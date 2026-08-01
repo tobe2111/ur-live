@@ -584,7 +584,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
 
   // 🚦 여기서 비로소 띄운다 — 이번 회차 예산만큼만. 미룬 레인은 **버린 게 아니라** 다음 차례에 돈다
   //   (`selectLanesForHour` 가 모든 레인이 `groups` 시간 안에 반드시 한 번 돎을 보장 — 유닛이 강제).
-  const kicked = dispatchPendingLanes({ pending, env: env as never, hourUTC, laneUrl, beat: adsBeat, waitUntil: (p) => ctx.waitUntil(p) })
+  const kicked = await dispatchPendingLanes({ pending, env: env as never, hourUTC, laneUrl, beat: adsBeat, waitUntil: (p) => ctx.waitUntil(p) })
 
   // 🧾 **모든 디스패치가 끝난 뒤** 남은 하트비트를 한 번에 쓴다(중간분은 임계치에서 이미 나갔다).
   //   ⚠️ 기다리지 않고 flush 하면 빈 배치를 쓰고, 그 뒤 쌓인 기록은 영영 안 나간다.

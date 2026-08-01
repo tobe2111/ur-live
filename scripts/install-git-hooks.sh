@@ -312,6 +312,12 @@ node scripts/check-current-work-sync.mjs || true
 echo "==> Pre-commit: 마이그레이션/repair-schema drift (warn-only)..."
 node scripts/check-migration-repair-drift.mjs || true
 
+# 🩹 머지 충돌 마커 — 커밋 전 마지막 방어선. `git add -A` 는 충돌 파일도 '해결됨'으로 표시한다.
+node scripts/check-conflict-markers.mjs -s || {
+  echo "커밋 중단: 충돌 마커가 남아 있다. 양쪽 내용을 직접 보고 합쳐라."
+  exit 1
+}
+
 # 📑 소개서(docs/proposals/) 동기화 권고 (warn-only — 절대 차단 X).
 echo "==> Pre-commit: 소개서 동기화 권고 (warn-only)..."
 bash scripts/check-proposal-sync.sh || true

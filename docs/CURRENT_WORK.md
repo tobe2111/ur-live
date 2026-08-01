@@ -5495,6 +5495,8 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
 _총 77건 · 최신순 · 이 목록은 자동 생성된다._
+_총 74건 · 최신순 · 이 목록은 자동 생성된다._
+_총 75건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-02**
 - [대표 지시 두 건이 "머지됐는데 실행된 적이 없었다" — 재추출 단계의 굶주림](handoff/2026-08-02-ads-reextract-starvation.md)

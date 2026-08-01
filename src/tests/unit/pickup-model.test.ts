@@ -17,7 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   parsePickup, pickupToMeta, validatePickup, isEmptyPickup,
-  STORAGE_LABEL, STORAGE_NOTICE, PICKUP_META_KEYS,
+  STORAGE_LABEL, STORAGE_NOTICE, PICKUP_META_KEYS, canRequestReturn,
 } from '@/shared/pickup'
 
 describe('🔴 보관구분 — 모르는 값은 추측하지 않는다', () => {
@@ -167,5 +167,52 @@ describe('📦 상품 상세 (C3)', () => {
 
   it('픽업일이 UTC-naive 오해석을 피한다', () => {
     expect(usesSymbol(page, 'parseUTCDate')).toBe(true)
+  })
+})
+
+/**
+ * 🔴 **픽업 주문도 반품을 신청할 수 있어야 한다** 〔체크리스트 C8 · §5.4〕
+ *
+ * 기존 게이트는 **배송 전제**(`status === 'DELIVERED'`)인데, 픽업 주문은 결제 후
+ * 매장에서 QR 로 소각될 뿐 **`DELIVERED` 를 거치지 않는다.**
+ * ⇒ 소비자가 반품을 올릴 입구가 **아예 없었다** — 문제가 생겨도 말할 방법이 없다는 뜻이다.
+ *
+ * ## 🔴 여는 건 **접수 자격**뿐 — 환불액이 아니다
+ * 얼마를 돌려줄지는 **④-b**(보관구분 정책)다. 받아줄지·얼마를 줄지는 운영자/어드민이 판단한다.
+ *
+ * ⚠️ 못 막는 것: 운영자가 요청을 **방치**하는 것 · 환불 정책 자체.
+ */
+describe('🔴 반품 접수 자격 — 픽업은 DELIVERED 를 안 거친다', () => {
+  const now = Date.parse('2026-08-10T00:00:00Z')
+
+  it('픽업 주문은 결제 완료(PAID/DONE)만으로 접수된다', () => {
+    for (const st of ['PAID', 'DONE']) {
+      expect(canRequestReturn({ status: st, isPickup: true, basisIso: null, nowMs: now }).ok).toBe(true)
+    }
+  })
+
+  it('🔴 배송 주문의 기존 게이트는 그대로 — DELIVERED 아니면 거부', () => {
+    // 이 변경이 배송 주문의 규칙을 느슨하게 만들면 안 된다.
+    expect(canRequestReturn({ status: 'PAID', isPickup: false, basisIso: null, nowMs: now }).ok).toBe(false)
+    expect(canRequestReturn({ status: 'DELIVERED', isPickup: false, basisIso: null, nowMs: now }).ok).toBe(true)
+  })
+
+  it('결제 전 픽업 주문은 거부 — 상태 게이트는 fail-closed', () => {
+    for (const st of ['PENDING', 'FAILED', 'CANCELLED']) {
+      expect(canRequestReturn({ status: st, isPickup: true, basisIso: null, nowMs: now }).ok).toBe(false)
+    }
+  })
+
+  it('창(7일)은 **픽업일** 기준 — 배송의 delivered_at 자리다', () => {
+    expect(canRequestReturn({ status: 'PAID', isPickup: true, basisIso: '2026-08-08', nowMs: now }).ok).toBe(true)
+    const late = canRequestReturn({ status: 'PAID', isPickup: true, basisIso: '2026-08-01', nowMs: now })
+    expect(late.ok).toBe(false)
+    if (!late.ok) expect(late.error).toContain('픽업일')
+  })
+
+  it('🔴 기준일을 모르면 **막지 않는다** — 모른다고 소비자 권리를 닫지 않는다', () => {
+    // 상태 게이트는 fail-closed, 기간 게이트는 fail-open. 방향이 다르다는 점이 이 설계의 핵심이다.
+    expect(canRequestReturn({ status: 'PAID', isPickup: true, basisIso: null, nowMs: now }).ok).toBe(true)
+    expect(canRequestReturn({ status: 'PAID', isPickup: true, basisIso: '내일', nowMs: now }).ok).toBe(true)
   })
 })

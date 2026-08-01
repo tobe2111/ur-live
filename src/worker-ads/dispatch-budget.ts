@@ -127,42 +127,72 @@ export interface LaneSelection<T extends LaneCandidate> {
   run: T[]
   /** 이번 회차엔 안 띄우는 레인 — **버리는 게 아니라 미루는 것**(다음 차례에 돈다). */
   deferred: T[]
-  /** 미룬 이유를 사람이 읽게: 조 개수. 1 이면 아무도 안 밀린다(= 유료 동작). */
-  groups: number
+  /** 이번 회차에 매시간 레인에 실제로 준 몫(= 예산 − 항상돌것). 0 이면 이 시간엔 매시간 레인이 하나도 못 돈다. */
+  cap: number
+  /** 다음 회차가 이어받을 커서. 호출부가 저장한다. */
+  nextCursor: number
+  /** 항상 돌아야 하는(미룰 수 없는) 레인 수 — 예산을 통째로 먹으면 이 값이 경보다. */
+  always: number
 }
 
 /**
- * 이번 정각에 띄울 레인을 고른다.
+ * 이번 정각에 띄울 레인을 고른다 — **커서 라운드로빈**.
  *
- * ## 배정 규칙 — **이름 정렬 후 인덱스**(배열 순서가 아니다)
- * 배열 순서를 쓰면 안 된다: 일 1회 레인은 그 시간에만 목록에 나타나므로 **그 시간에 뒤쪽 인덱스가
- * 전부 밀려** 다른 조로 튄다. 그러면 어떤 레인은 두 시간 연속 돌고 어떤 레인은 건너뛴다.
- * 이름으로 정렬하면 목록 구성이 바뀌어도 **같은 레인은 같은 자리**를 갖는다.
+ * ## 왜 고정 분할(`i % groups === hour % groups`)을 버렸나 — 2026-08-02 실측 결함
+ * 첫 구현은 매시간 레인을 `groups` 개의 조로 나눠 시간마다 한 조씩 돌렸다. 그런데 **일 1회·N시간
+ * 레인은 미룰 수 없어서**(미루면 영영 안 돈다) 그 시간의 실행 수에 그대로 얹혔다. 결과:
  *
- * ## 커버리지 보장
- * `groups = ceil(미룰수있는수 / perTick)` 이고 레인 i 는 `i % groups === hour % groups` 일 때 돈다
- * ⇒ **모든 레인이 최대 `groups` 시간 안에 반드시 한 번 돈다.** 굶는 레인이 구조적으로 없다.
+ * ```
+ *   예산 8  →  실제 실행 12   (16:00 UTC: dailyAt(16) + everyNHours(2) 가 겹친 시간)
+ * ```
+ * 그 회차에서 꼬리 3개(`collect-commerce`·`collect-neis`·`collect-nps`)가 26초대에
+ * `Worker exceeded CPU time limit` 로 잘렸다. **예산을 지킨다고 해 놓고 안 지키고 있었다.**
  *
- * @param hourUTC 0~23. 회전 위상.
+ * ⚠️ 그리고 내가 써 둔 "한 회차가 예산을 넘지 않는다" 어서션은 **통과했다** — 픽스처에 일 1회
+ *   레인이 하나도 없어 `always` 가 빈 배열이었기 때문이다. 실패할 수 없는 가드였다(오늘 세 번째).
+ *
+ * ## 고친 방식 — 몫을 줄이되, 굶기지 않는다
+ * `cap = 예산 − 항상돌것` 으로 매시간 레인의 몫을 **줄인다**. 그런데 이러면 몫이 시간마다 달라져
+ * **고정 분할의 커버리지 증명이 깨진다**(조 개수가 시간마다 바뀌면 어떤 레인은 계속 건너뛸 수 있다).
+ * 그래서 분할이 아니라 **커서**로 바꿨다: 정렬된 목록을 커서부터 `cap` 개 집고 커서를 그만큼 민다.
+ *
+ * ⇒ 몫이 들쭉날쭉해도 **순서대로 도니까 굶는 레인이 구조적으로 없다.** 커버리지는 "cap 이 매번
+ *   1 이상이면 최대 n 회차 안에 전원"으로 증명된다(유닛이 변동 몫으로 시뮬레이션해 강제).
+ *
+ * ⚠️ `cap` 하한은 **1**이다. 항상 돌 레인이 예산을 다 먹어도 매시간 레인 한 개는 전진시킨다 —
+ *   0 으로 두면 그 시간대가 반복될 때 커서가 영원히 안 움직인다(= 부재, 이 파일이 막으려는 바로 그것).
+ *
+ * @param cursor 지난 회차가 남긴 커서. 없으면 0(또는 시각 유도값) — 정확성은 커서 유무와 무관하고,
+ *               커서가 없으면 공평성만 약해진다(fail-soft).
  */
-export function selectLanesForHour<T extends LaneCandidate>(
-  lanes: T[], perTick: number, hourUTC: number,
+export function selectLanesForTick<T extends LaneCandidate>(
+  lanes: T[], perTick: number, cursor: number,
 ): LaneSelection<T> {
   const always = lanes.filter(l => !isDeferrable(l))
   const movable = lanes.filter(isDeferrable)
-  const cap = Number.isFinite(perTick) && perTick >= 1 ? Math.floor(perTick) : FREE_LANES_PER_TICK
-  if (movable.length <= cap) return { run: lanes, deferred: [], groups: 1 }
+  const budget = Number.isFinite(perTick) && perTick >= 1 ? Math.floor(perTick) : FREE_LANES_PER_TICK
+  const n = movable.length
+  const base = { always: always.length }
+  if (n === 0) return { run: [...always], deferred: [], cap: 0, nextCursor: 0, ...base }
 
-  const groups = Math.ceil(movable.length / cap)
+  // 항상 돌 레인이 먹고 남은 몫. 하한 1 — 위 주석 참조.
+  const cap = Math.max(1, budget - always.length)
+  if (n <= cap) return { run: [...always, ...movable], deferred: [], cap, nextCursor: 0, ...base }
+
   const ordered = [...movable].sort((a, b) => {
     const ka = assignKey(a.beat), kb = assignKey(b.beat)
     return ka < kb ? -1 : ka > kb ? 1 : 0
   })
-  const slot = ((Math.trunc(hourUTC) % groups) + groups) % groups // 음수 시각에도 안전
+  const c = Number.isFinite(cursor) ? ((Math.trunc(cursor) % n) + n) % n : 0  // 음수·NaN 안전
+  const picked = new Set<number>()
   const run: T[] = [...always]
-  const deferred: T[] = []
-  ordered.forEach((lane, i) => { (i % groups === slot ? run : deferred).push(lane) })
-  return { run, deferred, groups }
+  for (let i = 0; i < cap; i++) {
+    const idx = (c + i) % n
+    picked.add(idx)
+    run.push(ordered[idx])
+  }
+  const deferred = ordered.filter((_, i) => !picked.has(i))
+  return { run, deferred, cap, nextCursor: (c + cap) % n, ...base }
 }
 
 /**
@@ -170,12 +200,18 @@ export function selectLanesForHour<T extends LaneCandidate>(
  *
  * ⚠️ 이게 없으면 "왜 이 레인이 이번 시간에 안 돌았지?"를 구분할 방법이 없다 — 미룬 것과
  * 죽은 것이 똑같이 "기록 없음"으로 보인다. 이 레포에서 그 혼동으로 이미 여러 번 오진했다.
+ * (#919 첫 판정에서 실제로 못 봤다 — 쓰기만 하고 진단 API 에 노출을 안 했다.)
+ *
+ * `over_budget` — 항상 돌 레인만으로 예산을 넘긴 시간. **분산으로 해결 불가**하다는 신호이므로
+ * 사람이 보고 그 레인의 시각을 옮기거나 요금제를 올려야 한다.
  */
 export function dispatchSnapshot(
   sel: LaneSelection<LaneCandidate>, plan: AdsPlan, perTick: number, hourUTC: number, atIso: string,
 ): Record<string, unknown> {
   return {
-    at: atIso, hour: hourUTC, plan, per_tick: perTick, groups: sel.groups,
+    at: atIso, hour: hourUTC, plan, per_tick: perTick,
+    cap: sel.cap, always: sel.always, cursor_next: sel.nextCursor,
+    over_budget: sel.always >= perTick,
     ran: sel.run.map(l => l.beat).sort(),
     deferred: sel.deferred.map(l => l.beat).sort(),
   }
