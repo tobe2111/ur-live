@@ -75,7 +75,30 @@
    - 생겼다 ⇒ 수명 가설이 맞았다. 시작 표시는 **불필요**하다(위 "뺀 것" 참조).
    - 여전히 없다 ⇒ 시작조차 못 한다는 뜻이므로 그때 `markLaneStarted` 를 넣어 확정한다.
 2. `ok=false` 인 레인의 **`result.detail`**(#912) 원문을 읽는다 — `Too many subrequests` / `Network connection lost` / `internal error` 중 무엇인지가 처방을 가른다.
-3. `ads:sweep-kakao-chain` 은 위 둘과 **다른 문제**다(기록·스탬프 일치 = 진짜 미실행). 별건으로 볼 것.
+3. `ads:sweep-kakao-chain` 은 위 둘과 **다른 문제**다(기록·스탬프 일치 = 진짜 미실행). 별건으로 볼 것 — 아래 가설 참조.
+
+## `sweep-kakao-chain` — 검증되지 않은 가설 (다음 세션이 확인할 것)
+
+00:01:18 이후 **하트비트도 스탬프도** 없다. 게이트는 켜져 있다(같은 게이트의 `enrich-company`·`match-registry`·
+`reclassify` 는 13:01 에 돌았다). 즉 **kick 은 되는데 첫 쓰기 이전에 죽는다**로 보인다.
+
+가장 유력한 자리는 후보 조회다 — `company-collect.ts:470`:
+
+```sql
+SELECT id, company_name, region, address FROM ad_company_leads
+ WHERE merged_into IS NULL AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != ''
+   AND (kakao_checked_at IS NULL OR kakao_checked_at < datetime('now','-30 days'))
+ ORDER BY (tier IS NULL) ASC, tier ASC, id ASC LIMIT 600
+```
+
+`held_no_contact` 가 **150,294** 건이고 정렬 키가 계산식(`tier IS NULL`)이라 인덱스를 타기 어렵다.
+이 한 방이 오래 끌면 레인은 **아무 기록도 못 남기고** 사라진다 — 지금 화면과 정확히 같은 모습이다.
+
+⚠️ **아직 가설이다.** #913 배포 후 다른 레인은 beat 가 살아났는데 **이 레인만 무기록**이면 가설이 강해진다
+(그때 남는 차이는 이 레인만 갖는 150k행 조회다). 확정하려면 위에서 뺀 `markLaneStarted` 가 필요하다 —
+`phase=start` 가 남으면 조회 **이후**에서 죽는 것이고, 그래도 무기록이면 조회와 무관한 디스패치 문제다.
+
+판정 전에 인덱스를 추가하지 말 것 — 추측으로 스키마를 만지면 원인이 그대로 남은 채 증거만 흐려진다.
 
 ## 대표 판단 대기
 
