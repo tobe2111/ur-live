@@ -528,7 +528,7 @@ WebFetch 도 403(봇 차단)이라 스펙 확인은 대표 화면 확인이 필�
 2. **RED·미보유 영역만 작업** — 게이트가 RED 면 그 가드가 가리키는 사이트만, `AUDIT_INVARIANTS.md` 의 "가드 미보유" 영역(결제 금액정확성·런타임 크래시·외부 PG 실응답)만 수동 감사.
 3. **새 불변식을 발견·확인하면 가드부터 만들어라**(애초에 없도록) → `audit-gate.sh` + `AUDIT_INVARIANTS.md` 갱신. 수동 감사 결과를 반복하지 말고 기계가 지키게 한다.
 
-> 현재 **76개** 불변식 GREEN (서비스분리·인증세션RBAC·머니패턴·DB스키마·상품종류·UI테마·시각KST·배포·번들). 상세: `docs/AUDIT_INVARIANTS.md`.
+> 현재 **78개** 불변식 GREEN (서비스분리·인증세션RBAC·머니패턴·DB스키마·상품종류·UI테마·시각KST·배포·번들). 상세: `docs/AUDIT_INVARIANTS.md`.
 > ⚠️ 이 숫자는 가드를 추가할 때마다 낡는다(2026-07-29 에 47 → 76 으로 정정 — 29개가 밀려 있었다).
 > **정확한 값은 `bash scripts/audit-gate.sh` 의 마지막 줄**이고, `check-audit-registry-sync` 가
 > `docs/AUDIT_INVARIANTS.md` 의 개수만 강제한다(이 줄은 강제 대상이 아니라 수동 관리다).
