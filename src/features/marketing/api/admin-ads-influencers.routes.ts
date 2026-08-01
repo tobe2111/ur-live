@@ -9,6 +9,7 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
 import { buildSendQueueWhere, SEND_QUEUE_ORDER_BY, OUTREACH_NOISE_WORDS } from './outreach-queue'
+import { withOutreachTemplate } from './outreach-template'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
 import { ensurePerfExtraColumns, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
@@ -73,6 +74,21 @@ app.get('/influencer-pool', async (c) => {
   //   `''`(확인했지만 지역 없음)와 NULL(미확인)은 필터 대상 아님 — 실제 지역 토큰일 때만.
   const region = (c.req.query('region') || '').trim()
   if (region) { where.push('region = ?'); binds.push(region.slice(0, 20)) }
+  // 🏷️ **분류 신뢰도** 필터(2026-07-29) — 대표 4축 ②의 작업 도구.
+  //   `category_source` 는 이미 저장·CSV 에 나가는데 **쿼리할 수가 없었다.** 실측상 네이버 블로거의
+  //   84%가 `keyword`(발굴 키워드 상속: "강남 맛집"으로 발굴됐다고 맛집 블로거인 건 아니다)인데,
+  //   화면에서 그 84%를 골라낼 방법이 없으니 품질 작업의 대상 자체를 특정할 수 없었다.
+  //   `content` = 본문·소개글로 확인된 것(신뢰) · `keyword` = 상속(미확인, 재측정 대상).
+  const catSource = (c.req.query('catSource') || '').trim()
+  if (catSource === 'content') where.push("category_source = 'content'")
+  else if (catSource === 'keyword') where.push("category IS NOT NULL AND COALESCE(category_source, 'keyword') <> 'content'")
+  // 📏 **측정 여부** 필터(2026-07-29) — 대표 4축 ④.
+  //   `perf_checked_at IS NULL` = 아직 한 번도 안 잰 리드(= 연락처·본문분류가 통째로 비어 있는 집합).
+  //   실측 91%가 여기 있는데 목록에서 분리할 수 없었다 — 백로그가 줄고 있는지조차 화면에서 못 봤다.
+  //   ⚠️ `account_id`(+platform) 뒤에 오므로 `idx_ad_inf_leads_perf` 를 그대로 탄다(풀스캔 아님).
+  const measured = (c.req.query('measured') || '').trim()
+  if (measured === '0') where.push('perf_checked_at IS NULL')
+  else if (measured === '1') where.push('perf_checked_at IS NOT NULL')
   if (c.req.query('hasContact') === '1') where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
   if (c.req.query('hasEmail') === '1') where.push('email IS NOT NULL')      // 아웃리치 리스트용(이메일 보유만)
   if (c.req.query('hasInstagram') === '1') where.push('instagram IS NOT NULL')
@@ -109,9 +125,12 @@ app.get('/influencer-pool', async (c) => {
       where.push('name NOT LIKE ?'); binds.push(`%${w}%`)
     }
     where.push('COALESCE(is_brand, 0) = 0') // 🏢 브랜드 공식 채널(기업 계정)도 함께 숨김 — 태깅만, 삭제 아님
+    where.push('COALESCE(opted_out, 0) = 0') // 🚫 "제안은 정중히 사양합니다" — 발송 큐와 같은 기준
   }
   // 🏢 브랜드 공식 채널만 — 태깅 결과 검수용(오탐 확인 후 memo/status 로 큐레이션).
   if (c.req.query('brandOnly') === '1') where.push('is_brand = 1')
+  // 🚫 거부 명시만 — 오탐 검수용. 태그가 sticky 라 해제는 사람이 여기서 확인하고 판단한다.
+  if (c.req.query('optedOutOnly') === '1') where.push('opted_out = 1')
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
   const offset = Math.max(0, intParam(c.req.query('offset'), 0)) // 페이지네이션 — 풀 전체(1800+) 브라우징
   // 정렬: 기본 'fit'(유어딜 핏 — 스위트스팟 1만~50만 + 네이버블로그 최우선 → 준대형 → 나노 → 초대형).
@@ -132,7 +151,7 @@ app.get('/influencer-pool', async (c) => {
   // 현재 필터의 전체 건수(페이지네이션 UI "X / Y" + 더보기 판단) — 같은 where/binds 재사용.
   const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${whereSql}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
-  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel, outreach_draft, source, consented_at, recent_avg_views, recent_avg_comments, recent_posts_30d, email_status, opened_at, replied_at, channel_published_at, median_long_views, shorts_ratio, is_brand, lead_score, last_post_at, category_source, region
+  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel, outreach_draft, source, consented_at, recent_avg_views, recent_avg_comments, recent_posts_30d, email_status, opened_at, replied_at, channel_published_at, median_long_views, shorts_ratio, is_brand, lead_score, last_post_at, category_source, region, perf_checked_at, opted_out
     FROM ad_influencer_leads WHERE ${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
     .bind(...binds, limit, offset).all().catch(() => null)
   return c.json({ success: true, leads: rows?.results || [], total: totalRow?.n ?? 0, offset, limit })
@@ -177,7 +196,8 @@ app.get('/influencer-pool/send-queue', async (c) => {
   // 남은 총량 — "오늘 20명" 을 눌렀을 때 뒤에 몇 명이 더 있는지(동기부여 + 소진 판단).
   const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${where}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
-  return c.json({ success: true, leads: rows?.results || [], remaining: totalRow?.n ?? 0, limit })
+  // ✉️ 문안 동봉 — 화면이 붙여넣을 것을 서버가 만든다(SSOT: outreach-template). 근거는 그 모듈 헤더.
+  return c.json({ success: true, leads: withOutreachTemplate(rows?.results || []), remaining: totalRow?.n ?? 0, limit })
 })
 
 // PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션

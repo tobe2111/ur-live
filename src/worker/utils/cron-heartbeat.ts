@@ -20,17 +20,43 @@
  *   대신 **기록 누락이 없다**(모아서 쓰면 waitUntil 이 먼저 끝나 유실될 수 있다).
  */
 import type { Env } from '../types/env'
+// 🔴 기대 목록 대조(트리거 미등록 탐지) — 정적 목록 vs 런타임 기록. 상세: cron-expected.ts
+import { findNeverFired, type NeverFiredEntry } from './cron-expected'
 
 /**
- * 작업 반환값을 한 줄 요약으로. 평면 객체의 숫자·불리언·짧은 문자열만 추린다
- * (배열·중첩 객체는 길어지기만 하고 판단에 도움이 안 된다).
+ * 실패 사유를 **짧은 분류 코드**로 (순수 — 유닛 잠금).
+ *
+ *   원래 이 함수가 생긴 이유는 아래 `summarizeResult` 가 **24자 초과 문자열을 버렸기** 때문이다
+ *   (`Too many subrequests by single Worker invocation` = 47자 → 통째로 증발). 2026-07-29 에
+ *   ur-ads 4개 레인이 동시에 `ok:false` 로 죽었는데 예산 고갈인지 다른 예외인지 화면에서 구분되지 않았다.
+ *
+ *   ⚠️ 같은 날 **그 24자 드롭 자체를 없앴다**(아래 ✂️ 주석 — 자르되 버리지 않는다). 그래도 이 함수는 유지한다:
+ *   원문을 남기는 것과 **정규화된 코드로 분류**하는 것은 다른 일이다. `limit`/`timeout` 은 다음 행동
+ *   (AIMD 감속 / 타임아웃 조정)을 바로 정해주고, 원문은 문구가 바뀌면 집계가 깨진다. 둘 다 남긴다.
  */
-function summarizeResult(v: unknown): string | null {
+export function cronErrorCode(e: unknown): string {
+  const msg = String((e as { message?: string } | null)?.message || e || '')
+  if (/too many (subrequests|api requests)/i.test(msg)) return 'limit' // 예산 고갈 — AIMD 가 대응할 신호
+  const name = (e as { name?: string } | null)?.name
+  if (name === 'TimeoutError' || /timeout|aborted/i.test(msg)) return 'timeout'
+  return (name || 'Error').slice(0, 24)
+}
+
+/**
+ * 작업 반환값을 한 줄 요약으로. 평면 객체의 숫자·불리언·문자열만 추린다
+ * (배열은 길이만, 중첩 객체는 길어지기만 하고 판단에 도움이 안 된다).
+ * 유닛으로 고정하려고 export 한다 — **값이 조용히 사라지는 사고**를 실제로 겪었다(아래 ✂️ 주석).
+ */
+export function summarizeResult(v: unknown): string | null {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return null
   const parts: string[] = []
   for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
     if (typeof val === 'number' || typeof val === 'boolean') parts.push(`${k}=${val}`)
-    else if (typeof val === 'string' && val.length <= 24) parts.push(`${k}=${val}`)
+    // ✂️ 2026-07-29: 예전엔 24자를 넘는 문자열을 **통째로 버렸다.** 그런데 길어지는 문자열은 대개
+    //   `error` 다 — 즉 **가장 알고 싶은 값이 정확히 그 이유로 사라졌다**(라운드 체인이 왜 멈췄는지가
+    //   `round2: Error: Too many subrequests` 처럼 24자를 넘어 기록에서 증발). 버리지 말고 자른다.
+    //   전체는 어차피 MAX_NOTE 로 묶여 있어 '한 줄 요약'이라는 성격은 그대로다.
+    else if (typeof val === 'string' && val) parts.push(`${k}=${val.length <= 72 ? val : `${val.slice(0, 71)}…`}`)
     else if (Array.isArray(val)) parts.push(`${k}[${val.length}]`)
     if (parts.join(' ').length > MAX_NOTE) break
   }
@@ -63,21 +89,43 @@ export async function recordCronBeat(
    * 작은 평면 객체만 받는다(로그가 아니라 한 줄 요약).
    */
   result?: unknown,
+  /**
+   * 이 작업의 **실제** 기대 간격(분). cron 식만으로는 알 수 없을 때 작업이 직접 신고한다.
+   *
+   * ⚠️ 2026-07-29 신설 — ur-ads 처럼 **하나의 cron 이 여러 주기의 레인을 디스패치**하면
+   * `event.cron`(매시간) 이 실제 주기를 말해주지 못한다. 일 1회 레인이 매시간으로 기록돼
+   * **정상 동작 중에도 하루 21.5시간을 `stale`** 로 보고했다(실측: `ads:maintenance?phase=quality`
+   * age 167분 · stale). 그 판정은 uptime 프로브를 타고 이슈+메일로 나간다 — 매일 울리는 오탐은
+   * "확실히 이상한 것만 울린다"는 이 모듈의 설계 의도를 깨고 경보 전체를 무력화한다.
+   * 값이 있으면 cron 식보다 **우선**한다. 없으면 종전대로 cron 식에서 유도한다.
+   */
+  maxGapMin?: number,
 ): Promise<void> {
   try {
     const DB = (env as unknown as { DB?: D1Database }).DB
     if (!DB || !name) return
-    const value = JSON.stringify({
-      at: new Date().toISOString(),
-      ok,
-      ms: Math.max(0, Math.round(ms)),
-      ...(cronExpr ? { cron: cronExpr.slice(0, 40) } : {}),
-      ...(summarizeResult(result) ? { r: summarizeResult(result) } : {}),
-    }).slice(0, MAX_VALUE)
-    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-      .bind(`cron_hb:${name.slice(0, 80)}`, value)
-      .run()
+    const { key, value } = buildCronBeatRow(name, ok, ms, cronExpr, result, maxGapMin)
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, value).run()
   } catch { /* fail-soft — 관측 실패가 작업을 막지 않는다 */ }
+}
+
+/**
+ * 하트비트 한 행의 (key, value) — **페이로드 모양의 SSOT**.
+ *   단건 쓰기(`recordCronBeat`)와 일괄 쓰기(worker-ads `beat-batch`)가 **같은 것을 쓰도록** 분리했다.
+ *   두 벌로 쓰면 한쪽만 필드가 추가되고, 그 어긋남은 조용하다(이 레포가 반복해 겪은 실패 양식).
+ */
+export function buildCronBeatRow(
+  name: string, ok: boolean, ms: number, cronExpr?: string, result?: unknown, maxGapMin?: number,
+): { key: string; value: string } {
+  const value = JSON.stringify({
+    at: new Date().toISOString(),
+    ok,
+    ms: Math.max(0, Math.round(ms)),
+    ...(cronExpr ? { cron: cronExpr.slice(0, 40) } : {}),
+    ...(Number.isFinite(maxGapMin) && (maxGapMin as number) > 0 ? { g: Math.round(maxGapMin as number) } : {}),
+    ...(summarizeResult(result) ? { r: summarizeResult(result) } : {}),
+  }).slice(0, MAX_VALUE)
+  return { key: `cron_hb:${name.slice(0, 80)}`, value }
 }
 
 export interface CronHeartbeat {
@@ -91,6 +139,8 @@ export interface CronHeartbeat {
   cron?: string | null
   /** 이 작업이 '멈춤'으로 보이는가(기대 주기 대비). 판단 불가면 null. */
   stale?: boolean | null
+  /** 이 판정에 쓰인 기대 간격(분) — 작업이 신고했으면 그 값, 아니면 cron 식에서 유도. */
+  max_gap_min?: number | null
   /** 마지막 실행이 '무엇을 했나' 한 줄 요약(작업이 결과를 반환한 경우). */
   result?: string | null
 }
@@ -126,18 +176,22 @@ export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[
     const now = Date.now()
     const rows = (results || []).map((r) => {
       let at: string | null = null, ok: boolean | null = null, ms: number | null = null, cron: string | null = null, note: string | null = null
+      let gap: number | null = null
       try {
-        const v = JSON.parse(r.value) as { at?: string; ok?: boolean; ms?: number; cron?: string; r?: string }
+        const v = JSON.parse(r.value) as { at?: string; ok?: boolean; ms?: number; cron?: string; r?: string; g?: number }
         at = v.at ?? null; ok = typeof v.ok === 'boolean' ? v.ok : null
         ms = typeof v.ms === 'number' ? v.ms : null; cron = v.cron ?? null; note = v.r ?? null
+        gap = typeof v.g === 'number' && v.g > 0 ? v.g : null
       } catch { /* 깨진 값은 null 로 */ }
       const t = at ? Date.parse(at) : NaN
       const age = Number.isFinite(t) ? Math.round((now - t) / 60000) : null
-      const limit = expectedMaxAgeMinutes(cron)
+      // 작업이 직접 신고한 주기가 있으면 그것이 진실 — cron 식은 폴백이다(위 maxGapMin 주석 참조).
+      const limit = gap ?? expectedMaxAgeMinutes(cron)
       return {
         name: r.key.slice('cron_hb:'.length),
         at, ok, ms, cron, result: note,
         age_minutes: age,
+        max_gap_min: limit,
         stale: (limit != null && age != null) ? age > limit : null,
       }
     })
@@ -193,6 +247,13 @@ export interface CronHealth {
   stale: CronStaleEntry[]
   /** cron 식이 없거나 해석 불가해 **판정을 못 한** 작업들(모르면 조용히 있는다). */
   missing: string[]
+  /**
+   * 🔴 **한 번도 안 뛴 cron 식** — 코드는 기대하는데 기록이 0인 것.
+   * `stale`(뛰다가 멈춤)과 **다른 사고**다: 트리거 미등록은 침묵이 아니라 **부재**라 기존 판정에
+   * 아예 안 잡혔다(2026-07-29 실사고 — 주간 정산 지급·백업이 한 번도 안 돌고 있었다).
+   * 오탐 방지로 **추적 창이 그 주기보다 길 때만** 채워진다.
+   */
+  never_fired: NeverFiredEntry[]
 }
 
 export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
@@ -219,6 +280,7 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
       last_finished_at: null, age_min: null,
     }],
     missing: [],
+    never_fired: [],
   })
   if (!beats.length) return empty(trackedMin < TOTAL_SILENCE_MIN)
 
@@ -237,6 +299,7 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
         max_gap_min: TOTAL_SILENCE_MIN, last_finished_at: newest?.at ?? null, age_min: latestAge,
       }],
       missing: [],
+      never_fired: [],  // 전면 침묵이면 개별 부재는 노이즈 — 먼저 전체를 살려야 한다
     }
   }
 
@@ -244,7 +307,7 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
   const stale: CronStaleEntry[] = []
   const missing: string[] = []
   for (const b of beats) {
-    const limit = expectedMaxAgeMinutes(b.cron)
+    const limit = b.max_gap_min ?? expectedMaxAgeMinutes(b.cron)
     if (limit == null || b.age_minutes == null) { missing.push(b.name); continue }
     if (b.age_minutes > limit) {
       stale.push({
@@ -254,12 +317,17 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
     }
   }
 
+  // 🔴 기대 목록 대조 — "뛰다가 멈춤"이 아니라 **한 번도 안 뜀**.
+  const neverFired = findNeverFired(beats.map(b => b.cron), trackedMin, expectedMaxAgeMinutes)
+
   return {
-    ok: stale.length === 0,
+    // 부재도 ok 를 깬다 — 이걸 ok 로 두면 2026-07-29 사고가 그대로 반복된다(초록불인데 지급이 안 나감).
+    ok: stale.length === 0 && neverFired.length === 0,
     bootstrapping: false,
     latest_heartbeat_at: newest?.at ?? null,
     latest_age_min: latestAge,
     stale,
     missing,
+    never_fired: neverFired,
   }
 }

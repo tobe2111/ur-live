@@ -11,6 +11,8 @@ export interface RunStats {
   crash?: string; crash_at?: string; crash_spent?: number; crash_budget?: number
   diag?: { yt: PlatformDiag; naver: PlatformDiag; tistory?: PlatformDiag; naver_enrich?: { tried: number; measured: number; contacts: number; failed: number } }
   yt_budget?: { used: number; total: number; day?: string }
+  /** 🎯 픽 소진 실태 — 계획한 키워드 중 실제로 몇 개를 돌았고, 그게 어느 경로에서 왔는지(성과가중/커서). */
+  picks?: { planned: number; processed: number; from_yt: number; from_cursor: number }
 }
 /** 야간 정비 기록(platform_settings) — 실행된 단계만 키가 존재. *_error 는 그 단계 실패. */
 export interface MaintenanceRecord {
@@ -61,6 +63,24 @@ export interface EnrichLaneRecord {
   spent?: number; budget_total?: number
   limit_hit?: boolean; deadline_hit?: boolean; elapsed_ms?: number
   total_measured?: number; total_contacts?: number
+  /**
+   * 📧 누적 이메일 — **이 레인이 '쓸 수 있는 리드'를 만드는지** 판정하는 값.
+   *   ⚠️ `total_contacts` 를 대신 보면 안 된다: 2026-07-29 까지 그 값은 네이버 블로거의 **자기 블로그 링크**를
+   *   연락처로 세어 부풀어 있었다(실측: 이메일 없는 303명 중 295명이 자기링크만 보유). 유입은 막았지만
+   *   기존 누적치는 그대로다 — 화면엔 **이메일만** 보여 오독을 원천 차단한다.
+   */
+  total_emails?: number
+  /**
+   * 🔗 **이번 정각 전체의 합**(라운드 N개). 위 필드들은 전부 *마지막 라운드 한 장*이라,
+   *   체인이 3라운드를 돌아도 앞 두 라운드가 무엇을 했는지 화면에서 볼 수 없었다.
+   *   ⚠️ `rounds` 를 먼저 볼 것 — `max_depth + 1` 보다 작으면 중간 라운드가 죽은 것이고,
+   *      그때 합계 0 은 '못 쟀다'가 아니라 '기록이 없다'는 뜻이다.
+   */
+  chain?: {
+    rounds?: number; rounds_planned?: number; max_depth?: number; bio?: number; yt?: number
+    naver_selected?: number; naver_tried?: number; naver_measured?: number; naver_contacts?: number
+    deadline_hits?: number; spent?: number; started_at?: string
+  }
   crash?: string; crash_at?: string
 }
 
@@ -85,8 +105,11 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
   const cls = (p: PlatformDiag) => !p.configured ? 'missing' : (p.error && p.saved === 0) ? 'failed' : (p.error && p.saved > 0) ? 'partial' : 'ok'
   const d = run?.diag
   const yt = d ? cls(d.yt) : 'ok', nv = d ? cls(d.naver) : 'ok'
-  const hard = yt === 'missing' || yt === 'failed' || nv === 'missing' || nv === 'failed'
-  const soft = yt === 'partial' || nv === 'partial'
+  // 🆕 티스토리(카카오 Daum 검색) — 옛 스냅샷엔 이 슬롯이 없다. 없으면 'ok' 로 둬서 **옛 기록이 빨간불을
+  //   내지 않게** 한다(배선 전 회차와 배선 후 회차가 같은 화면에 섞인다).
+  const ts = d?.tistory ? cls(d.tistory) : 'ok'
+  const hard = [yt, nv, ts].some(x => x === 'missing' || x === 'failed')
+  const soft = [yt, nv, ts].some(x => x === 'partial')
   const line = (label: string, p: PlatformDiag, st: string) => (
     <div>{label} — {p.configured ? `발굴 ${formatNumber(p.found)} · 저장 ${formatNumber(p.saved)}` : '키 미설정'}
       {st === 'ok' ? ' · 정상' : st === 'partial' ? ' · 일부 키워드 일시 실패(다음 시간 자동 재시도)' : st === 'failed' ? ` · ⚠️ ${p.error}` : ''}</div>
@@ -121,6 +144,18 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
             {' '}정비 도구에서 수동 동기화로 원인이 기록됩니다.
           </div>
         )
+      ) : null}
+
+      {/* 🎯 계획 대비 실행 — 예산이 앞 몇 개에서 끝나면 뒤쪽(커서픽)은 영영 안 돈다. 숫자로 보여야
+          "왜 같은 키워드만 도나"를 코드를 뒤지지 않고 알 수 있다(2026-07-29 실측: 16개 계획 / 3개 실행). */}
+      {run?.picks ? (
+        <div className="mb-2 mt-1 text-[11px] text-gray-500">
+          🎯 이번 회차 키워드 {formatNumber(run.picks.processed)}개 실행 / {formatNumber(run.picks.planned)}개 계획
+          {` · 성과가중 ${formatNumber(run.picks.from_yt)} · 커서순환 ${formatNumber(run.picks.from_cursor)}`}
+          {run.picks.from_cursor === 0 && run.picks.planned > run.picks.processed
+            ? ' — 커서순환 키워드가 한 개도 도달하지 못했습니다(예산이 앞쪽에서 소진). 순환 폭이 성과가중 픽에만 의존합니다.'
+            : ''}
+        </div>
       ) : null}
 
       {run?.diag?.naver_enrich && run.diag.naver_enrich.tried > 0 && run.diag.naver_enrich.measured === 0 ? (
@@ -162,6 +197,28 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
           {nbUnmeasured != null && naverBlogTotal ? ` · 남은 블로거 ${formatNumber(nbUnmeasured)}/${formatNumber(naverBlogTotal)}` : ''}
           {enrichLane.yt_units?.total ? <span className={(enrichLane.yt_units.used || 0) >= enrichLane.yt_units.total ? 'text-amber-600' : ''}>{` · 📈 YT 성과 쿼터 ${formatNumber(enrichLane.yt_units.used || 0)}/${formatNumber(enrichLane.yt_units.total)}`}</span> : null}
           {enrichLane.total_measured ? ` · 누적 측정 ${formatNumber(enrichLane.total_measured)}` : ''}
+          {enrichLane.total_emails != null ? <span className="text-emerald-700">{` · 📧 누적 이메일 ${formatNumber(enrichLane.total_emails)}`}</span> : null}
+        </div>
+      ) : null}
+      {/* 🔗 이번 정각 **전체**(라운드 합) — 위 줄은 마지막 라운드 한 장이라, 앞 라운드의 성과가 안 보였다.
+          `rounds < max_depth+1` 이면 중간 라운드가 죽은 것 → 합계 0 을 '못 쟀다'로 읽으면 오진이다. */}
+      {enrichLane?.chain?.rounds ? (
+        <div className="mb-1 text-xs text-gray-500">
+          {`🔗 이번 회차 합계 — 라운드 ${formatNumber(enrichLane.chain.rounds)}`}
+          {/* 🧱 계획 대비 도달 — 격차가 곧 체인 수명 천장이다(계획 12에 도달 3이면 9라운드는 존재한 적이 없다). */}
+          {enrichLane.chain.rounds_planned
+            ? <span className={(enrichLane.chain.rounds || 0) < enrichLane.chain.rounds_planned ? 'text-amber-600' : ''}>
+                {`/${formatNumber(enrichLane.chain.rounds_planned)}`}
+                {(enrichLane.chain.rounds || 0) < enrichLane.chain.rounds_planned ? ' (수명으로 조기 종료)' : ''}
+              </span> : ''}
+          {(enrichLane.chain.rounds || 0) < (enrichLane.chain.max_depth || 0) + 1
+            ? <span className="text-amber-600">{` (⚠️ 깊이 ${enrichLane.chain.max_depth} — 중간 라운드 기록 없음)`}</span> : ''}
+          {` · 블로거 ${formatNumber(enrichLane.chain.naver_measured || 0)}/${formatNumber(enrichLane.chain.naver_tried || 0)}`}
+          {(enrichLane.chain.naver_selected || 0) > (enrichLane.chain.naver_tried || 0)
+            ? <span className="text-amber-600">{` (고른 ${formatNumber(enrichLane.chain.naver_selected || 0)} 중 ${formatNumber((enrichLane.chain.naver_selected || 0) - (enrichLane.chain.naver_tried || 0))}명 못 잼)`}</span> : ''}
+          {enrichLane.chain.naver_contacts ? ` · 연락처 +${formatNumber(enrichLane.chain.naver_contacts)}` : ''}
+          {enrichLane.chain.yt ? ` · 📈 ${formatNumber(enrichLane.chain.yt)}` : ''}
+          {enrichLane.chain.deadline_hits ? ` · ⏱️ 시간상한 ${formatNumber(enrichLane.chain.deadline_hits)}회` : ''}
         </div>
       ) : null}
       {enrichLane?.crash ? (
@@ -196,6 +253,7 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
           <div className="font-medium">수집 진단 (마지막 실행){!hard && soft ? ' — 정상(일부 일시 실패)' : ''}</div>
           {line('유튜브', d.yt, yt)}
           {line('네이버', d.naver, nv)}
+          {d.tistory ? line('티스토리', d.tistory, ts) : null}
           {hard && <div className="text-red-500">키 미설정이면: Cloudflare → Workers &amp; Pages → <b>ur-ads</b> → Settings → Variables and Secrets 에 해당 키 추가.</div>}
         </div>
       )}

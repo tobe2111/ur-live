@@ -440,6 +440,25 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
  * @returns `tried`/`limit_hit` 는 **self-chain 판정용**(2026-07-29) — 체인이 "진전이 있었나"를 알아야
  *   한 건도 못 한 라운드를 40번 반복하는 헛돌기를 막는다. `done`=대상 소진.
  */
+/**
+ * 🧾 **루프가 남겨야 하는 부기(簿記) 몫** — 2026-07-29 라이브 실측 후 정정.
+ *
+ * 루프 뒤에는 D1 쓰기/읽기가 **5회** 따라온다:
+ *   ① 전화 확보분 배치 저장 ② 시도 도장 배치 ③ 학습 상한 갱신 ④ 직전 통계 조회 ⑤ **자기 스탬프**
+ * 그런데 루프는 `left <= 2` 에서 멈췄다 — 2만 남기고 5를 쓰려 했으니 뒤쪽 3개가 예산 밖이다.
+ * D1 도 서브리퀘스트라 예산을 넘기면 던지고, 전부 `.catch(() => null)` 이라 **조용히 사라진다.**
+ * 그리고 하필 마지막이 자기 스탬프다 ⇒ **레인이 돌았는데 "안 돈 것"처럼 보인다.**
+ *
+ * 실측(2026-07-29): 이 레인은 매시간 디스패치되는데 `ads_kakao_sweep_stats.last_run` 이 13:01 에
+ * 멈춰 있었다. 같은 블록의 `reclassify` 는 매시간 갱신됐다 — 차이는 그쪽이 예산을 안 쓴다는 것뿐이다.
+ *
+ * ⚠️ 이 상수는 **아래 실제 쓰기 횟수와 맞물려 있다.** 쓰기를 추가하면 이 값도 함께 올릴 것
+ *   (안 올리면 또 조용히 마지막 것부터 잘린다 — 그게 이 주석이 존재하는 이유다).
+ * ⚠️ 이것으로도 못 막는 경우: **플랫폼 한도**(`budget.limitHit`)를 실제로 친 회차는 이후 어떤
+ *   서브리퀘스트도 못 쓴다. 그건 예약으로 해결되지 않는다(그래서 한도 자체를 학습해 낮춘다).
+ */
+const SWEEP_BOOKKEEPING_RESERVE = 6
+
 export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; found: number; cursor: number; done: boolean; tried?: number; limit_hit?: boolean; day_lookups?: number }> {
   const DB = env.DB
   const schemaSpent = await ensureCompanySchema(DB) // 스키마 DDL 실비(아래 예산에서 차감)
@@ -475,7 +494,7 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   const tried: number[] = []                                   // 시도한 행 → 도장(배치 1회)
   const hits: Array<{ id: number; phone: string }> = []        // 전화 확보분 → 저장(배치 1회)
   for (const r of rows) {
-    if (budget.left <= 2 || budget.limitHit) break // 배치 쓰기 2회 몫은 남겨둔다
+    if (budget.left <= SWEEP_BOOKKEEPING_RESERVE || budget.limitHit) break // 아래 부기 몫을 남겨둔다(상수 주석 참조)
     const k = await kakaoLocalLookup(key, r.company_name, r.region, r.address, budget)
     if (budget.limitHit) break // 한도 도달 — 이 행은 조회된 적 없으므로 도장도 찍지 않는다(다음 라운드 재시도)
     tried.push(r.id)

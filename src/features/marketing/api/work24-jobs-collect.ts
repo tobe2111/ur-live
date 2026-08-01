@@ -10,6 +10,7 @@
  *   ⚠️ 수집 ≠ 발송 — 공개 채용공고의 회사 정보만.
  */
 import type { Env } from '@/worker/types/env'
+import { isNoValue } from './public-data-diag'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 
 const DEFAULT_LIST_URL = 'https://www.work24.go.kr/cm/openApi/call/wk/callOpenApiSvcInfo210L01.do'
@@ -48,7 +49,9 @@ function parseJobs(text: string): { items: Raw[]; msg?: string } {
 const g = (o: Raw, ...keys: string[]): string => {
   for (const k of keys) { if (o[k] != null && String(o[k]).trim() !== '') return String(o[k]).trim() }
   const lower = Object.fromEntries(Object.entries(o).map(([k, v]) => [k.toLowerCase(), v]))
-  for (const k of keys) { const v = lower[k.toLowerCase()]; if (v != null && String(v).trim() !== '') return String(v).trim() }
+// ⚠️ 별칭 폴백은 `isNoValue` 를 통과해야 한다 — 포털이 '값 없음'을 `"N/A"` 문자열로 주는데 truthy 라
+//   앞 별칭에서 걸리면 **뒤 별칭의 진짜 값을 건너뛴다**(통신판매에서 주소 31.7% 를 그렇게 잃었다).
+  for (const k of keys) { const v = lower[k.toLowerCase()]; if (!isNoValue(v)) return String(v).trim() }
   return ''
 }
 

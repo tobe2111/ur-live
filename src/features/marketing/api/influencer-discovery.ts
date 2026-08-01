@@ -14,7 +14,9 @@
 
 import { resolveCategory, classifyCategory } from './influencer-classify'
 import { runDdlOnce } from './ads-schema-guard'
+import { isSelfBlogLink } from './influencer-self-link'
 import { fetchWithErr, outOfBudget, spendBudget } from './fetch-with-err'
+import { stripVideoTitles } from './influencer-parse'
 
 const YT_BASE = 'https://www.googleapis.com/youtube/v3'
 
@@ -66,8 +68,10 @@ const uniqLower = (arr: string[]): string[] => Array.from(new Set(arr.map(s => s
 const PLATFORM_LABEL_LOCAL_RE = /^(insta|instagram|ig|tiktok|틱톡|인스타|인스타그램|youtube|yt|facebook|fb|twitter|threads|telegram|텔레그램|kakao|kakaotalk|카톡|x)$/i // 🛡️ F-01: "insta @sunny.day"→insta@sunny.day 가짜 이메일 날조 차단(로컬파트=플랫폼 라벨이면 "라벨+@핸들" 표기)
 export const isPlatformLabelEmail = (e: string): boolean => PLATFORM_LABEL_LOCAL_RE.test(e.split('@')[0] || '')
 
-/** 🏷️ 영상 제목 세그먼트(" | 영상: …") 제거 — 컨택 재추출/해시태그 마이닝의 타인 핸들·캠페인 태그 오수집 방지(제목=분류 전용). */
-export const stripVideoTitles = (s: string): string => String(s || '').replace(/\s\|\s(?:영상|글):[\s\S]*$/, '')
+/** 🏷️ 분류 전용 꼬리(" | 영상/글/소개/분류: …") 제거 — 컨택 재추출/해시태그 마이닝의 타인 핸들·캠페인 태그 오수집 방지.
+ *  구현은 순수 파서(`influencer-parse.ts`)로 이사했다(붙이는 쪽 `buildNaverDescription` 과 한 파일에 둬야 마커가 안 어긋난다).
+ *  기존 import 경로를 깨지 않으려고 여기서 재수출한다(import 는 파일 상단 — 중간 import 금지 룰). */
+export { stripVideoTitles }
 
 // 🧹 노이즈 판별 — 개인 인플루언서가 아닌 게 거의 확실한 계정(뉴스·방송·기관·체험단모집·마케팅대행).
 //   보수적(오탐 최소) — bare 체험단/서포터즈/대행사 는 정상 창작자(협찬 환영·"대행사 아님") 오제외라 '…모집'·부정문만 노이즈.
@@ -215,7 +219,7 @@ export type FetchBudget = { left: number; limitHit?: boolean; deadline?: number 
  *  opts.order: 검색 정렬 — 'relevance'(관련도) | 'date'(최신, 신생·소형) | 'viewCount'(인기) | 'rating'.
  *    같은 키워드도 정렬을 바꾸면 다른 채널이 나옴 → 매 실행 교대 시 top-N 재탕이 아니라 커버리지가 계속 확장(수렴). */
 export async function discoverYouTubeInfluencers(
-  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number; pages?: number; budget?: FetchBudget; searchType?: 'channel' | 'video'; order?: 'relevance' | 'date' | 'viewCount' | 'rating' } = {},
+  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number; pages?: number; budget?: FetchBudget; searchType?: 'channel' | 'video'; order?: 'relevance' | 'date' | 'viewCount' | 'rating'; alreadyContacted?: AlreadyContacted } = {},
 ): Promise<DiscoverResult> {
   const key = env.YOUTUBE_API_KEY
   if (!key) return { ok: false, error: 'NOT_CONFIGURED' }
@@ -306,10 +310,16 @@ export async function discoverYouTubeInfluencers(
   // 3) 📧🏷️ 영상 스니펫 보충(playlistItems 1unit/채널, 상한 enrichMax) — 이메일 없거나(영상 더보기 비즈니스메일 커버,
   //    pickBusinessEmail 노이즈 방지) 소개글로 카테고리 분류가 안 되는(영상 제목으로 교정) 채널. 같은 1콜로 둘 다 보강(쿼터 0).
   const enrichMax = Math.max(0, Math.min(30, opts.enrichMax ?? 15))
-  const targets = (leads as Array<InfluencerLead & { _uploads?: string }>)
+  const ytCand = (leads as Array<InfluencerLead & { _uploads?: string }>)
     .filter(l => l._uploads && (!l.email || !classifyCategory(l.name, l.description)))
     .sort((a, b) => b.subscriber_count - a.subscriber_count)
-    .slice(0, enrichMax)
+  // 💸 **이미 연락처를 가진 리드는 보강하지 않는다**(2026-07-29). 저장은 빈 칸만 COALESCE 백필하므로,
+  //   이미 채워진 리드를 보강하면 결과가 통째로 버려진다 — 순수 낭비다. 그런데 이 레인의 병목은 정확히
+  //   그 fetch 예산이다(실측 `spent 40/40`, 라운드당 키워드 3개). 풀이 38,813 까지 자라 **재조우가 다수**라
+  //   낭비 비중이 계속 커진다(실측 `yt: found 148 → saved 2`).
+  //   ⇒ D1 조회 **1회**로 최대 `enrichMax`(15) fetch 를 없앤다. 조회 실패는 무시(보강 진행 — fail-soft).
+  const ytTargets = await filterUncontacted(opts.alreadyContacted, 'youtube', ytCand, l => l.channel_id)
+  const targets = ytTargets.slice(0, enrichMax)
   for (const l of targets) {
     if (outOfBudget(opts.budget)) break // 예산 소진 — 컨택 보충 조기 종료(핵심 메타는 이미 수집됨)
     spendBudget(opts.budget)
@@ -319,7 +329,9 @@ export async function discoverYouTubeInfluencers(
       if (bizEmail && !l.email) l.email = bizEmail
       if (!l.instagram && c.instagram[0]) l.instagram = c.instagram[0]
       if (!l.tiktok && c.tiktok[0]) l.tiktok = c.tiktok[0]
-      if (!l.links && c.links.length) l.links = c.links.join(' ')
+      // 🔗 자기 블로그 URL 제외 — 네이버 블로거에겐 연락처가 아니라 자기 글 링크다(위 보강 레인과 동일 기준).
+    const extLinks = c.links.filter(u => !isSelfBlogLink(u)) // 판정 SSOT: influencer-self-link
+    if (!l.links && extLinks.length) l.links = extLinks.join(' ')
     }
     // 🏷️ 영상 제목=카테고리 신호. F-09: 500자 소개글 뒤에 붙이고 재-500 자르면 무효이던 버그 — 소개글 360자로 양보.
     if (titleText) l.description = `${l.description.slice(0, 360)} | 영상: ${titleText}`.slice(0, 500)
@@ -365,8 +377,31 @@ async function fetchNaverBlogHome(handle: string): Promise<string> {
   } catch { return '' }
 }
 
+/**
+ * 🔎 **이미 연락처가 있는 리드인가**를 되묻는 훅 — 발굴 모듈이 D1 을 직접 만지지 않기 위해 콜백으로 받는다.
+ *
+ *   `keys`(채널ID/블로그핸들) 중 **풀에 이미 있고 연락처가 하나라도 채워진** 것들의 집합을 돌려준다.
+ *   그 리드는 아무리 보강해도 저장 단계에서 빈 칸만 채우는 COALESCE 에 걸려 결과가 버려지므로,
+ *   보강 fetch 를 아예 쏘지 않는다. 구현은 `influencer-auto-collect`(D1 소유자) 쪽에 있다.
+ *
+ * ⚠️ 이 훅이 없거나(undefined) 실패하면 **보강을 그대로 진행**한다 — 최적화가 수집을 막으면 안 된다.
+ */
+export type AlreadyContacted = (platform: string, keys: string[]) => Promise<Set<string>>
+
+/** 훅으로 '이미 연락처 보유' 를 걸러낸 목록. 훅 부재/실패 시 원본 그대로(fail-soft). */
+async function filterUncontacted<T>(hook: AlreadyContacted | undefined, platform: string, rows: T[], keyOf: (r: T) => string | null | undefined): Promise<T[]> {
+  if (!hook || !rows.length) return rows
+  const keys = rows.map(keyOf).filter((k): k is string => !!k)
+  if (!keys.length) return rows
+  try {
+    const known = await hook(platform, keys)
+    if (!known?.size) return rows
+    return rows.filter(r => { const k = keyOf(r); return !k || !known.has(k) })
+  } catch { return rows }
+}
+
 export async function discoverNaverBloggers(
-  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; enrichMax?: number; budget?: FetchBudget; sort?: 'sim' | 'date' } = {},
+  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; enrichMax?: number; budget?: FetchBudget; sort?: 'sim' | 'date'; alreadyContacted?: AlreadyContacted } = {},
 ): Promise<DiscoverResult> {
   if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
   const q = (keyword || '').trim()
@@ -413,7 +448,9 @@ export async function discoverNaverBloggers(
   //   1차 블로그 홈(프로필·위젯 — 적중률 높음), 홈에서 못 찾고 예산 남으면 2차 RSS(글 본문). 링크트리는
   //   여기서 links 로 잡히고 이후 enrichPoolFromLinkInBio 가 다시 따라가 이메일까지 체인 추출.
   const enrichMax = Math.max(0, Math.min(20, opts.enrichMax ?? 8))
-  const targets = leads.filter(l => (!l.email && !l.instagram && !l.links) && l.handle).slice(0, enrichMax)
+  // 💸 YT 와 같은 이유로 '이미 연락처 보유' 재조우는 건너뛴다(블로그 홈+RSS 는 건당 최대 2 fetch).
+  const nbCand = leads.filter(l => (!l.email && !l.instagram && !l.links) && l.handle)
+  const targets = (await filterUncontacted(opts.alreadyContacted, 'naver_blog', nbCand, l => l.handle)).slice(0, enrichMax)
   for (const l of targets) {
     if (outOfBudget(opts.budget)) break // 예산 소진 — 컨택 보충 조기 종료
     spendBudget(opts.budget)

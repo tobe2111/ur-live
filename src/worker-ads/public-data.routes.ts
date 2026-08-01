@@ -14,7 +14,13 @@ import type { Env } from '@/worker/types/env'
 
 export const publicDataRoutes = new Hono<{ Bindings: Env }>()
 
-/** 얇은 위임 핸들러 공통 — 실패는 500 + 'FAILED'(원문은 각 러너가 stats.diag.error 로 남긴다). */
+/** 얇은 위임 핸들러 공통 — 실패는 500 + 'FAILED'(원문은 각 러너가 stats.diag.error 로 남긴다).
+ *
+ *  ⚠️ 2026-07-29: 한때 cron 호출을 "즉시 응답 + waitUntil" 로 바꿨다가 **되돌렸다.**
+ *  서비스 바인딩 피호출자는 **호출자보다 오래 살 수 없다** — 즉시 응답하면 부모의 await 이 풀리고
+ *  부모 인보케이션이 끝나면서 이쪽 waitUntil 작업이 **취소**된다(#874 라이브 실측: 라운드 0회).
+ *  ⇒ 작업은 **응답 전에**, 호출자가 살아 있는 동안 한다.
+ */
 const lane = (run: (env: Env) => Promise<unknown>) => async (c: { env: Env; json: (b: unknown, s?: number) => Response }) => {
   try { return c.json({ ok: true, stats: await run(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 }
@@ -87,3 +93,15 @@ publicDataRoutes.post('/__ads/sweep-nts', lane(async (env) => {
 }))
 
 export default publicDataRoutes
+
+// 💼 고용24 채용기업 수집 — 채용 중(성장 신호) 광고·마케팅·판촉 계열 기업 발굴. 수동=게이트 무관.
+//   🧹 2026-07-29 엔트리(600줄 캡)에서 이 모듈로 이동 — **동작 불변, 위치만**(둘 다 공공데이터 계열 레인).
+publicDataRoutes.post('/__ads/collect-work24', lane(async (env) => {
+  const { runWork24JobsCollect } = await import('@/features/marketing/api/work24-jobs-collect'); return runWork24JobsCollect(env)
+}))
+
+// 👥 국민연금 규모 검증 — 기존 리드(대행사 우선)의 직원수(가입자수) 조회(엄격 매칭, 허위 0).
+//   40→100(2026-07-27 대표 "더 정확히" — data.go.kr 쿼터 여유). 이동 사유는 위와 동일.
+publicDataRoutes.post('/__ads/collect-nps', lane(async (env) => {
+  const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich'); return runNpsWorkplaceEnrich(env, 100)
+}))

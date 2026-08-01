@@ -1,0 +1,23 @@
+{
+  "_comment": "index.html 의 entry <script> + <link rel=modulepreload> 에 등장해도 되는 청크 이름(해시 제외). 새 이름이 들어오면 = eager import 가 청크 하나를 통째로 크리티컬 패스로 끌고 온 것. scripts/check-critical-chunks.mjs 참조.",
+  "_measured": "2026-07-29 · critical path 216.1 KB gzip (CI run 30451981959) · 17 chunks · app-components/app-ui-utils/app-wholesale-hooks 를 크리티컬에서 들어낸 직후 기준",
+  "chunks": [
+    "app-auth",
+    "app-layout",
+    "app-routes",
+    "app-shared",
+    "app-shell",
+    "app-stores",
+    "app-utils",
+    "axios",
+    "capacitor",
+    "helmet",
+    "i18n",
+    "index",
+    "lucide",
+    "react-core",
+    "react-router",
+    "tanstack-query",
+    "zustand"
+  ]
+}

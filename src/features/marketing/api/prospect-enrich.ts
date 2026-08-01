@@ -18,6 +18,7 @@ import type { Env } from '@/worker/types/env'
 import type { FetchBudget } from './influencer-discovery'
 import { ensureProspectSchema, PRIORITY_UPJONG_SQL } from './store-prospects'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap } from './collect-budget'
+import { runPooled, resolveConcurrency } from './lane-pool'
 import { foldEnrichRollup, PROSPECT_ROLLUP_KEY } from './enrich-telemetry'
 
 export interface ProspectEnrichResult {
@@ -25,6 +26,16 @@ export interface ProspectEnrichResult {
   /** 계측(2026-07-28 신설) — 이 레인이 왜 0건인지 판정 가능하게. */
   last_run?: string; spent?: number; budget_total?: number; limit_hit?: boolean; deadline_hit?: boolean
   elapsed_ms?: number; crawl_reason?: Record<string, number>; learned_cap?: number
+  /**
+   * 🔎 Pass 2(홈페이지 없는 매장) 결과 분해 (2026-07-29 신설).
+   *
+   *   왜 필요한가: 라이브가 `processed:9 · site_found:1 · email_found:0 · crawl_reason:{}` 이었다.
+   *   즉 **한 시간에 9건을 훑고 이메일 0** 인데 *왜* 0인지가 어디에도 없다 — 사이트를 못 찾은 건지,
+   *   찾았는데 이메일이 없던 건지, 크롤이 막힌 건지 구분이 안 된다. 그 셋은 **처방이 전부 다르다**:
+   *   못 찾음 → 발견 경로를 늘린다 / 찾았는데 없음 → 이 경로는 수율이 낮다(투자 중단) / 막힘 → 크롤러 수리.
+   *   ⚠️ 이 구분 없이 레인을 체인으로 증속하면 **0 을 N배 한 0** 을 얻는다(그게 지금 유혹적인 오답이다).
+   */
+  pass2_reason?: Record<string, number>
   /** 누적(ads_prospect_enrich_rollup)의 멱등 키 — 다음 라운드가 이 스냅샷을 접는다. */
   run_id?: string
 }
@@ -104,8 +115,12 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
     `SELECT id, biz_name, region, addr_road, addr_lot, website, phone FROM store_prospects WHERE active = 1 AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ${COOL} ORDER BY ${PRIORITY_UPJONG_SQL}, is_new_open DESC, id DESC LIMIT ${cap1}`
   ).all<{ id: number; biz_name: string; region: string | null; addr_road: string | null; addr_lot: string | null; website: string; phone: string | null }>().catch(() => null))?.results || []
   spendD1()
-  for (const p of withSite) {
-    if (budget.left <= 2 || budget.limitHit || outOfTime()) break
+  // 🧵 동시 처리(2026-07-29) — 이 레인도 회사 레인과 같은 병목이었다: 실측 `spent:34/60 ·
+  //   deadline_hit:true · elapsed 21.6s` = **예산이 남는데 시간이 먼저 끝난다**. 크롤 대기는 겹칠 수 있다.
+  //   요청 총량 불변(재배치) · K 는 5로 클램프(Workers 동시 커넥션 6) · 정지 조건은 그대로.
+  const concurrency = resolveConcurrency((env as unknown as { ADS_ENRICH_CONCURRENCY?: string }).ADS_ENRICH_CONCURRENCY)
+  const stop1 = () => budget.left <= 2 || !!budget.limitHit || outOfTime()
+  await runPooled(withSite, concurrency, async (p) => {
     processed++
     const c = await crawlContact(p.website, budget)
     crawlReason[c.reason] = (crawlReason[c.reason] || 0) + 1
@@ -114,8 +129,11 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
       if (ok) { if (c.email) emailFound++; if (c.phone && !p.phone) phoneFound++ }
     }
     await stamp(p.id)
-  }
+  }, stop1)
 
+  // 🔎 Pass 2 결과 분해 — "왜 이메일이 0인가"를 처방이 갈리는 단위로 센다(위 타입 주석 참조).
+  const pass2: Record<string, number> = {}
+  const bump2 = (k: string) => { pass2[k] = (pass2[k] || 0) + 1 }
   // ── Pass 2: 홈페이지 없음 → 네이버 지역검색으로 link 발견 → 크롤. 예산 남을 때만(1건당 비쌈). ──
   if (budget.left > 4 && (nvId && nvSecret)) {
     const cap2 = Math.min(60, Math.max(25, Math.floor(budget.left / 12)))
@@ -123,15 +141,25 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
     const noSite = (await DB.prepare(
       `SELECT id, biz_name, region, addr_road, addr_lot, phone FROM store_prospects WHERE active = 1 AND (website IS NULL OR website = '') AND (email IS NULL OR email = '') ${COOL} ORDER BY ${PRIORITY_UPJONG_SQL}, is_new_open DESC, id DESC LIMIT ${cap2}`
     ).all<{ id: number; biz_name: string; region: string | null; addr_road: string | null; addr_lot: string | null; phone: string | null }>().catch(() => null))?.results || []
-    for (const p of noSite) {
-      if (budget.left <= 4 || budget.limitHit || outOfTime()) break
+    const stop2 = () => budget.left <= 4 || !!budget.limitHit || outOfTime()
+    await runPooled(noSite, concurrency, async (p) => {
       processed++
       const nv = await naverLocalLookup(nvId, nvSecret, p.biz_name, p.region, addr(p), budget)
       let site = nv.website // 지역검색 등록 링크(업체가 직접 등록) — 신뢰
       let discovered = false
-      if (!site && budget.left > 3) { site = await naverHomepageSearch(nvId, nvSecret, p.biz_name, p.region, budget); discovered = !!site } // 웹문서 검색 발견(제3자 도메인 제외)
+      if (site) bump2('site_naver')
+      if (!site && budget.left > 3) { site = await naverHomepageSearch(nvId, nvSecret, p.biz_name, p.region, budget); discovered = !!site; bump2(site ? 'site_search' : 'no_site') } // 웹문서 검색 발견(제3자 도메인 제외)
+      else if (!site) bump2('no_site_budget') // 예산이 없어 **시도조차 못 함** — '없다'와 구분해야 처방이 갈린다
       let email: string | null = null
-      if (site) { siteFound++; const c = await crawlContact(site, budget, discovered ? p.biz_name : undefined); email = c.email } // 발견 사이트는 상호 존재 가드(오귀속 방지)
+      if (site) {
+        siteFound++
+        const c = await crawlContact(site, budget, discovered ? p.biz_name : undefined) // 발견 사이트는 상호 존재 가드(오귀속 방지)
+        email = c.email
+        bump2(email ? 'email' : `crawl_${c.reason}`) // 크롤 실패 사유까지 그대로(막힘/무연락처/타임아웃 구분)
+        // 🔎 상호 가드에 걸렸지만 **느슨한 상호**(지점·법인격 제거)로는 맞은 건수 — 채택은 안 하고 센다.
+        //   가드를 얼마나 풀지는 이 분포를 보고 정할 일이지 추측으로 정할 일이 아니다(프랜차이즈 본사 오귀속 위험).
+        if (c.nameLoose) bump2('name_loose_only')
+      }
       // 전화가 없으면 네이버 → 카카오 순으로 보강(부가). 이메일이 주목적.
       let phone: string | null = p.phone ? null : nv.phone
       if (!p.phone && !phone && kakaoKey && budget.left > 1) { const k = await kakaoLocalLookup(kakaoKey, p.biz_name, p.region, addr(p), budget); phone = k.phone }
@@ -141,7 +169,7 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
         if (ok) { if (email) emailFound++; if (phone) phoneFound++ }
       }
       await stamp(p.id)
-    }
+    }, stop2)
   }
 
   spendD1()
@@ -157,7 +185,7 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
     remaining_no_email: Number(rem?.n) || 0,
     last_run: new Date().toISOString().slice(0, 19).replace('T', ' '),
     spent: budgetTotal - budget.left, budget_total: budgetTotal, limit_hit: !!budget.limitHit,
-    deadline_hit: outOfTime(), elapsed_ms: Date.now() - t0, crawl_reason: crawlReason,
+    deadline_hit: outOfTime(), elapsed_ms: Date.now() - t0, crawl_reason: crawlReason, pass2_reason: pass2,
     learned_cap: nextCap ?? learnedCap, run_id: runId,
   }
   // 📝 스냅샷 — 이 레인이 왜 0건인지 다음 사람이 **묻지 않고 볼 수 있게**(이 파일 상단 참조).

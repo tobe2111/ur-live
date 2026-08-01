@@ -151,6 +151,14 @@ jobs:
 
       # 🧮 2026-07-29: 유어애즈 수집 레인 격리. 인라인 ctx.waitUntil 로 붙은 레인은 한 인보케이션의
       #   서브리퀘스트 예산을 다른 레인과 다퉈 **조용히 0건**이 된다(localdata·nara 가 실제로 total_saved:0).
+      # 🕳️ 2026-07-29: 포털은 '값 없음'을 문자열 "N/A" 로 준다 — truthy 라 별칭 폴백이 앞 필드의 "N/A" 를
+      #   채택하고 뒤의 진짜 값을 건너뛴다. 실측: 통신판매 리드의 31.7% 가 주소 "N/A" + region null 이었고,
+      #   카카오 스윕은 `address != ''` 로 걸러 그 행들을 없는 주소로 조회했다(47건 시도 → 0건 발견).
+      #   ⚠️ 이 가드는 `a || b` 형태의 2항 폴백은 못 잡는다(구문이 흔해 오탐 없이 특정 불가).
+      - name: 공공데이터 '값 없음' 자리표시자 판정 (strict)
+        run: node scripts/check-public-data-sentinel.mjs -s
+        continue-on-error: false
+
       - name: 유어애즈 레인 격리 (strict)
         run: node scripts/check-ads-lane-isolation.mjs
       # 🔢 2026-07-29: 시드 버전(가이드/블로그)은 이미 쓴 번호를 다시 쓰면 재시드가 **에러 없이**
@@ -220,6 +228,25 @@ jobs:
       #   ⚠️ ignoreDeprecations 로 막지 말 것 — 고정 TS(5.5)가 그 값을 거부해 CI 가 깨진다(버전 결합).
       - name: tsconfig 타입체크 무력화 차단 (strict)
         run: node scripts/check-tsconfig-resolution.mjs -s
+        continue-on-error: false
+
+      # 🌐 2026-07-29: 정본은 urdeal.kr(07-20 이전 완료). 구 도메인은 전 경로 301 이라
+      #   링크가 도착하고 에러도 안 나서, 사용자에게 보이는 낡은 문자열이 조용히 남는다
+      #   (실측: 결제 완료 넛지가 소비자에게 live.ur-team.com/u/{handle} 을 보여주고 있었다).
+      - name: 구 도메인 사용자 노출 차단 (strict)
+        run: node scripts/check-legacy-domain.mjs -s
+        continue-on-error: false
+
+      # 📋 2026-07-29: AUDIT_INVARIANTS.md 는 "무엇을 손으로 재감사하지 않아도 되는가" 의 목록이다.
+      #   빠진 가드는 이미 기계가 지키는 영역을 사람이 또 파게 만든다(실측: 문서 49 vs 실제 72).
+      - name: 감사 레지스트리 동기화 (strict)
+        run: node scripts/check-audit-registry-sync.mjs -s
+        continue-on-error: false
+
+      # 🔬 2026-07-29: 새 가드가 "대상이 비어도 초록" 인 채로 태어나는 것 차단(래칫).
+      #   오늘 실측 3건이 정확히 그 상태였다(번들 gzip 예산 · 도매 어드민 nav/api 가드).
+      - name: 가드 자기검증 — 측정 0 = 실패 (strict)
+        run: node scripts/check-guard-selfcheck.mjs -s
         continue-on-error: false
 
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
@@ -624,6 +651,13 @@ jobs:
       # ── 5. 번들 예산 ──
       - name: Bundle size budget
         run: npm run check:bundle:budget
+
+      # 🛡️ 2026-07-29: 총합 예산은 **후행** 감지기라(임계값을 넘어야 울림) "청크 하나가 통째로
+      #   크리티컬 패스에 새로 들어온" 구조 변화를 여유가 있는 동안 놓친다 — 이 레포에서 세 번 재발했다.
+      #   이 가드는 총합이 아니라 **구성**(청크 이름 집합)을 동결해 신규 진입을 즉시 이름으로 알려준다.
+      #   반드시 build 뒤에 둘 것(산출물 필요).
+      - name: Critical path chunk composition (strict)
+        run: node scripts/check-critical-chunks.mjs
 
       # ── 6. 결과 요약 (artifact) — build 가 성공한 경우만 ──
       - name: Bundle size report

@@ -8,11 +8,14 @@ import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
 import { ensureInfluencerSchema, extractContacts, stripVideoTitles } from './influencer-discovery'
 import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch, enrichNaverActivity } from './influencer-performance'
+import { cleanSelfLinks, SELF_BLOG_LIKE } from './influencer-self-link'
 import { runQualityPass } from './influencer-quality'
 import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS } from './collect-lease'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, platformSubreqCap } from './collect-budget'
 import { budgetedDb, newOpBudget, type OpBudget } from './maintenance-budget'
 import { healNaverHandles } from './influencer-handle-heal'
+// 📍 지역 백필 — 여기(정비 인보케이션)가 제자리다. 근거는 `sweepRegions` 주석.
+import { backfillRegions, recheckBlankRegions } from './influencer-region'
 
 const POOL = 0
 
@@ -194,16 +197,95 @@ export async function runNightlyMaintenance(env: Env): Promise<Record<string, un
 //   `.catch(() => null)` 이라 **마지막 결과 기록조차 실패** → 어드민엔 "아무것도 안 돎"으로만 보였다.
 //   ⇒ ① 단계당 1 인보케이션(fresh 예산) ② 예산 래퍼로 소진 시 안전 중단 ③ 커서로 다음 회차 이어받기
 //      ④ **결과 스탬프는 예산 밖에서 항상 기록**(무음 정지 구조적 불가).
-export type MaintPhase = 'merge' | 'reextract' | 'reclassify' | 'quality' | 'handle'
+export type MaintPhase = 'merge' | 'reextract' | 'reclassify' | 'quality' | 'handle' | 'selflink'
 // 🩹 'handle' = 손상 네이버 핸들 복구(2026-07-28 신설). 이 단계가 끝나기 전까지 블로거 보강 레인의
 //    큐 앞머리는 측정 불가 행으로 막혀 있다 — 정비 순환에서 가장 먼저 값을 내는 단계다.
-export const MAINT_PHASES: MaintPhase[] = ['merge', 'reextract', 'reclassify', 'quality', 'handle']
+export const MAINT_PHASES: MaintPhase[] = ['merge', 'reextract', 'reclassify', 'quality', 'handle', 'selflink']
 export const isMaintPhase = (v: unknown): v is MaintPhase => MAINT_PHASES.includes(v as MaintPhase)
+
+/**
+ * ⏱️ **시간대별 단계 배정표** — 균등 순환(`PHASES[h % 5]`)을 라이브 실측으로 대체(2026-07-29).
+ *
+ *   왜 균등이 틀렸나: 단계마다 남은 일의 양이 다른데 슬롯은 똑같이 나눠 갖고 있었다.
+ *   같은 날 어드민 실측(`ads_maintenance_last`):
+ *     - `reextract` — **전수 36,880행을 훑고 `filled: 0`, `done: true`.** 저장 시점에 이미 추출하므로
+ *       남은 일이 구조적으로 없다. 그런데도 5시간마다 한 슬롯(정비 용량의 20%)을 통째로 가져갔다.
+ *     - `merge` — `merged: 5`(그룹 3). 값은 있지만 소량이고 시급하지 않다.
+ *     - `reclassify` — 38,382행을 회차당 3,000행씩. 균등 배정이면 전수 한 바퀴에 13회차 × 5h = **65시간**.
+ *       분류 규칙을 고쳐도 라이브에 닿는 데 2.7일이 걸린다는 뜻이다(#867 이 정확히 그 상황이었다).
+ *     - `handle` — `fixed: 2,481`(+`reopened: 150`)로 **수율이 가장 높고 아직 `done: false`**.
+ *       게다가 이 단계가 밀린 만큼 블로거 보강 레인의 큐 앞머리가 측정 불가 행으로 막힌다(아래 주석 참조)
+ *       — 즉 풀의 74%를 차지하는 네이버 블로거 연락처 확보라는 **가장 큰 레버의 관문**이다.
+ *   ⇒ **일이 남은 쪽으로 옮긴다.** 10슬롯 중 `reclassify` 3 · `handle` 3(각 기존 2) ←
+ *      `reextract` 1 · `merge` 1(각 기존 2). `quality` 2 유지.
+ *      전수 스윕: reclassify 65h → **43h**, handle 은 회차가 1.5배.
+ *
+ *   ⚠️ **줄이는 쪽을 0으로 만들지 않는다.** 지금 `filled: 0` 인 건 "고장"이 아니라 "다 했다"이고,
+ *   미추출 행이 새로 생기면 다시 값이 나와야 한다. 10시간에 한 번이면 자기치유가 유지된다.
+ *   ⚠️ 이 표에서 빠진 단계는 **영원히 안 돈다** — 침묵이 아니라 부재라 경보에도 안 잡힌다.
+ *   그래서 `MAINT_PHASES` 전 단계 포함을 유닛(ads-lane-cadence)이 강제한다.
+ *   ⚠️ 배분의 **타당성**은 코드가 못 본다(라이브 수율은 코드 밖 사실이다). 위 수치가 뒤집히면
+ *   — 예컨대 `handle` 이 `done: true` 로 끝나면 — 그 슬롯은 다시 남는 일 쪽으로 옮겨야 한다.
+ */
+export const MAINT_SCHEDULE: MaintPhase[] = [
+  'merge', 'reextract', 'reclassify', 'quality', 'handle',
+  // 🧹 자기링크 정리(2026-07-29 대표 승인) — 백로그가 작고(후보 ~1,029행) 끝나면 **스스로 싸진다**:
+  //   비워진 행은 `links LIKE '%naver.com%'` 후보에서 빠져 다음 바퀴엔 즉시 done 이다.
+  //   그래서 상시 슬롯으로 두어 **유입 필터가 놓친 새 오염의 자가치유**까지 겸하게 한다.
+  'selflink',
+  'reclassify', 'handle', 'quality', 'reclassify', 'handle',
+  // 🔢 10 → 12 슬롯. 단순히 selflink 를 덧붙이면(11슬롯) **실제 최대 간격이 10h → 13h 로 벌어진다**
+  //   (24 를 11 로 나눌 때의 자정 불연속 — 유닛이 이걸 잡아냈다). 12 는 24 의 약수라 각 슬롯이 하루
+  //   **정확히 2회** 고정 시각에 돌고 최대 간격이 12h 로 떨어진다. 남는 한 자리는 전수 한 바퀴가 가장 느린
+  //   `reclassify`(65시간)에 준다 — 경보 창을 지키면서 커버리지가 가장 급한 쪽을 채운다.
+  'reclassify',
+]
 
 /** 단계 실행 lease TTL — 단계 하나는 짧다(예산 상한이 있으므로). 전체 파이프라인 TTL 과 별개. */
 const PHASE_LEASE_TTL_MS = 3 * 60_000
 /** 리스 해제·스탬프·커서 기록용으로 남겨두는 연산(예산에서 제외) — 이게 없으면 "기록조차 못 하는" 원래 병이 재발. */
 const RESERVE_OPS = 6
+
+/**
+ * 📍 **지역 백필 스윕** — `region` 이 비어 있는 행을 `source_keyword` 에서 채운다(외부 호출 0, D1 전용).
+ *
+ *   ## 왜 여기(정비)로 옮겼나 — 라이브 실측 2026-07-29
+ *   | 지역 판정 | 인원 | 비중 |
+ *   |---|---|---|
+ *   | 값 있음 | **282** | **0.7%** |
+ *   | 지역 없는 키워드로 확정(`''`) | 1,808 | 4.6% |
+ *   | **미판정(NULL)** | **37,075** | **94.7%** |
+ *
+ *   `강남 맛집` 한 키워드로만 741명을 모았는데 어드민에서 `region=강남` 을 고르면 **0명**이 나온다.
+ *   유어딜 동네딜은 지역×업종 매칭이 본질이라, 그 축이 사실상 없는 상태였다.
+ *
+ *   ❗ **처음엔 "예산 고갈로 백필이 굶는다"고 읽었는데 틀렸다.** 채워진 2,090건(=filled+none)이
+ *   정확히 5회차 × 400 이라, 백필은 **정상 동작 중이고 단지 느렸다**(회차당 400행 → 37,075건에 약 3.9일).
+ *   ⇒ 고칠 것은 "고장"이 아니라 **자리와 크기**다.
+ *
+ *   자리: 그전엔 수집 인보케이션의 **꼬리**에 있었다. 그 지점은 발굴이 예산을 다 쓴 뒤라 크게 못 늘린다.
+ *   반면 `reextract` 단계는 전수 36,880행을 훑고 `filled: 0` — **할 일이 없는데 자기 인보케이션
+ *   (fresh 예산)을 통째로 갖고 있었다.** 둘을 맞바꾼다.
+ *   크기: 한 청크(500행)가 [SELECT 1 + batch 5] ≈ 6 ops 라, 남은 예산이 허락하는 만큼 반복한다.
+ *
+ *   ⚠️ 커서가 없어도 된다 — 처리된 행은 값이 `NULL` 이 아니게 되므로 다음 청크가 자연히 다음 구간을 잡는다.
+ *   ⚠️ **한 곳에서만 돈다** — 수집 꼬리의 호출은 같은 커밋에서 제거했다(두 벌로 두면 조용히 갈라진다).
+ *   ⚠️ 정비를 끄면(`ADS_AUTO_MAINTENANCE_ENABLED='false'`) 지역 백필도 함께 멈춘다.
+ */
+export async function sweepRegions(DB: D1Database, budget: OpBudget): Promise<{ filled: number; chunks: number; done: boolean }> {
+  // 규칙 버전이 올랐을 때만 1회 — 그 외엔 조회 1번으로 즉시 반환(멱등).
+  try { await recheckBlankRegions(DB, POOL) } catch { /* 다음 회차가 재시도 */ }
+  let filled = 0, chunks = 0, done = false
+  // 청크당 ~6 ops. 예산이 그만큼도 안 남았으면 다음 회차에 넘긴다(무리해서 시작하지 않는다).
+  while (!budget.exhausted && budget.left >= 6) {
+    let n = 0
+    try { n = await backfillRegions(DB, POOL, 500) } catch { break } // 한도 예외 — 다음 회차가 이어받음
+    chunks++
+    filled += n
+    if (n === 0) { done = true; break }  // 미판정 행이 더 없다 = 전수 완료
+  }
+  return { filled, chunks, done }
+}
 
 /**
  * 🌙 정비 1단계 실행 — 예산 안에서 진행하고, **성공/중단/한도 여부를 반드시 기록**한다.
@@ -227,9 +309,13 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
   const out: Record<string, unknown> = { at, kind: 'maintenance', phase }
   try {
     if (phase === 'merge') out.merge = await mergeDuplicatePool(bdb, { groupCap: 150 })
-    else if (phase === 'reextract') out.reextract = await reextractPoolContacts(bdb, { budget })
+    else if (phase === 'reextract') {
+      out.reextract = await reextractPoolContacts(bdb, { budget })
+      out.region = await sweepRegions(bdb, budget)   // 같은 성격(가진 데이터로 빈칸 채우기) — 아래 주석 참조
+    }
     else if (phase === 'reclassify') out.reclassify = await runReclassifyPool(bdb, { budget })
     else if (phase === 'handle') out.handle = await healNaverHandles(bdb, { budget })
+    else if (phase === 'selflink') out.selflink = await cleanSelfLinkNoise(bdb, { budget })
     else out.quality = await runQualityPass(bdb, { budget })
   } catch (e) {
     out[`${phase}_error`] = (e as Error)?.message || 'fail'
@@ -264,7 +350,22 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
 export async function runNightlyRescan(env: Env): Promise<Record<string, unknown>> {
   const DB = env.DB
   // 🔒 정비와 같은 lease — 이쪽은 **YouTube 쿼터를 쓰기 때문에** 중복 실행이 곧 하루 예산 낭비(수집 몫 잠식).
-  if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS)) return { at: new Date().toISOString(), kind: 'rescan', busy: true }
+  if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS)) {
+    /**
+     * 🔇 **진 쪽도 흔적을 남긴다** — 안 남기면 '경합에 졌다'가 '한 번도 안 돌았다'와 구분되지 않는다.
+     *
+     *   2026-07-27 19:00 이후 이 레인의 스냅샷이 멈춰 있었다. 고장이 아니라 **시간별 정비 순환(07-28 도입)과
+     *   같은 lease 를 다투다 매번 졌기 때문**인데, 진 경로가 조용히 돌아가서 어드민에는 *"never fired"* 로만
+     *   보였다 — 원인 규명이 이틀 막힌 이유가 그 무음이다.
+     *
+     *   경합 자체는 스케줄러가 19시를 양보해 없앴다(`RESCAN_HOUR_UTC`). 이 기록은 **재발했을 때 즉시
+     *   알아보기 위한 것**이라, 경합이 사라진 뒤에도 남겨 둔다(하루 1회 쓰기 — 비용 무시 가능).
+     */
+    const busy = { at: new Date().toISOString(), kind: 'rescan', busy: true }
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind('ads_maintenance_rescan_last', JSON.stringify(busy)).run().catch(() => null)
+    return busy
+  }
   const out: Record<string, unknown> = { at: new Date().toISOString(), kind: 'rescan' }
   try {
     try { out.rescan = await runCategoryRescan(env) } catch (e) { out.rescan_error = (e as Error)?.message || 'fail' }
@@ -275,4 +376,50 @@ export async function runNightlyRescan(env: Env): Promise<Record<string, unknown
       .bind('ads_maintenance_rescan_last', JSON.stringify(out).slice(0, 1000)).run().catch(() => null)
   } finally { await releaseLease(DB, MAINTAIN_LEASE_KEY) }
   return out
+}
+
+/**
+ * 🧹 **자기링크 정리 패스** — 노이즈가 진짜 연락처의 자리를 막고 있던 것을 되돌린다 (2026-07-29, 대표 승인).
+ *
+ *   판정은 `influencer-self-link.ts`(SSOT) — 발굴·측정·재조우 스킵이 쓰는 것과 **같은 규칙**이다.
+ *   유입은 이미 막았지만 **기존 행은 그대로 남아 있어**, 그 행들은 백필이 구조적으로 불가능하다
+ *   (`COALESCE(links, ?)` 는 빈 칸만 채우는데 links 가 자기링크로 차 있다).
+ *
+ *   되돌릴 수 있는 변경이다: 비운 자리는 다음 측정이 다시 채우고, 그때는 걸러진 값만 들어간다.
+ *   ⚠️ 네이버 블로거만 — 유튜버에게 블로그 링크는 크로스플랫폼 발자국이라 값지다.
+ *   커서·배치·멱등은 형제 패스(`reextractPoolContacts`)와 동일. 예산 소진 시 다음 회차가 이어받는다.
+ */
+export async function cleanSelfLinkNoise(DB: D1Database, opts?: { budget?: OpBudget }): Promise<{ scanned: number; cleared: number; stripped: number; done: boolean }> {
+  const CURSOR_KEY = 'ads_selflink_cursor'
+  const PAGE = 500
+  let cursor = 0
+  const cRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY)
+    .first<{ value: string }>().catch(() => null)
+  if (cRaw?.value) cursor = Math.max(0, parseInt(cRaw.value, 10) || 0)
+  let scanned = 0, cleared = 0, stripped = 0, done = false
+  for (;;) {
+    // `SELF_BLOG_LIKE` 로 **넓게** 후보를 뽑고(정규식을 SQL 에서 못 쓴다) 정밀 판정은 순수함수가 한다.
+    const rows = (await DB.prepare(`SELECT id, links FROM ad_influencer_leads
+        WHERE account_id = ? AND platform = 'naver_blog' AND id > ? AND links LIKE ? ORDER BY id ASC LIMIT ?`)
+      .bind(POOL, cursor, SELF_BLOG_LIKE, PAGE)
+      .all<{ id: number; links: string | null }>().catch(() => null))?.results || []
+    if (!rows.length) { if (!opts?.budget?.exhausted) done = true; break }
+    for (const r of rows) cursor = Math.max(cursor, r.id)
+    scanned += rows.length
+    const ups: ReturnType<typeof DB.prepare>[] = []
+    for (const r of rows) {
+      const next = cleanSelfLinks(r.links)
+      if (next === undefined) continue // 손댈 것 없음
+      if (next === null) cleared++; else stripped++
+      ups.push(DB.prepare('UPDATE ad_influencer_leads SET links = ? WHERE id = ?').bind(next, r.id))
+    }
+    if (ups.length) await DB.batch(ups).catch(() => null)
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind(CURSOR_KEY, String(cursor)).run().catch(() => null)
+    if (opts?.budget?.exhausted) break
+  }
+  // 한 바퀴 끝나면 커서를 되감는다 — 새로 들어온 행(유입 필터가 놓친 것)도 다음 바퀴에 잡히게.
+  if (done) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(CURSOR_KEY, '0').run().catch(() => null)
+  return { scanned, cleared, stripped, done }
 }

@@ -321,6 +321,21 @@
 
 > ⚠️ 이 룰 안 지키면: 다음 세션이 진행 상태 모름 → 중복 구현 / 누락 / 사용자 "왜 이거 안 됐어?" 반복.
 
+## 📣 유어애즈 방향 확정 (2026-07-29 대표 — "앞으로 이것만 계속 할거야")
+
+**유어애즈 = 인플루언서 DB.** 앞으로 할 일은 **네 가지뿐**:
+**① DB 수집 · ② 카테고리화 · ③ 필터링 · ④ 정보 최대 수집.**
+
+🚫 **이메일 아웃리치는 하지 않는다.** 이전 인계의 `RESEND_API_KEY`·발송 큐·PIPA 관련
+"대표 액션"은 **폐기**(2026-07-28 콜드 발송 결정도 이 방향 변경으로 더 이상 추진하지 않음).
+발송 코드는 남아 있으나 **새 작업을 얹지 말 것**.
+
+> 🔑 **네 축의 병목은 하나다** (2026-07-29 실측): `enrichNaverActivity` 가 한 번 돌면
+> ②(본문 기반 카테고리)와 ④(연락처)가 **같이** 채워진다. `cat_keyword` 84%·연락처 9% 는
+> 분류기가 약해서가 아니라 **네이버 블로그 91%가 아직 측정된 적이 없어서**다.
+> 그런데 측정(20/시간)이 유입(101/시간)의 1/5이라 백로그가 시간당 133씩 벌어진다.
+> ⇒ **처리량이 곧 품질이다.** 근거·다음 액션: `docs/handoff/2026-07-29-influencer-db-throughput.md`
+
 ## 🔑 어드민 진단 접근 (2026-07-28 대표 지시 — "모든 세션에서 자동으로")
 
 라이브 데이터를 **추측 대신 실측**으로 확인하기 위해 어드민 API 읽기 접근을 상시 사용한다.
@@ -335,8 +350,12 @@
 미주입 세션이면 대표에게 값을 요청하지 말고 **다음 세션에서 수행**하거나 대표에게 상태줄을 요청한다.
 
 **접속 절차(3가지 함정 주의)**:
-1. **도메인**: 이 환경의 에이전트 프록시는 `urdeal.kr` 을 차단(CONNECT 403)한다. **`live.ur-team.com` 을 쓸 것** —
-   도메인 이전 시 `/api/*` 는 301 제외라 구 도메인 API 가 살아 있다.
+1. **도메인**: `live.ur-team.com` 을 쓰면 확실하다 — 도메인 이전 시 `/api/*` 는 301 제외라 구 도메인 API 가 살아 있다.
+   ⚠️ **2026-07-29 정정**: 여기 오래 적혀 있던 *"프록시가 `urdeal.kr` 을 차단(CONNECT 403)"* 은 **더 이상 사실이 아니다** —
+   실측 `urdeal.kr/`(HTML) **200** · `urdeal.kr/api/version` **200** · `live.ur-team.com/api/version` **200**.
+   이 오기를 믿으면 **할 수 있는 라이브 실측을 포기하고 대표에게 화면 복사를 요청하는 왕복**이 생긴다(실제로 그럴 뻔했다).
+   이 환경에서 **실제로 막힌 것**은 `dash.cloudflare.com` · **`*.pages.dev`(PR 프리뷰 — CONNECT 403)** ·
+   한국 공공 API 도메인(`apis.data.go.kr` 등)이다. 프록시 규칙은 바뀔 수 있으니 **막혔다고 단정하기 전에 한 번 찔러볼 것.**
 2. **User-Agent**: `botProtection()`(`bot-detection.ts`)이 curl UA 를 차단하고 `{"success":false,"error":"Forbidden"}`
    (키 2개, `code` 없음)를 준다. **브라우저 UA 헤더 필수**. `code:'ADMIN_IP_BLOCKED'` 가 있으면 그건 IP 화이트리스트로 **다른 원인**.
 3. **토큰**: `POST /api/admin/login` {email,password} → 응답 토큰 필드가 **한 가지가 아니다** — 실측상
@@ -410,7 +429,12 @@ curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ur-ads/settings" -
 **🚫 자율 규율 (대표가 넓은 권한을 줬어도 지킨다)**:
 1. **코드 배포는 이 토큰으로 하지 않는다.** 반드시 PR → CI(46 불변식) → 대표 승인 → 머지 경유.
    토큰으로 직접 배포하면 오늘 실제로 실수를 잡아낸 게이트(파일크기 래칫·타입체크)를 통째로 우회하게 된다.
-2. 토큰 용도는 **① 진단(빌드로그·배포상태·플랜/한도 확인) ② 게이트 env 토글 ③ D1/KV 읽기** 로 한정.
+2. 토큰 용도는 **① 진단(빌드로그·배포상태·플랜/한도 확인) ~~② 게이트 env 토글~~ ③ D1/KV 읽기** 로 한정.
+   > 🔒 **2026-07-29 대표 지시로 축소 — 토큰 용도는 "조회 한정"이다.** ②(게이트 env 토글)를 **철회**한다.
+   > **플랫폼 쓰기(cron 트리거 추가·env 변경·바인딩 수정)는 세션이 하지 않는다** — 세션은 **판정 결과만
+   > 보고**하고, 실제 변경은 **대표가 대시보드에서 직접** 한다. 스코프도 읽기 4종(Workers Scripts Read /
+   > Pages Read / D1 Read / Account Settings Read)만 요청하며, **부족해도 Edit 를 추가로 요청하지 않는다**
+   > (D1 Read 로 쿼리가 막히면 그 값은 대표가 어드민에서 직접 확인 — 예: 예치금 4숫자).
 3. **삭제·purge·바인딩 제거는 대표 명시 지시가 있을 때만.** 되돌리기 어려운 작업은 먼저 확인.
 4. 토큰 값을 파일·로그·커밋·PR 본문에 남기지 않는다. 응답 파일은 스크래치패드에만, 작업 후 삭제.
 
@@ -483,7 +507,10 @@ WebFetch 도 403(봇 차단)이라 스펙 확인은 대표 화면 확인이 필�
 2. **RED·미보유 영역만 작업** — 게이트가 RED 면 그 가드가 가리키는 사이트만, `AUDIT_INVARIANTS.md` 의 "가드 미보유" 영역(결제 금액정확성·런타임 크래시·외부 PG 실응답)만 수동 감사.
 3. **새 불변식을 발견·확인하면 가드부터 만들어라**(애초에 없도록) → `audit-gate.sh` + `AUDIT_INVARIANTS.md` 갱신. 수동 감사 결과를 반복하지 말고 기계가 지키게 한다.
 
-> 현재 47개 불변식 GREEN (서비스분리·인증세션RBAC·머니패턴·DB스키마·상품종류·UI테마·시각KST·배포). 상세: `docs/AUDIT_INVARIANTS.md`.
+> 현재 **76개** 불변식 GREEN (서비스분리·인증세션RBAC·머니패턴·DB스키마·상품종류·UI테마·시각KST·배포·번들). 상세: `docs/AUDIT_INVARIANTS.md`.
+> ⚠️ 이 숫자는 가드를 추가할 때마다 낡는다(2026-07-29 에 47 → 76 으로 정정 — 29개가 밀려 있었다).
+> **정확한 값은 `bash scripts/audit-gate.sh` 의 마지막 줄**이고, `check-audit-registry-sync` 가
+> `docs/AUDIT_INVARIANTS.md` 의 개수만 강제한다(이 줄은 강제 대상이 아니라 수동 관리다).
 
 > 🧪 **staging 검증 백로그 SSOT = `docs/STAGING_CHECKLIST.md`** (2026-07-05 신설). audit log 에 "staging 실결제 검증 필수"를 남길 때는 **같은 커밋에서 이 체크리스트에 항목(S#/P#) 추가** + 게이트 플래그면 `admin-system-monitoring.routes.ts` `OPS_GATES` 등록. 어드민 열람: `/admin/system-monitoring` "게이트·하트비트" 탭. cron 침묵·백업 무결성 관측: `cron-heartbeat.ts` + `/api/_healthcheck/cron` + `docs/BACKUP_RESTORE.md`.
 
@@ -1079,6 +1106,8 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | 잔액 컬럼 절대값 write(비원자) | `check-balance-absolute-write.mjs` (warn) | `verify.yml` + audit-gate (strict) | 2026-07-01 도매 3표면 감사 — 미수금 상환이 `SELECT outstanding → JS 계산 → UPDATE SET outstanding_balance=?`(절대값)라 동시 상환 2건이 같은 prevOut 을 읽어 하나가 덮어써 **미수금 과대계상**(플랫폼 채권 부풀림·판매사 손해, 머니 룰 #1 위배). **규칙**: `*balance*` 컬럼은 원자 증감(`x=x±?`·MAX/MIN/COALESCE) 또는 CAS(`WHERE x=?`)로만 — 한 UPDATE 에서 balance 컬럼 2회+ 등장. 스냅샷 `*_after`·테스트·`balance-write-ok` 예외 |
 | 커미션 예산 아비터 우회 [INV-CB] | `check-commission-budget.mjs` | `verify.yml` + audit-gate (strict) | 2026-07-04 재원 구조 개편 — 플랫폼 부담 성장 커미션(어필리에이트/멀티티어/영입자/에이전시)이 캡 없이 스택되어 트리 경유 최악 −14%. 적립은 `creditOrderCommissions`(오케스트레이터) 경유만 — 3P 주문당 예산(수수료−PG준비금) 비례 배분, 게이트 `commission_budget_enabled`(기본 OFF). 직접 호출/신규 적립 INSERT 차단(래칫 베이스라인). 설계 `commission-funding-restructure.md` |
 | KV delete 무료한도 폭식 | `check-kv-delete-budget.mjs` (warn) | `verify.yml` + audit-gate (strict) | 2026-07-21 대표 신고 — Cloudflare "Daily Workers KV delete limit exceeded"(무료 1천 delete/일 초과). `cacheGet`(worker/utils/cache.ts) L2 KV 쓰기는 2026-06-04 에 무료한도 보호로 OFF(`L2_KV_ENABLED=false`, 엣지캐시+L1 대체)인데 삭제 경로 `cacheInvalidate` 만 살아 **KV 에 존재하지도 않는 키를 매 무효화마다 삭제** → `invalidateGroupBuyProductsCache` 1회 = 28 KV.delete(4 status × 7 category), 셀러/어드민 상품·주문 흐름마다 발생 → 한도 폭식. **불변식**: ① `cacheInvalidate` 의 KV.delete 는 반드시 `L2_KV_ENABLED` 게이트 뒤(쓰기 경로와 대칭 — L2 OFF 면 지울 키 없음) ② 그 외 fan-out KV.delete(`arr.map/forEach(...=> <kv>.delete)`) 무방비 추가 금지(1회 N delete = 폭식 근본 클래스). 단발 KV.delete(저빈도)·Cache API(`caches.default`, 무료·무제한)·`*_ENABLED` 게이트·`kv-delete-ok` 주석은 예외. 복원: `L2_KV_ENABLED=true` |
+| 선언한 URL 이 라이브에서 죽음(예열/색인) | - | `live-contracts.yml` (**주기 실행 전용 — PR 게이트 아님**) | 2026-07-29 — 이 레포는 URL 목록을 **코드에 선언**한다: 예열 `HOT_PATHS` · SSR 워밍 `SSR_KV_PATHS` · 색인 `sitemap.xml`. 정적 가드(`check-sitemap-routes`)는 **라우트가 존재하는가**만 보는데, 번들 분리(`__INCLUDE_WHOLESALE__`)·기능 폐기·배포 상태 때문에 라우트가 있어도 실제로는 죽을 수 있다. 실측: `HOT_PATHS` 31개 중 **9개가 404**(도매 5·라이브 3·쇼츠 1) + sitemap 죽은 URL 3종. **예열은 실패해도 조용히 넘어가므로**(`if (res.ok)`) 몇 달간 신호가 0 이었고, 그 낭비가 서브리퀘스트 예산(무료 50/인보케이션, 실측 ≈49)을 갉아 **다른 경로의 예열 실패**로 이어지고 있었다. `check-live-contracts.mjs` 가 선언을 추출해 실제로 두드린다. **robots.txt 는 본문까지 대조**한다 — 2026-07-29 실측에서 `live.ur-team.com/robots.txt` 가 **Cloudflare Managed robots.txt** 로 통째 대체돼 레포 규칙 51줄 중 50줄과 `Sitemap:` 이 **서빙되지 않고 있었다**(그러면 `check-robots-private-routes` 는 초록인데 크롤러는 다른 파일을 본다 — 가드가 지키는 대상이 현실에 없는 경우). **판정**: 200 통과 · **같은 경로로의 3xx 통과**(live.ur-team.com→urdeal.kr 영구 301 은 정상 계약) · **경로가 바뀌는 3xx 는 실패**(`/group-buy → /` 를 이렇게 잡았다) · 오리진 전체가 동일 실패면 환경 조건으로 보고 스킵(프록시 CONNECT 차단은 status 0 이 아니라 **403 응답**으로 온다). ⚠️ **PR 게이트로 승격 금지** — 외부 네트워크 의존이라 간헐 실패가 머지를 막는다. ⚠️ 동시성을 올리면 중계 구간이 503 을 뿌려 **멀쩡한 URL 이 죽은 것처럼 보인다**(4-way 실측에서 가짜 503 12건) → 동시성 2 + 3회 재시도 고정 |
+| 구 도메인이 사용자 표면에 남음 | `check-legacy-domain.mjs` (warn) | `verify.yml` (strict) + audit-gate | 2026-07-29 — 정본이 `urdeal.kr` 로 옮겨졌고(07-20) 구 `live.ur-team.com` 은 **전 경로 영구 301** 이다. 그런데 이전은 리다이렉트를 거는 것으로 끝나지 않는다 — 코드에 박힌 문자열은 그대로 남는다. 실측: **결제 완료 직후 넛지**가 소비자에게 *"이미 `live.ur-team.com/u/{handle}` 링크샵이 준비돼 있어요"* 를 보여주고 있었다(2026-07-03 배선 당시 문자열). 링크는 301 로 도착하니 **에러가 안 나고**, 그래서 아무도 몰랐다. 사용자에게 보이는 표면(`src/pages`·`src/components`·`src/features`·`src/shared`·`public/locales`)만 검사한다. ⚠️ **이전을 *구현하는* 코드는 건드리지 말 것** — 워커 호스트 집합(`CONSUMER_FAST_PATH`/`LEGACY_CONSUMER_HOSTS`)은 301 을 수행하고, `ALLOWED_ORIGINS` 의 구 오리진은 전환기 동안 구 SPA 세션·토스 웹훅이 들어오는 자리라 소스 주석이 "제거하지 말 것"이라고 명시한다(둘 다 면제). `media.ur-team.com`(R2)·`@ur-team.com`(이메일)은 사이트 도메인이 아니라 무관. ⚠️ 검사 대상 파일이 0개면 **통과가 아니라 실패**(경로가 낡아 조용히 비는 것 차단). 예외 `legacy-domain-ok` 주석 |
 
 **Bypass (정당 사유만):**
 - commit message 에 `[SKIP_ROUTER_CHECK]` / `[SKIP_BUILD_CHECK]` / `[SKIP_SECRET_CHECK]` / `[STRICT_SILENT]` 등 명시

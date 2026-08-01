@@ -10,7 +10,7 @@
  *   순수 정적. 각 대시보드 파일군에서 /api/<seg> 호출을 수집 → 그 역할이 못 쓰는 전용 네임스페이스면 위반.
  *   동일 토큰 공유(판매사 storefront ↔ /api/seller) 와 공용(/api/upload 등)은 허용.
  */
-import { readFileSync, readdirSync, statSync } from 'fs'
+import { readFileSync, readdirSync, statSync, existsSync } from 'fs'
 import { resolve, dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 
@@ -31,7 +31,7 @@ const EXCLUSIVE = {
 //   wholesale storefront 의 사용자 = type='seller'(판매사) → /api/seller 동일토큰이라 forbid 에서 seller 제외.
 const GROUPS = [
   { name: '제조사(supplier)',  match: (p) => p.startsWith('src/pages/supplier-dashboard/') || p === 'src/pages/SupplierDashboardPage.tsx' || /^src\/pages\/Supplier[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'agency', 'seller', 'ads'] },
-  { name: '에이전시(agency)',  match: (p) => p.startsWith('src/pages/agency/') || /^src\/pages\/Agency[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'supplier', 'seller', 'ads'] },
+  { name: '에이전시(agency)',  match: (p) => p.startsWith('src/pages/agency-page/') || /^src\/pages\/Agency[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'supplier', 'seller', 'ads'] },
   { name: '판매사 storefront', match: (p) => p.startsWith('src/pages/wholesale/') || p.startsWith('src/pages/wholesale-catalog/') || p.startsWith('src/components/wholesale/') || /^src\/pages\/Wholesale[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'supplier', 'agency'] },
   // 어드민: 소비자/도매 어드민 페이지. supplier/agency 전용은 못 부름(admin 토큰). seller 는 일부 공용성 있어 제외(오탐 방지).
   { name: '어드민(admin)',     match: (p) => (/^src\/pages\/Admin[A-Z].*\.tsx$/.test(p) || p.startsWith('src/pages/admin/')) && !p.includes('AdminProductsPage'), forbid: ['supplier', 'agency', 'ads'] },
@@ -77,6 +77,21 @@ for (const f of files) {
   }
 }
 
+// 🛡️ 2026-07-29: 그룹 매처의 디렉터리 prefix 는 **리팩토링에 조용히 낡는다.**
+//   실측: `src/pages/agency/` 를 가리키고 있었는데 실제 경로는 `agency-page/` 라
+//   그 6개 파일이 **어느 그룹에도 분류되지 않았다**(위반이 있어도 못 봤다는 뜻).
+//   대안 정규식이 `src/pages/AgencyXxx.tsx` 만 잡아 하위 디렉터리는 사각지대였다.
+//   → prefix 가 실재하는지 스스로 확인한다. 없으면 통과가 아니라 실패.
+{
+  const roots = [...new Set([...readFileSync(new URL(import.meta.url), 'utf8')
+    .matchAll(/startsWith\('(src\/[A-Za-z0-9_./-]+\/)'\)/g)].map((m) => m[1]))]
+  const gone = roots.filter((r) => !existsSync(resolve(ROOT, r)))
+  if (gone.length) {
+    console.error(`❌ 그룹 매처가 없는 경로를 가리킨다: ${gone.join(', ')}`)
+    console.error(`   그 폴더의 파일은 **어느 그룹에도 분류되지 않아** 위반이 있어도 안 보인다.`)
+    process.exit(1)
+  }
+}
 console.log(`🔀 대시보드 교차-역할 API 검사`)
 console.log(`   스캔 ${files.length} 파일 · 그룹 ${GROUPS.length}개(제조사/에이전시/판매사/어드민/유어애즈)`)
 if (violations.length === 0) {

@@ -44,7 +44,15 @@ const ENSURE = /\b(?:ensureCompanySchema|ensureProspectSchema)\s*\(/
 const lineOf = (src, idx) => src.slice(0, idx).split('\n').length
 const violations = []
 
-for (const rel of SCAN.flatMap(d => walk(d))) {
+const scannedFiles = SCAN.flatMap(d => walk(d))
+
+// 🛡️ 2026-07-29: **측정 0 = 통과가 아니라 실패.** 스캔 대상이 비면 위반도 0이라 초록이 뜨는데,
+//   그 초록은 아무것도 보장하지 않는다(같은 날 실측 3건이 그 상태로 몇 주~몇 달 방치됐다).
+if (scannedFiles.length === 0) {
+  console.error('❌ 검사 대상 파일이 0개다 — 스캔 경로가 낡았을 가능성이 크다(통과 아님).')
+  process.exit(1)
+}
+for (const rel of scannedFiles) {
   const src = fs.readFileSync(path.join(ROOT, rel), 'utf8')
   if (src.includes('schema-cost-ok')) continue
   // 예산을 **만드는** 파일만 대상 — 예산이 없으면 뺄 지갑도 없다.

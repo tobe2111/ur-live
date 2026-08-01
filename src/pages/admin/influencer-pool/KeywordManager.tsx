@@ -20,15 +20,29 @@ export interface Keyword { id: number; keyword: string; category: string | null;
 //   2026-07-29 서버에 '공동구매'를 넣었는데 이 사본은 6개 그대로라 우선 태깅이 화면에서 불가능했다.
 //   (서버 모듈 주석도 "두 벌로 두면 조용히 갈라진다"고 이미 경고하고 있었다.)
 export { PRIORITY_CATEGORIES as PRIORITY_CATS } from '@/features/marketing/api/influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES as PRIORITY_CATS } from '@/features/marketing/api/influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES as PRIORITY_CATS, YIELD_EVIDENCE_MIN, YIELD_OK_RATE } from '@/features/marketing/api/influencer-keyword-rotation'
+
+/**
+ * 🌾 수확률 표시 판정 — **서버 점수 함수와 같은 상수**를 쓴다(두 벌로 두면 조용히 갈라진다 — 위 ⭐ 사고 참조).
+ *   `💤0` 은 `saved_total` 만 봐서 'found 2 saved 0'(거의 안 해봄)과 'found 117 saved 0'(진짜 낭비)을
+ *   구분하지 못했고, `방배 카페`(154건 → 1명, 0.6%) 처럼 **0 이 아닌 저수확**은 아예 안 보였다.
+ */
+function lowYield(k: Keyword): { pct: number; found: number } | null {
+  const found = k.found_total || 0
+  if (found < YIELD_EVIDENCE_MIN) return null
+  const rate = (k.saved_total || 0) / found
+  return rate < YIELD_OK_RATE ? { pct: Math.round(rate * 1000) / 10, found } : null
+}
 
 const CAND_PREVIEW = 60 // 후보 기본 표시 상한 — 성과순 정렬이라 상위가 곧 유의미한 것들
 
 function Chip({ k, onToggle }: { k: Keyword; onToggle: (k: Keyword) => void | Promise<void> }) {
+  const ly = lowYield(k)
   return (
     <button onClick={() => onToggle(k)} title={`${k.category || '일반'} · ${k.source}${k.saved_total ? ` · 누적 ${k.saved_total}명(직전 ${k.last_saved || 0})` : ''}${k.last_run_at ? ` · ${k.last_run_at.slice(5, 16)}` : ''}${k.hits ? ` · ${k.hits}회 등장` : ''}`}
       className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
       {PRIORITY_CATS.includes(k.category || '') ? '⭐' : ''}{k.keyword}{k.source === 'auto' ? ' 🌱' : ''}{k.saved_total ? <span className={k.active ? 'text-emerald-300' : 'text-gray-400'}> · {formatNumber(k.saved_total)}</span> : (k.last_run_at ? <span className="text-red-400" title="이 키워드로 여러 번 수집했지만 신규 0명 — 비활성 검토">{' · 💤0'}</span> : '')}
+      {ly && <span className="text-amber-400" title={`${formatNumber(ly.found)}건 찾아 ${formatNumber(k.saved_total || 0)}명 저장 (수확률 ${ly.pct}%) — 검색 슬롯을 쓰지만 리드가 거의 안 남습니다. 이미 다 모았거나(고갈) 키워드가 안 맞는 경우입니다. 점수에서 자동 감점되지만, 확실하면 눌러서 비활성.`}> 🪫{ly.pct}%</span>}
     </button>
   )
 }
@@ -97,7 +111,7 @@ export default function KeywordManager({ keywords, onChanged }: { keywords: Keyw
               후보 {formatNumber(candHidden)}개 더 보기 (많으면 느려질 수 있어요)
             </button>
           )}
-          <p className="mt-2 text-xs text-gray-400">칩을 눌러 활성/비활성. ⭐ = 우선 카테고리(우선 커서 3/4). 🌱 = 해시태그 자동확장. 숫자 = 이 키워드로 모은 누적 인원(성과순 정렬 — 잘 무는 키워드가 위로). 💤0 = 수집했지만 0명(죽은 키워드 — 눌러서 비활성 권장).</p>
+          <p className="mt-2 text-xs text-gray-400">칩을 눌러 활성/비활성. ⭐ = 우선 카테고리(우선 커서 3/4). 🌱 = 해시태그 자동확장. 숫자 = 이 키워드로 모은 누적 인원(성과순 정렬 — 잘 무는 키워드가 위로). 💤0 = 수집했지만 0명(죽은 키워드 — 눌러서 비활성 권장). 🪫N% = 충분히 찾았는데 거의 안 남는 키워드(수확률) — 점수에서 자동 감점되며, 확실하면 비활성.</p>
         </div>
       )}
     </details>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { expectedMaxAgeMinutes } from '@/worker/utils/cron-heartbeat'
+import { expectedMaxAgeMinutes, summarizeResult } from '@/worker/utils/cron-heartbeat'
 
 /**
  * 💓 cron 멈춤 판정 — 순수함수 회귀 고정 (2026-07-28).
@@ -50,5 +50,36 @@ describe('expectedMaxAgeMinutes — cron 식별 기대주기(분)', () => {
       const limit = expectedMaxAgeMinutes(expr)!
       expect(limit).toBeGreaterThan(period)
     }
+  })
+})
+
+/**
+ * 🔎 결과 요약 — **알고 싶은 값이 조용히 사라지지 않는가**.
+ *
+ * 2026-07-29 실측: 보강 라운드 드라이버가 12라운드를 계획하고 1라운드만 돈 채 `ok:true` 로 기록됐다.
+ * `runRoundChain` 은 첫 실패의 원문 error 를 들고 돌아오는데 하트비트가 그걸 안 받고 있었고,
+ * 받도록 고친 뒤엔 **요약기가 24자 넘는 문자열을 통째로 버려서** 또 사라질 뻔했다 —
+ * 길어지는 값은 대개 error 라, 하필 가장 필요한 값만 증발하는 규칙이었다.
+ */
+describe('summarizeResult — 요약하되 버리지 않는다', () => {
+  it('숫자·불리언을 남긴다', () => {
+    expect(summarizeResult({ done: 1, planned: 12, partial: true })).toBe('done=1 planned=12 partial=true')
+  })
+  it('긴 문자열을 버리지 않고 자른다 — 여기가 회귀 지점이다', () => {
+    const long = 'round2: Error: Too many subrequests. (subrequest limit exceeded)'
+    const out = summarizeResult({ error: long })
+    expect(out).toBeTruthy()
+    expect(out).toContain('round2')            // 어느 라운드에서 멈췄는지
+    expect(out).toContain('Too many')          // 왜 멈췄는지
+  })
+  it('전체 길이는 한 줄로 묶인다(로그가 아니다)', () => {
+    const out = summarizeResult({ a: 'x'.repeat(500), b: 'y'.repeat(500) })
+    expect((out || '').length).toBeLessThanOrEqual(160)
+  })
+  it('객체가 아니거나 비면 null', () => {
+    expect(summarizeResult(null)).toBeNull()
+    expect(summarizeResult('문자열')).toBeNull()
+    expect(summarizeResult([1, 2])).toBeNull()
+    expect(summarizeResult({})).toBeNull()
   })
 })

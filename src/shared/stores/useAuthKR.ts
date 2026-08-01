@@ -374,7 +374,13 @@ export const useAuthKR = create<AuthKRState>()(
           } catch (_) {} // non-critical: query client may not be initialized yet
 
           set({ user: null, userRole: null, tokenCache: null, isLoading: false, isAuthReady: true });
-          setTimeout(() => { window.location.href = '/'; }, 50);
+          // 🛡️ 2026-07-29: `window` 가드 — 이 타이머는 50ms 뒤에 뜨는데, 테스트에선 그 사이에
+          //   환경(jsdom)이 해체돼 `ReferenceError: window is not defined` 가 **unhandled** 로 터진다.
+          //   전체 스위트가 3416건 전부 통과하고도 **run 이 빨강**이 되는 클래스(타이밍 의존 = 간헐).
+          //   브라우저에선 항상 존재하므로 동작 변화 0 — 테스트/SSR 같은 비-브라우저 컨텍스트만 건너뛴다.
+          setTimeout(() => {
+            if (typeof window !== 'undefined') window.location.href = '/';
+          }, 50);
         },
 
         // ── 인증 초기화 (앱 최초 1회) ─────────────────────────────────────────

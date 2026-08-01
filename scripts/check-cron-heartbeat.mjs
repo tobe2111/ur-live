@@ -42,6 +42,14 @@ if (!existsSync(HEARTBEAT)) {
 // ── R2. 모든 waitUntil 스케줄 작업이 safeCron 을 거칠 것 ────────────────────
 //   safeCron 이 유일한 기록 지점이므로, 우회하면 그 작업만 관측 밖으로 빠진다.
 const lines = src.split('\n')
+
+// 🛡️ 2026-07-29: **측정 0 = 통과가 아니라 실패.** scheduled.ts 에서 safeCron 등록을 하나도 못 찾으면
+//   "우회 0건" 이 당연해지고 그 초록은 아무것도 보장하지 않는다(파일 구조가 바뀌면 조용히 그렇게 된다).
+const registeredCount = lines.filter((l) => /safeCron\(\s*'/.test(l.replace(/\/\/.*$/, ''))).length
+if (registeredCount === 0) {
+  console.error(`❌ ${SCHEDULED} 에서 safeCron 등록을 하나도 못 찾았다 — 추출이 깨졌다(통과 아님).`)
+  process.exit(1)
+}
 const bypass = []
 lines.forEach((l, i) => {
   if (!l.includes('ctx.waitUntil(')) return

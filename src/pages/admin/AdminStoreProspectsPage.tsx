@@ -17,9 +17,24 @@ interface Prospect {
 }
 interface Stats { total: number; operating: number; new_open: number; closed: number; with_phone: number; with_email: number; onboarded: number }
 const SRC_LABEL: Record<string, string> = { govreg: '인허가', kakao: '카카오', naver: '네이버', homepage: '홈페이지' }
-interface RunInfo { last_run?: string; day?: string; found?: number; saved?: number; new_open?: number; closed?: number; office?: string; total_saved?: number; diag?: { error?: string } }
+interface RunInfo {
+  last_run?: string; day?: string; found?: number; saved?: number; new_open?: number; closed?: number; office?: string; total_saved?: number
+  diag?: {
+    error?: string
+    /** 🔬 지금 쓰는 요청 형태 + 실패한 실제 요청(키는 서버에서 가려서 온다) + 후보 시도 이력. */
+    variant?: string
+    fail_probe?: { url?: string; endpoint?: string; day?: string; page?: number; msg?: string }
+    probe?: { at?: string; winner?: string | null; attempts?: { id: string; ok: boolean; rows: number; msg?: string }[] }
+  }
+}
 interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
 interface SubSource { gate: boolean; run: RunInfo | null }
+/** 📧 연락처 보강 레인 스냅샷 — API 는 계속 주고 있었는데 **화면에 없어서** 아무도 못 봤다(2026-07-29). */
+interface EnrichRun {
+  last_run?: string; processed?: number; email_found?: number; phone_found?: number; site_found?: number
+  remaining_no_email?: number; spent?: number; budget_total?: number; deadline_hit?: boolean; limit_hit?: boolean
+  elapsed_ms?: number; pass2_reason?: Record<string, number>; crawl_reason?: Record<string, number>
+}
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
@@ -43,6 +58,7 @@ export default function AdminStoreProspectsPage() {
   const [busySub, setBusySub] = useState('') // 'neis' | 'hira' | ''
   const [neis, setNeis] = useState<SubSource | null>(null)
   const [hira, setHira] = useState<SubSource | null>(null)
+  const [enrichRun, setEnrichRun] = useState<EnrichRun | null>(null)
   const [loading, setLoading] = useState(true)
   const [fCategory, setFCategory] = useState('')
   const [fRegion, setFRegion] = useState('')
@@ -51,7 +67,7 @@ export default function AdminStoreProspectsPage() {
   const dq = useDebouncedValue(q) // ⏱️ 서버 검색은 타이핑 멈춘 뒤 1회(키 입력마다 왕복 방지)
 
   const loadStats = useCallback(async () => {
-    try { const r = await api.get('/api/admin/store-prospects/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setNeis(r.data.neis || null); setHira(r.data.hira || null) } } catch { /* noop */ }
+    try { const r = await api.get('/api/admin/store-prospects/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setNeis(r.data.neis || null); setHira(r.data.hira || null); setEnrichRun(r.data.enrich?.run || null) } } catch { /* noop */ }
   }, [])
   const loadRows = useCallback(async () => {
     setLoading(true)
@@ -170,6 +186,44 @@ export default function AdminStoreProspectsPage() {
               <><span className="mx-2 text-gray-300">|</span>🏥 병원 <span className={hira.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{hira.gate ? 'ON' : 'OFF'}</span>
                 {hira.run.diag?.error ? <span className="text-amber-600"> · {hira.run.diag.error}</span>
                   : <span> · 최근 {kstShort(hira.run.last_run)} · 저장 {hira.run.saved ?? 0} (누적 {hira.run.total_saved ?? 0})</span>}</>
+            )}
+          </div>
+        )}
+
+        {/* 📧 보강 레인 — 매장 3.5만 중 **이메일 1건**이던 것을 판정 가능하게. 이 스냅샷은 API 가 계속
+            주고 있었는데 화면에 없어서 아무도 못 봤다. `pass2_reason` 이 "왜 0인가"를 처방 단위로 가른다:
+            사이트 못 찾음 → 발견 경로 확대 / 찾았는데 이메일 없음 → 이 경로는 수율이 낮다 / 크롤 막힘 → 크롤러 수리. */}
+        {enrichRun && (
+          <div className="mb-3 text-xs text-gray-500">
+            📧 연락처 보강 · 최근 {kstShort(enrichRun.last_run)} · 처리 {formatNumber(enrichRun.processed ?? 0)} ·
+            <b className="text-indigo-600"> 이메일 +{formatNumber(enrichRun.email_found ?? 0)}</b> ·
+            사이트 +{formatNumber(enrichRun.site_found ?? 0)} · 전화 +{formatNumber(enrichRun.phone_found ?? 0)} ·
+            남은 이메일없음 {formatNumber(enrichRun.remaining_no_email ?? 0)}
+            <span className="text-gray-400"> · 예산 {enrichRun.spent ?? 0}/{enrichRun.budget_total ?? 0}
+              {enrichRun.deadline_hit ? ' · ⏱️ 시간초과' : ''}{enrichRun.limit_hit ? ' · ⛔ 요청한도' : ''}</span>
+            {enrichRun.pass2_reason && Object.keys(enrichRun.pass2_reason).length > 0 && (
+              <div className="mt-0.5 text-[11px] text-gray-400">
+                사유 {Object.entries(enrichRun.pass2_reason).map(([k, v]) => `${k}:${v}`).join(' · ')}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 🔬 인허가가 실패했을 때 **무엇을 보냈고 무엇을 시도했는지** — 추측 대신 증거를 그대로 보여준다.
+            (서비스키는 서버에서 가려서 온다. 이 화면이 없으면 500 의 원인을 물어볼 곳이 없다.) */}
+        {collect?.run?.diag?.error && (collect.run.diag.fail_probe || collect.run.diag.probe) && (
+          <div className="mb-3 p-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900 break-all">
+            <span className="font-semibold">요청 형태</span> {collect.run.diag.variant || 'v1'}
+            {collect.run.diag.probe && (
+              <> · <span className="font-semibold">후보 탐색</span>{' '}
+                {collect.run.diag.probe.winner
+                  ? <>→ <b>{collect.run.diag.probe.winner}</b> 로 자동 전환</>
+                  : <>전 후보 실패 = <b>형태 문제가 아님</b>(키·활용신청·기관 장애 쪽)</>}
+                {' '}[{(collect.run.diag.probe.attempts || []).map(a => `${a.id}:${a.ok ? `${a.rows}행` : '실패'}`).join(' ')}]
+              </>
+            )}
+            {collect.run.diag.fail_probe?.url && (
+              <div className="mt-1 text-amber-700">실패 요청 · {collect.run.diag.fail_probe.endpoint} p{collect.run.diag.fail_probe.page} — {collect.run.diag.fail_probe.url}</div>
             )}
           </div>
         )}

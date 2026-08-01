@@ -47,7 +47,7 @@ export default function SellerConversionNudge() {
           <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">
             방금 산 것 같은 상품·이용권, <strong className="text-gray-900 dark:text-white">내 쇼핑몰</strong>에서 직접 팔 수 있어요.
             {handle
-              ? <> 이미 <span className="font-mono text-gray-900 dark:text-white">live.ur-team.com/u/{handle}</span> 링크샵이 준비돼 있어요.</>
+              ? <> 이미 <span className="font-mono text-gray-900 dark:text-white">urdeal.kr/u/{handle}</span> 링크샵이 준비돼 있어요.</>
               : <> 사업자 등록만 하면 내 링크샵이 열립니다.</>}
             <span className="block text-[11px] text-gray-500 dark:text-gray-400 mt-1">플랫폼 수수료 5% · 판매 대금은 QR 사용 확인 후 정산</span>
           </p>

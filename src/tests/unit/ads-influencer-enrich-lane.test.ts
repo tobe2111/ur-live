@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { planInfluencerEnrich, naverRoomFromRemaining } from '@/features/marketing/api/influencer-enrich-lane'
+import { planInfluencerEnrich, naverRoomFromRemaining, frontStageDeadline, starvedLastRound, NAVER_FLOOR_PCT_DEFAULT } from '@/features/marketing/api/influencer-enrich-lane'
 import { subreqCapKey } from '@/features/marketing/api/collect-budget'
 import { ddlChecksum } from '@/features/marketing/api/ads-schema-guard'
 import { AD_PERF_DDL } from '@/features/marketing/api/influencer-performance'
@@ -80,5 +82,123 @@ describe('planInfluencerEnrich — 보강 라운드 대상 배분', () => {
   it('④ 성과 컬럼 DDL 목록이 바뀌면 체크섬도 바뀐다(컬럼 미생성 방지)', () => {
     expect(ddlChecksum(AD_PERF_DDL)).not.toBe(ddlChecksum([...AD_PERF_DDL, 'ALTER TABLE ad_influencer_leads ADD COLUMN x TEXT']))
     expect(AD_PERF_DDL).toContain('ALTER TABLE ad_influencer_leads ADD COLUMN last_post_at TEXT')
+  })
+})
+
+/**
+ * ⏱️ 2026-07-29 — **블로거 레인 시간 바닥**. 라이브 실측(배포가 없던 12:00 회차):
+ *   `yt 14 · naver { selected 13, tried 0 } · spent 18/45 · deadline_hit true · elapsed 23.4s`
+ *   예산이 27 남았는데 **벽시계**가 먼저 끝나, 맨 뒤에 선 블로거 레인이 13명을 선택만 하고 전부 버렸다.
+ *   같은 날 10:00 회차는 elapsed 16.0s 라 13명을 다 쟀다 — 유튜브 지연에 따라 **동전 던지기**였고,
+ *   하필 미측정 백로그의 88%(26,694명)가 블로거 쪽이다.
+ *   ⚠️ 예산 배분으로는 못 고친다(`naverRoomFromRemaining` 이 이미 남은 예산을 넘겨주는데도 0명이었다).
+ */
+describe('frontStageDeadline — 앞 레인이 창을 다 먹지 못하게', () => {
+  const T0 = 1_000_000
+
+  it('🔒 기본 40% 바닥 — 앞 레인은 20초 창의 12초까지만', () => {
+    expect(frontStageDeadline(T0, 20_000, 40)).toBe(T0 + 12_000)
+  })
+
+  it('🔒 바닥이 커질수록 앞 레인 몫이 줄어든다(단조)', () => {
+    const at = (pct: number) => frontStageDeadline(T0, 20_000, pct) - T0
+    expect(at(10)).toBeGreaterThan(at(40))
+    expect(at(40)).toBeGreaterThan(at(80))
+  })
+
+  it('🔒 항상 원래 마감보다 이르다 — 늦추면 바닥이 사라진다', () => {
+    for (const pct of [10, 40, 80]) expect(frontStageDeadline(T0, 20_000, pct)).toBeLessThan(T0 + 20_000)
+  })
+
+  it('🔒 이상값도 창 안에 머문다(설정 오타가 레인을 죽이지 않게)', () => {
+    for (const pct of [-100, 0, 5, 95, 500, Number.NaN]) {
+      const d = frontStageDeadline(T0, 20_000, pct)
+      expect(d).toBeGreaterThan(T0)          // 0 이면 앞 레인이 통째로 굶는다
+      expect(d).toBeLessThan(T0 + 20_000)    // 창을 넘으면 바닥이 없어진다
+    }
+    // 창 자체가 이상해도 과거 시각을 만들지 않는다.
+    expect(frontStageDeadline(T0, Number.NaN, 40)).toBe(T0)
+    expect(frontStageDeadline(T0, -5_000, 40)).toBe(T0)
+  })
+})
+
+/**
+ * 🔄 **선두 교대의 폴백** — `depth % 2` 하나로는 발화 못 하는 회차가 있다.
+ *
+ *   #885 는 "체인이 depth 2+ 로 돈다"를 전제로 홀수 라운드에 블로거를 앞세운다. 그런데 배포(13:38) 이후
+ *   **14:00 틱 실측이 `depth: 0`** 이었고 `naver { selected 12, tried 0 }` 은 그대로였다.
+ *   체인이 한 라운드에서 끊기면 depth 는 영원히 0 이고 `0 % 2 === 1` 은 항상 거짓이라, **교대가 한 번도
+ *   안 일어난다.** 전제가 깨지면 처방도 같이 죽는 형태다 — 그래서 깊이와 무관한 신호를 하나 더 둔다.
+ */
+describe('starvedLastRound — 깊이와 무관한 교대 신호', () => {
+  it('🔒 고를 사람은 있었는데 한 명도 못 쟀으면 굶은 것 — 라이브에서 반복해 찍힌 값', () => {
+    expect(starvedLastRound({ naver: { selected: 12, tried: 0 } })).toBe(true)
+    expect(starvedLastRound({ naver: { selected: 13, tried: 0 } })).toBe(true)
+  })
+
+  it('🔒 큐가 빈 것(selected 0)은 굶은 게 아니다 — 할 일 없는 레인에 선두를 주지 않는다', () => {
+    expect(starvedLastRound({ naver: { selected: 0, tried: 0 } })).toBe(false)
+  })
+
+  it('🔒 한 명이라도 쟀으면 정상 — 창을 다 썼어도 뒤집지 않는다', () => {
+    expect(starvedLastRound({ naver: { selected: 13, tried: 1 } })).toBe(false)
+    expect(starvedLastRound({ naver: { selected: 13, tried: 13 } })).toBe(false)
+  })
+
+  it('🔒 스냅샷이 없거나 깨졌으면 기존 순서 유지(첫 배포·유실에 안전)', () => {
+    for (const v of [null, undefined, {}, { naver: {} }]) expect(starvedLastRound(v as never)).toBe(false)
+  })
+})
+
+/**
+ * 🔌 배선 잠금 — 순수함수만 테스트하면 "함수는 있는데 부르는 곳이 없는" 사고를 못 잡는다
+ *   (같은 날 `isUnjudgedRound` 가 정확히 그랬다). 호출부를 소스로 확인한다.
+ */
+describe('배선 — 교대가 깊이와 굶주림 둘 다 본다', () => {
+  const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-enrich-lane.ts'), 'utf8')
+
+  it('🔒 두 신호를 OR 로 묶는다 — 어느 하나가 죽어도 교대가 산다', () => {
+    expect(src).toMatch(/const naverFirst = depth % 2 === 1 \|\| starvedLastRound\(prev\)/)
+  })
+
+  it('🔒 직전 스냅샷을 레인 시작 전에 읽는다 — 끝에서만 읽으면 선두 결정에 못 쓴다', () => {
+    expect(src.indexOf('const prev = await readSnapshot(DB)')).toBeLessThan(src.indexOf('const naverFirst ='))
+  })
+})
+
+/**
+ * 📐 블로거 시간 바닥 비율 — 2026-07-29 16:00 A/B 실측이 만든 값.
+ *
+ * 인접한 두 깨끗한 회차(배포 겹침 없음)가 앞 단계 몫의 대가를 그대로 보여줬다:
+ * ```
+ *   15:00 블로거 선두 : yt  0 · naver{선택 22, 측정 22} · spent 44/45 · elapsed  8.3s
+ *   16:00 유튜브 선두 : yt 14 · naver{선택 18, 측정  6} · spent 19/45 · elapsed 22.0s
+ * ```
+ * 유튜브 14채널의 대가로 **블로거 12명이 선택만 되고 버려졌다**. 백로그(블로거 27,324 · 증가 중)와
+ * 측정 값어치(블로거는 이메일 수율 50~59%, 유튜브는 대개 이미 있는 값 갱신)가 이 배분을 뒤집는다.
+ *
+ * ⚠️ 이 테스트가 **못 보는 것**: 실제 라이브 적용 여부. `ADS_ENRICH_NAVER_FLOOR_PCT` 가 대시보드에
+ *    설정돼 있으면 env 가 이깁니다 — 적용은 다음 회차의 `naver.tried` 로 확인할 것.
+ */
+describe('블로거 시간 바닥 기본값', () => {
+  it('기본이 70% — 앞 단계는 창의 30%까지만', () => {
+    expect(NAVER_FLOOR_PCT_DEFAULT).toBe(70)
+    const t0 = 1_000_000
+    expect(frontStageDeadline(t0, 20_000, NAVER_FLOOR_PCT_DEFAULT)).toBe(t0 + 6_000)
+  })
+  it('🔒 16:00 회귀 재현: 40% 였다면 앞 단계가 창의 60%(12s)를 먹는다', () => {
+    const t0 = 1_000_000
+    expect(frontStageDeadline(t0, 20_000, 40)).toBe(t0 + 12_000)   // 실제로 그래서 블로거가 8s 만 받았다
+    // 새 기본값은 그 절반 — 블로거 몫이 8s → 14s 로 늘어난다.
+    expect(frontStageDeadline(t0, 20_000, NAVER_FLOOR_PCT_DEFAULT) - t0).toBeLessThan(12_000)
+  })
+  it('바닥은 여전히 상한 80%에 걸린다 — 앞 단계를 통째로 굶기지 않는다', () => {
+    const t0 = 1_000_000
+    expect(frontStageDeadline(t0, 20_000, 99) - t0).toBe(4_000)   // 20% 는 남는다
+  })
+  it('레인이 상수를 실제로 쓴다 — 리터럴 40 이 남아 있으면 기본값 변경이 무의미하다', () => {
+    const src = readFileSync('src/features/marketing/api/influencer-enrich-lane.ts', 'utf8')
+    expect(src).toMatch(/ADS_ENRICH_NAVER_FLOOR_PCT[\s\S]{0,120}?NAVER_FLOOR_PCT_DEFAULT/)
+    expect(src).not.toMatch(/ADS_ENRICH_NAVER_FLOOR_PCT[^\n]*\|\|\s*40\b/)
   })
 })

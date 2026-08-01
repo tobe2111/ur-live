@@ -9,103 +9,21 @@ import type { D1Database } from '@cloudflare/workers-types'
 import type { OpBudget } from './maintenance-budget'
 import type { Env } from '@/worker/types/env'
 import { pickBusinessEmail, extractContacts, stripVideoTitles, isPlatformLabelEmail, type FetchBudget } from './influencer-discovery'
-import { classifyCategory, reconcileCategory, NON_CATEGORIES } from './influencer-classify'
+import { classifyCategory, classifyCategoryByHits, reconcileCategory, NON_CATEGORIES, shouldClearCategory } from './influencer-classify'
 // 🧩 순수 파서는 `influencer-parse.ts` — 기존 import 경로 호환을 위해 재수출.
-export { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount, naverPostdateToIso } from './influencer-parse'
-import { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount } from './influencer-parse'
+export { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount, naverPostdateToIso,
+  avgStats, parseIsoDurationSec, SHORTS_MAX_SEC, medianOf, videoMetrics } from './influencer-parse'
+import { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount, deriveNaverRssSignals, videoMetrics, parseIsoDurationSec } from './influencer-parse'
+import { isSelfBlogLink } from './influencer-self-link'
 import { runDdlOnce } from './ads-schema-guard'
 import { deriveNaverHandle, naverBlogUrl } from './influencer-handle-heal'
 import { platformSubreqCap } from './collect-budget'
 
-const _reEsc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-/**
- * 🧹 기존 풀 이메일 재정리(백필) — 저장된 소개글(description)에 개선된 추출기를 재적용해 판정.
- *   반환: string=이 값으로 교체 · null=비우기(가짜 제거) · undefined=변경 없음.
- *   ① **가짜 이메일 제거**: 저장 이메일이 소개글에 문자 그대로 없고, "로컬파트 at 도메인라벨"(과거 전치사 'at'
- *      오변환 흔적)이 소개글에 있으면 날조 → 재도출값으로 교체(없으면 비움). ② 빈칸이면 재도출로 채움.
- *      ③ 대행사(비-개인도메인) 저장값 + 소개글에 개인도메인 메일 → 개인메일로 교정.
- */
-export function reextractEmail(description: string | null | undefined, stored: string | null): string | null | undefined {
-  const desc = stripVideoTitles(description || '') // 🏷️ 영상 제목 세그먼트(분류 전용 신호)의 타인 메일 오추출 방지
-  const derived = pickBusinessEmail(desc) || extractContacts(desc).emails[0] || null // 개선된(수정된) 추출기
-  if (!stored) return derived || undefined // 빈칸 채움
-  // 🛡️ 소급 정리(2026-07-25): 과거 날조 저장분(insta@sunny.day 류 — 로컬파트=플랫폼 라벨)은 진짜 메일로 교체 or 비움.
-  //   신규 추출기는 이 클래스를 차단하지만 재추출의 '유지' 판정이 기존 오염을 못 지우던 것 — 발송하면 전량 반송되는 값.
-  if (isPlatformLabelEmail(stored)) return derived && derived !== stored ? derived : null
-  const s = stored.toLowerCase(); const [local, domain] = s.split('@'); const label = (domain || '').split('.')[0]
-  const fabricated = !desc.toLowerCase().includes(s) && !!local && !!label
-    && new RegExp(`${_reEsc(local)}\\s+at\\s+${_reEsc(label)}`, 'i').test(desc) // "out at naver" 류 날조 흔적
-  if (fabricated) return derived && derived !== stored ? derived : null // 진짜 메일로 교체 or 비움
-  if (!PERSONAL_EMAIL_RE.test(stored) && derived && PERSONAL_EMAIL_RE.test(derived)) return derived // 대행사→개인
-  return undefined // 유지
-}
+// 📧 이메일 판정 규칙(순수)은 `influencer-email-rules.ts` — 기존 import 경로 호환을 위해 재수출.
+export { reextractEmail, correctedAboutEmail, PERSONAL_EMAIL_DOMAINS, personalEmailSqlClause, isPersonalEmail } from './influencer-email-rules'
+import { correctedAboutEmail, reextractEmail } from './influencer-email-rules'
 
-// 개인(창작자 본인) 메일 도메인 SSOT — 대행사/MCN 코퍼레이트 메일과 구분. About 에 이 도메인 메일이 있으면 우선.
-//   통계(admin-ads `yt_email_personal`)·교정(correctedAboutEmail) 둘 다 이 집합에서 파생 → 정의 드리프트 방지.
-export const PERSONAL_EMAIL_DOMAINS = ['gmail', 'naver', 'daum', 'kakao', 'hanmail', 'nate', 'hotmail', 'outlook', 'icloud'] as const
-const PERSONAL_EMAIL_RE = new RegExp(`@(${PERSONAL_EMAIL_DOMAINS.join('|')})\\.`, 'i')
-/** 통계용 SQL 조건 — 주어진 컬럼이 개인도메인 메일인지(위 SSOT 와 동일 집합). 도메인 리터럴만이라 인젝션 무관. */
-export const personalEmailSqlClause = (col = 'email'): string => PERSONAL_EMAIL_DOMAINS.map(d => `${col} LIKE '%@${d}.%'`).join(' OR ')
-/** 개인(창작자 본인) 메일인가 — 위 SSOT 와 동일 판정(스코어링 등 JS 소비자용). */
-export const isPersonalEmail = (email?: string | null): boolean => !!email && PERSONAL_EMAIL_RE.test(email)
-/** 저장된 이메일을 최신 About 이메일로 교정할지 판단(보수적 — 값을 나쁘게 만들지 않음).
- *  대상: 저장값이 없거나(NULL) 개인도메인이 아닌 경우(대행사 co.kr 등) + About 에 개인도메인 비즈니스 메일이 있을 때만.
- *  → 채널 주인이 나중에 About 에 본인 메일을 추가한 케이스(수집 당시엔 영상설명의 대행사 메일만 잡힘)를 자동 정정. */
-export function correctedAboutEmail(aboutDesc: string | undefined, stored: string | null): string | null {
-  if (!aboutDesc) return null
-  const fresh = pickBusinessEmail(aboutDesc)
-  if (!fresh || !PERSONAL_EMAIL_RE.test(fresh) || fresh === (stored || '')) return null
-  const storedIsPersonal = !!stored && PERSONAL_EMAIL_RE.test(stored)
-  return storedIsPersonal ? null : fresh // 이미 개인메일이면 안 건드림(처닝 방지), 아니면(대행사/NULL) 교정
-}
-
-// ── 순수 계산(테스트 가능) ──────────────────────────────────────────────────
-export function avgStats(videos: { views: number; comments: number }[]): { avgViews: number; avgComments: number } {
-  if (!videos.length) return { avgViews: 0, avgComments: 0 }
-  const s = videos.reduce((a, v) => ({ v: a.v + (v.views || 0), c: a.c + (v.comments || 0) }), { v: 0, c: 0 })
-  return { avgViews: Math.round(s.v / videos.length), avgComments: Math.round(s.c / videos.length) }
-}
-
-/** ISO-8601 duration(PT#H#M#S) → 초. 파싱 불가/빈값은 0(=길이 미상 → 롱폼 판정에서 제외). */
-export function parseIsoDurationSec(iso?: string | null): number {
-  const m = /^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$/i.exec(String(iso || '').trim())
-  if (!m) return 0
-  const [, d, h, mi, s] = m
-  const sec = (parseInt(d || '0', 10) * 86400) + (parseInt(h || '0', 10) * 3600) + (parseInt(mi || '0', 10) * 60) + Math.round(parseFloat(s || '0'))
-  return Number.isFinite(sec) ? sec : 0
-}
-
-/** 쇼츠 판정 임계(초) — 유튜브 쇼츠 최대 길이(3분) 기준. 이보다 길면 롱폼으로 본다. */
-export const SHORTS_MAX_SEC = 180
-
-/** 숫자 배열의 중앙값(정수 반올림). 빈 배열은 0. */
-export function medianOf(nums: number[]): number {
-  if (!nums.length) return 0
-  const a = [...nums].sort((x, y) => x - y)
-  const mid = a.length >> 1
-  return Math.round(a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2)
-}
-
-/**
- * 📈 채널 성과 지표(2026-07-27 개선) — 기존 '전체 평균 조회수'는 **쇼츠/롱폼 혼합 + 산술평균**이라
- *   쇼츠 몇 개가 터진 채널이 과대평가됐다(협찬 단가 오판). 롱폼만의 **중앙값**을 별도로 계산해
- *   실제 콘텐츠 도달력을 보수적으로 추정하고, 쇼츠 비중도 함께 노출한다.
- *   ⚠️ avgViews/avgComments 는 기존 표시·정렬 호환을 위해 그대로 유지(제거 아님).
- */
-export function videoMetrics(videos: { views: number; comments: number; durationSec?: number }[]): {
-  avgViews: number; avgComments: number; medianLongViews: number; shortsRatio: number
-} {
-  const { avgViews, avgComments } = avgStats(videos)
-  const withLen = videos.filter(v => (v.durationSec || 0) > 0)
-  const longs = withLen.filter(v => (v.durationSec || 0) > SHORTS_MAX_SEC)
-  const shorts = withLen.length - longs.length
-  return {
-    avgViews, avgComments,
-    // 길이를 못 잰 경우(전부 0초)엔 롱폼 중앙값을 0 으로 두고 호출부가 avg 로 폴백하게 한다.
-    medianLongViews: medianOf(longs.map(v => v.views || 0)),
-    shortsRatio: withLen.length ? Math.round((shorts / withLen.length) * 100) : 0,
-  }
-}
+// ── 순수 계산(비디오 지표)은 `influencer-parse.ts` 로 이사(2026-07-29 — 이 파일 600줄 캡) · 아래에서 재수출.
 
 
 // 성과 보강 전용 추가 컬럼(동결 ensureInfluencerSchema 무접촉 — 여기서 소유). 멱등·동시성 안전.
@@ -129,6 +47,25 @@ export function ensurePerfExtraColumns(DB: D1Database): Promise<void> {
 
 const YT_BASE = 'https://www.googleapis.com/youtube/v3'
 
+/**
+ * ⏱️ **이 단계가 쓸 시간이 끝났는가** — 예산(`budget.left`)과 **독립**인 두 번째 정지 조건.
+ *
+ * ## 왜 이게 따로 필요한가 (2026-07-29, 배포와 안 겹친 첫 클린 틱)
+ * 보강 레인은 앞 단계(유튜브)에 **사전 마감**을 씌워 뒤에 선 블로거 레인의 시간 바닥을 보장한다
+ * (`frontStageDeadline`, 기본 40%). 그런데 그 바닥이 실측에서 전혀 듣지 않았다:
+ * ```
+ *   14:00 틱 — 창 20,000ms · 앞 단계 사전 마감 12,000ms
+ *   결과: elapsed 28,095ms · naver { selected: 12, tried: 0 } · spent 19/45
+ * ```
+ * 원인은 단순하다 — **바닥은 '마감'인데, 그 마감을 앞 단계가 한 번도 읽지 않았다.** 이 함수의 세 루프는
+ * `budget.left` 만 보고 `budget.deadline` 은 안 봤다. 그래서 fetch 타임아웃 10s × 채널 수가 그대로
+ * 창을 넘겼고, 블로거는 매 회차 **선택만 하고 한 명도 못 재고** 반환했다(예산은 26 이나 남긴 채).
+ *
+ * ⚠️ 시간으로 멈춘 건은 **예산으로 멈춘 건과 같은 취급**(`budgetSkipped`)이다 — 스탬프를 찍으면
+ *    "측정했더니 0" 으로 각인돼 다음 순환에서 재선택 대상에서 빠진다(이 파일이 반복해 지켜온 불변식).
+ */
+const outOfTime = (b: FetchBudget): boolean => !!b.deadline && Date.now() >= b.deadline
+
 /** 🎯 YouTube topicDetails(구글 자체 주제분류, Wikipedia URL)를 우리 카테고리로 매핑 — 텍스트 파싱보다 신뢰도↑.
  *  구체적 주제 먼저. 없거나 매핑 불가면 null(호출부가 기존 category 유지). part=topicDetails 는 추가 쿼터 0. */
 export function topicToCategory(topicUrls: string[] | undefined): string | null {
@@ -151,7 +88,8 @@ export function topicToCategory(topicUrls: string[] | undefined): string | null 
 export async function enrichYouTubePerformance(
   apiKey: string | undefined, DB: D1Database, budget: FetchBudget, max: number, mode: 'progress' | 'refresh' = 'progress',
 ): Promise<number> {
-  if (!apiKey || max <= 0 || budget.left <= 3) return 0
+  // ⏱️ 시간이 이미 지났으면 **아무것도 하지 않는다** — D1/DDL 도 서브리퀘스트다(레인 예산과 같은 지갑).
+  if (!apiKey || max <= 0 || budget.left <= 3 || outOfTime(budget)) return 0
   await ensurePerfExtraColumns(DB) // channel_published_at 참조(백필 조건) 전 보강
   // 선택 대상 — progress(cron): perf 미수집 채널을 구독자 많은 순(pub_checked_at 로 자기종료: 좀비채널도 1회 후 재선택 X).
   //   refresh(수동 라이브 재조회): 이미 수집됐어도 **개인메일이 아직 없는 채널**(NULL·대행사)을 오래된 조회순으로 재선택
@@ -200,7 +138,9 @@ export async function enrichYouTubePerformance(
   for (const r of rows) {
     const pl = uploads.get(r.channel_id)
     if (!pl) { videoIdsByLead.set(r.id, []); continue }                 // 업로드 재생목록 없음 = 실제로 영상 0 → avg 0 이 정답
-    if (budget.left <= 2) { videoIdsByLead.set(r.id, []); budgetSkipped.add(r.id); continue } // 예산 소진 — perf 보류
+    // ⏱️ 예산 **또는 시간** 소진 — perf 보류(0 각인 금지). 시간을 안 보면 아래 10s 타임아웃 × 채널 수가
+    //   그대로 창을 넘겨, 뒤에 선 블로거 레인이 통째로 굶는다(2026-07-29 14:00 클린 틱 실측).
+    if (budget.left <= 2 || outOfTime(budget)) { videoIdsByLead.set(r.id, []); budgetSkipped.add(r.id); continue }
     budget.left--
     const piRes = await fetch(`${YT_BASE}/playlistItems?part=contentDetails&playlistId=${pl}&maxResults=10&key=${apiKey}`,
       { signal: AbortSignal.timeout(10000) }).catch(() => null)
@@ -214,7 +154,7 @@ export async function enrichYouTubePerformance(
   //   📈 part 에 contentDetails 추가(=영상 길이) — 같은 1 unit 이라 쿼터 비용 증가 0. 쇼츠/롱폼 구분에 사용.
   const allIds = Array.from(videoIdsByLead.values()).flat()
   const stats = new Map<string, { views: number; comments: number; durationSec: number }>()
-  for (let i = 0; i < allIds.length && budget.left > 0; i += 50) {
+  for (let i = 0; i < allIds.length && budget.left > 0 && !outOfTime(budget); i += 50) {
     budget.left--
     const vRes = await fetch(`${YT_BASE}/videos?part=statistics,contentDetails&id=${allIds.slice(i, i + 50).join(',')}&maxResults=50&key=${apiKey}`,
       { signal: AbortSignal.timeout(10000) }).catch(() => null)
@@ -268,6 +208,16 @@ export interface NaverEnrichDiag {
   selected?: number   // 후보 SELECT 가 실제로 돌려준 행 수(0 이면 큐가 빈 것 · >0 인데 tried 0 이면 전량 스킵)
   skipped?: number    // 핸들을 못 살려 스킵한 행(= 복구 불가 — healNaverHandles 의 unfixable 과 같은 집합)
   healed?: number     // 🩹 이번 라운드에 channel_id/url 에서 핸들을 되살려 측정한 행
+  /** 🎁 이미 받은 RSS 에서 **더 뽑은** 것(추가 fetch 0) — 2026-07-29 대표 4축(카테고리화·정보 최대 수집).
+   *  ⚠️ 이 환경에선 `rss.blog.naver.com` 이 프록시 차단이라 응답 실물을 못 봤다.
+   *     그래서 이 카운터들이 **필드 존재 여부의 판정 근거**다: 계속 0 이면 그 필드는 오지 않는 것이니
+   *     추측으로 파서를 더 손대지 말고 이 경로를 접을 것. */
+  rss_cat?: number     // `<category>`(블로거 자기분류)를 받은 행
+  rss_intro?: number   // 채널 `<description>`(블로그 소개글)을 받은 행
+  rss_emails?: number  // 그 소개글에서 **처음** 이메일을 얻은 행
+  cat_body?: number    // 글 본문 빈도로 **빈칸을** 채운 행(기존 분류 덮어쓰기 아님)
+  /** 🏠 홈 fetch 를 생략한 행(연락처 4종이 이미 다 차 있어 응답이 버려질 것) — 아낀 서브리퀘스트 수와 같다. */
+  home_skipped?: number
   /** 후보 조회 자체가 실패한 경우의 사유. 없으면 조회는 성공한 것 — `selected:0` 이 '큐가 빔'을 **확정**한다.
    *  (이게 없으면 조회 실패도 `selected:0` 으로 보여 "큐가 비었다"와 구분되지 않는다.) */
   query_error?: string
@@ -285,6 +235,26 @@ export interface NaverEnrichDiag {
  *   ④ **글 제목 → 카테고리 신호**: RSS 최근 글 제목을 description 꼬리(` | 글: …`)에 갱신 —
  *      야간 재분류가 실제 콘텐츠로 판정(검색 스니펫 1건 상속보다 정확).
  */
+/**
+ * 🏠 블로그 **홈 HTML 을 받을 가치가 있는가** — 순수 판정(테스트 가능).
+ *
+ * ## 왜
+ * 홈에서 얻는 건 넷뿐이고(이웃수·이메일·인스타·링크) **저장은 전부 빈칸 채움**이다
+ * (`COALESCE(email, ?)` · `CASE WHEN subscriber_count > 0 THEN subscriber_count ELSE ?`).
+ * 즉 넷이 이미 다 차 있으면 홈 응답은 **통째로 버려진다** — 그런데 서브리퀘스트는 소비된다.
+ *
+ * 서브리퀘스트가 이 파이프라인의 천장이다(라운드 실측 `spent 44/45` = 예산 소진으로 끝남).
+ * 버려질 fetch 하나를 안 쓰면 그 예산이 **아직 아무것도 없는 리드**에게 간다.
+ * 이건 추정이 아니라 저장 규칙에서 바로 따라 나오는 사실이라, 라운드 병목의 원인과 무관하게 맞다.
+ *
+ * ⚠️ 하나라도 비어 있으면 받는다 — 보수적으로. "이미 충분해 보인다"로 정보 수집을 줄이지 않는다.
+ */
+export function naverHomeUseful(r: {
+  email?: string | null; instagram?: string | null; links?: string | null; subscriber_count?: number | null
+}): boolean {
+  return !r.email || !r.instagram || !r.links || !((r.subscriber_count || 0) > 0)
+}
+
 export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, max: number): Promise<NaverEnrichDiag> {
   const diag: NaverEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0, emails: 0 }
   if (max <= 0 || budget.left <= 1) return diag
@@ -358,7 +328,10 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     //   라운드는 벽시계 20s 가 상한이라 직렬이면 **한 라운드에 1~2명**밖에 못 재고, cron 도 라운드를
     //   6회 예약해 놓고 2회에서 시간이 끝난다(라이브 실측: 라운드 13.8s / 9.1s 후 정지).
     //   병렬로 바꾸면 건당 상한이 8s — 같은 서브리퀘스트 수로 처리량이 배가 된다.
-    const wantHome = budget.left >= 2 // 예산이 1 남으면 RSS(활동성)를 우선 — 연락처보다 측정이 먼저다
+    // 예산이 1 남으면 RSS(활동성)를 우선 — 연락처보다 측정이 먼저다.
+    // + 홈이 **아무것도 못 채우는** 리드면 아예 안 받는다(아래 naverHomeUseful — 순수 낭비 제거).
+    const wantHome = budget.left >= 2 && naverHomeUseful(r)
+    if (!wantHome && budget.left >= 2) diag.home_skipped = (diag.home_skipped || 0) + 1
     budget.left -= wantHome ? 2 : 1
     const [rssXml, homeText] = await Promise.all([
       (async (): Promise<string | null> => {
@@ -386,18 +359,20 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     const sets: string[] = [`perf_checked_at = datetime('now')`]
     const binds: (string | number)[] = []
     let descForClass = r.description || '' // 🏷️ 재분류용 본문 — 아래에서 최신 글 제목으로 갱신되면 그 값을 쓴다
+    let rssIntro = ''   // 채널 소개글(본인 작성) — 연락처 보강에 **안전한** 유일한 RSS 출처
+    let rssBody = ''    // 글 본문 묶음 — **분류 전용**(남의 연락처가 섞임)
     if (rssXml !== null) {
       diag.measured++
       const pubDates = extractPubDates(rssXml)
       sets.push('recent_posts_30d = ?'); binds.push(countRecentPosts(pubDates, Date.now()))
       const newest = pubDates.map(d => Date.parse(d)).filter(Number.isFinite).sort((a, b) => b - a)[0]
       if (newest) { sets.push(`last_post_at = CASE WHEN last_post_at IS NULL OR last_post_at < ? THEN ? ELSE last_post_at END`); binds.push(...[new Date(newest).toISOString().slice(0, 10), new Date(newest).toISOString().slice(0, 10)]) }
-      const titles = extractRssTitles(rssXml)
-      if (titles.length) { // 글 제목 꼬리 갱신 — 기존 꼬리 제거 후 최신으로 교체(분류 신호 신선 유지)
-        const bare = stripVideoTitles(r.description || '').trim()
-        descForClass = `${bare.slice(0, 300)} | 글: ${titles.join(' · ')}`.slice(0, 500)
-        sets.push('description = ?'); binds.push(descForClass)
-      }
+      // 🎁 같은 응답에서 뽑을 수 있는 걸 전부 뽑는다(추가 fetch 0) — 제목 + 블로거 자기분류 + 블로그 소개글 + 본문.
+      const sig = deriveNaverRssSignals(rssXml, r.description || '')
+      if (sig.cats.length) diag.rss_cat = (diag.rss_cat || 0) + 1
+      if (sig.intro) diag.rss_intro = (diag.rss_intro || 0) + 1
+      if (sig.description) { descForClass = sig.description; sets.push('description = ?'); binds.push(sig.description) }
+      rssIntro = sig.intro; rssBody = sig.body
     }
     let emailAfter = r.email
     let instaAfter = r.instagram
@@ -411,11 +386,21 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
       if (neighbors > 0) { sets.push('subscriber_count = CASE WHEN subscriber_count > 0 THEN subscriber_count ELSE ? END'); binds.push(neighbors); if (!subsAfter || subsAfter <= 0) subsAfter = neighbors }
       const biz = pickBusinessEmail(homeText) // 프로필/위젯 = 본인 페이지 — 본인 연락처(discovery 홈 보강과 동일 기준)
       const c = extractContacts(homeText)
-      if ((biz && !r.email) || (c.instagram[0] && !r.instagram) || (c.links.length && !r.links)) diag.contacts++
+      /**
+       * 🔗 **자기 블로그 URL 은 연락처가 아니다**(2026-07-29 실측).
+       *   `extractContacts` 의 blog-URL 수집은 *유튜버*에겐 크로스플랫폼 발자국이라 값지지만,
+       *   네이버 블로거에겐 자기 글 링크일 뿐이다. 실측: 이메일 없는 블로거 303명 중 **295명이 links 보유**
+       *   인데 내용은 m.blog.naver.com(1,997)·blog.naver.com(292) — 외부 링크는 **3개**뿐이었다.
+       *   ⚠️ 두 가지가 망가진다: ① '연락처 보유'와 '새 연락처 획득률'이 부푼다(판단 근거로 쓰던 수치다)
+       *   ② 저장이 `COALESCE(links, ?)` 라 **한번 자기링크로 채워지면 나중에 찾은 진짜 외부 링크가 영영
+       *   안 들어간다** — 노이즈가 실제 연락처를 막는다.
+       */
+      const extLinks = c.links.filter(u => !isSelfBlogLink(u)) // 판정 SSOT: influencer-self-link
+      if ((biz && !r.email) || (c.instagram[0] && !r.instagram) || (extLinks.length && !r.links)) diag.contacts++
       if (biz && !r.email) diag.emails = (diag.emails || 0) + 1
       if (biz) { sets.push('email = COALESCE(email, ?)'); binds.push(biz); emailAfter = emailAfter || biz }
       if (c.instagram[0]) { sets.push('instagram = COALESCE(instagram, ?)'); binds.push(c.instagram[0]); instaAfter = instaAfter || c.instagram[0] }
-      if (c.links.length) { sets.push('links = COALESCE(links, ?)'); binds.push(c.links.slice(0, 8).join(' ')) }
+      if (extLinks.length) { sets.push('links = COALESCE(links, ?)'); binds.push(extLinks.slice(0, 8).join(' ')) }
     }
     // 🏷️ **측정한 그 자리에서 재분류**(2026-07-29) — 추가 fetch 0.
     //   배경: 풀의 74%(28,673명)가 네이버 블로거인데 이들의 업종은 거의 전부 **수집 키워드 상속**이다
@@ -424,7 +409,19 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     //   유튜브 경로는 이미 About 으로 재분류하는데(reconcileCategory) 네이버만 빠져 있었다.
     //   방금 받은 최신 글 제목이 블로거가 실제로 쓰는 주제라 키워드 상속보다 훨씬 정직한 신호다.
     //   ⚠️ live 가 null 이면 기존 값을 유지한다(reconcile 규칙 동일) — 못 알아본 것을 '없음'으로 덮지 않는다.
-    const liveCat = classifyCategory(r.name || '', descForClass)
+    // 📇 홈에서 못 얻은 것만 **블로그 소개글**로 보강 — 추가 fetch 0(이미 받은 RSS).
+    //   ⚠️ 소개글은 본인이 쓴 프로필이라 홈 프로필과 신뢰도가 같다. 글 본문(rssBody)은 **쓰지 않는다** —
+    //      협찬 문의처·업체 정보 등 남의 연락처가 섞여 발송 대상이 오염된다.
+    if (rssIntro && (!emailAfter || !instaAfter)) {
+      const biz = !emailAfter ? pickBusinessEmail(rssIntro) : null
+      const ig = !instaAfter ? extractContacts(rssIntro).instagram[0] : null
+      if (biz) { sets.push('email = COALESCE(email, ?)'); binds.push(biz); emailAfter = biz; diag.emails = (diag.emails || 0) + 1; diag.rss_emails = (diag.rss_emails || 0) + 1 }
+      if (ig) { sets.push('instagram = COALESCE(instagram, ?)'); binds.push(ig); instaAfter = ig }
+      if (biz || ig) diag.contacts++
+    }
+    let liveCat = classifyCategory(r.name || '', descForClass)
+    // 🔢 이름·소개글·제목 어디에도 신호가 없을 때만 **글 본문 빈도**로 폴백(덮어쓰기 아님 — 빈칸 채움).
+    if (!liveCat && rssBody) { liveCat = classifyCategoryByHits(rssBody); if (liveCat) diag.cat_body = (diag.cat_body || 0) + 1 }
     if (liveCat && !NON_CATEGORIES.has(liveCat)) {
       const finalCat = reconcileCategory(r.category, liveCat, null)
       if (finalCat) { sets.push('category = ?', `category_source = 'content'`); binds.push(finalCat) }
@@ -569,7 +566,9 @@ export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudg
       cursor = Math.max(cursor, r.id)
       const byContent = classifyCategory(r.name, r.description)
       if (byContent && byContent !== r.category) ups.push(DB.prepare("UPDATE ad_influencer_leads SET category = ?, category_source = 'content' WHERE id = ? AND account_id = 0").bind(byContent, r.id))
-      else if (!byContent && r.category && NON_CATEGORIES.has(r.category)) ups.push(DB.prepare('UPDATE ad_influencer_leads SET category = NULL WHERE id = ? AND account_id = 0').bind(r.id))
+      // 🧹 값이 안 나와도 **현재 규칙이 그 값을 거부한다는 걸 아는 경우**엔 지운다(shouldClearCategory 참조).
+      //   안 지우면 옛 규칙으로 붙은 값이 영구히 굳는다 — 실측: 입주업체 27명 중 21명이 그 상태였다.
+      else if (!byContent && shouldClearCategory(r.category, r.name, r.description)) ups.push(DB.prepare('UPDATE ad_influencer_leads SET category = NULL WHERE id = ? AND account_id = 0').bind(r.id))
     }
     for (let i = 0; i < ups.length; i += 100) await DB.batch(ups.slice(i, i + 100)).catch(() => null)
     changed += ups.length

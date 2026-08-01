@@ -10,6 +10,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
+import { runPooled, resolveConcurrency } from './lane-pool'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap } from './collect-budget'
 import { writeEnrichSnapshot, recordEnrichCrash, foldEnrichRollup, ENRICH_SNAPSHOT_KEY, ENRICH_ROLLUP_KEY } from './enrich-telemetry'
 import { healSuspectNames } from './enrich-name-heal'
@@ -17,6 +18,44 @@ import { ensureCompanySchema } from './company-discovery'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
 const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
+
+/**
+ * 🚰 **사이트 없는 리드가 라운드를 독식하지 못하게** — 슬롯 상한 (2026-07-29 라이브 실측).
+ *
+ * ## 무엇을 봤나
+ * 백로그 148,479건을 "크롤이 가능한가"로 가르면:
+ * ```
+ *   온라인판매 133,161 · 사이트 보유  0.0%   ← 크롤 대상이 아예 없다
+ *   전문서비스  12,384 · 사이트 보유  4.5%
+ *   대행사       1,372 · 사이트 보유 40.0%
+ *   ⇒ 즉시 크롤 가능 ≈ 1,315건(0.9%) / 사이트 없음 ≈ 147,164건(99.1%)
+ * ```
+ * 그리고 결정적으로 — **연락처가 있는 온라인판매 리드는 100% `contact_source='commerce'`**(원부가 준 것)다.
+ * 크롤로 연락처를 얻은 온라인판매 리드는 **한 건도 없다**. 원부는 88%의 이메일을 마스킹해서 주고
+ * (`dduki0**@naver.com` — 발송 불가라 저장하지 않는 것이 맞다), 그들은 홈페이지가 없어 크롤로도 못 뚫는다.
+ *
+ * ## 그래서 무엇이 문제였나
+ * 대상 정렬은 이미 **사이트 보유 우선**이다. 그런데 그 1,315건은 한 번 처리되면 7일 쿨다운이 찍히고,
+ * 그 다음부터는 **수율 ~0인 147,164건이 예산을 독식**한다(건당 네이버 조회 2 fetch).
+ * 즉 "빠르게"의 병목은 라운드 수가 아니라 **큐 구성**이었다.
+ *
+ * ## 왜 배제가 아니라 상한인가
+ * 사이트 없는 리드에도 발견 경로(네이버 지역검색/웹문서)가 설계상 존재하고, 그 수율을 아직
+ * **출처별로 재본 적이 없다.** 13만 건을 추측으로 버리지 않는다 — 대신 라운드의 일부만 쓰게 하고
+ * (`p2.no_site_capped` 로 몇 건이 밀렸는지 남긴다), 같은 라운드가 발견 수율을 출처별로 기록해
+ * **하루 안에 데이터로 판정**할 수 있게 한다.
+ *
+ * ⚠️ 크롤 가능분이 적은 회차엔 상한이 놀지 않게 — 사이트 보유 대상이 바닥나면 남은 슬롯은 그대로 쓴다.
+ */
+export const NO_SITE_SLOT_SHARE = 0.5
+
+/** 이번 라운드에서 '사이트 없음' 리드에 허용할 슬롯 수. 대상이 적으면 최소 1건은 보장(탐색 정지 방지). */
+export function noSiteSlotCap(targetCount: number, share = NO_SITE_SLOT_SHARE): number {
+  const n = Number.isFinite(targetCount) ? Math.max(0, Math.floor(targetCount)) : 0
+  if (n <= 0) return 0
+  const sh = Number.isFinite(share) ? Math.min(1, Math.max(0, share)) : NO_SITE_SLOT_SHARE
+  return Math.max(1, Math.floor(n * sh))
+}
 
 /** 📇 연락처 보강 폭포수 — 보류(active=0) 리드에 [카카오 로컬 전화 → 홈페이지 이메일/전화] 순차 시도.
  *   카카오 로컬 API 는 상호+주소로 **전화를 준다**(네이버는 빈값) → 홈페이지 없는 보류도 전화 확보 가능.
@@ -204,15 +243,37 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   // ── Phase 2: 이메일(비쌈, 좁게) — 실홈페이지 크롤 / 없으면 네이버로 홈페이지 발견 후 크롤 ──
   //   홈페이지 없는 보류 리드(상가정보 B2B 사무실 등)를 네이버 link/웹검색 발견으로 구제 → 이메일/전화 확보.
   let sinceSnapshot = 0
-  for (const t of targets) {
-    if (budget.left <= 2 || budget.limitHit || outOfBudget(budget)) break // 예산·한도·시간 중 하나라도 소진
+  // 🚰 이 라운드의 '사이트 없음' 슬롯 상한 — 대상 수에 비례(위 noSiteSlotCap).
+  //   ✅ 동시 처리 안전: 아래 [잔량 검사 → 증가] 사이에 `await` 가 없다(동기 구문). JS 는 단일 스레드라
+  //      그 구간이 원자적이므로 워커 K개가 같은 잔량을 두 번 쓰는 초과 사용이 생기지 않는다
+  //      (블로거 레인의 예산 차감과 같은 논증).
+  const noSiteCap = noSiteSlotCap(targets.length)
+  let noSiteUsed = 0
+  // 🧵 **동시 처리**(2026-07-29) — 이 루프의 병목은 서브리퀘스트가 아니라 **네트워크 대기**였다.
+  //   실측 스냅샷: `processed:3 · spent:21/60 · elapsed 9.7s · deadline_hit:false`, 당일 13라운드 중
+  //   7회가 20s 벽시계에 걸렸고 총 지출은 300(가능치 780). 즉 **예산 2/3 이 남는데 시간이 먼저 끝난다.**
+  //   대기는 겹칠 수 있다 — 서로 다른 리드(=서로 다른 호스트)를 K개씩 동시에 물면 같은 예산·같은
+  //   벽시계로 K배 가까이 들여다본다. 요청 **총량은 그대로**다(공짜가 아니라 재배치).
+  //   ⚠️ K 는 5 로 클램프한다(Workers 동시 오픈 커넥션 6). 정지 조건·도장·스냅샷 규칙은 전부 그대로다.
+  //   ⚠️ 정지 시점에 워커들이 각자 마지막 한 건을 물 수 있어 최대 K건이 더 지출될 수 있다 —
+  //      그래서 여유(`left <= 2`)를 두고 멈춘다. 진짜 천장은 런타임이 `limitHit` 으로 알려준다.
+  const concurrency = resolveConcurrency((env as unknown as { ADS_ENRICH_CONCURRENCY?: string }).ADS_ENRICH_CONCURRENCY)
+  const stopP2 = () => budget.left <= 2 || !!budget.limitHit || outOfBudget(budget) // 예산·한도·시간 중 하나라도 소진
+  const handleLead = async (t: (typeof targets)[number]): Promise<void> => {
     // 📊 `처리` = **이메일을 위해 실제로 들여다본 리드 수**(2026-07-28 정정). 예전엔 Phase 1 의 순회 횟수를
     //   세어, 전화가 이미 있는 리드를 건너뛰어도 숫자가 올라가 실제 작업량과 무관했다(전화 스킵 시 0 이 되는 문제도 함께 해소).
     processed++
     bump('examined'); at = `#${p2.examined} ${(t.company_name || '').slice(0, 24)}`
-    if (t.email) { bump('skip_email'); continue } // 이미 이메일 있음
+    if (t.email) { bump('skip_email'); return } // 이미 이메일 있음
     let site = realSite(t.website)
-    if (!site) bump('no_site')
+    if (!site) {
+      bump('no_site')
+      // 🚰 사이트 없는 리드의 슬롯 상한(위 noSiteSlotCap 주석의 실측 근거) — 수율 ~0 인 99%가
+      //    수율 있는 1%의 예산을 먹지 않게. 밀린 건수는 남긴다(상한이 과한지 판정하려면 숫자가 필요하다).
+      if (noSiteUsed >= noSiteCap) { bump('no_site_capped'); return }
+      noSiteUsed++
+      bump(`ns_src_${t.source || 'unknown'}`) // 📊 출처별 발견 시도 — 아래 ok 계수와 짝지어 수율을 낸다
+    }
     let discovered = false // 검색으로 발견한 사이트(등록 링크 아님) → 상호 존재 가드 필요
     if (!site && nvId && nvSecret && budget.left > 3) {
       bump('naver_try'); at = `nv:${(t.company_name || '').slice(0, 24)}`
@@ -221,6 +282,9 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
       if (!t.phone && nv.phone && t.address) { await save(t.id, nv.phone, null, nv.website, 'naver'); t.phone = nv.phone }
       // 지역검색에 홈페이지 없으면 웹문서 검색으로 발견(크롤 관문 확장 → 이메일↑). 제3자 도메인 제외 + 상호가드.
       if (!site && budget.left > 3) { site = await naverHomepageSearch(nvId, nvSecret, t.company_name, t.region, budget); discovered = !!site }
+      // 📊 발견 성공을 **출처별로** — 시도(ns_src_*) 대비 성공(nsok_*) 이 곧 그 출처의 발견 수율이다.
+      //    이 두 수가 쌓이면 "commerce 13만 건에 정말 경로가 없는가"를 추측이 아니라 데이터로 판정한다.
+      if (site) bump(`nsok_${t.source || 'unknown'}`)
     }
     if (site && budget.left > 2) {
       bump('crawl_try'); at = `cr:${site.slice(0, 60)}`
@@ -244,13 +308,16 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
     //   (2026-07-28 정체의 진짜 원인: 한도 뒤 무의미하게 실패한 수백 행이 매 라운드 7일 쿨다운을 받아
     //    재시도 풀에서 이탈 → 백로그가 흐르지 않고 이메일 수확이 0 에 고착.)
     //   ⚠️ 중단 **전에** 스냅샷을 남긴다 — 이 신호를 못 남기면 다음 세션이 또 원인부터 찾아야 한다.
-    if (budget.limitHit) { await snapshot(true); break }
+    //   ⚠️ 동시 처리에서도 `return` 이면 충분하다 — `stopP2()` 가 `limitHit` 을 보고 **새 건을 안 집는다**.
+    if (budget.limitHit) { await snapshot(true); return }
     await stamp(t.id) // 성공/실패 무관 시도 기록(모았다가 flushStamps 가 1회로) — 다음 시간엔 다음 백로그로
     bump('stamped')
     // 중도 종료돼도 여기까지는 남는다. ⚠️ 첫 3바퀴는 **매번** — 10건 주기만 두면 Phase 2 초반 사망이 영구 미계측이
     //   된다(2026-07-28 실측: `phase:'p1_done'` · `p2:{}` 고정 = 1~9건 구간에서 죽었는데 신호가 0).
     if (++sinceSnapshot <= 3 || sinceSnapshot % 10 === 0) await snapshot(true)
   }
+  const pool = await runPooled(targets, concurrency, handleLead, stopP2)
+  if (pool.failed) p2.threw = pool.failed // 예외로 끝난 건수 — 조용히 삼키지 않고 스냅샷에 남긴다
   // 실제로 시도한 리드의 도장을 한 번에 반영 — 한도로 끊겼어도 '해본 것'은 기록해야 다음 라운드가 앞으로 나간다.
   await flushStamps()
 

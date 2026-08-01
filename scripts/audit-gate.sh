@@ -72,6 +72,7 @@ if domain money; then
   run "블로그 fact 동기화"               bash scripts/check-blog-fact-sync.sh
   run "플랫폼 모델 문서 동기화"          node scripts/check-platform-model-sync.mjs
   run "인계 문서 동기화"                 node scripts/check-current-work-sync.mjs
+  run "동시 세션 겹침"                   node scripts/check-branch-overlap.mjs
 fi
 
 if domain schema; then
@@ -125,6 +126,7 @@ if domain deploy; then
   run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
   run "cron 하트비트 커버리지"           node scripts/check-cron-heartbeat.mjs
   run "유어애즈 레인 격리"              node scripts/check-ads-lane-isolation.mjs
+  run "공공데이터 자리표시자(N/A) 판정"  env STRICT_PUBLIC_DATA_SENTINEL=1 node scripts/check-public-data-sentinel.mjs
   run "시드 버전 단조증가"              env STRICT_SEED_VERSION=1     node scripts/check-seed-version-monotonic.mjs
   run "규칙 버전 bump"                  env STRICT_RULES_VERSION=1    node scripts/check-rules-version-bump.mjs
   # 가드를 지키는 가드 — "만들어만 두고 안 켠 검사" / "경로가 낡아 비어버린 검사" 차단.
@@ -133,6 +135,12 @@ if domain deploy; then
   run "sitemap 죽은 URL 제출"            env STRICT_SITEMAP=1          node scripts/check-sitemap-routes.mjs
   run "비공개 라우트 크롤 노출"          env STRICT_ROBOTS=1           node scripts/check-robots-private-routes.mjs
   run "tsconfig 타입체크 무력화 설정"    env STRICT_TSCONFIG=1         node scripts/check-tsconfig-resolution.mjs
+  run "구 도메인 사용자 노출"            env STRICT_LEGACY_DOMAIN=1    node scripts/check-legacy-domain.mjs
+  # 빌드 산출물이 있을 때만 실측(없으면 스크립트가 명시적 SKIP 출력 후 exit 0).
+  #   상주 실행 지점은 verify.yml 의 build 직후 — 거기선 항상 실측된다.
+  run "크리티컬 청크 구성 동결"          node scripts/check-critical-chunks.mjs
+  run "감사 레지스트리 동기화"          env STRICT_AUDIT_REGISTRY=1   node scripts/check-audit-registry-sync.mjs
+  run "가드 자기검증(측정0=실패)"       env STRICT_GUARD_SELFCHECK=1  node scripts/check-guard-selfcheck.mjs
 fi
 
 echo "────────────────────────────────────────────────────"
