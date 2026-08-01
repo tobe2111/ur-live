@@ -542,6 +542,10 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
 }
 
 /** 🏷️ 풀 카테고리 재분류(백필, 멱등) — 콘텐츠 신호로 교정 + 레거시 '자동'/'일반' → NULL 정리. */
+// ⏱️ 풀 전수 스캔 작업 상한(순수)은 `pool-scan-budget.ts` — 기존 import 경로 호환을 위해 재수출.
+export { poolScanShouldStop, POOL_SCAN_MAX_ROWS, POOL_SCAN_MAX_MS } from './pool-scan-budget'
+import { poolScanShouldStop } from './pool-scan-budget'
+
 export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudget }): Promise<{ scanned: number; changed: number; done: boolean }> {
   // 🧭 2026-07-28: OFFSET 전수스캔 → **id 커서**. 무료 플랜 예산(인보케이션당 ~29 D1 연산)에선 한 번에
   //   3.6만 행을 못 돈다 — 커서가 없으면 매 실행이 늘 같은 앞부분만 훑고 뒤쪽은 영원히 미분류로 남는다
@@ -554,6 +558,7 @@ export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudg
   if (raw?.value) cursor = Math.max(0, parseInt(raw.value, 10) || 0)
 
   let scanned = 0, changed = 0, done = false
+  const startedMs = Date.now()   // ⏱️ 인보케이션당 작업 상한(위 poolScanShouldStop) — CPU 한도 초과 방지
   for (;;) {
     const rows = (await DB.prepare(`SELECT id, name, description, category FROM ad_influencer_leads
         WHERE account_id = 0 AND id > ? ORDER BY id ASC LIMIT ?`).bind(cursor, PAGE)
@@ -574,6 +579,8 @@ export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudg
     changed += ups.length
     if (opts?.budget?.exhausted) { cursor = pageStart; scanned -= rows.length; break } // 쓰기가 잘림 → 이 페이지 재시도
     if (rows.length < PAGE) { done = true; break }
+    // ⏱️ 여기까지가 이 인보케이션의 몫 — `done` 을 false 로 남겨 커서가 다음 회차로 이어진다(커버리지 손실 0).
+    if (poolScanShouldStop(scanned, startedMs, Date.now())) break
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(CURSOR_KEY, String(done ? 0 : cursor)).run().catch(() => null)
