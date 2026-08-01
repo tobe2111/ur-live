@@ -690,3 +690,26 @@ describe('지역 백필 — 한 곳에서만, 정비 인보케이션에서', () 
     expect(maint).toMatch(/while \(!budget\.exhausted && budget\.left >= 6\)/)
   })
 })
+
+/**
+ * 🏘️ **카페 회원수** (2026-07-29 대표 신고 — "카페 회원수는 반영이 안되고 있음(카운팅이 안됨)").
+ *
+ *   원인은 고장이 아니라 **부재**였다: 발굴에 쓰는 네이버 `cafearticle.json`(글 검색)에는 회원수 필드가
+ *   아예 없어서 저장 시 `subscriber_count: 0` 을 넣고 끝이었다. 화면의 0 은 "회원 0명"이 아니라 "모름"이고,
+ *   그 둘이 구분되지 않던 것이 진짜 문제다.
+ *
+ *   ⚠️ 여기서 잠그는 건 **자리**다: 13번째 슬롯을 만들면 배정표가 24의 약수(12)를 벗어나 각 단계의
+ *   고정 시각 성질과 경보 창(12h)이 함께 깨진다. 그래서 할 일이 0인 `reextract` 에 얹었다.
+ */
+describe('카페 회원수 — 배정표를 늘리지 않고 얹는다', () => {
+  const maint = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-maintenance.ts'), 'utf8')
+
+  it('🔒 reextract 단계가 회원수 채우기를 돈다', () => {
+    expect(maint).toMatch(/out\.cafemembers = await fillCafeMemberCounts\(bdb, POOL, budget, \d+\)/)
+  })
+
+  it('🔒 배정표에 별도 슬롯을 만들지 않는다 — 12(24의 약수) 성질을 지킨다', () => {
+    expect(maint).not.toMatch(/'cafemembers',/)   // MAINT_SCHEDULE 리터럴에 등장 금지
+    expect(MAINT_SCHEDULE).not.toContain('cafemembers' as never)
+  })
+})
