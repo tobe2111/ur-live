@@ -16,6 +16,8 @@ import { budgetedDb, newOpBudget, type OpBudget } from './maintenance-budget'
 import { healNaverHandles } from './influencer-handle-heal'
 // 📍 지역 백필 — 여기(정비 인보케이션)가 제자리다. 근거는 `sweepRegions` 주석.
 import { backfillRegions, recheckBlankRegions } from './influencer-region'
+// 🏘️ 카페 회원수 — 발굴 API 가 안 주는 값이라 카페 홈에서 1회성으로 채운다(그 파일 헤더 참조).
+import { fillCafeMemberCounts } from './influencer-cafe-members'
 
 const POOL = 0
 
@@ -315,7 +317,14 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
     else if (phase === 'reextract') {
       out.reextract = await reextractPoolContacts(bdb, { budget })
       out.region = await sweepRegions(bdb, budget)   // 같은 성격(가진 데이터로 빈칸 채우기) — 아래 주석 참조
+      // 🏘️ 카페 회원수(2026-07-29 대표 "카운팅이 안 됨") — 여기 얹는 이유는 지역 백필과 같다:
+      //   이 단계는 전수 36,880행을 훑고 `filled: 0`(할 일이 구조적으로 없다)인데 자기 인보케이션을 갖는다.
+      //   ⚠️ **배정표에 13번째 슬롯을 만들지 않는다** — 12는 24의 약수라 각 단계가 매일 같은 시각에
+      //   정확히 2번 돈다. 13이면 그 성질이 깨져 경보 창(12h)까지 흔들린다(유닛이 그 값을 고정한다).
+      //   ⚠️ 여기만 외부 fetch 를 쓴다(카페 홈) — 전수 1회성이라 다 채우면 조회 1번으로 끝난다.
+      out.cafemembers = await fillCafeMemberCounts(bdb, POOL, budget, 20)
     }
+
     else if (phase === 'reclassify') out.reclassify = await runReclassifyPool(bdb, { budget })
     else if (phase === 'handle') out.handle = await healNaverHandles(bdb, { budget })
     else if (phase === 'selflink') out.selflink = await cleanSelfLinkNoise(bdb, { budget })

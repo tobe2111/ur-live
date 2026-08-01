@@ -18,6 +18,8 @@ import { isSelfBlogLink } from './influencer-self-link'
 import { fetchWithErr, outOfBudget, spendBudget } from './fetch-with-err'
 import { stripVideoTitles } from './influencer-parse'
 
+import { deobfuscateEmail } from './contact-deobfuscate'
+
 const YT_BASE = 'https://www.googleapis.com/youtube/v3'
 
 export interface ExtractedContacts { emails: string[]; instagram: string[]; tiktok: string[]; links: string[] }
@@ -28,6 +30,13 @@ const IG_RE = /(?:instagram\.com|instagr\.am)\/([A-Za-z0-9_.]{2,40})/gi
 //   @ 를 필수로 둬 "instagram is great" 같은 일반 문장 오탐을 원천 차단(@뒤 토큰만 핸들로 인정).
 //   (?<![A-Za-z]) = 앞이 영문자면 매칭 안 함 → "big @brand" 의 "ig" 오탐 차단(짧은 키워드 ig/insta 보호).
 const IG_AT_RE = /(?<![A-Za-z])(?:인스타(?:그램)?|instagram|insta|ig)\s*[:：]?\s*@([A-Za-z0-9_.]{2,30})/gi
+/**
+ * 📷 **@ 없는 라벨형** — "인스타그램 아이디 abc_123" / "인스타 계정: abc.def".
+ *   네이버 블로그 프로필은 `@` 를 안 붙이고 아이디만 적는 경우가 많아, `IG_AT_RE` 만으로는 통째로 놓친다.
+ *   ⚠️ **`아이디|계정|주소|ID` 를 반드시 요구**한다. 그게 없으면 "인스타 소통해요"·"인스타 daily" 같은
+ *   해시태그성 문구의 다음 단어를 아이디로 집는다 — 잘못된 핸들은 빈칸보다 나쁘다(발송이 엉뚱한 데로 간다).
+ */
+const IG_LABEL_ID_RE = /(?<![A-Za-z])(?:인스타(?:그램)?|instagram|insta|ig)\s*(?:아이디|계정|주소|ID)\s*[:：]?\s*@?([A-Za-z0-9_.]{3,30})/gi
 const TT_RE = /tiktok\.com\/@?([A-Za-z0-9_.]{2,40})/gi
 const TT_AT_RE = /(?<![A-Za-z])(?:틱톡|tiktok)\s*[:：]?\s*@([A-Za-z0-9_.]{2,30})/gi
 const LINKINBIO_RE = /(?:linktr\.ee|litt\.ly|inpock\.co\.kr|litelink\.at|link\.bio|taplink\.cc)\/[A-Za-z0-9_.\-/]{1,60}/gi
@@ -47,21 +56,6 @@ const NOT_EMAIL_SUFFIX = /\.(png|jpg|jpeg|gif|webp|svg|mp4|webm)$/i
  *   "abc [at] gmail [dot] com" · "abc(엣)naver.com" · "abc 골뱅이 gmail.com" · "abc@gmail．com" · "abc @ gmail . com".
  *   순수함수(단위테스트) — @ 뒤 도메인 맥락에서만 공백·점을 정리해 일반 문장 오염을 피한다.
  */
-export function deobfuscateEmail(text: string): string {
-  let t = String(text || '')
-  // ① 괄호/대괄호 마커: [at] (at) {at} → @ · [dot] (dot) {dot} → .  (영문 at/dot + 한글 골뱅이/앳/엣/점)
-  t = t.replace(/\s*[[({]\s*(?:at|@|골뱅이|앳|엣)\s*[\])}]\s*/gi, '@')
-  t = t.replace(/\s*[[({]\s*(?:dot|점)\s*[\])}]\s*/gi, '.')
-  // ② 한글 골뱅이/전각 @ → @ · 전각 점(．·)·가운뎃점 → .
-  t = t.replace(/골뱅이|앳|＠/g, '@').replace(/[．]/g, '.')
-  // ③ 단어형 " at " — **뒤에 " dot " 난독화가 이어질 때만** @로(영어 전치사 "at" 오탐 방지: "products at home.com"→가짜 이메일 금지). 공백 낀 리터럴 @ 는 ④가 처리.
-  t = t.replace(/([A-Za-z0-9._%+-])\s+at\s+(?=[A-Za-z0-9][A-Za-z0-9\-]*\s+dot\s+)/gi, '$1@')
-  t = t.replace(/([A-Za-z0-9])\s+dot\s+([A-Za-z]{2,})/gi, '$1.$2')
-  // ④ @ 주변 공백 제거 + @ 뒤 도메인의 점 주변 공백 제거(@ 있는 토큰 한정 — 일반 마침표 미접촉).
-  //   "biz @ daum . net" 처럼 점 양옆 공백도 흡수(도메인 마지막 라벨 앞 `\s*\.\s*`).
-  t = t.replace(/([A-Za-z0-9._%+-]+)\s*@\s*([A-Za-z0-9][A-Za-z0-9\-]*?(?:\s*\.\s*[A-Za-z]{2,})+)/g, (_m, a, b) => `${a}@${String(b).replace(/\s+/g, '')}`) // 도메인 라벨에 공백 불허(과거 "DM @ourteam for rates . more"→가짜메일 방지). 점 양옆 공백만 \s*\.\s* 로 흡수.
-  return t
-}
 
 const uniqLower = (arr: string[]): string[] => Array.from(new Set(arr.map(s => s.trim().toLowerCase()))).filter(Boolean)
 
@@ -72,6 +66,9 @@ export const isPlatformLabelEmail = (e: string): boolean => PLATFORM_LABEL_LOCAL
  *  구현은 순수 파서(`influencer-parse.ts`)로 이사했다(붙이는 쪽 `buildNaverDescription` 과 한 파일에 둬야 마커가 안 어긋난다).
  *  기존 import 경로를 깨지 않으려고 여기서 재수출한다(import 는 파일 상단 — 중간 import 금지 룰). */
 export { stripVideoTitles }
+
+// 📧 난독화 해제는 `contact-deobfuscate.ts`(600줄 래칫 분리) — 기존 import 경로 유지를 위해 재수출.
+export { deobfuscateEmail } from './contact-deobfuscate'
 
 // 🧹 노이즈 판별 — 개인 인플루언서가 아닌 게 거의 확실한 계정(뉴스·방송·기관·체험단모집·마케팅대행).
 //   보수적(오탐 최소) — bare 체험단/서포터즈/대행사 는 정상 창작자(협찬 환영·"대행사 아님") 오제외라 '…모집'·부정문만 노이즈.
@@ -88,7 +85,7 @@ export function extractContacts(text: string): ExtractedContacts {
   // URL 형 + 키워드+@ 형을 합쳐 정규화(다양한 표기 흡수) — 예약어(p/reel/instagram…) 제외.
   const IG_BAD = ['p', 'reel', 'reels', 'explore', 'stories', 'tv', 'instagram', 'insta', 'about', 'accounts']
   // 라벨형("인스타:@x"=본인선언) 우선, URL형 후순위. 🛡️ 'official' 핸들은 라벨형 제외(협업 브랜드 계정 오수집 방지).
-  const atHandles = Array.from(t.matchAll(IG_AT_RE), m => m[1]).filter(h => !/official/i.test(h))
+  const atHandles = [...Array.from(t.matchAll(IG_AT_RE), m => m[1]), ...Array.from(t.matchAll(IG_LABEL_ID_RE), m => m[1])].filter(h => !/official/i.test(h))
   const instagram = uniqLower([
     ...atHandles,
     ...Array.from(t.matchAll(IG_RE), m => m[1]),

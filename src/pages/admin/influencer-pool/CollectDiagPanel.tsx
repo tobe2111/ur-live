@@ -1,3 +1,4 @@
+import { formatKSTShort } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 
 /**
@@ -31,8 +32,8 @@ export interface MaintenanceRecord {
 
 export const fmtKST = (iso?: string) => {
   if (!iso) return '-'
-  const d = new Date(iso.includes('T') ? iso : iso.replace(' ', 'T') + 'Z')
-  return isNaN(d.getTime()) ? '-' : d.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  // 🕒 KST 표기는 SSOT(`utils/date.ts`) — 사본을 두면 갈라진다(레포 전역 9시간 어긋남 클래스).
+  return formatKSTShort(iso)
 }
 
 /** 정비 기록 → 사람이 읽는 한 줄(실행된 단계만). 에러 키가 있으면 그 단계를 ⚠️ 로 표시. */

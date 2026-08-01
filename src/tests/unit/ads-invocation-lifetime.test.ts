@@ -534,12 +534,18 @@ describe('🔍 소스에 생 NUL 바이트 없음 — grep 사각지대 방지',
  */
 describe('🔎 레인 실패 사유 — 자식이 원문을 남긴다', () => {
   it('미들웨어가 던져진 에러를 붙잡아 beat 로 넘긴다', () => {
-    const idx = read('src/worker-ads/index.ts')
-    const mw = /app\.use\('\/__ads\/\*'[\s\S]{0,900}?\n\}\)/.exec(idx)?.[0] || ''
-    expect(mw, '/__ads/* 미들웨어를 못 찾았다').toBeTruthy()
+    // 🔁 2026-08-01: 미들웨어 본체가 index.ts → self-beat.ts 로 옮겨졌다(그 모듈의 관심사이고,
+    //   index.ts 가 600줄 캡에 닿아 있었다). 불변식은 그대로고 **보는 파일만** 바뀐다.
+    const sb = read('src/worker-ads/self-beat.ts')
+    const mw = /export function selfBeatMiddleware\([\s\S]{0,1200}?\n\}/.exec(sb)?.[0] || ''
+    expect(mw, 'selfBeatMiddleware 를 못 찾았다').toBeTruthy()
     expect(mw, '에러를 잡아 두지 않는다').toMatch(/catch \(err\)[\s\S]{0,60}thrown = err/)
     expect(mw, 'writeSelfBeat 에 에러를 안 넘긴다').toMatch(/writeSelfBeat\([\s\S]{0,140}thrown\)/)
     expect(mw, '에러를 삼키면 부모가 재시도 판단을 못 한다').toMatch(/throw err/)
+    // ⏳ beat 쓰기는 **응답 경로 밖**이어야 한다 — await 로 되돌리면 자식 수명이 늘어 느린 레인이 죽는다.
+    expect(mw, 'beat 를 await 해 응답을 붙잡는다').toMatch(/waitUntil\(beat\)/)
+    // 그리고 엔트리는 그 미들웨어를 실제로 붙여야 한다(옮기고 배선을 빠뜨리면 관측이 통째로 사라진다).
+    expect(read('src/worker-ads/index.ts')).toMatch(/app\.use\('\/__ads\/\*', selfBeatMiddleware\(\)\)/)
   })
 
   it('beat 기록에 상수가 아니라 **실제 사유**가 들어간다', () => {
