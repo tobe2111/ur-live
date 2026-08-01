@@ -61,6 +61,7 @@ if domain money; then
   run "CSV 수식 인젝션"                 node scripts/check-csv-injection.mjs
   run "폐기 가격함수 직접호출"           node scripts/check-deprecated-pricing.mjs -s
   run "잔액 절대값 write(비원자)"        node scripts/check-balance-absolute-write.mjs -s
+  run "잔액↑ 원장기록 삼킴"            node scripts/check-balance-without-ledger.mjs
   run "커미션 예산 아비터 우회(INV-CB)"  node scripts/check-commission-budget.mjs
   run "서브리퀘스트 상한 키 레인공유"     node scripts/check-subreq-cap-lane.mjs -s
   run "서브리퀘스트 플랫폼 천장 우회"     node scripts/check-subreq-platform-cap.mjs -s

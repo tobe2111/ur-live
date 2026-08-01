@@ -15,6 +15,7 @@ import { createDashboardNotification } from '../../notifications/api/dashboard-n
 //   (2FA 미등록 관리자는 no-op 통과). adminApp 체인의 requireAdmin() 이 먼저 user 컨텍스트를
 //   세팅하므로 require2FA 는 admins 테이블(totp_secret/totp_enabled)로 정상 해석된다.
 import { require2FA } from '../../../worker/middleware/require-2fa'
+import { recordPointTxMinimal } from '@/worker/utils/point-ledger'
 
 const payoutCenterRoutes = new Hono<{ Bindings: Env }>()
 // 인증: adminApp 체인(CORS+IP whitelist+requireAdmin+audit)이 처리 — /api/admin/* 마운트 전제.
@@ -204,10 +205,16 @@ payoutCenterRoutes.patch('/curator/:id/reject', async (c) => {
       await DB.prepare(
         "UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?"
       ).bind(row.amount, row.user_id).run().catch(() => {})
-      await DB.prepare(
-        `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description)
-         VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)`
-      ).bind(row.user_id, row.amount, row.amount, row.user_id, `환급 신청 반려 — 딜 복원 (#${id})`).run().catch(() => {})
+      // 💸 2026-08-01: 잔액은 위에서 이미 복원됐다 — 여기서 삼키면 원장 행 없는 유저가 남는다.
+      //   확장 컬럼이 없는 환경 대비 최소 컬럼 폴백.
+      try {
+        await DB.prepare(
+          `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description)
+           VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)`
+        ).bind(row.user_id, row.amount, row.amount, row.user_id, `환급 신청 반려 — 딜 복원 (#${id})`).run()
+      } catch {
+        await recordPointTxMinimal(DB, row.user_id, 'refund', row.amount, `환급 신청 반려 — 딜 복원 (#${id})`)
+      }
     }
     if (row?.user_id) {
       await DB.prepare(

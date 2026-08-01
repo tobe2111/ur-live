@@ -18,6 +18,7 @@
     "설계 근거: docs/design/operator-mall-saas-gap.md §8-B(c)"
   ],
   "allow": {
-    "src/worker/routes/repair-schema.routes.ts": "스키마 DDL — 매입가 컬럼을 '만드는' 곳이지 소비자 응답에 싣는 곳이 아니다(ALTER/CREATE 문맥)."
+    "src/worker/routes/repair-schema.routes.ts": "스키마 DDL — 매입가 컬럼을 '만드는' 곳이지 소비자 응답에 싣는 곳이 아니다(ALTER/CREATE 문맥).",
+    "src/worker/routes/repair-schema/column-repairs.ts": "위와 같은 이유. 2026-08-01 에 컬럼 ALTER 목록만 분리한 파일이라 문맥이 동일하다(순수 DDL 데이터, 응답 조립 없음)."
   }
 }

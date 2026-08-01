@@ -19,6 +19,7 @@ import { computeCouponDiscount } from '../../features/coupons/coupon-discount';
 // 🎟️ [gb-price-wiring 2026-07-29] 공구가 결제 배선 + 구 tier cap. 배경/이중할인 주의는 헬퍼 헤더 참조.
 import { loadGbOrderPricing, computeGroupBuyCap } from '../utils/gb-order-pricing';
 import { ensureOrdersDealUsed } from '../utils/ensure-order-columns';
+import { revokeReferralCommissionsForOrder } from '../utils/referral-commission-revoke';
 import { swallow } from '../utils/swallow';
 import { hideOrder } from '../utils/hidden-orders';
 import { requireAuth, type AuthUser } from '../middleware/auth';
@@ -889,25 +890,9 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
     // 🛡️ 2026-07-02 (쇼핑 전수조사): 전액 환불일 때만 커미션 전량 회수(부분환불은 매출 일부만 취소).
     try {
       if (!isFullRefundNow) throw { __skipCommission: true };
+      // 💸 2026-08-01: CAS+잔액+원장이 한 세트라 `utils/referral-commission-revoke` 로 추출.
       const revokeTs = new Date().toISOString();
-      // 먼저 granted 인 commission 을 읽고 CAS 로 withdrawn 전환
-      // 🛡️ 2026-06-01 머니플로우 감사 fix: 잘못된 컬럼(user_id/amount)으로 항상 0건 매칭 →
-      //   추천 커미션 회수가 조용히 무효였음. 실제 스키마 컬럼(beneficiary_id/commission_amount)으로 정정.
-      const toRevoke = await c.env.DB.prepare(
-        "SELECT id, beneficiary_id, commission_amount FROM referral_commissions WHERE order_id = ? AND status = 'granted'"
-      ).bind(body.order_id).all<{ id: number; beneficiary_id: string; commission_amount: number }>().catch(() => ({ results: [] as Array<{ id: number; beneficiary_id: string; commission_amount: number }> }));
-
-      for (const co of (toRevoke.results || [])) {
-        const cas = await c.env.DB.prepare(
-          "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = ? WHERE id = ? AND status = 'granted'"
-        ).bind(revokeTs, co.id).run().catch(() => null);
-        // CAS 성공한 경우에만 포인트 차감 (다른 요청이 이미 처리했으면 skip)
-        if (cas && (cas.meta?.changes ?? 0) > 0) {
-          await c.env.DB.prepare(
-            'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
-          ).bind(co.commission_amount, co.beneficiary_id).run().catch(swallow('order:commission-revoke-points'));
-        }
-      }
+      await revokeReferralCommissionsForOrder(c.env.DB, body.order_id, swallow('order:commission-revoke-points'));
       // ⏳ 2026-06-15 (T+7 hold): 미성숙(pending=보류, 잔액 미적립) 추천 커미션은 잔액 회수 없이 상태만 닫음 —
       //   취소 주문이 '대기' 잔여로 남지 않게(성숙 cron 의 주문-status 가드와 이중 안전망, balance 변경 없음).
       await c.env.DB.prepare(

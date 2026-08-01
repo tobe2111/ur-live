@@ -510,7 +510,29 @@ export async function deleteCompanyLeads(DB: D1Database, ids: number[]): Promise
 /* ── 통계(어드민 대시보드 스트립) ──────────────────────────────────────────────── */
 export interface CompanyStats { total: number; with_contact: number; with_email: number; held_no_contact: number; active_pipeline: number; recent7: number; needs_review: number; merged_away: number }
 export interface AgencyEmailFunnel { total: number; with_email: number; site_no_email: number; site_tried: number; no_site: number }
-export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStats; byCategory: Array<{ k: string; n: number }>; byTier: Array<{ k: number | null; n: number }>; byLeadType: Array<{ k: string; n: number }>; agencyEmailFunnel: AgencyEmailFunnel }> {
+
+/**
+ * 📊 **수집원별 연락처 보유율** — "어느 수집원을 늘릴지"를 의견이 아니라 데이터로 정하기 위한 표 (2026-08-02 신설).
+ *
+ *   왜 필요했나: 08-02 실측에서 풀 173,824건 중 **86.6%(150,529)가 연락처 없음**이었고, 그걸 채우는
+ *   두 레인의 **적중률이 0** 이었다(카카오 전화 스윕 37시도 0발견 · 이메일 보강 hit_rate 0).
+ *   즉 "더 모으고 나중에 채운다"가 작동하지 않는다 — 더 모으면 **연락처 없는 리드만 는다.**
+ *
+ *   그런데 그때 "통신판매는 대량이나 연락처가 빈약하고 카카오 로컬은 전화가 함께 온다"는 판단의 근거가
+ *   **표본(`telno: "N/A"`)·깔때기·코드 주석뿐**이었다. 그 상태로 수집 전략을 바꾸면 정황을 확정으로
+ *   읽는 것이고, 그건 같은 날 이미 두 번 틀렸던 방식이다. ⇒ **세고 나서 정한다.**
+ *
+ *   ⚠️ 이 표가 **말하지 않는 것**: 리드의 *가치*(대행사인지 잡음인지)는 여기 없다 — `byCategory`·`byTier`
+ *     와 **함께** 봐야 한다. 연락처율이 높아도 전부 무관한 업종이면 늘릴 이유가 없다.
+ */
+export interface SourceContactRate {
+  source: string
+  n: number
+  with_phone: number
+  with_email: number
+  with_any: number
+}
+export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStats; byCategory: Array<{ k: string; n: number }>; byTier: Array<{ k: number | null; n: number }>; byLeadType: Array<{ k: string; n: number }>; agencyEmailFunnel: AgencyEmailFunnel; bySource: SourceContactRate[] }> {
   await ensureCompanySchema(DB)
   const t = await DB.prepare(`SELECT
       COUNT(*) AS total,
@@ -530,6 +552,14 @@ export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStat
   //   no_site      = 자체 사이트 미발견(지도·웹 어디에도 없음 — 공개된 이메일 자체가 없어 허위 0 원칙상 공란이 정답)
   //   🔎 2026-07-28: '사이트만'을 **크롤 시도 여부**로 한 번 더 쪼갠다 — 이메일이 안 느는 원인이
   //   "아직 시도 못 함(대기열)"인지 "시도했는데 이메일이 없음(구조적 한계)"인지 화면에서 즉시 구분.
+  // 📊 수집원별 연락처 보유율 — 위 SourceContactRate 주석 참조. 병합된 행은 제외(중복 계산 방지).
+  const bySource = (await DB.prepare(`SELECT COALESCE(NULLIF(source,''),'?') AS source, COUNT(*) AS n,
+      SUM(CASE WHEN phone IS NOT NULL AND phone != '' THEN 1 ELSE 0 END) AS with_phone,
+      SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS with_email,
+      SUM(CASE WHEN (phone IS NOT NULL AND phone != '') OR (email IS NOT NULL AND email != '') THEN 1 ELSE 0 END) AS with_any
+    FROM ad_company_leads WHERE merged_into IS NULL GROUP BY 1 ORDER BY n DESC LIMIT 20`)
+    .all<SourceContactRate>().catch(() => null))?.results || []
+
   const af = await DB.prepare(`SELECT COUNT(*) AS total,
       SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS with_email,
       SUM(CASE WHEN (email IS NULL OR email = '') AND website IS NOT NULL AND website != '' THEN 1 ELSE 0 END) AS site_no_email,
@@ -544,7 +574,7 @@ export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStat
       active_pipeline: Number(t?.active_pipeline) || 0, recent7: Number(t?.recent7) || 0,
       needs_review: Number(t?.needs_review) || 0,
     },
-    byCategory, byTier, byLeadType,
+    byCategory, byTier, byLeadType, bySource,
     agencyEmailFunnel: {
       total: Number(af?.total) || 0, with_email: Number(af?.with_email) || 0,
       site_no_email: Number(af?.site_no_email) || 0, site_tried: Number(af?.site_tried) || 0, no_site: Number(af?.no_site) || 0,

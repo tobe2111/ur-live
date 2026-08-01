@@ -21,7 +21,6 @@ import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { intParam } from '@/shared/pagination'
-
 const communityGroupBuyRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -125,7 +124,7 @@ async function recordCommunityPointTx(
     await DB.prepare(
       "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id, free_delta) VALUES (?, ?, ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)",
     ).bind(userId, type, amount, amount, userId, description, orderId ?? null, Math.round(freeDelta ?? 0)).run()
-  } catch { /* fail-soft — 원장은 보조 기록 */ }
+  } catch { const m = await import('../../../worker/utils/point-ledger'); await m.recordPointTxMinimal(DB, userId, type, amount, description) } // 잔액은 이미 움직였다
 }
 
 // 🏭 2026-06-04 (perf 전수조사): 만료 sweep 을 응답 경로에서 분리 — isolate 당 최대 60초 1회만 실행.

@@ -65,6 +65,19 @@ export async function reverseOrderAncillaryOnRefund(
         DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?")
           .bind(r.commission, r.referrer_id)
       )).catch(swallow('order-refund:affiliate-points'))
+      // 💸 2026-08-01 (딜 원장 전수조사): 여기서 **잔액만 줄이고 원장에는 아무것도 안 남기고 있었다.**
+      //   환불이 일어날 때마다 `잔액 < 거래합` 인 유저가 생긴다(정합 검사가 영구 불일치로 잡는다).
+      //   아래 status='refunded' UPDATE 가 재실행 시 대상 0 이라 이 블록도 사실상 1회다.
+      const { recordPointTransaction } = await import('./point-ledger')
+      for (const r of aff.results) {
+        await recordPointTransaction(DB, {
+          userId: r.referrer_id,
+          delta: -Math.abs(Number(r.commission) || 0),
+          type: 'affiliate_refunded',
+          description: '주문 환불 — 추천 적립 회수',
+          orderId: String(orderId),
+        }).catch(() => { /* fail-soft: 환불을 막지 않는다 */ })
+      }
       await DB.prepare("UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status,'pending') IN ('granted','pending')")
         .bind(orderId).run().catch(swallow('order-refund:affiliate-status'))
     }
