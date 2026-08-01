@@ -21,7 +21,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { capAfterAbandonedRun, nextSubreqCap } from '@/features/marketing/api/collect-budget'
+import { capAfterAbandonedRun, nextSubreqCap, ENRICH_DEADLINE_MS_DEFAULT, resolveEnrichDeadlineMs } from '@/features/marketing/api/collect-budget'
 import { frontStageDeadline, NAVER_FLOOR_PCT_DEFAULT } from '@/features/marketing/api/influencer-enrich-lane'
 import { interleavePicks } from '@/features/marketing/api/influencer-keyword-rotation'
 import { isSelfBlogLink, cleanSelfLinks } from '@/features/marketing/api/influencer-self-link'
@@ -563,5 +563,47 @@ describe('🔎 레인 실패 사유 — 자식이 원문을 남긴다', () => {
   it('던지지 않고 5xx 를 반환한 경우와 구분된다 — 원인이 다르면 기록도 달라야 한다', () => {
     const sb = read('src/worker-ads/self-beat.ts')
     expect(sb).toMatch(/STATUS_5XX/)
+  })
+})
+
+/**
+ * ⏱️ **보강 마감은 부모 수명 아래여야 한다** — 2026-08-02 KST 실측이 만든 불변식.
+ *
+ *   cron 경로에서 부모 인보케이션은 약 **10.5초**에 회수되고, 그때 살아 있던 자식이 **전부 함께** 죽는다
+ *   (피호출자는 호출자보다 오래 못 산다 — 이 파일 맨 위 규칙이 여기서 상한으로 나타난다).
+ *   두 틱 연속 **성공 최대 8,316 / 8,050ms ↔ 실패 최소 10,505ms · 겹침 0**, 실패는 전부 같은 초에 몰렸다.
+ *   그런데 세 보강 레인의 마감 기본값은 **20초**였다 — 그 창은 **애초에 도달 불가능**했고,
+ *   그래서 `enrich_lane.last_run` 이 며칠째 멈춰 있었다(스냅샷 쓰기 전에 죽으니 기록이 안 남는다).
+ *
+ *   ⚠️ 이 검사가 **못 막는 것**: 마감은 *항목 사이*에서만 검사된다. 건당 fetch 가 최대 8s라
+ *     6.9초에 시작한 건이 14.9초에 끝나면 여전히 절단된다 — 건당 타임아웃은 별도 과제다.
+ *   ⚠️ 10.5초는 **관측값**이지 플랫폼 상수가 아니다. 플랜/런타임이 바뀌면 다시 재라
+ *     (성공 max ↔ 실패 min 경계를 보면 된다).
+ */
+describe('⏱️ 보강 마감 — 부모 수명(≈10.5s) 아래', () => {
+  it('기본값이 부모 수명보다 확실히 작다', () => {
+    expect(ENRICH_DEADLINE_MS_DEFAULT).toBeLessThan(10_500)
+    // 너무 작으면 매 라운드가 한 건도 못 끝낸다 — 아래로도 바닥을 둔다.
+    expect(ENRICH_DEADLINE_MS_DEFAULT).toBeGreaterThanOrEqual(5_000)
+  })
+
+  it('env 로 조정되지만 범위를 벗어나지 않는다(무배포 되돌리기 경로)', () => {
+    expect(resolveEnrichDeadlineMs('9000')).toBe(9_000)
+    expect(resolveEnrichDeadlineMs('999999')).toBe(120_000)
+    expect(resolveEnrichDeadlineMs('1')).toBe(5_000)
+    expect(resolveEnrichDeadlineMs('abc')).toBe(ENRICH_DEADLINE_MS_DEFAULT)
+    expect(resolveEnrichDeadlineMs(undefined)).toBe(ENRICH_DEADLINE_MS_DEFAULT)
+  })
+
+  /**
+   * 🔑 **세 레인이 한 env 를 공유하는데 기본값은 세 벌이었다.** 하나만 고치면 나머지는 조용히 옛 값으로 남는다
+   *   — 실제로 죽은 목록에 `enrich-company`·`enrich-prospects` 가 정확히 들어 있었다(같은 이유로 죽고 있었다).
+   */
+  it('세 보강 레인이 모두 SSOT 리졸버를 쓴다(기본값 복제 금지)', () => {
+    for (const f of ['influencer-enrich-lane.ts', 'enrich-lane.ts', 'prospect-enrich.ts']) {
+      const src = read(`src/features/marketing/api/${f}`)
+      expect(src, `${f} 가 리졸버를 안 쓴다`).toMatch(/resolveEnrichDeadlineMs\(env\.ADS_ENRICH_DEADLINE_MS\)/)
+      expect(src, `${f} 에 기본값이 다시 복제됐다`).not.toMatch(/ADS_ENRICH_DEADLINE_MS \|\| '', 10\) \|\| \d/)
+    }
   })
 })
