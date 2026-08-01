@@ -20,7 +20,7 @@
 import { describe, it, expect } from 'vitest'
 import { readdirSync, existsSync, statSync } from 'fs'
 import { resolve } from 'path'
-import { readCode } from '../helpers/source-text'
+import { readCode, sliceFrom } from '../helpers/source-text'
 
 /** 운영자 몰 표면 — 파일·디렉터리 모두 허용. **새 몰 파일을 만들면 여기 추가한다.** */
 const SURFACE = [
@@ -74,5 +74,50 @@ describe('🔴 운영자 몰 경로는 예치금을 모른다', () => {
     // 예치금 동결/철거(X2 대기)가 신규 몰을 깨뜨리지 않음을 **코드로** 보장한다.
     // 값 검증이 아니라 **선언**이므로, 위 두 케이스가 초록인 것이 곧 이 문장의 증거다.
     expect(files.every((f) => !/deposit/i.test(readCode(f)))).toBe(true)
+  })
+})
+
+/**
+ * 🔔 **결제 실패는 소비자에게 도달해야 한다** 〔세션 ③-c, 체크리스트 C5 · 대표 [UNLOCK] 승인 2026-08-01〕
+ *
+ * 비동기 실패(webhook)는 **화면이 없다.** 소비자가 브라우저를 닫았거나 앱을 벗어났으면
+ * 자기 결제가 왜 실패했는지 **영영 모른다.** 어드민 벨은 대표만 보고,
+ * `sendOrderNotification` 은 이름과 달리 **Discord 전용**이다.
+ *
+ * 2026-07-01 에 취소 핸들러에 넣은 buyer 알림과 **정확히 대칭**인 누락이었다.
+ *
+ * ⚠️ 이 테스트가 **못** 막는 것: 알림이 실제로 **도달**하는지(D1 write·앱 표시) · 문구의 적절성.
+ */
+describe('🔔 결제 실패 buyer 알림 (Toss webhook)', () => {
+  const wh = readCode('src/worker/routes/webhook.routes.ts')
+
+  it('실패 핸들러가 buyer 에게 알린다 — 어드민 벨만으로 끝나지 않는다', () => {
+    const failBlock = sliceFrom(wh, 'async function handlePaymentFailed', 'async function handleVirtualAccountIssued')
+    expect(failBlock, 'handlePaymentFailed 를 못 찾았다').not.toBe('')
+    expect(failBlock).toContain('notifyUser')
+    expect(failBlock).toContain("'payment_failed'")
+  })
+
+  it('실패 사유를 함께 전달한다 — "실패했습니다"만으론 할 수 있는 게 없다', () => {
+    // ⚠️ 핸들러 전체에서 `failureMessage` 를 찾으면 **cancel_reason 이 이미 쓰고 있어** 늘 통과한다
+    //   (되돌려-검증에서 실제로 그래서 빨강이 안 떴다). **알림 블록 안에서만** 본다.
+    const notifyBlock = sliceFrom(wh, "'payment_failed'", '} catch', 900)
+    expect(notifyBlock, '알림 블록을 못 찾았다').not.toBe('')
+    expect(notifyBlock).toContain('reason')
+    // 그 reason 이 failureMessage 에서 온다는 것까지 — 빈 문자열로 바꿔치기하면 여기서 걸린다.
+    const reasonAssign = sliceFrom(wh, 'const reason =', '\n', 200)
+    expect(reasonAssign).toContain('failureMessage')
+  })
+
+  it('🔴 알림 실패가 결제 흐름을 막지 않는다 (fail-soft)', () => {
+    // ⚠️ `notifyUser\([\s\S]*?\)\.catch\(` 로 쓰면 **뒤쪽의 다른 `.catch(`** 에 걸려 늘 통과한다
+    //   (되돌려-검증에서 확인). 알림 호출의 **닫는 괄호 바로 뒤**를 봐야 한다.
+    const notifyBlock = sliceFrom(wh, "'payment_failed'", '} catch', 900)
+    expect(notifyBlock).toContain(').catch(')
+  })
+
+  it('취소 핸들러와 **대칭** — 한쪽만 있으면 그게 이 사고의 모양이다', () => {
+    const cancelBlock = sliceFrom(wh, 'async function handlePaymentCancelled', 'async function handlePaymentFailed')
+    expect(cancelBlock).toContain('notifyUser')
   })
 })
