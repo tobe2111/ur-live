@@ -400,6 +400,11 @@ jobs:
       #   원자 증감(x=x±?) 또는 CAS(WHERE x=?)만. 미수금 상환 race 사고(머니 룰 #1).
       - name: Balance absolute-write guard (strict)
         run: node scripts/check-balance-absolute-write.mjs -s
+
+      - name: 잔액↑ 원장기록 삼킴 (strict)
+        env:
+          STRICT_BALANCE_LEDGER: '1'
+        run: node scripts/check-balance-without-ledger.mjs
         continue-on-error: false
 
       # 🛡️ 2026-07-04 [INV-CB]: 커미션 예산 아비터 우회 금지 — 플랫폼 부담 성장 커미션(어필리에이트/

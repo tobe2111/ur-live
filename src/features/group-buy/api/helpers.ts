@@ -9,7 +9,6 @@ import type { D1Database } from '@cloudflare/workers-types'
 import { swallow } from '../../../worker/utils/swallow'
 import { recordLedger } from '../../../worker/utils/ledger'
 import { calcInfluencerCommissionPct, type CommissionRates } from './commission-rates'
-
 const DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.05 // 이용권 기본 수수료 5%
 
 // 🛡️ 2026-05-15: 차등 수수료 — 셀러 GMV 기반 자동 산정 (셀러 lock-in)
@@ -732,7 +731,7 @@ export async function reverseReferralBonusOnRefund(
       await DB.prepare(
         `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id, free_delta)
          VALUES (?, 'referral_bonus_reversed', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
-      ).bind(t.user_id, -amt, -amt, t.user_id, '추천 보너스 환불 회수', orderNumber, -amt).run().catch(() => {})
+      ).bind(t.user_id, -amt, -amt, t.user_id, '추천 보너스 환불 회수', orderNumber, -amt).run().catch(async () => { const m = await import('../../../worker/utils/point-ledger'); await m.recordPointTxMinimal(DB, t.user_id, 'referral_bonus_reversed', -amt, '추천 보너스 환불 회수') })
       reversed++
     }
     return reversed

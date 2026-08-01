@@ -135,6 +135,17 @@ const MUTATIONS = [
     test: 'src/tests/unit/ads-cpu-work-cap.test.ts',
     why: '상한이 없으면 한 인보케이션이 4만 행을 훑어 CPU 한도를 넘긴다(#908).',
   },
+  {
+    name: '스키마 매니페스트에 로직 유입',
+    file: 'src/worker/routes/repair-schema/column-repairs.ts',
+    find: 'export const COLUMN_REPAIRS: ColumnRepair[] = [',
+    replace: 'const mk = (t) => ({ desc: t, sql: `ALTER TABLE ${t} ADD x TEXT` })\nexport const COLUMN_REPAIRS: ColumnRepair[] = [\n    mk("zz"),',
+    test: 'src/tests/unit/repair-schema-manifest.test.ts',
+    why:
+      '이 파일은 "순수 데이터"라는 이유로 600줄 캡을 면제받았다. 로직이 들어오면 그 근거가 사라져 ' +
+      '단지 "린트를 끈 1,000줄짜리 파일"이 된다. 이 주입은 처음엔 **초록이 떴다** — 검사가 배열 ' +
+      '본문만 봐서 선언 위에 심은 헬퍼를 못 봤다. 파일 전체를 보게 고친 뒤 빨강.',
+  },
 ]
 
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
