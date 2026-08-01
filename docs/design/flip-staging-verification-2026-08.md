@@ -32,9 +32,45 @@
 | `pg_reserve_pct` | (미설정→코드 기본 **2.75**) | 필요시 재확정 | 예산 = 수수료 − 결제액×2.75%(VAT 실측) |
 | `promo_funding_source` | (미설정=platform) | `owner` | C1~C4 를 매장 promo(5% 밖) 재원으로 이전 |
 | `seller_promo_field_enabled` | false | `true` | 셀러 promo% 입력 UI 노출 |
-| `gb_engine_enabled` | (미설정=false) | `true` | 공구 엔진 |
+| `gb_engine_enabled` | (미설정=false) | `true` | 공구 엔진 — 🔴 **게이트가 2겹이다. 아래 주의 참조** |
 | `affiliate_use_mature_min_hours` | (미설정=0) | 예: `24` | §0-1 구매→사용 즉시확정 보류(어뷰즈창) |
 | `affiliate_referrer_daily_cap_krw` / `_monthly_cap_krw` | (미설정=무제한) | 정책값 | §0-3 referrer 적립 캡 |
+
+### 🔴 0-a. 공구 엔진 게이트는 **2겹**이다 (2026-07-29 실행 증거 감사에서 발견)
+
+`gb_engine_enabled`(서버) **하나만 켜도 공구 특가는 적용되지 않는다.** 클라 쪽에 하드코딩된 겹이 하나 더 있다:
+
+| 겹 | 위치 | 현재 값 | 켜는 방법 |
+|---|---|---|---|
+| 서버 | `platform_settings.gb_engine_enabled` | **키 자체 부재**(=false) | 어드민 플랫폼 설정에서 값 저장 — **배포 불필요** |
+| 클라 | `src/shared/feature-flags.ts` `GB_ENGINE_ENABLED` | `false` (하드코딩) | **소스 수정 + 배포 필요** |
+
+라이브 실측(2026-07-29): `GET /api/gb-marketplace` → `{ "data": [], "gb_engine": false }`
+
+> ⚠️ **순서 주의**: 클라만 켜면 화면에는 공구 UI 가 뜨는데 서버가 값을 안 실어 **빈 목록**이 된다.
+> **서버 → 클라** 순서로 켜고, 서버만 켠 상태에서 `/api/gb-marketplace` 가 `gb_engine: true` + 데이터를
+> 반환하는지 먼저 확인할 것.
+
+#### 🔴 게이트는 **노출**만 막는다 — 결제 단가는 안 막는다 (비대칭)
+
+이 2겹은 **표시 경로 전용**이다. #844 가 결제에 붙인 `loadGbOrderPricing`(`gb-order-pricing.ts`)은
+`gb_engine_enabled` 를 **보지 않는다** — 세션 데이터(`product_supply_meta` 의 `gb_mode`/`gb_price`)만 읽는다.
+
+| 경로 | 게이트 | 게이트 OFF 일 때 |
+|---|---|---|
+| 마켓플레이스 목록 (`/api/gb-marketplace`) | `gb_engine_enabled` | 빈 목록 |
+| 소비자 공구 UI 표면 | 클라 `GB_ENGINE_ENABLED` | 미노출 |
+| **결제 단가** (`order.routes` → `loadGbOrderPricing`) | **없음** | **세션이 열려 있으면 공구가로 결제된다** |
+
+⇒ **범위를 정하는 것은 게이트가 아니라 "어느 상품에 세션이 열려 있는가"** 다(#872 절차서의 전제와 동일).
+프로덕션 실결제 검증에서 **게이트를 켤 필요가 없고**, 켜면 오히려 범위가 넓어진다. 끝낼 때 닫는 것도
+게이트가 아니라 **그 상품의 세션**이다.
+
+> 🟢 과금 방향은 안전하다 — `validateGbSession` 이 `gb_price < 상시가` 를 강제하고 `resolveGbPricing` 도
+> 더 쌀 때만 적용해 **가격을 낮추기만 한다.**
+
+서버 겹은 어드민 `/admin/system-monitoring` → 게이트·하트비트 탭(`OPS_GATES`)에 등재됐다(2026-07-29).
+클라 겹은 값이 아니라 배포물이라 화면에 못 싣는다 — 그래서 라벨에 함께 적어 뒀다.
 
 ## 1. OFF-parity 증명 (스위치 OFF = 현행 byte-동일)
 

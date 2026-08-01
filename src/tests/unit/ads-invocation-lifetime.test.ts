@@ -517,3 +517,45 @@ describe('🔍 소스에 생 NUL 바이트 없음 — grep 사각지대 방지',
     for (const f of FILES) expect(read(f).includes(NUL), `${f} 에 생 NUL 이 있다`).toBe(false)
   })
 })
+
+/**
+ * 🔎 **자식이 자기 실패 사유를 남긴다** — 부모는 구조적으로 볼 수 없다 (2026-07-31 라이브 장애).
+ *
+ *   실측: ads 레인 15개가 매시간 `err=Error` 로 실패하는데, 같은 레인을 수동 트리거로 직접 부르면
+ *   **완벽히 정상**이었다(`tried 19 · spent 44/45 · 13.1s`). 고장은 레인 본문이 아니라 부모의 kick ↔
+ *   자식 인보케이션 사이인데, **왜 죽었는지가 어디에도 없었다.**
+ *     · `kick` 은 `SELF.fetch` 의 status 를 안 본다 → 자식의 500 은 `ok:true` 로 기록된다.
+ *       즉 `ok:false` 는 fetch 자체가 거부된 것이고, 자식의 메시지는 자식과 함께 사라진다.
+ *     · 부모의 `cronErrorCode` 는 **부모가 본** 에러만 본다 → 전부 `err=Error` 로 뭉개진다.
+ *       (그래서 "한도인가 아닌가"조차 구분이 안 됐다 — 그 구분이 처방을 정하는 값인데도.)
+ *   그리고 자식 쪽 기록은 `{ err: 'LANE_ERROR' }` **상수**였다 = 부모와 정확히 같은 양의 정보, 즉 0.
+ *
+ *   ⚠️ 이 가드가 못 막는 것: 인보케이션이 통째로 강제 종료되면 기록 자체가 없다(그 부재가 신호다).
+ */
+describe('🔎 레인 실패 사유 — 자식이 원문을 남긴다', () => {
+  it('미들웨어가 던져진 에러를 붙잡아 beat 로 넘긴다', () => {
+    const idx = read('src/worker-ads/index.ts')
+    const mw = /app\.use\('\/__ads\/\*'[\s\S]{0,900}?\n\}\)/.exec(idx)?.[0] || ''
+    expect(mw, '/__ads/* 미들웨어를 못 찾았다').toBeTruthy()
+    expect(mw, '에러를 잡아 두지 않는다').toMatch(/catch \(err\)[\s\S]{0,60}thrown = err/)
+    expect(mw, 'writeSelfBeat 에 에러를 안 넘긴다').toMatch(/writeSelfBeat\([\s\S]{0,140}thrown\)/)
+    expect(mw, '에러를 삼키면 부모가 재시도 판단을 못 한다').toMatch(/throw err/)
+  })
+
+  it('beat 기록에 상수가 아니라 **실제 사유**가 들어간다', () => {
+    const sb = read('src/worker-ads/self-beat.ts')
+    // ⚠️ 주석을 걷어내고 본다 — 첫 판은 이 파일의 **설명 문장**에 있는 `LANE_ERROR` 를 위반으로 잡았다
+    //   (코드가 아니라 산문을 검사한 것). 소스 형태 검사에서 반복해 밟는 함정이라 여기 남긴다.
+    const code = sb.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+    // 🚫 회귀 형태: 무엇이 죽었든 같은 문자열을 쓰는 것(= 부모의 err=Error 와 정보량이 같다).
+    expect(code, "'LANE_ERROR' 상수로 되돌아갔다").not.toMatch(/err:\s*'LANE_ERROR'/)
+    expect(code).toMatch(/function failNote\(/)
+    expect(code, '메시지를 안 싣는다').toMatch(/detail:\s*msg\.slice/)
+    expect(code, 'failNote 를 실제로 호출하지 않는다').toMatch(/recordCronBeat\([\s\S]{0,120}failNote\(err\)/)
+  })
+
+  it('던지지 않고 5xx 를 반환한 경우와 구분된다 — 원인이 다르면 기록도 달라야 한다', () => {
+    const sb = read('src/worker-ads/self-beat.ts')
+    expect(sb).toMatch(/STATUS_5XX/)
+  })
+})

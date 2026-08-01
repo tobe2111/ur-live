@@ -154,7 +154,8 @@ Pages 프리뷰는 별도 preview 바인딩을 명시하지 않으면 **프로�
 | # | 단계 | 지금 | 세션 | 완료 판정 |
 |---|---|---|---|---|
 | **A1** | 운영자를 승인한다 | 🟡 셀러 승인 화면 있음 | ⑤ | 👤 승인 → 그 계정이 즉시 상품 등록 가능 |
-| **A2** | 몰을 만든다 | 🟢 `wholesale-malls-admin` CRUD | ③-a | 👤 몰 생성 → 브랜딩 반영 확인 |
+| **A2** | 몰을 만든다 | 🟢 `wholesale-malls-admin` CRUD + **예약어 차단** | ③-a | 👤 몰 생성 → 브랜딩 반영 확인. 🤖 예약 슬러그(`admin`·`products`)로 생성 시 400 `SLUG_RESERVED` |
+| **A2-b** | 몰 슬러그가 라우트를 안 먹는다 | 🟢 진단 API | ③-a | 👤 `GET /api/admin/wholesale-malls/slug-conflicts` → **`ok:true`**. ⚠️ **`utongstart.com` 에서** 호출(도매 번들 전용). `checked:0` 이면 통과가 아니라 **조회 실패**로 볼 것 |
 | **A3** | 장애를 안다 | ❓ §5 | ③-c | 👤 **일부러 에러를 내고** 알림이 도달하는지 |
 | **A4** | 환불을 실행한다 | ❓ §5 | ⑤ | 👤 실제 환불 1건 → 원장 역전 + 카드 취소 |
 | **A5** | 정산을 승인·지급한다 | 🟢 `AdminPayoutCenterPage`·`AdminPayoutsPage` | ⑤ | 👤 지급 실행 → 운영자 입금 확인 (O8 과 같은 판정) |
