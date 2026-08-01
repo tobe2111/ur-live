@@ -20,6 +20,7 @@
 | **S1** | `commission_budget_enabled='true'` | platform_settings | 영입자 커미션 + 추천트리 커미션이 **겹치는** 3P 주문 결제 → 환불 | ① Σ(모든 커미션 적립) ≤ 주문당 예산(수수료−`pg_reserve_pct`) ② 환불 시 전 커미션 역전 대칭 ③ OFF 복귀 시 기존 동작과 동일 | ⬜ 미검증 (2026-07-04 배선) |
 | **S2** | `promo_funding_source='owner'` | platform_settings | 이용권 구매 → 매장에서 사용 → 환불 | ① 사용 시 매장 원장 promo debit **정확히 1회** ② 쇼핑 원장 fee 합산 정합 ③ 환불 시 debit 복원 | ⬜ 미검증 (2026-07-04 배선) |
 | **S3** | `SHOPPING_LEDGER_ENABLED='true'` | Cloudflare env | 일반 쇼핑 주문 결제 → 환불 (쇼핑탭 재오픈 전 필수) | ① 셀러 원장 net 크레딧(gross+fee) **정확히 1회**(이용권/공구 주문은 skip — 이중적립 0) ② 환불 시 역전 → receivable 0 | ⬜ 미검증 (2026-07-01 배선) |
+| **S5** | `pickup_unclaimed_policy_enabled='true'` | platform_settings | 🔴 **머니 경로 · 이미 흐르는 환불의 방향을 바꾼다**(cron `0 18` 실행 확인됨). 절차: P10 참조 | ① 게이트 OFF 로 되돌리면 **즉시 전액 환불 복귀** ② `storage` 미설정 상품은 **전액**(모르면 안 깎는다) ③ cron 2회 실행에도 **이중 환불 0**(CAS) ④ 깎인 만큼 `ledger_entries` 에 `unclaimed_forfeit` 1행 ⑤ **유어딜 5% 불변** | ⬜ 미검증 (2026-08-01 배선, 기본 OFF) |
 | **S4** | `FEE_RESOLVER_ENABLED='true'` | Cloudflare env | 다양한 소유모델 주문 여러 건 결제 (그림자 — 정산 무영향) | ① `order_fee_breakdown` 에 주문당 1행 기록 ② 기록된 분배 vs 현행 정산 비교 검증 → 일치 확인 후에만 authoritative 전환 논의 | ⬜ 미검증 (2026-06-27 배선) |
 
 ## P# — 게이트 없는 staging-필수 검증 (코드 경로 변경분)
@@ -35,6 +36,7 @@
 | **P7** | 결제 셀프취소 3건 fix (AUDIT_INVARIANTS 2026-06-26, 쇼핑 재오픈 전 fix 필요) | TECHNICAL_DEBT 등록분 — fix 후 시나리오 확정 | 쇼핑 재오픈 전 fix + 검증 | ⬜ (fix 선행) |
 | **P8** | 링크샵 공유 카드 (2026-07-01) | `/u/{handle}` 카톡 공유 + 하드로드 | 큐레이터 이름·프로필 OG 카드 / 로더 1종만 노출 | ⬜ |
 | **P9** | 🔴 **공구 특가 결제 배선** (2026-07-29, #844 — **머니 경로**) | **staging 부재로 프로덕션 소액 실결제**로 대체(대표 확정). 절차서: [gb-price-production-verification.md](./design/gb-price-production-verification.md) — 테스트 상품 2개(A=공구가만 / B=**tiers 병존**), 결제→원장→즉시환불 | ① 결제액=공구가 ② **B 가 이중할인 없이 공구가 그대로**(더 싸면 실패) ③ 종료 후 상시가 ④ linkOnly 는 `?ref` 경유만 ⑤ **원장 플랫폼 분 = 결제액의 5%**(상시가 5% 아님) | ⬜ |
+| **P10** | 🔴 **미수령 환불 정책 ④-b** (2026-08-01 — **머니 경로**, 게이트 S5) | staging 부재 → **프로덕션 소액 실결제**(P9 절차 준용). `storage=room` / `cold` / **미설정** 3종 상품을 만료시켜 cron 1회 | ① room=설정 비율 · cold=D1 결정값 · **미설정=전액** ② 원장 `unclaimed_forfeit` 금액 = 결제액−환불액 ③ cron 재실행 시 추가 환불·추가 원장 **0** ④ 전액 미환불이어도 소비자에게 만료 알림 1건 ⑤ 게이트 OFF → 전액 복귀 | ⬜ (D1·D2 정책값 대기) |
 
 ## 검증 데이 권장 순서 (반나절)
 

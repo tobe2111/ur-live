@@ -32,6 +32,8 @@ const SellerInventoryPage = lazy(() => import('@/pages/SellerInventoryPage'))
 const SellerProductNewPage = lazy(() => import('@/pages/SellerProductNewPage'))
 // ⚡ 2026-08-01 세션 ③-b — 3분 등록(사진·가격·마감만). 풀 폼(위)은 그대로 둔다.
 const SellerQuickGbPage = lazy(() => import('@/pages/SellerQuickGbPage'))
+// ↩️ 2026-08-01 세션 ⑤ — 반품 큐(API 는 있었는데 화면이 0건이었다)
+const SellerReturnsPage = lazy(() => import('@/pages/SellerReturnsPage'))
 const SellerProductEditPage = lazy(() => import('@/pages/SellerProductEditPage'))
 const SellerBookingSlotsPage = lazy(() => import('@/pages/SellerBookingSlotsPage'))
 const SellerAppointmentsPage = lazy(() => import('@/pages/SellerAppointmentsPage'))
@@ -166,6 +168,11 @@ export function SellerRoutes() {
       <Route path="/seller/products/quick" element={
         <ProtectedRoute requireSeller>
           <SellerQuickGbPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/returns" element={
+        <ProtectedRoute requireSeller>
+          <SellerReturnsPage />
         </ProtectedRoute>
       } />
       <Route path="/seller/products/:id/edit" element={

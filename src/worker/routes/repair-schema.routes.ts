@@ -889,9 +889,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //     free_delta = 거래별 무상 적용분(적립+/차감-) — 무상 우선 차감·무상 환급 제외·환불 대칭 복원 근거.
     { desc: 'user_points.free_balance', sql: "ALTER TABLE user_points ADD COLUMN free_balance INTEGER NOT NULL DEFAULT 0" },
     { desc: 'point_transactions.free_delta', sql: "ALTER TABLE point_transactions ADD COLUMN free_delta INTEGER DEFAULT 0" },
-    // 🔴 2026-08-01: 아래 3개는 `creditFreePoints` 등이 **INSERT 에 쓰는데 등록돼 있지 않았다**.
-    //   컬럼이 없는 창에서는 그 INSERT 가 통째로 실패하고(호출부가 삼킴) 잔액만 늘어난다 —
-    //   라이브 원장 불일치 3건이 정확히 그 모양이었다.
+    // 🔴 2026-08-01: 아래 3개는 INSERT 에 쓰이는데 등록이 없어, 컬럼 부재 창에서 원장 기록만 사라졌다(불일치 3건).
     { desc: 'point_transactions.points_amount', sql: "ALTER TABLE point_transactions ADD COLUMN points_amount INTEGER DEFAULT 0" },
     { desc: 'point_transactions.balance_after', sql: "ALTER TABLE point_transactions ADD COLUMN balance_after INTEGER" },
     { desc: 'point_transactions.order_id', sql: "ALTER TABLE point_transactions ADD COLUMN order_id TEXT" },

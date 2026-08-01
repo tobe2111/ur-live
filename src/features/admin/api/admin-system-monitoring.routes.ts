@@ -272,6 +272,10 @@ const OPS_GATES: OpsGate[] = [
   { key: 'flip_pilot_seller_ids', kind: 'setting', label: '8월 flip 파일럿 매장 스코프', default_value: '', staging_ref: null },
   { key: 'seller_promo_field_enabled', kind: 'setting', label: '셀러 promo% 입력 UI', default_value: 'false', staging_ref: null },
   { key: 'DISTRICT_AUTO_ISSUE_ENABLED', kind: 'env', label: '상권 쿠폰 온라인 자동발급(경로 B)', default_value: 'false', staging_ref: null },
+  // 💸 2026-08-01 ④-b: 미수령(픽업 안 찾아감) 환불을 보관구분에 따라 가른다.
+  //   🔴 **이미 흐르는 환불의 방향을 바꾼다** — 안 돌던 걸 켜는 게 아니다(cron `0 18` 실행 확인됨).
+  //   OFF 면 현행 전액 환불. 켜도 비율값(기본 100)을 안 바꾸면 동작 불변 — 안전판이 두 겹이다.
+  { key: 'pickup_unclaimed_policy_enabled', kind: 'setting', label: '미수령 환불 정책(보관구분별) ④-b', default_value: 'false', staging_ref: 'P10' },
 ]
 
 adminSystemMonitoringRoutes.get('/ops-status', async (c) => {

@@ -16,6 +16,35 @@ import { adjustUserPoints } from '../utils/point-ledger';
 import { reportCronFailure } from '../utils/cron-reporter';
 import { clawbackVoucherCommission } from '../../features/group-buy/api/helpers';
 import { weeklySettlementCutoffUtc } from '../utils/settlement-schedule';
+import { getSupplyMeta } from '../utils/product-supply-meta';
+import { parsePickup } from '../../shared/pickup';
+import {
+  DEFAULT_UNCLAIMED_POLICY,
+  parseUnclaimedPolicy,
+  unclaimedRefundAmount,
+  type UnclaimedPolicy,
+} from '../../shared/pickup-refund';
+import { recordLedger } from '../utils/ledger';
+
+/**
+ * 💸 **미수령 환불 정책 로드** — 세션 ④-b (머니 경로, 게이트 뒤)
+ *
+ * 🔴 **조회가 실패하면 기본값(=현행 전액 환불)** 이다. 정책을 못 읽었다고 소비자 환불을 깎지 않는다.
+ * 게이트(`pickup_unclaimed_policy_enabled`)는 기본 OFF — 대표가 켜기 전까지 **라이브 동작 0 변화**.
+ */
+async function loadUnclaimedPolicy(DB: D1Database): Promise<UnclaimedPolicy> {
+  try {
+    const { results } = await DB.prepare(
+      `SELECT key, value FROM platform_settings WHERE key IN
+        ('pickup_unclaimed_policy_enabled','pickup_unclaimed_cold_pct','pickup_unclaimed_room_pct','pickup_unclaimed_room_grace_days')`
+    ).all<{ key: string; value: string | null }>();
+    const rec: Record<string, string> = {};
+    for (const r of results || []) rec[r.key] = r.value ?? '';
+    return parseUnclaimedPolicy(rec);
+  } catch {
+    return { ...DEFAULT_UNCLAIMED_POLICY };
+  }
+}
 const _expColEnsured = new WeakSet<object>()
 async function ensureIsExperienceColumn(DB: D1Database): Promise<void> {
   if (_expColEnsured.has(DB as unknown as object)) return
@@ -191,7 +220,8 @@ export async function handleExpiredVoucherRefunds(env: Env) {
     // 다음 cron 주기에 나머지 처리 (idempotent).
     const expired = await DB.prepare(`
       SELECT v.id, v.code, v.order_id, v.product_id, v.applied_price,
-             o.user_id, o.payment_method, o.payment_key, p.price, p.name as product_name
+             o.user_id, o.payment_method, o.payment_key, p.price, p.name as product_name,
+             p.seller_id
       FROM vouchers v
       JOIN orders o ON v.order_id = o.id
       JOIN products p ON v.product_id = p.id
@@ -203,8 +233,16 @@ export async function handleExpiredVoucherRefunds(env: Env) {
 
     if (!expired.results?.length) return;
 
+    // 💸 ④-b: 정책이 꺼져 있으면 **아무것도 더 조회하지 않는다** — OFF 경로는 쿼리 수까지 현행과 같다.
+    const unclaimedPolicy = await loadUnclaimedPolicy(DB);
+    const pickupMeta = unclaimedPolicy.enabled
+      ? await getSupplyMeta(DB, expired.results.map((v) => Number((v as { product_id: number }).product_id)))
+          .catch(() => new Map<number, Record<string, string>>())
+      : new Map<number, Record<string, string>>();
+
     let refundCount = 0;
     let expireCount = 0;
+    let forfeitCount = 0;
 
     for (const voucher of expired.results) {
       // 🛡️ 2026-04-22: Atomic CAS — status 가 'unused' 일 때만 'expired' 로 변경.
@@ -222,9 +260,60 @@ export async function handleExpiredVoucherRefunds(env: Env) {
       // 🛡️ 2026-05-30 낙전(breakage) 정책 = "만료 시 고객 환불" (즉시판매 모델 정합).
       //   환불 금액은 실제 결제가(applied_price). 미존재 시 정가(price) fallback — 과다환불 방지.
       //   BUG #45 패턴: total_amount(주문 전체) 금지 — voucher 1건당 applied_price.
-      const refundAmount = Number(voucher.applied_price) > 0
+      const paidAmount = Number(voucher.applied_price) > 0
         ? Number(voucher.applied_price)
         : Number(voucher.price || 0);
+
+      // 💸 ④-b 미수령 정책 — **게이트 OFF 면 `unclaimedRefundAmount` 가 전액을 그대로 돌려준다.**
+      //   즉 이 블록이 있어도 OFF 상태의 환불액은 위 `paidAmount` 와 동일하다(현행 불변).
+      //   보관구분(`storage`)을 모르면 역시 전액 — 모르는 상태에서 소비자 돈을 덜 주지 않는다.
+      const pickup = parsePickup(pickupMeta.get(Number(voucher.product_id)));
+      const pickupMs = pickup.date ? Date.parse(pickup.date) : NaN;
+      const verdict = unclaimedRefundAmount({
+        paidAmount,
+        storage: pickup.storage,
+        daysSinceBasis: Number.isNaN(pickupMs)
+          ? null
+          : Math.floor((Date.now() - pickupMs) / 86_400_000),
+        policy: unclaimedPolicy,
+      });
+      const refundAmount = verdict.refund;
+
+      // 🔴 적립-역전 대칭(CLAUDE.md 머니 룰 #2): 환불을 줄였으면 그만큼 **운영자에게 귀속**돼야 한다.
+      //   원장 기록이 없으면 그 돈은 공중에 뜬다. CAS 통과분 안이라 **한 번만** 기록된다.
+      //   ⚠️ 유어딜 5% 는 여기서 건드리지 않는다 — 이건 소비자↔운영자 사이의 분배다.
+      if (verdict.operatorShare > 0 && voucher.seller_id) {
+        forfeitCount++;
+        try {
+          await recordLedger(DB, {
+            event_type: 'unclaimed_forfeit',
+            reference_id: `voucher:${voucher.id}`,
+            amount: verdict.operatorShare,
+            debit_account: `user:${voucher.user_id ?? 'unknown'}`,
+            credit_account: `seller:${voucher.seller_id}`,
+            metadata: { reason: verdict.reason, storage: pickup.storage, paid: paidAmount },
+          });
+        } catch (e) {
+          if (env.ENVIRONMENT !== 'production') console.warn('[unclaimed forfeit ledger]', e);
+        }
+
+        // 🔴 전액 미환불이면 아래 환불 알림이 **하나도 안 나간다**(전부 `refundAmount > 0` 가드).
+        //   돈을 냈는데 아무 통보도 못 받는 상태가 된다 — 그건 이 변경이 만든 구멍이다. 여기서 막는다.
+        //   (부분 환불은 아래 기존 알림이 **실제 환불액**으로 정확히 나가므로 중복시키지 않는다.)
+        if (refundAmount <= 0 && voucher.user_id) {
+          try {
+            await DB.prepare(`
+              INSERT INTO notifications (user_id, user_type, type, title, message, created_at, is_read)
+              VALUES (?, 'user', 'refund', '이용권이 만료되었습니다', ?, datetime('now'), 0)
+            `).bind(
+              voucher.user_id,
+              `사용 기한이 지나 이용권이 만료되었습니다 (${voucher.product_name}). 보관 기준에 따라 환불되지 않습니다.`
+            ).run();
+          } catch (e) {
+            if (env.ENVIRONMENT !== 'production') console.warn('[unclaimed forfeit notif]', e);
+          }
+        }
+      }
 
       // Refund deal points if paid with deal_points — user_points 테이블 사용
       // 💸 2026-06-12 (4차 감사 D1): 잔액변경 + point_transactions 장부 동시 기록 (adjustUserPoints SSOT).
@@ -310,7 +399,7 @@ export async function handleExpiredVoucherRefunds(env: Env) {
       }
     }
 
-    logInfo(`[Cron] Expired voucher refunds: ${expireCount} expired, ${refundCount} refunded`);
+    logInfo(`[Cron] Expired voucher refunds: ${expireCount} expired, ${refundCount} refunded, ${forfeitCount} forfeited`);
   } catch (err) {
     logError('[Cron] Expired voucher refund failed:', { error: String(err) });
     if (env.DISCORD_WEBHOOK_URL) {
