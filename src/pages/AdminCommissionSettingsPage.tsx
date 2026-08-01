@@ -107,10 +107,37 @@ export default function AdminCommissionSettingsPage() {
     <AdminLayout title="정산 마진 설정">
       <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="정산 마진 설정"
-          subtitle="공구 매출의 4 계정 분배 비율 조정 (변경 즉시 반영)"
+          title="정산 마진 설정 — 공구(이용권)"
+          subtitle="공구 매출 100%를 어떻게 나눌지 (변경 즉시 반영)"
           icon={<DollarSign className="h-5 w-5" />}
         />
+
+        {/* 🔎 2026-08-01 (대표: "이거는 무슨 정산 마진인거지? 왜 이렇게 된거야? 공구 마진??")
+            질문이 나왔다는 것 자체가 화면의 결함이다 — 어느 서비스의 무슨 값인지 페이지가 말하지 않았다.
+            같은 이름의 설정이 **두 군데** 있어서 더 헷갈린다(아래 카드에 그대로 적는다). */}
+        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-[13px] leading-relaxed text-sky-900">
+          <p className="font-bold">이 페이지가 조정하는 것</p>
+          <p className="mt-1">
+            <strong>공구(이용권) 주문</strong>의 매출 분배 비율입니다. 소비자가 이용권을 결제하면 그 금액을
+            유어딜·인플루언서·구매자·에이전시·셀러가 아래 비율로 나눠 갖습니다.
+          </p>
+          <p className="mt-2 text-[12px] text-sky-800">
+            저장하면 <code>platform_settings</code> 에 쓰이고, 공구 결제·정산 계산이 그 값을 읽습니다.
+            (읽는 곳: <code>features/group-buy/api/commission-rates.ts</code> → <code>group-buy.routes.ts</code>)
+          </p>
+          <p className="mt-2 border-t border-sky-200 pt-2 text-[12px]">
+            ⚠️ <strong>여기가 아닌 곳</strong>: 쇼핑 주문의 플랫폼 수수료(기본 5%)와 후원 수수료(15%)는
+            별도 키(<code>commission_rate_default</code> / <code>commission_rate_donation</code>)이고
+            <strong> 이 화면에서 안 바뀝니다.</strong> 셀러별 수수료는 셀러 상세에서 개별 조정합니다.
+          </p>
+          <p className="mt-2 text-[12px]">
+            📌 <strong>2026-07-08 대표 확정 재원 원칙과의 관계</strong>: "유어딜 5%는 어떤 커미션에도 쓰지
+            않는다(전부 매장 promo 재원)"로 방향이 정해졌지만, 아래 모델은 아직 <strong>그 이전 구조</strong>
+            (커미션을 매출에서 함께 차감)입니다. 전환은 <code>commission_budget_enabled</code> 게이트로
+            예정돼 있고 현재 기본 OFF입니다 — 그래서 지금 화면은 옛 모델대로 보입니다.
+            설계: <code>docs/design/commission-funding-restructure.md</code>
+          </p>
+        </div>
 
         {/* 합계 시각화 */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">

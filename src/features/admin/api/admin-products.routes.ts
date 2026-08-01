@@ -144,35 +144,26 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
 
     // 🛡️ 2026-05-19: referral_enabled / referral_commission_rate 추가 (migration 0271).
     //   컬럼 없는 환경에서도 graceful — try/catch fallback.
+    // 두 쿼리는 referral_* 두 컬럼 말고 전부 같다 — 목록을 두 벌로 두면 한쪽만 고쳐져 갈라진다(실제로
+    //   restaurant_name 을 추가할 때 양쪽을 손대야 했다). 컬럼 목록 하나에서 SQL 을 만든다.
+    const listSql = (withReferral: boolean) => `
+        SELECT p.id, p.name, p.description, p.price, p.stock,
+               p.image_url, p.is_active, p.product_type, p.category,
+               p.sold_count, p.kt_alpha_gift_code, p.deal_only,
+               ${withReferral ? 'p.referral_enabled, p.referral_commission_rate,' : ''}
+               COALESCE(p.supply_price, 0) AS supply_price,
+               COALESCE(p.is_supply_product, 0) AS is_supply_product,
+               p.restaurant_name, COALESCE(p.review_count, 0) AS review_count, COALESCE(p.avg_rating, 0) AS avg_rating,
+               p.seller_id, p.created_at, s.business_name as seller_name
+        FROM products p LEFT JOIN sellers s ON p.seller_id = s.id
+        ${whereClause}
+        ORDER BY ${orderBy} LIMIT ? OFFSET ?`;
     let products: ProductRow[]
     try {
-      products = await executeQuery<ProductRow>(DB, `
-        SELECT p.id, p.name, p.description, p.price, p.stock,
-               p.image_url, p.is_active, p.product_type, p.category,
-               p.sold_count, p.kt_alpha_gift_code, p.deal_only,
-               p.referral_enabled, p.referral_commission_rate,
-               COALESCE(p.supply_price, 0) AS supply_price,
-               COALESCE(p.is_supply_product, 0) AS is_supply_product,
-               p.restaurant_name, COALESCE(p.review_count, 0) AS review_count, COALESCE(p.avg_rating, 0) AS avg_rating,
-               p.seller_id, p.created_at, s.business_name as seller_name
-        FROM products p LEFT JOIN sellers s ON p.seller_id = s.id
-        ${whereClause}
-        ORDER BY ${orderBy} LIMIT ? OFFSET ?
-      `, [...params, limit, offset]);
+      products = await executeQuery<ProductRow>(DB, listSql(true), [...params, limit, offset]);
     } catch {
       // 마이그레이션 0271 미적용 환경 fallback (referral_* 컬럼 없음).
-      products = await executeQuery<ProductRow>(DB, `
-        SELECT p.id, p.name, p.description, p.price, p.stock,
-               p.image_url, p.is_active, p.product_type, p.category,
-               p.sold_count, p.kt_alpha_gift_code, p.deal_only,
-               COALESCE(p.supply_price, 0) AS supply_price,
-               COALESCE(p.is_supply_product, 0) AS is_supply_product,
-               p.restaurant_name, COALESCE(p.review_count, 0) AS review_count, COALESCE(p.avg_rating, 0) AS avg_rating,
-               p.seller_id, p.created_at, s.business_name as seller_name
-        FROM products p LEFT JOIN sellers s ON p.seller_id = s.id
-        ${whereClause}
-        ORDER BY ${orderBy} LIMIT ? OFFSET ?
-      `, [...params, limit, offset]);
+      products = await executeQuery<ProductRow>(DB, listSql(false), [...params, limit, offset]);
     }
 
     return c.json({

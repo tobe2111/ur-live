@@ -611,8 +611,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   데모 리뷰 시드/표시 경로에서 컬럼 부재 위험. repair-schema 에 등록해 영구 보장(멱등).
     { desc: 'product_reviews.seller_reply', sql: "ALTER TABLE product_reviews ADD COLUMN seller_reply TEXT" },
     { desc: 'product_reviews.seller_reply_at', sql: "ALTER TABLE product_reviews ADD COLUMN seller_reply_at DATETIME" },
-    // 🔴 2026-08-01: 가시성/광고표시 컬럼도 등록. 라이브엔 이미 있지만(실측), 위 CREATE 가 오랫동안
-    //   `is_hidden` 을 선언해 온 탓에 그 모양으로 만들어진 DB 가 있다면 여기서 치유된다.
+    // 🔴 2026-08-01: 가시성/광고표시 — 옛 is_hidden 모양으로 만들어진 DB 가 있다면 여기서 치유.
     { desc: 'product_reviews.is_visible', sql: "ALTER TABLE product_reviews ADD COLUMN is_visible INTEGER DEFAULT 1" },
     { desc: 'product_reviews.is_sponsored', sql: "ALTER TABLE product_reviews ADD COLUMN is_sponsored INTEGER DEFAULT 0" },
     // 🛡️ 2026-05-24: /api/vouchers/my SELECT 가 참조하는 컬럼 — 미존재 시 첫 SELECT crash → fallback 만 동작 (applied_price 누락).
@@ -1054,25 +1053,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       expires_at DATETIME NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )` },
-    { name: 'product_reviews', sql: `CREATE TABLE IF NOT EXISTS product_reviews (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      product_id INTEGER NOT NULL,
-      user_id INTEGER NOT NULL,
-      order_id INTEGER,
-      rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
-      title TEXT,
-      content TEXT,
-      images TEXT DEFAULT '[]',
-      -- 2026-08-01: 여기 있던 is_hidden INTEGER DEFAULT 0 은 현실과 반대였다.
-      --   라이브 테이블은 features/reviews/api/reviews.routes.ts 의 ensureTable 이 만들고,
-      --   가시성 컬럼은 is_visible (1=표시). 실측으로 확인(product_reviews SELECT *).
-      --   그런데 이 선언이 SSOT 처럼 보여서 2026-07-01 어드민 수리가 반대로 갔고,
-      --   /admin/reviews 가 한 달 내내 500 이었다. 선언을 현실에 맞춘다.
-      is_visible INTEGER DEFAULT 1,
-      is_sponsored INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )` },
+    // 2026-08-01: is_visible 은 이전에 is_hidden 이었다 — 현실과 반대라 교정(경위: admin-moderation.routes.ts).
+    { name: 'product_reviews', sql: `CREATE TABLE IF NOT EXISTS product_reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL, user_id INTEGER NOT NULL, order_id INTEGER, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5), title TEXT, content TEXT, images TEXT DEFAULT '[]', is_visible INTEGER DEFAULT 1, is_sponsored INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)` },
     { name: 'order_refund_history', sql: `CREATE TABLE IF NOT EXISTS order_refund_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       order_id INTEGER NOT NULL,
