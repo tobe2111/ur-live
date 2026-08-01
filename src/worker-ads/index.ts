@@ -18,7 +18,7 @@ import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
 import { publicDataRoutes } from './public-data.routes'
 import { chainRoutes } from './chain.routes'
-import { createBeatBatch } from './beat-batch'
+import { createBeatBatch, makeBeatWriter } from './beat-batch'
 import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
 import { laneUrl, selfBeatMiddleware } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
@@ -227,13 +227,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   // 🏷️ 실패 사유 = `cronErrorCode`(SSOT·근거는 그 docblock) · `maxGapMin`(#847) — 두 관심사는 독립이다.
   // 🧾 하트비트는 **모아서 한 번에** 쓴다 — `kick` 당 D1 1회씩 쓰면 부모 비용이 2N 이 되어
   //   천장(~50)에 닿고, 넘는 순간 뒤쪽 레인은 **디스패치도 실패 기록도 못 한다**(근거: beat-batch.ts).
-  const beats = createBeatBatch(async (list) => {
-    const { buildCronBeatRow } = await import('@/worker/utils/cron-heartbeat')
-    await env.DB.batch(list.map((b) => {
-      const { key, value } = buildCronBeatRow(b.name, b.ok, b.ms, b.cron, b.result, b.maxGapMin)
-      return env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, value)
-    }))
-  })
+  //   🛡️ 부모의 실패 기록이 자식의 성공을 덮지 않는 가드까지 포함한다 — 근거는 `beat-batch.ts`.
+  const beats = createBeatBatch(makeBeatWriter(env, new Date().toISOString()))
   // 📦 `extra` = 실패 사유와 **독립**인 부가 관측(예: 배포 직후 회차를 스스로 신고하는 build_age_min).
   //   오늘 세 번의 오진이 전부 "이 회차가 배포와 겹쳤나"를 사후에 못 봐서 났다 — 성공 회차에도 실어야 한다.
   const adsBeat = async (name: string, ok: boolean, ms: number, err?: unknown, maxGapMin?: number, extra?: Record<string, unknown>): Promise<void> => {
