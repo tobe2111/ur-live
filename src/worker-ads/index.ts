@@ -19,6 +19,7 @@ import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortli
 import { publicDataRoutes } from './public-data.routes'
 import { chainRoutes } from './chain.routes'
 import { createBeatBatch } from './beat-batch'
+import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
 import { laneUrl, selfBeatMiddleware } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
 import { healthRoutes } from './health.routes'
@@ -254,26 +255,15 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   `gap` — 이 레인의 **실제** 기대 간격(분). 안 주면 매시간(= event.cron)으로 본다.
   //     일 1회/N시간 레인은 `gates.dailyAt`/`gates.everyNHours` 가 조건과 함께 자동으로 넣어준다
   //     — 조건과 주기를 따로 적으면 어긋나고, 어긋나도 조용하다(lane-cadence.ts 주석 참조).
-  //   `kicked` — 디스패치 프로미스 모음. **마지막 flush 가 이걸 기다려야** 한다(안 그러면 빈 배치를 쓰고
-  //   그 뒤에 쌓인 하트비트는 영영 안 나간다 — 배선이 절반이면 관측이 0 이 되는 그 실패).
-  const kicked: Promise<unknown>[] = []
+  //   🚦 `pending` — 예전엔 `kick` 이 **즉시** 띄웠다. 그러면 한 정각에 15개가 동시에 매달려 부모
+  //   예산(실측 ~10.5s)을 넘기고 **진행 중이던 7개가 한꺼번에 잘렸다**(늘 뒤쪽 같은 레인들 —
+  //   값을 만드는 보강 레인이 10시간 굶은 원인). 이제 모아 두었다가 예산만큼만 띄운다.
+  //   근거·배정 규칙·유료 전환 시 자동 확대: `dispatch-budget.ts`.
+  const pending: RunnableLane[] = []
   const kick = (path: string, fallback: () => Promise<unknown>, opts?: { gap?: number; beat?: string }): void => {
     const beat = opts?.beat || path.replace(/^\/__ads\//, '')
     laneReg.note(path, opts?.beat)   // 하트비트 이름과 **같은 이름**으로 등록해야 never_fired/orphan 이 어긋나지 않는다
-    const p = (async () => {
-      const t0 = Date.now()
-      try {
-        // 🫀 이름·주기를 함께 넘긴다 — 레인이 **자기 하트비트를 스스로** 쓰게(self-beat.ts 참조).
-        //   부모가 응답 전에 회수돼도 '일을 끝냈다'는 사실이 남는다. 부모 쪽 쓰기는 폴백으로 유지.
-        if (env.SELF?.fetch) await env.SELF.fetch(new Request(laneUrl(path, beat, opts?.gap), { method: 'POST' }))
-        else await fallback()
-        await adsBeat(beat, true, Date.now() - t0, undefined, opts?.gap)
-      } catch (err) {
-        await adsBeat(beat, false, Date.now() - t0, err, opts?.gap)
-      }
-    })()
-    kicked.push(p)
-    ctx.waitUntil(p)
+    pending.push({ beat, path, fallback, gapMin: opts?.gap })
   }
   const gates = makeHourGates(hourUTC, kick, laneReg)
 
@@ -578,6 +568,10 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       await adsBeat('weekly-report', true, Date.now() - t0, undefined, staleGapMinutes(7 * 24 * 60))
     })())
   }
+
+  // 🚦 여기서 비로소 띄운다 — 이번 회차 예산만큼만. 미룬 레인은 **버린 게 아니라** 다음 차례에 돈다
+  //   (`selectLanesForHour` 가 모든 레인이 `groups` 시간 안에 반드시 한 번 돎을 보장 — 유닛이 강제).
+  const kicked = dispatchPendingLanes({ pending, env: env as never, hourUTC, laneUrl, beat: adsBeat, waitUntil: (p) => ctx.waitUntil(p) })
 
   // 🧾 **모든 디스패치가 끝난 뒤** 남은 하트비트를 한 번에 쓴다(중간분은 임계치에서 이미 나갔다).
   //   ⚠️ 기다리지 않고 flush 하면 빈 배치를 쓰고, 그 뒤 쌓인 기록은 영영 안 나간다.
