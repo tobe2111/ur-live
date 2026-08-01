@@ -27,6 +27,7 @@ import { Loader2, Check, AlertCircle } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
+import { STORAGE_LABEL, STORAGE_NOTICE, type StorageKind } from '@/shared/pickup'
 
 /** 마감 프리셋 — 날짜 피커 대신. 한 손으로 누를 수 있는 것만 남긴다. */
 const DEADLINE_PRESETS = [
@@ -49,6 +50,8 @@ export default function SellerQuickGbPage() {
   const [listPrice, setListPrice] = useState('')
   const [gbPrice, setGbPrice] = useState('')
   const [days, setDays] = useState<number>(7)
+  const [pickupDate, setPickupDate] = useState('')
+  const [storage, setStorage] = useState<StorageKind | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   /** ①은 됐는데 ②가 실패한 상태 — 이걸 숨기면 운영자가 같은 상품을 또 만든다. */
@@ -79,6 +82,8 @@ export default function SellerQuickGbPage() {
       // ② 공구 — 서버가 `공구가 < 상시가` 를 강제한다(어드민 조종석과 같은 함수).
       await api.put(`/api/seller/gb/${productId}`, {
         mode: 'live', price: gb, deadline: deadlineIso(days),
+        // 📦 픽업 — 서버가 "픽업일 >= 공구 마감" 을 강제한다(안 끝난 공구를 받으러 오라는 말 방지).
+        pickupDate: pickupDate || undefined, storage: storage || undefined,
       })
       navigate('/seller/products?created=1')
     } catch (e) {
@@ -151,7 +156,34 @@ export default function SellerQuickGbPage() {
           </div>
         </div>
 
-        {error && (
+          <div>
+          <label className={LABEL} htmlFor="q-pickup">픽업일 <span className="font-normal text-gray-400">(선택)</span></label>
+          {/* 공구 마감 **이후**만 의미가 있다 — min 으로 미리 좁혀 서버 거절을 줄인다. */}
+          <input id="q-pickup" type="date" className={INPUT} value={pickupDate}
+            min={new Date(Date.now() + days * 86400_000).toISOString().slice(0, 10)}
+            onChange={(e) => setPickupDate(e.target.value)} />
+        </div>
+
+        <div>
+          <label className={LABEL}>보관구분 <span className="font-normal text-gray-400">(선택)</span></label>
+          <div className="grid grid-cols-2 gap-2">
+            {(['room', 'cold'] as const).map((k) => (
+              <button key={k} type="button" onClick={() => setStorage(storage === k ? null : k)}
+                className={`h-14 rounded-xl text-base font-bold border ${
+                  storage === k ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200'
+                }`}>
+                {STORAGE_LABEL[k]}
+              </button>
+            ))}
+          </div>
+          {/* 🔴 고른 즉시 소비자에게 뭐라고 나가는지 보여준다 — 나중에 알면 이미 팔린 뒤다.
+              ⚠️ 문구는 **법무 확인 대기**(체크리스트 X4c) 임시 표기다. */}
+          {storage && (
+            <p className="mt-2 text-xs text-gray-500">소비자 안내: {STORAGE_NOTICE[storage]}</p>
+          )}
+        </div>
+
+      {error && (
           <div className="rounded-xl border border-rose-200 bg-rose-50 p-3">
             <p className="text-sm text-rose-700">{error}</p>
             {/* 🔴 ①만 성공한 상태를 **숨기지 않는다** — 숨기면 운영자가 같은 상품을 또 만든다. */}

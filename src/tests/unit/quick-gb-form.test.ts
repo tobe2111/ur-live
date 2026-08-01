@@ -44,8 +44,19 @@ describe('🔴 한 손 조작 (UX 기준 ④)', () => {
   })
 
   it('마감은 프리셋 버튼 — 날짜 피커를 쓰지 않는다', () => {
+    // ⚠️ *"파일 전체에 date 입력이 없다"* 로 쓰면 안 된다 — **픽업일은 날짜 피커가 맞다**(④-a 에서 추가).
+    //   지킬 것은 "마감이 프리셋인가"지 "date 입력을 아예 안 쓰는가"가 아니다.
     expect(code).toContain('DEADLINE_PRESETS')
-    expect(code).not.toMatch(/type="date"|type="datetime-local"/)
+    // 마감 블록 안에 date 입력이 없어야 한다.
+    const deadlineBlock = sliceFrom(code, 'DEADLINE_PRESETS.map', '</div>', 600)
+    expect(deadlineBlock).not.toMatch(/type="date"|type="datetime-local"/)
+  })
+
+  it('📦 픽업일은 **날짜 피커가 맞다** — 임의의 미래 날짜라 프리셋이 안 맞는다', () => {
+    // 마감(3·7·14일)과 달리 픽업일은 운영자가 매장 사정에 맞춰 고른다.
+    // 대신 `min` 으로 마감 이전을 미리 좁혀 서버 거절 왕복을 줄인다.
+    expect(code).toMatch(/id="q-pickup"[\s\S]{0,200}type="date"|type="date"[\s\S]{0,200}id="q-pickup"/)
+    expect(code).toContain('min=')
   })
 
   it('입력 높이가 엄지 타겟(56px = h-14) 이상', () => {

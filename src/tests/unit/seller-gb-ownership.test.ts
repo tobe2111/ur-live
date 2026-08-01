@@ -67,3 +67,31 @@ describe('배선', () => {
     expect(worker).toContain("app.route('/api/seller/gb', sellerGbRoutes)")
   })
 })
+
+/**
+ * 📦 **픽업 저장** 〔세션 ④-a〕 — 같은 엔드포인트에서 공구와 함께 저장한다.
+ *
+ * 🔴 **픽업일 검증이 방금 검증된 마감을 기준**으로 돌아야 한다. 둘을 따로 저장·검증하면
+ *   "마감 8/10 · 픽업 8/1" 같은 **불가능한 조합**이 통과한다 — 안 끝난 공구를 받으러 오라는 말이 된다.
+ *
+ * ⚠️ 못 막는 것: 실제 D1 write · 운영자가 보관구분을 **잘못 고르는 것** · ④-b 의 환불 분기.
+ */
+describe('📦 픽업 정보 (④-a)', () => {
+  it('저장 전에 **세션의 마감을 기준으로** 검증한다', () => {
+    // `session.deadline` 이 아니라 body 의 날짜를 그대로 넘기면 검증이 헛돈다.
+    expect(code).toMatch(/validatePickup\(pickup,\s*session\.deadline\)/)
+  })
+
+  it('보관구분은 화이트리스트 — 낯선 값은 null 로 떨군다', () => {
+    expect(code).toMatch(/b\.storage === 'cold' \|\| b\.storage === 'room'/)
+  })
+
+  it('🔴 픽업 저장 실패가 공구를 막지 않는다', () => {
+    // 공구는 이미 저장된 뒤다. 픽업 때문에 500 을 던지면 운영자는 "실패했다"고 믿고 다시 만든다.
+    expect(code).toMatch(/setSupplyMeta\([\s\S]{0,120}?\)\.catch\(/)
+  })
+
+  it('GET 이 픽업을 함께 돌려준다 — 편집 화면이 두 번 부르지 않게', () => {
+    expect(code).toMatch(/success: true, gb, pickup/)
+  })
+})

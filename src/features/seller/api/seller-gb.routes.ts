@@ -21,6 +21,8 @@ import type { Env } from '../../../worker/types/env'
 import { intParam } from '../../../shared/pagination'
 import { getGbSession, saveGbSession } from '../../../worker/utils/gb-session-store'
 import { validateGbSession, resolveGbStatus, type GbSession, type GbMode } from '../../../shared/gb-session'
+import { parsePickup, pickupToMeta, validatePickup, type PickupInfo } from '../../../shared/pickup'
+import { getSupplyMeta, setSupplyMeta } from '../../../worker/utils/product-supply-meta'
 import { safeError } from '../../../worker/utils/safe-error'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -66,7 +68,11 @@ app.get('/:id', async (c) => {
     // 남의 상품과 없는 상품을 **같은 404** 로 — 존재 여부를 흘리지 않는다.
     if (!p) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
     const gb = await getGbSession(c.env.DB, id)
-    return c.json({ success: true, gb, gb_effective_status: resolveGbStatus(gb, Date.now()) })
+    // 📦 세션 ④-a — 픽업 정보 동봉(같은 화면에서 함께 편집한다).
+    // ⚠️ `getSupplyMeta` 는 **id 배열 → Map** 이다(단건 조회 함수가 아니다 — 시그니처를 보고 맞췄다).
+    const metaMap = await getSupplyMeta(c.env.DB, [id]).catch(() => null)
+    const pickup = parsePickup(metaMap?.get(id) ?? null)
+    return c.json({ success: true, gb, pickup, gb_effective_status: resolveGbStatus(gb, Date.now()) })
   } catch (err) {
     return safeError(c, err, '공구 설정을 불러오지 못했습니다', '[seller-gb]')
   }
@@ -105,8 +111,20 @@ app.put('/:id', async (c) => {
     const v = validateGbSession(session, Number(p.price))
     if (!v.ok) return c.json({ success: false, error: v.error || '설정값을 확인해주세요' }, 400)
 
+    // 📦 세션 ④-a — 픽업 정보. **머니 무접촉**(값 저장만). 미수령 환불 분기는 ④-b.
+    //   🔴 픽업일은 **공구 마감 이후**여야 한다 — 안 끝난 공구를 받으러 오라는 말이 되기 때문.
+    //      그래서 방금 검증된 `session.deadline` 을 기준으로 넘긴다(둘을 따로 저장하면 어긋난다).
+    const pickup: PickupInfo = {
+      date: typeof b.pickupDate === 'string' && b.pickupDate ? b.pickupDate : null,
+      place: typeof b.pickupPlace === 'string' && b.pickupPlace ? b.pickupPlace.slice(0, 200) : null,
+      storage: b.storage === 'cold' || b.storage === 'room' ? b.storage : null,
+    }
+    const pv = validatePickup(pickup, session.deadline)
+    if (!pv.ok) return c.json({ success: false, error: pv.error }, 400)
+
     await saveGbSession(c.env.DB, id, session)
-    return c.json({ success: true, gb: session, gb_effective_status: resolveGbStatus(session, Date.now()) })
+    await setSupplyMeta(c.env.DB, id, pickupToMeta(pickup)).catch(() => { /* 픽업 저장 실패가 공구를 막지 않는다 */ })
+    return c.json({ success: true, gb: session, pickup, gb_effective_status: resolveGbStatus(session, Date.now()) })
   } catch (err) {
     return safeError(c, err, '공구 설정 저장에 실패했습니다', '[seller-gb]')
   }
