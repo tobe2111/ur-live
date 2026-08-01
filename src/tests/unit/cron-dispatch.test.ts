@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
-import { HANDLED_CRONS } from '../../worker/scheduled'
+import { ACCEPTED_CRON_EXPRESSIONS } from '../../worker/utils/cron-expected'
 
 /**
  * 🔇 cron 선언과 실제 분기의 불일치 — "등록했는데 아무 일도 안 일어난다" (2026-07-29 실행 증거 감사)
@@ -20,10 +20,13 @@ import { HANDLED_CRONS } from '../../worker/scheduled'
  * 이 레포가 반복해 만난 클래스는 "검사가 실패한다"가 아니라 **"검사가 아예 안 돈다"** 이고,
  * cron 은 그 중에서도 제일 조용하다 — 아무도 안 아프기 때문에 제일 오래 안 들킨다.
  *
+ * 📎 **역할 분담**: 명부(`cron-expected.ts`) ↔ 분기(`scheduled.ts`) 의 드리프트는
+ *   `cron-expected.test.ts` 가 본다. **여기서는 `wrangler.toml`(선언) 축만** 본다 — 그 축이
+ *   비어 있었고, 선언이 현실과 어긋난 것이 이번 사고의 출발점이었다.
+ *
  * ⚠️ 이 검사가 **못 잡는 것**(과신 금지):
- *   - **CF 에 실제로 등록된 목록.** 그건 레포 밖(대시보드/API)이라 여기서 볼 수 없다. 이 테스트는
- *     `wrangler.toml`(선언) ↔ `scheduled.ts`(분기) 사이의 정합만 본다. 선언과 현실의 차이는
- *     런타임의 `cron-unmatched` 하트비트와 worker-deploy 의 스케줄 PUT 결과가 판정한다.
+ *   - **CF 에 실제로 등록된 목록.** 그건 레포 밖(대시보드/API)이라 여기서 볼 수 없다. 선언과 현실의
+ *     차이는 런타임의 `cron-unmatched` 하트비트와 worker-deploy 의 스케줄 PUT 결과가 판정한다.
  *   - 분기 안에서 핸들러가 게이트 OFF 로 조기 return 하는 경우. 그건 하트비트 `result` 가 본다.
  *   - `wrangler-ads.toml`(별도 ur-ads 워커)의 트리거. 다른 스크립트다.
  */
@@ -57,14 +60,16 @@ describe('cron 디스패처 정합', () => {
     expect(declaredCrons().length).toBeGreaterThan(0)
   })
 
-  it('HANDLED_CRONS 가 소스의 분기 목록과 정확히 일치한다', () => {
-    // 넓히기만 하면 침묵을 다시 못 보고, 좁히면 정상 발화가 unmatched 로 오탐된다. 양방향으로 고정.
-    expect([...HANDLED_CRONS].sort()).toEqual(branchCrons().sort())
+  it('디스패처가 받는 목록이 소스의 분기를 전부 포함한다', () => {
+    // 명부(cron-expected.ts)가 좁으면 **정상 발화가 `cron-unmatched` 로 오탐**된다.
+    // 반대 방향(명부에만 있고 코드엔 없는 유령 식)은 `cron-expected.test.ts` 가 본다.
+    const missing = branchCrons().filter((c) => !ACCEPTED_CRON_EXPRESSIONS.includes(c))
+    expect(missing, `분기는 있는데 명부에 없는 식: ${missing.join(', ')}`).toEqual([])
   })
 
   it('선언한 트리거는 전부 처리하는 분기가 있다', () => {
     // 이걸 어기면 CF 는 정상 발화시키는데 우리 쪽에서 아무 일도 안 일어난다(사고 2번).
-    const orphan = declaredCrons().filter((c) => !HANDLED_CRONS.has(c))
+    const orphan = declaredCrons().filter((c) => !ACCEPTED_CRON_EXPRESSIONS.includes(c))
     expect(orphan, `선언했지만 핸들러가 없는 트리거: ${orphan.join(', ')}`).toEqual([])
   })
 

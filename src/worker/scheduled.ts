@@ -74,6 +74,7 @@ import { LIVE_COMMERCE_SUSPENDED } from '../shared/feature-flags';
 import { logError, logInfo } from './utils/logger';
 import { reportCronFailure } from './utils/cron-reporter';
 import { recordCronBeat } from './utils/cron-heartbeat';
+import { ACCEPTED_CRON_EXPRESSIONS } from './utils/cron-expected';
 
 /**
  * 🔔 2026-06-12 (4차 감사 D3): cron 내부 실패 공용 통지 — logError + Discord (fail-soft).
@@ -126,26 +127,13 @@ export async function wholesaleCronNoop(event: ScheduledEvent): Promise<void> {
 }
 
 /**
- * 이 디스패처가 실제로 분기하는 cron 문자열 전체.
+ * 이 디스패처가 받는 cron 문자열 전체 — **명부는 `cron-expected.ts` 가 SSOT** 다.
  *
- * ⚠️ 아래 `if (cron === '...')` 를 추가/수정하면 **여기도 같이 고쳐야 한다.** 안 고치면 정상 발화가
- *    `cron-unmatched` 로 잘못 기록된다(오탐). 반대로 여기만 넓히면 침묵을 다시 못 보게 된다.
- *    → `cron-dispatch.test.ts` 가 소스의 분기 목록과 이 집합의 일치를 강제한다.
+ * 여기에 목록을 다시 두지 않는다. 같은 목록이 두 곳에 있으면 반드시 갈라지고, 갈라진 쪽이
+ * 조용한 오탐(정상 발화를 `cron-unmatched` 로 기록)이나 조용한 사각지대(침묵을 못 봄)가 된다.
+ * 드리프트는 `cron-expected.test.ts` 가 소스의 분기를 파싱해 강제한다.
  */
-export const HANDLED_CRONS = new Set([
-  '*/2 * * * *',
-  '*/5 * * * *',
-  '0 * * * *',
-  '0 3 * * *',
-  '0 9 * * *',
-  '0 0 * * *',
-  '0 18 * * *',
-  '0 19 * * *',
-  '0 20 * * 0',
-  '0 20 * * SUN',
-  '0 20 * * 7',
-  '0 0 * * 1',
-])
+const HANDLED_CRONS = new Set(ACCEPTED_CRON_EXPRESSIONS)
 
 export async function handleCronScheduled(
   event: ScheduledEvent,
