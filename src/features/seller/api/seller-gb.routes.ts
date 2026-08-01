@@ -1,0 +1,115 @@
+/**
+ * 🎟️ **운영자가 직접 공구를 연다** — 셀러용 공구 설정 (세션 ③-b, O5)
+ *
+ * `gb-cockpit`(공구 조종석)은 **어드민 전용**(`requireAdmin`)이라, 운영자가 자기 상품의
+ * **공구가·마감을 스스로 못 정한다.** 3분 등록 폼을 만들어도 그 다음 칸이 막혀 있으면 소용없다.
+ *
+ * ## 🔴 이 파일이 지키는 것
+ * ① **소유권** — `products.seller_id === 인증된 셀러` 인 상품만. 남의 상품 공구를 못 건드린다(IDOR).
+ * ② **검증 SSOT 재사용** — `validateGbSession`(shared/gb-session) 그대로. 어드민 조종석과 **같은 규칙**이라
+ *    경로에 따라 통과 기준이 갈리지 않는다. 특히 **공구가 < 상시가** 강제 — 가격을 올리는 방향은 막힌다.
+ * ③ **저장도 SSOT** — `saveGbSession`(product_supply_meta upsert). 새 저장 경로를 만들지 않는다.
+ *
+ * ⚠️ **머니 무접촉**: 값 저장뿐이다. 실제 적용은 `platform_settings.gb_engine_enabled` 게이트 뒤이고,
+ *   결제/정산/커미션 로직은 이 파일이 건드리지 않는다(gb-cockpit 과 동일 방침).
+ */
+import { Hono } from 'hono'
+import { verify } from 'hono/jwt'
+import type { JWTPayload } from 'hono/utils/jwt/types'
+import type { D1Database } from '@cloudflare/workers-types'
+import type { Env } from '../../../worker/types/env'
+import { intParam } from '../../../shared/pagination'
+import { getGbSession, saveGbSession } from '../../../worker/utils/gb-session-store'
+import { validateGbSession, resolveGbStatus, type GbSession, type GbMode } from '../../../shared/gb-session'
+import { safeError } from '../../../worker/utils/safe-error'
+
+const app = new Hono<{ Bindings: Env }>()
+const MODES: readonly GbMode[] = ['off', 'scheduled', 'live', 'ended']
+
+/**
+ * 인증 + **활성 셀러** 확인. 정지·반려된 셀러의 토큰은 여전히 서명이 유효하므로
+ * DB status 를 함께 본다(`seller-orders.routes` 의 `getActiveSellerId` 와 같은 방침).
+ */
+async function activeSellerId(DB: D1Database, auth: string | undefined, jwtSecret: string): Promise<number | null> {
+  if (!auth || !auth.startsWith('Bearer ')) return null
+  let raw: string | number | undefined
+  try {
+    const payload = await verify(auth.substring(7), jwtSecret, 'HS256') as JWTPayload & { seller_id?: number | string }
+    raw = payload.seller_id
+  } catch { return null }
+  const id = Number(raw)
+  if (!Number.isFinite(id) || id <= 0) return null
+  const row = await DB.prepare(
+    "SELECT id FROM sellers WHERE id = ? AND status IN ('approved', 'active') AND is_active = 1"
+  ).bind(id).first<{ id: number }>().catch(() => null)
+  return row ? id : null
+}
+
+/**
+ * 🔴 **소유권 확인** — 이 상품이 그 셀러의 것인가.
+ * `WHERE id = ? AND seller_id = ?` 로 **쿼리에서** 거른다. 조회 후 애플리케이션에서 비교하면
+ * 한 번만 빠뜨려도 남의 상품이 통과한다.
+ */
+async function ownedProduct(DB: D1Database, productId: number, sellerId: number) {
+  return DB.prepare('SELECT id, price FROM products WHERE id = ? AND seller_id = ? AND is_active = 1')
+    .bind(productId, sellerId).first<{ id: number; price: number }>().catch(() => null)
+}
+
+// ── GET /:id — 내 상품의 현재 공구 설정 ────────────────────────────────────────
+app.get('/:id', async (c) => {
+  try {
+    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const id = intParam(c.req.param('id'), 0)
+    if (!id) return c.json({ success: false, error: '잘못된 상품 ID' }, 400)
+    const p = await ownedProduct(c.env.DB, id, sellerId)
+    // 남의 상품과 없는 상품을 **같은 404** 로 — 존재 여부를 흘리지 않는다.
+    if (!p) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
+    const gb = await getGbSession(c.env.DB, id)
+    return c.json({ success: true, gb, gb_effective_status: resolveGbStatus(gb, Date.now()) })
+  } catch (err) {
+    return safeError(c, err, '공구 설정을 불러오지 못했습니다', '[seller-gb]')
+  }
+})
+
+// ── PUT /:id — 내 상품의 공구 설정 저장 ────────────────────────────────────────
+app.put('/:id', async (c) => {
+  try {
+    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const id = intParam(c.req.param('id'), 0)
+    if (!id) return c.json({ success: false, error: '잘못된 상품 ID' }, 400)
+    const p = await ownedProduct(c.env.DB, id, sellerId)
+    if (!p) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
+
+    const b = await c.req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>))
+    const rawMode = String(b.mode || 'off')
+    const mode: GbMode = MODES.includes(rawMode as GbMode) ? (rawMode as GbMode) : 'off'
+    const numOrNull = (v: unknown): number | null => {
+      if (v == null || v === '') return null
+      const n = Number(v)
+      return Number.isFinite(n) ? n : null
+    }
+    const session: GbSession = {
+      mode,
+      startAt: typeof b.startAt === 'string' && b.startAt ? b.startAt : null,
+      deadline: typeof b.deadline === 'string' && b.deadline ? b.deadline : null,
+      target: numOrNull(b.target),
+      price: numOrNull(b.price),
+      promoPct: numOrNull(b.promoPct),
+      linkOnly: b.linkOnly === true || b.linkOnly === '1' || b.linkOnly === 1,
+    }
+
+    // 🔴 검증은 어드민 조종석과 **완전히 같은 함수**다 — 경로에 따라 기준이 갈리면
+    //   셀러 경로로만 통과하는 값이 생긴다(공구가 > 상시가 같은 것).
+    const v = validateGbSession(session, Number(p.price))
+    if (!v.ok) return c.json({ success: false, error: v.error || '설정값을 확인해주세요' }, 400)
+
+    await saveGbSession(c.env.DB, id, session)
+    return c.json({ success: true, gb: session, gb_effective_status: resolveGbStatus(session, Date.now()) })
+  } catch (err) {
+    return safeError(c, err, '공구 설정 저장에 실패했습니다', '[seller-gb]')
+  }
+})
+
+export { app as sellerGbRoutes }
