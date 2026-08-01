@@ -10,7 +10,7 @@
  *   (게이트 평가는 동기라 실제 시작 시각 차이는 무시할 수 있다.)
  */
 import type { D1Database } from '@cloudflare/workers-types'
-import { lanesPerTick, selectLanesForHour, dispatchSnapshot, resolvePlan, type LaneCandidate } from './dispatch-budget'
+import { lanesPerTick, selectLanesForTick, dispatchSnapshot, resolvePlan, type LaneCandidate } from './dispatch-budget'
 
 export interface RunnableLane extends LaneCandidate {
   path: string
@@ -52,36 +52,49 @@ export function runLanes(lanes: RunnableLane[], deps: LaneRunnerDeps): Promise<u
 }
 
 /**
- * 🚦 **이번 정각의 디스패치 한 방** — 선별 → 실행 → 미룬 내역 기록까지.
+ * 🚦 **이번 정각의 디스패치 한 방** — 커서 읽기 → 선별 → 실행 → 커서·내역 기록까지.
  *
  * 호출부(`index.ts`)는 배선만 남기고 판단을 전부 여기로 내린다. 그래야 배정 규칙이 바뀌어도
  * 스케줄러 본문을 안 건드리고, 유닛이 규칙을 직접 겨눌 수 있다.
  *
+ * ⚠️ **커서 읽기 때문에 async 다.** 레인 시작이 D1 왕복(~수십 ms)만큼 늦어지는 대신,
+ *   몫이 시간마다 달라져도 굶는 레인이 없어진다(고정 분할로는 그 보장이 깨진다 — dispatch-budget 참조).
+ *
  * @returns 띄운 프로미스들 — 호출부가 `waitUntil` + 마지막 하트비트 flush 에 쓴다.
  */
-export function dispatchPendingLanes(opts: {
+export const DISPATCH_CURSOR_KEY = 'ads_dispatch_cursor'
+
+export async function dispatchPendingLanes(opts: {
   pending: RunnableLane[]
   env: { SELF?: { fetch: (req: Request) => Promise<unknown> }; DB: D1Database; ADS_PLAN?: string; ADS_LANES_PER_TICK?: string }
   hourUTC: number
   laneUrl: LaneRunnerDeps['laneUrl']
   beat: LaneRunnerDeps['beat']
   waitUntil: (p: Promise<unknown>) => void
-}): Promise<unknown>[] {
+}): Promise<Promise<unknown>[]> {
   const { pending, env, hourUTC, waitUntil } = opts
   const perTick = lanesPerTick(env)
-  const sel = selectLanesForHour(pending, perTick, hourUTC)
+  // 📍 커서를 먼저 읽는다(D1 1회). **실패하면 시각 유도값으로 떨어진다** — 커서가 없어도 정확성은
+  //   불변이고 공평성만 약해진다. 여기서 throw 하면 그 회차 전체가 사라지므로 절대 던지지 않는다.
+  const row = await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+    .bind(DISPATCH_CURSOR_KEY).first<{ value: string }>().catch(() => null)
+  const stored = Number(row?.value)
+  const cursor = Number.isFinite(stored) ? stored : hourUTC * perTick
+  const sel = selectLanesForTick(pending, perTick, cursor)
   const self = env.SELF
   const kicked = runLanes(sel.run, {
     selfFetch: self?.fetch ? (req: Request) => self.fetch(req) : undefined,
     laneUrl: opts.laneUrl, beat: opts.beat,
   })
   for (const p of kicked) waitUntil(p)
-  // 🧾 미룬 것과 죽은 것이 똑같이 "기록 없음"으로 보이면 오진한다 — 선별 결과를 남긴다.
-  //   ⚠️ 미룬 게 없으면 안 쓴다(= 유료·소규모에선 D1 쓰기 0 — 부모 서브리퀘스트 천장이 빠듯하다).
+  // 🧾 미룬 것과 죽은 것이 똑같이 "기록 없음"으로 보이면 오진한다 — 선별 결과 + 다음 커서를 남긴다.
+  //   ⚠️ 커서는 **미룬 게 있을 때만** 전진한다(전부 돌았으면 회전할 이유가 없다) — 그때만 쓴다.
   if (sel.deferred.length) {
     const snap = JSON.stringify(dispatchSnapshot(sel, resolvePlan(env), perTick, hourUTC, new Date().toISOString()))
-    waitUntil(env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-      .bind('ads_dispatch_last', snap).run().catch(() => undefined))
+    waitUntil(env.DB.batch([
+      env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_dispatch_last', snap),
+      env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(DISPATCH_CURSOR_KEY, String(sel.nextCursor)),
+    ]).catch(() => undefined))
   }
   return kicked
 }
