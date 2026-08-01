@@ -21,7 +21,8 @@ import { classifyCategory } from './influencer-classify'
 import { buildInfluencerExportResponse } from './influencer-pool-export'
 import { mergeDuplicatePool, reextractPoolContacts } from './influencer-maintenance'
 import { getOrCreateClaimCode } from './lead-claim'
-import { buildInfluencerPoolStats, ensureRecruitColumn } from './influencer-pool-stats' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
+import { ensureRecruitColumn } from './influencer-pool-stats'
+import { poolReadRoutes } from './pool-timeline.routes' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -161,16 +162,8 @@ app.get('/influencer-pool', async (c) => {
   return c.json({ success: true, leads: rows?.results || [], total: totalRow?.n ?? 0, offset, limit })
 })
 
-// GET /api/admin/ads/influencer-pool/stats — 누적/최근 실행 통계 + 플랫폼별 카운트
-//   집계 본문은 `influencer-pool-stats.ts`(SSOT) — 이 라우트는 인증/응답만.
-app.get('/influencer-pool/stats', async (c) => c.json({ success: true, ...await buildInfluencerPoolStats(c.env) }))
+app.route('/', poolReadRoutes)   // 📊 풀 조회(누적 통계 + 일자별 타임라인) — 별 모듈(파일크기 래칫)
 
-// 📅 GET /api/admin/ads/influencer-pool/timeline?days=30 — **며칠에 얼마나 수집됐나**(KST 달력일).
-//   누적 총계만으로는 "언제 멈췄나"를 못 본다 — 라이브 판정에서 매번 하트비트를 손으로 뒤지던 자리다.
-app.get('/influencer-pool/timeline', async (c) => {
-  const { getPoolTimeline, resolveDays } = await import('./pool-timeline')
-  return c.json({ success: true, timeline: await getPoolTimeline(c.env.DB, 'influencer', resolveDays(c.req.query('days'))) })
-})
 
 /**
  * 🚀 GET /api/admin/ads/influencer-pool/send-queue?limit=20 — **오늘 보낼 사람만** 골라주는 발송 큐.

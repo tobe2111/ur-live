@@ -118,7 +118,9 @@ describe('getPoolTimeline — 한쪽이 죽어도 다른 쪽은 보인다', () =
 describe('🚧 배선 — 두 라우터가 실제로 이 SSOT 를 쓴다', () => {
   it('인플루언서/업체 라우터에 timeline 엔드포인트가 배선돼 있다', async () => {
     const fs = await import('node:fs')
-    const inf = fs.readFileSync('src/features/marketing/api/admin-ads-influencers.routes.ts', 'utf8')
+    // ⚠️ 2026-08-02: 파일크기 캡으로 라우트가 pool-timeline.routes.ts 로 옮겨갔다.
+    //   가드가 옛 파일만 보면 **불변식은 멀쩡한데 빨간불**이 난다(오늘 self-beat 에서 겪은 '낡은 지도').
+    const inf = fs.readFileSync('src/features/marketing/api/pool-timeline.routes.ts', 'utf8')
     expect(inf).toMatch(/app\.get\('\/influencer-pool\/timeline'/)
     expect(inf).toContain("getPoolTimeline(c.env.DB, 'influencer'")
 
