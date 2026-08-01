@@ -21,7 +21,8 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { capAfterAbandonedRun, nextSubreqCap, ENRICH_DEADLINE_MS_DEFAULT, resolveEnrichDeadlineMs } from '@/features/marketing/api/collect-budget'
+import { capAfterAbandonedRun, nextSubreqCap, ENRICH_DEADLINE_MS_DEFAULT, resolveEnrichDeadlineMs,
+  budgetedTimeoutMs, FETCH_TIMEOUT_FLOOR_MS } from '@/features/marketing/api/collect-budget'
 import { frontStageDeadline, NAVER_FLOOR_PCT_DEFAULT } from '@/features/marketing/api/influencer-enrich-lane'
 import { interleavePicks } from '@/features/marketing/api/influencer-keyword-rotation'
 import { isSelfBlogLink, cleanSelfLinks } from '@/features/marketing/api/influencer-self-link'
@@ -605,5 +606,53 @@ describe('⏱️ 보강 마감 — 부모 수명(≈10.5s) 아래', () => {
       expect(src, `${f} 가 리졸버를 안 쓴다`).toMatch(/resolveEnrichDeadlineMs\(env\.ADS_ENRICH_DEADLINE_MS\)/)
       expect(src, `${f} 에 기본값이 다시 복제됐다`).not.toMatch(/ADS_ENRICH_DEADLINE_MS \|\| '', 10\) \|\| \d/)
     }
+  })
+})
+
+/**
+ * ⏱️ **마감만으로는 부족하다** — 마감 검사는 *항목 사이*에서만 일어난다.
+ *   6.9초에 통과한 항목이 상수 8s 타임아웃을 다 쓰면 14.9초에 끝나고, 그때 부모(≈10.5s)는 이미 없다.
+ *   ⇒ 건당 타임아웃을 **남은 창에서 유도**해 최악 종료를 `마감 + 바닥값` 으로 묶는다.
+ */
+describe('⏱️ 건당 fetch 타임아웃 — 남은 창에서 유도', () => {
+  it('창이 넉넉하면 종전 상수를 그대로 준다(느린 사이트를 근거 없이 버리지 않는다)', () => {
+    const now = 1_000_000
+    expect(budgetedTimeoutMs(now + 20_000, 8_000, now)).toBe(8_000)
+    expect(budgetedTimeoutMs(undefined, 8_000, now)).toBe(8_000) // 마감 없음(수동 트리거) = 부모 수명에 안 묶임
+  })
+
+  it('창이 좁으면 남은 만큼만 준다', () => {
+    const now = 1_000_000
+    expect(budgetedTimeoutMs(now + 4_000, 8_000, now)).toBe(4_000)
+  })
+
+  it('바닥값 아래로는 안 내려간다 — 200ms 타임아웃은 정상 응답까지 실패로 각인한다', () => {
+    const now = 1_000_000
+    expect(budgetedTimeoutMs(now + 200, 8_000, now)).toBe(FETCH_TIMEOUT_FLOOR_MS)
+    expect(budgetedTimeoutMs(now - 5_000, 8_000, now)).toBe(FETCH_TIMEOUT_FLOOR_MS) // 이미 지난 마감
+  })
+
+  /** 🔑 이 부등식이 이 수리의 전부다. 깨지면 항목 하나가 부모보다 오래 살 수 있다. */
+  it('최악 종료(마감 + 바닥값)가 부모 수명보다 작다', () => {
+    expect(ENRICH_DEADLINE_MS_DEFAULT + FETCH_TIMEOUT_FLOOR_MS).toBeLessThan(10_500)
+  })
+
+  it('블로거 두 fetch 가 상수가 아니라 유도값을 쓴다', () => {
+    const src = read('src/features/marketing/api/influencer-performance.ts')
+    // 네이버 RSS·홈 — 이 두 줄이 레인의 실제 병목이다
+    expect(src).toMatch(/rss\.blog\.naver\.com[^\n]*AbortSignal\.timeout\(itemTimeout\)/)
+    expect(src).toMatch(/m\.blog\.naver\.com[^\n]*AbortSignal\.timeout\(itemTimeout\)/)
+    expect(src).toMatch(/const itemTimeout = budgetedTimeoutMs\(budget\.deadline, 8000\)/)
+  })
+
+  /** 유튜브 단계도 같은 창 안에서 돈다 — 여기서 넘기면 뒤에 선 블로거가 통째로 굶는다. */
+  it('유튜브 API 호출도 마감 안에서 유도값을 쓴다(상수 10s 잔존 금지)', () => {
+    const yt = read('src/features/marketing/api/influencer-performance.ts')
+      .split('\n')
+      .filter(l => /YT_BASE\}|AbortSignal\.timeout/.test(l))
+      .join('\n')
+    // 예산(budget)이 스코프에 있는 호출은 전부 유도값이어야 한다
+    const budgeted = (yt.match(/budgetedTimeoutMs\(budget\.deadline, 10000\)/g) || []).length
+    expect(budgeted, '유튜브 호출 3곳이 유도값을 써야 한다').toBe(3)
   })
 })
