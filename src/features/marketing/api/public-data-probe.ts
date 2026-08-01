@@ -60,7 +60,18 @@ export interface ProbeResult {
   error?: string
 }
 
-type TargetDef = { label: string; url: (key: string, env: Env) => string }
+/**
+ * 🔬 **파라미터를 흔들 수 있어야 한다** (2026-08-01 프로브 1차 실행이 곧바로 요구한 것).
+ *
+ *   첫 실행에서 통신판매가 **HTTP 200 · JSON · totalCount 2,649,409** 로 완벽히 정상이었다.
+ *   즉 키·활용신청·엔드포인트 전부 유효한데 **레인만 "비JSON 응답"** 을 받는다.
+ *   프로브와 레인의 차이는 딱 하나 — `numOfRows` 가 **1 vs 500**, `pageNo` 가 **1 vs 63**.
+ *   ⇒ 그 둘을 흔들어 **어디서 깨지는지**를 좁힌다. 이 모듈의 원래 한계 주석("특정 파라미터에서
+ *     깨지면 프로브는 초록으로 나온다")이 예고한 바로 그 후속이다.
+ */
+export interface ProbeOpts { rows?: number; page?: number }
+
+type TargetDef = { label: string; url: (key: string, env: Env, o: Required<ProbeOpts>) => string }
 
 /**
  * 프로브 대상 — **레인과 같은 상수**에서 만든다(따로 적으면 드리프트하고, 드리프트하면 프로브가 거짓말한다).
@@ -70,27 +81,27 @@ type TargetDef = { label: string; url: (key: string, env: Env) => string }
 export const PROBE_TARGETS: Record<string, TargetDef> = {
   'commerce-status': {
     label: '통신판매 등록현황',
-    url: (k) => `${COMMERCE_SERVICES[0].base}/${COMMERCE_SERVICES[0].op}?serviceKey=${serviceKeyParam(k)}&pageNo=1&numOfRows=1&type=json&_type=json&resultType=json`,
+    url: (k, _e, o) => `${COMMERCE_SERVICES[0].base}/${COMMERCE_SERVICES[0].op}?serviceKey=${serviceKeyParam(k)}&pageNo=${o.page}&numOfRows=${o.rows}&type=json&_type=json&resultType=json`,
   },
   'commerce-detail': {
     label: '통신판매 등록상세',
-    url: (k) => `${COMMERCE_SERVICES[1].base}/${COMMERCE_SERVICES[1].op}?serviceKey=${serviceKeyParam(k)}&pageNo=1&numOfRows=1&type=json&_type=json&resultType=json`,
+    url: (k, _e, o) => `${COMMERCE_SERVICES[1].base}/${COMMERCE_SERVICES[1].op}?serviceKey=${serviceKeyParam(k)}&pageNo=${o.page}&numOfRows=${o.rows}&type=json&_type=json&resultType=json`,
   },
   franchise: {
     label: '공정위 가맹정보',
-    url: (k) => `https://apis.data.go.kr/1130000/FftcBrandRlsInfo2_Service/getBrandReleaseInfo?serviceKey=${serviceKeyParam(k)}&pageNo=1&numOfRows=1&resultType=json`,
+    url: (k, _e, o) => `https://apis.data.go.kr/1130000/FftcBrandRlsInfo2_Service/getBrandReleaseInfo?serviceKey=${serviceKeyParam(k)}&pageNo=${o.page}&numOfRows=${o.rows}&resultType=json`,
   },
   nara: {
     label: '나라장터 조달업체',
-    url: (k) => `https://apis.data.go.kr/1230000/ao/UsrInfoService02/getPrcrmntCorpBasicInfo?serviceKey=${serviceKeyParam(k)}&pageNo=1&numOfRows=1&type=json`,
+    url: (k, _e, o) => `https://apis.data.go.kr/1230000/ao/UsrInfoService02/getPrcrmntCorpBasicInfo?serviceKey=${serviceKeyParam(k)}&pageNo=${o.page}&numOfRows=${o.rows}&type=json`,
   },
   localdata: {
     label: '인허가(일반음식점)',
-    url: (k) => `https://apis.data.go.kr/1741000/general_restaurants?serviceKey=${serviceKeyParam(k)}&pageIndex=1&pageSize=1&type=json&resultType=json`,
+    url: (k, _e, o) => `https://apis.data.go.kr/1741000/general_restaurants?serviceKey=${serviceKeyParam(k)}&pageIndex=${o.page}&pageSize=${o.rows}&type=json&resultType=json`,
   },
   nps: {
     label: '국민연금 사업장',
-    url: (k) => `https://apis.data.go.kr/B552015/NpsBplcInfoInqireServiceV2/getBassInfoSearchV2?serviceKey=${serviceKeyParam(k)}&pageNo=1&numOfRows=1&dataType=JSON`,
+    url: (k, _e, o) => `https://apis.data.go.kr/B552015/NpsBplcInfoInqireServiceV2/getBassInfoSearchV2?serviceKey=${serviceKeyParam(k)}&pageNo=${o.page}&numOfRows=${o.rows}&dataType=JSON`,
   },
 }
 
@@ -101,7 +112,12 @@ export function probeTargetNames(): string[] { return Object.keys(PROBE_TARGETS)
  * 한 대상을 **1회** 찌른다. 절대 던지지 않는다(진단이 500 을 내면 진단이 아니다).
  * @param keyOverride 시험용. 실전에서는 `PUBLIC_DATA_SERVICE_KEY` 를 쓴다.
  */
-export async function probePublicData(env: Env, target: string, keyOverride?: string): Promise<ProbeResult> {
+export async function probePublicData(env: Env, target: string, keyOverride?: string, opts?: ProbeOpts): Promise<ProbeResult> {
+  // 상한을 둔다 — 프로브가 수집처럼 굴면 안 되고, 잘못된 값이 상대편에 부담을 주면 안 된다.
+  const o = {
+    rows: Math.min(1000, Math.max(1, Math.trunc(Number(opts?.rows)) || 1)),
+    page: Math.min(100000, Math.max(1, Math.trunc(Number(opts?.page)) || 1)),
+  }
   const def = PROBE_TARGETS[target]
   const base: ProbeResult = { target, label: def?.label || target, url: '', http: null, body: '', is_json: false, hard: false }
   if (!def) return { ...base, error: `알 수 없는 대상 — ${probeTargetNames().join(', ')} 중 하나` }
@@ -109,7 +125,7 @@ export async function probePublicData(env: Env, target: string, keyOverride?: st
   const key = keyOverride ?? String((env as unknown as { PUBLIC_DATA_SERVICE_KEY?: string }).PUBLIC_DATA_SERVICE_KEY || '')
   if (!key) return { ...base, error: 'PUBLIC_DATA_SERVICE_KEY 미설정', hard: true }
 
-  const url = def.url(key, env)
+  const url = def.url(key, env, o)
   const safeUrl = redactServiceKey(url)
   let res: Response | null = null
   let netErr = ''
@@ -137,9 +153,20 @@ export async function probePublicData(env: Env, target: string, keyOverride?: st
 }
 
 /** 전부 한 번씩 — 대상 6개면 fetch 6회. 어느 것이 살아 있는지 한 화면에서 본다(대조군이 곧 진단이다). */
-export async function probeAllPublicData(env: Env): Promise<ProbeResult[]> {
+export async function probeAllPublicData(env: Env, opts?: ProbeOpts): Promise<ProbeResult[]> {
   const names = probeTargetNames()
   const out: ProbeResult[] = []
-  for (const n of names) out.push(await probePublicData(env, n))
+  for (const n of names) out.push(await probePublicData(env, n, undefined, opts))
+  return out
+}
+
+/**
+ * 🪜 **어디서 깨지는지 좁힌다** — 같은 대상에 rows 를 키워 가며 첫 실패 지점을 찾는다.
+ *   레인이 쓰는 값(통신판매 500)까지 훑으면 "몇 건부터 게이트웨이가 무너지는가" 가 한 번에 나온다.
+ *   ⚠️ 실패해도 멈추지 않고 끝까지 훑는다 — 간헐 실패와 임계값 실패는 다르고, 그 구분이 처방을 가른다.
+ */
+export async function probeLadder(env: Env, target: string, rowsList: number[], page = 1): Promise<ProbeResult[]> {
+  const out: ProbeResult[] = []
+  for (const rows of rowsList) out.push(await probePublicData(env, target, undefined, { rows, page }))
   return out
 }
