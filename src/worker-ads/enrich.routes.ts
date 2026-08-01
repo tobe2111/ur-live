@@ -30,6 +30,30 @@ enrichRoutes.post('/__ads/prefill-outreach-drafts', async (c) => {
 })
 
 /** 라운드 상한 — env 로 조정(1~20). 기본값은 레인마다 다르다(인플루언서 12 · 파트너풀 8). */
+/**
+ * 🍰 **팬아웃 폭(K)** — 정각 1회에 동시에 띄울 자식 수. 처리량의 **두 노브 중 무료에서 돌리는 쪽**이다.
+ *
+ *   ```
+ *   처리량 = (자식 수 K) × (자식당 예산)
+ *             ↑ 무료에서 키움     ↑ 유료 전환 시 저절로 커짐(코드 변경 0)
+ *   ```
+ *   이렇게 갈라 두면 유료 전환이 **설정 하나 없이** 곱해진다. 반대로 지금의 릴레이(라운드 N+1이
+ *   N을 기다림)를 그대로 두면 유료로 바꿔도 **체인 수명 벽이 그대로**라 효과가 안 난다.
+ *
+ *   ## 왜 K 를 크게 못 잡나 — 처리량이 아니라 **차단**이 상한이다
+ *   자식 하나가 블로거를 동시 3명씩 처리하므로(`NAVER_CONCURRENCY`) 네이버로 나가는 동시 연결은 **3K** 다.
+ *   K=8 이면 24 동시 — 한 출구(Cloudflare)에서 그만큼 때리면 차단·지연으로 되돌아온다.
+ *   그건 처리량을 늘리는 게 아니라 **레인을 통째로 죽이는** 방향이다(같은 판단이 `NAVER_CONCURRENCY`
+ *   주석에도 있다 — 거기서 3으로 보수적으로 잡은 이유와 동일하다).
+ *   ⇒ **K=4 로 시작**(동시 12). 올리기 전에 스냅샷의 `naver.failed` 가 안 오르는지부터 확인할 것.
+ *      추측으로 올리면 조용히 악화된다 — 실패가 늘어도 `measured` 만 보면 안 보인다.
+ *
+ *   ⚠️ `K<=1` 이면 **오늘과 완전히 같은 릴레이 동작**이다(롤백 = 값 하나).
+ */
+export function resolveEnrichFanout(raw: string | undefined, fallback = 4): number {
+  return Math.min(12, Math.max(1, parseInt(raw || '', 10) || fallback))
+}
+
 export function resolveEnrichRounds(raw: string | undefined, fallback = 12): number {
   return Math.min(20, Math.max(1, parseInt(raw || '', 10) || fallback))
 }
@@ -108,7 +132,9 @@ async function dispatchRoundChain(
     chained = true
     // 다음 라운드는 **새 인보케이션**(새 예산·새 서브리퀘스트 한도). 응답을 막지 않게 waitUntil 로 건다.
     c.executionCtx.waitUntil(
-      env.SELF.fetch(new Request(`https://ur-ads${path}?depth=${depth + 1}`, { method: 'POST' }))
+      // ⚠️ `?` 로 무조건 잇지 않는다 — 팬아웃 이후의 path 는 이미 `?slice=..&k=..` 를 달고 있어
+      //   `?depth=` 를 또 붙이면 URL 이 깨지고(물음표 2개) 그 자식은 조각 없이 돌아 **중복 측정**한다.
+      env.SELF.fetch(new Request(`https://ur-ads${path}${path.includes('?') ? '&' : '?'}depth=${depth + 1}`, { method: 'POST' }))
         .then(() => undefined).catch(() => undefined),
     )
   }
@@ -167,15 +193,53 @@ enrichRoutes.post('/__ads/enrich-influencer', async (c) => {
  *   💥 실패하면 그 자리에서 멈추고 원문을 돌려준다 — 남은 라운드를 헛돌리지 않고, 다음 정각이 이어받는다.
  */
 enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
-  const rounds = resolveEnrichRounds((c.env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS)
+  const env = c.env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string; ADS_INFLUENCER_ENRICH_FANOUT?: string; SELF?: { fetch: (r: Request) => Promise<Response> } }
+  const rounds = resolveEnrichRounds(env.ADS_INFLUENCER_ENRICH_ROUNDS)
   // 🔢 depth 를 레인 스냅샷에 실어 보낸다 — 하트비트에 실으면 부모(`kick`)가 덮어써 안 보인다(실측 12:00).
   const d = parseInt(c.req.query('depth') || '0', 10)
-  return dispatchRoundChain(c, 'enrich-influencer-driver', '/__ads/enrich-influencer-driver', rounds, async () => {
+
+  /**
+   * 🍰 **팬아웃 진입점**(2026-07-29) — 조각을 안 받은 최초 호출이면, 릴레이 대신 **자식 K개를 한 번에** 띄운다.
+   *
+   *   ## 왜 바꾸나 (실측)
+   *   릴레이는 라운드 N+1이 N을 기다린다. 그래서 12라운드를 계획하고도 **실측 도달 depth 2(3라운드)** 에서
+   *   끝났다 — 라운드당 ~10~20초라 30~60초면 체인 수명이 다한다. 계획한 9라운드는 존재한 적이 없다.
+   *
+   *   ## 왜 안전한가 (같은 날 실측으로 확인)
+   *   `kick` 의 레인 디스패치는 **이미 병렬로 돌고 있었다** — 정각 3틱 모두 [소요합계 > 벽시계 스팬]이었다
+   *   (틱0: 24.4s/6.0s · 틱1: 27.5s/8.3s · 틱2: 9.4s/5.8s). 즉 무료 플랜에서도 SELF.fetch 자식은
+   *   겹쳐 돈다. 새 코드를 배포해 재 볼 필요가 없었고, 하트비트의 `at`·`ms` 로 판정했다.
+   *
+   *   ## 겹치면 안 되는 것 — 같은 사람을 두 번 재는 것
+   *   이 큐의 SELECT 는 **선점이 아니라 정렬+LIMIT** 이라, 조각 없이 병렬로 돌리면 자식들이 전부 같은
+   *   앞머리를 집는다. 그래서 자식 i 는 `id % K = i` 만 맡는다(`sliceClause` 주석 참조).
+   *
+   *   ⚠️ 부모 비용은 자식 수만큼 늘어난다(fetch K개). K 상한 12 는 그래서다 — 부모가 다른 레인도
+   *   kick 해야 하므로 여기서 예산을 다 쓰면 **뒤에 선 레인이 굶는다**(이 파일이 고쳐 온 실패 양식 그대로).
+   */
+  const sliceRaw = c.req.query('slice')
+  const K = resolveEnrichFanout(env.ADS_INFLUENCER_ENRICH_FANOUT)
+  if (sliceRaw === undefined && K > 1 && env.SELF?.fetch && c.executionCtx?.waitUntil) {
+    for (let i = 0; i < K; i++) {
+      c.executionCtx.waitUntil(
+        env.SELF.fetch(new Request(`https://ur-ads/__ads/enrich-influencer-driver?slice=${i}&k=${K}`, { method: 'POST' }))
+          .then(() => undefined).catch(() => undefined),
+      )
+    }
+    // 자식들이 각자 자기 하트비트/스냅샷을 남긴다 — 이 응답은 '띄웠다'만 뜻한다.
+    return c.json({ ok: true, fanout: K, planned: rounds })
+  }
+  const kRaw = parseInt(c.req.query('k') || '', 10)
+  const slice = sliceRaw !== undefined && Number.isFinite(kRaw) && kRaw > 1
+    ? { i: parseInt(sliceRaw, 10) || 0, k: kRaw }
+    : null
+
+  return dispatchRoundChain(c, 'enrich-influencer-driver', `/__ads/enrich-influencer-driver${slice ? `?slice=${slice.i}&k=${slice.k}` : ''}`, rounds, async () => {
     const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
     // 🧱 계획 라운드 수를 함께 넘긴다 — 스냅샷의 `chain.rounds_planned` 와 실제 `rounds` 의 격차가
     //    **체인 수명 천장**을 드러낸다(실측 07-29: 계획 12 · 도달 3). 그 격차를 못 보면 다음 세션도
     //    "라운드를 늘렸으니 처리량이 늘었다"를 근거로 쓴다 — 늘린 라운드는 존재한 적이 없었다.
-    return runInfluencerEnrich(c.env, Number.isFinite(d) && d > 0 ? d : 0, rounds)
+    return runInfluencerEnrich(c.env, Number.isFinite(d) && d > 0 ? d : 0, rounds, slice)
   })
 })
 

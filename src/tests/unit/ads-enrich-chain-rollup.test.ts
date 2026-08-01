@@ -112,12 +112,12 @@ describe('배선 — 합계가 스냅샷에 실리고 화면이 읽는가', () =
     // 순수함수만 만들고 호출을 안 하면 **에러 없이** 필드가 영원히 안 생긴다.
     expect(src).toMatch(/chain:\s*rollupChain\(/)
   })
-  it('드라이버가 계획 라운드 수를 레인에 넘긴다 — 안 넘기면 격차가 영원히 안 보인다', () => {
+  it('드라이버가 계획 라운드 수를 레인에 넘긴다 — 안 넘기면 격차가 영원히 안 보인다(조각 인자는 선택)', () => {
     // 순수함수·화면을 다 만들어 놓고 이 인자 하나가 빠지면 `rounds_planned` 는 **에러 없이** 영영 없다.
     // (이 검사가 없던 사이에 회귀 주입을 해 봤는데 10개 전부 초록이었다 — 그래서 이 검사가 생겼다.)
     const src = readFileSync('src/worker-ads/enrich.routes.ts', 'utf8')
     // ⚠️ `[^)]*` 로 쓰면 인자 안의 `Number.isFinite(d)` 괄호에서 끊긴다 — 실제로 그렇게 써서 헛돌았다.
-    expect(src).toMatch(/runInfluencerEnrich\(\s*c\.env,[^;\n]*,\s*rounds\s*\)/)
+    expect(src).toMatch(/runInfluencerEnrich\(\s*c\.env,[^;\n]*,\s*rounds(,\s*slice)?\s*\)/)
   })
   it('어드민 화면이 chain 을 실제로 렌더한다', () => {
     const ui = readFileSync('src/pages/admin/influencer-pool/CollectDiagPanel.tsx', 'utf8')

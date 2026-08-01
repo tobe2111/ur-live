@@ -255,7 +255,10 @@ export function naverHomeUseful(r: {
   return !r.email || !r.instagram || !r.links || !((r.subscriber_count || 0) > 0)
 }
 
-export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, max: number): Promise<NaverEnrichDiag> {
+import { sliceClause, type EnrichSlice } from './enrich-slice'
+export { sliceClause, type EnrichSlice } from './enrich-slice' // 기존 import 경로 유지
+
+export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, max: number, slice?: EnrichSlice | null): Promise<NaverEnrichDiag> {
   const diag: NaverEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0, emails: 0 }
   if (max <= 0 || budget.left <= 1) return diag
   // 🩹 `handle IS NOT NULL` 만으로는 부족하다 — 손상 행은 handle 이 `'blog.naver.com'`(호스트)이라 이 조건을
@@ -264,8 +267,9 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     name: string | null; category: string | null; category_source: string | null; subscriber_count: number | null; is_brand: number | null; consented_at: string | null; source: string | null; recent_avg_views: number | null; median_long_views: number | null }
   let rows: NaverRow[] = []
   try {
-    const res = await DB.prepare(`SELECT id, handle, channel_id, url, name, email, instagram, links, description, category, category_source, subscriber_count, is_brand, consented_at, source, recent_avg_views, median_long_views FROM ad_influencer_leads      WHERE account_id = 0 AND platform = 'naver_blog'
-      ORDER BY perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30)).all<NaverRow>()
+    const sl = sliceClause(slice)
+    const res = await DB.prepare(`SELECT id, handle, channel_id, url, name, email, instagram, links, description, category, category_source, subscriber_count, is_brand, consented_at, source, recent_avg_views, median_long_views FROM ad_influencer_leads      WHERE account_id = 0 AND platform = 'naver_blog'${sl.sql}
+      ORDER BY perf_checked_at ASC LIMIT ?`).bind(...sl.binds, Math.min(max, 30)).all<NaverRow>()
     // ⬆️ 2026-07-29: `(perf_checked_at IS NULL) DESC, perf_checked_at ASC` 를 `perf_checked_at ASC` 로 —
     //   SQLite 는 NULL 을 가장 작은 값으로 보므로 ASC 가 이미 **미측정 우선**이다(정렬 결과 동일).
     //   식(expression)이 앞에 있으면 인덱스로 정렬을 만족시키지 못해 매 라운드 계정 전체(38k행)를 스캔·정렬했다.
