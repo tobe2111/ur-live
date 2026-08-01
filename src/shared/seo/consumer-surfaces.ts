@@ -135,7 +135,7 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   //   여기도 바꿔야 한다(형제 `/terms/seller` 등은 문서별로 달라 표에 넣지 않았다).
   '/terms': {
     title: '유어딜 이용약관',
-    description: '유어딜 서비스 이용약관 정본입니다.',
+    description: '유어딜 서비스를 이용하는 모든 회원에게 적용되는 이용약관 정본 — 회원 가입과 탈퇴, 딜 포인트, 결제와 환불, 회사와 회원의 책임.',
   },
   '/privacy': {
     title: '개인정보처리방침',
@@ -166,6 +166,63 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     description: '지금 소개비가 걸린 공구를 찾아 내 링크샵에 담으세요.',
     noindex: true,
   },
+  // 📜 약관 4종 — `/terms` 는 위에 있고 나머지 문서별 약관이 서버 메타 없이 남아 있었다.
+  //   ⚠️ description 에 **시행일·버전을 넣지 않는다.** `TermsDocument` 가 그렇게 만들고 있었는데
+  //   ① 개정할 때마다 메타가 흔들리고 ② 검색결과에 보일 문장으로도 부적합하다(버전 스탬프).
+  //   시행일/버전은 본문 상단에 그대로 보인다 — 메타는 "이 문서가 누구에게 무엇을 정하는가" 만.
+  '/terms/seller': {
+    title: '판매자 이용약관',
+    description: '유어딜에서 상품·이용권을 판매하는 사업자 유저에게 적용되는 약관 — 입점, 정산과 수수료, 금지 행위, 책임 범위.',
+  },
+  '/terms/agency': {
+    title: '에이전시 파트너 약관',
+    description: '유어딜 에이전시 파트너에게 적용되는 약관 — 매장 영입과 관리, 수수료 지급, 계약 해지.',
+  },
+  '/terms/influencer': {
+    title: '인플루언서 약관',
+    description: '유어딜 추천 링크로 활동하는 인플루언서에게 적용되는 약관 — 커미션 정책, 정산과 원천징수, 금지 행위.',
+  },
+  '/terms/group-buy': {
+    title: '공동구매 약관',
+    description: '유어딜 이용권 구매자에게 적용되는 약관 — 결제와 발급, 매장에서의 사용, 유효기간과 환불.',
+  },
+  '/area-report': {
+    title: '우리 동네 상권 리포트',
+    description: '공공 인허가 데이터로 보는 우리 동네 업종별 영업 현황과 개업·폐업 흐름.',
+  },
+}
+
+/**
+ * `/area-report/:region` — 지역명이 **경로에 그대로 들어 있어** 데이터 조회 없이 메타를 만들 수 있다.
+ *
+ * ⚠️ 그런데 그 말은 **누구나 URL 을 지어낼 수 있다**는 뜻이기도 하다. 임의 문자열마다 고유한 제목을
+ * 내주면 같은 화면이 무한한 URL 로 갈리는 도어웨이가 된다(이 PR 이 내내 고친 클래스와 같다).
+ * 그래서 **한국 행정구역처럼 생긴 세그먼트만 색인 대상**으로 두고 나머지는 `noindex` 로 낸다.
+ * 존재하지 않는 동을 완벽히 걸러내지는 못한다 — 그건 조회가 필요하고, 여기서 하려는 건
+ * "크롤러가 지어낼 수 있는 공간"을 없애는 것뿐이다.
+ */
+const AREA_REGION_RE = /^[가-힣][가-힣\s·-]{1,19}$/
+
+export function resolveAreaReportSeo(
+  pathname: string,
+  origin: string,
+  siteName: string = CONSUMER_SITE_NAME
+): ResolvedSurfaceSeo | null {
+  const m = /^\/area-report\/([^/]+)\/?$/.exec(pathname)
+  if (!m) return null
+  let region = ''
+  try { region = decodeURIComponent(m[1]).trim() } catch { region = m[1].trim() }
+  if (!region) return null
+
+  const looksLikeRegion = AREA_REGION_RE.test(region)
+  const pageTitle = withSiteName(`${region} 상권 리포트`, siteName)
+  return {
+    pageTitle,
+    title: pageTitle,
+    description: `${region} 업종별 영업 현황과 최근 90일 개업·폐업 흐름 — 공공 인허가 데이터 기반.`,
+    canonical: `${origin}/area-report/${encodeURIComponent(region)}`,
+    ...(looksLikeRegion ? {} : { noindex: true as const }),
+  }
 }
 
 /**
@@ -248,7 +305,8 @@ export function resolveConsumerSurfaceSeo(
 ): ResolvedSurfaceSeo | null {
   const path = pathname !== '/' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
   const entry = CONSUMER_SURFACE_SEO[path]
-  if (!entry) return null
+  // 표에 없으면 동적 표면 빌더에 넘긴다(경로에서 값을 뽑을 수 있는 것만 — 조회는 하지 않는다).
+  if (!entry) return resolveAreaReportSeo(path, origin, siteName)
 
   let title = entry.title
   let description = entry.description

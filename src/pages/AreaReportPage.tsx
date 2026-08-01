@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
+import { resolveConsumerSurfaceSeo } from '@/shared/seo/consumer-surfaces'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { formatNumber } from '@/utils/format'
 
@@ -40,11 +41,14 @@ export default function AreaReportPage() {
     return () => { alive = false }
   }, [region])
 
-  const title = region ? `${region} 상권 리포트 - 유어딜` : '우리 동네 상권 리포트 - 유어딜'
+  // 메타는 서버(비-JS 크롤러)와 같은 SSOT 에서 뽑는다. 지역 변형은 경로에서 파생되므로
+  // 빌더가 noindex 판정까지 함께 내려준다(지어낸 지역명 = 도어웨이 방지).
+  const path = `/area-report${region ? `/${region}` : ''}`
+  const seo = resolveConsumerSurfaceSeo(path, '', 'https://urdeal.kr')
 
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A]">
-      <SEO title={title} description={region ? `${region} 업종별 영업 현황과 최근 90일 개업·폐업 흐름 — 공공 인허가 데이터 기반.` : '공공 인허가 데이터로 보는 우리 동네 업종별 영업 현황과 개업·폐업 흐름.'} url={`/area-report${region ? `/${region}` : ''}`} />
+      <SEO title={seo?.title ?? '우리 동네 상권 리포트'} description={seo?.description ?? ''} url={path} noindex={seo?.noindex} />
       <div className="ur-content-medium px-4 lg:px-8 py-6">
         <h1 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">📊 {region ? `${region} 상권 리포트` : '우리 동네 상권 리포트'}</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">공공 인허가 데이터 기반 — 업종별 영업 현황과 최근 90일 개업·폐업 흐름을 무료로 확인하세요.</p>

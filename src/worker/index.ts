@@ -982,6 +982,8 @@ app.use('*', async (c, next) => {
     //   ⚠️ 정적 표면은 ssrSlot 이 아니라 **pathname** 으로 판정한다: `/vouchers?category=…` 는 슬롯 조건
     //   (`!url.search`)에 안 걸려 ssrSlot 이 'MAIN' 으로 떨어지지만 메타는 교환권 것이어야 한다(sitemap 이 제출).
     //   문구 SSOT = shared/seo/consumer-surfaces · 배선/빌더 = utils/surface-ssr-meta(god 파일 방지).
+    //   `/area-report/:region` 은 그 표의 **동적 항목** — 지역명이 경로에 있어 조회 없이 메타가 나오고,
+    //   지어낸 세그먼트(도어웨이)는 리졸버가 noindex 로 표시해 준다.
     //   SSR inject·0-RTT·`caches.default`·#root 로더·edgeCache 전부 불변 — head rewrite 만 추가.
     if (!isWholesaleSurface && !needsRootBlank) {
       const sm = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2);
