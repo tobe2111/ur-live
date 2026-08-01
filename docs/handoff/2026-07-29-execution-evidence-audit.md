@@ -417,3 +417,42 @@ Pages 는 정상 배포되고 머지도 초록불이라 **반영된 것처럼 �
 
 **판정 방법(다음에도 동일)**: worker-deploy 의 **최신 run 의 head_sha 가 그 PR 의 머지 커밋인지** 본다.
 없으면 트리거가 안 걸린 것이다. `git log` 나 PR 초록불로는 절대 알 수 없다.
+
+## 🔑 최종 판정 — 빠진 키 3개 확정 (2026-08-01 14:35:59Z)
+
+```
+cron-env-missing  cron=*/5 * * * *   (배포 14:32:52Z 이후 첫 발화 — 대조 완료)
+result: TOSS_SECRET_KEY(scheduled-cleanup)
+        ALIGO_API_KEY(scheduled-cleanup,retry-alimtalk)
+        CACHE_KV(cache-prewarm)
+```
+
+**한 줄이 그동안 따로 열려 있던 세 항목을 동시에 설명한다:**
+
+| 키 | 열려 있던 항목 | 답 |
+|---|---|---|
+| `TOSS_SECRET_KEY` | B8 | cron 캐리어에 없다 → 만료 환불·정합이 조용히 skip |
+| `ALIGO_API_KEY` | **L6 알림톡 0건** | cron 쪽 발송·재시도가 통째로 skip(요청 경로는 별개 — 여기서 판정 안 됨) |
+| `CACHE_KV` | **SSR 전역 워밍 사망**(07-12 기능) | 기능이 죽은 게 아니라 **바인딩이 없었다** |
+
+`0 18`·`0 19` 는 오늘 18:00Z·19:00Z 발화 때 `DISCORD_WEBHOOK_URL` 부재가 같은 방식으로 찍힐 것이다.
+
+### 대표 조치 (확정판)
+
+Workers `ur-live` → Variables and Secrets:
+- `TOSS_SECRET_KEY` — **Pages 값 복사**(이동 아님. Pages 에서 지우면 결제가 죽는다)
+- `ALIGO_API_KEY`(+`ALIGO_USER_ID`·`ALIGO_SENDER_KEY` 3종 세트 — 하나만 빠져도 발송 0)
+- `DISCORD_WEBHOOK_URL`, `DATA_ENCRYPTION_KEY`
+- KV `CACHE_KV` 바인딩
+
+**확인 방법**: 등록 후 5분 안에 `cron-env-missing` 의 `result` 에서 그 키가 빠진다. 전부 채우면 행 자체가 사라진다.
+
+### 이 판정이 가능했던 경로 (다음 세션이 재현할 수 있게)
+
+1. `wrangler.toml` 을 실측 등록분과 맞춰 **스케줄 PUT 을 처음 성공**시킴(#862) → 그 배포 로그가 바인딩 목록을 처음 노출
+2. 레포·로그가 답 못 하는 것을 **런타임에 물음**(#910 `cron-env-missing`)
+3. 그 관측의 **값이 사라지던 구멍**을 막음(#914 `summarizeResult` 원시값)
+4. 그 수리가 **cron 에 배포되지 않던 경로**를 막음(#917 트리거 path)
+
+**네 단계 중 하나라도 빠지면 이 한 줄은 안 나온다.** 특히 4번은 "머지했으니 반영됐다"는 가정이
+거짓인 구간이었다 — worker-deploy 의 head_sha 를 확인하지 않으면 영원히 안 보인다.

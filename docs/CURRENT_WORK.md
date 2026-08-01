@@ -5494,7 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 71건 · 최신순 · 이 목록은 자동 생성된다._
+_총 72건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-07-30**
 - [예산 루프가 자기 기록을 삼키던 자리 — 하루에 세 번 만난 실패 (2026-07-30)](handoff/2026-07-30-budget-bookkeeping-ratchet.md)
@@ -5513,6 +5513,7 @@ _총 71건 · 최신순 · 이 목록은 자동 생성된다._
 - [인허가 500 판정 — **우리 코드 문제가 아니다** (2026-07-29, 대표 지시로 수동 실행)](handoff/2026-07-29-datagokr-service-verdict.md)
 - [🔴 2026-07-29 — **도매 번들 cron no-op 게이트 (머니 경로, staging 검증 대기)**](handoff/2026-07-29-cron-no-op-staging.md)
 - [🛡️ 2026-07-29 — "한 번도 안 뛴 cron" 탐지 가드 (실사고 후 환원)](handoff/2026-07-29-cron-never-fired-guard.md)
+- [🔎 2026-07-29 — 소비자(urdeal.kr) 성능·SEO·UX 실측 점검 + 수리](handoff/2026-07-29-consumer-perf-seo-ux.md)
 - [수집량 계측 정정 + 유어딜 4대 업종 우선 (대표 지시 반영)](handoff/2026-07-29-collect-truth-and-priority.md)
 - [2026-07-29 — 번들 critical path: app-components 를 엔트리 preload 에서 분리](handoff/2026-07-29-bundle-critical-path.md)
 - [부모 cron 의 부기 비용을 절반으로 — 레인 굶주림의 *산수* (2026-07-29)](handoff/2026-07-29-beat-batch-subrequest.md)
