@@ -23,6 +23,7 @@ import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
 import { laneUrl, selfBeatMiddleware } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
 import { healthRoutes } from './health.routes'
+import { batchLaneRoutes } from './batch-lanes.routes'
 // 🥗 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보) — 메인 워커 CF Free 1MB 한도 회복을 위해
 //   여기(ur-ads 3MB)로 이전. 라우트는 자체 requireAdmin(같은 JWT_SECRET). 메인은 프록시 위임.
 import { socialMediaRoutes } from '@/features/social-media/api/social-media.routes'
@@ -150,6 +151,7 @@ app.route('/', publicDataRoutes)
 app.route('/', chainRoutes)           // 🔁 self-chain 진입점(전화 스윕·인허가) — 인보케이션 천장 때문에 이어 돈다
 app.route('/', healthRoutes)        // 🩺 /__ads/health (게이트·튜닝값 — 이 워커 env 가 진실)
 app.route('/', enrichRoutes)          // 📝 인플루언서 보강 레인 + 라운드 드라이버
+app.route('/', batchLaneRoutes)        // 🚦 부모 인라인이던 무거운 레인(daily-batch·social-maintenance)
 
 // 📊 인플루언서 풀 → 구글시트 동기화 — 메인 어드민(수동 버튼)과 아래 cron 이 **같은 라우트**를 쓴다.
 //   ⚠️ 그래서 `?by=cron` 으로 출처를 구분해 스탬프에 남긴다 — 이게 없어서 "마지막 동기화 07-27"이
@@ -277,14 +279,11 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   ctx.waitUntil(adsBeat('scheduled', true, 0, undefined, undefined, buildAgeInfo()))
 
   // ── 매시간(정각) — 소셜 유지보수 + 인플루언서 자동수집 ──────────────────────
-  ctx.waitUntil((async () => {
-    const t0 = Date.now()
-    try {
-      const { handleSocialMaintenance } = await import('@/worker/cron/social-maintenance')
-      await handleSocialMaintenance(env)
-      await adsBeat('social-maintenance', true, Date.now() - t0)
-    } catch (err) { await adsBeat('social-maintenance', false, Date.now() - t0, err) }
-  })())
+  //   🚦 2026-08-02: 생 waitUntil(부모 CPU 직격, 실측 2,390ms/회차) → kick(자식 예산). 예산 분산에도 잡힌다.
+  kick('/__ads/social-maintenance', async () => {
+    const { handleSocialMaintenance } = await import('@/worker/cron/social-maintenance')
+    return handleSocialMaintenance(env)
+  })
   // 🎯 인플루언서 자동 수집 — 대표 "무한하게, 가능할 때까지". 매시간 순환 발굴 → 공용 풀 누적.
   //   YT 쿼터 소진 시 그 틱부터 네이버만(quotaHit 가드) → 다음날 자동 재개. 게이트 ADS_AUTO_COLLECT_ENABLED.
   //   🔁 2026-07-29 시간당 N라운드(`collect-chain`) — 1라운드로는 키워드 3개에서 예산이 끊겨 활성 210개
@@ -503,14 +502,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
 
   // ── 매일 18:00 UTC — 일일 배치(가격→순위→스냅샷→알림→자동입찰 섀도우) ────────
-  if (hourUTC === 18) {
-    ctx.waitUntil((async () => {
-      const t0 = Date.now()
-      const { runAdsDailyBatch } = await import('./daily-batch') // 5단계 순차(순서에 의미) — 그 파일 헤더 참조
-      await runAdsDailyBatch(env)
-      await adsBeat('daily-batch', true, Date.now() - t0, undefined, dailyGapMinutes())
-    })())
-  }
+  //   🚦 2026-08-02: 생 waitUntil(부모 CPU 직격, 실측 4,107ms) → kick. 이 시각은 collect-commerce(짝수시)와
+  //   겹치는 가장 무거운 회차라, 부모에서 4초를 태우면 꼬리 레인이 그대로 잘린다(08-02 01:00·03:00 실측).
+  gates.dailyAt(18, '/__ads/daily-batch', async () => {
+    const { runAdsDailyBatch } = await import('./daily-batch') // 5단계 순차(순서에 의미) — 그 파일 헤더 참조
+    return runAdsDailyBatch(env)
+  })
 
   // ── 🌙 자동 정비 = **매시간 1단계 순환** + 19:00 UTC(=KST 04시) 라이브 재보정 (2026-07-26 대표 "버튼 말고 자동으로") ──
   //   버튼 시퀀스(🧬중복통합→🔗재추출→🏷️재분류→🏅품질)의 자동화 — influencer-maintenance SSOT(버튼과 동일 로직, 멱등).
