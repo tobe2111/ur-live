@@ -219,3 +219,35 @@ export function resolveEnrichDeadlineMs(raw: unknown): number {
   const n = parseInt(String(raw ?? ''), 10)
   return Math.min(120_000, Math.max(5_000, Number.isFinite(n) && n > 0 ? n : ENRICH_DEADLINE_MS_DEFAULT))
 }
+
+/**
+ * ⏱️ 건당 fetch 타임아웃 바닥값 — 남은 창이 이보다 적어도 이만큼은 준다.
+ *
+ *   왜 바닥이 필요한가: 남은 창이 200ms 라고 200ms 타임아웃을 주면 **정상 응답까지 실패로 각인**된다
+ *   (`failed` 가 오르고 다음 순환이 재시도 — 순수 낭비). 호출부의 마감 가드가 이미 "집을지 말지"를
+ *   정하므로, 일단 집은 항목에는 최소한의 기회를 준다.
+ */
+export const FETCH_TIMEOUT_FLOOR_MS = 1_500
+
+/**
+ * ⏱️ 건당 fetch 타임아웃을 **남은 창에서 유도**한다 (2026-08-02).
+ *
+ *   바로 위 `ENRICH_DEADLINE_MS_DEFAULT` 주석이 "이 값만으로는 부족하다 — 건당 타임아웃도 내려야 하는데
+ *   그건 실패 분포를 보고 정할 일" 이라고 남겨둔 자리의 답이다. 그런데 **상수를 내리는 건 틀린 답**이다:
+ *   창이 넉넉할 때도 느린 사이트를 똑같이 버려 수집 품질을 근거 없이 깎는다. 유도값은 그럴 필요가 없다 —
+ *   창이 6s 남았으면 6s 를 주고, 0.5s 남았으면 어차피 못 쓸 시간을 안 준다. 즉 **창이 이미 강제하는 것
+ *   이상으로는 절대 안 깎는다**(그래서 실패 분포라는 근거 없이도 지금 넣을 수 있다).
+ *
+ *   왜 필요한가: 마감 검사는 *항목 사이*에서만 일어난다. 6.9초에 통과한 항목이 상수 8s 를 다 쓰면
+ *   14.9초에 끝나는데 그때 부모(≈10.5s)는 이미 없다 — **그 라운드는 기록조차 안 남는다**
+ *   (관측이 관측 대상을 죽이는 자리, #913 과 같은 형태). 유도값이면 최악 종료가 `마감 + 바닥값` 으로
+ *   묶인다: 7,000 + 1,500 = 8.5s < 10.5s.
+ *
+ * ⚠️ 마감이 없으면(수동 트리거·테스트 — 부모 수명에 안 묶인 경로) 종전 상수를 그대로 쓴다.
+ * ⚠️ 못 막는 것: fetch 가 끝난 뒤의 본문 파싱·D1 쓰기 시간은 여기 안 들어온다. 그래서 바닥값과
+ *   부모 수명 사이에 2s 의 여유를 남겨 뒀다 — 부모 수명이 줄면 이 여유부터 사라진다.
+ */
+export function budgetedTimeoutMs(deadline: number | undefined, maxMs: number, now = Date.now()): number {
+  if (!deadline) return maxMs
+  return Math.max(FETCH_TIMEOUT_FLOOR_MS, Math.min(maxMs, deadline - now))
+}

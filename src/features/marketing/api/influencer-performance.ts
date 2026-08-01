@@ -17,7 +17,7 @@ import { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighbor
 import { isSelfBlogLink } from './influencer-self-link'
 import { runDdlOnce } from './ads-schema-guard'
 import { deriveNaverHandle, naverBlogUrl } from './influencer-handle-heal'
-import { platformSubreqCap } from './collect-budget'
+import { platformSubreqCap, budgetedTimeoutMs } from './collect-budget'
 
 // 📧 이메일 판정 규칙(순수)은 `influencer-email-rules.ts` — 기존 import 경로 호환을 위해 재수출.
 export { reextractEmail, correctedAboutEmail, PERSONAL_EMAIL_DOMAINS, personalEmailSqlClause, isPersonalEmail } from './influencer-email-rules'
@@ -116,7 +116,7 @@ export async function enrichYouTubePerformance(
   budget.left--
   await ensurePerfExtraColumns(DB)
   const chRes = await fetch(`${YT_BASE}/channels?part=contentDetails,snippet,topicDetails&id=${rows.map(r => r.channel_id).join(',')}&maxResults=50&key=${apiKey}`,
-    { signal: AbortSignal.timeout(10000) }).catch(() => null)
+    { signal: AbortSignal.timeout(budgetedTimeoutMs(budget.deadline, 10000)) }).catch(() => null)
   const chJson = chRes?.ok ? await chRes.json().catch(() => null) as { items?: { id?: string; snippet?: { publishedAt?: string; description?: string }; contentDetails?: { relatedPlaylists?: { uploads?: string } }; topicDetails?: { topicCategories?: string[] } }[] } | null : null
   // 🛡️ 2026-07-23 전수조사: channels.list 자체가 실패(네트워크/403/쿼터)하면 uploads 맵이 비어 이 배치 전원이
   //   "영상 0개가 정답" 분기로 avg 0 + 스탬프 → **영구 0 각인**(재선택 제외). 실패 시 아무것도 쓰지 않고 보류(다음 틱 재시도).
@@ -143,7 +143,7 @@ export async function enrichYouTubePerformance(
     if (budget.left <= 2 || outOfTime(budget)) { videoIdsByLead.set(r.id, []); budgetSkipped.add(r.id); continue }
     budget.left--
     const piRes = await fetch(`${YT_BASE}/playlistItems?part=contentDetails&playlistId=${pl}&maxResults=10&key=${apiKey}`,
-      { signal: AbortSignal.timeout(10000) }).catch(() => null)
+      { signal: AbortSignal.timeout(budgetedTimeoutMs(budget.deadline, 10000)) }).catch(() => null)
     const pi = piRes?.ok ? await piRes.json().catch(() => null) as { items?: { contentDetails?: { videoId?: string } }[] } | null : null
     // 🛡️ 호출 실패("측정 실패")는 빈 목록("진짜 영상 0")과 구분 — 실패면 스탬프 없이 보류(0 각인 방지).
     if (!pi) { videoIdsByLead.set(r.id, []); budgetSkipped.add(r.id); continue }
@@ -157,7 +157,7 @@ export async function enrichYouTubePerformance(
   for (let i = 0; i < allIds.length && budget.left > 0 && !outOfTime(budget); i += 50) {
     budget.left--
     const vRes = await fetch(`${YT_BASE}/videos?part=statistics,contentDetails&id=${allIds.slice(i, i + 50).join(',')}&maxResults=50&key=${apiKey}`,
-      { signal: AbortSignal.timeout(10000) }).catch(() => null)
+      { signal: AbortSignal.timeout(budgetedTimeoutMs(budget.deadline, 10000)) }).catch(() => null)
     const vj = vRes?.ok ? await vRes.json().catch(() => null) as { items?: { id?: string; statistics?: { viewCount?: string; commentCount?: string }; contentDetails?: { duration?: string } }[] } | null : null
     for (const it of vj?.items || []) if (it.id) stats.set(it.id, {
       views: parseInt(it.statistics?.viewCount || '0', 10) || 0,
@@ -255,7 +255,10 @@ export function naverHomeUseful(r: {
   return !r.email || !r.instagram || !r.links || !((r.subscriber_count || 0) > 0)
 }
 
-export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, max: number): Promise<NaverEnrichDiag> {
+import { sliceClause, type EnrichSlice } from './enrich-slice'
+export { sliceClause, type EnrichSlice } from './enrich-slice' // 기존 import 경로 유지
+
+export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, max: number, slice?: EnrichSlice | null): Promise<NaverEnrichDiag> {
   const diag: NaverEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0, emails: 0 }
   if (max <= 0 || budget.left <= 1) return diag
   // 🩹 `handle IS NOT NULL` 만으로는 부족하다 — 손상 행은 handle 이 `'blog.naver.com'`(호스트)이라 이 조건을
@@ -264,8 +267,9 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     name: string | null; category: string | null; category_source: string | null; subscriber_count: number | null; is_brand: number | null; consented_at: string | null; source: string | null; recent_avg_views: number | null; median_long_views: number | null }
   let rows: NaverRow[] = []
   try {
-    const res = await DB.prepare(`SELECT id, handle, channel_id, url, name, email, instagram, links, description, category, category_source, subscriber_count, is_brand, consented_at, source, recent_avg_views, median_long_views FROM ad_influencer_leads      WHERE account_id = 0 AND platform = 'naver_blog'
-      ORDER BY perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30)).all<NaverRow>()
+    const sl = sliceClause(slice)
+    const res = await DB.prepare(`SELECT id, handle, channel_id, url, name, email, instagram, links, description, category, category_source, subscriber_count, is_brand, consented_at, source, recent_avg_views, median_long_views FROM ad_influencer_leads      WHERE account_id = 0 AND platform = 'naver_blog'${sl.sql}
+      ORDER BY perf_checked_at ASC LIMIT ?`).bind(...sl.binds, Math.min(max, 30)).all<NaverRow>()
     // ⬆️ 2026-07-29: `(perf_checked_at IS NULL) DESC, perf_checked_at ASC` 를 `perf_checked_at ASC` 로 —
     //   SQLite 는 NULL 을 가장 작은 값으로 보므로 ASC 가 이미 **미측정 우선**이다(정렬 결과 동일).
     //   식(expression)이 앞에 있으면 인덱스로 정렬을 만족시키지 못해 매 라운드 계정 전체(38k행)를 스캔·정렬했다.
@@ -305,7 +309,7 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
   let cursor = 0
   const worker = async (): Promise<void> => {
    for (;;) {
-    // ⏱️ 예산 또는 **벽시계** 소진 — 블로그 fetch 는 건당 최대 16s(RSS 8 + 홈 8)라 예산이 남아도 시간이 먼저 끝난다.
+    // ⏱️ 예산 또는 **벽시계** 소진 — 블로그 fetch 는 건당 최대 8s(RSS·홈 병렬)라 예산이 남아도 시간이 먼저 끝난다.
     //   (2026-07-28 파트너풀 레인의 deadline 가드와 같은 이유 — 죽는 대신 여기까지 쓰고 깨끗이 넘긴다.)
     if (budget.left <= 1 || (budget.deadline && Date.now() >= budget.deadline)) return
     const r = rows[cursor++]
@@ -333,10 +337,13 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     const wantHome = budget.left >= 2 && naverHomeUseful(r)
     if (!wantHome && budget.left >= 2) diag.home_skipped = (diag.home_skipped || 0) + 1
     budget.left -= wantHome ? 2 : 1
+    // ⏱️ 타임아웃은 **남은 창에서 유도**한다(상수 8s 금지 — 6.9초에 집은 항목이 14.9초에 끝나면
+    //   부모(≈10.5s)가 이미 없어 이 라운드가 통째로 기록조차 안 남는다). 근거: collect-budget.ts.
+    const itemTimeout = budgetedTimeoutMs(budget.deadline, 8000)
     const [rssXml, homeText] = await Promise.all([
       (async (): Promise<string | null> => {
         try {
-          const res = await fetch(`https://rss.blog.naver.com/${encodeURIComponent(handle)}.xml`, { signal: AbortSignal.timeout(8000) })
+          const res = await fetch(`https://rss.blog.naver.com/${encodeURIComponent(handle)}.xml`, { signal: AbortSignal.timeout(itemTimeout) })
           if (res.ok) return (await res.text()).slice(0, 120_000)
           if (res.status === 404 || res.status === 410) return '' // 블로그 삭제/비공개 — "측정 성공·글 0"(터미널)
         } catch { /* null = 측정 실패 */ }
@@ -345,7 +352,7 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
       (async (): Promise<string | null> => {
         if (!wantHome) return null
         try {
-          const hr = await fetch(`https://m.blog.naver.com/${handle}`, { signal: AbortSignal.timeout(8000), headers: { 'user-agent': HOME_UA, accept: 'text/html' }, redirect: 'follow' })
+          const hr = await fetch(`https://m.blog.naver.com/${handle}`, { signal: AbortSignal.timeout(itemTimeout), headers: { 'user-agent': HOME_UA, accept: 'text/html' }, redirect: 'follow' })
           if (hr.ok) return (await hr.text()).slice(0, 80_000)
         } catch { /* fail-soft */ }
         return null

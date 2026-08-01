@@ -34,7 +34,7 @@ import type { Env } from '@/worker/types/env'
 import {
   ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, type FetchBudget,
 } from './influencer-discovery'
-import { enrichNaverActivity, enrichYouTubePerformance, ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
+import { enrichNaverActivity, enrichYouTubePerformance, ensurePerfExtraColumns, type NaverEnrichDiag, type EnrichSlice } from './influencer-performance'
 import { POOL_ACCOUNT_ID, readSetting, writeSetting, ytQuotaDayKey } from './influencer-auto-collect'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap, resolveEnrichDeadlineMs } from './collect-budget'
 // 스냅샷 키는 leaf 모듈(enrich-telemetry)에 둔다 — 어드민 통계가 수집 엔진을 import 하지 않고 읽게.
@@ -317,7 +317,12 @@ async function readSnapshot(DB: D1Database): Promise<InfluencerEnrichSnapshot | 
  *   실패해도 throw 하지 않는다(호출부는 fail-soft) — 대신 **crash 원문을 스냅샷에 남긴다**.
  *   증거 없는 종료가 진단을 몇 세션씩 잡아먹은 것이 2026-07-28 파트너풀 레인의 교훈이다.
  */
-export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: number): Promise<InfluencerEnrichSnapshot> {
+/**
+ * @param slice 여러 자식이 **동시에** 돌 때 각자 맡을 조각(`id % k = i`). 없거나 `k<=1` 이면 기존 동작.
+ *   근거는 `sliceClause`(influencer-performance) 주석 — 이 큐는 선점이 아니라 정렬+LIMIT 이라
+ *   조각 없이 병렬로 돌리면 같은 사람을 여러 자식이 중복 측정한다.
+ */
+export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: number, slice?: EnrichSlice | null): Promise<InfluencerEnrichSnapshot> {
   const DB = env.DB
   const started = Date.now()
   await ensureInfluencerSchema(DB)   // bio_checked_at · perf_checked_at · recent_posts_30d
@@ -402,7 +407,7 @@ export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: n
   const naverFirst = depth % 2 === 1 || starvedLastRound(prev)
   const runNaver = async (): Promise<void> => {
     // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 이 시점의 **실제 잔여**로 몫을 다시 계산한다.
-    try { naver = await enrichNaverActivity(DB, budget, naverRoomFromRemaining(budget.left, naverMax)) } catch (err) { note(err) }
+    try { naver = await enrichNaverActivity(DB, budget, naverRoomFromRemaining(budget.left, naverMax), slice) } catch (err) { note(err) }
   }
   const runFront = async (): Promise<void> => {
     // 🔗 링크인바이오(건당 1 fetch) → 📈 유튜브 성과(남은 일일 units 안에서만).

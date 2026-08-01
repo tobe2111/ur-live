@@ -18,6 +18,7 @@
  */
 import type { Env } from '../types/env'
 import { logInfo, logError } from '../utils/logger'
+import { findBalanceMismatches } from '../utils/ledger-integrity-checks'
 
 export async function handleLedgerIntegrityCheck(env: Env): Promise<void> {
   const DB = env.DB
@@ -71,27 +72,12 @@ export async function handleLedgerIntegrityCheck(env: Env): Promise<void> {
     //   ③ **부호 이중적용**: `amount` 는 이미 부호 있는 값(적립 +, 차감 −)인데 donate 에 −를 또 붙임.
     //   → 전 타입을 부호 그대로 합산한다. 레거시 행(amount 비고 points_amount 만 있는 구 코드 산출물)은
     //      구 규약(절대값 + 타입으로 부호 결정)으로 폴백.
-    const SIGNED_SUM = `SUM(CASE
-      WHEN COALESCE(pt.amount, 0) != 0 THEN pt.amount
-      WHEN pt.type IN ('donate','cash_withdraw','use','spend','deduct') THEN -COALESCE(pt.points_amount, 0)
-      ELSE COALESCE(pt.points_amount, 0) END)`
+    // 🔎 2026-08-01: 검사 SQL 을 `utils/ledger-integrity-checks` 로 옮겼다 — 어드민 조회 API 와
+    //   **같은 쿼리**를 써야 한다(두 벌이면 갈라진다). 여기선 호출만.
     try {
-      const mismatchSql = `
-        SELECT up.user_id, up.balance, COALESCE(${SIGNED_SUM}, 0) AS computed,
-               up.balance - COALESCE(${SIGNED_SUM}, 0) AS diff
-          FROM user_points up
-          LEFT JOIN point_transactions pt ON pt.user_id = up.user_id
-         GROUP BY up.user_id, up.balance
-        HAVING balance != computed`
-      // 총 건수(정확) + 샘플(상위 5) 분리 — 기존엔 LIMIT 30 결과 길이를 count 로 써서 30 에서 잘렸다.
-      const [cnt, r] = await Promise.all([
-        DB.prepare(`SELECT COUNT(*) AS n FROM (${mismatchSql})`).first<{ n: number }>().catch(() => null),
-        DB.prepare(`${mismatchSql} ORDER BY ABS(up.balance - COALESCE(${SIGNED_SUM}, 0)) DESC LIMIT 5`)
-          .all<{ user_id: string; balance: number; computed: number; diff: number }>().catch(() => ({ results: [] })),
-      ])
-      const total = Number(cnt?.n ?? (r.results?.length ?? 0))
+      const { total, rows } = await findBalanceMismatches(DB, 5)
       if (total > 0) {
-        voucherFlowMismatches.push({ check: 'user_points_balance_mismatch', count: total, sample: r.results ?? [] })
+        voucherFlowMismatches.push({ check: 'user_points_balance_mismatch', count: total, sample: rows })
       }
     } catch { /* skip */ }
 
@@ -154,11 +140,15 @@ export async function handleLedgerIntegrityCheck(env: Env): Promise<void> {
         `).bind(summary).run()
       } catch { /* dashboard_notifications 테이블 없으면 skip */ }
 
+      // 🔎 2026-08-01: **상세를 `stack` 에 함께 저장.** 지금까지 요약만 남아 `/admin/errors` 에서
+      //   "4건"만 보이고 **어떤 유저인지 알 수 없어 몇 주째 조사가 시작조차 못 됐다**.
+      //   `/api/_errors/recent` 가 이제 stack 을 돌려주므로(같은 날 수리) 화면에서 바로 보인다.
       try {
+        const detail = JSON.stringify({ orphans: (orphans.results ?? []).slice(0, 5), voucher_flow: voucherFlowMismatches }, null, 1).slice(0, 1900)
         await DB.prepare(`
-          INSERT INTO frontend_errors (message, type, url, created_at)
-          VALUES (?, 'ledger_mismatch', '/cron/ledger-integrity', datetime('now'))
-        `).bind(`Ledger mismatch (${totalMismatch}): ${summary}`).run()
+          INSERT INTO frontend_errors (message, stack, type, url, created_at)
+          VALUES (?, ?, 'ledger_mismatch', '/cron/ledger-integrity', datetime('now'))
+        `).bind(`Ledger mismatch (${totalMismatch}): ${summary}`, detail).run()
       } catch { /* frontend_errors 테이블 없으면 skip */ }
 
       // Discord webhook (기존)

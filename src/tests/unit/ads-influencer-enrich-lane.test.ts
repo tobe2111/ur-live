@@ -3,6 +3,8 @@ import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { planInfluencerEnrich, naverRoomFromRemaining, frontStageDeadline, starvedLastRound, NAVER_FLOOR_PCT_DEFAULT } from '@/features/marketing/api/influencer-enrich-lane'
 import { subreqCapKey } from '@/features/marketing/api/collect-budget'
+import { sliceClause } from '@/features/marketing/api/influencer-performance'
+import { resolveEnrichFanout } from '../../worker-ads/enrich.routes'
 import { ddlChecksum } from '@/features/marketing/api/ads-schema-guard'
 import { AD_PERF_DDL } from '@/features/marketing/api/influencer-performance'
 
@@ -200,5 +202,116 @@ describe('블로거 시간 바닥 기본값', () => {
     const src = readFileSync('src/features/marketing/api/influencer-enrich-lane.ts', 'utf8')
     expect(src).toMatch(/ADS_ENRICH_NAVER_FLOOR_PCT[\s\S]{0,120}?NAVER_FLOOR_PCT_DEFAULT/)
     expect(src).not.toMatch(/ADS_ENRICH_NAVER_FLOOR_PCT[^\n]*\|\|\s*40\b/)
+  })
+})
+
+/**
+ * 🍰 **슬라이스 팬아웃** (2026-08-01 대표 "무료 선에서 가장 이상적으로, 유료 전환도 자연스럽게").
+ *
+ *   ## 왜 바꿨나 (실측)
+ *   릴레이는 라운드 N+1이 N을 기다린다 → 12라운드를 계획하고도 **도달 depth 2(3라운드)** 에서 끝났다.
+ *   그런데 같은 날 하트비트로 확인한 사실: `kick` 의 레인 디스패치는 **이미 병렬**이었다
+ *   (정각 3틱 모두 [소요합계 > 벽시계 스팬] — 24.4s/6.0s · 27.5s/8.3s · 9.4s/5.8s).
+ *   즉 무료 플랜에서도 자식은 겹쳐 돈다 ⇒ 라운드도 팬아웃할 수 있다.
+ *
+ *   ## 겹치면 안 되는 것
+ *   이 큐의 SELECT 는 선점이 아니라 정렬+LIMIT 이라, 조각 없이 병렬로 돌리면 자식들이 **같은 사람을
+ *   중복 측정**하고 예산만 태운다. `id % k = i` 가 그걸 막는 유일한 장치다.
+ */
+describe('sliceClause — 자식들이 서로 다른 행을 집는다', () => {
+  it('🔒 k<=1 이면 조건이 없다 — 오늘과 완전히 같은 동작(롤백 = 값 하나)', () => {
+    for (const s of [null, undefined, { i: 0, k: 1 }, { i: 3, k: 0 }]) {
+      expect(sliceClause(s as never)).toEqual({ sql: '', binds: [] })
+    }
+  })
+
+  it('🔒 k>1 이면 id % k = i — 바인딩 순서가 SQL 과 일치한다', () => {
+    expect(sliceClause({ i: 2, k: 4 })).toEqual({ sql: ' AND id % ? = ?', binds: [4, 2] })
+  })
+
+  it('🔒 조각들이 전체를 빠짐없이·겹침없이 덮는다 — 이게 깨지면 누락이거나 중복이다', () => {
+    const K = 4
+    const owners = Array.from({ length: 100 }, (_, id) => {
+      const hit = Array.from({ length: K }, (_, i) => sliceClause({ i, k: K }))
+        .map((c, i) => (id % (c.binds[0] as number) === c.binds[1] ? i : -1)).filter(i => i >= 0)
+      return hit
+    })
+    expect(owners.every(h => h.length === 1), '각 id 는 정확히 한 자식의 몫이어야 한다').toBe(true)
+  })
+
+  it('🐛 음수·초과 인덱스도 유효 범위로 접힌다(설정 오타가 조각을 통째로 비우지 않게)', () => {
+    expect(sliceClause({ i: -1, k: 4 }).binds).toEqual([4, 3])
+    expect(sliceClause({ i: 9, k: 4 }).binds).toEqual([4, 1])
+  })
+})
+
+describe('resolveEnrichFanout — 무료에서 돌리는 노브', () => {
+  it('🔒 기본 4 — 네이버 동시 연결 3K=12. 차단이 상한이지 처리량이 아니다', () => {
+    expect(resolveEnrichFanout(undefined)).toBe(4)
+    expect(resolveEnrichFanout('')).toBe(4)
+  })
+
+  it('🔒 상한 12 — 부모가 자식 수만큼 fetch 를 쓰므로, 여기서 다 쓰면 뒤에 선 레인이 굶는다', () => {
+    expect(resolveEnrichFanout('99')).toBe(12)
+    expect(resolveEnrichFanout('0')).toBe(4)   // 0/비숫자 → 기본값
+    expect(resolveEnrichFanout('1')).toBe(1)   // 1 = 릴레이(롤백 경로)
+  })
+})
+
+/**
+ * 🔌 배선 잠금 — 순수함수만 테스트하면 "함수는 있는데 부르는 곳이 없는" 사고를 못 잡는다
+ *   (같은 세션에 `isUnjudgedRound` 가 정확히 그랬다).
+ */
+describe('배선 — 드라이버가 조각을 실제로 넘긴다', () => {
+  const routes = readFileSync(join(process.cwd(), 'src/worker-ads/enrich.routes.ts'), 'utf8')
+  const lane = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-enrich-lane.ts'), 'utf8')
+
+  it('🔒 최초 호출이면 자식 K개를 띄운다', () => {
+    expect(routes).toMatch(/slice=\$\{i\}&k=\$\{K\}/)
+    expect(routes).toMatch(/const K = resolveEnrichFanout\(/)
+  })
+
+  it('🔒 조각이 레인까지 전달된다 — 여기가 끊기면 자식들이 같은 사람을 중복 측정한다', () => {
+    // ⚠️ 인자 안에 괄호가 있어(`Number.isFinite(d)`) `[^)]*` 로는 못 넘는다 — 실제로 여기서 한 번 틀렸다.
+    expect(routes).toMatch(/runInfluencerEnrich\(c\.env,[\s\S]*?rounds, slice\)/)
+    expect(lane).toMatch(/enrichNaverActivity\(DB, budget, naverRoomFromRemaining\([^)]*\), slice\)/)
+  })
+
+  /**
+   * 🐛 실제로 밟을 뻔한 자리: 릴레이 URL 을 `?depth=` 로 무조건 이으면, 조각 파라미터가 이미 있는
+   *   path 에서 물음표가 두 개가 된다 → 그 자식은 조각 없이 돌아 **중복 측정**한다(조용히).
+   */
+  it('🔒 릴레이 URL 이 기존 쿼리스트링을 깨지 않는다', () => {
+    expect(routes).toMatch(/path\.includes\('\?'\) \? '&' : '\?'/)
+  })
+})
+
+/**
+ * 🔘 **수동 버튼도 팬아웃을 탄다** (2026-08-02).
+ *
+ *   그전엔 버튼이 단발 라운드(`/__ads/enrich-influencer`)를 불러서, 사람이 눌러도 **cron 이 하는 일의
+ *   일부**만 돌았다. 실측(08-02 01:06 수동 실행)이 그 자리를 정확히 보여줬다:
+ *     `naver measured 18 · spent 44/45 · elapsed 6.9s · deadline_hit false`
+ *   한 라운드는 **7초에 예산으로 끝난다** — 시간이 아니라 예산이 상한이다. 남는 건 시간뿐이고
+ *   그걸 쓰는 방법이 팬아웃이다(자식마다 자기 45 예산을 새로 받는다).
+ *
+ *   ⚠️ 이 측정이 앞선 판단 하나를 갱신한다: 같은 레인이 07-29 엔 `deadline_hit true · 20.3s` 였다.
+ *   그때의 처방(시간 바닥·선두 교대)은 그 조건에서 옳았지만, **지금 묶는 것은 예산**이다.
+ *   ⇒ 다음에 이 레인을 손볼 땐 `deadline_hit` 을 먼저 보고 어느 쪽이 상한인지 확정할 것.
+ */
+describe('수동 보강 버튼 — 드라이버(팬아웃) 경로', () => {
+  const ops = readFileSync(join(process.cwd(), 'src/features/marketing/api/admin-ads-pool-ops.routes.ts'), 'utf8')
+
+  it('🔒 기본 경로가 드라이버다 — 단발을 부르면 버튼이 1/K 만 돈다', () => {
+    expect(ops).toMatch(/'\/__ads\/enrich-influencer-driver'/)
+  })
+
+  it('🔒 단발 경로는 ?single=1 로만 — 디버깅용으로 남기되 기본이 되면 안 된다', () => {
+    expect(ops).toMatch(/const single = c\.req\.query\('single'\) === '1'/)
+    expect(ops).toMatch(/single \? `\/__ads\/enrich-influencer\?depth=\$\{depth\}` : '\/__ads\/enrich-influencer-driver'/)
+  })
+
+  it('🔒 팬아웃 개수를 응답에 실어 준다 — 그때는 stats 가 없어서 화면이 할 말이 없어진다', () => {
+    expect(ops).toMatch(/fanout: j\.fanout/)
   })
 })
