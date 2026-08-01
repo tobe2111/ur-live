@@ -156,6 +156,13 @@ jobs:
         run: node scripts/check-conflict-markers.mjs -s
         continue-on-error: false
 
+      # 🚦 2026-08-02: 레인이 예산을 우회하는 것을 막는다(인플루언서·B2B 공통).
+      #   생 `ctx.waitUntil(await import(…))` 은 **부모 CPU 를 직접 태우면서 예산 분산엔 안 잡힌다**.
+      #   `kick` 은 SELF.fetch = 자식 인보케이션 = 자기 예산이라 성격이 정반대다.
+      - name: 유어애즈 예산 우회 래칫 (strict)
+        run: node scripts/check-ads-dispatch-bypass.mjs -s
+        continue-on-error: false
+
       # 🧬 2026-08-02: **가드가 실제로 실패할 수 있는지** 기계가 확인한다(되돌려-검증 자동화).
       #   이 레포의 반복 사고는 "검사가 실패한다"가 아니라 **"검사가 실패할 수 없다"** 이고,
       #   하루에 세 번 났다(reverse 픽스처 · phase 이름 가설 · 일1회 레인 누락 픽스처).

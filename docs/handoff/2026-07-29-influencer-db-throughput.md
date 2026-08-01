@@ -1984,3 +1984,50 @@ exit code 를 확인하지 않았으면 "검증했다"고 보고할 뻔했다.
 ### 등록 (등록 안 된 가드는 없는 것과 같다)
 `audit-gate`(충돌마커) · `verify.yml`(둘 다 strict) · `pre-commit`(충돌마커) · `AUDIT_INVARIANTS.md` 77→**78**.
 게이트 전체 **ALL GREEN 78**.
+
+---
+
+## 🚦 08-02 02:3x KST — **B2B 도 같은 예산을 쓴다 + 우회 구멍 7개 발견**(대표 지시 "인플루언서, B2B 모두")
+
+### 사실 확인부터 — **B2B 가 더 큰 피해자였다**
+레인 34개를 세어 보니 **29개가 B2B**(업체/파트너풀/공공데이터)다. 그리고 01:00 KST 에 CPU 한도로
+죽은 3개 — `collect-commerce`·`collect-neis`·`collect-nps` — 는 **전부 B2B**.
+디스패처는 워커 단위라 두 도메인을 같이 덮지만, **그게 "지금 그렇다"일 뿐 강제되진 않았다.**
+
+### 🔴 구멍: 예산을 우회하는 레인이 7개 있다
+
+레인을 띄우는 길이 둘인데 **성격이 정반대**다:
+
+| 방식 | CPU 를 누가 내나 | 예산 분산 |
+|---|---|---|
+| `kick()` → `SELF.fetch` | **자식 인보케이션**(자기 예산) | ✅ 센다·미룬다 |
+| 생 `ctx.waitUntil(await import(…); await run(env))` | **부모가 직접 태움** | ❌ 안 세고 못 미룬다 |
+
+```
+./daily-batch                             ← 18:00 UTC(=03:00 KST). collect-commerce(짝수시)와 겹치는 무거운 회차
+./sheets-mirror-lane                      ← 라이브에서 CPU 한도 원문을 처음 보여준 그 레인
+@/features/marketing/api/autobid
+@/features/marketing/api/outreach-webhook
+@/features/marketing/api/weekly-report
+@/worker/cron/social-draft
+@/worker/cron/social-maintenance
+```
+
+⇒ **예산을 아무리 정교하게 나눠도 이 7개 몫이 조용히 새어 나간다.** 게다가 `kick` 은 자식 CPU 를
+쓰는데 이들은 부모 CPU 를 직접 태우므로, **부모 예산의 실제 주 소비자가 이쪽일 가능성이 크다.**
+
+### 이번엔 **막는 것만** 했다 (전환은 측정 후)
+`check-ads-dispatch-bypass.mjs` 래칫 — 7건 동결, **새 우회가 생기면 차단**.
+7개를 `kick` 으로 전환하면 그 CPU 가 부모에서 빠지므로 효과가 클 것으로 보이지만,
+**측정 없이 새벽에 7개 레인의 실행 방식을 바꾸지 않는다** — 오늘 두 번, 안 재고 움직여서 틀렸다.
+(`sheets-sync` 는 이미 `/__ads/sheets-sync` 라우트가 있어 전환 비용이 가장 낮다 — 여기부터 시작할 것.)
+
+### 🔑 다음 세션 첫 액션 — **03:00 KST(18:00 UTC) 가 결정적이다**
+그 회차는 ① `collect-commerce`(짝수시, 미룰 수 없음) ② `daily-batch`(예산 **밖**) 가 겹친다.
+- `dispatch.{ran,deferred,cap,always,over_budget}` 확인(#929 머지·배포 후여야 유효)
+- **실행 수가 8 이하인가** → 커서 라운드로빈 판정
+- 그런데도 꼬리가 잘리면 → 범인은 레인 개수가 아니라 **예산 밖 `daily-batch`** 다 ⇒ 전환 착수 근거
+
+### 교훈은 CLAUDE.md 로 옮겼다 (handoff 는 세션마다 넘어간다)
+방어선 표에 3줄 추가 — **가드가 실패할 수 없음** · **충돌 마커** · **예산 우회**.
+`CLAUDE.md` 는 매 세션 읽히므로, 잊히면 안 되는 것은 여기 있어야 한다.

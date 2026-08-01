@@ -104,6 +104,14 @@ const MUTATIONS = [
     why: '대표 지시 "유료 전환 시 자연히 늘어나게" 의 실체 — 이게 죽으면 유료로 올려도 그대로다.',
   },
   {
+    name: '예산 우회 래칫 무력화',
+    file: 'scripts/check-ads-dispatch-bypass.mjs',
+    find: "const added = found.filter(k => !baseline.includes(k))",
+    replace: 'const added = []',
+    test: 'src/tests/unit/ads-dispatch-bypass.test.ts',
+    why: '래칫이 신규 우회를 안 잡으면 예산 밖 레인이 조용히 늘어난다(부모 CPU 직격).',
+  },
+  {
     name: '풀 스캔 작업 상한 제거',
     file: 'src/features/marketing/api/pool-scan-budget.ts',
     find: 'if (n >= POOL_SCAN_MAX_ROWS) return true',
