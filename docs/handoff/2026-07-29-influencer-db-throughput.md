@@ -1225,3 +1225,15 @@ CPU 는 **공유 자원이 아니다.** 시트 미러를 덜 돌려도 **다른 
 
 ⚠️ **측정 없이 손대지 말 것.** 레인별 CPU 는 대시보드에 안 나온다 — #908 배포 후
 `Exceeded CPU Time Limits` 가 줄면 범인이 맞았던 것이고, 안 줄면 위 표의 아래쪽이다.
+
+### ⚠️ 로컬 file-size 검사가 "skip" 을 내고 CI 는 차단했다 (2026-08-01)
+
+`node scripts/check-file-size.mjs --changed-only -s` 가 로컬에서 **`대상 없음 (skip)`** 을 냈는데
+CI 는 같은 검사로 **`STRICT_FILE_SIZE — 차단`** 을 냈다(`influencer-performance.ts` 611줄).
+
+⇒ **로컬의 "skip" 은 통과가 아니다.** 판정 대상이 0건이면 그냥 아무것도 안 본 것이고,
+`--changed-only` 는 `origin/main` 과의 diff 에 의존하므로 **fetch 상태에 따라 조용히 0건이 된다.**
+`git add -A` 후 `origin/main` 을 최신으로 fetch 한 상태에서 돌려야 CI 와 같은 결과가 나온다
+(정상 동작 시 출력에 `— N개 판정` 이 붙는다 — **그 숫자가 없으면 믿지 말 것**).
+
+이건 이 레포가 반복해 만난 **"측정 대상 0건 = 통과"** 클래스와 같다(가드 레지스트리 항목의 ⓐ 참조).
