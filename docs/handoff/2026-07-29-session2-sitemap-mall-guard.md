@@ -117,3 +117,39 @@ CI 가 `라우트 ⊆ 예약어` 를 강제하므로, **DB 를 보는 건 어차
    *"새 페이지 / 새 SSR slot 추가(기존 4페이지 inject 패턴 따라)"* 에 해당한다.
    ⚠️ **단 SPA 라우트(`/:mallSlug`)가 먼저다** — 지금 OG 메타만 붙이면 **존재하지 않는 페이지의
    미리보기**를 만들게 된다. 순서: SPA 몰 화면 → 워커 메타.
+
+### 2026-08-01 후속 — **몰이 실제로 열린다** (③-a O2 본체)
+
+앞선 항목은 "판정 계층"까지였다. 여기서 **화면·API·어드민 스위치**를 붙여 O2 를 닫는다.
+
+| | 무엇 |
+|---|---|
+| 소비자 화면 | `src/pages/MallHomePage.tsx` — `/:mallSlug`. 브랜딩 헤더 + 진행 중 공구 그리드 |
+| 공개 API | `GET /api/mall/:slug` · `/:slug/products` (`features/mall/api/mall-public.routes.ts`) |
+| 어드민 스위치 | `AdminWholesaleMallsPage` 체크박스 *"소비자 도메인에서 열기"* + 목록 배지 |
+
+**대표 UX 기준 반영**: ① 비로그인·카톡 인앱 전제(왕복 2회를 **병렬**로) ③ 마감 잔여시간·잔여수량을
+**이미지 위 배지**로 — 카드에서 제일 먼저 읽히는 자리 ⑤ 본진 링크 0(`powered by 유어딜` 은 **문자열**, 링크 아님)
+⑥ 기존 토큰만 사용.
+
+**수수료 비노출**(대표 확정): 소비자 API 는 `promo_pct`·`per_unit_commission` 을 **의도적으로 안 싣는다.**
+`gb-marketplace`(인플루언서 뷰)를 재사용하지 않고 따로 쓴 이유가 이것이다.
+
+#### 🔴 라우트 자리가 곧 안전성이다
+`/:mallSlug` 는 **1-세그먼트 URL 을 전부 매치**한다. catch-all 바로 앞이 아니면 **뒤 라우트가 조용히 죽는다**
+(`/influencer` 두 달 미렌더 사고와 같은 클래스 — 에러도 경고도 안 난다).
+⇒ `mall-no-mainland-entry.test.ts` 에 자리 불변식 2건 추가(뒤에 `*` 하나뿐 · 1-세그먼트 param 라우트 유일).
+
+#### 🔴 sitemap 가드가 무력화될 뻔했다 (배포 전 발견)
+`/:mallSlug` 가 라우트 목록에 들어가면서 **죽은 1-세그먼트 URL 이 "라우트 있음"으로 통과**하게 됐다.
+`check-sitemap-routes.mjs` 의 catch-all 제외에 `/:mallSlug` 를 추가해 막았다.
+**실측**: 제외 없이 `/totally-dead-route` 를 사이트맵에 넣으면 **초록불**, 제외를 넣으면 **빨강**.
+그 가드의 주석이 경고하던 *"포함하면 검사가 통째로 무의미해진다"* 가 그대로 재현됐다.
+
+#### 자잘한 정정
+`products.stock_quantity` 로 썼다가 `schema-refs` 테스트에 걸렸다 — **SSOT 는 `products.stock`**
+(CLAUDE.md 가 기록한 이중화 컬럼 부채). 가드가 잡아줬다.
+
+#### 다음
+**워커 OG 메타 배선**이 이제 의미가 있다(페이지가 생겼으므로). `buildMallMeta` 는 준비돼 있고,
+`worker/index.ts` 의 DETAIL/PRODUCT 슬롯 패턴을 그대로 따르면 된다.

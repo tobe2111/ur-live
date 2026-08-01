@@ -65,3 +65,32 @@ describe('⑤ 본진에 운영자 몰 입구 금지', () => {
     ).toEqual([])
   })
 })
+
+/**
+ * 🔴 **`/:mallSlug` 라우트의 자리** 〔세션 ③-a, 2026-08-01〕
+ *
+ * 이 라우트는 **1-세그먼트 URL 을 전부 매치**한다. 그래서 자리가 곧 안전성이다:
+ * catch-all(`*`) 바로 앞이 아니면, **뒤에 오는 라우트가 조용히 죽는다** —
+ * 이 레포가 실제로 겪은 중복 라우트 사고(`/influencer` 두 달간 미렌더)와 같은 클래스이고,
+ * 그때처럼 **에러도 경고도 빌드 실패도 안 난다.**
+ *
+ * ⚠️ 이 테스트가 **못** 막는 것: 다른 파일(`src/routes/*.tsx`)에 1-세그먼트 라우트가 추가되는 경우.
+ *   그건 `check-duplicate-routes` 도 못 본다(경로가 다르니 중복이 아니다). 자리 규칙은 App.tsx 안에서만 성립한다.
+ */
+describe('🔴 `/:mallSlug` 는 catch-all 바로 앞에 있어야 한다', () => {
+  const app = readFileSync(resolve(process.cwd(), 'src/App.tsx'), 'utf8')
+  const routePaths = [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1])
+
+  it('App.tsx 라우트 목록에서 `/:mallSlug` 다음은 `*` 뿐이다', () => {
+    const i = routePaths.indexOf('/:mallSlug')
+    expect(i, '`/:mallSlug` 라우트가 App.tsx 에 없다').toBeGreaterThan(-1)
+    // 뒤에 남은 것이 catch-all 하나뿐이어야 한다. 하나라도 더 있으면 그 라우트는 도달 불가다.
+    expect(routePaths.slice(i + 1)).toEqual(['*'])
+  })
+
+  it('1-세그먼트 파라미터 라우트는 `/:mallSlug` 하나뿐이다', () => {
+    // 둘이면 먼저 선언된 쪽이 항상 이겨 나머지는 죽는다(중복 아님 → 중복 가드가 못 잡는다).
+    const oneSegParam = routePaths.filter((p) => /^\/:[^/]+$/.test(p))
+    expect(oneSegParam).toEqual(['/:mallSlug'])
+  })
+})

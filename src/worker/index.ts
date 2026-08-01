@@ -253,6 +253,7 @@ import { gbCockpitRoutes } from '../features/group-buy/api/gb-cockpit.routes';
 import { fcfsRoutes, fcfsAdminRoutes } from '../features/group-buy/api/fcfs.routes';
 import { experienceCampaignPublicRoutes, experienceCampaignAdminRoutes, experienceCampaignSellerRoutes } from '../features/group-buy/api/experience-campaign.routes';
 import { gbMarketplaceRoutes } from '../features/group-buy/api/gb-marketplace.routes';
+import { mallPublicRoutes } from '../features/mall/api/mall-public.routes';
 import { gbProposalsRoutes } from '../features/group-buy/api/gb-proposals.routes';
 import { voucherDisputeRoutes, voucherDisputeAdminRoutes } from '../features/group-buy/api/voucher-dispute.routes';
 // 🛡️ 2026-05-20: requireAdmin 은 위 (line 127) 에서 이미 import — 중복 제거.
@@ -1917,6 +1918,8 @@ app.route('/api/admin/experience-campaigns', experienceCampaignAdminRoutes);
 app.route('/api/seller-experience-campaigns', experienceCampaignSellerRoutes);
 // 🎟️ 2026-07-06 공구 엔진 §4 — 인플루언서 공구 탐색(promo 순). platform_settings.gb_engine_enabled 게이트.
 app.route('/api/gb-marketplace', gbMarketplaceRoutes);
+// 🏬 2026-08-01 세션 ③-a — 운영자 몰 소비자 공개 API(비로그인). consumer_path=1 인 몰만 200.
+app.route('/api/mall', mallPublicRoutes);
 // 🎟️ 2026-07-06 공구 엔진 §2-B — 양방향 공구 제안(인플↔매장). 상대방 승인 시 gb open.
 app.route('/api/gb-proposals', gbProposalsRoutes);
 // 🎟️ 2026-06-22 사용처리 분쟁(매장 "안 왔어요" 신고 → 정산 보류 + 어드민 중재)
