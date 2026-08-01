@@ -331,3 +331,22 @@ Deployed ur-live triggers (0.36 sec)
 `cron-trigger-remediation.md`(다른 세션)와 `cron-staged-ignition-plan-2026-07.md`(이 세션)가
 같은 주제로 각각 자랐고 **1단계 긴급도에서 갈렸다**(백업 축이 CI 로 이미 살아 있음 — #903).
 양쪽에 역할 분담과 교차 링크를 박았다: **순서·폭발반경 = 점화계획 / 등록 실측·바인딩 = 수습플랜.**
+
+### B8 판정 절차 (기준선 확보 완료 — 2026-08-01 12:45Z)
+
+**배포 전 기준선**(`/api/admin/cron-heartbeats`, 60행):
+- `cron-env-missing` **없음** · `cron-unmatched` **없음** (당연 — 코드 미배포)
+- 문제의 세 작업 전부 `ok=true`: `scheduled-cleanup` 08-01 12:41Z · `auto-settlement` 07-31 18:00Z · `reconciliation` 07-31 19:00Z
+
+**판정**: #910 머지·배포 후 **다음 `*/5` 발화(≤5분)** 에 다시 조회.
+
+| 결과 | 의미 | 다음 행동 |
+|---|---|---|
+| `cron-env-missing` **뜸** | B8 확정. `result` 에 없는 키가 그대로 적혀 있다 | 대표에게 Workers 쪽 `TOSS_SECRET_KEY` 등록 요청(Pages 값 **복사**) |
+| **안 뜸** | **내 B8 판정이 틀렸다** — wrangler 가 대시보드 시크릿을 원래 안 찍었을 뿐 | 차단표에서 B8 삭제 · `token-encryption-migration.md` §4-b 삭제 · **"배포 로그의 침묵은 증거가 아니다"를 오판 기록에 추가** |
+
+⚠️ **이 확인 전에 B8 을 기정사실로 다루지 말 것.** 문서 여러 곳에 이미 적혀 있지만 전부 "확정 아님" 단서를 달아 뒀다.
+
+### 07-31 추가 확인
+
+`0 18` 이 07-31 18:00 에도 정상 발화(`auto-settlement` ok) — **3일 연속**. 결측 우려는 완전히 가라앉았다.
