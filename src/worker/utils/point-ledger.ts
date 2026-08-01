@@ -111,8 +111,35 @@ export async function recordPointTransaction(
     ).run()
     return true
   } catch {
-    // 레거시 CHECK 제약 / 테이블 부재 — 잔액 변경은 이미 보존됨. audit 만 누락.
-    return false
+    // 🔴 2026-08-01: 여기서 그냥 포기하면 **잔액만 움직이고 원장 행이 없는 유저**가 남는다.
+    //   라이브 실측으로 정확히 그 모양인 유저 3명을 확인했다(원장 정합 검사가 몇 주째 잡아냈지만
+    //   원인이 로그조차 안 남아 조사가 시작되지 못했다). 최소 컬럼으로 반드시 한 번 더 남긴다.
+    return recordPointTxMinimal(DB, n.uid, String(input.type), n.delta, input.description)
+  }
+}
+
+/**
+ * 원장 행 최소 기록 — base CREATE 가 보장하는 컬럼만 쓴다(user_id·type·amount·description).
+ *
+ * 전체 INSERT 는 확장 컬럼(points_amount·balance_after·order_id·free_delta)을 쓰는데, 그 컬럼이
+ * 아직 없는 배포 창에서는 통째로 실패한다. 그때 **행이 아예 없는 것보다 열이 덜 채워진 행이 낫다** —
+ * 정합 검사는 `amount`·`type` 만으로 계산하기 때문이다.
+ */
+export async function recordPointTxMinimal(
+  DB: D1Database,
+  userId: string | number,
+  type: string,
+  amount: number,
+  description?: string | null,
+): Promise<boolean> {
+  try {
+    await DB.prepare(
+      `INSERT INTO point_transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)`,
+    ).bind(String(userId), String(type).slice(0, 50), Math.round(Number(amount)),
+      description ? String(description).slice(0, 300) : null).run()
+    return true
+  } catch {
+    return false // 테이블 자체가 없다 — repair-schema 소관
   }
 }
 
