@@ -7,7 +7,7 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
 import { ensureInfluencerSchema, extractContacts, stripVideoTitles } from './influencer-discovery'
-import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch, enrichNaverActivity } from './influencer-performance'
+import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch, enrichNaverActivity, poolScanShouldStop } from './influencer-performance'
 import { cleanSelfLinks, SELF_BLOG_LIKE } from './influencer-self-link'
 import { runQualityPass } from './influencer-quality'
 import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS } from './collect-lease'
@@ -138,6 +138,7 @@ export async function reextractPoolContacts(DB: D1Database, opts?: { budget?: Op
     .first<{ value: string }>().catch(() => null)
   if (cRaw?.value) cursor = Math.max(0, parseInt(cRaw.value, 10) || 0)
   let scanned = 0, filled = 0, done = false
+  const startedMs = Date.now()   // ⏱️ 인보케이션당 작업 상한(poolScanShouldStop) — 재분류와 같은 CPU 사고를 공유한다
   for (;;) {
     const rows = (await DB.prepare(`SELECT id, description, email, instagram, tiktok, links FROM ad_influencer_leads
         WHERE account_id = ? AND id > ? AND description IS NOT NULL AND description != '' ORDER BY id ASC LIMIT ?`).bind(POOL, cursor, PAGE)
@@ -164,6 +165,8 @@ export async function reextractPoolContacts(DB: D1Database, opts?: { budget?: Op
     filled += ups.length
     if (opts?.budget?.exhausted) { cursor = pageStart; scanned -= rows.length; break } // 쓰기가 잘림 → 이 페이지 재시도
     if (rows.length < PAGE) { done = true; break }
+    // ⏱️ 여기까지가 이 인보케이션의 몫 — `done` 을 false 로 남겨 커서가 다음 회차로 이어진다(커버리지 손실 0).
+    if (poolScanShouldStop(scanned, startedMs, Date.now())) break
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(CURSOR_KEY, String(done ? 0 : cursor)).run().catch(() => null)
