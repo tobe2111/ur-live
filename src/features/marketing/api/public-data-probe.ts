@@ -145,8 +145,13 @@ export const PROBE_TARGETS: Record<string, TargetDef> = {
     url: (k, _e, o) => `${COMMERCE_SERVICES[1].base}/${COMMERCE_SERVICES[1].op}?serviceKey=${serviceKeyParam(k)}&pageNo=${o.page}&numOfRows=${o.rows}&type=json&_type=json&resultType=json`,
   },
   franchise: {
+    // ⚠️ 2026-08-02 실측 수리: 오퍼레이션이 `getBrandReleaseInfo` 로 적혀 있었는데 **레인은 `getBrandList`** 다.
+    //   그래서 레인은 `HTTP 404 — API not found`, 프로브는 `400 NO_OPENAPI_SERVICE_ERROR` 로 **다른 답**이 왔고,
+    //   나는 그 400 을 근거로 "서비스가 폐기됐다"고 판정할 뻔했다. 프로브가 레인과 다른 곳을 찌르면
+    //   초록이든 빨강이든 **오진의 재료**가 된다. 기존 유닛은 서비스명(`FftcBrandRlsInfo2_Service`)만 대조해
+    //   오퍼레이션 차이를 통과시켰다 — 그 구멍을 같은 커밋에서 막았다.
     label: '공정위 가맹정보',
-    url: (k, _e, o) => `https://apis.data.go.kr/1130000/FftcBrandRlsInfo2_Service/getBrandReleaseInfo?serviceKey=${serviceKeyParam(k)}&pageNo=${o.page}&numOfRows=${o.rows}&resultType=json`,
+    url: (k, _e, o) => `https://apis.data.go.kr/1130000/FftcBrandRlsInfo2_Service/getBrandList?serviceKey=${serviceKeyParam(k)}&pageNo=${o.page}&numOfRows=${o.rows}&resultType=json`,
   },
   nara: {
     label: '나라장터 조달업체',

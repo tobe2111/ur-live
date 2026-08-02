@@ -101,6 +101,17 @@ const MUTATIONS = [
       '진단 도구의 유일한 가치는 레인과 같은 것을 본다는 것이다.',
   },
   {
+    name: '프로브가 레인과 **다른 오퍼레이션**을 찌름(서비스명만 같음)',
+    file: 'src/features/marketing/api/public-data-probe.ts',
+    find: 'FftcBrandRlsInfo2_Service/getBrandList',
+    replace: 'FftcBrandRlsInfo2_Service/getBrandReleaseInfo',
+    test: 'src/tests/unit/ads-public-data-probe.test.ts',
+    why:
+      '2026-08-02 라이브에서 실제로 일어난 일이다. 기존 대조는 **서비스명**(FftcBrandRlsInfo2_Service)만 봐서 ' +
+      '오퍼레이션이 다른 것을 통과시켰고, 레인은 HTTP 404 · 프로브는 400 NO_OPENAPI_SERVICE_ERROR 로 **다른 답**을 ' +
+      '받았다. 그 400 을 근거로 "서비스가 폐기됐다"고 결론 낼 뻔했다 — 진단 도구가 오진의 재료가 되는 최악의 모양이다.',
+  },
+  {
     name: '레인 일감이 요금제를 모름(예산만 커지고 일은 그대로)',
     file: 'src/features/marketing/api/nps-workplace-enrich.ts',
     find: 'const maxLeads = maxLeadsArg ?? envPlanValue(undefined, 40, 120, env)',

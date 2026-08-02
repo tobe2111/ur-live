@@ -448,3 +448,77 @@ curl -sS ".../api/admin/store-prospects/trades" -H "Authorization: Bearer $TOK" 
 curl -sS ".../api/admin/store-prospects/config" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA"
 ```
 ⚠️ **첫 회차에 시드가 돈다**(19행 batch). 그 회차만 예산 3 을 더 쓰므로 `spent` 가 튀는 것은 정상이다.
+
+---
+
+## ⑭ 🔬 **머지 후 프로브 실측 — 내 판단 두 개가 틀렸다** (2026-08-03 02시 KST)
+
+#967 머지·배포 직후 후보 경로 프로브를 실제로 쐈다. 결과가 **내가 세운 두 결론을 뒤집었다.**
+
+### 실측 표
+
+| 대상 | 결과 |
+|---|---|
+| **심평원 `hira`** | `rows 1·20·50·100·200·300·500` **전부 HTTP 200 · JSON · `NORMAL SERVICE`** |
+| `commerce-status`(대조군) | 200 · `totalCount 2,649,436` |
+| `franchise` 후보 3개 | 전부 `400 NO_OPENAPI_SERVICE_ERROR` — ⚠️ **단, 프로브가 틀린 오퍼레이션을 찔렀다**(아래) |
+| `nara` 후보 3개 | 전부 `400 NO_OPENAPI_SERVICE_ERROR` |
+| `localdata` 원천 3그룹 | 전부 **timeout** — `NO_OPENAPI_SERVICE_ERROR` 가 **아니다** |
+
+### 🔴 정정 ① — "인허가 원천은 localdata.go.kr 이고 살아 있다"는 **우리 워커 기준으로 틀렸다**
+
+#967 커밋 제목에 그렇게 썼다. 교정용으로 **`robots.txt`** 를 찔러 보니 그것도 15초 timeout —
+즉 경로 문제가 아니라 **호스트 자체가 CF 워커에서 도달 불가**다. 브라우저에서 열리는 것과
+워커에서 닿는 것은 다른 얘기였고, 나는 그 둘을 구분하지 않았다.
+⇒ **원천 직행은 막힌 길이다.** 후임 주소를 찾아도 그 호스트로는 못 간다.
+
+> 🧭 다음 세션 교훈: 새 호스트를 후보로 삼기 전에 **`robots.txt` 같은 무해한 경로로 도달성부터
+> 교정**하라. 그거 한 번이면 "주소가 틀렸나"와 "아예 못 가나"가 갈린다.
+
+### 🔴 정정 ② — `collect-hira` 는 **죽은 소스가 아니다**
+
+60회 실행·저장 0·`timeout` 이라 죽은 소스로 분류했는데, API 는 레인이 쓰는 값
+(`page=1`(커서 실측값) · `rows=100`)에서도, 심지어 `rows=500` 에서도 **즉답 200** 이다.
+`ADS_HIRA_ROWS` 는 ur-ads 바인딩 42개에 **없다**(= 레인은 기본 100 을 쓴다).
+
+⇒ 남은 차이는 **실행 문맥**뿐이다. 같은 시각 하트비트가 그 그림을 준다:
+
+```
+collect-neis        ms=42887   maintenance-rescan  ms=60425
+scan-notices        ms=30806   sweep-kakao-phone   ms=31117
+enrich-company           ok=false  Worker exceeded CPU time limit
+maintenance?phase=quality ok=false  〃
+reclassify-company        ok=false  〃
+collect-hira        ms=25750  ← AbortSignal.timeout(25000) 그대로
+```
+
+**정각(매시 :00)에 워커가 포화**다. hira 의 25초는 심평원이 느려서가 아니라 **우리 워커에서
+fetch 가 스케줄을 못 받아서**로 보인다 — 프로브는 한가한 시각에 단독으로 쏴서 즉답을 받았다.
+
+⚠️ **아직 가설이다.** 결정적 판정은 *비정각에 레인을 수동 트리거*해 보는 것인데, 그건 읽기가
+아니라 **수집 트리거(쓰기)** 라 대표 명시 지시 없이는 하지 않는다. 대표 지시는 "프로브를 쏴라"
+였고 프로브는 읽기 전용이다.
+
+### 🐛 그리고 진단 도구 자신의 결함 — **프로브가 레인과 다른 오퍼레이션을 찔렀다**
+
+`franchise` 만 두 곳의 답이 갈렸다: 레인 stats `HTTP 404`, 프로브 `400 NO_OPENAPI_SERVICE_ERROR`.
+같은 서비스인데 답이 다르면 **둘 중 하나가 다른 곳을 찌르고 있다.**
+
+```
+레인:   FftcBrandRlsInfo2_Service/getBrandList
+프로브: FftcBrandRlsInfo2_Service/getBrandReleaseInfo   ← 틀림
+```
+
+기존 대조 유닛은 **서비스명만** 봐서 오퍼레이션 차이를 통과시켰다. 하마터면 그 400 을 근거로
+*"공정위 서비스 폐기"* 라고 결론 낼 뻔했다 — **진단 도구가 오진의 재료가 되는 최악의 모양**이다.
+수리 + 가드 확장(BASE/OP 통째 대조) → **PR #982**. 되돌려-검증 RED · 매니페스트 63건.
+
+### 다음 세션의 첫 액션
+
+1. **#982 머지 후 franchise 재프로브** — 이제야 레인과 같은 주소를 찌른다. `getBrandList` 로
+   `404` 가 재현되면 *그때* "주소가 죽었다"가 근거를 갖는다.
+2. **nara** 는 프로브·레인이 이미 같은 주소(`UsrInfoService02/getPrcrmntCorpBasicInfo`)이고
+   `NO_OPENAPI_SERVICE_ERROR` 다 — 포털에서 실제 서비스명을 확인해야 한다(이 환경은 `data.go.kr`
+   문서가 봇 차단이라 못 본다 → **대표 화면 확인 필요**).
+3. **hira 정각 포화 가설** — 대표가 "수동 트리거 해봐라"고 하면 비정각 1회로 즉시 판정된다.
+   처방은 *레인 회차 분산*이고 그건 `dispatch-budget`(다른 세션 소관) + 대표 판단이다.
