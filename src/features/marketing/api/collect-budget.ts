@@ -316,6 +316,21 @@ export function resolveEnrichDeadlineMs(raw: unknown, plan: AdsPlan = 'free'): n
 export const FETCH_TIMEOUT_FLOOR_MS = 1_500
 
 /**
+ * ⏱️ **지금 새 항목을 집어도 되는가** — 바닥값을 줄 수 있을 때만 true (2026-08-02 신설).
+ *
+ * 바로 위 상수의 주석은 *"호출부의 마감 가드가 이미 집을지 말지를 정한다"* 를 **전제**한다.
+ * 그런데 실제 호출부(`enrichNaverActivity` 워커 루프)는 마감을 *이미 지났을 때만* 멈췄다 —
+ * 즉 그 전제가 거짓이었고, 잔여 50ms 에 집은 항목이 바닥값 1.5s 를 받아 마감을 넘겨 실패했다.
+ * 실측(08-02 03:00 회차): `tried 9 / failed 3` — **실패 3 = 동시성 3**(워커마다 마지막 1건).
+ *
+ * ⇒ 전제를 **함수로 만들어** 호출부가 실제로 지키게 한다. 마감이 없으면(무제한) 항상 true.
+ */
+export function canStartBudgetedItem(deadline: number | undefined, now = Date.now()): boolean {
+  if (!deadline) return true
+  return deadline - now >= FETCH_TIMEOUT_FLOOR_MS
+}
+
+/**
  * ⏱️ 건당 fetch 타임아웃을 **남은 창에서 유도**한다 (2026-08-02).
  *
  *   바로 위 `ENRICH_DEADLINE_MS_DEFAULT` 주석이 "이 값만으로는 부족하다 — 건당 타임아웃도 내려야 하는데
