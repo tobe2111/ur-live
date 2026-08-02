@@ -58,7 +58,10 @@ describe('🚧 배선 — 루프가 실제로 상한을 본다', () => {
 
   it('🔒 조기 중단은 `done` 을 true 로 만들지 않는다 — 커서가 0 으로 리셋되면 앞부분만 영원히 반복한다', () => {
     // `done` 이 true 면 커서가 0 으로 리셋된다(아래 INSERT). 상한으로 멈춘 것은 '완주'가 아니다.
-    const loop = /let scanned = 0, changed = 0, done = false[\s\S]*?INSERT OR REPLACE INTO platform_settings/.exec(src)?.[0] || ''
+    // ⚠️ 앵커는 **함수 이름**이다. 예전엔 `let scanned = 0, changed = 0, done = false` 선언문에 걸어 뒀는데,
+    //   2026-08-03 에 `stamped` 카운터가 추가되자 정규식이 안 맞아 `loop` 가 빈 문자열이 됐다.
+    //   아래 길이 검사가 그걸 잡아 줬다(그래서 이 줄이 있다) — 선언문은 자주 바뀌니 이름으로 잡는다.
+    const loop = /export async function runReclassifyPool[\s\S]*?INSERT OR REPLACE INTO platform_settings/.exec(src)?.[0] || ''
     expect(loop.length).toBeGreaterThan(500)          // 루프를 못 찾으면 검사가 헛도는 것이다
     // ⚠️ `includes('poolScanShouldStop')` 로 찾으면 **주석 줄**이 먼저 잡힌다(실제로 밟았다) — 호출부만 본다.
     const stopLine = loop.split('\n').find(l => l.includes('if (poolScanShouldStop(')) || ''

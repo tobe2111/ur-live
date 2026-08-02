@@ -539,7 +539,7 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
 export { poolScanShouldStop, POOL_SCAN_MAX_ROWS, POOL_SCAN_MAX_MS } from './pool-scan-budget'
 import { poolScanShouldStop } from './pool-scan-budget'
 
-export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudget }): Promise<{ scanned: number; changed: number; done: boolean }> {
+export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudget }): Promise<{ scanned: number; changed: number; stamped: number; done: boolean }> {
   // 🧭 2026-07-28: OFFSET 전수스캔 → **id 커서**. 무료 플랜 예산(인보케이션당 ~29 D1 연산)에선 한 번에
   //   3.6만 행을 못 돈다 — 커서가 없으면 매 실행이 늘 같은 앞부분만 훑고 뒤쪽은 영원히 미분류로 남는다
   //   (품질 패스가 이미 쓰는 패턴과 동일: 끝까지 돌면 0 으로 리셋해 순환 재검증).
@@ -550,26 +550,38 @@ export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudg
     .first<{ value: string }>().catch(() => null)
   if (raw?.value) cursor = Math.max(0, parseInt(raw.value, 10) || 0)
 
-  let scanned = 0, changed = 0, done = false
+  let scanned = 0, changed = 0, stamped = 0, done = false
   const startedMs = Date.now()   // ⏱️ 인보케이션당 작업 상한(위 poolScanShouldStop) — CPU 한도 초과 방지
   for (;;) {
-    const rows = (await DB.prepare(`SELECT id, name, description, category FROM ad_influencer_leads
+    const rows = (await DB.prepare(`SELECT id, name, description, category, category_source FROM ad_influencer_leads
         WHERE account_id = 0 AND id > ? ORDER BY id ASC LIMIT ?`).bind(cursor, PAGE)
-      .all<{ id: number; name: string; description: string | null; category: string | null }>().catch(() => null))?.results || []
+      .all<{ id: number; name: string; description: string | null; category: string | null; category_source: string | null }>().catch(() => null))?.results || []
     if (!rows.length) { if (!opts?.budget?.exhausted) done = true; break }
     const pageStart = cursor
     scanned += rows.length
     const ups: ReturnType<D1Database['prepare']>[] = []
+    let pageStamped = 0   // 이 페이지에서 '근거만' 찍은 수 — changed 와 섞지 않기 위해 따로 센다
     for (const r of rows) {
       cursor = Math.max(cursor, r.id)
       const byContent = classifyCategory(r.name, r.description)
       if (byContent && byContent !== r.category) ups.push(DB.prepare("UPDATE ad_influencer_leads SET category = ?, category_source = 'content' WHERE id = ? AND account_id = 0").bind(byContent, r.id))
+      /**
+       * 🔖 **값이 같아도 근거는 찍는다** (2026-08-03 라이브 실측).
+       *
+       *   본문 분류가 기존 값과 **일치**하면 이전 판은 아무것도 안 썼다. 그래서 "본문으로 확인됐다"는
+       *   사실이 기록되지 않고 `category_source` 가 NULL 로 남았고, 어드민 통계는 그걸 **키워드 폴백으로**
+       *   센다. 실측: 근거 NULL 19,595행(그중 19,297행이 소개글 보유) — 분류 품질이 실제보다 나빠 보였다.
+       *   ⇒ 확인 사실을 남긴다. 값은 안 바꾸므로 **분류 결과에 영향 0**, 통계만 진실에 가까워진다.
+       *   ⚠️ `changed`(값이 바뀐 수)와 **따로 센다** — 섞으면 "규칙이 얼마나 고치고 있나"를 못 본다.
+       */
+      else if (byContent && r.category_source !== 'content') { ups.push(DB.prepare("UPDATE ad_influencer_leads SET category_source = 'content' WHERE id = ? AND account_id = 0").bind(r.id)); pageStamped++ }
       // 🧹 값이 안 나와도 **현재 규칙이 그 값을 거부한다는 걸 아는 경우**엔 지운다(shouldClearCategory 참조).
       //   안 지우면 옛 규칙으로 붙은 값이 영구히 굳는다 — 실측: 입주업체 27명 중 21명이 그 상태였다.
       else if (!byContent && shouldClearCategory(r.category, r.name, r.description)) ups.push(DB.prepare('UPDATE ad_influencer_leads SET category = NULL WHERE id = ? AND account_id = 0').bind(r.id))
     }
     for (let i = 0; i < ups.length; i += 100) await DB.batch(ups.slice(i, i + 100)).catch(() => null)
-    changed += ups.length
+    changed += ups.length - pageStamped
+    stamped += pageStamped
     if (opts?.budget?.exhausted) { cursor = pageStart; scanned -= rows.length; break } // 쓰기가 잘림 → 이 페이지 재시도
     if (rows.length < PAGE) { done = true; break }
     // ⏱️ 여기까지가 이 인보케이션의 몫 — `done` 을 false 로 남겨 커서가 다음 회차로 이어진다(커버리지 손실 0).
@@ -577,5 +589,5 @@ export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudg
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(CURSOR_KEY, String(done ? 0 : cursor)).run().catch(() => null)
-  return { scanned, changed, done }
+  return { scanned, changed, stamped, done }
 }
