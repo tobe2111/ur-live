@@ -42,6 +42,21 @@ binding = "DB"
 database_name = "toss-live-commerce-db"
 database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 
+# ⏰ **DO 알람 레인** (2026-08-02) — cron 부모의 CPU 천장을 우회하는 유일한 무료 경로.
+#   부모가 `SELF.fetch` 로 띄운 자식의 CPU 는 **호출자 몫에서 나가서**, 부모가 3.6초에 죽으며
+#   매 정각 레인 절반이 끌려갔다(실측: 8개 중 4 사망 · 6개로 줄여도 3 사망 — 비율 그대로).
+#   DO 알람은 **부모가 없다** — 예약 시각에 런타임이 독립 인보케이션으로 깨우므로 자기 CPU·서브리퀘스트를
+#   그대로 받고, 알람 안에서 다음 알람을 걸어 스스로 이어진다.
+#   🆓 `new_sqlite_classes` = 무료 플랜 호환 백엔드(메인 ur-live 가 이미 같은 방식으로 DO 2개 운영 중).
+#   🔻 롤백: env `ADS_LANE_ALARM_ENABLED='false'` → 체인이 멎고 cron 경로로 자동 복귀(코드 변경 0).
+[[durable_objects.bindings]]
+name = "ADS_LANE"
+class_name = "AdsLaneDurableObject"
+
+[[migrations]]
+tag = "v1-ads-lane"
+new_sqlite_classes = ["AdsLaneDurableObject"]
+
 # 🔁 자기참조 서비스바인딩 — YT 예산 버스트 self-chain(각 수집 인보케이션이 다음을 fresh 예산으로 던지고 즉시 종료).
 #   Custom Domain 아님(2026-04-22 사고 무관) — 워커 내부 바인딩. wrangler deploy 가 toml 로 자동 생성(대시보드 불필요).
 [[services]]
