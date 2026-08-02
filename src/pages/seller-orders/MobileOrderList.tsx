@@ -11,14 +11,13 @@
  * 돈 흐름 코드를 건드리게 된다. ⇒ **표는 한 줄도 안 건드리고**(`hidden md:block`) 모바일에만
  * 이 카드 뷰를 얹는다(`md:hidden`). 롤백 = 이 컴포넌트 렌더 1줄 제거.
  *
- * ## 🔴 시안과 다른 점 하나 — 날짜 그룹 기준
- * 시안은 **픽업일**로 묶고 `오늘 픽업 7건` 을 센다. 그런데 `GET /api/seller/orders` 의 `Order` 에는
- * **픽업일이 없다**(`created_at` 뿐 — `types.ts` 참조). 픽업일은 `product_supply_meta.pickup_date` 에
- * 있고 주문 응답에 조인돼 있지 않다.
+ * ## 📦 날짜 그룹 기준 = **픽업일** (2026-08-02 배선 완료)
+ * 시안대로 **픽업일**로 묶고 `오늘 픽업 N건` 을 센다. 서버가 `product_supply_meta.pickup_date` 를
+ * 주문에 실어 준다(`seller-orders.routes` GET /orders — 읽기 enrich, 머니 무접촉).
  *
- * ⇒ 없는 값을 있는 척하지 않는다. **주문일로 묶고 라벨도 "주문"이라고 쓴다.**
- *   픽업일 기준으로 바꾸려면 API 가 주문 라인에 `pickup_date` 를 실어야 한다(핸드오프에 기재).
- *   그 전까지 이 화면은 "언제 주문이 들어왔나"를 훑는 화면이고, 시안이 노린 "오늘 누가 오나"는 아니다.
+ * 🔴 **픽업일이 없는 주문은 "픽업일 미정" 묶음으로 따로 뺀다.** 주문일로 대신 채우면
+ *   "오늘 온다"는 거짓말이 된다 — 이 화면의 유일한 질문이 *"오늘 누가 오나"* 라서,
+ *   그 자리에 다른 날짜를 넣는 순간 화면 전체가 틀린 답을 한다.
  *
  * ⚠️ 날짜는 전부 `@/utils/date` SSOT 경유 — D1 타임스탬프는 `Z` 없는 UTC 문자열이라
  *   `new Date()` 로 읽으면 9시간 어긋난다(이 레포 반복 사고 클래스, `check-utc-date-parse`).
@@ -61,25 +60,32 @@ export default function MobileOrderList({
 }) {
   const [tab, setTab] = useState<Tab>('waiting')
 
-  const waitingCount = orders.filter((o) => WAITING.has(o.status)).length
   const handedCount = orders.filter((o) => HANDED.has(o.status)).length
 
-  /** 탭 필터 → 주문일(KST)별 묶음. 최신 날짜가 위. */
+  const today = todayKstKey()
+  /** 오늘 픽업하러 오는 사람 — 이 화면의 유일한 질문이다. */
+  const todayCount = orders.filter(
+    (o) => WAITING.has(o.status) && o.pickup_date && kstOf(o.pickup_date)?.key === today,
+  ).length
+
+  /**
+   * 탭 필터 → **픽업일(KST)** 별 묶음. 가까운 날이 위다(오늘 할 일이 먼저).
+   * 픽업일 미정은 `ZZZ` 키로 **맨 아래** — 날짜가 있는 것들을 밀어내지 않는다.
+   */
   const groups = useMemo(() => {
     const filtered = orders.filter((o) =>
       tab === 'waiting' ? WAITING.has(o.status) : tab === 'handed' ? HANDED.has(o.status) : true,
     )
     const map = new Map<string, { label: string; rows: Order[] }>()
     for (const o of filtered) {
-      const k = kstOf(o.created_at)
-      if (!k) continue
-      if (!map.has(k.key)) map.set(k.key, { label: k.label, rows: [] })
-      map.get(k.key)!.rows.push(o)
+      const k = o.pickup_date ? kstOf(o.pickup_date) : null
+      const key = k?.key ?? 'ZZZ'
+      const label = k?.label ?? '픽업일 미정'
+      if (!map.has(key)) map.set(key, { label, rows: [] })
+      map.get(key)!.rows.push(o)
     }
-    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]))
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
   }, [orders, tab])
-
-  const today = todayKstKey()
 
   const TABS: Array<{ id: Tab; label: string }> = [
     { id: 'waiting', label: '픽업 대기' },
@@ -92,8 +98,8 @@ export default function MobileOrderList({
       {/* 요약 — 로즈는 "지금 처리해야 하는 것"에만 쓴다〔시안 §3.1〕 */}
       <div className="flex gap-2">
         <div className="flex-1 rounded-xl bg-[#FBEDF0] px-[13px] py-3">
-          <p className="text-[11.5px] font-bold text-[#B0576A] tracking-[-0.02em]">픽업 대기</p>
-          <p className="mt-[3px] text-[21px] font-extrabold text-[#C43D55] tracking-[-0.04em]">{waitingCount}건</p>
+          <p className="text-[11.5px] font-bold text-[#B0576A] tracking-[-0.02em]">오늘 픽업</p>
+          <p className="mt-[3px] text-[21px] font-extrabold text-[#C43D55] tracking-[-0.04em]">{todayCount}건</p>
         </div>
         <div className="flex-1 rounded-xl bg-[#F5F2F3] px-[13px] py-3">
           <p className="text-[11.5px] font-bold text-[#776F74] tracking-[-0.02em]">전달 완료</p>
@@ -125,7 +131,7 @@ export default function MobileOrderList({
         <section key={key}>
           <div className="flex items-center justify-between px-1 pt-[22px] pb-2.5">
             <h3 className="text-[13px] font-extrabold text-[#1A1719] tracking-[-0.03em]">
-              {g.label} 주문{key === today && ' · 오늘'}
+              {g.label}{key === today && ' · 오늘'}
             </h3>
             <span className="text-[12px] font-bold text-[#9A9298]">{g.rows.length}건</span>
           </div>

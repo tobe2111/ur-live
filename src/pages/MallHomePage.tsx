@@ -27,6 +27,11 @@
  * | 급함(마감·잔여) | 기능 red | 브랜드색이 아니라 **기능 신호**다(`tailwind.config.js` 주석: *"유일 예외 = red(에러/마감임박)"*) |
  * | 본문·가격 | 잉크 뉴트럴 | 어떤 상품 사진 위에서도 안 죽는다 |
  *
+ * 🔴 **몰 색 위 글자는 모드마다 반대다.** 라이트 `#2E7D5B` 는 어두운 색이라 **흰 글자**(5.0:1),
+ * 다크 `#5FBF95` 는 **밝은 색**이라 흰 글자를 얹으면 **2.24:1 로 AA 미달**이다 —
+ * 그래서 다크에서는 **잉크 글자**(7.9:1)를 얹는다. 이 결함은 `validateMallColor` 를 만들다가
+ * 실제로 잡혔다(가드가 없으면 눈으로는 "초록 위 흰 글씨"라 안 보인다).
+ *
  * 🔴 **다크에서는 운영자 색을 쓰지 않는다.** `resolveMallBranding` 이 `colorDark` 를 운영자 지정과
  * 무관하게 **항상 `MALL_COLOR_DARK`(#5FBF95)** 로 돌린다(임의 파생이 AA 를 깰까 봐 P0 보류,
  * branding.ts:86-89). 그래서 `--mall` 은 라이트/다크가 **서로 다른 변수**를 물게 배선했다 —
@@ -37,6 +42,11 @@
  *   디자인으로 못 막는다 — `validateMallColor`(AA 대비) 가 저장 시점에 필요하다.
  *
  * ⚠️ `text-gray-*` 대신 hex — `tailwind.config.js` 가 `gray-*` 를 INK(딥네이비)로 리맵한다.
+ * ⚠️ 🔴 **`rose-*` 를 쓰면 안 된다.** 같은 파일이 `rose: MONO` 로 **브랜드 색조까지 잉크로 리맵**해서
+ *   `bg-rose-600` 은 화면에 **네이비**로 나온다(2026-08-02 렌더 스모크 스크린샷으로 발견 —
+ *   정적 검사는 전부 초록이었다). 살아남는 기능색은 **`red` 하나뿐**이다(그 파일 주석:
+ *   *"유일 예외 = red(에러/삭제/마감임박/안읽음 = 기능 신호)"*). 그래서 마감·할인은 `red-*` 다.
+ *   회귀 방지는 `scripts/smoke-mall-render.mjs` 의 "마감 배지가 빨강 계열" 검사가 맡는다.
  * ⚠️ 이모지(⏰📦🔒) 대신 선 아이콘 — 안드로이드·iOS 에서 모양이 달라진다〔시안 §3.4〕.
  */
 import { useEffect, useState } from 'react'
@@ -48,7 +58,7 @@ import NotFoundPage from '@/pages/NotFoundPage'
 import { POWERED_BY, PAYMENT_TRUST_NOTE } from '@/shared/mall/branding'
 import { cfImage } from '@/utils/cf-image'
 import { parseUTCDate } from '@/utils/date'
-import { formatWon } from '@/utils/format'
+import { formatNumber } from '@/utils/format'
 import { STORAGE_LABEL, STORAGE_NOTICE, type StorageKind } from '@/shared/pickup'
 
 interface MallInfo {
@@ -84,6 +94,12 @@ function pickupDayLabel(iso: string): string {
   const kst = new Date(d.getTime() + 9 * 3600 * 1000)
   return `${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일`
 }
+
+/**
+ * 가격 표기 — **`7,000원`**. `formatWon` 은 `₩7,000` 을 내는데, 의뢰서 §4 화면 A 카드 ⑤ 와 시안이
+ * 둘 다 **`원` 접미**로 적었다(`30% 7,000원 ~~10,000원~~`). 손님 화면이라 표기를 시안에 맞춘다.
+ */
+const won = (v: number) => `${formatNumber(v)}원`
 
 /** 보관 배지 — 냉장·냉동은 파랑(주의 환기), 실온은 중립.〔시안 재사용 요소〕 */
 const STORAGE_BADGE: Record<StorageKind, string> = {
@@ -136,7 +152,7 @@ export default function MallHomePage() {
             <img src={cfImage(mall.logoUrl, { width: 112 })} alt="" width={56} height={56}
               className="w-[50px] h-[50px] rounded-[15px] object-cover border border-[#EFEBED] dark:border-[#2A2A2A] flex-none" />
           ) : (
-            <div className="w-[50px] h-[50px] rounded-[15px] flex items-center justify-center text-white text-[21px] font-extrabold tracking-[-0.02em] flex-none"
+            <div className="w-[50px] h-[50px] rounded-[15px] flex items-center justify-center text-white dark:text-[#1A1719] text-[21px] font-extrabold tracking-[-0.02em] flex-none"
               style={{ backgroundColor: 'var(--mall)' }} aria-hidden>{mall.initial}</div>
           )}
           <div className="min-w-0">
@@ -149,7 +165,7 @@ export default function MallHomePage() {
       {/* 신뢰 — 대표 UX 기준 ③. 몰 색 띠로 올려 "처음 보는 가게" 불안을 첫 화면에서 받는다.
           ⚠️ 문구(PAYMENT_TRUST_NOTE)는 **법무 확인 대기**라 시안이 ~어요체로 그렸어도 바꾸지 않는다. */}
       <div className="px-5 ur-content-wide mx-auto">
-        <p className="flex items-center gap-[7px] rounded-xl px-3.5 py-2.5 text-[12.5px] font-semibold tracking-[-0.02em] text-white"
+        <p className="flex items-center gap-[7px] rounded-xl px-3.5 py-2.5 text-[12.5px] font-semibold tracking-[-0.02em] text-white dark:text-[#1A1719]"
           style={{ backgroundColor: 'var(--mall)' }}>
           <Lock className="w-[13px] h-[13px] flex-none" strokeWidth={2.2} />
           {PAYMENT_TRUST_NOTE}
@@ -186,7 +202,7 @@ export default function MallHomePage() {
                       {/* 🔴 마감·잔여를 이미지 위에 — 카드에서 **제일 먼저 읽혀야 하는 정보**다(기준 ③).
                           마감이 채움 배지, 잔여가 검정 반투명 — 의뢰서가 먼저 읽히라 한 게 마감이라서다. */}
                       {remain && (
-                        <span className="absolute left-2 top-2 flex items-center gap-1 px-2 py-[5px] rounded-full bg-rose-600 text-white text-[11.5px] font-bold tracking-[-0.02em] pointer-events-none">
+                        <span className="absolute left-2 top-2 flex items-center gap-1 px-2 py-[5px] rounded-full bg-red-600 text-white text-[11.5px] font-bold tracking-[-0.02em] pointer-events-none">
                           <Clock className="w-[11px] h-[11px]" strokeWidth={2.4} />
                           {remain}
                         </span>
@@ -202,11 +218,11 @@ export default function MallHomePage() {
 
                     <p className="mt-[5px] flex items-baseline gap-[5px] flex-wrap">
                       {it.discount_pct > 0 && (
-                        <span className="text-[15px] font-extrabold tracking-[-0.03em] text-rose-600 dark:text-rose-400">{it.discount_pct}%</span>
+                        <span className="text-[15px] font-extrabold tracking-[-0.03em] text-red-600 dark:text-red-400">{it.discount_pct}%</span>
                       )}
-                      <span className="text-[15px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">{formatWon(it.gb_price)}</span>
+                      <span className="text-[15px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">{won(it.gb_price)}</span>
                       {it.list_price > it.gb_price && (
-                        <span className="text-[11.5px] line-through text-[#A9A2A6] dark:text-[#7C7479]">{formatWon(it.list_price)}</span>
+                        <span className="text-[11.5px] line-through text-[#A9A2A6] dark:text-[#7C7479]">{won(it.list_price)}</span>
                       )}
                     </p>
 
