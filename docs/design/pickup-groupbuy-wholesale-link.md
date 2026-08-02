@@ -387,13 +387,20 @@ AND NOT (COALESCE(is_supply_product,0)=1 AND supply_source_id IS NULL)
 
 대표 지시(2026-07-29): *"CF 토큰은 예치금과 분리해 별건 처리 — 재발급하되 **D1 읽기 전용 최소 스코프**."*
 
-- **현 상태**: `platform_settings.cf_api_token` 이 `GET /user/tokens/verify` 를 **실패**한다(만료/무효).
-  워커 목록·D1 조회 전부 `Authentication error`(code 10000).
+- ✅ **2026-08-02 해소** — 대표가 재발급, `platform_settings.cf_api_token` 에 저장됨. 실측
+  `verify → success:true, status:active` · **D1 6 / Workers 8 / Pages 7 조회 OK** · D1 query API 로
+  원본 SELECT 가 된다. 아래 "현 상태"는 07-29 시점 기록이다.
+- ~~**현 상태**: `platform_settings.cf_api_token` 이 `GET /user/tokens/verify` 를 **실패**한다(만료/무효).
+  워커 목록·D1 조회 전부 `Authentication error`(code 10000).~~
+- 🩸 **원인은 토큰이 아니라 저장 UI 였다** — `/admin/platform-settings` 가 편집 중 리페치로 폼을 덮어써
+  **새 값을 저장하지 못하고 옛 값을 되저장**했다. 화면엔 "설정됨"만 떠서 성공처럼 보였다.
+  2026-08-02 수리(시드 1회 + 끝4자리 표시 + 교체 항목 토스트). ⇒ **반영 판정은 화면이 아니라 `verify`**.
 - **재발급 스코프(최소)**: **D1 Read** 만. 기존 토큰이 갖고 있던 Workers Scripts Edit 등 쓰기 권한은 **주지 않는다**
   — CLAUDE.md 자율 규율이 이미 *"코드 배포는 이 토큰으로 하지 않는다 / 용도는 진단·게이트 토글·D1·KV 읽기"* 로
   좁혀 두었으므로, 스코프를 권한이 아니라 **용도에 맞춘다**.
 - **갱신 위치**: `platform_settings.cf_api_token`(D1). 레포에 값 커밋 금지 — 키 이름만 남긴다.
-- ⚠️ **CLAUDE.md 의 07-28 토큰 실측 기록은 무효**로 표기했다(그 절을 믿고 "토큰은 살아 있다"고 오판하지 말 것).
+- ⚠️ 07-29 에 **CLAUDE.md 의 07-28 실측 기록을 무효로 표기**했었다 — 2026-08-02 재발급으로 그 표기는 **해제**됐다.
+  다만 절차는 그대로다: 쓰기 전에 `verify` 로 확인할 것(만료·회전은 언제든 일어난다).
 
 ---
 
