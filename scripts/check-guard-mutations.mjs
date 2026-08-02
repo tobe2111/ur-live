@@ -259,6 +259,17 @@ const MUTATIONS = [
       '이 항목은 시험이 실제로 잡아낸 결함이다.',
   },
   {
+    name: '카카오 매장 회차가 다시 완주를 전제함(중간 정산 제거)',
+    file: 'src/features/marketing/api/store-kakao-collect.ts',
+    find: 'if (cursorKey && rows.length >= FLUSH_ROWS) await flushAt(cursorKey,',
+    replace: 'if (false) await flushAt(cursorKey,',
+    test: 'src/tests/unit/store-kakao-voucher-grid.test.ts',
+    why:
+      '맨 끝에서 한 번만 저장·전진하면 회차가 중간에 죽을 때 **캔 것도 전진도 통째로** 사라지고, ' +
+      '다음 회차가 같은 키워드를 또 훑는다 — 또 죽으면 영원히 0 이다(#927 이 그 구조로 며칠 멈췄다). ' +
+      '08-02 실측: 부모가 ms≈3.6초에 CPU 한도로 죽는데 이 레인의 완주 시간은 8,097ms 다. 완주가 예외다.',
+  },
+  {
     name: '수동 트리거가 ur-ads 에 없는 경로를 부름',
     file: 'src/features/marketing/api/store-prospects.routes.ts',
     find: "['/collect-store-kakao', 'collect-store-kakao'],",
