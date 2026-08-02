@@ -37,7 +37,25 @@ export function parseCafeMembers(html: string): number | null {
   return Number.isFinite(n) && n > 0 && n < 10_000_000 ? n : null
 }
 
-export interface CafeMemberDiag { tried: number; filled: number; failed: number; selected: number }
+/**
+ * 🔬 실패 표본 — **왜** 못 뽑았는지 라이브에서 보이게 한다.
+ *
+ *   2026-08-02 첫 라이브 회차가 `tried 3 · filled 0 · failed 3` 이었다. 자리는 잡혔는데 100% 실패인데,
+ *   진단이 없으니 원인이 ⓐ 요청 차단(403/302) ⓑ 프레임셋이라 본문에 숫자가 없음 ⓒ 표기가 달라 정규식 미스
+ *   중 무엇인지 **구분할 방법이 없었다.** 셋은 처방이 전혀 다르다(헤더 / 다른 엔드포인트 / 정규식).
+ *   ⚠️ 이 환경에서는 `cafe.naver.com` 이 프록시에 막혀(CONNECT 403) 직접 확인이 불가능하다 —
+ *     그래서 **워커가 본 것**을 남기는 것이 유일한 관측 경로다.
+ *   🔒 HTML 원문을 담지 않는다: 태그를 걷고 120자만, 표본 3건까지(설정값 크기·개인정보 양쪽 고려).
+ */
+export interface CafeSample { handle: string; via: string; status: number; len: number; peek: string }
+export interface CafeMemberDiag { tried: number; filled: number; failed: number; selected: number; samples?: CafeSample[] }
+
+/** 태그를 걷고 '멤버/회원' 주변을 잘라낸다 — 없으면 앞부분 일부(무엇을 받았는지라도 보이게). */
+export function peekMembers(html: string): string {
+  const text = String(html || '').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  const i = text.search(/멤버|회원/)
+  return (i >= 0 ? text.slice(Math.max(0, i - 40), i + 80) : text.slice(0, 120)).trim()
+}
 
 /**
  * 회원수 미측정 카페를 골라 채운다. 커서 불필요 — 채워진 행은 `subscriber_count > 0` 이라 다음 회차가
@@ -61,14 +79,43 @@ export async function fillCafeMemberCounts(DB: D1Database, poolId: number, budge
     budget.left -= 1
     diag.tried++
     let n: number | null = null
-    try {
-      const res = await fetch(`https://cafe.naver.com/${encodeURIComponent(handle)}`, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1' },
-        signal: AbortSignal.timeout(8000),
-      })
-      if (res.ok) n = parseCafeMembers((await res.text()).slice(0, 200_000))
-    } catch { /* 실패는 다음 회차가 재시도(멱등) */ }
-    if (n == null) { diag.failed++; continue }
+    const vias: string[] = []
+    let last: { status: number; len: number; peek: string } | undefined
+    /**
+     * 🚪 **게이트 JSON 우선, 홈 HTML 폴백.**
+     *   `cafe.naver.com/{handle}` 는 프레임셋을 돌려줄 수 있어 본문에 숫자가 없을 수 있다(가설).
+     *   카페 게이트 정보 JSON 에는 회원수가 들어 있다. 어느 쪽이 되는지는 **표본이 말해 준다** —
+     *   `via` 로 어떤 경로가 성공/실패했는지 남긴다. 둘 다 실패해도 기존과 같은 결과(0 덮어쓰기 없음)라
+     *   추가로 나빠지지 않는다.
+     *   ⚠️ 비용: 게이트가 성공하면 fetch 1(기존과 동일). 실패해야 폴백이 붙어 2가 된다.
+     */
+    const attempts: { via: string; url: string }[] = [
+      { via: 'gate', url: `https://apis.naver.com/cafe-web/cafe2/CafeGateInfo.json?cluburl=${encodeURIComponent(handle)}` },
+      { via: 'home', url: `https://cafe.naver.com/${encodeURIComponent(handle)}` },
+    ]
+    for (const a of attempts) {
+      try {
+        const res = await fetch(a.url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+            Referer: 'https://cafe.naver.com/',
+          },
+          signal: AbortSignal.timeout(8000),
+        })
+        const body = res.ok ? (await res.text()).slice(0, 200_000) : ''
+        n = res.ok ? parseCafeMembers(body) : null
+        vias.push(a.via)
+        last = { status: res.status, len: body.length, peek: peekMembers(body) || last?.peek || '' }
+      } catch { /* 실패는 다음 회차가 재시도(멱등) */ }
+      if (n != null) break
+      if (budget.left <= 0) break
+      budget.left -= 1 // 폴백도 한 번의 fetch 다 — 예산에 정직하게 반영
+    }
+    if (n == null) {
+      diag.failed++
+      if (last && (diag.samples ||= []).length < 3) diag.samples.push({ handle, via: vias.join('+'), ...last })
+      continue
+    }
     ups.push(DB.prepare('UPDATE ad_influencer_leads SET subscriber_count = ? WHERE id = ? AND account_id = ?').bind(n, r.id, poolId))
     diag.filled++
   }
