@@ -311,7 +311,7 @@ export default function AdminPartnerPoolPage() {
         <DashboardPageHeader title="🤝 파트너 풀" subtitle="유어딜 매장 입점을 대신 데려올 업체 DB — 수동입력·아웃리치 관리 (수집 ≠ 발송)" />
 
         {/* 📬 오늘의 컨택 — 이메일 우선(대표 지시), 미접촉만 */}
-        <TradePanel />
+        <TradePanel endpoint="/api/admin/partner-pool/keyword-trades" />
         <ContactListPanel />
 
         {/* 🤝 파트너 매장 소개 접수함(리퍼럴 — 지급 배선은 별도 세션) */}

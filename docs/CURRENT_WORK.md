@@ -5503,6 +5503,8 @@ _총 81건 · 최신순 · 이 목록은 자동 생성된다._
 - [대표 지시 두 건이 "머지됐는데 실행된 적이 없었다" — 재추출 단계의 굶주림](handoff/2026-08-02-ads-reextract-starvation.md)
 - [유어애즈 레인 배분 — 몫을 레인 개수가 아니라 **역할**이 정하게 (2026-08-02)](handoff/2026-08-02-ads-lane-role-quota.md)
 - [08-02 — 수집 조건을 화면에서 정한다 (①/③ 중 ① 완료)](handoff/2026-08-02-collect-config-ui.md)
+- [08-02 — 수집 조건을 화면에서 정한다 (①②③ 전부 완료)](handoff/2026-08-02-collect-config-ui.md)
+- [유어애즈 레인 배분 — 몫을 레인 개수가 아니라 **역할**이 정하게 (2026-08-02)](handoff/2026-08-02-ads-lane-role-quota.md)
 **2026-08-01**
 - [08-01~02 — 통신판매 API 는 멀쩡했다. 고장은 우리 쪽 파라미터다](handoff/2026-08-01-public-data-probe-verdict.md)
 - [인계 — 운영자 몰 ④-b·④-c 환불 · 도달불가 라우트 래칫 (2026-08-01)](handoff/2026-08-01-operator-mall-pickup-refund.md)

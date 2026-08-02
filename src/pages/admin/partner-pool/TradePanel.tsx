@@ -16,8 +16,20 @@ import { formatNumber, kstShort } from '@/utils/format'
  *     0건인데 키워드만 많은 업종이 바로 후보다(예: 창고형 공동구매 705kw / 저장 0).
  */
 export interface TradeRow {
-  trade: string; category: string | null; tier: number | null
+  trade: string; category: string | null; tier?: number | null
   kw: number; active_kw: number; found: number; saved: number; last_run_at: string | null
+}
+
+/**
+ * 두 풀(파트너·매장)이 **같은 컴포넌트**를 쓴다. 화면이 두 벌이면 한쪽만 고쳐져 갈라진다 —
+ * 이 레포가 키워드 목록·우선 카테고리에서 이미 겪은 클래스.
+ * 응답 모양이 다른 만큼만 `adapt` 로 흡수한다(매장은 업태 1행 = 지역 전체라 kw/active_kw 가 1/0).
+ */
+export interface TradePanelProps {
+  endpoint: string
+  title?: string
+  unit?: string        // 'kw' 열 라벨 — 파트너는 '지역', 매장은 업태당 전 지역이라 '블록'
+  adapt?: (raw: unknown[]) => TradeRow[]
 }
 
 const ERR_LABEL: Record<string, string> = {
@@ -26,7 +38,7 @@ const ERR_LABEL: Record<string, string> = {
   INVALID_TRADE: '업종 이름이 올바르지 않습니다',
 }
 
-export default function TradePanel() {
+export default function TradePanel({ endpoint, title = '🎛️ 수집 업종 설정', unit = '지역', adapt }: TradePanelProps) {
   const [rows, setRows] = useState<TradeRow[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState('')
@@ -35,19 +47,19 @@ export default function TradePanel() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const r = await api.get('/api/admin/partner-pool/keyword-trades')
-      if (r.data?.success) setRows(r.data.trades || [])
+      const r = await api.get(endpoint)
+      if (r.data?.success) setRows(adapt ? adapt(r.data.trades || []) : (r.data.trades || []))
     } catch { /* 상태줄이 이미 수집 상태를 보여준다 — 여기서 토스트까지 띄우면 소음 */ } finally { setLoading(false) }
-  }, [])
+  }, [endpoint, adapt])
   useEffect(() => { if (open) load() }, [open, load])
 
   async function toggle(t: TradeRow) {
     const next = t.active_kw === 0
     setBusy(t.trade)
     try {
-      const r = await api.patch('/api/admin/partner-pool/keyword-trades', { trade: t.trade, active: next })
+      const r = await api.patch(endpoint, { trade: t.trade, active: next })
       if (r.data?.success) {
-        toast.success(next ? `▶️ '${t.trade}' 수집 재개 (${formatNumber(r.data.changed || 0)}개 지역)` : `⏸ '${t.trade}' 수집 중지`)
+        toast.success(next ? `▶️ '${t.trade}' 수집 재개` : `⏸ '${t.trade}' 수집 중지`)
         await load()
       } else toast.error(ERR_LABEL[r.data?.error] || r.data?.error || '변경 실패')
     } catch (e) {
@@ -63,7 +75,7 @@ export default function TradePanel() {
     <div className="rounded-xl border border-gray-200 bg-white mb-4">
       <details onToggle={e => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
         <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-gray-800">
-          🎛️ 수집 업종 설정
+          {title}
           <span className="ml-2 font-normal text-xs text-gray-500">
             {rows.length ? `${activeTrades}/${rows.length} 업종 켜짐 · 키워드 ${formatNumber(totalKw)}` : '배포 없이 업종을 켜고 끕니다'}
           </span>
@@ -82,7 +94,7 @@ export default function TradePanel() {
                   <thead className="text-gray-500">
                     <tr className="border-b border-gray-100">
                       <th className="px-2 py-2 text-left font-medium">업종</th>
-                      <th className="px-2 py-2 text-right font-medium">지역</th>
+                      <th className="px-2 py-2 text-right font-medium">{unit}</th>
                       <th className="px-2 py-2 text-right font-medium">발굴</th>
                       <th className="px-2 py-2 text-right font-medium">저장</th>
                       <th className="px-2 py-2 text-left font-medium">최근</th>

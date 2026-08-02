@@ -83,14 +83,16 @@ describe('배선 — 서버가 있어도 누를 데가 없으면 없는 기능�
     expect(TRADE_ROUTES).toMatch(/app\.patch\('\/'/)
   })
 
-  it('🔒 패널이 페이지에 렌더된다 — 파일만 있고 안 붙이면 아무도 못 본다', () => {
-    expect(PAGE).toMatch(/<TradePanel \/>/)
+  it('🔒 패널이 페이지에 **올바른 엔드포인트로** 렌더된다 — 파일만 있고 안 붙이면 아무도 못 본다', () => {
     expect(PAGE).toMatch(/import TradePanel from '\.\/partner-pool\/TradePanel'/)
+    expect(PAGE).toMatch(/<TradePanel endpoint="\/api\/admin\/partner-pool\/keyword-trades"/)
   })
 
-  it('🔒 패널이 **같은 엔드포인트**를 부른다(경로 오타 = 조용한 404)', () => {
-    expect(PANEL).toMatch(/api\.get\('\/api\/admin\/partner-pool\/keyword-trades'\)/)
-    expect(PANEL).toMatch(/api\.patch\('\/api\/admin\/partner-pool\/keyword-trades'/)
+  it('🔒 패널은 **URL 을 박지 않는다** — 두 풀이 같은 컴포넌트를 쓰므로 하드코딩하면 한쪽이 남의 것을 부른다', () => {
+    expect(PANEL).toMatch(/api\.get\(endpoint\)/)
+    expect(PANEL).toMatch(/api\.patch\(endpoint,/)
+    const hardcoded = PANEL.split('\n').filter(l => /api\.(get|patch)\('\/api\//.test(l))
+    expect(hardcoded, `URL 을 박은 줄: ${hardcoded.join(' | ')}`).toHaveLength(0)
   })
 
   it('수확 순 정렬 — 어느 업종이 값을 만드는지 보여야 끌 결정을 한다', () => {
