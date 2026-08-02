@@ -779,6 +779,38 @@ const MUTATIONS = [
       '예산은 픽 4개를 다 못 돈다(보통 1~2개). 계획한 수만큼 밀면 처리 못 한 키워드를 지나쳐 ' +
       '**한 바퀴에 한 번도 안 걸리는 자리**가 생긴다 — 우선/일반 커서가 `prefixDone` 을 쓰는 이유와 같은 병(leapfrog).',
   },
+  {
+    name: "bare '마케터' 가 소개글까지 대행사로(이용권 축에서 훔쳐옴)",
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: '광고\\s*(운영|세팅|집행)/i,\n    nameRe:',
+    replace: '광고\\s*(운영|세팅|집행)|마케터/i,\n    nameRe:',
+    test: 'src/tests/unit/ads-classify-marketer.test.ts',
+    why:
+      '라이브 실측: 대행사 273명 중 **45명(16%)이 오직 이 단어 하나로** 들어왔고, 원래 자리는 ' +
+      '맛집 10 · 외식창업 8 · IT/재테크 5 · 카페 5 · 숙소 4 · 여행 2 · 패션 1 · 미분류 10 — ' +
+      '대부분 이용권 본체 축이다. "15년차 마케터. 75개국 여행" 이 여행 블로거를 대행사로 만든다.',
+  },
+  {
+    name: '이름 전용 신호를 안 봄(진짜 마케터가 사라짐)',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: 'if (!r.re.test(text) && !(r.nameRe && r.nameRe.test(name))) continue',
+    replace: 'if (!r.re.test(text)) continue',
+    test: 'src/tests/unit/ads-classify-marketer.test.ts',
+    why:
+      '좁히기의 짝이다. `nameRe` 를 안 보면 싱어송마케터·지역전문마케터·QR마케터처럼 **이름으로 자기를 ' +
+      '선언한 실제 마케터 14명**이 통째로 빠진다 — 오탐을 줄이려다 정탐을 버리는 형태.',
+  },
+  {
+    name: '규칙이 거부하는 옛 카테고리를 안 비움(영구 고착)',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: "  if (stored === '마케팅대행사') {",
+    replace: "  if (false && stored === '마케팅대행사') {",
+    test: 'src/tests/unit/ads-classify-marketer.test.ts',
+    why:
+      '재분류는 `classifyCategory` 가 **null 이면 그대로 둔다.** 규칙을 좁히면 어느 규칙에도 안 걸리는 ' +
+      '행이 생기는데(실측 45 중 10건), 안 비우면 옛 값이 영구히 굳는다 — `shouldClearCategory` docblock 이 ' +
+      '입주 시공업체 27명 실측으로 이미 경고한 바로 그 형태("측정하면 점진 교정된다"는 낙관은 틀렸다).',
+  },
 ]
 
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
