@@ -39,6 +39,15 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
+/**
+ * 🔍 `--only <부분문자열>` — 한 건만 돌린다(이름 부분일치).
+ * 전수는 45회 vitest 라 ~1.5분이고, 주입 하나를 손보는 동안 그걸 매번 기다리면 결국 **확인을
+ * 건너뛰게 된다** — 이 레포가 반복해서 당한 자리다. CI 는 인자 없이 전수로 돈다.
+ */
+const ONLY = (() => {
+  const i = process.argv.indexOf('--only')
+  return i !== -1 ? process.argv[i + 1] : null
+})()
 
 /**
  * @typedef {{name:string, file:string, find:string, replace:string, test:string, why:string}} Mutation
@@ -441,8 +450,13 @@ const MUTATIONS = [
   {
     name: 'cron day-of-week 0 재유입(배열 전체 거부)',
     file: 'wrangler.toml',
-    find: '"0 20 * * SUN"',
-    replace: '"0 20 * * 0"',
+    // 🔁 2026-08-02: 원래 좌표는 `"0 20 * * SUN"`(주간 백업)이었는데, 무료 한도(계정당 5)로
+    //   그 항목을 배열에서 뺐다. 그런데 **뺀 이유를 적은 주석에 같은 문자열이 남아** 주입이
+    //   주석에 걸렸고, 주석을 고쳐 봐야 동작이 안 바뀌니 테스트가 통과해 *"가드가 헛돈다"* 로
+    //   오진됐다. 지키려는 불변식은 특정 cron 이 아니라 **배열 안의 어떤 dow 든 0 이면 안 된다**
+    //   이므로, 좌표를 실제로 살아 있는 항목으로 옮긴다. (유료 전환으로 백업이 복귀해도 무관.)
+    find: '"0 18 * * *"',
+    replace: '"0 18 * * 0"',
     test: 'src/tests/unit/cron-schedule.test.ts',
     why:
       '표준 crontab 에선 0=일요일이라 맞아 보이지만 Cloudflare 는 1-7/MON-SUN 만 받는다(code 10100). ' +
@@ -474,21 +488,99 @@ if (MUTATIONS.length === 0) {
   process.exit(1)
 }
 
+/**
+ * 💬 주석을 공백으로 덮은 사본을 만든다 — **길이와 인덱스는 원본과 같게.**
+ *
+ * 2026-08-02 실측: `"0 20 * * SUN"` 주입이 `wrangler.toml` 의 **주석**에 걸렸다. 무료 한도로
+ * 그 cron 을 배열에서 뺐는데, 뺀 이유를 적은 주석 안에 같은 문자열이 남아 있었기 때문이다.
+ * 결과는 조용한 오진이었다 — 주석을 고쳐 봐야 동작이 안 바뀌니 테스트는 통과했고, 이 도구는
+ * 그걸 *"가드가 헛돈다"* 로 보고했다. **진실은 "지도가 낡았다"** 였고, 둘은 조치가 정반대다
+ * (전자는 테스트 픽스처를 고치고, 후자는 주입 좌표를 옮긴다).
+ *
+ * CLAUDE.md 가 `check-lock-table-symbols` 에 대해 적어 둔 함정 *"주석에만 남아도 통과"* 와
+ * 같은 클래스다. 이 도구 자체가 그 함정에 빠졌으니 여기서 막는다.
+ *
+ * ⚠️ **못 하는 것**: 문자열 리터럴 안의 `#`·`/*` 를 주석으로 오인할 수 있다. 그래도 안전한 쪽으로
+ *    틀린다 — 과잉 마스킹의 결과는 "낡은 지도"라는 **시끄러운 실패**지 조용한 통과가 아니다.
+ */
+function maskComments(src, file) {
+  const ext = path.extname(file)
+  const js = ['.ts', '.tsx', '.js', '.mjs', '.cjs'].includes(ext)
+  const hash = ['.toml', '.yml', '.yaml', '.sh', '.conf'].includes(ext)
+  if (!js && !hash) return src
+
+  // ⚠️ **정규식으로는 이 클래스를 못 가른다**(2026-08-02 실측). 첫 구현은
+  //   `/\/\*[\s\S]*?\*\//` 로 블록 주석을 지웠는데, 어느 `//` 주석이 본문에 `` `/*` `` 라는
+  //   **글자**를 담고 있어서 거기서부터 9줄을 통째로 삼켰다 — 그 안의 살아 있는 코드가
+  //   "주석"이 되어 정상 주입이 "낡은 지도"로 오진됐다. 문자열 안의 `#`·`/*` 도 같은 문제다.
+  //   ⇒ 왼쪽부터 상태를 들고 훑는다. 여는 기호는 **그때 상태가 code 일 때만** 의미가 있다.
+  const out = src.split('')
+  let i = 0
+  const n = src.length
+  let state = 'code' // code | line | block | sq | dq | tpl
+  const blank = (k) => { if (out[k] !== '\n') out[k] = ' ' }
+  while (i < n) {
+    const c = src[i], d = src[i + 1]
+    if (state === 'code') {
+      if (js && c === '/' && d === '/') { state = 'line'; blank(i); blank(i + 1); i += 2; continue }
+      if (js && c === '/' && d === '*') { state = 'block'; blank(i); blank(i + 1); i += 2; continue }
+      if (hash && c === '#') { state = 'line'; blank(i); i += 1; continue }
+      if (c === "'") state = 'sq'
+      else if (c === '"') state = 'dq'
+      else if (js && c === '`') state = 'tpl'
+      i += 1; continue
+    }
+    if (state === 'line') { if (c === '\n') state = 'code'; else blank(i); i += 1; continue }
+    if (state === 'block') {
+      if (c === '*' && d === '/') { blank(i); blank(i + 1); state = 'code'; i += 2; continue }
+      blank(i); i += 1; continue
+    }
+    // 문자열 — 내용은 그대로 두고(주입 대상이 문자열인 경우가 많다) 이스케이프만 건너뛴다.
+    if (c === '\\') { i += 2; continue }
+    if ((state === 'sq' && c === "'") || (state === 'dq' && c === '"') || (state === 'tpl' && c === '`')) state = 'code'
+    else if (state !== 'tpl' && c === '\n') state = 'code' // 닫히지 않은 따옴표로 파일 전체가 문자열이 되는 것 방지
+    i += 1
+  }
+  return out.join('')
+}
+
 const problems = []
 console.log(`🧬 guard-mutations: ${MUTATIONS.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
 
 for (const m of MUTATIONS) {
+  if (ONLY && !m.name.includes(ONLY)) continue
   const abs = path.join(ROOT, m.file)
   if (!fs.existsSync(abs)) { problems.push(`${m.name}: 파일 없음 — ${m.file} (코드가 옮겨갔다)`); continue }
   const src = fs.readFileSync(abs, 'utf8')
-  const count = src.split(m.find).length - 1
-  if (count === 0) { problems.push(`${m.name}: 주입 대상을 못 찾음 — ${m.file} 의 \`${m.find.slice(0, 50)}…\` (낡은 지도)`); continue }
+  // 🔑 세는 것도 고치는 것도 **주석 밖에서만** 한다. 주석을 고쳐 봐야 동작은 안 바뀌므로,
+  //   주석에 걸린 주입은 "가드가 헛돈다"가 아니라 "지도가 낡았다"로 보고해야 맞다.
+  const masked = maskComments(src, m.file)
+  // 판정은 **매치가 코드에서 시작하는가**로 한다. 문자열 전체를 마스킹된 사본에서 찾으면,
+  // 뒤쪽 주석을 앵커로 포함한 주입(`… : S2_REGIONS // 아무…`)을 거짓으로 "주석뿐"이라 부른다
+  // — 실제로 그렇게 두 건을 오탐했다. 시작 위치만 보면 둘 다 정확히 갈린다.
+  const inComment = (i) => masked[i] === ' ' && src[i] !== ' '
+  const hits = []
+  for (let i = src.indexOf(m.find); i !== -1; i = src.indexOf(m.find, i + 1)) hits.push(i)
+  const live = hits.filter((i) => !inComment(i))
+  const rawCount = hits.length
+  const count = live.length
+  if (count === 0) {
+    problems.push(
+      rawCount > 0
+        ? `${m.name}: 주입 대상이 **주석에만** 있다 — ${m.file} 의 \`${m.find.slice(0, 50)}…\` (낡은 지도: 코드에서 사라졌고 설명만 남았다)`
+        : `${m.name}: 주입 대상을 못 찾음 — ${m.file} 의 \`${m.find.slice(0, 50)}…\` (낡은 지도)`,
+    )
+    continue
+  }
   if (count > 1) { problems.push(`${m.name}: 주입 대상이 ${count}곳 — 유일해야 한다(엉뚱한 곳을 고칠 수 있다)`); continue }
+  // 주석에도 같은 문자열이 있을 수 있으므로 **코드 쪽 인덱스로** 바꾼다
+  // (`String.replace` 는 첫 등장을 바꾸는데, 그게 주석일 수 있다).
+  const at = live[0]
 
   pending.set(abs, src)
   let stillGreen
   try {
-    fs.writeFileSync(abs, src.replace(m.find, m.replace))
+    fs.writeFileSync(abs, src.slice(0, at) + m.replace + src.slice(at + m.find.length))
     stillGreen = runTest(m.test)
   } finally {
     fs.writeFileSync(abs, src)
