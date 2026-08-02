@@ -48,6 +48,14 @@ const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '노브 등기부 강제 무력화',
+    file: 'scripts/check-plan-knob-coverage.mjs',
+    find: 'if (bad) process.exit(STRICT ? 1 : 0)',
+    replace: 'if (false) process.exit(1)',
+    test: 'src/tests/unit/ads-plan-knobs.test.ts',
+    why: '등기부 누락·배선 누락을 통과시키면 다음 노브도 조용히 요금제를 못 받는다(하루에 세 번 만난 결함).',
+  },
+  {
     name: 'DO 알람이 요금제를 다시 모름',
     file: 'src/worker-ads/lane-alarm-policy.ts',
     find: "  if (!Number.isFinite(n) || n <= 0) return paidPlan(env) ? ALARM_INTERVAL_MS_PAID : ALARM_INTERVAL_MS_DEFAULT",

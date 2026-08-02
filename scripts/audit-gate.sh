@@ -128,6 +128,7 @@ if domain deploy; then
   run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
   run "cron 하트비트 커버리지"           node scripts/check-cron-heartbeat.mjs
   run "머지 충돌 마커"                  node scripts/check-conflict-markers.mjs -s
+  run "처리량 노브 요금제 커버리지"    env X=1                       node scripts/check-plan-knob-coverage.mjs -s
   run "유어애즈 예산 우회(부모 CPU)"    node scripts/check-ads-dispatch-bypass.mjs -s
   run "유어애즈 레인 격리"              node scripts/check-ads-lane-isolation.mjs
   run "예산 루프 부기 몫(자기 기록)"     env STRICT_BUDGET_BOOKKEEPING=1 node scripts/check-budget-bookkeeping.mjs
