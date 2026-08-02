@@ -33,7 +33,7 @@ import GroupBuyCountdown from './product-detail/GroupBuyCountdown'
 import ProductReviews from './product-detail/ProductReviews'
 import ReferralSection from './product-detail/ReferralSection'
 import { isMallProduct } from '@/shared/mall/resolve'
-import { PickupNotice, DeliveryNotice } from '@/pages/product-detail/ReceiveMethodNotice'
+import { PickupNotice, DeliveryNotice, hasPickupInfo } from '@/pages/product-detail/ReceiveMethodNotice'
 import { readMallOrigin } from '@/shared/mall/origin'
 import { parseUTCDate } from '@/utils/date'
 
@@ -863,7 +863,7 @@ export default function ProductDetailPage() {
               ...(product.category ? [{ label: t('productDetailPage.category'), value: product.category }] : []),
             ]} />
           </AccordionSection>
-          <AccordionSection title={t('productDetailPage.shippingExchange')}>
+          <AccordionSection title={hasPickupInfo(product.pickup) ? '교환·반품·환불 안내' : t('productDetailPage.shippingExchange')}>
             <ReturnPolicySection />
           </AccordionSection>
           <AccordionSection title={t('productDetailPage.notes')}>
