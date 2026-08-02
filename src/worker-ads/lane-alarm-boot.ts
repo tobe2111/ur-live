@@ -12,25 +12,34 @@
  * 근거(왜 알람인가)·롤백: `lane-alarm-policy.ts` 헤더.
  */
 import { alarmEnabled } from './lane-alarm-policy'
+import { ALARM_LANE_NAMES } from './lane-alarm-runners'
 
 type BeatFn = (
   name: string, ok: boolean, ms: number, err?: unknown, maxGapMin?: number, extra?: Record<string, unknown>,
 ) => Promise<void>
 
-/** 알람이 보강 레인을 모는가 — 킬스위치 OFF 이거나 DO 바인딩이 없으면 기존 cron 경로가 그대로 돈다. */
+/** 알람이 레인을 모는가 — 킬스위치 OFF 이거나 DO 바인딩이 없으면 기존 cron 경로가 그대로 돈다. */
 export function laneAlarmDrivesEnrich(env: unknown): boolean {
   return alarmEnabled(env) && !!(env as { ADS_LANE?: DurableObjectNamespace } | undefined)?.ADS_LANE
 }
 
-/** 알람 체인을 세운다(멱등). 💥 throw 하지 않는다 — 부트스트랩 실패가 다른 레인을 끌고 가면 안 된다. */
+/**
+ * 등록된 **모든** 레인의 알람 체인을 세운다(멱등). 💥 throw 하지 않는다 — 한 레인의 부트스트랩 실패가
+ * 다른 레인을 끌고 가면 안 된다(그래서 레인별로 개별 try 를 둔다).
+ * ⚠️ 비용: 레인당 DO fetch 1 + 하트비트 1. 등록부를 늘리면 **정각 부모의 서브리퀘스트도 그만큼 는다** —
+ *   레인을 얹기 전에 `lane-alarm-runners.ts` 헤더의 기준을 먼저 볼 것.
+ */
 export async function bootstrapLaneAlarm(env: unknown, beat: BeatFn): Promise<void> {
-  const t0 = Date.now()
-  try {
-    const ns = (env as { ADS_LANE: DurableObjectNamespace }).ADS_LANE
-    const res = await ns.get(ns.idFromName('enrich-influencer')).fetch('https://ur-ads/start', { method: 'POST' })
-    const body = await res.json().catch(() => null)
-    await beat('lane-alarm-boot', res.ok, Date.now() - t0, undefined, undefined, (body ?? {}) as Record<string, unknown>)
-  } catch (err) {
-    await beat('lane-alarm-boot', false, Date.now() - t0, err).catch(() => undefined)
+  const ns = (env as { ADS_LANE?: DurableObjectNamespace } | undefined)?.ADS_LANE
+  if (!ns) return
+  for (const lane of ALARM_LANE_NAMES) {
+    const t0 = Date.now()
+    try {
+      const res = await ns.get(ns.idFromName(lane)).fetch('https://ur-ads/start', { method: 'POST' })
+      const body = await res.json().catch(() => null)
+      await beat(`lane-alarm-boot:${lane}`, res.ok, Date.now() - t0, undefined, undefined, (body ?? {}) as Record<string, unknown>)
+    } catch (err) {
+      await beat(`lane-alarm-boot:${lane}`, false, Date.now() - t0, err).catch(() => undefined)
+    }
   }
 }

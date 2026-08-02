@@ -434,7 +434,8 @@ describe('자기링크 판정 — SSOT 와 정리 규칙', () => {
   /** ⚠️ 이 표에서 빠진 단계는 **영원히 안 돈다** — 침묵이 아니라 부재라 경보에도 안 잡힌다. */
   it('정비 스케줄과 cron 리터럴 양쪽에 selflink 가 있다', () => {
     expect(read('src/features/marketing/api/influencer-maintenance.ts')).toMatch(/'selflink',/)
-    expect(read('src/worker-ads/index.ts')).toMatch(/'selflink',/)
+    // 📦 2026-08-02: cron 리터럴이 `maintenance-cron.ts` 로 분리됐다(엔트리 파일크기 래칫) — 불변식은 그대로.
+    expect(read('src/worker-ads/maintenance-cron.ts')).toMatch(/'selflink',/)
   })
 })
 

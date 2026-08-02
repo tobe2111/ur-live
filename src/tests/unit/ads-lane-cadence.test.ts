@@ -163,10 +163,12 @@ describe('worker-ads/index.ts — 시각 게이트는 반드시 gates 헬퍼를 
     // 🔁 2026-07-29: 호출부에서 `scheduleGapMinutes(PHASES)` 를 직접 쓰던 것을 `gates.hourlySchedule` 안으로
     //   옮겼다(양보 시각과 주기를 **한 입력**에서 유도하기 위해 — 위 'raw kick 금지' 불변식이 요구한 형태).
     //   따라서 검사 대상은 "호출부가 그 게이트를 쓰는가" 로 바뀐다. 유도 자체의 정합은 아래 유닛이 본다.
-    expect(src).toMatch(/gates\.hourlySchedule\(PHASES,/)
-    expect(src).not.toMatch(/phaseGapMinutes\(PHASES/)
+    // 📦 2026-08-02: 순환 블록이 `maintenance-cron.ts` 로 분리됐다 — 검사 대상만 옮기고 불변식은 그대로.
+    const cron = readFileSync(join(process.cwd(), 'src/worker-ads/maintenance-cron.ts'), 'utf8')
+    expect(cron).toMatch(/gates\.hourlySchedule\(PHASES,/)
+    expect(cron).not.toMatch(/phaseGapMinutes\(PHASES/)
     // 호출부가 주기를 **손으로** 계산해 넘기면 다시 두 군데가 된다 — 그 형태를 금지한다.
-    expect(src).not.toMatch(/gap: scheduleGapMinutes\(/)
+    expect(cron).not.toMatch(/gap: scheduleGapMinutes\(/)
   })
 })
 
@@ -182,11 +184,12 @@ describe('worker-ads/index.ts — 시각 게이트는 반드시 gates 헬퍼를 
  *   비중을 바꿀 땐 `MAINT_SCHEDULE` 주석의 실측 근거도 함께 갱신할 것.
  */
 describe('정비 배정표 — cron 리터럴 ↔ MAINT_SCHEDULE(SSOT)', () => {
-  const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+  // 📦 2026-08-02: 순환 블록이 `maintenance-cron.ts` 로 분리됐다(엔트리 파일크기 래칫). 불변식은 그대로다.
+  const src = readFileSync(join(process.cwd(), 'src/worker-ads/maintenance-cron.ts'), 'utf8')
   /** worker-ads 의 `const PHASES = [...] as const` 리터럴을 그대로 읽는다(정적 import 불가라 복제돼 있다). */
   const cronSchedule = (): string[] => {
     const m = /const PHASES = \[([\s\S]*?)\] as const/.exec(src)
-    expect(m, 'worker-ads/index.ts 의 PHASES 리터럴을 못 찾음 — 형태가 바뀌었으면 이 정규식도 함께').toBeTruthy()
+    expect(m, 'maintenance-cron.ts 의 PHASES 리터럴을 못 찾음 — 형태가 바뀌었으면 이 정규식도 함께').toBeTruthy()
     return [...m![1].matchAll(/'([a-z]+)'/g)].map(x => x[1])
   }
 
@@ -625,12 +628,17 @@ describe('🤝 야간 재보정에 19시를 양보해도 정비 순환이 굶지
   })
 
   it('🔒 스케줄러가 실제로 양보한다 — 상수 공유(두 벌로 두면 한쪽만 옮겨져 다시 겹친다)', () => {
-    const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
-    expect(src).toMatch(/export const RESCAN_HOUR_UTC = 19/)
+    // 📦 상수는 `rescan-hour.ts` — 순환 블록이 분리되면서 엔트리에서 가져오면 순환 import 가 된다.
+    expect(readFileSync(join(process.cwd(), 'src/worker-ads/rescan-hour.ts'), 'utf8'))
+      .toMatch(/export const RESCAN_HOUR_UTC = 19/)
+    const cron = readFileSync(join(process.cwd(), 'src/worker-ads/maintenance-cron.ts'), 'utf8')
+    const idx = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
     // 양보는 `gates.hourlySchedule(PHASES, [RESCAN_HOUR_UTC], …)` 한 자리에서 표현된다 —
     // 조건과 주기를 따로 쓰면(첫 판이 그랬다) 'raw kick 금지' 불변식이 먼저 잡는다.
-    expect(src, '순환이 19시를 양보하지 않는다').toMatch(/gates\.hourlySchedule\(PHASES, \[RESCAN_HOUR_UTC\]/)
-    expect(src, '재보정 시각이 상수를 안 쓴다').toMatch(/dailyAt\(RESCAN_HOUR_UTC,/)
+    expect(cron, '순환이 19시를 양보하지 않는다').toMatch(/gates\.hourlySchedule\(PHASES, \[RESCAN_HOUR_UTC\]/)
+    expect(idx, '재보정 시각이 상수를 안 쓴다').toMatch(/dailyAt\(RESCAN_HOUR_UTC,/)
+    // 엔트리가 상수를 재수출한다 — 기존 import 경로(테스트 포함)가 끊기지 않게.
+    expect(idx).toMatch(/export \{ RESCAN_HOUR_UTC \} from '\.\/rescan-hour'/)
   })
 
   it('🔒 경합에 진 재보정이 흔적을 남긴다 — 무음이면 "안 돎"과 구분되지 않는다', () => {
