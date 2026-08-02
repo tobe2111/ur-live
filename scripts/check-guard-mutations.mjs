@@ -48,6 +48,14 @@ const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '스냅샷이 조건부로 회귀(붕괴 판정의 분모 소실)',
+    file: 'src/worker-ads/lane-runner.ts',
+    find: "  const writes = [\n    env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_dispatch_last', snap),\n  ]\n  if (sel.deferred.length) {",
+    replace: "  const writes = []\n  if (sel.deferred.length) {\n    writes.push(env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_dispatch_last', snap))",
+    test: 'src/tests/unit/ads-dispatch-budget.test.ts',
+    why: '미룬 게 없는 회차에 띄운 레인 수가 안 남는다 — 06:00Z 에서 실제로 "4개를 띄웠나 8개가 죽었나"를 못 갈랐다.',
+  },
+  {
     name: '도메인 격리 제거(예산이 다시 섞임)',
     file: 'src/worker-ads/dispatch-budget.ts',
     find: '    const sel = selectLanesForTick(group, budgets[d], cursors[d] ?? 0, share)',
