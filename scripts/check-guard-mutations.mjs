@@ -575,6 +575,18 @@ const MUTATIONS = [
       '몇 달간 등록조차 안 된 채였고(재해복구 0) 에러는 배포 로그 안에만 있었다. ' +
       '⚠️ 위 계정-한도 항목과 별개다: 하나는 개수, 이것은 문법이며 서로를 대체하지 않는다.',
   },
+  {
+    name: '바인딩을 주석으로 되돌림(배포가 지운다)',
+    file: 'wrangler.toml',
+    find: '[[r2_buckets]]\nbinding = "BACKUP_BUCKET"',
+    replace: '# [[r2_buckets]]\n# binding = "BACKUP_BUCKET"',
+    test: 'src/tests/unit/worker-bindings-declared.test.ts',
+    why:
+      '`wrangler deploy` 는 이 파일이 선언한 것으로 워커 설정을 **통째로 교체**한다 — 주석은 ' +
+      '"추가 안 함"이 아니라 **삭제**다. 2026-08-02~03 에 두 번 당했고(CACHE_KV · BACKUP_BUCKET), ' +
+      '두 번째는 **백업 cron 을 켜는 그 배포가 백업이 쓸 버킷을 지웠다**. 에러는 안 나고 ' +
+      '주간 회차가 올 때(일주일 뒤) 조용히 실패한다.',
+  },
 ]
 
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
