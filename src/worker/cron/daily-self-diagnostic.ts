@@ -14,6 +14,32 @@
 import { sendDiscordAlert } from '../utils/discord-alert';
 import type { Env } from '../types/env';
 
+/** 토스 키 검증용 **존재하지 않는** 결제키. 조회만 하므로 부수효과 0. */
+export const TOSS_KEY_PROBE_ID = 'urdeal_keyprobe_does_not_exist';
+
+export type TossKeyVerdict = 'valid' | 'invalid' | 'unknown' | 'skipped';
+
+/**
+ * 🔑 토스 키 프로브 응답 해석 (순수 — 유닛으로 고정).
+ *
+ * 없는 결제키를 조회하면 **인증 결과와 데이터 유무가 상태코드로 갈린다**:
+ *   - `401` → 인증 자체가 거부됐다 = **키가 잘못됐거나 폐기됨**
+ *   - `404` → 인증은 통과했고 그 결제가 없을 뿐 = **키 정상**
+ *   - 그 외(5xx·429 등) → 토스 쪽 사정. **키 문제로 단정하지 않는다.**
+ *
+ * ⚠️ 이 프로브가 **증명하지 않는 것**: 그 키로 *환불이 성공*하는지. 인증 유효성까지다.
+ *   결제를 취소하려면 그 결제를 만든 키와 같은 키여야 하는데, 그건 실제 대상이 있어야 알 수 있다.
+ */
+export function interpretTossKeyProbe(status: number): { verdict: TossKeyVerdict; message: string } {
+  if (status === 401) {
+    return { verdict: 'invalid', message: 'TOSS_SECRET_KEY 인증 실패(401) — 키가 잘못됐거나 폐기됨. 환불·정합이 전부 실패한다' };
+  }
+  if (status === 404) {
+    return { verdict: 'valid', message: '유효(404 = 인증 통과, 조회 대상만 없음)' };
+  }
+  return { verdict: 'unknown', message: `판정 불가(status=${status}) — 키 문제로 단정하지 말 것` };
+}
+
 export async function runDailySelfDiagnostic(env: Env) {
   const DB = env.DB;
   const webhookUrl = env.DISCORD_WEBHOOK_URL;
@@ -37,12 +63,38 @@ export async function runDailySelfDiagnostic(env: Env) {
   }
 
   // 2. Secret 존재
+  //   🗑️ 2026-08-02: `FIREBASE_PRIVATE_KEY` 제거. Firebase 인증 수용 경로는 2026-07-28 에 폐기됐고
+  //     (`check-no-firebase-auth` 가드가 재도입을 막는다) 그 키는 더 이상 어디서도 안 쓰인다.
+  //     남겨두면 **매일 새벽 3시에 거짓 🔴 경보**가 나간다 — 알림 채널을 켜는 순간 늑대소년이 된다.
   const requiredSecrets = [
-    'JWT_SECRET', 'REFRESH_TOKEN_SECRET', 'KAKAO_REST_API_KEY',
-    'FIREBASE_PRIVATE_KEY', 'TOSS_SECRET_KEY',
+    'JWT_SECRET', 'REFRESH_TOKEN_SECRET', 'KAKAO_REST_API_KEY', 'TOSS_SECRET_KEY',
   ];
   const missing = requiredSecrets.filter((k) => !(env as unknown as Record<string, unknown>)[k]);
   if (missing.length > 0) issues.push(`🔴 누락된 Secret: ${missing.join(', ')}`);
+
+  // 2-b. 🔑 토스 키가 **실제로 유효한가** — 존재는 동작이 아니다.
+  //   2026-08-02: cron 캐리어(Workers)에 키를 새로 넣었는데, 그게 맞는 값인지 확인할 방법이 없었다.
+  //   그 키를 실제로 쓰는 작업(만료 환불·주문 정합)은 **대상이 생겨야** 돌기 때문에, 최악의 경우
+  //   첫 실전 환불에서야 "키가 틀렸다"를 알게 된다. 그건 고객 돈이 걸린 자리다.
+  //   ⇒ 존재하지 않는 결제키로 **조회 1회**를 보내 인증만 검증한다. 401=키 불량 / 404=키 정상.
+  //   부수효과 0(GET, 상태 변경 없음). 키 값은 어디에도 로그하지 않는다.
+  const tossKey = (env as unknown as Record<string, string | undefined>).TOSS_SECRET_KEY;
+  let tossVerdict: TossKeyVerdict = 'skipped';
+  if (tossKey) {
+    try {
+      const res = await fetch(`https://api.tosspayments.com/v1/payments/${TOSS_KEY_PROBE_ID}`, {
+        headers: { Authorization: `Basic ${btoa(`${tossKey}:`)}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      const v = interpretTossKeyProbe(res.status);
+      tossVerdict = v.verdict;
+      if (v.verdict === 'invalid') issues.push(`🔴 ${v.message}`);
+      else info.push(`TOSS 키: ${v.message}`);
+    } catch {
+      tossVerdict = 'unknown';
+      info.push('TOSS 키: 판정 불가(네트워크/타임아웃) — 키 문제로 단정하지 말 것');
+    }
+  }
 
   // 3. 전날 주문/결제
   try {
@@ -157,11 +209,18 @@ export async function runDailySelfDiagnostic(env: Env) {
     }
   } catch {}
 
+  // 📌 2026-08-02: **결과를 반환한다.** 예전엔 webhook 이 없으면 여기서 그냥 return 해서
+  //   힘들게 모은 진단 결과가 **통째로 사라졌다** — console.warn 은 Observability 가 꺼져 있어
+  //   아무도 못 본다. 이제 반환값이 `safeCron` 을 거쳐 하트비트 `result` 에 남으므로,
+  //   Discord 가 없어도 `/api/admin/cron-heartbeats` 에서 pull 로 확인할 수 있다.
+  //   (이 레포가 반복해 만난 클래스: 관측을 만들어 놓고 그게 사람에게 도달하지 않는 것.)
+  const summary = { issues: issues.length, toss: tossVerdict, discord: Boolean(webhookUrl) };
+
   // 알림 발송
   if (!webhookUrl) {
     // 🛡️ 2026-04-22: webhook 미설정 알림 — 진단 자체 작동 안 함을 운영자가 인지하도록
     console.warn('[Daily Diagnostic] DISCORD_WEBHOOK_URL not configured — diagnostic results not sent');
-    return;
+    return summary;
   }
 
   if (issues.length > 0) {
@@ -179,4 +238,6 @@ export async function runDailySelfDiagnostic(env: Env) {
       'info'
     );
   }
+
+  return summary;
 }
