@@ -19,6 +19,8 @@ import ContactListPanel from './partner-pool/ContactListPanel'
 import ReferralPanel from './partner-pool/ReferralPanel'
 import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo, type Work24Info, type LocalDataInfo, type EnrichInfo, type EnrichRollupInfo, type KakaoSweepInfo, type RegistryMatchInfo } from './partner-pool/StatusLines'
 import { STAT_PICK, fmtRun, runStamp, parseStamp } from './partner-pool/job-completion'
+import { FilterChip, ActionMenu } from './partner-pool/Controls'
+import CompanyKeywordManager, { type CompanyKeyword } from './partner-pool/CompanyKeywordManager'
 
 interface Lead {
   id: number; company_name: string; category: string | null; subcategory: string | null
@@ -81,6 +83,7 @@ export default function AdminPartnerPoolPage() {
   const [busy, setBusy] = useState('')          // 실행 중인 액션 키(수집/보강/정리 공통)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [meta, setMeta] = useState<Meta | null>(null)
+  const [keywords, setKeywords] = useState<CompanyKeyword[]>([]) // 🔑 수집 대상 키워드(화면에서 on/off)
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [add, setAdd] = useState({ ...EMPTY_ADD })
@@ -100,6 +103,10 @@ export default function AdminPartnerPoolPage() {
 
   const loadMeta = useCallback(async () => {
     try { const r = await api.get('/api/admin/partner-pool/meta'); if (r.data?.success) setMeta(r.data) } catch { /* noop */ }
+  }, [])
+  /** 🔑 수집 키워드 — 4,546개까지 자라므로 **stats 폴링과 분리**한다(폴링마다 끌어오면 화면이 무거워진다). */
+  const loadKeywords = useCallback(async () => {
+    try { const r = await api.get('/api/admin/partner-pool/keywords'); if (r.data?.success) setKeywords(r.data.keywords || []) } catch { /* noop */ }
   }, [])
   const loadStats = useCallback(async (): Promise<Record<string, unknown> | null> => {
     try {
@@ -133,7 +140,8 @@ export default function AdminPartnerPoolPage() {
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
   }, [fCategory, fTier, fStatus, fType, quick, qd, page])
 
-  useEffect(() => { loadMeta(); loadStats() }, [loadMeta, loadStats])
+  // 🔑 키워드는 마운트 1회만 — 이후 갱신은 사용자가 바꿀 때(onChanged)뿐이다(폴링에 안 태운다).
+  useEffect(() => { loadMeta(); loadStats(); loadKeywords() }, [loadMeta, loadStats, loadKeywords])
   useEffect(() => { loadLeads() }, [loadLeads])
   // 필터가 바뀌면 1페이지로(현재 페이지가 범위를 벗어나 빈 목록이 되는 것 방지).
   useEffect(() => { setPage(0) }, [fCategory, fTier, fStatus, fType, quick, qd])
@@ -375,6 +383,11 @@ export default function AdminPartnerPoolPage() {
           </div>
         )}
 
+        {/* 🔑 수집 조건 — 무엇을 모을지 여기서 고른다(네 축 중 ③ 필터링) */}
+        <div className="mb-4">
+          <CompanyKeywordManager keywords={keywords} onChanged={loadKeywords} />
+        </div>
+
         {/* 수동 입력 폼 */}
         {showAdd && (
           <div className="rounded-xl border border-gray-200 bg-white p-4 mb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -491,45 +504,6 @@ export default function AdminPartnerPoolPage() {
 }
 
 /** 활성 필터 칩 — 목록에 지금 적용 중인 조건 1개(× 로 개별 해제). */
-function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-900 text-white">
-      {label}
-      <button onClick={onClear} aria-label={`${label} 해제`} className="text-gray-300 hover:text-white">×</button>
-    </span>
-  )
-}
-
-/** 액션 드롭다운 — 상시 노출 버튼 수를 줄이기 위한 묶음(수집 5종 / 정리·보강 4종). */
-function ActionMenu({ label, items, busy }: { label: string; busy?: boolean; items: Array<{ label: string; desc?: string; onClick: () => void }> }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [open])
-  return (
-    <div className="relative" ref={ref}>
-      <button onClick={() => setOpen(v => !v)} disabled={busy}
-        className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50">
-        {busy ? '실행 중…' : `${label} ▾`}
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-20 w-72 rounded-xl border border-gray-200 bg-white shadow-lg p-1">
-          {items.map(it => (
-            <button key={it.label} onClick={() => { setOpen(false); it.onClick() }}
-              className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50">
-              <div className="text-sm text-gray-800">{it.label}</div>
-              {it.desc && <div className="text-[11px] text-gray-400 mt-0.5">{it.desc}</div>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 /** 행 — memo. 한 행만 바뀔 때 나머지 99행이 재조정되지 않도록(대표 신고 "렉 걸림"). */
 const LeadRow = memo(function LeadRow({ lead: l, checked, onToggle, onPatch, onRemove, onBounce }: {

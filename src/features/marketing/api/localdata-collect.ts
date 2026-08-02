@@ -22,7 +22,7 @@ import type { Env } from '@/worker/types/env'
 import { ensureProspectSchema, saveProspects, LICENSE_UPJONG, PRIORITY_UPJONG, type StoreProspect } from './store-prospects'
 import { describePublicDataFailure, serviceKeyParam, isNoValue } from './public-data-diag'
 import { type FetchBudget } from './influencer-discovery'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap } from './collect-budget'
 import {
   buildLicenseUrl, findVariant, probeLicenseVariants, redactServiceKey, resolveLicensePageSize,
   shouldProbe, type ProbeAttempt, type VariantState,
@@ -63,7 +63,7 @@ async function resolveLocalDataBudget(env: Env): Promise<{ budget: FetchBudget; 
   const learnedCap = Math.max(0, parseInt((await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('localdata'))
     .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
-  const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
+  const pcap = envSubreqCap(env)
   const total = resolveSubreqBudget(envBudget, learnedCap, pcap)
   const deadlineMs = Math.min(120_000, Math.max(5_000, parseInt((env as unknown as { ADS_LOCALDATA_DEADLINE_MS?: string }).ADS_LOCALDATA_DEADLINE_MS || '', 10) || 20_000))
   return { budget: { left: total, limitHit: false, deadline: Date.now() + deadlineMs }, envBudget, learnedCap, total }
@@ -74,7 +74,7 @@ async function resolveLocalDataBudget(env: Env): Promise<{ budget: FetchBudget; 
  * ⚠️ 소비량은 **여기서** 시작값 기준으로 도출한다(호출자가 계산해 넘기면 백오프가 거꾸로 작동할 여지가 생긴다).
  */
 async function persistLocalDataCap(env: Env, total: number, budget: FetchBudget, learnedCap: number, envBudget: number): Promise<void> {
-  const nextCap = nextSubreqCap(total - budget.left, !!budget.limitHit, learnedCap, envBudget, platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP))
+  const nextCap = nextSubreqCap(total - budget.left, !!budget.limitHit, learnedCap, envBudget, envSubreqCap(env))
   if (nextCap == null) return
   await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(subreqCapKey('localdata'), String(nextCap)).run().catch(() => null)

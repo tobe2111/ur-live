@@ -48,6 +48,46 @@ const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '유료 천장이 무료와 같아짐(요금제 반쪽)',
+    file: 'src/features/marketing/api/collect-budget.ts',
+    find: 'export const SUBREQ_PLATFORM_CAP_PAID = 900',
+    replace: 'export const SUBREQ_PLATFORM_CAP_PAID = 60',
+    test: 'src/tests/unit/ads-plan-scaling.test.ts',
+    why: '유료로 바꿔도 레인당 처리가 60 에 묶이던 08-02 이전 상태. "레인 수만 늘고 일은 그대로".',
+  },
+  {
+    name: '레인이 요금제를 우회(raw env 직접 전달)',
+    file: 'src/features/marketing/api/enrich-lane.ts',
+    find: 'envSubreqCap(env)',
+    replace: 'platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)',
+    test: 'src/tests/unit/ads-plan-scaling.test.ts',
+    why: '13개 파일이 전부 이 형태였다 — 함수가 옳아도 레인이 안 쓰면 요금제가 닿을 길이 없다.',
+  },
+  {
+    name: '무료 보폭이 바뀜(라이브 회귀)',
+    file: 'src/features/marketing/api/collect-budget.ts',
+    find: 'return Math.max(RECOVER_STEP, Math.round(scaleBase(ceiling, learnedCap) / 30))',
+    replace: 'return Math.max(RECOVER_STEP, Math.round(scaleBase(ceiling, learnedCap) / 10))',
+    test: 'src/tests/unit/ads-plan-scaling.test.ts',
+    why: '유료 축을 넣다가 무료 학습 곡선을 흔드는 것 — 에러 없이 수확만 줄어드는 종류의 회귀.',
+  },
+  {
+    name: 'AIMD 불변식 위반(하향 ≤ 회복)',
+    file: 'src/features/marketing/api/collect-budget.ts',
+    find: 'return Math.max(ABANDON_STEP, Math.round(scaleBase(ceiling, learnedCap) / 15))',
+    replace: 'return Math.max(ABANDON_STEP, Math.round(scaleBase(ceiling, learnedCap) / 60))',
+    test: 'src/tests/unit/ads-plan-scaling.test.ts',
+    why: '하향이 회복보다 작으면 회차가 계속 죽는 동안에도 상한이 순증해 영영 못 내려온다.',
+  },
+  {
+    name: '보폭이 생활점 대신 천장 기준으로 회귀',
+    file: 'src/features/marketing/api/collect-budget.ts',
+    find: 'const live = learnedCap && learnedCap > 0 ? Math.min(learnedCap, ceiling) : ceiling',
+    replace: 'const live = ceiling',
+    test: 'src/tests/unit/collect-budget-cap.test.ts',
+    why: '첫 판이 그랬다 — 천장이 크고 실제 한도가 작은 배치(ADS_PLAN=paid 인데 계정은 무료)에서 낭비가 늘었다.',
+  },
+  {
     name: '예산 차감 제거(라이브 결함 재현)',
     file: 'src/worker-ads/dispatch-budget.ts',
     find: 'const cap = Math.max(1, budget - always.length)',
