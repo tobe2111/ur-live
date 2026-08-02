@@ -75,7 +75,7 @@ import { logError, logInfo } from './utils/logger';
 import { reportCronFailure } from './utils/cron-reporter';
 import { recordCronBeat } from './utils/cron-heartbeat';
 import { ACCEPTED_CRON_EXPRESSIONS } from './utils/cron-expected';
-import { missingEnvFor, formatMissingEnv } from './utils/cron-required-env';
+import { missingEnvFor, formatMissingEnv, CRON_REQUIRED_ENV, ENV_ALL_PRESENT } from './utils/cron-required-env';
 
 /**
  * 🔔 2026-06-12 (4차 감사 D3): cron 내부 실패 공용 통지 — logError + Discord (fail-soft).
@@ -181,10 +181,20 @@ export async function handleCronScheduled(
   // 🔑 2026-08-01: **돌긴 도는데 못 하는 일**을 남긴다. cron 캐리어(Workers)는 시크릿이 0개인데
   //   `*/5`·`0 18`·`0 19` 안의 머니 작업 셋이 TOSS_SECRET_KEY 를 읽는다 — 없으면 환불·정합이
   //   **에러 없이 스킵**되고 하트비트엔 `ok:true` 만 남는다. 배포 로그도 시크릿은 안 찍으므로
-  //   판정할 수 있는 자리는 여기뿐이다. 있으면 아무것도 쓰지 않는다(정상 시 비용 0).
-  const missingEnv = missingEnvFor(cron, env as unknown as Record<string, unknown>);
-  if (missingEnv.length > 0) {
-    ctx.waitUntil(safeCron('cron-env-missing', async () => formatMissingEnv(missingEnv)));
+  //   판정할 수 있는 자리는 여기뿐이다.
+  //
+  // 🔁 2026-08-02 수정 — **원래는 빠진 게 있을 때만 썼다. 그게 거짓말을 만들었다.**
+  //   키가 채워지면 아무것도 안 쓰니 **옛 행이 그대로 남아** 화면에는 여전히 "없음"으로 보인다.
+  //   실제로 물렸다: 22:50 에 마지막으로 쓰인 행이 23:00 회차 뒤에도 남아 있어, 이미 해결된 키를
+  //   미해결로 읽을 뻔했다(발화 시각과 행 시각을 대조해서야 알았다).
+  //   ⇒ **상태 지시등은 침묵으로 '정상'을 말하면 안 된다.** 요구사항이 있는 cron 은 매 회차
+  //   결과를 덮어쓴다. 비용은 회차당 1 write(이미 작업마다 쓰고 있으므로 무시할 수준)이고,
+  //   그 대가로 **행의 시각이 곧 그 판정의 시각**이 된다.
+  const envReqs = CRON_REQUIRED_ENV[cron];
+  if (envReqs?.length) {
+    const missingEnv = missingEnvFor(cron, env as unknown as Record<string, unknown>);
+    ctx.waitUntil(safeCron('cron-env-missing', async () =>
+      missingEnv.length > 0 ? formatMissingEnv(missingEnv) : ENV_ALL_PRESENT));
   }
 
   // 🛡️ 2026-06-09: 어드민 단체메일 큐 drainer — 2분마다 한 batch 씩 멱등 발송.

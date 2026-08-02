@@ -105,3 +105,14 @@ export function missingEnvFor(cron: string, env: Record<string, unknown>): CronE
 export function formatMissingEnv(missing: readonly CronEnvRequirement[]): string {
   return missing.map((m) => `${m.key}(${m.jobs.join(',')})`).join(' ')
 }
+
+/**
+ * 빠진 키가 없을 때 남기는 값.
+ *
+ * ⚠️ **왜 '아무것도 안 쓰기'가 아닌가** — 처음엔 그렇게 만들었고, 그게 거짓말을 만들었다.
+ * 키가 채워져도 옛 행이 그대로 남아 화면에는 여전히 "없음"으로 보였다(2026-08-02 실측:
+ * 22:50 행이 23:00 회차 뒤에도 남아 해결된 키를 미해결로 읽을 뻔했다).
+ * **상태 지시등은 침묵으로 '정상'을 말할 수 없다** — 침묵은 '정상'과 '관측 자체가 멈춤'을
+ * 구분하지 못하기 때문이다. 매 회차 덮어써야 행의 시각이 곧 판정 시각이 된다.
+ */
+export const ENV_ALL_PRESENT = 'ok — 요구 키 전부 존재'

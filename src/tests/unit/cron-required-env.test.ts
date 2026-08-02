@@ -6,6 +6,7 @@ import {
   CRON_REQUIRED_ENV,
   missingEnvFor,
   formatMissingEnv,
+  ENV_ALL_PRESENT,
 } from '../../worker/utils/cron-required-env'
 import { EXPECTED_CRON_EXPRESSIONS } from '../../worker/utils/cron-expected'
 
@@ -89,5 +90,31 @@ describe('missingEnvFor', () => {
     const s = formatMissingEnv(missingEnvFor('0 19 * * *', {}))
     expect(s).toContain('TOSS_SECRET_KEY')
     expect(s).toContain('reconciliation')
+  })
+})
+
+/**
+ * 🔁 2026-08-02 — **상태 지시등은 침묵으로 '정상'을 말할 수 없다.**
+ *
+ * 처음엔 빠진 키가 있을 때만 기록했다. 그랬더니 키가 채워져도 **옛 행이 그대로 남아** 화면에는
+ * 여전히 "없음"으로 보였다(실측: 22:50 행이 23:00 회차 뒤에도 남음 — 이미 해결된 키를 미해결로
+ * 읽을 뻔했고, 발화 시각과 행 시각을 대조해서야 알았다).
+ *
+ * 침묵은 **'정상'과 '관측 자체가 멈춤'을 구분하지 못한다.** 이 세션이 하루 종일 쫓은 바로 그
+ * 실패 양식을, 그걸 잡으려고 만든 도구가 스스로 저질렀다.
+ */
+describe('빠진 키가 없을 때도 판정을 남긴다', () => {
+  const SRC = readFileSync(resolve(__dirname, '../../worker/scheduled.ts'), 'utf-8')
+
+  it('요구사항이 있는 cron 은 매 회차 기록한다 (조건이 missing 개수가 아니다)', () => {
+    // `if (missingEnv.length > 0)` 로 되돌아가면 옛 행이 다시 거짓말을 시작한다.
+    expect(SRC).toMatch(/if\s*\(\s*envReqs\?\.length\s*\)/)
+    expect(SRC).not.toMatch(/if\s*\(\s*missingEnv\.length\s*>\s*0\s*\)/)
+  })
+
+  it('정상일 때 남기는 값이 비어 있지 않다', () => {
+    // 빈 문자열이면 summarizeResult 가 null 로 만들어 결국 행이 안 남는다(같은 사고 재발).
+    expect(ENV_ALL_PRESENT.trim().length).toBeGreaterThan(3)
+    expect(SRC).toContain('ENV_ALL_PRESENT')
   })
 })
