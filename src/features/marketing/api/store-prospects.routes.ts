@@ -135,8 +135,17 @@ app.post('/collect', async (c) => {
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
 
-// POST /api/admin/store-prospects/collect-neis · /collect-hira — 학원(NEIS)·병원(심평원) 수동 수집(ur-ads 위임).
-for (const [path, target] of [['/collect-neis', 'collect-neis'], ['/collect-hira', 'collect-hira']] as const) {
+// POST /api/admin/store-prospects/collect-{neis,hira,store-kakao} — 보조 소스 수동 수집(ur-ads 위임).
+//
+//   🎯 `collect-store-kakao` 가 여기 있는 이유: 이 레인은 dispatch 의 `prospect` 도메인(예산 1 / 레인 5)에
+//   속해 **약 5회차에 한 번**만 돈다. 대표가 조건을 바꾸고(권역·비중·페이지) 그 효과를 보려면
+//   최대 5시간을 기다려야 했다 — 학원·병원엔 있는 버튼이 정작 우선업종(음식점·카페·미용·숙박)을
+//   채우는 유일한 레인에만 없었다. **수동=의도** 라 게이트 무관(같은 `/__ads/*` 위임 패턴).
+//   ⚠️ 자동 회차와 겹칠 수 있다 — 저장은 upsert 라 오염은 없고 중복 조회만 생긴다(학원·병원과 동일).
+for (const [path, target] of [
+  ['/collect-neis', 'collect-neis'], ['/collect-hira', 'collect-hira'],
+  ['/collect-store-kakao', 'collect-store-kakao'],
+] as const) {
   app.post(path, async (c) => {
     const ads = c.env.ADS
     if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)

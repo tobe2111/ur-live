@@ -22,6 +22,7 @@ import { createBeatBatch, makeBeatWriter } from './beat-batch'; import { writeTi
 import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
 import { laneUrl, selfBeatMiddleware } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
+import { laneAlarmDrivesEnrich, bootstrapLaneAlarm } from './lane-alarm-boot'
 import { healthRoutes } from './health.routes'
 import { batchLaneRoutes } from './batch-lanes.routes'
 // 🥗 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보) — 메인 워커 CF Free 1MB 한도 회복을 위해
@@ -309,7 +310,10 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   못 써서 throw** 한다(그래서 러너가 '시작조차 못 함'). 라운드를 부모에서 6번 부르면 그 위험을 6배로
   //   키우고, 그 피해는 waitUntil 목록에서 **뒤에 선 다른 레인**이 받는다. 체인은 각 라운드가 자기
   //   인보케이션에서 다음을 잇게 해 부모 비용을 1로 고정한다(수집 레인과 같은 구조).
-  if ((env as unknown as { ADS_INFLUENCER_ENRICH_DISABLED?: string }).ADS_INFLUENCER_ENRICH_DISABLED !== 'true') {
+  //  ⏰ **알람이 몰면 cron 은 손을 뗀다**(2026-08-02 시범) — 게이트·부트스트랩·근거는 `lane-alarm-boot.ts`.
+  const laneAlarmOn = laneAlarmDrivesEnrich(env)
+  if (laneAlarmOn) ctx.waitUntil(bootstrapLaneAlarm(env, adsBeat))
+  if (!laneAlarmOn && (env as unknown as { ADS_INFLUENCER_ENRICH_DISABLED?: string }).ADS_INFLUENCER_ENRICH_DISABLED !== 'true') {
     // 🔁 라운드 루프는 **드라이버 인보케이션**이 돈다(`/__ads/enrich-influencer-driver`).
     //   여기서 for-await 로 돌리면 라운드 수만큼 부모의 서브리퀘스트를 먹는데, 부모는 이미 매시간
     //   11개 레인 × 2(fetch+하트비트) ≈ 31/50 을 쓰고 있다 — 라운드를 늘릴수록 **뒤쪽 waitUntil
@@ -596,5 +600,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     await writeTickSummary(env.DB, tickStartIso, hourUTC, kicked.length, beats.seenBeats)
   }))
 }
+
+// ⏰ DO 알람 레인 — wrangler-ads.toml 의 durable_objects 바인딩이 이 export 를 찾는다.
+//   ⚠️ export 를 빼면 배포는 되는데 **알람이 영원히 안 깨어난다**(클래스를 못 찾아 조용히 실패).
+export { AdsLaneDurableObject } from './lane-alarm'
 
 export default { fetch: app.fetch, scheduled }

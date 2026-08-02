@@ -102,7 +102,9 @@ describe('몫 배분 — 한쪽이 지갑을 비워 다른 쪽이 조용히 멈�
   it('🔒 앞 블록이 **예산을 남긴다** — 슬롯만 나누고 지갑을 비우면 뒤 블록은 첫 검사에서 튕긴다', () => {
     // 2026-08-02 ③: 페이지 수가 화면에서 조정 가능해져 유보분도 **설정값**으로 계산한다.
     //   상수로 두면 페이지를 낮췄을 때 필요 이상으로 떼어 뒤 블록이 굶는다.
-    expect(SRC).toMatch(/runBlock\('voucher',[\s\S]{0,120}?slots\.unmanned \* cfg\.max_pages\)/)
+    // ⚠️ 닫는 괄호로 앵커하지 않는다 — 뒤에 인자가 붙으면(커서 키 등) 코드가 맞는데도 빨간불이 뜬다.
+    //   대신 **자리(슬롯 바로 다음 = 5번째 인자)** 로 고정한다.
+    expect(SRC).toMatch(/runBlock\('voucher',[\s\S]{0,120}?slots\.voucher, slots\.unmanned \* cfg\.max_pages/)
     expect(SRC, 'floor 가 실제로 예산 검사에 쓰여야 한다').toMatch(/budget\.left <= saveReserve\(\) \+ floor/)
   })
 })
@@ -127,6 +129,45 @@ describe('회차가 죽어서 커서를 못 올리는 일이 없다 (#927 과 �
   it('중단 사유·경과를 남긴다 — 매번 deadline 이면 슬라이스를 줄여야 한다는 신호다', () => {
     expect(SRC).toMatch(/stopped_by: stoppedBy/)
     expect(SRC).toMatch(/elapsed_ms: Date\.now\(\) - startedAt/)
+  })
+})
+
+/**
+ * 🏦 **중간 정산** — 회차가 끝까지 산다고 가정하지 않는다 (2026-08-02 실측 후 신설).
+ *
+ * 마지막에 한 번만 저장·전진하면, 회차가 중간에 죽을 때 **캔 것도 전진도 통째로** 사라진다.
+ * 그리고 이 환경이 정확히 그렇다 — 정각 하트비트에서 다른 레인들이 `ms≈3.6초`에 CPU 한도로 죽는데
+ * 이 레인의 완주 시간은 `elapsed_ms 8,097` 이다. **끝까지 사는 쪽이 예외다.**
+ *
+ * ⚠️ 이 시험이 못 보는 것: 실제로 죽었을 때 무엇이 남는지(런타임). 여기서는 *구조*만 고정한다 —
+ *   ① 경계에서만 올린다 ② 두 곳의 커서 식이 같다 ③ 두 번 저장하지 않는다 ④ 합계가 누적된다.
+ */
+describe('중간 정산 — 죽어도 그때까지 캔 것은 남는다', () => {
+  const flushAt = SRC.indexOf('if (cursorKey && rows.length >= FLUSH_ROWS)')
+  const pageLoopEnd = SRC.indexOf('if (data?.meta?.is_end')
+  const blockReturn = SRC.indexOf('return (cursor + consumed)')
+
+  it('🔒 **키워드 경계**에서만 커서를 올린다 — 페이지 중간이면 안 본 페이지를 본 것으로 표시한다', () => {
+    expect(flushAt, '중간 정산 호출이 없다').toBeGreaterThan(0)
+    expect(flushAt, '페이지 루프 안쪽이다').toBeGreaterThan(pageLoopEnd)
+    expect(flushAt, '키워드 루프 밖으로 나갔다').toBeLessThan(blockReturn)
+  })
+
+  it('🔒 중간 커서 값이 **최종 반환값과 같은 식** — 갈라지면 한쪽이 조용히 틀린 자리를 가리킨다', () => {
+    expect(SRC.slice(flushAt, blockReturn)).toContain('(cursor + consumed) % Math.max(1, all.length)')
+  })
+
+  it('🔒 정산한 행은 **비운다** — 안 비우면 다음 정산이 같은 행을 또 저장하고 예산만 태운다', () => {
+    expect(SRC).toMatch(/saveProspects\(DB, rows\.splice\(0\)\)/)
+  })
+
+  it('🔒 저장 합계가 **누적**된다 — 덮어쓰면 total_saved 와 업태 통계가 마지막 조각만 센다', () => {
+    expect(SRC).toMatch(/saved \+= await saveProspects/)
+    expect(SRC, 'saved 를 다시 const 로 잡으면 누적이 끊긴다').not.toMatch(/const saved = /)
+  })
+
+  it('🔒 블록 경계에서도 정산한다 — 뒤 블록에서 죽어도 앞 블록의 수확이 남아야 한다', () => {
+    expect(SRC).toMatch(/await flushAt\(CURSOR_KEY_VOUCHER, nextV\)/)
   })
 })
 

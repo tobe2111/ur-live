@@ -17,7 +17,7 @@ import { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighbor
 import { isSelfBlogLink } from './influencer-self-link'
 import { runDdlOnce } from './ads-schema-guard'
 import { deriveNaverHandle, naverBlogUrl } from './influencer-handle-heal'
-import { envSubreqCap, budgetedTimeoutMs } from './collect-budget'
+import { envSubreqCap, budgetedTimeoutMs, canStartBudgetedItem } from './collect-budget'
 
 // 📧 이메일 판정 규칙(순수)은 `influencer-email-rules.ts` — 기존 import 경로 호환을 위해 재수출.
 export { reextractEmail, correctedAboutEmail, PERSONAL_EMAIL_DOMAINS, personalEmailSqlClause, isPersonalEmail } from './influencer-email-rules'
@@ -196,32 +196,10 @@ export async function enrichYouTubePerformance(
   return rows.length
 }
 
-/** 네이버 블로거 보강 결과 — 어드민 진단용(측정 성공 0 이 반복되면 차단/형식변경 신호).
- *  🩹 2026-07-28 추가된 3필드는 "0 인데 이유를 모르겠다"를 없애기 위한 것이다. 실제로 이 레인은
- *  라운드마다 `tried:0` 만 내보내며 멈춰 있었고(손상 핸들 12,357행을 뽑아서 버리는 중), 원인을 찾는 데
- *  스냅샷이 아니라 라이브 행을 직접 조회해야 했다. `selected/skipped` 만 있었으면 한 번에 보였다. */
-export interface NaverEnrichDiag {
-  tried: number; measured: number; contacts: number; failed: number
-  /** 📧 그중 **이메일**만(2026-07-29) — `contacts` 는 인스타·링크만 채워도 +1 이라 '쓸 수 있는 리드'를 못 센다.
-   *  실제로 풀에서 with_contact(3,542)가 with_email(2,359)보다 빨리 늘고 있었는데 그 격차가 안 보였다. */
-  emails?: number
-  selected?: number   // 후보 SELECT 가 실제로 돌려준 행 수(0 이면 큐가 빈 것 · >0 인데 tried 0 이면 전량 스킵)
-  skipped?: number    // 핸들을 못 살려 스킵한 행(= 복구 불가 — healNaverHandles 의 unfixable 과 같은 집합)
-  healed?: number     // 🩹 이번 라운드에 channel_id/url 에서 핸들을 되살려 측정한 행
-  /** 🎁 이미 받은 RSS 에서 **더 뽑은** 것(추가 fetch 0) — 2026-07-29 대표 4축(카테고리화·정보 최대 수집).
-   *  ⚠️ 이 환경에선 `rss.blog.naver.com` 이 프록시 차단이라 응답 실물을 못 봤다.
-   *     그래서 이 카운터들이 **필드 존재 여부의 판정 근거**다: 계속 0 이면 그 필드는 오지 않는 것이니
-   *     추측으로 파서를 더 손대지 말고 이 경로를 접을 것. */
-  rss_cat?: number     // `<category>`(블로거 자기분류)를 받은 행
-  rss_intro?: number   // 채널 `<description>`(블로그 소개글)을 받은 행
-  rss_emails?: number  // 그 소개글에서 **처음** 이메일을 얻은 행
-  cat_body?: number    // 글 본문 빈도로 **빈칸을** 채운 행(기존 분류 덮어쓰기 아님)
-  /** 🏠 홈 fetch 를 생략한 행(연락처 4종이 이미 다 차 있어 응답이 버려질 것) — 아낀 서브리퀘스트 수와 같다. */
-  home_skipped?: number
-  /** 후보 조회 자체가 실패한 경우의 사유. 없으면 조회는 성공한 것 — `selected:0` 이 '큐가 빔'을 **확정**한다.
-   *  (이게 없으면 조회 실패도 `selected:0` 으로 보여 "큐가 비었다"와 구분되지 않는다.) */
-  query_error?: string
-}
+// 📊 진단 타입은 `influencer-perf-types.ts` 로 분리(600줄 캡) — 호출부 무수정 위해 재수출.
+//   ⚠️ 재수출(`export type ... from`)은 **로컬 스코프에 안 들어온다** — 아래에서 쓰므로 import 도 따로 한다.
+export type { NaverEnrichDiag } from './influencer-perf-types'
+import type { NaverEnrichDiag } from './influencer-perf-types'
 
 /**
  * 네이버 블로거 활동성+정보 보강 — RSS(30일 포스팅 수·최근 글 제목) + 홈 HTML(이웃수·프로필 연락처).
@@ -311,7 +289,15 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
    for (;;) {
     // ⏱️ 예산 또는 **벽시계** 소진 — 블로그 fetch 는 건당 최대 8s(RSS·홈 병렬)라 예산이 남아도 시간이 먼저 끝난다.
     //   (2026-07-28 파트너풀 레인의 deadline 가드와 같은 이유 — 죽는 대신 여기까지 쓰고 깨끗이 넘긴다.)
-    if (budget.left <= 1 || (budget.deadline && Date.now() >= budget.deadline)) return
+    // 🔴 **바닥값을 줄 수 없으면 아예 안 집는다** (2026-08-02). 근거·실측은 `canStartBudgetedItem` 정의부.
+    //   요약: 마감을 *지났을 때만* 멈추던 옛 판은 잔여 1~1,499ms 에 집은 항목에 바닥값 1.5s 를 줘서
+    //   **확정 초과 → 실패 → 데이터 없이 `perf_checked_at` 도장**(22,000 깊이 큐 뒤로 밀림)을 만들었다.
+    //   실측 03:00 회차 `tried 9 / failed 3` = 동시성 3(워커마다 마지막 1건). 안 집으면 NULL 로 남아
+    //   다음 라운드가 온전한 창으로 다시 집는다(라운드마다 새 인보케이션 = 새 마감).
+    //   ⚠️ 처리량 증가가 아니라 **`failed` 를 진짜 신호로 되돌리는** 변경이다 — 위 NAVER_CONCURRENCY
+    //   주석의 "올리기 전에 failed 부터 확인하라"가 그동안 마감 아티팩트에 오염돼 쓸 수 없었다.
+    if (budget.left <= 1) return
+    if (!canStartBudgetedItem(budget.deadline)) { diag.window_skipped = (diag.window_skipped || 0) + 1; return }
     const r = rows[cursor++]
     if (!r) return
     // 🩹 손상 핸들 자가복구 — 일괄 힐(healNaverHandles)이 전수를 도는 데 몇 시간 걸리므로, 레인이 만나는

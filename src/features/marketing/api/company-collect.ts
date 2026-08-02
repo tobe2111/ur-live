@@ -414,8 +414,22 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
       }
     }
   }
-  // 커서는 **전체 키워드 수** 기준으로 감는다(창 크기가 아니라) — total 이 0 이면 0.
-  const nextCursor = total > 0 ? (cursor + batch) % total : 0
+  /**
+   * 커서는 **실제로 돈 만큼**만 전진한다(계획한 창 크기가 아니라). total 이 0 이면 0.
+   *
+   *   🚨 2026-08-02 실측으로 고친 것 — 전에는 `cursor + batch`(=계획 12)였다. 그런데 이 레인은
+   *   거의 매 회차 예산이 먼저 마른다: `keywords 11개 · limit_hit true · spent 51`.
+   *   **11개 돌고 12칸 전진**하면 못 돈 1개가 다음 회차로 넘어가는 게 아니라 **건너뛰어진다.**
+   *   게다가 전진폭이 창 크기와 같아 창 경계가 `[0..11] [12..23] …` 로 **영원히 고정**된다 ⇒
+   *   매 회전 **같은 자리**가 빠진다. 지연이 아니라 **영영 조회되지 않는 사각지대**다
+   *   (4,546 키워드 기준 한 바퀴 379칸 — 그 자리들은 몇 달이 지나도 한 번도 안 돈다).
+   *
+   *   ⚠️ 소비량으로 감으면 창이 매 회전 **밀리므로** 모든 키워드가 결국 차례를 받는다. 그게 요점이다.
+   *   ⚠️ `consumed === 0`(첫 키워드 전에 예산 고갈)이면 전진 0 — 맞는 동작이다. 아무것도 안 봤으니
+   *      전진할 근거가 없다(전진시키면 안 본 것을 본 것으로 표시하게 된다).
+   */
+  const consumed = used.length
+  const nextCursor = total > 0 ? (cursor + consumed) % total : 0
 
   const s: CompanyCollectStats = {
     last_run: stamp, found, saved, emailed, keywords: used, cursor: nextCursor,
