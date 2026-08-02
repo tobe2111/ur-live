@@ -203,9 +203,6 @@ export async function probePublicData(env: Env, target: string, keyOverride?: st
   //   공공데이터포털은 페이징 파라미터 이름이 서비스마다 갈린다(pageNo/numOfRows ↔ pageIndex/pageSize).
   //   후보를 찌를 땐 **둘 다** 실어 보낸다 — 모르는 쪽을 무시하는 게 이 게이트웨이의 동작이고,
   //   하나만 보내면 "이름이 달라서" 실패한 것을 "주소가 틀려서"로 오진하게 된다.
-  //   공공데이터포털은 페이징 파라미터 이름이 서비스마다 갈린다(pageNo/numOfRows ↔ pageIndex/pageSize).
-  //   후보를 찌를 땐 **둘 다** 실어 보낸다 — 모르는 쪽을 무시하는 게 이 게이트웨이의 동작이고,
-  //   하나만 보내면 "이름이 달라서" 실패한 것을 "주소가 틀려서"로 오진하게 된다.
   const paging = `pageNo=${o.page}&numOfRows=${o.rows}&pageIndex=${o.page}&pageSize=${o.rows}&type=json&_type=json&resultType=json`
   const url = candidate
     ? (candidate.host === 'apis.data.go.kr'
