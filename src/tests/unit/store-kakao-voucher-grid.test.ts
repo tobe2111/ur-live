@@ -119,7 +119,8 @@ describe('회차가 죽어서 커서를 못 올리는 일이 없다 (#927 과 �
   it('🔒 마감선에서 **break** 한다 — return/throw 면 뒤의 커서 저장을 건너뛴다', () => {
     const loopAt = SRC.indexOf('outer: for (const win of rotationWindow')
     expect(loopAt).toBeGreaterThan(0)
-    expect(SRC.slice(loopAt, loopAt + 700)).toMatch(/Date\.now\(\) - startedAt > RUN_DEADLINE_MS.*break outer/s)
+    // ⚠️ 2026-08-02: 마감선이 **요금제 인지 지역변수**가 됐다(무료 12초 / 유료 24초). 무료 값은 위 검사가 지킨다.
+    expect(SRC.slice(loopAt, loopAt + 700)).toMatch(/Date\.now\(\) - startedAt > runDeadlineMs.*break outer/s)
   })
 
   it('🔒 커서 저장이 루프 **뒤**에 있다', () => {

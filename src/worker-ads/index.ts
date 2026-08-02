@@ -444,7 +444,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     // ⏱️ 100 → 40 **되돌림** (2026-08-02 01:00 KST 실측 — CPU 한도로 26.6초에 사망).
     //   40→100 은 07-28(#768)이고 이 레인의 **마지막 성공은 07-27** 이다. 즉 올린 뒤로 한 번도
     //   성공한 적이 없다. "쿼터 여유" 는 맞았지만 병목이 쿼터가 아니라 CPU 였다.
-    gates.dailyAt(16, '/__ads/collect-nps', async () => { const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich'); return runNpsWorkplaceEnrich(env, 40) })
+    gates.dailyAt(16, '/__ads/collect-nps', async () => { const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich'); return runNpsWorkplaceEnrich(env) })
   }
   // 📮 이메일 재검증 스윕 — 일 1회(hourUTC===17 = KST 02시). 기존 저장 이메일의 죽은 도메인(반송 확정) 정리.
   if (env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
@@ -452,7 +452,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
   // 📑 나라장터 조달업체(대행사 계열) — 일 1회(hourUTC===23 = KST 08시). 게이트 ADS_NARA_VENDOR_ENABLED.
   if ((env as unknown as { ADS_NARA_VENDOR_ENABLED?: string }).ADS_NARA_VENDOR_ENABLED === 'true') {
-    gates.dailyAt(23, '/__ads/collect-nara-vendor', async () => { const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect'); return runNaraVendorCollect(env, 5) })
+    gates.dailyAt(23, '/__ads/collect-nara-vendor', async () => { const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect'); return runNaraVendorCollect(env) })
   }
   // 🏛️ 사업자 폐업 스윕 — 일 1회(hourUTC===19 = KST 04시). 사업자번호 보유 리드 100건/일 국세청 상태조회 →
   //   폐업이면 active=0(죽은 연락처에 아웃리치 낭비 방지). fail-soft(활용신청 전엔 no-op + note).
@@ -468,15 +468,15 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     gates.dailyAt(20, '/__ads/collect-localdata-chain', async () => { const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataCollect(env) })
   }
   // 🎓 학원(NEIS) · 🏥 병원(심평원) 매시간 소량 수집 — 각자 게이트(기본 OFF), 커서 순환으로 전국을 며칠에 커버.
-  // ⏱️ 6 → 3 페이지 **되돌림** (2026-08-02 01:00 KST 실측). 이 레인은 `Worker exceeded CPU time limit`
-  //   으로 26.0초에 죽고 있었다. 6페이지로 올린 것이 07-29 인데 그 뒤로 성공 기록이 없다 —
-  //   슬라이스를 올린 날 죽었고 회복이 없었다. 3 은 이 함수의 원래 기본값이다.
-  //   ⚠️ 다시 올리려면 하트비트의 `ms` 를 먼저 볼 것. 26,000 근처면 그게 천장이다.
+  // ⏱️ 슬라이스 숫자는 **레인 안**에 있다(2026-08-02 — 요금제별 명시값 `envPlanValue`). 여기서 리터럴로
+  //   넘기면 그 기본값이 죽는다. 되돌림 근거(6→3 · CPU 26초)는 값 옆(neis-academy-collect)에 있고,
+  //   `ads-cpu-deadline` 유닛이 그 위치에서 무료 실효값을 고정한다.
+  //   ⚠️ 무료 값을 올리려면 하트비트의 `ms` 를 먼저 볼 것. 26,000 근처면 그게 천장이다.
   if ((env as unknown as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED === 'true') {
-    kick('/__ads/collect-neis', async () => { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return runNeisAcademyCollect(env, 3) })
+    kick('/__ads/collect-neis', async () => { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return runNeisAcademyCollect(env) })
   }
   if ((env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {
-    kick('/__ads/collect-hira', async () => { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); return runHiraHospitalCollect(env, 6) })
+    kick('/__ads/collect-hira', async () => { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); return runHiraHospitalCollect(env) })
   }
   // 📧 매장 후보 이메일 우선 연락처 보강 자동 드레인 — **매시간, 수집 게이트와 분리**(2026-07-27 — 회사 풀과
   //   동일 병목: 인허가 게이트 OFF 면 보강도 0회이던 결합 해소). 킬스위치 ADS_ENRICH_DISABLED 만 끔.
@@ -487,7 +487,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   ⚠️ 이 레인이 이 워커에서 가장 폭발적이었다(2일 × 16업종 × 6페이지 = 최대 192 fetch, **매시간**).
   //   인라인이던 동안 같은 인보케이션의 다른 작업들(시트 미러 포함)까지 예산을 굶겼을 가능성이 크다.
   if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
-    kick('/__ads/collect-localdata?mode=backfill', async () => { const { runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataBackfill(env, 2) }, { beat: 'collect-localdata?mode=backfill' })
+    kick('/__ads/collect-localdata?mode=backfill', async () => { const { runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataBackfill(env) }, { beat: 'collect-localdata?mode=backfill' })
   }
   const envx = env as unknown as { ADS_COMMERCE_ENABLED?: string; ADS_FRANCHISE_ENABLED?: string; ADS_NOTICE_ENABLED?: string }
   // 🛒 통신판매사업자 — 짝수시(상가정보와 같은 창이나 별도 커서·예산). 🏢 공정위 가맹 — hourUTC===22(주 1회 성격, 매일 소량 페이지).

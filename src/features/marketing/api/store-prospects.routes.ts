@@ -7,6 +7,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
+import { judgeLanes } from './lane-yield-health'
 import {
   listProspects, countProspects, prospectStats, updateProspect,
   LICENSE_CATEGORIES, PROSPECT_STATUSES, PROSPECT_CONTACT_CHANNELS,
@@ -83,6 +84,16 @@ app.get('/stats', async (c) => {
     hira: { gate: gate('hira', (c.env as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true'), run: hiraRun },
     storeKakao: { gate: gate('store_kakao', (c.env as { ADS_STORE_KAKAO_ENABLED?: string }).ADS_STORE_KAKAO_ENABLED === 'true'), run: kakaoRun },
     enrich: { run: enrichRun }, // 킬스위치는 ADS_ENRICH_DISABLED(전역) — 별도 게이트 없음
+    // 🩺 **수확 0 이 지속되는 레인**을 화면이 물어보지 않아도 알 수 있게(2026-08-02).
+    //   실측: `collect-hira` 는 60회 실행에 저장 0(timeout)인데 하트비트는 `ok=true` 로 초록이었다.
+    //   죽은 레인도 살아 있는 레인과 **똑같이 회차 순번을 나눠 갖는다** — 대표 우선업종 레인이 그만큼 밀린다.
+    //   ⚠️ 판정은 보여주기만 한다. 끄는 것은 사람의 결정이다(판정 규칙·오경보 방지는 lane-yield-health 헤더).
+    laneHealth: judgeLanes([
+      { lane: 'collect-localdata', stat: run as never },
+      { lane: 'collect-neis', stat: neisRun as never },
+      { lane: 'collect-hira', stat: hiraRun as never },
+      { lane: 'collect-store-kakao', stat: kakaoRun as never },
+    ]),
   })
 })
 

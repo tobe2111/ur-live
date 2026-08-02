@@ -9,6 +9,7 @@
  *   수동 트리거 게이트 무관. ⚠️ 수집 ≠ 발송 — 공개 요양기관 현황만. SSOT: partner-company-collection.md §12.
  */
 import type { Env } from '@/worker/types/env'
+import { envLaneBudget , envPlanValue} from './collect-budget'
 import { ensureProspectSchema, saveProspects, type StoreProspect } from './store-prospects'
 import { serviceKeyParam } from './public-data-diag'
 
@@ -80,7 +81,10 @@ const STATS_KEY = 'ads_hira_stats'
 const CURSOR_KEY = 'ads_hira_cursor'
 
 /** 병원 1틱(매시간 크론 소량 또는 수동). 전국 목록을 페이지 커서 순환 — 소진 시 1페이지부터 재순환(갱신). */
-export async function runHiraHospitalCollect(env: Env, maxPages = 3): Promise<HiraStats> {
+export async function runHiraHospitalCollect(env: Env, maxPagesArg?: number): Promise<HiraStats> {
+  // 🎚️ 회차당 일감도 **요금제를 따른다** — 예산만 커지고 이 숫자가 고정이면 늘어난 예산이 남는다.
+  //   호출부가 명시로 넘기면 그 값이 이긴다(수동 트리거·테스트가 그렇게 쓴다).
+  const maxPages = maxPagesArg ?? envPlanValue(undefined, 3, 12, env)
   const DB = env.DB
   await ensureProspectSchema(DB)
   const now = new Date()

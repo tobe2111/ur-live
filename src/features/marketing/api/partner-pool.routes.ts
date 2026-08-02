@@ -19,6 +19,7 @@ import { LEAD_TYPES, LEAD_TYPE_LABEL } from './company-classify'
 import tradeRoutes from './partner-pool-trades.routes'
 import { partnerPoolDedupeRoutes } from './partner-pool-dedupe.routes'
 import { partnerPoolKeywordRoutes } from './partner-pool-keywords.routes'
+import { judgeLanes } from './lane-yield-health'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -302,6 +303,12 @@ app.get('/stats', async (c) => {
     enrichLast, enrichRollup, enrichBurst, reclassifyBurst, runAll, running, kakaoSweep,
     // 🏪 매장 후보(인허가) — 소비자 공개면/개업 웰컴의 데이터원. 상태줄에 없어 0건인 걸 아무도 몰랐음(2026-07-28).
     localdata: { gate: gate('localdata', false), run: localdataRun },
+    // 🩺 수확 0 이 지속되는 레인(매장 화면과 같은 판정기) — 규칙·근거는 `lane-yield-health.ts` 헤더.
+    laneHealth: judgeLanes([
+      { lane: 'collect-company', stat: run as never }, { lane: 'collect-storeinfo', stat: storeinfoRun as never },
+      { lane: 'collect-commerce', stat: commerceRun as never }, { lane: 'collect-franchise', stat: franchiseRun as never },
+      { lane: 'collect-nara-vendor', stat: naraRun as never }, { lane: 'collect-work24', stat: w24Run as never },
+      { lane: 'collect-nps', stat: npsRun as never }]),
   })
 })
 
@@ -409,7 +416,7 @@ app.post('/probe-public-data', async (c) => {
   const target = c.req.query('target') || 'all'
   try {
     const qs = new URLSearchParams({ target })
-    for (const k of ['rows', 'page', 'ladder']) { const v = c.req.query(k); if (v) qs.set(k, v) }
+    for (const k of ['rows', 'page', 'ladder', 'path']) { const v = c.req.query(k); if (v) qs.set(k, v) }
     const r = await ads.fetch(new Request(`https://ur-ads/__ads/probe-public-data?${qs.toString()}`, { method: 'POST', signal: AbortSignal.timeout(120_000) }))
     const body = await r.json().catch(() => null)
     return c.json({ success: true, ...(body as Record<string, unknown> || {}) })

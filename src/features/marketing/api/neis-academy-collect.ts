@@ -10,6 +10,7 @@
  *   ⚠️ 수집 ≠ 발송 — 공개 등록 정보만. 설계 SSOT: docs/design/partner-company-collection.md §12.
  */
 import type { Env } from '@/worker/types/env'
+import { envLaneBudget , envPlanValue} from './collect-budget'
 import { ensureProspectSchema, saveProspects, type StoreProspect } from './store-prospects'
 import { serviceKeyParam, isNoValue } from './public-data-diag'
 
@@ -87,7 +88,14 @@ const STATS_KEY = 'ads_neis_stats'
 const CURSOR_KEY = 'ads_neis_cursor' // 'officeIdx:page'
 
 /** 학원·교습소 1틱(매시간 크론 소량 또는 수동). 교육청×페이지 커서 순환 — 소진 시 처음부터 재순환(갱신). */
-export async function runNeisAcademyCollect(env: Env, maxPages = 3): Promise<NeisStats> {
+export async function runNeisAcademyCollect(env: Env, maxPagesArg?: number): Promise<NeisStats> {
+  // 🎚️ 회차당 일감도 **요금제를 따른다** — 예산만 커지고 이 숫자가 고정이면 늘어난 예산이 남는다.
+  //   호출부가 명시로 넘기면 그 값이 이긴다(수동 트리거·테스트가 그렇게 쓴다).
+  // 🩹 **6 → 3 되돌림**(2026-08-02 01:00 KST 실측) — 이 레인은 `Worker exceeded CPU time limit` 으로
+  //   26.0초에 죽고 있었다. 6페이지로 올린 것이 07-29 인데 **그 뒤로 성공 기록이 없다**(올린 날 죽었고
+  //   회복이 없었다). 무료에서 다시 올리려면 하트비트의 `ms` 를 먼저 볼 것 — 26,000 근처면 그게 천장이다.
+  //   ⚠️ 유료(8)는 CPU 한도가 다른 세계라 별개 값이다. **무료 3 을 올리는 것과 혼동하지 말 것.**
+  const maxPages = maxPagesArg ?? envPlanValue(undefined, 3, 8, env)
   const DB = env.DB
   await ensureProspectSchema(DB)
   const now = new Date()

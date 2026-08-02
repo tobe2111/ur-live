@@ -9,7 +9,7 @@
  *   설계 SSOT: docs/design/partner-company-collection.md §12.
  */
 import type { Env } from '@/worker/types/env'
-import { envLaneBudget } from './collect-budget'
+import { envSubreqCap, envLaneBudget , envPlanValue} from './collect-budget'
 import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { serviceKeyParam, isNoValue } from './public-data-diag'
 import { fieldCoverage, coverageNote, type FieldCoverage } from './field-coverage'
@@ -202,6 +202,9 @@ const PAGE_ROWS = 500
  *     외부 응답이 느린 회차에도 여유를 둔다. 정확한 CPU 계측은 워커 런타임이 안 준다.
  */
 const RUN_DEADLINE_MS = 12_000
+/** 유료 마감선 — 유료 CPU 한도(30s) 아래의 여유. ⚠️ 추정이다: 전환 후 하트비트의
+ *  **성공 최대 ms ↔ 실패 최소 ms 경계**로 재측정할 것(무료 12초도 같은 방식으로 정했다). */
+const RUN_DEADLINE_MS_PAID = 24_000
 /** 한 회차에 다루는 최대 레코드 수 — 마감선의 짝(응답이 빨라 마감선에 안 걸려도 파싱량이 CPU 를 먹는다). */
 const MAX_RECORDS_PER_RUN = 1_500
 
@@ -280,11 +283,14 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
     base: (env as unknown as { ADS_COMMERCE_ENDPOINT?: string }).ADS_COMMERCE_ENDPOINT || svc.base,
     op: (env as unknown as { ADS_COMMERCE_OP?: string }).ADS_COMMERCE_OP || svc.op,
   } : svc)
-  const totalBudget = Math.max(4, envLaneBudget(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET, 12, env))
+  // 🎚️ 요금제 인지 — 위 notice-scan 과 같은 이유(이 레인도 천장 함수를 안 거치고 있었다).
+  const totalBudget = Math.min(envSubreqCap(env), Math.max(4, envPlanValue(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET, 12, 60, env)))
   const budget = { left: totalBudget }
   const perService = Math.max(2, Math.floor(totalBudget / services.length))
 
   const startedAt = Date.now()
+  // 🎚️ 마감선도 요금제를 따른다 — 유료 CPU 한도가 커지는데 12초로 묶으면 회차가 일찍 끊긴다.
+  const runDeadlineMs = envPlanValue(undefined, RUN_DEADLINE_MS, RUN_DEADLINE_MS_PAID, env)
   let stoppedBy: 'deadline' | 'records' | undefined
   let found = 0, saved = 0, upserted = 0, closed = 0, sample: unknown, sampleHasEmail = false, lastPage = 0
   // 📊 커버리지는 **가장 최근에 받은 한 페이지**로 잰다(누적하면 스냅샷이 커지고, 페이지마다 채움률이
@@ -304,7 +310,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
     //   ⚠️ 예약분 = 커서(서비스 수) + 스냅샷 1. 뒤에 쓰기를 추가하면 이 식도 함께 고칠 것.
     for (let p = 0; p < perService && budget.left > services.length + 1; p++) {
       // ⏱️ CPU 한도에 닿기 전에 끊는다 — 끊어야 아래 커서 저장이 실행되고, 그래야 다음 회차가 전진한다.
-      if (Date.now() - startedAt > RUN_DEADLINE_MS) { stoppedBy = 'deadline'; break }
+      if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }
       if (found >= MAX_RECORDS_PER_RUN) { stoppedBy = 'records'; break }
       const { items, count, msg } = await fetchCommercePage(svc.base, svc.op, key, page, budget)
       if (msg) msgs.push(`${svc.label}: ${msg}`)
