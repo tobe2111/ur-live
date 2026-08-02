@@ -37,6 +37,8 @@ export interface AdsPoolDiag {
    *   스냅샷을 쓰기만 하고 노출을 안 해 ran/deferred 를 못 봤다.
    */
   dispatch: unknown
+  /** 📼 회차 이력(최근 24) — 최신값만 보관하는 저장소로는 못 만드는 시계열. */
+  tick_history: unknown
   /**
    * 📝 인플루언서 풀 보강 레인 결과(`ads_influencer_enrich_last`). 2026-07-28 신설 —
    * 보강이 수집과 같은 인보케이션에 얹혀 **한 건도 못 돌던** 것을 전용 레인으로 분리하면서,
@@ -60,7 +62,7 @@ export async function getAdsPoolDiag(DB: D1Database): Promise<AdsPoolDiag> {
       .first<{ value: string }>().catch(() => null),
     DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_sheets_last_sync'")
       .first<{ value: string }>().catch(() => null),
-    DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN ('ads_maintenance_last','ads_maintenance_rescan_last','ads_sheets_last_cron','ads_dispatch_last','ads_enrich_fanout_last','${INFLUENCER_ENRICH_SNAPSHOT_KEY}')`)
+    DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN ('ads_maintenance_last','ads_maintenance_rescan_last','ads_sheets_last_cron','ads_dispatch_last','ads_tick_history','ads_enrich_fanout_last','${INFLUENCER_ENRICH_SNAPSHOT_KEY}')`)
       .all<{ key: string; value: string }>().catch(() => null),
   ])
   const find = (k: string) => mRows?.results?.find(r => r.key === k)?.value
@@ -77,6 +79,9 @@ export async function getAdsPoolDiag(DB: D1Database): Promise<AdsPoolDiag> {
     // 🚦 이번 회차가 무엇을 돌리고 무엇을 미뤘는가(예산 분산). 이걸 안 내보내면 **미룬 것과 죽은 것을
     //   구분할 수단이 없다** — 스냅샷을 쓰기만 하고 노출을 안 해서 첫 판정에서 실제로 못 봤다.
     dispatch: parseJson(find('ads_dispatch_last')),
+    // 📼 지난 회차들의 [띄운수 ↔ ok ↔ fail ↔ 성공max ↔ 실패min]. `dispatch` 는 최신 1건뿐이라
+    //   시계열 판정(예: 레인 수와 실패율의 관계)은 **이 배열로만** 가능하다.
+    tick_history: parseJson(find('ads_tick_history')),
     // 🪂 팬아웃 자기신고 — "띄웠다"와 "착지했다"를 구분하는 유일한 기록.
     //   이게 안 보이면 하트비트 초록만 보고 '정상'으로 오판한다(2026-08-02 실측: 6시간 정지인데 ok).
     enrich_fanout: parseJson(find('ads_enrich_fanout_last')),

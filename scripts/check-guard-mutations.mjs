@@ -48,6 +48,30 @@ const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '회차 요약이 flush 로 비워짐(붕괴 과소보고)',
+    file: 'src/worker-ads/beat-batch.ts',
+    find: '      seen.push({ name: beat.name, ok: beat.ok, ms: beat.ms })',
+    replace: '      if (!pending.length) seen.length = 0; seen.push({ name: beat.name, ok: beat.ok, ms: beat.ms })',
+    test: 'src/tests/unit/ads-tick-history.test.ts',
+    why: 'seen 이 pending 처럼 비워지면 마지막 flush 시점에 앞쪽 묶음이 사라져 요약이 실제보다 작아진다.',
+  },
+  {
+    name: '회차 이력이 띄운수 대신 기록수를 씀',
+    file: 'src/worker-ads/index.ts',
+    find: 'writeTickSummary(env.DB, tickStartIso, hourUTC, kicked.length, beats.seenBeats)',
+    replace: 'writeTickSummary(env.DB, tickStartIso, hourUTC, beats.seenBeats.length, beats.seenBeats)',
+    test: 'src/tests/unit/ads-tick-history.test.ts',
+    why: 'ran===n 이 되어 "기록조차 못 남긴 수"가 영원히 0 — 가장 심한 붕괴가 안 보인다.',
+  },
+  {
+    name: '같은 회차가 두 줄로 갈림',
+    file: 'src/worker-ads/tick-history.ts',
+    find: 'const list = readTickHistory(prev).filter(t => t.at !== entry.at)',
+    replace: 'const list = readTickHistory(prev)',
+    test: 'src/tests/unit/ads-tick-history.test.ts',
+    why: 'flush 가 두 번이면 한 회차가 두 줄이 되어 회차 수가 부풀고 "얼마나 자주 도는가"를 오판한다.',
+  },
+  {
     name: 'cron 팬아웃이 다시 안 기다림(자식 취소)',
     file: 'src/worker-ads/index.ts',
     find: "kick('/__ads/enrich-influencer-driver?sync=1'",

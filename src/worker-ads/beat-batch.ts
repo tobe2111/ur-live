@@ -86,8 +86,17 @@ export function createBeatBatch(write: (beats: PendingBeat[]) => Promise<void>, 
     return p
   }
 
+  /**
+   * 📼 이 회차에 들어온 **모든** 하트비트(쓰였든 아니든). 회차 요약을 만들기 위한 것 —
+   *   `cron_hb:` 는 레인당 최신 1건만 보관해 **시계열을 만들 수 없다**(`tick-history.ts` 참조).
+   *   ⚠️ flush 로 비워지는 `pending` 과 달리 **절대 비우지 않는다.** 비우면 마지막 flush 시점에
+   *     앞쪽 묶음이 사라져 요약이 실제보다 작아진다(= 붕괴를 과소보고).
+   */
+  const seen: Array<{ name: string; ok: boolean; ms: number }> = []
+
   return {
     add(beat: PendingBeat): void {
+      seen.push({ name: beat.name, ok: beat.ok, ms: beat.ms })
       if (!pending.length) oldestAt = Date.now()
       pending.push(beat)
       // 봉인 뒤에는 임계치를 기다리지 않는다 — 기다리면 그 기록은 영영 안 나간다.
@@ -102,6 +111,8 @@ export function createBeatBatch(write: (beats: PendingBeat[]) => Promise<void>, 
     },
     /** 테스트/진단용 — 아직 안 쓴 건수. */
     get size(): number { return pending.length },
+    /** 이 회차에 들어온 하트비트 전부(요약용). flush 와 무관하게 누적된다. */
+    get seenBeats(): ReadonlyArray<{ name: string; ok: boolean; ms: number }> { return seen },
   }
 }
 
