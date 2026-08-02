@@ -8,13 +8,13 @@ import type { D1Database } from '@cloudflare/workers-types'
 import { TICK_HISTORY_KEY, appendTick, summarizeTick } from './tick-history'
 
 export async function writeTickSummary(
-  DB: D1Database, at: string, hourUTC: number, ran: number,
+  DB: D1Database, at: string, hourUTC: number, ranNames: readonly string[],
   beats: ReadonlyArray<{ name: string; ok: boolean; ms: number }>,
 ): Promise<void> {
   try {
     const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
       .bind(TICK_HISTORY_KEY).first<{ value: string }>().catch(() => null)
-    const next = appendTick(row?.value, summarizeTick(at, hourUTC, ran, beats))
+    const next = appendTick(row?.value, summarizeTick(at, hourUTC, ranNames, beats))
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind(TICK_HISTORY_KEY, next).run().catch(() => undefined)
   } catch { /* 관측 실패가 회차를 막지 않는다 */ }

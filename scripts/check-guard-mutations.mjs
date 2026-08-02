@@ -48,6 +48,14 @@ const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: 'miss 를 이름 대신 뺄셈으로 계산(음수 재발)',
+    file: 'src/worker-ads/tick-history.ts',
+    find: '    miss: [...ran].filter(nm => !beatNames.has(nm)).length,',
+    replace: '    miss: ran.size - lanes.length,',
+    test: 'src/tests/unit/ads-tick-history.test.ts',
+    why: '예산 밖 레인이 자기 하트비트를 남기면 음수가 된다 — 08-02 19:00 회차에서 실제로 나온 값.',
+  },
+  {
     name: '회차 요약이 flush 로 비워짐(붕괴 과소보고)',
     file: 'src/worker-ads/beat-batch.ts',
     find: '      seen.push({ name: beat.name, ok: beat.ok, ms: beat.ms })',
@@ -56,12 +64,12 @@ const MUTATIONS = [
     why: 'seen 이 pending 처럼 비워지면 마지막 flush 시점에 앞쪽 묶음이 사라져 요약이 실제보다 작아진다.',
   },
   {
-    name: '회차 이력이 띄운수 대신 기록수를 씀',
+    name: '회차 이력이 이름 대신 개수를 씀(miss 음수)',
     file: 'src/worker-ads/index.ts',
-    find: 'writeTickSummary(env.DB, tickStartIso, hourUTC, kicked.length, beats.seenBeats)',
-    replace: 'writeTickSummary(env.DB, tickStartIso, hourUTC, beats.seenBeats.length, beats.seenBeats)',
+    find: 'writeTickSummary(env.DB, tickStartIso, hourUTC, ranNames, beats.seenBeats)',
+    replace: 'writeTickSummary(env.DB, tickStartIso, hourUTC, beats.seenBeats.map(b => b.name.slice(4)), beats.seenBeats)',
     test: 'src/tests/unit/ads-tick-history.test.ts',
-    why: 'ran===n 이 되어 "기록조차 못 남긴 수"가 영원히 0 — 가장 심한 붕괴가 안 보인다.',
+    why: '이름 대조를 버리면 miss 가 0 이 되거나(개수 뺄셈이면) 음수가 된다 — 라이브 실측 "띄운7 기록9".',
   },
   {
     name: '같은 회차가 두 줄로 갈림',

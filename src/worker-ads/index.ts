@@ -19,6 +19,7 @@ import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortli
 import { publicDataRoutes } from './public-data.routes'
 import { chainRoutes } from './chain.routes'
 import { createBeatBatch, makeBeatWriter } from './beat-batch'; import { writeTickSummary } from './tick-history-write'
+import { runAutobidJob, runFollowupJob, runWeeklyJob } from './side-jobs'
 import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
 import { laneUrl, selfBeatMiddleware } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
@@ -499,17 +500,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   if (envx.ADS_NOTICE_ENABLED === 'true') {
     gates.dailyAt(21, '/__ads/scan-notices', async () => { const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return runNoticeScan(env) })
   }
-  // 자동입찰(게이트 ON 일 때만) — 이전 "*/5" 대체(매시간). 기본 OFF = no-op.
-  if (env.ADS_AUTOBID_ENABLED === 'true') {
-    ctx.waitUntil((async () => {
-      const t0 = Date.now()
-      try {
-        const { runAutobidAll } = await import('@/features/marketing/api/autobid')
-        await runAutobidAll(env)
-        await adsBeat('autobid', true, Date.now() - t0)
-      } catch (err) { await adsBeat('autobid', false, Date.now() - t0, err) }
-    })())
-  }
+  runAutobidJob(env, adsBeat, (p) => ctx.waitUntil(p))
 
   // ── 매일 18:00 UTC — 일일 배치(가격→순위→스냅샷→알림→자동입찰 섀도우) ────────
   //   🚦 2026-08-02: 생 waitUntil(부모 CPU 직격, 실측 4,107ms) → kick. 이 시각은 collect-commerce(짝수시)와
@@ -566,38 +557,22 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     })
   }
 
-  // ── 매일 23:00 UTC(=08:00 KST) — 유어애즈 아웃리치 팔로업 리마인더(무응답·회신도착 다이제스트) ──
-  //   0건이면 무발송(no-op) — Discord 스팸 방지. 자동 감지는 웹훅(resend)이 실시간 처리, 여기선 요약만.
-  if (hourUTC === 23) {
-    ctx.waitUntil((async () => {
-      const t0 = Date.now()
-      try { const { runFollowupReminder } = await import('@/features/marketing/api/outreach-webhook'); await runFollowupReminder(env) } catch { /* fail-soft */ }
-      await adsBeat('followup-reminder', true, Date.now() - t0, undefined, dailyGapMinutes())
-    })())
-  }
+  runFollowupJob(env, hourUTC, adsBeat, (p) => ctx.waitUntil(p), dailyGapMinutes())
 
   // 🔭 이번 실행이 '알고 있는' 레인(게이트 ON)을 남긴다 — 하트비트와 대조해 '한 번도 안 돈 레인'을 판정.
   ctx.waitUntil(recordKnownLanes(env, laneReg.list()))
 
-  // ── 월요일 00:00 UTC — 소셜 초안 + 유어애즈 AI 주간 리포트 ────────────────────
-  if (hourUTC === 0 && dowUTC === 1) {
-    ctx.waitUntil((async () => {
-      const t0 = Date.now()
-      try { const { handleSocialDraft } = await import('@/worker/cron/social-draft'); await handleSocialDraft(env) } catch { /* fail-soft */ }
-      try { const { handleAdsWeeklyReport } = await import('@/features/marketing/api/weekly-report'); await handleAdsWeeklyReport(env) } catch { /* fail-soft */ }
-      await adsBeat('weekly-report', true, Date.now() - t0, undefined, staleGapMinutes(7 * 24 * 60))
-    })())
-  }
+  runWeeklyJob(env, hourUTC, dowUTC, adsBeat, (p) => ctx.waitUntil(p), staleGapMinutes(7 * 24 * 60))
 
   // 🚦 여기서 비로소 띄운다 — 이번 회차 예산만큼만. 미룬 레인은 **버린 게 아니라** 다음 차례에 돈다
   //   (`selectLanesForHour` 가 모든 레인이 `groups` 시간 안에 반드시 한 번 돎을 보장 — 유닛이 강제).
-  const kicked = await dispatchPendingLanes({ pending, env: env as never, hourUTC, laneUrl, beat: adsBeat, waitUntil: (p) => ctx.waitUntil(p) })
+  const { kicked, ranNames } = await dispatchPendingLanes({ pending, env: env as never, hourUTC, laneUrl, beat: adsBeat, waitUntil: (p) => ctx.waitUntil(p) })
 
   // 🧾 **모든 디스패치가 끝난 뒤** 한 번에 쓴다(기다리지 않으면 빈 배치를 쓰고 이후 기록은 영영 못 나간다).
   //   📼 이어서 이 회차 한 줄을 이력에 남긴다(근거·한계는 `tick-history.ts` 헤더).
   ctx.waitUntil(Promise.allSettled(kicked).then(async () => {
     await beats.flush()
-    await writeTickSummary(env.DB, tickStartIso, hourUTC, kicked.length, beats.seenBeats)
+    await writeTickSummary(env.DB, tickStartIso, hourUTC, ranNames, beats.seenBeats)
   }))
 }
 

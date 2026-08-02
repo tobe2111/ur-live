@@ -74,7 +74,7 @@ export async function dispatchPendingLanes(opts: {
   laneUrl: LaneRunnerDeps['laneUrl']
   beat: LaneRunnerDeps['beat']
   waitUntil: (p: Promise<unknown>) => void
-}): Promise<Promise<unknown>[]> {
+}): Promise<{ kicked: Promise<unknown>[]; ranNames: string[] }> {
   const { pending, env, hourUTC, waitUntil } = opts
   const perTick = lanesPerTick(env)
   // 📍 커서를 먼저 읽는다(D1 1회). **실패하면 시각 유도값으로 떨어진다** — 커서가 없어도 정확성은
@@ -110,5 +110,8 @@ export async function dispatchPendingLanes(opts: {
     writes.push(env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(DISPATCH_CURSOR_KEY, JSON.stringify(sel.nextCursors)))
   }
   waitUntil(env.DB.batch(writes).catch(() => undefined))
-  return kicked
+  // 🏷️ **띄운 레인 이름**도 돌려준다 — 회차 요약이 "띄웠는데 기록이 없는 레인"을 *이름으로* 판정한다.
+  //   개수 뺄셈은 안 된다: 예산 밖 레인이 자기 하트비트를 따로 남겨 기록 수가 띄운 수보다 클 수 있다
+  //   (라이브 실측 `띄운 7 · 기록 9`). 뺄셈이면 음수가 나온다.
+  return { kicked, ranNames: sel.run.map(l => l.beat) }
 }

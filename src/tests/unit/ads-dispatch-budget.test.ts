@@ -315,7 +315,9 @@ describe('스냅샷 — 미룬 것과 죽은 것을 구분할 수 있게', () =>
 describe('🚧 배선 — 스케줄러가 실제로 예산 분산을 쓰는가', () => {
   it('index.ts 가 즉시 kick 하지 않고 모아서 dispatchPendingLanes 로 넘긴다', async () => {
     const src = (await import('node:fs')).readFileSync('src/worker-ads/index.ts', 'utf8')
-    expect(src).toMatch(/const kicked = await dispatchPendingLanes\(\{/)
+    // 🔁 2026-08-02: 띄운 레인 **이름**도 함께 받는다(회차 요약이 이름으로 miss 를 센다).
+    //   가드의 의도는 그대로 — "즉시 kick 하지 않고 **모아서 한 번에** 넘긴다".
+    expect(src).toMatch(/const (?:kicked|\{ kicked, ranNames \}) = await dispatchPendingLanes\(\{/)
     const kickBody = src.slice(src.indexOf('const kick = ('), src.indexOf('const gates = makeHourGates'))
     expect(kickBody).toContain('pending.push(')
     expect(kickBody).not.toContain('SELF')
