@@ -5494,10 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 87건 · 최신순 · 이 목록은 자동 생성된다._
+_총 89건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-03**
 - [ur-ads 배포가 조용히 안 나갔다 — 라이브는 멀쩡해 보였다 (2026-08-03)](handoff/2026-08-03-urads-deploy-silent-miss.md)
+- [학습기의 눈먼 구간을 메우고, 배포 실패를 대표에게 보이게 (2026-08-03)](handoff/2026-08-03-learner-bias-and-deploy-alert.md)
 **2026-08-02**
 - [2026-08-02 — 몰 손님이 보는 화면의 경계 (기준 ⑤) + 디자인 의뢰 추가분](handoff/2026-08-02-mall-consumer-surface-boundary.md)
 - [회차당 레인 수를 스스로 잰다 — 손으로 잰 상수의 마지막 자리 (2026-08-02)](handoff/2026-08-02-lane-count-selflearning.md)

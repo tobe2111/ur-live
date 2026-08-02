@@ -171,6 +171,25 @@ describe('배선 — 부모가 실제로 남기는가', () => {
     expect(runner, '디스패처가 이름을 안 돌려주면 배선이 성립하지 않는다').toMatch(/ranNames: sel\.run\.map\(l => l\.beat\)/)
   })
 
+  /**
+   * 🕳️ **빈 회차를 세는 순서** — 이력을 덧붙이기 *전*에 직전 항목을 읽어야 한다.
+   *
+   * 덧붙인 **뒤** 마지막 항목은 방금 만든 *이* 회차라 간격이 **항상 0** 이 된다. 그러면
+   * 학습기의 빈-회차 신호가 통째로 죽는데 **에러는 없다** — 이 레포가 반복해 만난 "헛도는 가드" 다.
+   *
+   * ⚠️ 이 검사 자체가 주입 하네스 덕에 생겼다: 처음엔 이 불변식을 지키는 테스트가 **하나도 없어서**
+   *   순서를 뒤집어도 초록이었다(`check-guard-mutations` 가 그걸 빨간불로 알려 줬다).
+   */
+  it('빈 회차 수를 이력 덧붙이기 **전**에 센다 — 뒤에 세면 항상 0 이다', () => {
+    const src = code('src/worker-ads/tick-history-write.ts')
+    const prevAt = src.indexOf('const prevAt')
+    const appendAt = src.indexOf('const next = appendTick(')
+    expect(prevAt, 'prevAt 계산을 못 찾았다 — 코드가 옮겨갔다(통과가 아니라 실패)').toBeGreaterThan(-1)
+    expect(appendAt).toBeGreaterThan(-1)
+    expect(prevAt, '덧붙인 뒤에 읽으면 방금 만든 이 회차가 잡혀 간격이 0 이 된다').toBeLessThan(appendAt)
+    expect(src, '학습기에 빈 회차 수를 안 넘기면 편향이 그대로다').toMatch(/missedTicks\(prevAt, at\)/)
+  })
+
   it('진단이 이력을 노출한다 — 쓰기만 하고 안 보여주면 판정에 못 쓴다', () => {
     const src = code('src/features/marketing/api/ads-pool-diag.ts')
     expect(src).toMatch(/tick_history: parseJson\(find\('ads_tick_history'\)\)/)
