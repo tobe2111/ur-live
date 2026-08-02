@@ -37,6 +37,33 @@ interface DumpResult {
   sql: string;
   tableCount: number;
   errorTables: string[];
+  /** 복구 대상이 아니라 **의도적으로** 건너뛴 테이블(내부/파생) — 에러가 아니다. */
+  skippedTables: string[];
+}
+
+/**
+ * 📄 **페이징 커서 컬럼 고르기 — 이게 2026-08-03 사고의 핵심이다.**
+ *
+ * 예전 코드는 `SELECT rowid, * FROM t` 로 페이징했다. 그런데 **D1 은 결과 컬럼 100개가 한도**이고
+ * `products`·`sellers` 는 **이미 정확히 100컬럼**이다 ⇒ `rowid` 한 칸을 더하는 순간 101개가 되어
+ * `too many columns in result set` 으로 **그 두 테이블만 dump 에서 통째로 빠졌다.**
+ *
+ * 하필 빠진 것이 상품과 셀러였다. 백업 파일은 19MB 로 멀쩡해 보였고 알림도 "완료"였다.
+ *
+ * ⇒ **커서를 위해 컬럼을 추가하지 않는다.** 단일 INTEGER PK(=rowid 별칭)가 있으면 그 컬럼으로
+ *   페이징하면 된다 — 그 값은 어차피 `*` 안에 들어 있다(추가 0칸).
+ */
+async function integerPkOf(DB: D1Database, table: string): Promise<string | null> {
+  try {
+    const { results } = await DB.prepare('SELECT name, type, pk FROM pragma_table_info(?)')
+      .bind(table).all<{ name: string; type: string; pk: number }>()
+    const pks = (results || []).filter((r) => Number(r.pk) > 0)
+    if (pks.length !== 1) return null                    // 복합 PK 는 커서로 못 씀
+    if (!/INT/i.test(String(pks[0].type || ''))) return null
+    return String(pks[0].name)
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -57,6 +84,7 @@ async function dumpDatabase(DB: D1Database): Promise<DumpResult> {
   ).all<{ name: string }>();
   const tables = (tablesResult.results || []).map((r) => r.name);
   const errorTables: string[] = [];
+  const skippedTables: string[] = [];
 
   for (const table of tables) {
     try {
@@ -71,31 +99,64 @@ async function dumpDatabase(DB: D1Database): Promise<DumpResult> {
         lines.push('');
       }
 
-      // cursor-based pagination — OFFSET 풀스캔 대신 rowid > lastRowId
+      // cursor-based pagination — OFFSET 풀스캔 대신 커서. **커서용 컬럼을 추가하지 않는다**(위 주석).
       const BATCH_SIZE = 500;
-      let lastRowId = 0;
-      while (true) {
-        const rows = await DB.prepare(
-          `SELECT rowid, * FROM ${table} WHERE rowid > ? ORDER BY rowid LIMIT ${BATCH_SIZE}`
-        ).bind(lastRowId).all();
-        const results = rows.results || [];
-        if (results.length === 0) break;
+      const pk = await integerPkOf(DB, table);
 
-        for (const row of results) {
-          const { rowid: _rowid, ...data } = row as Record<string, unknown>;
-          const cols = Object.keys(data);
-          const vals = Object.values(data).map((v) => {
-            if (v === null || v === undefined) return 'NULL';
-            if (typeof v === 'number') return String(v);
-            if (typeof v === 'boolean') return v ? '1' : '0';
-            const escaped = String(v).replace(/'/g, "''");
-            return `'${escaped}'`;
-          });
-          lines.push(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${vals.join(', ')});`);
-          lastRowId = Number(_rowid);
+      /** 한 행 → INSERT 문. */
+      const toInsert = (row: Record<string, unknown>) => {
+        const cols = Object.keys(row);
+        const vals = Object.values(row).map((v) => {
+          if (v === null || v === undefined) return 'NULL';
+          if (typeof v === 'number') return String(v);
+          if (typeof v === 'boolean') return v ? '1' : '0';
+          const escaped = String(v).replace(/'/g, "''");
+          return `'${escaped}'`;
+        });
+        return `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${vals.join(', ')});`;
+      };
+
+      if (pk) {
+        // ✅ 일반 경로 — PK 가 곧 커서다. `*` 안에 이미 들어 있어 컬럼이 늘지 않는다.
+        let cursor: number | string = 0;
+        for (;;) {
+          const rows = await DB.prepare(
+            `SELECT * FROM ${table} WHERE ${pk} > ? ORDER BY ${pk} LIMIT ${BATCH_SIZE}`
+          ).bind(cursor).all<Record<string, unknown>>();
+          const results = rows.results || [];
+          if (results.length === 0) break;
+          for (const row of results) {
+            lines.push(toInsert(row));
+            cursor = row[pk] as number | string;
+          }
+          if (results.length < BATCH_SIZE) break;
         }
-
-        if (results.length < BATCH_SIZE) break;
+      } else {
+        // 🔁 PK 가 없는 테이블 — rowid 를 **따로** 읽어(1컬럼) 그 묶음으로 본문을 가져온다.
+        //   왕복이 2배지만 `*` 의 컬럼 수를 건드리지 않는다. FTS 그림자·CF 내부 테이블은
+        //   rowid 자체가 없어 여기서 예외가 나는데, 그건 **복구 대상이 아니므로 skip**(에러 아님).
+        let lastRowId = 0;
+        for (;;) {
+          let ids: number[];
+          try {
+            const idRows = await DB.prepare(
+              `SELECT rowid AS __rid FROM ${table} WHERE rowid > ? ORDER BY rowid LIMIT ${BATCH_SIZE}`
+            ).bind(lastRowId).all<{ __rid: number }>();
+            ids = (idRows.results || []).map((r) => Number(r.__rid));
+          } catch {
+            // rowid 없음 = 가상/그림자/내부 테이블. 원본에서 재생성되거나 CF 소유다.
+            skippedTables.push(table);
+            lines.push(`-- SKIPPED (rowid 없음 — 파생/내부 테이블): ${table}`);
+            break;
+          }
+          if (ids.length === 0) break;
+          const rows = await DB.prepare(
+            `SELECT * FROM ${table} WHERE rowid IN (${ids.map(() => '?').join(',')}) ORDER BY rowid`
+          ).bind(...ids).all<Record<string, unknown>>();
+          for (const row of rows.results || []) lines.push(toInsert(row));
+          lastRowId = ids[ids.length - 1];
+          if (ids.length < BATCH_SIZE) break;
+        }
       }
       lines.push('');
     } catch (err) {
@@ -107,13 +168,13 @@ async function dumpDatabase(DB: D1Database): Promise<DumpResult> {
 
   lines.push('COMMIT;');
   lines.push('PRAGMA foreign_keys = ON;');
-  return { sql: lines.join('\n'), tableCount: tables.length, errorTables };
+  return { sql: lines.join('\n'), tableCount: tables.length, errorTables, skippedTables };
 }
 
 /**
  * 백업 실행 + R2 업로드
  */
-export async function handleD1Backup(env: BackupEnv): Promise<{ success: boolean; key?: string; size?: number; error?: string }> {
+export async function handleD1Backup(env: BackupEnv): Promise<{ success: boolean; key?: string; size?: number; error?: string; tables?: number; skipped?: number }> {
   const DB = env.DB;
   if (!DB) {
     return { success: false, error: 'DB binding missing' };
@@ -126,7 +187,7 @@ export async function handleD1Backup(env: BackupEnv): Promise<{ success: boolean
 
   try {
     logInfo('[D1 Backup] Starting dump...');
-    const { sql: dump, tableCount, errorTables } = await dumpDatabase(DB);
+    const { sql: dump, tableCount, errorTables, skippedTables } = await dumpDatabase(DB);
     const size = new TextEncoder().encode(dump).length;
 
     const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -176,7 +237,25 @@ export async function handleD1Backup(env: BackupEnv): Promise<{ success: boolean
       } catch {}
     }
 
-    return { success: true, key, size };
+    /**
+     * 🐺 **2026-08-03: 경고를 반환값에 실어 하트비트까지 보낸다.**
+     *
+     * 이전엔 무결성 경고가 **디스코드에만** 갔고 반환값은 `{success:true, key, size}` 뿐이었다.
+     * 그래서 하트비트에는 `success=true key=… size=…` 만 남았고, 그걸 본 세션이
+     * **"경고 없음"으로 보고**했다 — 실제로는 `products`·`sellers` 가 빠진 백업이었는데도.
+     * 침묵을 성공으로 읽은 것이고, 이 레포가 반복해 만난 바로 그 클래스다.
+     *
+     * ⇒ 관측 채널이 둘이면 **둘 다** 같은 사실을 실어야 한다. 한쪽만 보고 판정하게 두지 않는다.
+     */
+    if (errorTables.length > 0) {
+      // 🔴 복구 대상 테이블이 빠졌으면 이건 성공이 아니다. 부분 백업은 이미 올렸으니(없는 것보단 낫다)
+      //    업로드 뒤에 던져서 safeCron 이 ok:false + cron_failures + 🚨 알림까지 남기게 한다.
+      throw new Error(
+        `[D1 Backup] 부분 백업 — dump 실패 ${errorTables.length}개: ${errorTables.join(', ')} ` +
+        `(업로드됨: ${key}, ${(size / 1024).toFixed(1)} KB, 테이블 ${tableCount})`
+      );
+    }
+    return { success: true, key, size, tables: tableCount, skipped: skippedTables.length };
   } catch (err) {
     const msg = (err as Error)?.message || String(err);
     logError('[D1 Backup] Failed:', { error: String(msg) });
@@ -195,6 +274,14 @@ export async function handleD1Backup(env: BackupEnv): Promise<{ success: boolean
       } catch {}
     }
 
-    return { success: false, error: msg };
+    /**
+     * 🔊 **2026-08-03: 실패를 밖으로 던진다 (이전엔 `return {success:false}`).**
+     *
+     * `safeCron` 은 **예외가 나야** `ok:false` 를 남기고 `cron_failures` 에 기록한다.
+     * 그냥 반환하면 하트비트에 `ok=true` 로 찍혀 **실패한 백업이 성공처럼 보인다** —
+     * 이 파일 맨 위 `BACKUP_BUCKET` 미바인딩이 2026-06-12 에 throw 로 바뀐 것과 같은 이유다.
+     * (부분 백업 파일은 위에서 이미 R2 에 올렸다 — 없는 것보단 낫다.)
+     */
+    throw err instanceof Error ? err : new Error(msg);
   }
 }
