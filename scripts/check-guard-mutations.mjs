@@ -57,6 +57,28 @@ const ONLY = (() => {
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '공고 스캐너가 마감선 없이 회차를 늘려 부모 CPU 를 태움',
+    file: 'src/features/marketing/api/notice-scan.ts',
+    find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: '',
+    test: 'src/tests/unit/notice-scan-deadline.test.ts',
+    why:
+      '이 레인은 실측 31초(cpu_risk=danger)였는데 예산 20 에 실제 호출은 6번뿐이라 **예산이 한 번도 안 걸린다**. ' +
+      '비용은 요청 수가 아니라 시간인데 시간을 재는 것이 없었다 — 공공 API 하나가 15초까지 버티니 최악 90초다. ' +
+      '부모 cron 이 그걸 못 버텨 자식을 끌고 죽는다(`dispatch-budget.ts` 가 기록한 그 구조).',
+  },
+  {
+    name: '마감선만 넣고 회전을 빼 뒤쪽 키워드가 영원히 굶음',
+    file: 'src/features/marketing/api/notice-scan.ts',
+    find: 'const kw = KEYWORDS[(kwFrom + i) % KEYWORDS.length]',
+    replace: 'const kw = KEYWORDS[i]',
+    test: 'src/tests/unit/notice-scan-deadline.test.ts',
+    why:
+      '마감선은 일을 줄이는 게 아니라 **미루는** 것이다. 시작점을 고정하면 매 회차 같은 앞쪽만 돌고 ' +
+      '뒤쪽 키워드는 **한 번도** 조회되지 않는다 — 레인 단위에서 이미 겪은 구조적 기아를 키워드 단위에서 ' +
+      '반복하는 셈이다. 마감선과 회전 커서는 반드시 같이 간다.',
+  },
+  {
     name: '주간 백업이 products·sellers 를 조용히 빼먹음(커서 한 칸이 컬럼 한도 초과)',
     file: 'src/worker/cron/d1-backup.ts',
     find: 'SELECT * FROM ${table} WHERE ${pk} > ?',
