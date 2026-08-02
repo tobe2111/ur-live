@@ -17,6 +17,8 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber } from '@/utils/format'
 import ContactListPanel from './partner-pool/ContactListPanel'
 import ReferralPanel from './partner-pool/ReferralPanel'
+import TradePanel from './partner-pool/TradePanel'
+import TierBreakdown from './partner-pool/TierBreakdown'
 import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo, type Work24Info, type LocalDataInfo, type EnrichInfo, type EnrichRollupInfo, type KakaoSweepInfo, type RegistryMatchInfo } from './partner-pool/StatusLines'
 import { STAT_PICK, fmtRun, runStamp, parseStamp } from './partner-pool/job-completion'
 import { FilterChip, ActionMenu } from './partner-pool/Controls'
@@ -49,7 +51,6 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
 const CHANNEL_LABEL: Record<string, string> = { call: '전화', email: '이메일', visit: '방문', sms: '문자', kakao: '카톡', other: '기타' }
-const TIER_LABEL = (t: number | null) => t == null ? '—' : `${t}순위`
 const EMPTY_ADD = { company_name: '', category: '', subcategory: '', tier: '', region: '', phone: '', email: '', website: '', address: '' }
 const PAGE_SIZE = 100
 
@@ -310,6 +311,7 @@ export default function AdminPartnerPoolPage() {
         <DashboardPageHeader title="🤝 파트너 풀" subtitle="유어딜 매장 입점을 대신 데려올 업체 DB — 수동입력·아웃리치 관리 (수집 ≠ 발송)" />
 
         {/* 📬 오늘의 컨택 — 이메일 우선(대표 지시), 미접촉만 */}
+        <TradePanel />
         <ContactListPanel />
 
         {/* 🤝 파트너 매장 소개 접수함(리퍼럴 — 지급 배선은 별도 세션) */}
@@ -567,8 +569,3 @@ const LeadRow = memo(function LeadRow({ lead: l, checked, onToggle, onPatch, onR
   )
 })
 
-function TierBreakdown({ leads }: { leads: Lead[] }) {
-  const by = new Map<string, number>()
-  for (const l of leads) { const k = TIER_LABEL(l.tier); by.set(k, (by.get(k) || 0) + 1) }
-  return <>{[...by.entries()].map(([k, n]) => `${k} ${n}`).join(' · ') || '—'}</>
-}

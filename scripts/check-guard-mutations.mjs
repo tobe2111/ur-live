@@ -216,6 +216,26 @@ const MUTATIONS = [
       '행이 없으면 같은 추천 조합이 매번 다시 보상받는다 — 불일치를 넘어 반복 지급.',
   },
   {
+    name: '수집 업종 토글이 집계와 다른 식을 씀',
+    file: 'src/features/marketing/api/company-trades.ts',
+    find: 'UPDATE ad_company_keywords SET active = ? WHERE ${TRADE_EXPR} = ?',
+    replace: 'UPDATE ad_company_keywords SET active = ? WHERE subcategory = ?',
+    test: 'src/tests/unit/company-trades-toggle.test.ts',
+    why:
+      '집계(화면)와 토글(실행)이 다른 식을 쓰면 대표가 끈 줄 아는 업종이 계속 캐진다. ' +
+      '서브카테고리가 빈 업종은 아예 안 꺼진다 — 에러 없이.',
+  },
+  {
+    name: '마지막 활성 업종 가드 제거',
+    file: 'src/features/marketing/api/company-trades.ts',
+    find: "if ((Number(self?.n) || 0) > 0 && activeTrades <= 1) return { ok: false, error: 'LAST_ACTIVE_TRADE' }",
+    replace: '',
+    test: 'src/tests/unit/company-trades-toggle.test.ts',
+    why:
+      '전부 끄면 회전 쿼리가 0행을 받아 수집이 **에러 없이** 멈추고 하트비트는 초록으로 남는다 ' +
+      '(레인은 정상 실행되고 할 일이 없을 뿐이다). 클릭 한 번으로 그 상태가 될 수 있다.',
+  },
+  {
     name: '우선업종 category 오타(조용한 0 순위)',
     file: 'src/features/marketing/api/store-kakao-collect.ts',
     find: "{ kw: '한식', category: '일반음식점' }",
