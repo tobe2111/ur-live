@@ -5497,6 +5497,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 _총 79건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-02**
+- [08-02 — 매장 풀의 97.6%가 학원이었다. 대표가 지목한 네 업종은 **0건**](handoff/2026-08-02-kakao-store-voucher-grid.md)
 - [08-02 — 수량 실측: 양은 문제가 아니다. **연락처가 안 채워진다**](handoff/2026-08-02-collection-volume-verdict.md)
 **2026-08-01**
 - [08-01~02 — 통신판매 API 는 멀쩡했다. 고장은 우리 쪽 파라미터다](handoff/2026-08-01-public-data-probe-verdict.md)
