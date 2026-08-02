@@ -117,9 +117,38 @@ export function missingEnvFor(cron: string, env: Record<string, unknown>): CronE
   })
 }
 
-/** 하트비트 `result` 에 넣을 한 줄 요약. */
-export function formatMissingEnv(missing: readonly CronEnvRequirement[]): string {
-  return missing.map((m) => `${m.key}(${m.jobs.join(',')})`).join(' ')
+/**
+ * 🫥 **이름에 공백이 낀 채로 등록된 키**를 찾아낸다 — 대시보드에 붙여넣을 때 생긴다.
+ *
+ * 2026-08-02 실측: Workers `ur-live` 에 `' ALIGO_USER_ID'`(앞 공백)·`'DATA_ENCRYPTION_KEY '`
+ * (뒤 공백)로 들어가 있었다. 화면에는 **정상으로 보이고**(공백은 눈에 안 보인다) 대시보드도
+ * 아무 경고를 안 준다. 그런데 런타임에선 `env.ALIGO_USER_ID` 가 undefined 라 알림톡 발송
+ * 가드(3종 AND)가 조용히 거짓이 되어 **발송 0건이 정상처럼** 보였다.
+ *
+ * 이 함수는 "없다"를 **"없다 + 비슷한 이름이 있다"** 로 바꿔 준다. 그 차이가 곧 조치의 차이다
+ * (등록하라 ↔ 이름의 공백을 지워라). 눈으로 찾으려 하면 다음에도 못 찾는다.
+ */
+export function whitespaceVariantOf(key: string, env: Record<string, unknown>): string | null {
+  for (const k of Object.keys(env ?? {})) {
+    if (k !== key && k.trim() === key) return k
+  }
+  return null
+}
+
+/** 하트비트 `result` 에 넣을 한 줄 요약. `env` 를 주면 공백 낀 이름까지 지목한다. */
+export function formatMissingEnv(
+  missing: readonly CronEnvRequirement[],
+  env?: Record<string, unknown>,
+): string {
+  return missing
+    .map((m) => {
+      const variant = env ? whitespaceVariantOf(m.key, env) : null
+      // 공백은 눈에 안 보이므로 **따옴표로 감싸** 어디에 붙었는지 보이게 한다.
+      return variant
+        ? `${m.key}(⚠️이름공백 '${variant}' — 지우고 재등록)`
+        : `${m.key}(${m.jobs.join(',')})`
+    })
+    .join(' ')
 }
 
 /**
@@ -146,5 +175,5 @@ export function envBeatFor(cron: string, env: Record<string, unknown>): string |
   const missing = missingEnvFor(cron, env)
   // ⚠️ 여기서 '빠진 게 없으면 null' 로 바꾸지 말 것 — 그러면 옛 행이 남아 거짓말을 시작한다
   //    (위 ENV_ALL_PRESENT 주석의 실측 사고). 요구사항이 있는 cron 은 **매 회차** 덮어쓴다.
-  return missing.length > 0 ? formatMissingEnv(missing) : ENV_ALL_PRESENT
+  return missing.length > 0 ? formatMissingEnv(missing, env) : ENV_ALL_PRESENT
 }

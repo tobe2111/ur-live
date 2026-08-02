@@ -7,6 +7,7 @@ import {
   missingEnvFor,
   formatMissingEnv,
   envBeatFor,
+  whitespaceVariantOf,
   ENV_ALL_PRESENT,
 } from '../../worker/utils/cron-required-env'
 import { EXPECTED_CRON_EXPRESSIONS } from '../../worker/utils/cron-expected'
@@ -141,5 +142,37 @@ describe('빠진 키가 없을 때도 판정을 남긴다', () => {
   it('scheduled.ts 가 그 판정을 실제로 배선한다 (헬퍼만 있고 호출부가 없으면 무의미)', () => {
     expect(SRC).toContain('envBeatFor')
     expect(SRC).toMatch(/safeCron\(\s*['"]cron-env-missing['"]/)
+  })
+})
+
+/**
+ * 🫥 2026-08-02 — **공백 낀 바인딩 이름**. 이 클래스는 화면으로 못 찾는다.
+ *
+ * 실측: Workers 에 `' ALIGO_USER_ID'` 로 등록돼 런타임에선 undefined 였고, 3종 AND 가드가
+ * 조용히 거짓이 되어 **알림톡 0건이 정상처럼** 보였다. "없다"와 "이름이 틀렸다"는 조치가
+ * 다르다(등록하라 ↔ 공백을 지워라). 판정이 그 차이를 말해 줘야 한다.
+ */
+describe('공백 낀 이름 지목', () => {
+  it('비슷한 이름이 있으면 그것을 지목한다', () => {
+    const env = { TOSS_SECRET_KEY: 'x', ' ALIGO_USER_ID': 'x', ALIGO_API_KEY: 'x', ALIGO_SENDER_KEY: 'x', CACHE_KV: {} }
+    const out = envBeatFor('*/5 * * * *', env)
+    expect(out).toContain('ALIGO_USER_ID')
+    expect(out, '공백 낀 실제 이름을 따옴표로 보여야 한다').toContain("' ALIGO_USER_ID'")
+    expect(out).toContain('재등록')
+  })
+
+  it('그냥 없을 때는 평소 형식(작업 목록)을 쓴다', () => {
+    const env = { TOSS_SECRET_KEY: 'x', ALIGO_API_KEY: 'x', ALIGO_SENDER_KEY: 'x', CACHE_KV: {} }
+    const out = envBeatFor('*/5 * * * *', env) || ''
+    expect(out).toContain('ALIGO_USER_ID')
+    expect(out).toContain('retry-alimtalk')
+    expect(out).not.toContain('이름공백')
+  })
+
+  it('whitespaceVariantOf 는 정확히 트림 일치만 본다', () => {
+    expect(whitespaceVariantOf('A', { ' A': 1 })).toBe(' A')
+    expect(whitespaceVariantOf('A', { 'A ': 1 })).toBe('A ')
+    expect(whitespaceVariantOf('A', { A: 1 })).toBeNull()   // 정상 등록은 변종이 아니다
+    expect(whitespaceVariantOf('A', { AB: 1 })).toBeNull()
   })
 })
