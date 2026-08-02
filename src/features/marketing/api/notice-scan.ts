@@ -6,6 +6,7 @@
  *   설계 SSOT: docs/design/partner-company-collection.md §12.
  */
 import type { Env } from '@/worker/types/env'
+import { envLaneBudget } from './collect-budget'
 import { ensureNoticeSchema, saveNotices, type GovNotice } from './gov-notices'
 import { serviceKeyParam, isNoValue } from './public-data-diag'
 
@@ -53,7 +54,7 @@ export async function runNoticeScan(env: Env): Promise<NoticeStats> {
   const persist = async (s: NoticeStats) => { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null) }
   if (!key) { const s: NoticeStats = { last_run: stamp, found: 0, saved: 0, bid: 0, grant: 0, total_runs: (prev?.total_runs || 0) + 1, diag: { configured: false, error: 'NOT_CONFIGURED: PUBLIC_DATA_SERVICE_KEY 미설정' } }; await persist(s); return s }
 
-  const budget = { left: Math.max(6, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 20) }
+  const budget = { left: Math.max(6, envLaneBudget(env.ADS_COMPANY_SUBREQUEST_BUDGET, 20, env)) }
   let bid = 0, grant = 0, sampleBid: unknown, sampleGrant: unknown
   const all: GovNotice[] = []
 

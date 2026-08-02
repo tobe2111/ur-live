@@ -125,7 +125,10 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
 
   it('🔒 매 정각 부트스트랩 — 체인이 끊겨도 다음 정각이 되살린다', () => {
     expect(idx).toMatch(/ctx\.waitUntil\(bootstrapLaneAlarm\(env, adsBeat\)\)/)
-    expect(bootSrc).toMatch(/idFromName\('enrich-influencer'\)/)
+    // 🗂️ 이름은 등록부가 준다(클래스 하나 · 이름별 인스턴스). 보강 레인이 그 안에 있어야 한다.
+    expect(bootSrc).toMatch(/ns\.idFromName\(lane\)/)
+    expect(readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8'))
+      .toMatch(/'enrich-influencer': \{/)
     expect(doSrc).toMatch(/pathname !== '\/start'/)
     // 멱등: 이미 알람이 있으면 다시 걸지 않는다(중복 체인 금지).
     expect(doSrc).toMatch(/const cur = await this\.ctx\.storage\.getAlarm\(\)/)
@@ -137,7 +140,7 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
    *   (시트 미러와 같은 짝 검사 — 넘긴 쪽이 실제로 남기는지 모듈에서 확인).
    */
   it('🔒 부트스트랩은 성공·실패 양쪽에 하트비트를 남긴다', () => {
-    expect((bootSrc.match(/beat\('lane-alarm-boot'/g) || []).length).toBeGreaterThanOrEqual(2)
+    expect((bootSrc.match(/beat\(`lane-alarm-boot:\$\{lane\}`/g) || []).length).toBeGreaterThanOrEqual(2)
     expect(bootSrc).toMatch(/catch \(err\)/) // throw 가 다른 레인을 끌고 가지 않는다
   })
 

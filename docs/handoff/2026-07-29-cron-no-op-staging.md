@@ -87,7 +87,8 @@ export → 도매 번들도 cron 핸들러를 그대로 실었다. 도매 Pages 
 🔴 **게이트 선차단 금지** — ④를 먼저 하면 ②③ 경로가 같이 닫혀 **판매사 잔액이 회수 불가로 갇힌다.**
 
 **CF 토큰**: 예치금과 **별건**. 재발급하되 **D1 읽기 전용 최소 스코프**(§B.12). CLAUDE.md 의 07-28 실측 기록은
-**무효 표기 완료** — 그 절을 믿고 "토큰 살아 있다" 전제하지 말고 `verify` 로 먼저 확인할 것.
+~~**무효 표기 완료**~~ → ✅ **2026-08-02 해소**: 대표 재발급으로 토큰이 살아났다(`verify` success/active,
+D1·Workers·Pages 조회 OK). 절차는 그대로 — 쓰기 전에 `verify` 로 확인할 것.
 
 > ⚠️ **이번에 틀렸던 판단**: src 무변경 근거로 `git diff origin/main -- src/` 를 썼는데, **main 이 앞서면
 > main 의 새 src 가 섞여 들어와 오염된다.** 정확한 기준은 `git diff $(git merge-base origin/main HEAD)..HEAD`.

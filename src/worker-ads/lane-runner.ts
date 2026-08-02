@@ -14,6 +14,7 @@ import {
   lanesPerTick, selectLanesByDomain, readDomainCursors, domainDispatchSnapshot, resolvePlan, resolveMeasureShare,
   type LaneCandidate,
 } from './dispatch-budget'
+import { LANE_LEARN_KEY, readLaneLearn } from './lane-aimd'
 
 export interface RunnableLane extends LaneCandidate {
   path: string
@@ -74,13 +75,15 @@ export async function dispatchPendingLanes(opts: {
   laneUrl: LaneRunnerDeps['laneUrl']
   beat: LaneRunnerDeps['beat']
   waitUntil: (p: Promise<unknown>) => void
-}): Promise<Promise<unknown>[]> {
+}): Promise<{ kicked: Promise<unknown>[]; ranNames: string[] }> {
   const { pending, env, hourUTC, waitUntil } = opts
-  const perTick = lanesPerTick(env)
-  // 📍 커서를 먼저 읽는다(D1 1회). **실패하면 시각 유도값으로 떨어진다** — 커서가 없어도 정확성은
-  //   불변이고 공평성만 약해진다. 여기서 throw 하면 그 회차 전체가 사라지므로 절대 던지지 않는다.
-  const row = await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
-    .bind(DISPATCH_CURSOR_KEY).first<{ value: string }>().catch(() => null)
+  // 📍 커서 + 🎚️ 학습된 레인 수를 **한 번의 D1 왕복**으로 읽는다. **실패하면 각각의 기본값으로
+  //   떨어진다** — 커서가 없어도 정확성은 불변이고 공평성만 약해지며, 학습값이 없으면 요금제
+  //   기본값에서 다시 시작한다. 여기서 throw 하면 그 회차 전체가 사라지므로 절대 던지지 않는다.
+  const rows = await env.DB.prepare('SELECT key, value FROM platform_settings WHERE key IN (?, ?)')
+    .bind(DISPATCH_CURSOR_KEY, LANE_LEARN_KEY).all<{ key: string; value: string }>().catch(() => null)
+  const row = rows?.results?.find(r => r.key === DISPATCH_CURSOR_KEY) ?? null
+  const perTick = lanesPerTick(env, readLaneLearn(rows?.results?.find(r => r.key === LANE_LEARN_KEY)?.value)?.cap)
   // 🧭 **도메인별 커서** + 역할별 커서 + 회차. 저장값이 구 포맷(숫자 하나/역할 객체)이어도 받아준다 —
   //    배포 시점 라이브 값이 그렇고, 그때 0 에서 다시 시작하면 그 회차만 배분이 한쪽으로 쏠린다.
   //    행이 아예 없을 때만 시각 유도값으로 시작한다(첫 배포·초기화).
@@ -110,5 +113,8 @@ export async function dispatchPendingLanes(opts: {
     writes.push(env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(DISPATCH_CURSOR_KEY, JSON.stringify(sel.nextCursors)))
   }
   waitUntil(env.DB.batch(writes).catch(() => undefined))
-  return kicked
+  // 🏷️ **띄운 레인 이름**도 돌려준다 — 회차 요약이 "띄웠는데 기록이 없는 레인"을 *이름으로* 판정한다.
+  //   개수 뺄셈은 안 된다: 예산 밖 레인이 자기 하트비트를 따로 남겨 기록 수가 띄운 수보다 클 수 있다
+  //   (라이브 실측 `띄운 7 · 기록 9`). 뺄셈이면 음수가 나온다.
+  return { kicked, ranNames: sel.run.map(l => l.beat) }
 }

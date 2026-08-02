@@ -21,7 +21,7 @@ import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, 
 import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS, acquireLeaseDetect } from './collect-lease'
-import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap, envSubreqCap, capAfterAbandonedRun } from './collect-budget'
+import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap, envSubreqCap, capAfterAbandonedRun, envLaneBudget } from './collect-budget'
 import { makeAlreadyContacted } from './influencer-known-contacts'
 import { KW_DDL } from './influencer-keyword-ddl'
 import { runDdlOnce, ddlChecksum } from './ads-schema-guard'
@@ -305,7 +305,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const naverSort: 'sim' | 'date' = ((prev?.total_runs || 0) % 2 === 0) ? 'sim' : 'date'
   // 🔒 서브리퀘스트 예산(2026-07-20 실사고) — 한 실행의 외부 fetch 상한. 소진 시 조기 종료(에러 아님),
   //   커서가 다음 틱에 이어받아 손실 0. 기본 300(env ADS_SUBREQUEST_BUDGET), 실제 한도는 관측 학습 → collect-budget.ts.
-  const envBudget = Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 300)
+  const envBudget = Math.max(20, envLaneBudget(env.ADS_SUBREQUEST_BUDGET, 300, env))
   // 🔀 병합: 읽기는 이 브랜치의 배치(readSettings — 낱개 5회 → 1회), 천장은 main(#837).
   const storedCap = Math.max(0, parseInt(settings[subreqCapKey('influencer')] || '', 10) || 0)
   // 🪦 직전 회차가 lease 를 반납 못 하고 죽었으면 **이번 회차부터 즉시** 덜 쓴다(다음 회차가 아니라).

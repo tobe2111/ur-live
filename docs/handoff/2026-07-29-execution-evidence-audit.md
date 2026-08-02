@@ -677,3 +677,62 @@ CF API 토큰이 **다시 살아 있다**(핸드오프에 "죽었다"고 적어 
 > 🔎 **다음 세션이 쓸 수 있는 도구**: 바인딩 **이름**을 직접 읽는 것이 유일하게 이 클래스를 잡는다.
 > `GET /accounts/{acc}/workers/scripts/ur-live/settings` → `result.bindings[].name` 을 `repr` 로 볼 것
 > (눈으로는 앞뒤 공백이 안 보인다 — 실제로 정렬이 한 칸 어긋난 걸 보고서야 알았다).
+
+---
+
+## 2026-08-03 00:50 KST — 🔴 **대표가 넣은 키가 사라졌다. 지운 건 사람이 아니라 배포다.**
+
+대표 화면에 변수가 3개(FRONTEND_URL·SCRAPER_URL·TOSS_SECRET_KEY)만 남았다. 30분 전 내 조회는
+12개였다. **둘 다 사실이고, 사이에 배포가 있었다.**
+
+| 시각(KST) | 사건 |
+|---|---|
+| 00:31 | 내 조회 — 바인딩 **12개**(ALIGO 3 · DISCORD · DATA_ENCRYPTION_KEY · CACHE_KV 포함) |
+| 00:43 | **#971 `worker-deploy` 완료**(23:47 시작, 56분 소요) |
+| 00:47 | 내 재조회 — 바인딩 **6개** |
+
+### 규칙 (이게 핵심이다)
+
+**`wrangler deploy` 는 워커 설정을 `wrangler.toml` 이 선언한 것으로 통째로 교체한다.**
+파일에 없는 것은 *추가되지 않는 것*이 아니라 **삭제된다.**
+
+살아남은 것 ↔ 사라진 것이 이 규칙을 정확히 증명한다:
+
+| 살아남음 | 왜 |
+|---|---|
+| `DB`(D1) · `LIVE_STREAM`·`RATE_LIMITER`(DO) · `FRONTEND_URL`·`SCRAPER_URL`(vars) | **파일에 선언돼 있다** |
+| `TOSS_SECRET_KEY` | **Secret 은 별도 저장소**라 교체 대상이 아니다 |
+
+| 사라짐 | 왜 |
+|---|---|
+| `ALIGO_API_KEY`·`ALIGO_USER_ID`·`ALIGO_SENDER_KEY`·`DISCORD_WEBHOOK_URL`·`DATA_ENCRYPTION_KEY` | 대시보드에서 **Plaintext** 로 추가 — 파일에 없음 |
+| `CACHE_KV` | 대시보드에서 KV 바인딩 추가 — 파일에 없음 |
+
+⇒ **재발한다.** 워커 배포는 하루에도 여러 번 돈다. 대시보드에 다시 넣어도 다음 배포가 또 지운다.
+
+### 영구 조치 — 두 갈래로 갈라야 한다
+
+1. **비밀인 값 → Secret 으로 등록**(Plaintext ❌). Secret 은 배포가 못 건드린다.
+   `ALIGO_API_KEY` · `ALIGO_USER_ID` · `ALIGO_SENDER_KEY` · `DISCORD_WEBHOOK_URL` · `DATA_ENCRYPTION_KEY`.
+   ⚠️ **`wrangler.toml` 에 값을 쓰면 안 된다** — 공개 레포라 영구 노출이다.
+2. **비밀이 아닌 바인딩 → `wrangler.toml` 에 선언**(이번 커밋에서 `CACHE_KV` 반영).
+   D1·DO·vars 가 그동안 안 지워진 이유가 이것이다.
+
+> 🪤 **id 함정**: 계정에 `CACHE_KV`(25ecc9ce…) 라는 **동명의 다른 네임스페이스**가 있다. Pages 가
+> 실제 읽는 것은 제목이 **`ur-cashe`** 인 `25aef979…`(오타로 만들어진 이름)다. SSR 워밍은
+> **cron 이 쓰고 Pages 가 읽는** 구조라, 이름만 보고 고르면 **에러 없이 기능만 죽는다.**
+> 이름이 아니라 **Pages 바인딩이 가리키는 id** 를 따라갈 것.
+
+### 교차 세션 병합 (#971 — 다른 세션)
+
+그 PR 이 **죽은 워커를 정리해 cron 슬롯을 회수**했다 → 주간 D1 백업(`0 20 * * SUN`)이 배열에
+복귀했고 배포도 성공했다. 내 브랜치의 "무료 한도로 3개 유지" 전제는 **그 시점에 맞았고 지금은
+낡았다.** 병합하며 정리:
+
+- `wrangler.toml` crons → **그쪽 4개 채택**.
+- `cron-schedule.test.ts` → **그쪽 채택**(계정 합산 검사가 내 `FREE_PLAN_SHARE` 보다 낫다 —
+  한 파일이 아니라 `wrangler*.toml` 전부를 더한다. 한도는 계정 단위이므로 그게 맞다).
+- `check-guard-mutations` → 두 세션이 **같은 항목을 서로 다른 불변식으로** 바꿔 놨다.
+  **둘 다 남겼다** — 하나는 *개수*(계정 한도), 하나는 *문법*(dow=0). 서로를 대체하지 않는다.
+
+검증: 주입 **57/57 빨간불** · 전체 **4,327 pass** · 충돌 마커 0 · `cron-syntax` 4개 5/5.

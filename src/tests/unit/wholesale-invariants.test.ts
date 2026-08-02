@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync } from 'fs'
 import { resolve } from 'path'
 import { wholesaleAuthSeg } from '@/hooks/queries/useWholesale'
 
@@ -108,7 +108,11 @@ describe('정산 cron 은 소비자 워커에서만 — 이중성숙 차단', ()
     hasCrons: /^crons\s*=\s*\[[^\]]*"/m.test(toml),
   })
 
-  const CONFIGS = ['wrangler.toml', 'wrangler-cron.toml', 'wrangler-ads.toml', 'wrangler-proxy.toml']
+  // ⚠️ 2026-08-02: 예전엔 파일명을 **하드코딩**했다. 죽은 `wrangler-cron.toml` 을 지우자
+  //   `ENOENT` 로 테스트가 통째로 터졌다 — 이 레포가 오늘만 두 번 만난 '경로 하드코딩' 클래스다.
+  //   반대 방향(새 wrangler 설정이 생겼는데 목록에 안 넣음)은 **조용히 통과**해서 더 나쁘다.
+  //   ⇒ 레포에서 직접 찾는다.
+  const CONFIGS = readdirSync(resolve(process.cwd())).filter((f) => /^wrangler.*\.toml$/.test(f))
   const SHARED_ENTRY = 'src/worker/index.ts' // scheduled(=정산 성숙) 를 싣는 entry
 
   it('공유 entry 로 cron 을 도는 워커는 ur-live 하나뿐이다', () => {

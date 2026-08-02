@@ -11,7 +11,8 @@ import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch,
 import { cleanSelfLinks, SELF_BLOG_LIKE } from './influencer-self-link'
 import { runQualityPass } from './influencer-quality'
 import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS } from './collect-lease'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap } from './collect-budget'
+import { MAINT_PHASE_CURSOR_KEY, MAINT_SCHEDULE_VERSION, parsePhaseCursor, formatPhaseCursor, nextPhaseSlot } from './maintenance-phase-cursor'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget } from './collect-budget'
 import { budgetedDb, newOpBudget, type OpBudget } from './maintenance-budget'
 import { healNaverHandles } from './influencer-handle-heal'
 // 📍 지역 백필 — 여기(정비 인보케이션)가 제자리다. 근거는 `sweepRegions` 주석.
@@ -399,7 +400,7 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
   const at = new Date().toISOString()
   if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, PHASE_LEASE_TTL_MS)) return { at, kind: 'maintenance', phase, busy: true }
 
-  const envBudget = Math.max(10, Math.min(800, parseInt(String(env.ADS_MAINT_OPS_BUDGET || ''), 10) || 60))
+  const envBudget = Math.max(10, Math.min(900, envLaneBudget(env.ADS_MAINT_OPS_BUDGET, 60, env)))
   const learnedRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('maintenance'))
     .first<{ value: string }>().catch(() => null)
   const learnedCap = Math.max(0, parseInt(learnedRaw?.value || '', 10) || 0)
@@ -463,6 +464,30 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
     await releaseLease(DB, MAINTAIN_LEASE_KEY)
   }
   return out
+}
+
+/**
+ * 🔁 **다음 단계를 커서로 골라 한 번 돈다** — 알람 레인(호출부 없는 독립 인보케이션)용 진입점.
+ *
+ *   cron 경로는 `MAINT_SCHEDULE[hourUTC % 12]` 로 단계를 고른다. 알람은 **한 시간에 12번** 깨어나므로
+ *   그 방식을 그대로 쓰면 12회차가 전부 같은 단계를 돌아 아무 의미가 없다 ⇒ 회전축을 커서로 옮긴다.
+ *   배정표(`MAINT_SCHEDULE`)와 슬롯 가중치는 **그대로 재사용**한다 — 순서대로 한 바퀴 돌면 슬롯 비율이
+ *   그대로 빈도가 되므로 계약이 동일하다.
+ *
+ *   🅿️ **커서는 실행 전에 전진시킨다.** 단계가 죽어도 다음 회차는 다음 자리로 간다 — 안 그러면 무거운
+ *     단계 하나가 죽을 때마다 같은 자리를 무한 재시도하며 뒤를 영원히 굶긴다(라이브에서 이미 겪은 형태).
+ *   ⚠️ 리스는 `runMaintenancePhase` 가 잡는다 — 야간 재보정과 겹치면 `busy: true` 로 조용히 비켜난다.
+ */
+export async function runNextMaintenancePhase(env: Env): Promise<Record<string, unknown>> {
+  const DB = env.DB
+  const raw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+    .bind(MAINT_PHASE_CURSOR_KEY).first<{ value: string }>().catch(() => null)
+  const cursor = parsePhaseCursor(raw?.value, MAINT_SCHEDULE_VERSION)
+  const { index, nextCursor } = nextPhaseSlot(cursor, MAINT_SCHEDULE.length)
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(MAINT_PHASE_CURSOR_KEY, formatPhaseCursor(MAINT_SCHEDULE_VERSION, nextCursor)).run().catch(() => null)
+  const phase = MAINT_SCHEDULE[index]!
+  return { slot: index, ...(await runMaintenancePhase(env, phase)) }
 }
 
 /** 🌙 야간 라이브 재보정(별도 시간대 KST 04시 — fetch-heavy 라 자체 인보케이션 예산 사용):

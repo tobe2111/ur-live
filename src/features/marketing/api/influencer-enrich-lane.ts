@@ -36,7 +36,7 @@ import {
 } from './influencer-discovery'
 import { enrichNaverActivity, enrichYouTubePerformance, ensurePerfExtraColumns, type NaverEnrichDiag, type EnrichSlice } from './influencer-performance'
 import { POOL_ACCOUNT_ID, readSetting, writeSetting, ytQuotaDayKey } from './influencer-auto-collect'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs, envLaneBudget } from './collect-budget'
 // 스냅샷 키는 leaf 모듈(enrich-telemetry)에 둔다 — 어드민 통계가 수집 엔진을 import 하지 않고 읽게.
 import { INFLUENCER_ENRICH_SNAPSHOT_KEY } from './enrich-telemetry'
 
@@ -328,7 +328,7 @@ export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: n
   await ensureInfluencerSchema(DB)   // bio_checked_at · perf_checked_at · recent_posts_30d
   await ensurePerfExtraColumns(DB)   // last_post_at (블로거 마지막 글 날짜)
 
-  const envBudget = Math.min(400, Math.max(10, parseInt(env.ADS_INFLUENCER_ENRICH_BUDGET || '', 10) || 45))
+  const envBudget = Math.min(900, Math.max(10, envLaneBudget(env.ADS_INFLUENCER_ENRICH_BUDGET, 45, env)))
   const learnedCap = Math.max(0, parseInt((await readSetting(DB, subreqCapKey('influencer_enrich'))) || '', 10) || 0)
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = envSubreqCap(env)

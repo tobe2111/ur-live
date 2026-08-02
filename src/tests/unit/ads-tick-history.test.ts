@@ -32,41 +32,68 @@ import { createBeatBatch } from '../../worker-ads/beat-batch'
 const beat = (name: string, ok: boolean, ms: number) => ({ name, ok, ms })
 
 describe('회차 요약', () => {
-  it('ran(띄운수)과 n(기록수)을 따로 센다 — 그 차이가 "기록조차 못 남긴 수"다', () => {
-    const s = summarizeTick('2026-08-02T08:00:00.000Z', 8, 8, [
+  it('띄운 레인 중 기록이 없는 것을 miss 로 센다', () => {
+    const s = summarizeTick('2026-08-02T08:00:00.000Z', 8, ['a', 'b', 'c', 'd', 'e'], [
       beat('ads:a', true, 100), beat('ads:b', false, 3649), beat('ads:c', true, 4652),
     ])
-    expect(s.ran).toBe(8)
+    expect(s.ran).toBe(5)
     expect(s.n).toBe(3)
-    expect(s.ran - s.n).toBe(5)   // 5개는 하트비트조차 못 남겼다
+    expect(s.miss).toBe(2)   // d·e 는 하트비트조차 못 남겼다
+    expect(s.off).toBe(0)
     expect(s.ok).toBe(2)
     expect(s.fail).toBe(1)
     expect(s.okMax).toBe(4652)
     expect(s.failMin).toBe(3649)
   })
 
+  /**
+   * 🐛 **라이브 회귀 테스트** — 첫 판은 `ran - n` 으로 "기록조차 못 남긴 수"를 계산했다.
+   *   19:00 회차에서 **`띄운 7 · 기록 9`** 가 나와 그 값이 **음수**가 됐다:
+   *   예산 밖 레인(`sheets-sync` 같은 생 waitUntil)과 DO 알람 레인이 **자기 하트비트를 따로** 남긴다.
+   *   뺄셈은 두 집합이 같다고 가정했는데 거짓이었다. ⇒ 이름으로 대조하면 음수가 구조적으로 불가능하다.
+   */
+  it('🔒 예산 밖 레인이 기록을 남겨도 miss 가 음수가 되지 않는다 (라이브 실측 재현)', () => {
+    const s = summarizeTick('t', 19, ['collect-hira', 'collect-commerce'], [
+      beat('ads:collect-hira', true, 25750), beat('ads:collect-commerce', true, 12702),
+      beat('ads:sheets-sync', true, 9118),          // 예산 우회 레인
+      beat('ads:lane-alarm-boot', true, 273),       // DO 알람 레인
+    ])
+    expect(s.ran).toBe(2)
+    expect(s.n).toBe(4)          // 기록이 띄운 수보다 많다 — 실제로 일어난다
+    expect(s.miss).toBe(0)       // 띄운 둘은 다 기록을 남겼다
+    expect(s.off).toBe(2)        // 예산 밖에서 온 기록 둘
+    expect(s.miss).toBeGreaterThanOrEqual(0)
+  })
+
+  it('n = (ran − miss) + off 가 항상 성립한다', () => {
+    const s = summarizeTick('t', 0, ['a', 'b', 'c'], [
+      beat('ads:a', true, 1), beat('ads:x', false, 2), beat('ads:y', true, 3),
+    ])
+    expect(s.n).toBe((s.ran - s.miss) + s.off)
+  })
+
   /** `ads:scheduled` 는 "회차가 울렸다"는 사실이지 레인이 아니다 — 세면 성공률이 부풀려진다. */
   it('scheduled 는 레인으로 안 센다', () => {
-    const s = summarizeTick('t', 0, 2, [beat('ads:scheduled', true, 0), beat('ads:x', false, 10)])
+    const s = summarizeTick('t', 0, ['x'], [beat('ads:scheduled', true, 0), beat('ads:x', false, 10)])
     expect(s.n).toBe(1)
     expect(s.ok).toBe(0)
     expect(s.fail).toBe(1)
   })
 
   it('실패가 없으면 failMin 은 null (0 이 아니다)', () => {
-    expect(summarizeTick('t', 0, 1, [beat('ads:x', true, 5)]).failMin).toBeNull()
+    expect(summarizeTick('t', 0, ['x'], [beat('ads:x', true, 5)]).failMin).toBeNull()
   })
 
   it('실패 레인 이름을 남기되 상한을 둔다', () => {
     const many = Array.from({ length: 10 }, (_, i) => beat(`ads:l${i}`, false, 100))
-    const s = summarizeTick('t', 0, 10, many)
+    const s = summarizeTick('t', 0, many.map(b => b.name.slice(4)), many)
     expect(s.bad.length).toBe(6)
     expect(s.bad[0]).toBe('l0')   // `ads:` 접두어는 뗀다(길이 절약)
   })
 })
 
 describe('링 버퍼', () => {
-  const mk = (at: string) => summarizeTick(at, 0, 1, [beat('ads:x', true, 1)])
+  const mk = (at: string) => summarizeTick(at, 0, ['x'], [beat('ads:x', true, 1)])
 
   it('같은 회차는 한 줄로 유지된다 (flush 2회여도 안 갈린다)', () => {
     let raw = appendTick(null, mk('T1'))
@@ -87,8 +114,8 @@ describe('링 버퍼', () => {
   it('값 길이가 유계다 — 이름이 길어도', () => {
     let raw: string | null = null
     for (let i = 0; i < TICK_HISTORY_CAP; i++) {
-      raw = appendTick(raw, summarizeTick(`T${i}`, 0, 12,
-        Array.from({ length: 8 }, (_, j) => beat(`ads:${'x'.repeat(70)}${j}`, false, 1000))))
+      const big = Array.from({ length: 8 }, (_, j) => beat(`ads:${'x'.repeat(70)}${j}`, false, 1000))
+      raw = appendTick(raw, summarizeTick(`T${i}`, 0, big.map(b => b.name.slice(4)), big))
     }
     expect(raw!.length).toBeLessThanOrEqual(TICK_HISTORY_MAX_CHARS)
     expect(readTickHistory(raw).length).toBeGreaterThan(0)   // 다 버리지는 않는다
@@ -114,7 +141,7 @@ describe('누적기 — flush 해도 요약이 안 줄어든다', () => {
     await b.flush()
     expect(b.seenBeats.length).toBe(7)                       // 비워지지 않는다
     expect(written.reduce((a, n) => a + n, 0)).toBe(7)       // 쓰기 총합은 같다
-    const s = summarizeTick('t', 0, 9, b.seenBeats)
+    const s = summarizeTick('t', 0, b.seenBeats.map(x => x.name.slice(4)), b.seenBeats)
     expect(s.n).toBe(7)
     expect(s.ok).toBe(4)
     expect(s.fail).toBe(3)
@@ -128,16 +155,20 @@ describe('배선 — 부모가 실제로 남기는가', () => {
 
   it('스케줄러가 마지막 flush 뒤에 회차 요약을 쓴다', () => {
     const src = code('src/worker-ads/index.ts')
-    expect(src, '배선이 없으면 이력은 영원히 안 생긴다').toMatch(/writeTickSummary\(env\.DB, tickStartIso, hourUTC, kicked\.length, beats\.seenBeats\)/)
+    // ⚠️ 인자가 하나 늘었다(요금제 인지 학습기 — `lane-aimd.ts`). 뒤쪽은 열어 두고 앞 5개만 못박는다.
+    expect(src, '배선이 없으면 이력은 영원히 안 생긴다').toMatch(/writeTickSummary\(env\.DB, tickStartIso, hourUTC, ranNames, beats\.seenBeats/)
     const flushAt = src.indexOf('beats.flush()')
     const writeAt = src.indexOf('writeTickSummary(')
     expect(flushAt).toBeGreaterThan(-1)
     expect(writeAt, 'flush 전에 쓰면 마지막 묶음이 요약에서 빠진다').toBeGreaterThan(flushAt)
   })
 
-  it('띄운 수로 kicked.length 를 쓴다 — 기록 수로 대체하면 "못 남긴 수"가 0 이 된다', () => {
+  it('띄운 레인 **이름**을 넘긴다 — 개수로 대체하면 miss 가 음수가 될 수 있다', () => {
     const src = code('src/worker-ads/index.ts')
-    expect(src).toMatch(/writeTickSummary\([^)]*kicked\.length/)
+    expect(src).toMatch(/writeTickSummary\([^)]*ranNames/)
+    expect(src, '개수로 되돌아가면 라이브에서 본 "띄운7 기록9" 가 다시 음수를 만든다').not.toMatch(/writeTickSummary\([^)]*kicked\.length/)
+    const runner = code('src/worker-ads/lane-runner.ts')
+    expect(runner, '디스패처가 이름을 안 돌려주면 배선이 성립하지 않는다').toMatch(/ranNames: sel\.run\.map\(l => l\.beat\)/)
   })
 
   it('진단이 이력을 노출한다 — 쓰기만 하고 안 보여주면 판정에 못 쓴다', () => {

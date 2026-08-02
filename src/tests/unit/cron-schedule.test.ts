@@ -15,7 +15,7 @@
  *    **빼는** 실수(= 그 cron 삭제)도 못 막는다 — 사람이 그 로그와 대조해야 한다.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 
 const TOML = readFileSync('wrangler.toml', 'utf8')
 const CRON_LINE = TOML.split('\n').find((l) => /^\s*crons\s*=/.test(l)) || ''
@@ -68,51 +68,39 @@ describe('wrangler.toml cron 배열', () => {
     expect([...new Set(dup)], '같은 표현식이 두 번 — 한 번은 무의미').toEqual([])
   })
 
-  /**
-   * 🔴 2026-08-02 — 이 자리에 원래 *"주간 D1 백업 트리거가 살아 있다"* 가 있었다. **전제가 틀렸다.**
-   *
-   * 그 테스트는 "백업이 배열에서 사라지면 재해복구가 0" 을 전제했는데, 실측은 다르다:
-   *   - `d1-backup.yml`(GitHub Actions, 주간)이 **3주 연속 성공** 중이다(#903 — 07-15·22·29,
-   *     최신 아티팩트 23.97MB). 워커 cron 백업은 *유일 수단*이 아니라 **이중화의 두 번째 갈래**다.
-   *
-   * 그리고 더 큰 사실이 있다 — 문법을 `SUN` 으로 고쳐 배포한 결과(run 30749528808):
-   *   `This account has reached the Workers Free limit of 5 cron triggers per account.
-   *    Upgrade to Workers Paid to increase this limit to 1,000  [code: 10072]`
-   *   ⇒ 한도는 **스크립트당이 아니라 계정당 5개**다. 네 번째 항목은 **어떤 문자열로 쓰든 거부된다.**
-   *   ⇒ 배열에 남겨두면 **모든 배포가 빨간불**이 되고(스크립트는 올라가지만 스케줄 PUT 실패),
-   *     그 빨간불이 일상이 되면 진짜 실패를 못 알아본다.
-   *
-   * 그래서 검사를 바꾼다: *"백업 트리거가 배열에 있다"* → **"백업 경로가 최소 하나는 살아 있다"**.
-   * 지키려던 것(재해복구 0 방지)은 그대로이고, 지킬 수 없는 방식만 뺐다.
-   */
-  it('D1 백업 경로가 최소 하나는 살아 있다 (워커 cron 또는 CI)', () => {
-    const weeklyCron = EXPRS.some((e) => e.trim().split(/\s+/)[4] !== '*')
-    let ciBackup = false
-    try {
-      ciBackup = /schedule:/.test(readFileSync('.github/workflows/d1-backup.yml', 'utf8'))
-    } catch { ciBackup = false }
-    expect(
-      weeklyCron || ciBackup,
-      '백업 경로가 하나도 없다 — 워커 주간 cron 도, d1-backup.yml 스케줄도 없다(재해복구 0)',
-    ).toBe(true)
+  it('계정 전체 트리거 합이 무료 한도(5) 이하다', () => {
+    // 🔴 2026-08-02: 이게 문법보다 **뒤에 나온 두 번째 벽**이다. `0`→`SUN` 으로 고쳐 실제 배포하자
+    //   "Workers Free limit of 5 cron triggers per **account**" (code 10072) 가 나왔다.
+    //   한 파일만 보면 절대 못 잡는다 — 한도는 **계정** 단위다. (당시 ur-live 3 + cleanup-cron 1 + ads 1 = 5)
+    //   6번째를 넣으면 PUT 이 통째로 거부되고 **이후 모든 worker-deploy 가 실패**해 cron 배포가 멈춘다.
+    const files = readdirSync('.').filter((f) => /^wrangler.*\.toml$/.test(f))
+    expect(files.length, 'wrangler*.toml 을 못 찾았다 — 검사가 헛돈다').toBeGreaterThan(0)
+    let total = 0
+    const detail: string[] = []
+    for (const f of files) {
+      const l = readFileSync(f, 'utf8').split('\n').find((x) => /^\s*crons\s*=/.test(x))
+      if (!l) continue
+      const n = [...l.matchAll(/"([^"]+)"/g)].length
+      total += n
+      detail.push(`${f}:${n}`)
+    }
+    expect(total, `계정 합계 ${total} (${detail.join(' + ')}) — 무료 한도 5 초과`).toBeLessThanOrEqual(5)
   })
 
-  /**
-   * 💸 무료 플랜 한도 — 배포 실패를 **커밋 시점으로 앞당긴다.**
-   *
-   * 계정당 5개이고 다른 워커(ur-ads 등)가 나머지를 쓴다. ur-live 의 실측 몫이 3이다.
-   * 하나 더 넣으면 deploy 가 거부되는데, 그건 **배포해 봐야 알게 되는 실패**다 — 여기서 막는다.
-   *
-   * ⚠️ **유료 전환($5/월, 한도 1,000) 시 이 숫자를 올릴 것.** 그때 `"0 20 * * SUN"`(주간 백업)과
-   *    `"0 0 * * 1"`(주간 지급)을 복귀시킨다. 주간 지급은 **첫 정산(D+7) 전까지** 결정이 필요하다.
-   */
-  const FREE_PLAN_SHARE = 3
-  it(`무료 플랜에서 등록 가능한 몫(${FREE_PLAN_SHARE})을 넘지 않는다`, () => {
-    expect(
-      EXPRS.length,
-      `cron ${EXPRS.length}개 — 계정당 5개 한도(code 10072)에 걸려 배포가 거부된다. ` +
-        '유료 전환했다면 이 테스트의 FREE_PLAN_SHARE 를 올릴 것.',
-    ).toBeLessThanOrEqual(FREE_PLAN_SHARE)
+  it('주간 D1 백업 트리거가 배열에 있다', () => {
+    // 2026-08-02 점화. 여기서 빠지면 재해복구가 다시 0 이 된다 — 몇 달간 그 상태였다.
+    // (day-of-week 가 지정된 = 주간 스케줄. 표기는 SUN/0/7 무엇이든 코드가 받는다 — 아래 테스트.)
+    const weekly = EXPRS.filter((e) => e.trim().split(/\s+/)[4] !== '*')
+    expect(weekly.length, '주간 트리거가 없다 — D1 백업 cron 이 빠졌다').toBeGreaterThan(0)
+  })
+
+  it('백업 cron 은 코드가 세 표기를 모두 받는다 (등록 표기가 무엇이든)', () => {
+    //   `0`/`SUN`/`7` 중 무엇으로 등록하든 분기가 매칭돼야 한다.
+    //   CF 는 **등록된 문자열 그대로** event.cron 에 넣으므로 표기 하나만 받으면 조용히 안 돈다.
+    const scheduled = readFileSync('src/worker/scheduled.ts', 'utf8')
+    for (const form of ["'0 20 * * 0'", "'0 20 * * SUN'", "'0 20 * * 7'"]) {
+      expect(scheduled, `백업 분기가 ${form} 표기를 안 받는다`).toContain(form)
+    }
   })
 
   it('cron 이 코드에 실제로 배선돼 있다 (트리거만 있고 호출부가 없으면 무의미)', () => {
