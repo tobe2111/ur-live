@@ -594,3 +594,40 @@ nara·localdata(포털 경로)도 같은 이유로 **"폐기"가 아니라 "주�
 
 ⚠️ 후보 이름 6종(`FftcBrandRlsInfoService`·`_Service`·`3_Service`·`FftcJnghdqrtrsInfoService`·
 `JngIfrmpInfoService`·`FftcJngIfrmpService`)도 전부 code 12 였다 — **추측으로는 못 찾는다.**
+
+## ⑰ 🔬 **심평원 60회 무수확 — 재시도를 실험으로 바꿨다** (라이브가 다음 회차에 답한다)
+
+### 가설을 가른 실측
+
+```
+프로브(비정각, 같은 워커·키·주소)   rows 1·20·50·100·200·300·500 → 전부 200 즉답
+같은 :00 · 같은 게이트웨이 다른 레인  commerce 누적 130,795 · storeinfo 14,271  → 성공
+collect-hira (매시 :00, rows=100)   60회 전부 AbortSignal.timeout(25000)
+ur-ads 바인딩 42개                   PUBLIC_DATA_SERVICE_KEY 존재 · ADS_HIRA_ROWS 없음(=기본 100)
+```
+
+⇒ **"정각엔 게이트웨이가 바쁘다" 하나로는 설명이 안 된다.** 같은 시각·같은 호스트·같은 키로
+다른 레인은 성공한다. 그리고 남은 후보(동시성 / 이 엔드포인트만 느림)를 **읽기로는 더 못 가른다.**
+
+### 그래서: 재시도가 곧 A/B 실험
+
+첫 시도가 timeout 이면 **회차당 1회만** `rows/5` 로 재시도하고 결론을 `diag.retry` 에 남긴다.
+
+| 다음 회차의 `diag.retry` | 뜻 | 처방 |
+|---|---|---|
+| `재시도 성공 ⇒ 페이지 크기 문제` | 응답량이 원인 | `ADS_HIRA_ROWS` 를 내린다 — **무배포**(대표 대시보드 1줄) |
+| `재시도도 실패 ⇒ 크기 무관` | 동시성·외부 | 회차 분산을 봐야 한다(`dispatch-budget` — 다른 세션) |
+
+⚠️ **이건 처방이 아니라 관측이다.** 원인을 단정하지 않고, 어느 쪽이든 지금보다 나빠지지 않는다
+(실패해도 현행과 동일). 재시도 타임아웃은 첫 시도보다 짧게(8s < 25s) 묶어 회차 벽시계가 두 배가
+되지 않게 했고, `retried` 플래그로 **회차당 1회** 상한을 뒀다(무료 서브리퀘스트 천장 ~50).
+
+불변식 6개를 `hira-retry-experiment.test.ts` 로 고정 + 되돌려-검증 4건 RED + 매니페스트 2건 등재.
+
+### 다음 세션의 첫 액션 (명령까지)
+
+```bash
+# 심평원 레인의 다음 회차 결과 — retry 필드가 원인을 말해 준다
+SELECT value FROM platform_settings WHERE key='ads_hira_stats';
+```
+`diag.retry` 가 비어 있으면 아직 새 코드로 한 회차도 안 돈 것이다(배포 시각 확인).

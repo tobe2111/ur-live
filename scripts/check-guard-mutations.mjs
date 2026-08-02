@@ -112,6 +112,27 @@ const MUTATIONS = [
       '받았다. 그 400 을 근거로 "서비스가 폐기됐다"고 결론 낼 뻔했다 — 진단 도구가 오진의 재료가 되는 최악의 모양이다.',
   },
   {
+    name: '심평원 재시도가 실험이 아니게 됨(같은 크기로 재시도)',
+    file: 'src/features/marketing/api/hira-hospital-collect.ts',
+    find: 'Math.max(20, Math.floor(numRows / 5))',
+    replace: 'numRows',
+    test: 'src/tests/unit/hira-retry-experiment.test.ts',
+    why:
+      '이 재시도의 목적은 회복이 아니라 **원인 판별**이다 — 작은 페이지로 성공하면 "페이지 크기 문제"(무배포 노브로 해결), ' +
+      '작은 페이지도 실패하면 "크기 무관"(동시성·외부)이다. 같은 크기로 다시 쏘면 두 경우가 구분되지 않아 ' +
+      '60회 무수확의 원인을 **또 모르는 채로** 남는다.',
+  },
+  {
+    name: '심평원 재시도 상한이 사라짐(페이지마다 재시도)',
+    file: 'src/features/marketing/api/hira-hospital-collect.ts',
+    find: '      retried = true',
+    replace: '      retried = false',
+    test: 'src/tests/unit/hira-retry-experiment.test.ts',
+    why:
+      '무료 요금제의 서브리퀘스트 천장은 인보케이션당 ~50 이다. 회차당 1회 상한이 없으면 페이지마다 재시도가 붙어 ' +
+      '**같은 회차의 다른 레인 예산까지 잡아먹는다** — 이 레포가 이미 여러 번 당한 자리다.',
+  },
+  {
     name: 'code 12 힌트가 "폐기 확정"으로 읽히게 약해짐',
     file: 'src/features/marketing/api/public-data-diag.ts',
     find: '⚠️ **폐기와 경로 오타를 구분할 수 없는 코드다**',
