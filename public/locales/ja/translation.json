@@ -4157,7 +4157,8 @@
       "promoteBoosts": "露出ブースティング",
       "transfers": "セラー移転",
       "stays": "宿泊運営",
-      "prospects": "店舗開拓状況"
+      "prospects": "店舗開拓状況",
+      "ledger": "リアルタイム元帳"
     },
     "guide": "運営ガイド",
     "guideSubtitle": "エージェンシー運営の核心ガイド",
