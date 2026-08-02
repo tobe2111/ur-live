@@ -12,7 +12,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   BACKOFF_FACTOR, FREE_LANES_CEILING, HARM_MIN_LANES, LANE_LEARN_KEY, MIN_LANES_PER_TICK, PAID_LANES_CEILING,
-  PROBE_AFTER_PINNED, RECOVER_CLEAN_TICKS, laneCeiling, learnLanes, readLaneLearn, tickHarmed,
+  PROBE_AFTER_PINNED, RECOVER_CLEAN_TICKS, laneCeiling, learnLanes, missedTicks, readLaneLearn, tickHarmed,
   type LaneLearnState,
 } from '../../worker-ads/lane-aimd'
 import { FREE_LANES_PER_TICK, PAID_LANES_PER_TICK, lanesPerTick } from '../../worker-ads/dispatch-budget'
@@ -102,6 +102,42 @@ describe('되찾기 — 덧셈', () => {
   it('천장을 넘지 않는다', () => {
     expect(learnLanes({ cap: FREE_LANES_CEILING, clean: 1, pinned: 0 }, CLEAN, FREE_LANES_CEILING, 6).cap)
       .toBe(FREE_LANES_CEILING)
+  })
+})
+
+/**
+ * 🕳️ **학습기가 원래 못 보던 최악의 경우.** 부모가 flush 전에 죽으면 그 회차는 요약이 없어
+ *   학습기 입력에서 통째로 빠진다 — 가장 심하게 무너진 회차일수록 안 보인다.
+ *   실측(08-03 00:45 KST): `ads_dispatch_last` 는 15:00:35Z 디스패치를 기록했는데
+ *   그 회차의 요약도 `ads:scheduled` 하트비트도 둘 다 없었다(관측된 회차 5중 2꼴).
+ */
+describe('빈 회차 = 가장 강한 해 신호', () => {
+  it('한 시간 간격은 정상 — 빠진 회차 0', () => {
+    expect(missedTicks('2026-08-03T01:00:00.000Z', '2026-08-03T02:00:00.000Z')).toBe(0)
+    expect(missedTicks('2026-08-03T01:00:00.000Z', '2026-08-03T02:20:00.000Z')).toBe(0) // 지연 여유
+  })
+
+  it('두 시간 넘게 비면 그 사이 회차가 죽은 것이다', () => {
+    expect(missedTicks('2026-08-02T23:00:00.000Z', '2026-08-03T01:00:00.000Z')).toBe(1)
+    expect(missedTicks('2026-08-02T19:00:00.000Z', '2026-08-03T01:00:00.000Z')).toBe(5)
+  })
+
+  it('첫 회차·깨진 값은 해가 아니다 — 이력이 없다고 물러나면 안 된다', () => {
+    expect(missedTicks(undefined, '2026-08-03T01:00:00.000Z')).toBe(0)
+    expect(missedTicks('', '2026-08-03T01:00:00.000Z')).toBe(0)
+    expect(missedTicks('그런거없음', '2026-08-03T01:00:00.000Z')).toBe(0)
+    expect(missedTicks('2026-08-03T02:00:00.000Z', '2026-08-03T01:00:00.000Z')).toBe(0) // 역순
+  })
+
+  /** 🔴 이 회차가 **깨끗해도** 빈자리가 있으면 물러난다 — 편향을 메우는 지점이 정확히 여기다. */
+  it('회차 자체가 깨끗해도 빈자리가 있으면 물러난다 (6 → 4)', () => {
+    expect(learnLanes({ cap: 6, clean: 1, pinned: 0 }, CLEAN, FREE_LANES_CEILING, 6, 2))
+      .toEqual({ cap: 4, clean: 0, pinned: 0 })
+  })
+
+  it('빈자리가 없으면 종전대로 되찾는다 (기본값이 해를 만들지 않는다)', () => {
+    expect(learnLanes({ cap: 6, clean: 1, pinned: 0 }, CLEAN, FREE_LANES_CEILING, 6, 0).cap).toBe(7)
+    expect(learnLanes({ cap: 6, clean: 1, pinned: 0 }, CLEAN, FREE_LANES_CEILING, 6).cap).toBe(7)
   })
 })
 

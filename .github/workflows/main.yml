@@ -363,3 +363,14 @@ jobs:
             exit 1
           fi
           echo "✅ All smoke tests passed (worker 정상 응답 중)"
+
+      # 🚨 **실패를 대표가 보는 곳에 남긴다** (2026-08-03 신설 — 근거는 scripts/report-deploy-failure.sh).
+      #   배포 실패는 Actions 탭 안에만 있었고 아무도 안 봤다. 그 사이 라이브는 4개 머지만큼 뒤처졌다.
+      #   ⚠️ `continue-on-error` — 관측이 배포 결과를 바꾸면 본말전도다.
+      - name: 배포 실패를 어드민에 기록 (조용한 실패 차단)
+        if: failure()
+        continue-on-error: true
+        run: bash scripts/report-deploy-failure.sh "ur-live (소비자 Pages)" "${{ github.sha }}" "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
