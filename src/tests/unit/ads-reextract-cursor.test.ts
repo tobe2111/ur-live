@@ -129,3 +129,40 @@ describe('지역 스윕 — 뒤 작업 몫 예약', () => {
     expect(budget.left, '청크를 안 돌렸는데 예산이 크게 줄었다').toBeGreaterThan(3)
   })
 })
+
+/**
+ * 🏘️ **카페 회원수** — 자리는 잡혔는데 라이브 첫 회차가 `selected 20 · tried 3 · filled 0 · failed 3` 이었다.
+ *   두 결함이 겹쳐 있다: ① 예산이 3건 만에 바닥(예약이 안 먹음) ② 3건 전부 파싱 실패.
+ *
+ *   ①은 **순서**로 고쳤다 — 상한 있는 일(카페)을 앞에, 남는 걸 다 쓰는 일(지역)을 뒤에.
+ *     예약은 "앞 작업이 얼마를 쓰는지"를 정확히 알아야 성립하는데 지역 청크의 ops 는 고정이 아니다.
+ *     **예약(계산)보다 순서(구조)가 덜 틀린다.**
+ *   ②는 원인을 아직 모른다 — 이 환경은 `cafe.naver.com` 이 프록시에 막혀 직접 확인이 불가능하다.
+ *     그래서 추측으로 URL 을 바꾸지 않고 **워커가 본 것을 남기는 표본**을 넣었다(status/len/peek).
+ */
+describe('카페 회원수 — 순서로 굶주림을 막는다', () => {
+  const maint = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-maintenance.ts'), 'utf8')
+  const cafe = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-cafe-members.ts'), 'utf8')
+
+  it('🔒 카페가 지역보다 앞이다 — 뒤에 두면 남는 걸 다 쓰는 쪽에 굶는다', () => {
+    const block = /phase === 'reextract'\)\s*\{([\s\S]*?)\n {4}\}/.exec(maint)?.[1] || ''
+    expect(block, 'reextract 분기를 못 찾음').not.toBe('')
+    expect(block.indexOf('fillCafeMemberCounts')).toBeLessThan(block.indexOf('sweepRegions'))
+  })
+
+  it('🔒 카페는 상한이 있다 — 없으면 앞에 둔 것이 오히려 지역을 굶긴다', () => {
+    expect(maint).toMatch(/const CAFE_MAX = \d+/)
+    expect(maint).toMatch(/fillCafeMemberCounts\(bdb, POOL, budget, CAFE_MAX\)/)
+  })
+
+  it('🔬 실패하면 표본을 남긴다 — 원인 셋(차단·프레임셋·정규식)은 처방이 전혀 다르다', () => {
+    expect(cafe).toMatch(/diag\.samples \|\|= \[\]/)
+    expect(cafe).toMatch(/status: res\.status/)
+  })
+
+  it('표본은 HTML 원문이 아니라 태그를 걷은 요약이다(설정값 크기·개인정보)', () => {
+    const peek = (h: string) => h.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    expect(peek('<div>멤버수 <b>12,345</b></div>')).toBe('멤버수 12,345')
+    expect(cafe).toMatch(/export function peekMembers/)
+  })
+})
