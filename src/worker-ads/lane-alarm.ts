@@ -38,8 +38,8 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     if (!alarmEnabled(this.env)) return // 킬스위치 — 다음 알람을 안 걸면 체인이 멎는다
 
     const e = this.env as unknown as AlarmEnv
-    const interval = resolveInterval(e.ADS_LANE_ALARM_INTERVAL_MS)
-    const cap = resolveRunsPerHour(e.ADS_LANE_ALARM_RUNS_PER_HOUR)
+    const interval = resolveInterval(e.ADS_LANE_ALARM_INTERVAL_MS, e)
+    const cap = resolveRunsPerHour(e.ADS_LANE_ALARM_RUNS_PER_HOUR, e)
 
     const bucket = hourBucket(t0)
     const prevBucket = (await this.ctx.storage.get<number>('bucket')) ?? -1

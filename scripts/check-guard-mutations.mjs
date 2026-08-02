@@ -48,6 +48,30 @@ const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: 'DO 알람이 요금제를 다시 모름',
+    file: 'src/worker-ads/lane-alarm-policy.ts',
+    find: "  if (!Number.isFinite(n) || n <= 0) return paidPlan(env) ? ALARM_INTERVAL_MS_PAID : ALARM_INTERVAL_MS_DEFAULT",
+    replace: '  if (!Number.isFinite(n) || n <= 0) return ALARM_INTERVAL_MS_DEFAULT',
+    test: 'src/tests/unit/ads-plan-scaling.test.ts',
+    why: '지금 실제로 보강을 돌리는 레인이다 — 요금제가 못 닿으면 유료로 바꿔도 처리량이 한 톨도 안 는다.',
+  },
+  {
+    name: '레인 예산이 요금제를 다시 모름',
+    file: 'src/features/marketing/api/collect-budget.ts',
+    find: '  if (resolvePlan(env) !== \'paid\') return freeDefault',
+    replace: '  return freeDefault; if (false)',
+    test: 'src/tests/unit/ads-plan-scaling.test.ts',
+    why: '실제 예산은 min(envBudget, learnedCap, platformCap) — env 가 80 이면 천장을 900 으로 올려도 80 에서 멈춘다.',
+  },
+  {
+    name: '레인이 raw parseInt 로 예산 기본값 회귀',
+    file: 'src/features/marketing/api/enrich-lane.ts',
+    find: "envLaneBudget(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET, 300, env)",
+    replace: "(parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 300)",
+    test: 'src/tests/unit/ads-plan-scaling.test.ts',
+    why: '함수가 옳아도 레인이 안 쓰면 요금제가 닿을 길이 없다 — 오늘 같은 자리에서 이미 당했다.',
+  },
+  {
     name: 'miss 를 이름 대신 뺄셈으로 계산(음수 재발)',
     file: 'src/worker-ads/tick-history.ts',
     find: '    miss: [...ran].filter(nm => !beatNames.has(nm)).length,',

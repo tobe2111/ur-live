@@ -46,10 +46,23 @@
 
 /** 기본 간격(ms) — 5분. 시간당 12회. 무료 한도를 모르므로 보수적으로 시작한다. */
 export const ALARM_INTERVAL_MS_DEFAULT = 5 * 60_000
+/**
+ * 💳 **유료 기본 간격 — 1분**(2026-08-02).
+ *
+ *   이 레인이 **지금 실제로 보강을 돌리는 주체**다(cron 팬아웃이 아니라). 그런데 간격·상한이
+ *   `ADS_PLAN` 을 몰라서, **유료로 바꿔도 처리량이 한 톨도 안 늘어난다** — 요금제 노브가 닿지 않는
+ *   조임쇠가 하나 더 있었던 것이다(플랫폼 천장·벽시계에서 이미 한 번 겪은 것과 같은 클래스).
+ *
+ *   ⚠️ 1분/60회는 **추정**이다. 무료의 5분/12회도 *"한도를 모르므로 보수적으로"* 정한 값이었고,
+ *     전환 후 하트비트로 다시 재야 한다(성공 max ↔ 실패 min 경계 — 이 레포의 판정 관용구).
+ */
+export const ALARM_INTERVAL_MS_PAID = 60_000
 /** 간격 하한 — env 오타(0·음수)로 폭주하지 않게. */
 export const ALARM_INTERVAL_MS_MIN = 60_000
 /** 시간당 실행 상한 — 간격과 별개의 2중 안전장치(간격이 짧게 설정돼도 이 선에서 멎는다). */
 export const RUNS_PER_HOUR_DEFAULT = 12
+/** 💳 유료 상한 — 분당 1회(=간격 하한과 정합). 이것도 추정이며 전환 후 재측정 대상. */
+export const RUNS_PER_HOUR_PAID = 60
 /** 연속 실패 시 간격 배수(지수 백오프 상한 8배) — 죽은 체인도, 재시도 폭풍도 만들지 않는다. */
 export const FAIL_BACKOFF_MAX = 8
 
@@ -59,6 +72,14 @@ interface AlarmEnv {
   ADS_LANE_ALARM_ENABLED?: string
   ADS_LANE_ALARM_INTERVAL_MS?: string
   ADS_LANE_ALARM_RUNS_PER_HOUR?: string
+  /** 💳 요금제 — 명시 env 가 없을 때의 **기본값만** 정한다(`dispatch-budget.resolvePlan` 과 같은 규약). */
+  ADS_PLAN?: string
+}
+
+/** `ADS_PLAN` 해석 — 이 파일은 순수 정책이라 `dispatch-budget` 을 import 하지 않고 같은 규칙을 쓴다.
+ *  ⚠️ 규칙이 두 벌이 되지 않도록 **유닛이 두 함수의 판정을 대조**한다(문자열 규약이 갈리면 빨간불). */
+function paidPlan(env: unknown): boolean {
+  return String((env as AlarmEnv | undefined)?.ADS_PLAN ?? '').trim().toLowerCase() === 'paid'
 }
 
 /** 알람이 켜져 있는가 — **기본 ON**(끄려면 명시적으로 'false'). 정비 레인과 같은 하우스 패턴. */
@@ -66,17 +87,20 @@ export function alarmEnabled(env: unknown): boolean {
   return (env as AlarmEnv | undefined)?.ADS_LANE_ALARM_ENABLED !== 'false'
 }
 
-/** 간격(ms) — env 우선, 하한 클램프. 비숫자·0·음수는 기본값(오타가 파이프라인을 멈추면 안 된다). */
-export function resolveInterval(raw: string | undefined): number {
+/**
+ * 간격(ms) — env 우선, 하한 클램프. 비숫자·0·음수는 **요금제 기본값**
+ * (오타가 파이프라인을 멈추면 안 된다).
+ */
+export function resolveInterval(raw: string | undefined, env?: unknown): number {
   const n = Number(String(raw ?? '').trim())
-  if (!Number.isFinite(n) || n <= 0) return ALARM_INTERVAL_MS_DEFAULT
+  if (!Number.isFinite(n) || n <= 0) return paidPlan(env) ? ALARM_INTERVAL_MS_PAID : ALARM_INTERVAL_MS_DEFAULT
   return Math.max(ALARM_INTERVAL_MS_MIN, Math.floor(n))
 }
 
-/** 시간당 상한 — 1 이상. 0 을 주면 레인이 통째로 멈추므로 허용하지 않는다. */
-export function resolveRunsPerHour(raw: string | undefined): number {
+/** 시간당 상한 — 1 이상. 0 을 주면 레인이 통째로 멈추므로 허용하지 않는다. 부재면 **요금제 기본값**. */
+export function resolveRunsPerHour(raw: string | undefined, env?: unknown): number {
   const n = Number(String(raw ?? '').trim())
-  if (!Number.isFinite(n) || n < 1) return RUNS_PER_HOUR_DEFAULT
+  if (!Number.isFinite(n) || n < 1) return paidPlan(env) ? RUNS_PER_HOUR_PAID : RUNS_PER_HOUR_DEFAULT
   return Math.min(60, Math.floor(n))
 }
 

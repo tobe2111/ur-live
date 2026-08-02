@@ -12,7 +12,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget } from './collect-budget'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
 import { buildKeywordRows, rotationWindow, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
@@ -330,7 +330,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   const batch = kws.length // 회전 창이 이미 batchSize 만큼(끝에서 감김 포함) 읽어왔다
   const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false' // 기본 ON — 연락처 없는 리드는 보류.
   // 시작값을 상수로 고정 — 소비량을 다른 기준으로 재면 백오프/관측이 통째로 틀어진다(2026-07-28 kakao_sweep 실사고).
-  const envBudgetRaw = Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 110) // 카카오 레인 추가로 60→110(12kw×4콜+webkr)
+  const envBudgetRaw = Math.max(5, envLaneBudget(env.ADS_COMPANY_SUBREQUEST_BUDGET, 110, env)) // 카카오 레인 추가로 60→110(12kw×4콜+webkr)
   // 🧱 2026-07-29 — 이 레인만 **천장도 학습도 없이** 110 을 그대로 썼다(무료 플랜 인보케이션 한도는 50).
   //   그래서 매 라운드 후반 fetch 가 조용히 전멸했고, 학습 루프가 없어 그 사실이 어디에도 안 남았다.
   //   ⚠️ 시드 비용도 뺀다 — 시드가 도는 라운드에만 천장을 넘는 '가끔 죽는' 패턴은 원인 규명이 가장 어렵다.
