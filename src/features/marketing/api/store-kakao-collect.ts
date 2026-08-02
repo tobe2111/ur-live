@@ -22,7 +22,7 @@ import type { Env } from '@/worker/types/env'
 import { S2_REGIONS, REGION_GROUPS, rotationWindow } from './company-keyword-grid'
 import { regionFromAddress } from './company-collect'
 import { saveProspects, type StoreProspect } from './store-prospects'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envLaneBudget , envPlanValue} from './collect-budget'
 import { ensureStoreTrades, loadActiveStoreTrades, bumpStoreTradeStats, getStoreConfig } from './store-trades'
 
 /** 무인매장 업태 — 대표 요청분(2026-07-28). 카테고리는 `store_prospects.category` 표시값이 된다. */
@@ -72,6 +72,9 @@ const CURSOR_KEY_VOUCHER = 'ads_store_kakao_cursor_v' // 우선업종 블록 —
  *   이 레인은 키워드당 최대 10초 타임아웃이라 카카오가 느려지면 같은 벽에 닿는다 — 미리 끊는다.
  */
 const RUN_DEADLINE_MS = 12_000
+/** 유료 마감선 — 유료 CPU 한도(30s) 아래의 여유. ⚠️ 추정이다: 전환 후 하트비트의
+ *  **성공 최대 ms ↔ 실패 최소 ms 경계**로 재측정할 것(무료 12초도 같은 방식으로 정했다). */
+const RUN_DEADLINE_MS_PAID = 24_000
 /** 키워드당 최대 페이지(카카오 15건/페이지). 1페이지만 보면 그 키워드의 우물이 15건에서 마르고,
  *  커서가 한 바퀴 돌아 다시 와도 **같은 15건**이라 재방문 수확이 0 이 된다. */
 const MAX_PAGES = 3
@@ -173,6 +176,8 @@ function toProspect(d: Record<string, unknown>, kwRegion: string, category: stri
 export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
   const DB = env.DB
   const startedAt = Date.now()
+  // 🎚️ 마감선도 요금제를 따른다 — 유료 CPU 한도가 커지는데 12초로 묶으면 회차가 일찍 끊긴다.
+  const runDeadlineMs = envPlanValue(undefined, RUN_DEADLINE_MS, RUN_DEADLINE_MS_PAID, env)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const key = env.KAKAO_REST_API_KEY || ''
   const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
@@ -198,7 +203,15 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
   // 🎛️ 회차 조건 — 화면에서 정한 값(서버 clamp 완료). env 는 하위호환 폴백.
   const cfg = await getStoreConfig(DB, Object.keys(REGION_GROUPS))
   const activeRegions = regionsForGroups(cfg.regions)
-  const envBudget = Math.min(80, Math.max(5, parseInt(env.ADS_STORE_KAKAO_BUDGET || '', 10) || cfg.budget))
+  // 🎚️ 화면 값(`cfg.budget`)은 **무료 기준 회차 크기**다 — 유료에서는 같은 의도를 더 큰 회차로 실행한다.
+  //   슬라이더 상한(60)을 요금제와 무관하게 두면 플랫폼 천장이 15배 올라도 이 레인만 30 에 묶인다
+  //   (대표 "유료로 전환하면 수집 수치는 문제 없이 올라가게끔" 이 정확히 이 지점이다).
+  //   ⚠️ 일감(키워드 수)은 `blockSlots(budget.left, …)` 가 예산에서 유도하므로 예산만 키우면 함께 커진다.
+  //   ⚠️ `max_pages` 는 안 건드린다 — 3페이지×15건 = 45건이 **카카오 키워드 검색의 상한**이라 요금제와 무관하다.
+  const envBudget = Math.min(
+    envPlanValue(undefined, 80, 400, env),
+    Math.max(5, envPlanValue(env.ADS_STORE_KAKAO_BUDGET, cfg.budget, cfg.budget * 6, env)),
+  )
   const learnedRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('store_kakao')).first<{ value: string }>().catch(() => null)
   const learnedCap = Math.max(0, parseInt(learnedRaw?.value || '', 10) || 0)
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
@@ -279,7 +292,7 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
     outer: for (const win of rotationWindow(all.length, cursor, slots)) {
       for (const kw of all.slice(win.offset, win.offset + win.limit)) {
         if (limitHit) { stoppedBy = 'limit'; break outer }
-        if (Date.now() - startedAt > RUN_DEADLINE_MS) { stoppedBy = 'deadline'; break outer }
+        if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break outer }
         if (budget.left <= saveReserve() + floor) { stoppedBy = 'budget'; break outer }
         consumed++; stat.kw++
         used.push(kw.q)

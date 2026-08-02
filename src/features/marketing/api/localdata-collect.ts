@@ -22,7 +22,7 @@ import type { Env } from '@/worker/types/env'
 import { ensureProspectSchema, saveProspects, LICENSE_UPJONG, PRIORITY_UPJONG, type StoreProspect } from './store-prospects'
 import { describePublicDataFailure, serviceKeyParam, isNoValue } from './public-data-diag'
 import { type FetchBudget } from './influencer-discovery'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envLaneBudget , envPlanValue} from './collect-budget'
 import {
   buildLicenseUrl, findVariant, probeLicenseVariants, redactServiceKey, resolveLicensePageSize,
   shouldProbe, type ProbeAttempt, type VariantState,
@@ -59,7 +59,7 @@ interface PendingDay { day: string; idx: number }
 
 /** 이 레인의 예산 산출(env × 관측 학습 상한) — 다른 레인 키와 절대 공유하지 않는다(collect-budget 주석 참조). */
 async function resolveLocalDataBudget(env: Env): Promise<{ budget: FetchBudget; envBudget: number; learnedCap: number; total: number }> {
-  const envBudget = Math.min(300, Math.max(20, parseInt((env as unknown as { ADS_LOCALDATA_BUDGET?: string }).ADS_LOCALDATA_BUDGET || '', 10) || 40))
+  const envBudget = Math.min(300, Math.max(20, envPlanValue((env as unknown as { ADS_LOCALDATA_BUDGET?: string }).ADS_LOCALDATA_BUDGET, 40, 240, env)))
   const learnedCap = Math.max(0, parseInt((await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('localdata'))
     .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
@@ -428,7 +428,10 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
  *   시간당 1청크(maxDaysPerRun일)씩 진행(ur-ads 매시간 크론 + 수동 수집 버튼에 부착) — 커서 영속이라 중단/재개 안전.
  *   변동일 기준 조회라 과거로 갈수록 그날 변동된 매장이 계속 나옴 → 전국 매장이 점진 축적. 멱등 upsert 라 중복 0.
  */
-export async function runLocalDataBackfill(env: Env, maxDaysPerRun = 2): Promise<{ enabled: boolean; done: boolean; days: string[]; found: number; saved: number; spent?: number; limit_hit?: boolean; endpoint_idx?: number }> {
+export async function runLocalDataBackfill(env: Env, maxDaysArg?: number): Promise<{ enabled: boolean; done: boolean; days: string[]; found: number; saved: number; spent?: number; limit_hit?: boolean; endpoint_idx?: number }> {
+  // 🎚️ 회차당 일감도 **요금제를 따른다** — 예산만 커지고 이 숫자가 고정이면 늘어난 예산이 남는다.
+  //   호출부가 명시로 넘기면 그 값이 이긴다(수동 트리거·테스트가 그렇게 쓴다).
+  const maxDaysPerRun = maxDaysArg ?? envPlanValue(undefined, 2, 6, env)
   const DB = env.DB
   const windowDays = Math.max(0, parseInt((env as unknown as { ADS_LOCALDATA_BACKFILL_DAYS?: string }).ADS_LOCALDATA_BACKFILL_DAYS || '0', 10) || 0)
   if (!windowDays) return { enabled: false, done: true, days: [], found: 0, saved: 0 }

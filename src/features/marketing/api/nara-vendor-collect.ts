@@ -10,6 +10,7 @@
  *   ⚠️ 수집 ≠ 발송 — 공개 등록 정보만. SSOT: partner-company-collection.md §12.
  */
 import type { Env } from '@/worker/types/env'
+import { envLaneBudget , envPlanValue} from './collect-budget'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { describePublicDataFailure, serviceKeyParam, laneShouldSkip, updateLaneHealth, laneHealthNote, type LaneHealth, isNoValue } from './public-data-diag'
 
@@ -50,7 +51,10 @@ const STATS_KEY = 'ads_naravendor_stats'
 const CURSOR_KEY = 'ads_naravendor_cursor'
 
 /** 조달업체 1틱(일 1회 크론 또는 수동). 최근 N일 등록/변경 구간을 페이지 커서 순환, 대행사 계열만 저장. */
-export async function runNaraVendorCollect(env: Env, maxPages = 5): Promise<NaraVendorStats> {
+export async function runNaraVendorCollect(env: Env, maxPagesArg?: number): Promise<NaraVendorStats> {
+  // 🎚️ 회차당 일감도 **요금제를 따른다** — 예산만 커지고 이 숫자가 고정이면 늘어난 예산이 남는다.
+  //   호출부가 명시로 넘기면 그 값이 이긴다(수동 트리거·테스트가 그렇게 쓴다).
+  const maxPages = maxPagesArg ?? envPlanValue(undefined, 5, 15, env)
   const DB = env.DB
   await ensureCompanySchema(DB)
   const now = new Date()

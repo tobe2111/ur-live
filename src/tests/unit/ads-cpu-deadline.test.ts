@@ -45,7 +45,8 @@ describe('통신판매 — 마감선이 커서 저장을 지킨다', () => {
   it('🔒 페이지 루프가 마감선에서 **break** 한다 — return/throw 면 커서 저장을 건너뛴다', () => {
     const loop = COMMERCE.slice(COMMERCE.indexOf('for (let p = 0; p < perService'))
     const head = loop.slice(0, 500)
-    expect(head).toMatch(/Date\.now\(\) - startedAt > RUN_DEADLINE_MS.*break/s)
+    // ⚠️ 2026-08-02: 마감선이 **요금제 인지 지역변수**가 됐다(무료 12초 / 유료 24초). 무료 값은 위 검사가 지킨다.
+    expect(head).toMatch(/Date\.now\(\) - startedAt > runDeadlineMs.*break/s)
     expect(head, '레코드 캡도 함께 — 응답이 빨라도 파싱량이 CPU 를 먹는다').toMatch(/found >= MAX_RECORDS_PER_RUN.*break/s)
   })
 
@@ -65,15 +66,30 @@ describe('통신판매 — 마감선이 커서 저장을 지킨다', () => {
   })
 })
 
+/**
+ * 🩹 **슬라이스 되돌림 — 올린 날 죽었고 회복이 없었다.**
+ *
+ * ⚠️ 2026-08-02: 숫자가 **호출부(index.ts) → 레인 안**으로 옮겨갔다(요금제별 기본값이 됐다).
+ *   지켜야 할 것은 위치가 아니라 **무료에서의 실효값**이다 — 그래서 새 위치에서 같은 것을 고정한다.
+ *   그리고 *왜 되돌렸는지*를 **값 옆으로** 함께 옮겼다. 근거가 값에서 멀어지면 다음 세션이 또 올린다.
+ *
+ * ⚠️ 유료 값(8·120)은 CPU 한도가 다른 세계라 **이 사고와 무관한 별개 값**이다.
+ *   "유료가 8인데 무료도 8이면 되지 않나" 는 정확히 이 사고를 재현하는 생각이다.
+ */
 describe('슬라이스 되돌림 — 올린 날 죽었고 회복이 없었다', () => {
-  it('🔒 NEIS 는 3페이지 — 6 으로 올린 07-29 이후 성공 기록이 없다', () => {
-    expect(ENTRY).toMatch(/runNeisAcademyCollect\(env, 3\)/)
-    expect(ENTRY, '왜 되돌렸는지가 코드에 남아야 다음 세션이 또 올리지 않는다').toMatch(/6 → 3 페이지 \*\*되돌림\*\*/)
+  const NEIS = SRC('src/features/marketing/api/neis-academy-collect.ts')
+  const NPS = SRC('src/features/marketing/api/nps-workplace-enrich.ts')
+
+  it('🔒 NEIS 무료는 3페이지 — 6 으로 올린 07-29 이후 성공 기록이 없다', () => {
+    expect(NEIS).toMatch(/maxPagesArg \?\? envPlanValue\(undefined, 3, \d+, env\)/)
+    expect(NEIS, '왜 되돌렸는지가 **값 옆에** 남아야 다음 세션이 또 올리지 않는다').toMatch(/6 → 3 되돌림/)
+    expect(ENTRY, '호출부가 다시 리터럴을 박으면 레인의 요금제 기본값이 죽는다').not.toMatch(/runNeisAcademyCollect\(env, \d/)
   })
 
-  it('🔒 NPS 는 40건 — 100 으로 올린 07-28 이후 마지막 성공은 07-27 이다', () => {
-    expect(ENTRY).toMatch(/runNpsWorkplaceEnrich\(env, 40\)/)
-    expect(ENTRY).toMatch(/100 → 40 \*\*되돌림\*\*/)
+  it('🔒 NPS 무료는 40건 — 100 으로 올린 07-28 이후 마지막 성공은 07-27 이다', () => {
+    expect(NPS).toMatch(/maxLeadsArg \?\? envPlanValue\(undefined, 40, \d+, env\)/)
+    expect(NPS).toMatch(/100 → 40 되돌림/)
+    expect(ENTRY).not.toMatch(/runNpsWorkplaceEnrich\(env, \d/)
   })
 })
 
