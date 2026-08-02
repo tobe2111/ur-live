@@ -512,29 +512,62 @@ describe('deploy-ads.yml — 배포 트리거가 ur-ads 의존 경로를 덮는�
 })
 
 describe('orphanLaneBeats — 기록은 있는데 지금은 아무도 안 부르는 이름', () => {
-  it('알려진 목록에 없는 ads 기록을 고아로 잡는다', () => {
+  /** 오래된 기록(고아 후보) ↔ 방금 뛴 기록. 나이가 판정의 절반이다. */
+  const old = (n: string) => ({ name: n, age_minutes: 60 * 24 * 4 })   // 4일
+  const fresh = (n: string) => ({ name: n, age_minutes: 30 })          // 30분 전
+
+  it('알려진 목록에 없고 **오래됐으면** 고아로 잡는다', () => {
     // 실측 사례: sweep-kakao-phone → sweep-kakao-chain 개명 후 옛 행이 영원히 stale
-    expect(orphanLaneBeats(['sweep-kakao-chain'], ['ads:sweep-kakao-phone', 'ads:sweep-kakao-chain']))
+    expect(orphanLaneBeats(['sweep-kakao-chain'], [old('ads:sweep-kakao-phone'), fresh('ads:sweep-kakao-chain')]))
       .toEqual(['ads:sweep-kakao-phone'])
   })
 
+  /**
+   * 🔴 **이 검사가 이번 수리의 핵심이다** (2026-08-03 라이브 오탐).
+   *   DO 알람·우회로 도는 레인은 디스패처의 '알려진 목록'에 없다. 나이를 안 보면 **멀쩡히 도는 레인이
+   *   전부 고아**로 찍힌다 — 실측 16건 중 대부분이 그 순간 돌고 있었고, 진짜 하나를 묻어 버렸다.
+   */
+  it('🔴 목록에 없어도 **최근에 뛰고 있으면** 고아가 아니다', () => {
+    const known = ['collect']
+    const alarmDriven = [fresh('ads:maintenance?phase=merge'), fresh('ads:lane-alarm-boot'), fresh('ads:sheets-sync')]
+    expect(orphanLaneBeats(known, alarmDriven)).toEqual([])
+  })
+
+  it('나이를 모르면 고아로 단정하지 않는다', () => {
+    expect(orphanLaneBeats(['collect'], [{ name: 'ads:mystery', age_minutes: null }])).toEqual([])
+    expect(orphanLaneBeats(['collect'], [{ name: 'ads:mystery' }])).toEqual([])
+  })
+
   it("스케줄러 자체 신호('scheduled')는 레인이 아니므로 고아로 보지 않는다", () => {
-    expect(orphanLaneBeats(['collect'], ['ads:scheduled', 'ads:collect'])).toEqual([])
+    expect(orphanLaneBeats(['collect'], [old('ads:scheduled'), fresh('ads:collect')])).toEqual([])
   })
 
   it('쿼리가 붙은 이름도 레인 기준으로 판정한다', () => {
-    expect(orphanLaneBeats(['maintenance'], ['ads:maintenance?phase=merge'])).toEqual([])
+    expect(orphanLaneBeats(['maintenance'], [old('ads:maintenance?phase=merge')])).toEqual([])
+    // 🔴 반대 방향도 — `known` 쪽에 쿼리가 붙어 들어와도 같은 레인으로 본다(라이브가 그 형태다).
+    expect(orphanLaneBeats(['maintenance?phase=merge'], [old('ads:maintenance?phase=quality')])).toEqual([])
   })
 
   it('메인 워커 cron 은 비교 대상이 아니다', () => {
-    expect(orphanLaneBeats([], ['cache-prewarm', 'retry-alimtalk'])).toEqual([])
+    expect(orphanLaneBeats([], [old('cache-prewarm'), old('retry-alimtalk')])).toEqual([])
   })
 
   it('never_fired 와 정확히 반대 방향이다 — 둘을 같이 봐야 "안 도는 것"과 "이제 없는 것"이 갈린다', () => {
     const known = ['collect', 'collect-nps']
-    const beats = ['ads:collect', 'ads:old-lane']
-    expect(neverFiredLanes(known, beats)).toEqual(['collect-nps'])
-    expect(orphanLaneBeats(known, beats)).toEqual(['ads:old-lane'])
+    expect(neverFiredLanes(known, ['ads:collect', 'ads:old-lane'])).toEqual(['collect-nps'])
+    expect(orphanLaneBeats(known, [fresh('ads:collect'), old('ads:old-lane')])).toEqual(['ads:old-lane'])
+  })
+
+  /**
+   * 🔴 **쿼리가 붙은 레인이 "한 번도 안 돌았다"로 찍히던 오탐** (2026-08-03 실측).
+   *   `known` 은 쿼리를 단 채 들어오는데 하트비트 쪽만 쿼리를 떼고 비교해서, 그런 레인은
+   *   기록이 멀쩡히 있어도 영원히 never_fired 였다.
+   */
+  it('🔴 쿼리가 붙은 known 도 하트비트와 맞춰 본다 — 안 그러면 영원히 never_fired', () => {
+    expect(neverFiredLanes(['reclassify-company?passes=5'], ['ads:reclassify-company?passes=5'])).toEqual([])
+    expect(neverFiredLanes(['collect-localdata?mode=backfill'], ['ads:collect-localdata'])).toEqual([])
+    // 진짜로 기록이 없으면 여전히 잡는다.
+    expect(neverFiredLanes(['collect-nps?x=1'], ['ads:collect'])).toEqual(['collect-nps?x=1'])
   })
 })
 
@@ -562,7 +595,9 @@ describe('레인 등록 — beat 이름을 덮어쓰면 그 이름으로 등록�
     reg.note('/__ads/enrich-company-driver', 'enrich-company')
     const beats = ['ads:enrich-company']            // 하트비트는 beat 이름으로 남는다
     expect(neverFiredLanes(reg.list(), beats)).toEqual([])
-    expect(orphanLaneBeats(reg.list(), beats)).toEqual([])
+    // ⚠️ 나이를 **오래된 쪽**으로 준다 — 그래야 "이름 매칭이 맞아서" 통과한 건지
+    //   "최근이라서" 통과한 건지 헷갈리지 않는다(이 검사는 이름 매칭을 겨눈다).
+    expect(orphanLaneBeats(reg.list(), beats.map(n => ({ name: n, age_minutes: 60 * 24 * 4 })))).toEqual([])
   })
 
   it('빈 beat 은 무시하고 경로로 폴백한다(빈 문자열이 이름을 지우면 안 된다)', () => {

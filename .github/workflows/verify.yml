@@ -12,13 +12,22 @@ name: PR Verification
 #   ⚠️ group 키는 반드시 양쪽 이벤트에서 같은 값이어야 한다: push=ref_name, pull_request=head_ref
 #   (둘 다 브랜치명). `github.event.pull_request.number || github.ref` 로 쓰면 이벤트별로 갈려 dedup 안 됨.
 on:
+  # 🔴 **pull_request 에는 paths-ignore 를 두지 않는다** (2026-08-03 실사고).
+  #
+  #   두었을 때 이런 상태가 만들어졌다: 코드 커밋(b326fc7)을 밀어 Verify 가 돌던 중,
+  #   **문서 전용 커밋(5de7b35)을 뒤에 밀자** concurrency 가 앞 run 을 **취소**했고,
+  #   뒤 커밋은 paths-ignore 라 **자기 run 을 만들지 않았다.**
+  #   결과: PR 에 **실패한 체크가 하나도 없는데 그 코드는 한 번도 검증되지 않은 상태.**
+  #   (위 주석이 약속한 *"코드가 한 파일이라도 섞이면 정상 실행된다"* 는 **push 이벤트에선 거짓**이다 —
+  #    push 는 그 푸시의 파일만 보므로 문서 커밋 하나는 문서 커밋일 뿐이다.)
+  #
+  #   ⇒ PR 은 **항상** 검증한다. 비용은 문서 PR 도 ~10분 도는 것이고(이 레포는 public 이라 Actions 무료),
+  #     얻는 건 "머지되는 코드는 반드시 한 번은 검증됐다"는 보장이다. 그 비대칭이 명백하다.
   pull_request:
     branches: [main]
-    # 문서/마크다운만 바뀐 커밋은 검증 생략 — 이 레포는 필수 상태체크 강제가 없어 skip 이 머지를 막지 않는다.
-    #   (코드가 한 파일이라도 섞이면 paths-ignore 는 적용되지 않고 정상 실행된다.)
-    paths-ignore: ['docs/**', '**/*.md']
   push:
     branches-ignore: [main]   # main push 는 main.yml 이 처리
+    # push 쪽 skip 은 유지한다 — PR 이 열려 있으면 위 pull_request 가 어차피 전수 검증한다.
     paths-ignore: ['docs/**', '**/*.md']
   workflow_dispatch:
 

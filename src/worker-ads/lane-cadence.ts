@@ -152,13 +152,19 @@ export function createLaneRegistry(): LaneRegistry {
  * 하트비트 이름은 `ads:` 접두가 붙어 있고 쿼리를 달 수 있으므로 접두/쿼리를 떼고 비교한다.
  */
 export function neverFiredLanes(known: string[], beatNames: string[]): string[] {
-  const fired = new Set(
-    beatNames
-      .filter(n => n.startsWith('ads:'))
-      .map(n => n.slice('ads:'.length).split('?')[0]),
-  )
-  return known.filter(k => !fired.has(k)).sort()
+  // 🔴 **양쪽을 같은 방식으로 정규화한다** (2026-08-03 라이브 오탐 수리).
+  //   종전엔 하트비트 쪽만 쿼리를 뗐다. 그런데 `known` 은 **쿼리를 단 채로** 들어온다
+  //   (`reclassify-company?passes=5` · `collect-localdata?mode=backfill` — 레지스트리가 beat 이름을 그대로 담는다).
+  //   그래서 쿼리 있는 레인은 **하트비트가 멀쩡히 있어도 영원히 "한 번도 안 돌았다"** 로 찍혔다.
+  //   실측(08-03 02:30 KST): `never_fired: ['collect-localdata?mode=backfill','reclassify-company?passes=5']`
+  //   — 후자는 그 시각 하트비트가 존재했다(16:01 KST). 오탐이 경보 전체의 신뢰를 깎는다.
+  const fired = new Set(beatNames.filter(n => n.startsWith('ads:')).map(baseLaneName))
+  return known.filter(k => !fired.has(baseLaneName(k))).sort()
 }
+
+/** `ads:` 접두와 쿼리를 떼어 레인 이름을 한 형태로 만든다 — **비교하는 양쪽 모두** 이걸 통과해야 한다. */
+const baseLaneName = (n: string): string =>
+  (n.startsWith('ads:') ? n.slice('ads:'.length) : n).split('?')[0]
 
 /**
  * 🪦 반대 방향 — **기록은 있는데 지금은 아무도 부르지 않는 레인**(고아 하트비트).
@@ -174,15 +180,39 @@ export function neverFiredLanes(known: string[], beatNames: string[]): string[] 
  * ⚠️ 해석 주의: 고아로 잡히는 이유는 **둘** 이다 — ① 레인이 없어짐/이름 바뀜 ② **게이트가 OFF**
  *   (알려진 목록에는 게이트 통과 레인만 담기므로). 둘 다 "지금은 돌 예정이 아님"이라 경보 대상이
  *   아니라는 점은 같지만, 지우기 전에 어느 쪽인지 확인할 것.
+ *
+ * ## 🔴 나이를 함께 본다 (2026-08-03 라이브 오탐 수리)
+ * 종전엔 "알려진 목록에 없으면 고아" 였다. 그런데 **디스패처가 안 띄우는데도 정상적으로 도는 레인**이
+ * 여럿이다 — DO 알람이 돌리는 보강·정비 레인(`#975` 이후), 예산 밖 우회 레인(`sheets-sync`).
+ * 그 결과 실측에서 **16개가 고아로 찍혔고 그중 대부분이 그 순간 멀쩡히 돌고 있었다**:
+ * ```
+ *   maintenance?phase=* · enrich-influencer-driver · lane-alarm-boot · sheets-sync …
+ * ```
+ * 고칠 게 없는 경보 16줄은 **진짜 하나**(`sweep-kakao-phone`, 4일 정지)를 묻어 버린다.
+ *
+ * ⇒ **최근에 뛰고 있으면 고아가 아니다.** 목록에 없든 있든, 도는 레인은 도는 것이다.
+ *   이 판정은 목록을 손으로 관리하지 않아도 되므로 새 실행 경로(알람·우회)가 생겨도 안 깨진다.
+ *
+ * @param beats 이름 + 마지막 기록 이후 경과(분). 나이를 모르면(`null`) **고아로 안 본다**(보수적).
+ * @param staleMinutes 이 시간 넘게 기록이 없어야 고아 후보. 기본 24시간(어드민 `stale` 과 같은 기준).
  */
-export function orphanLaneBeats(known: string[], beatNames: string[]): string[] {
-  const k = new Set(known)
-  return beatNames
-    .filter(n => n.startsWith('ads:'))
-    .filter(n => {
-      const base = n.slice('ads:'.length).split('?')[0]
-      return base !== 'scheduled' && !k.has(base) // 'scheduled' 는 레인이 아니라 스케줄러 자체 신호
+export function orphanLaneBeats(
+  known: string[],
+  beats: ReadonlyArray<{ name: string; age_minutes?: number | null }>,
+  staleMinutes = 60 * 24,
+): string[] {
+  const k = new Set(known.map(baseLaneName))
+  return beats
+    .filter(b => typeof b?.name === 'string' && b.name.startsWith('ads:'))
+    .filter(b => {
+      const base = baseLaneName(b.name)
+      if (base === 'scheduled') return false      // 레인이 아니라 스케줄러 자체 신호
+      if (k.has(base)) return false               // 지금도 디스패처가 부르는 이름
+      const age = b.age_minutes
+      if (!Number.isFinite(age as number)) return false  // 나이를 모르면 단정하지 않는다
+      return (age as number) > staleMinutes       // 🔴 최근에 뛰고 있으면 고아가 아니다
     })
+    .map(b => b.name)
     .sort()
 }
 
