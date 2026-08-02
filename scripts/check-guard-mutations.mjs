@@ -130,6 +130,16 @@ const MUTATIONS = [
       '단지 "린트를 끈 1,000줄짜리 파일"이 된다. 이 주입은 처음엔 **초록이 떴다** — 검사가 배열 ' +
       '본문만 봐서 선언 위에 심은 헬퍼를 못 봤다. 파일 전체를 보게 고친 뒤 빨강.',
   },
+  {
+    name: '추천 보너스 원장 폴백 제거',
+    file: 'src/features/group-buy/api/referral-bonus.ts',
+    find: "await recordPointTxMinimal(DB, uid, 'referral_bonus', bonus, desc)",
+    replace: '/* removed */',
+    test: 'src/tests/unit/point-credit-ledger-row.test.ts',
+    why:
+      '이 원장 행은 잔액 기록이자 **중복 방지 키**다(`alreadyRewarded` 가 description LIKE 로 읽는다). ' +
+      '행이 없으면 같은 추천 조합이 매번 다시 보상받는다 — 불일치를 넘어 반복 지급.',
+  },
 ]
 
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
