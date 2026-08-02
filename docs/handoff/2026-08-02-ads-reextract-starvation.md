@@ -290,3 +290,74 @@ POST /accounts/{acc}/d1/database/{uuid}/query → 원본 SELECT 됨
 
 > 🔑 **교훈**: *"자격이 반영됐는지"를 화면 문구로 판정하지 마라.* "설정됨"은 옛 값에도 똑같이 뜬다.
 > 판정은 `verify` 같은 **바깥 사실**로 한다. 이 오진 하나가 며칠치 진단 능력을 막고 있었다.
+
+---
+
+## 🔁 정비 레인을 알람으로 — 단계 회전을 시각에서 커서로
+
+### 왜 (D1 직접 조회로 확정)
+```
+ads_reextract_cursor  13398 · 마지막 기록 KST 10:00 → 13시간째 제자리
+region_pending        32,761 불변
+cron_failures         KST 21:00 merge = CPU 한도 사망(기록됨)
+하트비트               KST 22:00 reextract = **기록 자체가 없음**(성공도 실패도)
+```
+KST 19:00 reextract 슬롯은 `ms=16,129` 로 "성공"했는데도 커서가 안 움직였다 — 카페 18회 시도가 예산을
+다 태워 region·reextract 를 0으로 굶긴 것(#966 이 고친 그것). 그런데 **#966 을 검증할 다음 기회가
+KST 07:00** 이었다. 단계가 `MAINT_SCHEDULE[hourUTC % 12]` 에 묶여 하루 3~4회차뿐이기 때문이다.
+
+⇒ 회전축을 **커서**로 옮기면 알람 경로에서 시간당 12회차가 된다(검증 주기 12시간 → 5분).
+
+### 무엇을 했나
+- `maintenance-phase-cursor.ts` — `"v:i"` 커서(재추출 커서와 같은 계약). **집기 전에 전진**시킨다
+  (안 그러면 무거운 단계가 죽을 때마다 같은 자리를 무한 재시도하며 뒤를 굶긴다).
+- `runNextMaintenancePhase(env)` — 커서로 단계를 골라 기존 `runMaintenancePhase` 에 위임(리스 계약 불변).
+- **알람 DO 를 레인 범용으로** — 인스턴스는 `idFromName(lane)` 로 갈리므로 **클래스 하나 + 이름별 인스턴스**면
+  `wrangler-ads.toml` 변경 없이 레인을 늘린다. 무엇을 돌릴지는 `lane-alarm-runners.ts` 등록부.
+  스탬프 키도 `ads_lane_alarm_last:{lane}` 으로 갈랐다(공유하면 나중 레인이 앞 레인 기록을 덮어쓴다).
+- cron 정비 순환은 `!laneAlarmOn` 일 때만 — 같은 `MAINT_LEASE_KEY` 를 다투면 진 쪽이 흔적 없이 사라진다.
+- `maintenance-cron.ts` · `rescan-hour.ts` 분리(엔트리 611 → 575줄, 파일크기 래칫).
+
+### ⚠️ 이번에 걸린 것
+- `HourGates` 타입을 `readonly string[]` 로 좁혔더니 호출부의 `as const` 리터럴이 안 맞았다(TS2345).
+  **제네릭 시그니처를 그대로** 받아야 한다.
+- `RESCAN_HOUR_UTC` 를 엔트리에 두면 분리한 모듈이 엔트리를 import 해 **순환**이 된다 → 자기 모듈로.
+- 소스-텍스트 가드 4개가 "엔트리에서 읽는다"고 박혀 있어 분리와 함께 깨졌다(cadence 3 + lifetime 1).
+  전부 새 파일로 앵커를 옮겼다 — **불변식은 하나도 약화하지 않았다.**
+
+### 다음 판정 (배포 후 ~10분)
+```bash
+bash /tmp/.../scratchpad/verdict.sh
+```
+- `ads_lane_alarm_last:maintenance` 가 5분 간격으로 오르는가 · `fail_streak` 0 유지되는가
+- `ads_maint_phase_cursor` 가 `1:N` 으로 돌아가는가(배정표 12칸을 한 바퀴)
+- **`ads_reextract_cursor` 가 13398 에서 움직이는가** · `region_pending` 이 32,761 에서 줄기 시작하는가
+- 카페 `via` 가 `:euckr` 인지 `:bytes` 인지, `aborted:true` 가 뜨는지(#966 조기 중단 작동)
+
+---
+
+## ⚠️ 판정 도구에서 틀렸던 것 두 가지 (다음 세션이 같은 오독 하지 않게)
+
+### 1. `region` 은 세 상태다 — 뭉치면 진도가 안 보인다
+```sql
+region IS NULL              →  32,871  미판정 (한 번도 시도 안 함)   ← 이게 "지역 미판정"
+region = ''                 →  10,029  시도했으나 못 찾음
+region IS NOT NULL AND <>'' →     807  채워짐
+```
+처음엔 `region IS NULL OR region=''` 로 세어 **42,900** 이 나왔고, 어드민이 말하는 32,761 과 안 맞아
+한참 헤맬 뻔했다. 백필이 아무리 돌아도 "못 찾음"은 안 줄어드므로, **NULL 만 세야** 진도가 보인다.
+
+### 2. `cron_failures` vs 하트비트 — 역할이 다르다
+- **하트비트**(`cron_hb:*`)는 **이름당 마지막 값만** 남는다. 21:00 에 죽고 22:00 에 성공하면 21:00 의
+  죽음은 사라진다 → **이력 판정에 쓰면 안 된다.**
+- **`cron_failures`** 는 로그다. 사망 이력은 여기서 본다.
+- 그리고 **둘 다 없는 경우**가 있다(22:00 reextract) — 그게 '관측 밖'이다. 디스패치 기록
+  (`ads_dispatch_last.by_domain.*.run`)과 리스(`ads_maintain_lease`)로만 "시작은 했다"를 알 수 있다.
+
+### 3. 🩸 백그라운드 CI 폴러가 조용히 죽어 있었다
+`curl api.github.com/.../check-runs` 가 세션 도중 **`GitHub access is not enabled for this session`** 을
+돌려주기 시작했다(초반엔 됐다). 예외를 먹고 `pend=1` 로 폴백하게 짜 놔서 **출력 0줄로 20분씩 돌다 끝났다** —
+실패가 성공과 구분되지 않았다. CI 판정은 **MCP(`pull_request_read`)** 로 할 것.
+
+> 🔑 이 세 개가 같은 클래스다: **"측정 도구가 조용히 틀리는" 것.** 값이 안 맞으면 대상을 의심하기 전에
+> 도구부터 의심할 것 — 오늘 CF 토큰 오진(며칠 낭비)도 정확히 이 클래스였다.

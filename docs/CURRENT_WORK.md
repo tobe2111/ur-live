@@ -5505,6 +5505,7 @@ _총 87건 · 최신순 · 이 목록은 자동 생성된다._
 - [마감 직전엔 집지 않는다 — 확정 실패 + 가짜 도장 차단 (2026-08-02)](handoff/2026-08-02-enrich-deadline-window.md)
 - [08-02 — 수량 실측: 양은 문제가 아니다. **연락처가 안 채워진다**](handoff/2026-08-02-collection-volume-verdict.md)
 - [08-02 — 수집 조건을 화면에서 정한다 (①②③ 전부 완료)](handoff/2026-08-02-collect-config-ui.md)
+- [2026-08-02 — 재해복구가 0이던 것을 켰다 (주간 D1 백업 cron) + 인프라 시크릿 4종](handoff/2026-08-02-backup-cron-ignition.md)
 - [대표 지시 두 건이 "머지됐는데 실행된 적이 없었다" — 재추출 단계의 굶주림](handoff/2026-08-02-ads-reextract-starvation.md)
 - [유어애즈 레인 배분 — 몫을 레인 개수가 아니라 **역할**이 정하게 (2026-08-02)](handoff/2026-08-02-ads-lane-role-quota.md)
 **2026-08-01**

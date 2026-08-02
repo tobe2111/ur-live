@@ -54,10 +54,26 @@ export const CRON_REQUIRED_ENV: Readonly<Record<string, readonly CronEnvRequirem
       jobs: ['scheduled-cleanup'],
       silently: '만료 선물 자동 환불이 통째로 스킵된다(5분마다).',
     },
+    // 📌 2026-08-02: **셋을 다 적는다.** 원래 `ALIGO_API_KEY` 하나만 있었는데, 발송 가드는
+    //   `!!(API_KEY && USER_ID && SENDER_KEY)` 라 **하나만 빠져도 통째로 skip** 된다.
+    //   실제로 물렸다 — 대표가 셋을 다 등록했는데 Workers 쪽 이름이 `' ALIGO_USER_ID'`(앞 공백)로
+    //   들어가 런타임에선 undefined 였다. 그런데 이 명부엔 API_KEY 만 있어서 판정이
+    //   **`ok — 요구 키 전부 존재`** 로 나왔다. 알림톡은 여전히 0건인데 계기는 초록이었다.
+    //   ⇒ **가드가 보는 조건과 코드가 보는 조건이 같아야 한다.** 하나만 보면 나머지가 사각지대다.
     {
       key: 'ALIGO_API_KEY',
       jobs: ['scheduled-cleanup', 'retry-alimtalk'],
       silently: '알림톡 발송·재시도가 전부 skip — 발송 0건이 정상처럼 보인다.',
+    },
+    {
+      key: 'ALIGO_USER_ID',
+      jobs: ['scheduled-cleanup', 'retry-alimtalk'],
+      silently: '같은 가드(3종 AND)에 걸려 알림톡이 통째로 skip — API_KEY 만 있으면 소용없다.',
+    },
+    {
+      key: 'ALIGO_SENDER_KEY',
+      jobs: ['scheduled-cleanup', 'retry-alimtalk'],
+      silently: '같은 가드(3종 AND)에 걸려 알림톡이 통째로 skip.',
     },
     {
       key: 'CACHE_KV',
@@ -101,7 +117,63 @@ export function missingEnvFor(cron: string, env: Record<string, unknown>): CronE
   })
 }
 
-/** 하트비트 `result` 에 넣을 한 줄 요약. */
-export function formatMissingEnv(missing: readonly CronEnvRequirement[]): string {
-  return missing.map((m) => `${m.key}(${m.jobs.join(',')})`).join(' ')
+/**
+ * 🫥 **이름에 공백이 낀 채로 등록된 키**를 찾아낸다 — 대시보드에 붙여넣을 때 생긴다.
+ *
+ * 2026-08-02 실측: Workers `ur-live` 에 `' ALIGO_USER_ID'`(앞 공백)·`'DATA_ENCRYPTION_KEY '`
+ * (뒤 공백)로 들어가 있었다. 화면에는 **정상으로 보이고**(공백은 눈에 안 보인다) 대시보드도
+ * 아무 경고를 안 준다. 그런데 런타임에선 `env.ALIGO_USER_ID` 가 undefined 라 알림톡 발송
+ * 가드(3종 AND)가 조용히 거짓이 되어 **발송 0건이 정상처럼** 보였다.
+ *
+ * 이 함수는 "없다"를 **"없다 + 비슷한 이름이 있다"** 로 바꿔 준다. 그 차이가 곧 조치의 차이다
+ * (등록하라 ↔ 이름의 공백을 지워라). 눈으로 찾으려 하면 다음에도 못 찾는다.
+ */
+export function whitespaceVariantOf(key: string, env: Record<string, unknown>): string | null {
+  for (const k of Object.keys(env ?? {})) {
+    if (k !== key && k.trim() === key) return k
+  }
+  return null
+}
+
+/** 하트비트 `result` 에 넣을 한 줄 요약. `env` 를 주면 공백 낀 이름까지 지목한다. */
+export function formatMissingEnv(
+  missing: readonly CronEnvRequirement[],
+  env?: Record<string, unknown>,
+): string {
+  return missing
+    .map((m) => {
+      const variant = env ? whitespaceVariantOf(m.key, env) : null
+      // 공백은 눈에 안 보이므로 **따옴표로 감싸** 어디에 붙었는지 보이게 한다.
+      return variant
+        ? `${m.key}(⚠️이름공백 '${variant}' — 지우고 재등록)`
+        : `${m.key}(${m.jobs.join(',')})`
+    })
+    .join(' ')
+}
+
+/**
+ * 빠진 키가 없을 때 남기는 값.
+ *
+ * ⚠️ **왜 '아무것도 안 쓰기'가 아닌가** — 처음엔 그렇게 만들었고, 그게 거짓말을 만들었다.
+ * 키가 채워져도 옛 행이 그대로 남아 화면에는 여전히 "없음"으로 보였다(2026-08-02 실측:
+ * 22:50 행이 23:00 회차 뒤에도 남아 해결된 키를 미해결로 읽을 뻔했다).
+ * **상태 지시등은 침묵으로 '정상'을 말할 수 없다** — 침묵은 '정상'과 '관측 자체가 멈춤'을
+ * 구분하지 못하기 때문이다. 매 회차 덮어써야 행의 시각이 곧 판정 시각이 된다.
+ */
+export const ENV_ALL_PRESENT = 'ok — 요구 키 전부 존재'
+
+/**
+ * 한 회차에 남길 env 판정 한 줄 — 요구사항이 없는 cron 이면 `null`(호출부가 건너뛴다).
+ *
+ * 📦 2026-08-02: `scheduled.ts` 에서 옮겨왔다. 그 파일은 68개 작업의 **디스패치 표**라 줄이
+ * 늘기만 하고(파일크기 래칫에 세 번 걸렸다), 판정 자체는 이 명부의 일이다. 무엇보다
+ * **분기가 여기 있어야 규칙을 소스 정규식이 아니라 행동으로 검사**할 수 있다 —
+ * `if (missing.length > 0)` 로 되돌아가는 회귀는 "정상일 때 null 을 돌려준다"로 잡힌다.
+ */
+export function envBeatFor(cron: string, env: Record<string, unknown>): string | null {
+  if (!CRON_REQUIRED_ENV[cron]?.length) return null
+  const missing = missingEnvFor(cron, env)
+  // ⚠️ 여기서 '빠진 게 없으면 null' 로 바꾸지 말 것 — 그러면 옛 행이 남아 거짓말을 시작한다
+  //    (위 ENV_ALL_PRESENT 주석의 실측 사고). 요구사항이 있는 cron 은 **매 회차** 덮어쓴다.
+  return missing.length > 0 ? formatMissingEnv(missing, env) : ENV_ALL_PRESENT
 }
