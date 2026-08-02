@@ -12,6 +12,13 @@ export interface Product {
    * 🔴 몰 상품인지로 가르지 않는다 — **있으면 보여준다**(데이터가 결정, 몰 결합 없음).
    */
   pickup?: { date: string | null; place: string | null; storage: 'cold' | 'room' | null } | null
+  /**
+   * 🏬 2026-08-02 — 상품이 속한 몰. `1`(MAIN_MALL) = 본진 유어딜, 그 외 = 운영자 몰.
+   * 상세가 **유어딜 영입 CTA·추천 섹션을 그릴지**를 이 값으로 가른다(대표 UX 기준 ⑤).
+   * 🔴 판정은 `isMallProduct()`(shared/mall/resolve) 로만 — 직접 `!== 1` 비교 금지
+   *   (`null`/문자열/0 이 섞이면 본진 상품이 몰 상품으로 잘못 잡힌다).
+   */
+  mall_id?: number | null
   id: string | number
   name: string
   description?: string

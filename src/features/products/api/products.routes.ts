@@ -33,6 +33,7 @@ import { voucherCategoriesSqlClause } from '@/shared/constants/voucher-categorie
 import type { Env } from '@/worker/types/env';
 import { parsePickup, isEmptyPickup } from '../../../shared/pickup';
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta';
+import { MAIN_MALL } from '../../../shared/mall/resolve';
 
 // 🛡️ 2026-04-22: bare cors() 는 모든 origin 허용. 민감 routes 에 쓰지 말고 아래 tightCors 사용.
 const tightCors = () => cors({ origin: [...ALLOWED_ORIGINS], credentials: true });
@@ -510,8 +511,10 @@ productsRoutes.get('/:id', cors(), async (c) => {
       // 🧱 2026-06-26 서비스 분리(도매↔유어딜): 도매 원본상품(is_supply_product=1 AND supply_source_id 없음)은
       //   소비자 상품 상세 비노출. findById 는 create/update 와 공유라 WHERE 필터 불가 → 라우트 가드.
       //   컬럼 미존재 env 는 fail-open(.catch null — 그 env 엔 도매 원본 자체가 없음). 404 결과도 캐시됨.
-      const sup = await DB.prepare('SELECT is_supply_product, supply_source_id FROM products WHERE id = ?')
-        .bind(id).first<{ is_supply_product: number | null; supply_source_id: number | null }>().catch(() => null);
+      // 🏬 2026-08-02 — `mall_id` 를 **이 쿼리에 얹어** 가져온다(왕복 추가 0). 소비자 상세가
+      //   "이 손님이 몰 손님인가"를 알아야 유어딜 영입 CTA 를 안 그린다(대표 UX 기준 ⑤).
+      const sup = await DB.prepare('SELECT is_supply_product, supply_source_id, mall_id FROM products WHERE id = ?')
+        .bind(id).first<{ is_supply_product: number | null; supply_source_id: number | null; mall_id: number | null }>().catch(() => null);
       if (sup && Number(sup.is_supply_product) === 1 && (sup.supply_source_id === null || Number(sup.supply_source_id) === 0)) {
         throw new Error('Product not found');
       }
@@ -527,6 +530,9 @@ productsRoutes.get('/:id', cors(), async (c) => {
         const metaMap = await getSupplyMeta(DB, [id]).catch(() => null);
         const pk = parsePickup(metaMap?.get(id) ?? null);
         (p as unknown as Record<string, unknown>).pickup = isEmptyPickup(pk) ? null : pk;
+        // 🏬 몰 귀속(additive). 위 쿼리가 실패한 env(컬럼 미적용)는 `MAIN_MALL` — 그런 env 엔
+        //   경로로 열리는 몰 자체가 없다(`consumer_path` fail-closed). ⇒ 현행과 동일한 동작.
+        (p as unknown as Record<string, unknown>).mall_id = Number(sup?.mall_id ?? MAIN_MALL) || MAIN_MALL;
       }
       return p;
     }, { ttl: 60, staleWhileRevalidate: 30 });

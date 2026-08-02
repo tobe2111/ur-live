@@ -19,7 +19,7 @@
  * > 왜 `host IS NULL` 로 추론하지 않는가: 메디스타트(id=2)는 host 가 NULL 인 **도매몰**이다.
  * >   추론했으면 `urdeal.kr/medi` 로 B2B 몰이 열렸을 것이다. **추론 대신 표시**가 맞다.
  */
-import { RESERVED_SLUGS } from '@/shared/mall/slug'
+import { isMallSlugCandidate } from '@/shared/mall/resolve'
 
 export interface ConsumerMallRow {
   id: number
@@ -32,20 +32,15 @@ export interface ConsumerMallRow {
   consumer_path?: number | null
 }
 
-/** 경로 후보 문법 — `firstPathSegment`(shared/mall/resolve.ts) 와 **같은 식**이어야 한다. */
-const SLUG_RE = /^[a-z0-9-]{3,30}$/
-const RESERVED = new Set(RESERVED_SLUGS)
-
 /**
  * 이 세그먼트가 **DB 를 볼 가치가 있는가**. 예약어·문법 밖이면 false → 조회 자체를 안 한다.
  *
- * ⚠️ 순서 주의: 예약어 검사가 **먼저**다. 그래야 실제 라우트가 단 한 번도 DB 를 건드리지 않는다.
+ * 🔴 판정은 **`shared/mall/resolve.ts` 하나뿐이다.** 2026-08-02 까지 여기 같은 정규식·예약어
+ *   집합이 한 벌 더 있었는데, 클라(App.tsx)가 몰 표면을 알아야 하게 되면서 **세 벌이 될 뻔했다.**
+ *   규칙이 갈리면 워커는 몰로 보고 클라는 아닌 경로가 생기고, 그 경로에서 유어딜 탭바가 몰 위에 뜬다.
  */
 export function isMallLookupCandidate(seg: string | null | undefined): boolean {
-  const s = String(seg ?? '').trim().toLowerCase()
-  if (!s) return false
-  if (RESERVED.has(s)) return false
-  return SLUG_RE.test(s)
+  return isMallSlugCandidate(seg)
 }
 
 /**

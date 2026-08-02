@@ -32,7 +32,9 @@ import AccordionSection from './product-detail/AccordionSection'
 import GroupBuyCountdown from './product-detail/GroupBuyCountdown'
 import ProductReviews from './product-detail/ProductReviews'
 import ReferralSection from './product-detail/ReferralSection'
-import { STORAGE_NOTICE } from '@/shared/pickup'
+import { isMallProduct } from '@/shared/mall/resolve'
+import { PickupNotice, DeliveryNotice } from '@/pages/product-detail/ReceiveMethodNotice'
+import { readMallOrigin } from '@/shared/mall/origin'
 import { parseUTCDate } from '@/utils/date'
 
 // 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection/
@@ -44,13 +46,6 @@ const ProductImageCarousel = lazy(() => import('@/components/product/product-ima
 const FloatingActionBar = lazy(() => import('@/components/product/floating-action-bar').then(m => ({ default: m.FloatingActionBar })))
 const GiftSendModal = lazy(() => import('@/components/gift/GiftSendModal'))
 
-/** 픽업일 라벨 — UTC-naive 를 로컬로 오해석하면 하루가 밀려 "어제 픽업" 이 된다(반복 사고 클래스). */
-function pickupDayLabel(iso: string): string {
-  const d = parseUTCDate(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const kst = new Date(d.getTime() + 9 * 3600 * 1000)
-  return `${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일`
-}
 
 export default function ProductDetailPage() {
   const { t } = useTranslation()
@@ -364,23 +359,44 @@ export default function ProductDetailPage() {
   }
 
   if (error || !product) {
+    const mallOrigin = readMallOrigin()
     return (
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0F151D] p-4">
         <div className="text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">{error?.message || t('productDetailPage.notFound')}</p>
           <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">{t('productDetail.retry')}</button>
-          <button
-            onClick={() => navigate('/')}
-            className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-sm font-semibold"
-          >
-            {t('common.backToHome', { defaultValue: '홈으로 돌아가기' })}
-          </button>
+          {/* 🏬 2026-08-02 — 여기선 상품을 못 읽어 `mall_id` 를 모른다. 그래서 **어디서 왔는지**를
+              쓴다: 몰 홈이 남긴 흔적이 있으면 그 가게로 돌려보낸다. 흔적이 없으면 기존대로 유어딜 홈
+              — 즉 **본진 손님의 동작은 불변**이고, 몰 손님만 자기 가게로 간다.
+              (품절·삭제된 상품 링크가 단톡방에 남아 있는 상황이 실제로 흔하다.) */}
+          {mallOrigin ? (
+            <button
+              onClick={() => navigate(`/${mallOrigin}`)}
+              className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-sm font-semibold"
+            >
+              가게로 돌아가기
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/')}
+              className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-sm font-semibold"
+            >
+              {t('common.backToHome', { defaultValue: '홈으로 돌아가기' })}
+            </button>
+          )}
         </div>
       </div>
     )
   }
 
   const displayPrice = product.current_price || product.price
+
+  // 🏬 2026-08-02 — 이 화면이 **두 종류의 손님**에게 열린다는 사실을 여기서 한 번만 판정한다.
+  //   두 신호는 **다른 질문**이라 일부러 분리했다(하나로 합치면 반드시 한쪽이 틀린다):
+  //     ① `mallProduct` = "이 손님은 몰 손님인가" → 유어딜로 데려가는 것을 안 그린다(기준 ⑤)
+  //     ② 픽업 여부   = "이 상품은 배송이 아닌가" → `ReceiveMethodNotice` 의 두 형제가
+  //        **같은 `pickup` 입력**을 읽어 배타적으로 그린다(여기서 판정하지 않는 것이 요점).
+  const mallProduct = isMallProduct(product.mall_id)
 
   // Parse detail images
   let detailImages: string[] = []
@@ -612,24 +628,7 @@ export default function ProductDetailPage() {
               <svg className="w-3.5 h-3.5 text-gray-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
             </button>
           )}
-          {/* 📦 2026-08-01 세션 ④-a — 픽업 안내. **픽업 공구는 배송이 없다.**
-              여기 없으면 소비자가 배송으로 오해하고, 그 오해는 전부 운영자 문의로 돌아온다.
-              🔴 몰 상품인지로 가르지 않는다 — **픽업 정보가 있으면 보여준다**(데이터가 결정).
-              ⚠️ 보관 고지 문구는 법무 확인 대기(X4c) 임시 표기. */}
-          {product.pickup && (product.pickup.date || product.pickup.place || product.pickup.storage) && (
-            <div className="mt-3 rounded-xl border border-gray-200 dark:border-[#2A3446] p-3 space-y-1">
-              <p className="text-[12px] font-bold text-gray-900 dark:text-white">📦 픽업 안내</p>
-              {product.pickup.date && (
-                <p className="text-[12px] text-gray-600 dark:text-gray-300">받는 날 · {pickupDayLabel(product.pickup.date)}</p>
-              )}
-              {product.pickup.place && (
-                <p className="text-[12px] text-gray-600 dark:text-gray-300">받는 곳 · {product.pickup.place}</p>
-              )}
-              {product.pickup.storage && (
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">{STORAGE_NOTICE[product.pickup.storage]}</p>
-              )}
-            </div>
-          )}
+          <PickupNotice pickup={product.pickup} />
 
           {/* 🚑 2026-07-02 (상세 리뷰): 수량 스텝퍼 부재 — setQuantity 미배선이라 2개 이상 즉시구매 불가하던 것 */}
           <div className="flex items-center justify-between mt-3">
@@ -754,9 +753,14 @@ export default function ProductDetailPage() {
 
         {/* 🛡️ 2026-05-27 (사용자 idea): 큐레이터 CTA — 1판매당 적립액 명확 표시.
               로그인 사용자: "📌 담기 + 추천 링크 복사" 통합 버튼 + 적립액 부제
-              비로그인: 회원가입 유도 (적립액 미리 표시 — 가입 동기 ↑) */}
+              비로그인: 회원가입 유도 (적립액 미리 표시 — 가입 동기 ↑)
+            🏬 2026-08-02 — **몰 상품엔 안 그린다**(대표 UX 기준 ⑤ 본진 입구 금지).
+              반찬가게 단톡방에서 온 손님에게 이 자리가 보여 주던 것은
+              *"🎁 회원가입하고 1판매당 N원 적립받기 / 내 링크샵에 담아 친구에게 추천만 해도 수익"* 였다.
+              몰 홈은 `powered by 유어딜` 조차 클릭 못 하게 막아 뒀는데 카드 한 번 누르면 여기였다.
+              공유(KakaoShareButton)는 **남긴다** — 단톡방 확산은 운영자에게 이득이고 유어딜 영입이 아니다. */}
         <div className="px-5 py-3 space-y-2">
-          {(() => {
+          {!mallProduct && (() => {
             // 1판매당 큐레이터 적립액 = 가격 × 2% (platform_settings.curator_affiliate_pct default).
             // 🛡️ 추후 dynamic-policy 동기화 가능 (현재 default 2% — referralCopy 기존 라벨과 일관).
             const commissionPct = 2
@@ -819,22 +823,17 @@ export default function ProductDetailPage() {
           />
         </div>
 
-        {/* v4 배송 정보 카드 */}
-        <div className="px-5 py-3">
-          <div className="flex items-center gap-2 py-3 px-3 rounded-xl bg-gray-50 dark:bg-[#1A2334]">
-            <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-            <span className="text-[12px] font-semibold text-gray-900 dark:text-white">{t('productDetail.tomorrowDelivery')}</span>
-            <span className="text-[11px] text-gray-500 dark:text-gray-400">{t('productDetail.freeShippingNote', { defaultValue: '· 5만원 이상 무료' })}</span>
-          </div>
-        </div>
+        <DeliveryNotice pickup={product.pickup} />
 
-        {/* 친구 초대 공동구매 */}
-        <ReferralSection
-          productId={product.id}
-          productTiers={product.group_buy_tiers}
-          isLoggedIn={isLoggedIn}
-          showToast={showToast}
-        />
+        {/* 친구 초대 공동구매 — 🏬 유어딜 추천 레일이라 몰 상품엔 미노출(기준 ⑤). */}
+        {!mallProduct && (
+          <ReferralSection
+            productId={product.id}
+            productTiers={product.group_buy_tiers}
+            isLoggedIn={isLoggedIn}
+            showToast={showToast}
+          />
+        )}
 
         {/* v4: 안내정보는 하단 아코디언으로 이동 */}
 
