@@ -10,7 +10,7 @@ import {
   whitespaceVariantOf,
   ENV_ALL_PRESENT,
 } from '../../worker/utils/cron-required-env'
-import { EXPECTED_CRON_EXPRESSIONS } from '../../worker/utils/cron-expected'
+import { EXPECTED_CRON_EXPRESSIONS, CRON_EXPRESSION_ALIASES } from '../../worker/utils/cron-expected'
 
 /**
  * 🔑 "돌긴 도는데 못 하는 일" 명부가 낡지 않게 한다 〔2026-08-01〕
@@ -174,5 +174,30 @@ describe('공백 낀 이름 지목', () => {
     expect(whitespaceVariantOf('A', { 'A ': 1 })).toBe('A ')
     expect(whitespaceVariantOf('A', { A: 1 })).toBeNull()   // 정상 등록은 변종이 아니다
     expect(whitespaceVariantOf('A', { AB: 1 })).toBeNull()
+  })
+})
+
+/**
+ * 🔗 2026-08-03 — **별칭이 명부를 통째로 무력화한다.**
+ *
+ * 주간 백업은 `wrangler.toml` 에 `0 20 * * SUN` 으로 등록돼 있고 런타임도 그 문자열을 준다.
+ * 그런데 명부 키는 canonical `0 20 * * 0` 이다(같은 파일이 이미 경고하는 별칭 문제 —
+ * *"등록도 됐고 발화도 하는데 아무 핸들러도 안 도는"*). 맞추지 않으면 그 블록의 요구사항이
+ * **영원히 평가되지 않는다** — 없는 것보다 나쁘다. 침묵이 '정상'으로 읽히기 때문이다.
+ */
+describe('별칭 cron 도 명부에 닿는다', () => {
+  it('등록 문자열(SUN)로 물어도 canonical 명부를 찾는다', () => {
+    expect(envBeatFor('0 20 * * SUN', {})).toContain('BACKUP_BUCKET')
+    expect(envBeatFor('0 20 * * 0', {})).toContain('BACKUP_BUCKET')
+  })
+
+  it('키가 있으면 정상 판정 (별칭 경로에서도 침묵하지 않는다)', () => {
+    expect(envBeatFor('0 20 * * SUN', { BACKUP_BUCKET: {} })).toBe(ENV_ALL_PRESENT)
+  })
+
+  it('명부의 모든 키가 canonical 이다 (별칭을 키로 쓰면 명부가 두 벌이 된다)', () => {
+    const aliases = Object.keys(CRON_EXPRESSION_ALIASES)
+    const bad = Object.keys(CRON_REQUIRED_ENV).filter((k) => aliases.includes(k))
+    expect(bad, `별칭을 키로 쓴 항목: ${bad.join(', ')}`).toEqual([])
   })
 })
