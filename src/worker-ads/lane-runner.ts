@@ -11,7 +11,7 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import {
-  lanesPerTick, selectLanesForTick, dispatchSnapshot, resolvePlan, readCursors, resolveMeasureShare,
+  lanesPerTick, selectLanesByDomain, readDomainCursors, domainDispatchSnapshot, resolvePlan, resolveMeasureShare,
   type LaneCandidate,
 } from './dispatch-budget'
 
@@ -81,24 +81,34 @@ export async function dispatchPendingLanes(opts: {
   //   불변이고 공평성만 약해진다. 여기서 throw 하면 그 회차 전체가 사라지므로 절대 던지지 않는다.
   const row = await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
     .bind(DISPATCH_CURSOR_KEY).first<{ value: string }>().catch(() => null)
-  // 🎭 역할별 커서 + 회차. 저장값이 구 포맷(숫자 하나)이어도 받아준다 — 배포 시점 라이브 값이 그렇다.
+  // 🧭 **도메인별 커서** + 역할별 커서 + 회차. 저장값이 구 포맷(숫자 하나/역할 객체)이어도 받아준다 —
+  //    배포 시점 라이브 값이 그렇고, 그때 0 에서 다시 시작하면 그 회차만 배분이 한쪽으로 쏠린다.
   //    행이 아예 없을 때만 시각 유도값으로 시작한다(첫 배포·초기화).
-  const cursor = row?.value != null ? readCursors(row.value) : readCursors(hourUTC * perTick)
-  const sel = selectLanesForTick(pending, perTick, cursor, resolveMeasureShare(env))
+  const cursors = readDomainCursors(row?.value != null ? row.value : hourUTC * perTick)
+  const sel = selectLanesByDomain(pending, perTick, cursors, hourUTC, resolveMeasureShare(env))
   const self = env.SELF
   const kicked = runLanes(sel.run, {
     selfFetch: self?.fetch ? (req: Request) => self.fetch(req) : undefined,
     laneUrl: opts.laneUrl, beat: opts.beat,
   })
   for (const p of kicked) waitUntil(p)
-  // 🧾 미룬 것과 죽은 것이 똑같이 "기록 없음"으로 보이면 오진한다 — 선별 결과 + 다음 커서를 남긴다.
-  //   ⚠️ 커서는 **미룬 게 있을 때만** 전진한다(전부 돌았으면 회전할 이유가 없다) — 그때만 쓴다.
+  // 🧾 미룬 것과 죽은 것이 똑같이 "기록 없음"으로 보이면 오진한다 — **도메인별** 선별 결과를 남긴다.
+  //
+  // 🔴 **매 회차 쓴다**(2026-08-02 교정). 예전엔 `if (sel.deferred.length)` 로 **미룬 게 있을 때만** 썼는데,
+  //   그러면 미룬 게 없는 회차는 **띄운 레인 수가 어디에도 안 남는다.** 라이브에서 실제로 막혔다:
+  //   06:00Z 에 하트비트가 4건뿐인데 스냅샷이 없어 *"4개를 띄웠나, 8개를 띄웠는데 절반이 기록도 못 남기고
+  //   죽었나"* 를 가릴 수 없었다 — 붕괴 판정의 분모가 통째로 사라진 것이다.
+  //   비용은 회차당 D1 쓰기 1회(하루 24회)로 무시할 만하고, 얻는 건 **모든 회차의 분모**다.
+  //
+  // ⚠️ **커서는 여전히 미룬 게 있을 때만** 전진한다 — 전부 돌았으면 회전할 이유가 없다(회전시키면
+  //   다음 회차가 엉뚱한 지점에서 시작해 오히려 공평성이 깨진다).
+  const snap = JSON.stringify(domainDispatchSnapshot(sel, resolvePlan(env), perTick, hourUTC, new Date().toISOString()))
+  const writes = [
+    env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_dispatch_last', snap),
+  ]
   if (sel.deferred.length) {
-    const snap = JSON.stringify(dispatchSnapshot(sel, resolvePlan(env), perTick, hourUTC, new Date().toISOString()))
-    waitUntil(env.DB.batch([
-      env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_dispatch_last', snap),
-      env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(DISPATCH_CURSOR_KEY, JSON.stringify(sel.nextCursor)),
-    ]).catch(() => undefined))
+    writes.push(env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(DISPATCH_CURSOR_KEY, JSON.stringify(sel.nextCursors)))
   }
+  waitUntil(env.DB.batch(writes).catch(() => undefined))
   return kicked
 }

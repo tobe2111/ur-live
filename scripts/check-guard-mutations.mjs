@@ -48,6 +48,78 @@ const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '스냅샷이 조건부로 회귀(붕괴 판정의 분모 소실)',
+    file: 'src/worker-ads/lane-runner.ts',
+    find: "  const writes = [\n    env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_dispatch_last', snap),\n  ]\n  if (sel.deferred.length) {",
+    replace: "  const writes = []\n  if (sel.deferred.length) {\n    writes.push(env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_dispatch_last', snap))",
+    test: 'src/tests/unit/ads-dispatch-budget.test.ts',
+    why: '미룬 게 없는 회차에 띄운 레인 수가 안 남는다 — 06:00Z 에서 실제로 "4개를 띄웠나 8개가 죽었나"를 못 갈랐다.',
+  },
+  {
+    name: '도메인 격리 제거(예산이 다시 섞임)',
+    file: 'src/worker-ads/dispatch-budget.ts',
+    find: '    const sel = selectLanesForTick(group, budgets[d], cursors[d] ?? 0, share)',
+    replace: '    const sel = selectLanesForTick(group, perTick, cursors[d] ?? 0, share)',
+    test: 'src/tests/unit/ads-lane-domains.test.ts',
+    why: '도메인마다 전체 예산을 주면 격리가 없어진다 — B2B 레인이 늘면 인플루언서가 깎이던 그 상태.',
+  },
+  {
+    name: '작은 도메인 최소 1자리 보장 제거',
+    file: 'src/worker-ads/lane-domains.ts',
+    find: 'for (const e of exact) { out[e.d] = Math.max(1, Math.floor(e.v)); used += out[e.d] }',
+    replace: 'for (const e of exact) { out[e.d] = Math.floor(e.v); used += out[e.d] }',
+    test: 'src/tests/unit/ads-lane-domains.test.ts',
+    why: '몫이 작은 도메인(매장후보·도매)이 반올림에서 0 이 되어 영원히 안 돈다 — 부재 사고의 교과서적 형태.',
+  },
+  {
+    name: '레인 도메인 표 누락(남의 예산을 씀)',
+    file: 'src/worker-ads/lane-domains.ts',
+    find: "  'enrich-influencer-driver': 'influencer',",
+    replace: '',
+    test: 'src/tests/unit/ads-lane-domains.test.ts',
+    why: '표에서 빠진 레인은 FALLBACK 으로 흘러가 돌기는 도는데 남의 조 예산을 쓴다(에러 없음).',
+  },
+  {
+    name: '유료 천장이 무료와 같아짐(요금제 반쪽)',
+    file: 'src/features/marketing/api/collect-budget.ts',
+    find: 'export const SUBREQ_PLATFORM_CAP_PAID = 900',
+    replace: 'export const SUBREQ_PLATFORM_CAP_PAID = 60',
+    test: 'src/tests/unit/ads-plan-scaling.test.ts',
+    why: '유료로 바꿔도 레인당 처리가 60 에 묶이던 08-02 이전 상태. "레인 수만 늘고 일은 그대로".',
+  },
+  {
+    name: '레인이 요금제를 우회(raw env 직접 전달)',
+    file: 'src/features/marketing/api/enrich-lane.ts',
+    find: 'envSubreqCap(env)',
+    replace: 'platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)',
+    test: 'src/tests/unit/ads-plan-scaling.test.ts',
+    why: '13개 파일이 전부 이 형태였다 — 함수가 옳아도 레인이 안 쓰면 요금제가 닿을 길이 없다.',
+  },
+  {
+    name: '무료 보폭이 바뀜(라이브 회귀)',
+    file: 'src/features/marketing/api/collect-budget.ts',
+    find: 'return Math.max(RECOVER_STEP, Math.round(scaleBase(ceiling, learnedCap) / 30))',
+    replace: 'return Math.max(RECOVER_STEP, Math.round(scaleBase(ceiling, learnedCap) / 10))',
+    test: 'src/tests/unit/ads-plan-scaling.test.ts',
+    why: '유료 축을 넣다가 무료 학습 곡선을 흔드는 것 — 에러 없이 수확만 줄어드는 종류의 회귀.',
+  },
+  {
+    name: 'AIMD 불변식 위반(하향 ≤ 회복)',
+    file: 'src/features/marketing/api/collect-budget.ts',
+    find: 'return Math.max(ABANDON_STEP, Math.round(scaleBase(ceiling, learnedCap) / 15))',
+    replace: 'return Math.max(ABANDON_STEP, Math.round(scaleBase(ceiling, learnedCap) / 60))',
+    test: 'src/tests/unit/ads-plan-scaling.test.ts',
+    why: '하향이 회복보다 작으면 회차가 계속 죽는 동안에도 상한이 순증해 영영 못 내려온다.',
+  },
+  {
+    name: '보폭이 생활점 대신 천장 기준으로 회귀',
+    file: 'src/features/marketing/api/collect-budget.ts',
+    find: 'const live = learnedCap && learnedCap > 0 ? Math.min(learnedCap, ceiling) : ceiling',
+    replace: 'const live = ceiling',
+    test: 'src/tests/unit/collect-budget-cap.test.ts',
+    why: '첫 판이 그랬다 — 천장이 크고 실제 한도가 작은 배치(ADS_PLAN=paid 인데 계정은 무료)에서 낭비가 늘었다.',
+  },
+  {
     name: '예산 차감 제거(라이브 결함 재현)',
     file: 'src/worker-ads/dispatch-budget.ts',
     find: 'const cap = Math.max(1, budget - always.length)',
@@ -77,7 +149,7 @@ const MUTATIONS = [
     name: '커서 저장 제거(배선)',
     file: 'src/worker-ads/lane-runner.ts',
     // 역할별 커서라 숫자 하나로는 못 남긴다 — 저장이 JSON 으로 바뀌었다(2026-08-02).
-    find: 'bind(DISPATCH_CURSOR_KEY, JSON.stringify(sel.nextCursor))',
+    find: 'bind(DISPATCH_CURSOR_KEY, JSON.stringify(sel.nextCursors))',
     replace: 'bind(DISPATCH_CURSOR_KEY, "0")',
     test: 'src/tests/unit/ads-dispatch-budget.test.ts',
     why: '순수 로직이 맞아도 저장을 안 하면 라운드로빈이 매번 0에서 다시 시작한다.',
@@ -186,6 +258,63 @@ const MUTATIONS = [
     why:
       '이 원장 행은 잔액 기록이자 **중복 방지 키**다(`alreadyRewarded` 가 description LIKE 로 읽는다). ' +
       '행이 없으면 같은 추천 조합이 매번 다시 보상받는다 — 불일치를 넘어 반복 지급.',
+  },
+  {
+    name: '회차 조건 clamp 를 순진한 Number 로',
+    file: 'src/features/marketing/api/store-trades.ts',
+    find: "  const ok = (typeof v === 'number' && Number.isFinite(v))",
+    replace: '  const ok = Number.isFinite(Number(v))',
+    test: 'src/tests/unit/store-collect-config.test.ts',
+    why:
+      '`Number(null)` · `Number([])` · `Number("")` 은 전부 **0** 이라 "값 없음"이 기본값이 아니라 ' +
+      '**하한**으로 조용히 바뀐다. 이 레포는 같은 함정으로 `{amount: []}` 가 0원 환불로 통과한 적이 있다(#941). ' +
+      '이 항목은 시험이 실제로 잡아낸 결함이다.',
+  },
+  {
+    name: '지역 권역 매칭 0 → 전국 폴백 제거',
+    file: 'src/features/marketing/api/store-kakao-collect.ts',
+    find: '  return picked.length ? picked : S2_REGIONS // 아무것도 안 잡히면 전국(설정 오타로 수집이 0 이 되면 안 된다)',
+    replace: '  return picked',
+    test: 'src/tests/unit/store-collect-config.test.ts',
+    why: '설정 오타 하나로 그리드가 0 이 되면 레인이 **에러 없이** 아무것도 안 캔다 — 침묵하는 0 보다 넓게 도는 편이 낫다.',
+  },
+  {
+    name: '매장 업태 — 빈 배열도 상수로 폴백(끈 게 되살아남)',
+    file: 'src/features/marketing/api/store-kakao-collect.ts',
+    find: 'const voucherTrades = dbTrades ? (dbTrades.voucher || []) : VOUCHER_TRADES',
+    replace: 'const voucherTrades = (dbTrades?.voucher?.length ? dbTrades.voucher : VOUCHER_TRADES)',
+    test: 'src/tests/unit/store-trades-config.test.ts',
+    why:
+      '"조회 실패" 와 "의도적으로 다 끔" 은 둘 다 비어 있지만 뜻이 정반대다. 후자에 폴백하면 ' +
+      '화면은 OFF 인데 수집은 계속 돈다 — 설정이 무력화되는 가장 나쁜 실패이고, 에러도 안 난다.',
+  },
+  {
+    name: '매장 업태 시드가 설정을 덮어씀',
+    file: 'src/features/marketing/api/store-trades.ts',
+    find: 'INSERT OR IGNORE INTO ad_store_trades (block, kw, category) VALUES',
+    replace: 'INSERT OR REPLACE INTO ad_store_trades (block, kw, category) VALUES',
+    test: 'src/tests/unit/store-trades-config.test.ts',
+    why: 'REPLACE 면 대표가 끈 업태가 **매 배포마다** 되살아난다 — 설정이 배포에 지워진다.',
+  },
+  {
+    name: '수집 업종 토글이 집계와 다른 식을 씀',
+    file: 'src/features/marketing/api/company-trades.ts',
+    find: 'UPDATE ad_company_keywords SET active = ? WHERE ${TRADE_EXPR} = ?',
+    replace: 'UPDATE ad_company_keywords SET active = ? WHERE subcategory = ?',
+    test: 'src/tests/unit/company-trades-toggle.test.ts',
+    why:
+      '집계(화면)와 토글(실행)이 다른 식을 쓰면 대표가 끈 줄 아는 업종이 계속 캐진다. ' +
+      '서브카테고리가 빈 업종은 아예 안 꺼진다 — 에러 없이.',
+  },
+  {
+    name: '마지막 활성 업종 가드 제거',
+    file: 'src/features/marketing/api/company-trades.ts',
+    find: "if ((Number(self?.n) || 0) > 0 && activeTrades <= 1) return { ok: false, error: 'LAST_ACTIVE_TRADE' }",
+    replace: '',
+    test: 'src/tests/unit/company-trades-toggle.test.ts',
+    why:
+      '전부 끄면 회전 쿼리가 0행을 받아 수집이 **에러 없이** 멈추고 하트비트는 초록으로 남는다 ' +
+      '(레인은 정상 실행되고 할 일이 없을 뿐이다). 클릭 한 번으로 그 상태가 될 수 있다.',
   },
   {
     name: '우선업종 category 오타(조용한 0 순위)',

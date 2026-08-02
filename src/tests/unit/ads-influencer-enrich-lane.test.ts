@@ -299,19 +299,57 @@ describe('배선 — 드라이버가 조각을 실제로 넘긴다', () => {
  *   그때의 처방(시간 바닥·선두 교대)은 그 조건에서 옳았지만, **지금 묶는 것은 예산**이다.
  *   ⇒ 다음에 이 레인을 손볼 땐 `deadline_hit` 을 먼저 보고 어느 쪽이 상한인지 확정할 것.
  */
+/**
+ * 🩸 **수동 경로는 자식을 `await` 해야 한다** — 안 그러면 버튼이 **0건**을 처리한다(08-02 라이브 실측).
+ *
+ *   드라이버를 그냥 부르면 `{fanout:4}` 를 즉시 돌려주는데, 그 순간 어드민 요청이 끝나면서
+ *   ur-ads 의 `waitUntil` 자식이 통째로 취소된다 — **서비스 바인딩 피호출자는 호출자보다 오래 못 산다**
+ *   (`dispatchRoundChain` docblock 이 이미 적어 둔 규칙인데, #930 에서 내가 어겼다).
+ *   실측: 킥 후 30초 뒤 `nb_unmeasured` 변화 **0**. 직전 단발 경로는 한 번에 22 감소.
+ *
+ *   ⚠️ **cron 은 안 죽는다** — 부모 scheduled 가 다른 레인을 kick 하느라 살아 있기 때문이다.
+ *     같은 코드가 호출자에 따라 다르게 죽으므로, cron 에서 확인했다고 버튼도 된다고 볼 수 없다.
+ */
 describe('수동 보강 버튼 — 드라이버(팬아웃) 경로', () => {
   const ops = readFileSync(join(process.cwd(), 'src/features/marketing/api/admin-ads-pool-ops.routes.ts'), 'utf8')
+  const routes = readFileSync(join(process.cwd(), 'src/worker-ads/enrich.routes.ts'), 'utf8')
 
   it('🔒 기본 경로가 드라이버다 — 단발을 부르면 버튼이 1/K 만 돈다', () => {
-    expect(ops).toMatch(/'\/__ads\/enrich-influencer-driver'/)
+    expect(ops).toMatch(/'\/__ads\/enrich-influencer-driver\?sync=1'/)
   })
 
   it('🔒 단발 경로는 ?single=1 로만 — 디버깅용으로 남기되 기본이 되면 안 된다', () => {
     expect(ops).toMatch(/const single = c\.req\.query\('single'\) === '1'/)
-    expect(ops).toMatch(/single \? `\/__ads\/enrich-influencer\?depth=\$\{depth\}` : '\/__ads\/enrich-influencer-driver'/)
+    expect(ops).toMatch(/single \? `\/__ads\/enrich-influencer\?depth=\$\{depth\}` : '\/__ads\/enrich-influencer-driver\?sync=1'/)
   })
 
   it('🔒 팬아웃 개수를 응답에 실어 준다 — 그때는 stats 가 없어서 화면이 할 말이 없어진다', () => {
     expect(ops).toMatch(/fanout: j\.fanout/)
+  })
+
+  it('🩸 sync 면 자식을 await 한다 — waitUntil 로만 띄우면 응답 직후 전부 취소된다', () => {
+    expect(routes).toMatch(/if \(syncFanout\) \{[\s\S]{0,200}await Promise\.all\(kids/)
+  })
+
+  it('🔒 sync 자식에게도 sync 를 물려준다 — 어차피 취소될 릴레이를 낳지 않게', () => {
+    expect(routes).toMatch(/\$\{syncFanout \? '&sync=1' : ''\}/)
+    expect(routes).toMatch(/if \(!sync && !error && depth \+ 1 < rounds/)
+  })
+
+  it('🔒 cron 경로(sync 없음)는 그대로 waitUntil — 거긴 부모가 살아 있다', () => {
+    expect(routes).toMatch(/for \(const p of kids\) c\.executionCtx!\.waitUntil\(/)
+  })
+
+  /**
+   * 🧱 **무료 플랜 CPU 벽** — 배포 후 실측(2026-08-02): 수동 경로는 502·처리 0.
+   *   `sync` 든 `single` 이든 같다. cron 은 같은 라운드를 8.4초에 끝낸다.
+   *   ⇒ 크로스워커 바인딩은 피호출자 CPU 를 **호출자 몫**에서 쓴다. 이 버튼은 구조적으로 못 돈다.
+   *   실패를 날 502 로 흘리면 다음 세션이 원인 불명으로 또 판다 — 사실과 대안을 말해야 한다.
+   *   ⚠️ 못 막는 것: 벽 자체는 코드로 못 본다. 유료 전환하면 `sync` 가 그대로 살아난다(구조 유지).
+   */
+  it('🧱 ur-ads 가 JSON 이 아닌 응답(CPU 로 끊김)이면 안내로 바꾼다 — 날 502 금지', () => {
+    expect(ops).toMatch(/blocked: 'cpu-budget'/)
+    expect(ops).toMatch(/if \(!j\) return planWall\(/)
+    expect(ops).toMatch(/매시간 cron 이 계속 돌고 있습니다/)
   })
 })

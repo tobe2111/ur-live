@@ -657,7 +657,11 @@ describe('⏱️ 보강 마감 — 부모 수명(≈10.5s) 아래', () => {
   it('세 보강 레인이 모두 SSOT 리졸버를 쓴다(기본값 복제 금지)', () => {
     for (const f of ['influencer-enrich-lane.ts', 'enrich-lane.ts', 'prospect-enrich.ts']) {
       const src = read(`src/features/marketing/api/${f}`)
-      expect(src, `${f} 가 리졸버를 안 쓴다`).toMatch(/resolveEnrichDeadlineMs\(env\.ADS_ENRICH_DEADLINE_MS\)/)
+      // 🔁 2026-08-02: 진입점이 `envEnrichDeadlineMs(env)` 로 바뀌었다(요금제까지 반영하려면 raw 문자열이
+      //   아니라 env 를 받아야 한다). **가드의 의도는 그대로다** — "레인이 SSOT 를 쓰는가".
+      //   두 형태를 모두 허용하되(옛 형태도 여전히 SSOT 경유라 위반이 아니다) 어느 쪽도 안 쓰면 실패.
+      //   ⚠️ 이름만 갈아끼우고 검사를 약화시키지 않았는지 확인할 것 — `.not.toMatch` 복제 금지 줄은 불변이다.
+      expect(src, `${f} 가 리졸버를 안 쓴다`).toMatch(/(envEnrichDeadlineMs\(env\)|resolveEnrichDeadlineMs\(env\.ADS_ENRICH_DEADLINE_MS\))/)
       expect(src, `${f} 에 기본값이 다시 복제됐다`).not.toMatch(/ADS_ENRICH_DEADLINE_MS \|\| '', 10\) \|\| \d/)
     }
   })

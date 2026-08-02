@@ -322,12 +322,39 @@ describe('🚧 배선 — 스케줄러가 실제로 예산 분산을 쓰는가',
     expect(kickBody).not.toContain('ctx.waitUntil')
   })
 
+  /**
+   * 🔴 **모든 회차에 분모를 남긴다** (2026-08-02 라이브에서 막혀서 넣었다).
+   *   예전엔 미룬 게 있을 때만 스냅샷을 썼다 → 미룬 게 없는 회차는 **띄운 레인 수가 어디에도 없다**.
+   *   06:00Z 에 하트비트 4건 + 스냅샷 없음 이라 "4개를 띄웠나 / 8개 띄우고 절반이 기록도 못 남기고
+   *   죽었나" 를 가릴 수 없었다 — 붕괴 판정의 분모가 사라진 것이다.
+   *   ⚠️ 커서 쓰기는 반대로 **조건부여야** 한다(전부 돌았으면 회전 안 함). 둘을 한 조건에 묶으면 안 된다.
+   */
+  it('🔒 스냅샷은 매 회차, 커서는 미룬 게 있을 때만 쓴다', async () => {
+    const raw = (await import('node:fs')).readFileSync('src/worker-ads/lane-runner.ts', 'utf8')
+    // ⚠️ **주석을 걷어내고 본다.** 첫 판은 이 검사가 빨간불이었는데 원인이 코드가 아니라 *설명 주석*
+    //   안의 `if (sel.deferred.length)` 였다 — 이 레포가 잠금표에서 겪은 "주석이 판정을 뒤집는" 클래스의
+    //   반대 방향(주석 때문에 멀쩡한 코드가 위반으로 잡힘). 소스 검사 가드는 항상 주석을 지우고 볼 것.
+    const src = raw.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n')
+    const snapAt = src.indexOf("bind('ads_dispatch_last', snap)")
+    const guardAt = src.indexOf('if (sel.deferred.length)')
+    // ⚠️ **쓰기 형태로** 찾는다 — `bind(DISPATCH_CURSOR_KEY)` 만 보면 파일 위쪽의 **읽기**(커서 SELECT)에
+    //   먼저 걸려 순서 판정이 뒤집힌다(첫 판이 실제로 그랬다).
+    const cursorAt = src.indexOf('bind(DISPATCH_CURSOR_KEY, JSON.stringify')
+    expect(snapAt, '스냅샷 쓰기를 못 찾았다 — 코드가 옮겨갔다(통과가 아니라 실패)').toBeGreaterThan(-1)
+    expect(guardAt).toBeGreaterThan(-1)
+    expect(cursorAt).toBeGreaterThan(-1)
+    // 스냅샷은 가드 **앞**(무조건), 커서는 가드 **뒤**(조건부).
+    expect(snapAt, '스냅샷이 deferred 가드 안으로 들어갔다 — 미룬 게 없는 회차의 분모가 다시 사라진다').toBeLessThan(guardAt)
+    expect(cursorAt, '커서가 가드 밖으로 나갔다 — 전부 돈 회차에도 커서가 돌아 공평성이 깨진다').toBeGreaterThan(guardAt)
+  })
+
   it('🔒 커서를 읽고 쓴다 — 안 그러면 매 회차 같은 레인만 돈다', async () => {
     const src = (await import('node:fs')).readFileSync('src/worker-ads/lane-runner.ts', 'utf8')
     expect(src).toMatch(/SELECT value FROM platform_settings WHERE key = \?/)
-    // 역할별 커서라 숫자 하나로는 못 남긴다 — String() 으로 되돌아가면 tick·measure 가 통째로 사라진다.
-    expect(src).toMatch(/bind\(DISPATCH_CURSOR_KEY, JSON\.stringify\(sel\.nextCursor\)\)/)
-    expect(src).toContain('readCursors(')
+    // 🔁 2026-08-02: 커서가 **도메인별**로 바뀌었다(`nextCursors`). 의도는 그대로 — 숫자 하나로는 못 남긴다.
+    //   String() 으로 되돌아가면 tick·measure·도메인이 통째로 사라진다.
+    expect(src).toMatch(/bind\(DISPATCH_CURSOR_KEY, JSON\.stringify\(sel\.nextCursors\)\)/)
+    expect(src).toContain('readDomainCursors(')
   })
 
   /**
@@ -337,7 +364,9 @@ describe('🚧 배선 — 스케줄러가 실제로 예산 분산을 쓰는가',
    */
   it('🔒 측정 비율을 실제로 넘긴다 — 안 넘기면 env 노브가 무음으로 죽는다', async () => {
     const src = (await import('node:fs')).readFileSync('src/worker-ads/lane-runner.ts', 'utf8')
-    expect(src).toMatch(/selectLanesForTick\(pending, perTick, cursor, resolveMeasureShare\(env\)\)/)
+    // 🔁 도메인 분리 후 진입점이 `selectLanesByDomain` 이다. **비율을 끝까지 넘기는지**가 이 검사의 요점이라
+    //   인자 위치가 바뀌어도 그 사실만 겨눈다(이름만 갈아끼우고 검사를 약화시키지 않는다).
+    expect(src).toMatch(/selectLanesByDomain\(pending, perTick, cursors, hourUTC, resolveMeasureShare\(env\)\)/)
     expect(src).toMatch(/ADS_MEASURE_SHARE\?: string/)   // env 타입에 없으면 대시보드 값이 안 들어온다
   })
 })

@@ -17,6 +17,8 @@ interface OpsGate {
   label: string
   default_value: string
   staging_ref: string | null
+  /** 🔴 무엇이 확인되면 켜는가 (2026-08-02 대표 확정 ⑤) — 없으면 영원히 안 켜진다. */
+  turn_on_when?: string
   value: string | null
   is_default: boolean
 }
@@ -157,6 +159,19 @@ export default function OpsStatusTab() {
             </div>
           ))}
         </div>
+        {/* 🔴 2026-08-02 (대표 확정 ⑤): 점등 조건이 없으면 아무도 "지금이 그때인가"를 판단할 수 없어
+            게이트가 영원히 꺼진 채로 남는다. 실제로 13개가 전부 미설정이었다. */}
+        <p className="mt-3 text-[11px] text-gray-500">
+          아래는 각 게이트를 <b>언제 켜는가</b>입니다. 조건이 충족되기 전에는 켜지 마세요.
+        </p>
+        <ul className="mt-1.5 space-y-1">
+          {gates.filter(g => g.turn_on_when).map(g => (
+            <li key={`when-${g.key}`} className="text-[11px] text-gray-600 flex gap-1.5">
+              <code className="shrink-0 bg-gray-100 px-1 rounded text-gray-500">{g.key}</code>
+              <span>{g.turn_on_when}</span>
+            </li>
+          ))}
+        </ul>
       </DashboardCard>
 
       {/* Heartbeat 전체 목록 */}

@@ -16,8 +16,9 @@ import {
   type CompanyLead, type CompanyLeadFilter,
 } from './company-discovery'
 import { LEAD_TYPES, LEAD_TYPE_LABEL } from './company-classify'
-import { listCompanyKeywords, addCompanyKeyword } from './company-collect'
+import tradeRoutes from './partner-pool-trades.routes'
 import { partnerPoolDedupeRoutes } from './partner-pool-dedupe.routes'
+import { partnerPoolKeywordRoutes } from './partner-pool-keywords.routes'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -25,6 +26,8 @@ app.use('*', requireAdmin())
 // 🧬 중복 병합 라우트(별도 모듈 — 600줄 래칫 우회 대신 추출).
 //   ⚠️ **반드시 requireAdmin() 뒤에 마운트**한다 — 앞에 두면 이 라우트만 인증을 안 거친다(라이브 데이터 수정 경로).
 app.route('/', partnerPoolDedupeRoutes)
+// 🔑 수집 키워드 라우트(같은 이유로 추출 — 부모가 600 캡 코앞). 인증 뒤 마운트는 위 경고와 동일하게 필수.
+app.route('/', partnerPoolKeywordRoutes)
 
 /* 🔔 작업 완료 알림벨 공용(2026-07-27) — 백그라운드(waitUntil) 작업은 페이지를 떠나도 계속되지만
  *   완료 토스트는 페이지와 함께 사라진다 → 결과를 알림벨에 남겨 어디서든/나중에 확인 가능하게. */
@@ -325,15 +328,7 @@ app.post('/collect-nara', delegateCollect('collect-nara-vendor', '📑 조달업
 app.post('/sweep-mx', delegateCollect('sweep-mx', '📮 이메일 재검증'))
 app.post('/sweep-nts', delegateCollect('sweep-nts', '🏛 폐업 정리'))
 
-// GET /api/admin/partner-pool/keywords — 레인 A 지역검색 키워드 풀(방배/서초/강남 × 업종 시드).
-app.get('/keywords', async (c) => c.json({ success: true, keywords: await listCompanyKeywords(c.env.DB) }))
-
-// POST /api/admin/partner-pool/keywords { keyword, category?, subcategory?, region? }
-app.post('/keywords', async (c) => {
-  const b = await c.req.json().catch(() => ({})) as { keyword?: string; category?: string; subcategory?: string; region?: string; tier?: number }
-  const r = await addCompanyKeyword(c.env.DB, b.keyword || '', b.category, b.subcategory, b.region, b.tier)
-  return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
-})
+app.route('/keyword-trades', tradeRoutes) // 🎛️ 업종 단위 일괄 on/off — 개별 키워드는 partner-pool-keywords.routes
 
 // POST /api/admin/partner-pool/collect — 레인 A 수동 수집(ur-ads 워커에 서비스바인딩 위임 → 메인 번들 무영향).
 //   백그라운드(waitUntil): 지역검색 순회는 수십 초 → 즉시 started 반환, 완료는 UI 가 stats(run.last_run) 폴링.

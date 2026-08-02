@@ -11,6 +11,8 @@
  *     수확 총량은 self-chain/매시간 cron 이 이어받아 유지된다 — 한 번에 덜 쓰고 여러 번 도는 것뿐.
  */
 
+import { resolvePlan, type AdsPlan } from '../../../worker-ads/dispatch-budget'
+
 /**
  * 🚦 학습 상한은 **레인마다 따로** 저장한다(2026-07-28 근본수리).
  *
@@ -60,6 +62,43 @@ const BACKOFF_RATIO = 0.8
 const ABANDON_STEP = 4
 
 /**
+ * 📐 **보폭은 레인이 실제로 사는 지점에 비례한다** (2026-08-02 — 유료 자동 확장의 나머지 절반).
+ *
+ *   천장만 60→900 으로 올리면 학습값은 **+2/회차**로 기어 올라간다 — 시간당 1회차라 900 에 닿는 데
+ *   **17일**이다. 대표가 유료로 바꾼 다음 날 아침에 달라진 게 없으면 그건 "자동"이 아니다.
+ *
+ *   🐛 **첫 판은 천장(`ceiling`)에 비례시켰다가 기존 유닛이 잡았다.** 시뮬레이션이 *천장 300 · 진짜 한도 50*
+ *     조합을 돌리는데, 그때 보폭이 10 이 되어 실패율이 30회 중 6 → **10** 으로 올랐다. 천장이 레인의
+ *     실제 생활점보다 한참 위일 수 있다는 걸 놓친 것이다 — 그리고 그건 가상의 상황이 아니다:
+ *     **`ADS_PLAN=paid` 로 바꿨는데 실제 계정은 아직 무료**면 정확히 그 배치가 된다.
+ *   ⇒ 기준을 **학습값(=관측된 생활점)** 으로 바꾼다. 천장이 얼마든 레인이 50 언저리에 살면 보폭은 2 다.
+ *     설정이 틀려도 조용히 낭비하지 않는다(**틀린 쪽으로 안전**).
+ *
+ *   ⚖️ **왜 이게 ×1.25 진동의 재발이 아닌가**: 여기 비율은 `1 + 1/30 ≈ ×1.033` 이다. 2026-07-29 사고는
+ *     회복이 백오프(×0.8)의 **정확한 역수**(×1.25)라 2주기로 맞물린 것이었다. ×1.033 은 백오프 1회를
+ *     되돌리는 데 ~7회차가 걸려 실패 사이 간격이 그만큼 길다 — 즉 **실패율(듀티비)을 규모와 무관하게
+ *     일정하게** 유지한다. 그게 이 비례의 목적이다(무료 55에서 +2 였던 그 비율 그대로).
+ *
+ *   🔒 **무료에서는 값이 안 변한다** — 생활점 40~60 → `round(55/30)=2` = 기존 `RECOVER_STEP`,
+ *     `round(55/15)=4` = 기존 `ABANDON_STEP`. 유닛이 이 항등을 고정한다(무료 회귀 0).
+ *
+ *   🔑 불변식: **하향 > 회복**(항상 2배). 안 지키면 회차가 계속 죽는 동안에도 상한이 순증해 영영 못 내려온다.
+ *
+ * @param ceiling  이번 회차의 상한(min(envBudget, platformCap)) — 학습값이 없을 때의 대체 기준
+ * @param learnedCap 관측된 생활점. 0/미지정이면 ceiling 을 쓴다.
+ */
+function scaleBase(ceiling: number, learnedCap?: number): number {
+  const live = learnedCap && learnedCap > 0 ? Math.min(learnedCap, ceiling) : ceiling
+  return Math.max(1, live)
+}
+export function recoverStep(ceiling: number, learnedCap?: number): number {
+  return Math.max(RECOVER_STEP, Math.round(scaleBase(ceiling, learnedCap) / 30))
+}
+export function abandonStep(ceiling: number, learnedCap?: number): number {
+  return Math.max(ABANDON_STEP, Math.round(scaleBase(ceiling, learnedCap) / 15))
+}
+
+/**
  * 응답/에러 메시지에 플랫폼 한도 신호가 있는가.
  *
  * ⚠️ 2026-07-28: `too many subrequests` **하나만** 보던 것을 넓혔다. Cloudflare 는 같은 성격의 초과를
@@ -101,10 +140,40 @@ export const isSubrequestLimitError = (msg?: string | null): boolean =>
  */
 export const SUBREQ_PLATFORM_CAP_DEFAULT = 60
 
-/** env 의 플랫폼 천장(없거나 이상값이면 기본값). 상한 900 은 유료 플랜(1,000)의 꼬리 여유. */
-export function platformSubreqCap(raw?: string | null): number {
+/**
+ * 💳 **유료 기본 천장** (2026-08-02 — 대표 "유료 전환 시 자동으로 수집 능력이 올라가면 좋겠네").
+ *
+ *   그 전엔 이 천장이 **요금제를 몰랐다.** `ADS_PLAN=paid` 로 레인 수는 8→64 로 늘어도
+ *   레인당 처리는 60 에 묶인 채라 — **레인 수만 늘고 일은 그대로**였다. 유료로 바꾼 사람이
+ *   `ADS_SUBREQ_PLATFORM_CAP` 을 따로 넣어야 한다는 걸 알 방법이 없었고, 그건 "자동"이 아니다.
+ *
+ *   ⚠️ 900 은 **추정이다** — 문서상 유료 서브리퀘스트 한도(1,000)의 꼬리 여유. 무료의 60 도 같은
+ *     성격의 추정이었고(관측 생존선 55~65 역산), 그래서 **전환 후 재측정이 필요하다**:
+ *     레인 학습값이 900 근처에서 수렴하면 맞고, 그 아래에서 한도 오류를 계속 보면 내린다.
+ */
+export const SUBREQ_PLATFORM_CAP_PAID = 900
+
+/** 요금제를 아는 env 조각 — `resolvePlan` 과 같은 모양(플랜 판정은 SSOT 하나만 쓴다). */
+export interface SubreqCapEnv { ADS_SUBREQ_PLATFORM_CAP?: string; ADS_PLAN?: string }
+
+/**
+ * env 의 플랫폼 천장(없거나 이상값이면 **요금제 기본값**). 상한 900 은 유료 플랜(1,000)의 꼬리 여유.
+ * ⚠️ 명시값이 있으면 요금제보다 우선한다 — 요금제는 *기본값만* 정한다.
+ */
+export function platformSubreqCap(raw?: string | null, plan: AdsPlan = 'free'): number {
   const n = parseInt(String(raw ?? ''), 10)
-  return Number.isFinite(n) && n > 0 ? Math.min(900, Math.max(10, n)) : SUBREQ_PLATFORM_CAP_DEFAULT
+  if (Number.isFinite(n) && n > 0) return Math.min(900, Math.max(10, n))
+  return plan === 'paid' ? SUBREQ_PLATFORM_CAP_PAID : SUBREQ_PLATFORM_CAP_DEFAULT
+}
+
+/**
+ * 🔌 **레인이 실제로 쓰는 진입점** — env 하나만 주면 요금제까지 반영된다.
+ *
+ * 예전엔 13개 파일이 전부 천장 함수에 **raw 문자열만**(`env.ADS_SUBREQ_PLATFORM_CAP`) 넘겼다.
+ * 그래서 요금제가 이 값에 닿을 길이 아예 없었다 — 새 레인이 같은 실수를 반복하지 않도록 진입점을 하나로 둔다.
+ */
+export function envSubreqCap(env: SubreqCapEnv | undefined | null): number {
+  return platformSubreqCap(env?.ADS_SUBREQ_PLATFORM_CAP, resolvePlan(env))
 }
 
 /** 이번 실행에 쓸 예산 — env·학습값·**플랫폼 천장** 중 가장 작은 값. */
@@ -153,7 +222,7 @@ export function resolveSubreqBudget(envBudget: number, learnedCap: number, platf
 export function capAfterAbandonedRun(learnedCap: number, envBudget: number, platformCap = SUBREQ_PLATFORM_CAP_DEFAULT): number {
   const ceiling = Math.min(envBudget, platformCap)
   const base = learnedCap > 0 ? Math.min(learnedCap, ceiling) : ceiling
-  return Math.max(Math.min(SUBREQ_CAP_MIN, ceiling), base - ABANDON_STEP)
+  return Math.max(Math.min(SUBREQ_CAP_MIN, ceiling), base - abandonStep(ceiling, learnedCap))
 }
 
 /**
@@ -188,7 +257,7 @@ export function nextSubreqCap(
   if (learnedCap > ceiling) return ceiling
   // 📈 가산 회복 — 배율이면 백오프(×0.8)의 역수와 맞물려 2주기 진동한다(위 RECOVER_STEP 주석의 실사고).
   //   천장(#837)은 *상한*을 막고, 가산은 *천장 아래에서의 진동*을 막는다 — 둘은 다른 실패를 푼다.
-  if (learnedCap > 0 && learnedCap < ceiling) return Math.min(ceiling, learnedCap + RECOVER_STEP)
+  if (learnedCap > 0 && learnedCap < ceiling) return Math.min(ceiling, learnedCap + recoverStep(ceiling, learnedCap))
   return null
 }
 
@@ -214,10 +283,27 @@ export function nextSubreqCap(
  */
 export const ENRICH_DEADLINE_MS_DEFAULT = 7_000
 
-/** env(`ADS_ENRICH_DEADLINE_MS`) → 유효 상한(ms). 범위 5s~120s 로 클램프, 비숫자·부재는 기본값. */
-export function resolveEnrichDeadlineMs(raw: unknown): number {
+/**
+ * 💳 **유료 기본 벽시계** (2026-08-02).
+ *
+ *   무료의 7초는 *부모 인보케이션이 ≈10.5초에 회수된다*는 실측에서 나온 값이다. 유료에서는 그 벽이
+ *   훨씬 멀어지므로 7초를 그대로 두면 **한 라운드가 4~7건에서 스스로 멈춘다** — 천장을 900 으로
+ *   올려 놓고도 벽시계가 먼저 끊으면 늘어난 예산을 쓸 수가 없다(세 조임쇠 중 마지막 하나).
+ *
+ *   ⚠️ 20초는 **추정이다**. 유료 CPU 한도(기본 30s) 아래의 여유를 잡은 것뿐이고, 무료의 7초처럼
+ *     *측정으로* 정해야 한다 — 전환 후 `cron-heartbeats` 에서 **성공 최대 ms ↔ 실패 최소 ms 경계**를
+ *     다시 재라. 그 방법이 무료에서 10.5초 벽을 찾아낸 방법이다.
+ */
+export const ENRICH_DEADLINE_MS_PAID = 20_000
+
+/**
+ * env(`ADS_ENRICH_DEADLINE_MS`) → 유효 상한(ms). 범위 5s~120s 로 클램프, 비숫자·부재는 **요금제 기본값**.
+ * ⚠️ 명시값이 요금제보다 우선한다(요금제는 기본값만 정한다 — `platformSubreqCap` 과 같은 규약).
+ */
+export function resolveEnrichDeadlineMs(raw: unknown, plan: AdsPlan = 'free'): number {
+  const fallback = plan === 'paid' ? ENRICH_DEADLINE_MS_PAID : ENRICH_DEADLINE_MS_DEFAULT
   const n = parseInt(String(raw ?? ''), 10)
-  return Math.min(120_000, Math.max(5_000, Number.isFinite(n) && n > 0 ? n : ENRICH_DEADLINE_MS_DEFAULT))
+  return Math.min(120_000, Math.max(5_000, Number.isFinite(n) && n > 0 ? n : fallback))
 }
 
 /**
@@ -265,4 +351,13 @@ export function canStartBudgetedItem(deadline: number | undefined, now = Date.no
 export function budgetedTimeoutMs(deadline: number | undefined, maxMs: number, now = Date.now()): number {
   if (!deadline) return maxMs
   return Math.max(FETCH_TIMEOUT_FLOOR_MS, Math.min(maxMs, deadline - now))
+}
+
+/**
+ * 🔌 보강 벽시계의 env 진입점 — 요금제까지 반영한다(`envSubreqCap` 과 같은 이유).
+ * ⚠️ 새 보강 레인은 `resolveEnrichDeadlineMs(env.ADS_ENRICH_DEADLINE_MS)` 가 아니라 **이걸** 써라.
+ *   raw 만 넘기면 요금제가 닿을 길이 없다 — 그게 유료 전환이 반쪽이던 원인이다.
+ */
+export function envEnrichDeadlineMs(env: { ADS_ENRICH_DEADLINE_MS?: string; ADS_PLAN?: string } | undefined | null): number {
+  return resolveEnrichDeadlineMs(env?.ADS_ENRICH_DEADLINE_MS, resolvePlan(env))
 }
