@@ -155,7 +155,8 @@ describe('배선 — 부모가 실제로 남기는가', () => {
 
   it('스케줄러가 마지막 flush 뒤에 회차 요약을 쓴다', () => {
     const src = code('src/worker-ads/index.ts')
-    expect(src, '배선이 없으면 이력은 영원히 안 생긴다').toMatch(/writeTickSummary\(env\.DB, tickStartIso, hourUTC, ranNames, beats\.seenBeats\)/)
+    // ⚠️ 인자가 하나 늘었다(요금제 인지 학습기 — `lane-aimd.ts`). 뒤쪽은 열어 두고 앞 5개만 못박는다.
+    expect(src, '배선이 없으면 이력은 영원히 안 생긴다').toMatch(/writeTickSummary\(env\.DB, tickStartIso, hourUTC, ranNames, beats\.seenBeats/)
     const flushAt = src.indexOf('beats.flush()')
     const writeAt = src.indexOf('writeTickSummary(')
     expect(flushAt).toBeGreaterThan(-1)

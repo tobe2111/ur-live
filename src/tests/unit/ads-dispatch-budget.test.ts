@@ -352,7 +352,11 @@ describe('🚧 배선 — 스케줄러가 실제로 예산 분산을 쓰는가',
 
   it('🔒 커서를 읽고 쓴다 — 안 그러면 매 회차 같은 레인만 돈다', async () => {
     const src = (await import('node:fs')).readFileSync('src/worker-ads/lane-runner.ts', 'utf8')
-    expect(src).toMatch(/SELECT value FROM platform_settings WHERE key = \?/)
+    // 🔁 2026-08-02: 읽기가 **커서 + 학습된 레인 수** 두 키를 한 왕복으로 가져온다(`lane-aimd.ts`).
+    //   SQL 문자열만 겨누면 형태가 바뀔 때마다 검사가 낡으므로, **커서 키가 실제로 읽기에 묶이는지**를 본다
+    //   — 그게 이 검사가 지키려는 사실이다(안 묶이면 매 회차 같은 레인만 돈다).
+    expect(src).toMatch(/SELECT key, value FROM platform_settings WHERE key IN \(\?, \?\)/)
+    expect(src, '커서 키가 읽기 바인딩에 없으면 커서는 영원히 초기값이다').toMatch(/\.bind\(DISPATCH_CURSOR_KEY, LANE_LEARN_KEY\)/)
     // 🔁 2026-08-02: 커서가 **도메인별**로 바뀌었다(`nextCursors`). 의도는 그대로 — 숫자 하나로는 못 남긴다.
     //   String() 으로 되돌아가면 tick·measure·도메인이 통째로 사라진다.
     expect(src).toMatch(/bind\(DISPATCH_CURSOR_KEY, JSON\.stringify\(sel\.nextCursors\)\)/)

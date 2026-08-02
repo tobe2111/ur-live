@@ -572,7 +572,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   📼 이어서 이 회차 한 줄을 이력에 남긴다(근거·한계는 `tick-history.ts` 헤더).
   ctx.waitUntil(Promise.allSettled(kicked).then(async () => {
     await beats.flush()
-    await writeTickSummary(env.DB, tickStartIso, hourUTC, ranNames, beats.seenBeats)
+    await writeTickSummary(env.DB, tickStartIso, hourUTC, ranNames, beats.seenBeats, env as never)
   }))
 }
 
