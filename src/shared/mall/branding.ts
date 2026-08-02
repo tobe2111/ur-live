@@ -35,6 +35,69 @@ export interface MallBranding {
 export const MALL_COLOR_LIGHT = '#2E7D5B'
 export const MALL_COLOR_DARK = '#5FBF95'
 
+/**
+ * 🔴 **대비는 취향이 아니라 규격이다** — 그런데 2026-08-02 까지 **검사가 없었다.**
+ *
+ * 위 주석이 "두 모드 모두 WCAG AA 충족" 이라고 선언해 놓고 강제하는 코드가 0 이었다.
+ * 운영자가 자기 색을 고르는데(`MallBranding.color`) 옅은 색을 고르면 몰 홈의 아바타 이니셜·
+ * 안전결제 띠의 **흰 글자가 그대로 안 보인다.** 파일럿은 몰 1개라 안 터지지만 몰이 늘면 터진다.
+ *
+ * ⚠️ 이 함수들이 **못 막는 것**: 운영자가 색을 고르는 화면이 아직 없어 저장 경로가 열리면
+ *   그 지점에서 반드시 불러야 한다. 순수함수만으로는 아무것도 막지 못한다.
+ */
+
+/** sRGB 채널 → 선형값 (WCAG 2.x relative luminance 전단계). */
+function linearize(c8: number): number {
+  const c = c8 / 255
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+}
+
+/** `#RRGGBB` → 상대 휘도. 형식이 틀리면 `null`(추측하지 않는다). */
+export function relativeLuminance(hex: string): number | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex ?? '').trim())
+  if (!m) return null
+  const n = parseInt(m[1], 16)
+  return 0.2126 * linearize((n >> 16) & 255) + 0.7152 * linearize((n >> 8) & 255) + 0.0722 * linearize(n & 255)
+}
+
+/** 두 색의 WCAG 대비비(1~21). 하나라도 형식이 틀리면 `null`. */
+export function contrastRatio(a: string, b: string): number | null {
+  const la = relativeLuminance(a), lb = relativeLuminance(b)
+  if (la === null || lb === null) return null
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+}
+
+/** 몰 색 위에 얹는 글자색. 라이트는 흰 글자, 다크는 잉크 글자다(§`MALL_COLOR_DARK` 는 밝은 색이다). */
+export const MALL_ON_COLOR_LIGHT = '#FFFFFF'
+export const MALL_ON_COLOR_DARK = '#1A1719'
+
+/** 본문 대비 기준. 몰 색 위 글자는 12~13px 이 섞여 있어 **일반 텍스트 기준(4.5)** 을 쓴다. */
+export const MALL_CONTRAST_MIN = 4.5
+
+/**
+ * 운영자가 고른 대표 색이 **쓸 수 있는 색인가**.
+ * `validateMallName` / `validateMallSlug` 와 같은 자리에서 **저장 전에** 부른다.
+ *
+ * 라이트 모드에서 이 색은 **면**이고 그 위에 흰 글자가 올라간다 ⇒ 흰색 대비 AA 를 요구한다.
+ * (다크 짝은 운영자 지정과 무관하게 `MALL_COLOR_DARK` 고정이라 여기서 검사 대상이 아니다 —
+ *  `resolveMallBranding` 참조. 그 값은 아래 테스트가 잉크 글자 기준으로 고정한다.)
+ */
+export function validateMallColor(raw: string): { ok: true } | { ok: false; reason: string } {
+  const s = String(raw ?? '').trim()
+  if (!/^#?[0-9a-fA-F]{6}$/.test(s)) {
+    return { ok: false, reason: '색은 #RRGGBB 형식이어야 합니다' }
+  }
+  const ratio = contrastRatio(s, MALL_ON_COLOR_LIGHT)
+  if (ratio === null) return { ok: false, reason: '색을 해석할 수 없습니다' }
+  if (ratio < MALL_CONTRAST_MIN) {
+    return {
+      ok: false,
+      reason: `너무 밝아 흰 글자가 보이지 않습니다 (대비 ${ratio.toFixed(1)}:1, 최소 ${MALL_CONTRAST_MIN}:1)`,
+    }
+  }
+  return { ok: true }
+}
+
 /** 하단 고정 표기 — 완전 화이트라벨이 아니다(성장 루프 입구 + 책임주체 표기 자리). */
 export const POWERED_BY = 'powered by 유어딜'
 

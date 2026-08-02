@@ -18,6 +18,7 @@ import { verify } from 'hono/jwt';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import { sendSellerAlimtalk } from '../../alimtalk/send';
 import { safeError } from '../../../worker/utils/safe-error';
+import { enrichSellerOrderRows } from '../../../worker/utils/order-list-enrich';
 import { rateLimit } from '../../../worker/middleware/rate-limit';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
 import { swallow } from '@/worker/utils/swallow';
@@ -142,28 +143,10 @@ sellerOrdersRoutes.get('/orders', async (c) => {
 
     const orders = await db.prepare(query).bind(...params).all();
 
-    // 🛡️ 2026-07-02 (쇼핑 전수조사): 각 주문의 order_items 첨부 — 이전엔 상품 목록 미반환이라
-    //   셀러 상세 모달의 상품 섹션이 항상 미렌더(무엇을 몇 개 보낼지 알 수 없음). 옵션(options)도 포함.
+    // 🧺 상품 라인 + 📦 픽업일 enrich — `worker/utils/order-list-enrich` 로 추출(2026-08-02).
+    //   화면 C 가 "오늘 누가 오나"를 묶으려면 픽업일이 필요하다. 읽기 전용·머니 무접촉.
     const orderRows = (orders.results || []) as Array<Record<string, unknown>>;
-    if (orderRows.length > 0) {
-      try {
-        const oIds = orderRows.map(o => Number(o.id)).filter(Number.isFinite);
-        if (oIds.length > 0) {
-          const iph = oIds.map(() => '?').join(',');
-          const { results: itemRows = [] } = await db.prepare(
-            `SELECT order_id, product_id, product_name, quantity, unit_price, subtotal, options, product_image
-               FROM order_items WHERE order_id IN (${iph})`
-          ).bind(...oIds).all<Record<string, unknown>>();
-          const byOrder = new Map<number, Array<Record<string, unknown>>>();
-          for (const it of itemRows) {
-            const oid = Number(it.order_id);
-            if (!byOrder.has(oid)) byOrder.set(oid, []);
-            byOrder.get(oid)!.push(it);
-          }
-          for (const o of orderRows) o.items = byOrder.get(Number(o.id)) || [];
-        }
-      } catch { /* order_items 조회 실패 시 items 생략(주문 목록 자체는 반환) */ }
-    }
+    await enrichSellerOrderRows(db, orderRows);
 
     let countQuery = `SELECT COUNT(*) as total FROM orders o WHERE o.seller_id = ?`;
     const countParams: unknown[] = [sellerId];
