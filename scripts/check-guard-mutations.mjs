@@ -182,6 +182,102 @@ const MUTATIONS = [
       '받았다. 그 400 을 근거로 "서비스가 폐기됐다"고 결론 낼 뻔했다 — 진단 도구가 오진의 재료가 되는 최악의 모양이다.',
   },
   {
+    name: '전진 0 가드가 헛돎(신규를 통과시킴)',
+    file: 'scripts/check-cursor-after-loop.mjs',
+    find: 'if (TIME_BOUND.test(body)) continue               // 시간 상한이 있다 — 통과',
+    replace: 'if (true) continue',
+    test: 'src/tests/unit/ads-cursor-after-loop-guard.test.ts',
+    why:
+      '이 가드가 막는 실패는 **에러가 안 보인다** — 하트비트는 "느린가 보다"로 읽히고 저장 0 의 이유가 ' +
+      '커서 미전진이라는 건 코드를 열어야 안다. 판정을 무력화하면 신규 레인이 그대로 통과해 ' +
+      '**세 번째 전진 0** 이 조용히 생긴다(이미 commerce·quality 두 번 났다).',
+  },
+  {
+    name: '품질 패스가 시간 상한을 잃음(전진 0 복귀)',
+    file: 'src/features/marketing/api/influencer-quality.ts',
+    find: "    if (Date.now() - t0 >= deadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: '',
+    test: 'src/tests/unit/ads-quality-deadline.test.ts',
+    why:
+      '상한이 **행 수(8,000)뿐**이라 한 인보케이션이 16페이지를 통째로 채점하다 CPU 한도로 죽었다(`ms=3649`). ' +
+      '🩸 재분류보다 나쁘다 — **커서 저장이 루프 뒤**라 죽으면 그 줄에 도달하지 못하고 다음 회차가 같은 지점을 ' +
+      '또 훑고 또 죽는다 ⇒ **영원히 전진 0**(통신판매에서 확정된 그 실패 모양).',
+  },
+  {
+    name: '품질 패스 마감선 중단이 done=true 로 커서를 리셋',
+    file: 'src/features/marketing/api/influencer-quality.ts',
+    find: "if (Date.now() - t0 >= deadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: 'if (Date.now() - t0 >= deadlineMs) { done = true; break }',
+    test: 'src/tests/unit/ads-quality-deadline.test.ts',
+    why:
+      '`done` 은 "한 바퀴 다 돌았다" 는 뜻이고 커서를 **0 으로 리셋**한다. 시간 때문에 멈춘 것을 완주로 표시하면 ' +
+      '매 회차가 처음부터 다시 돌아 **풀 뒷부분은 영영 채점되지 않는다** — 조용히, 에러 없이.',
+  },
+  {
+    name: '재분류 패스 루프가 마감선을 잃음(매시간 CPU 사망 복귀)',
+    file: 'src/worker-ads/index.ts',
+    find: 'passes < 5 && !last.done && Date.now() - t0 < deadlineMs',
+    replace: 'passes < 5 && !last.done',
+    test: 'src/tests/unit/ads-reclassify-deadline.test.ts',
+    why:
+      '이 레인은 **매시간 CPU 한도로 죽고 있었다**(`ok=false ms=3880`). 5패스 × 1,000행 × 행당 정규식 ~20개 = ' +
+      '10만 회를 한 인보케이션에서 돈다 — `ads-cpu-work-cap` 이 세운 교리(*"페이지가 아니라 인보케이션당 총량"*)를 ' +
+      '**호출부**가 어긴 것이다. 커서가 이어받으므로 일찍 멈춰도 커버리지 손실은 0 이다.',
+  },
+  {
+    name: '미사용 env 신고가 평상시에도 울림(경보 신뢰 상실)',
+    file: 'src/worker-ads/env-drift.ts',
+    find: "return u.length ? { env_unused: u.join(',') } : {}",
+    replace: "return { env_unused: u.join(',') }",
+    test: 'src/tests/unit/ads-env-drift.test.ts',
+    why:
+      '이상 없을 때도 키가 붙으면 하트비트 사유줄이 매 회차 오염되고, 진짜 신호가 그 안에 묻힌다. ' +
+      '이 레포가 무수확 레인 판정에서 배운 것과 같다 — **평상시 조용하지 않은 경보는 아무도 안 본다.**',
+  },
+  {
+    name: '미사용 env 목록이 낡음(새 노브를 오신고)',
+    file: 'src/worker-ads/env-drift.ts',
+    find: "'ADS_HIRA_ROWS',",
+    replace: '',
+    test: 'src/tests/unit/ads-env-drift.test.ts',
+    why:
+      '목록은 **코드가 읽는 키의 SSOT** 다. 새 노브를 코드에 넣고 목록에 안 넣으면 런타임이 그 키를 ' +
+      '"설정했는데 안 쓰임"으로 **오신고**한다 — 정상 설정을 결함으로 부르는 순간 이 신호는 죽는다. ' +
+      '(첫 작성에서 내가 손으로 적다가 실제로 64개를 빠뜨렸고, 이 시험이 즉시 잡았다.)',
+  },
+  {
+    name: '심평원 재시도가 실험이 아니게 됨(같은 크기로 재시도)',
+    file: 'src/features/marketing/api/hira-hospital-collect.ts',
+    find: 'Math.max(20, Math.floor(numRows / 5))',
+    replace: 'numRows',
+    test: 'src/tests/unit/hira-retry-experiment.test.ts',
+    why:
+      '이 재시도의 목적은 회복이 아니라 **원인 판별**이다 — 작은 페이지로 성공하면 "페이지 크기 문제"(무배포 노브로 해결), ' +
+      '작은 페이지도 실패하면 "크기 무관"(동시성·외부)이다. 같은 크기로 다시 쏘면 두 경우가 구분되지 않아 ' +
+      '60회 무수확의 원인을 **또 모르는 채로** 남는다.',
+  },
+  {
+    name: '심평원 재시도 상한이 사라짐(페이지마다 재시도)',
+    file: 'src/features/marketing/api/hira-hospital-collect.ts',
+    find: '      retried = true',
+    replace: '      retried = false',
+    test: 'src/tests/unit/hira-retry-experiment.test.ts',
+    why:
+      '무료 요금제의 서브리퀘스트 천장은 인보케이션당 ~50 이다. 회차당 1회 상한이 없으면 페이지마다 재시도가 붙어 ' +
+      '**같은 회차의 다른 레인 예산까지 잡아먹는다** — 이 레포가 이미 여러 번 당한 자리다.',
+  },
+  {
+    name: 'code 12 힌트가 "폐기 확정"으로 읽히게 약해짐',
+    file: 'src/features/marketing/api/public-data-diag.ts',
+    find: '⚠️ **폐기와 경로 오타를 구분할 수 없는 코드다**',
+    replace: '서비스 URL/오퍼레이션명이 틀렸거나 폐기됨',
+    test: 'src/tests/unit/public-data-diag.test.ts',
+    why:
+      '2026-08-03 에 **내가 직접 이 오추론을 했다** — code 12 를 보고 "공정위 서비스 폐기 확정"이라고 인계에 적었다. ' +
+      '대조군을 찔러 보니 살아있는 `MllBs_2Service`(같은 키로 200·264만건)도 오퍼레이션을 틀리면 **같은 code 12** 였다. ' +
+      '두 가능성을 나열만 하는 문구는 읽는 사람이 자기 가설에 맞는 쪽을 고르게 둔다 — 오추론을 **명시적으로 막아야** 한다.',
+  },
+  {
     name: '레인 일감이 요금제를 모름(예산만 커지고 일은 그대로)',
     file: 'src/features/marketing/api/nps-workplace-enrich.ts',
     find: 'const maxLeads = maxLeadsArg ?? envPlanValue(undefined, 40, 120, env)',
@@ -848,6 +944,38 @@ const MUTATIONS = [
     why:
       '예산은 픽 4개를 다 못 돈다(보통 1~2개). 계획한 수만큼 밀면 처리 못 한 키워드를 지나쳐 ' +
       '**한 바퀴에 한 번도 안 걸리는 자리**가 생긴다 — 우선/일반 커서가 `prefixDone` 을 쓰는 이유와 같은 병(leapfrog).',
+  },
+  {
+    name: "bare '마케터' 가 소개글까지 대행사로(이용권 축에서 훔쳐옴)",
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: '광고\\s*(운영|세팅|집행)/i,\n    nameRe:',
+    replace: '광고\\s*(운영|세팅|집행)|마케터/i,\n    nameRe:',
+    test: 'src/tests/unit/ads-classify-marketer.test.ts',
+    why:
+      '라이브 실측: 대행사 273명 중 **45명(16%)이 오직 이 단어 하나로** 들어왔고, 원래 자리는 ' +
+      '맛집 10 · 외식창업 8 · IT/재테크 5 · 카페 5 · 숙소 4 · 여행 2 · 패션 1 · 미분류 10 — ' +
+      '대부분 이용권 본체 축이다. "15년차 마케터. 75개국 여행" 이 여행 블로거를 대행사로 만든다.',
+  },
+  {
+    name: '이름 전용 신호를 안 봄(진짜 마케터가 사라짐)',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: 'if (!r.re.test(text) && !(r.nameRe && r.nameRe.test(name))) continue',
+    replace: 'if (!r.re.test(text)) continue',
+    test: 'src/tests/unit/ads-classify-marketer.test.ts',
+    why:
+      '좁히기의 짝이다. `nameRe` 를 안 보면 싱어송마케터·지역전문마케터·QR마케터처럼 **이름으로 자기를 ' +
+      '선언한 실제 마케터 14명**이 통째로 빠진다 — 오탐을 줄이려다 정탐을 버리는 형태.',
+  },
+  {
+    name: '규칙이 거부하는 옛 카테고리를 안 비움(영구 고착)',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: "  if (stored === '마케팅대행사') {",
+    replace: "  if (false && stored === '마케팅대행사') {",
+    test: 'src/tests/unit/ads-classify-marketer.test.ts',
+    why:
+      '재분류는 `classifyCategory` 가 **null 이면 그대로 둔다.** 규칙을 좁히면 어느 규칙에도 안 걸리는 ' +
+      '행이 생기는데(실측 45 중 10건), 안 비우면 옛 값이 영구히 굳는다 — `shouldClearCategory` docblock 이 ' +
+      '입주 시공업체 27명 실측으로 이미 경고한 바로 그 형태("측정하면 점진 교정된다"는 낙관은 틀렸다).',
   },
 ]
 

@@ -95,6 +95,47 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
   },
 ]
 
+/**
+ * 🥡 **운영 정책 — 입력칸이 없어 대표가 넣을 방법이 없던 값들** (2026-08-03 신설)
+ *
+ * 실측으로 드러났다: 대표가 2026-08-02 에 미수령 정책을 확정(냉장 0% · 실온 유예 3일)했는데
+ * `platform_settings` 를 직접 조회하니 **두 값 다 없었다.** 원인은 결정 누락이 아니라
+ * **넣을 화면이 없었던 것**이다. `operator_support_contact` 도 같은 상태라 운영자 문의 카드가
+ * 아예 렌더되지 않고 있었다. 이 세션의 감사 주제(*"코드는 있는데 연결·등록되지 않음"*)가
+ * 설정값 층에서 반복된 사례다.
+ *
+ * 🔴 **빈 값의 의미가 0 이 아니다.** `shared/pickup-refund.ts` 의 `pct()` 는 빈 문자열을
+ *   **미설정**으로 보고 기본값(100% = 전액 환불)으로 되돌린다 — *"값이 없을수록 소비자에게
+ *   유리해야 한다"* 는 원칙이다. 그래서 여기 기본값은 **빈 문자열**이다. 숫자를 미리 채워 두면
+ *   저장 한 번에 **머니 정책이 조용히 바뀐다**(0% = 환불 없음).
+ *
+ * ⚠️ 이 값들만으로는 아무 일도 일어나지 않는다 — 실제 적용은 게이트
+ *   `pickup_unclaimed_policy_enabled`(기본 OFF, `/admin/system-monitoring`)가 켜져야 한다.
+ */
+export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string; text?: boolean }> = [
+  {
+    key: 'operator_support_contact',
+    label: '운영자 문의 연락처',
+    hint: '비우면 셀러 화면의 문의 카드가 **아예 안 뜬다**(현재 상태). 전화·이메일·카카오 링크 중 하나',
+    text: true,
+  },
+  {
+    key: 'pickup_unclaimed_cold_pct',
+    label: '냉장·냉동 미수령 환불 (%)',
+    hint: '대표 확정값 0(환불 없음 — 상품 폐기). ⚠️ 비우면 100(전액 환불)으로 동작한다',
+  },
+  {
+    key: 'pickup_unclaimed_room_grace_days',
+    label: '실온 미수령 유예 (일)',
+    hint: '대표 확정값 3. 이 기간 안에 찾아가면 전액. 비우면 0(유예 없음)',
+  },
+  {
+    key: 'pickup_unclaimed_room_pct',
+    label: '실온 유예 경과 후 환불 (%)',
+    hint: '⚠️ 비우면 100(전액). 유예 이후를 깎으려면 **명시해야** 한다',
+  },
+]
+
 export default function AdminPlatformSettingsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -163,6 +204,13 @@ export default function AdminPlatformSettingsPage() {
         const err = validateSetting(f.key, v)
         if (err) { toast.error(err); return }
       }
+    }
+    // 🥡 운영 정책 — **빈 값은 통과시킨다**(미설정 = 소비자에게 유리한 기본값). 텍스트형은 숫자 검증 제외.
+    for (const f of OPS_POLICY_FIELDS) {
+      const v = (settings[f.key] ?? '').trim()
+      if (!v || f.text) continue
+      const err = validateSetting(f.key, v)
+      if (err) { toast.error(err); return }
     }
     setSaving(true)
     try {
@@ -261,6 +309,33 @@ export default function AdminPlatformSettingsPage() {
                       className="w-28 shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 text-right font-medium"
                     />
                   )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 🥡 운영 정책 — 결정은 있었는데 넣을 화면이 없던 값들(2026-08-03 실측) */}
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="px-5 pt-4 pb-2">
+              <h3 className="text-sm font-bold text-gray-900">🥡 운영 정책 (미수령 · 문의)</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                비워 두면 <span className="font-semibold text-gray-600">소비자에게 유리한 기본값</span>(전액 환불)으로 동작한다 — 0 이 아니다.
+                미수령 정책의 실제 적용은 게이트 <code className="text-[11px]">pickup_unclaimed_policy_enabled</code>(기본 OFF, 시스템 모니터링)가 켜져야 한다.
+              </p>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {OPS_POLICY_FIELDS.map(f => (
+                <div key={f.key} className="flex items-center justify-between gap-4 px-5 py-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{f.label}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{f.hint}</p>
+                  </div>
+                  <input
+                    value={settings[f.key] ?? ''}
+                    placeholder="미설정"
+                    onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    className={`${f.text ? 'w-56' : 'w-28 text-right'} shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium`}
+                  />
                 </div>
               ))}
             </div>
