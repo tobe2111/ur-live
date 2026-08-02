@@ -344,3 +344,30 @@ describe('🚧 배선 — 스케줄러가 실제로 예산 분산을 쓰는가',
     expect(src).toMatch(/ADS_MEASURE_SHARE\?: string/)   // env 타입에 없으면 대시보드 값이 안 들어온다
   })
 })
+
+/**
+ * 🔻 **몫은 실측값이다** — 8 은 2026-08-01 값이었고 08-02 에 틀렸다(풀이 42k 로 커지며 레인이 무거워짐).
+ *
+ *   KST 16:00 실측: 디스패치 8 → 완주 2 · 사망 4(CPU 한도, ms 3,880~4,152 로 **값이 같다** =
+ *   같은 순간에 끊겼다 = 개별 실패가 아니라 **부모가 죽은 것**) · 기록조차 없음 2.
+ *   원인: 자식 CPU 가 호출자 몫이라 부모 CPU = 동시 레인 수 × 각자의 시간 ≈ 8×4초 = 32초 > 30초.
+ *
+ *   ⚠️ 이 테스트가 못 막는 것: **값의 타당성**(라이브 수율은 코드 밖 사실이다).
+ *     여기서 고정하는 건 "동시 실행이 무료 cron CPU 한도 안에 드는 범위"라는 **의도**뿐이다.
+ *     레인이 더 무거워지면 또 내려야 한다 — 재측정은 어드민 `cron-heartbeats` 의 ok=true 개수.
+ */
+describe('회차 몫 — 무료 CPU 한도 안에 드는 범위', () => {
+  it('🔒 동시 레인 × 레인당 시간이 cron CPU 한도(30s)를 넘지 않는다', () => {
+    const LANE_SECONDS = 4      // 실측: 사망 시점 ms 3,880~4,152
+    const CRON_CPU_LIMIT = 30   // 무료 플랜
+    expect(FREE_LANES_PER_TICK * LANE_SECONDS).toBeLessThan(CRON_CPU_LIMIT)
+  })
+
+  it('🔒 그래도 1 이상 — 0 이면 파이프라인이 통째로 멈춘다', () => {
+    expect(FREE_LANES_PER_TICK).toBeGreaterThanOrEqual(1)
+  })
+
+  it('🔒 유료는 조를 1개로 만들 만큼 크다 — 전환에 코드 변경이 없어야 한다', () => {
+    expect(PAID_LANES_PER_TICK).toBeGreaterThan(FREE_LANES_PER_TICK * 4)
+  })
+})
