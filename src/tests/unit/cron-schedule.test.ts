@@ -68,13 +68,51 @@ describe('wrangler.toml cron 배열', () => {
     expect([...new Set(dup)], '같은 표현식이 두 번 — 한 번은 무의미').toEqual([])
   })
 
-  it('주간 D1 백업 트리거가 살아 있다', () => {
-    // 백업이 배열에서 사라지면 재해복구가 다시 0 이 된다. 몇 달간 그 상태였다.
-    const hasWeekly = EXPRS.some((e) => {
-      const f = e.trim().split(/\s+/)
-      return f[4] !== '*' // day-of-week 가 지정된 = 주간 스케줄
-    })
-    expect(hasWeekly, '주간(day-of-week 지정) 트리거가 없다 — D1 백업 cron 이 빠졌다').toBe(true)
+  /**
+   * 🔴 2026-08-02 — 이 자리에 원래 *"주간 D1 백업 트리거가 살아 있다"* 가 있었다. **전제가 틀렸다.**
+   *
+   * 그 테스트는 "백업이 배열에서 사라지면 재해복구가 0" 을 전제했는데, 실측은 다르다:
+   *   - `d1-backup.yml`(GitHub Actions, 주간)이 **3주 연속 성공** 중이다(#903 — 07-15·22·29,
+   *     최신 아티팩트 23.97MB). 워커 cron 백업은 *유일 수단*이 아니라 **이중화의 두 번째 갈래**다.
+   *
+   * 그리고 더 큰 사실이 있다 — 문법을 `SUN` 으로 고쳐 배포한 결과(run 30749528808):
+   *   `This account has reached the Workers Free limit of 5 cron triggers per account.
+   *    Upgrade to Workers Paid to increase this limit to 1,000  [code: 10072]`
+   *   ⇒ 한도는 **스크립트당이 아니라 계정당 5개**다. 네 번째 항목은 **어떤 문자열로 쓰든 거부된다.**
+   *   ⇒ 배열에 남겨두면 **모든 배포가 빨간불**이 되고(스크립트는 올라가지만 스케줄 PUT 실패),
+   *     그 빨간불이 일상이 되면 진짜 실패를 못 알아본다.
+   *
+   * 그래서 검사를 바꾼다: *"백업 트리거가 배열에 있다"* → **"백업 경로가 최소 하나는 살아 있다"**.
+   * 지키려던 것(재해복구 0 방지)은 그대로이고, 지킬 수 없는 방식만 뺐다.
+   */
+  it('D1 백업 경로가 최소 하나는 살아 있다 (워커 cron 또는 CI)', () => {
+    const weeklyCron = EXPRS.some((e) => e.trim().split(/\s+/)[4] !== '*')
+    let ciBackup = false
+    try {
+      ciBackup = /schedule:/.test(readFileSync('.github/workflows/d1-backup.yml', 'utf8'))
+    } catch { ciBackup = false }
+    expect(
+      weeklyCron || ciBackup,
+      '백업 경로가 하나도 없다 — 워커 주간 cron 도, d1-backup.yml 스케줄도 없다(재해복구 0)',
+    ).toBe(true)
+  })
+
+  /**
+   * 💸 무료 플랜 한도 — 배포 실패를 **커밋 시점으로 앞당긴다.**
+   *
+   * 계정당 5개이고 다른 워커(ur-ads 등)가 나머지를 쓴다. ur-live 의 실측 몫이 3이다.
+   * 하나 더 넣으면 deploy 가 거부되는데, 그건 **배포해 봐야 알게 되는 실패**다 — 여기서 막는다.
+   *
+   * ⚠️ **유료 전환($5/월, 한도 1,000) 시 이 숫자를 올릴 것.** 그때 `"0 20 * * SUN"`(주간 백업)과
+   *    `"0 0 * * 1"`(주간 지급)을 복귀시킨다. 주간 지급은 **첫 정산(D+7) 전까지** 결정이 필요하다.
+   */
+  const FREE_PLAN_SHARE = 3
+  it(`무료 플랜에서 등록 가능한 몫(${FREE_PLAN_SHARE})을 넘지 않는다`, () => {
+    expect(
+      EXPRS.length,
+      `cron ${EXPRS.length}개 — 계정당 5개 한도(code 10072)에 걸려 배포가 거부된다. ` +
+        '유료 전환했다면 이 테스트의 FREE_PLAN_SHARE 를 올릴 것.',
+    ).toBeLessThanOrEqual(FREE_PLAN_SHARE)
   })
 
   it('cron 이 코드에 실제로 배선돼 있다 (트리거만 있고 호출부가 없으면 무의미)', () => {
