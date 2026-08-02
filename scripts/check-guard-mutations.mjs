@@ -556,17 +556,27 @@ const MUTATIONS = [
     file: '.github/workflows/deploy-ads.yml',
     find: 'WAIT=$(( i == 1 ? 60 : (i == 2 ? 150 : 300) ))',
     replace: 'WAIT=$(( i * 10 ))',
-    test: 'src/tests/unit/deploy-ads-workflow.test.ts',
+    test: 'src/tests/unit/deploy-retry-backoff.test.ts',
     why:
       'Cloudflare 10429 는 초 단위로 안 풀린다 — 실측에서 3회 재시도가 40초 안에 소진돼 배포가 실패했고 ' +
       'ur-ads 가 낡은 코드로 계속 돌았다(머지 2건이 조용히 미배포). 라이브는 멀쩡해 보인다.',
+  },
+  {
+    name: '소비자 Pages 배포 백오프가 초 단위로 회귀',
+    file: '.github/workflows/main.yml',
+    find: "                SLEEP=$(( i == 1 ? 60 : (i == 2 ? 150 : 300) ))",
+    replace: "                SLEEP=$((i * 10))",
+    test: 'src/tests/unit/deploy-retry-backoff.test.ts',
+    why:
+      '소비자 사이트 배포가 같은 10429 로 **연속 4회** 실패했다(22:53·23:37·23:47·23:56 KST). ' +
+      '라이브가 4개 머지만큼 뒤처졌는데 화면은 멀쩡해 보인다 — 한 곳만 고치면 다른 곳이 같은 이유로 죽는다.',
   },
   {
     name: '배포 워크플로가 자기 자신을 경로에서 잃음',
     file: '.github/workflows/deploy-ads.yml',
     find: "      - '.github/workflows/deploy-ads.yml'",
     replace: '',
-    test: 'src/tests/unit/deploy-ads-workflow.test.ts',
+    test: 'src/tests/unit/deploy-retry-backoff.test.ts',
     why:
       '자기 자신이 paths 에 없으면 **이 워크플로의 수리가 배포되지 않는다** — 깨진 배포 경로를 고쳐도 ' +
       '무관한 코드 변경을 기다려야 적용된다(수리를 검증할 방법이 없는 자기참조적 사각지대).',

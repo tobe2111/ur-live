@@ -49,7 +49,7 @@ concurrency:
 jobs:
   deploy-worker:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
@@ -88,7 +88,7 @@ jobs:
           # 비상 탈출구: workflow_dispatch 의 `allow_schedule_drift=true`.
           #   파일을 고치지 않고 1회만 경고로 낮춘다(스케줄 API 간헐 장애 때 배포를 풀기 위한 것).
           ALLOW_DRIFT="${{ inputs.allow_schedule_drift }}"
-          MAX_RETRY=3
+          MAX_RETRY=4
           SCHED_ERR=""
           for i in $(seq 1 $MAX_RETRY); do
             echo "=== wrangler deploy attempt $i/$MAX_RETRY ==="
@@ -106,8 +106,14 @@ jobs:
               echo "⚠️ Attempt $i 실패(스크립트 미업로드)."
             fi
             if [ $i -lt $MAX_RETRY ]; then
-              SLEEP=$((i * 10))
-              echo "${SLEEP}s 후 재시도..."
+              # ⏱️ 10429(레이트 리밋)는 초 단위로 안 풀린다 — 근거는 main.yml 의 같은 블록 주석 참조.
+              if echo "$OUT" | grep -qE '10429|Rate limited'; then
+                SLEEP=$(( i == 1 ? 60 : (i == 2 ? 150 : 300) ))
+                echo "⏳ Cloudflare 레이트 리밋(10429) — ${SLEEP}s 후 재시도"
+              else
+                SLEEP=$((i * 10))
+                echo "${SLEEP}s 후 재시도..."
+              fi
               sleep $SLEEP
             fi
           done
