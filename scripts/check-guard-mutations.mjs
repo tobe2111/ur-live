@@ -112,6 +112,17 @@ const MUTATIONS = [
       '받았다. 그 400 을 근거로 "서비스가 폐기됐다"고 결론 낼 뻔했다 — 진단 도구가 오진의 재료가 되는 최악의 모양이다.',
   },
   {
+    name: 'code 12 힌트가 "폐기 확정"으로 읽히게 약해짐',
+    file: 'src/features/marketing/api/public-data-diag.ts',
+    find: '⚠️ **폐기와 경로 오타를 구분할 수 없는 코드다**',
+    replace: '서비스 URL/오퍼레이션명이 틀렸거나 폐기됨',
+    test: 'src/tests/unit/public-data-diag.test.ts',
+    why:
+      '2026-08-03 에 **내가 직접 이 오추론을 했다** — code 12 를 보고 "공정위 서비스 폐기 확정"이라고 인계에 적었다. ' +
+      '대조군을 찔러 보니 살아있는 `MllBs_2Service`(같은 키로 200·264만건)도 오퍼레이션을 틀리면 **같은 code 12** 였다. ' +
+      '두 가능성을 나열만 하는 문구는 읽는 사람이 자기 가설에 맞는 쪽을 고르게 둔다 — 오추론을 **명시적으로 막아야** 한다.',
+  },
+  {
     name: '레인 일감이 요금제를 모름(예산만 커지고 일은 그대로)',
     file: 'src/features/marketing/api/nps-workplace-enrich.ts',
     find: 'const maxLeads = maxLeadsArg ?? envPlanValue(undefined, 40, 120, env)',
