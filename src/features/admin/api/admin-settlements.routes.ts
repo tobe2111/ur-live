@@ -116,11 +116,11 @@ adminSettlementsRoutes.get('/settlement/stats', cors(), async (c) => {
       SELECT s.id as seller_id, s.name as seller_name, s.business_name,
              COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
              COUNT(o.id) as order_count,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as commission_amount,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as seller_amount,
-             COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='pending' THEN COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) ELSE 0 END),0) as pending_amount,
-             COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='completed' THEN COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) ELSE 0 END),0) as settled_amount
+             COALESCE(SUM(COALESCE(o.total_amount, 0)),0) as total_sales,
+             COALESCE(SUM(COALESCE(o.total_amount, 0)*COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as commission_amount,
+             COALESCE(SUM(COALESCE(o.total_amount, 0)*(1-COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as seller_amount,
+             COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='pending' THEN COALESCE(o.total_amount, 0)*(1-COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) ELSE 0 END),0) as pending_amount,
+             COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='completed' THEN COALESCE(o.total_amount, 0)*(1-COALESCE(o.commission_rate,s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) ELSE 0 END),0) as settled_amount
       FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id AND o.status IN ('DONE','PAID','DELIVERED') ${df}
       GROUP BY s.id ORDER BY total_sales DESC`);
     if (fullSellers !== null) {
@@ -130,11 +130,11 @@ adminSettlementsRoutes.get('/settlement/stats', cors(), async (c) => {
         SELECT s.id as seller_id, s.name as seller_name, s.business_name,
                ${DEFAULT_COMMISSION_RATE} as commission_rate,
                COUNT(o.id) as order_count,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*${DEFAULT_COMMISSION_RATE}/100),0) as commission_amount,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100)),0) as seller_amount,
-               COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='pending' THEN COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100) ELSE 0 END),0) as pending_amount,
-               COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='completed' THEN COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100) ELSE 0 END),0) as settled_amount
+               COALESCE(SUM(COALESCE(o.total_amount, 0)),0) as total_sales,
+               COALESCE(SUM(COALESCE(o.total_amount, 0)*${DEFAULT_COMMISSION_RATE}/100),0) as commission_amount,
+               COALESCE(SUM(COALESCE(o.total_amount, 0)*(1-${DEFAULT_COMMISSION_RATE}/100)),0) as seller_amount,
+               COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='pending' THEN COALESCE(o.total_amount, 0)*(1-${DEFAULT_COMMISSION_RATE}/100) ELSE 0 END),0) as pending_amount,
+               COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='completed' THEN COALESCE(o.total_amount, 0)*(1-${DEFAULT_COMMISSION_RATE}/100) ELSE 0 END),0) as settled_amount
         FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id
         WHERE 1=1 ${df}
         GROUP BY s.id ORDER BY total_sales DESC`);

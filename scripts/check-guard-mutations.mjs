@@ -57,6 +57,53 @@ const ONLY = (() => {
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '이용권 정산이 없는 컬럼(products.commission_rate)을 읽어 회차 전체가 죽음',
+    file: 'src/worker/cron/auto-settlement.ts',
+    find: 'COALESCE(s.commission_rate, ?)',
+    replace: 'COALESCE(p.commission_rate, ?)',
+    test: 'src/tests/unit/auto-settlement-rail-a.test.ts',
+    why:
+      '`products` 에 `commission_rate` 는 **존재한 적이 없다**(프로덕션 pragma 0 · baseline 97컬럼에도 없음). ' +
+      '그래서 이 SELECT 는 매일 03:00 KST 에 `no such column` 으로 던지고 정산 회차가 통째로 죽었다. ' +
+      '셀러별 수수료의 SSOT 는 `sellers.commission_rate` 다. SELECT 절은 `check-sql-column-exists` 의 ' +
+      '**명시된 사각지대**(JOIN/alias 복잡도로 skip)라 정적 가드가 못 봤다 — 그래서 테스트로 박았다.',
+  },
+  {
+    name: '정산 cron 이 Rail A 를 스스로 프로비저닝해 이중지급을 깨움',
+    file: 'src/worker/cron/auto-settlement.ts',
+    find: 'if (!(await railAProvisioned(DB))) {',
+    replace: 'if (false) {',
+    test: 'src/tests/unit/auto-settlement-rail-a.test.ts',
+    why:
+      'Rail A(`restaurant_settlements`)는 프로덕션에 **테이블조차 없다** — 한 행도 만든 적이 없다. ' +
+      '실제 지급은 Rail B(원장→payouts)가 한다. 여기서 게이트를 없애면 과거 사용분 전체가 Rail A 에 ' +
+      '한꺼번에 적재되고, 두 레일은 서로의 멱등 마커를 안 보므로 **같은 매출을 두 번 지급**한다. ' +
+      '`settlement-reconciliation.md` §Severe 3 이 머니 경로로 파킹해 둔 자리다.',
+  },
+  {
+    name: '컬럼 가드의 SELECT 패스가 보간 쿼리를 통째로 건너뛰어 헛돎',
+    file: 'scripts/check-sql-column-exists.mjs',
+    find: "      let prev\n      do { prev = stmt; stmt = stmt.replace(/\\$\\{[^{}]*\\}/g, ' ') } while (stmt !== prev)",
+    replace: '      continue',
+    test: 'src/tests/unit/auto-settlement-rail-a.test.ts',
+    why:
+      '첫 구현이 `${}` 보간을 보면 statement 를 건너뛰었는데, **이 사건의 원본 쿼리**' +
+      '(`auto-settlement` 의 `${ledgerSkipClause}`)가 정확히 그 형태라 주입 검증에서 초록이 떴다. ' +
+      '보간 조각만 지우고 나머지 리터럴은 검사해야 한다 — 안 그러면 SELECT 패스를 붙여 놓고도 ' +
+      '정작 그것 때문에 만들어진 결함을 못 본다.',
+  },
+  {
+    name: '일일 진단이 캐리어에 없는 Pages 전용 키로 매일 거짓 🔴 를 냄',
+    file: 'src/worker/cron/daily-self-diagnostic.ts',
+    find: 'const carrierKeys = [...new Set(',
+    replace: "const carrierKeys = ['JWT_SECRET', ...new Set(",
+    test: 'src/tests/unit/diagnostic-carrier-scope.test.ts',
+    why:
+      '`JWT_SECRET`·`REFRESH_TOKEN_SECRET`·`KAKAO_REST_API_KEY` 는 **Pages** 에 있고 cron 캐리어엔 ' +
+      '없는 게 정상인데, 진단이 자기 env 에서 찾아 매일 🔴 3건을 냈다(라이브 `/api/version` 은 셋 다 present). ' +
+      '거짓 경보 옆에 진짜가 섞이면 구분이 안 된다 — 늑대소년은 알림을 켜는 순간이 아니라 이미 시작돼 있었다.',
+  },
+  {
     name: '매장 보강이 크롤 불가 URL 에 슬롯을 낭비함',
     file: 'src/features/marketing/api/prospect-enrich.ts',
     find: '${COOL} AND ${platformNot}',
@@ -874,6 +921,38 @@ const MUTATIONS = [
     why:
       '예산은 픽 4개를 다 못 돈다(보통 1~2개). 계획한 수만큼 밀면 처리 못 한 키워드를 지나쳐 ' +
       '**한 바퀴에 한 번도 안 걸리는 자리**가 생긴다 — 우선/일반 커서가 `prefixDone` 을 쓰는 이유와 같은 병(leapfrog).',
+  },
+  {
+    name: "bare '마케터' 가 소개글까지 대행사로(이용권 축에서 훔쳐옴)",
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: '광고\\s*(운영|세팅|집행)/i,\n    nameRe:',
+    replace: '광고\\s*(운영|세팅|집행)|마케터/i,\n    nameRe:',
+    test: 'src/tests/unit/ads-classify-marketer.test.ts',
+    why:
+      '라이브 실측: 대행사 273명 중 **45명(16%)이 오직 이 단어 하나로** 들어왔고, 원래 자리는 ' +
+      '맛집 10 · 외식창업 8 · IT/재테크 5 · 카페 5 · 숙소 4 · 여행 2 · 패션 1 · 미분류 10 — ' +
+      '대부분 이용권 본체 축이다. "15년차 마케터. 75개국 여행" 이 여행 블로거를 대행사로 만든다.',
+  },
+  {
+    name: '이름 전용 신호를 안 봄(진짜 마케터가 사라짐)',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: 'if (!r.re.test(text) && !(r.nameRe && r.nameRe.test(name))) continue',
+    replace: 'if (!r.re.test(text)) continue',
+    test: 'src/tests/unit/ads-classify-marketer.test.ts',
+    why:
+      '좁히기의 짝이다. `nameRe` 를 안 보면 싱어송마케터·지역전문마케터·QR마케터처럼 **이름으로 자기를 ' +
+      '선언한 실제 마케터 14명**이 통째로 빠진다 — 오탐을 줄이려다 정탐을 버리는 형태.',
+  },
+  {
+    name: '규칙이 거부하는 옛 카테고리를 안 비움(영구 고착)',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: "  if (stored === '마케팅대행사') {",
+    replace: "  if (false && stored === '마케팅대행사') {",
+    test: 'src/tests/unit/ads-classify-marketer.test.ts',
+    why:
+      '재분류는 `classifyCategory` 가 **null 이면 그대로 둔다.** 규칙을 좁히면 어느 규칙에도 안 걸리는 ' +
+      '행이 생기는데(실측 45 중 10건), 안 비우면 옛 값이 영구히 굳는다 — `shouldClearCategory` docblock 이 ' +
+      '입주 시공업체 27명 실측으로 이미 경고한 바로 그 형태("측정하면 점진 교정된다"는 낙관은 틀렸다).',
   },
 ]
 

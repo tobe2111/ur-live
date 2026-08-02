@@ -318,7 +318,7 @@ sellerPublicRoutes.get('/seller/analytics', requireAuth(), async (c) => {
     // 최근 단골 10명
     const { results: recent } = await DB.prepare(`
       SELECT sf.user_id, sf.created_at,
-             u.display_name, u.profile_image
+             u.name AS display_name, u.profile_image
       FROM seller_follows sf
       LEFT JOIN users u ON u.id = sf.user_id
       WHERE sf.seller_id = ?

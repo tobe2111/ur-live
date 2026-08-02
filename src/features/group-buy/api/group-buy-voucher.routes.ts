@@ -143,7 +143,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         const meta = await DB.prepare(
           `SELECT v.id AS voucher_id, v.order_id, v.user_id, v.applied_price, u.phone,
                   p.name AS product_name, p.restaurant_name, p.category,
-                  p.seller_id, p.consigned_from_seller_id
+                  p.seller_id, NULL AS consigned_from_seller_id -- 실컬럼 아님(2026-08-02): 쿼리가 통째로 던졌다. 상세=2026-08-02 인계 §4-b
            FROM vouchers v
            LEFT JOIN users u ON u.id = v.user_id
            LEFT JOIN products p ON p.id = v.product_id
@@ -339,7 +339,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       // voucher + product seller 검증
       const voucher = await DB.prepare(
         `SELECT v.id, v.status, v.user_id, v.product_id, v.applied_price,
-                p.seller_id, p.consigned_from_seller_id, p.name AS product_name, p.restaurant_name, p.category
+                p.seller_id, NULL AS consigned_from_seller_id, p.name AS product_name, p.restaurant_name, p.category
          FROM vouchers v LEFT JOIN products p ON p.id = v.product_id
          WHERE v.code = ?`
       ).bind(code).first<{ id: number; status: string; user_id: string; product_id: number; applied_price: number | null; seller_id: number; consigned_from_seller_id: number | null; product_name: string; restaurant_name: string | null; category: string | null }>()
