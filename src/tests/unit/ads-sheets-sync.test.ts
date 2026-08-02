@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { b64url, SHEET_HEADER, leadToRow, type SheetLead } from '@/features/marketing/api/sheets-sync'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { b64url, SHEET_HEADER, leadToRow, parseSheetCursor, type SheetLead } from '@/features/marketing/api/sheets-sync'
 
 /**
  * 📊 2026-07-21 인플루언서 풀 → 구글시트 동기화 순수부 잠금.
@@ -68,5 +70,47 @@ describe('b64url — JWT 인코딩', () => {
   })
   it('바이너리 입력(서명 바이트) 처리', () => {
     expect(b64url(new Uint8Array([0xfb, 0xff, 0x3e]))).toBe('-_8-')
+  })
+})
+
+/**
+ * 🧱 **커서 미러** — 전량을 한 인보케이션에 담던 것이 CPU 사망의 원인이었다(2026-08-02 라이브).
+ *
+ *   실측: `ads:sheets-sync` 가 매시간 `Worker exceeded CPU time limit`(ms 29,191).
+ *   28k행일 땐 됐고 42k행에서 죽었다 — **성장에 비례해 영구히 실패**하는 형태라,
+ *   "가끔 실패"로 보고 재시도로 넘길 수 있는 종류가 아니다.
+ *
+ *   ⚠️ 이 테스트가 못 막는 것: 실제 CPU 사용량은 코드로 못 본다.
+ *     판정은 라이브 하트비트(`ads:sheets-sync` ok)와 `ads_sheets_last_sync.partial` 로 한다.
+ */
+describe('시트 미러 — 커서로 이어 붙인다', () => {
+  const raw = readFileSync(join(process.cwd(), 'src/features/marketing/api/sheets-sync.ts'), 'utf8')
+  /**
+   * ⚠️ **주석을 걷어내고 코드만 본다.** 첫 판은 이 파일의 docblock 이 옛 구조를 *설명하려고*
+   *   `rows.push(leadToRow(l))` 를 인용해 놨는데 가드가 거기 걸렸다 — 근거를 적을수록 가드가
+   *   깨지는 형태라 그대로 두면 다음 사람이 주석을 지워서 초록을 만든다(가드가 문서를 이긴다).
+   */
+  const src = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+
+  it('회차당 몫이 있다 — 없으면 풀이 커질수록 확실히 다시 죽는다', () => {
+    expect(src).toMatch(/const ROWS_PER_RUN = [\d_]+/)
+    expect(src).toMatch(/while \(wrote < ROWS_PER_RUN\)/)
+  })
+
+  it('🚫 전량을 메모리에 쌓지 않는다 — 페이지를 읽는 즉시 기록하고 버린다', () => {
+    // 옛 구조의 지문: 전량 배열에 push 해 두고 나중에 slice 로 청크를 떠서 썼다.
+    expect(src).not.toMatch(/rows\.push\(leadToRow/)
+    expect(src).toMatch(/page\.slice\(i, i \+ CHUNK\)\.map\(leadToRow\)/)
+  })
+
+  it('🚫 매 회차 전체 clear 를 하지 않는다 — 사이클이 여러 회차라 시트가 비는 구간이 생긴다', () => {
+    expect(src).not.toMatch(/\/values\/\$\{TAB\}:clear/)
+  })
+
+  it('커서 파싱: 정상값은 그대로, 깨진 값은 0(전량 재시작 = 누락보다 안전한 방향)', () => {
+    expect(parseSheetCursor(JSON.stringify({ off: 12000, total: 42256 }))).toEqual({ off: 12000, total: 42256 })
+    for (const raw of [null, undefined, '', 'not-json', '{"off":-5}', '{"off":"x"}']) {
+      expect(parseSheetCursor(raw as never).off, `raw=${String(raw)}`).toBe(0)
+    }
   })
 })
