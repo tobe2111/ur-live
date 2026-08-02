@@ -286,7 +286,7 @@ import { sectionsRoutes } from '../features/sections/api/sections.routes';
 import { youtubeGrowthRoutes, youtubeGrowthAdminRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
 import { dashboardNotificationsRoutes } from '../features/notifications/api/dashboard-notifications.routes';
 import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
-import { returnsRoutes } from '../features/returns/api/returns.routes';
+import { returnsRoutes } from '../features/returns/api';
 import { auctionRoutes } from '../features/auction/api/auction.routes';
 import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
 import { communityGroupBuyRoutes } from '../features/community-group-buy/api/community-group-buy.routes';
