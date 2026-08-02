@@ -131,6 +131,16 @@ const MUTATIONS = [
       '본문만 봐서 선언 위에 심은 헬퍼를 못 봤다. 파일 전체를 보게 고친 뒤 빨강.',
   },
   {
+    name: '추천 보너스 원장 폴백 제거',
+    file: 'src/features/group-buy/api/referral-bonus.ts',
+    find: "await recordPointTxMinimal(DB, uid, 'referral_bonus', bonus, desc)",
+    replace: '/* removed */',
+    test: 'src/tests/unit/point-credit-ledger-row.test.ts',
+    why:
+      '이 원장 행은 잔액 기록이자 **중복 방지 키**다(`alreadyRewarded` 가 description LIKE 로 읽는다). ' +
+      '행이 없으면 같은 추천 조합이 매번 다시 보상받는다 — 불일치를 넘어 반복 지급.',
+  },
+  {
     name: '우선업종 category 오타(조용한 0 순위)',
     file: 'src/features/marketing/api/store-kakao-collect.ts',
     find: "{ kw: '한식', category: '일반음식점' }",

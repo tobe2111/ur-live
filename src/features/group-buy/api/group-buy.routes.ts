@@ -16,6 +16,7 @@ import { recordLedger } from '@/worker/utils/ledger'
 import { formatKSTDate } from '@/utils/date' // 워커 TZ=UTC — 만료일 안내가 하루 이르던 것 교정
 import { swallow } from '@/worker/utils/swallow'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
+import { grantGroupBuyReferralBonus } from './referral-bonus'
 import { productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns'
 import { getCommissionRates, calcInfluencerCommissionPct } from './commission-rates'
 import type { Env } from '@/worker/types/env'
@@ -938,54 +939,16 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       'SELECT code, expires_at FROM vouchers WHERE order_id = ? AND user_id = ?'
     ).bind(newOrderId, userId).all<{ code: string; expires_at: string }>()
 
-    // 🛡️ 2026-05-15: Referral 추적 — affiliate_ref 헤더로 추천인 식별 시
-    //   양쪽 0.5% 보너스 딜 (네트워크 효과 vs 마진 보호 균형).
-    //   ✨ first-time-only: 같은 (ref, joiner) 조합은 1회만 보상 — point_transactions 에서 dedup.
-    //   본인 self-refer 차단.
-    try {
-      const refRaw = c.req.header('X-Affiliate-Ref') || ''
-      const refUserId = refRaw && /^\d+$/.test(refRaw) ? refRaw : null
-      if (refUserId && refUserId !== String(userId)) {
-        const refExists = await DB.prepare("SELECT 1 FROM users WHERE id = ?").bind(refUserId).first().catch(() => null)
-        if (refExists) {
-          // first-time check — 같은 추천 조합 이미 보상 받았는지 확인
-          const alreadyRewarded = await DB.prepare(
-            `SELECT 1 FROM point_transactions
-             WHERE type = 'referral_bonus'
-               AND user_id = ?
-               AND description LIKE '%' || ? || '%'
-             LIMIT 1`
-          ).bind(userId, `from:${refUserId}`).first().catch(() => null)
-
-          if (!alreadyRewarded) {
-            // 🛡️ 2026-05-22 정책 중앙화 — COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT
-            const { COMMISSION_DEFAULTS } = await import('../../../shared/constants/policy')
-            const bonus = Math.round(totalAmount * COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT / 100)
-            if (bonus > 0) {
-              // 🛡️ 2026-05-22: swallow() — 추천 보너스 실패 시 description 으로 추적 가능 (silent 금지).
-              // 💸 2026-07-05 버킷: 추천 보상 = 무상 딜 (free_balance 동시 증가 — 출금 제외·우선 차감)
-              await DB.prepare("UPDATE user_points SET balance = balance + ?, free_balance = COALESCE(free_balance, 0) + ? WHERE user_id = ?").bind(bonus, bonus, refUserId).run().catch(swallow('group-buy:referral-bonus:referrer-balance'))
-              await DB.prepare(
-                `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id, free_delta)
-                 VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
-              ).bind(refUserId, bonus, bonus, refUserId, `공구 추천 보상 (to:${userId}): ${product.name}`, orderNumber, bonus).run().catch(swallow('group-buy:referral-bonus:referrer-tx'))
-              await DB.prepare("UPDATE user_points SET balance = balance + ?, free_balance = COALESCE(free_balance, 0) + ? WHERE user_id = ?").bind(bonus, bonus, userId).run().catch(swallow('group-buy:referral-bonus:invitee-balance'))
-              await DB.prepare(
-                `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id, free_delta)
-                 VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
-              ).bind(userId, bonus, bonus, userId, `친구 추천 가입 보상 (from:${refUserId}): ${product.name}`, orderNumber, bonus).run().catch(swallow('group-buy:referral-bonus:invitee-tx'))
-              // 🔔 2026-07-01: 추천 보너스 딜 적립 알림(이전엔 무통보 — 유저가 딜 받은 줄 모름).
-              try {
-                const { notifyUser } = await import('../../../lib/notifications')
-                const bonusStr = Number(bonus).toLocaleString('ko-KR')
-                await notifyUser(DB, String(refUserId), 'referral_bonus', '🎉 추천 보상 딜 적립', `공구 추천 보상으로 ${bonusStr}딜이 적립됐어요.`, '/my-deal-history').catch(swallow('group-buy:referral-bonus:notify-referrer'))
-                await notifyUser(DB, String(userId), 'referral_bonus', '🎉 친구 추천 보상 딜 적립', `친구 추천 가입 보상으로 ${bonusStr}딜이 적립됐어요.`, '/my-deal-history').catch(swallow('group-buy:referral-bonus:notify-invitee'))
-              } catch { /* best-effort */ }
-            }
-          }
-        }
-      }
-    } catch (e) { if (import.meta.env?.DEV) console.warn('[group-buy referral]', e) }
+    // 💸 추천 보너스(양쪽 0.5%) — 잔액·원장·중복방지가 한 세트라 모듈로 분리(2026-08-02).
+    //   원장 행이 곧 중복 방지 키다 — 상세는 referral-bonus.ts 상단 참조.
+    await grantGroupBuyReferralBonus({
+      DB,
+      refRaw: c.req.header('X-Affiliate-Ref') || '',
+      userId,
+      totalAmount,
+      productName: product.name,
+      orderNumber,
+    })
 
     // 🏁 2026-06-11 (참여하기 느림 수술): 이메일 영수증(Resend 외부 HTTP) — 응답 후 실행(waitUntil).
     //   블록 내용/순서/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 기존처럼 동기 실행.
