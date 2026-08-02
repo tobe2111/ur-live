@@ -28,6 +28,8 @@ export interface AdsPoolDiag {
   maintenance: unknown
   /** 🌙 라이브 재보정 결과(`ads_maintenance_rescan_last`) */
   maintenance_rescan: unknown
+  /** 🪂 마지막 팬아웃 기록(`ads_enrich_fanout_last`) — 다음 회차가 착지 판정에 쓰는 기준값. */
+  enrich_fanout: unknown
   /**
    * 🚦 이번 정각의 디스패치 선별 결과(`ads_dispatch_last`) — 무료 CPU 예산 분산(#919).
    * 미룬 레인이 있을 때만 기록된다(없으면 undefined = 전부 돌았다).
@@ -58,7 +60,7 @@ export async function getAdsPoolDiag(DB: D1Database): Promise<AdsPoolDiag> {
       .first<{ value: string }>().catch(() => null),
     DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_sheets_last_sync'")
       .first<{ value: string }>().catch(() => null),
-    DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN ('ads_maintenance_last','ads_maintenance_rescan_last','ads_sheets_last_cron','ads_dispatch_last','${INFLUENCER_ENRICH_SNAPSHOT_KEY}')`)
+    DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN ('ads_maintenance_last','ads_maintenance_rescan_last','ads_sheets_last_cron','ads_dispatch_last','ads_enrich_fanout_last','${INFLUENCER_ENRICH_SNAPSHOT_KEY}')`)
       .all<{ key: string; value: string }>().catch(() => null),
   ])
   const find = (k: string) => mRows?.results?.find(r => r.key === k)?.value
@@ -75,5 +77,8 @@ export async function getAdsPoolDiag(DB: D1Database): Promise<AdsPoolDiag> {
     // 🚦 이번 회차가 무엇을 돌리고 무엇을 미뤘는가(예산 분산). 이걸 안 내보내면 **미룬 것과 죽은 것을
     //   구분할 수단이 없다** — 스냅샷을 쓰기만 하고 노출을 안 해서 첫 판정에서 실제로 못 봤다.
     dispatch: parseJson(find('ads_dispatch_last')),
+    // 🪂 팬아웃 자기신고 — "띄웠다"와 "착지했다"를 구분하는 유일한 기록.
+    //   이게 안 보이면 하트비트 초록만 보고 '정상'으로 오판한다(2026-08-02 실측: 6시간 정지인데 ok).
+    enrich_fanout: parseJson(find('ads_enrich_fanout_last')),
   }
 }

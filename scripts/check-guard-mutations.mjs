@@ -112,6 +112,30 @@ const MUTATIONS = [
     why: '래칫이 신규 우회를 안 잡으면 예산 밖 레인이 조용히 늘어난다(부모 CPU 직격).',
   },
   {
+    name: '수집 타임라인 KST 보정 제거',
+    file: 'src/features/marketing/api/pool-timeline.ts',
+    find: "DATE(${tsColumn}, '+9 hours') AS d",
+    replace: 'DATE(${tsColumn}) AS d',
+    test: 'src/tests/unit/ads-pool-timeline.test.ts',
+    why: 'D1 값은 Z 없는 UTC 라 보정 없이 DATE() 하면 한국 사용자에게 하루 밀린 날짜를 보여준다(실사고 4건 클래스).',
+  },
+  {
+    name: '수집 타임라인 풀 컬럼 혼동',
+    file: 'src/features/marketing/api/pool-timeline.ts',
+    find: "company: { table: 'ad_company_leads', tsColumn: 'collected_at' },",
+    replace: "company: { table: 'ad_company_leads', tsColumn: 'created_at' },",
+    test: 'src/tests/unit/ads-pool-timeline.test.ts',
+    why: '2026-08-02 라이브 실사고 재현: created_at 으로 적어 배포했더니 no such column 을 catch 가 삼켜 **에러 없이 allTime 0**(17만 건 풀이 빈 것처럼). 둘 다 collected_at 이다.',
+  },
+  {
+    name: '팬아웃 자기신고 무력화(띄웠다=성공)',
+    file: 'src/features/marketing/api/enrich-fanout-health.ts',
+    find: '    ok: verdict.landed !== false,',
+    replace: '    ok: true,',
+    test: 'src/tests/unit/ads-enrich-fanout-health.test.ts',
+    why: '필드만 추가하고 ok 를 안 뒤집으면 화면은 여전히 초록이다 — 자식이 전멸해도 6시간을 모른다(08-02 실측).',
+  },
+  {
     name: '풀 스캔 작업 상한 제거',
     file: 'src/features/marketing/api/pool-scan-budget.ts',
     find: 'if (n >= POOL_SCAN_MAX_ROWS) return true',
@@ -129,6 +153,16 @@ const MUTATIONS = [
       '이 파일은 "순수 데이터"라는 이유로 600줄 캡을 면제받았다. 로직이 들어오면 그 근거가 사라져 ' +
       '단지 "린트를 끈 1,000줄짜리 파일"이 된다. 이 주입은 처음엔 **초록이 떴다** — 검사가 배열 ' +
       '본문만 봐서 선언 위에 심은 헬퍼를 못 봤다. 파일 전체를 보게 고친 뒤 빨강.',
+  },
+  {
+    name: '추천 보너스 원장 폴백 제거',
+    file: 'src/features/group-buy/api/referral-bonus.ts',
+    find: "await recordPointTxMinimal(DB, uid, 'referral_bonus', bonus, desc)",
+    replace: '/* removed */',
+    test: 'src/tests/unit/point-credit-ledger-row.test.ts',
+    why:
+      '이 원장 행은 잔액 기록이자 **중복 방지 키**다(`alreadyRewarded` 가 description LIKE 로 읽는다). ' +
+      '행이 없으면 같은 추천 조합이 매번 다시 보상받는다 — 불일치를 넘어 반복 지급.',
   },
   {
     name: '우선업종 category 오타(조용한 0 순위)',

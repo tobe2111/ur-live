@@ -12,6 +12,7 @@
  *   ⚠️ 서비스 분리: `ad_influencer_leads` + `platform_settings` 만 접촉(소비자/도매 무관).
  */
 import { Hono } from 'hono'
+import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
 
 export const enrichRoutes = new Hono<{ Bindings: Env }>()
@@ -196,6 +197,32 @@ enrichRoutes.post('/__ads/enrich-influencer', async (c) => {
  *   같은 행을 중복 조회하고 예산만 태운다).
  *   💥 실패하면 그 자리에서 멈추고 원문을 돌려준다 — 남은 라운드를 헛돌리지 않고, 다음 정각이 이어받는다.
  */
+/** 팬아웃 자기신고 기록 키 — `enrich-fanout-health.ts` 의 `FanoutStamp` 가 이 값의 스키마다. */
+const FANOUT_KEY = 'ads_enrich_fanout_last'
+
+/**
+ * 🪂 팬아웃 자기신고 — 직전 회차의 착지 여부를 판정해 하트비트에 싣고, 이번 회차의 비교 기준을 남긴다.
+ * **던지지 않는다** — 관측이 작업을 막으면 안 된다(이 파일의 다른 관측도 전부 같은 규약).
+ */
+async function reportFanout(env: { DB: D1Database }, k: number, planned: number): Promise<void> {
+  try {
+    const { judgeFanout, fanoutBeatResult } = await import('@/features/marketing/api/enrich-fanout-health')
+    const { INFLUENCER_ENRICH_SNAPSHOT_KEY } = await import('@/features/marketing/api/enrich-telemetry')
+    const rows = await env.DB.prepare(
+      `SELECT key, value FROM platform_settings WHERE key IN ('${FANOUT_KEY}','${INFLUENCER_ENRICH_SNAPSHOT_KEY}')`,
+    ).all<{ key: string; value: string }>().catch(() => null)
+    const pick = (kk: string) => { try { return JSON.parse(rows?.results?.find(r => r.key === kk)?.value || 'null') } catch { return null } }
+    const laneNow = (pick(INFLUENCER_ENRICH_SNAPSHOT_KEY) as { last_run?: string } | null)?.last_run ?? null
+    const verdict = judgeFanout(pick(FANOUT_KEY), laneNow)
+    const { ok, result } = fanoutBeatResult(k, planned, verdict)
+    const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
+    await recordCronBeat(env as never, 'ads:enrich-influencer-fanout', ok, 0, '0 * * * *', result)
+    await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind(FANOUT_KEY, JSON.stringify({ at: new Date().toISOString(), k, planned, lane_before: laneNow }))
+      .run().catch(() => undefined)
+  } catch { /* 관측 실패가 팬아웃을 막지 않는다 */ }
+}
+
 enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
   const env = c.env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string; ADS_INFLUENCER_ENRICH_FANOUT?: string; SELF?: { fetch: (r: Request) => Promise<Response> } }
   const rounds = resolveEnrichRounds(env.ADS_INFLUENCER_ENRICH_ROUNDS)
@@ -253,8 +280,16 @@ enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
       const slices = await Promise.all(kids.map(p => p.then(r => r.json()).catch(() => null)))
       return c.json({ ok: true, fanout: K, sync: true, slices })
     }
-    // 자식들이 각자 자기 하트비트/스냅샷을 남긴다 — 이 응답은 '띄웠다'만 뜻한다.
+    // 🪂 자식들이 각자 자기 하트비트/스냅샷을 남긴다 — 이 응답은 '띄웠다'만 뜻한다.
+    //   🔴 그런데 그 즉시 응답으로 부모가 `ok=true 0ms` 하트비트를 찍어, **자식이 전멸해도 화면은 초록**이었다
+    //   (2026-08-02 실측: 하트비트 ok / 레인 스냅샷 6시간 정지 / total_measured 6시간에 +132).
+    //   ⇒ **직전 팬아웃이 착지했는지**를 여기서 스스로 신고한다. 전멸이면 이번 하트비트가 빨강이 되어
+    //     기존 stale-watch·경보가 잡는다. 근거·한계: `enrich-fanout-health.ts`.
+    //   🤝 두 수리는 **짝이다**(다른 세션의 관측 + 이 브랜치의 수리): 여기 `reportFanout` 은 *cron 경로에서*
+    //     전멸을 보이게 하고, 위 `sync` 분기는 *수동 경로에서* 전멸 자체를 없앤다. 하나만 남기면
+    //     "빨간불은 뜨는데 고칠 방법이 없다" 또는 "고쳤는데 다시 죽어도 모른다" 가 된다.
     for (const p of kids) c.executionCtx!.waitUntil(p.then(() => undefined).catch(() => undefined))
+    await reportFanout(c.env as never, K, rounds)
     return c.json({ ok: true, fanout: K, planned: rounds })
   }
   const kRaw = parseInt(c.req.query('k') || '', 10)

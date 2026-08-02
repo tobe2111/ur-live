@@ -117,6 +117,12 @@ const NAV_GROUPS: NavGroup[] = [
     label: '재무 & 설정', i18nKey: 'agency.nav.finance',
     items: [
       { path: '/agency/settlements', label: '정산 관리',   i18nKey: 'agency.nav.settlements', icon: TrendingUp, mode: 'common' },
+      // 📒 2026-08-01: 이 원장 화면(MyLedgerPage)은 **동작하는데 nav 에 없어** 아무도 못 갔다.
+      //   ⚠️ 주석에 경로를 따옴표/백틱으로 적지 말 것 — orphan 가드가 그걸 '링크'로 세어
+      //      nav 를 지워도 초록이 뜬다(이 줄을 쓰다가 실제로 그랬고 되돌려-검증이 잡았다).
+      //   `GET /api/ledger/my` 핸들러가 `user.type === 'agency'` 를 **명시적으로 지원**한다(`agency:{id}` 계정)
+      //   — 셀러 쪽 `/seller/ledger` 와 대칭이고, 정산 관리(확정 내역)와 달리 **실시간 미수/원장**을 본다.
+      { path: '/agency/ledger', label: '실시간 원장', i18nKey: 'agency.nav.ledger', icon: BookOpen, mode: 'common' },
       { path: '/agency/contracts',   label: '계약 관리',   i18nKey: 'agency.nav.contracts', icon: FileText, mode: 'common' },
       { path: '/agency/notices',     label: '셀러 공지',   i18nKey: 'agency.nav.notices', icon: Bell, mode: 'common' },
       { path: '/agency/guide',       label: '운영 가이드',  i18nKey: 'agency.nav.guide', icon: BookOpen, mode: 'common' },
