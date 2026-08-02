@@ -261,7 +261,12 @@ describe('worker-ads — 생 waitUntil 레인은 관측 밖이다(래칫)', () =
   }
 
   it('검사 대상이 실제로 존재한다 — 0건 통과를 성공으로 오인하지 않게', () => {
-    expect(rawLanes().length).toBeGreaterThanOrEqual(5)
+    // ⚠️ 2026-08-02: 하한이 **5**(작성 시점 개수)였는데, 그건 *줄이는 것*까지 위반으로 만든다.
+    //   실제로 그날 `daily-batch`(부모 CPU 4,107ms) · `social-maintenance`(2,390ms/회차)를
+    //   `kick` 으로 옮겨 우회를 5→4 로 줄이자 이 어서션이 빨간불이 됐다 — **개선이 막힌 것**이다.
+    //   이 검사의 선언된 목적은 "파서가 깨져 0건이 되는 것"을 잡는 것이므로 하한은 **1**이 맞다.
+    //   개수의 증가(=새 우회 유입)는 `check-ads-dispatch-bypass.mjs` 래칫이 별도로 막는다(역할 분리).
+    expect(rawLanes().length).toBeGreaterThanOrEqual(1)
   })
 
   it('🔒 하트비트 없는 생 레인이 하나도 없다 — 새 레인은 반드시 kick 또는 adsBeat', () => {

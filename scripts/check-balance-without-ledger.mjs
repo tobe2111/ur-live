@@ -51,16 +51,26 @@ function walk(dir, out = []) {
  *    `잔액 < 거래합` 인 유저(라이브 user 3, 차이 −22,480)를 만들고 있었다.
  */
 const MUTATES_BALANCE = /user_points[\s\S]{0,400}?balance\s*=\s*(?:MAX\([^)]*|COALESCE\([^)]*\)|balance)?\s*[\s\S]{0,20}?balance\s*[+-]\s*\?/i
-/** 원장 INSERT 뒤에 곧바로 오는 '삼키는' 마무리. */
-const SWALLOW = [
-  /INSERT INTO point_transactions[\s\S]{0,900}?\)\s*\.run\(\)\s*\.catch\(\s*\(\)\s*=>\s*(?:null|\{\s*\})\s*\)/,
-  /INSERT INTO point_transactions[\s\S]{0,900}?\.run\(\)\s*\n?\s*\}\s*catch\s*\{\s*(?:\/\*[^*]*\*\/)?\s*\}/,
+/**
+ * 원장 INSERT **한 자리**가 실패를 삼키는 모양들.
+ *
+ * ⚠️ 2026-08-02 확장: 처음엔 `() => null` / `() => {}` 두 모양만 알았다. 그래서
+ *    `.catch(swallow('...'))` — 이 레포가 실제로 제일 많이 쓰는 형태 — 를 **통째로 놓쳤고**,
+ *    공구 추천 보너스(`group-buy.routes.ts`)가 잔액만 올리고 기록을 삼키는 채로 통과했다.
+ *    가드를 만든 사람이 아는 모양만 넣으면 딱 그만큼만 막힌다.
+ */
+const SWALLOW_TAIL = [
+  /^\s*\.catch\(\s*\(\)\s*=>\s*(?:null|undefined|\{\s*\})\s*\)/,       // .catch(() => null)
+  /^\s*\.catch\(\s*[A-Za-z_$][\w$.]*\s*\([^)]*\)\s*\)/,                 // .catch(swallow('tag'))
+  /^\s*\.catch\(\s*[A-Za-z_$][\w$.]*\s*\)/,                             // .catch(logOnly)
 ]
 /**
  * 최소 컬럼 폴백(있으면 안전). 인라인 INSERT 또는 SSOT 헬퍼(`recordPointTxMinimal`) 위임 둘 다 인정한다.
  * ⚠️ 헬퍼 이름을 바꾸면 여기도 바꿔야 한다 — 안 바꾸면 정상 코드가 빨간불이 된다.
  */
 const HAS_FALLBACK = /INSERT INTO point_transactions \(user_id, type, amount, description\)|recordPointTxMinimal\s*\(/
+/** base CREATE 가 보장하는 컬럼만 쓰는 INSERT — 드리프트로 깨질 수 없으므로 폴백 불요. */
+const MINIMAL_INSERT = /INSERT INTO point_transactions\s*\(\s*user_id,\s*type,\s*amount,\s*description\s*\)/
 /** 원장 기록을 SSOT 헬퍼에 위임하는 형태(직접 INSERT 를 안 써도 안전). */
 const VIA_SSOT = /adjustUserPoints\s*\(|recordPointTransaction\s*\(|creditFreePoints\s*\(|recordPointTxMinimal\s*\(/
 
@@ -89,14 +99,29 @@ for (const abs of files) {
   }
 
   // 규칙 ②: 원장 INSERT 는 하는데 실패를 삼킨다(폴백 없음).
-  if (HAS_FALLBACK.test(src)) continue
-  for (const re of SWALLOW) {
-    const m = re.exec(src)
-    if (m) {
-      const lineNo = src.slice(0, m.index).split('\n').length
-      violations.push({ rel, lineNo, kind: 'INSERT 실패를 삼킨다' })
-      break
-    }
+  //
+  // ⚠️ 2026-08-02: 예전엔 `HAS_FALLBACK.test(src)` 로 **파일 전체**를 보고 통과시켰다. 그러면
+  //    한 파일에 폴백이 한 군데만 있어도 **같은 파일의 다른 INSERT 가 전부 면제**된다. 파일이
+  //    커질수록(라우트 파일이 그렇다) 이 면제는 점점 넓어진다 → **자리별**로 본다.
+  for (const m of src.matchAll(/INSERT INTO point_transactions/g)) {
+    const seg = src.slice(m.index, m.index + 1600)
+    // ⚠️ 이 INSERT 가 **이미 최소 컬럼**이면 폴백이 필요 없다 — 그 자체가 폴백 모양이고,
+    //    컬럼 드리프트로 깨질 수가 없다. (per-site 로 조이면서 이 면제를 빠뜨렸더니 정상 코드
+    //    2곳이 빨간불이었다: `ledger.ts` · `internal-admin-tools`. 조이는 것과 정확한 것은 다르다.)
+    if (MINIMAL_INSERT.test(seg)) continue
+    // 이 체인의 종결(.run()/.first()) 직후부터가 catch 자리다.
+    const end = /\.(?:run|first|all)\(\)/.exec(seg)
+    if (!end) continue
+    const tail = seg.slice(end.index + end[0].length)
+    if (!SWALLOW_TAIL.some((re) => re.test(tail))) continue     // 삼키는 모양이 아니면 통과
+    // 삼키긴 하는데 **그 catch 안에** 폴백이 있으면 안전(우리 수리 형태).
+    const catchBody = tail.slice(0, 400)
+    if (HAS_FALLBACK.test(catchBody)) continue
+    violations.push({
+      rel,
+      lineNo: src.slice(0, m.index).split('\n').length,
+      kind: 'INSERT 실패를 삼킨다(그 자리에 폴백 없음)',
+    })
   }
 }
 
