@@ -65,8 +65,37 @@ function csvPosInts(value: string): string | null {
   return bad.length === 0 ? null : `양의 정수 CSV 여야 함 (잘못된 항목: ${bad.join(', ')})`
 }
 
+/**
+ * 🥡 **빈 값이 허용되는 %/정수** — 미수령 정책 전용 (2026-08-03).
+ *
+ * `shared/pickup-refund.ts` 의 `pct()` 는 빈 문자열을 **미설정**으로 보고 소비자에게 유리한
+ * 기본값(100% = 전액 환불)으로 되돌린다 — *"값이 없을수록 소비자에게 유리해야 한다"*.
+ * 그래서 여기서 `''` 를 거부하면 **어드민이 칸을 비우는 순간 저장 전체가 막힌다.**
+ * 위의 `pct`/`intRange` 는 빈 값을 오류로 보므로(등록된 키들은 항상 값이 있는 게 맞다) 재사용하지 않는다.
+ */
+function optionalPct(value: string): string | null {
+  return value.trim() === '' ? null : pct(value)
+}
+function optionalIntRange(min: number, max: number): Validator {
+  const inner = intRange(min, max)
+  return (value) => (value.trim() === '' ? null : inner(value))
+}
+/** 자유 텍스트 — 빈 값 허용, 길이만 제한(실수로 문서를 통째로 붙여넣는 것 방지). */
+function optionalText(max: number): Validator {
+  return (value) => (value.length <= max ? null : `${max}자 이하여야 합니다`)
+}
+
 /** key → 검증 규칙. read-site 주석은 규칙 근거(범위 출처). */
 const SETTING_VALIDATORS: Record<string, Validator> = {
+  // ── 🥡 미수령 환불 정책 (④-b) — read-site: shared/pickup-refund.ts ──
+  //   게이트가 여기 없으면 'True'·'1' 같은 오타가 저장되고 `=== 'true'` 가 조용히 OFF 로 읽는다.
+  //   대표가 "켰다"고 믿는 정책이 안 도는 것 — 이 파일이 존재하는 바로 그 이유다.
+  pickup_unclaimed_policy_enabled: boolStr,
+  pickup_unclaimed_cold_pct: optionalPct,
+  pickup_unclaimed_room_pct: optionalPct,
+  pickup_unclaimed_room_grace_days: optionalIntRange(0, 365),
+  // ── 운영자 문의 연락처 — read-site: features/seller/api/seller-gb.routes.ts ──
+  operator_support_contact: optionalText(200),
   // ── boolean 스위치 (read-site === 'true') ──
   commission_budget_enabled: boolStr,          // order-commissions.ts:252
   gb_engine_enabled: boolStr,                  // gb-marketplace:26 / gb-proposals:27 / seller-orders:1285
