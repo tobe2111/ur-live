@@ -1,0 +1,11 @@
+{
+  "known": [
+    "src/features/marketing/api/biz-blog-router.ts::CURSOR_KEY",
+    "src/features/marketing/api/company-discovery.ts::RECLASSIFY_CURSOR",
+    "src/features/marketing/api/influencer-handle-heal.ts::CURSOR_KEY",
+    "src/features/marketing/api/influencer-maintenance.ts::CURSOR_KEY",
+    "src/features/marketing/api/registry-email-match.ts::CURSOR_KEY",
+    "src/features/marketing/api/sheets-sync.ts::CURSOR_KEY",
+    "src/worker-ads/lane-runner.ts::DISPATCH_CURSOR_KEY"
+  ]
+}

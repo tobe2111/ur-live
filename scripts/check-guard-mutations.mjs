@@ -112,6 +112,17 @@ const MUTATIONS = [
       '받았다. 그 400 을 근거로 "서비스가 폐기됐다"고 결론 낼 뻔했다 — 진단 도구가 오진의 재료가 되는 최악의 모양이다.',
   },
   {
+    name: '전진 0 가드가 헛돎(신규를 통과시킴)',
+    file: 'scripts/check-cursor-after-loop.mjs',
+    find: 'if (TIME_BOUND.test(body)) continue               // 시간 상한이 있다 — 통과',
+    replace: 'if (true) continue',
+    test: 'src/tests/unit/ads-cursor-after-loop-guard.test.ts',
+    why:
+      '이 가드가 막는 실패는 **에러가 안 보인다** — 하트비트는 "느린가 보다"로 읽히고 저장 0 의 이유가 ' +
+      '커서 미전진이라는 건 코드를 열어야 안다. 판정을 무력화하면 신규 레인이 그대로 통과해 ' +
+      '**세 번째 전진 0** 이 조용히 생긴다(이미 commerce·quality 두 번 났다).',
+  },
+  {
     name: '품질 패스가 시간 상한을 잃음(전진 0 복귀)',
     file: 'src/features/marketing/api/influencer-quality.ts',
     find: "    if (Date.now() - t0 >= deadlineMs) { stoppedBy = 'deadline'; break }",
