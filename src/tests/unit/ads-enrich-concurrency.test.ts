@@ -17,13 +17,18 @@ const SRC = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/infl
 
 describe('enrichNaverActivity — 동시 처리 안전 불변식', () => {
   it('예산 [잔량 검사 → 차감] 사이에 await 가 없다 (있으면 동시 워커가 같은 잔량을 두 번 쓴다)', () => {
-    const guard = SRC.indexOf('if (budget.left <= 1 || (budget.deadline && Date.now() >= budget.deadline)) return')
+    // 2026-08-02: 가드가 두 줄로 갈렸다(잔량 검사 + 마감 창 검사) — 앵커를 **잔량 검사**로 옮긴다.
+    //   옛 앵커 `if (budget.left <= 1 || (budget.deadline && Date.now() >= ...)) return` 은 소멸.
+    const guard = SRC.indexOf('if (budget.left <= 1) return')
     expect(guard, '예산 가드를 못 찾았다 — 리팩토링됐다면 이 테스트도 함께 갱신할 것').toBeGreaterThan(0)
     const spend = SRC.indexOf('budget.left -= wantHome ? 2 : 1', guard)
     expect(spend, '차감 지점을 못 찾았다 — 위와 동일').toBeGreaterThan(guard)
     // 이 구간이 전부 동기 구문이어야 원자적으로 실행된다(JS 단일 스레드).
     const between = SRC.slice(guard, spend)
     expect(between).not.toMatch(/\bawait\b/)
+    // 🔒 마감 창 가드도 이 구간 안에 있어야 한다(2026-08-02). 차감 **뒤로** 옮기면 예산을 깎아 놓고
+    //   포기하게 돼 잔량이 새 나간다 — 그 형태를 여기서 막는다.
+    expect(between, '마감 창 가드가 [검사→차감] 구간 밖으로 나갔다').toMatch(/canStartBudgetedItem\(/)
   })
 
   it('동시성 상한이 보수적 범위(1~4) 안에 있다 — 호스트당 연결을 과하게 열면 차단으로 되돌아온다', () => {

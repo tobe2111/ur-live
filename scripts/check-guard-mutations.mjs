@@ -147,6 +147,18 @@ const MUTATIONS = [
     why: '필드만 추가하고 ok 를 안 뒤집으면 화면은 여전히 초록이다 — 자식이 전멸해도 6시간을 모른다(08-02 실측).',
   },
   {
+    name: '마감 창 가드 제거(확정 실패 + 가짜 도장)',
+    file: 'src/features/marketing/api/collect-budget.ts',
+    find: 'return deadline - now >= FETCH_TIMEOUT_FLOOR_MS',
+    replace: 'return true',
+    test: 'src/tests/unit/ads-invocation-lifetime.test.ts',
+    why:
+      '바닥값(1.5s)을 줄 수 없는데도 항목을 집으면 **확정적으로 마감을 넘겨 실패**하고, 그 리드는 ' +
+      '데이터 없이 perf_checked_at 도장을 받아 22,000 깊이 큐 뒤로 밀린다(nb_unmeasured 에서도 빠진다). ' +
+      '08-02 실측: tried 9 / failed 3 — 실패 3 = 동시성 3(워커마다 마지막 1건). 전수 시뮬레이션상 ' +
+      '가드를 지우면 잔여 1~1,499ms 구간 1,499건이 전부 마감 초과가 된다.',
+  },
+  {
     name: '풀 스캔 작업 상한 제거',
     file: 'src/features/marketing/api/pool-scan-budget.ts',
     find: 'if (n >= POOL_SCAN_MAX_ROWS) return true',
