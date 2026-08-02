@@ -97,6 +97,33 @@ ad_company_keywords  4,546개  ↔  업종 32개
 **충돌 해소에서 함께 따라온 것**: main 이 `platformSubreqCap` → **`envSubreqCap(env)`**(요금제 연동,
 #952)으로 바꿔 이 레인도 그쪽을 따르게 맞췄다. 유료 전환 시 이 레인의 천장도 같이 오른다.
 
+## 🔍 매장 수집이 느린 **진짜 이유** (16:13 KST 실측 — 다음 세션이 다시 파지 말 것)
+
+머지 후 카카오 매장 레인이 5시간 넘게 안 돌아 원인을 규명했다. **고장이 아니라 도메인 예산이다.**
+
+```
+dispatch.by_domain (free · per_tick 8)
+  influencer  예산 3 / 레인 6  → 2.0 회차마다
+  company     예산 3 / 레인 5  → 1.7 회차마다
+  prospect    예산 1 / 레인 5  → ⚠️ 5.0 회차마다   ← collect-store-kakao 가 여기
+  wholesale   예산 1 / 레인 1  → 매 회차
+```
+
+`deferred` 목록에 `collect-store-kakao` 가 실재함을 확인했다(= 큐에는 있다). 즉 **대기지 부재가 아니다.**
+
+⚠️ **그런데 이건 대표 우선순위와 어긋난다.** 07-29·08-02 지시가 "음식점·카페·미용·숙박"인데
+그걸 채우는 유일한 레인이 **가장 좁은 몫**을 받는다. `prospect` 도메인에 수집 4 + 보강 1 이 몰려
+있어서 생긴 구조다.
+
+🚫 **이 파일(`dispatch-budget.ts`)은 PR #943(다른 세션)이 방금 만든 것이다 — 손대지 말 것.**
+조정이 필요하면 대표 판단을 받고, 그 세션과 겹치지 않게 조율할 것. 나는 사실만 보고했다.
+
+**진단 명령**(이 스냅샷은 어드민 API 로만 보인다 — 전용 diag 라우트는 404 다):
+```bash
+curl -sS ".../api/admin/ads/influencer-pool/stats" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA" \
+  | python3 -c "import sys,json;d=json.load(sys.stdin);print(json.dumps(d['data']['diag']['dispatch'],ensure_ascii=False)[:800])"
+```
+
 ## 이번에 틀렸던 판단
 
 - "키워드 관리 화면을 붙이면 된다" — 규모를 안 보고 시작했다. 4,546개짜리 목록은 **만들어도 못 쓴다.**
