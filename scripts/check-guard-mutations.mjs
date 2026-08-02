@@ -746,6 +746,39 @@ const MUTATIONS = [
       '자기 자신이 paths 에 없으면 **이 워크플로의 수리가 배포되지 않는다** — 깨진 배포 경로를 고쳐도 ' +
       '무관한 코드 변경을 기다려야 적용된다(수리를 검증할 방법이 없는 자기참조적 사각지대).',
   },
+  {
+    name: '집중 축 커서를 읽어오지 않음(항상 0 — 앞 4개만 무한 반복)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '[STATS_KEY, FOCUS_CURSOR_KEY,',
+    replace: '[STATS_KEY,',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      'readSettings 목록에 없는 키는 **에러가 아니라 undefined** 로 온다 → parseInt(\'0\') → 커서 0 고정. ' +
+      '라이브 실측: 활성 대행사 키워드 18개 중 앞 4개만 돌고 "체험단 대행"·"인플루언서 섭외" 등 14개는 ' +
+      '`found_total = 0 · last_run_at = null`(한 번도 검색된 적 없음). 슬롯 배정(`focus_n: 4`)은 정상이라 ' +
+      '통계만 봐선 멀쩡해 보였다.',
+  },
+  {
+    name: '민 커서를 통계 JSON 에만 남기고 저장 안 함',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '    [FOCUS_CURSOR_KEY, String(nextFocusCursor)],\n',
+    replace: '',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '다음 회차가 읽는 곳은 `platform_settings` 이지 통계 blob 이 아니다. 라이브 실측에서 ' +
+      'cursor_pri=158 · cursor=6 은 있는데 cursor_focus 는 **행 자체가 없었다** — 계산은 매 회차 했는데 ' +
+      '아무 데도 안 남았다. 커서가 있는 레인이라면 어디서든 같은 형태로 재발한다.',
+  },
+  {
+    name: '집중 축 커서를 계획한 수만큼 밀어 안 돈 키워드를 건너뜀',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '(focusCursor + focusDone)',
+    replace: '(focusCursor + nFocus)',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '예산은 픽 4개를 다 못 돈다(보통 1~2개). 계획한 수만큼 밀면 처리 못 한 키워드를 지나쳐 ' +
+      '**한 바퀴에 한 번도 안 걸리는 자리**가 생긴다 — 우선/일반 커서가 `prefixDone` 을 쓰는 이유와 같은 병(leapfrog).',
+  },
 ]
 
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
