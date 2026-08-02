@@ -3,7 +3,6 @@
     "/account/settings",
     "/admin/kakao-test/callback",
     "/admin/maker-pool",
-    "/agency/ledger",
     "/auth/kakao/callback",
     "/auth/kakao/consent/callback",
     "/fail",
@@ -45,11 +44,13 @@
       "/seller/store-dashboard": "150줄 — 매장 종합 매출(2026-05-21)",
       "/seller/voucher-orders": "170줄 — KT 교환권 이력(2026-05-19)",
       "/seller/consignment": "위탁 — 분류 미확인",
-      "/agency/ledger": "에이전시 정산 원장(MyLedgerPage) — 돈 화면인데 nav 에 없다",
       "/admin/maker-pool": "제조사 풀(AdminMakerPoolPage) — 어드민 메뉴에 없다"
     },
     "별칭": {
       "/mypage/wishlist": "`/wishlist` 가 실제 링크 대상. 이건 옛 경로 별칭"
+    },
+    "해소됨": {
+      "/agency/ledger": "2026-08-01 nav 배선 — `AgencyLayout` '실시간 원장'. `GET /api/ledger/my` 가 `user.type === 'agency'`(`agency:{id}` 계정)를 명시적으로 지원함을 **핸들러를 읽어 확인한 뒤** 달았다. 정산 관리(확정 내역)와 달리 **실시간 미수/원장**을 본다 — 셀러 `/seller/ledger` 와 대칭"
     }
   }
 }
