@@ -48,6 +48,30 @@ const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '도메인 격리 제거(예산이 다시 섞임)',
+    file: 'src/worker-ads/dispatch-budget.ts',
+    find: '    const sel = selectLanesForTick(group, budgets[d], cursors[d] ?? 0, share)',
+    replace: '    const sel = selectLanesForTick(group, perTick, cursors[d] ?? 0, share)',
+    test: 'src/tests/unit/ads-lane-domains.test.ts',
+    why: '도메인마다 전체 예산을 주면 격리가 없어진다 — B2B 레인이 늘면 인플루언서가 깎이던 그 상태.',
+  },
+  {
+    name: '작은 도메인 최소 1자리 보장 제거',
+    file: 'src/worker-ads/lane-domains.ts',
+    find: 'for (const e of exact) { out[e.d] = Math.max(1, Math.floor(e.v)); used += out[e.d] }',
+    replace: 'for (const e of exact) { out[e.d] = Math.floor(e.v); used += out[e.d] }',
+    test: 'src/tests/unit/ads-lane-domains.test.ts',
+    why: '몫이 작은 도메인(매장후보·도매)이 반올림에서 0 이 되어 영원히 안 돈다 — 부재 사고의 교과서적 형태.',
+  },
+  {
+    name: '레인 도메인 표 누락(남의 예산을 씀)',
+    file: 'src/worker-ads/lane-domains.ts',
+    find: "  'enrich-influencer-driver': 'influencer',",
+    replace: '',
+    test: 'src/tests/unit/ads-lane-domains.test.ts',
+    why: '표에서 빠진 레인은 FALLBACK 으로 흘러가 돌기는 도는데 남의 조 예산을 쓴다(에러 없음).',
+  },
+  {
     name: '유료 천장이 무료와 같아짐(요금제 반쪽)',
     file: 'src/features/marketing/api/collect-budget.ts',
     find: 'export const SUBREQ_PLATFORM_CAP_PAID = 900',
@@ -117,7 +141,7 @@ const MUTATIONS = [
     name: '커서 저장 제거(배선)',
     file: 'src/worker-ads/lane-runner.ts',
     // 역할별 커서라 숫자 하나로는 못 남긴다 — 저장이 JSON 으로 바뀌었다(2026-08-02).
-    find: 'bind(DISPATCH_CURSOR_KEY, JSON.stringify(sel.nextCursor))',
+    find: 'bind(DISPATCH_CURSOR_KEY, JSON.stringify(sel.nextCursors))',
     replace: 'bind(DISPATCH_CURSOR_KEY, "0")',
     test: 'src/tests/unit/ads-dispatch-budget.test.ts',
     why: '순수 로직이 맞아도 저장을 안 하면 라운드로빈이 매번 0에서 다시 시작한다.',

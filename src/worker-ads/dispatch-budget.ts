@@ -48,6 +48,8 @@
  * 재측정 방법: 어드민 `cron-heartbeats` 에서 한 정각의 `ok=true` 개수를 센다.
  */
 
+import { ADS_DOMAINS, domainBudgets, isKnownLane, laneDomain, type AdsDomain } from './lane-domains'
+
 /** 요금제 — `ADS_PLAN` env 값. 미설정이면 free(현재 상태). */
 export type AdsPlan = 'free' | 'paid'
 
@@ -380,5 +382,93 @@ export function dispatchSnapshot(
     ran_measure: sel.run.filter(l => laneRole(l) === 'measure').map(l => l.beat).sort(),
     ran: sel.run.map(l => l.beat).sort(),
     deferred: sel.deferred.map(l => l.beat).sort(),
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 🧭 도메인별 예산 분리 (2026-08-02 대표 지시 — "업체 b2b 와 인플루언서를 분리해서 생각")
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** 도메인별 커서 묶음. 저장은 JSON 한 덩어리(키 하나 유지 — D1 쓰기를 늘리지 않는다). */
+export type DomainCursors = Partial<Record<AdsDomain, LaneCursors>>
+
+/**
+ * 저장값 → 도메인별 커서. **구 포맷(단일 커서)이면 전 도메인의 시드로 쓴다** —
+ * 배포 직후 첫 회차가 0 에서 다시 시작하지 않게(그러면 그 회차만 배분이 한쪽으로 쏠린다).
+ */
+export function readDomainCursors(raw: unknown): DomainCursors {
+  let obj: Record<string, unknown> | null = null
+  if (typeof raw === 'string' && raw.trim().startsWith('{')) { try { obj = JSON.parse(raw) as Record<string, unknown> } catch { obj = null } }
+  else if (raw && typeof raw === 'object') obj = raw as Record<string, unknown>
+  // 도메인 키가 하나라도 있으면 새 포맷.
+  if (obj && ADS_DOMAINS.some(d => d in obj!)) {
+    const out: DomainCursors = {}
+    for (const d of ADS_DOMAINS) if (d in obj) out[d] = readCursors(obj[d])
+    return out
+  }
+  const seed = readCursors(raw)   // 구 포맷(숫자 또는 {measure,other,tick}) → 전 도메인 시드
+  const out: DomainCursors = {}
+  for (const d of ADS_DOMAINS) out[d] = { ...seed }
+  return out
+}
+
+export interface DomainSelection<T extends LaneCandidate> {
+  run: T[]
+  deferred: T[]
+  /** 도메인별 상세 — "누가 굶었나"를 스냅샷에서 바로 읽으려고 남긴다(예전엔 20개가 한 줄에 섞여 안 보였다). */
+  perDomain: Record<AdsDomain, { budget: number; run: string[]; deferred: string[]; always: number }>
+  nextCursors: DomainCursors
+  /** 표에 없는 레인 이름 — CI 유닛이 막지만, 라이브에서도 **보이게** 남긴다(조용한 드리프트 금지). */
+  unknown: string[]
+}
+
+/**
+ * 🍰 **도메인별로 나눠 고른다.** 각 도메인 안에서는 종전 규칙(항상돌것 → 역할 분할 → 라운드로빈)이 그대로다.
+ *
+ * ⚠️ **바깥은 도메인, 안은 역할** 이 순서가 중요하다. 반대로 하면(역할 먼저) 도메인 격리가 깨져
+ *   측정 몫을 한 도메인이 다 가져갈 수 있다 — 그게 지금 고치려는 결합의 다른 얼굴이다.
+ *
+ * @param tick 회전 기준(보통 hourUTC) — 예산이 도메인 수보다 작을 때만 쓰인다
+ */
+export function selectLanesByDomain<T extends LaneCandidate>(
+  lanes: T[], perTick: number, cursors: DomainCursors, tick = 0, share: number = MEASURE_SHARE_DEFAULT,
+): DomainSelection<T> {
+  const budget = Number.isFinite(perTick) && perTick >= 1 ? Math.floor(perTick) : FREE_LANES_PER_TICK
+  const byDomain = new Map<AdsDomain, T[]>()
+  const unknown: string[] = []
+  for (const l of lanes) {
+    if (!isKnownLane(l.beat)) unknown.push(l.beat)
+    const d = laneDomain(l.beat)
+    const arr = byDomain.get(d); if (arr) arr.push(l); else byDomain.set(d, [l])
+  }
+  const active = ADS_DOMAINS.filter(d => (byDomain.get(d)?.length || 0) > 0)
+  const budgets = domainBudgets(budget, active, tick)
+
+  const run: T[] = [], deferred: T[] = []
+  const nextCursors: DomainCursors = {}
+  const perDomain = {} as DomainSelection<T>['perDomain']
+  for (const d of ADS_DOMAINS) {
+    const group = byDomain.get(d) || []
+    if (!group.length) { perDomain[d] = { budget: 0, run: [], deferred: [], always: 0 }; continue }
+    const sel = selectLanesForTick(group, budgets[d], cursors[d] ?? 0, share)
+    run.push(...sel.run); deferred.push(...sel.deferred)
+    nextCursors[d] = sel.nextCursor
+    perDomain[d] = { budget: budgets[d], run: sel.run.map(l => l.beat).sort(), deferred: sel.deferred.map(l => l.beat).sort(), always: sel.always }
+  }
+  return { run, deferred, perDomain, nextCursors, unknown: [...new Set(unknown)].sort() }
+}
+
+/** 도메인 분리 스냅샷 — 기존 `dispatchSnapshot` 과 같은 자리에 실린다(어드민이 그대로 읽는다). */
+export function domainDispatchSnapshot(
+  sel: DomainSelection<LaneCandidate>, plan: AdsPlan, perTick: number, hourUTC: number, atIso: string,
+): Record<string, unknown> {
+  return {
+    at: atIso, hour: hourUTC, plan, per_tick: perTick,
+    by_domain: sel.perDomain,
+    ran: sel.run.map(l => l.beat).sort(),
+    deferred: sel.deferred.map(l => l.beat).sort(),
+    cursor_next: sel.nextCursors,
+    // 🔴 표에 없는 레인 — 있으면 `lane-domains.ts` 에 한 줄 추가할 것(조용히 다른 조에 얹혀 돌고 있다).
+    ...(sel.unknown.length ? { unknown_lanes: sel.unknown } : {}),
   }
 }
