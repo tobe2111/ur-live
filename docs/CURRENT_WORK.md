@@ -5502,6 +5502,7 @@ _총 79건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-02**
 - [대표 지시 두 건이 "머지됐는데 실행된 적이 없었다" — 재추출 단계의 굶주림](handoff/2026-08-02-ads-reextract-starvation.md)
+- [08-02 — 매장 풀의 97.6%가 학원이었다. 대표가 지목한 네 업종은 **0건**](handoff/2026-08-02-kakao-store-voucher-grid.md)
 - [08-02 — 수량 실측: 양은 문제가 아니다. **연락처가 안 채워진다**](handoff/2026-08-02-collection-volume-verdict.md)
 **2026-08-01**
 - [08-01~02 — 통신판매 API 는 멀쩡했다. 고장은 우리 쪽 파라미터다](handoff/2026-08-01-public-data-probe-verdict.md)

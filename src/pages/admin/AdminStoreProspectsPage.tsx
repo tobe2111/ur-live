@@ -19,6 +19,8 @@ interface Stats { total: number; operating: number; new_open: number; closed: nu
 const SRC_LABEL: Record<string, string> = { govreg: '인허가', kakao: '카카오', naver: '네이버', homepage: '홈페이지' }
 interface RunInfo {
   last_run?: string; day?: string; found?: number; saved?: number; new_open?: number; closed?: number; office?: string; total_saved?: number
+  /** 🏪 카카오 로컬 레인 전용 — 블록(우선업종/무인)별 수확. 어느 축이 실제로 도는지 한 줄로 판정. */
+  blocks?: Record<string, { kw: number; found: number }>
   diag?: {
     error?: string
     /** 🔬 지금 쓰는 요청 형태 + 실패한 실제 요청(키는 서버에서 가려서 온다) + 후보 시도 이력. */
@@ -58,6 +60,7 @@ export default function AdminStoreProspectsPage() {
   const [busySub, setBusySub] = useState('') // 'neis' | 'hira' | ''
   const [neis, setNeis] = useState<SubSource | null>(null)
   const [hira, setHira] = useState<SubSource | null>(null)
+  const [kakao, setKakao] = useState<SubSource | null>(null)
   const [enrichRun, setEnrichRun] = useState<EnrichRun | null>(null)
   const [loading, setLoading] = useState(true)
   const [fCategory, setFCategory] = useState('')
@@ -67,7 +70,7 @@ export default function AdminStoreProspectsPage() {
   const dq = useDebouncedValue(q) // ⏱️ 서버 검색은 타이핑 멈춘 뒤 1회(키 입력마다 왕복 방지)
 
   const loadStats = useCallback(async () => {
-    try { const r = await api.get('/api/admin/store-prospects/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setNeis(r.data.neis || null); setHira(r.data.hira || null); setEnrichRun(r.data.enrich?.run || null) } } catch { /* noop */ }
+    try { const r = await api.get('/api/admin/store-prospects/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setNeis(r.data.neis || null); setHira(r.data.hira || null); setKakao(r.data.storeKakao || null); setEnrichRun(r.data.enrich?.run || null) } } catch { /* noop */ }
   }, [])
   const loadRows = useCallback(async () => {
     setLoading(true)
@@ -186,6 +189,14 @@ export default function AdminStoreProspectsPage() {
               <><span className="mx-2 text-gray-300">|</span>🏥 병원 <span className={hira.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{hira.gate ? 'ON' : 'OFF'}</span>
                 {hira.run.diag?.error ? <span className="text-amber-600"> · {hira.run.diag.error}</span>
                   : <span> · 최근 {kstShort(hira.run.last_run)} · 저장 {hira.run.saved ?? 0} (누적 {hira.run.total_saved ?? 0})</span>}</>
+            )}
+            {/* 🏪 인허가가 500 으로 죽어 있는 동안 **매장 풀을 실제로 늘리는 유일한 레인**인데 화면에 없었다.
+                블록별 수확을 같이 보여야 "우선업종(음식점·카페·미용·숙박)이 도는가"를 묻지 않고 판정한다. */}
+            {kakao?.run && (
+              <><span className="mx-2 text-gray-300">|</span>🏪 카카오 <span className={kakao.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{kakao.gate ? 'ON' : 'OFF'}</span>
+                {kakao.run.diag?.error ? <span className="text-amber-600"> · {kakao.run.diag.error}</span>
+                  : <span> · 최근 {kstShort(kakao.run.last_run)} · 저장 {kakao.run.saved ?? 0} (누적 {kakao.run.total_saved ?? 0})
+                    {kakao.run.blocks ? ` · ${Object.entries(kakao.run.blocks).map(([k, v]) => `${k === 'voucher' ? '우선업종' : '무인'} ${v.kw}kw/${v.found}`).join(' · ')}` : ''}</span>}</>
             )}
           </div>
         )}
