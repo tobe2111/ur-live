@@ -57,6 +57,29 @@ const ONLY = (() => {
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '주간 백업이 products·sellers 를 조용히 빼먹음(커서 한 칸이 컬럼 한도 초과)',
+    file: 'src/worker/cron/d1-backup.ts',
+    find: 'SELECT * FROM ${table} WHERE ${pk} > ?',
+    replace: 'SELECT rowid, * FROM ${table} WHERE ${pk} > ?',
+    test: 'src/tests/unit/d1-backup-wide-tables.test.ts',
+    why:
+      'D1 결과 컬럼 한도는 100 인데 `products`·`sellers` 는 **이미 정확히 100컬럼**이다. ' +
+      '페이징용 `rowid` 한 칸을 더하면 101 이 되어 `too many columns in result set` 으로 ' +
+      '**그 두 테이블만** dump 에서 통째로 빠진다. 2026-08-03 첫 회차가 그렇게 나갔다 — ' +
+      '파일은 19MB 로 멀쩡해 보였고 알림도 "완료"였다. 그 백업으로 복구하면 상품도 셀러도 없다.',
+  },
+  {
+    name: '백업 실패를 catch 가 삼켜 하트비트에 ok:true 로 남음',
+    file: 'src/worker/cron/d1-backup.ts',
+    find: 'throw err instanceof Error ? err : new Error(msg);',
+    replace: 'return { success: false, error: msg };',
+    test: 'src/tests/unit/d1-backup-wide-tables.test.ts',
+    why:
+      '`safeCron` 은 **예외가 나야** ok:false 를 남기고 cron_failures 에 기록한다. 그냥 반환하면 ' +
+      '실패한 백업이 하트비트에서 성공처럼 보인다 — 재해복구에서 이건 가장 나쁜 거짓말이다. ' +
+      '같은 파일의 `BACKUP_BUCKET` 미바인딩이 2026-06-12 에 throw 로 바뀐 것과 같은 이유.',
+  },
+  {
     name: '이용권 정산이 없는 컬럼(products.commission_rate)을 읽어 회차 전체가 죽음',
     file: 'src/worker/cron/auto-settlement.ts',
     find: 'COALESCE(s.commission_rate, ?)',
