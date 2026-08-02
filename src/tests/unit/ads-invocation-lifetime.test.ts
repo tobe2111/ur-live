@@ -22,7 +22,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { capAfterAbandonedRun, nextSubreqCap, ENRICH_DEADLINE_MS_DEFAULT, resolveEnrichDeadlineMs,
-  budgetedTimeoutMs, FETCH_TIMEOUT_FLOOR_MS } from '@/features/marketing/api/collect-budget'
+  budgetedTimeoutMs, FETCH_TIMEOUT_FLOOR_MS, canStartBudgetedItem } from '@/features/marketing/api/collect-budget'
 import { frontStageDeadline, NAVER_FLOOR_PCT_DEFAULT } from '@/features/marketing/api/influencer-enrich-lane'
 import { interleavePicks } from '@/features/marketing/api/influencer-keyword-rotation'
 import { isSelfBlogLink, cleanSelfLinks } from '@/features/marketing/api/influencer-self-link'
@@ -58,6 +58,60 @@ describe('레인 수명 — 작업은 응답 전에 끝낸다', () => {
     expect(h).toBeTruthy()
     expect(h).toMatch(/await\s+runInfluencerAutoCollect\(/)
     expect(h).not.toMatch(/waitUntil\([\s\S]{0,120}runInfluencerAutoCollect/)
+  })
+})
+
+/**
+ * ⏱️ **집었으면 마감 안에 끝낼 수 있어야 한다** (2026-08-02 라이브 실측).
+ *
+ * `FETCH_TIMEOUT_FLOOR_MS` 주석은 *"호출부의 마감 가드가 이미 '집을지 말지'를 정한다"* 를 **전제**로
+ * 바닥값을 준다. 그런데 네이버 보강 워커 루프는 마감을 *이미 지났을 때만* 멈춰서 그 전제가 거짓이었다.
+ * 잔여 50ms 에 집은 항목이 바닥값 1.5s 를 받아 마감을 넘겨 달리다 실패했다.
+ *
+ * 실측(08-02 03:00 회차): `tried 9 / measured 6 / failed 3` — **실패 3 = 동시성 3**(워커마다 마지막 1건).
+ * 그 리드는 데이터 없이 `perf_checked_at` 도장을 받아 22,000 깊이 큐 뒤로 밀리고 `nb_unmeasured`
+ * 에서도 빠졌다 — **측정된 적 없는데 미측정으로 세어지지도 않는다.**
+ */
+describe('⏱️ 마감 직전에 집지 않는다 — 확정 실패 + 가짜 도장 차단', () => {
+  const D = 1_000_000   // 임의 마감 시각
+
+  it('바닥값을 줄 수 있을 때만 집는다', () => {
+    expect(canStartBudgetedItem(D, D - FETCH_TIMEOUT_FLOOR_MS)).toBe(true)      // 딱 바닥
+    expect(canStartBudgetedItem(D, D - FETCH_TIMEOUT_FLOOR_MS - 1)).toBe(true)  // 여유
+    expect(canStartBudgetedItem(D, D - FETCH_TIMEOUT_FLOOR_MS + 1)).toBe(false) // 부족
+    expect(canStartBudgetedItem(D, D)).toBe(false)                              // 마감 도달
+    expect(canStartBudgetedItem(D, D + 5_000)).toBe(false)                      // 이미 지남
+  })
+
+  it('마감이 없으면(무제한) 항상 집는다 — fail-soft', () => {
+    expect(canStartBudgetedItem(undefined, Date.now())).toBe(true)
+  })
+
+  /**
+   * 🔒 **이게 이 describe 의 핵심 불변식이다.** 위 둘은 상수 비교라 통과하기 쉽지만, 이건 두 함수의
+   * 관계를 고정한다 — "집기로 했으면, 그 항목에 주는 타임아웃이 마감을 넘지 않는다."
+   * 이게 깨지면 바닥값이 다시 마감을 넘어 달리고 `failed` 가 오염된다.
+   */
+  it('🔒 집기로 한 순간에는 건당 타임아웃이 절대 마감을 넘지 않는다', () => {
+    for (const remaining of [1_500, 1_501, 2_000, 5_000, 7_999, 8_000, 20_000]) {
+      const now = D - remaining
+      expect(canStartBudgetedItem(D, now), `remaining=${remaining}`).toBe(true)
+      expect(budgetedTimeoutMs(D, 8_000, now), `remaining=${remaining}`).toBeLessThanOrEqual(remaining)
+    }
+  })
+
+  it('🚧 배선 — 네이버 워커 루프가 실제로 이 가드를 쓴다', () => {
+    const perf = read('src/features/marketing/api/influencer-performance.ts')
+    const worker = /const worker = async \(\): Promise<void> => \{[\s\S]*?\n  \}/.exec(perf)?.[0] || ''
+    expect(worker, '워커 루프를 못 찾았다 — 리네임됐다면 이 테스트도 갱신할 것').toBeTruthy()
+    expect(worker).toMatch(/canStartBudgetedItem\(budget\.deadline\)/)
+    // 🚫 회귀 형태: 마감을 '이미 지났을 때만' 멈추는 옛 판으로 되돌아가면 같은 사고가 난다.
+    expect(worker).not.toMatch(/budget\.deadline && Date\.now\(\) >= budget\.deadline/)
+  })
+
+  it('🚧 안 집은 행은 셀 수 있어야 한다 — 안 그러면 "마감에 걸린 정도"가 안 보인다', () => {
+    const perf = read('src/features/marketing/api/influencer-performance.ts')
+    expect(perf).toMatch(/window_skipped/)
   })
 })
 
