@@ -780,14 +780,11 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (72개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (66개)
 
 - `/browse`
 - `/cart`
 - `/checkout`
-- `/live`
-- `/live/:streamId`
-- `/live/recap/:id`
 - `/my-orders`
 - `/my-returns`
 - `/my-vouchers`
@@ -797,6 +794,7 @@
 - `/seller`
 - `/seller/2fa`
 - `/seller/ad-slots`
+- `/seller/agency-delegation`
 - `/seller/alimtalk`
 - `/seller/analytics`
 - `/seller/bundles`
@@ -804,18 +802,14 @@
 - `/seller/consignment`
 - `/seller/coupons`
 - `/seller/dashboard`
+- `/seller/experience-campaigns`
 - `/seller/followers`
 - `/seller/forgot-password`
 - `/seller/group-buy`
 - `/seller/guide`
+- `/seller/influencer-deals`
 - `/seller/inventory`
 - `/seller/ledger`
-- `/seller/live`
-- `/seller/live-analytics`
-- `/seller/live-analytics/:streamId`
-- `/seller/live-broadcast`
-- `/seller/live-broadcast/:streamId`
-- `/seller/live-control`
 - `/seller/login`
 - `/seller/marketing`
 - `/seller/notify-followers`
@@ -824,38 +818,38 @@
 - `/seller/products`
 - `/seller/products/:id/edit`
 - `/seller/products/new`
+- `/seller/products/quick`
 - `/seller/profile`
 - `/seller/promo-codes`
+- `/seller/promo-spend`
 - `/seller/promote-boosts`
 - `/seller/proxy-products`
 - `/seller/realtime`
 - `/seller/register`
 - `/seller/register/business`
+- `/seller/relink`
 - `/seller/reset-password`
+- `/seller/returns`
+- `/seller/review-verifications`
 - `/seller/reviews`
+- `/seller/scan`
 - `/seller/settlements`
-- `/seller/shorts`
 - `/seller/signup`
-- `/seller/streaming-guide`
-- `/seller/streaming-setup`
-- `/seller/streams/:id`
-- `/seller/streams/new`
 - `/seller/tier`
 - `/seller/tiktok-callback`
 - `/seller/transfers`
-- `/seller/verify-whip-proxy`
 - `/seller/waiting`
 - `/seller/youtube-growth`
 - `/seller/youtube-growth/success`
 - `/seller/youtube/callback`
-- `/shorts`
+- `/store/scan`
 - `/store/stats/:productId`
 - `/v/:code`
 - `/vouchers`
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (332개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (256개)
 
 
 **/api/admin-review-bonus/:id**
@@ -896,18 +890,6 @@
 **/api/cart/clear**
 - `POST /api/cart/clear`
 
-**/api/chat/:liveId**
-- `POST /api/chat/:liveId/messages`
-- `DELETE /api/chat/:liveId/messages/:messageId`
-
-**/api/live/:liveId**
-- `POST /api/live/:liveId/broadcast`
-- `GET /api/live/:liveId/chat/messages`
-- `GET /api/live/:liveId/chat/sse`
-- `GET /api/live/:liveId/sse`
-- `POST /api/live/:liveId/view`
-- `GET /api/live/:liveId/ws`
-
 **/api/orders**
 - `GET /api/orders/`
 - `POST /api/orders/`
@@ -916,6 +898,7 @@
 - `GET /api/orders/:id`
 - `POST /api/orders/:id/cancel`
 - `POST /api/orders/:id/confirm`
+- `POST /api/orders/:id/hide`
 - `GET /api/orders/:id/tracking`
 
 **/api/orders/:orderId**
@@ -927,6 +910,9 @@
 
 **/api/orders/refund**
 - `POST /api/orders/refund`
+
+**/api/orders/shipping-quote**
+- `POST /api/orders/shipping-quote`
 
 **/api/platforms**
 - `GET /api/platforms`
@@ -951,6 +937,13 @@
 - `PUT /api/products/:id`
 - `GET /api/products/:id/available-slots`
 - `GET /api/products/:id/options`
+
+**/api/products/count**
+- `GET /api/products/count`
+
+**/api/products/demo-seed-linkshop**
+- `POST /api/products/demo-seed-linkshop`
+- `POST /api/products/demo-seed-linkshop/clear`
 
 **/api/products/dominant-color**
 - `POST /api/products/dominant-color`
@@ -981,6 +974,9 @@
 **/api/review-bonus/my**
 - `GET /api/review-bonus/my`
 
+**/api/review-bonus/my-level**
+- `GET /api/review-bonus/my-level`
+
 **/api/review-bonus/submit**
 - `POST /api/review-bonus/submit`
 
@@ -993,6 +989,13 @@
 - `GET /api/search/:id`
 - `PUT /api/search/:id`
 - `GET /api/search/:id/options`
+
+**/api/search/count**
+- `GET /api/search/count`
+
+**/api/search/demo-seed-linkshop**
+- `POST /api/search/demo-seed-linkshop`
+- `POST /api/search/demo-seed-linkshop/clear`
 
 **/api/search/dominant-color**
 - `POST /api/search/dominant-color`
@@ -1070,17 +1073,24 @@
 **/api/seller/deal-withdraw**
 - `POST /api/seller/deal-withdraw`
 
+**/api/seller/delegation**
+- `GET /api/seller/delegation/`
+- `POST /api/seller/delegation/:agencyId/grant`
+- `POST /api/seller/delegation/:agencyId/revoke`
+
 **/api/seller/forgot-password**
 - `POST /api/seller/forgot-password`
+
+**/api/seller/gb**
+- `GET /api/seller/gb/:id`
+- `PUT /api/seller/gb/:id`
+- `GET /api/seller/gb/support-contact`
 
 **/api/seller/kakao-link-status**
 - `GET /api/seller/kakao-link-status`
 
 **/api/seller/link-kakao**
 - `POST /api/seller/link-kakao`
-
-**/api/seller/live-notify**
-- `POST /api/seller/live-notify/`
 
 **/api/seller/login**
 - `POST /api/seller/login`
@@ -1103,6 +1113,9 @@
 - `PUT /api/seller/orders/:id/tracking`
 - `PATCH /api/seller/orders/bulk-status`
 
+**/api/seller/payouts**
+- `GET /api/seller/payouts`
+
 **/api/seller/personal-info**
 - `GET /api/seller/personal-info`
 
@@ -1122,6 +1135,8 @@
 - `GET /api/seller/products/:id/booking-slots`
 - `POST /api/seller/products/:id/booking-slots`
 - `DELETE /api/seller/products/:id/booking-slots/:slotId`
+- `GET /api/seller/products/:id/group-buy`
+- `POST /api/seller/products/:id/group-buy`
 - `POST /api/seller/products/:id/link-to-stream`
 - `GET /api/seller/products/:id/options`
 - `POST /api/seller/products/:id/options`
@@ -1130,6 +1145,9 @@
 
 **/api/seller/profile**
 - `GET /api/seller/profile`
+
+**/api/seller/promo-spend**
+- `GET /api/seller/promo-spend/`
 
 **/api/seller/public**
 - `GET /api/seller/public/:sellerId`
@@ -1146,17 +1164,34 @@
 **/api/seller/register-from-user**
 - `POST /api/seller/register-from-user`
 
+**/api/seller/relink-kakao**
+- `POST /api/seller/relink-kakao`
+
 **/api/seller/request-kakao-stepup**
 - `POST /api/seller/request-kakao-stepup`
 
 **/api/seller/reset-password**
 - `POST /api/seller/reset-password`
 
+**/api/seller/review-verifications**
+- `GET /api/seller/review-verifications/`
+- `POST /api/seller/review-verifications/:id/approve`
+- `POST /api/seller/review-verifications/:id/reject`
+
+**/api/seller/scan-devices**
+- `GET /api/seller/scan-devices`
+- `POST /api/seller/scan-devices`
+- `POST /api/seller/scan-devices/:id/revoke`
+
 **/api/seller/set-pin**
 - `POST /api/seller/set-pin`
 
 **/api/seller/settlement-options**
 - `GET /api/seller/settlement-options`
+
+**/api/seller/settlement-tax-invoices**
+- `GET /api/seller/settlement-tax-invoices`
+- `POST /api/seller/settlement-tax-invoices/:id/approve`
 
 **/api/seller/settlements**
 - `GET /api/seller/settlements`
@@ -1180,18 +1215,8 @@
 **/api/seller/stays-quota**
 - `GET /api/seller/stays-quota`
 
-**/api/seller/streams**
-- `GET /api/seller/streams/`
-- `POST /api/seller/streams/`
-- `DELETE /api/seller/streams/:id`
-- `GET /api/seller/streams/:id`
-- `PUT /api/seller/streams/:id`
-- `GET /api/seller/streams/:id/analytics`
-- `POST /api/seller/streams/:id/change-product`
-- `POST /api/seller/streams/:id/heartbeat`
-- `GET /api/seller/streams/:id/live-stats`
-- `PUT /api/seller/streams/:id/product-display`
-- `GET /api/seller/streams/analytics/summary`
+**/api/seller/surface**
+- `GET /api/seller/surface`
 
 **/api/seller/switch-to-seller**
 - `POST /api/seller/switch-to-seller`
@@ -1228,9 +1253,6 @@
 **/api/seller/verify-pin**
 - `POST /api/seller/verify-pin`
 
-**/api/seller/viewers**
-- `GET /api/seller/viewers/:user_id/loyalty`
-
 **/api/seller/voucher-catalog**
 - `GET /api/seller/voucher-catalog`
 
@@ -1241,45 +1263,11 @@
 - `POST /api/seller/voucher-redeem`
 
 **/api/seller/youtube**
-- `POST /api/seller/youtube/admin/rotate-all-stream-keys`
 - `GET /api/seller/youtube/auth-url`
 - `GET /api/seller/youtube/channels`
-- `GET /api/seller/youtube/live-readiness`
-- `GET /api/seller/youtube/live/_admin-quota-dashboard`
-- `POST /api/seller/youtube/live/_cleanup-pushes`
-- `GET /api/seller/youtube/live/_health-check`
-- `GET /api/seller/youtube/live/_quota`
-- `POST /api/seller/youtube/live/_verify-whip-proxy`
-- `POST /api/seller/youtube/live/:id/_force-live`
-- `POST /api/seller/youtube/live/:id/admin-force-end`
-- `GET /api/seller/youtube/live/:id/chat`
-- `GET /api/seller/youtube/live/:id/detect-webcam`
-- `GET /api/seller/youtube/live/:id/diagnose`
-- `POST /api/seller/youtube/live/:id/end`
-- `POST /api/seller/youtube/live/:id/end-beacon`
-- `POST /api/seller/youtube/live/:id/force-transition`
-- `PATCH /api/seller/youtube/live/:id/link-broadcast`
-- `POST /api/seller/youtube/live/:id/notify-followers`
-- `POST /api/seller/youtube/live/:id/refresh-thumbnail`
-- `POST /api/seller/youtube/live/:id/reset-zombie`
-- `POST /api/seller/youtube/live/:id/start`
-- `GET /api/seller/youtube/live/:id/status`
-- `GET /api/seller/youtube/live/:id/youtube-stats`
-- `POST /api/seller/youtube/live/create`
-- `POST /api/seller/youtube/live/create-webcam`
 - `DELETE /api/seller/youtube/oauth/:id`
 - `POST /api/seller/youtube/oauth/callback`
-- `POST /api/seller/youtube/rotate-stream-key`
 - `GET /api/seller/youtube/shorts/sync`
-- `GET /api/seller/youtube/streaming-setup`
-- `POST /api/seller/youtube/streaming-setup/init`
-- `GET /api/seller/youtube/streaming/health`
-- `DELETE /api/seller/youtube/streaming/whip-proxy-ome/:streamId`
-- `PATCH /api/seller/youtube/streaming/whip-proxy-ome/:streamId`
-- `POST /api/seller/youtube/streaming/whip-proxy-ome/:streamId`
-- `DELETE /api/seller/youtube/streaming/whip-proxy/:streamId`
-- `POST /api/seller/youtube/streaming/whip-proxy/:streamId`
-- `POST /api/seller/youtube/streaming/whip-token`
 
 **/api/sellers**
 - `GET /api/sellers/`
@@ -1328,22 +1316,6 @@
 **/api/shorts/seller**
 - `GET /api/shorts/seller/list`
 
-**/api/streams**
-- `GET /api/streams/`
-
-**/api/streams/:id**
-- `GET /api/streams/:id`
-- `GET /api/streams/:id/current-product`
-- `POST /api/streams/:id/current-product`
-- `POST /api/streams/:id/fake-cart-notification`
-- `GET /api/streams/:id/product-timestamps`
-- `GET /api/streams/:id/products`
-- `POST /api/streams/:id/restock-notify`
-- `GET /api/streams/:id/viewer-count`
-- `PUT /api/streams/:id/viewer-count`
-- `POST /api/streams/:id/viewer/join`
-- `POST /api/streams/:id/viewer/leave`
-
 **/api/timedeal/:id**
 - `GET /api/timedeal/:id`
 - `POST /api/timedeal/:id/claim`
@@ -1381,73 +1353,21 @@
 **/api/youtube-growth/request**
 - `POST /api/youtube-growth/request`
 
-**/api/youtube/admin**
-- `POST /api/youtube/admin/rotate-all-stream-keys`
-
 **/api/youtube/auth-url**
 - `GET /api/youtube/auth-url`
 
 **/api/youtube/channels**
 - `GET /api/youtube/channels`
 
-**/api/youtube/chat**
-- `GET /api/youtube/chat/chat/:streamId`
-- `POST /api/youtube/chat/chat/:streamId`
-- `GET /api/youtube/chat/chat/:streamId/cached`
-- `GET /api/youtube/chat/chat/:streamId/public`
-
-**/api/youtube/live**
-- `GET /api/youtube/live/_admin-quota-dashboard`
-- `POST /api/youtube/live/_cleanup-pushes`
-- `GET /api/youtube/live/_health-check`
-- `GET /api/youtube/live/_quota`
-- `POST /api/youtube/live/_verify-whip-proxy`
-- `POST /api/youtube/live/:id/_force-live`
-- `POST /api/youtube/live/:id/admin-force-end`
-- `GET /api/youtube/live/:id/chat`
-- `GET /api/youtube/live/:id/detect-webcam`
-- `GET /api/youtube/live/:id/diagnose`
-- `POST /api/youtube/live/:id/end`
-- `POST /api/youtube/live/:id/end-beacon`
-- `POST /api/youtube/live/:id/force-transition`
-- `PATCH /api/youtube/live/:id/link-broadcast`
-- `POST /api/youtube/live/:id/notify-followers`
-- `POST /api/youtube/live/:id/refresh-thumbnail`
-- `POST /api/youtube/live/:id/reset-zombie`
-- `POST /api/youtube/live/:id/start`
-- `GET /api/youtube/live/:id/status`
-- `GET /api/youtube/live/:id/youtube-stats`
-- `POST /api/youtube/live/create`
-- `POST /api/youtube/live/create-webcam`
-
-**/api/youtube/live-readiness**
-- `GET /api/youtube/live-readiness`
-
 **/api/youtube/oauth**
 - `DELETE /api/youtube/oauth/:id`
 - `POST /api/youtube/oauth/callback`
 
-**/api/youtube/rotate-stream-key**
-- `POST /api/youtube/rotate-stream-key`
-
 **/api/youtube/shorts**
 - `GET /api/youtube/shorts/sync`
 
-**/api/youtube/streaming**
-- `GET /api/youtube/streaming/health`
-- `DELETE /api/youtube/streaming/whip-proxy-ome/:streamId`
-- `PATCH /api/youtube/streaming/whip-proxy-ome/:streamId`
-- `POST /api/youtube/streaming/whip-proxy-ome/:streamId`
-- `DELETE /api/youtube/streaming/whip-proxy/:streamId`
-- `POST /api/youtube/streaming/whip-proxy/:streamId`
-- `POST /api/youtube/streaming/whip-token`
 
-**/api/youtube/streaming-setup**
-- `GET /api/youtube/streaming-setup`
-- `POST /api/youtube/streaming-setup/init`
-
-
-> 마지막 생성: 2026-06-07T22:42:02.487Z
+> 마지막 생성: 2026-08-02T15:37:42.355Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

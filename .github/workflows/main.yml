@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Deploy to Cloudflare Pages
     # 🛡️ 2026-05-28: 무한 hang 방어 — step 행 시 30분 후 실패 처리 (prerender hang 사고 재발 방지).
-    timeout-minutes: 30
+    timeout-minutes: 40
     # 🛡️ 2026-04-22 배치 117 (TD-012): Node 20 runtime deprecation 대비.
     #   2026-09 부터 GHA 의 JS actions 는 Node 24 사용. 일부 actions 는 아직
     #   Node 20 을 지정 — 이 env 가 Node 24 로 강제 실행.
@@ -207,20 +207,34 @@ jobs:
       - name: Deploy to Cloudflare Pages
         run: |
           set -e
-          MAX_RETRY=3
+          # ⏱️ **재시도 대기는 실패 이유에 맞춰야 한다** (2026-08-02 실사고).
+          #   종전 `SLEEP=$((i*10))` = 10s·20s → 총 30초. 그런데 실제로 만난 실패는 이것이었다:
+          #     `A request to the Cloudflare API (/accounts/***/pages/projects/ur-live) failed.
+          #      Rate limited. Please wait and consider throttling your request speed [code: 10429]`
+          #   레이트 리밋은 초 단위로 안 풀린다 → **소비자 사이트 배포가 연속 4회 실패**했고
+          #   (22:53·23:37·23:47·23:56 KST) 라이브는 4개 머지만큼 뒤처진 채였다.
+          #   ⇒ 10429 면 분 단위로 기다린다. 같은 수정을 deploy-ads/wholesale/worker-deploy 에도 적용.
+          MAX_RETRY=4
           for i in $(seq 1 $MAX_RETRY); do
             echo "=== Deploy attempt $i/$MAX_RETRY ==="
-            if npx wrangler@3 pages deploy dist/client \
+            OUT=$(npx wrangler@3 pages deploy dist/client \
                 --project-name=ur-live \
                 --branch=main \
                 --commit-dirty=true \
-                --commit-message="deploy ${{ github.sha }}"; then
+                --commit-message="deploy ${{ github.sha }}" 2>&1) && RC=0 || RC=$?
+            echo "$OUT"
+            if [ $RC -eq 0 ]; then
               echo "✅ Deploy succeeded on attempt $i"
               exit 0
             fi
             if [ $i -lt $MAX_RETRY ]; then
-              SLEEP=$((i * 10))
-              echo "⚠️ Attempt $i failed. Sleeping ${SLEEP}s before retry..."
+              if echo "$OUT" | grep -qE '10429|Rate limited'; then
+                SLEEP=$(( i == 1 ? 60 : (i == 2 ? 150 : 300) ))
+                echo "⏳ Cloudflare 레이트 리밋(10429) — ${SLEEP}s 후 재시도"
+              else
+                SLEEP=$((i * 10))
+                echo "⚠️ Attempt $i failed. Sleeping ${SLEEP}s before retry..."
+              fi
               sleep $SLEEP
             fi
           done

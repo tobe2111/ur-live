@@ -26,7 +26,7 @@ concurrency:
 jobs:
   deploy-wholesale:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
@@ -58,19 +58,28 @@ jobs:
             exit 1
           fi
           set -e
-          MAX_RETRY=3
+          # ⏱️ 10429(레이트 리밋)는 초 단위로 안 풀린다 — 근거·사고 경위는 main.yml 의 같은 블록 주석 참조.
+          MAX_RETRY=4
           for i in $(seq 1 $MAX_RETRY); do
             echo "=== Deploy attempt $i/$MAX_RETRY (ur-wholesale) ==="
-            if npx wrangler@3 pages deploy dist/client \
+            OUT=$(npx wrangler@3 pages deploy dist/client \
                 --project-name=ur-wholesale \
                 --branch=main \
                 --commit-dirty=true \
-                --commit-message="wholesale deploy ${{ github.sha }}"; then
+                --commit-message="wholesale deploy ${{ github.sha }}" 2>&1) && RC=0 || RC=$?
+            echo "$OUT"
+            if [ $RC -eq 0 ]; then
               echo "✅ ur-wholesale deploy succeeded on attempt $i"
               exit 0
             fi
             if [ $i -lt $MAX_RETRY ]; then
-              SLEEP=$((i * 10)); echo "⚠️ attempt $i 실패. ${SLEEP}s 후 재시도..."; sleep $SLEEP
+              if echo "$OUT" | grep -qE '10429|Rate limited'; then
+                SLEEP=$(( i == 1 ? 60 : (i == 2 ? 150 : 300) ))
+                echo "⏳ Cloudflare 레이트 리밋(10429) — ${SLEEP}s 후 재시도"
+              else
+                SLEEP=$((i * 10)); echo "⚠️ attempt $i 실패. ${SLEEP}s 후 재시도..."
+              fi
+              sleep $SLEEP
             fi
           done
           echo "❌ ur-wholesale 배포 $MAX_RETRY 회 모두 실패."
