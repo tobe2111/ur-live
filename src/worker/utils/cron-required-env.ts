@@ -54,10 +54,26 @@ export const CRON_REQUIRED_ENV: Readonly<Record<string, readonly CronEnvRequirem
       jobs: ['scheduled-cleanup'],
       silently: '만료 선물 자동 환불이 통째로 스킵된다(5분마다).',
     },
+    // 📌 2026-08-02: **셋을 다 적는다.** 원래 `ALIGO_API_KEY` 하나만 있었는데, 발송 가드는
+    //   `!!(API_KEY && USER_ID && SENDER_KEY)` 라 **하나만 빠져도 통째로 skip** 된다.
+    //   실제로 물렸다 — 대표가 셋을 다 등록했는데 Workers 쪽 이름이 `' ALIGO_USER_ID'`(앞 공백)로
+    //   들어가 런타임에선 undefined 였다. 그런데 이 명부엔 API_KEY 만 있어서 판정이
+    //   **`ok — 요구 키 전부 존재`** 로 나왔다. 알림톡은 여전히 0건인데 계기는 초록이었다.
+    //   ⇒ **가드가 보는 조건과 코드가 보는 조건이 같아야 한다.** 하나만 보면 나머지가 사각지대다.
     {
       key: 'ALIGO_API_KEY',
       jobs: ['scheduled-cleanup', 'retry-alimtalk'],
       silently: '알림톡 발송·재시도가 전부 skip — 발송 0건이 정상처럼 보인다.',
+    },
+    {
+      key: 'ALIGO_USER_ID',
+      jobs: ['scheduled-cleanup', 'retry-alimtalk'],
+      silently: '같은 가드(3종 AND)에 걸려 알림톡이 통째로 skip — API_KEY 만 있으면 소용없다.',
+    },
+    {
+      key: 'ALIGO_SENDER_KEY',
+      jobs: ['scheduled-cleanup', 'retry-alimtalk'],
+      silently: '같은 가드(3종 AND)에 걸려 알림톡이 통째로 skip.',
     },
     {
       key: 'CACHE_KV',
