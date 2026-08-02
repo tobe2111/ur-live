@@ -72,8 +72,10 @@ const MUTATIONS = [
   {
     name: '후보 경로 프로브가 임의 호스트를 허용(SSRF)',
     file: 'src/features/marketing/api/public-data-probe.ts',
-    find: '      if (u.hostname !== PROBE_ALLOWED_HOST) return null',
-    replace: '',
+    // 2026-08-02: 호스트가 단수 상수 → **열거 목록**이 되어 지도를 갱신했다(허용 호스트를 하나 넓혔다).
+    //   ⚠️ 갱신을 알려 준 게 이 검사 자신이다("낡은 지도" 모드).
+    find: "export const PROBE_ALLOWED_HOSTS = ['apis.data.go.kr', 'www.localdata.go.kr'] as const",
+    replace: "export const PROBE_ALLOWED_HOSTS = ['apis.data.go.kr', 'www.localdata.go.kr', 'evil.example.com'] as const",
     test: 'src/tests/unit/ads-public-data-probe.test.ts',
     why:
       '어드민 인증이 있어도 임의 URL 을 받으면 서버측 요청 위조다 — 내부 메타데이터 주소(169.254.169.254)까지 ' +

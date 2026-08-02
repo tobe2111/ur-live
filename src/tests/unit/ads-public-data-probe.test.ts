@@ -17,7 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { PROBE_TARGETS, probeTargetNames, probePublicData, normalizeProbePath, PROBE_ALLOWED_HOST } from '@/features/marketing/api/public-data-probe'
+import { PROBE_TARGETS, probeTargetNames, probePublicData, normalizeProbePath, PROBE_ALLOWED_HOST, PROBE_ALLOWED_HOSTS } from '@/features/marketing/api/public-data-probe'
 import type { Env } from '@/worker/types/env'
 
 const KEY = 'SUPER-SECRET-SERVICE-KEY-abc123=='
@@ -186,7 +186,7 @@ describe('probeLadder — 첫 실패 지점을 찾는다', () => {
     const R = readFileSync(resolve(process.cwd(), 'src/worker-ads/public-data.routes.ts'), 'utf8')
     expect(R).toMatch(/probeLadder\(c\.env, target, ladder/)
     const P = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/partner-pool.routes.ts'), 'utf8')
-    expect(P, '어드민 프록시가 rows/page/ladder/path 를 전달해야 한다').toMatch(/\['rows', 'page', 'ladder', 'path'\]/)
+    expect(P, '어드민 프록시가 rows/page/ladder/path/host 를 전달해야 한다').toMatch(/\['rows', 'page', 'ladder', 'path', 'host'\]/)
   })
 })
 
@@ -205,24 +205,33 @@ describe('probeLadder — 첫 실패 지점을 찾는다', () => {
  * 어드민 인증이 있어도 임의 URL 을 받으면 그건 서버측 요청 위조다. 호스트를 **고정**하고
  * 경로 문자만 받으며 쿼리스트링은 거절한다(서비스키 파라미터를 덮어쓸 수 있다).
  */
-describe('후보 경로 — 호스트 고정 + 쿼리 주입 차단', () => {
-  it('🔒 허용 호스트는 **하나뿐**이다 — 넓히는 순간 SSRF 다', () => {
-    expect(PROBE_ALLOWED_HOST).toBe('apis.data.go.kr')
+describe('후보 경로 — 호스트 **열거** + 쿼리 주입 차단', () => {
+  it('🔒 허용 호스트는 **열거된 둘뿐**이다 — 임의 URL 을 여는 게 아니다', () => {
+    expect([...PROBE_ALLOWED_HOSTS]).toEqual(['apis.data.go.kr', 'www.localdata.go.kr'])
+    expect(PROBE_ALLOWED_HOST).toBe('apis.data.go.kr') // 상대경로 기본 호스트
   })
 
-  it('평범한 경로는 받는다(앞 슬래시 유무 무관)', () => {
-    expect(normalizeProbePath('1741000/general_restaurants')).toBe('1741000/general_restaurants')
-    expect(normalizeProbePath('/1741000/LocalDataInfoSvc/getLocalData')).toBe('1741000/LocalDataInfoSvc/getLocalData')
+  it('평범한 경로는 받는다(앞 슬래시 유무 무관) — 기본 호스트는 공공데이터포털', () => {
+    expect(normalizeProbePath('1741000/general_restaurants')).toEqual({ host: 'apis.data.go.kr', path: '1741000/general_restaurants' })
+    expect(normalizeProbePath('/1741000/LocalDataInfoSvc/getLocalData')?.path).toBe('1741000/LocalDataInfoSvc/getLocalData')
+  })
+
+  it('🔒 host 를 지정하면 그 호스트로 — **허용 목록 밖이면 거절**', () => {
+    expect(normalizeProbePath('platform/rest/GR0/openDataApi', 'www.localdata.go.kr'))
+      .toEqual({ host: 'www.localdata.go.kr', path: 'platform/rest/GR0/openDataApi' })
+    // 목록 밖 호스트를 지정하면 **조용히 기본값으로 떨어지지 않고** 기본 호스트를 쓴다(경로는 유효하므로).
+    expect(normalizeProbePath('x/y', 'evil.example.com')?.host).toBe('apis.data.go.kr')
   })
 
   it('🔒 **다른 호스트의 절대 URL 은 거절**한다 — 조용히 통과시키면 그게 SSRF 다', () => {
-    for (const u of ['https://evil.example.com/x', 'http://169.254.169.254/latest/meta-data', 'https://apis.data.go.kr.evil.com/x']) {
+    for (const u of ['https://evil.example.com/x', 'http://169.254.169.254/latest/meta-data', 'https://apis.data.go.kr.evil.com/x', 'https://localdata.go.kr/x']) {
       expect(normalizeProbePath(u), u).toBeNull()
     }
   })
 
-  it('허용 호스트의 절대 URL 은 경로만 취한다', () => {
-    expect(normalizeProbePath('https://apis.data.go.kr/1741000/foo')).toBe('1741000/foo')
+  it('허용 호스트의 절대 URL 은 경로만 취한다(둘 다)', () => {
+    expect(normalizeProbePath('https://apis.data.go.kr/1741000/foo')).toEqual({ host: 'apis.data.go.kr', path: '1741000/foo' })
+    expect(normalizeProbePath('https://www.localdata.go.kr/platform/rest/GR0/openDataApi')?.host).toBe('www.localdata.go.kr')
   })
 
   it('🔒 **쿼리스트링은 거절**한다 — serviceKey 파라미터를 덮어쓸 수 있다', () => {
@@ -234,6 +243,24 @@ describe('후보 경로 — 호스트 고정 + 쿼리 주입 차단', () => {
     for (const bad of ['1741000/foo bar', '1741000/<script>', '', '   ', null, undefined]) {
       expect(normalizeProbePath(bad as never), JSON.stringify(bad)).toBeNull()
     }
+  })
+
+  /**
+   * 🔑 **키를 발급처가 아닌 호스트로 보내지 않는다.**
+   * LOCALDATA 는 자체 키 체계(`authKey`)를 쓰고 우리가 가진 건 공공데이터포털 `serviceKey` 다.
+   * "혹시 되나" 보려고 남의 호스트에 자격증명을 흘리면 안 된다 — 키 없이 찔러도 판정은 된다
+   * (인증 오류 = 엔드포인트 존재 / `NO_OPENAPI_SERVICE_ERROR` = 여기도 아님).
+   */
+  it('🔒 LOCALDATA 후보 URL 에 **serviceKey 를 싣지 않는다**', () => {
+    const SRC = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/public-data-probe.ts'), 'utf8')
+    expect(SRC).toMatch(/candidate\.host === 'apis\.data\.go\.kr'\n\s*\? `https:\/\/\$\{candidate\.host\}\/\$\{candidate\.path\}\?serviceKey=/)
+    expect(SRC, '키 없는 분기가 있어야 한다').toMatch(/: `https:\/\/\$\{candidate\.host\}\/\$\{candidate\.path\}\?\$\{paging\}`/)
+  })
+
+  it('🔒 키가 없어도 **비-포털 후보는 찌를 수 있다** — 존재 여부 판정이 목적이기 때문', () => {
+    const SRC = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/public-data-probe.ts'), 'utf8')
+    expect(SRC).toMatch(/const needsKey = !candidate \|\| candidate\.host === 'apis\.data\.go\.kr'/)
+    expect(SRC).toMatch(/if \(!key && needsKey\) return/)
   })
 })
 

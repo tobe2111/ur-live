@@ -361,7 +361,49 @@ POST /api/admin/partner-pool/probe-public-data?target=all&rows=1
 ⚠️ 그 과정에서 `partner-pool.routes.ts` 가 608줄이 됐다 — **방금 내가 푼 래칫을 내가 다시 깨는 것**이라
 근거 주석을 판정기 헤더로 옮기고 배열을 압축해 **600줄**로 맞췄다(캡은 "600 초과"라 600 은 통과).
 
-### 다음 세션의 첫 액션 — 후임 주소 찾기 (배포 후)
+#
+## ⑬ 🧭 후임 주소 추적 — **원천은 `localdata.go.kr` 이고 살아 있다** (웹 실측)
+
+공식 문서는 봇 차단(403)이라 **제3자 기록**에서 실제 호출 형태를 확보했다:
+```
+https://www.localdata.go.kr/platform/rest/{그룹}/openDataApi
+  ?authKey=…&resultType=json&pageIndex=1&pageSize=500&opnSvcId={업종}&lastModTsBgn=&lastModTsEnd=
+```
+
+**세 가지가 맞아떨어진다:**
+1. **페이징 이름이 정확히 일치** — 우리 레인은 `pageIndex`/`pageSize`. data.go.kr 표준은 `pageNo`/`numOfRows` 다.
+   ⇒ 이 코드는 **원래 localdata.go.kr 를 향해 쓰였다.**
+2. **업종 키가 `opnSvcId`** — 우리 테이블 컬럼 `opn_svc_id` 와 같은 이름.
+3. localdata.go.kr 는 **살아 있다**(API 신청·키 조회 페이지 정상).
+
+⇒ 소스 헤더의 *"localdata.go.kr 폐쇄 2026-04-16 후 이관"* 은 **틀렸거나 이관 대상 경로가 틀렸다.**
+base 만 `apis.data.go.kr/1741000` 으로 바뀌었는데 그 경로가 존재하지 않는다.
+
+⚠️ **인증 파라미터가 다르다** — LOCALDATA 는 `authKey`, 우리는 `serviceKey`. 그리고 LOCALDATA 는
+**자체 키 발급 체계**가 있다(`localdata.go.kr/devcenter/keylist.do`). 즉 우리 `PUBLIC_DATA_SERVICE_KEY`
+로는 데이터를 못 받을 가능성이 크다 — **키 발급은 대표 작업**이다.
+
+### 프로브 호스트 확장 — 정확히 **하나만**
+`PROBE_ALLOWED_HOSTS = ['apis.data.go.kr', 'www.localdata.go.kr']`. 임의 URL 이 아니라 **열거된 둘**이다.
+
+🔑 **우리 키를 발급처가 아닌 호스트로 보내지 않는다.** "혹시 되나" 보려고 자격증명을 흘리면 안 된다.
+**키 없이 찔러도 판정은 된다** — 인증 오류 = *엔드포인트 존재*, `NO_OPENAPI_SERVICE_ERROR` = *여기도 아님*.
+우리가 알고 싶은 건 "주소가 맞나"이지 "데이터를 받아오나"가 아니다.
+
+### 다음 세션의 첫 액션 — **배포 후 바로**
+```bash
+# ① LOCALDATA 원천(키 없이 — 존재 여부만)
+for G in GR0 TO0 ETC; do
+  curl -sS -m 60 -X POST ".../api/admin/partner-pool/probe-public-data?target=localdata&host=www.localdata.go.kr&path=platform/rest/$G/openDataApi&rows=1" \
+    -H "Authorization: Bearer $TOK" -H "User-Agent: $UA" \
+    | python3 -c "import sys,json;r=json.load(sys.stdin)['results'][0];print(r['http'], (r.get('hint') or r['body'])[:120])"
+done
+# ② 포털 쪽 버전 범프 후보(franchise·nara 는 접미사 패턴이 뚜렷하다: _Service2 · Service02)
+#    1130000/FftcBrandRlsInfo_Service · FftcBrandRlsInfo3_Service · 1230000/ao/UsrInfoService03 …
+```
+**판정**: `200 + JSON` = 후임 · `인증 오류` = 주소는 맞고 키가 필요 · `NO_OPENAPI_SERVICE_ERROR` = 아님.
+
+## 다음 세션의 첫 액션 — 후임 주소 찾기 (배포 후)
 ```bash
 # 죽은 셋 각각에 후보를 몇 개씩. 200 + JSON 이 나오면 그게 후임이다(저장 없음 · 읽기 전용).
 for T in localdata franchise nara; do

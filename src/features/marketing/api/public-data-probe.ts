@@ -83,26 +83,47 @@ export interface ProbeOpts {
    *     경로만 받고, 서비스키·페이징은 이 모듈이 붙인다(키가 로그·화면에 새지 않게).
    */
   path?: string
+  /** 후보 경로의 호스트(상대 경로일 때만 의미 있다). 허용 목록 밖이면 **거절**된다. */
+  host?: string
 }
 
-/** 후보 경로 프로브가 허용하는 **유일한** 호스트. 넓히지 말 것 — 넓히는 순간 SSRF 다. */
-export const PROBE_ALLOWED_HOST = 'apis.data.go.kr'
+/**
+ * 후보 경로 프로브가 허용하는 **고정 호스트 목록**. 임의 URL 을 여는 게 아니라 *열거된 둘*뿐이다.
+ * ⚠️ 늘리지 말 것 — 하나 늘 때마다 SSRF 표면이 그만큼 늘어난다. 늘려야 하면 **왜 그 호스트인지**를
+ *   여기에 근거로 남겨라(아래 두 개처럼).
+ *
+ *   - `apis.data.go.kr` — 공공데이터포털 게이트웨이. 우리 레인 대부분이 여기로 간다.
+ *   - `www.localdata.go.kr` — 지방행정 인허가 **원천**(2026-08-02 추가). 우리 레인의 페이징 파라미터가
+ *     `pageIndex`/`pageSize` 이고 업종 키가 `opnSvcId` 인 것이 이 호스트의 규약과 정확히 일치한다 —
+ *     즉 이 코드는 원래 여기를 향해 쓰였고, "폐쇄 후 이관" 때 base 만 바뀌었는데 그 경로가 존재하지 않는다.
+ */
+export const PROBE_ALLOWED_HOSTS = ['apis.data.go.kr', 'www.localdata.go.kr'] as const
+export type ProbeHost = (typeof PROBE_ALLOWED_HOSTS)[number]
+/** @deprecated 단수 상수는 남겨 둔다(기존 호출부·시험 호환). 판정은 `PROBE_ALLOWED_HOSTS` 가 한다. */
+export const PROBE_ALLOWED_HOST: ProbeHost = PROBE_ALLOWED_HOSTS[0]
 
-/** 경로 정규화 — 앞 슬래시·공백·쿼리스트링을 떼고 경로만 남긴다(쿼리는 이 모듈이 붙인다). */
-export function normalizeProbePath(raw: string | undefined | null): string | null {
+/**
+ * 경로 정규화 — 앞 슬래시·공백·쿼리스트링을 떼고 **호스트와 경로**만 남긴다(쿼리는 이 모듈이 붙인다).
+ * @param defaultHost 상대 경로일 때 쓸 호스트(미지정이면 공공데이터포털).
+ * @returns 허용 호스트가 아니거나 경로 문자가 아니면 `null` — **조용히 무시하지 않고 거절**한다.
+ */
+export function normalizeProbePath(raw: string | undefined | null, defaultHost?: string): { host: ProbeHost; path: string } | null {
   const t = String(raw ?? '').trim()
   if (!t) return null
+  const pickHost = (h: string | undefined): ProbeHost | null =>
+    (PROBE_ALLOWED_HOSTS as readonly string[]).includes(String(h || '')) ? (h as ProbeHost) : null
   // 절대 URL 이 오면 **허용 호스트일 때만** 경로를 취한다(다른 호스트는 거절 — 조용히 무시하지 않는다).
   if (/^https?:\/\//i.test(t)) {
     try {
       const u = new URL(t)
-      if (u.hostname !== PROBE_ALLOWED_HOST) return null
-      return u.pathname.replace(/^\/+/, '')
+      const h = pickHost(u.hostname)
+      if (!h) return null
+      return { host: h, path: u.pathname.replace(/^\/+/, '') }
     } catch { return null }
   }
   if (t.includes('?') || t.includes('#')) return null // 쿼리 주입 차단(키 파라미터를 덮어쓸 수 있다)
   if (!/^[A-Za-z0-9._~\-/]+$/.test(t)) return null    // 경로 문자만
-  return t.replace(/^\/+/, '')
+  return { host: pickHost(defaultHost) || PROBE_ALLOWED_HOSTS[0], path: t.replace(/^\/+/, '') }
 }
 
 /** ⚠️ 페이징만 받는다 — `path`(후보 경로)는 대상 정의와 무관하다(그건 대상을 *대체*하는 것이다). */
@@ -163,22 +184,33 @@ export async function probePublicData(env: Env, target: string, keyOverride?: st
     page: Math.min(100000, Math.max(1, Math.trunc(Number(opts?.page)) || 1)),
   }
   // 🧭 후보 경로가 오면 **대상 정의를 대체**한다 — 죽은 엔드포인트의 후임을 배포 없이 찾기 위해.
-  const candidate = normalizeProbePath(opts?.path)
+  const candidate = normalizeProbePath(opts?.path, opts?.host)
   const rejectedPath = !!opts?.path && !candidate // 거절은 조용히 넘기지 않는다(왜 안 됐는지 말해야 고친다)
   const def = PROBE_TARGETS[target]
-  const label = candidate ? `후보 경로 — ${candidate}` : (def?.label || target)
+  const label = candidate ? `후보 경로 — ${candidate.host}/${candidate.path}` : (def?.label || target)
   const base: ProbeResult = { target, label, url: '', http: null, body: '', is_json: false, hard: false }
-  if (rejectedPath) return { ...base, error: `후보 경로 거절 — ${PROBE_ALLOWED_HOST} 의 경로만 받습니다(쿼리·다른 호스트 불가)`, hard: true }
+  if (rejectedPath) return { ...base, error: `후보 경로 거절 — ${PROBE_ALLOWED_HOSTS.join(' 또는 ')} 의 경로만 받습니다(쿼리·다른 호스트 불가)`, hard: true }
   if (!def && !candidate) return { ...base, error: `알 수 없는 대상 — ${probeTargetNames().join(', ')} 중 하나` }
 
   const key = keyOverride ?? String((env as unknown as { PUBLIC_DATA_SERVICE_KEY?: string }).PUBLIC_DATA_SERVICE_KEY || '')
-  if (!key) return { ...base, error: 'PUBLIC_DATA_SERVICE_KEY 미설정', hard: true }
+  //   🔑 **키를 발급처가 아닌 호스트로 보내지 않는다.** LOCALDATA 는 자체 키 체계(`authKey`)를 쓰고
+  //     우리가 가진 건 공공데이터포털 `serviceKey` 다. 남의 호스트에 우리 키를 실어 보내는 건
+  //     "혹시 되나" 보려고 자격증명을 흘리는 것이다. 키 없이 찔러도 **판정은 된다** —
+  //     인증 오류가 오면 *"엔드포인트는 존재한다"*, `NO_OPENAPI_SERVICE_ERROR` 면 *"여기도 아니다"* 다.
+  const needsKey = !candidate || candidate.host === 'apis.data.go.kr'
+  if (!key && needsKey) return { ...base, error: 'PUBLIC_DATA_SERVICE_KEY 미설정', hard: true }
 
   //   공공데이터포털은 페이징 파라미터 이름이 서비스마다 갈린다(pageNo/numOfRows ↔ pageIndex/pageSize).
   //   후보를 찌를 땐 **둘 다** 실어 보낸다 — 모르는 쪽을 무시하는 게 이 게이트웨이의 동작이고,
   //   하나만 보내면 "이름이 달라서" 실패한 것을 "주소가 틀려서"로 오진하게 된다.
+  //   공공데이터포털은 페이징 파라미터 이름이 서비스마다 갈린다(pageNo/numOfRows ↔ pageIndex/pageSize).
+  //   후보를 찌를 땐 **둘 다** 실어 보낸다 — 모르는 쪽을 무시하는 게 이 게이트웨이의 동작이고,
+  //   하나만 보내면 "이름이 달라서" 실패한 것을 "주소가 틀려서"로 오진하게 된다.
+  const paging = `pageNo=${o.page}&numOfRows=${o.rows}&pageIndex=${o.page}&pageSize=${o.rows}&type=json&_type=json&resultType=json`
   const url = candidate
-    ? `https://${PROBE_ALLOWED_HOST}/${candidate}?serviceKey=${serviceKeyParam(key)}&pageNo=${o.page}&numOfRows=${o.rows}&pageIndex=${o.page}&pageSize=${o.rows}&type=json&_type=json&resultType=json`
+    ? (candidate.host === 'apis.data.go.kr'
+      ? `https://${candidate.host}/${candidate.path}?serviceKey=${serviceKeyParam(key)}&${paging}`
+      : `https://${candidate.host}/${candidate.path}?${paging}`) // 키 없이 — 존재 여부만 판정(위 주석)
     : def!.url(key, env, o)
   const safeUrl = redactServiceKey(url)
   let res: Response | null = null
