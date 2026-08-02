@@ -72,7 +72,17 @@ export const PLAN_KNOBS: readonly PlanKnob[] = [
   // ── 데이터 모양 — 예산이 아니다
   { env: 'ADS_COMPANY_WEB_TIER_MAX', cls: 'shape', why: '어느 tier 까지 웹 레인을 붙일지 — 대상 범위이지 속도가 아니다' },
   { env: 'ADS_MEASURE_SHARE', cls: 'shape', why: '측정/수집 몫 **비율** — 총량은 lanesPerTick 이 정한다' },
-  { env: 'ADS_INFLUENCER_ENRICH_FANOUT', cls: 'shape', why: '조각 수 K — 총 작업량이 아니라 나누는 방식(각 조각이 자기 예산을 쓴다)' },
+  // ⚠️ **이 한 줄은 확신이 낮다 — 다음 세션이 데이터로 결론지어야 한다.**
+  //   `shape` 로 둔 근거: 각 조각이 자기 서브리퀘스트 예산을 쓰므로 K 는 총 작업량이 아니라 나누는 방식이다.
+  //   `cf` 라는 반론: 조각은 `SELF.fetch` 자식이고 **피호출자 CPU 는 호출자 몫**이라 K 를 올리면
+  //     드라이버(→ 나아가 cron 부모)의 CPU 가 곧바로 오른다. `dispatch-budget.ts` 주석도
+  //     *"부모가 죽기 시작하면 비율이 아니라 K 를 먼저 내려라"* 라고 적고 있다 — 즉 이미 CF 자원처럼 다룬다.
+  //   판정에 필요한 것: 보강의 병목이 CPU 인가 외부 쿼터인가. 08-02 라이브는 **CPU 쪽**을 가리킨다
+  //     (`planned=20` 인데 착지 2 · `yt_budget 52/90` 으로 쿼터는 남았다). 그렇다면 유료에서 K 는 올라야 한다.
+  //   그런데도 안 바꾼 이유: K 는 **부모 비용을 곱**하므로, 레인 수 학습기(`lane-aimd.ts`)가 라이브에서
+  //     안정된 걸 확인하기 전에 같은 축을 둘 다 움직이면 **어느 쪽이 원인인지 못 가린다.**
+  //   ⇒ 학습기가 붙은 뒤 `ads_tick_history` 로 한 축씩 판정할 것.
+  { env: 'ADS_INFLUENCER_ENRICH_FANOUT', cls: 'shape', why: '조각 수 K — 각 조각이 자기 예산을 쓴다. ⚠️ 다만 자식 CPU 는 호출자 몫이라 cf 로 볼 여지가 있다(위 주석의 미결 항목)' },
   { env: 'ADS_INFLUENCER_ENRICH_ROUNDS', cls: 'shape', why: '계획 라운드 수 — 실제 수행은 벽시계·예산이 정한다(실측: 계획 20 · 도달 2)' },
 ]
 
