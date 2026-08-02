@@ -325,9 +325,10 @@ describe('🚧 배선 — 스케줄러가 실제로 예산 분산을 쓰는가',
   it('🔒 커서를 읽고 쓴다 — 안 그러면 매 회차 같은 레인만 돈다', async () => {
     const src = (await import('node:fs')).readFileSync('src/worker-ads/lane-runner.ts', 'utf8')
     expect(src).toMatch(/SELECT value FROM platform_settings WHERE key = \?/)
-    // 역할별 커서라 숫자 하나로는 못 남긴다 — String() 으로 되돌아가면 tick·measure 가 통째로 사라진다.
-    expect(src).toMatch(/bind\(DISPATCH_CURSOR_KEY, JSON\.stringify\(sel\.nextCursor\)\)/)
-    expect(src).toContain('readCursors(')
+    // 🔁 2026-08-02: 커서가 **도메인별**로 바뀌었다(`nextCursors`). 의도는 그대로 — 숫자 하나로는 못 남긴다.
+    //   String() 으로 되돌아가면 tick·measure·도메인이 통째로 사라진다.
+    expect(src).toMatch(/bind\(DISPATCH_CURSOR_KEY, JSON\.stringify\(sel\.nextCursors\)\)/)
+    expect(src).toContain('readDomainCursors(')
   })
 
   /**
@@ -337,7 +338,9 @@ describe('🚧 배선 — 스케줄러가 실제로 예산 분산을 쓰는가',
    */
   it('🔒 측정 비율을 실제로 넘긴다 — 안 넘기면 env 노브가 무음으로 죽는다', async () => {
     const src = (await import('node:fs')).readFileSync('src/worker-ads/lane-runner.ts', 'utf8')
-    expect(src).toMatch(/selectLanesForTick\(pending, perTick, cursor, resolveMeasureShare\(env\)\)/)
+    // 🔁 도메인 분리 후 진입점이 `selectLanesByDomain` 이다. **비율을 끝까지 넘기는지**가 이 검사의 요점이라
+    //   인자 위치가 바뀌어도 그 사실만 겨눈다(이름만 갈아끼우고 검사를 약화시키지 않는다).
+    expect(src).toMatch(/selectLanesByDomain\(pending, perTick, cursors, hourUTC, resolveMeasureShare\(env\)\)/)
     expect(src).toMatch(/ADS_MEASURE_SHARE\?: string/)   // env 타입에 없으면 대시보드 값이 안 들어온다
   })
 })
