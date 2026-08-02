@@ -88,8 +88,24 @@ describe('레인 도메인 표', () => {
 describe('도메인별 몫 배분', () => {
   const ALL = [...ADS_DOMAINS]
 
-  it('무료 8자리는 대표 확정 3/3/1/1 이다', () => {
-    expect(domainBudgets(FREE_LANES_PER_TICK, ALL)).toEqual({ influencer: 3, company: 3, prospect: 1, wholesale: 1 })
+  it('대표 확정 비율은 3/3/1/1 이다 — 8자리 기준', () => {
+    expect(domainBudgets(8, ALL)).toEqual({ influencer: 3, company: 3, prospect: 1, wholesale: 1 })
+  })
+
+  /**
+   * 🔻 **총량과 비율은 다른 사람이 정한다** (2026-08-02).
+   *   처음엔 이 검사가 `domainBudgets(FREE_LANES_PER_TICK, …)` 로 **총량과 비율을 한 값에 묶어** 뒀다.
+   *   그래서 CPU 실측으로 총량을 8 → 6 으로 내리는 순간 *대표 확정 비율까지 빨간불*이 됐다 —
+   *   고쳐야 할 것은 총량인데 테스트는 비율이 깨졌다고 말했다.
+   *   ⇒ 비율은 8자리 기준으로 고정하고(위), 현재 총량은 **비율을 지키는지만** 본다.
+   *   ⚠️ 총량은 플랫폼 CPU 한도가 정한다(`FREE_LANES_PER_TICK` 주석의 실측). 비율은 대표가 정한다.
+   */
+  it('현재 무료 총량도 비율을 지킨다 — 두 유어애즈 풀이 대등하고, 아무도 0 이 아니다', () => {
+    const b = domainBudgets(FREE_LANES_PER_TICK, ALL)
+    expect(b.influencer + b.company + b.prospect + b.wholesale).toBe(FREE_LANES_PER_TICK)
+    expect(b.influencer, '두 유어애즈 풀은 대등해야 한다').toBe(b.company)
+    for (const d of ALL) expect(b[d], `${d} 가 0 이면 그 도메인은 영원히 안 돈다`).toBeGreaterThanOrEqual(1)
+    expect(b.influencer, '비율이 최소-1 바닥에 눌리면 3:3:1:1 이 사라진다').toBeGreaterThan(b.prospect)
   })
 
   /** 💳 표를 손대지 않아도 유료에서 같은 비율로 커진다 — 그게 요금제 노브의 설계다. */
