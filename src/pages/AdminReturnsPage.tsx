@@ -18,6 +18,7 @@ import { formatKST } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 import { ChevronDown, ChevronUp, Loader2, RefreshCw, RotateCw } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import RefundAmountEditor from '@/components/admin/RefundAmountEditor'
 
 interface ReturnRecord {
   id: number
@@ -248,7 +249,10 @@ export default function AdminReturnsPage() {
                                   <strong>검수 결과:</strong> {r.inspection_result === 'approved' ? '✅ 승인' : '❌ 반려'}
                                 </div>
                               )}
-                              {r.refund_amount && (
+                              {/* 🔴 2026-08-01 fix: `refund_amount` 는 **반품 신청 시점**에 주문 총액으로 채워진다.
+                                  status 를 안 보고 그리면 신청하자마자 "환불 완료" 가 떠서, 아직 돈이 안 나갔는데
+                                  나간 것처럼 보였다. 실제로 나간 뒤(`refunded`)에만 그린다. */}
+                              {r.status === 'refunded' && r.refund_amount != null && (
                                 <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200 text-xs text-emerald-700">
                                   💰 환불 완료: {formatNumber(r.refund_amount)}원
                                 </div>
@@ -278,9 +282,19 @@ export default function AdminReturnsPage() {
                                   </>
                                 )}
                                 {r.status === 'inspected' && r.inspection_result === 'approved' && (
-                                  <button onClick={() => handleRefund(r.id)} className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-500 rounded hover:bg-emerald-600">
-                                    💰 환불 처리
-                                  </button>
+                                  <>
+                                    {/* 💸 ④-c: 금액을 정하는 것과 돈을 내보내는 것은 다른 결정이라 버튼이 따로다.
+                                        게이트(`partial_refund_enabled`)가 꺼져 있으면 저장이 403 으로 거부된다. */}
+                                    <RefundAmountEditor
+                                      returnId={r.id}
+                                      current={r.refund_amount}
+                                      onSaved={loadReturns}
+                                      config={h}
+                                    />
+                                    <button onClick={() => handleRefund(r.id)} className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-500 rounded hover:bg-emerald-600">
+                                      💰 환불 처리
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </div>

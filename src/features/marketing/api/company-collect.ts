@@ -49,7 +49,7 @@ async function laneFetch(url: string, init: RequestInit & { timeoutMs?: number }
  *   ⚠️ 지역이 31→235 로 늘어난 지금 그대로 두면 중복이 배수로 폭증한다.
  *   → 주소가 있으면 주소에서 도출(진실), 없을 때만 키워드 지역으로 폴백.
  */
-function regionFromAddress(addr: string | null | undefined, fallback: string | null): string | null {
+export function regionFromAddress(addr: string | null | undefined, fallback: string | null): string | null {
   const hits = [...String(addr || '').matchAll(/([가-힣]{2,10}?)(시|군|구)(?:\s|$)/g)]
     .map(m => m[1].replace(/특별|광역|자치/g, '').slice(0, 20))
     .filter(Boolean)

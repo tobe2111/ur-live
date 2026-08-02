@@ -226,6 +226,15 @@ jobs:
         run: node scripts/check-duplicate-routes.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-08-01: 라우트를 달아도 **누를 데가 없으면 없는 것과 같다.** 같은 클래스로
+      #   이미 세 번 났다(랜딩 가려짐 / `GET /api/returns/seller` 소비화면 0건 / O9 구현 0).
+      #   실측: 정적 라우트 361 중 21개가 소스 어디에도 문자열로 안 나온다 —
+      #   `/account/settings`(사용자 테마·언어 화면)가 **주석에만** 있었다.
+      #   래칫: 기존 21개는 동결, **새 고아만** 차단. 앱 밖 진입(OAuth·PG 리턴)은 동결이 정답이다.
+      - name: 도달 불가 라우트 래칫 (strict)
+        run: node scripts/check-orphan-routes.mjs -s
+        continue-on-error: false
+
       # 🛡️ 2026-07-29: CLAUDE.md 잠금표가 **사라진 심볼**을 지키면 표가 틀린 지도가 된다.
       #   실측 2건: `linkUserExtraRoles`(→`issueLinkedRoleTokens` 리네임) · `MainHomePage`(참조 0인 죽은 파일인데
       #   "eager import 유지" 를 요구 — 따르면 죽은 컴포넌트를 되살리게 된다).

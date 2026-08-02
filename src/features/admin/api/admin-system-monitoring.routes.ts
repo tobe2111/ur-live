@@ -276,6 +276,9 @@ const OPS_GATES: OpsGate[] = [
   //   🔴 **이미 흐르는 환불의 방향을 바꾼다** — 안 돌던 걸 켜는 게 아니다(cron `0 18` 실행 확인됨).
   //   OFF 면 현행 전액 환불. 켜도 비율값(기본 100)을 안 바꾸면 동작 불변 — 안전판이 두 겹이다.
   { key: 'pickup_unclaimed_policy_enabled', kind: 'setting', label: '미수령 환불 정책(보관구분별) ④-b', default_value: 'false', staging_ref: 'P10' },
+  // 💸 2026-08-01 ④-c: 부분환불 **금액을 정할 입구**. 그간 `returns.refund_amount` 를 바꾸는 경로가
+  //   아예 없어 실질적으로 전액 환불만 가능했다. OFF 면 금액 설정 API 가 403 → 현행(전액) 그대로.
+  { key: 'partial_refund_enabled', kind: 'setting', label: '부분환불 금액 설정 ④-c', default_value: 'false', staging_ref: 'P11' },
 ]
 
 adminSystemMonitoringRoutes.get('/ops-status', async (c) => {
