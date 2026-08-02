@@ -26,15 +26,64 @@ import type { D1Database } from '@cloudflare/workers-types'
  */
 type Spendable = { left: number; deadline?: number }
 
+/** 회원수로 받아들일 수 있는 값인가 — 상한: 네이버 최대 카페도 1천만 미만(넘으면 글 수/조회수 오집). */
+const sane = (n: number): number | null => (Number.isFinite(n) && n > 0 && n < 10_000_000 ? n : null)
+
 /** 카페 홈 HTML → 회원수. 못 찾으면 null(0 으로 덮어쓰지 않는다 — '모름'과 '0명'은 다르다). */
 export function parseCafeMembers(html: string): number | null {
   if (!html) return null
   // '멤버수 12,345' / '멤버 12,345명' / '회원수 12,345' / '회원 12,345명'
   const m = /(?:멤버|회원)\s*수?\s*[:：]?\s*([0-9][0-9,]{0,12})\s*명?/.exec(html)
   if (!m) return null
-  const n = parseInt(m[1]!.replace(/,/g, ''), 10)
-  // 상한: 네이버 최대 카페도 1천만 미만. 그보다 크면 글 수/조회수를 잘못 집은 것이다.
-  return Number.isFinite(n) && n > 0 && n < 10_000_000 ? n : null
+  return sane(parseInt(m[1]!.replace(/,/g, ''), 10))
+}
+
+/**
+ * 🔤 **EUC-KR 바이트에서 직접 회원수 뽑기** — 2026-08-02 라이브 표본이 원인을 확정했다.
+ *
+ * ```
+ *   status 200 · len 200,000 · peek '::�ǻ�::�Ǽ���������ϴ»���� / No.1 ���Ͼ�Ʈ...'
+ * ```
+ * 차단도 프레임셋도 아니었다. **카페 홈은 EUC-KR 인데 `res.text()` 가 UTF-8 로 디코딩**해서,
+ * 한글이 전부 U+FFFD 로 뭉개진다 — `멤버|회원` 정규식은 매치될 수가 없다(18/18 실패의 전부).
+ *
+ * ⚠️ **왜 TextDecoder 에 기대지 않는가**: Workers 런타임의 `TextDecoder` 가 'euc-kr' 라벨을 지원하는지
+ *   이 환경에서 확인할 수 없다(cafe.naver.com·CF 대시보드 모두 프록시 차단). 지원하면 그걸 쓰고,
+ *   throw 하면 이 바이트 스캔으로 떨어진다 — **둘 중 뭐가 먹었는지는 `via` 로 라이브에서 보인다.**
+ *   바이트 스캔은 디코더가 전혀 필요 없다: 라벨의 EUC-KR 바이트를 찾고, 그 뒤의 **ASCII 숫자**를 읽는다
+ *   (모지바케가 되든 말든 숫자 바이트는 훼손되지 않는다).
+ */
+const EUCKR_LABELS: number[][] = [
+  [0xb8, 0xe2, 0xb9, 0xf6], // 멤버
+  [0xc8, 0xb8, 0xbf, 0xf8], // 회원
+]
+
+/** 바이트 창을 ASCII 만 남겨 문자열로 — 한글(≥0x80)은 공백. 숫자·태그·구두점은 그대로 살아남는다. */
+export function asciiWindow(buf: Uint8Array, from: number, len: number): string {
+  let s = ''
+  for (let i = Math.max(0, from), end = Math.min(buf.length, from + len); i < end; i++) {
+    const c = buf[i]!
+    s += c >= 0x20 && c < 0x7f ? String.fromCharCode(c) : ' '
+  }
+  return s
+}
+
+export function parseCafeMembersFromBytes(buf: Uint8Array): number | null {
+  for (const label of EUCKR_LABELS) {
+    for (let i = 0; i + label.length < buf.length; i++) {
+      let hit = true
+      for (let j = 0; j < label.length; j++) if (buf[i + j] !== label[j]) { hit = false; break }
+      if (!hit) continue
+      // 라벨 뒤 60바이트를 ASCII 로 펴서 첫 숫자 덩어리(쉼표 포함)를 읽는다.
+      //   ⚠️ 마크업이 숫자를 쪼개면(`<b>12</b>,345`) 앞 조각만 잡힐 수 있다 — 기존 UTF-8 정규식과 같은
+      //     한계이고, `sane()` 이 상한만 막는다. 실제로 그런지는 진단 표본(peek)이 말해 준다.
+      const m = /([0-9][0-9,]{0,12})/.exec(asciiWindow(buf, i + label.length, 60))
+      if (!m) continue
+      const n = sane(parseInt(m[1]!.replace(/,/g, ''), 10))
+      if (n != null) return n
+    }
+  }
+  return null
 }
 
 /**
@@ -48,7 +97,23 @@ export function parseCafeMembers(html: string): number | null {
  *   🔒 HTML 원문을 담지 않는다: 태그를 걷고 120자만, 표본 3건까지(설정값 크기·개인정보 양쪽 고려).
  */
 export interface CafeSample { handle: string; via: string; status: number; len: number; peek: string }
-export interface CafeMemberDiag { tried: number; filled: number; failed: number; selected: number; samples?: CafeSample[] }
+export interface CafeMemberDiag {
+  tried: number; filled: number; failed: number; selected: number
+  samples?: CafeSample[]
+  /** 전량 실패라 회차를 접었다 — 뒤 단계(지역·재추출)에 예산을 넘겼다는 뜻. */
+  aborted?: true
+}
+
+/**
+ * 🛑 **연속 실패 조기 중단 임계** — 2026-08-02 회귀의 수리.
+ *
+ *   #957 이 카페를 단계 맨 앞으로 옮겨 굶주림(3/20 시도)은 풀었는데, **18번이 전부 실패하면서
+ *   예산을 다 태우고** 뒤의 지역 백필·재추출을 0 으로 굶겼다(라이브 실측: `region {filled:0}` ·
+ *   `reextract {scanned:0}` · 커서 불변). 순서를 고치면서 "안 되면 접는다"를 안 넣은 것이 원인이다.
+ *   ⇒ 한 건도 못 채운 채 이만큼 실패하면 **그 회차는 접고 예산을 뒤에 넘긴다.** 카페는 다음 회차가
+ *     이어서 잡으므로(채운 행은 제외되니 커서도 필요 없다) 잃는 것이 없다.
+ */
+export const CAFE_ABORT_AFTER_FAILS = 4
 
 /** 태그를 걷고 '멤버/회원' 주변을 잘라낸다 — 없으면 앞부분 일부(무엇을 받았는지라도 보이게). */
 export function peekMembers(html: string): string {
@@ -102,10 +167,29 @@ export async function fillCafeMemberCounts(DB: D1Database, poolId: number, budge
           },
           signal: AbortSignal.timeout(8000),
         })
-        const body = res.ok ? (await res.text()).slice(0, 200_000) : ''
-        n = res.ok ? parseCafeMembers(body) : null
-        vias.push(a.via)
-        last = { status: res.status, len: body.length, peek: peekMembers(body) || last?.peek || '' }
+        // 📦 **바이트로 받는다** — 인코딩 판단을 우리가 한다(`res.text()` 는 무조건 UTF-8 이라
+        //   EUC-KR 인 카페 홈을 통째로 뭉갠다. 그게 18/18 실패의 원인이었다).
+        const raw = res.ok ? new Uint8Array((await res.arrayBuffer()).slice(0, 300_000)) : new Uint8Array(0)
+        let how = a.via
+        if (res.ok) {
+          const utf8 = new TextDecoder().decode(raw) // 게이트 JSON·UTF-8 페이지는 여기서 끝난다
+          n = parseCafeMembers(utf8)
+          if (n == null) {
+            try { // 런타임이 euc-kr 라벨을 지원하면 그게 가장 정확하다
+              n = parseCafeMembers(new TextDecoder('euc-kr').decode(raw))
+              if (n != null) how = `${a.via}:euckr`
+            } catch { /* 미지원 런타임 — 아래 바이트 스캔으로 */ }
+          }
+          if (n == null) {
+            n = parseCafeMembersFromBytes(raw)
+            if (n != null) how = `${a.via}:bytes`
+          }
+          // 실패 표본은 **ASCII 로 편 창**을 남긴다 — U+FFFD 뭉갬은 원인을 못 보여준다(이미 겪었다).
+          if (n == null) last = { status: res.status, len: raw.length, peek: asciiWindow(raw, 0, 160).replace(/\s+/g, ' ').trim() }
+        } else {
+          last = { status: res.status, len: 0, peek: '' }
+        }
+        vias.push(how)
       } catch { /* 실패는 다음 회차가 재시도(멱등) */ }
       if (n != null) break
       if (budget.left <= 0) break
@@ -114,6 +198,8 @@ export async function fillCafeMemberCounts(DB: D1Database, poolId: number, budge
     if (n == null) {
       diag.failed++
       if (last && (diag.samples ||= []).length < 3) diag.samples.push({ handle, via: vias.join('+'), ...last })
+      // 🛑 한 건도 못 채운 채 연속 실패면 접는다 — 뒤 단계(지역·재추출)를 굶기지 않기 위해서다.
+      if (diag.filled === 0 && diag.failed >= CAFE_ABORT_AFTER_FAILS) { diag.aborted = true; break }
       continue
     }
     ups.push(DB.prepare('UPDATE ad_influencer_leads SET subscriber_count = ? WHERE id = ? AND account_id = ?').bind(n, r.id, poolId))
