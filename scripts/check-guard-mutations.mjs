@@ -259,6 +259,17 @@ const MUTATIONS = [
       '이 항목은 시험이 실제로 잡아낸 결함이다.',
   },
   {
+    name: '파트너 커서가 계획한 창 크기로 전진(영구 사각지대)',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: 'const nextCursor = total > 0 ? (cursor + consumed) % total : 0',
+    replace: 'const nextCursor = total > 0 ? (cursor + batch) % total : 0',
+    test: 'src/tests/unit/company-keyword-grid.test.ts',
+    why:
+      '이 레인은 거의 매 회차 예산이 먼저 마른다(실측 `keywords 11 · limit_hit true`). ' +
+      '계획한 12칸을 전진하면 못 돈 1개가 **건너뛰어지고**, 전진폭이 창 크기와 같아 창 경계가 ' +
+      '영원히 고정되므로 **매 회전 같은 자리**가 빠진다 — 지연이 아니라 영구 사각지대다. 오류도 안 난다.',
+  },
+  {
     name: '카카오 매장 회차가 다시 완주를 전제함(중간 정산 제거)',
     file: 'src/features/marketing/api/store-kakao-collect.ts',
     find: 'if (cursorKey && rows.length >= FLUSH_ROWS) await flushAt(cursorKey,',
