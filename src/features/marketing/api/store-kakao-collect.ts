@@ -22,7 +22,7 @@ import type { Env } from '@/worker/types/env'
 import { S2_REGIONS, rotationWindow } from './company-keyword-grid'
 import { regionFromAddress } from './company-collect'
 import { saveProspects, type StoreProspect } from './store-prospects'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap } from './collect-budget'
 
 /** 무인매장 업태 — 대표 요청분(2026-07-28). 카테고리는 `store_prospects.category` 표시값이 된다. */
 export const UNMANNED_TRADES: Array<{ kw: string; category: string }> = [
@@ -185,7 +185,7 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
   const learnedRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('store_kakao')).first<{ value: string }>().catch(() => null)
   const learnedCap = Math.max(0, parseInt(learnedRaw?.value || '', 10) || 0)
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
-  const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
+  const pcap = envSubreqCap(env)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
   // 다른 레인과 **같은 형태**의 예산 객체를 쓴다(가드가 이 형태를 요구한다 — 소비량 계산이 어긋나면
   //   백오프가 거꾸로 작동해 상한을 폭등시킨 전례가 있다: kakao_sweep 2026-07-28).

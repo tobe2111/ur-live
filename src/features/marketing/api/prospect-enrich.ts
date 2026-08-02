@@ -17,7 +17,7 @@
 import type { Env } from '@/worker/types/env'
 import type { FetchBudget } from './influencer-discovery'
 import { ensureProspectSchema, PRIORITY_UPJONG_SQL } from './store-prospects'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap, resolveEnrichDeadlineMs } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs } from './collect-budget'
 import { runPooled, resolveConcurrency } from './lane-pool'
 import { foldEnrichRollup, PROSPECT_ROLLUP_KEY } from './enrich-telemetry'
 
@@ -62,10 +62,10 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   const bootVal = (k: string) => boot.find(r => r.key === k)?.value || null
   const learnedCap = Math.max(0, parseInt(bootVal(subreqCapKey('prospect_enrich')) || '', 10) || 0)
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
-  const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
+  const pcap = envSubreqCap(env)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
   // ⏱️ 벽시계 마감 — 서브리퀘스트가 남아도 시간이 인보케이션을 끝낸다(보강 레인에서 실측된 실패 모드).
-  const deadlineMs = resolveEnrichDeadlineMs(env.ADS_ENRICH_DEADLINE_MS)
+  const deadlineMs = envEnrichDeadlineMs(env)
   const t0 = Date.now()
   const budget: FetchBudget = { left: budgetTotal, deadline: t0 + deadlineMs }
   let d1 = 0

@@ -12,7 +12,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, platformSubreqCap } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap } from './collect-budget'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
 import { buildKeywordRows, rotationWindow, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
@@ -174,6 +174,18 @@ export async function addCompanyKeyword(DB: D1Database, keyword: string, categor
   return { ok: true }
 }
 
+/**
+ * 키워드 on/off — **수집 대상**만 바꾼다(이미 모인 리드는 그대로).
+ * ⚠️ 존재하지 않는 id 면 `ok:false` 로 알린다. `.run()` 결과의 `meta.changes` 로 판정하는 이유는,
+ *   조용히 성공을 반환하면 화면이 "껐다"고 표시하는데 실제로는 아무것도 안 꺼진 상태가 되기 때문이다
+ *   (이 레포가 반복해 만난 "실패가 아니라 조용한 부재" 클래스).
+ */
+export async function setCompanyKeywordActive(DB: D1Database, id: number, active: 0 | 1): Promise<{ ok: boolean; error?: string }> {
+  await ensureCompanyKeywords(DB)
+  const r = await DB.prepare('UPDATE ad_company_keywords SET active = ? WHERE id = ?').bind(active, id).run().catch(() => null)
+  return r?.meta?.changes ? { ok: true } : { ok: false, error: 'NOT_FOUND' }
+}
+
 /** 네이버 지역검색(local.json) 1키워드 → CompanyLead[]. display 최대 5(네이버 로컬 API 제약). */
 async function searchNaverLocal(clientId: string, clientSecret: string, kw: CompanyKeyword, budget?: FetchBudget): Promise<CompanyLead[]> {
   if (outOfBudget(budget)) return []
@@ -322,7 +334,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   // 🧱 2026-07-29 — 이 레인만 **천장도 학습도 없이** 110 을 그대로 썼다(무료 플랜 인보케이션 한도는 50).
   //   그래서 매 라운드 후반 fetch 가 조용히 전멸했고, 학습 루프가 없어 그 사실이 어디에도 안 남았다.
   //   ⚠️ 시드 비용도 뺀다 — 시드가 도는 라운드에만 천장을 넘는 '가끔 죽는' 패턴은 원인 규명이 가장 어렵다.
-  const budgetTotal = Math.max(1, Math.min(envBudgetRaw, platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)) - seedSpent - schemaSpent)
+  const budgetTotal = Math.max(1, Math.min(envBudgetRaw, envSubreqCap(env)) - seedSpent - schemaSpent)
   const budget: FetchBudget = { left: budgetTotal }
 
   let found = 0, saved = 0
@@ -487,7 +499,7 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   //   실제의 ~10배가 나온다 → 한도 오류 시 백오프가 `floor(590*0.8)=472` 로 **상한을 오히려 폭등**시켰다
   //   (되내려와야 할 안전판이 거꾸로 작동). 시작값을 명시 상수로 잡아 두 곳이 어긋날 수 없게 한다.
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
-  const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
+  const pcap = envSubreqCap(env)
   const budgetTotal = resolveSubreqBudget(cap, learnedCap, pcap)
   const budget: FetchBudget = { left: budgetTotal - schemaSpent }
   let found = 0
