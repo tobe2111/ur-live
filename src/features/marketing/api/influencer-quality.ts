@@ -241,7 +241,10 @@ const QUALITY_CURSOR_KEY = 'ads_quality_cursor'
  *   한 실행 상한(기본 8000행)에 걸리면 커서를 남겨 다음 밤에 이어받고, 끝까지 돌면 0 으로 리셋해
  *   다음 회차에 전체를 다시 검증(성과·연락처가 갱신되면 점수도 따라 움직여야 하므로 순환이 정답).
  */
-export async function runQualityPass(DB: D1Database, opts?: { max?: number; budget?: OpBudget }): Promise<{ scanned: number; branded: number; scored: number; opted_out: number; done: boolean }> {
+/** 무료 요금제 기본 마감선 — 관측된 CPU 사망 지점(3,649ms)의 절반 아래. 호출부가 명시하면 그 값이 이긴다. */
+export const QUALITY_DEADLINE_MS_FREE = 1_700
+
+export async function runQualityPass(DB: D1Database, opts?: { max?: number; budget?: OpBudget; deadlineMs?: number }): Promise<{ scanned: number; branded: number; scored: number; opted_out: number; done: boolean; stopped_by: string; elapsed_ms: number }> {
   await ensureQualityColumns(DB)
   const MAX = Math.max(200, Math.min(40_000, opts?.max ?? 8000))
   const PAGE = 500
@@ -250,8 +253,25 @@ export async function runQualityPass(DB: D1Database, opts?: { max?: number; budg
     .first<{ value: string }>().catch(() => null)
   if (raw?.value) cursor = Math.max(0, parseInt(raw.value, 10) || 0)
 
+  /**
+   * ⏱️ **벽시계 마감선** (2026-08-03 라이브 실측 — 이 패스는 **매시간 CPU 한도로 죽고 있었다**).
+   *
+   *   `cron_hb:ads:maintenance?phase=quality` → `ok=false ms=3649 detail=Worker exceeded CPU time limit.`
+   *   상한이 **행 수(MAX=8,000)뿐**이라 한 인보케이션이 16페이지 × 500행을 통째로 채점한다.
+   *
+   *   🩸 **재분류보다 나쁘다** — 커서 저장이 이 루프 **뒤**에 있다. CPU 로 죽으면 그 줄에 **도달하지 못하고**,
+   *   다음 회차가 같은 지점을 또 훑고 또 죽는다 ⇒ **영원히 전진 0**.
+   *   (`ads-cpu-deadline.test.ts` 가 통신판매에서 확정한 그 실패 모양 그대로다.)
+   *
+   *   ⚠️ 벽시계는 CPU 의 **근사**다(런타임이 CPU 를 안 준다) — 관측된 사망 지점의 절반 아래로 잡는다.
+   *   ✅ 커버리지 손실 0: 일찍 멈춰도 `done:false` 로 커서가 남아 다음 회차가 이어받는다.
+   */
+  const t0 = Date.now()
+  const deadlineMs = Math.max(500, Math.trunc(Number(opts?.deadlineMs)) || QUALITY_DEADLINE_MS_FREE)
+  let stoppedBy: 'rows' | 'deadline' | 'page' | 'budget' = 'rows'
   let scanned = 0, branded = 0, scored = 0, optedOut = 0, done = false
   while (scanned < MAX) {
+    if (Date.now() - t0 >= deadlineMs) { stoppedBy = 'deadline'; break }
     // ⚠️ url·last_post_at 이 빠지면 아래 scoreLead 의 '연락 가능성'·'미측정 활동성' 보정이 통째로 무력화된다
     //   (undefined → 연락 불가로 오판 / 활동성 중립 폴백 불가). 컬럼 추가 시 이 SELECT 를 함께 볼 것.
     const rows = (await DB.prepare(`SELECT id, platform, name, description, subscriber_count, recent_avg_views,
@@ -282,10 +302,11 @@ export async function runQualityPass(DB: D1Database, opts?: { max?: number; budg
       stmts.push(DB.prepare('UPDATE ad_influencer_leads SET is_brand = ?, lead_score = ?, opted_out = ? WHERE id = ?').bind(brand, score, optOut, r.id))
     }
     for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100)).catch(() => null)
-    if (opts?.budget?.exhausted) { cursor = pageStart; break } // 갱신이 잘렸으면 이 페이지를 다음 회차에 다시
-    if (rows.length < PAGE) { done = true; break }
+    if (opts?.budget?.exhausted) { cursor = pageStart; stoppedBy = 'budget'; break } // 갱신이 잘렸으면 이 페이지를 다음 회차에 다시
+    if (rows.length < PAGE) { done = true; stoppedBy = 'page'; break }
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(QUALITY_CURSOR_KEY, String(done ? 0 : cursor)).run().catch(() => null)
-  return { scanned, branded, scored, opted_out: optedOut, done }
+  // 관측: 매번 `deadline` 이면 상한을 더 내려야 한다는 신호다(커서 전진률을 같이 볼 것).
+  return { scanned, branded, scored, opted_out: optedOut, done, stopped_by: stoppedBy, elapsed_ms: Date.now() - t0 }
 }

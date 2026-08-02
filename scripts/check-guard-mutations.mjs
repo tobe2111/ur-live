@@ -112,6 +112,27 @@ const MUTATIONS = [
       '받았다. 그 400 을 근거로 "서비스가 폐기됐다"고 결론 낼 뻔했다 — 진단 도구가 오진의 재료가 되는 최악의 모양이다.',
   },
   {
+    name: '품질 패스가 시간 상한을 잃음(전진 0 복귀)',
+    file: 'src/features/marketing/api/influencer-quality.ts',
+    find: "    if (Date.now() - t0 >= deadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: '',
+    test: 'src/tests/unit/ads-quality-deadline.test.ts',
+    why:
+      '상한이 **행 수(8,000)뿐**이라 한 인보케이션이 16페이지를 통째로 채점하다 CPU 한도로 죽었다(`ms=3649`). ' +
+      '🩸 재분류보다 나쁘다 — **커서 저장이 루프 뒤**라 죽으면 그 줄에 도달하지 못하고 다음 회차가 같은 지점을 ' +
+      '또 훑고 또 죽는다 ⇒ **영원히 전진 0**(통신판매에서 확정된 그 실패 모양).',
+  },
+  {
+    name: '품질 패스 마감선 중단이 done=true 로 커서를 리셋',
+    file: 'src/features/marketing/api/influencer-quality.ts',
+    find: "if (Date.now() - t0 >= deadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: 'if (Date.now() - t0 >= deadlineMs) { done = true; break }',
+    test: 'src/tests/unit/ads-quality-deadline.test.ts',
+    why:
+      '`done` 은 "한 바퀴 다 돌았다" 는 뜻이고 커서를 **0 으로 리셋**한다. 시간 때문에 멈춘 것을 완주로 표시하면 ' +
+      '매 회차가 처음부터 다시 돌아 **풀 뒷부분은 영영 채점되지 않는다** — 조용히, 에러 없이.',
+  },
+  {
     name: '재분류 패스 루프가 마감선을 잃음(매시간 CPU 사망 복귀)',
     file: 'src/worker-ads/index.ts',
     find: 'passes < 5 && !last.done && Date.now() - t0 < deadlineMs',
