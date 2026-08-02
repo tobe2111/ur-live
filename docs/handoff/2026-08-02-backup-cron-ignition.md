@@ -1,6 +1,11 @@
-# 2026-08-02 — 재해복구가 0이던 것을 켰다 (주간 D1 백업 cron) + 인프라 시크릿 4종
+# 2026-08-02 — 워커측 주간 D1 백업 cron 점화 (2번째 백업 경로) + 인프라 시크릿 4종
 
 머지: `#968`(문법 수정) · `#972`(슬롯 회수 + 점화) — 앞선 세션 작업은 `2026-08-01-consumer-seo-admin-ledger.md`
+
+> ✏️ **제목 정정 (이 세션이 한 번 과장했다)**: 처음엔 *"재해복구가 0이던 것을 켰다"* 라고 적었다. **틀렸다.**
+> `.github/workflows/d1-backup.yml` 이 **수요일 20:00 UTC 로 이미 돌고 있었다**(07-15·22·29 성공).
+> 이번에 켠 것은 **워커측 일요일 회차** — 즉 0→1 이 아니라 **1→2(경로 분산)** 다.
+> ⚠️ rebase 중에 이 정정이 한 번 유실돼 다시 적었다. **다음 세션은 이 줄을 지우지 말 것.**
 
 ---
 
@@ -122,6 +127,26 @@ ur-live 등록 cron: 0 18 * * *  ·  0 19 * * *  ·  0 20 * * SUN  ·  */5 * * *
 1. **Workers Paid 전환 여부** — 지금 cron **5/5 로 꽉 찼다.** 트리거가 하나 더 필요해지면
    유료(한도 1,000)로 가거나 또 자리를 비워야 한다. `docs/design/cron-staged-ignition-plan-2026-07.md`
    의 3·4단계(매시간·주간 payouts)가 **전부 이 제약에 걸린다.**
+
+### 🔥 다음 세션이 이어받을 것 — 유어애즈 레인 침묵 8건 (2026-08-02 실측)
+
+`/api/admin/cron-heartbeats` 기준 **68개 중 8개가 stale**, **전부 `ads:*`**:
+
+```
+6573분  ads:sweep-kakao-phone              (허용 150)
+1834분  ads:maintenance?phase=merge        (허용 1470)
+ 814분  ads:collect-localdata?mode=backfill(허용 150)
+ 573분  ads:collect-company   ok=false  err=Error detail=Worker exceeded CPU tim…   ← 원인
+ 573분  ads:enrich-influencer-fanout / -driver
+ 273분  ads:lane-alarm-boot   ·  153분  ads:match-registry
+```
+
+**원인은 새 결함이 아니라 알려진 CPU 예산 포화**다(`check-ads-dispatch-bypass` 가 지키는 그 클래스).
+처방은 ① 건당 비용 절감 ② 유료 전환 — ②는 위 "대표 판단(열림)"과 같은 문제다.
+
+⚠️ **이 세션이 한 번 오진했다**: 임계값이 잘못 잡힌 것 아니냐고 짐작하며 `reconciliation`(1,413분)을
+근거로 들었는데, **그건 애초에 stale 목록에 없었다**(허용 2,910분 — 일 1회 cron 은 `base*2+30` 으로
+정확히 계산된다). 임계는 멀쩡하고 **8건은 전부 진짜 정지다.** 짐작으로 임계를 손대지 말 것.
 
 ### 세션이 못 하는 것
 - **구글 AI 검색**: CF **Managed robots.txt** 가 레포 robots.txt 를 통째로 대체하며
