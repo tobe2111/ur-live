@@ -45,7 +45,10 @@ export default function StoreOwnerDashboardPage() {
   async function load() {
     try {
       setLoading(true)
-      const res = await api.get('/api/seller/store-dashboard/stats')
+      // 🔴 2026-08-02: 이 호출이 **404 였다.** 핸들러는 `sellerAnalyticsRoutes` 안에 있고
+      //   그 라우터는 /api/seller/analytics 에 마운트된다 — 즉 실제 주소에 analytics 가 들어간다.
+      //   이 화면은 nav 에서 도달 불가라 아무도 못 밟았고, 그래서 안 고쳐진 채 남아 있었다.
+      const res = await api.get('/api/seller/analytics/store-dashboard/stats')
       if (res.data?.success) setStats(res.data.data)
     } catch (e) {
       console.error('load store stats', e)
