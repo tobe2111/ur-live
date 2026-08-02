@@ -189,6 +189,29 @@ export function envLaneBudget(raw: string | undefined, freeDefault: number, env?
 }
 
 /**
+ * 🎚️ **비율로 유도하면 안 되는 축** — 요금제별 값을 *명시*로 받는다 (2026-08-02).
+ *
+ * ## 왜 `envLaneBudget` 을 못 쓰나
+ * 그 함수는 유료 기본값을 **천장 비율(60→900 = ×15)** 로 유도한다. 서브리퀘스트 예산에는 맞는
+ * 유도지만, **일감 수와 마감선에는 재앙**이다:
+ * ```
+ *   NEIS 페이지 3 × 15 = 45      ← 6 으로 올린 날 CPU 한도로 죽었던 레인이다
+ *   회차 마감선 12초 × 15 = 180초 ← 유료 CPU 한도(30초)를 여섯 배 넘는다
+ * ```
+ * 즉 **축마다 상한을 정하는 주체가 다르다.** 예산은 플랫폼 천장이 정하지만, 일감 수는 *그 레인이
+ * 한 회차에 태울 수 있는 CPU* 가 정하고, 마감선은 *런타임 CPU 한도* 가 정한다. 비율을 빌려 쓰면
+ * 그 차이가 지워진다 — `resolveEnrichDeadlineMs` 가 유료 값을 **명시**(7s→20s)로 둔 것과 같은 이유다.
+ *
+ * ⚠️ `paid` 는 **추정이다**. 전환 후 하트비트의 성공 최대 ms ↔ 실패 최소 ms 로 재측정할 것.
+ * 🔒 무료 회귀 0 — `plan!=='paid'` 면 `free` 를 그대로 돌려준다. 명시 env 는 언제나 우선.
+ */
+export function envPlanValue(raw: unknown, free: number, paid: number, env?: SubreqCapEnv | null): number {
+  const n = parseInt(String(raw ?? ''), 10)
+  if (Number.isFinite(n) && n > 0) return n
+  return resolvePlan(env) === 'paid' ? paid : free
+}
+
+/**
  * 🔌 **레인이 실제로 쓰는 진입점** — env 하나만 주면 요금제까지 반영된다.
  *
  * 예전엔 13개 파일이 전부 천장 함수에 **raw 문자열만**(`env.ADS_SUBREQ_PLATFORM_CAP`) 넘겼다.

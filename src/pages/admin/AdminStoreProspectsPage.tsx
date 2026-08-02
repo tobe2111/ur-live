@@ -67,6 +67,8 @@ export default function AdminStoreProspectsPage() {
   const [page, setPage] = useState(0)
   const [stats, setStats] = useState<Stats | null>(null)
   const [collect, setCollect] = useState<Collect | null>(null)
+  /** 🩺 수확 0 이 지속되는 레인 — 하트비트는 초록인데 한 건도 못 캐는 상태를 화면이 먼저 말해 준다. */
+  const [laneHealth, setLaneHealth] = useState<Array<{ lane: string; message: string; severity: string }>>([])
   const [collecting, setCollecting] = useState(false)
   const [enriching, setEnriching] = useState(false)
   const [busySub, setBusySub] = useState('') // 'neis' | 'hira' | 'store-kakao' | ''
@@ -82,7 +84,7 @@ export default function AdminStoreProspectsPage() {
   const dq = useDebouncedValue(q) // ⏱️ 서버 검색은 타이핑 멈춘 뒤 1회(키 입력마다 왕복 방지)
 
   const loadStats = useCallback(async () => {
-    try { const r = await api.get('/api/admin/store-prospects/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setNeis(r.data.neis || null); setHira(r.data.hira || null); setKakao(r.data.storeKakao || null); setEnrichRun(r.data.enrich?.run || null) } } catch { /* noop */ }
+    try { const r = await api.get('/api/admin/store-prospects/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setNeis(r.data.neis || null); setHira(r.data.hira || null); setKakao(r.data.storeKakao || null); setEnrichRun(r.data.enrich?.run || null); setLaneHealth(r.data.laneHealth || []) } } catch { /* noop */ }
   }, [])
   const loadRows = useCallback(async () => {
     setLoading(true)
@@ -172,6 +174,21 @@ export default function AdminStoreProspectsPage() {
 
         {/* 🎉 개업 웰컴 — 최근 개업 큐 + 개업 컨설팅 브리핑(상권 수치·멘트) */}
         <OpeningWelcomePanel onStatusChange={(id, status) => patchStatus(id, status)} />
+
+        {laneHealth.length > 0 && (
+          <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3">
+            <div className="text-sm font-semibold text-amber-800">⚠️ 수확이 없는 수집 레인</div>
+            <ul className="mt-1 space-y-0.5">
+              {laneHealth.map(h => (
+                <li key={h.lane} className="text-xs text-amber-900">
+                  <span className="font-mono font-semibold">{h.lane}</span> — {h.message}
+                </li>
+              ))}
+            </ul>
+            {/* 끄는 판단은 사람이 한다 — 외부 API 의 일시 장애와 영구 장애를 이 신호만으로는 못 가른다. */}
+            <div className="mt-1.5 text-[11px] text-amber-700">계속 이 상태면 해당 레인의 게이트를 끄는 것을 검토하세요 — 죽은 레인도 같은 도메인의 다른 레인과 회차 순번을 나눠 갖습니다.</div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-5">
           {statCard('전체', stats?.total || 0)}

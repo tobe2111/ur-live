@@ -17,7 +17,7 @@
 import type { Env } from '@/worker/types/env'
 import type { FetchBudget } from './influencer-discovery'
 import { ensureProspectSchema, PRIORITY_UPJONG_SQL } from './store-prospects'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs, envLaneBudget } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envLaneBudget, envEnrichDeadlineMs , envPlanValue} from './collect-budget'
 import { runPooled, resolveConcurrency } from './lane-pool'
 import { foldEnrichRollup, PROSPECT_ROLLUP_KEY } from './enrich-telemetry'
 
@@ -47,14 +47,14 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   const DB = env.DB
   // 스키마 DDL 실비도 예산에서 차감(localdata 와 동일 — store-prospects 주석 참조).
   const schemaSpent = await ensureProspectSchema(DB)
-  const { crawlContact, naverLocalLookup, naverHomepageSearch, kakaoLocalLookup, CRAWL_RULES_VERSION } = await import('./contact-enrich')
+  const { crawlContact, naverLocalLookup, naverHomepageSearch, kakaoLocalLookup, CRAWL_RULES_VERSION, realSite, PLATFORM_URL_SQL_EXCLUDE } = await import('./contact-enrich')
   const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
   // 🪙 레인별 학습 상한 — 예전엔 회사 풀 예산(ADS_ENRICH_BUDGET, 기본 300)을 그대로 빌려 썼다.
   //   실효 한도는 그 훨씬 아래라 cap1 = left/6 = 50 크롤 × 약 4 fetch = 200 요청을 시도했고,
   //   중간에 죽어도 **아무 기록이 없어** 아무도 몰랐다. 이제 부딪히면 다음 실행부터 낮춘다.
-  const envBudget = Math.min(900, Math.max(15, envLaneBudget(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET, 80, env)))
+  const envBudget = Math.min(300, Math.max(15, envPlanValue(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET, 80, 300, env)))
   // 부팅 조회 1회로 3개(학습 상한 + 직전 스냅샷 + 누적) — 회사 보강 레인과 동일 처방(그 파일 주석 참조).
   const boot = (await DB.prepare('SELECT key, value FROM platform_settings WHERE key IN (?, ?, ?)')
     .bind(subreqCapKey('prospect_enrich'), STATS_KEY, PROSPECT_ROLLUP_KEY)
@@ -108,12 +108,26 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   // 쿨다운 + 크롤러 버전 — 크롤 개선 시 이전 실패분 전량 즉시 재시도(회사 풀과 동일 처방).
   const COOL = `AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})`
 
+  /**
+   * 🚮 **크롤 불가 URL 을 선정 단계에서 뺀다** — 파트너 레인이 2026-07-28 에 배운 것을 이 레인만 못 배웠다.
+   *
+   *   라이브 실측(2026-08-02): 이 레인은 회차당 **8건**만 처리하는데(`deadline_hit`) 그중 **4건이
+   *   `crawl_blocked_host`** 였다 — 인스타·블로그·카페·구인 플랫폼이다. 소상공인의 '홈페이지'가
+   *   대부분 그것이라 **이메일이 구조적으로 없고**, 그런데도 `LIMIT` 슬롯과 크롤 예산을 똑같이 먹는다.
+   *   슬롯이 8개뿐인 레인에서 절반을 그렇게 쓰면 **진짜 사이트는 영영 안 뽑힌다**(파트너 레인이
+   *   같은 이유로 22.9% 를 걸러냈다 — 거긴 슬롯 15개라 이쪽이 훨씬 치명적이다).
+   *
+   *   ⚠️ 목록은 `contact-enrich` 의 **SSOT 를 그대로 쓴다**. 여기 복붙하면 한쪽만 늘어나 갈라진다.
+   *   ⚠️ SQL 은 1차 필터일 뿐이고, 최종 판정은 크롤 직전 `realSite()` 가 한다(서브도메인 변종 차단).
+   */
+  const platformNot = PLATFORM_URL_SQL_EXCLUDE.map(() => 'website NOT LIKE ?').join(' AND ')
+
   // ── Pass 1: 홈페이지 보유 + 이메일 없음 → 크롤(가장 저렴·수율 높음) ──
   //   🚰 상한 = 예산 비례(2026-07-27 — 예산 800 인데 40+25 고정이라 매장 10만 순회가 수십 일 걸리던 병목).
   const cap1 = Math.min(120, Math.max(40, Math.floor(budget.left / 6)))
   const withSite = (await DB.prepare(
-    `SELECT id, biz_name, region, addr_road, addr_lot, website, phone FROM store_prospects WHERE active = 1 AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ${COOL} ORDER BY ${PRIORITY_UPJONG_SQL}, is_new_open DESC, id DESC LIMIT ${cap1}`
-  ).all<{ id: number; biz_name: string; region: string | null; addr_road: string | null; addr_lot: string | null; website: string; phone: string | null }>().catch(() => null))?.results || []
+    `SELECT id, biz_name, region, addr_road, addr_lot, website, phone FROM store_prospects WHERE active = 1 AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ${COOL} AND ${platformNot} ORDER BY ${PRIORITY_UPJONG_SQL}, is_new_open DESC, id DESC LIMIT ${cap1}`
+  ).bind(...PLATFORM_URL_SQL_EXCLUDE).all<{ id: number; biz_name: string; region: string | null; addr_road: string | null; addr_lot: string | null; website: string; phone: string | null }>().catch(() => null))?.results || []
   spendD1()
   // 🧵 동시 처리(2026-07-29) — 이 레인도 회사 레인과 같은 병목이었다: 실측 `spent:34/60 ·
   //   deadline_hit:true · elapsed 21.6s` = **예산이 남는데 시간이 먼저 끝난다**. 크롤 대기는 겹칠 수 있다.
@@ -153,6 +167,13 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
       let email: string | null = null
       if (site) {
         siteFound++
+      }
+      // 🚮 플랫폼 URL(블로그·인스타·카페)이면 **크롤을 건너뛴다** — 업체 이메일이 안 나오는데 예산만 먹는다.
+      //   ⚠️ 주소 자체는 **버리지 않는다**(아래 `upd` 가 website 로 저장) — 소상공인에겐 그 블로그가 실제 접점이다.
+      //   빼는 것은 *크롤 시도*뿐이고, 그렇게 아낀 예산이 다음 행으로 간다(회차당 8건이 병목인 레인이다).
+      if (site && !realSite(site)) {
+        bump2('site_platform_skip')
+      } else if (site) {
         const c = await crawlContact(site, budget, discovered ? p.biz_name : undefined) // 발견 사이트는 상호 존재 가드(오귀속 방지)
         email = c.email
         bump2(email ? 'email' : `crawl_${c.reason}`) // 크롤 실패 사유까지 그대로(막힘/무연락처/타임아웃 구분)

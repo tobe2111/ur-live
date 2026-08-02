@@ -20,6 +20,7 @@
  *     (도장을 찍는 것은 "실제로 조회했고 매칭이 없었다" 일 때뿐 — 그건 진짜 정보다.)
  */
 import type { Env } from '@/worker/types/env'
+import { envLaneBudget , envPlanValue} from './collect-budget'
 import { ensureCompanySchema } from './company-discovery'
 import { parseItems } from './hira-hospital-collect'
 import { describePublicDataFailure, serviceKeyParam, isNoValue } from './public-data-diag'
@@ -44,7 +45,13 @@ export interface NpsStats {
 const STATS_KEY = 'ads_nps_stats'
 
 /** 규모 검증 1틱 — 미조회 리드(대행사 우선) maxLeads 건. 매칭 실패도 checked 표시(재조회 안 함, 커서 전진). */
-export async function runNpsWorkplaceEnrich(env: Env, maxLeads = 40): Promise<NpsStats> {
+export async function runNpsWorkplaceEnrich(env: Env, maxLeadsArg?: number): Promise<NpsStats> {
+  // 🎚️ 회차당 일감도 **요금제를 따른다** — 예산만 커지고 이 숫자가 고정이면 늘어난 예산이 남는다.
+  //   호출부가 명시로 넘기면 그 값이 이긴다(수동 트리거·테스트가 그렇게 쓴다).
+  // 🩹 **100 → 40 되돌림**(2026-08-02) — 100 으로 올린 07-28 이후 **마지막 성공이 07-27** 이다.
+  //   CPU 한도(26초)에 걸려 죽었고, 죽으면 커서가 안 올라가 다음 회차가 같은 구간을 또 훑는다.
+  //   ⚠️ 유료(120)는 CPU 한도가 다른 세계라 별개 값이다. **무료 40 을 올리는 것과 혼동하지 말 것.**
+  const maxLeads = maxLeadsArg ?? envPlanValue(undefined, 40, 120, env)
   const DB = env.DB
   await ensureCompanySchema(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')

@@ -57,6 +57,70 @@ const ONLY = (() => {
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '매장 보강이 크롤 불가 URL 에 슬롯을 낭비함',
+    file: 'src/features/marketing/api/prospect-enrich.ts',
+    find: '${COOL} AND ${platformNot}',
+    replace: '${COOL}',
+    test: 'src/tests/unit/prospect-enrich-platform-url.test.ts',
+    why:
+      '이 레인은 회차당 **8건**만 처리하는데(deadline) 실측상 그중 **4건이 차단 호스트**(인스타·블로그·카페)였다. ' +
+      '소상공인의 홈페이지가 대부분 그것이라 이메일이 구조적으로 없는데 LIMIT 슬롯과 예산은 똑같이 먹는다 — ' +
+      '진짜 사이트가 영영 안 뽑힌다. 파트너 레인이 07-28 에 같은 실측으로 이미 받은 처방이다.',
+  },
+  {
+    name: '무수확 판정이 풀 포화를 고장으로 오인(오경보)',
+    file: 'src/features/marketing/api/lane-yield-health.ts',
+    find: 'if (totalSaved > 0 && found === 0 && err)',
+    replace: 'if (totalSaved > 0 && err)',
+    test: 'src/tests/unit/lane-yield-health.test.ts',
+    why:
+      '발굴은 되는데 저장이 0 인 것은 **정상**이다(풀 포화 = 전부 중복). `found` 조건을 빼면 그 회차가 ' +
+      '매번 고장으로 신고돼 경보가 신뢰를 잃는다. ⚠️ 이 항목의 첫 픽스처엔 `diag.error` 가 없어 ' +
+      '**주입해도 초록불이었다** — "가드가 막는다는 그 경우"가 픽스처에 실재해야 한다는 것을 직접 증명했다.',
+  },
+  {
+    name: '후보 경로 프로브가 임의 호스트를 허용(SSRF)',
+    file: 'src/features/marketing/api/public-data-probe.ts',
+    // 2026-08-02: 호스트가 단수 상수 → **열거 목록**이 되어 지도를 갱신했다(허용 호스트를 하나 넓혔다).
+    //   ⚠️ 갱신을 알려 준 게 이 검사 자신이다("낡은 지도" 모드).
+    find: "export const PROBE_ALLOWED_HOSTS = ['apis.data.go.kr', 'www.localdata.go.kr'] as const",
+    replace: "export const PROBE_ALLOWED_HOSTS = ['apis.data.go.kr', 'www.localdata.go.kr', 'evil.example.com'] as const",
+    test: 'src/tests/unit/ads-public-data-probe.test.ts',
+    why:
+      '어드민 인증이 있어도 임의 URL 을 받으면 서버측 요청 위조다 — 내부 메타데이터 주소(169.254.169.254)까지 ' +
+      '우리 워커 이름으로 찌를 수 있게 된다. 호스트는 **하나로 고정**한다.',
+  },
+  {
+    name: '프로브 URL 이 레인 상수와 갈라짐(거짓말하는 프로브)',
+    file: 'src/features/marketing/api/public-data-probe.ts',
+    find: 'B551182/hospInfoServicev2/getHospBasisList',
+    replace: 'B551182/hospInfoServiceXX/getHospBasisList',
+    test: 'src/tests/unit/ads-public-data-probe.test.ts',
+    why:
+      '프로브가 레인과 **다른 주소**를 찌르면 "프로브는 초록인데 레인은 죽는다"가 되어 진단이 오히려 오도한다. ' +
+      '진단 도구의 유일한 가치는 레인과 같은 것을 본다는 것이다.',
+  },
+  {
+    name: '레인 일감이 요금제를 모름(예산만 커지고 일은 그대로)',
+    file: 'src/features/marketing/api/nps-workplace-enrich.ts',
+    find: 'const maxLeads = maxLeadsArg ?? envPlanValue(undefined, 40, 120, env)',
+    replace: 'const maxLeads = maxLeadsArg ?? 40',
+    test: 'src/tests/unit/ads-cpu-deadline.test.ts',
+    why:
+      '축이 둘이다 — 예산만 키우고 회차당 처리 건수가 고정이면 **늘어난 예산이 그냥 남는다**. ' +
+      '⚠️ 이 축은 예산과 달리 **비율로 유도하면 안 된다**(40×15=600 · NEIS 3×15=45 는 죽는 값이다) — ' +
+      '그래서 `envLaneBudget` 이 아니라 명시값 `envPlanValue` 를 쓴다.',
+  },
+  {
+    name: '유료 마감선을 만들어 놓고 분기가 안 씀',
+    file: 'src/features/marketing/api/store-kakao-collect.ts',
+    find: 'if (Date.now() - startedAt > runDeadlineMs)',
+    replace: 'if (Date.now() - startedAt > RUN_DEADLINE_MS)',
+    test: 'src/tests/unit/store-kakao-voucher-grid.test.ts',
+    why:
+      '상수를 추가해도 **분기가 안 보면** 아무 일도 안 일어난다 — 유료 CPU 한도가 커져도 회차는 12초에 끊긴다.',
+  },
+  {
     name: '노브 등기부 강제 무력화',
     file: 'scripts/check-plan-knob-coverage.mjs',
     find: 'if (bad) process.exit(STRICT ? 1 : 0)',
@@ -460,7 +524,9 @@ const MUTATIONS = [
   {
     name: '카카오 매장 수집 마감선 제거',
     file: 'src/features/marketing/api/store-kakao-collect.ts',
-    find: "if (Date.now() - startedAt > RUN_DEADLINE_MS) { stoppedBy = 'deadline'; break outer }",
+    // 2026-08-02: 마감선이 요금제 인지 지역변수(`runDeadlineMs`)로 바뀌어 이 지도를 갱신했다.
+    //   ⚠️ 갱신을 알려 준 게 이 검사 자신이다("낡은 지도" 모드) — 그게 이 파일의 존재 이유다.
+    find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break outer }",
     replace: '',
     test: 'src/tests/unit/store-kakao-voucher-grid.test.ts',
     why:

@@ -17,7 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { PROBE_TARGETS, probeTargetNames, probePublicData } from '@/features/marketing/api/public-data-probe'
+import { PROBE_TARGETS, probeTargetNames, probePublicData, normalizeProbePath, PROBE_ALLOWED_HOST, PROBE_ALLOWED_HOSTS } from '@/features/marketing/api/public-data-probe'
 import type { Env } from '@/worker/types/env'
 
 const KEY = 'SUPER-SECRET-SERVICE-KEY-abc123=='
@@ -186,6 +186,95 @@ describe('probeLadder — 첫 실패 지점을 찾는다', () => {
     const R = readFileSync(resolve(process.cwd(), 'src/worker-ads/public-data.routes.ts'), 'utf8')
     expect(R).toMatch(/probeLadder\(c\.env, target, ladder/)
     const P = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/partner-pool.routes.ts'), 'utf8')
-    expect(P, '어드민 프록시가 rows/page/ladder 를 전달해야 한다').toMatch(/\['rows', 'page', 'ladder'\]/)
+    expect(P, '어드민 프록시가 rows/page/ladder/path/host 를 전달해야 한다').toMatch(/\['rows', 'page', 'ladder', 'path', 'host'\]/)
+  })
+})
+
+/**
+ * 🧭 **후보 경로 프로브** — 죽은 엔드포인트의 후임을 **배포 없이** 찾는다 (2026-08-02 신설).
+ *
+ * ## 왜 (라이브 실측)
+ * ```
+ *   localdata → HTTP 400 · NO_OPENAPI_SERVICE_ERROR "해당 오픈API 서비스가 없거나 폐기됨"
+ * ```
+ * 화면엔 몇 주째 `HTTP 500 — Unexpected errors` 로 떠 있었고 **대표의 활용신청 대기 항목**으로
+ * 분류돼 있었다. 실제로는 권한이 아니라 **주소가 죽은 것**이었다. 그런데 맞는 주소를 확인할 방법이
+ * **배포뿐**이라 — 후보 하나에 배포 한 번이면 아무도 안 찾는다.
+ *
+ * ## 🔒 이 시험이 제일 신경 쓰는 것: **SSRF 를 열지 않는 것**
+ * 어드민 인증이 있어도 임의 URL 을 받으면 그건 서버측 요청 위조다. 호스트를 **고정**하고
+ * 경로 문자만 받으며 쿼리스트링은 거절한다(서비스키 파라미터를 덮어쓸 수 있다).
+ */
+describe('후보 경로 — 호스트 **열거** + 쿼리 주입 차단', () => {
+  it('🔒 허용 호스트는 **열거된 둘뿐**이다 — 임의 URL 을 여는 게 아니다', () => {
+    expect([...PROBE_ALLOWED_HOSTS]).toEqual(['apis.data.go.kr', 'www.localdata.go.kr'])
+    expect(PROBE_ALLOWED_HOST).toBe('apis.data.go.kr') // 상대경로 기본 호스트
+  })
+
+  it('평범한 경로는 받는다(앞 슬래시 유무 무관) — 기본 호스트는 공공데이터포털', () => {
+    expect(normalizeProbePath('1741000/general_restaurants')).toEqual({ host: 'apis.data.go.kr', path: '1741000/general_restaurants' })
+    expect(normalizeProbePath('/1741000/LocalDataInfoSvc/getLocalData')?.path).toBe('1741000/LocalDataInfoSvc/getLocalData')
+  })
+
+  it('🔒 host 를 지정하면 그 호스트로 — **허용 목록 밖이면 거절**', () => {
+    expect(normalizeProbePath('platform/rest/GR0/openDataApi', 'www.localdata.go.kr'))
+      .toEqual({ host: 'www.localdata.go.kr', path: 'platform/rest/GR0/openDataApi' })
+    // 목록 밖 호스트를 지정하면 **조용히 기본값으로 떨어지지 않고** 기본 호스트를 쓴다(경로는 유효하므로).
+    expect(normalizeProbePath('x/y', 'evil.example.com')?.host).toBe('apis.data.go.kr')
+  })
+
+  it('🔒 **다른 호스트의 절대 URL 은 거절**한다 — 조용히 통과시키면 그게 SSRF 다', () => {
+    for (const u of ['https://evil.example.com/x', 'http://169.254.169.254/latest/meta-data', 'https://apis.data.go.kr.evil.com/x', 'https://localdata.go.kr/x']) {
+      expect(normalizeProbePath(u), u).toBeNull()
+    }
+  })
+
+  it('허용 호스트의 절대 URL 은 경로만 취한다(둘 다)', () => {
+    expect(normalizeProbePath('https://apis.data.go.kr/1741000/foo')).toEqual({ host: 'apis.data.go.kr', path: '1741000/foo' })
+    expect(normalizeProbePath('https://www.localdata.go.kr/platform/rest/GR0/openDataApi')?.host).toBe('www.localdata.go.kr')
+  })
+
+  it('🔒 **쿼리스트링은 거절**한다 — serviceKey 파라미터를 덮어쓸 수 있다', () => {
+    expect(normalizeProbePath('1741000/foo?serviceKey=x')).toBeNull()
+    expect(normalizeProbePath('1741000/foo#frag')).toBeNull()
+  })
+
+  it('경로 문자가 아닌 것은 거절한다', () => {
+    for (const bad of ['1741000/foo bar', '1741000/<script>', '', '   ', null, undefined]) {
+      expect(normalizeProbePath(bad as never), JSON.stringify(bad)).toBeNull()
+    }
+  })
+
+  /**
+   * 🔑 **키를 발급처가 아닌 호스트로 보내지 않는다.**
+   * LOCALDATA 는 자체 키 체계(`authKey`)를 쓰고 우리가 가진 건 공공데이터포털 `serviceKey` 다.
+   * "혹시 되나" 보려고 남의 호스트에 자격증명을 흘리면 안 된다 — 키 없이 찔러도 판정은 된다
+   * (인증 오류 = 엔드포인트 존재 / `NO_OPENAPI_SERVICE_ERROR` = 여기도 아님).
+   */
+  it('🔒 LOCALDATA 후보 URL 에 **serviceKey 를 싣지 않는다**', () => {
+    const SRC = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/public-data-probe.ts'), 'utf8')
+    expect(SRC).toMatch(/candidate\.host === 'apis\.data\.go\.kr'\n\s*\? `https:\/\/\$\{candidate\.host\}\/\$\{candidate\.path\}\?serviceKey=/)
+    expect(SRC, '키 없는 분기가 있어야 한다').toMatch(/: `https:\/\/\$\{candidate\.host\}\/\$\{candidate\.path\}\?\$\{paging\}`/)
+  })
+
+  it('🔒 키가 없어도 **비-포털 후보는 찌를 수 있다** — 존재 여부 판정이 목적이기 때문', () => {
+    const SRC = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/public-data-probe.ts'), 'utf8')
+    expect(SRC).toMatch(/const needsKey = !candidate \|\| candidate\.host === 'apis\.data\.go\.kr'/)
+    expect(SRC).toMatch(/if \(!key && needsKey\) return/)
+  })
+})
+
+describe('심평원 프로브 대상 — 진단할 수 없는 레인은 고칠 수도 없다', () => {
+  const HIRA = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/hira-hospital-collect.ts'), 'utf8')
+
+  it('🔒 `hira` 가 프로브 대상에 있다 — 60회 실패를 원문 한 번 못 보던 상태를 끝낸다', () => {
+    expect(probeTargetNames()).toContain('hira')
+  })
+
+  it('🔒 프로브 base 가 **레인의 상수와 같은 문자열**이다 — 따로 적으면 프로브가 거짓말한다', () => {
+    const m = /const HIRA_BASE = '([^']+)'/.exec(HIRA)
+    expect(m, '레인의 HIRA_BASE 를 못 찾았다(상수명이 바뀌었나)').toBeTruthy()
+    const url = PROBE_TARGETS.hira.url('KEY', {} as never, { rows: 1, page: 1 })
+    expect(url).toContain(m![1])
   })
 })

@@ -62,6 +62,8 @@ export default function AdminPartnerPoolPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
   const [stats, setStats] = useState<Stats | null>(null)
+  /** 🩺 수확 0 이 지속되는 레인 — 매장 화면과 같은 판정기(근거는 `lane-yield-health.ts` 헤더). */
+  const [laneHealth, setLaneHealth] = useState<Array<{ lane: string; message: string }>>([])
   const [collect, setCollect] = useState<Collect | null>(null)
   const [storeinfo, setStoreinfo] = useState<StoreInfo | null>(null)
   const [commerce, setCommerce] = useState<Commerce | null>(null)
@@ -112,7 +114,7 @@ export default function AdminPartnerPoolPage() {
   const loadStats = useCallback(async (): Promise<Record<string, unknown> | null> => {
     try {
       const r = await api.get('/api/admin/partner-pool/stats')
-      if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null); setLocaldata(r.data.localdata || null); setEnrichInfo(r.data.enrichLast || null); setEnrichRollup(r.data.enrichRollup || null); setKakaoSweep(r.data.kakaoSweep || null); setRegistryMatch(r.data.registryMatch || null); setRunning(r.data.running || null) }
+      if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null); setLocaldata(r.data.localdata || null); setEnrichInfo(r.data.enrichLast || null); setEnrichRollup(r.data.enrichRollup || null); setKakaoSweep(r.data.kakaoSweep || null); setRegistryMatch(r.data.registryMatch || null); setRunning(r.data.running || null); setLaneHealth(r.data.laneHealth || []) }
       return r.data || null // 완료 감지 폴러가 원시 응답을 함께 사용
     } catch { return null }
   }, [])
@@ -318,6 +320,16 @@ export default function AdminPartnerPoolPage() {
         <ReferralPanel />
 
         {/* 통계 스트립 — 카드 클릭 = 필터 */}
+        {laneHealth.length > 0 && (
+          <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3">
+            <div className="text-sm font-semibold text-amber-800">⚠️ 수확이 없는 수집 레인</div>
+            <ul className="mt-1 space-y-0.5">
+              {laneHealth.map(h => <li key={h.lane} className="text-xs text-amber-900"><span className="font-mono font-semibold">{h.lane}</span> — {h.message}</li>)}
+            </ul>
+            <div className="mt-1.5 text-[11px] text-amber-700">계속 이 상태면 해당 레인의 게이트를 끄는 것을 검토하세요 — 죽은 레인도 같은 도메인의 다른 레인과 회차 순번을 나눠 갖습니다.</div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 mb-5">
           {statCard('', '전체', stats?.total || 0)}
           {statCard('contact', '연락처 보유', stats?.with_contact || 0, '전화 또는 이메일')}
