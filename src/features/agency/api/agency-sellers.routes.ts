@@ -267,12 +267,12 @@ app.get('/returns', async (c) => {
   try {
     const { results } = await c.env.DB.prepare(`
       SELECT r.id, r.order_number, r.status, r.reason, r.refund_amount,
-             r.seller_id, s.name AS seller_name, r.created_at
+             r.seller_id, s.name AS seller_name, r.requested_at
       FROM returns r
       INNER JOIN agency_sellers ag ON ag.seller_id = r.seller_id
       LEFT JOIN sellers s ON s.id = r.seller_id
       WHERE ag.agency_id = ?
-      ORDER BY r.created_at DESC LIMIT 50
+      ORDER BY r.requested_at DESC LIMIT 50
     `).bind(agencyId).all()
 
     return c.json({ success: true, data: results })

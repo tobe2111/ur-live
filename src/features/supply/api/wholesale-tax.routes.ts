@@ -116,7 +116,7 @@ app.get('/tax/aging', async (c) => {
     const settleRows = await DB.prepare(
       `SELECT ss.supplier_id AS supplier_id, ss.supply_amount AS amt,
               COALESCE(ss.available_at, ss.created_at) AS ref_at,
-              s.name AS supplier_name, s.business_name AS supplier_biz
+              s.business_name AS supplier_name, s.business_name AS supplier_biz
        FROM supplier_settlements ss
        LEFT JOIN suppliers s ON s.id = ss.supplier_id
        WHERE ss.status IN ('pending','available')
@@ -206,7 +206,7 @@ app.get('/tax/purchase-invoices', async (c) => {
       `SELECT ss.supplier_id AS supplier_id,
               SUM(ss.supply_amount) AS paid_amount,
               COUNT(*) AS settlement_count,
-              s.name AS supplier_name, s.business_name AS supplier_biz, s.business_number AS biz_no
+              s.business_name AS supplier_name, s.business_name AS supplier_biz, s.business_number AS biz_no
        FROM supplier_settlements ss
        LEFT JOIN suppliers s ON s.id = ss.supplier_id
        WHERE ss.status = 'paid'

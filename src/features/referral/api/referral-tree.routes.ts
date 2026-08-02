@@ -235,7 +235,7 @@ export async function computeMultiTierEntries(
   try {
     const sellerOwner = await queryFirst<{ user_id: string }>(
       DB,
-      `SELECT s.user_id FROM orders o JOIN sellers s ON o.seller_id = s.id WHERE o.id = ? LIMIT 1`,
+      `SELECT s.linked_user_id AS user_id FROM orders o JOIN sellers s ON o.seller_id = s.id WHERE o.id = ? LIMIT 1`,
       [orderId],
     )
     if (sellerOwner?.user_id && String(sellerOwner.user_id) === String(buyerUserId)) {

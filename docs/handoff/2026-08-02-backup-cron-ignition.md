@@ -111,10 +111,15 @@ ur-live 등록 cron: 0 18 * * *  ·  0 19 * * *  ·  0 20 * * SUN  ·  */5 * * *
 
 ## 4. 남은 결정 / 대기
 
-### 대표 판단
-1. **어긋난 4명 잔액 교정** — 합 −16,380딜. 08-01 세션에서 손대지 않았다(머지 교정은 사람 판단).
-2. **가입 보너스 재활성** — 지금 0. `platform_settings.signup_bonus_amount` 에 금액만 넣으면 켜진다.
-3. **Workers Paid 전환 여부** — 지금 cron **5/5 로 꽉 찼다.** 트리거가 하나 더 필요해지면
+### ✅ 대표가 닫은 것 — **다시 묻지 말 것** (2026-08-02 확정)
+1. **어긋난 4명 잔액 교정 → 안 한다.** 합 −16,380딜. 관측(`ledger_integrity_log`)은 계속 돌지만
+   **교정 작업을 제안하지 말 것.** 다이제스트에 `user_points_balance_mismatch: 4` 가 계속 뜨는 건
+   알려진 상태이지 새 이슈가 아니다.
+2. **가입 보너스 재활성 → 안 한다.** `platform_settings.signup_bonus_amount` 는 0으로 둔다.
+3. **배포 실패 알림 → 안 붙인다.** 워크플로 실패를 디스코드/푸시로 보내는 배선은 만들지 않는다.
+
+### 대표 판단 (열림)
+1. **Workers Paid 전환 여부** — 지금 cron **5/5 로 꽉 찼다.** 트리거가 하나 더 필요해지면
    유료(한도 1,000)로 가거나 또 자리를 비워야 한다. `docs/design/cron-staged-ignition-plan-2026-07.md`
    의 3·4단계(매시간·주간 payouts)가 **전부 이 제약에 걸린다.**
 
@@ -126,11 +131,75 @@ ur-live 등록 cron: 0 18 * * *  ·  0 19 * * *  ·  0 20 * * SUN  ·  */5 * * *
 
 ---
 
+## 4-b. 🔴 후속 세션 — **없는 컬럼을 읽는 SQL 11건** (대표 다이제스트에서 출발)
+
+대표가 붙여 준 일일 다이제스트의 한 줄 —
+`Cron auto-settlement encountered an error: no such column: p.commission_rate` — 을 당겼더니
+**같은 병이 11군데** 나왔다. 전부 프로덕션 D1 에서 실제로 `no such column` 을 낸다(1건씩 실측).
+
+> 🧠 **SQLite 는 없는 컬럼을 NULL 로 봐주지 않는다. 쿼리 *전체*를 던진다.**
+> 그리고 이 11건은 **전부 `try/catch` 또는 `.catch(...)` 안**이라 예외가 사람에게 도달하지 않았다.
+> 그래서 "기능이 고장 났다"가 아니라 **"기능이 조용히 없다"** 로 남아 있었다.
+
+| 사이트 | 없던 컬럼 → 고친 것 | 죽어 있던 것 |
+|---|---|---|
+| `cron/auto-settlement.ts` | `p.commission_rate` → `sellers.commission_rate` 조인 | 이용권 정산 회차 **전체**가 매일 03:00 KST 에 사망 |
+| `utils/affiliate-credit.ts` | `s.user_id` → `s.linked_user_id` | **자기구매 + SELF_SELLER 이중지급 가드**가 한 번도 발동 못 함(2026-07-07 대표 결정) |
+| `referral/referral-tree.routes.ts` | 〃 | 같은 가드 |
+| `cron/seller-churn-detect.ts` | 〃 | 이탈 감지 집계 |
+| `group-buy-voucher.routes.ts` ×2 | `p.consigned_from_seller_id` → `NULL AS …` | **`recordVoucherUsedLedger`(실지급 레일 B) 미실행** |
+| `group-buy-public.routes.ts` ×2 | `u.display_name` → `u.name` | 라이브 티커 |
+| `seller-public.routes.ts` | 〃 | 매장 단골 목록 |
+| `seller/seller-orders.routes.ts` | `p.image` 제거 | 셀러 주문 목록 이미지 |
+| `admin/admin-orders.routes.ts` ×2 | `o.tracking_company` → `o.shipping_company` | 어드민 주문 목록 |
+| `admin/admin-settlements.routes.ts` | `o.total_price` 제거 | 정산 폴백 쿼리 |
+| `agency/agency-incentives.routes.ts` | `s.avg_rating` → `product_reviews.rating` 집계 | 셀러 KPI **항상 빈 배열** = 인센티브 산정 불가 |
+| `agency/agency-stays.routes.ts` | `ag.status` 조건 제거(컬럼 없음) | 숙소 KPI |
+| `supply/wholesale-tax.routes.ts` ×2 | `s.name` → `s.business_name` | 도매 세금 공급자 지급액 |
+| `internal-admin-tools.routes.ts` | `s.store_category` 제거 | 어드민 셀러 조회 |
+
+**11건 전부 수정 후 프로덕션 D1 에 실제로 던져 ✅ 확인**(정적 통과가 아니라 실행 검증).
+
+### ⚖️ 규모 — 과장하지 말 것
+프로덕션은 **주문 88 · 유저 16 · 셀러 10 · 이용권 1(미사용) · affiliate_earnings 0 · 반품 0** 이다.
+⇒ **돈이 새고 있던 게 아니다.** 전부 **첫 실사용 순간에 조용히 실패하도록 배선된 지뢰**였다.
+(처음엔 "매장이 정산을 못 받고 있다"로 쓸 뻔했다 — `vouchers` 를 세어 보고 정정했다.)
+
+### 정산 레일의 진실 — **설계 문서가 사실과 달랐다**
+`settlement-reconciliation.md §Severe 3` 은 이용권이 두 레일에 **"100% 중복 적재"** 된다고 적었다.
+프로덕션 실측은 반대다: **`restaurant_settlements` 테이블도, `vouchers.settlement_id` 도 없다.**
+둘 다 어드민이 정산 화면을 열 때만 만들어지는데 아무도 안 열었다 ⇒ **Rail A 는 한 행도 만든 적이 없다.**
+
+⇒ 그래서 "테이블을 만들어 주자"는 **수리가 아니라 사고**다(과거분 일괄 적재 → Rail B 와 이중지급).
+   `railAProvisioned()` 로 **판정만** 하고 프로비저닝은 절대 안 한다. `auto-settlement-rail-a.test`(12)가 고정.
+   ⚠️ 다만 **어드민이 그 화면을 한 번 열면 Rail A 는 깨어난다.** 그 문까지 닫으려면 게이트
+   `settlement_skip_ledgered` flip — 머니 경로라 **대표 판단 + staging**.
+
+### 🐺 거짓 🔴 3건도 같이 껐다
+다이제스트의 `🔴 누락된 Secret: JWT_SECRET, REFRESH_TOKEN_SECRET, KAKAO_REST_API_KEY` 는 **전부 거짓**이었다.
+라이브 `/api/version` 은 셋 다 present 로 답한다 — **캐리어가 다르다**(Pages=시크릿 전부 / Workers=cron).
+그 셋을 읽는 **등록된** cron 은 없다. 목록을 `CRON_REQUIRED_ENV`(등록 블록만 담는 SSOT)에서 파생하게 바꿨다.
+> 진짜 경보가 거짓 옆에 섞이면 구분이 안 된다. 늑대소년은 알림을 켜는 순간이 아니라 **이미** 시작돼 있었다.
+
+---
+
 ## 5. 새 가드 (다음 세션이 믿어도 되는 것)
 
 | 가드 | 막는 것 | **못 막는 것** |
 |---|---|---|
 | `check-cron-syntax` + `cron-schedule.test`(9) | CF 문법(**DOW 0 금지**) · 5필드 · 중복 · **계정 합 ≤ 5** · 백업 트리거 존재 · `safeCron` 배선 · 세 표기 수용 | **CF 에 실제 등록됐는지는 모른다** — 유일한 답은 `worker-deploy` 로그의 `schedule:` 목록. 배열에서 항목을 **빼는**(=삭제) 실수도 못 막는다 |
+| `check-sql-column-exists` **SELECT 패스**(신설) | `FROM t a` / `JOIN t a ON` 로 바인딩된 **alias 한정 컬럼**이 스키마에 있는지. 이 파일 헤더가 "복잡해서 skip" 이라 적어 둔 사각지대를 열었다 — 그 뒤에 11건이 살아 있었다 | alias 없는 컬럼(`SELECT foo FROM t`) · 서브쿼리 alias 재바인딩 · 완전 동적 SQL · **레포엔 없고 프로덕션에만 있는 컬럼**(→ `SELECT_ALIAS_OK` 면제 4건) |
+| `auto-settlement-rail-a.test`(12) | 정산 cron 이 Rail A 를 **프로비저닝하지 않음** · 수수료 출처가 `sellers` · 게이트가 INSERT 보다 앞 · 가드의 SELECT 패스가 헛돌지 않음 | 어드민이 정산 화면을 열어 테이블이 생기는 경로(라우트의 정당한 기능) |
+| `diagnostic-carrier-scope.test`(7) | 일일 진단이 **Pages 전용 키를 이 캐리어에서 찾지 않음** · 목록을 `CRON_REQUIRED_ENV` 에서 파생 · 빈 문자열도 부재로 셈 | Pages 쪽 키가 진짜로 사라지는 것(→ `/api/health/env-readiness` 담당) · 키가 *있는데 틀린* 경우 |
+
+### 🔴 가드를 만들면서 **두 번 물렸다** — 둘 다 손으로 깨뜨려 봐서 알았다
+1. **보간이 있으면 문장을 통째로 skip** 하게 짰는데, **이 사건의 원본 쿼리**가 정확히 그 형태
+   (`auto-settlement` 의 `${ledgerSkipClause}`)라 주입 검증에서 **초록**이 떴다. 가드를 붙여 놓고
+   정작 그것 때문에 만든 결함을 못 보는 상태였다 → 보간 *조각만* 지우고 리터럴은 검사하도록 수정.
+2. **내가 방금 쓴 설명 주석**(`p.commission_rate` 라고 적은 문장)을 코드로 읽어 위반으로 신고했다
+   → `blankComments()` 추가. `check-lock-table-symbols` 의 *"주석에만 남아도 통과"* 함정의 거울상이다.
+
+⇒ **매니페스트 4건 추가(70→74), 전부 빨간불 확인.** 만들었으면 반드시 깨뜨려 볼 것.
 
 `check-guard-mutations` 매니페스트 등록 완료 — 6번째 트리거를 주입하면 CI 가 빨강을 낸다.
 
