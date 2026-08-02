@@ -456,3 +456,55 @@ Workers `ur-live` → Variables and Secrets:
 
 **네 단계 중 하나라도 빠지면 이 한 줄은 안 나온다.** 특히 4번은 "머지했으니 반영됐다"는 가정이
 거짓인 구간이었다 — worker-deploy 의 head_sha 를 확인하지 않으면 영원히 안 보인다.
+
+---
+
+## 2026-08-02 — 대표 키 등록 완료 + 오진 정정 2건
+
+### ✅ 대표 등록분 (실측 확인)
+
+| 키 | 런타임 | 확인 |
+|---|---|---|
+| `TOSS_SECRET_KEY` | Workers | 22:00 KST 반영 · Plaintext→Secret 전환 후에도 유지 |
+| `ALIGO_API_KEY`(+USER_ID·SENDER_KEY) | Workers | 22:50 KST 반영 |
+| `CACHE_KV` | Workers | 23:00 KST 반영 |
+| `DATA_ENCRYPTION_KEY` | Pages | 22:25 KST 반영 → **B5 해소** |
+| `DISCORD_WEBHOOK_URL` | Workers 추정 / **Pages ❌** | Pages 는 미반영 — 새벽 3시 진단으로 Workers 측 판정 |
+| `INTERNAL_API_TOKEN` | Pages ❌ | 미등록(급하지 않음) |
+
+⚠️ **정정**: `DATA_ENCRYPTION_KEY` 는 **Pages 만 필요**하다. cron 에서 `encryptAtRest/decryptAtRest`
+참조 0건 — 토큰 저장은 전부 요청 경로다. "양쪽 같은 값"이라고 안내한 것은 과했다.
+
+### 🔴 오진 정정 ① — cron 문법이 원인의 전부가 아니었다
+
+`0 20 * * SUN` 으로 고쳐 배포한 결과(run 30749528808):
+```
+This account has reached the Workers Free limit of 5 cron triggers per account.  [code: 10072]
+```
+**한도는 스크립트당이 아니라 계정당 5개.** ur-live 3 + 다른 워커로 이미 찼다.
+
+⇒ 07-29 의 *"거부 문자열 하나가 전체를 막았다"* 는 **부분적으로 틀렸다.** 9개를 PUT 하려 했으니
+문법이 맞았어도 한도에서 거부됐을 것이다. **한 원인을 찾고 초록불을 봤다고 다른 원인이 없다는
+뜻이 아니었다.**
+
+**대표 결정: 일단 무료 유지** → 선언을 3개로 되돌림(#973). 백업 손실 0(`d1-backup.yml` 3주째).
+⚠️ **주간 지급(`0 0 * * 1`)도 같은 한도** — 첫 정산 전까지 요금제 결정 필요.
+
+### 🔁 오진 정정 ② — 내가 만든 지시등이 침묵으로 거짓말했다
+
+`cron-env-missing` 은 빠진 키가 있을 때만 기록했다. 그래서 키가 채워진 뒤에도 **옛 행이 남아**
+화면엔 여전히 "없음"으로 보였다. 실측 22:50 행이 23:00 회차 뒤에도 남아 **해결된 키를 미해결로
+읽을 뻔했다** — 발화 시각과 행 시각을 대조해서야 알았다.
+
+⇒ **상태 지시등은 침묵으로 '정상'을 말할 수 없다.** 침묵은 '정상'과 '관측 자체가 멈춤'을 구분하지
+못한다. 요구사항이 있는 cron 은 매 회차 덮어쓰도록 고쳤고, 되돌리는 것을 테스트가 막는다.
+
+> 이 세션이 하루 종일 쫓은 실패 양식을, **그걸 잡으려고 만든 도구가 스스로 저질렀다.**
+
+### 다음 세션 첫 액션
+
+1. **새벽 3시(KST) `daily-self-diagnostic` 결과** — 하트비트 `result` 의 `toss=valid|invalid|unknown`.
+   `valid` 면 토스 키 유효성 확정. Discord 가 Workers 에 있으면 대표 폰으로도 간다.
+2. `env-readiness` 에서 Pages 의 `DISCORD_WEBHOOK_URL`·`INTERNAL_API_TOKEN` 확인.
+3. ⚠️ **`src/worker-ads/index.ts` 608줄** — 파일크기 래칫 RED(#963·#965, 유어애즈 세션 소관).
+   그 파일을 만지는 다음 PR 이 막힌다. 해당 세션에 전달 필요.
