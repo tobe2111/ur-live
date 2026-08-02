@@ -30,9 +30,14 @@ import { describe, it, expect } from 'vitest'
 import {
   SUBREQ_PLATFORM_CAP_DEFAULT, SUBREQ_PLATFORM_CAP_PAID, platformSubreqCap, envSubreqCap,
   ENRICH_DEADLINE_MS_DEFAULT, ENRICH_DEADLINE_MS_PAID, resolveEnrichDeadlineMs, envEnrichDeadlineMs,
-  recoverStep, abandonStep, nextSubreqCap, capAfterAbandonedRun,
+  recoverStep, abandonStep, nextSubreqCap, capAfterAbandonedRun, envLaneBudget,
 } from '../../features/marketing/api/collect-budget'
-import { lanesPerTick, FREE_LANES_PER_TICK, PAID_LANES_PER_TICK } from '../../worker-ads/dispatch-budget'
+import { lanesPerTick, resolvePlan, FREE_LANES_PER_TICK, PAID_LANES_PER_TICK } from '../../worker-ads/dispatch-budget'
+import {
+  resolveInterval, resolveRunsPerHour, ALARM_INTERVAL_MS_DEFAULT, ALARM_INTERVAL_MS_PAID,
+  RUNS_PER_HOUR_DEFAULT, RUNS_PER_HOUR_PAID,
+} from '../../worker-ads/lane-alarm-policy'
+import fs from 'node:fs'
 
 describe('요금제 스케일링 — 무료 회귀 0', () => {
   /**
@@ -49,6 +54,11 @@ describe('요금제 스케일링 — 무료 회귀 0', () => {
     expect(ENRICH_DEADLINE_MS_DEFAULT).toBe(7_000)
 
     expect(lanesPerTick({})).toBe(FREE_LANES_PER_TICK)
+
+    // 🔻 08-02 전수 점검에서 찾은 두 축 — 이것들도 무료에서 값이 안 바뀌어야 한다.
+    expect(resolveInterval(undefined)).toBe(ALARM_INTERVAL_MS_DEFAULT)
+    expect(resolveRunsPerHour(undefined)).toBe(RUNS_PER_HOUR_DEFAULT)
+    for (const d of [12, 20, 60, 80, 110, 300]) expect(envLaneBudget(undefined, d)).toBe(d)
   })
 
   /**
@@ -97,6 +107,73 @@ describe('요금제 스케일링 — 유료는 셋이 함께 오른다', () => {
     expect(SUBREQ_PLATFORM_CAP_PAID).toBeGreaterThan(SUBREQ_PLATFORM_CAP_DEFAULT)
     expect(ENRICH_DEADLINE_MS_PAID).toBeGreaterThan(ENRICH_DEADLINE_MS_DEFAULT)
     expect(PAID_LANES_PER_TICK).toBeGreaterThan(FREE_LANES_PER_TICK)
+  })
+
+  /**
+   * 🔻 **08-02 전수 점검 — 요금제가 못 닿던 축이 둘 더 있었다.**
+   *
+   *   ① **DO 알람 레인**(`lane-alarm-policy`): 5분 간격·시간당 12회가 고정이었다. 그런데 이 레인이
+   *      **지금 실제로 보강을 돌리는 주체**다(cron 팬아웃이 아니라) — 유료로 바꿔도 처리량이 한 톨도
+   *      안 늘어난다는 뜻이었다.
+   *   ② **레인별 env 예산**: 실제 예산은 `min(envBudget, learnedCap, platformCap)` 인데 env 기본값이
+   *      12·20·60·80·110·300 으로 제각각이고 요금제를 몰랐다. 천장을 900 으로 올려도 **레인은 80 에서 멈춘다.**
+   *
+   *   ⇒ 둘 다 요금제 인지형으로. 이제 `ADS_PLAN=paid` 하나가 **다섯 축**을 함께 올린다.
+   */
+  it('ADS_PLAN=paid 가 DO 알람과 레인 예산까지 올린다 (다섯 축)', () => {
+    const env = { ADS_PLAN: 'paid' }
+    expect(resolveInterval(undefined, env)).toBe(ALARM_INTERVAL_MS_PAID)
+    expect(resolveRunsPerHour(undefined, env)).toBe(RUNS_PER_HOUR_PAID)
+    expect(ALARM_INTERVAL_MS_PAID).toBeLessThan(ALARM_INTERVAL_MS_DEFAULT)   // 더 자주
+    expect(RUNS_PER_HOUR_PAID).toBeGreaterThan(RUNS_PER_HOUR_DEFAULT)        // 더 많이
+
+    // 레인 예산은 천장이 커진 비율만큼(60→900 = ×15), 단 천장을 넘지 않는다.
+    expect(envLaneBudget(undefined, 80, env)).toBe(900)     // 80×15=1200 → 900 으로 클램프
+    expect(envLaneBudget(undefined, 12, env)).toBe(180)     // 12×15
+    expect(envLaneBudget(undefined, 300, env)).toBe(900)
+    for (const d of [12, 20, 60, 80, 110, 300]) {
+      expect(envLaneBudget(undefined, d, env), `기본값 ${d}`).toBeGreaterThan(d)
+      expect(envLaneBudget(undefined, d, env)).toBeLessThanOrEqual(SUBREQ_PLATFORM_CAP_PAID)
+    }
+  })
+
+  /** 명시 env 는 요금제를 이긴다 — 이 파일의 다른 축들과 같은 규약이어야 한다(규약이 갈리면 예측 불가). */
+  it('새 두 축도 명시 env 가 우선한다', () => {
+    const env = { ADS_PLAN: 'paid' }
+    expect(resolveInterval('180000', env)).toBe(180_000)
+    expect(resolveRunsPerHour('5', env)).toBe(5)
+    expect(envLaneBudget('50', 300, env)).toBe(50)
+  })
+
+  /**
+   * ⚠️ `lane-alarm-policy` 는 순수 정책이라 `dispatch-budget` 을 import 하지 않고 **같은 규칙을 복제**한다.
+   *   두 벌이 되면 조용히 갈라진다(이 레포가 반복해 만난 클래스) — 그래서 판정을 직접 대조한다.
+   */
+  it('요금제 판정 규칙이 두 모듈에서 일치한다', () => {
+    for (const v of ['paid', 'PAID', ' paid ', 'Paid', 'free', 'pro', '', undefined]) {
+      const viaDispatch = resolvePlan({ ADS_PLAN: v }) === 'paid'
+      const viaAlarm = resolveInterval(undefined, { ADS_PLAN: v }) === ALARM_INTERVAL_MS_PAID
+      expect(viaAlarm, `ADS_PLAN=${JSON.stringify(v)}`).toBe(viaDispatch)
+    }
+  })
+
+  /**
+   * 🚦 **배선** — 함수가 옳아도 레인이 안 쓰면 의미가 없다(오늘 이미 같은 자리에서 당했다).
+   *   레인 예산 기본값을 `parseInt(env.X || '', 10) || N` 형태로 되돌리면 요금제가 다시 못 닿는다.
+   */
+  it('레인들이 실제로 envLaneBudget 을 쓴다 — raw parseInt 잔존 0', () => {
+    const dir = 'src/features/marketing/api'
+    const files = fs.readdirSync(dir).filter(f => f.endsWith('.ts') && f !== 'collect-budget.ts')
+    expect(files.length).toBeGreaterThan(20)   // 측정 대상이 비면 실패
+    const offenders: string[] = []
+    let users = 0
+    for (const f of files) {
+      const src = fs.readFileSync(`${dir}/${f}`, 'utf8')
+      if (/envLaneBudget\(/.test(src)) users++
+      if (/parseInt\(env\.ADS_(ENRICH_BUDGET|COMPANY_SUBREQUEST_BUDGET)[^)]*\)\s*\|\|\s*\d+/.test(src)) offenders.push(f)
+    }
+    expect(offenders, `요금제를 우회하는 예산 기본값 — envLaneBudget 로 바꿀 것:\n${offenders.join('\n')}`).toEqual([])
+    expect(users, '아무도 안 쓰면 배선이 죽은 것이다').toBeGreaterThanOrEqual(5)
   })
 
   /**

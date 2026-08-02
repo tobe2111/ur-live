@@ -48,6 +48,46 @@ const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '노브 등기부 강제 무력화',
+    file: 'scripts/check-plan-knob-coverage.mjs',
+    find: 'if (bad) process.exit(STRICT ? 1 : 0)',
+    replace: 'if (false) process.exit(1)',
+    test: 'src/tests/unit/ads-plan-knobs.test.ts',
+    why: '등기부 누락·배선 누락을 통과시키면 다음 노브도 조용히 요금제를 못 받는다(하루에 세 번 만난 결함).',
+  },
+  {
+    name: 'DO 알람이 요금제를 다시 모름',
+    file: 'src/worker-ads/lane-alarm-policy.ts',
+    find: "  if (!Number.isFinite(n) || n <= 0) return paidPlan(env) ? ALARM_INTERVAL_MS_PAID : ALARM_INTERVAL_MS_DEFAULT",
+    replace: '  if (!Number.isFinite(n) || n <= 0) return ALARM_INTERVAL_MS_DEFAULT',
+    test: 'src/tests/unit/ads-plan-scaling.test.ts',
+    why: '지금 실제로 보강을 돌리는 레인이다 — 요금제가 못 닿으면 유료로 바꿔도 처리량이 한 톨도 안 는다.',
+  },
+  {
+    name: '레인 예산이 요금제를 다시 모름',
+    file: 'src/features/marketing/api/collect-budget.ts',
+    find: '  if (resolvePlan(env) !== \'paid\') return freeDefault',
+    replace: '  return freeDefault; if (false)',
+    test: 'src/tests/unit/ads-plan-scaling.test.ts',
+    why: '실제 예산은 min(envBudget, learnedCap, platformCap) — env 가 80 이면 천장을 900 으로 올려도 80 에서 멈춘다.',
+  },
+  {
+    name: '레인이 raw parseInt 로 예산 기본값 회귀',
+    file: 'src/features/marketing/api/enrich-lane.ts',
+    find: "envLaneBudget(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET, 300, env)",
+    replace: "(parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 300)",
+    test: 'src/tests/unit/ads-plan-scaling.test.ts',
+    why: '함수가 옳아도 레인이 안 쓰면 요금제가 닿을 길이 없다 — 오늘 같은 자리에서 이미 당했다.',
+  },
+  {
+    name: 'miss 를 이름 대신 뺄셈으로 계산(음수 재발)',
+    file: 'src/worker-ads/tick-history.ts',
+    find: '    miss: [...ran].filter(nm => !beatNames.has(nm)).length,',
+    replace: '    miss: ran.size - lanes.length,',
+    test: 'src/tests/unit/ads-tick-history.test.ts',
+    why: '예산 밖 레인이 자기 하트비트를 남기면 음수가 된다 — 08-02 19:00 회차에서 실제로 나온 값.',
+  },
+  {
     name: '회차 요약이 flush 로 비워짐(붕괴 과소보고)',
     file: 'src/worker-ads/beat-batch.ts',
     find: '      seen.push({ name: beat.name, ok: beat.ok, ms: beat.ms })',
@@ -56,12 +96,12 @@ const MUTATIONS = [
     why: 'seen 이 pending 처럼 비워지면 마지막 flush 시점에 앞쪽 묶음이 사라져 요약이 실제보다 작아진다.',
   },
   {
-    name: '회차 이력이 띄운수 대신 기록수를 씀',
+    name: '회차 이력이 이름 대신 개수를 씀(miss 음수)',
     file: 'src/worker-ads/index.ts',
-    find: 'writeTickSummary(env.DB, tickStartIso, hourUTC, kicked.length, beats.seenBeats)',
-    replace: 'writeTickSummary(env.DB, tickStartIso, hourUTC, beats.seenBeats.length, beats.seenBeats)',
+    find: 'writeTickSummary(env.DB, tickStartIso, hourUTC, ranNames, beats.seenBeats, env as never)',
+    replace: 'writeTickSummary(env.DB, tickStartIso, hourUTC, beats.seenBeats.map(b => b.name.slice(4)), beats.seenBeats, env as never)',
     test: 'src/tests/unit/ads-tick-history.test.ts',
-    why: 'ran===n 이 되어 "기록조차 못 남긴 수"가 영원히 0 — 가장 심한 붕괴가 안 보인다.',
+    why: '이름 대조를 버리면 miss 가 0 이 되거나(개수 뺄셈이면) 음수가 된다 — 라이브 실측 "띄운7 기록9".',
   },
   {
     name: '같은 회차가 두 줄로 갈림',
@@ -437,6 +477,66 @@ const MUTATIONS = [
     why:
       '두 블록(우선업종·무인)이 한 커서를 쓰면 서로의 진행을 덮어써 어느 쪽도 한 바퀴를 못 돈다 ' +
       '— 레인별 학습 상한을 공유해 같은 사고가 났던 `ads_subreq_cap` 과 똑같은 구조다(2026-07-28).',
+  },
+
+  // ── 🎚️ 회차당 레인 수 학습기 (2026-08-02) — 손으로 잰 상수를 대체한 제어 루프
+  {
+    name: '학습기가 예산 밖 기록(off)을 해로 셈',
+    file: 'src/worker-ads/lane-aimd.ts',
+    find: '  Math.max(0, t.fail || 0) + Math.max(0, t.miss || 0) >= HARM_MIN_LANES',
+    replace: '  Math.max(0, t.fail || 0) + Math.max(0, t.miss || 0) + Math.max(0, t.off || 0) >= HARM_MIN_LANES',
+    test: 'src/tests/unit/ads-lane-aimd.test.ts',
+    why:
+      '`off` 는 DO 알람·우회 레인이 자기 하트비트를 남긴 정상 동작이다(라이브 "띄운7 기록9"). ' +
+      '이걸 해로 세면 학습기가 매 회차 물러나 **영원히 바닥에 눌린다** — 처리량을 스스로 반으로 깎고 아무도 모른다.',
+  },
+  {
+    name: '자기신고 1건에도 함대를 깎음',
+    file: 'src/worker-ads/lane-aimd.ts',
+    find: 'export const HARM_MIN_LANES = 2',
+    replace: 'export const HARM_MIN_LANES = 1',
+    test: 'src/tests/unit/ads-lane-aimd.test.ts',
+    why:
+      '`enrich-influencer-fanout` 은 CPU 와 무관하게 스스로 ok=false 를 남긴다(라이브 실재). ' +
+      '문턱이 1 이면 그 자기신고 하나가 매 회차 레인 수를 깎는다 — CPU 고갈은 떼로 죽인다(실측 5·2·4).',
+  },
+  {
+    name: '물러남이 반올림으로 제자리가 됨',
+    file: 'src/worker-ads/lane-aimd.ts',
+    find: 'const backed = Math.min(base - 1, Math.floor(base * BACKOFF_FACTOR))',
+    replace: 'const backed = Math.ceil(base * BACKOFF_FACTOR)',
+    test: 'src/tests/unit/ads-lane-aimd.test.ts',
+    why: '"최소 1 은 반드시 줄인다"가 없으면 작은 값에서 물러남이 사라져 학습이 멈춘다(계속 죽으면서 그 자리를 지킨다).',
+  },
+  {
+    name: '유료 전환이 배운 자리를 버리고 천장에서 시작',
+    file: 'src/worker-ads/lane-aimd.ts',
+    find: '  const base = clampCap(prev?.cap ?? start, top)',
+    replace: '  const base = clampCap(start, top)',
+    test: 'src/tests/unit/ads-lane-aimd.test.ts',
+    why:
+      '이 축의 한도는 요금제가 아니라 인보케이션당 CPU 다(유료 기본값도 30초). 배운 자리를 버리고 ' +
+      '`PAID_LANES_PER_TICK`(64)에서 시작하면 **유료로 바꾼 첫 정각에 무너진다** — 대표 요구사항의 정반대.',
+  },
+  {
+    name: '학습값이 디스패처에 안 닿음',
+    file: 'src/worker-ads/dispatch-budget.ts',
+    find: '  if (Number.isFinite(learned as number) && (learned as number) >= 1) return Math.floor(learned as number)',
+    replace: '  if (false) return 0',
+    test: 'src/tests/unit/ads-lane-aimd.test.ts',
+    why:
+      '배우기만 하고 안 쓰면 오늘 세 번 겪은 그 상태(닿지 않는 노브)가 그대로다 — 에러가 없어서 ' +
+      '학습이 도는 것처럼 보이는데 회차 수는 상수 그대로다.',
+  },
+  {
+    name: '바닥 고착 탈출이 사라짐',
+    file: 'src/worker-ads/lane-aimd.ts',
+    find: '  if (pinned >= PROBE_AFTER_PINNED) return { cap: Math.min(top, MIN_LANES_PER_TICK + 1), clean: 0, pinned: 0 }',
+    replace: '  if (pinned >= 999999) return { cap: Math.min(top, MIN_LANES_PER_TICK + 1), clean: 0, pinned: 0 }',
+    test: 'src/tests/unit/ads-lane-aimd.test.ts',
+    why:
+      '하트비트를 아예 안 남기는 레인이 하나만 있어도 `miss` 가 영구 1 이라 바닥에 영원히 눌린다. ' +
+      '탈출이 없으면 그 상태가 신호 없이 지속된다("실패가 아니라 조용한 부재").',
   },
   {
     name: 'cron 계정 한도 초과(스케줄 PUT 전면 거부)',

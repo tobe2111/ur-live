@@ -9,6 +9,7 @@
  *   설계 SSOT: docs/design/partner-company-collection.md §12.
  */
 import type { Env } from '@/worker/types/env'
+import { envLaneBudget } from './collect-budget'
 import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { serviceKeyParam, isNoValue } from './public-data-diag'
 import { fieldCoverage, coverageNote, type FieldCoverage } from './field-coverage'
@@ -279,7 +280,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
     base: (env as unknown as { ADS_COMMERCE_ENDPOINT?: string }).ADS_COMMERCE_ENDPOINT || svc.base,
     op: (env as unknown as { ADS_COMMERCE_OP?: string }).ADS_COMMERCE_OP || svc.op,
   } : svc)
-  const totalBudget = Math.max(4, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 12)
+  const totalBudget = Math.max(4, envLaneBudget(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET, 12, env))
   const budget = { left: totalBudget }
   const perService = Math.max(2, Math.floor(totalBudget / services.length))
 

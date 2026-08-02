@@ -32,8 +32,18 @@ export interface TickSummary {
   h: number
   /** 이번 회차에 **띄운** 레인 수(디스패처가 센 값 — 기록이 없어도 띄운 건 띄운 것이다). */
   ran: number
-  /** 하트비트를 남긴 수 / 성공 / 실패. `ran - n` 이 **기록조차 못 남긴 수**다. */
+  /** 하트비트를 남긴 수(예산 밖 레인 포함) / 성공 / 실패. */
   n: number
+  /**
+   * 🔴 **띄웠는데 하트비트가 없는 레인 수** — 붕괴의 핵심 지표.
+   *   ⚠️ 처음엔 `ran - n` 으로 계산했는데 **라이브에서 음수가 나왔다**(19:00 회차 `띄운 7 · 기록 9`).
+   *     예산 밖 레인(`sheets-sync` 같은 생 waitUntil)과 DO 알람 레인이 **자기 하트비트를 따로** 남기기
+   *     때문이다. 뺄셈은 두 집합이 같다고 가정했는데 그 가정이 거짓이었다.
+   *   ⇒ **이름으로 대조**한다. 음수가 구조적으로 불가능하다.
+   */
+  miss: number
+  /** 예산 밖에서 기록을 남긴 레인 수(우회·DO 알람·자식 self-beat). `n = (ran - miss) + off`. */
+  off: number
   ok: number
   fail: number
   /** 성공 최대 ms ↔ 실패 최소 ms — 겹치면 '시간 벽'이 아니라 'CPU 고갈'이다(이 레포의 판정 관용구). */
@@ -83,17 +93,27 @@ export function appendTick(prev: unknown, entry: TickSummary, cap = TICK_HISTORY
   return json
 }
 
-/** 하트비트 목록 → 회차 요약. `ran` 은 디스패처가 센 값이라 **따로 받는다**(기록 수와 다를 수 있다). */
+/**
+ * 하트비트 목록 → 회차 요약.
+ *
+ * @param ranNames 이번 회차에 **디스패처가 띄운** 레인 이름(`ads:` 접두어 없이). 기록 목록과 **집합이 다르다** —
+ *   예산 밖 레인이 따로 기록을 남기므로, 개수 뺄셈이 아니라 **이름 대조**로 판정해야 한다
+ *   (라이브에서 `띄운 7 · 기록 9` 가 실제로 나왔다).
+ */
 export function summarizeTick(
-  at: string, hourUTC: number, ran: number,
+  at: string, hourUTC: number, ranNames: readonly string[],
   beats: ReadonlyArray<{ name: string; ok: boolean; ms: number }>,
 ): TickSummary {
   // 🧹 `ads:scheduled`(회차가 울렸다는 사실 자체)는 레인이 아니다 — 세면 성공률이 부풀려진다.
   const lanes = beats.filter(b => b.name !== 'ads:scheduled')
   const ok = lanes.filter(b => b.ok)
   const bad = lanes.filter(b => !b.ok)
+  const beatNames = new Set(lanes.map(b => b.name.replace(/^ads:/, '')))
+  const ran = new Set(ranNames)
   return {
-    at, h: hourUTC, ran, n: lanes.length, ok: ok.length, fail: bad.length,
+    at, h: hourUTC, ran: ran.size, n: lanes.length, ok: ok.length, fail: bad.length,
+    miss: [...ran].filter(nm => !beatNames.has(nm)).length,
+    off: [...beatNames].filter(nm => !ran.has(nm)).length,
     okMax: ok.reduce((m, b) => Math.max(m, b.ms), 0),
     failMin: bad.length ? bad.reduce((m, b) => Math.min(m, b.ms), Infinity) : null,
     bad: bad.map(b => b.name.replace(/^ads:/, '')).slice(0, 6),

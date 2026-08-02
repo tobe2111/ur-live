@@ -11,7 +11,7 @@
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
 import { runPooled, resolveConcurrency } from './lane-pool'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs, envLaneBudget } from './collect-budget'
 import { writeEnrichSnapshot, recordEnrichCrash, foldEnrichRollup, ENRICH_SNAPSHOT_KEY, ENRICH_ROLLUP_KEY } from './enrich-telemetry'
 import { healSuspectNames } from './enrich-name-heal'
 import { ensureCompanySchema } from './company-discovery'
@@ -83,7 +83,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   HTML 수신 0건 = no_contact 0 · 네트워크가 필요 없는 blocked_host 만 정상)이 가리킨 것은 사이트별 봇차단이
   //   아니라 **한도 초과 후 전 fetch throw**. 인플루언서 레인이 이미 쓰던 관측 학습 상한(collect-budget)을
   //   이 레인에도 적용 — 부딪히면 다음 실행부터 그 아래만 쓰고, 무사히 다 쓰면 조금씩 회복한다.
-  const envBudget = Math.min(800, Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 300))
+  const envBudget = Math.min(900, Math.max(20, envLaneBudget(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET, 300, env)))
   // 🧮 부팅 조회 1회로 3개 값을 함께 읽는다(학습 상한 + 직전 스냅샷 + 누적) — 쿼리 수는 그대로 1.
   //   직전 스냅샷을 여기서 읽는 이유: **중도 사망한 라운드는 스스로를 누적할 수 없다**(종료 코드 미도달).
   //   그 라운드가 남긴 마지막 부분 스냅샷을 다음 라운드가 접어야 죽은 라운드까지 세어진다.

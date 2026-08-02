@@ -167,6 +167,28 @@ export function platformSubreqCap(raw?: string | null, plan: AdsPlan = 'free'): 
 }
 
 /**
+ * 💳 **레인별 env 예산도 요금제를 알아야 한다** (2026-08-02 — 전수 점검에서 찾은 세 번째 구멍).
+ *
+ *   실제 예산은 `min(envBudget, learnedCap, platformCap)` 이다. 그런데 레인들의 env 기본값은
+ *   **12·20·60·80·110·300** 으로 제각각이고 전부 요금제를 모른다. 그래서 유료로 천장을 60→900 으로
+ *   올려도 **그 레인은 80 에서 멈춘다** — 천장이 구속하지 않는 조임쇠가 되어 버린다.
+ *   플랫폼 천장·보강 벽시계에서 이미 두 번 겪은 것과 **같은 클래스**다: *"노브가 그 값에 닿지 않는다."*
+ *
+ *   ⇒ 무료 기본값은 그대로 두고, 유료에서만 **천장이 커진 비율만큼** 기본값을 키운다
+ *     (60→900 이면 ×15). 그 위는 `learnedCap` 이 관측으로 잡는다 — 즉 숫자를 새로 추측하지 않는다.
+ *
+ *   🔒 **무료 회귀 0**: `plan==='free'` 면 인자로 받은 기본값을 그대로 반환한다.
+ *   ⚠️ 명시 env 는 언제나 우선(요금제는 *기본값만* 정한다 — 이 파일의 다른 두 함수와 같은 규약).
+ */
+export function envLaneBudget(raw: string | undefined, freeDefault: number, env?: SubreqCapEnv | null): number {
+  const n = parseInt(String(raw ?? ''), 10)
+  if (Number.isFinite(n) && n > 0) return n
+  if (resolvePlan(env) !== 'paid') return freeDefault
+  const ratio = SUBREQ_PLATFORM_CAP_PAID / SUBREQ_PLATFORM_CAP_DEFAULT
+  return Math.min(SUBREQ_PLATFORM_CAP_PAID, Math.round(freeDefault * ratio))
+}
+
+/**
  * 🔌 **레인이 실제로 쓰는 진입점** — env 하나만 주면 요금제까지 반영된다.
  *
  * 예전엔 13개 파일이 전부 천장 함수에 **raw 문자열만**(`env.ADS_SUBREQ_PLATFORM_CAP`) 넘겼다.

@@ -9,7 +9,7 @@
 ## 🚦 한 줄 점검
 
 ```bash
-bash scripts/audit-gate.sh           # 전체 (82개 불변식)
+bash scripts/audit-gate.sh           # 전체 (83개 불변식)
 bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|money|schema|classify|ui|structure|deploy)
 ```
 
@@ -104,3 +104,20 @@ bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|mone
 2. 수동 전수감사를 한 도메인은 → "마지막 수동 전수감사" 날짜 갱신.
 3. 가드가 못 잡는 새 사고가 나면 → 가드부터 만들고(애초에 없도록) 이 표 + `audit-gate.sh` 갱신.
 4. 미래 세션 감사 요청 시: **먼저 `audit-gate.sh` 실행 → GREEN 도메인 스킵, RED·미보유 영역만 작업.**
+
+### 🎛️ 처리량 노브 요금제 커버리지 (`check-plan-knob-coverage.mjs`)
+
+**왜**: 2026-08-02 하루에 **같은 결함을 세 번** 만났다 — 플랫폼 천장 → 보강 벽시계 → DO 알람·레인 예산.
+전부 *"이 상수가 요금제를 모른다"* 였고 전부 사람이 발견해서 고쳤다. 발견에 의존하면 다음 노브도 놓치고,
+놓치면 **유료로 바꿔도 그 축은 안 오른다**(에러가 없어 아무도 모른다).
+
+**강제 2가지**
+- **R1** `src/worker-ads`·`src/features/marketing/api` 의 숫자 `ADS_*` 노브는 전부 `plan-knobs.ts` 등기부에 분류돼 있어야 한다.
+- **R2** `cf` 로 분류한 노브는 요금제 인지 리졸버를 거쳐야 한다(raw `parseInt(env.X…) || N` 금지).
+
+**🔴 전부 `cf` 로 만들면 안 된다** — `external`(YouTube 유닛·카카오/네이버 일 쿼터)을 요금제에 묶으면
+**유료 전환이 곧 장애**가 된다: Workers 예산은 늘었는데 그쪽이 403 을 주고 그 레인은 그날 내내 죽는다.
+
+⚠️ **못 잡는 것**: 분류가 *틀린* 경우(외부 쿼터를 `cf` 로 적음) — 문자열로 판정 불가. 등기부의 `why` 를 사람이 읽어야 한다.
+⚠️ 첫 판은 **R1 이 헛돌았다**: raw `parseInt` 만 봐서 리졸버로 배선하는 순간 스캐너 눈에서 사라졌다
+(등기부에서 지워도 통과). 리졸버 경유 형태도 함께 스캔하도록 고쳐 red 확인.

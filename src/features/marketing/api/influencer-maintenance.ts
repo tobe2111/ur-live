@@ -11,7 +11,7 @@ import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch,
 import { cleanSelfLinks, SELF_BLOG_LIKE } from './influencer-self-link'
 import { runQualityPass } from './influencer-quality'
 import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS } from './collect-lease'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget } from './collect-budget'
 import { budgetedDb, newOpBudget, type OpBudget } from './maintenance-budget'
 import { healNaverHandles } from './influencer-handle-heal'
 // 📍 지역 백필 — 여기(정비 인보케이션)가 제자리다. 근거는 `sweepRegions` 주석.
@@ -399,7 +399,7 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
   const at = new Date().toISOString()
   if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, PHASE_LEASE_TTL_MS)) return { at, kind: 'maintenance', phase, busy: true }
 
-  const envBudget = Math.max(10, Math.min(800, parseInt(String(env.ADS_MAINT_OPS_BUDGET || ''), 10) || 60))
+  const envBudget = Math.max(10, Math.min(900, envLaneBudget(env.ADS_MAINT_OPS_BUDGET, 60, env)))
   const learnedRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('maintenance'))
     .first<{ value: string }>().catch(() => null)
   const learnedCap = Math.max(0, parseInt(learnedRaw?.value || '', 10) || 0)

@@ -109,13 +109,18 @@ export function resolvePlan(env: DispatchEnv | undefined | null): AdsPlan {
 
 /**
  * 이 회차에 띄울 레인 수.
- * 우선순위: 명시값(`ADS_LANES_PER_TICK`) > 요금제 기본값.
- * ⚠️ 0 이하·비숫자는 **무시하고 기본값**으로 간다 — 오타 하나로 파이프라인이 통째로 멈추면 안 된다
+ * 우선순위: **명시값(`ADS_LANES_PER_TICK`) > 학습값 > 요금제 기본값.**
+ *
+ * 🎚️ `learned` 는 `lane-aimd.ts` 가 직전 회차 결과로 갱신한 값이다. 위 상수들은 이제
+ *   **시작값**일 뿐이고, 실제 자리는 라이브가 정한다 — 그 상수가 하루 만에 낡는 걸 두 번 봤다.
+ * ⚠️ 명시값이 학습을 **완전히 이긴다**(= 킬 스위치). 학습기가 이상하게 굴면 대표가 env 한 줄로 고정한다.
+ * ⚠️ 0 이하·비숫자는 **무시하고 다음 순위**로 간다 — 오타 하나로 파이프라인이 통째로 멈추면 안 된다
  *    (이 레포가 반복해 만난 "실패가 아니라 조용한 부재" 클래스를 여기서 만들지 않는다).
  */
-export function lanesPerTick(env: DispatchEnv | undefined | null): number {
+export function lanesPerTick(env: DispatchEnv | undefined | null, learned?: number | null): number {
   const explicit = Number(String(env?.ADS_LANES_PER_TICK ?? '').trim())
   if (Number.isFinite(explicit) && explicit >= 1) return Math.floor(explicit)
+  if (Number.isFinite(learned as number) && (learned as number) >= 1) return Math.floor(learned as number)
   return resolvePlan(env) === 'paid' ? PAID_LANES_PER_TICK : FREE_LANES_PER_TICK
 }
 

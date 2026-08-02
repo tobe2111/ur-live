@@ -17,7 +17,7 @@
 import type { Env } from '@/worker/types/env'
 import type { FetchBudget } from './influencer-discovery'
 import { ensureProspectSchema, PRIORITY_UPJONG_SQL } from './store-prospects'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs, envLaneBudget } from './collect-budget'
 import { runPooled, resolveConcurrency } from './lane-pool'
 import { foldEnrichRollup, PROSPECT_ROLLUP_KEY } from './enrich-telemetry'
 
@@ -54,7 +54,7 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   // 🪙 레인별 학습 상한 — 예전엔 회사 풀 예산(ADS_ENRICH_BUDGET, 기본 300)을 그대로 빌려 썼다.
   //   실효 한도는 그 훨씬 아래라 cap1 = left/6 = 50 크롤 × 약 4 fetch = 200 요청을 시도했고,
   //   중간에 죽어도 **아무 기록이 없어** 아무도 몰랐다. 이제 부딪히면 다음 실행부터 낮춘다.
-  const envBudget = Math.min(300, Math.max(15, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 80))
+  const envBudget = Math.min(900, Math.max(15, envLaneBudget(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET, 80, env)))
   // 부팅 조회 1회로 3개(학습 상한 + 직전 스냅샷 + 누적) — 회사 보강 레인과 동일 처방(그 파일 주석 참조).
   const boot = (await DB.prepare('SELECT key, value FROM platform_settings WHERE key IN (?, ?, ?)')
     .bind(subreqCapKey('prospect_enrich'), STATS_KEY, PROSPECT_ROLLUP_KEY)
