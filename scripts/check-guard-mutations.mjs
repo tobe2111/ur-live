@@ -128,6 +128,14 @@ const MUTATIONS = [
     why: '두 풀의 시각 컬럼이 다르다 — 혼동하면 no such column 500 이거나 조용히 0건이 된다.',
   },
   {
+    name: '팬아웃 자기신고 무력화(띄웠다=성공)',
+    file: 'src/features/marketing/api/enrich-fanout-health.ts',
+    find: '    ok: verdict.landed !== false,',
+    replace: '    ok: true,',
+    test: 'src/tests/unit/ads-enrich-fanout-health.test.ts',
+    why: '필드만 추가하고 ok 를 안 뒤집으면 화면은 여전히 초록이다 — 자식이 전멸해도 6시간을 모른다(08-02 실측).',
+  },
+  {
     name: '풀 스캔 작업 상한 제거',
     file: 'src/features/marketing/api/pool-scan-budget.ts',
     find: 'if (n >= POOL_SCAN_MAX_ROWS) return true',
