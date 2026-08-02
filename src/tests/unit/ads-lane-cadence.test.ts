@@ -406,7 +406,10 @@ describe('worker-ads/index.ts — 부모는 라운드 루프를 돌리지 않는
   })
 
   it('라운드가 필요한 레인은 드라이버 경로로 kick 한다(검사 대상 존재 확인)', () => {
-    expect(src).toMatch(/kick\('\/__ads\/enrich-influencer-driver'/)
+    // 🔁 2026-08-02: cron 이 자식을 기다리도록 `?sync=1` 이 붙었다(드라이버가 즉시 반환하면 손자가
+    //   취소된다 — 실측 prev_landed:false 2회 연속). **이 가드의 의도는 그대로다** — "부모가 라운드
+    //   루프를 직접 돌리지 않고 드라이버 경로로 넘기는가". 쿼리 유무는 그 의도와 무관하다.
+    expect(src).toMatch(/kick\('\/__ads\/enrich-influencer-driver(\?[a-z0-9=&]+)?'/)
     expect(src).toMatch(/kick\('\/__ads\/enrich-company-driver'/)
   })
 })

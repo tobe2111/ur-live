@@ -274,11 +274,20 @@ enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
   //   truthy 검사를 `||` 안에 두면 TS2774 가 난다(런타임엔 미제공 환경이 있어 검사 자체는 필요하다).
   const canDefer = typeof c.executionCtx?.waitUntil === 'function'
   if (sliceRaw === undefined && K > 1 && env.SELF?.fetch && (syncFanout || canDefer)) {
+    // 🪂 **착지 신고는 띄우기 *전*에 찍는다.** `reportFanout` 은 지금 레인 스냅샷을 `lane_before` 로
+    //   저장해 다음 회차가 비교한다 — 기다린 *뒤*에 찍으면 이번 라운드의 전진이 이미 반영돼
+    //   **다음 회차가 영원히 "전진 없음"으로 오판**한다(비교 기준이 사후값이 되므로).
+    //   sync 경로에도 반드시 남긴다 — 안 남기면 자식이 전멸해도 화면이 다시 초록이 된다
+    //   (그게 오늘 고친 결함이고, 여기서 되돌리면 같은 자리에서 재발한다).
+    await reportFanout(c.env as never, K, rounds)
     const kids = Array.from({ length: K }, (_, i) => env.SELF!.fetch(
       new Request(`https://ur-ads/__ads/enrich-influencer-driver?slice=${i}&k=${K}${syncFanout ? '&sync=1' : ''}`, { method: 'POST' })))
     if (syncFanout) {
       const slices = await Promise.all(kids.map(p => p.then(r => r.json()).catch(() => null)))
-      return c.json({ ok: true, fanout: K, sync: true, slices })
+      // 🔴 **한 조각도 안 돌아왔으면 이 레인은 실패다.** `ok:true` 로 반환하면 부모 하트비트가 초록이 되고
+      //   "띄웠다 = 성공" 오해가 sync 경로로 되살아난다. 자기 실패를 자기가 신고해야 stale-watch 가 잡는다.
+      const landed = slices.filter(Boolean).length
+      return c.json({ ok: landed > 0, fanout: K, sync: true, landed, slices }, landed > 0 ? 200 : 500)
     }
     // 🪂 자식들이 각자 자기 하트비트/스냅샷을 남긴다 — 이 응답은 '띄웠다'만 뜻한다.
     //   🔴 그런데 그 즉시 응답으로 부모가 `ok=true 0ms` 하트비트를 찍어, **자식이 전멸해도 화면은 초록**이었다
@@ -289,8 +298,7 @@ enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
     //     전멸을 보이게 하고, 위 `sync` 분기는 *수동 경로에서* 전멸 자체를 없앤다. 하나만 남기면
     //     "빨간불은 뜨는데 고칠 방법이 없다" 또는 "고쳤는데 다시 죽어도 모른다" 가 된다.
     for (const p of kids) c.executionCtx!.waitUntil(p.then(() => undefined).catch(() => undefined))
-    await reportFanout(c.env as never, K, rounds)
-    return c.json({ ok: true, fanout: K, planned: rounds })
+    return c.json({ ok: true, fanout: K, planned: rounds })   // 신고는 위(띄우기 전)에서 이미 했다
   }
   const kRaw = parseInt(c.req.query('k') || '', 10)
   const slice = sliceRaw !== undefined && Number.isFinite(kRaw) && kRaw > 1

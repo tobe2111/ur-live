@@ -18,7 +18,7 @@ import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
 import { publicDataRoutes } from './public-data.routes'
 import { chainRoutes } from './chain.routes'
-import { createBeatBatch, makeBeatWriter } from './beat-batch'
+import { createBeatBatch, makeBeatWriter } from './beat-batch'; import { writeTickSummary } from './tick-history-write'
 import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
 import { laneUrl, selfBeatMiddleware } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
@@ -231,7 +231,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   // 🧾 하트비트는 **모아서 한 번에** 쓴다 — `kick` 당 D1 1회씩 쓰면 부모 비용이 2N 이 되어
   //   천장(~50)에 닿고, 넘는 순간 뒤쪽 레인은 **디스패치도 실패 기록도 못 한다**(근거: beat-batch.ts).
   //   🛡️ 부모의 실패 기록이 자식의 성공을 덮지 않는 가드까지 포함한다 — 근거는 `beat-batch.ts`.
-  const beats = createBeatBatch(makeBeatWriter(env, new Date().toISOString()))
+  const tickStartIso = new Date().toISOString()   // 회차 키 — 하트비트 가드와 이력이 같은 값을 쓴다
+  const beats = createBeatBatch(makeBeatWriter(env, tickStartIso))
   // 📦 `extra` = 실패 사유와 **독립**인 부가 관측(예: 배포 직후 회차를 스스로 신고하는 build_age_min).
   //   오늘 세 번의 오진이 전부 "이 회차가 배포와 겹쳤나"를 사후에 못 봐서 났다 — 성공 회차에도 실어야 한다.
   const adsBeat = async (name: string, ok: boolean, ms: number, err?: unknown, maxGapMin?: number, extra?: Record<string, unknown>): Promise<void> => {
@@ -319,10 +320,15 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //   (시트 미러 등)부터 굶는다.** kick 1개로 넘기면 부모 비용은 고정 2, 라운드는 드라이버의
     //   독립 예산에서 돈다. 덤으로 이 레인도 드디어 하트비트가 찍힌다(그전엔 생 waitUntil 이라
     //   **관측 밖** — 조용히 멈춰도 아무도 몰랐다).
-    kick('/__ads/enrich-influencer-driver', async () => {
+    // 🤝 **cron 도 자식을 기다린다**(2026-08-02 — 라이브 2회 반증 후 교정).
+    //   드라이버가 즉시 반환하면 부모 `waitUntil` 이 0.6초에 풀려 손자가 통째로 취소된다
+    //   (이 파일들이 이미 적어 둔 규칙: *"피호출자는 호출자보다 오래 살 수 없다"*).
+    //   실측·근거·되돌릴 이유가 없는 까닭(최악=현상 유지)은 `ads-fanout-cron-sync.test.ts` 헤더에.
+    //   ⚠️ 대기는 I/O 라 CPU 를 안 쓴다 · `sync=1` 은 릴레이도 막아 대기가 1라운드(~7초)로 유계다.
+    kick('/__ads/enrich-influencer-driver?sync=1', async () => {
       const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
       return runInfluencerEnrich(env) // SELF 미바인딩(로컬) — 1라운드만
-    })
+    }, { beat: 'enrich-influencer-driver' })
   }
   // ✍ 발송 큐 상위 초안 미리 채우기 — 실측: 발송가능 22,533명인데 접촉 0명, 큐 상위 표본은 전원 초안 없음.
   //   사람이 10명마다 AI 를 기다리는 구조라 수집·보강을 아무리 빨리 해도 접촉 수가 안 는다.
@@ -587,9 +593,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   (`selectLanesForHour` 가 모든 레인이 `groups` 시간 안에 반드시 한 번 돎을 보장 — 유닛이 강제).
   const kicked = await dispatchPendingLanes({ pending, env: env as never, hourUTC, laneUrl, beat: adsBeat, waitUntil: (p) => ctx.waitUntil(p) })
 
-  // 🧾 **모든 디스패치가 끝난 뒤** 남은 하트비트를 한 번에 쓴다(중간분은 임계치에서 이미 나갔다).
-  //   ⚠️ 기다리지 않고 flush 하면 빈 배치를 쓰고, 그 뒤 쌓인 기록은 영영 안 나간다.
-  ctx.waitUntil(Promise.allSettled(kicked).then(() => beats.flush()))
+  // 🧾 **모든 디스패치가 끝난 뒤** 한 번에 쓴다(기다리지 않으면 빈 배치를 쓰고 이후 기록은 영영 못 나간다).
+  //   📼 이어서 이 회차 한 줄을 이력에 남긴다(근거·한계는 `tick-history.ts` 헤더).
+  ctx.waitUntil(Promise.allSettled(kicked).then(async () => {
+    await beats.flush()
+    await writeTickSummary(env.DB, tickStartIso, hourUTC, kicked.length, beats.seenBeats)
+  }))
 }
 
 // ⏰ DO 알람 레인 — wrangler-ads.toml 의 durable_objects 바인딩이 이 export 를 찾는다.

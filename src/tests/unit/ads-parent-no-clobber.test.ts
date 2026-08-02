@@ -52,7 +52,12 @@ describe('부모 하트비트 쓰기 — 실패만 가드한다', () => {
   })
 
   it('🔗 엔트리가 이 쓰기 함수를 실제로 쓴다 — 만들어 놓고 안 부르면 가드는 없는 것이다', () => {
-    expect(SRC).toMatch(/createBeatBatch\(makeBeatWriter\(env, new Date\(\)\.toISOString\(\)\)\)/)
+    // 🔁 2026-08-02: 회차 시작 시각을 **변수로 뽑았다**(`tickStartIso`) — 하트비트 가드와 회차 이력이
+    //   *같은 값*을 써야 해서다. **이 가드의 의도는 그대로다** — "엔트리가 이 쓰기 함수를 실제로 쓰는가".
+    //   ⚠️ 인라인이든 변수든 **회차 시작 시각**이어야 한다(flush 시점을 넘기면 가드가 통째로 무력해진다 —
+    //     `makeBeatWriter` 의 `tickStartIso` 주석 참조). 그래서 `new Date()` 를 *어딘가엔* 요구한다.
+    expect(SRC).toMatch(/createBeatBatch\(makeBeatWriter\(env, (new Date\(\)\.toISOString\(\)|tickStartIso)\)\)/)
+    expect(SRC, 'tickStartIso 는 회차 시작에 한 번 찍혀야 한다').toMatch(/const tickStartIso = new Date\(\)\.toISOString\(\)|makeBeatWriter\(env, new Date/)
     expect(SRC).toMatch(/import \{ createBeatBatch, makeBeatWriter \} from '\.\/beat-batch'/)
   })
 
