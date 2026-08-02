@@ -36,7 +36,7 @@ import {
 } from './influencer-discovery'
 import { enrichNaverActivity, enrichYouTubePerformance, ensurePerfExtraColumns, type NaverEnrichDiag, type EnrichSlice } from './influencer-performance'
 import { POOL_ACCOUNT_ID, readSetting, writeSetting, ytQuotaDayKey } from './influencer-auto-collect'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap, resolveEnrichDeadlineMs } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs } from './collect-budget'
 // 스냅샷 키는 leaf 모듈(enrich-telemetry)에 둔다 — 어드민 통계가 수집 엔진을 import 하지 않고 읽게.
 import { INFLUENCER_ENRICH_SNAPSHOT_KEY } from './enrich-telemetry'
 
@@ -331,7 +331,7 @@ export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: n
   const envBudget = Math.min(400, Math.max(10, parseInt(env.ADS_INFLUENCER_ENRICH_BUDGET || '', 10) || 45))
   const learnedCap = Math.max(0, parseInt((await readSetting(DB, subreqCapKey('influencer_enrich'))) || '', 10) || 0)
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
-  const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
+  const pcap = envSubreqCap(env)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
   /**
    * ⏱️ 벽시계 가드 — 서브리퀘스트가 남아도 시간이 인보케이션을 끝낸다.
@@ -355,7 +355,7 @@ export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: n
    * ⚠️ env 로 언제든 되돌린다(`ADS_ENRICH_DEADLINE_MS`). 상한 10.5초가 플랫폼/플랜에 따라 달라지면
    *   이 기본값도 다시 재야 한다 — 숫자를 믿지 말고 **성공 max ↔ 실패 min 경계**를 다시 측정할 것.
    */
-  const deadlineMs = resolveEnrichDeadlineMs(env.ADS_ENRICH_DEADLINE_MS)
+  const deadlineMs = envEnrichDeadlineMs(env)
   const budget: FetchBudget = { left: budgetTotal, deadline: started + deadlineMs }
   const { bioMax, naverMax, ytMax } = planInfluencerEnrich(budgetTotal)
   // 📈 유튜브 성과 — 서브리퀘스트(위 예산)와 **일일 units**(검색과 공유하는 10,000 풀) 둘 다 통과해야 돈다.

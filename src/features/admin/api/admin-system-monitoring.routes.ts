@@ -252,33 +252,41 @@ interface OpsGate {
   default_value: string
   /** docs/STAGING_CHECKLIST.md 의 항목 ID — null 이면 staging 실결제 검증 불필요 */
   staging_ref: string | null
+  /**
+   * 🔴 **무엇이 확인되면 켜는가** (2026-08-02 대표 확정 ⑤).
+   *
+   * 점등 조건이 없는 게이트는 **영원히 안 켜진다** — 아무도 "지금이 그때인가"를 판단할 수 없기 때문이다.
+   * 실제로 이 명부의 게이트 13개가 **전부 미설정**인 채로 있었다(라이브 실측).
+   * 새 게이트를 추가할 때 이 줄을 비우지 말 것.
+   */
+  turn_on_when: string
 }
 
 const OPS_GATES: OpsGate[] = [
-  { key: 'commission_budget_enabled', kind: 'setting', label: '커미션 예산 아비터 [INV-CB]', default_value: 'false', staging_ref: 'S1' },
-  { key: 'promo_funding_source', kind: 'setting', label: '프로모 owner-펀딩', default_value: 'platform', staging_ref: 'S2' },
-  { key: 'SHOPPING_LEDGER_ENABLED', kind: 'env', label: '쇼핑 주문 원장 크레딧', default_value: 'false', staging_ref: 'S3' },
-  { key: 'FEE_RESOLVER_ENABLED', kind: 'env', label: 'fee-resolver 그림자 기록', default_value: 'false', staging_ref: 'S4' },
-  { key: 'BLOG_AI_DRAFTS_ENABLED', kind: 'env', label: '블로그 AI 초안 주간 cron', default_value: 'false', staging_ref: null },
-  { key: 'ADS_AUTOBID_ENABLED', kind: 'env', label: '유어애즈 자동입찰', default_value: 'false', staging_ref: null },
-  { key: 'wholesale_auto_grade_enabled', kind: 'setting', label: '도매 등급 자동평가', default_value: '0', staging_ref: null },
+  { key: 'commission_budget_enabled', kind: 'setting', label: '커미션 예산 아비터 [INV-CB]', default_value: 'false', staging_ref: 'S1', turn_on_when: '영입+트리 커미션이 겹친 주문에서 Σ적립 ≤ 예산이 확인되면(S1)' },
+  { key: 'promo_funding_source', kind: 'setting', label: '프로모 owner-펀딩', default_value: 'platform', staging_ref: 'S2', turn_on_when: '이용권 구매→사용→환불에서 매장 원장 promo debit 1회가 확인되면(S2)' },
+  { key: 'SHOPPING_LEDGER_ENABLED', kind: 'env', label: '쇼핑 주문 원장 크레딧', default_value: 'false', staging_ref: 'S3', turn_on_when: '쇼핑탭 재오픈이 결정되고 S3 실결제로 net 크레딧 1회가 확인되면' },
+  { key: 'FEE_RESOLVER_ENABLED', kind: 'env', label: 'fee-resolver 그림자 기록', default_value: 'false', staging_ref: 'S4', turn_on_when: '그림자 기록(order_fee_breakdown) vs 현행 정산 비교가 일치하면(S4)' },
+  { key: 'BLOG_AI_DRAFTS_ENABLED', kind: 'env', label: '블로그 AI 초안 주간 cron', default_value: 'false', staging_ref: null, turn_on_when: '주간 AI 초안이 필요해지고 ANTHROPIC_API_KEY 가 ur-live 에 설정되면' },
+  { key: 'ADS_AUTOBID_ENABLED', kind: 'env', label: '유어애즈 자동입찰', default_value: 'false', staging_ref: null, turn_on_when: '유어애즈 광고주가 실제로 입찰을 시작하면(현재 인플루언서 DB 수집 단계라 미해당)' },
+  { key: 'wholesale_auto_grade_enabled', kind: 'setting', label: '도매 등급 자동평가', default_value: '0', staging_ref: null, turn_on_when: '🔴 켜지 않는다 — 도매몰은 철거 대상(2026-08-02 대표 확정 ⑦)' },
   // 🎟️ 2026-07-29 (실행 증거 감사): 공구 엔진 게이트가 **두 겹**인데 어느 명부에도 없었다.
   //   서버 `platform_settings.gb_engine_enabled`(현재 키 자체 부재 = false) +
   //   클라 `src/shared/feature-flags.ts` `GB_ENGINE_ENABLED`(현재 하드코딩 false).
   //   ⇒ 공구 특가를 결제에 배선해도(#844) **둘 다 켜지기 전에는 어디에도 적용되지 않는다.**
   //   여기 등재는 서버 겹만 값으로 보여준다 — 클라 겹은 배포가 필요하므로 라벨에 함께 적는다.
-  { key: 'gb_engine_enabled', kind: 'setting', label: '공구 엔진 (⚠️ 2겹 — 클라 GB_ENGINE_ENABLED 도 함께 켜야 적용)', default_value: 'false', staging_ref: null },
+  { key: 'gb_engine_enabled', kind: 'setting', label: '공구 엔진 (⚠️ 2겹 — 클라 GB_ENGINE_ENABLED 도 함께 켜야 적용)', default_value: 'false', staging_ref: null, turn_on_when: 'P9 실결제 통과 시(⑤ 1순위). ⚠️ 클라 GB_ENGINE_ENABLED 도 함께 켜야 적용' },
   // 8월 promo flip 스코프 스위치 — 값이 비어 있지 않으면 그 매장만 flip 경로.
-  { key: 'flip_pilot_seller_ids', kind: 'setting', label: '8월 flip 파일럿 매장 스코프', default_value: '', staging_ref: null },
-  { key: 'seller_promo_field_enabled', kind: 'setting', label: '셀러 promo% 입력 UI', default_value: 'false', staging_ref: null },
-  { key: 'DISTRICT_AUTO_ISSUE_ENABLED', kind: 'env', label: '상권 쿠폰 온라인 자동발급(경로 B)', default_value: 'false', staging_ref: null },
+  { key: 'flip_pilot_seller_ids', kind: 'setting', label: '8월 flip 파일럿 매장 스코프', default_value: '', staging_ref: null, turn_on_when: '8월 promo flip 파일럿 매장이 정해지면 그 seller_id 를 넣는다' },
+  { key: 'seller_promo_field_enabled', kind: 'setting', label: '셀러 promo% 입력 UI', default_value: 'false', staging_ref: null, turn_on_when: 'flip 파일럿 매장이 스스로 promo% 를 입력할 단계가 되면' },
+  { key: 'DISTRICT_AUTO_ISSUE_ENABLED', kind: 'env', label: '상권 쿠폰 온라인 자동발급(경로 B)', default_value: 'false', staging_ref: null, turn_on_when: '상권 캠페인 파일럿 매장이 확정되고 재원(예산 풀)이 배정되면' },
   // 💸 2026-08-01 ④-b: 미수령(픽업 안 찾아감) 환불을 보관구분에 따라 가른다.
   //   🔴 **이미 흐르는 환불의 방향을 바꾼다** — 안 돌던 걸 켜는 게 아니다(cron `0 18` 실행 확인됨).
   //   OFF 면 현행 전액 환불. 켜도 비율값(기본 100)을 안 바꾸면 동작 불변 — 안전판이 두 겹이다.
-  { key: 'pickup_unclaimed_policy_enabled', kind: 'setting', label: '미수령 환불 정책(보관구분별) ④-b', default_value: 'false', staging_ref: 'P10' },
+  { key: 'pickup_unclaimed_policy_enabled', kind: 'setting', label: '미수령 환불 정책(보관구분별) ④-b', default_value: 'false', staging_ref: 'P10', turn_on_when: '**첫 픽업 공구 개설과 동시**(⑤ 3순위). 런칭값: 냉장 0% · 실온 유예 3일' },
   // 💸 2026-08-01 ④-c: 부분환불 **금액을 정할 입구**. 그간 `returns.refund_amount` 를 바꾸는 경로가
   //   아예 없어 실질적으로 전액 환불만 가능했다. OFF 면 금액 설정 API 가 403 → 현행(전액) 그대로.
-  { key: 'partial_refund_enabled', kind: 'setting', label: '부분환불 금액 설정 ④-c', default_value: 'false', staging_ref: 'P11' },
+  { key: 'partial_refund_enabled', kind: 'setting', label: '부분환불 금액 설정 ④-c', default_value: 'false', staging_ref: 'P11', turn_on_when: '**첫 픽업 공구 개설과 동시**(⑤ 3순위) — ④-b 와 같이 켠다' },
 ]
 
 adminSystemMonitoringRoutes.get('/ops-status', async (c) => {

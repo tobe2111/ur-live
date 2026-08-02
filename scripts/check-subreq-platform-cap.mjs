@@ -13,7 +13,8 @@
  * 규칙(유어애즈/도매 수집·보강 레인):
  *   R1. `resolveSubreqBudget(...)` 는 **3번째 인자(천장)** 를 넘겨야 한다.
  *   R2. `nextSubreqCap(...)` 는 **5번째 인자(천장)** 를 넘겨야 한다.
- *   R3. `FetchBudget` 예산을 만드는 파일은 `platformSubreqCap` 또는 `resolveSubreqBudget` 을 거쳐야 한다
+ *   R3. `FetchBudget` 예산을 만드는 파일은 `envSubreqCap`(권장·요금제 반영) / `platformSubreqCap` /
+ *       `resolveSubreqBudget` 중 하나를 거쳐야 한다
  *       (env 숫자를 그대로 `{ left: N }` 에 넣는 레인 = 천장 무시).
  *
  * 예외: 정의부(collect-budget.ts), 테스트, `platform-cap-ok` 주석.
@@ -86,7 +87,7 @@ for (const rel of files) {
       const args = callArgs(src, open)
       if (!args) continue
       if (args.length < minArgs) {
-        violations.push({ rel, line: lineOf(src, m.index), rule, msg: `${fn}() 에 플랫폼 천장 인자 누락(인자 ${args.length}/${minArgs}) — platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP) 을 넘길 것` })
+        violations.push({ rel, line: lineOf(src, m.index), rule, msg: `${fn}() 에 플랫폼 천장 인자 누락(인자 ${args.length}/${minArgs}) — envSubreqCap(env) 를 넘길 것` })
       }
     }
   }
@@ -102,8 +103,11 @@ for (const rel of files) {
     for (; j < src.length; j++) { if (src[j] === '{') d++; else if (src[j] === '}') { d--; if (!d) break } }
     const init = src.slice(brace, j + 1)
     if (!/left\s*:/.test(init)) continue
-    if (/platformSubreqCap|resolveSubreqBudget|budgetTotal|\bpcap\b|\btotal\b/.test(init)) continue
-    violations.push({ rel, line: lineOf(src, bm.index), rule: 'R3', msg: '예산 초기화가 플랫폼 천장을 안 거친다 — resolveSubreqBudget() 또는 platformSubreqCap() 경유할 것' })
+    // 🔁 2026-08-02: 레인의 진입점이 `envSubreqCap(env)` 로 바뀌었다(요금제까지 반영하려면 raw 문자열이
+    //   아니라 env 를 받아야 한다). **가드의 의도는 그대로다** — "예산 초기화가 천장을 거치는가".
+    //   두 이름 다 같은 천장 함수로 귀결되므로 둘 다 인정한다(이름만 늘리고 검사는 안 약화시킨다).
+    if (/envSubreqCap|platformSubreqCap|resolveSubreqBudget|budgetTotal|\bpcap\b|\btotal\b/.test(init)) continue
+    violations.push({ rel, line: lineOf(src, bm.index), rule: 'R3', msg: '예산 초기화가 플랫폼 천장을 안 거친다 — envSubreqCap(env) 또는 resolveSubreqBudget() 경유할 것' })
   }
 }
 

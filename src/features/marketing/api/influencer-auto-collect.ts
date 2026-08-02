@@ -21,7 +21,7 @@ import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, 
 import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS, acquireLeaseDetect } from './collect-lease'
-import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap, platformSubreqCap, capAfterAbandonedRun } from './collect-budget'
+import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap, envSubreqCap, capAfterAbandonedRun } from './collect-budget'
 import { makeAlreadyContacted } from './influencer-known-contacts'
 import { KW_DDL } from './influencer-keyword-ddl'
 import { runDdlOnce, ddlChecksum } from './ads-schema-guard'
@@ -178,7 +178,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     if (isSubrequestLimitError(crash) && spent > 0) {
       // `spent` 는 위에서 `ctx.budgetTotal - ctx.budget.left`(시작값 기준 실사용)로 계산 — 가드가 요구하는
       //   형태와 값이 같지만 예산 변수가 클로저 밖(ctx)이라 그 리터럴을 못 쓴다.
-      const next = nextSubreqCap(spent, true, ctx.learnedCap, ctx.envBudget, platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)) // subreq-cap-lane-ok
+      const next = nextSubreqCap(spent, true, ctx.learnedCap, ctx.envBudget, envSubreqCap(env)) // subreq-cap-lane-ok
       if (next != null) await writeSetting(env.DB, subreqCapKey('influencer'), String(next)).catch(() => undefined)
     }
     // ① 증거 — 옛 스냅샷 위에 crash 만 덧씌운다(마지막 성공 시각·누적치 보존).
@@ -310,9 +310,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const storedCap = Math.max(0, parseInt(settings[subreqCapKey('influencer')] || '', 10) || 0)
   // 🪦 직전 회차가 lease 를 반납 못 하고 죽었으면 **이번 회차부터 즉시** 덜 쓴다(다음 회차가 아니라).
   //   죽은 회차는 상한을 못 낮추므로, 낮추는 일은 살아남은 쪽이 대신 해야 한다.
-  const learnedCap = abandonedPrev ? capAfterAbandonedRun(storedCap, envBudget, platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)) : storedCap
+  const learnedCap = abandonedPrev ? capAfterAbandonedRun(storedCap, envBudget, envSubreqCap(env)) : storedCap
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
-  const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
+  const pcap = envSubreqCap(env)
   /**
    * 🧾 **마감 기록용 예산 예약**(2026-07-29) — 이 레인이 자기가 한 일을 기록하지 못하던 근본 원인.
    *   증거(라이브 08:00): 블로거 **163명을 실제로 저장**했는데 `run.last_run` 은 05:00 에 멈춰 있고

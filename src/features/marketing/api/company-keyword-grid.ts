@@ -77,6 +77,17 @@ const GYEONGNAM = ['창원', '진주', '통영', '사천', '김해', '밀양', '
   '경남 고성', '남해', '하동', '산청', '함양', '거창', '합천']
 const JEJU = ['제주', '서귀포']
 
+/**
+ * 🗺️ 권역 묶음 — 화면에서 "서울·경기만 집중" 을 표현하려면 이 그룹이 필요하다 (2026-08-02).
+ *   지역 배열은 평평해서(`강남` · `부산 해운대` · `수원`) 접두사로는 서울을 못 고른다.
+ *   ⚠️ 값은 위 상수를 **그대로 참조**한다 — 복제하면 지역을 추가할 때 한쪽만 늘어난다.
+ */
+export const REGION_GROUPS: Record<string, string[]> = {
+  서울: SEOUL, 광역시: [...METRO_DISTRICTS, ...METRO_WIDE], 경기: GYEONGGI, 강원: GANGWON,
+  충북: CHUNGBUK, 충남: CHUNGNAM, 전북: JEONBUK, 전남: JEONNAM,
+  경북: GYEONGBUK, 경남: GYEONGNAM, 제주: JEJU,
+}
+
 /** 2단계 전국 그리드 — 대행사(tier1) 이메일 수율이 가장 높은 웹 레인이 붙는 지역 축. */
 export const S2_REGIONS: string[] = [
   ...SEOUL, ...METRO_DISTRICTS, ...METRO_WIDE, ...GYEONGGI, ...GANGWON,

@@ -100,7 +100,9 @@ describe('몫 배분 — 한쪽이 지갑을 비워 다른 쪽이 조용히 멈�
   })
 
   it('🔒 앞 블록이 **예산을 남긴다** — 슬롯만 나누고 지갑을 비우면 뒤 블록은 첫 검사에서 튕긴다', () => {
-    expect(SRC).toMatch(/runBlock\('voucher',[\s\S]{0,90}?slots\.unmanned \* MAX_PAGES\)/)
+    // 2026-08-02 ③: 페이지 수가 화면에서 조정 가능해져 유보분도 **설정값**으로 계산한다.
+    //   상수로 두면 페이지를 낮췄을 때 필요 이상으로 떼어 뒤 블록이 굶는다.
+    expect(SRC).toMatch(/runBlock\('voucher',[\s\S]{0,120}?slots\.unmanned \* cfg\.max_pages\)/)
     expect(SRC, 'floor 가 실제로 예산 검사에 쓰여야 한다').toMatch(/budget\.left <= saveReserve\(\) \+ floor/)
   })
 })
