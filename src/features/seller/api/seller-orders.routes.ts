@@ -590,7 +590,7 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
       `SELECT
          p.id, p.name, p.description, p.price, p.original_price,
          COALESCE(p.stock_quantity, p.stock, 0)                AS stock,
-         COALESCE(p.thumbnail_url, p.image_url, p.image)       AS image_url,
+         COALESCE(p.thumbnail_url, p.image_url)       AS image_url,
          p.detail_images,
          p.category, p.product_type,
          p.live_stream_id, p.live_only_price, p.live_price_enabled,

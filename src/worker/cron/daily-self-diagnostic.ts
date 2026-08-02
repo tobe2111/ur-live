@@ -62,15 +62,38 @@ export async function runDailySelfDiagnostic(env: Env) {
     issues.push(`🔴 DB 연결 실패: ${(err as Error).message}`);
   }
 
-  // 2. Secret 존재
-  //   🗑️ 2026-08-02: `FIREBASE_PRIVATE_KEY` 제거. Firebase 인증 수용 경로는 2026-07-28 에 폐기됐고
+  // 2. Secret 존재 — **이 캐리어가 실제로 쓰는 것만**
+  //   🗑️ 2026-08-02(1차): `FIREBASE_PRIVATE_KEY` 제거. Firebase 인증 수용 경로는 2026-07-28 에 폐기됐고
   //     (`check-no-firebase-auth` 가드가 재도입을 막는다) 그 키는 더 이상 어디서도 안 쓰인다.
   //     남겨두면 **매일 새벽 3시에 거짓 🔴 경보**가 나간다 — 알림 채널을 켜는 순간 늑대소년이 된다.
-  const requiredSecrets = [
-    'JWT_SECRET', 'REFRESH_TOKEN_SECRET', 'KAKAO_REST_API_KEY', 'TOSS_SECRET_KEY',
-  ];
-  const missing = requiredSecrets.filter((k) => !(env as unknown as Record<string, unknown>)[k]);
-  if (missing.length > 0) issues.push(`🔴 누락된 Secret: ${missing.join(', ')}`);
+  //
+  //   🔴 2026-08-02(2차, 대표 다이제스트 실측): 남은 목록도 **같은 병**이었다.
+  //     `JWT_SECRET, REFRESH_TOKEN_SECRET, KAKAO_REST_API_KEY` 가 매일 🔴 로 나가고 있었는데,
+  //     라이브 `/api/version` 은 셋 다 **present** 로 답한다. 모순이 아니라 **캐리어가 다르다**:
+  //
+  //       - Pages  = HTTP 요청 전부 + 시크릿 전부  ← 이 셋이 사는 곳(로그인·카카오)
+  //       - Workers = cron 전부                    ← **이 코드가 도는 곳**
+  //
+  //     이 셋을 읽는 cron 은 없다(`KAKAO_REST_API_KEY` 를 읽는 `restaurant-geocode`·
+  //     `demo-image-rehost` 는 `0 3`·`0 * ` 블록 소속인데 **그 블록들은 CF 에 등록돼 있지 않다** —
+  //     계정 cron 5/5). 즉 **매일 나가던 🔴 3건은 전부 거짓**이었고, 그 옆에 진짜가 섞여도
+  //     구분이 안 됐다. 늑대소년은 이미 시작돼 있었다.
+  //
+  //   ⇒ 목록을 하드코딩하지 않고 **`CRON_REQUIRED_ENV`(등록된 블록만 담는 SSOT)** 에서 파생한다.
+  //     블록을 점화하면서 요구 키를 거기 추가하면 이 진단이 **자동으로** 따라온다(드리프트 0).
+  //   ⚠️ Pages 쪽 커버리지를 잃는 것 아님 — 그건 `/api/health/env-readiness`(어드민)가 잰다.
+  //     **거기가 잴 수 있는 유일한 자리다.** 여기서 재면 늘 없다고 나온다.
+  const { CRON_REQUIRED_ENV } = await import('../utils/cron-required-env');
+  const carrierKeys = [...new Set(
+    Object.values(CRON_REQUIRED_ENV).flatMap((reqs) => reqs.map((r) => r.key))
+  )];
+  const envRec = env as unknown as Record<string, unknown>;
+  const missing = carrierKeys.filter((k) => {
+    const v = envRec[k];
+    if (v == null) return true;
+    return typeof v === 'string' && v.trim() === '';   // 빈 문자열 저장 = 미설정과 같은 결과
+  });
+  if (missing.length > 0) issues.push(`🔴 누락된 Secret(cron 캐리어): ${missing.join(', ')}`);
 
   // 2-b. 🔑 토스 키가 **실제로 유효한가** — 존재는 동작이 아니다.
   //   2026-08-02: cron 캐리어(Workers)에 키를 새로 넣었는데, 그게 맞는 값인지 확인할 방법이 없었다.

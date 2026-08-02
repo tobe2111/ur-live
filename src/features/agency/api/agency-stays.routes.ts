@@ -47,7 +47,7 @@ agencyStaysRoutes.get('/stays', cors(), async (c) => {
         WHERE p.category = 'stay_voucher'
           AND (s.agency_id = ? OR EXISTS (
             SELECT 1 FROM agency_sellers ag
-             WHERE ag.agency_id = ? AND ag.seller_id = p.seller_id AND (ag.status IS NULL OR ag.status = 'active')
+             WHERE ag.agency_id = ? AND ag.seller_id = p.seller_id
           ))
         ORDER BY p.created_at DESC
         LIMIT 200`,
@@ -81,7 +81,7 @@ agencyStaysRoutes.get('/stays/bookings', cors(), async (c) => {
         INNER JOIN sellers s ON s.id = b.seller_id
        WHERE (s.agency_id = ? OR EXISTS (
          SELECT 1 FROM agency_sellers ag
-          WHERE ag.agency_id = ? AND ag.seller_id = b.seller_id AND (ag.status IS NULL OR ag.status = 'active')
+          WHERE ag.agency_id = ? AND ag.seller_id = b.seller_id
        ))`
     const params: unknown[] = [agencyId, agencyId]
     if (status) { sql += ' AND b.status = ?'; params.push(status) }
@@ -105,7 +105,7 @@ agencyStaysRoutes.get('/stays/kpi', cors(), async (c) => {
   try {
     const sellerFilter = `(s.agency_id = ? OR EXISTS (
         SELECT 1 FROM agency_sellers ag
-         WHERE ag.agency_id = ? AND ag.seller_id = s.id AND (ag.status IS NULL OR ag.status = 'active')
+         WHERE ag.agency_id = ? AND ag.seller_id = s.id
       ))`
 
     const safe = async <T,>(p: Promise<T>): Promise<T | null> => p.catch(() => null)

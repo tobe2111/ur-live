@@ -146,7 +146,7 @@ export async function creditAffiliateForOrder(
 
     try {
       const sellerOwner = await DB.prepare(
-        `SELECT s.user_id FROM orders o JOIN sellers s ON o.seller_id = s.id WHERE o.id = ? LIMIT 1`
+        `SELECT s.linked_user_id AS user_id FROM orders o JOIN sellers s ON o.seller_id = s.id WHERE o.id = ? LIMIT 1`
       ).bind(order.id).first<{ user_id: string }>()
       if (sellerOwner?.user_id && String(sellerOwner.user_id) === String(order.user_id)) {
         await DB.prepare(

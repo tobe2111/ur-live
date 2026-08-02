@@ -440,7 +440,7 @@ export async function rankStoresForInfluencer(
   const ph = cats.map(() => '?').join(',')
   const reg = opts.regionPrefix || null
 
-  const sql = `SELECT p.id AS productId, p.title AS title, p.category AS category, p.price AS price,
+  const sql = `SELECT p.id AS productId, p.name AS title, p.category AS category, p.price AS price,
                       substr(pr.region_dong_code, 1, 5) AS regionCode
   FROM products p
   LEFT JOIN product_regions pr ON pr.product_id = p.id
