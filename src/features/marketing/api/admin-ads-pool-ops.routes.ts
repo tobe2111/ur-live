@@ -132,17 +132,22 @@ app.post('/influencer-pool/enrich-run', async (c) => {
    *   (시간이 아니라). 즉 남는 건 시간뿐이고, 그걸 쓰는 방법이 팬아웃이다.
    *   드라이버가 조각 K개를 동시에 띄우므로 같은 대기시간에 K배를 돈다(`resolveEnrichFanout` 주석).
    *
-   *   ⚠️ 팬아웃일 땐 응답에 `stats` 가 없다 — 자식들이 각자 자기 스냅샷을 남기기 때문이다.
-   *   그래서 `fanout` 개수를 그대로 돌려준다(화면이 "몇 개 띄웠다"를 말할 수 있게).
+   *   🩸 **`sync=1` 이 빠지면 버튼이 0건을 처리한다**(08-02 실측으로 되돌린 회귀). 드라이버를 그냥 부르면
+   *   `{fanout:4}` 를 즉시 돌려주는데, 그 순간 **이 요청이 끝나면서** ur-ads 의 `waitUntil` 자식이 통째로
+   *   취소된다(서비스 바인딩 피호출자는 호출자보다 오래 못 산다 — `dispatchRoundChain` docblock).
+   *   실측: 킥 후 30초 뒤 `nb_unmeasured` 변화 **0**(단발 경로일 땐 한 번에 22 감소).
+   *   cron 은 부모가 다른 레인을 kick 하느라 살아 있어 안 죽는다 — **같은 코드가 호출자에 따라 다르게 죽는다.**
+   *   ⇒ 수동 경로는 `sync=1` 로 자식을 **기다린다**(K라운드, 실측 라운드당 ~7초).
+   *
    *   `?single=1` 이면 옛 단발 경로 — 한 라운드의 숫자를 그 자리에서 보고 싶을 때(디버깅)만 쓴다.
    */
   const single = c.req.query('single') === '1'
-  const path = single ? `/__ads/enrich-influencer?depth=${depth}` : '/__ads/enrich-influencer-driver'
+  const path = single ? `/__ads/enrich-influencer?depth=${depth}` : '/__ads/enrich-influencer-driver?sync=1'
   try {
     const r = await ads.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
-    const j = await r.json().catch(() => null) as { ok?: boolean; stats?: unknown; error?: string; fanout?: number; planned?: number } | null
+    const j = await r.json().catch(() => null) as { ok?: boolean; stats?: unknown; error?: string; fanout?: number; planned?: number; slices?: unknown } | null
     if (!j?.ok) return c.json({ success: false, error: j?.error || '보강 레인 실행 실패', depth }, 502)
-    return c.json({ success: true, depth, stats: j.stats, fanout: j.fanout, planned: j.planned })
+    return c.json({ success: true, depth, stats: j.stats, fanout: j.fanout, planned: j.planned, slices: j.slices })
   } catch (err) {
     return c.json({ success: false, error: `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}`, depth }, 502)
   }
