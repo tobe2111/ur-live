@@ -505,8 +505,19 @@ node <scratch>/harness.mjs      # 컴파일된 JS 를 import 해 불변식을 �
 ```
 ⚠️ `--ignoreConfig` 없으면 TS6 이 **TS5112(tsconfig 있는데 파일을 지정함)로 즉시 중단**한다 — 출력이
 짧아 "에러 없음"과 구분이 안 된다(이 레포가 `baseUrl` 로 이미 당한 클래스).
-⚠️ 이 우회로 **못 하는 것**: alias(`@/`) import 가 있는 파일, React/JSX, vitest 러너 자체, `npm run build`.
-그건 CI 가 유일한 판정이다. ⇒ **순수 로직은 이 세션에서 실행 검증하고, 배선·빌드는 CI 에 남긴다**로 나눠라.
+**alias(`@/`)·vitest import 가 있는 테스트 파일도 타입체크된다** — 스크래치에 스텁 tsconfig 를 만든다:
+```jsonc
+// <scratch>/tc/tsconfig.json  (+ stubs/vitest.d.ts 에 describe/it/expect·node:fs 최소 선언)
+{ "compilerOptions": { "strict": true, "target": "es2022", "module": "esnext",
+    "moduleResolution": "bundler", "noEmit": true, "skipLibCheck": true, "types": [],
+    "paths": { "@/*": ["<레포절대경로>/src/*"] } },
+  "include": ["stubs/**/*.d.ts", "<레포절대경로>/src/tests/unit/<대상>.test.ts"] }
+```
+⚠️ **왜 이걸 꼭 하라는가**: 컴파일된 JS 를 돌리는 해네스는 **타입 에러를 절대 못 잡는다.** 2026-08-02 에
+`let cursor = 0` 에 객체를 대입하는 TS2322 를 해네스가 통과시켜 CI 를 한 번 더 돌렸다. 스텁 타입체크로
+바꾸자 **TS7022**(제어흐름 narrowing 이 `cursor → sel → cursor` 로 순환)까지 미리 잡혔다.
+⚠️ 이 우회로도 **못 하는 것**: React/JSX, vitest 러너 실행(어서션이 실제로 통과하는지), `npm run build`,
+번들·배선 가드. ⇒ **순수 로직은 실행 검증 + 타입은 스텁으로, 배선·빌드는 CI 에 남긴다**로 나눠라.
 
 **빌드 산출물 주의**: `npm run build` 는 `src/worker/generated/route-chunk-map.ts` 를 **재생성**한다(로컬 청크 해시).
 이건 커밋 대상이 아니다 — 검증 후 `git checkout -- src/worker/generated/route-chunk-map.ts` 로 되돌릴 것.

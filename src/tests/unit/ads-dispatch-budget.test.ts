@@ -16,7 +16,8 @@ import { describe, it, expect } from 'vitest'
 import {
   resolvePlan, lanesPerTick, isDeferrable, selectLanesForTick, dispatchSnapshot,
   FREE_LANES_PER_TICK, PAID_LANES_PER_TICK, assignKey, laneRole, readCursors,
-  splitCapByRole, resolveMeasureShare, MEASURE_SHARE_DEFAULT, type LaneCandidate,
+  splitCapByRole, resolveMeasureShare, MEASURE_SHARE_DEFAULT,
+  type LaneCandidate, type LaneCursors, type LaneSelection,
 } from '@/worker-ads/dispatch-budget'
 
 /** 2026-08-01 14:00 UTC 회차에 실제로 뜬 매시간 레인들(하트비트 실측) — 문구를 바꾸지 말 것. */
@@ -47,11 +48,15 @@ const HEAVY_HOUR: LaneCandidate[] = [...HOURLY, ...ALWAYS]
 
 /** 커서를 이어가며 N회차 돌리고 각 레인이 몇 번 돌았는지 센다. */
 function simulate(lanes: LaneCandidate[], perTick: number, ticks: number) {
-  let cursor = 0
+  // 첫 회차는 구 포맷(숫자)으로 시작해 **하위호환 경로까지 매 시뮬레이션이 지나가게** 한다.
+  // 이후엔 역할별 커서를 그대로 이어받는다.
+  let cursor: number | LaneCursors = 0
   const counts = new Map<string, number>()
   const runSizes: number[] = []
   for (let t = 0; t < ticks; t++) {
-    const sel = selectLanesForTick(lanes, perTick, cursor)
+    // ⚠️ 반환 타입을 명시해야 한다 — `cursor` 가 `sel.nextCursor` 를 받으면서 제어흐름 narrowing 이
+    //    `cursor → sel → cursor` 로 순환해 TS7022(암시적 any)가 난다.
+    const sel: LaneSelection<LaneCandidate> = selectLanesForTick(lanes, perTick, cursor)
     cursor = sel.nextCursor
     runSizes.push(sel.run.length)
     for (const l of sel.run) counts.set(l.beat, (counts.get(l.beat) || 0) + 1)

@@ -62,6 +62,13 @@ curl -sS "https://live.ur-team.com/api/admin/cron-heartbeats" \
 4. **CLAUDE.md 의 "npm 정상화"를 믿고 시작했다가 403.** 세션마다 다르다 — 먼저 찔러볼 것.
 5. **내 첫 어서션이 틀렸다**: "run ≤ perTick" 은 `perTick < always` 에서 **구조적으로 불가능**하다
    (미룰 수 없는 레인만으로 이미 초과 — 그게 `over_budget` 신호의 존재 이유). 해네스가 잡아줬다.
+6. **컴파일된 JS 해네스로 "검증 끝"이라 믿었다가 CI 를 두 번 돌렸다.** 해네스는 타입 에러를 못 잡는다
+   (`let cursor = 0` 에 객체 대입 = TS2322). CLAUDE.md 에 **스텁 tsconfig 로 테스트 파일까지
+   타입체크하는 법**을 적어 뒀다 — 그걸로 바꾸자 TS7022(narrowing 순환)까지 미리 잡혔다.
+   ⇒ npm 이 막혔으면 **실행 검증 + 스텁 타입체크를 둘 다** 하고 나서 푸시할 것.
+7. **CI 실패를 "내 것"으로 단정하기 전에 스텝 설정을 볼 것.** 같은 로그에 스키마 drift 실패
+   (`product_stay_rooms`)가 섞여 있었는데 그 스텝은 `continue-on-error: true`(정보용)라 차단 요인이
+   아니었다. 차단한 건 내 TS 에러 하나뿐이다.
 
 ## 4. 남은 결정 / 미수리
 
