@@ -438,6 +438,17 @@ const MUTATIONS = [
       '두 블록(우선업종·무인)이 한 커서를 쓰면 서로의 진행을 덮어써 어느 쪽도 한 바퀴를 못 돈다 ' +
       '— 레인별 학습 상한을 공유해 같은 사고가 났던 `ads_subreq_cap` 과 똑같은 구조다(2026-07-28).',
   },
+  {
+    name: 'cron day-of-week 0 재유입(배열 전체 거부)',
+    file: 'wrangler.toml',
+    find: '"0 20 * * SUN"',
+    replace: '"0 20 * * 0"',
+    test: 'src/tests/unit/cron-schedule.test.ts',
+    why:
+      '표준 crontab 에선 0=일요일이라 맞아 보이지만 Cloudflare 는 1-7/MON-SUN 만 받는다(code 10100). ' +
+      '스케줄 PUT 이 원자적 전체 교체라 이 한 줄이 배열 **전체**를 무효화한다 — 주간 D1 백업이 ' +
+      '몇 달간 등록조차 안 된 채였고(재해복구 0) 에러는 배포 로그 안에만 있었다.',
+  },
 ]
 
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
