@@ -631,3 +631,44 @@ ur-ads 바인딩 42개                   PUBLIC_DATA_SERVICE_KEY 존재 · ADS_H
 SELECT value FROM platform_settings WHERE key='ads_hira_stats';
 ```
 `diag.retry` 가 비어 있으면 아직 새 코드로 한 회차도 안 돈 것이다(배포 시각 확인).
+
+## ⑱ 🔌 **설정했는데 아무 일도 안 일어나는 env 4개** — 그리고 재발 차단
+
+ur-ads 바인딩 42개를 훑다가 **코드가 한 번도 안 읽는 키**를 찾았다:
+
+```
+DS_LOCALDATA_BACKFILL_DAYS   ← ADS_ 접두 오타(`A` 가 빠졌다)
+ENRICH_BUDGET                ← 실제 키는 ADS_ENRICH_BUDGET
+ENRICH_ROUNDS                ← 실제 키는 ADS_COLLECT_ROUNDS / ADS_INFLUENCER_ENRICH_ROUNDS
+SHEETS_SYNC_ENABLED          ← 실제 키는 ADS_SHEETS_SYNC_ENABLED
+```
+
+넷 다 **오류를 안 낸다.** 대시보드엔 값이 보이고 코드는 `undefined` 를 받아 기본값으로 간다 ⇒
+*"설정했다"* 와 *"실제로 그렇게 돈다"* 가 갈린 채로 남는다. 이 레포가 반복해 당한
+**"실패가 아니라 조용한 부재"** 클래스 그대로다.
+
+> 📌 **대표 액션(선택)**: 위 4개는 지워도 된다(짝이 되는 `ADS_*` 키가 이미 다 설정돼 있다).
+>   ⚠️ **다만 지우기 전에** `ADS_LOCALDATA_BACKFILL_DAYS`·`ADS_ENRICH_BUDGET`·`ADS_SHEETS_SYNC_ENABLED` 의
+>   값이 의도한 값인지 한 번 보실 것 — 오타 쪽에 "진짜 쓰려던 값"이 들어 있을 수 있다.
+
+### 재발 차단 — 두 방향을 각각 다른 장치가 지킨다
+
+정답 목록은 **코드**에, 실제 설정은 **대시보드**에 있다. CI 는 대시보드를 못 본다.
+둘이 만나는 유일한 자리가 워커 런타임의 `Object.keys(env)` 다.
+
+| 방향 | 장치 | 언제 |
+|---|---|---|
+| 코드 → 목록 | `ads-env-drift.test.ts` (소스 스캔) | CI 매 PR |
+| 대시보드 → 목록 | `envDriftInfo(env)` → `cron_hb:ads:scheduled` 의 `env_unused` | 매시 정각 |
+
+**새 라우트 0개** — 이미 있는 스케줄 하트비트에 실었다. 이상 없으면 **키 자체가 안 붙는다**(평상시 소음 0).
+
+⚠️ **손으로 적으면 반드시 빠진다** — 첫 작성에서 내가 64개를 빠뜨렸고 유닛이 즉시 잡았다.
+목록은 소스 스캔에서 기계로 뽑았다(외부 키·인프라 바인딩만 수동).
+
+### 다음 세션의 첫 액션
+
+```sql
+SELECT value FROM platform_settings WHERE key='cron_hb:ads:scheduled';
+```
+`env_unused` 가 보이면 그 키들이 지금도 무의미하게 설정돼 있는 것이다(없으면 정리됐다는 뜻).

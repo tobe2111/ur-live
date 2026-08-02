@@ -112,6 +112,27 @@ const MUTATIONS = [
       '받았다. 그 400 을 근거로 "서비스가 폐기됐다"고 결론 낼 뻔했다 — 진단 도구가 오진의 재료가 되는 최악의 모양이다.',
   },
   {
+    name: '미사용 env 신고가 평상시에도 울림(경보 신뢰 상실)',
+    file: 'src/worker-ads/env-drift.ts',
+    find: "return u.length ? { env_unused: u.join(',') } : {}",
+    replace: "return { env_unused: u.join(',') }",
+    test: 'src/tests/unit/ads-env-drift.test.ts',
+    why:
+      '이상 없을 때도 키가 붙으면 하트비트 사유줄이 매 회차 오염되고, 진짜 신호가 그 안에 묻힌다. ' +
+      '이 레포가 무수확 레인 판정에서 배운 것과 같다 — **평상시 조용하지 않은 경보는 아무도 안 본다.**',
+  },
+  {
+    name: '미사용 env 목록이 낡음(새 노브를 오신고)',
+    file: 'src/worker-ads/env-drift.ts',
+    find: "'ADS_HIRA_ROWS',",
+    replace: '',
+    test: 'src/tests/unit/ads-env-drift.test.ts',
+    why:
+      '목록은 **코드가 읽는 키의 SSOT** 다. 새 노브를 코드에 넣고 목록에 안 넣으면 런타임이 그 키를 ' +
+      '"설정했는데 안 쓰임"으로 **오신고**한다 — 정상 설정을 결함으로 부르는 순간 이 신호는 죽는다. ' +
+      '(첫 작성에서 내가 손으로 적다가 실제로 64개를 빠뜨렸고, 이 시험이 즉시 잡았다.)',
+  },
+  {
     name: '심평원 재시도가 실험이 아니게 됨(같은 크기로 재시도)',
     file: 'src/features/marketing/api/hira-hospital-collect.ts',
     find: 'Math.max(20, Math.floor(numRows / 5))',

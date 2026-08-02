@@ -1,3 +1,4 @@
+import { envDriftInfo } from './env-drift'
 /**
  * 🆕 2026-07-14 유어애즈 독립 Worker 엔트리 (Phase A 스캐폴드).
  *   설계 SSOT: docs/design/urads-worker-split.md.
@@ -280,7 +281,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   배포 창에 걸린 정각 회차는 아무 일도 못 하고 사라진다(2026-07-29 에 그걸 세 번 오진했다:
   //   `ms=0` · 카운터 +0 을 보고 코드 결함으로 읽었는데 실제로는 배포와 겹친 것이었다).
   //   `build_age_min` 이 작으면(≈0~2) 그 회차의 관측은 **판정 근거로 쓰면 안 된다.**
-  ctx.waitUntil(adsBeat('scheduled', true, 0, undefined, undefined, buildAgeInfo()))
+  //   🔌 **설정했는데 코드가 안 읽는 env 키**도 같이 신고한다(2026-08-03) — 실측에서 4개 나왔고
+  //   넷 다 오류를 안 낸다(대시보드엔 값이 보이는데 코드는 기본값으로 돈다). 이상 없으면 키가 아예 안 붙는다.
+  ctx.waitUntil(adsBeat('scheduled', true, 0, undefined, undefined, { ...buildAgeInfo(), ...envDriftInfo(env) }))
 
   // ── 매시간(정각) — 소셜 유지보수 + 인플루언서 자동수집 ──────────────────────
   //   🚦 2026-08-02: 생 waitUntil(부모 CPU 직격, 실측 2,390ms/회차) → kick(자식 예산). 예산 분산에도 잡힌다.
