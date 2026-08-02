@@ -315,10 +315,15 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //   (시트 미러 등)부터 굶는다.** kick 1개로 넘기면 부모 비용은 고정 2, 라운드는 드라이버의
     //   독립 예산에서 돈다. 덤으로 이 레인도 드디어 하트비트가 찍힌다(그전엔 생 waitUntil 이라
     //   **관측 밖** — 조용히 멈춰도 아무도 몰랐다).
-    kick('/__ads/enrich-influencer-driver', async () => {
+    // 🤝 **cron 도 자식을 기다린다**(2026-08-02 — 라이브 2회 반증 후 교정).
+    //   드라이버가 즉시 반환하면 부모 `waitUntil` 이 0.6초에 풀려 손자가 통째로 취소된다
+    //   (이 파일들이 이미 적어 둔 규칙: *"피호출자는 호출자보다 오래 살 수 없다"*).
+    //   실측·근거·되돌릴 이유가 없는 까닭(최악=현상 유지)은 `ads-fanout-cron-sync.test.ts` 헤더에.
+    //   ⚠️ 대기는 I/O 라 CPU 를 안 쓴다 · `sync=1` 은 릴레이도 막아 대기가 1라운드(~7초)로 유계다.
+    kick('/__ads/enrich-influencer-driver?sync=1', async () => {
       const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
       return runInfluencerEnrich(env) // SELF 미바인딩(로컬) — 1라운드만
-    })
+    }, { beat: 'enrich-influencer-driver' })
   }
   // ✍ 발송 큐 상위 초안 미리 채우기 — 실측: 발송가능 22,533명인데 접촉 0명, 큐 상위 표본은 전원 초안 없음.
   //   사람이 10명마다 AI 를 기다리는 구조라 수집·보강을 아무리 빨리 해도 접촉 수가 안 는다.

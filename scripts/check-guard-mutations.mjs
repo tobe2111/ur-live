@@ -48,6 +48,30 @@ const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: 'cron 팬아웃이 다시 안 기다림(자식 취소)',
+    file: 'src/worker-ads/index.ts',
+    find: "kick('/__ads/enrich-influencer-driver?sync=1'",
+    replace: "kick('/__ads/enrich-influencer-driver'",
+    test: 'src/tests/unit/ads-fanout-cron-sync.test.ts',
+    why: '드라이버가 0.6초에 반환하면 부모 waitUntil 이 풀려 손자가 취소된다 — 실측 prev_landed:false 2회 연속.',
+  },
+  {
+    name: '팬아웃 신고가 띄운 뒤로 이동(비교 기준 사후값)',
+    file: 'src/worker-ads/enrich.routes.ts',
+    find: '    await reportFanout(c.env as never, K, rounds)\n    const kids = Array.from(',
+    replace: '    const kids = Array.from(',
+    test: 'src/tests/unit/ads-fanout-cron-sync.test.ts',
+    why: 'lane_before 가 이번 라운드 전진 후 값이 되면 다음 회차가 영원히 "전진 없음"으로 오판한다.',
+  },
+  {
+    name: 'sync 전멸을 초록으로 반환',
+    file: 'src/worker-ads/enrich.routes.ts',
+    find: 'ok: landed > 0, fanout: K, sync: true, landed, slices }, landed > 0 ? 200 : 500',
+    replace: 'ok: true, fanout: K, sync: true, landed, slices }, 200',
+    test: 'src/tests/unit/ads-fanout-cron-sync.test.ts',
+    why: '"띄웠다 = 성공" 오해가 sync 경로로 되살아난다 — 자식이 전멸해도 화면이 초록.',
+  },
+  {
     name: '스냅샷이 조건부로 회귀(붕괴 판정의 분모 소실)',
     file: 'src/worker-ads/lane-runner.ts',
     find: "  const writes = [\n    env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_dispatch_last', snap),\n  ]\n  if (sel.deferred.length) {",

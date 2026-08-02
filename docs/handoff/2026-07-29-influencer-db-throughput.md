@@ -2295,3 +2295,50 @@ expect(POOL_SOURCE.company).toEqual({ table: 'ad_company_leads', tsColumn: 'crea
 - 도메인 분리 **완전 확인**: `influencer 3 / company 3 / prospect 1 / wholesale 1`, `unknown_lanes` 없음.
 - 인플루언서 보강은 **04:44 이후 3시간+ 정지**(`total_measured` 10,719 고정, `prev_landed` false).
   몫을 받고 driver 가 돌아도 자식이 못 산다 ⇒ **몫이 아니라 총량(CPU)** — 분리로는 못 고치는 종류다.
+
+---
+
+## 🪂 08-02 18:xx KST — 인플루언서 보강 정지의 **근본 원인**: cron 팬아웃이 안 기다렸다
+
+### 원인 (코드가 이미 답을 적어 뒀다)
+`enrich.routes.ts` 의 규칙: **"서비스 바인딩 피호출자는 호출자보다 오래 살 수 없다."**
+그런데 cron 경로만 예외로 뒀다 — *"거긴 waitUntil 이 맞다(부모가 살아 있다)"*. **그 전제가 틀렸다.**
+
+드라이버가 조각 K개를 띄우고 **즉시 반환**(641ms) → 부모의 `waitUntil` 이 그때 풀린다 →
+부모는 더 붙들 이유가 없다 → **손자가 통째로 취소**. 그래서:
+```
+enrich_lane.last_run   04:44:30 정지 (3시간 20분+)
+prev_landed            false (05:00 · 07:00 연속)
+total_measured         10,719 고정
+```
+그 사이 실제로 일한 건 **`sync=1` 을 쓰는 수동 경로 한 번**뿐이었다 — 같은 코드가 호출자에 따라
+다르게 죽는다는 그 파일의 관찰이 cron 에도 그대로 적용됐던 것이다.
+
+### 수정 — cron 도 `sync=1`
+`kick('/__ads/enrich-influencer-driver?sync=1', …, { beat: 'enrich-influencer-driver' })`
+> 🔑 **위험이 한 방향이다.** 기다리다 부모가 먼저 죽으면 결과는 *지금과 같다*(아무것도 안 남는다).
+>   기다려서 성공하면 K라운드가 남는다. **최악 = 현상 유지, 최선 = 회복** → 되돌릴 이유가 없다.
+>   그리고 대기는 I/O 라 **CPU 를 안 쓴다**(회차를 죽인 원인을 악화시키지 않는다).
+
+동반: `sync` 분기에도 `reportFanout` 배선(안 하면 "전멸해도 초록"이 sync 경로로 부활) ·
+신고를 **띄우기 전**으로(뒤에 찍으면 `lane_before` 가 사후값이라 다음 회차가 영원히 오판) ·
+한 조각도 안 오면 **500 + ok:false**(부모 runLane 이 실패로 기록).
+
+### `nps` 6일 정지는 **별건이 아니었다**
+`gates.dailyAt(16, …)` 로 매일 뜬다. 08-01 16:01 실측 `ok=false 26,563ms Worker exceeded CPU time limit`
+— 즉 **미실행이 아니라 매일 CPU 로 죽는 것**이고 `run.last_run`(07-27)은 마지막 *성공*이다.
+같은 붕괴다. 일 1회 레인은 이미 15~23시로 **한 시간에 하나씩** 흩어져 있어 그쪽은 이상적이다.
+
+### 남은 죽은 소스 — 내 손 밖
+| 소스 | 상태 | 누가 |
+|---|---|---|
+| `work24` | 개인회원 키 거부 | **대표** — 기업회원 전환 후 키 교체(코드 무관) |
+| `franchise`·`nara` | HTTP 404 | 제공자 스펙 변경 의심. 이 환경은 공공 API 도메인 CONNECT 403 이라 확인 불가 |
+| `localdata` | HTTP 500 (27회 저장 0) | 제공자 |
+| `nts` | HTTP 503 | 제공자 |
+셋 다 `health.fail_streak` + `next_probe_at` 백오프가 이미 있어 **예산을 계속 태우지는 않는다.**
+
+### 다음 세션의 첫 액션
+배포 후 정각에 `total_measured` 가 **10,719 에서 움직이는지**. 움직이면 원인 확정,
+안 움직이면 부모가 대기 중에도 죽는다는 뜻이라 **레인 수(`FREE_LANES_PER_TICK=8`)** 를 낮추는 쪽으로 간다
+(#960 이 모든 회차에 분모를 남기므로 이제 잴 수 있다).
