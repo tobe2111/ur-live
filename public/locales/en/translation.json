@@ -4157,7 +4157,8 @@
       "promoteBoosts": "Exposure Boosting",
       "transfers": "Seller Transfer",
       "stays": "Stays Ops",
-      "prospects": "Store Prospects"
+      "prospects": "Store Prospects",
+      "ledger": "Live Ledger"
     },
     "guide": "Guide",
     "guideSubtitle": "Core agency operations guide",
