@@ -407,9 +407,27 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //   passes 값을 바꿔도 하트비트가 개명되지 않는다(그게 이 고정의 목적).
     kick('/__ads/reclassify-company?passes=5', async () => {
       const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery')
+      const { envPlanValue } = await import('@/features/marketing/api/collect-budget')
+      /**
+       * ⏱️ **패스 루프에 마감선** (2026-08-03 라이브 실측 — 이 레인은 **매시간 CPU 한도로 죽고 있었다**).
+       *
+       *   `cron_hb:ads:reclassify-company?passes=5` → `ok=false ms=3880 detail=Worker exceeded CPU time limit.`
+       *   5패스 × 1,000행 × 행당 정규식 ~20개 = **10만 회**를 한 인보케이션에서 돌린다. 이건
+       *   `ads-cpu-work-cap` 이 이미 세운 교리 — *"막아야 하는 건 페이지 크기가 아니라 **인보케이션당 총량**"* —
+       *   을 이 **호출부**가 어기고 있던 것이다(함수 자체는 호출당 1,000행으로 이미 묶여 있다).
+       *
+       *   ✅ **커버리지 손실 0**: 각 패스가 끝날 때 커서를 저장하고 `done:false` 로 남긴다 —
+       *     일찍 멈춰도 다음 회차가 그 지점부터 이어받는다(시간만 더 걸린다).
+       *   ⚠️ 벽시계는 CPU 의 **근사**다(대기 시간이 섞인다). 정확한 계측은 런타임이 안 준다 —
+       *     그래서 관측된 사망 지점(3,880ms)의 **절반 아래**로 잡는다.
+       */
+      const deadlineMs = envPlanValue(undefined, 1_800, 12_000, env)
+      const t0 = Date.now()
       let last = await reclassifyCompanyLeads(env.DB, 1000) // 첫 패스만 housekeeping(억제 스윕)
-      for (let i = 1; i < 5 && !last.done; i++) last = await reclassifyCompanyLeads(env.DB, 1000, false)
-      return last
+      let passes = 1
+      for (; passes < 5 && !last.done && Date.now() - t0 < deadlineMs; passes++) last = await reclassifyCompanyLeads(env.DB, 1000, false)
+      // 관측: 매번 마감선에서 끊기면 상한을 더 내려야 한다는 신호다(그때 커서 전진률을 같이 볼 것).
+      return { ...last, passes, elapsed_ms: Date.now() - t0, stopped_by: last.done ? 'done' : (Date.now() - t0 >= deadlineMs ? 'deadline' : 'passes') }
     }, { beat: 'reclassify-company?passes=5' })
   }
   // 🏭 2026-07-28: 제조사·판매사 풀 자동 수집 — **배선 누락 수리**(대표 "제조사는 왜 저렇게 적어?").

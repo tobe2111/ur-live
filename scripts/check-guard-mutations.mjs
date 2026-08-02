@@ -112,6 +112,17 @@ const MUTATIONS = [
       '받았다. 그 400 을 근거로 "서비스가 폐기됐다"고 결론 낼 뻔했다 — 진단 도구가 오진의 재료가 되는 최악의 모양이다.',
   },
   {
+    name: '재분류 패스 루프가 마감선을 잃음(매시간 CPU 사망 복귀)',
+    file: 'src/worker-ads/index.ts',
+    find: 'passes < 5 && !last.done && Date.now() - t0 < deadlineMs',
+    replace: 'passes < 5 && !last.done',
+    test: 'src/tests/unit/ads-reclassify-deadline.test.ts',
+    why:
+      '이 레인은 **매시간 CPU 한도로 죽고 있었다**(`ok=false ms=3880`). 5패스 × 1,000행 × 행당 정규식 ~20개 = ' +
+      '10만 회를 한 인보케이션에서 돈다 — `ads-cpu-work-cap` 이 세운 교리(*"페이지가 아니라 인보케이션당 총량"*)를 ' +
+      '**호출부**가 어긴 것이다. 커서가 이어받으므로 일찍 멈춰도 커버리지 손실은 0 이다.',
+  },
+  {
     name: '미사용 env 신고가 평상시에도 울림(경보 신뢰 상실)',
     file: 'src/worker-ads/env-drift.ts',
     find: "return u.length ? { env_unused: u.join(',') } : {}",

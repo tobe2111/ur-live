@@ -672,3 +672,38 @@ SHEETS_SYNC_ENABLED          ← 실제 키는 ADS_SHEETS_SYNC_ENABLED
 SELECT value FROM platform_settings WHERE key='cron_hb:ads:scheduled';
 ```
 `env_unused` 가 보이면 그 키들이 지금도 무의미하게 설정돼 있는 것이다(없으면 정리됐다는 뜻).
+
+## ⑲ ⏱️ **매시간 CPU 로 죽던 레인 — 교리를 호출부가 어기고 있었다**
+
+하트비트 전수에서 **매시간 죽는 레인 3개**가 나왔다:
+
+```
+enrich-company              ok=false ms=5626  Worker exceeded CPU time limit
+maintenance?phase=quality   ok=false ms=3649  〃
+reclassify-company?passes=5 ok=false ms=3880  〃
+```
+
+`reclassify` 를 열어 보니 원인이 명확했다 — 호출부가 **5패스 × 1,000행**을 한 인보케이션에서 돈다.
+행당 정규식 ~20개면 **10만 회**다. 함수 자체(`reclassifyCompanyLeads`)는 호출당 1,000행으로
+**이미 묶여 있다** — 문제는 **루프를 도는 쪽**이었다.
+
+> 🧭 이건 `ads-cpu-work-cap`(2026-07-31)이 이미 세운 교리를 어긴 것이다:
+> *"막아야 하는 것은 페이지 크기가 아니라 **인보케이션당 총 작업량**"*.
+> 교리는 있었고 **호출부가 그 밖에 있었다** — 이 레포의 "가드가 못 보는 자리" 클래스.
+
+**수리**: 패스 루프에 마감선(무료 1,800ms / 유료 12,000ms, `envPlanValue`). 관측된 사망 지점의
+절반 아래다. **✅ 커버리지 손실 0** — 각 패스가 커서를 저장하고 `done:false` 로 남기므로 일찍
+멈춰도 다음 회차가 이어받는다. 오히려 **매번 죽던 회차가 부분 성공으로 바뀐다.**
+`stopped_by`·`elapsed_ms`·`passes` 를 남겨 상한이 적절한지 라이브가 말하게 했다.
+
+⚠️ **남은 둘은 손대지 않았다** — `enrich-company`(드라이버 구조가 다르다)·`maintenance?phase=quality`
+(소셜 유지보수). 같은 클래스일 가능성이 높으니 **다음 세션이 같은 방식으로 볼 것**:
+호출부가 인보케이션당 총량을 묶고 있는가?
+
+### 다음 세션의 첫 액션
+
+```sql
+SELECT key, value FROM platform_settings WHERE key LIKE 'cron_hb:ads:%' AND value LIKE '%CPU%';
+```
+`reclassify` 가 목록에서 빠졌으면 수리가 먹은 것이다. `stopped_by=deadline` 이 매번이면 1,800ms 를
+더 내리고(커서 전진률을 같이 볼 것), `stopped_by=passes` 면 여유가 있다는 뜻이다.
