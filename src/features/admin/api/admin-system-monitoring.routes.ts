@@ -74,7 +74,9 @@ adminSystemMonitoringRoutes.get('/cron-heartbeats', async (c) => {
       // 🪦 반대 방향 — 기록은 있는데 지금 아무도 안 부르는 이름(이름 변경/삭제/게이트 OFF).
       //   그런 행은 아무도 갱신하지 않으니 **영원히 stale** 이다. 실측: `ads:sweep-kakao-phone`
       //   (레인이 `sweep-kakao-chain` 으로 개명됐는데 옛 행이 남아 계속 경보).
-      orphan_lanes = orphanLaneBeats(lanes, items.map(i => i.name))
+      // 🔴 **나이를 함께 넘긴다** — 안 넘기면 DO 알람·우회로 도는 멀쩡한 레인이 전부 고아로 찍혀
+      //   (실측 16건 중 대부분) 진짜 하나를 묻는다. 근거: `orphanLaneBeats` 헤더.
+      orphan_lanes = orphanLaneBeats(lanes, items.map(i => ({ name: i.name, age_minutes: i.age_minutes })))
     }
   } catch { /* 관측 보조 — 실패해도 본 목록은 그대로 준다 */ }
 

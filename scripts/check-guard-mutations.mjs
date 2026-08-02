@@ -667,6 +667,36 @@ const MUTATIONS = [
 
   // ── 🚚 ur-ads 배포가 조용히 안 나감 (2026-08-02 실사고)
   {
+    name: 'PR 검증이 다시 건너뛰어짐(미검증 코드 머지)',
+    file: '.github/workflows/verify.yml',
+    find: '  pull_request:\n    branches: [main]\n  push:',
+    replace: "  pull_request:\n    branches: [main]\n    paths-ignore: ['docs/**']\n  push:",
+    test: 'src/tests/unit/ci-verify-coverage.test.ts',
+    why:
+      '문서 커밋을 코드 커밋 뒤에 밀면 concurrency 가 앞 run 을 취소하고 뒤 커밋은 자기 run 을 안 만든다 ' +
+      '— PR 에 실패한 체크가 하나도 없는데 코드는 한 번도 검증되지 않은 상태가 된다(2026-08-03 실제 발생).',
+  },
+  {
+    name: '고아 레인 판정이 나이를 다시 안 봄',
+    file: 'src/worker-ads/lane-cadence.ts',
+    find: '      return (age as number) > staleMinutes       // 🔴 최근에 뛰고 있으면 고아가 아니다',
+    replace: '      return true',
+    test: 'src/tests/unit/ads-lane-cadence.test.ts',
+    why:
+      'DO 알람·우회로 도는 레인은 디스패처 목록에 없다 — 나이를 안 보면 **멀쩡히 도는 레인이 전부 고아**로 ' +
+      '찍힌다(실측 16건 중 대부분). 고칠 게 없는 경보 16줄이 진짜 하나(sweep-kakao-phone 4일 정지)를 묻는다.',
+  },
+  {
+    name: 'never_fired 가 다시 비대칭 정규화',
+    file: 'src/worker-ads/lane-cadence.ts',
+    find: '  return known.filter(k => !fired.has(baseLaneName(k))).sort()',
+    replace: '  return known.filter(k => !fired.has(k)).sort()',
+    test: 'src/tests/unit/ads-lane-cadence.test.ts',
+    why:
+      '`known` 은 쿼리를 단 채 들어오는데 하트비트 쪽만 쿼리를 떼면, 쿼리 있는 레인은 기록이 멀쩡히 있어도 ' +
+      '**영원히 "한 번도 안 돌았다"** 로 찍힌다(실측 2건). 오탐이 경보 전체의 신뢰를 깎는다.',
+  },
+  {
     name: 'ur-ads 배포 백오프가 초 단위로 회귀',
     file: '.github/workflows/deploy-ads.yml',
     find: 'WAIT=$(( i == 1 ? 60 : (i == 2 ? 150 : 300) ))',
