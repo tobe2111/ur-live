@@ -16,6 +16,15 @@
  * ## 검사
  *   R1 필드 5개 · R2 각 필드 범위(특히 **DOW 0 금지**) · R3 배열 비어 있지 않음
  *   R4 중복 없음(같은 표현식 두 번 = 한 번은 무의미)
+ *   R5 🔴 **계정 전체 트리거 수 ≤ 5**(Workers Free) — 아래 참조
+ *
+ * ## R5 는 ①을 고치고 나서야 드러난 두 번째 벽 (2026-08-02 실측)
+ * `0`→`SUN` 으로 문법을 고쳐 실제 배포했더니 **다른 에러**가 나왔다:
+ *   "This account has reached the Workers Free limit of **5 cron triggers per account**" (code 10072)
+ * 이 계정은 이미 정확히 5개였다 — ur-live 3 + ur-live-cleanup-cron 1 + ur-ads 1.
+ * 6번째를 넣으면 PUT 이 통째로 거부되고 **그 뒤 모든 worker-deploy 가 이 단계에서 실패**해
+ * cron 코드 배포가 전면 정지한다. 즉 한 레포의 한 파일만 봐서는 못 막는다 —
+ * **wrangler*.toml 전부를 합산**해야 한다.
  *
  * ⚠️ 이 가드가 **못 하는 것**: 표현식이 문법적으로 맞아도 **CF 에 실제 등록됐는지**는 모른다.
  *    그건 `worker-deploy` 로그의 `schedule:` 목록만이 답이다(배포 후 확인).
@@ -29,6 +38,8 @@ import path from 'node:path'
 const ROOT = process.cwd()
 const STRICT = process.env.STRICT_CRON_SYNTAX === '1'
 const FILE = path.join(ROOT, 'wrangler.toml')
+/** Workers Free 플랜의 **계정당** cron 트리거 한도. 유료 전환 시 1,000. */
+const ACCOUNT_CRON_LIMIT = Number(process.env.CF_CRON_LIMIT || 5)
 
 const DOW_NAMES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const MON_NAMES = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
@@ -100,8 +111,25 @@ for (const e of exprs) {
 const dup = exprs.filter((e, i) => exprs.indexOf(e) !== i)
 for (const d of new Set(dup)) problems.push(`"${d}" — 중복 선언(한 번은 무의미)`)
 
+// R5: 계정 전체 합산 — 한 파일만 보면 절대 못 잡는다(위 주석의 code 10072).
+const perFile = []
+for (const f of fs.readdirSync(ROOT)) {
+  if (!/^wrangler.*\.toml$/.test(f)) continue
+  const line2 = fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n').find((l) => /^\s*crons\s*=/.test(l))
+  if (!line2) continue
+  perFile.push({ f, n: [...line2.matchAll(/"([^"]+)"/g)].length })
+}
+const total = perFile.reduce((a, b) => a + b.n, 0)
+if (total > ACCOUNT_CRON_LIMIT) {
+  problems.push(
+    `계정 전체 트리거 ${total}개 > 무료 한도 ${ACCOUNT_CRON_LIMIT} — ` +
+    perFile.map((p) => `${p.f}:${p.n}`).join(' + ') +
+    ' · 초과하면 스케줄 PUT 이 통째로 거부되고 이후 모든 worker-deploy 가 실패한다(code 10072)',
+  )
+}
+
 if (problems.length === 0) {
-  console.log(`✅ cron-syntax: ${exprs.length}개 표현식 전부 Cloudflare 문법 통과`)
+  console.log(`✅ cron-syntax: ${exprs.length}개 표현식 문법 통과 · 계정 합산 ${total}/${ACCOUNT_CRON_LIMIT}`)
   process.exit(0)
 }
 
