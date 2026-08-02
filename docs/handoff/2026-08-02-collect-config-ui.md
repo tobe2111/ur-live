@@ -157,6 +157,39 @@ curl -sS ".../api/admin/ads/influencer-pool/stats" -H "Authorization: Bearer $TO
 
 ⚠️ 자동 회차와 겹칠 수 있다 — 저장이 upsert 라 오염은 없고 중복 조회만 생긴다(학원·병원과 동일).
 
+## 🔴 정정 — 위 §"느린 진짜 이유"는 **절반만 맞았다** (17:14 KST 실측)
+
+위에서 나는 원인을 *도메인 예산*으로 단정했다. 더 재 보니 **그것만이 아니었다.**
+17:00 KST 정각 스냅샷에서 이 레인은 **분명히 뽑혔다**:
+
+```
+prospect: { budget: 1, run: ["collect-store-kakao"], deferred: [collect-hira, collect-neis, …] }
+```
+
+그런데 하트비트에는 그 회차의 `ads:collect-store-kakao` 가 **없다** — 최신 beat 이 아직
+`02:00:22`(11:00 KST)다. 하트비트는 레인당 **최신 1개만** 남으므로, 없다는 건 그때 이후로
+**한 번도 완주하지 못했다**는 뜻이다. 같은 정각의 다른 레인들이 답을 준다:
+
+```
+08:01:01  ok=false  ms=3649  ads:collect-commerce            CPU time limit
+08:01:01  ok=false  ms=3649  ads:maintenance?phase=quality   CPU time limit
+08:01:01  ok=false  ms=3701  ads:sheets-sync                 CPU time limit
+```
+
+**부모가 3.6초에 죽는다.** 이 레인이 마지막에 성공했을 때 걸린 시간은 `elapsed_ms: 8097` 이다 —
+차례가 와도 완주할 시간이 애초에 없다. 05·06·07·08시 정각 모두 같은 모양이다.
+
+⇒ **차례가 드문 것(예산)** 과 **차례가 와도 죽는 것(부모 CPU)** 은 별개의 두 원인이고,
+   두 번째가 지금 지배적이다. 예산만 넓혀도 이 레인은 안 돈다.
+
+🧩 **그래서 이 PR 의 수동 버튼이 편의 기능이 아니다.** 수동 실행은 어드민 요청 **자기 인보케이션**에서
+   서비스 바인딩으로 들어가므로 7개 레인과 CPU 를 다투지 않는다 — **지금 이 레인이 도는 유일한 길**이다.
+
+📌 `FREE_LANES_PER_TICK` 은 레포에 이미 **6**(#958)인데 17:00 KST 스냅샷은 `per_tick: 8` 이었다 —
+   그 정각엔 아직 옛 빌드였다. **다음 정각에 `per_tick: 6` 으로 바뀌는지**가 #958 의 판정이다.
+🚫 `dispatch-budget.ts`·`lane-domains.ts` 는 다른 세션(#943/#958) 소관 — 나는 재지 않은 것을 단정한
+   잘못만 정정하고 손대지 않았다.
+
 ## 다음 세션의 첫 액션
 
 ```bash
