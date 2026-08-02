@@ -43,6 +43,32 @@ describe('프로브 URL — 레인이 쓰는 상수와 같은 곳을 찌른다',
     expect(SRC(file), '레인 쪽 상수가 바뀌었는데 프로브가 안 따라왔다').toContain(marker)
   })
 
+  /**
+   * 🔒 **서비스명만 대조하면 오퍼레이션 차이를 통과시킨다** (2026-08-02 실측 — 이 시험의 구멍이었다).
+   *
+   *   위 `it.each` 는 `FftcBrandRlsInfo2_Service` 같은 **서비스 마커**만 봤다. 그래서 프로브가
+   *   `getBrandReleaseInfo`, 레인이 `getBrandList` 로 **다른 오퍼레이션**을 찌르는 동안 초록이었다.
+   *   라이브 실측에서 레인은 `HTTP 404`, 프로브는 `400 NO_OPENAPI_SERVICE_ERROR` 로 **다른 답**이 왔고,
+   *   하마터면 그 400 을 근거로 "서비스가 폐기됐다"고 결론 낼 뻔했다.
+   *   ⇒ base 와 op 를 **레인 파일에서 뽑아** 프로브 URL 에 `base/op` 가 통째로 들어있는지 본다.
+   *
+   * ⚠️ 이 시험이 못 보는 것: 쿼리 파라미터 이름·값(레인이 `_type=json`, 프로브가 `resultType=json`
+   *   같은 차이). 그건 게이트웨이가 대개 관대해서 오진으로 잘 안 이어지지만, 이어진다면 여기서 안 잡힌다.
+   */
+  it.each([
+    ['franchise', 'franchise-collect.ts', 'FRANCHISE_BASE', 'FRANCHISE_OP'],
+    ['nara', 'nara-vendor-collect.ts', 'NARA_VENDOR_BASE', 'NARA_VENDOR_OP'],
+    ['hira', 'hira-hospital-collect.ts', 'HIRA_BASE', 'HIRA_OP'],
+  ])('🔒 %s — 프로브가 레인의 **base/오퍼레이션**을 그대로 찌른다', (target, file, baseConst, opConst) => {
+    const src = SRC(file)
+    const b = new RegExp(`const ${baseConst} = '([^']+)'`).exec(src)
+    const p = new RegExp(`const ${opConst} = '([^']+)'`).exec(src)
+    expect(b, `${file} 의 ${baseConst} 를 못 찾았다(상수명이 바뀌었나)`).toBeTruthy()
+    expect(p, `${file} 의 ${opConst} 를 못 찾았다(상수명이 바뀌었나)`).toBeTruthy()
+    const url = PROBE_TARGETS[target].url(KEY, env, { rows: 1, page: 1 })
+    expect(url, '프로브와 레인이 다른 오퍼레이션을 찌르면 진단이 오진의 재료가 된다').toContain(`${b![1]}/${p![1]}`)
+  })
+
   it('🔒 통신판매는 상수를 **직접 참조**한다 — 문자열을 베끼면 드리프트한다', () => {
     const probe = SRC('public-data-probe.ts')
     expect(probe).toMatch(/import \{ COMMERCE_SERVICES \} from '\.\/commerce-notify-collect'/)
