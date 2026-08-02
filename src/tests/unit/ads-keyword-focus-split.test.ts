@@ -1,6 +1,15 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { planKeywordSplit, FOCUS_CATEGORIES, PRIORITY_CATEGORIES } from '@/features/marketing/api/influencer-keyword-rotation'
 import { CLASSIFIED_CATEGORIES } from '@/features/marketing/api/influencer-classify'
+
+const SRC = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
+/**
+ * 주석을 걷어낸 본문 — **가드는 코드를 읽어야 한다**. 첫 구현이 이 파일 주석 속 `settings[...]` 예시를
+ * 실제 접근으로 세어 빨간불을 냈다(이 레포가 겪은 "주석에만 남아도 통과"의 정확한 반대편).
+ */
+const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
 
 /**
  * 🎯 **집중 축 전용 슬롯** (2026-08-02 대표 "C안" 확정).
@@ -63,14 +72,67 @@ describe('planKeywordSplit — 집중/우선/일반 3분할', () => {
 /** 🔌 배선 잠금 — 순수함수만 테스트하면 "함수는 있는데 부르는 곳이 없는" 사고를 못 잡는다. */
 describe('배선 — 수집 루프가 3분할을 실제로 쓴다', () => {
   it('🔒 planKeywordSplit 로 배분하고 세 풀이 서로 배타다', async () => {
-    const { readFileSync } = await import('node:fs')
-    const { join } = await import('node:path')
-    const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
-    expect(src).toMatch(/const \{ nFocus, nPri, nGen \} = planKeywordSplit\(/)
-    expect(src).toMatch(/const focusPool = kws\.filter\(inFocus\)/)
+    expect(SRC).toMatch(/const \{ nFocus, nPri, nGen \} = planKeywordSplit\(/)
+    expect(SRC).toMatch(/const focusPool = kws\.filter\(inFocus\)/)
     // 우선/일반 풀이 집중 축을 제외해야 배타가 성립한다.
-    expect(src).toMatch(/priPool = kws\.filter\(k => !inFocus\(k\)/)
-    expect(src).toMatch(/genPool = kws\.filter\(k => !inFocus\(k\)/)
-    expect(src).toMatch(/focus_n: nFocus/)   // 밖에서 "대행사를 돌고 있나"를 볼 수 있어야 한다
+    expect(SRC).toMatch(/priPool = kws\.filter\(k => !inFocus\(k\)/)
+    expect(SRC).toMatch(/genPool = kws\.filter\(k => !inFocus\(k\)/)
+    expect(SRC).toMatch(/focus_n: nFocus/)   // 밖에서 "대행사를 돌고 있나"를 볼 수 있어야 한다
+  })
+})
+
+/**
+ * 🧊 **커서가 얼어붙는 병** (2026-08-03 라이브 실측 — 대행사 축이 왜 얇은지의 진짜 답).
+ *
+ * ## 무엇이 고장이었나
+ * 집중 축 슬롯(#930)은 배치의 1/4을 대행사 키워드에 떼어 주는데, **커서가 항상 0** 이었다.
+ * 원인이 둘 다 "조용한 부재"였다:
+ * ```
+ *   ① 읽기: settings['ads_autocollect_cursor_focus'] ← 이 키가 readSettings 목록에 없음
+ *           → 에러가 아니라 undefined → parseInt('0') → 0
+ *   ② 쓰기: nextFocusCursor 를 계산해 통계 JSON 에만 넣고 platform_settings 엔 안 씀
+ *           → 라이브 실측: cursor_pri=158 · cursor=6 인데 cursor_focus **행 자체가 없음**
+ * ```
+ * 결과(라이브): 활성 대행사 키워드 18개 중 **앞 4개만 무한 반복**.
+ * ```
+ *   56459 마케팅 대행사  found 2,070   56462 디지털 마케팅  found 0 · last_run null
+ *   56460 광고 대행사    found 1,150   …
+ *   56461 온라인 마케팅  found    58   56476 지역 광고      found 0 · last_run null
+ * ```
+ * "체험단 대행"·"인플루언서 섭외"처럼 **대행사를 가장 잘 찾을 키워드가 한 번도 검색된 적이 없다.**
+ * 슬롯은 정상 배정되고 있었으므로(`focus_n: 4`) 통계만 봐선 정상으로 보였다.
+ *
+ * ⚠️ 이 테스트가 못 보는 것: 커서가 **얼마나** 도는지(그건 예산과 라이브 수율의 문제다).
+ *   여기서 고정하는 건 "읽는 키를 실제로 읽어오는가 · 민 값을 실제로 저장하는가" 둘뿐이다.
+ */
+describe('설정 키 — 읽는 키는 읽어오고, 민 커서는 저장한다', () => {
+  /** `settings[X]` 로 읽는 키를 전부 뽑는다(리터럴·상수 양쪽). */
+  const READS = Array.from(CODE.matchAll(/\bsettings\[([^\]]+)\]/g)).map(m => m[1]!.trim())
+
+  it('읽는 키를 찾았다 — 0개면 아래 검사가 통째로 무의미하다', () => {
+    expect(READS.length).toBeGreaterThan(3)
+  })
+
+  it('🔒 `settings[...]` 로 읽는 키는 전부 readSettings 목록에 있다 — 없으면 조용히 기본값이 된다', () => {
+    const decl = /const SETTING_KEYS = \[([^\]]*)\]/.exec(CODE)?.[1]
+    expect(decl, 'SETTING_KEYS 선언을 못 찾음(리네임됐다면 이 테스트도 갱신할 것)').toBeTruthy()
+    for (const key of READS) {
+      expect(decl, `settings[${key}] 를 읽는데 SETTING_KEYS 에 없다 — undefined 가 온다`).toContain(key)
+    }
+  })
+
+  it('🔒 계산한 커서는 전부 platform_settings 에 저장된다 — 통계 JSON 은 다음 회차가 안 읽는다', () => {
+    const writes = /await writeSettings\(DB, \[([\s\S]*?)\n {2}\]\)/.exec(CODE)?.[1]
+    expect(writes, 'writeSettings 블록을 못 찾음').toBeTruthy()
+    const cursors = Array.from(new Set(Array.from(CODE.matchAll(/\bconst (next\w*Cursor)\b/g)).map(m => m[1]!)))
+    expect(cursors.length, '커서 변수를 못 찾음').toBeGreaterThanOrEqual(3)
+    for (const v of cursors) {
+      expect(writes, `${v} 를 계산하고 저장하지 않는다 — 다음 회차가 같은 자리에서 다시 돈다`).toContain(v)
+    }
+  })
+
+  it('🔒 집중 축 커서도 **처리된 접두**만큼만 민다 — 계획한 수만큼 밀면 안 돈 키워드를 건너뛴다', () => {
+    expect(SRC).toMatch(/const focusDone = prefixDone\(focusPicks\)/)
+    expect(SRC).toMatch(/nextFocusCursor = focusPool\.length \? \(focusCursor \+ focusDone\)/)
   })
 })
