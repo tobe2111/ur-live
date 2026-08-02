@@ -128,17 +128,63 @@ export async function mergeDuplicatePool(DB: D1Database, opts?: { groupCap?: num
   return { merged: mergedEmail + mergedInsta + mergedLink + mergedName, mergedEmail, mergedInsta, mergedLink, mergedName, groups: emailGroups.length + igGroups.length }
 }
 
-/** 🔗 기존 풀 소개글 연락처 재추출(백필, 멱등) — 개선된 추출기 재적용(API 재호출 0). 날조/대행사 이메일 소급 정리 포함. */
+/**
+ * 🔢 **재추출 규칙 버전** — 올리면 다음 회차가 커서를 0 으로 되돌려 전수를 **한 번** 다시 훑는다.
+ *
+ *   `extractContacts` / `reextractEmail` / `stripVideoTitles` 를 고쳤으면 **같은 커밋에서 +1** 할 것.
+ *   안 올리면 옛 규칙으로 이미 훑은 행은 아래 "다 훑은 뒤엔 새 행만"(주차) 때문에 **영원히 재추출되지 않는다** —
+ *   에러도 경고도 없이 개선이 라이브에 안 닿는다. 이 레포의 `CLASSIFY_RULES_VERSION` 과 같은 계약이고,
+ *   `check-rules-version-bump` 가 지키는 것과 같은 실패 양식이다.
+ */
+export const REEXTRACT_RULES_VERSION = 1
+
+/**
+ * 커서 저장 형태 `"<version>:<cursor>"`.
+ *
+ * ⚠️ 옛 형태(숫자만)는 **version 0** 으로 읽어 0 을 돌려준다 — 배포 직후 딱 한 바퀴 전수를 다시 훑고,
+ *   그 다음부터 새 형태로 주차된다. 형태를 못 알아보면 조용히 0 으로 떨어져 매번 전수를 도는(=지금 고치는
+ *   바로 그 병) 상태가 되므로, 파싱은 관대하되 **버전 불일치만이 리셋의 유일한 이유**여야 한다.
+ */
+export function parseReextractCursor(raw: string | null | undefined, version: number): number {
+  const s = String(raw ?? '').trim()
+  if (!s) return 0
+  const i = s.indexOf(':')
+  const v = i < 0 ? 0 : parseInt(s.slice(0, i), 10)
+  const c = parseInt(i < 0 ? s : s.slice(i + 1), 10)
+  if (!Number.isFinite(v) || v !== version) return 0 // 규칙이 바뀌었다 → 전수 한 바퀴
+  return Number.isFinite(c) && c > 0 ? c : 0
+}
+
+export const formatReextractCursor = (version: number, cursor: number): string =>
+  `${version}:${Math.max(0, Math.floor(Number.isFinite(cursor) ? cursor : 0))}`
+
+/**
+ * 🔗 기존 풀 소개글 연락처 재추출(백필, 멱등) — 개선된 추출기 재적용(API 재호출 0). 날조/대행사 이메일 소급 정리 포함.
+ *
+ * ## 🩸 2026-08-02 — 이 패스가 **같은 단계의 뒤 작업을 죽이고 있었다**(라이브 실측)
+ * `ads:maintenance?phase=reextract` 가 `err=Error`(ms 13,541)로 죽고 있었고, `ads_maintenance_last` 에
+ * `region`·`cafemembers` 키가 **한 번도** 나타난 적이 없었다 — 둘 다 이 함수 *다음*에 서 있어서다.
+ *
+ * 원인은 마지막 두 줄이었다: 전수를 다 훑으면 커서를 **0 으로 되돌렸다.** 그래서 매 회차가
+ * 36,880행을 처음부터 다시 훑었고(라이브 결과 `scanned: 36,880 · filled: 0` — 저장 시점에 이미 추출하므로
+ * 재수확이 구조적으로 0), 그 CPU 로 인보케이션이 끝나 **뒤에 선 지역 백필·카페 회원수는 시작조차 못 했다.**
+ * `poolScanShouldStop` 은 이 함수 안에서만 멈출 뿐, 이미 쓴 CPU 를 되돌려주지 않는다.
+ *
+ * ⇒ **다 훑었으면 커서를 그 자리에 주차한다.** 다음 회차는 `id > cursor` 인 **새 행만** 본다(보통 0~수백).
+ *   규칙을 고쳤을 때만 `REEXTRACT_RULES_VERSION` 으로 전수를 한 바퀴 되돌린다.
+ *
+ * ⚠️ 이 변경 뒤 `scanned: 0` 은 **고장이 아니라 정상**(새 행이 없다)이다. 예전처럼 큰 `scanned` 가 보고
+ *   싶다면 규칙 버전을 올려야 하고, 그건 규칙을 실제로 바꿨을 때만 정당하다.
+ */
 export async function reextractPoolContacts(DB: D1Database, opts?: { budget?: OpBudget }): Promise<{ scanned: number; filled: number; done: boolean }> {
   await ensureInfluencerSchema(DB)
   // 🔗 2026-07-28: OFFSET 전수스캔 → **id 커서**(품질/재분류 패스와 동일 패턴). 무료 플랜 예산에선 한 실행이
   //   전수를 못 도는데, 커서가 없으면 매번 앞부분만 다시 훑고 뒤쪽 백로그는 영원히 재추출되지 않는다.
   const CURSOR_KEY = 'ads_reextract_cursor'
   const PAGE = 2000
-  let cursor = 0
   const cRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY)
     .first<{ value: string }>().catch(() => null)
-  if (cRaw?.value) cursor = Math.max(0, parseInt(cRaw.value, 10) || 0)
+  let cursor = parseReextractCursor(cRaw?.value, REEXTRACT_RULES_VERSION)
   let scanned = 0, filled = 0, done = false
   const startedMs = Date.now()   // ⏱️ 인보케이션당 작업 상한(poolScanShouldStop) — 재분류와 같은 CPU 사고를 공유한다
   for (;;) {
@@ -170,8 +216,10 @@ export async function reextractPoolContacts(DB: D1Database, opts?: { budget?: Op
     // ⏱️ 여기까지가 이 인보케이션의 몫 — `done` 을 false 로 남겨 커서가 다음 회차로 이어진다(커버리지 손실 0).
     if (poolScanShouldStop(scanned, startedMs, Date.now())) break
   }
+  // 🅿️ 다 훑었어도 **0 으로 되돌리지 않는다** — 그게 매 회차 전수 재스캔의 원인이었다(위 docblock).
+  //   다음 회차는 여기서 이어받아 새 행만 본다. 전수 재스캔은 규칙 버전 bump 로만 일어난다.
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind(CURSOR_KEY, String(done ? 0 : cursor)).run().catch(() => null)
+    .bind(CURSOR_KEY, formatReextractCursor(REEXTRACT_RULES_VERSION, cursor)).run().catch(() => null)
   return { scanned, filled, done }
 }
 
@@ -232,13 +280,29 @@ export const isMaintPhase = (v: unknown): v is MaintPhase => MAINT_PHASES.includ
  *   ⚠️ 배분의 **타당성**은 코드가 못 본다(라이브 수율은 코드 밖 사실이다). 위 수치가 뒤집히면
  *   — 예컨대 `handle` 이 `done: true` 로 끝나면 — 그 슬롯은 다시 남는 일 쪽으로 옮겨야 한다.
  */
+/**
+ * 🔁 **2026-08-02 재배분 — 위 주석이 예고한 그 상황이 왔다.**
+ *
+ *   *"위 수치가 뒤집히면 — 예컨대 `handle` 이 `done: true` 로 끝나면 — 그 슬롯은 다시 남는 일 쪽으로
+ *   옮겨야 한다."* 라이브 `ads_maintenance_last` 실측:
+ *     - `handle` → `{ scanned: 34, fixed: 0, unfixable: 34, done: true }` — **고칠 게 남지 않았다.**
+ *       3슬롯(하루 6회)이 매번 같은 34행을 확인하고 0을 고치고 있었다.
+ *     - `reextract` 는 이제 **지역 백필(미판정 36,269 = 89%) + 카페 회원수(3,142행 전부 0)** 를 이고 있다.
+ *       배정표를 짤 때의 근거("할 일이 구조적으로 없다")가 **더는 사실이 아니다.**
+ *   ⇒ `handle` 3 → 1 · `reextract` 1 → 3.
+ *
+ *   🕘 **슬롯 자리가 결과를 바꾼다** — 인덱스 7 은 hour 19(야간 재보정에 양보)에 걸려 하루 **1회**만 돈다.
+ *     그래서 1슬롯 단계(`merge`·`selflink`·`handle`)를 거기 두면 간격이 24h 로 벌어져 경보 창을 깬다.
+ *     `handle` 은 인덱스 4(hour 4·16)에 두고, 양보로 한 번 깎여도 되는 `reextract`(3슬롯)가 7을 받는다.
+ *     결과: reextract 는 hour 1·7·10·13·22 — 최대 간격 9h.
+ */
 export const MAINT_SCHEDULE: MaintPhase[] = [
   'merge', 'reextract', 'reclassify', 'quality', 'handle',
   // 🧹 자기링크 정리(2026-07-29 대표 승인) — 백로그가 작고(후보 ~1,029행) 끝나면 **스스로 싸진다**:
   //   비워진 행은 `links LIKE '%naver.com%'` 후보에서 빠져 다음 바퀴엔 즉시 done 이다.
   //   그래서 상시 슬롯으로 두어 **유입 필터가 놓친 새 오염의 자가치유**까지 겸하게 한다.
   'selflink',
-  'reclassify', 'handle', 'quality', 'reclassify', 'handle',
+  'reclassify', 'reextract', 'quality', 'reclassify', 'reextract',
   // 🔢 10 → 12 슬롯. 단순히 selflink 를 덧붙이면(11슬롯) **실제 최대 간격이 10h → 13h 로 벌어진다**
   //   (24 를 11 로 나눌 때의 자정 불연속 — 유닛이 이걸 잡아냈다). 12 는 24 의 약수라 각 슬롯이 하루
   //   **정확히 2회** 고정 시각에 돌고 최대 간격이 12h 로 떨어진다. 남는 한 자리는 전수 한 바퀴가 가장 느린
@@ -246,10 +310,40 @@ export const MAINT_SCHEDULE: MaintPhase[] = [
   'reclassify',
 ]
 
+/**
+ * 📏 **슬롯 배분 의도** — 배정표의 개수를 근거와 함께 한 번 더 적는다(중복이 아니라 *계약*이다).
+ *
+ *   유닛이 이 표와 `MAINT_SCHEDULE` 의 일치를 강제하므로, 배정표를 손대면 **근거 한 줄을 같이** 고치게 된다.
+ *
+ *   ## 왜 이 형태인가 — 유닛이 옳은 변경을 막은 적이 있다
+ *   이전 판은 유닛 안에 `busy = ['reclassify','handle']` / `idle = ['reextract','merge']` 처럼
+ *   **2026-07-29 그날의 라이브 사실을 박아** 뒀다. 그 사실이 뒤집히자(`handle` → `done:true·unfixable 34`,
+ *   `reextract` 는 지역·카페 백로그를 떠안음) 유닛이 *정당한 재배분*에 빨간불을 냈다.
+ *   근거를 코드 옆에 두면 배정표와 **같이 늙는다** — 테스트가 사실을 소유하지 않는다.
+ *
+ *   ⚠️ 여전히 코드가 못 보는 것: 이 `why` 가 **지금도 참인지**. 라이브 수율은 코드 밖 사실이라,
+ *     `ads_maintenance_last` 를 보고 뒤집혔으면 이 표부터 고칠 것.
+ */
+export const MAINT_SLOT_INTENT: Record<MaintPhase, { slots: number; why: string }> = {
+  reclassify: { slots: 4, why: '전수 한 바퀴 65h — 커버리지가 가장 느리다' },
+  reextract: { slots: 3, why: '지역 미판정 36,269(89%) + 카페 회원수 3,142행 전부 0 — 이 단계가 이고 있다' },
+  quality: { slots: 2, why: 'scanned 4,500 · done:false — 진행 중' },
+  handle: { slots: 1, why: 'done:true · unfixable 34 — 고칠 게 없다(새 손상 유입 감시용 최소 슬롯)' },
+  merge: { slots: 1, why: 'merged 5(그룹 5) — 소량이고 시급하지 않다' },
+  selflink: { slots: 1, why: '끝나면 스스로 싸진다 — 비운 행은 다음 바퀴 후보에서 빠진다' },
+}
+
 /** 단계 실행 lease TTL — 단계 하나는 짧다(예산 상한이 있으므로). 전체 파이프라인 TTL 과 별개. */
 const PHASE_LEASE_TTL_MS = 3 * 60_000
 /** 리스 해제·스탬프·커서 기록용으로 남겨두는 연산(예산에서 제외) — 이게 없으면 "기록조차 못 하는" 원래 병이 재발. */
 const RESERVE_OPS = 6
+/**
+ * 🏘️ 카페 회원수 몫 — `reextract` 단계 안에서 **지역 백필이 다 먹지 않도록** 남겨 두는 연산 수.
+ *   지역 스윕은 `budget.left` 가 바닥날 때까지 도는 구조라, 예약이 없으면 뒤에 선 카페·재추출이
+ *   *한 번도* 실행되지 않는다(라이브: `ads_maintenance_last` 에 두 키가 아예 없었다).
+ *   ⚠️ **하한이지 상한이 아니다** — 지역이 끝나면 호출부가 남은 예산을 통째로 카페에 넘긴다.
+ */
+const CAFE_RESERVE = 22
 
 /**
  * 📍 **지역 백필 스윕** — `region` 이 비어 있는 행을 `source_keyword` 에서 채운다(외부 호출 0, D1 전용).
@@ -277,12 +371,17 @@ const RESERVE_OPS = 6
  *   ⚠️ **한 곳에서만 돈다** — 수집 꼬리의 호출은 같은 커밋에서 제거했다(두 벌로 두면 조용히 갈라진다).
  *   ⚠️ 정비를 끄면(`ADS_AUTO_MAINTENANCE_ENABLED='false'`) 지역 백필도 함께 멈춘다.
  */
-export async function sweepRegions(DB: D1Database, budget: OpBudget): Promise<{ filled: number; chunks: number; done: boolean }> {
+export async function sweepRegions(DB: D1Database, budget: OpBudget, reserve = 0): Promise<{ filled: number; chunks: number; done: boolean }> {
   // 규칙 버전이 올랐을 때만 1회 — 그 외엔 조회 1번으로 즉시 반환(멱등).
   try { await recheckBlankRegions(DB, POOL) } catch { /* 다음 회차가 재시도 */ }
   let filled = 0, chunks = 0, done = false
+  // 🅰️ `reserve` — **뒤에 선 작업 몫을 남긴다.** 이 스윕은 `budget.left` 가 바닥날 때까지 도는데,
+  //   같은 단계의 뒤 작업(카페 회원수·재추출)이 그 뒤에 있으므로 예약 없이는 **영구히 굶는다**
+  //   (그게 2026-08-02 에 고친 병의 절반이다 — 나머지 절반은 재추출의 전수 재스캔이었다).
+  //   ⚠️ 다 끝나면(`done`) 예약분은 자동으로 뒤 작업에 넘어간다 — 호출부가 `budget.left` 로 크기를 정한다.
+  const floor = Math.max(6, 6 + Math.max(0, Math.floor(reserve)))
   // 청크당 ~6 ops. 예산이 그만큼도 안 남았으면 다음 회차에 넘긴다(무리해서 시작하지 않는다).
-  while (!budget.exhausted && budget.left >= 6) {
+  while (!budget.exhausted && budget.left >= floor) {
     let n = 0
     try { n = await backfillRegions(DB, POOL, 500) } catch { break } // 한도 예외 — 다음 회차가 이어받음
     chunks++
@@ -315,14 +414,24 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
   try {
     if (phase === 'merge') out.merge = await mergeDuplicatePool(bdb, { groupCap: 150 })
     else if (phase === 'reextract') {
-      out.reextract = await reextractPoolContacts(bdb, { budget })
-      out.region = await sweepRegions(bdb, budget)   // 같은 성격(가진 데이터로 빈칸 채우기) — 아래 주석 참조
+      // 🔻 **순서가 곧 우선순위다.** 이 단계는 세 작업을 한 인보케이션에서 이어 돌리는데, 앞의 것이
+      //   예산/CPU 를 다 쓰면 뒤의 것은 *시작조차 못 한다*(실측: `region`·`cafemembers` 키가 한 번도
+      //   `ads_maintenance_last` 에 없었다 — 재추출이 매번 전수를 훑다 죽어서다).
+      //   ⇒ **남은 백로그가 큰 것부터** 앞에 둔다. 재추출은 커서 주차 후 새 행만 보므로(위 docblock)
+      //     보통 즉시 끝나지만, 규칙 버전을 올린 회차엔 전수를 도므로 **뒤에 두는 편이 안전하다.**
+      //   💱 **왜 지역이 먼저인가 — ops 당 산출이 83배다.** 지역은 청크(500행)당 ~6 ops(D1 전용)이고
+      //     카페는 홈 1건당 1 fetch = 1 op 다. 같은 예산이면 지역이 압도적으로 많이 채운다.
+      //     그래서 지역을 앞에 두되 **카페 몫(CAFE_RESERVE)을 예약**해 굶지 않게 한다.
+      out.region = await sweepRegions(bdb, budget, CAFE_RESERVE) // 지역 미판정 36,269행(89%) — D1 전용, 외부 호출 0
       // 🏘️ 카페 회원수(2026-07-29 대표 "카운팅이 안 됨") — 여기 얹는 이유는 지역 백필과 같다:
-      //   이 단계는 전수 36,880행을 훑고 `filled: 0`(할 일이 구조적으로 없다)인데 자기 인보케이션을 갖는다.
+      //   발굴 API(`cafearticle.json`)가 회원수를 안 주므로 카페 홈에서 1회성으로 채운다.
       //   ⚠️ **배정표에 13번째 슬롯을 만들지 않는다** — 12는 24의 약수라 각 단계가 매일 같은 시각에
       //   정확히 2번 돈다. 13이면 그 성질이 깨져 경보 창(12h)까지 흔들린다(유닛이 그 값을 고정한다).
       //   ⚠️ 여기만 외부 fetch 를 쓴다(카페 홈) — 전수 1회성이라 다 채우면 조회 1번으로 끝난다.
-      out.cafemembers = await fillCafeMemberCounts(bdb, POOL, budget, 20)
+      //   📈 **지역이 끝나면 남은 예산을 통째로 받는다** — 예약(CAFE_RESERVE)은 하한이지 상한이 아니다.
+      //     3,142행을 회차당 20건이면 31일이지만, 지역 백필이 끝난 뒤엔 회차당 ~40건이 되어 절반으로 준다.
+      out.cafemembers = await fillCafeMemberCounts(bdb, POOL, budget, Math.max(CAFE_RESERVE - 2, budget.left - 4))
+      out.reextract = await reextractPoolContacts(bdb, { budget })
     }
 
     else if (phase === 'reclassify') out.reclassify = await runReclassifyPool(bdb, { budget })

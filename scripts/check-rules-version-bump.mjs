@@ -24,6 +24,14 @@
  * 주석/공백만 바뀐 경우는 제외한다 — 소음이 되면 아무도 안 본다.
  *
  * 예외: 그 줄에 `rules-version-ok` 주석.
+ *
+ * 🔀 `watch` (2026-08-02) — 상수와 규칙이 **다른 파일**일 때 감시 대상을 따로 지정한다.
+ *   `REEXTRACT_RULES_VERSION` 이 그 경우다: 규칙이 세 파일(`influencer-discovery`·`-email-rules`·`-parse`)에
+ *   흩어져 있어 어느 하나에 상수를 둘 수 없고, 상수가 사는 `influencer-maintenance.ts` 를 감시하면
+ *   배정표 한 줄만 옮겨도 bump 를 요구하는 소음이 된다.
+ *   ⚠️ **못 잡는 것**: 상수가 merge-base 에 없으면(=이 브랜치에서 새로 만든 상수) 그 항목은 통째로 건너뛴다.
+ *     즉 상수를 신설하는 그 PR 자체는 검사되지 않고, **다음 브랜치부터** 걸린다. 의도된 동작이지만
+ *     "가드를 넣었으니 이제 안전하다"고 읽으면 한 판이 비어 있다.
  */
 import { readFileSync, existsSync } from 'node:fs'
 import { execSync } from 'node:child_process'
@@ -53,6 +61,22 @@ const TARGETS = [
     severity: 'high',
     why: "미매칭이 ''(지역 없음 확정)로 저장돼 재검사를 막는다 — 안 올리면 기존 행은 영구히 옛 판정에 갇힌다."
       + " 2026-07-29 실사고: '방배동 맛집'(누적 241명)이 '동' 접미 미지원으로 전부 지역 없음이었다.",
+  },
+  {
+    // 🔀 상수는 여기 있지만 **규칙은 다른 파일에 있다** — `watch` 가 그 간극을 잇는다.
+    //   상수 파일(influencer-maintenance.ts)엔 배정표·예산 같은 무관한 코드가 많아, 그걸 감시하면
+    //   슬롯 하나만 옮겨도 bump 를 요구하는 소음이 된다. 반대로 규칙 파일에 상수를 두려 해도
+    //   규칙이 **세 파일에 흩어져 있어** 어느 하나를 고를 수 없다.
+    file: 'src/features/marketing/api/influencer-maintenance.ts',
+    name: 'REEXTRACT_RULES_VERSION',
+    watch: [
+      'src/features/marketing/api/influencer-discovery.ts',   // extractContacts
+      'src/features/marketing/api/influencer-email-rules.ts', // reextractEmail
+      'src/features/marketing/api/influencer-parse.ts',       // stripVideoTitles
+    ],
+    severity: 'high',
+    why: '재추출 커서는 전수를 다 훑으면 **그 자리에 주차**한다(2026-08-02) — 안 올리면 개선된 추출기가'
+      + ' 기존 36,880행에 영원히 안 닿는다. 시간 폴백이 없다.',
   },
 ]
 
@@ -98,34 +122,42 @@ const meaningful = (src, name) => src
   })
   .join('\n')
 
+/** `git show <ref>:<path>` — 그 ref 에 없으면 null. */
+const showAt = (ref, path) => {
+  try {
+    return execSync(`git show ${ref}:${path}`, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] })
+  } catch { return null }
+}
+
 const problems = []
-for (const { file, name, severity, why } of TARGETS) {
+for (const { file, name, watch, severity, why } of TARGETS) {
   if (!existsSync(file)) continue
   const now = readFileSync(file, 'utf8')
   const cur = versionOf(now, name)
   if (!cur || cur.line.includes(ALLOW)) continue
 
-  let old
-  try {
-    old = execSync(`git show ${base}:${file}`, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] })
-  } catch { continue }        // merge-base 에 없던 새 파일 — 검사 대상 아님
+  if (showAt(base, file) === null) continue   // merge-base 에 없던 새 파일 — 검사 대상 아님
+  const prev = versionOf(showAt(base, file) || '', name)
+  if (!prev) continue                         // 상수 자체가 새로 생김
+  if (prev.value !== cur.value) continue      // 올렸다 — 통과
 
-  const prev = versionOf(old, name)
-  if (!prev) continue                              // 상수 자체가 새로 생김
-  if (prev.value !== cur.value) continue           // 올렸다 — 통과
-  if (meaningful(old, name) === meaningful(now, name)) continue  // 주석/공백만 — 통과
-
-  // main 과 내용이 같으면 **이 브랜치가 쓴 게 아니다** — main 을 병합해 물려받았을 뿐이다.
-  // 이 조건이 없으면, 규칙이 main 에 들어가기 *전에* 갈라진 브랜치가 나중에 main 을 병합하는
-  // 순간 전부 걸린다(자기 잘못이 아닌데). 소음이 되면 아무도 안 본다 — 시드 가드와 같은 교훈.
-  let mainSrc = null
-  for (const r of ['origin/main', 'main']) {
-    try {
-      mainSrc = execSync(`git show ${r}:${file}`, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] })
-      break
-    } catch { /* 다음 후보 */ }
+  // 🔀 **규칙이 사는 파일**을 본다. `watch` 가 없으면 상수와 같은 파일(기존 동작).
+  //    ⚠️ 하나도 못 읽으면 '변경 없음'으로 흘러가 검사가 조용히 무의미해진다 — 그래서 읽힌 파일 수를 센다.
+  const ruleFiles = (watch && watch.length ? watch : [file]).filter(existsSync)
+  let changed = false, seen = 0
+  for (const rf of ruleFiles) {
+    const oldSrc = showAt(base, rf)
+    if (oldSrc === null) continue             // merge-base 에 없던 새 파일
+    seen++
+    if (meaningful(oldSrc, name) === meaningful(readFileSync(rf, 'utf8'), name)) continue
+    // main 과 내용이 같으면 **이 브랜치가 쓴 게 아니다** — main 을 병합해 물려받았을 뿐이다.
+    // 이 조건이 없으면, 규칙이 main 에 들어가기 *전에* 갈라진 브랜치가 나중에 main 을 병합하는
+    // 순간 전부 걸린다(자기 잘못이 아닌데). 소음이 되면 아무도 안 본다 — 시드 가드와 같은 교훈.
+    const mainSrc = showAt('origin/main', rf) ?? showAt('main', rf)
+    if (mainSrc !== null && meaningful(mainSrc, name) === meaningful(readFileSync(rf, 'utf8'), name)) continue
+    changed = true
   }
-  if (mainSrc !== null && meaningful(mainSrc, name) === meaningful(now, name)) continue
+  if (!seen || !changed) continue
 
   problems.push({ file, name, value: cur.value, severity, why })
 }

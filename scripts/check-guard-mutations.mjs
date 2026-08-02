@@ -104,20 +104,31 @@ const MUTATIONS = [
     why: '0 이면 그 시간대가 반복될 때 커서가 영원히 안 움직인다(= 부재).',
   },
   {
+    // 2026-08-02: 커서가 역할별로 갈리며 전진 지점이 `pickFrom` 안으로 옮겨졌다(이전 대상
+    //   `nextCursor: (c + cap) % n` 은 소멸). 지도를 안 고치면 이 주입이 조용히 안 돈다.
     name: '커서 전진 제거',
     file: 'src/worker-ads/dispatch-budget.ts',
-    find: 'nextCursor: (c + cap) % n',
-    replace: 'nextCursor: c',
+    find: 'next: (c + take) % n',
+    replace: 'next: c',
     test: 'src/tests/unit/ads-dispatch-budget.test.ts',
     why: '커서가 안 움직이면 매 회차 같은 레인만 돌고 나머지는 영원히 굶는다.',
   },
   {
     name: '커서 저장 제거(배선)',
     file: 'src/worker-ads/lane-runner.ts',
-    find: 'bind(DISPATCH_CURSOR_KEY, String(sel.nextCursor))',
+    // 역할별 커서라 숫자 하나로는 못 남긴다 — 저장이 JSON 으로 바뀌었다(2026-08-02).
+    find: 'bind(DISPATCH_CURSOR_KEY, JSON.stringify(sel.nextCursor))',
     replace: 'bind(DISPATCH_CURSOR_KEY, "0")',
     test: 'src/tests/unit/ads-dispatch-budget.test.ts',
     why: '순수 로직이 맞아도 저장을 안 하면 라운드로빈이 매번 0에서 다시 시작한다.',
+  },
+  {
+    name: '역할 몫 무력화(측정 기아 재발)',
+    file: 'src/worker-ads/dispatch-budget.ts',
+    find: "return assignKey(lane.beat).startsWith('enrich') ? 'measure' : 'other'",
+    replace: "return 'other'",
+    test: 'src/tests/unit/ads-dispatch-budget.test.ts',
+    why: '역할 판정이 죽으면 몫이 다시 **레인 개수**로 정해진다 — 수집 소스를 붙일 때마다 측정의 몫이 깎이는 한 방향 드리프트가 재발한다(08-02 라이브: 수집 13 : 측정 1, nb_unmeasured 상승).',
   },
   {
     name: '진단 노출 제거',

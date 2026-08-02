@@ -65,6 +65,8 @@ export const PAID_LANES_PER_TICK = 64
 export interface DispatchEnv {
   ADS_PLAN?: string
   ADS_LANES_PER_TICK?: string
+  /** 측정 레인 몫의 비율 — `MEASURE_SHARE_DEFAULT` 참조. */
+  ADS_MEASURE_SHARE?: string
 }
 
 /** `ADS_PLAN` 해석 — 오타/대소문자/공백에 관대하되, **모르는 값은 free**(안전한 쪽). */
@@ -91,6 +93,146 @@ export interface LaneCandidate {
   beat: string
   /** 이 레인의 기대 간격(분). 60 이하면 매시간 레인 = 미룰 수 있다. */
   gapMin?: number
+  /** 역할. 생략하면 이름으로 판정(`laneRole`) — 등록부를 안 고쳐도 되게. */
+  role?: LaneRole
+}
+
+/**
+ * 🎭 **레인의 역할** — 몫을 정하는 기준.
+ *
+ * - `measure` … 백로그를 **줄이는** 레인(보강/측정). 이게 값을 만든다.
+ * - `other` … 나머지 전부(수집·정비·동기화). 수집은 백로그를 **늘린다**.
+ */
+export type LaneRole = 'measure' | 'other'
+
+/**
+ * 이름으로 역할을 판정한다 — `enrich-*` 만 `measure`.
+ *
+ * ⚠️ **왜 이름으로 판정하나**: 역할을 등록부(`index.ts` 의 `kick` 17곳)에 달면 그 파일이
+ * 여러 세션의 충돌 지점이 된다. 이름 규칙은 한 곳에서 바뀌고, 예외가 필요한 레인은
+ * `LaneCandidate.role` 로 **명시 지정**하면 이 함수를 이긴다.
+ *
+ * ⚠️ **이 판정이 틀리면 조용히 틀린다** — 새 보강 레인을 `enrich-` 없는 이름으로 만들면
+ * 그 레인은 `other` 로 분류돼 수집 레인들과 몫을 나눠 갖는다(에러 없음). 새 측정 레인을
+ * 만들 때는 이름을 `enrich-` 로 시작하거나 `role: 'measure'` 를 붙일 것.
+ */
+export function laneRole(lane: LaneCandidate): LaneRole {
+  if (lane.role === 'measure' || lane.role === 'other') return lane.role
+  return assignKey(lane.beat).startsWith('enrich') ? 'measure' : 'other'
+}
+
+/**
+ * 측정 레인이 가져갈 **매시간 몫의 비율** (2026-08-02 대표 확정 "무료 유지 — 배분 정책 재설계").
+ *
+ * ## 왜 비율로 못박나 — 실측이 드러낸 결함
+ * 커서 라운드로빈(#929)은 모든 매시간 레인을 **동등하게** 돌린다. 그런데 레인은 동등하지 않다:
+ * 수집 레인은 백로그를 만들고 보강 레인은 백로그를 줄인다. 동등 배분이면 **각 기능의 몫이
+ * "누가 레인을 몇 개 등록했나"로 정해진다.** 라이브 실측(08-02 20:32 UTC):
+ *
+ * ```
+ *   collect-*  13개  :  인플루언서 측정 레인  1개
+ *   → 한 사이클에 수집 13번 도는 동안 측정 1번
+ *   → nb_unmeasured  20,497 → 21,192 (상승)
+ * ```
+ * 게다가 **데이터 소스를 붙일 때마다 수집 레인이 하나 늘어** 측정의 몫이 자동으로 깎인다.
+ * 한 방향으로만 흐르는 드리프트다. ⇒ 몫을 **역할로** 정한다. 수집 레인이 몇 개가 되든 측정은
+ * 자기 비율을 유지한다.
+ *
+ * ⚠️ **0.5 는 추정이다.** 유입과 측정의 실제 처리량 비를 재서 정한 값이 아니다(회차당 측정
+ *   처리량을 이 세션이 깨끗하게 못 쟀다). 판정 근거는 `nb_unmeasured` 의 **방향**이다 —
+ *   계속 오르면 올리고, 꺾이면 그대로 둔다. 무배포 조정: `ADS_MEASURE_SHARE`.
+ *
+ * ⚠️ **올릴 때 같이 봐야 하는 것 — 팬아웃 비용.** `enrich-influencer-driver` 는 자식 K개를
+ *   `SELF.fetch` 로 띄운다(`ADS_INFLUENCER_ENRICH_FANOUT`, 기본 4). 이 레인이 도는 회차마다
+ *   부모가 K번 더 fetch 한다. **레인 수는 그대로여도 부모 비용은 올라간다** — 08-01 에 부모가
+ *   CPU 한도로 죽으며 자식을 다 끌고 간 사고(#927)가 이 비용 때문이었다. 비율을 올렸는데
+ *   부모가 죽기 시작하면 비율이 아니라 **K 를 먼저 내려라**(둘 다 무배포).
+ */
+export const MEASURE_SHARE_DEFAULT = 0.5
+
+/** env(`ADS_MEASURE_SHARE`) → 0~1 사이 비율. 범위 밖·비숫자·부재는 기본값(안전한 쪽). */
+export function resolveMeasureShare(env: DispatchEnv | undefined | null): number {
+  const n = Number(String((env as { ADS_MEASURE_SHARE?: string } | undefined | null)?.ADS_MEASURE_SHARE ?? '').trim())
+  return Number.isFinite(n) && n > 0 && n < 1 ? n : MEASURE_SHARE_DEFAULT
+}
+
+/**
+ * 몫을 역할로 나눈다 — **남는 몫은 버리지 않고 상대에게 넘긴다**(예산을 놀리지 않는다).
+ *
+ * ⚠️ `cap === 1` 은 나눌 수 없다(한 역할이 가져가면 다른 역할은 0). 0 인 역할은 그 회차에
+ *   커서가 안 움직이므로, 그 상태가 반복되면 **그 역할 전체가 굶는다** — 이 파일이 막으려는
+ *   바로 그 사고. 그래서 `cap === 1` 일 때는 회차(`tick`)로 **번갈아** 준다.
+ */
+export function splitCapByRole(
+  cap: number, nMeasure: number, nOther: number, share: number, tick: number,
+): { measure: number; other: number } {
+  if (cap <= 0) return { measure: 0, other: 0 }
+  if (nMeasure === 0) return { measure: 0, other: Math.min(cap, nOther) }
+  if (nOther === 0) return { measure: Math.min(cap, nMeasure), other: 0 }
+  // cap 1 은 나눌 수 없다 — 회차마다 번갈아(양쪽 다 전진한다).
+  if (cap === 1) {
+    const toMeasure = ((Math.trunc(tick) % 2) + 2) % 2 === 0
+    return toMeasure ? { measure: 1, other: 0 } : { measure: 0, other: 1 }
+  }
+  // 비율대로 나누되 양쪽 최소 1 — 한쪽이 0 이면 그 역할의 커서가 안 움직인다.
+  let m = Math.min(Math.max(1, Math.round(cap * share)), cap - 1, nMeasure)
+  let o = cap - m
+  // 상대가 가진 레인보다 몫이 크면 남는다 → 넘긴다(양방향).
+  if (o > nOther) { m = Math.min(nMeasure, m + (o - nOther)); o = nOther }
+  if (m > nMeasure) { o = Math.min(nOther, o + (m - nMeasure)); m = nMeasure }
+  return { measure: m, other: o }
+}
+
+/** 역할별 커서 + 회차 카운터. `tick` 은 `cap === 1` 교대에 쓴다. */
+export interface LaneCursors {
+  measure: number
+  other: number
+  tick: number
+}
+
+/**
+ * 저장값 → 커서. **구 포맷(숫자 하나)을 받아준다** — 배포 시점에 라이브에 숫자가 들어 있다.
+ * 깨진 값은 0 에서 시작한다(정확성은 커서와 무관하고 공평성만 약해진다 — fail-soft).
+ */
+export function readCursors(raw: unknown): LaneCursors {
+  const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? Math.trunc(n) : 0 }
+  if (typeof raw === 'number') return { measure: 0, other: num(raw), tick: 0 }
+  if (typeof raw === 'string') {
+    const t = raw.trim()
+    if (t.startsWith('{')) {
+      try {
+        const o = JSON.parse(t) as Record<string, unknown>
+        return { measure: num(o.measure), other: num(o.other), tick: num(o.tick) }
+      } catch { return { measure: 0, other: 0, tick: 0 } }
+    }
+    return { measure: 0, other: num(t), tick: 0 }   // 구 포맷
+  }
+  if (raw && typeof raw === 'object') {
+    const o = raw as Record<string, unknown>
+    return { measure: num(o.measure), other: num(o.other), tick: num(o.tick) }
+  }
+  return { measure: 0, other: 0, tick: 0 }
+}
+
+/** 정렬된 목록에서 커서부터 `want` 개를 집는다 — 역할 하나의 라운드로빈. */
+function pickFrom<T extends LaneCandidate>(lanes: T[], want: number, cursor: number) {
+  const n = lanes.length
+  if (n === 0) return { run: [] as T[], deferred: [] as T[], next: 0 }
+  const c = Number.isFinite(cursor) ? ((Math.trunc(cursor) % n) + n) % n : 0   // 음수·NaN 안전
+  const take = Math.min(Math.max(0, Math.trunc(want) || 0), n)
+  const ordered = [...lanes].sort((a, b) => {
+    const ka = assignKey(a.beat), kb = assignKey(b.beat)
+    return ka < kb ? -1 : ka > kb ? 1 : 0
+  })
+  if (take === 0) return { run: [] as T[], deferred: ordered, next: c }
+  const picked = new Set<number>()
+  const run: T[] = []
+  for (let i = 0; i < take; i++) {
+    const idx = (c + i) % n
+    picked.add(idx)
+    run.push(ordered[idx])
+  }
+  return { run, deferred: ordered.filter((_, i) => !picked.has(i)), next: (c + take) % n }
 }
 
 /**
@@ -129,8 +271,11 @@ export interface LaneSelection<T extends LaneCandidate> {
   deferred: T[]
   /** 이번 회차에 매시간 레인에 실제로 준 몫(= 예산 − 항상돌것). 0 이면 이 시간엔 매시간 레인이 하나도 못 돈다. */
   cap: number
-  /** 다음 회차가 이어받을 커서. 호출부가 저장한다. */
-  nextCursor: number
+  /** 그 몫을 역할로 나눈 결과 — 배분이 의도대로 됐는지 스냅샷에서 바로 읽으려고 남긴다. */
+  capMeasure: number
+  capOther: number
+  /** 다음 회차가 이어받을 커서(역할별). 호출부가 저장한다. */
+  nextCursor: LaneCursors
   /** 항상 돌아야 하는(미룰 수 없는) 레인 수 — 예산을 통째로 먹으면 이 값이 경보다. */
   always: number
 }
@@ -162,37 +307,55 @@ export interface LaneSelection<T extends LaneCandidate> {
  * ⚠️ `cap` 하한은 **1**이다. 항상 돌 레인이 예산을 다 먹어도 매시간 레인 한 개는 전진시킨다 —
  *   0 으로 두면 그 시간대가 반복될 때 커서가 영원히 안 움직인다(= 부재, 이 파일이 막으려는 바로 그것).
  *
- * @param cursor 지난 회차가 남긴 커서. 없으면 0(또는 시각 유도값) — 정확성은 커서 유무와 무관하고,
- *               커서가 없으면 공평성만 약해진다(fail-soft).
+ * ## 🎭 그리고 몫을 **역할로** 나눈다 (2026-08-02 대표 확정)
+ * 위까지가 "굶는 레인이 없다"는 보장이라면, 이건 "**옳은 레인이 굶지 않는다**"는 보장이다.
+ * 커서 라운드로빈은 모든 레인을 동등하게 돌리는데, 레인은 동등하지 않다 — 수집은 백로그를
+ * 만들고 보강은 백로그를 줄인다. 동등 배분이면 각 기능의 몫이 **등록된 레인 개수**로 정해지고,
+ * 데이터 소스를 붙일 때마다 측정의 몫이 자동으로 깎인다(라이브 실측: 수집 13 : 측정 1,
+ * `nb_unmeasured` 20,497 → 21,192 상승). ⇒ `MEASURE_SHARE_DEFAULT` 참조.
+ *
+ * **역할별로 커서가 따로 돈다.** 하나로 합치면(예: 두 역할의 인덱스를 같은 수에서 유도) 몫과
+ * 레인 수의 배수 관계에 따라 특정 레인이 영영 안 걸린다 — 굶는 레인이 없다는 위 증명이 깨진다.
+ *
+ * @param cursor 지난 회차가 남긴 커서(역할별 + 회차). 숫자 하나(구 포맷)도 받는다 — 배포 시점에
+ *               라이브에 숫자가 들어 있다. 없거나 깨져도 정확성은 불변이고 공평성만 약해진다(fail-soft).
+ * @param share  측정 레인이 가져갈 몫의 비율. 호출부가 env 로 준다(`resolveMeasureShare`).
  */
 export function selectLanesForTick<T extends LaneCandidate>(
-  lanes: T[], perTick: number, cursor: number,
+  lanes: T[], perTick: number, cursor: number | LaneCursors, share: number = MEASURE_SHARE_DEFAULT,
 ): LaneSelection<T> {
   const always = lanes.filter(l => !isDeferrable(l))
   const movable = lanes.filter(isDeferrable)
   const budget = Number.isFinite(perTick) && perTick >= 1 ? Math.floor(perTick) : FREE_LANES_PER_TICK
+  const cur = readCursors(cursor)
+  const tick = cur.tick + 1                     // 회차 카운터 — `cap === 1` 교대에 쓴다
   const n = movable.length
   const base = { always: always.length }
-  if (n === 0) return { run: [...always], deferred: [], cap: 0, nextCursor: 0, ...base }
+  const zero = { measure: 0, other: 0, tick }
+  if (n === 0) return { run: [...always], deferred: [], cap: 0, capMeasure: 0, capOther: 0, nextCursor: zero, ...base }
 
   // 항상 돌 레인이 먹고 남은 몫. 하한 1 — 위 주석 참조.
   const cap = Math.max(1, budget - always.length)
-  if (n <= cap) return { run: [...always, ...movable], deferred: [], cap, nextCursor: 0, ...base }
-
-  const ordered = [...movable].sort((a, b) => {
-    const ka = assignKey(a.beat), kb = assignKey(b.beat)
-    return ka < kb ? -1 : ka > kb ? 1 : 0
-  })
-  const c = Number.isFinite(cursor) ? ((Math.trunc(cursor) % n) + n) % n : 0  // 음수·NaN 안전
-  const picked = new Set<number>()
-  const run: T[] = [...always]
-  for (let i = 0; i < cap; i++) {
-    const idx = (c + i) % n
-    picked.add(idx)
-    run.push(ordered[idx])
+  const measure = movable.filter(l => laneRole(l) === 'measure')
+  const other = movable.filter(l => laneRole(l) !== 'measure')
+  if (n <= cap) {
+    return {
+      run: [...always, ...movable], deferred: [], cap,
+      capMeasure: measure.length, capOther: other.length, nextCursor: zero, ...base,
+    }
   }
-  const deferred = ordered.filter((_, i) => !picked.has(i))
-  return { run, deferred, cap, nextCursor: (c + cap) % n, ...base }
+
+  // 🎭 몫을 역할로 나눈다 — 수집 레인이 몇 개든 측정은 자기 비율을 유지한다(`MEASURE_SHARE_DEFAULT`).
+  const split = splitCapByRole(cap, measure.length, other.length, share, cur.tick)
+  const pm = pickFrom(measure, split.measure, cur.measure)
+  const po = pickFrom(other, split.other, cur.other)
+  return {
+    run: [...always, ...pm.run, ...po.run],
+    deferred: [...pm.deferred, ...po.deferred],
+    cap, capMeasure: split.measure, capOther: split.other,
+    nextCursor: { measure: pm.next, other: po.next, tick },
+    ...base,
+  }
 }
 
 /**
@@ -212,6 +375,9 @@ export function dispatchSnapshot(
     at: atIso, hour: hourUTC, plan, per_tick: perTick,
     cap: sel.cap, always: sel.always, cursor_next: sel.nextCursor,
     over_budget: sel.always >= perTick,
+    // 🎭 배분이 의도대로 됐는지 **다음 세션이 추측 없이 읽게** — 몫과 실제 실행을 나란히 남긴다.
+    cap_measure: sel.capMeasure, cap_other: sel.capOther,
+    ran_measure: sel.run.filter(l => laneRole(l) === 'measure').map(l => l.beat).sort(),
     ran: sel.run.map(l => l.beat).sort(),
     deferred: sel.deferred.map(l => l.beat).sort(),
   }

@@ -39,12 +39,12 @@
     },
     "기능은 실물인데 입구가 없다 — 판단 필요": {
       "/seller/2fa": "🔴 218줄 TOTP 설정 페이지. **링크를 달면 안 된다** — `require2FA()` 미들웨어가 **어드민 라우트에만** 붙어 있어(disputes 승인·payout-center) 셀러가 켜도 **아무것도 보호하지 않는다**. 빠진 것은 링크가 아니라 **셀러 라우트에의 적용**이다. 링크부터 달면 '켰는데 안 걸린다'가 된다",
-      "/seller/marketing": "283줄 — 인플루언서 차단 관리(2026-05-16)",
-      "/seller/realtime": "147줄 — 매장 실시간 매출",
-      "/seller/store-dashboard": "150줄 — 매장 종합 매출(2026-05-21)",
-      "/seller/voucher-orders": "170줄 — KT 교환권 이력(2026-05-19)",
+      "/seller/marketing": "283줄 — 인플루언서 차단/해제. ⚠️ `deals`·`deals/propose` 는 nav 의 `/seller/influencer-deals` 가 **이미 쓴다** — 고유 기능은 차단·해제뿐이라 부분 중복",
+      "/seller/realtime": "147줄 — 매장 실시간 매출. API `/api/seller-marketing/realtime-stats` **실재 확인**",
+      "/seller/store-dashboard": "150줄 — 매장 종합 매출. 🔴 **2026-08-02 실측: 통계 호출이 404 였다**(analytics 마운트 누락, 별건으로 수정). 도달 불가라 아무도 못 밟아 안 고쳐진 채 남아 있었다. 링크는 셀러 nav 간소화(2026-07-19 대표 확정)와 충돌하므로 대표 판단",
+      "/seller/voucher-orders": "170줄 — KT 교환권 이력. API 실재 확인",
       "/seller/consignment": "위탁 — 분류 미확인",
-      "/admin/maker-pool": "제조사 풀(AdminMakerPoolPage) — 어드민 메뉴에 없다"
+      "/admin/maker-pool": "🔴 **링크 금지** — `features/supply/**` 소속(=도매몰)이고 철거 대기다. consumer nav 에 달면 서비스 분리 위반. import 별칭도 `makerPoolTestRoutes`(테스트 성격)"
     },
     "별칭": {
       "/mypage/wishlist": "`/wishlist` 가 실제 링크 대상. 이건 옛 경로 별칭"
@@ -52,5 +52,6 @@
     "해소됨": {
       "/agency/ledger": "2026-08-01 nav 배선 — `AgencyLayout` '실시간 원장'. `GET /api/ledger/my` 가 `user.type === 'agency'`(`agency:{id}` 계정)를 명시적으로 지원함을 **핸들러를 읽어 확인한 뒤** 달았다. 정산 관리(확정 내역)와 달리 **실시간 미수/원장**을 본다 — 셀러 `/seller/ledger` 와 대칭"
     }
-  }
+  },
+  "_nav_note": "⚠️ 셀러 nav 추가는 **2026-07-19 대표 확정(SELLER_STORE_ONLY_MODE — 대시보드 간소화, 상품·소싱 그룹 통째 숨김)** 과 충돌한다. 세션이 임의로 늘리지 말 것."
 }

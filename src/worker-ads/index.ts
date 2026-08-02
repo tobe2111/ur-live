@@ -525,15 +525,20 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     // 🩹 2026-07-29 균등 순환(`% 5`) → 가중 10슬롯. 근거는 SSOT 쪽 주석에 라이브 수치로 적어 뒀다:
     //    `reextract` 는 전수 36,880행에 `filled: 0`(할 일이 구조적으로 없음)인데 20%를 가져갔고,
     //    `reclassify` 는 전수 한 바퀴에 65시간, `handle` 은 수율 최고(2,481)인데 아직 안 끝났다.
+    // 🩹 2026-08-02 재배분: `handle` 3 → 1(라이브 `done: true · unfixable: 34` — 고칠 게 없다),
+    //    `reextract` 1 → 3(지역 백필 36,269 + 카페 회원수 3,142 를 이 단계가 이고 있다).
+    //    자리도 근거가 있다 — 인덱스 7 은 19시 양보로 하루 1회라 1슬롯 단계를 두면 간격이 24h 가 된다.
     const PHASES = [
       'merge', 'reextract', 'reclassify', 'quality', 'handle',
       'selflink',
-      'reclassify', 'handle', 'quality', 'reclassify', 'handle',
+      'reclassify', 'reextract', 'quality', 'reclassify', 'reextract',
       'reclassify',
     ] as const
     // 🤝 **19시는 야간 재보정에 양보한다**(`RESCAN_HOUR_UTC`) — 둘이 같은 `MAINT_LEASE_KEY` 를 다투다
     //   진 쪽이 스냅샷도 안 남기고 사라지고 있었다(`maintenance_rescan.at` 이 07-27 에서 정지 — 순환 배포일).
-    //   양보 비용 0: `handle` 은 4·7·10·16·22시에 그대로 돈다. 근거·설계는 `gates.hourlySchedule` docblock.
+    //   양보 비용은 **19시 슬롯을 가진 단계**가 진다(인덱스 7). 그래서 거기엔 여러 슬롯을 가진 단계만 둔다 —
+    //   지금은 `reextract`(1·7·10) 이라 19시를 잃어도 hour 1·7·10·13·22 로 돌아 최대 간격 9h 다.
+    //   1슬롯 단계를 인덱스 7 에 두면 간격이 24h 가 되어 경보 창(12h)을 깬다(유닛이 그 값을 고정한다).
     gates.hourlySchedule(PHASES, [RESCAN_HOUR_UTC],
       (phase) => `/__ads/maintenance?phase=${phase}`,
       (phase) => async () => {
