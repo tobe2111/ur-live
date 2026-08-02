@@ -819,7 +819,7 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (27개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (29개)
 
 - `/admin/deals`
 - `/admin/group-buy`
@@ -828,6 +828,7 @@
 - `/admin/voucher-orders`
 - `/admin/voucher-transactions`
 - `/community-group-buy/:code`
+- `/community-group-buy/:code/messages`
 - `/community-group-buy/new`
 - `/g/:invite_code`
 - `/group-buy`
@@ -848,8 +849,9 @@
 - `/seller/voucher-orders`
 - `/stays`
 - `/stays/:id`
+- `/stays/checkout-return`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (83개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (95개)
 
 
 **/api/admin/stays**
@@ -860,16 +862,17 @@
 - `PATCH /api/admin/stays/bookings/:id/refund`
 - `GET /api/admin/stays/kpi`
 - `PATCH /api/admin/stays/reviews/:id/hide`
-
-**/api/admin/voucher-orders**
-- `GET /api/admin/voucher-orders`
-- `POST /api/admin/voucher-orders/:id/resend`
+- `DELETE /api/admin/stays/seed-demo`
+- `POST /api/admin/stays/seed-demo`
 
 **/api/appointments/:id**
 - `PATCH /api/appointments/:id/cancel`
 
 **/api/appointments/book**
 - `POST /api/appointments/book`
+
+**/api/appointments/bookable**
+- `GET /api/appointments/bookable`
 
 **/api/appointments/my**
 - `GET /api/appointments/my`
@@ -937,7 +940,14 @@
 **/api/group-buy/products**
 - `GET /api/group-buy/products`
 - `GET /api/group-buy/products/:id`
+- `GET /api/group-buy/products/:id/_diag`
+- `POST /api/group-buy/products/:id/ensure-geocode`
 - `GET /api/group-buy/products/:id/participants`
+- `GET /api/group-buy/products/map-clusters`
+
+**/api/group-buy/redemption-settings**
+- `GET /api/group-buy/redemption-settings`
+- `PUT /api/group-buy/redemption-settings`
 
 **/api/group-buy/refund**
 - `POST /api/group-buy/refund/:productId`
@@ -955,10 +965,17 @@
 - `POST /api/group-buy/stays/bookings/create`
 - `POST /api/group-buy/stays/bookings/create-multi`
 - `GET /api/group-buy/stays/my-bookings`
+- `GET /api/group-buy/stays/orders/:orderId`
 - `GET /api/group-buy/stays/search`
+
+**/api/group-buy/store-fcfs**
+- `GET /api/group-buy/store-fcfs`
 
 **/api/group-buy/store-stats**
 - `POST /api/group-buy/store-stats/:productId`
+
+**/api/group-buy/store-voucher-ledger**
+- `GET /api/group-buy/store-voucher-ledger`
 
 **/api/group-buy/verify**
 - `GET /api/group-buy/verify/:code`
@@ -969,6 +986,11 @@
 
 **/api/group-buy/voucher-logs**
 - `GET /api/group-buy/voucher-logs`
+
+**/api/group-buy/vouchers**
+- `POST /api/group-buy/vouchers/:code/cancel-redeem`
+- `GET /api/group-buy/vouchers/:code/redemption-info`
+- `POST /api/group-buy/vouchers/:code/self-redeem`
 
 **/api/hosting/catalog**
 - `GET /api/hosting/catalog`
@@ -1010,7 +1032,7 @@
 - `PATCH /api/seller/stays/bookings/:bookingId/use-voucher`
 
 
-> 마지막 생성: 2026-06-07T22:42:02.485Z
+> 마지막 생성: 2026-08-02T15:37:42.352Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

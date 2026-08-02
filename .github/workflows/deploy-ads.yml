@@ -25,6 +25,10 @@ on:
       - 'src/worker/**'
       - 'wrangler-ads.toml'
       - 'scripts/build-worker-ads.js'
+      # 🔁 **자기 자신** (2026-08-02 신설). 이게 없으면 *이 워크플로를 고쳐도 배포가 안 돈다* —
+      #   고친 재시도 로직이 실제로 되는지 확인하려면 무관한 코드 변경을 기다려야 했다.
+      #   (배포 경로가 깨졌을 때 그 수리를 검증할 방법이 없는 상태였다는 뜻이다.)
+      - '.github/workflows/deploy-ads.yml'
 
 concurrency:
   group: deploy-ads
@@ -33,7 +37,9 @@ concurrency:
 jobs:
   deploy-ads:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # ⏱️ 15 → 25: 정각 회차 보호(최대 6분) + 레이트 리밋 백오프(최대 8.5분) + 설치·번들이 15분 안에 안 들어간다.
+    #   짧게 두면 **대기 도중 타임아웃**으로 끝나 재시도가 또 무의미해진다.
+    timeout-minutes: 25
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
@@ -90,7 +96,22 @@ jobs:
           echo "=== esbuild 번들 ==="
           node scripts/build-worker-ads.js
           echo "=== wrangler deploy (ur-ads) ==="
-          MAX_RETRY=3
+          # ⏱️ **재시도 대기는 실패 이유에 맞춰야 한다** (2026-08-02 실측으로 재설계).
+          #
+          #   종전: `sleep $((i*10))` = 10s·20s → **총 30초**. 그런데 실제로 만난 실패는 이것이었다:
+          #     `A request to the Cloudflare API (/accounts/***/workers/services/ur-ads) failed.
+          #      Rate limited. Please wait and consider throttling your request speed [code: 10429]`
+          #   3번의 시도가 **40초 안에** 전부 소진되고 잡이 빨간불로 끝났다(15:03:29 → 15:03:51).
+          #   레이트 리밋은 초 단위로 안 풀린다 — 즉 재시도가 **있으나 마나**였다.
+          #
+          #   🔴 그리고 그 대가가 조용하다: ur-ads 는 **낡은 코드로 계속 돈다.** 라이브는 멀쩡해 보이고
+          #     실패는 Actions 탭 안에만 있다. 실제로 이날 머지 2건(#971·#969)의 ur-ads 코드가
+          #     배포되지 않은 채였고, 아무도 몰랐다. (이 파일 위쪽 주석이 경고한 바로 그 클래스 —
+          #     *"배포가 아예 안 돌아 ur-ads 가 조용히 낡은 코드로 계속 돌았다"* — 의 재발이다.)
+          #
+          #   ⇒ 레이트 리밋이면 **분 단위로** 기다린다(60·150·300s). 그 외 일시 오류는 짧게(10·20·30s).
+          #   ⚠️ 총 대기가 잡 타임아웃 안에 들어가야 한다 — 그래서 timeout-minutes 도 함께 올렸다.
+          MAX_RETRY=4
           for i in $(seq 1 $MAX_RETRY); do
             echo "--- attempt $i/$MAX_RETRY ---"
             OUT=$(npx wrangler@3 deploy --config wrangler-ads.toml 2>&1) && RC=0 || RC=$?
@@ -99,7 +120,16 @@ jobs:
             if echo "$OUT" | grep -q "Uploaded ur-ads"; then
               echo "::warning::스크립트 업로드 성공(부가 동기화만 실패) — 코드는 갱신됨."; exit 0
             fi
-            [ $i -lt $MAX_RETRY ] && { echo "재시도 대기..."; sleep $((i*10)); }
+            if [ $i -lt $MAX_RETRY ]; then
+              if echo "$OUT" | grep -qE '10429|Rate limited'; then
+                WAIT=$(( i == 1 ? 60 : (i == 2 ? 150 : 300) ))
+                echo "⏳ Cloudflare 레이트 리밋(10429) — ${WAIT}초 대기 후 재시도"
+              else
+                WAIT=$(( i * 10 ))
+                echo "재시도 대기... ${WAIT}초"
+              fi
+              sleep "$WAIT"
+            fi
           done
           echo "❌ ur-ads 배포 실패 (토큰 Workers Scripts:Edit 권한 / 번들 확인)"
           exit 1
