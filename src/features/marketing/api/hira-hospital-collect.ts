@@ -76,7 +76,7 @@ function toProspect(it: RawH): StoreProspect {
   }
 }
 
-export interface HiraStats { last_run: string; page: number; found: number; saved: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown } }
+export interface HiraStats { last_run: string; page: number; found: number; saved: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown; retry?: string } }
 const STATS_KEY = 'ads_hira_stats'
 const CURSOR_KEY = 'ads_hira_cursor'
 
@@ -101,20 +101,47 @@ export async function runHiraHospitalCollect(env: Env, maxPagesArg?: number): Pr
   let page = parseInt(curRaw?.value || '1', 10); if (!Number.isFinite(page) || page < 1) page = 1
 
   let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
+  let retried = false, retryNote: string | undefined
   for (let i = 0; i < Math.max(1, maxPages); i++) {
     // 🩹 2026-07-28 실측 수리: `numOfRows=500` 으로 **42회 실행 전부 타임아웃**(total_saved 0).
     //   심평원 병원목록은 페이지가 크면 응답이 느리다 — 한 번도 성공한 적이 없으니 크기를 줄이는 것이 맞다.
     //   env 로 조정 가능(무배포): 성공하면 올리고, 여전히 타임아웃이면 더 줄인다. 판정은 stats.diag.error 로.
     const numRows = Math.min(500, Math.max(20, parseInt((env as unknown as { ADS_HIRA_ROWS?: string }).ADS_HIRA_ROWS || '', 10) || 100))
-    const url = `${HIRA_BASE}/${HIRA_OP}?serviceKey=${serviceKeyParam(key)}&pageNo=${page}&numOfRows=${numRows}&_type=json`
     // ⚠️ 2026-07-28 수리: `.catch(() => null)` 이 예외 원문을 버려 32회 연속 실패가 전부 '네트워크 오류'
     //   한 줄로 뭉개졌다 — 서브리퀘스트 한도인지 실제 네트워크 장애인지 구분 불가(오진의 원인).
-    let res: Response | null = null
-    let netMsg = '네트워크 오류'
-    try { res = await fetch(url, { signal: AbortSignal.timeout(25000) }) } catch (err) {
-      const m = err instanceof Error ? err.message : String(err || '')
-      if (/too many subrequests/i.test(m)) netMsg = '⛔ 플랫폼 요청한도 도달 — maxPages 를 줄일 것'
-      else if (m) netMsg = `네트워크 오류: ${m.slice(0, 80)}`
+    const shoot = async (rows: number, ms: number): Promise<{ res: Response | null; msg: string }> => {
+      const u = `${HIRA_BASE}/${HIRA_OP}?serviceKey=${serviceKeyParam(key)}&pageNo=${page}&numOfRows=${rows}&_type=json`
+      try { return { res: await fetch(u, { signal: AbortSignal.timeout(ms) }), msg: '' } } catch (err) {
+        const m = err instanceof Error ? err.message : String(err || '')
+        if (/too many subrequests/i.test(m)) return { res: null, msg: '⛔ 플랫폼 요청한도 도달 — maxPages 를 줄일 것' }
+        return { res: null, msg: m ? `네트워크 오류: ${m.slice(0, 80)}` : '네트워크 오류' }
+      }
+    }
+    let { res, msg: netMsg } = await shoot(numRows, 25000)
+    /**
+     * 🔬 **재시도를 실험으로 쓴다** (2026-08-03 — 60회 연속 timeout 의 원인을 라이브가 스스로 가르게).
+     *
+     *   이 레인은 `page=1 · rows=100` 에서 **60회 전부** `AbortSignal.timeout(25000)` 로 죽었다.
+     *   그런데 **프로브는 같은 워커·같은 키·같은 주소로 `rows 1~500` 전부 즉답 200** 이었다
+     *   (다른 점은 시각뿐 — 레인은 매시 :00, 프로브는 비정각).
+     *   그리고 같은 :00 에 같은 게이트웨이를 때리는 `commerce`(누적 130,795건)·`storeinfo`(14,271건)는
+     *   **성공한다** ⇒ "정각엔 게이트웨이가 바쁘다" 만으로는 설명이 안 된다.
+     *
+     *   ⚠️ **이 재시도는 원인을 단정하지 않는다.** 어느 원인이든 손해가 없고(실패해도 지금과 동일),
+     *   결과가 `diag.retry` 에 남아 **다음 세션이 원인을 가른다**:
+     *     · 작은 페이지로 성공  → 페이지 크기/응답량 문제 (`ADS_HIRA_ROWS` 를 내리면 무배포로 해결)
+     *     · 작은 페이지도 실패  → 페이지 크기 **무관** (동시성·외부 요인 — 회차 분산을 봐야 한다)
+     *
+     *   회차당 **1회만** — 예산(무료 서브리퀘스트 천장)과 벽시계를 둘 다 묶어 둔다.
+     */
+    if (!res && !retried && /timeout|abort/i.test(netMsg)) {
+      retried = true
+      const small = Math.max(20, Math.floor(numRows / 5))
+      const r2 = await shoot(small, 8000)
+      retryNote = r2.res
+        ? `rows=${numRows}→${small} 재시도 성공 ⇒ 페이지 크기 문제(ADS_HIRA_ROWS 를 내릴 것)`
+        : `rows=${numRows}→${small} 재시도도 실패 ⇒ 페이지 크기 무관(동시성·외부 요인)`
+      if (r2.res) { res = r2.res; netMsg = '' }
     }
     if (!res || !res.ok) { lastMsg = res ? `HTTP ${res.status}` : netMsg; break }
     const text = await res.text().catch(() => '')
@@ -129,7 +156,7 @@ export async function runHiraHospitalCollect(env: Env, maxPagesArg?: number): Pr
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, String(page)).run().catch(() => null)
   const error = found === 0 && lastMsg ? `API: ${lastMsg}` : undefined
-  const s: HiraStats = { last_run: stamp, page, found, saved, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
+  const s: HiraStats = { last_run: stamp, page, found, saved, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample, retry: retryNote } }
   await persist(s)
   return s
 }
