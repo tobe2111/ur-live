@@ -140,6 +140,47 @@ const MUTATIONS = [
       '이 원장 행은 잔액 기록이자 **중복 방지 키**다(`alreadyRewarded` 가 description LIKE 로 읽는다). ' +
       '행이 없으면 같은 추천 조합이 매번 다시 보상받는다 — 불일치를 넘어 반복 지급.',
   },
+  {
+    name: '우선업종 category 오타(조용한 0 순위)',
+    file: 'src/features/marketing/api/store-kakao-collect.ts',
+    find: "{ kw: '한식', category: '일반음식점' }",
+    replace: "{ kw: '한식', category: '음식점' }",
+    test: 'src/tests/unit/store-kakao-voucher-grid.test.ts',
+    why:
+      'category 는 `PRIORITY_UPJONG`(인허가 한글 업종명)과 글자까지 같아야 우선순위 SQL 에 걸린다. ' +
+      '한 글자만 달라도 에러 없이 **0 순위**가 되고 어드민 업종 필터에서도 별개 항목으로 갈린다 ' +
+      '— store-prospects.ts 주석이 이미 경고한 함정이다.',
+  },
+  {
+    name: '카카오 매장 수집 마감선 제거',
+    file: 'src/features/marketing/api/store-kakao-collect.ts',
+    find: "if (Date.now() - startedAt > RUN_DEADLINE_MS) { stoppedBy = 'deadline'; break outer }",
+    replace: '',
+    test: 'src/tests/unit/store-kakao-voucher-grid.test.ts',
+    why:
+      '커서 저장이 루프 뒤에 있다. CPU 한도로 죽으면 커서가 안 올라가 다음 회차가 같은 키워드를 ' +
+      '또 훑는다 ⇒ **영원히 전진 0**. 통신판매 레인이 정확히 그렇게 며칠간 멈춰 있었다(#927).',
+  },
+  {
+    name: '무인 블록 최소 몫 보장 제거',
+    file: 'src/features/marketing/api/store-kakao-collect.ts',
+    find: 'const unmanned = Math.max(1, Math.round(total * (1 - voucherShare)))',
+    replace: 'const unmanned = Math.floor(total * (1 - voucherShare))',
+    test: 'src/tests/unit/store-kakao-voucher-grid.test.ts',
+    why:
+      '몫이 0 이면 그 레인은 **에러 없이** 멈춘다 — 커서도 안 움직여서 아무도 모른다. ' +
+      '대표가 07-28 에 요청한 무인 레인을 조용히 죽이는 경로다.',
+  },
+  {
+    name: '카카오 매장 블록이 커서를 공유',
+    file: 'src/features/marketing/api/store-kakao-collect.ts',
+    find: "const CURSOR_KEY_VOUCHER = 'ads_store_kakao_cursor_v'",
+    replace: "const CURSOR_KEY_VOUCHER = 'ads_store_kakao_cursor'",
+    test: 'src/tests/unit/store-kakao-voucher-grid.test.ts',
+    why:
+      '두 블록(우선업종·무인)이 한 커서를 쓰면 서로의 진행을 덮어써 어느 쪽도 한 바퀴를 못 돈다 ' +
+      '— 레인별 학습 상한을 공유해 같은 사고가 났던 `ads_subreq_cap` 과 똑같은 구조다(2026-07-28).',
+  },
 ]
 
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
