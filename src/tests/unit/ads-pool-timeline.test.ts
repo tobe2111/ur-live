@@ -13,22 +13,46 @@ import {
   TIMELINE_MAX_DAYS, TIMELINE_DEFAULT_DAYS,
 } from '@/features/marketing/api/pool-timeline'
 
-describe('🔒 두 풀은 테이블·시각 컬럼이 다르다', () => {
-  it('표가 실제 스키마와 일치한다', () => {
-    expect(POOL_SOURCE.influencer).toEqual({ table: 'ad_influencer_leads', tsColumn: 'collected_at' })
-    expect(POOL_SOURCE.company).toEqual({ table: 'ad_company_leads', tsColumn: 'created_at' })
+describe('🔒 시각 컬럼은 DDL 이 진실이다', () => {
+  /**
+   * 🔴 **2026-08-02 실사고 — 이 테스트의 첫 판은 실패할 수 없었다.**
+   * `expect(POOL_SOURCE.company).toEqual({ …, tsColumn: 'created_at' })` 로 **내 상수를 내 상수와**
+   * 비교했다. 그래서 값이 틀렸는데도 초록이었고, 라이브에서 `ad_company_leads` 조회가
+   * `no such column` → `.catch(() => null)` → **에러 없이 allTime: 0** 으로 나왔다
+   * (17만 건짜리 풀이 빈 것처럼 보였다). 오늘 네 번째 "실패할 수 없는 가드"다.
+   * ⇒ 이제 **CREATE TABLE 원문을 읽어** 대조한다. 상수가 틀리면 여기서 빨간불이 뜬다.
+   */
+  const DDL: Record<string, string> = {
+    ad_influencer_leads: 'src/features/marketing/api/influencer-schema.ts',
+    ad_company_leads: 'src/features/marketing/api/company-discovery.ts',
+  }
+
+  it('표의 컬럼이 그 테이블 DDL 에 실제로 있다', async () => {
+    const fs = await import('node:fs')
+    for (const src of Object.values(POOL_SOURCE)) {
+      const file = DDL[src.table]
+      expect(file, `${src.table} 의 DDL 위치를 모른다 — 표에 새 풀을 넣었으면 여기도 넣을 것`).toBeTruthy()
+      const text = fs.readFileSync(file, 'utf8')
+      const at = text.indexOf(`CREATE TABLE IF NOT EXISTS ${src.table}`)
+      expect(at, `${file} 에서 ${src.table} DDL 을 못 찾았다(코드 이동?)`).toBeGreaterThan(-1)
+      const ddl = text.slice(at, at + 4000)
+      expect(ddl, `${src.table} 에 ${src.tsColumn} 컬럼이 없다`).toMatch(new RegExp(`\\b${src.tsColumn}\\s+DATETIME`))
+    }
   })
 
-  it('각 풀의 SQL 이 자기 컬럼만 쓴다 — 남의 컬럼이 새어 들어가면 500 이거나 조용히 0건', () => {
+  it('두 풀 다 collected_at 이다 — 한쪽만 바꾸면 조용히 0건이 된다', () => {
+    expect(POOL_SOURCE.influencer.tsColumn).toBe('collected_at')
+    expect(POOL_SOURCE.company.tsColumn).toBe('collected_at')
+  })
+
+  it('각 풀의 SQL 이 자기 테이블만 쓴다', () => {
     const inf = buildTimelineSql('influencer', 30)
     expect(inf).toContain('ad_influencer_leads')
-    expect(inf).toContain('collected_at')
-    expect(inf).not.toContain('created_at')
+    expect(inf).not.toContain('ad_company_leads')
 
     const co = buildTimelineSql('company', 30)
     expect(co).toContain('ad_company_leads')
-    expect(co).toContain('created_at')
-    expect(co).not.toContain('collected_at')
+    expect(co).not.toContain('ad_influencer_leads')
   })
 })
 

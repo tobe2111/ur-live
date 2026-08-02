@@ -122,10 +122,10 @@ const MUTATIONS = [
   {
     name: '수집 타임라인 풀 컬럼 혼동',
     file: 'src/features/marketing/api/pool-timeline.ts',
-    find: "company: { table: 'ad_company_leads', tsColumn: 'created_at' },",
-    replace: "company: { table: 'ad_company_leads', tsColumn: 'collected_at' },",
+    find: "company: { table: 'ad_company_leads', tsColumn: 'collected_at' },",
+    replace: "company: { table: 'ad_company_leads', tsColumn: 'created_at' },",
     test: 'src/tests/unit/ads-pool-timeline.test.ts',
-    why: '두 풀의 시각 컬럼이 다르다 — 혼동하면 no such column 500 이거나 조용히 0건이 된다.',
+    why: '2026-08-02 라이브 실사고 재현: created_at 으로 적어 배포했더니 no such column 을 catch 가 삼켜 **에러 없이 allTime 0**(17만 건 풀이 빈 것처럼). 둘 다 collected_at 이다.',
   },
   {
     name: '팬아웃 자기신고 무력화(띄웠다=성공)',

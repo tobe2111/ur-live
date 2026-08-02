@@ -5,13 +5,17 @@
  * *누적 총계*뿐이라 "언제 들어왔나 · 어제보다 늘었나 · 어느 날 멈췄나"를 알 수 없었다
  * (라이브 장애 판정에서 실제로 이게 없어 매번 하트비트를 손으로 뒤졌다).
  *
- * ## ⚠️ 두 풀은 컬럼이 다르다 — 이게 이 파일의 존재 이유다
+ * ## ⚠️ 시각 컬럼은 **DDL 이 진실이다** — 여기서 실제로 틀렸다
  * ```
- *   ad_influencer_leads  → collected_at
- *   ad_company_leads     → created_at
+ *   ad_influencer_leads  → collected_at   (influencer-schema.ts:34)
+ *   ad_company_leads     → collected_at   (company-discovery.ts:131)
  * ```
- * 한쪽 이름으로 두 테이블을 조회하면 **`no such column` 로 500** 이거나, 더 나쁘게는
- * 조용히 0건이 된다. 그래서 표를 하나로 고정하고 유닛이 그 표를 강제한다.
+ * 🔴 **2026-08-02 실사고**: 여기 `ad_company_leads` 를 `created_at` 으로 적어 배포했다.
+ * D1 은 `no such column` 을 던졌고 조회부의 `.catch(() => null)` 이 그걸 삼켜 —
+ * **에러 없이 `allTime: 0`** 이 나왔다. 17만 건짜리 풀이 화면에서 빈 것처럼 보였다.
+ * 원인은 스키마를 `CREATE TABLE` 이 아니라 **다른 파일의 grep 한 줄**로 추정한 것이다.
+ * ⇒ 유닛이 **DDL 원문을 읽어** 이 표를 검증한다(상수를 상수와 비교하면 영원히 통과한다 —
+ *   첫 판이 정확히 그래서 못 잡았다).
  *
  * ## ⚠️ 날짜는 **KST** 다
  * D1 의 `datetime('now')`·`created_at` 은 **`Z` 없는 UTC 문자열**이다. 그대로 `DATE()` 하면
@@ -29,7 +33,7 @@ export type PoolKind = 'influencer' | 'company'
  */
 export const POOL_SOURCE: Record<PoolKind, { table: string; tsColumn: string }> = {
   influencer: { table: 'ad_influencer_leads', tsColumn: 'collected_at' },
-  company: { table: 'ad_company_leads', tsColumn: 'created_at' },
+  company: { table: 'ad_company_leads', tsColumn: 'collected_at' },
 }
 
 /** 한 번에 조회할 수 있는 최대 일수 — 무한 range 로 D1 를 훑지 않게. */

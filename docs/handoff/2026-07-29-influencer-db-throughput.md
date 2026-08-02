@@ -2121,3 +2121,38 @@ dispatch: cap 5 · always 3 · ran 8 · over_budget false   ← 예산은 지켜
 
 ### 📌 08-02 09:5x KST — #939 머지(`c2413c3`)
 수집 타임라인 · `daily-batch`/`social-maintenance` kick 전환(우회 7→5) · 팬아웃 착지 자기신고.
+
+---
+
+## 🔴 08-02 11:1x KST — **내가 방금 배포한 코드가 "조용히 0건" 을 냈다** (오늘 네 번째 같은 클래스)
+
+배포 직후 새 엔드포인트를 실제로 두드려 봤더니:
+```
+GET /api/admin/partner-pool/timeline?days=14
+→ { rows: [], total: 0, allTime: 0, since: null }      ← 이 풀엔 174,758 건이 있다
+```
+
+**원인**: `POOL_SOURCE.company.tsColumn` 을 `created_at` 으로 적었는데 실제 DDL 은 `collected_at` 이다
+(`company-discovery.ts:131`). D1 이 `no such column` 을 던졌고 조회부의 `.catch(() => null)` 이
+그걸 삼켜 **에러 없이 0건**이 됐다. 내가 그 파일 헤더에 *"더 나쁘게는 조용히 0건이 된다"* 라고
+경고까지 써 놓고 정확히 그 함정에 빠졌다.
+
+**왜 틀렸나**: 스키마를 `CREATE TABLE` 이 아니라 **다른 파일을 grep 한 한 줄**로 추정했다
+(`company-collect.ts` 에서 `created_at` 1건 → 그게 이 테이블의 컬럼이라고 단정).
+
+### 그런데 더 나쁜 건 — **테스트가 내 상수를 내 상수와 비교하고 있었다**
+```ts
+expect(POOL_SOURCE.company).toEqual({ table: 'ad_company_leads', tsColumn: 'created_at' })
+```
+값이 틀렸는데도 영원히 초록이다. **오늘 네 번째 "실패할 수 없는 가드"** — 그걸 막으려고 주입
+하네스까지 만든 날에, 같은 실수를 한 번 더 했다.
+⇒ 이제 유닛이 **`CREATE TABLE` 원문을 읽어** 컬럼 존재를 확인한다. 라이브에서 터진 오류를
+그대로 주입하면 빨간불이 뜬다(매니페스트 방향도 뒤집어 등록).
+
+### 🔑 다음 세션이 가져갈 교훈 (이게 제일 값지다)
+1. **스키마는 DDL 로 확인한다.** 다른 파일의 grep 한 줄은 근거가 아니다.
+2. **상수를 상수와 비교하는 테스트는 테스트가 아니다.** 외부 사실(DDL·라이브 응답)과 대조해야 한다.
+3. **배포했으면 그 엔드포인트를 실제로 두드려 봐라.** 이 버그는 유닛·타입·빌드·게이트를 전부
+   통과했고 **실호출 한 번**에 드러났다.
+
+두 풀 다 `collected_at` 이다.
