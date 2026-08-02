@@ -333,3 +333,31 @@ bash /tmp/.../scratchpad/verdict.sh
 - `ads_maint_phase_cursor` 가 `1:N` 으로 돌아가는가(배정표 12칸을 한 바퀴)
 - **`ads_reextract_cursor` 가 13398 에서 움직이는가** · `region_pending` 이 32,761 에서 줄기 시작하는가
 - 카페 `via` 가 `:euckr` 인지 `:bytes` 인지, `aborted:true` 가 뜨는지(#966 조기 중단 작동)
+
+---
+
+## ⚠️ 판정 도구에서 틀렸던 것 두 가지 (다음 세션이 같은 오독 하지 않게)
+
+### 1. `region` 은 세 상태다 — 뭉치면 진도가 안 보인다
+```sql
+region IS NULL              →  32,871  미판정 (한 번도 시도 안 함)   ← 이게 "지역 미판정"
+region = ''                 →  10,029  시도했으나 못 찾음
+region IS NOT NULL AND <>'' →     807  채워짐
+```
+처음엔 `region IS NULL OR region=''` 로 세어 **42,900** 이 나왔고, 어드민이 말하는 32,761 과 안 맞아
+한참 헤맬 뻔했다. 백필이 아무리 돌아도 "못 찾음"은 안 줄어드므로, **NULL 만 세야** 진도가 보인다.
+
+### 2. `cron_failures` vs 하트비트 — 역할이 다르다
+- **하트비트**(`cron_hb:*`)는 **이름당 마지막 값만** 남는다. 21:00 에 죽고 22:00 에 성공하면 21:00 의
+  죽음은 사라진다 → **이력 판정에 쓰면 안 된다.**
+- **`cron_failures`** 는 로그다. 사망 이력은 여기서 본다.
+- 그리고 **둘 다 없는 경우**가 있다(22:00 reextract) — 그게 '관측 밖'이다. 디스패치 기록
+  (`ads_dispatch_last.by_domain.*.run`)과 리스(`ads_maintain_lease`)로만 "시작은 했다"를 알 수 있다.
+
+### 3. 🩸 백그라운드 CI 폴러가 조용히 죽어 있었다
+`curl api.github.com/.../check-runs` 가 세션 도중 **`GitHub access is not enabled for this session`** 을
+돌려주기 시작했다(초반엔 됐다). 예외를 먹고 `pend=1` 로 폴백하게 짜 놔서 **출력 0줄로 20분씩 돌다 끝났다** —
+실패가 성공과 구분되지 않았다. CI 판정은 **MCP(`pull_request_read`)** 로 할 것.
+
+> 🔑 이 세 개가 같은 클래스다: **"측정 도구가 조용히 틀리는" 것.** 값이 안 맞으면 대상을 의심하기 전에
+> 도구부터 의심할 것 — 오늘 CF 토큰 오진(며칠 낭비)도 정확히 이 클래스였다.
