@@ -49,6 +49,32 @@ curl -s https://urdeal.kr/{슬러그} | grep -c 'BottomNav\|nav.vouchers'   # �
 - **손 안 댄 것**: `ReturnPolicySection` 내용. 청약철회 고지는 법무(X4c) 대기 중이라
   **환불·반품 고지 문구를 조용히 바꾸지 않았다.** 법무 회신 후 별도 처리.
 
+## 🎨 디자인은 **다른 세션이 맡는다** (2026-08-02 대표 지시)
+
+이 세션은 **코드 경계까지만** 했다. 시안 작업·적용은 별도 세션.
+
+**그 세션이 알아야 할 것**
+
+1. **의뢰서 2종이 준비돼 있다**
+   - `docs/design/design-outsourcing-brief.md` — 화면 A(가게 홈)·B(빠른 공구 등록)·C·D. **이미 디자이너에게 전달됨.**
+   - `docs/design/design-outsourcing-brief-addendum-a2.md` — **화면 A-2(손님 상품 상세)**. 이번에 추가.
+     우선순위 🥇(화면 A와 동급 — 결제 직전 화면이라 여기서 이탈하면 A가 무의미). **전달 여부 미확인.**
+
+2. 🔴 **대표가 공유한 시안 링크를 이 환경에서 못 읽는다 — 원인 규명 완료**
+   - `https://claude.ai/design/p/{uuid}?file=...dc.html` → **403**. 주소를 바꿔도, 공유를 켜도 안 열린다.
+   - **인증 문제가 아니다.** 대조 실험으로 갈랐다: `claude.ai/code/artifact/{uuid}` 는 **HTML 전문이 그대로 읽힌다**
+     (`1d846580-…` 「링크샵 리디자인 제안」으로 확인 — CSS 변수·노트 6개까지 전부).
+   - ⇒ WebFetch 가 여는 건 **`/code/artifact/` 경로 하나뿐**이고 `/design/p/`(Claude 디자인 산출물)은 허용 밖.
+   - **우회**: ① HTML 소스 붙여넣기 ② `.dc.html` 파일 첨부 ③ **Code 아티팩트로 재게시**(앞으로 링크만으로 읽히니 이게 제일 편하다).
+   - ⚠️ **이걸 모르면 "권한을 더 달라"는 왕복으로 시간을 버린다** — 권한으로 해결되는 문제가 아니다.
+
+3. **시안이 오면**: `docs/design/<page-name>.md`(또는 `.html`)로 저장 → 구현 → 하단에 `## ✅ 구현 완료` + commit hash.
+   채팅에만 두면 세션 종료와 함께 사라진다(오늘 "다이클로 이미지"가 그렇게 사라졌다).
+
+4. **디자인 세션이 건드리면 안 되는 것**: 이 PR 이 만든 경계(`mallSurface`·`isMallProduct`·`hasPickupInfo`).
+   시안이 아무리 예뻐도 **몰 화면에 유어딜 크롬/영입 CTA/배송 문구를 되살리면 안 된다** —
+   `mall-surface-boundary.test.ts` 가 빨강으로 막는다. 막히면 그건 가드가 옳은 것이다.
+
 ## 못 막는 것 (가드 한계 — 과신 금지)
 
 `mall-surface-boundary.test.ts` 는 **렌더 결과를 보지 않는다**(React 미실행). 게이트가 배선돼
