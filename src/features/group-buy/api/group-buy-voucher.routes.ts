@@ -135,23 +135,6 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         return c.json({ success: false, error: '이미 사용되었거나 PIN이 틀립니다.' }, 400)
       }
 
-      /**
-       * 🏷️ **`consigned_from_seller_id` 는 실제 컬럼이 아니다 — `NULL` 리터럴로 고정** (2026-08-02)
-       *
-       * 이 파일의 위탁(consignment) 분기는 `products.consigned_from_seller_id` 를 읽는데,
-       * 그 컬럼은 **프로덕션에 존재한 적이 없다**(실측 `no such column`, baseline 97컬럼에도 없음).
-       * SQLite 는 없는 컬럼을 NULL 로 봐주지 않고 **쿼리 전체를 던진다** ⇒ 아래 `if (meta)` 가
-       * 통째로 안 돌고, 그 안의 **`recordVoucherUsedLedger`(Rail B — 실제 지급 레일) 도 안 돈다.**
-       *
-       * ⚠️ **지금 돈이 새고 있던 게 아니다**(사용된 이용권 0건 — 실측). 하지만 **첫 사용 순간
-       *    조용히 실패**하도록 배선돼 있었다. try/catch 안이라 예외도 안 보인다. 그게 더 나쁘다.
-       *
-       * `NULL AS consigned_from_seller_id` 로 두면 아래 `?? meta.seller_id` 폴백이 **원래
-       * 의도대로**(위탁 아님 = 판매 셀러가 곧 매장) 동작한다 — 분배식·멱등 전부 무변경.
-       *
-       * 📌 위탁을 실제로 켤 때: `products` 는 컬럼 예산제라 ALTER 금지 ⇒ `product_supply_meta`
-       *    (K-V 사이드테이블)에 얹고 여기서 조회해 주입할 것. 그건 머니 경로 변경이다.
-       */
       // 🛡️ 2026-05-16: 사용자에게 사용 완료 알림톡 + 사장님 화면용 attribution 정보 수집
       let responseMeta: { product_name: string; restaurant_name: string | null; influencer_id?: string | null; influencer_commission?: number } = {
         product_name: '이용권', restaurant_name: null,
@@ -160,7 +143,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         const meta = await DB.prepare(
           `SELECT v.id AS voucher_id, v.order_id, v.user_id, v.applied_price, u.phone,
                   p.name AS product_name, p.restaurant_name, p.category,
-                  p.seller_id, NULL AS consigned_from_seller_id   -- ⚠️ 실컬럼 아님 — 아래 주석
+                  p.seller_id, NULL AS consigned_from_seller_id -- 실컬럼 아님(2026-08-02): 쿼리가 통째로 던졌다. 상세=2026-08-02 인계 §4-b
            FROM vouchers v
            LEFT JOIN users u ON u.id = v.user_id
            LEFT JOIN products p ON p.id = v.product_id
