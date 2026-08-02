@@ -290,3 +290,46 @@ POST /accounts/{acc}/d1/database/{uuid}/query → 원본 SELECT 됨
 
 > 🔑 **교훈**: *"자격이 반영됐는지"를 화면 문구로 판정하지 마라.* "설정됨"은 옛 값에도 똑같이 뜬다.
 > 판정은 `verify` 같은 **바깥 사실**로 한다. 이 오진 하나가 며칠치 진단 능력을 막고 있었다.
+
+---
+
+## 🔁 정비 레인을 알람으로 — 단계 회전을 시각에서 커서로
+
+### 왜 (D1 직접 조회로 확정)
+```
+ads_reextract_cursor  13398 · 마지막 기록 KST 10:00 → 13시간째 제자리
+region_pending        32,761 불변
+cron_failures         KST 21:00 merge = CPU 한도 사망(기록됨)
+하트비트               KST 22:00 reextract = **기록 자체가 없음**(성공도 실패도)
+```
+KST 19:00 reextract 슬롯은 `ms=16,129` 로 "성공"했는데도 커서가 안 움직였다 — 카페 18회 시도가 예산을
+다 태워 region·reextract 를 0으로 굶긴 것(#966 이 고친 그것). 그런데 **#966 을 검증할 다음 기회가
+KST 07:00** 이었다. 단계가 `MAINT_SCHEDULE[hourUTC % 12]` 에 묶여 하루 3~4회차뿐이기 때문이다.
+
+⇒ 회전축을 **커서**로 옮기면 알람 경로에서 시간당 12회차가 된다(검증 주기 12시간 → 5분).
+
+### 무엇을 했나
+- `maintenance-phase-cursor.ts` — `"v:i"` 커서(재추출 커서와 같은 계약). **집기 전에 전진**시킨다
+  (안 그러면 무거운 단계가 죽을 때마다 같은 자리를 무한 재시도하며 뒤를 굶긴다).
+- `runNextMaintenancePhase(env)` — 커서로 단계를 골라 기존 `runMaintenancePhase` 에 위임(리스 계약 불변).
+- **알람 DO 를 레인 범용으로** — 인스턴스는 `idFromName(lane)` 로 갈리므로 **클래스 하나 + 이름별 인스턴스**면
+  `wrangler-ads.toml` 변경 없이 레인을 늘린다. 무엇을 돌릴지는 `lane-alarm-runners.ts` 등록부.
+  스탬프 키도 `ads_lane_alarm_last:{lane}` 으로 갈랐다(공유하면 나중 레인이 앞 레인 기록을 덮어쓴다).
+- cron 정비 순환은 `!laneAlarmOn` 일 때만 — 같은 `MAINT_LEASE_KEY` 를 다투면 진 쪽이 흔적 없이 사라진다.
+- `maintenance-cron.ts` · `rescan-hour.ts` 분리(엔트리 611 → 575줄, 파일크기 래칫).
+
+### ⚠️ 이번에 걸린 것
+- `HourGates` 타입을 `readonly string[]` 로 좁혔더니 호출부의 `as const` 리터럴이 안 맞았다(TS2345).
+  **제네릭 시그니처를 그대로** 받아야 한다.
+- `RESCAN_HOUR_UTC` 를 엔트리에 두면 분리한 모듈이 엔트리를 import 해 **순환**이 된다 → 자기 모듈로.
+- 소스-텍스트 가드 4개가 "엔트리에서 읽는다"고 박혀 있어 분리와 함께 깨졌다(cadence 3 + lifetime 1).
+  전부 새 파일로 앵커를 옮겼다 — **불변식은 하나도 약화하지 않았다.**
+
+### 다음 판정 (배포 후 ~10분)
+```bash
+bash /tmp/.../scratchpad/verdict.sh
+```
+- `ads_lane_alarm_last:maintenance` 가 5분 간격으로 오르는가 · `fail_streak` 0 유지되는가
+- `ads_maint_phase_cursor` 가 `1:N` 으로 돌아가는가(배정표 12칸을 한 바퀴)
+- **`ads_reextract_cursor` 가 13398 에서 움직이는가** · `region_pending` 이 32,761 에서 줄기 시작하는가
+- 카페 `via` 가 `:euckr` 인지 `:bytes` 인지, `aborted:true` 가 뜨는지(#966 조기 중단 작동)
