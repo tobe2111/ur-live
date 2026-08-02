@@ -143,7 +143,11 @@ describe('📦 소비자 표시 (C3)', () => {
  */
 describe('📦 상품 상세 (C3)', () => {
   const api = readCode('src/features/products/api/products.routes.ts')
-  const page = readCode('src/pages/ProductDetailPage.tsx')
+  // 🧭 2026-08-02 — 픽업 안내는 `ProductDetailPage` 인라인에서 **전용 컴포넌트로 이사**했다.
+  //   이유: 배송 약속 카드가 200줄 떨어진 자리에 따로 있어 **픽업 상품에 "내일 도착"을 약속**하고
+  //   있었다. 둘을 같은 입력(`pickup`)을 읽는 형제로 묶어 배타성을 구조로 만들었다.
+  //   ⇒ 아래 불변식들은 **그 새 자리**를 본다. (테스트가 옛 자리를 계속 보면 "낡은 지도"가 된다.)
+  const page = readCode('src/pages/product-detail/ReceiveMethodNotice.tsx')
 
   it('상세 API 가 픽업을 동봉한다', () => {
     expect(usesSymbol(api, 'parsePickup')).toBe(true)
@@ -156,9 +160,14 @@ describe('📦 상품 상세 (C3)', () => {
 
   it('🔴 몰 여부로 가르지 않는다 — 데이터가 결정한다', () => {
     // 상세 페이지에 mall 조건이 들어가면 공용 페이지에 몰 결합이 생긴다.
-    const block = sliceFrom(page, 'product.pickup &&', '수량 스텝퍼', 1500)
-    expect(block, '픽업 블록을 못 찾았다').not.toBe('')
-    expect(block).not.toMatch(/mall_id|mallSlug|isMall/)
+    // 컴포넌트 **파일 전체**가 몰을 몰라야 한다 — 이제 픽업 UI 가 여기에만 있으므로
+    // 슬라이스가 아니라 전체를 본다(범위가 넓어졌으니 더 강한 검사다).
+    expect(page, '픽업 컴포넌트를 못 찾았다').not.toBe('')
+    expect(page).toMatch(/hasPickupInfo/)
+    expect(page).not.toMatch(/mall_id|mallSlug|isMall/)
+    // 🔴 사용처(상세 페이지)도 몰로 가르면 안 된다 — prop 은 픽업 데이터 하나뿐이어야 한다.
+    const host = readCode('src/pages/ProductDetailPage.tsx')
+    expect(host).toMatch(/<PickupNotice pickup=\{product\.pickup\} \/>/)
   })
 
   it('보관 고지를 상세에서 보여준다 — 카드는 배지, 상세는 전문', () => {

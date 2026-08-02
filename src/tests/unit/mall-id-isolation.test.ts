@@ -83,6 +83,10 @@ describe('mall_id 격리 전제 — 신규 몰은 1·2 를 재사용하지 않�
       //   값의 출처: 서버가 읽은 `sellers.mall_id` → `mallIdForSeller()`(순수, 유닛 테스트됨).
       //   **리터럴 1·2 를 쓰지 않는다.** body 입력도 받지 않는다(남의 몰에 꽂기 차단 — mall-product-stamp.test).
       'src/features/seller/api/seller-orders.routes.ts': '운영자 몰 스탬프 — sellers.mall_id → mallIdForSeller() 결과 bind',
+      // ✅ 2026-08-02 — 소비자 상품 상세가 **읽어서 그대로 응답에 싣는** 경로(쓰기 아님).
+      //   용도: 상세가 "몰 손님인가"를 알아 유어딜 영입 CTA 를 안 그리게 한다(대표 UX 기준 ⑤).
+      //   리터럴 몰 id 를 쓰지 않는다 — `MAIN_MALL` 상수 폴백뿐이고, 값의 출처는 DB 행 하나다.
+      'src/features/products/api/products.routes.ts': '소비자 상세 읽기 — DB 값 그대로 응답 스탬프(쓰기 없음)',
     }
     const mentions = files.filter((f) => /\bmall_id\b/.test(read(f)) && !(f in MENTION_BASELINE))
     expect(mentions, 'mall_id 를 쓰는 새 경로 — 1·2 가 아닌 운영자 몰 id 인지 확인 후 baseline 등록').toEqual([])
