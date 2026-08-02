@@ -259,6 +259,17 @@ const MUTATIONS = [
       '이 항목은 시험이 실제로 잡아낸 결함이다.',
   },
   {
+    name: '수동 트리거가 ur-ads 에 없는 경로를 부름',
+    file: 'src/features/marketing/api/store-prospects.routes.ts',
+    find: "['/collect-store-kakao', 'collect-store-kakao'],",
+    replace: "['/collect-store-kakao', 'collect-store-kakao-x'],",
+    test: 'src/tests/unit/store-collect-config.test.ts',
+    why:
+      '위임 `kick()` 이 fail-soft 라 대상이 틀려도 `{success:true, started:true}` 가 돌아간다 — ' +
+      '화면엔 "수집 시작" 토스트가 뜨고 **아무 일도 안 일어난다**. 404 보다 나쁜 건 404 가 성공처럼 보이는 것이고, ' +
+      '이 레인은 5회차에 한 번 도는 터라 "곧 되겠지"와 구분조차 안 된다.',
+  },
+  {
     name: '지역 권역 매칭 0 → 전국 폴백 제거',
     file: 'src/features/marketing/api/store-kakao-collect.ts',
     find: '  return picked.length ? picked : S2_REGIONS // 아무것도 안 잡히면 전국(설정 오타로 수집이 0 이 되면 안 된다)',
