@@ -216,6 +216,63 @@ const MUTATIONS = [
       '행이 없으면 같은 추천 조합이 매번 다시 보상받는다 — 불일치를 넘어 반복 지급.',
   },
   {
+    name: '회차 조건 clamp 를 순진한 Number 로',
+    file: 'src/features/marketing/api/store-trades.ts',
+    find: "  const ok = (typeof v === 'number' && Number.isFinite(v))",
+    replace: '  const ok = Number.isFinite(Number(v))',
+    test: 'src/tests/unit/store-collect-config.test.ts',
+    why:
+      '`Number(null)` · `Number([])` · `Number("")` 은 전부 **0** 이라 "값 없음"이 기본값이 아니라 ' +
+      '**하한**으로 조용히 바뀐다. 이 레포는 같은 함정으로 `{amount: []}` 가 0원 환불로 통과한 적이 있다(#941). ' +
+      '이 항목은 시험이 실제로 잡아낸 결함이다.',
+  },
+  {
+    name: '지역 권역 매칭 0 → 전국 폴백 제거',
+    file: 'src/features/marketing/api/store-kakao-collect.ts',
+    find: '  return picked.length ? picked : S2_REGIONS // 아무것도 안 잡히면 전국(설정 오타로 수집이 0 이 되면 안 된다)',
+    replace: '  return picked',
+    test: 'src/tests/unit/store-collect-config.test.ts',
+    why: '설정 오타 하나로 그리드가 0 이 되면 레인이 **에러 없이** 아무것도 안 캔다 — 침묵하는 0 보다 넓게 도는 편이 낫다.',
+  },
+  {
+    name: '매장 업태 — 빈 배열도 상수로 폴백(끈 게 되살아남)',
+    file: 'src/features/marketing/api/store-kakao-collect.ts',
+    find: 'const voucherTrades = dbTrades ? (dbTrades.voucher || []) : VOUCHER_TRADES',
+    replace: 'const voucherTrades = (dbTrades?.voucher?.length ? dbTrades.voucher : VOUCHER_TRADES)',
+    test: 'src/tests/unit/store-trades-config.test.ts',
+    why:
+      '"조회 실패" 와 "의도적으로 다 끔" 은 둘 다 비어 있지만 뜻이 정반대다. 후자에 폴백하면 ' +
+      '화면은 OFF 인데 수집은 계속 돈다 — 설정이 무력화되는 가장 나쁜 실패이고, 에러도 안 난다.',
+  },
+  {
+    name: '매장 업태 시드가 설정을 덮어씀',
+    file: 'src/features/marketing/api/store-trades.ts',
+    find: 'INSERT OR IGNORE INTO ad_store_trades (block, kw, category) VALUES',
+    replace: 'INSERT OR REPLACE INTO ad_store_trades (block, kw, category) VALUES',
+    test: 'src/tests/unit/store-trades-config.test.ts',
+    why: 'REPLACE 면 대표가 끈 업태가 **매 배포마다** 되살아난다 — 설정이 배포에 지워진다.',
+  },
+  {
+    name: '수집 업종 토글이 집계와 다른 식을 씀',
+    file: 'src/features/marketing/api/company-trades.ts',
+    find: 'UPDATE ad_company_keywords SET active = ? WHERE ${TRADE_EXPR} = ?',
+    replace: 'UPDATE ad_company_keywords SET active = ? WHERE subcategory = ?',
+    test: 'src/tests/unit/company-trades-toggle.test.ts',
+    why:
+      '집계(화면)와 토글(실행)이 다른 식을 쓰면 대표가 끈 줄 아는 업종이 계속 캐진다. ' +
+      '서브카테고리가 빈 업종은 아예 안 꺼진다 — 에러 없이.',
+  },
+  {
+    name: '마지막 활성 업종 가드 제거',
+    file: 'src/features/marketing/api/company-trades.ts',
+    find: "if ((Number(self?.n) || 0) > 0 && activeTrades <= 1) return { ok: false, error: 'LAST_ACTIVE_TRADE' }",
+    replace: '',
+    test: 'src/tests/unit/company-trades-toggle.test.ts',
+    why:
+      '전부 끄면 회전 쿼리가 0행을 받아 수집이 **에러 없이** 멈추고 하트비트는 초록으로 남는다 ' +
+      '(레인은 정상 실행되고 할 일이 없을 뿐이다). 클릭 한 번으로 그 상태가 될 수 있다.',
+  },
+  {
     name: '우선업종 category 오타(조용한 0 순위)',
     file: 'src/features/marketing/api/store-kakao-collect.ts',
     find: "{ kw: '한식', category: '일반음식점' }",

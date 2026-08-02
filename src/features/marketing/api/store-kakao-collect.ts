@@ -19,10 +19,11 @@
  *   게이트 `ADS_STORE_KAKAO_ENABLED`(기본 OFF).
  */
 import type { Env } from '@/worker/types/env'
-import { S2_REGIONS, rotationWindow } from './company-keyword-grid'
+import { S2_REGIONS, REGION_GROUPS, rotationWindow } from './company-keyword-grid'
 import { regionFromAddress } from './company-collect'
 import { saveProspects, type StoreProspect } from './store-prospects'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap } from './collect-budget'
+import { ensureStoreTrades, loadActiveStoreTrades, bumpStoreTradeStats, getStoreConfig } from './store-trades'
 
 /** 무인매장 업태 — 대표 요청분(2026-07-28). 카테고리는 `store_prospects.category` 표시값이 된다. */
 export const UNMANNED_TRADES: Array<{ kw: string; category: string }> = [
@@ -105,22 +106,35 @@ export interface StoreKakaoStats {
 }
 
 /** (지역 × 업태) 전량 — 회전 순회 대상. 순서 고정(커서가 의미를 유지해야 한다). */
-export function buildUnmannedKeywords(): Array<{ q: string; region: string; category: string }> {
-  const out: Array<{ q: string; region: string; category: string }> = []
-  for (const region of S2_REGIONS) {
-    for (const t of UNMANNED_TRADES) out.push({ q: `${region} ${t.kw}`, region, category: t.category })
+export function buildUnmannedKeywords(trades: Array<{ kw: string; category: string }> = UNMANNED_TRADES, regions?: string[]): Array<{ q: string; region: string; category: string; trade: string }> {
+  return buildGrid(trades, regions)
+}
+
+/** (지역 × 업태) 곱 — 두 블록이 **같은 함수**를 쓴다. 두 벌로 두면 한쪽만 고쳐져 조용히 갈라진다. */
+function buildGrid(trades: Array<{ kw: string; category: string }>, regions: string[] = S2_REGIONS): Array<{ q: string; region: string; category: string; trade: string }> {
+  const out: Array<{ q: string; region: string; category: string; trade: string }> = []
+  for (const region of regions) {
+    // `trade` 를 함께 들고 다닌다 — 나중에 `q` 에서 역산하면 지역명에 공백이 있는 곳('부산 해운대')에서 갈린다.
+    for (const t of trades) out.push({ q: `${region} ${t.kw}`, region, category: t.category, trade: t.kw })
   }
   return out
 }
 
 /** 우선업종 그리드 — **별도 배열·별도 커서**. 무인 배열에 덧붙이면 인덱스가 통째로 밀려
  *  기존 커서가 가리키던 자리가 달라진다(일부 지역이 영영 조회되지 않는다). */
-export function buildVoucherKeywords(): Array<{ q: string; region: string; category: string }> {
-  const out: Array<{ q: string; region: string; category: string }> = []
-  for (const region of S2_REGIONS) {
-    for (const t of VOUCHER_TRADES) out.push({ q: `${region} ${t.kw}`, region, category: t.category })
-  }
-  return out
+export function buildVoucherKeywords(trades: Array<{ kw: string; category: string }> = VOUCHER_TRADES, regions?: string[]): Array<{ q: string; region: string; category: string; trade: string }> {
+  return buildGrid(trades, regions)
+}
+
+/**
+ * 권역 이름 → 실제 지역 목록. 빈 배열/미지정 = 전국.
+ * ⚠️ **순서는 `S2_REGIONS` 를 따른다** — 선택 순서로 만들면 같은 설정에서도 배열이 달라져 커서가 흔들린다.
+ */
+export function regionsForGroups(groups: string[]): string[] {
+  if (!groups?.length) return S2_REGIONS
+  const want = new Set(groups.flatMap(g => REGION_GROUPS[g] || []))
+  const picked = S2_REGIONS.filter(r => want.has(r))
+  return picked.length ? picked : S2_REGIONS // 아무것도 안 잡히면 전국(설정 오타로 수집이 0 이 되면 안 된다)
 }
 
 /** 카카오 문서 → StoreProspect. **받은 값만** 옮긴다(빈 값은 null — 지어내지 않는다). */
@@ -181,7 +195,10 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
   const cursorU = await readCursor(CURSOR_KEY)
   const cursorV = await readCursor(CURSOR_KEY_VOUCHER)
 
-  const envBudget = Math.min(80, Math.max(5, parseInt(env.ADS_STORE_KAKAO_BUDGET || '', 10) || 30))
+  // 🎛️ 회차 조건 — 화면에서 정한 값(서버 clamp 완료). env 는 하위호환 폴백.
+  const cfg = await getStoreConfig(DB, Object.keys(REGION_GROUPS))
+  const activeRegions = regionsForGroups(cfg.regions)
+  const envBudget = Math.min(80, Math.max(5, parseInt(env.ADS_STORE_KAKAO_BUDGET || '', 10) || cfg.budget))
   const learnedRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('store_kakao')).first<{ value: string }>().catch(() => null)
   const learnedCap = Math.max(0, parseInt(learnedRaw?.value || '', 10) || 0)
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
@@ -190,12 +207,24 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
   // 다른 레인과 **같은 형태**의 예산 객체를 쓴다(가드가 이 형태를 요구한다 — 소비량 계산이 어긋나면
   //   백오프가 거꾸로 작동해 상한을 폭등시킨 전례가 있다: kakao_sweep 2026-07-28).
   const budget = { left: budgetTotal }
-  budget.left -= 4 // 위 SELECT 4회분(스스로도 서브리퀘스트다)
+  budget.left -= 5 // 위 SELECT + 설정 조회분(스스로도 서브리퀘스트다)
+
+  // 🎛️ 업태를 DB 에서 — 대표가 화면에서 켜고 끈 결과가 여기로 들어온다(store-trades 헤더의 폴백 규칙).
+  //   ⚠️ 시드/조회 비용도 **같은 지갑**에서 낸다. 안 빼면 시드가 도는 회차에만 조용히 천장을 넘는다.
+  budget.left -= await ensureStoreTrades(DB)
+  const dbTrades = await loadActiveStoreTrades(DB)
+  budget.left -= 2
+  //   `null` = 시드 전/조회 실패 → 코드 상수 폴백(설정 조회 실패로 수집을 멈추지 않는다).
+  //   비어 있지 않으면 DB 가 진실 — 블록이 빈 배열이면 그건 **의도적으로 끈 것**이라 폴백하지 않는다.
+  const voucherTrades = dbTrades ? (dbTrades.voucher || []) : VOUCHER_TRADES
+  const unmannedTrades = dbTrades ? (dbTrades.unmanned || []) : UNMANNED_TRADES
   let limitHit = false
 
   const rows: StoreProspect[] = []
   const used: string[] = []
   const blocks: Record<string, { kw: number; found: number }> = {}
+  /** 업태별 발굴 수 — 어느 업태가 값을 만드는지 화면이 보여줄 수 있어야 끌 결정을 한다. */
+  const perTrade = new Map<string, number>()
   let found = 0, sample: unknown, lastErr: string | undefined
   let stoppedBy: 'done' | 'deadline' | 'budget' | 'limit' = 'done'
 
@@ -205,7 +234,7 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
   /** @param floor 이 블록이 **남겨둬야 할** 예산(뒤 블록 몫). 슬롯만 나누고 예산을 안 남기면
    *  앞 블록이 지갑을 비워 뒤 블록은 슬롯이 있어도 첫 검사에서 튕긴다 — 몫 배분이 무의미해진다. */
   const runBlock = async (
-    name: string, all: Array<{ q: string; region: string; category: string }>, cursor: number, slots: number, floor = 0,
+    name: string, all: Array<{ q: string; region: string; category: string; trade: string }>, cursor: number, slots: number, floor = 0,
   ): Promise<number> => {
     let consumed = 0
     const stat = { kw: 0, found: 0 }
@@ -217,7 +246,7 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
         if (budget.left <= saveReserve() + floor) { stoppedBy = 'budget'; break outer }
         consumed++; stat.kw++
         used.push(kw.q)
-        for (let page = 1; page <= MAX_PAGES; page++) {
+        for (let page = 1; page <= cfg.max_pages; page++) {
           if (budget.left <= saveReserve() + floor) { stoppedBy = 'budget'; break outer }
           budget.left -= 1
           let res: Response | null = null
@@ -236,7 +265,7 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
           if (!sample && docs[0]) sample = docs[0]
           for (const d of docs) {
             const p = toProspect(d, kw.region, kw.category)
-            if (p) { rows.push(p); found++; stat.found++ }
+            if (p) { rows.push(p); found++; stat.found++; perTrade.set(kw.trade, (perTrade.get(kw.trade) || 0) + 1) }
           }
           if (data?.meta?.is_end || docs.length < 15) break // 우물이 말랐다
         }
@@ -246,14 +275,22 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
   }
 
   // 몫을 **먼저 나눈다** — 앞 블록이 다 쓰고 뒤가 0 이 되는 걸 막는다(위 blockSlots 주석).
-  const slots = blockSlots(budget.left)
+  const slots = blockSlots(budget.left, cfg.max_pages, cfg.voucher_share)
   // 우선업종 먼저 — 0 건에서 시작하는 쪽이 앞선다. 다만 무인 몫은 이미 떼어 놨다.
-  const nextV = await runBlock('voucher', buildVoucherKeywords(), cursorV, slots.voucher, slots.unmanned * MAX_PAGES)
-  const nextU = await runBlock('unmanned', buildUnmannedKeywords(), cursorU, slots.unmanned)
+  const nextV = voucherTrades.length ? await runBlock('voucher', buildVoucherKeywords(voucherTrades, activeRegions), cursorV, slots.voucher, slots.unmanned * cfg.max_pages) : cursorV
+  const nextU = unmannedTrades.length ? await runBlock('unmanned', buildUnmannedKeywords(unmannedTrades, activeRegions), cursorU, slots.unmanned) : cursorU
 
   // 저장은 saveProspects 가 50개씩 batch — 우리가 예산에서 그 횟수만큼 지불한다.
   budget.left -= Math.ceil(rows.length / 50)
   const saved = rows.length ? await saveProspects(DB, rows).catch(() => 0) : 0
+
+  // 업태별 누적 — 저장수는 업태별로 분해할 수 없다(upsert 가 전체 단위로 돈다). 발굴 비율로 배분하고,
+  //   그 사실을 컬럼 의미에 남긴다(정확한 수인 척하지 않는다).
+  if (perTrade.size) {
+    const totalFound = [...perTrade.values()].reduce((a, b) => a + b, 0) || 1
+    await bumpStoreTradeStats(DB, new Map([...perTrade].map(([k, f]) => [k, { found: f, saved: Math.round((saved * f) / totalFound) }])))
+    budget.left -= 1
+  }
 
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, String(nextU)).run().catch(() => null)
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY_VOUCHER, String(nextV)).run().catch(() => null)

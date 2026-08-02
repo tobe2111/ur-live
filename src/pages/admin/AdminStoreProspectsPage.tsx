@@ -6,6 +6,18 @@ import { toast } from '@/hooks/useToast'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber, kstShort } from '@/utils/format'
 import OpeningWelcomePanel from './store-prospects/OpeningWelcomePanel'
+import TradePanel, { type TradeRow } from './partner-pool/TradePanel'
+import CollectConfigPanel from './store-prospects/CollectConfigPanel'
+
+/** 매장 업태 → 공용 패널 행. 업태 1행이 **전 지역**을 뜻하므로 kw/active_kw 는 1/0 이다
+ *  (파트너는 업종 1행이 235지역을 묶은 것이라 개수가 실수치다 — 그 차이를 여기서만 흡수한다). */
+const adaptStoreTrades = (raw: unknown[]): TradeRow[] => (raw as Array<{
+  kw: string; category: string; block: string; active: number; found_total: number; saved_total: number; last_run_at: string | null
+}>).map(t => ({
+  trade: t.kw, category: `${t.block === 'voucher' ? '우선업종' : '무인'} · ${t.category}`,
+  kw: 1, active_kw: t.active ? 1 : 0,
+  found: t.found_total || 0, saved: t.saved_total || 0, last_run_at: t.last_run_at,
+}))
 
 interface Prospect {
   id: number; biz_name: string; category: string | null; uptae: string | null
@@ -200,6 +212,9 @@ export default function AdminStoreProspectsPage() {
             )}
           </div>
         )}
+
+        <CollectConfigPanel lastRun={kakao?.run as never} />
+        <TradePanel endpoint="/api/admin/store-prospects/trades" title="🎛️ 매장 수집 업태 설정" unit="블록" adapt={adaptStoreTrades} />
 
         {/* 📧 보강 레인 — 매장 3.5만 중 **이메일 1건**이던 것을 판정 가능하게. 이 스냅샷은 API 가 계속
             주고 있었는데 화면에 없어서 아무도 못 봤다. `pass2_reason` 이 "왜 0인가"를 처방 단위로 가른다:

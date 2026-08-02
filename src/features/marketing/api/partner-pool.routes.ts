@@ -16,6 +16,7 @@ import {
   type CompanyLead, type CompanyLeadFilter,
 } from './company-discovery'
 import { LEAD_TYPES, LEAD_TYPE_LABEL } from './company-classify'
+import tradeRoutes from './partner-pool-trades.routes'
 import { partnerPoolDedupeRoutes } from './partner-pool-dedupe.routes'
 import { partnerPoolKeywordRoutes } from './partner-pool-keywords.routes'
 
@@ -326,6 +327,8 @@ app.get('/contact-list', async (c) => {
 app.post('/collect-nara', delegateCollect('collect-nara-vendor', '📑 조달업체 수집'))
 app.post('/sweep-mx', delegateCollect('sweep-mx', '📮 이메일 재검증'))
 app.post('/sweep-nts', delegateCollect('sweep-nts', '🏛 폐업 정리'))
+
+app.route('/keyword-trades', tradeRoutes) // 🎛️ 업종 단위 일괄 on/off — 개별 키워드는 partner-pool-keywords.routes
 
 // POST /api/admin/partner-pool/collect — 레인 A 수동 수집(ur-ads 워커에 서비스바인딩 위임 → 메인 번들 무영향).
 //   백그라운드(waitUntil): 지역검색 순회는 수십 초 → 즉시 started 반환, 완료는 UI 가 stats(run.last_run) 폴링.
