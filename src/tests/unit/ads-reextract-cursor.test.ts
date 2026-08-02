@@ -23,6 +23,7 @@ import {
   parseReextractCursor, formatReextractCursor, REEXTRACT_RULES_VERSION, sweepRegions,
 } from '../../features/marketing/api/influencer-maintenance'
 import { newOpBudget, budgetedDb } from '../../features/marketing/api/maintenance-budget'
+import { parseCafeMembersFromBytes, CAFE_ABORT_AFTER_FAILS } from '../../features/marketing/api/influencer-cafe-members'
 
 describe('재추출 커서 — 규칙 버전이 붙은 형태', () => {
   const V = REEXTRACT_RULES_VERSION
@@ -164,5 +165,37 @@ describe('카페 회원수 — 순서로 굶주림을 막는다', () => {
     const peek = (h: string) => h.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
     expect(peek('<div>멤버수 <b>12,345</b></div>')).toBe('멤버수 12,345')
     expect(cafe).toMatch(/export function peekMembers/)
+  })
+
+  /**
+   * 🔤 **원인 확정 (2026-08-02 라이브 표본)** — 위 표본이 답을 줬다:
+   *   `status 200 · len 200,000 · peek '::�ǻ�::�Ǽ���...'`
+   *   차단(ⓐ)도 프레임셋(ⓑ)도 아니고 **EUC-KR 페이지를 UTF-8 로 디코딩**한 것이었다(18/18 실패).
+   *   ⚠️ 이 테스트가 못 보는 것: 실제 카페 HTML 의 마크업 모양. 여전히 프록시에 막혀 있고,
+   *     숫자를 태그가 쪼개면 앞 조각만 잡힐 수 있다 — 그때는 새 표본(ASCII 창)이 말해 준다.
+   */
+  it('🔤 EUC-KR 바이트에서 회원수를 뽑는다 — 디코더 지원 여부에 안 걸린다', () => {
+    const euckr = (s: string): number[] => ({ 멤버: [0xb8, 0xe2, 0xb9, 0xf6], 회원: [0xc8, 0xb8, 0xbf, 0xf8] }[s] || [])
+    const bytes = (label: string, tail: string) =>
+      new Uint8Array([...euckr(label), ...[...tail].map(c => c.charCodeAt(0))])
+    expect(parseCafeMembersFromBytes(bytes('멤버', '수 12,345명'))).toBe(12345)
+    expect(parseCafeMembersFromBytes(bytes('회원', '</span><em>7,001</em>'))).toBe(7001)
+    // 라벨이 없으면 아무 숫자나 집지 않는다 — 글 수를 회원수로 적는 건 0 보다 나쁜 실패다.
+    expect(parseCafeMembersFromBytes(new Uint8Array([...'게시글 98,765'].map(c => c.charCodeAt(0))))).toBe(null)
+    // 상한 밖(조회수 오집)은 버린다.
+    expect(parseCafeMembersFromBytes(bytes('멤버', ' 99,999,999'))).toBe(null)
+  })
+
+  it('🛑 전량 실패면 회차를 접는다 — #957 이 카페를 앞에 두면서 지역·재추출을 굶긴 회귀', () => {
+    // 라이브 실측: cafemembers tried 18/failed 18 인 회차에서 region {filled:0} · reextract {scanned:0}.
+    expect(CAFE_ABORT_AFTER_FAILS).toBeGreaterThan(0)
+    expect(CAFE_ABORT_AFTER_FAILS).toBeLessThan(20) // 상한(CAFE_MAX)보다 훨씬 작아야 의미가 있다
+    expect(cafe).toMatch(/diag\.filled === 0 && diag\.failed >= CAFE_ABORT_AFTER_FAILS/)
+    expect(cafe).toMatch(/diag\.aborted = true/)
+  })
+
+  it('🔒 바이트로 받는다 — res.text() 는 무조건 UTF-8 이라 같은 사고가 재발한다', () => {
+    expect(cafe).toMatch(/await res\.arrayBuffer\(\)/)
+    expect(cafe).not.toMatch(/await res\.text\(\)/)
   })
 })
