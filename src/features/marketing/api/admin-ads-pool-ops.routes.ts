@@ -140,16 +140,42 @@ app.post('/influencer-pool/enrich-run', async (c) => {
    *   ⇒ 수동 경로는 `sync=1` 로 자식을 **기다린다**(K라운드, 실측 라운드당 ~7초).
    *
    *   `?single=1` 이면 옛 단발 경로 — 한 라운드의 숫자를 그 자리에서 보고 싶을 때(디버깅)만 쓴다.
+   *
+   * ## 🧱 그런데 무료 플랜에선 **수동 경로가 무거운 일을 할 수 없다**(2026-08-02 배포 후 실측)
+   * `sync=1` 배포 직후 이 버튼이 **502(3.9~5.7초) · 처리 0** 이 됐다. 단발(`single=1`)도 똑같이 502다.
+   * 반면 같은 라운드가 **cron 에선 8.4초에 성공**하고, ads 워커 내부 `SELF.fetch` 자식도 정상이다.
+   *
+   * | 경로 | CPU 출처 | 결과 |
+   * |---|---|---|
+   * | cron(scheduled) → 라운드 | cron 인보케이션 예산 | ok 8.4s |
+   * | ads 내부 `SELF.fetch` 자식 | 부모(cron) 예산 상속 | ok |
+   * | **어드민 → `env.ADS` → 라운드** | **이 요청의 예산** | **502** |
+   *
+   * ⇒ 크로스워커 서비스 바인딩은 피호출자의 CPU 를 **호출자 몫에서** 쓴다. 그래서 이 버튼은
+   *   **즉시 반환하면 자식이 죽고, 기다리면 CPU 로 죽는다 — 어느 쪽이든 0건이다.**
+   *   유료 전환하면 호출자 예산이 커져 `sync` 가 **코드 변경 없이** 살아난다(구조는 그대로 둔다).
+   *
+   * ⚠️ 그래서 실패를 **날 502 로 흘리지 않는다.** 버튼을 누른 사람에게 "왜 안 되는지"와
+   *   "그럼 뭐가 대신 도는지"를 말해 준다 — 원인 불명 에러는 다음 세션이 또 파게 만든다.
    */
   const single = c.req.query('single') === '1'
   const path = single ? `/__ads/enrich-influencer?depth=${depth}` : '/__ads/enrich-influencer-driver?sync=1'
+  /** 무료 플랜 CPU 벽에 걸렸을 때의 안내 — 실패를 사실대로, 다음 행동까지. */
+  const planWall = (detail: string) => c.json({
+    success: false, depth, blocked: 'cpu-budget',
+    error: `수동 실행은 이 플랜에서 무거운 라운드를 돌릴 수 없습니다(${detail}). `
+      + `보강은 매시간 cron 이 계속 돌고 있습니다 — 어드민 '자동 실행 내역'에서 확인하세요. `
+      + `유료 전환 시 이 버튼은 코드 변경 없이 동작합니다.`,
+  }, 503)
   try {
     const r = await ads.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
+    // 502/500 은 대개 피호출자가 CPU 로 끊긴 것이다 — JSON 이 아니라 Cloudflare 의 본문이 온다.
     const j = await r.json().catch(() => null) as { ok?: boolean; stats?: unknown; error?: string; fanout?: number; planned?: number; slices?: unknown } | null
-    if (!j?.ok) return c.json({ success: false, error: j?.error || '보강 레인 실행 실패', depth }, 502)
+    if (!j) return planWall(`ur-ads 응답 ${r.status}`)
+    if (!j.ok) return c.json({ success: false, error: j.error || '보강 레인 실행 실패', depth }, 502)
     return c.json({ success: true, depth, stats: j.stats, fanout: j.fanout, planned: j.planned, slices: j.slices })
   } catch (err) {
-    return c.json({ success: false, error: `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}`, depth }, 502)
+    return planWall(`${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 120)}`)
   }
 })
 

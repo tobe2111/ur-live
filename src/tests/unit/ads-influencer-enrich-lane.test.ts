@@ -339,4 +339,17 @@ describe('수동 보강 버튼 — 드라이버(팬아웃) 경로', () => {
   it('🔒 cron 경로(sync 없음)는 그대로 waitUntil — 거긴 부모가 살아 있다', () => {
     expect(routes).toMatch(/for \(const p of kids\) c\.executionCtx!\.waitUntil\(/)
   })
+
+  /**
+   * 🧱 **무료 플랜 CPU 벽** — 배포 후 실측(2026-08-02): 수동 경로는 502·처리 0.
+   *   `sync` 든 `single` 이든 같다. cron 은 같은 라운드를 8.4초에 끝낸다.
+   *   ⇒ 크로스워커 바인딩은 피호출자 CPU 를 **호출자 몫**에서 쓴다. 이 버튼은 구조적으로 못 돈다.
+   *   실패를 날 502 로 흘리면 다음 세션이 원인 불명으로 또 판다 — 사실과 대안을 말해야 한다.
+   *   ⚠️ 못 막는 것: 벽 자체는 코드로 못 본다. 유료 전환하면 `sync` 가 그대로 살아난다(구조 유지).
+   */
+  it('🧱 ur-ads 가 JSON 이 아닌 응답(CPU 로 끊김)이면 안내로 바꾼다 — 날 502 금지', () => {
+    expect(ops).toMatch(/blocked: 'cpu-budget'/)
+    expect(ops).toMatch(/if \(!j\) return planWall\(/)
+    expect(ops).toMatch(/매시간 cron 이 계속 돌고 있습니다/)
+  })
 })
