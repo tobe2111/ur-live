@@ -70,6 +70,45 @@ describe('creditFreePoints — 잔액만 늘고 원장 행이 없는 사태 방�
   })
 })
 
+describe('공구 추천 보너스 — 원장 행이 곧 중복 방지 키다 (2026-08-02)', () => {
+  // 2026-08-02: 라우트 인라인 블록을 `referral-bonus.ts` 로 추출했다.
+  // ⚠️ 처음엔 라우트 파일에서 앵커 문자열로 블록을 잘라 봤는데, 추출하자 앵커가 사라져
+  //    "블록을 못 찾았다"로 **터졌다** — 조용히 통과하지 않게 만들어 둔 게 실제로 값을 했다.
+  const SRC_RB = readFileSync('src/features/group-buy/api/referral-bonus.ts', 'utf8')
+  const ROUTES = readFileSync('src/features/group-buy/api/group-buy.routes.ts', 'utf8')
+
+  it('원장 INSERT 가 실패하면 최소 컬럼으로 다시 쓴다', () => {
+    // 여기가 단순 불일치보다 나쁜 이유: 중복 방지가 **이 행이 남았는지로** 판정한다.
+    // 행이 없으면 같은 (추천인, 참여자) 조합이 매번 다시 보상받는다 = 반복 지급.
+    expect(SRC_RB, '폴백이 없다').toContain('recordPointTxMinimal(')
+    const tx = SRC_RB.slice(SRC_RB.indexOf('async function recordBonusTx'))
+    expect(tx.slice(0, 900), '확장 컬럼 INSERT 의 catch 에 폴백이 없다').toContain('recordPointTxMinimal(')
+  })
+
+  it('폴백이 description 을 그대로 쓴다 (중복 방지가 LIKE 로 읽는다)', () => {
+    // 중복 방지: `description LIKE '%' || 'from:REF' || '%'`. 문구를 바꾸면 dedup 이 못 찾는다.
+    expect(SRC_RB, '폴백이 호출부가 준 desc 를 안 넘긴다')
+      .toMatch(/recordPointTxMinimal\(DB, uid, 'referral_bonus', bonus, desc\)/)
+    expect(SRC_RB, 'inviteeDesc 에 from: 마커가 없다 — dedup 키가 깨진다')
+      .toMatch(/inviteeDesc\s*=\s*`[^`]*from:\$\{refUserId\}/)
+  })
+
+  it('중복 방지가 여전히 point_transactions 를 읽는다 (전제 확인)', () => {
+    // 이 전제가 바뀌면(예: 별도 테이블로 이동) 위 두 검사의 이유가 사라진다 — 그때 같이 고칠 것.
+    expect(SRC_RB).toMatch(/SELECT 1 FROM point_transactions[\s\S]{0,200}?referral_bonus/)
+  })
+
+  it('라우트가 이 모듈을 실제로 호출한다 (고아 모듈 방지)', () => {
+    expect(ROUTES, '추출해 놓고 호출을 안 하면 보너스가 통째로 사라진다')
+      .toContain('grantGroupBuyReferralBonus(')
+  })
+
+  it('추출 후 라우트에 옛 인라인 적립이 남아 있지 않다 (이중 지급 방지)', () => {
+    expect(ROUTES.includes("swallow('group-buy:referral-bonus:referrer-balance')"),
+      '인라인 블록이 남아 있다 — 모듈과 함께 두 번 지급된다').toBe(false)
+  })
+})
+
 describe('원장 불일치 조사 경로 — 데이터가 없으면 아무도 못 고친다', () => {
   it('cron 이 상세를 DB 에 남긴다 (예전엔 콘솔로만 가서 몇 주간 조사 불가였다)', () => {
     const cron = readFileSync('src/worker/cron/ledger-integrity-check.ts', 'utf8')

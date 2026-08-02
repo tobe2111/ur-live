@@ -1,12 +1,10 @@
 {
   "_why": "예산을 우회하는 생 waitUntil 레인(모듈 경로). 늘리지 말 것 — scripts/check-ads-dispatch-bypass.mjs 참조",
   "lanes": [
-    "./daily-batch",
     "./sheets-mirror-lane",
     "@/features/marketing/api/autobid",
     "@/features/marketing/api/outreach-webhook",
     "@/features/marketing/api/weekly-report",
-    "@/worker/cron/social-draft",
-    "@/worker/cron/social-maintenance"
+    "@/worker/cron/social-draft"
   ]
 }
