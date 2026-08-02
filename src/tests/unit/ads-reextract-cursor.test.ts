@@ -199,3 +199,34 @@ describe('카페 회원수 — 순서로 굶주림을 막는다', () => {
     expect(cafe).not.toMatch(/await res\.text\(\)/)
   })
 })
+
+/**
+ * 🅿️ **진도 기록은 예산 밖에서 한다** (2026-08-03 라이브 실측).
+ *
+ * ```
+ *   정비 회차: reextract {scanned: 2000, filled: 0}
+ *   ads_reextract_cursor: 13398 · 13시간째 그대로 · 판 접두사(`1:`)도 없음
+ * ```
+ * 즉 **일은 했는데 진도만 안 남았고**, 커서 파킹(#933)이 라이브에서 한 번도 성공한 적이 없었다.
+ * 다음 회차는 같은 2,000행을 다시 훑는다(`filled: 0` 이 그 증거다).
+ *
+ * 커서 저장은 함수의 **마지막** 동작이라 예산이 가장 바닥일 때 실행되고, `.catch(() => null)` 이
+ * 실패를 지운다. 같은 파일의 결과 스탬프는 이미 *"예산 밖(실제 DB)에서, 항상"* 규칙을 쓴다 —
+ * 커서만 그 대우를 못 받았다.
+ *
+ * ⚠️ **이 테스트가 증명하지 못하는 것**: 그게 *정말* 원인인지. 다른 커서(reclassify 등)는 같은 예산
+ *   래핑으로도 잘 저장된다. 그래서 수정과 함께 관측치(`from`/`cursor`/`saved`)를 남겼다 —
+ *   다음 회차가 ⓐ 메모리 커서가 안 움직였는지 ⓑ 저장이 삼켜졌는지 **직접** 말해 준다.
+ */
+describe('재추출 커서 — 진도는 예산 밖에 남긴다', () => {
+  const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-maintenance.ts'), 'utf8')
+
+  it('🔒 커서 저장이 raw DB 로 간다 — 예산 래핑된 DB 로 쓰면 마지막에 잘린다', () => {
+    expect(src).toMatch(/await \(opts\?\.rawDB \?\? DB\)\.prepare\('INSERT OR REPLACE INTO platform_settings/)
+    expect(src).toMatch(/reextractPoolContacts\(bdb, \{ budget, rawDB: DB \}\)/)
+  })
+
+  it('🔬 저장 결과와 커서 이동을 관측치로 남긴다 — 없으면 원인을 영영 구분 못 한다', () => {
+    expect(src).toMatch(/return \{ scanned, filled, done, from, cursor, saved: !!saveRes \}/)
+  })
+})

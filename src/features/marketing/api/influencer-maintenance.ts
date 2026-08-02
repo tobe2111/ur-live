@@ -177,7 +177,7 @@ export const formatReextractCursor = (version: number, cursor: number): string =
  * ⚠️ 이 변경 뒤 `scanned: 0` 은 **고장이 아니라 정상**(새 행이 없다)이다. 예전처럼 큰 `scanned` 가 보고
  *   싶다면 규칙 버전을 올려야 하고, 그건 규칙을 실제로 바꿨을 때만 정당하다.
  */
-export async function reextractPoolContacts(DB: D1Database, opts?: { budget?: OpBudget }): Promise<{ scanned: number; filled: number; done: boolean }> {
+export async function reextractPoolContacts(DB: D1Database, opts?: { budget?: OpBudget; rawDB?: D1Database }): Promise<{ scanned: number; filled: number; done: boolean; from?: number; cursor?: number; saved?: boolean }> {
   await ensureInfluencerSchema(DB)
   // 🔗 2026-07-28: OFFSET 전수스캔 → **id 커서**(품질/재분류 패스와 동일 패턴). 무료 플랜 예산에선 한 실행이
   //   전수를 못 도는데, 커서가 없으면 매번 앞부분만 다시 훑고 뒤쪽 백로그는 영원히 재추출되지 않는다.
@@ -185,7 +185,8 @@ export async function reextractPoolContacts(DB: D1Database, opts?: { budget?: Op
   const PAGE = 2000
   const cRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY)
     .first<{ value: string }>().catch(() => null)
-  let cursor = parseReextractCursor(cRaw?.value, REEXTRACT_RULES_VERSION)
+  const from = parseReextractCursor(cRaw?.value, REEXTRACT_RULES_VERSION)
+  let cursor = from
   let scanned = 0, filled = 0, done = false
   const startedMs = Date.now()   // ⏱️ 인보케이션당 작업 상한(poolScanShouldStop) — 재분류와 같은 CPU 사고를 공유한다
   for (;;) {
@@ -219,9 +220,21 @@ export async function reextractPoolContacts(DB: D1Database, opts?: { budget?: Op
   }
   // 🅿️ 다 훑었어도 **0 으로 되돌리지 않는다** — 그게 매 회차 전수 재스캔의 원인이었다(위 docblock).
   //   다음 회차는 여기서 이어받아 새 행만 본다. 전수 재스캔은 규칙 버전 bump 로만 일어난다.
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+  //
+  // 🩸 **커서 저장은 예산 밖(raw DB)에서 한다** (2026-08-03 라이브 실측). 호출부가 넘기는 `DB` 는
+  //   `budgetedDb` 라 예산이 바닥나면 쓰기가 잘리는데, 이 저장은 함수의 **마지막** 동작이라 하필
+  //   그때 실행된다. 그리고 `.catch(() => null)` 이 삼켜 조용히 사라진다 —
+  //   **일은 하고 진도만 안 남는 것**이 되고, 다음 회차가 같은 페이지를 다시 훑는다.
+  //   실측: `reextract {scanned: 2000, filled: 0}` 인데 커서는 13시간째 `13398`(그것도 판 접두사 없는
+  //   옛 형식) 그대로였다 — 즉 이 줄이 **라이브에서 한 번도 성공한 적이 없었다.**
+  //   같은 파일의 `ads_maintenance_last` 스탬프는 이미 "예산 밖에서, 항상" 규칙을 쓴다. 커서만 빠져 있었다.
+  //
+  // 🔬 **저장 결과를 관측한다** (2026-08-03). 라이브에서 `scanned: 2000` 인데 커서는 13시간째 그대로였고,
+  //   그게 ⓐ 메모리 커서가 애초에 안 움직였는지 ⓑ 움직였는데 저장이 삼켜졌는지 **구분할 방법이 없었다**
+  //   (`.catch(() => null)` 이 실패를 지운다). `from`/`cursor`/`saved` 를 남기면 다음 회차가 답을 준다.
+  const saveRes = await (opts?.rawDB ?? DB).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(CURSOR_KEY, formatReextractCursor(REEXTRACT_RULES_VERSION, cursor)).run().catch(() => null)
-  return { scanned, filled, done }
+  return { scanned, filled, done, from, cursor, saved: !!saveRes }
 }
 
 /**
@@ -432,7 +445,7 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
       //   💱 지역은 ops 당 산출이 83배다(청크 500행당 ~6 ops · D1 전용 vs 카페 1건당 fetch 1).
       //     그래서 **남은 예산을 전부** 가져간다 — 뒤의 재추출은 커서 주차 후 보통 즉시 끝난다.
       out.region = await sweepRegions(bdb, budget, 0) // 지역 미판정 32,761행 — D1 전용, 외부 호출 0
-      out.reextract = await reextractPoolContacts(bdb, { budget })
+      out.reextract = await reextractPoolContacts(bdb, { budget, rawDB: DB })
     }
 
     else if (phase === 'reclassify') out.reclassify = await runReclassifyPool(bdb, { budget })
