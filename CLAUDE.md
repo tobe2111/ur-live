@@ -484,18 +484,29 @@ curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ur-ads/settings" -
 > 이 접근이 없어서 오늘 막혔던 것들: `Workers Builds: ur-live-global` 이 매 PR 마다 실패하는데 **빌드 로그가
 > 대시보드에만 있어** 원인을 못 밝히고 "선재 실패"로만 넘겼다 · `SUPPLY_MAKER_COLLECT_ENABLED` 게이트를
 > 못 켜 제조사 풀이 수동 실행분(85건)에 머물렀다.
-## 🧪 원격 세션 검증 능력 — **npm 정상화** (2026-07-28 실측 정정)
+## 🧪 원격 세션 검증 능력 — **npm 은 세션마다 다르다. 먼저 확인할 것** (2026-08-02 정정)
 
-**`npm` 은 이제 이 원격환경에서 정상 동작한다.** 과거 audit log 곳곳의 *"이 환경 npm 조직정책 403 으로
-`npm run build`·vitest 미실행 — CI 에서 검증"* 은 **더 이상 유효하지 않다**(그 항목들은 작성 당시
-historical record 라 소급 수정하지 않는다 — 현재 사실은 이 섹션이 SSOT).
+⚠️ **이 섹션은 2026-07-28 에 "npm 정상화"로 단정돼 있었다. 그 단정이 틀렸다** — 정책은 세션마다 바뀐다.
+2026-08-02 실측: `npm ci` **403** · `npm view <any>` **403** · `npm i ms@2.1.3` **403**
+(특정 패키지가 아니라 **레지스트리 전면 차단**). 07-28 의 성공도 사실이었다 — 둘 다 사실이고, 그래서
+**단정하지 말고 세션 시작 때 한 번 찔러봐야 한다**(`npm view ms version` 이면 3초).
 
-2026-07-28 실측: `npm ci` exit 0(895 packages/30s) · `npx tsc --noEmit --skipLibCheck` 에러 0 ·
-`npm run build` exit 0(client→worker→prepare 3단계, `_worker.js` 갱신 확인).
+> ⚠️ **"npm 되니까 CI 로 미루지 마라"는 지침 자체는 유효하다.** 다만 **되는 세션에서만** 유효하다.
+> 잠금파일(Toss·로딩)을 건드렸는데 npm 이 막혔으면 아래 우회로 **할 수 있는 만큼은 반드시 하고**,
+> 못 한 범위를 커밋/PR 에 명시할 것. (머니 경로의 staging 실결제는 그대로 별도 — 빌드가 대체 못 한다.)
 
-> ⚠️ **그러므로 "CI 에서 확인하겠다" 로 미루지 말 것.** 잠금파일(Toss·로딩)을 건드렸으면 **이 세션에서**
-> tsc·build·vitest 를 돌려 회귀검증까지 끝내고 커밋한다. (staging 실결제 검증이 필요한 머니 경로는 그대로 별도 —
-> 빌드가 된다고 실결제 검증이 대체되지 않는다.)
+**🛟 npm 이 막혔을 때의 우회 — 2026-08-02 에 실제로 쓴 방법**
+`node_modules` 가 없어도 **전역 `tsc`(`/opt/node22/bin/tsc`, TS 6)** 는 있다. 의존성 없는 순수 모듈
+(`worker-ads/dispatch-budget.ts` 같은 정책·계산 파일)은 **단독 타입체크 + 컴파일 + 실행**이 된다:
+```bash
+tsc --ignoreConfig --noEmit --strict --target es2022 --module esnext --moduleResolution bundler <file.ts>
+tsc --ignoreConfig --outDir <scratch>/build --target es2022 --module esnext --moduleResolution bundler <file.ts>
+node <scratch>/harness.mjs      # 컴파일된 JS 를 import 해 불변식을 실제로 돌린다
+```
+⚠️ `--ignoreConfig` 없으면 TS6 이 **TS5112(tsconfig 있는데 파일을 지정함)로 즉시 중단**한다 — 출력이
+짧아 "에러 없음"과 구분이 안 된다(이 레포가 `baseUrl` 로 이미 당한 클래스).
+⚠️ 이 우회로 **못 하는 것**: alias(`@/`) import 가 있는 파일, React/JSX, vitest 러너 자체, `npm run build`.
+그건 CI 가 유일한 판정이다. ⇒ **순수 로직은 이 세션에서 실행 검증하고, 배선·빌드는 CI 에 남긴다**로 나눠라.
 
 **빌드 산출물 주의**: `npm run build` 는 `src/worker/generated/route-chunk-map.ts` 를 **재생성**한다(로컬 청크 해시).
 이건 커밋 대상이 아니다 — 검증 후 `git checkout -- src/worker/generated/route-chunk-map.ts` 로 되돌릴 것.

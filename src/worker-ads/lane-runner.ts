@@ -10,7 +10,10 @@
  *   (게이트 평가는 동기라 실제 시작 시각 차이는 무시할 수 있다.)
  */
 import type { D1Database } from '@cloudflare/workers-types'
-import { lanesPerTick, selectLanesForTick, dispatchSnapshot, resolvePlan, type LaneCandidate } from './dispatch-budget'
+import {
+  lanesPerTick, selectLanesForTick, dispatchSnapshot, resolvePlan, readCursors, resolveMeasureShare,
+  type LaneCandidate,
+} from './dispatch-budget'
 
 export interface RunnableLane extends LaneCandidate {
   path: string
@@ -66,7 +69,7 @@ export const DISPATCH_CURSOR_KEY = 'ads_dispatch_cursor'
 
 export async function dispatchPendingLanes(opts: {
   pending: RunnableLane[]
-  env: { SELF?: { fetch: (req: Request) => Promise<unknown> }; DB: D1Database; ADS_PLAN?: string; ADS_LANES_PER_TICK?: string }
+  env: { SELF?: { fetch: (req: Request) => Promise<unknown> }; DB: D1Database; ADS_PLAN?: string; ADS_LANES_PER_TICK?: string; ADS_MEASURE_SHARE?: string }
   hourUTC: number
   laneUrl: LaneRunnerDeps['laneUrl']
   beat: LaneRunnerDeps['beat']
@@ -78,9 +81,10 @@ export async function dispatchPendingLanes(opts: {
   //   불변이고 공평성만 약해진다. 여기서 throw 하면 그 회차 전체가 사라지므로 절대 던지지 않는다.
   const row = await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
     .bind(DISPATCH_CURSOR_KEY).first<{ value: string }>().catch(() => null)
-  const stored = Number(row?.value)
-  const cursor = Number.isFinite(stored) ? stored : hourUTC * perTick
-  const sel = selectLanesForTick(pending, perTick, cursor)
+  // 🎭 역할별 커서 + 회차. 저장값이 구 포맷(숫자 하나)이어도 받아준다 — 배포 시점 라이브 값이 그렇다.
+  //    행이 아예 없을 때만 시각 유도값으로 시작한다(첫 배포·초기화).
+  const cursor = row?.value != null ? readCursors(row.value) : readCursors(hourUTC * perTick)
+  const sel = selectLanesForTick(pending, perTick, cursor, resolveMeasureShare(env))
   const self = env.SELF
   const kicked = runLanes(sel.run, {
     selfFetch: self?.fetch ? (req: Request) => self.fetch(req) : undefined,
@@ -93,7 +97,7 @@ export async function dispatchPendingLanes(opts: {
     const snap = JSON.stringify(dispatchSnapshot(sel, resolvePlan(env), perTick, hourUTC, new Date().toISOString()))
     waitUntil(env.DB.batch([
       env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_dispatch_last', snap),
-      env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(DISPATCH_CURSOR_KEY, String(sel.nextCursor)),
+      env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(DISPATCH_CURSOR_KEY, JSON.stringify(sel.nextCursor)),
     ]).catch(() => undefined))
   }
   return kicked

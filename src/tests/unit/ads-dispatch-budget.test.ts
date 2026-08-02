@@ -15,7 +15,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   resolvePlan, lanesPerTick, isDeferrable, selectLanesForTick, dispatchSnapshot,
-  FREE_LANES_PER_TICK, PAID_LANES_PER_TICK, assignKey, type LaneCandidate,
+  FREE_LANES_PER_TICK, PAID_LANES_PER_TICK, assignKey, laneRole, readCursors,
+  splitCapByRole, resolveMeasureShare, MEASURE_SHARE_DEFAULT, type LaneCandidate,
 } from '@/worker-ads/dispatch-budget'
 
 /** 2026-08-01 14:00 UTC 회차에 실제로 뜬 매시간 레인들(하트비트 실측) — 문구를 바꾸지 말 것. */
@@ -114,7 +115,9 @@ describe('🔴 예산을 실제로 지킨다 — 08-02 라이브 결함의 회�
   it('🔒 항상돌것이 예산을 통째로 먹어도 매시간 레인 1개는 전진한다 — 0 이면 커서가 영원히 안 움직인다', () => {
     const sel = selectLanesForTick(HEAVY_HOUR, 2, 0)   // 예산 2 < always 4
     expect(sel.cap).toBe(1)
-    expect(sel.nextCursor).not.toBe(0)
+    // ⚠️ 커서가 객체가 된 뒤로 `not.toBe(0)` 은 **항상 참**이라 공허하다(객체 !== 0).
+    //    실제로 전진했는지를 봐야 한다 — 안 그러면 이 가드가 헛돈다.
+    expect(sel.nextCursor.measure + sel.nextCursor.other).toBeGreaterThan(0)
     // 그리고 그 사실이 스냅샷에 남아 사람이 볼 수 있어야 한다(분산으로는 해결 불가란 신호).
     expect(dispatchSnapshot(sel, 'free', 2, 16, 'x').over_budget).toBe(true)
   })
@@ -129,10 +132,20 @@ describe('🔒 굶는 레인이 없다 — 커서 라운드로빈 전수 증명'
     }
   })
 
-  it('공평하다 — 가장 많이 돈 레인과 가장 적게 돈 레인의 차가 1 이하', () => {
+  /**
+   * ⚠️ **이 어서션은 2026-08-02 에 의도적으로 바뀌었다.** 원래는 "모든 레인의 회차 차이 ≤ 1"
+   * (=완전 균등)이었는데, 그 균등이 바로 대표가 재설계를 지시한 결함이다 — 수집 13 : 측정 1 이라
+   * 균등 배분이면 **몫이 등록된 레인 개수로 정해진다**. 균등은 이제 불변식이 아니다.
+   * 대신 **역할 안에서의 공평성**을 지킨다(역할 내부에선 여전히 아무도 안 굶는다).
+   */
+  it('공평하다 — 같은 역할 안에서는 회차 차이가 1 이하', () => {
     const { counts } = simulate(HOURLY, 8, 60)
-    const v = [...counts.values()]
-    expect(Math.max(...v) - Math.min(...v)).toBeLessThanOrEqual(1)
+    const of = (role: 'measure' | 'other') => HOURLY
+      .filter(l => laneRole(l) === role).map(l => counts.get(l.beat) || 0)
+    for (const role of ['measure', 'other'] as const) {
+      const v = of(role)
+      expect(Math.max(...v) - Math.min(...v), `${role} 안에서 불공평`).toBeLessThanOrEqual(1)
+    }
   })
 
   it('예산 상한이 매 회차 지켜진다(48회차 전부)', () => {
@@ -194,13 +207,97 @@ describe('🔒 배정이 배열 순서에 의존하지 않는다', () => {
   })
 })
 
+/**
+ * 🎭 **몫을 역할로 나눈다** (2026-08-02 대표 확정 "무료 유지 — 배분 정책 재설계").
+ *
+ * ## 왜 이 가드가 필요한가 — 라이브 실측 (08-02 20:32 UTC)
+ * 커서 라운드로빈은 모든 레인을 동등하게 돌린다. 그런데 레인은 동등하지 않다:
+ * **수집은 백로그를 만들고 보강은 백로그를 줄인다.** 동등 배분이면 각 기능의 몫이
+ * "누가 레인을 몇 개 등록했나"로 정해진다 — 실측 `collect-* 13개 : 측정 1개`,
+ * `nb_unmeasured` 20,497 → 21,192 **상승**. 게다가 데이터 소스를 붙일 때마다
+ * 수집 레인이 하나 늘어 측정의 몫이 **자동으로 깎인다**(한 방향 드리프트).
+ */
+describe('🎭 몫은 레인 개수가 아니라 역할이 정한다', () => {
+  const drv = 'enrich-influencer-driver'
+
+  it('측정 레인이 수집 레인보다 자주 돈다', () => {
+    const { counts } = simulate(HEAVY_HOUR, 8, 48)
+    const collect = HOURLY.filter(l => l.beat.startsWith('collect'))
+      .map(l => counts.get(l.beat) || 0)
+    const avgCollect = collect.reduce((a, b) => a + b, 0) / collect.length
+    expect(counts.get(drv)!).toBeGreaterThan(avgCollect)
+  })
+
+  /**
+   * 🔒 **이게 이 describe 의 핵심이다.** 위 어서션은 균등 배분에서도 아슬아슬하게 통과할 수 있다
+   * (실측: 역할 판정을 무력화했더니 13 vs 13.0 으로 겨우 걸렸다). 드리프트를 직접 재현하는
+   * 아래 것이 진짜 가드다 — 되돌려-검증에서 13 → 7 로 확실히 빨강이 떴다.
+   */
+  it('🔒 수집 레인을 12개 더 등록해도 측정 회차가 안 깎인다 — 한 방향 드리프트 차단', () => {
+    const before = simulate(HEAVY_HOUR, 8, 48).counts.get(drv)
+    const flooded = [...HEAVY_HOUR, ...Array.from({ length: 12 }, (_, i) => ({ beat: `collect-new-${i}` }))]
+    const after = simulate(flooded, 8, 48).counts.get(drv)
+    expect(after).toBe(before)
+  })
+
+  it('🔒 cap 이 1 이어도 양쪽 역할이 다 전진한다 — 한쪽을 영구히 굶기면 안 된다', () => {
+    const { counts } = simulate(HEAVY_HOUR, 2, 48)   // cap = max(1, 2−4) = 1
+    for (const l of HOURLY) expect(counts.get(l.beat), `${l.beat} 가 한 번도 안 돌았다`).toBeGreaterThan(0)
+  })
+
+  it('역할 판정 — enrich-* 는 measure, 명시 role 이 이름을 이긴다', () => {
+    expect(laneRole({ beat: drv })).toBe('measure')
+    expect(laneRole({ beat: 'enrich-company' })).toBe('measure')
+    expect(laneRole({ beat: 'collect-neis' })).toBe('other')
+    expect(laneRole({ beat: 'collect', role: 'measure' })).toBe('measure')
+  })
+
+  it('몫을 다 쓴다 — 남는 건 상대 역할에 넘기고, 레인보다 크면 안 쓴다', () => {
+    const a = splitCapByRole(4, 3, 12, 0.5, 0)
+    expect(a.measure + a.other).toBe(4)
+    const b = splitCapByRole(10, 3, 2, 0.5, 0)         // 몫 10 > 레인 5
+    expect(b.measure + b.other).toBe(5)
+    const c = splitCapByRole(6, 1, 20, 0.5, 0)         // 측정 레인 1개뿐
+    expect(c).toEqual({ measure: 1, other: 5 })
+  })
+
+  it('🔒 비율은 무배포 조정 — 오타·범위 밖은 기본값(파이프라인이 멈추면 안 된다)', () => {
+    expect(resolveMeasureShare({ ADS_MEASURE_SHARE: '0.3' })).toBe(0.3)
+    expect(resolveMeasureShare({ ADS_MEASURE_SHARE: '오타' })).toBe(MEASURE_SHARE_DEFAULT)
+    expect(resolveMeasureShare({ ADS_MEASURE_SHARE: '5' })).toBe(MEASURE_SHARE_DEFAULT)
+    expect(resolveMeasureShare({})).toBe(MEASURE_SHARE_DEFAULT)
+  })
+})
+
+describe('🔒 커서 — 배포 시점에 라이브엔 구 포맷(숫자 하나)이 들어 있다', () => {
+  it('구 포맷을 받아준다 — 못 읽으면 그 회차 배분이 0 에서 시작한다', () => {
+    expect(readCursors('7')).toEqual({ measure: 0, other: 7, tick: 0 })
+    expect(readCursors(7)).toEqual({ measure: 0, other: 7, tick: 0 })
+  })
+  it('신 포맷 왕복 + 깨진 값은 0(fail-soft)', () => {
+    const c = { measure: 2, other: 5, tick: 9 }
+    expect(readCursors(JSON.stringify(c))).toEqual(c)
+    expect(readCursors('쓰레기')).toEqual({ measure: 0, other: 0, tick: 0 })
+    expect(readCursors(undefined)).toEqual({ measure: 0, other: 0, tick: 0 })
+  })
+})
+
 describe('스냅샷 — 미룬 것과 죽은 것을 구분할 수 있게', () => {
   it('돌린 것/미룬 것/다음 커서를 남긴다', () => {
     const sel = selectLanesForTick(HEAVY_HOUR, 8, 3)
     const snap = dispatchSnapshot(sel, 'free', 8, 16, '2026-08-01T16:00:00.000Z')
     expect((snap.ran as string[]).length + (snap.deferred as string[]).length).toBe(HEAVY_HOUR.length)
-    expect(snap.cursor_next).toBe(sel.nextCursor)
+    expect(snap.cursor_next).toEqual(sel.nextCursor)
     expect(snap.over_budget).toBe(false)
+  })
+
+  /** 🎭 배분이 의도대로 됐는지 **다음 세션이 추측 없이** 읽을 수 있어야 한다(이 레포의 반복 오진 클래스). */
+  it('역할별 몫과 실제 실행을 남긴다 — 안 남기면 "왜 이 배분이 됐지"를 못 푼다', () => {
+    const sel = selectLanesForTick(HEAVY_HOUR, 8, 3)
+    const snap = dispatchSnapshot(sel, 'free', 8, 16, '2026-08-02T16:00:00.000Z')
+    expect(snap.cap_measure as number).toBeGreaterThan(0)
+    expect((snap.cap_measure as number) + (snap.cap_other as number)).toBe(sel.cap)
+    expect(snap.ran_measure as string[]).toContain('enrich-influencer-driver')
   })
 
   it('🚧 진단 API 가 실제로 이 스냅샷을 내보낸다 — 안 그러면 판정에서 못 본다', async () => {
@@ -223,6 +320,19 @@ describe('🚧 배선 — 스케줄러가 실제로 예산 분산을 쓰는가',
   it('🔒 커서를 읽고 쓴다 — 안 그러면 매 회차 같은 레인만 돈다', async () => {
     const src = (await import('node:fs')).readFileSync('src/worker-ads/lane-runner.ts', 'utf8')
     expect(src).toMatch(/SELECT value FROM platform_settings WHERE key = \?/)
-    expect(src).toMatch(/bind\(DISPATCH_CURSOR_KEY, String\(sel\.nextCursor\)\)/)
+    // 역할별 커서라 숫자 하나로는 못 남긴다 — String() 으로 되돌아가면 tick·measure 가 통째로 사라진다.
+    expect(src).toMatch(/bind\(DISPATCH_CURSOR_KEY, JSON\.stringify\(sel\.nextCursor\)\)/)
+    expect(src).toContain('readCursors(')
+  })
+
+  /**
+   * 🔒 **배선 안 하면 노브가 조용히 죽는다.** `ADS_MEASURE_SHARE` 를 대시보드에 넣어도
+   * 호출부가 안 넘기면 언제나 기본값으로 돈다 — 에러도 경고도 없다(이 레포의 "실패가 아니라
+   * 조용한 부재" 클래스). 그래서 넘기는지를 직접 겨눈다.
+   */
+  it('🔒 측정 비율을 실제로 넘긴다 — 안 넘기면 env 노브가 무음으로 죽는다', async () => {
+    const src = (await import('node:fs')).readFileSync('src/worker-ads/lane-runner.ts', 'utf8')
+    expect(src).toMatch(/selectLanesForTick\(pending, perTick, cursor, resolveMeasureShare\(env\)\)/)
+    expect(src).toMatch(/ADS_MEASURE_SHARE\?: string/)   // env 타입에 없으면 대시보드 값이 안 들어온다
   })
 })
