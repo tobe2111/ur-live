@@ -1,7 +1,10 @@
 /**
  * 📊 2026-07-21 유어애즈 — 인플루언서 풀 → 구글 스프레드시트 자동 동기화.
  *   구글 **서비스 계정**(같은 GCP 프로젝트) JWT 로 Sheets API 직접 호출 — 제3자 서비스/수동 업로드 없음.
- *   전량 미러(clear → 전체 재기록) = 멱등·드리프트 0. 매시간 cron(ur-ads) + 어드민 수동 버튼.
+ *   **커서 미러**(회차당 ROWS_PER_RUN 행씩, 사이클이 끝나면 꼬리만 clear) = 멱등·드리프트 0.
+ *   매시간 cron(ur-ads) + 어드민 수동 버튼.
+ *   🩹 2026-08-02: 전량 미러(clear → 전체 재기록)에서 바꿨다. 전량을 한 인보케이션에 담는 구조라
+ *      풀이 42k 가 되자 매시간 `Worker exceeded CPU time limit` 으로 죽었다 — 근거는 `ROWS_PER_RUN` 주석.
  *
  *   설정(전부 ur-ads 워커 Variables — 미설정 시 조용히 skip, fail-soft):
  *     GSHEETS_SA_EMAIL  = 서비스계정 이메일(...@...iam.gserviceaccount.com)
@@ -31,6 +34,21 @@ const TAB = 'pool' // 대상 탭 이름(없으면 자동 생성) — 이름 변�
  */
 const PAGE = 10_000 // D1 페이지 크기
 const CHUNK = 8_000 // Sheets 1회 기록 행수
+/**
+ * 🧱 **한 회차가 미러할 최대 행수** — 전량을 한 인보케이션에 담지 않는다.
+ *
+ *   ## 왜 (2026-08-02 라이브)
+ *   이 레인이 매시간 `Worker exceeded CPU time limit`(ms 29,191)으로 죽고 있었다.
+ *   전량을 메모리에 쌓고(`rows.push(leadToRow(l))`) 청크마다 `JSON.stringify` 하는 구조라,
+ *   **풀이 커질수록 확실히 더 나빠진다** — 28k행일 땐 됐고 42k행에서 죽었다.
+ *   즉 "가끔 실패"가 아니라 **성장에 비례해 영구히 실패**하는 형태다.
+ *
+ *   ⇒ 회차당 몫을 고정하고 **커서로 이어 붙인다**(이 레포가 재분류·재추출에서 쓰는 그 패턴).
+ *   12,000 이면 42k 를 4회차(=4시간)에 한 바퀴 돈다. 풀이 두 배가 되면 회차 수만 늘고 죽지 않는다.
+ */
+const ROWS_PER_RUN = 12_000
+/** 커서 키 — `{off, total}`. `off=0` 이면 새 사이클 시작(그리드 확장·총계 재계산). */
+const CURSOR_KEY = 'ads_sheets_cursor'
 
 // ── base64url (JWT 용, 순수 — 테스트 가능) ──────────────────────────────────
 export function b64url(data: Uint8Array | string): string {
@@ -146,12 +164,12 @@ export type SyncTrigger = 'cron' | 'manual' | 'unknown'
  *     ⇒ 출처를 한 글자 남기면 이 모호성이 영구히 사라진다. 게이트 값(`sheets_gate`)과 조합하면
  *       "켰는데 cron 기록이 없다" = 고장, "꺼졌고 마지막이 manual" = 설정 — 단정 없이 판정된다.
  */
-export async function syncInfluencerPoolToSheets(env: Env, trigger: SyncTrigger = 'unknown'): Promise<{ ok: boolean; rows?: number; error?: string }> {
+export async function syncInfluencerPoolToSheets(env: Env, trigger: SyncTrigger = 'unknown'): Promise<SheetSyncResult> {
   // 💥 예외도 **결과로 기록**한다 — 2026-07-28 실사고: `_syncCore` 가 throw 하면(서브리퀘스트 한도 등)
   //   아래 스탬프 쓰기에 도달하지 못해 **옛 `ok:true` 스탬프가 그대로 남아** 34시간 정지가 성공처럼 보였다.
   //   (파트너풀 보강 레인의 `recordEnrichCrash` 와 같은 철학 — 무증거 종료 금지.)
   const cost = { subreq: 0 } // 이번 회차가 쓴 요청 수(추정) — 임계에 닿기 전에 보이게
-  let r: { ok: boolean; rows?: number; error?: string }
+  let r: SheetSyncResult
   try {
     r = await _syncCore(env, cost)
   } catch (err) {
@@ -172,7 +190,10 @@ export async function syncInfluencerPoolToSheets(env: Env, trigger: SyncTrigger 
   return r
 }
 
-async function _syncCore(env: Env, cost: { subreq: number }): Promise<{ ok: boolean; rows?: number; error?: string }> {
+/** 회차 결과 — `partial` 이면 사이클이 안 끝났고 `next` 부터 다음 회차가 이어받는다. */
+export type SheetSyncResult = { ok: boolean; rows?: number; error?: string; partial?: boolean; from?: number; next?: number; total?: number }
+
+async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncResult> {
   if (!env.GSHEETS_SHEET_ID || !env.GSHEETS_SA_EMAIL || !env.GSHEETS_SA_KEY) {
     return { ok: false, error: 'NOT_CONFIGURED: GSHEETS_SA_EMAIL / GSHEETS_SA_KEY / GSHEETS_SHEET_ID (ur-ads Variables)' }
   }
@@ -184,38 +205,93 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<{ ok: bool
   await ensureQualityColumns(env.DB); await ensurePerfExtraColumns(env.DB); await ensureOutreachColumns(env.DB)
   cost.subreq += 3 // DDL 3종 — 전부 runDdlOnce(체크섬 1회 조회). 2026-07-28 이전엔 ALTER 10회였다.
 
-  // D1 페이지 읽기(전량) — 공용 풀만(account_id=0).
+  // 🧭 커서 — 이번 회차가 어디부터 미러할지. `off=0` 은 새 사이클(그리드 확장 + 총계 재계산).
+  const cRaw = await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY)
+    .first<{ value: string }>().catch(() => null)
+  cost.subreq += 1
+  const cur = parseSheetCursor(cRaw?.value)
+  let off = cur.off
+  let total = cur.total
+
+  if (off === 0) {
+    const cnt = await env.DB.prepare('SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE account_id = 0')
+      .first<{ n: number }>().catch(() => null)
+    cost.subreq += 1
+    total = Math.max(0, Number(cnt?.n) || 0)
+    // 탭 보장 + 그리드를 전량 크기로 확장(1000행 기본 한계 → 2001행+ 400 방지). 사이클당 1회면 충분하다.
+    cost.subreq += 1
+    await ensurePoolSheet(token, sheetId, total + 2, SHEET_HEADER.length)
+    // 헤더는 사이클 시작에 한 번만 쓴다.
+    cost.subreq += 1
+    const h = await sheetsFetch(token, sheetId, `/values/${encodeURIComponent(`${TAB}!A1`)}?valueInputOption=RAW`, {
+      method: 'PUT', body: JSON.stringify({ range: `${TAB}!A1`, majorDimension: 'ROWS', values: [[...SHEET_HEADER]] }),
+    }).catch(() => null)
+    if (!h?.ok) return { ok: false, error: `HEADER: 시트 접근 실패(${h?.status || 'net'}) — 시트를 SA 이메일에 편집자 공유했는지 확인` }
+  }
+
+  // D1 페이지 읽기 — 공용 풀만(account_id=0). **이번 회차 몫(ROWS_PER_RUN)만** 읽고 쓴다.
   //   🛡️ 2026-07-23 전수조사: 페이지 읽기 **실패**(null)를 "마지막 페이지"로 오인하면 그 오프셋 이후 전량 누락된
-  //   잘린 미러가 되는데도 "성공 N행"으로 보고됐음 — 실패는 clear **이전**에 즉시 중단(시트 기존 데이터 보존).
-  const rows: (string | number)[][] = [[...SHEET_HEADER]]
-  for (let off = 0; ; off += PAGE) {
+  //   잘린 미러가 되는데도 "성공 N행"으로 보고됐음 — 실패는 쓰기 **이전**에 즉시 중단(시트 기존 데이터 유지).
+  //   🅿️ 커서는 **실패 시 전진하지 않는다** — 다음 회차가 같은 구간을 다시 집는다(구멍 없음).
+  const startOff = off
+  let done = false
+  let wrote = 0
+  while (wrote < ROWS_PER_RUN) {
+    const take = Math.min(PAGE, ROWS_PER_RUN - wrote)
     const res = await env.DB.prepare(`SELECT id, platform, name, handle, url, subscriber_count, recent_avg_views, recent_avg_comments, recent_posts_30d, email, instagram, tiktok, links,
         category, source_keyword, status, contact_channel, contacted_at, follow_up_at, source, consented_at, memo, collected_at,
         lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source, opted_out
       FROM ad_influencer_leads WHERE account_id = 0 ORDER BY id ASC LIMIT ? OFFSET ?`)
-      .bind(PAGE, off).all<SheetLead>().catch(() => null)
+      .bind(take, off).all<SheetLead>().catch(() => null)
     cost.subreq += 1
-    if (!res) return { ok: false, error: `READ: D1 페이지 읽기 실패(offset ${off}) — 잘린 미러 방지 위해 중단(시트 기존 데이터 유지)` }
+    if (!res) return { ok: false, error: `READ: D1 페이지 읽기 실패(offset ${off}) — 잘린 미러 방지 위해 중단(시트 기존 데이터 유지)`, rows: wrote }
     const page = res.results || []
-    for (const l of page) rows.push(leadToRow(l))
-    if (page.length < PAGE) break
+    if (!page.length) { done = true; break }
+
+    // 🧾 청크 단위로 **바로 기록**하고 버린다 — 전량을 메모리에 쌓던 것이 CPU 사망의 원인이었다.
+    for (let i = 0; i < page.length; i += CHUNK) {
+      const chunk = page.slice(i, i + CHUNK).map(leadToRow)
+      const rowNo = off + i + 2 // +1 헤더, +1 1-기반
+      const range = `${TAB}!A${rowNo}`
+      cost.subreq += 1
+      const w = await sheetsFetch(token, sheetId, `/values/${encodeURIComponent(range)}?valueInputOption=RAW`, {
+        method: 'PUT', body: JSON.stringify({ range, majorDimension: 'ROWS', values: chunk }),
+      }).catch(() => null)
+      if (!w?.ok) {
+        await saveSheetCursor(env, off + i, total)  // 성공한 데까지만 전진
+        return { ok: false, error: `WRITE: ${rowNo}행부터 기록 실패(${w?.status || 'net'})`, rows: wrote + i }
+      }
+    }
+    off += page.length
+    wrote += page.length
+    if (page.length < take) { done = true; break }
   }
 
-  // 탭 보장 + 그리드를 데이터 전량 크기로 확장(1000행 기본 한계 → 2001행+ 400 방지) 후 clear → 청크 기록.
-  cost.subreq += 1 // 시트 메타 조회(+ 확장 필요 시 1)
-  await ensurePoolSheet(token, sheetId, rows.length + 1, SHEET_HEADER.length)
-  // clear → 청크 기록(멱등 미러). RAW 입력(수식 해석 없음 — 시트측 수식 인젝션 원천 차단).
-  cost.subreq += 1
-  const clear = await sheetsFetch(token, sheetId, `/values/${TAB}:clear`, { method: 'POST', body: '{}' }).catch(() => null)
-  if (!clear?.ok) return { ok: false, error: `CLEAR: 시트 접근 실패(${clear?.status || 'net'}) — 시트를 SA 이메일에 편집자 공유했는지 확인` }
-  for (let i = 0; i < rows.length; i += CHUNK) {
-    const chunk = rows.slice(i, i + CHUNK)
-    const range = `${TAB}!A${i + 1}`
-    cost.subreq += 1
-    const w = await sheetsFetch(token, sheetId, `/values/${encodeURIComponent(range)}?valueInputOption=RAW`, {
-      method: 'PUT', body: JSON.stringify({ range, majorDimension: 'ROWS', values: chunk }),
-    }).catch(() => null)
-    if (!w?.ok) return { ok: false, error: `WRITE: ${i + 1}행부터 기록 실패(${w?.status || 'net'})`, rows: i }
+  if (done) {
+    // 🧹 사이클 끝 — 줄어든 만큼의 **꼬리만** 지운다(전체 clear 를 안 하므로 시트가 비는 구간이 없다).
+    //   ⚠️ 옛 구조는 매 회차 전체 clear 후 다시 채웠다. 그건 전량을 한 번에 쓸 수 있을 때만 성립한다.
+    if (off < total) {
+      cost.subreq += 1
+      await sheetsFetch(token, sheetId, `/values/${encodeURIComponent(`${TAB}!A${off + 2}:AE`)}:clear`, { method: 'POST', body: '{}' }).catch(() => null)
+    }
+    await saveSheetCursor(env, 0, off)   // 다음 회차는 새 사이클
+    return { ok: true, rows: off, partial: false, from: startOff }
   }
-  return { ok: true, rows: rows.length - 1 }
+  await saveSheetCursor(env, off, total)
+  return { ok: true, rows: wrote, partial: true, from: startOff, next: off, total }
+}
+
+/** 커서 파싱 — 형태가 깨졌으면 0(전량 재시작)이 **안전한 방향**이다(누락보다 중복 쓰기가 낫다). */
+export function parseSheetCursor(raw: string | null | undefined): { off: number; total: number } {
+  try {
+    const v = JSON.parse(String(raw || '{}')) as { off?: unknown; total?: unknown }
+    const off = Math.max(0, Math.floor(Number(v.off) || 0))
+    const total = Math.max(0, Math.floor(Number(v.total) || 0))
+    return { off, total }
+  } catch { return { off: 0, total: 0 } }
+}
+
+async function saveSheetCursor(env: Env, off: number, total: number): Promise<void> {
+  await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(CURSOR_KEY, JSON.stringify({ off, total, at: new Date().toISOString() })).run().catch(() => null)
 }
