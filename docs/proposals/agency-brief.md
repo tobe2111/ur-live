@@ -616,17 +616,16 @@
 | 에이전시 입점 분배 (platform_fee 중) | 30% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_SHARE_PCT` |
 | 에이전시 본인 commission (매출 기준) | 2% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_OWN_RATE` |
 | 인플루언서 입점 분배 (platform_fee 중) | 20% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.INFLUENCER_INTRO_SHARE_PCT` |
-| 크리에이터 매장 영입 commission (default) | 1.5% | `src/worker/utils/influencer-store-intro-commission.ts:DEFAULT_STORE_INTRO_PCT` |
+| 크리에이터 매장 영입 commission (default) | [추출실패—수동확인] | `src/worker/utils/influencer-store-intro-commission.ts:DEFAULT_STORE_INTRO_PCT` |
 | 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (53개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (52개)
 
 - `/a/:slug`
 - `/admin/agencies`
 - `/admin/agency-creator-approval`
-- `/admin/castings`
 - `/admin/influencer-disputes`
 - `/admin/influencer-payouts`
 - `/agency`
@@ -636,6 +635,7 @@
 - `/agency/compare`
 - `/agency/contracts`
 - `/agency/coupons`
+- `/agency/delegations`
 - `/agency/events`
 - `/agency/forgot-password`
 - `/agency/group-buy`
@@ -665,19 +665,18 @@
 - `/agency/settlements`
 - `/agency/stats`
 - `/agency/stays`
-- `/agency/streams`
 - `/agency/targets`
 - `/agency/transfers`
 - `/agency/waiting`
 - `/influencer`
 - `/influencer/analytics`
+- `/influencer/dashboard`
 - `/influencer/discover`
 - `/influencer/rankings`
 - `/influencer/settlement`
-- `/seller/castings`
 - `/seller/prospects`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (166개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (168개)
 
 
 **/api/admin-payouts/disputes**
@@ -744,6 +743,11 @@
 
 **/api/agency/dashboard**
 - `GET /api/agency/dashboard/bundle`
+
+**/api/agency/delegation**
+- `GET /api/agency/delegation/`
+- `GET /api/agency/delegation/stores/:sellerId/promo-summary`
+- `POST /api/agency/delegation/stores/:sellerId/request-mode`
 
 **/api/agency/forgot-password**
 - `POST /api/agency/forgot-password`
@@ -828,12 +832,6 @@
 **/api/agency/pin-status**
 - `GET /api/agency/pin-status`
 
-**/api/agency/pk**
-- `GET /api/agency/pk/`
-- `POST /api/agency/pk/`
-- `POST /api/agency/pk/:id/cancel`
-- `POST /api/agency/pk/:id/start`
-
 **/api/agency/profile**
 - `GET /api/agency/profile`
 - `PUT /api/agency/profile`
@@ -848,6 +846,9 @@
 
 **/api/agency/ranking**
 - `GET /api/agency/ranking`
+
+**/api/agency/refresh**
+- `POST /api/agency/refresh`
 
 **/api/agency/register**
 - `POST /api/agency/register`
@@ -942,6 +943,8 @@
 - `GET /api/influencer-settlement/analytics`
 
 **/api/influencer-settlement/deals**
+- `GET /api/influencer-settlement/deals`
+- `POST /api/influencer-settlement/deals/:id/submit-proof`
 - `POST /api/influencer-settlement/deals/propose`
 
 **/api/influencer-settlement/disputes**
@@ -957,14 +960,12 @@
 **/api/influencer-settlement/my-stores**
 - `GET /api/influencer-settlement/my-stores`
 
-**/api/pk-public/live**
-- `GET /api/pk-public/live/:live_id`
-
 **/api/seller-marketing/block**
 - `POST /api/seller-marketing/block`
 
 **/api/seller-marketing/deals**
 - `GET /api/seller-marketing/deals`
+- `POST /api/seller-marketing/deals/:id/approve-proof`
 - `POST /api/seller-marketing/deals/:id/respond`
 - `POST /api/seller-marketing/deals/propose`
 
@@ -989,7 +990,7 @@
 - `POST /api/seller/promote-boosts/:id/activate`
 
 
-> 마지막 생성: 2026-06-07T22:42:02.491Z
+> 마지막 생성: 2026-08-02T14:00:35.575Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

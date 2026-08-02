@@ -741,15 +741,15 @@
 - `/referral`
 - `/referral/:code`
 - `/s/:sellerId`
-- `/seller/donations`
 - `/seller/mini-shop`
 - `/u/:handle`
 - `/u/:handle/p/:productId`
 - `/u/me`
+- `/u/me/add`
 - `/u/me/earnings`
 - `/user/affiliate`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (58개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (60개)
 
 
 **/api/affiliate/funnel**
@@ -769,6 +769,10 @@
 
 **/api/curator/:handle**
 - `GET /api/curator/:handle`
+- `GET /api/curator/:handle/p/:productId/redirect`
+
+**/api/curator/admin**
+- `GET /api/curator/admin/affiliate-diagnostic`
 
 **/api/curator/handle**
 - `GET /api/curator/handle/check`
@@ -877,7 +881,7 @@
 - `GET /api/seller/donations/summary`
 
 
-> 마지막 생성: 2026-06-07T22:42:02.489Z
+> 마지막 생성: 2026-08-02T14:00:35.573Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

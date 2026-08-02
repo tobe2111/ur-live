@@ -19,13 +19,26 @@ interface ImageUploadProps {
   onChange: (url: string) => void
   label?: string
   maxSizeKB?: number
+  /**
+   * 🎨 `compact` = **정사각 슬롯 하나**〔시안 `docs/design/operator-mall-pilot.md` 화면 B〕.
+   *
+   * 기본 UI 는 드롭존 + `h-48` 미리보기 + URL 직접입력까지 붙은 **풀 폼**이라, 한 손으로 쓰는
+   * 3분 등록 화면에서는 그것만으로 첫 화면이 다 찬다(UX 기준 ④).
+   *
+   * ⚠️ 기본값 `'default'` — **기존 14개 호출부는 한 줄도 안 바뀐다.**
+   */
+  variant?: 'default' | 'compact'
+  /** `compact` 전용. 제출을 눌렀는데 사진이 비어 있는 상태〔시안 B-2〕. */
+  invalid?: boolean
 }
 
 export default function ImageUpload({
   value,
   onChange,
   label,
-  maxSizeKB = 800
+  maxSizeKB = 800,
+  variant = 'default',
+  invalid = false
 }: ImageUploadProps) {
   const { t } = useTranslation()
   const resolvedLabel = label ?? t('common.imageUpload', { defaultValue: '이미지 업로드' })
@@ -119,6 +132,73 @@ export default function ImageUpload({
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
+  }
+
+  /**
+   * 🎨 정사각 슬롯 1개. 라벨·URL 직접입력·업로드 안내문을 **전부 뺀다** — 그 설명은 슬롯 옆에
+   * 부모가 자기 문장으로 쓴다(시안 B: *"정사각형으로 잘려요 / 밝은 곳에서 위에서 찍으면 잘 나와요"*).
+   */
+  if (variant === 'compact') {
+    return (
+      <div>
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={() => !uploading && fileInputRef.current?.click()}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click() }}
+          aria-label={resolvedLabel}
+          className={`relative w-[92px] h-[92px] rounded-[14px] overflow-hidden flex-none cursor-pointer flex flex-col items-center justify-center gap-1.5 transition-colors ${
+            value
+              ? 'bg-[#F5F2F3] border border-[#EAE5E7]'
+              : invalid
+                ? 'bg-[#FDEEEE] border-[1.5px] border-dashed border-[#E9A9A2]'
+                : dragActive
+                  ? 'bg-[#F1EDEF] border border-[#DFD9DC]'
+                  : 'bg-[#F5F2F3] border border-[#EAE5E7]'
+          } ${uploading ? 'pointer-events-none' : ''}`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+            disabled={uploading}
+          />
+
+          {uploading ? (
+            <Loader2 className="w-5 h-5 text-[#8A8288] animate-spin" />
+          ) : value ? (
+            <>
+              <img src={value} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleRemove() }}
+                aria-label={t('common.imageRemove', { defaultValue: '이미지 제거' })}
+                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-[rgba(20,17,19,.72)] text-white flex items-center justify-center"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </>
+          ) : invalid ? (
+            <>
+              <ImageIcon className="w-[22px] h-[22px] text-[#D0685E]" strokeWidth={1.8} />
+              <span className="text-[11px] font-bold text-[#C0554B] tracking-[-0.02em]">사진 필요</span>
+            </>
+          ) : (
+            <>
+              <Upload className="w-[22px] h-[22px] text-[#A9A2A6]" strokeWidth={1.8} />
+              <span className="text-[11px] font-bold text-[#8A8288] tracking-[-0.02em]">사진 올리기</span>
+            </>
+          )}
+        </div>
+
+        {error && <p className="mt-2 text-[12px] text-[#C0392F] tracking-[-0.02em]">{error}</p>}
+      </div>
+    )
   }
 
   return (
