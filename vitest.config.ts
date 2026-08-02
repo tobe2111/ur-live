@@ -91,6 +91,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // 🧪 런타임 내장 모듈 — 번들러가 못 푼다. 스텁이 없으면 이걸 import 하는 파일을
+      //   **거쳐서 도달하는** 테스트까지 통째로 로드 실패한다(근거는 스텁 파일 헤더).
+      'cloudflare:workers': path.resolve(__dirname, './src/tests/stubs/cloudflare-workers.ts'),
     },
   },
 });
