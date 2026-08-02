@@ -5494,10 +5494,12 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 83건 · 최신순 · 이 목록은 자동 생성된다._
+_총 85건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-02**
+- [회차당 레인 수를 스스로 잰다 — 손으로 잰 상수의 마지막 자리 (2026-08-02)](handoff/2026-08-02-lane-count-selflearning.md)
 - [08-02 — 매장 풀의 97.6%가 학원이었다. 대표가 지목한 네 업종은 **0건**](handoff/2026-08-02-kakao-store-voucher-grid.md)
+- [마감 직전엔 집지 않는다 — 확정 실패 + 가짜 도장 차단 (2026-08-02)](handoff/2026-08-02-enrich-deadline-window.md)
 - [08-02 — 수량 실측: 양은 문제가 아니다. **연락처가 안 채워진다**](handoff/2026-08-02-collection-volume-verdict.md)
 - [08-02 — 수집 조건을 화면에서 정한다 (①②③ 전부 완료)](handoff/2026-08-02-collect-config-ui.md)
 - [대표 지시 두 건이 "머지됐는데 실행된 적이 없었다" — 재추출 단계의 굶주림](handoff/2026-08-02-ads-reextract-starvation.md)
