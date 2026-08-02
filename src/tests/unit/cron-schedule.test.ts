@@ -71,7 +71,7 @@ describe('wrangler.toml cron 배열', () => {
   it('계정 전체 트리거 합이 무료 한도(5) 이하다', () => {
     // 🔴 2026-08-02: 이게 문법보다 **뒤에 나온 두 번째 벽**이다. `0`→`SUN` 으로 고쳐 실제 배포하자
     //   "Workers Free limit of 5 cron triggers per **account**" (code 10072) 가 나왔다.
-    //   한 파일만 보면 절대 못 잡는다 — 이 계정은 ur-live 3 + cleanup-cron 1 + ads 1 = 이미 5.
+    //   한 파일만 보면 절대 못 잡는다 — 한도는 **계정** 단위다. (당시 ur-live 3 + cleanup-cron 1 + ads 1 = 5)
     //   6번째를 넣으면 PUT 이 통째로 거부되고 **이후 모든 worker-deploy 가 실패**해 cron 배포가 멈춘다.
     const files = readdirSync('.').filter((f) => /^wrangler.*\.toml$/.test(f))
     expect(files.length, 'wrangler*.toml 을 못 찾았다 — 검사가 헛돈다').toBeGreaterThan(0)
@@ -87,9 +87,15 @@ describe('wrangler.toml cron 배열', () => {
     expect(total, `계정 합계 ${total} (${detail.join(' + ')}) — 무료 한도 5 초과`).toBeLessThanOrEqual(5)
   })
 
+  it('주간 D1 백업 트리거가 배열에 있다', () => {
+    // 2026-08-02 점화. 여기서 빠지면 재해복구가 다시 0 이 된다 — 몇 달간 그 상태였다.
+    // (day-of-week 가 지정된 = 주간 스케줄. 표기는 SUN/0/7 무엇이든 코드가 받는다 — 아래 테스트.)
+    const weekly = EXPRS.filter((e) => e.trim().split(/\s+/)[4] !== '*')
+    expect(weekly.length, '주간 트리거가 없다 — D1 백업 cron 이 빠졌다').toBeGreaterThan(0)
+  })
+
   it('백업 cron 은 코드가 세 표기를 모두 받는다 (등록 표기가 무엇이든)', () => {
-    // ⚠️ 백업 트리거는 지금 **배열에 없다** — 계정 한도 때문에 되돌렸다(위 테스트 참조).
-    //   자리가 비어 추가할 때 `0`/`SUN`/`7` 중 무엇으로 등록하든 분기가 매칭되도록 코드는 준비돼 있다.
+    //   `0`/`SUN`/`7` 중 무엇으로 등록하든 분기가 매칭돼야 한다.
     //   CF 는 **등록된 문자열 그대로** event.cron 에 넣으므로 표기 하나만 받으면 조용히 안 돈다.
     const scheduled = readFileSync('src/worker/scheduled.ts', 'utf8')
     for (const form of ["'0 20 * * 0'", "'0 20 * * SUN'", "'0 20 * * 7'"]) {

@@ -21,7 +21,8 @@
  * ## R5 는 ①을 고치고 나서야 드러난 두 번째 벽 (2026-08-02 실측)
  * `0`→`SUN` 으로 문법을 고쳐 실제 배포했더니 **다른 에러**가 나왔다:
  *   "This account has reached the Workers Free limit of **5 cron triggers per account**" (code 10072)
- * 이 계정은 이미 정확히 5개였다 — ur-live 3 + ur-live-cleanup-cron 1 + ur-ads 1.
+ * 당시 계정은 이미 5였다 — ur-live 3 + ur-live-cleanup-cron 1 + ur-ads 1.
+ * 같은 날 죽은 `ur-live-cleanup-cron` 을 삭제해 한 자리를 회수했다(지금 ur-live 4 + ur-ads 1 = 5).
  * 6번째를 넣으면 PUT 이 통째로 거부되고 **그 뒤 모든 worker-deploy 가 이 단계에서 실패**해
  * cron 코드 배포가 전면 정지한다. 즉 한 레포의 한 파일만 봐서는 못 막는다 —
  * **wrangler*.toml 전부를 합산**해야 한다.
