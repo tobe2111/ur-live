@@ -69,7 +69,7 @@ export default function AdminStoreProspectsPage() {
   const [collect, setCollect] = useState<Collect | null>(null)
   const [collecting, setCollecting] = useState(false)
   const [enriching, setEnriching] = useState(false)
-  const [busySub, setBusySub] = useState('') // 'neis' | 'hira' | ''
+  const [busySub, setBusySub] = useState('') // 'neis' | 'hira' | 'store-kakao' | ''
   const [neis, setNeis] = useState<SubSource | null>(null)
   const [hira, setHira] = useState<SubSource | null>(null)
   const [kakao, setKakao] = useState<SubSource | null>(null)
@@ -118,13 +118,20 @@ export default function AdminStoreProspectsPage() {
     } catch { toast.error('수집 위임 실패') } finally { setCollecting(false) }
   }
 
-  async function runCollectSub(kind: 'neis' | 'hira') {
+  const SUB_LABEL: Record<string, string> = {
+    neis: '학원 수집 시작(교육청 순환) — 잠시 후 반영',
+    hira: '병원 수집 시작(전화+홈페이지) — 잠시 후 반영',
+    // 🎯 이 레인은 자동으로 ~5회차에 한 번만 돈다 — 조건을 바꾼 뒤 효과를 지금 보려면 이 버튼이 유일한 길이다.
+    'store-kakao': '카카오 매장 수집 시작(음식점·카페·미용·숙박 + 무인) — 잠시 후 반영',
+  }
+
+  async function runCollectSub(kind: 'neis' | 'hira' | 'store-kakao') {
     if (!collect?.adsBinding) { toast.error('ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작합니다'); return }
     setBusySub(kind)
     try {
       const r = await api.post(`/api/admin/store-prospects/collect-${kind}`, {})
       if (r.data?.success) {
-        toast.success(kind === 'neis' ? '학원 수집 시작(교육청 순환) — 잠시 후 반영' : '병원 수집 시작(전화+홈페이지) — 잠시 후 반영')
+        toast.success(SUB_LABEL[kind] || '수집 시작 — 잠시 후 반영')
         for (let i = 0; i < 3; i++) { await new Promise(res => setTimeout(res, 6000)); await Promise.all([loadStats(), loadRows()]) }
       } else toast.error(r.data?.error || '수집 위임 실패')
     } catch { toast.error('수집 위임 실패') } finally { setBusySub('') }
@@ -181,6 +188,7 @@ export default function AdminStoreProspectsPage() {
           <button onClick={runEnrich} disabled={enriching || !collect?.adsBinding} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium disabled:opacity-50" title="이메일 우선 연락처 보강 — 홈페이지 크롤 + 네이버 링크발견(게시된 것만, 추측 0)">{enriching ? '보강 중…' : '📧 이메일 보강'}</button>
           <button onClick={() => runCollectSub('neis')} disabled={busySub !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="나이스(NEIS) 학원·교습소 — 인허가에 없는 학원 갭 커버(교육청 17곳 순환). NEIS_API_KEY 필요">{busySub === 'neis' ? '수집 중…' : '🎓 학원 수집'}</button>
           <button onClick={() => runCollectSub('hira')} disabled={busySub !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="심평원 병원정보 — 전국 병·의원 전화+홈페이지 직접 제공(이메일 크롤 관문)">{busySub === 'hira' ? '수집 중…' : '🏥 병원 수집'}</button>
+          <button onClick={() => runCollectSub('store-kakao')} disabled={busySub !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg bg-rose-600 text-white text-sm font-medium disabled:opacity-50" title="카카오 로컬로 음식점·카페·미용실·숙박 + 무인매장을 캅니다(전화가 함께 옵니다). 자동으로는 약 5회차에 한 번만 도는 레인 — 아래 조건을 바꾼 뒤 지금 확인하려면 이 버튼">{busySub === 'store-kakao' ? '수집 중…' : '🍽️ 카카오 매장 수집'}</button>
           <button onClick={async () => { try { const r = await api.get('/api/admin/store-prospects/export', { responseType: 'blob' }); const u = URL.createObjectURL(new Blob([r.data], { type: 'text/csv;charset=utf-8' })); const a = document.createElement('a'); a.href = u; a.download = `store-prospects-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(u) } catch { toast.error('내보내기 실패 — 재로그인 후 시도') } }} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="영업중 매장 후보를 엑셀 호환 CSV 로(한글 BOM) — 인증 다운로드">⬇ CSV</button>
           <div className="grow" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="매장명·지역·전화·이메일·주소 검색" title="여러 단어를 넣으면 모두 포함된 매장만 나옵니다" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-56" />

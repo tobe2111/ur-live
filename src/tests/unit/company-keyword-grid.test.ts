@@ -149,3 +149,58 @@ describe('resumeSeedIndex — 버전 bump 시 이어받기', () => {
     expect(seedPrefixHash(rows, 100)).not.toBe(seedPrefixHash(rows, 101))
   })
 })
+
+/**
+ * 🎯 **커서는 실제로 돈 만큼만 전진한다** (2026-08-02 라이브 실측으로 발견).
+ *
+ * 이 레인은 거의 매 회차 예산이 먼저 마른다 — 실측 `keywords 11개 · limit_hit true · spent 51`.
+ * 그런데 커서는 **계획한 창 크기(12)** 만큼 전진하고 있었다. 못 돈 1개는 다음 회차로 넘어가는 게
+ * 아니라 **건너뛰어진다.** 게다가 전진폭이 창 크기와 같아 창 경계가 `[0..11] [12..23] …` 로
+ * **영원히 고정**되므로, 매 회전 **같은 자리**가 빠진다 — 지연이 아니라 사각지대다.
+ *
+ * 오류도 경고도 안 난다. 이 레포가 반복해 만난 "부재는 침묵과 다르게 생겼다" 클래스라,
+ * 문자열이 아니라 **행동으로** 고정한다.
+ *
+ * ⚠️ 이 시험이 못 보는 것: 실제 예산 소진 지점(외부 API 응답에 달렸다). 여기서는
+ *   "중간에 끊기는 회차가 반복될 때 전량이 결국 조회되는가" 만 본다.
+ */
+describe('커서 전진폭 — 끊기는 회차가 반복돼도 전량이 결국 돈다', () => {
+  /** 매 회차 `canRun` 개만 돌고 끊기는 상황을 그대로 흉내낸다. */
+  const simulate = (advance: 'window' | 'consumed', total: number, batch: number, canRun: number, runs = 500) => {
+    let cursor = 0
+    const seen = new Set<number>()
+    for (let r = 0; r < runs; r++) {
+      const offsets = rotationWindow(total, cursor, batch).flatMap(w => Array.from({ length: w.limit }, (_, i) => w.offset + i))
+      const consumed = Math.min(canRun, offsets.length)
+      for (const o of offsets.slice(0, consumed)) seen.add(o)
+      cursor = total > 0 ? (cursor + (advance === 'window' ? offsets.length : consumed)) % total : 0
+    }
+    return seen.size
+  }
+
+  it('🔒 소비량으로 감으면 **전량**이 조회된다', () => {
+    expect(simulate('consumed', 120, 12, 11)).toBe(120)
+    expect(simulate('consumed', 4546, 12, 11, 3000)).toBe(4546)
+  })
+
+  it('🚨 창 크기로 감으면 **영구 사각지대**가 생긴다 — 이 시험이 고치기 전의 실제 동작이다', () => {
+    const seen = simulate('window', 120, 12, 11)
+    expect(seen, '창 크기로 감는데도 전량이 돌면 이 시험은 아무것도 안 지키는 것이다').toBeLessThan(120)
+  })
+
+  it('소비량 == 창 크기(예산이 넉넉한 회차)면 두 방식이 같다 — 정상 회차의 동작은 안 바뀐다', () => {
+    expect(simulate('consumed', 120, 12, 12)).toBe(simulate('window', 120, 12, 12))
+  })
+
+  it('🔒 소비 0(첫 키워드 전에 예산 고갈)이면 전진하지 않는다 — 안 본 것을 본 것으로 표시하면 안 된다', () => {
+    expect(simulate('consumed', 120, 12, 0)).toBe(0)
+  })
+
+  it('🔒 레인이 실제로 **소비량**을 쓴다 — 위 시뮬레이션과 코드가 갈라지면 의미가 없다', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const src = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/company-collect.ts'), 'utf8')
+    expect(src).toMatch(/const consumed = used\.length/)
+    expect(src).toMatch(/const nextCursor = total > 0 \? \(cursor \+ consumed\) % total : 0/)
+  })
+})

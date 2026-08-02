@@ -319,6 +319,39 @@ const MUTATIONS = [
       '이 항목은 시험이 실제로 잡아낸 결함이다.',
   },
   {
+    name: '파트너 커서가 계획한 창 크기로 전진(영구 사각지대)',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: 'const nextCursor = total > 0 ? (cursor + consumed) % total : 0',
+    replace: 'const nextCursor = total > 0 ? (cursor + batch) % total : 0',
+    test: 'src/tests/unit/company-keyword-grid.test.ts',
+    why:
+      '이 레인은 거의 매 회차 예산이 먼저 마른다(실측 `keywords 11 · limit_hit true`). ' +
+      '계획한 12칸을 전진하면 못 돈 1개가 **건너뛰어지고**, 전진폭이 창 크기와 같아 창 경계가 ' +
+      '영원히 고정되므로 **매 회전 같은 자리**가 빠진다 — 지연이 아니라 영구 사각지대다. 오류도 안 난다.',
+  },
+  {
+    name: '카카오 매장 회차가 다시 완주를 전제함(중간 정산 제거)',
+    file: 'src/features/marketing/api/store-kakao-collect.ts',
+    find: 'if (cursorKey && rows.length >= FLUSH_ROWS) await flushAt(cursorKey,',
+    replace: 'if (false) await flushAt(cursorKey,',
+    test: 'src/tests/unit/store-kakao-voucher-grid.test.ts',
+    why:
+      '맨 끝에서 한 번만 저장·전진하면 회차가 중간에 죽을 때 **캔 것도 전진도 통째로** 사라지고, ' +
+      '다음 회차가 같은 키워드를 또 훑는다 — 또 죽으면 영원히 0 이다(#927 이 그 구조로 며칠 멈췄다). ' +
+      '08-02 실측: 부모가 ms≈3.6초에 CPU 한도로 죽는데 이 레인의 완주 시간은 8,097ms 다. 완주가 예외다.',
+  },
+  {
+    name: '수동 트리거가 ur-ads 에 없는 경로를 부름',
+    file: 'src/features/marketing/api/store-prospects.routes.ts',
+    find: "['/collect-store-kakao', 'collect-store-kakao'],",
+    replace: "['/collect-store-kakao', 'collect-store-kakao-x'],",
+    test: 'src/tests/unit/store-collect-config.test.ts',
+    why:
+      '위임 `kick()` 이 fail-soft 라 대상이 틀려도 `{success:true, started:true}` 가 돌아간다 — ' +
+      '화면엔 "수집 시작" 토스트가 뜨고 **아무 일도 안 일어난다**. 404 보다 나쁜 건 404 가 성공처럼 보이는 것이고, ' +
+      '이 레인은 5회차에 한 번 도는 터라 "곧 되겠지"와 구분조차 안 된다.',
+  },
+  {
     name: '지역 권역 매칭 0 → 전국 폴백 제거',
     file: 'src/features/marketing/api/store-kakao-collect.ts',
     find: '  return picked.length ? picked : S2_REGIONS // 아무것도 안 잡히면 전국(설정 오타로 수집이 0 이 되면 안 된다)',

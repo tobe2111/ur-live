@@ -221,6 +221,7 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
   let limitHit = false
 
   const rows: StoreProspect[] = []
+  let saved = 0
   const used: string[] = []
   const blocks: Record<string, { kw: number; found: number }> = {}
   /** 업태별 발굴 수 — 어느 업태가 값을 만드는지 화면이 보여줄 수 있어야 끌 결정을 한다. */
@@ -231,10 +232,46 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
   /** 저장 batch(50개당 1) 몫을 남겨둔다 — 다 캐놓고 저장에서 한도에 걸리는 게 가장 비싼 실패다. */
   const saveReserve = () => Math.ceil(rows.length / 50) + 2
 
+  /**
+   * 🏦 **중간 정산 — 완주를 전제하지 않는다** (2026-08-02 라이브 실측 후 신설).
+   *
+   *   이 레인은 원래 캔 것을 전부 모아 뒀다가 **맨 끝에서 한 번** 저장하고 커서를 올렸다.
+   *   그러면 회차가 중간에 죽을 때 **캔 것도 전진도 통째로 사라진다** — 다음 회차가 같은 키워드를
+   *   또 훑고, 또 죽으면 영원히 0 이다(#927 통신판매 레인이 실제로 그렇게 며칠 멈춰 있었다).
+   *
+   *   그리고 이 환경이 정확히 그렇다. 08-02 정각 하트비트 실측:
+   *   ```
+   *     08:01:01  ok=false  ms=3649  collect-commerce   Worker exceeded CPU time limit
+   *     08:01:01  ok=false  ms=3649  maintenance?quality  〃
+   *   ```
+   *   부모가 3.6초에 죽는데 이 레인의 완주 시간은 `elapsed_ms 8,097` 이다. **끝까지 사는 쪽이 예외다.**
+   *   자기 마감선(`RUN_DEADLINE_MS` 12초)은 부모 수명보다 길어서 아무것도 못 막는다 —
+   *   마감선을 3초로 줄이면 부모가 건강한 회차의 수확까지 같이 깎는다. 그래서 마감선이 아니라
+   *   **저장 시점**을 고쳤다: 무엇이 언제 죽든 **그때까지 캔 것은 남는다.**
+   *
+   *   💰 비용이 거의 0 인 게 이 설계의 핵심이다 — 저장 batch 는 **어차피 내야 하는** 값이고,
+   *   추가분은 커서 write 1 뿐이다(batch 파편화로 가끔 +1).
+   */
+  const flushRows = async () => {
+    if (!rows.length) return
+    budget.left -= Math.ceil(rows.length / 50)
+    saved += await saveProspects(DB, rows.splice(0)).catch(() => 0)
+  }
+  /** ⚠️ **키워드 경계에서만** 부른다 — 그 앞의 키워드는 전부 조회 완료라 커서 값이 정확하다.
+   *  페이지 중간에서 올리면 안 본 페이지를 본 것으로 표시하게 된다. */
+  const flushAt = async (cursorKey: string, at: number) => {
+    await flushRows()
+    budget.left -= 1
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(cursorKey, String(at)).run().catch(() => null)
+  }
+  /** 한 batch 가 찼으면 정산한다 — 더 모아 봐야 죽을 때 잃는 양만 커진다. */
+  const FLUSH_ROWS = 50
+
   /** @param floor 이 블록이 **남겨둬야 할** 예산(뒤 블록 몫). 슬롯만 나누고 예산을 안 남기면
    *  앞 블록이 지갑을 비워 뒤 블록은 슬롯이 있어도 첫 검사에서 튕긴다 — 몫 배분이 무의미해진다. */
   const runBlock = async (
     name: string, all: Array<{ q: string; region: string; category: string; trade: string }>, cursor: number, slots: number, floor = 0,
+    cursorKey?: string,
   ): Promise<number> => {
     let consumed = 0
     const stat = { kw: 0, found: 0 }
@@ -269,6 +306,8 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
           }
           if (data?.meta?.is_end || docs.length < 15) break // 우물이 말랐다
         }
+        // 🏦 키워드 하나가 끝난 지점 = 커서를 정확히 말할 수 있는 유일한 자리. 여기서 정산한다.
+        if (cursorKey && rows.length >= FLUSH_ROWS) await flushAt(cursorKey, (cursor + consumed) % Math.max(1, all.length))
       }
     }
     return (cursor + consumed) % Math.max(1, all.length)
@@ -277,12 +316,13 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
   // 몫을 **먼저 나눈다** — 앞 블록이 다 쓰고 뒤가 0 이 되는 걸 막는다(위 blockSlots 주석).
   const slots = blockSlots(budget.left, cfg.max_pages, cfg.voucher_share)
   // 우선업종 먼저 — 0 건에서 시작하는 쪽이 앞선다. 다만 무인 몫은 이미 떼어 놨다.
-  const nextV = voucherTrades.length ? await runBlock('voucher', buildVoucherKeywords(voucherTrades, activeRegions), cursorV, slots.voucher, slots.unmanned * cfg.max_pages) : cursorV
-  const nextU = unmannedTrades.length ? await runBlock('unmanned', buildUnmannedKeywords(unmannedTrades, activeRegions), cursorU, slots.unmanned) : cursorU
+  const nextV = voucherTrades.length ? await runBlock('voucher', buildVoucherKeywords(voucherTrades, activeRegions), cursorV, slots.voucher, slots.unmanned * cfg.max_pages, CURSOR_KEY_VOUCHER) : cursorV
+  // 🏦 블록 경계 정산 — 뒤 블록에서 죽어도 앞 블록의 수확·전진이 남는다.
+  if (voucherTrades.length) await flushAt(CURSOR_KEY_VOUCHER, nextV)
+  const nextU = unmannedTrades.length ? await runBlock('unmanned', buildUnmannedKeywords(unmannedTrades, activeRegions), cursorU, slots.unmanned, 0, CURSOR_KEY) : cursorU
 
-  // 저장은 saveProspects 가 50개씩 batch — 우리가 예산에서 그 횟수만큼 지불한다.
-  budget.left -= Math.ceil(rows.length / 50)
-  const saved = rows.length ? await saveProspects(DB, rows).catch(() => 0) : 0
+  // 남은 꼬리 — 저장은 saveProspects 가 50개씩 batch, 그 횟수만큼 예산에서 지불한다.
+  await flushRows()
 
   // 업태별 누적 — 저장수는 업태별로 분해할 수 없다(upsert 가 전체 단위로 돈다). 발굴 비율로 배분하고,
   //   그 사실을 컬럼 의미에 남긴다(정확한 수인 척하지 않는다).

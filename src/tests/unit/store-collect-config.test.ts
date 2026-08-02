@@ -25,6 +25,9 @@ const SRC = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
 const TRADES = SRC('src/features/marketing/api/store-trades.ts')
 const LANE = SRC('src/features/marketing/api/store-kakao-collect.ts')
 const PANEL = SRC('src/pages/admin/store-prospects/CollectConfigPanel.tsx')
+const ROUTES = SRC('src/features/marketing/api/store-prospects.routes.ts')
+const ADS = SRC('src/worker-ads/public-data.routes.ts')
+const PAGE = SRC('src/pages/admin/AdminStoreProspectsPage.tsx')
 const GROUPS = Object.keys(REGION_GROUPS)
 
 describe('clamp — 화면이 상한을 못 뚫는다', () => {
@@ -113,5 +116,41 @@ describe('효과를 같은 화면에 띄운다', () => {
 
   it('🔒 저장 후 **서버가 자른 값**을 반영한다 — 보낸 값을 그대로 그리면 화면과 실제가 갈라진다', () => {
     expect(PANEL).toMatch(/setCfg\(r\.data\.config\)/)
+  })
+})
+
+/**
+ * 🖲️ **지금 돌려 볼 수 있어야 조건을 조정할 수 있다.**
+ *
+ * 이 레인은 dispatch `prospect` 도메인(예산 1 / 레인 5)이라 **약 5회차에 한 번**만 돈다.
+ * 조건을 바꾼 뒤 효과를 보려면 최대 5시간을 기다려야 했다 — 학원·병원엔 있는 버튼이
+ * 정작 우선업종(음식점·카페·미용·숙박)을 채우는 **유일한 레인**에만 없었다.
+ *
+ * ⚠️ 여기서 진짜 위험한 건 404 가 아니라 **404 가 성공처럼 보이는 것**이다:
+ * 위임 `kick()` 이 `catch { /* fail-soft *\/ }` 라 대상 경로가 틀려도 `{success:true, started:true}` 를
+ * 돌려준다. 화면엔 "수집 시작" 토스트가 뜨고 아무 일도 안 일어난다 — 이 레포가 반복해 만난
+ * "침묵이 성공처럼 보인다" 클래스. 그래서 **양쪽 문자열을 대조**한다.
+ */
+describe('수동 실행 — 조건을 바꾼 뒤 지금 확인할 수 있다', () => {
+  const targets = [...ROUTES.matchAll(/\['(\/collect-[a-z-]+)', '([a-z-]+)'\]/g)].map(m => ({ path: m[1], target: m[2] }))
+
+  it('🔒 카카오 매장 레인에 수동 트리거가 있다', () => {
+    expect(targets.map(t => t.path), '위임 목록에 없다').toContain('/collect-store-kakao')
+  })
+
+  it('🔒 위임 대상이 ur-ads 에 **실재한다** — 없으면 fail-soft 가 삼켜 "시작됨"만 뜨고 아무 일도 안 난다', () => {
+    expect(targets.length, '위임 목록을 못 읽었다(정규식이 낡음)').toBeGreaterThan(1)
+    for (const { target } of targets) {
+      expect(ADS, `ur-ads 에 /__ads/${target} 가 없다`).toContain(`'/__ads/${target}'`)
+    }
+  })
+
+  it('🔒 버튼이 배선돼 있다 — 라우트만 있고 누를 데가 없으면 없는 기능이다', () => {
+    expect(PAGE).toMatch(/runCollectSub\('store-kakao'\)/)
+    expect(PAGE, "kind 가 URL 로 그대로 이어져야 한다").toMatch(/collect-\$\{kind\}/)
+  })
+
+  it('🔒 실행 중 라벨이 **그 버튼에만** 뜬다 — 공유 상태를 안 나누면 셋이 동시에 "수집 중"이 된다', () => {
+    expect(PAGE).toMatch(/busySub === 'store-kakao' \?/)
   })
 })
