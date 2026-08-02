@@ -65,6 +65,41 @@ export const BACKOFF_FACTOR = 0.75
  */
 export const PROBE_AFTER_PINNED = 6
 
+/** 회차 간격(정각 cron). 빈 회차 수를 세는 기준. */
+export const TICK_INTERVAL_MS = 60 * 60 * 1000
+/**
+ * 간격 판정의 여유. cron 발화 지연·flush 지연으로 1시간을 조금 넘는 건 흔하다.
+ * 이만큼은 "빠진 회차"로 세지 않는다(오탐을 만들면 학습기가 계속 물러난다).
+ */
+export const GAP_GRACE_MS = 30 * 60 * 1000
+
+/**
+ * 🕳️ **기록조차 없는 회차 수** — 이 학습기의 가장 아픈 사각지대를 메운다.
+ *
+ * ## 왜 필요한가 (2026-08-03 00:45 KST 실측으로 발견)
+ * 학습기의 입력은 회차 요약인데, **부모가 flush 전에 죽으면 그 회차는 요약이 없다.**
+ * 즉 **가장 심하게 무너진 회차일수록 기록이 안 남는다** — 학습기는 *살아남은 회차만* 보고,
+ * 그건 정의상 덜 해로운 회차들이다. ⇒ **물러나야 할 때 신호를 못 받는 편향**이 생긴다.
+ *
+ * 실측이 정확히 그랬다: `ads_dispatch_last` 는 15:00:35Z 에 디스패치를 기록했는데
+ * 그 회차의 요약도 `ads:scheduled` 하트비트도 **둘 다 없었다**. 관측된 회차는 5회 중 2회꼴.
+ *
+ * ⇒ **빈자리 자체를 신호로 쓴다.** 이력의 시각 간격이 한 회차를 넘으면 그 사이 회차들은
+ *   "띄웠는데 기록조차 못 남긴" 회차이고, 그건 `fail` 보다 더 강한 붕괴 신호다.
+ *
+ * ⚠️ **오탐 원인을 알고 쓴다**: 간격은 **배포로도 생긴다**(배포는 돌고 있는 isolate 를 즉시 죽인다 —
+ *   이 레포는 머지가 잦아 그게 일상이다). 다만 그 오탐의 대가는 *한 칸 물러났다가 깨끗한 2회차에
+ *   되찾는 것*이라 가볍고 자기교정된다. 반면 편향의 대가는 **영영 안 물러나는 것**이다.
+ *
+ * @param prevAt 직전 이력 항목의 ISO 시각(없으면 0 — 첫 회차를 해로 몰지 않는다).
+ */
+export function missedTicks(prevAt: string | null | undefined, nowAt: string): number {
+  if (!prevAt || !nowAt) return 0
+  const a = Date.parse(prevAt), b = Date.parse(nowAt)
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return 0
+  return Math.max(0, Math.floor((b - a - GAP_GRACE_MS) / TICK_INTERVAL_MS))
+}
+
 export interface LaneLearnState {
   /** 다음 회차에 쓸 레인 수. */
   cap: number
@@ -142,11 +177,16 @@ export const tickHarmed = (t: TickSummary): boolean =>
  */
 export function learnLanes(
   prev: LaneLearnState | null, tick: TickSummary, ceiling: number, start: number,
+  /**
+   * 🕳️ 직전 기록 이후 **기록조차 없는 회차 수**(`missedTicks`). 1 이상이면 무조건 해다 —
+   *   그 회차들은 부모가 flush 전에 죽은 것이고, 그게 이 학습기가 원래 못 보던 최악의 경우다.
+   */
+  missed = 0,
 ): LaneLearnState {
   const top = Math.max(MIN_LANES_PER_TICK, Math.floor(ceiling))
   const base = clampCap(prev?.cap ?? start, top)
 
-  if (!tickHarmed(tick)) {
+  if (!tickHarmed(tick) && missed <= 0) {
     const clean = (prev?.clean ?? 0) + 1
     if (clean < RECOVER_CLEAN_TICKS) return { cap: base, clean, pinned: 0 }
     return { cap: Math.min(top, base + 1), clean: 0, pinned: 0 }

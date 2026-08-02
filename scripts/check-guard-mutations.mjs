@@ -687,6 +687,26 @@ const MUTATIONS = [
       '라이브가 4개 머지만큼 뒤처졌는데 화면은 멀쩡해 보인다 — 한 곳만 고치면 다른 곳이 같은 이유로 죽는다.',
   },
   {
+    name: '빈 회차를 해로 안 셈(학습기 관측 편향 재발)',
+    file: 'src/worker-ads/lane-aimd.ts',
+    find: '  if (!tickHarmed(tick) && missed <= 0) {',
+    replace: '  if (!tickHarmed(tick)) {',
+    test: 'src/tests/unit/ads-lane-aimd.test.ts',
+    why:
+      '부모가 flush 전에 죽은 회차는 요약이 없다 — 즉 **가장 심하게 무너진 회차일수록 학습기 눈에 안 띈다**. ' +
+      '빈자리를 안 세면 학습기가 살아남은 회차만 보고 영영 안 물러난다(실측: 관측된 회차 5중 2).',
+  },
+  {
+    name: '빈 회차를 이력 덧붙인 *뒤* 에 셈(항상 0)',
+    file: 'src/worker-ads/tick-history-write.ts',
+    find: "    const prevAt = readTickHistory(pick(TICK_HISTORY_KEY)).at(-1)?.at\n    const next = appendTick(pick(TICK_HISTORY_KEY), tick)",
+    replace: "    const next = appendTick(pick(TICK_HISTORY_KEY), tick)\n    const prevAt = readTickHistory(next).at(-1)?.at",
+    test: 'src/tests/unit/ads-tick-history.test.ts',
+    why:
+      '덧붙인 뒤 마지막 항목은 **방금 만든 이 회차**라 간격이 항상 0 이 된다 — 검사가 통째로 헛돈다 ' +
+      '(이 레포가 반복해 만난 "헛도는 가드" 의 교과서적 형태).',
+  },
+  {
     name: '배포 워크플로가 자기 자신을 경로에서 잃음',
     file: '.github/workflows/deploy-ads.yml',
     find: "      - '.github/workflows/deploy-ads.yml'",
