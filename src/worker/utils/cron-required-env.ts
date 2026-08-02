@@ -116,3 +116,19 @@ export function formatMissingEnv(missing: readonly CronEnvRequirement[]): string
  * 구분하지 못하기 때문이다. 매 회차 덮어써야 행의 시각이 곧 판정 시각이 된다.
  */
 export const ENV_ALL_PRESENT = 'ok — 요구 키 전부 존재'
+
+/**
+ * 한 회차에 남길 env 판정 한 줄 — 요구사항이 없는 cron 이면 `null`(호출부가 건너뛴다).
+ *
+ * 📦 2026-08-02: `scheduled.ts` 에서 옮겨왔다. 그 파일은 68개 작업의 **디스패치 표**라 줄이
+ * 늘기만 하고(파일크기 래칫에 세 번 걸렸다), 판정 자체는 이 명부의 일이다. 무엇보다
+ * **분기가 여기 있어야 규칙을 소스 정규식이 아니라 행동으로 검사**할 수 있다 —
+ * `if (missing.length > 0)` 로 되돌아가는 회귀는 "정상일 때 null 을 돌려준다"로 잡힌다.
+ */
+export function envBeatFor(cron: string, env: Record<string, unknown>): string | null {
+  if (!CRON_REQUIRED_ENV[cron]?.length) return null
+  const missing = missingEnvFor(cron, env)
+  // ⚠️ 여기서 '빠진 게 없으면 null' 로 바꾸지 말 것 — 그러면 옛 행이 남아 거짓말을 시작한다
+  //    (위 ENV_ALL_PRESENT 주석의 실측 사고). 요구사항이 있는 cron 은 **매 회차** 덮어쓴다.
+  return missing.length > 0 ? formatMissingEnv(missing) : ENV_ALL_PRESENT
+}
