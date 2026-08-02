@@ -156,6 +156,14 @@ jobs:
         run: node scripts/check-conflict-markers.mjs -s
         continue-on-error: false
 
+      # ⏰ 2026-08-02: `0 20 * * 0` 한 줄이 배열 **전체**를 거부시켜 주간 D1 백업이 몇 달간
+      #   등록조차 안 됐다(재해복구 0). CF 의 day-of-week 는 1-7 또는 MON-SUN — 0 이 없다.
+      - name: cron 표현식 문법 (strict)
+        env:
+          STRICT_CRON_SYNTAX: 1
+        run: node scripts/check-cron-syntax.mjs
+        continue-on-error: false
+
       # 🚦 2026-08-02: 레인이 예산을 우회하는 것을 막는다(인플루언서·B2B 공통).
       #   생 `ctx.waitUntil(await import(…))` 은 **부모 CPU 를 직접 태우면서 예산 분산엔 안 잡힌다**.
       #   `kick` 은 SELF.fetch = 자식 인보케이션 = 자기 예산이라 성격이 정반대다.

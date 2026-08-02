@@ -16,6 +16,7 @@ import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import NotFoundPage from '@/pages/NotFoundPage'
 import { POWERED_BY, PAYMENT_TRUST_NOTE } from '@/shared/mall/branding'
+import { rememberMallOrigin } from '@/shared/mall/origin'
 import { cfImage } from '@/utils/cf-image'
 import { parseUTCDate } from '@/utils/date'
 import { formatWon } from '@/utils/format'
@@ -75,6 +76,9 @@ export default function MallHomePage() {
     Promise.all([p1, p2]).then(([m, list]) => {
       if (!alive) return
       if (!m?.success || !m?.mall) { setState('notfound'); return }
+      // 🧭 확인된 몰일 때만 흔적을 남긴다 — 상품 상세가 갈 곳을 잃었을 때 **가게로** 돌려보내기 위해서다.
+      //   ⚠️ 판정용이 아니다(shared/mall/origin.ts 주석 참조).
+      rememberMallOrigin(m.mall.slug)
       setMall(m.mall)
       setItems(Array.isArray(list?.data) ? list.data : [])
       setState('ok')

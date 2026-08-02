@@ -18,6 +18,10 @@
  * 2026-06-18 사고는 **계정 우선**이라 같은 URL 이 로그인 여부로 다르게 해석된 것이다.
  * 경로는 URL 에 박혀 있어 **결정적**이다 — 게스트/로그인이 같은 값을 본다.
  */
+import { RESERVED_SLUGS } from './slug'
+
+/** 예약어 조회는 O(1) 로. `slug.ts` 는 이 파일을 import 하지 않는다(순환 없음). */
+const RESERVED_SLUG_SET = new Set(RESERVED_SLUGS)
 
 /** 경로 기반 몰 해석을 허용하는 정본 호스트. 여기 없는 호스트에선 경로를 보지 않는다. */
 export const CANONICAL_HOSTS: readonly string[] = [
@@ -69,6 +73,39 @@ export function decideMallSource(i: MallResolveInput): MallSource {
   return 'default'
 }
 
+/**
+ * 이 세그먼트가 **몰 슬러그일 수 있는가** — 예약어(=실제 라우트)·문법 밖이면 false.
+ *
+ * 🔴 순서 주의: 예약어 검사가 **먼저**다. 그래야 실제 소비자 라우트가 이 판정에 한 번도 안 걸린다.
+ *
+ * 이것이 **유일한 정의**다. 워커(`worker/utils/mall-consumer.ts` `isMallLookupCandidate`)도
+ * 클라(`App.tsx` 몰 표면 판정)도 여기를 호출한다 — 같은 규칙을 두 벌 쓰면 **반드시 갈라지고**,
+ * 갈라진 순간 "워커는 몰로 보는데 클라는 아닌" 경로가 생겨 유어딜 탭바가 몰 위에 뜬다.
+ */
+export function isMallSlugCandidate(seg: string | null | undefined): boolean {
+  const s = String(seg ?? '').trim().toLowerCase()
+  if (!s) return false
+  if (RESERVED_SLUG_SET.has(s)) return false
+  return /^[a-z0-9-]{3,30}$/.test(s)
+}
+
+/**
+ * 이 **경로**가 몰 표면(`urdeal.kr/{슬러그}`)인가 — 한 세그먼트짜리 슬러그 후보.
+ *
+ * ⚠️ **문법 판정이지 존재 판정이 아니다.** 실재하지 않는 슬러그(`/ossda`)도 true 다 —
+ *   그 경로는 `MallHomePage` 가 스스로 404 를 그린다. 즉 이 함수가 true 인데 몰이 아니면
+ *   **404 화면에서 유어딜 탭바가 사라진다.** 그 대가를 알고 택했다:
+ *   ① 진짜 몰 손님(파일럿의 전부)에게 탭바가 **한 프레임도** 안 뜨는 쪽이 중요하다
+ *      — 나중에 숨기면 깜빡이고, 깜빡이는 순간 손님은 유어딜을 본다.
+ *   ② `NotFoundPage` 는 자체 '홈으로'·인기 링크·뒤로가기를 갖고 있어 오타 방문자도 안 갇힌다.
+ */
+export function isMallSurfacePath(pathname: string | null | undefined): boolean {
+  const path = String(pathname ?? '').split('?')[0].split('#')[0]
+  const segs = path.replace(/^\/+/, '').replace(/\/+$/, '').split('/')
+  if (segs.length !== 1) return false
+  return isMallSlugCandidate(segs[0])
+}
+
 /** URL 경로의 1st 세그먼트(소문자). 몰 슬러그 후보로만 쓰고, 실재 여부는 호출부가 DB 로 확인한다. */
 export function firstPathSegment(url: string): string | null {
   let p: string
@@ -83,6 +120,18 @@ export function firstPathSegment(url: string): string | null {
 
 /** 본진(기본 몰) id. 몰이 정해지지 않은 모든 것이 여기로 간다. */
 export const MAIN_MALL = 1
+
+/**
+ * 이 상품이 **운영자 몰 상품인가** (= 본진이 아닌가).
+ *
+ * 🔴 **모르면 본진으로 본다.** `null`/`undefined`/파싱불가는 전부 false —
+ *   `products.mall_id` 는 `DEFAULT 1` 이고, 컬럼이 없는 env 엔 경로로 열리는 몰 자체가 없다
+ *   (`consumer_path` fail-closed). ⇒ 신호가 없을 때의 동작이 **현행과 정확히 같다.**
+ */
+export function isMallProduct(mallId: number | null | undefined): boolean {
+  const n = Number(mallId)
+  return Number.isFinite(n) && Math.floor(n) !== MAIN_MALL && Math.floor(n) >= 1
+}
 
 /**
  * 🏬 **상품이 꽂힐 몰** — 운영자(셀러)의 몰을 그대로 따른다 (세션 ③-b, O4).

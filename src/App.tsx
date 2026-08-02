@@ -14,6 +14,7 @@ import { useMultiTabSync } from './hooks/useMultiTabSync'
 import { useTokenAutoRefresh } from './hooks/useTokenAutoRefresh'
 import HomeRoute from './pages/pc-home/HomeRoute' // 🖥️ 홈 뷰포트 분기(lg+ PC 홈 / 그 외 지도)
 import { isFullBleedPcPath } from './shared/pc-fullbleed' // 🖥️ 풀너비 PC 페이지(홈·카탈로그)
+import { isMallSurfacePath } from './shared/mall/resolve' // 🏬 운영자 몰 표면(본진 크롬 차단)
 import ScrollToTop from './components/ScrollToTop'
 import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
@@ -596,8 +597,15 @@ function AppContent() {
     } catch { return new URLSearchParams(location.search).get('embed') === '1' }
   })()
   const embedHideNav = embedFlag && /^\/(u|profile|s)(\/|$)/.test(location.pathname)
+  // 🏬 2026-08-02 — **운영자 몰 표면(`urdeal.kr/{슬러그}`)에서 유어딜 크롬 전부 차단.**
+  //   대표 UX 기준 ⑤ *"본진 입구 금지"*. `MallHomePage` 는 그 기준을 지키려고 `powered by 유어딜`
+  //   조차 **클릭 안 되는 문자열**로 두는데(:188), 정작 그 페이지 아래에 유어딜 5탭 하단바가,
+  //   PC 에선 상단 네비와 사이드배너까지 붙고 있었다. 페이지가 아무리 조심해도 **셸이 새고 있었다.**
+  //   ⇒ 판정은 `isMallSurfacePath`(shared SSOT, 워커와 같은 규칙) 하나로.
+  const mallSurface = isMallSurfacePath(location.pathname)
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
     || isWholesaleSurface(location.pathname) || isMarketingSurface(location.pathname) || embedHideNav
+    || mallSurface
   // 🗺️ 2026-06-20 (대표 — 홈=리스트 / 지도는 버튼 이동): 지도 페이지(/restaurant-map)만 h-screen 자체관리
   //   풀스크린(바텀시트가 하단 담당) → main 하단 네비 여백 제외. 홈(/)=리스트는 일반 페이지(여백 필요).
   //   ⚠️ 도매/제조사(isWholesaleSurface)는 위 hideBottomNav 가 이미 커버(여백 0) — 여기 중복 불필요.
@@ -1055,7 +1063,8 @@ function AppContent() {
           </main>
           </div>
           {!hideBottomNav && <BottomNav />}
-          {!fullScreen && !isFullBleedPcPath(location.pathname) /* 🖥️ PC 풀너비(홈·카탈로그)는 자체 레이아웃 */ && <Suspense fallback={null}><SideBanner /></Suspense>}
+          {!fullScreen && !mallSurface /* 🏬 몰 표면엔 유어딜 배너 금지(본진 입구) */
+            && !isFullBleedPcPath(location.pathname) /* 🖥️ PC 풀너비(홈·카탈로그)는 자체 레이아웃 */ && <Suspense fallback={null}><SideBanner /></Suspense>}
           {/* 🛡️ 2026-05-24 (사용자 명령): 우하단 카카오 FAB 잠시 숨김 (featureFlags.kakaoFab=false).
               복원: src/shared/config/feature-flags.ts 의 kakaoFab 을 true 로. 대신 /user/profile 페이지에 별도 배치. */}
           {!fullScreen && featureFlags.kakaoFab && <KakaoConsultButton />}

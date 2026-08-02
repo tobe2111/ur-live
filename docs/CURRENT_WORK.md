@@ -5498,6 +5498,7 @@ _총 85건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-02**
 - [회차당 레인 수를 스스로 잰다 — 손으로 잰 상수의 마지막 자리 (2026-08-02)](handoff/2026-08-02-lane-count-selflearning.md)
+- [2026-08-02 — 몰 손님이 보는 화면의 경계 (기준 ⑤) + 디자인 의뢰 추가분](handoff/2026-08-02-mall-consumer-surface-boundary.md)
 - [08-02 — 매장 풀의 97.6%가 학원이었다. 대표가 지목한 네 업종은 **0건**](handoff/2026-08-02-kakao-store-voucher-grid.md)
 - [마감 직전엔 집지 않는다 — 확정 실패 + 가짜 도장 차단 (2026-08-02)](handoff/2026-08-02-enrich-deadline-window.md)
 - [08-02 — 수량 실측: 양은 문제가 아니다. **연락처가 안 채워진다**](handoff/2026-08-02-collection-volume-verdict.md)
