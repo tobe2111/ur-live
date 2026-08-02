@@ -254,3 +254,39 @@ bash /tmp/.../scratchpad/verdict.sh    # ⓪ 사망 수 → ④ 알람 → ①�
 
 ### 검증
 tsc 0 · 전체 **4,200 pass** · audit-gate **81 GREEN** · 되돌려-검증 2건(조기 중단 제거 · 바이트 파서 무력화)
+
+---
+
+## ☁️ CF 토큰이 "죽어 있던" 진짜 이유 — 토큰이 아니라 저장 UI 였다
+
+여러 세션이 `platform_settings.cf_api_token` 이 `verify` 를 실패한다고 기록했고(07-29 에는 CLAUDE.md 의
+07-28 실측을 **무효 표기**까지 했다), 그래서 아무도 D1 을 직접 못 봤다. **원인은 토큰이 아니었다.**
+
+`/admin/platform-settings` 가 값을 **조용히 저장하지 않았다**:
+
+```
+useEffect(() => { if (settingsQ.data) setSettings(settingsQ.data) }, [settingsQ.data])
+```
+
+편집 폼인데 서버 값이 도착할 때마다 **폼 전체를 덮어쓴다.** RQ 는 창 포커스 복귀 등으로 타이핑 중에도
+리페치한다 ⇒ 토큰을 붙여넣고 → 다른 창 다녀오고 → 돌아오면 **방금 넣은 값이 옛 값으로 되돌아가** 있고,
+'저장'을 누르면 **옛 토큰이 다시 저장**된다. 화면엔 계속 "설정됨"이 떠서 성공처럼 보인다.
+
+🔑 **잡아낸 방법**: 대표가 준 값과 저장된 값의 **sha256 앞 8자리를 비교**했다. 길이가 둘 다 53이라
+화면으로는 절대 구분이 안 됐다(`cfut…` 접두사까지 같다). 값을 안 찍고 다름을 증명하는 유일한 길이었다.
+
+**수리**: 시드 1회(`seeded` ref) · 저장 성공 시에만 재시드 · "설정됨 · …끝4자리" 표시 ·
+무엇이 교체됐는지 토스트. 회귀 가드 `admin-settings-seed.test.ts`(5) — 되돌려-검증 2건 확인.
+
+### 지금 상태 (모든 세션이 그대로 씀)
+```
+verify → success:true · status:active
+D1 6개 / Workers 8개 / Pages 7개 조회 OK
+POST /accounts/{acc}/d1/database/{uuid}/query → 원본 SELECT 됨
+```
+⚠️ **D1 uuid 는 `d9530ba6-7a26-4c02-9295-3ce5aef112a3` 하나다.** 계정에 DB 가 6개라 **이름으로 고르면
+엉뚱한 걸 집어 `no such table` 이 난다**(실제로 한 번 헛짚었다). `wrangler.toml`·`wrangler-ads.toml` 이
+같은 값을 쓴다. 절차는 CLAUDE.md "☁️ Cloudflare API 접근 → 🗄️ D1 원본 조회" 에 박아 뒀다.
+
+> 🔑 **교훈**: *"자격이 반영됐는지"를 화면 문구로 판정하지 마라.* "설정됨"은 옛 값에도 똑같이 뜬다.
+> 판정은 `verify` 같은 **바깥 사실**로 한다. 이 오진 하나가 며칠치 진단 능력을 막고 있었다.

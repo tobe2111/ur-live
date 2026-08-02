@@ -450,6 +450,20 @@ curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" -H "$AUTH"       
 curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ur-ads/settings" -H "$AUTH"
 ```
 
+**🗄️ D1 원본 조회 (2026-08-02 신설 — 어드민이 노출한 통계 말고 테이블 자체를 본다)**
+
+```bash
+# ⚠️ 계정에 D1 이 6개 있다. **이름으로 고르지 말 것** — 라이브는 이 uuid 하나뿐이고
+#    (wrangler.toml · wrangler-ads.toml 이 같은 값을 쓴다), 이름 매칭은 엉뚱한 DB 를 집어
+#    `no such table` 을 낸다(실제로 그렇게 한 번 헛짚었다).
+DB=d9530ba6-7a26-4c02-9295-3ce5aef112a3
+python3 -c "import json,sys;json.dump({'sql':sys.argv[1]},open('/tmp/q.json','w'))" "SELECT COUNT(*) n FROM ad_influencer_leads"
+curl -sS -X POST "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$DB/query" -H "$AUTH" \
+  -H 'Content-Type: application/json' --data-binary @/tmp/q.json
+```
+🔒 **읽기 전용으로만 쓴다.** 데이터 수리는 일회성 SQL 이 아니라 **코드 경로**(정비 레인 · `repair-schema`)로
+간다 — 그래야 재현되고 리뷰되고 다음에도 돈다. 프로덕션 D1 에 잘못 날린 UPDATE 는 되돌릴 방법이 없다.
+
 **🚫 자율 규율 (대표가 넓은 권한을 줬어도 지킨다)**:
 1. **코드 배포는 이 토큰으로 하지 않는다.** 반드시 PR → CI(46 불변식) → 대표 승인 → 머지 경유.
    토큰으로 직접 배포하면 오늘 실제로 실수를 잡아낸 게이트(파일크기 래칫·타입체크)를 통째로 우회하게 된다.
@@ -462,12 +476,17 @@ curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ur-ads/settings" -
 3. **삭제·purge·바인딩 제거는 대표 명시 지시가 있을 때만.** 되돌리기 어려운 작업은 먼저 확인.
 4. 토큰 값을 파일·로그·커밋·PR 본문에 남기지 않는다. 응답 파일은 스크래치패드에만, 작업 후 삭제.
 
-> 🔴 **2026-07-29 무효 표기 (대표 지시)**: 아래 "확인된 사실(2026-07-28 실측)" 중 **이 토큰으로 조회에
-> 성공했다는 기록은 지금 유효하지 않다.** 2026-07-29 실측에서 `platform_settings.cf_api_token` 이
-> **`GET /user/tokens/verify` 자체를 실패**한다(`Authentication error` code 10000 — D1 권한 부족이 아니라
-> 토큰이 죽음). **재발급 예정이며 스코프는 D1 읽기 전용 최소**로 좁힌다(`docs/design/pickup-groupbuy-wholesale-link.md` §B.12).
-> ⇒ 이 절의 절차는 그대로 유효하지만, **"토큰은 살아 있다"를 전제하지 말고 `verify` 로 먼저 확인**할 것.
-> (아래 `usage_model` 정정과 같은 성격 — 낡은 실측을 믿고 오진한 사례가 반복됐다.)
+> ✅ **2026-08-02 복구 — 토큰은 살아 있다(실측).** 07-29 의 "죽음" 표기는 **해소됐다.** 대표가 새 토큰을
+> 발급했고, `platform_settings.cf_api_token` 에 저장돼 **모든 세션이 그대로 쓸 수 있다.** 실측:
+> `GET /user/tokens/verify` → `success:true, status:active` · **D1 6개 / Workers 8개 / Pages 7개 조회 OK**
+> · `POST /accounts/{acc}/d1/database/{uuid}/query` 로 **원본 테이블 SELECT 가 된다.**
+> ⇒ 그래도 절차는 그대로다: **`verify` 로 먼저 확인하고 쓴다**(만료·회전은 언제든 일어난다).
+>
+> 🩸 **07-29 세션이 "죽었다"고 판정한 것은 사실이었지만 원인은 토큰이 아니라 저장 UI 였다.**
+> `/admin/platform-settings` 가 값을 **조용히 안 저장**했다 — 편집 중 RQ 리페치가 폼을 서버 값으로
+> 덮어써서, 새 토큰을 붙여넣고 저장해도 **옛 토큰이 다시 저장**됐다. 화면엔 계속 "설정됨"이 떠서
+> 성공처럼 보였다(길이가 같으면 구분할 표시가 아예 없었다). 2026-08-02 수리: 시드 1회 + 저장 후
+> "…끝4자리" 표시 + 무엇이 교체됐는지 토스트. ⇒ **자격이 반영됐는지는 화면 문구가 아니라 `verify` 로 판정할 것.**
 
 **확인된 사실(2026-07-28 실측 — 추측 대체)**:
 - ⚠️ **정정(2026-07-28 후속)**: 아래 "유료 → 1,000" 은 **틀렸다. 믿지 말 것.** `usage_model: standard` 는

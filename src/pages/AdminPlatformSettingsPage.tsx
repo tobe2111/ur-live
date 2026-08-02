@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
@@ -100,6 +100,8 @@ export default function AdminPlatformSettingsPage() {
   const navigate = useNavigate()
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
+  /** 저장 성공 횟수 — 자격 섹션이 입력칸을 닫고 '설정됨 · 끝4자리' 로 되돌리는 신호. */
+  const [savedTick, setSavedTick] = useState(0)
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
 
   useEffect(() => {
@@ -109,7 +111,22 @@ export default function AdminPlatformSettingsPage() {
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. 편집형이라 데이터 도착 시 시드.
   const settingsQ = useApiQuery<Record<string, string>>(['admin', 'platform-settings'], '/api/admin/tools/settings', { select: (r: any) => (r?.success ? r.data || {} : {}) })
   const loading = settingsQ.isLoading
-  useEffect(() => { if (settingsQ.data) setSettings(settingsQ.data) }, [settingsQ.data])
+  /**
+   * 🩸 **시드는 한 번만** (2026-08-02 대표 신고 "입력이 된건지 안된건지" — 실제 데이터 손실).
+   *
+   *   원래는 `settingsQ.data` 가 바뀔 때마다 **입력 폼 전체를 서버 값으로 덮어썼다.** 그런데 이 페이지는
+   *   편집 폼이고, RQ 는 창 포커스 복귀 등으로 **사용자가 타이핑하는 중에도 리페치**한다.
+   *   실제 시나리오: 토큰을 붙여넣고 → 다른 창에 다녀오고 → 돌아오면 리페치가 **방금 붙여넣은 값을
+   *   서버의 옛 값으로 되돌려** 놓는다 → '저장' 을 눌러도 **옛 값이 다시 저장된다.**
+   *   화면에는 여전히 "설정됨" 이 떠 있어서 성공한 것처럼 보인다.
+   *   ⇒ 실측으로 확인: 대표가 새 토큰을 넣었는데 저장된 값의 해시가 옛 토큰과 같았다(길이는 우연히 동일).
+   *
+   *   고침: **첫 도착 때만 시드**한다. 이후 서버 값 반영이 필요하면 저장 성공 시 명시적으로 다시 시드한다.
+   */
+  const seeded = useRef(false)
+  useEffect(() => {
+    if (settingsQ.data && !seeded.current) { seeded.current = true; setSettings(settingsQ.data) }
+  }, [settingsQ.data])
 
   function validateSetting(key: string, value: string): string | null {
     const n = Number(value)
@@ -155,9 +172,23 @@ export default function AdminPlatformSettingsPage() {
        *   자격이 날아가는 셈이라, 페이로드에서 걸러 낸다(입력했을 때만 교체).
        */
       const payload: Record<string, string> = { ...settings }
-      for (const k of CREDENTIAL_KEYS) if (!(payload[k] || '').trim()) delete payload[k]
+      const creds: string[] = []
+      for (const k of CREDENTIAL_KEYS) {
+        if (!(payload[k] || '').trim()) delete payload[k]
+        else creds.push(k === 'cf_api_token' ? 'API 토큰' : '계정 ID')
+      }
       await api.put('/api/admin/tools/settings', payload, h)
-      toast.success(t('admin.platformSettings.saveSuccess', { defaultValue: '설정이 저장되었습니다' }))
+      /**
+       * 🔎 **자격은 무엇이 바뀌었는지 말해 준다** — 위 필터가 조용히 걸러 내므로, 자격을 안 바꿨는데도
+       *   "저장되었습니다" 만 뜨면 대표는 반영 여부를 알 길이 없다(실제로 그래서 옛 토큰이 남아 있었다).
+       */
+      toast.success(creds.length
+        ? `설정 저장 · ${creds.join('·')} 교체됨`
+        : t('admin.platformSettings.saveSuccess', { defaultValue: '설정이 저장되었습니다' }))
+      // 저장분을 서버에서 되읽어 '설정됨' 표시(끝 4자리)를 새 값으로 갱신 — 시드는 여기서만 다시 연다.
+      seeded.current = false
+      await settingsQ.refetch().catch(() => undefined)
+      setSavedTick(n => n + 1)
     } catch { toast.error(t('admin.platformSettings.saveFailed', { defaultValue: '저장 실패' })) }
     finally { setSaving(false) }
   }
@@ -236,7 +267,7 @@ export default function AdminPlatformSettingsPage() {
           </div>
 
           {/* ☁️ 진단용 Cloudflare 자격 — 입력칸이 없어 대표가 넣을 방법이 없던 것(2026-07-29) */}
-          <CloudflareCredsSection settings={settings} setSettings={setSettings} />
+          <CloudflareCredsSection settings={settings} setSettings={setSettings} savedTick={savedTick} />
 
           {/* 📊 Q10 캡 관측성 — 발동 이력 (order-commissions 가 Σ요청>예산 주문만 기록) */}
           <CommissionCapLogsSection />
@@ -362,9 +393,11 @@ function CommissionCapLogsSection() {
  * 🔒 표시 규칙: 이미 저장돼 있으면 **값을 화면에 뿌리지 않고** "설정됨"만 보여 준다(어깨너머 노출 방지).
  *   비워 두면 기존 값이 그대로 유지되고, 새로 입력할 때만 교체된다 — 실수로 지워지지 않는다.
  */
-function CloudflareCredsSection({ settings, setSettings }: { settings: Record<string, string>; setSettings: (fn: (prev: Record<string, string>) => Record<string, string>) => void }) {
+function CloudflareCredsSection({ settings, setSettings, savedTick }: { settings: Record<string, string>; setSettings: (fn: (prev: Record<string, string>) => Record<string, string>) => void; savedTick: number }) {
   const has = (k: string) => !!(settings[k] || '').trim()
   const [edit, setEdit] = useState<Record<string, boolean>>({})
+  // 저장이 끝나면 입력칸을 닫아 '설정됨 · 끝4자리' 로 되돌린다 — 그래야 반영을 눈으로 확인할 수 있다.
+  useEffect(() => { if (savedTick) setEdit({}) }, [savedTick])
   const FIELDS: { key: typeof CREDENTIAL_KEYS[number]; label: string; hint: string }[] = [
     { key: 'cf_api_token', label: 'Cloudflare API 토큰', hint: 'My Profile → API Tokens → Custom Token. 권한은 D1 = Read 하나면 됩니다. 값은 생성 화면에서 한 번만 보입니다.' },
     { key: 'cf_account_id', label: 'Cloudflare 계정 ID', hint: '대시보드 우측 사이드바에 표시됩니다.' },
@@ -385,7 +418,12 @@ function CloudflareCredsSection({ settings, setSettings }: { settings: Record<st
               </div>
               {has(f.key) && !edit[f.key] ? (
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-2 py-1">설정됨</span>
+                  {/* 🔎 끝 4자리 — 값이 **바뀌었는지**를 눈으로 구분할 유일한 수단이다. "설정됨" 만으로는
+                      옛 토큰과 새 토큰을 못 가린다(둘 다 길이가 같으면 화면이 완전히 동일하다 —
+                      2026-08-02 에 실제로 이래서 죽은 토큰이 남아 있는 줄 몰랐다). */}
+                  <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-2 py-1">
+                    설정됨 · …{(settings[f.key] || '').slice(-4)}
+                  </span>
                   <button onClick={() => { setEdit(p => ({ ...p, [f.key]: true })); setSettings(p => ({ ...p, [f.key]: '' })) }}
                     className="text-xs px-3 py-2 rounded-lg border border-gray-300 text-gray-700">교체</button>
                 </div>
