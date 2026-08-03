@@ -5494,6 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
+_총 100건 · 최신순 · 이 목록은 자동 생성된다._
+_총 99건 · 최신순 · 이 목록은 자동 생성된다._
+_총 96건 · 최신순 · 이 목록은 자동 생성된다._
+_총 86건 · 최신순 · 이 목록은 자동 생성된다._
 _총 101건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-03**
@@ -5501,6 +5505,7 @@ _총 101건 · 최신순 · 이 목록은 자동 생성된다._
 - [시트 미러가 8월 2일부터 멈춰 있었다 — 커서가 스냅샷을 지나쳐 영구 고착](handoff/2026-08-03-sheets-mirror-cursor-stuck.md)
 - [유료 전환 준비 마감 — 등기부가 못 보던 절반 (2026-08-03)](handoff/2026-08-03-paid-readiness-r3.md)
 - [관측이 틀린 답을 주면 없느니만 못하다 — 오탐 3건 (2026-08-03)](handoff/2026-08-03-observability-false-positives.md)
+- [인허가 레인 부활 — 죽은 게 아니라 **경로 한 칸이 빠져 있었다** (2026-08-03)](handoff/2026-08-03-license-lane-revived.md)
 - [🏬 몰 관리 API 가 소비자 배포에 없었다 — `/api/admin/wholesale-malls` 404 (2026-08-03)](handoff/2026-08-03-mall-admin-api-consumer-bundle.md)
 - [학습기의 눈먼 구간을 메우고, 배포 실패를 대표에게 보이게 (2026-08-03)](handoff/2026-08-03-learner-bias-and-deploy-alert.md)
 - [대행사 축이 얇던 진짜 이유 — 커서가 얼어 있었다 (그리고 필터는 무죄였다)](handoff/2026-08-03-focus-cursor-frozen.md)

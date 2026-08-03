@@ -39,12 +39,43 @@ export interface LicenseUrlVariant {
  * 순서 = 시도 순서(가장 가능성 높은 것부터). 새 후보를 넣을 땐 반드시 *한 가지만* 바꿔라.
  */
 export const LICENSE_VARIANTS: LicenseUrlVariant[] = [
-  { id: 'v1', pageParam: 'pageIndex', sizeParam: 'pageSize', size: 500, format: { type: 'json', resultType: 'json' }, dateFilter: true, why: '현행(대표 스펙 2026-07-22)' },
+  // ✅ 2026-08-03 라이브 실측으로 **확정**. 게이트웨이 응답 봉투가 자기가 받은 값을 되돌려 준다:
+  //    `{"numOfRows":1,"pageNo":2,"totalCount":70469}` ⇒ 이 서비스가 실제로 읽는 페이징 키가 이 둘이다.
+  //    (`pageIndex`/`pageSize` 는 같이 보내도 **조용히 무시**된다 — 그래서 아래 v1~v3 는 200 을 받고도
+  //     영원히 1페이지만 긁는 함정이었다. 200 이라고 전진하는 게 아니다.)
+  { id: 'v4', pageParam: 'pageNo', sizeParam: 'numOfRows', size: 100, format: { type: 'json' }, dateFilter: true, why: 'data.go.kr 표준 페이징(pageNo/numOfRows) — 응답 봉투가 echo 하는 것으로 확정(2026-08-03)' },
+  { id: 'v1', pageParam: 'pageIndex', sizeParam: 'pageSize', size: 500, format: { type: 'json', resultType: 'json' }, dateFilter: true, why: '구 localdata 규약(2026-07-22 스펙) — 폐쇄 전 원천의 것' },
   { id: 'v2', pageParam: 'pageIndex', sizeParam: 'pageSize', size: 100, format: { type: 'json', resultType: 'json' }, dateFilter: true, why: '페이지 크기 상한 의심 — 500 → 100' },
   { id: 'v3', pageParam: 'pageIndex', sizeParam: 'pageSize', size: 100, format: { resultType: 'json' }, dateFilter: true, why: '형식 파라미터 중복 의심 — type 제거' },
-  { id: 'v4', pageParam: 'pageNo', sizeParam: 'numOfRows', size: 100, format: { type: 'json' }, dateFilter: true, why: 'data.go.kr 표준 페이징(pageNo/numOfRows)' },
   { id: 'v5', pageParam: 'pageIndex', sizeParam: 'pageSize', size: 100, format: { type: 'json', resultType: 'json' }, dateFilter: false, why: '변동일 필터가 원인인지 — 날짜 파라미터 제거' },
 ]
+
+/**
+ * 🔑 **오퍼레이션 세그먼트** — 이게 빠져서 인허가 레인 전체가 죽어 있었다 (2026-08-03 실측 확정).
+ *
+ *   레인은 `…/1741000/general_restaurants` 로 요청했고 게이트웨이는 `NO_OPENAPI_SERVICE_ERROR`(code 12)로
+ *   답했다. 그 코드는 *"주소가 지금 안 맞는다"* 까지만 말하고 **폐기인지 오타인지는 구분하지 못한다** —
+ *   그래서 이전 세션(나)이 *"서비스 폐기 확정"* 이라고 인계에 적었다. **틀렸다.**
+ *
+ *   실제로는 **경로 끝에 오퍼레이션 한 칸이 빠져 있었다**:
+ *   ```
+ *     …/1741000/general_restaurants        → 400 · code 12
+ *     …/1741000/general_restaurants/info   → 200 · totalCount 有 · 실제 행
+ *   ```
+ *   같은 기관(1741000) 형제 서비스 전부 동일하다(휴게음식점·미용업·숙박업·약국 실측 확인).
+ *
+ *   ⚠️ **env 로 덮을 수 있게 둔다** — 기관이 오퍼레이션명을 바꾸면 배포 없이 고쳐야 한다.
+ *     빈 문자열을 주면 오퍼레이션 없이(옛 형태로) 나간다.
+ */
+export const LICENSE_OPERATION = 'info'
+
+/** env 오퍼레이션 정규화 — 슬래시·공백을 떼고 경로 문자만 남긴다. 미설정이면 기본값. */
+export function resolveLicenseOperation(raw: string | undefined | null): string {
+  if (raw == null) return LICENSE_OPERATION
+  const t = String(raw).trim().replace(/^\/+|\/+$/g, '')
+  if (!t) return ''                                  // 명시적 빈 값 = 오퍼레이션 없이(옛 형태)
+  return /^[A-Za-z0-9._~-]+$/.test(t) ? t : LICENSE_OPERATION
+}
 
 export const DEFAULT_VARIANT_ID = LICENSE_VARIANTS[0].id
 
@@ -62,16 +93,21 @@ export function resolveLicensePageSize(raw: string | undefined | null, variant: 
   return variant.size
 }
 
-/** 요청 URL 조립(SSOT — 일일/백필/프로브 공용). `keyParam` 은 **이미 인코딩된** 서비스키 문자열. */
+/**
+ * 요청 URL 조립(SSOT — 일일/백필/프로브 공용). `keyParam` 은 **이미 인코딩된** 서비스키 문자열.
+ * @param operation 경로 끝 오퍼레이션(기본 `info` — 위 `LICENSE_OPERATION` 참조). 빈 문자열이면 붙이지 않는다.
+ */
 export function buildLicenseUrl(opts: {
   base: string; endpoint: string; keyParam: string; day: string; page: number
-  variant: LicenseUrlVariant; size: number
+  variant: LicenseUrlVariant; size: number; operation?: string
 }): string {
   const { base, endpoint, keyParam, day, page, variant, size } = opts
+  const op = opts.operation === undefined ? LICENSE_OPERATION : opts.operation
+  const path = op ? `${endpoint}/${op}` : endpoint
   const parts = [`serviceKey=${keyParam}`, `${variant.pageParam}=${page}`, `${variant.sizeParam}=${size}`]
   for (const [k, v] of Object.entries(variant.format)) parts.push(`${k}=${v}`)
   if (variant.dateFilter) parts.push(`lastModTsBgn=${day}`, `lastModTsEnd=${day}`)
-  return `${base}/${endpoint}?${parts.join('&')}`
+  return `${base}/${path}?${parts.join('&')}`
 }
 
 /**
@@ -108,6 +144,8 @@ export function shouldProbe(state: VariantState | null | undefined, nowMs: numbe
 export async function probeLicenseVariants(opts: {
   base: string; endpoint: string; keyParam: string; day: string
   sizeOverride?: string | null
+  /** 경로 끝 오퍼레이션. 미지정이면 기본(`info`) — 레인과 같은 주소를 찔러야 판정이 의미 있다. */
+  operation?: string
   skip?: string[]
   fetchPage: (url: string) => Promise<{ ok: boolean; rows: number; msg?: string }>
   canSpend?: () => boolean
@@ -119,7 +157,7 @@ export async function probeLicenseVariants(opts: {
     if (opts.canSpend && !opts.canSpend()) break
     const url = buildLicenseUrl({
       base: opts.base, endpoint: opts.endpoint, keyParam: opts.keyParam, day: opts.day, page: 1,
-      variant: v, size: resolveLicensePageSize(opts.sizeOverride, v),
+      variant: v, size: resolveLicensePageSize(opts.sizeOverride, v), operation: opts.operation,
     })
     const r = await opts.fetchPage(url).catch(() => ({ ok: false, rows: 0, msg: '프로브 예외' }))
     attempts.push({ id: v.id, ok: !!r.ok, rows: r.rows | 0, msg: r.msg ? String(r.msg).slice(0, 120) : undefined })
