@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { b64url, SHEET_HEADER, leadToRow, parseSheetCursor, type SheetLead } from '@/features/marketing/api/sheets-sync'
+import { b64url, SHEET_HEADER, cycleRoom, leadToRow, parseSheetCursor, startCursor, type SheetLead } from '@/features/marketing/api/sheets-sync'
 
 /**
  * 📊 2026-07-21 인플루언서 풀 → 구글시트 동기화 순수부 잠금.
@@ -105,6 +105,37 @@ describe('시트 미러 — 커서로 이어 붙인다', () => {
 
   it('🚫 매 회차 전체 clear 를 하지 않는다 — 사이클이 여러 회차라 시트가 비는 구간이 생긴다', () => {
     expect(src).not.toMatch(/\/values\/\$\{TAB\}:clear/)
+  })
+
+  /**
+   * 🩹 2026-08-03 라이브 고착 — `ads_sheets_cursor = {off:44000, total:43597}`.
+   *   사이클은 시작 시점 total 로만 그리드를 넓히는데(`ensurePoolSheet(total+2)`) 읽기 루프엔 상한이 없어,
+   *   도중에 늘어난 몇 행이 그리드 밖으로 나가 400 → 그 자리에 커서 저장 → off 가 0 으로 못 돌아감 →
+   *   `ensurePoolSheet` 영영 미호출 → **매 회차 같은 행에서 400**. 미러는 멈추고 회차 예산 한 칸은 계속 탄다.
+   *   ⇒ 두 겹으로 막는다: (a) 사이클 상한(`cycleRoom`)으로 애초에 안 넘어가고 (b) 이미 넘어간 커서는 되돌린다.
+   */
+  it('🩹 스냅샷을 지나친 커서는 새 사이클로 되돌린다 — 안 그러면 그리드가 영영 안 넓어진다', () => {
+    // 실측 고착값 그대로
+    expect(startCursor({ off: 44000, total: 43597 })).toEqual({ off: 0, total: 0 })
+    // 경계: off === total 은 사이클이 끝난 것 → 새 사이클
+    expect(startCursor({ off: 12000, total: 12000 })).toEqual({ off: 0, total: 0 })
+    // 정상 진행 중인 커서는 건드리지 않는다
+    expect(startCursor({ off: 12000, total: 43597 })).toEqual({ off: 12000, total: 43597 })
+    // total 미상(0)은 종전대로 — 여기서 0 으로 되돌리면 멀쩡한 이어쓰기가 매번 처음부터 다시 돈다
+    expect(startCursor({ off: 12000, total: 0 })).toEqual({ off: 12000, total: 0 })
+  })
+
+  it('🧱 사이클은 자기 스냅샷까지만 쓴다 — 도중에 늘어난 행은 다음 사이클 몫', () => {
+    expect(cycleRoom(36000, 43597)).toBe(7597)
+    expect(cycleRoom(43597, 43597)).toBe(0)   // 여기서 멈춰야 그리드 밖을 안 쓴다
+    expect(cycleRoom(44000, 43597)).toBe(0)   // 이미 지나쳤어도 더 쓰지 않는다(음수 금지)
+    expect(cycleRoom(0, 0)).toBe(Number.POSITIVE_INFINITY) // 총계 미상이면 상한 없음(종전 동작)
+  })
+
+  it('배선 — 루프가 실제로 그 상한을 쓴다(순수함수만 고치고 호출을 빠뜨리면 라이브는 그대로다)', () => {
+    expect(src).toMatch(/const room = cycleRoom\(off, total\)/)
+    expect(src).toMatch(/Math\.min\(PAGE, ROWS_PER_RUN - wrote, room\)/)
+    expect(src).toMatch(/startCursor\(parseSheetCursor\(/)
   })
 
   it('커서 파싱: 정상값은 그대로, 깨진 값은 0(전량 재시작 = 누락보다 안전한 방향)', () => {
