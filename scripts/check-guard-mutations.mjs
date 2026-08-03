@@ -1623,6 +1623,40 @@ const MUTATIONS = [
       '쓰면 batch 가 던지고 `.catch(() => null)` 이 삼킨다 → 채널콜·영상콜 쿼터를 다 태우고 저장 0, 스탬프도 없어 ' +
       '그 행들이 다음 회차에도 맨 앞(이 PR 이 잡으려던 재선택 churn 을 되레 만든다).',
   },
+  {
+    name: '경보 채널이 비어 있다는 사실이 화면에서 안 보임',
+    file: 'src/worker-ads/health.routes.ts',
+    find: "      discord: e.DISCORD_WEBHOOK_URL ? '설정됨' : '🔴 미설정 — 아래 경보가 전부 무음',",
+    replace: "      discord: '',",
+    test: 'src/tests/unit/ads-alert-channel-visible.test.ts',
+    why:
+      '유어애즈 경보는 전부 `if (env.DISCORD_WEBHOOK_URL && …)` 라 값이 없으면 흔적 없이 건너뛴다 — ' +
+      '**경보가 무음이라는 사실 자체가 무음**이다. 2026-08-03 실측: ur-ads 에 미설정이라 시트 미러가 ' +
+      '이틀 멈춘 동안 디스코드 알림 0건. 같은 시점 메인(ur-live)엔 설정돼 있어 머니 경보는 정상이었고, ' +
+      '**두 워커의 env 가 갈렸다는 걸 밖에서 확인할 방법이 없었다.** 값 설정은 대표 몫이지만 ' +
+      '비어 있음이 보이는 것까지는 코드의 몫이다.',
+  },
+  {
+    name: '경보 실발사 확인 라우트가 결과를 삼킴(자기 존재 이유 상실)',
+    file: 'src/worker-ads/health.routes.ts',
+    find: '    return c.json({ ok: res.ok, status: res.status, ms: Date.now() - t0',
+    replace: '    return c.json({ ok: true, ms: Date.now() - t0',
+    test: 'src/tests/unit/ads-alert-channel-visible.test.ts',
+    why:
+      '이 라우트는 "설정됨"과 "실제로 도착함"을 가르려고 만든 것이다. Discord 상태를 안 돌려주고 ' +
+      '`ok: true` 만 주면 **오타난 웹훅도 초록**이라 라우트 자체가 같은 병에 걸린다 — 그러면 ' +
+      '대표는 채널이 살아 있다고 믿고 다음 장애를 또 놓친다.',
+  },
+  {
+    name: '실발사 확인 응답에 웹훅 URL 을 실음(채널 탈취)',
+    file: 'src/worker-ads/health.routes.ts',
+    find: "hint: res.ok ? '전송됨 — 채널에 도착했는지 눈으로 확인' : '웹훅 URL/채널 확인 필요'",
+    replace: 'webhook: url',
+    test: 'src/tests/unit/ads-alert-channel-visible.test.ts',
+    why:
+      'Discord 웹훅 URL 은 그 자체가 자격증명이다 — 아는 사람은 누구나 그 채널에 글을 쓸 수 있다. ' +
+      '진단 응답에 실으면 어드민 화면·로그·스크린샷을 타고 새어 나간다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
