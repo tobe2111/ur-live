@@ -57,6 +57,49 @@ const ONLY = (() => {
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '5xx 경보가 1건을 "스파이크"라 불러 매일 거짓 ⚠️ 를 냄',
+    file: 'src/worker/cron/daily-self-diagnostic.ts',
+    find: 'if (Number(row?.worst || 0) >= 10) issues.push',
+    replace: 'if (true) issues.push',
+    test: 'src/tests/unit/five-xx-observability.test.ts',
+    why:
+      '실측상 모든 창이 `count=1`(시간당 1건)인데 화면엔 ⚠️ 로 떴다. 스파이크 임계는 10/분이므로 ' +
+      '그건 스파이크가 아니다 — 거짓 경보이고, **진짜 스파이크가 왔을 때 구분이 안 된다.** ' +
+      '임계 미만은 정보로 남기고 🔴 는 실제로 넘었을 때만 올린다.',
+  },
+  {
+    name: '5xx 경보에 무엇이 실패했는지가 없어 조치 불가',
+    file: 'src/worker/middleware/error-rate-monitor.ts',
+    find: "VALUES (?, '5xx_path', ?, 1)",
+    replace: "VALUES (?, 'x', ?, 1)",
+    test: 'src/tests/unit/five-xx-observability.test.ts',
+    why:
+      '이 표엔 숫자만 있었다(`key=global`). "5xx 가 있었다"는 알아도 **어디서** 났는지 알 수 없어 ' +
+      '경보를 받고도 손에 쥔 것이 없었다. `key` 에 경로를 넣어 같은 표·같은 인덱스로 분포를 얻는다 ' +
+      '(스파이크 판정은 global 합계 그대로 — 경로가 갈려도 잡힌다).',
+  },
+  {
+    name: '카카오 전화 스윕이 마감선 없이 회차를 늘림(31초, 침묵 1위)',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: '',
+    test: 'src/tests/unit/ads-lane-deadlines.test.ts',
+    why:
+      '예산(`budget.left`)은 **요청 수**만 세고 응답이 얼마나 걸리는지는 안 본다. 예산이 남아 있는 한 ' +
+      '느린 카카오 조회가 계속 쌓여 부모 cron 의 CPU 를 태우고, 부모가 죽으면 매달린 자식이 전부 끌려간다.',
+  },
+  {
+    name: 'MX 스윕이 블록 고정 순서라 두 번째 블록이 영구히 굶음',
+    file: 'src/features/marketing/api/email-mx-sweep.ts',
+    find: 'if (firstIsCompany) { await runCompany(); await runProspects() }',
+    replace: 'await runCompany(); await runProspects()',
+    test: 'src/tests/unit/ads-lane-deadlines.test.ts',
+    why:
+      '마감선은 일을 줄이는 게 아니라 **미루는** 것이다. 블록 ①→② 순서가 고정이면 ①에서 마감선에 ' +
+      '걸릴 때 ②(매장 후보)는 **매 회차 한 번도 안 돌아** `cursorS` 가 영원히 멈춘다. ' +
+      '마감선을 넣으면서 이 회전을 빼면 **없던 기아를 새로 만드는 것**이다.',
+  },
+  {
     name: '공고 스캐너가 마감선 없이 회차를 늘려 부모 CPU 를 태움',
     file: 'src/features/marketing/api/notice-scan.ts',
     find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",

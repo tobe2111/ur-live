@@ -154,12 +154,33 @@ export async function runDailySelfDiagnostic(env: Env) {
     }
   } catch {}
 
-  // 4. 최근 5xx spike
+  /**
+   * 4. 최근 5xx — **"몇 분에 5xx 가 있었나"를 "스파이크"라고 부르지 않는다** (2026-08-03 정정)
+   *
+   * 예전 문구는 `COUNT(*)`(= 5xx 가 하나라도 있던 **분(window)의 개수**)를 그대로 "spike N건" 이라
+   * 불렀다. 실측에서 **모든 창의 count 가 1** 이었는데(시간당 1건 규칙적 발생) 화면엔 ⚠️ 로 떴다.
+   * 스파이크 임계는 `SPIKE_THRESHOLD=10/분` 이므로 그건 스파이크가 아니다 —
+   * **거짓 경보이고, 진짜 스파이크가 왔을 때 구분이 안 된다.**
+   *
+   * ⇒ ① 실제 에러 **건수**(SUM)와 ② 임계를 넘은 창이 있었는지를 **나눠서** 말한다.
+   *   그리고 ③ `5xx_path` 로 **어디서 나는지**까지 붙인다 — 경보는 다음 행동을 정할 수 있어야 한다.
+   */
   try {
+    const since = Math.floor(Date.now() / 1000) - 86400;
     const row = await DB.prepare(
-      "SELECT COUNT(*) as c FROM rate_limit_attempts WHERE action='5xx_spike' AND window_start >= ?"
-    ).bind(Math.floor(Date.now() / 1000) - 86400).first<{ c: number }>();
-    if (row && row.c > 0) issues.push(`⚠️ 5xx spike ${row.c}건 발생 (24h)`);
+      "SELECT COUNT(*) AS windows, COALESCE(SUM(count),0) AS total, COALESCE(MAX(count),0) AS worst FROM rate_limit_attempts WHERE action='5xx_spike' AND window_start >= ?"
+    ).bind(since).first<{ windows: number; total: number; worst: number }>();
+    const total = Number(row?.total || 0);
+    if (total > 0) {
+      const tops = await DB.prepare(
+        "SELECT key, SUM(count) AS n FROM rate_limit_attempts WHERE action='5xx_path' AND window_start >= ? GROUP BY key ORDER BY n DESC LIMIT 3"
+      ).bind(since).all<{ key: string; n: number }>().catch(() => null);
+      const where = (tops?.results || []).map((r) => `${r.key}×${r.n}`).join(', ');
+      const line = `5xx ${total}건/24h (분포 ${row?.windows}분, 최다 ${row?.worst}건/분)${where ? ` — ${where}` : ''}`;
+      // 🔔 임계(10/분)를 넘은 적이 있을 때만 🔴. 그 외는 정보로 남긴다 — 늑대소년 방지.
+      if (Number(row?.worst || 0) >= 10) issues.push(`🔴 5xx 스파이크 — ${line}`);
+      else info.push(line);
+    }
   } catch {}
 
   // 5. Slow query
