@@ -403,3 +403,55 @@ describe('회차 몫 — 무료 CPU 한도 안에 드는 범위', () => {
     expect(PAID_LANES_PER_TICK).toBeGreaterThan(FREE_LANES_PER_TICK * 4)
   })
 })
+
+/**
+ * 🕳️ **`0` 을 "미설정"으로 읽어 예산이 거꾸로 늘어나던 것** (2026-08-03 라이브에서 잡음).
+ *
+ *   `domainBudgets` 는 예산이 도메인 수보다 적으면 **일부러 0 을 주고 회전**시킨다(그 함수 docblock).
+ *   그런데 `selectLanesForTick` 이 `perTick >= 1` 로 걸러 0 을 기본값 6 으로 바꿔치기했다.
+ *   ⇒ 학습기가 조일수록 0 을 받는 도메인이 늘고, 그 도메인들이 오히려 6 으로 풀리는 **제어 반전**.
+ *
+ *   ⚠️ 이 테스트가 못 막는 것: 부모가 실제로 몇 초를 쓰는지는 코드로 못 본다.
+ *     여기서 고정하는 건 "0 을 받은 조는 미룰 수 있는 레인을 안 띄운다"는 **계약**뿐이다.
+ *     실제 회복 판정은 라이브 `ads_dispatch_last` 의 도메인별 run 합계로 한다.
+ */
+describe('🕳️ 예산 0 = "이번 회차엔 쉬어라" (미설정 아님)', () => {
+  const MOVABLE: LaneCandidate[] = [
+    { beat: 'collect', gapMin: 60 }, { beat: 'enrich-company', gapMin: 60 },
+    { beat: 'match-registry', gapMin: 60 }, { beat: 'reclassify-company', gapMin: 60 },
+  ]
+
+  it('0 이면 미룰 수 있는 레인을 하나도 안 띄운다 — 기본값 6 으로 바꿔치기 금지', () => {
+    const sel = selectLanesForTick(MOVABLE, 0, 0)
+    expect(sel.run, '0 인데 돌았다면 기본값이 끼어든 것이다').toHaveLength(0)
+    expect(sel.deferred).toHaveLength(MOVABLE.length)
+    expect(sel.cap).toBe(0)
+  })
+
+  it('0 이어도 미룰 수 없는 레인은 돈다 — 쉬는 것은 "미룰 수 있는" 것뿐이다', () => {
+    const withAlways = [...MOVABLE, ...ALWAYS]
+    const sel = selectLanesForTick(withAlways, 0, 0)
+    expect(sel.run.map(l => l.beat).sort()).toEqual(ALWAYS.map(l => l.beat).sort())
+  })
+
+  it('🔴 라이브 11:00 KST 재현 — company(always 2, 예산 0)가 6개를 띄우던 형태', () => {
+    // 실측: budget 0 → `max(1, 6−2)=4` + always 2 = 6. 고친 뒤엔 always 2 만.
+    const company = [...MOVABLE, ...ALWAYS]
+    expect(selectLanesForTick(company, 0, 0).run).toHaveLength(ALWAYS.length)
+    // 대조군: 자리를 받은 조는 종전대로 예산만큼 돈다(이 수리가 정상 배분을 죽이지 않는다).
+    expect(selectLanesForTick(company, 1, 0).run.length).toBeGreaterThan(ALWAYS.length)
+  })
+
+  it('쉬는 회차는 커서를 전진시키지 않는다 — 다음 회차가 같은 머리부터 집는다(공평성)', () => {
+    const a = selectLanesForTick(MOVABLE, 0, 0)
+    const afterRest = selectLanesForTick(MOVABLE, 2, a.nextCursor)
+    const noRest = selectLanesForTick(MOVABLE, 2, 0)
+    expect(afterRest.run.map(l => l.beat)).toEqual(noRest.run.map(l => l.beat))
+  })
+
+  it('진짜 미설정(NaN·undefined)은 종전대로 기본값 — 오타로 파이프라인이 멈추지 않는다', () => {
+    expect(selectLanesForTick(MOVABLE, NaN, 0).run.length).toBeGreaterThan(0)
+    expect(selectLanesForTick(MOVABLE, undefined as never, 0).run.length).toBeGreaterThan(0)
+    expect(selectLanesForTick(MOVABLE, -1, 0).run.length).toBeGreaterThan(0) // 음수도 미설정 취급
+  })
+})
