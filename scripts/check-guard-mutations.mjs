@@ -654,9 +654,11 @@ const MUTATIONS = [
   },
   {
     name: '회차 이력이 이름 대신 개수를 씀(miss 음수)',
-    file: 'src/worker-ads/index.ts',
-    find: 'writeTickSummary(env.DB, tickStartIso, hourUTC, ranNames, beats.seenBeats, env as never)',
-    replace: 'writeTickSummary(env.DB, tickStartIso, hourUTC, beats.seenBeats.map(b => b.name.slice(4)), beats.seenBeats, env as never)',
+    // 📍 2026-08-03: 꼬리가 `index.ts` 인라인 → `tail-bound.ts` `closeTick` 으로 이사해 앵커를 옮겼다.
+    //   (이 이사를 낡은 지도 검사가 그 자리에서 잡았다 — 안 잡혔으면 이 불변식이 조용히 사라졌을 것이다.)
+    file: 'src/worker-ads/tail-bound.ts',
+    find: 'judgedLaneNames(o.ranNames, r.settled), o.beats.seenBeats',
+    replace: 'o.beats.seenBeats.map(b => b.name.slice(4)), o.beats.seenBeats',
     test: 'src/tests/unit/ads-tick-history.test.ts',
     why: '이름 대조를 버리면 miss 가 0 이 되거나(개수 뺄셈이면) 음수가 된다 — 라이브 실측 "띄운7 기록9".',
   },
