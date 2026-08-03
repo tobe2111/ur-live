@@ -71,6 +71,7 @@ const STATS_KEY = 'ads_autocollect_stats'
 // ⚙️ 설정 읽기/쓰기(배치 포함)는 `influencer-settings.ts` — 기존 import 경로 호환 위해 재수출.
 export { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
 import { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
+import { NAVER_USED_KEY, kstDayKey, parseNaverUsed, takeNaverCalls, NAVER_DAILY_QUOTA_CALLS } from './naver-api-usage'
 
 const _kwSchemaPromise = new WeakMap<D1Database, Promise<void>>()
 
@@ -245,7 +246,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   ⚠️ **여기 없는 키를 `settings[...]` 로 읽으면 값이 아니라 `undefined` 가 온다** — 에러가 아니라
   //   기본값으로 조용히 떨어진다. 집중 축 커서가 정확히 그래서 항상 0 이었다(#930 → 2026-08-03 수리).
   //   새 키를 읽기 전에 이 배열에 넣을 것. `ads-keyword-focus-split` 이 기계로 대조한다.
-  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY]
+  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY]
   const settings = await readSettings(DB, SETTING_KEYS)
   let prev: AutoCollectStats | null = null
   try { prev = settings[STATS_KEY] ? JSON.parse(settings[STATS_KEY] as string) as AutoCollectStats : null } catch { prev = null }
@@ -531,12 +532,20 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const nextCursor = genPool.length ? (cursor + genDone) % genPool.length : 0
   // 🎯 YT 예산 소진으로 스킵됐고 다른 에러가 없으면 사유 노출(QUOTA 프리픽스 = 기존 배너 스타일 재사용).
   if (ytBudgetBlocked && !diag.yt.error) diag.yt.error = `QUOTA: 오늘 YT 검색 예산(${ytBudgetTotal}회) 소진 — 쿼터 리셋(한국 오후 4~5시) 후 자동 재개`
+  // 📟 네이버 오픈API 일일 사용량 — **아래 batch 에 얹어 서브리퀘스트 추가 0**(읽기는 SETTING_KEYS 에 이미 포함).
+  //   콜마다 D1 을 쓰면 네이버 콜 1회가 서브리퀘스트 2회가 되어 레인 예산을 반토막 낸다.
+  //   ⚠️ `takeNaverCalls()` 는 **가져가며 비우므로 회차당 정확히 한 번** 불러야 한다(두 번 부르면 뒤가 0).
+  const naverDay = kstDayKey(Date.now())
+  const naverCalls = parseNaverUsed(settings[NAVER_USED_KEY], naverDay) + takeNaverCalls()
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
     cursor: nextCursor, pri_cursor: nextPriCursor, focus_cursor: nextFocusCursor, focus_n: nFocus, promoted, kw_unjudged: starvedIds.size, ...(kwAuto ? { kw_auto: kwAuto } : {}), youtube_quota_hit: quotaHit, diag,
     picks: { planned: finalPicks.length, processed: processedIds.size, from_yt: fromYt, from_cursor: fromCursor },
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
+    // 📟 네이버 오픈API 일일 사용량(KST 기준일). **자동 레인만 세므로 실사용의 하한**이다 —
+    //   어드민 온디맨드 도구(keyword-tools/rank-tracker/competitor-tracker)는 계측 밖(naver-api-usage.ts 주석).
+    naver_api: { used: naverCalls, total: NAVER_DAILY_QUOTA_CALLS, day: naverDay },
     // 🔒 예산 실사용/상한/한도관측 — 정상 실행에도 남긴다(위 필드 주석 참조).
     spent: budgetTotal - budget.left, budget_total: budgetTotal, learned_cap: learnedCap, limit_hit: hitLimit,
     // ✅ 성공했으면 옛 crash 표식을 남기지 않는다(회복 후에도 빨간 줄이 남으면 다음 사람이 오진한다).
@@ -544,6 +553,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // 🧮 커서·카운터·통계를 1 batch 로 저장(2026-07-29) — 낱개 4 write = 4 서브리퀘스트였다.
   await writeSettings(DB, [
     [YT_USED_KEY, `${ytDay}:${ytSearchUsed}`],
+    [NAVER_USED_KEY, `${naverDay}:${naverCalls}`],
     // 🎯 집중 축 커서 — 이 줄이 없어서 대행사 키워드 18개 중 앞 4개만 무한 반복했다(2026-08-03 수리).
     //   통계 JSON 에 `focus_cursor` 를 넣는 것만으론 **다음 회차가 안 읽는다**(읽기는 이 키를 본다).
     [FOCUS_CURSOR_KEY, String(nextFocusCursor)],

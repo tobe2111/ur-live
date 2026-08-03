@@ -59,7 +59,7 @@ describe('①-b YT 성과 상한 — 고정이 아니라 검색 실사용의 나
 
   it('🔒 검색이 많이 쓴 날은 성과가 줄어든다 — 같은 풀이다', () => {
     expect(resolveYtPerfCap(6000)).toBe(4000)
-    expect(resolveYtPerfCap(9000)).toBe(2000) // 기본값 바닥에서 멈춤
+    expect(resolveYtPerfCap(8000)).toBe(2000) // 기본값 바닥
   })
 
   it('🔒 검색 바닥을 절대 침범하지 않는다 — 성과가 굶주려도 검색은 돈다', () => {
@@ -68,10 +68,27 @@ describe('①-b YT 성과 상한 — 고정이 아니라 검색 실사용의 나
     }
   })
 
-  it('🔒 오늘보다 나빠지지 않는다 — 기본값(2,000) 밑으로 안 내려간다', () => {
-    for (const used of [0, 5000, 9000, 20000, Number.NaN, -5]) {
+  /**
+   * 🚧 **무료 한도를 구조적으로 못 넘는다** (2026-08-03 대표 질문으로 발견).
+   *   옛 규칙 *"기본값 2,000 밑으로 안 내려간다"* 는 **틀렸다** — 검색이 9,000(배정 90회)을 쓴 날
+   *   성과 2,000 을 보장하면 총 11,000 으로 일일 쿼터를 넘는다. 바닥보다 **총합**이 상위 불변식이다.
+   */
+  it('🔒 검색 실사용 + 성과 상한 ≤ 일일 쿼터 — 어떤 입력에도', () => {
+    for (const used of [0, 1000, 2200, 5000, 6000, 7500, 8000, 8500, 9000, 9999, 10000]) {
+      expect(used + resolveYtPerfCap(used), `used=${used}`).toBeLessThanOrEqual(YT_DAILY_QUOTA_UNITS)
+    }
+  })
+
+  it('🔒 쿼터가 남아 있는 한 오늘보다 나빠지지 않는다(기본값 2,000)', () => {
+    for (const used of [0, 2200, 5000, 8000, Number.NaN, -5]) {
       expect(resolveYtPerfCap(used as number), `used=${used}`).toBeGreaterThanOrEqual(2000)
     }
+  })
+
+  it('🔒 쿼터를 다 쓴 날엔 0 — 없는 몫을 지어내지 않는다', () => {
+    expect(resolveYtPerfCap(10000)).toBe(0)
+    expect(resolveYtPerfCap(20000)).toBe(0)
+    expect(resolveYtPerfCap(9500)).toBe(500)
   })
 
   it('🔒 명시 env 가 이긴다 — 수동 개입이 자동보다 우선(레포 규약)', () => {

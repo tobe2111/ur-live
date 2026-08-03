@@ -315,6 +315,11 @@ export const YT_SEARCH_UNIT_COST = 100
  *   · **검색 바닥을 항상 지킨다** — 성과가 아무리 굶주려도 검색이 못 도는 일은 없다.
  *   · 검색이 많이 쓴 날은 상한이 **자동으로 줄어든다**(같은 풀이므로).
  *   · **기본값(2,000) 밑으로는 안 내려간다** — 오늘보다 나빠지는 경우를 구조적으로 막는다.
+ *     🩸 단, **남은 쿼터를 넘을 수는 없다**(2026-08-03 대표 질문 *"무료 한도 안에서 쓰고 있는 게 맞나"* 로 발견).
+ *     이 바닥을 무조건 보장하면 `검색 9,000 + 성과 2,000 = 11,000 > 10,000` 이 성립한다 — 검색 배정이
+ *     90회(9,000)라 **설정상 도달 가능한 조합**이다(실사용 2~28회라 오늘의 위험은 아니지만 구조는 남는다).
+ *     ⇒ 바닥도 `min(기본값, 총쿼터 − 검색실사용)` 으로 깎는다. 남은 게 0이면 성과도 0이다.
+ *     초과의 대가는 청구서가 아니라 **403 quotaExceeded** 다 — 돈이 아니라 그날 측정이 멎는 게 손해다.
  *
  * ⚠️ 이 함수가 **못 보는 것**: 성과가 하루 앞부분에 상한을 다 써 버리면 검색이 바닥(3,000)만 갖는다.
  *   실측 22회(2,200)면 여유가 있지만, 검색 키워드를 크게 늘리면 `YT_SEARCH_FLOOR_UNITS` 를 함께 올릴 것.
@@ -326,7 +331,9 @@ export function resolveYtPerfCap(searchUsedUnits: number, envRaw?: unknown): num
   const used = Number.isFinite(searchUsedUnits) ? Math.max(0, Math.floor(searchUsedUnits)) : 0
   const reserved = Math.max(used, YT_SEARCH_FLOOR_UNITS)
   const ceiling = YT_DAILY_QUOTA_UNITS - YT_SEARCH_FLOOR_UNITS
-  return Math.min(ceiling, Math.max(YT_PERF_UNITS_DEFAULT, YT_DAILY_QUOTA_UNITS - reserved))
+  // 🚧 바닥도 **실제 남은 쿼터**를 못 넘는다 — 검색이 이미 8,000+ 를 썼는데 2,000 을 보장하면 총합이 10,000 을 넘는다.
+  const floor = Math.min(YT_PERF_UNITS_DEFAULT, Math.max(0, YT_DAILY_QUOTA_UNITS - used))
+  return Math.min(ceiling, Math.max(floor, YT_DAILY_QUOTA_UNITS - reserved))
 }
 
 /**
