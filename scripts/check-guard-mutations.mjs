@@ -119,6 +119,28 @@ const MUTATIONS = [
       '`sweep-mx` 블록에서 겪은 것과 같은 구조적 기아 — 마감선과 회전은 짝이다.',
   },
   {
+    name: '회차 꼬리가 다시 무한정 기다림(학습기 갱신 자리가 통째로 사라짐)',
+    file: 'src/worker-ads/tail-bound.ts',
+    find: 'await Promise.race([Promise.all(tracked), deadline])',
+    replace: 'await Promise.all(tracked)',
+    test: 'src/tests/unit/ads-tail-bound.test.ts',
+    why:
+      '`cap` 을 갱신하는 자리는 회차 꼬리 하나뿐인데, 띄운 레인이 전부 끝나기를 기다리면 부모가 못 버틸 때 ' +
+      '요약도 학습도 **통째로 실행되지 않는다**. 실측: 이력이 09:00 KST 에서 5시간 정지했는데 디스패치 기록은 ' +
+      '매 회차 정상이고 cron_failures 는 0이었다(예외 없이 잘려 실패로도 안 남는다). 그래서 학습기가 바닥 2 에 고착됐다.',
+  },
+  {
+    name: '못 기다린 레인을 판정에 넘김 — 회차가 늘 해로움이 되는 부호 반대 고착',
+    file: 'src/worker-ads/tail-bound.ts',
+    find: 'judgedLaneNames(o.ranNames, r.settled)',
+    replace: 'o.ranNames',
+    test: 'src/tests/unit/ads-tail-bound.test.ts',
+    why:
+      '`tickHarmed` 는 `fail + miss` 로 판정하고 `miss` 는 *띄웠는데 하트비트가 없는* 레인이다. ' +
+      '상한을 넣고도 아직 도는 레인을 그대로 넘기면 전부 miss 로 잡혀 **모든 회차가 항상 해로움**이 된다 — ' +
+      '고치려던 것과 **부호만 반대인 같은 고착**이다. 끝난 레인만 판정 대상이어야 한다.',
+  },
+  {
     name: '매시간 레인이 gap 없이 등록돼 침묵 판정에서 통째로 빠짐',
     file: 'src/worker-ads/index.ts',
     find: 'gapMin: opts?.gap ?? hourlyGapMinutes()',
@@ -665,9 +687,11 @@ const MUTATIONS = [
   },
   {
     name: '회차 이력이 이름 대신 개수를 씀(miss 음수)',
-    file: 'src/worker-ads/index.ts',
-    find: 'writeTickSummary(env.DB, tickStartIso, hourUTC, ranNames, beats.seenBeats, env as never)',
-    replace: 'writeTickSummary(env.DB, tickStartIso, hourUTC, beats.seenBeats.map(b => b.name.slice(4)), beats.seenBeats, env as never)',
+    // 📍 2026-08-03: 꼬리가 `index.ts` 인라인 → `tail-bound.ts` `closeTick` 으로 이사해 앵커를 옮겼다.
+    //   (이 이사를 낡은 지도 검사가 그 자리에서 잡았다 — 안 잡혔으면 이 불변식이 조용히 사라졌을 것이다.)
+    file: 'src/worker-ads/tail-bound.ts',
+    find: 'judgedLaneNames(o.ranNames, r.settled), o.beats.seenBeats',
+    replace: 'o.beats.seenBeats.map(b => b.name.slice(4)), o.beats.seenBeats',
     test: 'src/tests/unit/ads-tick-history.test.ts',
     why: '이름 대조를 버리면 miss 가 0 이 되거나(개수 뺄셈이면) 음수가 된다 — 라이브 실측 "띄운7 기록9".',
   },
@@ -1423,16 +1447,32 @@ const MUTATIONS = [
       '도메인 수만큼 곱해지면 학습기 판단(cap 2)이 다시 안 맞는다. 하한은 *자리를 받은* 조에만 있어야 한다.',
   },
 ]
+/**
+ * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
+ *
+ * 이 스크립트는 소스에 **의도적 결함을 심었다 지운다**. 복원은 튼튼하지만(try/finally + 시그널 + exit),
+ * 그 사이에 **다른 곳에서 `git add -A` 를 하면 결함이 그대로 스테이징된다.**
+ * 실제로 그렇게 `Promise.all(tracked)`(무한 대기 — 그 PR 이 고치려던 바로 그 고장)가 커밋됐고,
+ * CI 가 잡을 때까지 아무도 몰랐다. `git status` 의 낯선 변경이 유일한 신호였는데 그건 사람이 놓친다.
+ *
+ * `.git/` 안에 두므로 커밋 대상이 될 수 없다. pre-commit 훅이 이 파일을 보고 거절한다.
+ */
+const LOCK = path.join(ROOT, '.git', 'guard-mutations.lock')
+function lockOn() { try { fs.writeFileSync(LOCK, `${process.pid} ${new Date().toISOString()}\n`) } catch { /* 최선 노력 */ } }
+function lockOff() { try { fs.rmSync(LOCK, { force: true }) } catch { /* 최선 노력 */ } }
+
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
 const pending = new Map()
 function restoreAll() {
   for (const [abs, src] of pending) { try { fs.writeFileSync(abs, src) } catch { /* 최선 노력 */ } }
   pending.clear()
+  lockOff()   // 복원과 같은 자리에서 푼다 — 둘이 갈리면 자물쇠만 남아 커밋이 영영 막힌다
 }
 for (const sig of ['SIGINT', 'SIGTERM', 'uncaughtException']) {
   process.on(sig, (e) => { restoreAll(); if (e instanceof Error) console.error(e); process.exit(1) })
 }
 process.on('exit', restoreAll)
+lockOn()   // 여기서부터 소스에 손을 댄다 — pre-commit 이 이 자물쇠를 보고 커밋을 거절한다
 
 function runTest(testPath) {
   try {
