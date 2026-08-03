@@ -34,6 +34,8 @@ export const POOL_ACCOUNT_ID = 0
 //   같은 버그(seed 가 auto 를 밀어냄)를 독립적으로 고쳤으나 순수함수+관측을 갖춘 main 판을 채택했다.
 export { AUTO_PROMOTE_HITS } from './influencer-keyword-promote' // 호출부 호환 재수출
 import { promoteHashtagKeywords } from './influencer-keyword-promote'
+// 🪦 은퇴 축 — 접은 카테고리의 키워드가 수집 슬롯을 계속 먹지 않게(선언은 그 파일 한 곳).
+import { RETIRED_CATEGORIES } from './influencer-classify'
 
 // ⭐ 우선 카테고리(대표 2026-07-20 "맛집·숙소·네일·뷰티 최우선") — 유어딜 연관(동네딜·매장·외식/자영업 결,
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
@@ -231,7 +233,13 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   ]).catch(() => null)
   const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
-  const kws = active?.results || []
+  /**
+   * 🪦 은퇴 축 키워드는 **슬롯을 안 먹는다**(2026-08-03). 축을 접었는데 그 키워드가 계속 돌면
+   *   희소한 회차(시간당 1회 · 16픽)를 죽은 축에 낭비한다. 선언은 `RETIRED_CATEGORIES` 한 곳.
+   *   ⚠️ 행을 지우거나 `active=0` 으로 쓰지 않는다 — 되돌릴 때 다시 켜야 하고, 성과 이력(found/saved)도
+   *   보존해야 한다. **선택에서만 빼는** 것이 가역적이다.
+   */
+  const kws = (active?.results || []).filter(k => !k.category || !RETIRED_CATEGORIES.has(k.category))
   // 🧮 이 실행이 쓰는 설정을 **한 번에** 읽는다(2026-07-29) — 통계·커서3·학습상한·YT카운터를 낱개로 읽으면
   //   읽기에만 5 서브리퀘스트, 그만큼 발굴 fetch 가 줄어든다(D1 도 한도에 포함, #784).
   //   ⚠️ **여기 없는 키를 `settings[...]` 로 읽으면 값이 아니라 `undefined` 가 온다** — 에러가 아니라

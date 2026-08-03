@@ -25,6 +25,21 @@ export function errorRateMonitor() {
     const status = c.res.status;
     if (status < 500) return;
 
+    /**
+     * 🩺 **의도된 상태 신호는 서버 에러가 아니다** (2026-08-03, 경로 계측 1시간 만에 판명).
+     *
+     * `/api/_healthcheck/cron` 은 cron 침묵을 알리는 **dead-man's switch** 라, 침묵이 있으면
+     * **설계대로 503** 을 낸다(`healthcheck.routes.ts` — `health.ok ? 200 : 503`).
+     * 그걸 5xx 로 세면 외부 프로브(`uptime.yml`, 10분)가 두드릴 때마다 카운터가 올라가
+     * **5xx 채널이 영구히 점유**된다 — 그러면 진짜 5xx 가 왔을 때 구분이 안 된다.
+     * 다이제스트의 "spike 2건"이 정확히 이것이었고, 침묵 자체는 uptime.yml + 자가진단의
+     * cron 침묵 항목이 이미 **각자 채널로** 보고한다. 즉 여기서 빼도 잃는 정보가 없다.
+     *
+     * ⚠️ **경로 전체를 면제하지 않는다** — `/api/_healthcheck/*` 의 503 중 이 dead-man's switch 만
+     *   의도된 것이고, 다른 헬스체크가 5xx 를 내면 그건 진짜 고장이다.
+     */
+    if (status === 503 && new URL(c.req.url).pathname === '/api/_healthcheck/cron') return;
+
     const env = c.env as Record<string, unknown>;
     const DB = env.DB as D1Database | undefined;
     const webhookUrl = env.DISCORD_WEBHOOK_URL as string | undefined;
@@ -40,6 +55,26 @@ export function errorRateMonitor() {
         ON CONFLICT(key, action, window_start)
         DO UPDATE SET count = count + 1
       `).bind(windowStart).run();
+
+      /**
+       * 📟 **경로별 계수 — 알림을 받고 나서 무엇을 볼지** (2026-08-03)
+       *
+       * 이 표에는 지금까지 **숫자만** 있었다(`key='global'`). 그래서 "5xx 가 있었다"는 알 수 있어도
+       * **무엇이 실패했는지는 알 수 없었다** — 경보를 받아도 손에 쥔 것이 없다.
+       * 실측(08-03): 시간당 1건씩 규칙적으로 5xx 가 나는데, 어디서 나는지 판정할 방법이 없었다.
+       *
+       * `key` 컬럼에 경로를 넣어 **같은 표·같은 인덱스**로 경로별 24시간 분포를 얻는다.
+       * 스파이크 판정은 기존 `global` 행 그대로다 — 경로가 갈려도 합계가 임계를 넘으면 잡힌다.
+       * ⚠️ 5xx 당 쓰기가 1→2 로 는다. 5xx 는 드물고(실측 시간당 1건) D1 쓰기라 KV 한도와 무관하다.
+       */
+      let path = 'unknown'
+      try { path = new URL(c.req.url).pathname.slice(0, 80) } catch { /* URL 파싱 실패는 무시 */ }
+      await DB.prepare(`
+        INSERT INTO rate_limit_attempts (key, action, window_start, count)
+        VALUES (?, '5xx_path', ?, 1)
+        ON CONFLICT(key, action, window_start)
+        DO UPDATE SET count = count + 1
+      `).bind(path, windowStart).run().catch(() => null);
 
       const row = await DB.prepare(`
         SELECT count FROM rate_limit_attempts

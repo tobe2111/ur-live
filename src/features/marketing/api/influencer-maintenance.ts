@@ -14,6 +14,7 @@ import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS }
 import { MAINT_PHASE_CURSOR_KEY, MAINT_SCHEDULE_VERSION, parsePhaseCursor, formatPhaseCursor, nextPhaseSlot } from './maintenance-phase-cursor'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue } from './collect-budget'
 import { budgetedDb, newOpBudget, type OpBudget } from './maintenance-budget'
+import { RESCAN_DEADLINE_MS, RESCAN_DEADLINE_MS_PAID, RESCAN_ORDER_KEY, normalizeOrder, nextOrder, rotatedOrder } from './rescan-rotation'
 import { healNaverHandles } from './influencer-handle-heal'
 // 📍 지역 백필 — 여기(정비 인보케이션)가 제자리다. 근거는 `sweepRegions` 주석.
 import { backfillRegions, recheckBlankRegions } from './influencer-region'
@@ -511,16 +512,8 @@ export async function runNightlyRescan(env: Env): Promise<Record<string, unknown
   const DB = env.DB
   // 🔒 정비와 같은 lease — 이쪽은 **YouTube 쿼터를 쓰기 때문에** 중복 실행이 곧 하루 예산 낭비(수집 몫 잠식).
   if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS)) {
-    /**
-     * 🔇 **진 쪽도 흔적을 남긴다** — 안 남기면 '경합에 졌다'가 '한 번도 안 돌았다'와 구분되지 않는다.
-     *
-     *   2026-07-27 19:00 이후 이 레인의 스냅샷이 멈춰 있었다. 고장이 아니라 **시간별 정비 순환(07-28 도입)과
-     *   같은 lease 를 다투다 매번 졌기 때문**인데, 진 경로가 조용히 돌아가서 어드민에는 *"never fired"* 로만
-     *   보였다 — 원인 규명이 이틀 막힌 이유가 그 무음이다.
-     *
-     *   경합 자체는 스케줄러가 19시를 양보해 없앴다(`RESCAN_HOUR_UTC`). 이 기록은 **재발했을 때 즉시
-     *   알아보기 위한 것**이라, 경합이 사라진 뒤에도 남겨 둔다(하루 1회 쓰기 — 비용 무시 가능).
-     */
+    // 🔇 진 쪽도 흔적을 남긴다 — 없으면 '경합에 졌다'와 '한 번도 안 돌았다'가 구분되지 않는다.
+    //   근거(2026-07-27 이틀 막힌 오진)는 `rescan-rotation.ts` 헤더에 옮겨 뒀다.
     const busy = { at: new Date().toISOString(), kind: 'rescan', busy: true }
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind('ads_maintenance_rescan_last', JSON.stringify(busy)).run().catch(() => null)
@@ -528,10 +521,32 @@ export async function runNightlyRescan(env: Env): Promise<Record<string, unknown
   }
   const out: Record<string, unknown> = { at: new Date().toISOString(), kind: 'rescan' }
   try {
-    try { out.rescan = await runCategoryRescan(env) } catch (e) { out.rescan_error = (e as Error)?.message || 'fail' }
-    // passes 4 = 80채널/밤 — 기존 측정행의 롱폼 중앙값 소급 가속(YT units ~100/밤 — 일일 쿼터 10k 대비 미미).
-    try { out.refetch = await runYtLiveRefetch(env, 4) } catch (e) { out.refetch_error = (e as Error)?.message || 'fail' }
-    try { out.naver = await enrichNaverActivity(DB, { left: 150 }, 60) } catch (e) { out.naver_error = (e as Error)?.message || 'fail' }
+    // ⏱️ 회차 마감선 + 선두 회전 — 근거와 순수함수는 `rescan-rotation.ts`(그 파일 헤더 참조).
+    //   마감선만 넣으면 마지막(naver)이 하루 1회 레인이라 **영구 미실행**이 된다.
+    const startedAt = Date.now()
+    const runDeadlineMs = envPlanValue(undefined, RESCAN_DEADLINE_MS, RESCAN_DEADLINE_MS_PAID, env)
+    const jobs: Array<{ name: string; run: () => Promise<unknown> }> = [
+      { name: 'rescan', run: () => runCategoryRescan(env) },
+      // passes 4 = 80채널/밤 — 기존 측정행의 롱폼 중앙값 소급 가속(YT units ~100/밤 — 일일 쿼터 10k 대비 미미).
+      { name: 'refetch', run: () => runYtLiveRefetch(env, 4) },
+      { name: 'naver', run: () => enrichNaverActivity(DB, { left: 150 }, 60) },
+    ]
+    const ordRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(RESCAN_ORDER_KEY)
+      .first<{ value: string }>().catch(() => null)
+    const from = normalizeOrder(ordRaw?.value, jobs.length)
+    out.first_job = jobs[from].name
+
+    let ran = 0
+    for (const idx of rotatedOrder(from, jobs.length)) {
+      if (Date.now() - startedAt > runDeadlineMs) { out.stopped_by = 'deadline'; break }
+      const j = jobs[idx]
+      ran++
+      try { out[j.name] = await j.run() } catch (e) { out[`${j.name}_error`] = (e as Error)?.message || 'fail' }
+    }
+    // 다음 회차는 이번에 **못 돌린 작업**부터 — 잘려도 3회 안에 셋 다 선두를 받는다.
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind(RESCAN_ORDER_KEY, String(nextOrder(from, ran, jobs.length))).run().catch(() => null)
+
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind('ads_maintenance_rescan_last', JSON.stringify(out).slice(0, 1000)).run().catch(() => null)
   } finally { await releaseLease(DB, MAINTAIN_LEASE_KEY) }

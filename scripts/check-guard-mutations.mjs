@@ -50,12 +50,218 @@ const ONLY = (() => {
 })()
 
 /**
+ * 🧹 `--verify-clean` — **아무것도 주입하지 않고**, 작업트리에 주입 잔재가 남아 있는지만 본다(수초).
+ *
+ * 왜 별도 모드인가: 이 스크립트는 끝에서 복원을 확인하지만 그건 **끝까지 갔을 때** 얘기다.
+ * 전수는 100건 넘는 vitest 라 오래 걸려서 중간에 끊기기 쉽고(타임아웃·Ctrl-C·`kill -9`),
+ * 그러면 마지막에 주입된 파일이 **그대로 남는다**. 2026-08-03 실측: 끊긴 harness 가
+ * `lane-aimd.ts`·`lane-cadence.ts`·`influencer-auto-collect.ts` 3개를 바꿔 놓은 채였고,
+ * 그중 하나는 **같은 날 다른 세션이 고친 커서 버그를 되살리는** 내용이었다 — `git add -A` 로
+ * 하마터면 그대로 커밋될 뻔했다.
+ *
+ * ⇒ **harness 를 중간에 끊었으면 커밋 전에 이걸 돌려라.** `git diff` 로 눈으로 보는 것보다 확실하다
+ *   (주입 한 줄은 정상 코드와 구분이 안 간다).
+ */
+const VERIFY_CLEAN = process.argv.includes('--verify-clean')
+
+/**
  * @typedef {{name:string, file:string, find:string, replace:string, test:string, why:string}} Mutation
  * `find` 는 소스에 **정확히 한 번** 나타나는 문자열이어야 한다(여러 번이면 첫 번째만 바뀌어
  * 의도한 결함이 아닐 수 있다 — 그래서 개수도 검사한다).
  */
 /** @type {Mutation[]} */
 const MUTATIONS = [
+  {
+    name: '데모 판정이 좁은 접두사로 되돌아가 새 데모 종류가 소비자에게 판매 상품으로 보임',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: "const DEMO_LAST = `(CASE WHEN ${demoSlugSql('p')} THEN 1 ELSE 0 END)`",
+    replace: `const DEMO_LAST = "(CASE WHEN COALESCE(p.slug,'') LIKE 'demo-deal-%' THEN 1 ELSE 0 END)"`,
+    test: 'src/tests/unit/demo-raffle-coverage.test.ts',
+    why:
+      '2026-08-03 실측: `demo-deal-` 접두사가 6군데에 하드코딩돼 있었고, 나중에 생긴 `demo-stay-*` 72개가 ' +
+      '어디에도 안 걸렸다. 추첨 설정이 0이라 배지 렌더 `{fcfs && <FcfsBadge/>}` 가 아무것도 안 그렸고 ' +
+      '소비자 눈엔 **89,000원짜리 진짜 숙박권**으로 보였다. 후순위 정렬에도 안 걸려 **피드 첫 50건을 전부 점유** ' +
+      '(같은 시점 실상품은 3개뿐). 에러가 없어 몇 주간 아무도 몰랐다 — 대표가 화면을 보고 물어서 드러났다.',
+  },
+  {
+    name: '심평원 수집이 마감선 없이 25초짜리 페이지를 3장 연다(67초, 최다)',
+    file: 'src/features/marketing/api/hira-hospital-collect.ts',
+    find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: '',
+    test: 'src/tests/unit/ads-lane-deadlines-final.test.ts',
+    why:
+      '페이지 한 장이 `AbortSignal.timeout(25000)` 까지 버티고 무료 maxPages=3 ⇒ 최악 75초(+재시도 8초). ' +
+      '실측 67초로 유어애즈 최다였다. 부모 cron 이 그걸 못 버티고 죽으면 매달린 자식이 전부 끌려간다. ' +
+      '⚠️ per-fetch 25초는 다른 세션의 재시도 실험 변수라 건드리지 않는다 — 이 마감선은 페이지 수만 묶는다.',
+  },
+  {
+    name: '야간 재스캔의 하위작업이 고정 순서라 마지막(naver)이 영구 미실행',
+    file: 'src/features/marketing/api/influencer-maintenance.ts',
+    find: 'for (const idx of rotatedOrder(from, jobs.length))',
+    replace: 'for (const idx of jobs.map((_, i) => i))',
+    test: 'src/tests/unit/ads-lane-deadlines-final.test.ts',
+    why:
+      '하위작업 셋을 순차 실행하는데 마감선을 넣으면서 순서를 고정하면, 앞의 둘이 시간을 다 쓸 때 ' +
+      '`naver` 는 매 회차 잘린다. **하루 1회 레인이라 그건 곧 영구 미실행이다.** ' +
+      '`sweep-mx` 블록에서 겪은 것과 같은 구조적 기아 — 마감선과 회전은 짝이다.',
+  },
+  {
+    name: '매시간 레인이 gap 없이 등록돼 침묵 판정에서 통째로 빠짐',
+    file: 'src/worker-ads/index.ts',
+    find: 'gapMin: opts?.gap ?? hourlyGapMinutes()',
+    replace: 'gapMin: opts?.gap',
+    test: 'src/tests/unit/ads-lane-gap-judgeable.test.ts',
+    why:
+      '자식 하트비트(`writeSelfBeat`)는 설계상 cron 식을 안 싣고 부모가 넘긴 `gap` 만 믿는데, ' +
+      '자식 쓰기가 **나중**이라 부모가 실어 둔 `cron` 을 덮는다. 둘 다 없으면 `getCronHealth` 가 ' +
+      '그 레인을 `missing` 으로 빼고 stale 검사를 **안 한다** — 게다가 `missing` 은 `ok` 를 안 깬다. ' +
+      '⇒ 그 레인은 조용히 멈춰도 dead-man\'s switch 가 초록이다. 실측: `ads:sweep-kakao-chain`(매시간 17초)이 ' +
+      '정확히 그 상태였고, "안 도는 것"과 "판정 대상이 아닌 것"이 화면에서 똑같이 생겼다.',
+  },
+  {
+    name: '요금제 유료값을 만들어 놓고 선택부를 안 붙임(파일 경계를 넘는 배선)',
+    file: 'src/features/marketing/api/influencer-maintenance.ts',
+    find: 'envPlanValue(undefined, RESCAN_DEADLINE_MS, RESCAN_DEADLINE_MS_PAID, env)',
+    replace: 'RESCAN_DEADLINE_MS',
+    test: 'src/tests/unit/ads-plan-knobs.test.ts',
+    why:
+      '상수를 만드는 것과 **그 상수가 선택되는 것**은 다른 일이다 — 후자가 빠지면 유료로 바꿔도 ' +
+      '그 축은 안 오르고 **에러는 안 난다**. 이 항목은 특히 **선언과 선택이 다른 파일**인 경우를 고정한다: ' +
+      '600줄 캡 때문에 회전 정책을 모듈로 뺀 순간 파일-지역 판정이 오탐을 냈고, 그 교정판의 첫 시도는 ' +
+      '`import` 줄에 남은 이름 때문에 **주입에도 초록**이 떴다(텍스트 존재는 구조의 증거가 아니다).',
+  },
+  {
+    name: '회전 커서를 읽어 놓고 항상 0번부터 시작(회전이 죽음)',
+    file: 'src/features/marketing/api/rescan-rotation.ts',
+    find: 'const start = normalizeOrder(String(from), len)',
+    replace: 'const start = 0',
+    test: 'src/tests/unit/ads-lane-deadlines-final.test.ts',
+    why:
+      '배선(호출)은 남아 있는데 산술만 죽으면 **텍스트 검사는 통과**한다 — 위 항목이 못 보는 자리다. ' +
+      '그래서 회전은 문자열이 아니라 **동작**으로도 검증한다(회차당 1개만 돌아도 3회차에 셋 다 선두를 받는가).',  },
+  {
+    name: '주간 D1 백업이 인덱스/트리거/뷰를 안 담아 복구본에서 멱등 UNIQUE 가 사라짐',
+    file: 'src/worker/cron/d1-backup.ts',
+    find: 'if (objects.length > 0) {',
+    replace: 'if (false) {',
+    test: 'src/tests/unit/d1-backup-restorable.test.ts',
+    why:
+      '덤프가 `type=\'table\'` 만 뽑던 시절의 동작이다. 프로덕션 실측 인덱스 610(UNIQUE 46) · 트리거 7 · 뷰 1 이 ' +
+      '전부 백업에서 빠지고, 복구하면 `INSERT OR IGNORE + partial UNIQUE` 로 지키던 멱등(머니 룰 #3)이 없어져 ' +
+      '**같은 ref 로 두 번 적립이 통과**한다(2026-08-03 축소판 복구 리허설에서 재현). 백업은 ok=true 로 성공하고 ' +
+      '복구 검증 쿼리도 행 수만 세므로 **어디서도 빨간불이 안 뜬다** — 그래서 테스트로 박았다.',
+  },
+  {
+    name: 'FTS5 그림자 테이블을 덤프에 실어 BLOB 손상 + 매주 무결성 경고',
+    file: 'src/worker/cron/d1-backup.ts',
+    find: '.filter((n) => !isInternalTable(n) && !isFtsShadowTable(n, virtualTables))',
+    replace: '',
+    test: 'src/tests/unit/d1-backup-restorable.test.ts',
+    why:
+      '`products_fts` 는 외부콘텐츠(content=products) FTS 라 그림자 테이블은 색인 내부구조다. ' +
+      '`_data`/`_docsize` 는 BLOB 이라 문자열로 뭉개지고, `_idx`/`_config` 와 D1 내부 `_cf_KV` 는 ' +
+      'WITHOUT ROWID 라 `SELECT rowid` 가 실패해 dump 실패 테이블로 남는다. 복구 후 `rebuild` 한 번이면 ' +
+      '색인은 원본에서 정확히 재생성되므로 깨진 그림자를 실어 나를 이유가 없다.',
+  },
+  {
+    name: "dead-man's switch 의 의도된 503 을 5xx 로 세어 채널을 영구 점유",
+    file: 'src/worker/middleware/error-rate-monitor.ts',
+    find: "if (status === 503 && new URL(c.req.url).pathname === '/api/_healthcheck/cron') return;",
+    replace: '',
+    test: 'src/tests/unit/five-xx-observability.test.ts',
+    why:
+      '경로 계측을 붙이자 24시간 유일한 5xx 가 `/api/_healthcheck/cron` 이었다 — 고장이 아니라 ' +
+      '**cron 침묵을 알리는 설계상 503** 이고, 외부 프로브가 10분마다 두드린다. 그걸 세면 5xx 채널이 ' +
+      '영구 점유돼 **진짜 5xx 가 와도 구분이 안 된다**(같은 PR 이 고친 거짓 경보와 같은 클래스). ' +
+      '침묵 자체는 uptime.yml + 자가진단이 각자 채널로 이미 보고하므로 여기서 빼도 잃는 정보가 없다.',
+  },
+  {
+    name: '5xx 경보가 1건을 "스파이크"라 불러 매일 거짓 ⚠️ 를 냄',
+    file: 'src/worker/cron/daily-self-diagnostic.ts',
+    find: 'if (Number(row?.worst || 0) >= 10) issues.push',
+    replace: 'if (true) issues.push',
+    test: 'src/tests/unit/five-xx-observability.test.ts',
+    why:
+      '실측상 모든 창이 `count=1`(시간당 1건)인데 화면엔 ⚠️ 로 떴다. 스파이크 임계는 10/분이므로 ' +
+      '그건 스파이크가 아니다 — 거짓 경보이고, **진짜 스파이크가 왔을 때 구분이 안 된다.** ' +
+      '임계 미만은 정보로 남기고 🔴 는 실제로 넘었을 때만 올린다.',
+  },
+  {
+    name: '5xx 경보에 무엇이 실패했는지가 없어 조치 불가',
+    file: 'src/worker/middleware/error-rate-monitor.ts',
+    find: "VALUES (?, '5xx_path', ?, 1)",
+    replace: "VALUES (?, 'x', ?, 1)",
+    test: 'src/tests/unit/five-xx-observability.test.ts',
+    why:
+      '이 표엔 숫자만 있었다(`key=global`). "5xx 가 있었다"는 알아도 **어디서** 났는지 알 수 없어 ' +
+      '경보를 받고도 손에 쥔 것이 없었다. `key` 에 경로를 넣어 같은 표·같은 인덱스로 분포를 얻는다 ' +
+      '(스파이크 판정은 global 합계 그대로 — 경로가 갈려도 잡힌다).',
+  },
+  {
+    name: '카카오 전화 스윕이 마감선 없이 회차를 늘림(31초, 침묵 1위)',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: '',
+    test: 'src/tests/unit/ads-lane-deadlines.test.ts',
+    why:
+      '예산(`budget.left`)은 **요청 수**만 세고 응답이 얼마나 걸리는지는 안 본다. 예산이 남아 있는 한 ' +
+      '느린 카카오 조회가 계속 쌓여 부모 cron 의 CPU 를 태우고, 부모가 죽으면 매달린 자식이 전부 끌려간다.',
+  },
+  {
+    name: 'MX 스윕이 블록 고정 순서라 두 번째 블록이 영구히 굶음',
+    file: 'src/features/marketing/api/email-mx-sweep.ts',
+    find: 'if (firstIsCompany) { await runCompany(); await runProspects() }',
+    replace: 'await runCompany(); await runProspects()',
+    test: 'src/tests/unit/ads-lane-deadlines.test.ts',
+    why:
+      '마감선은 일을 줄이는 게 아니라 **미루는** 것이다. 블록 ①→② 순서가 고정이면 ①에서 마감선에 ' +
+      '걸릴 때 ②(매장 후보)는 **매 회차 한 번도 안 돌아** `cursorS` 가 영원히 멈춘다. ' +
+      '마감선을 넣으면서 이 회전을 빼면 **없던 기아를 새로 만드는 것**이다.',  },
+  {
+    name: '공고 스캐너가 마감선 없이 회차를 늘려 부모 CPU 를 태움',
+    file: 'src/features/marketing/api/notice-scan.ts',
+    find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: '',
+    test: 'src/tests/unit/notice-scan-deadline.test.ts',
+    why:
+      '이 레인은 실측 31초(cpu_risk=danger)였는데 예산 20 에 실제 호출은 6번뿐이라 **예산이 한 번도 안 걸린다**. ' +
+      '비용은 요청 수가 아니라 시간인데 시간을 재는 것이 없었다 — 공공 API 하나가 15초까지 버티니 최악 90초다. ' +
+      '부모 cron 이 그걸 못 버텨 자식을 끌고 죽는다(`dispatch-budget.ts` 가 기록한 그 구조).',
+  },
+  {
+    name: '마감선만 넣고 회전을 빼 뒤쪽 키워드가 영원히 굶음',
+    file: 'src/features/marketing/api/notice-scan.ts',
+    find: 'const kw = KEYWORDS[(kwFrom + i) % KEYWORDS.length]',
+    replace: 'const kw = KEYWORDS[i]',
+    test: 'src/tests/unit/notice-scan-deadline.test.ts',
+    why:
+      '마감선은 일을 줄이는 게 아니라 **미루는** 것이다. 시작점을 고정하면 매 회차 같은 앞쪽만 돌고 ' +
+      '뒤쪽 키워드는 **한 번도** 조회되지 않는다 — 레인 단위에서 이미 겪은 구조적 기아를 키워드 단위에서 ' +
+      '반복하는 셈이다. 마감선과 회전 커서는 반드시 같이 간다.',
+  },
+  {
+    name: '주간 백업이 products·sellers 를 조용히 빼먹음(커서 한 칸이 컬럼 한도 초과)',
+    file: 'src/worker/cron/d1-backup.ts',
+    find: 'SELECT * FROM ${table} WHERE ${pk} > ?',
+    replace: 'SELECT rowid, * FROM ${table} WHERE ${pk} > ?',
+    test: 'src/tests/unit/d1-backup-wide-tables.test.ts',
+    why:
+      'D1 결과 컬럼 한도는 100 인데 `products`·`sellers` 는 **이미 정확히 100컬럼**이다. ' +
+      '페이징용 `rowid` 한 칸을 더하면 101 이 되어 `too many columns in result set` 으로 ' +
+      '**그 두 테이블만** dump 에서 통째로 빠진다. 2026-08-03 첫 회차가 그렇게 나갔다 — ' +
+      '파일은 19MB 로 멀쩡해 보였고 알림도 "완료"였다. 그 백업으로 복구하면 상품도 셀러도 없다.',
+  },
+  {
+    name: '백업 실패를 catch 가 삼켜 하트비트에 ok:true 로 남음',
+    file: 'src/worker/cron/d1-backup.ts',
+    find: 'throw err instanceof Error ? err : new Error(msg);',
+    replace: 'return { success: false, error: msg };',
+    test: 'src/tests/unit/d1-backup-wide-tables.test.ts',
+    why:
+      '`safeCron` 은 **예외가 나야** ok:false 를 남기고 cron_failures 에 기록한다. 그냥 반환하면 ' +
+      '실패한 백업이 하트비트에서 성공처럼 보인다 — 재해복구에서 이건 가장 나쁜 거짓말이다. ' +
+      '같은 파일의 `BACKUP_BUCKET` 미바인딩이 2026-06-12 에 throw 로 바뀐 것과 같은 이유.',
+  },
   {
     name: '이용권 정산이 없는 컬럼(products.commission_rate)을 읽어 회차 전체가 죽음',
     file: 'src/worker/cron/auto-settlement.ts',
@@ -515,16 +721,16 @@ const MUTATIONS = [
   {
     name: '예산 차감 제거(라이브 결함 재현)',
     file: 'src/worker-ads/dispatch-budget.ts',
-    find: 'const cap = Math.max(1, budget - always.length)',
-    replace: 'const cap = budget',
+    find: 'const cap = budget <= 0 ? 0 : Math.max(1, budget - always.length)',
+    replace: 'const cap = budget <= 0 ? 0 : budget',
     test: 'src/tests/unit/ads-dispatch-budget.test.ts',
     why: '미룰 수 없는 레인이 예산 위에 얹히던 08-02 결함. 예산 8 에 12개가 떠 꼬리 3개가 CPU 한도로 잘렸다.',
   },
   {
     name: 'cap 하한 1 제거',
     file: 'src/worker-ads/dispatch-budget.ts',
-    find: 'const cap = Math.max(1, budget - always.length)',
-    replace: 'const cap = Math.max(0, budget - always.length)',
+    find: 'const cap = budget <= 0 ? 0 : Math.max(1, budget - always.length)',
+    replace: 'const cap = budget <= 0 ? 0 : Math.max(0, budget - always.length)',
     test: 'src/tests/unit/ads-dispatch-budget.test.ts',
     why: '0 이면 그 시간대가 반복될 때 커서가 영원히 안 움직인다(= 부재).',
   },
@@ -888,6 +1094,27 @@ const MUTATIONS = [
 
   // ── 🚚 ur-ads 배포가 조용히 안 나감 (2026-08-02 실사고)
   {
+    name: 'env 밖 요금제 쌍(_PAID)이 다시 사각지대로',
+    file: 'scripts/check-plan-knob-coverage.mjs',
+    find: 'if (orphanPaid.size) {',
+    replace: 'if (false) {',
+    test: 'src/tests/unit/ads-plan-knobs.test.ts',
+    why:
+      '요금제 축의 절반은 env 가 아니라 파일 안 상수 쌍(RUN_DEADLINE_MS/_PAID 등)이다 — 등기부에도 R2 에도 ' +
+      '안 걸린다. `_PAID` 를 만들고 선택부를 안 붙이면 **유료로 바꿔도 그 축은 안 오른다**(에러 없음).',
+  },
+  {
+    name: 'bad 집계 변수 소실(R3 위반 시 ReferenceError)',
+    file: 'scripts/check-plan-knob-coverage.mjs',
+    find: 'let bad = false',
+    replace: 'globalThis.__bad_removed = 1',
+    test: 'src/tests/unit/ads-plan-knobs.test.ts',
+    why:
+      'R3 는 `bad = true` 로 집계한다 — 선언이 사라지면 위반이 났을 때 ReferenceError 로 죽는다. ' +
+      '⚠️ 통과할 땐 멀쩡하고 **실패할 때만** 깨지는 모양이라 눈으로는 못 본다(첫 판이 실제로 그 상태였다: ' +
+      'R3 를 선언보다 앞에 뒀다). 위치·존재 검사가 없으면 그대로 머지된다.',
+  },
+  {
     name: 'PR 검증이 다시 건너뛰어짐(미검증 코드 머지)',
     file: '.github/workflows/verify.yml',
     find: '  pull_request:\n    branches: [main]\n  push:',
@@ -1032,8 +1259,113 @@ const MUTATIONS = [
       '행이 생기는데(실측 45 중 10건), 안 비우면 옛 값이 영구히 굳는다 — `shouldClearCategory` docblock 이 ' +
       '입주 시공업체 27명 실측으로 이미 경고한 바로 그 형태("측정하면 점진 교정된다"는 낙관은 틀렸다).',
   },
+  {
+    name: '시트 미러가 사이클 스냅샷을 넘어 그리드 밖을 씀',
+    file: 'src/features/marketing/api/sheets-sync.ts',
+    find: 'Math.min(PAGE, ROWS_PER_RUN - wrote, room)',
+    replace: 'Math.min(PAGE, ROWS_PER_RUN - wrote)',
+    test: 'src/tests/unit/ads-sheets-sync.test.ts',
+    why:
+      '그리드는 사이클 **시작 시점 total** 로만 넓힌다(`ensurePoolSheet(total+2)`, `off===0` 분기 안). ' +
+      '읽기 루프에 그 상한이 없으면 사이클 도중 늘어난 행을 그리드 밖에 쓰고 Sheets 400 이 난다. ' +
+      '실패는 커서를 그 자리에 저장하고 끝나므로 `off` 가 0 으로 돌아갈 길이 없다 = **영구 고착**' +
+      '(2026-08-03 라이브: `{off:44000, total:43597}`, 24시간 7회 실패).',
+  },
+  {
+    name: '지나친 커서를 되돌리지 않아 그리드 확장이 영영 안 불림',
+    file: 'src/features/marketing/api/sheets-sync.ts',
+    find: 'return cur.total > 0 && cur.off >= cur.total ? { off: 0, total: 0 } : cur',
+    replace: 'return cur',
+    test: 'src/tests/unit/ads-sheets-sync.test.ts',
+    why:
+      '위 상한은 *앞으로* 안 넘어가게 할 뿐, **이미 넘어가 있는 라이브 커서는 안 푼다.** 이 되돌림이 ' +
+      '없으면 배포해도 같은 행에서 400 이 계속 나고, 2~3칸뿐인 회차 예산에서 한 칸을 계속 태운다. ' +
+      '⚠️ `total` 을 0 으로 되돌리는 것까지가 수리다 — 그래야 호출부가 총계를 다시 세고 그리드를 넓힌다.',
+  },
+  {
+    name: '알람이 모는 수집 레인을 부모도 던짐(부모 CPU 이중 소모)',
+    file: 'src/worker-ads/index.ts',
+    find: "if (!laneAlarmOn && env.ADS_AUTO_COLLECT_ENABLED === 'true')",
+    replace: "if (env.ADS_AUTO_COLLECT_ENABLED === 'true')",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '리스가 이중 *실행* 은 막지만 **던지는 것 자체가 부모 CPU 를 먹는다** — 그게 애초에 이 레인을 죽인 ' +
+      '원인이다(2026-08-03 실측: 디스패치 3초 뒤 `ads:collect  Worker exceeded CPU time limit`).',
+  },
+  {
+    name: 'laneAlarmOn 선언이 첫 사용보다 아래로(런타임 TDZ)',
+    file: 'src/worker-ads/index.ts',
+    find: '  const laneAlarmOn = laneAlarmDrivesEnrich(env)\n',
+    replace: '',
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '`const` 는 TDZ 라 선언보다 먼저 쓰면 **런타임에 ReferenceError** 인데 **타입체크는 통과한다**. ' +
+      '수집 게이트가 보강 블록보다 위에 있어 작성 중 실제로 밟았다. 이 주입은 선언을 통째로 지워 ' +
+      '"순서" 불변식이 위치를 실제로 보는지 확인한다.',
+  },
+  {
+    name: '수집 레인 시간당 상한이 조용히 증설됨',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: '  collect: {\n    runsPerHour: 1,\n',
+    replace: '  collect: {\n',
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '빼면 정책 기본값(12회/시간)을 받는다 = cron 설계 의도(`0 * * * *`)를 12배 넘는 증설이고, ' +
+      '**네이버로 나가는 요청량이 늘어나는 변경**이라 대표 판단 사항이다. 값이 조용히 바뀌는 것을 막는다.',
+  },
+  {
+    name: '은퇴 축 리드를 안 비움(유령 카테고리 영구 잔존)',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: '  if (retired.has(stored)) return true',
+    replace: '  if (false) return true',
+    test: 'src/tests/unit/ads-category-retire.test.ts',
+    why:
+      '축을 접어도 리드의 카테고리 값은 남는다 — 아무 규칙도 안 만드는 유령 값이 영구 잔존한다. ' +
+      '재분류는 `classifyCategory` 가 null 이면 그대로 두므로 스스로 낫지 않는다.',
+  },
+  {
+    name: '은퇴 축을 키워드 폴백이 다시 붙임(비우기와 무한 싸움)',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: '!NON_CATEGORIES.has(kc) && !retired.has(kc)',
+    replace: '!NON_CATEGORIES.has(kc)',
+    test: 'src/tests/unit/ads-category-retire.test.ts',
+    why:
+      '비우기(①)만 있고 유입 차단(②)이 없으면 재분류가 지우고 저장이 다시 붙여 **영원히 제자리**다. ' +
+      '두 경로는 짝이라 하나만 있으면 무의미하다.',
+  },
+  {
+    name: '은퇴 축 키워드가 수집 슬롯을 계속 먹음',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '.filter(k => !k.category || !RETIRED_CATEGORIES.has(k.category))',
+    replace: '',
+    test: 'src/tests/unit/ads-category-retire.test.ts',
+    why:
+      '수집은 시간당 1회 · 회차당 16픽뿐이다(실측). 접은 축 키워드가 계속 순번을 받으면 살아있는 축이 ' +
+      '그만큼 굶는다 — 대행사 축이 19개 중 17개를 못 돌던 것과 같은 희소성 문제다.',
+  },
+  {
+    name: '예산 0 을 "미설정"으로 읽어 기본값 6 으로 바꿔치기(제어 반전)',
+    file: 'src/worker-ads/dispatch-budget.ts',
+    find: 'perTick >= 0 ? Math.floor(perTick)',
+    replace: 'perTick >= 1 ? Math.floor(perTick)',
+    test: 'src/tests/unit/ads-dispatch-budget.test.ts',
+    why:
+      '`domainBudgets` 는 예산이 도메인 수보다 적으면 **일부러 0 을 주고 회전**시킨다(그 함수 docblock). ' +
+      '여기서 0 을 걸러 기본값 6 으로 바꾸면 **조일수록 레인이 늘어나는 제어 반전**이 된다 — ' +
+      '실측(2026-08-03 11:00 KST, 학습 cap 2): 예산 0 인 두 도메인이 3개·6개를 띄워 총 11개. ' +
+      '그 붕괴가 부모 꼬리의 `writeTickSummary`·`sheets-sync` 를 지워 학습기가 더 조이는 폭주 고리였다.',
+  },
+  {
+    name: '쉬는 회차에도 cap 하한 1 을 깔아 "쉬어라"가 무효화됨',
+    file: 'src/worker-ads/dispatch-budget.ts',
+    find: 'const cap = budget <= 0 ? 0 : Math.max(1, budget - always.length)',
+    replace: 'const cap = Math.max(1, budget - always.length)',
+    test: 'src/tests/unit/ads-dispatch-budget.test.ts',
+    why:
+      '위 수리의 짝이다. 0 을 제대로 읽어도 하한 1 이 남아 있으면 쉬는 조가 매 회차 1개씩 띄운다 — ' +
+      '도메인 수만큼 곱해지면 학습기 판단(cap 2)이 다시 안 맞는다. 하한은 *자리를 받은* 조에만 있어야 한다.',
+  },
 ]
-
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
 const pending = new Map()
 function restoreAll() {
@@ -1114,6 +1446,27 @@ function maskComments(src, file) {
 }
 
 const problems = []
+
+// 🧹 잔재 확인 전용 모드 — 주입은 건드리지 않고 "지금 트리에 남아 있나"만 본다(위 VERIFY_CLEAN 주석).
+if (VERIFY_CLEAN) {
+  const dirty = []
+  for (const m of MUTATIONS) {
+    const abs = path.join(ROOT, m.file)
+    if (!fs.existsSync(abs)) continue // 파일 이동은 전수 모드가 "낡은 지도"로 따로 보고한다
+    const s = fs.readFileSync(abs, 'utf8')
+    // `find` 가 사라졌는데 `replace` 가 있으면 주입된 상태다. `find` 만 사라졌으면 코드가 옮겨간 것.
+    if (!s.includes(m.find) && m.replace && s.includes(m.replace)) dirty.push(`${m.file} — ${m.name}`)
+  }
+  if (dirty.length) {
+    console.error(`\n❌ 주입 잔재 ${dirty.length}건 — **커밋하지 말 것**\n`)
+    for (const d of dirty) console.error(`   • ${d}`)
+    console.error(`\n   복원: git checkout -- <위 파일들>\n`)
+    process.exit(1)
+  }
+  console.log(`✅ 주입 잔재 0 — 작업트리 깨끗함 (${MUTATIONS.length}건 확인)`)
+  process.exit(0)
+}
+
 console.log(`🧬 guard-mutations: ${MUTATIONS.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
 
 for (const m of MUTATIONS) {

@@ -13,7 +13,7 @@ import { envDriftInfo } from './env-drift'
 import { Hono } from 'hono'
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
-import { makeHourGates, dailyGapMinutes, staleGapMinutes, createLaneRegistry, recordKnownLanes, buildAgeInfo } from './lane-cadence'
+import { makeHourGates, dailyGapMinutes, hourlyGapMinutes, staleGapMinutes, createLaneRegistry, recordKnownLanes, buildAgeInfo } from './lane-cadence'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
@@ -271,9 +271,34 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   const kick = (path: string, fallback: () => Promise<unknown>, opts?: { gap?: number; beat?: string }): void => {
     const beat = opts?.beat || path.replace(/^\/__ads\//, '')
     laneReg.note(path, opts?.beat)   // 하트비트 이름과 **같은 이름**으로 등록해야 never_fired/orphan 이 어긋나지 않는다
-    pending.push({ beat, path, fallback, gapMin: opts?.gap })
+    /**
+     * 🕳️ **`gap` 을 안 주면 그 레인은 침묵 판정에서 통째로 빠진다** (2026-08-03 라이브 실측).
+     *
+     *   위 주석은 *"안 주면 매시간(= event.cron)으로 본다"* 고 적혀 있는데, **자식 하트비트에는
+     *   그 유도가 없다.** 부모의 쓰기(`adsBeat`)는 `cron: event.cron` 을 싣지만, 레인이 응답 직전에
+     *   쓰는 자기 하트비트(`writeSelfBeat`)는 설계상 cron 을 **일부러 안 싣고** 부모가 넘긴 `gap` 만
+     *   믿는다(`self-beat.ts` — 레인은 자기 주기를 모르니 추측하면 일 1회 레인이 오경보를 낸다).
+     *   그런데 자식 쓰기가 **나중**이라 부모가 실어 둔 `cron` 을 덮는다. 결과:
+     *   `{"at":…,"ok":true,"ms":17004}` — `cron` 도 `g` 도 없다.
+     *
+     *   `getCronHealth` 는 `max_gap_min ?? expectedMaxAgeMinutes(cron)` 이 **둘 다 없으면**
+     *   그 레인을 `missing` 으로 분류하고 **stale 검사에서 제외**한다. 게다가 `missing` 은
+     *   `ok` 를 깨지 않는다 ⇒ **그 레인은 죽어도 dead-man's switch 가 안 울린다.**
+     *   실측으로 `ads:sweep-kakao-chain`(17초, 매시간)이 정확히 그 상태였다 —
+     *   *"안 도는 것"* 이 아니라 *"판정 대상이 아닌 것"* 이라 아무도 못 봤다.
+     *
+     *   ⇒ 문서화된 그 유도를 **여기서 실제로 한다**. 게이트 레인(`gates.*`)은 이미 자기 주기를
+     *   명시로 넘기므로 이 기본값에 닿지 않는다 — 일 1회 레인이 매시간으로 오인될 위험은 없다.
+     */
+    pending.push({ beat, path, fallback, gapMin: opts?.gap ?? hourlyGapMinutes() })
   }
   const gates = makeHourGates(hourUTC, kick, laneReg)
+  /**
+   * ⏰ **알람이 모는 레인은 부모가 손을 뗀다** — 판정은 한 번만 하고 아래 세 곳이 같이 본다
+   *   (수집 · 보강 · 정비). `let` 이 아니라 여기서 선언하는 이유: 수집 게이트가 보강 블록보다
+   *   **위**에 있어, 선언이 아래 있으면 TDZ 로 런타임에 터진다(작성 중 실제로 밟았다).
+   */
+  const laneAlarmOn = laneAlarmDrivesEnrich(env)
 
   // 🔔 이 워커의 cron 이 '울리기는 했다'는 사실 자체를 남긴다 — 개별 트랙이 전부 게이트 OFF 여도
   //   ur-ads 스케줄러가 살아있는지 구분할 수 있어야 한다(멈춤 경보의 최소 신호).
@@ -298,7 +323,11 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   공유하는데 이미 보강 레인 둘이 14 라운드를 던진다 — 더 부풀리면 waitUntil 꼬리(다른 레인)가 조용히
   //   죽는다. 오케스트레이터는 1건만 던지고 체인이 스스로 잇는다. 하트비트 이름은 'collect' 고정(바꾸면
   //   옛 `cron_hb:ads:collect` 가 남아 침묵 경보). 경위: docs/CURRENT_WORK.md 10차.
-  if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
+  //   🎯 2026-08-03: 알람 레인이 이 레인을 몰면 부모는 **손을 뗀다**. 이유는 `lane-alarm-runners.ts` 의
+  //   `collect` 항목 — 요약하면 인플루언서 도메인 예산 1칸을 레인 4개가 나눠 써 4시간에 한 번 순번이
+  //   오고, 그 한 번마저 부모 CPU 한도로 죽었다(실측 6시간 20분 정지). 리스가 이중 실행을 막긴 하지만
+  //   겹쳐 던지는 것 자체가 부모 CPU 를 또 먹으므로 게이트로 끊는다.
+  if (!laneAlarmOn && env.ADS_AUTO_COLLECT_ENABLED === 'true') {
     kick('/__ads/collect-chain', async () => { const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect'); return runInfluencerAutoCollect(env) }, { beat: 'collect' })
   }
   // 📝 인플루언서 풀 보강 시간당 N라운드 — **수집 게이트와 분리**(2026-07-28).
@@ -316,7 +345,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   키우고, 그 피해는 waitUntil 목록에서 **뒤에 선 다른 레인**이 받는다. 체인은 각 라운드가 자기
   //   인보케이션에서 다음을 잇게 해 부모 비용을 1로 고정한다(수집 레인과 같은 구조).
   //  ⏰ **알람이 몰면 cron 은 손을 뗀다**(2026-08-02 시범) — 게이트·부트스트랩·근거는 `lane-alarm-boot.ts`.
-  const laneAlarmOn = laneAlarmDrivesEnrich(env)
+  //   (`laneAlarmOn` 선언은 위 gates 옆으로 올렸다 — 수집 게이트가 이 블록보다 위에 있어서다.)
   if (laneAlarmOn) ctx.waitUntil(bootstrapLaneAlarm(env, adsBeat))
   if (!laneAlarmOn && (env as unknown as { ADS_INFLUENCER_ENRICH_DISABLED?: string }).ADS_INFLUENCER_ENRICH_DISABLED !== 'true') {
     // 🔁 라운드 루프는 **드라이버 인보케이션**이 돈다(`/__ads/enrich-influencer-driver`).

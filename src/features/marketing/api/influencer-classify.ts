@@ -112,6 +112,38 @@ export const CLASSIFIED_CATEGORIES: string[] = Array.from(new Set(RULES.map(r =>
 export const NON_CATEGORIES = new Set(['자동', '일반', '', null as unknown as string])
 
 /**
+ * 🪦 **은퇴한 카테고리** — 축을 **줄일 때** 여기 한 줄 적으면 나머지가 전부 따라온다 (2026-08-03 대표 지시
+ *   *"줄이기도 자연스럽게 만들어줘"*).
+ *
+ * ## 왜 "규칙에서 지우면 자동" 이 아닌가
+ * 그렇게 일반화하면 `shouldClearCategory` 의 경고("모르는 값을 지우면 사람이 손으로 고친 분류까지
+ * 날린다")를 정면으로 어긴다. **분류기가 안 만드는 값 ≠ 잘못된 값**이다 — 키워드 폴백(`resolveCategory`)
+ * 은 키워드에 적힌 **어떤 문자열이든** 리드에 붙일 수 있고, 그건 정당한 경로다.
+ * ⇒ 그래서 추론이 아니라 **선언**으로 받는다. 사람이 "이 축은 끝났다"고 말한 것만 지운다 = "아는 경우".
+ *
+ * ## 한 줄로 따라오는 것들
+ * ```
+ *   ① 재분류가 그 값을 가진 리드를 비운다      (shouldClearCategory)
+ *   ② 키워드 폴백이 그 값을 더는 안 붙인다      (resolveCategory)  ← 신규 유입 차단
+ *   ③ 그 축 키워드가 수집 슬롯을 그만 먹는다    (influencer-auto-collect 의 활성 목록 필터)
+ * ```
+ * ①만 있으면 ②가 계속 다시 붙여 **영원히 제자리**고, ②만 있으면 옛 리드가 유령 값으로 남는다.
+ *
+ * ## 줄이는 절차 (이제 두 줄이다)
+ * 1. `RULES` 에서 그 규칙 제거  2. 여기에 이름 추가.
+ * 끝. 키워드 비활성화·리드 정리·신규 차단은 자동이다.
+ * (어드민 필터 `POOL_CATEGORIES` 에서 빼는 건 선택 — 리드가 다 비워지면 그 항목은 빈 필터가 된다.)
+ *
+ * ⚠️ 규칙과 은퇴를 **동시에** 두지 말 것 — 분류기가 만들면서 지우면 매 회차 붙였다 지웠다 한다.
+ *   유닛이 `RETIRED ∩ CLASSIFIED = ∅` 을 강제한다.
+ * ⚠️ 되돌리려면 이 목록에서 빼고 규칙을 복원하면 된다. 다만 **이미 비워진 리드는 안 돌아온다**
+ *   (재분류가 본문으로 다시 잡아 주긴 하지만 본문 신호가 없던 리드는 미분류로 남는다).
+ */
+export const RETIRED_CATEGORIES: ReadonlySet<string> = new Set<string>([
+  // 예) '골프',  ← 축을 접을 때 여기 한 줄. 같은 커밋에서 위 RULES 의 해당 규칙을 지울 것.
+])
+
+/**
  * 🧹 **저장된 카테고리를 지워야 하는가** — 재분류가 `null` 을 받았을 때의 판단(순수).
  *
  * ## 왜 필요한가 (2026-07-29 실측 — 내 앞선 설명이 틀렸던 자리)
@@ -126,9 +158,16 @@ export const NON_CATEGORIES = new Set(['자동', '일반', '', null as unknown a
  * ⚠️ 넓히지 말 것: "현재 규칙이 거부한다"를 **아는** 경우만이다. 모르는 값을 지우면
  *    사람이 손으로 고친 분류까지 날린다.
  */
-export function shouldClearCategory(stored: string | null | undefined, name: string, description?: string | null): boolean {
+export function shouldClearCategory(
+  stored: string | null | undefined, name: string, description?: string | null,
+  /** 🧪 은퇴 목록 주입구 — 기본은 모듈 상수. `pickYtKeywords(…, priorityCats)` 와 같은 테스트 seam 이다.
+   *   이게 없으면 목록이 빈 동안 은퇴 동작 검사가 **0건을 돌며 늘 통과**한다(이 레포가 반복해 겪은 헛도는 가드). */
+  retired: ReadonlySet<string> = RETIRED_CATEGORIES,
+): boolean {
   if (!stored) return false
   if (NON_CATEGORIES.has(stored)) return true
+  // 🪦 은퇴 선언된 축 — 사람이 "끝났다"고 말한 값이라 **아는 경우**다(위 RETIRED_CATEGORIES 주석).
+  if (retired.has(stored)) return true
   // 공동구매인데 입주 시공업체 신호 → 현재 규칙이 명시적으로 거부하는 조합(위 isFitoutBulkBuy).
   if (stored === '공동구매' && isFitoutBulkBuy(`${name} ${description || ''}`)) return true
   /**
@@ -264,11 +303,16 @@ export function classifyCategoryByHits(text: string, minHits = 3): string | null
 }
 
 /** 저장 시점 최종 카테고리 — 콘텐츠 신호 우선, 없으면 키워드 카테고리(단 '자동'/'일반'은 null 로). */
-export function resolveCategory(name: string, description: string | null | undefined, keywordCat: string | null | undefined): string | null {
+export function resolveCategory(
+  name: string, description: string | null | undefined, keywordCat: string | null | undefined,
+  /** 🧪 위와 같은 이유의 주입구(기본 = 모듈 상수). */
+  retired: ReadonlySet<string> = RETIRED_CATEGORIES,
+): string | null {
   const byContent = classifyCategory(name, description)
   if (byContent) return byContent
   const kc = (keywordCat || '').trim()
-  return kc && !NON_CATEGORIES.has(kc) ? kc : null
+  // 🪦 은퇴 축은 폴백으로도 안 붙인다 — 이게 없으면 ①(비우기)과 ②(다시 붙이기)가 매 회차 싸운다.
+  return kc && !NON_CATEGORIES.has(kc) && !retired.has(kc) ? kc : null
 }
 
 // 🎯 YouTube topicDetails(구글 자체 영상기반 분류)가 구분 가능한 '거친' 카테고리 = topicToCategory 출력 범위.
