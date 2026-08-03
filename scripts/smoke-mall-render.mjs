@@ -126,6 +126,69 @@ try {
     console.log(`   📸 ${OUT}/mall-home-${mode}.png`)
     await ctx.close()
   }
+  // ── 화면 A-2 손님 상품 상세(픽업) ────────────────────────────────────────
+  // 🔴 이 화면은 **본진 쇼핑 전체가 쓰는 페이지**다. 시안은 픽업 상품에만 얹혔고,
+  //   그 분기가 실제로 갈리는지는 렌더로만 보인다(유닛은 마크업만 본다).
+  for (const mode of ['light', 'dark']) {
+    // 🇰🇷 `locale` 을 안 주면 i18n 이 브라우저 기본(en)으로 붙어 **영어 화면을 판정**하게 된다.
+    const ctx = await browser.newContext({ viewport: { width: 430, height: 1600 }, deviceScaleFactor: 2, locale: 'ko-KR' })
+    await ctx.addInitScript((m) => { try { localStorage.setItem('ur_theme_mode_v1', m) } catch { /* private */ } }, mode)
+    // ⚠️ 등록 순서 주의 — Playwright 는 **나중에 등록한 라우트가 먼저** 매치된다.
+    //   그래서 포괄 스텁을 먼저 깔고 구체 경로를 뒤에 등록한다.
+    await ctx.route('**/api/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"success":true,"data":[]}' }))
+    await ctx.route('**/api/products/11', (r) => r.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: {
+        id: 11, name: '수제 사과잼 250g 2병 세트', price: 7000, original_price: 10000,
+        stock: 8, deal_only: 0, group_buy_status: null, category: 'food', image_url: null,
+        description: '국내산 사과만 골라 오래 졸였습니다.', mall_id: 2,
+        pickup: { date: '2026-08-10', place: '행복반찬', storage: 'cold' },
+      } }),
+    }))
+    await ctx.route('**/api/products/11/options', (r) => r.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: [
+        { id: 1, option_value: '사과잼 2병', price_adjustment: 0, stock: 5 },
+        { id: 2, option_value: '유자청 2병', price_adjustment: 1500, stock: 0 },
+      ] }),
+    }))
+    // ⚠️ 리뷰 목록은 `data.reviews` 형태다(`reviews.routes` GET /product/:id). 포괄 스텁의
+    //   `data: []` 를 그대로 먹이면 화면이 터진다 — 그게 실제로 여기서 드러나 클라를 고쳤다.
+    await ctx.route('**/api/reviews/product/**', (r) => r.fulfill({
+      status: 200, contentType: 'application/json',
+      body: r.request().url().includes('/summary')
+        ? '{"success":true,"data":{"avg_rating":0,"total_count":0}}'
+        : '{"success":true,"data":{"reviews":[],"total":0,"page":1,"limit":5}}',
+    }))
+    const page = await ctx.newPage()
+    const errs = []
+    page.on('pageerror', (e) => errs.push(String(e)))
+    await page.goto(`${base}/products/11`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('text=가게에 직접 찾으러 오는 상품이에요', { timeout: 20000 })
+
+    check(`[A-2 ${mode}] 런타임 에러 0`, errs.length === 0, errs[0] || '없음')
+    check(`[A-2 ${mode}] 픽업 안내 + 받는 날`, (await page.getByText('8월 10일').count()) > 0, '8월 10일')
+    check(`[A-2 ${mode}] 옵션 3벌(선택/미선택/품절)`, (await page.getByText('품절', { exact: true }).count()) > 0, '품절 옵션 표시')
+
+    // 🔴 하단 바가 **픽업 벌**인가 — 본진 라벨('바로 구매', 공백 있음)이 뜨면 분기가 안 갈린 것이다.
+    const buy = page.locator('button', { hasText: /^바로구매$/ }).first()
+    check(`[A-2 ${mode}] 픽업 하단 바`, (await buy.count()) > 0 && (await page.getByText('바로 구매').count()) === 0, '바로구매')
+    check(`[A-2 ${mode}] 요약 줄(수량 · 픽업일)`, (await page.getByText(/개 · .*픽업/).count()) > 0, '표시됨')
+
+    // 🎨 주요 CTA 대비 — 다크에서 잉크↔반전이 뒤집히는 자리다(2026-08-02 에 몰 홈이 여기서 2.24:1 이었다).
+    const s = await buy.evaluate((el) => { const c = getComputedStyle(el); return { bg: c.backgroundColor, fg: c.color } })
+    const r = ratio(s.bg, s.fg)
+    check(`[A-2 ${mode}] 바로구매 대비 ≥ 4.5:1`, r >= 4.5, `${r.toFixed(2)}:1  (bg ${s.bg} / fg ${s.fg})`)
+
+    // 🔴 몰 상품(mall_id=2)이라 유어딜 본진 입구가 없어야 한다(대표 UX 기준 ⑤ · PR #971 경계).
+    check(`[A-2 ${mode}] 유어딜 본진 링크 0`,
+      (await page.locator('a[href^="/vouchers"], a[href^="/browse"], nav a[href="/"]').count()) === 0, '없음')
+
+    await page.screenshot({ path: `${OUT}/product-detail-pickup-${mode}.png`, fullPage: true })
+    console.log(`   📸 ${OUT}/product-detail-pickup-${mode}.png`)
+    await ctx.close()
+  }
+
   // ── 사장님 화면 B·D ────────────────────────────────────────────────────
   // 🔴 대시보드는 **라이트 한 벌**이다(의뢰서 §5.2 — 다크는 만들지 마세요). 그래서 한 모드만 본다.
   //   인증은 localStorage 토큰 스텁 + API 인터셉트로 통과시킨다(진짜 로그인을 하려는 게 아니다).

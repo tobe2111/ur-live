@@ -76,10 +76,12 @@ Key type **Signing Key** 로 공개키를 등록해야 한다(Developer settings
 어드민 폼 실시간 힌트. `mall-color-contrast.test.ts` **R4** 가 그 배선 자체를 불변식으로 고정한다
 (수정 경로는 `'brand_color' in body` 블록 **안**에서 호출되는지까지 본다).
 
-### ✅ 렌더 스모크 — `npm run smoke:mall` (24/24)
+### ✅ 렌더 스모크 — `npm run smoke:mall` (38/38)
 
 `scripts/smoke-mall-render.mjs`. 스크린샷을 눈으로 보는 게 아니라 **계산된 색을 읽어 대비를 직접 잰다.**
-라이트/다크 몰 홈 + 사장님 B·D. CI 는 `.github/workflows/render-smoke.yml`
+라이트/다크 몰 홈 + **A-2 상품 상세(픽업) 라이트/다크** + 사장님 B·D.
+⚠️ 컨텍스트에 `locale: 'ko-KR'` 을 준다 — 안 주면 i18n 이 브라우저 기본(en)으로 붙어
+**영어 화면을 판정**하게 된다(실제로 첫 스크린샷이 그랬다). CI 는 `.github/workflows/render-smoke.yml`
 (`workflow_dispatch` + 경로 필터 `pull_request`, 스크린샷 아티팩트 업로드).
 ⚠️ **PR 하드 게이트로 승격하지 말 것** — `live-contracts.yml` 과 같은 판단(외부 의존 간헐 실패가 머지를 막는다).
 
@@ -97,14 +99,24 @@ Key type **Signing Key** 로 공개키를 등록해야 한다(Developer settings
 > 📌 교훈: 이 레포의 시안 작업은 그동안 전부 정적 검사였다. 그건 *"틀리지 않았다"* 만 말하고
 > *"보인다"* 는 말하지 못한다. 위 2건은 **둘 다 tsc·유닛·가드 전부 초록**이었다.
 
+### ✅ A-2 나머지 — 옵션 / 수량 스테퍼 / 하단 고정 바
+
+`ProductDetailPage.tsx` 의 구매 블록을 `product-detail/PurchasePicker.tsx` 로 **그대로 들어내고**
+(로직 불변) 시안 벌을 `variant='pickup'` 으로 더했다. 하단 바는 `floating-action-bar.tsx` 에
+같은 이름의 variant. **판정은 `hasPickupInfo(product.pickup)`** — 몰이 아니라 픽업 데이터
+(`ReceiveMethodNotice` 와 같은 원칙, 본진 픽업 상품도 같은 화면).
+`ProductDetailPage` **978 → 939줄**, baseline 갱신(`SellerOrdersPage` 615→600 · `seller-orders.routes` 1457→1440 동반).
+
+> 🔴 **`default` 는 안 바꿨다.** 이 페이지는 본진 쇼핑 **전체**가 쓴다 — 파일럿 시안으로 본진을
+> 재디자인하는 것은 의뢰 범위가 아니다. `product-detail-purchase-picker.test.tsx` **R3** 가
+> 그걸 불변식으로 고정한다(본진 `바로 구매`(공백) ↔ 픽업 `바로구매`).
+
+**렌더 스모크가 여기서 또 하나 잡았다** — `ProductReviews` 가 `setReviews(r.data.data.reviews)` 를
+방어 없이 넣고 있어, 응답에 `reviews` 키가 없기만 해도 `reviews.length` 가 터지고
+**ErrorBoundary 가 상품 상세 페이지 전체를 삼켰다**(리뷰 한 칸이 아니라 화면 전체).
+`Array.isArray` 폴백 1줄. 정상 응답에선 동작 동일.
+
 ## 남은 결정 / 대기
-
-### 🟡 A-2 상품 상세 — 옵션 / 수량 스테퍼 / 하단 고정 바
-
-시안 A-2 의 나머지다. `ProductDetailPage.tsx` 가 **정확히 978줄로 동결**돼 있어
-(`file-size-baseline.json`) 한 줄도 못 늘린다 ⇒ `src/pages/product-detail/` 로 **추출이 선행**돼야 한다
-(`ReceiveMethodNotice.tsx` 가 그 폴더의 선례). 이 파일은 **본진 공용**이라 몰 전용 분기를 넣지 말 것 —
-경계는 `isMallProduct`/`hasPickupInfo` 가 판정한다.
 
 ### 리뷰 요망 — 행동이 바뀐 것 2개 (표면이 아니다)
 

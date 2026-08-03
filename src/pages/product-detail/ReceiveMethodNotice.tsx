@@ -34,6 +34,20 @@ function pickupDayLabel(iso: string): string {
   return `${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일`
 }
 
+/**
+ * 🧾 하단 고정 바 요약 줄 — `1개 · 8월 10일 픽업` 〔시안 A-2 하단 바〕.
+ *
+ * 🔴 **여기서 export 하는 이유**: 날짜 라벨을 호출부에서 다시 짜면 이 레포가 반복해 만난
+ *   *"UTC-naive 를 로컬로 오해석해 하루 밀림"* 클래스가 **두 벌**이 된다(`check-utc-date-parse`).
+ *   픽업일 문자열의 정의는 이 파일 하나여야 한다.
+ *
+ * 날짜가 없으면 수량만 돌려준다 — **없는 날짜를 지어내지 않는다.**
+ */
+export function pickupSummaryLine(quantity: number, date: string | null | undefined): string {
+  const day = date ? pickupDayLabel(date) : ''
+  return day ? `${quantity}개 · ${day} 픽업` : `${quantity}개`
+}
+
 /** 보관 배지 — 냉장·냉동은 파랑(주의 환기), 실온은 중립.〔시안 재사용 요소〕 */
 const STORAGE_BADGE: Record<'cold' | 'room', string> = {
   cold: 'text-[#3C6E8F] bg-[#E7F0F6] dark:text-[#8FBDDA] dark:bg-[#1B2A34]',
