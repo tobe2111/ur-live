@@ -37,7 +37,6 @@ import { handleAgencyMonthlyReport } from './cron/agency-monthly-report';
 import { handleAgencySelfEventsTick } from './cron/agency-self-events-tick';
 import { handleSellerTierEval } from './cron/seller-tier-eval';
 import { handleWholesaleGradeEval } from './cron/wholesale-grade-eval';
-import { handleWholesaleSettleTick } from './cron/wholesale-settle-tick';
 import { handleWholesaleOrphanSweep } from './cron/wholesale-orphan-sweep';
 import { handleWholesaleRestockNotify } from './cron/wholesale-restock-notify';
 import { handleAnomalyDetection } from './cron/anomaly-detect';
@@ -191,6 +190,13 @@ export async function handleCronScheduled(
   }
 
   if (cron === '*/5 * * * *') {
+    // 📰 2026-08-03 — 일일 다이제스트. 발화 안 하던 `0 * * * *` 에서 이사. **일간이 아니라 `*/5` 인 이유**:
+    //   내부 `getUTCHours()===22`(KST 07:00) 게이트가 있어 일간으로 옮기면 no-op, 게이트를 고치면
+    //   받는 시각이 새벽 4시로 바뀐다. 5분 슬롯이면 원래 시각 보존 + 그 외엔 게이트 false 라 DB 0.
+    ctx.waitUntil(safeCron('ops-daily-digest', async () => {
+      const { isOpsDigestHour, runOpsDailyDigest } = await import('./cron/ops-daily-digest');
+      if (isOpsDigestHour()) await runOpsDailyDigest(env);
+    }));
     ctx.waitUntil(safeCron('scheduled-cleanup', async () => {
       const { handleScheduled } = await import('./cron/scheduled-cleanup')
       return handleScheduled(env)
@@ -228,11 +234,6 @@ export async function handleCronScheduled(
   }
 
   if (cron === '0 * * * *') {
-    // 📰 일일 다이제스트 — 내부 `getUTCHours()===22` 게이트라 옮기면 no-op. 2026-08-03 이사에서 제외.
-    ctx.waitUntil(safeCron('ops-daily-digest', async () => {
-      const { isOpsDigestHour, runOpsDailyDigest } = await import('./cron/ops-daily-digest');
-      if (isOpsDigestHour()) await runOpsDailyDigest(env);
-    }));
     // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 홍보 유지보수 크론 배선 분리 — 소셜 자동화 그래프를 워커에서
     //   완전 제거해 CF 1MB 압축한도 회복. 기능 게이트 OFF·미사용이라 미실행 무해. 재도입 시 원복.
     // ctx.waitUntil(safeCron('social-maintenance', async () => {
@@ -263,7 +264,6 @@ export async function handleCronScheduled(
       return healDemoNamesInPlace(env.DB);
     }));
     // 🏭 2026-06-08 TAX-1: 공급사 정산 성숙 매시간 tick (기존 maturity helper 호출, idempotent).
-    ctx.waitUntil(safeCron('wholesale-settle-tick', () => handleWholesaleSettleTick(env)));
     // 🏭 2026-06-08 NOTI-1: 재입고 알림 — 구독 상품 재입고(stock>0) 시 판매사 알림.
     ctx.waitUntil(safeCron('wholesale-restock-notify', () => handleWholesaleRestockNotify(env)));
     // 🔔 2026-07-01: 알림 채널 설정 회귀 감시 — LIVE 채널 키가 사라지면(true→false) 1회 critical
