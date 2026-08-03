@@ -590,6 +590,18 @@ const MUTATIONS = [
       '(첫 작성에서 내가 손으로 적다가 실제로 64개를 빠뜨렸고, 이 시험이 즉시 잡았다.)',
   },
   {
+    name: '표준데이터 호스트가 키를 못 받음(SERVICE_KEY_IS_NULL)',
+    file: 'src/features/marketing/api/public-data-probe.ts',
+    find: "export const PORTAL_KEY_HOSTS = ['apis.data.go.kr', 'api.data.go.kr'] as const",
+    replace: "export const PORTAL_KEY_HOSTS = ['apis.data.go.kr'] as const",
+    test: 'src/tests/unit/ads-public-data-probe.test.ts',
+    why:
+      '판정이 단일 호스트 비교였을 때 같은 포털의 표준데이터 게이트웨이(`api.data.go.kr`, ‘s’ 없음)가 조건에서 ' +
+      '빠져 **키 없이 나갔고** 라이브가 `SERVICE_KEY_IS_NULL`(code 20)로 답했다. 그러면 *"우리 키가 이 데이터셋에 ' +
+      '열려 있는가"* 를 영영 판정 못 한다 — **이 프로브의 존재 이유가 바로 그 판정인데 스스로 막고 있었다.** ' +
+      '상권/상인회 축의 유일한 연락처 소스가 이 호스트에만 있다.',
+  },
+  {
     name: '인허가 경로에서 오퍼레이션(/info)이 사라짐',
     file: 'src/features/marketing/api/license-url.ts',
     find: "export const LICENSE_OPERATION = 'info'",

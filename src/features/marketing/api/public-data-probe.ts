@@ -104,6 +104,18 @@ export interface ProbeOpts {
  *     ⚠️ 여전히 **경로만** 받는다(쿼리·키는 이 모듈이 붙인다) — 호스트가 늘어도 그 계약은 그대로다.
  */
 export const PROBE_ALLOWED_HOSTS = ['apis.data.go.kr', 'www.localdata.go.kr', 'api.data.go.kr'] as const
+
+/**
+ * 🔑 **우리 `serviceKey` 가 유효한 호스트**(= 공공데이터포털 발급처). 이 집합에만 키를 실어 보낸다.
+ *
+ *   `PROBE_ALLOWED_HOSTS` 와 **일부러 다르다** — 허용(찌를 수 있다)과 인증(키를 줘도 된다)은 별개다.
+ *   `www.localdata.go.kr` 은 찌를 수는 있지만 **자체 키 체계(`authKey`)** 라 우리 키를 보내면
+ *   자격증명을 남의 호스트에 흘리는 것이 된다 → 키 없이 존재 여부만 본다.
+ *
+ *   ⚠️ 새 호스트를 `PROBE_ALLOWED_HOSTS` 에 넣을 때 **여기에도 넣을지 반드시 따로 판단**하라.
+ *     기본은 "넣지 않는다" 이고, 넣으려면 *같은 발급처가 같은 키를 받는다*는 근거가 있어야 한다.
+ */
+export const PORTAL_KEY_HOSTS = ['apis.data.go.kr', 'api.data.go.kr'] as const
 export type ProbeHost = (typeof PROBE_ALLOWED_HOSTS)[number]
 /** @deprecated 단수 상수는 남겨 둔다(기존 호출부·시험 호환). 판정은 `PROBE_ALLOWED_HOSTS` 가 한다. */
 export const PROBE_ALLOWED_HOST: ProbeHost = PROBE_ALLOWED_HOSTS[0]
@@ -208,7 +220,12 @@ export async function probePublicData(env: Env, target: string, keyOverride?: st
   //     우리가 가진 건 공공데이터포털 `serviceKey` 다. 남의 호스트에 우리 키를 실어 보내는 건
   //     "혹시 되나" 보려고 자격증명을 흘리는 것이다. 키 없이 찔러도 **판정은 된다** —
   //     인증 오류가 오면 *"엔드포인트는 존재한다"*, `NO_OPENAPI_SERVICE_ERROR` 면 *"여기도 아니다"* 다.
-  const needsKey = !candidate || candidate.host === 'apis.data.go.kr'
+  //   ⚠️ 2026-08-03 수리: 판정 기준이 `=== 'apis.data.go.kr'` **단일 호스트**였는데, 같은 포털이
+  //     **표준데이터를 `api.data.go.kr`(‘s’ 없음)로 서빙**한다. 둘은 같은 발급처의 같은 `serviceKey` 를
+  //     쓰는데 후자가 조건에서 빠져 **키 없이 나갔고**, 라이브가 `SERVICE_KEY_IS_NULL`(code 20)로 답했다.
+  //     그러면 "권한이 있나"를 영영 판정 못 한다 — 이 프로브의 존재 이유가 바로 그 판정이다.
+  //     ⇒ 기준을 *호스트 하나*가 아니라 **키가 유효한 발급처 집합**으로 바꾼다(아래 상수가 SSOT).
+  const needsKey = !candidate || (PORTAL_KEY_HOSTS as readonly string[]).includes(candidate.host)
   if (!key && needsKey) return { ...base, error: 'PUBLIC_DATA_SERVICE_KEY 미설정', hard: true }
 
   //   공공데이터포털은 페이징 파라미터 이름이 서비스마다 갈린다(pageNo/numOfRows ↔ pageIndex/pageSize).
@@ -216,7 +233,7 @@ export async function probePublicData(env: Env, target: string, keyOverride?: st
   //   하나만 보내면 "이름이 달라서" 실패한 것을 "주소가 틀려서"로 오진하게 된다.
   const paging = `pageNo=${o.page}&numOfRows=${o.rows}&pageIndex=${o.page}&pageSize=${o.rows}&type=json&_type=json&resultType=json`
   const url = candidate
-    ? (candidate.host === 'apis.data.go.kr'
+    ? (needsKey
       ? `https://${candidate.host}/${candidate.path}?serviceKey=${serviceKeyParam(key)}&${paging}`
       : `https://${candidate.host}/${candidate.path}?${paging}`) // 키 없이 — 존재 여부만 판정(위 주석)
     : def!.url(key, env, o)
