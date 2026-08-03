@@ -5495,6 +5495,9 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
 _총 100건 · 최신순 · 이 목록은 자동 생성된다._
+_총 99건 · 최신순 · 이 목록은 자동 생성된다._
+_총 96건 · 최신순 · 이 목록은 자동 생성된다._
+_총 86건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-03**
 - [ur-ads 배포가 조용히 안 나갔다 — 라이브는 멀쩡해 보였다 (2026-08-03)](handoff/2026-08-03-urads-deploy-silent-miss.md)
@@ -5511,6 +5514,7 @@ _총 100건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-08-03 — 주간 백업이 `products`·`sellers` 를 조용히 빼먹고 있었다](handoff/2026-08-03-backup-missing-core-tables.md)
 **2026-08-02**
 - [08-02 — 유료로 바꾸면 수집이 **실제로** 늘어나는가](handoff/2026-08-02-paid-plan-scaling.md)
+- [2026-08-02 — 운영자 몰 파일럿 시안 적용 (화면 A · A-2 · B · C · D)](handoff/2026-08-02-mall-design-apply-a-to-d.md)
 - [2026-08-02 — 몰 손님이 보는 화면의 경계 (기준 ⑤) + 디자인 의뢰 추가분](handoff/2026-08-02-mall-consumer-surface-boundary.md)
 - [회차당 레인 수를 스스로 잰다 — 손으로 잰 상수의 마지막 자리 (2026-08-02)](handoff/2026-08-02-lane-count-selflearning.md)
 - [08-02 — 매장 풀의 97.6%가 학원이었다. 대표가 지목한 네 업종은 **0건**](handoff/2026-08-02-kakao-store-voucher-grid.md)

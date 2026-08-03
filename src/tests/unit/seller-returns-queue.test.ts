@@ -38,7 +38,10 @@ describe('🔴 조회 실패를 "0건" 으로 위장하지 않는다', () => {
     const loadBlock = sliceFrom(page, "api.get('/api/returns/seller')", '.finally(', 400)
     expect(loadBlock, '목록 조회 블록을 못 찾았다').not.toBe('')
     expect(loadBlock).toContain('setError(true)')
-    expect(page).toMatch(/불러오지 못했습니다/)
+    // ⚠️ **어미에 묶지 않는다.** 원래 `/불러오지 못했습니다/` 였는데 2026-08-02 시안이 문구를
+    //   ~어요체로 통일하면서(`못했어요`) 깨졌다 — 지킬 것은 *실패를 말하는 문구가 있는가*이지
+    //   문장 끝이 아니다. 말투는 앞으로도 바뀔 수 있고, 그때마다 이 테스트가 빨개지면 안 된다.
+    expect(page).toMatch(/불러오지 못했/)
   })
 
   it('재시도 경로가 있다 — 막다른 에러 화면을 만들지 않는다', () => {

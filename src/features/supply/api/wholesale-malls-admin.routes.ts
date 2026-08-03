@@ -19,6 +19,7 @@ import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admi
 import { ensureMallSchema, invalidateMallCache, DEFAULT_MALL_ID } from './wholesale-malls'
 import { normalizeAdminRole } from '@/shared/admin-roles'
 import { RESERVED_SLUGS, validateMallSlug, auditMallSlugs } from '@/shared/mall/slug'
+import { validateMallColor } from '@/shared/mall/branding'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', adminIpWhitelist())
@@ -170,6 +171,10 @@ app.post('/', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-cre
     const host = cleanHost(body.host)
     const brand_name = cleanText(body.brand_name, 80)
     const brand_color = cleanText(body.brand_color, 20)
+    // 🎨 대비 게이트 — 이 색은 **면**이고 그 위에 흰 글자가 올라간다(몰 홈 아바타·안전결제 띠,
+    //   어드민 목록 썸네일). 옅은 색을 고르면 글자가 그대로 안 보인다. `branding.ts` 가
+    //   *"대비는 취향이 아니라 규격"* 이라고 선언해 놓고 검사가 없던 자리다(2026-08-02).
+    if (brand_color) { const v = validateMallColor(brand_color); if (!v.ok) return c.json({ success: false, error: v.reason }, 400) }
     const logo_url = cleanText(body.logo_url, 1000)
     const deposit_account = cleanText(body.deposit_account, 500)
     const commission_rate = Number.isFinite(Number(body.commission_rate)) ? Number(body.commission_rate) : null
@@ -225,7 +230,12 @@ app.patch('/:id', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall
     if ('name' in body) { const v = cleanText(body.name, 80); if (!v) return c.json({ success: false, error: '몰 이름을 입력해주세요' }, 400); sets.push('name = ?'); binds.push(v) }
     if ('host' in body) { sets.push('host = ?'); binds.push(cleanHost(body.host)) }
     if ('brand_name' in body) { sets.push('brand_name = ?'); binds.push(cleanText(body.brand_name, 80)) }
-    if ('brand_color' in body) { sets.push('brand_color = ?'); binds.push(cleanText(body.brand_color, 20)) }
+    if ('brand_color' in body) {
+      const v0 = cleanText(body.brand_color, 20)
+      // 🎨 생성과 **같은 게이트** — 한쪽만 막으면 수정으로 우회된다.
+      if (v0) { const v = validateMallColor(v0); if (!v.ok) return c.json({ success: false, error: v.reason }, 400) }
+      sets.push('brand_color = ?'); binds.push(v0)
+    }
     if ('logo_url' in body) { sets.push('logo_url = ?'); binds.push(cleanText(body.logo_url, 1000)) }
     if ('deposit_account' in body) { sets.push('deposit_account = ?'); binds.push(cleanText(body.deposit_account, 500)) }
     if ('commission_rate' in body) { sets.push('commission_rate = ?'); binds.push(Number.isFinite(Number(body.commission_rate)) ? Number(body.commission_rate) : null) }
