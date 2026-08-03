@@ -1030,7 +1030,6 @@ app.use('*', async (c, next) => {
     //   지어낸 세그먼트(도어웨이)는 리졸버가 noindex 로 표시해 준다.
     //   SSR inject·0-RTT·`caches.default`·#root 로더·edgeCache 전부 불변 — head rewrite 만 추가.
     if (!isWholesaleSurface && !needsRootBlank) {
-      // 🗺️ 2026-08-03: 표에 없는 `/region/*` 는 워커 전용 빌더가 받는다(클라 번들 무영향 — surface-ssr-meta 주석 참조).
       const sm = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2) ?? resolveRegionSeo(url.pathname, origin2);
       if (sm) rb = applySurfaceMeta(rb, sm);
     }
