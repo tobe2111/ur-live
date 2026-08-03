@@ -14,6 +14,18 @@ cat > "$HOOK_FILE" << 'EOF'
 # Pre-commit hook — schema + auth + runtime build integrity
 set -e
 
+# 🔒 주입 검증(check-guard-mutations)이 도는 동안은 커밋 금지 — 그 스크립트는 소스에 **의도적 결함을
+#   심었다 지운다**. 그 창에서 `git add -A` 를 하면 결함이 그대로 스테이징된다.
+#   2026-08-03 실제 사고: `Promise.all(tracked)`(무한 대기 — 그 PR 이 고치려던 바로 그 고장)가 커밋됐고
+#   CI 가 잡을 때까지 아무도 몰랐다. `git status` 의 낯선 변경이 유일한 신호인데 사람은 그걸 놓친다.
+if [ -f .git/guard-mutations.lock ]; then
+  echo "❌ 커밋 차단: 주입 검증(check-guard-mutations)이 실행 중입니다."
+  echo "   지금 워킹트리에는 **의도적으로 심어 둔 결함**이 들어 있을 수 있습니다."
+  echo "   → 그 스크립트가 끝나면(복원 완료) 다시 커밋하세요:  $(cat .git/guard-mutations.lock 2>/dev/null)"
+  echo "   → 스크립트가 비정상 종료해 자물쇠만 남았다면:  rm .git/guard-mutations.lock"
+  exit 1
+fi
+
 staged_ts=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx)$' | grep -v 'node_modules/\|dist/' || true)
 
 if [ -z "$staged_ts" ]; then

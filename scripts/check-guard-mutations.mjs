@@ -1414,16 +1414,32 @@ const MUTATIONS = [
       '도메인 수만큼 곱해지면 학습기 판단(cap 2)이 다시 안 맞는다. 하한은 *자리를 받은* 조에만 있어야 한다.',
   },
 ]
+/**
+ * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
+ *
+ * 이 스크립트는 소스에 **의도적 결함을 심었다 지운다**. 복원은 튼튼하지만(try/finally + 시그널 + exit),
+ * 그 사이에 **다른 곳에서 `git add -A` 를 하면 결함이 그대로 스테이징된다.**
+ * 실제로 그렇게 `Promise.all(tracked)`(무한 대기 — 그 PR 이 고치려던 바로 그 고장)가 커밋됐고,
+ * CI 가 잡을 때까지 아무도 몰랐다. `git status` 의 낯선 변경이 유일한 신호였는데 그건 사람이 놓친다.
+ *
+ * `.git/` 안에 두므로 커밋 대상이 될 수 없다. pre-commit 훅이 이 파일을 보고 거절한다.
+ */
+const LOCK = path.join(ROOT, '.git', 'guard-mutations.lock')
+function lockOn() { try { fs.writeFileSync(LOCK, `${process.pid} ${new Date().toISOString()}\n`) } catch { /* 최선 노력 */ } }
+function lockOff() { try { fs.rmSync(LOCK, { force: true }) } catch { /* 최선 노력 */ } }
+
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
 const pending = new Map()
 function restoreAll() {
   for (const [abs, src] of pending) { try { fs.writeFileSync(abs, src) } catch { /* 최선 노력 */ } }
   pending.clear()
+  lockOff()   // 복원과 같은 자리에서 푼다 — 둘이 갈리면 자물쇠만 남아 커밋이 영영 막힌다
 }
 for (const sig of ['SIGINT', 'SIGTERM', 'uncaughtException']) {
   process.on(sig, (e) => { restoreAll(); if (e instanceof Error) console.error(e); process.exit(1) })
 }
 process.on('exit', restoreAll)
+lockOn()   // 여기서부터 소스에 손을 댄다 — pre-commit 이 이 자물쇠를 보고 커밋을 거절한다
 
 function runTest(testPath) {
   try {
