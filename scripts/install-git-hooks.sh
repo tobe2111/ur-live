@@ -294,6 +294,9 @@ bash scripts/check-guide-sync.sh || true
 if git diff --cached --name-only --diff-filter=ACMR | grep -q '^docs/handoff/'; then
   echo "==> Pre-commit: 인계 목차 재생성..."
   node scripts/generate-handoff-index.mjs > /dev/null 2>&1 || true
+  # 🚦 기능 현황판 — feature-flags.ts 에서 재생성 + stage (손 관리하면 반드시 낡는다)
+  node scripts/generate-feature-status.mjs > /dev/null 2>&1 || true
+  git add docs/FEATURE_STATUS.md > /dev/null 2>&1 || true
   if ! git diff --quiet docs/CURRENT_WORK.md 2>/dev/null; then
     git add docs/CURRENT_WORK.md
     echo "   ✓ CURRENT_WORK.md 목차 재생성 + staged"

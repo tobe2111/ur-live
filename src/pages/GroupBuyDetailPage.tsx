@@ -369,10 +369,14 @@ export default function GroupBuyDetailPage() {
       return
     }
 
-    // 🛡️ 2026-05-23: 교환권 (voucher 카테고리) 은 딜 결제, 그 외 (일반 공구 상품) 만 토스 결제.
-    //   - meal_voucher / beauty_voucher / stay_voucher / etc_voucher / health_voucher / pet_voucher / activity_voucher → 딜
-    //   - 일반 상품 (공구 할인 적용된 의류/잡화/식품 등) → 토스
-    //   사용자 정책 (CLAUDE.md): "교환권을 딜로 거래하는 것 외에는 토스페이먼츠 결제"
+    // 🛡️ 2026-05-23 / 정정 2026-08-03: 결제수단은 **카테고리가 아니라 `deal_only`** 로 갈린다.
+    //   - `deal_only=1` (교환권 — 기프티콘·KT)            → 딜 결제
+    //   - `group_buy_status='active'` (**이용권 포함**)   → 토스 카드
+    //   - 그 외                                          → 토스 카드
+    //   ⚠️ 옛 주석은 교환권을 voucher 카테고리와 같은 말로 썼고, 그게 2026-08-03 에
+    //     **"식당 이용권은 카드로 못 산다"는 오판**을 낳았다. `meal_voucher` 는 명칭 SSOT 상
+    //     **이용권**이고 카드로 판다(예: 김밥천국 할인권 = 공구, Toss). 카테고리로 판정하지 말 것.
+    //   정책 (CLAUDE.md): "교환권을 딜로 거래하는 것 외에는 토스페이먼츠 결제"
     // 🛡️ 2026-05-23 v3: getProductFlow SSOT (src/shared/product-flow.ts) —
     //   voucher_deal vs group_buy_toss 단일 helper. legacy 카테고리 graceful + 미래 분류 1곳 수정.
     const { flow } = resolveProductFlow(detail)

@@ -570,6 +570,12 @@ jobs:
       #   ③ 순수 뷰 자식은 prop 구동(seller_token 직접 read 금지). 예외 `linkshop-ownership-ok`.
       - name: Linkshop ownership unification guard (strict)
         run: STRICT_LINKSHOP_OWNERSHIP=1 node scripts/check-linkshop-ownership.mjs
+
+      - name: 결제수단 판정 SSOT (카테고리로 결제수단 정하기 금지)
+        run: STRICT_PAYMENT_FLOW=1 node scripts/check-payment-flow-ssot.mjs
+
+      - name: 기능 현황판 동기 (꺼진 기능을 산 것으로 오독 방지)
+        run: node scripts/generate-feature-status.mjs --check
         continue-on-error: false
 
       # 🛡️ 2026-07-27: UTC-naive DB 타임스탬프의 순진한 `new Date()` 파싱 — 9시간 어긋남 클래스.

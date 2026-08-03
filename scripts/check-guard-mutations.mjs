@@ -72,6 +72,19 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '결제수단을 카테고리로 정해 이용권이 카드 결제에서 빠짐',
+    file: 'src/pages/GroupBuyDetailPage.tsx',
+    find: 'const { flow } = resolveProductFlow(detail)',
+    replace: "const flow = isVoucherCategory(detail.category) ? 'voucher_deal' : 'group_buy_toss'",
+    test: 'src/tests/unit/payment-flow-naming.test.ts',
+    why:
+      '결제수단 SSOT 는 `getProductFlow`(deal_only=1 → 딜 / group_buy_status=active → 카드)이고 ' +
+      '**카테고리는 판정 기준이 아니다**. `meal_voucher` 인 김밥천국 할인권은 카드 결제다. ' +
+      '2026-08-03 에 세션이 낡은 주석을 믿고 "이용권은 카드로 못 산다"고 대표에게 보고했고, ' +
+      '그 결과 존재하는 테스트 상품을 두고 새로 만들라고 안내할 뻔했다. 카테고리로 판정하면 ' +
+      '이용권 전체가 카드 결제에서 빠진다.',
+  },
+  {
     name: '데모 판정이 좁은 접두사로 되돌아가 새 데모 종류가 소비자에게 판매 상품으로 보임',
     file: 'src/features/group-buy/api/group-buy-public.routes.ts',
     find: "const DEMO_LAST = `(CASE WHEN ${demoSlugSql('p')} THEN 1 ELSE 0 END)`",
