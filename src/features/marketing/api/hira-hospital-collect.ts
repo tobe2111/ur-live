@@ -76,11 +76,15 @@ function toProspect(it: RawH): StoreProspect {
   }
 }
 
-export interface HiraStats { last_run: string; page: number; found: number; saved: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown; retry?: string } }
+export interface HiraStats { last_run: string; page: number; found: number; saved: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown; retry?: string; stopped_by?: string } }
 const STATS_KEY = 'ads_hira_stats'
 const CURSOR_KEY = 'ads_hira_cursor'
 
 /** 병원 1틱(매시간 크론 소량 또는 수동). 전국 목록을 페이지 커서 순환 — 소진 시 1페이지부터 재순환(갱신). */
+/** 회차 마감선 — 페이지 한 장이 25초까지 버티므로 **페이지 수**를 시간으로 묶는다. */
+const HIRA_DEADLINE_MS = 20_000
+const HIRA_DEADLINE_MS_PAID = 60_000
+
 export async function runHiraHospitalCollect(env: Env, maxPagesArg?: number): Promise<HiraStats> {
   // 🎚️ 회차당 일감도 **요금제를 따른다** — 예산만 커지고 이 숫자가 고정이면 늘어난 예산이 남는다.
   //   호출부가 명시로 넘기면 그 값이 이긴다(수동 트리거·테스트가 그렇게 쓴다).
@@ -102,7 +106,26 @@ export async function runHiraHospitalCollect(env: Env, maxPagesArg?: number): Pr
 
   let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
   let retried = false, retryNote: string | undefined
+  /**
+   * ⏱️ **회차 벽시계 마감선** (2026-08-03 — 대표 "나머지 두 레인도 끝까지")
+   *
+   * 이 레인은 실측 **67초**로 유어애즈 최다였다(`cpu_risk=danger`). 산수가 그대로다:
+   * 페이지 한 장이 `AbortSignal.timeout(25000)` 까지 버티고 무료 `maxPages=3` ⇒ **최악 75초**(+재시도 8초).
+   * 부모 cron 의 CPU 는 그걸 못 버틴다 — 부모가 죽으면 매달린 자식이 전부 끌려간다.
+   *
+   * ✅ **기아 걱정 없음** — `page` 커서는 **저장에 성공한 뒤에만** 전진하고 실패하면 `break` 다.
+   *   잘린 페이지는 다음 회차가 같은 자리에서 다시 집는다. 그래서 회전 커서가 필요 없다.
+   *
+   * ⚠️ **per-fetch 타임아웃(25000)은 건드리지 않는다** — 그건 2026-08-03 다른 세션의
+   *   재시도 실험 변수다(`diag.retry` 로 원인을 가르는 중). 여기서 바꾸면 그 실험이 오염된다.
+   *   이 마감선은 **페이지 수**를 묶을 뿐이라 실험과 직교한다.
+   */
+  const startedAt = Date.now()
+  const runDeadlineMs = envPlanValue(undefined, HIRA_DEADLINE_MS, HIRA_DEADLINE_MS_PAID, env)
+  let stoppedBy: string | undefined
   for (let i = 0; i < Math.max(1, maxPages); i++) {
+    // 새 페이지를 **시작하기 전에** 본다 — 이미 늦었으면 25초짜리를 하나 더 열지 않는다.
+    if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }
     // 🩹 2026-07-28 실측 수리: `numOfRows=500` 으로 **42회 실행 전부 타임아웃**(total_saved 0).
     //   심평원 병원목록은 페이지가 크면 응답이 느리다 — 한 번도 성공한 적이 없으니 크기를 줄이는 것이 맞다.
     //   env 로 조정 가능(무배포): 성공하면 올리고, 여전히 타임아웃이면 더 줄인다. 판정은 stats.diag.error 로.
@@ -156,7 +179,7 @@ export async function runHiraHospitalCollect(env: Env, maxPagesArg?: number): Pr
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, String(page)).run().catch(() => null)
   const error = found === 0 && lastMsg ? `API: ${lastMsg}` : undefined
-  const s: HiraStats = { last_run: stamp, page, found, saved, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample, retry: retryNote } }
+  const s: HiraStats = { last_run: stamp, page, found, saved, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample, retry: retryNote, stopped_by: stoppedBy } }
   await persist(s)
   return s
 }

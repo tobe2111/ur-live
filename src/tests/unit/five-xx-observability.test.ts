@@ -95,3 +95,35 @@ describe('임계 판정 산술 — 경계를 실제로 계산한다', () => {
     expect(MON).toMatch(/const SPIKE_THRESHOLD = 10/)   // 두 곳이 갈라지면 판정이 어긋난다
   })
 })
+
+/**
+ * 🩺 **의도된 503 을 서버 에러로 세지 않는다** (2026-08-03 — 경로 계측 1시간 만에 판명)
+ *
+ * 계측을 붙이자마자 유일한 경로가 `/api/_healthcheck/cron` 이었다. 그건 고장이 아니라
+ * **cron 침묵을 알리는 dead-man's switch** 라 침묵이 있으면 설계대로 503 을 낸다.
+ * 외부 프로브가 10분마다 두드리므로, 세면 **5xx 채널이 영구 점유**되고
+ * 진짜 5xx 가 왔을 때 구분이 안 된다 — 이 PR 이 고친 거짓 경보와 같은 클래스다.
+ *
+ * ⚠️ 이 테스트가 **못 막는 것**: 실제로 이 경로가 500 을 내는 경우(면제는 503 한정이라
+ *   500 은 그대로 잡힌다). 그리고 침묵 자체의 보고는 여기가 아니라 uptime.yml 소관이다.
+ */
+describe('의도된 상태 신호 면제', () => {
+  it('dead-man\'s switch 의 503 은 5xx 로 세지 않는다', () => {
+    expect(MON).toMatch(/if \(status === 503 && new URL\(c\.req\.url\)\.pathname === '\/api\/_healthcheck\/cron'\) return/)
+  })
+
+  it('면제는 503 한정 — 같은 경로의 500 은 여전히 진짜 고장이다', () => {
+    const exempt = (status: number, path: string) =>
+      status === 503 && path === '/api/_healthcheck/cron'
+    expect(exempt(503, '/api/_healthcheck/cron')).toBe(true)
+    expect(exempt(500, '/api/_healthcheck/cron')).toBe(false)   // 진짜 크래시는 잡혀야 한다
+    expect(exempt(503, '/api/_healthcheck/db')).toBe(false)     // 다른 헬스체크는 면제 아님
+  })
+
+  it('면제가 5xx 진입 조건 뒤에 있다 — 200 응답까지 훑지 않는다', () => {
+    const i5 = MON.indexOf('if (status < 500) return')
+    const iEx = MON.indexOf("=== '/api/_healthcheck/cron'")
+    expect(i5).toBeGreaterThan(-1)
+    expect(iEx).toBeGreaterThan(i5)
+  })
+})

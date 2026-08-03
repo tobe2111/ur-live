@@ -25,6 +25,21 @@ export function errorRateMonitor() {
     const status = c.res.status;
     if (status < 500) return;
 
+    /**
+     * 🩺 **의도된 상태 신호는 서버 에러가 아니다** (2026-08-03, 경로 계측 1시간 만에 판명).
+     *
+     * `/api/_healthcheck/cron` 은 cron 침묵을 알리는 **dead-man's switch** 라, 침묵이 있으면
+     * **설계대로 503** 을 낸다(`healthcheck.routes.ts` — `health.ok ? 200 : 503`).
+     * 그걸 5xx 로 세면 외부 프로브(`uptime.yml`, 10분)가 두드릴 때마다 카운터가 올라가
+     * **5xx 채널이 영구히 점유**된다 — 그러면 진짜 5xx 가 왔을 때 구분이 안 된다.
+     * 다이제스트의 "spike 2건"이 정확히 이것이었고, 침묵 자체는 uptime.yml + 자가진단의
+     * cron 침묵 항목이 이미 **각자 채널로** 보고한다. 즉 여기서 빼도 잃는 정보가 없다.
+     *
+     * ⚠️ **경로 전체를 면제하지 않는다** — `/api/_healthcheck/*` 의 503 중 이 dead-man's switch 만
+     *   의도된 것이고, 다른 헬스체크가 5xx 를 내면 그건 진짜 고장이다.
+     */
+    if (status === 503 && new URL(c.req.url).pathname === '/api/_healthcheck/cron') return;
+
     const env = c.env as Record<string, unknown>;
     const DB = env.DB as D1Database | undefined;
     const webhookUrl = env.DISCORD_WEBHOOK_URL as string | undefined;
