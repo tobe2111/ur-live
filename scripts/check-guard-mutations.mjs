@@ -1584,6 +1584,19 @@ const MUTATIONS = [
       '같은 알람의 collect 가 28,643ms 완주가 증거다. 전제가 사라진 값을 그대로 쓰면 창이 근거 없이 좁다.',
   },
   {
+    name: '집중 축이 다시 앞머리 독점(일반 풀 커서 동결 — 커버리지 붕괴)',
+    // ⚠️ 600줄 래칫으로 병합 로직이 `influencer-keyword-rotation.ts` 로 추출됐다(순수 이동).
+    //   앵커가 안 따라오면 이 주입은 "find 가 소스에 없음"으로 낡은 지도 판정을 받는다.
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: '  for (let i = 0; i < Math.max(focus.length, pri.length, gen.length); i++) {',
+    replace: '  out.push(...focus)\n  for (let i = 0; i < Math.max(pri.length, gen.length); i++) {',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '회차는 `planned 16 → processed 5`(예산 56/56 소진)다. 집중 축을 앞머리에 두면 4개가 앞자리를 먹고 ' +
+      '일반 풀엔 1개만 남는다. `prefixDone` 은 처리된 **앞부분만** 세므로 뒤 풀은 커서도 안 움직여 ' +
+      '**같은 키워드를 무한 재실행**한다 — 실측: 활성 399 중 323개가 이틀째 미실행, 24h 실행 54개뿐.',
+  },
+  {
     name: '티스토리가 블로거 뒤로 밀림(잔여를 다 뺏겨 영원히 0)',
     file: 'src/features/marketing/api/influencer-enrich-lane.ts',
     find: '    try { tistory = await enrichTistoryActivity(DB, budget, TISTORY_ROOM, slice) } catch (err) { note(err) }\n',

@@ -67,6 +67,8 @@ export interface AutoCollectStats {
   yt_budget?: { used: number; total: number; day: string }
   /** 📟 네이버 오픈API 일일 호출(KST 기준일). **자동 레인만 세므로 실사용의 하한** — `naver-api-usage.ts` 주석 참조. */
   naver_api?: { used: number; total: number; day: string }
+  /** 🧾 소스별 서브리퀘스트 실사용(수집 회차) — 예산 병목을 재는 값. 합 ≈ spent 면 그 소스가 범인. */
+  spend_by?: { yt: number; naver: number; cafe: number; tistory: number; save: number }
   /** 🔒 다른 실행이 진행 중이라 이번 호출은 아무것도 안 함(lease busy) — 체인/버스트는 yt_budget 부재로 자연 종료. */
   busy?: boolean
   /**

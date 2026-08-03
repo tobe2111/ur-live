@@ -41,7 +41,7 @@ import { RETIRED_CATEGORIES } from './influencer-classify'
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks } from './influencer-keyword-rotation'
 
 // 🌱 시드 키워드(데이터) → `influencer-seed-keywords.ts` 로 분리(600줄 래칫). 탐색 *범위*라 자유 확장.
 //   🔀 병합 메모: 이 브랜치도 같은 분리를 `influencer-seeds.ts` 로 했었다 — **같은 것을 두 벌 두면
@@ -292,12 +292,8 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   for (let i = 0; i < nFocus; i++) focusPicks.push(focusPool[(focusCursor + i) % focusPool.length])
   for (let i = 0; i < nPri; i++) priPicks.push(priPool[(priCursor + i) % priPool.length])
   for (let i = 0; i < nGen; i++) genPicks.push(genPool[(cursor + i) % genPool.length])
-  // 집중 축을 **앞머리**에 둔다 — YT 슬롯(희소, 앞 batch 개)에 확실히 들어가게.
-  const picks: { id: number; keyword: string; category: string | null }[] = [...focusPicks]
-  for (let i = 0; i < Math.max(priPicks.length, genPicks.length); i++) {
-    if (i < priPicks.length) picks.push(priPicks[i])
-    if (i < genPicks.length) picks.push(genPicks[i])
-  }
+  // 🔀 세 풀 라운드로빈 — 몫은 planKeywordSplit 그대로, 순서만 공평하게(근거·실측은 함수 docblock).
+  const picks = mergeKeywordPicks(focusPicks, priPicks, genPicks)
   // 🎯 YT 슬롯(희소 자원 — Search Queries/day 기본 100회)은 성과 가중 선택으로 교체.
   //   커서 순환(picks)은 네이버 폭 커버 담당 그대로 — YT 픽과 중복만 제거해 총량(totalPick) 유지.
   const ytPicks = pickYtKeywords(kws, batch, Date.now())
@@ -396,6 +392,17 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     if (raw) { const i = raw.indexOf(':'); if (i > 0 && raw.slice(0, i) === ytDay) ytSearchUsed = Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) }
   }
   let ytBudgetBlocked = false
+  /**
+   * 🧾 **소스별 서브리퀘스트 실사용 계측** (2026-08-04 — 커버리지 경보 후속).
+   *
+   *   회차가 `planned 16 → processed 5`(예산 56 소진)인데 **어디에 쓰이는지 아무도 몰랐다.**
+   *   가장 유력한 용의자는 발굴 시점 `enrichMax`(YT 8 · 네이버 5 = 키워드당 최대 13)인데,
+   *   그건 지금 **별도 보강 레인이 하는 일과 겹친다**(수집=폭, 보강=깊이). 다만 수집 시점 보강이
+   *   "수집과 동시에 이메일을 얻는" 경로이기도 해서 **추측으로 줄이면 수집 품질이 조용히 나빠진다.**
+   *   ⇒ 줄이기 전에 **재는 것**이 먼저다. 이 값들이 다음 판단의 근거다.
+   *   ⚠️ 이건 계측일 뿐 아무 동작도 안 바꾼다(추가 왕복 0 — 이미 있는 `budget.left` 를 읽기만).
+   */
+  const spendBy = { yt: 0, naver: 0, cafe: 0, tistory: 0, save: 0 }
   const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
   let fromYt = 0, fromCursor = 0 // 🎯 처리된 픽의 출처 — 커서픽이 실제로 도달되는지 보이게(위 `picks` 주석)
   // 💸 재조우 보강 스킵 훅 — 왜/예산회계는 `influencer-known-contacts.ts` docblock 이 SSOT.
@@ -418,11 +425,13 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       ytUsed++
       ytSearchUsed += ytPages // 검색 1페이지 = search.list 1회(예산 차감은 시도 기준 — 실패 호출도 구글이 카운트)
       try {
+        const _b0 = budget.left
         const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytAngle.searchType, order: ytAngle.order, alreadyContacted })
+        spendBy.yt += Math.max(0, _b0 - budget.left)
         if (r.ok) {
           kSearched++
           diag.yt.found += r.leads?.length || 0; kFound += r.leads?.length || 0
-          if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; kSaved += s; mine(r.leads) }
+          if (r.leads?.length) { { const _s0 = budget.left; const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; kSaved += s; mine(r.leads); spendBy.save += Math.max(0, _s0 - budget.left) } }
         } else {
           if (r.error === 'QUOTA') { quotaHit = true; ytSearchUsed = Math.max(ytSearchUsed, ytBudgetTotal) } // 구글이 초과 선언 → 카운터도 소진 처리(다음 틱 헛호출 방지)
           if (!diag.yt.error) diag.yt.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
@@ -431,11 +440,13 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     }
     if (hasNaver) {
       try {
+        const _b0 = budget.left
         const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: 5, budget, sort: naverSort, alreadyContacted })
+        spendBy.naver += Math.max(0, _b0 - budget.left)
         if (r.ok) {
           kSearched++
           diag.naver.found += r.leads?.length || 0; kFound += r.leads?.length || 0
-          if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; kSaved += s; mine(r.leads) }
+          if (r.leads?.length) { { const _s0 = budget.left; const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; kSaved += s; mine(r.leads); spendBy.save += Math.max(0, _s0 - budget.left) } }
         } else if (!diag.naver.error) diag.naver.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
       } catch (e) { if (!diag.naver.error) diag.naver.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
       // 네이버 카페 — 동일 키/쿼터풀(25k 여유). 커뮤니티(카페) 단위 집계.
@@ -446,8 +457,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       //   수확 가치 0 인 호출이 예산의 25~30% 를 먹는다. 끄면 그만큼 더 많은 키워드가 돈다.
       //   ⚠️ 기본값을 바꾸지 않는다(수집 정책은 대표 결정) — `ADS_COLLECT_CAFE_ENABLED='false'` 로 끈다.
       if ((env as unknown as { ADS_COLLECT_CAFE_ENABLED?: string }).ADS_COLLECT_CAFE_ENABLED !== 'false') try {
+        const _b0 = budget.left
         const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget, sort: naverSort })
-        if (r.ok) { kSearched++; if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.cafe.found += r.leads.length; diag.cafe.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) } }
+        spendBy.cafe += Math.max(0, _b0 - budget.left)
+        if (r.ok) { kSearched++; if (r.leads?.length) { { const _s0 = budget.left; const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.cafe.found += r.leads.length; diag.cafe.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads); spendBy.save += Math.max(0, _s0 - budget.left) } } }
       } catch { /* fail-soft */ }
     }
     /**
@@ -466,11 +479,13 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
      *   "켠 줄 알았는데 안 돌던" 사고를 반복한다 — 지금 tistory 가 0건인 것이 정확히 그 결과다.
      */
     if (hasKakao && (env as unknown as { ADS_COLLECT_TISTORY_DISABLED?: string }).ADS_COLLECT_TISTORY_DISABLED !== 'true') try {
+      const _b0 = budget.left
       const r = await discoverTistoryBloggers((env as unknown as { KAKAO_REST_API_KEY?: string }).KAKAO_REST_API_KEY, k.keyword, { size: 50, budget, sort: naverSort === 'date' ? 'recency' : 'accuracy' })
+      spendBy.tistory += Math.max(0, _b0 - budget.left)
       if (r.ok) {
         kSearched++
         diag.tistory.found += r.leads?.length || 0; kFound += r.leads?.length || 0
-        if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.tistory.saved += s; kSaved += s; mine(r.leads) }
+        if (r.leads?.length) { { const _s0 = budget.left; const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.tistory.saved += s; kSaved += s; mine(r.leads); spendBy.save += Math.max(0, _s0 - budget.left) } }
       } else if (!diag.tistory.error) diag.tistory.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
     } catch (e) { if (!diag.tistory.error) diag.tistory.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
     // 🌵 **공정한 시도였나** — 예산이 이 키워드 도중에 바닥났거나 한도 오류를 봤으면 '무수확'이 아니라 '굶은'
@@ -543,6 +558,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     cursor: nextCursor, pri_cursor: nextPriCursor, focus_cursor: nextFocusCursor, focus_n: nFocus, promoted, kw_unjudged: starvedIds.size, ...(kwAuto ? { kw_auto: kwAuto } : {}), youtube_quota_hit: quotaHit, diag,
     picks: { planned: finalPicks.length, processed: processedIds.size, from_yt: fromYt, from_cursor: fromCursor },
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
+    // 🧾 소스별 서브리퀘스트 실사용 — `processed 5 / planned 16` 의 범인을 **재서** 찾기 위한 값(위 spendBy 주석).
+    //   해석: 합이 spent 에 근접하면 그 소스가 병목. 특히 yt/naver 가 크면 발굴 시점 enrichMax(8/5)가 원인이고,
+    //   그건 별도 보강 레인과 겹치는 일이라 줄일 여지가 있다(줄이기 전에 이 숫자를 볼 것).
+    spend_by: spendBy,
     // 📟 네이버 오픈API 일일 사용량(KST 기준일). **자동 레인만 세므로 실사용의 하한**이다 —
     //   어드민 온디맨드 도구(keyword-tools/rank-tracker/competitor-tracker)는 계측 밖(naver-api-usage.ts 주석).
     naver_api: { used: naverCalls, total: NAVER_DAILY_QUOTA_CALLS, day: naverDay },
