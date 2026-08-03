@@ -18,15 +18,10 @@
     "seller-approval-reminder",
     "social-draft",
     "social-maintenance",
-    "stay-pending-expire",
-    "toss-refund-retry",
     "user-id-backfill-sweep",
-    "webhook-failed-drain",
     "weekly-cohort-report",
     "weekly-metrics-summary",
-    "wholesale-deposit-reconcile",
     "wholesale-restock-notify",
-    "wholesale-settle-tick",
-    "wholesale-withdrawal-reconcile"
+    "wholesale-settle-tick"
   ]
 }
