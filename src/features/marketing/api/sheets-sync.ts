@@ -209,7 +209,7 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncR
   const cRaw = await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY)
     .first<{ value: string }>().catch(() => null)
   cost.subreq += 1
-  const cur = parseSheetCursor(cRaw?.value)
+  const cur = startCursor(parseSheetCursor(cRaw?.value))
   let off = cur.off
   let total = cur.total
 
@@ -237,7 +237,11 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncR
   let done = false
   let wrote = 0
   while (wrote < ROWS_PER_RUN) {
-    const take = Math.min(PAGE, ROWS_PER_RUN - wrote)
+    // 🧱 **이 사이클은 자기 스냅샷까지만 쓴다** — 그리드를 그 크기로만 넓혔기 때문이다(`cycleRoom` 주석).
+    //   이 상한이 없어서 사이클 도중 늘어난 행을 그리드 밖에 쓰고 400 → 커서 고착이 났다.
+    const room = cycleRoom(off, total)
+    if (room <= 0) { done = true; break }
+    const take = Math.min(PAGE, ROWS_PER_RUN - wrote, room)
     const res = await env.DB.prepare(`SELECT id, platform, name, handle, url, subscriber_count, recent_avg_views, recent_avg_comments, recent_posts_30d, email, instagram, tiktok, links,
         category, source_keyword, status, contact_channel, contacted_at, follow_up_at, source, consented_at, memo, collected_at,
         lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source, opted_out
@@ -279,6 +283,33 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncR
   }
   await saveSheetCursor(env, off, total)
   return { ok: true, rows: wrote, partial: true, from: startOff, next: off, total }
+}
+
+/**
+ * 🩹 회차 시작 커서 보정 — 커서가 **스냅샷을 지나쳐** 있으면 새 사이클(off=0)로 되돌린다.
+ *
+ * 왜 필요한가(2026-08-03 라이브 실측 — `ads_sheets_cursor = {off:44000, total:43597}`):
+ * 그리드는 사이클 **시작 시점의 total** 로만 확장한다(`ensurePoolSheet(total+2)`). 그런데 읽기 루프는
+ * 페이지가 마를 때까지 갔으므로, 사이클 도중 풀이 몇 행만 늘어도 **그리드 밖 행**을 쓰고 400 을 맞았다.
+ * 그 실패는 커서를 그 자리에 저장하고 끝난다 → `off` 가 다시 0 이 되는 길이 없다 →
+ * `ensurePoolSheet` 가 **영영 안 불린다** → 매 회차 같은 행에서 400. 즉 **한 번 넘어가면 영구 고착**이고,
+ * 그동안 2~3칸뿐인 회차 예산에서 한 칸을 계속 태운다(실측 24시간 6회, 전부 CPU 사망 동반).
+ *
+ * ⚠️ `total: 0` 으로 되돌리는 게 핵심 — 그래야 호출부의 `off === 0` 분기가 총계를 다시 세고 그리드를 넓힌다.
+ */
+export function startCursor(cur: { off: number; total: number }): { off: number; total: number } {
+  return cur.total > 0 && cur.off >= cur.total ? { off: 0, total: 0 } : cur
+}
+
+/**
+ * 이번 **사이클**에 남은 행 수(시작 시점 스냅샷 기준).
+ *
+ * 사이클은 자기 스냅샷까지만 쓴다 — 그 크기로 그리드를 넓혔기 때문이다. 도중에 새로 들어온 행은
+ * **버리는 게 아니라 다음 사이클 몫**이다(다음 사이클이 그만큼 넓힌 뒤 쓴다).
+ * `total === 0`(총계 미상)이면 상한을 두지 않는다 — 종전 동작 그대로.
+ */
+export function cycleRoom(off: number, total: number): number {
+  return total > 0 ? Math.max(0, total - off) : Number.POSITIVE_INFINITY
 }
 
 /** 커서 파싱 — 형태가 깨졌으면 0(전량 재시작)이 **안전한 방향**이다(누락보다 중복 쓰기가 낫다). */
