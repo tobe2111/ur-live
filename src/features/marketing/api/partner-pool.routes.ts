@@ -8,6 +8,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
+import { csvResponse, parseCompanyExportFilter } from './pool-export'
 import { intParam } from '@/shared/pagination'
 import {
   ensureCompanySchema, listCompanyLeads, countCompanyLeads, saveCompanyLeads, updateCompanyLead, deleteCompanyLead, deleteCompanyLeads, companyStats,
@@ -578,22 +579,19 @@ app.post('/delete-bulk', async (c) => {
 })
 
 // GET /api/admin/partner-pool/export?format=csv — 엑셀 호환(수식 인젝션 방어). 대표 동선표용.
+/** 내보내기 상한. 이스케이프·절단 고지·필터 파싱은 `pool-export.ts`(두 풀 공용) 에 있다. */
+const EXPORT_MAX = 5000
+
+// 🩸 화면 필터를 그대로 따른다(2026-08-03 수리 — 이전엔 무시했다). 배경·근거는 `pool-export.ts` 헤더.
 app.get('/export', async (c) => {
   await ensureCompanySchema(c.env.DB)
-  const rows = await listCompanyLeads(c.env.DB, { limit: 5000, includeHeld: true }) // 전체(보류 포함) — 엑셀 원본용
-  const esc = (v: unknown): string => {
-    let s = v == null ? '' : String(v)
-    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
-    if (/[",\n\r]/.test(s)) s = `"${s.replace(/"/g, '""')}"`
-    return s
-  }
-  const header = ['tier', 'category', 'subcategory', 'company_name', 'region', 'phone', 'email', 'website', 'address', 'status', 'contact_channel', 'follow_up_at', 'memo', 'source', 'source_keyword', 'collected_at']
-  const lines = [header.join(',')]
-  for (const r of rows) {
-    lines.push([r.tier ?? '', r.category, r.subcategory, r.company_name, r.region, r.phone, r.email, r.website, r.address, r.status, r.contact_channel, r.follow_up_at, r.memo, r.source, r.source_keyword, (r.collected_at || '').slice(0, 10)].map(esc).join(','))
-  }
-  return new Response('﻿' + lines.join('\n'), {
-    headers: { 'Content-Type': 'text/csv;charset=utf-8', 'Content-Disposition': 'attachment; filename="partner-leads.csv"' },
+  const filter = parseCompanyExportFilter(k => c.req.query(k), intParam) as CompanyLeadFilter
+  const rows = await listCompanyLeads(c.env.DB, { ...filter, limit: EXPORT_MAX })
+  return csvResponse({
+    filename: 'partner-leads.csv',
+    header: ['tier', 'category', 'subcategory', 'company_name', 'region', 'phone', 'email', 'website', 'address', 'status', 'contact_channel', 'follow_up_at', 'memo', 'source', 'source_keyword', 'collected_at'],
+    rows: rows.map(r => [r.tier ?? '', r.category, r.subcategory, r.company_name, r.region, r.phone, r.email, r.website, r.address, r.status, r.contact_channel, r.follow_up_at, r.memo, r.source, r.source_keyword, (r.collected_at || '').slice(0, 10)]),
+    cap: EXPORT_MAX,
   })
 })
 

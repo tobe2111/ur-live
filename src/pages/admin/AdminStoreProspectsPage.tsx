@@ -86,23 +86,34 @@ export default function AdminStoreProspectsPage() {
   const loadStats = useCallback(async () => {
     try { const r = await api.get('/api/admin/store-prospects/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setNeis(r.data.neis || null); setHira(r.data.hira || null); setKakao(r.data.storeKakao || null); setEnrichRun(r.data.enrich?.run || null); setLaneHealth(r.data.laneHealth || []) } } catch { /* noop */ }
   }, [])
+  /**
+   * 🔗 **목록과 내보내기가 같은 조건을 쓴다** (2026-08-03 — 내보내기가 필터를 무시하던 것 수리).
+   *   실측상 이 풀은 **95%가 학원**이라, 필터가 파일까지 안 이어지면 대표 우선업종(음식점·카페·미용·숙박)은
+   *   내보내기로 **도달 자체가 불가능**했다. 조립을 두 벌로 두면 반드시 갈라진다 — 한 곳에 둔다.
+   *   ⚠️ limit/offset 은 넣지 않는다(내보내기엔 페이지가 없다).
+   */
+  const buildQuery = useCallback((): URLSearchParams => {
+    const p = new URLSearchParams()
+    if (fCategory) p.set('category', fCategory)
+    if (fRegion.trim()) p.set('region', fRegion.trim())
+    if (fView === 'newOpen') p.set('newOpen', '1')
+    if (fView === 'closed') p.set('includeClosed', '1')
+    if (fView === 'phone') p.set('hasPhone', '1')
+    if (fView === 'email') p.set('hasEmail', '1')
+    if (dq.trim()) p.set('q', dq.trim())
+    return p
+  }, [fCategory, fRegion, fView, dq])
+
   const loadRows = useCallback(async () => {
     setLoading(true)
     try {
-      const p = new URLSearchParams()
-      if (fCategory) p.set('category', fCategory)
-      if (fRegion.trim()) p.set('region', fRegion.trim())
-      if (fView === 'newOpen') p.set('newOpen', '1')
-      if (fView === 'closed') p.set('includeClosed', '1')
-      if (fView === 'phone') p.set('hasPhone', '1')
-      if (fView === 'email') p.set('hasEmail', '1')
-      if (dq.trim()) p.set('q', dq.trim())
+      const p = buildQuery()
       p.set('limit', String(PAGE_SIZE))
       p.set('offset', String(page * PAGE_SIZE))
       const r = await api.get(`/api/admin/store-prospects?${p.toString()}`)
       if (r.data?.success) { setRows(r.data.prospects || []); setTotal(Number(r.data.total) || 0) }
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [fCategory, fRegion, fView, dq, page])
+  }, [buildQuery, page])
 
   useEffect(() => { loadStats() }, [loadStats])
   useEffect(() => { loadRows() }, [loadRows])
@@ -206,7 +217,7 @@ export default function AdminStoreProspectsPage() {
           <button onClick={() => runCollectSub('neis')} disabled={busySub !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="나이스(NEIS) 학원·교습소 — 인허가에 없는 학원 갭 커버(교육청 17곳 순환). NEIS_API_KEY 필요">{busySub === 'neis' ? '수집 중…' : '🎓 학원 수집'}</button>
           <button onClick={() => runCollectSub('hira')} disabled={busySub !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="심평원 병원정보 — 전국 병·의원 전화+홈페이지 직접 제공(이메일 크롤 관문)">{busySub === 'hira' ? '수집 중…' : '🏥 병원 수집'}</button>
           <button onClick={() => runCollectSub('store-kakao')} disabled={busySub !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg bg-rose-600 text-white text-sm font-medium disabled:opacity-50" title="카카오 로컬로 음식점·카페·미용실·숙박 + 무인매장을 캅니다(전화가 함께 옵니다). 자동으로는 약 5회차에 한 번만 도는 레인 — 아래 조건을 바꾼 뒤 지금 확인하려면 이 버튼">{busySub === 'store-kakao' ? '수집 중…' : '🍽️ 카카오 매장 수집'}</button>
-          <button onClick={async () => { try { const r = await api.get('/api/admin/store-prospects/export', { responseType: 'blob' }); const u = URL.createObjectURL(new Blob([r.data], { type: 'text/csv;charset=utf-8' })); const a = document.createElement('a'); a.href = u; a.download = `store-prospects-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(u) } catch { toast.error('내보내기 실패 — 재로그인 후 시도') } }} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="영업중 매장 후보를 엑셀 호환 CSV 로(한글 BOM) — 인증 다운로드">⬇ CSV</button>
+          <button onClick={async () => { try { const r = await api.get(`/api/admin/store-prospects/export?${buildQuery().toString()}`, { responseType: 'blob' }); const u = URL.createObjectURL(new Blob([r.data], { type: 'text/csv;charset=utf-8' })); const a = document.createElement('a'); a.href = u; a.download = `store-prospects-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(u) } catch { toast.error('내보내기 실패 — 재로그인 후 시도') } }} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="⬇ 지금 화면 필터 그대로 CSV 로(한글 BOM). 📞 이 풀의 도달 채널은 전화입니다 — '전화 보유'로 좁혀 내보내세요">⬇ CSV</button>
           <div className="grow" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="매장명·지역·전화·이메일·주소 검색" title="여러 단어를 넣으면 모두 포함된 매장만 나옵니다" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-56" />
         </div>

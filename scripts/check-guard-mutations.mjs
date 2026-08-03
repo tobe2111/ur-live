@@ -170,6 +170,29 @@ const MUTATIONS = [
       '**세 번째 전진 0** 이 조용히 생긴다(이미 commerce·quality 두 번 났다).',
   },
   {
+    name: '내보내기가 화면 필터를 무시(손에 안 잡히는 지표)',
+    file: 'src/features/marketing/api/partner-pool.routes.ts',
+    find: 'listCompanyLeads(c.env.DB, { ...filter, limit: EXPORT_MAX })',
+    replace: 'listCompanyLeads(c.env.DB, { limit: EXPORT_MAX })',
+    // 2026-08-03: 파싱이 `pool-export.ts` 로 이동했지만 **넘기는 지점**은 여전히 여기다(지도 유효).
+    test: 'src/tests/unit/ads-export-filter-parity.test.ts',
+    why:
+      '이 DB 의 성공 지표는 총 인원이 아니라 **"제안 보낼 수 있는 리드 수"** 다. 화면은 그 정의로 세는데 ' +
+      '내보내기가 안 따르면 지표가 **화면에만 있고 손에는 안 잡힌다** — 실측상 파트너 풀은 이메일 보유가 12%뿐이라 ' +
+      '무필터 5,000행에 실제 발송 가능분은 ~600건이고 보류(active=0)까지 섞인다.',
+  },
+  {
+    name: '내보내기 조립이 목록과 두 벌로 갈라짐',
+    file: 'src/pages/admin/AdminStoreProspectsPage.tsx',
+    find: 'store-prospects/export?${buildQuery().toString()}',
+    replace: 'store-prospects/export',
+    test: 'src/tests/unit/ads-export-filter-parity.test.ts',
+    why:
+      '매장 풀은 **95%가 학원**이다(인허가 레인 사망으로 음식점·카페·미용·숙박 0). 화면 필터가 파일까지 ' +
+      '안 이어지면 대표 우선업종은 **내보내기로 도달 자체가 불가능**하다 — 서버만 고치고 화면을 안 고치면 ' +
+      '정확히 그 상태로 되돌아간다.',
+  },
+  {
     name: '품질 패스가 시간 상한을 잃음(전진 0 복귀)',
     file: 'src/features/marketing/api/influencer-quality.ts',
     find: "    if (Date.now() - t0 >= deadlineMs) { stoppedBy = 'deadline'; break }",

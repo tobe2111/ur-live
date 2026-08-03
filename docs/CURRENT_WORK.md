@@ -5494,17 +5494,14 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 90건 · 최신순 · 이 목록은 자동 생성된다._
-_총 89건 · 최신순 · 이 목록은 자동 생성된다._
-
-**2026-08-03**
-- [ur-ads 배포가 조용히 안 나갔다 — 라이브는 멀쩡해 보였다 (2026-08-03)](handoff/2026-08-03-urads-deploy-silent-miss.md)
-_총 91건 · 최신순 · 이 목록은 자동 생성된다._
+_총 93건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-03**
 - [ur-ads 배포가 조용히 안 나갔다 — 라이브는 멀쩡해 보였다 (2026-08-03)](handoff/2026-08-03-urads-deploy-silent-miss.md)
 - [관측이 틀린 답을 주면 없느니만 못하다 — 오탐 3건 (2026-08-03)](handoff/2026-08-03-observability-false-positives.md)
 - [학습기의 눈먼 구간을 메우고, 배포 실패를 대표에게 보이게 (2026-08-03)](handoff/2026-08-03-learner-bias-and-deploy-alert.md)
+- [대행사 축이 얇던 진짜 이유 — 커서가 얼어 있었다 (그리고 필터는 무죄였다)](handoff/2026-08-03-focus-cursor-frozen.md)
+- [수집 루트 실측 지도 + 내보내기가 지표를 손에 안 쥐어 주던 문제 (2026-08-03)](handoff/2026-08-03-collection-routes-map.md)
 **2026-08-02**
 - [08-02 — 유료로 바꾸면 수집이 **실제로** 늘어나는가](handoff/2026-08-02-paid-plan-scaling.md)
 - [2026-08-02 — 몰 손님이 보는 화면의 경계 (기준 ⑤) + 디자인 의뢰 추가분](handoff/2026-08-02-mall-consumer-surface-boundary.md)
@@ -5513,7 +5510,7 @@ _총 91건 · 최신순 · 이 목록은 자동 생성된다._
 - [마감 직전엔 집지 않는다 — 확정 실패 + 가짜 도장 차단 (2026-08-02)](handoff/2026-08-02-enrich-deadline-window.md)
 - [08-02 — 수량 실측: 양은 문제가 아니다. **연락처가 안 채워진다**](handoff/2026-08-02-collection-volume-verdict.md)
 - [08-02 — 수집 조건을 화면에서 정한다 (①②③ 전부 완료)](handoff/2026-08-02-collect-config-ui.md)
-- [2026-08-02 — 재해복구가 0이던 것을 켰다 (주간 D1 백업 cron) + 인프라 시크릿 4종](handoff/2026-08-02-backup-cron-ignition.md)
+- [2026-08-02 — 워커측 주간 D1 백업 cron 점화 (2번째 백업 경로) + 인프라 시크릿 4종](handoff/2026-08-02-backup-cron-ignition.md)
 - [대표 지시 두 건이 "머지됐는데 실행된 적이 없었다" — 재추출 단계의 굶주림](handoff/2026-08-02-ads-reextract-starvation.md)
 - [유어애즈 레인 배분 — 몫을 레인 개수가 아니라 **역할**이 정하게 (2026-08-02)](handoff/2026-08-02-ads-lane-role-quota.md)
 **2026-08-01**

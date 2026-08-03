@@ -118,30 +118,41 @@ export default function AdminPartnerPoolPage() {
       return r.data || null // 완료 감지 폴러가 원시 응답을 함께 사용
     } catch { return null }
   }, [])
+  /**
+   * 🔗 **목록과 내보내기가 같은 조건을 쓴다** (2026-08-03 — 내보내기가 필터를 통째로 무시하던 것 수리).
+   *   조립을 여기 한 곳에 두지 않으면 두 벌이 되고, 두 벌이 되면 **반드시 갈라진다**
+   *   (화면엔 이메일 보유 620건인데 파일엔 5,000행이 나오던 것이 정확히 그 결과였다).
+   *   ⚠️ 페이지네이션(limit/offset)은 **여기 넣지 않는다** — 내보내기는 페이지 개념이 없다.
+   */
+  const buildQuery = useCallback((): URLSearchParams => {
+    const p = new URLSearchParams()
+    if (fCategory) p.set('category', fCategory)
+    if (fTier) p.set('tier', fTier)
+    if (fStatus) p.set('status', fStatus)
+    if (fType) p.set('leadType', fType)
+    // 카드 필터 — 통계 카드 정의와 **같은 조건**(서버 buildLeadWhere).
+    if (quick === 'contact') p.set('hasContact', '1')
+    else if (quick === 'email') p.set('hasEmail', '1')
+    else if (quick === 'held') p.set('heldOnly', '1')
+    else if (quick === 'pipeline') p.set('pipeline', '1')
+    else if (quick === 'recent7') p.set('recentDays', '7')
+    else if (quick === 'review') p.set('leadType', 'unknown')
+    if (quick !== 'held') p.set('includeHeld', '1') // 기본: 보류 포함 전체
+    if (qd.trim()) p.set('q', qd.trim())
+    return p
+  }, [fCategory, fTier, fStatus, fType, quick, qd])
+
   const loadLeads = useCallback(async () => {
     setLoading(true)
     setSelected(new Set()) // 목록 갱신 시 선택 초기화(스테일 방지)
     try {
-      const p = new URLSearchParams()
-      if (fCategory) p.set('category', fCategory)
-      if (fTier) p.set('tier', fTier)
-      if (fStatus) p.set('status', fStatus)
-      if (fType) p.set('leadType', fType)
-      // 카드 필터 — 통계 카드 정의와 **같은 조건**(서버 buildLeadWhere).
-      if (quick === 'contact') p.set('hasContact', '1')
-      else if (quick === 'email') p.set('hasEmail', '1')
-      else if (quick === 'held') p.set('heldOnly', '1')
-      else if (quick === 'pipeline') p.set('pipeline', '1')
-      else if (quick === 'recent7') p.set('recentDays', '7')
-      else if (quick === 'review') p.set('leadType', 'unknown')
-      if (quick !== 'held') p.set('includeHeld', '1') // 기본: 보류 포함 전체
-      if (qd.trim()) p.set('q', qd.trim())
+      const p = buildQuery()
       p.set('limit', String(PAGE_SIZE))
       p.set('offset', String(page * PAGE_SIZE))
       const r = await api.get(`/api/admin/partner-pool?${p.toString()}`)
       if (r.data?.success) { setLeads(r.data.leads || []); setTotal(Number(r.data.total) || 0) }
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [fCategory, fTier, fStatus, fType, quick, qd, page])
+  }, [buildQuery, page])
 
   // 🔑 키워드는 마운트 1회만 — 이후 갱신은 사용자가 바꿀 때(onChanged)뿐이다(폴링에 안 태운다).
   useEffect(() => { loadMeta(); loadStats(); loadKeywords() }, [loadMeta, loadStats, loadKeywords])
@@ -368,7 +379,7 @@ export default function AdminPartnerPoolPage() {
             { label: '👥 규모 조회(국민연금)', desc: '대행사 우선 — 직원수(가입자수)로 실조직/1인 구분. 엄격 매칭만 저장', onClick: () => runAction('collect-nps', '국민연금 규모 조회') },
           ]} />
           <button onClick={() => setShowImport(v => !v)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="공정위 프랜차이즈 정보공개서·상인회 명부 CSV/TSV 붙여넣기(레인 B·C)">{showImport ? '닫기' : '📋 명부 붙여넣기'}</button>
-          <button onClick={() => downloadCsv('/api/admin/partner-pool/export?format=csv', `partner-leads-${new Date().toISOString().slice(0, 10)}.csv`)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="전체(보류 포함) 리드를 엑셀 호환 CSV 로 — 한글 깨짐 없음(BOM), 엑셀에서 바로 열림">⬇ CSV</button>
+          <button onClick={() => downloadCsv(`/api/admin/partner-pool/export?format=csv&${buildQuery().toString()}`, `partner-leads-${new Date().toISOString().slice(0, 10)}.csv`)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="⬇ 지금 화면 필터 그대로 CSV 로 — 엑셀 호환(BOM). 상한을 넘으면 파일 마지막 줄에 잘렸다고 적힙니다">⬇ CSV</button>
           {selected.size > 0 && (
             <button onClick={deleteSelected} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700">🗑 선택 삭제 ({selected.size})</button>
           )}
