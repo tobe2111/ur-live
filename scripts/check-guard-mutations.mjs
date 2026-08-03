@@ -72,6 +72,18 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '서비스 지도가 낡아 공구 서비스 일을 유어딜 일로 오인',
+    file: 'docs/design/urdeal-platform-model.md',
+    find: '| **🏪 공구 서비스** (운영자 SaaS)',
+    replace: '| ~~삭제된 행~~',
+    test: 'src/tests/unit/service-map-currency.test.ts',
+    why:
+      '지도가 오래 3-서비스였고 도매몰을 여전히 "B2B 도매"로만 적어, 그 사이 도매몰 코드를 용도 변경해 ' +
+      '만들어진 **공구 서비스**(운영자 SaaS)가 지도에 없었다. 2026-08-03 세션이 그 서비스의 오픈 차단 ' +
+      '항목(미수령 고지·브랜딩·실결제)을 **"유어딜 일"로 대표에게 보고**했다 — 서로 다른 서비스의 할 일이 ' +
+      '한 목록에 섞였고 대표가 바로잡았다. 지도는 세션이 "이건 어느 서비스인가"를 판단하는 유일한 근거다.',
+  },
+  {
     name: '결제수단을 카테고리로 정해 이용권이 카드 결제에서 빠짐',
     file: 'src/pages/GroupBuyDetailPage.tsx',
     find: 'const { flow } = resolveProductFlow(detail)',
