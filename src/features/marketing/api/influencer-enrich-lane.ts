@@ -36,7 +36,7 @@ import {
 } from './influencer-discovery'
 import { enrichNaverActivity, enrichYouTubePerformance, ensurePerfExtraColumns, type NaverEnrichDiag, type EnrichSlice } from './influencer-performance'
 import { POOL_ACCOUNT_ID, readSetting, writeSetting, ytQuotaDayKey } from './influencer-auto-collect'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs, envLaneBudget } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs, envLaneBudget, ENRICH_DEADLINE_MS_ALARM } from './collect-budget'
 // 스냅샷 키는 leaf 모듈(enrich-telemetry)에 둔다 — 어드민 통계가 수집 엔진을 import 하지 않고 읽게.
 import { INFLUENCER_ENRICH_SNAPSHOT_KEY } from './enrich-telemetry'
 
@@ -101,6 +101,10 @@ export interface InfluencerEnrichSnapshot {
    *   `rounds` 를 먼저 볼 것 — 합만 보면 죽은 라운드를 '0을 낸 라운드'와 구분 못 한다.
    */
   chain?: EnrichChainRollup
+  /** 🔀 이번 회차의 선두('naver' | 'front') — 다음 회차 교대의 유일한 근거(알람엔 depth 가 없다). */
+  led?: string
+  /** 📈 이 회차가 실제로 측정한 YT 채널 수 — units 대비 효율을 밖에서 계산하기 위한 값. */
+  yt_rows?: number
   elapsed_ms: number
   total_measured?: number     // 누적 — "얼마나 진행됐나"를 라운드 하나가 아니라 전체로 본다
   total_contacts?: number
@@ -153,6 +157,30 @@ export function starvedLastRound(prev: { naver?: { selected?: number; tried?: nu
   const n = prev?.naver
   if (!n) return false
   return (n.selected || 0) > 0 && (n.tried || 0) === 0
+}
+
+/**
+ * 🔀 **이번 회차는 누가 먼저 도나** — 선두 교대(순수).
+ *
+ * ## 무엇이 고장이었나 (2026-08-03 실측)
+ * 원래 조건은 `depth % 2 === 1 || starvedLastRound(prev)` 였다. 그런데 **DO 알람으로 옮긴 뒤 `depth` 는
+ * 항상 0** 이다(체인이 아니라 알람이 5분마다 라운드 하나씩 돌린다 — `chain.rounds: 1, max_depth: 0`).
+ * `0 % 2 === 1` 은 영원히 거짓이므로 **결정적 교대가 한 번도 발화하지 않는다.**
+ * 위 docblock 이 *"둘은 서로를 보완한다"* 고 적어 둔 그 짝이 **한쪽 죽은 채로** 돌고 있었다.
+ *
+ * 지금은 앞 레인(bio·yt)이 0을 내고 있어 블로거가 다 가져가므로 무해했다. 그러나 **YT 상한을 풀면
+ * (`resolveYtPerfCap`) yt 가 예산을 먼저 먹어 블로거가 굶는다** — 그 수리와 이 수리는 한 몸이다.
+ *
+ * ## 규칙 — 깊이 대신 **직전 선두**를 보고 번갈아 간다
+ * 알람이든 체인이든 스냅샷은 매 라운드 쓰이므로, 직전 선두를 기억하면 교대가 성립한다.
+ *   · 직전이 블로거였으면 이번엔 앞 레인 · 아니면 블로거
+ *   · 직전에 블로거가 굶었으면(위 함수) **무조건** 블로거 선두(자기교정이 교대를 이긴다)
+ *
+ * ⚠️ 스냅샷이 없으면(첫 배포·유실) 블로거 선두로 시작한다 — 백로그가 가장 큰 레인이라 손해가 적다.
+ */
+export function pickNaverFirst(prev: { led?: string; naver?: { selected?: number; tried?: number } } | null | undefined): boolean {
+  if (starvedLastRound(prev)) return true
+  return prev?.led !== 'naver'
 }
 
 /**
@@ -257,8 +285,61 @@ export function naverRoomFromRemaining(remaining: number, plannedMax: number): n
 /** 유튜브 성과 보강의 **일일 units 카운터**(검색과 같은 10,000 풀을 나눠 쓴다). "YYYY-MM-DD:count". */
 const YT_PERF_UNITS_KEY = 'ads_yt_perf_units'
 /** 기본 일일 상한 — 실측(검색 22회=2,200 units)에 비춰 넉넉하되, 검색이 자기 예산을 다 써도 여유가 남는 값.
- *  검색 예산(`ADS_YT_SEARCH_BUDGET`, 기본 90회=9,000 units)을 크게 올릴 때는 이 값을 함께 낮출 것. */
+ *  검색 예산(`ADS_YT_SEARCH_BUDGET`, 기본 90회=9,000 units)을 크게 올릴 때는 이 값을 함께 낮출 것.
+ *  ⚠️ 이제 이 값은 **바닥**이다 — 실사용이 적으면 아래 `resolveYtPerfCap` 이 남는 쿼터를 얹어 준다. */
 const YT_PERF_UNITS_DEFAULT = 2000
+
+/** 유튜브 일일 쿼터(프로젝트 기본). 검색과 성과가 **같은 풀**을 나눠 쓴다. */
+export const YT_DAILY_QUOTA_UNITS = 10_000
+/** 검색에게 항상 남겨 두는 몫(units). 30회 분량 — 실측 사용량 22회를 넉넉히 덮는다. */
+export const YT_SEARCH_FLOOR_UNITS = 3_000
+/** search.list 1회 비용(units). */
+export const YT_SEARCH_UNIT_COST = 100
+
+/**
+ * 📈 **성과 측정의 일일 상한 — 검색이 안 쓴 몫을 넘겨받는다** (2026-08-03 라이브 실측).
+ *
+ * ## 무엇이 문제였나
+ * ```
+ *   유튜브 쿼터 10,000/일
+ *     검색  배정 9,000(90회)  ·  실사용 2,200(22회)   ← 6,800 유휴
+ *     성과  배정 2,000        ·  실사용 2,003         ← 소진 → 그날 남은 시간 측정 0
+ *     총 사용 4,200 (42%)
+ * ```
+ * 위 상수 주석은 *"검색 예산을 크게 **올릴** 때는 이 값을 낮출 것"* 이라고 한 방향만 대비했다.
+ * **반대(검색이 배정을 안 쓰는 경우)** 는 안 봤고, 실제로 그쪽이 일어났다 — 키워드 쿨다운·고갈 억제가
+ * 검색을 하루 22회로 눌러 두기 때문이다. 그 사이 **수율이 가장 높은 축**(YT 45.2% vs 블로그 28.6%)이 멎었다.
+ *
+ * ## 규칙
+ * `상한 = clamp(총쿼터 − max(검색실사용, 검색바닥), 기본값, 총쿼터 − 검색바닥)`
+ *   · **검색 바닥을 항상 지킨다** — 성과가 아무리 굶주려도 검색이 못 도는 일은 없다.
+ *   · 검색이 많이 쓴 날은 상한이 **자동으로 줄어든다**(같은 풀이므로).
+ *   · **기본값(2,000) 밑으로는 안 내려간다** — 오늘보다 나빠지는 경우를 구조적으로 막는다.
+ *
+ * ⚠️ 이 함수가 **못 보는 것**: 성과가 하루 앞부분에 상한을 다 써 버리면 검색이 바닥(3,000)만 갖는다.
+ *   실측 22회(2,200)면 여유가 있지만, 검색 키워드를 크게 늘리면 `YT_SEARCH_FLOOR_UNITS` 를 함께 올릴 것.
+ * ⚠️ 명시 env(`ADS_YT_PERF_UNITS`)가 있으면 그 값이 이긴다(수동 개입이 자동보다 우선 — 레포 규약).
+ */
+export function resolveYtPerfCap(searchUsedUnits: number, envRaw?: unknown): number {
+  const explicit = parseInt(String(envRaw ?? ''), 10)
+  if (Number.isFinite(explicit) && explicit > 0) return Math.min(9000, explicit)
+  const used = Number.isFinite(searchUsedUnits) ? Math.max(0, Math.floor(searchUsedUnits)) : 0
+  const reserved = Math.max(used, YT_SEARCH_FLOOR_UNITS)
+  const ceiling = YT_DAILY_QUOTA_UNITS - YT_SEARCH_FLOOR_UNITS
+  return Math.min(ceiling, Math.max(YT_PERF_UNITS_DEFAULT, YT_DAILY_QUOTA_UNITS - reserved))
+}
+
+/**
+ * 🔎 오늘 **검색**이 몇 회 돌았나 — 수집 레인이 쓰는 `ads_yt_search_used`("YYYY-MM-DD:count", PT 기준일).
+ *   성과 상한을 검색 실사용에 맞춰 정하기 위해 읽는다(같은 10,000 풀을 나눠 쓰므로).
+ *   ⚠️ 값이 없거나 날짜가 다르면 0 — 그러면 성과가 최대치를 받는다(검색이 아직 안 돈 날의 정상 동작).
+ */
+async function readYtSearchCalls(DB: D1Database, day: string): Promise<number> {
+  const raw = await readSetting(DB, 'ads_yt_search_used')
+  if (!raw) return 0
+  const i = raw.indexOf(':')
+  return i > 0 && raw.slice(0, i) === day ? Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) : 0
+}
 
 /** 오늘 남은 perf units — 날짜가 바뀌면 자동으로 0부터(문자열 앞의 날짜가 키). */
 async function readPerfUnitsUsed(DB: D1Database, day: string): Promise<number> {
@@ -322,7 +403,14 @@ async function readSnapshot(DB: D1Database): Promise<InfluencerEnrichSnapshot | 
  *   근거는 `sliceClause`(influencer-performance) 주석 — 이 큐는 선점이 아니라 정렬+LIMIT 이라
  *   조각 없이 병렬로 돌리면 같은 사람을 여러 자식이 중복 측정한다.
  */
-export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: number, slice?: EnrichSlice | null): Promise<InfluencerEnrichSnapshot> {
+export async function runInfluencerEnrich(
+  env: Env, depth = 0, roundsPlanned?: number, slice?: EnrichSlice | null,
+  /**
+   * 🧭 호출자가 이 라운드의 성격을 알려 준다. 지금은 창(deadline)만 갈린다 —
+   *   cron 은 부모 수명(10.5초)에 묶이지만 **알람은 자기 인보케이션**이라 더 오래 산다(위 상수 주석).
+   */
+  opts?: { driver?: 'cron' | 'alarm' },
+): Promise<InfluencerEnrichSnapshot> {
   const DB = env.DB
   const started = Date.now()
   await ensureInfluencerSchema(DB)   // bio_checked_at · perf_checked_at · recent_posts_30d
@@ -355,12 +443,18 @@ export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: n
    * ⚠️ env 로 언제든 되돌린다(`ADS_ENRICH_DEADLINE_MS`). 상한 10.5초가 플랫폼/플랜에 따라 달라지면
    *   이 기본값도 다시 재야 한다 — 숫자를 믿지 말고 **성공 max ↔ 실패 min 경계**를 다시 측정할 것.
    */
-  const deadlineMs = envEnrichDeadlineMs(env)
+  // ⏱️ 명시 env 가 있으면 그게 이긴다(레포 규약). 없을 때만 드라이버별 기본값이 갈린다.
+  const deadlineMs = (env as unknown as { ADS_ENRICH_DEADLINE_MS?: string }).ADS_ENRICH_DEADLINE_MS
+    ? envEnrichDeadlineMs(env)
+    : (opts?.driver === 'alarm' ? ENRICH_DEADLINE_MS_ALARM : envEnrichDeadlineMs(env))
   const budget: FetchBudget = { left: budgetTotal, deadline: started + deadlineMs }
   const { bioMax, naverMax, ytMax } = planInfluencerEnrich(budgetTotal)
   // 📈 유튜브 성과 — 서브리퀘스트(위 예산)와 **일일 units**(검색과 공유하는 10,000 풀) 둘 다 통과해야 돈다.
   const ytDay = ytQuotaDayKey(started)
-  const ytUnitCap = Math.min(9000, Math.max(0, parseInt(env.ADS_YT_PERF_UNITS || '', 10) || YT_PERF_UNITS_DEFAULT))
+  // 📈 상한은 **고정이 아니라 검색 실사용의 나머지**다(위 `resolveYtPerfCap` 의 실측 근거).
+  //   검색 카운터는 회차 수라 units 로 환산해서 넘긴다(search.list 1회 = 100 units).
+  const ytSearchCalls = await readYtSearchCalls(DB, ytDay)
+  const ytUnitCap = resolveYtPerfCap(ytSearchCalls * YT_SEARCH_UNIT_COST, env.ADS_YT_PERF_UNITS)
   const ytUnitsUsed = await readPerfUnitsUsed(DB, ytDay)
   const ytRoom = Math.max(0, ytUnitCap - ytUnitsUsed)
 
@@ -404,7 +498,7 @@ export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: n
   //   `0 % 2 === 1` 은 항상 거짓이라 **교대가 한 번도 안 일어난다.** 전제가 깨지면 처방도 같이 죽는 형태다.
   //   ⇒ 직전 회차가 실제로 굶었으면(`selected > 0 && tried === 0`) 깊이와 무관하게 선두를 넘긴다.
   //   둘은 서로를 보완한다: 체인이 정상이면 결정적 교대가 반반을 보장하고, 끊겨도 자기교정이 받는다.
-  const naverFirst = depth % 2 === 1 || starvedLastRound(prev)
+  const naverFirst = pickNaverFirst(prev)   // 🔀 깊이가 아니라 직전 선두로 교대(위 docblock — 알람은 depth 가 항상 0)
   const runNaver = async (): Promise<void> => {
     // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 이 시점의 **실제 잔여**로 몫을 다시 계산한다.
     try { naver = await enrichNaverActivity(DB, budget, naverRoomFromRemaining(budget.left, naverMax), slice) } catch (err) { note(err) }
@@ -442,6 +536,11 @@ export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: n
   const stamp = nowStamp()
   const snap: InfluencerEnrichSnapshot = {
     last_run: stamp, bio, yt, naver, spent, budget_total: budgetTotal, depth,
+    // 🔀 이번 회차의 선두 — 다음 회차가 이걸 보고 번갈아 간다(`pickNaverFirst`). 알람엔 depth 가 없다.
+    led: naverFirst ? 'naver' : 'front',
+    // 📈 YT 실제 처리 행수 — units 대비 효율(콜/행)을 밖에서 볼 수 있어야 한다.
+    //   실측에서 19콜/행이 나왔는데 코드상 2~3콜이라, 이 값 없이는 원인을 못 가린다.
+    yt_rows: yt,
     // 🔗 이번 정각 전체의 합 — 마지막 라운드 한 장으로 판정하던 오독을 끝낸다(위 `chain` 주석의 실측 근거).
     chain: rollupChain(prev?.chain, depth, { bio, yt, naver, spent, deadlineHit, at: stamp, roundsPlanned }),
     limit_hit: limitHit, deadline_hit: deadlineHit, elapsed_ms: Date.now() - started,

@@ -184,8 +184,22 @@ export async function enrichYouTubePerformance(
     const measureFailed = leadVideoIds.length > 0 && vids.length === 0
     // 🏷️ 분류 근거 — 라이브 About 규칙=content / 유튜브 자체분류=topic / 그 외(유지)=기존 근거 보존(COALESCE).
     const catSrc = catToWrite == null ? null : catToWrite === liveCat ? 'content' : catToWrite === topicCat.get(r.channel_id) ? 'topic' : null
-    if (budgetSkipped.has(r.id) || measureFailed) // perf 미측정 — perf 컬럼/스탬프 무접촉(다음 틱 재선택), About/개설일/카테고리만
-      return DB.prepare(`UPDATE ad_influencer_leads SET channel_published_at = COALESCE(channel_published_at, ?), email = COALESCE(?, email), category = ?, category_source = COALESCE(?, category_source) WHERE id = ?`)
+    /**
+     * perf 미측정 — perf 컬럼/스탬프 무접촉(다음 틱 재선택), About/개설일/카테고리만.
+     *
+     * 🩸 **그런데 `pub_checked_at` 은 찍어야 한다** (2026-08-03 라이브 실측으로 발견).
+     *   선택 순서가 `(pub_checked_at IS NULL) DESC, subscriber_count DESC` 다. 여기까지 왔다는 건
+     *   `if (!chJson) return 0` 을 통과했다는 뜻 = **channels.list 는 성공**했고 About/개설일/카테고리를
+     *   지금 쓰고 있다. 즉 "pub 은 확인됨"이 사실인데 스탬프를 안 찍으니 이 행이 **다음 회차에도 맨 앞**이다.
+     *   ⇒ 예산 14 로는 20행 중 앞 ~11행만 완주하고 나머지는 매번 같은 자리에서 다시 채널콜을 태운다.
+     *   실측: **PT 하루 2,003 units 를 쓰고 106행만 측정** = 19콜/행(코드상 건당 2~3콜인데도).
+     *   ⇒ 스탬프를 찍으면 그 행은 뒤로 물러나고 다음 회차가 **새 행**으로 전진한다.
+     *
+     * ⚠️ `perf_checked_at` 은 **여전히 안 찍는다** — 영상 통계를 못 잰 건 사실이고, 0 을 각인하면
+     *   "측정했는데 0회"와 구분이 안 된다(위 measureFailed 주석의 그 사고). 재선택 자격은 유지된다.
+     */
+    if (budgetSkipped.has(r.id) || measureFailed)
+      return DB.prepare(`UPDATE ad_influencer_leads SET channel_published_at = COALESCE(channel_published_at, ?), email = COALESCE(?, email), category = ?, category_source = COALESCE(?, category_source), pub_checked_at = datetime('now') WHERE id = ?`)
         .bind(pub, fixEmail, catToWrite, catSrc, r.id)
     // 📈 롱폼 중앙값 + 쇼츠 비중 동시 기록(쇼츠 착시 배제 — 협찬 단가 판단용). 길이를 못 잰 배치는 중앙값 0 → 표시는 avg 폴백.
     const { avgViews, avgComments, medianLongViews, shortsRatio } = videoMetrics(vids)
