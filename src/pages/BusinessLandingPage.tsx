@@ -38,8 +38,10 @@ export default function BusinessLandingPage() {
         <div className="flex items-center gap-3">
           <Link to="/influencer" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">인플루언서</Link>
           <Link to="/agency-partner" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">에이전시</Link>
-          {/* 🛡️ 2026-06-01 도매몰(B2B) 진입 — store_owner '공급자 가입'과 구분 */}
-          <Link to="/supplier/login" className="hidden sm:inline text-sm text-amber-600 dark:text-amber-400 hover:underline">도매 공급사</Link>
+          {/* 🧨 2026-08-03 (대표 "도매몰은 잔재도 없애는거야"): '도매 공급사' 진입 제거.
+              이 페이지는 sitemap 에 올라가는 **공개 소비자 랜딩**이라 여기 링크가 남아 있으면
+              도매몰을 접는 동안에도 신규 유입이 계속 들어온다. 라우트(`/supplier/login`)는 그대로 —
+              기존 제조사·판매사는 직접 주소·utongstart.com 으로 들어온다(잔액 회수 경로 보존). */}
           <button onClick={() => navigate('/seller/register')} className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-sm font-bold">
             무료 시작하기
           </button>

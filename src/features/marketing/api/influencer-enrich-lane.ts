@@ -35,6 +35,7 @@ import {
   ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, type FetchBudget,
 } from './influencer-discovery'
 import { enrichNaverActivity, enrichYouTubePerformance, ensurePerfExtraColumns, type NaverEnrichDiag, type EnrichSlice } from './influencer-performance'
+import { enrichTistoryActivity, type TistoryEnrichDiag } from './influencer-tistory-performance'
 import { POOL_ACCOUNT_ID, readSetting, writeSetting, ytQuotaDayKey } from './influencer-auto-collect'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs, envLaneBudget, ENRICH_DEADLINE_MS_ALARM } from './collect-budget'
 // 스냅샷 키는 leaf 모듈(enrich-telemetry)에 둔다 — 어드민 통계가 수집 엔진을 import 하지 않고 읽게.
@@ -103,6 +104,8 @@ export interface InfluencerEnrichSnapshot {
   chain?: EnrichChainRollup
   /** 🔀 이번 회차의 선두('naver' | 'front') — 다음 회차 교대의 유일한 근거(알람엔 depth 가 없다). */
   led?: string
+  /** 📗 티스토리 보강 결과 — 이 환경은 tistory.com 이 프록시 차단이라 **라이브 diag 가 유일한 판정 근거**다. */
+  tistory?: TistoryEnrichDiag
   /** 📈 이 회차가 실제로 측정한 YT 채널 수 — units 대비 효율을 밖에서 계산하기 위한 값. */
   yt_rows?: number
   elapsed_ms: number
@@ -119,6 +122,9 @@ export interface InfluencerEnrichSnapshot {
  *   소모하므로 예약 오버헤드 4 를 빼고 나눈다. 실제 중단은 각 함수가 `budget.left` 로 하고,
  *   여기서는 SELECT LIMIT 이 헛되이 커지지 않게만 잡는다.
  */
+/** 📗 티스토리 회차 몫(행). 근거는 `runNaver` 안 주석 — 늘리기 전에 `tistory.failed` 부터 볼 것. */
+export const TISTORY_ROOM = 2
+
 export function planInfluencerEnrich(budgetTotal: number): { bioMax: number; naverMax: number; ytMax: number } {
   const usable = Math.max(0, budgetTotal - 4)
   const bioMax = Math.max(0, Math.min(6, Math.floor(usable * 0.15)))
@@ -468,6 +474,7 @@ export async function runInfluencerEnrich(
   let bio = 0
   let yt = 0
   let naver: NaverEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0, emails: 0 }
+  let tistory: TistoryEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0, emails: 0 }
   let limitHit = false
   let crash: string | undefined
   const note = (err: unknown) => {
@@ -507,6 +514,16 @@ export async function runInfluencerEnrich(
   //   둘은 서로를 보완한다: 체인이 정상이면 결정적 교대가 반반을 보장하고, 끊겨도 자기교정이 받는다.
   const naverFirst = pickNaverFirst(prev)   // 🔀 깊이가 아니라 직전 선두로 교대(위 docblock — 알람은 depth 가 항상 0)
   const runNaver = async (): Promise<void> => {
+    /**
+     * 📗 **티스토리 — 작은 고정 몫 먼저**(2026-08-03 신설). 측정 경로가 **아예 없어** 495행 전부가 미측정인데
+     *   유입은 ~216/일이라, 두면 못 쓰는 행만 쌓인다(8/19 엔 ~3,900행). 근거·한계: `influencer-tistory-performance.ts`.
+     *
+     *   ⚠️ **왜 2인가** — 이 값이 곧 블로거에게서 뺏는 양이다. 백로그 비(495 : 20,264 = 2.4%)를 보면
+     *   비례 몫은 1 미만이지만, 유입 216/일을 못 따라가면 백로그가 되레 는다. 2 면 회차당 최대 4 서브리퀘스트
+     *   (≈9%)로 하루 ~576행 — 며칠 안에 큐가 비고, **그 뒤에는 스스로 안 쓴다**(측정된 행은
+     *   `perf_checked_at ASC` 에서 뒤로 가 신규 유입분만 남는다). 늘리기 전에 `tistory.failed` 부터 볼 것.
+     */
+    try { tistory = await enrichTistoryActivity(DB, budget, TISTORY_ROOM, slice) } catch (err) { note(err) }
     // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 이 시점의 **실제 잔여**로 몫을 다시 계산한다.
     try { naver = await enrichNaverActivity(DB, budget, naverRoomFromRemaining(budget.left, naverMax), slice) } catch (err) { note(err) }
   }
@@ -545,6 +562,9 @@ export async function runInfluencerEnrich(
     last_run: stamp, bio, yt, naver, spent, budget_total: budgetTotal, depth,
     // 🔀 이번 회차의 선두 — 다음 회차가 이걸 보고 번갈아 간다(`pickNaverFirst`). 알람엔 depth 가 없다.
     led: naverFirst ? 'naver' : 'front',
+    // 📗 티스토리 — 이 환경에선 tistory.com 이 프록시 차단이라 **라이브 diag 가 유일한 판정 근거**다.
+    //   measured 가 계속 0 → RSS 경로가 틀림 · contacts/emails 가 계속 0 → 홈에 연락처가 없음(경로를 접을 것).
+    tistory,
     // 📈 YT 실제 처리 행수 — units 대비 효율(콜/행)을 밖에서 볼 수 있어야 한다.
     //   실측에서 19콜/행이 나왔는데 코드상 2~3콜이라, 이 값 없이는 원인을 못 가린다.
     yt_rows: yt,
@@ -552,8 +572,8 @@ export async function runInfluencerEnrich(
     chain: rollupChain(prev?.chain, depth, { bio, yt, naver, spent, deadlineHit, at: stamp, roundsPlanned }),
     limit_hit: limitHit, deadline_hit: deadlineHit, elapsed_ms: Date.now() - started,
     yt_units: { used: ytUnitsUsed + ytUnits, total: ytUnitCap, day: ytDay },
-    total_measured: (prev?.total_measured || 0) + naver.measured + yt,
-    total_contacts: (prev?.total_contacts || 0) + naver.contacts + bio,
+    total_measured: (prev?.total_measured || 0) + naver.measured + yt + tistory.measured,
+    total_contacts: (prev?.total_contacts || 0) + naver.contacts + bio + tistory.contacts,
     // 📧 누적 이메일 — 측정 스프린트가 '쓸 수 있는' 리드를 만드는지 판정하는 값(연락처 누적과 나란히 본다).
     total_emails: (prev?.total_emails || 0) + (naver.emails || 0),
     ...(crash ? { crash, crash_at: nowStamp() } : {}),

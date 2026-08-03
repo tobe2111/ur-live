@@ -76,3 +76,33 @@ describe('도매 철거 안전망 — 도매가 아닌 별개 사업은 함께 �
     expect(read('src/worker/scheduled.ts').includes("'buyer-autofetch'")).toBe(true)
   })
 })
+
+describe('도매 철거 — 소비자 표면에 도매 유입 진입점이 없다 (2026-08-03)', () => {
+  /**
+   * 🧨 대표 "도매몰은 잔재도 없애는거야". 접는 서비스로 **새로 들여보내는 문**을 소비자 표면에 두지 않는다.
+   *
+   * 🔴 라우트(`/supplier/login` 등)는 **일부러 살려 둔다** — 철거 계획 §4 가 예치금·미지급 정산금이
+   *   0 임을 확인한 뒤에야 삭제하라고 못박았고, 기존 제조사·판매사가 잔액을 회수하려면 들어올 길이
+   *   있어야 한다. 여기서 막는 것은 *신규 유입 링크*뿐이다(문은 남기고 간판만 내린다).
+   *
+   * ⚠️ 못 막는 것: 외부에 이미 퍼진 링크·검색 결과. 그건 라우트가 살아 있는 한 계속 도달한다(의도).
+   */
+  const CONSUMER_SURFACES = [
+    ['src/pages/BusinessLandingPage.tsx', '공개 사업자 랜딩(sitemap 등재)'],
+    ['src/pages/SellerLoginPage.tsx', '소비자 사업자 유저 로그인'],
+  ] as const
+
+  for (const [f, why] of CONSUMER_SURFACES) {
+    it(`${f.split('/').pop()} — ${why} 에 /supplier·/wholesale 링크 0`, () => {
+      const code = read(f)
+        .replace(/\/\*[\s\S]*?\*\//g, '')   // 블록 주석 제거 — "왜 지웠는지" 설명에 경로가 남아 있다
+        .replace(/^\s*\/\/.*$/gm, '')
+      expect(code).not.toMatch(/(?:to|href)=["']\/(?:supplier|wholesale)/)
+    })
+  }
+
+  it('그래도 라우트 자체는 살아 있다 — 잔액 회수 경로', () => {
+    // 지우는 건 삭제 PR(머니 게이트 통과 후). 지금 지우면 돌려줄 길이 먼저 사라진다.
+    expect(read('src/routes/supplier.routes.tsx')).toContain('/supplier/login')
+  })
+})

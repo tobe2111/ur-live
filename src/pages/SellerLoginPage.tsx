@@ -320,13 +320,9 @@ export default function SellerLoginPage() {
                   {t('seller.sellerRegister')}
                 </Link>
               </p>
-              {/* 🛡️ 2026-06-01 도매몰 크로스링크: 도매 공급사 진입 */}
-              <p className="text-xs text-gray-400 mt-2">
-                {t('seller.areYouSupplier', { defaultValue: '도매 공급사이신가요?' })}{' '}
-                <Link to="/supplier/login" className="text-amber-600 font-medium hover:underline">
-                  {t('seller.goWholesale', { defaultValue: '도매몰 →' })}
-                </Link>
-              </p>
+              {/* 🧨 2026-08-03 (대표 "도매몰은 잔재도 없애는거야"): 도매몰 크로스링크 제거.
+                  셀러 로그인은 소비자 사업자 유저의 문이다 — 접는 서비스로 보내는 갈림길을 여기 둘 이유가 없다.
+                  기존 제조사는 `/supplier/login` 직접 진입·utongstart.com 으로 그대로 들어온다. */}
             </div>
           </div>
 

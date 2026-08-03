@@ -11,23 +11,15 @@
     "demo-name-heal",
     "image-health-monitor",
     "kt-alpha-catalog-sync",
-    "kt-alpha-voucher-retry",
-    "ops-daily-digest",
     "payouts-generate",
     "r2-orphan-cleanup",
     "restaurant-geocode",
     "seller-approval-reminder",
     "social-draft",
     "social-maintenance",
-    "stay-pending-expire",
-    "toss-refund-retry",
     "user-id-backfill-sweep",
-    "webhook-failed-drain",
     "weekly-cohort-report",
     "weekly-metrics-summary",
-    "wholesale-deposit-reconcile",
-    "wholesale-restock-notify",
-    "wholesale-settle-tick",
-    "wholesale-withdrawal-reconcile"
+    "wholesale-restock-notify"
   ]
 }
