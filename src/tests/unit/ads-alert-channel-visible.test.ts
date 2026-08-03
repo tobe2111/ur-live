@@ -71,3 +71,23 @@ describe('경보 채널 실발사 확인 라우트', () => {
     expect(route).not.toMatch(/webhook:\s*url/)
   })
 })
+
+/**
+ * 🚪 **부를 수 있어야 한다** — `/__ads/*` 는 서비스바인딩 전용이라 밖에서 못 친다.
+ *   ur-ads 에 확인 라우트를 만들어 놓고 위임 경로를 안 붙이면 **없는 것과 같다**
+ *   (2026-08-03 에 실제로 그렇게 만들었다가 바로 잡았다).
+ */
+describe('경보 확인 경로가 어드민에서 도달 가능한가', () => {
+  const OPS = readFileSync(join(process.cwd(), 'src/features/marketing/api/admin-ads-pool-ops.routes.ts'), 'utf8')
+
+  it('어드민 위임 라우트가 있고 ur-ads 의 alert-test 를 부른다', () => {
+    expect(OPS).toMatch(/app\.post\('\/alert-test'/)
+    expect(OPS).toMatch(/'https:\/\/ur-ads\/__ads\/alert-test'/)
+  })
+
+  it('🚫 위임이 결과를 삼키지 않는다 — status 를 그대로 흘린다', () => {
+    // 여기서 success:true 만 주면 ur-ads 가 상태를 돌려주는 의미가 사라진다.
+    expect(OPS).toMatch(/status:\s*j\?\.status/)
+    expect(OPS).toMatch(/success:\s*!!j\?\.ok/)
+  })
+})
