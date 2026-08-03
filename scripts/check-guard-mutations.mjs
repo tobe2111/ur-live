@@ -302,8 +302,10 @@ const MUTATIONS = [
   {
     name: 'code 12 힌트가 "폐기 확정"으로 읽히게 약해짐',
     file: 'src/features/marketing/api/public-data-diag.ts',
-    find: '⚠️ **폐기와 경로 오타를 구분할 수 없는 코드다**',
-    replace: '서비스 URL/오퍼레이션명이 틀렸거나 폐기됨',
+    // 2026-08-03: 대조군을 하나 더 얻어(미신청=code 30) 문구가 정밀해졌다 — 지도를 갱신했다.
+    //   ⚠️ 알려 준 게 이 검사 자신이다("낡은 지도" 모드).
+    find: '🔑 단, **활용신청 문제는 아니다** — 미신청은 code 30(403)으로 따로 온다',
+    replace: '',
     test: 'src/tests/unit/public-data-diag.test.ts',
     why:
       '2026-08-03 에 **내가 직접 이 오추론을 했다** — code 12 를 보고 "공정위 서비스 폐기 확정"이라고 인계에 적었다. ' +
