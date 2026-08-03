@@ -57,6 +57,28 @@ const ONLY = (() => {
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '5xx 경보가 1건을 "스파이크"라 불러 매일 거짓 ⚠️ 를 냄',
+    file: 'src/worker/cron/daily-self-diagnostic.ts',
+    find: 'if (Number(row?.worst || 0) >= 10) issues.push',
+    replace: 'if (true) issues.push',
+    test: 'src/tests/unit/five-xx-observability.test.ts',
+    why:
+      '실측상 모든 창이 `count=1`(시간당 1건)인데 화면엔 ⚠️ 로 떴다. 스파이크 임계는 10/분이므로 ' +
+      '그건 스파이크가 아니다 — 거짓 경보이고, **진짜 스파이크가 왔을 때 구분이 안 된다.** ' +
+      '임계 미만은 정보로 남기고 🔴 는 실제로 넘었을 때만 올린다.',
+  },
+  {
+    name: '5xx 경보에 무엇이 실패했는지가 없어 조치 불가',
+    file: 'src/worker/middleware/error-rate-monitor.ts',
+    find: "VALUES (?, '5xx_path', ?, 1)",
+    replace: "VALUES (?, 'x', ?, 1)",
+    test: 'src/tests/unit/five-xx-observability.test.ts',
+    why:
+      '이 표엔 숫자만 있었다(`key=global`). "5xx 가 있었다"는 알아도 **어디서** 났는지 알 수 없어 ' +
+      '경보를 받고도 손에 쥔 것이 없었다. `key` 에 경로를 넣어 같은 표·같은 인덱스로 분포를 얻는다 ' +
+      '(스파이크 판정은 global 합계 그대로 — 경로가 갈려도 잡힌다).',
+  },
+  {
     name: '카카오 전화 스윕이 마감선 없이 회차를 늘림(31초, 침묵 1위)',
     file: 'src/features/marketing/api/company-collect.ts',
     find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
