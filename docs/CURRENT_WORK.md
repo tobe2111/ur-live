@@ -5495,11 +5495,13 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
 _총 105건 · 최신순 · 이 목록은 자동 생성된다._
-_총 102건 · 최신순 · 이 목록은 자동 생성된다._
+_총 106건 · 최신순 · 이 목록은 자동 생성된다._
+_총 107건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-03**
 - [ur-ads 배포가 조용히 안 나갔다 — 라이브는 멀쩡해 보였다 (2026-08-03)](handoff/2026-08-03-urads-deploy-silent-miss.md)
 - [2026-08-03 — 회차 꼬리 상한 (c) 배포 후 첫 판정과 그 뒤 굳히기](handoff/2026-08-03-tail-bound-hardening.md)
+- [재고 비율을 한계 수율로 착각해 측정 배분을 뒤집을 뻔했다](handoff/2026-08-03-stock-vs-marginal-yield-trap.md)
 - [시트 미러가 8월 2일부터 멈춰 있었다 — 커서가 스냅샷을 지나쳐 영구 고착](handoff/2026-08-03-sheets-mirror-cursor-stuck.md)
 - [유료 전환 준비 마감 — 등기부가 못 보던 절반 (2026-08-03)](handoff/2026-08-03-paid-readiness-r3.md)
 - [관측이 틀린 답을 주면 없느니만 못하다 — 오탐 3건 (2026-08-03)](handoff/2026-08-03-observability-false-positives.md)
@@ -5514,6 +5516,7 @@ _총 102건 · 최신순 · 이 목록은 자동 생성된다._
 - [수집 레인을 알람으로 — 대표의 1순위 축이 34개 중 가장 굶고 있었다](handoff/2026-08-03-collect-lane-alarm.md)
 - [학습기가 조일수록 레인이 늘어났다 — `0` 을 두 함수가 정반대로 읽음](handoff/2026-08-03-budget-zero-control-inversion.md)
 - [2026-08-03 — 주간 백업이 `products`·`sellers` 를 조용히 빼먹고 있었다](handoff/2026-08-03-backup-missing-core-tables.md)
+- [유어애즈 경보가 무음이었는데, **무음이라는 사실도 무음**이었다](handoff/2026-08-03-alert-channel-was-silent.md)
 **2026-08-02**
 - [08-02 — 유료로 바꾸면 수집이 **실제로** 늘어나는가](handoff/2026-08-02-paid-plan-scaling.md)
 - [2026-08-02 — 운영자 몰 파일럿 시안 적용 (화면 A · A-2 · B · C · D)](handoff/2026-08-02-mall-design-apply-a-to-d.md)

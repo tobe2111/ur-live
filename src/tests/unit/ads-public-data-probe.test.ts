@@ -17,7 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { PROBE_TARGETS, probeTargetNames, probePublicData, normalizeProbePath, PROBE_ALLOWED_HOST, PROBE_ALLOWED_HOSTS } from '@/features/marketing/api/public-data-probe'
+import { PROBE_TARGETS, probeTargetNames, probePublicData, normalizeProbePath, PROBE_ALLOWED_HOST, PROBE_ALLOWED_HOSTS, PORTAL_KEY_HOSTS } from '@/features/marketing/api/public-data-probe'
 import type { Env } from '@/worker/types/env'
 
 const KEY = 'SUPER-SECRET-SERVICE-KEY-abc123=='
@@ -293,14 +293,20 @@ describe('후보 경로 — 호스트 **열거** + 쿼리 주입 차단', () => 
    * (인증 오류 = 엔드포인트 존재 / `NO_OPENAPI_SERVICE_ERROR` = 여기도 아님).
    */
   it('🔒 LOCALDATA 후보 URL 에 **serviceKey 를 싣지 않는다**', () => {
+    // ⚠️ 2026-08-03: 원래 `candidate.host === 'apis.data.go.kr'` 리터럴을 앵커했는데, 포털이 표준데이터를
+    //   `api.data.go.kr` 로도 서빙해 **판정이 집합(PORTAL_KEY_HOSTS)으로 바뀌면서** 깨졌다.
+    //   지켜야 할 것은 비교문의 모양이 아니라 **"키 있는 분기와 없는 분기가 그 집합으로 갈린다"** 이다.
     const SRC = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/public-data-probe.ts'), 'utf8')
-    expect(SRC).toMatch(/candidate\.host === 'apis\.data\.go\.kr'\n\s*\? `https:\/\/\$\{candidate\.host\}\/\$\{candidate\.path\}\?serviceKey=/)
+    expect(SRC, '키 있는 분기는 needsKey(=발급처 집합)로 갈려야 한다')
+      .toMatch(/\? `https:\/\/\$\{candidate\.host\}\/\$\{candidate\.path\}\?serviceKey=/)
     expect(SRC, '키 없는 분기가 있어야 한다').toMatch(/: `https:\/\/\$\{candidate\.host\}\/\$\{candidate\.path\}\?\$\{paging\}`/)
+    expect(SRC, '분기 조건이 needsKey 여야 한다(호스트 하나를 다시 하드코딩하면 같은 사고가 난다)')
+      .toMatch(/const url = candidate\n\s*\? \(needsKey/)
   })
 
   it('🔒 키가 없어도 **비-포털 후보는 찌를 수 있다** — 존재 여부 판정이 목적이기 때문', () => {
     const SRC = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/public-data-probe.ts'), 'utf8')
-    expect(SRC).toMatch(/const needsKey = !candidate \|\| candidate\.host === 'apis\.data\.go\.kr'/)
+    expect(SRC).toMatch(/const needsKey = !candidate \|\| \(PORTAL_KEY_HOSTS as readonly string\[\]\)\.includes\(candidate\.host\)/)
     expect(SRC).toMatch(/if \(!key && needsKey\) return/)
   })
 })
@@ -317,5 +323,43 @@ describe('심평원 프로브 대상 — 진단할 수 없는 레인은 고칠 �
     expect(m, '레인의 HIRA_BASE 를 못 찾았다(상수명이 바뀌었나)').toBeTruthy()
     const url = PROBE_TARGETS.hira.url('KEY', {} as never, { rows: 1, page: 1 })
     expect(url).toContain(m![1])
+  })
+})
+
+/**
+ * 🔑 **키를 줄 호스트 ≠ 찌를 수 있는 호스트** — 2026-08-03 라이브가 드러낸 구멍.
+ *
+ * 판정이 `candidate.host === 'apis.data.go.kr'` **단일 호스트 비교**였다. 그 조건은 원래
+ * `www.localdata.go.kr`(자체 키 체계 `authKey`)에 우리 `serviceKey` 를 흘리지 않으려고 쓴 것이다.
+ * 그런데 같은 포털이 **표준데이터를 `api.data.go.kr`('s' 없음)로 서빙**한다 — 같은 발급처, 같은 키인데
+ * 조건에서 빠져 **키 없이 나갔고** 라이브가 이렇게 답했다:
+ *
+ * ```json
+ *   {"errMsg":"SERVICE_KEY_IS_NULL","returnAuthMsg":"서비스 접근거부","returnReasonCode":"20"}
+ * ```
+ *
+ * 그러면 *"우리 키가 이 데이터셋에 열려 있는가"* 를 **영영 판정하지 못한다** — 이 프로브의 존재 이유가
+ * 바로 그 판정인데, 스스로 그 판정을 막고 있었다.
+ *
+ * ## ⚠️ 이 시험이 못 보는 것
+ * 새 호스트를 넣을 때 **어느 집합에 넣을지**의 판단 자체. 그건 사람이 한다(상수 주석에 근거를 남길 것).
+ */
+describe('🔑 serviceKey 를 실어 보낼 호스트', () => {
+  it('🔒 두 목록은 **다르다** — 허용(찌를 수 있다) ≠ 인증(키를 줘도 된다)', () => {
+    expect([...PORTAL_KEY_HOSTS]).not.toEqual([...PROBE_ALLOWED_HOSTS])
+  })
+
+  it('🔒 키를 주는 호스트는 **전부 허용 목록 안**이어야 한다(허용 안 된 곳에 키를 보낼 수는 없다)', () => {
+    for (const h of PORTAL_KEY_HOSTS) expect(PROBE_ALLOWED_HOSTS as readonly string[]).toContain(h)
+  })
+
+  it('🔒 공공데이터포털 두 게이트웨이는 **둘 다** 키를 받는다 — 하나만 넣으면 SERVICE_KEY_IS_NULL 이 난다', () => {
+    expect(PORTAL_KEY_HOSTS as readonly string[]).toContain('apis.data.go.kr')
+    expect(PORTAL_KEY_HOSTS, "표준데이터('s' 없는 호스트)가 빠지면 상권 축 판정이 통째로 막힌다")
+      .toContain('api.data.go.kr')
+  })
+
+  it('🔒 localdata 는 **키를 받지 않는다** — 자체 키 체계라 우리 자격증명을 흘리는 셈이 된다', () => {
+    expect(PORTAL_KEY_HOSTS as readonly string[]).not.toContain('www.localdata.go.kr')
   })
 })

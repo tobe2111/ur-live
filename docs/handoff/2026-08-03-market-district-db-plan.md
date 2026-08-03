@@ -82,3 +82,48 @@ POST /api/admin/partner-pool/probe-public-data
 2. 소상공인 상가정보 파라미터 확정 후 **시장 좌표 기준 반경 조회** → 점포 수/업종 구성
 3. 지자체 고시 크롤 — **가장 나중**이다. 연락처가 없어 단독으로는 리드가 안 되고,
    구청마다 게시판 구조가 달라 비용이 크다. 1·2 로 리드가 쌓인 뒤 딱지로 붙이는 게 순서다.
+
+---
+
+## 프로브 1차 실행 결과 (배포 직후) — **엔드포인트는 살아 있다**
+
+```
+GET api.data.go.kr/openapi/tn_pubr_public_trdit_mrkt_api?pageNo=1&numOfRows=3&…
+→ 401 · {"errMsg":"SERVICE_KEY_IS_NULL","returnAuthMsg":"서비스 접근거부","returnReasonCode":"20"}
+```
+
+⚠️ **이건 "권한 없음"이 아니다.** 요청 URL 을 보면 `serviceKey` 파라미터가 **아예 없다** —
+프로브가 키를 안 실어 보냈다. 즉 상대가 우리를 거절한 게 아니라 **우리가 신분증을 안 냈다.**
+
+📌 그래도 하나는 확정됐다: **주소는 존재한다.** 없는 주소면 인증까지 못 가고 `code 12` 가 왔을 것이다.
+
+### 원인 — 판정이 *호스트 하나*로 하드코딩돼 있었다
+
+```ts
+const needsKey = !candidate || candidate.host === 'apis.data.go.kr'   // ← 단일 비교
+```
+
+이 조건은 원래 `www.localdata.go.kr`(**자체 키 체계 `authKey`**)에 우리 `serviceKey` 를 흘리지 않으려고
+쓴 것이다. 취지는 옳다. 그런데 같은 포털이 표준데이터를 **`api.data.go.kr`('s' 없음)** 로 서빙하면서,
+**같은 발급처·같은 키인데 조건에서 빠졌다.**
+
+⇒ 기준을 *호스트 하나*에서 **키가 유효한 발급처 집합**(`PORTAL_KEY_HOSTS`)으로 바꿨다.
+`PROBE_ALLOWED_HOSTS`(찌를 수 있다)와 **일부러 분리**한다 — 허용과 인증은 다른 질문이다.
+
+> 🔑 교훈이 오늘만 두 번째다. 인허가는 *"경로 한 칸"*, 이번엔 *"호스트 한 글자"* 였다.
+> 둘 다 **집합이어야 할 것을 단일 값으로 하드코딩**해서 생겼다. 새 호스트/경로를 넣을 때는
+> **"이 값이 하나뿐이라고 가정한 자리가 또 있나"** 를 같이 찾아야 한다.
+
+### 다음 세션의 첫 액션 (배포 후 한 방)
+
+```
+POST /api/admin/partner-pool/probe-public-data
+     ?target=license&path=openapi/tn_pubr_public_trdit_mrkt_api&host=api.data.go.kr&rows=3&page=1
+```
+
+| 결과 | 뜻 | 조치 |
+|---|---|---|
+| **200 + 행** | 키가 열려 있다 | 바로 수집 레인 배선(`ad_company_leads`, `category='상인회'`) |
+| **code 30**(403) | 활용신청 안 됨 | **대표께 요청** — 데이터셋 15012894 |
+| code 20 재발 | 키가 여전히 안 실린다 | `PORTAL_KEY_HOSTS` 배선 확인(이번 수리가 안 먹은 것) |
+| code 12 | 주소가 안 맞는다 | 오퍼레이션명 재확인 — ⚠️ **"폐기"로 단정 금지** |

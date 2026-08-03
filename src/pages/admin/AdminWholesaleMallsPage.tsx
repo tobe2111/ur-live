@@ -18,6 +18,8 @@ import { Building2, Loader2, Plus, Edit, X, Globe, Check } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { normalizeAdminRole } from '@/shared/admin-roles'
 import { validateMallColor } from '@/shared/mall/branding'
+import MallSellersPanel from './wholesale-malls/MallSellersPanel'
+import MallLinkRow from './wholesale-malls/MallLinkRow'
 
 interface MallRow {
   id: number
@@ -87,6 +89,8 @@ export default function AdminWholesaleMallsPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<MallForm>(EMPTY)
   const [saving, setSaving] = useState(false)
+  // 🏪 2026-08-03: 몰별 '매장' 패널 펼침. 목록이 길어지지 않게 **한 번에 하나만** 연다.
+  const [openSellers, setOpenSellers] = useState<number | null>(null)
 
   const { data: malls, isLoading: loading, isError, error, refetch } = useApiQuery<MallRow[]>(
     ['admin', 'wholesale-malls'], '/api/admin/wholesale-malls',
@@ -230,7 +234,8 @@ export default function AdminWholesaleMallsPage() {
         ) : (
           <div className="mt-4 grid gap-3">
             {list.map((m) => (
-              <div key={m.id} className="flex items-center gap-4 bg-white rounded-xl border border-gray-200 p-3">
+              <div key={m.id} className="bg-white rounded-xl border border-gray-200 p-3">
+                <div className="flex items-center gap-4">
                 {/* 브랜드 색 + 로고 미리보기 */}
                 <div className="w-12 h-12 shrink-0 rounded-lg overflow-hidden flex items-center justify-center text-white font-extrabold text-sm" style={{ background: m.brand_color || '#111827' }}>
                   {m.logo_url ? <img src={m.logo_url} alt={m.name} className="w-full h-full object-cover" /> : (m.name || '?').slice(0, 1)}
@@ -245,16 +250,25 @@ export default function AdminWholesaleMallsPage() {
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700" title="소비자 도메인 경로로 열림">소비자 공개</span>
                     )}
                   </div>
-                  <div className="text-xs text-gray-500 mt-1 truncate inline-flex items-center gap-1">
+                  {/* 🔗 2026-08-03 (대표 "매장 링크를 어드민에서도"): 손님 링크 + 안 열리면 그 이유. */}
+                  <MallLinkRow slug={m.slug} active={m.active} consumer_path={m.consumer_path} />
+                  <div className="text-xs text-gray-400 mt-1 truncate inline-flex items-center gap-1">
                     <Globe className="w-3 h-3" /> {m.host || t('admin.mall.noHost', { defaultValue: '호스트 미지정 (기본 fallback)' })}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {/* 🏪 2026-08-03: 매장을 몰에 붙이는 유일한 경로 — 이게 없으면 몰 홈이 영원히 비어 있다. */}
+                  <button onClick={() => setOpenSellers(openSellers === m.id ? null : m.id)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${openSellers === m.id ? 'bg-gray-900 text-white border-gray-900' : 'text-gray-600 hover:bg-gray-50 border-gray-200'}`}>
+                    매장
+                  </button>
                   <button onClick={() => toggleActive(m)} title={m.active ? '비활성화' : '활성화'} className="px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 rounded-lg border border-gray-200">
                     {m.active ? t('admin.mall.deactivate', { defaultValue: '비활성' }) : t('admin.mall.activate', { defaultValue: '활성화' })}
                   </button>
                   <button onClick={() => openEdit(m)} title={t('common.edit', { defaultValue: '수정' })} className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg"><Edit className="w-4 h-4" /></button>
                 </div>
+                </div>
+                {openSellers === m.id && <MallSellersPanel mallId={m.id} mallName={m.name} />}
               </div>
             ))}
           </div>
