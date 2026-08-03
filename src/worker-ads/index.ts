@@ -13,7 +13,7 @@ import { envDriftInfo } from './env-drift'
 import { Hono } from 'hono'
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
-import { makeHourGates, dailyGapMinutes, hourlyGapMinutes, staleGapMinutes, createLaneRegistry, recordKnownLanes, buildAgeInfo } from './lane-cadence'
+import { makeHourGates, dailyGapMinutes, laneCadenceFields, staleGapMinutes, createLaneRegistry, recordKnownLanes, buildAgeInfo } from './lane-cadence'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
@@ -267,7 +267,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   값을 만드는 보강 레인이 10시간 굶은 원인). 이제 모아 두었다가 예산만큼만 띄운다.
   //   근거·배정 규칙·유료 전환 시 자동 확대: `dispatch-budget.ts`.
   const pending: RunnableLane[] = []
-  const kick = (path: string, fallback: () => Promise<unknown>, opts?: { gap?: number; beat?: string }): void => {
+  const kick = (path: string, fallback: () => Promise<unknown>, opts?: { gap?: number; period?: number; beat?: string }): void => {
     const beat = opts?.beat || path.replace(/^\/__ads\//, '')
     laneReg.note(path, opts?.beat)   // 하트비트 이름과 **같은 이름**으로 등록해야 never_fired/orphan 이 어긋나지 않는다
     /**
@@ -289,7 +289,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
      *   ⇒ 문서화된 그 유도를 **여기서 실제로 한다**. 게이트 레인(`gates.*`)은 이미 자기 주기를
      *   명시로 넘기므로 이 기본값에 닿지 않는다 — 일 1회 레인이 매시간으로 오인될 위험은 없다.
      */
-    pending.push({ beat, path, fallback, gapMin: opts?.gap ?? hourlyGapMinutes() })
+    pending.push({ beat, path, fallback, ...laneCadenceFields(opts) })  // 주기/임계 조립 SSOT: lane-cadence.ts
   }
   const gates = makeHourGates(hourUTC, kick, laneReg)
   /**

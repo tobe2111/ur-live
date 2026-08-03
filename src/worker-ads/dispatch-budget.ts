@@ -128,8 +128,13 @@ export function lanesPerTick(env: DispatchEnv | undefined | null, learned?: numb
 export interface LaneCandidate {
   /** 하트비트 이름 — 조 배정의 **안정 키**. 경로가 아니라 이 이름을 쓴다(경로는 바뀔 수 있다). */
   beat: string
-  /** 이 레인의 기대 간격(분). 60 이하면 매시간 레인 = 미룰 수 있다. */
+  /**
+   * 침묵 판정 임계(분) — `staleGapMinutes` = 주기×2+30 으로 **부풀린** 값이다(하트비트 `g`).
+   * ⚠️ 주기가 아니다. 미룰 수 있는지의 근거로 쓰지 말 것 — `periodMin` 을 볼 것(`isDeferrable` 주석).
+   */
   gapMin?: number
+  /** 이 레인의 **실제 주기**(분). 60 이하면 매시간 레인 = 미룰 수 있다. */
+  periodMin?: number
   /** 역할. 생략하면 이름으로 판정(`laneRole`) — 등록부를 안 고쳐도 되게. */
   role?: LaneRole
 }
@@ -278,11 +283,26 @@ function pickFrom<T extends LaneCandidate>(lanes: T[], want: number, cursor: num
  * ⚠️ **이게 이 파일에서 가장 위험한 부분이다.** 일 1회 레인(예: 19:00 UTC 야간 재보정)을 조에
  * 넣으면, 그 레인의 조 차례가 19시가 아닌 시간에 걸리는 순간 **영원히 안 돈다.** 침묵이 아니라
  * 부재라 경보에도 안 잡힌다 — 이 레포가 `MAINT_SCHEDULE` 주석에 같은 경고를 적어 둔 바로 그 사고다.
- * 그래서 `gapMin > 60` 인 레인은 **무조건 이번 회차에 돈다**(그 시간에만 조건이 참이므로).
+ * 그래서 주기가 1시간보다 긴 레인은 **무조건 이번 회차에 돈다**(그 시간에만 조건이 참이므로).
+ *
+ * 🕳️ **`gapMin` 으로 판정하면 안 된다** (2026-08-03 라이브에서 잡음 — 오늘 세 번째 같은 형태).
+ *   `gapMin` 은 *침묵 판정 임계*(`staleGapMinutes` = 주기×2+30)이지 주기가 아니다. 늦게 도착한
+ *   레인을 오탐하지 않으려고 **일부러 부풀린 값**이다. 그런데 #1006 이 관측을 고치려고 매시간 레인에
+ *   `hourlyGapMinutes() = 150` 을 채우자, 여기서 `150 > 60` 이 되어 **매시간 레인 14개가 통째로
+ *   "미룰 수 없음"** 이 됐다(실측 12:00 KST: 네 도메인 전부 `deferred: 0`). 예산·학습기가 통제하는
+ *   대상은 미룰 수 있는 레인뿐이므로, **통제 대상이 0 개**가 되어 #1007 수리가 옳고도 무력해졌다.
+ *   의도와 정반대다 — 매시간 레인은 다음 시간에 또 오니 **가장 미루기 쉬운** 레인인데, 그 주기를
+ *   기록했다는 이유로 가장 미룰 수 없는 레인이 됐다.
+ *
+ * ⇒ 주기는 `periodMin` 으로 **따로** 싣는다. `gapMin` 폴백은 남겨 둔다 — `periodMin` 을 안 싣는
+ *   게이트 레인(일 1회·N시간·스케줄)은 종전 그대로 `always` 여야 하고, 그 값들은 전부 60 을 넘는다.
+ *   ⚠️ 부풀린 값에서 주기를 **역산하지 말 것**(`(gap−30)/2`) — 공식이 바뀌는 순간 조용히 깨진다.
  */
 export function isDeferrable(lane: LaneCandidate): boolean {
+  const period = Number(lane.periodMin)
+  if (Number.isFinite(period) && period > 0) return period <= 60
   const gap = Number(lane.gapMin)
-  if (!Number.isFinite(gap) || gap <= 0) return true // 미지정 = 매시간(kick 기본값과 같은 해석)
+  if (!Number.isFinite(gap) || gap <= 0) return true // 둘 다 미지정 = 매시간(kick 기본값과 같은 해석)
   return gap <= 60
 }
 

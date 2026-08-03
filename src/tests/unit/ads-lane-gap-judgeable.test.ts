@@ -27,7 +27,7 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
-import { hourlyGapMinutes, dailyGapMinutes, staleGapMinutes } from '@/worker-ads/lane-cadence'
+import { hourlyGapMinutes, dailyGapMinutes, staleGapMinutes, laneCadenceFields } from '@/worker-ads/lane-cadence'
 
 const read = (rel: string) => {
   const p = path.join(process.cwd(), rel)
@@ -38,8 +38,16 @@ const IDX = read('src/worker-ads/index.ts')
 const HEALTH = read('src/worker/utils/cron-heartbeat.ts')
 
 describe('kick 이 주기를 안 받으면 매시간으로 채운다', () => {
+  /**
+   * 🔁 2026-08-03: 이 불변식의 **집이 옮겨졌다** — 조립이 `lane-cadence.laneCadenceFields` 로 추출됐다
+   *   (같은 필드가 미루기 판정에도 쓰여 매시간 레인을 통째로 `always` 로 만들던 것을 끊으면서).
+   *   그래서 문자열이 아니라 **함수 반환값**으로 본다 — 리팩토링에 안 깨지고 뜻을 더 정확히 고정한다.
+   */
   it('gapMin 에 기본값이 있다 — undefined 를 그대로 넘기지 않는다', () => {
-    expect(IDX).toMatch(/pending\.push\(\{ beat, path, fallback, gapMin: opts\?\.gap \?\? hourlyGapMinutes\(\) \}\)/)
+    expect(laneCadenceFields(undefined).gapMin).toBe(hourlyGapMinutes())
+    expect(laneCadenceFields({}).gapMin).toBe(hourlyGapMinutes())
+    // 엔트리가 그 SSOT 를 실제로 쓰는가(직접 조립으로 되돌아가면 기본값이 다시 새어 나간다)
+    expect(IDX).toMatch(/pending\.push\(\{ beat, path, fallback, \.\.\.laneCadenceFields\(opts\) \}\)/)
   })
 
   it('기본값이 매시간 cron 의 기대 최대 나이와 같다', () => {
