@@ -151,3 +151,69 @@ npm 이 막힌 세션이었지만 `influencer-classify.ts` 는 **import 0 인 �
   판정한다. baseline: content 22,746 · NULL 19,513 · keyword 1,545 · topic 191 · cursor 62915.
 - 청소거리: 레인 접미사 없는 옛 키 `ads_lane_alarm_last` 는 이제 갱신이 멎었다.
 - 대표 몫: CF API 토큰은 채팅 기록에 남았으니 언젠가 회전.
+
+---
+
+## 🔴 그리고 진짜 병목이 드러났다 — 수집 레인이 부모 CPU 한도로 죽는다 (KST 07:00 판정)
+
+#990 을 배포하고 커서가 생기는지 보러 갔다가, **더 위에 있는 문제**를 만났다.
+`ads_autocollect_cursor_focus` 는 배포 3시간 반이 지나도 안 생겼는데 **#990 의 결함이 아니었다.**
+
+### 추적 순서 (그대로 따라 하면 재현된다)
+
+```bash
+# ① 커서 없음 · 리드도 안 늘어남
+#    → "collect 가 안 돌았나?" 인데, 하트비트는 배치라 비어 있어도 증거가 안 된다
+# ② collect 자신의 (배치 아닌) 스탬프를 본다
+SELECT substr(value,1,60) FROM platform_settings WHERE key='ads_autocollect_stats'
+#    → last_run 이 4시간 전 그대로 = 정말 안 돌았다
+# ③ 디스패처가 무엇을 했는지 본다
+SELECT value FROM platform_settings WHERE key='ads_dispatch_last'
+#    → run:['collect'] — **띄우긴 띄웠다**
+# ④ 리스를 본다 (정상 종료면 '0', 크래시면 만료시각이 남는다)
+SELECT value FROM platform_settings WHERE key='ads_collect_lease'
+#    → 만료시각이 남아 있음 = 잡고 죽었다. (정비 레인은 '0' = 정상)
+# ⑤ 사인
+SELECT job_name, created_at, error_message FROM cron_failures ORDER BY created_at DESC
+```
+
+```
+2026-08-02 22:00:38  ads:collect           Worker exceeded CPU time limit.
+2026-08-02 22:00:38  ads:enrich-company    Worker exceeded CPU time limit.
+2026-08-02 22:00:38  ads:collect-storeinfo Worker exceeded CPU time limit.
+2026-08-02 22:00:37  ads:sheets-sync       Worker exceeded CPU time limit.
+```
+
+디스패치가 22:00:35 → **3초 뒤 넷이 동시에 사망.** 자식 인보케이션의 CPU 는 부모에게 청구되므로,
+부모가 한도에 닿으면 자식이 같이 죽는다(CLAUDE.md 가 이미 기록한 클래스).
+
+### 24시간 CPU 사망 분포
+
+```
+sheets-sync 6 · enrich-company 6 · collect-commerce 3 · reclassify-company 2
+collect-storeinfo 2 · collect-neis 2 · collect-company 2 · ads:collect 2 · …  (총 29건)
+```
+
+⚠️ **최다 소비자 둘(sheets-sync · enrich-company)이 인플루언서 축이 아니다.** 대표의 우선순위는
+인플루언서 DB 인데, 그 수집이 다른 축 때문에 죽고 있다.
+
+### ⚠️ 내가 이 과정에서 틀린 것 두 가지 (같은 함정 반복 금지)
+
+1. **배치 하트비트가 비어 있는 걸 "부모 틱 사망"으로 읽었다.** 디스패처 기록은 "예산으로 미룸"이었다.
+   그리고 07:00 엔 반대로 **띄웠는데 죽은** 것이었다 — 셋은 서로 다른 상태고 하트비트로는 못 가른다.
+   ⇒ 순서는 항상 [자기 스탬프 → 디스패처 기록 → 리스 → cron_failures].
+2. **내 감시 스크립트가 내 측정을 오염시켰다.** 백그라운드 워처와 `d1.sh` 가 같은 `q_res.json` 을 써서,
+   내가 방금 던진 쿼리 결과 자리에 워처의 결과가 들어왔다. 값이 이상하면 **대상보다 도구를 먼저 의심**하라는
+   그 규칙에 내가 걸렸다. ⇒ 공유 임시파일을 쓰는 도구는 동시에 돌리지 말 것.
+
+### ▶️ 대표 판단이 필요한 것 (외부 요청량이 바뀌므로 임의 진행 안 함)
+
+| 안 | 내용 | 대가 |
+|---|---|---|
+| **(a)** | `collect` 를 DO 알람 레인으로(자기 CPU·자기 인보케이션) | cron 이 원래 의도한 **시간당 1회**로 복원되면 외부 검색량이 **현재 실측 대비 약 4배** — 대표가 경계한 네이버 차단 리스크 |
+| **(b)** | 부모 CPU 를 먹는 **비-인플루언서** 레인 축소(sheets-sync·enrich-company) | 외부 요청량 불변. 다만 B2B 축 진도가 느려진다 |
+| **(c)** | 유지 | 수집이 계속 간헐적으로 죽는다 |
+
+기술적으로는 **(a)** 가 정답이고 레지스트리(`ALARM_LANES`)가 정확히 이걸 위해 있다
+(`lane-alarm-runners.ts` 의 얹을 근거: *"회차가 죽어 진도가 안 나간다"*). 다만 **외부로 나가는 요청량이
+바뀌는 변경**이라 대표 확인 없이는 진행하지 않았다.

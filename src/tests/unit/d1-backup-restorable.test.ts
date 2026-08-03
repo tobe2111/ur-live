@@ -35,13 +35,24 @@ const MASTER = [
 ]
 
 const ROWS: Record<string, Record<string, unknown>[]> = {
-  ledger_entries: [{ rowid: 1, id: 1, ref: "order:1'quote" }],
-  products: [{ rowid: 1, id: 1, name: '아메리카노' }],
+  ledger_entries: [{ id: 1, ref: "order:1'quote" }],
+  products: [{ id: 1, name: '아메리카노' }],
 }
 
-/** 최소 D1 흉내 — dumpDatabase 가 실제로 발행하는 3가지 쿼리 형태에만 답한다. */
+/**
+ * 최소 D1 흉내 — dumpDatabase 가 실제로 발행하는 쿼리 형태에만 답한다.
+ *
+ * ⚠️ 커서는 `pragma_table_info` 로 고른 단일 INTEGER PK 다(2026-08-03 PR #995 — `SELECT rowid, *`
+ *    는 D1 100컬럼 한도를 넘겨 `products`/`sellers` 를 통째로 날렸다). 이 가짜 DB 도 그 경로를
+ *    그대로 태워야 실제와 같은 것을 검사하게 된다.
+ */
 function fakeDB(): D1Database {
   const answer = (sql: string, binds: unknown[]) => {
+    if (/pragma_table_info/.test(sql)) {
+      const table = String(binds[0] ?? '')
+      const cols = Object.keys(ROWS[table]?.[0] || {})
+      return cols.map((name) => ({ name, type: name === 'id' ? 'INTEGER' : 'TEXT', pk: name === 'id' ? 1 : 0 }))
+    }
     if (/FROM sqlite_master/.test(sql) && /type IN/.test(sql)) {
       return MASTER.filter((m) => ['index', 'trigger', 'view'].includes(m.type) && m.sql && !m.name.startsWith('sqlite_'))
     }
@@ -56,7 +67,7 @@ function fakeDB(): D1Database {
       throw new Error('no such column: rowid')
     }
     const lastId = Number(binds[0] ?? 0)
-    return (ROWS[table] || []).filter((r) => Number(r.rowid) > lastId)
+    return (ROWS[table] || []).filter((r) => Number(r.id) > lastId)
   }
   const prepare = (sql: string) => {
     const run = (binds: unknown[]) => ({

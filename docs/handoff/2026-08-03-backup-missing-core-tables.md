@@ -1,0 +1,117 @@
+# 2026-08-03 — 주간 백업이 `products`·`sellers` 를 조용히 빼먹고 있었다
+
+PR: `#995` — 앞선 세션 작업은 `2026-08-02-backup-cron-ignition.md`
+
+---
+
+## 1. 다음 세션의 첫 액션 — **다음 회차에 두 테이블이 들어갔는가** (⏰ 2026-08-10 05:00 KST)
+
+```bash
+UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+BODY=$(python3 -c "import json,os;print(json.dumps({'email':os.environ['URDEAL_ADMIN_EMAIL'],'password':os.environ['URDEAL_ADMIN_PASSWORD']}))")
+TOK=$(curl -sS -X POST https://live.ur-team.com/api/admin/login -H 'Content-Type: application/json' -H "User-Agent: $UA" \
+  --data-binary "$BODY" | python3 -c "import sys,json;d=json.load(sys.stdin);dd=d.get('data') or {};print(dd.get('accessToken') or dd.get('token') or d.get('token') or '')")
+
+curl -sS "https://live.ur-team.com/api/admin/cron-heartbeats" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA" \
+ | python3 -c "import sys,json;i=(json.load(sys.stdin).get('data') or {}).get('items') or [];print([x for x in i if x['name']=='d1-backup'])"
+```
+
+**판정** — `r` 문자열을 본다(이번 PR 로 내용이 늘었다):
+- `ok=true` + `success=true tables=316 skipped=N` → ✅ 끝. `skipped` 는 FTS 그림자·`_cf_KV` 라 정상.
+- `ok=false` + `부분 백업 — dump 실패 …` → 🔴 아직 빠지는 테이블이 있다. **이름이 메시지에 있다.**
+- `ok=true` 인데 `tables` 가 없으면 → **배포가 안 나간 것**이다(`2026-08-03-urads-deploy-silent-miss.md` 의 그 클래스).
+
+⚠️ **R2 목록 조회는 이 세션의 CF 토큰으로 안 된다**(조회 4종에 R2 없음 — `Authentication error`).
+대표 대시보드 확인이거나, 코드의 자체 `head()` 검증 + 하트비트로 판정한다.
+
+---
+
+## 2. 무슨 일이 있었나
+
+첫 회차(08-03 05:02 KST)는 **성공처럼 보였다** — 19MB, `ok=true`, 알림 "완료".
+디스코드 원문에만 이 줄이 있었다:
+
+```
+- dump 실패 테이블 5개: _cf_KV, products, products_fts_config, products_fts_idx, sellers
+```
+
+**`products` 와 `sellers` 가 빠진 백업이다.** 그걸로 복구하면 상품도 셀러도 없다.
+
+### 원인 — 커서 한 칸이 컬럼 한도를 넘겼다
+
+dump 가 `SELECT rowid, * FROM t` 로 페이징했다. **D1 결과 컬럼 한도 100** · `products`·`sellers` 는
+**이미 정확히 100컬럼**(컬럼 예산제가 존재하는 바로 그 이유) ⇒ `rowid` 한 칸 = 101 = 실패.
+
+| 프로덕션 실측 | |
+|---|---|
+| `SELECT rowid, * FROM products` | 🔴 `too many columns in result set` |
+| `SELECT * FROM products` | ✅ 정확히 100컬럼 |
+| `SELECT rowid, * FROM products_fts_idx` · `_cf_KV` | 🔴 `no such column: rowid` |
+
+### 수정
+- **단일 INTEGER PK 를 커서로** — 그 값은 이미 `*` 안에 있어 컬럼이 안 는다.
+- PK 없으면 rowid 를 **따로**(1컬럼) 읽어 그 묶음으로 본문을 가져온다.
+- rowid 조차 없는 파생/내부 테이블은 **skip**(에러로 세면 진짜 실패가 소음에 묻힌다).
+- 복구 대상이 빠지면 **업로드 후 throw** → `ok:false` + `cron_failures` + 🚨.
+
+---
+
+## 3. 이번에 틀렸던 판단 — **여기가 제일 값지다**
+
+### ① 나는 "경고 없음"이라고 대표에게 보고했다. 틀렸다.
+하트비트에는 무결성 경고가 **안 실린다**(경고는 디스코드로만 갔다). 나는 그 사실을 **바로 앞
+문단에서 직접 확인해 놓고도** `success=true` 만 보고 "경고 없음"이라고 단언했다.
+**침묵을 성공으로 읽은 것이다.** 이 레포가 반복해 만난 바로 그 클래스를 내가 다시 밟았다.
+
+⇒ 수리는 코드로 했다: 반환값에 `tables`/`skipped` 를 싣고, 실패는 throw 한다.
+⇒ **관측 채널이 둘이면 둘 다 같은 사실을 실어야 한다.** 한쪽만 보고 판정하게 두면 또 물린다.
+
+### ② 주입 검증이 한 번 초록으로 속였다
+`errorTables.length > 0` 문자열이 그 파일에 **두 번** 나온다(무결성 경고용 + 게이트).
+게이트를 `if (false)` 로 바꿔도 다른 등장에 매치돼 **초록**이 떴다.
+→ throw 를 감싼 `if` 의 **조건을 직접 읽도록** 교정. **문자열 존재는 구조의 증거가 아니다.**
+
+### ③ 어제도 같은 계열에 물렸다(연속 3회)
+`check-sql-column-exists` 는 내가 쓴 **설명 주석**을 코드로 읽어 오탐했고, 보간(`${}`) 쿼리를
+통째로 건너뛰어 **사건의 원본 쿼리를 못 봤다.** 셋 다 "텍스트를 봤는데 구조를 안 봤다".
+
+---
+
+## 4. 같이 한 것 — 유어애즈 건당 비용 절감 (대표 승인 "1번")
+
+41개 레인 소요 실측(하트비트 `ms`) 상위:
+
+```
+67s collect-hira · 60s maintenance-rescan · 31s sweep-kakao-phone · 31s scan-notices
+합계 316s / 41 레인
+```
+
+⚠️ **앞 두 개는 오늘 다른 세션이 만지는 중**(#988 심평원 실험)이라 **피했다.**
+파일별 최종 수정일로 판별했다 — `git log -1 --format=%ad --date=short -- <file>`.
+**같은 파일을 병렬로 파면 충돌 + 중복이다. 착수 전에 이 확인을 할 것.**
+
+`scan-notices` 를 잡았고, 원인이 예상과 달랐다:
+**예산(20)이 한 번도 안 걸린다** — 실제 호출이 6번뿐이라. 비용은 요청 수가 아니라 **시간**인데
+시간을 재는 것이 없었다(공공 API 하나가 15초 → 최악 90초).
+
+수정은 **둘이 짝**이다:
+1. 벽시계 마감선(free 12s / paid 24s, `envPlanValue` — 유료 전환에 코드 변경 0)
+2. **키워드 회전 커서** — 마감선은 일을 줄이는 게 아니라 *미루는* 것이라, 시작점을 고정하면
+   뒤쪽 키워드가 **영원히** 안 돈다. 레인 단위에서 이미 겪은 구조적 기아의 키워드판.
+
+### 다음 세션이 이어받을 것
+- 남은 고비용 레인: `sweep-kakao-phone`(31s, `enrich-lane.ts` — 마감선 **보유**, 재확인 필요)
+- `collect-hira`·`maintenance-rescan` 은 **다른 세션의 실험이 끝난 뒤** 접근.
+- 판정: `ads_notice_stats.diag.stoppedBy` 가 `deadline` 이면 마감선이 실제로 걸린 것 —
+  그때 `kwFrom` 이 회차마다 움직이는지 보면 기아가 없는지 확인된다.
+
+---
+
+## 5. 새 가드 (다음 세션이 믿어도 되는 것)
+
+| 가드 | 막는 것 | **못 막는 것** |
+|---|---|---|
+| `d1-backup-wide-tables.test`(8) | `SELECT rowid, *` 복귀 · PK 커서 · rowid 별도조회 · 파생테이블 skip · 실패 시 throw · 반환값에 tables | **실제 R2 파일 내용**. 소스 텍스트만 본다 — 다음 회차 하트비트가 유일한 판정 |
+| `notice-scan-deadline.test`(10) | 마감선 부재 · 요금제 하드코딩 · 회전 제거 · 커서 미저장. **회전 산술은 텍스트가 아니라 동작으로** 검증(1개씩만 돌아도 5회차에 전부 덮는지) | 실제 소요 시간. 마감선 값의 타당성은 하트비트 재측정으로만 안다 |
+
+주입 매니페스트 **+4건**, 전부 빨간불 확인.
