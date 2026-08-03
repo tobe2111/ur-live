@@ -5494,10 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 91건 · 최신순 · 이 목록은 자동 생성된다._
+_총 92건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-03**
 - [ur-ads 배포가 조용히 안 나갔다 — 라이브는 멀쩡해 보였다 (2026-08-03)](handoff/2026-08-03-urads-deploy-silent-miss.md)
+- [유료 전환 준비 마감 — 등기부가 못 보던 절반 (2026-08-03)](handoff/2026-08-03-paid-readiness-r3.md)
 - [관측이 틀린 답을 주면 없느니만 못하다 — 오탐 3건 (2026-08-03)](handoff/2026-08-03-observability-false-positives.md)
 - [학습기의 눈먼 구간을 메우고, 배포 실패를 대표에게 보이게 (2026-08-03)](handoff/2026-08-03-learner-bias-and-deploy-alert.md)
 **2026-08-02**

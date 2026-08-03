@@ -667,6 +667,27 @@ const MUTATIONS = [
 
   // ── 🚚 ur-ads 배포가 조용히 안 나감 (2026-08-02 실사고)
   {
+    name: 'env 밖 요금제 쌍(_PAID)이 다시 사각지대로',
+    file: 'scripts/check-plan-knob-coverage.mjs',
+    find: 'if (orphanPaid.size) {',
+    replace: 'if (false) {',
+    test: 'src/tests/unit/ads-plan-knobs.test.ts',
+    why:
+      '요금제 축의 절반은 env 가 아니라 파일 안 상수 쌍(RUN_DEADLINE_MS/_PAID 등)이다 — 등기부에도 R2 에도 ' +
+      '안 걸린다. `_PAID` 를 만들고 선택부를 안 붙이면 **유료로 바꿔도 그 축은 안 오른다**(에러 없음).',
+  },
+  {
+    name: 'bad 집계 변수 소실(R3 위반 시 ReferenceError)',
+    file: 'scripts/check-plan-knob-coverage.mjs',
+    find: 'let bad = false',
+    replace: 'globalThis.__bad_removed = 1',
+    test: 'src/tests/unit/ads-plan-knobs.test.ts',
+    why:
+      'R3 는 `bad = true` 로 집계한다 — 선언이 사라지면 위반이 났을 때 ReferenceError 로 죽는다. ' +
+      '⚠️ 통과할 땐 멀쩡하고 **실패할 때만** 깨지는 모양이라 눈으로는 못 본다(첫 판이 실제로 그 상태였다: ' +
+      'R3 를 선언보다 앞에 뒀다). 위치·존재 검사가 없으면 그대로 머지된다.',
+  },
+  {
     name: 'PR 검증이 다시 건너뛰어짐(미검증 코드 머지)',
     file: '.github/workflows/verify.yml',
     find: '  pull_request:\n    branches: [main]\n  push:',

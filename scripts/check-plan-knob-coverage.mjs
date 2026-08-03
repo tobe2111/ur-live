@@ -82,7 +82,6 @@ for (const rel of files) {
   }
 }
 if (seen === 0) { console.error('❌ plan-knobs: 숫자 노브를 하나도 못 찾았다 — 파서가 깨졌다(측정 0 = 실패).'); process.exit(1) }
-
 let bad = false
 if (missing.size) {
   bad = true
@@ -105,6 +104,43 @@ if (unwired.size) {
       envEnrichDeadlineMs(env) / resolveInterval(raw, env) / resolveRunsPerHour(raw, env)
    상수만 요금제 인지형으로 만들면 부족하다 — **읽는 코드가 요금제를 함께 받아야** 한다
    (이 레포가 2026-08-02 하루에 세 번 만난 결함).
+`)
+}
+/**
+ * R3. **하드코딩 요금제 쌍(`X` / `X_PAID`)도 실제로 선택돼야 한다** (2026-08-03 신설).
+ *
+ * ## 왜 이걸 따로 봐야 하나 — 등기부의 사각지대
+ * R1·R2 는 **env 노브(`ADS_*`)만** 본다. 그런데 이 파이프라인의 요금제 축 절반은 env 가 아니라
+ * **파일 안 상수 쌍**이다: `RUN_DEADLINE_MS` / `RUN_DEADLINE_MS_PAID`,
+ * `ALARM_INTERVAL_MS_DEFAULT` / `…_PAID`, `SUBREQ_PLATFORM_CAP_DEFAULT` / `…_PAID`.
+ * 그것들은 **등기부에 뜨지도, R2 에 걸리지도 않는다.**
+ *
+ * 오늘 전수 확인에서 다행히 전부 배선돼 있었지만, 그건 **강제가 아니라 성실함**이었다.
+ * `_PAID` 상수를 만들어 놓고 선택부를 안 붙이면 **유료로 바꿔도 그 축은 안 오른다** —
+ * 이 레포가 하루에 세 번 만난 바로 그 모양이 env 밖에서 재현되는 것이다(에러 없음).
+ *
+ * ⚠️ **못 잡는 것**: `_PAID` 짝이 **아예 없는** CF-bound 상수. 이름만으로는 그게 CPU 에 묶인
+ *   상수인지 데이터 모양인지 알 수 없다 — 사람이 판단해야 한다(등기부의 `why` 와 같은 이유).
+ */
+const PLAN_SELECTORS = /(envPlanValue|paidPlan|resolvePlan|isPaid)\s*\(/
+const orphanPaid = new Map()   // 정의는 있는데 아무도 고르지 않는 _PAID 상수
+for (const rel of files) {
+  const src = strip(fs.readFileSync(path.join(ROOT, rel), 'utf8'))
+  for (const m of src.matchAll(/\bconst\s+([A-Z][A-Z0-9_]*_PAID)\b/g)) {
+    const name = m[1]
+    // 정의 줄을 뺀 나머지에서 이 이름이 쓰이는가 + 그 파일이 요금제 판정을 하는가.
+    const usedElsewhere = new RegExp(`\\b${name}\\b`, 'g')
+    const hits = [...src.matchAll(usedElsewhere)].length
+    if (hits <= 1 || !PLAN_SELECTORS.test(src)) orphanPaid.set(name, rel)
+  }
+}
+if (orphanPaid.size) {
+  bad = true
+  console.error(`\n❌ plan-knobs: 아무도 고르지 않는 \`_PAID\` 상수 ${orphanPaid.size}건 — 유료로 바꿔도 그 축은 안 오른다\n`)
+  for (const [n, f] of orphanPaid) console.error(`   ! ${n}   (${f})`)
+  console.error(`
+   ⇒ 요금제 판정을 거쳐 고르게 하라: envPlanValue(raw, 무료값, 유료값, env)
+   상수를 만드는 것과 **그 상수가 선택되는 것**은 다른 일이다 — 후자가 빠지면 에러 없이 조용히 무료 동작.
 `)
 }
 if (bad) process.exit(STRICT ? 1 : 0)
