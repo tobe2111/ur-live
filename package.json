@@ -44,7 +44,8 @@
     "precommit": "npm run validate:routes && npm run type-check:worker",
     "deploy:staging": "bash scripts/deploy-staging.sh",
     "deploy:production": "bash scripts/deploy-production.sh",
-    "audit:check": "bash scripts/check-npm-audit.sh"
+    "audit:check": "bash scripts/check-npm-audit.sh",
+    "smoke:mall": "node scripts/smoke-mall-render.mjs"
   },
   "dependencies": {
     "@capacitor-community/admob": "6.2.0",

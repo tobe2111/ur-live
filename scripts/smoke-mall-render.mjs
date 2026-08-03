@@ -126,6 +126,54 @@ try {
     console.log(`   📸 ${OUT}/mall-home-${mode}.png`)
     await ctx.close()
   }
+  // ── 사장님 화면 B·D ────────────────────────────────────────────────────
+  // 🔴 대시보드는 **라이트 한 벌**이다(의뢰서 §5.2 — 다크는 만들지 마세요). 그래서 한 모드만 본다.
+  //   인증은 localStorage 토큰 스텁 + API 인터셉트로 통과시킨다(진짜 로그인을 하려는 게 아니다).
+  const sellerCtx = await browser.newContext({ viewport: { width: 430, height: 1600 }, deviceScaleFactor: 2 })
+  await sellerCtx.addInitScript(() => {
+    try {
+      localStorage.setItem('seller_token', 'smoke')
+      localStorage.setItem('user_type', 'seller')
+      localStorage.setItem('user_id', '1')
+      localStorage.setItem('ur_theme_mode_v1', 'light')
+    } catch { /* private */ }
+  })
+  await sellerCtx.route('**/api/seller/**', (route) => {
+    const u = route.request().url()
+    let body = { success: true, data: [] }
+    if (u.includes('/surface')) body = { success: true, wholesale_only: false }
+    if (u.includes('/returns')) body = { success: true, data: [] }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
+  })
+  await sellerCtx.route('**/api/returns/seller**', (route) => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ success: true, data: [
+      { id: 1, order_id: 260810031, status: 'requested', reason: '픽업일에 방문이 어려워졌어요.',
+        requested_at: '2026-08-10 04:00:00', order_total: 14000, shipping_name: '김민서' },
+      { id: 2, order_id: 260808019, status: 'approved', reason: '수량을 잘못 눌렀어요.',
+        requested_at: '2026-08-08 04:00:00', order_total: 9600, shipping_name: '박지훈' },
+    ] }),
+  }))
+
+  for (const [name, path, expect1] of [
+    ['B 빠른 공구 등록', '/seller/products/quick', '빠른 공구 등록'],
+    ['D 반품 큐', '/seller/returns', '반품 요청이에요'],
+  ]) {
+    const page = await sellerCtx.newPage()
+    const errs = []
+    page.on('pageerror', (e) => errs.push(String(e)))
+    await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })
+    const seen = await page.getByText(expect1, { exact: false }).count().catch(() => 0)
+    check(`[${name}] 렌더 + 런타임 에러 0`, seen > 0 && errs.length === 0, errs[0] || `"${expect1}" 확인`)
+
+    // 🔴 대시보드 라이트 고정 — 다크 클래스가 붙으면 정책 위반이다(check-dashboard-theme 의 렌더판).
+    const isDark = await page.evaluate(() => document.documentElement.classList.contains('dark'))
+    check(`[${name}] 다크 클래스 없음`, !isDark, isDark ? 'dark 붙음' : '라이트 고정')
+
+    await page.screenshot({ path: `${OUT}/${path.replace(/\W+/g, '-').replace(/^-|-$/g, '')}.png`, fullPage: true })
+    await page.close()
+  }
+  await sellerCtx.close()
 } finally {
   await browser.close()
   if (dev) { try { process.kill(-dev.pid) } catch { dev.kill('SIGKILL') } }
