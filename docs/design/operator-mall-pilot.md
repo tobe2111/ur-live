@@ -263,11 +263,26 @@ src/shared/mall/branding.ts
 > (`tailwind.config.js` 의 `rose: MONO` 리맵 — 살아남는 기능색은 `red` 하나뿐 → `red-*`).
 > ⇒ 이 시안의 색은 **`red` 외의 기능색을 쓰지 말 것**. 판정: `npm run smoke:mall`.
 
-### 🟡 남은 시안 — A-2 옵션 / 수량 스테퍼 / 하단 고정 바
+### ✅ A-2 옵션 / 수량 스테퍼 / 하단 고정 바
 
-`ProductDetailPage.tsx` 가 **정확히 978줄로 동결**돼 있어 한 줄도 못 늘린다 ⇒
-`src/pages/product-detail/` 로 추출이 선행돼야 한다(`ReceiveMethodNotice.tsx` 가 선례).
-이 파일은 **본진 공용**이라 몰 전용 분기 금지 — 경계는 `isMallProduct`/`hasPickupInfo` 가 판정한다.
+| 시안 요소 | 구현 |
+|---|---|
+| 옵션 52px 채움 행(선택=잉크 / 미선택=`#F1EDEF` / 품절=`#F7F5F6`) | `product-detail/PurchasePicker.tsx` |
+| 옵션 0개 → 회색 안내줄 `선택할 옵션이 없는 상품이에요` | 같은 파일 (이전엔 **누를 수 없는 버튼**에 `옵션을 선택해주세요` — 고르라는 지시로 읽혔다) |
+| 수량 44px 스테퍼 pill | 같은 파일 |
+| 하단 고정 바 2줄(`1개 · 8월 10일 픽업` + 합계) · `1 : 1.6` 버튼 · `padding-bottom 28px` | `components/product/floating-action-bar.tsx` `variant='pickup'` |
+
+**판정은 `hasPickupInfo(product.pickup)`** — `ReceiveMethodNotice.tsx` 와 같은 원칙이다
+(몰이 아니라 픽업 데이터가 결정 → 본진 픽업 상품도 같은 화면, 몰 결합 0).
+`ProductDetailPage.tsx` 는 추출로 **978 → 939줄**(baseline 갱신).
+
+🔴 **`default` 는 안 바뀐다.** 이 페이지는 본진 쇼핑 전체가 쓴다 — 본진 재디자인은 의뢰 범위가 아니다.
+`product-detail-purchase-picker.test.ts` **R3** 가 그것을 불변식으로 고정한다
+(본진 라벨 `바로 구매`, 공백 있음 / 픽업 라벨 `바로구매`).
+
+**시안과 일부러 다른 곳 2개**
+1. **찜 하트를 남겼다.** 시안 하단 바엔 없지만 *기능 제거*는 시안의 권한 밖이라 자리만 좁혔다.
+2. **적립 단위는 `딜`.** 시안은 `210원 적립` 이지만 유어딜 적립 단위는 딜이다 — 문장 모양만 지켰다.
 
 ### 행동이 바뀐 것 (표면이 아니다 — 리뷰 요망)
 

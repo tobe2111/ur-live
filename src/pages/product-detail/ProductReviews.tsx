@@ -218,7 +218,10 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
   useEffect(() => {
     if (!inView) return
     api.get(`/api/reviews/product/${productId}?limit=${limit}`)
-      .then(r => { if (r?.data?.success) setReviews(r.data.data.reviews) })
+      // 🔴 2026-08-02: 배열이 아니면 **빈 배열**. 이전엔 `r.data.data.reviews` 를 그대로 넣어서,
+      //   응답에 `reviews` 가 없기만 해도 아래 `reviews.length` 가 터지고 ErrorBoundary 가
+      //   **상품 상세 페이지 전체**를 삼켰다(리뷰 한 칸이 아니라 화면 전체). 렌더 스모크에서 실측.
+      .then(r => { if (r?.data?.success) setReviews(Array.isArray(r.data.data?.reviews) ? r.data.data.reviews : []) })
       .catch(() => { /* silent */ })
   }, [productId, limit, inView])
 
