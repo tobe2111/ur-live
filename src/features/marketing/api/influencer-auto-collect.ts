@@ -51,6 +51,13 @@ export type { DiscoveryKeyword, AutoCollectStats } from './influencer-collect-ty
 import type { AutoCollectStats, DiscoveryKeyword } from './influencer-collect-types'
 
 const CURSOR_KEY = 'ads_autocollect_cursor'
+/**
+ * 🎯 집중 축(마케팅대행사) 커서 — **읽기와 쓰기가 같은 문자열을 봐야 한다**.
+ *   2026-08-03 라이브 실측: 이 키를 리터럴로 두 곳(읽기·통계)에 흩어 놨더니 **쓰기가 아예 없었고**
+ *   읽기는 배치 목록에 없어 항상 `undefined` 였다 → 커서 영구 0 → 대행사 키워드 18개 중 앞 4개만
+ *   무한 반복(뒤 14개는 `found_total = 0`, `last_run_at = null`). 상수로 묶어 갈라지지 않게 한다.
+ */
+const FOCUS_CURSOR_KEY = 'ads_autocollect_cursor_focus'
 const STATS_KEY = 'ads_autocollect_stats'
 
 
@@ -225,9 +232,12 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   const kws = active?.results || []
-  // 🧮 이 실행이 쓰는 설정을 **한 번에** 읽는다(2026-07-29) — 통계·커서2·학습상한·YT카운터를 낱개로 읽으면
+  // 🧮 이 실행이 쓰는 설정을 **한 번에** 읽는다(2026-07-29) — 통계·커서3·학습상한·YT카운터를 낱개로 읽으면
   //   읽기에만 5 서브리퀘스트, 그만큼 발굴 fetch 가 줄어든다(D1 도 한도에 포함, #784).
-  const SETTING_KEYS = [STATS_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY]
+  //   ⚠️ **여기 없는 키를 `settings[...]` 로 읽으면 값이 아니라 `undefined` 가 온다** — 에러가 아니라
+  //   기본값으로 조용히 떨어진다. 집중 축 커서가 정확히 그래서 항상 0 이었다(#930 → 2026-08-03 수리).
+  //   새 키를 읽기 전에 이 배열에 넣을 것. `ads-keyword-focus-split` 이 기계로 대조한다.
+  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY]
   const settings = await readSettings(DB, SETTING_KEYS)
   let prev: AutoCollectStats | null = null
   try { prev = settings[STATS_KEY] ? JSON.parse(settings[STATS_KEY] as string) as AutoCollectStats : null } catch { prev = null }
@@ -254,7 +264,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const genPool = kws.filter(k => !inFocus(k) && !(k.category && PRIORITY_CATEGORIES.includes(k.category)))
   let priCursor = parseInt(settings['ads_autocollect_cursor_pri'] || '0', 10)
   if (!Number.isFinite(priCursor) || priCursor < 0) priCursor = 0
-  let focusCursor = parseInt(settings['ads_autocollect_cursor_focus'] || '0', 10)
+  let focusCursor = parseInt(settings[FOCUS_CURSOR_KEY] || '0', 10)
   if (!Number.isFinite(focusCursor) || focusCursor < 0) focusCursor = 0
   let cursor = parseInt(settings[CURSOR_KEY] || '0', 10)
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
@@ -506,7 +516,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const priDone = prefixDone(priPicks)
   const genDone = prefixDone(genPicks)
   const nextPriCursor = priPool.length ? (priCursor + priDone) % priPool.length : 0
-  const nextFocusCursor = focusPool.length ? (focusCursor + nFocus) % focusPool.length : 0
+  //   🎯 집중 축도 **처리된 접두**만큼만 민다(2026-08-03). 예전엔 `+ nFocus`(계획한 수)였는데,
+  //   예산은 보통 픽 4개를 다 못 돌아 안 돈 키워드를 건너뛰었다 — 위 leapfrog 와 같은 병이다.
+  const focusDone = prefixDone(focusPicks)
+  const nextFocusCursor = focusPool.length ? (focusCursor + focusDone) % focusPool.length : 0
   const nextCursor = genPool.length ? (cursor + genDone) % genPool.length : 0
   // 🎯 YT 예산 소진으로 스킵됐고 다른 에러가 없으면 사유 노출(QUOTA 프리픽스 = 기존 배너 스타일 재사용).
   if (ytBudgetBlocked && !diag.yt.error) diag.yt.error = `QUOTA: 오늘 YT 검색 예산(${ytBudgetTotal}회) 소진 — 쿼터 리셋(한국 오후 4~5시) 후 자동 재개`
@@ -523,6 +536,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // 🧮 커서·카운터·통계를 1 batch 로 저장(2026-07-29) — 낱개 4 write = 4 서브리퀘스트였다.
   await writeSettings(DB, [
     [YT_USED_KEY, `${ytDay}:${ytSearchUsed}`],
+    // 🎯 집중 축 커서 — 이 줄이 없어서 대행사 키워드 18개 중 앞 4개만 무한 반복했다(2026-08-03 수리).
+    //   통계 JSON 에 `focus_cursor` 를 넣는 것만으론 **다음 회차가 안 읽는다**(읽기는 이 키를 본다).
+    [FOCUS_CURSOR_KEY, String(nextFocusCursor)],
     ['ads_autocollect_cursor_pri', String(nextPriCursor)],
     [CURSOR_KEY, String(nextCursor)],
     [STATS_KEY, JSON.stringify(stats)],

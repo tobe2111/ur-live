@@ -30,6 +30,8 @@
  *   값의 유효성은 그 키를 쓰는 호출의 실패로만 드러난다.
  */
 
+import { canonicalCron } from './cron-expected'
+
 /** 한 cron 블록이 요구하는 env 하나. */
 export interface CronEnvRequirement {
   /** env 키 이름. */
@@ -43,7 +45,7 @@ export interface CronEnvRequirement {
 /**
  * cron 식 → 그 블록이 요구하는 env.
  *
- * ⚠️ **지금 등록된 블록만** 담는다(`*\/5`·`0 18`·`0 19`). 미등록 블록의 키를 넣으면
+ * ⚠️ **지금 등록된 블록만** 담는다(`*\/5`·`0 18`·`0 19`·`0 20 일요일`). 미등록 블록의 키를 넣으면
  *   "안 도는 것"과 "돌지만 못 하는 것"이 한 목록에 섞여 판정이 흐려진다.
  *   블록을 점화할 때 그 블록의 요구사항을 **같은 PR 에서** 여기 추가할 것.
  */
@@ -100,6 +102,21 @@ export const CRON_REQUIRED_ENV: Readonly<Record<string, readonly CronEnvRequirem
       silently: '결제 상태가 막힌 주문을 Toss 에 물어보지 못해 영원히 stuck 으로 남는다.',
     },
   ],
+  // 🗄️ 2026-08-03: 주간 D1 백업이 #971 로 **점화됐다**(죽은 워커를 정리해 슬롯 회수).
+  //   그런데 cron 캐리어에 **R2 바인딩이 하나도 없다**(실측: 배포 후 12개 중 r2_bucket 0).
+  //   `handleD1Backup` 은 버킷이 없으면 2026-06-12 수리 이후 **throw** 하므로 조용히 넘어가진
+  //   않는다 — 다만 그건 **일요일에야 알게 된다**는 뜻이다. 여기 적어 두면 5분마다가 아니라
+  //   그 회차에, 그리고 아래 키 명부로 **지금** 알 수 있다.
+  //   ⚠️ 키는 canonical(`0 20 * * 0`)로 적는다 — 실제 등록 문자열은 `0 20 * * SUN` 이고
+  //     조회 시 `canonicalCron` 이 맞춰 준다(별칭을 여기 넣으면 명부가 두 벌이 된다).
+  '0 20 * * 0': [
+    {
+      key: 'BACKUP_BUCKET',
+      jobs: ['d1-backup'],
+      silently:
+        '주간 D1 백업이 R2 에 못 올라간다 — Time Travel(30일) 밖 보존이 0 이 되어 재해복구 수단이 사라진다.',
+    },
+  ],
 }
 
 /**
@@ -108,7 +125,9 @@ export const CRON_REQUIRED_ENV: Readonly<Record<string, readonly CronEnvRequirem
  * 빈 문자열도 부재로 본다 — 대시보드에서 빈 값으로 저장한 경우가 미설정과 같은 결과를 낸다.
  */
 export function missingEnvFor(cron: string, env: Record<string, unknown>): CronEnvRequirement[] {
-  const reqs = CRON_REQUIRED_ENV[cron]
+  // 🔑 별칭 흡수: 실제 등록 문자열은 `0 20 * * SUN` 인데 명부 키는 canonical `0 20 * * 0` 이다.
+  //    맞추지 않으면 그 블록의 요구사항이 **영원히 평가되지 않는다**(조용한 사각지대).
+  const reqs = CRON_REQUIRED_ENV[canonicalCron(cron)]
   if (!reqs) return []
   return reqs.filter((r) => {
     const v = env?.[r.key]
@@ -171,7 +190,7 @@ export const ENV_ALL_PRESENT = 'ok — 요구 키 전부 존재'
  * `if (missing.length > 0)` 로 되돌아가는 회귀는 "정상일 때 null 을 돌려준다"로 잡힌다.
  */
 export function envBeatFor(cron: string, env: Record<string, unknown>): string | null {
-  if (!CRON_REQUIRED_ENV[cron]?.length) return null
+  if (!CRON_REQUIRED_ENV[canonicalCron(cron)]?.length) return null
   const missing = missingEnvFor(cron, env)
   // ⚠️ 여기서 '빠진 게 없으면 null' 로 바꾸지 말 것 — 그러면 옛 행이 남아 거짓말을 시작한다
   //    (위 ENV_ALL_PRESENT 주석의 실측 사고). 요구사항이 있는 cron 은 **매 회차** 덮어쓴다.

@@ -675,7 +675,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     try {
       const { results } = await DB.prepare(`
         SELECT
-          SUBSTR(COALESCE(u.display_name, u.email, '익명'), 1, 1) || '**' AS masked_name,
+          SUBSTR(COALESCE(u.name, u.email, '익명'), 1, 1) || '**' AS masked_name,
           u.profile_image AS avatar,
           p.id AS product_id,
           p.name AS product_name,
@@ -714,7 +714,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     try {
       const { results } = await DB.prepare(`
         SELECT
-          SUBSTR(COALESCE(u.display_name, u.email, '익명'), 1, 1) || '**' AS masked_name,
+          SUBSTR(COALESCE(u.name, u.email, '익명'), 1, 1) || '**' AS masked_name,
           u.profile_image AS avatar,
           o.created_at,
           oi.quantity

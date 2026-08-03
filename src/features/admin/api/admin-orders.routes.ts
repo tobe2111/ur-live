@@ -123,7 +123,7 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
                COALESCE(o.shipping_address,'') as shipping_address,
                COALESCE(o.shipping_address_detail,'') as shipping_address_detail,
                COALESCE(o.shipping_zipcode, o.shipping_postal_code, '') as shipping_zipcode,
-               COALESCE(o.courier, o.tracking_company, '') as courier,
+               COALESCE(o.courier, o.shipping_company, '') as courier,   -- 2026-08-02: tracking_company 는 실컬럼 아님(쿼리 전체가 던졌다)
                COALESCE(o.tracking_number,'') as tracking_number,
                o.created_at, o.updated_at,
                COALESCE(u.name, '') as user_name,
@@ -242,7 +242,7 @@ adminOrdersRoutes.get('/orders/:orderNumber', cors(), async (c) => {
                COALESCE(o.shipping_address, '') as shipping_address,
                COALESCE(o.shipping_address_detail, '') as shipping_address_detail,
                COALESCE(o.shipping_zipcode, o.shipping_postal_code, '') as shipping_zipcode,
-               COALESCE(o.courier, o.tracking_company, '') as courier,
+               COALESCE(o.courier, o.shipping_company, '') as courier,   -- 2026-08-02: tracking_company 는 실컬럼 아님(쿼리 전체가 던졌다)
                COALESCE(o.tracking_number, '') as tracking_number,
                o.created_at, o.updated_at,
                COALESCE(u.name, '') as user_name,

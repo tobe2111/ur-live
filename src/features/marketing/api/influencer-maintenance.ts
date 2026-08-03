@@ -9,10 +9,10 @@ import type { Env } from '@/worker/types/env'
 import { ensureInfluencerSchema, extractContacts, stripVideoTitles } from './influencer-discovery'
 import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch, enrichNaverActivity, poolScanShouldStop } from './influencer-performance'
 import { cleanSelfLinks, SELF_BLOG_LIKE } from './influencer-self-link'
-import { runQualityPass } from './influencer-quality'
+import { runQualityPass, QUALITY_DEADLINE_MS_FREE } from './influencer-quality'
 import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS } from './collect-lease'
 import { MAINT_PHASE_CURSOR_KEY, MAINT_SCHEDULE_VERSION, parsePhaseCursor, formatPhaseCursor, nextPhaseSlot } from './maintenance-phase-cursor'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue } from './collect-budget'
 import { budgetedDb, newOpBudget, type OpBudget } from './maintenance-budget'
 import { healNaverHandles } from './influencer-handle-heal'
 // 📍 지역 백필 — 여기(정비 인보케이션)가 제자리다. 근거는 `sweepRegions` 주석.
@@ -451,7 +451,8 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
     else if (phase === 'reclassify') out.reclassify = await runReclassifyPool(bdb, { budget })
     else if (phase === 'handle') out.handle = await healNaverHandles(bdb, { budget })
     else if (phase === 'selflink') out.selflink = await cleanSelfLinkNoise(bdb, { budget })
-    else out.quality = await runQualityPass(bdb, { budget })
+    // ⏱️ 마감선도 요금제를 따른다 — 유료는 CPU 한도가 다른 세계라 같은 값이면 늘어난 한도가 그냥 남는다.
+    else out.quality = await runQualityPass(bdb, { budget, deadlineMs: envPlanValue(undefined, QUALITY_DEADLINE_MS_FREE, 12_000, env) })
   } catch (e) {
     out[`${phase}_error`] = (e as Error)?.message || 'fail'
   } finally {

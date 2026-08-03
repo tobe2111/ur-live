@@ -39,7 +39,7 @@ export async function handleSellerChurnDetect(env: Env): Promise<void> {
       SELECT
         s.id AS seller_id,
         s.name AS seller_name,
-        s.user_id,
+        s.linked_user_id AS user_id,
         s.agency_id,
         (julianday('now') - julianday(MAX(p.created_at))) AS days_since_last_post,
         AVG(CASE WHEN p.group_buy_target > 0 THEN p.group_buy_current * 1.0 / p.group_buy_target ELSE NULL END) AS recent_avg_completion

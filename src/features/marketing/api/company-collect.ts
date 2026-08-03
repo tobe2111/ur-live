@@ -12,7 +12,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue } from './collect-budget'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
 import { buildKeywordRows, rotationWindow, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
@@ -485,6 +485,22 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
  */
 const SWEEP_BOOKKEEPING_RESERVE = 6
 
+/**
+ * ⏱️ **회차 벽시계 마감선** (2026-08-03 — 대표 승인 "다른 고비용 레인도 같은 방식으로")
+ *
+ * 이 스윕은 실측 **31초**를 썼다(`cpu_risk=danger`, 침묵 목록 1위). 예산(`budget.left`)은
+ * **요청 수**만 세는데, 카카오 조회 한 번의 *응답 시간*은 아무도 안 본다 — 예산이 남아 있는 한
+ * 느린 응답이 계속 쌓여 부모 cron 의 CPU 를 태운다(`dispatch-budget.ts` 가 기록한 그 구조:
+ * 부모가 죽으면 매달린 자식이 전부 끌려간다).
+ *
+ * ✅ **여기는 기아 걱정이 없다** — 대상 선택이 `kakao_checked_at < now-30days` 이고 도장은
+ *   **실제 시도한 행에만** 찍힌다(2026-07-28 수리). 마감선에 잘린 행은 도장이 없으니
+ *   다음 라운드에 그대로 다시 잡힌다. 그래서 회전 커서가 따로 필요 없다.
+ *   (`notice-scan`·`email-mx-sweep` 은 선택이 고정 순서라 회전을 같이 넣어야 했다 — 구조가 다르다.)
+ */
+const SWEEP_RUN_DEADLINE_MS = 12_000
+const SWEEP_RUN_DEADLINE_MS_PAID = 24_000
+
 export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; found: number; cursor: number; done: boolean; tried?: number; limit_hit?: boolean; day_lookups?: number }> {
   const DB = env.DB
   const schemaSpent = await ensureCompanySchema(DB) // 스키마 DDL 실비(아래 예산에서 차감)
@@ -517,10 +533,14 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   const budgetTotal = resolveSubreqBudget(cap, learnedCap, pcap)
   const budget: FetchBudget = { left: budgetTotal - schemaSpent }
   let found = 0
+  const startedAt = Date.now()
+  const runDeadlineMs = envPlanValue(undefined, SWEEP_RUN_DEADLINE_MS, SWEEP_RUN_DEADLINE_MS_PAID, env)
+  let stoppedBy: string | undefined
   const tried: number[] = []                                   // 시도한 행 → 도장(배치 1회)
   const hits: Array<{ id: number; phone: string }> = []        // 전화 확보분 → 저장(배치 1회)
   for (const r of rows) {
-    if (budget.left <= SWEEP_BOOKKEEPING_RESERVE || budget.limitHit) break // 아래 부기 몫을 남겨둔다(상수 주석 참조)
+    if (budget.left <= SWEEP_BOOKKEEPING_RESERVE || budget.limitHit) { stoppedBy = 'budget'; break } // 아래 부기 몫을 남겨둔다(상수 주석 참조)
+    if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }
     const k = await kakaoLocalLookup(key, r.company_name, r.region, r.address, budget)
     if (budget.limitHit) break // 한도 도달 — 이 행은 조회된 적 없으므로 도장도 찍지 않는다(다음 라운드 재시도)
     tried.push(r.id)
@@ -557,6 +577,8 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
     last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), scanned: rows.length, found, tried: tried.length, total_found: totalFound + found,
     day: kstToday, day_lookups: dayLookups + tried.length,
     limit_hit: !!budget.limitHit, // 한도로 조기 중단했는가 — true 면 남은 행은 커서 미전진(다음 라운드 재시도)
+    // 📟 왜 멈췄는지 — 'deadline' 이면 예산이 아니라 시간이 병목이다(둘의 처방이 다르다).
+    stopped_by: stoppedBy,
   })).run().catch(() => null)
   return { scanned: rows.length, found, cursor: 0, done: false, tried: tried.length, limit_hit: !!budget.limitHit, day_lookups: dayLookups + tried.length }
 }

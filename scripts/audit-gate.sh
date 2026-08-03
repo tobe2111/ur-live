@@ -105,6 +105,7 @@ if domain ui; then
   run "링크샵 소유권 단일화"              node scripts/check-linkshop-ownership.mjs -s
   run "소비자 이미지 cfImage 경유"        env STRICT_RAW_IMG=1 node scripts/check-consumer-img-cfimage.mjs
   run "KST 타임스탬프 파싱(9시간 어긋남)"  env STRICT_UTC_DATE=1 node scripts/check-utc-date-parse.mjs
+  run "커서 저장이 무한 루프 뒤(전진 0)"    node scripts/check-cursor-after-loop.mjs --strict
   # 2026-07-29 신규 등록 — 셋 다 파일은 예전부터 있었는데 어디에서도 실행되지 않고 있었다.
   run "input 라이트 가시성(흰글자)"       env STRICT_INPUT_TEXT=1       node scripts/check-input-text-color.mjs
   run "i18n 6개 언어 동기화"             node scripts/check-i18n-sync.mjs

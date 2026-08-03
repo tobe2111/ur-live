@@ -9,7 +9,7 @@
 ## 🚦 한 줄 점검
 
 ```bash
-bash scripts/audit-gate.sh           # 전체 (83개 불변식)
+bash scripts/audit-gate.sh           # 전체 (84개 불변식)
 bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|money|schema|classify|ui|structure|deploy)
 ```
 
@@ -39,6 +39,7 @@ bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|mone
 | **도매주문 상태머신** | wholesale_orders.status 가 canonical 집합만(정의 밖 오타/고아 상태 write 0) — 전이는 transitionWholesaleOrder | `check-wholesale-order-status` | 2026-06-27 (B2B 플로우 상태머신 신설: 수락/거절/취소/구매확정 + 발송 전 정산보류) |
 | **UI·테마·첫페인트** | dark variant 일관성, RQ initialData 신선도, 모바일 하단잘림 | `check-theme-consistency` · `check-query-initialdata` · `check-mobile-viewport` | 2026-06-26 (크래시/빈상태 clean) |
 | **시각 표기(KST 정합)** | DB 타임스탬프(`CURRENT_TIMESTAMP`/`datetime('now')` = UTC·`Z` 없음)를 `new Date()` 로 순진하게 파싱 금지 — 브라우저는 로컬(KST)로 오해석하고 워커는 `.toLocaleString('ko-KR')` 이 UTC 시각을 한국어로 찍어 **9시간 어긋남**. SSOT = `src/utils/date.ts`(`parseUTCDate`/`formatKST*`/`kstDayStartMs`·`kstDayEndMs`). 규칙 A(어디서든 `new Date(x.created_at).toLocale*` 금지) + 규칙 B(pages/components/hooks 는 비교·정렬까지 금지). 래칫(`utc-date-baseline.json`) — 신규/증가만 차단, 잔여분은 점진 정리 | `check-utc-date-parse` (래칫, `--rebaseline`) | 2026-07-27 (어드민 최근 활동 전수조사 — 연속 주문 감지 영구 미발동·알림톡 주문일시 9h 이름·주문 날짜필터 경계 누락·교환권 만료일 하루 이름 fix 후 신설. **서버/워커측 잔여 0**, 클라 87건 동결) |
+| **레인 전진(조용한 전진 0)** | 커서를 `platform_settings` 에 저장하는 지점 **앞** 창에 루프가 있는데 그 루프에 **시간 상한**(`Date.now() - t0`·`deadline`·`shouldStop`)이 없으면 차단. 루프가 CPU/시간 한도로 죽으면 뒤의 커서 저장에 **도달하지 못해** 다음 회차가 같은 지점을 또 훑고 또 죽는다 ⇒ **영원히 전진 0**(에러는 '느린가 보다'로 읽힌다). 마감선 중단은 `done` 을 **false** 로 남길 것 — true 면 커서가 0 으로 리셋돼 풀 뒷부분이 영영 처리되지 않는다. ⚠️ 함수 경계를 모르는 120줄 창 휴리스틱이고 CPU 실사용량은 판단하지 않는다 → **래칫**(신규만 차단) | `check-cursor-after-loop` (래칫, `--rebaseline`) | 2026-08-03 (같은 실패가 **두 번** 났다: commerce 08-02 · quality 08-03. `ads-cpu-deadline` 이 문서로 확정해 뒀는데도 다음 레인에서 재발 — 문서로는 못 막는다는 증거) |
 | **코드 구조(god 파일 방지)** | 신규 파일 600줄 초과 차단 + 기존 대형 파일이 `file-size-baseline.json`(82개 동결)보다 성장 시 차단(줄이는 건 OK) → god 파일 재발 0 | `check-file-size` (래칫, `--rebaseline` 로 동결값 갱신) | 2026-06-29 (대표 "리팩토링 반복 말고 애초에 막아라" — MyVouchersPage 1296→386·GroupBuyListPage 1309→827 분해 후 동결). 2026-07-11: PR CI(verify.yml)는 `--changed-only`(merge-base vs origin/main 변경 파일만 판정 — main 드리프트가 무관한 PR 을 실패시키던 문제 차단, 당일 3회 재발); 게이트/rebaseline 은 전수 `-a` 유지 |
 | **빌드·배포 안전** | vite 단독빌드/405 라우터/SW등록/하드코딩 시크릿 금지 | `check-build-command` · `check-router-patterns` · `check-no-sw-register` · `check-no-secrets` | (상시 가드) |
 | **KV delete 무료한도** | ① `cacheInvalidate`(worker/utils/cache.ts) KV.delete 는 `L2_KV_ENABLED` 게이트 뒤(쓰기 OFF 면 삭제 skip — 대칭) ② fan-out KV.delete(`arr.map/forEach(...=><kv>.delete)`) 무방비 추가 0. Cache API(`caches.default`)·단발 KV.delete(저빈도)는 무관 | `check-kv-delete-budget` | 2026-07-21 (KV delete 한도 초과 사고 — `cacheGet` L2 OFF 인데 삭제만 살아 28/호출 낭비) |

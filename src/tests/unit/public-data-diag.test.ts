@@ -18,7 +18,11 @@ describe('describePublicDataFailure — 원인별 조치 주체', () => {
     const msg = await describePublicDataFailure(resp(404,
       '<OpenAPI_ServiceResponse><cmmMsgHeader><returnAuthMsg>NO_OPENAPI_SERVICE_ERROR</returnAuthMsg></cmmMsgHeader></OpenAPI_ServiceResponse>'))
     expect(msg).toContain('NO_OPENAPI_SERVICE_ERROR')
-    expect(msg).toContain('코드에서 수정')
+    // ⚠️ 2026-08-03: 원래 `'코드에서 수정'` 리터럴이었다. 대조군 실측 후 문구가 바뀌면서 깨졌는데,
+    //   **지켜야 할 것은 리터럴이 아니라 조치 주체**다 — "이건 우리가 고칠 일이고 대표 활용신청 건이 아니다".
+    //   그래서 그 의미로 고쳐 잡는다(아래 미신청-키 시험과 짝: 그쪽은 '대표'가 나와야 한다).
+    expect(msg, '우리 쪽 조치(엔드포인트 교체)라는 것이 드러나야 한다').toMatch(/엔드포인트|요청주소/)
+    expect(msg, '경로 오류를 대표 활용신청 건으로 오인시키면 안 된다').not.toMatch(/활용신청/)
   })
 
   it('🔒 미신청 키는 **대표가 활용신청**으로 안내 (코드로는 못 고친다)', async () => {
@@ -86,5 +90,51 @@ describe('serviceKeyParam — 인코딩/디코딩 키 어느 쪽이 와도 같�
   it('빈값은 빈 문자열', () => {
     expect(serviceKeyParam(undefined)).toBe('')
     expect(serviceKeyParam(null)).toBe('')
+  })
+})
+
+/**
+ * 🚫 **오추론 방지 — `NO_OPENAPI_SERVICE_ERROR` 를 "폐기 확정"으로 읽으면 안 된다** (2026-08-03 대조군 실측).
+ *
+ * ## 무엇이 있었나
+ * 공정위 가맹 레인이 code 12 를 받는 것을 보고 나는 **"서비스 폐기 확정"** 이라고 인계 문서에 적었다(#985).
+ * 근거는 *"같은 키로 같은 기관(1130000)의 commerce 는 200 이니 권한이 아니라 서비스가 없는 것"* 이었다.
+ * 그 추론의 **앞부분은 맞고 뒷부분이 틀렸다** — 대조군을 찔러 보니:
+ *
+ * ```
+ *   1130000/MllBs_2Service                      → code 12   ← 살아있는 서비스(200·264만건)의 base 만
+ *   1130000/MllBs_2Service/getNoSuchOperation   → code 12   ← 살아있는 서비스 + 없는 오퍼레이션
+ *   1130000/FftcBrandRlsInfo2_Service/getBrandList → code 12
+ * ```
+ *
+ * **셋이 구분되지 않는다.** 이 코드는 "경로가 지금 안 맞는다"까지만 말하고, 그 이유가 폐기인지 오타인지는
+ * **원리적으로 모른다.** 힌트 문구는 원래도 두 가능성을 다 적고 있었지만, 나열만 하면 읽는 사람이
+ * **자기 가설에 맞는 쪽을 고른다** — 실제로 내가 그랬다.
+ *
+ * ## 이 시험이 지키는 것
+ * 힌트가 **오추론을 명시적으로 막는 문장**을 갖고 있을 것. 두 단어를 나열하는 것으론 부족하다.
+ *
+ * ## ⚠️ 이 시험이 못 보는 것
+ * 사람이 힌트를 안 읽는 것. 그리고 다른 코드(30/31 등)의 문구 품질은 여기서 안 본다.
+ */
+describe('🚫 code 12 를 "폐기 확정"으로 좁히지 못하게 한다', () => {
+  const hint = () => describePublicDataBody(JSON.stringify({
+    OpenAPI_ServiceResponse: { cmmMsgHeader: { errMsg: 'NO_OPENAPI_SERVICE_ERROR', returnReasonCode: '12' } },
+  })) || ''
+
+  it('🔒 code 12 를 힌트로 번역한다(번역 자체가 없으면 나머지가 무의미)', () => {
+    expect(hint()).toContain('NO_OPENAPI_SERVICE_ERROR')
+  })
+
+  it('🔒 **구분할 수 없다는 사실**이 문구에 있다 — 두 가능성 나열만으로는 부족하다', () => {
+    const h = hint()
+    expect(h, '"구분할 수 없다"는 경고가 없으면 읽는 사람이 자기 가설로 좁힌다(실제로 그랬다)').toMatch(/구분할 수 없/)
+    expect(h, '대조군 실측 근거가 같이 있어야 경고를 믿는다').toMatch(/살아있는 서비스도/)
+  })
+
+  it('🔒 **단정하지 말라**는 지시와 다음 행동이 함께 있다 — 경고만 있고 할 일이 없으면 무시된다', () => {
+    const h = hint()
+    expect(h).toMatch(/단정하지 말/)
+    expect(h, '무엇과 대조해야 하는지가 있어야 다음 세션이 움직인다').toMatch(/요청주소/)
   })
 })

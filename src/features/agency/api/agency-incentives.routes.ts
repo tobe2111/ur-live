@@ -275,13 +275,31 @@ export async function calculatePayouts(
   const rules = rulesRes.results || []
   const baseRate = agencyRow?.commission_rate ?? 2.0
 
-  // 2) 셀러별 KPI 집계 (해당 월)
+  /**
+   * 2) 셀러별 KPI 집계 (해당 월)
+   *
+   * ⭐ 2026-08-02 [평점 출처 정정] `sellers.avg_rating` 은 **실컬럼이 아니다** — 프로덕션 pragma 0.
+   *   SQLite 는 없는 컬럼을 NULL 로 봐주지 않고 **쿼리 전체를 던지므로**, 이 KPI 집계는
+   *   `sellerStats` 가 **항상 빈 배열**이었다(= 인센티브 산정이 통째로 불가). 실측으로 확인.
+   *   평점의 실제 출처는 `product_reviews.rating` 이라 그 매장 상품 리뷰로 집계한다.
+   *
+   * ⚠️ 값의 의미가 "셀러 평점 컬럼" → "그 셀러 상품 리뷰 평균" 으로 바뀐다. 저장 컬럼은 존재한
+   *   적이 없으니 원래 의도가 그것이고, 리뷰가 없으면 0 이다 — 종전(=전체 실패)보다 나쁠 수 없다.
+   *   **인센티브 수식·가중치는 무변경.**
+   *
+   * ⛔ 이 템플릿 리터럴 안 SQL 주석(`--`)에 백틱을 쓰지 말 것 — 리터럴이 끊겨 파싱이 깨진다
+   *   (2026-08-02 에 실제로 tsc 를 깨뜨렸다). 설명은 이렇게 밖에 둔다.
+   */
   const { results: sellerStats } = await DB.prepare(`
     SELECT
       ag.seller_id,
       COALESCE(SUM(o.total_amount), 0) AS sales,
       COUNT(o.id) AS orders,
-      COALESCE(AVG(s.avg_rating), 0) AS rating,
+      COALESCE((
+        SELECT AVG(pr.rating) FROM product_reviews pr
+         JOIN products pp ON pp.id = pr.product_id
+        WHERE pp.seller_id = ag.seller_id AND COALESCE(pr.is_visible, 1) = 1
+      ), 0) AS rating,
       (SELECT COUNT(*) FROM live_streams ls WHERE ls.seller_id = ag.seller_id AND ls.created_at >= ? AND ls.created_at < ?) AS streams,
       (SELECT COALESCE(SUM(ls.peak_viewers), 0) FROM live_streams ls WHERE ls.seller_id = ag.seller_id AND ls.created_at >= ? AND ls.created_at < ?) AS viewers
     FROM agency_sellers ag

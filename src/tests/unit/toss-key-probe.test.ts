@@ -70,12 +70,31 @@ describe('진단이 조용히 사라지지 않는다', () => {
     expect(SRC).not.toMatch(/not configured[^]*?\n\s*return;/)
   })
 
-  it('폐기된 FIREBASE_PRIVATE_KEY 를 요구하지 않는다', () => {
+  it('거짓 🔴 를 낼 키를 요구하지 않는다 (하드코딩 목록 폐지)', () => {
     // 2026-07-28 에 Firebase 인증 수용을 제거했다. 목록에 남아 있으면 매일 거짓 🔴 가 나가고,
     // 알림 채널을 켜는 순간 늑대소년이 된다.
-    const required = SRC.match(/const requiredSecrets = \[([^\]]*)\]/s)?.[1] ?? ''
-    expect(required.length).toBeGreaterThan(10)          // 측정 대상 0이면 통과가 아니라 실패
-    expect(required).not.toContain('FIREBASE_PRIVATE_KEY')
+    //
+    // 🔄 2026-08-02: **하드코딩 목록(`requiredSecrets`) 자체를 없앴다.** 남아 있던 세 키
+    //   (`JWT_SECRET`·`REFRESH_TOKEN_SECRET`·`KAKAO_REST_API_KEY`)가 **같은 병**이었기 때문이다 —
+    //   전부 Pages 에만 있고 cron 캐리어엔 없는 게 정상인데 매일 🔴 로 나가고 있었다.
+    //   이제 `CRON_REQUIRED_ENV`(등록된 cron 블록만 담는 SSOT)에서 파생한다 ⇒ 드리프트가 구조적으로 0.
+    //
+    //   ⚠️ 이 테스트가 **바로 그 변경을 잡아냈다**(아래 "0이면 실패" 조항 덕분). 규율이 실제로
+    //      동작한 사례라 조항을 지우지 말고 **새 메커니즘으로 옮겨서** 유지한다.
+    expect(SRC).not.toMatch(/const requiredSecrets = \[/)   // 하드코딩으로 되돌아가지 말 것
+    expect(SRC).toContain('CRON_REQUIRED_ENV')
+    const derived = SRC.match(/const carrierKeys = \[([\s\S]{0,300}?)\]/)?.[1] ?? ''
+    expect(derived.length).toBeGreaterThan(10)              // 측정 대상 0이면 통과가 아니라 실패
+
+    // ⚠️ **주석을 걷어내고 본다.** 위 설명문이 바로 그 키 이름들을 인용하고 있어서, 원문을 그대로
+    //    검사하면 *사고를 설명한 문장 때문에* 빨간불이 뜬다(2026-08-02 에 실제로 그랬다 —
+    //    같은 날 `check-sql-column-exists` 도 똑같이 물려 `blankComments()` 를 넣었다).
+    const EXEC = SRC.replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n')
+    for (const dead of ['FIREBASE_PRIVATE_KEY', 'JWT_SECRET', 'REFRESH_TOKEN_SECRET']) {
+      expect(EXEC, `${dead} 는 이 캐리어에 없는 게 정상 — 매일 거짓 🔴 가 된다`)
+        .not.toMatch(new RegExp(`\\b${dead}\\b`))
+    }
   })
 
   it('키 값을 로그로 흘리지 않는다', () => {

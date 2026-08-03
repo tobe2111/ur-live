@@ -941,7 +941,7 @@ internalAdminToolsRoutes.get('/api/admin/pending-sellers', requireAdmin(), async
   try {
     const { results } = await c.env.DB.prepare(
       `SELECT s.id, s.username, s.business_name, s.business_number, s.representative_name,
-              s.business_start_date, s.phone, s.email, s.store_category, s.seller_type, s.status,
+              s.business_start_date, s.phone, s.email, s.seller_type, s.status,
               s.nts_verified_at, s.nts_verify_result,
               s.introduced_by_agency_id, s.introduced_by_influencer_id, s.created_at,
               p.proof_image_url AS prospect_proof_url,

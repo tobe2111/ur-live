@@ -52,10 +52,67 @@ async function ensureIsExperienceColumn(DB: D1Database): Promise<void> {
   _expColEnsured.add(DB as unknown as object)
 }
 
+/**
+ * 🚧 **Rail A(`restaurant_settlements`) 가 이 DB 에 실재하는가** (2026-08-02 실측 후 신설)
+ *
+ * ## 왜 이 확인이 생겼나 — 문서가 사실과 달랐다
+ *
+ * `settlement-reconciliation.md §Severe 3` 은 이용권 정산이 두 레일에 **"100% 중복 적재"** 된다고
+ * 적었다. 프로덕션 D1 을 직접 조회하니 **그 전제가 틀렸다**:
+ *
+ * | 대상 | 프로덕션 |
+ * |---|---|
+ * | `restaurant_settlements` 테이블 | **없음** (`no such table`) |
+ * | `vouchers.settlement_id` | **없음** |
+ * | `products.commission_rate` | **없음** — 이 컬럼은 애초에 존재한 적이 없다 |
+ *
+ * 셋 다 `restaurant-settlement.routes.ts` 의 `ensureSettlementTables()` 가 **어드민이 그 화면을
+ * 열었을 때만** 만든다. 아무도 안 열었다 ⇒ **Rail A 는 단 한 행도 만든 적이 없다.**
+ * 그동안 이 cron 은 매일 03:00 KST 에 첫 SELECT 에서 던지고 죽었다(디스코드/벨 경보만 남기고).
+ *
+ * ## 그래서 왜 "고쳐서 켜기"가 아니라 "건너뛰기"인가
+ *
+ * 실제 지급은 **Rail B**(`ledger_entries` → `payouts-generate` 주간 → 어드민 approve)가 한다.
+ * 여기서 테이블을 만들어 주면 그날부터 **과거 사용분 전체가 Rail A 에 한꺼번에 적재**되고,
+ * 두 레일은 서로의 멱등 마커를 안 본다 ⇒ **같은 매출을 두 번 지급**할 수 있다.
+ * 그건 머니 경로 변경이라 **단독 세션 + staging + 대표 승인** 영역이다(설계 문서가 파킹해 둔 안②).
+ *
+ * ⇒ 이 함수는 **판정만 한다. 절대 프로비저닝하지 않는다.**
+ *    (`auto-settlement-rail-a.test.ts` 가 이 파일에 `CREATE TABLE restaurant_settlements` /
+ *     `ALTER TABLE vouchers ADD COLUMN settlement_id` 가 들어오는 것을 막는다.)
+ *
+ * ⚠️ 이 판정이 **못 막는 것**: 어드민이 `/admin` 정산 화면을 한 번 열면 라우트가 테이블을 만들고,
+ *    그 다음 회차부터 이 cron 이 정상 진입한다. 즉 Rail A 는 **화면 한 번으로 깨어난다.**
+ *    그 경로까지 닫는 것은 게이트(`settlement_skip_ledgered`) flip 이고 대표 판단이다.
+ */
+export async function railAProvisioned(DB: D1Database): Promise<boolean> {
+  try {
+    const tbl = await DB.prepare(
+      "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='restaurant_settlements'"
+    ).first<{ n: number }>()
+    if (!Number(tbl?.n)) return false
+    const col = await DB.prepare(
+      "SELECT COUNT(*) AS n FROM pragma_table_info('vouchers') WHERE name='settlement_id'"
+    ).first<{ n: number }>()
+    return Number(col?.n) > 0
+  } catch {
+    // 조회 자체가 실패하면 **없는 것으로 본다** — 모르는 상태에서 정산을 만들지 않는다.
+    return false
+  }
+}
+
 export async function handleAutoSettlement(env: Env) {
   const DB = env.DB;
 
   try {
+    // 🚧 Rail A 미프로비저닝이면 여기서 끝. 아무것도 만들지 않는다(위 `railAProvisioned` 주석).
+    //   2026-08-02 현재 프로덕션이 이 경로다 — 그래서 이 cron 은 매일 조용히 no-op 이 된다.
+    //   ⚠️ 이건 "정산이 안 되고 있다"가 아니다. 지급은 Rail B(원장→payouts)가 한다.
+    if (!(await railAProvisioned(DB))) {
+      logInfo('[Cron] Auto-settlement: Rail A(restaurant_settlements) 미프로비저닝 — skip. 지급은 Rail B(원장→payouts).')
+      return;
+    }
+
     // Get platform-wide meal voucher commission rate (source of truth: platform_settings).
     // Default 5% aligns with group-buy DEFAULT_MEAL_VOUCHER_COMMISSION_RATE.
     let platformRate = 5;
@@ -94,6 +151,14 @@ export async function handleAutoSettlement(env: Env) {
       ? "AND NOT EXISTS (SELECT 1 FROM ledger_entries le WHERE le.reference_id = 'voucher:' || v.id AND le.event_type = 'voucher_used')"
       : '';
 
+    // 💸 2026-08-02 [머니] 수수료율 출처 정정 — `p.commission_rate` → `sellers.commission_rate`.
+    //   `products` 에는 `commission_rate` 컬럼이 **존재한 적이 없다**(프로덕션 pragma 실측 0,
+    //   `products-column-baseline.json` 97컬럼에도 없음). 그래서 이 SELECT 는 실행될 때마다
+    //   `no such column: p.commission_rate` 로 던졌다 — 회차 전체가 죽었다.
+    //   셀러별 수수료의 SSOT 는 `sellers.commission_rate`(REAL DEFAULT 5.00, 어드민 조정 대상 —
+    //   production-schema.ts:221 · CLAUDE.md '딜 포인트 시스템'). 미설정이면 platform_settings 폴백.
+    //   ⚠️ **분배식은 손대지 않았다** — COALESCE 폴백 순서·`platformRate` 바인딩·아래 Math.round
+    //      전부 그대로다. 바뀐 것은 "그 율을 어느 테이블에서 읽는가" 하나뿐.
     // 🛡️ 2026-05-30: 정산 매출 = 실제 결제가(applied_price). 미존재 시 정가(price) fallback.
     //   환불(applied_price)과 동일 기준 → 결제·정산·환불 폐루프 정합. 티어 할인 deal 과다정산(플랫폼 손실) 제거.
     // 🛡️ 전수조사 fix: 이 SELECT 가 참조하는 vouchers.is_experience 는 번호 마이그레이션이 없어
@@ -102,9 +167,10 @@ export async function handleAutoSettlement(env: Env) {
     await ensureIsExperienceColumn(DB)
     const usedVouchers = await DB.prepare(`
       SELECT v.id, v.product_id, v.order_id, v.applied_price, p.price, p.seller_id, p.restaurant_name,
-             COALESCE(p.commission_rate, ?) as commission_rate
+             COALESCE(s.commission_rate, ?) as commission_rate
       FROM vouchers v
       JOIN products p ON v.product_id = p.id
+      LEFT JOIN sellers s ON s.id = p.seller_id
       WHERE v.status = 'used'
         AND v.used_at < ?
         AND v.settlement_id IS NULL

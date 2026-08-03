@@ -57,6 +57,141 @@ const ONLY = (() => {
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '5xx 경보가 1건을 "스파이크"라 불러 매일 거짓 ⚠️ 를 냄',
+    file: 'src/worker/cron/daily-self-diagnostic.ts',
+    find: 'if (Number(row?.worst || 0) >= 10) issues.push',
+    replace: 'if (true) issues.push',
+    test: 'src/tests/unit/five-xx-observability.test.ts',
+    why:
+      '실측상 모든 창이 `count=1`(시간당 1건)인데 화면엔 ⚠️ 로 떴다. 스파이크 임계는 10/분이므로 ' +
+      '그건 스파이크가 아니다 — 거짓 경보이고, **진짜 스파이크가 왔을 때 구분이 안 된다.** ' +
+      '임계 미만은 정보로 남기고 🔴 는 실제로 넘었을 때만 올린다.',
+  },
+  {
+    name: '5xx 경보에 무엇이 실패했는지가 없어 조치 불가',
+    file: 'src/worker/middleware/error-rate-monitor.ts',
+    find: "VALUES (?, '5xx_path', ?, 1)",
+    replace: "VALUES (?, 'x', ?, 1)",
+    test: 'src/tests/unit/five-xx-observability.test.ts',
+    why:
+      '이 표엔 숫자만 있었다(`key=global`). "5xx 가 있었다"는 알아도 **어디서** 났는지 알 수 없어 ' +
+      '경보를 받고도 손에 쥔 것이 없었다. `key` 에 경로를 넣어 같은 표·같은 인덱스로 분포를 얻는다 ' +
+      '(스파이크 판정은 global 합계 그대로 — 경로가 갈려도 잡힌다).',
+  },
+  {
+    name: '카카오 전화 스윕이 마감선 없이 회차를 늘림(31초, 침묵 1위)',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: '',
+    test: 'src/tests/unit/ads-lane-deadlines.test.ts',
+    why:
+      '예산(`budget.left`)은 **요청 수**만 세고 응답이 얼마나 걸리는지는 안 본다. 예산이 남아 있는 한 ' +
+      '느린 카카오 조회가 계속 쌓여 부모 cron 의 CPU 를 태우고, 부모가 죽으면 매달린 자식이 전부 끌려간다.',
+  },
+  {
+    name: 'MX 스윕이 블록 고정 순서라 두 번째 블록이 영구히 굶음',
+    file: 'src/features/marketing/api/email-mx-sweep.ts',
+    find: 'if (firstIsCompany) { await runCompany(); await runProspects() }',
+    replace: 'await runCompany(); await runProspects()',
+    test: 'src/tests/unit/ads-lane-deadlines.test.ts',
+    why:
+      '마감선은 일을 줄이는 게 아니라 **미루는** 것이다. 블록 ①→② 순서가 고정이면 ①에서 마감선에 ' +
+      '걸릴 때 ②(매장 후보)는 **매 회차 한 번도 안 돌아** `cursorS` 가 영원히 멈춘다. ' +
+      '마감선을 넣으면서 이 회전을 빼면 **없던 기아를 새로 만드는 것**이다.',
+  },
+  {
+    name: '공고 스캐너가 마감선 없이 회차를 늘려 부모 CPU 를 태움',
+    file: 'src/features/marketing/api/notice-scan.ts',
+    find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: '',
+    test: 'src/tests/unit/notice-scan-deadline.test.ts',
+    why:
+      '이 레인은 실측 31초(cpu_risk=danger)였는데 예산 20 에 실제 호출은 6번뿐이라 **예산이 한 번도 안 걸린다**. ' +
+      '비용은 요청 수가 아니라 시간인데 시간을 재는 것이 없었다 — 공공 API 하나가 15초까지 버티니 최악 90초다. ' +
+      '부모 cron 이 그걸 못 버텨 자식을 끌고 죽는다(`dispatch-budget.ts` 가 기록한 그 구조).',
+  },
+  {
+    name: '마감선만 넣고 회전을 빼 뒤쪽 키워드가 영원히 굶음',
+    file: 'src/features/marketing/api/notice-scan.ts',
+    find: 'const kw = KEYWORDS[(kwFrom + i) % KEYWORDS.length]',
+    replace: 'const kw = KEYWORDS[i]',
+    test: 'src/tests/unit/notice-scan-deadline.test.ts',
+    why:
+      '마감선은 일을 줄이는 게 아니라 **미루는** 것이다. 시작점을 고정하면 매 회차 같은 앞쪽만 돌고 ' +
+      '뒤쪽 키워드는 **한 번도** 조회되지 않는다 — 레인 단위에서 이미 겪은 구조적 기아를 키워드 단위에서 ' +
+      '반복하는 셈이다. 마감선과 회전 커서는 반드시 같이 간다.',
+  },
+  {
+    name: '주간 백업이 products·sellers 를 조용히 빼먹음(커서 한 칸이 컬럼 한도 초과)',
+    file: 'src/worker/cron/d1-backup.ts',
+    find: 'SELECT * FROM ${table} WHERE ${pk} > ?',
+    replace: 'SELECT rowid, * FROM ${table} WHERE ${pk} > ?',
+    test: 'src/tests/unit/d1-backup-wide-tables.test.ts',
+    why:
+      'D1 결과 컬럼 한도는 100 인데 `products`·`sellers` 는 **이미 정확히 100컬럼**이다. ' +
+      '페이징용 `rowid` 한 칸을 더하면 101 이 되어 `too many columns in result set` 으로 ' +
+      '**그 두 테이블만** dump 에서 통째로 빠진다. 2026-08-03 첫 회차가 그렇게 나갔다 — ' +
+      '파일은 19MB 로 멀쩡해 보였고 알림도 "완료"였다. 그 백업으로 복구하면 상품도 셀러도 없다.',
+  },
+  {
+    name: '백업 실패를 catch 가 삼켜 하트비트에 ok:true 로 남음',
+    file: 'src/worker/cron/d1-backup.ts',
+    find: 'throw err instanceof Error ? err : new Error(msg);',
+    replace: 'return { success: false, error: msg };',
+    test: 'src/tests/unit/d1-backup-wide-tables.test.ts',
+    why:
+      '`safeCron` 은 **예외가 나야** ok:false 를 남기고 cron_failures 에 기록한다. 그냥 반환하면 ' +
+      '실패한 백업이 하트비트에서 성공처럼 보인다 — 재해복구에서 이건 가장 나쁜 거짓말이다. ' +
+      '같은 파일의 `BACKUP_BUCKET` 미바인딩이 2026-06-12 에 throw 로 바뀐 것과 같은 이유.',
+  },
+  {
+    name: '이용권 정산이 없는 컬럼(products.commission_rate)을 읽어 회차 전체가 죽음',
+    file: 'src/worker/cron/auto-settlement.ts',
+    find: 'COALESCE(s.commission_rate, ?)',
+    replace: 'COALESCE(p.commission_rate, ?)',
+    test: 'src/tests/unit/auto-settlement-rail-a.test.ts',
+    why:
+      '`products` 에 `commission_rate` 는 **존재한 적이 없다**(프로덕션 pragma 0 · baseline 97컬럼에도 없음). ' +
+      '그래서 이 SELECT 는 매일 03:00 KST 에 `no such column` 으로 던지고 정산 회차가 통째로 죽었다. ' +
+      '셀러별 수수료의 SSOT 는 `sellers.commission_rate` 다. SELECT 절은 `check-sql-column-exists` 의 ' +
+      '**명시된 사각지대**(JOIN/alias 복잡도로 skip)라 정적 가드가 못 봤다 — 그래서 테스트로 박았다.',
+  },
+  {
+    name: '정산 cron 이 Rail A 를 스스로 프로비저닝해 이중지급을 깨움',
+    file: 'src/worker/cron/auto-settlement.ts',
+    find: 'if (!(await railAProvisioned(DB))) {',
+    replace: 'if (false) {',
+    test: 'src/tests/unit/auto-settlement-rail-a.test.ts',
+    why:
+      'Rail A(`restaurant_settlements`)는 프로덕션에 **테이블조차 없다** — 한 행도 만든 적이 없다. ' +
+      '실제 지급은 Rail B(원장→payouts)가 한다. 여기서 게이트를 없애면 과거 사용분 전체가 Rail A 에 ' +
+      '한꺼번에 적재되고, 두 레일은 서로의 멱등 마커를 안 보므로 **같은 매출을 두 번 지급**한다. ' +
+      '`settlement-reconciliation.md` §Severe 3 이 머니 경로로 파킹해 둔 자리다.',
+  },
+  {
+    name: '컬럼 가드의 SELECT 패스가 보간 쿼리를 통째로 건너뛰어 헛돎',
+    file: 'scripts/check-sql-column-exists.mjs',
+    find: "      let prev\n      do { prev = stmt; stmt = stmt.replace(/\\$\\{[^{}]*\\}/g, ' ') } while (stmt !== prev)",
+    replace: '      continue',
+    test: 'src/tests/unit/auto-settlement-rail-a.test.ts',
+    why:
+      '첫 구현이 `${}` 보간을 보면 statement 를 건너뛰었는데, **이 사건의 원본 쿼리**' +
+      '(`auto-settlement` 의 `${ledgerSkipClause}`)가 정확히 그 형태라 주입 검증에서 초록이 떴다. ' +
+      '보간 조각만 지우고 나머지 리터럴은 검사해야 한다 — 안 그러면 SELECT 패스를 붙여 놓고도 ' +
+      '정작 그것 때문에 만들어진 결함을 못 본다.',
+  },
+  {
+    name: '일일 진단이 캐리어에 없는 Pages 전용 키로 매일 거짓 🔴 를 냄',
+    file: 'src/worker/cron/daily-self-diagnostic.ts',
+    find: 'const carrierKeys = [...new Set(',
+    replace: "const carrierKeys = ['JWT_SECRET', ...new Set(",
+    test: 'src/tests/unit/diagnostic-carrier-scope.test.ts',
+    why:
+      '`JWT_SECRET`·`REFRESH_TOKEN_SECRET`·`KAKAO_REST_API_KEY` 는 **Pages** 에 있고 cron 캐리어엔 ' +
+      '없는 게 정상인데, 진단이 자기 env 에서 찾아 매일 🔴 3건을 냈다(라이브 `/api/version` 은 셋 다 present). ' +
+      '거짓 경보 옆에 진짜가 섞이면 구분이 안 된다 — 늑대소년은 알림을 켜는 순간이 아니라 이미 시작돼 있었다.',
+  },
+  {
     name: '매장 보강이 크롤 불가 URL 에 슬롯을 낭비함',
     file: 'src/features/marketing/api/prospect-enrich.ts',
     find: '${COOL} AND ${platformNot}',
@@ -110,6 +245,102 @@ const MUTATIONS = [
       '2026-08-02 라이브에서 실제로 일어난 일이다. 기존 대조는 **서비스명**(FftcBrandRlsInfo2_Service)만 봐서 ' +
       '오퍼레이션이 다른 것을 통과시켰고, 레인은 HTTP 404 · 프로브는 400 NO_OPENAPI_SERVICE_ERROR 로 **다른 답**을 ' +
       '받았다. 그 400 을 근거로 "서비스가 폐기됐다"고 결론 낼 뻔했다 — 진단 도구가 오진의 재료가 되는 최악의 모양이다.',
+  },
+  {
+    name: '전진 0 가드가 헛돎(신규를 통과시킴)',
+    file: 'scripts/check-cursor-after-loop.mjs',
+    find: 'if (TIME_BOUND.test(body)) continue               // 시간 상한이 있다 — 통과',
+    replace: 'if (true) continue',
+    test: 'src/tests/unit/ads-cursor-after-loop-guard.test.ts',
+    why:
+      '이 가드가 막는 실패는 **에러가 안 보인다** — 하트비트는 "느린가 보다"로 읽히고 저장 0 의 이유가 ' +
+      '커서 미전진이라는 건 코드를 열어야 안다. 판정을 무력화하면 신규 레인이 그대로 통과해 ' +
+      '**세 번째 전진 0** 이 조용히 생긴다(이미 commerce·quality 두 번 났다).',
+  },
+  {
+    name: '품질 패스가 시간 상한을 잃음(전진 0 복귀)',
+    file: 'src/features/marketing/api/influencer-quality.ts',
+    find: "    if (Date.now() - t0 >= deadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: '',
+    test: 'src/tests/unit/ads-quality-deadline.test.ts',
+    why:
+      '상한이 **행 수(8,000)뿐**이라 한 인보케이션이 16페이지를 통째로 채점하다 CPU 한도로 죽었다(`ms=3649`). ' +
+      '🩸 재분류보다 나쁘다 — **커서 저장이 루프 뒤**라 죽으면 그 줄에 도달하지 못하고 다음 회차가 같은 지점을 ' +
+      '또 훑고 또 죽는다 ⇒ **영원히 전진 0**(통신판매에서 확정된 그 실패 모양).',
+  },
+  {
+    name: '품질 패스 마감선 중단이 done=true 로 커서를 리셋',
+    file: 'src/features/marketing/api/influencer-quality.ts',
+    find: "if (Date.now() - t0 >= deadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: 'if (Date.now() - t0 >= deadlineMs) { done = true; break }',
+    test: 'src/tests/unit/ads-quality-deadline.test.ts',
+    why:
+      '`done` 은 "한 바퀴 다 돌았다" 는 뜻이고 커서를 **0 으로 리셋**한다. 시간 때문에 멈춘 것을 완주로 표시하면 ' +
+      '매 회차가 처음부터 다시 돌아 **풀 뒷부분은 영영 채점되지 않는다** — 조용히, 에러 없이.',
+  },
+  {
+    name: '재분류 패스 루프가 마감선을 잃음(매시간 CPU 사망 복귀)',
+    file: 'src/worker-ads/index.ts',
+    find: 'passes < 5 && !last.done && Date.now() - t0 < deadlineMs',
+    replace: 'passes < 5 && !last.done',
+    test: 'src/tests/unit/ads-reclassify-deadline.test.ts',
+    why:
+      '이 레인은 **매시간 CPU 한도로 죽고 있었다**(`ok=false ms=3880`). 5패스 × 1,000행 × 행당 정규식 ~20개 = ' +
+      '10만 회를 한 인보케이션에서 돈다 — `ads-cpu-work-cap` 이 세운 교리(*"페이지가 아니라 인보케이션당 총량"*)를 ' +
+      '**호출부**가 어긴 것이다. 커서가 이어받으므로 일찍 멈춰도 커버리지 손실은 0 이다.',
+  },
+  {
+    name: '미사용 env 신고가 평상시에도 울림(경보 신뢰 상실)',
+    file: 'src/worker-ads/env-drift.ts',
+    find: "return u.length ? { env_unused: u.join(',') } : {}",
+    replace: "return { env_unused: u.join(',') }",
+    test: 'src/tests/unit/ads-env-drift.test.ts',
+    why:
+      '이상 없을 때도 키가 붙으면 하트비트 사유줄이 매 회차 오염되고, 진짜 신호가 그 안에 묻힌다. ' +
+      '이 레포가 무수확 레인 판정에서 배운 것과 같다 — **평상시 조용하지 않은 경보는 아무도 안 본다.**',
+  },
+  {
+    name: '미사용 env 목록이 낡음(새 노브를 오신고)',
+    file: 'src/worker-ads/env-drift.ts',
+    find: "'ADS_HIRA_ROWS',",
+    replace: '',
+    test: 'src/tests/unit/ads-env-drift.test.ts',
+    why:
+      '목록은 **코드가 읽는 키의 SSOT** 다. 새 노브를 코드에 넣고 목록에 안 넣으면 런타임이 그 키를 ' +
+      '"설정했는데 안 쓰임"으로 **오신고**한다 — 정상 설정을 결함으로 부르는 순간 이 신호는 죽는다. ' +
+      '(첫 작성에서 내가 손으로 적다가 실제로 64개를 빠뜨렸고, 이 시험이 즉시 잡았다.)',
+  },
+  {
+    name: '심평원 재시도가 실험이 아니게 됨(같은 크기로 재시도)',
+    file: 'src/features/marketing/api/hira-hospital-collect.ts',
+    find: 'Math.max(20, Math.floor(numRows / 5))',
+    replace: 'numRows',
+    test: 'src/tests/unit/hira-retry-experiment.test.ts',
+    why:
+      '이 재시도의 목적은 회복이 아니라 **원인 판별**이다 — 작은 페이지로 성공하면 "페이지 크기 문제"(무배포 노브로 해결), ' +
+      '작은 페이지도 실패하면 "크기 무관"(동시성·외부)이다. 같은 크기로 다시 쏘면 두 경우가 구분되지 않아 ' +
+      '60회 무수확의 원인을 **또 모르는 채로** 남는다.',
+  },
+  {
+    name: '심평원 재시도 상한이 사라짐(페이지마다 재시도)',
+    file: 'src/features/marketing/api/hira-hospital-collect.ts',
+    find: '      retried = true',
+    replace: '      retried = false',
+    test: 'src/tests/unit/hira-retry-experiment.test.ts',
+    why:
+      '무료 요금제의 서브리퀘스트 천장은 인보케이션당 ~50 이다. 회차당 1회 상한이 없으면 페이지마다 재시도가 붙어 ' +
+      '**같은 회차의 다른 레인 예산까지 잡아먹는다** — 이 레포가 이미 여러 번 당한 자리다.',
+  },
+  {
+    name: 'code 12 힌트가 "폐기 확정"으로 읽히게 약해짐',
+    file: 'src/features/marketing/api/public-data-diag.ts',
+    find: '⚠️ **폐기와 경로 오타를 구분할 수 없는 코드다**',
+    replace: '서비스 URL/오퍼레이션명이 틀렸거나 폐기됨',
+    test: 'src/tests/unit/public-data-diag.test.ts',
+    why:
+      '2026-08-03 에 **내가 직접 이 오추론을 했다** — code 12 를 보고 "공정위 서비스 폐기 확정"이라고 인계에 적었다. ' +
+      '대조군을 찔러 보니 살아있는 `MllBs_2Service`(같은 키로 200·264만건)도 오퍼레이션을 틀리면 **같은 code 12** 였다. ' +
+      '두 가능성을 나열만 하는 문구는 읽는 사람이 자기 가설에 맞는 쪽을 고르게 둔다 — 오추론을 **명시적으로 막아야** 한다.',
   },
   {
     name: '레인 일감이 요금제를 모름(예산만 커지고 일은 그대로)',
@@ -766,6 +997,71 @@ const MUTATIONS = [
     why:
       '자기 자신이 paths 에 없으면 **이 워크플로의 수리가 배포되지 않는다** — 깨진 배포 경로를 고쳐도 ' +
       '무관한 코드 변경을 기다려야 적용된다(수리를 검증할 방법이 없는 자기참조적 사각지대).',
+  },
+  {
+    name: '집중 축 커서를 읽어오지 않음(항상 0 — 앞 4개만 무한 반복)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '[STATS_KEY, FOCUS_CURSOR_KEY,',
+    replace: '[STATS_KEY,',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      'readSettings 목록에 없는 키는 **에러가 아니라 undefined** 로 온다 → parseInt(\'0\') → 커서 0 고정. ' +
+      '라이브 실측: 활성 대행사 키워드 18개 중 앞 4개만 돌고 "체험단 대행"·"인플루언서 섭외" 등 14개는 ' +
+      '`found_total = 0 · last_run_at = null`(한 번도 검색된 적 없음). 슬롯 배정(`focus_n: 4`)은 정상이라 ' +
+      '통계만 봐선 멀쩡해 보였다.',
+  },
+  {
+    name: '민 커서를 통계 JSON 에만 남기고 저장 안 함',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '    [FOCUS_CURSOR_KEY, String(nextFocusCursor)],\n',
+    replace: '',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '다음 회차가 읽는 곳은 `platform_settings` 이지 통계 blob 이 아니다. 라이브 실측에서 ' +
+      'cursor_pri=158 · cursor=6 은 있는데 cursor_focus 는 **행 자체가 없었다** — 계산은 매 회차 했는데 ' +
+      '아무 데도 안 남았다. 커서가 있는 레인이라면 어디서든 같은 형태로 재발한다.',
+  },
+  {
+    name: '집중 축 커서를 계획한 수만큼 밀어 안 돈 키워드를 건너뜀',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '(focusCursor + focusDone)',
+    replace: '(focusCursor + nFocus)',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '예산은 픽 4개를 다 못 돈다(보통 1~2개). 계획한 수만큼 밀면 처리 못 한 키워드를 지나쳐 ' +
+      '**한 바퀴에 한 번도 안 걸리는 자리**가 생긴다 — 우선/일반 커서가 `prefixDone` 을 쓰는 이유와 같은 병(leapfrog).',
+  },
+  {
+    name: "bare '마케터' 가 소개글까지 대행사로(이용권 축에서 훔쳐옴)",
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: '광고\\s*(운영|세팅|집행)/i,\n    nameRe:',
+    replace: '광고\\s*(운영|세팅|집행)|마케터/i,\n    nameRe:',
+    test: 'src/tests/unit/ads-classify-marketer.test.ts',
+    why:
+      '라이브 실측: 대행사 273명 중 **45명(16%)이 오직 이 단어 하나로** 들어왔고, 원래 자리는 ' +
+      '맛집 10 · 외식창업 8 · IT/재테크 5 · 카페 5 · 숙소 4 · 여행 2 · 패션 1 · 미분류 10 — ' +
+      '대부분 이용권 본체 축이다. "15년차 마케터. 75개국 여행" 이 여행 블로거를 대행사로 만든다.',
+  },
+  {
+    name: '이름 전용 신호를 안 봄(진짜 마케터가 사라짐)',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: 'if (!r.re.test(text) && !(r.nameRe && r.nameRe.test(name))) continue',
+    replace: 'if (!r.re.test(text)) continue',
+    test: 'src/tests/unit/ads-classify-marketer.test.ts',
+    why:
+      '좁히기의 짝이다. `nameRe` 를 안 보면 싱어송마케터·지역전문마케터·QR마케터처럼 **이름으로 자기를 ' +
+      '선언한 실제 마케터 14명**이 통째로 빠진다 — 오탐을 줄이려다 정탐을 버리는 형태.',
+  },
+  {
+    name: '규칙이 거부하는 옛 카테고리를 안 비움(영구 고착)',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: "  if (stored === '마케팅대행사') {",
+    replace: "  if (false && stored === '마케팅대행사') {",
+    test: 'src/tests/unit/ads-classify-marketer.test.ts',
+    why:
+      '재분류는 `classifyCategory` 가 **null 이면 그대로 둔다.** 규칙을 좁히면 어느 규칙에도 안 걸리는 ' +
+      '행이 생기는데(실측 45 중 10건), 안 비우면 옛 값이 영구히 굳는다 — `shouldClearCategory` docblock 이 ' +
+      '입주 시공업체 27명 실측으로 이미 경고한 바로 그 형태("측정하면 점진 교정된다"는 낙관은 틀렸다).',
   },
 ]
 
