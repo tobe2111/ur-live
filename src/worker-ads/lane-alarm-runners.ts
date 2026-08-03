@@ -47,6 +47,42 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
       return runNextMaintenancePhase(env)
     },
   },
+  /**
+   * 🎯 **인플루언서 발굴** — 대표의 유일한 우선순위인데 34개 레인 중 가장 굶고 있었다 (2026-08-03 실측).
+   *
+   * ## 왜 얹는가 (위 "얹을 근거" 둘 중 **둘 다** 해당)
+   * ```
+   *   KST 09:00 회차 (per_tick 3 · 무료)
+   *     influencer  budget 1 → run:[inbound-onboarding]
+   *                            deferred:[collect, consented-reminder, social-maintenance]
+   * ```
+   * 인플루언서 도메인은 **레인 4개가 시간당 예산 1칸**을 나눠 쓴다 → collect 는 잘해야 4시간에 한 번.
+   * 그리고 그 한 번마저 죽는다:
+   * ```
+   *   22:00:35  디스패치 (run:['collect'])
+   *   22:00:38  ads:collect  Worker exceeded CPU time limit.   ← 3초 뒤
+   * ```
+   * 자식 CPU 는 부모에게 청구되므로 B2B 29개와 같은 벽에 부딪힌다. 실측 결과: **마지막 성공 KST 03:01,
+   * 6시간 20분 정지** — 그동안 리드 0건, 커서 0전진.
+   * ⇒ 예산 재분배로는 못 푼다(누가 굶느냐만 바뀌고 벽은 그대로다). 자기 인보케이션이 있어야 한다.
+   *
+   * ## ⚠️ `runsPerHour: 1` 인 이유 — 처리량을 미는 게 아니라 **고장을 고치는 것**
+   * cron 이 원래 `0 * * * *`(시간당 1회)다. 기본 12회/시간을 그대로 받으면 그건 **설계 의도를 넘는**
+   * 증설이고, 대표가 경계한 네이버 부하 증가가 된다. 여기서는 **의도한 값으로 복원만** 한다.
+   *   · YT 검색은 `ytBudgetTotal`(하루 90~100)이 하드캡이라 회차 수와 무관하게 총량이 같다.
+   *   · 네이버는 하루 25,000 쿼터에 실사용 ~2%.
+   * ⚠️ 이 값을 올리려면 **네이버 차단 리스크를 다시 판단**할 것 — 대표 확인 사항이다.
+   *
+   * 🔒 이중 실행은 리스(`ads_collect_lease`)가 막는다 — 알람과 cron 이 겹쳐도 한쪽만 잡는다.
+   *   그래도 부모 쪽 디스패치는 게이트로 끈다(겹치면 순수 낭비이고, 부모 CPU 를 또 먹는다).
+   */
+  collect: {
+    runsPerHour: 1,
+    run: async (env) => {
+      const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
+      return runInfluencerAutoCollect(env)
+    },
+  },
 }
 
 export const ALARM_LANE_NAMES = Object.keys(ALARM_LANES)

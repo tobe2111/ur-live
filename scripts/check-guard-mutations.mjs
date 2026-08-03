@@ -72,6 +72,30 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '주간 D1 백업이 인덱스/트리거/뷰를 안 담아 복구본에서 멱등 UNIQUE 가 사라짐',
+    file: 'src/worker/cron/d1-backup.ts',
+    find: 'if (objects.length > 0) {',
+    replace: 'if (false) {',
+    test: 'src/tests/unit/d1-backup-restorable.test.ts',
+    why:
+      '덤프가 `type=\'table\'` 만 뽑던 시절의 동작이다. 프로덕션 실측 인덱스 610(UNIQUE 46) · 트리거 7 · 뷰 1 이 ' +
+      '전부 백업에서 빠지고, 복구하면 `INSERT OR IGNORE + partial UNIQUE` 로 지키던 멱등(머니 룰 #3)이 없어져 ' +
+      '**같은 ref 로 두 번 적립이 통과**한다(2026-08-03 축소판 복구 리허설에서 재현). 백업은 ok=true 로 성공하고 ' +
+      '복구 검증 쿼리도 행 수만 세므로 **어디서도 빨간불이 안 뜬다** — 그래서 테스트로 박았다.',
+  },
+  {
+    name: 'FTS5 그림자 테이블을 덤프에 실어 BLOB 손상 + 매주 무결성 경고',
+    file: 'src/worker/cron/d1-backup.ts',
+    find: '.filter((n) => !isInternalTable(n) && !isFtsShadowTable(n, virtualTables))',
+    replace: '',
+    test: 'src/tests/unit/d1-backup-restorable.test.ts',
+    why:
+      '`products_fts` 는 외부콘텐츠(content=products) FTS 라 그림자 테이블은 색인 내부구조다. ' +
+      '`_data`/`_docsize` 는 BLOB 이라 문자열로 뭉개지고, `_idx`/`_config` 와 D1 내부 `_cf_KV` 는 ' +
+      'WITHOUT ROWID 라 `SELECT rowid` 가 실패해 dump 실패 테이블로 남는다. 복구 후 `rebuild` 한 번이면 ' +
+      '색인은 원본에서 정확히 재생성되므로 깨진 그림자를 실어 나를 이유가 없다.',
+  },
+  {
     name: '5xx 경보가 1건을 "스파이크"라 불러 매일 거짓 ⚠️ 를 냄',
     file: 'src/worker/cron/daily-self-diagnostic.ts',
     find: 'if (Number(row?.worst || 0) >= 10) issues.push',
@@ -112,8 +136,7 @@ const MUTATIONS = [
     why:
       '마감선은 일을 줄이는 게 아니라 **미루는** 것이다. 블록 ①→② 순서가 고정이면 ①에서 마감선에 ' +
       '걸릴 때 ②(매장 후보)는 **매 회차 한 번도 안 돌아** `cursorS` 가 영원히 멈춘다. ' +
-      '마감선을 넣으면서 이 회전을 빼면 **없던 기아를 새로 만드는 것**이다.',
-  },
+      '마감선을 넣으면서 이 회전을 빼면 **없던 기아를 새로 만드는 것**이다.',  },
   {
     name: '공고 스캐너가 마감선 없이 회차를 늘려 부모 CPU 를 태움',
     file: 'src/features/marketing/api/notice-scan.ts',
@@ -1100,6 +1123,37 @@ const MUTATIONS = [
       '위 상한은 *앞으로* 안 넘어가게 할 뿐, **이미 넘어가 있는 라이브 커서는 안 푼다.** 이 되돌림이 ' +
       '없으면 배포해도 같은 행에서 400 이 계속 나고, 2~3칸뿐인 회차 예산에서 한 칸을 계속 태운다. ' +
       '⚠️ `total` 을 0 으로 되돌리는 것까지가 수리다 — 그래야 호출부가 총계를 다시 세고 그리드를 넓힌다.',
+  },
+  {
+    name: '알람이 모는 수집 레인을 부모도 던짐(부모 CPU 이중 소모)',
+    file: 'src/worker-ads/index.ts',
+    find: "if (!laneAlarmOn && env.ADS_AUTO_COLLECT_ENABLED === 'true')",
+    replace: "if (env.ADS_AUTO_COLLECT_ENABLED === 'true')",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '리스가 이중 *실행* 은 막지만 **던지는 것 자체가 부모 CPU 를 먹는다** — 그게 애초에 이 레인을 죽인 ' +
+      '원인이다(2026-08-03 실측: 디스패치 3초 뒤 `ads:collect  Worker exceeded CPU time limit`).',
+  },
+  {
+    name: 'laneAlarmOn 선언이 첫 사용보다 아래로(런타임 TDZ)',
+    file: 'src/worker-ads/index.ts',
+    find: '  const laneAlarmOn = laneAlarmDrivesEnrich(env)\n',
+    replace: '',
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '`const` 는 TDZ 라 선언보다 먼저 쓰면 **런타임에 ReferenceError** 인데 **타입체크는 통과한다**. ' +
+      '수집 게이트가 보강 블록보다 위에 있어 작성 중 실제로 밟았다. 이 주입은 선언을 통째로 지워 ' +
+      '"순서" 불변식이 위치를 실제로 보는지 확인한다.',
+  },
+  {
+    name: '수집 레인 시간당 상한이 조용히 증설됨',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: '  collect: {\n    runsPerHour: 1,\n',
+    replace: '  collect: {\n',
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '빼면 정책 기본값(12회/시간)을 받는다 = cron 설계 의도(`0 * * * *`)를 12배 넘는 증설이고, ' +
+      '**네이버로 나가는 요청량이 늘어나는 변경**이라 대표 판단 사항이다. 값이 조용히 바뀌는 것을 막는다.',
   },
 ]
 
