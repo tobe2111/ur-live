@@ -625,3 +625,37 @@ bash scratchpad/d1.sh "SELECT CASE WHEN last_run_at IS NULL THEN '0.never'
   COUNT(*) n FROM ad_discovery_keywords WHERE active=1 GROUP BY g"
 ```
 **never 117 이 줄고 24h내가 54 → 100+ 로 늘면 성공.** 안 늘면 병목은 순서가 아니라 예산이다(위 레버).
+
+⚠️ **라운드로빈만으로는 경보가 안 꺼질 수 있다** — 정직하게 계산하면 일반 풀(~300개)이 회차당
+~1.5개 × 24 = 36/일 → **한 바퀴 8일**이다(전 12일). 경보 임계가 "2일째 미실행"이므로 여전히 걸린다.
+⇒ **진짜 해결은 처리량**이고, 그건 아래 계측이 나온 뒤에 판단한다.
+
+### 🧾 그래서 계측을 같이 넣었다 — `spend_by`
+
+`ads_autocollect_stats.spend_by = {yt, naver, cafe, tistory, save}` 신설(추가 왕복 0 — 이미 있는
+`budget.left` 를 소스 호출 전후로 읽기만 한다). 회차 `spent 56 / processed 5` = 키워드당 ~11인데
+**어디에 쓰이는지 아무도 몰랐다.**
+
+가장 유력한 용의자는 발굴 시점 **`enrichMax`(YT 8 · 네이버 5 = 키워드당 최대 13)** 이고, 그건 지금
+**별도 보강 레인이 하는 일과 겹친다**(수집=폭, 보강=깊이). 다만 수집 시점 보강은 *"수집과 동시에
+이메일을 얻는"* 경로이기도 해서 — 실제로 미측정 YT 행의 23.8% 가 이미 이메일을 갖고 있다 —
+**추측으로 줄이면 수집 품질이 조용히 나빠진다.** ⇒ 줄이기 전에 재는 것이 먼저다.
+
+**다음 세션 판독법**: `spend_by.yt + spend_by.naver` 가 `spent` 의 절반을 넘으면 enrichMax 가 범인이다.
+`save` 가 크면 저장 배치가 범인이고 그건 품질 손실 없이 줄일 수 있다(더 좋은 소식).
+
+
+### 🧱 같은 PR 에서 함께 처리한 두 가지
+
+**① 배포 블로커 — `brace-expansion` GHSA-rgw5-rvv9-x895 (내 변경과 무관, main 에서도 막힘)**
+새로 뜬 high advisory 가 `check-npm-audit` 를 빨간불로 만들었다. 취약 라인이 **v1·v5 둘 다**라
+(`<=1.1.17 || 3.0.0-5.0.8`) 단일 override 로는 v1 소비자(minimatch@3)가 깨진다 ⇒ 버전별로 고정:
+`"brace-expansion@1": "1.1.18"` · `"brace-expansion@5": "5.0.9"`. 게이트 재실행 통과 확인.
+⚠️ **허용목록으로 넘기지 않았다** — `.audit-allowlist.json` 은 `accepted_by: 대표 승인` 을 요구하는데
+세션이 그걸 대신 쓸 수는 없다. dev 전용이라 도달 불가로 보이더라도 **패치가 가능하면 패치가 먼저**다.
+
+**② 600줄 래칫 — 계측 추가로 618줄**
+`[SKIP_SIZE]` 우회 대신 병합 로직을 `influencer-keyword-rotation.ts` 로 추출(592줄).
+`planKeywordSplit`·`interleavePicks` 와 같은 모듈 = 같은 관심사다.
+🎁 부수 이득: 테스트가 **사본이 아니라 실제 함수**를 검사하게 됐다(사본 테스트는 구현이 갈라져도 초록).
+주입 검증도 두 층으로 늘었다 — 호출부 회귀 · 함수 자체 회귀 **둘 다 빨간불** 확인.

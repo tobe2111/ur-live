@@ -266,3 +266,35 @@ export function interleavePicks<T>(ytPicks: T[], cursorPicks: T[], total: number
   }
   return out
 }
+
+/**
+ * 🔀 **세 풀(집중·우선·일반)을 라운드로빈으로 병합** — 잘릴 때 공평하게 잘리도록 (2026-08-04).
+ *
+ * ## 무엇이 고장이었나 (커버리지 붕괴 경보, 라이브 실측)
+ * ```
+ *   활성 399  ·  never 117  ·  2일+ 206        ← 323개가 이틀째 미실행
+ *   회차: planned 16 → processed 5 (spent 56/56, 예산 소진)
+ *   24h 실제 실행 54개 = 집중 18 + 나머지 ~36  ← 하루 120슬롯인데 54개뿐
+ * ```
+ * 옛 코드는 `[...focusPicks, …]` 로 **집중 축을 무조건 앞머리**에 뒀다. 예산이 5개에서 끊기니
+ * 집중 4개가 앞자리를 먹고 **일반 풀엔 1개**만 남았다. 게다가 커서 전진은 `prefixDone`
+ * (처리된 **앞부분만** 셈)이라 뒤 풀은 잘릴 뿐 아니라 **커서도 안 움직여 다음 회차에 같은 키워드를
+ * 또 내놓는다** — 일반 풀(~300개) 한 바퀴에 12일 이상.
+ *
+ * ## 🗺️ 앞머리의 근거는 이미 낡아 있었다
+ * 옛 주석은 *"YT 슬롯(희소)에 확실히 들어가게"* 였는데, 지금 YT 픽은 `pickYtKeywords` 가
+ * **전체 키워드에서 따로** 뽑고 호출부는 오히려 그 id 들을 **제외**한다. 앞머리는 YT 에 아무 도움이
+ * 안 되면서 일반 풀만 굶기고 있었다(이 레포가 부르는 "낡은 지도").
+ *
+ * ⚠️ **몫은 안 바꾼다** — 배분은 `planKeywordSplit` 그대로고, 이 함수는 **순서만** 정한다.
+ *   집중 풀은 18개뿐이라 회차당 ~2개로도 하루 두 바퀴 이상 돈다(과잉 해소).
+ */
+export function mergeKeywordPicks<T>(focus: T[], pri: T[], gen: T[]): T[] {
+  const out: T[] = []
+  for (let i = 0; i < Math.max(focus.length, pri.length, gen.length); i++) {
+    if (i < focus.length) out.push(focus[i])
+    if (i < pri.length) out.push(pri[i])
+    if (i < gen.length) out.push(gen[i])
+  }
+  return out
+}

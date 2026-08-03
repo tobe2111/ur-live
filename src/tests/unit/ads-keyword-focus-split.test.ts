@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { planKeywordSplit, FOCUS_CATEGORIES, PRIORITY_CATEGORIES } from '@/features/marketing/api/influencer-keyword-rotation'
+import { planKeywordSplit, mergeKeywordPicks, FOCUS_CATEGORIES, PRIORITY_CATEGORIES } from '@/features/marketing/api/influencer-keyword-rotation'
 import { CLASSIFIED_CATEGORIES } from '@/features/marketing/api/influencer-classify'
 
 const SRC = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
@@ -147,15 +147,8 @@ describe('설정 키 — 읽는 키는 읽어오고, 민 커서는 저장한다'
  * ⚠️ 이 테스트가 못 보는 것: 실제 커버리지 회복 속도 — 그건 라이브 `never/2일+` 카운트로 판정한다.
  */
 describe('🔀 세 풀 병합 — 잘릴 때 공평하게 잘린다', () => {
-  const merge = (focus: number[], pri: number[], gen: number[]): number[] => {
-    const out: number[] = []
-    for (let i = 0; i < Math.max(focus.length, pri.length, gen.length); i++) {
-      if (i < focus.length) out.push(focus[i])
-      if (i < pri.length) out.push(pri[i])
-      if (i < gen.length) out.push(gen[i])
-    }
-    return out
-  }
+  // ⚠️ 사본이 아니라 **실제 함수**를 쓴다 — 사본을 테스트하면 구현이 갈라져도 초록이 뜬다.
+  const merge = mergeKeywordPicks
 
   it('🔒 앞 5개(=실측 처리량) 안에 세 풀이 모두 들어간다', () => {
     const head = merge([101, 102, 103, 104], [201, 202, 203, 204, 205, 206], [301, 302, 303, 304, 305, 306]).slice(0, 5)
@@ -177,6 +170,6 @@ describe('🔀 세 풀 병합 — 잘릴 때 공평하게 잘린다', () => {
     const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')  // 주석 제외 — 근거 설명에 옛 코드가 인용된다
     expect(src).not.toMatch(/const picks[^=]*=\s*\[\.\.\.focusPicks\]/)
-    expect(src).toMatch(/Math\.max\(focusPicks\.length, priPicks\.length, genPicks\.length\)/)
+    expect(src).toMatch(/mergeKeywordPicks\(focusPicks, priPicks, genPicks\)/)
   })
 })

@@ -1573,9 +1573,11 @@ const MUTATIONS = [
   },
   {
     name: '집중 축이 다시 앞머리 독점(일반 풀 커서 동결 — 커버리지 붕괴)',
-    file: 'src/features/marketing/api/influencer-auto-collect.ts',
-    find: 'Math.max(focusPicks.length, priPicks.length, genPicks.length)',
-    replace: 'Math.max(priPicks.length, genPicks.length)',
+    // ⚠️ 600줄 래칫으로 병합 로직이 `influencer-keyword-rotation.ts` 로 추출됐다(순수 이동).
+    //   앵커가 안 따라오면 이 주입은 "find 가 소스에 없음"으로 낡은 지도 판정을 받는다.
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: '  for (let i = 0; i < Math.max(focus.length, pri.length, gen.length); i++) {',
+    replace: '  out.push(...focus)\n  for (let i = 0; i < Math.max(pri.length, gen.length); i++) {',
     test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
     why:
       '회차는 `planned 16 → processed 5`(예산 56/56 소진)다. 집중 축을 앞머리에 두면 4개가 앞자리를 먹고 ' +
