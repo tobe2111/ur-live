@@ -17,7 +17,7 @@ import { DashboardPageHeader, DashboardStatCard, DashboardLoadError } from '@/co
 import { formatWon, formatNumber } from '@/utils/format'
 import {
   LayoutDashboard, Loader2, Wallet, ShoppingBag, Users, Store, Package,
-  Inbox, MessageSquare, Settings, ArrowUpRight, AlertCircle, Shield,
+  Inbox, MessageSquare, ArrowUpRight, AlertCircle, Shield,
 } from 'lucide-react'
 
 interface MallRow {
@@ -253,7 +253,10 @@ export default function AdminWholesaleOverviewPage() {
                       <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-1.5">
                         <QuickLink to="/admin/wholesale-deposits" icon={<Inbox className="w-3.5 h-3.5" />} label={t('admin.wsOverview.linkDeposits', { defaultValue: '입금확인' })} highlight={m.pending_charge_requests > 0} />
                         <QuickLink to="/admin/wholesale-proposals" icon={<MessageSquare className="w-3.5 h-3.5" />} label={t('admin.wsOverview.linkProposals', { defaultValue: '제안' })} highlight={m.pending_proposals > 0} />
-                        <QuickLink to="/admin/wholesale-malls" icon={<Settings className="w-3.5 h-3.5" />} label={t('admin.wsOverview.linkMalls', { defaultValue: '몰 설정' })} />
+                        {/* 🏬 2026-08-03: '몰 설정'(/admin/wholesale-malls) 링크 제거 — 그 화면은 이제
+                            도매가 아니라 **운영자 몰(소비자 표면)** 관리이고, `🏪 오프라인 공구` 그룹으로 옮겼다.
+                            여기 두면 도매 role 이 눌러도 wholesale-overview 로 튕긴다(nav 도달성 가드가 잡았다).
+                            애초에 super-only 화면이라 도매 파트너에겐 처음부터 열린 적이 없다. */}
                       </div>
                     </div>
                   )

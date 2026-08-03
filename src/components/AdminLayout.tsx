@@ -15,7 +15,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 // 🧱 2026-07-20: nav 데이터/섹션/RBAC 경로 상수는 admin-nav-config 로 분리(AdminLayout 슬림화 + 즐겨찾기 여유).
 import {
   type NavItem, type NavGroup,
-  VISIBLE_NAV_GROUPS, NAV_SECTIONS, navSectionOf,
+  VISIBLE_NAV_GROUPS, NAV_SECTIONS, navSectionOf, withoutWholesaleOnConsumer,
   ALWAYS_ALLOWED_ADMIN_PATHS, WHOLESALE_EXTRA_ALLOWED_PATHS,
 } from '@/components/admin/admin-nav-config'
 import AdminCommandPalette, { type CommandItem } from '@/components/admin/AdminCommandPalette'
@@ -135,12 +135,15 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   const stripSuperOnly = (groups: typeof VISIBLE_NAV_GROUPS) => groups
     .map((g) => ({ ...g, items: g.items.filter((it) => !SUPER_ONLY_NAV.has(it.path)) }))
     .filter((g) => g.items.length > 0)
+  // 🧨 2026-08-03 (대표 "도매몰은 잔재도 없애는거야") — 소비자 도메인에선 도매 밴드를 숨긴다.
+  //   판정·근거는 `withoutWholesaleOnConsumer`(admin-nav-config) 주석. 도매 role 분기는 **건드리지 않는다** —
+  //   그쪽에 적용하면 도매 파트너가 도매 도메인 밖에서 nav 가 통째로 비어 원인을 알 수 없게 된다.
   const roleNavGroups = adminRole === 'super'
-    ? VISIBLE_NAV_GROUPS
+    ? withoutWholesaleOnConsumer(VISIBLE_NAV_GROUPS)
     : adminRole === 'wholesale'
       // 🆕 도매 파트너 — 도매 도메인 그룹만 노출(유어딜 소비자 어드민 전부 숨김) + 슈퍼전용(몰 관리 등) 제외.
       ? stripSuperOnly(VISIBLE_NAV_GROUPS.filter((g) => g.domain === 'wholesale'))
-      : stripSuperOnly(VISIBLE_NAV_GROUPS)
+      : withoutWholesaleOnConsumer(stripSuperOnly(VISIBLE_NAV_GROUPS))
 
   // ⭐ 2026-07-20 (대표 — "자주 쓰는 페이지를 좌측 상단에"): 즐겨찾기(고정). 각 메뉴의 ★ 토글로 고정하면
   //   사이드바 맨 위 '즐겨찾기' 섹션에 pin 순서대로 모임. 역할별로 보이는 항목만 고정 가능(roleNavGroups 해석).

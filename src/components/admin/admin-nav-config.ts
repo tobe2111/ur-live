@@ -11,6 +11,7 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
+import { isUtongstart } from '@/utils/domain'
 
 export interface NavItem {
   path: string
@@ -83,7 +84,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/wholesale-products', label: '도매 프리미엄관', icon: Crown },
       { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
       { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
-      { path: '/admin/wholesale-malls',    label: '도매 몰 관리',  icon: Building2 },
       { path: '/admin/wholesale-activity', label: '처리 이력 (누가 처리?)', icon: History },
     ],
   },
@@ -116,6 +116,10 @@ export const NAV_GROUPS: NavGroup[] = [
     title: '🏪 오프라인 공구',
     items: [
       { path: '/admin/group-buy',        label: '공동구매',      icon: Ticket },
+      // 🏬 2026-08-03 (대표 "도매몰은 잔재도 없애는거야"): 몰 관리는 **도매 그룹에서 여기로 옮겼다.**
+      //   이 화면이 정하는 건 도매몰이 아니라 `urdeal.kr/{슬러그}`(운영자 몰 = 소비자 표면)의 존재·공개·색이다.
+      //   같은 날 API 도 도매 번들 밖으로 옮겼다(worker/index.ts). 철거 계획 §1(c) "몰 인프라는 물려받는다".
+      { path: '/admin/wholesale-malls',  label: '운영자 몰 관리', icon: Building2 },
       { path: '/admin/gb-cockpit',       label: '공구 엔진 조종석', icon: Rocket },
       { path: '/admin/dongnedeal-import', label: '동네딜 상품 등록', icon: Upload },
       { path: '/admin/fcfs',             label: '추첨 응모 관리', icon: Gift },
@@ -241,6 +245,32 @@ const LIVE_ADMIN_PATHS = new Set<string>([
   // 🏭 2026-07-01 (대표 "라이브 관련 내용 다 빼줘") YouTube 쿼터는 YouTube-라이브 전용 진단 → 라이브 중단 시 숨김.
   '/admin/youtube-quota',
 ])
+/**
+ * 🧨 **도매 철거 — 소비자 도메인에서 도매 밴드를 숨긴다** 〔2026-08-03 대표 "도매몰은 잔재도 없애는거야"〕
+ *
+ * 릴리즈 체크리스트 **A6**(*"도매 잔재가 안 보인다 — 어드민 메뉴에 도매 항목 0"*)의 안전한 절반이다.
+ *
+ * 🔴 **숨겨도 잃는 게 없다**: 도매 어드민 API 는 `mount-wholesale.ts` 안에 있어 소비자 배포(ur-live)에는
+ *   **애초에 없다**(`__INCLUDE_WHOLESALE__=false` → DCE). urdeal.kr 에서 이 메뉴들은 **이미 죽은 링크**였다.
+ *   즉 이 필터는 기능을 끄는 게 아니라 *없는 기능을 안 보이게* 한다.
+ *
+ * 🔴 **왜 화면 삭제가 아니라 숨김인가**: 철거 계획 §4 가 *"머니 게이트 4항목(예치금·미확인 충전요청·
+ *   미지급 정산금·plus)이 0 임을 확인한 뒤에 삭제"* 로 못박았고, 그 **확인 경로가 `/admin/wholesale-overview`**
+ *   다. 도매 도메인에서 그 화면이 살아 있어야 대표가 잔액을 확인하고 환급할 수 있다.
+ *   ⇒ 소비자 도메인에서만 숨기고, 삭제는 게이트 통과 후 **별도 PR**(계획 §5-3, 대표 확정 "삭제는 고립").
+ *
+ * 탈출구: `?wholesale=1`(`isUtongstart` 가 이미 지원) · 호스트에 `wholesale` 포함(`ur-wholesale.pages.dev`).
+ */
+export function isWholesaleAdminSurface(): boolean {
+  if (isUtongstart()) return true                      // utongstart.com · ?wholesale=1 — 호스트 SSOT
+  if (typeof window === 'undefined' || !window.location) return false
+  return window.location.hostname.toLowerCase().includes('wholesale')  // ur-wholesale.pages.dev 등
+}
+
+/** 도매 밴드 제거 — 도매 배포에서는 그대로 둔다. `domain: 'wholesale'` 그룹만 대상. */
+export const withoutWholesaleOnConsumer = (groups: NavGroup[]): NavGroup[] =>
+  isWholesaleAdminSurface() ? groups : groups.filter((g) => g.domain !== 'wholesale')
+
 export const VISIBLE_NAV_GROUPS: NavGroup[] = LIVE_COMMERCE_SUSPENDED
   ? NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((it) => !LIVE_ADMIN_PATHS.has(it.path)) })).filter((g) => g.items.length > 0)
   : NAV_GROUPS
