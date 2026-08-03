@@ -94,6 +94,18 @@ const MUTATIONS = [
       '`sweep-mx` 블록에서 겪은 것과 같은 구조적 기아 — 마감선과 회전은 짝이다.',
   },
   {
+    name: '요금제 유료값을 만들어 놓고 선택부를 안 붙임(파일 경계를 넘는 배선)',
+    file: 'src/features/marketing/api/influencer-maintenance.ts',
+    find: 'envPlanValue(undefined, RESCAN_DEADLINE_MS, RESCAN_DEADLINE_MS_PAID, env)',
+    replace: 'RESCAN_DEADLINE_MS',
+    test: 'src/tests/unit/ads-plan-knobs.test.ts',
+    why:
+      '상수를 만드는 것과 **그 상수가 선택되는 것**은 다른 일이다 — 후자가 빠지면 유료로 바꿔도 ' +
+      '그 축은 안 오르고 **에러는 안 난다**. 이 항목은 특히 **선언과 선택이 다른 파일**인 경우를 고정한다: ' +
+      '600줄 캡 때문에 회전 정책을 모듈로 뺀 순간 파일-지역 판정이 오탐을 냈고, 그 교정판의 첫 시도는 ' +
+      '`import` 줄에 남은 이름 때문에 **주입에도 초록**이 떴다(텍스트 존재는 구조의 증거가 아니다).',
+  },
+  {
     name: '회전 커서를 읽어 놓고 항상 0번부터 시작(회전이 죽음)',
     file: 'src/features/marketing/api/rescan-rotation.ts',
     find: 'const start = normalizeOrder(String(from), len)',

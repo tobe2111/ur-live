@@ -121,17 +121,58 @@ if (unwired.size) {
  *
  * ⚠️ **못 잡는 것**: `_PAID` 짝이 **아예 없는** CF-bound 상수. 이름만으로는 그게 CPU 에 묶인
  *   상수인지 데이터 모양인지 알 수 없다 — 사람이 판단해야 한다(등기부의 `why` 와 같은 이유).
+ *
+ * 🔧 **2026-08-03 판정 축 교정 — 파일-지역에서 프로그램-전역으로.**
+ *   첫 판은 사용처를 **선언한 파일 안에서만** 셌다. 그래서 정상적인 리팩토링 하나가 오탐을 만들었다:
+ *   `influencer-maintenance.ts` 가 600줄 캡에 닿아 회전 정책을 `rescan-rotation.ts` 로 빼자,
+ *   선언(모듈)과 선택(호출부)이 갈리면서 **멀쩡히 배선된 `RESCAN_DEADLINE_MS_PAID` 가 고아로 신고**됐다.
+ *   *"아무도 고르지 않는가"* 는 파일이 아니라 **프로그램 전체** 질문이다 — 스캔 범위 전체에서 센다.
+ *   ⚠️ 그래도 **범위 밖(다른 디렉터리)에서만 쓰이는 경우는 여전히 고아로 본다.** 이 파이프라인의
+ *   요금제 축은 `DIRS` 안에서 닫혀 있어야 하고, 밖으로 나갔다면 그 자체가 봐야 할 사실이다.
+ *
+ * 🩸 **그 교정의 첫 판은 헛돌았다(같은 날, 주입으로 발각).** "이름이 이 파일에 있고 + 이 파일이
+ *   요금제 판정을 한다"로 봤더니, 실제 선택부를 지워도 **`import` 줄에 이름이 남고** 그 파일의
+ *   *다른* `envPlanValue(` 가 조건을 채워 **초록**이 떴다. 텍스트 존재는 구조의 증거가 아니다.
+ *   ⇒ 판정을 **"선택 문맥 안에 그 이름이 있는가"** 로 좁혔다. 선택 문맥은 두 형태다:
+ *      ① 선택자 호출의 인자 목록 — `envPlanValue(raw, 무료, 유료, env)` (괄호 균형 스캔, 다중행 OK)
+ *      ② 요금제 삼항 — `paidPlan(env) ? X_PAID : X_DEFAULT` · `plan === 'paid' ? … `
+ *   ②를 빼면 **멀쩡히 배선된 상수 4건**(`ALARM_INTERVAL_MS_PAID` 등)이 오탐으로 뜬다 — 실제로 그랬다.
+ *   `import` 줄은 어느 쪽에도 안 들어가므로 **이름만 남은 잔재는 구조적으로 배제**된다.
  */
-const PLAN_SELECTORS = /(envPlanValue|paidPlan|resolvePlan|isPaid)\s*\(/
+/** 요금제 조건이 걸린 줄 — 삼항 선택 형태를 잡는다. */
+const PLAN_PREDICATE = /(paidPlan\s*\(|isPaid|resolvePlan\s*\(|===\s*'paid'|===\s*"paid")/
+const SELECTOR_NAMES = /\b(envPlanValue|paidPlan|resolvePlan|isPaid)\s*\(/g
+/** 선택자 호출들의 **인자 텍스트만** 모은다 — import·주석·무관한 언급을 구조적으로 배제. */
+function selectorArgs(src) {
+  const out = []
+  for (const m of src.matchAll(SELECTOR_NAMES)) {
+    let i = m.index + m[0].length, depth = 1
+    const start = i
+    while (i < src.length && depth > 0) {
+      const c = src[i]
+      if (c === '(') depth++
+      else if (c === ')') depth--
+      i++
+    }
+    out.push(src.slice(start, i - 1))
+  }
+  return out.join('\n')
+}
 const orphanPaid = new Map()   // 정의는 있는데 아무도 고르지 않는 _PAID 상수
-for (const rel of files) {
-  const src = strip(fs.readFileSync(path.join(ROOT, rel), 'utf8'))
+/** 스캔 범위 전체를 한 번만 읽어 둔다(파일 경계를 넘는 선택을 보기 위해). */
+const allSrc = files.map((rel) => [rel, strip(fs.readFileSync(path.join(ROOT, rel), 'utf8'))])
+/** 선택 문맥 = ① 선택자 인자 ∪ ② 요금제 조건이 걸린 줄. `import` 줄은 둘 다 아니다. */
+const selectionContext = allSrc
+  .map(([, src]) => [
+    selectorArgs(src),
+    src.split('\n').filter((l) => PLAN_PREDICATE.test(l)).join('\n'),
+  ].join('\n'))
+  .join('\n')
+const allSelectorArgs = selectionContext
+for (const [rel, src] of allSrc) {
   for (const m of src.matchAll(/\bconst\s+([A-Z][A-Z0-9_]*_PAID)\b/g)) {
     const name = m[1]
-    // 정의 줄을 뺀 나머지에서 이 이름이 쓰이는가 + 그 파일이 요금제 판정을 하는가.
-    const usedElsewhere = new RegExp(`\\b${name}\\b`, 'g')
-    const hits = [...src.matchAll(usedElsewhere)].length
-    if (hits <= 1 || !PLAN_SELECTORS.test(src)) orphanPaid.set(name, rel)
+    if (!new RegExp(`\\b${name}\\b`).test(allSelectorArgs)) orphanPaid.set(name, rel)
   }
 }
 if (orphanPaid.size) {
