@@ -70,13 +70,23 @@ const MUTATIONS = [
   {
     name: '야간 재스캔의 하위작업이 고정 순서라 마지막(naver)이 영구 미실행',
     file: 'src/features/marketing/api/influencer-maintenance.ts',
-    find: 'const j = jobs[(from + i) % jobs.length]',
-    replace: 'const j = jobs[i]',
+    find: 'for (const idx of rotatedOrder(from, jobs.length))',
+    replace: 'for (const idx of jobs.map((_, i) => i))',
     test: 'src/tests/unit/ads-lane-deadlines-final.test.ts',
     why:
       '하위작업 셋을 순차 실행하는데 마감선을 넣으면서 순서를 고정하면, 앞의 둘이 시간을 다 쓸 때 ' +
       '`naver` 는 매 회차 잘린다. **하루 1회 레인이라 그건 곧 영구 미실행이다.** ' +
       '`sweep-mx` 블록에서 겪은 것과 같은 구조적 기아 — 마감선과 회전은 짝이다.',
+  },
+  {
+    name: '회전 커서를 읽어 놓고 항상 0번부터 시작(회전이 죽음)',
+    file: 'src/features/marketing/api/rescan-rotation.ts',
+    find: 'const start = normalizeOrder(String(from), len)',
+    replace: 'const start = 0',
+    test: 'src/tests/unit/ads-lane-deadlines-final.test.ts',
+    why:
+      '배선(호출)은 남아 있는데 산술만 죽으면 **텍스트 검사는 통과**한다 — 위 항목이 못 보는 자리다. ' +
+      '그래서 회전은 문자열이 아니라 **동작**으로도 검증한다(회차당 1개만 돌아도 3회차에 셋 다 선두를 받는가).',
   },
   {
     name: '5xx 경보가 1건을 "스파이크"라 불러 매일 거짓 ⚠️ 를 냄',

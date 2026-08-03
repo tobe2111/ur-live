@@ -24,6 +24,7 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
+import { normalizeOrder, nextOrder, rotatedOrder } from '@/features/marketing/api/rescan-rotation'
 
 const read = (rel: string) => {
   const p = path.join(process.cwd(), rel)
@@ -70,8 +71,11 @@ describe('maintenance-rescan — 마감선 + 하위작업 선두 회전', () => 
 
   it('선두를 회차마다 돌린다', () => {
     // 고정 순서면 마지막 naver 가 (하루 1회 레인이라) 영원히 안 돈다.
-    expect(MAINT).toMatch(/const j = jobs\[\(from \+ i\) % jobs\.length\]/)
-    expect(MAINT).toMatch(/RESCAN_ORDER_KEY, String\(\(from \+ ran\) % jobs\.length\)/)
+    // 회전 정책은 `rescan-rotation.ts` 로 추출됐다(600줄 캡) — 배선이 살아 있는지를 본다.
+    expect(MAINT).toMatch(/for \(const idx of rotatedOrder\(from, jobs\.length\)\)/)
+    expect(MAINT).toMatch(/RESCAN_ORDER_KEY, String\(nextOrder\(from, ran, jobs\.length\)\)/)
+    // 커서를 읽지 않으면 회전이 아니라 매번 같은 자리에서 시작하는 것과 같다.
+    expect(MAINT).toMatch(/const from = normalizeOrder\(ordRaw\?\.value, jobs\.length\)/)
   })
 
   it('셋 다 그대로 실행 대상이다 (작업을 빼지 않았다)', () => {
@@ -95,15 +99,30 @@ describe('maintenance-rescan — 마감선 + 하위작업 선두 회전', () => 
 
 describe('회전 산술 — 하루 1회 레인에서 셋이 모두 선두를 받는가', () => {
   const N = 3
+  // ⚠️ 산술을 여기서 다시 짜면 **테스트가 자기 구현을 검증**할 뿐이다 — 실제 모듈을 돌린다.
   const walk = (perRun: number, runs: number) => {
     const led = new Set<number>()
     let from = 0
     for (let r = 0; r < runs; r++) {
-      for (let i = 0; i < perRun; i++) led.add((from + i) % N)
-      from = (from + perRun) % N
+      for (const idx of rotatedOrder(from, N).slice(0, perRun)) led.add(idx)
+      from = nextOrder(from, perRun, N)
     }
     return led
   }
+
+  it('깨진 커서(음수·NaN·문자·범위초과)도 유효 범위로 접힌다', () => {
+    for (const bad of [null, undefined, '', 'x', '-1', '99']) {
+      const v = normalizeOrder(bad, N)
+      expect(v, `커서 ${String(bad)} 이 범위를 벗어났다`).toBeGreaterThanOrEqual(0)
+      expect(v).toBeLessThan(N)
+    }
+  })
+
+  it('한 회차에 같은 작업을 두 번 돌리지 않는다', () => {
+    for (let from = 0; from < N; from++) {
+      expect(new Set(rotatedOrder(from, N)).size).toBe(N)
+    }
+  })
 
   it('회차당 1개만 돌아도 3회차면 셋 다 돈다 (최악)', () => {
     expect(walk(1, 3).size).toBe(N)

@@ -14,6 +14,7 @@ import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS }
 import { MAINT_PHASE_CURSOR_KEY, MAINT_SCHEDULE_VERSION, parsePhaseCursor, formatPhaseCursor, nextPhaseSlot } from './maintenance-phase-cursor'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue } from './collect-budget'
 import { budgetedDb, newOpBudget, type OpBudget } from './maintenance-budget'
+import { RESCAN_DEADLINE_MS, RESCAN_DEADLINE_MS_PAID, RESCAN_ORDER_KEY, normalizeOrder, nextOrder, rotatedOrder } from './rescan-rotation'
 import { healNaverHandles } from './influencer-handle-heal'
 // 📍 지역 백필 — 여기(정비 인보케이션)가 제자리다. 근거는 `sweepRegions` 주석.
 import { backfillRegions, recheckBlankRegions } from './influencer-region'
@@ -507,26 +508,12 @@ export async function runNextMaintenancePhase(env: Env): Promise<Record<string, 
 /** 🌙 야간 라이브 재보정(별도 시간대 KST 04시 — fetch-heavy 라 자체 인보케이션 예산 사용):
  *   🧭 카테고리 전체 재보정(커서 이어받기) + 🔄 라이브 재조회 2패스(0회·무메일·미분류 우선)
  *   + 📝 블로거 스윕(활동성·이웃수·프로필 연락처 — 시간당 20 개로는 백로그가 느려 밤에 60 개 추가). */
-/** 야간 재스캔 회차 마감선 — 하위작업 셋의 **합계**를 묶는다(각자 예산과 별개). */
-const RESCAN_DEADLINE_MS = 20_000
-const RESCAN_DEADLINE_MS_PAID = 45_000
-/** 하위작업 선두 회전 커서 — 고정 순서면 마지막(naver)이 영구 미실행이 된다. */
-const RESCAN_ORDER_KEY = 'ads_maintenance_rescan_order'
-
 export async function runNightlyRescan(env: Env): Promise<Record<string, unknown>> {
   const DB = env.DB
   // 🔒 정비와 같은 lease — 이쪽은 **YouTube 쿼터를 쓰기 때문에** 중복 실행이 곧 하루 예산 낭비(수집 몫 잠식).
   if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS)) {
-    /**
-     * 🔇 **진 쪽도 흔적을 남긴다** — 안 남기면 '경합에 졌다'가 '한 번도 안 돌았다'와 구분되지 않는다.
-     *
-     *   2026-07-27 19:00 이후 이 레인의 스냅샷이 멈춰 있었다. 고장이 아니라 **시간별 정비 순환(07-28 도입)과
-     *   같은 lease 를 다투다 매번 졌기 때문**인데, 진 경로가 조용히 돌아가서 어드민에는 *"never fired"* 로만
-     *   보였다 — 원인 규명이 이틀 막힌 이유가 그 무음이다.
-     *
-     *   경합 자체는 스케줄러가 19시를 양보해 없앴다(`RESCAN_HOUR_UTC`). 이 기록은 **재발했을 때 즉시
-     *   알아보기 위한 것**이라, 경합이 사라진 뒤에도 남겨 둔다(하루 1회 쓰기 — 비용 무시 가능).
-     */
+    // 🔇 진 쪽도 흔적을 남긴다 — 없으면 '경합에 졌다'와 '한 번도 안 돌았다'가 구분되지 않는다.
+    //   근거(2026-07-27 이틀 막힌 오진)는 `rescan-rotation.ts` 헤더에 옮겨 뒀다.
     const busy = { at: new Date().toISOString(), kind: 'rescan', busy: true }
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind('ads_maintenance_rescan_last', JSON.stringify(busy)).run().catch(() => null)
@@ -534,19 +521,8 @@ export async function runNightlyRescan(env: Env): Promise<Record<string, unknown
   }
   const out: Record<string, unknown> = { at: new Date().toISOString(), kind: 'rescan' }
   try {
-    /**
-     * ⏱️ **회차 벽시계 마감선 + 하위작업 회전** (2026-08-03 — 대표 "나머지 두 레인도 끝까지")
-     *
-     * 이 레인은 실측 **60초**를 썼다(`cpu_risk=danger`). 하위 작업 셋이 각자 예산(YT 쿼터·서브리퀘스트)은
-     * 갖고 있지만 **셋을 합친 시간을 재는 것이 없었다** — 부모 cron 의 CPU 는 그 합계를 감당해야 한다.
-     *
-     * ⚠️ **마감선만 넣으면 `naver` 가 영원히 안 돈다.** 순서가 고정이라 앞의 둘이 시간을 다 쓰면
-     *   마지막은 매 회차 잘린다(하루 1회 레인이라 = **영구 미실행**). `sweep-mx` 블록에서 겪은 것과
-     *   같은 구조적 기아다 ⇒ **시작 위치를 회차마다 돌린다.** 3회면 셋 다 선두를 한 번씩 받는다.
-     *
-     * 실패해도 다음 작업으로 넘어가는 기존 동작(try 개별 감쌈)은 그대로다 —
-     * 한 작업의 실패가 나머지를 막지 않는다.
-     */
+    // ⏱️ 회차 마감선 + 선두 회전 — 근거와 순수함수는 `rescan-rotation.ts`(그 파일 헤더 참조).
+    //   마감선만 넣으면 마지막(naver)이 하루 1회 레인이라 **영구 미실행**이 된다.
     const startedAt = Date.now()
     const runDeadlineMs = envPlanValue(undefined, RESCAN_DEADLINE_MS, RESCAN_DEADLINE_MS_PAID, env)
     const jobs: Array<{ name: string; run: () => Promise<unknown> }> = [
@@ -557,21 +533,19 @@ export async function runNightlyRescan(env: Env): Promise<Record<string, unknown
     ]
     const ordRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(RESCAN_ORDER_KEY)
       .first<{ value: string }>().catch(() => null)
-    let from = parseInt(ordRaw?.value || '0', 10)
-    if (!Number.isFinite(from) || from < 0) from = 0
-    from %= jobs.length
+    const from = normalizeOrder(ordRaw?.value, jobs.length)
     out.first_job = jobs[from].name
 
     let ran = 0
-    for (let i = 0; i < jobs.length; i++) {
+    for (const idx of rotatedOrder(from, jobs.length)) {
       if (Date.now() - startedAt > runDeadlineMs) { out.stopped_by = 'deadline'; break }
-      const j = jobs[(from + i) % jobs.length]
+      const j = jobs[idx]
       ran++
       try { out[j.name] = await j.run() } catch (e) { out[`${j.name}_error`] = (e as Error)?.message || 'fail' }
     }
     // 다음 회차는 이번에 **못 돌린 작업**부터 — 잘려도 3회 안에 셋 다 선두를 받는다.
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-      .bind(RESCAN_ORDER_KEY, String((from + ran) % jobs.length)).run().catch(() => null)
+      .bind(RESCAN_ORDER_KEY, String(nextOrder(from, ran, jobs.length))).run().catch(() => null)
 
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind('ads_maintenance_rescan_last', JSON.stringify(out).slice(0, 1000)).run().catch(() => null)
