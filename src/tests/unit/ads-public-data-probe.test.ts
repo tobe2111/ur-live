@@ -232,9 +232,24 @@ describe('probeLadder — 첫 실패 지점을 찾는다', () => {
  * 경로 문자만 받으며 쿼리스트링은 거절한다(서비스키 파라미터를 덮어쓸 수 있다).
  */
 describe('후보 경로 — 호스트 **열거** + 쿼리 주입 차단', () => {
-  it('🔒 허용 호스트는 **열거된 둘뿐**이다 — 임의 URL 을 여는 게 아니다', () => {
-    expect([...PROBE_ALLOWED_HOSTS]).toEqual(['apis.data.go.kr', 'www.localdata.go.kr'])
+  it('🔒 허용 호스트는 **열거된 것뿐**이다 — 임의 URL 을 여는 게 아니다', () => {
+    // 목록을 리터럴로 못박는 이유: 늘리려면 **일부러 이 줄을 고쳐야** 한다(무심코 늘지 않게).
+    expect([...PROBE_ALLOWED_HOSTS]).toEqual(['apis.data.go.kr', 'www.localdata.go.kr', 'api.data.go.kr'])
     expect(PROBE_ALLOWED_HOST).toBe('apis.data.go.kr') // 상대경로 기본 호스트
+  })
+
+  /**
+   * 위 리터럴 시험은 "무심코 늘어남"만 막는다. 진짜 지켜야 할 성질은 **어디로 나갈 수 있는가** 이므로
+   * 따로 못박는다 — 오타(`api.data.go.kr.evil.com`)나 사내 호스트가 목록에 섞이면 그 순간 SSRF 다.
+   */
+  it('🔒 허용 호스트는 **전부 정부 도메인(.go.kr)** 이어야 한다(SSRF 표면의 실제 경계)', () => {
+    // ⚠️ `data.go.kr` 로 못박지 않는 이유: 인허가 원천은 `localdata.go.kr` 이라 계열이 하나가 아니다.
+    //   지켜야 할 성질은 "포털이냐"가 아니라 **정부 도메인 밖으로 못 나간다**는 것 —
+    //   `api.data.go.kr.evil.com` 같은 접미사 위장은 `.com` 이라 여기서 걸린다.
+    for (const h of PROBE_ALLOWED_HOSTS) {
+      expect(h, `${h} 는 .go.kr 이 아니다`).toMatch(/\.go\.kr$/)
+      expect(h, `${h} 에 포트·인증정보·경로가 섞였다`).toMatch(/^[a-z0-9.-]+$/)
+    }
   })
 
   it('평범한 경로는 받는다(앞 슬래시 유무 무관) — 기본 호스트는 공공데이터포털', () => {
