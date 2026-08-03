@@ -35,8 +35,28 @@ export interface EnrichRollup {
   processed: number; enriched: number; crawls: number; fetches: number; d1: number; spent: number
   /** 라운드가 **어디서 끝났는지**의 분포(p1_done/p2/p3_done…) — ⓐ/ⓑ 판정의 핵심. */
   phase: Record<string, number>
+  /**
+   * 💀 중도 사망한 라운드의 **마지막 체크포인트**(`snap.at`) 최근 8개 (2026-08-03 신설).
+   *
+   *   `phase` 는 "2단계에서 죽었다"까지만 말한다. 그런데 실측에서 남은 물음은 그 다음이었다 —
+   *   ```
+   *     ads_enrich_last: processed 3 · spent 15/60 · limit_hit false · deadline_hit false
+   *                      crash 0 · partial true · at "cr:https://www.busan.com"
+   *   ```
+   *   한도도·시간제한도·예외도 아닌 **예외 없이 사라지는 죽음**인데, 처방이 둘로 갈린다:
+   *   **한 주소에 몰리면** 그 사이트가 응답을 안 줘 벽시계를 태운 것(그 호스트만 차단하면 끝) ·
+   *   **흩어지면** 부모 CPU 한도(레인 배치를 고쳐야 한다). 정반대다.
+   *
+   *   그런데 `at` 은 **스냅샷에만 있고 라운드마다 덮인다** → 판정하려면 하루 2회차씩 며칠을 기다려야 했다.
+   *   여기 모으면 **조회 한 번**으로 갈린다. 비용 0 — 이미 쓰는 누적 레코드에 문자열 몇 개를 얹을 뿐이고,
+   *   추가 SELECT·UPDATE 가 없다(무료 플랜의 서브리퀘스트 지갑을 건드리지 않는다).
+   */
+  deaths?: string[]
   last_run_id?: string; updated_at?: string
 }
+
+/** `deaths` 링버퍼 길이 — 하루 회차가 적어(실측 2~4) 8이면 며칠치가 남는다. 값 자체가 짧아 저장비용 무시가능. */
+export const DEATH_TRAIL_MAX = 8
 
 /** KST 하루 경계 — 워커 TZ 는 UTC 라 +9h 후 날짜를 취한다(`docs/CURRENT_WORK.md` KST 규약). */
 export const kstDay = (ms = Date.now()) => new Date(ms + 9 * 3_600_000).toISOString().slice(0, 10)
@@ -67,7 +87,13 @@ export function foldRound(rollup: EnrichRollup | null, snap: Record<string, unkn
     : emptyRollup(day)
   const n = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0)
   r.rounds++
-  if (snap.partial === true) r.partial++
+  if (snap.partial === true) {
+    r.partial++
+    // 💀 사망 지점을 흔적으로 남긴다(위 `deaths` 주석 참조). 새 배열로 만들어 이전 누적본과 공유하지 않는다
+    //   — 65행의 얕은 복사가 배열을 참조로 물고 오므로, 여기서 push 하면 원본까지 오염된다.
+    const at = typeof snap.at === 'string' ? snap.at.slice(0, 60) : ''
+    if (at) r.deaths = [...(r.deaths || []), at].slice(-DEATH_TRAIL_MAX)
+  }
   if (snap.deadline_hit === true) r.deadline++
   if (snap.limit_hit === true) r.limit++
   if (snap.crash) r.crash++
