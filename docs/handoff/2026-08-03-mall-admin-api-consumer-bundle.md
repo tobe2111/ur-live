@@ -94,26 +94,43 @@ curl -sS -o /dev/null -w '%{http_code}\n' -X POST https://urdeal.kr/api/admin/wh
    재발하면 다른 네트워크(모바일 테더링 등)에서 한 번 확인해 주시면 범위가 갈린다.
 3. **PR #1001** — #1011 이 머지되며 내용은 다 들어갔다. 중복이라 닫으면 된다.
 
-## 🔴 같은 클래스가 **12개 더 있다** (고치지 않았다 — 판단이 필요해서)
+## 🔴 같은 클래스가 **10개 더 있다** — 어드민 메뉴에서 숨겼다(삭제는 아직)
 
-몰 관리만 특이한 게 아니다. `dist/client` 가 공유라 **모든 도매 어드민 화면이 urdeal.kr/admin 에
-실리는데**, 그 API 는 `mount-wholesale` 안에만 있다 ⇒ **urdeal.kr 에서 누르면 전부 404.**
+### ⚠️ 먼저, 이 문서의 앞선 판이 틀렸다 (2026-08-03 정정)
 
-소비자 번들에 없는 어드민 네임스페이스(실측 — `mount-wholesale.ts`):
-`/api/admin/wholesale`·`wholesale/integrity`·`wholesale-deposits`·`wholesale-banners`·
-`wholesale-board`·`wholesale-proposals`·`wholesale-products`·`wholesale-deposit-account`·
-`wholesale-overview`·`distributor`·**`buyer-pool`**·**`maker-pool`**.
+*"`buyer-pool`·`maker-pool` 도 도매 번들에만 있다"* 고 적었는데 **사실이 아니다.**
+`worker/index.ts:1682·1684` 가 **소비자 번들에서 직접 마운트**한다(`[TEMP-TEST 2026-07-20]` —
+*"도매 워커가 미배포라"*). urdeal.kr 에서 **정상 동작**한다. 철거 계획 §1(b) 가 요구한 보호가
+이미 걸려 있었고, `supply-teardown-safety.test.ts` 가 그 마운트를 검사하고 있다.
+⇒ 도매 번들 전용은 **10개**다: `wholesale`·`wholesale/integrity`·`wholesale-deposits`·
+`wholesale-banners`·`wholesale-board`·`wholesale-proposals`·`wholesale-products`·
+`wholesale-deposit-account`·`wholesale-overview`·`distributor`.
+**열 개 다 진짜 도매 전용**이라 철거 대상이지 소비자로 올릴 것이 아니다.
 
-🔴 **`buyer-pool` 은 특히 의심스럽다** — `admin-nav-config.ts:61` 이 이걸 **`domain:'wholesale'` 밖,
-전-어드민 그룹**에 두고 *"도매 RBAC 스코프 밖 → 여기(전-어드민)"* 라고 명시한다. 도매 전용이 아니라고
-선언해 놓고 API 는 도매 번들에만 있다. `maker-pool`(제조사 풀)도 같다.
+> 🩸 왜 틀렸나: `mount-wholesale.ts` 에서 두 마운트를 보고 **거기에만 있다고 단정**했다.
+> 두 곳에 다 있는 경우를 안 봤다. 마운트는 **양쪽 파일을 다 확인**해야 한다.
 
-**왜 안 고쳤나**: 나머지는 *진짜로 도매 전용*이라 utongstart.com 에서 쓰는 게 서비스 분리에 맞고,
-게다가 릴리즈 체크리스트 **A6("도매 잔재가 안 보인다 — 철거 PR")** 가 이 화면들을 **지우는** 방향이다.
-지울 것을 소비자 번들에 올리는 건 반대 방향이다. ⇒ **대표 결정 2択**:
-- **(가)** A6 철거에 맡긴다 — 그때 어드민 메뉴에서도 함께 사라진다. 그 전까지 urdeal.kr 에선 404 유지.
-- **(나)** `buyer-pool`·`maker-pool` 둘만 소비자로 올린다(도매 전용이 아니라고 선언돼 있으므로).
-  비용은 이번과 같은 수준(수 KB gz). 나머지 10개는 (가)로.
+### 한 것 — A6 의 안전한 절반
 
-⚠️ **`domain: 'wholesale'` 태그는 이걸 못 막는다** — 그건 **RBAC 역할 스코프**지 *배포 도메인*이 아니다.
-슈퍼관리자는 urdeal.kr/admin 에서 도매 메뉴를 전부 본다.
+`dist/client` 가 공유라 도매 어드민 화면이 urdeal.kr/admin 에 **다 실리는데** API 는 없다 ⇒
+그 메뉴들은 **이미 죽은 링크**였다. 그래서 **소비자 도메인에서만 도매 밴드를 숨겼다**
+(`withoutWholesaleOnConsumer` — `admin-nav-config.ts`). 기능을 끈 게 아니라 *없는 기능을 안 보이게* 했다.
+
+🔴 **전역 플래그로 숨기지 않은 이유**: 철거 계획 §4 의 머니 게이트 확인 경로가
+**`/admin/wholesale-overview`** 다. 전역으로 껐다면 **예치금을 돌려줄 경로까지** 껐을 것이다.
+⇒ 도매 도메인(`utongstart.com` · `*wholesale*` 호스트 · `?wholesale=1`)에서는 **그대로 보인다.**
+
+**몰 관리는 도매 밴드에서 빼서 `🏪 오프라인 공구` 로 옮겼다**(라벨 `운영자 몰 관리`).
+안 옮겼으면 오늘 API 를 고쳐 놓고 **메뉴를 숨겨서 파일럿 몰을 못 만들 뻔했다.**
+가드: `admin-nav-wholesale-teardown.test.ts`(13개, 되돌려-검증 2종).
+
+### 안 한 것 — 화면·라우트 삭제 (계획 §5-3)
+
+**머니 게이트 4항목**(판매사 예치금 · 미확인 충전요청 · 공급자 미지급 정산금 · plus 활성 구독)이
+**전부 0** 이어야 삭제할 수 있다(계획 §4). 이 세션은 어드민 자격도 라이브 이그레스도 없어 **확인 불가**.
+> 대표가 도매 도메인 `/admin/wholesale-overview` 에서 `deposit_liability`·`pending_charge_requests`
+> 를 보고 0 이면 그때 **삭제 전용 PR**(대표 확정: *"삭제는 기능 구현과 섞지 말고 별도 PR 로 고립"*).
+
+⚠️ 삭제 범위에 **문서 모순**이 하나 있다 — 계획 §2 는 `/api/admin/wholesale-*` 를 통째로 지우라 하고,
+`operator-mall-saas-gap.md` §8 은 `wholesale-main`(배너)·`wholesale-board`·`wholesale-overview` 를
+**존치**(운영자 몰 꾸미기에 재사용)라 한다. **삭제 PR 착수 전에 이 셋의 운명을 먼저 정할 것.**

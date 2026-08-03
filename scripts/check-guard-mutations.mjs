@@ -521,6 +521,39 @@ const MUTATIONS = [
       '(첫 작성에서 내가 손으로 적다가 실제로 64개를 빠뜨렸고, 이 시험이 즉시 잡았다.)',
   },
   {
+    name: '인허가 경로에서 오퍼레이션(/info)이 사라짐',
+    file: 'src/features/marketing/api/license-url.ts',
+    find: "export const LICENSE_OPERATION = 'info'",
+    replace: "export const LICENSE_OPERATION = ''",
+    test: 'src/tests/unit/license-url-variant.test.ts',
+    why:
+      '이 한 칸이 없어서 인허가 레인 전체가 며칠간 0건이었다. 게이트웨이는 `NO_OPENAPI_SERVICE_ERROR`(code 12)로 ' +
+      '답하는데 그 코드는 **폐기와 경로 오타를 구분하지 못한다** — 실제로 이전 세션이 "서비스 폐기 확정"이라고 ' +
+      '오판했다. 대표 우선업종(음식점·카페·미용·숙박)이 통째로 이 경로에 달려 있다.',
+  },
+  {
+    name: '인허가 기본 후보가 무시되는 페이징 키로 되돌아감',
+    file: 'src/features/marketing/api/license-url.ts',
+    find: "{ id: 'v4', pageParam: 'pageNo', sizeParam: 'numOfRows'",
+    replace: "{ id: 'v4', pageParam: 'pageIndex', sizeParam: 'pageSize'",
+    test: 'src/tests/unit/license-url-variant.test.ts',
+    why:
+      '라이브 응답 봉투가 `{"numOfRows":…,"pageNo":…}` 를 echo 한다 = 이 둘이 실제로 읽히는 키다. ' +
+      '`pageIndex`/`pageSize` 는 같이 보내도 **조용히 무시**되므로 그쪽으로 되돌리면 **200 을 받으면서 ' +
+      '영원히 1페이지만** 긁는다 — 에러가 없어 안 보이는 실패(이 레포가 "조용한 전진 0"이라 부르는 것).',
+  },
+  {
+    name: '인허가 대문자 필드 별칭이 사라짐(200 인데 저장 0)',
+    file: 'src/features/marketing/api/localdata-collect.ts',
+    find: "g(it, 'mgtno', 'mgtNo', 'MNG_NO')",
+    replace: "g(it, 'mgtno', 'mgtNo')",
+    test: 'src/tests/unit/license-field-aliases.test.ts',
+    why:
+      '이관된 포털은 대문자 스네이크(`MNG_NO`/`BPLC_NM`/`TELNO`)를 쓴다. 옛 소문자 이름만 읽으면 ' +
+      '**HTTP 200 에 실제 행이 와도** 전부 빈 문자열로 파싱돼 복합키가 성립하지 않고 행이 통째로 버려진다. ' +
+      '경로만 고치고 이걸 빠뜨리면 증상(0건)이 그대로라 "아직도 안 된다"로 오진하게 된다.',
+  },
+  {
     name: '사망 지점 흔적이 이전 누적본을 오염시킴(제자리 push)',
     file: 'src/features/marketing/api/enrich-telemetry.ts',
     find: 'r.deaths = [...(r.deaths || []), at].slice(-DEATH_TRAIL_MAX)',

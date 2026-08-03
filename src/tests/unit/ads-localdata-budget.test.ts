@@ -101,9 +101,11 @@ describe('localdata 수집 — 예산 소진 이어받기', () => {
     const forPendingDay = urls.filter(u => u.includes(`lastModTsBgn=${day}`))
     // 남겨둔 날은 업종 2번부터만 조회해야 한다 — 0·1번 재조회는 순수 예산 낭비.
     expect(forPendingDay).toHaveLength(EPS.length - 2)
-    expect(forPendingDay[0]).toContain(`/${EPS[2]}?`)
-    expect(forPendingDay.some(u => u.includes(`/${EPS[0]}?`))).toBe(false)
-    expect(forPendingDay.some(u => u.includes(`/${EPS[1]}?`))).toBe(false)
+    // 업종 뒤에 오퍼레이션(`/info`)이 붙을 수 있으므로 **경계**로 잡는다 — 지킬 것은 "어디서 재개하나" 다.
+    const hasEp = (u: string, ep: string) => new RegExp(`/${ep}[/?]`).test(u)
+    expect(hasEp(forPendingDay[0], EPS[2])).toBe(true)
+    expect(forPendingDay.some(u => hasEp(u, EPS[0]))).toBe(false)
+    expect(forPendingDay.some(u => hasEp(u, EPS[1]))).toBe(false)
     // 완주했으므로 커서는 지워진다(적체가 무한히 쌓이지 않는다).
     expect(kv[PENDING_KEY]).toBeUndefined()
   })
