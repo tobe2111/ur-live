@@ -600,6 +600,18 @@ const MUTATIONS = [
       '오판했다. 대표 우선업종(음식점·카페·미용·숙박)이 통째로 이 경로에 달려 있다.',
   },
   {
+    name: '낡은 변종 판정을 그대로 믿음(옛 형태에 영구히 갇힘)',
+    file: 'src/features/marketing/api/license-url.ts',
+    find: 'return Number(state.v || 0) === LICENSE_STATE_VERSION ? state : null',
+    replace: 'return state',
+    test: 'src/tests/unit/license-url-variant.test.ts',
+    why:
+      '라이브 DB 에 **주소가 틀렸던 시절의 판정**(`{"id":"v1"}` + code 12 실패 이력)이 남아 있었다. 저장된 값이 ' +
+      '항상 이기므로 기본값을 고쳐도 안 지워지고, 프로브는 *실패했을 때만* 도는데 경로가 고쳐진 뒤로는 v1 도 ' +
+      '200 을 받는다(페이징 키가 조용히 무시될 뿐) → 실패가 없다 → 프로브가 안 돈다 → **영원히 v1**. ' +
+      '에러 없이 같은 페이지만 긁는 "조용한 전진 0" 이다.',
+  },
+  {
     name: '인허가 기본 후보가 무시되는 페이징 키로 되돌아감',
     file: 'src/features/marketing/api/license-url.ts',
     find: "{ id: 'v4', pageParam: 'pageNo', sizeParam: 'numOfRows'",

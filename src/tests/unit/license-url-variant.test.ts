@@ -9,7 +9,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  LICENSE_VARIANTS, DEFAULT_VARIANT_ID, findVariant, buildLicenseUrl, redactServiceKey, resolveLicenseOperation,
+  LICENSE_VARIANTS, DEFAULT_VARIANT_ID, findVariant, buildLicenseUrl, redactServiceKey, resolveLicenseOperation, usableVariantState, LICENSE_STATE_VERSION,
   resolveLicensePageSize, shouldProbe, probeLicenseVariants, PROBE_COOLDOWN_MS,
 } from '@/features/marketing/api/license-url'
 
@@ -210,5 +210,46 @@ describe('오퍼레이션 세그먼트', () => {
     })
     expect(seen.length).toBeGreaterThan(0)
     for (const u of seen) expect(u).toContain('/general_restaurants/info?')
+  })
+})
+
+/**
+ * 🧊 **저장된 판정의 유효기간** — 라이브가 배포 직후에 드러낸 구멍 (2026-08-03).
+ *
+ * `/info` 를 고쳐 배포하고 라이브 D1 을 봤더니 이렇게 남아 있었다:
+ * ```json
+ *   ads_localdata_variant = {"id":"v1","probed_at":…,"attempts":[…전부 code 12 실패…]}
+ * ```
+ * **주소가 틀렸던 시절의 판정**이다. 그때는 무엇을 찔러도 실패했으니 정보가 아니라 *잔해*다.
+ *
+ * 그런데 기본값을 v4 로 올린 것만으로는 이게 안 지워진다 — **저장된 값이 항상 이긴다.**
+ * 게다가 **스스로 못 빠져나온다**: 프로브는 *실패했을 때만* 도는데, 경로가 고쳐진 지금은 v1 도 200 을
+ * 받는다(그 서비스가 `pageIndex`/`pageSize` 를 조용히 무시할 뿐이다) → 실패가 없다 → 프로브가 안 돈다 →
+ * **영원히 v1**. 에러도 경고도 없이 같은 페이지만 긁는다.
+ *
+ * ## ⚠️ 이 시험이 못 보는 것
+ * 버전을 올려야 할 변경인데 **안 올리는 것**. 그건 사람이 판단한다(`LICENSE_STATE_VERSION` 주석에 명시).
+ */
+describe('저장된 변종 판정의 유효기간', () => {
+  it('🔒 규칙 버전이 다른 판정은 **없는 것으로 친다** — 안 그러면 옛 형태에 영원히 갇힌다', () => {
+    expect(usableVariantState({ id: 'v1', probed_at: 1 })).toBeNull()            // v 없음 = 구버전
+    expect(usableVariantState({ id: 'v1', probed_at: 1, v: 0 })).toBeNull()
+    expect(usableVariantState({ id: 'v1', probed_at: 1, v: LICENSE_STATE_VERSION - 1 })).toBeNull()
+  })
+
+  it('🔒 현행 버전 판정은 그대로 쓴다(매번 다시 탐색하면 예산 낭비다)', () => {
+    const s = { id: 'v1', probed_at: 1, v: LICENSE_STATE_VERSION }
+    expect(usableVariantState(s)).toBe(s)
+  })
+
+  it('빈 상태·id 없는 쓰레기는 null(레인이 죽지 않고 기본값으로 간다)', () => {
+    expect(usableVariantState(null)).toBeNull()
+    expect(usableVariantState(undefined)).toBeNull()
+    expect(usableVariantState({ id: '' })).toBeNull()
+  })
+
+  it('무효화된 상태는 쿨다운도 걸리지 않는다 — 즉시 다시 판정할 수 있어야 한다', () => {
+    const stale = { id: 'v1', probed_at: Date.now() }          // 방금 찍혔지만 구버전
+    expect(shouldProbe(usableVariantState(stale), Date.now())).toBe(true)
   })
 })
