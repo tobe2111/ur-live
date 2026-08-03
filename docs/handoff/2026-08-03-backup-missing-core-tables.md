@@ -99,11 +99,43 @@ dump 가 `SELECT rowid, * FROM t` 로 페이징했다. **D1 결과 컬럼 한도
 2. **키워드 회전 커서** — 마감선은 일을 줄이는 게 아니라 *미루는* 것이라, 시작점을 고정하면
    뒤쪽 키워드가 **영원히** 안 돈다. 레인 단위에서 이미 겪은 구조적 기아의 키워드판.
 
-### 다음 세션이 이어받을 것
-- 남은 고비용 레인: `sweep-kakao-phone`(31s, `enrich-lane.ts` — 마감선 **보유**, 재확인 필요)
-- `collect-hira`·`maintenance-rescan` 은 **다른 세션의 실험이 끝난 뒤** 접근.
-- 판정: `ads_notice_stats.diag.stoppedBy` 가 `deadline` 이면 마감선이 실제로 걸린 것 —
-  그때 `kwFrom` 이 회차마다 움직이는지 보면 기아가 없는지 확인된다.
+### 후속(같은 세션, `#997`) — 레인 2종 추가 + 5xx 관측
+
+`sweep-kakao-phone`(31s, 침묵 1위) · `sweep-mx`(12.5s) 에도 마감선을 넣었다.
+
+> 🔑 **마감선의 짝은 구조마다 다르다 — 이걸 틀리면 없던 기아를 만든다.**
+>
+> | 레인 | 대상 선택 | 필요한 짝 |
+> |---|---|---|
+> | `scan-notices` | 고정 키워드 배열 | **회전 커서** |
+> | `sweep-mx` | 블록 ①회사→②매장 **고정 순서** | **블록 선후 회전**(없으면 ②가 매 회차 굶음) |
+> | `sweep-kakao-phone` | `kakao_checked_at < now-30d` + **시도한 행에만 도장** | **불필요**(잘린 행은 다음 라운드 재선택) |
+>
+> 마지막 줄이 중요하다 — 여기에 회전을 덧붙이면 **없는 문제를 푸는 코드**가 늘 뿐이다.
+
+**5xx 경보도 고쳤다.** 다이제스트의 `⚠️ 5xx spike 2건` 을 D1 으로 추적하니 **모든 창이 count=1**
+(시간당 1건)이었다 — 임계 10/분이므로 스파이크가 아니다. 옛 문구는 *"5xx 가 있던 분의 개수"* 를
+"spike N건"으로 불렀다. 게다가 표에 **숫자만** 있어 무엇이 실패했는지 알 수 없었다(조치 불가 경보).
+→ `5xx_path` 경로별 계수 + 진단은 건수/최다분/상위경로, **임계 넘었을 때만 🔴**.
+
+### 다음 세션이 이어받을 것 — 판정 3개
+
+1. **레인이 마감선 안으로 들어왔나** — 하트비트 `ms` 재측정.
+   `stopped_by='deadline'` 이면 시간이 병목(예산 아님)이라는 뜻이고, 그때 마감선 값을 조정한다.
+2. **기아가 없는가** — `ads_notice_stats.diag.kwFrom` 과 `ads_mxsweep_stats.first_block` 이
+   회차마다 **움직이는지** 본다. 고정돼 있으면 회전이 안 도는 것이다.
+3. **🔴 시간당 5xx 1건의 정체** — 배포 24시간 뒤 `5xx_path` 분포로 밝힌다:
+   ```sql
+   SELECT key, SUM(count) n FROM rate_limit_attempts
+    WHERE action='5xx_path' AND window_start >= strftime('%s','now')-86400
+    GROUP BY key ORDER BY n DESC LIMIT 10;
+   ```
+
+### 아직 손대지 않은 것
+`collect-hira`(67s) · `maintenance-rescan`(60s) · `maintenance?phase=reextract`(16s) —
+**전부 `influencer-maintenance.ts`·`hira-hospital-collect.ts` 이고 다른 세션이 08-03 에 편집 중**이다.
+그 실험(#988 심평원 재시도)이 끝난 뒤 같은 패턴을 적용할 것.
+⚠️ 착수 전 반드시: `git log -1 --format=%ad --date=short -- <file>` 로 오늘 편집 여부 확인.
 
 ---
 
