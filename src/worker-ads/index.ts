@@ -274,6 +274,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     pending.push({ beat, path, fallback, gapMin: opts?.gap })
   }
   const gates = makeHourGates(hourUTC, kick, laneReg)
+  /**
+   * ⏰ **알람이 모는 레인은 부모가 손을 뗀다** — 판정은 한 번만 하고 아래 세 곳이 같이 본다
+   *   (수집 · 보강 · 정비). `let` 이 아니라 여기서 선언하는 이유: 수집 게이트가 보강 블록보다
+   *   **위**에 있어, 선언이 아래 있으면 TDZ 로 런타임에 터진다(작성 중 실제로 밟았다).
+   */
+  const laneAlarmOn = laneAlarmDrivesEnrich(env)
 
   // 🔔 이 워커의 cron 이 '울리기는 했다'는 사실 자체를 남긴다 — 개별 트랙이 전부 게이트 OFF 여도
   //   ur-ads 스케줄러가 살아있는지 구분할 수 있어야 한다(멈춤 경보의 최소 신호).
@@ -298,7 +304,11 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   공유하는데 이미 보강 레인 둘이 14 라운드를 던진다 — 더 부풀리면 waitUntil 꼬리(다른 레인)가 조용히
   //   죽는다. 오케스트레이터는 1건만 던지고 체인이 스스로 잇는다. 하트비트 이름은 'collect' 고정(바꾸면
   //   옛 `cron_hb:ads:collect` 가 남아 침묵 경보). 경위: docs/CURRENT_WORK.md 10차.
-  if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
+  //   🎯 2026-08-03: 알람 레인이 이 레인을 몰면 부모는 **손을 뗀다**. 이유는 `lane-alarm-runners.ts` 의
+  //   `collect` 항목 — 요약하면 인플루언서 도메인 예산 1칸을 레인 4개가 나눠 써 4시간에 한 번 순번이
+  //   오고, 그 한 번마저 부모 CPU 한도로 죽었다(실측 6시간 20분 정지). 리스가 이중 실행을 막긴 하지만
+  //   겹쳐 던지는 것 자체가 부모 CPU 를 또 먹으므로 게이트로 끊는다.
+  if (!laneAlarmOn && env.ADS_AUTO_COLLECT_ENABLED === 'true') {
     kick('/__ads/collect-chain', async () => { const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect'); return runInfluencerAutoCollect(env) }, { beat: 'collect' })
   }
   // 📝 인플루언서 풀 보강 시간당 N라운드 — **수집 게이트와 분리**(2026-07-28).
@@ -316,7 +326,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   키우고, 그 피해는 waitUntil 목록에서 **뒤에 선 다른 레인**이 받는다. 체인은 각 라운드가 자기
   //   인보케이션에서 다음을 잇게 해 부모 비용을 1로 고정한다(수집 레인과 같은 구조).
   //  ⏰ **알람이 몰면 cron 은 손을 뗀다**(2026-08-02 시범) — 게이트·부트스트랩·근거는 `lane-alarm-boot.ts`.
-  const laneAlarmOn = laneAlarmDrivesEnrich(env)
+  //   (`laneAlarmOn` 선언은 위 gates 옆으로 올렸다 — 수집 게이트가 이 블록보다 위에 있어서다.)
   if (laneAlarmOn) ctx.waitUntil(bootstrapLaneAlarm(env, adsBeat))
   if (!laneAlarmOn && (env as unknown as { ADS_INFLUENCER_ENRICH_DISABLED?: string }).ADS_INFLUENCER_ENRICH_DISABLED !== 'true') {
     // 🔁 라운드 루프는 **드라이버 인보케이션**이 돈다(`/__ads/enrich-influencer-driver`).

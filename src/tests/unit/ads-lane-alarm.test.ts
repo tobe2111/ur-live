@@ -123,6 +123,38 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
     expect(bootSrc).toMatch(/return alarmEnabled\(env\) && !!\(env as \{ ADS_LANE\?/)
   })
 
+  /**
+   * 🎯 **수집 레인도 같은 규칙을 받는다** (2026-08-03).
+   *   부모 디스패치를 안 끊으면 알람과 cron 이 겹쳐 던진다. 리스가 이중 *실행* 은 막지만
+   *   던지는 것 자체가 **부모 CPU 를 또 먹는다** — 그게 애초에 이 레인을 죽인 원인이다.
+   */
+  it('🔒 수집도 알람이 몰면 cron 은 손을 뗀다', () => {
+    expect(idx).toMatch(/if \(!laneAlarmOn && env\.ADS_AUTO_COLLECT_ENABLED === 'true'\)/)
+  })
+
+  /**
+   * ⚠️ **선언이 첫 사용보다 위에 있어야 한다** — `const` 는 TDZ 라 아래 있으면 **런타임에 터진다**
+   *   (타입체크는 통과한다). 수집 게이트가 보강 블록보다 위에 있어 작성 중 실제로 밟았다.
+   */
+  it('🔒 laneAlarmOn 선언이 첫 사용보다 앞에 있다 — TDZ 는 타입체크가 못 잡는다', () => {
+    const decl = idx.indexOf('const laneAlarmOn = laneAlarmDrivesEnrich(env)')
+    const firstUse = idx.indexOf('!laneAlarmOn')
+    expect(decl).toBeGreaterThanOrEqual(0)
+    expect(firstUse).toBeGreaterThanOrEqual(0)
+    expect(decl, '선언이 첫 사용보다 뒤에 있다 → 런타임 ReferenceError').toBeLessThan(firstUse)
+  })
+
+  /**
+   * 📉 **수집은 시간당 1회로 못 박는다** — 기본값(12)을 그대로 받으면 cron 설계 의도(`0 * * * *`)를
+   *   넘는 증설이고, 그건 네이버로 나가는 요청을 늘리는 일이라 **대표 판단 사항**이다.
+   *   ⚠️ 이 값을 올릴 땐 그 판단을 다시 받을 것. 테스트가 조용히 바뀌는 걸 막는다.
+   */
+  it('🔒 수집 레인은 runsPerHour 1 — cron 의도 복원이지 증설이 아니다', () => {
+    const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
+    expect(runners).toMatch(/collect: \{\s*\n\s*runsPerHour: 1,/)
+    expect(runners).toMatch(/runInfluencerAutoCollect/)
+  })
+
   it('🔒 매 정각 부트스트랩 — 체인이 끊겨도 다음 정각이 되살린다', () => {
     expect(idx).toMatch(/ctx\.waitUntil\(bootstrapLaneAlarm\(env, adsBeat\)\)/)
     // 🗂️ 이름은 등록부가 준다(클래스 하나 · 이름별 인스턴스). 보강 레인이 그 안에 있어야 한다.
