@@ -67,7 +67,7 @@ export async function handleGroupBuyFeedCache(env: Env): Promise<{
           WHERE p.category IN (${placeholders}) AND p.is_active = 1
             AND (p.group_buy_status = ? OR ? = 'all')
             AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
-          ORDER BY (CASE WHEN COALESCE(p.slug,'') LIKE 'demo-deal-%' THEN 1 ELSE 0 END), p.created_at DESC
+          ORDER BY (CASE WHEN COALESCE(p.slug,'') LIKE 'demo-%' THEN 1 ELSE 0 END), p.created_at DESC
           LIMIT 50
         `).bind(...categories, status, status).all()
 
