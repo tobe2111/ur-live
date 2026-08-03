@@ -40,7 +40,11 @@ describe('bySource — 수집원별 연락처 보유율', () => {
   })
 
   it('🔗 응답에 실제로 실린다 — 계산만 하고 안 내보내면 아무도 못 본다', () => {
-    expect(SRC).toMatch(/byCategory, byTier, byLeadType, bySource,/)
+    // ⚠️ 2026-08-03: 원래 `byCategory, byTier, byLeadType, bySource,` **순서 문자열**로 앵커했는데,
+    //   반환 목록에 `byDay` 가 하나 끼자 깨졌다(기능은 멀쩡한데 시험만 빨강 = 낡은 지도).
+    //   지켜야 할 것은 이웃 순서가 아니라 **"bySource 가 반환에 실린다"** 이므로 그 의미로 잡는다.
+    const ret = SRC.slice(SRC.lastIndexOf('return {'))
+    expect(ret, 'bySource 가 반환 객체에 없다 — 계산만 하고 안 내보내는 것이다').toMatch(/\bbySource\b/)
     expect(SRC, '반환 타입에도 있어야 소비처가 쓴다').toMatch(/bySource: SourceContactRate\[\]/)
   })
 

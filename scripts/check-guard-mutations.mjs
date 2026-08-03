@@ -389,6 +389,82 @@ const MUTATIONS = [
       '**세 번째 전진 0** 이 조용히 생긴다(이미 commerce·quality 두 번 났다).',
   },
   {
+    name: '전화 매칭이 대표번호를 통과시킴(남의 매장에 본사 이메일)',
+    file: 'src/features/marketing/api/registry-phone-match.ts',
+    find: '  if (!d || isSharedLine(d)) return null',
+    replace: '  if (!d) return null',
+    test: 'src/tests/unit/registry-phone-match.test.ts',
+    why:
+      '1588·1544·080 같은 대표번호는 **한 번호에 매장이 수백 개**다. 그대로 이으면 전혀 다른 매장에 ' +
+      '본사 이메일이 붙고, 잘못 붙은 주소로 보낸 메일은 **반송·스팸신고**가 되어 도메인 평판을 깎는다 — ' +
+      '그건 되돌리기 어렵다. 이 필터가 이 기능의 안전장치 절반이다.',
+  },
+  {
+    name: '전화 매칭이 모호한 다중 매칭을 통과시킴',
+    file: 'src/features/marketing/api/registry-phone-match.ts',
+    find: "  if (emails.length > 1) return { skip: 'ambiguous_phone' }",
+    replace: '  // (removed)',
+    test: 'src/tests/unit/registry-phone-match.test.ts',
+    why:
+      '같은 번호에 서로 다른 이메일이 둘 이상이면 **어느 쪽인지 모른다**. 아무거나 고르면 절반은 틀린다 — ' +
+      '연락처 품질은 양보다 정확도가 먼저다(틀린 주소 하나가 도메인 전체를 깎는다).',
+  },
+  {
+    name: '두 사업 명단이 보류(연락처 없음)까지 셈',
+    file: 'src/features/marketing/api/company-breakdown.ts',
+    find: 'WHERE merged_into IS NULL AND active = 1',
+    replace: 'WHERE merged_into IS NULL',
+    test: 'src/tests/unit/ads-export-filter-parity.test.ts',
+    why:
+      '화면 맨 위의 두 숫자는 **"지금 제안을 보낼 수 있는 수"** 다. 보류(active=0 = 연락처 없어 제외된 행)를 ' +
+      '섞으면 17만 총계와 다를 바 없어지고, 대표가 그 숫자를 믿고 명단을 뽑으면 **보낼 수 없는 행이 섞여 나온다.**',
+  },
+  {
+    name: '페이백 명단을 전화로도 셈(이메일 발송인데)',
+    file: 'src/features/marketing/api/company-breakdown.ts',
+    find: "SUM(CASE WHEN category = '온라인판매' AND email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS payback_ready",
+    replace: "SUM(CASE WHEN category = '온라인판매' AND phone IS NOT NULL THEN 1 ELSE 0 END) AS payback_ready",
+    test: 'src/tests/unit/ads-export-filter-parity.test.ts',
+    why:
+      '두 사업은 **도달 채널이 다르다** — 페이백은 이메일 발송이라 전화만 있는 행은 명단이 아니고, ' +
+      '대행사는 전화도 채널이다. 이 구분이 무너지면 숫자는 커지는데 실제로 보낼 수 있는 건 줄어든다.',
+  },
+  {
+    name: '루트별 수율이 총계로 뭉개짐(어디에 예산 쓸지 못 봄)',
+    file: 'src/features/marketing/api/store-prospects.ts',
+    find: "SUM(CASE WHEN (phone IS NOT NULL AND phone != '') OR (email IS NOT NULL AND email != '') THEN 1 ELSE 0 END) AS with_any",
+    replace: 'COUNT(*) AS with_any',
+    test: 'src/tests/unit/ads-export-filter-parity.test.ts',
+    why:
+      '총계만 보면 "5만 건 모았다"로 읽힌다. 실측은 `neis_academy` 49,315건에 **이메일 7건**이고 ' +
+      '대표 우선업종은 **0건**이라는 전혀 다른 이야기를 한다 — 둘 다 총계로는 안 보인다. ' +
+      '⚠️ 이 항목의 첫 시험은 파일 전체에서 컬럼명을 찾아 **주입해도 초록불이었다**(같은 이름이 다른 쿼리에도 있다). ' +
+      '"가드가 막는다는 그 자리"로 범위를 좁혀야 실제로 깨진다.',
+  },
+  {
+    name: '내보내기가 화면 필터를 무시(손에 안 잡히는 지표)',
+    file: 'src/features/marketing/api/partner-pool.routes.ts',
+    find: 'listCompanyLeads(c.env.DB, { ...filter, limit: EXPORT_MAX })',
+    replace: 'listCompanyLeads(c.env.DB, { limit: EXPORT_MAX })',
+    // 2026-08-03: 파싱이 `pool-export.ts` 로 이동했지만 **넘기는 지점**은 여전히 여기다(지도 유효).
+    test: 'src/tests/unit/ads-export-filter-parity.test.ts',
+    why:
+      '이 DB 의 성공 지표는 총 인원이 아니라 **"제안 보낼 수 있는 리드 수"** 다. 화면은 그 정의로 세는데 ' +
+      '내보내기가 안 따르면 지표가 **화면에만 있고 손에는 안 잡힌다** — 실측상 파트너 풀은 이메일 보유가 12%뿐이라 ' +
+      '무필터 5,000행에 실제 발송 가능분은 ~600건이고 보류(active=0)까지 섞인다.',
+  },
+  {
+    name: '내보내기 조립이 목록과 두 벌로 갈라짐',
+    file: 'src/pages/admin/AdminStoreProspectsPage.tsx',
+    find: 'store-prospects/export?${buildQuery().toString()}',
+    replace: 'store-prospects/export',
+    test: 'src/tests/unit/ads-export-filter-parity.test.ts',
+    why:
+      '매장 풀은 **95%가 학원**이다(인허가 레인 사망으로 음식점·카페·미용·숙박 0). 화면 필터가 파일까지 ' +
+      '안 이어지면 대표 우선업종은 **내보내기로 도달 자체가 불가능**하다 — 서버만 고치고 화면을 안 고치면 ' +
+      '정확히 그 상태로 되돌아간다.',
+  },
+  {
     name: '품질 패스가 시간 상한을 잃음(전진 0 복귀)',
     file: 'src/features/marketing/api/influencer-quality.ts',
     find: "    if (Date.now() - t0 >= deadlineMs) { stoppedBy = 'deadline'; break }",
@@ -465,8 +541,10 @@ const MUTATIONS = [
   {
     name: 'code 12 힌트가 "폐기 확정"으로 읽히게 약해짐',
     file: 'src/features/marketing/api/public-data-diag.ts',
-    find: '⚠️ **폐기와 경로 오타를 구분할 수 없는 코드다**',
-    replace: '서비스 URL/오퍼레이션명이 틀렸거나 폐기됨',
+    // 2026-08-03: 대조군을 하나 더 얻어(미신청=code 30) 문구가 정밀해졌다 — 지도를 갱신했다.
+    //   ⚠️ 알려 준 게 이 검사 자신이다("낡은 지도" 모드).
+    find: '🔑 단, **활용신청 문제는 아니다** — 미신청은 code 30(403)으로 따로 온다',
+    replace: '',
     test: 'src/tests/unit/public-data-diag.test.ts',
     why:
       '2026-08-03 에 **내가 직접 이 오추론을 했다** — code 12 를 보고 "공정위 서비스 폐기 확정"이라고 인계에 적었다. ' +

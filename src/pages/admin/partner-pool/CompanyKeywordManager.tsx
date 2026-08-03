@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { formatNumber } from '@/utils/format'
+import { formatNumber , kstShort } from '@/utils/format'
 
 /**
  * 🔑 **업체(B2B) 수집 키워드 관리** — 대표 요구 2026-08-02:
@@ -54,7 +54,7 @@ function Chip({ k, onToggle }: { k: CompanyKeyword; onToggle: (k: CompanyKeyword
   const tip = [k.category, k.subcategory, k.region].filter(Boolean).join(' · ')
   return (
     <button onClick={() => onToggle(k)}
-      title={`${tip || '미분류'}${k.tier ? ` · ${k.tier}순위` : ''}${k.saved_total ? ` · 누적 ${k.saved_total}곳` : ''}${k.last_run_at ? ` · ${k.last_run_at.slice(5, 16)}` : ''}`}
+      title={`${tip || '미분류'}${k.tier ? ` · ${k.tier}순위` : ''}${k.saved_total ? ` · 누적 ${k.saved_total}곳` : ''}${k.last_run_at ? ` · ${kstShort(k.last_run_at)}` : ''}`}
       className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
       {k.tier === 1 ? '⭐' : ''}{k.keyword}
       {k.saved_total
