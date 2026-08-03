@@ -131,11 +131,27 @@ dump 가 `SELECT rowid, * FROM t` 로 페이징했다. **D1 결과 컬럼 한도
     GROUP BY key ORDER BY n DESC LIMIT 10;
    ```
 
-### 아직 손대지 않은 것
-`collect-hira`(67s) · `maintenance-rescan`(60s) · `maintenance?phase=reextract`(16s) —
-**전부 `influencer-maintenance.ts`·`hira-hospital-collect.ts` 이고 다른 세션이 08-03 에 편집 중**이다.
-그 실험(#988 심평원 재시도)이 끝난 뒤 같은 패턴을 적용할 것.
-⚠️ 착수 전 반드시: `git log -1 --format=%ad --date=short -- <file>` 로 오늘 편집 여부 확인.
+### ✅ 완료 — `danger`·`warn` 레인 **전부** 마감선 보유 (2026-08-03, `#997`+후속)
+
+| 레인 | 실측 | 처방 | 짝이 필요했나 |
+|---|---|---|---|
+| `collect-hira` | 67s | 마감선 20s/60s | ❌ page 커서가 성공 시에만 전진 |
+| `maintenance-rescan` | 60s | 마감선 20s/45s | ✅ **하위작업 선두 회전**(naver 가 영구 미실행이던 자리) |
+| `sweep-kakao-phone` | 31s | 마감선 12s/24s | ❌ 도장이 시도한 행에만 |
+| `scan-notices` | 31s | 마감선 12s/24s | ✅ **키워드 회전 커서** |
+| `maintenance?phase=reextract` | 16s | `POOL_SCAN_MAX_MS` | (다른 세션이 이미 처리) |
+| `sweep-mx` | 12.5s | 마감선 10s/24s | ✅ **블록 선후 회전** |
+
+> 🔑 **이 시리즈의 교훈 한 줄**: 마감선은 일을 줄이지 않고 **미룬다.**
+> 그래서 매번 *"미뤄진 일감이 다음 회차에 반드시 잡히는가"* 를 봐야 하고,
+> 답이 ❌ 면 회전이 **필수**, ✅ 면 회전은 **없는 문제를 푸는 코드**다.
+> 세 번은 필요했고 두 번은 아니었다 — 구조를 보지 않고 일괄 적용하면 둘 다 틀린다.
+
+⚠️ `collect-hira` 의 per-fetch `AbortSignal.timeout(25000)` 은 **다른 세션의 재시도 실험 변수**라
+건드리지 않았다(`diag.retry` 로 원인을 가르는 중). 테스트가 그 값의 불변을 고정한다 —
+무심코 바꾸면 빨간불이 뜬다. **실험 결론이 나온 뒤에** 조정할 것.
+
+⚠️ 남의 세션 파일 착수 전 반드시: `git log -1 --format='%ad %h' --date=short -- <file>`
 
 ---
 
