@@ -91,6 +91,49 @@ describe('노브 등기부 — 가드가 실제로 강제한다', () => {
    *   그건 실제 위반을 주입해 봐야 알고, 그 검증은 **손으로 두 규칙 다 exit=1 을 확인**했다
    *   (등기부 한 줄 삭제 / cf 노브를 raw parseInt 로 되돌리기).
    */
+  /**
+   * 🕳️ **등기부의 사각지대 — env 가 아닌 요금제 쌍** (2026-08-03 신설).
+   *
+   * R1·R2 는 `ADS_*` env 노브만 본다. 그런데 이 파이프라인의 요금제 축 **절반은 파일 안 상수 쌍**이다
+   * (`RUN_DEADLINE_MS` / `…_PAID`, `ALARM_INTERVAL_MS_DEFAULT` / `…_PAID`, `SUBREQ_PLATFORM_CAP_*`).
+   * 그것들은 등기부에 뜨지도, R2 에 걸리지도 않는다.
+   *
+   * 08-03 전수 확인에서 다행히 전부 배선돼 있었지만 그건 **강제가 아니라 성실함**이었다.
+   * `_PAID` 를 만들어 놓고 선택부를 안 붙이면 **유료로 바꿔도 그 축은 안 오른다**(에러 없음).
+   *
+   * ⚠️ 이 규칙이 못 잡는 것: `_PAID` 짝이 **아예 없는** CF-bound 상수. 이름만으론 CPU 에 묶인 건지
+   *   데이터 모양인지 알 수 없다 — 사람이 판단해야 한다(등기부의 `why` 와 같은 이유).
+   */
+  it('R3: 아무도 고르지 않는 `_PAID` 상수를 잡는다 (env 밖 요금제 쌍)', async () => {
+    const fs = await import('node:fs')
+    const src = fs.readFileSync('scripts/check-plan-knob-coverage.mjs', 'utf8')
+    expect(src, '_PAID 상수 스캔이 없으면 env 밖 요금제 축이 통째로 사각지대다')
+      .toMatch(/const\\s\+\(\[A-Z\]\[A-Z0-9_\]\*_PAID\)/)
+    expect(src, '요금제 판정 함수를 확인하지 않으면 "정의만 하고 안 고르는" 경우를 못 잡는다')
+      .toMatch(/envPlanValue\|paidPlan\|resolvePlan\|isPaid/)
+    // 🔴 **조건문 자체를 겨눈다.** 처음엔 `orphanPaid.size` 문자열만 봤는데, 그 이름이 **에러 메시지
+    //   안에도** 있어서 `if (orphanPaid.size)` 를 `if (false)` 로 바꿔도 초록이었다(주입에서 드러남).
+    //   같은 함정을 이 파일에서 이미 한 번 겪었다 — 이름이 아니라 **강제 경로**를 고정해야 한다.
+    expect(src, '조건이 죽으면 R3 는 아무것도 안 막는다').toMatch(/if \(orphanPaid\.size\) \{\s*\n\s*bad = true/)
+  })
+
+  /**
+   * ⚠️ **선언 순서 함정** — R3 블록이 `let bad = false` 보다 **앞**에 있으면, 위반이 실제로 났을 때
+   *   `bad = true` 가 TDZ ReferenceError 로 죽는다. 통과할 땐 멀쩡하고 **실패할 때만 깨지는**
+   *   가장 나쁜 모양이다(첫 판이 실제로 그 상태였고, 순서 검사를 넣고서야 알았다).
+   */
+  it('R3 가 `let bad` 뒤에 온다 — 앞이면 위반 시 TDZ 로 죽는다', async () => {
+    const fs = await import('node:fs')
+    const src = fs.readFileSync('scripts/check-plan-knob-coverage.mjs', 'utf8')
+    const declAt = src.indexOf('let bad = false')
+    const r3At = src.indexOf('const orphanPaid = new Map()')
+    const exitAt = src.indexOf('if (bad) process.exit')
+    expect(declAt).toBeGreaterThan(-1)
+    expect(r3At, 'R3 블록을 못 찾았다 — 코드가 옮겨갔다').toBeGreaterThan(-1)
+    expect(r3At, 'R3 가 bad 선언보다 앞이면 위반 시 ReferenceError').toBeGreaterThan(declAt)
+    expect(r3At, 'R3 가 최종 exit 뒤면 판정이 반영되지 않는다').toBeLessThan(exitAt)
+  })
+
   it('위반을 찾으면 실제로 실패로 끝난다 (강제 경로 존재)', async () => {
     const fs = await import('node:fs')
     const src = fs.readFileSync('scripts/check-plan-knob-coverage.mjs', 'utf8')

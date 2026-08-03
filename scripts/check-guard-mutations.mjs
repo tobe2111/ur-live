@@ -50,6 +50,21 @@ const ONLY = (() => {
 })()
 
 /**
+ * 🧹 `--verify-clean` — **아무것도 주입하지 않고**, 작업트리에 주입 잔재가 남아 있는지만 본다(수초).
+ *
+ * 왜 별도 모드인가: 이 스크립트는 끝에서 복원을 확인하지만 그건 **끝까지 갔을 때** 얘기다.
+ * 전수는 100건 넘는 vitest 라 오래 걸려서 중간에 끊기기 쉽고(타임아웃·Ctrl-C·`kill -9`),
+ * 그러면 마지막에 주입된 파일이 **그대로 남는다**. 2026-08-03 실측: 끊긴 harness 가
+ * `lane-aimd.ts`·`lane-cadence.ts`·`influencer-auto-collect.ts` 3개를 바꿔 놓은 채였고,
+ * 그중 하나는 **같은 날 다른 세션이 고친 커서 버그를 되살리는** 내용이었다 — `git add -A` 로
+ * 하마터면 그대로 커밋될 뻔했다.
+ *
+ * ⇒ **harness 를 중간에 끊었으면 커밋 전에 이걸 돌려라.** `git diff` 로 눈으로 보는 것보다 확실하다
+ *   (주입 한 줄은 정상 코드와 구분이 안 간다).
+ */
+const VERIFY_CLEAN = process.argv.includes('--verify-clean')
+
+/**
  * @typedef {{name:string, file:string, find:string, replace:string, test:string, why:string}} Mutation
  * `find` 는 소스에 **정확히 한 번** 나타나는 문자열이어야 한다(여러 번이면 첫 번째만 바뀌어
  * 의도한 결함이 아닐 수 있다 — 그래서 개수도 검사한다).
@@ -87,6 +102,30 @@ const MUTATIONS = [
     why:
       '배선(호출)은 남아 있는데 산술만 죽으면 **텍스트 검사는 통과**한다 — 위 항목이 못 보는 자리다. ' +
       '그래서 회전은 문자열이 아니라 **동작**으로도 검증한다(회차당 1개만 돌아도 3회차에 셋 다 선두를 받는가).',
+  },
+  {
+    name: '주간 D1 백업이 인덱스/트리거/뷰를 안 담아 복구본에서 멱등 UNIQUE 가 사라짐',
+    file: 'src/worker/cron/d1-backup.ts',
+    find: 'if (objects.length > 0) {',
+    replace: 'if (false) {',
+    test: 'src/tests/unit/d1-backup-restorable.test.ts',
+    why:
+      '덤프가 `type=\'table\'` 만 뽑던 시절의 동작이다. 프로덕션 실측 인덱스 610(UNIQUE 46) · 트리거 7 · 뷰 1 이 ' +
+      '전부 백업에서 빠지고, 복구하면 `INSERT OR IGNORE + partial UNIQUE` 로 지키던 멱등(머니 룰 #3)이 없어져 ' +
+      '**같은 ref 로 두 번 적립이 통과**한다(2026-08-03 축소판 복구 리허설에서 재현). 백업은 ok=true 로 성공하고 ' +
+      '복구 검증 쿼리도 행 수만 세므로 **어디서도 빨간불이 안 뜬다** — 그래서 테스트로 박았다.',
+  },
+  {
+    name: 'FTS5 그림자 테이블을 덤프에 실어 BLOB 손상 + 매주 무결성 경고',
+    file: 'src/worker/cron/d1-backup.ts',
+    find: '.filter((n) => !isInternalTable(n) && !isFtsShadowTable(n, virtualTables))',
+    replace: '',
+    test: 'src/tests/unit/d1-backup-restorable.test.ts',
+    why:
+      '`products_fts` 는 외부콘텐츠(content=products) FTS 라 그림자 테이블은 색인 내부구조다. ' +
+      '`_data`/`_docsize` 는 BLOB 이라 문자열로 뭉개지고, `_idx`/`_config` 와 D1 내부 `_cf_KV` 는 ' +
+      'WITHOUT ROWID 라 `SELECT rowid` 가 실패해 dump 실패 테이블로 남는다. 복구 후 `rebuild` 한 번이면 ' +
+      '색인은 원본에서 정확히 재생성되므로 깨진 그림자를 실어 나를 이유가 없다.',
   },
   {
     name: '5xx 경보가 1건을 "스파이크"라 불러 매일 거짓 ⚠️ 를 냄',
@@ -129,8 +168,7 @@ const MUTATIONS = [
     why:
       '마감선은 일을 줄이는 게 아니라 **미루는** 것이다. 블록 ①→② 순서가 고정이면 ①에서 마감선에 ' +
       '걸릴 때 ②(매장 후보)는 **매 회차 한 번도 안 돌아** `cursorS` 가 영원히 멈춘다. ' +
-      '마감선을 넣으면서 이 회전을 빼면 **없던 기아를 새로 만드는 것**이다.',
-  },
+      '마감선을 넣으면서 이 회전을 빼면 **없던 기아를 새로 만드는 것**이다.',  },
   {
     name: '공고 스캐너가 마감선 없이 회차를 늘려 부모 CPU 를 태움',
     file: 'src/features/marketing/api/notice-scan.ts',
@@ -930,6 +968,27 @@ const MUTATIONS = [
 
   // ── 🚚 ur-ads 배포가 조용히 안 나감 (2026-08-02 실사고)
   {
+    name: 'env 밖 요금제 쌍(_PAID)이 다시 사각지대로',
+    file: 'scripts/check-plan-knob-coverage.mjs',
+    find: 'if (orphanPaid.size) {',
+    replace: 'if (false) {',
+    test: 'src/tests/unit/ads-plan-knobs.test.ts',
+    why:
+      '요금제 축의 절반은 env 가 아니라 파일 안 상수 쌍(RUN_DEADLINE_MS/_PAID 등)이다 — 등기부에도 R2 에도 ' +
+      '안 걸린다. `_PAID` 를 만들고 선택부를 안 붙이면 **유료로 바꿔도 그 축은 안 오른다**(에러 없음).',
+  },
+  {
+    name: 'bad 집계 변수 소실(R3 위반 시 ReferenceError)',
+    file: 'scripts/check-plan-knob-coverage.mjs',
+    find: 'let bad = false',
+    replace: 'globalThis.__bad_removed = 1',
+    test: 'src/tests/unit/ads-plan-knobs.test.ts',
+    why:
+      'R3 는 `bad = true` 로 집계한다 — 선언이 사라지면 위반이 났을 때 ReferenceError 로 죽는다. ' +
+      '⚠️ 통과할 땐 멀쩡하고 **실패할 때만** 깨지는 모양이라 눈으로는 못 본다(첫 판이 실제로 그 상태였다: ' +
+      'R3 를 선언보다 앞에 뒀다). 위치·존재 검사가 없으면 그대로 머지된다.',
+  },
+  {
     name: 'PR 검증이 다시 건너뛰어짐(미검증 코드 머지)',
     file: '.github/workflows/verify.yml',
     find: '  pull_request:\n    branches: [main]\n  push:',
@@ -1074,6 +1133,60 @@ const MUTATIONS = [
       '행이 생기는데(실측 45 중 10건), 안 비우면 옛 값이 영구히 굳는다 — `shouldClearCategory` docblock 이 ' +
       '입주 시공업체 27명 실측으로 이미 경고한 바로 그 형태("측정하면 점진 교정된다"는 낙관은 틀렸다).',
   },
+  {
+    name: '시트 미러가 사이클 스냅샷을 넘어 그리드 밖을 씀',
+    file: 'src/features/marketing/api/sheets-sync.ts',
+    find: 'Math.min(PAGE, ROWS_PER_RUN - wrote, room)',
+    replace: 'Math.min(PAGE, ROWS_PER_RUN - wrote)',
+    test: 'src/tests/unit/ads-sheets-sync.test.ts',
+    why:
+      '그리드는 사이클 **시작 시점 total** 로만 넓힌다(`ensurePoolSheet(total+2)`, `off===0` 분기 안). ' +
+      '읽기 루프에 그 상한이 없으면 사이클 도중 늘어난 행을 그리드 밖에 쓰고 Sheets 400 이 난다. ' +
+      '실패는 커서를 그 자리에 저장하고 끝나므로 `off` 가 0 으로 돌아갈 길이 없다 = **영구 고착**' +
+      '(2026-08-03 라이브: `{off:44000, total:43597}`, 24시간 7회 실패).',
+  },
+  {
+    name: '지나친 커서를 되돌리지 않아 그리드 확장이 영영 안 불림',
+    file: 'src/features/marketing/api/sheets-sync.ts',
+    find: 'return cur.total > 0 && cur.off >= cur.total ? { off: 0, total: 0 } : cur',
+    replace: 'return cur',
+    test: 'src/tests/unit/ads-sheets-sync.test.ts',
+    why:
+      '위 상한은 *앞으로* 안 넘어가게 할 뿐, **이미 넘어가 있는 라이브 커서는 안 푼다.** 이 되돌림이 ' +
+      '없으면 배포해도 같은 행에서 400 이 계속 나고, 2~3칸뿐인 회차 예산에서 한 칸을 계속 태운다. ' +
+      '⚠️ `total` 을 0 으로 되돌리는 것까지가 수리다 — 그래야 호출부가 총계를 다시 세고 그리드를 넓힌다.',
+  },
+  {
+    name: '알람이 모는 수집 레인을 부모도 던짐(부모 CPU 이중 소모)',
+    file: 'src/worker-ads/index.ts',
+    find: "if (!laneAlarmOn && env.ADS_AUTO_COLLECT_ENABLED === 'true')",
+    replace: "if (env.ADS_AUTO_COLLECT_ENABLED === 'true')",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '리스가 이중 *실행* 은 막지만 **던지는 것 자체가 부모 CPU 를 먹는다** — 그게 애초에 이 레인을 죽인 ' +
+      '원인이다(2026-08-03 실측: 디스패치 3초 뒤 `ads:collect  Worker exceeded CPU time limit`).',
+  },
+  {
+    name: 'laneAlarmOn 선언이 첫 사용보다 아래로(런타임 TDZ)',
+    file: 'src/worker-ads/index.ts',
+    find: '  const laneAlarmOn = laneAlarmDrivesEnrich(env)\n',
+    replace: '',
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '`const` 는 TDZ 라 선언보다 먼저 쓰면 **런타임에 ReferenceError** 인데 **타입체크는 통과한다**. ' +
+      '수집 게이트가 보강 블록보다 위에 있어 작성 중 실제로 밟았다. 이 주입은 선언을 통째로 지워 ' +
+      '"순서" 불변식이 위치를 실제로 보는지 확인한다.',
+  },
+  {
+    name: '수집 레인 시간당 상한이 조용히 증설됨',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: '  collect: {\n    runsPerHour: 1,\n',
+    replace: '  collect: {\n',
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '빼면 정책 기본값(12회/시간)을 받는다 = cron 설계 의도(`0 * * * *`)를 12배 넘는 증설이고, ' +
+      '**네이버로 나가는 요청량이 늘어나는 변경**이라 대표 판단 사항이다. 값이 조용히 바뀌는 것을 막는다.',
+  },
 ]
 
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
@@ -1156,6 +1269,27 @@ function maskComments(src, file) {
 }
 
 const problems = []
+
+// 🧹 잔재 확인 전용 모드 — 주입은 건드리지 않고 "지금 트리에 남아 있나"만 본다(위 VERIFY_CLEAN 주석).
+if (VERIFY_CLEAN) {
+  const dirty = []
+  for (const m of MUTATIONS) {
+    const abs = path.join(ROOT, m.file)
+    if (!fs.existsSync(abs)) continue // 파일 이동은 전수 모드가 "낡은 지도"로 따로 보고한다
+    const s = fs.readFileSync(abs, 'utf8')
+    // `find` 가 사라졌는데 `replace` 가 있으면 주입된 상태다. `find` 만 사라졌으면 코드가 옮겨간 것.
+    if (!s.includes(m.find) && m.replace && s.includes(m.replace)) dirty.push(`${m.file} — ${m.name}`)
+  }
+  if (dirty.length) {
+    console.error(`\n❌ 주입 잔재 ${dirty.length}건 — **커밋하지 말 것**\n`)
+    for (const d of dirty) console.error(`   • ${d}`)
+    console.error(`\n   복원: git checkout -- <위 파일들>\n`)
+    process.exit(1)
+  }
+  console.log(`✅ 주입 잔재 0 — 작업트리 깨끗함 (${MUTATIONS.length}건 확인)`)
+  process.exit(0)
+}
+
 console.log(`🧬 guard-mutations: ${MUTATIONS.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
 
 for (const m of MUTATIONS) {
