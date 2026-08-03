@@ -21,7 +21,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { resolveConsumerSurfaceSeo, resolveRegionSeo } from '@/shared/seo/consumer-surfaces'
+import { resolveConsumerSurfaceSeo } from '@/shared/seo/consumer-surfaces'
+import { resolveRegionSeo } from '@/worker/utils/surface-ssr-meta'
 import { REGION_INDEX_MIN_DEALS } from '@/shared/constants/region-slugs'
 
 const read = (p: string) => readFileSync(p, 'utf8')
@@ -107,10 +108,17 @@ describe('④ 서버 메타 — Yeti 는 JS 를 돌리지 않는다', () => {
     expect(hub?.noindex).toBeUndefined()
   })
 
-  it('공용 리졸버(resolveConsumerSurfaceSeo)에 연결돼 있다 — 워커가 부르는 건 이쪽이다', () => {
-    // 🔴 이 배선이 빠지면 위 단위 테스트는 전부 통과하는데 라이브에선 홈 메타가 나간다.
-    const r = resolveConsumerSurfaceSeo('/region/서울/중구', '', origin)
-    expect(r?.pageTitle).toContain('서울 중구')
+  it('워커가 실제로 호출한다 — 이 배선이 빠지면 단위 테스트는 다 통과하는데 라이브엔 홈 메타가 나간다', () => {
+    const w = read('src/worker/index.ts')
+    expect(w).toMatch(/resolveRegionSeo/)
+    // 표에 없는 경로일 때 폴백으로 붙어야 한다(?? 체인). 그냥 import 만 돼 있으면 안 된다.
+    expect(w).toMatch(/resolveConsumerSurfaceSeo\([^)]*\)\s*\?\?\s*resolveRegionSeo\(/)
+  })
+
+  it('문구 SSOT(consumer-surfaces)는 지역 표를 import 하지 않는다 — 크리티컬 청크 회귀 방지', () => {
+    // 🔴 2026-08-03 실제 사고: 여기서 region-slugs 를 import 했더니 `app-constants` 청크가
+    //    첫 페인트로 딸려왔다(check-critical-chunks 가 CI 에서 잡음). 워커 전용 모듈로 옮겨 해결.
+    expect(read('src/shared/seo/consumer-surfaces.ts')).not.toMatch(/region-slugs/)
   })
 
   it('기존 표면(/vouchers)·area-report 는 영향 없음', () => {

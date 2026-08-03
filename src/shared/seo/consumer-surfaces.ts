@@ -21,9 +21,6 @@
  * `resolveConsumerSurfaceSeo` 로 갈아끼우면 된다(문구가 두 벌이 되지 않게 반드시 함께).
  */
 
-// ⚠️ 상대경로 — 이 파일은 워커(esbuild, alias 미해석)에서도 로드된다. `@/` 로 쓰면 워커 빌드가 깨진다.
-import { normalizeSido } from '../constants/region-slugs'
-
 export interface ConsumerSurfaceSeo {
   /** og/twitter title (사이트명 접미사 **없이**) — `<SEO title>` 에 그대로 넣는 값 */
   title: string
@@ -229,64 +226,6 @@ export function resolveAreaReportSeo(
 }
 
 /**
- * 🗺️ 2026-08-03 (대표 — 도시별 색인 페이지): `/region/:sido[/:sigungu]` 서버 메타.
- *
- * 왜 서버에서 만드는가: 네이버 Yeti 는 JS 를 돌리지 않는다. 클라이언트 `<SEO>`(react-helmet)만
- * 두면 크롤러에겐 **모든 지역 페이지가 홈 메타**로 보이고, 그러면 도시 페이지를 만든 의미가 없다.
- *
- * ⚠️ 이 함수가 **못** 하는 것 — 딜 개수를 모른다(여기선 DB 조회를 하지 않는다. area-report 와 같은 규칙).
- *   그래서 "딜이 적은 지역은 noindex" 는 클라이언트 렌더에서만 붙는다. 실무상 구멍이 크지 않은 이유는
- *   **thin 지역 URL 로 가는 링크를 아예 만들지 않기 때문**이다(RegionLinkGrid·sitemap 둘 다 `indexable`
- *   만 내보낸다). 직접 주소를 친 경우에만 index 로 나가고, 그건 크롤러가 도달할 일이 드물다.
- *   이게 불충분해지면(예: 외부에서 thin URL 로 링크가 걸리면) 워커에서 집계를 읽어 판정해야 한다.
- */
-export function resolveRegionSeo(
-  pathname: string,
-  origin: string,
-  siteName: string = CONSUMER_SITE_NAME
-): ResolvedSurfaceSeo | null {
-  const m = /^\/region(?:\/([^/]+))?(?:\/([^/]+))?\/?$/.exec(pathname)
-  if (!m) return null
-
-  const dec = (v?: string) => {
-    if (!v) return ''
-    try { return decodeURIComponent(v).trim() } catch { return v.trim() }
-  }
-  const sidoRaw = dec(m[1])
-  const sigunguRaw = dec(m[2])
-
-  // `/region` 허브
-  if (!sidoRaw) {
-    const t = withSiteName('지역별 이용권·동네딜 — 우리 동네 할인 찾기', siteName)
-    return {
-      pageTitle: t,
-      title: t,
-      description: '서울·경기·부산부터 제주까지, 지역별 식당·카페·뷰티·숙박 이용권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요.',
-      canonical: `${origin}/region`,
-    }
-  }
-
-  const sido = normalizeSido(sidoRaw)
-  // 모르는 지역 = 크롤러가 지어냈거나 오타. 색인시키면 soft-404 가 쌓인다.
-  if (!sido || (sigunguRaw && !/^[가-힣]{1,10}(시|군|구)$/.test(sigunguRaw))) {
-    const t = withSiteName('지역별 이용권·동네딜', siteName)
-    return { pageTitle: t, title: t, description: '지역별 이용권·동네딜을 확인해보세요.', canonical: `${origin}/region`, noindex: true }
-  }
-
-  const label = sigunguRaw ? `${sido} ${sigunguRaw}` : sido
-  const t = withSiteName(`${label} 이용권·동네딜 할인`, siteName)
-  const canonicalPath = sigunguRaw
-    ? `/region/${encodeURIComponent(sido)}/${encodeURIComponent(sigunguRaw)}`
-    : `/region/${encodeURIComponent(sido)}`
-  return {
-    pageTitle: t,
-    title: t,
-    description: `${label}의 식당·카페·뷰티·숙박 이용권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요.`,
-    canonical: `${origin}${canonicalPath}`,
-  }
-}
-
-/**
  * `title` 에 사이트명 접미사를 **중복 없이** 붙인다.
  *
  * 🐛 라이브 실측 버그: `/vouchers` 의 실제 `<title>` 이 `교환권 - 유어딜 - 유어딜` 이었다.
@@ -367,7 +306,7 @@ export function resolveConsumerSurfaceSeo(
   const path = pathname !== '/' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
   const entry = CONSUMER_SURFACE_SEO[path]
   // 표에 없으면 동적 표면 빌더에 넘긴다(경로에서 값을 뽑을 수 있는 것만 — 조회는 하지 않는다).
-  if (!entry) return resolveRegionSeo(path, origin, siteName) ?? resolveAreaReportSeo(path, origin, siteName)
+  if (!entry) return resolveAreaReportSeo(path, origin, siteName)
 
   let title = entry.title
   let description = entry.description

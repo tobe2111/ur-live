@@ -170,7 +170,7 @@ import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/
 // 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
 import { resolveConsumerAlias } from '../shared/seo/consumer-redirects';
-import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity } from './utils/surface-ssr-meta';
+import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity, resolveRegionSeo } from './utils/surface-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
@@ -1030,7 +1030,8 @@ app.use('*', async (c, next) => {
     //   지어낸 세그먼트(도어웨이)는 리졸버가 noindex 로 표시해 준다.
     //   SSR inject·0-RTT·`caches.default`·#root 로더·edgeCache 전부 불변 — head rewrite 만 추가.
     if (!isWholesaleSurface && !needsRootBlank) {
-      const sm = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2);
+      // 🗺️ 2026-08-03: 표에 없는 `/region/*` 는 워커 전용 빌더가 받는다(클라 번들 무영향 — surface-ssr-meta 주석 참조).
+      const sm = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2) ?? resolveRegionSeo(url.pathname, origin2);
       if (sm) rb = applySurfaceMeta(rb, sm);
     }
     // 🪦 2026-07-29 (소비자 SEO 실측): **사라진 상세 페이지가 `200 + index,follow` 로 나가고 있었다.**

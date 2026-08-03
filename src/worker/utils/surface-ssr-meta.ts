@@ -13,7 +13,12 @@
  * 클라 `<SEO>`(react-helmet)는 JS 렌더 후라 네이버 Yeti 가 못 본다 — `SEO.tsx` 의 2026-07-28 주석이
  * 같은 사실을 실측으로 기록해 뒀다(정적 토큰만 실효였다).
  */
-import { escapeAttr } from '../../shared/seo/consumer-surfaces'
+import { escapeAttr, withSiteName, CONSUMER_SITE_NAME, type ResolvedSurfaceSeo } from '../../shared/seo/consumer-surfaces'
+// 🗺️ 워커 전용 — 이 표를 크리티컬 패스(consumer-surfaces)에서 끌어오면 app-constants 청크가 첫 페인트로 딸려온다.
+import { normalizeSido } from '../../shared/constants/region-slugs'
+
+/** 시군구 형태 — '중구'·'파주시'·'양양군'. 접두부 1글자 허용(중구·동구·남구가 탈락하지 않게). */
+const SIGUNGU_RE = /^[가-힣]{1,10}(시|군|구)$/
 
 export interface SurfaceRewriteMeta {
   /** `<title>` 값 */
@@ -140,4 +145,69 @@ const ENTITY_SLOTS = new Set(['DETAIL', 'PRODUCT', 'STAYDETAIL', 'SELLER', 'CURA
  */
 export function shouldNoindexMissingEntity(slot: string, ssrStatus: string): boolean {
   return ENTITY_SLOTS.has(slot) && ssrStatus === 'self-fetch-404'
+}
+
+/**
+ * 🗺️ 2026-08-03 (대표 — 도시별 색인 페이지): `/region/:sido[/:sigungu]` 서버 메타.
+ *
+ * 왜 서버에서 만드는가: 네이버 Yeti 는 JS 를 돌리지 않는다. 클라이언트 `<SEO>`(react-helmet)만
+ * 두면 크롤러에겐 **모든 지역 페이지가 홈 메타**로 보이고, 그러면 도시 페이지를 만든 의미가 없다.
+ *
+ * ⚠️ 왜 `consumer-surfaces`(문구 SSOT)가 아니라 여기 있는가 — **번들 때문이다.**
+ *   지역 정규화 표(`shared/constants/region-slugs`)는 `app-constants` 청크에 묶이는데,
+ *   `consumer-surfaces` 는 소비자 페이지들이 `<SEO>` 용으로 import 하는 **크리티컬 패스 모듈**이다.
+ *   거기서 region-slugs 를 끌어오면 첫 페인트에 그 청크가 통째로 딸려 온다
+ *   (`check-critical-chunks` 가 실제로 잡았다 — CI 가 아니었으면 조용히 무거워졌을 것이다).
+ *   이 파일은 **워커 전용**이라 클라 번들에 영향이 0 이다. 지역 페이지의 클라 `<SEO>` 는
+ *   `RegionPage` 가 직접 만들므로 문구가 두 벌이 되는 문제도 없다(딜 개수까지 넣어 더 구체적이다).
+ *
+ * ⚠️ 이 함수가 **못** 하는 것 — 딜 개수를 모른다(여기선 DB 조회를 하지 않는다. area-report 와 같은 규칙).
+ *   그래서 "딜이 적은 지역은 noindex" 는 클라이언트 렌더에서만 붙는다. 실무상 구멍이 크지 않은 이유는
+ *   **thin 지역 URL 로 가는 링크를 아예 만들지 않기 때문**이다(RegionLinkGrid·sitemap 둘 다 `indexable`
+ *   만 내보낸다). 직접 주소를 친 경우에만 index 로 나가고, 그건 크롤러가 도달할 일이 드물다.
+ */
+export function resolveRegionSeo(
+  pathname: string,
+  origin: string,
+  siteName: string = CONSUMER_SITE_NAME
+): ResolvedSurfaceSeo | null {
+  const m = /^\/region(?:\/([^/]+))?(?:\/([^/]+))?\/?$/.exec(pathname)
+  if (!m) return null
+
+  const dec = (v?: string) => {
+    if (!v) return ''
+    try { return decodeURIComponent(v).trim() } catch { return v.trim() }
+  }
+  const sidoRaw = dec(m[1])
+  const sigunguRaw = dec(m[2])
+
+  // `/region` 허브
+  if (!sidoRaw) {
+    const t = withSiteName('지역별 이용권·동네딜 — 우리 동네 할인 찾기', siteName)
+    return {
+      pageTitle: t,
+      title: t,
+      description: '서울·경기·부산부터 제주까지, 지역별 식당·카페·뷰티·숙박 이용권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요.',
+      canonical: `${origin}/region`,
+    }
+  }
+
+  const sido = normalizeSido(sidoRaw)
+  // 모르는 지역 = 크롤러가 지어냈거나 오타. 색인시키면 soft-404 가 쌓인다.
+  if (!sido || (sigunguRaw && !SIGUNGU_RE.test(sigunguRaw))) {
+    const t = withSiteName('지역별 이용권·동네딜', siteName)
+    return { pageTitle: t, title: t, description: '지역별 이용권·동네딜을 확인해보세요.', canonical: `${origin}/region`, noindex: true }
+  }
+
+  const label = sigunguRaw ? `${sido} ${sigunguRaw}` : sido
+  const t = withSiteName(`${label} 이용권·동네딜 할인`, siteName)
+  const canonicalPath = sigunguRaw
+    ? `/region/${encodeURIComponent(sido)}/${encodeURIComponent(sigunguRaw)}`
+    : `/region/${encodeURIComponent(sido)}`
+  return {
+    pageTitle: t,
+    title: t,
+    description: `${label}의 식당·카페·뷰티·숙박 이용권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요.`,
+    canonical: `${origin}${canonicalPath}`,
+  }
 }
