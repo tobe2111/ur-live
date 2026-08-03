@@ -140,6 +140,18 @@ const MUTATIONS = [
       '색인은 원본에서 정확히 재생성되므로 깨진 그림자를 실어 나를 이유가 없다.',
   },
   {
+    name: "dead-man's switch 의 의도된 503 을 5xx 로 세어 채널을 영구 점유",
+    file: 'src/worker/middleware/error-rate-monitor.ts',
+    find: "if (status === 503 && new URL(c.req.url).pathname === '/api/_healthcheck/cron') return;",
+    replace: '',
+    test: 'src/tests/unit/five-xx-observability.test.ts',
+    why:
+      '경로 계측을 붙이자 24시간 유일한 5xx 가 `/api/_healthcheck/cron` 이었다 — 고장이 아니라 ' +
+      '**cron 침묵을 알리는 설계상 503** 이고, 외부 프로브가 10분마다 두드린다. 그걸 세면 5xx 채널이 ' +
+      '영구 점유돼 **진짜 5xx 가 와도 구분이 안 된다**(같은 PR 이 고친 거짓 경보와 같은 클래스). ' +
+      '침묵 자체는 uptime.yml + 자가진단이 각자 채널로 이미 보고하므로 여기서 빼도 잃는 정보가 없다.',
+  },
+  {
     name: '5xx 경보가 1건을 "스파이크"라 불러 매일 거짓 ⚠️ 를 냄',
     file: 'src/worker/cron/daily-self-diagnostic.ts',
     find: 'if (Number(row?.worst || 0) >= 10) issues.push',
