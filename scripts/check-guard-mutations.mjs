@@ -57,6 +57,28 @@ const ONLY = (() => {
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '심평원 수집이 마감선 없이 25초짜리 페이지를 3장 연다(67초, 최다)',
+    file: 'src/features/marketing/api/hira-hospital-collect.ts',
+    find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: '',
+    test: 'src/tests/unit/ads-lane-deadlines-final.test.ts',
+    why:
+      '페이지 한 장이 `AbortSignal.timeout(25000)` 까지 버티고 무료 maxPages=3 ⇒ 최악 75초(+재시도 8초). ' +
+      '실측 67초로 유어애즈 최다였다. 부모 cron 이 그걸 못 버티고 죽으면 매달린 자식이 전부 끌려간다. ' +
+      '⚠️ per-fetch 25초는 다른 세션의 재시도 실험 변수라 건드리지 않는다 — 이 마감선은 페이지 수만 묶는다.',
+  },
+  {
+    name: '야간 재스캔의 하위작업이 고정 순서라 마지막(naver)이 영구 미실행',
+    file: 'src/features/marketing/api/influencer-maintenance.ts',
+    find: 'const j = jobs[(from + i) % jobs.length]',
+    replace: 'const j = jobs[i]',
+    test: 'src/tests/unit/ads-lane-deadlines-final.test.ts',
+    why:
+      '하위작업 셋을 순차 실행하는데 마감선을 넣으면서 순서를 고정하면, 앞의 둘이 시간을 다 쓸 때 ' +
+      '`naver` 는 매 회차 잘린다. **하루 1회 레인이라 그건 곧 영구 미실행이다.** ' +
+      '`sweep-mx` 블록에서 겪은 것과 같은 구조적 기아 — 마감선과 회전은 짝이다.',
+  },
+  {
     name: '5xx 경보가 1건을 "스파이크"라 불러 매일 거짓 ⚠️ 를 냄',
     file: 'src/worker/cron/daily-self-diagnostic.ts',
     find: 'if (Number(row?.worst || 0) >= 10) issues.push',

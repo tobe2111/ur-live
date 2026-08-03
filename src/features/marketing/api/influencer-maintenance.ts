@@ -507,6 +507,12 @@ export async function runNextMaintenancePhase(env: Env): Promise<Record<string, 
 /** 🌙 야간 라이브 재보정(별도 시간대 KST 04시 — fetch-heavy 라 자체 인보케이션 예산 사용):
  *   🧭 카테고리 전체 재보정(커서 이어받기) + 🔄 라이브 재조회 2패스(0회·무메일·미분류 우선)
  *   + 📝 블로거 스윕(활동성·이웃수·프로필 연락처 — 시간당 20 개로는 백로그가 느려 밤에 60 개 추가). */
+/** 야간 재스캔 회차 마감선 — 하위작업 셋의 **합계**를 묶는다(각자 예산과 별개). */
+const RESCAN_DEADLINE_MS = 20_000
+const RESCAN_DEADLINE_MS_PAID = 45_000
+/** 하위작업 선두 회전 커서 — 고정 순서면 마지막(naver)이 영구 미실행이 된다. */
+const RESCAN_ORDER_KEY = 'ads_maintenance_rescan_order'
+
 export async function runNightlyRescan(env: Env): Promise<Record<string, unknown>> {
   const DB = env.DB
   // 🔒 정비와 같은 lease — 이쪽은 **YouTube 쿼터를 쓰기 때문에** 중복 실행이 곧 하루 예산 낭비(수집 몫 잠식).
@@ -528,10 +534,45 @@ export async function runNightlyRescan(env: Env): Promise<Record<string, unknown
   }
   const out: Record<string, unknown> = { at: new Date().toISOString(), kind: 'rescan' }
   try {
-    try { out.rescan = await runCategoryRescan(env) } catch (e) { out.rescan_error = (e as Error)?.message || 'fail' }
-    // passes 4 = 80채널/밤 — 기존 측정행의 롱폼 중앙값 소급 가속(YT units ~100/밤 — 일일 쿼터 10k 대비 미미).
-    try { out.refetch = await runYtLiveRefetch(env, 4) } catch (e) { out.refetch_error = (e as Error)?.message || 'fail' }
-    try { out.naver = await enrichNaverActivity(DB, { left: 150 }, 60) } catch (e) { out.naver_error = (e as Error)?.message || 'fail' }
+    /**
+     * ⏱️ **회차 벽시계 마감선 + 하위작업 회전** (2026-08-03 — 대표 "나머지 두 레인도 끝까지")
+     *
+     * 이 레인은 실측 **60초**를 썼다(`cpu_risk=danger`). 하위 작업 셋이 각자 예산(YT 쿼터·서브리퀘스트)은
+     * 갖고 있지만 **셋을 합친 시간을 재는 것이 없었다** — 부모 cron 의 CPU 는 그 합계를 감당해야 한다.
+     *
+     * ⚠️ **마감선만 넣으면 `naver` 가 영원히 안 돈다.** 순서가 고정이라 앞의 둘이 시간을 다 쓰면
+     *   마지막은 매 회차 잘린다(하루 1회 레인이라 = **영구 미실행**). `sweep-mx` 블록에서 겪은 것과
+     *   같은 구조적 기아다 ⇒ **시작 위치를 회차마다 돌린다.** 3회면 셋 다 선두를 한 번씩 받는다.
+     *
+     * 실패해도 다음 작업으로 넘어가는 기존 동작(try 개별 감쌈)은 그대로다 —
+     * 한 작업의 실패가 나머지를 막지 않는다.
+     */
+    const startedAt = Date.now()
+    const runDeadlineMs = envPlanValue(undefined, RESCAN_DEADLINE_MS, RESCAN_DEADLINE_MS_PAID, env)
+    const jobs: Array<{ name: string; run: () => Promise<unknown> }> = [
+      { name: 'rescan', run: () => runCategoryRescan(env) },
+      // passes 4 = 80채널/밤 — 기존 측정행의 롱폼 중앙값 소급 가속(YT units ~100/밤 — 일일 쿼터 10k 대비 미미).
+      { name: 'refetch', run: () => runYtLiveRefetch(env, 4) },
+      { name: 'naver', run: () => enrichNaverActivity(DB, { left: 150 }, 60) },
+    ]
+    const ordRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(RESCAN_ORDER_KEY)
+      .first<{ value: string }>().catch(() => null)
+    let from = parseInt(ordRaw?.value || '0', 10)
+    if (!Number.isFinite(from) || from < 0) from = 0
+    from %= jobs.length
+    out.first_job = jobs[from].name
+
+    let ran = 0
+    for (let i = 0; i < jobs.length; i++) {
+      if (Date.now() - startedAt > runDeadlineMs) { out.stopped_by = 'deadline'; break }
+      const j = jobs[(from + i) % jobs.length]
+      ran++
+      try { out[j.name] = await j.run() } catch (e) { out[`${j.name}_error`] = (e as Error)?.message || 'fail' }
+    }
+    // 다음 회차는 이번에 **못 돌린 작업**부터 — 잘려도 3회 안에 셋 다 선두를 받는다.
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind(RESCAN_ORDER_KEY, String((from + ran) % jobs.length)).run().catch(() => null)
+
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind('ads_maintenance_rescan_last', JSON.stringify(out).slice(0, 1000)).run().catch(() => null)
   } finally { await releaseLease(DB, MAINTAIN_LEASE_KEY) }
