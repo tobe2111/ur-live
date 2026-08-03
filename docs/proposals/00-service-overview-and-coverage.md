@@ -297,12 +297,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 390 | 1190 |
+| 전체 | 390 | 1193 |
 | 도메인 버킷 (5개 소개서) | 203 | 583 |
-| 공통/인프라 (의도적 제외) | 160 | 438 |
-| **미커버 (점검 필요)** | **27** | **169** |
+| 공통/인프라 (의도적 제외) | 160 | 442 |
+| **미커버 (점검 필요)** | **27** | **168** |
 
-⚠️ **미커버 196건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 195건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -466,7 +466,6 @@
 - `PATCH /shipping-policy` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /signup-meta` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `PATCH /signup-meta` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /slug-conflicts` (`src/features/supply/api/wholesale-malls-admin.routes.ts`)
 - `GET /statement` (`src/features/supply/api/wholesale-documents.routes.ts`)
 - `GET /status` (`src/features/supply/api/coupang-commerce.routes.ts`)
 - `POST /store/coupang/connect` (`src/features/supply/api/supplier-dashboard.routes.ts`)
@@ -1982,7 +1981,7 @@
 
 
 
-> 마지막 생성: 2026-08-02T15:37:42.365Z
+> 마지막 생성: 2026-08-03T05:35:51.611Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

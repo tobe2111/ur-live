@@ -58,6 +58,8 @@ import { adminCouponsRoutes } from '../features/admin/api/admin-coupons.routes';
 import { adminBulkEmailRoutes } from '../features/admin/api/admin-bulk-email.routes';
 import { adminSideBannersRoutes } from '../features/admin/api/admin-side-banners.routes';
 import { adminSettlementsRoutes } from '../features/admin/api/admin-settlements.routes';
+// 🏬 몰 관리 CRUD — 파일 위치는 features/supply 지만 **소비자 번들에 실린다**(아래 마운트 주석 참조).
+import { adminWholesaleMallRoutes } from '../features/supply/api/wholesale-malls-admin.routes';
 import { adminStatsRoutes } from '../features/admin/api/admin-stats.routes';
 import { adminSellersRoutes } from '../features/admin/api/admin-sellers.routes';
 import { adminProductsRoutes } from '../features/admin/api/admin-products.routes';
@@ -1838,6 +1840,22 @@ if (__INCLUDE_WHOLESALE__) {
   const { mountWholesale } = await import('./mount-wholesale');
   mountWholesale(app, adminApp);
 }
+/**
+ * 🏬 **몰 관리 CRUD 는 도매 게이트 밖이다** 〔2026-08-03 — 대표 실측 404〕
+ *
+ * 이 API 가 지배하는 대상은 도매몰이 아니라 **소비자 표면**이다:
+ * 몰의 존재 · `consumer_path`(=`urdeal.kr/{슬러그}` 로 열지 말지) · 브랜드 색(라이트).
+ * `lookupConsumerMall`(worker/utils/mall-consumer.ts)이 읽는 바로 그 행을 쓴다.
+ *
+ * 🔴 그런데 이게 `if (__INCLUDE_WHOLESALE__)` 안(mount-wholesale)에 있어서, 소비자 배포(ur-live)에선
+ *   **어드민 화면만 실리고 API 는 DCE 로 빠졌다** — `/admin/wholesale-malls` 에서 몰을 만들면 404.
+ *   화면이 있는데 그 화면이 부르는 API 가 없는 것은 배선 결함이지 설정 문제가 아니다.
+ *
+ * ⚠️ 도매 그래프를 되살리지 않는다: 이 라우트의 import 폐쇄는 `wholesale-malls.ts`(+`swallow`)와
+ *   이미 소비자 번들에 있는 공용 미들웨어·`shared/mall/*` 뿐이다(~500줄). 200KB 도매 그래프와 무관.
+ * ⚠️ `/api/admin` 마운트 **앞**에 있어야 한다(mount-wholesale 의 같은 주석과 동일 이유).
+ */
+app.route('/api/admin/wholesale-malls', adminWholesaleMallRoutes);
 app.route('/api/admin', adminApp);
 // Cafe24 public callback (no admin auth needed for OAuth redirect)
 app.route('/admin/cafe24/callback', cafe24Routes);
