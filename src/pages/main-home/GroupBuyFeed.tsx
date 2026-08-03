@@ -14,6 +14,7 @@ import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
 import type { Product } from './types'
 import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-regions'
+import { addressInRegion, type RegionRef } from '@/shared/constants/region-slugs'
 import { parseUTCDate } from '@/utils/date'
 
 interface FeedProduct extends Product {
@@ -78,6 +79,7 @@ export default function GroupBuyFeed({
   onSortChange,
   regionKey,
   districtKey,
+  regionRef,
   userLoc,
 }: {
   pc?: boolean
@@ -89,6 +91,9 @@ export default function GroupBuyFeed({
   //   주소-텍스트 매칭 필터(matchAddress). 미지정이면 matchAddress 가 true → 기존 동작 byte-불변.
   regionKey?: string
   districtKey?: string
+  // 🗺️ 2026-08-03 (대표 — 도시별 색인 페이지): 행정 시군구 필터(`/region/*`). 상권(regionKey)과 별개 축 —
+  //   전달되면 상권 필터보다 **우선**하고, 미전달이면 기존 경로 그대로(홈 무영향).
+  regionRef?: RegionRef
   // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): sort='near' 일 때 이 좌표 기준 거리순 정렬(좌표 없는 딜은 뒤로).
   userLoc?: { lat: number; lng: number } | null
 } = {}) {
@@ -100,8 +105,10 @@ export default function GroupBuyFeed({
   const setSort = (s: SortKey) => { if (onSortChange) onSortChange(s); else setSortState(s) }
   // 🖥️ PC 홈(pc)은 한 줄 4개(대표 요청 — 카드 크게), 모바일은 기존 2~3열. PcHomePage 는 lg+ 에서만
   //   렌더되므로 grid-cols-4 고정으로 충분(레일 옆 flex-1 폭에서 카드가 그만큼 커짐). 로딩/본문/더보기 공통.
+  // 🗺️ 2026-08-03: `grid-cols-4` 고정 → 반응형. **PC 홈은 lg+ 에서만 렌더되므로 4열 그대로**(무변경)이고,
+  //   lg 미만 값은 `/region/*`(PC·모바일 공용 페이지)이 쓴다 — 고정 4열이면 모바일에서 카드가 뭉개진다.
   const gridCls = pc
-    ? 'grid grid-cols-4 gap-5 pb-10'
+    ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-5 pb-10'
     : 'grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8'
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
@@ -161,6 +168,11 @@ export default function GroupBuyFeed({
   //   주소 없는 딜을 통과(`!a ||`)시키던 것이 지역 필터 누수의 원인 → 지역 선택 시 주소-미상 딜은 제외.
   //   (매칭 0 이면 아래 폴백이 '전체' 로 전환 + 안내 문구 — 조용한 오표시 대신 명시.)
   const inRegion = (p: FeedProduct) => {
+    // 🗺️ 2026-08-03 (대표 — 도시별 색인 페이지): 행정 시군구 필터(`/region/*` 전용, additive).
+    //   상권(regionKey)과 **다른 축**이라 별도 분기다 — 상권 택소노미엔 서울 서대문구·부산 연제구처럼
+    //   상품이 많은데 빠진 지역이 있어서(2026-08-03 실측), 색인 페이지는 주소 파싱 기반으로 거른다.
+    //   미전달이면 아래 기존 경로가 그대로 실행 → 홈 동작 byte-불변.
+    if (regionRef) return addressInRegion(p.restaurant_address || p.business_address, regionRef)
     if (!regionKey) return true
     const a = p.restaurant_address || p.business_address
     if (a) return matchAddress(a, regionKey, districtKey)
@@ -244,11 +256,15 @@ export default function GroupBuyFeed({
     // 지역 매칭 0(전부 필터로 사라짐) → 지역 무시 전체 폴백(빈 화면 방지) + 🗺️ 2026-07-19 안내 플래그
     //   (조용히 전체를 보여주면 "부산인데 서울 딜이 왜?" 오해 — 명시 문구로 전환 사실을 알림).
     let fb = false
+    // ⚠️ 조건에 `regionRef` 를 **넣지 말 것**(2026-08-03). 홈은 빈 화면을 피하려고 전체로 폴백하지만,
+    //    `/region/*` 색인 페이지가 같은 짓을 하면 모든 도시 페이지가 '전국 전체 목록'이라는 **동일 콘텐츠**가
+    //    되어 중복 콘텐츠로 색인된다 — 도시 페이지를 만든 이유가 통째로 사라진다. 지역 페이지는 0건이면 0건.
     if (regionKey && out.length === 0) { fb = true; seen.clear(); out.length = 0; for (const band of bands) pushBand(band, false) }
     return { list: out, regionFallback: fb }
     // inRegion/sortBand 는 매 렌더 재생성(아래 deps 를 클로저) → deps 에 원천값만 나열.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, extraPages, sort, userLoc, regionKey, districtKey])
+    // regionRef 는 객체라 참조가 매 렌더 바뀔 수 있어 원시값으로 분해해 넣는다(무한 재계산 방지).
+  }, [items, extraPages, sort, userLoc, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu])
 
   return (
     <>

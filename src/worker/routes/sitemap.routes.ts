@@ -11,6 +11,11 @@ import type { Env } from '@/worker/types/env';
 //   색인은 배포로 못 되돌린다(회수 시점의 통제권이 검색엔진에 있음) → 첫 몰 개설보다 먼저 들어가야 하는 가드.
 //   ⚠️ worker 값(value) import 는 alias 금지 — 상대경로(esbuild worker 빌드가 alias 를 못 푼다).
 import { mainScopeFor } from '../utils/consumer-scope';
+// 🗺️ 2026-08-03 (대표 — 도시별 색인): 지역 URL 발행. 페이지의 `noindex` 판정과 **같은 집계**를 쓴다 —
+//   따로 세면 sitemap 이 제출한 URL 을 페이지가 noindex 로 막는 모순이 생긴다(색인 신뢰도 하락).
+import { computeRegionStats } from '../../features/group-buy/api/regions.routes';
+import { regionPath } from '../../shared/constants/region-slugs';
+import { REGION_PAGES_ENABLED } from '../../shared/feature-flags';
 
 const sitemapRoutes = new Hono<{ Bindings: Env }>();
 
@@ -163,6 +168,27 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
       //   위 정적 목록(line 52)은 "라이브커머스 영구중단 → /live·/shorts 미노출"이라고 **이미 적어 놨는데**
       //   동적 섹션만 정리에서 빠졌다 — 주석과 코드가 어긋난 채 남은 전형적인 형태다.
       //   되살릴 일이 생기면 라우트부터 복구할 것(URL 이 없으면 사이트맵 신뢰도만 깎인다).
+
+      // 🗺️ 2026-08-03 지역 페이지 — 딜이 `REGION_INDEX_MIN_DEALS` 이상인 곳만 제출.
+      //   ⚠️ 문턱을 낮추지 말 것: 빈 지역 URL 을 대량 제출하면 크롤 예산을 먹고 soft-404 로 집계되어
+      //   사이트 전체 색인 품질이 깎인다. 그리고 그 손해는 배포로 되돌아오지 않는다.
+      //   플래그 OFF 면 지역 URL 을 아예 발행하지 않는다(전면 롤백 경로).
+      if (REGION_PAGES_ENABLED) {
+        try {
+          const regionStats = await computeRegionStats({ DB } as Env);
+          urls.push({ loc: '/region', priority: 0.8, changefreq: 'daily' });
+          for (const r of regionStats) {
+            if (!r.indexable) continue;
+            urls.push({ loc: regionPath({ sido: r.sido }), priority: 0.85, changefreq: 'daily' });
+            for (const s of r.sigungu) {
+              if (!s.indexable) continue;
+              urls.push({ loc: regionPath({ sido: r.sido, sigungu: s.sigungu }), priority: 0.75, changefreq: 'daily' });
+            }
+          }
+        } catch {
+          // 집계 실패해도 나머지 sitemap 은 정상 발행 — 지역 URL 만 이번 회차에 빠진다.
+        }
+      }
 
       // 블로그 글
       const blogs = await DB.prepare(
