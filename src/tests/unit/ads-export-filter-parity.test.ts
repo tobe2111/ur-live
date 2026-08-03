@@ -144,3 +144,52 @@ describe('수집 루트별 수율 — 총계가 아니라 "연락 가능한 수"
     expect(STORE_UI, '📞 도달 채널 안내가 있어야 이메일만 찾다 끝나지 않는다').toMatch(/도달 채널은 <b>전화<\/b>/)
   })
 })
+
+/**
+ * 🎯 **두 사업의 "오늘 쓸 수 있는 명단"이 맨 위에 있다** (2026-08-03 대표 확정 후 신설).
+ *
+ * 대표 확정: **온라인판매 = 페이백 사업 · 대행사 = 제휴 사업.**
+ * 총계는 17만이고 그중 지금 보낼 수 있는 건 얼마 안 된다 — 총계는 판단에 도움이 안 되고
+ * *"지금은 복잡함"* 이라는 인상만 만든다. 이 DB 의 성공 지표는 **"제안 보낼 수 있는 리드 수"** 다.
+ *
+ * ```
+ *   💸 페이백   온라인판매 18,155 중 이메일 18,088(99.6%)  ← 준비 완료
+ *   🤝 제휴     대행사      1,989 중 연락처   111(5.6%)   ← 새 수집 루트 필요
+ * ```
+ *
+ * ⚠️ 못 보는 것: 화면 렌더·클릭 동작(배선만 본다). 숫자가 0 이어도 고장이 아니다.
+ */
+describe('두 사업 명단 — 총계가 아니라 "지금 보낼 수 있는 수"', () => {
+  const BREAKDOWN = SRC('src/features/marketing/api/company-breakdown.ts')
+  const SEG_UI = SRC('src/pages/admin/partner-pool/BusinessSegments.tsx')
+
+  it('🔒 두 명단을 **각각 조건부로** 센다 — COUNT(*) 면 "몇 건 있나"만 남는다', () => {
+    for (const col of ['payback_ready', 'agency_ready']) {
+      const at = BREAKDOWN.indexOf(`AS ${col}`)
+      expect(at, `${col} 집계가 없다`).toBeGreaterThan(0)
+      const own = BREAKDOWN.slice(0, at)
+      expect(own.slice(own.lastIndexOf(',') + 1), `${col} 이 조건부 집계가 아니다`).toMatch(/SUM\(CASE WHEN/)
+    }
+  })
+
+  it('🔒 **보류는 명단이 아니다** — active=1 로 좁히지 않으면 연락처 없는 행까지 센다', () => {
+    const at = BREAKDOWN.indexOf('payback_ready')
+    expect(BREAKDOWN.slice(at, at + 700)).toMatch(/active = 1/)
+  })
+
+  it('🔒 페이백은 **이메일**, 제휴는 **전화 또는 이메일** — 도달 채널이 다르다', () => {
+    const at = BREAKDOWN.indexOf('AS payback_ready')
+    const payback = BREAKDOWN.slice(BREAKDOWN.lastIndexOf('SUM(CASE WHEN', at), at)
+    expect(payback, '페이백은 이메일 발송이라 전화만으로는 명단이 아니다').not.toMatch(/phone/)
+    const at2 = BREAKDOWN.indexOf('AS agency_ready')
+    const agency = BREAKDOWN.slice(BREAKDOWN.lastIndexOf('SUM(CASE WHEN', at2), at2)
+    expect(agency, '대행사는 전화도 도달 채널이다').toMatch(/phone/)
+  })
+
+  it('🔒 화면이 두 명단을 읽고, 클릭하면 **그 필터로 좁힌다** — 좁히지 않으면 카드가 장식이다', () => {
+    expect(PARTNER_UI).toMatch(/setSegments\(r\.data\.segments \|\| null\)/)
+    expect(PARTNER_UI).toMatch(/<BusinessSegments segments=\{segments\} onPick=/)
+    expect(SEG_UI).toMatch(/onPick\('온라인판매', 'email'\)|'온라인판매', 'email'/)
+    expect(SEG_UI).toMatch(/'대행사', 'contact'/)
+  })
+})

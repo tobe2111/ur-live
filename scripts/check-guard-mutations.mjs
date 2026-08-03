@@ -191,6 +191,26 @@ const MUTATIONS = [
       '연락처 품질은 양보다 정확도가 먼저다(틀린 주소 하나가 도메인 전체를 깎는다).',
   },
   {
+    name: '두 사업 명단이 보류(연락처 없음)까지 셈',
+    file: 'src/features/marketing/api/company-breakdown.ts',
+    find: 'WHERE merged_into IS NULL AND active = 1',
+    replace: 'WHERE merged_into IS NULL',
+    test: 'src/tests/unit/ads-export-filter-parity.test.ts',
+    why:
+      '화면 맨 위의 두 숫자는 **"지금 제안을 보낼 수 있는 수"** 다. 보류(active=0 = 연락처 없어 제외된 행)를 ' +
+      '섞으면 17만 총계와 다를 바 없어지고, 대표가 그 숫자를 믿고 명단을 뽑으면 **보낼 수 없는 행이 섞여 나온다.**',
+  },
+  {
+    name: '페이백 명단을 전화로도 셈(이메일 발송인데)',
+    file: 'src/features/marketing/api/company-breakdown.ts',
+    find: "SUM(CASE WHEN category = '온라인판매' AND email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS payback_ready",
+    replace: "SUM(CASE WHEN category = '온라인판매' AND phone IS NOT NULL THEN 1 ELSE 0 END) AS payback_ready",
+    test: 'src/tests/unit/ads-export-filter-parity.test.ts',
+    why:
+      '두 사업은 **도달 채널이 다르다** — 페이백은 이메일 발송이라 전화만 있는 행은 명단이 아니고, ' +
+      '대행사는 전화도 채널이다. 이 구분이 무너지면 숫자는 커지는데 실제로 보낼 수 있는 건 줄어든다.',
+  },
+  {
     name: '루트별 수율이 총계로 뭉개짐(어디에 예산 쓸지 못 봄)',
     file: 'src/features/marketing/api/store-prospects.ts',
     find: "SUM(CASE WHEN (phone IS NOT NULL AND phone != '') OR (email IS NOT NULL AND email != '') THEN 1 ELSE 0 END) AS with_any",

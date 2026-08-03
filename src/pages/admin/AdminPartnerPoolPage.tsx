@@ -8,6 +8,8 @@
  *     ② 버튼 정리 — 수집 5종 / 정리·보강 4종을 각각 드롭다운 1개로(상시 노출 11개 → 5개).
  *     ③ 페이지네이션 — 서버 offset/total 로 **끝까지** 넘겨봄 + 행 memo 로 렉 제거(기존: 500행 통째 렌더).
  */
+import ImportPanel from './partner-pool/ImportPanel'
+import BusinessSegments from './partner-pool/BusinessSegments'
 import InflowTimeline from './partner-pool/InflowTimeline'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import api from '@/lib/api'
@@ -65,6 +67,9 @@ export default function AdminPartnerPoolPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   /** 🕐 최신화 내역 — 총계는 며칠 멈춰도 안 변한다. "요즘 들어오고는 있나"는 이 줄로만 보인다. */
   const [byDay, setByDay] = useState<Array<{ d: string; n: number; reachable: number }>>([])
+  /** 🎯 두 사업의 발송 가능 명단(온라인판매=페이백 · 대행사=제휴). 근거는 `BusinessSegments.tsx` 헤더. */
+  const [segments, setSegments] = useState<{ payback_ready: number; agency_ready: number } | null>(null)
+  const [showOps, setShowOps] = useState(false) // 수집 상태·키워드는 기본 접힘
   /** 🩺 수확 0 이 지속되는 레인 — 매장 화면과 같은 판정기(근거는 `lane-yield-health.ts` 헤더). */
   const [laneHealth, setLaneHealth] = useState<Array<{ lane: string; message: string }>>([])
   const [collect, setCollect] = useState<Collect | null>(null)
@@ -117,16 +122,12 @@ export default function AdminPartnerPoolPage() {
   const loadStats = useCallback(async (): Promise<Record<string, unknown> | null> => {
     try {
       const r = await api.get('/api/admin/partner-pool/stats')
-      if (r.data?.success) { setStats(r.data.stats); setByDay(r.data.byDay || []); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null); setLocaldata(r.data.localdata || null); setEnrichInfo(r.data.enrichLast || null); setEnrichRollup(r.data.enrichRollup || null); setKakaoSweep(r.data.kakaoSweep || null); setRegistryMatch(r.data.registryMatch || null); setRunning(r.data.running || null); setLaneHealth(r.data.laneHealth || []) }
+      if (r.data?.success) { setStats(r.data.stats); setByDay(r.data.byDay || []); setSegments(r.data.segments || null); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null); setLocaldata(r.data.localdata || null); setEnrichInfo(r.data.enrichLast || null); setEnrichRollup(r.data.enrichRollup || null); setKakaoSweep(r.data.kakaoSweep || null); setRegistryMatch(r.data.registryMatch || null); setRunning(r.data.running || null); setLaneHealth(r.data.laneHealth || []) }
       return r.data || null // 완료 감지 폴러가 원시 응답을 함께 사용
     } catch { return null }
   }, [])
-  /**
-   * 🔗 **목록과 내보내기가 같은 조건을 쓴다** (2026-08-03 — 내보내기가 필터를 통째로 무시하던 것 수리).
-   *   조립을 여기 한 곳에 두지 않으면 두 벌이 되고, 두 벌이 되면 **반드시 갈라진다**
-   *   (화면엔 이메일 보유 620건인데 파일엔 5,000행이 나오던 것이 정확히 그 결과였다).
-   *   ⚠️ 페이지네이션(limit/offset)은 **여기 넣지 않는다** — 내보내기는 페이지 개념이 없다.
-   */
+  /** 🔗 목록과 내보내기가 **같은 조건**을 쓴다(두 벌이면 반드시 갈라진다 — 2026-08-03 수리).
+   *  ⚠️ limit/offset 은 넣지 않는다 — 내보내기엔 페이지 개념이 없다. */
   const buildQuery = useCallback((): URLSearchParams => {
     const p = new URLSearchParams()
     if (fCategory) p.set('category', fCategory)
@@ -344,6 +345,8 @@ export default function AdminPartnerPoolPage() {
           </div>
         )}
 
+        <BusinessSegments segments={segments} onPick={(cat, q) => { setFCategory(cat); setQuick(q); setPage(0) }} />
+
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 mb-5">
           {statCard('', '전체', stats?.total || 0)}
           {statCard('contact', '연락처 보유', stats?.with_contact || 0, '전화 또는 이메일')}
@@ -400,23 +403,21 @@ export default function AdminPartnerPoolPage() {
             <span className="text-emerald-600"> — 페이지를 닫거나 이동해도 계속됩니다. 완료되면 알림벨에 결과가 남습니다.</span>
           </div>
         )}
-        <StatusLines enrichRollup={enrichRollup} kakaoSweep={kakaoSweep} collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} work24={work24Info} localdata={localdata} enrichLast={enrichInfo} registryMatch={registryMatch} />
+        {/* 🗂️ 수집 상태·키워드는 매일 볼 것이 아니라 기본으로 접는다(대표 "지금은 복잡함").
+            ⚠️ 숨김이 아니라 접기다 — 고장은 무수확 경고(laneHealth)가 위에서 따로 띄운다. */}
+        <button onClick={() => setShowOps(v => !v)} className="mb-2 text-xs text-gray-500 hover:text-gray-800">
+          {showOps ? '▾ 수집 상태·키워드 접기' : '▸ 수집 상태·키워드 펼치기'}
+        </button>
+        {showOps && <StatusLines enrichRollup={enrichRollup} kakaoSweep={kakaoSweep} collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} work24={work24Info} localdata={localdata} enrichLast={enrichInfo} registryMatch={registryMatch} />}
 
-        {/* 명부 붙여넣기(레인 B·C) */}
-        {showImport && (
-          <div className="rounded-xl border border-gray-200 bg-white p-4 mb-4">
-            <p className="text-xs text-gray-500 mb-2">헤더(회사명·전화·주소·홈페이지·이메일·업종…) 있는 표를 붙여넣으세요. 공정위 정보공개서·상인회 명부 CSV/TSV 자동 인식. 회사명 컬럼 필수.</p>
-            <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={6} placeholder={'회사명\t전화\t주소\t홈페이지\nOO간판\t02-...\t서초구...\thttp://...'} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm font-mono" />
-            <div className="flex justify-end mt-2">
-              <button onClick={submitImport} disabled={importing} className="px-5 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{importing ? '저장 중…' : '임포트'}</button>
-            </div>
+        {showImport && <ImportPanel text={importText} onText={setImportText} busy={importing} onSubmit={submitImport} />}
+
+        {/* 🔑 수집 조건 — 무엇을 모을지 여기서 고른다(네 축 중 ③ 필터링). 위 토글과 함께 접힌다. */}
+        {showOps && (
+          <div className="mb-4">
+            <CompanyKeywordManager keywords={keywords} onChanged={loadKeywords} />
           </div>
         )}
-
-        {/* 🔑 수집 조건 — 무엇을 모을지 여기서 고른다(네 축 중 ③ 필터링) */}
-        <div className="mb-4">
-          <CompanyKeywordManager keywords={keywords} onChanged={loadKeywords} />
-        </div>
 
         {/* 수동 입력 폼 */}
         {showAdd && (
