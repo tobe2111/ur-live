@@ -121,9 +121,17 @@ describe('수집 루트별 수율 — 총계가 아니라 "연락 가능한 수"
     expect(at, 'bySource 집계를 못 찾았다').toBeGreaterThan(0)
     const block = STORE_LIB.slice(at, STORE_LIB.indexOf('.all<', at))
     expect(block).toMatch(/GROUP BY opn_svc_id/)
+    // ⚠️ **이름만 보면 안 된다** — `COUNT(*) AS with_any` 로 바꿔도 이름은 그대로 남는다(주입 검증이 잡았다).
+    //   지켜야 할 것은 "연락 가능한 수를 **조건부로** 센다"이지 컬럼이 존재한다가 아니다.
     for (const col of ['with_phone', 'with_email', 'with_any']) {
-      expect(block, `${col} 이 빠지면 "몇 건 모았나"만 남는다`).toContain(col)
+      const at = block.indexOf(`AS ${col}`)
+      expect(at, `${col} 집계가 없다`).toBeGreaterThan(0)
+      // 그 컬럼 **자기 식**만 본다 — 앞 컬럼의 `AS` 까지 되돌아가면 옆 식의 SUM 을 자기 것으로 착각한다.
+      const own = block.slice(0, at)
+      const expr = own.slice(own.lastIndexOf(',') + 1)
+      expect(expr, `${col} 이 조건부 집계가 아니다 — COUNT(*) 면 "몇 건 모았나"만 남는다`).toMatch(/SUM\(CASE WHEN/)
     }
+    expect(block, '전화·이메일 둘 다 봐야 한다 — 이 풀은 전화가 도달 채널이다').toMatch(/phone[\s\S]*email/)
   })
 
   it('🔒 응답에 실려 나간다 — 계산만 하고 안 보내면 없는 기능이다', () => {

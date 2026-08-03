@@ -532,7 +532,9 @@ export interface SourceContactRate {
   with_email: number
   with_any: number
 }
-export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStats; byCategory: Array<{ k: string; n: number }>; byTier: Array<{ k: number | null; n: number }>; byLeadType: Array<{ k: string; n: number }>; agencyEmailFunnel: AgencyEmailFunnel; bySource: SourceContactRate[] }> {
+export interface CompanyDayInflow { d: string; n: number; reachable: number }
+
+export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStats; byCategory: Array<{ k: string; n: number }>; byDay: CompanyDayInflow[]; byTier: Array<{ k: number | null; n: number }>; byLeadType: Array<{ k: string; n: number }>; agencyEmailFunnel: AgencyEmailFunnel; bySource: SourceContactRate[] }> {
   await ensureCompanySchema(DB)
   const t = await DB.prepare(`SELECT
       COUNT(*) AS total,
@@ -545,6 +547,12 @@ export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStat
       SUM(CASE WHEN lead_type IS NULL OR lead_type = 'unknown' THEN 1 ELSE 0 END) AS needs_review
     FROM ad_company_leads`).first<Record<string, number>>().catch(() => null)
   const byCategory = (await DB.prepare("SELECT COALESCE(category,'?') AS k, COUNT(*) AS n FROM ad_company_leads GROUP BY category ORDER BY n DESC LIMIT 20").all<{ k: string; n: number }>().catch(() => null))?.results || []
+  // 🕐 최신화 내역 — 총계는 며칠 멈춰도 안 변한다(멈춤이 안 보이는 지표). 배경은 `InflowTimeline.tsx` 헤더.
+  //   ⚠️ **KST 경계**(`+9 hours`)로 센다 — UTC 로 자르면 한국의 '오늘'이 09:00 에 시작한다.
+  const byDay = (await DB.prepare(`SELECT DATE(collected_at,'+9 hours') AS d, COUNT(*) AS n,
+      SUM(CASE WHEN (email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != '') THEN 1 ELSE 0 END) AS reachable
+    FROM ad_company_leads WHERE merged_into IS NULL AND collected_at >= datetime('now','-14 days')
+    GROUP BY d ORDER BY d DESC LIMIT 14`).all<{ d: string; n: number; reachable: number }>().catch(() => null))?.results || []
   const byTier = (await DB.prepare('SELECT tier AS k, COUNT(*) AS n FROM ad_company_leads GROUP BY tier ORDER BY (tier IS NULL) ASC, tier ASC').all<{ k: number | null; n: number }>().catch(() => null))?.results || []
   const byLeadType = (await DB.prepare("SELECT COALESCE(NULLIF(lead_type,''),'unknown') AS k, COUNT(*) AS n FROM ad_company_leads GROUP BY 1 ORDER BY n DESC").all<{ k: string; n: number }>().catch(() => null))?.results || []
   // 📧 대행사 이메일 퍼널(2026-07-27 대표 "대행사인데도 이메일 수집 안 되는 경우 있는지") — 미보유를 원인별로 분해:
@@ -574,7 +582,7 @@ export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStat
       active_pipeline: Number(t?.active_pipeline) || 0, recent7: Number(t?.recent7) || 0,
       needs_review: Number(t?.needs_review) || 0,
     },
-    byCategory, byTier, byLeadType, bySource,
+    byCategory, byDay, byTier, byLeadType, bySource,
     agencyEmailFunnel: {
       total: Number(af?.total) || 0, with_email: Number(af?.with_email) || 0,
       site_no_email: Number(af?.site_no_email) || 0, site_tried: Number(af?.site_tried) || 0, no_site: Number(af?.no_site) || 0,
