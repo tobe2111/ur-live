@@ -123,7 +123,41 @@ export function redactServiceKey(url: string): string {
 export interface ProbeAttempt { id: string; ok: boolean; rows: number; msg?: string }
 
 /** DB(`ads_localdata_variant`)에 저장되는 상태 — 어느 형태를 왜 쓰는지 + 언제 확인했는지. */
-export interface VariantState { id: string; probed_at?: number; attempts?: ProbeAttempt[] }
+export interface VariantState {
+  id: string; probed_at?: number; attempts?: ProbeAttempt[]
+  /** 이 상태를 만들 때의 규칙 버전. 다르면 **믿지 않는다**(아래 `LICENSE_STATE_VERSION`). */
+  v?: number
+}
+
+/**
+ * 🧊 **저장된 판정의 유효기간** — 라이브가 즉시 드러낸 구멍의 수리 (2026-08-03).
+ *
+ *   `/info` 를 고쳐 배포한 직후 라이브를 봤더니 DB 에 이렇게 남아 있었다:
+ *   ```json
+ *     ads_localdata_variant = {"id":"v1", "probed_at":…, "attempts":[…code 12 전부 실패…]}
+ *   ```
+ *   **주소가 틀렸던 시절에 내려진 판정**이다. 그때는 무엇을 찔러도 실패했으니 이 값은 정보가 아니라
+ *   *잔해*다. 그런데 기본값을 v4 로 올린 것만으로는 이게 안 지워진다 — 저장된 값이 항상 이긴다.
+ *
+ *   더 나쁜 건 **스스로 못 빠져나온다**는 점이다. 프로브는 *실패했을 때만* 도는데, 경로가 고쳐진 지금
+ *   v1 도 200 을 받는다(그 서비스는 `pageIndex`/`pageSize` 를 **조용히 무시**할 뿐이다). 즉:
+ *   실패가 없다 → 프로브가 안 돈다 → **영원히 v1** → 매 회차 같은 페이지만 긁는다.
+ *   에러도 경고도 없다. 이 레포가 "조용한 전진 0"이라 부르는 바로 그 모양이다.
+ *
+ *   ⇒ 규칙이 바뀌면 **옛 판정을 무효로** 한다(이 레포의 `*_RULES_VERSION` 관용구와 같은 철학).
+ *   ⚠️ **요청 형태·경로에 영향을 주는 변경을 하면 이 값을 +1** 하라. 안 올리면 라이브는 옛 답을 계속 쓴다.
+ *     v1(2026-08-03) = 오퍼레이션 `/info` 도입 + 기본 후보 v4 승격.
+ */
+export const LICENSE_STATE_VERSION = 1
+
+/**
+ * 저장된 판정을 **쓸 수 있는가** — 버전이 다르면 `null`(= 저장된 적 없음처럼 취급 → 기본값 + 재프로브).
+ * @returns 그대로 쓸 수 있으면 상태, 낡았으면 null
+ */
+export function usableVariantState(state: VariantState | null | undefined): VariantState | null {
+  if (!state || !state.id) return null
+  return Number(state.v || 0) === LICENSE_STATE_VERSION ? state : null
+}
 
 /** 프로브 재시도 쿨다운(기본 6h) — 실패가 상대편 일시 장애일 때 매 라운드 4발씩 쏘지 않게. */
 export const PROBE_COOLDOWN_MS = 6 * 3_600_000

@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { runLocalDataCollect, runLocalDataBackfill } from '@/features/marketing/api/localdata-collect'
-import { LICENSE_VARIANTS } from '@/features/marketing/api/license-url'
+import { LICENSE_VARIANTS, LICENSE_STATE_VERSION } from '@/features/marketing/api/license-url'
 
 /**
  * ⚠️ 2026-08-03: 아래 픽스처들은 원래 **`v1`(pageIndex/pageSize=500)이 기본**이라는 전제를 리터럴로
@@ -78,7 +78,7 @@ describe('인허가 요청 형태 프로브', () => {
   })
 
   it('기억한 형태는 다음 실행에서 곧바로 쓰이고, 프로브는 다시 돌지 않는다', async () => {
-    const { db } = makeDB({ [VARIANT_KEY]: JSON.stringify({ id: ALT.id, probed_at: Date.now() }) })
+    const { db } = makeDB({ [VARIANT_KEY]: JSON.stringify({ id: ALT.id, probed_at: Date.now(), v: LICENSE_STATE_VERSION }) })
     const urls: string[] = []
     vi.stubGlobal('fetch', vi.fn(async (u: string) => { urls.push(String(u)); return new Response(JSON.stringify({ svc: { row: [ROW] } }), { status: 200 }) }))
 
@@ -154,7 +154,7 @@ describe('인허가 요청 형태 프로브', () => {
   })
 
   it('쿨다운을 **공유**하므로 두 레인이 같은 창에서 중복으로 찌르지 않는다', async () => {
-    const { db } = makeDB({ [VARIANT_KEY]: JSON.stringify({ id: 'v1', probed_at: Date.now() }) })
+    const { db } = makeDB({ [VARIANT_KEY]: JSON.stringify({ id: 'v1', probed_at: Date.now(), v: LICENSE_STATE_VERSION }) })
     const urls: string[] = []
     vi.stubGlobal('fetch', vi.fn(async (u: string) => { urls.push(String(u)); return new Response('Unexpected errors', { status: 500 }) }))
 

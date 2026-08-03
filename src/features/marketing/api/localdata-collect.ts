@@ -25,7 +25,7 @@ import { type FetchBudget } from './influencer-discovery'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envLaneBudget , envPlanValue} from './collect-budget'
 import {
   buildLicenseUrl, findVariant, probeLicenseVariants, redactServiceKey, resolveLicensePageSize, resolveLicenseOperation,
-  shouldProbe, type ProbeAttempt, type VariantState,
+  shouldProbe, usableVariantState, LICENSE_STATE_VERSION, type ProbeAttempt, type VariantState,
 } from './license-url'
 import { fieldCoverage, coverageNote, type FieldCoverage } from './field-coverage'
 
@@ -163,7 +163,7 @@ async function maybeProbeVariant(opts: {
     canSpend: () => !outOfBudget(opts.budget),
     fetchPage: async (u) => { const r = await opts.fetchUrl(u); return { ok: !r.msg, rows: r.count, msg: r.msg } },
   })
-  const state: VariantState = { id: pr.winner || opts.variantId, probed_at: Date.now(), attempts: pr.attempts }
+  const state: VariantState = { id: pr.winner || opts.variantId, probed_at: Date.now(), attempts: pr.attempts, v: LICENSE_STATE_VERSION }
   opts.spendD1()
   await opts.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(VARIANT_KEY, JSON.stringify(state)).run().catch(() => null)
   return { winner: pr.winner, info: { at: opts.stamp, winner: pr.winner, attempts: pr.attempts }, state }
@@ -330,7 +330,9 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
   // 🔑 경로 끝 오퍼레이션(`/info`). 미설정이면 기본값 — 기관이 이름을 바꾸면 env 로 배포 없이 고친다.
   const opEnv = (env as unknown as { ADS_LICENSE_OPERATION?: string }).ADS_LICENSE_OPERATION ?? null
   let vState: VariantState | null = null
-  try { const v = setting(VARIANT_KEY); vState = v ? JSON.parse(v) as VariantState : null } catch { vState = null }
+  // 🧊 규칙 버전이 다른 판정은 **잔해다**(주소가 틀렸던 시절의 답) — 없는 것으로 치고 기본값 + 재프로브.
+  //    이게 없으면 저장된 값이 항상 이겨서, 경로를 고쳐도 라이브는 옛 형태로 계속 간다.
+  try { const v = setting(VARIANT_KEY); vState = usableVariantState(v ? JSON.parse(v) as VariantState : null) } catch { vState = null }
   let variantId = findVariant(envVariant || vState?.id).id
   let probeInfo: { at: string; winner: string | null; attempts: ProbeAttempt[] } | undefined
   let failProbe: LocalDataStats['diag']['fail_probe']
@@ -484,7 +486,7 @@ export async function runLocalDataBackfill(env: Env, maxDaysArg?: number): Promi
   const bfEnvVariant = String((env as unknown as { ADS_LOCALDATA_VARIANT?: string }).ADS_LOCALDATA_VARIANT || '').trim()
   let bfVariant = bfEnvVariant
   let bfState: VariantState | null = null
-  try { bfState = JSON.parse(bfSetting(VARIANT_KEY) || 'null') as VariantState | null } catch { bfState = null }
+  try { bfState = usableVariantState(JSON.parse(bfSetting(VARIANT_KEY) || 'null') as VariantState | null) } catch { bfState = null }
   if (!bfVariant) bfVariant = bfState?.id || ''
   let bfProbed = false // 이번 실행 1회만(예산 보호)
   const bfSizeEnv = (env as unknown as { ADS_LOCALDATA_PAGE_SIZE?: string }).ADS_LOCALDATA_PAGE_SIZE || null
