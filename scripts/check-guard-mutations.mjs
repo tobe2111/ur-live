@@ -119,10 +119,35 @@ const MUTATIONS = [
       '`sweep-mx` 블록에서 겪은 것과 같은 구조적 기아 — 마감선과 회전은 짝이다.',
   },
   {
+    name: '회차 꼬리가 다시 무한정 기다림(학습기 갱신 자리가 통째로 사라짐)',
+    file: 'src/worker-ads/tail-bound.ts',
+    find: 'await Promise.race([Promise.all(tracked), deadline])',
+    replace: 'await Promise.all(tracked)',
+    test: 'src/tests/unit/ads-tail-bound.test.ts',
+    why:
+      '`cap` 을 갱신하는 자리는 회차 꼬리 하나뿐인데, 띄운 레인이 전부 끝나기를 기다리면 부모가 못 버틸 때 ' +
+      '요약도 학습도 **통째로 실행되지 않는다**. 실측: 이력이 09:00 KST 에서 5시간 정지했는데 디스패치 기록은 ' +
+      '매 회차 정상이고 cron_failures 는 0이었다(예외 없이 잘려 실패로도 안 남는다). 그래서 학습기가 바닥 2 에 고착됐다.',
+  },
+  {
+    name: '못 기다린 레인을 판정에 넘김 — 회차가 늘 해로움이 되는 부호 반대 고착',
+    file: 'src/worker-ads/tail-bound.ts',
+    find: 'judgedLaneNames(o.ranNames, r.settled)',
+    replace: 'o.ranNames',
+    test: 'src/tests/unit/ads-tail-bound.test.ts',
+    why:
+      '`tickHarmed` 는 `fail + miss` 로 판정하고 `miss` 는 *띄웠는데 하트비트가 없는* 레인이다. ' +
+      '상한을 넣고도 아직 도는 레인을 그대로 넘기면 전부 miss 로 잡혀 **모든 회차가 항상 해로움**이 된다 — ' +
+      '고치려던 것과 **부호만 반대인 같은 고착**이다. 끝난 레인만 판정 대상이어야 한다.',
+  },
+  {
     name: '매시간 레인이 gap 없이 등록돼 침묵 판정에서 통째로 빠짐',
-    file: 'src/worker-ads/index.ts',
-    find: 'gapMin: opts?.gap ?? hourlyGapMinutes()',
-    replace: 'gapMin: opts?.gap',
+    // 🔁 2026-08-03: 조립이 `lane-cadence.laneCadenceFields` 로 추출되면서 이 줄이 이사했다
+    //   (같은 필드가 미루기 판정에도 쓰여 매시간 레인을 통째로 `always` 로 만들던 것을 끊으면서).
+    //   불변식은 그대로다 — **기본값 없이 undefined 를 그대로 넘기면** 그 레인이 침묵 판정에서 빠진다.
+    file: 'src/worker-ads/lane-cadence.ts',
+    find: '  const gapMin = opts?.gap ?? hourlyGapMinutes()',
+    replace: '  const gapMin = opts?.gap as number',
     test: 'src/tests/unit/ads-lane-gap-judgeable.test.ts',
     why:
       '자식 하트비트(`writeSelfBeat`)는 설계상 cron 식을 안 싣고 부모가 넘긴 `gap` 만 믿는데, ' +
@@ -677,9 +702,11 @@ const MUTATIONS = [
   },
   {
     name: '회차 이력이 이름 대신 개수를 씀(miss 음수)',
-    file: 'src/worker-ads/index.ts',
-    find: 'writeTickSummary(env.DB, tickStartIso, hourUTC, ranNames, beats.seenBeats, env as never)',
-    replace: 'writeTickSummary(env.DB, tickStartIso, hourUTC, beats.seenBeats.map(b => b.name.slice(4)), beats.seenBeats, env as never)',
+    // 📍 2026-08-03: 꼬리가 `index.ts` 인라인 → `tail-bound.ts` `closeTick` 으로 이사해 앵커를 옮겼다.
+    //   (이 이사를 낡은 지도 검사가 그 자리에서 잡았다 — 안 잡혔으면 이 불변식이 조용히 사라졌을 것이다.)
+    file: 'src/worker-ads/tail-bound.ts',
+    find: 'judgedLaneNames(o.ranNames, r.settled), o.beats.seenBeats',
+    replace: 'o.beats.seenBeats.map(b => b.name.slice(4)), o.beats.seenBeats',
     test: 'src/tests/unit/ads-tick-history.test.ts',
     why: '이름 대조를 버리면 miss 가 0 이 되거나(개수 뺄셈이면) 음수가 된다 — 라이브 실측 "띄운7 기록9".',
   },
@@ -1383,6 +1410,29 @@ const MUTATIONS = [
       '**네이버로 나가는 요청량이 늘어나는 변경**이라 대표 판단 사항이다. 값이 조용히 바뀌는 것을 막는다.',
   },
   {
+    name: '미루기 판정이 주기 대신 침묵 임계를 봄(매시간 레인이 통째로 always)',
+    file: 'src/worker-ads/dispatch-budget.ts',
+    find: '  const period = Number(lane.periodMin)\n  if (Number.isFinite(period) && period > 0) return period <= 60\n',
+    replace: '',
+    test: 'src/tests/unit/ads-dispatch-budget.test.ts',
+    why:
+      '`gapMin` 은 `staleGapMinutes` = 주기×2+30 으로 **부풀린** 침묵 판정 임계다. 이 분기를 지우면 ' +
+      '매시간 레인의 150 이 `> 60` 으로 읽혀 **전부 `always`** 가 된다(2026-08-03 12:00 KST 실측: ' +
+      '네 도메인 전부 `deferred: 0`, 레인 14). 예산·학습기는 미룰 수 있는 레인에만 작용하므로 ' +
+      '통제 대상이 0 개가 되고, #1007(예산 0 구속) 수리가 옳고도 무력해진다.',
+  },
+  {
+    name: '게이트 레인에도 periodMin 60 을 실어 일 1회 레인이 미뤄짐',
+    file: 'src/worker-ads/lane-cadence.ts',
+    find: "  return opts?.gap === undefined ? { gapMin, periodMin: 60 } : { gapMin }",
+    replace: '  return { gapMin, periodMin: 60 }',
+    test: 'src/tests/unit/ads-dispatch-budget.test.ts',
+    why:
+      '반대 방향의 사고 — 명시 `gap` 을 받은 게이트 레인(일 1회·N시간·스케줄)까지 매시간으로 표시하면 ' +
+      '**미룰 수 있게** 되고, 그 레인의 조 차례가 지정 시각이 아닌 때 걸리는 순간 **영영 안 돈다**. ' +
+      '침묵이 아니라 부재라 경보에도 안 잡힌다(`isDeferrable` docblock 이 경고하는 바로 그 형태).',
+  },
+  {
     name: '은퇴 축 리드를 안 비움(유령 카테고리 영구 잔존)',
     file: 'src/features/marketing/api/influencer-classify.ts',
     find: '  if (retired.has(stored)) return true',
@@ -1433,18 +1483,85 @@ const MUTATIONS = [
     why:
       '위 수리의 짝이다. 0 을 제대로 읽어도 하한 1 이 남아 있으면 쉬는 조가 매 회차 1개씩 띄운다 — ' +
       '도메인 수만큼 곱해지면 학습기 판단(cap 2)이 다시 안 맞는다. 하한은 *자리를 받은* 조에만 있어야 한다.',
+    name: 'YT 건너뛴 행이 스탬프를 못 받아 영구 선두(재선택 churn)',
+    // ⚠️ 2026-08-03 600줄 래칫으로 YT 성과가 이 파일로 분리됐다(순수 이동). 앵커가 안 따라오면
+    //   이 주입은 "find 문자열이 소스에 없음"으로 낡은 지도 판정을 받는다 — 그게 이 러너의 모드 ②다.
+    file: 'src/features/marketing/api/influencer-yt-performance.ts',
+    find: "category_source = COALESCE(?, category_source), pub_checked_at = datetime('now') WHERE id = ?",
+    replace: 'category_source = COALESCE(?, category_source) WHERE id = ?',
+    test: 'src/tests/unit/ads-enrich-throughput.test.ts',
+    why:
+      '선택 순서가 `(pub_checked_at IS NULL) DESC` 다. 스탬프가 없으면 예산으로 건너뛴 행이 **다음 회차에도 ' +
+      '맨 앞**이라 채널콜을 또 태운다. 실측: PT 하루 2,003 units 로 106행만 측정 = **19콜/행**(코드상 2~3콜).',
+  },
+  {
+    name: 'YT 성과 상한이 고정으로 회귀(검색 유휴분을 못 씀)',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: 'resolveYtPerfCap(ytSearchCalls * YT_SEARCH_UNIT_COST, env.ADS_YT_PERF_UNITS)',
+    replace: 'Math.min(9000, YT_PERF_UNITS_DEFAULT)',
+    test: 'src/tests/unit/ads-enrich-throughput.test.ts',
+    why:
+      '실측: 검색 배정 9,000 중 2,200만 쓰는데 성과는 2,000 상한에 걸려 **그날 남은 시간 측정 0**. ' +
+      '멎은 쪽이 수율이 더 높은 축이다(YT 45.2% vs 블로그 28.6%). 총 쿼터의 58%가 놀고 있었다.',
+  },
+  {
+    name: '선두 기록 누락 — 교대가 성립하지 않음',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: "    led: naverFirst ? 'naver' : 'front',\n",
+    replace: '',
+    test: 'src/tests/unit/ads-enrich-throughput.test.ts',
+    why:
+      'DO 알람에선 `depth` 가 항상 0 이라 `depth % 2 === 1` 교대가 **영원히 거짓**이다. 직전 선두를 ' +
+      '기록해야 교대가 성립한다. YT 상한을 푼 뒤에는 이게 없으면 블로거가 굶는다 — 두 수리는 한 몸이다.',
+  },
+  {
+    name: '알람이 cron 시절 7초 창을 그대로 씀',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: "runInfluencerEnrich(env, 0, undefined, null, { driver: 'alarm' })",
+    replace: 'runInfluencerEnrich(env)',
+    test: 'src/tests/unit/ads-enrich-throughput.test.ts',
+    why:
+      '7초의 근거는 *"부모 인보케이션이 10.5초에 회수되고 자식이 함께 죽는다"* 였다. **알람엔 부모가 없다** — ' +
+      '같은 알람의 collect 가 28,643ms 완주가 증거다. 전제가 사라진 값을 그대로 쓰면 창이 근거 없이 좁다.',
+  },
+  {
+    name: 'YT 영상 통계 루프가 저장 몫을 안 남김(쿼터 태우고 저장 0)',
+    file: 'src/features/marketing/api/influencer-yt-performance.ts',
+    find: 'allIds.length && budget.left > 1 && !outOfTime(budget)',
+    replace: 'allIds.length && budget.left > 0 && !outOfTime(budget)',
+    test: 'src/tests/unit/ads-enrich-throughput.test.ts',
+    why:
+      '루프 뒤 `DB.batch(stmts)` 가 이 회차 측정 전량의 **유일한** 쓰기다. D1 도 서브리퀘스트라 마지막 칸까지 ' +
+      '쓰면 batch 가 던지고 `.catch(() => null)` 이 삼킨다 → 채널콜·영상콜 쿼터를 다 태우고 저장 0, 스탬프도 없어 ' +
+      '그 행들이 다음 회차에도 맨 앞(이 PR 이 잡으려던 재선택 churn 을 되레 만든다).',
   },
 ]
+/**
+ * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
+ *
+ * 이 스크립트는 소스에 **의도적 결함을 심었다 지운다**. 복원은 튼튼하지만(try/finally + 시그널 + exit),
+ * 그 사이에 **다른 곳에서 `git add -A` 를 하면 결함이 그대로 스테이징된다.**
+ * 실제로 그렇게 `Promise.all(tracked)`(무한 대기 — 그 PR 이 고치려던 바로 그 고장)가 커밋됐고,
+ * CI 가 잡을 때까지 아무도 몰랐다. `git status` 의 낯선 변경이 유일한 신호였는데 그건 사람이 놓친다.
+ *
+ * `.git/` 안에 두므로 커밋 대상이 될 수 없다. pre-commit 훅이 이 파일을 보고 거절한다.
+ */
+const LOCK = path.join(ROOT, '.git', 'guard-mutations.lock')
+function lockOn() { try { fs.writeFileSync(LOCK, `${process.pid} ${new Date().toISOString()}\n`) } catch { /* 최선 노력 */ } }
+function lockOff() { try { fs.rmSync(LOCK, { force: true }) } catch { /* 최선 노력 */ } }
+
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
 const pending = new Map()
 function restoreAll() {
   for (const [abs, src] of pending) { try { fs.writeFileSync(abs, src) } catch { /* 최선 노력 */ } }
   pending.clear()
+  lockOff()   // 복원과 같은 자리에서 푼다 — 둘이 갈리면 자물쇠만 남아 커밋이 영영 막힌다
 }
 for (const sig of ['SIGINT', 'SIGTERM', 'uncaughtException']) {
   process.on(sig, (e) => { restoreAll(); if (e instanceof Error) console.error(e); process.exit(1) })
 }
 process.on('exit', restoreAll)
+lockOn()   // 여기서부터 소스에 손을 댄다 — pre-commit 이 이 자물쇠를 보고 커밋을 거절한다
 
 function runTest(testPath) {
   try {

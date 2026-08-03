@@ -342,6 +342,20 @@ export const ENRICH_DEADLINE_MS_DEFAULT = 7_000
 export const ENRICH_DEADLINE_MS_PAID = 20_000
 
 /**
+ * ⏰ **DO 알람이 모는 레인의 창** (2026-08-03).
+ *
+ *   위 무료 기본값 7초의 근거는 *"부모 인보케이션이 약 10.5초에 회수되고, 그 순간 살아 있던 자식이 전부
+ *   함께 죽는다"* 였다. **알람에는 부모가 없다** — 그 근거가 통째로 사라진 자리다.
+ *   증거(같은 알람, 같은 워커): `ads_lane_alarm_last:collect` 가 **28,643ms 완주**(fail_streak 0, 2회차 연속).
+ *   ⇒ 7초는 이제 *낡은 지도*다. 20초는 실측으로 확인된 28.6초 안쪽이라 여유가 있다.
+ *
+ *   ⚠️ 지금 이 레인의 실제 병목은 시간이 아니라 **예산**이다(`spent 44/45` · 4.7초 종료).
+ *     그래서 이 값만 올리면 아무것도 안 변한다 — YT 상한을 푸는 수리(`resolveYtPerfCap`)와 짝이어야
+ *     앞 레인이 시간을 쓰기 시작하고, 그때 이 창이 의미를 갖는다.
+ */
+export const ENRICH_DEADLINE_MS_ALARM = 20_000
+
+/**
  * env(`ADS_ENRICH_DEADLINE_MS`) → 유효 상한(ms). 범위 5s~120s 로 클램프, 비숫자·부재는 **요금제 기본값**.
  * ⚠️ 명시값이 요금제보다 우선한다(요금제는 기본값만 정한다 — `platformSubreqCap` 과 같은 규약).
  */

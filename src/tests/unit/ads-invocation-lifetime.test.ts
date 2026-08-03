@@ -705,8 +705,12 @@ describe('⏱️ 건당 fetch 타임아웃 — 남은 창에서 유도', () => {
   })
 
   /** 유튜브 단계도 같은 창 안에서 돈다 — 여기서 넘기면 뒤에 선 블로거가 통째로 굶는다. */
+  /**
+   * ⚠️ 2026-08-03: YT 성과가 `influencer-yt-performance.ts` 로 분리됐다(600줄 래칫, 순수 이동).
+   *   앵커를 안 옮기면 이 가드는 **YT 호출이 0개인 파일을 세며 조용히 실패/통과**한다 — 낡은 지도.
+   */
   it('유튜브 API 호출도 마감 안에서 유도값을 쓴다(상수 10s 잔존 금지)', () => {
-    const yt = read('src/features/marketing/api/influencer-performance.ts')
+    const yt = read('src/features/marketing/api/influencer-yt-performance.ts')
       .split('\n')
       .filter(l => /YT_BASE\}|AbortSignal\.timeout/.test(l))
       .join('\n')

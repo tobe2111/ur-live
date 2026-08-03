@@ -159,8 +159,25 @@ describe('starvedLastRound — 깊이와 무관한 교대 신호', () => {
 describe('배선 — 교대가 깊이와 굶주림 둘 다 본다', () => {
   const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-enrich-lane.ts'), 'utf8')
 
-  it('🔒 두 신호를 OR 로 묶는다 — 어느 하나가 죽어도 교대가 산다', () => {
-    expect(src).toMatch(/const naverFirst = depth % 2 === 1 \|\| starvedLastRound\(prev\)/)
+  /**
+   * 🪦 **이 검사는 사실이 아닌 것을 지키고 있었다** (2026-08-03 라이브 실측으로 교체).
+   *
+   * 원래 문구는 *"두 신호를 OR 로 묶는다 — 어느 하나가 죽어도 교대가 산다"* 였고
+   * `depth % 2 === 1 || starvedLastRound(prev)` 를 못 박았다. 그런데 **DO 알람으로 옮긴 뒤
+   * `depth` 는 항상 0** 이다(`chain.rounds: 1, max_depth: 0` — 알람이 5분마다 라운드 하나씩 돌린다).
+   * `0 % 2 === 1` 은 영원히 거짓이므로 **두 신호 중 하나는 이미 죽어 있었다.**
+   * 즉 이 가드는 "보완 관계"를 지킨다고 적어 두고, 실제로는 **반쪽짜리 식을 고정**하고 있었다.
+   *
+   * ⇒ 깊이 대신 **직전 선두**(`led`)로 교대한다 — 알람이든 체인이든 스냅샷은 매 라운드 쓰이므로
+   *   두 경로 모두에서 성립한다. 자기교정(굶주림)은 그대로 남아 교대를 이긴다.
+   *
+   * ⚠️ `depth % 2` 로 되돌리지 말 것 — 알람 경로에서 조용히 죽는다. 근거는 `pickNaverFirst` docblock.
+   */
+  it('🔒 교대는 깊이가 아니라 직전 선두를 본다 — 알람엔 depth 가 없다', () => {
+    expect(src).toMatch(/const naverFirst = pickNaverFirst\(prev\)/)
+    expect(src, 'depth 기반 교대는 알람에서 영원히 거짓이다').not.toMatch(/naverFirst = depth % 2 === 1/)
+    // 교대가 성립하려면 이번 선두가 기록돼야 한다(다음 회차가 읽는다).
+    expect(src).toMatch(/led: naverFirst \? 'naver' : 'front'/)
   })
 
   it('🔒 직전 스냅샷을 레인 시작 전에 읽는다 — 끝에서만 읽으면 선두 결정에 못 쓴다', () => {
