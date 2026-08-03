@@ -227,16 +227,7 @@ export async function handleCronScheduled(
     // }
   }
 
-  // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
   if (cron === '0 * * * *') {
-    // 🚨 2026-07-28: cron 멈춤 감시 — 하트비트가 '보이게' 했다면 이건 '알려준다'.
-    //   기대 주기는 하트비트에 저장된 cron 식으로 스스로 계산(수동 주기표 없음). 12시간 재알림 억제.
-    //   ⚠️ 자기 자신이 멈추면 못 알린다(watchdog 한계) — 그 경우는 외부 uptime 관측이 잡는다.
-    ctx.waitUntil(safeCron('cron-stale-watch', async () => {
-      const { handleCronStaleWatch } = await import('./cron/cron-stale-watch');
-      await handleCronStaleWatch(env);
-    }));
-    ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
     // 📰 2026-07-19 (운영 자동화 ①): 어드민 일일 다이제스트 — hourly 슬롯에서 UTC 22시(KST 07:00)만
     //   실행(내부 게이트 + 같은 KST 날짜 멱등). read-only 집계 → 벨+Discord(+설정 시 메일/알림톡).
     ctx.waitUntil(safeCron('ops-daily-digest', async () => {
@@ -298,15 +289,6 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('channel-watchdog', async () => {
       const { handleChannelWatchdog } = await import('./cron/channel-watchdog');
       return handleChannelWatchdog(env);
-    }));
-    // 🔔 2026-07-01: 소비자 찜(위시리스트) 재입고 + 가격인하 알림(매시간, 멱등 스캔 — 재고/가격 write 무hook).
-    ctx.waitUntil(safeCron('wishlist-restock-notify', async () => {
-      const { handleWishlistRestockNotify } = await import('./cron/wishlist-notify');
-      return handleWishlistRestockNotify(env);
-    }));
-    ctx.waitUntil(safeCron('wishlist-price-drop-notify', async () => {
-      const { handleWishlistPriceDropNotify } = await import('./cron/wishlist-notify');
-      return handleWishlistPriceDropNotify(env);
     }));
     // 🔁 2026-06-12 (4차 감사 D4 — 1단계): FAILED 웹훅(retry<3) 백로그 감시 — Discord 요약.
     //   실제 자동 재처리는 webhook.routes 잠금 해제 승인 후 2단계 (파일 헤더 참조).
@@ -524,6 +506,24 @@ export async function handleCronScheduled(
     // 🛡️ 2026-05-16: 인플루언서 attribution pending→available 매일 19시 동기화.
     //   매월 1일에만 실제 송금 큐잉. 그 외엔 status 동기화만.
     ctx.waitUntil(safeCron('influencer-payout', () => handleInfluencerPayout(env)));
+    // ⏰ 2026-08-03 — 아래 넷은 발화하지 않는 `0 * * * *` 블록(wrangler crons 미등록 — 하트비트 0건
+    //   실측)에서 **여기로 이사**. 머니 무관 + 자체 상한 + 시각 게이트 없음이라 일간도 유효하다.
+    //   cron-stale-watch=멈춤 감시 · anomaly-detect=어뷰징 탐지 · wishlist-*=찜 재입고/가격인하(CAP 200).
+    //   ⚠️ 두고 온 것: `ops-daily-digest`(내부 `getUTCHours()===22` 게이트 — 여기 오면 조용히 no-op)와
+    //      머니 경로(교환권 재발송·환불 재시도·webhook drain·도매 정산) = 대표 결정 + staging 룰.
+    ctx.waitUntil(safeCron('cron-stale-watch', async () => {
+      const { handleCronStaleWatch } = await import('./cron/cron-stale-watch');
+      await handleCronStaleWatch(env);
+    }));
+    ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
+    ctx.waitUntil(safeCron('wishlist-restock-notify', async () => {
+      const { handleWishlistRestockNotify } = await import('./cron/wishlist-notify');
+      return handleWishlistRestockNotify(env);
+    }));
+    ctx.waitUntil(safeCron('wishlist-price-drop-notify', async () => {
+      const { handleWishlistPriceDropNotify } = await import('./cron/wishlist-notify');
+      return handleWishlistPriceDropNotify(env);
+    }));
   }
 
   // 🔴 2026-07-29: 세 표기를 전부 받는다. CF 는 **등록된 문자열 그대로** event.cron 에 넣기 때문에,
