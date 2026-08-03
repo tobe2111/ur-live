@@ -158,6 +158,13 @@ jobs:
         run: node scripts/check-cron-heartbeat.mjs
         continue-on-error: false
 
+      # ⏰ 2026-08-03: 하트비트 가드의 **짝**. 저건 "safeCron 으로 감쌌는가"를 보는데, 감싼 것이
+      #   **안 불리는** 경우는 못 본다 — `if (cron === '0 * * * *')` 블록이 wrangler crons 에 없어
+      #   메인 워커에서 한 번도 발화하지 않았고, 거기 든 cron 32개가 조용히 죽어 있었다.
+      - name: cron 슬롯 등록 — 안 도는 cron 차단 (strict)
+        run: node scripts/check-cron-slot-registered.mjs -s
+        continue-on-error: false
+
       # 🩹 2026-08-02: 머지 충돌 마커가 커밋되는 것을 막는다. 이 레포에서 두 번 났다
       #   (07-11 CLAUDE.md · 08-02 세션이 `git add -A` 로 마커째 푸시). `git add -A` 는 충돌 파일도
       #   '해결됨'으로 표시하므로 git 은 막아 주지 않는다.

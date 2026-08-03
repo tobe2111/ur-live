@@ -1041,8 +1041,70 @@ d1-backup  08-03 05:02 KST  ok=true  ms=146975
 *"주입 대상을 못 찾음(낡은 지도)"* 로 **빨강**이 떴다 — 코드가 아니라 **잔재**가 원인이었다.
 ⇒ 이 검사를 돌리기 전에 **`git status` 로 작업트리가 깨끗한지 먼저 볼 것.**
 
+### 🔴 배포했는데 안 돈다 — cron 32개가 등록 안 된 슬롯에서 잠들어 있다 (2026-08-03)
+
+숙박 데모 추첨 자가치유를 배포하고 라이브를 봤더니 **하나도 안 바뀌어 있었다.**
+`/api/group-buy/products?category=stay_voucher` → `demo-stay-*` 50건 전부 `fcfs: null`.
+
+**원인**: 내가 그 백필을 넣은 `demo-fcfs-renew` 가 `if (cron === '0 * * * *')` 블록 안에 있는데,
+그 표현식이 **`wrangler.toml` crons 에 없다**(`*/5` · `0 18` · `0 19` · `0 20 SUN` 뿐).
+3단계 보류 — 같은 블록의 **도매 예치금 자동 환불** 규모가 미측정이라 대표가 의도적으로 안 켠 것.
+
+**실측 근거**(추측 아님): `GET /api/admin/cron-heartbeats` 에서 `cron: '0 * * * *'` 하트비트 32건이
+**전부 `ads:*`**(별도 워커 ur-ads — 자기 crons 를 따로 갖고 실제로 매시간 돈다). **메인 워커 것 0건.**
+
+**함께 잠든 것들** (총 32개 동결, `scripts/cron-dead-slot-baseline.json`) — 몇 개는 눈에 띈다:
+
+| cron | 원래 역할 |
+|---|---|
+| `kt-alpha-voucher-retry` | 교환권 미발송 스위퍼 — `waitUntil` isolate 소멸 갭의 **백스톱**(Toss audit log 2026-07-02) |
+| `toss-refund-retry` | 토스 환불 실패 자동 재시도 |
+| `webhook-failed-drain` | 실패 webhook 재처리 |
+| `wishlist-restock-notify` · `wishlist-price-drop-notify` | 소비자 재입고·가격인하 알림 |
+
+⚠️ **이 표를 "고장났다"로 읽지 말 것** — 보류는 대표의 의도적 결정이고, 켜는 순간
+`wholesale-deposit-reconcile`(도매 예치금 자동 환불)이 **함께** 돈다. 그게 안 켠 이유다.
+⇒ **대표 결정 항목**: 위 4~5개를 살아 있는 슬롯(`0 18`)으로 옮길지, 아니면 예치금 규모를 먼저 재고
+`0 * * * *` 를 통째로 켤지. (계정 cron 트리거 한도는 5개이고 현재 정확히 5개다 — 새 슬롯 추가는 불가.)
+
+**내가 한 것** (대표 *"최대한 너가 할 수 있는건 너가 하고"*):
+
+| 옮김 | 어디로 | 왜 안전한가 |
+|---|---|---|
+| `demo-fcfs-renew` | `0 18` | 머니 무관 · `demo-%` slug 만 · 완전 멱등 |
+| `cron-stale-watch` | `0 19` | cron 멈춤 감시 — **이게 죽어 있어서 이 사고를 아무도 못 알았다** |
+| `anomaly-detect` | `0 19` | 어뷰징 탐지 · 틱당 상한 + 24h 중복억제 보유 |
+| `wishlist-restock-notify` · `wishlist-price-drop-notify` | `0 19` | 소비자 찜 알림 · `BATCH_CAP 200` + `INSERT OR IGNORE` 멱등 |
+
+**`0 19` 를 고른 이유**: `0 18` 은 이미 16개(정산·성숙 등 머니 경로 포함)라 서브리퀘스트 여유가 없다
+(무료 인보케이션당 50). `0 19` 는 **2개뿐**이었다 → 6개가 됐다.
+
+**두고 온 것과 그 이유**:
+- 🕒 `ops-daily-digest` — 내부에 **`getUTCHours() === 22` 게이트**가 있다. 옮기면 슬롯은 살아나도
+  **조용히 아무 일도 안 한다.** (내 가드가 "못 보는 것"이라고 적어 둔 바로 그 경우 — 실물로 만났다.)
+- 💰 `kt-alpha-voucher-retry` · `toss-refund-retry` · `webhook-failed-drain` · `stay-pending-expire`
+  · `wholesale-*` 3종 — **머니 경로**라 CLAUDE.md 상 단독 세션 + staging 실결제 룰이 붙는다.
+  ⚠️ 특히 `kt-alpha-voucher-retry` 는 **돈 낸 교환권이 미발송으로 남는 갭의 백스톱**이다.
+  지금 죽어 있으므로 그 갭에 빠진 주문은 **영영 안 간다.** 대표 결정 1순위.
+
+**계정 한도 때문에 슬롯 추가는 불가**: cron 트리거는 계정 전체 **5개가 상한이고 현재 정확히 5개**
+(ur-live 4 + ur-ads 1). `0 * * * *` 를 새로 등록하려면 **다른 걸 빼야 한다.**
+
+**가드**: `scripts/check-cron-slot-registered.mjs`(래칫 — 죽은 슬롯에 **새** 이름이 들어오면 red,
+빼는 건 자유) + `src/tests/unit/cron-slot-registered.test.ts` + 매니페스트 1건.
+기존 `check-cron-heartbeat` 는 *"safeCron 으로 감쌌는가"* 만 봐서 이걸 못 잡는다 —
+**감싼 것이 안 불리는** 경우는 다른 층이다.
+
+⚠️ **그 새 테스트도 첫 판이 헛돌았다**(오늘 세 번째): 위에서부터 **처음 만나는** cron 블록을
+답으로 삼아서, 살아 있는 블록 **안에 죽은 블록을 중첩**시키는 주입이 바깥 `0 18` 로 판정돼 초록이
+떴다. → **가장 좁은 범위**(innermost)를 답으로 고쳐 red 확인.
+
 ### 다음 세션 첫 액션
 
+0. 🎭 **숙박 데모 배지** — `0 18`(KST 03:00) 회차가 지난 뒤
+   `curl -s 'https://urdeal.kr/api/group-buy/products?status=active&category=stay_voucher'` 에서
+   `fcfs` 가 **null 이 아니면** 자가치유가 돈 것이다. 그다음 카드에 `N명 뽑기 · M명 응모` 확인.
+   여전히 null 이면 cron 이 아니라 `renewDemoFcfs` 내부 조건을 봐야 한다.
 1. ~~백업 첫 발화 확인~~ → **완료(위 절)**. 다음 회차는 `0 20 * * SUN`.
    그때 디스코드 알림의 `Indexes/Triggers/Views:` 줄이 **610 근처**인지 볼 것 — 두 자릿수면
    추출이 또 고장난 것이다(0 이면 경고가 자동으로 뜬다).
