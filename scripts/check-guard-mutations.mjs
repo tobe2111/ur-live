@@ -57,6 +57,27 @@ const ONLY = (() => {
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '카카오 전화 스윕이 마감선 없이 회차를 늘림(31초, 침묵 1위)',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: '',
+    test: 'src/tests/unit/ads-lane-deadlines.test.ts',
+    why:
+      '예산(`budget.left`)은 **요청 수**만 세고 응답이 얼마나 걸리는지는 안 본다. 예산이 남아 있는 한 ' +
+      '느린 카카오 조회가 계속 쌓여 부모 cron 의 CPU 를 태우고, 부모가 죽으면 매달린 자식이 전부 끌려간다.',
+  },
+  {
+    name: 'MX 스윕이 블록 고정 순서라 두 번째 블록이 영구히 굶음',
+    file: 'src/features/marketing/api/email-mx-sweep.ts',
+    find: 'if (firstIsCompany) { await runCompany(); await runProspects() }',
+    replace: 'await runCompany(); await runProspects()',
+    test: 'src/tests/unit/ads-lane-deadlines.test.ts',
+    why:
+      '마감선은 일을 줄이는 게 아니라 **미루는** 것이다. 블록 ①→② 순서가 고정이면 ①에서 마감선에 ' +
+      '걸릴 때 ②(매장 후보)는 **매 회차 한 번도 안 돌아** `cursorS` 가 영원히 멈춘다. ' +
+      '마감선을 넣으면서 이 회전을 빼면 **없던 기아를 새로 만드는 것**이다.',
+  },
+  {
     name: '공고 스캐너가 마감선 없이 회차를 늘려 부모 CPU 를 태움',
     file: 'src/features/marketing/api/notice-scan.ts',
     find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
