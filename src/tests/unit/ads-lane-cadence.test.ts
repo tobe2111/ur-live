@@ -678,7 +678,20 @@ describe('🤝 야간 재보정에 19시를 양보해도 정비 순환이 굶지
 
   it('🔒 경합에 진 재보정이 흔적을 남긴다 — 무음이면 "안 돎"과 구분되지 않는다', () => {
     const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-maintenance.ts'), 'utf8')
-    const block = /export async function runNightlyRescan[\s\S]{0,2000}?\n\}/.exec(src)?.[0] || ''
+    /**
+     * 🔧 2026-08-03: 슬라이스를 **고정 바이트 창(`{0,2000}?\n\}`)에서 함수 경계**로 바꿨다.
+     *
+     * 이 테스트가 보려는 것은 *"경합에 진 경로가 흔적을 남기는가"* 이고 그 코드는 함수 **맨 앞**에 있다.
+     * 그런데 창이 2000자로 고정돼 있어, 같은 함수에 마감선·회전이 추가돼 **길어지자 창 밖으로 나가**
+     * `block=''` 이 됐다 — 지키려는 동작은 멀쩡한데 가드가 빨간불을 냈다.
+     *
+     * ⇒ 함수가 자란다고 깨지는 가드는 **자기 대상을 잘못 고른 것**이다. 다음 `export` 까지로 자르면
+     *   내용이 늘어도 의도가 그대로 유지된다. (같은 클래스: 경로 하드코딩 → `readdirSync` 전환.)
+     */
+    const start = src.indexOf('export async function runNightlyRescan(')   // '(' 까지 — 접두사가 같은 다른 이름에 걸리지 않게
+    const after = start >= 0 ? src.slice(start + 1) : ''
+    const nextExport = after.indexOf('\nexport ')
+    const block = start < 0 ? '' : (nextExport >= 0 ? after.slice(0, nextExport) : after)
     expect(block, 'runNightlyRescan 을 못 찾았다').toBeTruthy()
     // busy 반환 경로에서 스냅샷 키를 쓴다
     const busyPath = /acquireLease\([\s\S]{0,900}?\n  \}/.exec(block)?.[0] || ''
