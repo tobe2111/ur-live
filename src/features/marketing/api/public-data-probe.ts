@@ -96,8 +96,14 @@ export interface ProbeOpts {
  *   - `www.localdata.go.kr` — 지방행정 인허가 **원천**(2026-08-02 추가). 우리 레인의 페이징 파라미터가
  *     `pageIndex`/`pageSize` 이고 업종 키가 `opnSvcId` 인 것이 이 호스트의 규약과 정확히 일치한다 —
  *     즉 이 코드는 원래 여기를 향해 쓰였고, "폐쇄 후 이관" 때 base 만 바뀌었는데 그 경로가 존재하지 않는다.
+ *   - `api.data.go.kr` — **같은 포털의 표준데이터 게이트웨이**(2026-08-03 추가). 's' 하나 차이지만 별개
+ *     호스트다: `apis.` 는 기관별 서비스, `api.` 는 *표준데이터*(`/openapi/tn_pubr_public_*`)를 서빙한다.
+ *     상권/상인회 축의 핵심인 **전국전통시장표준데이터**(전화·홈페이지 포함 = 우리 기준 유일한 '도달 가능'
+ *     소스)가 여기에만 있다. 이걸 못 찌르면 *"우리 키가 그 데이터셋에 열려 있는가"* 를 배포 없이 알 방법이
+ *     없어, 오늘 인허가에서 겪은 "추측 → 배포 → 또 추측" 왕복이 그대로 재현된다.
+ *     ⚠️ 여전히 **경로만** 받는다(쿼리·키는 이 모듈이 붙인다) — 호스트가 늘어도 그 계약은 그대로다.
  */
-export const PROBE_ALLOWED_HOSTS = ['apis.data.go.kr', 'www.localdata.go.kr'] as const
+export const PROBE_ALLOWED_HOSTS = ['apis.data.go.kr', 'www.localdata.go.kr', 'api.data.go.kr'] as const
 export type ProbeHost = (typeof PROBE_ALLOWED_HOSTS)[number]
 /** @deprecated 단수 상수는 남겨 둔다(기존 호출부·시험 호환). 판정은 `PROBE_ALLOWED_HOSTS` 가 한다. */
 export const PROBE_ALLOWED_HOST: ProbeHost = PROBE_ALLOWED_HOSTS[0]
