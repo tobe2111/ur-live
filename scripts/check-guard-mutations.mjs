@@ -1657,6 +1657,17 @@ const MUTATIONS = [
       'Discord 웹훅 URL 은 그 자체가 자격증명이다 — 아는 사람은 누구나 그 채널에 글을 쓸 수 있다. ' +
       '진단 응답에 실으면 어드민 화면·로그·스크린샷을 타고 새어 나간다.',
   },
+  {
+    name: '어드민 위임이 경보 확인 결과를 삼킴(오타난 웹훅이 초록)',
+    file: 'src/features/marketing/api/admin-ads-pool-ops.routes.ts',
+    find: 'return c.json({ success: !!j?.ok, status: j?.status ?? null',
+    replace: 'return c.json({ success: true, status: null',
+    test: 'src/tests/unit/ads-alert-channel-visible.test.ts',
+    why:
+      'ur-ads 가 Discord HTTP 상태를 그대로 돌려주도록 만들어 놨는데, 위임이 그걸 뭉개면 ' +
+      '**오타난 웹훅·삭제된 채널도 초록**으로 보인다. 그러면 대표는 채널이 살아 있다고 믿고 ' +
+      '다음 장애를 또 놓친다 — 이 경로 전체의 존재 이유가 사라지는 형태.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

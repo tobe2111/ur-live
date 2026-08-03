@@ -181,6 +181,27 @@ app.post('/influencer-pool/enrich-run', async (c) => {
 
 // POST /api/admin/ads/influencer-pool/sheets-sync — 📊 구글시트 수동 동기화(ur-ads 위임, 동기 응답).
 //   시트 미러는 수초 내라 결과(행수/에러)를 그대로 전달 — 설정 안내가 사용자에게 보여야 함.
+/**
+ * 🔔 **경보 채널 실발사 확인** — `POST /api/admin/ads/alert-test`.
+ *
+ *   `/__ads/*` 는 서비스바인딩 전용이라 밖에서 못 부른다. 그래서 ur-ads 에 확인 라우트를 만들어도
+ *   **부를 방법이 없으면 없는 것과 같다** — 2026-08-03 에 실제로 그렇게 만들었다가 바로 잡았다
+ *   (오늘 종일 고친 "코드는 있는데 안 돎" 과 같은 클래스를 새로 만든 셈이었다).
+ *
+ *   ⚠️ **결과를 그대로 흘린다.** ur-ads 가 준 `status`(Discord 는 204 가 정상)를 삼키지 않는다 —
+ *   `success:true` 만 주면 오타난 웹훅도 초록으로 보여 이 경로의 존재 이유가 사라진다.
+ *   ⚠️ 웹훅 URL 은 응답에 없다(ur-ads 가 애초에 안 싣는다) — 자격증명이라 화면·로그로 새면 안 된다.
+ */
+app.post('/alert-test', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정' }, 503)
+  try {
+    const r = await ads.fetch(new Request('https://ur-ads/__ads/alert-test', { method: 'POST' }))
+    const j = await r.json().catch(() => null) as { ok?: boolean; status?: number; ms?: number; error?: string; hint?: string } | null
+    return c.json({ success: !!j?.ok, status: j?.status ?? null, ms: j?.ms ?? null, hint: j?.hint, error: j?.error }, j?.ok ? 200 : 400)
+  } catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+})
+
 app.post('/influencer-pool/sheets-sync', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정' }, 503)
