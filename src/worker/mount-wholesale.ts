@@ -40,7 +40,6 @@ import { supplierWithdrawalRoutes, adminWholesaleWithdrawalRoutes } from '../fea
 import { wholesaleChatRoutes } from '../features/supply/api/wholesale-chat.routes';
 import { wholesaleMainPublicRoutes, adminWholesaleBannerRoutes, adminWholesaleProposalRoutes, adminWholesaleProductRoutes, adminWholesaleDepositAccountRoutes } from '../features/supply/api/wholesale-main.routes';
 import { wholesaleBoardPublicRoutes, wholesaleWishlistRoutes, adminWholesaleBoardRoutes } from '../features/supply/api/wholesale-board.routes';
-import { adminWholesaleMallRoutes } from '../features/supply/api/wholesale-malls-admin.routes';
 import { adminWholesaleOverviewRoutes } from '../features/supply/api/wholesale-overview-admin.routes';
 import { buyerPoolRoutes } from '../features/supply/api/buyer-pool.routes';
 import { makerPoolRoutes } from '../features/supply/api/maker-pool.routes';
@@ -95,7 +94,9 @@ export function mountWholesale(app: App, adminApp: App): void {
   app.route('/api/admin/wholesale-proposals', adminWholesaleProposalRoutes); // 어드민 제안·신고 큐/처리
   app.route('/api/admin/wholesale-products', adminWholesaleProductRoutes); // 어드민 프리미엄 전용관 토글
   app.route('/api/admin/wholesale-deposit-account', adminWholesaleDepositAccountRoutes); // 어드민 예치금 입금계좌 설정
-  app.route('/api/admin/wholesale-malls', adminWholesaleMallRoutes); // 🏬 어드민 멀티-몰 관리 CRUD
+  // 🏬 멀티-몰 관리 CRUD 는 여기 없다 — `worker/index.ts` 가 **게이트 밖에서** 마운트한다.
+  //   이유: 그 API 가 지배하는 건 도매몰이 아니라 `urdeal.kr/{슬러그}`(소비자 표면)다. 여기로 되돌리면
+  //   소비자 배포에서 어드민 화면만 남고 API 가 다시 404 가 된다(2026-08-03 실측). 중복 마운트도 금지.
   app.route('/api/admin/wholesale-overview', adminWholesaleOverviewRoutes); // 🏬 어드민 도매 통합 현황
   app.route('/api/admin/buyer-pool', buyerPoolRoutes); // 🌐 해외 수출 바이어 파이프라인(무료 수집·유어딜 무관·격리 테이블·게이트 OFF)
   app.route('/api/admin/maker-pool', makerPoolRoutes); // 🏭 제조사(브랜드사)·판매사 후보 풀(도매 격리 테이블·게이트 OFF)
