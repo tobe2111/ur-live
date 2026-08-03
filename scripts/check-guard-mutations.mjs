@@ -1471,6 +1471,57 @@ const MUTATIONS = [
     why:
       '위 수리의 짝이다. 0 을 제대로 읽어도 하한 1 이 남아 있으면 쉬는 조가 매 회차 1개씩 띄운다 — ' +
       '도메인 수만큼 곱해지면 학습기 판단(cap 2)이 다시 안 맞는다. 하한은 *자리를 받은* 조에만 있어야 한다.',
+    name: 'YT 건너뛴 행이 스탬프를 못 받아 영구 선두(재선택 churn)',
+    // ⚠️ 2026-08-03 600줄 래칫으로 YT 성과가 이 파일로 분리됐다(순수 이동). 앵커가 안 따라오면
+    //   이 주입은 "find 문자열이 소스에 없음"으로 낡은 지도 판정을 받는다 — 그게 이 러너의 모드 ②다.
+    file: 'src/features/marketing/api/influencer-yt-performance.ts',
+    find: "category_source = COALESCE(?, category_source), pub_checked_at = datetime('now') WHERE id = ?",
+    replace: 'category_source = COALESCE(?, category_source) WHERE id = ?',
+    test: 'src/tests/unit/ads-enrich-throughput.test.ts',
+    why:
+      '선택 순서가 `(pub_checked_at IS NULL) DESC` 다. 스탬프가 없으면 예산으로 건너뛴 행이 **다음 회차에도 ' +
+      '맨 앞**이라 채널콜을 또 태운다. 실측: PT 하루 2,003 units 로 106행만 측정 = **19콜/행**(코드상 2~3콜).',
+  },
+  {
+    name: 'YT 성과 상한이 고정으로 회귀(검색 유휴분을 못 씀)',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: 'resolveYtPerfCap(ytSearchCalls * YT_SEARCH_UNIT_COST, env.ADS_YT_PERF_UNITS)',
+    replace: 'Math.min(9000, YT_PERF_UNITS_DEFAULT)',
+    test: 'src/tests/unit/ads-enrich-throughput.test.ts',
+    why:
+      '실측: 검색 배정 9,000 중 2,200만 쓰는데 성과는 2,000 상한에 걸려 **그날 남은 시간 측정 0**. ' +
+      '멎은 쪽이 수율이 더 높은 축이다(YT 45.2% vs 블로그 28.6%). 총 쿼터의 58%가 놀고 있었다.',
+  },
+  {
+    name: '선두 기록 누락 — 교대가 성립하지 않음',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: "    led: naverFirst ? 'naver' : 'front',\n",
+    replace: '',
+    test: 'src/tests/unit/ads-enrich-throughput.test.ts',
+    why:
+      'DO 알람에선 `depth` 가 항상 0 이라 `depth % 2 === 1` 교대가 **영원히 거짓**이다. 직전 선두를 ' +
+      '기록해야 교대가 성립한다. YT 상한을 푼 뒤에는 이게 없으면 블로거가 굶는다 — 두 수리는 한 몸이다.',
+  },
+  {
+    name: '알람이 cron 시절 7초 창을 그대로 씀',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: "runInfluencerEnrich(env, 0, undefined, null, { driver: 'alarm' })",
+    replace: 'runInfluencerEnrich(env)',
+    test: 'src/tests/unit/ads-enrich-throughput.test.ts',
+    why:
+      '7초의 근거는 *"부모 인보케이션이 10.5초에 회수되고 자식이 함께 죽는다"* 였다. **알람엔 부모가 없다** — ' +
+      '같은 알람의 collect 가 28,643ms 완주가 증거다. 전제가 사라진 값을 그대로 쓰면 창이 근거 없이 좁다.',
+  },
+  {
+    name: 'YT 영상 통계 루프가 저장 몫을 안 남김(쿼터 태우고 저장 0)',
+    file: 'src/features/marketing/api/influencer-yt-performance.ts',
+    find: 'allIds.length && budget.left > 1 && !outOfTime(budget)',
+    replace: 'allIds.length && budget.left > 0 && !outOfTime(budget)',
+    test: 'src/tests/unit/ads-enrich-throughput.test.ts',
+    why:
+      '루프 뒤 `DB.batch(stmts)` 가 이 회차 측정 전량의 **유일한** 쓰기다. D1 도 서브리퀘스트라 마지막 칸까지 ' +
+      '쓰면 batch 가 던지고 `.catch(() => null)` 이 삼킨다 → 채널콜·영상콜 쿼터를 다 태우고 저장 0, 스탬프도 없어 ' +
+      '그 행들이 다음 회차에도 맨 앞(이 PR 이 잡으려던 재선택 churn 을 되레 만든다).',
   },
 ]
 /**

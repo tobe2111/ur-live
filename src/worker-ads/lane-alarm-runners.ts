@@ -38,7 +38,7 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
   'enrich-influencer': {
     run: async (env) => {
       const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
-      return runInfluencerEnrich(env)
+      return runInfluencerEnrich(env, 0, undefined, null, { driver: 'alarm' })
     },
   },
   maintenance: {
