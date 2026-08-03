@@ -119,6 +119,28 @@ const MUTATIONS = [
       '`sweep-mx` 블록에서 겪은 것과 같은 구조적 기아 — 마감선과 회전은 짝이다.',
   },
   {
+    name: '회차 꼬리가 다시 무한정 기다림(학습기 갱신 자리가 통째로 사라짐)',
+    file: 'src/worker-ads/tail-bound.ts',
+    find: 'await Promise.race([Promise.all(tracked), deadline])',
+    replace: 'await Promise.all(tracked)',
+    test: 'src/tests/unit/ads-tail-bound.test.ts',
+    why:
+      '`cap` 을 갱신하는 자리는 회차 꼬리 하나뿐인데, 띄운 레인이 전부 끝나기를 기다리면 부모가 못 버틸 때 ' +
+      '요약도 학습도 **통째로 실행되지 않는다**. 실측: 이력이 09:00 KST 에서 5시간 정지했는데 디스패치 기록은 ' +
+      '매 회차 정상이고 cron_failures 는 0이었다(예외 없이 잘려 실패로도 안 남는다). 그래서 학습기가 바닥 2 에 고착됐다.',
+  },
+  {
+    name: '못 기다린 레인을 판정에 넘김 — 회차가 늘 해로움이 되는 부호 반대 고착',
+    file: 'src/worker-ads/tail-bound.ts',
+    find: 'judgedLaneNames(o.ranNames, r.settled)',
+    replace: 'o.ranNames',
+    test: 'src/tests/unit/ads-tail-bound.test.ts',
+    why:
+      '`tickHarmed` 는 `fail + miss` 로 판정하고 `miss` 는 *띄웠는데 하트비트가 없는* 레인이다. ' +
+      '상한을 넣고도 아직 도는 레인을 그대로 넘기면 전부 miss 로 잡혀 **모든 회차가 항상 해로움**이 된다 — ' +
+      '고치려던 것과 **부호만 반대인 같은 고착**이다. 끝난 레인만 판정 대상이어야 한다.',
+  },
+  {
     name: '매시간 레인이 gap 없이 등록돼 침묵 판정에서 통째로 빠짐',
     file: 'src/worker-ads/index.ts',
     find: 'gapMin: opts?.gap ?? hourlyGapMinutes()',

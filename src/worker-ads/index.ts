@@ -19,7 +19,8 @@ import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
 import { publicDataRoutes } from './public-data.routes'
 import { chainRoutes } from './chain.routes'
-import { createBeatBatch, makeBeatWriter } from './beat-batch'; import { writeTickSummary } from './tick-history-write'
+import { createBeatBatch, makeBeatWriter } from './beat-batch'
+import { closeTick } from './tail-bound'
 import { runAutobidJob, runFollowupJob, runWeeklyJob } from './side-jobs'
 import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
 import { laneUrl, selfBeatMiddleware } from './self-beat'
@@ -57,8 +58,6 @@ app.post('/__ads/collect', async (c) => {
     return c.json({ ok: true, stats })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
-
-
 
 // 🔀 업체형 블로그/카페 → B2B 파트너풀 라우팅(수동 전용). **기본 dry-run** — `?apply=1` 이어야 실제 저장.
 //   외부 요청 0회(D1 만) — 상호+블로그URL 을 넘기면 파트너풀 보강 레인이 전화/이메일을 채운다.
@@ -585,12 +584,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   (`selectLanesForHour` 가 모든 레인이 `groups` 시간 안에 반드시 한 번 돎을 보장 — 유닛이 강제).
   const { kicked, ranNames } = await dispatchPendingLanes({ pending, env: env as never, hourUTC, laneUrl, beat: adsBeat, waitUntil: (p) => ctx.waitUntil(p) })
 
-  // 🧾 **모든 디스패치가 끝난 뒤** 한 번에 쓴다(기다리지 않으면 빈 배치를 쓰고 이후 기록은 영영 못 나간다).
-  //   📼 이어서 이 회차 한 줄을 이력에 남긴다(근거·한계는 `tick-history.ts` 헤더).
-  ctx.waitUntil(Promise.allSettled(kicked).then(async () => {
-    await beats.flush()
-    await writeTickSummary(env.DB, tickStartIso, hourUTC, ranNames, beats.seenBeats, env as never)
-  }))
+  // 🧾 디스패치 후 한 번에 쓴다(빈 배치를 쓰면 이후 기록이 영영 못 나간다) + 이력 한 줄. ⏳ 단 **무한정
+  //   기다리지 않는다** — 근거·실측·못 기다린 레인을 왜 판정에서 빼는지는 `tail-bound.ts` 헤더에 있다.
+  ctx.waitUntil(closeTick({ DB: env.DB, env: env as never, kicked, ranNames, at: tickStartIso, hourUTC, beats }))
 }
 
 // ⏰ DO 알람 레인 — wrangler-ads.toml 의 durable_objects 바인딩이 이 export 를 찾는다.
