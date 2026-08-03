@@ -228,8 +228,7 @@ export async function handleCronScheduled(
   }
 
   if (cron === '0 * * * *') {
-    // 📰 2026-07-19 (운영 자동화 ①): 어드민 일일 다이제스트 — hourly 슬롯에서 UTC 22시(KST 07:00)만
-    //   실행(내부 게이트 + 같은 KST 날짜 멱등). read-only 집계 → 벨+Discord(+설정 시 메일/알림톡).
+    // 📰 일일 다이제스트 — 내부 `getUTCHours()===22` 게이트라 옮기면 no-op. 2026-08-03 이사에서 제외.
     ctx.waitUntil(safeCron('ops-daily-digest', async () => {
       const { isOpsDigestHour, runOpsDailyDigest } = await import('./cron/ops-daily-digest');
       if (isOpsDigestHour()) await runOpsDailyDigest(env);
@@ -245,23 +244,6 @@ export async function handleCronScheduled(
       const { handleSellerApprovalReminder } = await import('./cron/seller-approval-reminder')
       return handleSellerApprovalReminder(env)
     }));
-    // 🛡️ 2026-05-31: 미결제 pending 숙소 예약 자동 만료 (30분 경과). 재고 미조작 — 정리 목적.
-    ctx.waitUntil(safeCron('stay-pending-expire', async () => {
-      const { handleStayPendingExpire } = await import('./cron/stay-pending-expire')
-      return handleStayPendingExpire(env)
-    }));
-    // 🏦 2026-06-09: 미완료 예치금 주문 reconcile(크래시 복구) — 차감됐는데 PAID 도달 못 한 주문 자동 환불(미회수 0).
-    ctx.waitUntil(safeCron('wholesale-deposit-reconcile', async () => {
-      const { reconcileOrphanedDepositOrders } = await import('../features/supply/api/wholesale-deposit-core')
-      return reconcileOrphanedDepositOrders(env.DB)
-    }));
-    // 🏦 2026-07-02: 출금 정산원장 자가복구 — status=paid 인데 net-out row 미확정인 출금을 멱등 완료(재출금 방지).
-    ctx.waitUntil(safeCron('wholesale-withdrawal-reconcile', async () => {
-      const { reconcileWithdrawalLedgers } = await import('../features/supply/api/supplier-withdrawal-core')
-      return reconcileWithdrawalLedgers(env.DB)
-    }));
-    // 🛡️ 2026-05-21 Phase TD-3: 토스 환불 실패 자동 재시도 (exponential backoff).
-    ctx.waitUntil(safeCron('toss-refund-retry', () => handleTossRefundRetry(env)));
     // 🛡️ 2026-05-24: 별점 "신규" 영구 fix — daily (18 UTC) 외에도 매시간 catch.
     //   신규 활성 상품이 들어오면 최대 1시간 안에 ★ 노출. idempotent (review_count>0 skip).
     ctx.waitUntil(safeCron('auto-seed-reviews-hourly', () => handleAutoSeedReviews(env)));
@@ -289,12 +271,6 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('channel-watchdog', async () => {
       const { handleChannelWatchdog } = await import('./cron/channel-watchdog');
       return handleChannelWatchdog(env);
-    }));
-    // 🔁 2026-06-12 (4차 감사 D4 — 1단계): FAILED 웹훅(retry<3) 백로그 감시 — Discord 요약.
-    //   실제 자동 재처리는 webhook.routes 잠금 해제 승인 후 2단계 (파일 헤더 참조).
-    ctx.waitUntil(safeCron('webhook-failed-drain', async () => {
-      const { handleWebhookFailedDrain } = await import('./cron/webhook-failed-drain');
-      return handleWebhookFailedDrain(env);
     }));
   }
 
@@ -523,6 +499,30 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('kt-alpha-voucher-retry', async () => {
       const { handleKtAlphaVoucherRetry } = await import('./cron/kt-alpha-voucher-retry');
       return handleKtAlphaVoucherRetry(env);
+    }));
+    // 💰 2026-08-03 (대표 "재처리 3개도 다 진행해줘") — 발화 안 하는 `0 * * * *` 에서 이사. 보류 사유였던
+    //   규모를 라이브 D1 로 **실측**: reconcile 0건 · 예치금 원장 172,800원 · 환불실패 테이블 미생성 ·
+    //   FAILED 웹훅 0 · pending 숙소예약 0 ⇒ 돈이 움직이는 게 아니라 **안전망을 켜는 것**이다.
+    ctx.waitUntil(safeCron('toss-refund-retry', () => handleTossRefundRetry(env)));
+    // FAILED 웹훅 백로그 **감시**(Discord 요약). 자동 재처리는 잠금 해제 후 2단계 — 지금은 관측만.
+    ctx.waitUntil(safeCron('webhook-failed-drain', async () => {
+      const { handleWebhookFailedDrain } = await import('./cron/webhook-failed-drain');
+      return handleWebhookFailedDrain(env);
+    }));
+    // 차감됐는데 PAID 못 간 예치금 주문 자동 환불(미회수 0). 라이브 실측 대상 0건 · 예치금 원장 총 172,800원.
+    ctx.waitUntil(safeCron('wholesale-deposit-reconcile', async () => {
+      const { reconcileOrphanedDepositOrders } = await import('../features/supply/api/wholesale-deposit-core')
+      return reconcileOrphanedDepositOrders(env.DB)
+    }));
+    // 출금 원장 자가복구 — **재출금 방지**라 안 도는 쪽이 위험하다(테이블 미생성 = 아직 출금 0).
+    ctx.waitUntil(safeCron('wholesale-withdrawal-reconcile', async () => {
+      const { reconcileWithdrawalLedgers } = await import('../features/supply/api/supplier-withdrawal-core')
+      return reconcileWithdrawalLedgers(env.DB)
+    }));
+    // 미결제 pending 숙소 예약 만료(30분 경과). 재고 미조작 — 정리 목적. 실측 대상 0건.
+    ctx.waitUntil(safeCron('stay-pending-expire', async () => {
+      const { handleStayPendingExpire } = await import('./cron/stay-pending-expire')
+      return handleStayPendingExpire(env)
     }));
   }
 
