@@ -5496,6 +5496,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 _총 105건 · 최신순 · 이 목록은 자동 생성된다._
 _총 106건 · 최신순 · 이 목록은 자동 생성된다._
+_총 107건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-03**
 - [ur-ads 배포가 조용히 안 나갔다 — 라이브는 멀쩡해 보였다 (2026-08-03)](handoff/2026-08-03-urads-deploy-silent-miss.md)
@@ -5515,6 +5516,7 @@ _총 106건 · 최신순 · 이 목록은 자동 생성된다._
 - [수집 레인을 알람으로 — 대표의 1순위 축이 34개 중 가장 굶고 있었다](handoff/2026-08-03-collect-lane-alarm.md)
 - [학습기가 조일수록 레인이 늘어났다 — `0` 을 두 함수가 정반대로 읽음](handoff/2026-08-03-budget-zero-control-inversion.md)
 - [2026-08-03 — 주간 백업이 `products`·`sellers` 를 조용히 빼먹고 있었다](handoff/2026-08-03-backup-missing-core-tables.md)
+- [유어애즈 경보가 무음이었는데, **무음이라는 사실도 무음**이었다](handoff/2026-08-03-alert-channel-was-silent.md)
 **2026-08-02**
 - [08-02 — 유료로 바꾸면 수집이 **실제로** 늘어나는가](handoff/2026-08-02-paid-plan-scaling.md)
 - [2026-08-02 — 운영자 몰 파일럿 시안 적용 (화면 A · A-2 · B · C · D)](handoff/2026-08-02-mall-design-apply-a-to-d.md)
