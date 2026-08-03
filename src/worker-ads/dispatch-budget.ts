@@ -363,7 +363,17 @@ export function selectLanesForTick<T extends LaneCandidate>(
 ): LaneSelection<T> {
   const always = lanes.filter(l => !isDeferrable(l))
   const movable = lanes.filter(isDeferrable)
-  const budget = Number.isFinite(perTick) && perTick >= 1 ? Math.floor(perTick) : FREE_LANES_PER_TICK
+  // 🕳️ **`0` 은 "미설정"이 아니라 "이번 회차엔 쉬어라"다** (2026-08-03 라이브에서 잡음).
+  //   `domainBudgets` 는 예산이 도메인 수보다 적으면 **일부러 0 을 주고 `tick` 으로 회전**시킨다
+  //   (그 함수 docblock: *"매 회차 다른 도메인이 자리를 받게 한다"*). 그런데 여기서 `>= 1` 로 걸러
+  //   0 을 기본값 `FREE_LANES_PER_TICK`(6)으로 **바꿔치기**하고 있었다 — 두 함수가 같은 숫자를 정반대로 읽었다.
+  //   결과는 **제어 반전**이다: 학습기가 cap 을 조일수록 0 을 받는 도메인이 늘고, 그 도메인들이 오히려
+  //   6 으로 풀린다. 실측(11:00 KST, 학습 cap 2 · 4도메인): influencer budget 0 → **3개**,
+  //   company budget 0·always 2 → `max(1, 6−2)+2` = **6개**, 총 **11개**가 떴다(예산이 실제로 통제한 건
+  //   자리를 받은 prospect 뿐 — deferred 4). 그 붕괴가 부모 꼬리의 `writeTickSummary`·`sheets-sync` 를
+  //   지우고 → 빈 회차로 보여 → 학습기가 더 조이는 **폭주 고리**였다.
+  //   ⚠️ 굶주림 걱정은 없다 — 쉬는 도메인은 `domainBudgets` 의 회전이 다음 회차에 자리를 준다.
+  const budget = Number.isFinite(perTick) && perTick >= 0 ? Math.floor(perTick) : FREE_LANES_PER_TICK
   const cur = readCursors(cursor)
   const tick = cur.tick + 1                     // 회차 카운터 — `cap === 1` 교대에 쓴다
   const n = movable.length
@@ -372,7 +382,9 @@ export function selectLanesForTick<T extends LaneCandidate>(
   if (n === 0) return { run: [...always], deferred: [], cap: 0, capMeasure: 0, capOther: 0, nextCursor: zero, ...base }
 
   // 항상 돌 레인이 먹고 남은 몫. 하한 1 — 위 주석 참조.
-  const cap = Math.max(1, budget - always.length)
+  //   단 **예산 0(=쉬는 회차)엔 하한도 없다.** 여기서 1 을 깔면 "쉬어라"가 다시 "1개는 돌려라"가 되고,
+  //   미룬 레인은 `deferred` 로 나가 회전 커서가 그대로라 다음 회차에 같은 머리부터 집는다(공평성 불변).
+  const cap = budget <= 0 ? 0 : Math.max(1, budget - always.length)
   const measure = movable.filter(l => laneRole(l) === 'measure')
   const other = movable.filter(l => laneRole(l) !== 'measure')
   if (n <= cap) {

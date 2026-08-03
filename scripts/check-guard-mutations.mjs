@@ -643,16 +643,16 @@ const MUTATIONS = [
   {
     name: '예산 차감 제거(라이브 결함 재현)',
     file: 'src/worker-ads/dispatch-budget.ts',
-    find: 'const cap = Math.max(1, budget - always.length)',
-    replace: 'const cap = budget',
+    find: 'const cap = budget <= 0 ? 0 : Math.max(1, budget - always.length)',
+    replace: 'const cap = budget <= 0 ? 0 : budget',
     test: 'src/tests/unit/ads-dispatch-budget.test.ts',
     why: '미룰 수 없는 레인이 예산 위에 얹히던 08-02 결함. 예산 8 에 12개가 떠 꼬리 3개가 CPU 한도로 잘렸다.',
   },
   {
     name: 'cap 하한 1 제거',
     file: 'src/worker-ads/dispatch-budget.ts',
-    find: 'const cap = Math.max(1, budget - always.length)',
-    replace: 'const cap = Math.max(0, budget - always.length)',
+    find: 'const cap = budget <= 0 ? 0 : Math.max(1, budget - always.length)',
+    replace: 'const cap = budget <= 0 ? 0 : Math.max(0, budget - always.length)',
     test: 'src/tests/unit/ads-dispatch-budget.test.ts',
     why: '0 이면 그 시간대가 반복될 때 커서가 영원히 안 움직인다(= 부재).',
   },
@@ -1265,8 +1265,29 @@ const MUTATIONS = [
       '수집은 시간당 1회 · 회차당 16픽뿐이다(실측). 접은 축 키워드가 계속 순번을 받으면 살아있는 축이 ' +
       '그만큼 굶는다 — 대행사 축이 19개 중 17개를 못 돌던 것과 같은 희소성 문제다.',
   },
+  {
+    name: '예산 0 을 "미설정"으로 읽어 기본값 6 으로 바꿔치기(제어 반전)',
+    file: 'src/worker-ads/dispatch-budget.ts',
+    find: 'perTick >= 0 ? Math.floor(perTick)',
+    replace: 'perTick >= 1 ? Math.floor(perTick)',
+    test: 'src/tests/unit/ads-dispatch-budget.test.ts',
+    why:
+      '`domainBudgets` 는 예산이 도메인 수보다 적으면 **일부러 0 을 주고 회전**시킨다(그 함수 docblock). ' +
+      '여기서 0 을 걸러 기본값 6 으로 바꾸면 **조일수록 레인이 늘어나는 제어 반전**이 된다 — ' +
+      '실측(2026-08-03 11:00 KST, 학습 cap 2): 예산 0 인 두 도메인이 3개·6개를 띄워 총 11개. ' +
+      '그 붕괴가 부모 꼬리의 `writeTickSummary`·`sheets-sync` 를 지워 학습기가 더 조이는 폭주 고리였다.',
+  },
+  {
+    name: '쉬는 회차에도 cap 하한 1 을 깔아 "쉬어라"가 무효화됨',
+    file: 'src/worker-ads/dispatch-budget.ts',
+    find: 'const cap = budget <= 0 ? 0 : Math.max(1, budget - always.length)',
+    replace: 'const cap = Math.max(1, budget - always.length)',
+    test: 'src/tests/unit/ads-dispatch-budget.test.ts',
+    why:
+      '위 수리의 짝이다. 0 을 제대로 읽어도 하한 1 이 남아 있으면 쉬는 조가 매 회차 1개씩 띄운다 — ' +
+      '도메인 수만큼 곱해지면 학습기 판단(cap 2)이 다시 안 맞는다. 하한은 *자리를 받은* 조에만 있어야 한다.',
+  },
 ]
-
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
 const pending = new Map()
 function restoreAll() {

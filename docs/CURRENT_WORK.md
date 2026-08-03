@@ -5494,7 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 96건 · 최신순 · 이 목록은 자동 생성된다._
+_총 97건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-03**
 - [ur-ads 배포가 조용히 안 나갔다 — 라이브는 멀쩡해 보였다 (2026-08-03)](handoff/2026-08-03-urads-deploy-silent-miss.md)
@@ -5504,6 +5504,7 @@ _총 96건 · 최신순 · 이 목록은 자동 생성된다._
 - [학습기의 눈먼 구간을 메우고, 배포 실패를 대표에게 보이게 (2026-08-03)](handoff/2026-08-03-learner-bias-and-deploy-alert.md)
 - [대행사 축이 얇던 진짜 이유 — 커서가 얼어 있었다 (그리고 필터는 무죄였다)](handoff/2026-08-03-focus-cursor-frozen.md)
 - [수집 레인을 알람으로 — 대표의 1순위 축이 34개 중 가장 굶고 있었다](handoff/2026-08-03-collect-lane-alarm.md)
+- [학습기가 조일수록 레인이 늘어났다 — `0` 을 두 함수가 정반대로 읽음](handoff/2026-08-03-budget-zero-control-inversion.md)
 - [2026-08-03 — 주간 백업이 `products`·`sellers` 를 조용히 빼먹고 있었다](handoff/2026-08-03-backup-missing-core-tables.md)
 **2026-08-02**
 - [08-02 — 유료로 바꾸면 수집이 **실제로** 늘어나는가](handoff/2026-08-02-paid-plan-scaling.md)
