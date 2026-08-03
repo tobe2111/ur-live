@@ -134,3 +134,24 @@ curl -sS -o /dev/null -w '%{http_code}\n' -X POST https://urdeal.kr/api/admin/wh
 ⚠️ 삭제 범위에 **문서 모순**이 하나 있다 — 계획 §2 는 `/api/admin/wholesale-*` 를 통째로 지우라 하고,
 `operator-mall-saas-gap.md` §8 은 `wholesale-main`(배너)·`wholesale-board`·`wholesale-overview` 를
 **존치**(운영자 몰 꾸미기에 재사용)라 한다. **삭제 PR 착수 전에 이 셋의 운명을 먼저 정할 것.**
+
+---
+
+## 🧨 도매 유입 진입점 제거 (2026-08-03 후속 — 대표 "도매몰은 잔재도 없애는거야")
+
+접는 서비스로 **새로 들여보내는 문**을 소비자 표면에서 닫았다.
+
+| 파일 | 지운 것 | 왜 |
+|---|---|---|
+| `BusinessLandingPage.tsx` | 상단 nav `'도매 공급사' → /supplier/login` | **sitemap 등재 공개 랜딩**이다. 접는 동안에도 신규 유입이 들어온다 |
+| `SellerLoginPage.tsx` | `'도매 공급사이신가요? 도매몰 →'` | 셀러 로그인은 소비자 사업자 유저의 문이다. 갈림길을 여기 둘 이유가 없다 |
+
+🔴 **라우트는 일부러 살려 뒀다.** 철거 계획 §4 가 *"예치금·미지급 정산금이 0 임을 확인한 뒤 삭제"* 라고
+못박았고, 기존 제조사·판매사가 **잔액을 회수하려면 들어올 길이 있어야** 한다.
+⇒ **문은 남기고 간판만 내린 것**이다. 외부에 이미 퍼진 링크·검색 결과는 그대로 도달한다(의도).
+
+가드: `supply-teardown-safety.test.ts` 에 3개 추가(소비자 표면 링크 0 + 라우트 생존).
+되돌려-검증: 크로스링크 복구 주입 → 빨강 · 복원 → 초록.
+
+⚠️ i18n 키 `seller.areYouSupplier`·`seller.goWholesale` 는 **지우지 않았다** — 6개 로케일 churn 대비
+얻는 게 없고, 되살릴 때 그대로 쓴다.
