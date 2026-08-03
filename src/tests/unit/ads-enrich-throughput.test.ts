@@ -22,7 +22,9 @@ import {
 } from '@/features/marketing/api/influencer-enrich-lane'
 import { ENRICH_DEADLINE_MS_ALARM, ENRICH_DEADLINE_MS_DEFAULT } from '@/features/marketing/api/collect-budget'
 
-const PERF = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-performance.ts'), 'utf8')
+// 📈 YT 성과는 600줄 래칫으로 `influencer-yt-performance.ts` 로 분리됐다(순수 이동).
+//   ⚠️ 앵커를 옮기지 않으면 이 가드가 **빈 파일을 검사하며 조용히 통과**한다 — 이 레포의 "낡은 지도" 클래스.
+const YTPERF = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-yt-performance.ts'), 'utf8')
 const LANE = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-enrich-lane.ts'), 'utf8')
 const RUNNERS = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
 
@@ -33,18 +35,18 @@ const RUNNERS = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runn
  */
 describe('①-a YT 재선택 churn — 건너뛴 행도 pub 은 확인됐다', () => {
   it('🔒 예산으로 건너뛴 행에도 pub_checked_at 을 찍는다', () => {
-    const skipped = /if \(budgetSkipped\.has\(r\.id\) \|\| measureFailed\)[\s\S]{0,400}?\.bind\(/.exec(PERF)?.[0] || ''
-    expect(skipped, '건너뛰기 분기를 못 찾음').not.toBe('')
+    const skipped = /if \(budgetSkipped\.has\(r\.id\) \|\| measureFailed\)[\s\S]{0,400}?\.bind\(/.exec(YTPERF)?.[0] || ''
+    expect(skipped, '건너뛰기 분기를 못 찾음(파일이 또 옮겨갔다면 앵커를 갱신할 것)').not.toBe('')
     expect(skipped).toMatch(/pub_checked_at = datetime\('now'\)/)
   })
 
   it('🔒 그래도 perf_checked_at 은 안 찍는다 — 0 각인은 "측정했는데 0회"와 구분이 안 된다', () => {
-    const skipped = /if \(budgetSkipped\.has\(r\.id\) \|\| measureFailed\)[\s\S]{0,400}?\.bind\(/.exec(PERF)?.[0] || ''
+    const skipped = /if \(budgetSkipped\.has\(r\.id\) \|\| measureFailed\)[\s\S]{0,400}?\.bind\(/.exec(YTPERF)?.[0] || ''
     expect(skipped).not.toMatch(/perf_checked_at = datetime/)
   })
 
   it('📌 순서가 pub_checked_at 을 여전히 본다 — 안 보면 이 수리가 무의미하다', () => {
-    expect(PERF).toMatch(/\(pub_checked_at IS NULL\) DESC/)
+    expect(YTPERF).toMatch(/\(pub_checked_at IS NULL\) DESC/)
   })
 })
 

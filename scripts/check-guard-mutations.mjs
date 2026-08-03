@@ -1389,7 +1389,9 @@ const MUTATIONS = [
       '위 수리의 짝이다. 0 을 제대로 읽어도 하한 1 이 남아 있으면 쉬는 조가 매 회차 1개씩 띄운다 — ' +
       '도메인 수만큼 곱해지면 학습기 판단(cap 2)이 다시 안 맞는다. 하한은 *자리를 받은* 조에만 있어야 한다.',
     name: 'YT 건너뛴 행이 스탬프를 못 받아 영구 선두(재선택 churn)',
-    file: 'src/features/marketing/api/influencer-performance.ts',
+    // ⚠️ 2026-08-03 600줄 래칫으로 YT 성과가 이 파일로 분리됐다(순수 이동). 앵커가 안 따라오면
+    //   이 주입은 "find 문자열이 소스에 없음"으로 낡은 지도 판정을 받는다 — 그게 이 러너의 모드 ②다.
+    file: 'src/features/marketing/api/influencer-yt-performance.ts',
     find: "category_source = COALESCE(?, category_source), pub_checked_at = datetime('now') WHERE id = ?",
     replace: 'category_source = COALESCE(?, category_source) WHERE id = ?',
     test: 'src/tests/unit/ads-enrich-throughput.test.ts',
