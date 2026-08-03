@@ -66,7 +66,7 @@ export async function settleWithin(tasks: readonly Promise<unknown>[], ms: numbe
   )
   let timer: ReturnType<typeof setTimeout> | undefined
   const deadline = new Promise<void>((resolve) => { timer = setTimeout(resolve, Math.max(0, ms)) })
-  await Promise.all(tracked)
+  await Promise.race([Promise.all(tracked), deadline])
   if (timer !== undefined) clearTimeout(timer)   // 남겨 두면 그 회차 isolate 가 그만큼 더 붙잡힌다
   return { settled: [...settled].sort((a, b) => a - b), cut: tasks.length - settled.length }
 }
