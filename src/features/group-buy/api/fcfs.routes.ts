@@ -98,7 +98,7 @@ function parseConfig(rec: Record<string, string> | undefined): FcfsConfig {
 async function isDemoProduct(DB: D1Database, productId: number): Promise<boolean> {
   const row = await DB.prepare('SELECT slug FROM products WHERE id=?')
     .bind(productId).first<{ slug: string | null }>().catch(() => null)
-  return (row?.slug || '').startsWith('demo-deal-')
+  return (row?.slug || '').startsWith('demo-')
 }
 
 // 표시 카운트에는 'demo'(데모 상품에 실 유저가 응모한 행 — 추첨 풀 제외 전용 상태)도 포함 —
@@ -138,7 +138,7 @@ publicApp.get('/active', async (c) => {
     //   이 목록을 직접 렌더하는 표면(상권관 랜딩 등)에서도 실 상품 먼저, 데모는 뒤.
     const { results: prods } = await DB.prepare(
       `SELECT p.id, p.name, p.price, p.original_price, p.image_url, p.restaurant_name, p.restaurant_address, p.category,
-              (CASE WHEN COALESCE(p.slug,'') LIKE 'demo-deal-%' THEN 1 ELSE 0 END) AS is_demo
+              (CASE WHEN COALESCE(p.slug,'') LIKE 'demo-%' THEN 1 ELSE 0 END) AS is_demo
          FROM products p ${regionJoin}
         WHERE p.id IN (${ph}) AND p.is_active=1 ${regionWhere}
         ORDER BY is_demo, p.created_at DESC`

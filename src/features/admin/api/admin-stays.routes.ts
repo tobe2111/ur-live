@@ -512,6 +512,9 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         await DB.prepare(`UPDATE products SET images = ? WHERE id = ?`)
           .bind(JSON.stringify(imgs.slice(0, 5)), pid).run().catch(() => {})
       }
+      // 🎭 2026-08-03 (대표 "숙박 데모도 추첨 가능해야지 · 같은 규칙으로"): 추첨 응모 설정.
+      //   없으면 배지 렌더 `{fcfs && <FcfsBadge/>}` 가 아무것도 안 그려 소비자 눈엔 진짜 숙박권이 된다.
+      await (await import('../../../worker/utils/demo-raffle')).seedDemoRaffle(DB, pid)
       // 카카오 place URL — products 컬럼 아님(예산제) → product_supply_meta 사이드테이블(동네딜 시드와 동일).
       if (place.placeUrl) {
         const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta')

@@ -72,6 +72,18 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '데모 판정이 좁은 접두사로 되돌아가 새 데모 종류가 소비자에게 판매 상품으로 보임',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: "const DEMO_LAST = `(CASE WHEN ${demoSlugSql('p')} THEN 1 ELSE 0 END)`",
+    replace: `const DEMO_LAST = "(CASE WHEN COALESCE(p.slug,'') LIKE 'demo-deal-%' THEN 1 ELSE 0 END)"`,
+    test: 'src/tests/unit/demo-raffle-coverage.test.ts',
+    why:
+      '2026-08-03 실측: `demo-deal-` 접두사가 6군데에 하드코딩돼 있었고, 나중에 생긴 `demo-stay-*` 72개가 ' +
+      '어디에도 안 걸렸다. 추첨 설정이 0이라 배지 렌더 `{fcfs && <FcfsBadge/>}` 가 아무것도 안 그렸고 ' +
+      '소비자 눈엔 **89,000원짜리 진짜 숙박권**으로 보였다. 후순위 정렬에도 안 걸려 **피드 첫 50건을 전부 점유** ' +
+      '(같은 시점 실상품은 3개뿐). 에러가 없어 몇 주간 아무도 몰랐다 — 대표가 화면을 보고 물어서 드러났다.',
+  },
+  {
     name: '심평원 수집이 마감선 없이 25초짜리 페이지를 3장 연다(67초, 최다)',
     file: 'src/features/marketing/api/hira-hospital-collect.ts',
     find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
@@ -113,8 +125,7 @@ const MUTATIONS = [
     test: 'src/tests/unit/ads-lane-deadlines-final.test.ts',
     why:
       '배선(호출)은 남아 있는데 산술만 죽으면 **텍스트 검사는 통과**한다 — 위 항목이 못 보는 자리다. ' +
-      '그래서 회전은 문자열이 아니라 **동작**으로도 검증한다(회차당 1개만 돌아도 3회차에 셋 다 선두를 받는가).',
-  },
+      '그래서 회전은 문자열이 아니라 **동작**으로도 검증한다(회차당 1개만 돌아도 3회차에 셋 다 선두를 받는가).',  },
   {
     name: '주간 D1 백업이 인덱스/트리거/뷰를 안 담아 복구본에서 멱등 UNIQUE 가 사라짐',
     file: 'src/worker/cron/d1-backup.ts',

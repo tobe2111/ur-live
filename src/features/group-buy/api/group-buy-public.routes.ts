@@ -20,6 +20,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
+import { demoSlugSql, isDemoSlug } from '@/shared/constants/demo-products'
 import { safeError } from '@/worker/utils/safe-error'
 import { productDetailCols, productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns'
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
@@ -115,9 +116,13 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     }
     const sortParam = c.req.query('sort') || ''
     // 🎯 2026-07-04 [UNLOCK_LOADING] (대표 "데모 이용권 노출은 항상 후순위"): 어떤 정렬이든 1차 키 =
-    //   데모-후순위(slug demo-deal-*). 실 사업자/플랫폼 상품이 항상 먼저, 데모는 뒤 채움용.
+    //   데모-후순위. 실 사업자/플랫폼 상품이 항상 먼저, 데모는 뒤 채움용.
     //   캐시키/헤더/필드 전부 불변 — 응답 내 행 순서만. materialized cron 도 동일 정렬(짝 수정).
-    const DEMO_LAST = "(CASE WHEN COALESCE(p.slug,'') LIKE 'demo-deal-%' THEN 1 ELSE 0 END)"
+    // 🎭 2026-08-03 [UNLOCK_LOADING] (대표 "숙박 데모도"): 판정을 `demo-deal-` → **`demo-`**(SSOT
+    //   `demo-products.ts`)로 넓힌다. 그 사이 생긴 `demo-stay-*` 72개가 접두사 불일치로 이 정렬에
+    //   **한 번도 안 걸려** 실상품 취급을 받았고, 최근 생성이라 **피드 첫 50건을 전부 점유**했다
+    //   (같은 시점 실상품은 3개뿐). 조건 문자열만 넓힘 — 캐시키·SSR·응답 필드 전부 byte-불변.
+    const DEMO_LAST = `(CASE WHEN ${demoSlugSql('p')} THEN 1 ELSE 0 END)`
     // 🌍 2026-07-08 (대표 "수천개 늘 때 미리 — 업체들 근본 방식"): 지오 스케일 파라미터(additive, 검증 float 인라인).
     //   near=lat,lng → 거리순 랭킹. bbox=swLat,swLng,neLat,neLng → 보이는 지도영역만 반환(스케일 핵심 — 전국
     //   전체 대신 뷰포트만 로드). 검증된 숫자만 SQL 에 들어가므로 인젝션 불가. 기본 요청(파라미터 없음)엔 미영향
@@ -367,7 +372,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                 deadline: rec.fcfs_deadline || null,
                 // 🎯 2026-07-04 (대표 "데모 항상 후순위"): 클라 '선착순 상위노출' boost 가 데모를
                 //   끌어올리지 않게 demo 플래그 — RestaurantMapPage displayList 가 non-demo 만 boost.
-                demo: String((p as { slug?: string }).slug || '').startsWith('demo-deal-'),
+                demo: isDemoSlug((p as { slug?: string }).slug),
               },
             }
           })
