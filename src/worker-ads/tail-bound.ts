@@ -37,6 +37,9 @@
  * - 상시 느린 레인은 계속 판정에서 빠진다 — 그 사실은 `cut` 수치로 드러나므로 다음 세션이 본다.
  */
 
+import { resolvePlan } from './dispatch-budget'
+import { writeTickSummary } from './tick-history-write'
+
 /** 회차 꼬리에서 레인 완료를 기다리는 상한(무료). 레인 마감선(12~20s)보다 넉넉하게. */
 export const TAIL_WAIT_MS = 25_000
 /** 유료는 부모 수명이 길고 레인 마감선도 길다(24~60s). */
@@ -80,12 +83,18 @@ export function judgedLaneNames(ranNames: readonly string[], settled: readonly n
   return ranNames.filter((_, i) => keep.has(i))
 }
 
-/** 요금제까지 반영해 한 번에 — 호출부가 상한 계산을 다시 쓰지 않게. */
+/**
+ * 요금제까지 반영해 한 번에 — 호출부가 상한 계산을 다시 쓰지 않게.
+ *
+ * ⚠️ **동적 `@/` import 를 쓰지 않는다.** 첫 판은 `await import('@/features/.../collect-budget')` 였는데
+ *   CLAUDE.md 가 금지하는 조합이고(워커에서 dynamic import + alias), 그게 던지면 이 꼬리가 통째로
+ *   죽어 **기록이 안 남는다** — 고치려던 고장과 똑같은 증상이 된다. 같은 폴더의 `resolvePlan` 을
+ *   정적 상대 import 로 쓴다(`tick-history-write.ts` 와 같은 방식).
+ */
 export async function settleWithinPlan(
   tasks: readonly Promise<unknown>[], env: Record<string, unknown>,
 ): Promise<TailWaitResult & { waited: number }> {
-  const { envPlanValue } = await import('@/features/marketing/api/collect-budget')
-  const waited = envPlanValue(undefined, TAIL_WAIT_MS, TAIL_WAIT_MS_PAID, env as never)
+  const waited = resolvePlan(env as never) === 'paid' ? TAIL_WAIT_MS_PAID : TAIL_WAIT_MS
   return { ...(await settleWithin(tasks, waited)), waited }
 }
 
@@ -111,9 +120,15 @@ export async function closeTick(o: {
   ranNames: readonly string[]; at: string; hourUTC: number
   beats: { flush: () => Promise<unknown>; seenBeats: ReadonlyArray<{ name: string; ok: boolean; ms: number }> }
 }): Promise<void> {
-  const r = await settleWithinPlan(o.kicked, o.env)
-  await o.beats.flush()
-  const { writeTickSummary } = await import('./tick-history-write')
-  await writeTickSummary(o.DB as never, o.at, o.hourUTC, judgedLaneNames(o.ranNames, r.settled), o.beats.seenBeats, o.env as never)
+  // 🛡️ 대기·flush 가 실패해도 **요약과 스탬프는 반드시 시도한다** — 이 꼬리의 존재 이유가
+  //   "기록이 남는 것" 이라, 앞 단계 하나가 던져서 뒤가 통째로 생략되면 고치려던 고장 그대로다.
+  let r: TailWaitResult & { waited: number } = { settled: [], cut: o.kicked.length, waited: 0 }
+  try {
+    r = await settleWithinPlan(o.kicked, o.env)
+    await o.beats.flush()
+  } catch { /* 아래 기록은 그대로 진행 */ }
+  try {
+    await writeTickSummary(o.DB as never, o.at, o.hourUTC, judgedLaneNames(o.ranNames, r.settled), o.beats.seenBeats, o.env as never)
+  } catch { /* 스탬프까지는 남긴다 */ }
   await stampTailBound(o.DB as never, o.at, o.ranNames.length, r)
 }

@@ -131,6 +131,27 @@ const MUTATIONS = [
       '`sweep-mx` 블록에서 겪은 것과 같은 구조적 기아 — 마감선과 회전은 짝이다.',
   },
   {
+    name: '꼬리가 워커 금지 조합(동적 alias import)으로 되돌아감',
+    file: 'src/worker-ads/tail-bound.ts',
+    find: "const waited = resolvePlan(env as never) === 'paid' ? TAIL_WAIT_MS_PAID : TAIL_WAIT_MS",
+    replace: "const { envPlanValue } = await import('@/features/marketing/api/collect-budget')\n  const waited = envPlanValue(undefined, TAIL_WAIT_MS, TAIL_WAIT_MS_PAID, env as never)",
+    test: 'src/tests/unit/ads-tail-bound.test.ts',
+    why:
+      'CLAUDE.md 가 금지하는 조합이다(워커에서 dynamic import + `@/` alias). 이 꼬리에서 던지면 ' +
+      '**기록이 통째로 안 남아** 고치려던 고장과 증상이 같아진다 — 원인 규명이 한 바퀴 더 돈다. ' +
+      '같은 폴더 `resolvePlan` 을 정적 상대 import 로 쓴다(`tick-history-write.ts` 와 동일).',
+  },
+  {
+    name: '앞 단계가 던지면 요약·스탬프가 통째로 생략됨',
+    file: 'src/worker-ads/tail-bound.ts',
+    find: '  try {\n    await writeTickSummary(o.DB as never, o.at, o.hourUTC, judgedLaneNames(o.ranNames, r.settled), o.beats.seenBeats, o.env as never)\n  } catch { /* 스탬프까지는 남긴다 */ }',
+    replace: '  await writeTickSummary(o.DB as never, o.at, o.hourUTC, judgedLaneNames(o.ranNames, r.settled), o.beats.seenBeats, o.env as never)',
+    test: 'src/tests/unit/ads-tail-bound.test.ts',
+    why:
+      '이 꼬리의 존재 이유가 **기록이 남는 것**이다. 대기·flush·요약 중 하나가 던져서 뒤가 생략되면 ' +
+      '고장 그대로다(실제로 배포 첫 회차에 기록이 또 안 남았고, 원인 후보가 바로 이 취약성이었다).',
+  },
+  {
     name: '회차 꼬리가 다시 무한정 기다림(학습기 갱신 자리가 통째로 사라짐)',
     file: 'src/worker-ads/tail-bound.ts',
     find: 'await Promise.race([Promise.all(tracked), deadline])',

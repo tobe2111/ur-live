@@ -85,8 +85,23 @@ describe('배선', () => {
   })
 
   it('상한이 요금제를 따른다 — 유료 전환에 코드 변경 0', () => {
-    expect(TAIL).toMatch(/envPlanValue\(undefined, TAIL_WAIT_MS, TAIL_WAIT_MS_PAID, env as never\)/)
+    expect(TAIL).toMatch(/resolvePlan\(env as never\) === 'paid' \? TAIL_WAIT_MS_PAID : TAIL_WAIT_MS/)
     expect(TAIL_WAIT_MS_PAID).toBeGreaterThan(TAIL_WAIT_MS)
+  })
+
+  it('워커에서 금지된 동적 alias import 를 쓰지 않는다', () => {
+    // 첫 판이 그 형태였다. 던지면 이 꼬리가 통째로 죽어 **기록이 안 남는다** — 고치려던 고장과
+    // 증상이 같아 원인 규명이 한 바퀴 더 돈다.
+    // ⚠️ **주석을 걷어내고 본다.** 안 걷으면 위 설명문(그 형태를 인용한다)에 걸려 정상 코드가 빨간불이
+    //   된다 — 오늘 이 함정을 네 번째로 밟았다. 텍스트 존재는 구조의 증거가 아니다.
+    const codeOnly = TAIL.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n')
+    expect(codeOnly).not.toMatch(/await import\('@\//)
+  })
+
+  it('앞 단계가 실패해도 요약·스탬프를 시도한다', () => {
+    // 이 꼬리의 존재 이유가 "기록이 남는 것" 이다. 한 단계가 던져서 뒤가 생략되면 의미가 없다.
+    expect(TAIL).toMatch(/catch \{[^}]*\}\s*\n\s*try \{\s*\n\s*await writeTickSummary/)
+    expect(TAIL).toMatch(/await stampTailBound\(o\.DB as never, o\.at, o\.ranNames\.length, r\)/)
   })
 
   it('잘린 수를 남긴다 — "잘렸다"와 "원래 없다"가 같아 보이면 안 된다', () => {
