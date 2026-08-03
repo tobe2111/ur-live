@@ -1572,6 +1572,27 @@ const MUTATIONS = [
       '같은 알람의 collect 가 28,643ms 완주가 증거다. 전제가 사라진 값을 그대로 쓰면 창이 근거 없이 좁다.',
   },
   {
+    name: '티스토리가 블로거 뒤로 밀림(잔여를 다 뺏겨 영원히 0)',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: '    try { tistory = await enrichTistoryActivity(DB, budget, TISTORY_ROOM, slice) } catch (err) { note(err) }\n',
+    replace: '',
+    test: 'src/tests/unit/ads-tistory-enrich.test.ts',
+    why:
+      '블로거는 `naverRoomFromRemaining` 으로 **잔여 전부**를 가져간다. 티스토리가 뒤에 서면 남는 예산이 없어 ' +
+      '측정이 0으로 고착된다 — 에러 없이 조용히. ⚠️ 첫 판정이 `indexOf(\'enrichTistoryActivity\')` 라 맨 위 ' +
+      '**import 문**을 먼저 찾아 초록이 떴다(import 는 언제나 첫 번째다) → 호출부로 앵커를 옮겼다.',
+  },
+  {
+    name: '티스토리 몫이 조용히 증설됨(블로거 백로그를 갉음)',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: 'export const TISTORY_ROOM = 2',
+    replace: 'export const TISTORY_ROOM = 9',
+    test: 'src/tests/unit/ads-tistory-enrich.test.ts',
+    why:
+      '이 값이 곧 블로거에게서 뺏는 양이다(2 = 회차당 최대 4 서브리퀘스트 ≈ 9%). 티스토리 백로그는 495 로 ' +
+      '블로거(20,264)의 2.4% 라, 몫을 키우면 20,264행 소진이 그만큼 늦어진다. 늘리려면 실측이 먼저다.',
+  },
+  {
     name: '네이버 오픈API 계측이 래퍼에서 사라짐(그 레인이 통째로 계측 밖)',
     file: 'src/features/marketing/api/fetch-with-err.ts',
     find: '  noteNaverCall(url) //',
