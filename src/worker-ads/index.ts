@@ -13,7 +13,7 @@ import { envDriftInfo } from './env-drift'
 import { Hono } from 'hono'
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
-import { makeHourGates, dailyGapMinutes, staleGapMinutes, createLaneRegistry, recordKnownLanes, buildAgeInfo } from './lane-cadence'
+import { makeHourGates, dailyGapMinutes, hourlyGapMinutes, staleGapMinutes, createLaneRegistry, recordKnownLanes, buildAgeInfo } from './lane-cadence'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
@@ -271,7 +271,26 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   const kick = (path: string, fallback: () => Promise<unknown>, opts?: { gap?: number; beat?: string }): void => {
     const beat = opts?.beat || path.replace(/^\/__ads\//, '')
     laneReg.note(path, opts?.beat)   // 하트비트 이름과 **같은 이름**으로 등록해야 never_fired/orphan 이 어긋나지 않는다
-    pending.push({ beat, path, fallback, gapMin: opts?.gap })
+    /**
+     * 🕳️ **`gap` 을 안 주면 그 레인은 침묵 판정에서 통째로 빠진다** (2026-08-03 라이브 실측).
+     *
+     *   위 주석은 *"안 주면 매시간(= event.cron)으로 본다"* 고 적혀 있는데, **자식 하트비트에는
+     *   그 유도가 없다.** 부모의 쓰기(`adsBeat`)는 `cron: event.cron` 을 싣지만, 레인이 응답 직전에
+     *   쓰는 자기 하트비트(`writeSelfBeat`)는 설계상 cron 을 **일부러 안 싣고** 부모가 넘긴 `gap` 만
+     *   믿는다(`self-beat.ts` — 레인은 자기 주기를 모르니 추측하면 일 1회 레인이 오경보를 낸다).
+     *   그런데 자식 쓰기가 **나중**이라 부모가 실어 둔 `cron` 을 덮는다. 결과:
+     *   `{"at":…,"ok":true,"ms":17004}` — `cron` 도 `g` 도 없다.
+     *
+     *   `getCronHealth` 는 `max_gap_min ?? expectedMaxAgeMinutes(cron)` 이 **둘 다 없으면**
+     *   그 레인을 `missing` 으로 분류하고 **stale 검사에서 제외**한다. 게다가 `missing` 은
+     *   `ok` 를 깨지 않는다 ⇒ **그 레인은 죽어도 dead-man's switch 가 안 울린다.**
+     *   실측으로 `ads:sweep-kakao-chain`(17초, 매시간)이 정확히 그 상태였다 —
+     *   *"안 도는 것"* 이 아니라 *"판정 대상이 아닌 것"* 이라 아무도 못 봤다.
+     *
+     *   ⇒ 문서화된 그 유도를 **여기서 실제로 한다**. 게이트 레인(`gates.*`)은 이미 자기 주기를
+     *   명시로 넘기므로 이 기본값에 닿지 않는다 — 일 1회 레인이 매시간으로 오인될 위험은 없다.
+     */
+    pending.push({ beat, path, fallback, gapMin: opts?.gap ?? hourlyGapMinutes() })
   }
   const gates = makeHourGates(hourUTC, kick, laneReg)
   /**
