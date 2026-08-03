@@ -62,9 +62,14 @@ export function pickConsumerMall(rows: readonly ConsumerMallRow[], seg: string):
 }
 
 // ── 조회 (isolate 캐시) ────────────────────────────────────────────────────────
-// 몰 테이블은 작고(수십 행) 변경이 드물다 — host 판별 캐시(worker/index.ts)와 동일하게 5분.
+// 몰 테이블은 작고(수십 행) 변경이 드물다.
+// ⏱️ 2026-08-03: 300초 → **60초**. 5분은 "방금 만든 몰이 왜 404 냐"를 5분간 답할 수 없게 만든다
+//   (대표가 실제로 그 구간에 걸렸다). 조회 비용은 무시할 만하다 — `isMallLookupCandidate` 가
+//   예약어·문법으로 먼저 걸러 **기존 소비자 경로는 이 함수에 도달조차 안 하고**, 남는 건 몰 주소와
+//   오타뿐이다. 그 몇 건이 60초에 한 번 작은 인덱스 조회를 하는 값으로 5분의 혼란을 산다.
+//   ⚠️ isolate 마다 캐시가 따로라 "즉시"는 여전히 아니다. 즉시성이 필요해지면 KV/버전 스탬프가 답이다.
 let _cache: { rows: ConsumerMallRow[]; at: number } | null = null
-const TTL_MS = 300_000
+const TTL_MS = 60_000
 
 /** 테스트/무효화용. 어드민 몰 변경 후 즉시 반영이 필요하면 호출부에서 쓴다. */
 export function resetConsumerMallCache(): void { _cache = null }

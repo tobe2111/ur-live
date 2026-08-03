@@ -19,6 +19,7 @@ import { toast } from '@/hooks/useToast'
 import { normalizeAdminRole } from '@/shared/admin-roles'
 import { validateMallColor } from '@/shared/mall/branding'
 import MallSellersPanel from './wholesale-malls/MallSellersPanel'
+import MallLinkRow from './wholesale-malls/MallLinkRow'
 
 interface MallRow {
   id: number
@@ -249,7 +250,9 @@ export default function AdminWholesaleMallsPage() {
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700" title="소비자 도메인 경로로 열림">소비자 공개</span>
                     )}
                   </div>
-                  <div className="text-xs text-gray-500 mt-1 truncate inline-flex items-center gap-1">
+                  {/* 🔗 2026-08-03 (대표 "매장 링크를 어드민에서도"): 손님 링크 + 안 열리면 그 이유. */}
+                  <MallLinkRow slug={m.slug} active={m.active} consumer_path={m.consumer_path} />
+                  <div className="text-xs text-gray-400 mt-1 truncate inline-flex items-center gap-1">
                     <Globe className="w-3 h-3" /> {m.host || t('admin.mall.noHost', { defaultValue: '호스트 미지정 (기본 fallback)' })}
                   </div>
                 </div>
