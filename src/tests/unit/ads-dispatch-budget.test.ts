@@ -13,6 +13,9 @@
  * 분산은 그 사고를 만들기 가장 쉬운 구조다. 그래서 커버리지를 전수로 증명한다.
  */
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { laneCadenceFields } from '@/worker-ads/lane-cadence'
+import { join } from 'node:path'
 import {
   resolvePlan, lanesPerTick, isDeferrable, selectLanesForTick, dispatchSnapshot,
   FREE_LANES_PER_TICK, PAID_LANES_PER_TICK, assignKey, laneRole, readCursors,
@@ -453,5 +456,55 @@ describe('🕳️ 예산 0 = "이번 회차엔 쉬어라" (미설정 아님)', (
     expect(selectLanesForTick(MOVABLE, NaN, 0).run.length).toBeGreaterThan(0)
     expect(selectLanesForTick(MOVABLE, undefined as never, 0).run.length).toBeGreaterThan(0)
     expect(selectLanesForTick(MOVABLE, -1, 0).run.length).toBeGreaterThan(0) // 음수도 미설정 취급
+  })
+})
+
+/**
+ * 🕳️ **주기와 침묵 임계는 다른 값이다** — 2026-08-03 라이브(12:00 KST)에서 잡은 세 번째 "한 값, 두 의미".
+ *
+ *   `gapMin` 은 `staleGapMinutes` = 주기×2+30 으로 **부풀린** 침묵 판정 임계다. #1006 이 관측을 고치려고
+ *   매시간 레인에 `hourlyGapMinutes() = 150` 을 채우자 `isDeferrable` 이 `150 > 60` 으로 읽어
+ *   **매시간 레인 14개가 통째로 `always`** 가 됐다(실측: 네 도메인 전부 `deferred: 0`).
+ *   예산·학습기는 미룰 수 있는 레인에만 작용하므로 **통제 대상이 0 개** = #1007 수리가 옳고도 무력.
+ *
+ *   ⚠️ 이 테스트가 못 막는 것: 실제 회차의 레인 구성은 코드로 못 본다.
+ *     판정은 라이브 `ads_dispatch_last` 의 도메인별 `deferred` 가 다시 채워지는지로 한다.
+ */
+describe('미루기 판정은 주기(periodMin)로 — 침묵 임계(gapMin)로 하면 안 된다', () => {
+  it('🔴 라이브 그대로: 매시간 레인(주기 60)에 부풀린 임계 150 이 실려도 미룰 수 있다', () => {
+    expect(isDeferrable({ beat: 'enrich-company', gapMin: 150, periodMin: 60 })).toBe(true)
+  })
+
+  it('일 1회·N시간 레인은 그대로 always — 미루면 그 시간이 지나 영영 안 돈다', () => {
+    expect(isDeferrable({ beat: 'daily', gapMin: 24 * 60 * 2 + 30, periodMin: 24 * 60 })).toBe(false)
+    expect(isDeferrable({ beat: 'every2h', gapMin: 270, periodMin: 120 })).toBe(false)
+    // periodMin 을 안 싣는 게이트 레인은 gapMin 폴백으로 종전과 동일해야 한다
+    expect(isDeferrable({ beat: 'gate-daily', gapMin: 2910 })).toBe(false)
+    expect(isDeferrable({ beat: 'gate-sched', gapMin: 1470 })).toBe(false)
+  })
+
+  it('둘 다 없으면 매시간으로 본다(kick 기본값과 같은 해석)', () => {
+    expect(isDeferrable({ beat: 'x' })).toBe(true)
+  })
+
+  it('🚫 부풀린 값에서 주기를 역산하지 않는다 — 공식이 바뀌면 조용히 깨진다', () => {
+    const src = readFileSync(join(process.cwd(), 'src/worker-ads/dispatch-budget.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    expect(src).not.toMatch(/gapMin[^\n]*-\s*30/)
+    expect(src).toMatch(/const period = Number\(lane\.periodMin\)/)
+  })
+
+  it('배선 — 매시간 레인에만 periodMin 을 싣는다(게이트 레인은 안 싣는다)', () => {
+    // 명시 gap 이 있으면 periodMin 을 빼야 게이트 레인이 always 로 남는다.
+    expect(laneCadenceFields(undefined)).toEqual({ gapMin: 150, periodMin: 60 })   // 매시간
+    expect(laneCadenceFields({ gap: 2910 })).toEqual({ gapMin: 2910 })             // 일 1회 게이트
+    expect(laneCadenceFields({ gap: 270 })).toEqual({ gapMin: 270 })               // 2시간마다
+    expect(laneCadenceFields({ gap: 270, period: 120 })).toEqual({ gapMin: 270, periodMin: 120 })
+    // 그리고 그 값들이 실제로 의도한 판정을 낸다(필드만 맞고 판정이 틀리면 무의미하다).
+    expect(isDeferrable({ beat: 'h', ...laneCadenceFields(undefined) })).toBe(true)
+    expect(isDeferrable({ beat: 'd', ...laneCadenceFields({ gap: 2910 }) })).toBe(false)
+    // 엔트리가 그 SSOT 를 실제로 쓰는지(직접 조립으로 되돌아가면 두 벌이 갈린다)
+    const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+    expect(src).toMatch(/pending\.push\(\{ beat, path, fallback, \.\.\.laneCadenceFields\(opts\) \}\)/)
   })
 })

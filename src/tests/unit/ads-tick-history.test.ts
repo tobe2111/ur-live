@@ -153,20 +153,32 @@ describe('배선 — 부모가 실제로 남기는가', () => {
   const code = (p: string) => fs.readFileSync(p, 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n')
 
-  it('스케줄러가 마지막 flush 뒤에 회차 요약을 쓴다', () => {
-    const src = code('src/worker-ads/index.ts')
-    // ⚠️ 인자가 하나 늘었다(요금제 인지 학습기 — `lane-aimd.ts`). 뒤쪽은 열어 두고 앞 5개만 못박는다.
-    expect(src, '배선이 없으면 이력은 영원히 안 생긴다').toMatch(/writeTickSummary\(env\.DB, tickStartIso, hourUTC, ranNames, beats\.seenBeats/)
-    const flushAt = src.indexOf('beats.flush()')
-    const writeAt = src.indexOf('writeTickSummary(')
+  /**
+   * 🧭 **2026-08-03: 앵커를 위치가 아니라 의미로 옮겼다.**
+   *   꼬리가 `index.ts` 인라인 → `tail-bound.ts` `closeTick` 으로 이사하면서 이 검사가 깨졌는데,
+   *   **지켜야 할 것은 그 코드가 어느 파일에 있느냐가 아니라** ① 요약이 쓰이는가 ② flush 뒤인가
+   *   ③ 개수가 아니라 이름인가 다. 파일을 옮겼다고 빨간불이 뜨면 그건 "낡은 지도"이지 회귀가 아니다.
+   */
+  const tail = () => code('src/worker-ads/tail-bound.ts')
+
+  it('마지막 flush 뒤에 회차 요약을 쓴다', () => {
+    const src = tail()
+    expect(src, '배선이 없으면 이력은 영원히 안 생긴다').toMatch(/writeTickSummary\(/)
+    const flushAt = src.indexOf('.flush()')
+    const writeAt = src.indexOf('writeTickSummary(o.DB')
     expect(flushAt).toBeGreaterThan(-1)
     expect(writeAt, 'flush 전에 쓰면 마지막 묶음이 요약에서 빠진다').toBeGreaterThan(flushAt)
+    // 그리고 그 꼬리가 실제로 스케줄러에 매달려 있어야 한다(모듈만 있고 안 부르면 무의미).
+    expect(code('src/worker-ads/index.ts'), '스케줄러가 꼬리를 안 부르면 이력이 안 생긴다')
+      .toMatch(/ctx\.waitUntil\(closeTick\(\{/)
   })
 
   it('띄운 레인 **이름**을 넘긴다 — 개수로 대체하면 miss 가 음수가 될 수 있다', () => {
-    const src = code('src/worker-ads/index.ts')
-    expect(src).toMatch(/writeTickSummary\([^)]*ranNames/)
-    expect(src, '개수로 되돌아가면 라이브에서 본 "띄운7 기록9" 가 다시 음수를 만든다').not.toMatch(/writeTickSummary\([^)]*kicked\.length/)
+    const src = tail()
+    // ⚠️ 범위를 **같은 줄**로 묶는다. 이 코드베이스는 세미콜론을 안 써서 `[^;]*` 가 다음 문장까지 넘어가고,
+    //   실제로 바로 아래 `stampTailBound(..., o.ranNames.length, r)` 에 걸려 정상 코드가 빨간불이 됐다.
+    expect(src).toMatch(/writeTickSummary\([^\n]*ranNames/)
+    expect(src, '개수로 되돌아가면 라이브에서 본 "띄운7 기록9" 가 다시 음수를 만든다').not.toMatch(/writeTickSummary\([^\n]*\.length\s*,/)
     const runner = code('src/worker-ads/lane-runner.ts')
     expect(runner, '디스패처가 이름을 안 돌려주면 배선이 성립하지 않는다').toMatch(/ranNames: sel\.run\.map\(l => l\.beat\)/)
   })

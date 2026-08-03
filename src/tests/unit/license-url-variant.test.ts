@@ -9,7 +9,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  LICENSE_VARIANTS, DEFAULT_VARIANT_ID, findVariant, buildLicenseUrl, redactServiceKey,
+  LICENSE_VARIANTS, DEFAULT_VARIANT_ID, findVariant, buildLicenseUrl, redactServiceKey, resolveLicenseOperation,
   resolveLicensePageSize, shouldProbe, probeLicenseVariants, PROBE_COOLDOWN_MS,
 } from '@/features/marketing/api/license-url'
 
@@ -20,10 +20,23 @@ const url = (id: string, size?: number) => buildLicenseUrl({
 })
 
 describe('요청 형태 후보', () => {
-  it('후보 id 는 중복되지 않고 첫 번째가 현행(v1)이다', () => {
+  it('후보 id 는 중복되지 않고 첫 번째가 기본이다', () => {
     const ids = LICENSE_VARIANTS.map(v => v.id)
     expect(new Set(ids).size).toBe(ids.length)
-    expect(DEFAULT_VARIANT_ID).toBe('v1')
+    expect(DEFAULT_VARIANT_ID).toBe(LICENSE_VARIANTS[0].id)
+  })
+
+  /**
+   * ⚠️ 2026-08-03: 원래 `DEFAULT_VARIANT_ID === 'v1'` 리터럴이었다. 라이브 실측으로 기본이 v4 로 바뀌면서
+   *   깨졌는데, **지켜야 할 것은 id 문자열이 아니라 "기본이 실측으로 확인된 형태여야 한다"** 는 것이다.
+   *   게이트웨이 응답 봉투가 `{"numOfRows":…,"pageNo":…}` 를 되돌려 준다 = 이 둘이 실제로 읽히는 키다.
+   *   `pageIndex`/`pageSize` 는 같이 보내도 조용히 무시되므로, 그쪽을 기본으로 두면 **200 을 받으면서
+   *   영원히 1페이지만** 긁는다(에러가 없어 안 보이는 실패).
+   */
+  it('🔒 기본 후보는 라이브가 echo 하는 페이징 키를 쓴다(pageNo/numOfRows)', () => {
+    const d = findVariant(DEFAULT_VARIANT_ID)
+    expect(d.pageParam, '이걸 pageIndex 로 되돌리면 200 인 채로 전진이 0 이 된다').toBe('pageNo')
+    expect(d.sizeParam).toBe('numOfRows')
   })
 
   it('알 수 없는 id 는 현행으로 폴백한다(DB 에 쓰레기가 있어도 레인이 죽지 않게)', () => {
@@ -106,12 +119,13 @@ describe('프로브 판정', () => {
   it('행을 준 후보를 승자로 뽑고 거기서 멈춘다(뒤 후보는 쏘지 않는다)', async () => {
     const seen: string[] = []
     const r = await probeLicenseVariants({
-      ...base, skip: ['v1'],
-      fetchPage: async (u) => { seen.push(u); return u.includes('pageSize=100') && u.includes('type=json') ? { ok: true, rows: 7 } : { ok: false, rows: 0, msg: 'HTTP 500' } },
+      // 첫 후보를 건너뛰게 해 "skip 이 실제로 먹는다 + 그 다음에서 즉시 멈춘다"를 함께 본다.
+      ...base, skip: [LICENSE_VARIANTS[0].id],
+      fetchPage: async (u) => { seen.push(u); return u.includes(`${LICENSE_VARIANTS[1].pageParam}=1`) ? { ok: true, rows: 7 } : { ok: false, rows: 0, msg: 'HTTP 500' } },
     })
-    expect(r.winner).toBe('v2')
-    expect(seen.length).toBe(1) // v1 은 skip, v2 에서 즉시 승부
-    expect(r.attempts.map(a => a.id)).toEqual(['v2'])
+    expect(r.winner).toBe(LICENSE_VARIANTS[1].id)
+    expect(seen.length).toBe(1) // 첫 후보는 skip, 그 다음에서 즉시 승부
+    expect(r.attempts.map(a => a.id)).toEqual([LICENSE_VARIANTS[1].id])
   })
 
   it('**200 인데 0행**은 승자가 아니다 — 그날 변동이 없어서일 수 있어 판정 근거가 못 된다', async () => {
@@ -140,5 +154,61 @@ describe('프로브 판정', () => {
     const r = await probeLicenseVariants({ ...base, fetchPage: async () => { throw new Error('boom') } })
     expect(r.attempts).toHaveLength(LICENSE_VARIANTS.length)
     expect(r.attempts[0].ok).toBe(false)
+  })
+})
+
+/**
+ * 🔑 **오퍼레이션 세그먼트(`/info`)** — 인허가 레인이 며칠째 0건이던 진짜 원인 (2026-08-03 라이브 실측).
+ *
+ * ```
+ *   …/1741000/general_restaurants        → 400 · NO_OPENAPI_SERVICE_ERROR(code 12)
+ *   …/1741000/general_restaurants/info   → 200 · totalCount 70,469 · 실제 행
+ * ```
+ * code 12 는 *"주소가 지금 안 맞는다"* 까지만 말하고 **폐기인지 오타인지 구분하지 못한다** —
+ * 그래서 이전 세션(나)이 "서비스 폐기 확정"이라고 인계에 적었다. 틀렸고, 빠진 건 경로 한 칸이었다.
+ *
+ * ## ⚠️ 이 시험이 못 보는 것
+ * 기관이 나중에 오퍼레이션명을 바꾸는 것. 그래서 env(`ADS_LICENSE_OPERATION`)로 **배포 없이** 덮을 수
+ * 있게 뒀고, 여기서는 그 덮어쓰기가 실제로 URL 에 반영되는지만 본다.
+ */
+describe('오퍼레이션 세그먼트', () => {
+  const build = (operation?: string) => buildLicenseUrl({
+    base: 'https://apis.data.go.kr/1741000', endpoint: 'general_restaurants', keyParam: 'K',
+    day: '20260803', page: 1, variant: LICENSE_VARIANTS[0], size: 100, operation,
+  })
+
+  it('🔒 기본으로 `/info` 가 붙는다 — 없으면 게이트웨이가 code 12 로 거절한다', () => {
+    expect(build()).toContain('/1741000/general_restaurants/info?')
+  })
+
+  it('🔒 env 로 덮으면 그 이름이 쓰인다(기관이 바꿔도 무배포 수리)', () => {
+    expect(buildLicenseUrl({
+      base: 'https://apis.data.go.kr/1741000', endpoint: 'general_restaurants', keyParam: 'K',
+      day: '20260803', page: 1, variant: LICENSE_VARIANTS[0], size: 100,
+      operation: resolveLicenseOperation('list'),
+    })).toContain('/general_restaurants/list?')
+  })
+
+  it('빈 문자열이면 붙이지 않는다 — 옛 형태로 되돌릴 여지를 남긴다', () => {
+    expect(build('')).toContain('/1741000/general_restaurants?')
+  })
+
+  it('env 정규화: 슬래시·공백은 떼고, 이상한 문자는 기본값으로 되돌린다(경로 주입 차단)', () => {
+    expect(resolveLicenseOperation(' /info/ ')).toBe('info')
+    expect(resolveLicenseOperation('bad/../path')).toBe('info')
+    expect(resolveLicenseOperation('a?b=c')).toBe('info')
+    expect(resolveLicenseOperation(undefined)).toBe('info')
+    expect(resolveLicenseOperation(null)).toBe('info')
+    expect(resolveLicenseOperation('')).toBe('')      // 명시적 빈 값만 '없음'
+  })
+
+  it('프로브도 같은 오퍼레이션으로 찌른다 — 레인과 다른 주소를 시험하면 판정이 무의미하다', async () => {
+    const seen: string[] = []
+    await probeLicenseVariants({
+      base: 'https://api', endpoint: 'general_restaurants', keyParam: 'K', day: '20260803',
+      fetchPage: async (u) => { seen.push(u); return { ok: false, rows: 0, msg: 'x' } },
+    })
+    expect(seen.length).toBeGreaterThan(0)
+    for (const u of seen) expect(u).toContain('/general_restaurants/info?')
   })
 })
