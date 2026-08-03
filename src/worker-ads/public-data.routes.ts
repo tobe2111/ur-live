@@ -114,7 +114,7 @@ publicDataRoutes.post('/__ads/probe-public-data', async (c) => {
       ? await m.probeLadder(c.env, target, ladder, page || 1)
       : target === 'all'
         ? await m.probeAllPublicData(c.env, { rows, page })
-        : [await m.probePublicData(c.env, target, undefined, { rows, page, path: c.req.query('path'), host: c.req.query('host') })]
+        : [await m.probePublicData(c.env, target, undefined, { rows, page, path: c.req.query('path'), host: c.req.query('host'), params: c.req.query('params') })]
     return c.json({ ok: true, targets: m.probeTargetNames(), results })
   } catch (e) {
     return c.json({ ok: false, error: String((e as Error)?.message || e || '').slice(0, 200) }, 500)

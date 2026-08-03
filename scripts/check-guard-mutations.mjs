@@ -602,6 +602,18 @@ const MUTATIONS = [
       '상권/상인회 축의 유일한 연락처 소스가 이 호스트에만 있다.',
   },
   {
+    name: '표준데이터에 모르는 파라미터를 실어 보냄(INVALID_REQUEST_PARAMETER)',
+    file: 'src/features/marketing/api/public-data-probe.ts',
+    find: "  return host === 'api.data.go.kr' ? 'std' : 'both'",
+    replace: "  return 'both'",
+    test: 'src/tests/unit/ads-public-data-probe.test.ts',
+    why:
+      '게이트웨이마다 **모르는 파라미터를 대하는 태도가 다르다.** 기관별 서비스는 조용히 무시하지만 ' +
+      '표준데이터는 거부한다 — 라이브가 `INVALID_REQUEST_PARAMETER_ERROR (pageIndex)` 로 말해 줬다. ' +
+      '즉 인증·주소가 다 맞은 요청을 **우리 편의 문법이 죽인다**(진단 도구가 스스로 만든 실패). ' +
+      '상권 축의 유일한 연락처 소스가 이 게이트웨이에 있다.',
+  },
+  {
     name: '인허가 경로에서 오퍼레이션(/info)이 사라짐',
     file: 'src/features/marketing/api/license-url.ts',
     find: "export const LICENSE_OPERATION = 'info'",
