@@ -518,6 +518,17 @@ const MUTATIONS = [
       '(첫 작성에서 내가 손으로 적다가 실제로 64개를 빠뜨렸고, 이 시험이 즉시 잡았다.)',
   },
   {
+    name: '사망 지점 흔적이 이전 누적본을 오염시킴(제자리 push)',
+    file: 'src/features/marketing/api/enrich-telemetry.ts',
+    find: 'r.deaths = [...(r.deaths || []), at].slice(-DEATH_TRAIL_MAX)',
+    replace: '{ (r.deaths ||= []).push(at); r.deaths = r.deaths.slice(-DEATH_TRAIL_MAX) }',
+    test: 'src/tests/unit/enrich-rollup.test.ts',
+    why:
+      '`foldRound` 는 이전 누적본을 **얕은 복사**해 배열을 참조로 물고 온다. 제자리 push 면 아직 저장되지 ' +
+      '않은 원본까지 함께 늘어나 **멱등 검사가 거짓말을 한다**(같은 라운드를 두 번 센 것처럼 보인다). ' +
+      '계측이 틀리면 그 위에 세운 처방이 전부 틀린다 — 이 레코드의 존재 이유가 무너진다.',
+  },
+  {
     name: '심평원 재시도가 실험이 아니게 됨(같은 크기로 재시도)',
     file: 'src/features/marketing/api/hira-hospital-collect.ts',
     find: 'Math.max(20, Math.floor(numRows / 5))',
