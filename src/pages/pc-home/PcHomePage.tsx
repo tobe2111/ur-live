@@ -7,7 +7,7 @@ import PcHomeRail, { type DealCategory } from './PcHomeRail'
 import PcHomeMapButton from './PcHomeMapButton'
 import PcHomeAppBand from './PcHomeAppBand'
 import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from './PcHomeLocationBar'
-import RegionLinkGrid from '@/components/main/RegionLinkGrid'
+import RegionLinkGrid from '@/components/region/RegionLinkGrid'
 import { REGION_PAGES_ENABLED } from '@/shared/feature-flags'
 
 /**

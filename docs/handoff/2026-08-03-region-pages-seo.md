@@ -23,8 +23,8 @@
 | `src/features/group-buy/api/regions.routes.ts` | `GET /api/regions` — 지역별 딜 집계(페이지·그리드·sitemap 공용) |
 | `src/pages/region/RegionPage.tsx` | `/region/:sido[/:sigungu]` 착지 페이지 |
 | `src/pages/region/RegionIndexPage.tsx` | `/region` 허브(전 시/도 펼침) |
-| `src/components/main/RegionLinkGrid.tsx` | 텍스트 링크 그리드(여기어때 하단 차용) |
-| `consumer-surfaces.ts` `resolveRegionSeo` | 서버 메타(Yeti 대응) |
+| `src/components/region/RegionLinkGrid.tsx` | 텍스트 링크 그리드(여기어때 하단 차용) ⚠️ `components/main/` 에 두면 eager 청크로 들어간다 |
+| `worker/utils/surface-ssr-meta.ts` `resolveRegionSeo` | 서버 메타(Yeti 대응) — **워커 전용**(클라 크리티컬 모듈에 두지 말 것) |
 | `sitemap.routes.ts` | 지역 URL 발행(문턱 통과분만) |
 | `SiteFooter.tsx` | `/region` 허브 링크 |
 
@@ -59,14 +59,23 @@ URL 은 **한글 경로**(`/region/서울/중구`). 시군구 229개 로마자 �
 4. **`/region` 을 몰 슬러그 예약어에 안 넣었다.** `urdeal.kr/{몰슬러그}` 가 1-세그먼트 캐치올이라,
    누가 `region` 슬러그로 몰을 열면 지역 허브가 죽는다. `mall-branding.test.ts` 가 잡았다 →
    `src/shared/mall/slug.ts` 에 추가. **새 1-세그먼트 라우트를 만들 때마다 반드시 함께 등록.**
-5. **모바일 우선 색인을 하마터면 놓칠 뻔했다.** 홈은 뷰포트로 갈리는데(`HomeRoute`) 모바일 홈은
+5. **`git stash` 로 "main 과 비교했다"고 착각했다 — 이번 세션 최악의 오판.**
+   CI 의 `check-critical-chunks` 가 빨강이길래 stash 후 빌드해 청크 집합이 같은 것을 보고
+   **"base 선재"라고 결론 내리고 PR 에 그렇게 적었다.** 틀렸다 — `git stash` 는 **이미 커밋된
+   파일을 되돌리지 않는다.** 그 시점에 내 코드는 이미 커밋돼 있었으므로 내가 "main" 이라고 측정한
+   빌드에는 내 코드가 그대로 있었다. 진짜 원인은 내 것이었다:
+   `RegionLinkGrid.tsx` 를 `src/components/main/` 에 두었는데 vite 규칙
+   `id.includes('/src/components/main/') → 'app-layout'` 때문에 **eager 청크**에 들어갔고,
+   거기서 region-slugs 를 import 하며 `app-constants`(8.86KB gzip)가 크리티컬 패스로 딸려왔다.
+   → `src/components/region/` 으로 이동해 17개 기준 복귀. **대조는 커밋 상태까지 포함해서 할 것.**
+6. **모바일 우선 색인을 하마터면 놓칠 뻔했다.** 홈은 뷰포트로 갈리는데(`HomeRoute`) 모바일 홈은
    풀스크린 지도(`RestaurantMapPage`)라 **푸터도 지역 링크도 없다.** PC 홈에만 그리드를 달면
    Googlebot(스마트폰)은 지역 페이지를 영영 발견하지 못한다 → `SiteFooter` 에 허브 링크를 넣어 해결.
    **그 한 줄이 사실상 유일한 진입로다**(가드로 고정).
 
 ## 검증
 
-- `region-slugs.test.ts` 29 + `region-page-wiring.test.ts` 18 = **47 pass**
+- `region-slugs.test.ts` 29 + `region-page-wiring.test.ts` 21 = **50 pass** (전체 4854)
 - **되돌려-검증 완료**: 푸터 링크 제거 · 리졸버 배선 해제 · 지역 페이지 전국폴백 허용 →
   정확히 그 3개 테스트만 빨강. 복원 확인.
 - `tsc --noEmit` 0 · `npm run build` 0(client+worker+prerender) · audit-gate **85 GREEN**

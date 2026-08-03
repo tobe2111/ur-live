@@ -4,7 +4,7 @@ import { MapPin, ChevronRight } from 'lucide-react'
 import SEO, { breadcrumbJsonLd } from '@/components/SEO'
 import SiteFooter from '@/components/main/SiteFooter'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
-import RegionLinkGrid from '@/components/main/RegionLinkGrid'
+import RegionLinkGrid from '@/components/region/RegionLinkGrid'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { REGION_PAGES_ENABLED } from '@/shared/feature-flags'
 import {

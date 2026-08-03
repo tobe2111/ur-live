@@ -20,7 +20,7 @@
  *   - 라이브 데이터. 여기선 소스 텍스트와 순수 함수만 본다.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { resolveConsumerSurfaceSeo } from '@/shared/seo/consumer-surfaces'
 import { resolveRegionSeo } from '@/worker/utils/surface-ssr-meta'
 import { REGION_INDEX_MIN_DEALS } from '@/shared/constants/region-slugs'
@@ -49,7 +49,7 @@ describe('② 내부 링크 — 크롤러가 지역 페이지에 도달하는 �
   })
 
   it('지역 링크 그리드는 딜이 충분한 지역만 링크한다 — 빈 페이지로 보내면 soft-404', () => {
-    const grid = read('src/components/main/RegionLinkGrid.tsx')
+    const grid = read('src/components/region/RegionLinkGrid.tsx')
     expect(grid).toMatch(/filter\(\s*s\s*=>\s*s\.indexable\s*\)/)
   })
 
@@ -116,8 +116,6 @@ describe('④ 서버 메타 — Yeti 는 JS 를 돌리지 않는다', () => {
   })
 
   it('문구 SSOT(consumer-surfaces)는 지역 표를 import 하지 않는다 — 크리티컬 청크 회귀 방지', () => {
-    // 🔴 2026-08-03 실제 사고: 여기서 region-slugs 를 import 했더니 `app-constants` 청크가
-    //    첫 페인트로 딸려왔다(check-critical-chunks 가 CI 에서 잡음). 워커 전용 모듈로 옮겨 해결.
     expect(read('src/shared/seo/consumer-surfaces.ts')).not.toMatch(/region-slugs/)
   })
 
@@ -139,6 +137,27 @@ describe('⑤ 지역 페이지는 전국 폴백을 하지 않는다', () => {
   it('regionRef 가 오면 행정구역 매칭으로 거른다', () => {
     const feed = read('src/pages/main-home/GroupBuyFeed.tsx')
     expect(feed).toMatch(/if\s*\(regionRef\)\s*return\s+addressInRegion\(/)
+  })
+})
+
+describe('⑥ 크리티컬 청크 — 지역 코드가 첫 페인트로 딸려오면 안 된다', () => {
+  // 🔴 2026-08-03 실제 사고: `RegionLinkGrid` 를 `src/components/main/` 에 두었더니
+  //    vite manualChunks 의 `if (id.includes('/src/components/main/')) return 'app-layout'`
+  //    규칙에 걸려 **eager 청크 app-layout** 에 들어갔고, 거기서 region-slugs 를 import 하면서
+  //    `app-constants`(8.86KB gzip) 가 통째로 크리티컬 패스에 진입했다.
+  //    CI 의 check-critical-chunks 가 잡았다 — 없었으면 첫 페인트가 조용히 무거워졌을 것이다.
+  //    ⚠️ 그때 나는 `git stash` 로 "main 과 비교했다"고 판단했는데, stash 는 **이미 커밋된 파일을
+  //    되돌리지 않아** 내 코드가 그대로 들어간 빌드를 main 이라 착각했다. 대조는 커밋 상태까지 볼 것.
+  it('RegionLinkGrid 는 eager 청크 폴더(components/main)에 있지 않다', () => {
+    expect(existsSync('src/components/region/RegionLinkGrid.tsx')).toBe(true)
+    expect(existsSync('src/components/main/RegionLinkGrid.tsx')).toBe(false)
+  })
+
+  it('eager 청크(components/main)의 파일들은 지역 표를 import 하지 않는다', () => {
+    for (const f of readdirSync('src/components/main')) {
+      if (!f.endsWith('.tsx') && !f.endsWith('.ts')) continue
+      expect(read(`src/components/main/${f}`), `${f} 가 region-slugs 를 끌어온다`).not.toMatch(/region-slugs/)
+    }
   })
 })
 
