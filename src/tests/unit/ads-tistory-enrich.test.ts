@@ -1,0 +1,112 @@
+/**
+ * 📗 **티스토리 측정 경로 신설** (2026-08-03 — 대표 *"다 해줘"*).
+ *
+ * 495행 전부가 미측정이었고 **측정 경로가 아예 없었다**. 유입은 ~216/일이라 두면 못 쓰는 행만 쌓인다.
+ *
+ * ⚠️ **이 테스트가 못 보는 것**: 티스토리 RSS·홈이 실제로 무엇을 주는지. 이 환경은 `tistory.com` 이
+ *   프록시 CONNECT 403 이라 실물 응답을 한 번도 못 봤다 — 그건 **라이브 diag** 로만 판정된다
+ *   (`measured` 0 → RSS 경로 오류 · `contacts` 0 → 홈에 연락처 없음 ⇒ 경로를 접을 것).
+ *   여기서 고정하는 건 ① 핸들 도출 ② 낭비 방지 ③ 배선(네이버 무접촉·몫 제한·진단 노출)뿐이다.
+ */
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { deriveTistoryHandle, tistoryHomeUseful } from '@/features/marketing/api/influencer-tistory-performance'
+import { TISTORY_ROOM } from '@/features/marketing/api/influencer-enrich-lane'
+
+const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
+/** 💬 주석 제거 — 배선은 코드에서만 판정한다(주석 처리해도 초록이 뜨던 함정, 같은 날 두 번 밟았다). */
+const code = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+const TIS = read('src/features/marketing/api/influencer-tistory-performance.ts')
+const LANE = read('src/features/marketing/api/influencer-enrich-lane.ts')
+const NAVER = read('src/features/marketing/api/influencer-performance.ts')
+
+describe('핸들 도출 — handle 이 깨져도 url 에서 되살린다', () => {
+  it('🔒 정상 핸들은 그대로', () => {
+    expect(deriveTistoryHandle({ handle: 'zomzom', url: 'https://zomzom.tistory.com' })).toBe('zomzom')
+    expect(deriveTistoryHandle({ handle: 'AllMightyPapa', url: null })).toBe('allmightypapa')
+  })
+
+  it('🔒 핸들이 없거나 쓰레기면 url 서브도메인에서 되살린다', () => {
+    expect(deriveTistoryHandle({ handle: null, url: 'https://indp.tistory.com/123' })).toBe('indp')
+    expect(deriveTistoryHandle({ handle: 'tistory.com', url: 'https://sdjoon.tistory.com' })).toBe('sdjoon')
+    // 호스트가 통째로 handle 에 들어간 손상 형태 — 네이버에서 실제로 났던 클래스다.
+    expect(deriveTistoryHandle({ handle: 'tistory', url: 'https://gyungchin.tistory.com' })).toBe('gyungchin')
+  })
+
+  it('🔒 어디에도 없으면 null — 측정 불가를 "빈 문자열"로 위장하지 않는다', () => {
+    expect(deriveTistoryHandle({ handle: null, url: null })).toBeNull()
+    expect(deriveTistoryHandle({ handle: '', url: 'https://blog.naver.com/someone' })).toBeNull()
+    expect(deriveTistoryHandle({ handle: 'a', url: null })).toBeNull() // 1자는 티스토리 서브도메인이 아니다
+  })
+})
+
+describe('홈 fetch 낭비 방지', () => {
+  it('🔒 연락처 3종이 다 차 있으면 홈을 안 받는다', () => {
+    expect(tistoryHomeUseful({ email: 'a@b.com', instagram: 'x', links: 'https://y' })).toBe(false)
+  })
+  it('🔒 하나라도 비면 받는다', () => {
+    expect(tistoryHomeUseful({ email: 'a@b.com', instagram: 'x', links: null })).toBe(true)
+    expect(tistoryHomeUseful({})).toBe(true)
+  })
+})
+
+describe('🔌 배선', () => {
+  it('🔒 네이버 경로를 안 건드린다 — 백로그 20,264행을 가는 가장 값진 레인이다', () => {
+    expect(code(NAVER)).not.toMatch(/tistory/i)
+  })
+
+  it('🔒 레인이 티스토리를 부르고, 블로거보다 **먼저** 작은 몫만 쓴다', () => {
+    const c = code(LANE)
+    expect(c).toMatch(/enrichTistoryActivity\(DB, budget, TISTORY_ROOM, slice\)/)
+    /**
+     * 순서가 뒤집히면 블로거가 잔여를 다 가져가 티스토리는 영원히 0이 된다(`naverRoomFromRemaining` 이 전부를 쓴다).
+     * ⚠️ **호출부로 앵커한다** — 처음엔 `indexOf('enrichTistoryActivity')` 로 썼는데 그게 맨 위 **import 문**을
+     *   먼저 찾아, 순서를 실제로 뒤집는 주입에도 초록이 떴다(import 는 언제나 첫 번째다).
+     */
+    expect(c.indexOf('enrichTistoryActivity(DB, budget')).toBeGreaterThan(-1)
+    expect(c.indexOf('enrichTistoryActivity(DB, budget')).toBeLessThan(c.indexOf('enrichNaverActivity(DB, budget'))
+  })
+
+  it('🔒 몫은 작게 고정 — 이 값이 곧 블로거에게서 뺏는 양이다', () => {
+    expect(TISTORY_ROOM).toBeGreaterThan(0)
+    expect(TISTORY_ROOM, '늘리려면 tistory.failed 실측이 먼저다(회차당 2 = 최대 4 서브리퀘스트 ≈ 9%)').toBeLessThanOrEqual(3)
+  })
+
+  it('🔒 스냅샷에 진단이 실린다 — 프록시 차단 환경에선 이게 유일한 판정 근거다', () => {
+    expect(code(LANE)).toMatch(/^\s*tistory,$/m)
+  })
+
+  it('🔒 누적 집계에도 합산 — 두 레인을 같은 눈으로 읽는다', () => {
+    const c = code(LANE)
+    expect(c).toMatch(/total_measured:.*\+ tistory\.measured/)
+    expect(c).toMatch(/total_contacts:.*\+ tistory\.contacts/)
+  })
+})
+
+describe('스탬프 규칙 — 네이버와 같아야 한다(갈라지면 조용히 어긋난다)', () => {
+  it('🔒 둘 다 실패면 데이터 없이 스탬프만(0 각인 금지)', () => {
+    expect(TIS).toMatch(/rssXml === null && homeText === null/)
+    expect(TIS).toMatch(/diag\.failed\+\+/)
+  })
+
+  it('🔒 404/410 은 "측정 성공·글 0"(터미널) — 재시도 루프에 가두지 않는다', () => {
+    expect(TIS).toMatch(/res\.status === 404 \|\| res\.status === 410/)
+  })
+
+  it('🔒 글 본문은 연락처로 쓰지 않는다 — 남의 연락처가 섞여 발송 대상이 오염된다', () => {
+    // 소개글(rssIntro)로만 보강하고 rssBody 는 분류에만 쓴다.
+    expect(TIS).toMatch(/if \(rssIntro && \(!emailAfter \|\| !instaAfter\)\)/)
+    expect(TIS).toMatch(/classifyCategoryByHits\(rssBody\)/)
+    expect(TIS).not.toMatch(/pickBusinessEmail\(rssBody\)/)
+  })
+
+  it('🔒 창을 못 주면 안 집는다 — 집고 실패하면 스탬프가 찍혀 큐 뒤로 밀린다', () => {
+    expect(TIS).toMatch(/canStartBudgetedItem\(budget\.deadline\)/)
+    expect(TIS).toMatch(/window_skipped/)
+  })
+
+  it('🔒 조회 실패를 삼키지 않는다 — selected:0 이 "큐가 빔"을 확정해야 한다', () => {
+    expect(TIS).toMatch(/diag\.query_error =/)
+  })
+})
