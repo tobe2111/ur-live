@@ -296,13 +296,6 @@ export async function handleCronScheduled(
       const { handleWebhookFailedDrain } = await import('./cron/webhook-failed-drain');
       return handleWebhookFailedDrain(env);
     }));
-    // 🎫 2026-06-17 (사용자 요청 "가장 이상적으로"): KT Alpha 교환권 발송 실패 자동 복구.
-    //   'failed'(미발송 확정) 는 안전 자동 재시도(retry<3, backoff) / 'processing' 끼임은 중복방지 위해
-    //   수동 검토로 surface. config 미설정 시 skip. (파일 헤더 참조)
-    ctx.waitUntil(safeCron('kt-alpha-voucher-retry', async () => {
-      const { handleKtAlphaVoucherRetry } = await import('./cron/kt-alpha-voucher-retry');
-      return handleKtAlphaVoucherRetry(env);
-    }));
   }
 
   if (cron === '0 18 * * *') {
@@ -523,6 +516,13 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('wishlist-price-drop-notify', async () => {
       const { handleWishlistPriceDropNotify } = await import('./cron/wishlist-notify');
       return handleWishlistPriceDropNotify(env);
+    }));
+    // 🎫 KT Alpha 교환권 발송 실패 자동 복구(retry<3·backoff·14일내·run당 20건·NOT EXISTS 이중발송 0).
+    //   2026-08-03 대표 승인 — 발화 안 하는 `0 * * * *` 에 있어 **돈 낸 교환권이 영영 안 가고 있었다.**
+    //   ⚠️ 일간이라 복구가 최대 24h 지연된다. 즉시 필요하면 어드민 `POST /_run-cron {kt-alpha-voucher-retry}`.
+    ctx.waitUntil(safeCron('kt-alpha-voucher-retry', async () => {
+      const { handleKtAlphaVoucherRetry } = await import('./cron/kt-alpha-voucher-retry');
+      return handleKtAlphaVoucherRetry(env);
     }));
   }
 

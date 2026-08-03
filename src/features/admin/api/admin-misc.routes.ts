@@ -476,10 +476,30 @@ adminMiscRoutes.post('/_run-cron', cors(), rateLimit({ action: 'admin_run_cron',
       return c.json({ success: true, name, elapsed_ms: Date.now() - start, result });
     }
 
+    // 🎫 2026-08-03 — 돈 낸 교환권이 안 간 주문의 **즉시 복구**. 이 재시도는 발화하지 않는 cron
+    //   슬롯에 있어 한 번도 안 돌았고, 살아 있는 슬롯으로 옮겼지만 **일간이라 최대 24h 지연**된다.
+    //   손님이 기다리는 상황에서 그건 너무 길다 → 어드민이 지금 킥할 수 있게 화이트리스트에 추가.
+    //   ⚠️ 발송을 일으키는 경로지만 이중발송은 구조적으로 0 이다: 시도 이력(`external_order_id`
+    //      LIKE 'u{oid}-%') `NOT EXISTS` + status CAS(failed→processing) + run 당 20건 + retry<3.
+    if (name === 'kt-alpha-voucher-retry') {
+      const { handleKtAlphaVoucherRetry } = await import('../../../worker/cron/kt-alpha-voucher-retry');
+      const result = await handleKtAlphaVoucherRetry(env as never);
+      return c.json({ success: true, name, elapsed_ms: Date.now() - start, result });
+    }
+
+    // 🎭 2026-08-03 — 데모 추첨 자가치유(마감 연장 + 설정 없는 이용권 데모에 seed). 일간 슬롯이라
+    //   배포 후 다음 회차(KST 03:00)까지 기다려야 하는데, 데모 표시는 **지금 소비자가 보는 화면**이다.
+    //   읽기-쓰기지만 `demo-%` slug 한정 + 완전 멱등이라 몇 번 눌러도 같은 결과.
+    if (name === 'demo-fcfs-renew') {
+      const { renewDemoFcfs } = await import('../../../worker/cron/demo-fcfs-renew');
+      const result = await renewDemoFcfs(env as never);
+      return c.json({ success: true, name, elapsed_ms: Date.now() - start, result });
+    }
+
     return c.json({
       success: false,
       error: `허용되지 않은 cron name: ${name}`,
-      allowed: ['restaurant-geocode', 'kt-alpha-catalog-sync'],
+      allowed: ['restaurant-geocode', 'kt-alpha-catalog-sync', 'kt-alpha-voucher-retry', 'demo-fcfs-renew'],
     }, 400);
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
