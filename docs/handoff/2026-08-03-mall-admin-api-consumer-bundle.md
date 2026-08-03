@@ -93,3 +93,27 @@ curl -sS -o /dev/null -w '%{http_code}\n' -X POST https://urdeal.kr/api/admin/wh
    (404 는 서버가 응답은 했다). 네트워크/CF 구간이고 코드로 고칠 수 있는 게 아니다.
    재발하면 다른 네트워크(모바일 테더링 등)에서 한 번 확인해 주시면 범위가 갈린다.
 3. **PR #1001** — #1011 이 머지되며 내용은 다 들어갔다. 중복이라 닫으면 된다.
+
+## 🔴 같은 클래스가 **12개 더 있다** (고치지 않았다 — 판단이 필요해서)
+
+몰 관리만 특이한 게 아니다. `dist/client` 가 공유라 **모든 도매 어드민 화면이 urdeal.kr/admin 에
+실리는데**, 그 API 는 `mount-wholesale` 안에만 있다 ⇒ **urdeal.kr 에서 누르면 전부 404.**
+
+소비자 번들에 없는 어드민 네임스페이스(실측 — `mount-wholesale.ts`):
+`/api/admin/wholesale`·`wholesale/integrity`·`wholesale-deposits`·`wholesale-banners`·
+`wholesale-board`·`wholesale-proposals`·`wholesale-products`·`wholesale-deposit-account`·
+`wholesale-overview`·`distributor`·**`buyer-pool`**·**`maker-pool`**.
+
+🔴 **`buyer-pool` 은 특히 의심스럽다** — `admin-nav-config.ts:61` 이 이걸 **`domain:'wholesale'` 밖,
+전-어드민 그룹**에 두고 *"도매 RBAC 스코프 밖 → 여기(전-어드민)"* 라고 명시한다. 도매 전용이 아니라고
+선언해 놓고 API 는 도매 번들에만 있다. `maker-pool`(제조사 풀)도 같다.
+
+**왜 안 고쳤나**: 나머지는 *진짜로 도매 전용*이라 utongstart.com 에서 쓰는 게 서비스 분리에 맞고,
+게다가 릴리즈 체크리스트 **A6("도매 잔재가 안 보인다 — 철거 PR")** 가 이 화면들을 **지우는** 방향이다.
+지울 것을 소비자 번들에 올리는 건 반대 방향이다. ⇒ **대표 결정 2択**:
+- **(가)** A6 철거에 맡긴다 — 그때 어드민 메뉴에서도 함께 사라진다. 그 전까지 urdeal.kr 에선 404 유지.
+- **(나)** `buyer-pool`·`maker-pool` 둘만 소비자로 올린다(도매 전용이 아니라고 선언돼 있으므로).
+  비용은 이번과 같은 수준(수 KB gz). 나머지 10개는 (가)로.
+
+⚠️ **`domain: 'wholesale'` 태그는 이걸 못 막는다** — 그건 **RBAC 역할 스코프**지 *배포 도메인*이 아니다.
+슈퍼관리자는 urdeal.kr/admin 에서 도매 메뉴를 전부 본다.
