@@ -7,7 +7,15 @@
  *     안 보이므로 **소프트 글래스 알약**(반투명 다크 + blur, 흰 글자)로 가독성 유지(솔리드 검정보다 가벼움).
  *   prelaunch(오픈 예정)는 판매중이 아닌 '상태' 신호라 소프트 앰버 알약으로 항상 구분.
  *   appliedDisplay=응모자(굵게 강조). 🗳️ 2026-07-22 (대표 UI P1): 이건 **추첨 응모** 배지(구매 아님) —
- *   "지원"(구직 어휘)→"응모", 모집 정원(spots) 미노출("N명 모여야 성사" 오독+CS 유발), deadline 24h 내면 "· 마감 임박".
+ *   "지원"(구직 어휘)→"응모", deadline 24h 내면 "· 마감 임박".
+ *
+ * 🎟️ 2026-08-03 (대표 "원래 이용권처럼 **몇 명 뽑는데 몇 명 응모**했다라고 떠야지"):
+ *   **정원(spots)을 다시 노출한다** — 2026-07-22 의 '정원 미노출' 결정을 대표가 뒤집었다.
+ *   당시 우려는 *"N명 모여야 성사"* 라는 **공동구매 오독**이었는데, 그건 정원을 *목표치*로 읽을 때
+ *   생긴다. 문구를 **"3명 뽑는데 12명 응모"** 로 두면 정원이 *당첨 인원*으로 읽혀 그 오독이 안 생기고,
+ *   오히려 경쟁률이 보여 응모 동기가 된다. ⚠️ 그러니 되돌릴 때도 **문구 형태가 핵심**이다 —
+ *   "N명 모집"·"N명 목표" 같은 표현으로 바꾸면 2026-07-22 의 CS 문제가 그대로 돌아온다.
+ *   정원이 0/미설정이면 종전대로 응모자만 보여준다(없는 숫자를 지어내지 않는다).
  */
 import { formatNumber } from '@/utils/format'
 import type { FcfsInfo } from './useFcfs'
@@ -16,6 +24,7 @@ export default function FcfsBadge(
   { info, className = '', variant = 'inline' }: { info: FcfsInfo; className?: string; variant?: 'inline' | 'overlay' },
 ) {
   const applied = formatNumber(info.appliedDisplay)
+  const spots = Math.max(0, Number(info.spots) || 0)
   // ⏳ 마감 임박 — deadline 이 실제 24h 내일 때만(먼 마감에 '임박' 오표기 방지 · 대표 UI P1).
   const deadlineNear = (() => {
     if (!info.deadline) return false
@@ -45,14 +54,18 @@ export default function FcfsBadge(
   if (variant === 'overlay') {
     return (
       <span className={`inline-flex items-center gap-1 rounded-full bg-black/55 backdrop-blur-sm px-2 py-1 text-[10px] font-bold leading-none text-white shadow-sm ${className}`}>
-        <span className="animate-fcfs-flame">🔥</span> <span className="font-extrabold animate-fcfs-spark">{applied}</span>명 응모
+        <span className="animate-fcfs-flame">🔥</span>
+        {spots > 0 && <><span className="font-extrabold">{spots}</span>명 뽑기 <span className="opacity-50">·</span> </>}
+        <span className="font-extrabold animate-fcfs-spark">{applied}</span>명 응모
       </span>
     )
   }
   return (
     <span className={`inline-flex items-center gap-1 text-[12px] text-gray-400 dark:text-gray-500 ${className}`}>
       <span className="animate-fcfs-flame">🔥</span>
-      <span>지금 <b className="font-extrabold text-gray-900 dark:text-white animate-fcfs-spark">{applied}명</b> 응모 중</span>
+      {spots > 0
+        ? <span><b className="font-extrabold text-gray-900 dark:text-white">{spots}명</b> 뽑는데 <b className="font-extrabold text-gray-900 dark:text-white animate-fcfs-spark">{applied}명</b> 응모 중</span>
+        : <span>지금 <b className="font-extrabold text-gray-900 dark:text-white animate-fcfs-spark">{applied}명</b> 응모 중</span>}
       {deadlineNear && <span className="font-semibold text-brand-text">· 마감 임박</span>}
     </span>
   )

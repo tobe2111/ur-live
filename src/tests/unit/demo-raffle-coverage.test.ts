@@ -116,3 +116,31 @@ describe('추첨 설정 자가치유 (기존 데모 백필)', () => {
     expect(read('src/worker/utils/demo-raffle.ts')).toContain('demoRaffleDefaults')
   })
 })
+
+describe('추첨 배지 문구 — "몇 명 뽑는데 몇 명 응모" (대표 2026-08-03)', () => {
+  // ⚠️ **주석을 걷어낸 실행 코드로만 판정한다.** 원문으로 보면 이 파일 헤더의 설명 문장이
+  //    검사어를 대신 만족시켜 초록이 뜬다(첫 판이 실제로 그랬다 — 렌더에서 정원을 빼도 통과했다).
+  const badge = read('src/features/group-buy/FcfsBadge.tsx')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n')
+
+  it('두 변형 모두 정원을 렌더한다 — 2026-07-22 미노출 결정을 대표가 뒤집었다', () => {
+    // 문자열 존재가 아니라 **정원 값이 실제로 그려지는지**를 본다.
+    const drawsSpots = badge.match(/\{spots\}/g) || []
+    expect(drawsSpots.length, 'inline·overlay 두 곳에서 정원을 그려야 한다').toBeGreaterThanOrEqual(2)
+    expect(badge, 'inline 문구').toContain('뽑는데')
+    expect(badge, 'overlay 문구(좁은 공간)').toContain('뽑기')
+  })
+
+  it('공동구매 오독을 부르는 표현을 쓰지 않는다', () => {
+    // 2026-07-22 에 정원을 숨긴 이유가 *"N명 모여야 성사"* 오독 + CS 였다.
+    // 정원 자체가 아니라 **목표치로 읽히는 문구**가 문제다 — 그 표현만 금지한다.
+    for (const bad of ['명 모집', '명 목표', '모여야', '달성']) {
+      expect(badge, `"${bad}" 는 공동구매 목표로 읽힌다 — 추첨 정원이 아니다`).not.toContain(bad)
+    }
+  })
+
+  it('정원이 0/미설정이면 응모자만 보여준다 (없는 숫자를 지어내지 않는다)', () => {
+    expect(badge, 'spots=0 폴백 분기가 없다').toContain('지금 ')
+  })
+})
