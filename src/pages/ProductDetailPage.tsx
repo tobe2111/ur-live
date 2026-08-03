@@ -32,8 +32,9 @@ import AccordionSection from './product-detail/AccordionSection'
 import GroupBuyCountdown from './product-detail/GroupBuyCountdown'
 import ProductReviews from './product-detail/ProductReviews'
 import ReferralSection from './product-detail/ReferralSection'
+import PurchasePicker from './product-detail/PurchasePicker'
 import { isMallProduct } from '@/shared/mall/resolve'
-import { PickupNotice, DeliveryNotice } from '@/pages/product-detail/ReceiveMethodNotice'
+import { PickupNotice, DeliveryNotice, hasPickupInfo, pickupSummaryLine } from '@/pages/product-detail/ReceiveMethodNotice'
 import { readMallOrigin } from '@/shared/mall/origin'
 import { parseUTCDate } from '@/utils/date'
 
@@ -397,6 +398,7 @@ export default function ProductDetailPage() {
   //     ② 픽업 여부   = "이 상품은 배송이 아닌가" → `ReceiveMethodNotice` 의 두 형제가
   //        **같은 `pickup` 입력**을 읽어 배타적으로 그린다(여기서 판정하지 않는 것이 요점).
   const mallProduct = isMallProduct(product.mall_id)
+  const pickupProduct = hasPickupInfo(product.pickup)
 
   // Parse detail images
   let detailImages: string[] = []
@@ -589,65 +591,21 @@ export default function ProductDetailPage() {
         {/* v4: description은 상세정보 섹션에서 통합 표시 */}
 
         {/* 🛡️ 2026-05-24: 사용자 요청 — 옵션 선택을 상세 정보 위로 이동.
-            구매 의도 단계에서 옵션 우선 노출 → 결정 후 상세 정보 확인 패턴. */}
-        {/* v4 옵션 선택 */}
-        <div className="h-2 bg-gray-50 dark:bg-[#161616]" />
-        <section className="px-5 py-5">
-          <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">{t('productDetail.optionSelect')}</p>
-          {options.length > 0 ? (
-            <div className="space-y-2">
-              {options.map((opt: ProductOption) => {
-                // 🛡️ 2026-07-02 (쇼핑 전수조사): 옵션 품절 표시/선택 차단. stock 은 canonical(서버 COALESCE(stock)).
-                //   stock===0 은 '재고관리 안 함(무제한)' 의미가 아니라 실제 0 일 때만 품절 — 서버 주문 생성도
-                //   stock>0 일 때만 CAS 차감하므로 UI 도 명시적 0 만 품절 처리(옵션 재고 미설정 상품과 구분 불가한
-                //   한계는 있으나, 재고 입력한 셀러의 품절 옵션을 못 고르게 하는 게 우선).
-                const soldOut = opt.stock === 0
-                const selected = selectedOptions.option === Number(opt.id)
-                return (
-                <button key={opt.id} disabled={soldOut} onClick={() => !soldOut && setSelectedOptions({ option: Number(opt.id) })}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${
-                    soldOut ? 'border-gray-200 dark:border-[#2A3446] opacity-40 cursor-not-allowed'
-                    : selected ? 'border-gray-900 bg-gray-50 dark:bg-[#1A2334]' : 'border-gray-200 dark:border-[#2A3446]'
-                  }`}>
-                  <span className={`text-[12px] ${soldOut ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>{opt.option_value}</span>
-                  <span className="flex items-center gap-2">
-                    {soldOut && <span className="text-[11px] text-red-500 font-medium">{t('product.optionSoldOut', { defaultValue: '품절' })}</span>}
-                    {!soldOut && opt.price_adjustment !== 0 && (
-                      <span className="text-[11px] text-red-500 font-bold">
-                        {(opt.price_adjustment || 0) > 0 ? '+' : ''}{t('productDetail.priceWon', { defaultValue: '{{value}}원', value: formatNumber(opt.price_adjustment || 0) })}
-                      </span>
-                    )}
-                  </span>
-                </button>
-                )
-              })}
-            </div>
-          ) : (
-            <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A3446]">
-              <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('productDetail.optionPlaceholder')}</span>
-              <svg className="w-3.5 h-3.5 text-gray-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
-            </button>
-          )}
-          <PickupNotice pickup={product.pickup} />
-
-          {/* 🚑 2026-07-02 (상세 리뷰): 수량 스텝퍼 부재 — setQuantity 미배선이라 2개 이상 즉시구매 불가하던 것 */}
-          <div className="flex items-center justify-between mt-3">
-            <span className="text-[12px] font-bold text-gray-900 dark:text-white">{t('productDetail.quantity', { defaultValue: '수량' })}</span>
-            <div className="flex items-center gap-3 border border-gray-200 dark:border-[#2A3446] rounded-xl px-2 py-1">
-              <button type="button" aria-label="수량 감소" onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-8 h-8 flex items-center justify-center text-gray-900 dark:text-white font-bold disabled:opacity-30" disabled={quantity <= 1}>−</button>
-              <span className="min-w-[2ch] text-center text-[14px] font-bold text-gray-900 dark:text-white">{quantity}</span>
-              <button type="button" aria-label="수량 증가" onClick={() => setQuantity((q) => Math.min(Math.max((product.stock ?? 0), (product.stock_quantity ?? 0), 1), 99, q + 1))}
-                className="w-8 h-8 flex items-center justify-center text-gray-900 dark:text-white font-bold">＋</button>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 mt-3">
-            <span className="text-[11px] text-gray-400 dark:text-gray-500">{t('productDetail.pointReward')}</span>
-            <span className="text-[11px] font-bold text-gray-900 dark:text-white">{t('productDetail.maxPointReward', { defaultValue: '최대 {{value}}딜', value: formatNumber(Math.round(displayPrice * 0.03)) })}</span>
-          </div>
-          {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시) */}
-          <div className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500">{t('productDetail.vatIncluded')}</div>
-        </section>
+            구매 의도 단계에서 옵션 우선 노출 → 결정 후 상세 정보 확인 패턴.
+            🏬 2026-08-02: 마크업을 `product-detail/PurchasePicker` 로 이동(로직 불변) — 시안 A-2 의
+            픽업 벌을 여기 인라인으로 더하면 978줄 동결 파일이 두 배로 자란다. */}
+        {!pickupProduct && <div className="h-2 bg-gray-50 dark:bg-[#161616]" />}
+        <PurchasePicker
+          options={options}
+          selectedOptionId={selectedOptions.option}
+          onSelectOption={(oid) => setSelectedOptions({ option: oid })}
+          quantity={quantity}
+          onQuantity={setQuantity}
+          maxQuantity={Math.max((product.stock ?? 0), (product.stock_quantity ?? 0), 1)}
+          displayPrice={displayPrice}
+          variant={pickupProduct ? 'pickup' : 'default'}
+          notice={<PickupNotice pickup={product.pickup} />}
+        />
 
         {/* v4 상세 정보 (이미지 + 설명 + 펼쳐보기) */}
         <div className="h-2 bg-gray-50 dark:bg-[#161616]" />
@@ -863,7 +821,7 @@ export default function ProductDetailPage() {
               ...(product.category ? [{ label: t('productDetailPage.category'), value: product.category }] : []),
             ]} />
           </AccordionSection>
-          <AccordionSection title={t('productDetailPage.shippingExchange')}>
+          <AccordionSection title={hasPickupInfo(product.pickup) ? '교환·반품·환불 안내' : t('productDetailPage.shippingExchange')}>
             <ReturnPolicySection />
           </AccordionSection>
           <AccordionSection title={t('productDetailPage.notes')}>
@@ -885,6 +843,9 @@ export default function ProductDetailPage() {
           price={product.price}
           originalPrice={product.original_price}
           dealOnly={Number(product.deal_only) === 1}
+          variant={pickupProduct ? 'pickup' : 'default'}
+          summaryLeft={pickupProduct ? pickupSummaryLine(quantity, product.pickup?.date) : undefined}
+          summaryTotal={displayPrice * quantity}
         />
       </Suspense>
 

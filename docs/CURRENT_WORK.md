@@ -5494,9 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 85건 · 최신순 · 이 목록은 자동 생성된다._
+_총 86건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-02**
+- [2026-08-02 — 운영자 몰 파일럿 시안 적용 (화면 A · A-2 · B · C · D)](handoff/2026-08-02-mall-design-apply-a-to-d.md)
 - [2026-08-02 — 몰 손님이 보는 화면의 경계 (기준 ⑤) + 디자인 의뢰 추가분](handoff/2026-08-02-mall-consumer-surface-boundary.md)
 - [08-02 — 매장 풀의 97.6%가 학원이었다. 대표가 지목한 네 업종은 **0건**](handoff/2026-08-02-kakao-store-voucher-grid.md)
 - [마감 직전엔 집지 않는다 — 확정 실패 + 가짜 도장 차단 (2026-08-02)](handoff/2026-08-02-enrich-deadline-window.md)

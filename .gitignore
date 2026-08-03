@@ -76,3 +76,6 @@ GoogleService-Info.plist
 dist-test/
 .claude/worktrees/
 dist-ads/
+
+# 렌더 스모크 산출물(스크린샷·결과 JSON) — 커밋 대상 아님
+artifacts/

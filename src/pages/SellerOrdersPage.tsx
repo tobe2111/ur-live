@@ -35,6 +35,8 @@ import {
 // 🛡️ 2026-05-27 (loading P1): 모달 ~10-15KB lazy — 사용자가 상세 클릭 시만 fetch.
 const OrderDetailModal = lazy(() => import('./seller-orders/OrderDetailModal'))
 import { StatusBadge, useStatusText, nextStatusOf } from './seller-orders/statusHelpers'
+import BulkActionBar from './seller-orders/BulkActionBar'
+import MobileOrderList from './seller-orders/MobileOrderList'
 import type { Order } from './seller-orders/types'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / parseShippingAddress / status 헬퍼 / 주문 상세 모달
@@ -440,8 +442,11 @@ export default function SellerOrdersPage() {
           <BrandLoader />
         ) : (
           <>
-            {/* Orders List */}
-            <div className="bg-white rounded-lg shadow-sm border">
+            {/* 📱 모바일 — 카드 뷰(시안 화면 C). PC 표는 아래 그대로 유지한다. */}
+            <MobileOrderList orders={filteredOrders} onSelect={viewOrderDetail} />
+
+            {/* Orders List — 🖥️ PC 표(의뢰서 §5.3 "사장님 대시보드는 PC 에서 넓게") */}
+            <div className="hidden md:block bg-white rounded-lg shadow-sm border">
               {currentOrders.length === 0 ? (
                 <div className="text-center py-20">
                   <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -456,34 +461,14 @@ export default function SellerOrdersPage() {
                 <div className="overflow-x-auto">
                   {/* 일괄 처리 바 */}
                   {selectedIds.size > 0 && (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border-b border-blue-200">
-                      <span className="text-sm font-medium text-blue-700">{t('seller.selectedCount', { count: selectedIds.size })}</span>
-                      <select
-                        value={bulkStatus}
-                        onChange={e => setBulkStatus(e.target.value)}
-                        className="text-sm border border-blue-300 rounded-lg px-2 py-1.5 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">{t('common.status')}</option>
-                        <option value="PREPARING">{t('seller.statusPreparing')}</option>
-                        <option value="SHIPPING">{t('seller.statusShipping')}</option>
-                        <option value="DELIVERED">{t('seller.statusDelivered')}</option>
-                        <option value="CANCELLED">{t('seller.statusCancelled')}</option>
-                      </select>
-                      <button
-                        onClick={handleBulkStatusChange}
-                        disabled={!bulkStatus || bulkLoading}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                      >
-                        {bulkLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                        {t('seller.bulkChange')}
-                      </button>
-                      <button
-                        onClick={() => setSelectedIds(new Set())}
-                        className="text-sm text-gray-500 hover:text-gray-700"
-                      >
-                        {t('seller.deselectAll')}
-                      </button>
-                    </div>
+                    <BulkActionBar
+                      count={selectedIds.size}
+                      status={bulkStatus}
+                      onStatusChange={setBulkStatus}
+                      onApply={handleBulkStatusChange}
+                      applying={bulkLoading}
+                      onClear={() => setSelectedIds(new Set())}
+                    />
                   )}
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b">
@@ -550,9 +535,9 @@ export default function SellerOrdersPage() {
               )}
             </div>
 
-            {/* Pagination */}
+            {/* Pagination — 표 전용. 모바일 카드 뷰는 전체를 날짜별로 묶어 보여준다. */}
             {totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-between">
+              <div className="mt-6 hidden md:flex items-center justify-between">
                 <div className="text-sm text-gray-600">
                   {t('seller.paginationInfo', { start: startIndex + 1, end: Math.min(endIndex, filteredOrders.length), total: filteredOrders.length })}
                 </div>
