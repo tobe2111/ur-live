@@ -15,8 +15,12 @@
 
 import { isVoucherCategory } from './constants/voucher-categories'
 
+// 🏷️ 명칭 주의 (2026-08-03): **교환권 ≠ 이용권.**
+//   교환권 = 기프티콘·KT (`deal_only=1`) → 딜 결제
+//   이용권 = 식당·뷰티·숙박 매장권 (`meal_voucher` 등 카테고리) → **카드 결제**(group_buy_toss)
+//   카테고리 이름에 `_voucher` 가 붙는다고 딜 결제가 아니다 — 이 혼동이 실제 오판을 낳았다.
 export type ProductFlow =
-  | 'voucher_deal'         // 교환권 — 딜 결제, 즉시 발급, /my-vouchers 이동
+  | 'voucher_deal'         // 교환권(deal_only=1) — 딜 결제, 즉시 발급, /my-vouchers 이동
   | 'group_buy_toss'       // 공동구매 (일반 상품) — Toss 결제, 배송, voucher 발급
   | 'standard_checkout'    // 일반 쇼핑 — Toss 결제, 배송, 장바구니 지원
 

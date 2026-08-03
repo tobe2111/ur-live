@@ -9,7 +9,7 @@
 ## 🚦 한 줄 점검
 
 ```bash
-bash scripts/audit-gate.sh           # 전체 (84개 불변식)
+bash scripts/audit-gate.sh           # 전체 (86개 불변식)
 bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|money|schema|classify|ui|structure|deploy)
 ```
 
@@ -122,3 +122,32 @@ bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|mone
 ⚠️ **못 잡는 것**: 분류가 *틀린* 경우(외부 쿼터를 `cf` 로 적음) — 문자열로 판정 불가. 등기부의 `why` 를 사람이 읽어야 한다.
 ⚠️ 첫 판은 **R1 이 헛돌았다**: raw `parseInt` 만 봐서 리졸버로 배선하는 순간 스캐너 눈에서 사라졌다
 (등기부에서 지워도 통과). 리졸버 경유 형태도 함께 스캔하도록 고쳐 red 확인.
+
+---
+
+## 💳 결제수단 판정 SSOT (`check-payment-flow-ssot.mjs`) — 2026-08-03
+
+**불변식**: 소비자 표면이 결제수단을 **카테고리로 정하지 않는다.** 판정은
+`src/shared/product-flow.ts` `getProductFlow()` — `deal_only=1` → 딜(**교환권**),
+`group_buy_status='active'` → 카드(**이용권**·공구), 그 외 → 카드.
+
+**왜**: 세션이 낡은 주석(*교환권을 voucher 카테고리와 등치*)을 믿고 대표에게
+**"이용권은 카드로 못 산다"** 고 보고했다. `meal_voucher` 인 김밥천국 할인권은 **카드 결제**이고
+SSOT 주석이 바로 그 예를 든다. 그 오판으로 *"카드로 살 수 있는 상품이 없으니 새로 만들어야 한다"* 는
+잘못된 절차까지 갈 뻔했다(실제로는 라이브에 3개 있었다).
+
+⚠️ **못 잡는 것**: 서버가 런타임에 실제로 무엇을 태우는지. 그건 실결제로만 안다.
+⚠️ **첫 판의 R1 이 헛돌았다**: `payment_method: 'deal'` **리터럴**만 봐서, 정작 잡아야 할
+`payment_method: isVoucherCategory(c) ? 'deal' : 'toss'` 를 통과시켰다(주입 검증에서 초록이 떠 발견).
+지금은 `payment_method` 대입 지점에서 위로 훑어 **먼저 만나는 근거**(SSOT vs 카테고리)로 판정한다.
+
+## 🚦 기능 현황판 동기 (`generate-feature-status.mjs --check`) — 2026-08-03
+
+**불변식**: `docs/FEATURE_STATUS.md` 가 `src/shared/feature-flags.ts` 와 일치한다(자동 생성).
+
+**왜**: 이 레포엔 **종료됐는데 코드가 온전히 남은 기능**이 9개다. 라우트·페이지·API 가 다 살아 있고
+꺼진 사실은 플래그 한 줄로만 표현된다 ⇒ **파일을 열어보는 것으로는 판단할 수 없다.**
+세션이 이미 종료된 **딜 충전**(2026-07-18)을 대표에게 실결제 절차로 제안했다.
+
+⚠️ **못 잡는 것**: 서버측 게이트(`platform_settings`·env)와 데이터로만 꺼진 것(공구 세션·추첨 설정).
+표는 **표면 노출**만 말한다 — 🟢 라고 경로가 완주된다는 뜻이 아니다.
