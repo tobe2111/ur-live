@@ -14,6 +14,7 @@ import { Hono } from 'hono'
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
 import { makeHourGates, dailyGapMinutes, laneCadenceFields, staleGapMinutes, createLaneRegistry, recordKnownLanes, buildAgeInfo } from './lane-cadence'
+import { registerPublicDataCrons } from './cron-public-data'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
@@ -538,18 +539,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
     kick('/__ads/collect-localdata?mode=backfill', async () => { const { runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataBackfill(env) }, { beat: 'collect-localdata?mode=backfill' })
   }
-  const envx = env as unknown as { ADS_COMMERCE_ENABLED?: string; ADS_FRANCHISE_ENABLED?: string; ADS_NOTICE_ENABLED?: string }
-  // 🛒 통신판매사업자 — 짝수시(상가정보와 같은 창이나 별도 커서·예산). 🏢 공정위 가맹 — hourUTC===22(주 1회 성격, 매일 소량 페이지).
-  if (envx.ADS_COMMERCE_ENABLED === 'true') {
-    gates.everyNHours(2, 0, '/__ads/collect-commerce', async () => { const { runCommerceCollect } = await import('@/features/marketing/api/commerce-notify-collect'); return runCommerceCollect(env) })
-  }
-  if (envx.ADS_FRANCHISE_ENABLED === 'true') {
-    gates.dailyAt(22, '/__ads/collect-franchise', async () => { const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect'); return runFranchiseCollect(env) })
-  }
-  // 📢 공고 스캐너 — 일 1회(hourUTC===21 = KST 06시). 게이트 ADS_NOTICE_ENABLED.
-  if (envx.ADS_NOTICE_ENABLED === 'true') {
-    gates.dailyAt(21, '/__ads/scan-notices', async () => { const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return runNoticeScan(env) })
-  }
+  // 🏛️ 공공데이터 계열 4종(통신판매·공정위가맹·전통시장·공고) — 시각/게이트는 `cron-public-data.ts` SSOT.
+  registerPublicDataCrons(env, gates)
   runAutobidJob(env, adsBeat, (p) => ctx.waitUntil(p))
 
   // ── 매일 18:00 UTC — 일일 배치(가격→순위→스냅샷→알림→자동입찰 섀도우) ────────

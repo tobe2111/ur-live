@@ -53,12 +53,19 @@ export type ClassifyConfidence = 'registry' | 'evidence' | 'keyword' | 'none'
  *  자동으로 재검사 대상이 된다(안 올리면 이미 스탬프된 잘못된 행이 영구 방치 — 이 사고의 원인).
  *  v3 (2026-07-27): 안내-페이지 제목 어휘(위치안내/이용안내/오시는길/지정 게시대 — 대표 신고
  *  "지정 게시대 위치안내" 업체명) NOTICE_WORD 추가. */
-export const CLASSIFY_RULES_VERSION = 4 // 2026-07-29: 공동구매 규칙 추가 — 기존 171k 행도 소급 재분류돼야 새 카테고리에 잡힌다
+export const CLASSIFY_RULES_VERSION = 5 // 2026-08-03: 'market'(전통시장) 권위 소스 추가
+//  ⚠️ 이 bump 의 소급 대상은 **사실상 0** 이다(아직 source='market' 행이 없다). 그런데도 올린 이유:
+//    이 상수의 실패 모드는 비대칭이다 — 불필요하게 올리면 **한 번 더 훑는 비용**이지만, 안 올리면
+//    **영구히 옛 판정에 갇힌다**(재검사 쿼리에 시간 폴백이 없다). 애매하면 올리는 쪽이 맞다.
+//  v4 (2026-07-29): 공동구매 규칙 추가 — 기존 171k 행도 소급 재분류돼야 새 카테고리에 잡힌다.
 
 /** 카테고리 권위 소스 — 이 소스들의 category 는 **정부 등록부의 공식 업종**(상가정보 업종코드·통신판매
  *  신고업태·공정위 가맹·나라장터 업종)이라 텍스트 정규식(BIZ_RULES)이 덮어쓰면 안 된다(권위 역전 금지).
  *  판별(공고/정부페이지 차단)과 lead_type 부여는 이 소스들에도 그대로 적용. */
-export const REGISTRY_CATEGORY_SOURCES = new Set(['storeinfo', 'commerce', 'franchise', 'nara', 'registry'])
+// 🏪 'market'(전통시장 표준데이터) — 시장 이름("사기막골도자기시장")은 아래 `상인회|번영회|…` 규칙에
+//   **안 걸린다.** 원부가 이미 "전통시장"이라고 말해 주는데 이름만 보고 다시 추측하면 카테고리가 비거나
+//   엉뚱해진다 → 이 소스의 category/subcategory 는 권위값으로 둔다.
+export const REGISTRY_CATEGORY_SOURCES = new Set(['storeinfo', 'commerce', 'franchise', 'nara', 'registry', 'market'])
 
 export interface ClassifyInput {
   company_name?: string | null

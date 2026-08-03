@@ -37,6 +37,10 @@ publicDataRoutes.post('/__ads/collect-commerce', lane(async (env) => {
 publicDataRoutes.post('/__ads/collect-franchise', lane(async (env) => {
   const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect'); return runFranchiseCollect(env)
 }))
+// 🏪 상권 축 — 전국전통시장표준데이터(연락처가 붙어 오는 유일한 상권 소스). 수동=게이트 무관.
+publicDataRoutes.post('/__ads/collect-market', lane(async (env) => {
+  const { runMarketCollect } = await import('@/features/marketing/api/market-collect'); return runMarketCollect(env)
+}))
 publicDataRoutes.post('/__ads/scan-notices', lane(async (env) => {
   const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return runNoticeScan(env)
 }))
