@@ -13,13 +13,14 @@ import { envDriftInfo } from './env-drift'
 import { Hono } from 'hono'
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
-import { makeHourGates, dailyGapMinutes, hourlyGapMinutes, staleGapMinutes, createLaneRegistry, recordKnownLanes, buildAgeInfo } from './lane-cadence'
+import { makeHourGates, dailyGapMinutes, laneCadenceFields, staleGapMinutes, createLaneRegistry, recordKnownLanes, buildAgeInfo } from './lane-cadence'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
 import { publicDataRoutes } from './public-data.routes'
 import { chainRoutes } from './chain.routes'
-import { createBeatBatch, makeBeatWriter } from './beat-batch'; import { writeTickSummary } from './tick-history-write'
+import { createBeatBatch, makeBeatWriter } from './beat-batch'
+import { closeTick } from './tail-bound'
 import { runAutobidJob, runFollowupJob, runWeeklyJob } from './side-jobs'
 import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
 import { laneUrl, selfBeatMiddleware } from './self-beat'
@@ -57,8 +58,6 @@ app.post('/__ads/collect', async (c) => {
     return c.json({ ok: true, stats })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
-
-
 
 // 🔀 업체형 블로그/카페 → B2B 파트너풀 라우팅(수동 전용). **기본 dry-run** — `?apply=1` 이어야 실제 저장.
 //   외부 요청 0회(D1 만) — 상호+블로그URL 을 넘기면 파트너풀 보강 레인이 전화/이메일을 채운다.
@@ -268,7 +267,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   값을 만드는 보강 레인이 10시간 굶은 원인). 이제 모아 두었다가 예산만큼만 띄운다.
   //   근거·배정 규칙·유료 전환 시 자동 확대: `dispatch-budget.ts`.
   const pending: RunnableLane[] = []
-  const kick = (path: string, fallback: () => Promise<unknown>, opts?: { gap?: number; beat?: string }): void => {
+  const kick = (path: string, fallback: () => Promise<unknown>, opts?: { gap?: number; period?: number; beat?: string }): void => {
     const beat = opts?.beat || path.replace(/^\/__ads\//, '')
     laneReg.note(path, opts?.beat)   // 하트비트 이름과 **같은 이름**으로 등록해야 never_fired/orphan 이 어긋나지 않는다
     /**
@@ -290,7 +289,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
      *   ⇒ 문서화된 그 유도를 **여기서 실제로 한다**. 게이트 레인(`gates.*`)은 이미 자기 주기를
      *   명시로 넘기므로 이 기본값에 닿지 않는다 — 일 1회 레인이 매시간으로 오인될 위험은 없다.
      */
-    pending.push({ beat, path, fallback, gapMin: opts?.gap ?? hourlyGapMinutes() })
+    pending.push({ beat, path, fallback, ...laneCadenceFields(opts) })  // 주기/임계 조립 SSOT: lane-cadence.ts
   }
   const gates = makeHourGates(hourUTC, kick, laneReg)
   /**
@@ -585,12 +584,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   (`selectLanesForHour` 가 모든 레인이 `groups` 시간 안에 반드시 한 번 돎을 보장 — 유닛이 강제).
   const { kicked, ranNames } = await dispatchPendingLanes({ pending, env: env as never, hourUTC, laneUrl, beat: adsBeat, waitUntil: (p) => ctx.waitUntil(p) })
 
-  // 🧾 **모든 디스패치가 끝난 뒤** 한 번에 쓴다(기다리지 않으면 빈 배치를 쓰고 이후 기록은 영영 못 나간다).
-  //   📼 이어서 이 회차 한 줄을 이력에 남긴다(근거·한계는 `tick-history.ts` 헤더).
-  ctx.waitUntil(Promise.allSettled(kicked).then(async () => {
-    await beats.flush()
-    await writeTickSummary(env.DB, tickStartIso, hourUTC, ranNames, beats.seenBeats, env as never)
-  }))
+  // 🧾 디스패치 후 한 번에 쓴다(빈 배치를 쓰면 이후 기록이 영영 못 나간다) + 이력 한 줄. ⏳ 단 **무한정
+  //   기다리지 않는다** — 근거·실측·못 기다린 레인을 왜 판정에서 빼는지는 `tail-bound.ts` 헤더에 있다.
+  ctx.waitUntil(closeTick({ DB: env.DB, env: env as never, kicked, ranNames, at: tickStartIso, hourUTC, beats }))
 }
 
 // ⏰ DO 알람 레인 — wrangler-ads.toml 의 durable_objects 바인딩이 이 export 를 찾는다.

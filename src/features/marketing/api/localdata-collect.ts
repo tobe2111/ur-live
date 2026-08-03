@@ -24,7 +24,7 @@ import { describePublicDataFailure, serviceKeyParam, isNoValue } from './public-
 import { type FetchBudget } from './influencer-discovery'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envLaneBudget , envPlanValue} from './collect-budget'
 import {
-  buildLicenseUrl, findVariant, probeLicenseVariants, redactServiceKey, resolveLicensePageSize,
+  buildLicenseUrl, findVariant, probeLicenseVariants, redactServiceKey, resolveLicensePageSize, resolveLicenseOperation,
   shouldProbe, type ProbeAttempt, type VariantState,
 } from './license-url'
 import { fieldCoverage, coverageNote, type FieldCoverage } from './field-coverage'
@@ -149,7 +149,7 @@ function extractRows(data: Record<string, unknown> | null): { rows: RawLicense[]
  */
 async function maybeProbeVariant(opts: {
   DB: D1Database; base: string; endpoint: string; key: string; day: string
-  sizeEnv: string | null; envVariant: string; variantId: string
+  sizeEnv: string | null; envVariant: string; variantId: string; opEnv?: string | null
   vState: VariantState | null; budget: FetchBudget; stamp: string
   fetchUrl: (u: string) => Promise<{ count: number; msg?: string }>
   spendD1: () => void
@@ -159,7 +159,7 @@ async function maybeProbeVariant(opts: {
   if (opts.budget.left <= LICENSE_VARIANT_PROBE_COST) return null      // 반쯤 하다 끊기면 판정이 안 된다
   const pr = await probeLicenseVariants({
     base: opts.base, endpoint: opts.endpoint, keyParam: serviceKeyParam(opts.key), day: opts.day,
-    sizeOverride: opts.sizeEnv, skip: [opts.variantId],
+    sizeOverride: opts.sizeEnv, skip: [opts.variantId], operation: resolveLicenseOperation(opts.opEnv),
     canSpend: () => !outOfBudget(opts.budget),
     fetchPage: async (u) => { const r = await opts.fetchUrl(u); return { ok: !r.msg, rows: r.count, msg: r.msg } },
   })
@@ -201,36 +201,55 @@ async function fetchLicenseUrl(url: string, budget?: FetchBudget): Promise<{ ite
  */
 async function fetchLicensePage(
   base: string, endpoint: string, key: string, dayYmd: string, pageIndex: number,
-  variantId: string, sizeEnv: string | null | undefined, budget?: FetchBudget,
+  variantId: string, sizeEnv: string | null | undefined, budget?: FetchBudget, opEnv?: string | null,
 ): Promise<{ items: RawLicense[]; count: number; msg?: string; size: number; url: string }> {
   const variant = findVariant(variantId)
   const size = resolveLicensePageSize(sizeEnv, variant)
   // 🔑 serviceKeyParam — 인코딩/디코딩 키 어느 쪽이 저장돼 있어도 이중 인코딩되지 않게(public-data-diag SSOT).
-  const url = buildLicenseUrl({ base, endpoint, keyParam: serviceKeyParam(key), day: dayYmd, page: pageIndex, variant, size })
+  //    🔑 operation — 경로 끝 `/info`(license-url SSOT). 기관이 이름을 바꾸면 env 로 배포 없이 고친다.
+  const url = buildLicenseUrl({ base, endpoint, keyParam: serviceKeyParam(key), day: dayYmd, page: pageIndex, variant, size, operation: resolveLicenseOperation(opEnv) })
   const r = await fetchLicenseUrl(url, budget)
   return { ...r, size, url }
 }
 
-/** 원항목 → StoreProspect 매핑(SSOT — 일일 변동분·백필 공용). 소문자 우선 + 카멜 폴백. */
-function toProspect(it: RawLicense, endpoint: string, category: string): StoreProspect {
-  const road = g(it, 'rdnwhladdr', 'rdnWhlAddr', 'rdnWhladdr')
-  const lot = g(it, 'sitewhladdr', 'siteWhlAddr', 'siteWhladdr')
-  const trd = g(it, 'trdstategbn', 'trdStateGbn')
+/**
+ * 원항목 → StoreProspect 매핑(SSOT — 일일 변동분·백필 공용).
+ *
+ * ## 🪤 이름이 두 벌이다 — 그리고 그게 **조용한 0건**의 두 번째 원인이었다 (2026-08-03 실측)
+ * 폐쇄된 `localdata.go.kr` 은 소문자였다(`bplcnm`/`sitetel`/`mgtno`). 이관된 공공데이터포털
+ * (`apis.data.go.kr/1741000/<업종>/info`)은 **완전히 다른 대문자 스네이크**를 쓴다:
+ * ```
+ *   bplcnm    → BPLC_NM        sitetel     → TELNO
+ *   mgtno     → MNG_NO         rdnwhladdr  → ROAD_NM_ADDR
+ *   trdstategbn → SALS_STTS_CD sitewhladdr → LOTNO_ADDR
+ * ```
+ * ⚠️ **경로만 고치면 HTTP 200 이 뜨는데 저장은 여전히 0 이다** — 모든 필드가 빈 문자열로 읽혀
+ * `mgt_no` 가 비고, 복합키가 성립하지 않아 행이 통째로 버려지기 때문이다. 200 은 성공이 아니다.
+ * 그래서 경로 수리와 **같은 커밋에서** 이름을 함께 넓힌다.
+ *
+ * 옛 이름을 지우지 않는 이유: 백필 캐시·다른 기관 응답이 아직 소문자로 올 수 있다. 별칭은 **더하기만** 한다.
+ */
+export function toProspect(it: RawLicense, endpoint: string, category: string): StoreProspect {
+  const road = g(it, 'rdnwhladdr', 'rdnWhlAddr', 'rdnWhladdr', 'ROAD_NM_ADDR')
+  const lot = g(it, 'sitewhladdr', 'siteWhlAddr', 'siteWhladdr', 'LOTNO_ADDR')
+  const trd = g(it, 'trdstategbn', 'trdStateGbn', 'SALS_STTS_CD')
+  const team = g(it, 'opnsfteamcode', 'opnSfTeamCode', 'OPN_ATMY_GRP_CD')
   return {
     opn_svc_id: g(it, 'opnsvcid', 'opnSvcId') || endpoint,
-    opn_sf_team_code: g(it, 'opnsfteamcode', 'opnSfTeamCode'),
-    mgt_no: g(it, 'mgtno', 'mgtNo'),
-    biz_name: g(it, 'bplcnm', 'bplcNm'),
+    opn_sf_team_code: team,
+    mgt_no: g(it, 'mgtno', 'mgtNo', 'MNG_NO'),
+    biz_name: g(it, 'bplcnm', 'bplcNm', 'BPLC_NM'),
     category,
-    uptae: g(it, 'uptaenm', 'uptaeNm') || null,
+    // 위생업태명은 업종마다 키가 갈린다 — 음식점 `BZSTAT_SE_NM`(경양식) · 이·미용 `SNTTN_BZSTAT_NM`(일반이용업).
+    uptae: g(it, 'uptaenm', 'uptaeNm', 'SNTTN_BZSTAT_NM', 'BZSTAT_SE_NM') || null,
     addr_road: road || null, addr_lot: lot || null,
-    phone: g(it, 'sitetel', 'siteTel') || null,
-    local_code: g(it, 'opnsfteamcode', 'opnSfTeamCode', 'localcode', 'localCode') || null,
+    phone: g(it, 'sitetel', 'siteTel', 'TELNO') || null,
+    local_code: g(it, 'opnsfteamcode', 'opnSfTeamCode', 'localcode', 'localCode', 'OPN_ATMY_GRP_CD') || null,
     region: pickRegion(road || lot) || null,
-    trd_state: trd || null, trd_state_nm: g(it, 'trdstatenm', 'trdStateNm') || null,
-    apv_perm_ymd: g(it, 'apvpermymd', 'apvPermYmd').replace(/\D/g, '').slice(0, 8) || null,
-    last_mod_ts: g(it, 'lastmodts', 'lastModTs') || null,
-    lon: Number(g(it, 'x')) || null, lat: Number(g(it, 'y')) || null,
+    trd_state: trd || null, trd_state_nm: g(it, 'trdstatenm', 'trdStateNm', 'SALS_STTS_NM') || null,
+    apv_perm_ymd: g(it, 'apvpermymd', 'apvPermYmd', 'LCPMT_YMD').replace(/\D/g, '').slice(0, 8) || null,
+    last_mod_ts: g(it, 'lastmodts', 'lastModTs', 'LAST_MDFCN_PNT') || null,
+    lon: Number(g(it, 'x', 'CRD_INFO_X')) || null, lat: Number(g(it, 'y', 'CRD_INFO_Y')) || null,
   }
 }
 
@@ -308,6 +327,8 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
   //   env 고정은 "대표가 스펙을 확인했다" 는 뜻이므로 자동 탐색이 그 결정을 덮어쓰지 않는다.
   const envVariant = String((env as unknown as { ADS_LOCALDATA_VARIANT?: string }).ADS_LOCALDATA_VARIANT || '').trim()
   const sizeEnv = (env as unknown as { ADS_LOCALDATA_PAGE_SIZE?: string }).ADS_LOCALDATA_PAGE_SIZE || null
+  // 🔑 경로 끝 오퍼레이션(`/info`). 미설정이면 기본값 — 기관이 이름을 바꾸면 env 로 배포 없이 고친다.
+  const opEnv = (env as unknown as { ADS_LICENSE_OPERATION?: string }).ADS_LICENSE_OPERATION ?? null
   let vState: VariantState | null = null
   try { const v = setting(VARIANT_KEY); vState = v ? JSON.parse(v) as VariantState : null } catch { vState = null }
   let variantId = findVariant(envVariant || vState?.id).id
@@ -343,7 +364,7 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
       const [endpoint, category] = eps[ei]
       for (let page = 1; page <= MAX_PAGES; page++) {
         if (outOfBudget(budget)) { stoppedAt = ei; break } // 이 업종은 아직 안 끝났다 → 다음 틱이 이 업종부터
-        const { items, count, msg, size, url } = await fetchLicensePage(base, endpoint, key, item.day, page, variantId, sizeEnv, budget)
+        const { items, count, msg, size, url } = await fetchLicensePage(base, endpoint, key, item.day, page, variantId, sizeEnv, budget, opEnv)
         if (msg) lastMsg = msg
         // ⚠️ 한도로 **이 요청이 실패**했으면 이 업종은 '완료'가 아니다. `!count` 로 빠져나가면 정상 0건과
         //   구분이 안 돼 다음 틱이 이 업종을 건너뛴다 = 그 업종 데이터 영구 누락(유닛테스트가 잡은 실버그).
@@ -358,7 +379,7 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
         if (msg && page === 1 && !count && !probedThisRun) {
           probedThisRun = true
           const pr = await maybeProbeVariant({
-            DB, base, endpoint, key, day: item.day, sizeEnv, envVariant, variantId, vState, budget, stamp,
+            DB, base, endpoint, key, day: item.day, sizeEnv, envVariant, variantId, opEnv, vState, budget, stamp,
             fetchUrl: (u) => fetchLicenseUrl(u, budget), spendD1,
           })
           if (pr) {
@@ -467,6 +488,7 @@ export async function runLocalDataBackfill(env: Env, maxDaysArg?: number): Promi
   if (!bfVariant) bfVariant = bfState?.id || ''
   let bfProbed = false // 이번 실행 1회만(예산 보호)
   const bfSizeEnv = (env as unknown as { ADS_LOCALDATA_PAGE_SIZE?: string }).ADS_LOCALDATA_PAGE_SIZE || null
+  const opEnv = (env as unknown as { ADS_LICENSE_OPERATION?: string }).ADS_LICENSE_OPERATION ?? null
   const eps = Object.entries(endpoints)
   let found = 0, saved = 0
   const days: string[] = []
@@ -479,7 +501,7 @@ export async function runLocalDataBackfill(env: Env, maxDaysArg?: number): Promi
       const [endpoint, category] = eps[ei]
       for (let page = 1; page <= MAX_PAGES; page++) {
         if (outOfBudget(budget)) { stoppedAt = ei; break }
-        const { items, count, size, msg } = await fetchLicensePage(base, endpoint, key, cur, page, bfVariant, bfSizeEnv, budget)
+        const { items, count, size, msg } = await fetchLicensePage(base, endpoint, key, cur, page, bfVariant, bfSizeEnv, budget, opEnv)
         if (budget.limitHit) { stoppedAt = ei; break } // 한도로 실패한 업종은 완료가 아니다(위 일일 레인과 동일)
         // 🔬 백필도 프로브한다 — 이 레인은 **매시간** 돌지만 일일 레인은 하루 1회다. 판정을 일일 레인에만
         //   맡기면 500 의 정체를 아는 데 최대 24시간이 걸린다(관측 기회를 하루 23번 버리는 셈).
@@ -488,7 +510,7 @@ export async function runLocalDataBackfill(env: Env, maxDaysArg?: number): Promi
           bfProbed = true
           const pr = await maybeProbeVariant({
             DB, base, endpoint, key, day: cur, sizeEnv: bfSizeEnv, envVariant: bfEnvVariant,
-            variantId: findVariant(bfVariant).id, vState: bfState, budget,
+            variantId: findVariant(bfVariant).id, opEnv, vState: bfState, budget,
             stamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
             fetchUrl: (u) => fetchLicenseUrl(u, budget), spendD1,
           })

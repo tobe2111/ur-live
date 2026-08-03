@@ -229,7 +229,19 @@ src/shared/mall/branding.ts
 
 ---
 
-## 6. 남은 결정 — 🔴 화면 C 는 아직 시안의 일을 못 한다
+## 6. ~~남은 결정 — 화면 C 는 아직 시안의 일을 못 한다~~ → ✅ **해소됨 (2026-08-02)**
+
+> ⚠️ **이 절은 2026-08-03 까지 "아직 못 한다"로 남아 있었다 — 이미 고쳐진 뒤에도.**
+> 낡은 문서는 다음 세션에게 *틀린 지도*다(CLAUDE.md `check-lock-table-symbols` 가 경고하는 클래스).
+> 원문은 아래에 기록으로 남기고 판정만 갱신한다.
+
+**지금 상태**: 화면 C 는 **픽업일로 묶고 `오늘 픽업 N건` 을 센다** — 시안이 정의한 그 일을 한다.
+- 서버: `worker/utils/order-list-enrich.ts` `enrichSellerOrderRows` 가 `product_supply_meta`
+  (`key='pickup_date'`)를 주문 라인에 붙인다. `seller-orders.routes.ts:146` 에서 호출.
+- 클라: `MobileOrderList.tsx:68` 이 `o.pickup_date` 로 오늘치를 세고, 그룹 키도 픽업일이다.
+- 픽업일이 **없는 주문은 지어내지 않는다**(`o.pickup_date &&` 가드) — 배송형 주문은 오늘치에 안 낀다.
+
+<details><summary>원문 (2026-08-02 이전 판정)</summary>
 
 의뢰서 §4 화면 C 는 *"오늘 픽업하러 올 사람이 누구고 뭘 가져가나"* 를 훑는 화면이라고 정의했고,
 시안은 **픽업일**로 묶고 `오늘 픽업 7건` 을 센다.
@@ -244,6 +256,8 @@ src/shared/mall/branding.ts
 **필요한 것**: `seller-orders.routes.ts` 의 주문 목록 쿼리가 라인 상품의 `pickup_date` 를 실어야 한다.
 그 뒤 `MobileOrderList` 의 `kstOf(o.created_at)` 를 픽업일로 바꾸고 통계 라벨을 `오늘 픽업` 으로 되돌리면 된다.
 (머니 경로 무접촉 — 읽기 enrich 뿐이다.)
+
+</details>
 
 ---
 
