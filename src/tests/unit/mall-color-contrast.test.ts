@@ -50,6 +50,27 @@ describe('🔴 R3 — 화면이 다크에서 잉크 글자를 쓴다', () => {
   })
 })
 
+describe('🔴 R4 — 게이트가 **실제로 배선돼 있다**', () => {
+  // 순수함수만 있고 아무도 안 부르면 아무것도 못 막는다 — 이 레포가 반복해 만난 클래스
+  // (`check-guard-registry`: *"가드가 있는데 안 돎"*).
+  const route = readCode('src/features/supply/api/wholesale-malls-admin.routes.ts')
+
+  it('몰 생성 경로가 부른다', () => {
+    expect(route).toContain('validateMallColor')
+  })
+
+  it('🔴 수정 경로도 부른다 — 한쪽만 막으면 수정으로 우회된다', () => {
+    // `brand_color` 를 쓰는 블록 안에서 호출돼야 한다(파일 어딘가에 있는 것으로는 부족).
+    const i = route.indexOf("'brand_color' in body")
+    expect(i, 'brand_color 수정 블록을 못 찾았다').toBeGreaterThan(-1)
+    expect(route.slice(i, i + 400)).toContain('validateMallColor')
+  })
+
+  it('어드민 폼이 제출 전에 보여준다', () => {
+    expect(readCode('src/pages/admin/AdminWholesaleMallsPage.tsx')).toContain('validateMallColor')
+  })
+})
+
 describe('validateMallColor — 저장 전 게이트', () => {
   it('형식이 아니면 거절한다', () => {
     for (const bad of ['', 'green', '#FFF', '#12345', 'rgb(0,0,0)']) {

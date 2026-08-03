@@ -255,6 +255,19 @@ src/shared/mall/branding.ts
 | **B** 빠른 공구 등록 · **D** 반품 큐 | `SellerQuickGbPage.tsx` · `SellerReturnsPage.tsx` · `ImageUpload.tsx`(compact) | `c3c50d4` |
 | **A** 가게 홈 · **C** 주문 목록(모바일) | `MallHomePage.tsx` · `seller-orders/MobileOrderList.tsx` · `seller-orders/BulkActionBar.tsx` | `1f5036a` |
 | **A-2** 상품 상세 픽업 안내 | `product-detail/ReceiveMethodNotice.tsx` · `ProductDetailPage.tsx` | `dcec8dd` |
+| **C** 픽업일 배선(주문일 → 픽업일) · 색 대비 순수함수 · 렌더 스모크 | `worker/utils/order-list-enrich.ts` · `shared/mall/branding.ts` · `scripts/smoke-mall-render.mjs` | `6e83a72` |
+| 대비 게이트 **배선**(생성·수정·어드민 폼) + 스모크 B·D + CI | `supply/api/wholesale-malls-admin.routes.ts` · `admin/AdminWholesaleMallsPage.tsx` · `.github/workflows/render-smoke.yml` | (후속) |
+
+> 🔴 **정적 검사가 초록인 채 살아 있던 결함 2개를 렌더 스모크가 잡았다** — ① 다크 모드 몰 색 면 위
+> 흰 글자 **2.24:1**(→ `dark:text-[#1A1719]`, 7.94:1) ② `rose-*` 가 화면에선 **네이비**
+> (`tailwind.config.js` 의 `rose: MONO` 리맵 — 살아남는 기능색은 `red` 하나뿐 → `red-*`).
+> ⇒ 이 시안의 색은 **`red` 외의 기능색을 쓰지 말 것**. 판정: `npm run smoke:mall`.
+
+### 🟡 남은 시안 — A-2 옵션 / 수량 스테퍼 / 하단 고정 바
+
+`ProductDetailPage.tsx` 가 **정확히 978줄로 동결**돼 있어 한 줄도 못 늘린다 ⇒
+`src/pages/product-detail/` 로 추출이 선행돼야 한다(`ReceiveMethodNotice.tsx` 가 선례).
+이 파일은 **본진 공용**이라 몰 전용 분기 금지 — 경계는 `isMallProduct`/`hasPickupInfo` 가 판정한다.
 
 ### 행동이 바뀐 것 (표면이 아니다 — 리뷰 요망)
 
