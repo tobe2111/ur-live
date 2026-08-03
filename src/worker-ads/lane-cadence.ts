@@ -30,6 +30,13 @@
  */
 export const staleGapMinutes = (periodMinutes: number): number => Math.max(1, periodMinutes) * 2 + 30
 
+/**
+ * 매시간 레인 — `kick` 이 `gap` 없이 호출될 때의 기본값.
+ * ⚠️ 이걸 안 주면 그 레인은 `missing`(판정 불가)으로 분류돼 **침묵 검사에서 통째로 빠진다**
+ *   (자식 하트비트는 cron 식을 안 싣는다 — 근거는 `index.ts` 의 `kick` 주석).
+ */
+export const hourlyGapMinutes = (): number => staleGapMinutes(60)
+
 /** 일 1회 레인. */
 export const dailyGapMinutes = (): number => staleGapMinutes(24 * 60)
 

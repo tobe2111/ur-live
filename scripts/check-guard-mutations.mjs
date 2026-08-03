@@ -106,6 +106,19 @@ const MUTATIONS = [
       '`sweep-mx` 블록에서 겪은 것과 같은 구조적 기아 — 마감선과 회전은 짝이다.',
   },
   {
+    name: '매시간 레인이 gap 없이 등록돼 침묵 판정에서 통째로 빠짐',
+    file: 'src/worker-ads/index.ts',
+    find: 'gapMin: opts?.gap ?? hourlyGapMinutes()',
+    replace: 'gapMin: opts?.gap',
+    test: 'src/tests/unit/ads-lane-gap-judgeable.test.ts',
+    why:
+      '자식 하트비트(`writeSelfBeat`)는 설계상 cron 식을 안 싣고 부모가 넘긴 `gap` 만 믿는데, ' +
+      '자식 쓰기가 **나중**이라 부모가 실어 둔 `cron` 을 덮는다. 둘 다 없으면 `getCronHealth` 가 ' +
+      '그 레인을 `missing` 으로 빼고 stale 검사를 **안 한다** — 게다가 `missing` 은 `ok` 를 안 깬다. ' +
+      '⇒ 그 레인은 조용히 멈춰도 dead-man\'s switch 가 초록이다. 실측: `ads:sweep-kakao-chain`(매시간 17초)이 ' +
+      '정확히 그 상태였고, "안 도는 것"과 "판정 대상이 아닌 것"이 화면에서 똑같이 생겼다.',
+  },
+  {
     name: '요금제 유료값을 만들어 놓고 선택부를 안 붙임(파일 경계를 넘는 배선)',
     file: 'src/features/marketing/api/influencer-maintenance.ts',
     find: 'envPlanValue(undefined, RESCAN_DEADLINE_MS, RESCAN_DEADLINE_MS_PAID, env)',
