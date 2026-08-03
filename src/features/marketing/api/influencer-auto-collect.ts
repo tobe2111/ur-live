@@ -292,9 +292,31 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   for (let i = 0; i < nFocus; i++) focusPicks.push(focusPool[(focusCursor + i) % focusPool.length])
   for (let i = 0; i < nPri; i++) priPicks.push(priPool[(priCursor + i) % priPool.length])
   for (let i = 0; i < nGen; i++) genPicks.push(genPool[(cursor + i) % genPool.length])
-  // 집중 축을 **앞머리**에 둔다 — YT 슬롯(희소, 앞 batch 개)에 확실히 들어가게.
-  const picks: { id: number; keyword: string; category: string | null }[] = [...focusPicks]
-  for (let i = 0; i < Math.max(priPicks.length, genPicks.length); i++) {
+  /**
+   * 🔀 **세 풀을 라운드로빈으로 섞는다** (2026-08-04 — 커버리지 붕괴 경보로 발견).
+   *
+   * ## 무엇이 고장이었나 (라이브 실측)
+   * ```
+   *   활성 399  ·  never 117  ·  2일+ 206     ← 323개가 이틀째 미실행
+   *   회차: planned 16 → processed 5 (spent 56/56, 예산 소진)
+   *   24h 실제 실행 키워드 54개  =  집중 18 + 나머지 ~36   ← 하루 120슬롯인데 54개뿐
+   * ```
+   * 옛 코드는 `[...focusPicks, …]` 로 **집중 축을 무조건 앞머리**에 뒀다. 예산이 5개에서 끊기니
+   * 집중 4개가 앞자리를 먹고 **일반 풀엔 1개**만 남았다. 게다가 `prefixDone` 은 **처리된 앞부분만**
+   * 세므로 뒤 풀은 잘릴 뿐 아니라 **커서도 안 움직여 다음 회차에 같은 키워드를 또 내놓는다** —
+   * 그래서 일반 풀(~300개)이 한 바퀴 도는 데 12일 이상 걸렸다.
+   *
+   * ## 🗺️ 앞머리의 근거는 이미 낡아 있었다
+   * 옛 주석은 *"YT 슬롯(희소)에 확실히 들어가게"* 였는데, 지금 `ytPicks` 는 `pickYtKeywords` 가
+   * **전체 키워드에서 따로** 뽑고 아래에서 `picks` 는 오히려 `ytIds` 를 **제외**한다.
+   * ⇒ 앞머리는 YT 에 아무 도움이 안 되면서 일반 풀만 굶기고 있었다(이 레포가 부르는 "낡은 지도").
+   *
+   * ⚠️ 라운드로빈은 **몫을 바꾸지 않는다**(`planKeywordSplit` 그대로) — 잘릴 때 **누가 먼저 잘리느냐**만
+   *   공평하게 만든다. 집중 풀은 18개뿐이라 회차당 ~2개로도 하루 두 바퀴 이상 돈다(과잉 해소).
+   */
+  const picks: { id: number; keyword: string; category: string | null }[] = []
+  for (let i = 0; i < Math.max(focusPicks.length, priPicks.length, genPicks.length); i++) {
+    if (i < focusPicks.length) picks.push(focusPicks[i])
     if (i < priPicks.length) picks.push(priPicks[i])
     if (i < genPicks.length) picks.push(genPicks[i])
   }

@@ -136,3 +136,47 @@ describe('설정 키 — 읽는 키는 읽어오고, 민 커서는 저장한다'
     expect(SRC).toMatch(/nextFocusCursor = focusPool\.length \? \(focusCursor \+ focusDone\)/)
   })
 })
+
+/**
+ * 🔀 **세 풀 라운드로빈** (2026-08-04 — 커버리지 붕괴 경보).
+ *
+ * 활성 399 중 **323개가 이틀째 미실행**이었다. 회차는 `planned 16 → processed 5`(예산 56/56 소진)인데
+ * 옛 코드가 **집중 축을 무조건 앞머리**에 둬서 집중 4개가 앞자리를 먹고 일반 풀엔 1개만 남았다.
+ * `prefixDone` 이 처리된 **앞부분만** 세므로 뒤 풀은 커서도 안 움직여 **같은 키워드를 무한 재실행**한다.
+ *
+ * ⚠️ 이 테스트가 못 보는 것: 실제 커버리지 회복 속도 — 그건 라이브 `never/2일+` 카운트로 판정한다.
+ */
+describe('🔀 세 풀 병합 — 잘릴 때 공평하게 잘린다', () => {
+  const merge = (focus: number[], pri: number[], gen: number[]): number[] => {
+    const out: number[] = []
+    for (let i = 0; i < Math.max(focus.length, pri.length, gen.length); i++) {
+      if (i < focus.length) out.push(focus[i])
+      if (i < pri.length) out.push(pri[i])
+      if (i < gen.length) out.push(gen[i])
+    }
+    return out
+  }
+
+  it('🔒 앞 5개(=실측 처리량) 안에 세 풀이 모두 들어간다', () => {
+    const head = merge([101, 102, 103, 104], [201, 202, 203, 204, 205, 206], [301, 302, 303, 304, 305, 306]).slice(0, 5)
+    expect(head.filter(x => x < 200), '집중').not.toHaveLength(0)
+    expect(head.filter(x => x >= 200 && x < 300), '우선').not.toHaveLength(0)
+    expect(head.filter(x => x >= 300), '일반').not.toHaveLength(0)
+  })
+
+  it('🔒 옛 프리픽스 방식이면 일반 풀이 앞 5개에서 밀려난다 — 이것이 고장의 형태였다', () => {
+    const oldWay = [101, 102, 103, 104, 201, 301, 202, 302]
+    expect(oldWay.slice(0, 5).filter(x => x >= 300), '일반이 0개 = 커서 동결').toHaveLength(0)
+  })
+
+  it('🔒 한 풀이 비어도 나머지가 순서를 유지한다(집중 고갈 시 자동 회수)', () => {
+    expect(merge([], [201, 202], [301, 302])).toEqual([201, 301, 202, 302])
+  })
+
+  it('🔌 배선 — 집중 축 프리픽스로 회귀하지 않는다', () => {
+    const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')  // 주석 제외 — 근거 설명에 옛 코드가 인용된다
+    expect(src).not.toMatch(/const picks[^=]*=\s*\[\.\.\.focusPicks\]/)
+    expect(src).toMatch(/Math\.max\(focusPicks\.length, priPicks\.length, genPicks\.length\)/)
+  })
+})
