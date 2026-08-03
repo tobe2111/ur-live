@@ -8,6 +8,9 @@
  *     ② 버튼 정리 — 수집 5종 / 정리·보강 4종을 각각 드롭다운 1개로(상시 노출 11개 → 5개).
  *     ③ 페이지네이션 — 서버 offset/total 로 **끝까지** 넘겨봄 + 행 memo 로 렉 제거(기존: 500행 통째 렌더).
  */
+import ImportPanel from './partner-pool/ImportPanel'
+import BusinessSegments from './partner-pool/BusinessSegments'
+import InflowTimeline from './partner-pool/InflowTimeline'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
@@ -62,6 +65,11 @@ export default function AdminPartnerPoolPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
   const [stats, setStats] = useState<Stats | null>(null)
+  /** 🕐 최신화 내역 — 총계는 며칠 멈춰도 안 변한다. "요즘 들어오고는 있나"는 이 줄로만 보인다. */
+  const [byDay, setByDay] = useState<Array<{ d: string; n: number; reachable: number }>>([])
+  /** 🎯 두 사업의 발송 가능 명단(온라인판매=페이백 · 대행사=제휴). 근거는 `BusinessSegments.tsx` 헤더. */
+  const [segments, setSegments] = useState<{ payback_ready: number; agency_ready: number } | null>(null)
+  const [showOps, setShowOps] = useState(false) // 수집 상태·키워드는 기본 접힘
   /** 🩺 수확 0 이 지속되는 레인 — 매장 화면과 같은 판정기(근거는 `lane-yield-health.ts` 헤더). */
   const [laneHealth, setLaneHealth] = useState<Array<{ lane: string; message: string }>>([])
   const [collect, setCollect] = useState<Collect | null>(null)
@@ -114,34 +122,41 @@ export default function AdminPartnerPoolPage() {
   const loadStats = useCallback(async (): Promise<Record<string, unknown> | null> => {
     try {
       const r = await api.get('/api/admin/partner-pool/stats')
-      if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null); setLocaldata(r.data.localdata || null); setEnrichInfo(r.data.enrichLast || null); setEnrichRollup(r.data.enrichRollup || null); setKakaoSweep(r.data.kakaoSweep || null); setRegistryMatch(r.data.registryMatch || null); setRunning(r.data.running || null); setLaneHealth(r.data.laneHealth || []) }
+      if (r.data?.success) { setStats(r.data.stats); setByDay(r.data.byDay || []); setSegments(r.data.segments || null); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null); setLocaldata(r.data.localdata || null); setEnrichInfo(r.data.enrichLast || null); setEnrichRollup(r.data.enrichRollup || null); setKakaoSweep(r.data.kakaoSweep || null); setRegistryMatch(r.data.registryMatch || null); setRunning(r.data.running || null); setLaneHealth(r.data.laneHealth || []) }
       return r.data || null // 완료 감지 폴러가 원시 응답을 함께 사용
     } catch { return null }
   }, [])
+  /** 🔗 목록과 내보내기가 **같은 조건**을 쓴다(두 벌이면 반드시 갈라진다 — 2026-08-03 수리).
+   *  ⚠️ limit/offset 은 넣지 않는다 — 내보내기엔 페이지 개념이 없다. */
+  const buildQuery = useCallback((): URLSearchParams => {
+    const p = new URLSearchParams()
+    if (fCategory) p.set('category', fCategory)
+    if (fTier) p.set('tier', fTier)
+    if (fStatus) p.set('status', fStatus)
+    if (fType) p.set('leadType', fType)
+    // 카드 필터 — 통계 카드 정의와 **같은 조건**(서버 buildLeadWhere).
+    if (quick === 'contact') p.set('hasContact', '1')
+    else if (quick === 'email') p.set('hasEmail', '1')
+    else if (quick === 'held') p.set('heldOnly', '1')
+    else if (quick === 'pipeline') p.set('pipeline', '1')
+    else if (quick === 'recent7') p.set('recentDays', '7')
+    else if (quick === 'review') p.set('leadType', 'unknown')
+    if (quick !== 'held') p.set('includeHeld', '1') // 기본: 보류 포함 전체
+    if (qd.trim()) p.set('q', qd.trim())
+    return p
+  }, [fCategory, fTier, fStatus, fType, quick, qd])
+
   const loadLeads = useCallback(async () => {
     setLoading(true)
     setSelected(new Set()) // 목록 갱신 시 선택 초기화(스테일 방지)
     try {
-      const p = new URLSearchParams()
-      if (fCategory) p.set('category', fCategory)
-      if (fTier) p.set('tier', fTier)
-      if (fStatus) p.set('status', fStatus)
-      if (fType) p.set('leadType', fType)
-      // 카드 필터 — 통계 카드 정의와 **같은 조건**(서버 buildLeadWhere).
-      if (quick === 'contact') p.set('hasContact', '1')
-      else if (quick === 'email') p.set('hasEmail', '1')
-      else if (quick === 'held') p.set('heldOnly', '1')
-      else if (quick === 'pipeline') p.set('pipeline', '1')
-      else if (quick === 'recent7') p.set('recentDays', '7')
-      else if (quick === 'review') p.set('leadType', 'unknown')
-      if (quick !== 'held') p.set('includeHeld', '1') // 기본: 보류 포함 전체
-      if (qd.trim()) p.set('q', qd.trim())
+      const p = buildQuery()
       p.set('limit', String(PAGE_SIZE))
       p.set('offset', String(page * PAGE_SIZE))
       const r = await api.get(`/api/admin/partner-pool?${p.toString()}`)
       if (r.data?.success) { setLeads(r.data.leads || []); setTotal(Number(r.data.total) || 0) }
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [fCategory, fTier, fStatus, fType, quick, qd, page])
+  }, [buildQuery, page])
 
   // 🔑 키워드는 마운트 1회만 — 이후 갱신은 사용자가 바꿀 때(onChanged)뿐이다(폴링에 안 태운다).
   useEffect(() => { loadMeta(); loadStats(); loadKeywords() }, [loadMeta, loadStats, loadKeywords])
@@ -330,6 +345,8 @@ export default function AdminPartnerPoolPage() {
           </div>
         )}
 
+        <BusinessSegments segments={segments} onPick={(cat, q) => { setFCategory(cat); setQuick(q); setPage(0) }} />
+
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 mb-5">
           {statCard('', '전체', stats?.total || 0)}
           {statCard('contact', '연락처 보유', stats?.with_contact || 0, '전화 또는 이메일')}
@@ -339,6 +356,8 @@ export default function AdminPartnerPoolPage() {
           {statCard('recent7', '최근 7일', stats?.recent7 || 0)}
           {statCard('review', '분류 확인 필요', stats?.needs_review || 0, '근거 없이 키워드 추정')}
         </div>
+
+        <InflowTimeline byDay={byDay} />
 
         {/* 액션 바 — 수집 5종 / 정리·보강 4종을 드롭다운으로 묶음(상시 노출 축소) */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -368,7 +387,7 @@ export default function AdminPartnerPoolPage() {
             { label: '👥 규모 조회(국민연금)', desc: '대행사 우선 — 직원수(가입자수)로 실조직/1인 구분. 엄격 매칭만 저장', onClick: () => runAction('collect-nps', '국민연금 규모 조회') },
           ]} />
           <button onClick={() => setShowImport(v => !v)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="공정위 프랜차이즈 정보공개서·상인회 명부 CSV/TSV 붙여넣기(레인 B·C)">{showImport ? '닫기' : '📋 명부 붙여넣기'}</button>
-          <button onClick={() => downloadCsv('/api/admin/partner-pool/export?format=csv', `partner-leads-${new Date().toISOString().slice(0, 10)}.csv`)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="전체(보류 포함) 리드를 엑셀 호환 CSV 로 — 한글 깨짐 없음(BOM), 엑셀에서 바로 열림">⬇ CSV</button>
+          <button onClick={() => downloadCsv(`/api/admin/partner-pool/export?format=csv&${buildQuery().toString()}`, `partner-leads-${new Date().toISOString().slice(0, 10)}.csv`)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="⬇ 지금 화면 필터 그대로 CSV 로 — 엑셀 호환(BOM). 상한을 넘으면 파일 마지막 줄에 잘렸다고 적힙니다">⬇ CSV</button>
           {selected.size > 0 && (
             <button onClick={deleteSelected} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700">🗑 선택 삭제 ({selected.size})</button>
           )}
@@ -384,23 +403,21 @@ export default function AdminPartnerPoolPage() {
             <span className="text-emerald-600"> — 페이지를 닫거나 이동해도 계속됩니다. 완료되면 알림벨에 결과가 남습니다.</span>
           </div>
         )}
-        <StatusLines enrichRollup={enrichRollup} kakaoSweep={kakaoSweep} collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} work24={work24Info} localdata={localdata} enrichLast={enrichInfo} registryMatch={registryMatch} />
+        {/* 🗂️ 수집 상태·키워드는 매일 볼 것이 아니라 기본으로 접는다(대표 "지금은 복잡함").
+            ⚠️ 숨김이 아니라 접기다 — 고장은 무수확 경고(laneHealth)가 위에서 따로 띄운다. */}
+        <button onClick={() => setShowOps(v => !v)} className="mb-2 text-xs text-gray-500 hover:text-gray-800">
+          {showOps ? '▾ 수집 상태·키워드 접기' : '▸ 수집 상태·키워드 펼치기'}
+        </button>
+        {showOps && <StatusLines enrichRollup={enrichRollup} kakaoSweep={kakaoSweep} collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} work24={work24Info} localdata={localdata} enrichLast={enrichInfo} registryMatch={registryMatch} />}
 
-        {/* 명부 붙여넣기(레인 B·C) */}
-        {showImport && (
-          <div className="rounded-xl border border-gray-200 bg-white p-4 mb-4">
-            <p className="text-xs text-gray-500 mb-2">헤더(회사명·전화·주소·홈페이지·이메일·업종…) 있는 표를 붙여넣으세요. 공정위 정보공개서·상인회 명부 CSV/TSV 자동 인식. 회사명 컬럼 필수.</p>
-            <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={6} placeholder={'회사명\t전화\t주소\t홈페이지\nOO간판\t02-...\t서초구...\thttp://...'} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm font-mono" />
-            <div className="flex justify-end mt-2">
-              <button onClick={submitImport} disabled={importing} className="px-5 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{importing ? '저장 중…' : '임포트'}</button>
-            </div>
+        {showImport && <ImportPanel text={importText} onText={setImportText} busy={importing} onSubmit={submitImport} />}
+
+        {/* 🔑 수집 조건 — 무엇을 모을지 여기서 고른다(네 축 중 ③ 필터링). 위 토글과 함께 접힌다. */}
+        {showOps && (
+          <div className="mb-4">
+            <CompanyKeywordManager keywords={keywords} onChanged={loadKeywords} />
           </div>
         )}
-
-        {/* 🔑 수집 조건 — 무엇을 모을지 여기서 고른다(네 축 중 ③ 필터링) */}
-        <div className="mb-4">
-          <CompanyKeywordManager keywords={keywords} onChanged={loadKeywords} />
-        </div>
 
         {/* 수동 입력 폼 */}
         {showAdd && (

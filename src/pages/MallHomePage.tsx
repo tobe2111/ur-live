@@ -5,21 +5,60 @@
  *   ① **1순위 검증 환경 = 카카오톡 인앱 브라우저** ⇒ 비로그인·저사양·좁은 폭에서 먼저 성립해야 한다.
  *   ③ **신뢰 + 마감·잔여 수량 강조** ⇒ 카드에서 제일 먼저 읽히는 건 남은 시간과 남은 수량이다.
  *   ⑤ **본진 입구 금지** ⇒ 이 화면에서 유어딜 홈·탭·추천으로 가는 링크를 만들지 않는다.
- *   ⑥ **디자인 개선 금지** ⇒ 기존 토큰/패턴만 쓴다. 새 비주얼 언어를 만들지 않는다.
+ *   ~~⑥ 디자인 개선 금지~~ ⇒ **2026-08-02 로 해제.** 대표가 디자인을 외부 의뢰했고
+ *     (`docs/design/design-outsourcing-brief.md`) 시안이 도착했다. ⑥ 은 *시안이 없는 동안*의
+ *     보호막이었으므로 시안이 그 자리를 대신한다. ①③⑤ 는 그대로 유효하다.
  *
  * 🔴 몰을 못 찾으면(없음·`consumer_path=0`) **404 를 그대로 보여준다.** 조용히 본진을 보여주지 않는다 —
  *   그러면 A몰 링크를 받은 사람이 유어딜 홈을 보게 되고, 그건 "몰이 열렸다"보다 나쁜 결과다.
+ *
+ * ---
+ * ## 🎨 2026-08-02 시안 적용 〔`docs/design/operator-mall-pilot.md` 화면 A〕
+ *
+ * ### 색 역할 — 🔴 의뢰서 §5.1 을 따르지 않는다
+ * 의뢰서는 *"주 버튼·강조 = 로즈 `#E0526B`"* 라고 적었지만 **그건 코드를 안 보고 쓴 것이다.**
+ * `shared/mall/branding.ts` 에 2026-07-29 대표 확정이 있다 — 몰 대표 색 `#2E7D5B`(딥그린),
+ * *"유어딜 본진(로즈 #E0526B)과 **구분**되되 결제 신뢰를 주는 톤"*.
+ * **의뢰서와 코드가 어긋나면 코드에 박힌 대표 확정이 우선**이다. 그래서 세 역할로 나눈다:
+ *
+ * | 역할 | 색 | 근거 |
+ * |---|---|---|
+ * | 몰 정체성(로고 아바타·안전결제 띠) | `mall.colorLight` / `colorDark` | 운영자가 고른 값. 몰마다 다르다 |
+ * | 급함(마감·잔여) | 기능 red | 브랜드색이 아니라 **기능 신호**다(`tailwind.config.js` 주석: *"유일 예외 = red(에러/마감임박)"*) |
+ * | 본문·가격 | 잉크 뉴트럴 | 어떤 상품 사진 위에서도 안 죽는다 |
+ *
+ * 🔴 **몰 색 위 글자는 모드마다 반대다.** 라이트 `#2E7D5B` 는 어두운 색이라 **흰 글자**(5.0:1),
+ * 다크 `#5FBF95` 는 **밝은 색**이라 흰 글자를 얹으면 **2.24:1 로 AA 미달**이다 —
+ * 그래서 다크에서는 **잉크 글자**(7.9:1)를 얹는다. 이 결함은 `validateMallColor` 를 만들다가
+ * 실제로 잡혔다(가드가 없으면 눈으로는 "초록 위 흰 글씨"라 안 보인다).
+ *
+ * 🔴 **다크에서는 운영자 색을 쓰지 않는다.** `resolveMallBranding` 이 `colorDark` 를 운영자 지정과
+ * 무관하게 **항상 `MALL_COLOR_DARK`(#5FBF95)** 로 돌린다(임의 파생이 AA 를 깰까 봐 P0 보류,
+ * branding.ts:86-89). 그래서 `--mall` 은 라이트/다크가 **서로 다른 변수**를 물게 배선했다 —
+ * 다크에서 운영자 색으로 그리면 실물과 다른 시안이 된다.
+ *
+ * ⚠️ **미해결(코드 가드 필요)**: 운영자가 고른 색의 **대비 검사가 없다**. 옅은 색을 고르면 이 화면의
+ *   흰 글자(아바타 이니셜·안전결제 띠)가 안 보인다. 파일럿은 몰 1개라 안 터지지만 몰이 늘면 터진다.
+ *   디자인으로 못 막는다 — `validateMallColor`(AA 대비) 가 저장 시점에 필요하다.
+ *
+ * ⚠️ `text-gray-*` 대신 hex — `tailwind.config.js` 가 `gray-*` 를 INK(딥네이비)로 리맵한다.
+ * ⚠️ 🔴 **`rose-*` 를 쓰면 안 된다.** 같은 파일이 `rose: MONO` 로 **브랜드 색조까지 잉크로 리맵**해서
+ *   `bg-rose-600` 은 화면에 **네이비**로 나온다(2026-08-02 렌더 스모크 스크린샷으로 발견 —
+ *   정적 검사는 전부 초록이었다). 살아남는 기능색은 **`red` 하나뿐**이다(그 파일 주석:
+ *   *"유일 예외 = red(에러/삭제/마감임박/안읽음 = 기능 신호)"*). 그래서 마감·할인은 `red-*` 다.
+ *   회귀 방지는 `scripts/smoke-mall-render.mjs` 의 "마감 배지가 빨강 계열" 검사가 맡는다.
+ * ⚠️ 이모지(⏰📦🔒) 대신 선 아이콘 — 안드로이드·iOS 에서 모양이 달라진다〔시안 §3.4〕.
  */
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { Clock, Package, Lock, Info } from 'lucide-react'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import NotFoundPage from '@/pages/NotFoundPage'
 import { POWERED_BY, PAYMENT_TRUST_NOTE } from '@/shared/mall/branding'
-import { rememberMallOrigin } from '@/shared/mall/origin'
 import { cfImage } from '@/utils/cf-image'
 import { parseUTCDate } from '@/utils/date'
-import { formatWon } from '@/utils/format'
+import { formatNumber } from '@/utils/format'
 import { STORAGE_LABEL, STORAGE_NOTICE, type StorageKind } from '@/shared/pickup'
 
 interface MallInfo {
@@ -56,6 +95,18 @@ function pickupDayLabel(iso: string): string {
   return `${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일`
 }
 
+/**
+ * 가격 표기 — **`7,000원`**. `formatWon` 은 `₩7,000` 을 내는데, 의뢰서 §4 화면 A 카드 ⑤ 와 시안이
+ * 둘 다 **`원` 접미**로 적었다(`30% 7,000원 ~~10,000원~~`). 손님 화면이라 표기를 시안에 맞춘다.
+ */
+const won = (v: number) => `${formatNumber(v)}원`
+
+/** 보관 배지 — 냉장·냉동은 파랑(주의 환기), 실온은 중립.〔시안 재사용 요소〕 */
+const STORAGE_BADGE: Record<StorageKind, string> = {
+  cold: 'text-[#3C6E8F] bg-[#E7F0F6] dark:text-[#8FBDDA] dark:bg-[#1B2A34]',
+  room: 'text-[#6B6469] bg-[#F0EDEE] dark:text-[#A29A9F] dark:bg-[#242024]',
+}
+
 export default function MallHomePage() {
   const { mallSlug = '' } = useParams()
   const [mall, setMall] = useState<MallInfo | null>(null)
@@ -76,9 +127,6 @@ export default function MallHomePage() {
     Promise.all([p1, p2]).then(([m, list]) => {
       if (!alive) return
       if (!m?.success || !m?.mall) { setState('notfound'); return }
-      // 🧭 확인된 몰일 때만 흔적을 남긴다 — 상품 상세가 갈 곳을 잃었을 때 **가게로** 돌려보내기 위해서다.
-      //   ⚠️ 판정용이 아니다(shared/mall/origin.ts 주석 참조).
-      rememberMallOrigin(m.mall.slug)
       setMall(m.mall)
       setItems(Array.isArray(list?.data) ? list.data : [])
       setState('ok')
@@ -91,75 +139,103 @@ export default function MallHomePage() {
   if (state === 'notfound' || !mall) return <NotFoundPage />
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
+    <div
+      className="min-h-[100dvh] bg-white dark:bg-[#0F151D] [--mall:var(--mall-l)] dark:[--mall:var(--mall-d)]"
+      style={{ ['--mall-l' as string]: mall.colorLight, ['--mall-d' as string]: mall.colorDark }}
+    >
       <SEO title={`${mall.name} - 공동구매`} description={mall.intro} url={`/${mall.slug}`} />
 
       {/* 헤더 — 로고(없으면 이니셜) · 이름 · 소개 1줄 */}
-      <header className="px-4 pt-6 pb-4 ur-content-wide mx-auto">
-        <div className="flex items-center gap-3">
+      <header className="px-5 pt-6 pb-4 ur-content-wide mx-auto">
+        <div className="flex items-center gap-[13px]">
           {mall.logoUrl ? (
             <img src={cfImage(mall.logoUrl, { width: 112 })} alt="" width={56} height={56}
-              className="w-14 h-14 rounded-2xl object-cover border border-gray-100 dark:border-[#2A2A2A]" />
+              className="w-[50px] h-[50px] rounded-[15px] object-cover border border-[#EFEBED] dark:border-[#2A2A2A] flex-none" />
           ) : (
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl font-extrabold"
-              style={{ backgroundColor: mall.colorLight }} aria-hidden>{mall.initial}</div>
+            <div className="w-[50px] h-[50px] rounded-[15px] flex items-center justify-center text-white dark:text-[#1A1719] text-[21px] font-extrabold tracking-[-0.02em] flex-none"
+              style={{ backgroundColor: 'var(--mall)' }} aria-hidden>{mall.initial}</div>
           )}
           <div className="min-w-0">
-            <h1 className="text-xl font-extrabold text-gray-900 dark:text-white truncate">{mall.name}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{mall.intro}</p>
+            <h1 className="text-[18.5px] font-extrabold tracking-[-0.035em] leading-tight text-[#1A1719] dark:text-[#F3EFF1] truncate">{mall.name}</h1>
+            <p className="mt-1 text-[13px] tracking-[-0.015em] text-[#776F74] dark:text-[#9C9398] truncate">{mall.intro}</p>
           </div>
         </div>
-
-        {/* 신뢰 — 대표 UX 기준 ③. 결제 주체를 밝히되 **환불 주체는 단정하지 않는다**(기획 확정 문구). */}
-        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">🔒 {PAYMENT_TRUST_NOTE}</p>
       </header>
 
-      <main className="px-4 pb-16 ur-content-wide mx-auto">
+      {/* 신뢰 — 대표 UX 기준 ③. 몰 색 띠로 올려 "처음 보는 가게" 불안을 첫 화면에서 받는다.
+          ⚠️ 문구(PAYMENT_TRUST_NOTE)는 **법무 확인 대기**라 시안이 ~어요체로 그렸어도 바꾸지 않는다. */}
+      <div className="px-5 ur-content-wide mx-auto">
+        <p className="flex items-center gap-[7px] rounded-xl px-3.5 py-2.5 text-[12.5px] font-semibold tracking-[-0.02em] text-white dark:text-[#1A1719]"
+          style={{ backgroundColor: 'var(--mall)' }}>
+          <Lock className="w-[13px] h-[13px] flex-none" strokeWidth={2.2} />
+          {PAYMENT_TRUST_NOTE}
+        </p>
+      </div>
+
+      <main className="px-5 pb-4 ur-content-wide mx-auto">
+        <div className="flex items-baseline justify-between pt-6 pb-3.5">
+          <h2 className="text-[15.5px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">진행 중인 공동구매</h2>
+          {items.length > 0 && <span className="text-[12px] font-semibold text-[#9A9298] dark:text-[#7C7479]">{items.length}</span>}
+        </div>
+
         {items.length === 0 ? (
-          <p className="py-16 text-center text-sm text-gray-500 dark:text-gray-400">
-            진행 중인 공동구매가 없습니다.
-          </p>
+          <div className="flex flex-col items-center justify-center px-10 py-24 text-center">
+            <div className="w-[62px] h-[62px] rounded-[20px] bg-[#F5F2F3] dark:bg-[#1C181B] flex items-center justify-center mb-[18px]">
+              <Package className="w-[26px] h-[26px] text-[#B7B0B4]" strokeWidth={1.8} />
+            </div>
+            {/* 빈 상태는 마침표를 뺀다〔시안 §3.3〕 */}
+            <p className="text-[14.5px] font-bold tracking-[-0.03em] text-[#3F383C] dark:text-[#DAD4D7]">진행 중인 공동구매가 없어요</p>
+          </div>
         ) : (
-          <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3.5 gap-y-[22px]">
             {items.map((it) => {
               const remain = remainLabel(it.deadline)
+              const lowStock = typeof it.stock === 'number' && it.stock > 0 && it.stock <= 10
               return (
                 <li key={it.product_id}>
                   <Link to={`/products/${it.product_id}`} className="block group">
-                    <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
+                    <div className="relative aspect-square rounded-[14px] overflow-hidden bg-[#F1EDEF] dark:bg-[#221D20]">
                       {it.image_url && (
                         <img src={cfImage(it.image_url, { width: 400 })} alt="" loading="lazy"
                           className="w-full h-full object-cover" />
                       )}
-                      {/* 🔴 마감·잔여를 이미지 위에 — 카드에서 **제일 먼저 읽혀야 하는 정보**다(기준 ③). */}
+                      {/* 🔴 마감·잔여를 이미지 위에 — 카드에서 **제일 먼저 읽혀야 하는 정보**다(기준 ③).
+                          마감이 채움 배지, 잔여가 검정 반투명 — 의뢰서가 먼저 읽히라 한 게 마감이라서다. */}
                       {remain && (
-                        <span className="absolute left-2 top-2 px-2 py-0.5 rounded-full bg-black/70 text-white text-[11px] font-semibold">
-                          ⏰ {remain}
+                        <span className="absolute left-2 top-2 flex items-center gap-1 px-2 py-[5px] rounded-full bg-red-600 text-white text-[11.5px] font-bold tracking-[-0.02em] pointer-events-none">
+                          <Clock className="w-[11px] h-[11px]" strokeWidth={2.4} />
+                          {remain}
                         </span>
                       )}
-                      {typeof it.stock === 'number' && it.stock > 0 && it.stock <= 10 && (
-                        <span className="absolute right-2 top-2 px-2 py-0.5 rounded-full bg-rose-600 text-white text-[11px] font-bold">
+                      {lowStock && (
+                        <span className="absolute right-2 top-2 px-2 py-[5px] rounded-full bg-[rgba(20,17,19,.74)] backdrop-blur-sm text-white text-[11.5px] font-bold tracking-[-0.02em] pointer-events-none">
                           {it.stock}개 남음
                         </span>
                       )}
                     </div>
-                    <p className="mt-2 text-sm text-gray-900 dark:text-gray-100 line-clamp-2">{it.name}</p>
-                    <p className="mt-0.5 flex items-baseline gap-1.5">
+
+                    <p className="mt-[11px] min-h-[38px] line-clamp-2 text-[13.5px] leading-[1.4] tracking-[-0.025em] text-[#251F22] dark:text-[#ECE7E9]">{it.name}</p>
+
+                    <p className="mt-[5px] flex items-baseline gap-[5px] flex-wrap">
                       {it.discount_pct > 0 && (
-                        <span className="text-sm font-extrabold text-rose-600">{it.discount_pct}%</span>
+                        <span className="text-[15px] font-extrabold tracking-[-0.03em] text-red-600 dark:text-red-400">{it.discount_pct}%</span>
                       )}
-                      <span className="text-sm font-extrabold text-gray-900 dark:text-white">{formatWon(it.gb_price)}</span>
+                      <span className="text-[15px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">{won(it.gb_price)}</span>
                       {it.list_price > it.gb_price && (
-                        <span className="text-xs text-gray-400 line-through">{formatWon(it.list_price)}</span>
+                        <span className="text-[11.5px] line-through text-[#A9A2A6] dark:text-[#7C7479]">{won(it.list_price)}</span>
                       )}
                     </p>
+
                     {/* 📦 픽업 — **언제 받는지**가 카드에서 보여야 "배송인가?" 문의가 안 쏟아진다.
-                        보관구분은 배지로 짧게(고지 전문은 상세에서). */}
+                        옅은 판을 깔아 가격 줄과 분리한다(의뢰서가 가장 걱정한 문의). */}
                     {it.pickup && (it.pickup.date || it.pickup.storage) && (
-                      <p className="mt-1 flex items-center gap-1.5 text-[11px] text-gray-500">
-                        {it.pickup.date && <span>📦 {pickupDayLabel(it.pickup.date)} 픽업</span>}
+                      <p className="mt-[9px] flex items-center gap-1.5 rounded-lg bg-[#F5F2F3] dark:bg-[#211C1F] px-2 py-1.5">
+                        <Package className="w-[13px] h-[13px] flex-none text-[#5C5459] dark:text-[#A69EA3]" strokeWidth={1.9} />
+                        {it.pickup.date && (
+                          <span className="text-[11.5px] font-bold tracking-[-0.02em] text-[#3F383C] dark:text-[#DAD4D7]">{pickupDayLabel(it.pickup.date)} 픽업</span>
+                        )}
                         {it.pickup.storage && (
-                          <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-semibold">
+                          <span className={`ml-auto flex-none px-[5px] py-[3px] rounded-[5px] text-[10.5px] font-bold tracking-[-0.02em] ${STORAGE_BADGE[it.pickup.storage]}`}>
                             {STORAGE_LABEL[it.pickup.storage]}
                           </span>
                         )}
@@ -174,22 +250,27 @@ export default function MallHomePage() {
       </main>
 
       {/* 📦 보관 고지 — **카드마다 반복하지 않고** 목록에 한 번. 카드가 시끄러워지면 마감·가격이 묻힌다.
-          ⚠️ 문구는 법무 확인 대기(체크리스트 X4c) 임시 표기다. */}
+          ⚠️ 문구는 법무 확인 대기(체크리스트 X4c) 임시 표기다 — 말투를 바꾸지 않는다. */}
       {(() => {
         const kinds = Array.from(new Set(items.map((i) => i.pickup?.storage).filter(Boolean))) as StorageKind[]
         if (kinds.length === 0) return null
         return (
-          <aside className="px-4 pb-6 ur-content-wide mx-auto space-y-1">
-            {kinds.map((k) => (
-              <p key={k} className="text-[11px] text-gray-500 dark:text-gray-400">· {STORAGE_NOTICE[k]}</p>
-            ))}
+          <aside className="px-5 pb-6 ur-content-wide mx-auto">
+            <div className="flex gap-2.5 rounded-xl bg-[#F7F5F6] dark:bg-[#1C181B] border border-[#EDE9EB] dark:border-[#292327] px-3.5 py-3.5">
+              <Info className="w-[15px] h-[15px] flex-none mt-px text-[#8A8288]" strokeWidth={2} />
+              <div className="space-y-1">
+                {kinds.map((k) => (
+                  <p key={k} className="text-[12px] leading-[1.6] tracking-[-0.02em] text-[#6B6469] dark:text-[#A29A9F]">{STORAGE_NOTICE[k]}</p>
+                ))}
+              </div>
+            </div>
           </aside>
         )
       })()}
 
       {/* ⑤ 본진 입구 금지 — 링크가 아니라 **문자열**이다(클릭 안 됨). */}
-      <footer className="px-4 pb-10 text-center">
-        <span className="text-[11px] text-gray-400 dark:text-gray-500">{POWERED_BY}</span>
+      <footer className="ur-content-wide mx-auto px-5 pb-10 text-center border-t border-[#F1EDEF] dark:border-[#262023]">
+        <span className="inline-block pt-5 text-[10.5px] font-semibold tracking-[0.06em] text-[#BCB5B9] dark:text-[#5E5559] select-none cursor-default">{POWERED_BY}</span>
       </footer>
     </div>
   )

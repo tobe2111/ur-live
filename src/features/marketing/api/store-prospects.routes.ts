@@ -3,6 +3,7 @@
  *   메인 어드민 JWT(requireAdmin). 소스: 지방행정 인허가정보(localdata-collect, ur-ads 위임).
  *   ⚠️ 수집 ≠ 발송 — 공개 인허가 정보만. 자동 발송 경로 부존재.
  */
+import { csvResponse } from './pool-export'
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
@@ -196,21 +197,32 @@ app.get('/:id/briefing', async (c) => {
 })
 
 // GET /api/admin/store-prospects/export — 엑셀 호환 CSV(BOM + 수식 인젝션 방어). 인증 blob 다운로드용.
+/** 내보내기 상한 — `listProspects` 가 2,000 으로 클램프한다(그 이상은 그쪽부터). */
+const EXPORT_MAX = 2000
+
+/**
+ * 🩸 **화면 필터를 그대로 따른다** (2026-08-03 실측 수리 — 이전엔 필터를 **통째로 무시**했다).
+ *   이 풀은 **95%가 학원**이라(인허가 레인 사망으로 음식점·카페·미용·숙박 0), 필터가 파일까지 안 이어지면
+ *   대표 우선업종은 **내보내기로 도달 자체가 불가능**했다.
+ *   📞 도달 채널도 이메일이 아니라 **전화**다(이메일 8건 · 전화 27,831건) — `hasPhone=1` 이 이제 파일까지 간다.
+ */
 app.get('/export', async (c) => {
-  const rows = await listProspects(c.env.DB, { includeClosed: false, limit: 2000 })
-  const esc = (v: unknown): string => {
-    let s = v == null ? '' : String(v)
-    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
-    if (/[",\n\r]/.test(s)) s = `"${s.replace(/"/g, '""')}"`
-    return s
+  const filter: ProspectFilter = {
+    category: c.req.query('category') || undefined,
+    region: (c.req.query('region') || '').trim() || undefined,
+    status: c.req.query('status') || undefined,
+    newOpenOnly: c.req.query('newOpen') === '1',
+    includeClosed: c.req.query('includeClosed') === '1',
+    hasPhone: c.req.query('hasPhone') === '1',
+    hasEmail: c.req.query('hasEmail') === '1',
+    q: (c.req.query('q') || '').trim() || undefined,
   }
-  const header = ['category', 'biz_name', 'region', 'phone', 'email', 'website', 'addr_road', 'status', 'is_new_open', 'apv_perm_ymd', 'collected_at']
-  const lines = [header.join(',')]
-  for (const r of rows) {
-    lines.push([r.category, r.biz_name, r.region, r.phone, r.email, r.website, r.addr_road, r.status, r.is_new_open ? '개업' : '', r.apv_perm_ymd, (r.collected_at || '').slice(0, 10)].map(esc).join(','))
-  }
-  return new Response('﻿' + lines.join('\n'), {
-    headers: { 'Content-Type': 'text/csv;charset=utf-8', 'Content-Disposition': 'attachment; filename="store-prospects.csv"' },
+  const rows = await listProspects(c.env.DB, { ...filter, limit: EXPORT_MAX })
+  return csvResponse({
+    filename: 'store-prospects.csv',
+    header: ['category', 'biz_name', 'region', 'phone', 'email', 'website', 'addr_road', 'status', 'is_new_open', 'apv_perm_ymd', 'collected_at'],
+    rows: rows.map(r => [r.category, r.biz_name, r.region, r.phone, r.email, r.website, r.addr_road, r.status, r.is_new_open ? '개업' : '', r.apv_perm_ymd, (r.collected_at || '').slice(0, 10)]),
+    cap: EXPORT_MAX,
   })
 })
 

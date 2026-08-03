@@ -17,6 +17,7 @@ import ImageUpload from '@/components/upload/ImageUpload'
 import { Building2, Loader2, Plus, Edit, X, Globe, Check } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { normalizeAdminRole } from '@/shared/admin-roles'
+import { validateMallColor } from '@/shared/mall/branding'
 
 interface MallRow {
   id: number
@@ -307,6 +308,14 @@ export default function AdminWholesaleMallsPage() {
                     <input value={form.brand_color} onChange={(e) => setForm((f) => ({ ...f, brand_color: e.target.value }))} maxLength={20}
                       className="flex-1 h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400 font-mono" placeholder="#111827" />
                   </div>
+                  {/* 🎨 대비 미리보기 — 서버가 어차피 400 으로 막지만(wholesale-malls-admin.routes),
+                      제출한 뒤에 알면 왕복이 한 번 늘고 무엇이 문제인지도 안 보인다.
+                      이 색은 **면**이고 그 위에 흰 글자가 올라간다(몰 홈 아바타·안전결제 띠). */}
+                  {(() => {
+                    const v = validateMallColor(form.brand_color)
+                    if (v.ok) return null
+                    return <p className="mt-1.5 text-[11px] text-red-600">{v.reason}</p>
+                  })()}
                 </div>
               </div>
 
