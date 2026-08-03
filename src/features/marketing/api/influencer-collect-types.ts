@@ -65,6 +65,8 @@ export interface AutoCollectStats {
   }
   /** 🎯 YT 검색 예산(진짜 병목 = Search Queries/day, 기본 100회) — 어드민 "오늘 n/100" 표시용. */
   yt_budget?: { used: number; total: number; day: string }
+  /** 📟 네이버 오픈API 일일 호출(KST 기준일). **자동 레인만 세므로 실사용의 하한** — `naver-api-usage.ts` 주석 참조. */
+  naver_api?: { used: number; total: number; day: string }
   /** 🔒 다른 실행이 진행 중이라 이번 호출은 아무것도 안 함(lease busy) — 체인/버스트는 yt_budget 부재로 자연 종료. */
   busy?: boolean
   /**

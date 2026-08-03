@@ -1430,6 +1430,47 @@ const MUTATIONS = [
       '같은 알람의 collect 가 28,643ms 완주가 증거다. 전제가 사라진 값을 그대로 쓰면 창이 근거 없이 좁다.',
   },
   {
+    name: '네이버 오픈API 계측이 래퍼에서 사라짐(그 레인이 통째로 계측 밖)',
+    file: 'src/features/marketing/api/fetch-with-err.ts',
+    find: '  noteNaverCall(url) //',
+    replace: '  // noteNaverCall(url) //',
+    test: 'src/tests/unit/ads-naver-api-usage.test.ts',
+    why:
+      '유튜브·카카오는 일별 실사용을 세는데 네이버만 카운터가 없어 "한도 안"이 **추정**이었다. 래퍼에서 빠지면 ' +
+      '그 레인 호출이 통째로 계측 밖이 되고, 숫자는 그럴듯하게 남아 **더 위험하다**(0이 아니라 과소계상). ' +
+      '⚠️ 이 주입은 *주석 처리* 다 — 첫 판정이 문자열만 봐서 초록이 떴고, 그래서 검사가 주석을 지우고 본다.',
+  },
+  {
+    name: '네이버 계측이 회차당 두 번 take(뒤가 0 — 조용한 과소계상)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '+ takeNaverCalls()',
+    replace: '+ takeNaverCalls() + takeNaverCalls()',
+    test: 'src/tests/unit/ads-naver-api-usage.test.ts',
+    why:
+      '`takeNaverCalls()` 는 **가져가며 비운다**. 두 번 부르면 두 번째가 항상 0이라 합계가 맞는 것처럼 보이지만, ' +
+      '중간에 다른 코드가 끼면 그 사이 누적이 통째로 사라진다. 호출은 회차당 정확히 한 번이어야 한다.',
+  },
+  {
+    name: 'B2B 레인이 네이버 누적을 안 비움(그 인보케이션 몫 유실)',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: '  await flushNaverCalls(DB, Date.now())',
+    replace: '  // await flushNaverCalls(DB, Date.now())',
+    test: 'src/tests/unit/ads-naver-api-usage.test.ts',
+    why:
+      '네이버 쿼터는 **앱 단위**라 B2B 몫도 같은 통에 들어가야 총계가 의미를 갖는다. 안 비우면 그 인보케이션 ' +
+      '누적은 사라진다 — 아이솔레이트가 달라 인플루언서 레인이 걷어가지 못한다.',
+  },
+  {
+    name: 'YT 성과 바닥이 남은 쿼터를 무시(무료 한도 초과)',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: 'const floor = Math.min(YT_PERF_UNITS_DEFAULT, Math.max(0, YT_DAILY_QUOTA_UNITS - used))',
+    replace: 'const floor = YT_PERF_UNITS_DEFAULT',
+    test: 'src/tests/unit/ads-enrich-throughput.test.ts',
+    why:
+      '바닥 2,000 을 무조건 보장하면 **검색 9,000(배정 90회) + 성과 2,000 = 11,000 > 10,000** 이 성립한다. ' +
+      '초과의 대가는 청구서가 아니라 403 quotaExceeded — 그날 측정이 통째로 멎는다. 바닥보다 **총합**이 상위 불변식이다.',
+  },
+  {
     name: 'YT 영상 통계 루프가 저장 몫을 안 남김(쿼터 태우고 저장 0)',
     file: 'src/features/marketing/api/influencer-yt-performance.ts',
     find: 'allIds.length && budget.left > 1 && !outOfTime(budget)',

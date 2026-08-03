@@ -13,6 +13,7 @@
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue } from './collect-budget'
+import { noteNaverCall, flushNaverCalls } from './naver-api-usage'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
 import { buildKeywordRows, rotationWindow, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
@@ -30,6 +31,7 @@ const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
  */
 async function laneFetch(url: string, init: RequestInit & { timeoutMs?: number }, budget?: FetchBudget): Promise<Response | null> {
   const { timeoutMs = 12000, ...rest } = init
+  noteNaverCall(url) // 📟 네이버 오픈API 계측(호스트 아니면 no-op) — 실패분도 쿼터를 먹으므로 호출 전에 센다
   try {
     return await fetch(url, { ...rest, signal: AbortSignal.timeout(timeoutMs) })
   } catch (err) {
@@ -441,6 +443,10 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null)
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, String(nextCursor)).run().catch(() => null)
+  // 📟 네이버 오픈API 사용량 flush — **쿼터는 앱 단위라 B2B 몫도 같은 통에 들어가야** 총계가 의미를 갖는다.
+  //   여기서 안 비우면 이 인보케이션의 누적은 그대로 사라진다(아이솔레이트가 다르면 인플루언서 레인이 못 걷어간다).
+  //   이 레인은 settings batch 가 없어 읽기1+쓰기1을 쓴다 — 누적 0이면 왕복도 0이다.
+  await flushNaverCalls(DB, Date.now())
   return s
 }
 

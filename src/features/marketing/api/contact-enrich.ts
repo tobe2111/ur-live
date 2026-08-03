@@ -7,6 +7,7 @@
  */
 import { type FetchBudget, pickBusinessEmail } from './influencer-discovery'
 import { isSubrequestLimitError } from './collect-budget'
+import { noteNaverCall } from './naver-api-usage'
 
 // 예산 = 서브리퀘스트 수 + **시간**(budget.deadline). 정의는 influencer-discovery 의 FetchBudget 주석 참조.
 const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
@@ -23,6 +24,7 @@ const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
  */
 async function safeFetch(url: string, init: RequestInit & { timeoutMs?: number }, budget?: FetchBudget, errSink?: { msg: string }): Promise<Response | null> {
   const { timeoutMs = 8000, ...rest } = init
+  noteNaverCall(url) // 📟 네이버 오픈API 계측(호스트 아니면 no-op) — 실패분도 쿼터를 먹으므로 호출 전에 센다
   try {
     return await fetch(url, { ...rest, signal: AbortSignal.timeout(timeoutMs) })
   } catch (err) {

@@ -1,4 +1,5 @@
 import type { FetchBudget } from './influencer-discovery'
+import { noteNaverCall } from './naver-api-usage'
 
 /**
  * 🔎 fetch 예외 원문 보존 (2026-07-29) — 발굴/보강 경로가 `.catch(() => null)` 로 사유를 버려
@@ -9,6 +10,7 @@ import type { FetchBudget } from './influencer-discovery'
  *   AbortError=상대 무응답 / TypeError "Too many subrequests"=플랫폼 한도 / 그 외=DNS·TLS.
  */
 export async function fetchWithErr(url: string, init?: RequestInit): Promise<{ res: Response | null; err?: string }> {
+  noteNaverCall(url) // 📟 네이버 오픈API 일일 사용량 계측(호스트 아니면 no-op) — 실패한 호출도 쿼터를 먹으므로 **호출 전**에 센다
   try {
     return { res: await fetch(url, init) }
   } catch (e) {
