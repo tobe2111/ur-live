@@ -1338,6 +1338,29 @@ const MUTATIONS = [
       '**네이버로 나가는 요청량이 늘어나는 변경**이라 대표 판단 사항이다. 값이 조용히 바뀌는 것을 막는다.',
   },
   {
+    name: '미루기 판정이 주기 대신 침묵 임계를 봄(매시간 레인이 통째로 always)',
+    file: 'src/worker-ads/dispatch-budget.ts',
+    find: '  const period = Number(lane.periodMin)\n  if (Number.isFinite(period) && period > 0) return period <= 60\n',
+    replace: '',
+    test: 'src/tests/unit/ads-dispatch-budget.test.ts',
+    why:
+      '`gapMin` 은 `staleGapMinutes` = 주기×2+30 으로 **부풀린** 침묵 판정 임계다. 이 분기를 지우면 ' +
+      '매시간 레인의 150 이 `> 60` 으로 읽혀 **전부 `always`** 가 된다(2026-08-03 12:00 KST 실측: ' +
+      '네 도메인 전부 `deferred: 0`, 레인 14). 예산·학습기는 미룰 수 있는 레인에만 작용하므로 ' +
+      '통제 대상이 0 개가 되고, #1007(예산 0 구속) 수리가 옳고도 무력해진다.',
+  },
+  {
+    name: '게이트 레인에도 periodMin 60 을 실어 일 1회 레인이 미뤄짐',
+    file: 'src/worker-ads/lane-cadence.ts',
+    find: "  return opts?.gap === undefined ? { gapMin, periodMin: 60 } : { gapMin }",
+    replace: '  return { gapMin, periodMin: 60 }',
+    test: 'src/tests/unit/ads-dispatch-budget.test.ts',
+    why:
+      '반대 방향의 사고 — 명시 `gap` 을 받은 게이트 레인(일 1회·N시간·스케줄)까지 매시간으로 표시하면 ' +
+      '**미룰 수 있게** 되고, 그 레인의 조 차례가 지정 시각이 아닌 때 걸리는 순간 **영영 안 돈다**. ' +
+      '침묵이 아니라 부재라 경보에도 안 잡힌다(`isDeferrable` docblock 이 경고하는 바로 그 형태).',
+  },
+  {
     name: '은퇴 축 리드를 안 비움(유령 카테고리 영구 잔존)',
     file: 'src/features/marketing/api/influencer-classify.ts',
     find: '  if (retired.has(stored)) return true',

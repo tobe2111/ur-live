@@ -102,8 +102,32 @@ export const scheduleGapMinutes = (schedule: readonly unknown[], skipHours: read
  *   `gap`  — 이 레인의 실제 기대 간격(분). 없으면 워커 cron 식에서 유도(= 매시간).
  *   `beat` — 하트비트 이름 고정(경로가 바뀌어도 옛 행이 남아 영원히 stale 로 경보되는 것 방지).
  */
-export interface KickOpts { gap?: number; beat?: string }
+export interface KickOpts {
+  /** 침묵 판정 임계(분) — `staleGapMinutes` 로 부풀린 값. 주기가 아니다. */
+  gap?: number
+  /** 이 레인의 **실제 주기**(분). 미루기 판정은 이 값으로 한다(`isDeferrable`). 생략 시 매시간. */
+  period?: number
+  beat?: string
+}
 export type KickFn = (path: string, fallback: () => Promise<unknown>, opts?: KickOpts) => void
+
+/**
+ * 🧭 레인 후보에 실을 **주기/임계 두 값** — `KickOpts` 옆에 두어 두 뜻이 한 화면에서 읽히게 한다.
+ *
+ * - `gapMin` … 침묵 판정 임계. `staleGapMinutes` = 주기×2+30 으로 **부풀린** 값이다(하트비트 `g`).
+ *   안 주면 그 레인은 침묵 판정에서 통째로 빠지므로(#1006) 매시간 기본값을 채워 넣는다.
+ * - `periodMin` … **실제 주기**. 미룰 수 있는지는 이 값으로만 판정한다(`isDeferrable`).
+ *
+ * ⚠️ **명시 `gap` 을 받은 레인(게이트: 일 1회·N시간·스케줄)엔 `periodMin` 을 일부러 안 싣는다.**
+ *   그래야 `gapMin` 폴백으로 종전과 똑같이 `always` 로 남는다. 여기에 60 을 실으면 반대 사고가 난다 —
+ *   미룰 수 있게 되고, 조 차례가 지정 시각이 아닌 때 걸리는 순간 **영영 안 돈다**(침묵이 아니라 부재라
+ *   경보에도 안 잡힌다). 두 방향 다 주입 검증으로 고정돼 있다.
+ */
+export function laneCadenceFields(opts?: KickOpts): { gapMin: number; periodMin?: number } {
+  const gapMin = opts?.gap ?? hourlyGapMinutes()
+  if (opts?.period !== undefined) return { gapMin, periodMin: opts.period }
+  return opts?.gap === undefined ? { gapMin, periodMin: 60 } : { gapMin }
+}
 
 /**
  * 하트비트 이름 = `/__ads/` 접두와 쿼리를 뗀 것.

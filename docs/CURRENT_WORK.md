@@ -5494,7 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 101건 · 최신순 · 이 목록은 자동 생성된다._
+_총 102건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-03**
 - [ur-ads 배포가 조용히 안 나갔다 — 라이브는 멀쩡해 보였다 (2026-08-03)](handoff/2026-08-03-urads-deploy-silent-miss.md)
@@ -5503,6 +5503,7 @@ _총 101건 · 최신순 · 이 목록은 자동 생성된다._
 - [관측이 틀린 답을 주면 없느니만 못하다 — 오탐 3건 (2026-08-03)](handoff/2026-08-03-observability-false-positives.md)
 - [🏬 몰 관리 API 가 소비자 배포에 없었다 — `/api/admin/wholesale-malls` 404 (2026-08-03)](handoff/2026-08-03-mall-admin-api-consumer-bundle.md)
 - [학습기의 눈먼 구간을 메우고, 배포 실패를 대표에게 보이게 (2026-08-03)](handoff/2026-08-03-learner-bias-and-deploy-alert.md)
+- [관측을 고치자 예산이 통제할 대상이 0 개가 됐다 — `gapMin` 이 두 뜻으로 겹쳐 쓰임](handoff/2026-08-03-gapmin-overload-always-lanes.md)
 - [대행사 축이 얇던 진짜 이유 — 커서가 얼어 있었다 (그리고 필터는 무죄였다)](handoff/2026-08-03-focus-cursor-frozen.md)
 - [크롤 처리량 붕괴 — 대행사 이메일이 안 늘어나는 진짜 이유 (2026-08-03, 머지 직후 실측)](handoff/2026-08-03-enrich-throughput-collapse.md)
 - [수집 루트 실측 지도 + 내보내기가 지표를 손에 안 쥐어 주던 문제 (2026-08-03)](handoff/2026-08-03-collection-routes-map.md)
