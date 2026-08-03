@@ -72,6 +72,50 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '심평원 수집이 마감선 없이 25초짜리 페이지를 3장 연다(67초, 최다)',
+    file: 'src/features/marketing/api/hira-hospital-collect.ts',
+    find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
+    replace: '',
+    test: 'src/tests/unit/ads-lane-deadlines-final.test.ts',
+    why:
+      '페이지 한 장이 `AbortSignal.timeout(25000)` 까지 버티고 무료 maxPages=3 ⇒ 최악 75초(+재시도 8초). ' +
+      '실측 67초로 유어애즈 최다였다. 부모 cron 이 그걸 못 버티고 죽으면 매달린 자식이 전부 끌려간다. ' +
+      '⚠️ per-fetch 25초는 다른 세션의 재시도 실험 변수라 건드리지 않는다 — 이 마감선은 페이지 수만 묶는다.',
+  },
+  {
+    name: '야간 재스캔의 하위작업이 고정 순서라 마지막(naver)이 영구 미실행',
+    file: 'src/features/marketing/api/influencer-maintenance.ts',
+    find: 'for (const idx of rotatedOrder(from, jobs.length))',
+    replace: 'for (const idx of jobs.map((_, i) => i))',
+    test: 'src/tests/unit/ads-lane-deadlines-final.test.ts',
+    why:
+      '하위작업 셋을 순차 실행하는데 마감선을 넣으면서 순서를 고정하면, 앞의 둘이 시간을 다 쓸 때 ' +
+      '`naver` 는 매 회차 잘린다. **하루 1회 레인이라 그건 곧 영구 미실행이다.** ' +
+      '`sweep-mx` 블록에서 겪은 것과 같은 구조적 기아 — 마감선과 회전은 짝이다.',
+  },
+  {
+    name: '요금제 유료값을 만들어 놓고 선택부를 안 붙임(파일 경계를 넘는 배선)',
+    file: 'src/features/marketing/api/influencer-maintenance.ts',
+    find: 'envPlanValue(undefined, RESCAN_DEADLINE_MS, RESCAN_DEADLINE_MS_PAID, env)',
+    replace: 'RESCAN_DEADLINE_MS',
+    test: 'src/tests/unit/ads-plan-knobs.test.ts',
+    why:
+      '상수를 만드는 것과 **그 상수가 선택되는 것**은 다른 일이다 — 후자가 빠지면 유료로 바꿔도 ' +
+      '그 축은 안 오르고 **에러는 안 난다**. 이 항목은 특히 **선언과 선택이 다른 파일**인 경우를 고정한다: ' +
+      '600줄 캡 때문에 회전 정책을 모듈로 뺀 순간 파일-지역 판정이 오탐을 냈고, 그 교정판의 첫 시도는 ' +
+      '`import` 줄에 남은 이름 때문에 **주입에도 초록**이 떴다(텍스트 존재는 구조의 증거가 아니다).',
+  },
+  {
+    name: '회전 커서를 읽어 놓고 항상 0번부터 시작(회전이 죽음)',
+    file: 'src/features/marketing/api/rescan-rotation.ts',
+    find: 'const start = normalizeOrder(String(from), len)',
+    replace: 'const start = 0',
+    test: 'src/tests/unit/ads-lane-deadlines-final.test.ts',
+    why:
+      '배선(호출)은 남아 있는데 산술만 죽으면 **텍스트 검사는 통과**한다 — 위 항목이 못 보는 자리다. ' +
+      '그래서 회전은 문자열이 아니라 **동작**으로도 검증한다(회차당 1개만 돌아도 3회차에 셋 다 선두를 받는가).',
+  },
+  {
     name: '주간 D1 백업이 인덱스/트리거/뷰를 안 담아 복구본에서 멱등 UNIQUE 가 사라짐',
     file: 'src/worker/cron/d1-backup.ts',
     find: 'if (objects.length > 0) {',
@@ -94,6 +138,18 @@ const MUTATIONS = [
       '`_data`/`_docsize` 는 BLOB 이라 문자열로 뭉개지고, `_idx`/`_config` 와 D1 내부 `_cf_KV` 는 ' +
       'WITHOUT ROWID 라 `SELECT rowid` 가 실패해 dump 실패 테이블로 남는다. 복구 후 `rebuild` 한 번이면 ' +
       '색인은 원본에서 정확히 재생성되므로 깨진 그림자를 실어 나를 이유가 없다.',
+  },
+  {
+    name: "dead-man's switch 의 의도된 503 을 5xx 로 세어 채널을 영구 점유",
+    file: 'src/worker/middleware/error-rate-monitor.ts',
+    find: "if (status === 503 && new URL(c.req.url).pathname === '/api/_healthcheck/cron') return;",
+    replace: '',
+    test: 'src/tests/unit/five-xx-observability.test.ts',
+    why:
+      '경로 계측을 붙이자 24시간 유일한 5xx 가 `/api/_healthcheck/cron` 이었다 — 고장이 아니라 ' +
+      '**cron 침묵을 알리는 설계상 503** 이고, 외부 프로브가 10분마다 두드린다. 그걸 세면 5xx 채널이 ' +
+      '영구 점유돼 **진짜 5xx 가 와도 구분이 안 된다**(같은 PR 이 고친 거짓 경보와 같은 클래스). ' +
+      '침묵 자체는 uptime.yml + 자가진단이 각자 채널로 이미 보고하므로 여기서 빼도 잃는 정보가 없다.',
   },
   {
     name: '5xx 경보가 1건을 "스파이크"라 불러 매일 거짓 ⚠️ 를 냄',
