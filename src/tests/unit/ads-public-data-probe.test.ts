@@ -17,7 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { PROBE_TARGETS, probeTargetNames, probePublicData, normalizeProbePath, PROBE_ALLOWED_HOST, PROBE_ALLOWED_HOSTS, PORTAL_KEY_HOSTS } from '@/features/marketing/api/public-data-probe'
+import { PROBE_TARGETS, probeTargetNames, probePublicData, normalizeProbePath, PROBE_ALLOWED_HOST, PROBE_ALLOWED_HOSTS, PORTAL_KEY_HOSTS, resolveProbeParamSet, buildProbePaging } from '@/features/marketing/api/public-data-probe'
 import type { Env } from '@/worker/types/env'
 
 const KEY = 'SUPER-SECRET-SERVICE-KEY-abc123=='
@@ -212,7 +212,12 @@ describe('probeLadder — 첫 실패 지점을 찾는다', () => {
     const R = readFileSync(resolve(process.cwd(), 'src/worker-ads/public-data.routes.ts'), 'utf8')
     expect(R).toMatch(/probeLadder\(c\.env, target, ladder/)
     const P = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/partner-pool.routes.ts'), 'utf8')
-    expect(P, '어드민 프록시가 rows/page/ladder/path/host 를 전달해야 한다').toMatch(/\['rows', 'page', 'ladder', 'path', 'host'\]/)
+    // ⚠️ 2026-08-03: 원래 목록 리터럴을 통째로 앵커했는데, 옵션(`params`)을 **추가하자** 깨졌다.
+    //   지켜야 할 것은 목록의 모양이 아니라 *"만든 옵션이 실제로 전달되는가"* 다 → 키 단위로 본다.
+    for (const k of ['rows', 'page', 'ladder', 'path', 'host', 'params']) {
+      expect(P, `어드민 프록시가 ${k} 를 전달해야 한다 — 만들어 놓고 안 넘기면 없는 옵션이다`)
+        .toMatch(new RegExp(`'${k}'`))
+    }
   })
 })
 
@@ -361,5 +366,59 @@ describe('🔑 serviceKey 를 실어 보낼 호스트', () => {
 
   it('🔒 localdata 는 **키를 받지 않는다** — 자체 키 체계라 우리 자격증명을 흘리는 셈이 된다', () => {
     expect(PORTAL_KEY_HOSTS as readonly string[]).not.toContain('www.localdata.go.kr')
+  })
+})
+
+/**
+ * 🎛️ **파라미터 세트** — 게이트웨이마다 *모르는 파라미터를 대하는 태도*가 다르다 (2026-08-03 실측).
+ *
+ * 프로브는 원래 두 페이징 이름을 **다 실어** 보냈다. 그 전제는 *"모르는 쪽은 조용히 무시된다"* 였고,
+ * 기관별 서비스(`apis.data.go.kr`)에선 실제로 그렇다. 그런데 표준데이터 게이트웨이는 **거부**한다:
+ *
+ * ```json
+ *   {"resultCode":"10","resultMsg":"INVALID_REQUEST_PARAMETER_ERROR (pageIndex)"}
+ * ```
+ *
+ * 즉 인증·주소가 다 맞은 요청을 **우리 편의 문법이 죽이고 있었다.** 진단 도구가 스스로 만든 실패다.
+ *
+ * ## ⚠️ 이 시험이 못 보는 것
+ * 어떤 게이트웨이가 어느 태도인지. 그건 **찔러 봐야** 알고, 그래서 명시 옵션(`params`)이 있다.
+ */
+describe('🎛️ 요청 파라미터 세트', () => {
+  const o = { rows: 3, page: 1 }
+
+  it('🔒 표준데이터 호스트는 **최소셋**이 기본 — pageIndex 를 보내면 거부당한다', () => {
+    const set = resolveProbeParamSet(undefined, 'api.data.go.kr')
+    expect(set).toBe('std')
+    const q = buildProbePaging(set, o)
+    expect(q).toContain('pageNo=1')
+    expect(q).toContain('numOfRows=3')
+    expect(q, 'pageIndex 가 섞이면 INVALID_REQUEST_PARAMETER_ERROR 로 죽는다').not.toContain('pageIndex')
+    expect(q, 'resultType 도 이 게이트웨이엔 모르는 파라미터다').not.toContain('resultType')
+  })
+
+  it('🔒 기관별 서비스는 **둘 다** 보내는 기존 동작 유지 — 이름이 갈리는 걸 주소 문제로 오진하지 않게', () => {
+    const q = buildProbePaging(resolveProbeParamSet(undefined, 'apis.data.go.kr'), o)
+    expect(q).toContain('pageNo=1')
+    expect(q).toContain('pageIndex=1')
+  })
+
+  it('🔒 명시 옵션이 호스트 기본값을 **이긴다** — 새 게이트웨이에서 또 막히지 않게', () => {
+    expect(resolveProbeParamSet('both', 'api.data.go.kr')).toBe('both')
+    expect(resolveProbeParamSet('legacy', 'apis.data.go.kr')).toBe('legacy')
+    expect(resolveProbeParamSet('STD', undefined)).toBe('std')   // 대소문자·공백 무관
+    expect(resolveProbeParamSet(' std ', undefined)).toBe('std')
+  })
+
+  it('알 수 없는 값은 조용히 기본으로(진단 도구가 오타로 죽지 않게)', () => {
+    expect(resolveProbeParamSet('없는값', 'apis.data.go.kr')).toBe('both')
+    expect(resolveProbeParamSet('', undefined)).toBe('both')
+  })
+
+  it('legacy 는 구 localdata 규약 그대로', () => {
+    const q = buildProbePaging('legacy', o)
+    expect(q).toContain('pageIndex=1')
+    expect(q).toContain('pageSize=3')
+    expect(q).not.toContain('pageNo')
   })
 })
