@@ -92,7 +92,15 @@ export async function enrichYouTubePerformance(
   //   📈 part 에 contentDetails 추가(=영상 길이) — 같은 1 unit 이라 쿼터 비용 증가 0. 쇼츠/롱폼 구분에 사용.
   const allIds = Array.from(videoIdsByLead.values()).flat()
   const stats = new Map<string, { views: number; comments: number; durationSec: number }>()
-  for (let i = 0; i < allIds.length && budget.left > 0 && !outOfTime(budget); i += 50) {
+  /**
+   * 🧾 **RESERVE = 1** — 이 루프 뒤에 `DB.batch(stmts)` 가 온다(이 회차 측정 결과 전량의 유일한 쓰기).
+   *   D1 도 서브리퀘스트라, 루프가 마지막 한 칸까지 쓰면 그 batch 가 던지고 `.catch(() => null)` 이 삼킨다
+   *   → **채널콜·영상콜 쿼터를 다 태우고도 저장이 0** 이 된다. 게다가 스탬프(`perf_checked_at`)가 안 찍히니
+   *   그 행들은 다음 회차에도 맨 앞 → 같은 쿼터를 또 태운다(=이 PR 이 잡는 재선택 churn 을 되레 만든다).
+   *   ⚠️ 옛 `budget.left > 0` 은 이 파일이 `influencer-performance.ts` 이던 시절 래칫에 동결돼 있었다 —
+   *   순수 이동으로 경로가 바뀌며 드러났고, 미루지 않고 여기서 고친다.
+   */
+  for (let i = 0; i < allIds.length && budget.left > 1 && !outOfTime(budget); i += 50) {
     budget.left--
     const vRes = await fetch(`${YT_BASE}/videos?part=statistics,contentDetails&id=${allIds.slice(i, i + 50).join(',')}&maxResults=50&key=${apiKey}`,
       { signal: AbortSignal.timeout(budgetedTimeoutMs(budget.deadline, 10000)) }).catch(() => null)

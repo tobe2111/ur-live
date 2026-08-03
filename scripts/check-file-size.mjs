@@ -91,11 +91,18 @@ try { baseline = JSON.parse(readFileSync(join(ROOT, BASELINE_PATH), 'utf8')) } c
  *   부분 문자열 매칭이라 그게 우회로 잡혔고, 그 뒤 `-a`·`--changed-only` 가 전부 skip 을 찍었다.
  *   위반(605줄)은 CI 가 잡았다 — CI 는 fresh checkout 이라 그 파일이 없었기 때문이지, 판정이 달라서가 아니다.
  *   ⇒ 우회는 **그 커밋 한 번**에만 유효해야 한다. 전수(-a)·PR(--changed-only) 판정은 우회 불가.
+ *
+ * 🕳️ **두 번째로 같은 함정을 밟았다** (2026-08-03). 위 사고를 *설명한* 커밋 메시지가
+ *   ``[SKIP_SIZE]`` 를 백틱에 넣어 인용했는데(*"`[SKIP_SIZE]` 로 우회하지 않고 분리한다"* — 즉
+ *   **안 쓰겠다는 선언**), 부분 문자열 매칭이라 그게 또 우회로 잡혀 로컬 pre-commit 이 skip 을 찍었다.
+ *   위 주석은 이 함정을 **설명만** 하고 매칭은 그대로 뒀다 — CLAUDE.md 가 경고하는 *"문서 기재로 끝내지 말 것"*.
+ *   ⇒ **백틱 인용 구간을 지우고 판정한다.** 두 사고 모두 백틱 안이었고, 실제 우회는 맨 토큰으로 쓴다.
+ *   ⚠️ 못 막는 것: 백틱 없이 산문에 쓴 언급은 여전히 우회로 잡힌다(그건 오탐이라기보다 애매한 작성이다).
  */
 if (!ALL && !CHANGED_ONLY) {
   try {
     if (existsSync(join(ROOT, '.git/COMMIT_EDITMSG'))) {
-      const msg = readFileSync(join(ROOT, '.git/COMMIT_EDITMSG'), 'utf8')
+      const msg = readFileSync(join(ROOT, '.git/COMMIT_EDITMSG'), 'utf8').replace(/`[^`]*`/g, '')
       if (/\[SKIP_SIZE\]/.test(msg)) { console.log('✅ file-size: [SKIP_SIZE] — skip (pre-commit).'); process.exit(0) }
     }
   } catch { /* ignore */ }

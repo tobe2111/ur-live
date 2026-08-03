@@ -1429,6 +1429,17 @@ const MUTATIONS = [
       '7초의 근거는 *"부모 인보케이션이 10.5초에 회수되고 자식이 함께 죽는다"* 였다. **알람엔 부모가 없다** — ' +
       '같은 알람의 collect 가 28,643ms 완주가 증거다. 전제가 사라진 값을 그대로 쓰면 창이 근거 없이 좁다.',
   },
+  {
+    name: 'YT 영상 통계 루프가 저장 몫을 안 남김(쿼터 태우고 저장 0)',
+    file: 'src/features/marketing/api/influencer-yt-performance.ts',
+    find: 'allIds.length && budget.left > 1 && !outOfTime(budget)',
+    replace: 'allIds.length && budget.left > 0 && !outOfTime(budget)',
+    test: 'src/tests/unit/ads-enrich-throughput.test.ts',
+    why:
+      '루프 뒤 `DB.batch(stmts)` 가 이 회차 측정 전량의 **유일한** 쓰기다. D1 도 서브리퀘스트라 마지막 칸까지 ' +
+      '쓰면 batch 가 던지고 `.catch(() => null)` 이 삼킨다 → 채널콜·영상콜 쿼터를 다 태우고 저장 0, 스탬프도 없어 ' +
+      '그 행들이 다음 회차에도 맨 앞(이 PR 이 잡으려던 재선택 churn 을 되레 만든다).',
+  },
 ]
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
 const pending = new Map()
