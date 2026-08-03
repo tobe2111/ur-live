@@ -78,8 +78,9 @@ URL 은 **한글 경로**(`/region/서울/중구`). 시군구 229개 로마자 �
 - `region-slugs.test.ts` 29 + `region-page-wiring.test.ts` 21 = **50 pass** (전체 4854)
 - **되돌려-검증 완료**: 푸터 링크 제거 · 리졸버 배선 해제 · 지역 페이지 전국폴백 허용 →
   정확히 그 3개 테스트만 빨강. 복원 확인.
-- `tsc --noEmit` 0 · `npm run build` 0(client+worker+prerender) · audit-gate **85 GREEN**
-  (RED 2건 `시드 버전 단조증가`·`크리티컬 청크 구성 동결`은 **브랜치 선재** — stash 대조로 확인)
+- `tsc --noEmit` 0 · `npm run build` 0(client+worker+prerender)
+- `check-critical-chunks` **17개 = 기준 동일**(내가 만든 회귀를 고친 뒤)
+- audit-gate RED 잔여 1건 `시드 버전 단조증가` — 브랜치 선재(이 브랜치는 시드 상수 무접촉)
 - `file-size-baseline.json` rebaseline(App.tsx +6 / worker/index.ts +4 — 새 라우트·마운트)
 
 ## 다음 세션의 첫 액션
