@@ -240,7 +240,9 @@ export async function countProspects(DB: D1Database, filter: ProspectFilter = {}
 }
 
 export interface ProspectStats { total: number; operating: number; new_open: number; closed: number; with_phone: number; with_email: number; onboarded: number }
-export async function prospectStats(DB: D1Database): Promise<{ stats: ProspectStats; byCategory: Array<{ k: string; n: number }> }> {
+export interface ProspectSourceRate { source: string; n: number; with_phone: number; with_email: number; with_any: number }
+
+export async function prospectStats(DB: D1Database): Promise<{ stats: ProspectStats; byCategory: Array<{ k: string; n: number }>; bySource: ProspectSourceRate[] }> {
   await ensureProspectSchema(DB)
   const t = await DB.prepare(`SELECT
       COUNT(*) AS total,
@@ -252,11 +254,32 @@ export async function prospectStats(DB: D1Database): Promise<{ stats: ProspectSt
       SUM(CASE WHEN status = 'onboarded' THEN 1 ELSE 0 END) AS onboarded
     FROM store_prospects`).first<Record<string, number>>().catch(() => null)
   const byCategory = (await DB.prepare("SELECT COALESCE(category,'?') AS k, COUNT(*) AS n FROM store_prospects WHERE active = 1 GROUP BY category ORDER BY n DESC LIMIT 20").all<{ k: string; n: number }>().catch(() => null))?.results || []
+  /**
+   * 📊 **수집 루트별 도달 수율** (2026-08-03 신설 — 파트너 풀엔 이미 있던 것의 매장판).
+   *
+   *   화면이 총계만 보여 주면 *"5만 건 모았다"* 로 읽힌다. 실측은 전혀 다른 이야기를 한다:
+   *   ```
+   *     neis_academy  49,315 · 이메일     7 · 전화 27,831   ← 풀의 95%
+   *     kakao_place    1,485 · 이메일     1 · 전화    573
+   *     hira_hospital  1,200 · 이메일     0 · 전화  1,199
+   *   ```
+   *   ⇒ ① 이 풀의 도달 채널은 **이메일이 아니라 전화**다 ② 대표 우선업종(음식점·카페·미용·숙박)은
+   *   **한 건도 없다**(인허가 레인 사망). 둘 다 **총계로는 절대 안 보인다.**
+   *
+   *   이 DB 의 성공 지표는 총 인원이 아니라 *"제안 보낼 수 있는 리드 수"* 다(CLAUDE.md 방향) —
+   *   그 지표를 **루트별로** 보여야 어디에 예산을 더 쓸지 판단이 선다.
+   */
+  const bySource = (await DB.prepare(`SELECT COALESCE(NULLIF(opn_svc_id,''),'?') AS source, COUNT(*) AS n,
+      SUM(CASE WHEN phone IS NOT NULL AND phone != '' THEN 1 ELSE 0 END) AS with_phone,
+      SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS with_email,
+      SUM(CASE WHEN (phone IS NOT NULL AND phone != '') OR (email IS NOT NULL AND email != '') THEN 1 ELSE 0 END) AS with_any
+    FROM store_prospects GROUP BY opn_svc_id ORDER BY n DESC LIMIT 20`)
+    .all<{ source: string; n: number; with_phone: number; with_email: number; with_any: number }>().catch(() => null))?.results || []
   return {
     stats: {
       total: Number(t?.total) || 0, operating: Number(t?.operating) || 0, new_open: Number(t?.new_open) || 0,
       closed: Number(t?.closed) || 0, with_phone: Number(t?.with_phone) || 0, with_email: Number(t?.with_email) || 0, onboarded: Number(t?.onboarded) || 0,
-    }, byCategory,
+    }, byCategory, bySource,
   }
 }
 

@@ -170,6 +170,39 @@ const MUTATIONS = [
       '**세 번째 전진 0** 이 조용히 생긴다(이미 commerce·quality 두 번 났다).',
   },
   {
+    name: '전화 매칭이 대표번호를 통과시킴(남의 매장에 본사 이메일)',
+    file: 'src/features/marketing/api/registry-phone-match.ts',
+    find: '  if (!d || isSharedLine(d)) return null',
+    replace: '  if (!d) return null',
+    test: 'src/tests/unit/registry-phone-match.test.ts',
+    why:
+      '1588·1544·080 같은 대표번호는 **한 번호에 매장이 수백 개**다. 그대로 이으면 전혀 다른 매장에 ' +
+      '본사 이메일이 붙고, 잘못 붙은 주소로 보낸 메일은 **반송·스팸신고**가 되어 도메인 평판을 깎는다 — ' +
+      '그건 되돌리기 어렵다. 이 필터가 이 기능의 안전장치 절반이다.',
+  },
+  {
+    name: '전화 매칭이 모호한 다중 매칭을 통과시킴',
+    file: 'src/features/marketing/api/registry-phone-match.ts',
+    find: "  if (emails.length > 1) return { skip: 'ambiguous_phone' }",
+    replace: '  // (removed)',
+    test: 'src/tests/unit/registry-phone-match.test.ts',
+    why:
+      '같은 번호에 서로 다른 이메일이 둘 이상이면 **어느 쪽인지 모른다**. 아무거나 고르면 절반은 틀린다 — ' +
+      '연락처 품질은 양보다 정확도가 먼저다(틀린 주소 하나가 도메인 전체를 깎는다).',
+  },
+  {
+    name: '루트별 수율이 총계로 뭉개짐(어디에 예산 쓸지 못 봄)',
+    file: 'src/features/marketing/api/store-prospects.ts',
+    find: "SUM(CASE WHEN (phone IS NOT NULL AND phone != '') OR (email IS NOT NULL AND email != '') THEN 1 ELSE 0 END) AS with_any",
+    replace: 'COUNT(*) AS with_any',
+    test: 'src/tests/unit/ads-export-filter-parity.test.ts',
+    why:
+      '총계만 보면 "5만 건 모았다"로 읽힌다. 실측은 `neis_academy` 49,315건에 **이메일 7건**이고 ' +
+      '대표 우선업종은 **0건**이라는 전혀 다른 이야기를 한다 — 둘 다 총계로는 안 보인다. ' +
+      '⚠️ 이 항목의 첫 시험은 파일 전체에서 컬럼명을 찾아 **주입해도 초록불이었다**(같은 이름이 다른 쿼리에도 있다). ' +
+      '"가드가 막는다는 그 자리"로 범위를 좁혀야 실제로 깨진다.',
+  },
+  {
     name: '내보내기가 화면 필터를 무시(손에 안 잡히는 지표)',
     file: 'src/features/marketing/api/partner-pool.routes.ts',
     find: 'listCompanyLeads(c.env.DB, { ...filter, limit: EXPORT_MAX })',

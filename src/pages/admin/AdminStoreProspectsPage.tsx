@@ -66,6 +66,8 @@ export default function AdminStoreProspectsPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
   const [stats, setStats] = useState<Stats | null>(null)
+  /** 📊 수집 루트별 도달 수율 — 총계만 보면 "5만 건 모았다"로 읽힌다(실측은 학원 95% · 이메일 8건). */
+  const [bySource, setBySource] = useState<Array<{ source: string; n: number; with_phone: number; with_email: number }>>([])
   const [collect, setCollect] = useState<Collect | null>(null)
   /** 🩺 수확 0 이 지속되는 레인 — 하트비트는 초록인데 한 건도 못 캐는 상태를 화면이 먼저 말해 준다. */
   const [laneHealth, setLaneHealth] = useState<Array<{ lane: string; message: string; severity: string }>>([])
@@ -84,7 +86,7 @@ export default function AdminStoreProspectsPage() {
   const dq = useDebouncedValue(q) // ⏱️ 서버 검색은 타이핑 멈춘 뒤 1회(키 입력마다 왕복 방지)
 
   const loadStats = useCallback(async () => {
-    try { const r = await api.get('/api/admin/store-prospects/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setNeis(r.data.neis || null); setHira(r.data.hira || null); setKakao(r.data.storeKakao || null); setEnrichRun(r.data.enrich?.run || null); setLaneHealth(r.data.laneHealth || []) } } catch { /* noop */ }
+    try { const r = await api.get('/api/admin/store-prospects/stats'); if (r.data?.success) { setStats(r.data.stats); setBySource(r.data.bySource || []); setCollect(r.data.collect || null); setNeis(r.data.neis || null); setHira(r.data.hira || null); setKakao(r.data.storeKakao || null); setEnrichRun(r.data.enrich?.run || null); setLaneHealth(r.data.laneHealth || []) } } catch { /* noop */ }
   }, [])
   /**
    * 🔗 **목록과 내보내기가 같은 조건을 쓴다** (2026-08-03 — 내보내기가 필터를 무시하던 것 수리).
@@ -201,7 +203,7 @@ export default function AdminStoreProspectsPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-5">
+        <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
           {statCard('전체', stats?.total || 0)}
           {statCard('영업중', stats?.operating || 0)}
           {statCard('🆕 신규 개업', stats?.new_open || 0, '최근 인허가 · 전환율 최고', 'text-rose-600')}
@@ -210,6 +212,33 @@ export default function AdminStoreProspectsPage() {
           {statCard('입점 완료', stats?.onboarded || 0, undefined, 'text-green-600')}
           {statCard('폐업', stats?.closed || 0, '자동 정리됨', 'text-gray-400')}
         </div>
+        {bySource.length > 0 && (
+          /* 📊 루트별 수율 — "어디에 예산을 더 쓸까" 는 총계로는 답이 안 나온다.
+             실측(2026-08-03): neis_academy 49,315건에 이메일 7 · 전화 27,831 / 우선업종은 0건. */
+          <div className="mt-3 mb-5 rounded-xl border border-gray-200 bg-white p-3">
+            <div className="text-xs font-semibold text-gray-700 mb-2">수집 루트별 도달 수율 <span className="font-normal text-gray-400">— 총계가 아니라 “연락 가능한 수”로 본다</span></div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-gray-700">
+                <thead><tr className="text-gray-500 text-left"><th className="py-1 pr-3">루트</th><th className="py-1 pr-3 text-right">건수</th><th className="py-1 pr-3 text-right">📞 전화</th><th className="py-1 pr-3 text-right">📧 이메일</th><th className="py-1 text-right">도달률</th></tr></thead>
+                <tbody>
+                  {bySource.map(r => {
+                    const reach = r.n > 0 ? Math.round(((r.with_phone + r.with_email > 0 ? Math.max(r.with_phone, r.with_email) : 0) / r.n) * 100) : 0
+                    return (
+                      <tr key={r.source} className="border-t border-gray-100">
+                        <td className="py-1 pr-3 font-medium">{r.source}</td>
+                        <td className="py-1 pr-3 text-right tabular-nums">{formatNumber(r.n)}</td>
+                        <td className="py-1 pr-3 text-right tabular-nums">{formatNumber(r.with_phone)}</td>
+                        <td className={`py-1 pr-3 text-right tabular-nums ${r.with_email === 0 ? 'text-gray-300' : ''}`}>{formatNumber(r.with_email)}</td>
+                        <td className={`py-1 text-right tabular-nums ${reach < 10 ? 'text-rose-600 font-semibold' : 'text-gray-500'}`}>{reach}%</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-2 text-[11px] text-gray-500">📞 이 풀의 도달 채널은 <b>전화</b>입니다(이메일은 홈페이지 게시분만). 내보내기 전에 <b>‘전화 보유’</b>로 좁히세요.</div>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <button onClick={runCollect} disabled={collecting || !collect?.adsBinding} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="지방행정 인허가 전일 변동분 1회 수집(일반음식점·휴게음식점·미용업·숙박업·동물미용업)">{collecting ? '수집 중…' : '🏪 인허가 수집'}</button>

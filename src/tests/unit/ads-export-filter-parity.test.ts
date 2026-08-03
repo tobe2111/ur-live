@@ -95,3 +95,44 @@ describe('화면 — 목록과 내보내기가 **같은 조립**을 쓴다', () 
     }
   })
 })
+
+/**
+ * 📊 **수집 루트별 도달 수율이 화면에 보인다** (2026-08-03 신설).
+ *
+ * 총계만 보이면 *"5만 건 모았다"* 로 읽힌다. 실측은 다른 이야기를 한다:
+ * ```
+ *   neis_academy  49,315 · 이메일     7 · 전화 27,831   ← 풀의 95%
+ *   kakao_place    1,485 · 이메일     1
+ *   hira_hospital  1,200 · 이메일     0
+ * ```
+ * ⇒ ① 이 풀의 도달 채널은 **전화**다 ② 대표 우선업종은 **0건**이다(인허가 레인 사망).
+ * 둘 다 **총계로는 절대 안 보인다.** 어디에 예산을 더 쓸지는 이 표로만 판단된다.
+ *
+ * ⚠️ 파트너 풀엔 같은 것이 이미 있었다(`bySource`) — 매장 풀만 없었다.
+ */
+describe('수집 루트별 수율 — 총계가 아니라 "연락 가능한 수"로 본다', () => {
+  const STORE_LIB = SRC('src/features/marketing/api/store-prospects.ts')
+
+  it('🔒 매장 통계가 `opn_svc_id`(수집 루트)별로 도달 수를 센다', () => {
+    // ⚠️ **파일 전체에서 찾으면 안 된다** — `with_phone` 은 전체 통계 쿼리에도 있어서, bySource 에서
+    //   집계를 통째로 지워도 초록불이 뜬다(첫 작성이 실제로 그랬고 주입 검증이 잡았다).
+    //   "가드가 막는다고 주장하는 그 자리"로 범위를 좁힌다.
+    const at = STORE_LIB.indexOf('const bySource = ')
+    expect(at, 'bySource 집계를 못 찾았다').toBeGreaterThan(0)
+    const block = STORE_LIB.slice(at, STORE_LIB.indexOf('.all<', at))
+    expect(block).toMatch(/GROUP BY opn_svc_id/)
+    for (const col of ['with_phone', 'with_email', 'with_any']) {
+      expect(block, `${col} 이 빠지면 "몇 건 모았나"만 남는다`).toContain(col)
+    }
+  })
+
+  it('🔒 응답에 실려 나간다 — 계산만 하고 안 보내면 없는 기능이다', () => {
+    expect(STORE_LIB).toMatch(/\}, byCategory, bySource,/)
+  })
+
+  it('🔒 화면이 그것을 읽어 띄운다', () => {
+    expect(STORE_UI).toMatch(/setBySource\(r\.data\.bySource \|\| \[\]\)/)
+    expect(STORE_UI, '루트 이름이 보여야 어느 루트인지 안다').toMatch(/\{r\.source\}/)
+    expect(STORE_UI, '📞 도달 채널 안내가 있어야 이메일만 찾다 끝나지 않는다').toMatch(/도달 채널은 <b>전화<\/b>/)
+  })
+})

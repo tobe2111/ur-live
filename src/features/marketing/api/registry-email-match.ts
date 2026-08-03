@@ -104,6 +104,8 @@ export interface RegistryMatchStats {
   /** 이 패스가 쓴 D1 쿼리 수 / 예산 — 한도에 눌려 조기 종료했는지 판정(무증거 0건 금지). */
   d1?: number; d1_budget?: number; budget_exhausted?: boolean
 }
+import { phoneMatchKey, pickRegistryContact, type RegistryPhoneRow } from './registry-phone-match'
+
 const STATS_KEY = 'ads_registry_match_stats'
 const CURSOR_KEY = 'ads_registry_match_cursor'
 
@@ -141,10 +143,10 @@ export async function matchRegistryEmails(env: Env, batch = 400, budget?: D1Budg
   // 대상 = 이메일 없는 **비-원부** 리드(원부끼리 매칭은 의미 없음). 커서 순회로 전량 커버.
   spend(budget)
   const targets = (await DB.prepare(
-    `SELECT id, company_name, address, region, website FROM ad_company_leads
+    `SELECT id, company_name, address, region, website, phone FROM ad_company_leads
       WHERE id > ? AND merged_into IS NULL AND ((email IS NULL OR email = '') OR (website IS NULL OR website = '')) AND COALESCE(source,'') != 'commerce'
       ORDER BY id ASC LIMIT ?`
-  ).bind(cursor, batch).all<{ id: number; company_name: string; address: string | null; region: string | null; website: string | null }>().catch(() => null))?.results || []
+  ).bind(cursor, batch).all<{ id: number; company_name: string; address: string | null; region: string | null; website: string | null; phone: string | null }>().catch(() => null))?.results || []
 
   const skip: Record<string, number> = {}
   const updates: { id: number; email: string | null; website: string | null }[] = []
@@ -193,6 +195,53 @@ export async function matchRegistryEmails(env: Env, batch = 400, budget?: D1Budg
     const website = (exact[0].website || '').trim() || null
     if (!email && !website) { skip.registry_row_empty = (skip.registry_row_empty || 0) + 1; continue }
     updates.push({ id: t.id, email, website })
+  }
+
+  /**
+   * ☎️ **2차 — 전화번호로 잇는다** (2026-08-03 대표 질문에서 신설).
+   *
+   *   상호는 흔들린다(`"○○커피"` ↔ `"주식회사 ○○커피"` ↔ `"○○커피 강남점"`). 전화번호는 안 흔들린다.
+   *   통신판매 원부는 **상호·전화·이메일을 함께** 공시하므로, 이름으로 못 잡은 잔여분을 전화로 한 번 더 훑는다.
+   *   ⚠️ **1차에서 이미 잡힌 건 건드리지 않는다** — 이름 매칭은 주소까지 대조하는 더 강한 근거다.
+   *   🛡️ 대표번호(1588 등)·모호한 다중 매칭은 `registry-phone-match` 가 걸러 낸다 —
+   *      잘못 붙은 이메일은 반송·스팸신고가 되고 도메인 평판은 되돌리기 어렵다.
+   */
+  const gotName = new Set(updates.map(u => u.id))
+  const phoneWanted: Array<{ t: typeof targets[number]; k: string }> = []
+  for (const t of targets) {
+    if (gotName.has(t.id)) continue
+    const k = phoneMatchKey(t.phone)
+    if (!k) { if (t.phone) { skip.phone_unusable = (skip.phone_unusable || 0) + 1 } ; continue }
+    phoneWanted.push({ t, k })
+  }
+  if (phoneWanted.length) {
+    const byPhone = new Map<string, RegistryPhoneRow[]>()
+    const keys = [...new Set(phoneWanted.map(w => w.k))]
+    for (let i = 0; i < keys.length; i += 90) {
+      if (budget?.exhausted) { skip.budget_exhausted = (skip.budget_exhausted || 0) + 1; break }
+      const chunk = keys.slice(i, i + 90)
+      spend(budget)
+      // ⚠️ 원부 전화도 **같은 방식으로 정규화**해서 비교해야 한다 — 저장 형태가 `02-1234-5678` 이라
+      //   숫자열과 그냥 비교하면 한 건도 안 맞는다(측정 0 을 "원부에 없다"로 오독하게 된다).
+      const rows = (await DB.prepare(
+        `SELECT phone, email, website FROM ad_company_leads
+          WHERE source = 'commerce' AND merged_into IS NULL AND phone IS NOT NULL AND phone != ''
+            AND REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'.','') IN (${chunk.map(() => '?').join(',')})
+            AND ((email IS NOT NULL AND email != '') OR (website IS NOT NULL AND website != ''))`
+      ).bind(...chunk).all<RegistryPhoneRow>().catch(() => null))
+      if (!rows) { skip.phone_query_failed = (skip.phone_query_failed || 0) + 1; continue } // 조용한 0건 금지
+      for (const r of rows.results || []) {
+        const k = phoneMatchKey(r.phone); if (!k) continue
+        const arr = byPhone.get(k)
+        if (arr) { if (arr.length < 6) arr.push(r) } else byPhone.set(k, [r])
+      }
+    }
+    for (const { t, k } of phoneWanted) {
+      const picked = pickRegistryContact(byPhone.get(k) || [])
+      if ('skip' in picked) { const r = `phone_${picked.skip}`; skip[r] = (skip[r] || 0) + 1; continue }
+      updates.push({ id: t.id, email: picked.email, website: picked.website })
+      skip.phone_matched = (skip.phone_matched || 0) + 1 // 사유표에 함께 남긴다(1차/2차 기여도 분리)
+    }
   }
 
   // 반송 억제 목록에 있는 주소는 이식하지 않는다(품질 루프 존중).
