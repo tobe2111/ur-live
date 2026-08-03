@@ -1065,6 +1065,37 @@ const MUTATIONS = [
       '행이 생기는데(실측 45 중 10건), 안 비우면 옛 값이 영구히 굳는다 — `shouldClearCategory` docblock 이 ' +
       '입주 시공업체 27명 실측으로 이미 경고한 바로 그 형태("측정하면 점진 교정된다"는 낙관은 틀렸다).',
   },
+  {
+    name: '알람이 모는 수집 레인을 부모도 던짐(부모 CPU 이중 소모)',
+    file: 'src/worker-ads/index.ts',
+    find: "if (!laneAlarmOn && env.ADS_AUTO_COLLECT_ENABLED === 'true')",
+    replace: "if (env.ADS_AUTO_COLLECT_ENABLED === 'true')",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '리스가 이중 *실행* 은 막지만 **던지는 것 자체가 부모 CPU 를 먹는다** — 그게 애초에 이 레인을 죽인 ' +
+      '원인이다(2026-08-03 실측: 디스패치 3초 뒤 `ads:collect  Worker exceeded CPU time limit`).',
+  },
+  {
+    name: 'laneAlarmOn 선언이 첫 사용보다 아래로(런타임 TDZ)',
+    file: 'src/worker-ads/index.ts',
+    find: '  const laneAlarmOn = laneAlarmDrivesEnrich(env)\n',
+    replace: '',
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '`const` 는 TDZ 라 선언보다 먼저 쓰면 **런타임에 ReferenceError** 인데 **타입체크는 통과한다**. ' +
+      '수집 게이트가 보강 블록보다 위에 있어 작성 중 실제로 밟았다. 이 주입은 선언을 통째로 지워 ' +
+      '"순서" 불변식이 위치를 실제로 보는지 확인한다.',
+  },
+  {
+    name: '수집 레인 시간당 상한이 조용히 증설됨',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: '  collect: {\n    runsPerHour: 1,\n',
+    replace: '  collect: {\n',
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '빼면 정책 기본값(12회/시간)을 받는다 = cron 설계 의도(`0 * * * *`)를 12배 넘는 증설이고, ' +
+      '**네이버로 나가는 요청량이 늘어나는 변경**이라 대표 판단 사항이다. 값이 조용히 바뀌는 것을 막는다.',
+  },
 ]
 
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
