@@ -120,9 +120,12 @@ const MUTATIONS = [
   },
   {
     name: '매시간 레인이 gap 없이 등록돼 침묵 판정에서 통째로 빠짐',
-    file: 'src/worker-ads/index.ts',
-    find: 'gapMin: opts?.gap ?? hourlyGapMinutes()',
-    replace: 'gapMin: opts?.gap',
+    // 🔁 2026-08-03: 조립이 `lane-cadence.laneCadenceFields` 로 추출되면서 이 줄이 이사했다
+    //   (같은 필드가 미루기 판정에도 쓰여 매시간 레인을 통째로 `always` 로 만들던 것을 끊으면서).
+    //   불변식은 그대로다 — **기본값 없이 undefined 를 그대로 넘기면** 그 레인이 침묵 판정에서 빠진다.
+    file: 'src/worker-ads/lane-cadence.ts',
+    find: '  const gapMin = opts?.gap ?? hourlyGapMinutes()',
+    replace: '  const gapMin = opts?.gap as number',
     test: 'src/tests/unit/ads-lane-gap-judgeable.test.ts',
     why:
       '자식 하트비트(`writeSelfBeat`)는 설계상 cron 식을 안 싣고 부모가 넘긴 `gap` 만 믿는데, ' +
