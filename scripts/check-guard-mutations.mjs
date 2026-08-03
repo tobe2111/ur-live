@@ -1155,6 +1155,36 @@ const MUTATIONS = [
       '빼면 정책 기본값(12회/시간)을 받는다 = cron 설계 의도(`0 * * * *`)를 12배 넘는 증설이고, ' +
       '**네이버로 나가는 요청량이 늘어나는 변경**이라 대표 판단 사항이다. 값이 조용히 바뀌는 것을 막는다.',
   },
+  {
+    name: '은퇴 축 리드를 안 비움(유령 카테고리 영구 잔존)',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: '  if (retired.has(stored)) return true',
+    replace: '  if (false) return true',
+    test: 'src/tests/unit/ads-category-retire.test.ts',
+    why:
+      '축을 접어도 리드의 카테고리 값은 남는다 — 아무 규칙도 안 만드는 유령 값이 영구 잔존한다. ' +
+      '재분류는 `classifyCategory` 가 null 이면 그대로 두므로 스스로 낫지 않는다.',
+  },
+  {
+    name: '은퇴 축을 키워드 폴백이 다시 붙임(비우기와 무한 싸움)',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: '!NON_CATEGORIES.has(kc) && !retired.has(kc)',
+    replace: '!NON_CATEGORIES.has(kc)',
+    test: 'src/tests/unit/ads-category-retire.test.ts',
+    why:
+      '비우기(①)만 있고 유입 차단(②)이 없으면 재분류가 지우고 저장이 다시 붙여 **영원히 제자리**다. ' +
+      '두 경로는 짝이라 하나만 있으면 무의미하다.',
+  },
+  {
+    name: '은퇴 축 키워드가 수집 슬롯을 계속 먹음',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '.filter(k => !k.category || !RETIRED_CATEGORIES.has(k.category))',
+    replace: '',
+    test: 'src/tests/unit/ads-category-retire.test.ts',
+    why:
+      '수집은 시간당 1회 · 회차당 16픽뿐이다(실측). 접은 축 키워드가 계속 순번을 받으면 살아있는 축이 ' +
+      '그만큼 굶는다 — 대행사 축이 19개 중 17개를 못 돌던 것과 같은 희소성 문제다.',
+  },
 ]
 
 /** 복원해야 할 원본들 — 어떤 경로로 끝나도 되돌린다. */
