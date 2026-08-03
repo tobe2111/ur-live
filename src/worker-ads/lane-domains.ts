@@ -83,6 +83,7 @@ export const LANE_DOMAIN: Record<string, AdsDomain> = {
   'collect-storeinfo': 'company',
   'collect-franchise': 'company',
   'collect-nara-vendor': 'company',
+  'collect-market': 'company',   // 🏪 전통시장 상인회 — 같은 테이블(ad_company_leads)
   'collect-nps': 'company',
   'collect-work24': 'company',
   'enrich-company': 'company',

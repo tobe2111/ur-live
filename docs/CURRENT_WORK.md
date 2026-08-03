@@ -5494,9 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 105건 · 최신순 · 이 목록은 자동 생성된다._
-_총 106건 · 최신순 · 이 목록은 자동 생성된다._
-_총 107건 · 최신순 · 이 목록은 자동 생성된다._
+_총 108건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-03**
 - [ur-ads 배포가 조용히 안 나갔다 — 라이브는 멀쩡해 보였다 (2026-08-03)](handoff/2026-08-03-urads-deploy-silent-miss.md)
@@ -5505,6 +5503,7 @@ _총 107건 · 최신순 · 이 목록은 자동 생성된다._
 - [시트 미러가 8월 2일부터 멈춰 있었다 — 커서가 스냅샷을 지나쳐 영구 고착](handoff/2026-08-03-sheets-mirror-cursor-stuck.md)
 - [유료 전환 준비 마감 — 등기부가 못 보던 절반 (2026-08-03)](handoff/2026-08-03-paid-readiness-r3.md)
 - [관측이 틀린 답을 주면 없느니만 못하다 — 오탐 3건 (2026-08-03)](handoff/2026-08-03-observability-false-positives.md)
+- [상권 축 1단계 — 전통시장 수집 레인 (2026-08-03)](handoff/2026-08-03-market-lane.md)
 - [상인회·상권 DB — 네 소스는 성격이 다르다 (2026-08-03 대표 지시)](handoff/2026-08-03-market-district-db-plan.md)
 - [🏬 몰 관리 API 가 소비자 배포에 없었다 — `/api/admin/wholesale-malls` 404 (2026-08-03)](handoff/2026-08-03-mall-admin-api-consumer-bundle.md)
 - [인허가 레인 부활 — 죽은 게 아니라 **경로 한 칸이 빠져 있었다** (2026-08-03)](handoff/2026-08-03-license-lane-revived.md)

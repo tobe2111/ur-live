@@ -602,6 +602,27 @@ const MUTATIONS = [
       '상권/상인회 축의 유일한 연락처 소스가 이 호스트에만 있다.',
   },
   {
+    name: '전통시장 레인이 금지 파라미터를 실어 보냄',
+    file: 'src/features/marketing/api/market-collect.ts',
+    find: '&numOfRows=${rows}&type=json`',
+    replace: '&numOfRows=${rows}&pageIndex=${page}&type=json`',
+    test: 'src/tests/unit/market-collect.test.ts',
+    why:
+      '표준데이터 게이트웨이는 모르는 파라미터를 **거부**한다(`INVALID_REQUEST_PARAMETER_ERROR (pageIndex)`). ' +
+      '다른 레인을 베끼다 "혹시 몰라" 한 줄 얹으면 **인증까지 통과한 요청이 죽는다** — 그리고 그 실패는 ' +
+      '`found:0` 으로만 보여서 주소 문제로 오진하게 된다.',
+  },
+  {
+    name: '전통시장 전화 필드 매핑이 끊김(연락 불가 명단이 된다)',
+    file: 'src/features/marketing/api/market-collect.ts',
+    find: "g(it, 'phoneNumber') || null",
+    replace: "null",
+    test: 'src/tests/unit/market-collect.test.ts',
+    why:
+      '상권 축에서 **전화가 이 소스의 존재 이유**다(나머지 세 소스는 연락처가 아예 없다). 필드명이 어긋나면 ' +
+      'HTTP 200 에 행까지 오는데 **연락 불가 명단**만 쌓인다 — 인허가에서 실제로 당한 클래스(200 은 성공이 아니다).',
+  },
+  {
     name: '표준데이터에 모르는 파라미터를 실어 보냄(INVALID_REQUEST_PARAMETER)',
     file: 'src/features/marketing/api/public-data-probe.ts',
     find: "  return host === 'api.data.go.kr' ? 'std' : 'both'",

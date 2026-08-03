@@ -162,7 +162,7 @@ app.post('/run-all', async (c) => {
     // ① 수집 전 레인 병렬(각 호출 = ur-ads 의 독립 인보케이션 = 독립 예산 — 서로 안 갉아먹음).
     // ⚠️ 2026-07-28 실측 수리: **매장 후보(인허가) 수집·보강이 목록에서 빠져** 있어 전체 실행을 눌러도
     //   store_prospects 가 0건 → 소비자 공개면(/new-openings·/area-report)과 개업 웰컴 큐가 영구 빈 상태였음.
-    const COLLECTORS = ['collect-company', 'collect-storeinfo', 'collect-commerce', 'collect-franchise', 'collect-nara-vendor', 'collect-work24', 'collect-nps', 'sweep-nts', 'sweep-mx', 'collect-localdata', 'enrich-prospects']
+    const COLLECTORS = ['collect-company', 'collect-storeinfo', 'collect-commerce', 'collect-franchise', 'collect-market', 'collect-nara-vendor', 'collect-work24', 'collect-nps', 'sweep-nts', 'sweep-mx', 'collect-localdata', 'enrich-prospects']
     const collected = await Promise.all(COLLECTORS.map(p => call(p)))
     const collectSaved = collected.reduce((s: number, r) => s + num(r, 'saved'), 0)
     const collectFound = collected.reduce((s: number, r) => s + num(r, 'found'), 0)
@@ -429,6 +429,7 @@ app.post('/probe-public-data', async (c) => {
 app.post('/collect-storeinfo', delegateCollect('collect-storeinfo', '🏪 상가정보 수집')) // 소스① 상가정보
 app.post('/collect-commerce', delegateCollect('collect-commerce', '🛒 통신판매 수집'))   // 통신판매사업자(전화+이메일)
 app.post('/collect-franchise', delegateCollect('collect-franchise', '🏢 프랜차이즈 수집')) // 공정위 가맹정보(프랜차이즈 본사)
+app.post('/collect-market', delegateCollect('collect-market', '🏪 전통시장 수집'))     // 상권 축 — 상인회(연락처 有)
 app.post('/collect-nps', delegateCollect('collect-nps', '👥 국민연금 규모 조회'))         // 👥 국민연금 규모 검증(직원수)
 app.post('/collect-work24', delegateCollect('collect-work24', '💼 채용기업(고용24) 수집')) // 💼 고용24 채용기업(성장 신호)
 
