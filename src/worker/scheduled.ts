@@ -274,8 +274,9 @@ export async function handleCronScheduled(
     // 🛡️ 2026-05-24: 별점 "신규" 영구 fix — daily (18 UTC) 외에도 매시간 catch.
     //   신규 활성 상품이 들어오면 최대 1시간 안에 ★ 노출. idempotent (review_count>0 skip).
     ctx.waitUntil(safeCron('auto-seed-reviews-hourly', () => handleAutoSeedReviews(env)));
-    // 🔄 2026-07-05 (대표 "마감돼도 사라지면 안 됨 — 콜드스타트"): 데모 추첨 마감 자동 연장(5~10일 롤링).
-    ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env)));
+    // 🔄 2026-07-05 데모 추첨 마감 자동 연장 → **2026-08-03 에 아래 `0 18` 일간 블록으로 옮겼다.**
+    //    이 시간당 블록은 `wrangler.toml` crons 에 **등록돼 있지 않다**(3단계 보류 — 도매 예치금
+    //    자동 환불 규모 미측정). 즉 여기 있는 동안은 **한 번도 안 돌았다**(하트비트 0건으로 실측).
     // 🖼️ 2026-07-21 (대표 "남은 이상적인 것"): 데모 갤러리 외부 CDN URL → R2 점진 이관(시간당 상품 2개,
     //   외부 fetch ≤10 — 서브리퀘스트 예산 보호). 멱등(img_rehost_done meta 종결) — 수렴 후 SELECT 1회 no-op.
     ctx.waitUntil(safeCron('demo-image-rehost', async () => {
@@ -325,6 +326,11 @@ export async function handleCronScheduled(
   if (cron === '0 18 * * *') {
     ctx.waitUntil(safeCron('auto-settlement', () => handleAutoSettlement(env)));
     ctx.waitUntil(safeCron('expired-voucher-refund', () => handleExpiredVoucherRefunds(env)));
+    // 🎭 2026-08-03 — 시간당 블록에서 **여기로 이사**. 데모 추첨 마감 롤링 연장 + 추첨 설정이 없는
+    //   이용권 데모(숙박 72개)에 seed. 원래 자리(`0 * * * *`)가 wrangler crons 에 없어 **한 번도
+    //   안 돌았다**(하트비트 0건 실측) → 숙박 데모가 배지 없이 "진짜 상품"으로 보이고 있었다.
+    //   ⚠️ 머니 무관 · `demo-%` slug 만 건드림 · 완전 멱등이라 하루 1회면 충분하다.
+    ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env)));
     // 🛡️ 2026-06-01 도매몰: 공급자 정산 성숙 (환불창 지난 pending → available).
     ctx.waitUntil(safeCron('supplier-settlement-mature', async () => {
       const { matureSupplierSettlements } = await import('../features/supply/api/supply-settlement');

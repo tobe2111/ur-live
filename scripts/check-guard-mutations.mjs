@@ -72,6 +72,19 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '데모 추첨 자가치유가 발화 안 하는 cron 슬롯에 배선됨',
+    file: 'src/worker/scheduled.ts',
+    find: "    ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env)));",
+    replace: "    if (cron === '0 * * * *') { ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env))); }",
+    test: 'src/tests/unit/cron-slot-registered.test.ts',
+    why:
+      '숙박 데모 72개가 **추첨 배지 없이** 89,000원짜리 진짜 숙박권으로 보이고 있어 자가치유 백필을 ' +
+      '`demo-fcfs-renew` 에 넣고 배포했는데 라이브가 그대로였다. 그 cron 이 `0 * * * *` 블록 안에 있고 ' +
+      '그 표현식은 wrangler.toml crons 에 **없다**(3단계 보류) — 즉 한 번도 발화한 적이 없다(하트비트 ' +
+      '실측: 시간당 32건이 전부 ads:* 별도 워커, 메인 워커 0건). **에러가 없어** 배포는 초록불이고 ' +
+      '리뷰에도 안 걸린다. 짝인 check-cron-heartbeat 는 "safeCron 으로 감쌌는가"만 보므로 못 잡는다.',
+  },
+  {
     name: '서비스 지도가 낡아 공구 서비스 일을 유어딜 일로 오인',
     file: 'docs/design/urdeal-platform-model.md',
     find: '| **🏪 공구 서비스** (운영자 SaaS)',
