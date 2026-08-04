@@ -127,3 +127,50 @@ POST /api/admin/partner-pool/probe-public-data
 | **code 30**(403) | 활용신청 안 됨 | **대표께 요청** — 데이터셋 15012894 |
 | code 20 재발 | 키가 여전히 안 실린다 | `PORTAL_KEY_HOSTS` 배선 확인(이번 수리가 안 먹은 것) |
 | code 12 | 주소가 안 맞는다 | 오퍼레이션명 재확인 — ⚠️ **"폐기"로 단정 금지** |
+
+---
+
+## 활용신청 반영됨 — 그리고 **게이트웨이 성격이 달랐다** (2026-08-03 저녁)
+
+대표가 전국전통시장표준데이터(15012894) 활용신청 → 재프로브:
+
+```
+code 30 (등록되지 않은 서비스키)
+  → 200 · {"resultCode":"10","resultMsg":"INVALID_REQUEST_PARAMETER_ERROR (pageIndex)"}
+```
+
+**인증 통과.** 우리가 이미 갖고 있던 키가 그대로 통한다 — 대표가 키를 따로 줄 필요는 없었다
+(공공데이터포털은 계정당 인증키 하나이고 데이터셋별로 *권한만* 붙는다).
+
+### 🪤 그런데 프로브의 전제가 여기선 틀렸다
+
+프로브는 후보를 찌를 때 **두 페이징 이름을 다 실어** 보낸다. 근거는 *"모르는 쪽은 조용히 무시된다"* 였고
+기관별 서비스(`apis.data.go.kr`)에선 사실이다. 그런데 **표준데이터는 거부한다.**
+
+⇒ 인증·주소가 다 맞은 요청을 **우리 편의 문법이 죽이고 있었다.** 진단 도구가 스스로 만든 실패다.
+
+**수리**: `ProbeParamSet`(`both`|`std`|`legacy`) — 호스트로 기본을 정하되 **명시 옵션이 이긴다**.
+`std` = `pageNo`/`numOfRows`/`type` 최소셋. 어드민 프록시에 `params` 쿼리 배선.
+
+> 🔑 **오늘 같은 클래스가 세 번째다.** ① 경로 한 칸(`/info`) ② 호스트 한 글자(`api.` vs `apis.`)
+> ③ 파라미터 문법. 전부 **"이 값/규칙은 하나뿐"** 이라는 가정에서 나왔다.
+> 새 소스를 붙일 때는 *경로·호스트·파라미터·필드명* 넷을 **각각 실측**해야 한다 — 하나가 맞았다고
+> 나머지가 따라오지 않는다.
+
+### 전통시장 API 실제 규약 (실측 확정분)
+
+```
+https://api.data.go.kr/openapi/tn_pubr_public_trdit_mrkt_api
+  ?serviceKey=…&pageNo=1&numOfRows=…&type=json
+```
+`pageIndex`/`pageSize`/`resultType`/`_type` **금지**(거부당한다).
+
+### 다음 세션의 첫 액션
+
+배포 후:
+```
+POST /api/admin/partner-pool/probe-public-data
+     ?target=license&path=openapi/tn_pubr_public_trdit_mrkt_api&host=api.data.go.kr&rows=3&page=1
+```
+- **200 + `body.items` 에 행** → 필드명을 읽어 매핑 확정 → 수집 레인(`ad_company_leads`, `category='상인회'`)
+- 또 `resultCode:10` 이면 **어느 파라미터인지 메시지가 이름을 말해 준다** — 그걸 빼면 된다.

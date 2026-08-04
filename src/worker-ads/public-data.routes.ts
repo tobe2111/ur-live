@@ -37,6 +37,10 @@ publicDataRoutes.post('/__ads/collect-commerce', lane(async (env) => {
 publicDataRoutes.post('/__ads/collect-franchise', lane(async (env) => {
   const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect'); return runFranchiseCollect(env)
 }))
+// 🏪 상권 축 — 전국전통시장표준데이터(연락처가 붙어 오는 유일한 상권 소스). 수동=게이트 무관.
+publicDataRoutes.post('/__ads/collect-market', lane(async (env) => {
+  const { runMarketCollect } = await import('@/features/marketing/api/market-collect'); return runMarketCollect(env)
+}))
 publicDataRoutes.post('/__ads/scan-notices', lane(async (env) => {
   const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return runNoticeScan(env)
 }))
@@ -114,7 +118,7 @@ publicDataRoutes.post('/__ads/probe-public-data', async (c) => {
       ? await m.probeLadder(c.env, target, ladder, page || 1)
       : target === 'all'
         ? await m.probeAllPublicData(c.env, { rows, page })
-        : [await m.probePublicData(c.env, target, undefined, { rows, page, path: c.req.query('path'), host: c.req.query('host') })]
+        : [await m.probePublicData(c.env, target, undefined, { rows, page, path: c.req.query('path'), host: c.req.query('host'), params: c.req.query('params') })]
     return c.json({ ok: true, targets: m.probeTargetNames(), results })
   } catch (e) {
     return c.json({ ok: false, error: String((e as Error)?.message || e || '').slice(0, 200) }, 500)

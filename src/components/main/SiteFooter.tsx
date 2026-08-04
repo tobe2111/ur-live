@@ -36,6 +36,11 @@ export default function SiteFooter() {
             <a href="/about" className={colLink}>서비스 소개</a>
             <a href="/vouchers" className={colLink}>교환권</a>
             <a href="/map" className={colLink}>동네딜 지도</a>
+            {/* 🗺️ 2026-08-03: 지역 허브. **모바일 우선 색인 대응으로 여기 있어야 한다** — 모바일 홈은
+                풀스크린 지도(RestaurantMapPage)라 푸터도 지역 링크도 없어서, 홈만 보는 크롤러는
+                `/region/*` 를 영영 발견하지 못한다. 푸터는 대부분의 소비자 페이지에 붙으므로 이 한 줄이
+                지역 페이지 56개로 가는 유일하게 안정적인 진입로다. */}
+            <a href="/region" className={colLink}>지역별 동네딜</a>
             <a href="/new-openings" className={colLink}>우리 동네 새 가게</a>
             <a href="/stays" className={colLink}>숙소</a>
             <a href="/experience" className={colLink}>체험단 모집</a>

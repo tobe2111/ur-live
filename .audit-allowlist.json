@@ -114,6 +114,14 @@
       "review": "npm 설치 가능 환경에서 postcss 패치 버전 상향 후 제거 — 근본 해결 우선."
     },
     {
+      "ghsa": "GHSA-4cwx-7wf7-3272",
+      "pkg": "undici",
+      "reason": "dev/빌드툴·테스트 전용 transitive(jsdom@28 · wrangler→miniflare 경유). 취약점 = undici **HTTP 클라이언트 캐시**의 degenerate private cache directive 파싱(cross-user 정보노출/파싱 크래시) — production Cloudflare Workers 런타임은 undici 가 아니라 **네이티브 fetch** 를 쓴다. 실측 확인: `npm ls undici --omit=dev` 비어 있음 + `src/` 참조 0 → production 번들 미포함, 런타임 도달 불가. 기등재 undici 3건(GHSA-vmh5/vxpw/hm92)과 동일 패키지·동일 도달불가 근거. 2026-08-04 신규 published advisory 가 전 PR 배포를 차단해 등재(lockfile 무변경인데 어드바이저리 DB 갱신만으로 초록→빨강 전환).",
+      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스(2026-06-22·07-15·07-21·07-25 선례와 동일, 동일 패키지 기승인)",
+      "date": "2026-08-04",
+      "review": "wrangler/miniflare·jsdom 업그레이드로 undici 갱신 시 재확인 후 제거."
+    },
+    {
       "ghsa": "GHSA-f88m-g3jw-g9cj",
       "pkg": "sharp",
       "reason": "dev/빌드툴 전용 transitive(libvips 상속 취약점 — CVE-2026-33327/33328/35590/35591). package.json 직접 의존 아님 + src/ 미참조. sharp 는 Node 네이티브 모듈이라 Cloudflare Workers/Pages 런타임에서 실행 불가 → production 번들 미포함, 도달 불가. 2026-07 신규 published advisory 가 전 PR 배포를 차단해 등재(undici/tar/ws 등과 동일 도달불가 클래스).",

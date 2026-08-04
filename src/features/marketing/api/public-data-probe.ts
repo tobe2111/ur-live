@@ -85,6 +85,8 @@ export interface ProbeOpts {
   path?: string
   /** 후보 경로의 호스트(상대 경로일 때만 의미 있다). 허용 목록 밖이면 **거절**된다. */
   host?: string
+  /** 요청 파라미터 세트(`both`|`std`|`legacy`). 미지정이면 호스트로 정한다 — `ProbeParamSet` 참조. */
+  params?: string
 }
 
 /**
@@ -146,6 +148,36 @@ export function normalizeProbePath(raw: string | undefined | null, defaultHost?:
 
 /** ⚠️ 페이징만 받는다 — `path`(후보 경로)는 대상 정의와 무관하다(그건 대상을 *대체*하는 것이다). */
 export type ProbePaging = { rows: number; page: number }
+
+/**
+ * 🎛️ **요청 파라미터 세트** — 게이트웨이마다 *모르는 파라미터를 대하는 태도*가 다르다.
+ *
+ *   - `both`(기본) — 두 페이징 이름을 다 보낸다. 기관별 서비스(`apis.data.go.kr`)는 모르는 쪽을
+ *     **조용히 무시**하므로, 이름이 달라서 실패한 것을 "주소가 틀려서"로 오진하지 않게 해 준다.
+ *   - `std` — 공공데이터포털 **표준 최소셋**(`pageNo`/`numOfRows`/`type`). 표준데이터 게이트웨이는
+ *     모르는 파라미터를 **거부**한다(실측: `INVALID_REQUEST_PARAMETER_ERROR (pageIndex)`) —
+ *     거기엔 `both` 가 오히려 독이다.
+ *   - `legacy` — 구 localdata 규약(`pageIndex`/`pageSize`).
+ */
+export type ProbeParamSet = 'both' | 'std' | 'legacy'
+
+/**
+ * 호스트를 보고 기본 세트를 고른다 — 명시값이 있으면 그것이 이긴다.
+ * ⚠️ 기본을 호스트로 정하는 이유: 진단 도구가 **매번 옵션을 외워야 쓸 수 있으면** 아무도 안 쓴다.
+ *   그렇다고 호스트 판정을 못 넘어서게 두면 새 게이트웨이에서 또 막히므로 **명시 옵션이 우선**이다.
+ */
+export function resolveProbeParamSet(raw: string | undefined | null, host?: string): ProbeParamSet {
+  const t = String(raw || '').trim().toLowerCase()
+  if (t === 'std' || t === 'legacy' || t === 'both') return t
+  return host === 'api.data.go.kr' ? 'std' : 'both'
+}
+
+/** 파라미터 세트 → 쿼리 문자열(서비스키 제외 — 그건 호출부가 앞에 붙인다). */
+export function buildProbePaging(set: ProbeParamSet, o: ProbePaging): string {
+  if (set === 'std') return `pageNo=${o.page}&numOfRows=${o.rows}&type=json`
+  if (set === 'legacy') return `pageIndex=${o.page}&pageSize=${o.rows}&type=json&resultType=json`
+  return `pageNo=${o.page}&numOfRows=${o.rows}&pageIndex=${o.page}&pageSize=${o.rows}&type=json&_type=json&resultType=json`
+}
 type TargetDef = { label: string; url: (key: string, env: Env, o: ProbePaging) => string }
 
 /**
@@ -231,7 +263,12 @@ export async function probePublicData(env: Env, target: string, keyOverride?: st
   //   공공데이터포털은 페이징 파라미터 이름이 서비스마다 갈린다(pageNo/numOfRows ↔ pageIndex/pageSize).
   //   후보를 찌를 땐 **둘 다** 실어 보낸다 — 모르는 쪽을 무시하는 게 이 게이트웨이의 동작이고,
   //   하나만 보내면 "이름이 달라서" 실패한 것을 "주소가 틀려서"로 오진하게 된다.
-  const paging = `pageNo=${o.page}&numOfRows=${o.rows}&pageIndex=${o.page}&pageSize=${o.rows}&type=json&_type=json&resultType=json`
+  //   ⚠️ 2026-08-03: 그 전제가 **모든 게이트웨이에 통하지 않는다.** 표준데이터(`api.data.go.kr`)는
+  //     모르는 파라미터를 무시하지 않고 **거부**한다 — 라이브가 그렇게 말해 줬다:
+  //     `{"resultCode":"10","resultMsg":"INVALID_REQUEST_PARAMETER_ERROR (pageIndex)"}`
+  //     즉 "둘 다 보내기"가 **인증까지 통과한 요청을 파라미터로 죽이는** 자리가 됐다.
+  //     ⇒ 파라미터 세트를 고를 수 있게 한다(`paging` 옵션). 기본은 기존 그대로.
+  const paging = buildProbePaging(resolveProbeParamSet(opts?.params, candidate?.host), o)
   const url = candidate
     ? (needsKey
       ? `https://${candidate.host}/${candidate.path}?serviceKey=${serviceKeyParam(key)}&${paging}`

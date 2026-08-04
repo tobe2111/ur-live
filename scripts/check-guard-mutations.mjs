@@ -165,6 +165,17 @@ const MUTATIONS = [
       '고장 그대로다(실제로 배포 첫 회차에 기록이 또 안 남았고, 원인 후보가 바로 이 취약성이었다).',
   },
   {
+    name: '꼬리 상한이 25s 로 되돌아감(부모가 못 버티는 값)',
+    file: 'src/worker-ads/tail-bound.ts',
+    find: 'export const TAIL_WAIT_MS = 10_000',
+    replace: 'export const TAIL_WAIT_MS = 25_000',
+    test: 'src/tests/unit/ads-tail-bound.test.ts',
+    why:
+      '25s 로는 밤사이 10회차 중 3회 꼬리가 안 돌았고 `cap` 이 4→2 로 되물러났다(2026-08-04 실측). ' +
+      '상한이 있으면 최대 그만큼만 기다리므로, 그래도 못 남긴다는 건 **부모가 25s 조차 못 버틴다**는 뜻이다. ' +
+      '값을 다시 올리려면 라이브 근거(이력 구멍 감소 실측)가 먼저 있어야 한다.',
+  },
+  {
     name: '회차 꼬리가 다시 무한정 기다림(학습기 갱신 자리가 통째로 사라짐)',
     file: 'src/worker-ads/tail-bound.ts',
     find: 'await Promise.race([Promise.all(tracked), deadline])',
@@ -600,6 +611,39 @@ const MUTATIONS = [
       '빠져 **키 없이 나갔고** 라이브가 `SERVICE_KEY_IS_NULL`(code 20)로 답했다. 그러면 *"우리 키가 이 데이터셋에 ' +
       '열려 있는가"* 를 영영 판정 못 한다 — **이 프로브의 존재 이유가 바로 그 판정인데 스스로 막고 있었다.** ' +
       '상권/상인회 축의 유일한 연락처 소스가 이 호스트에만 있다.',
+  },
+  {
+    name: '전통시장 레인이 금지 파라미터를 실어 보냄',
+    file: 'src/features/marketing/api/market-collect.ts',
+    find: '&numOfRows=${rows}&type=json`',
+    replace: '&numOfRows=${rows}&pageIndex=${page}&type=json`',
+    test: 'src/tests/unit/market-collect.test.ts',
+    why:
+      '표준데이터 게이트웨이는 모르는 파라미터를 **거부**한다(`INVALID_REQUEST_PARAMETER_ERROR (pageIndex)`). ' +
+      '다른 레인을 베끼다 "혹시 몰라" 한 줄 얹으면 **인증까지 통과한 요청이 죽는다** — 그리고 그 실패는 ' +
+      '`found:0` 으로만 보여서 주소 문제로 오진하게 된다.',
+  },
+  {
+    name: '전통시장 전화 필드 매핑이 끊김(연락 불가 명단이 된다)',
+    file: 'src/features/marketing/api/market-collect.ts',
+    find: "g(it, 'phoneNumber') || null",
+    replace: "null",
+    test: 'src/tests/unit/market-collect.test.ts',
+    why:
+      '상권 축에서 **전화가 이 소스의 존재 이유**다(나머지 세 소스는 연락처가 아예 없다). 필드명이 어긋나면 ' +
+      'HTTP 200 에 행까지 오는데 **연락 불가 명단**만 쌓인다 — 인허가에서 실제로 당한 클래스(200 은 성공이 아니다).',
+  },
+  {
+    name: '표준데이터에 모르는 파라미터를 실어 보냄(INVALID_REQUEST_PARAMETER)',
+    file: 'src/features/marketing/api/public-data-probe.ts',
+    find: "  return host === 'api.data.go.kr' ? 'std' : 'both'",
+    replace: "  return 'both'",
+    test: 'src/tests/unit/ads-public-data-probe.test.ts',
+    why:
+      '게이트웨이마다 **모르는 파라미터를 대하는 태도가 다르다.** 기관별 서비스는 조용히 무시하지만 ' +
+      '표준데이터는 거부한다 — 라이브가 `INVALID_REQUEST_PARAMETER_ERROR (pageIndex)` 로 말해 줬다. ' +
+      '즉 인증·주소가 다 맞은 요청을 **우리 편의 문법이 죽인다**(진단 도구가 스스로 만든 실패). ' +
+      '상권 축의 유일한 연락처 소스가 이 게이트웨이에 있다.',
   },
   {
     name: '인허가 경로에서 오퍼레이션(/info)이 사라짐',
