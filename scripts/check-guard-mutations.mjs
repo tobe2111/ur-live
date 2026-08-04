@@ -198,6 +198,17 @@ const MUTATIONS = [
       '고치려던 것과 **부호만 반대인 같은 고착**이다. 끝난 레인만 판정 대상이어야 한다.',
   },
   {
+    name: '순환 경보가 다시 "해제될 수 없는" 임계로 회귀',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: 'export const ROTATION_STARVE_CYCLES = 3',
+    replace: 'export const ROTATION_STARVE_CYCLES = 2',
+    test: 'src/tests/unit/ads-rotation-health.test.ts',
+    why:
+      '이 경보의 병은 "안 울리는 것"이 아니라 **꺼질 수 없는 것**이었다(임계 2일 < 한 바퀴 6.5일 → 완벽해도 80% 가 걸림). ' +
+      '배수를 실측 최악(2.21바퀴)보다 낮추면 정상 상태가 다시 경보가 된다 — 매일 울리는 경보는 곧 안 읽히는 경보다. ' +
+      '이 주입은 그 회귀를 재현한다.',
+  },
+  {
     name: '매시간 레인이 gap 없이 등록돼 침묵 판정에서 통째로 빠짐',
     // 🔁 2026-08-03: 조립이 `lane-cadence.laneCadenceFields` 로 추출되면서 이 줄이 이사했다
     //   (같은 필드가 미루기 판정에도 쓰여 매시간 레인을 통째로 `always` 로 만들던 것을 끊으면서).

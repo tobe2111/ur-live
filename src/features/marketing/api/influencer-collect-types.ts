@@ -83,6 +83,19 @@ export interface AutoCollectStats {
   learned_cap?: number
   /** 이번 실행에서 한도 신호를 봤나(레인이 fail-soft 로 삼켜도 여기서 드러난다). */
   limit_hit?: boolean
+  /**
+   * 예산을 다 썼는가 — **`limit_hit` 과 다른 값이다**(2026-08-04 라이브에서 잡음).
+   *
+   * `limit_hit` 은 *플랫폼 한도 에러를 맞았나* 이고, 예산은 에러 없이 **깨끗하게 소진**된다
+   * (각 키워드 전에 `budget.left` 를 보고 멈추므로). 그래서 `spent 56 / budget_total 56` 인데
+   * `limit_hit: false` 였고, 화면상 "한도 안 걸림" 으로 보여 **키워드 회전이 2일까지 늘어난 것을
+   * 아무도 못 봤다**(활성 399 중 320 미실행 — 경보는 떴는데 확인처가 늘 정상이었다).
+   *
+   * ⚠️ **`limit_hit` 에 합치면 정반대로 악화된다** — `nextSubreqCap` 이 그 값을 받으면 상한을
+   *   `spent × 0.8` 로 **축소**하는데 예산은 거의 매 회차 소진되므로 상한이 계속 깎인다.
+   *   자가튜닝 입력(`hitLimit`)은 무접촉으로 두고 **보고용 값만 따로** 낸다.
+   */
+  budget_exhausted?: boolean
   /** 💥 이번 실행이 예외로 끝났다 — 원문/시각/그 시점 사용량. 성공하면 다음 스냅샷에서 사라진다. */
   crash?: string
   crash_at?: string

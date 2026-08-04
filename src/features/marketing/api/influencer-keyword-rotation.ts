@@ -355,3 +355,73 @@ export function keywordsPerRoundCap(env: unknown): number {
   const raw = parseInt(String((env as { ADS_COLLECT_KEYWORD_CAP?: string } | undefined)?.ADS_COLLECT_KEYWORD_CAP ?? ''), 10)
   return Number.isFinite(raw) && raw > 0 ? Math.min(40, raw) : COLLECT_KEYWORDS_PER_ROUND
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 🩺 순환 건강 판정 — **한 바퀴를 관측으로 재고**, 상수와 비교하지 않는다 (2026-08-04)
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** `judgeRotation` 입력 — 전부 D1 한 쿼리에서 나온다(추가 왕복 0). */
+export interface RotationSample {
+  /** 활성 키워드 수. */
+  active: number
+  /** 최근 24시간에 순번을 받은 **서로 다른** 키워드 수 = 관측 처리량. */
+  ran24h: number
+  /** 가장 오래 순번을 못 받은 키워드의 나이(일). 한 번도 안 돈 키워드는 **등록일** 기준. */
+  oldestDays: number
+  /** 평균 나이(일). 완전한 라운드로빈이면 한 바퀴의 절반이다. */
+  avgDays: number
+}
+
+export interface RotationVerdict {
+  /** 관측 처리량으로 계산한 한 바퀴(일). 처리량 0 이면 `Infinity`. */
+  cycleDays: number
+  /** 가장 오래 밀린 키워드가 몇 바퀴째 밀렸나. 이상적 라운드로빈이면 ≤1. */
+  worstCycles: number
+  stalled: boolean
+  /** `stopped` = 아예 안 돎 · `starved` = 도는데 특정 꼬리만 계속 건너뜀 · null = 건강. */
+  reason: 'stopped' | 'starved' | null
+}
+
+/**
+ * ⚠️ **왜 "이틀"을 버리는가 — 그 임계는 *성공할 수 없었다*.**
+ *
+ * 종전 판정은 `활성의 30% 초과가 2일째 미실행` 이었다. 이 값은 키워드 **210개 · 한 바퀴 ~10시간**
+ * 시절에 잡은 것이고, 그때는 2일이 한 바퀴의 **다섯 배**라 넘으면 진짜 고장이었다. 그런데 지금
+ * 라이브는(2026-08-04 실측):
+ *
+ * ```
+ *   활성 399  ·  24h 실행 61  →  한 바퀴 6.5일
+ *   2일 초과 320개(80%)   ← 임계 30% 를 언제나 넘는다
+ *   평균 나이 5.68일 ≈ 0.87 바퀴 · 14일 초과 0개   ← 순환은 **정상적으로 돌고 있다**
+ * ```
+ * **2일이 한 바퀴보다 짧으니, 시스템이 완벽해도 80% 가 "2일째 미실행"이다.** 즉 이 경보는
+ * 울리는 것 말고는 할 수 있는 게 없었다 — 이 레포가 반복해 만난 *"실패할 수 없는 가드"* 의 거울상,
+ * **해제될 수 없는 경보**다. 매일 울리는 경보는 곧 아무도 안 읽는 경보가 된다.
+ *
+ * ⚠️ **그리고 이 경보가 시키는 처방이 방향과 반대였다.** 문구는 순환을 더 빨리 돌리라고 하는데,
+ *   `CLAUDE.md` 유어애즈 절의 실측은 *유입 1,613/일 vs 측정 3,600/일 — 측정이 이기는 중*이고
+ *   그래서 *"처리량을 더 밀지 말 것(네이버 차단 리스크)"* 이다. 발굴을 더 빨리 돌리면 미측정
+ *   백로그만 늘어 **목표 지표(발송 가능 리드)를 오히려 늦춘다.**
+ *
+ * ⇒ 상수 대신 **관측된 한 바퀴**와 비교한다. 두 가지만 진짜 고장이다:
+ *   · `stopped`  — 24시간 동안 아무 키워드도 순번을 못 받았다(순환 자체가 멎음).
+ *   · `starved`  — 돌고는 있는데 특정 꼬리가 **여러 바퀴째** 건너뛰어진다(라운드로빈이 깨진 것).
+ *
+ * ⚠️ 배수 3 은 **여유를 둔 값**이다. 실측 최악이 2.21 바퀴(14.46일/6.5일)인데, 몫 배분상
+ *   집중·우선 풀이 슬롯을 먼저 가져가므로 일반 풀의 꼬리는 원래 1 바퀴를 넘는다. 2 로 두면
+ *   정상 상태에서 울린다(방금 버린 임계와 같은 병). 3 을 넘으면 배분이 아니라 **버그**다.
+ * ⚠️ 표본이 작으면(`active < 20`) 판정하지 않는다 — 시드 직후 노이즈.
+ */
+export const ROTATION_STARVE_CYCLES = 3
+
+export function judgeRotation(s: RotationSample): RotationVerdict {
+  const active = Number(s.active) || 0
+  const ran = Number(s.ran24h) || 0
+  const oldest = Number.isFinite(s.oldestDays) ? Number(s.oldestDays) : 0
+  const cycleDays = ran > 0 ? active / ran : Number.POSITIVE_INFINITY
+  const worstCycles = Number.isFinite(cycleDays) && cycleDays > 0 ? oldest / cycleDays : Number.POSITIVE_INFINITY
+  if (active < 20) return { cycleDays, worstCycles, stalled: false, reason: null }
+  if (ran === 0) return { cycleDays, worstCycles, stalled: true, reason: 'stopped' }
+  if (worstCycles > ROTATION_STARVE_CYCLES) return { cycleDays, worstCycles, stalled: true, reason: 'starved' }
+  return { cycleDays, worstCycles, stalled: false, reason: null }
+}
