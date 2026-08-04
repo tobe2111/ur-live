@@ -728,3 +728,38 @@ spend_by: yt 24 · naver 28 · cafe 0 · tistory 4 · save 0     (spent 56)
 2. **게이트를 프로덕션 트리로 한정**(`--omit=dev`) — 반복이 사라지지만 **게이트를 약화**시키는 방향이다.
 ⚠️ 허용목록(`.audit-allowlist.json`)은 `accepted_by: 대표 승인` 을 요구하므로 **세션이 대신 못 쓴다** —
    그래서 두 번 다 패치로 갔다. 이 제약은 의도된 것이니 우회하지 말 것.
+
+---
+
+## 🧪 배포 전 기준선 — #1041 판정용 (KST 12:00 회차, 배포 **전**)
+
+```
+picks     planned 16 / processed 5
+spend_by  yt 23 · naver 29 · cafe 0 · tistory 4 · save 0   (합 56)
+spent/budget_total  56 / 56  (전량 소진)
+naver_api 187 / 25,000       (오픈API 한도 여유 — 병목 아님)
+```
+**판정 기준(배포 후 첫 정각 회차)**: `spend_by.naver` **29 → ~10** · `picks.processed` **≤ 6 유지**(폭 동결).
+⚠️ 배포 반영 여부는 시각이 아니라 **값**으로 판정할 것 — 정각마다 도는 레인이라 "새 회차 = 새 코드"가 아니다.
+
+## 🕳️ 내가 저지른 것 (추가) — typecheck 를 한 번도 실제로 안 봤다
+
+`npx tsc --noEmit --skipLibCheck | head -5; echo "tsc=$?"` 로 확인하고 **통과로 보고**했다.
+`$?` 는 **파이프의 마지막 명령(`head`) 상태**라 tsc 가 무엇을 뱉든 항상 0 이다.
+그 결과 **TS2559 가 CI 까지 갔다**(`keywordsPerRoundCap(env: { ADS_COLLECT_KEYWORD_CAP?: string })`
+— 워커 `Env` 에 그 키가 없어 "공통 속성이 없다"). 수리: 파라미터를 `unknown` 으로 받고 내부 캐스팅
+(`alarmEnabled(env: unknown)` 과 동형).
+
+⇒ **검증 명령에 파이프를 쓰지 말 것.** 파일로 받고 exit 를 직접 읽는다:
+```bash
+npx tsc --noEmit --skipLibCheck > /tmp/tsc.log 2>&1; echo "exit=$?"; wc -l < /tmp/tsc.log
+```
+이건 같은 날 위에 적은 *"빈 grep 출력을 통과로 읽음"* 과 **같은 클래스**다 — 둘 다
+**성공을 확인한 게 아니라 실패의 부재를 봤다.**
+
+## 🧾 CI 실패 로그를 읽을 때 — 블로킹 스텝을 먼저 가려라
+
+#1041 CI 로그에 `product_stay_rooms … "status": "drift"` 가 함께 찍혀 있어 두 개의 원인을 의심했는데,
+`.github/workflows/verify.yml` 의 **Schema verification (drift detection)** 스텝은
+`continue-on-error: true`(정보 용도)다 — **블로커가 아니다.** 실제 블로커는 TS2559 하나였다.
+⇒ 로그에 빨간 게 여럿 보이면 **워크플로에서 그 스텝의 `continue-on-error` 를 먼저 확인**할 것.
