@@ -68,9 +68,9 @@ publicDataRoutes.post('/__ads/enrich-prospects', lane(async (env) => {
   const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich'); return enrichProspectContacts(env)
 }))
 
-// 📑 나라장터 조달업체(대행사 계열).
-publicDataRoutes.post('/__ads/collect-nara-vendor', lane(async (env) => {
-  const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect'); return runNaraVendorCollect(env, 5)
+// 🏛️ 나라장터 계약정보 — 상권활성화 용역의 **수주사 + 발주기관 담당자**(대표 확정 B안, 2026-08-04).
+publicDataRoutes.post('/__ads/collect-nara-contract', lane(async (env) => {
+  const { runNaraContractCollect } = await import('@/features/marketing/api/nara-contract-collect'); return runNaraContractCollect(env)
 }))
 
 // 🎓 나이스 학원·교습소 · 🏥 심평원 병원.

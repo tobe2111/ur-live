@@ -224,8 +224,11 @@ export const PROBE_TARGETS: Record<string, TargetDef> = {
     url: (k, _e, o) => `https://apis.data.go.kr/1130000/FftcBrandRlsInfo2_Service/getBrandList?serviceKey=${serviceKeyParam(k)}&pageNo=${o.page}&numOfRows=${o.rows}&resultType=json`,
   },
   nara: {
-    label: '나라장터 조달업체',
-    url: (k, _e, o) => `https://apis.data.go.kr/1230000/ao/UsrInfoService02/getPrcrmntCorpBasicInfo?serviceKey=${serviceKeyParam(k)}&pageNo=${o.page}&numOfRows=${o.rows}&type=json`,
+    // 🏛️ 2026-08-04 수리: `UsrInfoService02/getPrcrmntCorpBasicInfo` 는 **code 12 로 죽어 있다**(15회 실행 0건).
+    //   프로브로 찾은 살아있는 후임 = 공공데이터개방표준서비스 **계약정보**. 레인도 여기로 옮겼다.
+    //   ⚠️ 레인 상수(`NARA_CONTRACT_BASE`/`_OP`)와 **같은 곳**이어야 한다 — 유닛이 원본과 대조한다.
+    label: '나라장터 계약정보(상권 용역)',
+    url: (k, _e, o) => `https://apis.data.go.kr/1230000/ao/PubDataOpnStdService/getDataSetOpnStdCntrctInfo?serviceKey=${serviceKeyParam(k)}&pageNo=${o.page}&numOfRows=${o.rows}&type=json`,
   },
   localdata: {
     label: '인허가(일반음식점)',
