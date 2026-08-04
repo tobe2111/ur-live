@@ -1734,6 +1734,56 @@ const MUTATIONS = [
       '같은 알람의 collect 가 28,643ms 완주가 증거다. 전제가 사라진 값을 그대로 쓰면 창이 근거 없이 좁다.',
   },
   {
+    name: '재업로드가 반응 시각을 덮음(COALESCE 제거)',
+    file: 'src/features/marketing/api/outreach-status-ingest.ts',
+    find: 'opened_at = COALESCE(opened_at, ?)',
+    replace: 'opened_at = ?',
+    test: 'src/tests/unit/ads-outreach-status-ingest.test.ts',
+    why:
+      '같은 파일을 두 번 올리면 "방금 열었다"로 덮여 반응 시점 분석이 망가진다. 멱등은 "에러가 안 난다"가 ' +
+      '아니라 **최종 상태가 같다** 는 뜻이다.',
+  },
+  {
+    name: 'sent 가 contacted_at 을 덮어 리마인더가 영원히 안 나감',
+    file: 'src/features/marketing/api/outreach-status-ingest.ts',
+    find: 'contacted_at = COALESCE(contacted_at, ?)',
+    replace: 'contacted_at = ?',
+    test: 'src/tests/unit/ads-outreach-status-ingest.test.ts',
+    why:
+      'contacted_at 은 발송 큐/리마인더의 "이미 보냈나·언제" 판정에 쓰인다. 재업로드가 갱신하면 D+N 창이 ' +
+      '매번 밀려 **후속 발송이 구조적으로 0** 이 된다. 에러가 안 나서 안 보이는 종류다.',
+  },
+  {
+    name: '수신거부가 opted_out 을 안 세움(또는 다른 상태가 세움)',
+    file: 'src/features/marketing/api/outreach-status-ingest.ts',
+    find: "case 'opt_out':",
+    replace: "case 'sent2':",
+    test: 'src/tests/unit/ads-outreach-status-ingest.test.ts',
+    why:
+      '수신거부는 법적 의사표시다. 안 세우면 다음 발송에 그 사람이 다시 뽑히고, 반대로 다른 상태가 세우면 ' +
+      '멀쩡한 리드가 영구 제외된다(해제는 사람만 한다).',
+  },
+  {
+    name: '미매칭을 안 세어 반쯤 먹힌 업로드가 성공으로 보임',
+    file: 'src/features/marketing/api/outreach-status-ingest.ts',
+    find: '    if (ch === 0) out.unmatched++',
+    replace: '    if (false) out.unmatched++',
+    test: 'src/tests/unit/ads-outreach-status-ingest.test.ts',
+    why:
+      '주소가 풀에 없으면 changes 0 인데 그걸 안 세면 응답이 "성공"이다. 이 레포가 반복해 만난 ' +
+      '*"실패가 아니라 부재"* 클래스 — 유입구에서 특히 위험하다(대표는 넣었다고 믿는다).',
+  },
+  {
+    name: '티스토리가 조용히 되살아남(수율 3.0%)',
+    file: 'src/features/marketing/api/influencer-tistory-performance.ts',
+    find: 'export const TISTORY_ROOM = 0',
+    replace: 'export const TISTORY_ROOM = 2',
+    test: 'src/tests/unit/ads-tistory-enrich.test.ts',
+    why:
+      '2026-08-04 실측으로 접었다(측정 397 → 이메일 12 = 3.0%, 네이버 26.7%·유튜브 40.6%). 되살리려면 ' +
+      '**수율이 왜 올랐는지 근거가 먼저**다. env(ADS_TISTORY_ROOM)로는 열려 있으니 코드 기본값은 0 이어야 한다.',
+  },
+  {
     name: '수집 폭 동결이 풀림(측정이 병목인데 백로그가 증가 반전)',
     file: 'src/features/marketing/api/influencer-auto-collect.ts',
     find: '    if (processedIds.size >= roundCap) break',
@@ -1771,23 +1821,16 @@ const MUTATIONS = [
   {
     name: '티스토리가 블로거 뒤로 밀림(잔여를 다 뺏겨 영원히 0)',
     file: 'src/features/marketing/api/influencer-enrich-lane.ts',
-    find: '    try { tistory = await enrichTistoryActivity(DB, budget, TISTORY_ROOM, slice) } catch (err) { note(err) }\n',
+    // 🗺️ 2026-08-04 앵커 이사: 몫이 상수 → `tistoryRoom(env)` 가 되고 `if (tisRoom > 0)` 으로 감싸졌다.
+    //   지키는 불변식(티스토리가 블로거보다 **먼저**)은 그대로라 항목을 지우지 않고 따라간다.
+    find: '      try { tistory = await enrichTistoryActivity(DB, budget, tisRoom, slice) } catch (err) { note(err) }\n',
     replace: '',
     test: 'src/tests/unit/ads-tistory-enrich.test.ts',
     why:
       '블로거는 `naverRoomFromRemaining` 으로 **잔여 전부**를 가져간다. 티스토리가 뒤에 서면 남는 예산이 없어 ' +
       '측정이 0으로 고착된다 — 에러 없이 조용히. ⚠️ 첫 판정이 `indexOf(\'enrichTistoryActivity\')` 라 맨 위 ' +
-      '**import 문**을 먼저 찾아 초록이 떴다(import 는 언제나 첫 번째다) → 호출부로 앵커를 옮겼다.',
-  },
-  {
-    name: '티스토리 몫이 조용히 증설됨(블로거 백로그를 갉음)',
-    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
-    find: 'export const TISTORY_ROOM = 2',
-    replace: 'export const TISTORY_ROOM = 9',
-    test: 'src/tests/unit/ads-tistory-enrich.test.ts',
-    why:
-      '이 값이 곧 블로거에게서 뺏는 양이다(2 = 회차당 최대 4 서브리퀘스트 ≈ 9%). 티스토리 백로그는 495 로 ' +
-      '블로거(20,264)의 2.4% 라, 몫을 키우면 20,264행 소진이 그만큼 늦어진다. 늘리려면 실측이 먼저다.',
+      '**import 문**을 먼저 찾아 초록이 떴다(import 는 언제나 첫 번째다) → 호출부로 앵커를 옮겼다. ' +
+      '(현재 기본 몫은 0 이라 이 순서는 `ADS_TISTORY_ROOM` 으로 되살렸을 때를 위한 보험이다.)',
   },
   {
     name: '네이버 오픈API 계측이 래퍼에서 사라짐(그 레인이 통째로 계측 밖)',

@@ -99,7 +99,7 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240925.0",
+    "@cloudflare/workers-types": "5.20260804.1",
     "@playwright/test": "^1.47.0",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
@@ -124,7 +124,7 @@
     "typescript": "^5.5.4",
     "vite": "^5.4.3",
     "vitest": "4.1.8",
-    "wrangler": "4.84.1"
+    "wrangler": "4.118.0"
   },
   "overrides": {
     "protobufjs": "^7.5.8",
