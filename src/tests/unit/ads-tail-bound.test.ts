@@ -84,6 +84,16 @@ describe('배선', () => {
     expect(IDX).toMatch(/ctx\.waitUntil\(closeTick\(\{/)
   })
 
+  it('무료 상한이 레인 마감선(12~20s)보다 크지 않다 — 25s 회귀 방지', () => {
+    /**
+     * 🔻 2026-08-04: 25s 로는 밤사이 10회차 중 3회 꼬리가 안 돌았고 `cap` 이 4→2 로 되물러났다.
+     *   상한이 있으면 최대 그만큼만 기다리므로, 그래도 못 남긴다는 건 **부모가 25s 조차 못 버틴다**는 뜻이다.
+     *   ⇒ 값을 다시 올리려면 **라이브 근거**(이력 구멍이 줄었다는 실측)가 먼저 있어야 한다.
+     *   ⚠️ 이 테스트가 못 막는 것: 10s 가 **옳은 값인지**. 그건 배포 후 이력 구멍 추이로만 안다.
+     */
+    expect(TAIL_WAIT_MS).toBeLessThanOrEqual(15_000)
+  })
+
   it('상한이 요금제를 따른다 — 유료 전환에 코드 변경 0', () => {
     expect(TAIL).toMatch(/resolvePlan\(env as never\) === 'paid' \? TAIL_WAIT_MS_PAID : TAIL_WAIT_MS/)
     expect(TAIL_WAIT_MS_PAID).toBeGreaterThan(TAIL_WAIT_MS)
