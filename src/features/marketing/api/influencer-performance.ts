@@ -11,6 +11,12 @@ import type { Env } from '@/worker/types/env'
 import { pickBusinessEmail, extractContacts, stripVideoTitles, isPlatformLabelEmail, type FetchBudget } from './influencer-discovery'
 import { classifyCategory, classifyCategoryByHits, reconcileCategory, NON_CATEGORIES, shouldClearCategory } from './influencer-classify'
 // 🧩 순수 파서는 `influencer-parse.ts` — 기존 import 경로 호환을 위해 재수출.
+/** 🎯 키워드 연락처 성과 재계산 — 본체는 `influencer-keyword-yield.ts`(목적함수 근거가 거기 있다).
+ *  여기서 재수출하는 이유: 이것도 *성과 재계산*이고, 호출부(`influencer-maintenance.ts`)가 600줄 캡에
+ *  정확히 닿아 있어 import 한 줄을 더 넣을 수 없다. 기존 import 에 이름만 얹는다(동작 무관).
+ */
+export { recomputeKeywordContactYield } from './influencer-keyword-yield'
+
 export { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount, naverPostdateToIso,
   avgStats, parseIsoDurationSec, SHORTS_MAX_SEC, medianOf, videoMetrics } from './influencer-parse'
 import { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount, deriveNaverRssSignals, videoMetrics, parseIsoDurationSec } from './influencer-parse'

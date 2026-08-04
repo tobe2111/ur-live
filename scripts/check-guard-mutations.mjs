@@ -95,6 +95,28 @@ const MUTATIONS = [
       '안 흐르는데 CPU 만 탄다 — 시간 조건만 남기면 08-04 상태 그대로다.',
   },
   {
+    name: '키워드 목적함수가 다시 "몇 명 모았나"로 되돌아감',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: ' - yieldPenalty(k) - contactPenalty(k.yt_leads, k.yt_contacts)',
+    replace: ' - yieldPenalty(k)',
+    test: 'src/tests/unit/influencer-keyword-yield.test.ts',
+    why:
+      '대표 지시로 목적함수를 **연락처 확보율**로 바꿨다. 이 한 항이 빠지면 점수식은 다시 `saved` 만 ' +
+      '보고, 라이브 실측처럼 **연락처 0%인 키워드가 우수로 평가된다**(금천 네일 리드 118 · 이메일 0 · ' +
+      '감점 0). 리드 수는 오히려 늘어나므로 **대시보드로는 개선처럼 보인다** — 그게 이 회귀의 위험이다.',
+  },
+  {
+    name: '키워드 성과 재계산이 빠져 감점이 영원히 0',
+    file: 'src/features/marketing/api/influencer-maintenance.ts',
+    find: '; out.kwyield = await recomputeKeywordContactYield(DB).catch(() => null) }',
+    replace: ' }',
+    test: 'src/tests/unit/influencer-keyword-yield.test.ts',
+    why:
+      '감점은 `yt_leads`/`yt_contacts` 가 채워져 있어야 작동한다. 재계산 호출이 사라지면 두 값이 ' +
+      '영원히 0 이고 `contactPenalty` 는 **증거 부족으로 항상 0 을 돌려준다** — 코드는 그대로인데 ' +
+      '목적함수만 조용히 옛것으로 되돌아간다. 에러도 경고도 없다(이 레포가 "헛도는 가드"라 부르는 형태).',
+  },
+  {
     name: '나라장터 계약 — 마스킹된 전화를 진짜 연락처로 센다',
     file: 'src/features/marketing/api/nara-contract-collect.ts',
     find: "  return raw.includes('*') ? '' : raw",
