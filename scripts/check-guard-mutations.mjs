@@ -165,6 +165,17 @@ const MUTATIONS = [
       '고장 그대로다(실제로 배포 첫 회차에 기록이 또 안 남았고, 원인 후보가 바로 이 취약성이었다).',
   },
   {
+    name: '꼬리 상한이 25s 로 되돌아감(부모가 못 버티는 값)',
+    file: 'src/worker-ads/tail-bound.ts',
+    find: 'export const TAIL_WAIT_MS = 10_000',
+    replace: 'export const TAIL_WAIT_MS = 25_000',
+    test: 'src/tests/unit/ads-tail-bound.test.ts',
+    why:
+      '25s 로는 밤사이 10회차 중 3회 꼬리가 안 돌았고 `cap` 이 4→2 로 되물러났다(2026-08-04 실측). ' +
+      '상한이 있으면 최대 그만큼만 기다리므로, 그래도 못 남긴다는 건 **부모가 25s 조차 못 버틴다**는 뜻이다. ' +
+      '값을 다시 올리려면 라이브 근거(이력 구멍 감소 실측)가 먼저 있어야 한다.',
+  },
+  {
     name: '회차 꼬리가 다시 무한정 기다림(학습기 갱신 자리가 통째로 사라짐)',
     file: 'src/worker-ads/tail-bound.ts',
     find: 'await Promise.race([Promise.all(tracked), deadline])',

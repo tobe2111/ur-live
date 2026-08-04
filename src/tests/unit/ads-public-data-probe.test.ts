@@ -17,7 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { PROBE_TARGETS, probeTargetNames, probePublicData, normalizeProbePath, PROBE_ALLOWED_HOST, PROBE_ALLOWED_HOSTS, PORTAL_KEY_HOSTS, resolveProbeParamSet, buildProbePaging } from '@/features/marketing/api/public-data-probe'
+import { PROBE_TARGETS, probeTargetNames, probePublicData, normalizeProbePath, PROBE_ALLOWED_HOST, PROBE_ALLOWED_HOSTS, PORTAL_KEY_HOSTS, resolveProbeParamSet, buildProbePaging, resolveBodyMax, BODY_MAX_LIMIT } from '@/features/marketing/api/public-data-probe'
 import type { Env } from '@/worker/types/env'
 
 const KEY = 'SUPER-SECRET-SERVICE-KEY-abc123=='
@@ -420,5 +420,60 @@ describe('🎛️ 요청 파라미터 세트', () => {
     expect(q).toContain('pageIndex=1')
     expect(q).toContain('pageSize=3')
     expect(q).not.toContain('pageNo')
+  })
+})
+
+/**
+ * 🔍 **본문 길이 상한** — 이 상한이 오늘 **두 번** 판정을 막았다(2026-08-03).
+ *
+ * ① 인허가 필드명을 알아내려는데 900자에서 잘려, 짧은 스키마의 형제 업종을 대신 찔러 우회했다.
+ * ② 나라장터 계약정보에서 **계약업체명 필드**를 확인하려는데 또 같은 자리에서 잘렸다.
+ * 둘 다 *"상대가 이미 말해 준 답"* 을 우리 화면 상한이 가린 경우다.
+ *
+ * 그렇다고 무제한으로 열면 응답이 통째로 어드민 화면·인계 문서로 흘러간다 ⇒ **상한을 두되 올릴 수 있게**.
+ *
+ * ## ⚠️ 이 시험이 못 보는 것
+ * 잘린 위치가 하필 중요한 필드 앞인지. 그건 상대 스키마에 달렸다 — 그래서 애초에 조절이 필요하다.
+ */
+describe('🔍 본문 길이 상한', () => {
+  it('미지정이면 기본(900) — 평소엔 화면에 붙일 만큼만', () => {
+    expect(resolveBodyMax(undefined)).toBe(900)
+    expect(resolveBodyMax('')).toBe(900)
+    expect(resolveBodyMax('없는값')).toBe(900)
+    expect(resolveBodyMax(0)).toBe(900)
+    expect(resolveBodyMax(-5)).toBe(900)
+  })
+
+  it('🔒 올릴 수 있다 — 필드명 확인이 막히면 진단 자체가 멈춘다', () => {
+    expect(resolveBodyMax(3000)).toBe(3000)
+    expect(resolveBodyMax('2500')).toBe(2500)
+  })
+
+  it('🔒 무제한은 아니다 — 응답 전문이 어드민 화면·문서로 흘러가면 안 된다', () => {
+    expect(resolveBodyMax(999999)).toBe(BODY_MAX_LIMIT)
+    expect(BODY_MAX_LIMIT).toBeLessThanOrEqual(10000)
+  })
+
+  it('너무 작은 값은 바닥으로 — 20자짜리 본문은 진단이 안 된다', () => {
+    expect(resolveBodyMax(5)).toBe(200)
+  })
+
+  /**
+   * ⚠️ **처음엔 이 시험을 "가림이 자르기 *전에* 걸린다"로 썼다가, 주입해 보고 헛돈다는 걸 알았다.**
+   *   `redactServiceKey` 의 패턴이 `serviceKey=` 뒤를 문자열 끝까지 먹으므로 **순서를 바꿔도 키는 안 샌다** —
+   *   순서는 보안 성질이 아니라 "가린 만큼 다른 내용을 더 보여 준다"는 표시 성질일 뿐이었다.
+   *   ⇒ 실제로 지킬 수 있는 것만 주장한다: **상한을 올려도 가림은 계속 걸린다**(원문 경로가 생기면 여기서 걸린다).
+   */
+  it('🔒 상한을 올려도 키는 안 샌다 — 원문을 그대로 흘리는 경로가 생기면 여기서 걸린다', async () => {
+    const orig = globalThis.fetch
+    // 키가 본문 뒤쪽(기본 상한 밖)에 오도록 앞을 길게 채운다.
+    const padded = `${'x'.repeat(1200)} https://apis.data.go.kr/z?serviceKey=${KEY}&pageNo=1`
+    globalThis.fetch = (async () => new Response(padded, { status: 200 })) as typeof fetch
+    try {
+      const r = await probePublicData(env, 'commerce-status', KEY, { bodyMax: 4000 })
+      expect(r.body.length).toBeGreaterThan(900)          // 실제로 늘었는지
+      expect(r.body, '상한을 올렸더니 키가 드러났다면 최악이다 — public repo 라 회수 불가').not.toContain(KEY)
+      expect(r.body).toContain('serviceKey=***')
+    } finally { globalThis.fetch = orig }
   })
 })
