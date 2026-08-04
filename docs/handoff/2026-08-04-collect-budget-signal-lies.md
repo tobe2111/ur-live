@@ -176,3 +176,22 @@ GET  /api/wholesale/catalog    → 404   (7/16 도매 분리로 ur-live 가 안 
 
 📌 **`uptime.yml` 스케줄이 매우 불규칙하다**(10분 주기인데 01:03 → 04:22 3시간 공백 실측).
 public repo Actions 스케줄 지연 — dead-man's switch 가 이 정도로 늦으면 그것도 관측 대상이다(별건).
+
+## 10) 마지막 무료 레버 — `sheets-sync` DO 알람 이관
+
+대표의 "정말 더 없어?"에 대한 답이다. 남은 개선 후보를 어느 방향으로 파도 전부 **부모 CPU 천장**으로
+수렴한다(집중 축 대행사 이메일 3.2%의 병목도 결국 그 천장에 잘리는 `enrich-company`). 열쇠는 둘 —
+유료 전환(대표 몫)과 **DO 알람 이관**(코드 몫). 후자의 1순위가 `sheets-sync`(CPU 사망 ×16/3일, 전 레인 최다).
+
+**한 것**: `ALARM_LANES` 에 `sheets-sync` 추가(runsPerHour 1 — 증설 아님, cron 의도 복원) ·
+cron 쪽 `!laneAlarmOn` 게이트(collect·maintenance 와 동일) · 알람 러너는 SELF 홉 없이 직접 실행
+(자기 예산이라 홉이 낭비) + 게이트를 러너가 봄 + 실패는 throw(백오프·ok=false).
+
+⚠️ **시트 미러는 리스가 없다**(커서 append) — `!laneAlarmOn` 게이트가 이중 실행의 유일한 방어.
+   잠금: 유닛 3장 + 주입 1건(게이트 제거 → red).
+
+**판정**: 배포 후 다음 정각에 `cron_hb:ads:sheets-sync` 가 `ok=true` 로 갱신 + `ads_lane_alarm_last:sheets-sync`
+스탬프 신설. 이후 24시간 `cron_failures` 에서 `ads:sheets-sync` CPU 사망이 사라지는지(×16 → 0 기대).
+
+**다음 확장 후보**(성공 확인 후): `reclassify-company`(×9) · `collect-company`(×6) — 단 이들은
+도메인 예산(kick 경로)을 쓰는 레인이라 이관 시 `!laneAlarmOn` 만으론 부족하고 도메인 표 정리가 같이 필요.

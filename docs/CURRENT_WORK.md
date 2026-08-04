@@ -5494,11 +5494,12 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 119건 · 최신순 · 이 목록은 자동 생성된다._
+_총 120건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-04**
 - [부모 틱이 CPU 천장에 닿았다 — 레인이 하나씩 죽는 진짜 이유 (2026-08-04, 라이브 하트비트 실측)](handoff/2026-08-04-tick-cpu-ceiling.md)
 - [2026-08-04 — 꼬리 상한 25s → 10s (대표 승인)](handoff/2026-08-04-tail-wait-10s.md)
+- [📝 순환 축에도 연락처 목적함수 — 자동 조율의 나머지 절반 (2026-08-04)](handoff/2026-08-04-rotation-contact-yield.md)
 - [2026-08-04 — 지역 집계에 데모 딜 포함 (대표 결정)](handoff/2026-08-04-region-demo-inclusion.md)
 - [상권 축 2단계 — 나라장터 계약정보 레인 (2026-08-04)](handoff/2026-08-04-nara-contract-lane.md)
 - [키워드 목적함수를 "연락처 확보율"로 (2026-08-04 대표 지시)](handoff/2026-08-04-keyword-objective-contacts.md)
