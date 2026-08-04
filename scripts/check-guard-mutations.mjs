@@ -106,6 +106,28 @@ const MUTATIONS = [
       '`쿼터 × 90% ÷ 단가` 이고, 남는 1,000 units 가 측정 몫이다.',
   },
   {
+    name: 'CPU 자기교정 — 감지 호출이 사라짐(학습이 조용히 멈춘다)',
+    file: 'src/worker-ads/beat-batch.ts',
+    find: '    await learnCpuQuanta(env, list).catch(() => undefined)',
+    replace: '    void list',
+    test: 'src/tests/unit/ads-cpu-quantum.test.ts',
+    why:
+      'CPU 로 죽은 레인은 자기 하트비트를 못 쓰므로 **항상 부모가** 기록한다 — 그 기록이 지나는 ' +
+      '이 한 곳이 유일한 감지 지점이다. 빠지면 자동수리가 통째로 멈추는데 **에러도 경고도 없다** ' +
+      '(레인은 여전히 죽고, 아무도 줄여 주지 않을 뿐이다).',
+  },
+  {
+    name: 'CPU 자기교정 — 레인 이름에서 `ads:` 접두어가 빠짐',
+    file: 'src/features/marketing/api/collect-budget.ts',
+    find: "export const RECLASSIFY_LANE = 'ads:reclassify-company?passes=5'",
+    replace: "export const RECLASSIFY_LANE = 'reclassify-company?passes=5'",
+    test: 'src/tests/unit/ads-cpu-quantum.test.ts',
+    why:
+      '학습 표의 키는 하트비트 이름(`adsBeat` 이 `ads:` 를 붙인다)이다. 접두어가 어긋나면 표를 못 찾아 ' +
+      '**학습값이 있어도 상한이 안 줄어든다** — 조회는 성공하고 값만 기본값이라 에러가 없다. ' +
+      '이 레포가 반복해 만난 "이름 한 칸 어긋나서 조용히 no-op" 클래스.',
+  },
+  {
     name: '카카오 스윕이 다시 tier 순만 보고 뒷줄을 굶긴다',
     file: 'src/features/marketing/api/company-collect.ts',
     find: "     ORDER BY (kakao_checked_at IS NOT NULL) ASC, (email IS NOT NULL AND email <> '') ASC, (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)",
@@ -1851,6 +1873,47 @@ const MUTATIONS = [
     why:
       '주소가 풀에 없으면 changes 0 인데 그걸 안 세면 응답이 "성공"이다. 이 레포가 반복해 만난 ' +
       '*"실패가 아니라 부재"* 클래스 — 유입구에서 특히 위험하다(대표는 넣었다고 믿는다).',
+  },
+  {
+    name: 'YT 몫이 옛 비율로 회귀(서브리퀘스트당 이메일 2.5배를 버림)',
+    file: 'src/features/marketing/api/influencer-enrich-plan.ts',
+    find: 'Math.min(20, Math.floor(usable * 0.55))',
+    replace: 'Math.min(20, Math.floor(usable * 0.35))',
+    test: 'src/tests/unit/ads-enrich-yt-priority.test.ts',
+    why:
+      'YT 는 건당 1 fetch, 블로거는 2 인데 같은 날 수율은 YT 가 더 높다(26.7% vs 21.2%) — ' +
+      '서브리퀘스트당 2.5배다. 비율이 돌아가면 같은 예산으로 얻는 이메일이 조용히 줄어든다.',
+  },
+  {
+    name: '블로거 선두 회차가 YT 몫까지 먹음(그 회차 YT 0행)',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: 'naverRoomWithYtReserve(budget.left, naverMax, ytReserve)',
+    replace: 'naverRoomFromRemaining(budget.left, naverMax)',
+    test: 'src/tests/unit/ads-enrich-yt-priority.test.ts',
+    why:
+      '`naverRoomFromRemaining` 은 `max(planned, affordable)` 이라 선두일 때 예산 전체를 가져간다. ' +
+      '그러면 **회차의 절반에서 YT 가 한 명도 못 재고**, ytMax 를 올린 의미가 통째로 사라진다. ' +
+      '에러가 없어 안 보이는 종류 — 스냅샷의 yt 가 0 인 회차로만 드러난다.',
+  },
+  {
+    name: '발송 큐가 중복 주소를 그대로 내보냄(같은 사람에게 두 번)',
+    file: 'src/features/marketing/api/outreach-queue.ts',
+    find: 'return dedupeByEmail((rows?.results || []) as T[]).slice(0, limit)',
+    replace: 'return ((rows?.results || []) as T[]).slice(0, limit)',
+    test: 'src/tests/unit/ads-outreach-dedupe-wiring.test.ts',
+    why:
+      '실측 130그룹/262행 — 그대로 두면 132통이 두 번째로 나간다. 상대는 짜증나고 브랜드가 깎이며, ' +
+      '회신률 통계까지 흐려진다(같은 사람을 두 번 센다).',
+  },
+  {
+    name: '연락 대상 내보내기가 중복 주소를 그대로 담음',
+    file: 'src/features/marketing/api/influencer-pool-export.ts',
+    find: "const outRows = opts?.contactable ? dedupeByEmail(rows) : rows",
+    replace: 'const outRows = rows',
+    test: 'src/tests/unit/ads-outreach-dedupe-wiring.test.ts',
+    why:
+      '대표의 실제 워크플로는 **엑셀 내보내기 → 직접 발송**이라, 큐만 고치고 내보내기를 빼면 ' +
+      '정작 발송되는 경로에는 중복이 그대로 남는다(고친 줄 알고 안 고친 형태).',
   },
   {
     name: '결과 화면이 파서를 다시 짬(인식 건수와 실제 반영이 갈라짐)',

@@ -44,14 +44,14 @@ describe('재분류 — 인보케이션당 총량에 상한이 있다', () => {
     expect(LOOP, '루프 조건에 경과 시간 검사가 있어야 한다').toMatch(/passes < 5 && [^\n]*Date\.now\(\) - t0 < deadlineMs/)
   })
 
-  it('🔒 무료 마감선이 **관측된 사망 지점(3,880ms)의 절반 아래** — 근접하면 못 끊는다', () => {
-    const free = reclassifyWorkPlan(undefined).deadlineMs
+  it('🔒 무료 마감선이 **관측된 사망 지점(3,880ms)의 절반 아래** — 근접하면 못 끊는다', async () => {
+    const free = (await reclassifyWorkPlan(undefined)).deadlineMs
     expect(free).toBeGreaterThan(0)
     expect(free, '3,880ms 에 죽는데 마감선이 1,940ms 이상이면 끊는 의미가 없다').toBeLessThanOrEqual(1_940)
   })
 
-  it('🔒 유료는 **더 크다** — CPU 한도가 다른 세계인데 같은 값이면 늘어난 한도가 그냥 남는다', () => {
-    expect(reclassifyWorkPlan({ ADS_PLAN: 'paid' }).deadlineMs).toBeGreaterThan(reclassifyWorkPlan(undefined).deadlineMs)
+  it('🔒 유료는 **더 크다** — CPU 한도가 다른 세계인데 같은 값이면 늘어난 한도가 그냥 남는다', async () => {
+    expect((await reclassifyWorkPlan({ ADS_PLAN: 'paid' })).deadlineMs).toBeGreaterThan((await reclassifyWorkPlan(undefined)).deadlineMs)
   })
 
   it('🔒 첫 패스는 **상한 검사 전에** 무조건 돈다 — 0패스로 끝나면 커서가 영영 안 나간다', () => {

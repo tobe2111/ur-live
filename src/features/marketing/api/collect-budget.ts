@@ -471,14 +471,35 @@ export function rowsWorthReading(spendable: number, hardCap: number, slack = 4):
  * ⚠️ 시간 상한은 **그대로 둔다**(제거가 아니라 병행). 둘 중 먼저 닿는 쪽이 멈춘다 —
  *   D1 이 느린 회차엔 시간이, 정상 회차엔 행 수가 먼저 닿는다.
  * ⚠️ 못 고치는 것: 행 하나가 비정상적으로 무거운 경우(초장문 본문). 그건 행 수로 안 잡힌다.
+ *
+ * 🧠 **2026-08-04 추가 — 자기교정에 물린다.** `DB` 를 주면 이 레인이 CPU 로 죽은 이력만큼
+ *   상한이 자동으로 더 줄어든다(`cpu-quantum.ts`). 안 주면 종전 값 그대로 — 테스트·수동 호출은
+ *   무영향이다. ⚠️ 레인 이름은 하트비트 키와 **정확히 같아야** 한다(`adsBeat` 이 `ads:` 를 붙인다) —
+ *   어긋나면 학습값이 있어도 조용히 안 걸린다.
  */
-export function reclassifyWorkPlan(env: { ADS_PLAN?: string } | undefined | null): {
-  rowsPerPass: number; maxRows: number; deadlineMs: number
-} {
-  return {
+export const RECLASSIFY_LANE = 'ads:reclassify-company?passes=5'
+
+export async function reclassifyWorkPlan(
+  env: { ADS_PLAN?: string } | undefined | null,
+  DB?: { prepare: (s: string) => { bind: (...a: unknown[]) => { first: <T>() => Promise<T | null> } } },
+): Promise<{ rowsPerPass: number; maxRows: number; deadlineMs: number; q?: number }> {
+  const base = {
     rowsPerPass: envPlanValue(undefined, 250, 1_000, env),
     maxRows: envPlanValue(undefined, 1_000, 5_000, env),
     deadlineMs: envPlanValue(undefined, 1_800, 12_000, env),
+  }
+  if (!DB) return base
+  const { parseQuanta, quantumFor, applyQuantum, CPU_QUANTA_KEY } = await import('./cpu-quantum')
+  const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+    .bind(CPU_QUANTA_KEY).first<{ value: string }>().catch(() => null)
+  const q = quantumFor(parseQuanta(row?.value), RECLASSIFY_LANE)
+  if (q >= 1) return base
+  // 바닥을 준다 — 0 행/0 패스가 되면 이 레인은 도는 의미가 없고 백로그가 영영 안 준다.
+  return {
+    rowsPerPass: applyQuantum(base.rowsPerPass, q, 50),
+    maxRows: applyQuantum(base.maxRows, q, 100),
+    deadlineMs: base.deadlineMs,
+    q,
   }
 }
 

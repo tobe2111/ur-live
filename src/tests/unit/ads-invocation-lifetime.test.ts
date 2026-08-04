@@ -465,7 +465,10 @@ describe('보강 레인 — 라운드마다 선두 교대', () => {
   it('블로거 선두 라운드에는 사전 마감을 씌우지 않는다 — 마감 전체를 쓴다', () => {
     const branch = /if \(naverFirst\) \{[\s\S]{0,300}?\n  \} else \{/.exec(lane)?.[0] || ''
     expect(branch, 'naverFirst 분기를 못 찾았다').toBeTruthy()
-    expect(branch).toMatch(/runNaver\(\)[\s\S]{0,80}runFront\(\)/)
+    // 🔧 2026-08-04: `runNaver` 가 **YT 예약분 인자**를 받게 되면서 `runNaver()` 리터럴이 깨졌다.
+    //   이 테스트가 지키는 건 인자가 아니라 **순서**(블로거 먼저)이므로 인자를 허용하되
+    //   두 호출의 순서·근접은 그대로 고정한다. 예약분의 존재 자체는 `ads-enrich-yt-priority` 가 본다.
+    expect(branch).toMatch(/runNaver\([^)]*\)[\s\S]{0,80}runFront\(\)/)
     expect(branch).not.toMatch(/frontStageDeadline/)
   })
 

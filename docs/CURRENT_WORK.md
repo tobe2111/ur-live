@@ -5494,13 +5494,14 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 123건 · 최신순 · 이 목록은 자동 생성된다._
+_총 125건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-04**
 - [부모 틱이 CPU 천장에 닿았다 — 레인이 하나씩 죽는 진짜 이유 (2026-08-04, 라이브 하트비트 실측)](handoff/2026-08-04-tick-cpu-ceiling.md)
 - [2026-08-04 — 꼬리 상한 25s → 10s (대표 승인)](handoff/2026-08-04-tail-wait-10s.md)
 - [📝 순환 축에도 연락처 목적함수 — 자동 조율의 나머지 절반 (2026-08-04)](handoff/2026-08-04-rotation-contact-yield.md)
 - [2026-08-04 — 지역 집계에 데모 딜 포함 (대표 결정)](handoff/2026-08-04-region-demo-inclusion.md)
+- [발송 결과 붙여넣기 UI — 반응 루프의 열린 끝을 닫는다 (2026-08-04)](handoff/2026-08-04-outreach-result-ui.md)
 - [상권 축 2단계 — 나라장터 계약정보 레인 (2026-08-04)](handoff/2026-08-04-nara-contract-lane.md)
 - [키워드 목적함수를 "연락처 확보율"로 (2026-08-04 대표 지시)](handoff/2026-08-04-keyword-objective-contacts.md)
 - [인계 — 홈 쇼케이스 ①③④ (2026-08-04)](handoff/2026-08-04-home-showcase.md)
@@ -5508,6 +5509,7 @@ _총 123건 · 최신순 · 이 목록은 자동 생성된다._
 - [인계 — 홈 섹션 어드민 편집(직접 고르기 · 순서 변경) (2026-08-04)](handoff/2026-08-04-home-sections-editing.md)
 - [인계 — Firebase 클라이언트 전면 제거 (2026-08-04)](handoff/2026-08-04-firebase-removal.md)
 - [2026-08-04 — CPU 한도: 벽시계로는 못 막는다 (호출부 두 곳 총량 상한)](handoff/2026-08-04-cpu-work-cap-callsites.md)
+- [2026-08-04 — CPU 사망 자기교정 (손으로 하던 것을 기계가 하게)](handoff/2026-08-04-cpu-selftuning.md)
 - [2026-08-04 — 파트너 수집 회차 벽시계 마감선 (27.4초가 "성공"으로 기록되던 자리)](handoff/2026-08-04-company-lane-run-deadline.md)
 - [커버리지가 2일로 늘어난 걸 아무도 못 봤다 — 확인처가 늘 "정상"이라서](handoff/2026-08-04-collect-budget-signal-lies.md)
 - [인계 — 배너 미디어 업로드 + 마감임박 줄 제거 (2026-08-04)](handoff/2026-08-04-banner-upload.md)
