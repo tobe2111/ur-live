@@ -186,6 +186,9 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const BlogListPage = lazy(() => import('./pages/BlogListPage'))
 const NewOpeningsPage = lazy(() => import('./pages/NewOpeningsPage')) // 🎉 우리 동네 새 가게(공공 인허가 개업 피드)
 const AreaReportPage = lazy(() => import('./pages/AreaReportPage')) // 📊 상권 리포트(아웃리치 이메일 미끼·SEO)
+// 🗺️ 2026-08-03 지역 허브 + 시/도·시군구 착지 페이지(도시별 색인). 롤백은 REGION_PAGES_ENABLED.
+const RegionIndexPage = lazy(() => import('./pages/region/RegionIndexPage'))
+const RegionPage = lazy(() => import('./pages/region/RegionPage'))
 const BlogDetailPage = lazy(() => import('./pages/BlogDetailPage'))
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
 const RestaurantMapPage = lazy(() => import('./pages/RestaurantMapPage'))
@@ -1015,6 +1018,10 @@ function AppContent() {
             {/* 블로그 */}
             <Route path="/blog" element={<BlogListPage />} />
             <Route path="/new-openings" element={<NewOpeningsPage />} />
+            {/* 🗺️ 2026-08-03 지역 페이지 — 라우트는 플래그와 무관하게 유지(플래그 OFF 는 노출·색인만 끔). 색인된 URL 을 404 로 만들면 회수에 수 주. */}
+            <Route path="/region" element={<RegionIndexPage />} />
+            <Route path="/region/:sido" element={<RegionPage />} />
+            <Route path="/region/:sido/:sigungu" element={<RegionPage />} />
             <Route path="/area-report" element={<AreaReportPage />} />
             <Route path="/area-report/:region" element={<AreaReportPage />} />
             <Route path="/blog/:slug" element={<BlogDetailPage />} />

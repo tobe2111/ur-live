@@ -7,6 +7,8 @@ import PcHomeRail, { type DealCategory } from './PcHomeRail'
 import PcHomeMapButton from './PcHomeMapButton'
 import PcHomeAppBand from './PcHomeAppBand'
 import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from './PcHomeLocationBar'
+import RegionLinkGrid from '@/components/region/RegionLinkGrid'
+import { REGION_PAGES_ENABLED } from '@/shared/feature-flags'
 
 /**
  * 🖥️ 2026-07-15 (대표 시안 — 당근 스타일 PC 홈): lg+ 전용 풀너비 홈.
@@ -137,6 +139,11 @@ export default function PcHomePage() {
           />
         </main>
       </div>
+
+      {/* 🗺️ 2026-08-03 (대표 — 여기어때 하단 링크 그리드 차용): 지역 텍스트 링크.
+          크롤러가 `/region/*` 페이지를 발견하는 통로 + 사용자 지역 탐색. 이미지 0 → LCP 영향 없음.
+          플래그 OFF 면 아무것도 안 그린다(홈은 2026-07-19 확정 구조로 즉시 복귀). */}
+      {REGION_PAGES_ENABLED && <RegionLinkGrid />}
 
       <PcHomeAppBand />
       <SiteFooter />

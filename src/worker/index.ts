@@ -170,7 +170,7 @@ import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/
 // 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
 import { resolveConsumerAlias } from '../shared/seo/consumer-redirects';
-import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity } from './utils/surface-ssr-meta';
+import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity, resolveRegionSeo } from './utils/surface-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
@@ -249,6 +249,8 @@ import { pointsRoutes } from '../features/points/api/points.routes';
 import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
 // 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 사용자 측 public — PR 1 Foundation.
 import { staysPublicRoutes } from '../features/group-buy/api/stays-public.routes';
+// 🗺️ 2026-08-03 (대표 — 도시별 페이지 + 구글 색인): 지역별 딜 집계(페이지·인덱스·sitemap 공용 SSOT).
+import { regionsRoutes } from '../features/group-buy/api/regions.routes';
 // 🛡️ 2026-05-18: R2 이미지 업로드 (seller/admin/agency/user 공용).
 import { uploadRoutes } from '../features/upload/api/upload.routes';
 import { sellerMarketingRoutes, influencerSettlementRoutes, adminPayoutRoutes, influencerDiscoverRoutes, influencerRankingsRoutes } from '../features/group-buy/api/marketing.routes';
@@ -1028,7 +1030,7 @@ app.use('*', async (c, next) => {
     //   지어낸 세그먼트(도어웨이)는 리졸버가 noindex 로 표시해 준다.
     //   SSR inject·0-RTT·`caches.default`·#root 로더·edgeCache 전부 불변 — head rewrite 만 추가.
     if (!isWholesaleSurface && !needsRootBlank) {
-      const sm = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2);
+      const sm = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2) ?? resolveRegionSeo(url.pathname, origin2);
       if (sm) rb = applySurfaceMeta(rb, sm);
     }
     // 🪦 2026-07-29 (소비자 SEO 실측): **사라진 상세 페이지가 `200 + index,follow` 로 나가고 있었다.**
@@ -1925,6 +1927,8 @@ app.route('/api/group-buy', groupBuyRoutes);
 app.route('/api/vouchers', groupBuyRoutes);
 // 🛡️ 2026-05-18: 숙소 공구 사용자 측 (PR 1 Foundation).
 app.route('/api/group-buy', staysPublicRoutes);
+// 🗺️ 2026-08-03: 지역별 딜 집계 — `/region/*` 페이지·지역 인덱스·sitemap 이 같은 숫자를 보게 하는 SSOT.
+app.route('/api/regions', regionsRoutes);
 // 🛡️ 2026-05-18: R2 이미지 업로드 (multi-role).
 app.route('/api', uploadRoutes);
 // 🛡️ 2026-05-21: 자체 예약 캘린더 (뷰티/액티비티/건강/펫 등 sub-1day 예약).

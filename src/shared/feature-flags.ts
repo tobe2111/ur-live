@@ -131,3 +131,24 @@ export const MATCHING_ENABLED = true
  *      이 플래그만 false 로 되돌리면 즉시 복원(가역). 어드민 매칭 AI 근거(admin-matching)는 별개(무관).
  */
 export const ADS_AI_HIDDEN = true
+
+
+/**
+ * REGION_PAGES_ENABLED — 도시별 색인 페이지 `/region/*` 노출 (2026-08-03 대표 지시 —
+ *   "도시별로도 보이게" + "이전으로 돌아갈 수도 있게끔 해두자").
+ *
+ *   배경: 지금까지 지역 필터는 URL 이 아니라 localStorage(`ur_home_region_v1`)에만 있었다.
+ *         **URL 이 없으면 검색엔진에 그 페이지는 존재하지 않는다** — "강남 이용권"으로 우리가 뜰
+ *         방법이 0 이었다. 2026-08-03 실측(활성 딜 329건)에서 45개 시군구 중 31곳이 딜 3개 이상이라,
+ *         지금 당장 색인 가치가 있는 페이지가 40개 넘게 만들어진다.
+ *
+ *   true: `/region`·`/region/:sido`·`/region/:sido/:sigungu` 라우트 + 홈 하단 지역 링크 그리드 +
+ *         sitemap 지역 URL 발행.
+ *   false: **즉시 전면 롤백** — 홈 그리드 미노출 · sitemap 지역 URL 0 · 지역 페이지는 `noindex`.
+ *         라우트/컴포넌트/API(`/api/regions`)는 보존하므로 이미 나간 링크가 404 로 죽지 않는다
+ *         (색인된 URL 을 404 로 만드는 건 되돌리기 가장 비싼 실수다 — 회수에 수 주가 걸린다).
+ *
+ *   ⚠️ 홈 상단·피드·모바일 지도 홈은 이 기능과 **무관하게 무변경**이다. 플래그를 내려도 홈은
+ *      2026-07-19 확정 구조 그대로 남는다.
+ */
+export const REGION_PAGES_ENABLED = true

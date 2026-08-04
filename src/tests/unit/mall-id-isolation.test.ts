@@ -87,6 +87,11 @@ describe('mall_id 격리 전제 — 신규 몰은 1·2 를 재사용하지 않�
       //   용도: 상세가 "몰 손님인가"를 알아 유어딜 영입 CTA 를 안 그리게 한다(대표 UX 기준 ⑤).
       //   리터럴 몰 id 를 쓰지 않는다 — `MAIN_MALL` 상수 폴백뿐이고, 값의 출처는 DB 행 하나다.
       'src/features/products/api/products.routes.ts': '소비자 상세 읽기 — DB 값 그대로 응답 스탬프(쓰기 없음)',
+      // ✅ 2026-08-03 — 지역별 딜 집계(`/region/*` 페이지·sitemap 공용). **쓰기 0 · 리터럴 몰 id 0.**
+      //   `mall_id` 는 주석에만 등장하고, 실제 격리는 `mainScopeFor(DB,'products','p')` 가 생성하는
+      //   본진 조건(`COALESCE(p.mall_id,1)=1`)이 담당한다 — 다른 sitemap 쿼리와 동일한 헬퍼다.
+      //   이 조건이 빠지면 몰 상품 기준으로 지역 URL 이 색인 요청된다(sitemap-mall-scope 가 잡았다).
+      'src/features/group-buy/api/regions.routes.ts': '지역 집계 읽기 — mainScopeFor 본진 격리(쓰기 없음)',
     }
     const mentions = files.filter((f) => /\bmall_id\b/.test(read(f)) && !(f in MENTION_BASELINE))
     expect(mentions, 'mall_id 를 쓰는 새 경로 — 1·2 가 아닌 운영자 몰 id 인지 확인 후 baseline 등록').toEqual([])
