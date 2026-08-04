@@ -162,7 +162,7 @@ app.post('/run-all', async (c) => {
     // ① 수집 전 레인 병렬(각 호출 = ur-ads 의 독립 인보케이션 = 독립 예산 — 서로 안 갉아먹음).
     // ⚠️ 2026-07-28 실측 수리: **매장 후보(인허가) 수집·보강이 목록에서 빠져** 있어 전체 실행을 눌러도
     //   store_prospects 가 0건 → 소비자 공개면(/new-openings·/area-report)과 개업 웰컴 큐가 영구 빈 상태였음.
-    const COLLECTORS = ['collect-company', 'collect-storeinfo', 'collect-commerce', 'collect-franchise', 'collect-market', 'collect-nara-vendor', 'collect-work24', 'collect-nps', 'sweep-nts', 'sweep-mx', 'collect-localdata', 'enrich-prospects']
+    const COLLECTORS = ['collect-company', 'collect-storeinfo', 'collect-commerce', 'collect-franchise', 'collect-market', 'collect-nara-contract', 'collect-work24', 'collect-nps', 'sweep-nts', 'sweep-mx', 'collect-localdata', 'enrich-prospects']
     const collected = await Promise.all(COLLECTORS.map(p => call(p)))
     const collectSaved = collected.reduce((s: number, r) => s + num(r, 'saved'), 0)
     const collectFound = collected.reduce((s: number, r) => s + num(r, 'found'), 0)
@@ -265,7 +265,7 @@ app.get('/stats', async (c) => {
     try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
   }
   const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll, registryMatch, lkAll, lkEnrich, lkReclassify, localdataRun, enrichRollup, kakaoSweep] = await Promise.all([
-    readKey('ads_naravendor_stats'), readKey('ads_mxsweep_stats'), readKey('ads_enrich_last'), readKey('ads_enrich_burst_last'), readKey('ads_reclassify_burst_last'), readKey('ads_runall_last'), readKey('ads_registry_match_stats'),
+    readKey('ads_naracontract_stats'), readKey('ads_mxsweep_stats'), readKey('ads_enrich_last'), readKey('ads_enrich_burst_last'), readKey('ads_reclassify_burst_last'), readKey('ads_runall_last'), readKey('ads_registry_match_stats'),
     readKey('ads_runall_lock'), readKey('ads_enrich_burst_lock'), readKey('ads_reclassify_burst_lock'), readKey('ads_localdata_stats'),
     // 🧮 누적(2026-07-29) — 스냅샷은 라운드마다 덮이므로 "모든 라운드가 죽는다"와 "마지막만 잘렸다"를
     //   한 장으로는 **구분할 수 없었다**. 하루치 rounds/partial/phase 분포를 함께 보여 판정 가능하게.
@@ -308,7 +308,7 @@ app.get('/stats', async (c) => {
     laneHealth: judgeLanes([
       { lane: 'collect-company', stat: run as never }, { lane: 'collect-storeinfo', stat: storeinfoRun as never },
       { lane: 'collect-commerce', stat: commerceRun as never }, { lane: 'collect-franchise', stat: franchiseRun as never },
-      { lane: 'collect-nara-vendor', stat: naraRun as never }, { lane: 'collect-work24', stat: w24Run as never },
+      { lane: 'collect-nara-contract', stat: naraRun as never }, { lane: 'collect-work24', stat: w24Run as never },
       { lane: 'collect-nps', stat: npsRun as never }]),
   })
 })
@@ -332,7 +332,7 @@ app.get('/contact-list', async (c) => {
 
 // 위임 3종(나라장터 수집 · 이메일 재검증 · 폐업 정리) — 아래 delegateCollect 하나로 통일(같은 보일러플레이트였다).
 //   ⚠️ 함수 선언은 호이스팅되므로 정의(아래)보다 위에서 호출해도 안전하다.
-app.post('/collect-nara', delegateCollect('collect-nara-vendor', '📑 조달업체 수집'))
+app.post('/collect-nara', delegateCollect('collect-nara-contract', '🏛️ 상권 용역 계약 수집'))
 app.post('/sweep-mx', delegateCollect('sweep-mx', '📮 이메일 재검증'))
 app.post('/sweep-nts', delegateCollect('sweep-nts', '🏛 폐업 정리'))
 

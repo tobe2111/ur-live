@@ -34,6 +34,14 @@ app.post('/__ads/daily-batch', async (c) => {
   } catch (err) { return c.json(fail(err), 500) }
 })
 
+// 🔔 레인 침묵 요약 — 유어애즈 채널로 push(하루 1회). 설계·소음 억제는 `silence-digest.ts` 헤더.
+app.post('/__ads/silence-digest', async (c) => {
+  try {
+    const { runAdsSilenceDigest } = await import('./silence-digest')
+    return c.json({ ok: true, stats: await runAdsSilenceDigest(c.env) })
+  } catch (err) { return c.json(fail(err), 500) }
+})
+
 app.post('/__ads/social-maintenance', async (c) => {
   try {
     const { handleSocialMaintenance } = await import('@/worker/cron/social-maintenance')

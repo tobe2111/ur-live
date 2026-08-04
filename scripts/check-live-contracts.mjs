@@ -105,6 +105,38 @@ for (const [re, end, label] of [
   }
 }
 
+/* ── ⑤ 가동 프로브가 두드리는 URL (2026-08-04 신설) ──────────────────────────
+ *
+ * `uptime.yml` 은 10분마다 몇 개의 URL 을 두드려 사이트 생사를 판정한다. 그런데 그 판정 규칙이
+ * **`5xx`/`000` 만 다운**이고 `4xx` 는 "worker 는 살아있음"으로 세므로, **URL 이 사라져도 조용히 통과**한다.
+ *
+ * 실측 2건(2026-08-04):
+ * ```
+ *   POST /api/version              → 404 (그 라우트는 GET 전용 — 늘 404였다)
+ *   /api/wholesale/catalog         → 404 (7/16 도매 분리로 ur-live 가 안 서빙)
+ * ```
+ * 둘 다 **자기 목적을 한 번도 확인한 적이 없는 검사**였고, 후자는 #544(7/29)가 `prod-smoke.yml` 에서
+ * 같은 이유로 고쳤는데 **이 파일만 빠져** 3주를 그대로 지났다. 가동 감시가 자기 URL 을 잃어버리면
+ * 남는 건 초록불뿐이다 — 이 레포가 반복해 만난 *"실패할 수 없는 검사"* 의 또 다른 얼굴.
+ *
+ * ⚠️ 여기서는 **경로만** 뽑는다(호스트가 박힌 URL). 판정은 아래 공통 로직이 하므로, 200 이 아니거나
+ *   경로가 바뀌는 3xx 면 빨간불이다.
+ */
+{
+  const wf = readFileSync('.github/workflows/uptime.yml', 'utf8')
+  for (const m of wf.matchAll(/https:\/\/([a-z0-9.-]+)(\/[^\s"']*)/gi)) {
+    const [, host, path] = m
+    if (!path.startsWith('/')) continue
+    // 🚫 헬스체크는 제외 — **503 이 그 엔드포인트의 설계된 신호**다(cron 침묵 = 503).
+    //   여기에 200 을 요구하면 cron 이 조용할 때마다 이 가드가 울리고, 그건 곧
+    //   *"꺼질 수 없는 검사"* 를 하나 더 만드는 것이다 — 오늘 고친 병을 새로 만들 수는 없다.
+    //   그 URL 의 생사는 `uptime.yml` 자신이 판정하고, 이 가드는 **나머지 프로브 URL 이 실재하는가**만 본다.
+    if (path.startsWith('/api/_healthcheck')) continue
+    // 캐시버스트 쿼리는 러너 변수라 그대로 두면 404 다 — 떼고 경로만 본다.
+    push(path.replace(/[?&]cb=.*$/, ''), 'uptime.yml:probe', `https://${host}`)
+  }
+}
+
 if (targets.length === 0) {
   console.error('❌ [live-contracts] 선언된 URL 을 하나도 못 찾았다 — 추출이 깨졌다(통과 아님).')
   process.exit(1)

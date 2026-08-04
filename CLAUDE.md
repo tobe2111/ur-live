@@ -1144,7 +1144,11 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 4. `npm run build`  ← **`vite build` 아님!** (위 빌드 룰 참조)
 5. `git push origin <branch>` (훅이 main 자동 머지 + 배포)
 6. Actions 탭 녹색 확인
-7. 배포 후 `curl -X POST -i https://live.ur-team.com/api/version` 등 핵심 endpoint smoke test
+7. 배포 후 `curl -i "https://urdeal.kr/api/version?cb=$RANDOM"` 등 핵심 endpoint smoke test
+   > 🔴 **2026-08-04 정정**: 여기 오래 적혀 있던 `-X POST .../api/version` 은 **항상 404** 다
+   > (그 라우트는 GET 전용). 캐시 우회가 목적이었으면 쿼리로 하면 되고, POST 로는 배포가 성공했는지
+   > 실패했는지 **구분이 안 된다**. 같은 오류가 `uptime.yml` 의 생존 프로브에도 있었고
+   > (4xx='정상' 규칙이라 조용히 통과), 이제 `check-live-contracts` 가 프로브 URL 의 실재를 검사한다.
 
 ### 절대 하지 말 것 (배포 관련)
 - ❌ Service Worker / PWA 라이브러리 — 카카오 OAuth 차단 사고 (2026-04-27, `docs/INCIDENTS.md`)

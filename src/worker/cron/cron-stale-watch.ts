@@ -8,8 +8,17 @@
  *   하트비트에 함께 저장된 **실행 당시 cron 식**으로 기대 주기를 계산한다(expectedMaxAgeMinutes).
  *   기준은 기대주기 × 2 + 30분 — 배포·지연으로 한두 번 밀리는 것까지 울리면 아무도 안 보게 된다.
  *
- * 통지 — 새 채널을 만들지 않고 `reportCronFailure`(cron_failures + 어드민 벨 + Discord)를 재사용한다.
+ * 통지 — 새 채널을 만들지 않고 `reportCronFailure` 를 재사용한다.
  *   severity 는 'warning' — 실패가 아니라 "안 돈 것 같다" 이므로.
+ *
+ * 🔴 **정정 (2026-08-04)**: 이 줄은 오래 *"cron_failures + 어드민 벨 + Discord"* 라고 적혀 있었는데
+ *   **Discord 는 사실이 아니다.** `cron-reporter.ts` 는 console + `cron_failures` + `dashboard_notifications`
+ *   **셋뿐**이다(그 파일 헤더가 스스로 그렇게 적고 있다). 즉 이 감시의 결과는 **전부 pull** 이고,
+ *   대표가 어드민을 열지 않으면 영영 모른다. 실제로 유어애즈 레인 침묵이 그 상태였다 —
+ *   `stale:ads:*` 가 `cron_failures` 에 쌓이는 동안 디스코드는 조용했다.
+ *   ⚠️ 여기에 Discord 를 그냥 붙이지 **않는다**: 이 워커의 웹훅은 **유어딜 머니 경보 채널**이고,
+ *   레인 하나하나를 12시간마다 쏘면 그 채널이 유어애즈 소음으로 덮인다. 유어애즈 침묵은
+ *   **자기 채널로 일 1회 요약**해서 보낸다 → `worker-ads/silence-digest.ts`.
  *
  * 재알림 억제 — 같은 작업을 매시간 울리면 소음이 된다. 12시간에 한 번만.
  *   상태는 `platform_settings.cron_stale_alerts` 한 줄(JSON map)에 모아 둔다 — 이 작업이 유일한 writer 라 경합 없음.

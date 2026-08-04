@@ -72,6 +72,61 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '키워드 목적함수가 다시 "몇 명 모았나"로 되돌아감',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: ' - yieldPenalty(k) - contactPenalty(k.yt_leads, k.yt_contacts)',
+    replace: ' - yieldPenalty(k)',
+    test: 'src/tests/unit/influencer-keyword-yield.test.ts',
+    why:
+      '대표 지시로 목적함수를 **연락처 확보율**로 바꿨다. 이 한 항이 빠지면 점수식은 다시 `saved` 만 ' +
+      '보고, 라이브 실측처럼 **연락처 0%인 키워드가 우수로 평가된다**(금천 네일 리드 118 · 이메일 0 · ' +
+      '감점 0). 리드 수는 오히려 늘어나므로 **대시보드로는 개선처럼 보인다** — 그게 이 회귀의 위험이다.',
+  },
+  {
+    name: '키워드 성과 재계산이 빠져 감점이 영원히 0',
+    file: 'src/features/marketing/api/influencer-maintenance.ts',
+    find: '; out.kwyield = await recomputeKeywordContactYield(DB).catch(() => null) }',
+    replace: ' }',
+    test: 'src/tests/unit/influencer-keyword-yield.test.ts',
+    why:
+      '감점은 `yt_leads`/`yt_contacts` 가 채워져 있어야 작동한다. 재계산 호출이 사라지면 두 값이 ' +
+      '영원히 0 이고 `contactPenalty` 는 **증거 부족으로 항상 0 을 돌려준다** — 코드는 그대로인데 ' +
+      '목적함수만 조용히 옛것으로 되돌아간다. 에러도 경고도 없다(이 레포가 "헛도는 가드"라 부르는 형태).',
+  },
+  {
+    name: '나라장터 계약 — 마스킹된 전화를 진짜 연락처로 센다',
+    file: 'src/features/marketing/api/nara-contract-collect.ts',
+    find: "  return raw.includes('*') ? '' : raw",
+    replace: '  return raw',
+    test: 'src/tests/unit/nara-contract-collect.test.ts',
+    why:
+      '이 원부는 수주사 전화를 `***********` 로 가려서 준다(실측). 그대로 저장하면 **"연락처 있음"** 으로 ' +
+      '집계돼 액션풀(active=1)에 들어간다 — 유어애즈의 유일한 지표가 *"제안 보낼 수 있는 리드 수"* 인데 ' +
+      '그 숫자가 거짓이 된다. 전화하면 그제서야 안다. 200 도 받고 저장도 되니 **에러가 어디에도 안 뜬다.**',
+  },
+  {
+    name: '나라장터 계약 — 상권 필터가 풀려 26k 계약이 통째로 유입',
+    file: 'src/features/marketing/api/nara-contract-collect.ts',
+    find: '  if (!DISTRICT_CONTRACT_RE.test(cntrctNm)) return []',
+    replace: '  if (!cntrctNm) return []',
+    test: 'src/tests/unit/nara-contract-collect.test.ts',
+    why:
+      '원부 26,445건 중 상권 계약은 소수이고 나머지는 대학·병원 물품 구매다. 필터가 풀리면 ' +
+      '**수집이 성공한 것처럼 보이면서**(저장 수가 오히려 폭증한다) 상권 리드가 잡음에 덮인다. ' +
+      '수치가 커지는 방향의 고장이라 대시보드로는 절대 못 알아챈다.',
+  },
+  {
+    name: '나라장터 계약 — 굳은 파라미터 판정이 코드 수정을 이긴다',
+    file: 'src/features/marketing/api/nara-contract-collect.ts',
+    find: '  if (Number(v || 0) !== NARA_PARAM_STATE_VERSION) return null',
+    replace: '  void v',
+    test: 'src/tests/unit/nara-contract-collect.test.ts',
+    why:
+      '레인이 측정한 파라미터 모드를 D1 에 굳히는데, 버전 잠금이 빠지면 **코드 기본값을 고쳐 배포해도 ' +
+      'DB 의 옛 판정이 이겨 라이브가 안 변한다.** 인허가 레인에서 정확히 이 사고를 겪었고 ' +
+      '(`LICENSE_STATE_VERSION` 이 그 수습이다) 원인을 찾는 데 하루가 갔다 — 배포는 초록불이었다.',
+  },
+  {
     name: '데모 추첨 자가치유가 발화 안 하는 cron 슬롯에 배선됨',
     file: 'src/worker/scheduled.ts',
     find: "    ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env)));",
@@ -196,6 +251,18 @@ const MUTATIONS = [
       '`tickHarmed` 는 `fail + miss` 로 판정하고 `miss` 는 *띄웠는데 하트비트가 없는* 레인이다. ' +
       '상한을 넣고도 아직 도는 레인을 그대로 넘기면 전부 miss 로 잡혀 **모든 회차가 항상 해로움**이 된다 — ' +
       '고치려던 것과 **부호만 반대인 같은 고착**이다. 끝난 레인만 판정 대상이어야 한다.',
+  },
+  {
+    name: '개명된 하트비트가 다시 게이트를 물어 영구 503 (사이트 다운 감지가 가려짐)',
+    file: 'src/worker/utils/cron-beat-retirement.ts',
+    find: "  if (raw.includes('?') && freshBaseNames.has(beatBaseName(raw))) return 'superseded'",
+    replace: '  // (superseded 판정 제거)',
+    test: 'src/tests/unit/cron-beat-retirement.test.ts',
+    why:
+      '하트비트 행은 레인보다 오래 산다. 개명·DO알람 인수된 이름은 아무도 갱신하지 않아 **영원히 stale** 이고, ' +
+      '그러면 `/api/_healthcheck/cron` 이 영구 503 이 된다. 실측 피해가 크다: uptime 프로브가 그 503 을 ' +
+      '"사이트 다운"과 같은 바구니로 세어, 장애 이슈 #845 가 6일째 열린 채 코멘트 84개가 쌓이는 동안 ' +
+      '**진짜 다운을 감지할 수 없었다**. 이 주입은 그 회귀를 재현한다.',
   },
   {
     name: '순환 경보가 다시 "해제될 수 없는" 임계로 회귀',
@@ -1687,47 +1754,6 @@ const MUTATIONS = [
     why:
       '2026-08-04 실측으로 접었다(측정 397 → 이메일 12 = 3.0%, 네이버 26.7%·유튜브 40.6%). 되살리려면 ' +
       '**수율이 왜 올랐는지 근거가 먼저**다. env(ADS_TISTORY_ROOM)로는 열려 있으니 코드 기본값은 0 이어야 한다.',
-  },
-  {
-    name: '연락처 수율 억제가 되돌릴 수 없게 됨(탐침 회차 제거)',
-    file: 'src/features/marketing/api/keyword-contact-yield.ts',
-    find: '  if (roundIndex % CONTACT_PROBE_EVERY === 0) return pool',
-    replace: '  if (false) return pool',
-    test: 'src/tests/unit/ads-keyword-contact-yield.test.ts',
-    why:
-      '억제된 키워드는 더 이상 수집되지 않으므로 **증거가 영원히 갱신되지 않는다** — 판정이 틀렸어도 ' +
-      '스스로 뒤집힐 수 없다. 저수율의 원인 셋(키워드가 나쁨/그 주제가 원래 연락처를 안 검/우리 추출기가 ' +
-      '그 형식을 못 읽음) 중 셋째는 추출기를 고치는 순간 되살아나야 한다. 탐침 회차가 그 유일한 통로다.',
-  },
-  {
-    name: '전부 저조할 때 풀이 비어 그 축이 통째로 멈춤',
-    file: 'src/features/marketing/api/keyword-contact-yield.ts',
-    find: '  return kept.length ? kept : pool',
-    replace: '  return kept',
-    test: 'src/tests/unit/ads-keyword-contact-yield.test.ts',
-    why:
-      '한 축의 키워드가 전부 저수율이면 풀이 빈 배열이 되고 그 축은 그 회차에 아무것도 안 돈다. ' +
-      '고쳐야 할 것은 키워드지 수집이 아니다. 같은 클래스(집중 축 커서 동결 → 커버리지 붕괴)를 이미 겪었다.',
-  },
-  {
-    name: '표본 부족 키워드를 벌해 탐색이 죽음',
-    file: 'src/features/marketing/api/keyword-contact-yield.ts',
-    find: '  if (m < CONTACT_EVIDENCE_MIN) return false',
-    replace: '  if (false) return false',
-    test: 'src/tests/unit/ads-keyword-contact-yield.test.ts',
-    why:
-      '갓 만든 키워드는 measured_total 0 이라 수율도 0 이다. 증거 게이트가 없으면 **모든 신규 키워드가 ' +
-      '첫 회차에 낙인**찍혀 영원히 억제된다 — 자동 조율이 아니라 신규 축 차단기가 된다.',
-  },
-  {
-    name: '연락처 수율 커서를 저장 안 함(같은 슬라이스만 영원히)',
-    file: 'src/features/marketing/api/influencer-auto-collect.ts',
-    find: 'CONTACT_YIELD_CURSOR_KEY, String(kwYield.cursor)',
-    replace: "'ads_kw_contact_yield_cursor_x', String(kwYield.cursor)",
-    test: 'src/tests/unit/ads-keyword-contact-yield.test.ts',
-    why:
-      '커서를 안 남기면 매 탐침 회차가 **첫 60개만** 갱신한다. 399개 중 나머지는 measured_total 0 에 ' +
-      '머물러 영원히 판정 대상이 아니게 된다 — 조율이 도는 것처럼 보이면서 실제로는 6분의 1만 본다.',
   },
   {
     name: '수집 폭 동결이 풀림(측정이 병목인데 백로그가 증가 반전)',

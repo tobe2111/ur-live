@@ -128,13 +128,12 @@ app.post('/__ads/collect-maker', async (c) => {
   }
 })
 
-// ☎️ 카카오 전용 전화 스윕 — 보류 리드 전화 대량 채움(시간당 기본 600건, 카카오만 — 네이버 쿼터 무접촉).
-app.post('/__ads/sweep-kakao-phone', async (c) => {
-  try {
-    const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect')
-    return c.json({ ok: true, stats: await runKakaoPhoneSweep(c.env) })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
+// 🪦 `/__ads/sweep-kakao-phone` 제거 (2026-08-04) — **같은 일을 `sweep-kakao-chain` 이 한다**
+//   (`index.ts` 의 kick, 같은 `runKakaoPhoneSweep`). 이 라우트는 아무도 안 불렀는데 이름만 남아
+//   하트비트 행이 **6일째 stale** 로 `/api/_healthcheck/cron` 을 503 에 묶어 뒀다 → uptime 프로브가
+//   장애 이슈를 6일간 열어 두고(코멘트 84개) **진짜 사이트 다운 감지를 가리고 있었다.**
+//   ⇒ 이름이 은퇴하면 라우트·도메인 등록도 같이 지운다. 낡은 하트비트 행 자체는
+//   `cron-beat-retirement.ts` 가 `retired` 로 갈라 게이트에서 뺀다(정보는 남기고 게이트만 만족 가능하게).
 
 // 🧭 파트너 리드 소급 재분류 — 공고/정부페이지 제거 + 업종을 리드 자신의 텍스트 근거로 재적용(배치 커서).
 app.post('/__ads/reclassify-company', async (c) => {
@@ -500,9 +499,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   if (env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
     gates.dailyAt(17, '/__ads/sweep-mx', async () => { const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep'); return sweepEmailMx(env) })
   }
-  // 📑 나라장터 조달업체(대행사 계열) — 일 1회(hourUTC===23 = KST 08시). 게이트 ADS_NARA_VENDOR_ENABLED.
-  if ((env as unknown as { ADS_NARA_VENDOR_ENABLED?: string }).ADS_NARA_VENDOR_ENABLED === 'true') {
-    gates.dailyAt(23, '/__ads/collect-nara-vendor', async () => { const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect'); return runNaraVendorCollect(env) })
+  // 🏛️ 나라장터 계약정보(상권활성화 용역) — 일 1회(hourUTC===23 = KST 08시). 게이트 ADS_NARA_CONTRACT_ENABLED.
+  if ((env as unknown as { ADS_NARA_CONTRACT_ENABLED?: string }).ADS_NARA_CONTRACT_ENABLED === 'true') {
+    gates.dailyAt(23, '/__ads/collect-nara-contract', async () => { const { runNaraContractCollect } = await import('@/features/marketing/api/nara-contract-collect'); return runNaraContractCollect(env) })
   }
   // 🏛️ 사업자 폐업 스윕 — 일 1회(hourUTC===19 = KST 04시). 사업자번호 보유 리드 100건/일 국세청 상태조회 →
   //   폐업이면 active=0(죽은 연락처에 아웃리치 낭비 방지). fail-soft(활용신청 전엔 no-op + note).
@@ -549,6 +548,15 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   gates.dailyAt(18, '/__ads/daily-batch', async () => {
     const { runAdsDailyBatch } = await import('./daily-batch') // 5단계 순차(순서에 의미) — 그 파일 헤더 참조
     return runAdsDailyBatch(env)
+  })
+
+  // ── 🔔 매일 23:00 UTC(KST 08시) — **레인 침묵 요약을 유어애즈 채널로 push**.
+  //   근거·소음 억제 설계는 `silence-digest.ts` 헤더. 요약은 D1 읽기 몇 번뿐이라 가볍고,
+  //   ⚠️ 시각을 **한산한 회차**로 골랐다 — 이 요약이 무거운 회차의 꼬리에 붙으면 부모 CPU 한도에
+  //   잘려, 하필 *"레인이 잘린다"* 를 알리는 경보가 같은 이유로 안 온다(자기 참조 사고).
+  gates.dailyAt(23, '/__ads/silence-digest', async () => {
+    const { runAdsSilenceDigest } = await import('./silence-digest')
+    return runAdsSilenceDigest(env)
   })
 
   // ── 🌙 자동 정비 순환(cron 경로) — 배정표·양보 규칙·근거는 `maintenance-cron.ts`(그 모듈의 관심사다).

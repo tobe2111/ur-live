@@ -107,3 +107,72 @@ nextSubreqCap(spent, hitLimit, …)
 * **Workers 유료 전환** — 지금의 진짜 천장. 무료 인보케이션 서브리퀘스트 ~50 이 회차당 처리
   키워드 수를 정한다(planned 16 → processed 5).
 * **브랜치 보호**(`Verify` 하나만 required) — GitHub API 가 이 환경 프록시에서 막혀 세션이 못 건다.
+
+---
+
+## 8) 후속 — 대표 질문 "다른 축 알림도 안 오는지 알려줘" (같은 세션, 배포 후)
+
+**답: 안 온다.** 그리고 그 이유가 오늘 고친 것과 **또 같은 클래스**였다(하루에 세 번째).
+
+### 실측
+`/api/_healthcheck/cron` 이 **6일째 503**이고, `uptime.yml` 이 연 장애 이슈 **#845 가 7/29 부터 열린 채
+코멘트 84개**. 침묵 19건이 **전부 `ads:*`**. 그런데 분류해 보니:
+
+| 분류 | 건수 | 실제 |
+|---|---|---|
+| 개명·인수된 이름 | 10 | 같은 일이 **새 이름으로 정상 실행 중** |
+| 진짜 침묵 | 7 | 부모 CPU 한도에 잘리는 중 |
+| (판정 불가) | 2 | gap 미상 |
+
+`ads:maintenance?phase=quality` 가 1.8일째 침묵인데 `ads:maintenance` 는 12분 전에 **바로 그 phase 로**
+실행됐다. 하트비트 행이 레인보다 오래 살아서 생긴 유령이다.
+
+### 🔴 가장 큰 피해는 유어애즈가 아니었다
+`uptime.yml` 이 이 503 을 **사이트 다운과 같은 바구니**로 셌다 → **6일 내내 빨간불** →
+**진짜 사이트 다운이 나도 새 신호를 못 낸다.** dead-man's switch 가 스스로 가려져 있었다.
+
+### 그리고 디스코드로는 애초에 안 갔다
+`cron-stale-watch` 의 docblock 이 *"cron_failures + 어드민 벨 + **Discord**"* 라고 적어 놨는데
+**`cron-reporter.ts` 에 Discord 가 없다**(그 파일 헤더가 스스로 셋뿐이라고 적고 있다). 문서만 있는 채널.
+
+### 고친 것 (PR 진행 중)
+1. `cron-beat-retirement.ts` — `superseded`(같은 base 가 신선) / `retired`(자기 임계 8배+하루) 를 갈라
+   **`ok` 를 물지 않게**. 지우지 않고 계속 보여 준다.
+2. `uptime.yml` — cron 침묵을 **별도 이슈(`cron-silence` 라벨)** 로 분리. 다운 감지 회복.
+   상태 변화 때만 코멘트(84개로 불어난 원인).
+3. `worker-ads/silence-digest.ts` — 유어애즈 침묵을 **자기 채널로 하루 1회 요약** push (신규).
+4. `sweep-kakao-phone` 죽은 라우트·도메인 등록 제거(`sweep-kakao-chain` 이 같은 일을 한다).
+5. `cron-stale-watch` docblock 의 거짓 Discord 주장 정정.
+
+### ⚠️ 안 고친 것 (대표 판단 / 별건)
+- **부모 CPU 한도** — `cron_failures` 실측: `sheets-sync ×16` · `reclassify-company ×9` ·
+  `collect-company ×6` 전부 `Worker exceeded CPU time limit`. 진짜 침묵 7건의 원인이 이것이다.
+  유료 전환이거나 구조 변경(레인을 더 DO 알람으로) — **별건**.
+- **`gapMin` 이 실제 도달 주기를 모른다** — `hourlyGapMinutes()=150분` 인데 디스패치 예산
+  (`per_tick 2 · 4도메인`)이 레인을 수 시간씩 미룬다. 임계가 achieved cadence 를 반영해야 하는데
+  cron 식만 본다. **오늘 고친 것과 같은 병의 네 번째 얼굴** — 설계 변경이라 별건.
+- 📌 **`ADS_COLLECT_ROUNDS` 는 대표가 이미 8 로 설정해 뒀다**(§6.5 작성 시점엔 미설정으로 알았다).
+  그런데 그 상태에서도 한 바퀴가 6.3일이다 ⇒ **라운드는 레버가 아니다**(예산 56/56 이 천장).
+  §6.5 의 철회가 실측으로 한 번 더 확인된 셈이다.
+
+## 9) 후속 2 — 배포 검증 중에 **같은 병 2건 더** (5·6번째)
+
+`uptime.yml` 의 판정을 손으로 재현하다가 프로브 URL 두 개가 **자기 목적을 한 번도 확인한 적이 없음**을 발견:
+
+```
+POST /api/version              → 404   (그 라우트는 GET 전용 — 늘 404였다)
+GET  /api/wholesale/catalog    → 404   (7/16 도매 분리로 ur-live 가 안 서빙)
+```
+프로브 규칙이 **`5xx`/`000` 만 다운**이고 `4xx` 는 "worker 살아있음"이라 **조용히 통과**한다.
+후자는 **#544(7/29)가 `prod-smoke.yml` 에서 같은 이유로 이미 고쳤는데 이 파일만 빠졌다** — 3주 방치.
+
+**고친 것**: ① `POST` → `GET` + 캐시버스트 쿼리(우회 목적 유지, 이제 실제 200) ② 도매 프로브 →
+`/api/group-buy/products?status=active`(ur-live 가 실제로 서빙, 200 실측) ③ `CLAUDE.md` 배포
+체크리스트의 같은 오류 정정 ④ **`check-live-contracts` 가 `uptime.yml` 프로브 URL 도 검사**하도록 확장.
+
+⚠️ ④에서 `/api/_healthcheck/*` 는 **제외**했다 — 503 이 그 엔드포인트의 *설계된 신호*라
+200 을 요구하면 cron 이 조용할 때마다 이 가드가 울린다. **오늘 고친 병을 새로 만들 뻔했다.**
+되돌려-검증: 옛 도매 URL 로 되돌리면 `404 … ← uptime.yml:probe` 로 빨간불 확인.
+
+📌 **`uptime.yml` 스케줄이 매우 불규칙하다**(10분 주기인데 01:03 → 04:22 3시간 공백 실측).
+public repo Actions 스케줄 지연 — dead-man's switch 가 이 정도로 늦으면 그것도 관측 대상이다(별건).

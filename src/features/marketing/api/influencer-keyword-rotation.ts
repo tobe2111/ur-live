@@ -9,8 +9,7 @@
  *   호환을 위해 원래 모듈이 이 심볼들을 그대로 재수출한다(기존 import 경로 유지).
  */
 import { isSubrequestLimitError } from './collect-budget'
-// 📮 연락처 수율 감점(2026-08-04) — `yieldPenalty` 는 '안 남았다'를, 이건 '남았는데 연락처가 없다'를 본다.
-import { contactPenalty, type ContactYieldRow } from './keyword-contact-yield'
+import { contactPenalty } from './influencer-keyword-yield'
 
 /** 우선 카테고리 — 유어딜 딜과 결이 맞는 축(맛집·뷰티·숙소). 선택 점수에 가중된다. */
 //   🛒 '공동구매' 추가(2026-07-29 대표 지시) — 이미 자기 팔로워에게 직접 파는 층이라 링크샵 전환 장벽이
@@ -67,7 +66,7 @@ export function planKeywordSplit(
   return { nFocus, nPri, nGen }
 }
 
-export interface YtPickKeyword extends ContactYieldRow {
+export interface YtPickKeyword {
   id: number
   keyword: string
   category: string | null
@@ -78,6 +77,9 @@ export interface YtPickKeyword extends ContactYieldRow {
   last_run_at?: string | null
   /** 🌵 연속 무수확 횟수 — 한 명이라도 저장되면 0 으로 리셋된다(고갈 판정의 유일한 근거). */
   barren_streak?: number
+  /** 🎯 유튜브 연락처 성과(주기 재계산 — `influencer-keyword-yield.ts`). 없으면 감점 0. */
+  yt_leads?: number
+  yt_contacts?: number
   /** 🌾 누적 **발견** 수. `saved_total` 과 짝을 이뤄 '수확률'을 만든다 — 아래 `yieldPenalty` 참조. */
   found_total?: number
 }
@@ -172,9 +174,13 @@ export function pickYtKeywords(kws: YtPickKeyword[], n: number, nowMs: number, p
   //   🌵 누적 성과(`saved_total`)는 과거의 영광이라 고갈돼도 점수를 떠받친다 → 연속 무수확만큼 깎는다.
   //   최근 성과(`last_saved`)와 우선 카테고리 가중은 그대로(잘 무는 키워드는 여전히 최우선).
   //   🌾 수확률 감점 추가(2026-07-29) — `barren_streak` 은 "못 찾음"만 보고 "찾았는데 안 남음"을 못 본다.
+  //   🎯 **연락처 감점**(2026-08-04 대표 *"이메일 및 연락처 수집율로 기준해서 개선"*) — 위 셋이 보는 것은
+  //   전부 *몇 명 모았나* 다. 그런데 지표는 *제안 보낼 수 있는 리드 수*라, 연락처 0% 인 키워드가
+  //   리드를 잘 물어오면 여기서 **우수로 평가된다**(실측: 금천 네일 118건 · 이메일 0건 · 감점 0).
+  //   유튜브 한정인 이유는 `influencer-keyword-yield.ts` 헤더 참조(네이버는 우리 백로그가 신호를 오염시킨다).
   const score = (k: YtPickKeyword) => (k.last_saved || 0) * 3 + Math.min(k.saved_total || 0, 100)
     + (k.category && priorityCats.includes(k.category) ? 50 : 0) - Math.max(0, k.barren_streak || 0) * 25
-    - yieldPenalty(k) - contactPenalty(k)
+    - yieldPenalty(k) - contactPenalty(k.yt_leads, k.yt_contacts)
   // 🧭 미실행 큐는 **사람이 고른 것 → 우선 카테고리 → 들어온 순서**(위 exploreRank 의 실측 근거).
   const neverRun = kws.filter(k => !k.last_run_at)
     .sort((a, b) => exploreRank(a, priorityCats) - exploreRank(b, priorityCats) || a.id - b.id)

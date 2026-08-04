@@ -31,17 +31,38 @@ jobs:
               5*|000) FAILS="${FAILS}${label} (HTTP ${code})\n" ;;
             esac
           }
-          # POST /api/version — 캐시 우회(POST) → worker 생존의 진짜 신호
-          check "API worker (POST /api/version)" -X POST "https://urdeal.kr/api/version"
-          # 핵심 상거래 API 2종
+          # 🔎 worker 생존 신호 — 캐시를 우회하되 **라우트를 실제로 통과**해야 한다.
+          #   🔴 2026-08-04 수리: 종전 `-X POST /api/version` 은 그 라우트가 GET 전용이라 **항상 404** 였다.
+          #     4xx 는 '정상'으로 세므로 이 검사는 자기 목적("worker 가 응답하는가")을 한 번도 확인한 적이 없다.
+          #     ⇒ GET + 캐시버스트 쿼리로 바꾼다(우회 목적은 유지, 이제 실제로 200 을 받는다).
+          check "API worker (GET /api/version)" "https://urdeal.kr/api/version?cb=${GITHUB_RUN_ID}${GITHUB_RUN_ATTEMPT}"
+          # 핵심 상거래 API 2종 — 둘 다 **이 워커(ur-live)가 실제로 서빙하는** 경로여야 한다.
           check "교환권/상품 목록" "https://urdeal.kr/api/products?limit=1"
-          check "도매 카탈로그" "https://urdeal.kr/api/wholesale/catalog?limit=1"
+          # 🏭 [wholesale-split 2026-07-16] 도매는 **별도 워커(ur-wholesale)** 다 — 메인 도메인은 404.
+          #   🔴 2026-08-04: 여기가 `urdeal.kr/api/wholesale/catalog` 를 두드리고 있었다. 늘 404 →
+          #     4xx='정상' 규칙에 걸려 **실패할 수 없는 검사**로 3주를 보냈다. #544(7/29)가 prod-smoke 는
+          #     같은 이유로 고쳤는데 이 파일이 빠졌다. 도매 점검은 그쪽(자기 도메인)이 담당하므로
+          #     여기서는 **ur-live 가 실제로 서빙하는 소비자 경로**로 대체한다(동네딜 피드, 200 실측).
+          check "동네딜 피드" "https://urdeal.kr/api/group-buy/products?status=active"
           # HTML 셸
           check "메인 페이지 HTML" "https://urdeal.kr/"
-          # 🫀 cron 침묵 감지 (dead-man's switch) — 핵심 cron 이 허용 간격을 넘기면
-          #   worker 가 503 → 여기서 다운으로 잡혀 이슈 생성. cron 내부 자가진단은
-          #   cron 전면 사망 시 같이 죽으므로 **외부 관측이 유일한 진짜 감시**다.
-          check "Cron heartbeat (침묵 감지)" "https://urdeal.kr/api/_healthcheck/cron"
+          # 🫀 cron 침묵 감지 (dead-man's switch) — cron 내부 자가진단은 cron 전면 사망 시 같이
+          #   죽으므로 **외부 관측이 유일한 진짜 감시**다.
+          #
+          # 🔴 **다운 판정(FAILS)에서 분리했다** (2026-08-04). 종전엔 이 503 이 위 endpoint 들과 같은
+          #   바구니에 들어가 "사이트 다운"으로 집계됐다. 그런데 cron 침묵은 **한 번 빨개지면 며칠 간다** —
+          #   실측: 이슈 #845 가 7/29 부터 6일째 열린 채 코멘트 84개, 원인 19건이 전부 `ads:*` 레인.
+          #   그동안 이 워크플로는 **이미 빨간불**이라 진짜 사이트 다운이 나도 새 신호를 못 냈다.
+          #   경보의 목적이 정반대로 뒤집힌 상태였다(가려진 dead-man's switch).
+          #   ⇒ cron 은 `CRON_DOWN` 으로 **따로** 집계하고, 사이트 다운 이슈와 라벨을 나눈다.
+          #   ⚠️ 무시하는 게 아니다 — 아래 별도 스텝이 자기 이슈를 연다. 섞지만 않는다.
+          cron_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://urdeal.kr/api/_healthcheck/cron" || echo "000")
+          echo "Cron heartbeat (침묵 감지) → $cron_code"
+          case "$cron_code" in
+            5*|000) echo "cron_down=true" >> "$GITHUB_OUTPUT" ;;
+            *)      echo "cron_down=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+          echo "cron_code=$cron_code" >> "$GITHUB_OUTPUT"
           if [ -n "$FAILS" ]; then
             echo "down=true" >> "$GITHUB_OUTPUT"
             printf "fails<<EOF\n${FAILS}EOF\n" >> "$GITHUB_OUTPUT"
@@ -79,6 +100,43 @@ jobs:
               await github.rest.issues.createComment({
                 owner: context.repo.owner, repo: context.repo.repo, issue_number: open.number,
                 body: `🟢 **복구 확인** (${now} KST) — 전체 endpoint 정상. 이슈를 닫습니다.`,
+              })
+              await github.rest.issues.update({ owner: context.repo.owner, repo: context.repo.repo, issue_number: open.number, state: 'closed' })
+            }
+
+      # 🫀 cron 침묵은 **별도 이슈**로 — 사이트 다운과 라벨을 나눈다.
+      #   위 스텝과 섞으면 며칠 가는 cron 빨간불이 다운 감지를 통째로 가린다(2026-08-04 실측 6일).
+      #   ⚠️ 코멘트를 매 회차(10분) 달지 않는다 — #845 가 코멘트 84개로 불어나 아무도 안 읽게 된 원인이다.
+      #     상태가 바뀔 때(열림/닫힘)만 쓴다.
+      - name: Open/close cron-silence issue
+        uses: actions/github-script@v7
+        env:
+          CRON_DOWN: ${{ steps.probe.outputs.cron_down }}
+          CRON_CODE: ${{ steps.probe.outputs.cron_code }}
+        with:
+          script: |
+            const down = process.env.CRON_DOWN === 'true'
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'cron-silence',
+            })
+            const open = issues[0]
+            const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
+            if (down && !open) {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: `🟡 [cron 침묵] 일부 작업이 기대 주기를 넘김 — ${now}`,
+                body: `🟡 **cron 침묵 감지** (${now} KST · HTTP ${process.env.CRON_CODE})\n\n`
+                  + `상세: \`GET /api/_healthcheck/cron\` 의 \`stale\` 목록.\n`
+                  + `⚠️ \`retired\`(개명·인수된 이름)는 판정에서 제외됩니다 — 남은 건 진짜 침묵입니다.\n\n`
+                  + `복구되면 자동으로 닫힙니다. **상태가 바뀔 때만** 코멘트가 달립니다.\n`
+                  + `유어애즈 레인이면 디스코드 일 1회 요약도 함께 옵니다(\`silence-digest\`).`,
+                labels: ['cron-silence'],
+              })
+            } else if (!down && open) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: open.number,
+                body: `🟢 **cron 침묵 해소** (${now} KST) — 전 작업이 기대 주기 안. 이슈를 닫습니다.`,
               })
               await github.rest.issues.update({ owner: context.repo.owner, repo: context.repo.repo, issue_number: open.number, state: 'closed' })
             }

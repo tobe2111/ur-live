@@ -23,8 +23,6 @@ import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-perfo
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS, acquireLeaseDetect } from './collect-lease'
 import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap, envSubreqCap, capAfterAbandonedRun, envLaneBudget } from './collect-budget'
 import { makeAlreadyContacted } from './influencer-known-contacts'
-import { KW_DDL } from './influencer-keyword-ddl'
-import { runDdlOnce, ddlChecksum } from './ads-schema-guard'
 import { maybeAlertCollectHealth } from './collect-health-alert'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
@@ -43,10 +41,8 @@ import { RETIRED_CATEGORIES } from './influencer-classify'
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
 import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap } from './influencer-keyword-rotation'
 
-// 🌱 시드 키워드(데이터) → `influencer-seed-keywords.ts` 로 분리(600줄 래칫). 탐색 *범위*라 자유 확장.
-//   🔀 병합 메모: 이 브랜치도 같은 분리를 `influencer-seeds.ts` 로 했었다 — **같은 것을 두 벌 두면
-//   조용히 갈라지므로** main 이름 하나로 통일하고 이쪽 파일은 삭제했다.
-import { SEED, REGION_SEED, BANGBAE_SEED } from './influencer-seed-keywords'
+// 🌱 시드 키워드(데이터)는 `influencer-seed-keywords.ts`, 그 시드를 테이블에 넣는 일은
+//   `influencer-keyword-store.ts` — 이 파일은 **둘 다 직접 안 만진다**(아래 재수출만).
 
 // 📊 결과 타입은 `influencer-collect-types.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
 export type { DiscoveryKeyword, AutoCollectStats } from './influencer-collect-types'
@@ -73,58 +69,12 @@ export { readSetting, readSettings, writeSetting, writeSettings } from './influe
 import { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
 import { NAVER_USED_KEY, kstDayKey, parseNaverUsed, takeNaverCalls, NAVER_DAILY_QUOTA_CALLS } from './naver-api-usage'
 
-const _kwSchemaPromise = new WeakMap<D1Database, Promise<void>>()
-
-/**
- * 키워드 테이블 보장 + 시드(멱등 INSERT OR IGNORE).
- *
- * 🧱 2026-07-29 — **매 인보케이션 7 쿼리 → 1 쿼리**. D1 호출도 서브리퀘스트 한도에 포함되는데(#784),
- *   이 함수는 CREATE 1 + ALTER 6 + 시드 batch 1 을 *매시간 영원히* 재실행하고 있었다. 몇 달 전에 만들어진
- *   테이블에 대한 no-op 이 발굴 fetch 예산을 먹은 것이다 — `ensureInfluencerSchema` 가 이미 같은 이유로
- *   `runDdlOnce` 로 바뀌었는데(2026-07-28) 이 함수만 남아 있었다.
- *
- *   시드는 별도 문장으로 넣지 않는다(키워드 200개 = 200 서브리퀘스트 = 그 실행이 즉사). DDL 체크섬에
- *   **시드 목록의 체크섬을 마커로 섞어** 시드가 바뀐 회차에만 1 batch 로 적용한다.
- */
-export function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
-  const cached = _kwSchemaPromise.get(DB)
-  if (cached) return cached
-  const p = (async () => {
-    const seeds = [...SEED, ...REGION_SEED, ...BANGBAE_SEED]
-    const seedSum = ddlChecksum(seeds.flatMap(g => g.keywords.map(kw => `${g.category}:${kw}`)))
-    // 마커는 실행돼도 무해한 SELECT — 체크섬 입력에 섞이는 것이 목적(시드 변경 감지).
-    const { ran } = await runDdlOnce(DB, 'ads_ddl_discovery_keywords', [...KW_DDL, `SELECT '${seedSum}' AS seed_marker`])
-    if (!ran) return // ✅ 최신 — DDL·시드 전부 생략(읽기 1회로 끝)
-    // 시드(일반 ~90 + 지역그리드 100 + 방배 11) — 개별 INSERT 대신 1 batch (Free 한도 절약). 멱등 INSERT OR IGNORE.
-    const stmts = seeds.flatMap(g => g.keywords.map(kw =>
-      DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
-        .bind(kw, g.category, 'seed')))
-    await DB.batch(stmts).catch(() => null)
-  })()
-  _kwSchemaPromise.set(DB, p)
-  return p
-}
-
-export async function listDiscoveryKeywords(DB: D1Database): Promise<DiscoveryKeyword[]> {
-  await ensureDiscoveryKeywords(DB)
-  const r = await DB.prepare('SELECT id, keyword, category, active, hits, source, created_at FROM ad_discovery_keywords ORDER BY active DESC, hits DESC, id ASC LIMIT 1000')
-    .all<DiscoveryKeyword>().catch(() => null)
-  return r?.results || []
-}
-
-export async function addDiscoveryKeyword(DB: D1Database, keyword: string, category?: string): Promise<{ ok: boolean; error?: string }> {
-  const kw = (keyword || '').trim()
-  if (kw.length < 2 || kw.length > 40) return { ok: false, error: 'INVALID' }
-  await ensureDiscoveryKeywords(DB)
-  await DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
-    .bind(kw, (category || '수동').slice(0, 40), 'manual').run().catch(() => null)
-  return { ok: true }
-}
-
-export async function setKeywordActive(DB: D1Database, id: number, active: boolean): Promise<{ ok: boolean }> {
-  await DB.prepare('UPDATE ad_discovery_keywords SET active = ? WHERE id = ?').bind(active ? 1 : 0, id).run().catch(() => null)
-  return { ok: true }
-}
+// 🗂️ 키워드 테이블의 수명주기(스키마·시드·목록·추가/토글)는 `influencer-keyword-store.ts` — 호출부 호환 재수출.
+//   ⚠️ 2026-08-04: 그 분리(2026-07-29)가 **병합으로 되돌아와** 두 파일에 byte-동일한 정의가 둘 있었고,
+//     추출본은 아무도 import 하지 않는 죽은 코드였다. 한쪽만 고치면 `runDdlOnce` 체크섬이 매 인보케이션
+//     엇갈려 **DDL+시드 200문장이 영원히 재실행**된다(그 재실행을 없애려던 최적화가 통째로 뒤집힌다).
+export { ensureDiscoveryKeywords, listDiscoveryKeywords, addDiscoveryKeyword, setKeywordActive } from './influencer-keyword-store'
+import { ensureDiscoveryKeywords } from './influencer-keyword-store'
 
 export async function getAutoCollectStats(DB: D1Database): Promise<AutoCollectStats | null> {
   const raw = await readSetting(DB, STATS_KEY)
@@ -134,13 +84,11 @@ export async function getAutoCollectStats(DB: D1Database): Promise<AutoCollectSt
 
 // 🏷️ 해시태그 후보 추출 → `influencer-hashtag-mine.ts` 로 분리(600줄 래칫). 순수 로직이라 이 파일에 있을 이유가 없다.
 
-// ── 🎯 YT 검색 슬롯 성과 가중 선택 → `influencer-keyword-rotation.ts` 로 분리(600줄 래칫).
+// ── 🎯 YT 슬롯 선택 · 🌱 키워드 승격 자리 → `influencer-keyword-rotation.ts`(600줄 래칫으로 분리).
 //   기존 import 경로 호환을 위해 그대로 재수출한다(테스트·호출부 무변경).
-export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS, type YtPickKeyword } from './influencer-keyword-rotation'
-// 🌱 신규 키워드 승격 자리 — 순수 로직이라 회전 모듈이 제자리(이 파일 600줄 래칫).
-export { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
+export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS, type YtPickKeyword, MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
 import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotation'
-import { buildRotationPools, maybeRefreshContactYield, CONTACT_YIELD_CURSOR_KEY } from './keyword-contact-yield'
+import { buildRotationPools } from './keyword-contact-yield'
 import { mineHashtags } from './influencer-hashtag-mine'
 
 // ── 📅 YT 쿼터 하루 경계 — 구글 쿼터는 태평양 자정(한국 오후 4~5시) 리셋. 카운터 키에 사용. ──
@@ -233,7 +181,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
     DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8"),
   ]).catch(() => null)
-  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total, measured_total, email_total FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
+  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total, COALESCE(yt_leads,0) AS yt_leads, COALESCE(yt_contacts,0) AS yt_contacts FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   /**
    * 🪦 은퇴 축 키워드는 **슬롯을 안 먹는다**(2026-08-03). 축을 접었는데 그 키워드가 계속 돌면
@@ -247,7 +195,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   ⚠️ **여기 없는 키를 `settings[...]` 로 읽으면 값이 아니라 `undefined` 가 온다** — 에러가 아니라
   //   기본값으로 조용히 떨어진다. 집중 축 커서가 정확히 그래서 항상 0 이었다(#930 → 2026-08-03 수리).
   //   새 키를 읽기 전에 이 배열에 넣을 것. `ads-keyword-focus-split` 이 기계로 대조한다.
-  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY, CONTACT_YIELD_CURSOR_KEY]
+  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY]
   const settings = await readSettings(DB, SETTING_KEYS)
   let prev: AutoCollectStats | null = null
   try { prev = settings[STATS_KEY] ? JSON.parse(settings[STATS_KEY] as string) as AutoCollectStats : null } catch { prev = null }
@@ -265,8 +213,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_AUTOCOLLECT_BATCH || '', 10) || 4))
 
   // ⭐ 3분할 풀(집중·우선·일반) 구성 + 연락처 수율 솎아내기 — 규칙·근거는 `buildRotationPools` docblock(SSOT).
-  const roundIndex = (prev?.total_runs || 0) + 1
-  const { focusPool, priPool, genPool } = buildRotationPools(kws, roundIndex, { focus: FOCUS_CATEGORIES, priority: PRIORITY_CATEGORIES })
+  const { focusPool, priPool, genPool } = buildRotationPools(kws, { focus: FOCUS_CATEGORIES, priority: PRIORITY_CATEGORIES })
   let priCursor = parseInt(settings['ads_autocollect_cursor_pri'] || '0', 10)
   if (!Number.isFinite(priCursor) || priCursor < 0) priCursor = 0
   let focusCursor = parseInt(settings[FOCUS_CURSOR_KEY] || '0', 10)
@@ -552,7 +499,6 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   ⚠️ `takeNaverCalls()` 는 **가져가며 비우므로 회차당 정확히 한 번** 불러야 한다(두 번 부르면 뒤가 0).
   const naverDay = kstDayKey(Date.now())
   const naverCalls = parseNaverUsed(settings[NAVER_USED_KEY], naverDay) + takeNaverCalls()
-  const kwYield = await maybeRefreshContactYield(DB, roundIndex, settings[CONTACT_YIELD_CURSOR_KEY]) // 📮 연락처 수율 갱신(탐침 회차만) — 근거는 함수 docblock
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
@@ -563,7 +509,6 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   해석: 합이 spent 에 근접하면 그 소스가 병목. 특히 yt/naver 가 크면 발굴 시점 enrichMax(8/5)가 원인이고,
     //   그건 별도 보강 레인과 겹치는 일이라 줄일 여지가 있다(줄이기 전에 이 숫자를 볼 것).
     spend_by: spendBy,
-    ...(kwYield ? { kw_yield: kwYield } : {}),
     // 📟 네이버 오픈API 일일 사용량(KST 기준일). **자동 레인만 세므로 실사용의 하한**이다 —
     //   어드민 온디맨드 도구(keyword-tools/rank-tracker/competitor-tracker)는 계측 밖(naver-api-usage.ts 주석).
     naver_api: { used: naverCalls, total: NAVER_DAILY_QUOTA_CALLS, day: naverDay },
@@ -583,7 +528,6 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     ['ads_autocollect_cursor_pri', String(nextPriCursor)],
     [CURSOR_KEY, String(nextCursor)],
     [STATS_KEY, JSON.stringify(stats)],
-    ...(kwYield && !kwYield.error ? [[CONTACT_YIELD_CURSOR_KEY, String(kwYield.cursor)] as [string, string]] : []),
     // 🩹 학습 상한도 같은 batch 로(위 주석) — 자가교정 상태와 커서는 같은 회차의 결과라 운명을 함께해도 된다.
     ...(nextCap != null ? [[subreqCapKey('influencer'), String(nextCap)] as [string, string]] : []),
   ]).catch(() => undefined) // 🧯 위와 동일 — 실패해도 리스 해제까지는 간다(TTL 5분 백스톱에 기대지 않게)

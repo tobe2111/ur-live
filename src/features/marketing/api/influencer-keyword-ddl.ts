@@ -26,11 +26,5 @@ export const KW_DDL: string[] = [
   //   `saved_total` 이 큰 옛 성공 키워드가 점수 상위를 계속 차지해 **이미 수확한 채널을 재방문**하고 있었다.
   //   (기존 은퇴 조건은 `saved_total = 0` 이라 이 부류를 영원히 못 걸러낸다.)
   'ALTER TABLE ad_discovery_keywords ADD COLUMN barren_streak INTEGER NOT NULL DEFAULT 0',
-  // 📮 2026-08-04 연락처 수율 — 위 둘(`found/saved`)은 **수집** 성적이고, 이건 **측정 후** 성적이다.
-  //   "잘 찾고 잘 남았는데 재 보니 이메일이 없는" 키워드는 앞의 어떤 카운터에도 안 걸린다
-  //   (실측: 방배동 맛집 0.0%/표본 46 · 금천 맛집 5.9% — 둘 다 barren_streak 0, 저장률 정상).
-  //   정비 레인이 주기적으로 채운다(`refreshKeywordContactYield`) — 수집 시점엔 알 수 없는 값이다.
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN measured_total INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN email_total INTEGER NOT NULL DEFAULT 0',
 ]
 

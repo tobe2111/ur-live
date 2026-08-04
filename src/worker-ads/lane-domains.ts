@@ -82,7 +82,7 @@ export const LANE_DOMAIN: Record<string, AdsDomain> = {
   'collect-commerce': 'company',
   'collect-storeinfo': 'company',
   'collect-franchise': 'company',
-  'collect-nara-vendor': 'company',
+  'collect-nara-contract': 'company',
   'collect-market': 'company',   // 🏪 전통시장 상인회 — 같은 테이블(ad_company_leads)
   'collect-nps': 'company',
   'collect-work24': 'company',
@@ -91,11 +91,13 @@ export const LANE_DOMAIN: Record<string, AdsDomain> = {
   'match-registry': 'company',
   'reclassify-company': 'company',
   'sweep-kakao-chain': 'company',
-  'sweep-kakao-phone': 'company',
+  // 🪦 'sweep-kakao-phone' 제거(2026-08-04) — 위 chain 이 같은 `runKakaoPhoneSweep` 을 돌린다.
+  //   표에 남겨 두면 "알려진 레인"으로 잡혀 침묵 판정 대상이 되는데, 부르는 사람이 없어 영원히 stale 이다.
   'sweep-mx': 'company',
   'sweep-nts': 'company',
   'scan-notices': 'company',
   'daily-batch': 'company',             // 일 1회 묶음 — 업체 풀 부기/정리
+  'silence-digest': 'company',          // 일 1회 침묵 요약 → 유어애즈 디스코드(silence-digest.ts)
 
   // ── 매장 후보 (store_prospects) — 소비자 셀러 영업 리드
   'collect-neis': 'prospect',

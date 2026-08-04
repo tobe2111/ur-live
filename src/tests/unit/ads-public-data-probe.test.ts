@@ -34,7 +34,7 @@ describe('프로브 URL — 레인이 쓰는 상수와 같은 곳을 찌른다',
     ['commerce-status', 'commerce-notify-collect.ts', 'MllBs_2Service'],
     ['commerce-detail', 'commerce-notify-collect.ts', 'MllBsDtl_3Service'],
     ['franchise', 'franchise-collect.ts', 'FftcBrandRlsInfo2_Service'],
-    ['nara', 'nara-vendor-collect.ts', 'UsrInfoService02'],
+    ['nara', 'nara-contract-collect.ts', 'PubDataOpnStdService'],
     ['localdata', 'localdata-collect.ts', '1741000'],
     ['nps', 'nps-workplace-enrich.ts', 'NpsBplcInfoInqireServiceV2'],
   ])('%s — 프로브가 %s 의 실제 엔드포인트(%s)를 쓴다', (target, file, marker) => {
@@ -57,7 +57,7 @@ describe('프로브 URL — 레인이 쓰는 상수와 같은 곳을 찌른다',
    */
   it.each([
     ['franchise', 'franchise-collect.ts', 'FRANCHISE_BASE', 'FRANCHISE_OP'],
-    ['nara', 'nara-vendor-collect.ts', 'NARA_VENDOR_BASE', 'NARA_VENDOR_OP'],
+    ['nara', 'nara-contract-collect.ts', 'NARA_CONTRACT_BASE', 'NARA_CONTRACT_OP'],
     ['hira', 'hira-hospital-collect.ts', 'HIRA_BASE', 'HIRA_OP'],
   ])('🔒 %s — 프로브가 레인의 **base/오퍼레이션**을 그대로 찌른다', (target, file, baseConst, opConst) => {
     const src = SRC(file)
