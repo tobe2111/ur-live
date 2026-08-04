@@ -47,21 +47,40 @@ export const normEmail = (v: unknown): string | null => {
  * 📋 **CSV 도 받는다** — 메일 도구가 뱉는 건 대개 CSV 다. JSON 만 받으면 대표가 매번 변환해야 하고,
  *   그 마찰이 곧 "결과가 안 들어옴"이 된다(이 파일이 존재하는 이유가 정확히 그 마찰이었다).
  *
- * 형식: `email,status[,at]` — 헤더 행은 있으면 건너뛴다(첫 칸이 이메일이 아니면 헤더로 본다).
+ * 기본 형식은 `email,status[,at]` 이지만 **컬럼 순서를 강제하지 않는다**. 메일 도구마다 열 구성이 다르고
+ * 우리는 대표가 쓰는 도구의 출력을 본 적이 없다 — 순서를 강제하면 첫 업로드가 통째로 `invalid` 로 떨어지고,
+ * 그 왕복이 곧 "결과가 안 들어옴"이다(이 파일이 존재하는 이유가 정확히 그 마찰이었다).
+ *   ⇒ 앞 두 칸이 맞으면 그대로 쓰고, 아니면 **행 안에서 이메일 한 칸과 상태 한 칸을 찾는다**.
+ *   구분자도 `,` `;` 탭 을 모두 받는다(이 세 필드는 구분자를 품지 않으므로 안전하다).
+ *
  * ⚠️ 파싱 실패 행은 **버리지 않고** `invalid` 로 센다 — 조용히 사라지면 업로드가 반쯤 먹혔는지 알 수 없다.
+ *   단 **첫 비어있지 않은 줄에 이메일이 하나도 없으면** 헤더로 보고 조용히 건너뛴다.
  */
 export function parseOutreachCsv(text: string): { items: OutreachItem[]; invalid: number } {
   const items: OutreachItem[] = []
   let invalid = 0
+  let seenRow = false
   for (const raw of String(text || '').split(/\r?\n/)) {
     const line = raw.trim()
     if (!line) continue
-    const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''))
-    const email = normEmail(cols[0])
-    if (!email) { if (cols[0] && !/^e-?mail$/i.test(cols[0])) invalid++; continue }
-    const status = String(cols[1] || '').toLowerCase()
+    const cols = line.split(/[,;\t]/).map(c => c.trim().replace(/^"|"$/g, ''))
+    const isFirst = !seenRow
+    seenRow = true
+
+    // ① 규정 순서(email,status[,at]) — 맞으면 그대로.
+    let email = normEmail(cols[0])
+    let status = String(cols[1] || '').toLowerCase()
+    let at: string | null = cols[2] || null
+    // ② 아니면 행 전체를 훑는다 — 열 순서/개수를 모르는 파일을 그대로 받기 위해.
+    if (!email || !isOutreachStatus(status)) {
+      email = cols.map(normEmail).find(Boolean) || null
+      status = cols.map(c => c.toLowerCase()).find(isOutreachStatus) || ''
+      at = cols.find(c => /^\d{4}-\d{2}-\d{2}/.test(c)) || null
+    }
+
+    if (!email) { if (!isFirst) invalid++; continue }   // 이메일이 없는 첫 줄 = 헤더
     if (!isOutreachStatus(status)) { invalid++; continue }
-    items.push({ email, status, at: cols[2] || null })
+    items.push({ email, status, at })
   }
   return { items, invalid }
 }
