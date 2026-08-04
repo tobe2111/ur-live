@@ -5494,7 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 115건 · 최신순 · 이 목록은 자동 생성된다._
+_총 116건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-04**
 - [부모 틱이 CPU 천장에 닿았다 — 레인이 하나씩 죽는 진짜 이유 (2026-08-04, 라이브 하트비트 실측)](handoff/2026-08-04-tick-cpu-ceiling.md)
@@ -5502,6 +5502,7 @@ _총 115건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-08-04 — 지역 집계에 데모 딜 포함 (대표 결정)](handoff/2026-08-04-region-demo-inclusion.md)
 - [상권 축 2단계 — 나라장터 계약정보 레인 (2026-08-04)](handoff/2026-08-04-nara-contract-lane.md)
 - [인계 — 홈 쇼케이스 ①③④ (2026-08-04)](handoff/2026-08-04-home-showcase.md)
+- [2026-08-04 — CPU 한도: 벽시계로는 못 막는다 (호출부 두 곳 총량 상한)](handoff/2026-08-04-cpu-work-cap-callsites.md)
 - [커버리지가 2일로 늘어난 걸 아무도 못 봤다 — 확인처가 늘 "정상"이라서](handoff/2026-08-04-collect-budget-signal-lies.md)
 **2026-08-03**
 - [ur-ads 배포가 조용히 안 나갔다 — 라이브는 멀쩡해 보였다 (2026-08-03)](handoff/2026-08-03-urads-deploy-silent-miss.md)

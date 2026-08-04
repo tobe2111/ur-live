@@ -435,7 +435,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //   passes 값을 바꿔도 하트비트가 개명되지 않는다(그게 이 고정의 목적).
     kick('/__ads/reclassify-company?passes=5', async () => {
       const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery')
-      const { envPlanValue } = await import('@/features/marketing/api/collect-budget')
+      const { reclassifyWorkPlan } = await import('@/features/marketing/api/collect-budget')
       /**
        * ⏱️ **패스 루프에 마감선** (2026-08-03 라이브 실측 — 이 레인은 **매시간 CPU 한도로 죽고 있었다**).
        *
@@ -448,14 +448,18 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
        *     일찍 멈춰도 다음 회차가 그 지점부터 이어받는다(시간만 더 걸린다).
        *   ⚠️ 벽시계는 CPU 의 **근사**다(대기 시간이 섞인다). 정확한 계측은 런타임이 안 준다 —
        *     그래서 관측된 사망 지점(3,880ms)의 **절반 아래**로 잡는다.
+       *
+       *   🩹 **2026-08-04 — 시간만으론 못 막았다.** 마감선 1,800ms 를 넣고도 `ms=1316` 에 CPU 한도로
+       *     죽었다(자기 마감선에 닿기도 전에). 외부 호출 없는 DB-only 루프라 **벽시계가 안 흐르는데
+       *     정규식은 CPU 를 계속 태운다** ⇒ 교리대로 **행 총량**으로도 묶는다(시간 상한은 병행).
        */
-      const deadlineMs = envPlanValue(undefined, 1_800, 12_000, env)
+      const { rowsPerPass, maxRows, deadlineMs } = reclassifyWorkPlan(env)
       const t0 = Date.now()
-      let last = await reclassifyCompanyLeads(env.DB, 1000) // 첫 패스만 housekeeping(억제 스윕)
-      let passes = 1
-      for (; passes < 5 && !last.done && Date.now() - t0 < deadlineMs; passes++) last = await reclassifyCompanyLeads(env.DB, 1000, false)
-      // 관측: 매번 마감선에서 끊기면 상한을 더 내려야 한다는 신호다(그때 커서 전진률을 같이 볼 것).
-      return { ...last, passes, elapsed_ms: Date.now() - t0, stopped_by: last.done ? 'done' : (Date.now() - t0 >= deadlineMs ? 'deadline' : 'passes') }
+      let last = await reclassifyCompanyLeads(env.DB, rowsPerPass) // 첫 패스만 housekeeping(억제 스윕)
+      let passes = 1, rows = rowsPerPass
+      for (; passes < 5 && !last.done && rows < maxRows && Date.now() - t0 < deadlineMs; passes++, rows += rowsPerPass) last = await reclassifyCompanyLeads(env.DB, rowsPerPass, false)
+      // 관측: 매번 상한에서 끊기면 더 내려야 한다는 신호다(그때 커서 전진률을 같이 볼 것).
+      return { ...last, passes, rows, elapsed_ms: Date.now() - t0, stopped_by: last.done ? 'done' : (rows >= maxRows ? 'rows' : (Date.now() - t0 >= deadlineMs ? 'deadline' : 'passes')) }
     }, { beat: 'reclassify-company?passes=5' })
   }
   // 🏭 2026-07-28: 제조사·판매사 풀 자동 수집 — **배선 누락 수리**(대표 "제조사는 왜 저렇게 적어?").

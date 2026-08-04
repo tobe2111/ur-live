@@ -72,6 +72,29 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: 'CPU 상한 — 카카오 스윕이 예산 밖 행까지 다시 읽는다',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: '    .bind(rowCap).all<{ id: number; company_name',
+    replace: '    .bind(cap).all<{ id: number; company_name',
+    test: 'src/tests/unit/ads-cpu-work-cap-callsites.test.ts',
+    why:
+      '예산 천장이 무료 캡(기본 60)이라 시도 가능한 행은 ~50개인데 `LIMIT 600` 으로 읽고 있었다. ' +
+      '나머지 550행은 역직렬화만 되고 루프 `break` 에 버려지는데, 그 계산이 무료 플랜 CPU 를 태운다 ' +
+      '(실측 6,640ms 에 CPU 한도 사망 — 벽시계 마감 12s 는 닿지도 못했다). **행은 그대로 처리되고 ' +
+      '에러도 안 난다** — 되돌아가도 화면에는 아무 변화가 없어 사람이 못 잡는다.',
+  },
+  {
+    name: 'CPU 상한 — 재분류가 시간만 보고 행 총량을 안 본다',
+    file: 'src/worker-ads/index.ts',
+    find: 'passes < 5 && !last.done && rows < maxRows && Date.now() - t0 < deadlineMs',
+    replace: 'passes < 5 && !last.done && Date.now() - t0 < deadlineMs',
+    test: 'src/tests/unit/ads-cpu-work-cap-callsites.test.ts',
+    why:
+      '08-03 에 이 자리에 붙인 처방이 벽시계 마감선이었는데, 08-04 에 `ms=1316` 으로 **자기 마감선 ' +
+      '1,800ms 에 닿기도 전에** CPU 한도로 죽었다. 외부 호출이 없는 DB-only 정규식 루프는 벽시계가 ' +
+      '안 흐르는데 CPU 만 탄다 — 시간 조건만 남기면 08-04 상태 그대로다.',
+  },
+  {
     name: '나라장터 계약 — 마스킹된 전화를 진짜 연락처로 센다',
     file: 'src/features/marketing/api/nara-contract-collect.ts',
     find: "  return raw.includes('*') ? '' : raw",
@@ -627,13 +650,18 @@ const MUTATIONS = [
   {
     name: '재분류 패스 루프가 마감선을 잃음(매시간 CPU 사망 복귀)',
     file: 'src/worker-ads/index.ts',
-    find: 'passes < 5 && !last.done && Date.now() - t0 < deadlineMs',
-    replace: 'passes < 5 && !last.done',
+    // 🗺️ 2026-08-04 앵커 갱신 — 같은 줄에 **행 총량 조건이 추가**됐다(`rows < maxRows`). 옛 앵커를
+    //   그대로 두면 주입 대상을 못 찾아 이 불변식이 조용히 사라진다(가드가 실제로 그렇게 잡았다).
+    //   지우는 건 여전히 **시간 조건만** — 행 조건은 별도 항목(`CPU 상한 — 재분류가 …`)이 지킨다.
+    find: 'passes < 5 && !last.done && rows < maxRows && Date.now() - t0 < deadlineMs',
+    replace: 'passes < 5 && !last.done && rows < maxRows',
     test: 'src/tests/unit/ads-reclassify-deadline.test.ts',
     why:
       '이 레인은 **매시간 CPU 한도로 죽고 있었다**(`ok=false ms=3880`). 5패스 × 1,000행 × 행당 정규식 ~20개 = ' +
       '10만 회를 한 인보케이션에서 돈다 — `ads-cpu-work-cap` 이 세운 교리(*"페이지가 아니라 인보케이션당 총량"*)를 ' +
-      '**호출부**가 어긴 것이다. 커서가 이어받으므로 일찍 멈춰도 커버리지 손실은 0 이다.',
+      '**호출부**가 어긴 것이다. 커서가 이어받으므로 일찍 멈춰도 커버리지 손실은 0 이다. ' +
+      '⚠️ 08-04 실측에서 이 마감선만으론 부족함이 확인됐지만(`ms=1316` 에 마감선 1,800ms 를 못 닿고 사망) ' +
+      '**빼면 안 된다** — D1 이 느린 회차는 행 수가 아니라 시간이 먼저 닿는다(둘은 병행 안전판이다).',
   },
   {
     name: '미사용 env 신고가 평상시에도 울림(경보 신뢰 상실)',

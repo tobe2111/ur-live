@@ -12,7 +12,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue, rowsWorthReading } from './collect-budget'
 import { noteNaverCall, flushNaverCalls } from './naver-api-usage'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
@@ -514,14 +514,6 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   const key = env.KAKAO_REST_API_KEY || ''
   if (!key) return { scanned: 0, found: 0, cursor: 0, done: false }
   const cap = Math.min(600, Math.max(50, parseInt((env as unknown as { ADS_KAKAO_SWEEP_CAP?: string }).ADS_KAKAO_SWEEP_CAP || '', 10) || 600))
-  // 🎯 tier 오름차순 = 접촉 가치 순. 도장 쿨다운으로 재시도를 통제(커서 없음 — 위 헤더 주석 참조).
-  const rows = (await DB.prepare(
-    `SELECT id, company_name, region, address FROM ad_company_leads
-     WHERE merged_into IS NULL AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != ''
-       AND (kakao_checked_at IS NULL OR kakao_checked_at < datetime('now', '-30 days'))
-     ORDER BY (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)
-    .bind(cap).all<{ id: number; company_name: string; region: string | null; address: string }>().catch(() => null))?.results || []
-  if (!rows.length) return { scanned: 0, found: 0, cursor: 0, done: true }
   // 🩹 2026-07-28 근본수리(실측: "주소는 있는데 전화가 없는" 리드 1만+): 이 스윕은 예산 객체를 안 넘겨
   //   회당 600 fetch 를 무통제로 쏘았고, 서브리퀘스트 한도를 넘으면 이후 조회가 전부 조용히 실패했다.
   //   그런데 커서는 **무조건 마지막 행까지 전진**해서, 한 건도 못 받은 라운드의 600건이 통째로 건너뛰어졌다
@@ -538,6 +530,21 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   const pcap = envSubreqCap(env)
   const budgetTotal = resolveSubreqBudget(cap, learnedCap, pcap)
   const budget: FetchBudget = { left: budgetTotal - schemaSpent }
+  // 🧮 **예산이 못 쓸 행은 읽지도 않는다** (2026-08-04). 예전엔 `LIMIT cap`(최대 600)을 읽고 나서
+  //   예산을 셌는데 천장이 무료 캡(기본 60)이라 시도 가능한 행은 ~50개뿐 — 550행은 역직렬화만
+  //   되고 아래 `break` 에 버려졌다. 실측: 이 레인이 6,640ms 에 CPU 한도로 사망(벽시계 마감 12s 는
+  //   닿지도 못했다 — CPU 는 벽시계를 못 넘으니 그건 대기가 아니라 계산이다).
+  //   ⚠️ 처리 대상·순서 불변(잘린 꼬리는 원래 안 쓰던 행, 도장은 시도분에만 → 기아 없음).
+  //   근거·한계: `rowsWorthReading` 헤더.
+  const rowCap = rowsWorthReading(budget.left - SWEEP_BOOKKEEPING_RESERVE, cap)
+  // 🎯 tier 오름차순 = 접촉 가치 순. 도장 쿨다운으로 재시도를 통제(커서 없음 — 위 헤더 주석 참조).
+  const rows = (await DB.prepare(
+    `SELECT id, company_name, region, address FROM ad_company_leads
+     WHERE merged_into IS NULL AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != ''
+       AND (kakao_checked_at IS NULL OR kakao_checked_at < datetime('now', '-30 days'))
+     ORDER BY (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)
+    .bind(rowCap).all<{ id: number; company_name: string; region: string | null; address: string }>().catch(() => null))?.results || []
+  if (!rows.length) return { scanned: 0, found: 0, cursor: 0, done: true }
   let found = 0
   const startedAt = Date.now()
   const runDeadlineMs = envPlanValue(undefined, SWEEP_RUN_DEADLINE_MS, SWEEP_RUN_DEADLINE_MS_PAID, env)
