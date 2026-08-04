@@ -659,3 +659,133 @@ bash scratchpad/d1.sh "SELECT CASE WHEN last_run_at IS NULL THEN '0.never'
 `planKeywordSplit`·`interleavePicks` 와 같은 모듈 = 같은 관심사다.
 🎁 부수 이득: 테스트가 **사본이 아니라 실제 함수**를 검사하게 됐다(사본 테스트는 구현이 갈라져도 초록).
 주입 검증도 두 층으로 늘었다 — 호출부 회귀 · 함수 자체 회귀 **둘 다 빨간불** 확인.
+
+---
+
+## 📉 수집 예산 회수 + 폭 동결 (2026-08-04 KST 09:30 — 대표 *"수집과 보강 다 잘 되게 하면 안돼?"* → *"①만"*)
+
+### 계측이 범인을 특정했다 (어젯밤 넣은 `spend_by` 의 첫 수확)
+
+```
+spend_by: yt 24 · naver 28 · cafe 0 · tistory 4 · save 0     (spent 56)
+→ yt + naver = 52/56 = 93%.  save 는 0 (배치라 예산을 안 먹는다)
+```
+판독 기준이 *"절반 초과면 enrichMax 가 범인"* 이었는데 **93%** 였다. 확정.
+
+### 네이버만 산출이 나쁜 이유 — 버그가 아니라 산수
+
+```
+미측정 행(= 순수 수집 결과)의 이메일:  네이버 1.3%   vs   유튜브 22.4%
+키워드당 발굴 ~69명 → enrichMax 5명만 보강 = 7%
+7% × 홈 수율 25% ≈ 1.8%   ← 실측 1.3% 와 일치
+```
+수집 시점 네이버 보강은 보강 레인과 **똑같은 코드**(`fetchNaverBlogHome`→`pickBusinessEmail`)를 쓴다.
+차이는 **몇 명을 하느냐**뿐이고, 보강 레인은 같은 사람들을 **100% 커버해 25%** 로 만든다
+⇒ **어차피 할 일의 7%를 미리 하면서 예산의 54%를 쓰는 중복.**
+🎯 유튜브 22.4% 는 `enrichMax` 가 아니라 **`channels.list` 응답(공짜)** 에서 나온다 — 그래서 안 건드렸다.
+
+### 🩸 그런데 "폭을 넓히자"는 내 제안은 내가 스스로 뒤집었다
+
+대표가 *"그렇게 하면 어떻게 된다는거지?"* 라고 물어 확인했더니:
+```
+블로그  유입 3,895/일  vs  측정 4,184/일  →  여유 +289 (백로그 19,963 → 69일)
+폭 1.8배면 유입 ~7,000/일  →  백로그가 매일 +2,800 으로 **증가 반전**
+```
+새 행은 이메일 1.3% 이고 그걸 25% 로 만드는 게 측정인데 **측정이 병목**이다.
+⇒ 폭을 넓히면 **행 수만 늘고 발송 가능 리드는 거의 안 는다.** 커버리지 경보는 "폭이 좁다"고 말하지만
+**지금 넓히면 못 쓰는 행만 쌓인다.** ⚠️ 어제 내가 "16일이면 블로그 소진"이라 한 것도 순간 표본이었다 —
+**24시간 창으로 재면 69일**이다. 소진 예상은 24h 창으로 잴 것.
+
+### 적용 — ①만
+
+| | 값 | 근거 |
+|---|---:|---|
+| `NAVER_COLLECT_ENRICH_MAX` | 5 → **1** | 중복(무손실). 0이 아니라 1인 건 경로 생존을 diag 로 계속 보기 위해 |
+| `COLLECT_KEYWORDS_PER_ROUND` | **6** (신설 캡) | 회수한 예산이 **자동으로** 5→9개가 되는 것을 막는다 |
+| 유튜브 `enrichMax` | 8 (불변) | 22.4%는 공짜 응답에서 나옴 · 스니펫 기여는 **아직 안 쟀다** |
+
+🔓 **푸는 법**: `ADS_COLLECT_KEYWORD_CAP` env — 재배포 없이 즉시 폭으로 전환된다.
+**측정 처리량이 올라간 뒤에** 풀 것. ⚠️ 측정을 올리는 것 자체가 네이버 직접 조회 부하(~8,000/일)를
+늘리는 일이라 차단 위험 판단이 먼저다.
+
+### 🕳️ 내가 저지른 것 두 가지
+
+1. **새 env 노브를 SSOT 목록(`env-drift.ts`)에 등록 안 함** — 레포에 이미 그 가드가 있어 잡혔다.
+   등록 안 하면 런타임이 그 키를 **"미사용"으로 오신고**한다.
+2. **빈 grep 출력을 "통과"로 읽음** — 재실행이 **아직 안 끝난 상태**였는데 `grep "Failed Tests"` 가
+   비었다고 초록으로 판단했다. 이 레포가 반복해 만난 *"실패가 아니라 부재"* 를 내가 똑같이 했다.
+   ⇒ **로그를 파일로 남기고 요약줄(`Test Files … passed`)을 직접 읽을 것.** 필터링된 빈 출력은 증거가 아니다.
+
+### 🔁 반복 신호 — 새 npm advisory 가 하루에 두 번 배포를 막았다
+
+`brace-expansion`(08-03) · `undici`(08-04) 둘 다 **내 변경과 무관**하고 둘 다 **dev 전용**이다
+(`npm ls undici --omit=dev` 비어 있음 — jsdom 테스트 · wrangler/miniflare 빌드). 매번 override 로
+개별 대응했고 이번엔 `undici: ^7.29.0`(취약 7.0.0–7.28.0).
+
+⚠️ **이게 계속되면 머지마다 무관한 블로커에 시간을 쓴다.** 근본 처방 후보 두 가지 — **대표 판단 사항**:
+1. **`wrangler` 4.84 → 4.118** — audit 이 권하는 fix 이고 undici·miniflare·sharp 3건이 한 번에 해소된다.
+   빌드 툴체인 변경이라 별도 검증 필요.
+2. **게이트를 프로덕션 트리로 한정**(`--omit=dev`) — 반복이 사라지지만 **게이트를 약화**시키는 방향이다.
+⚠️ 허용목록(`.audit-allowlist.json`)은 `accepted_by: 대표 승인` 을 요구하므로 **세션이 대신 못 쓴다** —
+   그래서 두 번 다 패치로 갔다. 이 제약은 의도된 것이니 우회하지 말 것.
+
+---
+
+## 🧪 배포 전 기준선 — #1041 판정용 (KST 12:00 회차, 배포 **전**)
+
+```
+picks     planned 16 / processed 5
+spend_by  yt 23 · naver 29 · cafe 0 · tistory 4 · save 0   (합 56)
+spent/budget_total  56 / 56  (전량 소진)
+naver_api 187 / 25,000       (오픈API 한도 여유 — 병목 아님)
+```
+**판정 기준(배포 후 첫 정각 회차)**: `spend_by.naver` **29 → ~10** · `picks.processed` **≤ 6 유지**(폭 동결).
+⚠️ 배포 반영 여부는 시각이 아니라 **값**으로 판정할 것 — 정각마다 도는 레인이라 "새 회차 = 새 코드"가 아니다.
+
+## 🕳️ 내가 저지른 것 (추가) — typecheck 를 한 번도 실제로 안 봤다
+
+`npx tsc --noEmit --skipLibCheck | head -5; echo "tsc=$?"` 로 확인하고 **통과로 보고**했다.
+`$?` 는 **파이프의 마지막 명령(`head`) 상태**라 tsc 가 무엇을 뱉든 항상 0 이다.
+그 결과 **TS2559 가 CI 까지 갔다**(`keywordsPerRoundCap(env: { ADS_COLLECT_KEYWORD_CAP?: string })`
+— 워커 `Env` 에 그 키가 없어 "공통 속성이 없다"). 수리: 파라미터를 `unknown` 으로 받고 내부 캐스팅
+(`alarmEnabled(env: unknown)` 과 동형).
+
+⇒ **검증 명령에 파이프를 쓰지 말 것.** 파일로 받고 exit 를 직접 읽는다:
+```bash
+npx tsc --noEmit --skipLibCheck > /tmp/tsc.log 2>&1; echo "exit=$?"; wc -l < /tmp/tsc.log
+```
+이건 같은 날 위에 적은 *"빈 grep 출력을 통과로 읽음"* 과 **같은 클래스**다 — 둘 다
+**성공을 확인한 게 아니라 실패의 부재를 봤다.**
+
+## 🧾 CI 실패 로그를 읽을 때 — 블로킹 스텝을 먼저 가려라
+
+#1041 CI 로그에 `product_stay_rooms … "status": "drift"` 가 함께 찍혀 있어 두 개의 원인을 의심했는데,
+`.github/workflows/verify.yml` 의 **Schema verification (drift detection)** 스텝은
+`continue-on-error: true`(정보 용도)다 — **블로커가 아니다.** 실제 블로커는 TS2559 하나였다.
+⇒ 로그에 빨간 게 여럿 보이면 **워크플로에서 그 스텝의 `continue-on-error` 를 먼저 확인**할 것.
+
+## 🕳️ 검증 공백 — head 가 문서 커밋이면 Verify 가 **한 번도 안 돈다** (2026-08-04 실측)
+
+`verify.yml` 은 두 다리로 돈다: `push`(브랜치, **`paths-ignore: ['docs/**','**/*.md']`**) + `pull_request`
+(paths-ignore 없음 — 2026-08-03 실사고 수습으로 일부러 뺐다). 설계 의도는 *"문서 커밋이 head 여도
+pull_request 다리가 전수 검증한다"* 인데, **그 다리가 현재 안 돌고 있다.**
+
+```
+verify.yml · event=pull_request 최근 run : 2026-08-03T17:54:34Z (a8186f2) 이후 0건
+그 뒤 내 푸시 75180f1 / 1c42f04 / e916e99 : 전부 event=push 로만 실행
+문서 전용 커밋 c6f3029 (head)            : push=paths-ignore 로 skip, pull_request=미발화
+  → GET /pulls/1041 check-runs = Cloudflare Pages 뿐. **Verify 체크 0건.**
+```
+⇒ **"PR 에 빨간 체크가 없다"가 "검증됐다"가 아니다.** 이 레포가 2026-08-03 에 겪은 사고와 같은 상태가
+   경로만 바꿔 재현됐다(그때는 paths-ignore + concurrency, 이번엔 pull_request 다리 자체의 침묵).
+
+🔎 **원인 미확정 — 다음 세션의 첫 액션**: `pull_request` 다리가 왜 침묵하는지. draft PR·중복 run 억제·
+   Actions 설정 중 무엇인지 못 가렸다. 판정법: 코드 커밋을 하나 밀고
+   `GET /actions/workflows/verify.yml/runs?event=pull_request` 에 새 run 이 잡히는지 본다.
+⚠️ 이 환경에선 `workflow_dispatch` 가 **403(Resource not accessible by integration)** 이라 우회 못 했다.
+
+🛟 **그동안의 실무 규칙**: **PR 의 마지막 커밋을 문서로 두지 말 것.** 문서 갱신을 코드 커밋보다 **먼저**
+   밀거나, 문서를 민 뒤 코드 커밋을 한 번 더 밀어 head 를 코드로 만든다.
+   (이번 건은 `git diff e916e99 c6f3029 --stat` 로 **차이가 handoff 1파일뿐**임을 확인하고,
+    문서-민감 가드 3종(`check-current-work-sync`·`check-blog-seed-currency`·인계목차 재생성)을
+    로컬로 돌려 통과시킨 뒤 진행했다. 그래도 **이건 우회지 검증이 아니다** — 위 원인 규명이 남는다.)

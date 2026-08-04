@@ -1639,6 +1639,28 @@ const MUTATIONS = [
       '같은 알람의 collect 가 28,643ms 완주가 증거다. 전제가 사라진 값을 그대로 쓰면 창이 근거 없이 좁다.',
   },
   {
+    name: '수집 폭 동결이 풀림(측정이 병목인데 백로그가 증가 반전)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '    if (processedIds.size >= roundCap) break',
+    replace: '',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '네이버 enrichMax 축소로 키워드당 비용이 ~10.4 → ~6 이 되면 루프가 **자동으로** 회차당 5 → 9개를 돈다. ' +
+      '실측: 블로그 유입 3,895/일 vs 측정 4,184/일(여유 +289). 폭을 1.8배로 넓히면 유입 ~7,000 → ' +
+      '백로그가 매일 +2,800 으로 **증가 반전**한다. 새 행은 이메일 1.3% 라 행 수만 늘고 발송 가능 리드는 안 는다.',
+  },
+  {
+    name: '네이버 수집 시점 보강이 원래대로(예산 54% 재소모)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: 'enrichMax: NAVER_COLLECT_ENRICH_MAX',
+    replace: 'enrichMax: 5',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '실측 `spend_by` 에서 네이버가 회차 예산의 54%(28/56)를 쓰는데 그 산출은 미측정 행 이메일 **1.3%** 다. ' +
+      '키워드당 발굴 69명 중 5명(7%)만 보강하기 때문 — 보강 레인은 같은 사람들을 100% 커버해 25% 로 만든다. ' +
+      '즉 어차피 할 일의 7%를 미리 하면서 예산 절반을 쓰는 중복이다.',
+  },
+  {
     name: '집중 축이 다시 앞머리 독점(일반 풀 커서 동결 — 커버리지 붕괴)',
     // ⚠️ 600줄 래칫으로 병합 로직이 `influencer-keyword-rotation.ts` 로 추출됐다(순수 이동).
     //   앵커가 안 따라오면 이 주입은 "find 가 소스에 없음"으로 낡은 지도 판정을 받는다.
