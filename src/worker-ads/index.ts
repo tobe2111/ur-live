@@ -322,10 +322,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   공유하는데 이미 보강 레인 둘이 14 라운드를 던진다 — 더 부풀리면 waitUntil 꼬리(다른 레인)가 조용히
   //   죽는다. 오케스트레이터는 1건만 던지고 체인이 스스로 잇는다. 하트비트 이름은 'collect' 고정(바꾸면
   //   옛 `cron_hb:ads:collect` 가 남아 침묵 경보). 경위: docs/CURRENT_WORK.md 10차.
-  //   🎯 2026-08-03: 알람 레인이 이 레인을 몰면 부모는 **손을 뗀다**. 이유는 `lane-alarm-runners.ts` 의
-  //   `collect` 항목 — 요약하면 인플루언서 도메인 예산 1칸을 레인 4개가 나눠 써 4시간에 한 번 순번이
-  //   오고, 그 한 번마저 부모 CPU 한도로 죽었다(실측 6시간 20분 정지). 리스가 이중 실행을 막긴 하지만
-  //   겹쳐 던지는 것 자체가 부모 CPU 를 또 먹으므로 게이트로 끊는다.
+  //   🎯 2026-08-03: 알람이 몰면 부모는 손을 뗀다(예산 1칸/4레인 = 4시간에 한 번인데 그마저 CPU 사망 —
+  //   실측 6시간 20분 정지, 상세는 `lane-alarm-runners.ts` collect 항목). 리스가 있어도 겹쳐 던지는
+  //   것 자체가 부모 CPU 를 먹으므로 게이트로 끊는다.
   if (!laneAlarmOn && env.ADS_AUTO_COLLECT_ENABLED === 'true') {
     kick('/__ads/collect-chain', async () => { const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect'); return runInfluencerAutoCollect(env) }, { beat: 'collect' })
   }
@@ -379,10 +378,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   **관측 밖**이었다. `cron-stale-watch` 는 *한 번도 기록이 없는 이름을 판정 대상으로 잡지 못하므로*,
   //   멈춰도 침묵 경보에 안 걸렸다(실측: 다른 13개 레인이 다 돈 회차에 이것만 3시간 전 기록 그대로).
   //   🧹 2026-07-29 본문은 `sheets-mirror-lane.ts` 로 분리(엔트리 600줄 캡) — **동작 불변, 위치만**.
-  //   ⏰ 2026-08-04 **알람이 몰면 cron 은 손을 뗀다**(collect·maintenance 와 동일 게이트). 이 레인은
-  //   전 레인 최다 CPU 사망(×16/3일 — 부모 꼬리에서 끌려감)이라 알람 이관 대상이 됐다. 근거는
-  //   `lane-alarm-runners.ts` 의 sheets-sync 항목. ⚠️ 시트 미러는 리스가 없어(커서 append) 겹치면
-  //   **행이 중복**된다 — 이 게이트가 이중 실행의 유일한 방어이므로 빼면 안 된다.
+  //   ⏰ 2026-08-04 알람이 몰면 cron 은 손을 뗀다(전 레인 최다 CPU 사망 ×16 — 근거·⚠️행중복 방어는
+  //   `lane-alarm-runners.ts` sheets-sync 항목). 시트 미러는 리스가 없어 이 게이트가 유일한 방어다.
   if (!laneAlarmOn && env.ADS_SHEETS_SYNC_ENABLED === 'true') {
     ctx.waitUntil((async () => {
       const { runSheetsMirrorLane } = await import('./sheets-mirror-lane')
