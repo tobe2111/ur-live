@@ -30,7 +30,8 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { rowsWorthReading, reclassifyWorkPlan } from '@/features/marketing/api/collect-budget'
+import { rowsWorthReading, reclassifyWorkPlan, companyRunDeadlineMs } from '@/features/marketing/api/collect-budget'
+import { CPU_WALL_MS } from '@/worker/utils/cron-heartbeat'
 
 const read = (rel: string) => {
   const p = join(process.cwd(), rel)
@@ -107,5 +108,28 @@ describe('🚧 배선 — 순수함수만 만들고 호출부에 안 걸면 아�
 
   it('무엇이 멈췄는지 남긴다 — "행에서 끊겼다"와 "시간에서 끊겼다"가 같아 보이면 조정할 수 없다', () => {
     expect(read('src/worker-ads/index.ts')).toMatch(/stopped_by: last\.done \? 'done' : \(rows >= maxRows \? 'rows'/)
+  })
+})
+
+describe('companyRunDeadlineMs — 27.4초가 "성공"으로 기록되던 자리', () => {
+  it('무료 마감선이 실측 사망 기준선보다 확실히 아래다 — 아니면 넣으나 마나다', () => {
+    expect(companyRunDeadlineMs(undefined)).toBeLessThan(CPU_WALL_MS)
+  })
+
+  it('유료가 무료보다 길다 — 요금제를 올린 사람이 손해 보면 안 된다', () => {
+    expect(companyRunDeadlineMs({ ADS_PLAN: 'paid' })).toBeGreaterThan(companyRunDeadlineMs(undefined))
+  })
+
+  it('🚧 배선 — 키워드 루프와 이메일 크롤 블록 **둘 다** 마감선을 본다', () => {
+    const src = read('src/features/marketing/api/company-collect.ts')
+    expect(src).toMatch(/const startedAt = Date\.now\(\), runDeadlineMs = companyRunDeadlineMs\(env\)/)
+    // 루프: 기존 예산 조건에 마감선이 **더해져** 있어야 한다(대체가 아니다 — 둘 다 필요하다)
+    expect(src).toMatch(/if \(outOfBudget\(budget\) \|\| budget\.limitHit \|\| Date\.now\(\) - startedAt > runDeadlineMs\) break/)
+    // 이메일 크롤은 루프 뒤에 따라오는 **가장 비싼 꼬리**(사이트 15건 크롤)라 여기가 빠지면 마감선이 무의미하다
+    expect(src).toMatch(/if \(!outOfBudget\(budget\) && Date\.now\(\) - startedAt < runDeadlineMs\) \{/)
+  })
+
+  it('무엇 때문에 멈췄는지 남긴다 — 안 남기면 조정할 근거가 없다', () => {
+    expect(read('src/features/marketing/api/company-collect.ts')).toMatch(/run_ms: Date\.now\(\) - startedAt, deadline_hit:/)
   })
 })

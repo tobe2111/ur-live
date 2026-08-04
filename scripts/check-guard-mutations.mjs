@@ -72,6 +72,17 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: 'CPU 상한 — 파트너 수집 회차에 벽시계 마감선이 없다',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: ' || Date.now() - startedAt > runDeadlineMs) break',
+    replace: ') break',
+    test: 'src/tests/unit/ads-cpu-work-cap-callsites.test.ts',
+    why:
+      '이 레인은 예산(요청 수)만 볼 뿐 회차가 얼마나 오래 도는지는 안 봤다. 실측 `ms=27,410` 으로 ' +
+      '**사망 기준선 26,000 을 넘긴 회차가 "성공"으로 기록**됐다 — 화면 어디에도 경고가 없다. ' +
+      '마감선이 빠지면 그 상태로 돌아가고, 되돌아가도 **성공으로 보이므로 사람이 못 잡는다.**',
+  },
+  {
     name: 'CPU 상한 — 카카오 스윕이 예산 밖 행까지 다시 읽는다',
     file: 'src/features/marketing/api/company-collect.ts',
     find: '    .bind(rowCap).all<{ id: number; company_name',
