@@ -5,6 +5,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { readSetting, writeSetting } from './influencer-auto-collect'
+import { judgeRotation } from './influencer-keyword-rotation'
 
 export type CollectDiag = {
   yt: { configured: boolean; found: number; saved: number; error?: string }
@@ -30,16 +31,24 @@ export async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: {
   const foundTotal = diag.yt.found + diag.naver.found + (diag.tistory?.found || 0)
   // 🌵 2026-07-29 **순환 정체** 추가 — 위 두 조건은 "아무것도 못 건졌다"만 본다. 그런데 실제로 며칠을
   //   잡아먹은 실패는 그 모양이 아니었다: 매시간 `Too many subrequests` 로 죽으면서도 13~139건은 저장했고
-  //   (saved>0·found>0), 그래서 이 경보는 **한 번도 울릴 수 없었다**. 정작 피해는 활성 키워드 210개 중
-  //   124개가 이틀째 순번을 못 받은 것 — 수확량이 아니라 **커버리지**가 무너진 것이다.
-  //   ⇒ 원인(한도/예산/버그)을 묻지 않고 **증상**을 직접 센다. 한도 탐침(AIMD)이 가끔 튀는 것으로는 안 울린다.
-  const stale = (await DB.prepare(`SELECT COUNT(*) AS n FROM ad_discovery_keywords
-    WHERE active = 1 AND (last_run_at IS NULL OR last_run_at <= datetime('now','-2 days'))`)
-    .first<{ n: number }>().catch(() => null))?.n || 0
-  const activeTotal = (await DB.prepare('SELECT COUNT(*) AS n FROM ad_discovery_keywords WHERE active = 1')
-    .first<{ n: number }>().catch(() => null))?.n || 0
-  //   임계: 활성의 30% 초과가 이틀째 미실행. 시드 210개 기준 63개 — 정상 순환(한 바퀴 ~10시간)에선 0 에 가깝다.
-  const rotationStalled = activeTotal >= 20 && stale > activeTotal * 0.3
+  //   (saved>0·found>0), 그래서 이 경보는 **한 번도 울릴 수 없었다**. 정작 피해는 커버리지가 무너진 것이다.
+  //   ⇒ 원인(한도/예산/버그)을 묻지 않고 **증상**을 직접 센다.
+  // 🔄 2026-08-04 판정 교체 — 임계 "2일"이 이제 **한 바퀴(6.5일)보다 짧아** 완벽해도 80% 가 걸렸다.
+  //   해제될 수 없는 경보라 매일 울리고, 시키는 처방(순환 가속)은 방향과 반대였다. 근거·배수는
+  //   `judgeRotation` docblock. **쿼리 2개 → 1개**(왕복도 줄었다).
+  const rot = await DB.prepare(`SELECT COUNT(*) AS active,
+      SUM(CASE WHEN last_run_at >= datetime('now','-24 hours') THEN 1 ELSE 0 END) AS ran24h,
+      MAX(julianday('now') - julianday(COALESCE(last_run_at, created_at))) AS oldest_days,
+      AVG(julianday('now') - julianday(COALESCE(last_run_at, created_at))) AS avg_days
+    FROM ad_discovery_keywords WHERE active = 1`)
+    .first<{ active: number; ran24h: number; oldest_days: number; avg_days: number }>().catch(() => null)
+  const activeTotal = rot?.active || 0
+  const verdict = judgeRotation({
+    active: activeTotal, ran24h: rot?.ran24h || 0,
+    oldestDays: rot?.oldest_days || 0, avgDays: rot?.avg_days || 0,
+  })
+  const rotationStalled = verdict.stalled
+  const cycleTxt = Number.isFinite(verdict.cycleDays) ? `${verdict.cycleDays.toFixed(1)}일` : '∞(정지)'
   const unhealthy = keyMissing || (saved === 0 && foundTotal === 0) || rotationStalled
   const prevAt = await readSetting(DB, ALERT_KEY)
   // ⚠️ 상대경로 필수 — 워커 런타임엔 `@/` alias 가 없다(dynamic import 는 빌드 시 resolve 안 됨).
@@ -49,7 +58,7 @@ export async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: {
   if (!unhealthy) {
     if (prevAt) { // 직전이 경보 상태였다 → 해제 + 회복 알림 1회.
       await writeSetting(DB, ALERT_KEY, '')
-      await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 회복', `신규 ${saved}건 저장 · 활성 ${activeTotal}개 중 미실행 ${stale}개 — 정상 재개.`, 'info')
+      await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 회복', `신규 ${saved}건 저장 · 활성 ${activeTotal}개 · 한 바퀴 ${cycleTxt} — 정상 재개.`, 'info')
     }
     return
   }
@@ -59,7 +68,9 @@ export async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: {
   await writeSetting(DB, ALERT_KEY, new Date(now).toISOString())
   const lines = [
     keyMissing ? '⚠️ API 키 미설정(시크릿 소실 의심 — ur-ads 워커 env 확인)'
-      : rotationStalled ? `⚠️ 키워드 순환 정체 — 활성 ${activeTotal}개 중 ${stale}개가 이틀째 미실행(수확은 나오지만 커버리지가 무너진 상태)`
+      // 🔎 두 정체는 처방이 다르다 — 뭉뚱그리면 대표가 잘못된 곳을 본다.
+      : verdict.reason === 'stopped' ? `🛑 키워드 순환 **정지** — 활성 ${activeTotal}개 중 24시간 동안 실행 0개(레인이 멎었는지 먼저 확인)`
+      : rotationStalled ? `⚠️ 키워드 순환 **편식** — 한 바퀴 ${cycleTxt}인데 가장 밀린 키워드가 ${verdict.worstCycles.toFixed(1)}바퀴째 순번을 못 받음(라운드로빈이 깨진 상태)`
       : '⚠️ 전 플랫폼 신규 0건',
     `• YouTube: cfg=${diag.yt.configured} found=${diag.yt.found} saved=${diag.yt.saved}${diag.yt.error ? ` err=${diag.yt.error}` : ''}`,
     `• Naver: cfg=${diag.naver.configured} found=${diag.naver.found} saved=${diag.naver.saved}${diag.naver.error ? ` err=${diag.naver.error}` : ''}`,
@@ -71,7 +82,10 @@ export async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: {
     rotationStalled ? `• 예산 ${run?.spent ?? '?'}/${run?.budget_total ?? '?'}${run?.budget_exhausted ? ' (소진)' : ''}`
       + ` · 키워드 ${run?.picks?.processed ?? '?'}/${run?.picks?.planned ?? '?'} 처리`
       + ` · 회전 ${run?.picks?.from_cursor ?? '?'}개/라운드` : '',
-    rotationStalled ? '• 회전이 느리면 ADS_COLLECT_ROUNDS(기본 4) 상향 — 라운드마다 새 예산이라 서브리퀘스트 천장 무관' : '',
+    // ⚠️ **"더 빨리 돌려라"를 처방으로 쓰지 않는다.** `CLAUDE.md` 유어애즈 절 실측이 *유입 1,613/일 vs
+    //   측정 3,600/일 — 측정이 이기는 중*이라 발굴 가속은 미측정 백로그만 키운다(+네이버 차단 리스크).
+    //   순환이 느린 것 자체는 고장이 아니고, 여기 걸렸다는 건 **배분이 깨졌다**는 뜻이다.
+    rotationStalled ? '• 처방: 순환 가속이 아니라 배분 확인(집중/우선/일반 몫 · 커서 전진) — 발굴 가속은 미측정 백로그를 키운다' : '',
     '어드민 인플루언서 풀에서 상세 확인.',
   ].filter(Boolean)
   await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 경보', lines.join('\n'), keyMissing ? 'error' : 'warn')
