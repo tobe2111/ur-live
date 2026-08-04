@@ -246,6 +246,36 @@ describe('⑨ 어드민 편집 — 직접 고르기 · 순서 변경 (2026-08-04
   })
 })
 
+describe('⑩ 섹션 수정 — 만든 뒤에 고칠 수 있어야 한다 (2026-08-04 "없는 것도 다")', () => {
+  const page = code('src/pages/admin/AdminHomeSectionsPage.tsx')
+  const form = code('src/pages/admin/home-sections/SectionForm.tsx')
+
+  it('생성과 수정이 같은 폼 컴포넌트를 쓴다', () => {
+    // 두 벌로 두면 한쪽에만 필드가 추가돼 "만들 땐 되는데 고칠 땐 안 되는" 필드가 생긴다.
+    const uses = page.match(/<SectionForm\b/g) ?? []
+    expect(uses.length).toBe(2)
+    expect(page).toMatch(/mode="create"/)
+    expect(page).toMatch(/mode="edit"/)
+  })
+
+  it('생성과 수정이 같은 payload 빌더를 쓴다', () => {
+    const calls = page.match(/toPayload\(v\)/g) ?? []
+    expect(calls.length).toBe(2)
+    expect(page).toMatch(/api\.put\(`\/api\/sections\/\$\{editing\.id\}`, toPayload\(v\)\)/)
+  })
+
+  it('수정 폼이 서버 값으로 채워진다 (빈 폼으로 열려 기존 설정을 날리지 않게)', () => {
+    expect(page).toMatch(/initial=\{toFormValue\(editing\)\}/)
+    expect(page).toMatch(/source: \(s\.source \|\| DEFAULT_SECTION_SOURCE\)/)
+  })
+
+  it('쓰이지 않는 layout 필드는 폼에 노출하지 않는다', () => {
+    // DB 컬럼은 있지만 홈 렌더가 안 쓴다 — 고를 수는 있는데 아무 일도 안 일어나는 스위치는
+    // 없는 것보다 나쁘다. 홈이 layout 을 실제로 쓰게 되면 그때 폼에 추가할 것.
+    expect(form).not.toMatch(/name="layout"|form\.layout/)
+  })
+})
+
 describe('⑧ 청크 — 홈 쇼케이스가 크리티컬 패스에 들어가지 않는다', () => {
   it('components/home 은 eager 청크(app-layout) 규칙에 걸리지 않는다', () => {
     // 2026-08-03 에 RegionLinkGrid 를 components/main/ 에 뒀다가 app-constants 를
