@@ -454,7 +454,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
        *     죽었다(자기 마감선에 닿기도 전에). 외부 호출 없는 DB-only 루프라 **벽시계가 안 흐르는데
        *     정규식은 CPU 를 계속 태운다** ⇒ 교리대로 **행 총량**으로도 묶는다(시간 상한은 병행).
        */
-      const { rowsPerPass, maxRows, deadlineMs } = reclassifyWorkPlan(env)
+      const { rowsPerPass, maxRows, deadlineMs } = await reclassifyWorkPlan(env, env.DB) // 🧠 CPU 사망 학습분 반영(cpu-quantum.ts)
       const t0 = Date.now()
       let last = await reclassifyCompanyLeads(env.DB, rowsPerPass) // 첫 패스만 housekeeping(억제 스윕)
       let passes = 1, rows = rowsPerPass
