@@ -715,3 +715,16 @@ spend_by: yt 24 · naver 28 · cafe 0 · tistory 4 · save 0     (spent 56)
 2. **빈 grep 출력을 "통과"로 읽음** — 재실행이 **아직 안 끝난 상태**였는데 `grep "Failed Tests"` 가
    비었다고 초록으로 판단했다. 이 레포가 반복해 만난 *"실패가 아니라 부재"* 를 내가 똑같이 했다.
    ⇒ **로그를 파일로 남기고 요약줄(`Test Files … passed`)을 직접 읽을 것.** 필터링된 빈 출력은 증거가 아니다.
+
+### 🔁 반복 신호 — 새 npm advisory 가 하루에 두 번 배포를 막았다
+
+`brace-expansion`(08-03) · `undici`(08-04) 둘 다 **내 변경과 무관**하고 둘 다 **dev 전용**이다
+(`npm ls undici --omit=dev` 비어 있음 — jsdom 테스트 · wrangler/miniflare 빌드). 매번 override 로
+개별 대응했고 이번엔 `undici: ^7.29.0`(취약 7.0.0–7.28.0).
+
+⚠️ **이게 계속되면 머지마다 무관한 블로커에 시간을 쓴다.** 근본 처방 후보 두 가지 — **대표 판단 사항**:
+1. **`wrangler` 4.84 → 4.118** — audit 이 권하는 fix 이고 undici·miniflare·sharp 3건이 한 번에 해소된다.
+   빌드 툴체인 변경이라 별도 검증 필요.
+2. **게이트를 프로덕션 트리로 한정**(`--omit=dev`) — 반복이 사라지지만 **게이트를 약화**시키는 방향이다.
+⚠️ 허용목록(`.audit-allowlist.json`)은 `accepted_by: 대표 승인` 을 요구하므로 **세션이 대신 못 쓴다** —
+   그래서 두 번 다 패치로 갔다. 이 제약은 의도된 것이니 우회하지 말 것.
