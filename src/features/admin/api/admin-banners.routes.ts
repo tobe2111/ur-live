@@ -19,6 +19,10 @@ import { requireAdmin } from '@/worker/middleware/auth';
 import { validateImageUrl } from '@/worker/utils/validation';
 import { invalidateBannerCache } from '@/lib/cache-invalidation';
 import type { Env } from '@/worker/types/env';
+// 🏠 2026-08-04 (대표 시안 승인): 배너에 **자리**(hero/inline/wide)와 **영상 배경**이 생겼다.
+//   컬럼 보강 함수는 공개 라우트와 같은 것을 쓴다(둘이 갈리면 한쪽만 ALTER 되는 사고가 난다).
+import { ensureBannerColumns } from '@/features/banners/api/banners.routes';
+import { normalizeBannerType } from '@/shared/constants/home-showcase';
 
 export const adminBannersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -29,9 +33,10 @@ adminBannersRoutes.use('*', requireAdmin());
 adminBannersRoutes.get('/', cors(), async (c) => {
   try {
     const { DB } = c.env;
+    await ensureBannerColumns(DB);
     const banners = await executeQuery<any>(DB, `
-      SELECT id, title, image_url, link_url, description,
-             is_active, display_order, start_date, end_date,
+      SELECT id, title, image_url, video_url, link_url, description,
+             banner_type, is_active, display_order, start_date, end_date,
              created_at, updated_at
       FROM banners ORDER BY display_order ASC, created_at DESC
     `);
@@ -45,7 +50,8 @@ adminBannersRoutes.get('/', cors(), async (c) => {
 adminBannersRoutes.post('/', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    const { title, image_url, link_url, description, is_active, display_order, start_date, end_date } = await c.req.json();
+    await ensureBannerColumns(DB);
+    const { title, image_url, video_url, banner_type, link_url, description, is_active, display_order, start_date, end_date } = await c.req.json();
     // 🛡️ 2026-05-18: 제목 optional 화 — 이미지만 있어도 등록 허용 (이미지 자체가 메시지).
     if (!image_url) return c.json({ success: false, error: '이미지 URL은 필수입니다.' }, 400);
 
@@ -56,11 +62,17 @@ adminBannersRoutes.post('/', cors(), async (c) => {
       const linkCheck = validateImageUrl(link_url);
       if (!linkCheck.valid) return c.json({ success: false, error: `링크 URL: ${linkCheck.error}` }, 400);
     }
+    // 🏠 영상 배경도 같은 URL 검증을 태운다 — 배너 URL 은 어드민이 넣지만 그대로 <video src> 가 된다.
+    if (video_url) {
+      const vidCheck = validateImageUrl(video_url);
+      if (!vidCheck.valid) return c.json({ success: false, error: `영상 URL: ${vidCheck.error}` }, 400);
+    }
 
     const result = await executeRun(DB,
-      `INSERT INTO banners (title, image_url, link_url, description, is_active, display_order, start_date, end_date, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [title || '', image_url, link_url || null, description || null,
+      `INSERT INTO banners (title, image_url, video_url, banner_type, link_url, description, is_active, display_order, start_date, end_date, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      [title || '', image_url, video_url || null, normalizeBannerType(banner_type),
+       link_url || null, description || null,
        is_active !== undefined ? (is_active ? 1 : 0) : 1,
        display_order || 0, start_date || null, end_date || null]
     );
@@ -76,7 +88,8 @@ adminBannersRoutes.put('/:id', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const bannerId = c.req.param('id');
-    const { title, image_url, link_url, description, is_active, display_order, start_date, end_date } = await c.req.json();
+    await ensureBannerColumns(DB);
+    const { title, image_url, video_url, banner_type, link_url, description, is_active, display_order, start_date, end_date } = await c.req.json();
     const rows = await executeQuery<any>(DB, 'SELECT id FROM banners WHERE id = ?', [bannerId]);
     if (rows.length === 0) return c.json({ success: false, error: '배너를 찾을 수 없습니다' }, 404);
 
@@ -89,12 +102,17 @@ adminBannersRoutes.put('/:id', cors(), async (c) => {
       const linkCheck = validateImageUrl(link_url);
       if (!linkCheck.valid) return c.json({ success: false, error: `링크 URL: ${linkCheck.error}` }, 400);
     }
+    if (video_url) {
+      const vidCheck = validateImageUrl(video_url);
+      if (!vidCheck.valid) return c.json({ success: false, error: `영상 URL: ${vidCheck.error}` }, 400);
+    }
 
     // 🛡️ 2026-05-18: title optional — 빈 문자열 허용.
     await executeRun(DB,
-      `UPDATE banners SET title=?, image_url=?, link_url=?, description=?, is_active=?,
+      `UPDATE banners SET title=?, image_url=?, video_url=?, banner_type=?, link_url=?, description=?, is_active=?,
        display_order=?, start_date=?, end_date=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-      [title || '', image_url, link_url || null, description || null,
+      [title || '', image_url, video_url || null, normalizeBannerType(banner_type),
+       link_url || null, description || null,
        is_active !== undefined ? (is_active ? 1 : 0) : 1,
        display_order || 0, start_date || null, end_date || null, bannerId]
     );

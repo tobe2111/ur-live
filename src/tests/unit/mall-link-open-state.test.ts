@@ -75,25 +75,44 @@ describe('🔴 R2 — 안 열리면 이유를 반드시 말한다', () => {
 })
 
 /**
- * 🔴 R4 — **만들기 화면이 "안 열린다"를 미리 말한다** 〔2026-08-04 대표 "계속 404야"〕
+ * 🔴 R4 — **새 몰은 기본으로 열린다 + 끄면 그 자리에서 경고** 〔2026-08-04 대표 "체크 없이도 열리게"〕
  *
- * `consumer_path` 기본값은 **꺼짐**이고 그건 의도된 fail-closed 다(켜면 B2B 도매몰이 소비자
- * 도메인 경로로 샌다). 문제는 기본값이 아니라 **그 결과가 화면 어디에도 없었다**는 것 —
- * 체크를 안 하고 만들면 `urdeal.kr/{슬러그}` 가 **즉시 죽은 몰**이 되는데, 만든 사람은
- * 주소를 눌러 보고 404 를 맞고 나서야 안다. 그래서 폼에서 미리 경고한다.
+ * 처음엔 `consumer_path` 기본이 **꺼짐**이었다(도매몰이 소비자 도메인으로 새는 걸 막는 fail-closed).
+ * 그런데 **이 화면으로 만드는 건 공구 몰이고, 공구 몰의 존재 이유가 `urdeal.kr/{슬러그}`** 라서
+ * 그 안전 기본값이 실사용에선 **"만들면 404"** 로 나타났다 — 대표가 실제로 겪었다.
  *
- * ⚠️ **못 막는 것**: 경고를 읽고도 안 켜는 것. 이건 화면이 사실을 말하는지까지만 본다.
+ * ⇒ 기본을 켬으로 뒤집고, 스위치는 고급 설정에 남긴다. 끄는 사람에겐 **404 가 된다고 그 자리에서** 말한다.
+ *
+ * ⚠️ **못 막는 것**: 기존 몰의 DB 값. 이건 새 폼의 초기값과 화면 문구만 본다 —
+ *   이미 `consumer_path=0` 으로 저장된 몰은 수정에서 켜야 하고, 그건 목록의 링크 줄이 안내한다.
  */
-describe('🔴 R4 — 소비자 공개가 꺼져 있으면 만들기 화면이 경고한다', () => {
-  const page = readCode('src/pages/admin/AdminWholesaleMallsPage.tsx')
+describe('🔴 R4 — 새 몰 기본 공개 + 끄면 경고', () => {
+  const formSrc = readCode('src/pages/admin/wholesale-malls/mall-form.ts')
+  const adv = readCode('src/pages/admin/wholesale-malls/MallAdvancedFields.tsx')
+
+  it('EMPTY 초기값이 consumer_path: true (체크 없이도 열린다)', () => {
+    expect(formSrc).toMatch(/consumer_path:\s*true/)
+    expect(formSrc).not.toMatch(/consumer_path:\s*false/)
+  })
+
+  it('스위치는 살아 있다 — 도매몰용으로 끌 수 있어야 한다', () => {
+    expect(adv).toMatch(/consumer_path:\s*e\.target\.checked/)
+  })
 
   it('`!form.consumer_path` 조건부 경고 블록이 있다', () => {
-    expect(page).toMatch(/\{!form\.consumer_path\s*&&/)
+    expect(adv).toMatch(/\{!form\.consumer_path\s*&&/)
   })
 
   it('경고가 404 라는 결과를 명시한다(모호한 "확인하세요" 로 끝내지 않는다)', () => {
-    const warn = page.slice(page.indexOf('{!form.consumer_path'))
-    expect(warn.slice(0, 700)).toContain('404')
+    // ⚠️ `{!form.consumer_path` 로 앵커하면 **접힘 배지**(먼저 나온다)를 잡아 경고문에 못 닿는다
+    //   — 처음에 그렇게 짰다가 빨강을 봤다. 문구 자체로 앵커한다.
+    const i = adv.indexOf('손님 링크가 열리지 않습니다')
+    expect(i).toBeGreaterThan(-1)
+    expect(adv.slice(i, i + 400)).toContain('404')
+  })
+
+  it('접혀 있어도 꺼짐을 알 수 있다(고급 설정을 안 펴는 게 기본이므로)', () => {
+    expect(adv).toContain('손님 링크 꺼짐')
   })
 })
 

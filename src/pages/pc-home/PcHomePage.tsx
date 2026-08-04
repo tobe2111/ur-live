@@ -8,7 +8,10 @@ import PcHomeMapButton from './PcHomeMapButton'
 import PcHomeAppBand from './PcHomeAppBand'
 import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from './PcHomeLocationBar'
 import RegionLinkGrid from '@/components/region/RegionLinkGrid'
-import { REGION_PAGES_ENABLED } from '@/shared/feature-flags'
+import HomeHeroBanner from '@/components/home/HomeHeroBanner'
+import HomeBannerStrip from '@/components/home/HomeBannerStrip'
+import HomeSections from '@/components/home/HomeSections'
+import { HOME_SHOWCASE_ENABLED, REGION_PAGES_ENABLED } from '@/shared/feature-flags'
 
 /**
  * 🖥️ 2026-07-15 (대표 시안 — 당근 스타일 PC 홈): lg+ 전용 풀너비 홈.
@@ -57,6 +60,10 @@ export default function PcHomePage() {
         jsonLd={[organizationJsonLd, webSiteJsonLd]}
       />
 
+      {/* 🏠 ④ 히어로 배너 (2026-08-04 대표 시안 승인) — 풀블리드, 컨테이너 **밖**.
+          등록된 히어로가 없으면 아무것도 안 그린다 → 아래 컨테이너가 그대로 최상단(현행과 동일). */}
+      {HOME_SHOWCASE_ENABLED && <HomeHeroBanner />}
+
       {/* 🖥️ 2026-07-19 (대표 — "왼쪽 카테고리보단 위에"): 좌측 레일 제거 → 풀너비. 카테고리는 상단 가로 바(PcHomeRail). */}
       <div className="max-w-[1600px] mx-auto px-6 lg:px-10 pt-6">
         <main className="min-w-0">
@@ -70,6 +77,17 @@ export default function PcHomePage() {
             </div>
             <PcHomeMapButton />
           </div>
+
+          {/* 🏠 ① 카테고리 섹션(+더보기) · ③ 중간 배너 (2026-08-04 대표 시안 승인).
+              어드민이 만든 섹션·배너가 하나도 없으면 **전부 null** → 아래 딜 그리드가 그대로
+              이어진다(대표 확정 "안 올리면 아예 안 보이게"). 되돌리기는 플래그 하나. */}
+          {HOME_SHOWCASE_ENABLED && (
+            <>
+              <HomeSections midBanner={<HomeBannerStrip variant="inline" />} />
+              <HomeBannerStrip variant="wide" />
+            </>
+          )}
+
           <header className="mb-4">
             <h1 className="text-[24px] font-black tracking-tight text-gray-900 dark:text-white">
               {userLoc ? '내 주변 가까운 딜' : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
