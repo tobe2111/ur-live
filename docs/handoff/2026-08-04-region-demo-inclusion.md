@@ -66,3 +66,18 @@ curl -sS -A "$UA" 'https://urdeal.kr/region/%EC%84%9C%EC%9A%B8/%EC%A4%91%EA%B5%A
   필요한 건 배선 + `video_url`·`banner_type`(hero/inline)·`position` 컬럼.
   🔑 대표 확정 규칙: **배너 0건이면 컴포넌트가 `null`** — 빈 자리 없이 레이아웃이 위로 붙는다.
 - **실제 재고**가 이 기능의 진짜 병목이다. 실제 매장 1곳뿐 — 지역 SEO 의 효과는 재고가 붙는 만큼 나온다.
+
+## ⚠️ CI 운영 함정 — `pull_request` synchronize 이벤트가 유실될 수 있다
+
+2026-08-04, 문서 전용 커밋 `71c6920`(기능 현황판 재생성)을 밀었는데 **Verify run 이 하나도
+생성되지 않았다** — push 는 `paths-ignore: ['docs/**','**/*.md']` 로 정상 스킵이고,
+`pull_request` 는 paths-ignore 가 없어 돌았어야 하는데 안 돌았다.
+(같은 브랜치의 직전 문서 커밋 `a91a879` 은 `pull_request` run 이 정상 생성됐다 —
+설정 문제가 아니라 **이벤트 1회 유실**로 보인다.)
+
+**증상이 위험한 이유**: PR 화면엔 *직전 커밋의 실패*가 마지막 상태로 남아 있고, 새 커밋은
+체크가 아예 없다. "고쳤는데 왜 여전히 빨갛지?" 로 오독하기 쉽고, 반대로 체크가 없는 것을
+"통과"로 오독하면 검증 안 된 코드가 머지된다(그게 `verify.yml` 헤더가 기록한 2026-08-03 사고다).
+
+**판정법**: PR 체크 목록만 보지 말고 `actions_list(list_workflow_runs, verify.yml, branch=…)` 로
+**head SHA 에 해당하는 run 이 실제로 있는지** 확인할 것. 없으면 재트리거(아무 커밋이나 푸시).
