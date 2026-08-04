@@ -422,6 +422,39 @@ export interface RotationVerdict {
  */
 export const ROTATION_STARVE_CYCLES = 3
 
+/**
+ * 🛟 **기아 방지 슬롯** — 라운드당 1픽은 "가장 오래 굶은 미실행 키워드"가 무조건 받는다 (2026-08-04).
+ *
+ * ## 왜 (라이브 경보 → 실측 — `starved` 판정이 실전에서 처음 잡은 것)
+ * ```
+ *   자동확장 키워드 24개 · 생성 14.9일 · 실행 0회        ← 전부 source='auto'
+ *   pri 풀 315 · 커서 177 · '동네맛집' idx 145 → 거리 275
+ *   커서 전진 실측 ~28/일  ⇒  첫 실행까지 약 10일 더
+ * ```
+ * 이들은 커서 정체기(#1035 이전 — 꼬리 픽이 처리 안 돼 커서가 며칠 제자리)에 태어나 순번을 놓쳤고,
+ * 지금은 커서에서 **가장 먼 자리**라 수리 후에도 열흘을 더 기다린다. YT 탐색 슬롯도 못 탄다 —
+ * `exploreRank` 가 사람 시드를 앞세우는 건 옳지만, 시드가 계속 유입되는 한 auto 는 **무한 연기**된다
+ * (우선순위 스케줄링의 고전적 기아 — aging 없는 strict priority).
+ *
+ * ## 해법 — 가속이 아니라 **순서 보정**
+ * 총 픽 수는 그대로 두고, 라운드당 1픽만 "미실행 중 가장 오래된 것"(id 최소 = 생성순)에게 준다.
+ * 24개 잔량이면 실효 라운드 기준 1~3일에 소진되고, 이후로는 **어떤 키워드도 미실행인 채로
+ * 풀 한 바퀴 이상을 기다릴 수 없다**(상한이 생김). 커서 수학 무접촉 — 구조는 호출부 주석 참조.
+ *
+ * ⚠️ **이 함수가 못 하는 것**: "한 번 돌았지만 오래된" 키워드는 구제하지 않는다 — 그건 커서 순환이
+ *   정상적으로 처리한다(구제 대상을 넓히면 이 슬롯이 제2의 커서가 되어 진짜 커서를 굶긴다).
+ */
+export function pickStarvationRescue<T extends { id: number; last_run_at?: string | null }>(
+  kws: readonly T[], excludeIds: ReadonlySet<number>,
+): T | null {
+  let oldest: T | null = null
+  for (const k of kws) {
+    if (k.last_run_at || excludeIds.has(k.id)) continue
+    if (!oldest || k.id < oldest.id) oldest = k   // id 최소 = 가장 먼저 만들어진 미실행
+  }
+  return oldest
+}
+
 export function judgeRotation(s: RotationSample): RotationVerdict {
   const active = Number(s.active) || 0
   const ran = Number(s.ran24h) || 0
