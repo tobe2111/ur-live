@@ -19,6 +19,7 @@
 import { describe, it, expect } from 'vitest'
 import { mallOpenState, mallConsumerUrl } from '@/pages/admin/wholesale-malls/MallLinkRow'
 import { pickConsumerMall } from '@/worker/utils/mall-consumer'
+import { readCode } from '../helpers/source-text'
 
 type Row = { id: number; slug: string; name: string; active?: number | null; consumer_path?: number | null }
 
@@ -70,6 +71,48 @@ describe('🔴 R2 — 안 열리면 이유를 반드시 말한다', () => {
 
   it('열릴 땐 이유가 없다', () => {
     expect(mallOpenState(base).reason).toBeUndefined()
+  })
+})
+
+/**
+ * 🔴 R4 — **새 몰은 기본으로 열린다 + 끄면 그 자리에서 경고** 〔2026-08-04 대표 "체크 없이도 열리게"〕
+ *
+ * 처음엔 `consumer_path` 기본이 **꺼짐**이었다(도매몰이 소비자 도메인으로 새는 걸 막는 fail-closed).
+ * 그런데 **이 화면으로 만드는 건 공구 몰이고, 공구 몰의 존재 이유가 `urdeal.kr/{슬러그}`** 라서
+ * 그 안전 기본값이 실사용에선 **"만들면 404"** 로 나타났다 — 대표가 실제로 겪었다.
+ *
+ * ⇒ 기본을 켬으로 뒤집고, 스위치는 고급 설정에 남긴다. 끄는 사람에겐 **404 가 된다고 그 자리에서** 말한다.
+ *
+ * ⚠️ **못 막는 것**: 기존 몰의 DB 값. 이건 새 폼의 초기값과 화면 문구만 본다 —
+ *   이미 `consumer_path=0` 으로 저장된 몰은 수정에서 켜야 하고, 그건 목록의 링크 줄이 안내한다.
+ */
+describe('🔴 R4 — 새 몰 기본 공개 + 끄면 경고', () => {
+  const formSrc = readCode('src/pages/admin/wholesale-malls/mall-form.ts')
+  const adv = readCode('src/pages/admin/wholesale-malls/MallAdvancedFields.tsx')
+
+  it('EMPTY 초기값이 consumer_path: true (체크 없이도 열린다)', () => {
+    expect(formSrc).toMatch(/consumer_path:\s*true/)
+    expect(formSrc).not.toMatch(/consumer_path:\s*false/)
+  })
+
+  it('스위치는 살아 있다 — 도매몰용으로 끌 수 있어야 한다', () => {
+    expect(adv).toMatch(/consumer_path:\s*e\.target\.checked/)
+  })
+
+  it('`!form.consumer_path` 조건부 경고 블록이 있다', () => {
+    expect(adv).toMatch(/\{!form\.consumer_path\s*&&/)
+  })
+
+  it('경고가 404 라는 결과를 명시한다(모호한 "확인하세요" 로 끝내지 않는다)', () => {
+    // ⚠️ `{!form.consumer_path` 로 앵커하면 **접힘 배지**(먼저 나온다)를 잡아 경고문에 못 닿는다
+    //   — 처음에 그렇게 짰다가 빨강을 봤다. 문구 자체로 앵커한다.
+    const i = adv.indexOf('손님 링크가 열리지 않습니다')
+    expect(i).toBeGreaterThan(-1)
+    expect(adv.slice(i, i + 400)).toContain('404')
+  })
+
+  it('접혀 있어도 꺼짐을 알 수 있다(고급 설정을 안 펴는 게 기본이므로)', () => {
+    expect(adv).toContain('손님 링크 꺼짐')
   })
 })
 

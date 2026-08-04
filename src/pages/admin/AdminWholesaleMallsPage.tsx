@@ -20,6 +20,8 @@ import { normalizeAdminRole } from '@/shared/admin-roles'
 import { validateMallColor } from '@/shared/mall/branding'
 import MallSellersPanel from './wholesale-malls/MallSellersPanel'
 import MallLinkRow from './wholesale-malls/MallLinkRow'
+import MallAdvancedFields from './wholesale-malls/MallAdvancedFields'
+import { EMPTY, type MallForm } from './wholesale-malls/mall-form'
 
 interface MallRow {
   id: number
@@ -39,45 +41,6 @@ interface MallRow {
   features_json?: string | null
   company_json?: string | null
   active: number
-}
-
-// 🏢 몰별 회사(푸터) 정보 필드 — WholesaleFooter BUSINESS_INFO 키와 1:1. 비우면 기본(유통스타트) 폴백.
-const COMPANY_FIELDS: { key: string; label: string; ph: string }[] = [
-  { key: 'company', label: '상호', ph: '사람과고리' },
-  { key: 'ceo', label: '대표자', ph: '송유미' },
-  { key: 'bizRegNo', label: '사업자등록번호', ph: '108-20-56790' },
-  { key: 'mailOrderNo', label: '통신판매신고', ph: '제 20174-서울중구-0242호' },
-  { key: 'address', label: '주소', ph: '서울 중구 …' },
-  { key: 'tel', label: '전화(고객센터)', ph: '02-2038-0996' },
-  { key: 'fax', label: '팩스', ph: '0303-3443-4424' },
-  { key: 'csEmail', label: '이메일', ph: 'cs@example.com' },
-  { key: 'bankName', label: '입금 은행', ph: '우체국' },
-  { key: 'bankNo', label: '입금 계좌번호', ph: '014084-02-129530' },
-  { key: 'bankHolder', label: '예금주', ph: '사람과고리(송유미)' },
-]
-
-interface MallForm {
-  slug: string
-  name: string
-  host: string
-  brand_name: string
-  brand_color: string
-  logo_url: string
-  deposit_account: string
-  commission_rate: string
-  categories_json: string
-  requires_license: boolean
-  consumer_path: boolean
-  license_label: string
-  features_json: string
-  company: Record<string, string>
-  active: boolean
-}
-
-const EMPTY: MallForm = {
-  slug: '', name: '', host: '', brand_name: '', brand_color: '#111827',
-  logo_url: '', deposit_account: '', commission_rate: '', categories_json: '',
-  requires_license: false, consumer_path: false, license_label: '', features_json: '', company: {}, active: true,
 }
 
 const DEFAULT_MALL_ID = 1
@@ -301,19 +264,16 @@ export default function AdminWholesaleMallsPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">{t('admin.mall.host', { defaultValue: '호스트(들)' })}</label>
-                <input value={form.host} onChange={(e) => setForm((f) => ({ ...f, host: e.target.value }))} maxLength={300}
-                  className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" placeholder="food.utongstart.com, www.food.com" />
-                <p className="text-[11px] text-gray-400 mt-1">{t('admin.mall.hostInputHint', { defaultValue: '쉼표로 여러 호스트 지정. 비우면 호스트 라우팅 없음.' })}</p>
+              {/* 🔗 만들기 전에 **어디로 열릴지** 보여 준다 — slug 를 타이핑하는 동안 링크가 자란다.
+                  (2026-08-04 대표 "체크 없이도 열리게" — 이제 기본이 열림이라 이 줄이 곧 결과다.) */}
+              <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
+                <span className="text-[11px] text-gray-500">손님이 갈 주소</span>
+                <p className="text-[13px] font-semibold text-gray-900 font-mono break-all">
+                  urdeal.kr/{form.slug || <span className="text-gray-400">{'{주소}'}</span>}
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">{t('admin.mall.brandName', { defaultValue: '브랜드명' })}</label>
-                  <input value={form.brand_name} onChange={(e) => setForm((f) => ({ ...f, brand_name: e.target.value }))} maxLength={80}
-                    className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" placeholder={t('admin.mall.brandNamePlaceholder', { defaultValue: '헤더 워드마크 (미입력 시 몰 이름)' })} />
-                </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">{t('admin.mall.brandColor', { defaultValue: '브랜드 색' })}</label>
                   <div className="flex items-center gap-2">
@@ -338,77 +298,9 @@ export default function AdminWholesaleMallsPage() {
                 <ImageUpload value={form.logo_url} onChange={(url) => setForm((f) => ({ ...f, logo_url: url }))} tokenKey="admin_token" label={t('admin.mall.logo', { defaultValue: '로고' })} aspectRatio="square" />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">{t('admin.mall.categories', { defaultValue: '카테고리 (JSON)' })}</label>
-                <textarea value={form.categories_json} onChange={(e) => setForm((f) => ({ ...f, categories_json: e.target.value }))} rows={2}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400 font-mono"
-                  placeholder='[{"id":"food","label":"식품"},{"id":"snack","label":"간식"}]' />
-                <p className="text-[11px] text-gray-400 mt-1">{t('admin.mall.catHint', { defaultValue: '비우면 기본 카테고리 사용. [{id,label}] 배열.' })}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">{t('admin.mall.depositAccount', { defaultValue: '입금 계좌' })}</label>
-                  <input value={form.deposit_account} onChange={(e) => setForm((f) => ({ ...f, deposit_account: e.target.value }))} maxLength={500}
-                    className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" placeholder="국민 123-45-6789 (예금주)" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">{t('admin.mall.commission', { defaultValue: '수수료율 (%)' })}</label>
-                  <input type="number" step="0.1" value={form.commission_rate} onChange={(e) => setForm((f) => ({ ...f, commission_rate: e.target.value }))}
-                    className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" placeholder="10" />
-                  <p className="text-[11px] text-gray-400 mt-1">이 몰의 플랫폼 마진%(공급가 = 원가×(1+%)). 비우면 전역 수수료 사용 — 표시가·결제가에 즉시 적용.</p>
-                </div>
-              </div>
-
-              {/* 🏬 2026-08-01 세션 ③-a — 소비자 도메인 경로 개방.
-                  ⚠️ 기본 OFF(fail-closed). 켜지 않으면 `urdeal.kr/{슬러그}` 로 열리지 않는다.
-                  도매몰(유통스타트·메디스타트)은 자기 호스트에 살므로 **끈 채로 둔다**. */}
-              <div className="rounded-lg border border-gray-200 p-3 space-y-2">
-                <label className="flex items-center gap-2 text-sm text-gray-700 font-semibold">
-                  <input type="checkbox" checked={form.consumer_path} onChange={(e) => setForm((f) => ({ ...f, consumer_path: e.target.checked }))} className="w-4 h-4" />
-                  소비자 도메인에서 열기 — <code className="text-xs bg-gray-100 px-1 rounded">urdeal.kr/{form.slug || '{주소}'}</code>
-                </label>
-                <p className="text-[11px] text-gray-400">
-                  운영자 몰(공구)만 켠다. <b>도매몰은 끈 채로 둘 것</b> — 켜면 B2B 몰이 소비자 도메인 경로로 노출된다.
-                </p>
-              </div>
-
-              {/* 🏥 규제 몰(인허가) — 가입 시 신고번호 필수 여부 + 필드 라벨 */}
-              <div className="rounded-lg border border-gray-200 p-3 space-y-2.5">
-                <label className="flex items-center gap-2 text-sm text-gray-700 font-semibold">
-                  <input type="checkbox" checked={form.requires_license} onChange={(e) => setForm((f) => ({ ...f, requires_license: e.target.checked }))} className="w-4 h-4" />
-                  가입 시 인허가(신고번호) 필수 — 규제 몰
-                </label>
-                {form.requires_license && (
-                  <input value={form.license_label} onChange={(e) => setForm((f) => ({ ...f, license_label: e.target.value }))} maxLength={80}
-                    className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400"
-                    placeholder="인허가 필드 라벨 — 예: 의료기기 판매업 신고번호" />
-                )}
-              </div>
-
-              {/* 🧩 기능 토글(제외 레이어) — {"키": false} 로 이 몰에서 기능 숨김. 비우면 전 기능 ON. */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">기능 토글 (JSON — 이 몰에서 뺄 기능)</label>
-                <textarea value={form.features_json} onChange={(e) => setForm((f) => ({ ...f, features_json: e.target.value }))} rows={2}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400 font-mono"
-                  placeholder='{"dropship": false}' />
-                <p className="text-[11px] text-gray-400 mt-1">비우면 전 기능 켜짐. 예: {'{"dropship": false}'} = 이 몰에서 대량발주(드랍십) 숨김.</p>
-              </div>
-
-              {/* 🏢 회사(푸터) 정보 — 비운 칸은 기본(유통스타트) 정보로 폴백. 푸터/고객센터/약관에 반영. */}
-              <div className="rounded-lg border border-gray-200 p-3">
-                <p className="text-xs font-bold text-gray-700 mb-2">푸터 사업자 정보 <span className="font-normal text-gray-400">— 비운 칸은 기본(유통스타트) 정보 사용</span></p>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {COMPANY_FIELDS.map((cf) => (
-                    <div key={cf.key} className={cf.key === 'address' || cf.key === 'mailOrderNo' ? 'col-span-2' : ''}>
-                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">{cf.label}</label>
-                      <input value={form.company[cf.key] || ''} maxLength={300}
-                        onChange={(e) => setForm((f) => ({ ...f, company: { ...f.company, [cf.key]: e.target.value } }))}
-                        className="w-full h-9 px-2.5 rounded-lg border border-gray-200 text-[13px] text-gray-900 outline-none focus:border-gray-400" placeholder={cf.ph} />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {/* ⚙️ 고급 설정 — 도매몰·규제몰용 설정 전부(카테고리/기능토글/인허가/회사정보/소비자경로).
+                  지우지 않고 **접는다**: 도매몰 존치라 기존 몰 수정 시 도달할 수 있어야 한다. */}
+              <MallAdvancedFields form={form} setForm={setForm} />
 
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input type="checkbox" checked={form.active} onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))} className="w-4 h-4"

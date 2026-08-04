@@ -41,7 +41,7 @@ import { RETIRED_CATEGORIES } from './influencer-classify'
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap } from './influencer-keyword-rotation'
 
 // 🌱 시드 키워드(데이터) → `influencer-seed-keywords.ts` 로 분리(600줄 래칫). 탐색 *범위*라 자유 확장.
 //   🔀 병합 메모: 이 브랜치도 같은 분리를 `influencer-seeds.ts` 로 했었다 — **같은 것을 두 벌 두면
@@ -404,12 +404,16 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
    */
   const spendBy = { yt: 0, naver: 0, cafe: 0, tistory: 0, save: 0 }
   const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
+  const roundCap = keywordsPerRoundCap(env)
   let fromYt = 0, fromCursor = 0 // 🎯 처리된 픽의 출처 — 커서픽이 실제로 도달되는지 보이게(위 `picks` 주석)
   // 💸 재조우 보강 스킵 훅 — 왜/예산회계는 `influencer-known-contacts.ts` docblock 이 SSOT.
   const alreadyContacted = makeAlreadyContacted(DB, POOL_ACCOUNT_ID, budget)
 
   for (const k of finalPicks) {
     if (budget.left <= 0) break // 🔒 예산 소진 — 이번 틱 종료(다음 틱 커서가 못 돈 키워드를 이어받음)
+    // 🧊 폭 동결(2026-08-04) — 위 enrichMax 축소로 남은 예산이 **자동으로 키워드 수를 늘리는 것**을 막는다.
+    //   왜 막는가는 `COLLECT_KEYWORDS_PER_ROUND` docblock(측정이 병목인데 폭을 넓히면 백로그만 는다).
+    if (processedIds.size >= roundCap) break
     used.push(k.keyword); processedIds.add(k.id)
     if (ytIds.has(k.id)) fromYt++; else fromCursor++
     let kFound = 0, kSaved = 0 // 이 키워드의 이번 실행 발굴/저장
@@ -441,7 +445,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     if (hasNaver) {
       try {
         const _b0 = budget.left
-        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: 5, budget, sort: naverSort, alreadyContacted })
+        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: NAVER_COLLECT_ENRICH_MAX, budget, sort: naverSort, alreadyContacted })
         spendBy.naver += Math.max(0, _b0 - budget.left)
         if (r.ok) {
           kSearched++
