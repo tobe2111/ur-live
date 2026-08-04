@@ -15,6 +15,8 @@ import {
   type LaneCandidate,
 } from './dispatch-budget'
 import { LANE_LEARN_KEY, readLaneLearn } from './lane-aimd'
+import { rotationTicks, rotatedGapMinutes } from './lane-cadence'
+import { laneDomain } from './lane-domains'
 
 export interface RunnableLane extends LaneCandidate {
   path: string
@@ -89,8 +91,14 @@ export async function dispatchPendingLanes(opts: {
   //    행이 아예 없을 때만 시각 유도값으로 시작한다(첫 배포·초기화).
   const cursors = readDomainCursors(row?.value != null ? row.value : hourUTC * perTick)
   const sel = selectLanesByDomain(pending, perTick, cursors, hourUTC, resolveMeasureShare(env))
+  // 🔁 **회전을 반영한 침묵 임계** — 매시간 *자격*이 있어도 실제 차례는 도메인 몫만큼 늦게 온다.
+  //   기준을 부모 주기(150분)로 두면 정상 동작이 매번 경보가 되고, 그 소음이 진짜 침묵을 덮는다
+  //   (2026-08-05 실측: 경보 6건 중 5건이 오탐이었고 그 사이에 3일 멈춘 레인이 하나 있었다).
+  //   ⚠️ `periodMin` 은 그대로 둔다 — 그건 미루기 판정용이고, 키우면 일 1회 레인이 영영 안 돈다.
+  const runWithGap = sel.run.map(l => l.periodMin === undefined ? l
+    : { ...l, gapMin: rotatedGapMinutes(l.periodMin, rotationTicks(sel.perDomain[laneDomain(l.beat)])) })
   const self = env.SELF
-  const kicked = runLanes(sel.run, {
+  const kicked = runLanes(runWithGap, {
     selfFetch: self?.fetch ? (req: Request) => self.fetch(req) : undefined,
     laneUrl: opts.laneUrl, beat: opts.beat,
   })

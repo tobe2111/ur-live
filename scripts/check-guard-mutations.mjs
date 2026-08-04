@@ -116,6 +116,28 @@ const MUTATIONS = [
       '조절기의 첫 시험대이기도 하다. 되돌아가도 초록불이라 사람이 못 잡는다.',
   },
   {
+    name: '침묵 기준이 회전을 다시 잊는다(계산만 하고 안 띄움)',
+    file: 'src/worker-ads/lane-runner.ts',
+    find: 'runLanes(runWithGap, {',
+    replace: 'runLanes(sel.run, {',
+    test: 'src/tests/unit/ads-rotation-gap.test.ts',
+    why:
+      '회전 임계를 계산해 놓고 원본을 그대로 띄우면 **아무것도 안 바뀐다** — 코드는 멀쩡해 보이고 ' +
+      '타입도 통과하는데 하트비트엔 옛 기준이 실린다. 그러면 정상 동작 중인 매시간 레인이 ' +
+      '다시 매번 경보가 되고(2026-08-05 실측 5건), 그 소음이 진짜 침묵 하나를 덮는다.',
+  },
+  {
+    name: '회전 계산이 `always` 레인을 빼지 않는다(기준이 과하게 느슨해짐)',
+    file: 'src/worker-ads/lane-cadence.ts',
+    find: 'const running = Math.max(0, (d?.run?.length ?? 0) - Math.max(0, Math.floor(Number(d?.always) || 0)))',
+    replace: 'const running = d?.run?.length ?? 0',
+    test: 'src/tests/unit/ads-rotation-gap.test.ts',
+    why:
+      '`always` 레인(지정 시각에만 열리는 게이트)은 예산과 무관하게 항상 돈다 — 경쟁자가 아니다. ' +
+      '안 빼면 회전이 부풀고(company 4→7) 임계가 필요 이상으로 커져 **진짜 멈춘 레인도 오래 안 울린다.** ' +
+      '완화가 과해지는 방향이라 경보가 조용히 무력해지고, 조용해진 것과 정상인 것이 구분되지 않는다.',
+  },
+  {
     name: '카카오 스윕이 다시 tier 순만 보고 뒷줄을 굶긴다',
     file: 'src/features/marketing/api/company-collect.ts',
     find: "     ORDER BY (kakao_checked_at IS NOT NULL) ASC, (email IS NOT NULL AND email <> '') ASC, (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)",
