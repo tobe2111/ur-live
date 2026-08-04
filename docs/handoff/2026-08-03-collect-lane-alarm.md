@@ -789,3 +789,37 @@ verify.yml · event=pull_request 최근 run : 2026-08-03T17:54:34Z (a8186f2) 이
    (이번 건은 `git diff e916e99 c6f3029 --stat` 로 **차이가 handoff 1파일뿐**임을 확인하고,
     문서-민감 가드 3종(`check-current-work-sync`·`check-blog-seed-currency`·인계목차 재생성)을
     로컬로 돌려 통과시킨 뒤 진행했다. 그래도 **이건 우회지 검증이 아니다** — 위 원인 규명이 남는다.)
+
+## ✅ #1041 머지 — `0f9ab7c` (2026-08-04 KST 12:48)
+
+Verify 97스텝 통과 후 머지. ur-ads 재배포는 `deploy-ads.yml` 이 자동 처리
+(변경 파일이 `src/features/marketing/**`·`src/worker-ads/**` 경로 필터에 걸린다).
+
+### 🏃 머지가 세 번 막혔다 — 그 세 가지가 각각 다른 교훈이다
+
+1. **draft PR** — `405 Pull Request is still a draft`. PR 이 draft 면 API 머지가 막힌다.
+   ⚠️ **그리고 이게 위 "Verify 미실행" 의 유력한 원인 후보다** — `pull_request` 다리가 침묵한 구간과
+   draft 였던 구간이 겹친다. 다음 세션이 판정할 것: **non-draft 상태에서 코드 커밋을 밀고**
+   `event=pull_request` run 이 생기는지. (draft 해제 직후 밀었더니 실제로 Verify 가 정상 등록됐다 —
+   정황은 맞지만 변수가 하나가 아니라 단정하지 않는다.)
+2. **main 이 앞서가는 경주** — 내 사이클(병합→CI 15분→머지)이 도는 동안 main 에 #1040·#1043 이
+   연달아 들어왔다. 세션이 여럿 도는 레포에선 **CI 를 기다리는 동안 base 가 움직인다**는 걸 전제할 것.
+3. **양쪽이 같은 자리에 서로 다른 것을 추가** (`influencer-keyword-rotation.ts`) —
+   우리 쪽 수집 예산 상수 vs main 의 `judgeRotation`. **둘 다 보존**이 정답이다.
+
+### 🕳️ 그 보존에서 조용히 깨진 것 — 닫는 중괄호
+
+git 은 두 함수가 공유하는 `}` 를 **충돌 영역 밖**에 남긴다. 양쪽을 이어 붙이면 앞 함수의 `}` 가
+사라지는데, **본문은 멀쩡해 보인다**:
+```
+export function keywordsPerRoundCap(env: unknown): number {
+  return ...                          ← '}' 가 없다
+/* ── 🩺 순환 건강 판정 ── */          ← main 쪽 블록이 바로 이어짐
+```
+`tsc` 가 `TS1005: '}' expected` 로 잡았다. ⇒ **충돌 해소 후 타입체크는 선택이 아니다.**
+(`grep '<<<<<<<'` 은 이걸 못 본다 — 마커는 이미 0이다.)
+
+### 🤝 방향 일치 확인
+
+main 의 #1043 이 남긴 실측 주석도 *"유입 1,613/일 vs 측정 3,600/일 — 측정이 이기는 중이니
+처리량을 더 밀지 말 것"* 이다. 이 PR 의 **폭 동결과 같은 결론**이라 두 변경이 서로를 무르지 않는다.
