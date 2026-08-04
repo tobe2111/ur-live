@@ -7,11 +7,16 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, Link as LinkIcon, Image as ImageIcon, X } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+// 🏠 2026-08-04 (대표 시안 승인): 배너에 **자리**(히어로/중간/와이드)와 **영상 배경**이 생겼다.
+//   자리 종류는 SSOT 에서만 온다 — 여기서 문자열을 새로 만들면 홈이 못 알아본다.
+import { BANNER_TYPES, BANNER_TYPE_LABELS, DEFAULT_BANNER_TYPE, type BannerType } from '@/shared/constants/home-showcase'
 
 interface Banner {
   id: number
   title: string
   image_url: string
+  video_url?: string
+  banner_type?: BannerType
   link_url?: string
   description?: string
   is_active: boolean
@@ -23,7 +28,8 @@ interface Banner {
 }
 
 const EMPTY_FORM = {
-  title: '', image_url: '', link_url: '', description: '',
+  title: '', image_url: '', video_url: '', banner_type: DEFAULT_BANNER_TYPE as BannerType,
+  link_url: '', description: '',
   is_active: true, display_order: 0, start_date: '', end_date: ''
 }
 
@@ -55,6 +61,7 @@ export default function AdminBannersPage() {
     setEditingBanner(banner)
     setFormData({
       title: banner.title, image_url: banner.image_url,
+      video_url: banner.video_url || '', banner_type: banner.banner_type || DEFAULT_BANNER_TYPE,
       link_url: banner.link_url || '', description: banner.description || '',
       is_active: banner.is_active, display_order: banner.display_order,
       start_date: banner.start_date ? banner.start_date.split('T')[0] : '',
@@ -153,6 +160,31 @@ export default function AdminBannersPage() {
                 <input type="number" min="0" value={formData.display_order} onChange={e => setFormData({ ...formData, display_order: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
             </div>
+            {/* 🏠 자리 — 이 값이 홈의 어느 슬롯에 뜰지를 정한다. 먼저 고르게 이미지 위에 둔다. */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">노출 자리</label>
+              <div className="flex flex-wrap gap-2">
+                {BANNER_TYPES.map(bt => (
+                  <button
+                    key={bt}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, banner_type: bt })}
+                    aria-pressed={formData.banner_type === bt}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
+                      formData.banner_type === bt
+                        ? 'bg-blue-600 border-blue-600 text-white'
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {BANNER_TYPE_LABELS[bt]}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-xs text-gray-400">
+                히어로는 홈 최상단 큰 배너(영상 가능) · 중간은 3열 프로모션 · 와이드는 가로 한 줄.
+                <strong className="text-gray-500"> 등록하지 않은 자리는 홈에 아예 안 보입니다.</strong>
+              </p>
+            </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.banners.k017', { defaultValue: '이미지 URL *' })}</label>
               <input type="url" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="https://..." required />
@@ -171,6 +203,23 @@ export default function AdminBannersPage() {
               </div>
               {formData.image_url && <img src={formData.image_url} alt={t('admin.banners.k029', { defaultValue: "미리보기" })} className="mt-2 w-full max-w-sm aspect-video object-cover rounded-lg" loading="lazy" />}
             </div>
+            {/* 🎬 영상 배경 — 히어로에서만 쓴다. 비워두면 이미지가 배경. */}
+            {formData.banner_type === 'hero' && (
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">영상 URL (선택)</label>
+                <input
+                  type="url"
+                  value={formData.video_url}
+                  onChange={e => setFormData({ ...formData, video_url: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  placeholder="https://.../hero.mp4"
+                />
+                <p className="mt-1.5 text-xs text-gray-400">
+                  넣으면 배경이 영상(무음·자동재생·반복)이 됩니다. <strong className="text-gray-500">위 이미지는 영상이 뜨기 전 표지</strong>로 쓰이니
+                  같이 넣어 주세요 — 안 넣으면 로딩 동안 검은 화면입니다. MP4(H.264) 5MB 이하 권장.
+                </p>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.banners.k030', { defaultValue: '링크 URL' })}</label>
               <input type="text" value={formData.link_url} onChange={e => setFormData({ ...formData, link_url: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder={t('admin.banners.k031', { defaultValue: "#live-section 또는 https://..." })} />
@@ -225,6 +274,10 @@ export default function AdminBannersPage() {
               <div className="flex items-start justify-between mb-1">
                 <h3 className={`text-sm font-semibold ${banner.title ? 'text-gray-900' : 'text-gray-400 italic'}`}>{banner.title || t('admin.banners.noTitle', { defaultValue: '(제목 없음 — 이미지만)' })}</h3>
                 <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                  <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
+                    {BANNER_TYPE_LABELS[banner.banner_type || DEFAULT_BANNER_TYPE]}
+                  </span>
+                  {banner.video_url && <span className="text-xs text-gray-400">🎬 영상</span>}
                   <span className="text-xs text-gray-400">순서 {banner.display_order}</span>
                   <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${banner.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
                     {banner.is_active ? t('admin.banners.k040', { defaultValue: '활성' }) : t('admin.banners.k041', { defaultValue: '비활성' })}

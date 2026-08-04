@@ -72,6 +72,39 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '나라장터 계약 — 마스킹된 전화를 진짜 연락처로 센다',
+    file: 'src/features/marketing/api/nara-contract-collect.ts',
+    find: "  return raw.includes('*') ? '' : raw",
+    replace: '  return raw',
+    test: 'src/tests/unit/nara-contract-collect.test.ts',
+    why:
+      '이 원부는 수주사 전화를 `***********` 로 가려서 준다(실측). 그대로 저장하면 **"연락처 있음"** 으로 ' +
+      '집계돼 액션풀(active=1)에 들어간다 — 유어애즈의 유일한 지표가 *"제안 보낼 수 있는 리드 수"* 인데 ' +
+      '그 숫자가 거짓이 된다. 전화하면 그제서야 안다. 200 도 받고 저장도 되니 **에러가 어디에도 안 뜬다.**',
+  },
+  {
+    name: '나라장터 계약 — 상권 필터가 풀려 26k 계약이 통째로 유입',
+    file: 'src/features/marketing/api/nara-contract-collect.ts',
+    find: '  if (!DISTRICT_CONTRACT_RE.test(cntrctNm)) return []',
+    replace: '  if (!cntrctNm) return []',
+    test: 'src/tests/unit/nara-contract-collect.test.ts',
+    why:
+      '원부 26,445건 중 상권 계약은 소수이고 나머지는 대학·병원 물품 구매다. 필터가 풀리면 ' +
+      '**수집이 성공한 것처럼 보이면서**(저장 수가 오히려 폭증한다) 상권 리드가 잡음에 덮인다. ' +
+      '수치가 커지는 방향의 고장이라 대시보드로는 절대 못 알아챈다.',
+  },
+  {
+    name: '나라장터 계약 — 굳은 파라미터 판정이 코드 수정을 이긴다',
+    file: 'src/features/marketing/api/nara-contract-collect.ts',
+    find: '  if (Number(v || 0) !== NARA_PARAM_STATE_VERSION) return null',
+    replace: '  void v',
+    test: 'src/tests/unit/nara-contract-collect.test.ts',
+    why:
+      '레인이 측정한 파라미터 모드를 D1 에 굳히는데, 버전 잠금이 빠지면 **코드 기본값을 고쳐 배포해도 ' +
+      'DB 의 옛 판정이 이겨 라이브가 안 변한다.** 인허가 레인에서 정확히 이 사고를 겪었고 ' +
+      '(`LICENSE_STATE_VERSION` 이 그 수습이다) 원인을 찾는 데 하루가 갔다 — 배포는 초록불이었다.',
+  },
+  {
     name: '데모 추첨 자가치유가 발화 안 하는 cron 슬롯에 배선됨',
     file: 'src/worker/scheduled.ts',
     find: "    ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env)));",

@@ -386,6 +386,13 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'settlements.paid_at', sql: 'ALTER TABLE settlements ADD COLUMN paid_at DATETIME' },
     { name: 'settlements.admin_memo', sql: 'ALTER TABLE settlements ADD COLUMN admin_memo TEXT' },
     { name: 'user_withdrawals.deal_deducted', sql: 'ALTER TABLE user_withdrawals ADD COLUMN deal_deducted INTEGER DEFAULT 0' },
+    // 🏠 2026-08-04 홈 쇼케이스 — 라우트 lazy ALTER 는 그 라우트가 호출돼야 돌고, 컬럼이 없으면 어드민 저장이 조용히 실패한다.
+    { name: 'banners.banner_type', sql: "ALTER TABLE banners ADD COLUMN banner_type TEXT DEFAULT 'inline'" },
+    { name: 'banners.video_url', sql: 'ALTER TABLE banners ADD COLUMN video_url TEXT' },
+    { name: 'homepage_sections.source', sql: "ALTER TABLE homepage_sections ADD COLUMN source TEXT DEFAULT 'manual'" },
+    { name: 'homepage_sections.source_value', sql: 'ALTER TABLE homepage_sections ADD COLUMN source_value TEXT' },
+    { name: 'homepage_sections.limit_count', sql: 'ALTER TABLE homepage_sections ADD COLUMN limit_count INTEGER DEFAULT 4' },
+    { name: 'homepage_sections.more_href', sql: 'ALTER TABLE homepage_sections ADD COLUMN more_href TEXT' },
     // 🏁 2026-06-12 P4: 국세청 상태조회 결과 저장 (유통=자동승인 근거 / 공급=어드민 표시)
     { name: 'sellers.nts_status', sql: 'ALTER TABLE sellers ADD COLUMN nts_status TEXT' },
     { name: 'suppliers.nts_status', sql: 'ALTER TABLE suppliers ADD COLUMN nts_status TEXT' },

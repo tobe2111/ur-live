@@ -107,7 +107,7 @@ describe('배선 — 판정만 있고 안 보이면 없는 기능이다', () => 
   it('🔒 **파트너 풀도 같은 판정기를 쓴다** — 죽은 레인은 그쪽에 더 많다(franchise·nara 실측)', () => {
     const PARTNER = SRC('src/features/marketing/api/partner-pool.routes.ts')
     expect(PARTNER).toMatch(/laneHealth: judgeLanes\(\[/)
-    for (const lane of ['collect-franchise', 'collect-nara-vendor', 'collect-commerce']) {
+    for (const lane of ['collect-franchise', 'collect-nara-contract', 'collect-commerce']) {
       expect(PARTNER, `${lane} 이 판정 대상에서 빠졌다`).toContain(`lane: '${lane}'`)
     }
   })
