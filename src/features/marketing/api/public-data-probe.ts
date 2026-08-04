@@ -38,8 +38,26 @@ import { serviceKeyParam, describePublicDataBody, isHardConfigFailure } from './
 import { COMMERCE_SERVICES } from './commerce-notify-collect'
 import type { Env } from '@/worker/types/env'
 
-/** 응답 본문에서 남길 최대 길이 — 어드민 화면에 붙여넣을 만큼만(전문 로그가 아니다). */
+/** 응답 본문에서 남길 기본 길이 — 어드민 화면에 붙여넣을 만큼만(전문 로그가 아니다). */
 const BODY_MAX = 900
+/**
+ * 🔍 **본문을 더 길게 볼 수 있어야 한다** (2026-08-03 — 이 상한이 두 번 판정을 막았다).
+ *
+ *   ① 인허가 필드명을 알아내려는데 900자에서 잘려, **짧은 스키마의 형제 업종**을 대신 찔러 우회했다.
+ *   ② 나라장터 계약정보에서 **계약업체명 필드**를 확인하려는데 또 같은 자리에서 잘렸다.
+ *   둘 다 "상대가 이미 말해 준 답"을 우리 화면 상한이 가린 경우다.
+ *
+ *   ⚠️ 그래도 **전문 로그로 만들지는 않는다** — 이건 어드민 화면에 붙는 값이고, 무제한이면
+ *     응답이 통째로 인계 문서로 흘러간다. 상한을 두되 *사람이 필요할 때 올릴 수 있게* 한다.
+ *   🔐 길이를 늘려도 키는 안 샌다 — `redactServiceKey` 가 `serviceKey=` 뒤를 끝까지 먹기 때문이고,
+ *     자르기 전/후 어느 쪽에 걸어도 결과가 같다(주입으로 확인). 순서는 *표시량* 차이일 뿐이다.
+ */
+export const BODY_MAX_LIMIT = 6000
+export function resolveBodyMax(raw: string | number | undefined | null): number {
+  const n = Math.trunc(Number(raw))
+  if (!Number.isFinite(n) || n <= 0) return BODY_MAX
+  return Math.min(BODY_MAX_LIMIT, Math.max(200, n))
+}
 
 export interface ProbeResult {
   target: string
@@ -87,6 +105,8 @@ export interface ProbeOpts {
   host?: string
   /** 요청 파라미터 세트(`both`|`std`|`legacy`). 미지정이면 호스트로 정한다 — `ProbeParamSet` 참조. */
   params?: string
+  /** 본문에서 남길 길이(기본 900, 최대 `BODY_MAX_LIMIT`). 필드명을 확인해야 할 때만 올린다. */
+  bodyMax?: string | number
 }
 
 /**
@@ -282,7 +302,7 @@ export async function probePublicData(env: Env, target: string, keyOverride?: st
 
   const raw = await res.text().catch(() => '')
   // 🔐 게이트웨이가 오류 본문에 요청 URL 을 echo 하는 경우가 있다 — 본문에도 반드시 먹인다.
-  const body = redactServiceKey(raw).slice(0, BODY_MAX)
+  const body = redactServiceKey(raw).slice(0, resolveBodyMax(opts?.bodyMax))
   let isJson = false
   try { JSON.parse(raw); isJson = true } catch { isJson = false }
   const hint = describePublicDataBody(raw) || undefined
