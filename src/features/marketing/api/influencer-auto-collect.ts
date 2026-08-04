@@ -181,7 +181,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
     DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8"),
   ]).catch(() => null)
-  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total, COALESCE(yt_leads,0) AS yt_leads, COALESCE(yt_contacts,0) AS yt_contacts FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
+  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total, COALESCE(yt_leads,0) AS yt_leads, COALESCE(yt_contacts,0) AS yt_contacts, COALESCE(nb_measured,0) AS nb_measured, COALESCE(nb_contacts,0) AS nb_contacts FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   /**
    * 🪦 은퇴 축 키워드는 **슬롯을 안 먹는다**(2026-08-03). 축을 접었는데 그 키워드가 계속 돌면
@@ -213,7 +213,8 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_AUTOCOLLECT_BATCH || '', 10) || 4))
 
   // ⭐ 3분할 풀(집중·우선·일반) 구성 + 연락처 수율 솎아내기 — 규칙·근거는 `buildRotationPools` docblock(SSOT).
-  const { focusPool, priPool, genPool } = buildRotationPools(kws, { focus: FOCUS_CATEGORIES, priority: PRIORITY_CATEGORIES })
+  const roundIndex = (prev?.total_runs || 0) + 1
+  const { focusPool, priPool, genPool } = buildRotationPools(kws, roundIndex, { focus: FOCUS_CATEGORIES, priority: PRIORITY_CATEGORIES })
   let priCursor = parseInt(settings['ads_autocollect_cursor_pri'] || '0', 10)
   if (!Number.isFinite(priCursor) || priCursor < 0) priCursor = 0
   let focusCursor = parseInt(settings[FOCUS_CURSOR_KEY] || '0', 10)
@@ -424,8 +425,21 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
      *
      *   ⚠️ 기본 ON + 킬스위치(`ADS_COLLECT_TISTORY_DISABLED='true'`). '켜야 도는 구조'로 두면
      *   "켠 줄 알았는데 안 돌던" 사고를 반복한다 — 지금 tistory 가 0건인 것이 정확히 그 결과다.
+     *
+     * 📉 **2026-08-04: 기본을 OFF 로 뒤집는다** — 위 "가장 싼 소스" 논거는 *연락 경로가 있다*는 전제
+     *   위에 있었는데, **그 전제가 실측으로 무너졌다**: 측정 397건 → 이메일 **12(3.0%)**
+     *   (네이버 26.7% · 유튜브 40.6%), 최근 3일 유입 325행 → 이메일 **0**.
+     *   그래서 같은 날 측정 몫(`TISTORY_ROOM`)을 0 으로 접었는데 — **수집만 남으면 더 나쁘다**:
+     *   ```
+     *     라이브 실측(09:00 회차)  enrich tistory.tried 0   ← 측정은 멈춤
+     *                              collect spend_by.tistory 5 · found 17 · saved 7   ← 수집은 계속
+     *   ```
+     *   **영원히 측정 안 될 행을 회차당 5 서브리퀘스트 써서 쌓는 상태**다. 축을 접으려면 둘 다 접어야 한다.
+     *   🔓 되살리기: `ADS_COLLECT_TISTORY_DISABLED=false` (+ `ADS_TISTORY_ROOM=2` 로 측정도 같이).
+     *     ⚠️ 둘 중 하나만 켜면 지금과 같은 반쪽 상태가 된다 — **짝으로 움직일 것.**
      */
-    if (hasKakao && (env as unknown as { ADS_COLLECT_TISTORY_DISABLED?: string }).ADS_COLLECT_TISTORY_DISABLED !== 'true') try {
+    const tistoryCollectOff = (env as unknown as { ADS_COLLECT_TISTORY_DISABLED?: string }).ADS_COLLECT_TISTORY_DISABLED !== 'false'
+    if (hasKakao && !tistoryCollectOff) try {
       const _b0 = budget.left
       const r = await discoverTistoryBloggers((env as unknown as { KAKAO_REST_API_KEY?: string }).KAKAO_REST_API_KEY, k.keyword, { size: 50, budget, sort: naverSort === 'date' ? 'recency' : 'accuracy' })
       spendBy.tistory += Math.max(0, _b0 - budget.left)
