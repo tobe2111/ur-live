@@ -10,7 +10,19 @@
  */
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import type { User as FirebaseUser } from 'firebase/auth';
+/**
+ * 🔥 2026-08-04: Firebase 제거(대표 승인). KR 은 2026-05-01 부터 Firebase 를 안 썼고
+ *   GLOBAL 은 미런칭·폐기(#804) — 서버 수용은 2026-07-28 에 이미 끊겼다(#806).
+ *   이 스토어의 `user` 는 **항상 null** 이지만 타입/셀렉터가 전 코드에 퍼져 있어
+ *   구조만 남긴다(패키지 의존 제거가 목적).
+ */
+type FirebaseUser = {
+  uid: string
+  email: string | null
+  displayName?: string | null
+  photoURL?: string | null
+  getIdToken: (forceRefresh?: boolean) => Promise<string>
+};
 import { isKorea } from '@/shared/config/region';
 
 /**
@@ -399,163 +411,12 @@ export const useAuthKR = create<AuthKRState>()(
          *    permanent loading state.  The catch block now sets isAuthReady.
          */
         initializeAuth: () => {
-          // 🛡️ 2026-05-01: KR 은 Firebase 100% 미사용 — 즉시 ready 처리 후 종료.
-          //   App.tsx 가 이미 `if (isKorea()) setAuthReady(true)` 로 일찍 끊지만
-          //   defense-in-depth 로 store 자체에서도 차단. Firebase SDK lazy import 절대 발생 X.
-          if (isKorea()) {
-            set({ isAuthReady: true });
-            return () => { /* no-op cleanup */ };
-          }
-
-          let isMounted = true;           // ✅ tracks whether cleanup was already called
-          let unsubscribeFn: (() => void) | null = null;
-
-          // Firebase lazy load 후 구독 시작 (비동기)
-          (async () => {
-            try {
-              const { onAuthStateChanged } = await import('@/lib/firebase-auth');
-
-              // ✅ If cleanup ran before we even reached here, bail out immediately
-              if (!isMounted) return;
-
-              unsubscribeFn = await onAuthStateChanged(async (firebaseUser) => {
-                if (firebaseUser) {
-                  // ✅ 중복 처리 방지: KakaoCallback/LoginPage에서 이미 처리했으면
-                  //    user와 isAuthReady만 보장하고 스킵 (API 중복 호출 방지)
-                  const lastProcessed = sessionStorage.getItem('auth_processed_uid');
-                  if (lastProcessed === firebaseUser.uid) {
-                    // Already processed by KakaoCallback/LoginPage, just ensure user+ready
-                    const currentUser = get().user;
-                    if (!currentUser) {
-                      set({ user: firebaseUser, isAuthReady: true });
-                    } else {
-                      set({ isAuthReady: true });
-                    }
-                    return;
-                  }
-
-                  // Firebase 유저 있음 → user_type 이 seller/admin 이면 간섭하지 않음
-                  const currentType = localStorage.getItem('user_type');
-                  if (currentType === 'seller' || currentType === 'admin') {
-                    set({ isAuthReady: true });
-                    return;
-                  }
-
-                  // ✅ 핵심 수정: user와 isAuthReady를 먼저 설정하여 ProtectedRoute가 즉시 통과
-                  // 비동기 작업(role 확인, claims, accessToken)은 백그라운드에서 진행
-                  safeSetUserType();
-                  localStorage.setItem('lastLoginUid', firebaseUser.uid);
-                  set({
-                    user: firebaseUser,
-                    userRole: 'user',
-                    isLoading: false,
-                    isAuthReady: true,
-                    error: null,
-                  });
-
-                  // ✅ 백그라운드 비동기 작업: role 확인, claims 동기화, accessToken 저장
-                  // 이 작업이 느려도 UI는 이미 정상 표시됨
-                  (async () => {
-                    try {
-                      const idToken = await firebaseUser.getIdToken(false);
-
-                      // Role 확인
-                      const res = await fetch('/api/users/role', {
-                        headers: { Authorization: `Bearer ${idToken}` },
-                      });
-                      const body = (await res.json().catch(() => ({ role: 'user' }))) as { role?: string };
-                      const role = (body.role || 'user') as 'user';
-
-                      // Claims에서 userName/profileImage 추출
-                      try {
-                        const idTokenResult = await firebaseUser.getIdTokenResult();
-                        const claimsUserName = idTokenResult.claims.userName as string | undefined;
-                        const claimsProfileImage = idTokenResult.claims.profileImage as string | undefined;
-
-                        if (claimsUserName) {
-                          const existing = localStorage.getItem('user_name');
-                          if (!existing || existing === 'Kakao User' || existing === '사용자') {
-                            localStorage.setItem('user_name', claimsUserName);
-                          }
-                          if (!firebaseUser.displayName) {
-                            try {
-                              const { updateProfile } = await import('firebase/auth');
-                              await updateProfile(firebaseUser, { displayName: claimsUserName });
-                            } catch (_) {} // non-critical: best-effort displayName update
-                          }
-                        }
-                        if (claimsProfileImage) {
-                          localStorage.setItem('user_profile_image', claimsProfileImage);
-                        }
-                      } catch (_) {} // non-critical: best-effort claims extraction
-
-                      // accessToken 저장
-                      try {
-                        const { useAuthStore } = await import('@/client/stores/auth.store');
-                        useAuthStore.getState().setAuth(
-                          {
-                            id: firebaseUser.uid,
-                            email: firebaseUser.email || '',
-                            name: firebaseUser.displayName || localStorage.getItem('user_name') || '',
-                            role: 'user',
-                          },
-                          idToken,
-                          ''
-                        );
-                        // accessToken saved successfully
-                      } catch (e) {
-                        if (import.meta.env.DEV) console.warn('[AuthKR] ⚠️ useAuthStore 업데이트 실패:', e);
-                      }
-
-                      sessionStorage.setItem('auth_processed_uid', firebaseUser.uid);
-
-                      // Role이 다르면 업데이트
-                      if (role !== get().userRole) {
-                        set({ userRole: role });
-                      }
-                    } catch (err) {
-                      // 백그라운드 실패해도 user/isAuthReady는 이미 설정됨 → 무시
-                      if (import.meta.env.DEV) console.warn('[AuthKR] ⚠️ 백그라운드 인증 작업 실패 (무시):', err);
-                      try {
-                        const idTokenFallback = await firebaseUser.getIdToken(false);
-                        const { useAuthStore } = await import('@/client/stores/auth.store');
-                        useAuthStore.getState().setAuth(
-                          { id: firebaseUser.uid, email: firebaseUser.email || '', name: firebaseUser.displayName || '', role: 'user' },
-                          idTokenFallback, ''
-                        );
-                      } catch (e) {
-                        if (import.meta.env.DEV) console.warn('[AuthKR] Fallback token save error:', e);
-                      }
-                    }
-                  })();
-                } else {
-                  // ✅ 로그아웃 시 플래그 제거
-                  sessionStorage.removeItem('auth_processed_uid');
-                  
-                  // Firebase 유저 없음
-                  localStorage.removeItem('lastLoginUid');
-                  set({
-                    user: null,
-                    userRole: null,
-                    isLoading: false,
-                    isAuthReady: true,
-                  });
-                }
-              });
-            } catch (err) {
-              console.error('[useAuthKR] onAuthStateChanged 설정 실패:', err);
-              // ✅ BUG #9 FIX: Always mark auth as ready so the app doesn't hang
-              set({ isLoading: false, isAuthReady: true });
-            }
-          })();
-
-          // 즉시 반환 (cleanup 함수)
-          return () => {
-            isMounted = false;   // ✅ prevent stale async IIFE from subscribing after unmount
-            if (unsubscribeFn) {
-              unsubscribeFn();
-            }
-          };
+          // 🔥 2026-08-04 (대표 승인 — Firebase 완전 제거): 이 스토어는 더 이상 외부 인증 SDK 를
+          //   구독하지 않는다. KR 은 2026-05-01 부터 이미 즉시 ready 였고, 나머지 분기는 GLOBAL
+          //   전용이었는데 GLOBAL 은 미런칭·폐기(#804)라 도달 경로가 없었다.
+          //   ⇒ 언제나 즉시 ready. 반환값(cleanup)은 App.tsx 계약 유지를 위해 no-op 로 남긴다.
+          set({ isAuthReady: true });
+          return () => { /* no-op cleanup */ };
         },
       }),
       {
