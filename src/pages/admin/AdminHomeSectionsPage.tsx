@@ -4,7 +4,8 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
-import { LayoutList, Plus, Trash2, Eye, EyeOff, X } from 'lucide-react'
+import { LayoutList, Plus, Trash2, Eye, EyeOff, X, ArrowUp, ArrowDown, ListPlus } from 'lucide-react'
+import SectionProductPicker from './home-sections/SectionProductPicker'
 import {
   SECTION_SOURCES, SECTION_SOURCE_LABELS, DEFAULT_SECTION_SOURCE,
   SECTION_DEFAULT_LIMIT, SECTION_MAX_LIMIT, type SectionSource,
@@ -36,7 +37,7 @@ interface Section {
   source_value?: string | null
   limit_count?: number | null
   more_href?: string | null
-  products?: Array<{ id: number; name: string }>
+  products?: Array<{ id: number; name: string; price?: number | null; image_url?: string | null; restaurant_name?: string | null }>
 }
 
 const EMPTY = {
@@ -52,6 +53,9 @@ export default function AdminHomeSectionsPage() {
   const [form, setForm] = useState(EMPTY)
   const [showForm, setShowForm] = useState(false)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
+  /** 상품 담기 패널이 열린 섹션 id (직접 고르기 전용). */
+  const [pickerFor, setPickerFor] = useState<number | null>(null)
+  const [reordering, setReordering] = useState(false)
 
   const flash = (text: string, ok: boolean) => { setMsg({ text, ok }); setTimeout(() => setMsg(null), 3000) }
 
@@ -77,6 +81,23 @@ export default function AdminHomeSectionsPage() {
       await api.put(`/api/sections/${s.id}`, { is_active: s.is_active ? 0 : 1 })
       refetch(); flash(s.is_active ? '비활성화했습니다.' : '활성화했습니다.', true)
     } catch { flash('상태 변경 실패', false) }
+  }
+
+  /**
+   * 섹션 순서 바꾸기 — 서버는 배열 순서를 그대로 sort_order 로 쓴다(`POST /api/sections/reorder`).
+   * 화면에 보이는 순서 = 홈에 뜨는 순서라, 여기서 올리고 내린 그대로 저장한다.
+   */
+  async function moveSection(index: number, dir: -1 | 1) {
+    const next = [...sections]
+    const j = index + dir
+    if (j < 0 || j >= next.length || reordering) return
+    ;[next[index], next[j]] = [next[j]!, next[index]!]
+    setReordering(true)
+    try {
+      await api.post('/api/sections/reorder', { section_ids: next.map(s => s.id) })
+      await refetch()
+    } catch { flash('순서 변경 실패', false) }
+    finally { setReordering(false) }
   }
 
   async function handleDelete(s: Section) {
@@ -137,7 +158,7 @@ export default function AdminHomeSectionsPage() {
                 </select>
                 <p className="mt-1.5 text-xs text-gray-400">
                   {form.source === 'manual'
-                    ? '직접 고르면 생성 후 상품을 담아야 홈에 나옵니다. 손이 가는 대신 완전한 통제.'
+                    ? '직접 고르면 만든 뒤 목록에서 \'상품 담기\' 로 골라 담습니다. 손이 가는 대신 완전한 통제.'
                     : '규칙은 상품이 들어오고 나가는 대로 저절로 맞습니다 — 매일 손볼 필요가 없습니다.'}
                 </p>
               </div>
@@ -195,7 +216,7 @@ export default function AdminHomeSectionsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {sections.map(s => {
+            {sections.map((s, i) => {
               const src = (s.source || DEFAULT_SECTION_SOURCE) as SectionSource
               return (
                 <div key={s.id} className={`bg-white rounded-xl shadow-sm p-4 ${s.is_active ? '' : 'opacity-60'}`}>
@@ -210,10 +231,27 @@ export default function AdminHomeSectionsPage() {
                         {src === 'category' && s.source_value && <span>· {CATEGORY_LABELS[s.source_value] ?? s.source_value}</span>}
                         <span>· {s.limit_count ?? SECTION_DEFAULT_LIMIT}개</span>
                         {s.more_href && <span>· 더보기 {s.more_href}</span>}
-                        {src === 'manual' && <span>· 담긴 상품 {s.products?.length ?? 0}개</span>}
+                        {src === 'manual' && (
+                          <span className={(s.products?.length ?? 0) === 0 ? 'text-amber-600 font-medium' : ''}>
+                            · 담긴 상품 {s.products?.length ?? 0}개{(s.products?.length ?? 0) === 0 ? ' (홈 미노출)' : ''}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* 순서 — 위/아래. 목록 순서가 곧 홈 순서다. */}
+                      <div className="flex items-center">
+                        <button onClick={() => moveSection(i, -1)} disabled={i === 0 || reordering} aria-label="위로"
+                          className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5 text-gray-500" /></button>
+                        <button onClick={() => moveSection(i, 1)} disabled={i === sections.length - 1 || reordering} aria-label="아래로"
+                          className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30"><ArrowDown className="w-3.5 h-3.5 text-gray-500" /></button>
+                      </div>
+                      {src === 'manual' && (
+                        <button onClick={() => setPickerFor(pickerFor === s.id ? null : s.id)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100">
+                          <ListPlus className="w-3.5 h-3.5" /> 상품 담기
+                        </button>
+                      )}
                       <button onClick={() => toggleActive(s)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200">
                         {s.is_active ? <><EyeOff className="w-3.5 h-3.5" /> 숨기기</> : <><Eye className="w-3.5 h-3.5" /> 노출</>}
                       </button>
@@ -222,6 +260,14 @@ export default function AdminHomeSectionsPage() {
                       </button>
                     </div>
                   </div>
+                  {pickerFor === s.id && (
+                    <SectionProductPicker
+                      sectionId={s.id}
+                      initial={s.products ?? []}
+                      onClose={() => setPickerFor(null)}
+                      onSaved={(t, ok) => { flash(t, ok); if (ok) refetch() }}
+                    />
+                  )}
                 </div>
               )
             })}
