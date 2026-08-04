@@ -9,11 +9,11 @@
  * ⚠️ 이 시험이 **못** 보는 것: 재계산이 실제 라이브에서 도는가(그건 배선 검사 + 어드민 `kwyield` 관측).
  */
 import { describe, it, expect } from 'vitest'
+import { join } from 'path'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import {
-  contactPenalty, CONTACT_EVIDENCE_MIN, CONTACT_OK_RATE, CONTACT_PENALTY_MAX, KEYWORD_YIELD_DDL,
-} from '@/features/marketing/api/influencer-keyword-yield'
+  contactPenalty, CONTACT_EVIDENCE_MIN, CONTACT_OK_RATE, CONTACT_PENALTY_MAX, KEYWORD_YIELD_DDL, isLowRotationYield, suppressLowRotationYield, ROTATION_EVIDENCE_MIN, ROTATION_OK_RATE, ROTATION_PROBE_EVERY} from '@/features/marketing/api/influencer-keyword-yield'
 import { pickYtKeywords, type YtPickKeyword } from '@/features/marketing/api/influencer-keyword-rotation'
 
 describe('연락처 확보율 감점', () => {
@@ -92,5 +92,70 @@ describe('🔌 배선 — 재계산이 안 돌면 감점이 영원히 0 이다(�
   it('DDL 이 두 컬럼을 만든다(멱등 ALTER)', () => {
     expect(KEYWORD_YIELD_DDL.join(' ')).toContain('yt_leads')
     expect(KEYWORD_YIELD_DDL.join(' ')).toContain('yt_contacts')
+  })
+})
+
+/**
+ * 📝 **네이버/일반 축 — 커서 순환에도 같은 목적함수** (2026-08-04, 대표 *"머신러닝처럼 계속 자동 조정"*).
+ *
+ * 위 유튜브 감점은 `pickYtKeywords` **점수**에만 걸린다. 네이버/일반은 커서 순환으로 뽑혀
+ * 감점이 한 톨도 안 닿았다 — 실측 `방배동 맛집 0.0%(표본 46)` 가 그 상태로 계속 돌았다.
+ *
+ * ⚠️ **이 테스트가 못 보는 것**: 억제가 *옳은지*. 저수율의 원인이 우리 추출기 결함이면 억제는 손해다.
+ *   그래서 탐침 회차를 두지만, 근본 확인은 **저수율 키워드 표본을 사람이 직접 열어 보는 것**뿐이다.
+ */
+describe('📝 순환 축 연락처 수율 — 분모가 다르다', () => {
+  it('🔒 증거가 모자라면 절대 안 벌한다 — 신규 축 차단기가 되면 안 된다', () => {
+    expect(isLowRotationYield({ nb_measured: ROTATION_EVIDENCE_MIN - 1, nb_contacts: 0 })).toBe(false)
+    expect(isLowRotationYield({})).toBe(false)
+  })
+
+  it('🔒 증거가 쌓이면 잡는다 (실측: 방배동 맛집 0%/46 · 금천 맛집 5.9%/188)', () => {
+    expect(isLowRotationYield({ nb_measured: 46, nb_contacts: 0 })).toBe(true)
+    expect(isLowRotationYield({ nb_measured: 188, nb_contacts: 11 })).toBe(true)
+  })
+
+  it('🔒 기저(26.7%) 근처는 손대지 않는다', () => {
+    expect(isLowRotationYield({ nb_measured: 200, nb_contacts: 53 })).toBe(false)
+    expect(ROTATION_OK_RATE).toBeLessThan(0.267)
+  })
+
+  it('🔒 탐침 회차엔 전부 통과 — 억제된 키워드는 증거가 안 갱신되므로 판정이 뒤집힐 통로가 필요하다', () => {
+    const bad = { nb_measured: 100, nb_contacts: 2 }
+    const good = { nb_measured: 100, nb_contacts: 40 }
+    expect(suppressLowRotationYield([bad, good], 1)).toEqual([good])
+    expect(suppressLowRotationYield([bad, good], ROTATION_PROBE_EVERY)).toEqual([bad, good])
+  })
+
+  it('🔒 전부 저조하면 억제하지 않는다 — 빈 풀은 그 축을 통째로 멈춘다', () => {
+    const bad = { nb_measured: 100, nb_contacts: 1 }
+    expect(suppressLowRotationYield([bad, bad], 1)).toEqual([bad, bad])
+  })
+
+  it('🔒 분모가 **측정 완료**다 — 안 훑은 행이 분모에 들어가면 백로그를 키워드 탓으로 돌린다', () => {
+    const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-keyword-yield.ts'), 'utf8')
+    expect(src).toMatch(/naver_blog' AND perf_checked_at IS NOT NULL THEN 1 ELSE 0 END\) AS nb_measured/)
+  })
+
+  it('🔒 유튜브와 네이버를 **한 스캔**에서 낸다 — 쿼리 둘이면 4.9만 행을 두 번 훑는다', () => {
+    const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-keyword-yield.ts'), 'utf8')
+    const selects = src.match(/FROM ad_influencer_leads/g) || []
+    expect(selects.length, '리드 테이블 스캔은 한 곳이어야 한다').toBe(1)
+  })
+
+  it('🔌 순환 풀이 실제로 억제를 부른다 — 상수만 있고 안 쓰면 무의미', () => {
+    const pools = readFileSync(join(process.cwd(), 'src/features/marketing/api/keyword-contact-yield.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+    expect(pools).toMatch(/const trim = \(p: T\[\]\) => suppressLowRotationYield\(p, roundIndex\)/)
+    expect(pools).toMatch(/focusPool: trim\(/)
+    expect(pools).toMatch(/priPool: trim\(/)
+    expect(pools).toMatch(/genPool: trim\(/)
+  })
+
+  it('🔌 수집 루프가 새 컬럼을 SELECT 한다 — 안 읽으면 판정값이 항상 0이라 아무도 안 걸린다', () => {
+    const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+    expect(src).toMatch(/COALESCE\(nb_measured,0\) AS nb_measured/)
+    expect(src).toMatch(/COALESCE\(nb_contacts,0\) AS nb_contacts/)
   })
 })

@@ -40,6 +40,11 @@ import { runDdlOnce } from './ads-schema-guard'
 export const KEYWORD_YIELD_DDL = [
   'ALTER TABLE ad_discovery_keywords ADD COLUMN yt_leads INTEGER DEFAULT 0',
   'ALTER TABLE ad_discovery_keywords ADD COLUMN yt_contacts INTEGER DEFAULT 0',
+  // 📝 2026-08-04 네이버 축 — ⚠️ **분모가 다르다**: `nb_measured` 는 *측정이 끝난* 행만 센다.
+  //   위 docblock 이 경고한 "아직 안 훑은 키워드를 나쁜 키워드로 오인"을 분모로 막는 것이다
+  //   (측정 전 행은 분모에도 안 들어가므로 낮게 나올 수가 없다).
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN nb_measured INTEGER DEFAULT 0',
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN nb_contacts INTEGER DEFAULT 0',
 ]
 
 /**
@@ -68,7 +73,7 @@ export function contactPenalty(leads: number | null | undefined, contacts: numbe
 }
 
 /** 집계 한 행 — `recomputeKeywordContactYield` 내부 표현(시험이 직접 만들 수 있게 export). */
-export interface KeywordYieldRow { keyword: string; leads: number; contacts: number }
+export interface KeywordYieldRow { keyword: string; leads: number; contacts: number; nb_measured?: number; nb_contacts?: number }
 
 /**
  * 리드 풀 → 키워드별 유튜브 성과. **한 번 훑고** 배치 한 번으로 쓴다.
@@ -77,17 +82,85 @@ export interface KeywordYieldRow { keyword: string; leads: number; contacts: num
 export async function recomputeKeywordContactYield(DB: D1Database): Promise<{ keywords: number; scanned: number }> {
   await runDdlOnce(DB, 'ads_ddl_kw_yield_v1', KEYWORD_YIELD_DDL)
   //   ⚠️ 빈 문자열도 '없음'이다 — `email IS NOT NULL` 만 보면 `''` 를 연락처로 센다(이 레포가 반복해 겪은 형태).
+  //   🔁 2026-08-04: 유튜브와 네이버를 **한 스캔**에서 같이 낸다(조건부 집계). 쿼리를 둘로 두면
+  //     인덱스 없는 4.9만 행 테이블을 **두 번** 훑는다 — 같은 값을 얻는 데 비용만 두 배다.
   const agg = await DB.prepare(`
-    SELECT source_keyword AS keyword, COUNT(*) AS leads,
-           SUM(CASE WHEN email IS NOT NULL AND email <> '' THEN 1 ELSE 0 END) AS contacts
+    SELECT source_keyword AS keyword,
+           SUM(CASE WHEN platform = 'youtube' THEN 1 ELSE 0 END) AS leads,
+           SUM(CASE WHEN platform = 'youtube' AND email IS NOT NULL AND email <> '' THEN 1 ELSE 0 END) AS contacts,
+           SUM(CASE WHEN platform = 'naver_blog' AND perf_checked_at IS NOT NULL THEN 1 ELSE 0 END) AS nb_measured,
+           SUM(CASE WHEN platform = 'naver_blog' AND perf_checked_at IS NOT NULL AND email IS NOT NULL AND email <> '' THEN 1 ELSE 0 END) AS nb_contacts
       FROM ad_influencer_leads
-     WHERE platform = 'youtube' AND source_keyword IS NOT NULL AND source_keyword <> ''
+     WHERE source_keyword IS NOT NULL AND source_keyword <> ''
      GROUP BY source_keyword`).all<KeywordYieldRow>().catch(() => null)
   const rows = agg?.results || []
   if (!rows.length) return { keywords: 0, scanned: 0 }
   // 배치 1회 = 서브리퀘스트 1회. 키워드가 늘어도 비용이 선형으로 늘지 않는다.
   await DB.batch(rows.map(r => DB.prepare(
-    'UPDATE ad_discovery_keywords SET yt_leads = ?, yt_contacts = ? WHERE keyword = ?',
-  ).bind(Math.max(0, r.leads || 0), Math.max(0, r.contacts || 0), r.keyword))).catch(() => null)
+    'UPDATE ad_discovery_keywords SET yt_leads = ?, yt_contacts = ?, nb_measured = ?, nb_contacts = ? WHERE keyword = ?',
+  ).bind(Math.max(0, r.leads || 0), Math.max(0, r.contacts || 0),
+         Math.max(0, r.nb_measured || 0), Math.max(0, r.nb_contacts || 0), r.keyword))).catch(() => null)
   return { keywords: rows.length, scanned: rows.reduce((a, r) => a + (r.leads || 0), 0) }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 📝 **네이버/일반 축 — 커서 순환에도 같은 목적함수를 건다** (2026-08-04)
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * ## 왜 감점이 아니라 **솎아내기**인가
+ * 위 `contactPenalty` 는 **점수**를 깎는데, 그 점수를 쓰는 건 `pickYtKeywords`(유튜브)뿐이다.
+ * 네이버/일반 키워드는 **커서 순환**으로 뽑힌다(`buildRotationPools` → `cursor + i`) — 점수가 아예 없다.
+ * 그래서 감점을 아무리 키워도 이쪽엔 **한 톨도 안 닿는다.** 실측(2026-08-04):
+ * ```
+ *   방배동 맛집  측정 46 → 이메일  0 (0.0%)   ← 미측정 358행이 대기 중
+ *   금천 맛집    측정 188 → 이메일 11 (5.9%)
+ *   관악 네일    측정  65 → 이메일  8 (12.3%)
+ *   (기저 26.7% · 저수율 16개가 측정의 10.7%를 먹고 산출은 4.1%)
+ * ```
+ *
+ * ## ⚠️ 분모가 다른 이유 — 이게 이 설계의 핵심이다
+ * 이 파일 상단이 *"네이버는 우리 처리 상태에 좌우되니 벌주면 백로그를 키워드 탓으로 돌리는 것"* 이라고
+ * 경고한다. **맞다.** 그래서 분모를 `nb_measured`(=`perf_checked_at IS NOT NULL`)로 둔다 —
+ * **측정한 것만 센다.** 아직 안 훑은 행은 분모에도 분자에도 안 들어가므로 *낮게 나올 수가 없고*,
+ * 증거가 모자라면 아래 게이트가 판정 자체를 안 한다. ⇒ 그 반론이 구조적으로 해소된다.
+ *
+ * ## 왜 "머신러닝"이 아니라 밴딧인가 (대표 *"머신러닝처럼 계속 자동 조정"*)
+ * 하는 일은 같다 — **관측 → 몫 조정 → 재관측**. 다만 학습 모델이 아니라 **다중 슬롯머신(bandit)** 이다:
+ *   · 피드백이 느리다(수집 → 측정까지 며칠) → 온라인 학습이 수렴하기 전에 세상이 바뀐다
+ *   · 팔이 300개뿐이고 특징이 없다 → 모델이 배울 게 "이 키워드가 잘 되나" 하나뿐이다
+ *   · **틀렸을 때 조용히 축을 죽인다** → 해석 가능해야 사람이 뒤집을 수 있다
+ * ⇒ 관측값 하나로 판정하고, **탐침 회차로 탐색(exploration)을 강제**하는 형태가 이 문제에 맞는 도구다.
+ */
+
+/** 이만큼 **측정**된 뒤에야 판정한다. 미만이면 무조건 통과(신규 축 보호 — 위 `CONTACT_EVIDENCE_MIN` 과 같은 정신). */
+export const ROTATION_EVIDENCE_MIN = 40
+/** 기저 26.7% 대비 확실히 낮은 선. 이 위는 손대지 않는다. */
+export const ROTATION_OK_RATE = 0.15
+/** 억제돼도 이 주기마다 한 회차는 통과 — **증거 갱신 + 가역성**(탐색 보장). */
+export const ROTATION_PROBE_EVERY = 5
+
+export interface RotationYieldRow { nb_measured?: number | null; nb_contacts?: number | null }
+
+/** 이 키워드가 "재 봤더니 연락처가 안 나오는" 부류인가. 증거 부족이면 **무조건 false**. */
+export function isLowRotationYield(k: RotationYieldRow): boolean {
+  const m = Math.max(0, k.nb_measured || 0)
+  if (m < ROTATION_EVIDENCE_MIN) return false
+  return (Math.max(0, k.nb_contacts || 0) / m) < ROTATION_OK_RATE
+}
+
+/**
+ * 순환 풀에서 저수율 키워드를 그 회차만 **건너뛴다**(제거 아님).
+ *
+ * ⚠️ 안전장치 둘이 **둘 다** 있어야 한다:
+ *   · 탐침 회차엔 전부 통과 — 억제된 키워드는 더 이상 수집되지 않으므로 **증거가 영영 안 갱신된다.**
+ *     판정이 틀렸어도 스스로 뒤집힐 수 없다면 그건 자동 조율이 아니라 영구 배제다.
+ *   · 전부 저조해 풀이 비면 **억제하지 않는다** — 빈 풀은 그 축을 통째로 멈춘다(고칠 건 키워드지 수집이 아니다).
+ *     이 레포는 같은 클래스를 이미 겪었다(집중 축 커서 동결 → 커버리지 붕괴).
+ */
+export function suppressLowRotationYield<T extends RotationYieldRow>(pool: T[], roundIndex: number): T[] {
+  if (!pool.length) return pool
+  if (roundIndex % ROTATION_PROBE_EVERY === 0) return pool
+  const kept = pool.filter(k => !isLowRotationYield(k))
+  return kept.length ? kept : pool
 }

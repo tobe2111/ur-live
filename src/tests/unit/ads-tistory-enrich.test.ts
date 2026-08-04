@@ -127,3 +127,26 @@ describe('스탬프 규칙 — 네이버와 같아야 한다(갈라지면 조용
     expect(TIS).toMatch(/diag\.query_error =/)
   })
 })
+
+/**
+ * 🪓 **축을 접으려면 둘 다 접어야 한다** (2026-08-04 라이브 판정에서 드러난 반쪽 상태).
+ *
+ * 측정 몫만 0 으로 했더니 라이브가 이렇게 됐다:
+ * ```
+ *   enrich  tistory.tried 0            ← 측정은 멈춤
+ *   collect spend_by.tistory 5 · found 17 · saved 7   ← 수집은 계속
+ * ```
+ * **영원히 측정 안 될 행을 회차당 5 서브리퀘스트 써서 쌓는 상태**다. 접기 전보다 나쁘다.
+ */
+describe('🪓 수집도 같이 접혔나 — 반쪽이면 더 나쁘다', () => {
+  const COLLECT = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+
+  it('🔒 수집 기본값이 OFF — 되살리려면 명시적으로 false 를 줘야 한다', () => {
+    expect(COLLECT).toMatch(/ADS_COLLECT_TISTORY_DISABLED\?: string \}\)\.ADS_COLLECT_TISTORY_DISABLED !== 'false'/)
+  })
+
+  it('🔒 OFF 면 발굴 호출 자체를 안 한다 — 몫만 0 이고 호출은 돌면 서브리퀘스트가 남는다', () => {
+    expect(COLLECT).toMatch(/if \(hasKakao && !tistoryCollectOff\)/)
+  })
+})
