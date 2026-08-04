@@ -23,6 +23,7 @@ import { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighbor
 import { isSelfBlogLink } from './influencer-self-link'
 import { runDdlOnce } from './ads-schema-guard'
 import { deriveNaverHandle, naverBlogUrl } from './influencer-handle-heal'
+import { noteCrawlStatus, naverCrawlBlocked, crawlBlockSnapshot, flushCrawlBlock } from './naver-crawl-block'
 import { envSubreqCap, budgetedTimeoutMs, canStartBudgetedItem } from './collect-budget'
 
 // 📧 이메일 판정 규칙(순수)은 `influencer-email-rules.ts` — 기존 import 경로 호환을 위해 재수출.
@@ -226,22 +227,30 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
       (async (): Promise<string | null> => {
         try {
           const res = await fetch(`https://rss.blog.naver.com/${encodeURIComponent(handle)}.xml`, { signal: AbortSignal.timeout(itemTimeout) })
+          noteCrawlStatus(res.status) // 🚧 429/403 만 차단으로 샌다 — 근거·한계는 naver-crawl-block.ts
           if (res.ok) return (await res.text()).slice(0, 120_000)
           if (res.status === 404 || res.status === 410) return '' // 블로그 삭제/비공개 — "측정 성공·글 0"(터미널)
-        } catch { /* null = 측정 실패 */ }
+        } catch { noteCrawlStatus(null) /* 예외=상대 무응답. 차단의 증거도 회복의 증거도 아니다 */ }
         return null
       })(),
       (async (): Promise<string | null> => {
         if (!wantHome) return null
         try {
           const hr = await fetch(`https://m.blog.naver.com/${handle}`, { signal: AbortSignal.timeout(itemTimeout), headers: { 'user-agent': HOME_UA, accept: 'text/html' }, redirect: 'follow' })
+          noteCrawlStatus(hr.status)
           if (hr.ok) return (await hr.text()).slice(0, 80_000)
-        } catch { /* fail-soft */ }
+        } catch { noteCrawlStatus(null) /* fail-soft */ }
         return null
       })(),
     ])
-    if (rssXml === null && homeText === null) { // 둘 다 실패 — 아무것도 안 쓰고 스탬프만(다음 순환에 재시도, 0-각인 금지)
+    if (rssXml === null && homeText === null) {
       diag.failed++
+      // 🚧 **차단이면 스탬프를 찍지 않는다** (2026-08-04). 실패에 스탬프를 찍는 건 "이 블로그가 문제"일 때
+      //   큐를 전진시키려는 것인데, 막힌 건 우리다 — 그대로 찍으면 ① 백로그가 한 바퀴 통째로 소모되고
+      //   ② `perf_checked_at` 이 `nb_measured`(연락처 수율의 **분모**)를 부풀려 `suppressLowRotationYield`
+      //   가 멀쩡한 키워드를 "나쁘다"고 학습한다. 그 학습은 차단이 풀려도 안 돌아온다(억제되면 증거가
+      //   갱신되지 않으므로). NULL 로 남기면 다음 회차가 온전한 창으로 다시 집는다.
+      if (naverCrawlBlocked()) { diag.blocked = (diag.blocked || 0) + 1; return }
       stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET perf_checked_at = datetime('now') WHERE id = ?`).bind(r.id))
       continue
     }
@@ -335,6 +344,10 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
   }
   await Promise.all(Array.from({ length: Math.min(NAVER_CONCURRENCY, rows.length) }, () => worker()))
   if (stmts.length) await DB.batch(stmts).catch(() => null)
+  // 🚧 차단 관측을 일별로 남긴다(관측 0이면 왕복 0). `crawl_block.tripped` 가 참인 회차는 **측정치가 아니라
+  //   사고 기록**이다 — 수율이 떨어졌다고 키워드를 탓하기 전에 이 값을 먼저 볼 것.
+  Object.assign(diag, { crawl_block: crawlBlockSnapshot() })
+  await flushCrawlBlock(DB, Date.now())
   return diag
 }
 

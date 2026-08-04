@@ -10,7 +10,9 @@ import { noteNaverCall } from './naver-api-usage'
  *   AbortError=상대 무응답 / TypeError "Too many subrequests"=플랫폼 한도 / 그 외=DNS·TLS.
  */
 export async function fetchWithErr(url: string, init?: RequestInit): Promise<{ res: Response | null; err?: string }> {
-  noteNaverCall(url) // 📟 네이버 오픈API 일일 사용량 계측(호스트 아니면 no-op) — 실패한 호출도 쿼터를 먹으므로 **호출 전**에 센다
+  // 📟 네이버 오픈API 계측 + 일일 목표(90%) 게이트. 실패한 호출도 쿼터를 먹으므로 **호출 전**에 센다.
+  //   false = 오늘 목표 소진 → 쏘지 않는다. 사유를 err 로 남겨야 상태줄에서 '네트워크 실패'와 구분된다.
+  if (!noteNaverCall(url)) return { res: null, err: 'NaverQuota: 일일 목표(90%) 소진' }
   try {
     return { res: await fetch(url, init) }
   } catch (e) {

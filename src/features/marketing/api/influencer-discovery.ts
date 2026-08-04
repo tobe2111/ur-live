@@ -17,6 +17,7 @@ import { runDdlOnce } from './ads-schema-guard'
 import { isSelfBlogLink } from './influencer-self-link'
 import { fetchWithErr, outOfBudget, spendBudget } from './fetch-with-err'
 import { stripVideoTitles } from './influencer-parse'
+import { noteCrawlStatus, naverCrawlBlocked } from './naver-crawl-block'
 
 import { deobfuscateEmail } from './contact-deobfuscate'
 
@@ -347,15 +348,14 @@ export async function discoverYouTubeInfluencers(
 const NAVER_OPENAPI = 'https://openapi.naver.com'
 const stripTag = (s: string | undefined) => String(s || '').replace(/<[^>]+>/g, '').replace(/&[a-z]+;/gi, ' ').trim()
 
-/** 네이버 블로그 RSS(공개 피드)로 최근 글 본문 텍스트 취득 — 검색 스니펫보다 풍부해 컨택(이메일/카톡/인스타) 커버.
- *  네이버 오픈API 쿼터와 무관(단순 HTTP GET). 실패/차단 시 빈 문자열(fail-soft). */
+/** 블로그 RSS(공개 피드) 본문 — 스니펫보다 풍부해 컨택 커버. ⚠️ 오픈API 쿼터 **밖**이라 한도가 없다(→차단 감지). */
 async function fetchNaverBlogRss(handle: string): Promise<string> {
   if (!/^[A-Za-z0-9_-]{2,40}$/.test(handle)) return ''
   try {
     const res = await fetch(`https://rss.blog.naver.com/${handle}.xml`, { signal: AbortSignal.timeout(10000) })
-    if (!res.ok) return ''
+    noteCrawlStatus(res.status); if (!res.ok) return '' // 🚧 429/403 만 차단으로 샌다(naver-crawl-block.ts)
     return (await res.text()).slice(0, 20000) // 최근 글 몇 개면 충분
-  } catch { return '' }
+  } catch { noteCrawlStatus(null); return '' }
 }
 
 /** 🏠 네이버 블로그 **홈(모바일)** 공개 HTML — 프로필 소개글 + 위젯(인스타/링크트리/오픈카톡/이메일)이 여기 있음.
@@ -369,9 +369,9 @@ async function fetchNaverBlogHome(handle: string): Promise<string> {
       headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1', accept: 'text/html' },
       redirect: 'follow',
     })
-    if (!res.ok) return ''
+    noteCrawlStatus(res.status); if (!res.ok) return ''
     return (await res.text()).slice(0, 80000) // 프로필/위젯 영역에 mailto:·instagram.com·linktr.ee 링크
-  } catch { return '' }
+  } catch { noteCrawlStatus(null); return '' }
 }
 
 /**
@@ -449,7 +449,7 @@ export async function discoverNaverBloggers(
   const nbCand = leads.filter(l => (!l.email && !l.instagram && !l.links) && l.handle)
   const targets = (await filterUncontacted(opts.alreadyContacted, 'naver_blog', nbCand, l => l.handle)).slice(0, enrichMax)
   for (const l of targets) {
-    if (outOfBudget(opts.budget)) break // 예산 소진 — 컨택 보충 조기 종료
+    if (outOfBudget(opts.budget) || naverCrawlBlocked()) break // 예산 소진 또는 🚧 차단 — 조기 종료
     spendBudget(opts.budget)
     let text = await fetchNaverBlogHome(l.handle!)
     let c = text ? extractContacts(text) : { emails: [], instagram: [], tiktok: [], links: [] }

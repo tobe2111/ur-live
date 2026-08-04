@@ -66,7 +66,8 @@ export interface AutoCollectStats {
   /** 🎯 YT 검색 예산(진짜 병목 = Search Queries/day, 기본 100회) — 어드민 "오늘 n/100" 표시용. */
   yt_budget?: { used: number; total: number; day: string }
   /** 📟 네이버 오픈API 일일 호출(KST 기준일). **자동 레인만 세므로 실사용의 하한** — `naver-api-usage.ts` 주석 참조. */
-  naver_api?: { used: number; total: number; day: string }
+  /** 📟 네이버 오픈API 일일 사용량. `target`=90% 목표(22,500) · `left`=잔량(`null`=게이트 미장전). */
+  naver_api?: { used: number; total: number; day: string; target?: number; left?: number | null }
   /** 🧾 소스별 서브리퀘스트 실사용(수집 회차) — 예산 병목을 재는 값. 합 ≈ spent 면 그 소스가 범인. */
   spend_by?: { yt: number; naver: number; cafe: number; tistory: number; save: number }
   /** 🔬 유튜브 서브리퀘스트 **내역** — 검색/채널/영상 중 어디가 배수인지(`DiscoverCalls`). */

@@ -72,6 +72,77 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '`rules-version-ok` 탈출구가 다시 죽는다(매치가 숫자에서 끊김)',
+    file: 'scripts/check-rules-version-bump.mjs',
+    // ⚠️ 백슬래시가 많은 구간이라 **역슬래시 없는 꼬리**만 집는다(이스케이프 두 겹으로 첫 시도가 빗나갔다).
+    find: ".*$`, 'm').exec(src)",
+    replace: "`, 'm').exec(src)",
+    test: 'src/tests/unit/rules-version-exemption.test.ts',
+    why:
+      '가드가 안내하는 유일한 예외 통로가 **문서에만 있고 코드에는 없던** 상태로 돌아간다 — 매치가 ' +
+      '숫자에서 끝나면 같은 줄의 주석이 `cur.line` 에 안 들어와 예외가 절대 안 걸린다. ' +
+      '막다른 길에 몰린 세션은 그러면 **더 나쁜 선택**(불필요한 bump 로 3.6만 행 재처리, 혹은 가드 끄기)을 ' +
+      '한다. 되돌려도 에러가 없고, 예외를 쓰려는 사람만 조용히 막힌다.',
+  },
+  {
+    name: '차단당한 회차가 백로그를 그대로 스탬프한다(학습 오염)',
+    file: 'src/features/marketing/api/influencer-performance.ts',
+    find: "      if (naverCrawlBlocked()) { diag.blocked = (diag.blocked || 0) + 1; return }",
+    replace: '      // (차단 가드 제거)',
+    test: 'src/tests/unit/naver-crawl-block.test.ts',
+    why:
+      '연락처는 오픈API 가 아니라 공개 페이지 크롤(`m.blog`·`rss.blog`)로 캔다 — 쿼터도 승인도 없고, ' +
+      '실측 하루 8천 요청이다. 막히면 본문이 0인데 이 가드가 없으면 **스탬프가 찍힌다**: ' +
+      '`perf_checked_at` 이 `nb_measured`(연락처 수율의 분모)를 부풀려 `suppressLowRotationYield` 가 ' +
+      '멀쩡한 키워드를 "나쁘다"고 학습하고, 억제된 키워드는 증거가 갱신되지 않아 **차단이 풀려도 ' +
+      '안 돌아온다.** 게다가 그동안 백로그가 한 바퀴 통째로 소모된다. 되돌려도 에러는 안 난다.',
+  },
+  {
+    name: '타임아웃까지 차단으로 세어 멀쩡한 레인을 멈춘다',
+    file: 'src/features/marketing/api/naver-crawl-block.ts',
+    find: '  if (isBlockStatus(status)) { streak += 1; blocked += 1; return }\n  if (typeof status === \'number\') { streak = 0; ok += 1 }',
+    replace: '  streak += 1; blocked += 1',
+    test: 'src/tests/unit/naver-crawl-block.test.ts',
+    why:
+      '*"느리다"는 "막혔다"가 아니다* — 2026-07-29 `shouldNoindexMissingEntity` 에서 타임아웃을 ' +
+      '"없음"으로 읽으면 멀쩡한 상품이 색인에서 빠진다고 배운 것과 같은 규칙이다. 예외·404 까지 세면 ' +
+      '삭제된 블로그 세 개에 측정 레인이 통째로 멈추고, 성공이 연속을 못 끊어 **한 번 막히면 영영 멈춘다.**',
+  },
+  {
+    name: '네이버 일일 목표 게이트를 호출부가 무시한다(반환값 버림)',
+    file: 'src/features/marketing/api/fetch-with-err.ts',
+    find: "  if (!noteNaverCall(url)) return { res: null, err: 'NaverQuota: 일일 목표(90%) 소진' }",
+    replace: '  noteNaverCall(url)',
+    test: 'src/tests/unit/api-daily-target.test.ts',
+    why:
+      '게이트는 계측 함수의 **반환값**으로만 작동한다 — 예전처럼 값을 버리고 부르면 상수와 장전은 ' +
+      '그대로 남은 채 아무도 안 막힌다(이 레포가 반복해 만난 "검사가 실패할 수 없다" 클래스). ' +
+      '유료 전환으로 서브리퀘스트가 ×15 되면 그대로 쿼터를 넘겨 429 를 받고, 실패 호출도 쿼터를 ' +
+      '먹으므로 **회차 후반 작업이 통째로 버려진다.**',
+  },
+  {
+    name: '네이버 게이트를 아무도 장전하지 않는다(항상 무제한)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '  armNaverDailyAllowance(parseNaverUsed(settings[NAVER_USED_KEY], kstDayKey(Date.now())))',
+    replace: '  void armNaverDailyAllowance',
+    test: 'src/tests/unit/api-daily-target.test.ts',
+    why:
+      '허용량 기본값은 **무제한(`null`)** 이다 — 무장을 잊은 레인이 조용히 멈추는 것보다 낫기 때문이다. ' +
+      '그 설계의 대가로, 장전 한 줄이 사라지면 게이트가 **에러 없이 전면 무효**가 된다. ' +
+      '상수도 테스트도 그대로 초록이라 사람 눈으로는 못 잡는다.',
+  },
+  {
+    name: '유튜브 검색 예산을 100 으로 되돌린다(측정 몫 0)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: 'export const YT_SEARCH_BUDGET_DEFAULT = 90',
+    replace: 'export const YT_SEARCH_BUDGET_DEFAULT = 100',
+    test: 'src/tests/unit/api-daily-target.test.ts',
+    why:
+      'search.list 1회 = 100 units 라 검색 100회면 하루 쿼터 10,000 이 검색으로 전부 나간다 → ' +
+      '성과측정(각 1 unit)이 **하루 종일 403**(2026-07-27 실사고). 90 은 임의값이 아니라 ' +
+      '`쿼터 × 90% ÷ 단가` 이고, 남는 1,000 units 가 측정 몫이다.',
+  },
+  {
     name: 'CPU 자기교정 — 감지 호출이 사라짐(학습이 조용히 멈춘다)',
     file: 'src/worker-ads/beat-batch.ts',
     find: '    await learnCpuQuanta(env, list).catch(() => undefined)',
@@ -2099,8 +2170,10 @@ const MUTATIONS = [
   {
     name: '네이버 오픈API 계측이 래퍼에서 사라짐(그 레인이 통째로 계측 밖)',
     file: 'src/features/marketing/api/fetch-with-err.ts',
-    find: '  noteNaverCall(url) //',
-    replace: '  // noteNaverCall(url) //',
+    // ⚠️ 2026-08-04: 이 줄이 `noteNaverCall(url)` 단독에서 **게이트 분기**로 바뀌었다(90% 목표).
+    //   옛 find 는 그대로 두면 "주입 대상을 못 찾음(낡은 지도)"로 잡힌다 — 실제로 그렇게 잡혔다.
+    find: "  if (!noteNaverCall(url)) return { res: null, err: 'NaverQuota: 일일 목표(90%) 소진' }\n  try {",
+    replace: '  try {',
     test: 'src/tests/unit/ads-naver-api-usage.test.ts',
     why:
       '유튜브·카카오는 일별 실사용을 세는데 네이버만 카운터가 없어 "한도 안"이 **추정**이었다. 래퍼에서 빠지면 ' +
