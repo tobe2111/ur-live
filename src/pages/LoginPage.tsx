@@ -8,7 +8,6 @@ import { toast } from '@/hooks/useToast'
 import { trackFunnel } from '@/lib/funnel'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { Eye, EyeOff, MapPin, Ticket } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -59,13 +58,11 @@ export default function LoginPage() {
   const krGlobalLoading = useAuthKR(state => state.isLoading)
   const krLoginWithEmail = useAuthKR(state => state.loginWithEmail)
   const krSendPasswordReset = useAuthKR(state => state.sendPasswordResetEmail)
-  const worldUser = useAuthWorld(state => state.user)
-  const worldIsAuthReady = useAuthWorld(state => state.isAuthReady)
-  const worldGlobalLoading = useAuthWorld(state => state.isLoading)
-
-  const user = isKR ? krUser : worldUser
-  const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
-  const globalLoading = isKR ? krGlobalLoading : worldGlobalLoading
+  // 🔥 2026-08-04 (대표 승인 — Firebase 제거): GLOBAL 스토어(useAuthWorld) 삭제.
+  //   GLOBAL 은 미런칭·폐기(#804)이고 서버 수용도 2026-07-28 에 끊겼다(#806).
+  const user = krUser
+  const isAuthReady = krIsAuthReady
+  const globalLoading = krGlobalLoading
   const loginWithEmailAction = krLoginWithEmail
   const sendPasswordResetEmailAction = krSendPasswordReset
 
@@ -179,7 +176,7 @@ export default function LoginPage() {
       await loginWithEmailAction(email, password)
 
       // ✅ role에 따라 리다이렉트 경로 결정
-      const { userRole } = isKR ? useAuthKR.getState() : useAuthWorld.getState()
+      const { userRole } = useAuthKR.getState()
       sessionStorage.removeItem('returnUrl')
 
       // role별 리다이렉트
@@ -221,50 +218,7 @@ export default function LoginPage() {
     }
   }
 
-  // ✅ Google 로그인 핸들러 (GLOBAL 전용)
-  async function handleGoogleLogin() {
-    setLoading(true)
-    setError('')
-
-    try {
-      const { signInWithGoogle } = await import('@/lib/firebase-auth')
-
-      const result = await signInWithGoogle()
-
-      // ✅ localStorage에 user_type 설정 (API Interceptor를 위해 필수)
-      localStorage.setItem('user_type', 'user')
-      localStorage.setItem('user_name', result.user.displayName || result.user.email?.split('@')[0] || 'User')
-      localStorage.setItem('user_id', result.user.uid)
-      if (result.user.email) localStorage.setItem('user_email', result.user.email)
-
-      // ✅ Zustand store 업데이트
-      const authStore = useAuthWorld.getState()
-      authStore.setUser(result.user)
-      authStore.setAuthReady(true)
-
-      // 백엔드에 사용자 정보 저장 (D1 DB)
-      await api.post('/api/auth/google/register', {
-        uid: result.user.uid,
-        email: result.user.email,
-        name: result.user.displayName,
-        photoURL: result.user.photoURL
-      })
-
-      sessionStorage.removeItem('returnUrl')
-      navigate(returnUrl, { replace: true })
-
-    } catch (error: unknown) {
-      if (import.meta.env.DEV) console.error('[Google Login] ❌ 실패:', error)
-      const firebaseError = error as { code?: string }
-      if (firebaseError?.code === 'auth/popup-closed-by-user') {
-        // 사용자가 팝업을 닫은 경우 — 에러 표시하지 않음
-      } else {
-        setError(t('auth.googleLoginError'))
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
+  // 🔥 2026-08-04: 구글 로그인 핸들러 제거(대표 승인) — Firebase 의존 제거 · GLOBAL 폐기(#804).
 
   // 🔥 Early return: Prevent rendering while redirecting
   if (isLoggedIn && hasRedirected.current) {
@@ -336,8 +290,7 @@ export default function LoginPage() {
             {/* 주 CTA 카드 — 카카오(KR)/구글(GLOBAL) 로그인. 버튼 로직/마크업 불변, 배치만 강조 */}
             <div className="rounded-2xl bg-gray-50/80 dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446] p-5 shadow-sm">
             {/* ✅ Region-based Primary Login Button */}
-            {isKR ? (
-              /* Kakao Login Button (KR) */
+            {/* Kakao Login Button — 🔥 2026-08-04: 구글 분기 제거(GLOBAL 폐기 #804). */}
               <button
                 onClick={() => {
                   handleKakaoLogin()
@@ -362,34 +315,6 @@ export default function LoginPage() {
                   </>
                 )}
               </button>
-            ) : (
-              /* Google Login Button (GLOBAL) */
-              <button
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                className="w-full h-[52px] bg-white hover:bg-gray-50 text-[#3c4043] rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-3 border border-gray-300"
-              >
-                {loading ? (
-                  <div className="flex items-center gap-2">
-                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>{t('common.loading')}</span>
-                  </div>
-                ) : (
-                  <>
-                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                    <span>{t('auth.loginWithGoogle')}</span>
-                  </>
-                )}
-              </button>
-            )}
               <p className="mt-3 text-center text-[11px] text-gray-500 dark:text-gray-500 font-light">
                 {t('login.kakaoHint', { defaultValue: '복잡한 가입 절차 없이 바로 시작할 수 있어요' })}
               </p>

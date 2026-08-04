@@ -150,13 +150,7 @@ export async function logout(userType?: 'user' | 'seller' | 'admin'): Promise<vo
           store.setUser(null)
           store.setLoading(false)
           store.setAuthReady(true)
-        } else {
-          const { useAuthWorld } = await import('@/shared/stores/useAuthWorld')
-          const store = useAuthWorld.getState()
-          store.setUser(null)
-          store.setLoading(false)
-          store.setAuthReady(true)
-        }
+        }  // 🔥 2026-08-04: GLOBAL 스토어 분기 제거(#804)
         logger.info('[LoginFlow] ✅ Zustand 스토어 초기화 완료')
       } catch (err) {
         logger.warn('[LoginFlow] ⚠️ Zustand 스토어 초기화 실패 (무시):', { error: String(err) })
@@ -238,10 +232,7 @@ export async function logoutAll(): Promise<void> {
     if (isKR) {
       const { useAuthKR } = await import('@/shared/stores/useAuthKR')
       const s = useAuthKR.getState(); s.setUser(null); s.setLoading(false); s.setAuthReady(true)
-    } else {
-      const { useAuthWorld } = await import('@/shared/stores/useAuthWorld')
-      const s = useAuthWorld.getState(); s.setUser(null); s.setLoading(false); s.setAuthReady(true)
-    }
+    }  // 🔥 2026-08-04: GLOBAL 스토어 분기 제거(#804)
   } catch (err) {
     logger.warn('[LoginFlow] logoutAll 스토어 초기화 실패(무시):', { error: String(err) })
   }
