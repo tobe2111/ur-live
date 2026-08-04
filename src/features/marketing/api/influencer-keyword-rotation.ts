@@ -346,8 +346,12 @@ export const NAVER_COLLECT_ENRICH_MAX = 1
  */
 export const COLLECT_KEYWORDS_PER_ROUND = 6
 
-/** 회차당 키워드 상한 — env(`ADS_COLLECT_KEYWORD_CAP`)로 재배포 없이 조정 가능(1~40). */
-export function keywordsPerRoundCap(env: { ADS_COLLECT_KEYWORD_CAP?: string } | undefined): number {
-  const raw = parseInt(String(env?.ADS_COLLECT_KEYWORD_CAP ?? ''), 10)
+/**
+ * 회차당 키워드 상한 — env(`ADS_COLLECT_KEYWORD_CAP`)로 재배포 없이 조정 가능(1~40).
+ * ⚠️ 파라미터가 `unknown` 인 이유: 워커 `Env` 타입에 이 키가 선언돼 있지 않아 좁은 구조 타입으로 받으면
+ *   **TS2559**("공통 속성이 없다")가 난다. `alarmEnabled(env: unknown)` 과 같은 형태로 맞춘다.
+ */
+export function keywordsPerRoundCap(env: unknown): number {
+  const raw = parseInt(String((env as { ADS_COLLECT_KEYWORD_CAP?: string } | undefined)?.ADS_COLLECT_KEYWORD_CAP ?? ''), 10)
   return Number.isFinite(raw) && raw > 0 ? Math.min(40, raw) : COLLECT_KEYWORDS_PER_ROUND
 }
