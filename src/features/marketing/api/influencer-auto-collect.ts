@@ -181,7 +181,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
     DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8"),
   ]).catch(() => null)
-  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total, COALESCE(yt_leads,0) AS yt_leads, COALESCE(yt_contacts,0) AS yt_contacts FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
+  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total, COALESCE(yt_leads,0) AS yt_leads, COALESCE(yt_contacts,0) AS yt_contacts, COALESCE(nb_measured,0) AS nb_measured, COALESCE(nb_contacts,0) AS nb_contacts FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   /**
    * 🪦 은퇴 축 키워드는 **슬롯을 안 먹는다**(2026-08-03). 축을 접었는데 그 키워드가 계속 돌면
@@ -213,7 +213,8 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_AUTOCOLLECT_BATCH || '', 10) || 4))
 
   // ⭐ 3분할 풀(집중·우선·일반) 구성 + 연락처 수율 솎아내기 — 규칙·근거는 `buildRotationPools` docblock(SSOT).
-  const { focusPool, priPool, genPool } = buildRotationPools(kws, { focus: FOCUS_CATEGORIES, priority: PRIORITY_CATEGORIES })
+  const roundIndex = (prev?.total_runs || 0) + 1
+  const { focusPool, priPool, genPool } = buildRotationPools(kws, roundIndex, { focus: FOCUS_CATEGORIES, priority: PRIORITY_CATEGORIES })
   let priCursor = parseInt(settings['ads_autocollect_cursor_pri'] || '0', 10)
   if (!Number.isFinite(priCursor) || priCursor < 0) priCursor = 0
   let focusCursor = parseInt(settings[FOCUS_CURSOR_KEY] || '0', 10)

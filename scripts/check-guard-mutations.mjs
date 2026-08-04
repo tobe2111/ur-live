@@ -1784,6 +1784,57 @@ const MUTATIONS = [
       '**수율이 왜 올랐는지 근거가 먼저**다. env(ADS_TISTORY_ROOM)로는 열려 있으니 코드 기본값은 0 이어야 한다.',
   },
   {
+    name: '순환 축 억제가 되돌릴 수 없게 됨(탐침 회차 제거)',
+    file: 'src/features/marketing/api/influencer-keyword-yield.ts',
+    find: '  if (roundIndex % ROTATION_PROBE_EVERY === 0) return pool',
+    replace: '  if (false) return pool',
+    test: 'src/tests/unit/influencer-keyword-yield.test.ts',
+    why:
+      '억제된 키워드는 더 이상 수집되지 않아 **증거가 영영 갱신되지 않는다** — 판정이 틀려도 스스로 ' +
+      '뒤집힐 수 없다. 밴딧에서 탐색(exploration)을 없애는 것과 같고, 그러면 자동 조율이 아니라 영구 배제다.',
+  },
+  {
+    name: '순환 풀이 비어 그 축이 통째로 멈춤',
+    file: 'src/features/marketing/api/influencer-keyword-yield.ts',
+    find: '  return kept.length ? kept : pool',
+    replace: '  return kept',
+    test: 'src/tests/unit/influencer-keyword-yield.test.ts',
+    why:
+      '한 축의 키워드가 전부 저수율이면 풀이 빈 배열이 되어 그 축은 그 회차에 아무것도 안 돈다. ' +
+      '고쳐야 할 건 키워드지 수집이 아니다(집중 축 커서 동결 → 커버리지 붕괴와 같은 클래스).',
+  },
+  {
+    name: '순환 축이 표본 부족 키워드를 벌해 탐색이 죽음',
+    file: 'src/features/marketing/api/influencer-keyword-yield.ts',
+    find: '  if (m < ROTATION_EVIDENCE_MIN) return false',
+    replace: '  if (false) return false',
+    test: 'src/tests/unit/influencer-keyword-yield.test.ts',
+    why:
+      '새 키워드는 nb_measured 0 이라 수율도 0 이다. 게이트가 없으면 **모든 신규 키워드가 첫 회차에 낙인**' +
+      '찍혀 영원히 억제된다 — 자동 조율이 아니라 신규 축 차단기가 된다.',
+  },
+  {
+    name: '순환 축 분모에 **안 훑은 행**이 들어감(백로그를 키워드 탓으로)',
+    file: 'src/features/marketing/api/influencer-keyword-yield.ts',
+    find: 'AND perf_checked_at IS NOT NULL THEN 1 ELSE 0 END) AS nb_measured',
+    replace: 'THEN 1 ELSE 0 END) AS nb_measured',
+    test: 'src/tests/unit/influencer-keyword-yield.test.ts',
+    why:
+      '이 파일 상단이 경고한 바로 그 함정이다 — 네이버는 우리 측정 백로그 때문에 낮게 보인다. 분모를 ' +
+      '**측정 완료**로 한정해야 "아직 안 훑은 키워드"가 낮게 나올 수가 없다. 이 조건이 빠지면 미측정 ' +
+      '20,105행이 전부 분모에 들어가 **멀쩡한 키워드가 통째로 억제**된다.',
+  },
+  {
+    name: '순환 풀이 억제를 안 부름(상수만 있고 배선 없음)',
+    file: 'src/features/marketing/api/keyword-contact-yield.ts',
+    find: '  const trim = (p: T[]) => suppressLowRotationYield(p, roundIndex)',
+    replace: '  const trim = (p: T[]) => p',
+    test: 'src/tests/unit/influencer-keyword-yield.test.ts',
+    why:
+      '정책 함수가 있어도 순환 풀이 안 부르면 네이버/일반은 그대로다. 유튜브 감점이 여기 안 닿는다는 것이 ' +
+      '이 작업의 출발점이었다(방배동 맛집 0% 가 계속 돌던 이유).',
+  },
+  {
     name: '수집 폭 동결이 풀림(측정이 병목인데 백로그가 증가 반전)',
     file: 'src/features/marketing/api/influencer-auto-collect.ts',
     find: '    if (processedIds.size >= roundCap) break',
