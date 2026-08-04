@@ -62,9 +62,30 @@ describe('① SSOT — 자리·소스 종류', () => {
 })
 
 describe('② 대표 확정 — 없으면 아무것도 안 그린다', () => {
-  it('히어로/중간·와이드 배너는 데이터 0건이면 null 을 반환한다', () => {
-    expect(code('src/components/home/HomeHeroBanner.tsx')).toMatch(/if\s*\(\s*!hero\s*\)\s*return\s+null/)
+  it('중간·와이드 배너는 데이터 0건이면 null 을 반환한다 (대표 확정 규칙)', () => {
     expect(code('src/components/home/HomeBannerStrip.tsx')).toMatch(/banners\.length\s*===\s*0\s*\)\s*return\s+null/)
+  })
+
+  it('히어로는 배너가 없으면 **브랜드 기본 배경**을 그린다 (2026-08-04 대표 지시)', () => {
+    // ⚠️ 히어로만 예외다. "배너 안 올리면 안 보이게" 는 **배너 콘텐츠** 규칙이고,
+    //    히어로 자리 자체는 화면 뼈대라 대표가 직접 기본 배경을 요구했다.
+    expect(code('src/components/home/HomeHeroBanner.tsx')).toMatch(/if\s*\(\s*!hero\s*\)\s*return\s+<HomeHeroDefault\s*\/>/)
+  })
+
+  it('기본 히어로는 영상·이미지 파일을 요청하지 않는다 (첫 화면 무게 0)', () => {
+    // 홈 최상단에 수 MB 를 얹으면 이 레포가 로딩에 들인 노력을 한 번에 되돌린다.
+    const def = code('src/components/home/HomeHeroDefault.tsx')
+    expect(def).not.toMatch(/<video|<img|url\(https?:/)
+  })
+
+  it('기본 히어로가 장식으로 끝나지 않는다 — 실제 검색 진입점을 갖는다', () => {
+    expect(code('src/components/home/HomeHeroDefault.tsx')).toMatch(/\/search\?q=/)
+  })
+
+  it('기본 히어로 배경 애니메이션이 prefers-reduced-motion 을 존중한다', () => {
+    const css = read('src/index.css')
+    const block = css.slice(css.indexOf('ur-hero-bloom-a'))
+    expect(block).toMatch(/prefers-reduced-motion[\s\S]{0,400}ur-hero-bloom-a/)
   })
 
   it('서버가 상품 0건 섹션을 목록에서 뺀다 (홈에 제목만 남는 빈 줄 금지)', () => {
