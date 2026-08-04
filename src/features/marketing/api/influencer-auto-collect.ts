@@ -182,7 +182,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
     DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8"),
   ]).catch(() => null)
-  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
+  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total, COALESCE(yt_leads,0) AS yt_leads, COALESCE(yt_contacts,0) AS yt_contacts FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   /**
    * 🪦 은퇴 축 키워드는 **슬롯을 안 먹는다**(2026-08-03). 축을 접었는데 그 키워드가 계속 돌면
