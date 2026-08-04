@@ -291,7 +291,10 @@ describe('배선 — 드라이버가 조각을 실제로 넘긴다', () => {
   it('🔒 조각이 레인까지 전달된다 — 여기가 끊기면 자식들이 같은 사람을 중복 측정한다', () => {
     // ⚠️ 인자 안에 괄호가 있어(`Number.isFinite(d)`) `[^)]*` 로는 못 넘는다 — 실제로 여기서 한 번 틀렸다.
     expect(routes).toMatch(/runInfluencerEnrich\(c\.env,[\s\S]*?rounds, slice\)/)
-    expect(lane).toMatch(/enrichNaverActivity\(DB, budget, naverRoomFromRemaining\([^)]*\), slice\)/)
+    // 🔧 2026-08-04: 블로거 방 계산이 `naverRoomWithYtReserve`(YT 예약분 반영)로 바뀌었다.
+    //   이 테스트가 지키는 건 방 계산식이 아니라 **`slice` 가 끝까지 전달되는가** 이므로 방 함수는
+    //   이름을 느슨하게 두고 마지막 인자만 고정한다(방 정책은 `ads-enrich-yt-priority` 가 본다).
+    expect(lane).toMatch(/enrichNaverActivity\(DB, budget, naverRoom\w*\([^)]*\), slice\)/)
   })
 
   /**
