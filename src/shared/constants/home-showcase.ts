@@ -13,27 +13,38 @@
  * ⚠️ 워커(esbuild)에서도 로드되므로 이 파일은 **의존성 0**을 유지할 것.
  */
 
-/** 배너가 놓이는 자리. DB `banners.banner_type` 값과 1:1. */
-export const BANNER_TYPES = ['hero', 'inline', 'wide'] as const
-export type BannerType = typeof BANNER_TYPES[number]
+/**
+ * 배너가 놓이는 자리. DB `banners.banner_slot` 값과 1:1.
+ *
+ * 🔴 **NULL(미지정) 이 정상 상태다** — 자리를 고르지 않은 배너는 홈 쇼케이스에 **안 뜬다**.
+ *
+ * ## 왜 이렇게 바꿨나 (2026-08-04 대표 신고 "이렇게 뜨는게 정상이야?")
+ * 처음엔 `banner_type` 컬럼을 `DEFAULT 'inline'` 로 추가했다. SQLite 는 그 기본값을
+ * **기존 행에도 적용**하므로, 예전에 다른 용도로 올려둔 배너가 **저절로 중간 배너 자리에 나타났다.**
+ * 대표가 못박은 *"안 올리면 아예 안 보이게"* 를 정확히 어긴 것이다(라이브에서 실제로 그랬다).
+ *
+ * ⇒ 자리는 **사람이 고른 것만** 값이 된다. 기본값 없는 새 컬럼(`banner_slot`)이라
+ *   기존 행은 NULL 로 남고, NULL 은 어디에도 안 뜬다. 되돌리는 데이터 수정이 필요 없다.
+ */
+export const BANNER_SLOTS = ['hero', 'inline', 'wide'] as const
+export type BannerSlot = typeof BANNER_SLOTS[number]
 
-export const BANNER_TYPE_LABELS: Record<BannerType, string> = {
+export const BANNER_SLOT_LABELS: Record<BannerSlot, string> = {
   hero: '히어로 (홈 최상단 · 배경 이미지/영상)',
   inline: '중간 배너 (3열)',
   wide: '와이드 배너 (가로 전체)',
 }
 
-/**
- * 기본값이 `'inline'` 인 이유: 이 컬럼이 생기기 **전에 등록된 배너**는 값이 NULL 인데,
- * 그걸 히어로로 승격시키면 옛 배너가 갑자기 홈 최상단을 덮는다. 중간 배너가 안전한 기본이다.
- */
-export const DEFAULT_BANNER_TYPE: BannerType = 'inline'
+/** 어드민이 **새 배너를 만들 때**의 초기 선택. 기존 행에는 절대 소급되지 않는다(컬럼 기본값 아님). */
+export const NEW_BANNER_SLOT: BannerSlot = 'inline'
 
-export function isBannerType(v: unknown): v is BannerType {
-  return typeof v === 'string' && (BANNER_TYPES as readonly string[]).includes(v)
+export function isBannerSlot(v: unknown): v is BannerSlot {
+  return typeof v === 'string' && (BANNER_SLOTS as readonly string[]).includes(v)
 }
-export function normalizeBannerType(v: unknown): BannerType {
-  return isBannerType(v) ? v : DEFAULT_BANNER_TYPE
+
+/** 자리 파싱 — 모르는 값·빈값·NULL 은 전부 **미지정(null)**. 기본 자리로 승격시키지 않는다. */
+export function parseBannerSlot(v: unknown): BannerSlot | null {
+  return isBannerSlot(v) ? v : null
 }
 
 /**

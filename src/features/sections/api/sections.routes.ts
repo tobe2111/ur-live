@@ -28,6 +28,7 @@ import {
   normalizeSectionSource,
 } from '@/shared/constants/home-showcase';
 import { resolveSectionProducts, CARD_COLS } from './section-rules';
+import { maybeSeedHomeSections } from './section-seed';
 import { mainScopeFor } from '@/worker/utils/consumer-scope';
 const sectionsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -94,6 +95,9 @@ sectionsRoutes.get('/', async (c) => {
       'sections:public',
       async () => {
         await ensureTables(DB);
+        // 🏠 2026-08-04: 승인된 시안의 세 줄을 기본으로 넣는다 — 아무도 안 만들면 홈이
+        //   "틀만 있고 안이 빈" 화면이 되고, 그건 시안이 아니다(대표 신고). 편집·삭제는 보존.
+        await maybeSeedHomeSections(c.env as Env);
 
         const { results: sections } = await DB.prepare(`
           SELECT id, title, subtitle, layout,
@@ -171,6 +175,7 @@ sectionsRoutes.get('/admin', requireAuth(), async (c) => {
 
   const { DB } = c.env;
   await ensureTables(DB);
+  await maybeSeedHomeSections(c.env as Env);
 
   const { results: sections } = await DB.prepare(
     'SELECT * FROM homepage_sections ORDER BY sort_order ASC'

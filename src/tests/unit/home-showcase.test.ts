@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
-  BANNER_TYPES, DEFAULT_BANNER_TYPE, normalizeBannerType, isBannerType,
+  BANNER_SLOTS, NEW_BANNER_SLOT, parseBannerSlot, isBannerSlot,
   SECTION_SOURCES, DEFAULT_SECTION_SOURCE, normalizeSectionSource,
   clampSectionLimit, SECTION_DEFAULT_LIMIT, SECTION_MAX_LIMIT,
 } from '@/shared/constants/home-showcase'
@@ -26,19 +26,21 @@ const read = (p: string) => fs.readFileSync(path.join(root, p), 'utf8')
 const code = (p: string) => read(p).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('① SSOT — 자리·소스 종류', () => {
-  it('배너 기본 자리는 hero 가 아니다 (옛 배너가 홈 최상단을 덮으면 안 됨)', () => {
-    expect(DEFAULT_BANNER_TYPE).not.toBe('hero')
-    expect(BANNER_TYPES).toContain(DEFAULT_BANNER_TYPE)
+  it('🔴 자리 미지정은 null 이다 — 기본 자리로 승격되지 않는다', () => {
+    // 2026-08-04 실사고: `banner_type DEFAULT 'inline'` 이라 SQLite 가 **기존 행에도**
+    // 그 값을 채웠고, 예전에 올린 배너가 홈 중간 배너 자리에 저절로 나타났다.
+    expect(parseBannerSlot(null)).toBeNull()
+    expect(parseBannerSlot(undefined)).toBeNull()
+    expect(parseBannerSlot('')).toBeNull()
+    expect(parseBannerSlot('HERO')).toBeNull()
+    expect(parseBannerSlot('inline')).toBe('inline')
+    expect(isBannerSlot('wide')).toBe(true)
+    expect(isBannerSlot('banner')).toBe(false)
   })
 
-  it('normalizeBannerType 은 모르는 값을 기본값으로 떨어뜨린다', () => {
-    expect(normalizeBannerType('hero')).toBe('hero')
-    expect(normalizeBannerType('HERO')).toBe(DEFAULT_BANNER_TYPE)
-    expect(normalizeBannerType(null)).toBe(DEFAULT_BANNER_TYPE)
-    expect(normalizeBannerType(undefined)).toBe(DEFAULT_BANNER_TYPE)
-    expect(normalizeBannerType({ toString: () => 'hero' })).toBe(DEFAULT_BANNER_TYPE)
-    expect(isBannerType('wide')).toBe(true)
-    expect(isBannerType('banner')).toBe(false)
+  it('새 배너의 초기 선택은 히어로가 아니다 (실수로 최상단을 덮지 않게)', () => {
+    expect(NEW_BANNER_SLOT).not.toBe('hero')
+    expect(BANNER_SLOTS).toContain(NEW_BANNER_SLOT)
   })
 
   it('섹션 기본 소스는 manual — 기존 섹션의 동작이 바뀌면 안 된다', () => {
@@ -157,15 +159,29 @@ describe('⑤ 카드 링크는 canonicalDetailPath SSOT — 손으로 찍지 않
   })
 })
 
-describe('⑥ 옛 배너 보호 · 자리 필터', () => {
+describe('⑥ 옛 배너가 저절로 뜨지 않는다 · 자리 필터', () => {
   const src = code('src/features/banners/api/banners.routes.ts')
 
-  it('banner_type 조회가 COALESCE 로 NULL(옛 배너)을 기본값으로 읽는다', () => {
-    expect(src).toMatch(/COALESCE\(banner_type,\s*\?\)/)
+  it('🔴 자리 컬럼 ALTER 에 DEFAULT 가 없다 (기존 행이 자리를 얻으면 안 된다)', () => {
+    // SQLite 는 ADD COLUMN 의 DEFAULT 를 **기존 행에도** 적용한다 — 그래서 기본값을 주면
+    // 예전에 올린 배너가 전부 그 자리를 차지한 것으로 읽힌다(2026-08-04 라이브 사고).
+    expect(src).toMatch(/ADD COLUMN banner_slot TEXT`/)
+    expect(src).not.toMatch(/ADD COLUMN banner_slot TEXT DEFAULT/)
+  })
+
+  it('🔴 자리 필터가 엄격 일치다 (COALESCE 로 기본값을 씌우지 않는다)', () => {
+    expect(src).toMatch(/AND banner_slot = \?/)
+    expect(src).not.toMatch(/COALESCE\(banner_slot/)
+  })
+
+  it('클라이언트도 미지정을 기본 자리로 승격시키지 않는다', () => {
+    const hook = code('src/components/home/useHomeBanners.ts')
+    expect(hook).toMatch(/parseBannerSlot\(b\.banner_slot\)/)
+    expect(hook).toMatch(/banner_slot === slot/)
   })
 
   it('type 쿼리 파라미터는 화이트리스트를 통과한 값만 쓴다', () => {
-    expect(src).toMatch(/isBannerType\(typeRaw\)/)
+    expect(src).toMatch(/isBannerSlot\(slotRaw\)/)
   })
 
   it('컬럼 ALTER 는 요청마다가 아니라 WeakSet 메모이즈 뒤에 있다 (per-request DDL 금지)', () => {
@@ -173,10 +189,16 @@ describe('⑥ 옛 배너 보호 · 자리 필터', () => {
     expect(src).toMatch(/_bannerColsReady\.has\(DB\)/)
   })
 
-  it('어드민 저장 경로도 같은 ensureBannerColumns 를 쓴다 (한쪽만 ALTER 되는 사고 방지)', () => {
+  it('어드민 저장 경로도 같은 ensureBannerColumns 를 쓰고, 미지정을 null 로 저장한다', () => {
     const admin = code('src/features/admin/api/admin-banners.routes.ts')
     expect(admin).toMatch(/ensureBannerColumns/)
-    expect(admin).toMatch(/normalizeBannerType\(banner_type\)/)
+    expect(admin).toMatch(/parseBannerSlot\(banner_slot\)/)
+  })
+
+  it('배너 1~2장이면 3열 그리드에 홀로 서지 않는다', () => {
+    // 대표 신고 화면: 1장이 3열 그리드의 1/3 폭에 들어가 가로로 긴 이미지가 잘렸다.
+    const strip = code('src/components/home/HomeBannerStrip.tsx')
+    expect(strip).toMatch(/banners\.length === 1 \? 'grid-cols-1'/)
   })
 
   it('영상 URL 도 이미지와 같은 URL 검증을 탄다', () => {
@@ -194,7 +216,7 @@ describe('⑦ 어드민 도달성 — 만들 수 있어야 존재한다', () => 
   it('새 컬럼이 정비 레인(repair-schema)에도 등재돼 있다', () => {
     const repair = code('src/worker/routes/repair-schema.routes.ts')
     for (const name of [
-      'banners.banner_type', 'banners.video_url',
+      'banners.banner_slot', 'banners.video_url',
       'homepage_sections.source', 'homepage_sections.limit_count', 'homepage_sections.more_href',
     ]) {
       expect(repair).toContain(name)
@@ -273,6 +295,39 @@ describe('⑩ 섹션 수정 — 만든 뒤에 고칠 수 있어야 한다 (2026-
     // DB 컬럼은 있지만 홈 렌더가 안 쓴다 — 고를 수는 있는데 아무 일도 안 일어나는 스위치는
     // 없는 것보다 나쁘다. 홈이 layout 을 실제로 쓰게 되면 그때 폼에 추가할 것.
     expect(form).not.toMatch(/name="layout"|form\.layout/)
+  })
+})
+
+describe('⑪ 홈이 기본으로 시안 모양이어야 한다 (2026-08-04 "시안이랑 완전 다르잖아")', () => {
+  const seed = code('src/features/sections/api/section-seed.ts')
+  const routes = code('src/features/sections/api/sections.routes.ts')
+
+  it('승인 시안의 세 줄이 시드로 존재한다', () => {
+    // 기능만 넣고 섹션을 안 만들면 홈은 "틀만 있고 안이 빈" 화면이 된다 — 그게 실제로 났다.
+    for (const t of ['지금 인기 이용권', '오늘 마감 임박', '주말에 떠나는 숙소']) {
+      expect(seed).toContain(t)
+    }
+  })
+
+  it('시드는 규칙 섹션만 넣는다 (manual 은 담긴 상품이 없어 어차피 홈에서 빠진다)', () => {
+    expect(seed).not.toMatch(/source: 'manual'/)
+  })
+
+  it('시드가 기존 섹션을 덮지 않는다 (제목이 같으면 건너뛴다)', () => {
+    expect(seed).toMatch(/if \(existing\.has\(s\.title\)\) continue/)
+    expect(seed).not.toMatch(/\bUPDATE homepage_sections\b|\bDELETE FROM homepage_sections\b/)
+  })
+
+  it('시드가 **홈 조회** 경로에서 실행된다 (어드민이 안 열어도 떠야 한다)', () => {
+    // ⚠️ "파일 어딘가에 호출이 있다"로는 못 잡는다 — 어드민 목록에도 같은 호출이 있어서
+    //    홈 경로에서 빼도 초록이 뜬다(이 테스트를 만들 때 실제로 그랬다).
+    //    그래서 **공개 GET 블록 안**에 있는지를 위치로 확인한다.
+    const publicStart = routes.indexOf("sectionsRoutes.get('/',")
+    const adminStart = routes.indexOf("sectionsRoutes.get('/admin'")
+    expect(publicStart).toBeGreaterThan(-1)
+    expect(adminStart).toBeGreaterThan(publicStart)
+    const publicBlock = routes.slice(publicStart, adminStart)
+    expect(publicBlock).toMatch(/maybeSeedHomeSections\(/)
   })
 })
 
