@@ -229,7 +229,7 @@ export interface Env {
   NEIS_API_KEY?: string;                  // 🎓 나이스(open.neis.go.kr) 학원·교습소 인증키 — 인허가에 없는 학원 갭 커버.
   ADS_NEIS_ENABLED?: string;              // 학원 매시간 소량 수집 게이트(기본 OFF). 수동 트리거는 무관.
   ADS_HIRA_ENABLED?: string;              // 🏥 심평원 병원정보 매시간 소량 수집 게이트(기본 OFF) — 전화+홈페이지 직접.
-  ADS_NARA_CONTRACT_ENABLED?: string;     // 🏛️ 나라장터 계약정보(상권활성화 용역 — 수주사+발주기관) 일1회 게이트(기본 OFF).
+  ADS_NARA_CONTRACT_ENABLED?: string;     // 🏛️ 나라장터 계약정보(상권 용역) 일1회 — **기본 ON**(opt-out). 끄려면 'false'.
   ADS_NPS_ENABLED?: string;               // 👥 국민연금 사업장 규모 검증(직원수) 일1회 게이트(기본 OFF). 수동 트리거 무관.
   ADS_KAKAO_SWEEP_CAP?: string;           // ☎️ 카카오 전화 스윕 시간당 건수(기본 600, 상한 600 클램프 — 무료 10만/일 대비 여유).
   // 🏭 도매몰 제조사(브랜드사)·판매사 후보 수집 게이트(기본 OFF). 수동 버튼은 게이트 무관.
@@ -251,16 +251,13 @@ export interface Env {
   ADS_YT_PERF_UNITS?: string;             // 📈 유튜브 **성과 보강**의 일일 units 상한(기본 2000, 상한 9000).
                                           //   발굴 검색(ADS_YT_SEARCH_BUDGET×100 units)과 같은 10,000 풀을 나눠 쓴다 —
                                           //   검색 예산을 크게 올리면 이 값을 함께 낮출 것(2026-07-28 실측: 검색 22회=2,200).
-  WORK24_API_KEY?: string;                // 💼 고용24 오픈API 인증키(채용정보 — 대표 승인 2026-07-27). Cloudflare env 전용.
-  ADS_WORK24_ENABLED?: string;            // 💼 고용24 채용기업 일1회 게이트(기본 OFF). 수동 트리거 무관.
   ADS_FRANCHISE_PAGES?: string;           // 🏢 프랜차이즈 1회 수집 페이지 수(기본 8, 상한 30) — 커서로 여러 번 나눠 순회.
                                           //   ⚠️ 이전엔 ADS_ENRICH_BUDGET(800)을 빌려 써 서브리퀘스트 한도에 부딪히는 구조였음(2026-07-28 수리).
-  ADS_WORK24_LIST_URL?: string;           // 💼 고용24 채용목록 URL 오버라이드(통합 후 표기 흔들림 대비).
   ADS_NARA_CONTRACT_ENDPOINT?: string;    // 🏛️ 계약정보 base override(기본 1230000/ao/PubDataOpnStdService).
   ADS_NARA_CONTRACT_OP?: string;          // 오퍼레이션 override(기본 getDataSetOpnStdCntrctInfo).
   ADS_NARA_CONTRACT_DAYS?: string;        // 날짜 창 일수(기본 7) — 창 파라미터가 먹히는 경우에만 의미(param_mode 참조).
   ADS_NARA_CONTRACT_ROWS?: string;        // 페이지당 행 수(무료 200/유료 400, 상한 500) — 계약 1건 ~1.9KB 라 크게 잡으면 CPU 로 죽는다.
-  ADS_NARA_CONTRACT_PAGES?: string;       // 1회 페이지 수(기본 8, 상한 20) — 요청 수 = 포털 일 쿼터라 요금제와 무관(plan-knobs external).
+  ADS_NARA_CONTRACT_PAGES?: string;       // 1회 페이지 수(기본 20, 상한 40) — 요청 수 = 포털 일 쿼터라 요금제와 무관(plan-knobs external).
   ADS_NARA_CONTRACT_DEADLINE_MS?: string; // 벽시계 마감선(무료 20s/유료 45s) — 커서 저장에 도달 못 하면 '조용한 전진 0'.
   // 🛒 통신판매사업자 · 🏢 공정위 가맹정보 · 📢 공고 스캐너(나라장터+기업마당). 전부 기본 OFF, 키=PUBLIC_DATA_SERVICE_KEY.
   ADS_COMMERCE_OP?: string;               // 통신판매 operation override(기본 getMllBsInfoDetail_3 = MllBsDtl_3Service).

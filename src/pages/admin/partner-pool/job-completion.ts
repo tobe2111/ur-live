@@ -11,7 +11,7 @@ const pick = (path: string) => (d: Record<string, unknown>): RunObj | null =>
 /** 버튼 경로 → /stats 응답에서 그 작업의 결과 객체를 고르는 셀렉터. */
 export const STAT_PICK: Record<string, (d: Record<string, unknown>) => RunObj | null> = {
   'collect': pick('collect'), 'collect-storeinfo': pick('storeinfo'), 'collect-commerce': pick('commerce'),
-  'collect-franchise': pick('franchise'), 'collect-nara': pick('nara'), 'collect-work24': pick('work24'),
+  'collect-franchise': pick('franchise'), 'collect-nara': pick('nara'), 
   'collect-nps': pick('nps'), 'sweep-nts': pick('nts'), 'sweep-mx': pick('mx'),
   'enrich': d => (d?.enrichLast as RunObj) || null, 'enrich-burst': d => (d?.enrichBurst as RunObj) || null,
   'run-all': d => (d?.runAll as RunObj) || null,

@@ -32,7 +32,8 @@
  *   ⚠️ 기억된 판정은 **버전으로 잠근다**(`NARA_PARAM_STATE_VERSION`) — 인허가 레인에서 겪은
  *     *"코드 기본값을 고쳤는데 DB 에 굳은 옛 판정이 이겨서 라이브가 안 변한다"* 를 그대로 반복하지 않기 위해.
  *
- * 게이트 `ADS_NARA_CONTRACT_ENABLED`(기본 OFF). 키 `PUBLIC_DATA_SERVICE_KEY`.
+ * 게이트 `ADS_NARA_CONTRACT_ENABLED` — **기본 ON**(2026-08-04 대표 *"자동으로 데이터 나오게끔"*, opt-out).
+ * 키 `PUBLIC_DATA_SERVICE_KEY`.
  * ⚠️ 수집 ≠ 발송. SSOT: partner-company-collection.md.
  */
 import type { Env } from '@/worker/types/env'
@@ -254,7 +255,10 @@ export async function runNaraContractCollect(env: Env): Promise<NaraContractStat
   //   **CPU 로 죽는 자리**다(이 레포가 반복해 겪은 그 죽음). 무료 200(페이지당 ~380KB) / 유료 400.
   //   ⚠️ 요청 **수**가 아니라 파싱량만 늘므로 이 노브가 묶인 건 포털 쿼터가 아니라 CPU 다(plan-knobs `cf`).
   const rows = Math.min(500, Math.max(50, envPlanValue(e.ADS_NARA_CONTRACT_ROWS, 200, 400, env)))
-  const budget = { left: Math.min(20, Math.max(1, parseInt(e.ADS_NARA_CONTRACT_PAGES || '', 10) || 8)) }
+  // 📄 회차당 페이지 — 실측(2026-08-04 첫 회차)이 `stopped_by:"pages"` 였다. 즉 **마감선(20s)이 아니라
+  //   페이지 수에서 멈췄다** = 시간이 남는다. 원부 29,129건을 200행씩 도는데 8페이지면 한 바퀴에 25회차(25일)라
+  //   롤링 원부를 못 따라간다 → 20 으로. 마감선이 백스톱이라 느린 날엔 알아서 일찍 멈춘다(커서는 진행분 보존).
+  const budget = { left: Math.min(40, Math.max(1, parseInt(e.ADS_NARA_CONTRACT_PAGES || '', 10) || 20)) }
   const windowDays = Math.min(90, Math.max(1, parseInt(e.ADS_NARA_CONTRACT_DAYS || '', 10) || 7))
   const bgn = kstYmd(now - windowDays * 86_400_000)
   const end = kstYmd(now)

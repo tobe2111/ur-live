@@ -22,7 +22,7 @@ import ContactListPanel from './partner-pool/ContactListPanel'
 import ReferralPanel from './partner-pool/ReferralPanel'
 import TradePanel from './partner-pool/TradePanel'
 import TierBreakdown from './partner-pool/TierBreakdown'
-import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo, type Work24Info, type LocalDataInfo, type EnrichInfo, type EnrichRollupInfo, type KakaoSweepInfo, type RegistryMatchInfo } from './partner-pool/StatusLines'
+import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo, type LocalDataInfo, type EnrichInfo, type EnrichRollupInfo, type KakaoSweepInfo, type RegistryMatchInfo } from './partner-pool/StatusLines'
 import { STAT_PICK, fmtRun, runStamp, parseStamp } from './partner-pool/job-completion'
 import { FilterChip, ActionMenu } from './partner-pool/Controls'
 import CompanyKeywordManager, { type CompanyKeyword } from './partner-pool/CompanyKeywordManager'
@@ -80,7 +80,6 @@ export default function AdminPartnerPoolPage() {
   const [agencyFunnel, setAgencyFunnel] = useState<AgencyFunnel | null>(null)
   const [npsInfo, setNpsInfo] = useState<NpsInfo | null>(null)
   const [reclassifyInfo, setReclassifyInfo] = useState<ReclassifyInfo | null>(null)
-  const [work24Info, setWork24Info] = useState<Work24Info | null>(null)
   const [enrichInfo, setEnrichInfo] = useState<EnrichInfo | null>(null) // 📧 보강 레인 계측(적중률)
   // 🧮 하루 누적 — 스냅샷은 라운드마다 덮이므로 '모든 라운드가 죽는지 vs 마지막만 잘렸는지'를 이것으로 판정.
   const [enrichRollup, setEnrichRollup] = useState<EnrichRollupInfo | null>(null)
@@ -122,7 +121,7 @@ export default function AdminPartnerPoolPage() {
   const loadStats = useCallback(async (): Promise<Record<string, unknown> | null> => {
     try {
       const r = await api.get('/api/admin/partner-pool/stats')
-      if (r.data?.success) { setStats(r.data.stats); setByDay(r.data.byDay || []); setSegments(r.data.segments || null); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null); setLocaldata(r.data.localdata || null); setEnrichInfo(r.data.enrichLast || null); setEnrichRollup(r.data.enrichRollup || null); setKakaoSweep(r.data.kakaoSweep || null); setRegistryMatch(r.data.registryMatch || null); setRunning(r.data.running || null); setLaneHealth(r.data.laneHealth || []) }
+      if (r.data?.success) { setStats(r.data.stats); setByDay(r.data.byDay || []); setSegments(r.data.segments || null); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setLocaldata(r.data.localdata || null); setEnrichInfo(r.data.enrichLast || null); setEnrichRollup(r.data.enrichRollup || null); setKakaoSweep(r.data.kakaoSweep || null); setRegistryMatch(r.data.registryMatch || null); setRunning(r.data.running || null); setLaneHealth(r.data.laneHealth || []) }
       return r.data || null // 완료 감지 폴러가 원시 응답을 함께 사용
     } catch { return null }
   }, [])
@@ -375,7 +374,6 @@ export default function AdminPartnerPoolPage() {
             { label: '통신판매사업자', desc: '공정위 — 대표자 이메일이 붙어 옴', onClick: () => runAction('collect-commerce', '통신판매 수집') },
             { label: '프랜차이즈 본사', desc: '공정위 가맹 정보공개서', onClick: () => runAction('collect-franchise', '프랜차이즈 수집') },
             { label: '나라장터 상권 용역', desc: '상권활성화 계약 수주사 + 발주기관 담당자', onClick: () => runAction('collect-nara', '상권 용역 계약 수집') },
-            { label: '💼 채용기업(고용24)', desc: '채용 중 = 성장 신호 — 광고·판촉·인쇄 계열만', onClick: () => runAction('collect-work24', '고용24 채용기업 수집') },
           ]} />
           <ActionMenu label="🧹 정리·보강" busy={['enrich', 'enrich-burst', 'reclassify', 'sweep-nts', 'sweep-mx', 'collect-nps', 'match-registry?passes=5'].includes(busy)} items={[
             { label: '📧 연락처 보강', desc: '홈페이지 크롤·네이버 발견으로 이메일 소급(허위 0)', onClick: () => runAction('enrich', '연락처 보강') },
@@ -408,7 +406,7 @@ export default function AdminPartnerPoolPage() {
         <button onClick={() => setShowOps(v => !v)} className="mb-2 text-xs text-gray-500 hover:text-gray-800">
           {showOps ? '▾ 수집 상태·키워드 접기' : '▸ 수집 상태·키워드 펼치기'}
         </button>
-        {showOps && <StatusLines enrichRollup={enrichRollup} kakaoSweep={kakaoSweep} collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} work24={work24Info} localdata={localdata} enrichLast={enrichInfo} registryMatch={registryMatch} />}
+        {showOps && <StatusLines enrichRollup={enrichRollup} kakaoSweep={kakaoSweep} collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} localdata={localdata} enrichLast={enrichInfo} registryMatch={registryMatch} />}
 
         {showImport && <ImportPanel text={importText} onText={setImportText} busy={importing} onSubmit={submitImport} />}
 
