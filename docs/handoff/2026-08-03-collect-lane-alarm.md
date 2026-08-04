@@ -763,3 +763,29 @@ npx tsc --noEmit --skipLibCheck > /tmp/tsc.log 2>&1; echo "exit=$?"; wc -l < /tm
 `.github/workflows/verify.yml` 의 **Schema verification (drift detection)** 스텝은
 `continue-on-error: true`(정보 용도)다 — **블로커가 아니다.** 실제 블로커는 TS2559 하나였다.
 ⇒ 로그에 빨간 게 여럿 보이면 **워크플로에서 그 스텝의 `continue-on-error` 를 먼저 확인**할 것.
+
+## 🕳️ 검증 공백 — head 가 문서 커밋이면 Verify 가 **한 번도 안 돈다** (2026-08-04 실측)
+
+`verify.yml` 은 두 다리로 돈다: `push`(브랜치, **`paths-ignore: ['docs/**','**/*.md']`**) + `pull_request`
+(paths-ignore 없음 — 2026-08-03 실사고 수습으로 일부러 뺐다). 설계 의도는 *"문서 커밋이 head 여도
+pull_request 다리가 전수 검증한다"* 인데, **그 다리가 현재 안 돌고 있다.**
+
+```
+verify.yml · event=pull_request 최근 run : 2026-08-03T17:54:34Z (a8186f2) 이후 0건
+그 뒤 내 푸시 75180f1 / 1c42f04 / e916e99 : 전부 event=push 로만 실행
+문서 전용 커밋 c6f3029 (head)            : push=paths-ignore 로 skip, pull_request=미발화
+  → GET /pulls/1041 check-runs = Cloudflare Pages 뿐. **Verify 체크 0건.**
+```
+⇒ **"PR 에 빨간 체크가 없다"가 "검증됐다"가 아니다.** 이 레포가 2026-08-03 에 겪은 사고와 같은 상태가
+   경로만 바꿔 재현됐다(그때는 paths-ignore + concurrency, 이번엔 pull_request 다리 자체의 침묵).
+
+🔎 **원인 미확정 — 다음 세션의 첫 액션**: `pull_request` 다리가 왜 침묵하는지. draft PR·중복 run 억제·
+   Actions 설정 중 무엇인지 못 가렸다. 판정법: 코드 커밋을 하나 밀고
+   `GET /actions/workflows/verify.yml/runs?event=pull_request` 에 새 run 이 잡히는지 본다.
+⚠️ 이 환경에선 `workflow_dispatch` 가 **403(Resource not accessible by integration)** 이라 우회 못 했다.
+
+🛟 **그동안의 실무 규칙**: **PR 의 마지막 커밋을 문서로 두지 말 것.** 문서 갱신을 코드 커밋보다 **먼저**
+   밀거나, 문서를 민 뒤 코드 커밋을 한 번 더 밀어 head 를 코드로 만든다.
+   (이번 건은 `git diff e916e99 c6f3029 --stat` 로 **차이가 handoff 1파일뿐**임을 확인하고,
+    문서-민감 가드 3종(`check-current-work-sync`·`check-blog-seed-currency`·인계목차 재생성)을
+    로컬로 돌려 통과시킨 뒤 진행했다. 그래도 **이건 우회지 검증이 아니다** — 위 원인 규명이 남는다.)
