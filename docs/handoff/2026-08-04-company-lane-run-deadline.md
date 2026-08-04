@@ -96,3 +96,32 @@ SELECT substr(value,1,400) FROM platform_settings WHERE key = 'ads_company_stats
 | Workers 유료 전환 | 대표 보류. 레인 CPU 사망은 유료가 직접 해결하는 종류 |
 
 ⚠️ `tick-history-write.ts` · `lane-aimd.ts` 는 다른 세션(#983) 소관 — **무접촉**.
+
+---
+
+## ✅ 20:39 KST 판정 — **두 처방 다 걸렸다** (표본 각 1회)
+
+```
+#1059 collect-company        run_ms 31,376 → 12,981   deadline_hit true
+                             keywords 12 → 5          spent 52 → 20   limit_hit true → false
+#1054 reclassify-company     20:00 KST  ok=true ms=5,681   (직전: ms=1,316 CPU 한도 사망)
+ads_lanes_learned            cap 5   (2→3→4→5 계속 상승)   pinned 0
+```
+
+**두 처방이 서로 다른 것을 고쳤고 둘 다 예측대로 움직였다** — 벽시계(collect-company)와
+행 총량(reclassify). 이로써 §3-① 의 추론(*"각 자식이 자기 CPU 예산을 태운다 ⇒ 레인별 수리가 맞다"*)이
+**한 단계 더 뒷받침됐다**: 부모 탓이었다면 코드를 안 고친 레인도 같이 살아났어야 하는데,
+미수리인 `collect-hira` 는 **그대로 CPU 한도**다.
+
+⚠️ **표본이 각 1회다.** 오늘 아침 5회 표본으로 "풀렸다"고 했다가 6시간 만에 뒤집힌 전례가 있다.
+2~3회차 더 유지되는지 확인하고 확정할 것.
+
+### 💸 정직하게 남길 비용
+회차당 처리량이 줄었다 — 키워드 12→5, `saved` 92→14. 대신 **회차가 안 죽고 커서가 정확히 전진**한다
+(죽으면 그 회차의 커서 전진·통계 쓰기가 통째로 날아간다). ⇒ 더 벌고 싶으면 **회차를 길게 하지 말고**
+(그래서 죽었다) **회차 수**로 벌 것. `cap` 이 5까지 오른 것이 정확히 그 방향이다.
+
+### 다음 세션이 볼 것 — 순서대로
+1. `cron_hb:ads:sweep-kakao-chain`(20:39 기준 마지막 14:00) — #1054 의 나머지 절반. `ok:true` 면 확정.
+2. `cron_hb:ads:collect-hira`(마지막 10:00, **미수리**) — 여전히 CPU 한도면 예상대로다. 같은 처방 적용.
+3. `deadline_hit` 이 **매 회차** true 면 ⚠️ **12s 를 올리지 말고** `batchSize`(기본 12)를 줄일 것.
