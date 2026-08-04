@@ -5494,9 +5494,12 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 125건 · 최신순 · 이 목록은 자동 생성된다._
+_총 128건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-08-05**
+- [2026-08-05 — 경보가 울려도 아무도 안 보게 되는 길](handoff/2026-08-05-rotation-aware-silence.md)
 **2026-08-04**
+- [YT 우선 배분 + 중복 발송 제거 (2026-08-04, 대표 승인 "2,3 진행")](handoff/2026-08-04-yt-priority-and-dedupe.md)
 - [부모 틱이 CPU 천장에 닿았다 — 레인이 하나씩 죽는 진짜 이유 (2026-08-04, 라이브 하트비트 실측)](handoff/2026-08-04-tick-cpu-ceiling.md)
 - [2026-08-04 — 꼬리 상한 25s → 10s (대표 승인)](handoff/2026-08-04-tail-wait-10s.md)
 - [📝 순환 축에도 연락처 목적함수 — 자동 조율의 나머지 절반 (2026-08-04)](handoff/2026-08-04-rotation-contact-yield.md)
@@ -5504,6 +5507,7 @@ _총 125건 · 최신순 · 이 목록은 자동 생성된다._
 - [발송 결과 붙여넣기 UI — 반응 루프의 열린 끝을 닫는다 (2026-08-04)](handoff/2026-08-04-outreach-result-ui.md)
 - [상권 축 2단계 — 나라장터 계약정보 레인 (2026-08-04)](handoff/2026-08-04-nara-contract-lane.md)
 - [키워드 목적함수를 "연락처 확보율"로 (2026-08-04 대표 지시)](handoff/2026-08-04-keyword-objective-contacts.md)
+- [2026-08-04 — 카카오 전화 스윕이 뒷줄 15,582건을 굶기고 있었다](handoff/2026-08-04-kakao-sweep-starvation.md)
 - [인계 — 홈 쇼케이스 ①③④ (2026-08-04)](handoff/2026-08-04-home-showcase.md)
 - [인계 — 홈 쇼케이스 라이브 수리 (2026-08-04)](handoff/2026-08-04-home-showcase-fix.md)
 - [인계 — 홈 섹션 어드민 편집(직접 고르기 · 순서 변경) (2026-08-04)](handoff/2026-08-04-home-sections-editing.md)
