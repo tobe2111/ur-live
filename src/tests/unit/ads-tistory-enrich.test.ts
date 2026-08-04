@@ -12,7 +12,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { deriveTistoryHandle, tistoryHomeUseful } from '@/features/marketing/api/influencer-tistory-performance'
-import { TISTORY_ROOM } from '@/features/marketing/api/influencer-enrich-lane'
+import { TISTORY_ROOM, tistoryRoom } from '@/features/marketing/api/influencer-tistory-performance'
 
 const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
 /** 💬 주석 제거 — 배선은 코드에서만 판정한다(주석 처리해도 초록이 뜨던 함정, 같은 날 두 번 밟았다). */
@@ -58,7 +58,8 @@ describe('🔌 배선', () => {
 
   it('🔒 레인이 티스토리를 부르고, 블로거보다 **먼저** 작은 몫만 쓴다', () => {
     const c = code(LANE)
-    expect(c).toMatch(/enrichTistoryActivity\(DB, budget, TISTORY_ROOM, slice\)/)
+    // 2026-08-04: 몫이 상수 → `tistoryRoom(env)`(기본 0, env 로 복원) 로 바뀌었다. 호출 형태를 따라간다.
+    expect(c).toMatch(/enrichTistoryActivity\(DB, budget, tisRoom, slice\)/)
     /**
      * 순서가 뒤집히면 블로거가 잔여를 다 가져가 티스토리는 영원히 0이 된다(`naverRoomFromRemaining` 이 전부를 쓴다).
      * ⚠️ **호출부로 앵커한다** — 처음엔 `indexOf('enrichTistoryActivity')` 로 썼는데 그게 맨 위 **import 문**을
@@ -68,9 +69,25 @@ describe('🔌 배선', () => {
     expect(c.indexOf('enrichTistoryActivity(DB, budget')).toBeLessThan(c.indexOf('enrichNaverActivity(DB, budget'))
   })
 
-  it('🔒 몫은 작게 고정 — 이 값이 곧 블로거에게서 뺏는 양이다', () => {
-    expect(TISTORY_ROOM).toBeGreaterThan(0)
-    expect(TISTORY_ROOM, '늘리려면 tistory.failed 실측이 먼저다(회차당 2 = 최대 4 서브리퀘스트 ≈ 9%)').toBeLessThanOrEqual(3)
+  /**
+   * 📉 **2026-08-04: 이 경로를 접었다** — 어제 이 파일이 지키던 "작은 몫이라도 돌려라"가 뒤집혔다.
+   *   표본이 397건으로 커지자 이메일 수율 **3.0%**(네이버 26.7% · 유튜브 40.6%). 최근 3일 325행 → 0건.
+   *   측정은 정상 동작하고(393/397 글 수 획득) 티스토리 블로거가 연락처를 안 거는 것이라 코드로 못 고친다.
+   *   ⇒ 테스트도 방향을 바꾼다: 이제 지킬 것은 "돌 것"이 아니라 **"몰래 되살아나지 말 것"** 이다.
+   */
+  it('🔒 기본은 0 — 되살리려면 근거와 함께 명시적으로', () => {
+    expect(TISTORY_ROOM, '되살리려면 수율이 왜 올랐는지 근거가 먼저다(env ADS_TISTORY_ROOM)').toBe(0)
+    expect(tistoryRoom(undefined)).toBe(0)
+    expect(tistoryRoom({})).toBe(0)
+  })
+
+  it('🔒 env 로는 되살아난다 — 삭제가 아니라 접은 것이다(가역)', () => {
+    expect(tistoryRoom({ ADS_TISTORY_ROOM: '2' })).toBe(2)
+    expect(tistoryRoom({ ADS_TISTORY_ROOM: '99' })).toBe(5)   // 런어웨이 방지
+  })
+
+  it('🔒 0 이면 아예 안 부른다 — 몫만 0 이고 호출은 도는 형태면 D1 왕복이 남는다', () => {
+    expect(code(LANE)).toMatch(/if \(tisRoom > 0\) \{/)
   })
 
   it('🔒 스냅샷에 진단이 실린다 — 프록시 차단 환경에선 이게 유일한 판정 근거다', () => {

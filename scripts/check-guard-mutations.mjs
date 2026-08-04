@@ -1639,6 +1639,56 @@ const MUTATIONS = [
       '같은 알람의 collect 가 28,643ms 완주가 증거다. 전제가 사라진 값을 그대로 쓰면 창이 근거 없이 좁다.',
   },
   {
+    name: '재업로드가 반응 시각을 덮음(COALESCE 제거)',
+    file: 'src/features/marketing/api/outreach-status-ingest.ts',
+    find: 'opened_at = COALESCE(opened_at, ?)',
+    replace: 'opened_at = ?',
+    test: 'src/tests/unit/ads-outreach-status-ingest.test.ts',
+    why:
+      '같은 파일을 두 번 올리면 "방금 열었다"로 덮여 반응 시점 분석이 망가진다. 멱등은 "에러가 안 난다"가 ' +
+      '아니라 **최종 상태가 같다** 는 뜻이다.',
+  },
+  {
+    name: 'sent 가 contacted_at 을 덮어 리마인더가 영원히 안 나감',
+    file: 'src/features/marketing/api/outreach-status-ingest.ts',
+    find: 'contacted_at = COALESCE(contacted_at, ?)',
+    replace: 'contacted_at = ?',
+    test: 'src/tests/unit/ads-outreach-status-ingest.test.ts',
+    why:
+      'contacted_at 은 발송 큐/리마인더의 "이미 보냈나·언제" 판정에 쓰인다. 재업로드가 갱신하면 D+N 창이 ' +
+      '매번 밀려 **후속 발송이 구조적으로 0** 이 된다. 에러가 안 나서 안 보이는 종류다.',
+  },
+  {
+    name: '수신거부가 opted_out 을 안 세움(또는 다른 상태가 세움)',
+    file: 'src/features/marketing/api/outreach-status-ingest.ts',
+    find: "case 'opt_out':",
+    replace: "case 'sent2':",
+    test: 'src/tests/unit/ads-outreach-status-ingest.test.ts',
+    why:
+      '수신거부는 법적 의사표시다. 안 세우면 다음 발송에 그 사람이 다시 뽑히고, 반대로 다른 상태가 세우면 ' +
+      '멀쩡한 리드가 영구 제외된다(해제는 사람만 한다).',
+  },
+  {
+    name: '미매칭을 안 세어 반쯤 먹힌 업로드가 성공으로 보임',
+    file: 'src/features/marketing/api/outreach-status-ingest.ts',
+    find: '    if (ch === 0) out.unmatched++',
+    replace: '    if (false) out.unmatched++',
+    test: 'src/tests/unit/ads-outreach-status-ingest.test.ts',
+    why:
+      '주소가 풀에 없으면 changes 0 인데 그걸 안 세면 응답이 "성공"이다. 이 레포가 반복해 만난 ' +
+      '*"실패가 아니라 부재"* 클래스 — 유입구에서 특히 위험하다(대표는 넣었다고 믿는다).',
+  },
+  {
+    name: '티스토리가 조용히 되살아남(수율 3.0%)',
+    file: 'src/features/marketing/api/influencer-tistory-performance.ts',
+    find: 'export const TISTORY_ROOM = 0',
+    replace: 'export const TISTORY_ROOM = 2',
+    test: 'src/tests/unit/ads-tistory-enrich.test.ts',
+    why:
+      '2026-08-04 실측으로 접었다(측정 397 → 이메일 12 = 3.0%, 네이버 26.7%·유튜브 40.6%). 되살리려면 ' +
+      '**수율이 왜 올랐는지 근거가 먼저**다. env(ADS_TISTORY_ROOM)로는 열려 있으니 코드 기본값은 0 이어야 한다.',
+  },
+  {
     name: '연락처 수율 억제가 되돌릴 수 없게 됨(탐침 회차 제거)',
     file: 'src/features/marketing/api/keyword-contact-yield.ts',
     find: '  if (roundIndex % CONTACT_PROBE_EVERY === 0) return pool',

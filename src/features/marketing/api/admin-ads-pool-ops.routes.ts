@@ -10,7 +10,8 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
-import { isCollectRunning, isMaintainRunning } from './collect-lease' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
+import { isCollectRunning, isMaintainRunning } from './collect-lease'
+import { parseOutreachCsv, normalizeOutreachItems, ingestOutreachStatuses, OUTREACH_INGEST_MAX } from './outreach-status-ingest' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -233,3 +234,28 @@ app.post('/influencer-pool/route-biz', async (c) => {
 })
 
 export { app as adminAdsPoolOpsRoutes }
+
+/**
+ * 📬 POST /api/admin/ads/outreach/status — 아웃리치 결과 유입(반응 루프 닫기).
+ *
+ *   body: `{ items: [{email, status, at?}] }` 또는 `{ csv: "email,status[,at]\n..." }`
+ *   status: sent | opened | replied | bounced | complained | opt_out
+ *
+ *   ⚠️ 대표가 **외부 도구로 발송**하므로 이게 유일한 유입구다. 설계 근거·멱등성은
+ *   `outreach-status-ingest.ts` docblock — 특히 "왜 sent 가 contacted_at 을 안 덮는가".
+ *   ⚠️ 응답에 `unmatched` 를 반드시 담는다 — 조용한 0건은 "성공"과 구분이 안 된다.
+ */
+app.post('/outreach/status', async (c) => {
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const fromCsv = typeof b.csv === 'string' ? parseOutreachCsv(b.csv) : null
+  const parsed = fromCsv ?? normalizeOutreachItems(b.items)
+  if (parsed.items.length > OUTREACH_INGEST_MAX) {
+    return c.json({ success: false, error: `한 번에 ${OUTREACH_INGEST_MAX}건까지 — 나눠서 보내주세요` }, 400)
+  }
+  if (!parsed.items.length) {
+    return c.json({ success: false, error: '반영할 행이 없습니다', invalid: parsed.invalid }, 400)
+  }
+  const nowIso = new Date().toISOString().slice(0, 19).replace('T', ' ')
+  const r = await ingestOutreachStatuses(c.env.DB, parsed.items, nowIso)
+  return c.json({ success: !r.error, ...r, invalid: parsed.invalid, error: r.error })
+})
