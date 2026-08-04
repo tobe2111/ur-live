@@ -48,6 +48,8 @@ export const PLAN_KNOBS: readonly PlanKnob[] = [
   { env: 'ADS_LANES_PER_TICK', cls: 'cf', why: '회차당 레인 수 = 부모 인보케이션 CPU' },
   { env: 'ADS_SUBREQ_PLATFORM_CAP', cls: 'cf', why: '서브리퀘스트 플랫폼 천장' },
   { env: 'ADS_ENRICH_DEADLINE_MS', cls: 'cf', why: '보강 라운드 벽시계 = 부모 수명(CPU)' },
+  { env: 'ADS_NARA_CONTRACT_DEADLINE_MS', cls: 'cf', why: '계약 수집 라운드 벽시계 = 부모 수명(CPU)' },
+  { env: 'ADS_NARA_CONTRACT_ROWS', cls: 'cf', why: '페이지당 행 수 — 요청 **수**는 그대로고 파싱량만 는다(계약 1건 ~1.9KB). 묶인 것은 CPU' },
   { env: 'ADS_ENRICH_BUDGET', cls: 'cf', why: '보강 레인 서브리퀘스트 예산' },
   { env: 'ADS_COMPANY_SUBREQUEST_BUDGET', cls: 'cf', why: '업체 레인 서브리퀘스트 예산' },
   { env: 'ADS_INFLUENCER_ENRICH_BUDGET', cls: 'cf', why: '인플루언서 보강 서브리퀘스트 예산' },
@@ -68,9 +70,11 @@ export const PLAN_KNOBS: readonly PlanKnob[] = [
   { env: 'ADS_STOREINFO_BATCH', cls: 'external', why: '공공 API 회당 배치 → 그쪽 호출 한도' },
   { env: 'ADS_COMPANY_WEB_PAGES', cls: 'external', why: '웹문서 검색 페이지 수 → 네이버 쿼터' },
   { env: 'ADS_LOCALDATA_CHAIN', cls: 'external', why: '인허가 API 체인 깊이 → 공공 API 호출' },
+  { env: 'ADS_NARA_CONTRACT_PAGES', cls: 'external', why: '계약정보 회당 페이지 수 = data.go.kr 요청 수 → 포털 일 쿼터(요금제와 무관)' },
 
   // ── 데이터 모양 — 예산이 아니다
   { env: 'ADS_COMPANY_WEB_TIER_MAX', cls: 'shape', why: '어느 tier 까지 웹 레인을 붙일지 — 대상 범위이지 속도가 아니다' },
+  { env: 'ADS_NARA_CONTRACT_DAYS', cls: 'shape', why: '날짜 창 폭 — 무엇을 보는가이지 얼마나 빨리 보는가가 아니다(창이 무시되면 값 자체가 무의미)' },
   { env: 'ADS_MEASURE_SHARE', cls: 'shape', why: '측정/수집 몫 **비율** — 총량은 lanesPerTick 이 정한다' },
   // ⚠️ **이 한 줄은 확신이 낮다 — 다음 세션이 데이터로 결론지어야 한다.**
   //   `shape` 로 둔 근거: 각 조각이 자기 서브리퀘스트 예산을 쓰므로 K 는 총 작업량이 아니라 나누는 방식이다.

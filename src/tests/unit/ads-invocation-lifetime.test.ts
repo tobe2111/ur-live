@@ -19,7 +19,7 @@
  *   그때 처방은 "cron 이 라운드를 직접 N번 kick"(루트가 수명을 쥔다)이다.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { capAfterAbandonedRun, nextSubreqCap, ENRICH_DEADLINE_MS_DEFAULT, resolveEnrichDeadlineMs,
   budgetedTimeoutMs, FETCH_TIMEOUT_FLOOR_MS, canStartBudgetedItem } from '@/features/marketing/api/collect-budget'
@@ -537,9 +537,20 @@ describe('🧱 DDL SSOT — 공유 키의 문장 목록은 한 벌이다', () =>
     expect(defs, `KW_DDL 을 두 곳 이상에서 정의하고 있다: ${defs.join(', ')}`).toEqual(['influencer-keyword-ddl.ts'])
   })
 
-  it('두 호출부 모두 그 SSOT 를 import 한다', () => {
-    for (const f of ['influencer-keyword-store.ts', 'influencer-auto-collect.ts']) {
-      expect(read(`${DIR}/${f}`), `${f} 가 KW_DDL 을 자체 정의하거나 안 쓴다`)
+  /**
+   * ⚠️ 2026-08-04 재앵커 — 원래 이 시험은 `['influencer-keyword-store.ts', 'influencer-auto-collect.ts']`
+   *   **두 파일 이름을 박아** 두었다. 그런데 그 둘이 byte-동일한 정의를 갖고 있던 것 자체가 결함이었고
+   *   (2026-07-29 분리가 병합으로 되돌아왔다), 중복을 지우자 이 시험이 **정상 구조를 빨간불로** 만들었다.
+   *   ⇒ 이름이 아니라 **의도**에 건다: 그 공유 키로 `runDdlOnce` 를 부르는 모듈은 *전부* SSOT 를 import 한다.
+   *   파일이 하나든 셋이든 성립하고, 새 호출부가 생기면 자동으로 검사 대상이 된다.
+   */
+  it('그 공유 키를 쓰는 모듈은 **전부** SSOT 를 import 한다', () => {
+    const KEY = 'ads_ddl_discovery_keywords'
+    const files = readdirSync(resolve(process.cwd(), DIR)).filter(f => f.endsWith('.ts'))
+    const callers = files.filter(f => f !== 'influencer-keyword-ddl.ts' && read(`${DIR}/${f}`).includes(KEY))
+    expect(callers.length, '호출부가 0개면 이 검사는 통과가 아니라 무의미하다(키 이름이 바뀌었나)').toBeGreaterThan(0)
+    for (const f of callers) {
+      expect(read(`${DIR}/${f}`), `${f} 가 공유 키를 쓰면서 KW_DDL 을 자체 정의하거나 베꼈다`)
         .toMatch(/import \{ KW_DDL \} from '\.\/influencer-keyword-ddl'/)
     }
   })

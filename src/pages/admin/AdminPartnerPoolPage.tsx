@@ -374,7 +374,7 @@ export default function AdminPartnerPoolPage() {
             { label: '공공 상가정보', desc: 'tier 2~5 업종 통째 + 전화 역조회', onClick: () => runAction('collect-storeinfo', '상가정보 수집') },
             { label: '통신판매사업자', desc: '공정위 — 대표자 이메일이 붙어 옴', onClick: () => runAction('collect-commerce', '통신판매 수집') },
             { label: '프랜차이즈 본사', desc: '공정위 가맹 정보공개서', onClick: () => runAction('collect-franchise', '프랜차이즈 수집') },
-            { label: '나라장터 조달업체', desc: '정부 용역 수주 광고·마케팅사', onClick: () => runAction('collect-nara', '조달업체 수집') },
+            { label: '나라장터 상권 용역', desc: '상권활성화 계약 수주사 + 발주기관 담당자', onClick: () => runAction('collect-nara', '상권 용역 계약 수집') },
             { label: '💼 채용기업(고용24)', desc: '채용 중 = 성장 신호 — 광고·판촉·인쇄 계열만', onClick: () => runAction('collect-work24', '고용24 채용기업 수집') },
           ]} />
           <ActionMenu label="🧹 정리·보강" busy={['enrich', 'enrich-burst', 'reclassify', 'sweep-nts', 'sweep-mx', 'collect-nps', 'match-registry?passes=5'].includes(busy)} items={[
