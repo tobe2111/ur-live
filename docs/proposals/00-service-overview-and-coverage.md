@@ -1985,7 +1985,7 @@
 
 
 
-> 마지막 생성: 2026-08-04T02:19:39.152Z
+> 마지막 생성: 2026-08-04T02:40:18.290Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

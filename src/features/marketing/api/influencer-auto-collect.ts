@@ -41,7 +41,7 @@ import { RETIRED_CATEGORIES } from './influencer-classify'
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap } from './influencer-keyword-rotation'
 
 // 🌱 시드 키워드(데이터) → `influencer-seed-keywords.ts` 로 분리(600줄 래칫). 탐색 *범위*라 자유 확장.
 //   🔀 병합 메모: 이 브랜치도 같은 분리를 `influencer-seeds.ts` 로 했었다 — **같은 것을 두 벌 두면
@@ -404,12 +404,16 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
    */
   const spendBy = { yt: 0, naver: 0, cafe: 0, tistory: 0, save: 0 }
   const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
+  const roundCap = keywordsPerRoundCap(env)
   let fromYt = 0, fromCursor = 0 // 🎯 처리된 픽의 출처 — 커서픽이 실제로 도달되는지 보이게(위 `picks` 주석)
   // 💸 재조우 보강 스킵 훅 — 왜/예산회계는 `influencer-known-contacts.ts` docblock 이 SSOT.
   const alreadyContacted = makeAlreadyContacted(DB, POOL_ACCOUNT_ID, budget)
 
   for (const k of finalPicks) {
     if (budget.left <= 0) break // 🔒 예산 소진 — 이번 틱 종료(다음 틱 커서가 못 돈 키워드를 이어받음)
+    // 🧊 폭 동결(2026-08-04) — 위 enrichMax 축소로 남은 예산이 **자동으로 키워드 수를 늘리는 것**을 막는다.
+    //   왜 막는가는 `COLLECT_KEYWORDS_PER_ROUND` docblock(측정이 병목인데 폭을 넓히면 백로그만 는다).
+    if (processedIds.size >= roundCap) break
     used.push(k.keyword); processedIds.add(k.id)
     if (ytIds.has(k.id)) fromYt++; else fromCursor++
     let kFound = 0, kSaved = 0 // 이 키워드의 이번 실행 발굴/저장
@@ -441,7 +445,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     if (hasNaver) {
       try {
         const _b0 = budget.left
-        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: 5, budget, sort: naverSort, alreadyContacted })
+        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: NAVER_COLLECT_ENRICH_MAX, budget, sort: naverSort, alreadyContacted })
         spendBy.naver += Math.max(0, _b0 - budget.left)
         if (r.ok) {
           kSearched++
@@ -567,6 +571,8 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     naver_api: { used: naverCalls, total: NAVER_DAILY_QUOTA_CALLS, day: naverDay },
     // 🔒 예산 실사용/상한/한도관측 — 정상 실행에도 남긴다(위 필드 주석 참조).
     spent: budgetTotal - budget.left, budget_total: budgetTotal, learned_cap: learnedCap, limit_hit: hitLimit,
+    // 🕳️ `limit_hit` 과 **다른 값**이다 — 근거·함정은 타입 정의(`AutoCollectStats.budget_exhausted`) 참조.
+    budget_exhausted: budget.left <= 0,
     // ✅ 성공했으면 옛 crash 표식을 남기지 않는다(회복 후에도 빨간 줄이 남으면 다음 사람이 오진한다).
   }
   // 🧮 커서·카운터·통계를 1 batch 로 저장(2026-07-29) — 낱개 4 write = 4 서브리퀘스트였다.
@@ -587,6 +593,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   미판정 37,075건에 약 3.9일이 걸렸다. 정비 쪽은 fresh 인보케이션이라 한 회차에 수천 행을 돈다.
   //   ⚠️ 여기서 다시 부르지 말 것 — 두 벌로 두면 조용히 갈라진다.
   await releaseLease() // 🔒 상태 기록 후 해제(다음 실행이 최신 카운터/커서를 읽게) — 크래시 시 TTL 5분이 백스톱
-  try { await maybeAlertCollectHealth(env, DB, { diag, saved, quotaHit }) } catch { /* fail-soft */ }
+  try { await maybeAlertCollectHealth(env, DB, {
+    diag, saved, quotaHit, // 🔢 아래 숫자가 없어서 '정체' 경보를 받고도 확인처가 false 라 정상으로 보였다
+    spent: stats.spent, budget_total: stats.budget_total, budget_exhausted: stats.budget_exhausted, picks: stats.picks,
+  }) } catch { /* fail-soft */ }
   return stats
 }

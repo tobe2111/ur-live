@@ -12,6 +12,8 @@ import {
   alarmEnabled, resolveInterval, resolveRunsPerHour, nextWakeAt, hourBucket, LANE_ALARM_STAMP_KEY,
 } from './lane-alarm-policy'
 import { lookupAlarmLane } from './lane-alarm-runners'
+import { buildCronBeatRow } from '@/worker/utils/cron-heartbeat'
+import { staleGapMinutes } from './lane-cadence'
 
 interface AlarmEnv {
   ADS_LANE_ALARM_INTERVAL_MS?: string
@@ -80,13 +82,25 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     try {
       const DB = (this.env as { DB?: D1Database }).DB
       if (DB) {
-        await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-          .bind(`${LANE_ALARM_STAMP_KEY}:${this.lane}`, JSON.stringify({
+        const put = DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+        // 🫀 **침묵 판정이 보는 곳에도 남긴다** (2026-08-04 라이브에서 잡음).
+        //   알람으로 옮긴 레인은 부모가 더 이상 kick 하지 않으므로 `cron_hb:ads:{레인}` 이 그 시점에
+        //   멈춘다 — 실측: `collect` 가 매시간 정상 실행 중인데 하트비트는 **27시간 전** 값이었다.
+        //   `getCronHealth` 는 그 키로 판정하므로, 이 레인은 **죽어도 침묵 경보가 안 울린다**
+        //   (#1006 이 고친 "판정 대상에서 빠짐" 과 같은 클래스가 알람 이전으로 되살아난 것).
+        //   ⚠️ 페이로드는 `buildCronBeatRow`(SSOT)를 쓴다 — 손으로 모양을 맞추면 두 벌이 갈린다.
+        //   ⚠️ 같은 batch = **서브리퀘스트 1개**. 낱개로 쓰면 가장 빠듯한 지점에 하나를 더 얹는 셈이다.
+        const hb = buildCronBeatRow(`ads:${this.lane}`, !error, Date.now() - t0, undefined, stats,
+          staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))))
+        await DB.batch([
+          put.bind(`${LANE_ALARM_STAMP_KEY}:${this.lane}`, JSON.stringify({
             at: new Date().toISOString(), lane: this.lane, ms: Date.now() - t0, runs_this_hour: ran, cap,
             interval_ms: interval, next_at: new Date(at).toISOString(), fail_streak: nextFail,
             ...(error ? { error: error.slice(0, 200) } : {}),
             stats: stats ? JSON.parse(JSON.stringify(stats)) : null,
-          }).slice(0, 2000)).run()
+          }).slice(0, 2000)),
+          put.bind(hb.key, hb.value),
+        ])
       }
     } catch { /* 관측 실패가 체인을 끊지 않는다 */ }
   }
