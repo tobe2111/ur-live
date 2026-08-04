@@ -1639,6 +1639,47 @@ const MUTATIONS = [
       '같은 알람의 collect 가 28,643ms 완주가 증거다. 전제가 사라진 값을 그대로 쓰면 창이 근거 없이 좁다.',
   },
   {
+    name: '연락처 수율 억제가 되돌릴 수 없게 됨(탐침 회차 제거)',
+    file: 'src/features/marketing/api/keyword-contact-yield.ts',
+    find: '  if (roundIndex % CONTACT_PROBE_EVERY === 0) return pool',
+    replace: '  if (false) return pool',
+    test: 'src/tests/unit/ads-keyword-contact-yield.test.ts',
+    why:
+      '억제된 키워드는 더 이상 수집되지 않으므로 **증거가 영원히 갱신되지 않는다** — 판정이 틀렸어도 ' +
+      '스스로 뒤집힐 수 없다. 저수율의 원인 셋(키워드가 나쁨/그 주제가 원래 연락처를 안 검/우리 추출기가 ' +
+      '그 형식을 못 읽음) 중 셋째는 추출기를 고치는 순간 되살아나야 한다. 탐침 회차가 그 유일한 통로다.',
+  },
+  {
+    name: '전부 저조할 때 풀이 비어 그 축이 통째로 멈춤',
+    file: 'src/features/marketing/api/keyword-contact-yield.ts',
+    find: '  return kept.length ? kept : pool',
+    replace: '  return kept',
+    test: 'src/tests/unit/ads-keyword-contact-yield.test.ts',
+    why:
+      '한 축의 키워드가 전부 저수율이면 풀이 빈 배열이 되고 그 축은 그 회차에 아무것도 안 돈다. ' +
+      '고쳐야 할 것은 키워드지 수집이 아니다. 같은 클래스(집중 축 커서 동결 → 커버리지 붕괴)를 이미 겪었다.',
+  },
+  {
+    name: '표본 부족 키워드를 벌해 탐색이 죽음',
+    file: 'src/features/marketing/api/keyword-contact-yield.ts',
+    find: '  if (m < CONTACT_EVIDENCE_MIN) return false',
+    replace: '  if (false) return false',
+    test: 'src/tests/unit/ads-keyword-contact-yield.test.ts',
+    why:
+      '갓 만든 키워드는 measured_total 0 이라 수율도 0 이다. 증거 게이트가 없으면 **모든 신규 키워드가 ' +
+      '첫 회차에 낙인**찍혀 영원히 억제된다 — 자동 조율이 아니라 신규 축 차단기가 된다.',
+  },
+  {
+    name: '연락처 수율 커서를 저장 안 함(같은 슬라이스만 영원히)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: 'CONTACT_YIELD_CURSOR_KEY, String(kwYield.cursor)',
+    replace: "'ads_kw_contact_yield_cursor_x', String(kwYield.cursor)",
+    test: 'src/tests/unit/ads-keyword-contact-yield.test.ts',
+    why:
+      '커서를 안 남기면 매 탐침 회차가 **첫 60개만** 갱신한다. 399개 중 나머지는 measured_total 0 에 ' +
+      '머물러 영원히 판정 대상이 아니게 된다 — 조율이 도는 것처럼 보이면서 실제로는 6분의 1만 본다.',
+  },
+  {
     name: '수집 폭 동결이 풀림(측정이 병목인데 백로그가 증가 반전)',
     file: 'src/features/marketing/api/influencer-auto-collect.ts',
     find: '    if (processedIds.size >= roundCap) break',

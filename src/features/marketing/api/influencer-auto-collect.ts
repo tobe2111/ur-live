@@ -140,6 +140,7 @@ export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_
 // 🌱 신규 키워드 승격 자리 — 순수 로직이라 회전 모듈이 제자리(이 파일 600줄 래칫).
 export { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
 import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotation'
+import { buildRotationPools, maybeRefreshContactYield, CONTACT_YIELD_CURSOR_KEY } from './keyword-contact-yield'
 import { mineHashtags } from './influencer-hashtag-mine'
 
 // ── 📅 YT 쿼터 하루 경계 — 구글 쿼터는 태평양 자정(한국 오후 4~5시) 리셋. 카운터 키에 사용. ──
@@ -232,7 +233,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
     DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8"),
   ]).catch(() => null)
-  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
+  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total, measured_total, email_total FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   /**
    * 🪦 은퇴 축 키워드는 **슬롯을 안 먹는다**(2026-08-03). 축을 접었는데 그 키워드가 계속 돌면
@@ -246,7 +247,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   ⚠️ **여기 없는 키를 `settings[...]` 로 읽으면 값이 아니라 `undefined` 가 온다** — 에러가 아니라
   //   기본값으로 조용히 떨어진다. 집중 축 커서가 정확히 그래서 항상 0 이었다(#930 → 2026-08-03 수리).
   //   새 키를 읽기 전에 이 배열에 넣을 것. `ads-keyword-focus-split` 이 기계로 대조한다.
-  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY]
+  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY, CONTACT_YIELD_CURSOR_KEY]
   const settings = await readSettings(DB, SETTING_KEYS)
   let prev: AutoCollectStats | null = null
   try { prev = settings[STATS_KEY] ? JSON.parse(settings[STATS_KEY] as string) as AutoCollectStats : null } catch { prev = null }
@@ -263,14 +264,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   커서 순환이라 커버리지는 며칠에 걸쳐 동일 — 1회 부하만 낮춤(매시간 cron 이라 총량은 큼).
   const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_AUTOCOLLECT_BATCH || '', 10) || 4))
 
-  // ⭐ 우선 카테고리 배정 — 배치의 ceil(3/4)은 우선 풀(맛집·푸드·외식창업·숙소·네일·뷰티, 별도 커서),
-  //   나머지는 일반 풀 순환. 한쪽 풀이 모자라면 다른 쪽이 잔여 슬롯을 채움(총 batch 개 유지).
-  // 🎯 집중 축(마케팅대행사) 전용 풀 — 우선/일반보다 **앞에서** 뗀다. 근거는 `FOCUS_CATEGORIES` 주석.
-  //   ⚠️ 세 풀은 서로 배타여야 한다 — 겹치면 같은 키워드가 한 배치에 두 번 들어간다.
-  const inFocus = (k: { category: string | null }) => !!k.category && FOCUS_CATEGORIES.includes(k.category)
-  const focusPool = kws.filter(inFocus)
-  const priPool = kws.filter(k => !inFocus(k) && k.category && PRIORITY_CATEGORIES.includes(k.category))
-  const genPool = kws.filter(k => !inFocus(k) && !(k.category && PRIORITY_CATEGORIES.includes(k.category)))
+  // ⭐ 3분할 풀(집중·우선·일반) 구성 + 연락처 수율 솎아내기 — 규칙·근거는 `buildRotationPools` docblock(SSOT).
+  const roundIndex = (prev?.total_runs || 0) + 1
+  const { focusPool, priPool, genPool } = buildRotationPools(kws, roundIndex, { focus: FOCUS_CATEGORIES, priority: PRIORITY_CATEGORIES })
   let priCursor = parseInt(settings['ads_autocollect_cursor_pri'] || '0', 10)
   if (!Number.isFinite(priCursor) || priCursor < 0) priCursor = 0
   let focusCursor = parseInt(settings[FOCUS_CURSOR_KEY] || '0', 10)
@@ -556,6 +552,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   ⚠️ `takeNaverCalls()` 는 **가져가며 비우므로 회차당 정확히 한 번** 불러야 한다(두 번 부르면 뒤가 0).
   const naverDay = kstDayKey(Date.now())
   const naverCalls = parseNaverUsed(settings[NAVER_USED_KEY], naverDay) + takeNaverCalls()
+  const kwYield = await maybeRefreshContactYield(DB, roundIndex, settings[CONTACT_YIELD_CURSOR_KEY]) // 📮 연락처 수율 갱신(탐침 회차만) — 근거는 함수 docblock
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
@@ -566,6 +563,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   해석: 합이 spent 에 근접하면 그 소스가 병목. 특히 yt/naver 가 크면 발굴 시점 enrichMax(8/5)가 원인이고,
     //   그건 별도 보강 레인과 겹치는 일이라 줄일 여지가 있다(줄이기 전에 이 숫자를 볼 것).
     spend_by: spendBy,
+    ...(kwYield ? { kw_yield: kwYield } : {}),
     // 📟 네이버 오픈API 일일 사용량(KST 기준일). **자동 레인만 세므로 실사용의 하한**이다 —
     //   어드민 온디맨드 도구(keyword-tools/rank-tracker/competitor-tracker)는 계측 밖(naver-api-usage.ts 주석).
     naver_api: { used: naverCalls, total: NAVER_DAILY_QUOTA_CALLS, day: naverDay },
@@ -585,6 +583,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     ['ads_autocollect_cursor_pri', String(nextPriCursor)],
     [CURSOR_KEY, String(nextCursor)],
     [STATS_KEY, JSON.stringify(stats)],
+    ...(kwYield && !kwYield.error ? [[CONTACT_YIELD_CURSOR_KEY, String(kwYield.cursor)] as [string, string]] : []),
     // 🩹 학습 상한도 같은 batch 로(위 주석) — 자가교정 상태와 커서는 같은 회차의 결과라 운명을 함께해도 된다.
     ...(nextCap != null ? [[subreqCapKey('influencer'), String(nextCap)] as [string, string]] : []),
   ]).catch(() => undefined) // 🧯 위와 동일 — 실패해도 리스 해제까지는 간다(TTL 5분 백스톱에 기대지 않게)
