@@ -72,6 +72,28 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: 'CPU 자기교정 — 감지 호출이 사라짐(학습이 조용히 멈춘다)',
+    file: 'src/worker-ads/beat-batch.ts',
+    find: '    await learnCpuQuanta(env, list).catch(() => undefined)',
+    replace: '    void list',
+    test: 'src/tests/unit/ads-cpu-quantum.test.ts',
+    why:
+      'CPU 로 죽은 레인은 자기 하트비트를 못 쓰므로 **항상 부모가** 기록한다 — 그 기록이 지나는 ' +
+      '이 한 곳이 유일한 감지 지점이다. 빠지면 자동수리가 통째로 멈추는데 **에러도 경고도 없다** ' +
+      '(레인은 여전히 죽고, 아무도 줄여 주지 않을 뿐이다).',
+  },
+  {
+    name: 'CPU 자기교정 — 레인 이름에서 `ads:` 접두어가 빠짐',
+    file: 'src/features/marketing/api/collect-budget.ts',
+    find: "export const RECLASSIFY_LANE = 'ads:reclassify-company?passes=5'",
+    replace: "export const RECLASSIFY_LANE = 'reclassify-company?passes=5'",
+    test: 'src/tests/unit/ads-cpu-quantum.test.ts',
+    why:
+      '학습 표의 키는 하트비트 이름(`adsBeat` 이 `ads:` 를 붙인다)이다. 접두어가 어긋나면 표를 못 찾아 ' +
+      '**학습값이 있어도 상한이 안 줄어든다** — 조회는 성공하고 값만 기본값이라 에러가 없다. ' +
+      '이 레포가 반복해 만난 "이름 한 칸 어긋나서 조용히 no-op" 클래스.',
+  },
+  {
     name: '카카오 스윕이 다시 tier 순만 보고 뒷줄을 굶긴다',
     file: 'src/features/marketing/api/company-collect.ts',
     find: "     ORDER BY (kakao_checked_at IS NOT NULL) ASC, (email IS NOT NULL AND email <> '') ASC, (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)",

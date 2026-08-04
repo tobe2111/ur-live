@@ -142,6 +142,27 @@ export function createBeatBatch(write: (beats: PendingBeat[]) => Promise<void>, 
  * @param tickStartIso 이 cron 틱이 시작한 시각(ISO). **배치 flush 시점이 아니라 틱 시작**이어야 한다 —
  *   flush 시점으로 잡으면 자식 기록보다 나중이 되어 가드가 통째로 무력해진다.
  */
+/**
+ * 🧠 **CPU 사망을 학습한다** (2026-08-04, 대표 승인). 근거·경계는 `cpu-quantum.ts` 헤더.
+ *
+ *   여기가 유일한 자리인 이유: **CPU 로 죽은 레인은 자기 하트비트를 못 쓴다**(죽었으니까).
+ *   그 사망은 **항상 부모가** 기록하고, 부모의 기록은 전부 이 함수를 지난다. 감지 지점이 하나다.
+ *
+ *   💸 쓰기 절약: 표는 **줄어든 레인만** 담고, `changed` 일 때만 쓴다. 평시(전부 성공, 표 비어 있음)엔
+ *   읽기 1회뿐이고 쓰기는 0 이다 — 매 회차 쓰면 그 자체가 예산을 먹는다.
+ *   ⚠️ fail-soft: 이 학습이 실패해도 **하트비트 쓰기는 이미 끝난 뒤**다(순서가 중요하다).
+ */
+async function learnCpuQuanta(env: Env, list: PendingBeat[]): Promise<void> {
+  const { parseQuanta, reduceCpuQuanta, CPU_QUANTA_KEY } = await import('@/features/marketing/api/cpu-quantum')
+  const row = await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+    .bind(CPU_QUANTA_KEY).first<{ value: string }>().catch(() => null)
+  const state = parseQuanta(row?.value)
+  const { next, changed } = reduceCpuQuanta(state, list.map(b => ({ name: b.name, ok: b.ok, result: b.result })))
+  if (!changed) return
+  await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(CPU_QUANTA_KEY, JSON.stringify(next)).run().catch(() => null)
+}
+
 export function makeBeatWriter(env: Env, tickStartIso: string) {
   return async (list: PendingBeat[]): Promise<void> => {
     const { buildCronBeatRow } = await import('@/worker/utils/cron-heartbeat')
@@ -155,5 +176,7 @@ export function makeBeatWriter(env: Env, tickStartIso: string) {
           WHERE COALESCE(json_extract(platform_settings.value, '$.at'), '') < ?3`,
       ).bind(key, value, tickStartIso)
     }))
+    // 🧠 하트비트를 쓴 **뒤에** 학습한다 — 이게 실패해도 기록은 이미 남았다(위 함수 헤더 참조).
+    await learnCpuQuanta(env, list).catch(() => undefined)
   }
 }
