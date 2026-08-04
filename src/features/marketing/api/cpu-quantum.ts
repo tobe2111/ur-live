@@ -103,6 +103,50 @@ export function applyQuantum(base: number, q: number, min = 1): number {
   return Math.max(min, Math.floor(base * clampQ(q)))
 }
 
+/** `readLaneSettings` 가 쓰는 최소 D1 모양 — 유닛이 가짜 DB 를 끼울 수 있게 구조 타입으로 둔다. */
+export interface SettingsReader {
+  prepare: (sql: string) => { bind: (...args: unknown[]) => { all: <T>() => Promise<{ results?: T[] } | null> } }
+}
+
+export interface LaneSettings {
+  /** 요청한 키의 값(없으면 `undefined` — 기존 `.catch(() => null)` 와 같은 모양). */
+  get: (key: string) => string | undefined
+  /** 이 레인이 지금 쓸 작업량 배수. 학습이 없거나 읽기에 실패하면 **1**(=현행 그대로). */
+  q: number
+}
+
+/**
+ * 🔌 **레인이 쓰는 소비 진입점** — 한 번의 D1 조회로 설정들과 CPU 배수를 **함께** 읽는다.
+ *
+ * ## 왜 이런 모양인가 — 감지만 있고 소비가 없으면 그냥 no-op 이다
+ * 2026-08-04 첫 판은 감지(`beat-batch`)와 소비(`reclassifyWorkPlan`) 한 쌍만 배선했다. 그래서
+ * **다른 레인이 CPU 로 죽으면 표에 `q` 가 적히기만 하고 아무도 읽지 않았다** — 자동수리가 도는
+ * 것처럼 보이는데 실제로는 그 레인에 아무 일도 일어나지 않는다. 이 레포가 반복해 만난
+ * "조용한 no-op" 이 정확히 이 모양이라, 소비 진입점을 하나로 두고 레인마다 한 줄로 붙인다.
+ *
+ * ## 💸 비용이 0 인 이유 — 읽기를 늘리는 게 아니라 **합친다**
+ * 레인들은 이미 `ads_subreq_cap_*`·커서·통계를 **각각** 조회한다. 그 키들을 이 함수에 함께 넘기면
+ * `key IN (…)` 한 문장이 되어 서브리퀘스트가 **오히려 줄어든다**(hira: 2→1). 부모 꼬리는 지금
+ * 예산이 빠듯한 자리라, 조절기를 붙이면서 비용을 더하면 그 자체가 새 문제가 된다.
+ *
+ * 🔒 **실패는 항상 안전한 방향**: 조회가 깨지면 `q=1` 이라 레인은 **오늘과 똑같이** 동작한다.
+ *   조절기가 고장 나서 레인이 *더* 많이 하게 되는 경로는 없다.
+ */
+export async function readLaneSettings(
+  DB: SettingsReader | null | undefined,
+  keys: readonly string[],
+  lane?: string,
+): Promise<LaneSettings> {
+  const want = lane ? [...keys, CPU_QUANTA_KEY] : [...keys]
+  const map = new Map<string, string>()
+  if (DB && want.length > 0) {
+    const rows = await DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN (${want.map(() => '?').join(',')})`)
+      .bind(...want).all<{ key: string; value: string }>().catch(() => null)
+    for (const r of rows?.results || []) if (r?.key != null) map.set(String(r.key), String(r.value ?? ''))
+  }
+  return { get: (k: string) => map.get(k), q: lane ? quantumFor(parseQuanta(map.get(CPU_QUANTA_KEY)), lane) : 1 }
+}
+
 export interface BeatOutcome { name: string; ok: boolean; result?: unknown }
 
 /**
