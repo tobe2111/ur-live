@@ -16,7 +16,12 @@ const ALERT_KEY = 'ads_autocollect_alert_at' // 경보 throttle 상태(빈값=�
 
 /** 🔔 조용한 실패 방어(2026-07-20 실사고 — deploy 가 시크릿 wipe, "신규 0건"이 며칠 무음): 키 소실 또는
  *  전 플랫폼 발굴 0 이면 Discord 경보(6h throttle · 회복 시 해제). fail-soft · 웹훅 미설정=no-op. */
-export async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { diag: CollectDiag; saved: number; quotaHit: boolean }): Promise<void> {
+export async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: {
+  diag: CollectDiag; saved: number; quotaHit: boolean
+  /** 🔢 판단에 필요한 숫자 — 경보에 실어 보낸다(없으면 '?'). 종전엔 "확인해 보라"만 했다. */
+  spent?: number; budget_total?: number; budget_exhausted?: boolean
+  picks?: { planned?: number; processed?: number; from_cursor?: number }
+}): Promise<void> {
   const webhook = env.DISCORD_WEBHOOK_URL
   if (!webhook) return
   const { diag, saved, quotaHit } = run
@@ -37,7 +42,10 @@ export async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { d
   const rotationStalled = activeTotal >= 20 && stale > activeTotal * 0.3
   const unhealthy = keyMissing || (saved === 0 && foundTotal === 0) || rotationStalled
   const prevAt = await readSetting(DB, ALERT_KEY)
-  const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
+  // ⚠️ 상대경로 필수 — 워커 런타임엔 `@/` alias 가 없다(dynamic import 는 빌드 시 resolve 안 됨).
+  //   2026-08-04: 이 줄이 alias 였다. 경보를 쏘려는 순간에만 터지므로 **평소엔 안 보이고**,
+  //   유어애즈는 웹훅이 미설정이라 이 분기 자체에 도달한 적이 없어 더 오래 숨어 있었다.
+  const { sendDiscordAlert } = await import('../../../worker/utils/discord-alert')
   if (!unhealthy) {
     if (prevAt) { // 직전이 경보 상태였다 → 해제 + 회복 알림 1회.
       await writeSetting(DB, ALERT_KEY, '')
@@ -57,7 +65,13 @@ export async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { d
     `• Naver: cfg=${diag.naver.configured} found=${diag.naver.found} saved=${diag.naver.saved}${diag.naver.error ? ` err=${diag.naver.error}` : ''}`,
     diag.tistory ? `• Tistory: cfg=${diag.tistory.configured} found=${diag.tistory.found} saved=${diag.tistory.saved}${diag.tistory.error ? ` err=${diag.tistory.error}` : ''}` : '',
     quotaHit ? '• YouTube 일일 쿼터 소진(내일 자동 재개)' : '',
-    rotationStalled ? '• 점검: run.spent/budget_total/limit_hit(예산 소진) · ADS_COLLECT_ROUNDS(라운드 수)' : '',
+    // 🔢 **값을 실어 보낸다** — 종전엔 "확인해 보라"만 했다. 그런데 확인처인 `limit_hit` 은 플랫폼 에러
+    //   전용이라 예산이 100% 소진돼도 `false` 다(2026-08-04 실측: spent 56/56 · limit_hit false).
+    //   그래서 경보를 받고 열어 봐도 "정상"으로 보였다. 판단에 필요한 숫자를 경보 안에 넣는다.
+    rotationStalled ? `• 예산 ${run?.spent ?? '?'}/${run?.budget_total ?? '?'}${run?.budget_exhausted ? ' (소진)' : ''}`
+      + ` · 키워드 ${run?.picks?.processed ?? '?'}/${run?.picks?.planned ?? '?'} 처리`
+      + ` · 회전 ${run?.picks?.from_cursor ?? '?'}개/라운드` : '',
+    rotationStalled ? '• 회전이 느리면 ADS_COLLECT_ROUNDS(기본 4) 상향 — 라운드마다 새 예산이라 서브리퀘스트 천장 무관' : '',
     '어드민 인플루언서 풀에서 상세 확인.',
   ].filter(Boolean)
   await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 경보', lines.join('\n'), keyMissing ? 'error' : 'warn')

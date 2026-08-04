@@ -297,12 +297,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 390 | 1196 |
+| 전체 | 393 | 1197 |
 | 도메인 버킷 (5개 소개서) | 203 | 583 |
 | 공통/인프라 (의도적 제외) | 160 | 445 |
-| **미커버 (점검 필요)** | **27** | **168** |
+| **미커버 (점검 필요)** | **30** | **169** |
 
-⚠️ **미커버 195건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 199건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -332,6 +332,9 @@
 - `/new-openings`
 - `/partners`
 - `/partnership`
+- `/region`
+- `/region/:sido`
+- `/region/:sido/:sigungu`
 
 **미커버 API 엔드포인트**
 - `DELETE /:id` (`src/features/supply/api/wholesale-board.routes.ts`)
@@ -370,6 +373,7 @@
 - `POST /api/gb-proposals/seller/:id/respond` (`src/features/group-buy/api/gb-proposals.routes.ts`)
 - `GET /api/gb-proposals/seller/list` (`src/features/group-buy/api/gb-proposals.routes.ts`)
 - `POST /api/partnership/inquiry` (`src/worker/routes/partnership.routes.ts`)
+- `GET /api/regions/` (`src/features/group-buy/api/regions.routes.ts`)
 - `GET /api/seller-experience-campaigns/` (`src/features/group-buy/api/experience-campaign.routes.ts`)
 - `POST /api/seller-experience-campaigns/` (`src/features/group-buy/api/experience-campaign.routes.ts`)
 - `GET /api/seller-experience-campaigns/:id` (`src/features/group-buy/api/experience-campaign.routes.ts`)
@@ -1981,7 +1985,7 @@
 
 
 
-> 마지막 생성: 2026-08-03T15:22:42.859Z
+> 마지막 생성: 2026-08-04T02:40:18.290Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
