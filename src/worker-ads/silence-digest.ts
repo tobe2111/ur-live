@@ -109,13 +109,25 @@ export async function runAdsSilenceDigest(env: Env): Promise<{ silent: number; s
 
     if (Number.isFinite(prevAt) && now - prevAt < DIGEST_INTERVAL_H * 3600_000) return out  // 하루 1회
 
+    // 🔢 **원인을 추측으로 두지 않는다** — 같은 창의 CPU 한도 사망을 실제로 센다.
+    //   종전 문안은 *"원인 후보: … CPU 한도"* 였는데, 그건 대표에게 **또 다른 확인 숙제**를 주는 것이다
+    //   (오늘 고친 수집 경보가 정확히 그 실패였다 — 확인처만 알려 주고 그 확인처가 비어 있었다).
+    //   D1 읽기 1회로 숫자를 붙이면 "유료 전환이 필요한가"를 이 메시지만 보고 판단할 수 있다.
+    const cpu = await DB.prepare(`SELECT COUNT(*) AS n, COUNT(DISTINCT job_name) AS lanes
+      FROM cron_failures
+      WHERE created_at > datetime('now','-1 day')
+        AND job_name LIKE 'ads:%' AND error_message LIKE '%CPU time limit%'`)
+      .first<{ n: number; lanes: number }>().catch(() => null)
     const shown = silent.slice(0, 12)
     const body = [
       `⚠️ 유어애즈 레인 ${silent.length}개가 임계를 넘겨 침묵 중입니다.`,
       ...shown.map(line),
       silent.length > shown.length ? `… 외 ${silent.length - shown.length}개` : '',
-      // 실측상 이 목록의 주된 원인은 부모 인보케이션의 CPU 한도다 — 어디를 볼지 같이 준다.
-      '원인 후보: 부모 cron CPU 한도(`cron_failures` 의 "Worker exceeded CPU time limit") · 디스패치 예산에 밀림.',
+      cpu && cpu.n > 0
+        // 이게 있으면 원인은 예산 배분이 아니라 **플랫폼 천장**이다 — 코드로 못 푼다.
+        ? `🔴 지난 24시간 CPU 한도 사망 **${cpu.n}회**(레인 ${cpu.lanes}종) — 부모 인보케이션이 자식을 끌고 죽는다. `
+          + '레인 재배치로는 한계이고 Workers 유료 전환이 근본 해결이다.'
+        : '원인 후보: 디스패치 예산에 밀림(CPU 한도 사망은 지난 24시간 0회).',
       '어드민 → 시스템 모니터링 → 게이트·하트비트 에서 상세 확인.',
     ].filter(Boolean).join('\n')
     await sendDiscordAlert(webhook, '유어애즈 레인 침묵 요약', body, 'warn').catch(() => null)

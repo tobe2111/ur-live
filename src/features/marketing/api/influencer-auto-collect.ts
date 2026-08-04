@@ -84,11 +84,9 @@ export async function getAutoCollectStats(DB: D1Database): Promise<AutoCollectSt
 
 // 🏷️ 해시태그 후보 추출 → `influencer-hashtag-mine.ts` 로 분리(600줄 래칫). 순수 로직이라 이 파일에 있을 이유가 없다.
 
-// ── 🎯 YT 검색 슬롯 성과 가중 선택 → `influencer-keyword-rotation.ts` 로 분리(600줄 래칫).
+// ── 🎯 YT 슬롯 선택 · 🌱 키워드 승격 자리 → `influencer-keyword-rotation.ts`(600줄 래칫으로 분리).
 //   기존 import 경로 호환을 위해 그대로 재수출한다(테스트·호출부 무변경).
-export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS, type YtPickKeyword } from './influencer-keyword-rotation'
-// 🌱 신규 키워드 승격 자리 — 순수 로직이라 회전 모듈이 제자리(이 파일 600줄 래칫).
-export { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
+export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS, type YtPickKeyword, MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
 import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotation'
 import { mineHashtags } from './influencer-hashtag-mine'
 
