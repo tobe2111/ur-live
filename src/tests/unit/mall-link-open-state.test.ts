@@ -19,6 +19,7 @@
 import { describe, it, expect } from 'vitest'
 import { mallOpenState, mallConsumerUrl } from '@/pages/admin/wholesale-malls/MallLinkRow'
 import { pickConsumerMall } from '@/worker/utils/mall-consumer'
+import { readCode } from '../helpers/source-text'
 
 type Row = { id: number; slug: string; name: string; active?: number | null; consumer_path?: number | null }
 
@@ -70,6 +71,29 @@ describe('🔴 R2 — 안 열리면 이유를 반드시 말한다', () => {
 
   it('열릴 땐 이유가 없다', () => {
     expect(mallOpenState(base).reason).toBeUndefined()
+  })
+})
+
+/**
+ * 🔴 R4 — **만들기 화면이 "안 열린다"를 미리 말한다** 〔2026-08-04 대표 "계속 404야"〕
+ *
+ * `consumer_path` 기본값은 **꺼짐**이고 그건 의도된 fail-closed 다(켜면 B2B 도매몰이 소비자
+ * 도메인 경로로 샌다). 문제는 기본값이 아니라 **그 결과가 화면 어디에도 없었다**는 것 —
+ * 체크를 안 하고 만들면 `urdeal.kr/{슬러그}` 가 **즉시 죽은 몰**이 되는데, 만든 사람은
+ * 주소를 눌러 보고 404 를 맞고 나서야 안다. 그래서 폼에서 미리 경고한다.
+ *
+ * ⚠️ **못 막는 것**: 경고를 읽고도 안 켜는 것. 이건 화면이 사실을 말하는지까지만 본다.
+ */
+describe('🔴 R4 — 소비자 공개가 꺼져 있으면 만들기 화면이 경고한다', () => {
+  const page = readCode('src/pages/admin/AdminWholesaleMallsPage.tsx')
+
+  it('`!form.consumer_path` 조건부 경고 블록이 있다', () => {
+    expect(page).toMatch(/\{!form\.consumer_path\s*&&/)
+  })
+
+  it('경고가 404 라는 결과를 명시한다(모호한 "확인하세요" 로 끝내지 않는다)', () => {
+    const warn = page.slice(page.indexOf('{!form.consumer_path'))
+    expect(warn.slice(0, 700)).toContain('404')
   })
 })
 
