@@ -107,7 +107,11 @@ if (!base) {
 }
 
 const versionOf = (src, name) => {
-  const m = new RegExp(`^\\s*(?:export\\s+)?const\\s+${name}\\s*=\\s*(\\d+)`, 'm').exec(src)
+  // 🐛 2026-08-04 수리: 예전 정규식은 `(\d+)` 에서 끝나 **매치가 숫자까지만** 잡혔다. 그래서 아래에서
+  //   `cur.line.includes(ALLOW)` 로 검사하는 `rules-version-ok` 주석이 **같은 줄에 있어도 절대 안 걸렸다**
+  //   — 이 파일이 안내하는 유일한 예외 통로가 처음부터 동작하지 않았다(문서에만 있던 탈출구).
+  //   `.*` 로 줄 끝까지 잡아 주석을 포함시킨다.
+  const m = new RegExp(`^\\s*(?:export\\s+)?const\\s+${name}\\s*=\\s*(\\d+).*$`, 'm').exec(src)
   return m ? { value: Number(m[1]), line: m[0] } : null
 }
 
