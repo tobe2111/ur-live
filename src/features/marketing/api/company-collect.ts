@@ -12,7 +12,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue, rowsWorthReading } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue, rowsWorthReading, companyRunDeadlineMs } from './collect-budget'
 import { noteNaverCall, flushNaverCalls } from './naver-api-usage'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
@@ -285,7 +285,7 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
 // 📇 연락처 보강 레인은 `enrich-lane.ts` 로 분리(2026-07-28, 600줄 한도) — 기존 import 경로 유지용 re-export.
 export { enrichHeldLeads } from './enrich-lane'
 
-export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; total_keywords?: number; spent?: number; limit_hit?: boolean; diag: { configured: boolean; error?: string } }
+export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; total_keywords?: number; spent?: number; limit_hit?: boolean; run_ms?: number; deadline_hit?: boolean; diag: { configured: boolean; error?: string } }
 const STATS_KEY = 'ads_company_stats'
 const CURSOR_KEY = 'ads_company_cursor'
 
@@ -341,8 +341,10 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
 
   let found = 0, saved = 0
   const used: string[] = []
+  // ⏱️ 회차 벽시계 마감선 — 실측 27,410ms(사망선 26,000 초과인데 "성공"). 근거·한계·커버리지 불변식은 `companyRunDeadlineMs` 헤더.
+  const startedAt = Date.now(), runDeadlineMs = companyRunDeadlineMs(env)
   for (let i = 0; i < batch; i++) {
-    if (outOfBudget(budget) || budget.limitHit) break // 한도 도달 시 즉시 중단 — 남은 키워드를 헛돌지 않는다
+    if (outOfBudget(budget) || budget.limitHit || Date.now() - startedAt > runDeadlineMs) break // 한도/마감 도달 시 즉시 중단
     const kw = kws[i]
     used.push(kw.keyword)
     const leads = await searchNaverLocal(clientId, clientSecret, kw, budget)
@@ -379,7 +381,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   //   2026-07-27 최종 점검: ① source='local' 한정 → **webkr(웹검색 발굴 대행사 — 주력 레인) 포함**
   //   ② 홈 1페이지 크롤(crawlCompanyEmail) → **crawlContact**(root+/contact+홈 문의링크 추적)로 통일.
   let emailed = 0
-  if (!outOfBudget(budget)) {
+  if (!outOfBudget(budget) && Date.now() - startedAt < runDeadlineMs) {
     const { crawlContact, CRAWL_RULES_VERSION, realSite, PLATFORM_URL_SQL_EXCLUDE } = await import('./contact-enrich')
     // 대행사(tier 1)는 phone 보다 이메일 접촉이 핵심 → 이메일 크롤 우선(대표 "2단계 이메일 크롤 우선").
     // 🔁 2026-07-28 재시도 쿨다운 추가 — 보강 레인(enrich-lane:75)이 이미 쓰는 패턴인데 이 블록만 빠져 있었다.
@@ -439,6 +441,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     // 📊 관측 필드 — 예산이 실제로 얼마나 쓰였고 한도에 닿았는지, 전국 확장 후 한 바퀴가 얼마나 되는지.
     //   (전국 확장 + webkr 페이지네이션으로 키워드당 비용이 올라 예산이 먼저 마를 수 있다 → 눈에 보이게.)
     total_keywords: total, spent: budgetTotal - budget.left, limit_hit: !!budget.limitHit,
+    run_ms: Date.now() - startedAt, deadline_hit: Date.now() - startedAt > runDeadlineMs,
     diag: { configured: true },
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null)
