@@ -3,57 +3,105 @@
 export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = {
   "home": {
     "js": [
-      "/assets/RestaurantMapPage-D5yDusGh.js"
+      "/assets/RestaurantMapPage-BcYh4LLe.js",
+      "/assets/app-components-zsDUVb-3.js",
+      "/assets/app-features-DvB2sKsG.js",
+      "/assets/app-constants-DAH-VZ0h.js",
+      "/assets/app-ui-utils-RWwMCRBU.js",
+      "/assets/radix-ui-7il725KW.js",
+      "/assets/app-misc-DZKsWztc.js",
+      "/assets/app-wholesale-hooks-DKz2QyJo.js",
+      "/assets/app-kakao-sdk-HAM5uC3L.js"
     ],
     "css": []
   },
   "gbDetail": {
     "js": [
-      "/assets/GroupBuyDetailPage-CM3qEAMd.js",
-      "/assets/product-flow-Gl0CTbCD.js",
-      "/assets/app-group-buy-n1e-wX--.js",
-      "/assets/seed-detail-BRqakZJ5.js"
+      "/assets/GroupBuyDetailPage-BheZ5fZI.js",
+      "/assets/app-search-BIa_XE1p.js",
+      "/assets/app-constants-DAH-VZ0h.js",
+      "/assets/app-components-zsDUVb-3.js",
+      "/assets/app-features-DvB2sKsG.js",
+      "/assets/app-ui-utils-RWwMCRBU.js",
+      "/assets/radix-ui-7il725KW.js",
+      "/assets/app-misc-DZKsWztc.js",
+      "/assets/app-wholesale-hooks-DKz2QyJo.js",
+      "/assets/app-kakao-sdk-HAM5uC3L.js"
     ],
     "css": []
   },
   "voucherDetail": {
     "js": [
-      "/assets/VoucherDetailPage-BqnBIMXo.js",
+      "/assets/VoucherDetailPage-Bw_MPXAM.js",
+      "/assets/app-components-zsDUVb-3.js",
+      "/assets/app-features-DvB2sKsG.js",
+      "/assets/app-constants-DAH-VZ0h.js",
+      "/assets/app-ui-utils-RWwMCRBU.js",
+      "/assets/radix-ui-7il725KW.js",
+      "/assets/app-misc-DZKsWztc.js",
+      "/assets/app-wholesale-hooks-DKz2QyJo.js",
+      "/assets/app-kakao-sdk-HAM5uC3L.js",
       "/assets/seed-detail-BRqakZJ5.js"
     ],
     "css": []
   },
   "product": {
     "js": [
-      "/assets/ProductDetailPage-B98T0FlS.js",
-      "/assets/product-flow-Gl0CTbCD.js",
-      "/assets/app-product-components-CBbYn9c6.js",
-      "/assets/embla-XVrp4Y8g.js",
-      "/assets/ProductReviews-Suiy_IhM.js"
+      "/assets/ProductDetailPage-Czq5a2He.js",
+      "/assets/app-search-BIa_XE1p.js",
+      "/assets/app-constants-DAH-VZ0h.js",
+      "/assets/app-components-zsDUVb-3.js",
+      "/assets/app-features-DvB2sKsG.js",
+      "/assets/app-ui-utils-RWwMCRBU.js",
+      "/assets/radix-ui-7il725KW.js",
+      "/assets/app-misc-DZKsWztc.js",
+      "/assets/app-wholesale-hooks-DKz2QyJo.js",
+      "/assets/app-kakao-sdk-HAM5uC3L.js"
     ],
     "css": []
   },
   "linkshop": {
     "js": [
-      "/assets/CuratorPage-DvRA6kze.js",
-      "/assets/BrowseProductCard-BnBu5KVd.js",
-      "/assets/seller-public-fetch-CVokQwcX.js",
-      "/assets/SellerPublicPage-D24SoYoD.js"
+      "/assets/CuratorPage-CpKocHRk.js",
+      "/assets/app-components-zsDUVb-3.js",
+      "/assets/app-features-DvB2sKsG.js",
+      "/assets/app-constants-DAH-VZ0h.js",
+      "/assets/app-ui-utils-RWwMCRBU.js",
+      "/assets/radix-ui-7il725KW.js",
+      "/assets/app-misc-DZKsWztc.js",
+      "/assets/app-wholesale-hooks-DKz2QyJo.js",
+      "/assets/app-kakao-sdk-HAM5uC3L.js",
+      "/assets/BrowseProductCard-Um4Wq0v_.js"
     ],
     "css": []
   },
   "vouchers": {
     "js": [
-      "/assets/VouchersPage-sIWMDDmE.js",
-      "/assets/BrowseProductCard-BnBu5KVd.js"
+      "/assets/VouchersPage-DV1tA3w0.js",
+      "/assets/app-components-zsDUVb-3.js",
+      "/assets/app-features-DvB2sKsG.js",
+      "/assets/app-constants-DAH-VZ0h.js",
+      "/assets/app-ui-utils-RWwMCRBU.js",
+      "/assets/radix-ui-7il725KW.js",
+      "/assets/app-misc-DZKsWztc.js",
+      "/assets/app-wholesale-hooks-DKz2QyJo.js",
+      "/assets/app-kakao-sdk-HAM5uC3L.js",
+      "/assets/BrowseProductCard-Um4Wq0v_.js"
     ],
     "css": []
   },
   "browse": {
     "js": [
-      "/assets/BrowsePage-BCOtoPKh.js",
-      "/assets/app-seller-components-DtZZ6JET.js",
-      "/assets/BrowseProductCard-BnBu5KVd.js"
+      "/assets/BrowsePage-BDjG-5aX.js",
+      "/assets/app-seller-components-CXWYPWOe.js",
+      "/assets/app-components-zsDUVb-3.js",
+      "/assets/app-features-DvB2sKsG.js",
+      "/assets/app-constants-DAH-VZ0h.js",
+      "/assets/app-ui-utils-RWwMCRBU.js",
+      "/assets/radix-ui-7il725KW.js",
+      "/assets/app-misc-DZKsWztc.js",
+      "/assets/app-wholesale-hooks-DKz2QyJo.js",
+      "/assets/app-kakao-sdk-HAM5uC3L.js"
     ],
     "css": []
   }

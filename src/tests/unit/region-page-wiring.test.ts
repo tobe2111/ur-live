@@ -161,6 +161,29 @@ describe('⑥ 크리티컬 청크 — 지역 코드가 첫 페인트로 딸려�
   })
 })
 
+describe('⑦ 데모 딜 포함 (2026-08-03 대표 결정 "포함시키자")', () => {
+  // 배포 직후 실측: 활성 딜 329건 중 **328건이 데모 시드**라 데모를 빼면 색인 문턱(3건)을
+  // 넘는 지역이 0개였다 — 지역 페이지가 통째로 비었다. 대표가 포함으로 확정.
+  // ⚠️ 세션은 반대 의견을 냈다(데모 상품 페이지가 색인되면 검색 유입자가 못 쓰는 상품에 착지,
+  //    그리고 색인은 배포로 되돌아오지 않음). 결정은 대표 것이고, 되돌림 경로만 지켜 둔다.
+  const routes = read('src/features/group-buy/api/regions.routes.ts')
+
+  it('데모 제외가 플래그 뒤에 있다 — 무조건 제외로 되돌아가면 지역 페이지가 다시 빈다', () => {
+    expect(routes).toMatch(/REGION_COUNT_INCLUDE_DEMO\s*\?\s*''\s*:/)
+  })
+
+  it('플래그가 기본 포함(true)', () => {
+    expect(read('src/shared/feature-flags.ts')).toMatch(/export const REGION_COUNT_INCLUDE_DEMO = true/)
+  })
+
+  it('캐시 키가 플래그를 반영한다 — 아니면 되돌려도 최대 10분간 옛 집계가 나간다', () => {
+    // 🔴 이게 빠지면 "플래그를 껐는데 왜 그대로냐"를 캐시 TTL 만큼 디버깅하게 된다.
+    const key = routes.match(/cacheGet\(\s*[^,]+,\s*([^,]+),/)?.[1] ?? ''
+    expect(key, '캐시 키 인자를 찾지 못했다 — 코드가 옮겨졌으면 이 가드를 갱신할 것').toBeTruthy()
+    expect(key).toMatch(/REGION_COUNT_INCLUDE_DEMO/)
+  })
+})
+
 describe('색인 문턱', () => {
   it('1보다 크다 — 1이면 상품 하나짜리 빈 페이지가 색인된다', () => {
     expect(REGION_INDEX_MIN_DEALS).toBeGreaterThan(1)
