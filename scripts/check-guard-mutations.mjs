@@ -299,6 +299,17 @@ const MUTATIONS = [
       '**진짜 다운을 감지할 수 없었다**. 이 주입은 그 회귀를 재현한다.',
   },
   {
+    name: '기아 방지 슬롯 배선이 빠짐 — 미실행 키워드가 다시 무한 연기',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '  const rescue = pickStarvationRescue(kws, new Set(interleaved.map(p => p.id)))\n  const finalPicks = rescue ? [rescue, ...interleaved.slice(0, Math.max(0, totalPick - 1))] : interleaved',
+    replace: '  const finalPicks = interleaved',
+    test: 'src/tests/unit/ads-rotation-health.test.ts',
+    why:
+      '함수(`pickStarvationRescue`)가 있어도 **배선이 빠지면 아무 일도 안 한다** — 이 레포의 "코드에 있다 ≠ ' +
+      '살아 있다" 클래스. 라이브 실측: 자동확장 키워드 24개가 생성 14.9일째 실행 0회(커서 거리 275 ≈ 10일 더). ' +
+      'starved 경보가 실전에서 처음 잡은 사고의 수리 지점이라, 배선 소실 = 그 사고의 무음 재발이다.',
+  },
+  {
     name: '순환 경보가 다시 "해제될 수 없는" 임계로 회귀',
     file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
     find: 'export const ROTATION_STARVE_CYCLES = 3',

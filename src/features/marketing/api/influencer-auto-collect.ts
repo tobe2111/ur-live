@@ -39,7 +39,7 @@ import { RETIRED_CATEGORIES } from './influencer-classify'
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, pickStarvationRescue } from './influencer-keyword-rotation'
 
 // 🌱 시드 키워드(데이터)는 `influencer-seed-keywords.ts`, 그 시드를 테이블에 넣는 일은
 //   `influencer-keyword-store.ts` — 이 파일은 **둘 다 직접 안 만진다**(아래 재수출만).
@@ -243,7 +243,12 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const ytPicks = pickYtKeywords(kws, batch, Date.now())
   const ytIds = new Set(ytPicks.map(k => k.id))
   // 🔀 번갈아 배치 — 꼬리의 커서 픽이 영영 안 돌던 것(실측 `from_cursor: 0`). 근거는 `interleavePicks` docblock.
-  const finalPicks = interleavePicks(ytPicks, picks.filter(p => !ytIds.has(p.id)), totalPick)
+  const interleaved = interleavePicks(ytPicks, picks.filter(p => !ytIds.has(p.id)), totalPick)
+  // 🛟 기아 방지 슬롯 — **맨 앞**에 둔다(예산이 앞에서부터 끊기므로 앞자리만 처리가 보장된다).
+  //   커서 수학 무접촉: 이 픽은 풀 커서 시퀀스 밖의 별도 1픽이라, 커서 전진(prefixDone)은 실제 처리된
+  //   풀 픽만 세므로 그대로 옳다. 근거·실측(14.9일 미실행 24개)은 `pickStarvationRescue` docblock.
+  const rescue = pickStarvationRescue(kws, new Set(interleaved.map(p => p.id)))
+  const finalPicks = rescue ? [rescue, ...interleaved.slice(0, Math.max(0, totalPick - 1))] : interleaved
 
   const hasYouTube = !!env.YOUTUBE_API_KEY
   const naverId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
