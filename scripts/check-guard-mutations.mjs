@@ -72,6 +72,18 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '카카오 스윕이 다시 tier 순만 보고 뒷줄을 굶긴다',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: "     ORDER BY (kakao_checked_at IS NOT NULL) ASC, (email IS NOT NULL AND email <> '') ASC, (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)",
+    replace: "     ORDER BY (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)",
+    test: 'src/tests/unit/kakao-sweep-order.test.ts',
+    why:
+      '라이브 실측: 적격 148,297 중 tier4 가 129,049 라, 그 뒤의 storeinfo 15,518건은 하루 360조회로 ' +
+      '**358일** 뒤에나 차례가 온다. 게다가 30일 쿨다운이 만료된 앞줄이 계속 재적격돼 커서 없는 이 ' +
+      '설계에서는 앞줄만 반복된다 — 실제로 storeinfo 17,979건의 카카오 조회 이력이 **0건**이었다. ' +
+      '이 키가 빠지면 그 상태로 조용히 돌아가고, **스윕은 계속 성공으로 보인다**(앞줄은 잘 처리되므로).',
+  },
+  {
     name: 'CPU 상한 — 파트너 수집 회차에 벽시계 마감선이 없다',
     file: 'src/features/marketing/api/company-collect.ts',
     find: ' || Date.now() - startedAt > runDeadlineMs) break',
