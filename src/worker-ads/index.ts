@@ -497,8 +497,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   if (env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
     gates.dailyAt(17, '/__ads/sweep-mx', async () => { const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep'); return sweepEmailMx(env) })
   }
-  // 🏛️ 나라장터 계약정보(상권활성화 용역) — 일 1회(hourUTC===23 = KST 08시). 게이트 ADS_NARA_CONTRACT_ENABLED.
-  if ((env as unknown as { ADS_NARA_CONTRACT_ENABLED?: string }).ADS_NARA_CONTRACT_ENABLED === 'true') {
+  // 🏛️ 나라장터 계약정보(상권활성화 용역) — 일 1회(hourUTC===23 = KST 08시).
+  //   ⚠️ **기본 ON**(2026-08-04 대표 *"자동으로 데이터 나오게끔 하면 되잖아"*) — 다른 레인과 달리
+  //   opt-out 이다. 근거: 수동 1회 실측이 `scanned 1200 · saved 2 · error 0 · stopped_by "pages"` 로
+  //   깨끗했고(시간이 아니라 페이지 수에서 멈춤 = 여유 있음), 원부 29,129건을 훑어야 해서 **사람이
+  //   버튼을 누르는 방식으로는 영영 못 돈다**(한 바퀴 25회차). 끄려면 env 에 `false`.
+  if ((env as unknown as { ADS_NARA_CONTRACT_ENABLED?: string }).ADS_NARA_CONTRACT_ENABLED !== 'false') {
     gates.dailyAt(23, '/__ads/collect-nara-contract', async () => { const { runNaraContractCollect } = await import('@/features/marketing/api/nara-contract-collect'); return runNaraContractCollect(env) })
   }
   // 🏛️ 사업자 폐업 스윕 — 일 1회(hourUTC===19 = KST 04시). 사업자번호 보유 리드 100건/일 국세청 상태조회 →
