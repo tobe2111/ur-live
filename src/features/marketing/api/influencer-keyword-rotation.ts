@@ -298,3 +298,130 @@ export function mergeKeywordPicks<T>(focus: T[], pri: T[], gen: T[]): T[] {
   }
   return out
 }
+
+/**
+ * 📉 **네이버 발굴 시점 컨택 보강 상한** (2026-08-04 — 대표 *"수집과 보강 다 잘 되게 하면 안돼?"*).
+ *
+ * ## 왜 5 → 1 인가 (라이브 실측 — 추측 아님)
+ * ```
+ *   회차 예산 56 의 내역:  yt 24 · naver 28 · cafe 0 · tistory 4 · save 0
+ *   네이버가 54%(28/56)를 쓴다.  그 결과는?
+ *
+ *   미측정 행(= 순수 수집 결과)의 이메일 보유율
+ *     네이버 블로그  1.3%      ← 수집 시점 보강이 만든 전부
+ *     유튜브        22.4%     ← 이건 channels.list 응답(공짜)에서 나온다
+ * ```
+ * **버그가 아니라 산수다**: 키워드당 발굴 ~69명인데 `enrichMax` 5명만 보강 = **7%**.
+ * 7% × 홈 수율 25% ≈ 1.8% — 실측 1.3% 와 맞는다. 그리고 **보강 레인은 같은 사람들을 100% 커버**한다
+ * (미측정 1.1% → 측정 25.0%, 2026-08-03 실측). ⇒ 수집 시점 네이버 보강은 **어차피 할 일의 7%를
+ * 미리 하면서 예산의 절반 이상을 쓰는 중복**이다.
+ *
+ * ⚠️ **0 이 아니라 1 인 이유**: 경로 자체를 없애면 그 코드가 죽었는지 살았는지 알 수 없게 된다.
+ *   1 이면 회차마다 한 명은 지나가므로 `diag.naver` 로 **경로가 살아 있음이 계속 확인**된다.
+ *   ⚠️ 유튜브는 **건드리지 않았다** — 22.4% 는 `enrichMax` 가 아니라 `channels.list` 설명에서 나오고
+ *   그 몫(영상 스니펫 보충)의 실제 기여는 아직 안 쟀다. 재기 전에 줄이지 않는다.
+ */
+export const NAVER_COLLECT_ENRICH_MAX = 1
+
+/**
+ * 🧊 **회차당 키워드 상한 — "폭 동결"** (2026-08-04, 대표 승인 "①만 진행").
+ *
+ * ## 왜 남은 예산으로 키워드를 더 돌리지 않는가
+ * 위 `NAVER_COLLECT_ENRICH_MAX` 축소로 키워드당 비용이 ~10.4 → ~6 이 된다. 그대로 두면 루프가
+ * **자동으로 회차당 5개 → 9개**를 돌아 커버리지가 1.8배가 된다. 매력적으로 들리지만 **지금 하면 손해다**:
+ * ```
+ *   블로그  유입 3,895/일  vs  측정 4,184/일   →  여유 +289 (백로그 19,963 → 69일)
+ *   폭을 1.8배로 넓히면 유입 ~7,000/일  →  백로그가 **매일 +2,800 으로 증가 반전**
+ * ```
+ * 새 행은 이메일 1.3% 이고 그걸 25% 로 만드는 것이 측정인데, **측정이 병목**이다.
+ * ⇒ 폭을 넓히면 행 수만 늘고 **발송 가능 리드는 거의 안 는다.** 지금 병목은 수집이 아니다.
+ *
+ * ## 🔓 언제 푸는가
+ * **측정 처리량이 올라간 뒤.** 그때 이 상수를 올리거나 `ADS_COLLECT_KEYWORD_CAP` 을 세우면
+ * 위에서 회수한 예산이 **즉시** 폭으로 전환된다(코드 변경 없이).
+ * ⚠️ 측정을 올리는 것 자체는 **네이버 직접 조회 부하**(하루 ~8,000 요청)를 늘리는 일이라
+ *   차단 위험 판단이 먼저다 — 숫자 없이 밀지 말 것.
+ *
+ * 현재값 6 = 실측 처리량 5 보다 살짝 위(정상 변동 흡수), 자동 확대(9)는 차단.
+ */
+export const COLLECT_KEYWORDS_PER_ROUND = 6
+
+/**
+ * 회차당 키워드 상한 — env(`ADS_COLLECT_KEYWORD_CAP`)로 재배포 없이 조정 가능(1~40).
+ * ⚠️ 파라미터가 `unknown` 인 이유: 워커 `Env` 타입에 이 키가 선언돼 있지 않아 좁은 구조 타입으로 받으면
+ *   **TS2559**("공통 속성이 없다")가 난다. `alarmEnabled(env: unknown)` 과 같은 형태로 맞춘다.
+ */
+export function keywordsPerRoundCap(env: unknown): number {
+  const raw = parseInt(String((env as { ADS_COLLECT_KEYWORD_CAP?: string } | undefined)?.ADS_COLLECT_KEYWORD_CAP ?? ''), 10)
+  return Number.isFinite(raw) && raw > 0 ? Math.min(40, raw) : COLLECT_KEYWORDS_PER_ROUND
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 🩺 순환 건강 판정 — **한 바퀴를 관측으로 재고**, 상수와 비교하지 않는다 (2026-08-04)
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** `judgeRotation` 입력 — 전부 D1 한 쿼리에서 나온다(추가 왕복 0). */
+export interface RotationSample {
+  /** 활성 키워드 수. */
+  active: number
+  /** 최근 24시간에 순번을 받은 **서로 다른** 키워드 수 = 관측 처리량. */
+  ran24h: number
+  /** 가장 오래 순번을 못 받은 키워드의 나이(일). 한 번도 안 돈 키워드는 **등록일** 기준. */
+  oldestDays: number
+  /** 평균 나이(일). 완전한 라운드로빈이면 한 바퀴의 절반이다. */
+  avgDays: number
+}
+
+export interface RotationVerdict {
+  /** 관측 처리량으로 계산한 한 바퀴(일). 처리량 0 이면 `Infinity`. */
+  cycleDays: number
+  /** 가장 오래 밀린 키워드가 몇 바퀴째 밀렸나. 이상적 라운드로빈이면 ≤1. */
+  worstCycles: number
+  stalled: boolean
+  /** `stopped` = 아예 안 돎 · `starved` = 도는데 특정 꼬리만 계속 건너뜀 · null = 건강. */
+  reason: 'stopped' | 'starved' | null
+}
+
+/**
+ * ⚠️ **왜 "이틀"을 버리는가 — 그 임계는 *성공할 수 없었다*.**
+ *
+ * 종전 판정은 `활성의 30% 초과가 2일째 미실행` 이었다. 이 값은 키워드 **210개 · 한 바퀴 ~10시간**
+ * 시절에 잡은 것이고, 그때는 2일이 한 바퀴의 **다섯 배**라 넘으면 진짜 고장이었다. 그런데 지금
+ * 라이브는(2026-08-04 실측):
+ *
+ * ```
+ *   활성 399  ·  24h 실행 61  →  한 바퀴 6.5일
+ *   2일 초과 320개(80%)   ← 임계 30% 를 언제나 넘는다
+ *   평균 나이 5.68일 ≈ 0.87 바퀴 · 14일 초과 0개   ← 순환은 **정상적으로 돌고 있다**
+ * ```
+ * **2일이 한 바퀴보다 짧으니, 시스템이 완벽해도 80% 가 "2일째 미실행"이다.** 즉 이 경보는
+ * 울리는 것 말고는 할 수 있는 게 없었다 — 이 레포가 반복해 만난 *"실패할 수 없는 가드"* 의 거울상,
+ * **해제될 수 없는 경보**다. 매일 울리는 경보는 곧 아무도 안 읽는 경보가 된다.
+ *
+ * ⚠️ **그리고 이 경보가 시키는 처방이 방향과 반대였다.** 문구는 순환을 더 빨리 돌리라고 하는데,
+ *   `CLAUDE.md` 유어애즈 절의 실측은 *유입 1,613/일 vs 측정 3,600/일 — 측정이 이기는 중*이고
+ *   그래서 *"처리량을 더 밀지 말 것(네이버 차단 리스크)"* 이다. 발굴을 더 빨리 돌리면 미측정
+ *   백로그만 늘어 **목표 지표(발송 가능 리드)를 오히려 늦춘다.**
+ *
+ * ⇒ 상수 대신 **관측된 한 바퀴**와 비교한다. 두 가지만 진짜 고장이다:
+ *   · `stopped`  — 24시간 동안 아무 키워드도 순번을 못 받았다(순환 자체가 멎음).
+ *   · `starved`  — 돌고는 있는데 특정 꼬리가 **여러 바퀴째** 건너뛰어진다(라운드로빈이 깨진 것).
+ *
+ * ⚠️ 배수 3 은 **여유를 둔 값**이다. 실측 최악이 2.21 바퀴(14.46일/6.5일)인데, 몫 배분상
+ *   집중·우선 풀이 슬롯을 먼저 가져가므로 일반 풀의 꼬리는 원래 1 바퀴를 넘는다. 2 로 두면
+ *   정상 상태에서 울린다(방금 버린 임계와 같은 병). 3 을 넘으면 배분이 아니라 **버그**다.
+ * ⚠️ 표본이 작으면(`active < 20`) 판정하지 않는다 — 시드 직후 노이즈.
+ */
+export const ROTATION_STARVE_CYCLES = 3
+
+export function judgeRotation(s: RotationSample): RotationVerdict {
+  const active = Number(s.active) || 0
+  const ran = Number(s.ran24h) || 0
+  const oldest = Number.isFinite(s.oldestDays) ? Number(s.oldestDays) : 0
+  const cycleDays = ran > 0 ? active / ran : Number.POSITIVE_INFINITY
+  const worstCycles = Number.isFinite(cycleDays) && cycleDays > 0 ? oldest / cycleDays : Number.POSITIVE_INFINITY
+  if (active < 20) return { cycleDays, worstCycles, stalled: false, reason: null }
+  if (ran === 0) return { cycleDays, worstCycles, stalled: true, reason: 'stopped' }
+  if (worstCycles > ROTATION_STARVE_CYCLES) return { cycleDays, worstCycles, stalled: true, reason: 'starved' }
+  return { cycleDays, worstCycles, stalled: false, reason: null }
+}

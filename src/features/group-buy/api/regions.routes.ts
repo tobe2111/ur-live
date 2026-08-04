@@ -15,8 +15,9 @@
  * 집계 정의는 홈 피드(`group-buy-public.routes.ts` GET /products)의 WHERE 와 **일치시킨다**:
  *   category ∈ VOUCHER_CATEGORIES · is_active=1 · group_buy_status='active'
  *   · 도매 원본 제외
- * 여기에 **데모 딜 제외**를 추가한다 — 데모는 홈에서 후순위로 밀릴 뿐 목록엔 남지만,
- * 색인 판정에 세면 **가짜 상품으로 thin 지역이 색인 문턱을 넘는다**(색인은 되돌리기 비싸다).
+ * 데모 딜 포함 여부는 `REGION_COUNT_INCLUDE_DEMO`(기본 포함, 2026-08-03 대표 결정)가 정한다 —
+ * 실측상 활성 딜의 99.7%가 데모 시드라 제외하면 지역 페이지가 통째로 빈다. 트레이드오프는
+ * 그 플래그 주석에 적혀 있다.
  */
 
 import { Hono } from 'hono'
@@ -25,6 +26,7 @@ import { cacheGet } from '@/worker/utils/cache'
 import { safeError } from '@/worker/utils/safe-error'
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import { demoSlugSql } from '@/shared/constants/demo-products'
+import { REGION_COUNT_INCLUDE_DEMO } from '@/shared/feature-flags'
 import { mainScopeFor } from '@/worker/utils/consumer-scope'
 import {
   parseRegionFromAddress,
@@ -45,6 +47,12 @@ export async function computeRegionStats(env: Env): Promise<SidoStat[]> {
   //   홈 피드(group-buy-public)는 아직 이 조건이 없어 집계가 피드보다 **조금 보수적**일 수 있는데,
   //   방향이 안전하다(과소집계 → 빈 URL 을 제출하지 않음). 반대였다면 빈 페이지를 색인 요청하게 된다.
   const productScope = await mainScopeFor(env.DB, 'products', 'p')
+  // 🎭 2026-08-03 (대표 결정 "포함시키자"): 데모 딜 포함 여부. 배포 직후 실측에서 활성 딜 329건 중
+  //   **328건이 데모 시드**였고, 제외하면 색인 문턱을 넘는 지역이 0개라 지역 페이지가 통째로 비었다.
+  //   데모는 소비자 홈 피드에도 이미 노출되므로(후순위 정렬) 지역만 빼면 홈↔지역이 불일치한다.
+  //   ⚠️ 트레이드오프는 `REGION_COUNT_INCLUDE_DEMO` 주석에 적어 뒀다 — 되돌려도 이미 색인된 URL 은
+  //   즉시 사라지지 않는다. 플래그를 끄면 이 줄이 다시 붙는다.
+  const demoFilter = REGION_COUNT_INCLUDE_DEMO ? '' : `AND NOT ${demoSlugSql('p')}`
   const rows = await env.DB.prepare(`
     SELECT p.restaurant_address AS addr
     FROM products p
@@ -52,7 +60,7 @@ export async function computeRegionStats(env: Env): Promise<SidoStat[]> {
       AND p.is_active = 1
       AND p.group_buy_status = 'active'
       AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
-      AND NOT ${demoSlugSql('p')}
+      ${demoFilter}
       AND p.restaurant_address IS NOT NULL
       AND TRIM(p.restaurant_address) <> ''${productScope}
   `).bind(...VOUCHER_CATEGORIES).all<{ addr: string }>()
@@ -91,9 +99,11 @@ export async function computeRegionStats(env: Env): Promise<SidoStat[]> {
 regionsRoutes.get('/', async (c) => {
   try {
     // 상품 등록/마감이 분 단위로 바뀌지 않는 집계 — 10분 캐시로 D1 왕복을 줄인다.
+    // 🔑 캐시 키에 데모 포함 여부를 넣는다 — 안 넣으면 플래그를 되돌려도 최대 10분간
+    //   옛 집계가 계속 나가고, 그 사이 "고쳤는데 왜 그대로냐"를 디버깅하게 된다.
     const data = await cacheGet(
       c.env.SESSION_KV,
-      'region_stats:v1',
+      `region_stats:v2:${REGION_COUNT_INCLUDE_DEMO ? 'incl-demo' : 'real-only'}`,
       () => computeRegionStats(c.env),
       { ttl: 600, staleWhileRevalidate: 300 },
     )

@@ -14,7 +14,7 @@ import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import ImageUpload from '@/components/upload/ImageUpload'
-import { Building2, Loader2, Plus, Edit, X, Globe, Check } from 'lucide-react'
+import { Building2, Loader2, Plus, Edit, X, Globe, Check, AlertTriangle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { normalizeAdminRole } from '@/shared/admin-roles'
 import { validateMallColor } from '@/shared/mall/branding'
@@ -371,6 +371,18 @@ export default function AdminWholesaleMallsPage() {
                 <p className="text-[11px] text-gray-400">
                   운영자 몰(공구)만 켠다. <b>도매몰은 끈 채로 둘 것</b> — 켜면 B2B 몰이 소비자 도메인 경로로 노출된다.
                 </p>
+                {/* 🔴 2026-08-04 대표 "계속 404야" — 기본 OFF 라 체크를 안 하면 **만들자마자 죽은 몰**이 된다.
+                    그 사실이 이 화면 어디에도 없어서, 만든 사람은 주소를 눌러 보고 나서야 안다.
+                    fail-closed 기본값은 그대로 두고(도매몰 누수 방지가 이유다) **결과만 미리 말해 준다.** */}
+                {!form.consumer_path && (
+                  <p className="flex items-start gap-1.5 text-[11.5px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-[1px] text-amber-500" />
+                    <span>
+                      지금 상태로 만들면 <b>손님 링크가 열리지 않습니다</b> — <code className="bg-white/70 px-1 rounded">urdeal.kr/{form.slug || '{주소}'}</code> 는 404 가 됩니다.
+                      공구 몰이라면 위 체크를 켜세요.
+                    </span>
+                  </p>
+                )}
               </div>
 
               {/* 🏥 규제 몰(인허가) — 가입 시 신고번호 필수 여부 + 필드 라벨 */}

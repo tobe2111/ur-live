@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { planKeywordSplit, mergeKeywordPicks, FOCUS_CATEGORIES, PRIORITY_CATEGORIES } from '@/features/marketing/api/influencer-keyword-rotation'
+import { planKeywordSplit, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, FOCUS_CATEGORIES, PRIORITY_CATEGORIES } from '@/features/marketing/api/influencer-keyword-rotation'
 import { CLASSIFIED_CATEGORIES } from '@/features/marketing/api/influencer-classify'
 
 const SRC = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
@@ -171,5 +171,49 @@ describe('🔀 세 풀 병합 — 잘릴 때 공평하게 잘린다', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')  // 주석 제외 — 근거 설명에 옛 코드가 인용된다
     expect(src).not.toMatch(/const picks[^=]*=\s*\[\.\.\.focusPicks\]/)
     expect(src).toMatch(/mergeKeywordPicks\(focusPicks, priPicks, genPicks\)/)
+  })
+})
+
+/**
+ * 📉🧊 **수집 예산 회수 + 폭 동결** (2026-08-04 — 대표 *"수집과 보강 다 잘 되게 하면 안돼?"* → *"①만 진행"*).
+ *
+ * 라이브 실측이 근거다:
+ * ```
+ *   회차 예산 56 = yt 24 · naver 28 · cafe 0 · tistory 4 · save 0   ← 네이버가 54%
+ *   미측정 행(순수 수집 결과) 이메일:  네이버 1.3%  vs  유튜브 22.4%
+ *   블로그  유입 3,895/일  vs  측정 4,184/일  →  여유 +289 (백로그 19,963)
+ * ```
+ * ⇒ 네이버 수집 시점 보강은 **중복**(보강 레인이 100%를 25%로 만든다)이라 줄여도 손실이 없다.
+ * ⇒ 하지만 남은 예산으로 **폭을 넓히면 안 된다** — 측정이 병목이라 백로그만 증가 반전한다.
+ *
+ * ⚠️ 이 테스트가 못 보는 것: 실제 이메일 손실률 — 라이브 `미측정 네이버 이메일%` 로 판정한다(1.3% 기준).
+ */
+describe('📉🧊 수집 예산 회수 + 폭 동결', () => {
+  it('🔒 네이버 발굴 시점 보강은 최소값 — 0 이 아니라 1(경로 생존 확인용)', () => {
+    expect(NAVER_COLLECT_ENRICH_MAX).toBe(1)
+  })
+
+  it('🔒 유튜브는 안 건드린다 — 22.4%는 enrichMax 가 아니라 channels.list 에서 나온다', () => {
+    const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
+    expect(src, 'YT enrichMax 를 줄이려면 영상 스니펫의 실제 기여를 먼저 재야 한다').toMatch(/enrichMax: 8/)
+  })
+
+  it('🔒 폭이 조용히 풀리지 않는다 — 회수한 예산이 자동으로 키워드 수가 되면 백로그가 증가 반전한다', () => {
+    expect(COLLECT_KEYWORDS_PER_ROUND).toBeGreaterThanOrEqual(5)   // 실측 처리량 아래로 내리면 되레 후퇴
+    expect(COLLECT_KEYWORDS_PER_ROUND, '측정이 유입을 못 따라간다(여유 +289/일) — 올리려면 측정 처리량이 먼저다').toBeLessThanOrEqual(8)
+  })
+
+  it('🔒 env 로 재배포 없이 조정 가능(측정이 올라가면 즉시 푼다)', () => {
+    expect(keywordsPerRoundCap({ ADS_COLLECT_KEYWORD_CAP: '20' })).toBe(20)
+    expect(keywordsPerRoundCap({ ADS_COLLECT_KEYWORD_CAP: '999' })).toBe(40)   // 런어웨이 방지
+    expect(keywordsPerRoundCap({ ADS_COLLECT_KEYWORD_CAP: 'abc' })).toBe(COLLECT_KEYWORDS_PER_ROUND)
+    expect(keywordsPerRoundCap(undefined)).toBe(COLLECT_KEYWORDS_PER_ROUND)
+  })
+
+  it('🔌 배선 — 루프가 실제로 캡을 본다(상수만 있고 안 쓰면 무의미)', () => {
+    const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+    expect(src).toMatch(/if \(processedIds\.size >= roundCap\) break/)
+    expect(src).toMatch(/enrichMax: NAVER_COLLECT_ENRICH_MAX/)
   })
 })

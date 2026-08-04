@@ -50,6 +50,11 @@ export default function RegionLinkGrid({
 
   const linkable = active.sigungu.filter(s => s.indexable)
 
+  // 🚫 링크할 지역이 어디에도 없으면 섹션 자체를 감춘다 — 대표가 배너에 정한 원칙과 같다
+  //   ("올리지 않으면 아예 보이지 않도록"). 안 그러면 홈 하단에 제목만 있고 "아직 딜이 모이지
+  //   않았어요" 만 뜨는, 빈손을 광고하는 블록이 남는다(2026-08-03 배포 직후 실제 그 상태였다).
+  if (!available.some(r => r.sigungu.some(s => s.indexable))) return null
+
   return (
     <section className={`border-t border-gray-100 dark:border-[#2A3446] ${className}`} aria-labelledby="region-grid-heading">
       <div className="max-w-[1600px] mx-auto px-6 lg:px-10 py-8">

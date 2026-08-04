@@ -244,3 +244,47 @@ curl -sS -o /dev/null -w '%{http_code}\n' -X POST https://urdeal.kr/api/admin/wh
 ⚠️ **다음 세션에게**: 그 문서의 §2·§5 를 보고 삭제를 시작하지 말 것. 문서 상단에 확정 블록을 박아 뒀다.
 이번에 한 것은 **잔재 정리**(소비자 도메인에서 도매 nav 숨김 + 소비자 표면의 도매 유입 링크 제거)뿐이고,
 라우트·API·데이터는 **전부 살아 있다**.
+
+---
+
+## 🔎 "계속 404" 재진단 — 배포가 아니라 **데이터 상태**였다 (2026-08-04)
+
+대표가 보낸 스크린샷은 **소비자 404 화면**(액자 거터 레일 + `바로가기` 패널)이었다. 어드민 화면이 아니다 —
+`ConsumerFrameRails` 는 소비자 표면에만 붙고 어드민은 `AdminLayout` 이다. ⇒ **실패한 URL 은
+`urdeal.kr/{슬러그}`** 이고, `MallHomePage.tsx:139` 의 `if (state === 'notfound' || !mall)` 가 그린 것이다.
+
+### 배포·번들 가설은 **기각**(실측)
+
+| 확인 | 결과 |
+|---|---|
+| `/:mallSlug` 라우트 | **있다** — `App.tsx:1057` → `MallHomePage` |
+| `/admin/wholesale-malls` 라우트 | **있다** — `routes/admin.routes.tsx:449`(App.tsx:38 에서 `AdminRoutes` 마운트) |
+| `/api/mall` 소비자 번들 | **있다** — `worker/index.ts:1974`, `if (__INCLUDE_WHOLESALE__)` **밖** 최상위 마운트 |
+| 그 마운트가 main 에 있나 | **있다** — `#953` 부터(이번 세션 변경 아님) |
+
+⇒ 어드민 API 404(이번 세션이 고친 것)와 **다른 문제**다. 몰 공개 API 는 원래부터 소비자 번들에 있었다.
+남는 원인은 셋뿐이고 전부 데이터다: **몰 행이 없음** · **`consumer_path=0`** · **`active=0`/슬러그 규칙 밖**.
+
+### 🔴 가장 유력한 원인 — 만들기 폼의 **기본값 footgun**
+
+`EMPTY.consumer_path = false`(`AdminWholesaleMallsPage.tsx:80`) + 서버도 `Number(body.consumer_path) === 1`
+이 아니면 `0`. 즉 **체크를 안 하면 만들자마자 죽은 몰**이 된다.
+
+기본 OFF 자체는 **의도된 fail-closed** 다(켜면 B2B 도매몰이 소비자 도메인 경로로 샌다 — 소스 주석에 명시).
+그래서 **기본값은 뒤집지 않았다.** 진짜 결함은 **그 결과가 화면 어디에도 없었다**는 것 —
+만든 사람은 주소를 눌러 404 를 맞고 나서야 안다. ⇒ 체크가 꺼져 있으면 폼에서 **미리 경고**한다:
+
+> ⚠️ 지금 상태로 만들면 **손님 링크가 열리지 않습니다** — `urdeal.kr/{주소}` 는 404 가 됩니다.
+
+가드: `mall-link-open-state.test.ts` R4(2개) — 조건부 블록 존재 + 경고문이 **`404` 라는 결과를 명시**할 것
+(모호한 "확인하세요"로 끝나면 빨강). 되돌려-검증: 조건을 `true` 로 바꿔 주입 → 2개 빨강 → 복원 → 20개 초록.
+
+### 다음 세션의 첫 액션 — 대표에게 물어볼 것 없이 판정된다
+
+브라우저에서 **`urdeal.kr/api/mall/{슬러그}`** 를 연다(공개 API, 로그인 불필요):
+- `{"success":true,...}` → 몰은 살아 있고 공개 상태다. 그럼 404 는 **다른 원인**이니 슬러그 오타부터 볼 것.
+- 404 / `success:false` → 몰이 없거나 `consumer_path=0`. 어드민 몰 목록의 링크 줄이 이유를 말해 준다.
+
+⚠️ **이 세션도 라이브를 못 봤다** — `urdeal.kr`·`live.ur-team.com` 둘 다 **403**,
+`URDEAL_ADMIN_*`·`CLOUDFLARE_*` **미주입**(실측). D1 을 직접 못 봐서 "몰 행이 실제로 있는지"는 확인 불가다.
+⇒ **다음 세션에 자격이 주입돼 있으면 `SELECT id,slug,active,consumer_path FROM wholesale_malls` 한 방으로 끝난다.**
