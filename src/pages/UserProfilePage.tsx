@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 import SEO from '@/components/SEO'
 import { cfImage } from '@/utils/cf-image'
@@ -47,7 +46,7 @@ export default function UserProfilePage() {
   const counts = useMyCounts()
 
   // ✅ Zustand 스토어 사용 (지역별)
-  const authStore = isKorea() ? useAuthKR : useAuthWorld
+  const authStore = useAuthKR // 🔥 2026-08-04: GLOBAL 스토어 제거(#804)
   const { user, isAuthReady } = authStore()
 
   const [userName, setUserName] = useState('')

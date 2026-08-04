@@ -82,34 +82,16 @@ async function refreshDashboardToken(
   return p;
 }
 
-async function getCachedFirebaseToken(forceRefresh = false): Promise<string | null> {
-  const now = Date.now();
-
-  // 캐시 유효한 경우 즉시 반환
-  if (!forceRefresh && _firebaseTokenCache && _firebaseTokenCache.expiresAt > now) {
-    return _firebaseTokenCache.token;
-  }
-
-  try {
-    const { getFirebaseAuth } = await import('./firebase-auth');
-    const auth = await getFirebaseAuth();
-    const user = auth.currentUser;
-
-    if (!user) return null;
-
-    // 강제 갱신 여부 결정: 캐시 만료 or 명시적 forceRefresh
-    const needsRefresh = forceRefresh || !_firebaseTokenCache || _firebaseTokenCache.expiresAt <= now;
-    const token = await user.getIdToken(needsRefresh);
-
-    _firebaseTokenCache = { token, expiresAt: now + TOKEN_CACHE_TTL_MS };
-    return token;
-  } catch (err) {
-    console.error('[API] Firebase token 조회 실패:', err);
-    return null;
-  }
+/**
+ * 🔥 2026-08-04 (대표 승인 — Firebase 완전 제거): 이 경로는 **GLOBAL 전용 레거시**였고
+ *   GLOBAL 은 미런칭·폐기(#804), 서버 수용도 2026-07-28 에 끊겼다(#806).
+ *   KR 은 애초에 도달하지 않는다(아래 `if (isKorea()) return config` 가 먼저 반환).
+ *   ⇒ 항상 null. 호출부는 그대로 두고 "토큰 없음" 경로로 흐르게 한다.
+ */
+async function getCachedFirebaseToken(_forceRefresh = false): Promise<string | null> {
+  return null;
 }
 
-/** 캐시 무효화 (로그아웃 시 호출) */
 export function clearFirebaseTokenCache() {
   _firebaseTokenCache = null;
 }
@@ -365,14 +347,11 @@ api.interceptors.request.use(
       if (isKorea()) return config;
     } catch { /* region detect fail — continue */ }
 
-    // ── Firebase User API (legacy fallback, 글로벌 전용) ──────────────────
-    // ✅ 우선순위 1: useAuthKR/useAuthWorld.getIdToken() → 항상 유효한 토큰 보장
+    // ── 스토어 토큰 fallback (레거시 경로) ────────────────────────────────
+    // 🔥 2026-08-04: useAuthWorld(GLOBAL) 분기 제거 — KR 스토어만 남는다.
     try {
-      const { isKorea } = await import('@/config/region');
-      const isKR = isKorea();
       const { useAuthKR } = await import('@/shared/stores/useAuthKR');
-      const { useAuthWorld } = await import('@/shared/stores/useAuthWorld');
-      const authStore = isKR ? useAuthKR.getState() : useAuthWorld.getState();
+      const authStore = useAuthKR.getState();
       const authStoreWithToken = authStore as typeof authStore & { getIdToken?: (forceRefresh?: boolean) => Promise<string | null> };
 
       if (authStoreWithToken.user && typeof authStoreWithToken.getIdToken === 'function') {
@@ -408,7 +387,7 @@ api.interceptors.request.use(
       console.warn('[API] useAuthStore 조회 실패:', e);
     }
     
-    // ✅ 우선순위 3: Firebase에서 직접 조회 (최후 fallback)
+    // ✅ 우선순위 3: 레거시 토큰 조회 (Firebase 제거 후 항상 null — 아래 '토큰 없음' 경로)
     const token = await getCachedFirebaseToken();
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
@@ -575,14 +554,11 @@ api.interceptors.response.use(
       try {
         let newToken: string | null = null;
 
-        // ✅ 1차: useAuthKR/useAuthWorld.getIdToken(true) — Firebase User 객체 직접 사용
+        // ✅ 1차: 스토어의 getIdToken(true) — 🔥 2026-08-04 GLOBAL 스토어 분기 제거(#804)
         if (!skipFirebaseRefresh) {
           try {
-            const { isKorea } = await import('@/config/region');
-            const isKR = isKorea();
             const { useAuthKR } = await import('@/shared/stores/useAuthKR');
-            const { useAuthWorld } = await import('@/shared/stores/useAuthWorld');
-            const authStore = isKR ? useAuthKR.getState() : useAuthWorld.getState();
+            const authStore = useAuthKR.getState();
             const authStoreWithToken = authStore as typeof authStore & { getIdToken?: (forceRefresh?: boolean) => Promise<string | null> };
             if (authStoreWithToken.user && typeof authStoreWithToken.getIdToken === 'function') {
               newToken = await authStoreWithToken.getIdToken(true); // force refresh

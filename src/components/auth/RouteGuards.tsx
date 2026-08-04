@@ -15,12 +15,6 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { isKorea } from '@/shared/config/region'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import BrandLoader from '@/components/brand/BrandLoader'
-import type { User as FirebaseUser } from 'firebase/auth'
-
-interface AuthWorldState {
-  user: FirebaseUser | null;
-  isAuthReady: boolean;
-}
 
 const DEBUG = import.meta.env.DEV
 
@@ -197,44 +191,13 @@ export function ProtectedRoute({
     return <Navigate to={makeLoginUrl(location.pathname, location.search)} replace />
   }
 
-  // 글로벌: Firebase 포함 체크
-  return <GlobalUserProtectedRoute location={location}>{children}</GlobalUserProtectedRoute>
-}
-
-// 글로벌 전용: Firebase user 체크 (한국에서는 절대 실행 안 됨)
-function GlobalUserProtectedRoute({
-  children,
-  location,
-}: {
-  children: React.ReactNode
-  location: ReturnType<typeof useLocation>
-}) {
-  // 글로벌에서만 import (한국에서는 이 컴포넌트 자체가 렌더 안 됨)
-  const { useAuthWorld } = require('@/shared/stores/useAuthWorld')
-  const firebaseUser = useAuthWorld((s: AuthWorldState) => s.user)
-  const isAuthReady = useAuthWorld((s: AuthWorldState) => s.isAuthReady)
-
-  const [timedOut, setTimedOut] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const hasFirebaseTrace = !!localStorage.getItem('lastLoginUid')
-  const needsWait = !isUserLoggedIn() && !firebaseUser && hasFirebaseTrace && !isAuthReady
-
-  useEffect(() => {
-    if (!needsWait) {
-      if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
-      return
-    }
-    timerRef.current = setTimeout(() => setTimedOut(true), 3000)
-    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
-  }, [needsWait])
-
-  if (isUserLoggedIn()) return <>{children}</>
-  if (firebaseUser) return <>{children}</>
-  if (needsWait && !timedOut) return <>{children}</>
-
+  // 🔥 2026-08-04 (대표 승인 — Firebase 제거): GLOBAL 전용 Firebase 대기 분기 삭제.
+  //   GLOBAL 은 미런칭·폐기(#804)라 이 아래는 도달 경로가 없었다.
+  //   ⚠️ 잠금 항목인 isAdminLoggedIn/isUserLoggedIn/isSellerLoggedIn **토큰 존재 검사는 불변** —
+  //     위 KR 분기가 그대로 그 검사를 쓴다(이중 로그인 자동 로그아웃 회귀 방지).
   return <Navigate to={makeLoginUrl(location.pathname, location.search)} replace />
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PublicRoute (로그인 페이지용 — 이미 로그인된 유저는 리다이렉트)

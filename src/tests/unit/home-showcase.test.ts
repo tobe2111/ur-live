@@ -323,9 +323,10 @@ describe('⑪ 홈이 기본으로 시안 모양이어야 한다 (2026-08-04 "시
   const seed = code('src/features/sections/api/section-seed.ts')
   const routes = code('src/features/sections/api/sections.routes.ts')
 
-  it('승인 시안의 세 줄이 시드로 존재한다', () => {
+  it('기본 노출 줄이 시드로 존재한다', () => {
     // 기능만 넣고 섹션을 안 만들면 홈은 "틀만 있고 안이 빈" 화면이 된다 — 그게 실제로 났다.
-    for (const t of ['지금 인기 이용권', '오늘 마감 임박', '주말에 떠나는 숙소']) {
+    // ⚠️ '오늘 마감 임박' 은 2026-08-04 대표 지시로 제외("아예 필요없어") — ⑫ 에서 부재를 고정한다.
+    for (const t of ['지금 인기 이용권', '주말에 떠나는 숙소']) {
       expect(seed).toContain(t)
     }
   })
@@ -349,6 +350,44 @@ describe('⑪ 홈이 기본으로 시안 모양이어야 한다 (2026-08-04 "시
     expect(adminStart).toBeGreaterThan(publicStart)
     const publicBlock = routes.slice(publicStart, adminStart)
     expect(publicBlock).toMatch(/maybeSeedHomeSections\(/)
+  })
+})
+
+describe('⑫ 배너 미디어 업로드 · 시드 조정 (2026-08-04 대표 3·4번)', () => {
+  const up = code('src/features/upload/api/upload.routes.ts')
+  const comp = code('src/pages/admin/banners/BannerMediaUpload.tsx')
+  const page = code('src/pages/AdminBannersPage.tsx')
+  const seed = code('src/features/sections/api/section-seed.ts')
+
+  it('영상 업로드는 **어드민 전용** 엔드포인트다', () => {
+    // 공용 /upload/image 에 영상 MIME 을 열면 모든 셀러가 영상을 올릴 수 있게 된다.
+    expect(up).toMatch(/'\/upload\/banner-video'[\s\S]{0,120}requireAdmin\(\)/)
+  })
+
+  it('공용 이미지 업로드에 영상 MIME 이 새어들지 않았다', () => {
+    const allowed = up.match(/const ALLOWED_MIME = new Set\(\[[^\]]*\]/)?.[0] ?? ''
+    expect(allowed).not.toMatch(/video\//)
+  })
+
+  it('영상도 매직바이트로 검증한다 (확장자만 믿지 않는다)', () => {
+    expect(up).toMatch(/detectVideoMime/)
+    expect(up).toMatch(/0x1a, 0x45, 0xdf, 0xa3|0x1a && bytes\[1\] === 0x45/)
+  })
+
+  it('배너 폼이 이미지·영상 **둘 다** 업로더를 쓴다 (URL 수동입력만이면 대표가 못 쓴다)', () => {
+    expect(page).toMatch(/<BannerMediaUpload kind="image"/)
+    expect(page).toMatch(/<BannerMediaUpload kind="video"/)
+  })
+
+  it('업로더가 "저장 눌러야 반영" 을 알린다', () => {
+    // 올리고 나가면 URL 만 채워진 채 사라진다 — 그걸 모르면 "왜 안 됐지" 가 된다.
+    expect(comp).toMatch(/저장 버튼을 눌러야 반영/)
+  })
+
+  it("시드에서 '오늘 마감 임박' 이 빠졌다 (대표 \"아예 필요없어\")", () => {
+    expect(seed).not.toMatch(/title: '오늘 마감 임박'/)
+    expect(seed).toMatch(/title: '지금 인기 이용권'/)
+    expect(seed).toMatch(/title: '주말에 떠나는 숙소'/)
   })
 })
 

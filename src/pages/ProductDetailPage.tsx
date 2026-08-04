@@ -8,7 +8,6 @@ import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { resolveProductFlow, canonicalDetailPath } from '@/shared/product-flow'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
 // ✅ React Query Hook (Product, ProductOption 타입도 여기서 가져옴)
 import { useProduct, useProductOptions } from '@/hooks/useProduct'
@@ -69,10 +68,9 @@ export default function ProductDetailPage() {
   
   // ✅ Region 기반 Store 선택
   const krUser = useAuthKR(state => state.user)
-  const worldUser = useAuthWorld(state => state.user)
   
   // ✅ Selector로 필요한 상태만 구독
-  const user = isKorea() ? krUser : worldUser
+  const user = krUser // 🔥 2026-08-04: GLOBAL 스토어 제거(#804)
   const isLoggedIn = !!user || hasConsumerSession()
   
   // 🔥 React Query로 데이터 fetching (자동 캐싱 + 재시도)

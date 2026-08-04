@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
 import { toast } from '@/hooks/useToast'
 import { hasConsumerSession } from '@/utils/auth'
@@ -18,11 +17,9 @@ export default function RegisterPage() {
   const krUser = useAuthKR(state => state.user)
   const krIsAuthReady = useAuthKR(state => state.isAuthReady)
   const krSignupWithEmail = useAuthKR(state => state.signupWithEmail)
-  const worldUser = useAuthWorld(state => state.user)
-  const worldIsAuthReady = useAuthWorld(state => state.isAuthReady)
 
-  const user = isKR ? krUser : worldUser
-  const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
+  const user = krUser
+  const isAuthReady = krIsAuthReady
   const signupWithEmailAction = krSignupWithEmail
 
   const isLoggedIn = !!user || hasConsumerSession()

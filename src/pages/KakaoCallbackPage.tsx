@@ -123,12 +123,7 @@ export default function KakaoCallbackPage() {
 
         // 🛡️ 2026-05-01: Firebase customToken 로그인 경로 제거.
         //   세션 쿠키만으로 한국·글로벌 모두 인증 처리.
-        if (!isKorea()) {
-          try {
-            const { useAuthWorld } = await import('@/shared/stores/useAuthWorld')
-            useAuthWorld.getState().setAuthReady(true)
-          } catch { /* ignore */ }
-        }
+        // 🔥 2026-08-04: GLOBAL 스토어 ready 표시 제거 — 스토어 자체가 사라졌다(#804).
 
         // ── 장바구니 복원 ──
         // 🛡️ 2026-05-01: 실패 시 명시 toast — 이전엔 silent 무시 → 사용자가 cart 손실 인지 못 함.

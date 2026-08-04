@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button'
 import { AlertCircle } from 'lucide-react'
 import { getUserIdSync, hasConsumerSession } from '@/utils/auth'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
 import { captureError } from '@/lib/sentry'
 import { toast } from '@/hooks/useToast'
@@ -62,14 +61,11 @@ function CartCheckout() {
   const krUser = useAuthKR(state => state.user)
   const krAuthLoading = useAuthKR(state => state.isLoading)
   const krIsAuthReady = useAuthKR(state => state.isAuthReady)
-  const worldUser = useAuthWorld(state => state.user)
-  const worldAuthLoading = useAuthWorld(state => state.isLoading)
-  const worldIsAuthReady = useAuthWorld(state => state.isAuthReady)
 
   // ✅ Selector로 필요한 상태만 구독
-  const user = isKR ? krUser : worldUser
-  const authLoading = isKR ? krAuthLoading : worldAuthLoading
-  const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
+  const user = krUser
+  const authLoading = krAuthLoading
+  const isAuthReady = krIsAuthReady
 
   const navigate = useNavigate()
   const location = useLocation()

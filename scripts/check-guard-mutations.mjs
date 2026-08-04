@@ -321,6 +321,17 @@ const MUTATIONS = [
       '**진짜 다운을 감지할 수 없었다**. 이 주입은 그 회귀를 재현한다.',
   },
   {
+    name: '기아 방지 슬롯 배선이 빠짐 — 미실행 키워드가 다시 무한 연기',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '  const rescue = pickStarvationRescue(kws, new Set(interleaved.map(p => p.id)))\n  const finalPicks = rescue ? [rescue, ...interleaved.slice(0, Math.max(0, totalPick - 1))] : interleaved',
+    replace: '  const finalPicks = interleaved',
+    test: 'src/tests/unit/ads-rotation-health.test.ts',
+    why:
+      '함수(`pickStarvationRescue`)가 있어도 **배선이 빠지면 아무 일도 안 한다** — 이 레포의 "코드에 있다 ≠ ' +
+      '살아 있다" 클래스. 라이브 실측: 자동확장 키워드 24개가 생성 14.9일째 실행 0회(커서 거리 275 ≈ 10일 더). ' +
+      'starved 경보가 실전에서 처음 잡은 사고의 수리 지점이라, 배선 소실 = 그 사고의 무음 재발이다.',
+  },
+  {
     name: '순환 경보가 다시 "해제될 수 없는" 임계로 회귀',
     file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
     find: 'export const ROTATION_STARVE_CYCLES = 3',
@@ -1816,6 +1827,56 @@ const MUTATIONS = [
     why:
       '주소가 풀에 없으면 changes 0 인데 그걸 안 세면 응답이 "성공"이다. 이 레포가 반복해 만난 ' +
       '*"실패가 아니라 부재"* 클래스 — 유입구에서 특히 위험하다(대표는 넣었다고 믿는다).',
+  },
+  {
+    name: '결과 화면이 파서를 다시 짬(인식 건수와 실제 반영이 갈라짐)',
+    file: 'src/pages/admin/influencer-pool/OutreachResultPanel.tsx',
+    find: "  parseOutreachCsv, OUTREACH_STATUSES, OUTREACH_INGEST_MAX,",
+    replace: "  OUTREACH_STATUSES, OUTREACH_INGEST_MAX,\n  parseOutreachCsv as _unusedParse,",
+    test: 'src/tests/unit/ads-outreach-result-panel.test.tsx',
+    why:
+      '화면이 "인식 3건"이라 해놓고 서버가 다르게 세면 그 숫자는 **거짓말**이다. 파서 두 벌은 반드시 ' +
+      '갈라진다 — 그러면 대표는 넣었다고 믿는데 절반만 들어간다(이 기능의 존재 이유가 그 오해를 없애는 것).',
+  },
+  {
+    name: '결과 500 상한을 안 나눠 보냄(초과분 조용히 유실)',
+    file: 'src/pages/admin/influencer-pool/OutreachResultPanel.tsx',
+    find: 'i += OUTREACH_INGEST_MAX',
+    replace: 'i += 100000',
+    test: 'src/tests/unit/ads-outreach-result-panel.test.tsx',
+    why:
+      '서버는 500 초과를 400 으로 거절한다. 안 나누면 큰 파일이 통째로 실패하고, 대표는 파일을 ' +
+      '손으로 쪼개야 한다 — 그 마찰이 곧 "결과가 안 들어옴"이고 이 화면을 만든 이유가 사라진다.',
+  },
+  {
+    name: '미매칭이 화면에 안 남음(절반만 먹힌 업로드가 성공으로 보임)',
+    file: 'src/pages/admin/influencer-pool/OutreachResultPanel.tsx',
+    find: "{' · '}미매칭 <b>{formatNumber(result.unmatched)}</b>건",
+    replace: '',
+    test: 'src/tests/unit/ads-outreach-result-panel.test.tsx',
+    why:
+      '미매칭(풀에 없는 주소)은 **조용한 0건과 구분이 안 된다**. 토스트로 흘리면 사라지고, ' +
+      '대표는 반영됐다고 믿는다 — 이 레포가 반복해 만난 *"실패가 아니라 부재"* 클래스.',
+  },
+  {
+    name: '결과 화면이 페이지에서 떨어짐(엔드포인트만 남고 화면 0)',
+    file: 'src/pages/admin/AdminInfluencerPoolPage.tsx',
+    find: '            <OutreachResultPanel />',
+    replace: '            {false && <OutreachResultPanel />}',
+    test: 'src/tests/unit/ads-outreach-result-panel.test.tsx',
+    why:
+      '이 기능의 실패 모드는 "서버가 틀린다"가 아니라 **"사람이 못 넣는다"** 이다 — 실제로 ' +
+      '엔드포인트만 있고 화면이 없어 라이브 email_status 가 0건이었다. 배선이 빠지면 그 상태로 되돌아간다.',
+  },
+  {
+    name: 'CSV 파서가 열 순서를 강제함(첫 업로드가 통째로 invalid)',
+    file: 'src/features/marketing/api/outreach-status-ingest.ts',
+    find: '      email = cols.map(normEmail).find(Boolean) || null',
+    replace: '      email = null',
+    test: 'src/tests/unit/ads-outreach-status-ingest.test.ts',
+    why:
+      '메일 도구마다 열 구성이 다르고 우리는 대표가 쓰는 도구의 출력을 본 적이 없다. 순서를 강제하면 ' +
+      '첫 파일이 통째로 무시되고, 그 왕복이 곧 "결과가 안 들어옴"이다.',
   },
   {
     name: '티스토리 수집만 되살아남(측정 안 될 행을 계속 쌓음)',
