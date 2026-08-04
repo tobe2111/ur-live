@@ -379,7 +379,11 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   **관측 밖**이었다. `cron-stale-watch` 는 *한 번도 기록이 없는 이름을 판정 대상으로 잡지 못하므로*,
   //   멈춰도 침묵 경보에 안 걸렸다(실측: 다른 13개 레인이 다 돈 회차에 이것만 3시간 전 기록 그대로).
   //   🧹 2026-07-29 본문은 `sheets-mirror-lane.ts` 로 분리(엔트리 600줄 캡) — **동작 불변, 위치만**.
-  if (env.ADS_SHEETS_SYNC_ENABLED === 'true') {
+  //   ⏰ 2026-08-04 **알람이 몰면 cron 은 손을 뗀다**(collect·maintenance 와 동일 게이트). 이 레인은
+  //   전 레인 최다 CPU 사망(×16/3일 — 부모 꼬리에서 끌려감)이라 알람 이관 대상이 됐다. 근거는
+  //   `lane-alarm-runners.ts` 의 sheets-sync 항목. ⚠️ 시트 미러는 리스가 없어(커서 append) 겹치면
+  //   **행이 중복**된다 — 이 게이트가 이중 실행의 유일한 방어이므로 빼면 안 된다.
+  if (!laneAlarmOn && env.ADS_SHEETS_SYNC_ENABLED === 'true') {
     ctx.waitUntil((async () => {
       const { runSheetsMirrorLane } = await import('./sheets-mirror-lane')
       await runSheetsMirrorLane(env, adsBeat)

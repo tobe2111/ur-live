@@ -1559,6 +1559,17 @@ const MUTATIONS = [
       '"순서" 불변식이 위치를 실제로 보는지 확인한다.',
   },
   {
+    name: '시트 미러가 알람과 cron 에서 동시에 돎 (리스 없음 → 시트 행 중복)',
+    file: 'src/worker-ads/index.ts',
+    find: "if (!laneAlarmOn && env.ADS_SHEETS_SYNC_ENABLED === 'true')",
+    replace: "if (env.ADS_SHEETS_SYNC_ENABLED === 'true')",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '시트 미러는 리스가 없다(커서 기반 append) — collect 는 겹쳐도 리스가 한쪽을 걸러 주지만 이 레인은 ' +
+      '`!laneAlarmOn` 게이트가 이중 실행의 **유일한** 방어다. 게이트가 빠지면 알람과 cron 이 같은 정각에 ' +
+      '겹쳐 돌아 구글시트에 행이 중복되고, 에러가 없어 아무도 모른다. 이 주입은 그 게이트 소실을 재현한다.',
+  },
+  {
     name: '수집 레인 시간당 상한이 조용히 증설됨',
     file: 'src/worker-ads/lane-alarm-runners.ts',
     find: '  collect: {\n    runsPerHour: 1,\n',

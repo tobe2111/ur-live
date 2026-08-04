@@ -83,6 +83,28 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
       return runInfluencerAutoCollect(env)
     },
   },
+  /**
+   * 📊 **구글시트 미러** — 전 레인 중 **최다 CPU 사망**이라 얹는다 (2026-08-04, 위 "얹을 근거" 충족).
+   *
+   * ```
+   *   cron_failures 3일치:  ads:sheets-sync  Worker exceeded CPU time limit.  ×16
+   * ```
+   * 자기가 무거운 게 아니라 부모 `waitUntil` 꼬리에서 **부모가 죽을 때 끌려간다** — 대표가 이틀
+   * 못 본 시트 정지(2026-08-03)가 이 모양이었다. 알람은 부모가 없어 자기 예산 30초를 받는다.
+   *
+   * ## ⚠️ `runsPerHour: 1` — collect 와 같은 이유(증설이 아니라 의도 복원)
+   * cron 설계가 매시간 1회다. 더 돌리면 Sheets API 쿼터와 D1 페이지 읽기(풀 성장 비례)만 태운다.
+   * 게이트(`ADS_SHEETS_SYNC_ENABLED`)는 러너 안에서 본다 — 알람은 매시간 무조건 깨므로.
+   * 🔒 이중 실행: cron 쪽 디스패치는 `!laneAlarmOn` 게이트로 끊는다(collect·maintenance 와 동일).
+   *   시트 미러는 리스가 없어(커서 기반 append) 겹치면 **행이 중복**된다 — 게이트가 유일한 방어다.
+   */
+  'sheets-sync': {
+    runsPerHour: 1,
+    run: async (env) => {
+      const { runSheetsMirrorDirect } = await import('./sheets-mirror-lane')
+      return runSheetsMirrorDirect(env)
+    },
+  },
 }
 
 export const ALARM_LANE_NAMES = Object.keys(ALARM_LANES)
