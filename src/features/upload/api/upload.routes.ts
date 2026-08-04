@@ -21,6 +21,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { rateLimit } from '../../../worker/middleware/rate-limit'
+import { requireAdmin } from '../../../worker/middleware/auth'
 import { safeError } from '../../../worker/utils/safe-error'
 
 type Bindings = {
@@ -208,6 +209,68 @@ uploadRoutes.post('/upload/image', cors(), rateLimit({ action: 'image-upload', m
         mime: detected,
       },
     })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[upload]')
+  }
+})
+
+/**
+ * 🎬 2026-08-04 배너 영상 업로드 (어드민 전용) — 대표 "히어로도 브랜드 배경으로 영상으로".
+ *
+ * `/upload/image` 는 셀러도 쓰는 공용 경로라 거기에 영상 MIME 을 열면 **모든 셀러가 영상을
+ * 올릴 수 있게 된다**(rate-limit 100/10분 · 10MB). 홈 히어로 영상은 어드민만 올리므로
+ * **별도 엔드포인트 + `requireAdmin`** 으로 가른다.
+ *
+ * ⚠️ 크기: 홈 최상단에 깔리는 배경이라 클수록 첫 화면이 느려진다. 하드 상한 10MB,
+ *    안내는 5MB 이하 권장(어드민 화면 문구).
+ * ⚠️ 매직바이트: MP4/WebM 은 `ftyp`(4~8바이트 오프셋) · EBML 헤더로 확인 — 확장자만 믿지 않는다.
+ */
+const VIDEO_MIME = new Set(['video/mp4', 'video/webm'])
+
+function detectVideoMime(bytes: Uint8Array): string | null {
+  // MP4/MOV: 4~7 바이트가 'ftyp'
+  if (bytes.length > 12 && bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70) {
+    return 'video/mp4'
+  }
+  // WebM/Matroska: EBML 매직 1A 45 DF A3
+  if (bytes.length > 4 && bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3) {
+    return 'video/webm'
+  }
+  return null
+}
+
+uploadRoutes.post('/upload/banner-video', cors(), requireAdmin(), rateLimit({ action: 'banner-video-upload', max: 20, windowSec: 600 }), async (c) => {
+  try {
+    if (!c.env.MEDIA_BUCKET) {
+      return c.json({ success: false, error: 'R2 binding 미설정 (MEDIA_BUCKET)', code: 'R2_NOT_CONFIGURED' }, 503)
+    }
+    const formData = await c.req.formData().catch(() => null)
+    if (!formData) return c.json({ success: false, error: 'multipart/form-data 필요' }, 400)
+
+    const file = formData.get('file')
+    if (!(file instanceof File)) return c.json({ success: false, error: 'file field 필요' }, 400)
+    if (file.size > MAX_SIZE) {
+      return c.json({ success: false, error: `영상이 너무 큽니다 (최대 ${MAX_SIZE / 1024 / 1024}MB · 5MB 이하 권장)` }, 413)
+    }
+    if (file.size < 1000) return c.json({ success: false, error: '파일이 너무 작습니다' }, 400)
+    if (!VIDEO_MIME.has(file.type)) {
+      return c.json({ success: false, error: `허용 형식: ${[...VIDEO_MIME].join(', ')}` }, 415)
+    }
+
+    const buffer = await file.arrayBuffer()
+    const detected = detectVideoMime(new Uint8Array(buffer))
+    if (!detected) return c.json({ success: false, error: '영상 파일 형식이 올바르지 않습니다 (위변조 의심)' }, 400)
+
+    const yyyymm = new Date().toISOString().slice(0, 7)
+    const key = `uploads/admin/banner/${yyyymm}/${randomKey()}.${detected === 'video/webm' ? 'webm' : 'mp4'}`
+    await c.env.MEDIA_BUCKET.put(key, buffer, {
+      httpMetadata: { contentType: detected, cacheControl: 'public, max-age=31536000, immutable' },
+      customMetadata: { uploader: 'admin:banner', uploaded_at: new Date().toISOString() },
+    })
+
+    const publicBase = c.env.PUBLIC_R2_URL || ''
+    const url = publicBase ? `${publicBase.replace(/\/$/, '')}/${key}` : `/api/media/${key}`
+    return c.json({ success: true, data: { key, url, size: file.size, mime: detected } })
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[upload]')
   }
