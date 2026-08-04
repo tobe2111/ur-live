@@ -5503,6 +5503,7 @@ _총 119건 · 최신순 · 이 목록은 자동 생성된다._
 - [상권 축 2단계 — 나라장터 계약정보 레인 (2026-08-04)](handoff/2026-08-04-nara-contract-lane.md)
 - [키워드 목적함수를 "연락처 확보율"로 (2026-08-04 대표 지시)](handoff/2026-08-04-keyword-objective-contacts.md)
 - [인계 — 홈 쇼케이스 ①③④ (2026-08-04)](handoff/2026-08-04-home-showcase.md)
+- [인계 — 홈 쇼케이스 라이브 수리 (2026-08-04)](handoff/2026-08-04-home-showcase-fix.md)
 - [인계 — 홈 섹션 어드민 편집(직접 고르기 · 순서 변경) (2026-08-04)](handoff/2026-08-04-home-sections-editing.md)
 - [2026-08-04 — CPU 한도: 벽시계로는 못 막는다 (호출부 두 곳 총량 상한)](handoff/2026-08-04-cpu-work-cap-callsites.md)
 - [2026-08-04 — 파트너 수집 회차 벽시계 마감선 (27.4초가 "성공"으로 기록되던 자리)](handoff/2026-08-04-company-lane-run-deadline.md)

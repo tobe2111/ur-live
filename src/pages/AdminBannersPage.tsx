@@ -7,16 +7,16 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, Link as LinkIcon, Image as ImageIcon, X } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
-// 🏠 2026-08-04 (대표 시안 승인): 배너에 **자리**(히어로/중간/와이드)와 **영상 배경**이 생겼다.
-//   자리 종류는 SSOT 에서만 온다 — 여기서 문자열을 새로 만들면 홈이 못 알아본다.
-import { BANNER_TYPES, BANNER_TYPE_LABELS, DEFAULT_BANNER_TYPE, type BannerType } from '@/shared/constants/home-showcase'
+// 🏠 2026-08-04: 배너 **자리**(히어로/중간/와이드) + **영상 배경**. 자리 종류는 SSOT 에서만 온다.
+//   🔴 '노출 안 함'(null)이 기본 상태다 — 자리를 고른 배너만 홈에 뜬다.
+import { BANNER_SLOTS, BANNER_SLOT_LABELS, NEW_BANNER_SLOT, type BannerSlot } from '@/shared/constants/home-showcase'
 
 interface Banner {
   id: number
   title: string
   image_url: string
   video_url?: string
-  banner_type?: BannerType
+  banner_slot?: BannerSlot | null
   link_url?: string
   description?: string
   is_active: boolean
@@ -28,7 +28,7 @@ interface Banner {
 }
 
 const EMPTY_FORM = {
-  title: '', image_url: '', video_url: '', banner_type: DEFAULT_BANNER_TYPE as BannerType,
+  title: '', image_url: '', video_url: '', banner_slot: NEW_BANNER_SLOT as BannerSlot | null,
   link_url: '', description: '',
   is_active: true, display_order: 0, start_date: '', end_date: ''
 }
@@ -61,7 +61,7 @@ export default function AdminBannersPage() {
     setEditingBanner(banner)
     setFormData({
       title: banner.title, image_url: banner.image_url,
-      video_url: banner.video_url || '', banner_type: banner.banner_type || DEFAULT_BANNER_TYPE,
+      video_url: banner.video_url || '', banner_slot: banner.banner_slot ?? null,
       link_url: banner.link_url || '', description: banner.description || '',
       is_active: banner.is_active, display_order: banner.display_order,
       start_date: banner.start_date ? banner.start_date.split('T')[0] : '',
@@ -164,25 +164,39 @@ export default function AdminBannersPage() {
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">노출 자리</label>
               <div className="flex flex-wrap gap-2">
-                {BANNER_TYPES.map(bt => (
+                {/* 🔴 '노출 안 함' 이 먼저다 — 홈에 안 띄우는 것이 정상 상태이고,
+                    자리는 사람이 고를 때만 값이 된다(옛 배너가 저절로 뜬 사고의 수리). */}
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, banner_slot: null })}
+                  aria-pressed={!formData.banner_slot}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
+                    !formData.banner_slot
+                      ? 'bg-gray-800 border-gray-800 text-white'
+                      : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  홈에 노출 안 함
+                </button>
+                {BANNER_SLOTS.map(bt => (
                   <button
                     key={bt}
                     type="button"
-                    onClick={() => setFormData({ ...formData, banner_type: bt })}
-                    aria-pressed={formData.banner_type === bt}
+                    onClick={() => setFormData({ ...formData, banner_slot: bt })}
+                    aria-pressed={formData.banner_slot === bt}
                     className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
-                      formData.banner_type === bt
+                      formData.banner_slot === bt
                         ? 'bg-blue-600 border-blue-600 text-white'
                         : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                     }`}
                   >
-                    {BANNER_TYPE_LABELS[bt]}
+                    {BANNER_SLOT_LABELS[bt]}
                   </button>
                 ))}
               </div>
               <p className="mt-1.5 text-xs text-gray-400">
                 히어로는 홈 최상단 큰 배너(영상 가능) · 중간은 3열 프로모션 · 와이드는 가로 한 줄.
-                <strong className="text-gray-500"> 등록하지 않은 자리는 홈에 아예 안 보입니다.</strong>
+                <strong className="text-gray-500"> 자리를 고르지 않으면 홈에 안 뜹니다(기존 배너는 전부 이 상태).</strong>
               </p>
             </div>
             <div>
@@ -204,7 +218,7 @@ export default function AdminBannersPage() {
               {formData.image_url && <img src={formData.image_url} alt={t('admin.banners.k029', { defaultValue: "미리보기" })} className="mt-2 w-full max-w-sm aspect-video object-cover rounded-lg" loading="lazy" />}
             </div>
             {/* 🎬 영상 배경 — 히어로에서만 쓴다. 비워두면 이미지가 배경. */}
-            {formData.banner_type === 'hero' && (
+            {formData.banner_slot === 'hero' && (
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">영상 URL (선택)</label>
                 <input
@@ -274,8 +288,10 @@ export default function AdminBannersPage() {
               <div className="flex items-start justify-between mb-1">
                 <h3 className={`text-sm font-semibold ${banner.title ? 'text-gray-900' : 'text-gray-400 italic'}`}>{banner.title || t('admin.banners.noTitle', { defaultValue: '(제목 없음 — 이미지만)' })}</h3>
                 <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                  <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
-                    {BANNER_TYPE_LABELS[banner.banner_type || DEFAULT_BANNER_TYPE]}
+                  <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                    banner.banner_slot ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {banner.banner_slot ? BANNER_SLOT_LABELS[banner.banner_slot] : '홈 미노출'}
                   </span>
                   {banner.video_url && <span className="text-xs text-gray-400">🎬 영상</span>}
                   <span className="text-xs text-gray-400">순서 {banner.display_order}</span>
