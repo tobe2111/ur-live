@@ -22,6 +22,7 @@
 import type { Env } from '../types/env'
 // 🔴 기대 목록 대조(트리거 미등록 탐지) — 정적 목록 vs 런타임 기록. 상세: cron-expected.ts
 import { findNeverFired, type NeverFiredEntry } from './cron-expected'
+import { classifyBeat, freshBaseNames } from './cron-beat-retirement'
 
 /**
  * 실패 사유를 **짧은 분류 코드**로 (순수 — 유닛 잠금).
@@ -294,6 +295,12 @@ export interface CronHealth {
   latest_heartbeat_at: string | null
   latest_age_min: number | null
   stale: CronStaleEntry[]
+  /**
+   * 🪦 **은퇴/인수된 이름** — 낡았지만 `ok` 를 물지 **않는다**. 개명·DO 알람 인수로 아무도 안 부르는
+   * 하트비트 행은 영원히 갱신되지 않아 게이트를 영구 빨간불로 만든다(2026-08-04 실측 6일·이슈 코멘트 84개).
+   * 지우지 않고 여기 남겨 **보이게는** 한다 — 정리 대상 목록으로 쓰라고.
+   */
+  retired: CronStaleEntry[]
   /** cron 식이 없거나 해석 불가해 **판정을 못 한** 작업들(모르면 조용히 있는다). */
   missing: string[]
   /**
@@ -328,6 +335,7 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
       name: '(전체)', label: 'cron 전체', max_gap_min: TOTAL_SILENCE_MIN,
       last_finished_at: null, age_min: null,
     }],
+    retired: [],
     missing: [],
     never_fired: [],
   })
@@ -347,22 +355,31 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
         name: '(전체)', label: 'cron 전체 — 아무 작업도 안 돌고 있음',
         max_gap_min: TOTAL_SILENCE_MIN, last_finished_at: newest?.at ?? null, age_min: latestAge,
       }],
+      retired: [],
       missing: [],
       never_fired: [],  // 전면 침묵이면 개별 부재는 노이즈 — 먼저 전체를 살려야 한다
     }
   }
 
   // ① 개별 침묵 — 기대주기(기록된 cron 식 기반)를 넘긴 작업.
+  //   🪦 2026-08-04: **은퇴한 이름은 `ok` 를 물지 않는다.** 하트비트 행은 레인보다 오래 살아서,
+  //     개명·인수된 이름은 영원히 안 갱신되고 영원히 stale 이다 → 게이트가 꺼질 수 없다(실측 6일).
+  //     지우지 않고 `retired` 로 **계속 보여 주되** 판정에서만 뺀다. 근거: `cron-beat-retirement.ts`.
+  const fresh = freshBaseNames(beats)
   const stale: CronStaleEntry[] = []
+  const retired: CronStaleEntry[] = []
   const missing: string[] = []
   for (const b of beats) {
     const limit = b.max_gap_min ?? expectedMaxAgeMinutes(b.cron)
     if (limit == null || b.age_minutes == null) { missing.push(b.name); continue }
     if (b.age_minutes > limit) {
-      stale.push({
+      const entry: CronStaleEntry = {
         name: b.name, label: b.name, max_gap_min: limit,
         last_finished_at: b.at, age_min: b.age_minutes,
-      })
+      }
+      const verdict = classifyBeat({ name: b.name, age_minutes: b.age_minutes, max_gap_min: limit }, fresh)
+      if (verdict === 'judge') stale.push(entry)
+      else retired.push({ ...entry, label: `${b.name} (${verdict === 'superseded' ? '같은 일이 새 이름으로 실행 중' : '아무도 안 부르는 이름'})` })
     }
   }
 
@@ -376,6 +393,7 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
     latest_heartbeat_at: newest?.at ?? null,
     latest_age_min: latestAge,
     stale,
+    retired,
     missing,
     never_fired: neverFired,
   }
