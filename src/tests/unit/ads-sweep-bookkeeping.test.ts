@@ -37,7 +37,20 @@ describe('카카오 전화 스윕 — 부기 예산', () => {
     const reserve = Number(m![1])
 
     const body = sweepBody()
-    const after = body.slice(body.indexOf('SWEEP_BOOKKEEPING_RESERVE') + 1)
+    /**
+     * 🎯 **루프 가드에 앵커한다** — 상수의 *첫 등장*이 아니다 (2026-08-04 교정).
+     *
+     *   첫 등장으로 자르면 그 상수를 루프 앞에서 **한 번 더 쓰는 순간** 세는 구간이 위로 넓어져
+     *   루프 안의 D1 접근까지 딸려 들어온다. 실제로 그렇게 됐다: 행 선택 상한을
+     *   `rowsWorthReading(budget.left - SWEEP_BOOKKEEPING_RESERVE, cap)` 로 좁히자 **루프 뒤 쓰기는
+     *   6 그대로인데** 세어진 값만 7 이 되어 빨간불이 났다. 지키려는 것은 *"루프 뒤"* 이므로
+     *   그 경계인 **정지선 자체**를 앵커로 삼는다.
+     *   ⚠️ 이 시험이 못 보는 것: 정지선보다 **위**에서 늘어나는 D1 접근. 그건 예약분이 아니라
+     *     예산 총량(`resolveSubreqBudget`)의 문제라 여기서 다룰 자리가 아니다.
+     */
+    const guard = body.indexOf('budget.left <= SWEEP_BOOKKEEPING_RESERVE')
+    expect(guard, '루프 정지선을 못 찾았다 — 형태가 바뀌었으면 이 검사도 함께').toBeGreaterThan(0)
+    const after = body.slice(guard + 1)
     // 루프 이후 구간의 D1 접근(prepare 호출) 횟수 — 배치도 1회로 센다(D1.batch = 서브리퀘스트 1).
     const writes = (after.match(/DB\.(prepare|batch)\(/g) || []).length
     expect(writes, '루프 뒤 D1 접근을 못 셌다 — 형태가 바뀌었으면 이 검사도 함께').toBeGreaterThan(0)
