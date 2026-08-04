@@ -72,6 +72,51 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: 'CPU 상한 — 카카오 스윕이 예산 밖 행까지 다시 읽는다',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: '    .bind(rowCap).all<{ id: number; company_name',
+    replace: '    .bind(cap).all<{ id: number; company_name',
+    test: 'src/tests/unit/ads-cpu-work-cap-callsites.test.ts',
+    why:
+      '예산 천장이 무료 캡(기본 60)이라 시도 가능한 행은 ~50개인데 `LIMIT 600` 으로 읽고 있었다. ' +
+      '나머지 550행은 역직렬화만 되고 루프 `break` 에 버려지는데, 그 계산이 무료 플랜 CPU 를 태운다 ' +
+      '(실측 6,640ms 에 CPU 한도 사망 — 벽시계 마감 12s 는 닿지도 못했다). **행은 그대로 처리되고 ' +
+      '에러도 안 난다** — 되돌아가도 화면에는 아무 변화가 없어 사람이 못 잡는다.',
+  },
+  {
+    name: 'CPU 상한 — 재분류가 시간만 보고 행 총량을 안 본다',
+    file: 'src/worker-ads/index.ts',
+    find: 'passes < 5 && !last.done && rows < maxRows && Date.now() - t0 < deadlineMs',
+    replace: 'passes < 5 && !last.done && Date.now() - t0 < deadlineMs',
+    test: 'src/tests/unit/ads-cpu-work-cap-callsites.test.ts',
+    why:
+      '08-03 에 이 자리에 붙인 처방이 벽시계 마감선이었는데, 08-04 에 `ms=1316` 으로 **자기 마감선 ' +
+      '1,800ms 에 닿기도 전에** CPU 한도로 죽었다. 외부 호출이 없는 DB-only 정규식 루프는 벽시계가 ' +
+      '안 흐르는데 CPU 만 탄다 — 시간 조건만 남기면 08-04 상태 그대로다.',
+  },
+  {
+    name: '키워드 목적함수가 다시 "몇 명 모았나"로 되돌아감',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: ' - yieldPenalty(k) - contactPenalty(k.yt_leads, k.yt_contacts)',
+    replace: ' - yieldPenalty(k)',
+    test: 'src/tests/unit/influencer-keyword-yield.test.ts',
+    why:
+      '대표 지시로 목적함수를 **연락처 확보율**로 바꿨다. 이 한 항이 빠지면 점수식은 다시 `saved` 만 ' +
+      '보고, 라이브 실측처럼 **연락처 0%인 키워드가 우수로 평가된다**(금천 네일 리드 118 · 이메일 0 · ' +
+      '감점 0). 리드 수는 오히려 늘어나므로 **대시보드로는 개선처럼 보인다** — 그게 이 회귀의 위험이다.',
+  },
+  {
+    name: '키워드 성과 재계산이 빠져 감점이 영원히 0',
+    file: 'src/features/marketing/api/influencer-maintenance.ts',
+    find: '; out.kwyield = await recomputeKeywordContactYield(DB).catch(() => null) }',
+    replace: ' }',
+    test: 'src/tests/unit/influencer-keyword-yield.test.ts',
+    why:
+      '감점은 `yt_leads`/`yt_contacts` 가 채워져 있어야 작동한다. 재계산 호출이 사라지면 두 값이 ' +
+      '영원히 0 이고 `contactPenalty` 는 **증거 부족으로 항상 0 을 돌려준다** — 코드는 그대로인데 ' +
+      '목적함수만 조용히 옛것으로 되돌아간다. 에러도 경고도 없다(이 레포가 "헛도는 가드"라 부르는 형태).',
+  },
+  {
     name: '나라장터 계약 — 마스킹된 전화를 진짜 연락처로 센다',
     file: 'src/features/marketing/api/nara-contract-collect.ts',
     find: "  return raw.includes('*') ? '' : raw",
@@ -627,13 +672,18 @@ const MUTATIONS = [
   {
     name: '재분류 패스 루프가 마감선을 잃음(매시간 CPU 사망 복귀)',
     file: 'src/worker-ads/index.ts',
-    find: 'passes < 5 && !last.done && Date.now() - t0 < deadlineMs',
-    replace: 'passes < 5 && !last.done',
+    // 🗺️ 2026-08-04 앵커 갱신 — 같은 줄에 **행 총량 조건이 추가**됐다(`rows < maxRows`). 옛 앵커를
+    //   그대로 두면 주입 대상을 못 찾아 이 불변식이 조용히 사라진다(가드가 실제로 그렇게 잡았다).
+    //   지우는 건 여전히 **시간 조건만** — 행 조건은 별도 항목(`CPU 상한 — 재분류가 …`)이 지킨다.
+    find: 'passes < 5 && !last.done && rows < maxRows && Date.now() - t0 < deadlineMs',
+    replace: 'passes < 5 && !last.done && rows < maxRows',
     test: 'src/tests/unit/ads-reclassify-deadline.test.ts',
     why:
       '이 레인은 **매시간 CPU 한도로 죽고 있었다**(`ok=false ms=3880`). 5패스 × 1,000행 × 행당 정규식 ~20개 = ' +
       '10만 회를 한 인보케이션에서 돈다 — `ads-cpu-work-cap` 이 세운 교리(*"페이지가 아니라 인보케이션당 총량"*)를 ' +
-      '**호출부**가 어긴 것이다. 커서가 이어받으므로 일찍 멈춰도 커버리지 손실은 0 이다.',
+      '**호출부**가 어긴 것이다. 커서가 이어받으므로 일찍 멈춰도 커버리지 손실은 0 이다. ' +
+      '⚠️ 08-04 실측에서 이 마감선만으론 부족함이 확인됐지만(`ms=1316` 에 마감선 1,800ms 를 못 닿고 사망) ' +
+      '**빼면 안 된다** — D1 이 느린 회차는 행 수가 아니라 시간이 먼저 닿는다(둘은 병행 안전판이다).',
   },
   {
     name: '미사용 env 신고가 평상시에도 울림(경보 신뢰 상실)',
@@ -1695,6 +1745,56 @@ const MUTATIONS = [
       '같은 알람의 collect 가 28,643ms 완주가 증거다. 전제가 사라진 값을 그대로 쓰면 창이 근거 없이 좁다.',
   },
   {
+    name: '재업로드가 반응 시각을 덮음(COALESCE 제거)',
+    file: 'src/features/marketing/api/outreach-status-ingest.ts',
+    find: 'opened_at = COALESCE(opened_at, ?)',
+    replace: 'opened_at = ?',
+    test: 'src/tests/unit/ads-outreach-status-ingest.test.ts',
+    why:
+      '같은 파일을 두 번 올리면 "방금 열었다"로 덮여 반응 시점 분석이 망가진다. 멱등은 "에러가 안 난다"가 ' +
+      '아니라 **최종 상태가 같다** 는 뜻이다.',
+  },
+  {
+    name: 'sent 가 contacted_at 을 덮어 리마인더가 영원히 안 나감',
+    file: 'src/features/marketing/api/outreach-status-ingest.ts',
+    find: 'contacted_at = COALESCE(contacted_at, ?)',
+    replace: 'contacted_at = ?',
+    test: 'src/tests/unit/ads-outreach-status-ingest.test.ts',
+    why:
+      'contacted_at 은 발송 큐/리마인더의 "이미 보냈나·언제" 판정에 쓰인다. 재업로드가 갱신하면 D+N 창이 ' +
+      '매번 밀려 **후속 발송이 구조적으로 0** 이 된다. 에러가 안 나서 안 보이는 종류다.',
+  },
+  {
+    name: '수신거부가 opted_out 을 안 세움(또는 다른 상태가 세움)',
+    file: 'src/features/marketing/api/outreach-status-ingest.ts',
+    find: "case 'opt_out':",
+    replace: "case 'sent2':",
+    test: 'src/tests/unit/ads-outreach-status-ingest.test.ts',
+    why:
+      '수신거부는 법적 의사표시다. 안 세우면 다음 발송에 그 사람이 다시 뽑히고, 반대로 다른 상태가 세우면 ' +
+      '멀쩡한 리드가 영구 제외된다(해제는 사람만 한다).',
+  },
+  {
+    name: '미매칭을 안 세어 반쯤 먹힌 업로드가 성공으로 보임',
+    file: 'src/features/marketing/api/outreach-status-ingest.ts',
+    find: '    if (ch === 0) out.unmatched++',
+    replace: '    if (false) out.unmatched++',
+    test: 'src/tests/unit/ads-outreach-status-ingest.test.ts',
+    why:
+      '주소가 풀에 없으면 changes 0 인데 그걸 안 세면 응답이 "성공"이다. 이 레포가 반복해 만난 ' +
+      '*"실패가 아니라 부재"* 클래스 — 유입구에서 특히 위험하다(대표는 넣었다고 믿는다).',
+  },
+  {
+    name: '티스토리가 조용히 되살아남(수율 3.0%)',
+    file: 'src/features/marketing/api/influencer-tistory-performance.ts',
+    find: 'export const TISTORY_ROOM = 0',
+    replace: 'export const TISTORY_ROOM = 2',
+    test: 'src/tests/unit/ads-tistory-enrich.test.ts',
+    why:
+      '2026-08-04 실측으로 접었다(측정 397 → 이메일 12 = 3.0%, 네이버 26.7%·유튜브 40.6%). 되살리려면 ' +
+      '**수율이 왜 올랐는지 근거가 먼저**다. env(ADS_TISTORY_ROOM)로는 열려 있으니 코드 기본값은 0 이어야 한다.',
+  },
+  {
     name: '수집 폭 동결이 풀림(측정이 병목인데 백로그가 증가 반전)',
     file: 'src/features/marketing/api/influencer-auto-collect.ts',
     find: '    if (processedIds.size >= roundCap) break',
@@ -1732,23 +1832,16 @@ const MUTATIONS = [
   {
     name: '티스토리가 블로거 뒤로 밀림(잔여를 다 뺏겨 영원히 0)',
     file: 'src/features/marketing/api/influencer-enrich-lane.ts',
-    find: '    try { tistory = await enrichTistoryActivity(DB, budget, TISTORY_ROOM, slice) } catch (err) { note(err) }\n',
+    // 🗺️ 2026-08-04 앵커 이사: 몫이 상수 → `tistoryRoom(env)` 가 되고 `if (tisRoom > 0)` 으로 감싸졌다.
+    //   지키는 불변식(티스토리가 블로거보다 **먼저**)은 그대로라 항목을 지우지 않고 따라간다.
+    find: '      try { tistory = await enrichTistoryActivity(DB, budget, tisRoom, slice) } catch (err) { note(err) }\n',
     replace: '',
     test: 'src/tests/unit/ads-tistory-enrich.test.ts',
     why:
       '블로거는 `naverRoomFromRemaining` 으로 **잔여 전부**를 가져간다. 티스토리가 뒤에 서면 남는 예산이 없어 ' +
       '측정이 0으로 고착된다 — 에러 없이 조용히. ⚠️ 첫 판정이 `indexOf(\'enrichTistoryActivity\')` 라 맨 위 ' +
-      '**import 문**을 먼저 찾아 초록이 떴다(import 는 언제나 첫 번째다) → 호출부로 앵커를 옮겼다.',
-  },
-  {
-    name: '티스토리 몫이 조용히 증설됨(블로거 백로그를 갉음)',
-    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
-    find: 'export const TISTORY_ROOM = 2',
-    replace: 'export const TISTORY_ROOM = 9',
-    test: 'src/tests/unit/ads-tistory-enrich.test.ts',
-    why:
-      '이 값이 곧 블로거에게서 뺏는 양이다(2 = 회차당 최대 4 서브리퀘스트 ≈ 9%). 티스토리 백로그는 495 로 ' +
-      '블로거(20,264)의 2.4% 라, 몫을 키우면 20,264행 소진이 그만큼 늦어진다. 늘리려면 실측이 먼저다.',
+      '**import 문**을 먼저 찾아 초록이 떴다(import 는 언제나 첫 번째다) → 호출부로 앵커를 옮겼다. ' +
+      '(현재 기본 몫은 0 이라 이 순서는 `ADS_TISTORY_ROOM` 으로 되살렸을 때를 위한 보험이다.)',
   },
   {
     name: '네이버 오픈API 계측이 래퍼에서 사라짐(그 레인이 통째로 계측 밖)',

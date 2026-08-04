@@ -152,6 +152,12 @@ if domain deploy; then
   run "크리티컬 청크 구성 동결"          node scripts/check-critical-chunks.mjs
   run "감사 레지스트리 동기화"          env STRICT_AUDIT_REGISTRY=1   node scripts/check-audit-registry-sync.mjs
   run "가드 자기검증(측정0=실패)"       env STRICT_GUARD_SELFCHECK=1  node scripts/check-guard-selfcheck.mjs
+  # 🧪 2026-08-04 신설 — **이 게이트에 가드 주입 검증이 통째로 빠져 있었다.**
+  #   실제 사고: 이 세션이 티스토리 코드를 옮기고 `audit-gate.sh` 로 "ALL GREEN 87" 을 확인한 뒤 커밋했는데,
+  #   CI 는 낡은 지도 2건으로 빨간불이었다. 게이트가 안 보는 검사를 근거로 "전부 통과"라고 보고한 것이다.
+  #   ⚠️ `-s` 가 없으면 실패해도 exit 0(warn)이라 여기서도 반드시 붙인다 — 그게 없어서 못 봤다.
+  #   ⏱️ 느리다(주입마다 vitest 1회, 수 분). 그래도 게이트의 값은 **"안 보는 곳이 없다"** 는 것이다.
+  run "가드 주입 검증(헛도는 가드)"      node scripts/check-guard-mutations.mjs -s
 fi
 
 echo "────────────────────────────────────────────────────"

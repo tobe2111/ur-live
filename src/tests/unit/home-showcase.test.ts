@@ -206,6 +206,76 @@ describe('⑦ 어드민 도달성 — 만들 수 있어야 존재한다', () => 
   })
 })
 
+describe('⑨ 어드민 편집 — 직접 고르기 · 순서 변경 (2026-08-04 대표 요청)', () => {
+  const page = code('src/pages/admin/AdminHomeSectionsPage.tsx')
+  const picker = code('src/pages/admin/home-sections/SectionProductPicker.tsx')
+  const routes = code('src/features/sections/api/sections.routes.ts')
+
+  it('직접 고르기(manual) 섹션에만 상품 담기 버튼이 뜬다', () => {
+    // 규칙 섹션은 서버가 채우므로 담기 버튼이 뜨면 안 된다(눌러도 반영이 안 돼 혼란만 준다).
+    expect(page).toMatch(/src === 'manual' &&[\s\S]{0,400}상품 담기/)
+  })
+
+  it('담긴 상품 0건인 manual 섹션은 "홈 미노출" 로 표시된다', () => {
+    // 서버가 빈 줄을 빼는 건 옳지만, 어드민이 그 이유를 모르면 고장으로 읽는다.
+    expect(page).toMatch(/홈 미노출/)
+  })
+
+  it('피커가 순서를 바꾸고 그 순서대로 저장한다 (배열 순서 = 홈 순서)', () => {
+    expect(picker).toMatch(/product_ids: picked\.map\(p => p\.id\)/)
+    expect(picker).toMatch(/\[next\[i\], next\[j\]\] = \[next\[j\]!, next\[i\]!\]/)
+  })
+
+  it('피커가 상한(SECTION_MAX_LIMIT)을 넘겨 담지 못하게 막는다', () => {
+    expect(picker).toMatch(/picked\.length >= SECTION_MAX_LIMIT/)
+  })
+
+  it('피커가 조회 실패와 "결과 0건" 을 구분한다', () => {
+    // 둘 다 빈 목록으로 보이면 원인을 못 찾는다(check-query-iserror 와 같은 이유).
+    expect(picker).toMatch(/isError/)
+  })
+
+  it('섹션 순서 변경이 배열 순서를 그대로 서버로 보낸다', () => {
+    expect(page).toMatch(/api\.post\('\/api\/sections\/reorder', \{ section_ids: next\.map\(s => s\.id\) \}\)/)
+  })
+
+  it('모든 변경(생성·수정·삭제·상품·순서)이 공개 홈 캐시를 비운다', () => {
+    // 안 비우면 최대 120초 동안 "바꿨는데 홈에 없다" 가 되고 그건 고장과 구분되지 않는다.
+    const calls = routes.match(/invalidateSectionsCache\(/g) ?? []
+    expect(calls.length).toBeGreaterThanOrEqual(7) // 정의 1 + 호출 6
+  })
+})
+
+describe('⑩ 섹션 수정 — 만든 뒤에 고칠 수 있어야 한다 (2026-08-04 "없는 것도 다")', () => {
+  const page = code('src/pages/admin/AdminHomeSectionsPage.tsx')
+  const form = code('src/pages/admin/home-sections/SectionForm.tsx')
+
+  it('생성과 수정이 같은 폼 컴포넌트를 쓴다', () => {
+    // 두 벌로 두면 한쪽에만 필드가 추가돼 "만들 땐 되는데 고칠 땐 안 되는" 필드가 생긴다.
+    const uses = page.match(/<SectionForm\b/g) ?? []
+    expect(uses.length).toBe(2)
+    expect(page).toMatch(/mode="create"/)
+    expect(page).toMatch(/mode="edit"/)
+  })
+
+  it('생성과 수정이 같은 payload 빌더를 쓴다', () => {
+    const calls = page.match(/toPayload\(v\)/g) ?? []
+    expect(calls.length).toBe(2)
+    expect(page).toMatch(/api\.put\(`\/api\/sections\/\$\{editing\.id\}`, toPayload\(v\)\)/)
+  })
+
+  it('수정 폼이 서버 값으로 채워진다 (빈 폼으로 열려 기존 설정을 날리지 않게)', () => {
+    expect(page).toMatch(/initial=\{toFormValue\(editing\)\}/)
+    expect(page).toMatch(/source: \(s\.source \|\| DEFAULT_SECTION_SOURCE\)/)
+  })
+
+  it('쓰이지 않는 layout 필드는 폼에 노출하지 않는다', () => {
+    // DB 컬럼은 있지만 홈 렌더가 안 쓴다 — 고를 수는 있는데 아무 일도 안 일어나는 스위치는
+    // 없는 것보다 나쁘다. 홈이 layout 을 실제로 쓰게 되면 그때 폼에 추가할 것.
+    expect(form).not.toMatch(/name="layout"|form\.layout/)
+  })
+})
+
 describe('⑧ 청크 — 홈 쇼케이스가 크리티컬 패스에 들어가지 않는다', () => {
   it('components/home 은 eager 청크(app-layout) 규칙에 걸리지 않는다', () => {
     // 2026-08-03 에 RegionLinkGrid 를 components/main/ 에 뒀다가 app-constants 를

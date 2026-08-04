@@ -88,6 +88,7 @@ export async function getAutoCollectStats(DB: D1Database): Promise<AutoCollectSt
 //   기존 import 경로 호환을 위해 그대로 재수출한다(테스트·호출부 무변경).
 export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS, type YtPickKeyword, MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
 import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotation'
+import { buildRotationPools } from './keyword-contact-yield'
 import { mineHashtags } from './influencer-hashtag-mine'
 
 // ── 📅 YT 쿼터 하루 경계 — 구글 쿼터는 태평양 자정(한국 오후 4~5시) 리셋. 카운터 키에 사용. ──
@@ -180,7 +181,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
     DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8"),
   ]).catch(() => null)
-  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
+  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total, COALESCE(yt_leads,0) AS yt_leads, COALESCE(yt_contacts,0) AS yt_contacts FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   /**
    * 🪦 은퇴 축 키워드는 **슬롯을 안 먹는다**(2026-08-03). 축을 접었는데 그 키워드가 계속 돌면
@@ -211,14 +212,8 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   커서 순환이라 커버리지는 며칠에 걸쳐 동일 — 1회 부하만 낮춤(매시간 cron 이라 총량은 큼).
   const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_AUTOCOLLECT_BATCH || '', 10) || 4))
 
-  // ⭐ 우선 카테고리 배정 — 배치의 ceil(3/4)은 우선 풀(맛집·푸드·외식창업·숙소·네일·뷰티, 별도 커서),
-  //   나머지는 일반 풀 순환. 한쪽 풀이 모자라면 다른 쪽이 잔여 슬롯을 채움(총 batch 개 유지).
-  // 🎯 집중 축(마케팅대행사) 전용 풀 — 우선/일반보다 **앞에서** 뗀다. 근거는 `FOCUS_CATEGORIES` 주석.
-  //   ⚠️ 세 풀은 서로 배타여야 한다 — 겹치면 같은 키워드가 한 배치에 두 번 들어간다.
-  const inFocus = (k: { category: string | null }) => !!k.category && FOCUS_CATEGORIES.includes(k.category)
-  const focusPool = kws.filter(inFocus)
-  const priPool = kws.filter(k => !inFocus(k) && k.category && PRIORITY_CATEGORIES.includes(k.category))
-  const genPool = kws.filter(k => !inFocus(k) && !(k.category && PRIORITY_CATEGORIES.includes(k.category)))
+  // ⭐ 3분할 풀(집중·우선·일반) 구성 + 연락처 수율 솎아내기 — 규칙·근거는 `buildRotationPools` docblock(SSOT).
+  const { focusPool, priPool, genPool } = buildRotationPools(kws, { focus: FOCUS_CATEGORIES, priority: PRIORITY_CATEGORIES })
   let priCursor = parseInt(settings['ads_autocollect_cursor_pri'] || '0', 10)
   if (!Number.isFinite(priCursor) || priCursor < 0) priCursor = 0
   let focusCursor = parseInt(settings[FOCUS_CURSOR_KEY] || '0', 10)
