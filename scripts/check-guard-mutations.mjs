@@ -94,6 +94,28 @@ const MUTATIONS = [
       '이 레포가 반복해 만난 "이름 한 칸 어긋나서 조용히 no-op" 클래스.',
   },
   {
+    name: 'CPU 자기교정 — 학습표가 레인 조회에서 빠짐(적히기만 하고 아무도 안 읽는다)',
+    file: 'src/features/marketing/api/cpu-quantum.ts',
+    find: 'const want = lane ? [...keys, CPU_QUANTA_KEY] : [...keys]',
+    replace: 'const want = [...keys]',
+    test: 'src/tests/unit/ads-cpu-quantum.test.ts',
+    why:
+      '이 한 줄이 감지와 소비를 잇는다. 빠지면 CPU 사망은 계속 표에 적히는데 **어떤 레인도 그 값을 ' +
+      '안 읽어** 작업량이 그대로다 — 조회는 성공하고 `q` 만 늘 1 이라 에러도 경고도 없다. ' +
+      '자동수리가 도는 것처럼 보이면서 실제로는 아무 일도 안 일어나는, 정확히 그 상태가 된다.',
+  },
+  {
+    name: 'CPU 자기교정 — collect-hira 가 배수를 무시한다',
+    file: 'src/features/marketing/api/hira-hospital-collect.ts',
+    find: 'const maxPages = maxPagesArg ?? applyQuantum(envPlanValue(undefined, 3, 12, env), cfg.q, 1)',
+    replace: 'const maxPages = maxPagesArg ?? envPlanValue(undefined, 3, 12, env)',
+    test: 'src/tests/unit/ads-cpu-quantum.test.ts',
+    why:
+      '페이지 수가 이 레인의 작업량 노브다(한 장이 곧 파싱량). 배수가 안 걸리면 학습이 돌아도 ' +
+      '이 레인만 예전 크기로 계속 돌아 **또 CPU 로 죽는다** — 2026-08-04 실측 6,409ms 사망 레인이라 ' +
+      '조절기의 첫 시험대이기도 하다. 되돌아가도 초록불이라 사람이 못 잡는다.',
+  },
+  {
     name: '카카오 스윕이 다시 tier 순만 보고 뒷줄을 굶긴다',
     file: 'src/features/marketing/api/company-collect.ts',
     find: "     ORDER BY (kakao_checked_at IS NOT NULL) ASC, (email IS NOT NULL AND email <> '') ASC, (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)",

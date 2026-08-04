@@ -14,6 +14,7 @@ import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS }
 import { MAINT_PHASE_CURSOR_KEY, MAINT_SCHEDULE_VERSION, parsePhaseCursor, formatPhaseCursor, nextPhaseSlot } from './maintenance-phase-cursor'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue } from './collect-budget'
 import { budgetedDb, newOpBudget, type OpBudget } from './maintenance-budget'
+import { applyQuantum, readLaneSettings } from './cpu-quantum'
 import { RESCAN_DEADLINE_MS, RESCAN_DEADLINE_MS_PAID, RESCAN_ORDER_KEY, normalizeOrder, nextOrder, rotatedOrder } from './rescan-rotation'
 import { healNaverHandles } from './influencer-handle-heal'
 // 📍 지역 백필 — 여기(정비 인보케이션)가 제자리다. 근거는 `sweepRegions` 주석.
@@ -415,12 +416,11 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
   if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, PHASE_LEASE_TTL_MS)) return { at, kind: 'maintenance', phase, busy: true }
 
   const envBudget = Math.max(10, Math.min(900, envLaneBudget(env.ADS_MAINT_OPS_BUDGET, 60, env)))
-  const learnedRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('maintenance'))
-    .first<{ value: string }>().catch(() => null)
-  const learnedCap = Math.max(0, parseInt(learnedRaw?.value || '', 10) || 0)
-  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
-  const pcap = envSubreqCap(env)
-  const total = resolveSubreqBudget(envBudget, learnedCap, pcap)
+  // 🧠 학습 상한 + CPU 배수를 한 문장으로(조회 수 동일) — 실제로 CPU 한도로 죽은 기록이 있는 레인이라(2026-08-02 `phase=quality`) **하트비트 이름 그대로 phase 별로** 배우고, 작업량(=D1 연산 수)에 그 배수를 건다.
+  const s = await readLaneSettings(DB, [subreqCapKey('maintenance')], `ads:maintenance?phase=${phase}`)
+  const learnedCap = Math.max(0, parseInt(s.get(subreqCapKey('maintenance')) || '', 10) || 0)
+  const pcap = envSubreqCap(env) // 🧱 플랫폼 천장 — 학습 상한도 이 위로 못 간다(기본 60, 근거·조정법은 collect-budget 주석).
+  const total = applyQuantum(resolveSubreqBudget(envBudget, learnedCap, pcap), s.q, 10)
   const budget = newOpBudget(Math.max(6, total - RESERVE_OPS))
   const bdb = budgetedDb(DB, budget)
 

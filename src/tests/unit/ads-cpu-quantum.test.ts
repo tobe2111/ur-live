@@ -209,4 +209,73 @@ describe('🚧 배선 — 학습값이 실제로 상한을 줄이는가 (가짜 
     // fail-soft: 학습이 던져도 이 함수가 실패하면 안 된다
     expect(src).toMatch(/await learnCpuQuanta\(env, list\)\.catch\(/)
   })
+  // ── 소비 배선 (2026-08-05) — 감지만 있고 소비가 없으면 그냥 no-op 이다 ──────────────────
+  describe('readLaneSettings — 한 조회로 설정 + CPU 배수', () => {
+    /** 한 문장으로 여러 키를 돌려주는 가짜 D1. 발행된 SQL/바인드도 검사할 수 있게 기록한다. */
+    const manyDB = (rows: Record<string, string>) => {
+      const seen: { sql: string; binds: unknown[] } = { sql: '', binds: [] }
+      return {
+        seen,
+        db: {
+          prepare: (sql: string) => ({
+            bind: (...binds: unknown[]) => {
+              seen.sql = sql; seen.binds = binds
+              return { all: async () => ({ results: binds.filter(b => rows[String(b)] != null).map(b => ({ key: String(b), value: rows[String(b)] })) }) }
+            },
+          }),
+        },
+      }
+    }
+
+    it('조회는 **한 번**이다 — 레인마다 읽기를 늘리면 부모 꼬리 예산을 갉는다', async () => {
+      const { readLaneSettings, CPU_QUANTA_KEY } = await import('@/features/marketing/api/cpu-quantum')
+      const { seen, db } = manyDB({ a: '1', b: '2' })
+      const s = await readLaneSettings(db as never, ['a', 'b'], 'ads:x')
+      expect(s.get('a')).toBe('1')
+      expect(s.get('b')).toBe('2')
+      // 요청한 키 + 학습표가 **같은 문장**에 들어간다
+      expect(seen.sql).toContain('key IN (?,?,?)')
+      expect(seen.binds).toEqual(['a', 'b', CPU_QUANTA_KEY])
+    })
+
+    it('학습값이 있으면 그 레인의 배수가 나온다', async () => {
+      const { readLaneSettings, CPU_QUANTA_KEY } = await import('@/features/marketing/api/cpu-quantum')
+      const { db } = manyDB({ [CPU_QUANTA_KEY]: JSON.stringify({ 'ads:collect-hira': { q: 0.5, c: 0 } }) })
+      expect((await readLaneSettings(db as never, [], 'ads:collect-hira')).q).toBe(0.5)
+      expect((await readLaneSettings(db as never, [], 'ads:other')).q).toBe(1)   // 표에 없으면 제한 없음
+    })
+
+    it('🔒 실패는 항상 안전한 방향 — 조회가 깨져도 q=1(현행 그대로), 더 일하지 않는다', async () => {
+      const { readLaneSettings } = await import('@/features/marketing/api/cpu-quantum')
+      const boom = { prepare: () => ({ bind: () => ({ all: async () => { throw new Error('D1 down') } }) }) }
+      const s = await readLaneSettings(boom as never, ['a'], 'ads:x')
+      expect(s.q).toBe(1)
+      expect(s.get('a')).toBeUndefined()
+      expect((await readLaneSettings(null, ['a'], 'ads:x')).q).toBe(1)
+      // 배수 1 은 원본을 그대로 통과시킨다 = 레인 동작 무변화
+      const { applyQuantum } = await import('@/features/marketing/api/cpu-quantum')
+      expect(applyQuantum(3, s.q, 1)).toBe(3)
+    })
+  })
+
+  describe('레인 소비 배선 — 표에 적히기만 하고 아무도 안 읽으면 조용한 no-op 이다', () => {
+    const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
+
+    it('collect-hira — 페이지 수에 배수가 걸린다', () => {
+      const src = read('src/features/marketing/api/hira-hospital-collect.ts')
+      // 레인 이름은 하트비트와 **글자 그대로** 같아야 표를 찾는다(`ads:` 접두어 포함)
+      expect(src).toContain("'ads:collect-hira'")
+      expect(src).toMatch(/maxPages = maxPagesArg \?\? applyQuantum\(/)
+      // 조회 합치기 — 예전의 개별 SELECT 두 건이 남아 있으면 비용 주장이 거짓이 된다
+      expect(src).not.toContain('bind(STATS_KEY)')
+      expect(src).not.toContain('bind(CURSOR_KEY)')
+    })
+
+    it('maintenance — phase 별로 배우고, 연산 예산에 배수가 걸린다', () => {
+      const src = read('src/features/marketing/api/influencer-maintenance.ts')
+      // 하트비트가 `ads:maintenance?phase=quality` 로 적히므로 키도 그 형태여야 한다
+      expect(src).toContain('`ads:maintenance?phase=${phase}`')
+      expect(src).toMatch(/const total = applyQuantum\(resolveSubreqBudget\(/)
+    })
+  })
 })
