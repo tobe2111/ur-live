@@ -8,7 +8,7 @@ import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
-import { buildSendQueueWhere, SEND_QUEUE_ORDER_BY, OUTREACH_NOISE_WORDS } from './outreach-queue'
+import { buildSendQueueWhere, OUTREACH_NOISE_WORDS, fetchSendQueuePage } from './outreach-queue'
 import { withOutreachTemplate } from './outreach-template'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
@@ -193,15 +193,13 @@ app.get('/influencer-pool/send-queue', async (c) => {
   const { where, binds } = buildSendQueueWhere(POOL, c.req.query('platform'), {
     category: c.req.query('category'), region: c.req.query('region'), emailOnly: c.req.query('emailOnly') === '1',
   })
-  const rows = await c.env.DB.prepare(`SELECT id, platform, name, url, email, instagram, status, outreach_draft, lead_score, subscriber_count, category, region, email_status
-    FROM ad_influencer_leads WHERE ${where}
-    ORDER BY ${SEND_QUEUE_ORDER_BY} LIMIT ?`)
-    .bind(...binds, limit).all().catch(() => null)
+  // 🧹 조회·중복제거·자르기는 `fetchSendQueuePage`(SSOT) — 중복 주소는 실측 130그룹/262행이다.
+  const queue = await fetchSendQueuePage<{ email?: string | null }>(c.env.DB, where, binds, limit)
   // 남은 총량 — "오늘 20명" 을 눌렀을 때 뒤에 몇 명이 더 있는지(동기부여 + 소진 판단).
   const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${where}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
   // ✉️ 문안 동봉 — 화면이 붙여넣을 것을 서버가 만든다(SSOT: outreach-template). 근거는 그 모듈 헤더.
-  return c.json({ success: true, leads: withOutreachTemplate(rows?.results || []), remaining: totalRow?.n ?? 0, limit })
+  return c.json({ success: true, leads: withOutreachTemplate(queue), remaining: totalRow?.n ?? 0, limit })
 })
 
 // PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션

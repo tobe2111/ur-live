@@ -78,3 +78,54 @@ export function buildSendQueueWhere(
   if (opts?.emailOnly) where.push('email IS NOT NULL')
   return { where: where.join(' AND '), binds }
 }
+
+/**
+ * 🧹 **같은 주소에 두 번 보내지 않는다** (2026-08-04 — 대표 승인 "2,3 진행").
+ *
+ * ## 실측
+ * 발송 가능(이메일 보유·수신거부 아님) 리드 중 **중복 주소 그룹 130개 / 262행** —
+ * 즉 그대로 두면 **132통이 같은 사람에게 두 번째로 나간다.**
+ * 한 사람이 유튜브와 블로그를 같이 하거나, 소속 대행사 대표메일이 여러 채널에 적혀 있으면 생긴다.
+ * 중복 통합(`mergeDuplicatePool`)은 **같은 채널의 중복 행**을 합치는 것이라 이 경우는 안 잡는다 —
+ * 서로 다른 채널이고 각각 정당한 리드다. 지우면 안 되고, **보낼 때만 하나로** 묶는 것이 맞다.
+ *
+ * ## 왜 SQL 이 아니라 여기서
+ * 발송 목록은 이미 **좋은 순서로 정렬**돼 있다(점수·구독자). `GROUP BY email` 을 걸면 그 순서가
+ * 흔들리고 어느 행이 남는지가 D1 구현에 맡겨진다. 정렬을 신뢰하고 **먼저 나온 것을 남기는** 편이
+ * 결과가 결정적이고, 페이지 단위로 읽는 내보내기와도 같은 규칙으로 맞출 수 있다.
+ *
+ * ⚠️ 이메일이 없는 행은 **그대로 통과**시킨다 — 빈 값끼리 묶으면 이메일 없는 리드가 한 명만 남는다
+ *   (내보내기 전체 목록은 이메일 없는 리드도 담는다).
+ */
+export function dedupeByEmail<T extends { email?: string | null }>(rows: T[]): T[] {
+  const seen = new Set<string>()
+  const out: T[] = []
+  for (const r of rows) {
+    const e = String(r?.email ?? '').trim().toLowerCase()
+    if (!e) { out.push(r); continue }
+    if (seen.has(e)) continue
+    seen.add(e)
+    out.push(r)
+  }
+  return out
+}
+
+/** 발송 큐 한 페이지가 읽는 컬럼 — 화면(붙여넣기 문안 포함)이 쓰는 것만. */
+const SEND_QUEUE_COLS = 'id, platform, name, url, email, instagram, status, outreach_draft, lead_score, subscriber_count, category, region, email_status'
+
+/**
+ * 🚀 **발송 큐 한 페이지** — 라우트에서 분리(2026-08-04, 600줄 래칫). 조회·중복제거·자르기를 한 자리에.
+ *
+ *   ⚠️ `limit` 이 아니라 **`limit * 2` 를 읽는다** — 중복을 걸러낸 뒤에도 요청한 인원을 채우기 위해서다.
+ *     그대로 `limit` 을 읽고 거르면 "20명 주세요" 가 17명이 되고, 매일 쓰는 화면이라 바로 체감된다.
+ *   ⚠️ 상한 200 은 D1 응답 크기 안전선(초안 본문이 실려 행이 크다).
+ */
+export async function fetchSendQueuePage<T extends { email?: string | null }>(
+  DB: { prepare(sql: string): { bind(...v: unknown[]): { all<R>(): Promise<{ results?: R[] } | null> } } },
+  where: string, binds: (string | number)[], limit: number,
+): Promise<T[]> {
+  const fetchN = Math.min(200, Math.max(1, limit) * 2)
+  const rows = await DB.prepare(`SELECT ${SEND_QUEUE_COLS} FROM ad_influencer_leads WHERE ${where}
+    ORDER BY ${SEND_QUEUE_ORDER_BY} LIMIT ?`).bind(...binds, fetchN).all<T>().catch(() => null)
+  return dedupeByEmail((rows?.results || []) as T[]).slice(0, limit)
+}
