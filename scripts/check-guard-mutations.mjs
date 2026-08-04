@@ -198,6 +198,18 @@ const MUTATIONS = [
       '고치려던 것과 **부호만 반대인 같은 고착**이다. 끝난 레인만 판정 대상이어야 한다.',
   },
   {
+    name: '개명된 하트비트가 다시 게이트를 물어 영구 503 (사이트 다운 감지가 가려짐)',
+    file: 'src/worker/utils/cron-beat-retirement.ts',
+    find: "  if (raw.includes('?') && freshBaseNames.has(beatBaseName(raw))) return 'superseded'",
+    replace: '  // (superseded 판정 제거)',
+    test: 'src/tests/unit/cron-beat-retirement.test.ts',
+    why:
+      '하트비트 행은 레인보다 오래 산다. 개명·DO알람 인수된 이름은 아무도 갱신하지 않아 **영원히 stale** 이고, ' +
+      '그러면 `/api/_healthcheck/cron` 이 영구 503 이 된다. 실측 피해가 크다: uptime 프로브가 그 503 을 ' +
+      '"사이트 다운"과 같은 바구니로 세어, 장애 이슈 #845 가 6일째 열린 채 코멘트 84개가 쌓이는 동안 ' +
+      '**진짜 다운을 감지할 수 없었다**. 이 주입은 그 회귀를 재현한다.',
+  },
+  {
     name: '순환 경보가 다시 "해제될 수 없는" 임계로 회귀',
     file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
     find: 'export const ROTATION_STARVE_CYCLES = 3',
