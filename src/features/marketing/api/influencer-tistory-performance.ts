@@ -215,3 +215,34 @@ export async function enrichTistoryActivity(
   if (stmts.length) await DB.batch(stmts).catch(() => null)
   return diag
 }
+
+/**
+ * 📗 **티스토리 회차 몫 — 0 으로 접었다** (2026-08-04, 대표 *"티스토리 접고"*).
+ *
+ * ## 하루 만에 뒤집힌 판단이라 근거를 남긴다
+ * 이 경로는 **2026-08-03 에 이 세션이 만들었다**. 그때 근거는 *"495행이 미측정인데 측정 경로가
+ * 아예 없다"* 였고, 초기 소표본에서 이메일 수율을 11.5% 로 봤다. **표본이 397건으로 커지자 3.0% 였다.**
+ * ```
+ *   측정완료 기준 이메일 수율     티스토리  3.0% (397 → 12)
+ *                                네이버   26.7% (17,643 → 4,705)
+ *                                유튜브   40.6% (4,858 → 1,974)
+ *   최근 3일 유입 325행 → 이메일 0
+ * ```
+ * ⚠️ **경로가 고장난 게 아니다** — 측정은 정상 동작한다(397건 중 393건이 글 수, 392건이 링크 획득).
+ *   티스토리 블로거가 **연락처를 안 거는 것**이고, 그건 코드로 못 고친다.
+ *   ⇒ 회차당 4~6 서브리퀘스트를 1/9 수율에 쓰는 대신 네이버(26.7%)로 보낸다.
+ *
+ * ## 왜 코드를 지우지 않는가
+ * `enrichTistoryActivity` 와 diag 는 그대로 둔다. 0 이면 **한 건도 안 돌지만**, 나중에
+ * 추출기를 고치거나 티스토리 쪽이 바뀌면 이 상수 하나(또는 `ADS_TISTORY_ROOM`)로 즉시 되살아난다.
+ * 삭제하면 되살리는 데 다시 하루가 든다 — 이 레포가 반복해 쓰는 가역성 원칙.
+ *
+ * 🔓 되살리는 법: env `ADS_TISTORY_ROOM=2`. 되살리기 전에 **왜 수율이 올랐는지 근거를 먼저** 볼 것.
+ */
+export const TISTORY_ROOM = 0
+
+/** env 로 재배포 없이 되살릴 수 있게(0~5). 기본은 위 상수(=접힘). */
+export function tistoryRoom(env: unknown): number {
+  const raw = parseInt(String((env as { ADS_TISTORY_ROOM?: string } | undefined)?.ADS_TISTORY_ROOM ?? ''), 10)
+  return Number.isFinite(raw) && raw >= 0 ? Math.min(5, raw) : TISTORY_ROOM
+}

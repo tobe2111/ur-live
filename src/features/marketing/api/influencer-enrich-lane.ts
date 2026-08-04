@@ -35,7 +35,7 @@ import {
   ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, type FetchBudget,
 } from './influencer-discovery'
 import { enrichNaverActivity, enrichYouTubePerformance, ensurePerfExtraColumns, type NaverEnrichDiag, type EnrichSlice } from './influencer-performance'
-import { enrichTistoryActivity, type TistoryEnrichDiag } from './influencer-tistory-performance'
+import { enrichTistoryActivity, tistoryRoom, type TistoryEnrichDiag } from './influencer-tistory-performance'
 import { POOL_ACCOUNT_ID, readSetting, writeSetting, ytQuotaDayKey } from './influencer-auto-collect'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs, envLaneBudget, ENRICH_DEADLINE_MS_ALARM } from './collect-budget'
 // 스냅샷 키는 leaf 모듈(enrich-telemetry)에 둔다 — 어드민 통계가 수집 엔진을 import 하지 않고 읽게.
@@ -122,8 +122,8 @@ export interface InfluencerEnrichSnapshot {
  *   소모하므로 예약 오버헤드 4 를 빼고 나눈다. 실제 중단은 각 함수가 `budget.left` 로 하고,
  *   여기서는 SELECT LIMIT 이 헛되이 커지지 않게만 잡는다.
  */
-/** 📗 티스토리 회차 몫(행). 근거는 `runNaver` 안 주석 — 늘리기 전에 `tistory.failed` 부터 볼 것. */
-export const TISTORY_ROOM = 2
+/** 📗 티스토리 몫 — 정책·근거는 `influencer-tistory-performance.ts`(SSOT). 여기선 재수출만. */
+export { TISTORY_ROOM, tistoryRoom } from './influencer-tistory-performance'
 
 export function planInfluencerEnrich(budgetTotal: number): { bioMax: number; naverMax: number; ytMax: number } {
   const usable = Math.max(0, budgetTotal - 4)
@@ -515,15 +515,14 @@ export async function runInfluencerEnrich(
   const naverFirst = pickNaverFirst(prev)   // 🔀 깊이가 아니라 직전 선두로 교대(위 docblock — 알람은 depth 가 항상 0)
   const runNaver = async (): Promise<void> => {
     /**
-     * 📗 **티스토리 — 작은 고정 몫 먼저**(2026-08-03 신설). 측정 경로가 **아예 없어** 495행 전부가 미측정인데
-     *   유입은 ~216/일이라, 두면 못 쓰는 행만 쌓인다(8/19 엔 ~3,900행). 근거·한계: `influencer-tistory-performance.ts`.
-     *
-     *   ⚠️ **왜 2인가** — 이 값이 곧 블로거에게서 뺏는 양이다. 백로그 비(495 : 20,264 = 2.4%)를 보면
-     *   비례 몫은 1 미만이지만, 유입 216/일을 못 따라가면 백로그가 되레 는다. 2 면 회차당 최대 4 서브리퀘스트
-     *   (≈9%)로 하루 ~576행 — 며칠 안에 큐가 비고, **그 뒤에는 스스로 안 쓴다**(측정된 행은
-     *   `perf_checked_at ASC` 에서 뒤로 가 신규 유입분만 남는다). 늘리기 전에 `tistory.failed` 부터 볼 것.
+     * 📗 **티스토리 — 기본 0(접힘)**. 2026-08-03 에 신설했다가 **다음 날 실측으로 접었다**:
+     *   측정 397 → 이메일 12(3.0%) vs 네이버 26.7% · 유튜브 40.6%. 근거 전문은 `TISTORY_ROOM` docblock.
+     *   ⚠️ 호출 자체는 남긴다 — `room 0` 이면 안 돌고, `ADS_TISTORY_ROOM` 으로 즉시 되살아난다.
      */
-    try { tistory = await enrichTistoryActivity(DB, budget, TISTORY_ROOM, slice) } catch (err) { note(err) }
+    const tisRoom = tistoryRoom(env)
+    if (tisRoom > 0) {
+      try { tistory = await enrichTistoryActivity(DB, budget, tisRoom, slice) } catch (err) { note(err) }
+    }
     // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 이 시점의 **실제 잔여**로 몫을 다시 계산한다.
     try { naver = await enrichNaverActivity(DB, budget, naverRoomFromRemaining(budget.left, naverMax), slice) } catch (err) { note(err) }
   }
