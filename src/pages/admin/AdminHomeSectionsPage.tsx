@@ -4,12 +4,12 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
-import { LayoutList, Plus, Trash2, Eye, EyeOff, X } from 'lucide-react'
+import { LayoutList, Plus, Trash2, Eye, EyeOff, ArrowUp, ArrowDown, ListPlus, Pencil } from 'lucide-react'
+import SectionProductPicker from './home-sections/SectionProductPicker'
+import SectionForm, { EMPTY_SECTION_FORM, type SectionFormValue } from './home-sections/SectionForm'
 import {
-  SECTION_SOURCES, SECTION_SOURCE_LABELS, DEFAULT_SECTION_SOURCE,
-  SECTION_DEFAULT_LIMIT, SECTION_MAX_LIMIT, type SectionSource,
+  SECTION_SOURCE_LABELS, DEFAULT_SECTION_SOURCE, SECTION_DEFAULT_LIMIT, type SectionSource,
 } from '@/shared/constants/home-showcase'
-import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 
 /** 카테고리 한글 라벨 — 명칭 SSOT(2026-06-29): 카테고리 칩은 '식사/미용/숙소/기타'. */
 const CATEGORY_LABELS: Record<string, string> = {
@@ -36,12 +36,7 @@ interface Section {
   source_value?: string | null
   limit_count?: number | null
   more_href?: string | null
-  products?: Array<{ id: number; name: string }>
-}
-
-const EMPTY = {
-  title: '', subtitle: '', source: DEFAULT_SECTION_SOURCE as SectionSource,
-  source_value: '', limit_count: SECTION_DEFAULT_LIMIT, more_href: '',
+  products?: Array<{ id: number; name: string; price?: number | null; image_url?: string | null; restaurant_name?: string | null }>
 }
 
 export default function AdminHomeSectionsPage() {
@@ -49,27 +44,57 @@ export default function AdminHomeSectionsPage() {
     ['admin', 'home-sections'], '/api/sections/admin',
     { select: (r) => { const x = r as { success?: boolean; data?: Section[] }; return x?.success ? (x.data ?? []) : [] } },
   )
-  const [form, setForm] = useState(EMPTY)
   const [showForm, setShowForm] = useState(false)
+  /** 수정 중인 섹션. null 이면 수정 폼이 닫힌 상태. */
+  const [editing, setEditing] = useState<Section | null>(null)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
+  /** 상품 담기 패널이 열린 섹션 id (직접 고르기 전용). */
+  const [pickerFor, setPickerFor] = useState<number | null>(null)
+  const [reordering, setReordering] = useState(false)
 
   const flash = (text: string, ok: boolean) => { setMsg({ text, ok }); setTimeout(() => setMsg(null), 3000) }
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.title.trim()) { flash('섹션 제목은 필수입니다.', false); return }
+  /** 생성·수정이 서버로 보내는 본문은 같다 — 한 곳에서 만든다(두 벌이면 반드시 갈라진다). */
+  function toPayload(v: SectionFormValue) {
+    return {
+      title: v.title.trim(),
+      subtitle: v.subtitle.trim() || null,
+      source: v.source,
+      source_value: v.source === 'category' ? v.source_value : null,
+      limit_count: v.limit_count,
+      more_href: v.more_href.trim() || null,
+    }
+  }
+
+  async function handleCreate(v: SectionFormValue) {
+    if (!v.title.trim()) { flash('섹션 제목은 필수입니다.', false); return }
     try {
-      await api.post('/api/sections', {
-        title: form.title.trim(),
-        subtitle: form.subtitle.trim() || null,
-        source: form.source,
-        source_value: form.source === 'category' ? form.source_value : null,
-        limit_count: form.limit_count,
-        more_href: form.more_href.trim() || null,
-      })
-      setForm(EMPTY); setShowForm(false); refetch()
+      await api.post('/api/sections', toPayload(v))
+      setShowForm(false); refetch()
       flash('섹션이 생성되었습니다. (조건에 맞는 상품이 없으면 홈에는 안 보입니다)', true)
     } catch { flash('섹션 생성 실패', false) }
+  }
+
+  async function handleEdit(v: SectionFormValue) {
+    if (!editing) return
+    if (!v.title.trim()) { flash('섹션 제목은 필수입니다.', false); return }
+    try {
+      await api.put(`/api/sections/${editing.id}`, toPayload(v))
+      setEditing(null); refetch()
+      flash('섹션이 수정되었습니다.', true)
+    } catch { flash('섹션 수정 실패', false) }
+  }
+
+  /** 서버 행 → 폼 값. 기본값 보정은 여기 한 곳에서만(폼은 값을 그대로 믿는다). */
+  function toFormValue(s: Section): SectionFormValue {
+    return {
+      title: s.title ?? '',
+      subtitle: s.subtitle ?? '',
+      source: (s.source || DEFAULT_SECTION_SOURCE) as SectionSource,
+      source_value: s.source_value ?? '',
+      limit_count: s.limit_count ?? SECTION_DEFAULT_LIMIT,
+      more_href: s.more_href ?? '',
+    }
   }
 
   async function toggleActive(s: Section) {
@@ -77,6 +102,23 @@ export default function AdminHomeSectionsPage() {
       await api.put(`/api/sections/${s.id}`, { is_active: s.is_active ? 0 : 1 })
       refetch(); flash(s.is_active ? '비활성화했습니다.' : '활성화했습니다.', true)
     } catch { flash('상태 변경 실패', false) }
+  }
+
+  /**
+   * 섹션 순서 바꾸기 — 서버는 배열 순서를 그대로 sort_order 로 쓴다(`POST /api/sections/reorder`).
+   * 화면에 보이는 순서 = 홈에 뜨는 순서라, 여기서 올리고 내린 그대로 저장한다.
+   */
+  async function moveSection(index: number, dir: -1 | 1) {
+    const next = [...sections]
+    const j = index + dir
+    if (j < 0 || j >= next.length || reordering) return
+    ;[next[index], next[j]] = [next[j]!, next[index]!]
+    setReordering(true)
+    try {
+      await api.post('/api/sections/reorder', { section_ids: next.map(s => s.id) })
+      await refetch()
+    } catch { flash('순서 변경 실패', false) }
+    finally { setReordering(false) }
   }
 
   async function handleDelete(s: Section) {
@@ -93,7 +135,7 @@ export default function AdminHomeSectionsPage() {
           subtitle="메인 상단에 주제별 상품 줄을 만듭니다 · 상품이 없으면 그 줄은 홈에 안 나옵니다"
           icon={<LayoutList className="h-5 w-5" />}
           actions={
-            <button onClick={() => setShowForm(v => !v)} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+            <button onClick={() => { setEditing(null); setShowForm(v => !v) }} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
               <Plus className="h-3.5 w-3.5" /> 새 섹션
             </button>
           }
@@ -106,79 +148,16 @@ export default function AdminHomeSectionsPage() {
         )}
 
         {showForm && (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-900">새 섹션</h2>
-              <button onClick={() => setShowForm(false)} aria-label="닫기" className="p-1.5 rounded-lg hover:bg-gray-100">
-                <X className="w-4 h-4 text-gray-400" />
-              </button>
-            </div>
-            <form onSubmit={handleCreate} className="p-5 space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">제목 *</label>
-                  <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    placeholder="지금 인기 이용권" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">부제 (선택)</label>
-                  <input value={form.subtitle} onChange={e => setForm({ ...form, subtitle: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    placeholder="이번 주 많이 팔린 순" />
-                </div>
-              </div>
+          <SectionForm mode="create" initial={EMPTY_SECTION_FORM} onSubmit={handleCreate} onCancel={() => setShowForm(false)} />
+        )}
 
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">상품을 고르는 방식</label>
-                <select value={form.source} onChange={e => setForm({ ...form, source: e.target.value as SectionSource })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                  {SECTION_SOURCES.map(s => <option key={s} value={s}>{SECTION_SOURCE_LABELS[s]}</option>)}
-                </select>
-                <p className="mt-1.5 text-xs text-gray-400">
-                  {form.source === 'manual'
-                    ? '직접 고르면 생성 후 상품을 담아야 홈에 나옵니다. 손이 가는 대신 완전한 통제.'
-                    : '규칙은 상품이 들어오고 나가는 대로 저절로 맞습니다 — 매일 손볼 필요가 없습니다.'}
-                </p>
-              </div>
-
-              {form.source === 'category' && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">카테고리</label>
-                  <select value={form.source_value} onChange={e => setForm({ ...form, source_value: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    <option value="">전체 이용권</option>
-                    {VOUCHER_CATEGORIES.map(c => (
-                      <option key={c} value={c}>{CATEGORY_LABELS[c] ?? c}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    상품 수 <span className="text-gray-400 font-normal">(최대 {SECTION_MAX_LIMIT})</span>
-                  </label>
-                  <input type="number" min={1} max={SECTION_MAX_LIMIT} value={form.limit_count}
-                    onChange={e => setForm({ ...form, limit_count: parseInt(e.target.value, 10) || SECTION_DEFAULT_LIMIT })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">더보기 링크 (선택)</label>
-                  <input value={form.more_href} onChange={e => setForm({ ...form, more_href: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    placeholder="/vouchers" />
-                  <p className="mt-1.5 text-xs text-gray-400">사이트 내부 경로만 됩니다(외부 주소는 무시).</p>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">취소</button>
-                <button type="submit" className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700">생성</button>
-              </div>
-            </form>
-          </div>
+        {editing && (
+          <SectionForm
+            mode="edit"
+            initial={toFormValue(editing)}
+            onSubmit={handleEdit}
+            onCancel={() => setEditing(null)}
+          />
         )}
 
         {isError ? (
@@ -195,7 +174,7 @@ export default function AdminHomeSectionsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {sections.map(s => {
+            {sections.map((s, i) => {
               const src = (s.source || DEFAULT_SECTION_SOURCE) as SectionSource
               return (
                 <div key={s.id} className={`bg-white rounded-xl shadow-sm p-4 ${s.is_active ? '' : 'opacity-60'}`}>
@@ -210,10 +189,31 @@ export default function AdminHomeSectionsPage() {
                         {src === 'category' && s.source_value && <span>· {CATEGORY_LABELS[s.source_value] ?? s.source_value}</span>}
                         <span>· {s.limit_count ?? SECTION_DEFAULT_LIMIT}개</span>
                         {s.more_href && <span>· 더보기 {s.more_href}</span>}
-                        {src === 'manual' && <span>· 담긴 상품 {s.products?.length ?? 0}개</span>}
+                        {src === 'manual' && (
+                          <span className={(s.products?.length ?? 0) === 0 ? 'text-amber-600 font-medium' : ''}>
+                            · 담긴 상품 {s.products?.length ?? 0}개{(s.products?.length ?? 0) === 0 ? ' (홈 미노출)' : ''}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* 순서 — 위/아래. 목록 순서가 곧 홈 순서다. */}
+                      <div className="flex items-center">
+                        <button onClick={() => moveSection(i, -1)} disabled={i === 0 || reordering} aria-label="위로"
+                          className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5 text-gray-500" /></button>
+                        <button onClick={() => moveSection(i, 1)} disabled={i === sections.length - 1 || reordering} aria-label="아래로"
+                          className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30"><ArrowDown className="w-3.5 h-3.5 text-gray-500" /></button>
+                      </div>
+                      <button onClick={() => { setShowForm(false); setEditing(editing?.id === s.id ? null : s) }}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200">
+                        <Pencil className="w-3.5 h-3.5" /> 수정
+                      </button>
+                      {src === 'manual' && (
+                        <button onClick={() => setPickerFor(pickerFor === s.id ? null : s.id)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100">
+                          <ListPlus className="w-3.5 h-3.5" /> 상품 담기
+                        </button>
+                      )}
                       <button onClick={() => toggleActive(s)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200">
                         {s.is_active ? <><EyeOff className="w-3.5 h-3.5" /> 숨기기</> : <><Eye className="w-3.5 h-3.5" /> 노출</>}
                       </button>
@@ -222,6 +222,14 @@ export default function AdminHomeSectionsPage() {
                       </button>
                     </div>
                   </div>
+                  {pickerFor === s.id && (
+                    <SectionProductPicker
+                      sectionId={s.id}
+                      initial={s.products ?? []}
+                      onClose={() => setPickerFor(null)}
+                      onSaved={(t, ok) => { flash(t, ok); if (ok) refetch() }}
+                    />
+                  )}
                 </div>
               )
             })}
