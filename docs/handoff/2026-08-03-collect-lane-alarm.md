@@ -823,3 +823,43 @@ export function keywordsPerRoundCap(env: unknown): number {
 
 main 의 #1043 이 남긴 실측 주석도 *"유입 1,613/일 vs 측정 3,600/일 — 측정이 이기는 중이니
 처리량을 더 밀지 말 것"* 이다. 이 PR 의 **폭 동결과 같은 결론**이라 두 변경이 서로를 무르지 않는다.
+
+## 🎯 #1041 라이브 판정 — 13:00 KST 회차 (배포 후 첫 회차)
+
+```
+                     배포 전 12:00      배포 후 13:00
+spend_by.naver            29                18          ← 예측 ~10 은 빗나감(아래)
+  키워드당 naver          5.8               3.0          ← ✅ 정확히 반토막 = 실제 효과
+picks.processed            5                 6          ← ✅ 캡(6)에서 멈춤
+spend_by.yt               23                33          ← 회수분이 여기로 흡수
+spent / budget_total    56 / 56          56 / 56        ← 예산은 여전히 전량 소비
+diag.naver          found 347/saved 167  found 463/saved 158   ← 경로 생존(캡 1 로도 정상)
+저장 합계                 190               188          ← 사실상 동일
+```
+
+### 🩸 내가 틀린 예측 — "naver 29 → ~10"
+
+**처리 키워드가 5 → 6 으로 는다는 걸 예측에 안 넣었다.** 회수한 예산은 사라지지 않고
+**키워드 한 개를 더 도는 데 쓰인다** — 그게 폭 캡을 6으로 둔 이유인데, 정작 숫자는 5개 기준으로 말했다.
+⇒ **총량으로 판정하지 말 것. 단위당(키워드당) 으로 봐야 한다** — 5.8 → 3.0 이 진짜 결과다.
+
+### ❓ 아직 못 가린 것 — `processed 6` 이 캡 때문인가 예산 때문인가
+
+`spent 56 == budget_total 56`(전량 소비)인데 `limit_hit=false` 다. 캡이 묶었다는 정황이 맞지만
+**한 회차로는 두 원인을 분리 못 한다.** 판정법: 다음 회차 2~3개에서
+`processed` 가 계속 정확히 6 이면 캡, 5 이하로 흔들리면 예산이 먼저 닿는 것이다.
+후자라면 `COLLECT_KEYWORDS_PER_ROUND` 는 아직 **구속력이 없는 장식**이고, 그 사실을 알아야
+나중에 `ADS_COLLECT_KEYWORD_CAP` 을 올렸을 때 아무 일도 안 일어나는 걸 오진하지 않는다.
+
+### 🔭 다음 세션의 첫 액션
+
+```bash
+# 어드민 토큰($TOK)·UA 는 CLAUDE.md 절차. 정각 +2분에 읽는다.
+curl -sS "https://live.ur-team.com/api/admin/ads/influencer-pool/stats" \
+  -H "Authorization: Bearer $TOK" -H "User-Agent: $UA" \
+  | python3 -c "import sys,json;r=json.load(sys.stdin)['run'];print(r['last_run'],r['picks'],r['spend_by'],r['spent'],r['budget_total'])"
+```
+· `picks.processed` 가 **6 고정**인가 → 폭 동결이 실제로 구속 중
+· `spend_by.naver / processed` 가 **3.0 부근 유지**인가 → 중복 제거가 지속되는가
+· 그리고 진짜 지표는 **발송 가능 리드**다: 이 변경은 행 수를 늘리는 게 아니라
+  **예산을 덜 낭비하는** 것이므로, 하루 단위로 `with_email` 증가분을 봐야 한다(회차 단위로는 안 보인다).
