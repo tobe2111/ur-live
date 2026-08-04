@@ -417,7 +417,7 @@ app.post('/probe-public-data', async (c) => {
   const target = c.req.query('target') || 'all'
   try {
     const qs = new URLSearchParams({ target })
-    for (const k of ['rows', 'page', 'ladder', 'path', 'host', 'params']) { const v = c.req.query(k); if (v) qs.set(k, v) }
+    for (const k of ['rows', 'page', 'ladder', 'path', 'host', 'params', 'body']) { const v = c.req.query(k); if (v) qs.set(k, v) }
     const r = await ads.fetch(new Request(`https://ur-ads/__ads/probe-public-data?${qs.toString()}`, { method: 'POST', signal: AbortSignal.timeout(120_000) }))
     const body = await r.json().catch(() => null)
     return c.json({ success: true, ...(body as Record<string, unknown> || {}) })
