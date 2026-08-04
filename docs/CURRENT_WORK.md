@@ -5494,11 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 109건 · 최신순 · 이 목록은 자동 생성된다._
-_총 110건 · 최신순 · 이 목록은 자동 생성된다._
+_총 111건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-04**
 - [2026-08-04 — 꼬리 상한 25s → 10s (대표 승인)](handoff/2026-08-04-tail-wait-10s.md)
+- [커버리지가 2일로 늘어난 걸 아무도 못 봤다 — 확인처가 늘 "정상"이라서](handoff/2026-08-04-collect-budget-signal-lies.md)
 **2026-08-03**
 - [ur-ads 배포가 조용히 안 나갔다 — 라이브는 멀쩡해 보였다 (2026-08-03)](handoff/2026-08-03-urads-deploy-silent-miss.md)
 - [2026-08-03 — 회차 꼬리 상한 (c) 배포 후 첫 판정과 그 뒤 굳히기](handoff/2026-08-03-tail-bound-hardening.md)
