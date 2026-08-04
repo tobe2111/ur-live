@@ -31,12 +31,54 @@ export const NAVER_DAILY_QUOTA_CALLS = 25_000
 /** `platform_settings` 키 — 값 형식 `"YYYY-MM-DD:count"`(KST 기준일). */
 export const NAVER_USED_KEY = 'ads_naver_api_used'
 
+/**
+ * 🎯 **일일 사용 목표 90%** (2026-08-04 대표 지시 *"유료 api 각각 90%씩은 쓰자"*).
+ *
+ * 90% 는 **늘리는 값이 아니라 멈추는 값**이다. 지금 실사용은 396/25,000(1.6%)이고 병목은 쿼터가
+ * 아니라 Cloudflare CPU·서브리퀘스트다 — 이 상수를 올려도 오늘의 수집량은 1건도 안 는다.
+ * 이게 필요한 건 **유료 전환 이후**다: 서브리퀘스트 천장이 60→900(×15)이 되면 쿼터를 넘겨
+ * 429 를 받기 시작하는데, 그때는 회차 중간에 남은 작업이 통째로 버려진다(실패 호출도 쿼터를 먹는다).
+ *
+ * ⚠️ 10% 를 남기는 이유: ① 이 카운터는 **자동 레인만** 세므로 실사용의 하한이다(어드민 수동 도구는 밖) —
+ *   100% 를 겨누면 실제로는 넘긴다. ② 초과 판정의 진짜 근거는 이 숫자가 아니라 **429 응답**이다.
+ */
+export const NAVER_DAILY_TARGET_PCT = 0.9
+/** 하루에 여기까지만 쏜다 — 22,500회. */
+export const NAVER_DAILY_TARGET_CALLS = Math.floor(NAVER_DAILY_QUOTA_CALLS * NAVER_DAILY_TARGET_PCT)
+
 /** 인보케이션 내 누적. flush 로만 비운다. */
 let pending = 0
+/**
+ * 남은 허용량. **`null` = 미설정 = 무제한**(게이트 이전 동작 그대로).
+ * 레인이 `armNaverDailyAllowance` 로 무장해야만 산다 — 무장을 잊은 레인이 조용히 멈추는 일은 없다.
+ * (반대 방향의 위험 — 무장을 잊어 쿼터를 넘기는 것 — 은 429 로 드러나지만, 조용한 정지는 안 드러난다.)
+ */
+let allowance: number | null = null
 
-/** 🧮 URL 이 오픈API 면 1 센다. 아니면 무시 — 호출부는 조건 없이 부르면 된다(판정을 한 곳에 모은다). */
-export function noteNaverCall(url: unknown): void {
-  if (typeof url === 'string' && url.includes(NAVER_OPENAPI_HOST)) pending += 1
+/**
+ * 🔫 오늘 쓴 만큼을 빼고 남은 허용량을 장전한다. 레인이 회차 **시작**에 한 번 부른다.
+ * @param usedToday `parseNaverUsed(settings[NAVER_USED_KEY], kstDayKey(now))` 값.
+ */
+export function armNaverDailyAllowance(usedToday: number, target = NAVER_DAILY_TARGET_CALLS): void {
+  allowance = Math.max(0, target - Math.max(0, usedToday))
+}
+
+/** 남은 허용량(진단·상태줄용). `null` = 무장 안 됨. */
+export function naverAllowanceLeft(): number | null {
+  return allowance
+}
+
+/**
+ * 🧮 URL 이 오픈API 면 1 센다. 아니면 무시 — 호출부는 조건 없이 부르면 된다(판정을 한 곳에 모은다).
+ * @returns **쏴도 되는가.** `false` 면 호출부가 fetch 를 하지 말아야 한다(일일 목표 소진).
+ *   오픈API 가 아닌 URL 은 언제나 `true` — 이 게이트는 쿼터를 먹는 호출만 막는다.
+ */
+export function noteNaverCall(url: unknown): boolean {
+  if (typeof url !== 'string' || !url.includes(NAVER_OPENAPI_HOST)) return true
+  if (allowance !== null && allowance <= 0) return false
+  pending += 1
+  if (allowance !== null) allowance -= 1
+  return true
 }
 
 /** 아직 flush 안 된 누적치(테스트·진단용). */
@@ -59,6 +101,7 @@ export function takeNaverCalls(): number {
 /** 테스트 전용 — 모듈 스코프 상태를 초기화한다. */
 export function __resetNaverCallMeter(): void {
   pending = 0
+  allowance = null
 }
 
 /** 📅 KST 기준일 `YYYY-MM-DD`. `+9h` 시프트 후 UTC 날짜를 읽는 표준 방식(D1 의 `DATE(x,'+9 hours')` 와 동일 규약). */
@@ -73,6 +116,33 @@ export function parseNaverUsed(raw: string | null | undefined, day: string): num
   if (at < 0 || s.slice(0, at) !== day) return 0
   const n = parseInt(s.slice(at + 1), 10)
   return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+/**
+ * 🔫🧺 **장전 + 다른 설정값 읽기를 한 왕복으로** — 레인이 한 줄로 무장하게 만드는 진입점.
+ *
+ *   쿼터는 **앱 단위**라 레인 하나만 무장하면 나머지가 그 위에 얹혀 총합이 목표를 넘는다. 그런데
+ *   무장에 D1 왕복이 하나 더 든다면 예산이 빠듯한 레인은 결국 안 하게 된다 — 그래서 **이미 하던
+ *   설정 읽기에 네이버 키를 얹는다**(`key IN`). 서브리퀘스트 추가 0.
+ *
+ * @param extraKeys 레인이 원래 읽던 키들.
+ * @returns 그 키들을 꺼내는 함수. 읽기 실패 시 전부 `undefined` + **무장 안 함**(=무제한) —
+ *   계측 실패가 수집을 멈추면 안 된다(이 모듈의 다른 함수와 같은 방침).
+ */
+export async function armNaverAndReadSettings(
+  DB: { prepare: (sql: string) => { bind: (...v: unknown[]) => { all: <T>() => Promise<{ results?: T[] } | null> } } },
+  extraKeys: string[],
+  nowMs: number = Date.now(),
+): Promise<(key: string) => string | undefined> {
+  const keys = [NAVER_USED_KEY, ...extraKeys]
+  let rows: { key: string; value: string }[] = []
+  try {
+    const q = await DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN (${keys.map(() => '?').join(', ')})`)
+      .bind(...keys).all<{ key: string; value: string }>()
+    rows = q?.results || []
+    armNaverDailyAllowance(parseNaverUsed(rows.find(r => r.key === NAVER_USED_KEY)?.value, kstDayKey(nowMs)))
+  } catch { /* 무장 실패 = 무제한(현행 동작) — 계측이 레인을 죽이면 안 된다 */ }
+  return (k: string) => rows.find(r => r.key === k)?.value
 }
 
 type MinimalDB = {

@@ -72,6 +72,40 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '네이버 일일 목표 게이트를 호출부가 무시한다(반환값 버림)',
+    file: 'src/features/marketing/api/fetch-with-err.ts',
+    find: "  if (!noteNaverCall(url)) return { res: null, err: 'NaverQuota: 일일 목표(90%) 소진' }",
+    replace: '  noteNaverCall(url)',
+    test: 'src/tests/unit/api-daily-target.test.ts',
+    why:
+      '게이트는 계측 함수의 **반환값**으로만 작동한다 — 예전처럼 값을 버리고 부르면 상수와 장전은 ' +
+      '그대로 남은 채 아무도 안 막힌다(이 레포가 반복해 만난 "검사가 실패할 수 없다" 클래스). ' +
+      '유료 전환으로 서브리퀘스트가 ×15 되면 그대로 쿼터를 넘겨 429 를 받고, 실패 호출도 쿼터를 ' +
+      '먹으므로 **회차 후반 작업이 통째로 버려진다.**',
+  },
+  {
+    name: '네이버 게이트를 아무도 장전하지 않는다(항상 무제한)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '  armNaverDailyAllowance(parseNaverUsed(settings[NAVER_USED_KEY], kstDayKey(Date.now())))',
+    replace: '  void armNaverDailyAllowance',
+    test: 'src/tests/unit/api-daily-target.test.ts',
+    why:
+      '허용량 기본값은 **무제한(`null`)** 이다 — 무장을 잊은 레인이 조용히 멈추는 것보다 낫기 때문이다. ' +
+      '그 설계의 대가로, 장전 한 줄이 사라지면 게이트가 **에러 없이 전면 무효**가 된다. ' +
+      '상수도 테스트도 그대로 초록이라 사람 눈으로는 못 잡는다.',
+  },
+  {
+    name: '유튜브 검색 예산을 100 으로 되돌린다(측정 몫 0)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: 'export const YT_SEARCH_BUDGET_DEFAULT = 90',
+    replace: 'export const YT_SEARCH_BUDGET_DEFAULT = 100',
+    test: 'src/tests/unit/api-daily-target.test.ts',
+    why:
+      'search.list 1회 = 100 units 라 검색 100회면 하루 쿼터 10,000 이 검색으로 전부 나간다 → ' +
+      '성과측정(각 1 unit)이 **하루 종일 403**(2026-07-27 실사고). 90 은 임의값이 아니라 ' +
+      '`쿼터 × 90% ÷ 단가` 이고, 남는 1,000 units 가 측정 몫이다.',
+  },
+  {
     name: '카카오 스윕이 다시 tier 순만 보고 뒷줄을 굶긴다',
     file: 'src/features/marketing/api/company-collect.ts',
     find: "     ORDER BY (kakao_checked_at IS NOT NULL) ASC, (email IS NOT NULL AND email <> '') ASC, (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)",
@@ -1992,8 +2026,10 @@ const MUTATIONS = [
   {
     name: '네이버 오픈API 계측이 래퍼에서 사라짐(그 레인이 통째로 계측 밖)',
     file: 'src/features/marketing/api/fetch-with-err.ts',
-    find: '  noteNaverCall(url) //',
-    replace: '  // noteNaverCall(url) //',
+    // ⚠️ 2026-08-04: 이 줄이 `noteNaverCall(url)` 단독에서 **게이트 분기**로 바뀌었다(90% 목표).
+    //   옛 find 는 그대로 두면 "주입 대상을 못 찾음(낡은 지도)"로 잡힌다 — 실제로 그렇게 잡혔다.
+    find: "  if (!noteNaverCall(url)) return { res: null, err: 'NaverQuota: 일일 목표(90%) 소진' }\n  try {",
+    replace: '  try {',
     test: 'src/tests/unit/ads-naver-api-usage.test.ts',
     why:
       '유튜브·카카오는 일별 실사용을 세는데 네이버만 카운터가 없어 "한도 안"이 **추정**이었다. 래퍼에서 빠지면 ' +
