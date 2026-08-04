@@ -4,6 +4,7 @@ import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns } from './influencer-performance'
 import { ensureOutreachColumns } from './outreach-webhook'
 // ⚖️ 법적 문구는 **발송 경로와 같은 SSOT** 를 쓴다 — 여기서 따로 쓰면 법이 바뀔 때 한쪽만 고쳐진다.
+import { dedupeByEmail } from './outreach-queue'
 import { outreachSubject, outreachBody } from './outreach-template'
 
 /**
@@ -86,6 +87,10 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
     rows.push(...page)
     if (page.length < PAGE) break
   }
+  // 🧹 연락 대상 목록만 같은 주소 중복 제거 — 발송 큐와 **같은 규칙**(`dedupeByEmail` SSOT).
+  //   ⚠️ 전체 내보내기(contactable 아님)는 건드리지 않는다 — 그건 *풀의 사본*이라 행이 사라지면
+  //   대표가 "왜 내 리드가 없지?" 가 된다. 중복이 해로운 건 **보낼 때**뿐이다.
+  const outRows = opts?.contactable ? dedupeByEmail(rows) : rows
   const PLAT: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타그램', tiktok: '틱톡' }
   const CH_KO: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
   const HEAD = ['ID', '플랫폼', '이름', '핸들', 'URL', '🏅점수', '구독자', '평균조회수', '롱폼중앙값', '쇼츠%', '평균댓글', '月포스팅', '마지막글', '이메일', '메일상태', '인스타그램', '틱톡', '기타링크', '✉️제목(광고표기)', '✉️본문틀', '📍지역', '카테고리', '분류근거', '제외태그', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일']
@@ -114,7 +119,7 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
 
   if (format === 'csv') {
     const csvEscapeCell = (v: string | number) => { const s = String(v ?? ''); const g = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s; return /[",\n]/.test(g) ? `"${g.replace(/"/g, '""')}"` : g }
-    const body = [HEAD.join(','), ...rows.map(r => cells(r).map(csvEscapeCell).join(','))].join('\r\n')
+    const body = [HEAD.join(','), ...outRows.map(r => cells(r).map(csvEscapeCell).join(','))].join('\r\n')
     return new Response('﻿' + body, { headers: { 'Content-Type': 'text/csv;charset=utf-8', 'Content-Disposition': `attachment; filename="${fname}.csv"` } })
   }
 
@@ -125,9 +130,9 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
   const rowXml = (vals: (string | number)[]) => `<Row>${vals.map(cellXml).join('')}</Row>`
   const headXml = `<Row>${HEAD.map(h => `<Cell ss:StyleID="h"><Data ss:Type="String">${xe(h)}</Data></Cell>`).join('')}</Row>`
   const sheetName = (name: string) => xe(name.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || '기타')
-  const byCat = new Map<string, typeof rows>()
-  for (const r of rows) { const k = r.category || '기타'; const arr = byCat.get(k) || []; arr.push(r); byCat.set(k, arr) }
-  const sheetPlan = [{ name: `전체 (${rows.length})`, rs: rows }, ...Array.from(byCat.entries()).map(([k, rs]) => ({ name: `${k} (${rs.length})`, rs }))]
+  const byCat = new Map<string, typeof outRows>()
+  for (const r of outRows) { const k = r.category || '기타'; const arr = byCat.get(k) || []; arr.push(r); byCat.set(k, arr) }
+  const sheetPlan = [{ name: `전체 (${outRows.length})`, rs: outRows }, ...Array.from(byCat.entries()).map(([k, rs]) => ({ name: `${k} (${rs.length})`, rs }))]
   const enc = new TextEncoder()
   function* chunks(): Generator<string> {
     yield `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="h"><Font ss:Bold="1"/><Interior ss:Color="#EEF2F7" ss:Pattern="Solid"/></Style></Styles>`
