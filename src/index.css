@@ -1146,3 +1146,36 @@ html.dark .gbd {
   .ws-cat-badge { animation: none; }
   .ws-cat-tile:hover .ws-cat-badge { transform: scale(1.04); }
 }
+
+/* ──────────────────────────────────────────────────────────────
+   🏠 2026-08-04 홈 히어로 기본 배경 (대표 "히어로도 브랜드 배경으로 영상처럼").
+
+   영상 파일을 쓰지 않는다 — 저작권이 확인된 소스가 없고, 외부 영상 호스트는 CSP 가 막으며,
+   무엇보다 **홈 최상단에 수 MB 를 얹으면 첫 화면이 느려진다**(이 레포가 로딩에 들인 노력을
+   한 번에 되돌리는 짓이다). 대신 브랜드 로즈 블룸 두 개가 서로 다른 주기로 천천히 흐르고
+   빛줄기가 가로지르는 **코드 배경**으로 같은 인상을 만든다. 용량 0 · 네트워크 0.
+
+   ⚠️ 어드민이 실제 이미지/영상을 올리면 그쪽이 이긴다 — 이건 '아무것도 없을 때'의 기본값이다.
+   ────────────────────────────────────────────────────────────── */
+@keyframes ur-hero-bloom-a {
+  0%, 100% { transform: translate3d(-6%, -4%, 0) scale(1);    opacity: 0.85; }
+  50%      { transform: translate3d(6%, 5%, 0)   scale(1.18); opacity: 1; }
+}
+@keyframes ur-hero-bloom-b {
+  0%, 100% { transform: translate3d(5%, 6%, 0)   scale(1.12); opacity: 0.6; }
+  50%      { transform: translate3d(-7%, -5%, 0) scale(0.94); opacity: 0.9; }
+}
+@keyframes ur-hero-sweep {
+  0%   { transform: translateX(-60%) skewX(-14deg); opacity: 0; }
+  18%  { opacity: 0.5; }
+  60%  { opacity: 0; }
+  100% { transform: translateX(160%) skewX(-14deg); opacity: 0; }
+}
+.ur-hero-bloom-a { animation: ur-hero-bloom-a 15s ease-in-out infinite; }
+.ur-hero-bloom-b { animation: ur-hero-bloom-b 21s ease-in-out infinite; }
+.ur-hero-sweep   { animation: ur-hero-sweep 9s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+@media (prefers-reduced-motion: reduce) {
+  /* 정지해도 구도가 유지되도록 '가운데' 상태로 멈춘다(빈 화면이 되지 않게). */
+  .ur-hero-bloom-a, .ur-hero-bloom-b, .ur-hero-sweep { animation: none; }
+  .ur-hero-sweep { opacity: 0.18; transform: translateX(40%) skewX(-14deg); }
+}

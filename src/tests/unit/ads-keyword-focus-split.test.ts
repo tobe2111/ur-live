@@ -73,10 +73,18 @@ describe('planKeywordSplit — 집중/우선/일반 3분할', () => {
 describe('배선 — 수집 루프가 3분할을 실제로 쓴다', () => {
   it('🔒 planKeywordSplit 로 배분하고 세 풀이 서로 배타다', async () => {
     expect(SRC).toMatch(/const \{ nFocus, nPri, nGen \} = planKeywordSplit\(/)
-    expect(SRC).toMatch(/const focusPool = kws\.filter\(inFocus\)/)
+    /**
+     * ⚠️ **앵커가 이사했다**(2026-08-04, 600줄 래칫): 풀 구성이 `keyword-contact-yield.ts`
+     *   `buildRotationPools` 로 추출됐다. 여기서 옛 문자열을 계속 찾으면 *낡은 지도*가 되고,
+     *   실제로 이 테스트가 그렇게 빨간불을 냈다(순수 이동인데 실패). **지우지 말고 따라간다** —
+     *   지키는 불변식(3분할·배타·집중 축 우선)은 그대로다.
+     */
+    expect(SRC).toMatch(/buildRotationPools\(kws, roundIndex, \{ focus:/)
+    const POOLS = readFileSync(join(process.cwd(), 'src/features/marketing/api/keyword-contact-yield.ts'), 'utf8')
+    expect(POOLS).toMatch(/focusPool: trim\(kws\.filter\(inFocus\)\)/)
     // 우선/일반 풀이 집중 축을 제외해야 배타가 성립한다.
-    expect(SRC).toMatch(/priPool = kws\.filter\(k => !inFocus\(k\)/)
-    expect(SRC).toMatch(/genPool = kws\.filter\(k => !inFocus\(k\)/)
+    expect(POOLS).toMatch(/priPool: trim\(kws\.filter\(k => !inFocus\(k\) && inPri\(k\)\)\)/)
+    expect(POOLS).toMatch(/genPool: trim\(kws\.filter\(k => !inFocus\(k\) && !inPri\(k\)\)\)/)
     expect(SRC).toMatch(/focus_n: nFocus/)   // 밖에서 "대행사를 돌고 있나"를 볼 수 있어야 한다
   })
 })

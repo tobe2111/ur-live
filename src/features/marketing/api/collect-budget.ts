@@ -420,3 +420,87 @@ export function budgetedTimeoutMs(deadline: number | undefined, maxMs: number, n
 export function envEnrichDeadlineMs(env: { ADS_ENRICH_DEADLINE_MS?: string; ADS_PLAN?: string } | undefined | null): number {
   return resolveEnrichDeadlineMs(env?.ADS_ENRICH_DEADLINE_MS, resolvePlan(env))
 }
+
+/**
+ * 🧮 **예산이 못 쓸 행은 애초에 안 읽는다** (2026-08-04 — 대표 "유료 전환 전에 더 잘게 쪼개기").
+ *
+ * ## 왜
+ * 카카오 전화 스윕은 `LIMIT 600` 으로 행을 읽고 나서야 예산을 계산했다. 그런데 예산 천장은
+ * 무료 플랫폼 캡(기본 60)이라 **아무리 많이 읽어도 시도할 수 있는 행은 ~50개**다. 나머지
+ * 550행은 D1 에서 역직렬화만 되고 루프의 `break` 에 걸려 버려진다.
+ *
+ * 그 역직렬화가 공짜가 아니다. 무료 플랜의 인보케이션 CPU 예산은 벽시계와 **다른 축**이라,
+ * I/O 로 19초를 사는 레인이 있는가 하면 **985ms 만에 `Worker exceeded CPU time limit`** 으로
+ * 죽는 레인이 있다(08-04 실측: `collect-company` 985ms · `reclassify-company` 1,316ms ·
+ * `collect-hira` 6,409ms · `sweep-kakao-chain` 6,640ms). CPU 시간은 벽시계를 넘을 수 없으므로
+ * **1초 안에 한도를 넘었다면 그건 대기가 아니라 계산**이다 — 그리고 이 자리의 계산은
+ * *쓰지도 않을 행을 읽는 것*이었다.
+ *
+ * ## 무엇이 바뀌나 (동작은 안 바뀐다)
+ * 잘라내는 행은 **원래도 루프가 손대지 않던 꼬리**다(예산 소진 시 `break`, 도장은 시도한 행에만).
+ * 선택 순서(tier 오름차순)가 같으므로 **앞에서부터 같은 행을 같은 순서로** 처리한다.
+ * 못 읽은 행은 도장이 없어 다음 라운드에 그대로 다시 잡힌다 — 기아 없음.
+ *
+ * ⚠️ **이게 못 고치는 것**: 행 읽기 말고 다른 데서 CPU 를 태우는 레인. 그건 각자 재야 한다.
+ * ⚠️ 유료 전환 시엔 `envSubreqCap` 이 커져 이 상한도 같이 커진다 — 별도 조정 불필요.
+ *
+ * @param spendable 이번 회차에 실제로 쓸 수 있는 서브리퀘스트(= 예산 − 이미 쓴 몫 − 부기 예약)
+ * @param hardCap   호출부의 기존 상한(env/상수). 이 값을 절대 넘지 않는다.
+ * @param slack     조회가 예산을 안 먹고 끝나는 경우(캐시·조기반환)를 위한 여유분
+ */
+export function rowsWorthReading(spendable: number, hardCap: number, slack = 4): number {
+  const cap = Math.max(1, Math.floor(hardCap))
+  if (!Number.isFinite(spendable)) return cap          // 모르면 종전대로(조용히 줄이지 않는다)
+  return Math.max(1, Math.min(cap, Math.floor(spendable) + Math.max(0, Math.floor(slack))))
+}
+
+/**
+ * 🧭 **소급 재분류의 인보케이션 몫** (2026-08-04 — `ads-cpu-work-cap` 교리를 호출부에 적용).
+ *
+ * 그 교리는 *"막아야 하는 건 페이지 크기가 아니라 **인보케이션당 총 작업량**"* 이다.
+ * 그런데 재분류 호출부는 **시간 상한만** 걸고 있었다(08-03, 무료 1,800ms). 08-04 실측에서
+ * 그 레인은 **1,316ms 에 CPU 한도로 죽었다** — *자기 마감선에 닿기도 전에*. 벽시계는 CPU 의
+ * 근사일 뿐이고, 대기가 거의 없는 DB-only 루프에서는 **근사가 가장 나쁘게 어긋난다**
+ * (외부 호출이 없어 벽시계가 안 흐르는데 정규식은 계속 CPU 를 태운다).
+ *
+ * ⇒ 시간 대신 **행 총량**으로 묶는다. 무료 1,000행(= 250 × 최대 4패스)이면 행당 정규식 ~20개
+ * 기준 2만 회로, 종전 5,000행(10만 회)의 1/5 이다.
+ *
+ * ✅ **커버리지 손실 0** — 각 패스가 커서를 저장하고 `done:false` 로 남기므로 다음 회차가
+ *   그 지점부터 이어받는다. 한 바퀴에 시간이 더 걸릴 뿐 건너뛰는 행은 없다.
+ * ⚠️ 시간 상한은 **그대로 둔다**(제거가 아니라 병행). 둘 중 먼저 닿는 쪽이 멈춘다 —
+ *   D1 이 느린 회차엔 시간이, 정상 회차엔 행 수가 먼저 닿는다.
+ * ⚠️ 못 고치는 것: 행 하나가 비정상적으로 무거운 경우(초장문 본문). 그건 행 수로 안 잡힌다.
+ */
+export function reclassifyWorkPlan(env: { ADS_PLAN?: string } | undefined | null): {
+  rowsPerPass: number; maxRows: number; deadlineMs: number
+} {
+  return {
+    rowsPerPass: envPlanValue(undefined, 250, 1_000, env),
+    maxRows: envPlanValue(undefined, 1_000, 5_000, env),
+    deadlineMs: envPlanValue(undefined, 1_800, 12_000, env),
+  }
+}
+
+/**
+ * ⏱️ **파트너 수집 회차의 벽시계 마감선** (2026-08-04 — 라이브 실측 후 신설).
+ *
+ * `ads:collect-company` 가 16:01 KST 에 **`ms=27,410` 으로 "성공"** 했다. 이 레포가 실측으로 세운
+ * 사망 기준선은 `CPU_WALL_MS = 26_000`(08-02 사망 3건의 최솟값에서 내림) — **이미 넘긴 값이
+ * 성공으로 기록된 것**이라 화면 어디에도 경고가 없다. 이 레인은 예산(요청 수)만 볼 뿐 **회차가
+ * 얼마나 오래 도는지는 아무도 안 봤다**: 키워드 12개 × (네이버 지역 + 카카오 3페이지 + 웹 최대 5페이지)
+ * + 사이트 크롤 15건이고, fetch 하나당 타임아웃이 12초다. 느린 회차가 겹치면 그대로 벽에 닿는다.
+ *
+ * ✅ **커버리지 손실 0** — 이 레인의 커서는 *계획한 창 크기*가 아니라 **실제로 돈 키워드 수**만큼만
+ *   전진한다(파일 주석이 그 불변식을 2026-08-02 사고로 세워 뒀다). 그래서 일찍 멈추면 남은 키워드는
+ *   건너뛰어지는 게 아니라 **다음 회차의 창에 그대로 들어온다.**
+ *
+ * ⚠️ **이게 못 고치는 것**: 같은 레인의 *다른* 사망 모드 — 08-04 에는 `ms=985` 로도 죽었다.
+ *   1초 안에 한도를 넘은 것이니 그건 대기가 아니라 계산이고(리드 수백 건의 파싱·정규식 의심),
+ *   **벽시계로는 못 잡는다.** 그건 `rowsWorthReading` 처럼 *양*으로 묶어야 한다 — 다음 작업.
+ * ⚠️ 값의 출처: 같은 파일의 카카오 스윕(`SWEEP_RUN_DEADLINE_MS`)과 같은 12s/24s. 근거 없는 새 숫자를
+ *   만들지 않았다(둘 다 같은 부모 수명 안에서 도는 같은 클래스의 레인이다).
+ */
+export function companyRunDeadlineMs(env: { ADS_PLAN?: string } | undefined | null): number {
+  return envPlanValue(undefined, 12_000, 24_000, env)
+}

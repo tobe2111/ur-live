@@ -17,7 +17,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
-import { cacheGet } from '@/worker/utils/cache';
+import { cacheGet, cacheInvalidate } from '@/worker/utils/cache';
 import type { Env } from '@/worker/types/env';
 import type { KVNamespace } from '@cloudflare/workers-types';
 // 🏠 2026-08-04 (대표 시안 승인): 규칙 기반 섹션. 기존 수동 큐레이션은 기본값으로 그대로 유지.
@@ -28,8 +28,19 @@ import {
   normalizeSectionSource,
 } from '@/shared/constants/home-showcase';
 import { resolveSectionProducts, CARD_COLS } from './section-rules';
+import { maybeSeedHomeSections } from './section-seed';
 import { mainScopeFor } from '@/worker/utils/consumer-scope';
 const sectionsRoutes = new Hono<{ Bindings: Env }>();
+
+/**
+ * 공개 홈 섹션 캐시(`sections:public`, 120초) 무효화.
+ * 어드민이 무엇을 바꾸든 홈이 바로 따라오게 — 기다리는 동안은 "안 된다"로 보인다.
+ * `cacheInvalidate` 는 L1 을 비우고 KV 삭제는 L2 게이트가 OFF 면 건너뛴다(무료한도 보호).
+ */
+async function invalidateSectionsCache(env: Env): Promise<void> {
+  const { SESSION_KV } = env as Env & { SESSION_KV?: KVNamespace };
+  await cacheInvalidate(SESSION_KV, 'sections:public').catch(() => {});
+}
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
@@ -84,6 +95,9 @@ sectionsRoutes.get('/', async (c) => {
       'sections:public',
       async () => {
         await ensureTables(DB);
+        // 🏠 2026-08-04: 승인된 시안의 세 줄을 기본으로 넣는다 — 아무도 안 만들면 홈이
+        //   "틀만 있고 안이 빈" 화면이 되고, 그건 시안이 아니다(대표 신고). 편집·삭제는 보존.
+        await maybeSeedHomeSections(c.env as Env);
 
         const { results: sections } = await DB.prepare(`
           SELECT id, title, subtitle, layout,
@@ -161,6 +175,7 @@ sectionsRoutes.get('/admin', requireAuth(), async (c) => {
 
   const { DB } = c.env;
   await ensureTables(DB);
+  await maybeSeedHomeSections(c.env as Env);
 
   const { results: sections } = await DB.prepare(
     'SELECT * FROM homepage_sections ORDER BY sort_order ASC'
@@ -173,7 +188,7 @@ sectionsRoutes.get('/admin', requireAuth(), async (c) => {
   if (sectionIds.length > 0) {
     const ph = sectionIds.map(() => '?').join(',');
     const { results: rows } = await DB.prepare(`
-      SELECT sp.section_id, sp.id as sp_id, sp.sort_order, p.id, p.name, p.price, p.image_url
+      SELECT sp.section_id, sp.id as sp_id, sp.sort_order, p.id, p.name, p.price, p.image_url, p.restaurant_name
       FROM section_products sp
       JOIN products p ON sp.product_id = p.id
       WHERE sp.section_id IN (${ph})
@@ -223,6 +238,7 @@ sectionsRoutes.post('/', requireAuth(), async (c) => {
     normalizeSectionSource(source), source_value ?? null, clampSectionLimit(limit_count), more_href ?? null,
   ).run();
 
+  await invalidateSectionsCache(c.env as Env);
   return c.json({ success: true, message: '섹션이 생성되었습니다' }, 201);
 });
 
@@ -255,6 +271,7 @@ sectionsRoutes.put('/:id', requireAuth(), async (c) => {
   params.push(sectionId!);
   await DB.prepare(`UPDATE homepage_sections SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
 
+  await invalidateSectionsCache(c.env as Env);
   return c.json({ success: true, message: '섹션이 수정되었습니다' });
 });
 
@@ -269,6 +286,7 @@ sectionsRoutes.delete('/:id', requireAuth(), async (c) => {
   await DB.prepare('DELETE FROM section_products WHERE section_id = ?').bind(sectionId).run();
   await DB.prepare('DELETE FROM homepage_sections WHERE id = ?').bind(sectionId).run();
 
+  await invalidateSectionsCache(c.env as Env);
   return c.json({ success: true, message: '섹션이 삭제되었습니다' });
 });
 
@@ -292,6 +310,9 @@ sectionsRoutes.post('/:id/products', requireAuth(), async (c) => {
     ).bind(sectionId, product_ids[i], i).run();
   }
 
+  // 🏠 2026-08-04: 담자마자 홈에 반영되게 공개 캐시를 비운다 — 안 그러면 최대 120초 동안
+  //   "담았는데 홈에 없다" 가 되고, 그건 고장과 구분되지 않는다.
+  await invalidateSectionsCache(c.env as Env);
   return c.json({ success: true, message: `${product_ids.length}개 상품이 설정되었습니다` });
 });
 
@@ -304,6 +325,7 @@ sectionsRoutes.delete('/:id/products/:productId', requireAuth(), async (c) => {
   await DB.prepare('DELETE FROM section_products WHERE section_id = ? AND product_id = ?')
     .bind(c.req.param('id'), c.req.param('productId')).run();
 
+  await invalidateSectionsCache(c.env as Env);
   return c.json({ success: true, message: '상품이 제거되었습니다' });
 });
 
@@ -320,6 +342,7 @@ sectionsRoutes.post('/reorder', requireAuth(), async (c) => {
       .bind(i, section_ids[i]).run();
   }
 
+  await invalidateSectionsCache(c.env as Env);
   return c.json({ success: true, message: '순서가 변경되었습니다' });
 });
 

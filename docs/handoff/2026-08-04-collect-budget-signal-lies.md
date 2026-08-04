@@ -154,3 +154,44 @@ nextSubreqCap(spent, hitLimit, …)
 - 📌 **`ADS_COLLECT_ROUNDS` 는 대표가 이미 8 로 설정해 뒀다**(§6.5 작성 시점엔 미설정으로 알았다).
   그런데 그 상태에서도 한 바퀴가 6.3일이다 ⇒ **라운드는 레버가 아니다**(예산 56/56 이 천장).
   §6.5 의 철회가 실측으로 한 번 더 확인된 셈이다.
+
+## 9) 후속 2 — 배포 검증 중에 **같은 병 2건 더** (5·6번째)
+
+`uptime.yml` 의 판정을 손으로 재현하다가 프로브 URL 두 개가 **자기 목적을 한 번도 확인한 적이 없음**을 발견:
+
+```
+POST /api/version              → 404   (그 라우트는 GET 전용 — 늘 404였다)
+GET  /api/wholesale/catalog    → 404   (7/16 도매 분리로 ur-live 가 안 서빙)
+```
+프로브 규칙이 **`5xx`/`000` 만 다운**이고 `4xx` 는 "worker 살아있음"이라 **조용히 통과**한다.
+후자는 **#544(7/29)가 `prod-smoke.yml` 에서 같은 이유로 이미 고쳤는데 이 파일만 빠졌다** — 3주 방치.
+
+**고친 것**: ① `POST` → `GET` + 캐시버스트 쿼리(우회 목적 유지, 이제 실제 200) ② 도매 프로브 →
+`/api/group-buy/products?status=active`(ur-live 가 실제로 서빙, 200 실측) ③ `CLAUDE.md` 배포
+체크리스트의 같은 오류 정정 ④ **`check-live-contracts` 가 `uptime.yml` 프로브 URL 도 검사**하도록 확장.
+
+⚠️ ④에서 `/api/_healthcheck/*` 는 **제외**했다 — 503 이 그 엔드포인트의 *설계된 신호*라
+200 을 요구하면 cron 이 조용할 때마다 이 가드가 울린다. **오늘 고친 병을 새로 만들 뻔했다.**
+되돌려-검증: 옛 도매 URL 로 되돌리면 `404 … ← uptime.yml:probe` 로 빨간불 확인.
+
+📌 **`uptime.yml` 스케줄이 매우 불규칙하다**(10분 주기인데 01:03 → 04:22 3시간 공백 실측).
+public repo Actions 스케줄 지연 — dead-man's switch 가 이 정도로 늦으면 그것도 관측 대상이다(별건).
+
+## 10) 마지막 무료 레버 — `sheets-sync` DO 알람 이관
+
+대표의 "정말 더 없어?"에 대한 답이다. 남은 개선 후보를 어느 방향으로 파도 전부 **부모 CPU 천장**으로
+수렴한다(집중 축 대행사 이메일 3.2%의 병목도 결국 그 천장에 잘리는 `enrich-company`). 열쇠는 둘 —
+유료 전환(대표 몫)과 **DO 알람 이관**(코드 몫). 후자의 1순위가 `sheets-sync`(CPU 사망 ×16/3일, 전 레인 최다).
+
+**한 것**: `ALARM_LANES` 에 `sheets-sync` 추가(runsPerHour 1 — 증설 아님, cron 의도 복원) ·
+cron 쪽 `!laneAlarmOn` 게이트(collect·maintenance 와 동일) · 알람 러너는 SELF 홉 없이 직접 실행
+(자기 예산이라 홉이 낭비) + 게이트를 러너가 봄 + 실패는 throw(백오프·ok=false).
+
+⚠️ **시트 미러는 리스가 없다**(커서 append) — `!laneAlarmOn` 게이트가 이중 실행의 유일한 방어.
+   잠금: 유닛 3장 + 주입 1건(게이트 제거 → red).
+
+**판정**: 배포 후 다음 정각에 `cron_hb:ads:sheets-sync` 가 `ok=true` 로 갱신 + `ads_lane_alarm_last:sheets-sync`
+스탬프 신설. 이후 24시간 `cron_failures` 에서 `ads:sheets-sync` CPU 사망이 사라지는지(×16 → 0 기대).
+
+**다음 확장 후보**(성공 확인 후): `reclassify-company`(×9) · `collect-company`(×6) — 단 이들은
+도메인 예산(kick 경로)을 쓰는 레인이라 이관 시 `!laneAlarmOn` 만으론 부족하고 도메인 표 정리가 같이 필요.

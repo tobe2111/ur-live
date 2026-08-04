@@ -322,10 +322,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   공유하는데 이미 보강 레인 둘이 14 라운드를 던진다 — 더 부풀리면 waitUntil 꼬리(다른 레인)가 조용히
   //   죽는다. 오케스트레이터는 1건만 던지고 체인이 스스로 잇는다. 하트비트 이름은 'collect' 고정(바꾸면
   //   옛 `cron_hb:ads:collect` 가 남아 침묵 경보). 경위: docs/CURRENT_WORK.md 10차.
-  //   🎯 2026-08-03: 알람 레인이 이 레인을 몰면 부모는 **손을 뗀다**. 이유는 `lane-alarm-runners.ts` 의
-  //   `collect` 항목 — 요약하면 인플루언서 도메인 예산 1칸을 레인 4개가 나눠 써 4시간에 한 번 순번이
-  //   오고, 그 한 번마저 부모 CPU 한도로 죽었다(실측 6시간 20분 정지). 리스가 이중 실행을 막긴 하지만
-  //   겹쳐 던지는 것 자체가 부모 CPU 를 또 먹으므로 게이트로 끊는다.
+  //   🎯 2026-08-03: 알람이 몰면 부모는 손을 뗀다(예산 1칸/4레인 = 4시간에 한 번인데 그마저 CPU 사망 —
+  //   실측 6시간 20분 정지, 상세는 `lane-alarm-runners.ts` collect 항목). 리스가 있어도 겹쳐 던지는
+  //   것 자체가 부모 CPU 를 먹으므로 게이트로 끊는다.
   if (!laneAlarmOn && env.ADS_AUTO_COLLECT_ENABLED === 'true') {
     kick('/__ads/collect-chain', async () => { const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect'); return runInfluencerAutoCollect(env) }, { beat: 'collect' })
   }
@@ -379,7 +378,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   **관측 밖**이었다. `cron-stale-watch` 는 *한 번도 기록이 없는 이름을 판정 대상으로 잡지 못하므로*,
   //   멈춰도 침묵 경보에 안 걸렸다(실측: 다른 13개 레인이 다 돈 회차에 이것만 3시간 전 기록 그대로).
   //   🧹 2026-07-29 본문은 `sheets-mirror-lane.ts` 로 분리(엔트리 600줄 캡) — **동작 불변, 위치만**.
-  if (env.ADS_SHEETS_SYNC_ENABLED === 'true') {
+  //   ⏰ 2026-08-04 알람이 몰면 cron 은 손을 뗀다(전 레인 최다 CPU 사망 ×16 — 근거·⚠️행중복 방어는
+  //   `lane-alarm-runners.ts` sheets-sync 항목). 시트 미러는 리스가 없어 이 게이트가 유일한 방어다.
+  if (!laneAlarmOn && env.ADS_SHEETS_SYNC_ENABLED === 'true') {
     ctx.waitUntil((async () => {
       const { runSheetsMirrorLane } = await import('./sheets-mirror-lane')
       await runSheetsMirrorLane(env, adsBeat)
@@ -435,7 +436,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //   passes 값을 바꿔도 하트비트가 개명되지 않는다(그게 이 고정의 목적).
     kick('/__ads/reclassify-company?passes=5', async () => {
       const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery')
-      const { envPlanValue } = await import('@/features/marketing/api/collect-budget')
+      const { reclassifyWorkPlan } = await import('@/features/marketing/api/collect-budget')
       /**
        * ⏱️ **패스 루프에 마감선** (2026-08-03 라이브 실측 — 이 레인은 **매시간 CPU 한도로 죽고 있었다**).
        *
@@ -448,14 +449,18 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
        *     일찍 멈춰도 다음 회차가 그 지점부터 이어받는다(시간만 더 걸린다).
        *   ⚠️ 벽시계는 CPU 의 **근사**다(대기 시간이 섞인다). 정확한 계측은 런타임이 안 준다 —
        *     그래서 관측된 사망 지점(3,880ms)의 **절반 아래**로 잡는다.
+       *
+       *   🩹 **2026-08-04 — 시간만으론 못 막았다.** 마감선 1,800ms 를 넣고도 `ms=1316` 에 CPU 한도로
+       *     죽었다(자기 마감선에 닿기도 전에). 외부 호출 없는 DB-only 루프라 **벽시계가 안 흐르는데
+       *     정규식은 CPU 를 계속 태운다** ⇒ 교리대로 **행 총량**으로도 묶는다(시간 상한은 병행).
        */
-      const deadlineMs = envPlanValue(undefined, 1_800, 12_000, env)
+      const { rowsPerPass, maxRows, deadlineMs } = reclassifyWorkPlan(env)
       const t0 = Date.now()
-      let last = await reclassifyCompanyLeads(env.DB, 1000) // 첫 패스만 housekeeping(억제 스윕)
-      let passes = 1
-      for (; passes < 5 && !last.done && Date.now() - t0 < deadlineMs; passes++) last = await reclassifyCompanyLeads(env.DB, 1000, false)
-      // 관측: 매번 마감선에서 끊기면 상한을 더 내려야 한다는 신호다(그때 커서 전진률을 같이 볼 것).
-      return { ...last, passes, elapsed_ms: Date.now() - t0, stopped_by: last.done ? 'done' : (Date.now() - t0 >= deadlineMs ? 'deadline' : 'passes') }
+      let last = await reclassifyCompanyLeads(env.DB, rowsPerPass) // 첫 패스만 housekeeping(억제 스윕)
+      let passes = 1, rows = rowsPerPass
+      for (; passes < 5 && !last.done && rows < maxRows && Date.now() - t0 < deadlineMs; passes++, rows += rowsPerPass) last = await reclassifyCompanyLeads(env.DB, rowsPerPass, false)
+      // 관측: 매번 상한에서 끊기면 더 내려야 한다는 신호다(그때 커서 전진률을 같이 볼 것).
+      return { ...last, passes, rows, elapsed_ms: Date.now() - t0, stopped_by: last.done ? 'done' : (rows >= maxRows ? 'rows' : (Date.now() - t0 >= deadlineMs ? 'deadline' : 'passes')) }
     }, { beat: 'reclassify-company?passes=5' })
   }
   // 🏭 2026-07-28: 제조사·판매사 풀 자동 수집 — **배선 누락 수리**(대표 "제조사는 왜 저렇게 적어?").
@@ -484,8 +489,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   if (env.ADS_STOREINFO_ENABLED === 'true') {
     gates.everyNHours(2, 0, '/__ads/collect-storeinfo', async () => { const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect'); return runStoreInfoCollect(env) })
   }
-  // 🪦 고용24 레인 철거(2026-08-04) — 오픈API 가 기업회원 전용이고 대표가 "키는 받지 못한다" 확정.
-  //   10회 실행 0건이던 레인이라 되살릴 근거가 없다. 되살리려면 키부터 확보하고 새로 배선할 것.
+  // 🪦 고용24 레인 철거(2026-08-04) — 기업회원 전용 API + 대표 "키는 받지 못한다" 확정. 되살리려면 키부터.
   // 👥 국민연금 규모 검증 — 일 1회(hourUTC===16 = KST 01시). 게이트 ADS_NPS_ENABLED(기본 OFF).
   if ((env as unknown as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true') {
     // ⏱️ 100 → 40 **되돌림** (2026-08-02 01:00 KST 실측 — CPU 한도로 26.6초에 사망).
@@ -498,10 +502,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     gates.dailyAt(17, '/__ads/sweep-mx', async () => { const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep'); return sweepEmailMx(env) })
   }
   // 🏛️ 나라장터 계약정보(상권활성화 용역) — 일 1회(hourUTC===23 = KST 08시).
-  //   ⚠️ **기본 ON**(2026-08-04 대표 *"자동으로 데이터 나오게끔 하면 되잖아"*) — 다른 레인과 달리
-  //   opt-out 이다. 근거: 수동 1회 실측이 `scanned 1200 · saved 2 · error 0 · stopped_by "pages"` 로
-  //   깨끗했고(시간이 아니라 페이지 수에서 멈춤 = 여유 있음), 원부 29,129건을 훑어야 해서 **사람이
-  //   버튼을 누르는 방식으로는 영영 못 돈다**(한 바퀴 25회차). 끄려면 env 에 `false`.
+  //   ⚠️ **기본 ON**(2026-08-04 대표 *"자동으로 데이터 나오게끔"*, opt-out — 끄려면 env 에 `false`).
+  //   근거·실측은 `docs/handoff/2026-08-04-nara-contract-lane.md` — 원부 29,129건이라 사람이 버튼을
+  //   누르는 방식으로는 영영 못 돈다.
   if ((env as unknown as { ADS_NARA_CONTRACT_ENABLED?: string }).ADS_NARA_CONTRACT_ENABLED !== 'false') {
     gates.dailyAt(23, '/__ads/collect-nara-contract', async () => { const { runNaraContractCollect } = await import('@/features/marketing/api/nara-contract-collect'); return runNaraContractCollect(env) })
   }
