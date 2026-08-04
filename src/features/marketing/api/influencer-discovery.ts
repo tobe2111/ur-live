@@ -199,8 +199,8 @@ async function fetchRecentVideoSnippets(key: string, uploadsPlaylistId: string):
 }
 
 export type DiscoverResult =
-  | { ok: true; leads: InfluencerLead[] }
-  | { ok: false; error: 'NOT_CONFIGURED' | 'QUOTA' | 'FAILED'; message?: string }
+  | { ok: true; leads: InfluencerLead[]; calls?: import('./influencer-collect-types').DiscoverCalls }
+  | { ok: false; error: 'NOT_CONFIGURED' | 'QUOTA' | 'FAILED'; message?: string; calls?: import('./influencer-collect-types').DiscoverCalls }
 
 /** 🔒 서브리퀘스트 예산(2026-07-20) — Cloudflare Worker 1회 실행의 subrequest 한도 방어.
  *   여러 키워드 발굴이 한 cron 실행에 누적돼 "Too many subrequests" 로 중도 실패하던 사고 방지.
@@ -232,10 +232,10 @@ export async function discoverYouTubeInfluencers(
   // 1) 검색 — pageToken 으로 pages 만큼 깊이 순회(각 page=100 units). 첫 page 실패는 에러, 이후는 있는 만큼 진행.
   //    channel=채널 결과(id.channelId) / video=영상 결과(snippet.channelId → 그 영상 주인 채널).
   const channelIds: string[] = []
-  let pageToken = ''
+  let pageToken = ''; const calls: import('./influencer-collect-types').DiscoverCalls = { search: 0, channels: 0, videos: 0 } // 🔬 내역 계측(근거: DiscoverCalls). videos 는 **채널당 1회**라 배수의 유력한 자리다
   for (let p = 0; p < pages; p++) {
     if (outOfBudget(opts.budget)) break // 예산 소진 — 모은 만큼만 처리
-    spendBudget(opts.budget)
+    spendBudget(opts.budget); calls.search++
     const searchUrl = `${YT_BASE}/search?part=snippet&type=${searchType}&maxResults=${n}&order=${order}&regionCode=KR&relevanceLanguage=ko&q=${encodeURIComponent(q)}${pageToken ? `&pageToken=${pageToken}` : ''}&key=${key}`
     let searchData: YTSearchResp
     try {
@@ -264,7 +264,7 @@ export async function discoverYouTubeInfluencers(
   const chItems: NonNullable<YTChannelsResp['items']> = []
   for (let i = 0; i < uniqIds.length; i += 50) {
     if (outOfBudget(opts.budget)) break
-    spendBudget(opts.budget)
+    spendBudget(opts.budget); calls.channels++
     const batch = uniqIds.slice(i, i + 50)
     const chUrl = `${YT_BASE}/channels?part=snippet,statistics,brandingSettings,contentDetails&id=${batch.join(',')}&maxResults=50&key=${key}`
     try {
@@ -319,7 +319,7 @@ export async function discoverYouTubeInfluencers(
   const targets = ytTargets.slice(0, enrichMax)
   for (const l of targets) {
     if (outOfBudget(opts.budget)) break // 예산 소진 — 컨택 보충 조기 종료(핵심 메타는 이미 수집됨)
-    spendBudget(opts.budget)
+    spendBudget(opts.budget); calls.videos++
     const { descText, titleText } = await fetchRecentVideoSnippets(key, l._uploads!)
     if (descText) {
       const c = extractContacts(descText); const bizEmail = pickBusinessEmail(descText)
@@ -338,7 +338,7 @@ export async function discoverYouTubeInfluencers(
 
   // 구독자 많은 순.
   leads.sort((a, b) => b.subscriber_count - a.subscriber_count)
-  return { ok: true, leads }
+  return { ok: true, leads, calls }
 }
 
 // ── 네이버 블로거 발굴 (네이버 검색 오픈API — 무료, 보유 키) ────────────────────

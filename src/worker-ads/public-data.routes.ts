@@ -129,9 +129,6 @@ export default publicDataRoutes
 
 // 💼 고용24 채용기업 수집 — 채용 중(성장 신호) 광고·마케팅·판촉 계열 기업 발굴. 수동=게이트 무관.
 //   🧹 2026-07-29 엔트리(600줄 캡)에서 이 모듈로 이동 — **동작 불변, 위치만**(둘 다 공공데이터 계열 레인).
-publicDataRoutes.post('/__ads/collect-work24', lane(async (env) => {
-  const { runWork24JobsCollect } = await import('@/features/marketing/api/work24-jobs-collect'); return runWork24JobsCollect(env)
-}))
 
 // 👥 국민연금 규모 검증 — 기존 리드(대행사 우선)의 직원수(가입자수) 조회(엄격 매칭, 허위 0).
 //   40→100(2026-07-27 대표 "더 정확히" — data.go.kr 쿼터 여유). 이동 사유는 위와 동일.

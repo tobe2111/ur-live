@@ -251,11 +251,8 @@ export interface Env {
   ADS_YT_PERF_UNITS?: string;             // 📈 유튜브 **성과 보강**의 일일 units 상한(기본 2000, 상한 9000).
                                           //   발굴 검색(ADS_YT_SEARCH_BUDGET×100 units)과 같은 10,000 풀을 나눠 쓴다 —
                                           //   검색 예산을 크게 올리면 이 값을 함께 낮출 것(2026-07-28 실측: 검색 22회=2,200).
-  WORK24_API_KEY?: string;                // 💼 고용24 오픈API 인증키(채용정보 — 대표 승인 2026-07-27). Cloudflare env 전용.
-  ADS_WORK24_ENABLED?: string;            // 💼 고용24 채용기업 일1회 게이트(기본 OFF). 수동 트리거 무관.
   ADS_FRANCHISE_PAGES?: string;           // 🏢 프랜차이즈 1회 수집 페이지 수(기본 8, 상한 30) — 커서로 여러 번 나눠 순회.
                                           //   ⚠️ 이전엔 ADS_ENRICH_BUDGET(800)을 빌려 써 서브리퀘스트 한도에 부딪히는 구조였음(2026-07-28 수리).
-  ADS_WORK24_LIST_URL?: string;           // 💼 고용24 채용목록 URL 오버라이드(통합 후 표기 흔들림 대비).
   ADS_NARA_CONTRACT_ENDPOINT?: string;    // 🏛️ 계약정보 base override(기본 1230000/ao/PubDataOpnStdService).
   ADS_NARA_CONTRACT_OP?: string;          // 오퍼레이션 override(기본 getDataSetOpnStdCntrctInfo).
   ADS_NARA_CONTRACT_DAYS?: string;        // 날짜 창 일수(기본 7) — 창 파라미터가 먹히는 경우에만 의미(param_mode 참조).

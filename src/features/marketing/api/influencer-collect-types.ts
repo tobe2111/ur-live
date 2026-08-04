@@ -69,6 +69,8 @@ export interface AutoCollectStats {
   naver_api?: { used: number; total: number; day: string }
   /** 🧾 소스별 서브리퀘스트 실사용(수집 회차) — 예산 병목을 재는 값. 합 ≈ spent 면 그 소스가 범인. */
   spend_by?: { yt: number; naver: number; cafe: number; tistory: number; save: number }
+  /** 🔬 유튜브 서브리퀘스트 **내역** — 검색/채널/영상 중 어디가 배수인지(`DiscoverCalls`). */
+  yt_calls?: DiscoverCalls
   /** 🔒 다른 실행이 진행 중이라 이번 호출은 아무것도 안 함(lease busy) — 체인/버스트는 yt_budget 부재로 자연 종료. */
   busy?: boolean
   /**
@@ -102,3 +104,13 @@ export interface AutoCollectStats {
   crash_spent?: number
   crash_budget?: number
 }
+
+/**
+ * 🔬 **서브리퀘스트가 어디로 갔는가** (2026-08-04 신설).
+ *
+ *   라이브 실측: 유튜브 쿼터는 **90 중 3**만 쓰는데 서브리퀘스트 예산(56)은 **전부** 소진돼 회차가 끝난다.
+ *   병목이 구글 쿼터가 아니라 우리 요청 수인데, 기존 계측(`spend_by.yt`)은 레인 합계뿐이라
+ *   그 33개가 **검색·채널조회·영상스니펫 중 어디에 몰렸는지 알 수 없다.** 모르면 줄일 수도 없다 —
+ *   찍어서 줄이면 수율이 같이 떨어진다. 비용 0(지역 카운터 3개).
+ */
+export interface DiscoverCalls { search: number; channels: number; videos: number }
