@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { cfImage } from '@/utils/cf-image'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useHomeBanners, type HomeBanner } from './useHomeBanners'
-import type { BannerType } from '@/shared/constants/home-showcase'
+import type { BannerSlot } from '@/shared/constants/home-showcase'
 
 /**
  * 🏠 ③ 중간 배너 (2026-08-04 대표 시안 승인).
@@ -30,7 +30,7 @@ function Wrap({ href, className, children }: { href: string; className: string; 
     : <div className={className}>{children}</div>
 }
 
-export default function HomeBannerStrip({ variant }: { variant: Extract<BannerType, 'inline' | 'wide'> }) {
+export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSlot, 'inline' | 'wide'> }) {
   const banners = useHomeBanners(variant)
   if (banners.length === 0) return null
 
@@ -62,7 +62,13 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerTy
 
   return (
     <div className="pb-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {/* 📐 열 수를 **개수에 맞춘다** — 1장을 3열 그리드에 두면 1/3 폭에 홀로 서서
+          가로로 긴 홍보 이미지가 잘린다(2026-08-04 대표 신고 화면이 정확히 그랬다). */}
+      <div className={`grid gap-3 ${
+        banners.length === 1 ? 'grid-cols-1'
+        : banners.length === 2 ? 'grid-cols-1 sm:grid-cols-2'
+        : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+      }`}>
         {banners.slice(0, 3).map(b => {
           const href = bannerHref(b)
           const bg = b.image_url ? cfImage(b.image_url, { width: 700, quality: 76 }) : ''

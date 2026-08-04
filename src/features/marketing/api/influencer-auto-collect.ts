@@ -352,6 +352,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
    *   ⚠️ 이건 계측일 뿐 아무 동작도 안 바꾼다(추가 왕복 0 — 이미 있는 `budget.left` 를 읽기만).
    */
   const spendBy = { yt: 0, naver: 0, cafe: 0, tistory: 0, save: 0 }
+  // 🔬 유튜브 서브리퀘스트 **내역**(2026-08-04) — 쿼터는 90 중 3만 쓰는데 요청 예산은 다 쓴다.
+  //   그 33개가 검색·채널조회·영상스니펫 중 어디로 갔는지 재야 줄일 자리가 정해진다(찍어 줄이면 수율이 같이 떨어진다).
+  const ytCalls = { search: 0, channels: 0, videos: 0 }
   const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
   const roundCap = keywordsPerRoundCap(env)
   let fromYt = 0, fromCursor = 0 // 🎯 처리된 픽의 출처 — 커서픽이 실제로 도달되는지 보이게(위 `picks` 주석)
@@ -381,6 +384,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
         const _b0 = budget.left
         const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytAngle.searchType, order: ytAngle.order, alreadyContacted })
         spendBy.yt += Math.max(0, _b0 - budget.left)
+        if (r.calls) { ytCalls.search += r.calls.search; ytCalls.channels += r.calls.channels; ytCalls.videos += r.calls.videos }
         if (r.ok) {
           kSearched++
           diag.yt.found += r.leads?.length || 0; kFound += r.leads?.length || 0
@@ -528,6 +532,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   해석: 합이 spent 에 근접하면 그 소스가 병목. 특히 yt/naver 가 크면 발굴 시점 enrichMax(8/5)가 원인이고,
     //   그건 별도 보강 레인과 겹치는 일이라 줄일 여지가 있다(줄이기 전에 이 숫자를 볼 것).
     spend_by: spendBy,
+    yt_calls: ytCalls, // 🔬 검색/채널/영상 내역 — 어느 항이 배수인지(위 ytCalls 주석)
     // 📟 네이버 오픈API 일일 사용량(KST 기준일). **자동 레인만 세므로 실사용의 하한**이다 —
     //   어드민 온디맨드 도구(keyword-tools/rank-tracker/competitor-tracker)는 계측 밖(naver-api-usage.ts 주석).
     naver_api: { used: naverCalls, total: NAVER_DAILY_QUOTA_CALLS, day: naverDay },

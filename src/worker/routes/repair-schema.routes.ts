@@ -386,8 +386,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'settlements.paid_at', sql: 'ALTER TABLE settlements ADD COLUMN paid_at DATETIME' },
     { name: 'settlements.admin_memo', sql: 'ALTER TABLE settlements ADD COLUMN admin_memo TEXT' },
     { name: 'user_withdrawals.deal_deducted', sql: 'ALTER TABLE user_withdrawals ADD COLUMN deal_deducted INTEGER DEFAULT 0' },
-    // 🏠 2026-08-04 홈 쇼케이스 — 라우트 lazy ALTER 는 그 라우트가 호출돼야 돌고, 컬럼이 없으면 어드민 저장이 조용히 실패한다.
-    { name: 'banners.banner_type', sql: "ALTER TABLE banners ADD COLUMN banner_type TEXT DEFAULT 'inline'" },
+    // 🏠 2026-08-04 홈 쇼케이스 — 라우트 lazy ALTER 는 호출돼야 돌고, 컬럼이 없으면 어드민 저장이 조용히 실패한다. ⚠️ banner_slot 에 DEFAULT 금지(SQLite 는 기존 행에도 적용 → 옛 배너가 저절로 홈에 뜬다, 실사고).
+    { name: 'banners.banner_slot', sql: 'ALTER TABLE banners ADD COLUMN banner_slot TEXT' },
     { name: 'banners.video_url', sql: 'ALTER TABLE banners ADD COLUMN video_url TEXT' },
     { name: 'homepage_sections.source', sql: "ALTER TABLE homepage_sections ADD COLUMN source TEXT DEFAULT 'manual'" },
     { name: 'homepage_sections.source_value', sql: 'ALTER TABLE homepage_sections ADD COLUMN source_value TEXT' },

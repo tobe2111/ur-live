@@ -138,7 +138,7 @@ export async function mergeDuplicatePool(DB: D1Database, opts?: { groupCap?: num
  *   에러도 경고도 없이 개선이 라이브에 안 닿는다. 이 레포의 `CLASSIFY_RULES_VERSION` 과 같은 계약이고,
  *   `check-rules-version-bump` 가 지키는 것과 같은 실패 양식이다.
  */
-export const REEXTRACT_RULES_VERSION = 1
+export const REEXTRACT_RULES_VERSION = 2 // 2026-08-04: 계측 추가로 감시 파일이 바뀌어 bump(규칙 변경 아님 — 한 바퀴 재추출은 D1 전용·커서 페이스라 외부 예산 무관)
 
 /**
  * 커서 저장 형태 `"<version>:<cursor>"`.

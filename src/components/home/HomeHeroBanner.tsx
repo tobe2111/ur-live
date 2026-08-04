@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { cfImage } from '@/utils/cf-image'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useHomeBanners } from './useHomeBanners'
+import HomeHeroDefault from './HomeHeroDefault'
 
 /**
  * 🏠 ④ 히어로 배너 (2026-08-04 대표 시안 승인 "좋다 이렇게 가자").
@@ -11,8 +12,11 @@ import { useHomeBanners } from './useHomeBanners'
  * 올린 배너 중 첫 번째만 쓴다 — 히어로는 하나여야 하고, 여러 개면 캐러셀이 되어
  * 첫 화면이 산만해진다(그건 별도 결정이지 이 시안이 아니다).
  *
- * 🚫 **등록된 히어로가 없으면 아무것도 안 그린다**(대표 확정 규칙). 빈 자리도, 회색
- *    플레이스홀더도 없이 아래 콘텐츠가 그대로 최상단이 된다.
+ * 🔄 **등록된 히어로가 없으면 브랜드 기본 배경**(`HomeHeroDefault`)을 그린다
+ *    — 2026-08-04 대표 지시 *"히어로도 브랜드 배경으로 적합한 거 영상으로 넣어줘"*.
+ *    ⚠️ 이전 판은 여기서 `null` 을 반환했다(대표의 "배너 안 올리면 안 보이게" 규칙 적용).
+ *    그 규칙은 **배너 콘텐츠**에 대한 것이고, 히어로 자리 자체는 화면의 뼈대라 대표가 직접
+ *    기본 배경을 요구했다. 중간·와이드 배너는 **여전히 없으면 안 그린다**(규칙 유지).
  *
  * 영상 배경 주의:
  *  - `muted`·`playsInline` 없으면 모바일 사파리가 재생을 거부한다(그러면 검은 화면만 남는다).
@@ -28,7 +32,7 @@ export default function HomeHeroBanner() {
     try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return false }
   }, [])
 
-  if (!hero) return null
+  if (!hero) return <HomeHeroDefault />
 
   const poster = hero.image_url ? cfImage(hero.image_url, { width: 1600, quality: 78 }) : ''
   const useVideo = !!hero.video_url && !reduceMotion

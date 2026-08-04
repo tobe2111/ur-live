@@ -31,7 +31,6 @@ const OnboardingTrigger = lazy(() => import('./components/onboarding/OnboardingT
 const RestoreAccountModal = lazy(() => import('./components/account/RestoreAccountModal'))
 const SideBanner = lazy(() => import('@/components/SideBanner'))
 import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 // TD-006: route group files
 import { SellerRoutes } from './routes/seller.routes'
@@ -421,36 +420,11 @@ function AppContent() {
 
     const userType = localStorage.getItem('user_type')
 
-    // Seller/Admin은 Firebase 초기화 불필요 → isAuthReady 즉시 true
-    if (userType === 'seller' || userType === 'admin') {
-      useAuthKR.getState().setAuthReady(true)
-      useAuthWorld.getState().setAuthReady(true)
-      return
-    }
-
-    // 한국(KR): Firebase 100% 미사용 — 카카오 세션 쿠키 only.
-    if (isKorea()) {
-      useAuthKR.getState().setAuthReady(true)
-      return
-    }
-
-    // 글로벌: 세션 쿠키 유저는 Firebase 불필요
-    if (localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')) {
-      useAuthWorld.getState().setAuthReady(true)
-      return
-    }
-
-    // ✅ 글로벌 전용: Firebase 초기화 (Google/Apple 로그인 등)
-    const initAuth = async () => {
-      try {
-        useAuthWorld.getState().initializeAuth()
-      } catch (err) {
-        if (import.meta.env.DEV) console.error('[App] ❌ 인증 초기화 실패:', err)
-        useAuthWorld.getState().setAuthReady(true)
-      }
-    }
-
-    initAuth()
+    // 🔥 2026-08-04 (대표 승인 — Firebase 완전 제거): 외부 인증 SDK 초기화가 사라졌다.
+    //   KR 은 2026-05-01 부터 카카오 세션 쿠키 only 였고, GLOBAL 분기는 미런칭·폐기(#804)라
+    //   도달 경로가 없었다. ⇒ 어떤 경우든 즉시 ready.
+    void userType
+    useAuthKR.getState().setAuthReady(true)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 🔄 다중 탭 동기화
