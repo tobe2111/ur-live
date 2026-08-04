@@ -1774,6 +1774,17 @@ const MUTATIONS = [
       '*"실패가 아니라 부재"* 클래스 — 유입구에서 특히 위험하다(대표는 넣었다고 믿는다).',
   },
   {
+    name: '티스토리 수집만 되살아남(측정 안 될 행을 계속 쌓음)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: ".ADS_COLLECT_TISTORY_DISABLED !== 'false'",
+    replace: ".ADS_COLLECT_TISTORY_DISABLED === 'true'",
+    test: 'src/tests/unit/ads-tistory-enrich.test.ts',
+    why:
+      '2026-08-04 라이브 판정에서 실제로 이 반쪽 상태였다 — 측정 몫만 0 으로 했더니 ' +
+      '`enrich tistory.tried 0` 인데 `collect spend_by.tistory 5 · found 17`. **영원히 측정 안 될 행을 ' +
+      '회차당 5 서브리퀘스트 써서 쌓는** 상태로, 접기 전보다 나쁘다. 축은 둘 다 접거나 둘 다 켠다.',
+  },
+  {
     name: '티스토리가 조용히 되살아남(수율 3.0%)',
     file: 'src/features/marketing/api/influencer-tistory-performance.ts',
     find: 'export const TISTORY_ROOM = 0',

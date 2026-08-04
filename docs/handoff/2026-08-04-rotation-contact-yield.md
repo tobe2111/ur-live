@@ -63,3 +63,32 @@ curl -sS "https://live.ur-team.com/api/admin/ads/influencer-pool/stats" \
 
 ⚠️ **이 변경이 못 보는 것**: 억제가 *옳은지*. 저수율의 원인이 **우리 추출기 결함**이면 억제는 손해다.
    탐침 회차가 증거를 계속 갱신하지만, 근본 확인은 **저수율 키워드 표본을 사람이 열어 보는 것**뿐이다.
+
+---
+
+## 🩸 라이브 판정에서 드러난 내 반쪽 — 티스토리를 절반만 접었다
+
+#1049 배포 후 09:00 회차 실측:
+```
+enrich_lane.tistory      { tried: 0, measured: 0 }        ✅ 측정은 멈췄다
+collect  spend_by.tistory 5 · diag.tistory found 17 / saved 7   ❌ 수집은 그대로
+```
+**측정 몫(`TISTORY_ROOM`)만 0 으로 하고 수집 경로(`discoverTistoryBloggers`)는 안 건드렸다.**
+그 결과가 접기 전보다 나쁘다 — **영원히 측정되지 않을 행을 회차당 5 서브리퀘스트 써서 쌓는다.**
+
+수리: `ADS_COLLECT_TISTORY_DISABLED` 기본을 **OFF 로 뒤집었다**(되살리려면 명시적 `=false`).
+주입 2건으로 고정 — "기본이 다시 ON" · "게이트 우회".
+
+> 🪞 **교훈**: 축을 접는다는 건 **그 축이 자원을 쓰는 모든 자리**를 접는 것이다. 한 자리만 끄면
+> 관측 지표(`tistory.tried 0`)는 접힌 것처럼 보이는데 실제로는 비용이 그대로 나간다.
+> ⇒ 접기 전에 **`grep -rn <소스이름>` 으로 자원을 쓰는 자리를 전부 세어 볼 것.**
+
+## ✅ 그 외 판정 (09:00 회차)
+
+```
+enrich naver  tried 22 · measured 22 · contacts 6 · emails 6  (27% — 기저와 일치, 실패 0)
+collect spend_by  yt 33 · naver 18 · tistory 5 · save 0       (naver 키워드당 3.0 유지)
+```
+· 네이버 측정이 정상 동작하고 수율도 기저(26.7%)와 일치한다.
+· ⚠️ **회수분이 네이버로 갔는지는 확정 못 했다** — 배포 전 `enrich naver.measured` 값을 안 잡아 뒀다.
+  비교 기준선이 없으면 "늘었다"를 말할 수 없다. 다음엔 **바꾸기 전에 그 지표부터 찍을 것.**
