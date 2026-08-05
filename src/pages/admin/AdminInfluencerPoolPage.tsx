@@ -12,7 +12,8 @@ import CollectDiagPanel, { type RunStats, type MaintenanceRecord, type EnrichLan
 import FulfillBanner from './influencer-pool/FulfillBanner'
 import { pickReach } from './influencer-pool/reach'
 import { useCollectRun } from './influencer-pool/useCollectRun'
-import KeywordManager, { type Keyword } from './influencer-pool/KeywordManager'
+import KeywordManager from './influencer-pool/KeywordManager'
+import { usePoolMeta } from './influencer-pool/usePoolMeta'
 import SendModeButtons from './influencer-pool/SendModeButtons'
 import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
 import ColdSendPanel from './influencer-pool/ColdSendPanel'
@@ -86,7 +87,6 @@ export default function AdminInfluencerPoolPage() {
   const [maintenanceRescan, setMaintenanceRescan] = useState<MaintenanceRecord | null>(null) // 🌙 야간 라이브 재보정(04시)
   const [enrichLane, setEnrichLane] = useState<EnrichLaneRecord | null>(null)             // 📝 보강 전용 레인(시간당 N라운드) 마지막 결과
   const [catFunnel, setCatFunnel] = useState<CategoryFunnelRow[]>([])                     // 📊 카테고리별 전환
-  const [keywords, setKeywords] = useState<Keyword[]>([])
   const [platform, setPlatform] = useState('')
   const [hasContact, setHasContact] = useState(false)
   const [hasEmail, setHasEmail] = useState(false)
@@ -182,23 +182,15 @@ export default function AdminInfluencerPoolPage() {
       return
     }
     wasMaintaining.current = true
-    const t = setInterval(() => { void loadMeta() }, 10_000)
+    const t = setInterval(() => { void loadStats() }, 10_000)   // ⚡ 진행 표시는 통계만 필요
     return () => clearInterval(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maintainRunning])
 
-  const loadMeta = useCallback(async () => {
-    try {
-      const [s, k] = await Promise.all([
-        api.get('/api/admin/ads/influencer-pool/stats'),
-        api.get('/api/admin/ads/influencer-pool/keywords'),
-      ])
-      if (s.data?.success) applyMeta(s.data)
-      if (k.data?.success) setKeywords(k.data.keywords || [])
-    } catch { /* soft */ }
-  }, [applyMeta])
+  // ⚡ 통계/키워드 분리 로드 — 정책은 `influencer-pool/usePoolMeta.ts`(첫 페인트 224KB 제거).
+  const { keywords, loadStats, loadKeywords, loadMeta } = usePoolMeta(applyMeta)
 
-  useEffect(() => { loadMeta() }, [loadMeta])
+  useEffect(() => { loadStats() }, [loadStats])   // ⚡ 첫 페인트는 통계만 — 키워드는 패널 열 때
   useEffect(() => { loadLeads() }, [loadLeads])
 
   // 🔥 통합 수집 = 오늘 YouTube 예산(하루 100회) 소진까지 백그라운드 연속 수집(self-chain).
@@ -430,7 +422,7 @@ export default function AdminInfluencerPoolPage() {
           </div>
         </details>
 
-        <KeywordManager keywords={keywords} onChanged={loadMeta} />{/* 키워드 관리 — influencer-pool/ 추출(600줄 캡) */}
+        <KeywordManager keywords={keywords} onChanged={loadMeta} onFirstOpen={loadKeywords} />{/* 키워드 관리 — influencer-pool/ 추출(600줄 캡) */}
 
         {/* 필터 — 입력 UI 는 `influencer-pool/PoolFilters` 로 분리(페이지 600줄 캡). 상태는 여기 유지. */}
         <PoolFilters

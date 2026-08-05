@@ -47,8 +47,23 @@ function Chip({ k, onToggle }: { k: Keyword; onToggle: (k: Keyword) => void | Pr
   )
 }
 
-export default function KeywordManager({ keywords, onChanged }: { keywords: Keyword[]; onChanged: () => Promise<void> }) {
+/**
+ * ⚡ **키워드는 이 패널을 열 때만 받는다** (2026-08-05 대표 *"로딩이 너무 느린데"*).
+ *
+ *   라이브 실측: 풀 페이지 첫 로딩 3콜 중 `/keywords` 가 **224KB** 로 전체 310KB 의 **72%** 였다.
+ *   그런데 이 컴포넌트는 **접힌 `<details>`** 라 열기 전엔 본문도 안 그린다(아래 `open` 게이트) —
+ *   대부분의 방문에서 그 224KB 를 받아 **파싱만 하고 버렸다**. 서버 SELECT 가 `LIMIT 1000` 이라
+ *   비활성 키워드까지 전부 온다.
+ *
+ *   ⇒ 부모는 마운트에서 **통계만** 받고(`loadStats`), 키워드는 여기서 **처음 펼칠 때** `onFirstOpen` 으로
+ *     가져온다. 편집 뒤(`onChanged`)엔 분류 통계도 바뀌므로 둘 다 갱신한다.
+ *   ⚠️ 받기 전에는 요약줄에서 **개수를 숨긴다** — "활성 0" 으로 보이면 *키워드가 사라진 걸로* 읽힌다.
+ *   ⚠️ 정비 폴링(10초)도 통계만 부를 것 — 아니면 보고 있는 내내 224KB 를 다시 받는다.
+ */
+export default function KeywordManager({ keywords, onChanged, onFirstOpen }: { keywords: Keyword[]; onChanged: () => Promise<void>; onFirstOpen?: () => Promise<void> }) {
   const [open, setOpen] = useState(false)         // ⚡ 닫힘 상태에선 본문(칩 수백 개) 미렌더
+  // ⚡ 데이터도 열 때 받는다(224KB) — 페이지 첫 페인트를 막지 않게. 근거는 부모의 `loadKeywords` docblock.
+  const [fetched, setFetched] = useState(false)
   const [newKw, setNewKw] = useState('')
   const [newKwCat, setNewKwCat] = useState('맛집') // 신규 키워드 카테고리(우선 커서 태깅)
   const [q, setQ] = useState('')                   // 칩 검색 필터
@@ -80,9 +95,9 @@ export default function KeywordManager({ keywords, onChanged }: { keywords: Keyw
   }
 
   return (
-    <details className="mb-4 rounded-lg border border-gray-200 bg-white" onToggle={e => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
+    <details className="mb-4 rounded-lg border border-gray-200 bg-white" onToggle={e => { const o = (e.currentTarget as HTMLDetailsElement).open; setOpen(o); if (o && !fetched) { setFetched(true); void onFirstOpen?.() } }}>
       <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-900">
-        수집 키워드 관리 (활성 {activeCount} · 후보 {candidateCount})
+        수집 키워드 관리{fetched ? ` (활성 ${activeCount} · 후보 ${candidateCount})` : ''}
       </summary>
       {open && (
         <div className="px-4 pb-4">
