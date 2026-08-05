@@ -11,6 +11,7 @@
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
 import { runPooled, resolveConcurrency } from './lane-pool'
+import { applyQuantum, quantumFromRaw, CPU_QUANTA_KEY } from './cpu-quantum'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs, envLaneBudget } from './collect-budget'
 import { writeEnrichSnapshot, recordEnrichCrash, foldEnrichRollup, ENRICH_SNAPSHOT_KEY, ENRICH_ROLLUP_KEY } from './enrich-telemetry'
 import { healSuspectNames } from './enrich-name-heal'
@@ -87,14 +88,16 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   // 🧮 부팅 조회 1회로 3개 값을 함께 읽는다(학습 상한 + 직전 스냅샷 + 누적) — 쿼리 수는 그대로 1.
   //   직전 스냅샷을 여기서 읽는 이유: **중도 사망한 라운드는 스스로를 누적할 수 없다**(종료 코드 미도달).
   //   그 라운드가 남긴 마지막 부분 스냅샷을 다음 라운드가 접어야 죽은 라운드까지 세어진다.
-  const boot = (await DB.prepare('SELECT key, value FROM platform_settings WHERE key IN (?, ?, ?)')
-    .bind(subreqCapKey('company_enrich'), ENRICH_SNAPSHOT_KEY, ENRICH_ROLLUP_KEY)
+  //   🧠 CPU 학습표를 **같은 문장에 얹는다**(`?` 하나 추가 — 서브리퀘스트 0 증가).
+  const boot = (await DB.prepare('SELECT key, value FROM platform_settings WHERE key IN (?, ?, ?, ?)')
+    .bind(subreqCapKey('company_enrich'), ENRICH_SNAPSHOT_KEY, ENRICH_ROLLUP_KEY, CPU_QUANTA_KEY)
     .all<{ key: string; value: string }>().catch(() => null))?.results || []
   const bootVal = (k: string) => boot.find(r => r.key === k)?.value || null
   const learnedCap = Math.max(0, parseInt(bootVal(subreqCapKey('company_enrich')) || '', 10) || 0)
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = envSubreqCap(env)
-  const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
+  // 🧠 2026-08-05 라이브에서 이 레인은 24시간에 3회 CPU 한도로 죽었다. 배수는 그 학습분이다(바닥 10).
+  const budgetTotal = applyQuantum(resolveSubreqBudget(envBudget, learnedCap, pcap), quantumFromRaw(bootVal(CPU_QUANTA_KEY), 'ads:enrich-company'), 10)
   // ⏱️ 벽시계 가드(2026-07-28) — 서브리퀘스트가 남아도 **시간**이 인보케이션을 끝낼 수 있다(느린 사이트 1곳이
   //   8s 타임아웃을 여러 번 먹는 경우). 20s 이후엔 새 fetch 를 시작하지 않고 Phase 3 → 정상 종료로 빠진다:
   //   죽는 대신 깨끗이 넘기면 스냅샷·학습·도장이 전부 정상 작동하고 남은 백로그는 다음 라운드가 이어받는다.

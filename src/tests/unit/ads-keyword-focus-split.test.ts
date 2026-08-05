@@ -20,14 +20,55 @@ const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '
  *   ⚠️ **자기 반납이 이 설계의 핵심이다.** 대행사 키워드가 고갈되면(무수확 누적 → 자동 비활성)
  *   전용 슬롯은 스스로 0이 되고 그 몫이 우선/일반으로 돌아간다. 이게 없으면 다 훑은 뒤에도
  *   1/4을 영원히 낭비한다 — 아래 검사가 그 성질을 고정한다.
- *   ⚠️ 이 테스트가 못 보는 것: 1/4이라는 **비중이 타당한지**(라이브 수율은 코드 밖 사실이다).
- *   비중을 바꿀 땐 `FOCUS_SHARE` 주석의 근거도 함께 갱신할 것.
+ *   ⚠️ 이 테스트가 못 보는 것: 배수 3:2:1 이 **타당한지**(라이브 수율은 코드 밖 사실이다).
+ *   배수를 바꿀 땐 `AXIS_ROTATION_MULTIPLIER` 주석의 근거도 함께 갱신할 것.
  */
 describe('planKeywordSplit — 집중/우선/일반 3분할', () => {
-  it('🔒 집중 축이 몫(1/4)을 먼저 가져간다', () => {
-    const r = planKeywordSplit(16, 10, 100, 100)
-    expect(r.nFocus).toBe(4)
-    expect(r.nFocus + r.nPri + r.nGen).toBe(16)
+  /**
+   * 🔁 **2026-08-05 정책 교체** — 옛 검사는 `nFocus === 4`(= 배치의 1/4)를 고정했다. 그 규칙이
+   *   라이브에서 실제로 만든 결과는 *집중 축 키워드가 우선 축보다 7배 자주 도는 것*이었다
+   *   (집중 19개가 4슬롯 vs 우선 315개가 9슬롯). 그래서 숙소 19개 중 12개가 **한 번도 못 돌았다.**
+   *
+   *   ⇒ 이제 고정하는 건 슬롯 수가 아니라 **한 바퀴 시간의 비율**이다. 그게 정책의 실체이고,
+   *     풀 크기가 변해도 유지돼야 하는 값이다(옛 규칙은 풀이 커지면 조용히 무너졌다).
+   */
+  it('🔒 한 바퀴 시간이 배수대로 — 풀 크기가 달라도 유지된다', () => {
+    const lap = (pool: number, slots: number) => (slots > 0 ? pool / slots : Infinity)
+    for (const [f, p, g] of [[19, 315, 65], [50, 50, 50], [10, 400, 200]] as const) {
+      const r = planKeywordSplit(60, f, p, g)
+      const lf = lap(f, r.nFocus), lp = lap(p, r.nPri), lg = lap(g, r.nGen)
+      // 집중은 우선보다 빨리 돌고, 우선은 일반보다 빨리 돈다(배수 3:2:1).
+      expect(lf, `focus lap (${f}/${p}/${g})`).toBeLessThan(lp)
+      expect(lp, `pri lap (${f}/${p}/${g})`).toBeLessThan(lg)
+    }
+  })
+
+  it('🔒 작은 축이 큰 축 옆에서 0 이 되지 않는다 — 반올림이 전략 축을 삼키면 안 된다', () => {
+    // 라이브 실측 형상(집중 19 · 우선 315 · 일반 65)에 회차 6슬롯. 순수 비례면 집중이 0.45 → 0 이 된다.
+    const r = planKeywordSplit(6, 19, 315, 65)
+    expect(r.nFocus).toBeGreaterThanOrEqual(1)
+    expect(r.nGen).toBeGreaterThanOrEqual(1)
+    expect(r.nFocus + r.nPri + r.nGen).toBe(6)
+  })
+
+  /**
+   * ⚠️ **처음 이 검사를 "다른 축의 슬롯이 안 줄어든다"로 썼다가 스스로 반박당했다.** 슬롯 총량이 고정이므로
+   *   한 축이 커지면 다른 축 슬롯은 **실제로 줄어든다** — 그건 예산이 유한하다는 뜻이지 결함이 아니다.
+   *   보존돼야 하는 건 슬롯이 아니라 **축 사이의 한 바퀴 시간 비율**이다: 풀이 커지면 모두가 같이 느려져야지,
+   *   한쪽만 빨라지면 안 된다. 옛 규칙이 정확히 그 병이었다 — 집중은 고정 1/4 이라 다른 풀이 커질수록
+   *   **혼자 상대적으로 빨라졌고**, 그래서 숙소가 굶었다.
+   */
+  it('🔒 큰 축이 커지면 모두 같이 느려진다 — 한쪽만 빨라지지 않는다(옛 규칙의 병)', () => {
+    const lapOf = (r: { nFocus: number; nPri: number; nGen: number }, f: number, p: number, g: number) =>
+      ({ f: f / r.nFocus, p: p / r.nPri, g: g / r.nGen })
+    const before = lapOf(planKeywordSplit(60, 19, 315, 65), 19, 315, 65)
+    const after = lapOf(planKeywordSplit(60, 19, 815, 65), 19, 815, 65)   // 우선 축에 500개 추가
+    // 모든 축이 느려지거나 최소한 안 빨라진다(부동소수 여유 5%).
+    expect(after.f).toBeGreaterThan(before.f * 0.95)
+    expect(after.g).toBeGreaterThan(before.g * 0.95)
+    // 그리고 순서(집중 < 우선 < 일반)는 그대로다.
+    expect(after.f).toBeLessThan(after.p)
+    expect(after.p).toBeLessThan(after.g)
   })
 
   it('🔒 집중 축이 비면 슬롯을 **반납**한다 — 다 훑은 뒤 1/4을 낭비하지 않는다', () => {

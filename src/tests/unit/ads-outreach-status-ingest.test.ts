@@ -47,6 +47,32 @@ describe('CSV — 메일 도구가 뱉는 형식을 그대로 받는다', () => 
     const r = parseOutreachCsv('\n"a@b.com" , "opened" , "2026-08-01 10:00:00"\n\n')
     expect(r.items[0]).toEqual({ email: 'a@b.com', status: 'opened', at: '2026-08-01 10:00:00' })
   })
+
+  // ⚠️ 여기가 첫 업로드의 승부처다 — 열 순서를 강제하면 파일 하나가 통째로 invalid 로 떨어지고,
+  //   그 왕복이 곧 "결과가 안 들어옴"이다(엔드포인트는 있었는데 email_status 가 0건이던 이유).
+  it('🔒 열 순서를 강제하지 않는다 — 행 안에서 이메일·상태를 찾는다', () => {
+    const r = parseOutreachCsv([
+      'Recipient Name,Email Address,Sent At,Delivery Status',
+      '홍길동,a@b.com,2026-08-01 09:00:00,bounced',
+      '김철수,c@d.com,2026-08-02 09:00:00,replied',
+    ].join('\n'))
+    expect(r.invalid).toBe(0)
+    expect(r.items).toEqual([
+      { email: 'a@b.com', status: 'bounced', at: '2026-08-01 09:00:00' },
+      { email: 'c@d.com', status: 'replied', at: '2026-08-02 09:00:00' },
+    ])
+  })
+
+  it('🔒 세미콜론·탭 구분자도 받는다(메일 도구마다 다르다)', () => {
+    expect(parseOutreachCsv('a@b.com;replied').items[0]?.status).toBe('replied')
+    expect(parseOutreachCsv('a@b.com\treplied').items[0]?.status).toBe('replied')
+  })
+
+  it('🔒 헤더 건너뛰기는 **첫 줄에만** — 본문 중간의 이메일 없는 줄은 invalid 로 센다', () => {
+    const r = parseOutreachCsv('email,status\na@b.com,sent\n합계,1')
+    expect(r.items).toHaveLength(1)
+    expect(r.invalid).toBe(1)
+  })
 })
 
 describe('JSON 입력', () => {

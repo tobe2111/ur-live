@@ -23,13 +23,17 @@
  *     정규식은 CPU 를 계속 태운다** ⇒ 교리대로 **행 총량**으로도 묶는다(시간 상한은 병행).
  *   ⏰ **2026-08-05 — 그래도 죽어서 알람으로 이관.** 행상한·시간상한을 다 넣고도 부모 cron 꼬리에서
  *     끌려 죽었다(같은 정각의 다른 레인이 부모 CPU 를 소진). DO 알람은 부모가 없어 자기 예산을 받는다.
+ *   🧠 **2026-08-05 머지 이식 — CPU 사망 학습분 반영.** main(#1076)이 인라인 본문에
+ *     `reclassifyWorkPlan(env, env.DB)`(async — cpu-quantum 학습배수 소비)를 배선했는데 같은 시각
+ *     이 파일로 본문이 추출되고 있었다. 두 벌이 갈리지 않게 여기(단일 본문)로 옮겨 왔다 —
+ *     cron·알람 어느 경로로 돌아도 사망 이력만큼 행 상한이 자동으로 줄어든다.
  */
 import type { Env } from '@/worker/types/env'
 
 export async function runReclassifyLane(env: Env): Promise<Record<string, unknown>> {
   const { reclassifyCompanyLeads } = await import('./company-discovery')
   const { reclassifyWorkPlan } = await import('./collect-budget')
-  const { rowsPerPass, maxRows, deadlineMs } = reclassifyWorkPlan(env)
+  const { rowsPerPass, maxRows, deadlineMs } = await reclassifyWorkPlan(env, env.DB) // 🧠 CPU 사망 학습분 반영(cpu-quantum.ts)
   const t0 = Date.now()
   let last = await reclassifyCompanyLeads(env.DB, rowsPerPass) // 첫 패스만 housekeeping(억제 스윕)
   let passes = 1, rows = rowsPerPass

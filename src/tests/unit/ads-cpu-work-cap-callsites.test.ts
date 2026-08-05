@@ -63,20 +63,20 @@ describe('rowsWorthReading — 예산이 못 쓸 행은 안 읽는다', () => {
 })
 
 describe('reclassifyWorkPlan — 무료는 총량으로 묶는다', () => {
-  it('무료 총량이 종전(5,000행)보다 확실히 작다 — 안 줄이면 이 변경의 의미가 없다', () => {
-    const free = reclassifyWorkPlan(undefined)
+  it('무료 총량이 종전(5,000행)보다 확실히 작다 — 안 줄이면 이 변경의 의미가 없다', async () => {
+    const free = await reclassifyWorkPlan(undefined)
     expect(free.maxRows).toBeLessThan(5_000)
     expect(free.rowsPerPass).toBeLessThanOrEqual(free.maxRows)
   })
 
-  it('유료는 종전 그대로 — 요금제를 올린 사람이 손해 보면 안 된다', () => {
-    const paid = reclassifyWorkPlan({ ADS_PLAN: 'paid' })
+  it('유료는 종전 그대로 — 요금제를 올린 사람이 손해 보면 안 된다', async () => {
+    const paid = await reclassifyWorkPlan({ ADS_PLAN: 'paid' })
     expect(paid.rowsPerPass).toBe(1_000)
     expect(paid.maxRows).toBe(5_000)
   })
 
-  it('시간 상한이 살아 있다 — 행 상한으로 **대체**하면 느린 D1 회차를 못 막는다', () => {
-    expect(reclassifyWorkPlan(undefined).deadlineMs).toBeGreaterThan(0)
+  it('시간 상한이 살아 있다 — 행 상한으로 **대체**하면 느린 D1 회차를 못 막는다', async () => {
+    expect((await reclassifyWorkPlan(undefined)).deadlineMs).toBeGreaterThan(0)
   })
 })
 
@@ -99,10 +99,11 @@ describe('🚧 배선 — 순수함수만 만들고 호출부에 안 걸면 아�
   })
 
   // 🗺️ 2026-08-05 읽기 대상 이사 — 재분류 본문이 index.ts 인라인에서 `reclassify-lane.ts` 로
-  //   추출됐다(DO 알람 이관: cron·알람 두 경로가 같은 본문을 불러야 해서). 계약은 그대로다.
+  //   추출됐다(DO 알람 이관: cron·알람 두 경로가 같은 본문을 불러야 해서). 계약은 그대로 —
+  //   main(#1076)의 cpu-quantum 배선(`await … env.DB`)도 추출 모듈에서 그대로 지킨다.
   it('재분류 루프가 행 총량으로도 멈춘다 — 시간 조건만 남으면 08-04 상태 그대로다', () => {
     const src = read('src/features/marketing/api/reclassify-lane.ts')
-    expect(src).toMatch(/const \{ rowsPerPass, maxRows, deadlineMs \} = reclassifyWorkPlan\(env\)/)
+    expect(src).toMatch(/const \{ rowsPerPass, maxRows, deadlineMs \} = await reclassifyWorkPlan\(env, env\.DB\)/)
     expect(src).toMatch(/rows < maxRows/)
     // 고정 1000 이 루프에 다시 박히면 요금제가 닿을 길이 없다
     expect(src).not.toMatch(/reclassifyCompanyLeads\(env\.DB, 1000/)

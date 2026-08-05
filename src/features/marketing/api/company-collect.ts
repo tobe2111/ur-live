@@ -13,7 +13,7 @@
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue, rowsWorthReading, companyRunDeadlineMs } from './collect-budget'
-import { noteNaverCall, flushNaverCalls } from './naver-api-usage'
+import { noteNaverCall, flushNaverCalls, armNaverAndReadSettings } from './naver-api-usage'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
 import { buildKeywordRows, rotationWindow, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
@@ -31,7 +31,7 @@ const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
  */
 async function laneFetch(url: string, init: RequestInit & { timeoutMs?: number }, budget?: FetchBudget): Promise<Response | null> {
   const { timeoutMs = 12000, ...rest } = init
-  noteNaverCall(url) // 📟 네이버 오픈API 계측(호스트 아니면 no-op) — 실패분도 쿼터를 먹으므로 호출 전에 센다
+  if (!noteNaverCall(url)) return null // 📟 계측+일일목표(90%) 게이트. 실패분도 쿼터를 먹어 호출 전에 센다
   try {
     return await fetch(url, { ...rest, signal: AbortSignal.timeout(timeoutMs) })
   } catch (err) {
@@ -297,9 +297,9 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const clientId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
   const clientSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
-  const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
+  const pick = await armNaverAndReadSettings(DB, [STATS_KEY]) // 🔫 쿼터는 앱 단위 — B2B 도 같은 90% 목표에 묶는다(왕복 추가 0)
   let prev: CompanyCollectStats | null = null
-  try { prev = prevRaw?.value ? JSON.parse(prevRaw.value) as CompanyCollectStats : null } catch { prev = null }
+  try { const v = pick(STATS_KEY); prev = v ? JSON.parse(v) as CompanyCollectStats : null } catch { prev = null }
 
   if (!clientId || !clientSecret) {
     const s: CompanyCollectStats = { last_run: stamp, found: 0, saved: 0, keywords: [], cursor: prev?.cursor || 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: false, error: 'NOT_CONFIGURED: NAVER_SEARCH_CLIENT_ID/SECRET 미설정' } }
@@ -502,10 +502,8 @@ const SWEEP_BOOKKEEPING_RESERVE = 6
  * 느린 응답이 계속 쌓여 부모 cron 의 CPU 를 태운다(`dispatch-budget.ts` 가 기록한 그 구조:
  * 부모가 죽으면 매달린 자식이 전부 끌려간다).
  *
- * ✅ **여기는 기아 걱정이 없다** — 대상 선택이 `kakao_checked_at < now-30days` 이고 도장은
- *   **실제 시도한 행에만** 찍힌다(2026-07-28 수리). 마감선에 잘린 행은 도장이 없으니
- *   다음 라운드에 그대로 다시 잡힌다. 그래서 회전 커서가 따로 필요 없다.
- *   (`notice-scan`·`email-mx-sweep` 은 선택이 고정 순서라 회전을 같이 넣어야 했다 — 구조가 다르다.)
+ * ⚠️ **"기아 걱정 없다"던 옛 주석은 틀렸다**(2026-08-04 실측이 반증) — 도장은 시도분에만 찍히지만
+ *   30일 쿨다운이 **한 바퀴(411일)보다 짧아** 앞줄이 계속 재적격됐다. 수리: 아래 `ORDER BY` 주석.
  */
 const SWEEP_RUN_DEADLINE_MS = 12_000
 const SWEEP_RUN_DEADLINE_MS_PAID = 24_000
@@ -537,15 +535,17 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   //   예산을 셌는데 천장이 무료 캡(기본 60)이라 시도 가능한 행은 ~50개뿐 — 550행은 역직렬화만
   //   되고 아래 `break` 에 버려졌다. 실측: 이 레인이 6,640ms 에 CPU 한도로 사망(벽시계 마감 12s 는
   //   닿지도 못했다 — CPU 는 벽시계를 못 넘으니 그건 대기가 아니라 계산이다).
-  //   ⚠️ 처리 대상·순서 불변(잘린 꼬리는 원래 안 쓰던 행, 도장은 시도분에만 → 기아 없음).
-  //   근거·한계: `rowsWorthReading` 헤더.
+  //   ⚠️ 대상 불변(잘린 꼬리는 원래 안 쓰던 행, 도장은 시도분에만). 근거·한계: `rowsWorthReading` 헤더.
   const rowCap = rowsWorthReading(budget.left - SWEEP_BOOKKEEPING_RESERVE, cap)
-  // 🎯 tier 오름차순 = 접촉 가치 순. 도장 쿨다운으로 재시도를 통제(커서 없음 — 위 헤더 주석 참조).
+  // 🎯 정렬 = ① 미조회 → ② 연락처 없음 → ③ tier(접촉 가치) → id. 🩹 2026-08-04 기아 수리(실측: storeinfo
+  //   17,979건이 주소를 갖고도 카카오 조회 **0건** — 앞의 tier4 12.9만을 하루 360조회로 지나는 데만 358일).
+  //   ②는 이미 이메일 있는 리드에 희소한 조회를 안 쓰기 위함(목표는 조회 수가 아니라 *부를 수 있는 사람
+  //   수*). tier 정의는 불변, 축만 늘렸다. 근거·한계: `tests/unit/kakao-sweep-order.test.ts`.
   const rows = (await DB.prepare(
     `SELECT id, company_name, region, address FROM ad_company_leads
      WHERE merged_into IS NULL AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != ''
        AND (kakao_checked_at IS NULL OR kakao_checked_at < datetime('now', '-30 days'))
-     ORDER BY (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)
+     ORDER BY (kakao_checked_at IS NOT NULL) ASC, (email IS NOT NULL AND email <> '') ASC, (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)
     .bind(rowCap).all<{ id: number; company_name: string; region: string | null; address: string }>().catch(() => null))?.results || []
   if (!rows.length) return { scanned: 0, found: 0, cursor: 0, done: true }
   let found = 0

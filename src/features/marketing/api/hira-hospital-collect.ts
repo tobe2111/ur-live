@@ -10,6 +10,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { envLaneBudget , envPlanValue} from './collect-budget'
+import { applyQuantum, readLaneSettings } from './cpu-quantum'
 import { ensureProspectSchema, saveProspects, type StoreProspect } from './store-prospects'
 import { serviceKeyParam } from './public-data-diag'
 
@@ -86,23 +87,25 @@ const HIRA_DEADLINE_MS = 20_000
 const HIRA_DEADLINE_MS_PAID = 60_000
 
 export async function runHiraHospitalCollect(env: Env, maxPagesArg?: number): Promise<HiraStats> {
-  // 🎚️ 회차당 일감도 **요금제를 따른다** — 예산만 커지고 이 숫자가 고정이면 늘어난 예산이 남는다.
-  //   호출부가 명시로 넘기면 그 값이 이긴다(수동 트리거·테스트가 그렇게 쓴다).
-  const maxPages = maxPagesArg ?? envPlanValue(undefined, 3, 12, env)
   const DB = env.DB
   await ensureProspectSchema(DB)
+  // 🧠 통계·커서·CPU 학습배수를 **한 문장으로** 읽는다(예전 2회 → 1회, 서브리퀘스트 절약).
+  const cfg = await readLaneSettings(DB, [STATS_KEY, CURSOR_KEY], 'ads:collect-hira')
+  // 🎚️ 회차당 일감도 **요금제를 따른다** — 예산만 커지고 이 숫자가 고정이면 늘어난 예산이 남는다.
+  //   호출부가 명시로 넘기면 그 값이 이긴다(수동 트리거·테스트가 그렇게 쓴다).
+  //   🧠 그 위에 CPU 학습배수를 곱한다 — 이 레인은 오늘 6,409ms 에 CPU 로 죽었고, 페이지 한 장이
+  //     곧 파싱량이라 **페이지 수가 이 레인의 작업량 노브**다. 학습이 없으면 q=1 이라 현행 그대로.
+  const maxPages = maxPagesArg ?? applyQuantum(envPlanValue(undefined, 3, 12, env), cfg.q, 1)
   const now = new Date()
   const stamp = now.toISOString().slice(0, 19).replace('T', ' ')
   const todayYmd = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, '0')}${String(now.getUTCDate()).padStart(2, '0')}`
   const key = env.PUBLIC_DATA_SERVICE_KEY || (env as unknown as { NTS_API_KEY?: string }).NTS_API_KEY || ''
-  const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
   let prev: HiraStats | null = null
-  try { prev = prevRaw?.value ? JSON.parse(prevRaw.value) as HiraStats : null } catch { prev = null }
+  try { const v = cfg.get(STATS_KEY); prev = v ? JSON.parse(v) as HiraStats : null } catch { prev = null }
   const persist = async (s: HiraStats) => { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null) }
   if (!key) { const s: HiraStats = { last_run: stamp, page: 0, found: 0, saved: 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: false, error: 'NOT_CONFIGURED: PUBLIC_DATA_SERVICE_KEY 미설정' } }; await persist(s); return s }
 
-  const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY).first<{ value: string }>().catch(() => null)
-  let page = parseInt(curRaw?.value || '1', 10); if (!Number.isFinite(page) || page < 1) page = 1
+  let page = parseInt(cfg.get(CURSOR_KEY) || '1', 10); if (!Number.isFinite(page) || page < 1) page = 1
 
   let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
   let retried = false, retryNote: string | undefined

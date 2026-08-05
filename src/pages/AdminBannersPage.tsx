@@ -7,6 +7,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, Link as LinkIcon, Image as ImageIcon, X } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import BannerMediaUpload from './admin/banners/BannerMediaUpload'
 // 🏠 2026-08-04: 배너 **자리**(히어로/중간/와이드) + **영상 배경**. 자리 종류는 SSOT 에서만 온다.
 //   🔴 '노출 안 함'(null)이 기본 상태다 — 자리를 고른 배너만 홈에 뜬다.
 import { BANNER_SLOTS, BANNER_SLOT_LABELS, NEW_BANNER_SLOT, type BannerSlot } from '@/shared/constants/home-showcase'
@@ -201,7 +202,7 @@ export default function AdminBannersPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.banners.k017', { defaultValue: '이미지 URL *' })}</label>
-              <input type="url" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="https://..." required />
+              <BannerMediaUpload kind="image" value={formData.image_url} onChange={url => setFormData({ ...formData, image_url: url })} />
               <div className="mt-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
                 <p className="text-xs font-semibold text-blue-700 mb-1.5">📐 권장 이미지 규격 (메인 hero 배너)</p>
                 <ul className="space-y-1 text-xs text-blue-600">
@@ -221,13 +222,7 @@ export default function AdminBannersPage() {
             {formData.banner_slot === 'hero' && (
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">영상 URL (선택)</label>
-                <input
-                  type="url"
-                  value={formData.video_url}
-                  onChange={e => setFormData({ ...formData, video_url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  placeholder="https://.../hero.mp4"
-                />
+                <BannerMediaUpload kind="video" value={formData.video_url} onChange={url => setFormData({ ...formData, video_url: url })} />
                 <p className="mt-1.5 text-xs text-gray-400">
                   넣으면 배경이 영상(무음·자동재생·반복)이 됩니다. <strong className="text-gray-500">위 이미지는 영상이 뜨기 전 표지</strong>로 쓰이니
                   같이 넣어 주세요 — 안 넣으면 로딩 동안 검은 화면입니다. MP4(H.264) 5MB 이하 권장.

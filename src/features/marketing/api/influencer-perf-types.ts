@@ -14,6 +14,11 @@ export interface NaverEnrichDiag {
   /** 📧 그중 **이메일**만(2026-07-29) — `contacts` 는 인스타·링크만 채워도 +1 이라 '쓸 수 있는 리드'를 못 센다.
    *  실제로 풀에서 with_contact(3,542)가 with_email(2,359)보다 빨리 늘고 있었는데 그 격차가 안 보였다. */
   emails?: number
+  /** 🚧 **차단으로 판정돼 스탬프 없이 넘긴 행**(2026-08-04). `failed` 의 부분집합이다.
+   *  이게 0 보다 크면 그 회차의 수율은 **키워드 성적이 아니라 사고 기록**이다 — `naver-crawl-block.ts`. */
+  blocked?: number
+  /** 🚧 회차 말 차단 스냅샷(연속·누적·발동 여부). `tripped` 참이면 남은 행을 안 집고 멈춘 것. */
+  crawl_block?: { streak: number; blocked: number; ok: number; tripped: boolean }
   selected?: number   // 후보 SELECT 가 실제로 돌려준 행 수(0 이면 큐가 빈 것 · >0 인데 tried 0 이면 전량 스킵)
   skipped?: number    // 핸들을 못 살려 스킵한 행(= 복구 불가 — healNaverHandles 의 unfixable 과 같은 집합)
   healed?: number     // 🩹 이번 라운드에 channel_id/url 에서 핸들을 되살려 측정한 행

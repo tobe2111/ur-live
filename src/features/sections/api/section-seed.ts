@@ -31,20 +31,16 @@ interface SeedSection {
   more_href: string
 }
 
-/** 시안(2026-08-04 승인)의 세 줄 그대로. */
+/**
+ * 기본 노출 줄.
+ * ⚠️ 2026-08-04 대표 지시로 **'오늘 마감 임박' 은 뺐다**("아예 필요없어").
+ *   규칙(`deadline`) 자체는 살아 있어 어드민에서 언제든 다시 만들 수 있다.
+ */
 export const HOME_SECTION_SEED: SeedSection[] = [
   {
     title: '지금 인기 이용권',
     subtitle: '많이 팔린 순으로 모았어요',
     source: 'popular',
-    source_value: null,
-    limit_count: SECTION_DEFAULT_LIMIT,
-    more_href: '/group-buy',
-  },
-  {
-    title: '오늘 마감 임박',
-    subtitle: '곧 끝나요 — 놓치기 전에',
-    source: 'deadline',
     source_value: null,
     limit_count: SECTION_DEFAULT_LIMIT,
     more_href: '/group-buy',
