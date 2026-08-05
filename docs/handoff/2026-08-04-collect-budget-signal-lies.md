@@ -219,3 +219,22 @@ finalPicks **맨 앞**(예산이 앞에서 끊기므로). 총 픽 수 불변 = �
 📌 **곁가지 관측(코드 안 바꿈)**: pri 풀이 315/399 = **79%** — "우선" 카테고리가 다수가 돼
 우선의 의미가 소멸했고, gen(65개, 2.7일 주기)보다 pri(11일 주기)가 오히려 느리다.
 `PRIORITY_CATEGORIES` 축소는 축 정책이라 대표 판단 사항.
+
+## 12) 판정 앞당김 + 2차 이관 5레인 (2026-08-05 오전)
+
+**24시간을 기다릴 필요가 없었다** — 달력이 아니라 역사적 사망 시각(07:00·10:00 KST)의 통과가 검증이다.
+10:00 KST 회차가 완벽한 대조 실험으로 끝났다:
+
+```
+같은 회차:  sheets-sync(알람)            ok=true 10.8s   ← 어제까지 매일 죽던 시각
+           collect-company(cron 잔류)    CPU 사망
+           sweep-kakao-chain(cron 잔류)  CPU 사망
+```
+배포 후 사망 0 (이전 3일 ×16) ⇒ **이관 방식 성공 확정** → 즉시 2차 이관.
+
+**2차 이관 5레인**: collect-company(홀수시 의도 보존) · sweep-kakao-chain · reclassify-company?passes=5
+(본문을 `reclassify-lane.ts` 로 추출 — 두 경로 공용, 뮤테이션 앵커 2건 이사) · collect-store-kakao · collect-neis.
+규약은 sheets-sync 와 동일(runsPerHour 1 · 게이트는 러너 안 · cron 은 !laneAlarmOn).
+⚠️ 킬스위치 레인(sweep/reclassify — 기본 ON)과 기본-OFF 레인의 게이트 방향이 반대다 — 테스트가 그걸 안다.
+
+부모 cron 부담: 알람 부트 4→9 (부트당 ~0.6s·서브리퀘스트 1 — 정각 예산 내).

@@ -100,8 +100,11 @@ describe('🚧 배선 — 순수함수만 만들고 호출부에 안 걸면 아�
     expect(budget).toBeLessThan(select)
   })
 
-  it('재분류 루프가 행 총량으로도 멈춘다 — 시간 조건만 남으면 08-04 상태 그대로다', async () => {
-    const src = read('src/worker-ads/index.ts')
+  // 🗺️ 2026-08-05 읽기 대상 이사 — 재분류 본문이 index.ts 인라인에서 `reclassify-lane.ts` 로
+  //   추출됐다(DO 알람 이관: cron·알람 두 경로가 같은 본문을 불러야 해서). 계약은 그대로 —
+  //   main(#1076)의 cpu-quantum 배선(`await … env.DB`)도 추출 모듈에서 그대로 지킨다.
+  it('재분류 루프가 행 총량으로도 멈춘다 — 시간 조건만 남으면 08-04 상태 그대로다', () => {
+    const src = read('src/features/marketing/api/reclassify-lane.ts')
     expect(src).toMatch(/const \{ rowsPerPass, maxRows, deadlineMs \} = await reclassifyWorkPlan\(env, env\.DB\)/)
     expect(src).toMatch(/rows < maxRows/)
     // 고정 1000 이 루프에 다시 박히면 요금제가 닿을 길이 없다
@@ -109,7 +112,7 @@ describe('🚧 배선 — 순수함수만 만들고 호출부에 안 걸면 아�
   })
 
   it('무엇이 멈췄는지 남긴다 — "행에서 끊겼다"와 "시간에서 끊겼다"가 같아 보이면 조정할 수 없다', () => {
-    expect(read('src/worker-ads/index.ts')).toMatch(/stopped_by: last\.done \? 'done' : \(rows >= maxRows \? 'rows'/)
+    expect(read('src/features/marketing/api/reclassify-lane.ts')).toMatch(/stopped_by: last\.done \? 'done' : \(rows >= maxRows \? 'rows'/)
   })
 })
 

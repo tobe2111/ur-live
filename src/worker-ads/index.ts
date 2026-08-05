@@ -396,7 +396,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
   // 🤝 파트너(업체) 자동수집 — 홀수시만(인플루언서는 매시간 유지 → 반토막 방지, 겹침 최소). 네이버 지역검색(local.json).
   //   게이트 ADS_COMPANY_COLLECT_ENABLED(기본 OFF). 별도 FetchBudget/커서/키워드 → 인플루언서 트랙 무영향.
-  if (env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
+  if (!laneAlarmOn && env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
     gates.everyNHours(2, 1, '/__ads/collect-company', async () => { const { runCompanyAutoCollect } = await import('@/features/marketing/api/company-collect'); return runCompanyAutoCollect(env) })
   }
   // 📇 연락처 보강 자동 드레인 — **매시간, 수집 게이트와 분리**(2026-07-27 대표 "이메일 보유 대행사 13개" 원인:
@@ -428,39 +428,17 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     })
     // ☎️ 카카오 전용 전화 스윕 — 보류 대량 전화 채움(카카오 쿼터 10만/일 활용, 네이버·크롤 무접촉).
     //   체인 진입점 — 한 라운드(≈55건)에서 끝내지 않고 진전이 있는 한 이어 돈다(chain.routes.ts 주석).
-    kick('/__ads/sweep-kakao-chain', async () => { const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect'); return runKakaoPhoneSweep(env) })
+    if (!laneAlarmOn) kick('/__ads/sweep-kakao-chain', async () => { const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect'); return runKakaoPhoneSweep(env) })
     // 🧭 소급 재분류 — 매시간 5패스×1000건(DB-only, 외부 API 0·예산 무소모 — 규칙 버전 bump 후 전량
     //   재검사도 클릭 없이 ~하루면 자동 소진). 기사제목/키워드메아리/쓰레기전화/의심이름 자동 청소.
     // ⚠️ beat 를 **현재 이름 그대로** 고정한다(쿼리 포함). 깔끔한 이름으로 바꾸면 라이브의 옛 행
     //   `ads:reclassify-company?passes=5` 가 남아 stale watch 가 영원히 울린다 — 이름은 못생겨도 안정이 먼저다.
     //   passes 값을 바꿔도 하트비트가 개명되지 않는다(그게 이 고정의 목적).
-    kick('/__ads/reclassify-company?passes=5', async () => {
-      const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery')
-      const { reclassifyWorkPlan } = await import('@/features/marketing/api/collect-budget')
-      /**
-       * ⏱️ **패스 루프에 마감선** (2026-08-03 라이브 실측 — 이 레인은 **매시간 CPU 한도로 죽고 있었다**).
-       *
-       *   `cron_hb:ads:reclassify-company?passes=5` → `ok=false ms=3880 detail=Worker exceeded CPU time limit.`
-       *   5패스 × 1,000행 × 행당 정규식 ~20개 = **10만 회**를 한 인보케이션에서 돌린다. 이건
-       *   `ads-cpu-work-cap` 이 이미 세운 교리 — *"막아야 하는 건 페이지 크기가 아니라 **인보케이션당 총량**"* —
-       *   을 이 **호출부**가 어기고 있던 것이다(함수 자체는 호출당 1,000행으로 이미 묶여 있다).
-       *
-       *   ✅ **커버리지 손실 0**: 각 패스가 끝날 때 커서를 저장하고 `done:false` 로 남긴다 —
-       *     일찍 멈춰도 다음 회차가 그 지점부터 이어받는다(시간만 더 걸린다).
-       *   ⚠️ 벽시계는 CPU 의 **근사**다(대기 시간이 섞인다). 정확한 계측은 런타임이 안 준다 —
-       *     그래서 관측된 사망 지점(3,880ms)의 **절반 아래**로 잡는다.
-       *
-       *   🩹 **2026-08-04 — 시간만으론 못 막았다.** 마감선 1,800ms 를 넣고도 `ms=1316` 에 CPU 한도로
-       *     죽었다(자기 마감선에 닿기도 전에). 외부 호출 없는 DB-only 루프라 **벽시계가 안 흐르는데
-       *     정규식은 CPU 를 계속 태운다** ⇒ 교리대로 **행 총량**으로도 묶는다(시간 상한은 병행).
-       */
-      const { rowsPerPass, maxRows, deadlineMs } = await reclassifyWorkPlan(env, env.DB) // 🧠 CPU 사망 학습분 반영(cpu-quantum.ts)
-      const t0 = Date.now()
-      let last = await reclassifyCompanyLeads(env.DB, rowsPerPass) // 첫 패스만 housekeeping(억제 스윕)
-      let passes = 1, rows = rowsPerPass
-      for (; passes < 5 && !last.done && rows < maxRows && Date.now() - t0 < deadlineMs; passes++, rows += rowsPerPass) last = await reclassifyCompanyLeads(env.DB, rowsPerPass, false)
-      // 관측: 매번 상한에서 끊기면 더 내려야 한다는 신호다(그때 커서 전진률을 같이 볼 것).
-      return { ...last, passes, rows, elapsed_ms: Date.now() - t0, stopped_by: last.done ? 'done' : (rows >= maxRows ? 'rows' : (Date.now() - t0 >= deadlineMs ? 'deadline' : 'passes')) }
+    //   ⏰ 2026-08-05: 본문은 `reclassify-lane.ts` 로 추출(알람 이관 — 두 경로가 같은 것을 씀. 마감선·
+    //   행상한 근거도 그 파일 헤더로 이동). 알람이 몰면 아래 개별 게이트가 cron 쪽을 끈다.
+    if (!laneAlarmOn) kick('/__ads/reclassify-company?passes=5', async () => {
+      const { runReclassifyLane } = await import('@/features/marketing/api/reclassify-lane')
+      return runReclassifyLane(env)
     }, { beat: 'reclassify-company?passes=5' })
   }
   // 🏭 2026-07-28: 제조사·판매사 풀 자동 수집 — **배선 누락 수리**(대표 "제조사는 왜 저렇게 적어?").
@@ -478,7 +456,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
   // 🏪 무인매장(아이스크림 할인점·무인판매점) — 매시간. 카카오 로컬 키워드 검색이라 인허가 승인과 무관하고
   //   **전화가 함께 들어온다**(네이버 지역검색은 전화가 빈값). 게이트 ADS_STORE_KAKAO_ENABLED(기본 OFF).
-  if ((env as unknown as { ADS_STORE_KAKAO_ENABLED?: string }).ADS_STORE_KAKAO_ENABLED === 'true') {
+  if (!laneAlarmOn && (env as unknown as { ADS_STORE_KAKAO_ENABLED?: string }).ADS_STORE_KAKAO_ENABLED === 'true') {
     kick('/__ads/collect-store-kakao', async () => {
       const { runStoreKakaoCollect } = await import('@/features/marketing/api/store-kakao-collect')
       return runStoreKakaoCollect(env)
@@ -526,7 +504,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   넘기면 그 기본값이 죽는다. 되돌림 근거(6→3 · CPU 26초)는 값 옆(neis-academy-collect)에 있고,
   //   `ads-cpu-deadline` 유닛이 그 위치에서 무료 실효값을 고정한다.
   //   ⚠️ 무료 값을 올리려면 하트비트의 `ms` 를 먼저 볼 것. 26,000 근처면 그게 천장이다.
-  if ((env as unknown as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED === 'true') {
+  if (!laneAlarmOn && (env as unknown as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED === 'true') {
     kick('/__ads/collect-neis', async () => { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return runNeisAcademyCollect(env) })
   }
   if ((env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {
