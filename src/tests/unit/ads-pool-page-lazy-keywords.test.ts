@@ -21,6 +21,8 @@ const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
 const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
 const PAGE = code(read('src/pages/admin/AdminInfluencerPoolPage.tsx'))
 const MGR = code(read('src/pages/admin/influencer-pool/KeywordManager.tsx'))
+// 🔁 2026-08-05: 로더 3종이 페이지 600줄 래칫으로 훅(usePoolMeta)으로 옮겨졌다. 불변식은 그대로 — 보는 위치만 이동.
+const HOOK = code(read('src/pages/admin/influencer-pool/usePoolMeta.ts'))
 
 describe('첫 페인트 — 키워드 224KB 를 받지 않는다', () => {
   it('🔒 마운트 이펙트는 통계만 부른다', () => {
@@ -30,8 +32,10 @@ describe('첫 페인트 — 키워드 224KB 를 받지 않는다', () => {
   })
 
   it('🔒 통계와 키워드가 분리된 함수다 — 한 덩어리면 나눠 부를 수 없다', () => {
-    expect(PAGE).toMatch(/const loadStats = useCallback/)
-    expect(PAGE).toMatch(/const loadKeywords = useCallback/)
+    expect(HOOK).toMatch(/const loadStats = useCallback/)
+    expect(HOOK).toMatch(/const loadKeywords = useCallback/)
+    // 페이지는 그 훅을 실제로 쓴다 — 훅만 있고 안 부르면 아무 효과가 없다.
+    expect(PAGE).toMatch(/usePoolMeta\(applyMeta\)/)
   })
 
   it('🔒 정비 폴링(10초)은 통계만 — 아니면 224KB 를 10초마다 다시 받는다', () => {
@@ -39,7 +43,7 @@ describe('첫 페인트 — 키워드 224KB 를 받지 않는다', () => {
   })
 
   it('🔒 키워드 편집 뒤에는 둘 다 다시 받는다(분류 통계도 같이 바뀐다)', () => {
-    expect(PAGE).toMatch(/const loadMeta = useCallback\(async \(\) => \{ await Promise\.all\(\[loadStats\(\), loadKeywords\(\)\]\) \}/)
+    expect(HOOK).toMatch(/const loadMeta = useCallback\(async \(\) => \{ await Promise\.all\(\[loadStats\(\), loadKeywords\(\)\]\) \}/)
     expect(PAGE).toMatch(/onChanged=\{loadMeta\}/)
   })
 })

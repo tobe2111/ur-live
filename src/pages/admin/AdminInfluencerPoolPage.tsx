@@ -12,7 +12,8 @@ import CollectDiagPanel, { type RunStats, type MaintenanceRecord, type EnrichLan
 import FulfillBanner from './influencer-pool/FulfillBanner'
 import { pickReach } from './influencer-pool/reach'
 import { useCollectRun } from './influencer-pool/useCollectRun'
-import KeywordManager, { type Keyword } from './influencer-pool/KeywordManager'
+import KeywordManager from './influencer-pool/KeywordManager'
+import { usePoolMeta } from './influencer-pool/usePoolMeta'
 import SendModeButtons from './influencer-pool/SendModeButtons'
 import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
 import ColdSendPanel from './influencer-pool/ColdSendPanel'
@@ -85,7 +86,6 @@ export default function AdminInfluencerPoolPage() {
   const [maintenanceRescan, setMaintenanceRescan] = useState<MaintenanceRecord | null>(null) // 🌙 야간 라이브 재보정(04시)
   const [enrichLane, setEnrichLane] = useState<EnrichLaneRecord | null>(null)             // 📝 보강 전용 레인(시간당 N라운드) 마지막 결과
   const [catFunnel, setCatFunnel] = useState<CategoryFunnelRow[]>([])                     // 📊 카테고리별 전환
-  const [keywords, setKeywords] = useState<Keyword[]>([])
   const [platform, setPlatform] = useState('')
   const [hasContact, setHasContact] = useState(false)
   const [hasEmail, setHasEmail] = useState(false)
@@ -186,30 +186,8 @@ export default function AdminInfluencerPoolPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maintainRunning])
 
-  /**
-   * ⚡ **키워드는 패널을 열 때만 받는다** (2026-08-05 대표 "로딩이 너무 느린데").
-   *
-   *   실측: 첫 로딩 3콜 중 `/keywords` 가 **224KB** 로 전체 310KB 의 72% 였다. 그런데 그 데이터를 쓰는
-   *   `KeywordManager` 는 **접힌 `<details>`** 라 열기 전엔 본문도 안 그린다 — 대부분의 방문에서
-   *   224KB 를 받아 파싱만 하고 버렸다. (`SELECT ... LIMIT 1000` 이라 비활성 키워드까지 전부 온다.)
-   *   ⇒ 통계만 먼저 그리고, 키워드는 **처음 펼칠 때** 가져온다.
-   */
-  const loadStats = useCallback(async () => {
-    try {
-      const s = await api.get('/api/admin/ads/influencer-pool/stats')
-      if (s.data?.success) applyMeta(s.data)
-    } catch { /* soft */ }
-  }, [applyMeta])
-
-  const loadKeywords = useCallback(async () => {
-    try {
-      const k = await api.get('/api/admin/ads/influencer-pool/keywords')
-      if (k.data?.success) setKeywords(k.data.keywords || [])
-    } catch { /* soft */ }
-  }, [])
-
-  // 키워드를 편집한 뒤엔 통계(카테고리 분포)도 같이 바뀌므로 둘 다 다시 받는다.
-  const loadMeta = useCallback(async () => { await Promise.all([loadStats(), loadKeywords()]) }, [loadStats, loadKeywords])
+  // ⚡ 통계/키워드 분리 로드 — 정책은 `influencer-pool/usePoolMeta.ts`(첫 페인트 224KB 제거).
+  const { keywords, loadStats, loadKeywords, loadMeta } = usePoolMeta(applyMeta)
 
   useEffect(() => { loadStats() }, [loadStats])   // ⚡ 첫 페인트는 통계만 — 키워드는 패널 열 때
   useEffect(() => { loadLeads() }, [loadLeads])
