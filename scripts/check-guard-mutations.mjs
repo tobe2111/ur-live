@@ -2278,6 +2278,27 @@ const MUTATIONS = [
       '**오타난 웹훅·삭제된 채널도 초록**으로 보인다. 그러면 대표는 채널이 살아 있다고 믿고 ' +
       '다음 장애를 또 놓친다 — 이 경로 전체의 존재 이유가 사라지는 형태.',
   },
+  {
+    name: '축 몫이 풀 크기를 무시(작은 전략 축이 7배 빨리 돌아 큰 축이 굶음)',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: '  const w = [avail[0] * mult.focus, avail[1] * mult.priority, avail[2] * mult.general]',
+    replace: '  const w = [mult.focus, mult.priority, mult.general]',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '가중치에서 풀 크기를 빼면 옛 규칙(고정 비율)으로 되돌아간다. 라이브에서 그 규칙이 만든 결과는 ' +
+      '집중 19개가 4슬롯 · 우선 315개가 9슬롯 = **키워드당 7배** 였고, 숙소 19개 중 12개가 한 번도 못 돌았다. ' +
+      '에러가 없어 안 보이고, 키워드를 더 넣을수록 조용히 나빠진다.',
+  },
+  {
+    name: '작은 축 바닥 1슬롯이 사라짐(반올림이 전략 축을 삼킴)',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: '  for (const i of order) { if (left > 0 && avail[i] > 0) { out[i] = 1; left-- } }',
+    replace: '  void order',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '순수 비례만 하면 회차 6슬롯에서 집중 축(19)이 0.45 → **매 회차 0** 이 된다. 전략 축이 ' +
+      '정책이 아니라 반올림 때문에 꺼지는 형태 — 아무도 끈 적 없는데 안 돈다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

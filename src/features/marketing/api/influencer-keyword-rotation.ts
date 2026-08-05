@@ -35,35 +35,73 @@ export const PRIORITY_CATEGORIES = ['공동구매', '맛집', '푸드', '외식�
  */
 export const FOCUS_CATEGORIES = ['마케팅대행사']
 
-/** 집중 축이 가져가는 몫(배치 대비). 1/4 — 나머지를 기존 3:1(우선:일반)로 다시 나눈다. */
-export const FOCUS_SHARE = 0.25
+/**
+ * 🔁 **축별 회전 배수** — 몫을 *슬롯 수*가 아니라 *한 바퀴 시간*으로 정한다 (2026-08-05 대표 "가장 이상적으로").
+ *
+ * ## 왜 바꿨나 (라이브 실측)
+ * 예전 규칙은 **슬롯 비율 고정**이었다(집중 25%, 나머지를 우선:일반 3:1). 그러면 풀 크기가 변할 때마다
+ * 한 바퀴 시간이 제멋대로 흘러간다 — **맛집에 키워드를 더 넣으면 숙소가 조용히 굶는다.** 아무도 그걸
+ * 바꾼 적이 없는데도. 2026-08-05 실측이 정확히 그 누적 결과였다:
+ *
+ *   집중 19개가 4슬롯(키워드당 0.211) · 우선 315개가 9슬롯(0.029) · 일반 65개가 3슬롯(0.046)
+ *   ⇒ **집중 축 키워드가 우선 축보다 7배 자주** 돌았다. 마케팅대행사 19개 중 18개가 24h 내 실행된 반면
+ *     숙소 19개는 12개가 **한 번도 안 돌았고** 24h 실행 0, 골프 6개 전부 미실행.
+ *
+ * ## 새 규칙
+ * 몫 ∝ (그 축의 가용 키워드 수) × (배수). 이러면 **한 바퀴 시간 ∝ 1/배수** 가 되어 풀 크기와 무관해진다 —
+ * 축에 키워드를 100개 더 넣어도 다른 축의 순번이 밀리지 않는다(그 축이 느려질 뿐이다).
+ *
+ * 배수는 대표가 정한 축 우선순위를 **그대로 보존**한다. 다만 "집중이 25% 슬롯"이 아니라
+ * "집중이 3배 자주 돈다"로 표현이 바뀌었다. 값을 바꾸려면 여기 숫자 하나만 고치면 된다.
+ */
+export const AXIS_ROTATION_MULTIPLIER = { focus: 3, priority: 2, general: 1 } as const
 
 /**
  * 배치를 [집중 · 우선 · 일반] 으로 나눈다 — **순수**(유닛으로 고정).
  *
- *   불변식 셋:
+ *   불변식 넷(앞 셋은 종전과 동일):
  *     ① 합계는 `total` 을 절대 안 넘는다
  *     ② 슬롯을 버리지 않는다 — 가용 키워드가 있으면 `min(total, 가용합계)` 만큼 꽉 채운다
  *     ③ 각 몫은 그 풀의 **실제 가용 수**를 안 넘는다(= 빈 풀은 자동 반납)
+ *     ④ 🆕 비지 않은 축은 **최소 1슬롯**을 받는다(슬롯이 축 수보다 많을 때) —
+ *        비례 배분만 하면 작은 풀(집중 19)이 큰 풀(우선 315) 옆에서 **매 회차 0** 이 되어
+ *        전략 축이 사실상 꺼진다. 반올림이 정책을 삼키지 않게 하는 바닥이다.
  */
 export function planKeywordSplit(
-  total: number, focusAvail: number, priAvail: number, genAvail: number, focusShare = FOCUS_SHARE,
+  total: number, focusAvail: number, priAvail: number, genAvail: number,
+  mult: { focus: number; priority: number; general: number } = AXIS_ROTATION_MULTIPLIER,
 ): { nFocus: number; nPri: number; nGen: number } {
   const cap = Number.isFinite(total) ? Math.max(0, Math.floor(total)) : 0
   const av = (n: number) => (Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0)
-  const fA = av(focusAvail), pA = av(priAvail), gA = av(genAvail)
-  // ① 집중 축 — 가용분까지만(비면 0 → 그대로 아래로 흘러간다)
-  let nFocus = Math.min(fA, Math.ceil(cap * focusShare))
-  const rest = cap - nFocus
-  // ② 남은 몫을 기존 규칙(우선 3/4)대로. 일반이 모자라면 우선이 더 가져간다(기존 동작 보존).
-  const nGen0 = Math.min(gA, rest - Math.min(pA, Math.ceil(rest * 3 / 4)))
-  const nPri = Math.min(pA, rest - Math.max(0, nGen0))
-  const nGen = Math.max(0, Math.min(gA, rest - nPri))
-  // ③ 그래도 남으면 집중 축이 더 가져간다 — **슬롯을 버리지 않는다**.
-  //   🐛 이게 없으면 우선·일반이 비었을 때(예: 다른 축이 전부 고갈) 집중 축은 1/4 만 돌고
-  //   나머지 3/4 이 통째로 놀았다. 유닛이 `planKeywordSplit(8, 8, 0, 0)` 에서 그걸 잡았다.
-  nFocus = Math.min(fA, nFocus + (cap - nFocus - nPri - nGen))
-  return { nFocus, nPri, nGen }
+  const avail = [av(focusAvail), av(priAvail), av(genAvail)]
+  const w = [avail[0] * mult.focus, avail[1] * mult.priority, avail[2] * mult.general]
+  const budget = Math.min(cap, avail[0] + avail[1] + avail[2])
+  const out = [0, 0, 0]
+  if (budget <= 0) return { nFocus: 0, nPri: 0, nGen: 0 }
+
+  // ④ 바닥 — 비지 않은 축부터 1씩(가중치 큰 순). 슬롯이 모자라면 큰 축이 먼저 받는다.
+  const order = [0, 1, 2].sort((a, b) => w[b] - w[a])
+  let left = budget
+  for (const i of order) { if (left > 0 && avail[i] > 0) { out[i] = 1; left-- } }
+
+  // 비례 배분(최대잔여) — 바닥을 뺀 나머지를 가중치대로.
+  const wSum = w[0] + w[1] + w[2]
+  if (left > 0 && wSum > 0) {
+    const want = w.map(x => (left * x) / wSum)
+    const base = want.map(x => Math.floor(x))
+    for (let i = 0; i < 3; i++) { const add = Math.min(base[i], avail[i] - out[i]); out[i] += add; left -= add }
+    // 남은 슬롯은 소수부 큰 축부터 — 가용분이 남아 있는 축에만.
+    const rest = [0, 1, 2].sort((a, b) => (want[b] - Math.floor(want[b])) - (want[a] - Math.floor(want[a])))
+    while (left > 0) {
+      const i = rest.find(k => out[k] < avail[k])
+      if (i === undefined) break
+      out[i]++; left--
+      rest.push(rest.splice(rest.indexOf(i), 1)[0])   // 라운드로빈으로 돌려 한 축이 독식하지 않게
+    }
+  }
+  // ② 슬롯을 버리지 않는다 — 위에서 남았으면 가용분 있는 축이 마저 가져간다.
+  for (const i of order) { while (left > 0 && out[i] < avail[i]) { out[i]++; left-- } }
+  return { nFocus: out[0], nPri: out[1], nGen: out[2] }
 }
 
 export interface YtPickKeyword {
