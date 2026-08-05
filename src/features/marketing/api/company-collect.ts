@@ -14,6 +14,7 @@ import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue, rowsWorthReading, companyRunDeadlineMs } from './collect-budget'
 import { noteNaverCall, flushNaverCalls, armNaverAndReadSettings } from './naver-api-usage'
+import { KAKAO_SWEEP_SQL, tallySweep, type KakaoSweepRow, type SweepSourceTally } from './kakao-sweep-query'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
 import { buildKeywordRows, rotationWindow, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
@@ -537,16 +538,9 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   //   닿지도 못했다 — CPU 는 벽시계를 못 넘으니 그건 대기가 아니라 계산이다).
   //   ⚠️ 대상 불변(잘린 꼬리는 원래 안 쓰던 행, 도장은 시도분에만). 근거·한계: `rowsWorthReading` 헤더.
   const rowCap = rowsWorthReading(budget.left - SWEEP_BOOKKEEPING_RESERVE, cap)
-  // 🎯 정렬 = ① 미조회 → ② 연락처 없음 → ③ tier(접촉 가치) → id. 🩹 2026-08-04 기아 수리(실측: storeinfo
-  //   17,979건이 주소를 갖고도 카카오 조회 **0건** — 앞의 tier4 12.9만을 하루 360조회로 지나는 데만 358일).
-  //   ②는 이미 이메일 있는 리드에 희소한 조회를 안 쓰기 위함(목표는 조회 수가 아니라 *부를 수 있는 사람
-  //   수*). tier 정의는 불변, 축만 늘렸다. 근거·한계: `tests/unit/kakao-sweep-order.test.ts`.
-  const rows = (await DB.prepare(
-    `SELECT id, company_name, region, address FROM ad_company_leads
-     WHERE merged_into IS NULL AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != ''
-       AND (kakao_checked_at IS NULL OR kakao_checked_at < datetime('now', '-30 days'))
-     ORDER BY (kakao_checked_at IS NOT NULL) ASC, (email IS NOT NULL AND email <> '') ASC, (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)
-    .bind(rowCap).all<{ id: number; company_name: string; region: string | null; address: string }>().catch(() => null))?.results || []
+  // 🎯 줄 세우기 SSOT + 두 번의 수리 근거는 `kakao-sweep-query.ts` 헤더(자주 틀리는 자리라 분리했다).
+  const rows = (await DB.prepare(KAKAO_SWEEP_SQL)
+    .bind(rowCap).all<KakaoSweepRow>().catch(() => null))?.results || []
   if (!rows.length) return { scanned: 0, found: 0, cursor: 0, done: true }
   let found = 0
   const startedAt = Date.now()
@@ -554,12 +548,14 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   let stoppedBy: string | undefined
   const tried: number[] = []                                   // 시도한 행 → 도장(배치 1회)
   const hits: Array<{ id: number; phone: string }> = []        // 전화 확보분 → 저장(배치 1회)
+  const bySource: SweepSourceTally = {}                        // 📊 소스별 적중률 — 다음 단계(수율 가중)의 근거
   for (const r of rows) {
     if (budget.left <= SWEEP_BOOKKEEPING_RESERVE || budget.limitHit) { stoppedBy = 'budget'; break } // 아래 부기 몫을 남겨둔다(상수 주석 참조)
     if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }
     const k = await kakaoLocalLookup(key, r.company_name, r.region, r.address, budget)
     if (budget.limitHit) break // 한도 도달 — 이 행은 조회된 적 없으므로 도장도 찍지 않는다(다음 라운드 재시도)
     tried.push(r.id)
+    tallySweep(bySource, r.source, !!k.phone)
     if (k.phone) { found++; hits.push({ id: r.id, phone: k.phone }) }
   }
   // 💾 쓰기는 배치로 — 건건이 쓰면 부기(簿記)가 예산을 먹어 크롤 기회를 줄인다(보강 레인과 동일 교훈).
@@ -592,6 +588,9 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_kakao_sweep_stats', JSON.stringify({
     last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), scanned: rows.length, found, tried: tried.length, total_found: totalFound + found,
     day: kstToday, day_lookups: dayLookups + tried.length,
+    // 📊 이번 회차의 소스별 시도/적중. **아직 아무 판정에도 안 쓴다** — 증거 없이 가중하면
+    //   "storeinfo 수율 2.7%니 잘라내자"(실은 한 번도 조회된 적 없었다) 오판을 반복한다.
+    by_source: bySource,
     limit_hit: !!budget.limitHit, // 한도로 조기 중단했는가 — true 면 남은 행은 커서 미전진(다음 라운드 재시도)
     // 📟 왜 멈췄는지 — 'deadline' 이면 예산이 아니라 시간이 병목이다(둘의 처방이 다르다).
     stopped_by: stoppedBy,
