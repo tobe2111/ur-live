@@ -187,6 +187,18 @@ const MUTATIONS = [
       '조절기의 첫 시험대이기도 하다. 되돌아가도 초록불이라 사람이 못 잡는다.',
   },
   {
+    name: '침묵 경보가 은퇴 분류를 다시 건너뛴다(유령이 사람에게 간다)',
+    file: 'src/worker/cron/cron-stale-watch.ts',
+    find: "    && classifyBeat({ name: b.name, age_minutes: b.age_minutes, max_gap_min: b.max_gap_min }, fresh) === 'judge')",
+    replace: '    )',
+    test: 'src/tests/unit/cron-stale-watch-retirement.test.ts',
+    why:
+      '2026-08-04 에 만든 은퇴 분류가 `/api/_healthcheck/cron` 게이트에만 붙고 **이 경로엔 안 붙어** ' +
+      '디스코드·`cron_failures`·어드민 벨이 유령을 계속 신고했다(08-05 실측 `stale:*` 16건 중 대부분). ' +
+      '⚠️ 나쁜 이유는 소음이 아니라 **진짜를 덮는 것**이다 — 그 목록 안에 3일 멈춘 레인이 묻혀 있었다. ' +
+      '되돌아가도 경보는 계속 울리므로(오히려 더 울린다) **사람이 이상을 못 느낀다.**',
+  },
+  {
     name: 'CPU 자기교정 — 라이브에서 죽는 레인이 배수를 다시 무시한다',
     file: 'src/features/marketing/api/commerce-notify-collect.ts',
     find: "readLaneSettings(DB, [STATS_KEY], 'ads:collect-commerce')",
