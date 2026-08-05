@@ -181,23 +181,37 @@ export default function AdminInfluencerPoolPage() {
       return
     }
     wasMaintaining.current = true
-    const t = setInterval(() => { void loadMeta() }, 10_000)
+    const t = setInterval(() => { void loadStats() }, 10_000)   // ⚡ 진행 표시는 통계만 필요
     return () => clearInterval(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maintainRunning])
 
-  const loadMeta = useCallback(async () => {
+  /**
+   * ⚡ **키워드는 패널을 열 때만 받는다** (2026-08-05 대표 "로딩이 너무 느린데").
+   *
+   *   실측: 첫 로딩 3콜 중 `/keywords` 가 **224KB** 로 전체 310KB 의 72% 였다. 그런데 그 데이터를 쓰는
+   *   `KeywordManager` 는 **접힌 `<details>`** 라 열기 전엔 본문도 안 그린다 — 대부분의 방문에서
+   *   224KB 를 받아 파싱만 하고 버렸다. (`SELECT ... LIMIT 1000` 이라 비활성 키워드까지 전부 온다.)
+   *   ⇒ 통계만 먼저 그리고, 키워드는 **처음 펼칠 때** 가져온다.
+   */
+  const loadStats = useCallback(async () => {
     try {
-      const [s, k] = await Promise.all([
-        api.get('/api/admin/ads/influencer-pool/stats'),
-        api.get('/api/admin/ads/influencer-pool/keywords'),
-      ])
+      const s = await api.get('/api/admin/ads/influencer-pool/stats')
       if (s.data?.success) applyMeta(s.data)
-      if (k.data?.success) setKeywords(k.data.keywords || [])
     } catch { /* soft */ }
   }, [applyMeta])
 
-  useEffect(() => { loadMeta() }, [loadMeta])
+  const loadKeywords = useCallback(async () => {
+    try {
+      const k = await api.get('/api/admin/ads/influencer-pool/keywords')
+      if (k.data?.success) setKeywords(k.data.keywords || [])
+    } catch { /* soft */ }
+  }, [])
+
+  // 키워드를 편집한 뒤엔 통계(카테고리 분포)도 같이 바뀌므로 둘 다 다시 받는다.
+  const loadMeta = useCallback(async () => { await Promise.all([loadStats(), loadKeywords()]) }, [loadStats, loadKeywords])
+
+  useEffect(() => { loadStats() }, [loadStats])   // ⚡ 첫 페인트는 통계만 — 키워드는 패널 열 때
   useEffect(() => { loadLeads() }, [loadLeads])
 
   // 🔥 통합 수집 = 오늘 YouTube 예산(하루 100회) 소진까지 백그라운드 연속 수집(self-chain).
@@ -428,7 +442,7 @@ export default function AdminInfluencerPoolPage() {
           </div>
         </details>
 
-        <KeywordManager keywords={keywords} onChanged={loadMeta} />{/* 키워드 관리 — influencer-pool/ 추출(600줄 캡) */}
+        <KeywordManager keywords={keywords} onChanged={loadMeta} onFirstOpen={loadKeywords} />{/* 키워드 관리 — influencer-pool/ 추출(600줄 캡) */}
 
         {/* 필터 — 입력 UI 는 `influencer-pool/PoolFilters` 로 분리(페이지 600줄 캡). 상태는 여기 유지. */}
         <PoolFilters

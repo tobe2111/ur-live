@@ -1991,6 +1991,26 @@ const MUTATIONS = [
       '**오타난 웹훅·삭제된 채널도 초록**으로 보인다. 그러면 대표는 채널이 살아 있다고 믿고 ' +
       '다음 장애를 또 놓친다 — 이 경로 전체의 존재 이유가 사라지는 형태.',
   },
+  {
+    name: '풀 페이지 첫 페인트가 키워드 224KB 를 다시 받음',
+    file: 'src/pages/admin/AdminInfluencerPoolPage.tsx',
+    find: 'useEffect(() => { loadStats() }, [loadStats])',
+    replace: 'useEffect(() => { loadMeta() }, [loadMeta])',
+    test: 'src/tests/unit/ads-pool-page-lazy-keywords.test.ts',
+    why:
+      '첫 로딩 310KB 중 224KB(72%)가 키워드인데, 그걸 쓰는 패널은 접혀 있어 열기 전엔 본문도 안 그린다. ' +
+      '되돌아가면 대부분의 방문이 그 224KB 를 받아 파싱만 하고 버린다 — 대표가 "느리다"고 한 그 자리다.',
+  },
+  {
+    name: '정비 폴링이 10초마다 키워드까지 다시 받음',
+    file: 'src/pages/admin/AdminInfluencerPoolPage.tsx',
+    find: 'setInterval(() => { void loadStats() }, 10_000)',
+    replace: 'setInterval(() => { void loadMeta() }, 10_000)',
+    test: 'src/tests/unit/ads-pool-page-lazy-keywords.test.ts',
+    why:
+      '정비는 몇 분씩 걸린다. 그동안 10초마다 224KB 를 다시 받으면 첫 페인트를 고쳐 놓고 ' +
+      '**보고 있는 내내** 같은 비용을 문다. 진행 표시에 필요한 건 통계뿐이다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

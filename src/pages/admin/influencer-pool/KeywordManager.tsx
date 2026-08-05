@@ -47,8 +47,10 @@ function Chip({ k, onToggle }: { k: Keyword; onToggle: (k: Keyword) => void | Pr
   )
 }
 
-export default function KeywordManager({ keywords, onChanged }: { keywords: Keyword[]; onChanged: () => Promise<void> }) {
+export default function KeywordManager({ keywords, onChanged, onFirstOpen }: { keywords: Keyword[]; onChanged: () => Promise<void>; onFirstOpen?: () => Promise<void> }) {
   const [open, setOpen] = useState(false)         // ⚡ 닫힘 상태에선 본문(칩 수백 개) 미렌더
+  // ⚡ 데이터도 열 때 받는다(224KB) — 페이지 첫 페인트를 막지 않게. 근거는 부모의 `loadKeywords` docblock.
+  const [fetched, setFetched] = useState(false)
   const [newKw, setNewKw] = useState('')
   const [newKwCat, setNewKwCat] = useState('맛집') // 신규 키워드 카테고리(우선 커서 태깅)
   const [q, setQ] = useState('')                   // 칩 검색 필터
@@ -80,9 +82,9 @@ export default function KeywordManager({ keywords, onChanged }: { keywords: Keyw
   }
 
   return (
-    <details className="mb-4 rounded-lg border border-gray-200 bg-white" onToggle={e => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
+    <details className="mb-4 rounded-lg border border-gray-200 bg-white" onToggle={e => { const o = (e.currentTarget as HTMLDetailsElement).open; setOpen(o); if (o && !fetched) { setFetched(true); void onFirstOpen?.() } }}>
       <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-900">
-        수집 키워드 관리 (활성 {activeCount} · 후보 {candidateCount})
+        수집 키워드 관리{fetched ? ` (활성 ${activeCount} · 후보 ${candidateCount})` : ''}
       </summary>
       {open && (
         <div className="px-4 pb-4">
