@@ -5494,11 +5494,12 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 130건 · 최신순 · 이 목록은 자동 생성된다._
+_총 131건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-05**
 - [2026-08-05 — 경보가 울려도 아무도 안 보게 되는 길](handoff/2026-08-05-rotation-aware-silence.md)
 - [수집 키워드 순환 — 몫을 "슬롯"에서 "한 바퀴 시간"으로 (2026-08-05)](handoff/2026-08-05-keyword-rotation-lap-time.md)
+- [2026-08-05 — 카카오 스윕 소스별 인터리브 (어제 수리의 **정정**)](handoff/2026-08-05-kakao-sweep-interleave.md)
 **2026-08-04**
 - [YT 우선 배분 + 중복 발송 제거 (2026-08-04, 대표 승인 "2,3 진행")](handoff/2026-08-04-yt-priority-and-dedupe.md)
 - [부모 틱이 CPU 천장에 닿았다 — 레인이 하나씩 죽는 진짜 이유 (2026-08-04, 라이브 하트비트 실측)](handoff/2026-08-04-tick-cpu-ceiling.md)

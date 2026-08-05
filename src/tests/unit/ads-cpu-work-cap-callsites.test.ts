@@ -92,7 +92,9 @@ describe('🚧 배선 — 순수함수만 만들고 호출부에 안 걸면 아�
   it('예산 계산이 SELECT **앞**에 있다 — 뒤에 있으면 좁힐 값이 없다', () => {
     const src = read('src/features/marketing/api/company-collect.ts')
     const budget = src.indexOf('const budget: FetchBudget = { left: budgetTotal - schemaSpent }')
-    const select = src.indexOf('FROM ad_company_leads\n     WHERE merged_into IS NULL AND (phone IS NULL')
+    // ⚠️ 2026-08-05: SQL 자체가 `kakao-sweep-query.ts` 로 이사했다 — 여기선 **호출부**를 집는다
+    //   (이 시험이 지키는 건 SQL 문구가 아니라 "예산이 먼저 계산되는가"라는 순서다).
+    const select = src.indexOf('DB.prepare(KAKAO_SWEEP_SQL)')
     expect(budget, '예산 선언을 못 찾았다 — 이름이 바뀌었으면 이 시험을 고쳐라').toBeGreaterThan(0)
     expect(select, '스윕 SELECT 를 못 찾았다').toBeGreaterThan(0)
     expect(budget).toBeLessThan(select)
