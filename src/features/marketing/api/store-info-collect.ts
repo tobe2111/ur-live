@@ -18,6 +18,7 @@ import { type FetchBudget } from './influencer-discovery'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { kakaoLocalLookup, naverLocalLookup, crawlContact } from './contact-enrich'
 import { envSubreqCap, envLaneBudget } from './collect-budget'
+import { applyQuantum, readLaneSettings } from './cpu-quantum'
 import { isNoValue } from './public-data-diag'
 
 const outOfBudget = (b?: FetchBudget) => !!b && b.left <= 0
@@ -81,23 +82,25 @@ export async function runStoreInfoCollect(env: Env): Promise<StoreInfoStats> {
   const serviceKey = env.PUBLIC_DATA_SERVICE_KEY || (env as unknown as { NTS_API_KEY?: string }).NTS_API_KEY || ''
   const clientId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
   const clientSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
-  const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
+  // 🧠 통계·커서·CPU 학습배수를 **한 문장으로**(예전 2회 → 1회, 서브리퀘스트 절약).
+  const cfg = await readLaneSettings(DB, [STATS_KEY, CURSOR_KEY], 'ads:collect-storeinfo')
   let prev: StoreInfoStats | null = null
-  try { prev = prevRaw?.value ? JSON.parse(prevRaw.value) as StoreInfoStats : null } catch { prev = null }
+  try { const v = cfg.get(STATS_KEY); prev = v ? JSON.parse(v) as StoreInfoStats : null } catch { prev = null }
   const base = (err?: string, sample?: unknown): StoreInfoStats => ({ last_run: stamp, found: 0, saved: 0, enriched: 0, target: '', page: 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: !err, error: err, sample } })
   const persist = async (s: StoreInfoStats) => { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null) }
 
   if (!serviceKey) { const s = base('NOT_CONFIGURED: PUBLIC_DATA_SERVICE_KEY/NTS_API_KEY 미설정'); await persist(s); return s }
 
   // 커서: 'targetIdx:page'. 페이지 소진(빈 결과) 시 다음 타깃·page1.
-  const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY).first<{ value: string }>().catch(() => null)
-  let [ti, page] = (curRaw?.value || '0:1').split(':').map(n => parseInt(n, 10))
+  let [ti, page] = (cfg.get(CURSOR_KEY) || '0:1').split(':').map(n => parseInt(n, 10))
   if (!Number.isFinite(ti) || ti < 0) ti = 0
   if (!Number.isFinite(page) || page < 1) page = 1
   ti = ti % STOREINFO_TARGETS.length
   const t = STOREINFO_TARGETS[ti]
 
-  const batch = Math.max(1, parseInt(env.ADS_STOREINFO_BATCH || '', 10) || 3)
+  // 🧠 회차당 페이지 수가 이 레인의 작업량 노브다(한 장이 곧 파싱량). 2026-08-05 라이브에서
+  //   24시간에 3회 CPU 한도로 죽었고, 학습표에 그 배수가 적힌다 — 여기가 그 값을 쓰는 자리다.
+  const batch = applyQuantum(Math.max(1, parseInt(env.ADS_STOREINFO_BATCH || '', 10) || 3), cfg.q, 1)
   // 🧱 플랫폼 천장(2026-07-29) — env 값이 얼마든 인보케이션 한도를 넘을 수 없다. 넘으면 후반 fetch 가
   //   조용히 전멸하고(잡히는 예외 없이) 그 사실이 어디에도 안 남는다. collect-budget.ts 주석(기본 60·근거) 참조.
   const budget: FetchBudget = { left: Math.max(1, Math.min(envSubreqCap(env), Math.max(5, envLaneBudget(env.ADS_COMPANY_SUBREQUEST_BUDGET, 60, env))) - schemaSpent) }

@@ -103,6 +103,16 @@ export function applyQuantum(base: number, q: number, min = 1): number {
   return Math.max(min, Math.floor(base * clampQ(q)))
 }
 
+/**
+ * 이미 읽어 둔 표 문자열에서 배수를 꺼낸다 — 레인이 **자기 부팅 조회에 키를 얹은** 경우.
+ *
+ * 여러 레인이 이미 `key IN (?,?,?)` 로 설정을 한 번에 읽는다. 거기에 `?` 하나만 더하면
+ * **서브리퀘스트가 0 만큼 는다** — `readLaneSettings` 를 쓰려고 그 구조를 갈아엎는 것보다
+ * 훨씬 작은 변경이고, 파싱은 여기 하나로 모여 두 경로가 갈라지지 않는다.
+ */
+export const quantumFromRaw = (raw: string | null | undefined, lane: string): number =>
+  quantumFor(parseQuanta(raw), lane)
+
 /** `readLaneSettings` 가 쓰는 최소 D1 모양 — 유닛이 가짜 DB 를 끼울 수 있게 구조 타입으로 둔다. */
 export interface SettingsReader {
   prepare: (sql: string) => { bind: (...args: unknown[]) => { all: <T>() => Promise<{ results?: T[] } | null> } }
