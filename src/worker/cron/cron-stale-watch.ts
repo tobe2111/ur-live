@@ -28,6 +28,7 @@
  *   그 경우는 외부 관측(uptime 워크플로 / 사이트 다운)이 잡아야 한다.
  */
 import { listCronHeartbeats } from '../utils/cron-heartbeat'
+import { classifyBeat, freshBaseNames } from '../utils/cron-beat-retirement'
 import { reportCronFailure } from '../utils/cron-reporter'
 import type { Env } from '../types/env'
 
@@ -42,7 +43,25 @@ export async function handleCronStaleWatch(env: Env): Promise<{ checked: number;
   if (!DB) return { checked: 0, alerted: [] }
 
   const beats = await listCronHeartbeats(DB)
-  const stale = beats.filter(b => b.stale === true && b.name !== SELF)
+  // 🪦 **은퇴/승계된 이름은 판정에서 뺀다** — 2026-08-04 에 만든 분류를 이 경로에도 적용한다.
+  //
+  //   그 수리는 `/api/_healthcheck/cron` 게이트에만 배선됐고 **여기엔 안 붙었다.** 그래서 사람에게
+  //   실제로 닿는 채널(디스코드·`cron_failures`·어드민 벨)은 계속 유령을 신고하고 있었다 —
+  //   2026-08-05 실측으로 24시간 `cron_failures` 의 `stale:*` 16건 중 대부분이 그것이었다:
+  //   ```
+  //     stale:ads:maintenance?phase=merge   79h   ← ads:maintenance 는 12분 전에 돌았다(승계)
+  //     stale:ads:enrich-influencer-driver  58h   ← DO 알람 ads:enrich-influencer 가 인수(승계)
+  //     stale:ads:sweep-kakao-phone        158h   ← sweep-kakao-chain 으로 개명(은퇴)
+  //   ```
+  //   ⚠️ 이게 나쁜 이유는 소음 자체가 아니라 **진짜를 덮기 때문**이다. 실제로 그 목록 안에 3일 멈춘
+  //   레인 하나가 섞여 있었는데 유령 15건에 묻혀 있었다(같은 날 회전 오탐과 똑같은 병).
+  //
+  //   🔒 **지우는 게 아니다** — `retired`/`superseded` 만 빼고 판정 대상(`judge`)은 그대로 신고한다.
+  //   판정 기준은 그 파일의 배수(8×)와 하한(24h)이라, 예산에 밀려 늦는 정상 레인은 숨지 않는다.
+  const fresh = freshBaseNames(beats)
+  const stale = beats.filter(b =>
+    b.stale === true && b.name !== SELF
+    && classifyBeat({ name: b.name, age_minutes: b.age_minutes, max_gap_min: b.max_gap_min }, fresh) === 'judge')
   if (!beats.length) return { checked: 0, alerted: [] }
 
   // 이전 알림 시각 (없거나 깨졌으면 빈 맵 — 처음이면 알린다)
