@@ -72,6 +72,18 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: 'B2B 수집 페이지가 다시 마운트마다 917KB 를 받는다',
+    file: 'src/pages/admin/AdminPartnerPoolPage.tsx',
+    find: 'useEffect(() => { loadMeta(); loadStats() }, [loadMeta, loadStats])',
+    replace: 'useEffect(() => { loadMeta(); loadStats(); loadKeywords() }, [loadMeta, loadStats, loadKeywords])',
+    test: 'src/tests/unit/partner-pool-lazy-keywords.test.ts',
+    why:
+      '키워드 패널은 `showOps` 안이고 **기본이 접힘**인데 그 917KB(4,546개)를 마운트마다 받고 있었다 — ' +
+      '한 번도 화면에 그려지지 않은 채로. 렌더 쪽은 이미 최적화돼 있어(상위 80 미리보기·useMemo) ' +
+      '"이 패널은 최적화됨"으로 읽혔고, **비용이 렌더가 아니라 전송에 있다는 걸 아무도 안 쟀다.** ' +
+      '되돌려도 화면은 똑같이 동작한다 — 느려질 뿐이라 사람 눈으로는 못 잡는다.',
+  },
+  {
     name: '`rules-version-ok` 탈출구가 다시 죽는다(매치가 숫자에서 끊김)',
     file: 'scripts/check-rules-version-bump.mjs',
     // ⚠️ 백슬래시가 많은 구간이라 **역슬래시 없는 꼬리**만 집는다(이스케이프 두 겹으로 첫 시도가 빗나갔다).

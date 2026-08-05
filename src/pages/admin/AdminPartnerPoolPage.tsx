@@ -157,8 +157,10 @@ export default function AdminPartnerPoolPage() {
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
   }, [buildQuery, page])
 
-  // 🔑 키워드는 마운트 1회만 — 이후 갱신은 사용자가 바꿀 때(onChanged)뿐이다(폴링에 안 태운다).
-  useEffect(() => { loadMeta(); loadStats(); loadKeywords() }, [loadMeta, loadStats, loadKeywords])
+  useEffect(() => { loadMeta(); loadStats() }, [loadMeta, loadStats])
+  // 🔑 키워드는 **펼칠 때 한 번만** — 실측 917KB/4,546개(나머지 3요청 합의 16배)인데 패널은 기본 접힘이었다.
+  const kwLoaded = useRef(false)
+  useEffect(() => { if (showOps && !kwLoaded.current) { kwLoaded.current = true; loadKeywords() } }, [showOps, loadKeywords])
   useEffect(() => { loadLeads() }, [loadLeads])
   // 필터가 바뀌면 1페이지로(현재 페이지가 범위를 벗어나 빈 목록이 되는 것 방지).
   useEffect(() => { setPage(0) }, [fCategory, fTier, fStatus, fType, quick, qd])
