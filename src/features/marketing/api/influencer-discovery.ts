@@ -321,21 +321,21 @@ export async function discoverYouTubeInfluencers(
   for (const l of targets) {
     if (outOfBudget(opts.budget)) break // 예산 소진 — 컨택 보충 조기 종료(핵심 메타는 이미 수집됨)
     spendBudget(opts.budget); calls.videos++
-    const { descText, titleText } = await fetchRecentVideoSnippets(key, l._uploads!)
+    const { descText, titleText } = await fetchRecentVideoSnippets(key, l._uploads!); let won = false // 🔬 수확 계측: `DiscoverCalls`
     if (descText) {
       const c = extractContacts(descText); const bizEmail = pickBusinessEmail(descText)
-      if (bizEmail && !l.email) l.email = bizEmail
-      if (!l.instagram && c.instagram[0]) l.instagram = c.instagram[0]
+      if (bizEmail && !l.email) { l.email = bizEmail; calls.videos_email = (calls.videos_email || 0) + 1; won = true }
+      if (!l.instagram && c.instagram[0]) { l.instagram = c.instagram[0]; calls.videos_contact = (calls.videos_contact || 0) + 1; won = true }
       if (!l.tiktok && c.tiktok[0]) l.tiktok = c.tiktok[0]
       // 🔗 자기 블로그 URL 제외 — 네이버 블로거에겐 연락처가 아니라 자기 글 링크다(위 보강 레인과 동일 기준).
-    const extLinks = c.links.filter(u => !isSelfBlogLink(u)) // 판정 SSOT: influencer-self-link
-    if (!l.links && extLinks.length) l.links = extLinks.join(' ')
+      const extLinks = c.links.filter(u => !isSelfBlogLink(u)) // 판정 SSOT: influencer-self-link
+      if (!l.links && extLinks.length) { l.links = extLinks.join(' '); calls.videos_contact = (calls.videos_contact || 0) + 1; won = true }
     }
     // 🏷️ 영상 제목=카테고리 신호. F-09: 500자 소개글 뒤에 붙이고 재-500 자르면 무효이던 버그 — 소개글 360자로 양보.
-    if (titleText) l.description = `${l.description.slice(0, 360)} | 영상: ${titleText}`.slice(0, 500)
+    if (titleText) { l.description = `${l.description.slice(0, 360)} | 영상: ${titleText}`.slice(0, 500); calls.videos_cat = (calls.videos_cat || 0) + 1; won = true }
+    if (!won) calls.videos_empty = (calls.videos_empty || 0) + 1 // 🪦 낭비분 — 이 비율이 곧 잘라도 되는 몫
   }
-  // 내부 필드 제거(저장 스키마엔 없음).
-  for (const l of leads as Array<InfluencerLead & { _uploads?: string }>) delete l._uploads
+  for (const l of leads as Array<InfluencerLead & { _uploads?: string }>) delete l._uploads // 내부 필드(저장 스키마엔 없음)
 
   // 구독자 많은 순.
   leads.sort((a, b) => b.subscriber_count - a.subscriber_count)

@@ -139,7 +139,7 @@ export async function mergeDuplicatePool(DB: D1Database, opts?: { groupCap?: num
  *   에러도 경고도 없이 개선이 라이브에 안 닿는다. 이 레포의 `CLASSIFY_RULES_VERSION` 과 같은 계약이고,
  *   `check-rules-version-bump` 가 지키는 것과 같은 실패 양식이다.
  */
-export const REEXTRACT_RULES_VERSION = 3 // 2026-08-04(2회차): 차단 감지 배선으로 감시 파일이 또 바뀌어 bump. ⚠️ 추출 규칙은 그대로다 — 한 바퀴는 무변화 재확인이지만, 예외 주석은 고위험 가드를 **영구히** 침묵시키므로 무장 유지를 택했다(재추출은 D1 전용·커서 페이스라 외부 API 예산 무관)
+export const REEXTRACT_RULES_VERSION = 3 // rules-version-ok — 2026-08-05 판정을 **더 좁은 가드로 교체**(면제가 아니다): `check-rules-version-bump` 는 감시 파일이 한 글자만 바뀌어도 bump 를 요구해 **계측 한 줄에도 36,880행 재추출이 처음부터 다시 돈다**(진행 중 패스는 버려지고 CPU 만 헛돈다 — 08-04 의 2→3 이 그 무변화 한 바퀴였다). 이제 `src/tests/unit/reextract-rules-fingerprint.test.ts` 가 **정규식 상수 + 추출 함수 본문**만 해싱해 판정한다: 계측은 안 걸리고 규칙은 한 글자만 바뀌어도 걸린다. ⚠️ 그 지문 목록에서 빠진 헬퍼를 추출 경로에 끼우면 아무도 안 잡는다 — 새 헬퍼는 그 파일에 추가할 것
 
 /**
  * 커서 저장 형태 `"<version>:<cursor>"`.
