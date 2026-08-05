@@ -148,13 +148,62 @@ cursor 17 · pri_cursor 183 · focus_cursor 5      ← 셋 다 전진 중(교착
 
 ---
 
+## 5.5 🟢 10:41 KST — **자동조절기가 실제로 작동했다. 그리고 바로 반쪽인 게 드러났다**
+
+```
+ads_cpu_quanta = { "ads:collect-commerce": {q:0.5,c:0}, "ads:enrich-prospects": {q:0.5,c:0} }
+```
+
+**감지는 됐다.** 24시간 `cron_failures` 실측 — `Worker exceeded CPU time limit` 17건:
+```
+enrich-prospects 3 · enrich-company 3 · collect-storeinfo 3 · collect-commerce 3
+sweep-kakao-chain 2 · collect-company 2 · sheets-sync 1
+```
+
+🔴 **그런데 q 를 받은 두 레인 모두 소비 배선이 없었다.** #1073 이 배선한 건
+`collect-hira`·`maintenance`·`reclassify` 셋인데, **실제로 죽은 건 전부 다른 레인**이었다.
+값은 적히는데 아무도 안 읽는 — 내가 #1073 PR 본문에서 경고한 바로 그 상태가, 다른 레인에 그대로 남아 있었다.
+
+> 🧭 **교훈**: "감지 붙였다"와 "그 레인이 실제로 줄어든다"는 다른 문장이다. 배선을 *어디에* 했는지가
+> 아니라 **어디서 죽는지**를 먼저 봤어야 했다. `cron_failures` 를 24시간 그룹핑하면 1분이면 나온다.
+
+**수리**: 죽은 레인 4개에 소비 배선(12/17건 커버).
+`enrich-prospects`·`enrich-company` 는 기존 부팅 조회에 `?` 하나만 더해 **조회 0 증가**,
+`collect-storeinfo`·`collect-commerce` 는 낱개 SELECT 를 합쳐 **오히려 감소**.
+남은 것: `collect-company`·`sweep-kakao-chain`(600줄 파일이라 추출 선행) · `sheets-sync`(#983 소관).
+
+⚠️ 같은 창에서 `ads_lanes_learned` 가 **6 → 3** 으로 내려갔다. 진짜 CPU 사망에 대한 정상 반응이지만
+처리량이 절반이 됐다는 뜻이다 — 조절기가 레인당 작업량을 줄여 사망이 멎으면 다시 오를 것이고,
+**안 오르면 그때는 근본 원인이 따로 있다는 신호**다.
+
+## 5.6 ⚠️ 침묵 경보 재판정 — 내 "5 오탐 1 진짜"는 **표본이 좁았다**
+
+대표가 전달한 6건만 보고 판정했는데, `cron_failures` 전체를 보니 **진짜 침묵이 더 있다**:
+```
+sweep-kakao-phone            158시간   ← g=2910 인데 그 5배를 넘겼다
+maintenance?phase=merge       79시간   ┐ 여섯 단계 전부 53~79시간
+maintenance?phase=handle      63시간   │ (g=1470 = 24.5시간이므로 회전 오탐이 아니다)
+maintenance?phase=selflink    62시간   │
+maintenance?phase=quality     59시간   │
+maintenance?phase=reextract   57시간   │
+maintenance?phase=reclassify  53시간   ┘
+enrich-influencer-fanout      58시간 · enrich-influencer-driver 58시간 · lane-alarm-boot 53시간
+```
+이들은 **회전 완화 대상이 아니다**(명시 `gap` 보유). 즉 #1074 를 배포해도 계속 울리고, **울려야 맞다.**
+정비 6단계가 이틀 넘게 안 도는 것은 그 자체로 별도 조사 대상이다.
+
+> 🧭 **교훈 둘**: 전달받은 목록으로 "전수 판정"이라 말하지 말 것. 원장(`cron_failures`)을 직접 그룹핑하면
+> 표본이 3배였다. 내가 "5 오탐 1 진짜"라고 단정한 문장은 **전달 목록 안에서만** 참이었다.
+
 ## 6. 남은 것
 
 | 항목 | 상태 |
 |---|---|
 | 부모 cron 회차 누락 | 🔴 **대표 대시보드 확인 대기** — 원인 미확정 |
 | 키워드 순환 편식 | 진단 완료·미착수(§4) |
-| 자동조절기 첫 시험대 | CPU 사망 0건이라 아직 기회 없음. `ads_cpu_quanta` 행 없음 = 정상 |
+| 자동조절기 | ✅ **작동 확인**(§5.5). 죽은 레인 4개 소비 배선 완료, 3개 남음 |
+| 정비 6단계 53~79시간 미실행 | 🔴 **미조사** — 회전 오탐이 아니다(§5.6) |
+| `sweep-kakao-phone` 158시간 | 🔴 미조사 |
 | `collect-company` CPU-dense(985ms) | 미수리 — 벽시계로는 못 잡는다 |
 | Workers 유료 전환 | 대표 보류 |
 

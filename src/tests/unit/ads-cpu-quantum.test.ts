@@ -278,4 +278,40 @@ describe('🚧 배선 — 학습값이 실제로 상한을 줄이는가 (가짜 
       expect(src).toMatch(/const total = applyQuantum\(resolveSubreqBudget\(/)
     })
   })
+  describe('🔴 라이브에서 실제로 죽은 레인들 (2026-08-05 cron_failures 실측)', () => {
+    /**
+     * 배포 후 `ads_cpu_quanta` 에 실제로 적힌 것:
+     *   { "ads:collect-commerce": {q:0.5}, "ads:enrich-prospects": {q:0.5} }
+     * 그런데 **그 두 레인 모두 읽는 곳이 없었다** — 조절기가 돌았는데 아무 일도 안 일어났다.
+     * 24h cron_failures: enrich-prospects 3 · enrich-company 3 · collect-storeinfo 3 ·
+     *                    collect-commerce 3 · sweep-kakao-chain 2 · collect-company 2
+     */
+    const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
+    const cases: [string, string, RegExp][] = [
+      ['enrich-prospects', 'src/features/marketing/api/prospect-enrich.ts', /applyQuantum\(resolveSubreqBudget\(/],
+      ['enrich-company', 'src/features/marketing/api/enrich-lane.ts', /applyQuantum\(resolveSubreqBudget\(/],
+      ['collect-storeinfo', 'src/features/marketing/api/store-info-collect.ts', /const batch = applyQuantum\(/],
+      ['collect-commerce', 'src/features/marketing/api/commerce-notify-collect.ts', /const totalBudget = applyQuantum\(/],
+    ]
+
+    for (const [lane, file, useRe] of cases) {
+      it(`${lane} — 학습배수를 실제로 읽고 쓴다`, () => {
+        const src = read(file)
+        // 레인 이름은 하트비트와 **글자 그대로** 같아야 표를 찾는다(`ads:` 접두어 포함)
+        expect(src, `${lane} 의 학습 키가 없다 — 표를 못 찾아 조용히 기본값으로 돈다`).toContain(`'ads:${lane}'`)
+        expect(src, `${lane} 이 배수를 읽기만 하고 안 쓴다 — 그게 조용한 no-op 이다`).toMatch(useRe)
+      })
+    }
+
+    it('💸 조회를 늘리지 않는다 — 부팅 조회에 키를 얹거나(IN 확장) 개별 조회를 합친다', () => {
+      // 부팅 조회가 있는 두 레인: `?` 하나만 늘었는지(= 문장 수 불변)
+      for (const f of ['src/features/marketing/api/prospect-enrich.ts', 'src/features/marketing/api/enrich-lane.ts']) {
+        expect(read(f), `${f}: 학습표를 별도 SELECT 로 읽고 있다 — 부팅 조회에 얹어야 한다`)
+          .toContain('WHERE key IN (?, ?, ?, ?)')
+      }
+      // 개별 조회를 합친 두 레인: 예전의 낱개 SELECT 가 남아 있으면 비용 주장이 거짓이 된다
+      expect(read('src/features/marketing/api/store-info-collect.ts')).not.toContain('bind(CURSOR_KEY).first')
+      expect(read('src/features/marketing/api/commerce-notify-collect.ts')).not.toContain('bind(STATS_KEY).first')
+    })
+  })
 })

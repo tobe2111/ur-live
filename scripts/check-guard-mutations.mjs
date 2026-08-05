@@ -187,6 +187,18 @@ const MUTATIONS = [
       '조절기의 첫 시험대이기도 하다. 되돌아가도 초록불이라 사람이 못 잡는다.',
   },
   {
+    name: 'CPU 자기교정 — 라이브에서 죽는 레인이 배수를 다시 무시한다',
+    file: 'src/features/marketing/api/commerce-notify-collect.ts',
+    find: "readLaneSettings(DB, [STATS_KEY], 'ads:collect-commerce')",
+    replace: "readLaneSettings(DB, [STATS_KEY], 'collect-commerce')",
+    test: 'src/tests/unit/ads-cpu-quantum.test.ts',
+    why:
+      '2026-08-05 라이브에서 이 레인은 24시간에 3회 CPU 한도로 죽었고 학습표에 q=0.5 가 **실제로 적혔다**. ' +
+      '그런데 배포 직후에는 읽는 곳이 없어 아무 일도 안 일어났다 — 조절기가 도는데 효과가 0 인, ' +
+      '이 레포가 반복해 만난 조용한 no-op 이다. `ads:` 한 칸만 어긋나도 조회는 성공하고 값만 기본값이라 ' +
+      '**에러도 경고도 없이** 그 상태로 되돌아간다.',
+  },
+  {
     name: '침묵 기준이 회전을 다시 잊는다(계산만 하고 안 띄움)',
     file: 'src/worker-ads/lane-runner.ts',
     find: 'runLanes(runWithGap, {',
