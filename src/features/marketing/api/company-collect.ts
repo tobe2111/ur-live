@@ -12,8 +12,9 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue, rowsWorthReading } from './collect-budget'
-import { noteNaverCall, flushNaverCalls } from './naver-api-usage'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue, rowsWorthReading, companyRunDeadlineMs } from './collect-budget'
+import { noteNaverCall, flushNaverCalls, armNaverAndReadSettings } from './naver-api-usage'
+import { KAKAO_SWEEP_SQL, tallySweep, type KakaoSweepRow, type SweepSourceTally } from './kakao-sweep-query'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
 import { buildKeywordRows, rotationWindow, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
@@ -31,7 +32,7 @@ const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
  */
 async function laneFetch(url: string, init: RequestInit & { timeoutMs?: number }, budget?: FetchBudget): Promise<Response | null> {
   const { timeoutMs = 12000, ...rest } = init
-  noteNaverCall(url) // 📟 네이버 오픈API 계측(호스트 아니면 no-op) — 실패분도 쿼터를 먹으므로 호출 전에 센다
+  if (!noteNaverCall(url)) return null // 📟 계측+일일목표(90%) 게이트. 실패분도 쿼터를 먹어 호출 전에 센다
   try {
     return await fetch(url, { ...rest, signal: AbortSignal.timeout(timeoutMs) })
   } catch (err) {
@@ -285,7 +286,7 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
 // 📇 연락처 보강 레인은 `enrich-lane.ts` 로 분리(2026-07-28, 600줄 한도) — 기존 import 경로 유지용 re-export.
 export { enrichHeldLeads } from './enrich-lane'
 
-export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; total_keywords?: number; spent?: number; limit_hit?: boolean; diag: { configured: boolean; error?: string } }
+export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; total_keywords?: number; spent?: number; limit_hit?: boolean; run_ms?: number; deadline_hit?: boolean; diag: { configured: boolean; error?: string } }
 const STATS_KEY = 'ads_company_stats'
 const CURSOR_KEY = 'ads_company_cursor'
 
@@ -297,9 +298,9 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const clientId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
   const clientSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
-  const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
+  const pick = await armNaverAndReadSettings(DB, [STATS_KEY]) // 🔫 쿼터는 앱 단위 — B2B 도 같은 90% 목표에 묶는다(왕복 추가 0)
   let prev: CompanyCollectStats | null = null
-  try { prev = prevRaw?.value ? JSON.parse(prevRaw.value) as CompanyCollectStats : null } catch { prev = null }
+  try { const v = pick(STATS_KEY); prev = v ? JSON.parse(v) as CompanyCollectStats : null } catch { prev = null }
 
   if (!clientId || !clientSecret) {
     const s: CompanyCollectStats = { last_run: stamp, found: 0, saved: 0, keywords: [], cursor: prev?.cursor || 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: false, error: 'NOT_CONFIGURED: NAVER_SEARCH_CLIENT_ID/SECRET 미설정' } }
@@ -341,8 +342,10 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
 
   let found = 0, saved = 0
   const used: string[] = []
+  // ⏱️ 회차 벽시계 마감선 — 실측 27,410ms(사망선 26,000 초과인데 "성공"). 근거·한계·커버리지 불변식은 `companyRunDeadlineMs` 헤더.
+  const startedAt = Date.now(), runDeadlineMs = companyRunDeadlineMs(env)
   for (let i = 0; i < batch; i++) {
-    if (outOfBudget(budget) || budget.limitHit) break // 한도 도달 시 즉시 중단 — 남은 키워드를 헛돌지 않는다
+    if (outOfBudget(budget) || budget.limitHit || Date.now() - startedAt > runDeadlineMs) break // 한도/마감 도달 시 즉시 중단
     const kw = kws[i]
     used.push(kw.keyword)
     const leads = await searchNaverLocal(clientId, clientSecret, kw, budget)
@@ -379,7 +382,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   //   2026-07-27 최종 점검: ① source='local' 한정 → **webkr(웹검색 발굴 대행사 — 주력 레인) 포함**
   //   ② 홈 1페이지 크롤(crawlCompanyEmail) → **crawlContact**(root+/contact+홈 문의링크 추적)로 통일.
   let emailed = 0
-  if (!outOfBudget(budget)) {
+  if (!outOfBudget(budget) && Date.now() - startedAt < runDeadlineMs) {
     const { crawlContact, CRAWL_RULES_VERSION, realSite, PLATFORM_URL_SQL_EXCLUDE } = await import('./contact-enrich')
     // 대행사(tier 1)는 phone 보다 이메일 접촉이 핵심 → 이메일 크롤 우선(대표 "2단계 이메일 크롤 우선").
     // 🔁 2026-07-28 재시도 쿨다운 추가 — 보강 레인(enrich-lane:75)이 이미 쓰는 패턴인데 이 블록만 빠져 있었다.
@@ -439,6 +442,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     // 📊 관측 필드 — 예산이 실제로 얼마나 쓰였고 한도에 닿았는지, 전국 확장 후 한 바퀴가 얼마나 되는지.
     //   (전국 확장 + webkr 페이지네이션으로 키워드당 비용이 올라 예산이 먼저 마를 수 있다 → 눈에 보이게.)
     total_keywords: total, spent: budgetTotal - budget.left, limit_hit: !!budget.limitHit,
+    run_ms: Date.now() - startedAt, deadline_hit: Date.now() - startedAt > runDeadlineMs,
     diag: { configured: true },
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null)
@@ -499,10 +503,8 @@ const SWEEP_BOOKKEEPING_RESERVE = 6
  * 느린 응답이 계속 쌓여 부모 cron 의 CPU 를 태운다(`dispatch-budget.ts` 가 기록한 그 구조:
  * 부모가 죽으면 매달린 자식이 전부 끌려간다).
  *
- * ✅ **여기는 기아 걱정이 없다** — 대상 선택이 `kakao_checked_at < now-30days` 이고 도장은
- *   **실제 시도한 행에만** 찍힌다(2026-07-28 수리). 마감선에 잘린 행은 도장이 없으니
- *   다음 라운드에 그대로 다시 잡힌다. 그래서 회전 커서가 따로 필요 없다.
- *   (`notice-scan`·`email-mx-sweep` 은 선택이 고정 순서라 회전을 같이 넣어야 했다 — 구조가 다르다.)
+ * ⚠️ **"기아 걱정 없다"던 옛 주석은 틀렸다**(2026-08-04 실측이 반증) — 도장은 시도분에만 찍히지만
+ *   30일 쿨다운이 **한 바퀴(411일)보다 짧아** 앞줄이 계속 재적격됐다. 수리: 아래 `ORDER BY` 주석.
  */
 const SWEEP_RUN_DEADLINE_MS = 12_000
 const SWEEP_RUN_DEADLINE_MS_PAID = 24_000
@@ -534,16 +536,11 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   //   예산을 셌는데 천장이 무료 캡(기본 60)이라 시도 가능한 행은 ~50개뿐 — 550행은 역직렬화만
   //   되고 아래 `break` 에 버려졌다. 실측: 이 레인이 6,640ms 에 CPU 한도로 사망(벽시계 마감 12s 는
   //   닿지도 못했다 — CPU 는 벽시계를 못 넘으니 그건 대기가 아니라 계산이다).
-  //   ⚠️ 처리 대상·순서 불변(잘린 꼬리는 원래 안 쓰던 행, 도장은 시도분에만 → 기아 없음).
-  //   근거·한계: `rowsWorthReading` 헤더.
+  //   ⚠️ 대상 불변(잘린 꼬리는 원래 안 쓰던 행, 도장은 시도분에만). 근거·한계: `rowsWorthReading` 헤더.
   const rowCap = rowsWorthReading(budget.left - SWEEP_BOOKKEEPING_RESERVE, cap)
-  // 🎯 tier 오름차순 = 접촉 가치 순. 도장 쿨다운으로 재시도를 통제(커서 없음 — 위 헤더 주석 참조).
-  const rows = (await DB.prepare(
-    `SELECT id, company_name, region, address FROM ad_company_leads
-     WHERE merged_into IS NULL AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != ''
-       AND (kakao_checked_at IS NULL OR kakao_checked_at < datetime('now', '-30 days'))
-     ORDER BY (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)
-    .bind(rowCap).all<{ id: number; company_name: string; region: string | null; address: string }>().catch(() => null))?.results || []
+  // 🎯 줄 세우기 SSOT + 두 번의 수리 근거는 `kakao-sweep-query.ts` 헤더(자주 틀리는 자리라 분리했다).
+  const rows = (await DB.prepare(KAKAO_SWEEP_SQL)
+    .bind(rowCap).all<KakaoSweepRow>().catch(() => null))?.results || []
   if (!rows.length) return { scanned: 0, found: 0, cursor: 0, done: true }
   let found = 0
   const startedAt = Date.now()
@@ -551,12 +548,14 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   let stoppedBy: string | undefined
   const tried: number[] = []                                   // 시도한 행 → 도장(배치 1회)
   const hits: Array<{ id: number; phone: string }> = []        // 전화 확보분 → 저장(배치 1회)
+  const bySource: SweepSourceTally = {}                        // 📊 소스별 적중률 — 다음 단계(수율 가중)의 근거
   for (const r of rows) {
     if (budget.left <= SWEEP_BOOKKEEPING_RESERVE || budget.limitHit) { stoppedBy = 'budget'; break } // 아래 부기 몫을 남겨둔다(상수 주석 참조)
     if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }
     const k = await kakaoLocalLookup(key, r.company_name, r.region, r.address, budget)
     if (budget.limitHit) break // 한도 도달 — 이 행은 조회된 적 없으므로 도장도 찍지 않는다(다음 라운드 재시도)
     tried.push(r.id)
+    tallySweep(bySource, r.source, !!k.phone)
     if (k.phone) { found++; hits.push({ id: r.id, phone: k.phone }) }
   }
   // 💾 쓰기는 배치로 — 건건이 쓰면 부기(簿記)가 예산을 먹어 크롤 기회를 줄인다(보강 레인과 동일 교훈).
@@ -589,6 +588,9 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_kakao_sweep_stats', JSON.stringify({
     last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), scanned: rows.length, found, tried: tried.length, total_found: totalFound + found,
     day: kstToday, day_lookups: dayLookups + tried.length,
+    // 📊 이번 회차의 소스별 시도/적중. **아직 아무 판정에도 안 쓴다** — 증거 없이 가중하면
+    //   "storeinfo 수율 2.7%니 잘라내자"(실은 한 번도 조회된 적 없었다) 오판을 반복한다.
+    by_source: bySource,
     limit_hit: !!budget.limitHit, // 한도로 조기 중단했는가 — true 면 남은 행은 커서 미전진(다음 라운드 재시도)
     // 📟 왜 멈췄는지 — 'deadline' 이면 예산이 아니라 시간이 병목이다(둘의 처방이 다르다).
     stopped_by: stoppedBy,

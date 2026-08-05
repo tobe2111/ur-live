@@ -471,13 +471,57 @@ export function rowsWorthReading(spendable: number, hardCap: number, slack = 4):
  * ⚠️ 시간 상한은 **그대로 둔다**(제거가 아니라 병행). 둘 중 먼저 닿는 쪽이 멈춘다 —
  *   D1 이 느린 회차엔 시간이, 정상 회차엔 행 수가 먼저 닿는다.
  * ⚠️ 못 고치는 것: 행 하나가 비정상적으로 무거운 경우(초장문 본문). 그건 행 수로 안 잡힌다.
+ *
+ * 🧠 **2026-08-04 추가 — 자기교정에 물린다.** `DB` 를 주면 이 레인이 CPU 로 죽은 이력만큼
+ *   상한이 자동으로 더 줄어든다(`cpu-quantum.ts`). 안 주면 종전 값 그대로 — 테스트·수동 호출은
+ *   무영향이다. ⚠️ 레인 이름은 하트비트 키와 **정확히 같아야** 한다(`adsBeat` 이 `ads:` 를 붙인다) —
+ *   어긋나면 학습값이 있어도 조용히 안 걸린다.
  */
-export function reclassifyWorkPlan(env: { ADS_PLAN?: string } | undefined | null): {
-  rowsPerPass: number; maxRows: number; deadlineMs: number
-} {
-  return {
+export const RECLASSIFY_LANE = 'ads:reclassify-company?passes=5'
+
+export async function reclassifyWorkPlan(
+  env: { ADS_PLAN?: string } | undefined | null,
+  DB?: { prepare: (s: string) => { bind: (...a: unknown[]) => { first: <T>() => Promise<T | null> } } },
+): Promise<{ rowsPerPass: number; maxRows: number; deadlineMs: number; q?: number }> {
+  const base = {
     rowsPerPass: envPlanValue(undefined, 250, 1_000, env),
     maxRows: envPlanValue(undefined, 1_000, 5_000, env),
     deadlineMs: envPlanValue(undefined, 1_800, 12_000, env),
   }
+  if (!DB) return base
+  const { parseQuanta, quantumFor, applyQuantum, CPU_QUANTA_KEY } = await import('./cpu-quantum')
+  const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+    .bind(CPU_QUANTA_KEY).first<{ value: string }>().catch(() => null)
+  const q = quantumFor(parseQuanta(row?.value), RECLASSIFY_LANE)
+  if (q >= 1) return base
+  // 바닥을 준다 — 0 행/0 패스가 되면 이 레인은 도는 의미가 없고 백로그가 영영 안 준다.
+  return {
+    rowsPerPass: applyQuantum(base.rowsPerPass, q, 50),
+    maxRows: applyQuantum(base.maxRows, q, 100),
+    deadlineMs: base.deadlineMs,
+    q,
+  }
+}
+
+/**
+ * ⏱️ **파트너 수집 회차의 벽시계 마감선** (2026-08-04 — 라이브 실측 후 신설).
+ *
+ * `ads:collect-company` 가 16:01 KST 에 **`ms=27,410` 으로 "성공"** 했다. 이 레포가 실측으로 세운
+ * 사망 기준선은 `CPU_WALL_MS = 26_000`(08-02 사망 3건의 최솟값에서 내림) — **이미 넘긴 값이
+ * 성공으로 기록된 것**이라 화면 어디에도 경고가 없다. 이 레인은 예산(요청 수)만 볼 뿐 **회차가
+ * 얼마나 오래 도는지는 아무도 안 봤다**: 키워드 12개 × (네이버 지역 + 카카오 3페이지 + 웹 최대 5페이지)
+ * + 사이트 크롤 15건이고, fetch 하나당 타임아웃이 12초다. 느린 회차가 겹치면 그대로 벽에 닿는다.
+ *
+ * ✅ **커버리지 손실 0** — 이 레인의 커서는 *계획한 창 크기*가 아니라 **실제로 돈 키워드 수**만큼만
+ *   전진한다(파일 주석이 그 불변식을 2026-08-02 사고로 세워 뒀다). 그래서 일찍 멈추면 남은 키워드는
+ *   건너뛰어지는 게 아니라 **다음 회차의 창에 그대로 들어온다.**
+ *
+ * ⚠️ **이게 못 고치는 것**: 같은 레인의 *다른* 사망 모드 — 08-04 에는 `ms=985` 로도 죽었다.
+ *   1초 안에 한도를 넘은 것이니 그건 대기가 아니라 계산이고(리드 수백 건의 파싱·정규식 의심),
+ *   **벽시계로는 못 잡는다.** 그건 `rowsWorthReading` 처럼 *양*으로 묶어야 한다 — 다음 작업.
+ * ⚠️ 값의 출처: 같은 파일의 카카오 스윕(`SWEEP_RUN_DEADLINE_MS`)과 같은 12s/24s. 근거 없는 새 숫자를
+ *   만들지 않았다(둘 다 같은 부모 수명 안에서 도는 같은 클래스의 레인이다).
+ */
+export function companyRunDeadlineMs(env: { ADS_PLAN?: string } | undefined | null): number {
+  return envPlanValue(undefined, 12_000, 24_000, env)
 }

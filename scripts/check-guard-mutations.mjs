@@ -72,10 +72,208 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '`rules-version-ok` 탈출구가 다시 죽는다(매치가 숫자에서 끊김)',
+    file: 'scripts/check-rules-version-bump.mjs',
+    // ⚠️ 백슬래시가 많은 구간이라 **역슬래시 없는 꼬리**만 집는다(이스케이프 두 겹으로 첫 시도가 빗나갔다).
+    find: ".*$`, 'm').exec(src)",
+    replace: "`, 'm').exec(src)",
+    test: 'src/tests/unit/rules-version-exemption.test.ts',
+    why:
+      '가드가 안내하는 유일한 예외 통로가 **문서에만 있고 코드에는 없던** 상태로 돌아간다 — 매치가 ' +
+      '숫자에서 끝나면 같은 줄의 주석이 `cur.line` 에 안 들어와 예외가 절대 안 걸린다. ' +
+      '막다른 길에 몰린 세션은 그러면 **더 나쁜 선택**(불필요한 bump 로 3.6만 행 재처리, 혹은 가드 끄기)을 ' +
+      '한다. 되돌려도 에러가 없고, 예외를 쓰려는 사람만 조용히 막힌다.',
+  },
+  {
+    name: '차단당한 회차가 백로그를 그대로 스탬프한다(학습 오염)',
+    file: 'src/features/marketing/api/influencer-performance.ts',
+    find: "      if (naverCrawlBlocked()) { diag.blocked = (diag.blocked || 0) + 1; return }",
+    replace: '      // (차단 가드 제거)',
+    test: 'src/tests/unit/naver-crawl-block.test.ts',
+    why:
+      '연락처는 오픈API 가 아니라 공개 페이지 크롤(`m.blog`·`rss.blog`)로 캔다 — 쿼터도 승인도 없고, ' +
+      '실측 하루 8천 요청이다. 막히면 본문이 0인데 이 가드가 없으면 **스탬프가 찍힌다**: ' +
+      '`perf_checked_at` 이 `nb_measured`(연락처 수율의 분모)를 부풀려 `suppressLowRotationYield` 가 ' +
+      '멀쩡한 키워드를 "나쁘다"고 학습하고, 억제된 키워드는 증거가 갱신되지 않아 **차단이 풀려도 ' +
+      '안 돌아온다.** 게다가 그동안 백로그가 한 바퀴 통째로 소모된다. 되돌려도 에러는 안 난다.',
+  },
+  {
+    name: '타임아웃까지 차단으로 세어 멀쩡한 레인을 멈춘다',
+    file: 'src/features/marketing/api/naver-crawl-block.ts',
+    find: '  if (isBlockStatus(status)) { streak += 1; blocked += 1; return }\n  if (typeof status === \'number\') { streak = 0; ok += 1 }',
+    replace: '  streak += 1; blocked += 1',
+    test: 'src/tests/unit/naver-crawl-block.test.ts',
+    why:
+      '*"느리다"는 "막혔다"가 아니다* — 2026-07-29 `shouldNoindexMissingEntity` 에서 타임아웃을 ' +
+      '"없음"으로 읽으면 멀쩡한 상품이 색인에서 빠진다고 배운 것과 같은 규칙이다. 예외·404 까지 세면 ' +
+      '삭제된 블로그 세 개에 측정 레인이 통째로 멈추고, 성공이 연속을 못 끊어 **한 번 막히면 영영 멈춘다.**',
+  },
+  {
+    name: '네이버 일일 목표 게이트를 호출부가 무시한다(반환값 버림)',
+    file: 'src/features/marketing/api/fetch-with-err.ts',
+    find: "  if (!noteNaverCall(url)) return { res: null, err: 'NaverQuota: 일일 목표(90%) 소진' }",
+    replace: '  noteNaverCall(url)',
+    test: 'src/tests/unit/api-daily-target.test.ts',
+    why:
+      '게이트는 계측 함수의 **반환값**으로만 작동한다 — 예전처럼 값을 버리고 부르면 상수와 장전은 ' +
+      '그대로 남은 채 아무도 안 막힌다(이 레포가 반복해 만난 "검사가 실패할 수 없다" 클래스). ' +
+      '유료 전환으로 서브리퀘스트가 ×15 되면 그대로 쿼터를 넘겨 429 를 받고, 실패 호출도 쿼터를 ' +
+      '먹으므로 **회차 후반 작업이 통째로 버려진다.**',
+  },
+  {
+    name: '네이버 게이트를 아무도 장전하지 않는다(항상 무제한)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '  armNaverDailyAllowance(parseNaverUsed(settings[NAVER_USED_KEY], kstDayKey(Date.now())))',
+    replace: '  void armNaverDailyAllowance',
+    test: 'src/tests/unit/api-daily-target.test.ts',
+    why:
+      '허용량 기본값은 **무제한(`null`)** 이다 — 무장을 잊은 레인이 조용히 멈추는 것보다 낫기 때문이다. ' +
+      '그 설계의 대가로, 장전 한 줄이 사라지면 게이트가 **에러 없이 전면 무효**가 된다. ' +
+      '상수도 테스트도 그대로 초록이라 사람 눈으로는 못 잡는다.',
+  },
+  {
+    name: '유튜브 검색 예산을 100 으로 되돌린다(측정 몫 0)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: 'export const YT_SEARCH_BUDGET_DEFAULT = 90',
+    replace: 'export const YT_SEARCH_BUDGET_DEFAULT = 100',
+    test: 'src/tests/unit/api-daily-target.test.ts',
+    why:
+      'search.list 1회 = 100 units 라 검색 100회면 하루 쿼터 10,000 이 검색으로 전부 나간다 → ' +
+      '성과측정(각 1 unit)이 **하루 종일 403**(2026-07-27 실사고). 90 은 임의값이 아니라 ' +
+      '`쿼터 × 90% ÷ 단가` 이고, 남는 1,000 units 가 측정 몫이다.',
+  },
+  {
+    name: 'CPU 자기교정 — 감지 호출이 사라짐(학습이 조용히 멈춘다)',
+    file: 'src/worker-ads/beat-batch.ts',
+    find: '    await learnCpuQuanta(env, list).catch(() => undefined)',
+    replace: '    void list',
+    test: 'src/tests/unit/ads-cpu-quantum.test.ts',
+    why:
+      'CPU 로 죽은 레인은 자기 하트비트를 못 쓰므로 **항상 부모가** 기록한다 — 그 기록이 지나는 ' +
+      '이 한 곳이 유일한 감지 지점이다. 빠지면 자동수리가 통째로 멈추는데 **에러도 경고도 없다** ' +
+      '(레인은 여전히 죽고, 아무도 줄여 주지 않을 뿐이다).',
+  },
+  {
+    name: 'CPU 자기교정 — 레인 이름에서 `ads:` 접두어가 빠짐',
+    file: 'src/features/marketing/api/collect-budget.ts',
+    find: "export const RECLASSIFY_LANE = 'ads:reclassify-company?passes=5'",
+    replace: "export const RECLASSIFY_LANE = 'reclassify-company?passes=5'",
+    test: 'src/tests/unit/ads-cpu-quantum.test.ts',
+    why:
+      '학습 표의 키는 하트비트 이름(`adsBeat` 이 `ads:` 를 붙인다)이다. 접두어가 어긋나면 표를 못 찾아 ' +
+      '**학습값이 있어도 상한이 안 줄어든다** — 조회는 성공하고 값만 기본값이라 에러가 없다. ' +
+      '이 레포가 반복해 만난 "이름 한 칸 어긋나서 조용히 no-op" 클래스.',
+  },
+  {
+    name: 'CPU 자기교정 — 학습표가 레인 조회에서 빠짐(적히기만 하고 아무도 안 읽는다)',
+    file: 'src/features/marketing/api/cpu-quantum.ts',
+    find: 'const want = lane ? [...keys, CPU_QUANTA_KEY] : [...keys]',
+    replace: 'const want = [...keys]',
+    test: 'src/tests/unit/ads-cpu-quantum.test.ts',
+    why:
+      '이 한 줄이 감지와 소비를 잇는다. 빠지면 CPU 사망은 계속 표에 적히는데 **어떤 레인도 그 값을 ' +
+      '안 읽어** 작업량이 그대로다 — 조회는 성공하고 `q` 만 늘 1 이라 에러도 경고도 없다. ' +
+      '자동수리가 도는 것처럼 보이면서 실제로는 아무 일도 안 일어나는, 정확히 그 상태가 된다.',
+  },
+  {
+    name: 'CPU 자기교정 — collect-hira 가 배수를 무시한다',
+    file: 'src/features/marketing/api/hira-hospital-collect.ts',
+    find: 'const maxPages = maxPagesArg ?? applyQuantum(envPlanValue(undefined, 3, 12, env), cfg.q, 1)',
+    replace: 'const maxPages = maxPagesArg ?? envPlanValue(undefined, 3, 12, env)',
+    test: 'src/tests/unit/ads-cpu-quantum.test.ts',
+    why:
+      '페이지 수가 이 레인의 작업량 노브다(한 장이 곧 파싱량). 배수가 안 걸리면 학습이 돌아도 ' +
+      '이 레인만 예전 크기로 계속 돌아 **또 CPU 로 죽는다** — 2026-08-04 실측 6,409ms 사망 레인이라 ' +
+      '조절기의 첫 시험대이기도 하다. 되돌아가도 초록불이라 사람이 못 잡는다.',
+  },
+  {
+    name: '침묵 경보가 은퇴 분류를 다시 건너뛴다(유령이 사람에게 간다)',
+    file: 'src/worker/cron/cron-stale-watch.ts',
+    find: "    && classifyBeat({ name: b.name, age_minutes: b.age_minutes, max_gap_min: b.max_gap_min }, fresh) === 'judge')",
+    replace: '    )',
+    test: 'src/tests/unit/cron-stale-watch-retirement.test.ts',
+    why:
+      '2026-08-04 에 만든 은퇴 분류가 `/api/_healthcheck/cron` 게이트에만 붙고 **이 경로엔 안 붙어** ' +
+      '디스코드·`cron_failures`·어드민 벨이 유령을 계속 신고했다(08-05 실측 `stale:*` 16건 중 대부분). ' +
+      '⚠️ 나쁜 이유는 소음이 아니라 **진짜를 덮는 것**이다 — 그 목록 안에 3일 멈춘 레인이 묻혀 있었다. ' +
+      '되돌아가도 경보는 계속 울리므로(오히려 더 울린다) **사람이 이상을 못 느낀다.**',
+  },
+  {
+    name: 'CPU 자기교정 — 라이브에서 죽는 레인이 배수를 다시 무시한다',
+    file: 'src/features/marketing/api/commerce-notify-collect.ts',
+    find: "readLaneSettings(DB, [STATS_KEY], 'ads:collect-commerce')",
+    replace: "readLaneSettings(DB, [STATS_KEY], 'collect-commerce')",
+    test: 'src/tests/unit/ads-cpu-quantum.test.ts',
+    why:
+      '2026-08-05 라이브에서 이 레인은 24시간에 3회 CPU 한도로 죽었고 학습표에 q=0.5 가 **실제로 적혔다**. ' +
+      '그런데 배포 직후에는 읽는 곳이 없어 아무 일도 안 일어났다 — 조절기가 도는데 효과가 0 인, ' +
+      '이 레포가 반복해 만난 조용한 no-op 이다. `ads:` 한 칸만 어긋나도 조회는 성공하고 값만 기본값이라 ' +
+      '**에러도 경고도 없이** 그 상태로 되돌아간다.',
+  },
+  {
+    name: '침묵 기준이 회전을 다시 잊는다(계산만 하고 안 띄움)',
+    file: 'src/worker-ads/lane-runner.ts',
+    find: 'runLanes(runWithGap, {',
+    replace: 'runLanes(sel.run, {',
+    test: 'src/tests/unit/ads-rotation-gap.test.ts',
+    why:
+      '회전 임계를 계산해 놓고 원본을 그대로 띄우면 **아무것도 안 바뀐다** — 코드는 멀쩡해 보이고 ' +
+      '타입도 통과하는데 하트비트엔 옛 기준이 실린다. 그러면 정상 동작 중인 매시간 레인이 ' +
+      '다시 매번 경보가 되고(2026-08-05 실측 5건), 그 소음이 진짜 침묵 하나를 덮는다.',
+  },
+  {
+    name: '회전 계산이 `always` 레인을 빼지 않는다(기준이 과하게 느슨해짐)',
+    file: 'src/worker-ads/lane-cadence.ts',
+    find: 'const running = Math.max(0, (d?.run?.length ?? 0) - Math.max(0, Math.floor(Number(d?.always) || 0)))',
+    replace: 'const running = d?.run?.length ?? 0',
+    test: 'src/tests/unit/ads-rotation-gap.test.ts',
+    why:
+      '`always` 레인(지정 시각에만 열리는 게이트)은 예산과 무관하게 항상 돈다 — 경쟁자가 아니다. ' +
+      '안 빼면 회전이 부풀고(company 4→7) 임계가 필요 이상으로 커져 **진짜 멈춘 레인도 오래 안 울린다.** ' +
+      '완화가 과해지는 방향이라 경보가 조용히 무력해지고, 조용해진 것과 정상인 것이 구분되지 않는다.',
+  },
+  {
+    name: '카카오 스윕이 다시 tier 순만 보고 뒷줄을 굶긴다',
+    // ⚠️ 2026-08-05: SQL 이 `kakao-sweep-query.ts` 로 이사했다(자주 틀리는 자리라 분리).
+    file: 'src/features/marketing/api/kakao-sweep-query.ts',
+    find: "              (kakao_checked_at IS NOT NULL) ASC,\n              (email IS NOT NULL AND email <> '') ASC,\n",
+    replace: '',
+    test: 'src/tests/unit/kakao-sweep-order.test.ts',
+    why:
+      '라이브 실측: 적격 148,297 중 tier4 가 129,049 라, 그 뒤의 storeinfo 15,518건은 하루 360조회로 ' +
+      '**358일** 뒤에나 차례가 온다. 게다가 30일 쿨다운이 만료된 앞줄이 계속 재적격돼 커서 없는 이 ' +
+      '설계에서는 앞줄만 반복된다 — 실제로 storeinfo 17,979건의 카카오 조회 이력이 **0건**이었다. ' +
+      '이 키가 빠지면 그 상태로 조용히 돌아가고, **스윕은 계속 성공으로 보인다**(앞줄은 잘 처리되므로).',
+  },
+  {
+    name: '소스별 인터리브가 사라져 큰 소스가 작은 소스를 굶긴다',
+    file: 'src/features/marketing/api/kakao-sweep-query.ts',
+    find: 'ROW_NUMBER() OVER (PARTITION BY source ORDER BY',
+    replace: 'ROW_NUMBER() OVER (ORDER BY',
+    test: 'src/tests/unit/kakao-sweep-order.test.ts',
+    why:
+      '미조회 우선(위 항목)만으로는 안 닿았다 — 미조회끼리는 tier 가 줄을 세워 대기열이 ' +
+      '`t3 storeinfo 2,742 → t4 commerce 111,256(벽) → t5 storeinfo 15,518` 이 된다(309일). ' +
+      '파티션이 빠지면 **소스 하나가 예산을 통째로 가져가고**, 굶는 쪽은 조회 이력이 0이라 ' +
+      '"그 소스는 수율이 낮다"로 오독된다(실제로 그렇게 오판해 storeinfo 를 잘라낼 뻔했다).',
+  },
+  {
+    name: 'CPU 상한 — 파트너 수집 회차에 벽시계 마감선이 없다',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: ' || Date.now() - startedAt > runDeadlineMs) break',
+    replace: ') break',
+    test: 'src/tests/unit/ads-cpu-work-cap-callsites.test.ts',
+    why:
+      '이 레인은 예산(요청 수)만 볼 뿐 회차가 얼마나 오래 도는지는 안 봤다. 실측 `ms=27,410` 으로 ' +
+      '**사망 기준선 26,000 을 넘긴 회차가 "성공"으로 기록**됐다 — 화면 어디에도 경고가 없다. ' +
+      '마감선이 빠지면 그 상태로 돌아가고, 되돌아가도 **성공으로 보이므로 사람이 못 잡는다.**',
+  },
+  {
     name: 'CPU 상한 — 카카오 스윕이 예산 밖 행까지 다시 읽는다',
     file: 'src/features/marketing/api/company-collect.ts',
-    find: '    .bind(rowCap).all<{ id: number; company_name',
-    replace: '    .bind(cap).all<{ id: number; company_name',
+    // ⚠️ 2026-08-05: SQL 이 `kakao-sweep-query.ts` 로 나가면서 인라인 타입이 `KakaoSweepRow` 가 됐다.
+    find: '    .bind(rowCap).all<KakaoSweepRow>',
+    replace: '    .bind(cap).all<KakaoSweepRow>',
     test: 'src/tests/unit/ads-cpu-work-cap-callsites.test.ts',
     why:
       '예산 천장이 무료 캡(기본 60)이라 시도 가능한 행은 ~50개인데 `LIMIT 600` 으로 읽고 있었다. ' +
@@ -85,7 +283,8 @@ const MUTATIONS = [
   },
   {
     name: 'CPU 상한 — 재분류가 시간만 보고 행 총량을 안 본다',
-    file: 'src/worker-ads/index.ts',
+    // 🗺️ 2026-08-05 앵커 이사 — 본문이 `reclassify-lane.ts` 로 추출됐다(알람 이관: cron·알람 두 경로 공용).
+    file: 'src/features/marketing/api/reclassify-lane.ts',
     find: 'passes < 5 && !last.done && rows < maxRows && Date.now() - t0 < deadlineMs',
     replace: 'passes < 5 && !last.done && Date.now() - t0 < deadlineMs',
     test: 'src/tests/unit/ads-cpu-work-cap-callsites.test.ts',
@@ -286,6 +485,17 @@ const MUTATIONS = [
       '그러면 `/api/_healthcheck/cron` 이 영구 503 이 된다. 실측 피해가 크다: uptime 프로브가 그 503 을 ' +
       '"사이트 다운"과 같은 바구니로 세어, 장애 이슈 #845 가 6일째 열린 채 코멘트 84개가 쌓이는 동안 ' +
       '**진짜 다운을 감지할 수 없었다**. 이 주입은 그 회귀를 재현한다.',
+  },
+  {
+    name: '기아 방지 슬롯 배선이 빠짐 — 미실행 키워드가 다시 무한 연기',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '  const rescue = pickStarvationRescue(kws, new Set(interleaved.map(p => p.id)))\n  const finalPicks = rescue ? [rescue, ...interleaved.slice(0, Math.max(0, totalPick - 1))] : interleaved',
+    replace: '  const finalPicks = interleaved',
+    test: 'src/tests/unit/ads-rotation-health.test.ts',
+    why:
+      '함수(`pickStarvationRescue`)가 있어도 **배선이 빠지면 아무 일도 안 한다** — 이 레포의 "코드에 있다 ≠ ' +
+      '살아 있다" 클래스. 라이브 실측: 자동확장 키워드 24개가 생성 14.9일째 실행 0회(커서 거리 275 ≈ 10일 더). ' +
+      'starved 경보가 실전에서 처음 잡은 사고의 수리 지점이라, 배선 소실 = 그 사고의 무음 재발이다.',
   },
   {
     name: '순환 경보가 다시 "해제될 수 없는" 임계로 회귀',
@@ -671,7 +881,8 @@ const MUTATIONS = [
   },
   {
     name: '재분류 패스 루프가 마감선을 잃음(매시간 CPU 사망 복귀)',
-    file: 'src/worker-ads/index.ts',
+    // 🗺️ 2026-08-05 앵커 이사 — 본문이 `reclassify-lane.ts` 로 추출됐다(위 CPU 상한 항목과 동일).
+    file: 'src/features/marketing/api/reclassify-lane.ts',
     // 🗺️ 2026-08-04 앵커 갱신 — 같은 줄에 **행 총량 조건이 추가**됐다(`rows < maxRows`). 옛 앵커를
     //   그대로 두면 주입 대상을 못 찾아 이 불변식이 조용히 사라진다(가드가 실제로 그렇게 잡았다).
     //   지우는 건 여전히 **시간 조건만** — 행 조건은 별도 항목(`CPU 상한 — 재분류가 …`)이 지킨다.
@@ -1609,6 +1820,17 @@ const MUTATIONS = [
       '"순서" 불변식이 위치를 실제로 보는지 확인한다.',
   },
   {
+    name: '시트 미러가 알람과 cron 에서 동시에 돎 (리스 없음 → 시트 행 중복)',
+    file: 'src/worker-ads/index.ts',
+    find: "if (!laneAlarmOn && env.ADS_SHEETS_SYNC_ENABLED === 'true')",
+    replace: "if (env.ADS_SHEETS_SYNC_ENABLED === 'true')",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '시트 미러는 리스가 없다(커서 기반 append) — collect 는 겹쳐도 리스가 한쪽을 걸러 주지만 이 레인은 ' +
+      '`!laneAlarmOn` 게이트가 이중 실행의 **유일한** 방어다. 게이트가 빠지면 알람과 cron 이 같은 정각에 ' +
+      '겹쳐 돌아 구글시트에 행이 중복되고, 에러가 없어 아무도 모른다. 이 주입은 그 게이트 소실을 재현한다.',
+  },
+  {
     name: '수집 레인 시간당 상한이 조용히 증설됨',
     file: 'src/worker-ads/lane-alarm-runners.ts',
     find: '  collect: {\n    runsPerHour: 1,\n',
@@ -1774,6 +1996,97 @@ const MUTATIONS = [
       '*"실패가 아니라 부재"* 클래스 — 유입구에서 특히 위험하다(대표는 넣었다고 믿는다).',
   },
   {
+    name: 'YT 몫이 옛 비율로 회귀(서브리퀘스트당 이메일 2.5배를 버림)',
+    file: 'src/features/marketing/api/influencer-enrich-plan.ts',
+    find: 'Math.min(20, Math.floor(usable * 0.55))',
+    replace: 'Math.min(20, Math.floor(usable * 0.35))',
+    test: 'src/tests/unit/ads-enrich-yt-priority.test.ts',
+    why:
+      'YT 는 건당 1 fetch, 블로거는 2 인데 같은 날 수율은 YT 가 더 높다(26.7% vs 21.2%) — ' +
+      '서브리퀘스트당 2.5배다. 비율이 돌아가면 같은 예산으로 얻는 이메일이 조용히 줄어든다.',
+  },
+  {
+    name: '블로거 선두 회차가 YT 몫까지 먹음(그 회차 YT 0행)',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: 'naverRoomWithYtReserve(budget.left, naverMax, ytReserve)',
+    replace: 'naverRoomFromRemaining(budget.left, naverMax)',
+    test: 'src/tests/unit/ads-enrich-yt-priority.test.ts',
+    why:
+      '`naverRoomFromRemaining` 은 `max(planned, affordable)` 이라 선두일 때 예산 전체를 가져간다. ' +
+      '그러면 **회차의 절반에서 YT 가 한 명도 못 재고**, ytMax 를 올린 의미가 통째로 사라진다. ' +
+      '에러가 없어 안 보이는 종류 — 스냅샷의 yt 가 0 인 회차로만 드러난다.',
+  },
+  {
+    name: '발송 큐가 중복 주소를 그대로 내보냄(같은 사람에게 두 번)',
+    file: 'src/features/marketing/api/outreach-queue.ts',
+    find: 'return dedupeByEmail((rows?.results || []) as T[]).slice(0, limit)',
+    replace: 'return ((rows?.results || []) as T[]).slice(0, limit)',
+    test: 'src/tests/unit/ads-outreach-dedupe-wiring.test.ts',
+    why:
+      '실측 130그룹/262행 — 그대로 두면 132통이 두 번째로 나간다. 상대는 짜증나고 브랜드가 깎이며, ' +
+      '회신률 통계까지 흐려진다(같은 사람을 두 번 센다).',
+  },
+  {
+    name: '연락 대상 내보내기가 중복 주소를 그대로 담음',
+    file: 'src/features/marketing/api/influencer-pool-export.ts',
+    find: "const outRows = opts?.contactable ? dedupeByEmail(rows) : rows",
+    replace: 'const outRows = rows',
+    test: 'src/tests/unit/ads-outreach-dedupe-wiring.test.ts',
+    why:
+      '대표의 실제 워크플로는 **엑셀 내보내기 → 직접 발송**이라, 큐만 고치고 내보내기를 빼면 ' +
+      '정작 발송되는 경로에는 중복이 그대로 남는다(고친 줄 알고 안 고친 형태).',
+  },
+  {
+    name: '결과 화면이 파서를 다시 짬(인식 건수와 실제 반영이 갈라짐)',
+    file: 'src/pages/admin/influencer-pool/OutreachResultPanel.tsx',
+    find: "  parseOutreachCsv, OUTREACH_STATUSES, OUTREACH_INGEST_MAX,",
+    replace: "  OUTREACH_STATUSES, OUTREACH_INGEST_MAX,\n  parseOutreachCsv as _unusedParse,",
+    test: 'src/tests/unit/ads-outreach-result-panel.test.tsx',
+    why:
+      '화면이 "인식 3건"이라 해놓고 서버가 다르게 세면 그 숫자는 **거짓말**이다. 파서 두 벌은 반드시 ' +
+      '갈라진다 — 그러면 대표는 넣었다고 믿는데 절반만 들어간다(이 기능의 존재 이유가 그 오해를 없애는 것).',
+  },
+  {
+    name: '결과 500 상한을 안 나눠 보냄(초과분 조용히 유실)',
+    file: 'src/pages/admin/influencer-pool/OutreachResultPanel.tsx',
+    find: 'i += OUTREACH_INGEST_MAX',
+    replace: 'i += 100000',
+    test: 'src/tests/unit/ads-outreach-result-panel.test.tsx',
+    why:
+      '서버는 500 초과를 400 으로 거절한다. 안 나누면 큰 파일이 통째로 실패하고, 대표는 파일을 ' +
+      '손으로 쪼개야 한다 — 그 마찰이 곧 "결과가 안 들어옴"이고 이 화면을 만든 이유가 사라진다.',
+  },
+  {
+    name: '미매칭이 화면에 안 남음(절반만 먹힌 업로드가 성공으로 보임)',
+    file: 'src/pages/admin/influencer-pool/OutreachResultPanel.tsx',
+    find: "{' · '}미매칭 <b>{formatNumber(result.unmatched)}</b>건",
+    replace: '',
+    test: 'src/tests/unit/ads-outreach-result-panel.test.tsx',
+    why:
+      '미매칭(풀에 없는 주소)은 **조용한 0건과 구분이 안 된다**. 토스트로 흘리면 사라지고, ' +
+      '대표는 반영됐다고 믿는다 — 이 레포가 반복해 만난 *"실패가 아니라 부재"* 클래스.',
+  },
+  {
+    name: '결과 화면이 페이지에서 떨어짐(엔드포인트만 남고 화면 0)',
+    file: 'src/pages/admin/AdminInfluencerPoolPage.tsx',
+    find: '            <OutreachResultPanel />',
+    replace: '            {false && <OutreachResultPanel />}',
+    test: 'src/tests/unit/ads-outreach-result-panel.test.tsx',
+    why:
+      '이 기능의 실패 모드는 "서버가 틀린다"가 아니라 **"사람이 못 넣는다"** 이다 — 실제로 ' +
+      '엔드포인트만 있고 화면이 없어 라이브 email_status 가 0건이었다. 배선이 빠지면 그 상태로 되돌아간다.',
+  },
+  {
+    name: 'CSV 파서가 열 순서를 강제함(첫 업로드가 통째로 invalid)',
+    file: 'src/features/marketing/api/outreach-status-ingest.ts',
+    find: '      email = cols.map(normEmail).find(Boolean) || null',
+    replace: '      email = null',
+    test: 'src/tests/unit/ads-outreach-status-ingest.test.ts',
+    why:
+      '메일 도구마다 열 구성이 다르고 우리는 대표가 쓰는 도구의 출력을 본 적이 없다. 순서를 강제하면 ' +
+      '첫 파일이 통째로 무시되고, 그 왕복이 곧 "결과가 안 들어옴"이다.',
+  },
+  {
     name: '티스토리 수집만 되살아남(측정 안 될 행을 계속 쌓음)',
     file: 'src/features/marketing/api/influencer-auto-collect.ts',
     find: ".ADS_COLLECT_TISTORY_DISABLED !== 'false'",
@@ -1897,8 +2210,10 @@ const MUTATIONS = [
   {
     name: '네이버 오픈API 계측이 래퍼에서 사라짐(그 레인이 통째로 계측 밖)',
     file: 'src/features/marketing/api/fetch-with-err.ts',
-    find: '  noteNaverCall(url) //',
-    replace: '  // noteNaverCall(url) //',
+    // ⚠️ 2026-08-04: 이 줄이 `noteNaverCall(url)` 단독에서 **게이트 분기**로 바뀌었다(90% 목표).
+    //   옛 find 는 그대로 두면 "주입 대상을 못 찾음(낡은 지도)"로 잡힌다 — 실제로 그렇게 잡혔다.
+    find: "  if (!noteNaverCall(url)) return { res: null, err: 'NaverQuota: 일일 목표(90%) 소진' }\n  try {",
+    replace: '  try {',
     test: 'src/tests/unit/ads-naver-api-usage.test.ts',
     why:
       '유튜브·카카오는 일별 실사용을 세는데 네이버만 카운터가 없어 "한도 안"이 **추정**이었다. 래퍼에서 빠지면 ' +
@@ -2010,6 +2325,27 @@ const MUTATIONS = [
     why:
       '정비는 몇 분씩 걸린다. 그동안 10초마다 224KB 를 다시 받으면 첫 페인트를 고쳐 놓고 ' +
       '**보고 있는 내내** 같은 비용을 문다. 진행 표시에 필요한 건 통계뿐이다.',
+  },
+  {
+    name: '축 몫이 풀 크기를 무시(작은 전략 축이 7배 빨리 돌아 큰 축이 굶음)',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: '  const w = [avail[0] * mult.focus, avail[1] * mult.priority, avail[2] * mult.general]',
+    replace: '  const w = [mult.focus, mult.priority, mult.general]',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '가중치에서 풀 크기를 빼면 옛 규칙(고정 비율)으로 되돌아간다. 라이브에서 그 규칙이 만든 결과는 ' +
+      '집중 19개가 4슬롯 · 우선 315개가 9슬롯 = **키워드당 7배** 였고, 숙소 19개 중 12개가 한 번도 못 돌았다. ' +
+      '에러가 없어 안 보이고, 키워드를 더 넣을수록 조용히 나빠진다.',
+  },
+  {
+    name: '작은 축 바닥 1슬롯이 사라짐(반올림이 전략 축을 삼킴)',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: '  for (const i of order) { if (left > 0 && avail[i] > 0) { out[i] = 1; left-- } }',
+    replace: '  void order',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '순수 비례만 하면 회차 6슬롯에서 집중 축(19)이 0.45 → **매 회차 0** 이 된다. 전략 축이 ' +
+      '정책이 아니라 반올림 때문에 꺼지는 형태 — 아무도 끈 적 없는데 안 돈다.',
   },
 ]
 /**

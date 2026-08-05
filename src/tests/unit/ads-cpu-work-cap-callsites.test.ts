@@ -30,7 +30,8 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { rowsWorthReading, reclassifyWorkPlan } from '@/features/marketing/api/collect-budget'
+import { rowsWorthReading, reclassifyWorkPlan, companyRunDeadlineMs } from '@/features/marketing/api/collect-budget'
+import { CPU_WALL_MS } from '@/worker/utils/cron-heartbeat'
 
 const read = (rel: string) => {
   const p = join(process.cwd(), rel)
@@ -62,20 +63,20 @@ describe('rowsWorthReading — 예산이 못 쓸 행은 안 읽는다', () => {
 })
 
 describe('reclassifyWorkPlan — 무료는 총량으로 묶는다', () => {
-  it('무료 총량이 종전(5,000행)보다 확실히 작다 — 안 줄이면 이 변경의 의미가 없다', () => {
-    const free = reclassifyWorkPlan(undefined)
+  it('무료 총량이 종전(5,000행)보다 확실히 작다 — 안 줄이면 이 변경의 의미가 없다', async () => {
+    const free = await reclassifyWorkPlan(undefined)
     expect(free.maxRows).toBeLessThan(5_000)
     expect(free.rowsPerPass).toBeLessThanOrEqual(free.maxRows)
   })
 
-  it('유료는 종전 그대로 — 요금제를 올린 사람이 손해 보면 안 된다', () => {
-    const paid = reclassifyWorkPlan({ ADS_PLAN: 'paid' })
+  it('유료는 종전 그대로 — 요금제를 올린 사람이 손해 보면 안 된다', async () => {
+    const paid = await reclassifyWorkPlan({ ADS_PLAN: 'paid' })
     expect(paid.rowsPerPass).toBe(1_000)
     expect(paid.maxRows).toBe(5_000)
   })
 
-  it('시간 상한이 살아 있다 — 행 상한으로 **대체**하면 느린 D1 회차를 못 막는다', () => {
-    expect(reclassifyWorkPlan(undefined).deadlineMs).toBeGreaterThan(0)
+  it('시간 상한이 살아 있다 — 행 상한으로 **대체**하면 느린 D1 회차를 못 막는다', async () => {
+    expect((await reclassifyWorkPlan(undefined)).deadlineMs).toBeGreaterThan(0)
   })
 })
 
@@ -91,21 +92,49 @@ describe('🚧 배선 — 순수함수만 만들고 호출부에 안 걸면 아�
   it('예산 계산이 SELECT **앞**에 있다 — 뒤에 있으면 좁힐 값이 없다', () => {
     const src = read('src/features/marketing/api/company-collect.ts')
     const budget = src.indexOf('const budget: FetchBudget = { left: budgetTotal - schemaSpent }')
-    const select = src.indexOf('FROM ad_company_leads\n     WHERE merged_into IS NULL AND (phone IS NULL')
+    // ⚠️ 2026-08-05: SQL 자체가 `kakao-sweep-query.ts` 로 이사했다 — 여기선 **호출부**를 집는다
+    //   (이 시험이 지키는 건 SQL 문구가 아니라 "예산이 먼저 계산되는가"라는 순서다).
+    const select = src.indexOf('DB.prepare(KAKAO_SWEEP_SQL)')
     expect(budget, '예산 선언을 못 찾았다 — 이름이 바뀌었으면 이 시험을 고쳐라').toBeGreaterThan(0)
     expect(select, '스윕 SELECT 를 못 찾았다').toBeGreaterThan(0)
     expect(budget).toBeLessThan(select)
   })
 
+  // 🗺️ 2026-08-05 읽기 대상 이사 — 재분류 본문이 index.ts 인라인에서 `reclassify-lane.ts` 로
+  //   추출됐다(DO 알람 이관: cron·알람 두 경로가 같은 본문을 불러야 해서). 계약은 그대로 —
+  //   main(#1076)의 cpu-quantum 배선(`await … env.DB`)도 추출 모듈에서 그대로 지킨다.
   it('재분류 루프가 행 총량으로도 멈춘다 — 시간 조건만 남으면 08-04 상태 그대로다', () => {
-    const src = read('src/worker-ads/index.ts')
-    expect(src).toMatch(/const \{ rowsPerPass, maxRows, deadlineMs \} = reclassifyWorkPlan\(env\)/)
+    const src = read('src/features/marketing/api/reclassify-lane.ts')
+    expect(src).toMatch(/const \{ rowsPerPass, maxRows, deadlineMs \} = await reclassifyWorkPlan\(env, env\.DB\)/)
     expect(src).toMatch(/rows < maxRows/)
     // 고정 1000 이 루프에 다시 박히면 요금제가 닿을 길이 없다
     expect(src).not.toMatch(/reclassifyCompanyLeads\(env\.DB, 1000/)
   })
 
   it('무엇이 멈췄는지 남긴다 — "행에서 끊겼다"와 "시간에서 끊겼다"가 같아 보이면 조정할 수 없다', () => {
-    expect(read('src/worker-ads/index.ts')).toMatch(/stopped_by: last\.done \? 'done' : \(rows >= maxRows \? 'rows'/)
+    expect(read('src/features/marketing/api/reclassify-lane.ts')).toMatch(/stopped_by: last\.done \? 'done' : \(rows >= maxRows \? 'rows'/)
+  })
+})
+
+describe('companyRunDeadlineMs — 27.4초가 "성공"으로 기록되던 자리', () => {
+  it('무료 마감선이 실측 사망 기준선보다 확실히 아래다 — 아니면 넣으나 마나다', () => {
+    expect(companyRunDeadlineMs(undefined)).toBeLessThan(CPU_WALL_MS)
+  })
+
+  it('유료가 무료보다 길다 — 요금제를 올린 사람이 손해 보면 안 된다', () => {
+    expect(companyRunDeadlineMs({ ADS_PLAN: 'paid' })).toBeGreaterThan(companyRunDeadlineMs(undefined))
+  })
+
+  it('🚧 배선 — 키워드 루프와 이메일 크롤 블록 **둘 다** 마감선을 본다', () => {
+    const src = read('src/features/marketing/api/company-collect.ts')
+    expect(src).toMatch(/const startedAt = Date\.now\(\), runDeadlineMs = companyRunDeadlineMs\(env\)/)
+    // 루프: 기존 예산 조건에 마감선이 **더해져** 있어야 한다(대체가 아니다 — 둘 다 필요하다)
+    expect(src).toMatch(/if \(outOfBudget\(budget\) \|\| budget\.limitHit \|\| Date\.now\(\) - startedAt > runDeadlineMs\) break/)
+    // 이메일 크롤은 루프 뒤에 따라오는 **가장 비싼 꼬리**(사이트 15건 크롤)라 여기가 빠지면 마감선이 무의미하다
+    expect(src).toMatch(/if \(!outOfBudget\(budget\) && Date\.now\(\) - startedAt < runDeadlineMs\) \{/)
+  })
+
+  it('무엇 때문에 멈췄는지 남긴다 — 안 남기면 조정할 근거가 없다', () => {
+    expect(read('src/features/marketing/api/company-collect.ts')).toMatch(/run_ms: Date\.now\(\) - startedAt, deadline_hit:/)
   })
 })

@@ -9,7 +9,7 @@
  *   (D1 밖). 컬럼명이 바뀌면 판정은 조용히 0 입력을 받는다 — 그건 `check-sql-column-exists` 몫이다.
  */
 import { describe, it, expect } from 'vitest'
-import { judgeRotation, ROTATION_STARVE_CYCLES } from '@/features/marketing/api/influencer-keyword-rotation'
+import { judgeRotation, ROTATION_STARVE_CYCLES, pickStarvationRescue } from '@/features/marketing/api/influencer-keyword-rotation'
 
 describe('judgeRotation', () => {
   it('라이브 실측(2026-08-04) — 느리지만 도는 상태는 경보가 아니다', () => {
@@ -53,5 +53,55 @@ describe('judgeRotation', () => {
     const v = judgeRotation({ active: NaN, ran24h: NaN, oldestDays: NaN, avgDays: NaN } as never)
     expect(v.stalled).toBe(false)
     expect(() => judgeRotation({} as never)).not.toThrow()
+  })
+})
+
+/**
+ * 🛟 기아 방지 슬롯 — `starved` 경보가 실전에서 처음 잡은 것의 수리 (2026-08-04 저녁).
+ *   라이브 실측: 자동확장 키워드 24개가 생성 14.9일째 실행 0회, 커서에서 거리 275(≈10일 더 대기).
+ */
+describe('pickStarvationRescue', () => {
+  const kw = (id: number, ran: boolean) => ({ id, last_run_at: ran ? '2026-08-04 10:00:00' : null })
+
+  it('가장 오래된(id 최소) 미실행 키워드를 고른다 — 라이브 케이스', () => {
+    // 실행된 것들 사이에 미실행(생성 14.9일)이 끼어 있다 — id 가 곧 생성순이다.
+    const pool = [kw(1, true), kw(120, false), kw(121, false), kw(300, true), kw(400, false)]
+    expect(pickStarvationRescue(pool, new Set())?.id).toBe(120)
+  })
+
+  it('이번 라운드에 이미 뽑힌 키워드는 건너뛴다 — 같은 픽 이중 소비 금지', () => {
+    const pool = [kw(120, false), kw(121, false)]
+    expect(pickStarvationRescue(pool, new Set([120]))?.id).toBe(121)
+  })
+
+  it('미실행이 없으면 null — 슬롯은 반납되고 평소 픽이 그대로 돈다', () => {
+    expect(pickStarvationRescue([kw(1, true), kw(2, true)], new Set())).toBeNull()
+    expect(pickStarvationRescue([], new Set())).toBeNull()
+  })
+
+  it('한 번이라도 돈 키워드는 구제하지 않는다 — 제2의 커서가 되면 진짜 커서를 굶긴다', () => {
+    // 오래됐어도 last_run_at 이 있으면 커서 순환의 몫이다.
+    const pool = [{ id: 5, last_run_at: '2026-07-01 00:00:00' }, kw(900, false)]
+    expect(pickStarvationRescue(pool, new Set())?.id).toBe(900)
+  })
+
+  it('매 라운드 하나씩 소진된다 — 24개 잔량이 24라운드에 0이 되는 불변식', () => {
+    let pool = Array.from({ length: 24 }, (_, i) => kw(100 + i, false))
+    for (let round = 0; round < 24; round++) {
+      const r = pickStarvationRescue(pool, new Set())
+      expect(r).not.toBeNull()
+      pool = pool.map(k => (k.id === r!.id ? { ...k, last_run_at: 'ran' } : k))
+    }
+    expect(pickStarvationRescue(pool, new Set())).toBeNull()
+  })
+})
+
+/** 🔌 배선 불변식 — 함수가 있어도 배선이 빠지면 아무 일도 안 한다("코드에 있다 ≠ 살아 있다"). */
+describe('기아 방지 슬롯 — 배선', () => {
+  it('finalPicks 맨 앞에 rescue 가 온다 (예산이 앞에서 끊기므로 앞자리만 처리 보장)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const src = readFileSync('src/features/marketing/api/influencer-auto-collect.ts', 'utf8')
+    expect(src).toMatch(/const rescue = pickStarvationRescue\(kws,/)
+    expect(src).toMatch(/rescue \? \[rescue, \.\.\.interleaved/)
   })
 })

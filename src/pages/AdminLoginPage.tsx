@@ -67,17 +67,7 @@ export default function AdminLoginPage() {
       //   KR 소비자 세션(쿠키)은 어드민 Bearer 와 독립이라 공존 가능 → 파괴하지 않는다.
       //   글로벌(Firebase)만 기존대로 정리 + signOut (Bearer 공간/토큰 일관성 유지).
       clearFirebaseTokenCache()
-      try {
-        const { isKorea } = await import('@/config/region')
-        if (!isKorea()) {
-          clearAuthData('user')
-          const signOutPromise = import('@/lib/firebase-auth').then(m => m.signOut())
-          await Promise.race([
-            signOutPromise,
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
-          ])
-        }
-      } catch (_) {} // non-critical: best-effort signOut before admin login
+      // 🔥 2026-08-04 (대표 승인): GLOBAL Firebase signOut 블록 제거 — GLOBAL 미런칭·폐기(#804).
 
       // JWT-based Login (NO Firebase!)
       // 🆕 보안 PIN: 처음부터 함께 전송 → PIN 설정 계정도 한 번에 로그인(2단계 제거). 비우면 미전송.

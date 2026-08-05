@@ -30,12 +30,11 @@ export interface KakaoSweepInfo { last_run?: string; scanned?: number; found?: n
 export interface EnrichRollupInfo { day: string; rounds: number; partial: number; deadline: number; limit: number; crash: number; processed: number; enriched: number; crawls: number; phase?: Record<string, number> }
 export interface RegistryMatchInfo { last_run?: string; scanned?: number; matched?: number; total_matched?: number; skip_reason?: Record<string, number> }
 export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; pending_days?: number; backfill_days?: number; spent?: number; budget_total?: number; diag?: { configured?: boolean; error?: string } } | null }
-export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
 
-export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24, localdata, enrichLast, enrichRollup, kakaoSweep, registryMatch }: {
+export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, localdata, enrichLast, enrichRollup, kakaoSweep, registryMatch }: {
   collect: Collect | null; storeinfo: StoreInfo | null; commerce: Commerce | null; franchise: Franchise | null
   nts: NtsSweep | null; npsInfo: NpsInfo | null; reclassifyInfo: ReclassifyInfo | null; agencyFunnel: AgencyFunnel | null
-  work24: Work24Info | null; localdata: LocalDataInfo | null; enrichLast: EnrichInfo | null; enrichRollup?: EnrichRollupInfo | null; kakaoSweep?: KakaoSweepInfo | null; registryMatch?: RegistryMatchInfo | null
+  localdata: LocalDataInfo | null; enrichLast: EnrichInfo | null; enrichRollup?: EnrichRollupInfo | null; kakaoSweep?: KakaoSweepInfo | null; registryMatch?: RegistryMatchInfo | null
 }) {
   return (
     <>
@@ -277,17 +276,6 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
         )}
       </div>
       {/* 💼 고용24 채용기업 수집 상태 — 첫 실행 diag 로 실응답 검증 */}
-      {work24?.run && (
-        <div className="mb-3 text-xs text-gray-500">
-          💼 채용기업(고용24) <span className={work24.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{work24.gate ? 'ON · 00시' : 'OFF'}</span>
-          <span> · 최근 {kstShort(work24.run.last_run)} · '{work24.run.keyword}' 발굴 {work24.run.found ?? 0} / 적합 {work24.run.matched ?? 0} / 저장 {work24.run.saved ?? 0} (누적 {work24.run.total_saved ?? 0})</span>
-          {work24.run.diag?.error && <span className="text-amber-600"> · ⚠️ {work24.run.diag.error}</span>}
-          {/* 발굴 0 진단 — 응답 원문 앞부분(엔드포인트/파라미터/인증 오류가 그대로 보임) */}
-          {(work24.run.found ?? 0) === 0 && work24.run.diag?.sample != null && (
-            <span className="text-amber-600"> · 응답: {String(typeof work24.run.diag.sample === 'string' ? work24.run.diag.sample : JSON.stringify(work24.run.diag.sample)).slice(0, 200)}</span>
-          )}
-        </div>
-      )}
     </>
   )
 }

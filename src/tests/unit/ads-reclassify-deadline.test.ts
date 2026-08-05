@@ -34,24 +34,30 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { reclassifyWorkPlan } from '@/features/marketing/api/collect-budget'
 
-const SRC = readFileSync(resolve(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
-const AT = SRC.indexOf("kick('/__ads/reclassify-company")
+// 🗺️ 2026-08-05 읽기 대상 이사 — 본문이 `reclassify-lane.ts` 로 추출됐다(DO 알람 이관: cron·알람
+//   두 경로가 같은 본문을 쓴다. 인라인 복제는 마감선·행상한이 두 벌이 되어 조용히 갈린다).
+//   이 시험의 계약(마감선·행상한·첫패스·중단사유)은 전부 그대로다 — 사는 곳만 옮겨졌다.
+const SRC = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/reclassify-lane.ts'), 'utf8')
+const AT = SRC.indexOf('export async function runReclassifyLane')
 const LOOP = SRC.slice(AT, AT + 2600)
+// 배선(두 경로가 정말 이 본문을 부르는가)도 함께 잠근다 — 추출이 반쪽(한 경로만 교체)이면 도로 두 벌이다.
+const IDX = readFileSync(resolve(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+const RUNNERS = readFileSync(resolve(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
 
 describe('재분류 — 인보케이션당 총량에 상한이 있다', () => {
   it('🔒 패스 루프가 **마감선**을 본다 — 없으면 5패스를 무조건 돌아 CPU 한도에 닿는다', () => {
-    expect(AT, '재분류 kick 을 못 찾았다 — 이름이 바뀌었으면 이 시험을 고쳐라').toBeGreaterThan(0)
+    expect(AT, 'runReclassifyLane 을 못 찾았다 — 이름이 바뀌었으면 이 시험을 고쳐라').toBeGreaterThan(0)
     expect(LOOP, '루프 조건에 경과 시간 검사가 있어야 한다').toMatch(/passes < 5 && [^\n]*Date\.now\(\) - t0 < deadlineMs/)
   })
 
-  it('🔒 무료 마감선이 **관측된 사망 지점(3,880ms)의 절반 아래** — 근접하면 못 끊는다', () => {
-    const free = reclassifyWorkPlan(undefined).deadlineMs
+  it('🔒 무료 마감선이 **관측된 사망 지점(3,880ms)의 절반 아래** — 근접하면 못 끊는다', async () => {
+    const free = (await reclassifyWorkPlan(undefined)).deadlineMs
     expect(free).toBeGreaterThan(0)
     expect(free, '3,880ms 에 죽는데 마감선이 1,940ms 이상이면 끊는 의미가 없다').toBeLessThanOrEqual(1_940)
   })
 
-  it('🔒 유료는 **더 크다** — CPU 한도가 다른 세계인데 같은 값이면 늘어난 한도가 그냥 남는다', () => {
-    expect(reclassifyWorkPlan({ ADS_PLAN: 'paid' }).deadlineMs).toBeGreaterThan(reclassifyWorkPlan(undefined).deadlineMs)
+  it('🔒 유료는 **더 크다** — CPU 한도가 다른 세계인데 같은 값이면 늘어난 한도가 그냥 남는다', async () => {
+    expect((await reclassifyWorkPlan({ ADS_PLAN: 'paid' })).deadlineMs).toBeGreaterThan((await reclassifyWorkPlan(undefined)).deadlineMs)
   })
 
   it('🔒 첫 패스는 **상한 검사 전에** 무조건 돈다 — 0패스로 끝나면 커서가 영영 안 나간다', () => {
@@ -69,5 +75,10 @@ describe('재분류 — 인보케이션당 총량에 상한이 있다', () => {
 
   it('🔒 `housekeeping` 은 첫 패스만 — 뒤 패스도 켜면 대형 테이블 풀스캔이 패스마다 반복된다', () => {
     expect(LOOP).toMatch(/reclassifyCompanyLeads\(env\.DB, rowsPerPass, false\)/)
+  })
+
+  it('🔒 두 실행 경로(cron kick · DO 알람)가 **같은 본문**을 부른다 — 반쪽 추출이면 도로 두 벌', () => {
+    expect(IDX).toMatch(/runReclassifyLane/)
+    expect(RUNNERS).toMatch(/runReclassifyLane/)
   })
 })

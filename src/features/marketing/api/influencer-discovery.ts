@@ -17,6 +17,7 @@ import { runDdlOnce } from './ads-schema-guard'
 import { isSelfBlogLink } from './influencer-self-link'
 import { fetchWithErr, outOfBudget, spendBudget } from './fetch-with-err'
 import { stripVideoTitles } from './influencer-parse'
+import { noteCrawlStatus, naverCrawlBlocked } from './naver-crawl-block'
 
 import { deobfuscateEmail } from './contact-deobfuscate'
 
@@ -199,8 +200,8 @@ async function fetchRecentVideoSnippets(key: string, uploadsPlaylistId: string):
 }
 
 export type DiscoverResult =
-  | { ok: true; leads: InfluencerLead[] }
-  | { ok: false; error: 'NOT_CONFIGURED' | 'QUOTA' | 'FAILED'; message?: string }
+  | { ok: true; leads: InfluencerLead[]; calls?: import('./influencer-collect-types').DiscoverCalls }
+  | { ok: false; error: 'NOT_CONFIGURED' | 'QUOTA' | 'FAILED'; message?: string; calls?: import('./influencer-collect-types').DiscoverCalls }
 
 /** 🔒 서브리퀘스트 예산(2026-07-20) — Cloudflare Worker 1회 실행의 subrequest 한도 방어.
  *   여러 키워드 발굴이 한 cron 실행에 누적돼 "Too many subrequests" 로 중도 실패하던 사고 방지.
@@ -232,10 +233,10 @@ export async function discoverYouTubeInfluencers(
   // 1) 검색 — pageToken 으로 pages 만큼 깊이 순회(각 page=100 units). 첫 page 실패는 에러, 이후는 있는 만큼 진행.
   //    channel=채널 결과(id.channelId) / video=영상 결과(snippet.channelId → 그 영상 주인 채널).
   const channelIds: string[] = []
-  let pageToken = ''
+  let pageToken = ''; const calls: import('./influencer-collect-types').DiscoverCalls = { search: 0, channels: 0, videos: 0 } // 🔬 내역 계측(근거: DiscoverCalls). videos 는 **채널당 1회**라 배수의 유력한 자리다
   for (let p = 0; p < pages; p++) {
     if (outOfBudget(opts.budget)) break // 예산 소진 — 모은 만큼만 처리
-    spendBudget(opts.budget)
+    spendBudget(opts.budget); calls.search++
     const searchUrl = `${YT_BASE}/search?part=snippet&type=${searchType}&maxResults=${n}&order=${order}&regionCode=KR&relevanceLanguage=ko&q=${encodeURIComponent(q)}${pageToken ? `&pageToken=${pageToken}` : ''}&key=${key}`
     let searchData: YTSearchResp
     try {
@@ -264,7 +265,7 @@ export async function discoverYouTubeInfluencers(
   const chItems: NonNullable<YTChannelsResp['items']> = []
   for (let i = 0; i < uniqIds.length; i += 50) {
     if (outOfBudget(opts.budget)) break
-    spendBudget(opts.budget)
+    spendBudget(opts.budget); calls.channels++
     const batch = uniqIds.slice(i, i + 50)
     const chUrl = `${YT_BASE}/channels?part=snippet,statistics,brandingSettings,contentDetails&id=${batch.join(',')}&maxResults=50&key=${key}`
     try {
@@ -319,7 +320,7 @@ export async function discoverYouTubeInfluencers(
   const targets = ytTargets.slice(0, enrichMax)
   for (const l of targets) {
     if (outOfBudget(opts.budget)) break // 예산 소진 — 컨택 보충 조기 종료(핵심 메타는 이미 수집됨)
-    spendBudget(opts.budget)
+    spendBudget(opts.budget); calls.videos++
     const { descText, titleText } = await fetchRecentVideoSnippets(key, l._uploads!)
     if (descText) {
       const c = extractContacts(descText); const bizEmail = pickBusinessEmail(descText)
@@ -338,7 +339,7 @@ export async function discoverYouTubeInfluencers(
 
   // 구독자 많은 순.
   leads.sort((a, b) => b.subscriber_count - a.subscriber_count)
-  return { ok: true, leads }
+  return { ok: true, leads, calls }
 }
 
 // ── 네이버 블로거 발굴 (네이버 검색 오픈API — 무료, 보유 키) ────────────────────
@@ -347,15 +348,14 @@ export async function discoverYouTubeInfluencers(
 const NAVER_OPENAPI = 'https://openapi.naver.com'
 const stripTag = (s: string | undefined) => String(s || '').replace(/<[^>]+>/g, '').replace(/&[a-z]+;/gi, ' ').trim()
 
-/** 네이버 블로그 RSS(공개 피드)로 최근 글 본문 텍스트 취득 — 검색 스니펫보다 풍부해 컨택(이메일/카톡/인스타) 커버.
- *  네이버 오픈API 쿼터와 무관(단순 HTTP GET). 실패/차단 시 빈 문자열(fail-soft). */
+/** 블로그 RSS(공개 피드) 본문 — 스니펫보다 풍부해 컨택 커버. ⚠️ 오픈API 쿼터 **밖**이라 한도가 없다(→차단 감지). */
 async function fetchNaverBlogRss(handle: string): Promise<string> {
   if (!/^[A-Za-z0-9_-]{2,40}$/.test(handle)) return ''
   try {
     const res = await fetch(`https://rss.blog.naver.com/${handle}.xml`, { signal: AbortSignal.timeout(10000) })
-    if (!res.ok) return ''
+    noteCrawlStatus(res.status); if (!res.ok) return '' // 🚧 429/403 만 차단으로 샌다(naver-crawl-block.ts)
     return (await res.text()).slice(0, 20000) // 최근 글 몇 개면 충분
-  } catch { return '' }
+  } catch { noteCrawlStatus(null); return '' }
 }
 
 /** 🏠 네이버 블로그 **홈(모바일)** 공개 HTML — 프로필 소개글 + 위젯(인스타/링크트리/오픈카톡/이메일)이 여기 있음.
@@ -369,9 +369,9 @@ async function fetchNaverBlogHome(handle: string): Promise<string> {
       headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1', accept: 'text/html' },
       redirect: 'follow',
     })
-    if (!res.ok) return ''
+    noteCrawlStatus(res.status); if (!res.ok) return ''
     return (await res.text()).slice(0, 80000) // 프로필/위젯 영역에 mailto:·instagram.com·linktr.ee 링크
-  } catch { return '' }
+  } catch { noteCrawlStatus(null); return '' }
 }
 
 /**
@@ -449,7 +449,7 @@ export async function discoverNaverBloggers(
   const nbCand = leads.filter(l => (!l.email && !l.instagram && !l.links) && l.handle)
   const targets = (await filterUncontacted(opts.alreadyContacted, 'naver_blog', nbCand, l => l.handle)).slice(0, enrichMax)
   for (const l of targets) {
-    if (outOfBudget(opts.budget)) break // 예산 소진 — 컨택 보충 조기 종료
+    if (outOfBudget(opts.budget) || naverCrawlBlocked()) break // 예산 소진 또는 🚧 차단 — 조기 종료
     spendBudget(opts.budget)
     let text = await fetchNaverBlogHome(l.handle!)
     let c = text ? extractContacts(text) : { emails: [], instagram: [], tiktok: [], links: [] }

@@ -337,5 +337,54 @@ export function buildAgeInfo(nowMs: number = Date.now()): { build_age_min?: numb
   } catch { return {} }
 }
 
+/**
+ * 🔁 **회전을 아는 침묵 기준** (2026-08-05 — 라이브 경보 6건 중 5건이 오탐이었다).
+ *
+ * ## 왜 — 이 파일이 고친 문제의 한 겹 아래
+ * 위 `hourlyGapMinutes()` 는 "매시간 도는 레인"을 전제로 150분을 준다. 그런데 **매시간 도는 건
+ * 부모**고, 레인은 회차마다 `lanesPerTick` 개만 **돌아가며** 뽑힌다. 즉 매시간 *자격이 있는* 레인도
+ * 실제 차례는 몇 시간에 한 번이다 — 기준이 구조적으로 지킬 수 없는 값이라 **영원히 울린다.**
+ *
+ * 2026-08-05 라이브 실측(경보 6건):
+ * ```
+ *   collect-store-kakao 420분 · sweep-kakao-chain 300 · collect-hira 300
+ *   collect-localdata   180분 · match-registry    180      ← 다섯 다 정상(마지막 결과 전부 성공)
+ *   scan-notices       4139분                              ← 이것만 진짜(일 1회 레인, 3일 침묵)
+ * ```
+ * 배분 스냅샷이 답이었다: `prospect` 도메인은 **몫 1 에 레인 5개**라 한 레인의 차례가 **5시간**이다.
+ * 기준 150분으로는 정상 동작이 매번 경보가 된다.
+ *
+ * 🔴 그리고 이게 왜 중요하냐면 — **오탐 다섯이 진짜 하나를 덮고 있었다.** 이 파일의 헤더가 이미
+ *   경고한 그대로다: *"매일 울리는 오탐은 곧 아무도 경보를 안 보게 만든다."*
+ *
+ * ## 계산
+ * 한 도메인에서 예산 슬롯을 두고 경쟁하는 레인 수 ÷ 그 도메인의 몫 = 회전(회차).
+ * `always`(게이트가 지정 시각에만 여는 레인)는 예산과 무관하게 항상 도니까 **뺀다** —
+ * 안 빼면 회전이 부풀어 기준이 필요 이상으로 느슨해진다.
+ *
+ * ⚠️ **`periodMin` 은 절대 안 건드린다.** 그 값은 *미룰 수 있는가*(`isDeferrable`)의 근거이고,
+ *   여기서 키우면 일 1회 레인이 미룰 수 있게 되어 **영영 안 도는** 반대 사고가 난다(위 주석 참조).
+ *   이 함수가 만지는 것은 **침묵 임계 하나**뿐이다.
+ *
+ * ⚠️ 이 완화가 **놓치는 것**: 매시간 레인이 진짜로 멈춰도 경보가 회전 배수만큼 늦어진다
+ *   (`prospect` 면 150분 → 630분). 그 대가로 얻는 것이 "울리면 진짜"라는 신뢰다.
+ *   일 1회·N시간 레인은 명시 `gap` 을 갖고 회전 대상도 아니라 **기준이 그대로**다 — 위 실측에서
+ *   `scan-notices` 만 계속 울리는 이유이고, 그게 이 설계가 지키려는 성질이다.
+ */
+export function rotationTicks(d?: { budget?: number; run?: readonly unknown[]; deferred?: readonly unknown[]; always?: number } | null): number {
+  const budget = Math.max(1, Math.floor(Number(d?.budget) || 0) || 1)
+  const running = Math.max(0, (d?.run?.length ?? 0) - Math.max(0, Math.floor(Number(d?.always) || 0)))
+  const compete = running + (d?.deferred?.length ?? 0)
+  if (compete <= 0) return 1
+  return Math.max(1, Math.ceil(compete / budget))
+}
+
+/**
+ * 회전을 반영한 침묵 임계(분). **미루기 대상(= `periodMin` 을 가진 레인)에만** 쓴다 —
+ * 명시 `gap` 레인은 회전을 안 타므로 부르지 않는다.
+ */
+export const rotatedGapMinutes = (periodMin: number, rotation: number): number =>
+  staleGapMinutes(Math.max(1, periodMin) * Math.max(1, rotation))
+
 /** esbuild `define` 이 주입하는 빌드 시각(ISO). 주입 안 된 환경(로컬·테스트)에선 존재하지 않는다. */
 declare const __ADS_BUILD_AT__: string | undefined

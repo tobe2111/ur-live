@@ -10,6 +10,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { envSubreqCap, envLaneBudget , envPlanValue} from './collect-budget'
+import { applyQuantum, readLaneSettings } from './cpu-quantum'
 import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { serviceKeyParam, isNoValue } from './public-data-diag'
 import { fieldCoverage, coverageNote, type FieldCoverage } from './field-coverage'
@@ -256,9 +257,10 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   await ensureCompanySchema(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const key = env.PUBLIC_DATA_SERVICE_KEY || (env as unknown as { NTS_API_KEY?: string }).NTS_API_KEY || ''
-  const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
+  // 🧠 통계 + CPU 학습배수를 한 문장으로(조회 수 동일 — `key IN` 으로 합쳤을 뿐이다).
+  const cfg = await readLaneSettings(DB, [STATS_KEY], 'ads:collect-commerce')
   let prev: CommerceStats | null = null
-  try { prev = prevRaw?.value ? JSON.parse(prevRaw.value) as CommerceStats : null } catch { prev = null }
+  try { const v = cfg.get(STATS_KEY); prev = v ? JSON.parse(v) as CommerceStats : null } catch { prev = null }
   const persist = async (s: CommerceStats) => { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null) }
   if (!key) { const s: CommerceStats = { last_run: stamp, found: 0, saved: 0, page: 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: false, error: 'NOT_CONFIGURED: PUBLIC_DATA_SERVICE_KEY 미설정' } }; await persist(s); return s }
 
@@ -284,7 +286,9 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
     op: (env as unknown as { ADS_COMMERCE_OP?: string }).ADS_COMMERCE_OP || svc.op,
   } : svc)
   // 🎚️ 요금제 인지 — 위 notice-scan 과 같은 이유(이 레인도 천장 함수를 안 거치고 있었다).
-  const totalBudget = Math.min(envSubreqCap(env), Math.max(4, envPlanValue(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET, 12, 60, env)))
+  // 🧠 2026-08-05 라이브에서 24시간에 3회 CPU 한도로 죽었고 학습표에 q=0.5 가 실제로 적혔다 —
+  //   그런데 읽는 곳이 없어 아무 일도 안 일어났다. 여기가 그 값을 쓰는 자리다(바닥 4 = 종전 최소).
+  const totalBudget = applyQuantum(Math.min(envSubreqCap(env), Math.max(4, envPlanValue(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET, 12, 60, env))), cfg.q, 4)
   const budget = { left: totalBudget }
   const perService = Math.max(2, Math.floor(totalBudget / services.length))
 

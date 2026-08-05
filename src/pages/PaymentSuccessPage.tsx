@@ -133,29 +133,14 @@ export default function PaymentSuccessPage() {
     }
   }
 
+  /**
+   * 🔥 2026-08-04 [UNLOCK] (대표 AskUserQuestion 승인 "허가 — 그 블록만 제거"):
+   *   GLOBAL 전용 Firebase 인증 대기 블록 제거. 그 블록은 `if (!isKorea())` 안에 있어
+   *   **한국에서는 한 번도 실행되지 않았고**, GLOBAL 은 미런칭·폐기(#804)라 도달 경로가 없다.
+   *   ⚠️ **Toss confirm/금액검증/TossPaymentObject 표시/pendingBookings 전부 byte-불변** —
+   *     이 함수는 이제 `confirmPayment()` 로 곧장 넘긴다(호출부 계약 유지를 위해 이름은 보존).
+   */
   async function waitForFirebaseAndConfirm() {
-    // 한국: Firebase 대기 불필요 (세션 쿠키 인증)
-    const { isKorea } = await import('@/config/region')
-    if (!isKorea()) {
-      try {
-        const { getFirebaseAuth } = await import('@/lib/firebase-auth')
-        const auth = await getFirebaseAuth()
-        if (typeof (auth as unknown as Record<string, unknown>).authStateReady === 'function') {
-          await (auth as unknown as { authStateReady: () => Promise<void> }).authStateReady()
-        } else {
-          await new Promise<void>((resolve) => {
-            const timer = setTimeout(resolve, 8000)
-            const unsubscribe = auth.onAuthStateChanged(() => {
-              clearTimeout(timer)
-              unsubscribe()
-              resolve()
-            })
-          })
-        }
-      } catch (e) {
-        if (import.meta.env.DEV) console.error('[PaymentSuccess] Firebase auth wait error:', e);
-      }
-    }
     confirmPayment()
   }
 

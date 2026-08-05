@@ -292,7 +292,7 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
     outer: for (const win of rotationWindow(all.length, cursor, slots)) {
       for (const kw of all.slice(win.offset, win.offset + win.limit)) {
         if (limitHit) { stoppedBy = 'limit'; break outer }
-        if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break outer }
+        
         if (budget.left <= saveReserve() + floor) { stoppedBy = 'budget'; break outer }
         consumed++; stat.kw++
         used.push(kw.q)

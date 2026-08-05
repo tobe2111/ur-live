@@ -44,7 +44,22 @@ const read = (rel: string) => {
 }
 
 const MX = read('src/features/marketing/api/email-mx-sweep.ts')
-const KAKAO = read('src/features/marketing/api/company-collect.ts')
+/**
+ * ⚠️ **스윕 함수 본문만 본다** (2026-08-04 교정).
+ *
+ *   `company-collect.ts` 에는 이제 마감선이 **둘**이다 — 이 스윕(`runKakaoPhoneSweep`)과
+ *   파트너 수집(`runCompanyAutoCollect`, 27.4초 사망 근처를 막으려 신설). 파일 전체에서
+ *   `indexOf` 로 첫 등장을 찾으면 **다른 함수의 마감선**을 집어 아래 "예산 가드보다 뒤" 검사가
+ *   뒤집힌다(실측: `expected 14962 to be greater than 21190` — 정상 코드에 빨간불).
+ *   ⇒ 검사 대상 함수의 본문으로 범위를 좁힌다. 불변식은 그대로다.
+ */
+const KAKAO = (() => {
+  const src = read('src/features/marketing/api/company-collect.ts')
+  const i = src.indexOf('export async function runKakaoPhoneSweep(')
+  expect(i, 'runKakaoPhoneSweep 를 못 찾았다 — 이름이 바뀌었으면 이 검사도 함께 갱신할 것').toBeGreaterThan(0)
+  const j = src.indexOf('\nexport ', i + 10)
+  return src.slice(i, j > 0 ? j : undefined)
+})()
 
 describe('sweep-mx — 마감선 + 블록 선후 회전', () => {
   it('벽시계 마감선이 두 블록 모두에서 끊는다', () => {

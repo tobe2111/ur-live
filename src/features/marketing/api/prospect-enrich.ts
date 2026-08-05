@@ -17,6 +17,7 @@
 import type { Env } from '@/worker/types/env'
 import type { FetchBudget } from './influencer-discovery'
 import { ensureProspectSchema, PRIORITY_UPJONG_SQL } from './store-prospects'
+import { applyQuantum, quantumFromRaw, CPU_QUANTA_KEY } from './cpu-quantum'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envLaneBudget, envEnrichDeadlineMs , envPlanValue} from './collect-budget'
 import { runPooled, resolveConcurrency } from './lane-pool'
 import { foldEnrichRollup, PROSPECT_ROLLUP_KEY } from './enrich-telemetry'
@@ -56,14 +57,17 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   //   중간에 죽어도 **아무 기록이 없어** 아무도 몰랐다. 이제 부딪히면 다음 실행부터 낮춘다.
   const envBudget = Math.min(300, Math.max(15, envPlanValue(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET, 80, 300, env)))
   // 부팅 조회 1회로 3개(학습 상한 + 직전 스냅샷 + 누적) — 회사 보강 레인과 동일 처방(그 파일 주석 참조).
-  const boot = (await DB.prepare('SELECT key, value FROM platform_settings WHERE key IN (?, ?, ?)')
-    .bind(subreqCapKey('prospect_enrich'), STATS_KEY, PROSPECT_ROLLUP_KEY)
+  //   🧠 CPU 학습표를 **같은 문장에 얹는다**(`?` 하나 추가 — 서브리퀘스트 0 증가).
+  const boot = (await DB.prepare('SELECT key, value FROM platform_settings WHERE key IN (?, ?, ?, ?)')
+    .bind(subreqCapKey('prospect_enrich'), STATS_KEY, PROSPECT_ROLLUP_KEY, CPU_QUANTA_KEY)
     .all<{ key: string; value: string }>().catch(() => null))?.results || []
   const bootVal = (k: string) => boot.find(r => r.key === k)?.value || null
   const learnedCap = Math.max(0, parseInt(bootVal(subreqCapKey('prospect_enrich')) || '', 10) || 0)
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = envSubreqCap(env)
-  const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
+  // 🧠 이 레인은 2026-08-05 라이브에서 CPU 한도로 죽어 학습표에 q=0.5 가 실제로 적혔다 — 그런데
+  //   읽는 곳이 없어 아무 일도 안 일어났다. 여기가 그 값을 쓰는 자리다(바닥 10 — 아래는 회차가 무의미).
+  const budgetTotal = applyQuantum(resolveSubreqBudget(envBudget, learnedCap, pcap), quantumFromRaw(bootVal(CPU_QUANTA_KEY), 'ads:enrich-prospects'), 10)
   // ⏱️ 벽시계 마감 — 서브리퀘스트가 남아도 시간이 인보케이션을 끝낸다(보강 레인에서 실측된 실패 모드).
   const deadlineMs = envEnrichDeadlineMs(env)
   const t0 = Date.now()

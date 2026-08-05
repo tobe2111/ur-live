@@ -11,14 +11,16 @@
  * 관리자용 배너 CRUD (GET all / POST / PUT / DELETE) →
  *   adminBannersRoutes → app.route('/api/admin/banners', adminBannersRoutes)
  *
- * 🏠 2026-08-04 (대표 시안 승인 "좋다 이렇게 가자"): 홈 쇼케이스용 `banner_type`·`video_url` 추가.
- *   자리(히어로/중간/와이드)를 배너 행이 스스로 알고 있어야 홈이 "무엇을 어디에 그릴지"를
- *   조회 한 번으로 정한다. 종류 SSOT: `shared/constants/home-showcase.ts`.
+ * 🏠 2026-08-04: 홈 쇼케이스용 `banner_slot`(자리)·`video_url` 추가.
+ *   자리를 배너 행이 스스로 알고 있어야 홈이 "무엇을 어디에 그릴지" 조회 한 번으로 정한다.
+ *   🔴 **자리 미지정(NULL)은 홈에 안 뜬다** — 기본값 없는 컬럼이라 기존 배너는 전부 미지정이다.
+ *   (직전 판 `banner_type` 은 `DEFAULT 'inline'` 이라 **옛 배너가 저절로 홈에 나타났다** — 대표 신고.)
+ *   SSOT: `shared/constants/home-showcase.ts`.
  */
 
 import { Hono } from 'hono';
 import { safeError } from '../../../worker/utils/safe-error';
-import { isBannerType, DEFAULT_BANNER_TYPE } from '../../../shared/constants/home-showcase';
+import { isBannerSlot } from '../../../shared/constants/home-showcase';
 
 type Bindings = {
   DB: D1Database;
@@ -36,7 +38,9 @@ export async function ensureBannerColumns(DB: D1Database): Promise<void> {
   if (_bannerColsReady.has(DB)) return;
   _bannerColsReady.add(DB);
   for (const sql of [
-    `ALTER TABLE banners ADD COLUMN banner_type TEXT DEFAULT '${DEFAULT_BANNER_TYPE}'`,
+    // ⚠️ **DEFAULT 를 주지 않는다.** SQLite 는 ADD COLUMN 의 기본값을 기존 행에도 적용하므로,
+    //    기본값이 있으면 예전에 올려둔 배너가 전부 그 자리를 차지한 것으로 읽힌다(실제 사고).
+    `ALTER TABLE banners ADD COLUMN banner_slot TEXT`,
     `ALTER TABLE banners ADD COLUMN video_url TEXT`,
   ]) {
     try { await DB.prepare(sql).run(); } catch { /* 이미 있음 */ }
@@ -51,26 +55,25 @@ bannerRoutes.get('/', async (c) => {
     await ensureBannerColumns(DB);
     const now = new Date().toISOString();
 
-    // 🎯 자리 필터. 값이 이상하면 무시하고 전체를 준다 — 홈이 빈손이 되는 것보다 낫다.
-    const typeRaw = (c.req.query('type') || '').trim();
-    const typeFilter = isBannerType(typeRaw) ? typeRaw : '';
+    // 🎯 자리 필터. 값이 이상하면 무시하고 전체를 준다(기존 배너 캐러셀 같은 무필터 소비자 보호).
+    const slotRaw = (c.req.query('type') || '').trim();
+    const slotFilter = isBannerSlot(slotRaw) ? slotRaw : '';
 
-    // ⚠️ `COALESCE(banner_type, 기본값)` — 이 컬럼이 생기기 **전에 등록된 배너**는 NULL 이라
-    //   그냥 `banner_type = ?` 로 거르면 옛 배너가 전부 사라진다(조용한 회귀).
-    const typeWhere = typeFilter ? `AND COALESCE(banner_type, ?) = ?` : '';
-    const typeBind: string[] = typeFilter ? [DEFAULT_BANNER_TYPE, typeFilter] : [];
+    // 🔴 **엄격 일치**. 자리를 안 고른 배너(NULL)는 어떤 슬롯에도 안 뜬다 —
+    //    COALESCE 로 기본값을 씌우면 옛 배너가 저절로 홈에 나타난다(2026-08-04 실사고).
+    const slotWhere = slotFilter ? `AND banner_slot = ?` : '';
+    const slotBind: string[] = slotFilter ? [slotFilter] : [];
 
     const banners = await DB.prepare(`
       SELECT id, title, image_url, video_url, link_url, description,
-             COALESCE(banner_type, ?) AS banner_type,
-             display_order, start_date, end_date
+             banner_slot, display_order, start_date, end_date
       FROM banners
       WHERE is_active = 1
         AND (start_date IS NULL OR start_date <= ?)
         AND (end_date IS NULL OR end_date >= ?)
-        ${typeWhere}
+        ${slotWhere}
       ORDER BY display_order ASC, created_at DESC
-    `).bind(DEFAULT_BANNER_TYPE, now, now, ...typeBind).all();
+    `).bind(now, now, ...slotBind).all();
 
     // 브라우저는 짧게, 엣지는 길게 — 배너는 분 단위로 안 바뀐다.
     c.header('Cache-Control', 'public, max-age=60');

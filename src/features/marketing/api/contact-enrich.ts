@@ -24,7 +24,8 @@ const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
  */
 async function safeFetch(url: string, init: RequestInit & { timeoutMs?: number }, budget?: FetchBudget, errSink?: { msg: string }): Promise<Response | null> {
   const { timeoutMs = 8000, ...rest } = init
-  noteNaverCall(url) // 📟 네이버 오픈API 계측(호스트 아니면 no-op) — 실패분도 쿼터를 먹으므로 호출 전에 센다
+  // 📟 계측 + 일일 목표(90%) 게이트 — 실패분도 쿼터를 먹으므로 호출 전에 센다. 소진이면 안 쏜다.
+  if (!noteNaverCall(url)) { if (errSink) errSink.msg = 'NaverQuota: 일일 목표(90%) 소진'; return null }
   try {
     return await fetch(url, { ...rest, signal: AbortSignal.timeout(timeoutMs) })
   } catch (err) {

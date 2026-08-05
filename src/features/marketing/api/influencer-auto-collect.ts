@@ -39,7 +39,7 @@ import { RETIRED_CATEGORIES } from './influencer-classify'
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, pickStarvationRescue } from './influencer-keyword-rotation'
 
 // 🌱 시드 키워드(데이터)는 `influencer-seed-keywords.ts`, 그 시드를 테이블에 넣는 일은
 //   `influencer-keyword-store.ts` — 이 파일은 **둘 다 직접 안 만진다**(아래 재수출만).
@@ -67,7 +67,7 @@ const STATS_KEY = 'ads_autocollect_stats'
 // ⚙️ 설정 읽기/쓰기(배치 포함)는 `influencer-settings.ts` — 기존 import 경로 호환 위해 재수출.
 export { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
 import { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
-import { NAVER_USED_KEY, kstDayKey, parseNaverUsed, takeNaverCalls, NAVER_DAILY_QUOTA_CALLS } from './naver-api-usage'
+import { NAVER_USED_KEY, kstDayKey, parseNaverUsed, takeNaverCalls, NAVER_DAILY_QUOTA_CALLS, armNaverDailyAllowance, naverAllowanceLeft, NAVER_DAILY_TARGET_CALLS } from './naver-api-usage'
 
 // 🗂️ 키워드 테이블의 수명주기(스키마·시드·목록·추가/토글)는 `influencer-keyword-store.ts` — 호출부 호환 재수출.
 //   ⚠️ 2026-08-04: 그 분리(2026-07-29)가 **병합으로 되돌아와** 두 파일에 byte-동일한 정의가 둘 있었고,
@@ -95,6 +95,12 @@ import { mineHashtags } from './influencer-hashtag-mine'
 // ⚠️ 쿼터 경제(2026-07-27 "평균 0회 대부분" 실사고): search.list 1회=100 units → 검색 100회=일일 쿼터(10,000) 전부
 //   → 성과측정(각 1 unit)이 하루 종일 403. 검색 90회로 낮춰 측정용 ~1,000 units/day 예약(~750채널/일 측정 여력).
 //   env ADS_YT_SEARCH_BUDGET 로 조정(100 으로 되돌리면 측정 굶음 — ads-yt-scheduling.test 불변식이 차단).
+// 🎯 **유튜브도 일일 90%** (2026-08-04 대표 *"각각 90%씩"*) — 이미 그 값이다. 우연이 아니라 계산이다:
+//   10,000 units × 90% ÷ 100 units/search = **90 검색**. 남는 1,000 units 가 성과측정(각 1 unit) 몫이고,
+//   100 으로 올리면 그 몫이 0이 되어 측정이 하루 종일 403 이 된다(2026-07-27 실사고).
+//   ⚠️ 쿼터·단가 상수는 `influencer-enrich-lane`(YT_DAILY_QUOTA_UNITS/YT_SEARCH_UNIT_COST)이 SSOT 다 —
+//   그 모듈이 **이 모듈을 import** 하므로 여기서 되import 하면 순환이다. 관계식은 테스트가 고정한다.
+export const YT_DAILY_TARGET_PCT = 0.9
 export const YT_SEARCH_BUDGET_DEFAULT = 90
 export function ytQuotaDayKey(nowMs: number): string {
   return new Date(nowMs).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) // YYYY-MM-DD
@@ -243,7 +249,12 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const ytPicks = pickYtKeywords(kws, batch, Date.now())
   const ytIds = new Set(ytPicks.map(k => k.id))
   // 🔀 번갈아 배치 — 꼬리의 커서 픽이 영영 안 돌던 것(실측 `from_cursor: 0`). 근거는 `interleavePicks` docblock.
-  const finalPicks = interleavePicks(ytPicks, picks.filter(p => !ytIds.has(p.id)), totalPick)
+  const interleaved = interleavePicks(ytPicks, picks.filter(p => !ytIds.has(p.id)), totalPick)
+  // 🛟 기아 방지 슬롯 — **맨 앞**에 둔다(예산이 앞에서부터 끊기므로 앞자리만 처리가 보장된다).
+  //   커서 수학 무접촉: 이 픽은 풀 커서 시퀀스 밖의 별도 1픽이라, 커서 전진(prefixDone)은 실제 처리된
+  //   풀 픽만 세므로 그대로 옳다. 근거·실측(14.9일 미실행 24개)은 `pickStarvationRescue` docblock.
+  const rescue = pickStarvationRescue(kws, new Set(interleaved.map(p => p.id)))
+  const finalPicks = rescue ? [rescue, ...interleaved.slice(0, Math.max(0, totalPick - 1))] : interleaved
 
   const hasYouTube = !!env.YOUTUBE_API_KEY
   const naverId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
@@ -336,6 +347,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     if (raw) { const i = raw.indexOf(':'); if (i > 0 && raw.slice(0, i) === ytDay) ytSearchUsed = Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) }
   }
   let ytBudgetBlocked = false
+  // 🔫 네이버 일일 목표(90% = 22,500) 장전 — 유튜브가 `ytBudgetTotal` 로 스스로를 묶는 것과 같은 자리.
+  //   ⚠️ 회차 **시작**에 한 번만. 여기서 안 부르면 게이트가 `null`(무제한)로 남아 조용히 무효가 된다.
+  armNaverDailyAllowance(parseNaverUsed(settings[NAVER_USED_KEY], kstDayKey(Date.now())))
   /**
    * 🧾 **소스별 서브리퀘스트 실사용 계측** (2026-08-04 — 커버리지 경보 후속).
    *
@@ -347,6 +361,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
    *   ⚠️ 이건 계측일 뿐 아무 동작도 안 바꾼다(추가 왕복 0 — 이미 있는 `budget.left` 를 읽기만).
    */
   const spendBy = { yt: 0, naver: 0, cafe: 0, tistory: 0, save: 0 }
+  // 🔬 유튜브 서브리퀘스트 **내역**(2026-08-04) — 쿼터는 90 중 3만 쓰는데 요청 예산은 다 쓴다.
+  //   그 33개가 검색·채널조회·영상스니펫 중 어디로 갔는지 재야 줄일 자리가 정해진다(찍어 줄이면 수율이 같이 떨어진다).
+  const ytCalls = { search: 0, channels: 0, videos: 0 }
   const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
   const roundCap = keywordsPerRoundCap(env)
   let fromYt = 0, fromCursor = 0 // 🎯 처리된 픽의 출처 — 커서픽이 실제로 도달되는지 보이게(위 `picks` 주석)
@@ -376,6 +393,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
         const _b0 = budget.left
         const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytAngle.searchType, order: ytAngle.order, alreadyContacted })
         spendBy.yt += Math.max(0, _b0 - budget.left)
+        if (r.calls) { ytCalls.search += r.calls.search; ytCalls.channels += r.calls.channels; ytCalls.videos += r.calls.videos }
         if (r.ok) {
           kSearched++
           diag.yt.found += r.leads?.length || 0; kFound += r.leads?.length || 0
@@ -523,9 +541,12 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   해석: 합이 spent 에 근접하면 그 소스가 병목. 특히 yt/naver 가 크면 발굴 시점 enrichMax(8/5)가 원인이고,
     //   그건 별도 보강 레인과 겹치는 일이라 줄일 여지가 있다(줄이기 전에 이 숫자를 볼 것).
     spend_by: spendBy,
+    yt_calls: ytCalls, // 🔬 검색/채널/영상 내역 — 어느 항이 배수인지(위 ytCalls 주석)
     // 📟 네이버 오픈API 일일 사용량(KST 기준일). **자동 레인만 세므로 실사용의 하한**이다 —
     //   어드민 온디맨드 도구(keyword-tools/rank-tracker/competitor-tracker)는 계측 밖(naver-api-usage.ts 주석).
-    naver_api: { used: naverCalls, total: NAVER_DAILY_QUOTA_CALLS, day: naverDay },
+    //   `target`/`left` = 90% 목표와 잔량. `left: 0` 이면 오늘 네이버 호출이 **의도적으로** 멈춘 것 —
+    //   장애("네트워크 실패")와 구분되어야 다음 세션이 오진하지 않는다.
+    naver_api: { used: naverCalls, total: NAVER_DAILY_QUOTA_CALLS, day: naverDay, target: NAVER_DAILY_TARGET_CALLS, left: naverAllowanceLeft() },
     // 🔒 예산 실사용/상한/한도관측 — 정상 실행에도 남긴다(위 필드 주석 참조).
     spent: budgetTotal - budget.left, budget_total: budgetTotal, learned_cap: learnedCap, limit_hit: hitLimit,
     // 🕳️ `limit_hit` 과 **다른 값**이다 — 근거·함정은 타입 정의(`AutoCollectStats.budget_exhausted`) 참조.

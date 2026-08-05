@@ -90,6 +90,7 @@
 3. 본 CLAUDE.md 의 audit log 에 변경 commit 추가
 
 ### 변경 audit log
+- 2026-08-04 `[UNLOCK]` `PaymentSuccessPage.tsx` **GLOBAL 전용 Firebase 인증 대기 블록 제거** (대표 `AskUserQuestion` 승인 "허가 — 그 블록만 제거"). **배경**: Firebase 클라이언트 잔재를 전면 삭제(번들 −400KB · 유출됐던 서비스계정 키 계열 코드 제거)하는데, 이 파일의 `waitForFirebaseAndConfirm()` 이 `@/lib/firebase-auth` 를 import 해 삭제를 막고 있었다. 그 블록은 **`if (!isKorea())` 안에 있어 한국에서는 한 번도 실행된 적이 없고**, GLOBAL 은 미런칭·폐기(#804)라 도달 경로가 없다(서버 수용도 2026-07-28 #806 에 차단). **수정**: 함수 본문을 `confirmPayment()` 호출 한 줄로 축소(호출부 계약 유지를 위해 함수 이름은 보존 — `useEffect` 가 그 이름을 부른다). **⚠️ Toss confirm/금액검증(`serverTotal!==parsedAmount`)/`TossPaymentObject` 표시(receipt.url·cashReceipt·easyPay·card·approvedAt)/pendingBookings/autoReturn/셀러 전환 넛지 전부 byte-불변** — 제거한 것은 결제와 무관한 인증 대기뿐이다. 검증: tsc 0 · build 0 · vitest 5056 pass(382 파일) · audit-gate ALL GREEN 88. ⚠️ **staging 결제 성공 1회 권장**(리다이렉트 직후 승인이 정상 진행되는지 — KR 경로는 원래 이 블록을 건너뛰었으므로 회귀 가능성은 낮다). 롤백: 이 함수를 이전 형태로 되돌리려면 `firebase-auth` 도 함께 복원해야 한다.
 - 2026-07-02 `[UNLOCK]` `webhook.routes.ts` `handlePaymentConfirmed` **쇼핑 원장 net 크레딧 — webhook 경로 대칭** (대표 AskUserQuestion 승인 "선행 수리까지" — 쇼핑 전수조사 정산 갭). **배경**: `creditSellerOrderToLedger` 가 `payment.routes /confirm` 에만 있어 `confirmPaymentAtomic` CAS 로 **webhook 이 이기면(브라우저 confirm 누락) 그 주문은 원장에 영구 미적립** → `SHOPPING_LEDGER_ENABLED` 활성 시 주간 payout 에서 그 매출 누락. **수정(게이트 블록 1개 추가)**: 기존 `result.confirmed>0` side-effect 블록(딜차감·KT발송 다음)에 `/confirm` 과 동일 게이트(`env.SHOPPING_LEDGER_ENABLED==='true'`, 기본 OFF)로 order_number 의 각 주문에 `creditSellerOrderToLedger` 호출. 동일 멱등(order:N dedup + 이용권/공구 skip) + `result.confirmed>0`(단일실행) 가드 → 이중적립 0. **⚠️ confirmPaymentAtomic/금액검증/기존 side-effect 전부 byte-불변 — 게이트 블록만.** 기본 OFF=현행 100% 동일. (동반 비잠금: `returns.routes.ts` 반품환불 인라인 역전 체인에 `reverseSellerOrderLedger` 추가 — 이 경로만 누락돼 활성 시 반품된 쇼핑 주문 receivable 잔존→과지급이던 것 대칭화, 게이트 무관 완전 멱등이라 OFF 시 no-op.) 검증: sql 가드 0(tsc/build 는 npm 403 미실행 — staging 필수). ⚠️ **staging(게이트 ON 시)**: webhook-only 확정 주문 원장 적립 + 반품 시 역전 → receivable 0.
 - 2026-07-02 `[UNLOCK]` `webhook.routes.ts` `handlePaymentFailed` **재고 복원 무가드 → 전이 성공분 한정** (대표 AskUserQuestion 승인 "지금 수정" — 쇼핑 상품 전수조사 P1). **배경**: 결제 실패 webhook 이 `updateStatus(orderNumber,'FAILED')`(내부 CAS 로 PENDING/AWAITING_PAYMENT 만 FAILED 전이) 결과와 **무관하게 무조건** `restoreStock(order.id)` 를 루프 실행 → ① 지연 도착한 ABORTED/EXPIRED webhook 이 이미 `/confirm` 으로 확정(DONE)된 주문의 재고를 되살려 **초과판매** ② order_items 를 CANCELLED 로 오염(이후 환불 시 복원 skip → 원장 꼬임). `handlePaymentCancelled` 는 paid-guard+CAS 를 갖췄으나 실패 핸들러엔 부재(비대칭). **수정(restoreStock 호출 게이트 1개 추가만)**: `updateStatus` 후 `findByOrderNumber` 재조회 결과에서 **`status==='FAILED'` 인 주문(=이 webhook 이 실제 전이시킨 것)만** 재고 복원, DONE/CANCELLED/REFUNDED 등은 skip(로그). **⚠️ Toss 시그니처/금액검증/updateStatus(내부 CAS)/알림 전부 byte-불변 — restoreStock 게이트만.** 검증: sql-bind/column/table/money-pattern 가드 0(이 원격환경 npm 403 으로 tsc/build 미실행 — staging 검증 필수). ⚠️ **staging**: 카드 결제 확정(DONE) 후 지연 실패 webhook 도착 시 재고 불변(복원 skip) + 정상 PENDING 실패 시 재고 1회 복원. 롤백: 게이트 조건(`if status !== 'FAILED' continue`) 제거 → 무조건 루프 환원.
 - 2026-07-03 `[UNLOCK]` `PaymentSuccessPage.tsx` **구매 직후 셀러 전환 넛지 배선** (대표 AskUserQuestion 승인 "잠금 해제하고 직접 수정 · 1~4번 전부 · 가장 이상적으로" — 티몬 초기모델 비교 후 "웨지 전환 깔때기" 구현). **배경**: 로컬딜/이용권 미끼 → 링크샵 D2C 전환이 웨지 전략인데, 기존 셀러 전환 CTA 가 마이/링크샵 소유자뷰(RoleCtaGrid·SellOwnProductsCTA)에만 있어 **이미 관심 있는 사람만 봄(self-selection)** — 방금 산 소비자에게 전환 제안이 한 번도 안 뜨는 "깔때기 중간 단절". **수정(additive 비-결제 UI 1블록)**: 결제 성공(non-demo) 화면 액션버튼 위에 `<SellerConversionNudge/>`(신규 `src/pages/payment-success/SellerConversionNudge.tsx` — file-size 룰 준수 추출) 렌더 — "내 쇼핑몰에서도 팔 수 있어요" + `user_handle` 있으면 `live.ur-team.com/u/{handle}` 개인화, CTA→`/seller/register/supplier?from=payment`(기존 `?from=curator` 패턴), '다음에' 닫으면 localStorage 재노출 억제. 셀러(`seller_token`)·데모·비로그인 미노출. **⚠️ Toss confirm/금액검증(client-side serverTotal!==parsedAmount)/TossPaymentObject 표시(receipt.url·cashReceipt·easyPay·card·approvedAt)/pendingBookings/autoReturn 전부 byte-불변 — 자기완결 넛지 컴포넌트 렌더 1줄 + import 만.** 검증: audit-gate 42 GREEN(sql-bind/column/table/theme/file-size/mobile-viewport 0)·⚠️ 이 원격환경 npm 403 으로 tsc/build 미실행(staging 회귀검증 필요). 롤백: 넛지 렌더 1줄 + import 제거(+ 파일 삭제).
@@ -172,6 +173,7 @@
 3. 본 CLAUDE.md 의 audit log 에 변경 commit 추가
 
 ### 변경 audit log
+- 2026-08-04 `[UNLOCK_LOADING]` `RouteGuards.tsx` **GLOBAL 전용 `GlobalUserProtectedRoute` 제거** (대표 "1번 하자" — Firebase 클라이언트 전면 삭제). **배경**: 이 컴포넌트는 `useAuthWorld`(Firebase 스토어)를 `require()` 로 끌어와 `lastLoginUid` 흔적이 있으면 최대 3초 대기하던 **글로벌 전용** 분기다. 주석 그대로 *"한국에서는 절대 실행 안 됨"* 이고, GLOBAL 은 미런칭·폐기(#804). **수정**: `isKorea()` 분기 아래 fall-through 를 `<Navigate to={makeLoginUrl(...)}/>` 로 대체하고 컴포넌트·`AuthWorldState` 타입·`firebase/auth` 타입 import 삭제(291→257줄). **⚠️ 잠금 항목인 `isAdminLoggedIn`/`isUserLoggedIn`/`isSellerLoggedIn` 토큰 존재 검사는 byte-불변** — 위 KR 분기가 그대로 그 함수들을 쓴다(admin↔user 이중 로그인 자동 로그아웃 회귀 방지 유지). 검증: tsc 0 · build 0 · vitest 5056 pass · audit-gate ALL GREEN 88 · critical-chunks 17 불변. 롤백: 컴포넌트 복원 + `useAuthWorld` 복원(현재 삭제됨).
 - 2026-08-01 `[UNLOCK]` `webhook.routes.ts` `handlePaymentFailed` **결제 실패 → 구매자 인앱 알림 배선** (대표 `AskUserQuestion` 승인 "지금 수정" — 세션 ③-c, 릴리즈 체크리스트 C5). **배경**: 결제 **실패** 시 구매자 알림함이 **0건**이었다. 같은 핸들러의 `sendOrderNotification` 은 이름과 달리 **Discord 임베드 전용**(운영 채널)이고 어드민 벨은 대표만 본다 — **비동기 실패는 화면이 없어서**(브라우저를 닫았거나 앱을 벗어난 경우) 소비자가 자기 결제가 왜 실패했는지 **영영 모른다**. 2026-07-01 에 `handlePaymentCancelled` 에 넣은 buyer 알림과 **정확히 대칭인 누락**. **수정(side-effect 1블록 추가)**: `sendOrderNotification('failed')` 직후 `orders.user_id` 조회 → `notifyUser(env.DB, userId, 'payment_failed', '결제가 완료되지 않았습니다', '주문 N 결제가 실패했습니다.(사유) 장바구니에서 다시 시도할 수 있습니다', '/my-orders')`. 실패 사유(`data.failureMessage`)를 **그대로 옮긴다** — "실패했습니다"만 보내면 소비자가 할 수 있는 게 없다. **⚠️ Toss 시그니처/금액검증/`updateStatus`(내부 CAS)/2026-07-02 재고복원 게이트/어드민 벨 전부 byte-불변 — `notifyUser` side-effect 1블록만.** **fail-soft**: `.catch(() => {})` + 바깥 try — 알림 실패가 webhook 을 실패시키면 Toss 재시도 폭풍이 난다. 검증: 3655 pass·tsc 0·build 0·sql-bind/column/CHECK 제약 0. ⚠️ **되돌려-검증 교훈 2건**: ① *"실패 사유 전달"* 판정을 핸들러 전체에서 `failureMessage` 검색으로 했더니 **`cancel_reason` 이 이미 쓰고 있어** 늘 통과 ② fail-soft 판정 정규식 `notifyUser\([\s\S]*?\)\.catch\(` 이 **뒤쪽의 다른 `.catch(`** 에 걸려 늘 통과 → 둘 다 **알림 블록으로 앵커**해 red 확인. 롤백: 그 블록 제거.
 - 2026-08-01 `[UNLOCK_LOADING]` `worker/index.ts` **운영자 몰 MALL SSR 슬롯 + OG 메타 rewrite 신설** (세션 ③-a, 대표 UX 기준 ② *"OG 메타가 곧 매대다"*). 잠금표 **예외 절 "새 페이지 / 새 SSR slot 추가(기존 4페이지 inject 패턴 따라)"** 에 해당 — DETAIL/PRODUCT/CURATOR 와 **동일 additive 패턴**. **배경**: `urdeal.kr/{슬러그}` 몰 링크가 카톡방에 붙을 때 미리보기가 **유어딜 제네릭 홈**으로 뜬다(CURATOR/BLOGPOST 만 메타 rewrite 보유). 잘못 나간 카드는 카카오 스크랩 캐시에 **박제**되고 회수 시점의 통제권이 우리에게 없다. **수정(additive 2블록)**: ① 슬롯 매처 **가장 마지막**에 `MALL` 추가 — 🔴 `isMallLookupCandidate`(예약어+문법 사전필터)를 통과한 1-세그먼트만. 기존 소비자 경로는 **전부 예약어라 이 분기에 도달조차 안 하고 self-fetch 도 안 생긴다**(핫패스 불변). ② 서빙경로 HTMLRewriter 에 `ssrSlot==='MALL' && ssrPayload` 메타 블록(title=`{몰 이름} - 공동구매`, og/twitter/canonical). **payload 없으면 기본 메타 그대로**(fail-soft — 추측해서 박제하지 않는다). **⚠️ SSR inject(`__SSR_INITIAL_*`)·0-RTT·`caches.default` read·#root 정적 로더·기존 슬롯 전부 byte-불변 — 매처 마지막 분기 + 메타 rewrite 만 additive.** 배선 불변식 3건을 테스트로 고정(`mall-ssr-meta.test.ts`: 후보 필터 존재 · 기존 슬롯보다 뒤 · payload 가드). ⚠️ **되돌려-검증 교훈**: 첫 판정이 텍스트 근접검사라 `if` 에서 필터를 빼도 **위 설명 주석에 남은 이름 때문에 초록**이 떴다(`check-lock-table-symbols` 가 경고한 *"주석에만 남아도 통과"* 와 동일 함정) → **주석 제거 후 조건문 자체를 검사**하도록 고쳐 red 확인. 검증: 3600 pass·tsc 0·build 0·loader-continuity 14 GREEN. 롤백: 매처 else 분기 + 메타 블록 + import 제거.
 - 2026-07-03 `[UNLOCK_LOADING]` `KakaoAuthService.ts` `upsertUser` **가입 시 링크샵 핸들 즉시 발급** (대표 승인 "잠금 해제하고 직접 수정 · 1~4번 전부 · 가장 이상적으로" — 웨지 전환 깔때기 토대). **배경**: 신규 유저 링크샵(`/u/{handle}`)이 가입 시가 아니라 **첫 핀/큐레이터 접속 때 lazy 생성**(`curator.routes.ts:409·793`)이라 대다수 신규 유저가 handle-less → "당신은 이미 쇼핑몰이 있어요" 자산이 구매 넛지 시점에 준비 안 됨. **수정(additive, isNewUser 분기)**: INSERT 직후 email_verified 갱신 옆에 `generateUniqueHandle`(SSOT `handle-generator.ts` 재사용, worker util 상대경로 import) 호출 → `UPDATE users SET handle=? WHERE id=? AND (handle IS NULL OR handle='')`. 신규 유저는 handle 확정적 NULL 이라 조회 왕복 0(UPDATE 1회), best-effort(실패/컬럼부재 시 기존 lazy backfill 이 커버). **⚠️ same-email 셀러 auto-link(LOWER 매칭·verified 게이트·COUNT≤1 모호성 보류)·email takeover 방어·kakao_id UNIQUE·프로필 보존 UPDATE 전부 byte-불변 — 신규 유저 handle UPDATE 1블록만.** (동반 비잠금: ① `PointsChargeSuccessPage.tsx` 충전완료 → '지금 이용권 사러 가기'(`/vouchers`) primary CTA 추가 — 딜포인트 float→spend 소진 유인(락인 강화), 가짜 보너스 없음(2026-05-22 대표 방침 준수), '딜 부족→충전' 복귀루프면 미노출. ② `group-buy-voucher.routes.ts` `/:code/use` **부정사용 방어** — store_code 모드 + `store_verify_pin` 미설정 상품은 무인증+PIN-null CAS 로 코드만 알면 소각되던 갭을, 제출값이 매장 확인코드와 일치할 때만 허용(소비자 self-redeem 경로는 이미 모드 강제). ③ 신규 `src/pages/payment-success/SellerConversionNudge.tsx`.) 검증: audit-gate 42 GREEN·file-size 래칫 rebaseline(group-buy-voucher 690→711, +admin-products 1429→1494 는 선행 세션 미갱신 드리프트 sync)·⚠️ npm 403 으로 tsc/build 미실행(staging 필요). 롤백: isNewUser handle 블록 + import 제거.
@@ -374,6 +376,48 @@
 > `유입 1,613/일 vs 측정 3,600/일 → 순감 1,987/일`. 07-29 에 *"시간당 133씩 벌어진다"* 던 것이 뒤집혔다.
 > ⚠️ **그러니 처리량을 더 밀지 말 것** — 조각 4배로 13일→3~4일이 되지만 얻는 건 9일이고
 > 지는 건 **네이버 차단**(차단되면 측정이 통째로 멎는다). 수렴 중인 걸 리스크 지고 밀 이유가 없다.
+
+### 📮 발송 시점 = **한참 뒤** (2026-08-05 대표 확정) → 그래서 **발굴 우선, 측정은 최소 유지**
+
+대표에게 *"제휴 제안을 언제 보내기 시작하느냐"* 를 물어 확정받았다: **"한참 뒤."**
+이 한 줄이 배분·유료전환 판단을 전부 결정하므로 **다른 세션은 이 전제로 계획할 것.**
+
+**⇒ 미측정 백로그를 쌓는 것이 지금은 손해가 아니다.** 백로그는 **썩지 않는다** — 6개월 뒤에
+측정해도 그때의 현재 활동을 재는 것이라 결과가 같다(2026-08-05 에 "데이터 부패" 라고 적었던 것은
+**오기였고 정정한다**). 실측이 그걸 뒷받침한다:
+```
+측정됨 28,086 → 이메일 수율 27.7%      미측정 25,947 → 1.6%     ← 측정이 이메일을 만든다(17배)
+미측정 안에 잠든 이메일 ≈ 7,200        (현재 보유 8,187의 거의 두 배)
+24h 유입 5,656  vs  측정 5,938         ← 순감 282/일. **균형점 바로 위**
+```
+⚠️ **다만 발굴을 늘리면 이 균형이 뒤집힌다**(유입 > 측정 → 백로그 영구 증가). 발송이 한참 뒤라
+그 자체는 괜찮지만, **측정을 0으로 두면 안 된다** — 키워드 수율(`recomputeKeywordContactYield`)이
+측정에서만 나오므로, 측정을 끊으면 **어떤 키워드가 좋은지 모른 채 발굴**하게 되어 모수만 늘고 질이 안 오른다.
+⇒ `MEASURE_SHARE`(기본 0.5)를 **0 으로 만들지 말 것**. 발굴 우선으로 기울이더라도 피드백 루프는 남긴다.
+
+### 🧱 발굴의 천장은 플랫폼마다 다르다 (2026-08-05 실측 — 대표 *"수집도 플랫폼마다 천장이 있을거야"*)
+
+맞다. 그리고 **하나는 이미 초과**다. 발굴 확대를 계획할 때 이 표를 먼저 볼 것:
+
+| 축 | 일 한도 | 2026-08-05 실측 | 성격 |
+|---|---|---|---|
+| **YouTube units** | 10,000 (구글) | search 66회×100 + perf 3,702 ≈ **10,302 → 초과** | 🔴 **하드**. 유료 전환 무관. 여기서 더 못 뽑는다 |
+| **네이버 검색 API** | 25,000 (목표 22,500) | **163 (0.7%)** | 🟢 하드지만 **140배 여유** — 볼륨은 여기서 나온다 |
+| **네이버 직접 크롤** | ~8,000 관측치 | ok 2,006 · blocked **0** | 🟡 **소프트**. 공식 한도가 아니라 **차단 위험** — 차단되면 측정이 통째로 멎는다 |
+| 카카오 로컬 | **미확정** | 187 lookups | ❓ 코드에 선언 없음. 확대 전 확인 필요 |
+| 공공데이터포털 | API별 상이 | — | ❓ 미조사 |
+
+**24h 수집 기여**: `naver_blog 5,130` · `youtube 408` · `tistory 45` — **네이버가 92%** 다.
+
+🔑 **그래서 발굴 확대의 실질 상한은 네이버이고, 네이버는 아직 0.7% 밖에 안 썼다.**
+막고 있는 것은 쿼터가 아니라 **우리 Cloudflare 서브리퀘스트 예산**이다(실측 `spent 51/56`, `계획 16 → 처리 6`).
+
+> ⚠️ **그런데 발굴 폭은 이미 의도적으로 잠겨 있다.** `COLLECT_KEYWORDS_PER_ROUND = 6`
+> (`influencer-keyword-rotation.ts`, cap 40). 그 주석이 **열쇠를 명시**한다 —
+> *"🔓 언제 푸는가: **측정 처리량이 올라간 뒤.**"* 그리고 *"측정을 올리는 것 자체가 네이버 직접
+> 조회 부하를 늘리는 일이라 **차단 위험 판단이 먼저**"* 라고 경고한다.
+> ⇒ **발굴 우선으로 가더라도 이 상수를 그냥 올리지 말 것.** 올리려면 (a) 측정 처리량이 받쳐 주는지
+> (b) `ads_naver_crawl_block.blocked` 가 0 을 유지하는지 **두 값을 먼저 보고** 근거와 함께 올린다.
 
 ## 🕐 대표 보고는 **한국시간(KST)** (2026-08-01 대표 지시 — "앞으로 한국 시간으로 알려줘")
 

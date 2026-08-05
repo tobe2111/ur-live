@@ -176,3 +176,65 @@ GET  /api/wholesale/catalog    → 404   (7/16 도매 분리로 ur-live 가 안 
 
 📌 **`uptime.yml` 스케줄이 매우 불규칙하다**(10분 주기인데 01:03 → 04:22 3시간 공백 실측).
 public repo Actions 스케줄 지연 — dead-man's switch 가 이 정도로 늦으면 그것도 관측 대상이다(별건).
+
+## 10) 마지막 무료 레버 — `sheets-sync` DO 알람 이관
+
+대표의 "정말 더 없어?"에 대한 답이다. 남은 개선 후보를 어느 방향으로 파도 전부 **부모 CPU 천장**으로
+수렴한다(집중 축 대행사 이메일 3.2%의 병목도 결국 그 천장에 잘리는 `enrich-company`). 열쇠는 둘 —
+유료 전환(대표 몫)과 **DO 알람 이관**(코드 몫). 후자의 1순위가 `sheets-sync`(CPU 사망 ×16/3일, 전 레인 최다).
+
+**한 것**: `ALARM_LANES` 에 `sheets-sync` 추가(runsPerHour 1 — 증설 아님, cron 의도 복원) ·
+cron 쪽 `!laneAlarmOn` 게이트(collect·maintenance 와 동일) · 알람 러너는 SELF 홉 없이 직접 실행
+(자기 예산이라 홉이 낭비) + 게이트를 러너가 봄 + 실패는 throw(백오프·ok=false).
+
+⚠️ **시트 미러는 리스가 없다**(커서 append) — `!laneAlarmOn` 게이트가 이중 실행의 유일한 방어.
+   잠금: 유닛 3장 + 주입 1건(게이트 제거 → red).
+
+**판정**: 배포 후 다음 정각에 `cron_hb:ads:sheets-sync` 가 `ok=true` 로 갱신 + `ads_lane_alarm_last:sheets-sync`
+스탬프 신설. 이후 24시간 `cron_failures` 에서 `ads:sheets-sync` CPU 사망이 사라지는지(×16 → 0 기대).
+
+**다음 확장 후보**(성공 확인 후): `reclassify-company`(×9) · `collect-company`(×6) — 단 이들은
+도메인 예산(kick 경로)을 쓰는 레인이라 이관 시 `!laneAlarmOn` 만으론 부족하고 도메인 표 정리가 같이 필요.
+
+## 11) `starved` 경보의 첫 실전 발화 — 진짜였다 → 기아 방지 슬롯 (2026-08-04 밤)
+
+밤에 새 경보가 울렸다: *"한 바퀴 4.9일인데 가장 밀린 키워드가 3.1바퀴째"*. 실측 판정:
+
+```
+자동확장 키워드 24개 · 생성 14.9일 · 실행 0회 (전부 source='auto')
+pri 풀 315 · 커서 177 · '동네맛집' idx 145 → 거리 275 · 전진 ~28/일 ⇒ 10일 더 대기
+```
+
+**진짜 기아다** — 커서 정체기(#1035 이전)에 태어나 순번을 놓쳤고, YT 탐색 슬롯도 못 탄다
+(`exploreRank` 가 시드를 앞세우는 건 옳지만 시드가 계속 유입되면 auto 는 무한 연기 — aging 없는
+strict priority 의 고전적 기아). 아침 경보(오탐)와 달리 이번엔 **경보가 제 역할을 했다.**
+
+**수리**: `pickStarvationRescue` — 라운드당 1픽을 "미실행 중 가장 오래된 것"(id 최소)에 보장,
+finalPicks **맨 앞**(예산이 앞에서 끊기므로). 총 픽 수 불변 = 가속 아님. 잔량 24개 → 1~3일 소진,
+이후 미실행 대기에 상한이 생긴다. 한 번 돈 키워드는 구제 안 함(제2의 커서 금지 — docblock).
+잠금: 유닛 6 + 배선 불변식 1 + 주입 1(배선 제거 → red).
+
+**판정**: 배포 후 1~3일 내 `never_old7d`(7일+ 미실행) 28 → 0, starved 경보 자연 해제.
+
+📌 **곁가지 관측(코드 안 바꿈)**: pri 풀이 315/399 = **79%** — "우선" 카테고리가 다수가 돼
+우선의 의미가 소멸했고, gen(65개, 2.7일 주기)보다 pri(11일 주기)가 오히려 느리다.
+`PRIORITY_CATEGORIES` 축소는 축 정책이라 대표 판단 사항.
+
+## 12) 판정 앞당김 + 2차 이관 5레인 (2026-08-05 오전)
+
+**24시간을 기다릴 필요가 없었다** — 달력이 아니라 역사적 사망 시각(07:00·10:00 KST)의 통과가 검증이다.
+10:00 KST 회차가 완벽한 대조 실험으로 끝났다:
+
+```
+같은 회차:  sheets-sync(알람)            ok=true 10.8s   ← 어제까지 매일 죽던 시각
+           collect-company(cron 잔류)    CPU 사망
+           sweep-kakao-chain(cron 잔류)  CPU 사망
+```
+배포 후 사망 0 (이전 3일 ×16) ⇒ **이관 방식 성공 확정** → 즉시 2차 이관.
+
+**2차 이관 5레인**: collect-company(홀수시 의도 보존) · sweep-kakao-chain · reclassify-company?passes=5
+(본문을 `reclassify-lane.ts` 로 추출 — 두 경로 공용, 뮤테이션 앵커 2건 이사) · collect-store-kakao · collect-neis.
+규약은 sheets-sync 와 동일(runsPerHour 1 · 게이트는 러너 안 · cron 은 !laneAlarmOn).
+⚠️ 킬스위치 레인(sweep/reclassify — 기본 ON)과 기본-OFF 레인의 게이트 방향이 반대다 — 테스트가 그걸 안다.
+
+부모 cron 부담: 알람 부트 4→9 (부트당 ~0.6s·서브리퀘스트 1 — 정각 예산 내).

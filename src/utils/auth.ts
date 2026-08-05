@@ -15,11 +15,8 @@ import { NavigateFunction } from 'react-router-dom'
 import { isSafeInternalPath } from './safe-internal-path'
 import { useAuthStore } from '@/client/stores/auth.store'
 
-// Firebase는 dynamic import로만 사용 (초기 번들에서 제외)
-async function getFirebaseAuth() {
-  const { getFirebaseAuth: getAuth } = await import('@/lib/firebase-auth')
-  return getAuth()
-}
+// 🔥 2026-08-04 (대표 승인): Firebase 제거. GLOBAL 미런칭·폐기(#804) · 서버 수용 차단(#806).
+//   KR 은 카카오 세션 쿠키 인증이라 이 경로를 원래 안 탄다.
 
 // Firebase 표준 localStorage 키
 const FIREBASE_STORAGE_KEYS = {
@@ -206,12 +203,7 @@ export async function isLoggedIn(): Promise<boolean> {
       return true
     }
 
-    // Firebase Auth (글로벌 — Firebase 전용 세션이라 localStorage 신호가 없을 수 있음)
-    const auth = await getFirebaseAuth()
-    if (auth.currentUser) {
-      return true
-    }
-
+    // 🔥 2026-08-04: GLOBAL Firebase 세션 확인 제거 — localStorage 신호(isLoggedInSync)가 유일한 판단.
     return false
   } catch (error) {
     console.error('[Auth] isLoggedIn 체크 실패:', error)
@@ -324,28 +316,7 @@ export async function getUserId(): Promise<string | null> {
     return localUserId
   }
   
-  // 2️⃣ Firebase Custom Claims (buyers with Kakao/Email login)
-  try {
-    const auth = await getFirebaseAuth()
-    const user = auth.currentUser
-    if (user) {
-      // @ts-ignore - Firebase custom claims
-      const claims = user.reloadUserInfo?.customAttributes
-      if (claims) {
-        try {
-          const parsed = JSON.parse(claims)
-          if (parsed.userId) {
-            return parsed.userId.toString()
-          }
-        } catch (_) {} // non-critical: JSON.parse of custom claims may fail
-      }
-      // ✅ Fallback: use Firebase UID (email login users without custom claims)
-      return user.uid
-    }
-  } catch (error) {
-    console.warn('[Auth] getUserId - Firebase claims 조회 실패:', error)
-  }
-
+  // 🔥 2026-08-04: Firebase Custom Claims 조회 제거 — KR 은 세션 쿠키, GLOBAL 폐기(#804).
   return null
 }
 
@@ -360,31 +331,8 @@ export async function getUserId(): Promise<string | null> {
  * ⚠️ Seller/Admin은 seller_name, admin_name을 사용해야 하므로 제외
  */
 export async function getUserName(): Promise<string | null> {
-  try {
-    // 1️⃣ Firebase Custom Claims 체크 (Kakao 로그인 시 userName 포함)
-    const auth = await getFirebaseAuth()
-    const user = auth.currentUser
-    
-    if (user) {
-      // Force token refresh to get latest claims
-      const idTokenResult = await user.getIdTokenResult()
-      const claims = idTokenResult.claims
-      
-      // Custom Claims에서 userName 추출
-      if (claims.userName && typeof claims.userName === 'string') {
-        return claims.userName
-      }
-      
-      // 2️⃣ Firebase displayName (Google 로그인 등)
-      if (user.displayName) {
-        return user.displayName
-      }
-    }
-  } catch (error) {
-    console.warn('[Auth] getUserName - Firebase 조회 실패:', error)
-  }
-  
-  // 3️⃣ localStorage 폴백 (user_type이 'user'인 경우에만!)
+  // 🔥 2026-08-04: Firebase Custom Claims/displayName 조회 제거(#804) — localStorage 만 본다.
+  // localStorage (user_type이 'user'인 경우에만!)
   const userType = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
   
   // ✅ Only read user_name if user_type is 'user' (not 'seller' or 'admin')
@@ -556,16 +504,7 @@ export async function logout(type?: 'seller' | 'admin' | 'user' | null): Promise
     // Sentry 초기화 실패 시 무시
   }
   
-  // Firebase 로그아웃 (글로벌 전용 — 한국은 세션 쿠키만 사용)
-  try {
-    const { isKorea } = await import('@/shared/config/region')
-    if (!isKorea()) {
-      const auth = await getFirebaseAuth()
-      auth.signOut()
-    }
-  } catch (e) {
-    // Firebase 초기화 실패 시 무시
-  }
+  // 🔥 2026-08-04: Firebase signOut 제거 — KR 은 세션 쿠키, GLOBAL 미런칭·폐기(#804).
   
 }
 

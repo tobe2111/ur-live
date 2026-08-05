@@ -122,17 +122,13 @@ export interface InfluencerEnrichSnapshot {
  *   소모하므로 예약 오버헤드 4 를 빼고 나눈다. 실제 중단은 각 함수가 `budget.left` 로 하고,
  *   여기서는 SELECT LIMIT 이 헛되이 커지지 않게만 잡는다.
  */
+/** 📐 예산 배분 정책(순수) — SSOT 는 `influencer-enrich-plan.ts`. 재수출이라 기존 import 경로는 그대로. */
+export { planInfluencerEnrich, naverRoomFromRemaining, naverRoomWithYtReserve } from './influencer-enrich-plan'
+import { planInfluencerEnrich, naverRoomWithYtReserve } from './influencer-enrich-plan'
+
 /** 📗 티스토리 몫 — 정책·근거는 `influencer-tistory-performance.ts`(SSOT). 여기선 재수출만. */
 export { TISTORY_ROOM, tistoryRoom } from './influencer-tistory-performance'
 
-export function planInfluencerEnrich(budgetTotal: number): { bioMax: number; naverMax: number; ytMax: number } {
-  const usable = Math.max(0, budgetTotal - 4)
-  const bioMax = Math.max(0, Math.min(6, Math.floor(usable * 0.15)))
-  // 📈 YT 는 건당 ~1 fetch 라 싸다 — 전체의 1/3 을 배정해도 블로거 몫이 크게 줄지 않는다.
-  const ytMax = Math.max(0, Math.min(20, Math.floor(usable * 0.35)))
-  const naverMax = Math.max(0, Math.min(30, Math.floor((usable - bioMax - ytMax) / 2)))
-  return { bioMax, naverMax, ytMax }
-}
 
 /**
  * 📝 블로거 몫을 **이 시점의 실제 잔여 예산**으로 다시 계산한다.
@@ -280,13 +276,7 @@ export function rollupChain(
   }
 }
 
-export function naverRoomFromRemaining(remaining: number, plannedMax: number): number {
-  const left = Number.isFinite(remaining) ? remaining : 0
-  const planned = Number.isFinite(plannedMax) ? plannedMax : 0
-  const affordable = Math.floor(Math.max(0, left - 1) / 2)
-  // 계획분보다 줄이지 않는다 — 앞 레인이 예산을 다 썼을 때 기존 동작으로 안전하게 되돌아간다.
-  return Math.max(0, Math.min(30, Math.max(planned, affordable)))
-}
+
 
 /** 유튜브 성과 보강의 **일일 units 카운터**(검색과 같은 10,000 풀을 나눠 쓴다). "YYYY-MM-DD:count". */
 const YT_PERF_UNITS_KEY = 'ads_yt_perf_units'
@@ -513,7 +503,9 @@ export async function runInfluencerEnrich(
   //   ⇒ 직전 회차가 실제로 굶었으면(`selected > 0 && tried === 0`) 깊이와 무관하게 선두를 넘긴다.
   //   둘은 서로를 보완한다: 체인이 정상이면 결정적 교대가 반반을 보장하고, 끊겨도 자기교정이 받는다.
   const naverFirst = pickNaverFirst(prev)   // 🔀 깊이가 아니라 직전 선두로 교대(위 docblock — 알람은 depth 가 항상 0)
-  const runNaver = async (): Promise<void> => {
+  /** 📈 이 회차 YT 가 쓸 예정인 서브리퀘스트(행당 1 + 배치콜 1). 블로거 선두 회차의 예약분으로 쓴다. */
+  const ytPlanned = (ytMax > 0 && ytRoom > 0 && env.YOUTUBE_API_KEY) ? Math.min(ytMax, ytRoom) + 1 : 0
+  const runNaver = async (ytReserve = 0): Promise<void> => {
     /**
      * 📗 **티스토리 — 기본 0(접힘)**. 2026-08-03 에 신설했다가 **다음 날 실측으로 접었다**:
      *   측정 397 → 이메일 12(3.0%) vs 네이버 26.7% · 유튜브 40.6%. 근거 전문은 `TISTORY_ROOM` docblock.
@@ -524,7 +516,7 @@ export async function runInfluencerEnrich(
       try { tistory = await enrichTistoryActivity(DB, budget, tisRoom, slice) } catch (err) { note(err) }
     }
     // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 이 시점의 **실제 잔여**로 몫을 다시 계산한다.
-    try { naver = await enrichNaverActivity(DB, budget, naverRoomFromRemaining(budget.left, naverMax), slice) } catch (err) { note(err) }
+    try { naver = await enrichNaverActivity(DB, budget, naverRoomWithYtReserve(budget.left, naverMax, ytReserve), slice) } catch (err) { note(err) }
   }
   const runFront = async (): Promise<void> => {
     // 🔗 링크인바이오(건당 1 fetch) → 📈 유튜브 성과(남은 일일 units 안에서만).
@@ -538,7 +530,8 @@ export async function runInfluencerEnrich(
   }
 
   if (naverFirst) {
-    await runNaver()          // 마감 전체를 블로거가 쓴다
+    // 📌 YT 예약분을 떼고 준다 — 안 그러면 이 회차 YT 는 0행이다(위 `naverRoomWithYtReserve` docblock).
+    await runNaver(ytPlanned) // 마감 전체를 블로거가 쓴다
     await runFront()          // 남은 시간은 앞 레인이
   } else {
     // 짝수 라운드는 종전대로 — 앞 레인에 사전 마감을 씌워 블로거 시간 바닥을 보장한다.

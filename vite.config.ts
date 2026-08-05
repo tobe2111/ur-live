@@ -83,7 +83,6 @@ export default defineConfig({
           // React Router
           if (id.includes('react-router')) return 'react-router'
           // Firebase — 별도 청크 (lazy load)
-          if (id.includes('firebase/')) return 'firebase'
           // TanStack Query
           if (id.includes('@tanstack/react-query')) return 'tanstack-query'
           // 🛡️ 2026-05-28 (Stripe 232KB 메인 진입 사고 fix): Stripe 와 Tosspayments 분리.
@@ -164,7 +163,6 @@ export default defineConfig({
           //   로드했음. SDK 와 같은 'tosspayments' 청크로 분리 → import 하는 결제 표면
           //   (Checkout/PointsCharge/TossWidgetPay 등)만 로드. 결제 페이지 preload 동작은 불변.
           if (id.includes('/src/lib/toss-preload')) return 'tosspayments'
-          if (id.includes('/src/lib/firebase-auth') || id.includes('/src/lib/firebase-config')) return 'app-firebase-wrapper'
           // 🛡️ phase 5: 페이지별 hook 분리 (사용처 1곳).
           if (id.includes('/src/hooks/useCart')) return 'app-cart'
           if (id.includes('/src/hooks/useSearch')) return 'app-search'

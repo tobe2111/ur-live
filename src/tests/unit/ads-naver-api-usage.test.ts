@@ -107,7 +107,9 @@ describe('🔌 배선 — 자동 레인의 fetch 래퍼 전부에 달려 있다'
   })
 
   it('🔒 상태줄에 노출된다 — 안 보이면 계측해도 판정에 못 쓴다', () => {
-    expect(COLLECT).toMatch(/naver_api: \{ used: naverCalls, total: NAVER_DAILY_QUOTA_CALLS, day: naverDay \}/)
+    // ⚠️ 닫는 중괄호까지 고정하지 않는다 — 2026-08-04 에 `target`/`left`(90% 목표·잔량)를 더하면서
+    //   이 시험이 깨졌다. 지키려는 건 **노출 여부**지 필드 개수가 아니다.
+    expect(COLLECT).toMatch(/naver_api: \{ used: naverCalls, total: NAVER_DAILY_QUOTA_CALLS, day: naverDay/)
   })
 
   /**

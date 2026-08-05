@@ -19,6 +19,7 @@ import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
 import ColdSendPanel from './influencer-pool/ColdSendPanel'
 import ExcelExportButtons from './influencer-pool/ExcelExportButtons'
 import MarkContactedPanel from './influencer-pool/MarkContactedPanel'
+import OutreachResultPanel from './influencer-pool/OutreachResultPanel'
 import MaintenanceButtons from './influencer-pool/MaintenanceButtons'
 import { exportFilteredCsv } from './influencer-pool/export-csv'
 import TrackLinkButton from './influencer-pool/TrackLinkButton'
@@ -417,6 +418,7 @@ export default function AdminInfluencerPoolPage() {
             <ColdSendPanel />
             <ExcelExportButtons variant="contactable" />
             <MarkContactedPanel />
+            <OutreachResultPanel />{/* 📬 결과 유입 — 반응 루프의 열린 끝(엔드포인트는 있었는데 화면이 없어 email_status 가 0건이었다) */}
           </div>
         </details>
 
