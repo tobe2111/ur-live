@@ -96,7 +96,8 @@ const MUTATIONS = [
   },
   {
     name: 'CPU 상한 — 재분류가 시간만 보고 행 총량을 안 본다',
-    file: 'src/worker-ads/index.ts',
+    // 🗺️ 2026-08-05 앵커 이사 — 본문이 `reclassify-lane.ts` 로 추출됐다(알람 이관: cron·알람 두 경로 공용).
+    file: 'src/features/marketing/api/reclassify-lane.ts',
     find: 'passes < 5 && !last.done && rows < maxRows && Date.now() - t0 < deadlineMs',
     replace: 'passes < 5 && !last.done && Date.now() - t0 < deadlineMs',
     test: 'src/tests/unit/ads-cpu-work-cap-callsites.test.ts',
@@ -693,7 +694,8 @@ const MUTATIONS = [
   },
   {
     name: '재분류 패스 루프가 마감선을 잃음(매시간 CPU 사망 복귀)',
-    file: 'src/worker-ads/index.ts',
+    // 🗺️ 2026-08-05 앵커 이사 — 본문이 `reclassify-lane.ts` 로 추출됐다(위 CPU 상한 항목과 동일).
+    file: 'src/features/marketing/api/reclassify-lane.ts',
     // 🗺️ 2026-08-04 앵커 갱신 — 같은 줄에 **행 총량 조건이 추가**됐다(`rows < maxRows`). 옛 앵커를
     //   그대로 두면 주입 대상을 못 찾아 이 불변식이 조용히 사라진다(가드가 실제로 그렇게 잡았다).
     //   지우는 건 여전히 **시간 조건만** — 행 조건은 별도 항목(`CPU 상한 — 재분류가 …`)이 지킨다.

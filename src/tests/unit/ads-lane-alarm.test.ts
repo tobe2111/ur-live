@@ -224,3 +224,39 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
     expect(bootSrc).toMatch(/import \{ alarmEnabled \} from '\.\/lane-alarm-policy'/)
   })
 })
+
+  /**
+   * ⏰ 2차 이관 5레인 (2026-08-05) — 10:00 KST 대조 실험(이관=생존·잔류=사망) 후 확장.
+   *   sheets-sync 와 같은 3장: 등록 + runsPerHour 1 + cron 게이트. 근거는 lane-alarm-runners docblock.
+   */
+  it('🔒 2차 이관 5레인 — 전부 runsPerHour 1 (외부 API 쿼터 증설 금지)', () => {
+    const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
+    for (const lane of ["'collect-company'", "'sweep-kakao-chain'", "'reclassify-company?passes=5'", "'collect-store-kakao'", "'collect-neis'"]) {
+      expect(runners, `${lane} 등록 누락`).toContain(`${lane}: {`)
+      const seg = runners.slice(runners.indexOf(`${lane}: {`), runners.indexOf(`${lane}: {`) + 200)
+      expect(seg, `${lane} runsPerHour 1 아님`).toMatch(/runsPerHour: 1,/)
+    }
+  })
+
+  it('🔒 2차 이관 — 알람이 몰면 cron 은 손을 뗀다(5곳 전부)', () => {
+    const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+    expect(src).toMatch(/if \(!laneAlarmOn\) kick\('\/__ads\/sweep-kakao-chain'/)
+    expect(src).toMatch(/if \(!laneAlarmOn\) kick\('\/__ads\/reclassify-company\?passes=5'/)
+    expect(src).toMatch(/if \(!laneAlarmOn && env\.ADS_COMPANY_COLLECT_ENABLED === 'true'\)/)
+    expect(src).toMatch(/if \(!laneAlarmOn && \(env as unknown as \{ ADS_STORE_KAKAO_ENABLED\?: string \}\)\.ADS_STORE_KAKAO_ENABLED === 'true'\)/)
+    expect(src).toMatch(/if \(!laneAlarmOn && \(env as unknown as \{ ADS_NEIS_ENABLED\?: string \}\)\.ADS_NEIS_ENABLED === 'true'\)/)
+  })
+
+  it('🔒 2차 이관 — 러너가 게이트를 스스로 본다(알람은 매시간 무조건 깨므로)', async () => {
+    const { ALARM_LANES } = await import('@/worker-ads/lane-alarm-runners')
+    // 기본-OFF 레인({} = 게이트 미설정): 게이트를 안 보고 진행하면 DB 접근에서 throw 한다.
+    for (const lane of ['collect-company', 'collect-store-kakao', 'collect-neis']) {
+      const r = await ALARM_LANES[lane]!.run({} as never)
+      expect((r as { skipped?: string }).skipped, `${lane} 게이트 무시`).toBe('gate_off')
+    }
+    // 킬스위치 레인(기본 ON): 명시로 꺼야 skipped 다 — 방향이 반대인 걸 테스트가 안다.
+    for (const lane of ['sweep-kakao-chain', 'reclassify-company?passes=5']) {
+      const r = await ALARM_LANES[lane]!.run({ ADS_ENRICH_DISABLED: 'true' } as never)
+      expect((r as { skipped?: string }).skipped, `${lane} 킬스위치 무시`).toBe('gate_off')
+    }
+  })

@@ -105,6 +105,69 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
       return runSheetsMirrorDirect(env)
     },
   },
+  /**
+   * ⏰ **2차 이관 5레인** (2026-08-05 — sheets-sync 24h 판정 통과 후 확장).
+   *
+   * ## 근거 — 대조 실험이 라이브에서 완결됐다
+   * ```
+   *   10:00 KST 회차(역사적 최다 사망 시각):
+   *     sheets-sync(알람)              ok=true 10.8s      ← 어제까지 매일 죽던 레인
+   *     collect-company(cron 잔류)     CPU 사망
+   *     sweep-kakao-chain(cron 잔류)   CPU 사망
+   * ```
+   * 이관 전 3일 사망: sheets-sync ×16 → 이관 후 24h **0**. 같은 회차에서 cron 잔류만 죽는다.
+   *
+   * ## 공통 규약 (sheets-sync 와 동일)
+   * · `runsPerHour: 1` — 증설 아님, cron 의도 복원(외부 API 쿼터 불변)
+   * · **게이트는 러너 안에서** — 알람은 매시간 무조건 깨므로 env 게이트를 여기서 본다(OFF = no-op)
+   * · cron 쪽은 `!laneAlarmOn` 게이트로 손 뗌(이중 실행 차단 — index.ts 각 kick)
+   * · 직접 호출(SELF 홉 없음) — 알람 인보케이션이 자기 예산이라 홉이 낭비다
+   */
+  'collect-company': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if (env.ADS_COMPANY_COLLECT_ENABLED !== 'true') return { skipped: 'gate_off' }
+      // cron 시절 홀수시 격리(짝수시 storeinfo 와 예산 반토막 방지)는 **부모 예산을 나누던 시절의 이유**다.
+      // 알람은 자기 예산이라 격리가 불필요하지만, 외부(네이버 지역검색) 호출량 의도는 보존한다 — 홀수시만.
+      if (new Date().getUTCHours() % 2 !== 1) return { skipped: 'even_hour' }
+      const { runCompanyAutoCollect } = await import('@/features/marketing/api/company-collect')
+      return runCompanyAutoCollect(env)
+    },
+  },
+  'sweep-kakao-chain': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED === 'true') return { skipped: 'gate_off' }
+      const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect')
+      return runKakaoPhoneSweep(env)
+    },
+  },
+  // ⚠️ 키 = DO 인스턴스 이름 = 하트비트 이름. 쿼리 포함 이름을 **그대로** 쓴다 — 바꾸면 라이브의
+  //   옛 행 `ads:reclassify-company?passes=5` 가 남아 stale watch 가 영원히 운다(이름은 못생겨도 안정이 먼저).
+  'reclassify-company?passes=5': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED === 'true') return { skipped: 'gate_off' }
+      const { runReclassifyLane } = await import('@/features/marketing/api/reclassify-lane')
+      return runReclassifyLane(env)
+    },
+  },
+  'collect-store-kakao': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_STORE_KAKAO_ENABLED?: string }).ADS_STORE_KAKAO_ENABLED !== 'true') return { skipped: 'gate_off' }
+      const { runStoreKakaoCollect } = await import('@/features/marketing/api/store-kakao-collect')
+      return runStoreKakaoCollect(env)
+    },
+  },
+  'collect-neis': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED !== 'true') return { skipped: 'gate_off' }
+      const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect')
+      return runNeisAcademyCollect(env)
+    },
+  },
 }
 
 export const ALARM_LANE_NAMES = Object.keys(ALARM_LANES)
