@@ -72,6 +72,18 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '추출 규칙 지문이 정규식 변경을 놓친다(재추출이 영원히 안 돈다)',
+    file: 'src/features/marketing/api/influencer-discovery.ts',
+    find: 'const NOT_EMAIL_SUFFIX = /\\.(png|jpg|jpeg|gif|webp|svg|mp4|webm)$/i',
+    replace: 'const NOT_EMAIL_SUFFIX = /\\.(pngX|jpg|jpeg|gif|webp|svg|mp4|webm)$/i',
+    test: 'src/tests/unit/reextract-rules-fingerprint.test.ts',
+    why:
+      '`REEXTRACT_RULES_VERSION` 은 시간 폴백이 없어, 안 올리면 개선된 추출기가 기존 36,880행에 ' +
+      '**영원히** 안 닿는다. 그 판정을 이 지문이 대신하므로 지문이 규칙 변경을 놓치면 가드가 통째로 ' +
+      '무의미해진다. ⚠️ 실제로 놓쳤었다 — 첫 판은 `_RE` 로 끝나는 **이름**만 골라 이 상수를 빠뜨렸고 ' +
+      '정규식을 바꿔도 초록이었다. 이름이 아니라 **값의 모양**으로 고르게 고친 뒤 빨강을 확인했다.',
+  },
+  {
     name: 'B2B 수집 페이지가 다시 마운트마다 917KB 를 받는다',
     file: 'src/pages/admin/AdminPartnerPoolPage.tsx',
     find: 'useEffect(() => { loadMeta(); loadStats() }, [loadMeta, loadStats])',
