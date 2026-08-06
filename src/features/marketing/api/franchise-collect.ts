@@ -3,7 +3,12 @@
  *   프랜차이즈 **본사/브랜드**(브랜드명·법인명·대표·사업자번호·업종·주요상품)를 발굴 → `ad_company_leads` source='franchise'.
  *   가맹점 확장 중인 본사 = 유어딜에 매장을 다수 데려올 수 있는 파트너.
  *
- *   ✅ 실 엔드포인트(웹 확인 2026-07-23): FftcBrandRlsInfo2_Service / getBrandList.
+ *   ✅ 실 엔드포인트(2026-08-05 **포털 Swagger 화면으로 확정**): FftcBrandRlsInfo2_Service / `getBrandinfo`.
+ *      🩸 그전엔 `getBrandList` 였고 **21회 연속 실패**했다(`NO_OPENAPI_SERVICE_ERROR`). 승인·활용기간·키
+ *      전부 정상인데 **오퍼레이션 이름 하나가 틀려서**였다. 07-23 주석은 "웹 확인"이라 적혀 있었지만
+ *      실제로는 확인된 적이 없었다 — 이 환경은 `apis.data.go.kr` 이 프록시 차단이라 **찔러볼 수가 없고**,
+ *      그래서 "확인했다"는 문장만 남고 검증은 비어 있었다(문서가 증거를 대신한 자리).
+ *      ⚠️ 대소문자 주의: `getBrandInfo` 가 아니라 **`getBrandinfo`**(Swagger 의 응답 모델도 같은 표기).
  *   ⚠️ 이 API 는 **연락처(전화/이메일)를 직접 주지 않음**(브랜드·법인·사업자번호까지). 연락처는 **보강 단계**에서
  *      네이버 홈페이지 검색(브랜드명)→크롤로 확보(프랜차이즈 본사는 홈페이지 보유율 높아 이메일 수율 우수).
  *      → requireContact:true 로 저장(보류) → enrichHeldLeads 가 브랜드명으로 홈페이지 찾아 이메일/전화 채움.
@@ -15,8 +20,20 @@ import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { describePublicDataFailure, serviceKeyParam, laneShouldSkip, updateLaneHealth, laneHealthNote, type LaneHealth, isNoValue } from './public-data-diag'
 
-const FRANCHISE_BASE = 'https://apis.data.go.kr/1130000/FftcBrandRlsInfo2_Service'
-const FRANCHISE_OP = 'getBrandList'
+export const FRANCHISE_BASE = 'https://apis.data.go.kr/1130000/FftcBrandRlsInfo2_Service'
+export const FRANCHISE_OP = 'getBrandinfo'
+/**
+ * 🔁 오퍼레이션 후보 — 첫 이름이 `NO_OPENAPI_SERVICE_ERROR`(=그 주소가 없음) 면 **다음 이름으로 한 번 더** 쏜다.
+ *
+ *   이 환경에서 `apis.data.go.kr` 은 프록시 차단이라 **개발 중에 이름을 검증할 방법이 없다.** 07-23 에
+ *   그래서 못 맞춘 이름 하나로 21회를 버렸다. Swagger 화면으로 `getBrandinfo` 를 확정했지만 화면 글자가
+ *   작아 대소문자를 100% 단정하기 어렵다 — **추측을 코드에 굳히는 대신 한 번의 실측으로 스스로 정하게** 한다.
+ *   ⚠️ 후보는 **주소 부재(코드 12)일 때만** 넘어간다. 키·트래픽·파라미터 오류에 후보를 돌리면 같은 실패를
+ *      N배로 반복해 예산만 태운다.
+ */
+const FRANCHISE_OP_FALLBACKS = ['getBrandInfo', 'getBrandList'] as const
+/** 실측으로 확정된 이름을 기억한다 — 다음 회차부터 첫 시도에 맞는다(재시도 0). */
+const OP_KEY = 'ads_franchise_op'
 const stripTag = (s: unknown): string => String(s ?? '').replace(/<[^>]+>/g, '').trim()
 type RawFranchise = Record<string, unknown>
 // ⚠️ 별칭 폴백은 `isNoValue` 를 통과해야 한다 — 포털이 '값 없음'을 `"N/A"` 문자열로 주는데 truthy 라
@@ -64,7 +81,10 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const key = env.PUBLIC_DATA_SERVICE_KEY || (env as unknown as { NTS_API_KEY?: string }).NTS_API_KEY || ''
   const base = (env as unknown as { ADS_FRANCHISE_ENDPOINT?: string }).ADS_FRANCHISE_ENDPOINT || FRANCHISE_BASE
-  const op = (env as unknown as { ADS_FRANCHISE_OP?: string }).ADS_FRANCHISE_OP || FRANCHISE_OP
+  // 🔁 오퍼레이션 이름 — env override > **실측으로 확정된 값** > 기본. 확정값이 있으면 후보 순회를 안 한다.
+  const learnedOp = (await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(OP_KEY)
+    .first<{ value: string }>().catch(() => null))?.value || ''
+  const op = (env as unknown as { ADS_FRANCHISE_OP?: string }).ADS_FRANCHISE_OP || learnedOp || FRANCHISE_OP
   const yr = (env as unknown as { ADS_FRANCHISE_YEAR?: string }).ADS_FRANCHISE_YEAR || ''
   const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
   let prev: FranchiseStats | null = null
@@ -88,8 +108,19 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
   const pagesPerRun = Math.min(30, Math.max(3, parseInt((env as unknown as { ADS_FRANCHISE_PAGES?: string }).ADS_FRANCHISE_PAGES || '', 10) || 8))
   const budget = { left: pagesPerRun }
   let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
+  let useOp = op
   for (let i = 0; i < budget.left + 3 && budget.left > 0; i++) {
-    const { items, count, msg } = await fetchBrandPage(base, op, key, page, yr, budget)
+    let { items, count, msg } = await fetchBrandPage(base, useOp, key, page, yr, budget)
+    // 🔁 **주소 부재일 때만** 다음 후보로 — 첫 페이지에서 한 번만 시도한다(예산 낭비 방지).
+    //   맞는 이름을 찾으면 저장해 다음 회차부터 재시도 0. 근거: `FRANCHISE_OP_FALLBACKS` 주석.
+    if (i === 0 && !count && msg && /NO_OPENAPI_SERVICE_ERROR/i.test(msg)) {
+      for (const cand of FRANCHISE_OP_FALLBACKS) {
+        if (cand === useOp || budget.left <= 0) continue
+        const r = await fetchBrandPage(base, cand, key, page, yr, budget)
+        if (r.count) { useOp = cand; items = r.items; count = r.count; msg = r.msg; break }
+      }
+      if (count) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(OP_KEY, useOp).run().catch(() => null)
+    }
     if (msg) lastMsg = msg
     if (!sample && items[0]) sample = items[0]
     if (!count) break

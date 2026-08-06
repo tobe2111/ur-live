@@ -36,6 +36,7 @@
 import { redactServiceKey } from './license-url'
 import { serviceKeyParam, describePublicDataBody, isHardConfigFailure } from './public-data-diag'
 import { COMMERCE_SERVICES } from './commerce-notify-collect'
+import { FRANCHISE_BASE, FRANCHISE_OP } from './franchise-collect' // 문자열 두 벌 금지 — 레인과 프로브가 갈리면 오진의 재료가 된다
 import type { Env } from '@/worker/types/env'
 
 /** 응답 본문에서 남길 기본 길이 — 어드민 화면에 붙여넣을 만큼만(전문 로그가 아니다). */
@@ -220,8 +221,11 @@ export const PROBE_TARGETS: Record<string, TargetDef> = {
     //   나는 그 400 을 근거로 "서비스가 폐기됐다"고 판정할 뻔했다. 프로브가 레인과 다른 곳을 찌르면
     //   초록이든 빨강이든 **오진의 재료**가 된다. 기존 유닛은 서비스명(`FftcBrandRlsInfo2_Service`)만 대조해
     //   오퍼레이션 차이를 통과시켰다 — 그 구멍을 같은 커밋에서 막았다.
+    //   🩹 2026-08-05: 대표가 준 포털 Swagger 화면으로 실제 이름이 **`getBrandinfo`** 임을 확정
+    //     (`getBrandList` 로 22회 연속 0건이었다). 여기와 레인이 갈리면 위 주석의 사고가 그대로 재현되므로
+    //     **레인 상수를 import 해서 쓴다** — 문자열을 두 벌 두면 반드시 갈라진다.
     label: '공정위 가맹정보',
-    url: (k, _e, o) => `https://apis.data.go.kr/1130000/FftcBrandRlsInfo2_Service/getBrandList?serviceKey=${serviceKeyParam(k)}&pageNo=${o.page}&numOfRows=${o.rows}&resultType=json`,
+    url: (k, _e, o) => `${FRANCHISE_BASE}/${FRANCHISE_OP}?serviceKey=${serviceKeyParam(k)}&pageNo=${o.page}&numOfRows=${o.rows}&resultType=json`,
   },
   nara: {
     // 🏛️ 2026-08-04 수리: `UsrInfoService02/getPrcrmntCorpBasicInfo` 는 **code 12 로 죽어 있다**(15회 실행 0건).

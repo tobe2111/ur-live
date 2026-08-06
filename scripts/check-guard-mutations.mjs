@@ -72,6 +72,18 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '가맹 레인이 틀린 오퍼레이션 이름에서 못 빠져나온다',
+    file: 'src/features/marketing/api/franchise-collect.ts',
+    find: "    if (i === 0 && !count && msg && /NO_OPENAPI_SERVICE_ERROR/i.test(msg)) {",
+    replace: '    if (false) {',
+    test: 'src/tests/unit/franchise-op-fallback.test.ts',
+    why:
+      '이 레인은 오퍼레이션 이름 하나(`getBrandList` → 실제 `getBrandinfo`)가 틀려 **22회 연속 0건**이었다. ' +
+      '승인·활용기간·키 전부 정상이라 화면상 아무 문제가 없어 보였고, 소스 주석은 "웹 확인"이라 단언하고 ' +
+      '있었다 — 이 환경은 `apis.data.go.kr` 이 프록시 차단이라 **개발 중에 검증할 수가 없기 때문**이다. ' +
+      '자가회복이 빠지면 다음에 이름이 또 바뀔 때 같은 몇 주가 반복되고, **실패가 조용해서 아무도 모른다.**',
+  },
+  {
     name: '추출 규칙 지문이 정규식 변경을 놓친다(재추출이 영원히 안 돈다)',
     file: 'src/features/marketing/api/influencer-discovery.ts',
     find: 'const NOT_EMAIL_SUFFIX = /\\.(png|jpg|jpeg|gif|webp|svg|mp4|webm)$/i',
@@ -787,8 +799,10 @@ const MUTATIONS = [
   {
     name: '프로브가 레인과 **다른 오퍼레이션**을 찌름(서비스명만 같음)',
     file: 'src/features/marketing/api/public-data-probe.ts',
-    find: 'FftcBrandRlsInfo2_Service/getBrandList',
-    replace: 'FftcBrandRlsInfo2_Service/getBrandReleaseInfo',
+    // ⚠️ 2026-08-05: 프로브가 문자열 대신 **레인 상수를 import** 하게 바뀌었다(두 벌이면 갈라지므로).
+    //   그래서 주입도 "상수를 쓰지 말고 옛 문자열을 도로 박는다" 형태여야 같은 사고를 재현한다.
+    find: '`${FRANCHISE_BASE}/${FRANCHISE_OP}?serviceKey=',
+    replace: '`https://apis.data.go.kr/1130000/FftcBrandRlsInfo2_Service/getBrandReleaseInfo?serviceKey=',
     test: 'src/tests/unit/ads-public-data-probe.test.ts',
     why:
       '2026-08-02 라이브에서 실제로 일어난 일이다. 기존 대조는 **서비스명**(FftcBrandRlsInfo2_Service)만 봐서 ' +
