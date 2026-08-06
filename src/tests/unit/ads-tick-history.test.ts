@@ -194,12 +194,15 @@ describe('배선 — 부모가 실제로 남기는가', () => {
    */
   it('빈 회차 수를 이력 덧붙이기 **전**에 센다 — 뒤에 세면 항상 0 이다', () => {
     const src = code('src/worker-ads/tick-history-write.ts')
-    const prevAt = src.indexOf('const prevAt')
+    const prevAt = src.indexOf('const prev =')
     const appendAt = src.indexOf('const next = appendTick(')
-    expect(prevAt, 'prevAt 계산을 못 찾았다 — 코드가 옮겨갔다(통과가 아니라 실패)').toBeGreaterThan(-1)
+    expect(prevAt, '직전 항목 계산을 못 찾았다 — 코드가 옮겨갔다(통과가 아니라 실패)').toBeGreaterThan(-1)
     expect(appendAt).toBeGreaterThan(-1)
     expect(prevAt, '덧붙인 뒤에 읽으면 방금 만든 이 회차가 잡혀 간격이 0 이 된다').toBeLessThan(appendAt)
-    expect(src, '학습기에 빈 회차 수를 안 넘기면 편향이 그대로다').toMatch(/missedTicks\(prevAt, at\)/)
+    expect(src, '학습기에 빈 회차 수를 안 넘기면 편향이 그대로다').toMatch(/missedTicksJudged\(prev, at\)/)
+    // 🕳️ 2026-08-06: 디스패치가 **같은 `at`** 으로 잠정 항목을 먼저 박으므로, 이력의 마지막은 보통
+    //   *이* 회차다. 그냥 `.at(-1)` 을 쓰면 순서가 맞아도 간격이 늘 0 이라 검사가 또 헛돈다.
+    expect(src, '자기 자신을 직전으로 쓰면 안 된다').toMatch(/\.find\(t => t\.at !== at\)/)
   })
 
   it('진단이 이력을 노출한다 — 쓰기만 하고 안 보여주면 판정에 못 쓴다', () => {

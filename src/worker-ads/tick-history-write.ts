@@ -12,7 +12,7 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import { TICK_HISTORY_KEY, appendTick, readTickHistory, summarizeTick } from './tick-history'
-import { LANE_LEARN_KEY, laneCeiling, learnLanes, missedTicks, readLaneLearn } from './lane-aimd'
+import { LANE_LEARN_KEY, laneCeiling, learnLanes, missedTicksJudged, readLaneLearn } from './lane-aimd'
 import { FREE_LANES_PER_TICK, PAID_LANES_PER_TICK, resolvePlan, type DispatchEnv } from './dispatch-budget'
 
 export async function writeTickSummary(
@@ -29,14 +29,19 @@ export async function writeTickSummary(
     const tick = summarizeTick(at, hourUTC, ranNames, beats)
     // 🕳️ **빈 회차를 세는 건 이력을 덧붙이기 *전*이어야 한다** — 덧붙인 뒤 마지막 항목을 보면
     //   그건 방금 만든 이 회차라 간격이 항상 0 이 된다(검사가 통째로 헛돈다).
-    const prevAt = readTickHistory(pick(TICK_HISTORY_KEY)).at(-1)?.at
+    // 🕳️ **이 회차 자신의 잠정 항목은 직전이 아니다.** 디스패치가 같은 `at` 으로 먼저 박아 두므로
+    //   이력의 마지막은 보통 *이 회차*다 — 그걸 직전으로 쓰면 간격이 늘 0 이라 검사가 헛돈다
+    //   (2026-08-03 이 파일이 이미 한 번 밟은 함정의 새 변종).
+    const hist = readTickHistory(pick(TICK_HISTORY_KEY))
+    const prev = [...hist].reverse().find(t => t.at !== at) ?? null
     const next = appendTick(pick(TICK_HISTORY_KEY), tick)
 
     const plan = resolvePlan(env ?? null)
     const learned = learnLanes(
       readLaneLearn(pick(LANE_LEARN_KEY)), tick, laneCeiling(plan),
       plan === 'paid' ? PAID_LANES_PER_TICK : FREE_LANES_PER_TICK,
-      missedTicks(prevAt, at),
+      // 직전이 '결과 미상'이면 빈자리를 해로 세지 않는다 — 관측 실패지 붕괴가 아니다.
+      missedTicksJudged(prev, at),
     )
 
     const put = DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')

@@ -564,7 +564,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
 
   // 🚦 여기서 비로소 띄운다 — 이번 회차 예산만큼만. 미룬 레인은 **버린 게 아니라** 다음 차례에 돈다
   //   (`selectLanesForHour` 가 모든 레인이 `groups` 시간 안에 반드시 한 번 돎을 보장 — 유닛이 강제).
-  const { kicked, ranNames } = await dispatchPendingLanes({ pending, env: env as never, hourUTC, laneUrl, beat: adsBeat, waitUntil: (p) => ctx.waitUntil(p) })
+  //   🕳️ `at: tickStartIso` — 꼬리(`closeTick`)와 **같은 값**이라야 잠정 이력이 확정본으로 교체된다.
+  //     다른 값을 넘기면 한 회차가 두 줄이 되어 "얼마나 자주 도는가" 가 부풀려진다.
+  const { kicked, ranNames } = await dispatchPendingLanes({ pending, env: env as never, hourUTC, laneUrl, beat: adsBeat, waitUntil: (p) => ctx.waitUntil(p), at: tickStartIso })
 
   // 🧾 디스패치 후 한 번에 쓴다(빈 배치를 쓰면 이후 기록이 영영 못 나간다) + 이력 한 줄. ⏳ 단 **무한정
   //   기다리지 않는다** — 근거·실측·못 기다린 레인을 왜 판정에서 빼는지는 `tail-bound.ts` 헤더에 있다.
