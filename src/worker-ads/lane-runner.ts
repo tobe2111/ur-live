@@ -15,6 +15,7 @@ import {
   type LaneCandidate,
 } from './dispatch-budget'
 import { LANE_LEARN_KEY, readLaneLearn } from './lane-aimd'
+import { TICK_HISTORY_KEY, appendTick, provisionalTick } from './tick-history'
 import { rotationTicks, rotatedGapMinutes } from './lane-cadence'
 import { laneDomain } from './lane-domains'
 
@@ -77,13 +78,21 @@ export async function dispatchPendingLanes(opts: {
   laneUrl: LaneRunnerDeps['laneUrl']
   beat: LaneRunnerDeps['beat']
   waitUntil: (p: Promise<unknown>) => void
+  /**
+   * 🕳️ 회차 시작 ISO — **꼬리(`closeTick`)가 쓰는 값과 같아야 한다**(`tickStartIso`).
+   * 이 값으로 잠정 이력을 남기면 꼬리가 같은 `at` 으로 교체한다. 생략하면 잠정 이력을 안 남긴다
+   * (기존 동작 그대로 — 호출부가 아직 안 넘기는 경우에도 회차가 깨지지 않게).
+   */
+  at?: string
 }): Promise<{ kicked: Promise<unknown>[]; ranNames: string[] }> {
   const { pending, env, hourUTC, waitUntil } = opts
   // 📍 커서 + 🎚️ 학습된 레인 수를 **한 번의 D1 왕복**으로 읽는다. **실패하면 각각의 기본값으로
   //   떨어진다** — 커서가 없어도 정확성은 불변이고 공평성만 약해지며, 학습값이 없으면 요금제
   //   기본값에서 다시 시작한다. 여기서 throw 하면 그 회차 전체가 사라지므로 절대 던지지 않는다.
-  const rows = await env.DB.prepare('SELECT key, value FROM platform_settings WHERE key IN (?, ?)')
-    .bind(DISPATCH_CURSOR_KEY, LANE_LEARN_KEY).all<{ key: string; value: string }>().catch(() => null)
+  //   🕳️ 이력도 **같은 왕복에서** 읽는다 — 잠정 항목을 덧붙이려면 기존 이력이 필요한데,
+  //     이걸 따로 읽으면 회차마다 D1 왕복이 하나 늘어난다(무료 예산을 갉는다).
+  const rows = await env.DB.prepare('SELECT key, value FROM platform_settings WHERE key IN (?, ?, ?)')
+    .bind(DISPATCH_CURSOR_KEY, LANE_LEARN_KEY, TICK_HISTORY_KEY).all<{ key: string; value: string }>().catch(() => null)
   const row = rows?.results?.find(r => r.key === DISPATCH_CURSOR_KEY) ?? null
   const perTick = lanesPerTick(env, readLaneLearn(rows?.results?.find(r => r.key === LANE_LEARN_KEY)?.value)?.cap)
   // 🧭 **도메인별 커서** + 역할별 커서 + 회차. 저장값이 구 포맷(숫자 하나/역할 객체)이어도 받아준다 —
@@ -119,6 +128,14 @@ export async function dispatchPendingLanes(opts: {
   ]
   if (sel.deferred.length) {
     writes.push(env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(DISPATCH_CURSOR_KEY, JSON.stringify(sel.nextCursors)))
+  }
+  // 🕳️ **잠정 회차를 여기서 박는다** — 꼬리가 못 돌아도 이력에 빈자리가 안 생긴다.
+  //   빈자리를 붕괴로 읽고 cap 이 6 → 2 로 자해하던 것의 근본 수리(`provisionalTick` 헤더 참조).
+  //   ⚠️ `opts.at` 은 꼬리와 **같은 값**이어야 교체된다. 없으면 남기지 않는다(둘로 갈리느니 없는 게 낫다).
+  if (opts.at) {
+    const prevHist = rows?.results?.find(r => r.key === TICK_HISTORY_KEY)?.value
+    writes.push(env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind(TICK_HISTORY_KEY, appendTick(prevHist, provisionalTick(opts.at, hourUTC, sel.run.map(l => l.beat)))))
   }
   waitUntil(env.DB.batch(writes).catch(() => undefined))
   // 🏷️ **띄운 레인 이름**도 돌려준다 — 회차 요약이 "띄웠는데 기록이 없는 레인"을 *이름으로* 판정한다.

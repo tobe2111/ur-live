@@ -1717,12 +1717,33 @@ const MUTATIONS = [
   {
     name: '빈 회차를 이력 덧붙인 *뒤* 에 셈(항상 0)',
     file: 'src/worker-ads/tick-history-write.ts',
-    find: "    const prevAt = readTickHistory(pick(TICK_HISTORY_KEY)).at(-1)?.at\n    const next = appendTick(pick(TICK_HISTORY_KEY), tick)",
-    replace: "    const next = appendTick(pick(TICK_HISTORY_KEY), tick)\n    const prevAt = readTickHistory(next).at(-1)?.at",
+    find: "    const prev = [...hist].reverse().find(t => t.at !== at) ?? null\n    const next = appendTick(pick(TICK_HISTORY_KEY), tick)",
+    replace: "    const next = appendTick(pick(TICK_HISTORY_KEY), tick)\n    const prev = readTickHistory(next).at(-1) ?? null",
     test: 'src/tests/unit/ads-tick-history.test.ts',
     why:
       '덧붙인 뒤 마지막 항목은 **방금 만든 이 회차**라 간격이 항상 0 이 된다 — 검사가 통째로 헛돈다 ' +
-      '(이 레포가 반복해 만난 "헛도는 가드" 의 교과서적 형태).',
+      '(이 레포가 반복해 만난 "헛도는 가드" 의 교과서적 형태). ' +
+      '2026-08-06 부터는 디스패치가 같은 `at` 으로 잠정 항목을 먼저 박으므로 `.at(-1)` 자체가 늘 이 회차다.',
+  },
+  {
+    name: '잠정 회차를 해로 셈(관측 실패를 붕괴로 오독 — cap 자해)',
+    file: 'src/worker-ads/lane-aimd.ts',
+    find: '  if (prev.p === 1) return 0\n',
+    replace: '',
+    test: 'src/tests/unit/ads-provisional-tick.test.ts',
+    why:
+      '이 한 줄이 2026-08-06 사고의 수리다. 빈자리를 붕괴로 읽어 **레인이 전부 ok=true 인 밤사이에** ' +
+      'cap 이 6 → 2(바닥)로 자해했다. 빼면 "관측만 죽은 회차"가 다시 해로 잡혀 사고가 그대로 재현된다.',
+  },
+  {
+    name: '디스패치가 잠정 회차를 안 남김(꼬리 실패 = 영구 빈자리)',
+    file: 'src/worker-ads/lane-runner.ts',
+    find: '  if (opts.at) {',
+    replace: '  if (false) {',
+    test: 'src/tests/unit/ads-provisional-tick.test.ts',
+    why:
+      '잠정 항목이 없으면 부모가 꼬리까지 못 산 회차는 이력에 빈자리로 남고, 그 빈자리가 다시 ' +
+      '붕괴 신호가 된다 — 수리 이전 상태로 통째 회귀한다.',
   },
   {
     name: '배포 워크플로가 자기 자신을 경로에서 잃음',

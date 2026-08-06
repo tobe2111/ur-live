@@ -100,6 +100,27 @@ export function missedTicks(prevAt: string | null | undefined, nowAt: string): n
   return Math.max(0, Math.floor((b - a - GAP_GRACE_MS) / TICK_INTERVAL_MS))
 }
 
+/**
+ * 🕳️ **직전 회차가 '결과 미상'이면 빈자리를 세지 않는다** (2026-08-06).
+ *
+ * 잠정 항목(`p:1`)은 **디스패치는 됐고 꼬리만 못 돌았다**는 뜻이다. 그 회차의 레인들은 자기
+ * 인보케이션에서 계속 돌아 자기 하트비트를 남긴다(라이브 실측: 빈자리 9회차 동안 레인 하트비트
+ * 전부 `ok=true`). 그러니 그건 붕괴가 아니라 **관측 실패**다.
+ *
+ * ⚠️ 그런데 잠정 항목이 이력에 있으면 `missedTicks` 는 그 시각을 기준으로 재므로 간격이 0 이 된다 —
+ *   즉 이 함수가 없어도 대개는 맞는다. 이 함수가 필요한 건 **잠정 항목조차 못 쓴 회차가 섞일 때**로,
+ *   그때 직전 확정 회차까지 거슬러 세면 *관측만 죽은 회차*까지 해로 잡힌다.
+ *
+ * @returns 해로 셀 빈자리 수. 직전이 잠정이면 0(판정 보류).
+ */
+export function missedTicksJudged(
+  prev: { at: string; p?: 1 } | null | undefined, nowAt: string,
+): number {
+  if (!prev) return 0
+  if (prev.p === 1) return 0
+  return missedTicks(prev.at, nowAt)
+}
+
 export interface LaneLearnState {
   /** 다음 회차에 쓸 레인 수. */
   cap: number
