@@ -412,7 +412,20 @@ export async function runInfluencerEnrich(
    * 🧭 호출자가 이 라운드의 성격을 알려 준다. 지금은 창(deadline)만 갈린다 —
    *   cron 은 부모 수명(10.5초)에 묶이지만 **알람은 자기 인보케이션**이라 더 오래 산다(위 상수 주석).
    */
-  opts?: { driver?: 'cron' | 'alarm' },
+  opts?: {
+    driver?: 'cron' | 'alarm'
+    /**
+     * 📗 **네이버/티스토리만 돈다**(링크인바이오·유튜브 건너뜀) — 측정 샤딩용 (2026-08-09, 대표 승인).
+     *
+     * `slice` 는 네이버·티스토리 조회에만 들어간다 — `enrichYouTubePerformance` 는 `slice` 를 안 받는다.
+     * 그래서 샤드를 그냥 늘리면 **YT 만 샤드마다 통째로 반복**되어 이미 초과인 일 쿼터를 배로 태운다.
+     * ⇒ 샤드 0 만 앞 레인(bio+YT)을 맡고 **샤드 1+ 는 네이버만** 돈다(백로그의 98%가 네이버다).
+     * 근거·실측·샤드 수 조정법은 SSOT: `worker-ads/lane-alarm-runners.ts` `ENRICH_SHARDS`.
+     *
+     * ⚠️ YT 에 `slice` 를 배선하면 이 스위치는 필요 없어진다(그땐 YT 도 갈라져 총 호출량 불변).
+     */
+    naverOnly?: boolean
+  },
 ): Promise<InfluencerEnrichSnapshot> {
   const DB = env.DB
   const started = Date.now()
@@ -529,7 +542,11 @@ export async function runInfluencerEnrich(
     if (ytUnits > 0) await writeSetting(DB, YT_PERF_UNITS_KEY, `${ytDay}:${ytUnitsUsed + ytUnits}`).catch(() => undefined)
   }
 
-  if (naverFirst) {
+  // 📗 **네이버 전용 샤드** — 앞 레인(bio+YT)을 통째로 건너뛴다(위 `naverOnly` docblock).
+  //   예약분 0: 이 회차엔 YT 가 없으므로 블로거가 창을 전부 쓴다.
+  if (opts?.naverOnly) {
+    await runNaver(0)
+  } else if (naverFirst) {
     // 📌 YT 예약분을 떼고 준다 — 안 그러면 이 회차 YT 는 0행이다(위 `naverRoomWithYtReserve` docblock).
     await runNaver(ytPlanned) // 마감 전체를 블로거가 쓴다
     await runFront()          // 남은 시간은 앞 레인이

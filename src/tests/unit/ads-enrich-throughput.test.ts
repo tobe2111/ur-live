@@ -147,7 +147,10 @@ describe('④ 알람 창 — 사라진 전제 위의 값을 그대로 쓰지 않
   })
 
   it('🔌 배선 — 알람 러너가 driver 를 알려주고, 레인이 그걸로 창을 고른다', () => {
-    expect(RUNNERS).toMatch(/runInfluencerEnrich\(env, 0, undefined, null, \{ driver: 'alarm' \}\)/)
+    // ⚠️ 인자 **형태**가 아니라 `driver: 'alarm'` 이 실제로 실리는지를 본다 — 2026-08-09 샤딩으로
+    //   네 번째 인자가 `null` → `k > 1 ? { i, k } : null` 이 되며 이 검사가 형태만 보고 빨간불을 냈다.
+    //   지키려는 사실은 "알람 러너가 자기 정체를 알려 준다" 이고, 그건 아래 한 줄로 충분하다.
+    expect(RUNNERS).toMatch(/runInfluencerEnrich\(env, 0, undefined, [^)]*driver: 'alarm'/)
     expect(LANE).toMatch(/opts\?\.driver === 'alarm' \? ENRICH_DEADLINE_MS_ALARM/)
     // 명시 env 는 여전히 이긴다(운영자가 잠글 수 있어야 한다).
     expect(LANE).toMatch(/ADS_ENRICH_DEADLINE_MS\s*\n?\s*\?\s*envEnrichDeadlineMs\(env\)/)

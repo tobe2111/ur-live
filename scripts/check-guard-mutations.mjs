@@ -2007,12 +2007,43 @@ const MUTATIONS = [
   {
     name: '알람이 cron 시절 7초 창을 그대로 씀',
     file: 'src/worker-ads/lane-alarm-runners.ts',
-    find: "runInfluencerEnrich(env, 0, undefined, null, { driver: 'alarm' })",
-    replace: 'runInfluencerEnrich(env)',
+    find: "return runInfluencerEnrich(env, 0, undefined, k > 1 ? { i, k } : null, { driver: 'alarm', naverOnly: i > 0 })",
+    replace: 'return runInfluencerEnrich(env)',
     test: 'src/tests/unit/ads-enrich-throughput.test.ts',
     why:
       '7초의 근거는 *"부모 인보케이션이 10.5초에 회수되고 자식이 함께 죽는다"* 였다. **알람엔 부모가 없다** — ' +
       '같은 알람의 collect 가 28,643ms 완주가 증거다. 전제가 사라진 값을 그대로 쓰면 창이 근거 없이 좁다.',
+  },
+  {
+    name: '측정 샤드가 slice 를 안 넘김(같은 사람 중복 측정 — 늘린 만큼 손해)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: 'k > 1 ? { i, k } : null',
+    replace: 'null',
+    test: 'src/tests/unit/ads-enrich-shards.test.ts',
+    why:
+      '이 큐는 선점이 아니라 정렬+LIMIT 이라, slice 없이 샤드를 늘리면 **전부 같은 앞머리**를 집는다. ' +
+      '처리량은 그대로인데 예산만 샤드 수만큼 태운다. ⚠️ `sliceClause` 순수함수 검증만으로는 이걸 못 잡는다 ' +
+      '(2026-08-09 주입 실험에서 실제로 초록이 떴다) — 러너의 배선을 직접 봐야 한다.',
+  },
+  {
+    name: '측정 샤드 1+ 가 YT 도 돎(이미 초과인 일 쿼터를 샤드 수만큼 태움)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: 'naverOnly: i > 0',
+    replace: 'naverOnly: false',
+    test: 'src/tests/unit/ads-enrich-shards.test.ts',
+    why:
+      '`enrichYouTubePerformance` 는 `slice` 를 안 받아 샤드마다 **통째로 반복**된다. YT 쿼터는 이미 ' +
+      '초과 상태이고 미측정 백로그의 98%는 네이버다(youtube 667명뿐) — 순손해다.',
+  },
+  {
+    name: 'naverOnly 가 앞 레인을 안 건너뜀(플래그만 있고 무력)',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: '  if (opts?.naverOnly) {\n    await runNaver(0)\n  } else if (naverFirst) {',
+    replace: '  if (opts?.naverOnly) {\n    await runNaver(0); await runFront()\n  } else if (naverFirst) {',
+    test: 'src/tests/unit/ads-enrich-shards.test.ts',
+    why:
+      '플래그를 넘겨도 분기가 앞 레인(bio+YT)을 그대로 돌면 쿼터 보호가 무효다 — ' +
+      '"스위치는 있는데 아무것도 안 끄는" 형태이고, 에러가 없어 조용히 통과한다.',
   },
   {
     name: '재업로드가 반응 시각을 덮음(COALESCE 제거)',
