@@ -19,7 +19,7 @@
 import type { Env } from '../types/env'
 import { rehostImageToR2, isExternalImageUrl, validateImageLoads } from '../utils/rehost-image'
 import { getSupplyMeta, setSupplyMeta, ensureSupplyMetaTable } from '../utils/product-supply-meta'
-import { fetchDemoPhotos } from '../utils/demo-photo-set'
+import { fetchDemoPhotos, isBlockedPhotoUrl } from '../utils/demo-photo-set'
 
 // 🏷️ 데모 이미지 컨디션 버전 — bump 하면 전 데모가 한 번씩 재적용된다(대표사진 + 3~5장).
 //   v2 = 카카오 og 대표사진 커버 + 3~5장(2026-07-21).
@@ -101,7 +101,7 @@ function isPlaceholderUrl(u: string | null | undefined): boolean {
  */
 export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): Promise<{ reconditioned: number; skipped: number }> {
   const DB = env.DB
-  const out = { reconditioned: 0, skipped: 0 }
+  const out = { reconditioned: 0, skipped: 0, hiddenNoPhoto: 0, revived: 0 }
   const { results } = await DB.prepare(
     `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address, p.restaurant_phone, p.restaurant_lat, p.restaurant_lng
        FROM products p
@@ -140,6 +140,18 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
       count: 3 + Math.floor(Math.random() * 3),
     }).catch(() => [] as string[])
     if (imgs.length === 0) {
+      // 🚫 2026-08-08 (대표 "사진이 아예 없으면 그 데모 이용권은 안올려져야지. 자체가"):
+      //   근거 있는 사진(카카오/네이버 지도 대표사진·매장명 매칭)을 못 구했으면 **매대에서 내린다.**
+      //   사진 없는 상품을 목록에 두는 건 나쁜 사진을 두는 것과 같은 종류의 거짓말이다.
+      //   ⚠️ 삭제가 아니라 `is_active=0` — 다음 회차에 사진이 잡히면 아래에서 자동 복귀한다(가역).
+      //   현재 커버가 실사진이면(=예전에 확보됨) 내리지 않는다 — 멀쩡한 걸 끌어내리지 않기 위해.
+      const hasUsableCover = !isPlaceholderUrl(row.image_url) && !isBlockedPhotoUrl(row.image_url || '')
+      if (!hasUsableCover) {
+        await DB.prepare(`UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?`)
+          .bind(row.id).run().catch(() => {})
+        await setSupplyMeta(DB, row.id, { demo_hidden_no_photo: '1' }).catch(() => {})
+        out.hiddenNoPhoto++
+      }
       await setSupplyMeta(DB, row.id, { demo_cond_tries: String(tries + 1) }).catch(() => {})
       continue
     }
@@ -181,6 +193,14 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
         }
       }
     }
+    // ♻️ 2026-08-08: 사진이 없어서 내려갔던 데모가 이번에 사진을 확보했으면 **자동 복귀**.
+    //   (사람이 다시 켜 주길 기다리지 않는다 — 그러면 아무도 안 켠다.)
+    if (meta.demo_hidden_no_photo === '1') {
+      await DB.prepare(`UPDATE products SET is_active = 1, updated_at = datetime('now') WHERE id = ?`)
+        .bind(row.id).run().catch(() => {})
+      await setSupplyMeta(DB, row.id, { demo_hidden_no_photo: '0' }).catch(() => {})
+      out.revived++
+    }
     // 버전 마킹(수렴) + rehost 재큐잉(새 외부 URL 을 R2 로 이관하도록 종결 마크 해제).
     await setSupplyMeta(DB, row.id, { demo_cond_v: DEMO_COND_V, img_rehost_done: '0' }).catch(() => {})
     out.reconditioned++
@@ -192,7 +212,7 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
   const DB = env.DB
   const bucketEnv = env as unknown as { MEDIA_BUCKET?: R2Bucket }
   // ① 재조정 — R2 버킷 유무와 무관(외부 URL 저장도 표시엔 유효, ②가 이후 영구화). fail-soft.
-  const rc = await reconditionDemos(env).catch(() => ({ reconditioned: 0, skipped: 0 }))
+  const rc = await reconditionDemos(env).catch(() => ({ reconditioned: 0, skipped: 0, hiddenNoPhoto: 0, revived: 0 }))
   const result = { reconditioned: rc.reconditioned, migrated: 0, images: 0, done: 0 }
   if (!bucketEnv.MEDIA_BUCKET) return result // 바인딩 미등록 — 이관만 no-op(재조정은 이미 수행)
 
