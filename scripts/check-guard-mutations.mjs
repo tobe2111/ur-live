@@ -72,6 +72,18 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '공정위 응답 오류코드를 header 에서만 읽는다(실패가 성공처럼 보인다)',
+    file: 'src/features/marketing/api/franchise-collect.ts',
+    find: '  const codeSrc = (resp.header ?? resp ?? data) as Record<string, unknown>',
+    replace: '  const codeSrc = (resp.header ?? {}) as Record<string, unknown>',
+    test: 'src/tests/unit/franchise-op-fallback.test.ts',
+    why:
+      '이 API 응답은 **평평하다**(Swagger `getBrandinfo_response { resultCode, …, items }`) — `header` 래퍼가 ' +
+      '없다. header 에서만 읽으면 `rc`/`rm` 이 빈 문자열이 되고 실패 판정이 **무조건 통과**해서 라이브에 ' +
+      '`found 0 · error 없음` 만 남는다(실측 3회 반복). 에러가 없는 게 아니라 **에러를 읽는 자리가 비어 ' +
+      '있는 것**이라 화면상 정상으로 보인다 — 이 레포가 반복해 만난 "조용한 실패" 클래스의 교과서적 형태.',
+  },
+  {
     name: '가맹 레인이 틀린 오퍼레이션 이름에서 못 빠져나온다',
     file: 'src/features/marketing/api/franchise-collect.ts',
     find: "    if (i === 0 && !count && msg && /NO_OPENAPI_SERVICE_ERROR/i.test(msg)) {",
