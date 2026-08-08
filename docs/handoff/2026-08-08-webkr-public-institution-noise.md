@@ -114,3 +114,16 @@ local·storeinfo·nara         925   3.3%
 - 🟡 webkr 잔여 오염: 이름이 멀쩡한데 기관인 경우(`jepa.kr` 처럼 `.kr` 인 진흥원)는 **여전히 못 잡는다.**
   호스트도 이름도 신호가 없다. 잡으려면 크롤한 `og:site_name` 을 기관 어휘로 재검사하는 단계가 필요하다
   (이름 치유 Phase 3 에 얹으면 됨 — 지금은 치유만 하고 재분류는 `classifyLead` 로 돌린다).
+
+## 📏 배포 전 기준선 (2026-08-09 03:1x KST 실측 — 배포 후 이 값과 비교)
+
+```
+rescan_pending      235,053   ← classified_v < 7. 재분류 레인이 돌며 0 으로 수렴해야 한다
+webkr_partner           501   ← 줄어야 한다(or.kr·본문근거만 맞던 것이 빠짐)
+webkr_orkr_partner       23   ← 0 이어야 한다(or.kr 은 이제 무조건 org)
+webkr_frag                4   ← 0 이어야 한다(잘린 제목은 거부 → 미큐레이션 행은 삭제)
+contactable_partner  26,839   ← **거의 안 변해야 한다**(commerce registry 가 95.7%)
+```
+🔴 **`contactable_partner` 가 눈에 띄게 줄면 그건 성공이 아니라 사고다** — 이 수정의 대상은 webkr 1%
+뿐이고, `commerce` 를 건드렸다는 뜻이 된다(위 교훈 ②의 실패 모양). 그때는 즉시 되돌릴 것.
+⏳ 235k 를 회당 1,000행씩 훑으므로 **한 바퀴에 시간이 걸린다**(레인 주기 확인 필요) — 하루 뒤에 다시 재라.
