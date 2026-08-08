@@ -23,6 +23,7 @@ import {
   alarmEnabled, resolveInterval, resolveRunsPerHour, nextWakeAt, hourBucket,
   ALARM_INTERVAL_MS_DEFAULT, ALARM_INTERVAL_MS_MIN, RUNS_PER_HOUR_DEFAULT, FAIL_BACKOFF_MAX,
 } from '../../worker-ads/lane-alarm-policy'
+import { ALARM_LANE_NAMES, lookupAlarmLane } from '../../worker-ads/lane-alarm-runners'
 
 describe('알람 게이트 — 기본 ON, 끄려면 명시적으로', () => {
   it('미설정이면 켜진다 — "켜야 도는 구조"는 이 레포가 반복해 만난 조용한 부재를 만든다', () => {
@@ -184,8 +185,11 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
     expect(idx).toMatch(/ctx\.waitUntil\(bootstrapLaneAlarm\(env, adsBeat\)\)/)
     // 🗂️ 이름은 등록부가 준다(클래스 하나 · 이름별 인스턴스). 보강 레인이 그 안에 있어야 한다.
     expect(bootSrc).toMatch(/ns\.idFromName\(lane\)/)
-    expect(readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8'))
-      .toMatch(/'enrich-influencer': \{/)
+    // ⚠️ 소스 문자열이 아니라 **등록부 자체**를 본다 — 2026-08-09 에 샤딩으로 리터럴이 생성식이 되며
+    //   이 검사가 형태만 보고 빨간불을 냈다. 지키려는 사실은 "보강 레인이 등록돼 있다" 이지
+    //   "그게 객체 리터럴로 쓰였다" 가 아니다(런타임 검사가 더 강하기도 하다).
+    expect(ALARM_LANE_NAMES).toContain('enrich-influencer')
+    expect(lookupAlarmLane('enrich-influencer')).not.toBeNull()
     expect(doSrc).toMatch(/pathname !== '\/start'/)
     // 멱등: 이미 알람이 있으면 다시 걸지 않는다(중복 체인 금지).
     expect(doSrc).toMatch(/const cur = await this\.ctx\.storage\.getAlarm\(\)/)
