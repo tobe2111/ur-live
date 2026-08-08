@@ -104,6 +104,41 @@ describe('③ 데모 사진 — 그 매장이라는 근거가 없으면 안 쓴�
   })
 })
 
+describe('③-b 사진을 못 구한 데모는 **매대에 올리지 않는다** (대표 2026-08-08)', () => {
+  // 대표: "사진이 아예 없으면 그 데모 이용권은 안올려져야지. 자체가."
+  //   나쁜 사진을 안 쓰는 것만으로는 부족했다 — 사진 0장인 상품이 그대로 목록에 남으면
+  //   89,000원짜리 숙박권이 회색 더미로 걸린다. 그것도 같은 종류의 거짓말이다.
+
+  it('🔴 숙소 시드: 사진 0장이면 생성을 건너뛴다 (picsum 폴백 금지)', () => {
+    const stays = code('src/features/admin/api/admin-stays.routes.ts')
+    expect(stays, '사진 없으면 continue 해야 한다').toMatch(/imgs\.length === 0.*continue/)
+    expect(stays, 'picsum 더미로 채워 올리던 폴백이 되살아났다')
+      .not.toMatch(/picsum\.photos\/seed\/\$\{slug\}/)
+  })
+
+  it('🔴 동네딜 시드: 사진 0장이면 생성을 건너뛴다', () => {
+    const prod = code('src/features/admin/api/admin-products.routes.ts')
+    expect(prod).toMatch(/!realPhoto && !resolvedImgSets\[i\]\[0\].*continue/)
+  })
+
+  it('정비 회차가 사진 없는 기존 데모를 내린다 — 삭제가 아니라 is_active=0(가역)', () => {
+    const rehost = code('src/worker/cron/demo-image-rehost.ts')
+    expect(rehost).toContain('demo_hidden_no_photo')
+    expect(rehost, '삭제가 아니라 비활성이어야 되돌릴 수 있다').toMatch(/UPDATE products SET is_active = 0/)
+  })
+
+  it('사진이 다시 잡히면 자동 복귀한다 (사람이 켜 주길 기다리지 않는다)', () => {
+    const rehost = code('src/worker/cron/demo-image-rehost.ts')
+    expect(rehost).toMatch(/demo_hidden_no_photo === '1'[\s\S]{0,200}is_active = 1/)
+  })
+
+  it('멀쩡한 커버를 가진 데모는 끌어내리지 않는다', () => {
+    // 이번 회차에 사진을 못 구했다고 예전에 확보한 실사진까지 버리면 과잉 대응이다.
+    const rehost = code('src/worker/cron/demo-image-rehost.ts')
+    expect(rehost).toContain('hasUsableCover')
+  })
+})
+
 describe('④ 데모 상세는 "응모하기"', () => {
   it('🔴 slug 가 상세 응답에 실린다 — 없으면 판정이 항상 false', () => {
     // 라이브 실측(2026-08-08): /api/group-buy/products/2791 → slug null 이라 분기가 죽어 있었다.

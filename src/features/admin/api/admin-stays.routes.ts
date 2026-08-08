@@ -445,7 +445,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         }
       }
     } catch { /* images 컬럼 미존재 환경 등 — best-effort */ }
-    let created = 0, skipped = 0, realPhotos = 0
+    let created = 0, skipped = 0, realPhotos = 0, skippedNoPhoto = 0
     for (let i = 0; i < count; i++) {
       const spot = spots[(n + 1 + i) % spots.length]
       const ty = STAY_TYPES[(n + 1 + i) % STAY_TYPES.length]
@@ -470,11 +470,16 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         count: wantPhotos,
       }).catch(() => [] as string[])
       if (imgs.length) realPhotos++
+      // 🚫 2026-08-08 (대표 "사진이 아예 없으면 그 데모 이용권은 안올려져야지. 자체가"):
+      //   사진 0장이면 **만들지 않는다.** 이전엔 picsum 플레이스홀더를 씌워 그대로 올렸는데,
+      //   소비자 화면엔 89,000원짜리 숙박권이 회색 더미 사진으로 걸렸다. 매대에 올릴 게 아니다.
+      //   (다음 시드 회차에 그 매장 사진이 잡히면 그때 생성된다 — 영구 배제가 아니다.)
+      if (imgs.length === 0) { skippedNoPhoto++; continue }
       // 🩹 2026-07-21 전수조사 #2: 숙소 커버도 R2 재호스팅(동네딜 시드와 대칭 — 숙소는 그간 커버를
       //   raw 외부 URL 로만 저장해 네이버 핫링크/삭제 시 카드에서 깨졌음). MEDIA_BUCKET 있으면 /api/media,
       //   없으면 null → 원본 폴백(현행과 동일). 커버 1장만(서브리퀘스트 예산 — 갤러리는 cron 이관).
       const coverHosted = imgs[0] ? await rehostImageToR2(extEnv as unknown as { MEDIA_BUCKET?: R2Bucket }, imgs[0], 'demo-stay-seed').catch(() => null) : null
-      const img = coverHosted || imgs[0] || `https://picsum.photos/seed/${slug}/800/600`
+      const img = coverHosted || imgs[0]  // imgs 비면 위에서 continue — picsum 더미 폴백 폐기(2026-08-08)
       const desc = `${spot.label}의 ${ty.kakao} — ${ty.desc}`
       // 객실 2종 — 인원 2~6 자동 분산(인원 필터 검색이 항상 유효하게) + 주중/주말가.
       //   products INSERT 보다 먼저 계산: 대표가(price)=최저 객실 주중가, 오퍼명이 객실명을 참조.
@@ -618,7 +623,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         if (c.executionCtx?.waitUntil) c.executionCtx.waitUntil(run); else await run
       }
     } catch { /* best-effort — 리뷰 실패가 시드를 막지 않음 */ }
-    return c.json({ success: true, data: { created, skipped, realPhotos, healed, photoHealed, varied, reviewed, requested: count, region: regionQ || null } })
+    return c.json({ success: true, data: { created, skipped, realPhotos, skippedNoPhoto, healed, photoHealed, varied, reviewed, requested: count, region: regionQ || null } })
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500)
   }
