@@ -27,6 +27,7 @@ import { readCache } from '@/hooks/queries/localCache'
 import { pickSeedDetail } from './group-buy/seed-detail'
 import FcfsApplyBlock from '@/features/group-buy/FcfsApplyBlock'
 // 🖥️ 2026-07-19 (대표 승인 — 그루폰식 상세): PC 우측 sticky 구매 박스 + 섹션 추출(파일크기 래칫).
+import { isDemoSlug } from '@/shared/constants/demo-products'
 import DealPurchaseBox from './group-buy/DealPurchaseBox'
 import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
 import OtherDealsRow from './group-buy/OtherDealsRow'
@@ -338,6 +339,8 @@ export default function GroupBuyDetailPage() {
   const isJoinable = detail?.group_buy_status === 'active' || detail?.group_buy_status === 'achieved'
   // 🏷️ 2026-07-05 (대표 "옵션으로 선택"): 오픈 예정형은 구매 불가 — 사전 응모(FcfsApplyBlock)로 유도.
   const isPrelaunch = !!detail?.prelaunch
+  // 🎭 2026-08-08 데모=추첨이라 '구매하기'가 거짓 — 판정은 SSOT(isDemoSlug) 하나만. 사유: 동명 테스트 파일.
+  const isDemoDeal = isDemoSlug((detail as { slug?: string | null } | null)?.slug ?? null)
   const buyable = isJoinable && !isPrelaunch
 
   // 🎨 2026-06-16 리디자인: 스와이프 갤러리 이미지 — image_url + images/detail_images/image_urls(JSON) 병합·중복제거.
@@ -938,6 +941,7 @@ export default function GroupBuyDetailPage() {
           buyable={buyable}
           isJoinable={isJoinable}
           isPrelaunch={isPrelaunch}
+          isDemo={isDemoDeal}
           joining={joining}
           onBuy={handleJoin}
           onPrelaunchApply={() => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
@@ -981,10 +985,10 @@ export default function GroupBuyDetailPage() {
         <button
           onClick={isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : handleJoin}
           disabled={(!isJoinable && !isPrelaunch) || joining}
-          aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? `${formatNumber(total)}원 구매하기` : '구매 불가'}
+          aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? `${formatNumber(total)}원 ${isDemoDeal ? '응모하기' : '구매하기'}` : isDemoDeal ? '응모 불가' : '구매 불가'}
           style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
         >
-          {joining ? '처리 중…' : isPrelaunch ? '🔔 오픈 예정 — 사전 응모하기' : !isJoinable ? '구매 불가' : <>{formatNumber(total)}원 구매하기<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
+          {joining ? '처리 중…' : isPrelaunch ? '🔔 오픈 예정 — 사전 응모하기' : !isJoinable ? (isDemoDeal ? '응모 불가' : '구매 불가') : <>{formatNumber(total)}원 {isDemoDeal ? '응모하기' : '구매하기'}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
         </button>
       </div>{/* /bar box */}
       </footer>

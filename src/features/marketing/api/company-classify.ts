@@ -74,7 +74,11 @@ export type ClassifyConfidence = 'registry' | 'evidence' | 'keyword' | 'none'
  *  자동으로 재검사 대상이 된다(안 올리면 이미 스탬프된 잘못된 행이 영구 방치 — 이 사고의 원인).
  *  v3 (2026-07-27): 안내-페이지 제목 어휘(위치안내/이용안내/오시는길/지정 게시대 — 대표 신고
  *  "지정 게시대 위치안내" 업체명) NOTICE_WORD 추가. */
-export const CLASSIFY_RULES_VERSION = 6 // 2026-08-08: or.kr=org · 잘린제목 거부 · 본문근거 불인정(대표 신고 진흥원)
+export const CLASSIFY_RULES_VERSION = 7 // 2026-08-08: or.kr=org · 잘린제목 거부 · 본문근거 불인정(대표 신고 진흥원)
+//  ⚠️ **6 이 아니라 7 인 이유** — 같은 신고를 두 세션이 각각 잡아 **둘 다 6 을 선점**했고(#1099 가 먼저
+//    머지돼 배포됨), 그쪽 규칙으로 이미 `classified_v=6` 이 찍히기 시작했다. 6 으로 합치면 이 파일의
+//    새 규칙(or.kr·본문근거)은 그 행들을 **영영 다시 안 본다** — 재검사 조건이 `< VERSION` 이라서다.
+//    상수를 '내 변경분'이 아니라 **'풀이 마지막으로 검사받은 시점'** 으로 읽어야 이 실수를 안 한다.
 //  ⚠️ 이 bump 의 소급 대상은 **사실상 0** 이다(아직 source='market' 행이 없다). 그런데도 올린 이유:
 //    이 상수의 실패 모드는 비대칭이다 — 불필요하게 올리면 **한 번 더 훑는 비용**이지만, 안 올리면
 //    **영구히 옛 판정에 갇힌다**(재검사 쿼리에 시간 폴백이 없다). 애매하면 올리는 쪽이 맞다.
@@ -255,8 +259,16 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
 export function suspectCompanyName(name: string, sourceKeyword?: string | null): boolean {
   const n = String(name || '').replace(/\s+/g, ' ').trim()
   if (n.length < 2) return true
+  // 🔴 2026-08-08 (대표 신고 — 공공기관 담당자 혼입): 실제로 들어와 있던 건 회사명이 아니라 **파편**이었다.
+  //   `[광주` — "[광주] …" 같은 공고 제목을 파싱하다 대괄호 앞부분만 남은 것(실측 id 401793,
+  //   전라남도중소기업일자리경제진흥원 담당자). `(주케이디알앤케이` 도 같은 형태(id 305893).
+  //   여는 괄호만 있고 닫는 괄호가 없으면 **상호가 아니라 잘린 문자열**이다 — 정체를 알 수 없다.
+  //   ⚠️ 닫는 괄호가 있는 정상 상호(`(주)케이디알`·`○○(강남점)`)는 통과시킨다.
+  //   🔀 판정은 `unbalancedBracket`(SSOT) 하나로 — 같은 신고를 두 세션이 각각 잡아 `includes` 쌍과
+  //     개수-비교가 나란히 들어왔다. 후자가 상위집합이라(개수를 세고 「」【】《》〈〉 도 본다) 그쪽으로 합쳤다.
+  //     둘을 남겨 두면 다음에 한쪽만 고쳐 놓고 고쳤다고 믿게 된다.
+  if (unbalancedBracket(n)) return true
   if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(n)) return true // 도메인 그대로인 placeholder(미디어 레인 등) — 실명 치유 대상
-  if (unbalancedBracket(n)) return true // 구분자로 자르다 괄호 안에서 끊긴 파편("[광주") — 호출부가 webkr 한정이라 등록부 표기 오탐 없음
   if (/["“”‘’',?？]/.test(n)) return true
   if (n.length >= 18 && n.split(/\s+/).length >= 5) return true
   if (/(?:된다|한다|않는다|안된다|났다|높여|커져|줄어|늘어)$/.test(n)) return true

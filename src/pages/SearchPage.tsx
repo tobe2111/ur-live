@@ -47,6 +47,8 @@ export default function SearchPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const query = searchParams.get('q') || ''
+  /** 🎟️ 검색 범위 — 'exchange'(교환권 전용, `/vouchers` 에서 진입) / 그 외 = 이용권만(기본). */
+  const scope = searchParams.get('scope') || ''
 
   // 🛡️ 2026-05-19: 무한 스크롤 — useInfiniteQuery 로 페이지 누적.
   const {
@@ -130,9 +132,13 @@ export default function SearchPage() {
     let filtered = (searchResult.products as Product[]).filter(product => {
       const price = getDiscountedPrice(product.price, product.discount_rate || 0)
       if (price < priceRange.min || price > priceRange.max) return false
-      // 🖥️ 2026-07-16 (대표 — "검색은 무조건 이용권만"): 교환권(deal_only=1 기프티콘) 항상 제외 +
-      //   category 있으면 이용권(voucher 카테고리: 식사/미용/숙소/기타)만. isVoucherCategory = 이용권 SSOT.
-      //   category 누락 응답에도 결과가 비지 않도록 deal_only 를 1차 가드로 사용(robust).
+      // 🎟️ 2026-08-08 (대표 — "교환권 페이지에선 교환권만 검색되게"): 검색 범위가 **어디서 왔는지**에
+      //   따라 정반대다. 그래서 `?scope=` 로 가른다 — 없으면 종전(이용권만) 그대로.
+      //     · scope=exchange : 교환권(deal_only=1)만 — `/vouchers` 의 검색 버튼이 붙여 보낸다
+      //     · 그 외(기본)     : 이용권만 (2026-07-16 대표 "검색은 무조건 이용권만")
+      //   ⚠️ 기본값을 바꾸지 않는다 — 홈·지도에서 온 검색은 지금 동작이 맞다.
+      if (scope === 'exchange') return Number(product.deal_only) === 1
+      // category 누락 응답에도 결과가 비지 않도록 deal_only 를 1차 가드로 사용(robust).
       if (Number(product.deal_only) === 1) return false
       if (product.category && !isVoucherCategory(product.category)) return false
       return true

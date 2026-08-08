@@ -45,13 +45,19 @@ export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead
       const c = classifyLead(l)
       if (!c.ok) return null
       const registry = REGISTRY_CATEGORY_SOURCES.has(String(l.source || '')) && !!l.category
+      // 🔴 2026-08-08: 이름이 파편이면 **정체를 모른다** — 제안을 보낼 수 없다. partner 승격 금지.
+      //   (대표 신고 건 `[광주` 가 정확히 이 경로로 발송 대상에 남아 있었다.)
+      const suspect = suspectCompanyName(l.company_name, l.source_keyword)
       if (registry) {
         // 공식 업종 유지 + 등록부 실재 업체라 접촉가치 미상이면 파트너로(기관 어휘 감지는 존중).
-        return { ...l, _type: c.lead_type === 'unknown' ? 'partner' : c.lead_type, _conf: 'registry' }
+        const t = c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type
+        return { ...l, _type: t, _conf: suspect ? 'none' : 'registry' }
       }
       // webkr 제목-파편 의심 이름은 저장 시점부터 '분류 확인'(none) — 재분류에만 있던 강등을 입구에도 동일 적용.
-      const conf = l.source === 'webkr' && c.confidence !== 'evidence' && suspectCompanyName(l.company_name, l.source_keyword) ? 'none' : c.confidence
-      return { ...l, category: c.category, subcategory: c.subcategory, tier: c.tier, _type: c.lead_type, _conf: conf }
+      const conf = l.source === 'webkr' && c.confidence !== 'evidence' && suspect ? 'none' : c.confidence
+      // 소스 무관 — 이름이 파편이면 발송 대상(partner)에서 뺀다(unknown = 분류 확인 필요).
+      return { ...l, category: c.category, subcategory: c.subcategory, tier: c.tier,
+               _type: suspect && c.lead_type === 'partner' ? 'unknown' : c.lead_type, _conf: conf }
     })
     .filter((l): l is NonNullable<typeof l> => l !== null)
   if (!rows.length) return { inserted: 0, upserted: 0 }

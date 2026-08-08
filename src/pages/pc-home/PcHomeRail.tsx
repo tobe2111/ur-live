@@ -12,7 +12,8 @@ import { LayoutGrid, Utensils, Scissors, BedDouble, Shapes } from 'lucide-react'
 
 export type DealCategory = 'all' | 'meal_voucher' | 'beauty_voucher' | 'stay_voucher' | 'etc_voucher'
 
-const DEAL_CATS: { key: DealCategory; label: string; icon: typeof LayoutGrid }[] = [
+/** 🏷️ 카테고리 라벨 SSOT — 레일 칩과 홈 제목이 **같은 표**를 읽는다(문구가 갈리면 반드시 어긋난다). */
+export const DEAL_CATS: { key: DealCategory; label: string; icon: typeof LayoutGrid }[] = [
   { key: 'all',            label: '전체', icon: LayoutGrid },
   { key: 'meal_voucher',   label: '식사', icon: Utensils },
   { key: 'beauty_voucher', label: '미용', icon: Scissors },
