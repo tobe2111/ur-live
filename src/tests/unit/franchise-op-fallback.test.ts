@@ -67,3 +67,32 @@ describe('자가회복 — 틀린 이름에서 스스로 빠져나온다', () =>
     expect(CODE).toMatch(/if \(cand === useOp \|\| budget\.left <= 0\) continue/)
   })
 })
+
+/**
+ * 🩸 **2026-08-07 후속 — 이름을 고쳤더니 다음 층에서 같은 병이 나왔다.**
+ *
+ * 오퍼레이션 이름 수정 후 `NO_OPENAPI_SERVICE_ERROR` 는 사라졌는데 3회 연속 `found 0 · error 없음`.
+ * 에러가 없는 게 아니라 **에러를 읽는 자리가 비어 있었다**: 결과코드를 `header.resultCode` 에서만
+ * 읽는데, 이 API 응답은 **평평하다**(Swagger `getBrandinfo_response { resultCode, …, items }`).
+ * `header` 가 undefined → `rc`/`rm` 이 빈 문자열 → 실패 판정이 **무조건 통과**.
+ *
+ * ⚠️ 이 시험이 못 보는 것: 실제로 데이터가 오는지. 그건 라이브만 안다 —
+ *   여기서 지키는 건 *"실패가 실패로 보이는가"* 다.
+ */
+describe('응답 봉투 — 실패가 조용히 성공처럼 보이면 안 된다', () => {
+  it('🔒 결과코드를 header **또는 평평한 최상위** 어디서든 읽는다', () => {
+    expect(CODE, 'header 에서만 읽으면 평평한 응답의 오류코드를 영영 못 본다')
+      .toMatch(/const codeSrc = \(resp\.header \?\? resp \?\? data\)/)
+    expect(CODE).toMatch(/String\(codeSrc\.resultCode/)
+    expect(CODE).toMatch(/String\(codeSrc\.resultMsg/)
+  })
+
+  it('🔒 `header` 유무로 결과코드 읽기를 가르지 않는다 — 그게 이 버그의 형태였다', () => {
+    expect(CODE, "옛 형태(header ? … : '')가 살아 있다").not.toMatch(/header \? String\(header\.resultCode/)
+  })
+
+  it('🔒 **0건이면 그 사실을 남긴다** — 안 남기면 "에러 없는데 0건"으로 또 막힌다', () => {
+    expect(CODE).toMatch(/arr\.length === 0 \?/)
+    expect(CODE, 'totalCount 를 같이 남겨야 정상 0건과 조용한 실패가 갈린다').toMatch(/totalCount=/)
+  })
+})
