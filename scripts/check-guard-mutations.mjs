@@ -1924,6 +1924,28 @@ const MUTATIONS = [
       '**네이버로 나가는 요청량이 늘어나는 변경**이라 대표 판단 사항이다. 값이 조용히 바뀌는 것을 막는다.',
   },
   {
+    name: '3차 이관 match-registry cron 게이트 소실(알람과 이중 디스패치)',
+    file: 'src/worker-ads/index.ts',
+    find: "if (!laneAlarmOn) kick('/__ads/match-registry'",
+    replace: "kick('/__ads/match-registry'",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '이관 후 유일하게 계속 죽던 레인(×3, 2026-08-06 까지)이라 3차로 옮겼다. 게이트가 빠지면 ' +
+      '알람과 cron 이 같은 정각에 겹쳐 던지고, 던지는 것 자체가 부모 CPU 를 먹는다 — ' +
+      '그게 애초에 이 레인 계열을 죽인 원인이다(2·3차 공통 규약).',
+  },
+  {
+    name: '3차 이관 commerce cron 게이트 소실 — 다른 파일(cron-public-data)이라 따로 지킨다',
+    file: 'src/worker-ads/cron-public-data.ts',
+    find: "if (!laneAlarmDrivesEnrich(env) && e.ADS_COMMERCE_ENABLED === 'true')",
+    replace: "if (e.ADS_COMMERCE_ENABLED === 'true')",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      'commerce 의 cron 등록은 index.ts 가 아니라 cron-public-data.ts 에 있다 — index.ts 만 지키는 ' +
+      '검사라면 이 파일의 게이트가 사라져도 초록이다(낡은 지도 클래스). 08-08 23:00 KST 한 회차에 ' +
+      'hira·commerce·storeinfo 가 몰살한 그 자리의 재발 방지.',
+  },
+  {
     name: '미루기 판정이 주기 대신 침묵 임계를 봄(매시간 레인이 통째로 always)',
     file: 'src/worker-ads/dispatch-budget.ts',
     find: '  const period = Number(lane.periodMin)\n  if (Number.isFinite(period) && period > 0) return period <= 60\n',

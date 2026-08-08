@@ -264,3 +264,12 @@ ALARM_LANES 등록(runsPerHour 1, 게이트는 러너 안) + index.ts kick 에 `
 이쪽은 같은 본문을 추출 중. 해소는 "어느 쪽을 남기냐"가 아니라 "배선을 추출 모듈로 이식"이었다.
 ③ 기아 지표로 `ad_collect_keywords`(없는 테이블)·`status`(없는 컬럼)를 두 번 헛짚음 — 실 테이블은
 `ad_discovery_keywords`, 활성 컬럼은 `active` 다.
+
+## 14) 3차 이관 4레인 (2026-08-09 새벽 — 대표 "지금 해 인계 없이 진행")
+
+사흘 실측(§13)의 결론 그대로: 이관된 9레인 사망 0 ↔ cron 잔류만 죽는다. 남은 사망 전원 이관:
+**match-registry**(×3) · **collect-hira**(×2) · **collect-commerce** · **collect-storeinfo**
+(뒤 셋은 08-08 23:00 KST 한 회차 몰살 — #1098 보정값은 러너 안에서 그대로 유지, 구조만 이관).
+규약 2차와 동일 + 짝수시 레인(commerce·storeinfo)은 러너 안에서 시각 보존. commerce 의 cron
+게이트는 **cron-public-data.ts** 에 있다(index.ts 만 보면 놓친다 — 변이 항목으로 고정).
+제외: enrich-company·enrich-prospects·daily-batch — 08-05 각 1회 후 사흘 무사망("얹을 근거" 미달).
