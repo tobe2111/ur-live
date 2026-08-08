@@ -741,7 +741,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               })}
             </div>
             {/* 👆 2026-07-29 (UX 실측): 탭 타깃이 28×28 이었다 — iOS HIG 44pt 미만. 아이콘 크기는 그대로 두고 패딩만. */}
-            <button onClick={() => navigate('/search')} aria-label="검색" className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center">
+            <button onClick={() => navigate('/search?scope=exchange')} aria-label="검색" className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center">
               <Search className="w-5 h-5 text-gray-900 dark:text-white" />
             </button>
           </div>

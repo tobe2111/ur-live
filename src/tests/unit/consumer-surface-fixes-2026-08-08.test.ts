@@ -1,0 +1,126 @@
+/**
+ * 🛠️ 2026-08-08 대표 신고 4건의 수리를 고정한다. 넷 다 **에러가 안 나는 종류**라, 되돌아가도
+ * 빌드는 초록이고 아무도 모른다. 그래서 각각을 앵커로 박는다.
+ *
+ * | # | 신고 | 진짜 원인 |
+ * |---|---|---|
+ * | ① | "교환권 페이지에선 교환권만 검색되게" | `/vouchers` 검색이 `/search` 로 보내는데 그 화면은 **교환권을 통째로 제외**(2026-07-16 "검색은 무조건 이용권만") |
+ * | ② | "카테고리 눌러도 맨 위가 그 카테고리가 아님" | PC 홈 **어드민 쇼케이스 섹션이 카테고리를 모른다** — 걸러진 그리드는 그 아래 |
+ * | ③ | "데모 사진이 전혀 안 맞음" | 사진 폴백 ③④ 가 **그 매장이라는 근거가 없다** (연합뉴스 파도 사진이 풀빌라 커버로) |
+ * | ④ | "데모는 구매하기 대신 응모하기" | 데모 판정에 쓸 `slug` 가 **상세 응답에 없었다** — 분기가 항상 false |
+ *
+ * ⚠️ **못 막는 것**: 실제 렌더 결과. 이 환경은 브라우저가 프록시를 못 뚫어 스크린샷을 못 찍는다.
+ * 화면 확인은 배포 후 사람 눈이다.
+ */
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { isBlockedPhotoUrl } from '../../worker/utils/demo-photo-set'
+import { PRODUCT_DETAIL_FIELDS } from '../../shared/db/product-columns'
+
+/** 주석은 배선이 아니다 — 실행 코드만 남기고 판정한다(이 레포가 반복해 걸린 함정). */
+const code = (p: string) =>
+  readFileSync(p, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n')
+
+describe('① 교환권 페이지 검색은 교환권만', () => {
+  it('/vouchers 검색 버튼이 scope 를 붙여 보낸다', () => {
+    const v = code('src/pages/VouchersPage.tsx')
+    expect(v, "맨 `/search` 로 보내면 교환권이 전부 빠진다(그 화면 기본이 이용권만)")
+      .toContain("navigate('/search?scope=exchange')")
+  })
+
+  it('SearchPage 가 scope=exchange 를 교환권 전용으로 해석한다', () => {
+    const s = code('src/pages/SearchPage.tsx')
+    expect(s).toContain("searchParams.get('scope')")
+    expect(s, 'scope 분기가 deal_only=1(교환권)만 남겨야 한다')
+      .toMatch(/scope === 'exchange'[\s\S]{0,80}deal_only\) === 1/)
+  })
+
+  it('기본(scope 없음)은 종전대로 이용권만 — 홈·지도 검색을 바꾸지 않는다', () => {
+    const s = code('src/pages/SearchPage.tsx')
+    // 2026-07-16 대표 "검색은 무조건 이용권만" 이 기본으로 살아 있어야 한다.
+    expect(s).toContain('if (Number(product.deal_only) === 1) return false')
+    expect(s).toContain('isVoucherCategory(product.category)')
+  })
+})
+
+describe('② 카테고리를 고르면 그 카테고리만 보인다 (PC 홈)', () => {
+  const pc = code('src/pages/pc-home/PcHomePage.tsx')
+
+  it("🔴 쇼케이스 편성은 category === 'all' 일 때만 렌더된다", () => {
+    // 이 조건이 빠지면 숙소를 눌러도 화면 맨 위가 어드민 편성(카테고리 무관)으로 남는다.
+    expect(pc, '쇼케이스가 카테고리 게이트 없이 렌더되고 있다')
+      .toMatch(/HOME_SHOWCASE_ENABLED && category === 'all'/)
+  })
+
+  it('제목이 선택 카테고리를 말한다 (걸러졌다는 신호)', () => {
+    expect(pc).toContain('catLabel')
+    // 라벨은 레일과 같은 표에서 온다 — 문구가 두 벌이면 반드시 갈린다.
+    expect(pc, '라벨 SSOT(DEAL_CATS)를 import 해야 한다').toContain('DEAL_CATS')
+    expect(code('src/pages/pc-home/PcHomeRail.tsx')).toContain('export const DEAL_CATS')
+  })
+})
+
+describe('③ 데모 사진 — 그 매장이라는 근거가 없으면 안 쓴다', () => {
+  const photo = code('src/worker/utils/demo-photo-set.ts')
+
+  it('🔴 언론사·스톡 출처는 하드 배제된다 (저작권)', () => {
+    // 실사고: "경포파도네 풀빌라" 커버가 연합뉴스 워터마크 파도 사진이었다.
+    expect(isBlockedPhotoUrl('https://img.yna.co.kr/photo/ap/2026/01/02/x.jpg')).toBe(true)
+    expect(isBlockedPhotoUrl('https://image.newsis.com/2026/a.jpg')).toBe(true)
+    expect(isBlockedPhotoUrl('https://www.shutterstock.com/x.jpg')).toBe(true)
+    // 지도 계열 실사진은 통과해야 한다(과차단이면 사진이 전멸한다).
+    expect(isBlockedPhotoUrl('https://ldb-phinf.pstatic.net/2026/a.jpg')).toBe(false)
+    expect(isBlockedPhotoUrl('https://t1.daumcdn.net/place/a.jpg')).toBe(false)
+  })
+
+  it('빈 URL 은 버린다 (확신 없으면 안 쓴다)', () => {
+    expect(isBlockedPhotoUrl('')).toBe(true)
+  })
+
+  it('🔴 업종·지역 일반검색 폴백이 제거돼 있다', () => {
+    // 그 매장과 아무 관계 없는 사진을 "그 매장 대표사진" 자리에 앉히던 경로.
+    expect(photo, 'fetchNaverImageUrl(일반검색) 이 되살아났다').not.toContain('fetchNaverImageUrl(')
+  })
+
+  it('지도 대표사진 경로(①②)는 유지된다 — 근거 있는 사진까지 없애면 안 된다', () => {
+    expect(photo).toContain('fetchKakaoPlacePhotos')
+    expect(photo).toContain('fetchNaverPlaceMainPhoto')
+  })
+
+  it('기존 데모에도 적용되도록 재조정 버전이 올라가 있다', () => {
+    // 버전을 안 올리면 새 규칙이 **앞으로 만들 데모에만** 걸린다(이미 박힌 332장은 그대로).
+    const rehost = code('src/worker/cron/demo-image-rehost.ts')
+    const m = rehost.match(/DEMO_COND_V\s*=\s*'(\d+)'/)
+    expect(m, 'DEMO_COND_V 를 못 읽었다').toBeTruthy()
+    expect(Number(m![1]), '사진 규칙을 바꿨으면 버전을 올려야 전량 재적용된다').toBeGreaterThanOrEqual(4)
+  })
+
+  it('정비 대상이 좁은 접두사로 되돌아가지 않는다', () => {
+    const rehost = code('src/worker/cron/demo-image-rehost.ts')
+    expect(rehost, "demo-deal-/demo-stay- 로 좁히면 새 데모 종류가 또 누락된다(2026-08-03 사고)")
+      .not.toContain('demo-deal-%')
+  })
+})
+
+describe('④ 데모 상세는 "응모하기"', () => {
+  it('🔴 slug 가 상세 응답에 실린다 — 없으면 판정이 항상 false', () => {
+    // 라이브 실측(2026-08-08): /api/group-buy/products/2791 → slug null 이라 분기가 죽어 있었다.
+    expect(PRODUCT_DETAIL_FIELDS as readonly string[]).toContain('slug')
+  })
+
+  it('상세 페이지가 SSOT 판정(isDemoSlug)을 쓴다', () => {
+    const d = code('src/pages/GroupBuyDetailPage.tsx')
+    expect(d, "'demo-' 를 다시 박으면 판정이 화면마다 갈린다").toContain('isDemoSlug')
+    expect(d, 'PC 패널로 isDemo 를 내려야 한다').toContain('isDemo={isDemoDeal}')
+  })
+
+  it('두 변형(모바일 푸터·PC 패널) 모두 문구가 갈린다', () => {
+    const box = code('src/pages/group-buy/DealPurchaseBox.tsx')
+    expect(box).toContain("isDemo ? '응모하기' : '구매하기'")
+    const d = code('src/pages/GroupBuyDetailPage.tsx')
+    // 모바일 푸터도 같이 바뀌어야 한다 — 한쪽만 고치면 화면에 따라 다른 말을 한다.
+    expect(d).toContain("isDemoDeal ? '응모하기' : '구매하기'")
+  })
+})

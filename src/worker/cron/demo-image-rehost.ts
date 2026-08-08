@@ -24,7 +24,11 @@ import { fetchDemoPhotos } from '../utils/demo-photo-set'
 // 🏷️ 데모 이미지 컨디션 버전 — bump 하면 전 데모가 한 번씩 재적용된다(대표사진 + 3~5장).
 //   v2 = 카카오 og 대표사진 커버 + 3~5장(2026-07-21).
 //   v3 = + 네이버 지도(플레이스) 대표사진 커버 폴백(카카오 사진 없는 매장, 2026-07-21 대표 지시).
-export const DEMO_COND_V = '3'
+// 🔴 2026-08-08 (대표 "사진 출처를 모두 가장 이상적으로 해주고 모두 수정 및 적용") — '3' → '4'.
+//   버전을 올리면 **기존 데모 전량이 재조정 대상**이 된다(meta demo_cond_v ≠ 현재값 → 재처리 후 마킹 → 수렴).
+//   그래야 새 사진 규칙(언론사/스톡 하드배제 + 업종·지역 일반검색 폴백 제거, demo-photo-set.ts)이
+//   **신규분뿐 아니라 이미 박힌 332장에도** 적용된다. 안 올리면 새 규칙은 앞으로 만들 데모에만 걸린다.
+export const DEMO_COND_V = '4'
 
 const RECONDITION_PER_RUN = 3
 const REHOST_PER_RUN = 2
@@ -49,7 +53,7 @@ export async function rehostDemoImagesBulk(env: Env, perRun = 8): Promise<{ reho
   const bucketBound = !!bucketEnv.MEDIA_BUCKET
   await ensureSupplyMetaTable(DB)
   // 이관 대상 = 외부 커버 데모 중 아직 '이관 불가(rehost_skip)' 로 마킹 안 된 것. skip 마킹으로 수렴.
-  const WHERE = `(slug LIKE 'demo-deal-%' OR slug LIKE 'demo-stay-%') AND COALESCE(is_active,1)=1
+  const WHERE = `slug LIKE 'demo-%' AND COALESCE(is_active,1)=1
         AND image_url LIKE 'http%' AND image_url NOT LIKE '%media.ur-team.com%' AND image_url NOT LIKE '%picsum.photos%'
         AND id NOT IN (SELECT product_id FROM product_supply_meta WHERE key='rehost_skip' AND value='1')`
   const countExternal = async () => {
@@ -101,7 +105,7 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
   const { results } = await DB.prepare(
     `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address, p.restaurant_phone, p.restaurant_lat, p.restaurant_lng
        FROM products p
-      WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
+      WHERE p.slug LIKE 'demo-%'
         AND COALESCE(p.is_active, 1) = 1
         AND p.restaurant_name IS NOT NULL
         AND NOT EXISTS (
@@ -196,7 +200,7 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
   const { results } = await DB.prepare(
     `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address
        FROM products p
-      WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
+      WHERE p.slug LIKE 'demo-%'
         AND COALESCE(p.is_active, 1) = 1
         AND NOT EXISTS (
           SELECT 1 FROM product_supply_meta m
