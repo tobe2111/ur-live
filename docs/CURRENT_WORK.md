@@ -5494,16 +5494,21 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 135건 · 최신순 · 이 목록은 자동 생성된다._
+_총 139건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-08-08**
+- [2026-08-08 — 공공기관이 '대행사 tier1' 에 앉던 세 겹 결함 (유어애즈)](handoff/2026-08-08-webkr-public-institution-noise.md)
 **2026-08-06**
 - [학습기가 멀쩡한 자기 목을 졸랐다 — 빈자리를 붕괴로 읽어 cap 6 → 2](handoff/2026-08-06-provisional-tick.md)
+- [미실행 키워드 구제 — 회차당 1개로 충분한가 (2026-08-06)](handoff/2026-08-06-keyword-starvation-throughput.md)
 **2026-08-05**
 - [2026-08-05 — 경보가 울려도 아무도 안 보게 되는 길](handoff/2026-08-05-rotation-aware-silence.md)
+- [2026-08-05 — 유튜브 발굴 계측 영구화 + 그걸 막던 가드를 **더 좁은 가드로 교체**](handoff/2026-08-05-reextract-fingerprint.md)
 - [인플루언서 풀 페이지 첫 페인트 — 224KB 를 빼냈다 (2026-08-05)](handoff/2026-08-05-pool-page-first-paint.md)
 - [2026-08-05 — B2B 수집 페이지가 느린 이유는 **화면에 없는 917KB** 였다](handoff/2026-08-05-partner-pool-lazy-keywords.md)
 - [수집 키워드 순환 — 몫을 "슬롯"에서 "한 바퀴 시간"으로 (2026-08-05)](handoff/2026-08-05-keyword-rotation-lap-time.md)
 - [2026-08-05 — 카카오 스윕 소스별 인터리브 (어제 수리의 **정정**)](handoff/2026-08-05-kakao-sweep-interleave.md)
+- [2026-08-05 — 공정위 가맹 레인이 **이름 하나로 22회를 버렸다**](handoff/2026-08-05-franchise-op-name.md)
 - [레인 학습기 건강 판정은 `ads_tick_history` 톱니로 — `cron_failures` 임의 창으로 하지 말 것](handoff/2026-08-05-aimd-health-ledger.md)
 **2026-08-04**
 - [YT 우선 배분 + 중복 발송 제거 (2026-08-04, 대표 승인 "2,3 진행")](handoff/2026-08-04-yt-priority-and-dedupe.md)
