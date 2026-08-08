@@ -72,6 +72,19 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '정체 불명 리드가 발송 대상(partner)으로 남음',
+    file: 'src/features/marketing/api/company-save.ts',
+    find: "const t = c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type",
+    replace: "const t = c.lead_type === 'unknown' ? 'partner' : c.lead_type",
+    test: 'src/tests/unit/ads-suspect-name-lead-type.test.ts',
+    why:
+      '대표 신고("나라장터 담당자가 섞였다")를 실측했더니 회사명이 `[광주` — "[광주] …" 공고 제목을 ' +
+      '파싱하다 남은 **파편**이었다(id 401793). 이름이 없으니 기관 어휘 규칙이 잡을 수가 없고, ' +
+      '`suspectCompanyName` 은 confidence 만 낮추고 lead_type 은 partner 로 뒀다. 게다가 ' +
+      "`unknown ? 'partner'` 승격이 저장·재분류 두 곳에 있어 분류기가 '모르겠다'고 해도 발송 대상이 됐다. " +
+      '이 DB 의 유일한 성공 지표가 "제안 보낼 수 있는 리드 수"라, 보낼 수 없는 리드가 섞이면 그 수가 거짓이 된다.',
+  },
+  {
     name: '가맹 레인이 틀린 오퍼레이션 이름에서 못 빠져나온다',
     file: 'src/features/marketing/api/franchise-collect.ts',
     find: "    if (i === 0 && !count && msg && /NO_OPENAPI_SERVICE_ERROR/i.test(msg)) {",

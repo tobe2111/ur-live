@@ -399,12 +399,14 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
       continue
     }
     // webkr 이름이 검색결과 제목 파편으로 의심되면("데이터 토론"/"insight") 분류 확인 카드로 노출.
-    const conf = r.source === 'webkr' && c.confidence !== 'evidence' && suspectCompanyName(r.company_name, r.source_keyword) ? 'none' : c.confidence
+    // 🔴 2026-08-08: 이름 파편은 소스 무관하게 정체 불명 — 아래 partner 승격에서 제외한다.
+    const suspect = suspectCompanyName(r.company_name, r.source_keyword)
+    const conf = r.source === 'webkr' && c.confidence !== 'evidence' && suspect ? 'none' : c.confidence
     // 카테고리 권위 위계: registry(공식 업종) 소스는 category 불가침 — lead_type/confidence 만 스탬프.
     const registry = REGISTRY_CATEGORY_SOURCES.has(r.source || '') && !!r.category
     if (registry) {
       stmts.push(DB.prepare("UPDATE ad_company_leads SET lead_type = ?, classify_confidence = 'registry', classified_v = ? WHERE id = ?")
-        .bind(c.lead_type === 'unknown' ? 'partner' : c.lead_type, CLASSIFY_RULES_VERSION, r.id))
+        .bind(c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type, CLASSIFY_RULES_VERSION, r.id))
     } else if (c.confidence === 'evidence') {
       // 업종은 근거(evidence) 있을 때만 덮어쓰고, 그 외엔 기존 값 유지(대표 수동 분류 보존).
       stmts.push(DB.prepare('UPDATE ad_company_leads SET category = ?, subcategory = ?, tier = COALESCE(tier, ?), lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?')
