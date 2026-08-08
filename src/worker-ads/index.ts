@@ -422,7 +422,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     // 🔗 원부 이메일 이식 — 매시간. **외부 API 0·D1 전용**이라 크롤 한도와 무관하고, 크롤 한 번 없이
     //   타깃(대행사·전문서비스)에 이메일/홈페이지를 붙인다. 2026-07-28 까지 **크론이 아예 없어서**
     //   어드민이 버튼을 누를 때만 돌았다 — 자동수집이 영구적으로 돌아야 한다는 원칙의 누락분.
-    kick('/__ads/match-registry', async () => {
+    //   ⏰ 2026-08-09 알람 이관(3차) — 이관 후 유일하게 계속 죽던 레인(×3). 알람이 몰면 cron 은 손 뗌.
+    if (!laneAlarmOn) kick('/__ads/match-registry', async () => {
       const { matchRegistryEmails } = await import('@/features/marketing/api/registry-email-match')
       return matchRegistryEmails(env, 400, { left: 45 })
     })
@@ -464,7 +465,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
   // 🏪 상가정보(공공데이터) 자동수집 — 짝수시만(company-collect 홀수시와 분리, 예산 반토막 방지).
   //   게이트 ADS_STOREINFO_ENABLED(기본 OFF). 별도 커서/예산 → 다른 트랙 무영향. 연락처는 네이버 역조회로 보강.
-  if (env.ADS_STOREINFO_ENABLED === 'true') {
+  if (!laneAlarmOn && env.ADS_STOREINFO_ENABLED === 'true') {
     gates.everyNHours(2, 0, '/__ads/collect-storeinfo', async () => { const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect'); return runStoreInfoCollect(env) })
   }
   // 🪦 고용24 레인 철거(2026-08-04) — 기업회원 전용 API + 대표 "키는 받지 못한다" 확정. 되살리려면 키부터.
@@ -507,7 +508,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   if (!laneAlarmOn && (env as unknown as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED === 'true') {
     kick('/__ads/collect-neis', async () => { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return runNeisAcademyCollect(env) })
   }
-  if ((env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {
+  if (!laneAlarmOn && (env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {
     kick('/__ads/collect-hira', async () => { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); return runHiraHospitalCollect(env) })
   }
   // 📧 매장 후보 이메일 우선 연락처 보강 자동 드레인 — **매시간, 수집 게이트와 분리**(2026-07-27 — 회사 풀과

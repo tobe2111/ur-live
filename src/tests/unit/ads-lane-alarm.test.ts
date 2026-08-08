@@ -260,3 +260,47 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
       expect((r as { skipped?: string }).skipped, `${lane} 킬스위치 무시`).toBe('gate_off')
     }
   })
+
+  /**
+   * ⏰ 3차 이관 4레인 (2026-08-09) — 2차 판정 사흘 뒤, 남은 CPU 사망이 전부 cron 잔류라서.
+   *   match-registry ×3 · 08-08 23:00 KST 한 회차에 hira·commerce·storeinfo 몰살. 규약은 2차와 동일.
+   */
+  it('🔒 3차 이관 4레인 — 전부 runsPerHour 1 (외부 API 쿼터 증설 금지)', () => {
+    const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
+    for (const lane of ["'match-registry'", "'collect-hira'", "'collect-commerce'", "'collect-storeinfo'"]) {
+      expect(runners, `${lane} 등록 누락`).toContain(`${lane}: {`)
+      const seg = runners.slice(runners.indexOf(`${lane}: {`), runners.indexOf(`${lane}: {`) + 200)
+      expect(seg, `${lane} runsPerHour 1 아님`).toMatch(/runsPerHour: 1,/)
+    }
+  })
+
+  it('🔒 3차 이관 — 알람이 몰면 cron 은 손을 뗀다(4곳 전부, commerce 는 cron-public-data)', () => {
+    const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+    expect(src).toMatch(/if \(!laneAlarmOn\) kick\('\/__ads\/match-registry'/)
+    expect(src).toMatch(/if \(!laneAlarmOn && \(env as unknown as \{ ADS_HIRA_ENABLED\?: string \}\)\.ADS_HIRA_ENABLED === 'true'\)/)
+    expect(src).toMatch(/if \(!laneAlarmOn && env\.ADS_STOREINFO_ENABLED === 'true'\)/)
+    // commerce 는 cron-public-data.ts — 판단은 index.ts 와 **같은 헬퍼**여야 한다(두 벌 판단 금지).
+    const pub = readFileSync(join(process.cwd(), 'src/worker-ads/cron-public-data.ts'), 'utf8')
+    expect(pub).toMatch(/import \{ laneAlarmDrivesEnrich \} from '\.\/lane-alarm-boot'/)
+    expect(pub).toMatch(/if \(!laneAlarmDrivesEnrich\(env\) && e\.ADS_COMMERCE_ENABLED === 'true'\)/)
+  })
+
+  it('🔒 3차 이관 — 러너가 게이트를 스스로 본다(방향: match-registry 만 킬스위치)', async () => {
+    const { ALARM_LANES } = await import('@/worker-ads/lane-alarm-runners')
+    // 기본-OFF 레인({} = 게이트 미설정): 게이트를 안 보고 진행하면 DB 접근에서 throw 한다.
+    for (const lane of ['collect-hira', 'collect-commerce', 'collect-storeinfo']) {
+      const r = await ALARM_LANES[lane]!.run({} as never)
+      expect((r as { skipped?: string }).skipped, `${lane} 게이트 무시`).toBe('gate_off')
+    }
+    // 킬스위치 레인(기본 ON): 명시로 꺼야 skipped 다.
+    const r = await ALARM_LANES['match-registry']!.run({ ADS_ENRICH_DISABLED: 'true' } as never)
+    expect((r as { skipped?: string }).skipped, 'match-registry 킬스위치 무시').toBe('gate_off')
+  })
+
+  it('🔒 3차 이관 — 짝수시 레인은 러너 안에서 시각을 보존한다(외부 호출량 증설 금지)', () => {
+    const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
+    for (const lane of ["'collect-commerce'", "'collect-storeinfo'"]) {
+      const seg = runners.slice(runners.indexOf(`${lane}: {`), runners.indexOf(`${lane}: {`) + 500)
+      expect(seg, `${lane} 짝수시 보존 누락`).toMatch(/getUTCHours\(\) % 2 !== 0/)
+    }
+  })
