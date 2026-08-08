@@ -84,10 +84,16 @@ local·storeinfo·nara         925   3.3%
 
 ## 남은 것 / 대표 판단 대기
 
-- 🔴 **cron 침묵 4건** (같은 인계로 넘어옴, 이 세션 미착수):
-  `ads:collect-hira` · `ads:collect-storeinfo` · `ads:collect-commerce` 가 "Worker exceeded CPU time
-  limit", `ads:collect-nara-vendor` 는 **92시간 침묵**. 넷 다 B2B 다. 가드는 `check-ads-dispatch-bypass`.
-  ⚠️ 위 소급 재분류도 레인이 돌아야 진행되므로 **①의 확인이 여기에 걸려 있다.**
+- ✅ **cron 침묵 4건 — 인계 내용이 부정확했다(실측으로 정정).**
+  · 인계는 *"매 회차 CPU 로 죽어 실행 기록이 안 남았다"* 고 했으나 하트비트에 **기록은 남아 있고**
+    (`ok=false`), 24h 실패는 **회차 한 번**(KST 08-08 23:00 에 hira·storeinfo·commerce 동시 사망).
+    무거운 B2B 레인이 한 회차에 겹친 것이고, **PR #1098 이 이미 고쳤다**(보정값이 낡았던 것).
+  · "침묵 12건" 중 11건은 **유령**(개명·승계된 옛 하트비트 키). `ads:maintenance?phase=*` 는
+    `ads:maintenance` 가 승계했고 그건 11분 전에 돌았다. 진짜는 `collect-nara-vendor` **하나**.
+  · 🩹 그 유령이 화면에만 보이던 이유 = 게이트·경보는 `classifyBeat` 로 걸렀는데 **어드민 목록만
+    안 걸렀다**. 이 세션에서 `verdict` 를 목록에 실어 화면·경보를 일치시켰다(가드 2건 추가).
+  · ✅ **소급 재분류 레인(`ads:reclassify-company`)은 살아 있다**(실측: 12분 전 ok=true) — 규칙만
+    고치고 정화가 안 되는 상황은 아니다.
 - 🔴 **`ads_naravendor_stats` 15회 연속 `NO_OPENAPI_SERVICE_ERROR`** — 공정위와 **같은 클래스**(오퍼레이션
   이름)일 가능성이 높다. 이 환경은 `apis.data.go.kr` 이 프록시 차단이라 찔러볼 수 없다 →
   **대표에게 나라장터 업체 API 의 Swagger 화면**을 요청해야 판정된다(⚠️ `serviceKey=***` 가려서).

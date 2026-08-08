@@ -72,6 +72,28 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '하트비트 목록이 유령 판정을 안 싣는다(화면과 경보가 갈라진다)',
+    file: 'src/worker/utils/cron-heartbeat.ts',
+    find: '    for (const r of rows) r.verdict = classifyBeat({ name: r.name, age_minutes: r.age_minutes, max_gap_min: r.max_gap_min }, freshBases)',
+    replace: '    // (제거)',
+    test: 'src/tests/unit/cron-heartbeat-verdict.test.ts',
+    why:
+      '게이트·경보는 `classifyBeat` 로 유령(개명·승계된 옛 이름)을 걸러 조용한데 **사람이 보는 목록만** ' +
+      '안 걸렀다 — 화면 12건 vs 실제 알림 2건. 그 격차는 소음이 아니라 **오진**을 만들었다: 2026-08-08 에 ' +
+      '두 세션이 이 목록을 읽고 "유어애즈 레인 4개가 침묵 중"이라고 보고했지만 진짜로 멈춘 것은 ' +
+      '`collect-nara-vendor` 하나였다. 유령이 진짜를 덮는 것이 이 레포가 반복해 만난 경보 무력화의 형태다.',
+  },
+  {
+    name: '어드민 침묵 목록이 유령까지 센다',
+    file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
+    find: "  const stale = items.filter(i => (i.age_minutes ?? 0) > 60 * 24 && (i.verdict ?? 'judge') === 'judge').map(i => i.name)",
+    replace: '  const stale = items.filter(i => (i.age_minutes ?? 0) > 60 * 24).map(i => i.name)',
+    test: 'src/tests/unit/cron-heartbeat-verdict.test.ts',
+    why:
+      '판정을 계산해 놓고 **쓰지 않으면** 화면은 그대로다 — "가드는 있는데 그 자리에 안 붙어 있다" 클래스. ' +
+      '이 한 줄이 되돌아가면 유령 11건이 다시 침묵으로 집계되고, 다음 세션이 또 같은 오진을 한다.',
+  },
+  {
     name: '잘린 제목 파편이 상호가 된다(webkr — 공공기관이 대행사 tier1 로)',
     file: 'src/features/marketing/api/company-classify.ts',
     find: "  if (DESC_IS_PAGE_BODY.has(input.source || '') && unbalancedBracket(name)) return reject('TRUNCATED_TITLE')",
