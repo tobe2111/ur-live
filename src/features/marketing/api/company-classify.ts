@@ -53,7 +53,7 @@ export type ClassifyConfidence = 'registry' | 'evidence' | 'keyword' | 'none'
  *  자동으로 재검사 대상이 된다(안 올리면 이미 스탬프된 잘못된 행이 영구 방치 — 이 사고의 원인).
  *  v3 (2026-07-27): 안내-페이지 제목 어휘(위치안내/이용안내/오시는길/지정 게시대 — 대표 신고
  *  "지정 게시대 위치안내" 업체명) NOTICE_WORD 추가. */
-export const CLASSIFY_RULES_VERSION = 5 // 2026-08-03: 'market'(전통시장) 권위 소스 추가
+export const CLASSIFY_RULES_VERSION = 6 // 2026-08-08: 괄호 불균형=이름 파편 판정 + 의심 이름은 partner 승격 금지
 //  ⚠️ 이 bump 의 소급 대상은 **사실상 0** 이다(아직 source='market' 행이 없다). 그런데도 올린 이유:
 //    이 상수의 실패 모드는 비대칭이다 — 불필요하게 올리면 **한 번 더 훑는 비용**이지만, 안 올리면
 //    **영구히 옛 판정에 갇힌다**(재검사 쿼리에 시간 폴백이 없다). 애매하면 올리는 쪽이 맞다.
@@ -217,6 +217,13 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
 export function suspectCompanyName(name: string, sourceKeyword?: string | null): boolean {
   const n = String(name || '').replace(/\s+/g, ' ').trim()
   if (n.length < 2) return true
+  // 🔴 2026-08-08 (대표 신고 — 공공기관 담당자 혼입): 실제로 들어와 있던 건 회사명이 아니라 **파편**이었다.
+  //   `[광주` — "[광주] …" 같은 공고 제목을 파싱하다 대괄호 앞부분만 남은 것(실측 id 401793,
+  //   전라남도중소기업일자리경제진흥원 담당자). `(주케이디알앤케이` 도 같은 형태(id 305893).
+  //   여는 괄호만 있고 닫는 괄호가 없으면 **상호가 아니라 잘린 문자열**이다 — 정체를 알 수 없다.
+  //   ⚠️ 닫는 괄호가 있는 정상 상호(`(주)케이디알`·`○○(강남점)`)는 통과시킨다.
+  if ((n.includes('[') && !n.includes(']')) || (n.includes('(') && !n.includes(')'))) return true
+  if ((n.includes(']') && !n.includes('[')) || (n.includes(')') && !n.includes('('))) return true
   if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(n)) return true // 도메인 그대로인 placeholder(미디어 레인 등) — 실명 치유 대상
   if (/["“”‘’',?？]/.test(n)) return true
   if (n.length >= 18 && n.split(/\s+/).length >= 5) return true

@@ -11,6 +11,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import type { makeHourGates } from './lane-cadence'
+import { laneAlarmDrivesEnrich } from './lane-alarm-boot'
 
 type Gates = ReturnType<typeof makeHourGates>
 
@@ -29,7 +30,9 @@ interface PublicDataEnv {
 export function registerPublicDataCrons(env: Env, gates: Gates): void {
   const e = env as unknown as PublicDataEnv
   // 🛒 통신판매사업자 — 짝수시(상가정보와 같은 창이나 별도 커서·예산). 최대 공급원이라 가장 잦다.
-  if (e.ADS_COMMERCE_ENABLED === 'true') {
+  //   ⏰ 2026-08-09 알람 이관(3차) — 08-08 23:00 KST 회차 CPU 사망. 알람이 몰면 cron 은 손 뗌
+  //   (판단은 index.ts 와 같은 헬퍼 한 곳 — 두 군데서 각자 판단하면 한쪽만 고쳐져 두 경로가 겹친다).
+  if (!laneAlarmDrivesEnrich(env) && e.ADS_COMMERCE_ENABLED === 'true') {
     gates.everyNHours(2, 0, '/__ads/collect-commerce', async () => { const { runCommerceCollect } = await import('@/features/marketing/api/commerce-notify-collect'); return runCommerceCollect(env) })
   }
   // 🏢 공정위 가맹 — 일 1회(주 1회 성격이지만 매일 소량 페이지로 커서를 흘린다).

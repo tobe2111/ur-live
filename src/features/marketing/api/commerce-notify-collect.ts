@@ -202,12 +202,24 @@ const PAGE_ROWS = 500
  *   ⚠️ 벽시계로 CPU 를 대신 재는 것은 근사다(둘은 다르다). 죽는 지점(26초)의 절반 이하로 잡아
  *     외부 응답이 느린 회차에도 여유를 둔다. 정확한 CPU 계측은 워커 런타임이 안 준다.
  */
-const RUN_DEADLINE_MS = 12_000
+/**
+ * 🔻 2026-08-09 **재보정 — 죽는 지점이 26초에서 13.9초로 내려왔다**(라이브 실측).
+ *   위 주석이 12초를 고른 근거는 *"죽는 지점(26초)의 절반 이하"* 였는데, 그 전제가 더는 참이 아니다:
+ *     마지막 성공 08-08 21:00 KST  elapsed 13,935ms (deadline·records 동시 도달)
+ *     사망     08-08 23:00 KST  ms 13,921ms  err=Worker exceeded CPU time limit
+ *   즉 12초 마감선은 이제 사망점의 **87%** 다 — 여유가 사실상 0 이라 한 회차만 무거워도 넘어간다.
+ *   같은 틱에 `collect-storeinfo`(13,833ms) · `collect-hira`(21,067ms) 도 같은 사유로 죽었다.
+ *
+ * ⚠️ **작게 도는 것이 죽는 것보다 항상 낫다** — 죽으면 루프 뒤 커서 저장이 실행되지 않아 다음 회차가
+ *   같은 페이지를 또 훑는다(위 주석의 '영원히 전진 0'). 슬라이스를 줄이면 회차당 수확만 줄고 전진은 남는다.
+ *   ⇒ 사망점의 절반이라는 **원래 기준을 그대로 지키되**, 갱신된 사망점(13.9초)에 맞춰 다시 계산했다.
+ */
+const RUN_DEADLINE_MS = 6_000
 /** 유료 마감선 — 유료 CPU 한도(30s) 아래의 여유. ⚠️ 추정이다: 전환 후 하트비트의
  *  **성공 최대 ms ↔ 실패 최소 ms 경계**로 재측정할 것(무료 12초도 같은 방식으로 정했다). */
 const RUN_DEADLINE_MS_PAID = 24_000
 /** 한 회차에 다루는 최대 레코드 수 — 마감선의 짝(응답이 빨라 마감선에 안 걸려도 파싱량이 CPU 를 먹는다). */
-const MAX_RECORDS_PER_RUN = 1_500
+const MAX_RECORDS_PER_RUN = 700
 
 async function fetchCommercePage(base: string, op: string, key: string, page: number, budget: { left: number }): Promise<{ items: RawCommerce[]; count: number; msg?: string }> {
   if (budget.left <= 0) return { items: [], count: 0 }

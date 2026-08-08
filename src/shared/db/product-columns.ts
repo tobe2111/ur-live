@@ -20,6 +20,10 @@ export const PRODUCT_DETAIL_FIELDS = [
   // ⚠️ shipping_fee/base_shipping_fee 는 orders/sellers 컬럼 — products 에 존재하지 않음.
   //   2026-06-10 사고 정리 때 잘못 포함 → 모든 상세 쿼리가 'no such column' 1차 실패하던 진짜 원인.
   //   (검증: scripts/check-product-detail-fields-repairable.mjs 가 CI 에서 차단)
+  // 🎭 2026-08-08 (대표 "데모 상품들만 응모하기로"): 데모 판정(`isDemoSlug`)이 slug 로만 성립하는데
+  //   상세 응답에 slug 가 없어 클라 분기가 **항상 false** 였다(라이브 실측: /products/2791 → slug null).
+  //   목록(buildCols)은 2026-07-04 에 이미 넣었고 상세만 빠져 있었다 — 같은 판정이 화면마다 갈리던 것.
+  'slug',
   'created_at', 'updated_at',
 ] as const
 

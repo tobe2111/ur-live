@@ -72,6 +72,19 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '정체 불명 리드가 발송 대상(partner)으로 남음',
+    file: 'src/features/marketing/api/company-save.ts',
+    find: "const t = c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type",
+    replace: "const t = c.lead_type === 'unknown' ? 'partner' : c.lead_type",
+    test: 'src/tests/unit/ads-suspect-name-lead-type.test.ts',
+    why:
+      '대표 신고("나라장터 담당자가 섞였다")를 실측했더니 회사명이 `[광주` — "[광주] …" 공고 제목을 ' +
+      '파싱하다 남은 **파편**이었다(id 401793). 이름이 없으니 기관 어휘 규칙이 잡을 수가 없고, ' +
+      '`suspectCompanyName` 은 confidence 만 낮추고 lead_type 은 partner 로 뒀다. 게다가 ' +
+      "`unknown ? 'partner'` 승격이 저장·재분류 두 곳에 있어 분류기가 '모르겠다'고 해도 발송 대상이 됐다. " +
+      '이 DB 의 유일한 성공 지표가 "제안 보낼 수 있는 리드 수"라, 보낼 수 없는 리드가 섞이면 그 수가 거짓이 된다.',
+  },
+  {
     name: '가맹 레인이 틀린 오퍼레이션 이름에서 못 빠져나온다',
     file: 'src/features/marketing/api/franchise-collect.ts',
     find: "    if (i === 0 && !count && msg && /NO_OPENAPI_SERVICE_ERROR/i.test(msg)) {",
@@ -210,6 +223,17 @@ const MUTATIONS = [
       '이 한 줄이 감지와 소비를 잇는다. 빠지면 CPU 사망은 계속 표에 적히는데 **어떤 레인도 그 값을 ' +
       '안 읽어** 작업량이 그대로다 — 조회는 성공하고 `q` 만 늘 1 이라 에러도 경고도 없다. ' +
       '자동수리가 도는 것처럼 보이면서 실제로는 아무 일도 안 일어나는, 정확히 그 상태가 된다.',
+  },
+  {
+    name: 'commerce 마감선 보정이 낡은 값으로 되돌아감',
+    file: 'src/features/marketing/api/commerce-notify-collect.ts',
+    find: 'const RUN_DEADLINE_MS = 6_000',
+    replace: 'const RUN_DEADLINE_MS = 12_000',
+    test: 'src/tests/unit/ads-commerce-deadline-calibration.test.ts',
+    why:
+      '벽시계 마감선은 CPU 한도의 **대리 측정**이라 사망점이 움직이면 보정이 조용히 낡는다. ' +
+      '실제로 낡았다: 주석이 12초를 고른 근거는 "사망점(26초)의 절반" 이었는데 2026-08-08 사망은 13,921ms 였다 ' +
+      '(= 12초가 사망점의 87%, 여유 0). 주석에만 적어 두면 다음 세션이 "느리니까" 되돌린다.',
   },
   {
     name: 'CPU 자기교정 — collect-hira 가 배수를 무시한다',
@@ -1898,6 +1922,28 @@ const MUTATIONS = [
     why:
       '빼면 정책 기본값(12회/시간)을 받는다 = cron 설계 의도(`0 * * * *`)를 12배 넘는 증설이고, ' +
       '**네이버로 나가는 요청량이 늘어나는 변경**이라 대표 판단 사항이다. 값이 조용히 바뀌는 것을 막는다.',
+  },
+  {
+    name: '3차 이관 match-registry cron 게이트 소실(알람과 이중 디스패치)',
+    file: 'src/worker-ads/index.ts',
+    find: "if (!laneAlarmOn) kick('/__ads/match-registry'",
+    replace: "kick('/__ads/match-registry'",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '이관 후 유일하게 계속 죽던 레인(×3, 2026-08-06 까지)이라 3차로 옮겼다. 게이트가 빠지면 ' +
+      '알람과 cron 이 같은 정각에 겹쳐 던지고, 던지는 것 자체가 부모 CPU 를 먹는다 — ' +
+      '그게 애초에 이 레인 계열을 죽인 원인이다(2·3차 공통 규약).',
+  },
+  {
+    name: '3차 이관 commerce cron 게이트 소실 — 다른 파일(cron-public-data)이라 따로 지킨다',
+    file: 'src/worker-ads/cron-public-data.ts',
+    find: "if (!laneAlarmDrivesEnrich(env) && e.ADS_COMMERCE_ENABLED === 'true')",
+    replace: "if (e.ADS_COMMERCE_ENABLED === 'true')",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      'commerce 의 cron 등록은 index.ts 가 아니라 cron-public-data.ts 에 있다 — index.ts 만 지키는 ' +
+      '검사라면 이 파일의 게이트가 사라져도 초록이다(낡은 지도 클래스). 08-08 23:00 KST 한 회차에 ' +
+      'hira·commerce·storeinfo 가 몰살한 그 자리의 재발 방지.',
   },
   {
     name: '미루기 판정이 주기 대신 침묵 임계를 봄(매시간 레인이 통째로 always)',
