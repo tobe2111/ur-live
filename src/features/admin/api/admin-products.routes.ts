@@ -1508,9 +1508,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         //   대표사진 원본 URL(resolvedImgSets[0] = 카카오 대표사진, 없으면 네이버 top) → ③ 최후 picsum.
         //   (2026-07-20 대표 "가장 메인이 되는 사진을 커버로" — 재호스팅 실패로 대표사진을 버리고 picsum 으로
         //   떨어지던 구멍 수정. 원본 URL 도 로드 가능하므로 picsum 보다 항상 우선.)
-        // 🚫 2026-08-08 (대표 "사진이 아예 없으면 그 데모 이용권은 안올려져야지. 자체가"):
-        //   근거 있는 사진을 못 구했으면 **만들지 않는다.** picsum 더미로 채워 올리던 것을 중단.
-        //   (다음 시드 회차에 그 매장 사진이 잡히면 그때 생성 — 영구 배제가 아니다.)
+        // 🚫 2026-08-08 대표 "사진 없으면 자체가 안올려져야지" — picsum 더미 폴백 폐기. 사유: 동명 테스트.
         if (!realPhoto && !resolvedImgSets[i][0]) { skippedNoPhoto++; continue; }
         const img = realPhoto || resolvedImgSets[i][0];
         const restName = place?.name || null;         // hasCoord 보장 → 항상 실매장명

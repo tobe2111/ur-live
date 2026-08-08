@@ -470,10 +470,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         count: wantPhotos,
       }).catch(() => [] as string[])
       if (imgs.length) realPhotos++
-      // 🚫 2026-08-08 (대표 "사진이 아예 없으면 그 데모 이용권은 안올려져야지. 자체가"):
-      //   사진 0장이면 **만들지 않는다.** 이전엔 picsum 플레이스홀더를 씌워 그대로 올렸는데,
-      //   소비자 화면엔 89,000원짜리 숙박권이 회색 더미 사진으로 걸렸다. 매대에 올릴 게 아니다.
-      //   (다음 시드 회차에 그 매장 사진이 잡히면 그때 생성된다 — 영구 배제가 아니다.)
+      // 🚫 2026-08-08 대표 "사진 없으면 자체가 안올려져야지" — picsum 더미 폴백 폐기. 사유: 동명 테스트.
       if (imgs.length === 0) { skippedNoPhoto++; continue }
       // 🩹 2026-07-21 전수조사 #2: 숙소 커버도 R2 재호스팅(동네딜 시드와 대칭 — 숙소는 그간 커버를
       //   raw 외부 URL 로만 저장해 네이버 핫링크/삭제 시 카드에서 깨졌음). MEDIA_BUCKET 있으면 /api/media,

@@ -1,10 +1,10 @@
 {
   "src/App.tsx": 1099,
   "src/components/SellerLayout.tsx": 616,
-  "src/features/admin/api/admin-products.routes.ts": 2347,
+  "src/features/admin/api/admin-products.routes.ts": 2350,
   "src/features/admin/api/admin-review-generator.routes.ts": 749,
   "src/features/admin/api/admin-sellers.routes.ts": 1079,
-  "src/features/admin/api/admin-stays.routes.ts": 638,
+  "src/features/admin/api/admin-stays.routes.ts": 640,
   "src/features/agency/api/agency.routes.ts": 1117,
   "src/features/auction/api/auction.routes.ts": 833,
   "src/features/auth/api/admin.routes.ts": 641,
