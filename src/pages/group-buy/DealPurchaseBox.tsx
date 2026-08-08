@@ -23,6 +23,8 @@ interface Props {
   buyable: boolean
   isJoinable: boolean
   isPrelaunch: boolean
+  /** 🎭 데모 상품 — 소비자에겐 '구매'가 아니라 '응모'로 보여야 한다(대표 2026-08-08). */
+  isDemo?: boolean
   joining: boolean
   onBuy: () => void
   onPrelaunchApply: () => void
@@ -31,8 +33,11 @@ interface Props {
 export default function DealPurchaseBox({
   name, discountPct, unitPrice, refPrice, unitSaving, totalSaving, total,
   quantity, setQuantity, maxQty, maxPerPerson,
-  buyable, isJoinable, isPrelaunch, joining, onBuy, onPrelaunchApply,
+  buyable, isJoinable, isPrelaunch, isDemo, joining, onBuy, onPrelaunchApply,
 }: Props) {
+  // 🎭 2026-08-08 (대표 "데모 상품들만 상품페이지에 구매하기 버튼 대신 응모하기로"): 데모는 추첨이라
+  //   '구매하기'가 거짓말이 된다(결제가 아니라 응모다). 문구만 바꾼다 — 동작(onBuy)은 그대로.
+  const ctaLabel = isDemo ? '응모하기' : '구매하기'
   return (
     <div style={{ border: '1px solid var(--gbd-line2)', borderRadius: 18, padding: 18, background: 'var(--gbd-card)', boxShadow: '0 6px 24px rgba(0,0,0,.06)' }}>
       {/* 옵션(단일가) 카드 — 그루폰 옵션 패널의 유어딜 버전(즉시판매 단일가 모델) */}
@@ -75,10 +80,10 @@ export default function DealPurchaseBox({
       <button
         onClick={isPrelaunch ? onPrelaunchApply : onBuy}
         disabled={(!isJoinable && !isPrelaunch) || joining}
-        aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? `${formatNumber(total)}원 구매하기` : '구매 불가'}
+        aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? `${formatNumber(total)}원 ${ctaLabel}` : isDemo ? '응모 불가' : '구매 불가'}
         style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
       >
-        {joining ? '처리 중…' : isPrelaunch ? '🔔 오픈 예정 — 사전 응모하기' : !isJoinable ? '구매 불가' : <>{formatNumber(total)}원 구매하기<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
+        {joining ? '처리 중…' : isPrelaunch ? '🔔 오픈 예정 — 사전 응모하기' : !isJoinable ? (isDemo ? '응모 불가' : '구매 불가') : <>{formatNumber(total)}원 {ctaLabel}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
       </button>
 
       {/* 안심 배지 — 그루폰 trust rows */}

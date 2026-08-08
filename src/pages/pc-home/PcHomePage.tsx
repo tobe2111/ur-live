@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import SiteFooter from '@/components/main/SiteFooter'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
-import PcHomeRail, { type DealCategory } from './PcHomeRail'
+import PcHomeRail, { DEAL_CATS, type DealCategory } from './PcHomeRail'
 import PcHomeMapButton from './PcHomeMapButton'
 import PcHomeAppBand from './PcHomeAppBand'
 import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from './PcHomeLocationBar'
@@ -41,6 +41,8 @@ export default function PcHomePage() {
       return q && DEAL_CATEGORY_KEYS.includes(q) ? q : 'all'
     } catch { return 'all' }
   })
+  // 🏷️ 선택된 카테고리의 한글 라벨 — 'all' 이면 빈 문자열(= 홈 기본 문구 유지). 라벨 SSOT 는 PcHomeRail.
+  const catLabel = category === 'all' ? '' : (DEAL_CATS.find(c => c.key === category)?.label || '')
   const [sort, setSort] = useState<SortKey>('popular')
   // 🗺️ 2026-07-16 (대표 — PC 홈 위치 필터): 선택 지역(초기값 = 지난 방문 저장분). GroupBuyFeed 로 주입.
   const [region, setRegion] = useState<HomeRegion>(() => readHomeRegion())
@@ -81,19 +83,30 @@ export default function PcHomePage() {
           {/* 🏠 ① 카테고리 섹션(+더보기) · ③ 중간 배너 (2026-08-04 대표 시안 승인).
               어드민이 만든 섹션·배너가 하나도 없으면 **전부 null** → 아래 딜 그리드가 그대로
               이어진다(대표 확정 "안 올리면 아예 안 보이게"). 되돌리기는 플래그 하나. */}
-          {HOME_SHOWCASE_ENABLED && (
+          {/* 🎯 2026-08-08 (대표 — "카테고리 페이지를 눌러도 맨 위가 그 카테고리에 맞는 이용권이 안 나와.
+              UI 자체가 잘못됐어. 그 카테고리 이용권만 나와야지"): 쇼케이스 섹션·배너는 **어드민이 큐레이션한
+              홈 전용 편성**이라 카테고리를 모른다. 그래서 숙소를 눌러도 맨 위엔 그대로 남아 있었고,
+              카테고리로 걸러진 그리드는 그 **아래**에 있었다 — 화면 맨 위가 카테고리와 무관했던 이유.
+              ⇒ 카테고리를 고른 순간엔 숨긴다. 'all'(홈 기본)에서만 편성이 보인다. */}
+          {HOME_SHOWCASE_ENABLED && category === 'all' && (
             <>
               <HomeSections midBanner={<HomeBannerStrip variant="inline" />} />
               <HomeBannerStrip variant="wide" />
             </>
           )}
 
+          {/* 🏷️ 2026-08-08: 카테고리를 고르면 제목·설명이 **그 카테고리를 말한다.** 이전엔 숙소를 눌러도
+              제목이 "내 주변 가까운 딜"이라, 화면이 걸러졌다는 신호가 어디에도 없었다. */}
           <header className="mb-4">
             <h1 className="text-[24px] font-black tracking-tight text-gray-900 dark:text-white">
-              {userLoc ? '내 주변 가까운 딜' : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
+              {catLabel
+                ? `${catLabel} 이용권`
+                : userLoc ? '내 주변 가까운 딜' : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
             </h1>
             <p className="mt-1.5 text-[14px] text-gray-500 dark:text-gray-400">
-              이용권 · 공동구매 · 교환권을 할인가로 바로 만나보세요.
+              {catLabel
+                ? `${catLabel} 이용권만 모아 봤어요.`
+                : '이용권 · 공동구매 · 교환권을 할인가로 바로 만나보세요.'}
             </p>
           </header>
 
