@@ -225,15 +225,27 @@ const MUTATIONS = [
       '자동수리가 도는 것처럼 보이면서 실제로는 아무 일도 안 일어나는, 정확히 그 상태가 된다.',
   },
   {
+    name: 'commerce anyEmail 빠른 길이 태그 감싼 이메일을 놓침',
+    file: 'src/features/marketing/api/commerce-notify-collect.ts',
+    find: "    if (!raw.includes('@')) continue",
+    replace: "    if (raw.includes('<')) continue",
+    test: 'src/tests/unit/ads-commerce-record-cpu.test.ts',
+    why:
+      '최적화는 "빠른 길"을 **추가**하는 것이라 조용히 결과를 바꿀 수 있다 — 그리고 이 함수가 바꾸는 결과는 ' +
+      '**리드의 이메일 유무**, 즉 이 DB 의 유일한 성공 지표다. 그래서 속도가 아니라 **옛 구현과의 동치성**을 ' +
+      "고정한다(참조 구현을 테스트에 박아 대조). 이 주입은 '@' 대신 '<' 로 끊어 태그 감싼 이메일을 놓치게 만든다.",
+  },
+  {
     name: 'commerce 마감선 보정이 낡은 값으로 되돌아감',
     file: 'src/features/marketing/api/commerce-notify-collect.ts',
     find: 'const RUN_DEADLINE_MS = 6_000',
     replace: 'const RUN_DEADLINE_MS = 12_000',
     test: 'src/tests/unit/ads-commerce-deadline-calibration.test.ts',
     why:
-      '벽시계 마감선은 CPU 한도의 **대리 측정**이라 사망점이 움직이면 보정이 조용히 낡는다. ' +
-      '실제로 낡았다: 주석이 12초를 고른 근거는 "사망점(26초)의 절반" 이었는데 2026-08-08 사망은 13,921ms 였다 ' +
-      '(= 12초가 사망점의 87%, 여유 0). 주석에만 적어 두면 다음 세션이 "느리니까" 되돌린다.',
+      '한 회차가 태우는 CPU 의 **천장**이다. 워커가 CPU 시간을 안 주므로 남은 여유를 볼 수 없고, ' +
+      '죽는 지점은 레인이 아니라 **그 회차의 성질**이다(08-09 실측: storeinfo 가 13,833ms 에 죽고 ' +
+      '20,668ms 에 살았다 — 코드 변경 0). 맞출 대상이 없으니 할 수 있는 건 우리 몫을 작게 두는 것뿐이고, ' +
+      '그래서 이 값은 **올리는 것만 막는 천장**이다. 주석에만 적어 두면 다음 세션이 "느리니까" 되돌린다.',
   },
   {
     name: 'CPU 자기교정 — collect-hira 가 배수를 무시한다',

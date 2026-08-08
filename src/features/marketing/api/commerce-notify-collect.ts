@@ -73,7 +73,12 @@ export function mapCommerceLead(it: RawCommerce): CompanyLead {
     closed,
   }
 }
-const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
+/**
+ * ⚡ 2026-08-09: `'<'` 가 없으면 `replace` 를 건너뛴다 — **결과는 완전히 동일**(지울 게 없다).
+ *   이 함수는 레코드마다 필드 수만큼 불린다(회차당 수만 번). 실응답 값의 대부분엔 태그가 없어
+ *   정규식 실행이 통째로 낭비였다. 이 레인이 CPU 한도로 죽는 원인의 한 축이다.
+ */
+const stripTag = (s: unknown): string => { const v = String(s || ''); return (v.includes('<') ? v.replace(/<[^>]+>/g, '') : v).trim() }
 const pickRegion = (addr: string): string | null => { const m = addr.match(/([가-힣]+?)(시|군|구)\s/); return m ? m[1].replace(/특별|광역|자치|도$/g, '').slice(0, 20) : null }
 
 export type RawCommerce = Record<string, unknown>
@@ -156,7 +161,20 @@ const DOMAIN_RE = /^(?:https?:\/\/)?(?:www\.)?[a-z0-9.\-]+\.[a-z]{2,}(?:\/\S*)?$
 function g(it: RawCommerce, ...keys: string[]): string { for (const k of keys) { const v = it[k]; if (!isNoValue(v)) return stripTag(v) } return '' }
 /** ⚠️ 필드명 불확실 대비 — **어떤 필드든 이메일 형태면** 회수(통신판매 신고본은 전자우편이 있음, 키 이름만 버전차).
  *   `*` 포함 값은 통째 스킵 — 마스킹("ab**cd@x.com")에서 부분매칭("cd@x.com")으로 **잘린 가짜 이메일**을 만들 위험 차단. */
-function anyEmail(it: RawCommerce): string { for (const v of Object.values(it)) { const s = stripTag(v); if (!s || s.includes('*')) continue; const m = s.match(EMAIL_RE); if (m && !/@(?:example|test|sample)\./i.test(m[0])) return m[0].toLowerCase() } return '' }
+function anyEmail(it: RawCommerce): string {
+  for (const v of Object.values(it)) {
+    // ⚡ 2026-08-09: 태그 제거는 문자를 **지우기만** 하므로 원문에 '@' 가 없으면 결과에도 없고,
+    //   EMAIL_RE 는 '@' 를 요구한다 ⇒ 여기서 끊는 것은 **결과에 영향이 0**이면서 필드당 정규식 2회를 없앤다.
+    //   실응답은 필드 ~50개 중 이메일 후보가 한둘이라 이 한 줄이 이 함수 비용의 대부분을 걷어낸다.
+    const raw = String(v || '')
+    if (!raw.includes('@')) continue
+    const s = stripTag(raw)
+    if (!s || s.includes('*')) continue
+    const m = s.match(EMAIL_RE)
+    if (m && !/@(?:example|test|sample)\./i.test(m[0])) return m[0].toLowerCase()
+  }
+  return ''
+}
 /** 인터넷도메인 필드(크롤 관문 겸 **수동 접촉용 회사 사이트**). 이메일 형태는 제외. */
 function anyDomain(it: RawCommerce): string { for (const [k, v] of Object.entries(it)) { if (!/dmn|domain|url|site|hmpg|hompage|homepage/i.test(k)) continue; const s = stripTag(v); if (s && !s.includes('@') && DOMAIN_RE.test(s)) return s } return '' }
 
@@ -203,16 +221,27 @@ const PAGE_ROWS = 500
  *     외부 응답이 느린 회차에도 여유를 둔다. 정확한 CPU 계측은 워커 런타임이 안 준다.
  */
 /**
- * 🔻 2026-08-09 **재보정 — 죽는 지점이 26초에서 13.9초로 내려왔다**(라이브 실측).
- *   위 주석이 12초를 고른 근거는 *"죽는 지점(26초)의 절반 이하"* 였는데, 그 전제가 더는 참이 아니다:
- *     마지막 성공 08-08 21:00 KST  elapsed 13,935ms (deadline·records 동시 도달)
- *     사망     08-08 23:00 KST  ms 13,921ms  err=Worker exceeded CPU time limit
- *   즉 12초 마감선은 이제 사망점의 **87%** 다 — 여유가 사실상 0 이라 한 회차만 무거워도 넘어간다.
- *   같은 틱에 `collect-storeinfo`(13,833ms) · `collect-hira`(21,067ms) 도 같은 사유로 죽었다.
+ * 🔻 2026-08-09 **재보정 — 그리고 "사망점" 이라는 개념 자체를 버린다**(배포 후 라이브 실측).
+ *
+ *   처음엔 *"죽는 지점이 26초에서 13.9초로 내려왔으니 마감선도 절반으로"* 라고 적었다. **그 모델이 틀렸다.**
+ *   배포 뒤 08-09 05:00 KST 회차가 반증했다 — **손대지 않은 레인들이 자기 사망 기록보다 한참 위에서 살았다**:
+ *     collect-storeinfo  13,833ms 에 사망 → **20,668ms 에 생존**(코드 변경 0)
+ *     collect-hira       21,067ms 에 사망 → **12,415ms 에 생존**(코드 변경 0)
+ *     collect-neis                          **30,697ms 에 생존**(관측 최고)
+ *
+ *   ⇒ 죽는 지점은 **레인의 성질이 아니라 그 회차의 성질**이다. 같은 레인이 13.8초에 죽고 20.7초에 산다.
+ *     부모/형제가 그 틱에서 이미 태운 CPU 가 남은 여유를 정하는데, **우리는 그 여유를 볼 수 없다**
+ *     (워커가 CPU 시간을 안 준다 — `Date.now()` 는 I/O 에서만 흐른다).
+ *
+ * ⇒ 그래서 기준을 바꾼다: 죽는 지점에 **맞추는** 것이 아니라 **우리가 태우는 몫을 줄인다**.
+ *   여유를 못 보니 맞출 수 없고, 할 수 있는 건 *넘어갈 확률을 낮추는 것*뿐이다. 실측으로 확인된 것:
+ *   이 값(6초·700건)에서 한 회차가 **1페이지 499건**만 훑고 `stopped_by=deadline` 으로 끊고 커서를 남긴다
+ *   (종전 3페이지 1,499건). 태우는 몫이 1/3 이면 나쁜 틱에서 살아남을 확률이 그만큼 오른다.
  *
  * ⚠️ **작게 도는 것이 죽는 것보다 항상 낫다** — 죽으면 루프 뒤 커서 저장이 실행되지 않아 다음 회차가
  *   같은 페이지를 또 훑는다(위 주석의 '영원히 전진 0'). 슬라이스를 줄이면 회차당 수확만 줄고 전진은 남는다.
- *   ⇒ 사망점의 절반이라는 **원래 기준을 그대로 지키되**, 갱신된 사망점(13.9초)에 맞춰 다시 계산했다.
+ *   비용은 명시해 둔다: 회차당 1,499 → 499건. 수확을 되찾으려면 마감선을 올릴 게 아니라
+ *   **레코드당 CPU 를 줄여야 한다**(그게 여유를 안 쓰고 수확만 늘리는 유일한 길).
  */
 const RUN_DEADLINE_MS = 6_000
 /** 유료 마감선 — 유료 CPU 한도(30s) 아래의 여유. ⚠️ 추정이다: 전환 후 하트비트의
