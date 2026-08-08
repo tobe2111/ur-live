@@ -72,6 +72,54 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '잘린 제목 파편이 상호가 된다(webkr — 공공기관이 대행사 tier1 로)',
+    file: 'src/features/marketing/api/company-classify.ts',
+    find: "  if (DESC_IS_PAGE_BODY.has(input.source || '') && unbalancedBracket(name)) return reject('TRUNCATED_TITLE')",
+    replace: '  // (제거)',
+    test: 'src/tests/unit/company-classify-webkr-noise.test.ts',
+    why:
+      '제목을 구분자로 자르다 괄호 안에서 끊기면(`[광주 - 동구] …` → `[광주`) 그 파편이 상호가 되고, ' +
+      '이름에 `진흥원` 이 안 남아 **기관 어휘 검사를 통과한다**. 대표가 잡은 전남중소기업일자리경제진흥원이 ' +
+      '정확히 그 경로로 `대행사 tier1`(콜드 접촉 풀 최상단)에 앉아 있었다. 리드가 하나 섞이는 문제가 아니라 ' +
+      '**"제안 보낼 수 있는 리드 수"라는 유일한 성공 지표가 거짓으로 부풀어 있는** 문제다.',
+  },
+  {
+    name: '잘린-제목 규칙을 전 소스에 적용한다(등록부 실업체 56건 삭제)',
+    file: 'src/features/marketing/api/company-classify.ts',
+    find: "  if (DESC_IS_PAGE_BODY.has(input.source || '') && unbalancedBracket(name)) return reject('TRUNCATED_TITLE')",
+    replace: "  if (unbalancedBracket(name)) return reject('TRUNCATED_TITLE')",
+    test: 'src/tests/unit/company-classify-webkr-noise.test.ts',
+    why:
+      '⚠️ **넓히는 방향의 결함** — 좁히는 것만 결함이 아니다. 라이브에서 괄호 불균형을 전 소스로 재면 ' +
+      '`주)다산케인엔케이통상` 류 **정부 등록부 실업체 56건**이 잡힌다(등록부가 앞 `(` 를 흘린 표기지 우리가 ' +
+      '자른 파편이 아니다). 그리고 `commerce` 는 **제안 가능 리드의 95.7%** 다 — 이 한 줄이 넓어지면 명단의 ' +
+      '심장을 깎는다. 실제로 이 규칙을 설계할 때 전 소스 적용이 첫 안이었고, 라이브 측정이 막았다.',
+  },
+  {
+    name: 'or.kr(비영리 전용 도메인)을 기관으로 안 본다',
+    file: 'src/features/marketing/api/company-classify.ts',
+    find: '      orgByHost = NONPROFIT_HOST.test(host)',
+    replace: '      orgByHost = false',
+    test: 'src/tests/unit/company-classify-webkr-noise.test.ts',
+    why:
+      '`or.kr` 은 등록 요건상 비영리기관만 받는다 — 이름을 안 봐도 확정인 신호다. 이게 필요한 이유는 ' +
+      '**이름이 늘 믿을 수 있는 게 아니기 때문**: 상공회의소가 `「2025년 제1회 부산진구` 라는 잘린 제목으로 ' +
+      '들어와 파트너로 앉아 있었다. 이름 어휘 검사는 이름이 남아 있을 때만 통하고, **호스트는 잘리지 않는다.** ' +
+      '소스 주석은 예전부터 "or.kr 은 org 로 분류만" 이라고 약속했는데 **그 코드가 없었다**(의도만 있던 자리).',
+  },
+  {
+    name: '페이지 본문을 업종 근거로 인정한다(webkr)',
+    file: 'src/features/marketing/api/company-classify.ts',
+    find: '    if (bodyUntrusted && !r.re.test(name)) continue',
+    replace: '    // (제거)',
+    test: 'src/tests/unit/company-classify-webkr-noise.test.ts',
+    why:
+      'webkr 의 `description` 은 검색결과 **페이지 본문**이다. 진흥원이 지원사업 보도자료에 "온라인 마케팅 ' +
+      '활성화" 라고 쓰면 대행사 규칙에 걸려 기관이 파트너가 된다. 더 나쁜 건 그렇게 붙은 `evidence` 가 ' +
+      '**이름 치유(Phase 3)의 제외 조건**이라 잘린 이름까지 영구히 굳는다는 것 — 조용히 틀린 채 남는다. ' +
+      '⚠️ `local`(지도)의 description 은 지도 API 업종 문자열이라 진짜 근거이고, 5,932건이 거기 걸려 있다.',
+  },
+  {
     name: '공정위 응답 오류코드를 header 에서만 읽는다(실패가 성공처럼 보인다)',
     file: 'src/features/marketing/api/franchise-collect.ts',
     find: '  const codeSrc = (resp.header ?? resp ?? data) as Record<string, unknown>',

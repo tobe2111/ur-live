@@ -23,6 +23,27 @@
 /** 업체가 아닌 도메인 — 정부/공공/학교/군. 이 호스트의 페이지는 업체 리드가 될 수 없다.
  *  (협회·조합 `or.kr` 은 '지역조직' 파트너로 실제 가치가 있어 차단하지 않고 lead_type=org 로 분류만.) */
 export const NON_BUSINESS_HOST = /(?:^|\.)(?:go\.kr|gov\.kr|ac\.kr|ed\.kr|es\.kr|ms\.kr|hs\.kr|mil\.kr|re\.kr|korea\.kr|gov)$/i
+/**
+ * 🏛 비영리 전용 도메인 — **차단이 아니라 org 라벨**(위 주석이 약속한 동작인데 코드가 없었다).
+ *
+ *   `or.kr` 은 등록 요건상 비영리기관·단체만 받는다 → 이름을 안 봐도 확정이다. 이게 필요한 이유는
+ *   **이름이 늘 믿을 수 있는 게 아니기 때문**이다: 라이브 실측에서 상공회의소가 `「2025년 제1회 부산진구`
+ *   라는 잘린 제목으로 들어와 `대행사 tier1`(콜드 접촉 풀) 최상단에 앉아 있었다. 이름 어휘 검사
+ *   (ORG_WORD)는 이름이 남아 있을 때만 통한다 — 호스트는 잘리지 않는다.
+ */
+export const NONPROFIT_HOST = /(?:^|\.)or\.kr$/i
+/**
+ * ✂️ **잘린 제목 판별** — 여는 괄호가 안 닫혔거나 그 반대.
+ *
+ *   ⚠️ **`webkr` 에만 쓴다.** 라이브 실측에서 이 패턴을 전 소스에 걸면 `주)다산케인엔케이통상`
+ *   같은 **정부 등록부의 실제 업체 56건**을 지운다(등록부가 앞 `(` 를 흘린 표기라 우리 잘못이 아니다).
+ *   webkr 은 우리가 제목을 구분자로 직접 자르므로 파편이 우리 책임이고, 그때만 이 신호가 유효하다.
+ */
+const BRACKETS: Array<[string, string]> = [['[', ']'], ['(', ')'], ['「', '」'], ['【', '】'], ['《', '》'], ['〈', '〉']]
+export const unbalancedBracket = (s: string): boolean =>
+  BRACKETS.some(([o, c]) => (s.split(o).length - 1) !== (s.split(c).length - 1))
+/** 설명(description)이 **페이지 본문**이라 업종 근거로 못 쓰는 소스 — 근거는 `classifyLead` ③ 주석. */
+const DESC_IS_PAGE_BODY = new Set(['webkr'])
 
 /** 공고·모집글·기사 제목에만 나타나는 어휘 — 상호에는 사실상 등장하지 않는다.
  *  (예: "…수행기관 모집", "2026년 … 지원사업 공고", "보도자료", "채용공고") */
@@ -53,7 +74,7 @@ export type ClassifyConfidence = 'registry' | 'evidence' | 'keyword' | 'none'
  *  자동으로 재검사 대상이 된다(안 올리면 이미 스탬프된 잘못된 행이 영구 방치 — 이 사고의 원인).
  *  v3 (2026-07-27): 안내-페이지 제목 어휘(위치안내/이용안내/오시는길/지정 게시대 — 대표 신고
  *  "지정 게시대 위치안내" 업체명) NOTICE_WORD 추가. */
-export const CLASSIFY_RULES_VERSION = 5 // 2026-08-03: 'market'(전통시장) 권위 소스 추가
+export const CLASSIFY_RULES_VERSION = 6 // 2026-08-08: or.kr=org · 잘린제목 거부 · 본문근거 불인정(대표 신고 진흥원)
 //  ⚠️ 이 bump 의 소급 대상은 **사실상 0** 이다(아직 source='market' 행이 없다). 그런데도 올린 이유:
 //    이 상수의 실패 모드는 비대칭이다 — 불필요하게 올리면 **한 번 더 훑는 비용**이지만, 안 올리면
 //    **영구히 옛 판정에 갇힌다**(재검사 쿼리에 시간 폴백이 없다). 애매하면 올리는 쪽이 맞다.
@@ -150,12 +171,16 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
 
   // ① 정부·학교 도메인에서 온 페이지는 업체가 아님(webkr 발굴의 주된 오염원).
   const site = squash(input.website)
+  let orgByHost = false
   if (site) {
     try {
       const host = new URL(/^https?:\/\//i.test(site) ? site : `https://${site}`).hostname
       if (NON_BUSINESS_HOST.test(host)) return reject('NON_BUSINESS_HOST')
+      orgByHost = NONPROFIT_HOST.test(host) // 차단 X — 아래 ③ 에서 org 로 라벨만(제휴 가치는 있다)
     } catch { /* 파싱 실패는 통과 — 뒤 어휘 검사로 걸러짐 */ }
   }
+  // ①-b 우리가 자른 제목의 파편은 상호가 아니다("[광주 - 동구] …" → "[광주"). webkr 한정 — 근거는 상수 주석.
+  if (DESC_IS_PAGE_BODY.has(input.source || '') && unbalancedBracket(name)) return reject('TRUNCATED_TITLE')
 
   // ② 공고/모집/기사 제목 → 업체명이 아님. ("…수행기관 모집" 사례)
   if (NOTICE_WORD.test(name)) return reject('NOTICE_TITLE')
@@ -183,12 +208,25 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
 
   // ③ 업종 분류 — 리드 자신의 텍스트가 1순위 근거, 키워드는 폴백.
   const hay = `${name} ${desc}`
+  /**
+   * 🩸 **설명 본문은 근거가 아니다** (2026-08-08 대표 신고 — 전남중소기업일자리경제진흥원이 '대행사 tier1').
+   *
+   *   webkr 의 `description` 은 **검색결과 페이지의 본문 조각**이다. 진흥원이 소상공인 지원 보도자료에
+   *   "온라인 마케팅 활성화" 라고 쓰면 `hay` 가 대행사 규칙에 걸려 **기관이 콜드 접촉 풀 최상단**에 앉았다.
+   *   게다가 그렇게 붙은 `evidence` 는 이름 치유(Phase 3, `classify_confidence='none'` 대상)에서 제외돼
+   *   **잘린 이름까지 영구히 굳는다** — 조용히 틀린 채 남는 이 레포의 단골 실패 모양.
+   *   ⇒ 이 소스는 **이름에서 맞은 규칙만** 근거로 인정하고, 본문에서만 맞으면 ④ 키워드 폴백으로 떨어뜨린다
+   *     (버리지 않는다 — 카테고리는 남고 `unknown` 이라 '분류 확인 카드'로 사람 눈에 올라간다).
+   *   ⚠️ `local`(지도)의 description 은 지도 API 의 업종 문자열이라 **진짜 근거다** — 여기 포함하지 말 것.
+   */
+  const bodyUntrusted = DESC_IS_PAGE_BODY.has(input.source || '')
   // 🏛 기관 선판정 — 업종 규칙보다 먼저. 재단·협회가 '행사 대행' 을 한다고 영업 대상(파트너)이 되지 않는다.
-  if (ORG_WORD_STRICT.test(name)) {
+  if (orgByHost || ORG_WORD_STRICT.test(name)) {
     return { ok: true, category: input.category ?? '지역조직', subcategory: input.subcategory ?? null, tier: input.tier ?? 3, lead_type: 'org', confidence: 'evidence' }
   }
   for (const r of BIZ_RULES) {
     if (!r.re.test(hay)) continue
+    if (bodyUntrusted && !r.re.test(name)) continue // 본문에서만 맞음 — 다음 규칙이 이름에서 맞을 기회를 준다
     if (r.type === 'store') {
       // 매장 자체 — 업종 라벨은 키워드 폴백을 유지하되 접촉 가치 축만 store 로.
       return { ok: true, category: input.category ?? null, subcategory: input.subcategory ?? null, tier: input.tier ?? r.tier, lead_type: 'store', confidence: 'evidence' }
@@ -218,6 +256,7 @@ export function suspectCompanyName(name: string, sourceKeyword?: string | null):
   const n = String(name || '').replace(/\s+/g, ' ').trim()
   if (n.length < 2) return true
   if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(n)) return true // 도메인 그대로인 placeholder(미디어 레인 등) — 실명 치유 대상
+  if (unbalancedBracket(n)) return true // 구분자로 자르다 괄호 안에서 끊긴 파편("[광주") — 호출부가 webkr 한정이라 등록부 표기 오탐 없음
   if (/["“”‘’',?？]/.test(n)) return true
   if (n.length >= 18 && n.split(/\s+/).length >= 5) return true
   if (/(?:된다|한다|않는다|안된다|났다|높여|커져|줄어|늘어)$/.test(n)) return true
