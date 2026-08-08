@@ -212,6 +212,17 @@ const MUTATIONS = [
       '자동수리가 도는 것처럼 보이면서 실제로는 아무 일도 안 일어나는, 정확히 그 상태가 된다.',
   },
   {
+    name: 'commerce 마감선 보정이 낡은 값으로 되돌아감',
+    file: 'src/features/marketing/api/commerce-notify-collect.ts',
+    find: 'const RUN_DEADLINE_MS = 6_000',
+    replace: 'const RUN_DEADLINE_MS = 12_000',
+    test: 'src/tests/unit/ads-commerce-deadline-calibration.test.ts',
+    why:
+      '벽시계 마감선은 CPU 한도의 **대리 측정**이라 사망점이 움직이면 보정이 조용히 낡는다. ' +
+      '실제로 낡았다: 주석이 12초를 고른 근거는 "사망점(26초)의 절반" 이었는데 2026-08-08 사망은 13,921ms 였다 ' +
+      '(= 12초가 사망점의 87%, 여유 0). 주석에만 적어 두면 다음 세션이 "느리니까" 되돌린다.',
+  },
+  {
     name: 'CPU 자기교정 — collect-hira 가 배수를 무시한다',
     file: 'src/features/marketing/api/hira-hospital-collect.ts',
     find: 'const maxPages = maxPagesArg ?? applyQuantum(envPlanValue(undefined, 3, 12, env), cfg.q, 1)',
