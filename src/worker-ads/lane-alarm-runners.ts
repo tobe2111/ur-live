@@ -357,6 +357,35 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
       return runNoticeScan(env)
     },
   },
+  /**
+   * ⏰ **5차 이관 — 보강 2레인** (2026-08-09 밤, 대표 "다른 세션에서 수집 에러" 신고의 실측 처방).
+   *
+   *   3차 때 "사흘 무사망"으로 제외했던 둘이 4차 이관 **후에도** 부모 회차에서 죽기 시작했다
+   *   (`enrich-company` ×2 · `enrich-prospects` ×1 — 마지막 08-09 22:00 KST). 부모가 가벼워져도
+   *   남은 레인끼리 겹치는 회차는 죽는다. 제외 근거가 사라졌으니 원칙대로 이관 — 이것으로
+   *   cron 에 남는 레인은 발화 실종·사망 이력이 **한 번도 없는** 것들뿐이다.
+   *
+   *   ⚠️ enrich-company 만 `runsPerHour: 8` — cron 의도가 원래 드라이버 8라운드/시였다
+   *   (`resolveEnrichRounds(ADS_ENRICH_ROUNDS, 8)`, 라이브 env 미설정 = 8). 알람 기상 1회가
+   *   드라이버 1홉과 같은 "자기 예산 1라운드"라 총량 동일 — 증설이 아니라 의도 복원이다.
+   *   env 로 라운드를 바꾸면 이 값도 함께 볼 것(정적 등록부라 env 를 못 읽는다).
+   */
+  'enrich-company': {
+    runsPerHour: 8,
+    run: async (env) => {
+      if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED === 'true') return { skipped: 'gate_off' }
+      const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
+      return enrichHeldLeads(env)
+    },
+  },
+  'enrich-prospects': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED === 'true') return { skipped: 'gate_off' }
+      const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich')
+      return enrichProspectContacts(env)
+    },
+  },
 }
 
 export const ALARM_LANE_NAMES = Object.keys(ALARM_LANES)

@@ -1958,6 +1958,17 @@ const MUTATIONS = [
       '그게 애초에 이 레인 계열을 죽인 원인이다(2·3차 공통 규약).',
   },
   {
+    name: '5차 이관 enrich-company cron 게이트 소실(알람 8라운드와 cron 드라이버가 겹침)',
+    file: 'src/worker-ads/index.ts',
+    find: "if (!laneAlarmOn) kick('/__ads/enrich-company-driver'",
+    replace: "kick('/__ads/enrich-company-driver'",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '3차 때 "사흘 무사망"으로 제외했던 레인이 4차 후에도 부모 회차에서 죽어(×2, 08-09 22:00 KST) ' +
+      '5차로 이관했다. 게이트가 빠지면 알람 8라운드와 cron 드라이버 8라운드가 같은 시간에 겹쳐 ' +
+      '크롤 예산이 이중으로 나간다.',
+  },
+  {
     name: '키워드 수율 은퇴 소실 — 고갈 auto 가 슬롯을 영구 점유(신선도 회전 정지)',
     file: 'src/features/marketing/api/influencer-auto-collect.ts',
     find: "AND found_total >= 50 AND saved_total < 10 ORDER BY saved_total ASC, found_total DESC LIMIT 3",

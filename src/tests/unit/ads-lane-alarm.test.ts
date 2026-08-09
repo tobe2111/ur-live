@@ -363,3 +363,29 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
     const seg = runners.slice(runners.indexOf('maintenance: {'), runners.indexOf('maintenance: {') + 900)
     expect(seg).toMatch(/getUTCHours\(\) === RESCAN_HOUR_UTC\) return \{ skipped: 'rescan_hour' \}/)
   })
+
+  /**
+   * ⏰ 5차 이관 — 보강 2레인 (2026-08-09 밤). 3차 때 "사흘 무사망"으로 제외했던 둘이 4차 후에도
+   *   죽기 시작(enrich-company ×2 · enrich-prospects ×1). 이것으로 cron 잔류는 사망 이력 0 뿐이다.
+   */
+  it('🔒 5차 이관 — enrich-company 는 runsPerHour 8(드라이버 8라운드/시 의도 복원, 증설 아님)', () => {
+    const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
+    const seg = runners.slice(runners.indexOf("'enrich-company': {"), runners.indexOf("'enrich-company': {") + 200)
+    expect(seg).toMatch(/runsPerHour: 8,/)
+    const seg2 = runners.slice(runners.indexOf("'enrich-prospects': {"), runners.indexOf("'enrich-prospects': {") + 200)
+    expect(seg2).toMatch(/runsPerHour: 1,/)
+  })
+
+  it('🔒 5차 이관 — 알람이 몰면 cron 은 손을 뗀다(2곳)', () => {
+    const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+    expect(src).toMatch(/if \(!laneAlarmOn\) kick\('\/__ads\/enrich-company-driver'/)
+    expect(src).toMatch(/if \(!laneAlarmOn\) kick\('\/__ads\/enrich-prospects'/)
+  })
+
+  it('🔒 5차 이관 — 킬스위치 방향(기본 ON, false 아님 명시로만 끔)', async () => {
+    const { ALARM_LANES } = await import('@/worker-ads/lane-alarm-runners')
+    for (const lane of ['enrich-company', 'enrich-prospects']) {
+      const r = await ALARM_LANES[lane]!.run({ ADS_ENRICH_DISABLED: 'true' } as never)
+      expect((r as { skipped?: string }).skipped, `${lane} 킬스위치 무시`).toBe('gate_off')
+    }
+  })
