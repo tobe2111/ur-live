@@ -273,3 +273,19 @@ ALARM_LANES 등록(runsPerHour 1, 게이트는 러너 안) + index.ts kick 에 `
 규약 2차와 동일 + 짝수시 레인(commerce·storeinfo)은 러너 안에서 시각 보존. commerce 의 cron
 게이트는 **cron-public-data.ts** 에 있다(index.ts 만 보면 놓친다 — 변이 항목으로 고정).
 제외: enrich-company·enrich-prospects·daily-batch — 08-05 각 1회 후 사흘 무사망("얹을 근거" 미달).
+
+## 15) 4차 이관 — 일 1회 레인 7개 + 침묵 경보 원인 규명 (2026-08-09 새벽)
+
+대표가 붙여넣은 침묵 경보(rescan 3.2일·localdata-chain 2.1일·nara-vendor 5일)의 실측 결론:
+- **nara-vendor = 유령**(레인 철거됨, 하트비트 행만 잔존). 은퇴 임계(gap×8≈16일)가 일1회 레인엔
+  보수적이라 ~08-19 까지 울리다 자연 해제. 즉시 끄려면 어드민에서 그 하트비트 행 삭제(대표 액션).
+- **일1회 레인의 발화 실종 = 부모 사망 회차(p:1)와 정확히 일치.** 08-08 하루에만 5개(nps 16h ·
+  daily-batch 18h · sweep-nts 19h · scan-notices 21h · nara-contract 23h) 실종 — 매시간 레인은
+  다음 정각이 있지만 일1회는 그날이 끝. ⇒ **가장 취약한 레인들이라 4차로 이관**(+rescan·localdata-chain).
+- 곁수리 2건: ① 3차 match-registry 러너가 라우트의 5패스 루프 대신 1패스만 돌던 것 정합(04:00 실측
+  scanned=400 이 단서) ② cron 규약 "정비는 19시를 재보정에 양보"를 알람 maintenance 러너에 복원
+  (안 하면 12회/시 정비가 MAINT_LEASE 를 쥐어 재보정이 영영 못 잡는다 — 변이로 고정).
+- 잔류 cron 일1회: sweep-mx·franchise·silence-digest — 발화 실종 이력 0이라 "얹을 근거" 미달로 유지.
+- 알람 레인 13 → 20. 부트 = 회차당 서브리퀘스트 1개씩이라 부모 예산(≈50) 안.
+
+**판정**: 배포 후 각 레인의 지정 시각(KST 01·03·04·05·06·08시 계열) 통과 시 스탬프+ok 확인.
