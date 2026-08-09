@@ -84,6 +84,18 @@ const MUTATIONS = [
       '`collect-nara-vendor` 하나였다. 유령이 진짜를 덮는 것이 이 레포가 반복해 만난 경보 무력화의 형태다.',
   },
   {
+    name: '어드민 화면이 유령을 빨갛게 칠한다(서버만 고치면 화면은 그대로다)',
+    file: 'src/pages/AdminSystemMonitoringPage.tsx',
+    find: '                  {realStale && <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-bold">멈춤 의심</span>}',
+    replace: '                  {h.stale && <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-bold">멈춤 의심</span>}',
+    test: 'src/tests/unit/cron-heartbeat-verdict.test.ts',
+    why:
+      '**여기까지 안 오면 고친 게 아니다.** 서버가 판정을 실어 주고 집계에서 빼도, 화면이 행마다 ' +
+      '`h.stale` 을 빨갛게 칠하면 **사람이 보는 것은 그대로 12건**이다. 실제로 이 세션이 서버만 고쳐 놓고 ' +
+      '끝났다고 할 뻔했고, 대표가 "이제 영구적이냐"고 물어 다시 확인하다 발견했다 — 같은 커밋에서 ' +
+      '"계산해 놓고 안 쓰면 소용없다"고 적어 놓고 자기가 그 함정에 걸린 것이라, 이 배선은 기계가 지킨다.',
+  },
+  {
     name: '어드민 침묵 목록이 유령까지 센다',
     file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
     find: "  const stale = items.filter(i => (i.age_minutes ?? 0) > 60 * 24 && (i.verdict ?? 'judge') === 'judge').map(i => i.name)",

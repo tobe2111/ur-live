@@ -55,6 +55,20 @@ describe('하트비트 유령 판정', () => {
     expect(src).toMatch(/r\.verdict = classifyBeat\(/)
   })
 
+  /**
+   * 🩸 **여기까지 안 오면 고친 게 아니다.** 서버가 판정을 실어 주고 집계에서 빼도, 화면이 행마다
+   * `h.stale` 을 빨갛게 칠하면 사람이 보는 것은 그대로 12건이다 — 실제로 이 세션이 서버만 고쳐 놓고
+   * "끝났다"고 할 뻔했다(대표가 "이제 영구적이냐"고 물어 다시 확인하다 발견).
+   */
+  it('🔒 화면이 유령을 빨갛게 칠하지 않는다 (서버만 고치면 화면은 그대로다)', () => {
+    const src = fs.readFileSync('src/pages/AdminSystemMonitoringPage.tsx', 'utf8')
+    // 유령 판정을 실제로 계산해서 쓰는가
+    expect(src).toMatch(/const ghost = [^\n]*verdict === 'superseded'/)
+    // '멈춤 의심' 배지와 빨간 점이 raw `stale` 이 아니라 realStale 에 묶여 있는가
+    expect(src).toMatch(/\{realStale && [^\n]*멈춤 의심/)
+    expect(src).not.toMatch(/\{h\.stale && [^\n]*멈춤 의심/)
+  })
+
   it('🔒 어드민 stale 목록이 judge 만 센다', () => {
     const src = fs.readFileSync('src/features/admin/api/admin-system-monitoring.routes.ts', 'utf8')
     const line = src.split('\n').find(l => l.includes('const stale = items.filter')) || ''
