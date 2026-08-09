@@ -1935,6 +1935,28 @@ const MUTATIONS = [
       '그게 애초에 이 레인 계열을 죽인 원인이다(2·3차 공통 규약).',
   },
   {
+    name: '4차 이관 daily-batch cron 게이트 소실(알람과 이중 실행 — 일일 배치는 멱등 보장이 없다)',
+    file: 'src/worker-ads/index.ts',
+    find: "if (!laneAlarmOn) gates.dailyAt(18, '/__ads/daily-batch'",
+    replace: "gates.dailyAt(18, '/__ads/daily-batch'",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '일 1회 레인 7개를 4차로 알람에 옮겼다(08-08 하루에만 5개가 부모 사망 회차에서 발화 실종). ' +
+      'daily-batch 는 5단계 순차 배치라 알람과 cron 이 같은 18시에 겹치면 가격→순위→스냅샷이 ' +
+      '두 번 돌며 이력이 이중 기록된다 — 게이트가 유일한 방어다.',
+  },
+  {
+    name: '정비 알람이 재보정 시각 양보를 잃음(리스 경합 — 진 쪽이 흔적 없이 사라진다)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: "if (new Date().getUTCHours() === RESCAN_HOUR_UTC) return { skipped: 'rescan_hour' }",
+    replace: '',
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      'cron 시절 `hourlySchedule(PHASES, [RESCAN_HOUR_UTC])` 가 하던 양보를 알람 러너가 잃으면, ' +
+      '시간당 최대 12회 도는 정비가 19시 내내 MAINT_LEASE 를 쥐어 일 1회뿐인 야간 재보정이 ' +
+      '리스를 못 잡고 조용히 사라진다 — 침묵 경보 3.2일의 재발 경로다.',
+  },
+  {
     name: '3차 이관 commerce cron 게이트 소실 — 다른 파일(cron-public-data)이라 따로 지킨다',
     file: 'src/worker-ads/cron-public-data.ts',
     find: "if (!laneAlarmDrivesEnrich(env) && e.ADS_COMMERCE_ENABLED === 'true')",

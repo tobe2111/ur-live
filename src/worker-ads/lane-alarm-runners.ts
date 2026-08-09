@@ -43,6 +43,11 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
   },
   maintenance: {
     run: async (env) => {
+      // 🤝 19시(UTC)는 야간 재보정에 양보 — cron 시절 `hourlySchedule(PHASES, [RESCAN_HOUR_UTC])` 의
+      //   양보를 알람에서도 복원한다(2026-08-09 4차). 둘이 같은 MAINT_LEASE 를 다투면 진 쪽이
+      //   스냅샷도 안 남기고 사라진다(maintenance-cron.ts 의 원 규약 — 시각 상수도 같은 SSOT).
+      const { RESCAN_HOUR_UTC } = await import('./rescan-hour')
+      if (new Date().getUTCHours() === RESCAN_HOUR_UTC) return { skipped: 'rescan_hour' }
       const { runNextMaintenancePhase } = await import('@/features/marketing/api/influencer-maintenance')
       return runNextMaintenancePhase(env)
     },
@@ -192,7 +197,12 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
     run: async (env) => {
       if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED === 'true') return { skipped: 'gate_off' }
       const { matchRegistryEmails } = await import('@/features/marketing/api/registry-email-match')
-      return matchRegistryEmails(env, 400, { left: 45 }) // cron 킥과 같은 인자 — 처리량 의도 보존
+      // 라우트(`/__ads/match-registry`)와 같은 5패스 예산 루프 — 첫 판(1패스)은 처리량을 1/5 로
+      //   줄이고 있었다(2026-08-09 04:00 KST 실측 scanned=400). 두 벌이 갈리면 이렇게 된다.
+      const budget = { left: 45 }
+      let last = await matchRegistryEmails(env, 400, budget)
+      for (let i = 1; i < 5 && !last.done && budget.left > 8; i++) last = await matchRegistryEmails(env, 400, budget)
+      return last
     },
   },
   'collect-hira': {
@@ -220,6 +230,87 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
       if (new Date().getUTCHours() % 2 !== 0) return { skipped: 'odd_hour' }
       const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect')
       return runStoreInfoCollect(env)
+    },
+  },
+  /**
+   * ⏰ **4차 이관 — 일 1회 레인 7개** (2026-08-09, 대표가 붙여넣은 침묵 경보의 근본 수리).
+   *
+   * ## 왜 — 하루 한 번뿐인 기회가 부모 사망에 걸리면 통째로 증발한다 (D1 실측)
+   * ```
+   *   침묵 경보:  maintenance-rescan 3.2일 · collect-localdata-chain 2.1일
+   *   08-08 하루에만:  nps(16h)·daily-batch(18h)·sweep-nts(19h)·scan-notices(21h)·nara-contract(23h)
+   *                    전부 발화 실종 — 그 시각들의 회차 이력이 정확히 잠정(p:1 = 부모가 꼬리 전에 사망)
+   * ```
+   * 매시간 레인은 한 번 죽어도 다음 정각이 있지만 **일 1회 레인은 그날이 끝**이다. 알람은 부모가
+   * 없어 자기 예산을 받는다 — 1~3차와 같은 처방을, 가장 취약한(기회가 가장 희소한) 레인에 적용.
+   *
+   * ## 규약 — 시각은 러너 안에서 보존(외부 호출량 불변), 나머지는 1~3차와 동일
+   * cron 잔류 일 1회 레인 중 **발화를 놓친 적 없는** sweep-mx(17h)·collect-franchise(22h)·
+   * silence-digest(23h)는 남긴다 — "얹을 근거"(굶거나 죽거나)가 아직 없다.
+   */
+  'maintenance-rescan': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_AUTO_MAINTENANCE_ENABLED?: string }).ADS_AUTO_MAINTENANCE_ENABLED === 'false') return { skipped: 'gate_off' }
+      const { RESCAN_HOUR_UTC } = await import('./rescan-hour')
+      if (new Date().getUTCHours() !== RESCAN_HOUR_UTC) return { skipped: 'off_hour' }
+      const { runNightlyRescan } = await import('@/features/marketing/api/influencer-maintenance')
+      return runNightlyRescan(env)
+    },
+  },
+  'collect-localdata-chain': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED !== 'true') return { skipped: 'gate_off' }
+      if (new Date().getUTCHours() !== 20) return { skipped: 'off_hour' }
+      const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect')
+      return runLocalDataCollect(env)
+    },
+  },
+  'collect-nps': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED !== 'true') return { skipped: 'gate_off' }
+      if (new Date().getUTCHours() !== 16) return { skipped: 'off_hour' }
+      const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich')
+      return runNpsWorkplaceEnrich(env)
+    },
+  },
+  'daily-batch': {
+    runsPerHour: 1,
+    run: async (env) => {
+      // env 게이트 없음(cron 도 무게이트) — 시각만 지킨다.
+      if (new Date().getUTCHours() !== 18) return { skipped: 'off_hour' }
+      const { runAdsDailyBatch } = await import('./daily-batch')
+      return runAdsDailyBatch(env)
+    },
+  },
+  'sweep-nts': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if (env.ADS_COMPANY_COLLECT_ENABLED !== 'true') return { skipped: 'gate_off' }
+      if (new Date().getUTCHours() !== 19) return { skipped: 'off_hour' }
+      const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep')
+      return sweepBusinessStatus(env)
+    },
+  },
+  // ⚠️ 나라장터는 **opt-out**(기본 ON — 2026-08-04 대표 "자동으로 데이터 나오게끔") — 게이트 방향 주의.
+  'collect-nara-contract': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_NARA_CONTRACT_ENABLED?: string }).ADS_NARA_CONTRACT_ENABLED === 'false') return { skipped: 'gate_off' }
+      if (new Date().getUTCHours() !== 23) return { skipped: 'off_hour' }
+      const { runNaraContractCollect } = await import('@/features/marketing/api/nara-contract-collect')
+      return runNaraContractCollect(env)
+    },
+  },
+  'scan-notices': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_NOTICE_ENABLED?: string }).ADS_NOTICE_ENABLED !== 'true') return { skipped: 'gate_off' }
+      if (new Date().getUTCHours() !== 21) return { skipped: 'off_hour' }
+      const { runNoticeScan } = await import('@/features/marketing/api/notice-scan')
+      return runNoticeScan(env)
     },
   },
 }
