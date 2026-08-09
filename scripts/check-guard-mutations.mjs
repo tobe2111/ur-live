@@ -2061,6 +2061,28 @@ const MUTATIONS = [
       '같은 알람의 collect 가 28,643ms 완주가 증거다. 전제가 사라진 값을 그대로 쓰면 창이 근거 없이 좁다.',
   },
   {
+    name: '알람 부트스트랩이 죽은 체인을 못 살림(레인이 조용히 멎는다)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'const kind = alarmReviveKind(cur, Date.now())',
+    replace: "const kind = cur == null ? 'none' : 'alive'",
+    test: 'src/tests/unit/ads-alarm-revive.test.ts',
+    why:
+      '이게 2026-08-09 사고 그 자체다 — `getAlarm()` 이 non-null 이면 "이미 걸려 있다"며 넘어가는데, ' +
+      '**예약 시각이 3.5시간 과거인데 안 깨어난** 인스턴스가 정확히 그 상태였다. 매 정각 확인하면서 ' +
+      '매 정각 못 살려 측정 갈래가 6시간 죽어 있었고, 하트비트는 계속 초록이었다.',
+  },
+  {
+    name: '알람 사망 판정 여유가 간격보다 짧음(정상 지연을 덮어써 회차를 잃음)',
+    file: 'src/worker-ads/lane-alarm-policy.ts',
+    find: 'export const ALARM_DEAD_AFTER_MS = 30 * 60_000',
+    replace: 'export const ALARM_DEAD_AFTER_MS = 30_000',
+    test: 'src/tests/unit/ads-alarm-revive.test.ts',
+    why:
+      '**부호만 반대인 같은 고장.** 런타임의 알람 발화는 정확하지 않아 수십 초~수 분 지연이 정상인데, ' +
+      '여유가 간격보다 짧으면 그 정상 지연을 죽음으로 오판해 알람을 계속 덮어쓴다 → 고치려던 것과 ' +
+      '반대로 회차를 잃는다. 되살리기를 넣을 때 반드시 같이 고정해야 하는 짝이다.',
+  },
+  {
     name: '측정 샤드가 slice 를 안 넘김(같은 사람 중복 측정 — 늘린 만큼 손해)',
     file: 'src/worker-ads/lane-alarm-runners.ts',
     find: 'k > 1 ? { i, k } : null',
