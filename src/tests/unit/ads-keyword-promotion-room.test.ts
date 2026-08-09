@@ -110,6 +110,18 @@ describe('은퇴↔승격 livelock 차단 — 즉시-재은퇴 클래스는 되�
     expect(promoteSrc()).toMatch(/active = 0 AND hits >= \? AND \$\{PROMOTE_NOT_RETIRABLE_SQL\} AND keyword IN/)
   })
 
+  it('🕊️ 가석방 — 은퇴 증거는 낡는다(대표 확정 2026-08-09 "영구 배제가 되면 안된다")', async () => {
+    const { AUTO_RETIRE_WHERE, RETIRE_EVIDENCE_FRESH_DAYS } = await import('@/features/marketing/api/influencer-keyword-rotation')
+    // 세 조각 전부 신선도 절이 있어야 한다 — 하나라도 빠지면 그 클래스는 다시 영구 배제가 된다.
+    const fresh = `last_run_at IS NOT NULL AND last_run_at >= datetime('now','-${RETIRE_EVIDENCE_FRESH_DAYS} days')`
+    for (const [k, frag] of Object.entries(AUTO_RETIRE_WHERE)) {
+      expect(frag, `은퇴 조각 '${k}' 에 증거 유통기한이 없다 — 차단이 영구가 된다`).toContain(fresh)
+    }
+    // 창의 범위: 0/음수면 은퇴 자체가 꺼지고(모든 증거가 '낡음'), 과대하면 사실상 영구 배제로 회귀.
+    expect(RETIRE_EVIDENCE_FRESH_DAYS).toBeGreaterThanOrEqual(7)
+    expect(RETIRE_EVIDENCE_FRESH_DAYS).toBeLessThanOrEqual(90)
+  })
+
   it('조각은 NULL-안전(COALESCE) — bare 비교면 NOT() 3치 논리가 신선 후보 전체를 승격에서 조용히 뺀다', async () => {
     // 미실행 후보는 found/saved/barren 이 NULL 일 수 있다. bare `found_total >= 50` 은 NULL 을 내고
     // `NOT(NULL OR …)` = NULL = 제외 — 차단 가드가 정반대(신선 큐 전멸)로 뒤집힌다.

@@ -273,20 +273,34 @@ export function autoPromotionRoom(activeAutoCount: number, cap = MAX_AUTO_KEYWOR
 }
 
 /**
+ * 🕊️ **은퇴 증거의 유통기한(가석방)** — 대표 확정 2026-08-09 *"영구 배제가 되면 안된다"*.
+ *
+ *   근거는 `yieldPenalty` 의 관찰과 같다 — 새 크리에이터는 계속 생기므로 "그때 못 물었다"가 "영영 못
+ *   문다"는 아니다. 마지막 실행이 이 일수보다 오래됐으면 은퇴 증거를 **낡은 것**으로 보고 조건에서 뺀다.
+ *   차단(`PROMOTE_NOT_RETIRABLE_SQL`)은 이 조각들의 부정이라 **자동으로 함께 만료**된다: 30일 뒤
+ *   재승격 가능 → 한 회차 돌아 재평가 → 또 빈손이면 증거가 신선해져 다시 30일 차단. 나쁜 키워드의
+ *   비용은 30일당 슬롯 1개로 유계이고, 영구 배제는 구조적으로 불가능하다.
+ *   활성 키워드는 회전 랩(~3일)상 last_run_at 이 항상 신선해 **은퇴 동작은 사실상 불변**이다.
+ */
+export const RETIRE_EVIDENCE_FRESH_DAYS = 30
+const FRESH_EVIDENCE = `last_run_at IS NOT NULL AND last_run_at >= datetime('now','-${RETIRE_EVIDENCE_FRESH_DAYS} days')`
+
+/**
  * 🪦 **auto 은퇴 3문(수집 회차 시작에 실행)의 WHERE 조각** — 은퇴문과 승격 차단이 **같은 문자열**을 봐야 한다.
  *
  *   ⚠️ 전부 COALESCE 로 감싼 이유: 이 조각은 승격 차단(`PROMOTE_NOT_RETIRABLE_SQL`)에서 **NOT(...)** 으로도
  *   쓰이는데, 미실행 후보는 found/saved/barren 이 NULL 일 수 있다. bare 비교(`found_total >= 50`)는 NULL 을
  *   내고, SQL 3치 논리에서 `NOT(NULL OR …)` 은 NULL = 제외 — **신선 후보 전체가 승격에서 조용히 빠진다.**
  *   COALESCE 면 각 조각이 항상 참/거짓이라 그 함정이 없다(은퇴문 쪽 의미는 동일 — NULL 은 어차피 은퇴 아님).
+ *   `last_run_at` 비교는 `FRESH_EVIDENCE` 의 선행 `IS NOT NULL` 이 단락시켜 같은 이유로 NULL-안전하다.
  */
 export const AUTO_RETIRE_WHERE = {
-  /** (F-30) 이틀+ 돌았는데 성과 0 — 탐색 슬롯 영구 점유 차단. */
-  f30: "COALESCE(saved_total, 0) = 0 AND last_run_at IS NOT NULL AND last_run_at <= datetime('now','-2 days')",
-  /** 🌵 연속 무수확(저장 0 회차) 8회+ — 고갈. */
-  barren: 'COALESCE(barren_streak, 0) >= 8',
+  /** (F-30) 이틀+ 돌았는데 성과 0 — 탐색 슬롯 점유 차단(증거 30일 유통기한). */
+  f30: `COALESCE(saved_total, 0) = 0 AND ${FRESH_EVIDENCE} AND last_run_at <= datetime('now','-2 days')`,
+  /** 🌵 연속 무수확(저장 0 회차) 8회+ — 고갈(증거 30일 유통기한). */
+  barren: `COALESCE(barren_streak, 0) >= 8 AND ${FRESH_EVIDENCE}`,
   /** 🌾 수율 — 찾긴 하는데(found 50+) 새 리드가 안 남음(saved <10). barren 의 drip 사각지대를 닫는다. */
-  yield: 'COALESCE(found_total, 0) >= 50 AND COALESCE(saved_total, 0) < 10',
+  yield: `COALESCE(found_total, 0) >= 50 AND COALESCE(saved_total, 0) < 10 AND ${FRESH_EVIDENCE}`,
 } as const
 
 /**
@@ -305,7 +319,8 @@ export const AUTO_RETIRE_WHERE = {
  * 2026-07-29 결정(`healBarrenStreakOnce` docblock)의 복귀 경로는 살아 있다 — 오염된 barren 으로 잘못
  * 은퇴됐다 힐링된 고수율 키워드(맛집 saved 414 · 피부관리 363 …)는 세 조건 어디에도 안 걸려 재승격된다
  * (실제로 #1106 cap 개방 직후 그 경로로 복귀했다 — 관측 15개 전원 온타깃). 막는 것은 오직
- * "되살려도 즉시 재은퇴 = 순수 낭비" 클래스다. 시간 경과 가석방(예: 30일 뒤 재도전)은 별도 정책 판단.
+ * "되살려도 즉시 재은퇴 = 순수 낭비" 클래스이고, 그 차단도 **영구가 아니다** — 증거가 낡으면
+ * (`RETIRE_EVIDENCE_FRESH_DAYS`) 은퇴 조건과 함께 만료되어 재도전 1회가 열린다(대표 확정 2026-08-09).
  */
 export const PROMOTE_NOT_RETIRABLE_SQL =
   `NOT ((${AUTO_RETIRE_WHERE.f30}) OR (${AUTO_RETIRE_WHERE.barren}) OR (${AUTO_RETIRE_WHERE.yield}))`

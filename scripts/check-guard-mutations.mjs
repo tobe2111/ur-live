@@ -1961,13 +1961,23 @@ const MUTATIONS = [
     name: '키워드 수율 은퇴 소실 — 고갈 auto 가 슬롯을 영구 점유(신선도 회전 정지)',
     // 2026-08-09: SQL 이 rotation SSOT 조각(AUTO_RETIRE_WHERE)으로 이사 — 주입 표적도 따라간다.
     file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
-    find: "yield: 'COALESCE(found_total, 0) >= 50 AND COALESCE(saved_total, 0) < 10'",
-    replace: "yield: 'COALESCE(found_total, 0) >= 999999 AND COALESCE(saved_total, 0) < 10'",
+    find: 'yield: `COALESCE(found_total, 0) >= 50',
+    replace: 'yield: `COALESCE(found_total, 0) >= 999999',
     test: 'src/tests/unit/ads-keyword-promotion-room.test.ts',
     why:
       'barren_streak 은 저장 0 회차 연속만 세므로 "가끔 1명씩 떨궈 streak 을 리셋하는"(found 50+/saved<10) ' +
       '저수율 auto 는 영영 은퇴하지 않는다(실측: 동작카페 91/2 · 중랑네일 94/3 이 자리 점유, ' +
       '승격 대기 2,981개가 밖). 임계를 사실상 무한대로 올리는 이 주입은 은퇴를 무력화한다.',
+  },
+  {
+    name: '가석방 소실 — 은퇴 증거 유통기한이 빠지면 차단이 다시 영구 배제가 됨',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: ' AND COALESCE(saved_total, 0) < 10 AND ${FRESH_EVIDENCE}`',
+    replace: ' AND COALESCE(saved_total, 0) < 10`',
+    test: 'src/tests/unit/ads-keyword-promotion-room.test.ts',
+    why:
+      '대표 확정(2026-08-09) "영구 배제가 되면 안된다" — 은퇴 조건은 증거 신선도(30일)로 만료돼야 ' +
+      '승격 차단(그 부정)도 함께 만료된다. 신선도 절을 빼면 그 클래스의 좀비는 영영 재도전을 못 받는다.',
   },
   {
     name: '은퇴↔승격 livelock 재무장 — 즉시-재은퇴 좀비가 승격 슬롯을 태움',
