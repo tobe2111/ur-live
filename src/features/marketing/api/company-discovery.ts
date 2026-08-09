@@ -16,6 +16,7 @@ import { NEWSROOM_EMAIL_LOCAL } from './contact-enrich'
 import { isValidKrPhone } from './contact-enrich'
 import { normalizeCompanyName } from './registry-email-match'
 import { runDdlOnce } from './ads-schema-guard'
+import { pickPriorityBatch, pickCrawlBatch, writePrioState, type ReclassifyRow } from './reclassify-priority'
 
 /* ── 접점 분류 (수집 카테고리 SSOT — 2026-07-27 대표 확정 v3: **실무 업종명이 최상위**) ── */
 //   "카테고리를 대행사, 전문서비스(법률·세무·기장 등), 간판, 인테리어 이렇게 해야지" — 우산어
@@ -372,21 +373,23 @@ export async function countCompanyLeads(DB: D1Database, filter: CompanyLeadFilte
  *     · webkr 의심 이름(검색결과 제목 파편) → confidence='none'(분류 확인 카드로 노출 — 수동 검토 유도)
  *   커서(platform_settings)로 매 실행 이어서. 허위 0(연락처 무접촉). */
 const RECLASSIFY_CURSOR = 'ads_company_reclassify_cursor'
-export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housekeeping = true): Promise<{ scanned: number; updated: number; removed: number; held: number; cursor: number; done: boolean }> {
+// 🎯 재검사 우선순위(추측 많은 소스 먼저) — 근거·티어·상태는 `reclassify-priority.ts` SSOT.
+export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housekeeping = true): Promise<{ scanned: number; updated: number; removed: number; held: number; cursor: number; done: boolean; phase?: string }> {
   await ensureCompanySchema(DB)
-  const curRow = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(RECLASSIFY_CURSOR).first<{ value: string }>().catch(() => null)
-  let cursor = parseInt(curRow?.value || '0', 10)
-  if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
   const n = Math.min(1000, Math.max(1, limit))
-  const rows = (await DB.prepare(
-    `SELECT id, company_name, description, website, category, subcategory, tier, source, source_keyword, status, memo, phone, email, contact_source
-     FROM ad_company_leads WHERE id > ? AND merged_into IS NULL AND (classified_v IS NULL OR classified_v < ?) ORDER BY id ASC LIMIT ?`)
-    .bind(cursor, CLASSIFY_RULES_VERSION, n).all<{ id: number; company_name: string; description: string | null; website: string | null; category: string | null; subcategory: string | null; tier: number | null; source: string; source_keyword: string | null; status: string; memo: string | null; phone: string | null; email: string | null; contact_source: string | null }>()
-    .catch(() => null))?.results || []
+
+  // ①②  배치 선택 — 우선순위(추측 많은 소스) 먼저, 다 비면 전체 크롤. 근거는 reclassify-priority.ts 헤더.
+  const prio = await pickPriorityBatch(DB, n, CLASSIFY_RULES_VERSION)
+  const prioDone = !prio
+  const crawl = prioDone ? await pickCrawlBatch(DB, n, CLASSIFY_RULES_VERSION, RECLASSIFY_CURSOR) : null
+  const rows: ReclassifyRow[] = prio?.rows || crawl?.rows || []
+  const phase = prio?.phase || 'crawl'
   if (!rows.length) {
     // 한 바퀴 완료 — 커서 리셋(다음 실행은 처음부터, 새로 들어온 미분류 행을 잡음).
+    //   우선순위 상태도 같이 리셋해야 **다음 랩에서 다시 앞줄에 선다**(안 하면 티어가 끝에 고정돼 무력화).
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, '0').run().catch(() => null)
-    return { scanned: 0, updated: 0, removed: 0, held: 0, cursor: 0, done: true }
+    await writePrioState(DB, 0, 0)
+    return { scanned: 0, updated: 0, removed: 0, held: 0, cursor: 0, done: true, phase }
   }
   let updated = 0, removed = 0, held = 0
   const stmts: D1PreparedStatement[] = []
@@ -434,8 +437,10 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     await DB.prepare('UPDATE ad_company_leads SET email = NULL WHERE email IS NOT NULL AND email IN (SELECT email FROM ad_email_suppress)').run().catch(() => null)
     await DB.prepare('UPDATE store_prospects SET email = NULL WHERE email IS NOT NULL AND email IN (SELECT email FROM ad_email_suppress)').run().catch(() => null)
   }
+  // 커서 전진 — **이번 회차가 어느 패스였는지에 맞는 쪽만** 옮긴다. 섞으면 한쪽이 조용히 건너뛴다.
   const nextCursor = rows[rows.length - 1].id
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, String(nextCursor)).run().catch(() => null)
+  if (prioDone) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, String(nextCursor)).run().catch(() => null)
+  else await writePrioState(DB, prio!.tier, nextCursor)
   // 📊 진행률 가시화(2026-07-27 대표 "청소 얼마나 됐나 안 보임") — 남은 미분류 수 포함 스탬프.
   const remRow = await DB.prepare('SELECT COUNT(*) AS n FROM ad_company_leads WHERE merged_into IS NULL AND (classified_v IS NULL OR classified_v < ?)').bind(CLASSIFY_RULES_VERSION).first<{ n: number }>().catch(() => null)
   const prevStat = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>().catch(() => null)
@@ -445,7 +450,7 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), scanned: rows.length, updated, removed, held,
     remaining_unclassified: Number(remRow?.n) || 0, total_removed: tot.removed + removed, total_updated: tot.updated + updated,
   })).run().catch(() => null)
-  return { scanned: rows.length, updated, removed, held, cursor: nextCursor, done: false }
+  return { scanned: rows.length, updated, removed, held, cursor: nextCursor, done: false, phase }
 }
 
 /* ── 큐레이션(상태머신·tier·메모·팔로업·채널) ──────────────────────────────────── */
