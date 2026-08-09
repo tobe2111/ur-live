@@ -1959,14 +1959,26 @@ const MUTATIONS = [
   },
   {
     name: '키워드 수율 은퇴 소실 — 고갈 auto 가 슬롯을 영구 점유(신선도 회전 정지)',
-    file: 'src/features/marketing/api/influencer-auto-collect.ts',
-    find: "AND found_total >= 50 AND saved_total < 10 ORDER BY saved_total ASC, found_total DESC LIMIT 3",
-    replace: "AND found_total >= 999999 AND saved_total < 10 ORDER BY saved_total ASC, found_total DESC LIMIT 3",
+    // 2026-08-09: SQL 이 rotation SSOT 조각(AUTO_RETIRE_WHERE)으로 이사 — 주입 표적도 따라간다.
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: "yield: 'COALESCE(found_total, 0) >= 50 AND COALESCE(saved_total, 0) < 10'",
+    replace: "yield: 'COALESCE(found_total, 0) >= 999999 AND COALESCE(saved_total, 0) < 10'",
     test: 'src/tests/unit/ads-keyword-promotion-room.test.ts',
     why:
-      'barren_streak 은 "검색결과 0"만 세므로 "찾긴 하는데(found 50+) 새 리드가 안 남는(saved<10)" ' +
-      '고갈 키워드는 영영 은퇴하지 않는다(실측: 동작카페 91/2 · 중랑네일 94/3 이 자리 점유, ' +
+      'barren_streak 은 저장 0 회차 연속만 세므로 "가끔 1명씩 떨궈 streak 을 리셋하는"(found 50+/saved<10) ' +
+      '저수율 auto 는 영영 은퇴하지 않는다(실측: 동작카페 91/2 · 중랑네일 94/3 이 자리 점유, ' +
       '승격 대기 2,981개가 밖). 임계를 사실상 무한대로 올리는 이 주입은 은퇴를 무력화한다.',
+  },
+  {
+    name: '은퇴↔승격 livelock 재무장 — 즉시-재은퇴 좀비가 승격 슬롯을 태움',
+    file: 'src/features/marketing/api/influencer-keyword-promote.ts',
+    find: 'AND ${PROMOTE_NOT_RETIRABLE_SQL} AND keyword IN',
+    replace: 'AND keyword IN',
+    test: 'src/tests/unit/ads-keyword-promotion-room.test.ts',
+    why:
+      '은퇴는 active=0 만 쓰고 hits 는 재채굴마다 쌓인다 — 이 가드가 빠지면 은퇴자가 hits DESC 로 ' +
+      '신선 큐를 제치고 재승격되고, 수율/F-30/barren 은 평생 카운터라 다음 회차 시작에 한 번도 안 돌고 ' +
+      '재은퇴된다(2026-08-09 실측 좀비 5 · 게이트 통과 4). 승격 슬롯이 좀비에게 새는 livelock.',
   },
   {
     name: '자동 키워드 cap 이 조용히 60 으로 회귀(신선 유입 재차단)',

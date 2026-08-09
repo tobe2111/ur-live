@@ -39,7 +39,7 @@ import { RETIRED_CATEGORIES } from './influencer-classify'
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, pickStarvationRescue } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, pickStarvationRescue, AUTO_RETIRE_WHERE } from './influencer-keyword-rotation'
 
 // 🌱 시드 키워드(데이터)는 `influencer-seed-keywords.ts`, 그 시드를 테이블에 넣는 일은
 //   `influencer-keyword-store.ts` — 이 파일은 **둘 다 직접 안 만진다**(아래 재수출만).
@@ -177,20 +177,24 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   await ensureQualityColumns(DB)   // is_brand(저장 시점 태깅)·lead_score 컬럼 — INSERT 가 참조하므로 선보강
   await ensurePerfExtraColumns(DB) // last_post_at(블로거 마지막 글 날짜) — INSERT/백필이 참조
   await ensureDiscoveryKeywords(DB)
-  // 💤 자동확장 키워드 회수 2종 — 1 batch(=1 서브리퀘스트)로 묶는다(2026-07-29 예산 절약).
+  // 💤 자동확장 키워드 회수 3종 — 1 batch(=1 서브리퀘스트)로 묶는다(2026-07-29 예산 절약).
+  //   ⚠️ WHERE 조각은 `AUTO_RETIRE_WHERE`(rotation SSOT) — 승격 차단(`PROMOTE_NOT_RETIRABLE_SQL`)이 같은
+  //   문자열을 봐야 한다. 여기만 고치면 은퇴자가 재승격→즉시 재은퇴하는 livelock 이 되살아난다(2026-08-09).
   await DB.batch([
     // (F-30) 활성 이틀+ 인데 성과 0 인 auto 키워드 비활성(탐색 슬롯 영구 점유 차단, 멱등).
-    DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND saved_total = 0 AND last_run_at IS NOT NULL AND last_run_at <= datetime('now','-2 days')"),
+    DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND ${AUTO_RETIRE_WHERE.f30}`),
     // 🌵 **고갈** 회수(2026-07-29) — 위 조건은 `saved_total = 0`(한 번도 못 문 키워드)만 잡아서, *예전엔 잘 물었지만
     //   지금은 다 훑은* auto 키워드를 영원히 놓친다. 연속 무수확 8회+면 비활성(성과가 있었어도 지금은 고갈).
     //   ⚠️ seed 키워드는 비활성화하지 않는다 — 대표가 고른 지역/업종 축이라 사라지면 커버리지에 구멍이 난다.
     //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
-    DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8"),
-    // 🌾 **수율 은퇴**(2026-08-09 — 대표 "키워드 수율" 지시) — barren 의 문서화된 사각지대를 슬롯 차원에서 닫는다:
-    //   "찾긴 하는데(found 50+) 새 리드가 안 남는(saved <10)" auto 는 검색이 성공하니 streak 이 영영 안 오른다.
-    //   실측: 동작카페 found 91/saved 2 · 중랑네일 94/3 이 자리를 점유하는 동안 승격 대기 2,981개가 밖에 있었다.
+    DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND ${AUTO_RETIRE_WHERE.barren}`),
+    // 🌾 **수율 은퇴**(2026-08-09 — 대표 "키워드 수율" 지시) — barren 의 사각지대를 슬롯 차원에서 닫는다:
+    //   barren 은 저장 0 회차 *연속*만 세므로, "찾긴 하는데(found 50+) 가끔 1명씩 떨궈 streak 을 리셋하는"
+    //   저수율(drip) auto 는 8연속에 영영 못 닿는다(정정 2026-08-09 — 예전 문구 "검색이 성공하니 안 오른다"는
+    //   코드와 달랐다. 카운터는 v.saved 바인딩이다). 실측: 동작카페 found 91/saved 2 · 중랑네일 94/3 이
+    //   자리를 점유하는 동안 승격 대기 2,981개가 밖에 있었다.
     //   회차당 3개 상한 — 한꺼번에 비우면 승격·첫회차 수확이 몰려 요동한다(완만한 회전이 목적). seed 무접촉.
-    DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE id IN (SELECT id FROM ad_discovery_keywords WHERE source = 'auto' AND active = 1 AND found_total >= 50 AND saved_total < 10 ORDER BY saved_total ASC, found_total DESC LIMIT 3)"),
+    DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE id IN (SELECT id FROM ad_discovery_keywords WHERE source = 'auto' AND active = 1 AND ${AUTO_RETIRE_WHERE.yield} ORDER BY saved_total ASC, found_total DESC LIMIT 3)`),
   ]).catch(() => null)
   const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total, COALESCE(yt_leads,0) AS yt_leads, COALESCE(yt_contacts,0) AS yt_contacts, COALESCE(nb_measured,0) AS nb_measured, COALESCE(nb_contacts,0) AS nb_contacts FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)

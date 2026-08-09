@@ -126,8 +126,10 @@ export interface YtPickKeyword {
  * 🌾 **수확률 페널티** — `barren_streak` 이 구조적으로 못 보는 낭비 (2026-07-29 라이브 실측).
  *
  * ## barren_streak 의 사각지대
- * 그 카운터는 **`found == 0`**(아무도 못 찾음) 회차만 센다. 그래서
- * **"많이 찾았는데 한 명도 안 남는"** 키워드는 streak 가 영원히 0 이고, 고갈 판정에 걸리지 않는다.
+ * 그 카운터는 **`saved == 0`**(저장 0) 회차 연속을 센다(수집 루프의 `CASE WHEN ? > 0` 이 `v.saved` 에
+ * 바인딩 — 2026-08-09 정정: 예전 판은 "found==0 만 센다"고 적었는데 **코드와 달랐다**). 그래서 사각지대는
+ * "많이 찾는" 키워드 일반이 아니라, **가끔 1명씩 떨궈 streak 을 리셋하는 저수율(drip)** 키워드다 —
+ * 8연속 빈손에 영영 못 닿아 고갈 판정에 안 걸린다(라이브 5개 좀비 중 4개가 정확히 이 부류: saved 2~9).
  *
  * 라이브 실측(2026-07-29) — 전부 `active=1 · barren_streak=0`:
  * ```
@@ -269,6 +271,44 @@ export function autoPromotionRoom(activeAutoCount: number, cap = MAX_AUTO_KEYWOR
   const c = Number.isFinite(cap) ? Math.max(0, cap) : 0
   return Math.max(0, c - n)
 }
+
+/**
+ * 🪦 **auto 은퇴 3문(수집 회차 시작에 실행)의 WHERE 조각** — 은퇴문과 승격 차단이 **같은 문자열**을 봐야 한다.
+ *
+ *   ⚠️ 전부 COALESCE 로 감싼 이유: 이 조각은 승격 차단(`PROMOTE_NOT_RETIRABLE_SQL`)에서 **NOT(...)** 으로도
+ *   쓰이는데, 미실행 후보는 found/saved/barren 이 NULL 일 수 있다. bare 비교(`found_total >= 50`)는 NULL 을
+ *   내고, SQL 3치 논리에서 `NOT(NULL OR …)` 은 NULL = 제외 — **신선 후보 전체가 승격에서 조용히 빠진다.**
+ *   COALESCE 면 각 조각이 항상 참/거짓이라 그 함정이 없다(은퇴문 쪽 의미는 동일 — NULL 은 어차피 은퇴 아님).
+ */
+export const AUTO_RETIRE_WHERE = {
+  /** (F-30) 이틀+ 돌았는데 성과 0 — 탐색 슬롯 영구 점유 차단. */
+  f30: "COALESCE(saved_total, 0) = 0 AND last_run_at IS NOT NULL AND last_run_at <= datetime('now','-2 days')",
+  /** 🌵 연속 무수확(저장 0 회차) 8회+ — 고갈. */
+  barren: 'COALESCE(barren_streak, 0) >= 8',
+  /** 🌾 수율 — 찾긴 하는데(found 50+) 새 리드가 안 남음(saved <10). barren 의 drip 사각지대를 닫는다. */
+  yield: 'COALESCE(found_total, 0) >= 50 AND COALESCE(saved_total, 0) < 10',
+} as const
+
+/**
+ * 🧟 **승격 차단 — "다음 회차 시작에 즉시 재은퇴될" 키워드는 되살리지 않는다** (2026-08-09 라이브 실측).
+ *
+ * ## 무엇이 고장이었나 (livelock — cap 120 개방이 무장시킨 자리)
+ * 은퇴는 `active=0` 만 쓴다 — `hits` 는 그대로고 **재발굴될 때마다 계속 쌓인다**(upsert 는 active 무관).
+ * 그런데 승격 후보 쿼리는 `active=0 AND hits>=5` 뿐이라, 은퇴자가 그 회차 topTags 에 다시 채굴되면
+ * `hits DESC` 에서 **신선 큐를 제치고 재승격**된다. 수율/F-30/barren 조건은 전부 **평생 카운터**
+ * (found/saved/streak 은 리셋되지 않는다)라 재승격자는 다음 회차 시작의 은퇴 batch 가 **돌기도 전에 다시
+ * 은퇴**시킨다 — 한 번도 안 돌고 승격 슬롯만 태우는 순환이다. 라이브 실측(2026-08-09): 좀비 5개
+ * (재테크 hits 260 · 동작카페 124 · 감성카페 103 · 재테크블로그 56 · 중랑네일 49), 그중 4개가 카테고리
+ * 게이트 통과(맛집/네일) = 재승격 가능. 수율 은퇴가 도는 한 이 집합은 **단조 증가**한다.
+ *
+ * ## 이 가드가 막지 않는 것 (의도)
+ * 2026-07-29 결정(`healBarrenStreakOnce` docblock)의 복귀 경로는 살아 있다 — 오염된 barren 으로 잘못
+ * 은퇴됐다 힐링된 고수율 키워드(맛집 saved 414 · 피부관리 363 …)는 세 조건 어디에도 안 걸려 재승격된다
+ * (실제로 #1106 cap 개방 직후 그 경로로 복귀했다 — 관측 15개 전원 온타깃). 막는 것은 오직
+ * "되살려도 즉시 재은퇴 = 순수 낭비" 클래스다. 시간 경과 가석방(예: 30일 뒤 재도전)은 별도 정책 판단.
+ */
+export const PROMOTE_NOT_RETIRABLE_SQL =
+  `NOT ((${AUTO_RETIRE_WHERE.f30}) OR (${AUTO_RETIRE_WHERE.barren}) OR (${AUTO_RETIRE_WHERE.yield}))`
 
 /**
  * 🌵 **이 회차의 결과를 키워드 판정에 써도 되는가** (2026-07-29 — 순수함수로 승격).

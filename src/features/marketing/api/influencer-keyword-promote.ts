@@ -9,7 +9,7 @@
  *   ⚠️ 서비스 분리: `ad_discovery_keywords` 만 접촉(소비자/도매 무관).
  */
 import { classifyCategory, canAutoPromote } from './influencer-classify'
-import { autoPromotionRoom, MAX_AUTO_KEYWORDS } from './influencer-keyword-rotation'
+import { autoPromotionRoom, MAX_AUTO_KEYWORDS, PROMOTE_NOT_RETIRABLE_SQL } from './influencer-keyword-rotation'
 
 /** 🛡️ 2026-07-23: 채널 단위 dedupe 도입과 함께 3→5 — '서로 다른 채널 5곳'이 쓴 태그만 승격(단일 실행 폭주 승격 방지). */
 export const AUTO_PROMOTE_HITS = 5
@@ -65,8 +65,12 @@ export async function promoteHashtagKeywords(
   if (!gated.length) return { promoted, kwAuto }
 
   const ph = gated.map(() => '?').join(',')
+  // 🧟 **즉시-재은퇴 클래스는 되살리지 않는다**(2026-08-09) — 은퇴는 active=0 만 쓰고 hits 는 계속 쌓이므로,
+  //   이 가드가 없으면 은퇴자가 재채굴될 때마다 `hits DESC` 로 신선 큐를 제치고 재승격 → 다음 회차 시작의
+  //   은퇴 batch 가 한 번도 안 돌리고 다시 은퇴 → 승격 슬롯만 태우는 livelock(근거·실측은
+  //   `PROMOTE_NOT_RETIRABLE_SQL` docblock). 조각은 은퇴문과 같은 SSOT(rotation)라 갈라질 수 없다.
   const cands = await DB.prepare(`SELECT id, keyword FROM ad_discovery_keywords
-    WHERE active = 0 AND hits >= ? AND keyword IN (${ph}) ORDER BY hits DESC LIMIT ?`)
+    WHERE active = 0 AND hits >= ? AND ${PROMOTE_NOT_RETIRABLE_SQL} AND keyword IN (${ph}) ORDER BY hits DESC LIMIT ?`)
     .bind(AUTO_PROMOTE_HITS, ...gated.map(([t]) => t), room)
     .all<{ id: number; keyword: string }>().catch(() => null)
   const rows = cands?.results || []
