@@ -40,10 +40,10 @@ import { join } from 'node:path'
 const SRC = readFileSync(join(process.cwd(), 'src/features/marketing/api/commerce-notify-collect.ts'), 'utf8')
 
 /**
- * 이 값들로 실제로 살아남은 회차를 관측했다(08-09 05:00 KST). 천장이지 목표가 아니다 —
- * 더 내리는 것은 언제든 자유롭고, **올리는 것만 막는다**.
+ * ⚠️ **마감선은 여기 없다** — 08-09 07:00 KST 실측으로 그건 CPU 가드가 아니라 **I/O 예산**임이
+ * 드러났다(워커의 `Date.now()` 는 I/O 에서만 흐른다). CPU 를 묶는 건 레코드 상한뿐이다.
  */
-const CEILING = { deadlineMs: 6_000, recordsPerRun: 700 }
+const CEILING = { recordsPerRun: 700 }
 
 const num = (name: string): number => {
   const m = SRC.match(new RegExp(`const\\s+${name}\\s*=\\s*([0-9_]+)`))
@@ -52,12 +52,15 @@ const num = (name: string): number => {
 }
 
 describe('collect-commerce — 한 회차가 태우는 몫의 천장', () => {
-  it('🔒 무료 마감선은 실측 생존값 이하로 유지 — 여유를 볼 수 없으니 우리 몫을 작게 둔다', () => {
-    expect(num('RUN_DEADLINE_MS')).toBeLessThanOrEqual(CEILING.deadlineMs)
+  it('🔒 **CPU 를 묶는 건 레코드 상한뿐** — 이 값만이 파싱량을, 즉 CPU 를 정한다', () => {
+    // 죽던 회차가 1,499건이었다. 그 절반 아래로 유지한다.
+    expect(num('MAX_RECORDS_PER_RUN')).toBeLessThanOrEqual(CEILING.recordsPerRun)
   })
 
-  it('🔒 레코드 상한도 함께 — 응답이 빨라 마감선에 안 걸려도 파싱이 CPU 를 먹는다', () => {
-    expect(num('MAX_RECORDS_PER_RUN')).toBeLessThanOrEqual(CEILING.recordsPerRun)
+  it('🔒 마감선은 **I/O 예산** — 레코드 상한이 실제로 걸릴 만큼은 줘야 한다(안 그러면 CPU 가드가 죽은 코드다)', () => {
+    // 6초일 땐 첫 페이지(≈500)에서 끊겨 상한(700)이 한 번도 안 걸렸다 = 수확만 깎고 CPU 가드는 무효.
+    // 페이지 하나가 ~10~12초(실측)이므로 2페이지째를 받으려면 그보다 넉넉해야 한다.
+    expect(num('RUN_DEADLINE_MS')).toBeGreaterThanOrEqual(15_000)
   })
 
   it('🔒 유료 마감선은 무료보다 크되 유료 CPU 한도(30초) 아래 — 전환 시 코드 변경 0', () => {

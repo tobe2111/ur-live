@@ -236,10 +236,10 @@ const MUTATIONS = [
       "고정한다(참조 구현을 테스트에 박아 대조). 이 주입은 '@' 대신 '<' 로 끊어 태그 감싼 이메일을 놓치게 만든다.",
   },
   {
-    name: 'commerce 마감선 보정이 낡은 값으로 되돌아감',
+    name: 'commerce 레코드 상한(=진짜 CPU 가드)이 죽던 값으로 되돌아감',
     file: 'src/features/marketing/api/commerce-notify-collect.ts',
-    find: 'const RUN_DEADLINE_MS = 6_000',
-    replace: 'const RUN_DEADLINE_MS = 12_000',
+    find: 'const MAX_RECORDS_PER_RUN = 700',
+    replace: 'const MAX_RECORDS_PER_RUN = 1_500',
     test: 'src/tests/unit/ads-commerce-deadline-calibration.test.ts',
     why:
       '한 회차가 태우는 CPU 의 **천장**이다. 워커가 CPU 시간을 안 주므로 남은 여유를 볼 수 없고, ' +
