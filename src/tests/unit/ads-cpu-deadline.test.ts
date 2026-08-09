@@ -34,12 +34,37 @@ const COMMERCE = SRC('src/features/marketing/api/commerce-notify-collect.ts')
 const ENTRY = SRC('src/worker-ads/index.ts')
 
 describe('통신판매 — 마감선이 커서 저장을 지킨다', () => {
-  it('🔒 마감선이 **죽는 지점(26초)의 절반 이하** — 외부가 느린 회차에도 여유가 있어야 한다', () => {
-    const m = /const RUN_DEADLINE_MS = ([\d_]+)/.exec(COMMERCE)
-    expect(m, 'RUN_DEADLINE_MS 가 없다').toBeTruthy()
-    const ms = Number(m![1].replace(/_/g, ''))
+  /**
+   * 🔁 **2026-08-09 재작성 — 묶어야 할 것은 시간이 아니라 파싱량이다.**
+   *
+   *   원래 이 검사는 `RUN_DEADLINE_MS <= 13_000`(사망점 26초의 절반)이었다. 그 시절엔 그게 맞았다 —
+   *   `MAX_RECORDS_PER_RUN` 이 **1,500** 이라 실질 제동이 마감선뿐이었기 때문이다.
+   *
+   *   그런데 마감선이 CPU 를 줄이는 방식은 **간접적**이다: 마감선 → 받는 페이지 수 → 파싱 레코드 수 → CPU.
+   *   그리고 그 사슬의 끝(레코드 수)에는 **직접 천장**이 따로 있다. 상한을 700 으로 내린 지금은
+   *   그 천장이 먼저 걸리므로, 시간을 묶는 것은 **수확만 깎고 CPU 는 안 줄인다**
+   *   (08-09 07:00 실측: 마감선 6초에서 `found=500`, 상한 700 은 **한 번도 안 걸렸다**).
+   *
+   *   ⇒ 그래서 시간이 아니라 **실효 파싱량**을 묶는다. 상한은 페이지를 **받기 전에** 보므로 한 장은 넘친다:
+   *       실효 상한 = MAX_RECORDS_PER_RUN + PAGE_ROWS
+   *   이 값이 **죽던 회차의 1,499 보다 작아야** 한다. 마감선을 얼마로 두든 이 천장은 유지된다.
+   *
+   * ⚠️ 못 보는 것: 레코드당 CPU 가 얼마인지는 여기서 못 잰다. 파싱 로직이 무거워지면 같은 건수라도
+   *   더 태운다 — 그건 라이브 하트비트(`ok=false`)로만 보인다. 그때 내릴 것은 **상한**이다.
+   */
+  it('🔒 한 회차 **실효 파싱량**이 죽던 회차(1,499건)보다 작다 — CPU 를 묶는 건 시간이 아니라 이것이다', () => {
+    const cap = Number(/const MAX_RECORDS_PER_RUN = ([\d_]+)/.exec(COMMERCE)![1].replace(/_/g, ''))
+    const rows = Number(/const PAGE_ROWS = ([\d_]+)/.exec(COMMERCE)![1].replace(/_/g, ''))
+    expect(cap).toBeGreaterThan(0)
+    expect(rows).toBeGreaterThan(0)
+    expect(cap + rows, '실효 상한(상한+페이지)이 죽던 1,499건 이상이면 그 회차를 다시 만든다').toBeLessThan(1_499)
+  })
+
+  it('🔒 마감선은 살아 있고 유료 마감선을 넘지 않는다 — 사라지면 느린 회차가 통째로 매달린다', () => {
+    const ms = Number(/const RUN_DEADLINE_MS = ([\d_]+)/.exec(COMMERCE)![1].replace(/_/g, ''))
+    const paid = Number(/const RUN_DEADLINE_MS_PAID = ([\d_]+)/.exec(COMMERCE)![1].replace(/_/g, ''))
     expect(ms).toBeGreaterThan(0)
-    expect(ms, '26초에 죽는데 마감선이 13초 이상이면 못 끊는다').toBeLessThanOrEqual(13_000)
+    expect(ms).toBeLessThanOrEqual(paid)
   })
 
   it('🔒 페이지 루프가 마감선에서 **break** 한다 — return/throw 면 커서 저장을 건너뛴다', () => {
