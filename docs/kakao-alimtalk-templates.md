@@ -486,7 +486,12 @@ https://utongstart.com/wholesale/login
 5. 승인 후: 등록한 `tpl_code`가 위 문서 코드와 **동일**하면 추가 env 불필요(코드가 그 코드로 발송).
    - 단, 콘솔이 코드를 자동 부여(`TC_2026...`)하는 경우 → 해당 env override 등록:
      `ALIGO_STAY_REMINDER_TEMPLATE_DDAY`(stay_dday), `..._D1`(stay_d1),
-     `ALIGO_STAY_VOUCHER_EXPIRE_SOON`, `ALIGO_BUSINESS_REGISTRATION_RESULT`.
+     `ALIGO_STAY_VOUCHER_EXPIRE_SOON`,
+     `ALIGO_BUSINESS_REGISTRATION_VERIFIED`(business_registration_verified) /
+     `ALIGO_BUSINESS_REGISTRATION_REJECTED`(business_registration_rejected).
+     <!-- ⚠️ 2026-08-09 정정: 구 `ALIGO_BUSINESS_REGISTRATION_RESULT` 는 2026-07-01 1코드2문안
+          분리 때 폐기된 이름 — 코드가 읽지 않으므로(env.ts:81-82) 그 이름으로 설정하면 override 가
+          안 먹는다. 반드시 action 별 VERIFIED/REJECTED 두 개로 등록할 것. -->.
 
 ## 📊 발송/실패 모니터링
 

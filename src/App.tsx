@@ -24,6 +24,8 @@ import DesktopTopNav from '@/components/main/DesktopTopNav'
 import { swallow } from '@/shared/utils/swallow'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
 import { featureFlags } from '@/shared/config/feature-flags'
+import { CAMPAIGN_SIGNUP_ENABLED } from '@/shared/feature-flags'
+import { captureInflowRef } from '@/utils/affiliate-track'
 // lazy-loaded — only rendered conditionally, not on initial paint
 const PushNotificationSetup = lazy(() => import('./components/PushNotificationSetup'))
 const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
@@ -78,6 +80,7 @@ const WholesaleLoginPage = lazy(() => import('./pages/WholesaleLoginPage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
 const CreatorApplyPage = lazy(() => import('./pages/CreatorApplyPage')); const CreatorStartPage = lazy(() => import('./pages/CreatorStartPage'))
+const CampaignApplyPage = lazy(() => import('./pages/CampaignApplyPage')) // 📣 2026-08-09 캠페인 인플루언서 모집(방배 등)
 const AboutPage = lazy(() => import('./pages/AboutPage')); const AboutServicePage = lazy(() => import('./pages/AboutServicePage')); const PartnersPage = lazy(() => import('./pages/PartnersPage')); const CreatorsPage = lazy(() => import('./pages/CreatorsPage')) // 🧭 2026-07-19 웹페이지 3종 (구 소개서 = /about/print)
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -410,6 +413,11 @@ function AppContent() {
       if (inviter && /^\d+$/.test(inviter)) {
         localStorage.setItem('pending_referral_inviter', JSON.stringify({ id: inviter, ts: Date.now() }))
       }
+      // 📣 2026-08-09: 루트 등 상세 밖 랜딩의 ?ref= 도 유입 클릭(inflow_clicks)에 적재.
+      //   affiliate.routes 가 발급하는 share_url(`urdeal.kr/?ref=`)·캠페인 완료화면 링크가 지금까지
+      //   미적재되던 갭. 유입 기록만이며 어필리에이트 구매 귀속(affiliate_ref 저장)은 종전과 동일
+      //   (상세 페이지들의 storeAffiliateRef 만) — 머니 경로 무접촉. 캠페인 코드(?c=)는 함께 태워진다.
+      captureInflowRef(params.get('ref') || params.get('aff'))
     } catch { /* ignore */ }
   }, [])
 
@@ -641,6 +649,7 @@ function AppContent() {
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
             <Route path="/creators/apply" element={<CreatorApplyPage />} /><Route path="/creators/start" element={<CreatorStartPage />} />
+            {CAMPAIGN_SIGNUP_ENABLED && <Route path="/campaign/:code" element={<CampaignApplyPage />} />}{/* 📣 캠페인 신청 — 기존 가입과 게이트 분리(이 플래그는 이 라우트만 가림) */}
             <Route path="/about" element={<AboutServicePage />} /><Route path="/about/print" element={<AboutPage />} /><Route path="/partners" element={<PartnersPage />} /><Route path="/creators" element={<CreatorsPage />} />
             <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <HomeRoute />} />{/* 🖥️ lg+ = 당근 PC 홈 / 그 외 = 지도(홈=지도, 대표 2026-07-15) */}
             <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
