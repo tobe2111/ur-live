@@ -34,6 +34,16 @@ export const FRANCHISE_OP = 'getBrandinfo'
 const FRANCHISE_OP_FALLBACKS = ['getBrandInfo', 'getBrandList'] as const
 /** 실측으로 확정된 이름을 기억한다 — 다음 회차부터 첫 시도에 맞는다(재시도 0). */
 const OP_KEY = 'ads_franchise_op'
+/** 루프가 자기 기록(오퍼레이션 학습 · 통계 · 커서)에 쓸 몫 — 근거는 루프 위 주석. */
+const BOOKKEEPING_RESERVE = 1
+/**
+ * ⏱️ 회차 벽시계 마감선 — 커서 저장이 루프 **뒤**에 있다는 사실이 이 값을 필수로 만든다.
+ *   루프가 인보케이션 한도(≈10.5s)에 맞아 죽으면 저장에 도달하지 못하고 다음 회차가 **같은 페이지를 또
+ *   훑는다(전진 0)** — commerce(08-02)·quality(08-03)가 정확히 그렇게 조용히 멈춰 있었다. 에러가 안 뜨니
+ *   "느린가 보다"로 읽힌다. 한 페이지 fetch 타임아웃이 15s 라 **한 장만 물려도 회차가 통째로 날아가므로**
+ *   스스로 물러나 커서를 남긴다(남은 페이지는 다음 회차가 이어받는다 — 손실 0).
+ */
+const FRANCHISE_RUN_MS = 6_000
 const stripTag = (s: unknown): string => String(s ?? '').replace(/<[^>]+>/g, '').trim()
 type RawFranchise = Record<string, unknown>
 // ⚠️ 별칭 폴백은 `isNoValue` 를 통과해야 한다 — 포털이 '값 없음'을 `"N/A"` 문자열로 주는데 truthy 라
@@ -60,14 +70,26 @@ async function fetchBrandPage(base: string, op: string, key: string, page: numbe
   try { data = JSON.parse(raw) as Record<string, unknown> } catch { data = null }
   if (!data) return { items: [], count: 0, msg: raw.slice(0, 160).replace(/<[^>]+>/g, ' ').trim() || '비JSON 응답' }
   const resp = (data.response ?? data) as Record<string, unknown>
-  const header = resp.header as Record<string, unknown> | undefined
-  const rc = header ? String(header.resultCode ?? '') : ''
-  const rm = header ? String(header.resultMsg ?? '') : ''
+  // 🩸 2026-08-07 — **결과코드를 `header` 에서만 읽던 것이 실패를 성공으로 보이게 했다.**
+  //   이 API 의 응답은 **평평하다**(Swagger 모델 `getBrandinfo_response { resultCode, resultMsg,
+  //   numOfRows, pageNo, totalCount, items }`) — `header` 래퍼가 없다. 그래서 `header` 가 undefined 라
+  //   `rc`/`rm` 이 빈 문자열이 되고, 아래 `msg` 판정이 **무조건 undefined** 가 됐다.
+  //   실측: 오퍼레이션 이름을 고친 뒤 `NO_OPENAPI_SERVICE_ERROR` 는 사라졌는데 `found 0 · error 없음` 이
+  //   3회 반복됐다 — 에러가 없는 게 아니라 **에러를 읽는 자리가 비어 있었다**(이 레포가 반복해 만난
+  //   "실패가 조용히 성공처럼 보인다" 클래스). ⇒ header **또는 평평한 최상위** 어느 쪽에서든 읽는다.
+  const codeSrc = (resp.header ?? resp ?? data) as Record<string, unknown>
+  const rc = String(codeSrc.resultCode ?? '')
+  const rm = String(codeSrc.resultMsg ?? '')
   const body = (resp.body ?? data.body ?? data) as Record<string, unknown>
   let items = (body?.items ?? body?.item ?? data.data ?? []) as unknown
   if (items && !Array.isArray(items) && typeof items === 'object') items = (items as Record<string, unknown>).item ?? []
   const arr = Array.isArray(items) ? items as RawFranchise[] : (items && typeof items === 'object' ? [items as RawFranchise] : [])
-  const msg = (rc && rc !== '00' && rc !== '0') || (rm && !/normal|정상|success/i.test(rm)) ? `${rc} ${rm}`.trim() : undefined
+  const ok = (!rc || rc === '00' || rc === '0') && (!rm || /normal|정상|success/i.test(rm))
+  // 🔎 **0건이 '정상 0건'인지 '조용한 실패'인지 구분한다.** totalCount 가 있으면 그 값을, 없으면 그 사실을
+  //   남긴다 — 안 남기면 다음 세션이 또 "에러 없는데 0건"만 보고 원인을 못 찾는다.
+  const total = codeSrc.totalCount ?? body?.totalCount
+  const msg = !ok ? `${rc} ${rm}`.trim()
+    : (arr.length === 0 ? `응답은 정상(rc=${rc || '없음'})인데 items 0 — totalCount=${total ?? '없음'} · 키=${Object.keys(resp).slice(0, 8).join(',')}` : undefined)
   return { items: arr, count: arr.length, msg }
 }
 
@@ -109,7 +131,13 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
   const budget = { left: pagesPerRun }
   let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
   let useOp = op
-  for (let i = 0; i < budget.left + 3 && budget.left > 0; i++) {
+  // 🧾 **자기 기록 몫을 남긴다** — 이 루프는 이제 안에서 D1 을 쓸 수 있고(오퍼레이션 학습), 뒤에도 쓴다
+  //   (통계·커서). D1 도 서브리퀘스트라, 0까지 태우면 그 쓰기들이 던지고 호출부가 전부 `.catch(() => null)`
+  //   이라 **조용히 사라진다** — 하필 마지막이 자기 스탬프여서 *"돌았는데 안 돈 것"* 처럼 보인다
+  //   (2026-07-30 카카오 스윕·통신판매에서 실제로 그랬다). 이 레인은 48시간에 한 번 도므로
+  //   한 페이지를 양보하는 값이 스탬프를 잃는 값보다 훨씬 싸다.
+  const runDeadline = now + FRANCHISE_RUN_MS
+  for (let i = 0; i < budget.left + 3 && budget.left > BOOKKEEPING_RESERVE && Date.now() < runDeadline; i++) {
     let { items, count, msg } = await fetchBrandPage(base, useOp, key, page, yr, budget)
     // 🔁 **주소 부재일 때만** 다음 후보로 — 첫 페이지에서 한 번만 시도한다(예산 낭비 방지).
     //   맞는 이름을 찾으면 저장해 다음 회차부터 재시도 0. 근거: `FRANCHISE_OP_FALLBACKS` 주석.

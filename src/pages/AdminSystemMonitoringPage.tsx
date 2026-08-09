@@ -72,6 +72,13 @@ interface CronHeartbeat {
   cron?: string | null
   /** 기대 주기 대비 '멈춤'으로 보이는가. 판단 불가면 null. */
   stale?: boolean | null
+  /**
+   * 🪦 그 '멈춤'을 **믿어도 되는가** — `judge` 만 진짜다.
+   *   `superseded`=같은 일이 새 이름으로 돌고 있음 · `retired`=아무도 안 부르는 옛 이름.
+   *   ⚠️ 이걸 안 쓰고 `stale` 만 빨갛게 칠하면 유령이 진짜를 덮는다 — 2026-08-08 에 화면이 12건을
+   *   빨갛게 보여 줬지만 실제로 멈춘 건 하나였고, 그걸 읽은 두 세션이 나란히 오진했다.
+   */
+  verdict?: 'judge' | 'superseded' | 'retired' | null
   /** 마지막 실행이 무엇을 했는지 한 줄 요약. */
   result?: string | null
   /** 이 판정에 쓰인 기대 간격(분) — '왜 멈춤으로 봤나'의 근거. 안 보이면 또 오진한다. */
@@ -329,17 +336,28 @@ export default function AdminSystemMonitoringPage() {
               <span className="text-[11px] text-gray-500">오래된 순 — 맨 위가 멈춤 의심 1순위</span>
             </div>
             <div className="max-h-72 overflow-y-auto divide-y divide-gray-100">
-              {heartbeats.map(h => (
+              {heartbeats.map(h => {
+                // 🪦 유령(승계·은퇴)은 **빨갛게 칠하지 않는다** — 서버가 이미 판정을 실어 준다.
+                //   지우지도 않는다(은퇴 시점을 봐야 하니까). 회색 라벨로 남겨 진짜 하나가 묻히지 않게.
+                const ghost = h.stale === true && (h.verdict === 'superseded' || h.verdict === 'retired')
+                const realStale = h.stale === true && !ghost
+                return (
                 <div key={h.name} className="py-1.5 flex items-center gap-2 text-xs">
-                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${h.stale ? 'bg-red-500' : h.ok === false ? 'bg-amber-500' : 'bg-green-500'}`} />
-                  <span className="font-medium text-gray-900 truncate max-w-[190px]" title={h.name}>{h.name}</span>
-                  <span className={`shrink-0 ${h.stale ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${realStale ? 'bg-red-500' : ghost ? 'bg-gray-300' : h.ok === false ? 'bg-amber-500' : 'bg-green-500'}`} />
+                  <span className={`font-medium truncate max-w-[190px] ${ghost ? 'text-gray-400' : 'text-gray-900'}`} title={h.name}>{h.name}</span>
+                  <span className={`shrink-0 ${realStale ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
                     {h.age_minutes == null ? '기록 없음'
                       : h.age_minutes < 60 ? `${h.age_minutes}분 전`
                       : h.age_minutes < 60 * 24 ? `${Math.round(h.age_minutes / 60)}시간 전`
                       : `${Math.round(h.age_minutes / 60 / 24)}일 전`}
                   </span>
-                  {h.stale && <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-bold">멈춤 의심</span>}
+                  {realStale && <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-bold">멈춤 의심</span>}
+                  {ghost && (
+                    <span className="shrink-0 px-1.5 py-0.5 rounded bg-gray-100 text-gray-500"
+                      title={h.verdict === 'superseded' ? '같은 일이 새 이름으로 실행 중 — 이 이름은 아무도 갱신하지 않는다' : '아무도 안 부르는 옛 이름(개명·게이트 OFF)'}>
+                      {h.verdict === 'superseded' ? '새 이름이 승계' : '은퇴한 이름'}
+                    </span>
+                  )}
                   {h.result && <span className="text-gray-400 truncate" title={h.result}>{h.result}</span>}
                   {h.max_gap_min != null && (
                     <span className="ml-auto shrink-0 text-gray-400" title="이 시간을 넘기면 '멈춤 의심'">
@@ -348,7 +366,8 @@ export default function AdminSystemMonitoringPage() {
                   )}
                   {h.cron && <span className={`shrink-0 text-gray-300 font-mono ${h.max_gap_min == null ? 'ml-auto' : ''}`}>{h.cron}</span>}
                 </div>
-              ))}
+                )
+              })}
             </div>
           </DashboardCard>
         )}
