@@ -1947,6 +1947,28 @@ const MUTATIONS = [
       '그게 애초에 이 레인 계열을 죽인 원인이다(2·3차 공통 규약).',
   },
   {
+    name: '키워드 수율 은퇴 소실 — 고갈 auto 가 슬롯을 영구 점유(신선도 회전 정지)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: "AND found_total >= 50 AND saved_total < 10 ORDER BY saved_total ASC, found_total DESC LIMIT 3",
+    replace: "AND found_total >= 999999 AND saved_total < 10 ORDER BY saved_total ASC, found_total DESC LIMIT 3",
+    test: 'src/tests/unit/ads-keyword-promotion-room.test.ts',
+    why:
+      'barren_streak 은 "검색결과 0"만 세므로 "찾긴 하는데(found 50+) 새 리드가 안 남는(saved<10)" ' +
+      '고갈 키워드는 영영 은퇴하지 않는다(실측: 동작카페 91/2 · 중랑네일 94/3 이 자리 점유, ' +
+      '승격 대기 2,981개가 밖). 임계를 사실상 무한대로 올리는 이 주입은 은퇴를 무력화한다.',
+  },
+  {
+    name: '자동 키워드 cap 이 조용히 60 으로 회귀(신선 유입 재차단)',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: 'export const MAX_AUTO_KEYWORDS = 120',
+    replace: 'export const MAX_AUTO_KEYWORDS = 60',
+    test: 'src/tests/unit/ads-keyword-promotion-room.test.ts',
+    why:
+      '07-21 발굴 스파이크(12,533/일)의 재현 조건이 신선 키워드 유입인데, cap 60 은 라이브에서 ' +
+      'room 0 으로 꽉 차 있었다. 회귀하면 발굴이 다시 고갈 셋 반복으로 돌아간다 — 네이버 호출량과 ' +
+      '무관한 값이라(회차 폭 6 은 별도 상수) 리스크 근거로 되돌릴 이유도 없다.',
+  },
+  {
     name: '4차 이관 daily-batch cron 게이트 소실(알람과 이중 실행 — 일일 배치는 멱등 보장이 없다)',
     file: 'src/worker-ads/index.ts',
     find: "if (!laneAlarmOn) gates.dailyAt(18, '/__ads/daily-batch'",
