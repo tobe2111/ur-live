@@ -83,6 +83,7 @@ export default function AdminSystemMonitoringPage() {
   const [tab, setTab] = useState<'cron' | 'alimtalk' | 'delivery' | 'ops'>('cron')
   const [showResolved, setShowResolved] = useState(false)
   const [acting, setActing] = useState<number | null>(null)
+  const [deletingBeat, setDeletingBeat] = useState<string | null>(null)
   const [channels, setChannels] = useState<Record<string, boolean> | null>(null)
   const [testing, setTesting] = useState(false)
 
@@ -145,6 +146,12 @@ export default function AdminSystemMonitoringPage() {
   const heartbeats = heartbeatQ.data?.items ?? []
   const neverFired = heartbeatQ.data?.never_fired ?? []
   const orphanLanes = heartbeatQ.data?.orphan_lanes ?? []
+  // 🪦 고아(코드에서 사라진 레인)는 실행 목록에서 **분리**한다(2026-08-09) — 오래된 순 정렬이라 고아가
+  //   맨 위 '멈춤 의심'을 독점해 진짜 실패를 묻는다(실측: 최근 실패 5 중 2건이 유령 — b2b 인계 §후속).
+  //   고아는 아래 전용 카드에서만 보이고, 기록 삭제도 거기서 한다.
+  const orphanSet = new Set(orphanLanes)
+  const liveBeats = heartbeats.filter(h => !orphanSet.has(h.name))
+  const orphanBeats = heartbeats.filter(h => orphanSet.has(h.name))
 
   const cronFailures = cronQ.data?.items ?? []
   const cronCounts = cronQ.data?.counts ?? []
@@ -186,6 +193,17 @@ export default function AdminSystemMonitoringPage() {
       toast.success(res.data?.message || '재시도 예약됨')
       load()
     } catch { toast.error('실패') } finally { setActing(null) }
+  }
+
+  // 🪦 고아 하트비트 삭제 — 이름에 `?`/`:` 가 있어(maintenance?phase=…) path 가 아니라 body 로 보낸다.
+  const deleteOrphanBeat = async (name: string) => {
+    if (!window.confirm(`'${name}' 하트비트 기록을 지울까요?\n(레인이 실제로 살아 있으면 다음 실행이 행을 다시 만듭니다)`)) return
+    setDeletingBeat(name)
+    try {
+      await api.post('/api/admin/cron-heartbeats/delete', { name }, auth)
+      toast.success('기록 삭제됨 — 침묵 경보도 함께 멎습니다')
+      heartbeatQ.refetch()
+    } catch { toast.error('실패') } finally { setDeletingBeat(null) }
   }
 
   return (
@@ -308,28 +326,47 @@ export default function AdminSystemMonitoringPage() {
           <DashboardCard className="!p-3">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-bold text-gray-900">🪦 고아 기록</h3>
-              <span className="text-[11px] text-gray-500">기록은 있는데 지금은 아무도 안 부른다</span>
+              <span className="text-[11px] text-gray-500">기록은 있는데 지금은 아무도 안 부른다 — 실행 목록에서는 제외됨</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {orphanLanes.map(n => (
-                <span key={n} className="px-2 py-1 rounded bg-gray-100 text-gray-600 text-xs font-medium line-through">{n}</span>
-              ))}
+              {orphanLanes.map(n => {
+                const beat = orphanBeats.find(h => h.name === n)
+                const age = beat?.age_minutes
+                return (
+                  <span key={n} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-gray-100 text-gray-600 text-xs font-medium">
+                    <span className="line-through">{n}</span>
+                    {age != null && (
+                      <span className="text-gray-400 no-underline">
+                        {age < 60 * 24 ? `${Math.round(age / 60)}시간` : `${Math.round(age / 60 / 24)}일`}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => deleteOrphanBeat(n)}
+                      disabled={deletingBeat === n}
+                      title="하트비트 기록 삭제 — 레인이 살아 있으면 다음 실행이 행을 다시 만든다"
+                      className="ml-0.5 text-gray-400 hover:text-red-600 font-bold disabled:opacity-40"
+                    >
+                      {deletingBeat === n ? '…' : '✕'}
+                    </button>
+                  </span>
+                )
+              })}
             </div>
             <p className="mt-2 text-[11px] text-gray-500">
-              이름이 바뀌었거나 게이트가 꺼진 레인이다. 아무도 갱신하지 않으니 영원히 &lsquo;멈춤 의심&rsquo; 으로 남는다 —
-              고칠 수 없는 경보는 곧 전체 경보를 무시하게 만든다. 지우기 전에 어느 쪽인지 확인할 것.
+              이름이 바뀌었거나 게이트가 꺼진 레인이다. 아무도 갱신하지 않으니 영원히 &lsquo;멈춤 의심&rsquo; 으로 남고
+              침묵 경보도 은퇴 임계까지 계속 울린다 — ✕ 로 기록을 지우면 경보가 즉시 멎는다(개명 확인 후 지울 것).
             </p>
           </DashboardCard>
         )}
         {/* 💓 실행 하트비트 — '멈춤' 은 실패 목록에 안 나온다(예외가 없으니까). 여기서만 보인다. */}
-        {tab === 'cron' && heartbeats.length > 0 && (
+        {tab === 'cron' && liveBeats.length > 0 && (
           <DashboardCard className="!p-3">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-bold text-gray-900">💓 cron 실행 기록</h3>
               <span className="text-[11px] text-gray-500">오래된 순 — 맨 위가 멈춤 의심 1순위</span>
             </div>
             <div className="max-h-72 overflow-y-auto divide-y divide-gray-100">
-              {heartbeats.map(h => (
+              {liveBeats.map(h => (
                 <div key={h.name} className="py-1.5 flex items-center gap-2 text-xs">
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${h.stale ? 'bg-red-500' : h.ok === false ? 'bg-amber-500' : 'bg-green-500'}`} />
                   <span className="font-medium text-gray-900 truncate max-w-[190px]" title={h.name}>{h.name}</span>

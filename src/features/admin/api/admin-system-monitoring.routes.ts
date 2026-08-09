@@ -11,7 +11,7 @@ import { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
 import type { Env } from '@/worker/types/env'
 import { isDocumentedRegistered } from '@/lib/alimtalk-templates'
-import { listCronHeartbeats, getCronHealth } from '@/worker/utils/cron-heartbeat'
+import { listCronHeartbeats, getCronHealth, cpuDeathKey } from '@/worker/utils/cron-heartbeat'
 import { neverFiredLanes, orphanLaneBeats, KNOWN_LANES_KEY } from '@/worker-ads/lane-cadence'
 
 export const adminSystemMonitoringRoutes = new Hono<{ Bindings: Env }>()
@@ -81,6 +81,26 @@ adminSystemMonitoringRoutes.get('/cron-heartbeats', async (c) => {
   } catch { /* 관측 보조 — 실패해도 본 목록은 그대로 준다 */ }
 
   return c.json({ success: true, data: { items, stale, count: items.length, never_fired, orphan_lanes, known_lanes_at } })
+})
+
+// ── POST /cron-heartbeats/delete ────────────────────────────────
+// 🪦 고아 하트비트 행 삭제(2026-08-09) — 개명/철거된 레인의 옛 행은 아무도 갱신하지 않아 **영원히
+//   '멈춤 의심'** 으로 남고, 침묵 경보(silence digest)도 은퇴 임계까지 계속 울린다(실측: nara-vendor
+//   유령이 ~08-19 까지 울릴 예정이었다). 지금까지는 D1 콘솔에서 손으로 지워야 했다 — 어드민 화면의
+//   '고아 기록' 카드에서 지울 수 있게 한다. ⚠️ path param 이 아니라 body 인 이유: 레인 이름에
+//   `?`(`ads:maintenance?phase=quality`)와 `:` 가 들어가 URL 세그먼트로 안전하게 못 싣는다.
+adminSystemMonitoringRoutes.post('/cron-heartbeats/delete', async (c) => {
+  const body = await c.req.json().catch(() => null) as { name?: string } | null
+  const name = typeof body?.name === 'string' ? body.name.trim() : ''
+  if (!name || name.length > 120) return c.json({ success: false, error: 'invalid name' }, 400)
+  // 하트비트 본행 + CPU 사망 기록(별도 키 — 성공이 못 덮는 카운터)을 짝으로 지운다. 레인이 살아
+  //   있는데 실수로 지워도 다음 실행이 행을 다시 만드므로 파괴적이지 않다(사망 카운터만 리셋됨).
+  await c.env.DB.batch([
+    // 키 조립은 기록 쪽과 같은 규칙(slice 80)을 써야 한다 — cpuDeathKey 는 SSOT 헬퍼, hb 는 그 미러.
+    c.env.DB.prepare('DELETE FROM platform_settings WHERE key = ?').bind(`cron_hb:${name.slice(0, 80)}`),
+    c.env.DB.prepare('DELETE FROM platform_settings WHERE key = ?').bind(cpuDeathKey(name)),
+  ]).catch(() => null)
+  return c.json({ success: true })
 })
 
 adminSystemMonitoringRoutes.patch('/cron-failures/:id/resolve', async (c) => {

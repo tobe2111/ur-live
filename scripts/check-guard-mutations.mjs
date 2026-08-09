@@ -1970,6 +1970,17 @@ const MUTATIONS = [
       '승격 대기 2,981개가 밖). 임계를 사실상 무한대로 올리는 이 주입은 은퇴를 무력화한다.',
   },
   {
+    name: 'enrich 킬스위치가 알람 러너에서 소실(죽은 손잡이 재발)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: "if ((env as unknown as { ADS_INFLUENCER_ENRICH_DISABLED?: string }).ADS_INFLUENCER_ENRICH_DISABLED === 'true') return { skipped: 'disabled' }",
+    replace: '',
+    test: 'src/tests/unit/ads-enrich-shards.test.ts',
+    why:
+      '게이트가 cron 폴백 호출부에만 있으면 알람 모드(라이브)에서 스위치를 켜도 아무 일도 안 ' +
+      '일어난다 — 2026-08-02 알람 이관 때 실제로 그렇게 유실됐고 2026-08-09 에 발견됐다. ' +
+      '행동 테스트(run() 이 skipped 반환)가 잡는다.',
+  },
+  {
     name: '가석방 소실 — 은퇴 증거 유통기한이 빠지면 차단이 다시 영구 배제가 됨',
     file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
     find: ' AND COALESCE(saved_total, 0) < 10 AND ${FRESH_EVIDENCE}`',
