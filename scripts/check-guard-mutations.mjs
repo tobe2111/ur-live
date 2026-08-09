@@ -72,6 +72,100 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '하트비트 목록이 유령 판정을 안 싣는다(화면과 경보가 갈라진다)',
+    file: 'src/worker/utils/cron-heartbeat.ts',
+    find: '    for (const r of rows) r.verdict = classifyBeat({ name: r.name, age_minutes: r.age_minutes, max_gap_min: r.max_gap_min }, freshBases)',
+    replace: '    // (제거)',
+    test: 'src/tests/unit/cron-heartbeat-verdict.test.ts',
+    why:
+      '게이트·경보는 `classifyBeat` 로 유령(개명·승계된 옛 이름)을 걸러 조용한데 **사람이 보는 목록만** ' +
+      '안 걸렀다 — 화면 12건 vs 실제 알림 2건. 그 격차는 소음이 아니라 **오진**을 만들었다: 2026-08-08 에 ' +
+      '두 세션이 이 목록을 읽고 "유어애즈 레인 4개가 침묵 중"이라고 보고했지만 진짜로 멈춘 것은 ' +
+      '`collect-nara-vendor` 하나였다. 유령이 진짜를 덮는 것이 이 레포가 반복해 만난 경보 무력화의 형태다.',
+  },
+  {
+    name: '어드민 화면이 유령을 빨갛게 칠한다(서버만 고치면 화면은 그대로다)',
+    file: 'src/pages/AdminSystemMonitoringPage.tsx',
+    find: '                  {realStale && <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-bold">멈춤 의심</span>}',
+    replace: '                  {h.stale && <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-bold">멈춤 의심</span>}',
+    test: 'src/tests/unit/cron-heartbeat-verdict.test.ts',
+    why:
+      '**여기까지 안 오면 고친 게 아니다.** 서버가 판정을 실어 주고 집계에서 빼도, 화면이 행마다 ' +
+      '`h.stale` 을 빨갛게 칠하면 **사람이 보는 것은 그대로 12건**이다. 실제로 이 세션이 서버만 고쳐 놓고 ' +
+      '끝났다고 할 뻔했고, 대표가 "이제 영구적이냐"고 물어 다시 확인하다 발견했다 — 같은 커밋에서 ' +
+      '"계산해 놓고 안 쓰면 소용없다"고 적어 놓고 자기가 그 함정에 걸린 것이라, 이 배선은 기계가 지킨다.',
+  },
+  {
+    name: '어드민 침묵 목록이 유령까지 센다',
+    file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
+    find: "  const stale = items.filter(i => (i.age_minutes ?? 0) > 60 * 24 && (i.verdict ?? 'judge') === 'judge').map(i => i.name)",
+    replace: '  const stale = items.filter(i => (i.age_minutes ?? 0) > 60 * 24).map(i => i.name)',
+    test: 'src/tests/unit/cron-heartbeat-verdict.test.ts',
+    why:
+      '판정을 계산해 놓고 **쓰지 않으면** 화면은 그대로다 — "가드는 있는데 그 자리에 안 붙어 있다" 클래스. ' +
+      '이 한 줄이 되돌아가면 유령 11건이 다시 침묵으로 집계되고, 다음 세션이 또 같은 오진을 한다.',
+  },
+  {
+    name: '잘린 제목 파편이 상호가 된다(webkr — 공공기관이 대행사 tier1 로)',
+    file: 'src/features/marketing/api/company-classify.ts',
+    find: "  if (DESC_IS_PAGE_BODY.has(input.source || '') && unbalancedBracket(name)) return reject('TRUNCATED_TITLE')",
+    replace: '  // (제거)',
+    test: 'src/tests/unit/company-classify-webkr-noise.test.ts',
+    why:
+      '제목을 구분자로 자르다 괄호 안에서 끊기면(`[광주 - 동구] …` → `[광주`) 그 파편이 상호가 되고, ' +
+      '이름에 `진흥원` 이 안 남아 **기관 어휘 검사를 통과한다**. 대표가 잡은 전남중소기업일자리경제진흥원이 ' +
+      '정확히 그 경로로 `대행사 tier1`(콜드 접촉 풀 최상단)에 앉아 있었다. 리드가 하나 섞이는 문제가 아니라 ' +
+      '**"제안 보낼 수 있는 리드 수"라는 유일한 성공 지표가 거짓으로 부풀어 있는** 문제다.',
+  },
+  {
+    name: '잘린-제목 규칙을 전 소스에 적용한다(등록부 실업체 56건 삭제)',
+    file: 'src/features/marketing/api/company-classify.ts',
+    find: "  if (DESC_IS_PAGE_BODY.has(input.source || '') && unbalancedBracket(name)) return reject('TRUNCATED_TITLE')",
+    replace: "  if (unbalancedBracket(name)) return reject('TRUNCATED_TITLE')",
+    test: 'src/tests/unit/company-classify-webkr-noise.test.ts',
+    why:
+      '⚠️ **넓히는 방향의 결함** — 좁히는 것만 결함이 아니다. 라이브에서 괄호 불균형을 전 소스로 재면 ' +
+      '`주)다산케인엔케이통상` 류 **정부 등록부 실업체 56건**이 잡힌다(등록부가 앞 `(` 를 흘린 표기지 우리가 ' +
+      '자른 파편이 아니다). 그리고 `commerce` 는 **제안 가능 리드의 95.7%** 다 — 이 한 줄이 넓어지면 명단의 ' +
+      '심장을 깎는다. 실제로 이 규칙을 설계할 때 전 소스 적용이 첫 안이었고, 라이브 측정이 막았다.',
+  },
+  {
+    name: 'or.kr(비영리 전용 도메인)을 기관으로 안 본다',
+    file: 'src/features/marketing/api/company-classify.ts',
+    find: '      orgByHost = NONPROFIT_HOST.test(host)',
+    replace: '      orgByHost = false',
+    test: 'src/tests/unit/company-classify-webkr-noise.test.ts',
+    why:
+      '`or.kr` 은 등록 요건상 비영리기관만 받는다 — 이름을 안 봐도 확정인 신호다. 이게 필요한 이유는 ' +
+      '**이름이 늘 믿을 수 있는 게 아니기 때문**: 상공회의소가 `「2025년 제1회 부산진구` 라는 잘린 제목으로 ' +
+      '들어와 파트너로 앉아 있었다. 이름 어휘 검사는 이름이 남아 있을 때만 통하고, **호스트는 잘리지 않는다.** ' +
+      '소스 주석은 예전부터 "or.kr 은 org 로 분류만" 이라고 약속했는데 **그 코드가 없었다**(의도만 있던 자리).',
+  },
+  {
+    name: '페이지 본문을 업종 근거로 인정한다(webkr)',
+    file: 'src/features/marketing/api/company-classify.ts',
+    find: '    if (bodyUntrusted && !r.re.test(name)) continue',
+    replace: '    // (제거)',
+    test: 'src/tests/unit/company-classify-webkr-noise.test.ts',
+    why:
+      'webkr 의 `description` 은 검색결과 **페이지 본문**이다. 진흥원이 지원사업 보도자료에 "온라인 마케팅 ' +
+      '활성화" 라고 쓰면 대행사 규칙에 걸려 기관이 파트너가 된다. 더 나쁜 건 그렇게 붙은 `evidence` 가 ' +
+      '**이름 치유(Phase 3)의 제외 조건**이라 잘린 이름까지 영구히 굳는다는 것 — 조용히 틀린 채 남는다. ' +
+      '⚠️ `local`(지도)의 description 은 지도 API 업종 문자열이라 진짜 근거이고, 5,932건이 거기 걸려 있다.',
+  },
+  {
+    name: '공정위 응답 오류코드를 header 에서만 읽는다(실패가 성공처럼 보인다)',
+    file: 'src/features/marketing/api/franchise-collect.ts',
+    find: '  const codeSrc = (resp.header ?? resp ?? data) as Record<string, unknown>',
+    replace: '  const codeSrc = (resp.header ?? {}) as Record<string, unknown>',
+    test: 'src/tests/unit/franchise-op-fallback.test.ts',
+    why:
+      '이 API 응답은 **평평하다**(Swagger `getBrandinfo_response { resultCode, …, items }`) — `header` 래퍼가 ' +
+      '없다. header 에서만 읽으면 `rc`/`rm` 이 빈 문자열이 되고 실패 판정이 **무조건 통과**해서 라이브에 ' +
+      '`found 0 · error 없음` 만 남는다(실측 3회 반복). 에러가 없는 게 아니라 **에러를 읽는 자리가 비어 ' +
+      '있는 것**이라 화면상 정상으로 보인다 — 이 레포가 반복해 만난 "조용한 실패" 클래스의 교과서적 형태.',
+  },
+  {
     name: '정체 불명 리드가 발송 대상(partner)으로 남음',
     file: 'src/features/marketing/api/company-save.ts',
     find: "const t = c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type",

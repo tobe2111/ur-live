@@ -22,7 +22,7 @@
 import type { Env } from '../types/env'
 // 🔴 기대 목록 대조(트리거 미등록 탐지) — 정적 목록 vs 런타임 기록. 상세: cron-expected.ts
 import { findNeverFired, type NeverFiredEntry } from './cron-expected'
-import { classifyBeat, freshBaseNames } from './cron-beat-retirement'
+import { classifyBeat, freshBaseNames, type BeatVerdict } from './cron-beat-retirement'
 
 /**
  * 실패 사유를 **짧은 분류 코드**로 (순수 — 유닛 잠금).
@@ -152,6 +152,17 @@ export interface CronHeartbeat {
   cron?: string | null
   /** 이 작업이 '멈춤'으로 보이는가(기대 주기 대비). 판단 불가면 null. */
   stale?: boolean | null
+  /**
+   * 🪦 `stale` 을 **사람이 읽어도 되는가** — 게이트·경보가 쓰던 판정을 목록에도 실어 준다.
+   *
+   *   `stale` 만으로는 "멈춘 레인"과 "개명돼 아무도 안 부르는 옛 이름"이 구분되지 않는다.
+   *   게이트(`getCronHealth`)와 경보(`cron-stale-watch`)는 이미 `classifyBeat` 로 걸러서 조용한데,
+   *   **사람이 보는 이 목록만 안 걸렀다** → 화면엔 12건이 뜨고 실제 알림은 2건이다.
+   *   그 격차가 오진을 만들었다: 2026-08-08 에 두 세션이 이 목록을 읽고 *"레인 4개가 침묵 중"* 이라고
+   *   보고했는데, 실제로 멈춘 건 `collect-nara-vendor` 하나였다(나머지는 승계된 옛 이름).
+   *   ⇒ **`judge` 인 것만 진짜 침묵이다.** 유령도 계속 보여 주되 라벨로 구분한다(지우지 않는다).
+   */
+  verdict?: BeatVerdict
   /** 이 판정에 쓰인 기대 간격(분) — 작업이 신고했으면 그 값, 아니면 cron 식에서 유도. */
   max_gap_min?: number | null
   /** 마지막 실행이 '무엇을 했나' 한 줄 요약(작업이 결과를 반환한 경우). */
@@ -299,7 +310,7 @@ export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[
       }
     } catch { /* 사망 기록을 못 읽어도 목록은 뜬다 */ }
     const now = Date.now()
-    const rows = (results || []).map((r) => {
+    const rows: CronHeartbeat[] = (results || []).map((r) => {
       let at: string | null = null, ok: boolean | null = null, ms: number | null = null, cron: string | null = null, note: string | null = null
       let gap: number | null = null
       try {
@@ -331,6 +342,10 @@ export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[
     })
     // 오래된 것 먼저 = 멈췄을 가능성이 높은 것 먼저.
     rows.sort((a, b) => (b.age_minutes ?? Number.MAX_SAFE_INTEGER) - (a.age_minutes ?? Number.MAX_SAFE_INTEGER))
+    // 🪦 유령 판정을 목록에도 싣는다 — 근거는 `CronHeartbeat.verdict` 주석. 여기서 계산해 두면
+    //   게이트·경보·어드민이 **같은 판정**을 쓰고, 화면과 알림이 갈라지지 않는다.
+    const freshBases = freshBaseNames(rows)
+    for (const r of rows) r.verdict = classifyBeat({ name: r.name, age_minutes: r.age_minutes, max_gap_min: r.max_gap_min }, freshBases)
     return rows
   } catch {
     return []

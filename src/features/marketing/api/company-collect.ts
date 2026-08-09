@@ -225,7 +225,7 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
 async function searchNaverWeb(clientId: string, clientSecret: string, kw: CompanyKeyword, budget?: FetchBudget, pages = 1): Promise<CompanyLead[]> {
   if (outOfBudget(budget)) return []
   const { THIRD_PARTY_HOST, NEWS_MEDIA_HOST } = await import('./contact-enrich')
-  const { NON_BUSINESS_HOST } = await import('./company-classify')
+  const { NON_BUSINESS_HOST, unbalancedBracket } = await import('./company-classify')
   // 📄 2026-07-28: 이 레인이 **이메일 수율 최고**(라이브 실측 webkr 75% vs 지도 2%)인데 1페이지(30건)만 봤다.
   //   start=1,31,61… 로 더 깊게 판다. dedup(seen)이 페이지 간에도 유지돼 중복 도메인은 1건으로 접힌다.
   const items: Array<{ title?: string; link?: string; description?: string }> = []
@@ -267,8 +267,8 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
     if (/(\/news|\/article|articleview|newsview|\/press\/|\/media\/)/i.test((u.pathname + u.search).toLowerCase())) continue
     seen.add(host)
     // 상호 라벨: 제목 첫 구획(구분자 앞) — 정체성은 도메인(company_key=w:host)이라 라벨 오차 무해.
-    const name = stripTag(it.title).split(/[|\-–—:·]/)[0].trim().slice(0, 60) || host
-    if (name.length < 2) continue
+    const cut = stripTag(it.title).split(/[|\-–—:·]/)[0].trim().slice(0, 60)
+    const name = cut.length >= 2 && !unbalancedBracket(cut) ? cut : host // 괄호 안에서 끊긴 파편("[광주")은 상호가 아니다 → 도메인(og:site_name 치유가 실명으로)
     out.push({
       company_name: name, category: kw.category, subcategory: kw.subcategory, tier: kw.tier, region: kw.region,
       website: u.origin, // origin 만 저장 — 도메인 dedup + 크롤 진입점
