@@ -85,7 +85,8 @@ const MUTATIONS = [
   },
   {
     name: '어드민 화면이 유령을 빨갛게 칠한다(서버만 고치면 화면은 그대로다)',
-    file: 'src/pages/AdminSystemMonitoringPage.tsx',
+    // 2026-08-09: 카드 UI 가 600줄 래칫으로 HeartbeatCards.tsx 로 추출 — 표적도 따라간다.
+    file: 'src/pages/admin-system-monitoring/HeartbeatCards.tsx',
     find: '                  {realStale && <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-bold">멈춤 의심</span>}',
     replace: '                  {h.stale && <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-bold">멈춤 의심</span>}',
     test: 'src/tests/unit/cron-heartbeat-verdict.test.ts',
