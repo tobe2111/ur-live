@@ -186,6 +186,11 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   ⚠️ seed 키워드는 비활성화하지 않는다 — 대표가 고른 지역/업종 축이라 사라지면 커버리지에 구멍이 난다.
     //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
     DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8"),
+    // 🌾 **수율 은퇴**(2026-08-09 — 대표 "키워드 수율" 지시) — barren 의 문서화된 사각지대를 슬롯 차원에서 닫는다:
+    //   "찾긴 하는데(found 50+) 새 리드가 안 남는(saved <10)" auto 는 검색이 성공하니 streak 이 영영 안 오른다.
+    //   실측: 동작카페 found 91/saved 2 · 중랑네일 94/3 이 자리를 점유하는 동안 승격 대기 2,981개가 밖에 있었다.
+    //   회차당 3개 상한 — 한꺼번에 비우면 승격·첫회차 수확이 몰려 요동한다(완만한 회전이 목적). seed 무접촉.
+    DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE id IN (SELECT id FROM ad_discovery_keywords WHERE source = 'auto' AND active = 1 AND found_total >= 50 AND saved_total < 10 ORDER BY saved_total ASC, found_total DESC LIMIT 3)"),
   ]).catch(() => null)
   const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total, COALESCE(yt_leads,0) AS yt_leads, COALESCE(yt_contacts,0) AS yt_contacts, COALESCE(nb_measured,0) AS nb_measured, COALESCE(nb_contacts,0) AS nb_contacts FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)

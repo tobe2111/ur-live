@@ -23,6 +23,7 @@ import {
   alarmEnabled, resolveInterval, resolveRunsPerHour, nextWakeAt, hourBucket,
   ALARM_INTERVAL_MS_DEFAULT, ALARM_INTERVAL_MS_MIN, RUNS_PER_HOUR_DEFAULT, FAIL_BACKOFF_MAX,
 } from '../../worker-ads/lane-alarm-policy'
+import { ALARM_LANE_NAMES, lookupAlarmLane } from '../../worker-ads/lane-alarm-runners'
 
 describe('알람 게이트 — 기본 ON, 끄려면 명시적으로', () => {
   it('미설정이면 켜진다 — "켜야 도는 구조"는 이 레포가 반복해 만난 조용한 부재를 만든다', () => {
@@ -184,8 +185,11 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
     expect(idx).toMatch(/ctx\.waitUntil\(bootstrapLaneAlarm\(env, adsBeat\)\)/)
     // 🗂️ 이름은 등록부가 준다(클래스 하나 · 이름별 인스턴스). 보강 레인이 그 안에 있어야 한다.
     expect(bootSrc).toMatch(/ns\.idFromName\(lane\)/)
-    expect(readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8'))
-      .toMatch(/'enrich-influencer': \{/)
+    // ⚠️ 소스 문자열이 아니라 **등록부 자체**를 본다 — 2026-08-09 에 샤딩으로 리터럴이 생성식이 되며
+    //   이 검사가 형태만 보고 빨간불을 냈다. 지키려는 사실은 "보강 레인이 등록돼 있다" 이지
+    //   "그게 객체 리터럴로 쓰였다" 가 아니다(런타임 검사가 더 강하기도 하다).
+    expect(ALARM_LANE_NAMES).toContain('enrich-influencer')
+    expect(lookupAlarmLane('enrich-influencer')).not.toBeNull()
     expect(doSrc).toMatch(/pathname !== '\/start'/)
     // 멱등: 이미 알람이 있으면 다시 걸지 않는다(중복 체인 금지).
     expect(doSrc).toMatch(/const cur = await this\.ctx\.storage\.getAlarm\(\)/)
@@ -259,4 +263,103 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
       const r = await ALARM_LANES[lane]!.run({ ADS_ENRICH_DISABLED: 'true' } as never)
       expect((r as { skipped?: string }).skipped, `${lane} 킬스위치 무시`).toBe('gate_off')
     }
+  })
+
+  /**
+   * ⏰ 3차 이관 4레인 (2026-08-09) — 2차 판정 사흘 뒤, 남은 CPU 사망이 전부 cron 잔류라서.
+   *   match-registry ×3 · 08-08 23:00 KST 한 회차에 hira·commerce·storeinfo 몰살. 규약은 2차와 동일.
+   */
+  it('🔒 3차 이관 4레인 — 전부 runsPerHour 1 (외부 API 쿼터 증설 금지)', () => {
+    const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
+    for (const lane of ["'match-registry'", "'collect-hira'", "'collect-commerce'", "'collect-storeinfo'"]) {
+      expect(runners, `${lane} 등록 누락`).toContain(`${lane}: {`)
+      const seg = runners.slice(runners.indexOf(`${lane}: {`), runners.indexOf(`${lane}: {`) + 200)
+      expect(seg, `${lane} runsPerHour 1 아님`).toMatch(/runsPerHour: 1,/)
+    }
+  })
+
+  it('🔒 3차 이관 — 알람이 몰면 cron 은 손을 뗀다(4곳 전부, commerce 는 cron-public-data)', () => {
+    const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+    expect(src).toMatch(/if \(!laneAlarmOn\) kick\('\/__ads\/match-registry'/)
+    expect(src).toMatch(/if \(!laneAlarmOn && \(env as unknown as \{ ADS_HIRA_ENABLED\?: string \}\)\.ADS_HIRA_ENABLED === 'true'\)/)
+    expect(src).toMatch(/if \(!laneAlarmOn && env\.ADS_STOREINFO_ENABLED === 'true'\)/)
+    // commerce 는 cron-public-data.ts — 판단은 index.ts 와 **같은 헬퍼**여야 한다(두 벌 판단 금지).
+    const pub = readFileSync(join(process.cwd(), 'src/worker-ads/cron-public-data.ts'), 'utf8')
+    expect(pub).toMatch(/import \{ laneAlarmDrivesEnrich \} from '\.\/lane-alarm-boot'/)
+    expect(pub).toMatch(/if \(!laneAlarmDrivesEnrich\(env\) && e\.ADS_COMMERCE_ENABLED === 'true'\)/)
+  })
+
+  it('🔒 3차 이관 — 러너가 게이트를 스스로 본다(방향: match-registry 만 킬스위치)', async () => {
+    const { ALARM_LANES } = await import('@/worker-ads/lane-alarm-runners')
+    // 기본-OFF 레인({} = 게이트 미설정): 게이트를 안 보고 진행하면 DB 접근에서 throw 한다.
+    for (const lane of ['collect-hira', 'collect-commerce', 'collect-storeinfo']) {
+      const r = await ALARM_LANES[lane]!.run({} as never)
+      expect((r as { skipped?: string }).skipped, `${lane} 게이트 무시`).toBe('gate_off')
+    }
+    // 킬스위치 레인(기본 ON): 명시로 꺼야 skipped 다.
+    const r = await ALARM_LANES['match-registry']!.run({ ADS_ENRICH_DISABLED: 'true' } as never)
+    expect((r as { skipped?: string }).skipped, 'match-registry 킬스위치 무시').toBe('gate_off')
+  })
+
+  it('🔒 3차 이관 — 짝수시 레인은 러너 안에서 시각을 보존한다(외부 호출량 증설 금지)', () => {
+    const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
+    for (const lane of ["'collect-commerce'", "'collect-storeinfo'"]) {
+      const seg = runners.slice(runners.indexOf(`${lane}: {`), runners.indexOf(`${lane}: {`) + 500)
+      expect(seg, `${lane} 짝수시 보존 누락`).toMatch(/getUTCHours\(\) % 2 !== 0/)
+    }
+  })
+
+  /**
+   * ⏰ 4차 이관 — 일 1회 레인 7개 (2026-08-09). 하루 한 번뿐인 발화가 부모 사망(잠정 회차 p:1)에
+   *   걸리면 통째로 증발한다 — 08-08 하루에만 5개 실종. 근거는 lane-alarm-runners docblock.
+   */
+  const WAVE4 = [
+    ["'maintenance-rescan'", 'RESCAN_HOUR_UTC'], ["'collect-localdata-chain'", '20'], ["'collect-nps'", '16'],
+    ["'daily-batch'", '18'], ["'sweep-nts'", '19'], ["'collect-nara-contract'", '23'], ["'scan-notices'", '21'],
+  ] as const
+
+  it('🔒 4차 이관 7레인 — 등록 + runsPerHour 1 + 러너 안 시각 보존(일 1회 의도 복원)', () => {
+    const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
+    for (const [lane, hour] of WAVE4) {
+      expect(runners, `${lane} 등록 누락`).toContain(`${lane}: {`)
+      const seg = runners.slice(runners.indexOf(`${lane}: {`), runners.indexOf(`${lane}: {`) + 700)
+      expect(seg, `${lane} runsPerHour 1 아님`).toMatch(/runsPerHour: 1,/)
+      // 시각 체크가 빠지면 일 1회 레인이 매시간 돌게 된다(외부 API 호출량 증설 — 대표 판단 사항)
+      expect(seg, `${lane} 시각 보존 누락`).toMatch(hour === 'RESCAN_HOUR_UTC' ? /!== RESCAN_HOUR_UTC/ : new RegExp(`getUTCHours\\(\\) !== ${hour}`))
+    }
+  })
+
+  it('🔒 4차 이관 — 알람이 몰면 cron 은 손을 뗀다(7곳: index 6 + cron-public-data 1)', () => {
+    const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+    expect(src).toMatch(/if \(!laneAlarmOn && env\.ADS_AUTO_MAINTENANCE_ENABLED !== 'false'\) \{\s*\n\s*gates\.dailyAt\(RESCAN_HOUR_UTC/)
+    expect(src).toMatch(/if \(!laneAlarmOn && \(env as unknown as \{ ADS_LOCALDATA_ENABLED\?: string \}\)\.ADS_LOCALDATA_ENABLED === 'true'\) \{\s*\n\s*\/\/ {3}체인 진입점/)
+    expect(src).toMatch(/if \(!laneAlarmOn && \(env as unknown as \{ ADS_NPS_ENABLED\?: string \}\)\.ADS_NPS_ENABLED === 'true'\)/)
+    expect(src).toMatch(/if \(!laneAlarmOn\) gates\.dailyAt\(18, '\/__ads\/daily-batch'/)
+    expect(src).toMatch(/if \(!laneAlarmOn && env\.ADS_COMPANY_COLLECT_ENABLED === 'true'\) \{\s*\n\s*gates\.dailyAt\(19, '\/__ads\/sweep-nts'/)
+    expect(src).toMatch(/if \(!laneAlarmOn && \(env as unknown as \{ ADS_NARA_CONTRACT_ENABLED\?: string \}\)\.ADS_NARA_CONTRACT_ENABLED !== 'false'\)/)
+    const pub = readFileSync(join(process.cwd(), 'src/worker-ads/cron-public-data.ts'), 'utf8')
+    expect(pub).toMatch(/if \(!laneAlarmDrivesEnrich\(env\) && e\.ADS_NOTICE_ENABLED === 'true'\)/)
+  })
+
+  it('🔒 4차 이관 — 러너 게이트 방향(opt-in ↔ opt-out 이 섞여 있다 — 테스트가 그걸 안다)', async () => {
+    const { ALARM_LANES } = await import('@/worker-ads/lane-alarm-runners')
+    // 기본-OFF({} → gate_off): 게이트가 시각 체크보다 먼저라 시각과 무관하게 결정적이다.
+    for (const lane of ['collect-localdata-chain', 'collect-nps', 'sweep-nts', 'scan-notices']) {
+      const r = await ALARM_LANES[lane]!.run({} as never)
+      expect((r as { skipped?: string }).skipped, `${lane} 게이트 무시`).toBe('gate_off')
+    }
+    // opt-out(기본 ON — 'false' 로만 끔): rescan(AUTO_MAINTENANCE) · nara-contract.
+    for (const [lane, envs] of [
+      ['maintenance-rescan', { ADS_AUTO_MAINTENANCE_ENABLED: 'false' }],
+      ['collect-nara-contract', { ADS_NARA_CONTRACT_ENABLED: 'false' }],
+    ] as const) {
+      const r = await ALARM_LANES[lane]!.run(envs as never)
+      expect((r as { skipped?: string }).skipped, `${lane} opt-out 무시`).toBe('gate_off')
+    }
+  })
+
+  it('🔒 정비는 재보정 시각을 양보한다 — cron 규약의 알람 복원(둘이 리스를 다투면 진 쪽이 사라진다)', () => {
+    const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
+    const seg = runners.slice(runners.indexOf('maintenance: {'), runners.indexOf('maintenance: {') + 900)
+    expect(seg).toMatch(/getUTCHours\(\) === RESCAN_HOUR_UTC\) return \{ skipped: 'rescan_hour' \}/)
   })

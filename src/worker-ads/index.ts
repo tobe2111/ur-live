@@ -422,7 +422,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     // 🔗 원부 이메일 이식 — 매시간. **외부 API 0·D1 전용**이라 크롤 한도와 무관하고, 크롤 한 번 없이
     //   타깃(대행사·전문서비스)에 이메일/홈페이지를 붙인다. 2026-07-28 까지 **크론이 아예 없어서**
     //   어드민이 버튼을 누를 때만 돌았다 — 자동수집이 영구적으로 돌아야 한다는 원칙의 누락분.
-    kick('/__ads/match-registry', async () => {
+    //   ⏰ 2026-08-09 알람 이관(3차) — 이관 후 유일하게 계속 죽던 레인(×3). 알람이 몰면 cron 은 손 뗌.
+    if (!laneAlarmOn) kick('/__ads/match-registry', async () => {
       const { matchRegistryEmails } = await import('@/features/marketing/api/registry-email-match')
       return matchRegistryEmails(env, 400, { left: 45 })
     })
@@ -464,12 +465,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
   // 🏪 상가정보(공공데이터) 자동수집 — 짝수시만(company-collect 홀수시와 분리, 예산 반토막 방지).
   //   게이트 ADS_STOREINFO_ENABLED(기본 OFF). 별도 커서/예산 → 다른 트랙 무영향. 연락처는 네이버 역조회로 보강.
-  if (env.ADS_STOREINFO_ENABLED === 'true') {
+  if (!laneAlarmOn && env.ADS_STOREINFO_ENABLED === 'true') {
     gates.everyNHours(2, 0, '/__ads/collect-storeinfo', async () => { const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect'); return runStoreInfoCollect(env) })
   }
   // 🪦 고용24 레인 철거(2026-08-04) — 기업회원 전용 API + 대표 "키는 받지 못한다" 확정. 되살리려면 키부터.
   // 👥 국민연금 규모 검증 — 일 1회(hourUTC===16 = KST 01시). 게이트 ADS_NPS_ENABLED(기본 OFF).
-  if ((env as unknown as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true') {
+  if (!laneAlarmOn && (env as unknown as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true') {
     // ⏱️ 100 → 40 **되돌림** (2026-08-02 01:00 KST 실측 — CPU 한도로 26.6초에 사망).
     //   40→100 은 07-28(#768)이고 이 레인의 **마지막 성공은 07-27** 이다. 즉 올린 뒤로 한 번도
     //   성공한 적이 없다. "쿼터 여유" 는 맞았지만 병목이 쿼터가 아니라 CPU 였다.
@@ -483,19 +484,19 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   ⚠️ **기본 ON**(2026-08-04 대표 *"자동으로 데이터 나오게끔"*, opt-out — 끄려면 env 에 `false`).
   //   근거·실측은 `docs/handoff/2026-08-04-nara-contract-lane.md` — 원부 29,129건이라 사람이 버튼을
   //   누르는 방식으로는 영영 못 돈다.
-  if ((env as unknown as { ADS_NARA_CONTRACT_ENABLED?: string }).ADS_NARA_CONTRACT_ENABLED !== 'false') {
+  if (!laneAlarmOn && (env as unknown as { ADS_NARA_CONTRACT_ENABLED?: string }).ADS_NARA_CONTRACT_ENABLED !== 'false') {
     gates.dailyAt(23, '/__ads/collect-nara-contract', async () => { const { runNaraContractCollect } = await import('@/features/marketing/api/nara-contract-collect'); return runNaraContractCollect(env) })
   }
   // 🏛️ 사업자 폐업 스윕 — 일 1회(hourUTC===19 = KST 04시). 사업자번호 보유 리드 100건/일 국세청 상태조회 →
   //   폐업이면 active=0(죽은 연락처에 아웃리치 낭비 방지). fail-soft(활용신청 전엔 no-op + note).
-  if (env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
+  if (!laneAlarmOn && env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
     gates.dailyAt(19, '/__ads/sweep-nts', async () => { const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep'); return sweepBusinessStatus(env) })
   }
   // 🏪 매장 후보(인허가) 변동분 — **일 1회**(hourUTC===20 = KST 05시, 전일 변동분 마감 후). 게이트 ADS_LOCALDATA_ENABLED.
   //   ⚠️ 2026-07-28: 직접 await → **kick(독립 인보케이션)**. 이 스케줄 핸들러의 waitUntil 블록들은
   //   **하나의 인보케이션**을 공유하므로, 인허가(업종 16 × 페이지) + NEIS + 심평원 + 백필이 서로의
   //   서브리퀘스트를 잡아먹어 라이브가 `⛔ 요청한도 도달` 로 `found:0` 에 고착했다. kick 은 각자 새 예산을 받는다.
-  if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
+  if (!laneAlarmOn && (env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
     //   체인 진입점(2026-07-29) — 업종 16개를 하루 1회로는 못 훑는다(그래서 음식점·카페·미용·숙박이 0건이었다).
     gates.dailyAt(20, '/__ads/collect-localdata-chain', async () => { const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataCollect(env) })
   }
@@ -507,7 +508,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   if (!laneAlarmOn && (env as unknown as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED === 'true') {
     kick('/__ads/collect-neis', async () => { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return runNeisAcademyCollect(env) })
   }
-  if ((env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {
+  if (!laneAlarmOn && (env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {
     kick('/__ads/collect-hira', async () => { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); return runHiraHospitalCollect(env) })
   }
   // 📧 매장 후보 이메일 우선 연락처 보강 자동 드레인 — **매시간, 수집 게이트와 분리**(2026-07-27 — 회사 풀과
@@ -528,7 +529,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   // ── 매일 18:00 UTC — 일일 배치(가격→순위→스냅샷→알림→자동입찰 섀도우) ────────
   //   🚦 2026-08-02: 생 waitUntil(부모 CPU 직격, 실측 4,107ms) → kick. 이 시각은 collect-commerce(짝수시)와
   //   겹치는 가장 무거운 회차라, 부모에서 4초를 태우면 꼬리 레인이 그대로 잘린다(08-02 01:00·03:00 실측).
-  gates.dailyAt(18, '/__ads/daily-batch', async () => {
+  if (!laneAlarmOn) gates.dailyAt(18, '/__ads/daily-batch', async () => {
     const { runAdsDailyBatch } = await import('./daily-batch') // 5단계 순차(순서에 의미) — 그 파일 헤더 참조
     return runAdsDailyBatch(env)
   })
@@ -548,7 +549,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   // 🧭 라이브 재보정(YouTube 쿼터 소비)은 기존대로 하루 1회(19:00 UTC = KST 04시)만.
   //   ⚠️ 이 시각은 위 순환이 **양보**한다(같은 lease 경합 — 위 docblock 참조). 시각을 바꾸려면 두 곳을
   //     같이 바꿔야 하므로 상수 하나를 공유한다.
-  if (env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {
+  if (!laneAlarmOn && env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {
     gates.dailyAt(RESCAN_HOUR_UTC, '/__ads/maintenance-rescan', async () => {
       const { runNightlyRescan } = await import('@/features/marketing/api/influencer-maintenance')
       return runNightlyRescan(env)

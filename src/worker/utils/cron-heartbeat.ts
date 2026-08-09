@@ -115,6 +115,10 @@ export async function recordCronBeat(
     if (!DB || !name) return
     const { key, value } = buildCronBeatRow(name, ok, ms, cronExpr, result, maxGapMin)
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, value).run()
+    // 🩸 CPU 사망만 **따로** 누적한다 — 하트비트 행은 매 회차 덮어써지므로 다음 성공 한 번이면
+    //   사망 기록이 사라진다(그래서 지금까지 "누가 실제로 죽는가"를 아무도 몰랐다).
+    //   ⚠️ 성공 경로엔 읽기/쓰기가 **하나도 안 붙는다**(사망은 드물다) — 93레인 × 매시간이라 비용이 중요하다.
+    if (!ok && CPU_DEATH_RE.test(summarizeResult(result) || '')) await bumpCpuDeath(DB, name)
   } catch { /* fail-soft — 관측 실패가 작업을 막지 않는다 */ }
 }
 
@@ -164,10 +168,17 @@ export interface CronHeartbeat {
   /** 마지막 실행이 '무엇을 했나' 한 줄 요약(작업이 결과를 반환한 경우). */
   result?: string | null
   /**
-   * ⏱️ 이 작업이 **CPU 한도에 다가가고 있는가**(2026-08-02 신설). `null` = 판단 불가(ms 없음).
-   *   `'danger'` = 이미 죽는 구간 · `'warn'` = 여유가 얼마 안 남음.
+   * 🩸 이 작업이 **실제로 CPU 로 죽은 적이 있는가**(2026-08-09 재정의).
+   *   `'danger'` = 최근 7일 내 사망 · `'warn'` = 30일 내 · `null` = **기록 없음(모른다 ≠ 안전하다)**.
+   *   ⚠️ 종전엔 벽시계 ms 로 추측했는데 그건 I/O 시간이라 CPU 와 무관했다 — 실제로 반대로 찍혔다.
    */
   cpu_risk?: 'warn' | 'danger' | null
+  /** 누적 CPU 사망 횟수(별도 키에 보존 — 하트비트는 다음 성공이 덮어쓴다). */
+  cpu_deaths?: number
+  /** 마지막 CPU 사망 시각(ISO). */
+  last_cpu_death_at?: string | null
+  /** ⏱️ 벽시계가 길다 = **I/O 가 느리다**(외부 API 지연 등). CPU 위험이 아니다. */
+  io_slow?: 'warn' | 'danger' | null
 }
 
 /**
@@ -205,6 +216,43 @@ export function cpuRisk(ms: number | null | undefined): 'warn' | 'danger' | null
 }
 
 /**
+ * 🩸 **CPU 사망을 세는 것 — 이것만이 진짜 신호다** (2026-08-09).
+ *
+ * ## 왜 벽시계를 버렸나
+ * 위 `cpuRisk(ms)` 는 **벽시계 ms 만** 본다. 그런데 워커에서 `Date.now()` 는 **I/O 에서만 흐른다**
+ * (CPU 구간엔 시계가 멈춘다) ⇒ `ms` 는 **I/O 시간**이고 CPU 와는 무관하다. 라이브가 그걸 증명했다:
+ *
+ * ```
+ * schema-repair-daily  159,066ms → danger   그런데 ok=true (멀쩡)
+ * d1-backup            146,975ms → danger   그런데 ok=true (멀쩡)
+ * collect-commerce      13,921ms → null     그런데 그 회차에 CPU 로 죽었다   ← 반대다
+ * collect-storeinfo     13,833ms 에 죽고 → 20,668ms · 80,696ms 에 살았다     ← 같은 레인
+ * ```
+ *
+ * **실제로 죽은 레인은 "위험 없음", 멀쩡한 백업은 "위험"** 으로 찍힌다. 이 지표를 읽고
+ * *"문턱에 붙은 레인 6개"* 라는 잘못된 목록이 만들어졌고, 그 목록으로 작업이 나갈 뻔했다.
+ *
+ * ## 대신 무엇을 보나 — 추측 말고 **실제로 죽은 기록**
+ * 워커는 CPU 시간을 안 준다. 그러니 "다가가고 있는가"는 **원리적으로 못 잰다.**
+ * 잴 수 있는 것은 하나뿐 — **죽었는가.** 그건 이미 에러 원문에 남는다.
+ *
+ * ⚠️ **못 하는 것**: 이건 *예측이 아니라 사후 기록*이다. 한 번도 안 죽은 레인은 `null` 이고,
+ *   그게 "안전하다"는 뜻은 **아니다**(측정 수단이 없다는 뜻이다).
+ */
+export const CPU_DEATH_RE = /exceeded CPU time limit/i
+
+/** 하트비트가 남긴 사망 카운터 → 위험 등급. 최근일수록 위험. 기록이 없으면 `null`(모른다). */
+export function cpuRiskFromDeaths(deaths?: number | null, lastAt?: string | null, nowMs = 0): 'warn' | 'danger' | null {
+  const n = Number(deaths) || 0
+  if (n <= 0) return null
+  const t = lastAt ? Date.parse(lastAt) : NaN
+  if (!Number.isFinite(t) || !nowMs) return 'warn'
+  const days = (nowMs - t) / 86_400_000
+  if (days <= 7) return 'danger'      // 최근 일주일에 죽었다 = 지금 위험하다
+  return days <= 30 ? 'warn' : null   // 한 달 넘었으면 흘려보낸다(옛 사고가 영원히 붉게 남지 않도록)
+}
+
+/**
  * cron 식으로부터 **"이 시간을 넘기면 이상하다"** 기준(분)을 계산한다. 순수함수 — 테스트 가능.
  *
  * 넉넉하게 잡는다(기대주기 × 2 + 30분 여유): 배포·재시도·지연으로 한두 번 밀리는 것까지
@@ -226,12 +274,41 @@ export function expectedMaxAgeMinutes(cronExpr?: string | null): number | null {
   return base * 2 + 30
 }
 
+/** 사망 카운터 키 — 하트비트 행과 **분리**해야 다음 성공이 덮어쓰지 않는다. */
+export const cpuDeathKey = (name: string): string => `cron_cpu_death:${name.slice(0, 80)}`
+
+/** 사망 1회 누적(읽고 +1). fail-soft — 관측 실패가 작업을 막지 않는다. */
+async function bumpCpuDeath(DB: D1Database, name: string): Promise<void> {
+  try {
+    const k = cpuDeathKey(name)
+    const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>()
+    let n = 0
+    try { n = Number((JSON.parse(row?.value || '{}') as { n?: number }).n) || 0 } catch { /* 깨진 값은 0 */ }
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind(k, JSON.stringify({ n: n + 1, at: new Date().toISOString() })).run()
+  } catch { /* fail-soft */ }
+}
+
 /** 어드민 조회용 — 오래된 것부터. 실패해도 빈 배열(화면이 죽지 않게). */
 export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[]> {
   try {
     const { results } = await DB.prepare(
       "SELECT key, value FROM platform_settings WHERE key LIKE 'cron_hb:%'",
     ).all<{ key: string; value: string }>()
+    // 🩸 사망 기록은 별도 키에 산다(하트비트는 매 회차 덮어써진다). 한 번 더 읽는 값어치가 있다 —
+    //   이 화면의 '위험' 표시가 여기서 나오고, 없으면 벽시계로 추측하게 된다(그게 반대로 찍혔다).
+    const deaths = new Map<string, { n: number; at: string | null }>()
+    try {
+      const d = await DB.prepare(
+        "SELECT key, value FROM platform_settings WHERE key LIKE 'cron_cpu_death:%'",
+      ).all<{ key: string; value: string }>()
+      for (const r of d.results || []) {
+        try {
+          const v = JSON.parse(r.value) as { n?: number; at?: string }
+          deaths.set(r.key.slice('cron_cpu_death:'.length), { n: Number(v.n) || 0, at: v.at ?? null })
+        } catch { /* 깨진 값 무시 */ }
+      }
+    } catch { /* 사망 기록을 못 읽어도 목록은 뜬다 */ }
     const now = Date.now()
     const rows: CronHeartbeat[] = (results || []).map((r) => {
       let at: string | null = null, ok: boolean | null = null, ms: number | null = null, cron: string | null = null, note: string | null = null
@@ -246,14 +323,21 @@ export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[
       const age = Number.isFinite(t) ? Math.round((now - t) / 60000) : null
       // 작업이 직접 신고한 주기가 있으면 그것이 진실 — cron 식은 폴백이다(위 maxGapMin 주석 참조).
       const limit = gap ?? expectedMaxAgeMinutes(cron)
+      const name = r.key.slice('cron_hb:'.length)
       return {
-        name: r.key.slice('cron_hb:'.length),
+        name,
         at, ok, ms, cron, result: note,
         age_minutes: age,
         max_gap_min: limit,
         stale: (limit != null && age != null) ? age > limit : null,
-        // ⏱️ 죽기 전에 보이게 — 이 값이 warn 이면 그 레인은 다음 성장 때 죽는다(위 cpuRisk 주석).
-        cpu_risk: cpuRisk(ms),
+        // 🩸 2026-08-09: 위험 판정을 **실제 사망 기록**으로 바꿨다. 벽시계(ms)는 I/O 시간이라
+        //   CPU 와 무관하고, 라이브에서 실제로 반대 방향을 가리켰다(위 cpuRiskFromDeaths 주석의 실측 4건).
+        cpu_risk: cpuRiskFromDeaths(deaths.get(name)?.n, deaths.get(name)?.at, now),
+        cpu_deaths: deaths.get(name)?.n ?? 0,
+        last_cpu_death_at: deaths.get(name)?.at ?? null,
+        // ⏱️ ms 기반 값은 버리지 않고 **정직한 이름**으로 남긴다 — '느리다'(I/O)는 그 자체로 쓸모가 있다
+        //   (외부 API 지연·행 걸림). 다만 그건 CPU 위험이 **아니다**.
+        io_slow: cpuRisk(ms),
       }
     })
     // 오래된 것 먼저 = 멈췄을 가능성이 높은 것 먼저.

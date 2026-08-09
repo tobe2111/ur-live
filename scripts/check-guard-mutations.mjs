@@ -319,15 +319,38 @@ const MUTATIONS = [
       '자동수리가 도는 것처럼 보이면서 실제로는 아무 일도 안 일어나는, 정확히 그 상태가 된다.',
   },
   {
-    name: 'commerce 마감선 보정이 낡은 값으로 되돌아감',
+    name: 'commerce anyEmail 빠른 길이 태그 감싼 이메일을 놓침',
     file: 'src/features/marketing/api/commerce-notify-collect.ts',
-    find: 'const RUN_DEADLINE_MS = 6_000',
-    replace: 'const RUN_DEADLINE_MS = 12_000',
+    find: "    if (!raw.includes('@')) continue",
+    replace: "    if (raw.includes('<')) continue",
+    test: 'src/tests/unit/ads-commerce-record-cpu.test.ts',
+    why:
+      '최적화는 "빠른 길"을 **추가**하는 것이라 조용히 결과를 바꿀 수 있다 — 그리고 이 함수가 바꾸는 결과는 ' +
+      '**리드의 이메일 유무**, 즉 이 DB 의 유일한 성공 지표다. 그래서 속도가 아니라 **옛 구현과의 동치성**을 ' +
+      "고정한다(참조 구현을 테스트에 박아 대조). 이 주입은 '@' 대신 '<' 로 끊어 태그 감싼 이메일을 놓치게 만든다.",
+  },
+  {
+    name: 'CPU 위험 판정이 벽시계(ms)로 되돌아감',
+    file: 'src/worker/utils/cron-heartbeat.ts',
+    find: 'cpu_risk: cpuRiskFromDeaths(deaths.get(name)?.n, deaths.get(name)?.at, now),',
+    replace: 'cpu_risk: cpuRisk(ms),',
+    test: 'src/tests/unit/cron-cpu-death-risk.test.ts',
+    why:
+      '워커에서 Date.now() 는 I/O 에서만 흐르므로 ms 는 CPU 와 무관하다. 라이브에서 실제로 **반대로** 찍혔다: ' +
+      'd1-backup 146,975ms 는 멀쩡한데 danger, collect-commerce 는 13,921ms 에 죽었는데 null. ' +
+      '이 지표를 읽고 "문턱에 붙은 레인 6개" 라는 잘못된 목록이 만들어졌다 — 되돌아가면 그 오진이 반복된다.',
+  },
+  {
+    name: 'commerce 레코드 상한(=진짜 CPU 가드)이 죽던 값으로 되돌아감',
+    file: 'src/features/marketing/api/commerce-notify-collect.ts',
+    find: 'const MAX_RECORDS_PER_RUN = 700',
+    replace: 'const MAX_RECORDS_PER_RUN = 1_500',
     test: 'src/tests/unit/ads-commerce-deadline-calibration.test.ts',
     why:
-      '벽시계 마감선은 CPU 한도의 **대리 측정**이라 사망점이 움직이면 보정이 조용히 낡는다. ' +
-      '실제로 낡았다: 주석이 12초를 고른 근거는 "사망점(26초)의 절반" 이었는데 2026-08-08 사망은 13,921ms 였다 ' +
-      '(= 12초가 사망점의 87%, 여유 0). 주석에만 적어 두면 다음 세션이 "느리니까" 되돌린다.',
+      '한 회차가 태우는 CPU 의 **천장**이다. 워커가 CPU 시간을 안 주므로 남은 여유를 볼 수 없고, ' +
+      '죽는 지점은 레인이 아니라 **그 회차의 성질**이다(08-09 실측: storeinfo 가 13,833ms 에 죽고 ' +
+      '20,668ms 에 살았다 — 코드 변경 0). 맞출 대상이 없으니 할 수 있는 건 우리 몫을 작게 두는 것뿐이고, ' +
+      '그래서 이 값은 **올리는 것만 막는 천장**이다. 주석에만 적어 두면 다음 세션이 "느리니까" 되돌린다.',
   },
   {
     name: 'CPU 자기교정 — collect-hira 가 배수를 무시한다',
@@ -2018,6 +2041,72 @@ const MUTATIONS = [
       '**네이버로 나가는 요청량이 늘어나는 변경**이라 대표 판단 사항이다. 값이 조용히 바뀌는 것을 막는다.',
   },
   {
+    name: '3차 이관 match-registry cron 게이트 소실(알람과 이중 디스패치)',
+    file: 'src/worker-ads/index.ts',
+    find: "if (!laneAlarmOn) kick('/__ads/match-registry'",
+    replace: "kick('/__ads/match-registry'",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '이관 후 유일하게 계속 죽던 레인(×3, 2026-08-06 까지)이라 3차로 옮겼다. 게이트가 빠지면 ' +
+      '알람과 cron 이 같은 정각에 겹쳐 던지고, 던지는 것 자체가 부모 CPU 를 먹는다 — ' +
+      '그게 애초에 이 레인 계열을 죽인 원인이다(2·3차 공통 규약).',
+  },
+  {
+    name: '키워드 수율 은퇴 소실 — 고갈 auto 가 슬롯을 영구 점유(신선도 회전 정지)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: "AND found_total >= 50 AND saved_total < 10 ORDER BY saved_total ASC, found_total DESC LIMIT 3",
+    replace: "AND found_total >= 999999 AND saved_total < 10 ORDER BY saved_total ASC, found_total DESC LIMIT 3",
+    test: 'src/tests/unit/ads-keyword-promotion-room.test.ts',
+    why:
+      'barren_streak 은 "검색결과 0"만 세므로 "찾긴 하는데(found 50+) 새 리드가 안 남는(saved<10)" ' +
+      '고갈 키워드는 영영 은퇴하지 않는다(실측: 동작카페 91/2 · 중랑네일 94/3 이 자리 점유, ' +
+      '승격 대기 2,981개가 밖). 임계를 사실상 무한대로 올리는 이 주입은 은퇴를 무력화한다.',
+  },
+  {
+    name: '자동 키워드 cap 이 조용히 60 으로 회귀(신선 유입 재차단)',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: 'export const MAX_AUTO_KEYWORDS = 120',
+    replace: 'export const MAX_AUTO_KEYWORDS = 60',
+    test: 'src/tests/unit/ads-keyword-promotion-room.test.ts',
+    why:
+      '07-21 발굴 스파이크(12,533/일)의 재현 조건이 신선 키워드 유입인데, cap 60 은 라이브에서 ' +
+      'room 0 으로 꽉 차 있었다. 회귀하면 발굴이 다시 고갈 셋 반복으로 돌아간다 — 네이버 호출량과 ' +
+      '무관한 값이라(회차 폭 6 은 별도 상수) 리스크 근거로 되돌릴 이유도 없다.',
+  },
+  {
+    name: '4차 이관 daily-batch cron 게이트 소실(알람과 이중 실행 — 일일 배치는 멱등 보장이 없다)',
+    file: 'src/worker-ads/index.ts',
+    find: "if (!laneAlarmOn) gates.dailyAt(18, '/__ads/daily-batch'",
+    replace: "gates.dailyAt(18, '/__ads/daily-batch'",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '일 1회 레인 7개를 4차로 알람에 옮겼다(08-08 하루에만 5개가 부모 사망 회차에서 발화 실종). ' +
+      'daily-batch 는 5단계 순차 배치라 알람과 cron 이 같은 18시에 겹치면 가격→순위→스냅샷이 ' +
+      '두 번 돌며 이력이 이중 기록된다 — 게이트가 유일한 방어다.',
+  },
+  {
+    name: '정비 알람이 재보정 시각 양보를 잃음(리스 경합 — 진 쪽이 흔적 없이 사라진다)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: "if (new Date().getUTCHours() === RESCAN_HOUR_UTC) return { skipped: 'rescan_hour' }",
+    replace: '',
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      'cron 시절 `hourlySchedule(PHASES, [RESCAN_HOUR_UTC])` 가 하던 양보를 알람 러너가 잃으면, ' +
+      '시간당 최대 12회 도는 정비가 19시 내내 MAINT_LEASE 를 쥐어 일 1회뿐인 야간 재보정이 ' +
+      '리스를 못 잡고 조용히 사라진다 — 침묵 경보 3.2일의 재발 경로다.',
+  },
+  {
+    name: '3차 이관 commerce cron 게이트 소실 — 다른 파일(cron-public-data)이라 따로 지킨다',
+    file: 'src/worker-ads/cron-public-data.ts',
+    find: "if (!laneAlarmDrivesEnrich(env) && e.ADS_COMMERCE_ENABLED === 'true')",
+    replace: "if (e.ADS_COMMERCE_ENABLED === 'true')",
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      'commerce 의 cron 등록은 index.ts 가 아니라 cron-public-data.ts 에 있다 — index.ts 만 지키는 ' +
+      '검사라면 이 파일의 게이트가 사라져도 초록이다(낡은 지도 클래스). 08-08 23:00 KST 한 회차에 ' +
+      'hira·commerce·storeinfo 가 몰살한 그 자리의 재발 방지.',
+  },
+  {
     name: '미루기 판정이 주기 대신 침묵 임계를 봄(매시간 레인이 통째로 always)',
     file: 'src/worker-ads/dispatch-budget.ts',
     find: '  const period = Number(lane.periodMin)\n  if (Number.isFinite(period) && period > 0) return period <= 60\n',
@@ -2125,12 +2214,65 @@ const MUTATIONS = [
   {
     name: '알람이 cron 시절 7초 창을 그대로 씀',
     file: 'src/worker-ads/lane-alarm-runners.ts',
-    find: "runInfluencerEnrich(env, 0, undefined, null, { driver: 'alarm' })",
-    replace: 'runInfluencerEnrich(env)',
+    find: "return runInfluencerEnrich(env, 0, undefined, k > 1 ? { i, k } : null, { driver: 'alarm', naverOnly: i > 0 })",
+    replace: 'return runInfluencerEnrich(env)',
     test: 'src/tests/unit/ads-enrich-throughput.test.ts',
     why:
       '7초의 근거는 *"부모 인보케이션이 10.5초에 회수되고 자식이 함께 죽는다"* 였다. **알람엔 부모가 없다** — ' +
       '같은 알람의 collect 가 28,643ms 완주가 증거다. 전제가 사라진 값을 그대로 쓰면 창이 근거 없이 좁다.',
+  },
+  {
+    name: '알람 부트스트랩이 죽은 체인을 못 살림(레인이 조용히 멎는다)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'const kind = alarmReviveKind(cur, Date.now())',
+    replace: "const kind = cur == null ? 'none' : 'alive'",
+    test: 'src/tests/unit/ads-alarm-revive.test.ts',
+    why:
+      '이게 2026-08-09 사고 그 자체다 — `getAlarm()` 이 non-null 이면 "이미 걸려 있다"며 넘어가는데, ' +
+      '**예약 시각이 3.5시간 과거인데 안 깨어난** 인스턴스가 정확히 그 상태였다. 매 정각 확인하면서 ' +
+      '매 정각 못 살려 측정 갈래가 6시간 죽어 있었고, 하트비트는 계속 초록이었다.',
+  },
+  {
+    name: '알람 사망 판정 여유가 간격보다 짧음(정상 지연을 덮어써 회차를 잃음)',
+    file: 'src/worker-ads/lane-alarm-policy.ts',
+    find: 'export const ALARM_DEAD_AFTER_MS = 30 * 60_000',
+    replace: 'export const ALARM_DEAD_AFTER_MS = 30_000',
+    test: 'src/tests/unit/ads-alarm-revive.test.ts',
+    why:
+      '**부호만 반대인 같은 고장.** 런타임의 알람 발화는 정확하지 않아 수십 초~수 분 지연이 정상인데, ' +
+      '여유가 간격보다 짧으면 그 정상 지연을 죽음으로 오판해 알람을 계속 덮어쓴다 → 고치려던 것과 ' +
+      '반대로 회차를 잃는다. 되살리기를 넣을 때 반드시 같이 고정해야 하는 짝이다.',
+  },
+  {
+    name: '측정 샤드가 slice 를 안 넘김(같은 사람 중복 측정 — 늘린 만큼 손해)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: 'k > 1 ? { i, k } : null',
+    replace: 'null',
+    test: 'src/tests/unit/ads-enrich-shards.test.ts',
+    why:
+      '이 큐는 선점이 아니라 정렬+LIMIT 이라, slice 없이 샤드를 늘리면 **전부 같은 앞머리**를 집는다. ' +
+      '처리량은 그대로인데 예산만 샤드 수만큼 태운다. ⚠️ `sliceClause` 순수함수 검증만으로는 이걸 못 잡는다 ' +
+      '(2026-08-09 주입 실험에서 실제로 초록이 떴다) — 러너의 배선을 직접 봐야 한다.',
+  },
+  {
+    name: '측정 샤드 1+ 가 YT 도 돎(이미 초과인 일 쿼터를 샤드 수만큼 태움)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: 'naverOnly: i > 0',
+    replace: 'naverOnly: false',
+    test: 'src/tests/unit/ads-enrich-shards.test.ts',
+    why:
+      '`enrichYouTubePerformance` 는 `slice` 를 안 받아 샤드마다 **통째로 반복**된다. YT 쿼터는 이미 ' +
+      '초과 상태이고 미측정 백로그의 98%는 네이버다(youtube 667명뿐) — 순손해다.',
+  },
+  {
+    name: 'naverOnly 가 앞 레인을 안 건너뜀(플래그만 있고 무력)',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: '  if (opts?.naverOnly) {\n    await runNaver(0)\n  } else if (naverFirst) {',
+    replace: '  if (opts?.naverOnly) {\n    await runNaver(0); await runFront()\n  } else if (naverFirst) {',
+    test: 'src/tests/unit/ads-enrich-shards.test.ts',
+    why:
+      '플래그를 넘겨도 분기가 앞 레인(bio+YT)을 그대로 돌면 쿼터 보호가 무효다 — ' +
+      '"스위치는 있는데 아무것도 안 끄는" 형태이고, 에러가 없어 조용히 통과한다.',
   },
   {
     name: '재업로드가 반응 시각을 덮음(COALESCE 제거)',

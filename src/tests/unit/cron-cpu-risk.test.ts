@@ -49,9 +49,18 @@ describe('cpuRisk — 실측 사망 지점에서 유도한 기준', () => {
     expect(cpuRisk(NaN)).toBeNull()
   })
 
-  it('🔗 목록에 실제로 실린다 — 계산만 하고 안 내보내면 아무도 못 본다', () => {
+  /**
+   * 🔁 **2026-08-09 재작성** — 이 함수는 살아 있지만 **의미가 바뀌었다.**
+   *   `ms` 는 워커에서 **I/O 시간**이다(`Date.now()` 가 CPU 구간엔 멈춘다) ⇒ CPU 위험이 아니다.
+   *   라이브가 반대로 찍는 걸 확인했다: `d1-backup` 146,975ms 는 멀쩡한데 `danger`,
+   *   `collect-commerce` 는 13,921ms 에 **죽었는데** `null`. 같은 레인이 13.8초에 죽고 80.7초에 살았다.
+   *   ⇒ 위험 판정은 `cpuRiskFromDeaths`(실제 사망 기록)로 옮겼고, 이 함수는 **`io_slow`**
+   *     (= 느리다, 외부 API 지연 신호)로 남는다. 아래 위 케이스들은 그 새 의미에서 여전히 유효하다.
+   */
+  it('🔗 목록에 실린다 — 다만 이름이 io_slow 다(CPU 위험은 사망 기록이 판정한다)', () => {
     const SRC = readFileSync(resolve(process.cwd(), 'src/worker/utils/cron-heartbeat.ts'), 'utf8')
-    expect(SRC).toMatch(/cpu_risk: cpuRisk\(ms\)/)
+    expect(SRC, 'ms 기반 값은 io_slow 로 실린다').toMatch(/io_slow: cpuRisk\(ms\)/)
+    expect(SRC, 'CPU 위험은 사망 기록에서').toMatch(/cpu_risk: cpuRiskFromDeaths\(/)
     expect(SRC, '타입에도 있어야 소비처가 쓴다').toMatch(/cpu_risk\?: 'warn' \| 'danger' \| null/)
   })
 })

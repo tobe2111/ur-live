@@ -34,15 +34,64 @@ export interface AlarmLane {
  * 🔑 키가 곧 DO 인스턴스 이름이다. 이름을 바꾸면 **다른 인스턴스**가 되어 저장된 알람·카운터가 끊긴다
  *   (옛 인스턴스의 알람이 계속 깨어나 같은 큐를 두 번 집는다) — 이름은 함부로 바꾸지 말 것.
  */
+/**
+ * 🍰 **측정 샤드 수** — 인플루언서 보강을 몇 갈래로 나눠 돌릴까 (2026-08-09, 대표 승인 "2배부터").
+ *
+ * ## 왜 필요했나 (라이브 실측)
+ * 측정이 **하루 ~4,200 에 묶여** 유입(6,000)을 못 따라가 백로그가 매일 +1,800 씩 늘고 있었다.
+ * 그런데 한 회차는 이미 꽉 찼다 — `spent=44 / budget_total=45`, 처리 20행. **인보케이션당
+ * 서브리퀘스트가 천장**이라 한 갈래로는 더 못 짠다.
+ *
+ * ⇒ 늘리는 유일한 길은 **갈래를 늘리는 것**이다. 알람 레인은 이름별 DO 인스턴스라 각자 자기
+ *   인보케이션·자기 예산을 받는다 — **무료에서도 배수가 난다**(유료 전환 없이).
+ *
+ * ## 왜 지금까지 안 돌았나 — 이사 중 유실
+ * 원래 `enrich-influencer-driver` 가 자식 K개를 띄웠는데, 그 kick 은 `if (!laneAlarmOn)` 게이트 뒤에 있다.
+ * 2026-08-02 알람 전환 이후 **cron 은 "알람이 하겠지" 하고 손을 뗐고 알람 등록부엔 그 레인이 없었다.**
+ * 그래서 4배 팬아웃이 **6일간 조용히 사라졌다**(하트비트 152시간 정지). `lane-alarm-boot.ts` 헤더가
+ * 예고한 *"cron 킥은 게이트로 꺼져 있어 이 레인이 통째로 사라진다"* 가 실제로 일어난 것이다.
+ *
+ * ## 값을 올릴 때 (2 → 4)
+ * ⚠️ **차단 수치를 먼저 본다.** 측정은 네이버를 직접 조회하므로 샤드 수만큼 부하가 곱해진다:
+ *   `platform_settings.ads_naver_crawl_block` 의 `blocked` 가 0 을 유지하는지 하루 지켜본 뒤 올릴 것.
+ *   차단당하면 측정이 통째로 멎어서, 얻는 것보다 잃는 게 크다.
+ * 🔙 **롤백은 이 값을 1 로** — 그러면 `sliceClause` 가 조건을 안 붙여 오늘 이전과 완전히 같아진다
+ *   (남는 DO 인스턴스는 `lookupAlarmLane` 이 null 을 줘 조용히 멎는다 — 유령이 안 남는다).
+ */
+export const ENRICH_SHARDS = 2
+
+/**
+ * 측정 샤드 레인들을 **생성**한다 — 손으로 나열하면 샤드 수와 `slice.k` 가 어긋나
+ * 두 레인이 같은 사람을 재거나(중복) 일부가 영영 안 잡힌다(누락).
+ *
+ * 🔑 **샤드 0 의 이름은 `enrich-influencer` 그대로** — 이름이 곧 DO 인스턴스라, 바꾸면 기존
+ *   알람·카운터가 끊기고 옛 인스턴스가 계속 깨어나 같은 큐를 두 번 집는다(위 주석).
+ * 📗 샤드 1+ 는 **네이버 전용**(`naverOnly`) — YT 는 `slice` 를 안 받아 샤드마다 통째로 반복되는데
+ *   YT 쿼터는 이미 초과이고 백로그의 98%가 네이버다(`naverOnly` docblock 에 실측).
+ */
+function enrichShardLanes(shards: number): Record<string, AlarmLane> {
+  const k = Math.max(1, Math.floor(shards))
+  const out: Record<string, AlarmLane> = {}
+  for (let i = 0; i < k; i++) {
+    out[i === 0 ? 'enrich-influencer' : `enrich-influencer-${i + 1}`] = {
+      run: async (env) => {
+        const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
+        return runInfluencerEnrich(env, 0, undefined, k > 1 ? { i, k } : null, { driver: 'alarm', naverOnly: i > 0 })
+      },
+    }
+  }
+  return out
+}
+
 export const ALARM_LANES: Record<string, AlarmLane> = {
-  'enrich-influencer': {
-    run: async (env) => {
-      const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
-      return runInfluencerEnrich(env, 0, undefined, null, { driver: 'alarm' })
-    },
-  },
+  ...enrichShardLanes(ENRICH_SHARDS),
   maintenance: {
     run: async (env) => {
+      // 🤝 19시(UTC)는 야간 재보정에 양보 — cron 시절 `hourlySchedule(PHASES, [RESCAN_HOUR_UTC])` 의
+      //   양보를 알람에서도 복원한다(2026-08-09 4차). 둘이 같은 MAINT_LEASE 를 다투면 진 쪽이
+      //   스냅샷도 안 남기고 사라진다(maintenance-cron.ts 의 원 규약 — 시각 상수도 같은 SSOT).
+      const { RESCAN_HOUR_UTC } = await import('./rescan-hour')
+      if (new Date().getUTCHours() === RESCAN_HOUR_UTC) return { skipped: 'rescan_hour' }
       const { runNextMaintenancePhase } = await import('@/features/marketing/api/influencer-maintenance')
       return runNextMaintenancePhase(env)
     },
@@ -166,6 +215,146 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
       if ((env as unknown as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED !== 'true') return { skipped: 'gate_off' }
       const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect')
       return runNeisAcademyCollect(env)
+    },
+  },
+  /**
+   * ⏰ **3차 이관 4레인** (2026-08-09 — 2차 판정 사흘 뒤).
+   *
+   * ## 근거 — 남은 사망이 전부 cron 잔류다 (D1 실측, 08-05 14:00 KST 2차 이관 이후)
+   * ```
+   *   이관된 9레인:                     사망 0 (사흘)
+   *   match-registry(cron 잔류)         ×3 (마지막 08-06 10:00 KST)
+   *   collect-hira ×2 · collect-commerce · collect-storeinfo   ← 08-08 23:00 KST 한 회차에 몰살
+   * ```
+   * hira·commerce·storeinfo 는 #1098 이 보정값(작업량 축소)으로 1시간 전에 처방했지만, 2차까지의
+   * 실측이 말하는 건 **작업량이 아니라 부모 공유가 사인**이라는 것이다(자기 일에 지친 게 아니라
+   * 부모가 죽을 때 끌려간다 — sheets-sync 가 이미 증명). 보정값은 방어로 유지하고(러너 안에서 그대로
+   * 작동) 구조는 알람으로 옮긴다 — 두 처방은 겹치지 않는다.
+   *
+   * ## 규약은 2차와 동일
+   * · `runsPerHour: 1` + 짝수시 레인은 러너 안에서 시각 보존(증설 아님 — cron 의도 복원)
+   * · 게이트는 러너 안(알람은 매시간 무조건 깨므로) · cron 쪽은 `!laneAlarmOn` 으로 손 뗌
+   * · ⚠️ match-registry 만 킬스위치 계열(`ADS_ENRICH_DISABLED` 기본 ON) — 게이트 방향이 반대다
+   */
+  'match-registry': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED === 'true') return { skipped: 'gate_off' }
+      const { matchRegistryEmails } = await import('@/features/marketing/api/registry-email-match')
+      // 라우트(`/__ads/match-registry`)와 같은 5패스 예산 루프 — 첫 판(1패스)은 처리량을 1/5 로
+      //   줄이고 있었다(2026-08-09 04:00 KST 실측 scanned=400). 두 벌이 갈리면 이렇게 된다.
+      const budget = { left: 45 }
+      let last = await matchRegistryEmails(env, 400, budget)
+      for (let i = 1; i < 5 && !last.done && budget.left > 8; i++) last = await matchRegistryEmails(env, 400, budget)
+      return last
+    },
+  },
+  'collect-hira': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED !== 'true') return { skipped: 'gate_off' }
+      const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect')
+      return runHiraHospitalCollect(env)
+    },
+  },
+  'collect-commerce': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED !== 'true') return { skipped: 'gate_off' }
+      // cron 시절 짝수시(everyNHours(2,0)) 의도 보존 — 외부(data.go.kr) 호출량 불변.
+      if (new Date().getUTCHours() % 2 !== 0) return { skipped: 'odd_hour' }
+      const { runCommerceCollect } = await import('@/features/marketing/api/commerce-notify-collect')
+      return runCommerceCollect(env)
+    },
+  },
+  'collect-storeinfo': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if (env.ADS_STOREINFO_ENABLED !== 'true') return { skipped: 'gate_off' }
+      if (new Date().getUTCHours() % 2 !== 0) return { skipped: 'odd_hour' }
+      const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect')
+      return runStoreInfoCollect(env)
+    },
+  },
+  /**
+   * ⏰ **4차 이관 — 일 1회 레인 7개** (2026-08-09, 대표가 붙여넣은 침묵 경보의 근본 수리).
+   *
+   * ## 왜 — 하루 한 번뿐인 기회가 부모 사망에 걸리면 통째로 증발한다 (D1 실측)
+   * ```
+   *   침묵 경보:  maintenance-rescan 3.2일 · collect-localdata-chain 2.1일
+   *   08-08 하루에만:  nps(16h)·daily-batch(18h)·sweep-nts(19h)·scan-notices(21h)·nara-contract(23h)
+   *                    전부 발화 실종 — 그 시각들의 회차 이력이 정확히 잠정(p:1 = 부모가 꼬리 전에 사망)
+   * ```
+   * 매시간 레인은 한 번 죽어도 다음 정각이 있지만 **일 1회 레인은 그날이 끝**이다. 알람은 부모가
+   * 없어 자기 예산을 받는다 — 1~3차와 같은 처방을, 가장 취약한(기회가 가장 희소한) 레인에 적용.
+   *
+   * ## 규약 — 시각은 러너 안에서 보존(외부 호출량 불변), 나머지는 1~3차와 동일
+   * cron 잔류 일 1회 레인 중 **발화를 놓친 적 없는** sweep-mx(17h)·collect-franchise(22h)·
+   * silence-digest(23h)는 남긴다 — "얹을 근거"(굶거나 죽거나)가 아직 없다.
+   */
+  'maintenance-rescan': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_AUTO_MAINTENANCE_ENABLED?: string }).ADS_AUTO_MAINTENANCE_ENABLED === 'false') return { skipped: 'gate_off' }
+      const { RESCAN_HOUR_UTC } = await import('./rescan-hour')
+      if (new Date().getUTCHours() !== RESCAN_HOUR_UTC) return { skipped: 'off_hour' }
+      const { runNightlyRescan } = await import('@/features/marketing/api/influencer-maintenance')
+      return runNightlyRescan(env)
+    },
+  },
+  'collect-localdata-chain': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED !== 'true') return { skipped: 'gate_off' }
+      if (new Date().getUTCHours() !== 20) return { skipped: 'off_hour' }
+      const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect')
+      return runLocalDataCollect(env)
+    },
+  },
+  'collect-nps': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED !== 'true') return { skipped: 'gate_off' }
+      if (new Date().getUTCHours() !== 16) return { skipped: 'off_hour' }
+      const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich')
+      return runNpsWorkplaceEnrich(env)
+    },
+  },
+  'daily-batch': {
+    runsPerHour: 1,
+    run: async (env) => {
+      // env 게이트 없음(cron 도 무게이트) — 시각만 지킨다.
+      if (new Date().getUTCHours() !== 18) return { skipped: 'off_hour' }
+      const { runAdsDailyBatch } = await import('./daily-batch')
+      return runAdsDailyBatch(env)
+    },
+  },
+  'sweep-nts': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if (env.ADS_COMPANY_COLLECT_ENABLED !== 'true') return { skipped: 'gate_off' }
+      if (new Date().getUTCHours() !== 19) return { skipped: 'off_hour' }
+      const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep')
+      return sweepBusinessStatus(env)
+    },
+  },
+  // ⚠️ 나라장터는 **opt-out**(기본 ON — 2026-08-04 대표 "자동으로 데이터 나오게끔") — 게이트 방향 주의.
+  'collect-nara-contract': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_NARA_CONTRACT_ENABLED?: string }).ADS_NARA_CONTRACT_ENABLED === 'false') return { skipped: 'gate_off' }
+      if (new Date().getUTCHours() !== 23) return { skipped: 'off_hour' }
+      const { runNaraContractCollect } = await import('@/features/marketing/api/nara-contract-collect')
+      return runNaraContractCollect(env)
+    },
+  },
+  'scan-notices': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_NOTICE_ENABLED?: string }).ADS_NOTICE_ENABLED !== 'true') return { skipped: 'gate_off' }
+      if (new Date().getUTCHours() !== 21) return { skipped: 'off_hour' }
+      const { runNoticeScan } = await import('@/features/marketing/api/notice-scan')
+      return runNoticeScan(env)
     },
   },
 }
