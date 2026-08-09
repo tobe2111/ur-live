@@ -105,3 +105,34 @@ describe('기아 방지 슬롯 — 배선', () => {
     expect(src).toMatch(/rescue \? \[rescue, \.\.\.interleaved/)
   })
 })
+
+/**
+ * 🕐 **미실행 나이 = 활성화 시각부터** (2026-08-10 — 승격 물결의 가짜 starved 경보).
+ *
+ *   실측: '댕댕이'(07-21 후보 생성)가 08-09 #1106 물결로 승격되자마자 등록일 기준 나이 18.97일
+ *   = 정확히 경보의 3.7바퀴로 잡혔다. 라운드로빈은 멀쩡했다 — **측정이 후보의 수면 기간을 굶은
+ *   기간으로 셌을 뿐**이다. 승격 물결(cap 상향·가석방 복귀)마다 재발하는 클래스라 측정을 고쳤다.
+ */
+describe('순환 나이 — 활성화 시각 기준 (승격 물결 가짜 경보 차단)', () => {
+  const read = (p: string) => require('node:fs').readFileSync(p, 'utf8') as string
+
+  it('건강 판정 쿼리의 나이 COALESCE 에 activated_at 이 낀다(빼면 승격 물결마다 가짜 starved)', () => {
+    const src = read('src/features/marketing/api/collect-health-alert.ts')
+    const hits = src.match(/COALESCE\(last_run_at, activated_at, created_at\)/g) || []
+    expect(hits.length, 'oldest_days 와 avg_days 둘 다').toBeGreaterThanOrEqual(2)
+  })
+
+  it('활성화 3경로 전부 activated_at 을 스탬프한다 — 한 경로라도 빠지면 그 경로 승격분이 가짜 경보를 낸다', () => {
+    // ① 해시태그 승격 ② 어드민/스토어 토글(켤 때만 — CASE 가드) — 끄기는 시각 보존.
+    expect(read('src/features/marketing/api/influencer-keyword-promote.ts'))
+      .toMatch(/SET active = 1, activated_at = datetime\('now'\)/)
+    for (const p of ['src/features/marketing/api/influencer-keyword-store.ts', 'src/features/marketing/api/admin-ads-influencers.routes.ts']) {
+      expect(read(p), p).toMatch(/activated_at = CASE WHEN \? = 1 THEN datetime\('now'\) ELSE activated_at END/)
+    }
+  })
+
+  it('컬럼이 DDL 에 있다 — 스탬프만 있고 컬럼이 없으면 UPDATE 가 조용히 실패한다(fail-soft catch)', () => {
+    expect(read('src/features/marketing/api/influencer-keyword-ddl.ts'))
+      .toMatch(/ADD COLUMN activated_at DATETIME/)
+  })
+})

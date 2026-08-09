@@ -2076,6 +2076,17 @@ const MUTATIONS = [
       '행동 테스트(run() 이 skipped 반환)가 잡는다.',
   },
   {
+    name: '순환 나이가 등록일 기준으로 회귀(승격 물결마다 가짜 starved 경보)',
+    file: 'src/features/marketing/api/collect-health-alert.ts',
+    find: "MAX(julianday('now') - julianday(COALESCE(last_run_at, activated_at, created_at))) AS oldest_days",
+    replace: "MAX(julianday('now') - julianday(COALESCE(last_run_at, created_at))) AS oldest_days",
+    test: 'src/tests/unit/ads-rotation-health.test.ts',
+    why:
+      '미실행 키워드 나이를 등록일로 재면 몇 주 잠자던 후보가 승격되는 순간 "N주 굶음"으로 보인다 — ' +
+      '2026-08-10 실측: 댕댕이(07-21 생성→08-09 승격)가 즉시 3.7바퀴 starved 로 잡혀 대표에게 ' +
+      '가짜 경보가 나갔다. cap 상향·가석방 복귀 등 승격 물결마다 재발하는 클래스.',
+  },
+  {
     name: '가석방 소실 — 은퇴 증거 유통기한이 빠지면 차단이 다시 영구 배제가 됨',
     file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
     find: ' AND COALESCE(saved_total, 0) < 10 AND ${FRESH_EVIDENCE}`',

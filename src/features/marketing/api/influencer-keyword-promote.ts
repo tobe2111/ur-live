@@ -75,7 +75,9 @@ export async function promoteHashtagKeywords(
     .all<{ id: number; keyword: string }>().catch(() => null)
   const rows = cands?.results || []
   if (rows.length) {
-    await DB.batch(rows.map(r => DB.prepare('UPDATE ad_discovery_keywords SET active = 1 WHERE id = ?').bind(r.id))).catch(() => null)
+    // 🕐 activated_at 스탬프 — 순환 건강 판정의 미실행 나이는 이 시각부터다(등록일 기준이면 몇 주 잠자던
+    //   후보가 승격 즉시 "N주 굶음" 가짜 starved 경보를 낸다 — 2026-08-10, '댕댕이' 실측).
+    await DB.batch(rows.map(r => DB.prepare("UPDATE ad_discovery_keywords SET active = 1, activated_at = datetime('now') WHERE id = ?").bind(r.id))).catch(() => null)
     promoted.push(...rows.map(r => r.keyword))
   }
   return { promoted, kwAuto }

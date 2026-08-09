@@ -26,5 +26,10 @@ export const KW_DDL: string[] = [
   //   `saved_total` 이 큰 옛 성공 키워드가 점수 상위를 계속 차지해 **이미 수확한 채널을 재방문**하고 있었다.
   //   (기존 은퇴 조건은 `saved_total = 0` 이라 이 부류를 영원히 못 걸러낸다.)
   'ALTER TABLE ad_discovery_keywords ADD COLUMN barren_streak INTEGER NOT NULL DEFAULT 0',
+  // 🕐 2026-08-10 활성화 시각 — 순환 건강 판정의 미실행 나이가 **등록일** 기준이라, 몇 주 잠자던 후보가
+  //   승격되는 순간 "N주 굶은 키워드"로 보였다(실측: '댕댕이' 07-21 생성 → 08-09 승격 → 즉시 3.7바퀴
+  //   starved 경보 = #1106 승격 물결의 가짜 경보). 나이는 활성화부터 재야 한다. NULL(기존 시드)은
+  //   created_at 폴백 — 시드는 생성 즉시 활성이라 두 값이 같다.
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN activated_at DATETIME',
 ]
 
