@@ -415,7 +415,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //     천장 근처다 — 07:00 실측에서 인플루언서 수집이 **실패 기록조차 못 남겼다.** 드라이버로 넘기면
     //     부모 비용은 라운드 수와 무관하게 kick 1개(+하트비트)로 고정된다. 근거는 그 라우트 주석 참조.
     //     덤으로 이 레인도 드디어 하트비트가 찍힌다(그전엔 생 waitUntil 이라 조용히 멈춰도 몰랐다).
-    kick('/__ads/enrich-company-driver', async () => {
+    //   ⏰ 2026-08-09 알람 이관(5차) — 알람이 몰면 cron 은 손 뗌(러너가 8라운드/시 의도를 보존).
+    if (!laneAlarmOn) kick('/__ads/enrich-company-driver', async () => {
       const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
       return enrichHeldLeads(env) // SELF 미바인딩(로컬) — 1라운드만
     }, { beat: 'enrich-company' })
@@ -514,7 +515,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   // 📧 매장 후보 이메일 우선 연락처 보강 자동 드레인 — **매시간, 수집 게이트와 분리**(2026-07-27 — 회사 풀과
   //   동일 병목: 인허가 게이트 OFF 면 보강도 0회이던 결합 해소). 킬스위치 ADS_ENRICH_DISABLED 만 끔.
   if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED !== 'true') {
-    kick('/__ads/enrich-prospects', async () => { const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich'); return enrichProspectContacts(env) })
+    if (!laneAlarmOn) kick('/__ads/enrich-prospects', async () => { const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich'); return enrichProspectContacts(env) })
   }
   // 📦 과거 백필 1청크(ADS_LOCALDATA_BACKFILL_DAYS 설정 시) — 인허가 트랙 게이트 유지(수집 예산 소비).
   //   ⚠️ 이 레인이 이 워커에서 가장 폭발적이었다(2일 × 16업종 × 6페이지 = 최대 192 fetch, **매시간**).
