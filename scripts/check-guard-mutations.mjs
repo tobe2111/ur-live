@@ -236,6 +236,17 @@ const MUTATIONS = [
       "고정한다(참조 구현을 테스트에 박아 대조). 이 주입은 '@' 대신 '<' 로 끊어 태그 감싼 이메일을 놓치게 만든다.",
   },
   {
+    name: 'CPU 위험 판정이 벽시계(ms)로 되돌아감',
+    file: 'src/worker/utils/cron-heartbeat.ts',
+    find: 'cpu_risk: cpuRiskFromDeaths(deaths.get(name)?.n, deaths.get(name)?.at, now),',
+    replace: 'cpu_risk: cpuRisk(ms),',
+    test: 'src/tests/unit/cron-cpu-death-risk.test.ts',
+    why:
+      '워커에서 Date.now() 는 I/O 에서만 흐르므로 ms 는 CPU 와 무관하다. 라이브에서 실제로 **반대로** 찍혔다: ' +
+      'd1-backup 146,975ms 는 멀쩡한데 danger, collect-commerce 는 13,921ms 에 죽었는데 null. ' +
+      '이 지표를 읽고 "문턱에 붙은 레인 6개" 라는 잘못된 목록이 만들어졌다 — 되돌아가면 그 오진이 반복된다.',
+  },
+  {
     name: 'commerce 레코드 상한(=진짜 CPU 가드)이 죽던 값으로 되돌아감',
     file: 'src/features/marketing/api/commerce-notify-collect.ts',
     find: 'const MAX_RECORDS_PER_RUN = 700',
