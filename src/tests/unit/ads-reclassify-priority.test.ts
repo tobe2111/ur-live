@@ -15,10 +15,11 @@
  */
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
-import { RECLASSIFY_PRIORITY_TIERS } from '@/features/marketing/api/company-discovery'
+import { RECLASSIFY_PRIORITY_TIERS } from '@/features/marketing/api/reclassify-priority'
 import { REGISTRY_CATEGORY_SOURCES } from '@/features/marketing/api/company-classify'
 
 const SRC = 'src/features/marketing/api/company-discovery.ts'
+const PRIO = 'src/features/marketing/api/reclassify-priority.ts'
 
 describe('재검사 우선순위', () => {
   it('🔒 webkr 이 첫 티어 — 이름 자체를 페이지 제목에서 추측하는 유일한 소스', () => {
@@ -39,8 +40,9 @@ describe('재검사 우선순위', () => {
   it('🔒 우선순위는 전체 크롤을 대체하지 않는다 (등록부 행도 결국 재검사된다)', () => {
     const src = fs.readFileSync(SRC, 'utf8')
     // 티어가 다 비면(prioDone) 기존 전체 크롤로 폴백하는 분기가 살아 있어야 한다.
-    expect(src).toMatch(/const prioDone = !rows\.length/)
-    expect(src).toMatch(/if \(prioDone\) \{[\s\S]{0,400}?ORDER BY id ASC LIMIT \?/)
+    expect(src).toMatch(/const prioDone = !prio/)
+    // 우선순위가 비면(prioDone) 전체 크롤 배치를 실제로 가져오는가
+    expect(src).toMatch(/prioDone \? await pickCrawlBatch\(/)
   })
 
   /**
@@ -50,7 +52,7 @@ describe('재검사 우선순위', () => {
   it('🔒 그 회차가 쓴 패스의 커서만 전진한다', () => {
     const src = fs.readFileSync(SRC, 'utf8')
     expect(src).toMatch(/if \(prioDone\) await DB\.prepare\([^\n]*\)\.bind\(RECLASSIFY_CURSOR/)
-    expect(src).toMatch(/else await DB\.prepare\([^\n]*\)\.bind\(RECLASSIFY_PRIO_STATE/)
+    expect(src).toMatch(/else await writePrioState\(DB, prio!\.tier, nextCursor\)/)
   })
 
   /**
@@ -60,13 +62,12 @@ describe('재검사 우선순위', () => {
   it('🔒 랩 완료 시 우선순위 상태도 리셋된다 (안 하면 1회용이 된다)', () => {
     const src = fs.readFileSync(SRC, 'utf8')
     const lap = src.slice(src.indexOf('한 바퀴 완료'), src.indexOf('한 바퀴 완료') + 700)
-    expect(lap).toContain('RECLASSIFY_PRIO_STATE')
-    expect(lap).toMatch(/tier: 0/)
+    expect(lap).toMatch(/writePrioState\(DB, 0, 0\)/)
   })
 
   it('어느 패스였는지 결과에 남는다 (안 보이면 또 오진한다)', () => {
     const src = fs.readFileSync(SRC, 'utf8')
-    expect(src).toMatch(/phase = `prio:/)
+    expect(fs.readFileSync(PRIO, 'utf8')).toMatch(/phase: `prio:/)
     expect(src).toMatch(/done: false, phase/)
   })
 })

@@ -73,7 +73,7 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 const MUTATIONS = [
   {
     name: '재검사 우선순위에 등록부 소스가 들어간다(우선순위가 무의미해진다)',
-    file: 'src/features/marketing/api/company-discovery.ts',
+    file: 'src/features/marketing/api/reclassify-priority.ts',
     find: "export const RECLASSIFY_PRIORITY_TIERS: readonly (readonly string[])[] = [['webkr'], ['local']]",
     replace: "export const RECLASSIFY_PRIORITY_TIERS: readonly (readonly string[])[] = [['webkr'], ['local'], ['commerce']]",
     test: 'src/tests/unit/ads-reclassify-priority.test.ts',
@@ -85,8 +85,8 @@ const MUTATIONS = [
   {
     name: '우선순위가 전체 크롤을 대체한다(등록부 행이 영영 재검사 안 됨)',
     file: 'src/features/marketing/api/company-discovery.ts',
-    find: '  const prioDone = !rows.length // 우선순위가 다 비었으면 이번 회차는 전체 크롤',
-    replace: '  const prioDone = false // 우선순위가 다 비었으면 이번 회차는 전체 크롤',
+    find: '  const prioDone = !prio',
+    replace: '  const prioDone = false',
     test: 'src/tests/unit/ads-reclassify-priority.test.ts',
     why:
       '우선순위는 크롤을 **대체하는 게 아니라 앞에 끼워 넣는 것**이다. 폴백이 끊기면 등록부 20만 건이 ' +
@@ -105,7 +105,7 @@ const MUTATIONS = [
   {
     name: '랩 완료 시 우선순위 상태를 리셋 안 함(우선순위가 1회용이 된다)',
     file: 'src/features/marketing/api/company-discovery.ts',
-    find: "    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_PRIO_STATE, JSON.stringify({ tier: 0, cursor: 0 })).run().catch(() => null)",
+    find: '    await writePrioState(DB, 0, 0)',
     replace: '    // (제거)',
     test: 'src/tests/unit/ads-reclassify-priority.test.ts',
     why:

@@ -16,6 +16,7 @@ import { NEWSROOM_EMAIL_LOCAL } from './contact-enrich'
 import { isValidKrPhone } from './contact-enrich'
 import { normalizeCompanyName } from './registry-email-match'
 import { runDdlOnce } from './ads-schema-guard'
+import { pickPriorityBatch, pickCrawlBatch, writePrioState, type ReclassifyRow } from './reclassify-priority'
 
 /* ── 접점 분류 (수집 카테고리 SSOT — 2026-07-27 대표 확정 v3: **실무 업종명이 최상위**) ── */
 //   "카테고리를 대행사, 전문서비스(법률·세무·기장 등), 간판, 인테리어 이렇게 해야지" — 우산어
@@ -372,72 +373,22 @@ export async function countCompanyLeads(DB: D1Database, filter: CompanyLeadFilte
  *     · webkr 의심 이름(검색결과 제목 파편) → confidence='none'(분류 확인 카드로 노출 — 수동 검토 유도)
  *   커서(platform_settings)로 매 실행 이어서. 허위 0(연락처 무접촉). */
 const RECLASSIFY_CURSOR = 'ads_company_reclassify_cursor'
-/**
- * 🎯 **재검사 우선순위 — 추측이 많은 소스부터** (2026-08-09 대표 승인 "1번 해줘").
- *
- * ## 왜 필요했나 (라이브 실측)
- * 재검사는 id 오름차순 크롤 하나뿐이었다. 그런데 처리량이 **회차당 250행 · 시간당 1회**
- * (`stopped_by=deadline`)이고 풀은 **23만 건**이라 **한 바퀴에 38일**이다. 즉 규칙을 아무리 잘 고쳐도
- * 실효까지 한 달 이상 걸린다 — 그리고 그 사실이 어디에도 안 보였다.
- * 더 나쁜 건 위치였다: 커서가 id 55,380 인데 오염된 webkr 1,092건은 **전부 그보다 뒤**
- * (69,053~471,880). 대표가 신고한 진흥원 행은 id 401,793 — 사실상 그 38일을 거의 다 기다려야 했다.
- *
- * ## 무엇이 근거인가
- * 풀의 96%는 등록부 소스(`REGISTRY_CATEGORY_SOURCES` — 정부 신고 업태)라 **규칙을 바꿔도 판정이
- * 거의 안 바뀐다.** 반대로 판정이 흔들리는 것은 텍스트로 **추측한** 소스뿐이고, 그게 전체의 4% 다.
- * ⇒ 재검사는 그 4% 부터 본다. `webkr` 이 첫 티어인 이유는 **이름 자체를 페이지 제목에서 추측**하기
- * 때문이다(다른 소스는 최소한 상호를 API 가 준다) — 오분류가 구조적으로 가장 많다.
- *
- * ⚠️ 티어가 비면 다음 티어로, 전부 비면 **기존 전체 크롤로 자동 폴백**한다. 우선순위는 크롤을
- * 대체하는 게 아니라 **앞에 끼워 넣는 것**이다(등록부 행도 결국 다 재검사된다).
- */
-export const RECLASSIFY_PRIORITY_TIERS: readonly (readonly string[])[] = [['webkr'], ['local']]
-const RECLASSIFY_PRIO_STATE = 'ads_company_reclassify_prio'
-/** 재검사 대상 행의 SELECT 컬럼 — 우선순위 패스와 전체 크롤이 **같은 것을 읽어야** 한다(두 벌이면 갈라진다). */
-const RECLASSIFY_COLS = 'id, company_name, description, website, category, subcategory, tier, source, source_keyword, status, memo, phone, email, contact_source'
-type ReclassifyRow = { id: number; company_name: string; description: string | null; website: string | null; category: string | null; subcategory: string | null; tier: number | null; source: string; source_keyword: string | null; status: string; memo: string | null; phone: string | null; email: string | null; contact_source: string | null }
-
+// 🎯 재검사 우선순위(추측 많은 소스 먼저) — 근거·티어·상태는 `reclassify-priority.ts` SSOT.
 export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housekeeping = true): Promise<{ scanned: number; updated: number; removed: number; held: number; cursor: number; done: boolean; phase?: string }> {
   await ensureCompanySchema(DB)
   const n = Math.min(1000, Math.max(1, limit))
 
-  // ① 우선순위 패스 — 근거는 RECLASSIFY_PRIORITY_TIERS 주석.
-  const prioRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(RECLASSIFY_PRIO_STATE).first<{ value: string }>().catch(() => null)
-  let tier = 0, prioCursor = 0
-  try {
-    const p = prioRaw?.value ? JSON.parse(prioRaw.value) as { tier?: number; cursor?: number } : null
-    if (p) { tier = Number(p.tier) || 0; prioCursor = Number(p.cursor) || 0 }
-  } catch { /* 깨진 값은 처음부터 — 재검사는 멱등이라 손해가 없다 */ }
-  let rows: ReclassifyRow[] = []
-  let phase = 'crawl'
-  while (tier < RECLASSIFY_PRIORITY_TIERS.length && !rows.length) {
-    const srcs = RECLASSIFY_PRIORITY_TIERS[tier]
-    const got = (await DB.prepare(
-      `SELECT ${RECLASSIFY_COLS} FROM ad_company_leads
-        WHERE source IN (${srcs.map(() => '?').join(',')}) AND id > ? AND merged_into IS NULL
-          AND (classified_v IS NULL OR classified_v < ?) ORDER BY id ASC LIMIT ?`)
-      .bind(...srcs, prioCursor, CLASSIFY_RULES_VERSION, n).all<ReclassifyRow>().catch(() => null))?.results || []
-    if (got.length) { rows = got; phase = `prio:${srcs.join('+')}` }
-    else { tier += 1; prioCursor = 0 } // 이 티어는 비었다 — 다음 티어로(전부 비면 아래 전체 크롤)
-  }
-  const prioDone = !rows.length // 우선순위가 다 비었으면 이번 회차는 전체 크롤
-
-  // ② 전체 크롤 — 기존 동작 그대로(우선순위는 대체가 아니라 앞에 끼워 넣는 것).
-  const curRow = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(RECLASSIFY_CURSOR).first<{ value: string }>().catch(() => null)
-  let cursor = parseInt(curRow?.value || '0', 10)
-  if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
-  if (prioDone) {
-    rows = (await DB.prepare(
-      `SELECT ${RECLASSIFY_COLS}
-       FROM ad_company_leads WHERE id > ? AND merged_into IS NULL AND (classified_v IS NULL OR classified_v < ?) ORDER BY id ASC LIMIT ?`)
-      .bind(cursor, CLASSIFY_RULES_VERSION, n).all<ReclassifyRow>()
-      .catch(() => null))?.results || []
-  }
+  // ①②  배치 선택 — 우선순위(추측 많은 소스) 먼저, 다 비면 전체 크롤. 근거는 reclassify-priority.ts 헤더.
+  const prio = await pickPriorityBatch(DB, n, CLASSIFY_RULES_VERSION)
+  const prioDone = !prio
+  const crawl = prioDone ? await pickCrawlBatch(DB, n, CLASSIFY_RULES_VERSION, RECLASSIFY_CURSOR) : null
+  const rows: ReclassifyRow[] = prio?.rows || crawl?.rows || []
+  const phase = prio?.phase || 'crawl'
   if (!rows.length) {
     // 한 바퀴 완료 — 커서 리셋(다음 실행은 처음부터, 새로 들어온 미분류 행을 잡음).
     //   우선순위 상태도 같이 리셋해야 **다음 랩에서 다시 앞줄에 선다**(안 하면 티어가 끝에 고정돼 무력화).
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, '0').run().catch(() => null)
-    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_PRIO_STATE, JSON.stringify({ tier: 0, cursor: 0 })).run().catch(() => null)
+    await writePrioState(DB, 0, 0)
     return { scanned: 0, updated: 0, removed: 0, held: 0, cursor: 0, done: true, phase }
   }
   let updated = 0, removed = 0, held = 0
@@ -489,7 +440,7 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
   // 커서 전진 — **이번 회차가 어느 패스였는지에 맞는 쪽만** 옮긴다. 섞으면 한쪽이 조용히 건너뛴다.
   const nextCursor = rows[rows.length - 1].id
   if (prioDone) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, String(nextCursor)).run().catch(() => null)
-  else await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_PRIO_STATE, JSON.stringify({ tier, cursor: nextCursor })).run().catch(() => null)
+  else await writePrioState(DB, prio!.tier, nextCursor)
   // 📊 진행률 가시화(2026-07-27 대표 "청소 얼마나 됐나 안 보임") — 남은 미분류 수 포함 스탬프.
   const remRow = await DB.prepare('SELECT COUNT(*) AS n FROM ad_company_leads WHERE merged_into IS NULL AND (classified_v IS NULL OR classified_v < ?)').bind(CLASSIFY_RULES_VERSION).first<{ n: number }>().catch(() => null)
   const prevStat = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>().catch(() => null)
