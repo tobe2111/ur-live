@@ -5494,11 +5494,13 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
+_총 144건 · 최신순 · 이 목록은 자동 생성된다._
 _총 143건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-09**
 - [측정 4배 장치가 이사 중 유실됐다 — 샤딩으로 되살림(2배부터)](handoff/2026-08-09-enrich-sharding.md)
 - [2026-08-09 — B2B 수집 레인이 CPU 한도로 죽는다: 원인은 "낡은 보정값"](handoff/2026-08-09-b2b-lane-cpu-death.md)
+- [자가치유가 자기가 고쳐야 할 상태를 "건강"으로 읽었다 — 알람 되살리기](handoff/2026-08-09-alarm-revive.md)
 **2026-08-08**
 - [판정: 빈자리 9 → 0, cap 2 → 12(무료 천장). 그리고 하루치 첫 정직한 숫자](handoff/2026-08-08-provisional-tick-verdict.md)
 - [2026-08-08 — 배포 게이트가 막혀 있었다: high 3건 해소 (의존성)](handoff/2026-08-08-npm-audit-gate-unblock.md)

@@ -10,6 +10,7 @@ import { DurableObject } from 'cloudflare:workers'
 import type { Env } from '@/worker/types/env'
 import {
   alarmEnabled, resolveInterval, resolveRunsPerHour, nextWakeAt, hourBucket, LANE_ALARM_STAMP_KEY,
+  alarmReviveKind,
 } from './lane-alarm-policy'
 import { lookupAlarmLane } from './lane-alarm-runners'
 import { buildCronBeatRow } from '@/worker/utils/cron-heartbeat'
@@ -30,9 +31,14 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     if (url.pathname !== '/start') return new Response('Not Found', { status: 404 })
     if (!alarmEnabled(this.env)) return Response.json({ ok: true, enabled: false })
     const cur = await this.ctx.storage.getAlarm()
-    if (cur == null) {
+    // 🫀 **"걸려 있다"와 "살아 있다"는 다르다** — 예약 시각이 한참 지났는데 안 깨어났으면 체인이 죽은 것이다.
+    //   판정 근거·실측(2026-08-09 측정 갈래 6시간 사망)은 `alarmReviveKind` docblock.
+    const kind = alarmReviveKind(cur, Date.now())
+    if (kind !== 'alive') {
       await this.ctx.storage.setAlarm(Date.now() + 1_000)
-      return Response.json({ ok: true, lane: this.lane, started: true })
+      // ⚠️ `revived` 를 따로 남긴다 — "원래 없었다"와 "죽어서 되살렸다"를 같은 값으로 뭉개면
+      //   다음 세션이 사고를 또 못 본다(이번 사고가 6시간 안 보인 이유가 정확히 그것이다).
+      return Response.json({ ok: true, lane: this.lane, started: true, revived: kind === 'stale', staleAt: kind === 'stale' ? cur : undefined })
     }
     return Response.json({ ok: true, lane: this.lane, started: false, alarmAt: cur })
   }
