@@ -45,7 +45,8 @@ export function registerPublicDataCrons(env: Env, gates: Gates): void {
     gates.dailyAt(20, '/__ads/collect-market', async () => { const { runMarketCollect } = await import('@/features/marketing/api/market-collect'); return runMarketCollect(env) })
   }
   // 📢 공고 스캐너 — 일 1회(hourUTC===21 = KST 06시).
-  if (e.ADS_NOTICE_ENABLED === 'true') {
+  //   ⏰ 2026-08-09 알람 이관(4차) — 08-08 21:00 UTC 잠정 회차(부모 사망)에 발화 실종. 판단 헬퍼는 commerce 와 동일.
+  if (!laneAlarmDrivesEnrich(env) && e.ADS_NOTICE_ENABLED === 'true') {
     gates.dailyAt(21, '/__ads/scan-notices', async () => { const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return runNoticeScan(env) })
   }
 }
