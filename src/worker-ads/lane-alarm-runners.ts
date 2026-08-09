@@ -34,13 +34,57 @@ export interface AlarmLane {
  * 🔑 키가 곧 DO 인스턴스 이름이다. 이름을 바꾸면 **다른 인스턴스**가 되어 저장된 알람·카운터가 끊긴다
  *   (옛 인스턴스의 알람이 계속 깨어나 같은 큐를 두 번 집는다) — 이름은 함부로 바꾸지 말 것.
  */
+/**
+ * 🍰 **측정 샤드 수** — 인플루언서 보강을 몇 갈래로 나눠 돌릴까 (2026-08-09, 대표 승인 "2배부터").
+ *
+ * ## 왜 필요했나 (라이브 실측)
+ * 측정이 **하루 ~4,200 에 묶여** 유입(6,000)을 못 따라가 백로그가 매일 +1,800 씩 늘고 있었다.
+ * 그런데 한 회차는 이미 꽉 찼다 — `spent=44 / budget_total=45`, 처리 20행. **인보케이션당
+ * 서브리퀘스트가 천장**이라 한 갈래로는 더 못 짠다.
+ *
+ * ⇒ 늘리는 유일한 길은 **갈래를 늘리는 것**이다. 알람 레인은 이름별 DO 인스턴스라 각자 자기
+ *   인보케이션·자기 예산을 받는다 — **무료에서도 배수가 난다**(유료 전환 없이).
+ *
+ * ## 왜 지금까지 안 돌았나 — 이사 중 유실
+ * 원래 `enrich-influencer-driver` 가 자식 K개를 띄웠는데, 그 kick 은 `if (!laneAlarmOn)` 게이트 뒤에 있다.
+ * 2026-08-02 알람 전환 이후 **cron 은 "알람이 하겠지" 하고 손을 뗐고 알람 등록부엔 그 레인이 없었다.**
+ * 그래서 4배 팬아웃이 **6일간 조용히 사라졌다**(하트비트 152시간 정지). `lane-alarm-boot.ts` 헤더가
+ * 예고한 *"cron 킥은 게이트로 꺼져 있어 이 레인이 통째로 사라진다"* 가 실제로 일어난 것이다.
+ *
+ * ## 값을 올릴 때 (2 → 4)
+ * ⚠️ **차단 수치를 먼저 본다.** 측정은 네이버를 직접 조회하므로 샤드 수만큼 부하가 곱해진다:
+ *   `platform_settings.ads_naver_crawl_block` 의 `blocked` 가 0 을 유지하는지 하루 지켜본 뒤 올릴 것.
+ *   차단당하면 측정이 통째로 멎어서, 얻는 것보다 잃는 게 크다.
+ * 🔙 **롤백은 이 값을 1 로** — 그러면 `sliceClause` 가 조건을 안 붙여 오늘 이전과 완전히 같아진다
+ *   (남는 DO 인스턴스는 `lookupAlarmLane` 이 null 을 줘 조용히 멎는다 — 유령이 안 남는다).
+ */
+export const ENRICH_SHARDS = 2
+
+/**
+ * 측정 샤드 레인들을 **생성**한다 — 손으로 나열하면 샤드 수와 `slice.k` 가 어긋나
+ * 두 레인이 같은 사람을 재거나(중복) 일부가 영영 안 잡힌다(누락).
+ *
+ * 🔑 **샤드 0 의 이름은 `enrich-influencer` 그대로** — 이름이 곧 DO 인스턴스라, 바꾸면 기존
+ *   알람·카운터가 끊기고 옛 인스턴스가 계속 깨어나 같은 큐를 두 번 집는다(위 주석).
+ * 📗 샤드 1+ 는 **네이버 전용**(`naverOnly`) — YT 는 `slice` 를 안 받아 샤드마다 통째로 반복되는데
+ *   YT 쿼터는 이미 초과이고 백로그의 98%가 네이버다(`naverOnly` docblock 에 실측).
+ */
+function enrichShardLanes(shards: number): Record<string, AlarmLane> {
+  const k = Math.max(1, Math.floor(shards))
+  const out: Record<string, AlarmLane> = {}
+  for (let i = 0; i < k; i++) {
+    out[i === 0 ? 'enrich-influencer' : `enrich-influencer-${i + 1}`] = {
+      run: async (env) => {
+        const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
+        return runInfluencerEnrich(env, 0, undefined, k > 1 ? { i, k } : null, { driver: 'alarm', naverOnly: i > 0 })
+      },
+    }
+  }
+  return out
+}
+
 export const ALARM_LANES: Record<string, AlarmLane> = {
-  'enrich-influencer': {
-    run: async (env) => {
-      const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
-      return runInfluencerEnrich(env, 0, undefined, null, { driver: 'alarm' })
-    },
-  },
+  ...enrichShardLanes(ENRICH_SHARDS),
   maintenance: {
     run: async (env) => {
       // 🤝 19시(UTC)는 야간 재보정에 양보 — cron 시절 `hourlySchedule(PHASES, [RESCAN_HOUR_UTC])` 의
