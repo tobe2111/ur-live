@@ -72,6 +72,28 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '공정위 연도를 코드에 박는다(내년에 같은 자리에서 또 죽는다)',
+    file: 'src/features/marketing/api/franchise-collect.ts',
+    find: '  const y = new Date(nowMs).getUTCFullYear()',
+    replace: '  const y = 2026',
+    test: 'src/tests/unit/franchise-op-fallback.test.ts',
+    why:
+      '이 레인은 **오퍼레이션 이름 하나로 21회**를 버렸다. 봉투 오독을 고치자 같은 클래스의 두 번째 함정이 ' +
+      '드러났다 — 코드 12(주소 없음)가 사라지고 **코드 11(필수 파라미터 누락)** 이 나왔다(`yr` 미전송). ' +
+      '연도를 박으면 **해가 바뀌는 순간 조용히 0건**이 되고, 이 환경은 `apis.data.go.kr` 이 프록시 차단이라 ' +
+      '개발 중에 못 찔러 본다 → 또 몇 주를 버린다. 그래서 실측으로 스스로 정하게 둔다.',
+  },
+  {
+    name: '공정위 연도 순회를 모든 오류에서 돈다(같은 실패를 N배로)',
+    file: 'src/features/marketing/api/franchise-collect.ts',
+    find: '    if (i === 0 && !count && msg && /ESSENTIAL_PARAMETER_ERROR|필수.*파라미터/i.test(msg)) {',
+    replace: '    if (i === 0 && !count && msg) {',
+    test: 'src/tests/unit/franchise-op-fallback.test.ts',
+    why:
+      '키 오류·트래픽 초과에 연도 후보를 돌리면 **같은 실패를 3배로 반복**해 서브리퀘스트만 태운다. ' +
+      '무료 플랜은 인보케이션당 50~60 이라 그 낭비가 다른 레인의 예열 실패로 번진다(2026-07-29 실측 클래스).',
+  },
+  {
     name: '재검사 우선순위에 등록부 소스가 들어간다(우선순위가 무의미해진다)',
     file: 'src/features/marketing/api/reclassify-priority.ts',
     find: "export const RECLASSIFY_PRIORITY_TIERS: readonly (readonly string[])[] = [['webkr'], ['local']]",

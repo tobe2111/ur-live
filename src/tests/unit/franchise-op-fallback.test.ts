@@ -96,3 +96,31 @@ describe('응답 봉투 — 실패가 조용히 성공처럼 보이면 안 된�
     expect(CODE, 'totalCount 를 같이 남겨야 정상 0건과 조용한 실패가 갈린다').toMatch(/totalCount=/)
   })
 })
+
+describe('연도(yr) 자가치유 — 코드 11', () => {
+  const SRC2 = readFileSync(resolve('src/features/marketing/api/franchise-collect.ts'), 'utf8')
+
+  /**
+   * 🩸 봉투 오독을 고치자 진짜 사유가 드러났다: 코드 12(주소 없음)가 사라지고 **코드 11(필수 파라미터
+   * 누락)** 이 나왔다 — 이름은 맞았고 `yr` 이 비어 있던 것이다. 이름 때와 **같은 클래스**의 두 번째 함정.
+   */
+  it('🔒 연도를 코드에 박지 않는다 (박으면 내년에 같은 자리에서 또 죽는다)', () => {
+    expect(SRC2).toMatch(/const yearCandidates = \(nowMs: number\)/)
+    expect(SRC2).toMatch(/getUTCFullYear\(\)/)
+  })
+
+  it('🔒 코드 11 일 때만 연도를 순회한다 (다른 오류에 돌리면 실패를 N배로 반복)', () => {
+    expect(SRC2).toMatch(/ESSENTIAL_PARAMETER_ERROR\|필수\.\*파라미터/)
+  })
+
+  it('🔒 첫 페이지에서만 — 매 페이지 순회는 예산 낭비', () => {
+    const m = SRC2.match(/if \(i === 0 && !count && msg && \/ESSENTIAL_PARAMETER_ERROR/)
+    expect(m, '연도 폴백이 i===0 가드 안에 있어야 한다').toBeTruthy()
+  })
+
+  it('🔒 맞은 연도를 저장하고 다음 회차에 읽는다 (재시도 0)', () => {
+    expect(SRC2).toMatch(/bind\(YR_KEY, useYr\)/)      // 저장
+    expect(SRC2).toMatch(/learnedYr/)                    // 읽기
+    expect(SRC2).toMatch(/ADS_FRANCHISE_YEAR \|\| learnedYr/) // env override 가 우선
+  })
+})
