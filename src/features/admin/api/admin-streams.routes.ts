@@ -19,6 +19,11 @@ import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { executeQuery } from '@/worker/utils/database';
 import type { D1Database } from '@cloudflare/workers-types';
+// 💰 2026-08-10 알림톡 원가·마진 SSOT — 원가는 platform_settings, 판매가는 alimtalk_packages(분리).
+import {
+  ALIMTALK_COST_SETTING_KEYS, DEFAULT_ALIMTALK_UNIT_COST_KRW, DEFAULT_FRIENDTALK_UNIT_COST_KRW,
+  parseUnitCost, computeAlimtalkMargin,
+} from '@/shared/alimtalk-pricing';
 
 export const adminStreamsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -247,6 +252,22 @@ async function ensureAlimtalkPackagesTable(DB: D1Database) {
   } catch { /* table exists */ }
 }
 
+/**
+ * 💰 2026-08-10 원가 조회 — platform_settings(어드민 조정). 미설정/오타는 SSOT 기본값으로 폴백.
+ *   원가가 있어야 마진을 계산할 수 있다. 판매가(packages.price)와 **분리 보관**한다.
+ */
+async function readAlimtalkUnitCosts(DB: D1Database): Promise<{ alimtalk: number; friendtalk: number }> {
+  const row = await DB.prepare(
+    'SELECT key, value FROM platform_settings WHERE key IN (?, ?)',
+  ).bind(ALIMTALK_COST_SETTING_KEYS.alimtalk, ALIMTALK_COST_SETTING_KEYS.friendtalk)
+    .all<{ key: string; value: string }>().catch(() => ({ results: [] as { key: string; value: string }[] }));
+  const map = new Map((row.results || []).map((r) => [r.key, r.value]));
+  return {
+    alimtalk: parseUnitCost(map.get(ALIMTALK_COST_SETTING_KEYS.alimtalk), DEFAULT_ALIMTALK_UNIT_COST_KRW),
+    friendtalk: parseUnitCost(map.get(ALIMTALK_COST_SETTING_KEYS.friendtalk), DEFAULT_FRIENDTALK_UNIT_COST_KRW),
+  };
+}
+
 adminStreamsRoutes.get('/alimtalk/pricing', cors(), async (c) => {
   const { DB } = c.env;
   try {
@@ -255,9 +276,36 @@ adminStreamsRoutes.get('/alimtalk/pricing', cors(), async (c) => {
       `SELECT id, label, credits, price, is_active, sort_order, created_at, updated_at
        FROM alimtalk_packages ORDER BY sort_order ASC`
     ).all().catch(() => ({ results: [] }));
-    return c.json({ success: true, data: results });
+    // 원가를 함께 실어 보낸다 — 화면이 패키지별 마진율을 그리려면 둘이 같이 있어야 한다.
+    return c.json({ success: true, data: results, unit_costs: await readAlimtalkUnitCosts(DB) });
   } catch {
     return c.json({ success: true, data: [] });
+  }
+});
+
+/** 💰 원가 저장(어드민) — 요금제가 바뀌면 배포 없이 여기서 고친다. */
+adminStreamsRoutes.put('/alimtalk/cost', cors(), async (c) => {
+  const { DB } = c.env;
+  try {
+    const body = await c.req.json<{ alimtalk?: number | string; friendtalk?: number | string }>();
+    const pairs: [string, unknown][] = [];
+    if (body.alimtalk !== undefined) pairs.push([ALIMTALK_COST_SETTING_KEYS.alimtalk, body.alimtalk]);
+    if (body.friendtalk !== undefined) pairs.push([ALIMTALK_COST_SETTING_KEYS.friendtalk, body.friendtalk]);
+    if (pairs.length === 0) return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400);
+    for (const [key, raw] of pairs) {
+      const n = Number(String(raw ?? '').trim());
+      // 저장 시점에 막는다 — 잘못된 값이 들어가면 마진 표시가 통째로 거짓말이 된다.
+      if (!Number.isFinite(n) || n < 0 || n > 1000) {
+        return c.json({ success: false, error: '원가는 0~1000원 사이 숫자여야 합니다' }, 400);
+      }
+      await DB.prepare(
+        `INSERT INTO platform_settings (key, value) VALUES (?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      ).bind(key, String(n)).run();
+    }
+    return c.json({ success: true, data: await readAlimtalkUnitCosts(DB) });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -326,25 +374,37 @@ adminStreamsRoutes.get('/alimtalk/accounts', cors(), async (c) => {
 adminStreamsRoutes.get('/alimtalk/statistics', cors(), async (c) => {
   const { DB } = c.env;
   try {
-    const [totalSent, totalBalance, activeAccounts] = await Promise.all([
+    // 💰 2026-08-10: 종전 `total_cost = 발송건수 × 하드코딩 9원` 은 **원가가 아니라 매출(그것도 추정)** 이었다.
+    //   실매출은 충전 원장(credit_transactions.price_paid)에서, 실원가는 발송건수 × 설정 원가에서 온다.
+    const [totalSent, totalBalance, activeAccounts, charged, costs] = await Promise.all([
       DB.prepare('SELECT COUNT(*) AS cnt FROM alimtalk_logs WHERE success = 1')
         .first<{ cnt: number }>().catch(() => ({ cnt: 0 })),
       DB.prepare('SELECT COALESCE(SUM(balance), 0) AS total FROM seller_credits')
         .first<{ total: number }>().catch(() => ({ total: 0 })),
       DB.prepare('SELECT COUNT(*) AS cnt FROM seller_credits WHERE balance > 0')
         .first<{ cnt: number }>().catch(() => ({ cnt: 0 })),
+      DB.prepare("SELECT COALESCE(SUM(price_paid), 0) AS total FROM credit_transactions WHERE type = 'charge'")
+        .first<{ total: number }>().catch(() => ({ total: 0 })),
+      readAlimtalkUnitCosts(DB),
     ]);
+    const sent = totalSent?.cnt ?? 0;
+    const m = computeAlimtalkMargin(charged?.total ?? 0, sent, costs.alimtalk);
     return c.json({
       success: true,
       data: {
-        total_sent: totalSent?.cnt ?? 0,
-        total_cost: (totalSent?.cnt ?? 0) * 9,
+        total_sent: sent,
+        // ⚠️ 하위호환: 옛 화면이 total_cost 를 읽는다 — 이제 **진짜 원가**를 담는다(의미가 바뀌었다).
+        total_cost: m.cost,
+        revenue: m.revenue,
+        margin: m.margin,
+        margin_pct: m.marginPct,
+        unit_cost: costs.alimtalk,
         active_accounts: activeAccounts?.cnt ?? 0,
         total_balance: totalBalance?.total ?? 0,
       },
     });
   } catch {
-    return c.json({ success: true, data: { total_sent: 0, total_cost: 0, active_accounts: 0, total_balance: 0 } });
+    return c.json({ success: true, data: { total_sent: 0, total_cost: 0, revenue: 0, margin: 0, margin_pct: 0, unit_cost: DEFAULT_ALIMTALK_UNIT_COST_KRW, active_accounts: 0, total_balance: 0 } });
   }
 });
 

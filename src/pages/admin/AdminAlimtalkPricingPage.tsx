@@ -8,6 +8,8 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { MessageSquare, DollarSign, Users, TrendingUp, Edit2, Save, X, Plus, Eye, EyeOff } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+// 💰 2026-08-10 원가·마진 SSOT (판매가는 패키지, 원가는 platform_settings — 분리 보관)
+import { DEFAULT_ALIMTALK_UNIT_COST_KRW, packageMarginPct } from '@/shared/alimtalk-pricing'
 
 interface AlimtalkPackage {
   id: number
@@ -30,7 +32,15 @@ interface SellerCreditRow {
 
 interface AlimtalkStats {
   total_sent: number
+  /** 실원가(원) — 2026-08-10 이전엔 `발송건수 × 9원`(사실상 매출 추정)이었다. 지금은 진짜 원가다. */
   total_cost: number
+  /** 실매출(원) — 충전 원장(credit_transactions.price_paid) 합계 */
+  revenue?: number
+  /** 마진(원) = 매출 − 원가 */
+  margin?: number
+  margin_pct?: number
+  /** 현재 적용 중인 건당 원가(원) */
+  unit_cost?: number
   active_accounts: number
   total_balance: number
 }
@@ -65,6 +75,11 @@ export default function AdminAlimtalkPricingPage() {
     ['admin', 'alimtalk', 'pricing'], '/api/admin/alimtalk/pricing',
     { headers: authHeaders, select: (r) => (r as { data?: AlimtalkPackage[] })?.data ?? [] },
   )
+  // 💰 원가(어드민 설정) — 같은 응답에 실려 온다. 마진율 계산의 기준값.
+  const costQ = useApiQuery<number>(
+    ['admin', 'alimtalk', 'unit-cost'], '/api/admin/alimtalk/pricing',
+    { headers: authHeaders, select: (r) => (r as { unit_costs?: { alimtalk?: number } })?.unit_costs?.alimtalk ?? DEFAULT_ALIMTALK_UNIT_COST_KRW },
+  )
   const accountsQ = useApiQuery<SellerCreditRow[]>(
     ['admin', 'alimtalk', 'accounts'], '/api/admin/alimtalk/accounts',
     { headers: authHeaders, select: (r) => (r as { data?: SellerCreditRow[] })?.data ?? [] },
@@ -76,10 +91,24 @@ export default function AdminAlimtalkPricingPage() {
   const packages = pricingQ.data ?? []
   const accounts = accountsQ.data ?? []
   const stats = statsQ.data ?? null
+  const unitCost = costQ.data ?? DEFAULT_ALIMTALK_UNIT_COST_KRW
   const loading = pricingQ.isLoading || accountsQ.isLoading || statsQ.isLoading
   const anyError = pricingQ.isError || accountsQ.isError || statsQ.isError
   const loadAllData = () => {
-    void pricingQ.refetch(); void accountsQ.refetch(); void statsQ.refetch()
+    void pricingQ.refetch(); void accountsQ.refetch(); void statsQ.refetch(); void costQ.refetch()
+  }
+
+  // 💰 원가 저장 — 요금제가 바뀌면 배포 없이 여기서 고친다(서버가 0~1000원 재검증).
+  const [costInput, setCostInput] = useState<string>('')
+  async function saveUnitCost() {
+    const n = Number(costInput)
+    if (!Number.isFinite(n) || n < 0 || n > 1000) { toast.error('원가는 0~1000원 사이 숫자여야 합니다'); return }
+    try {
+      await api.put('/api/admin/alimtalk/cost', { alimtalk: n }, { headers: authHeaders })
+      toast.success('원가가 저장되었습니다')
+      setCostInput('')
+      loadAllData()
+    } catch { toast.error('원가 저장에 실패했습니다') }
   }
 
   useEffect(() => {
@@ -134,6 +163,10 @@ export default function AdminAlimtalkPricingPage() {
   function unitPrice(pkg: AlimtalkPackage) {
     return pkg.credits > 0 ? (pkg.price / pkg.credits).toFixed(1) : '0'
   }
+  /** 💰 패키지 건당 마진율 — 원가(어드민 설정) 대비. 원가보다 싸게 팔면 음수가 그대로 보인다. */
+  function marginPct(pkg: AlimtalkPackage) {
+    return packageMarginPct(pkg.price, pkg.credits, unitCost)
+  }
 
   function fmt(n: number) { return new Intl.NumberFormat('ko-KR').format(n || 0) }
   function fmtDate(s: string | null) { return s ? formatKSTDate(s) : '-' }
@@ -157,14 +190,35 @@ export default function AdminAlimtalkPricingPage() {
           subtitle="알림톡 발송 현황 · 수익 · 패키지 가격"
           icon={<MessageSquare className="h-5 w-5" />}
         />
+      {/* 💰 2026-08-10 원가 설정 — 마진 계산의 기준값. 알리고 요금제가 바뀌면 배포 없이 여기서 고친다. */}
+      <div className="bg-white rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-gray-900">알림톡 원가 (건당)</p>
+          <p className="text-xs text-gray-400">현재 {unitCost}원 — 우리가 알리고에 내는 돈. 판매가(패키지)와 별개로 보관합니다.</p>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <input
+            type="number" step="0.1" min="0" max="1000"
+            value={costInput} onChange={(e) => setCostInput(e.target.value)}
+            placeholder={String(unitCost)}
+            className="w-28 h-9 px-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400"
+          />
+          <button onClick={saveUnitCost} disabled={!costInput.trim()}
+            className="px-3 h-9 rounded-lg bg-gray-900 text-white text-xs font-semibold disabled:opacity-40">
+            원가 저장
+          </button>
+        </div>
+      </div>
+
       {/* 통계 카드 */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: '총 발송', value: `${fmt(stats.total_sent)}건`, icon: <MessageSquare className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: '수익 (9원/건)', value: `${fmt(stats.total_cost)}원`, icon: <DollarSign className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { label: '잔액 보유 셀러', value: `${fmt(stats.active_accounts)}명`, icon: <Users className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50' },
-            { label: '전체 잔액', value: `${fmt(stats.total_balance)}건`, icon: <TrendingUp className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50' },
+            // 💰 2026-08-10: 종전 '수익 (9원/건)' 은 원가를 안 뺀 **매출 추정**이었다. 매출·원가·마진을 나눠 보여준다.
+            { label: '충전 매출(누적)', value: `${fmt(stats.revenue ?? 0)}원`, icon: <DollarSign className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+            { label: `발송 원가(${unitCost}원/건)`, value: `${fmt(stats.total_cost)}원`, icon: <MessageSquare className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
+            { label: `마진 (${stats.margin_pct ?? 0}%)`, value: `${fmt(stats.margin ?? 0)}원`, icon: <TrendingUp className="w-5 h-5" />, color: (stats.margin ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600', bg: (stats.margin ?? 0) >= 0 ? 'bg-emerald-50' : 'bg-red-50' },
+            { label: '미소진 잔액', value: `${fmt(stats.total_balance)}건`, icon: <Users className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50' },
           ].map(card => (
             <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
@@ -301,7 +355,13 @@ export default function AdminAlimtalkPricingPage() {
                             {pkg.is_active === 1 ? '활성' : '비활성'}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-400">{fmt(pkg.credits)}건 · {fmt(pkg.price)}원 · 건당 {unitPrice(pkg)}원</p>
+                        <p className="text-xs text-gray-400">
+                          {fmt(pkg.credits)}건 · {fmt(pkg.price)}원 · 건당 {unitPrice(pkg)}원
+                          {/* 💰 원가 대비 마진율 — 음수(원가 이하 판매)면 빨강으로 즉시 보이게. */}
+                          <span className={`ml-1.5 font-semibold ${marginPct(pkg) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            마진 {marginPct(pkg)}%
+                          </span>
+                        </p>
                       </div>
                     </div>
                   )}

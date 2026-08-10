@@ -6,7 +6,8 @@
  * POST /api/seller/alimtalk/credits/confirm  - 결제 완료 → 크레딧 지급
  * GET  /api/seller/alimtalk/logs             - 발송 이력
  *
- * 브랜드메시지(친구톡): 25원/건  |  알리고 원가: 19.9원/건
+ * 💰 단가는 주석이 아니라 데이터에 있다(2026-08-10): 원가 = `platform_settings.friendtalk_unit_cost_krw`,
+ *   판매가 = `alimtalk_packages.price`. 기본값·마진 계산은 `@/shared/alimtalk-pricing`.
  * 자동 발송 알림톡(주문/배송/취소)은 플랫폼 예산으로 별도 처리
  */
 
