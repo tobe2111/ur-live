@@ -1,5 +1,31 @@
 # 2026-08-09 — 캠페인 신청 페이지(방배) + 현황 확인 5건 + A-3/A-4 후속
 
+## ✅ 머지 완료 — PR #1113 → main `a87dc16` (2026-08-10, 사용자 "머지까지 완료해줘")
+
+CI 전부 green(Verify 5,300+ · smoke · Pages) 확인 후 squash 머지. 배포는 main.yml 이 자동 수행.
+
+> 🧯 **머지 때 걸린 것**: GitHub **GraphQL 쿼터만** 소진(REST 는 14,989 남음)이라
+> `update_pull_request`(draft 해제)가 막혔다. **draft→ready 전환은 GraphQL 전용**이라 REST 우회가 없다.
+> 판정: `curl https://api.github.com/rate_limit` 의 `resources.graphql.remaining` — 0 이면 `reset`(epoch)
+> 까지 기다리는 것 말고 방법이 없다(이번엔 5분). ⚠️ 이때 **main 에 직접 push 로 우회하지 말 것** —
+> PR 경로를 벗어나면 CI 게이트가 통째로 빠진다.
+
+### 3차 (같은 세션 후속) — 알림톡 재시도 큐 결함 수리
+`sendBusinessRegistrationAlimtalk`(admin-sellers.routes.ts)만 `lib/aligo` 를 **직접** 호출해
+공용 헬퍼(`sendSystemAlimtalk`)를 우회 → **발송 실패가 `alimtalk_failures` 큐에 안 들어가**
+`retry-alimtalk` cron 이 못 잡았다(승인/반려 통보 영구 소실). 발송 호출만 헬퍼 경유로 교체.
+- 함께 얻음: dedup·rate-limit(phone+template 1h)·일일 비용 cap·발송 로그.
+- ⚠️ **감수한 부작용**: 1시간 내 재반려는 알림톡이 skip 된다. 두 경로 모두 위에서
+  `createDashboardNotification` 을 하므로 통보 채널이 0 이 되지는 않는다(그래서 감수 가능하다고 판단).
+- 문안·tpl_code **byte-불변**(카카오 승인 본문 글자 일치 요구).
+
+### 손대지 않기로 한 것 (판단 근거)
+`admin-notification-settings` 시드 목록에 `seller_reactivated`·`business_registration_*` 가 없다.
+**추가하지 않았다** — 그 발송 경로들은 `dispatchNotification`(설정 테이블을 읽는 쪽)이 아니라
+`sendSystemAlimtalk` 을 직접 부른다. 행만 넣으면 **눌러도 아무 일도 안 하는 토글**이 생겨
+지금의 "없음"보다 나쁘다. 고치려면 그 발송들을 `dispatchNotification` 으로 옮기는 게 먼저다
+(`seller_approved` 행이 이미 그 상태 — 선재 불일치).
+
 ## 2차 지시 (같은 세션 후속 — 사용자 "A-1·A-2 보류, A-3 개선, A-4 다 하자")
 
 ### A-3 유입 트래킹 개선
