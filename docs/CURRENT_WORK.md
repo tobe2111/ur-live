@@ -5494,12 +5494,12 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 146건 · 최신순 · 이 목록은 자동 생성된다._
-_총 145건 · 최신순 · 이 목록은 자동 생성된다._
+_총 147건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-09**
 - [키워드 순환(②) 리뷰 — 은퇴↔승격 livelock 을 찾아 차단했다](handoff/2026-08-09-keyword-rotation-livelock.md)
 - [측정 4배 장치가 이사 중 유실됐다 — 샤딩으로 되살림(2배부터)](handoff/2026-08-09-enrich-sharding.md)
+- [2026-08-09 — 캠페인 신청 페이지(방배) + 현황 확인 5건 + A-3/A-4 후속](handoff/2026-08-09-campaign-signup-status-check.md)
 - [2026-08-09 — B2B 수집 레인이 CPU 한도로 죽는다: 원인은 "낡은 보정값"](handoff/2026-08-09-b2b-lane-cpu-death.md)
 - [자가치유가 자기가 고쳐야 할 상태를 "건강"으로 읽었다 — 알람 되살리기](handoff/2026-08-09-alarm-revive.md)
 **2026-08-08**
