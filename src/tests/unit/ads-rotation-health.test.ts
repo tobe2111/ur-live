@@ -136,3 +136,14 @@ describe('순환 나이 — 활성화 시각 기준 (승격 물결 가짜 경보
       .toMatch(/ADD COLUMN activated_at DATETIME/)
   })
 })
+
+/** 🩹 현 물결 백필(2026-08-10) — activated_at 은 새 활성화에만 찍혀, 이미 승격된 08-09 물결이
+ *  NULL→created_at(7월) 폴백으로 머지 후에도 가짜 starved 를 냈다(대표 수신 2회). KW_DDL 1회 백필. */
+describe('activated_at 현 물결 백필', () => {
+  it('KW_DDL 에 조건 가드(활성·미실행·NULL)된 백필이 있다 — 가드가 빠지면 기실행 나이까지 덮어쓴다', async () => {
+    const { KW_DDL } = await import('@/features/marketing/api/influencer-keyword-ddl')
+    const stmt = KW_DDL.find(s => s.includes('SET activated_at ='))
+    expect(stmt).toBeTruthy()
+    expect(stmt).toContain('active = 1 AND last_run_at IS NULL AND activated_at IS NULL')
+  })
+})

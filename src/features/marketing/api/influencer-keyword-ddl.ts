@@ -31,5 +31,10 @@ export const KW_DDL: string[] = [
   //   starved 경보 = #1106 승격 물결의 가짜 경보). 나이는 활성화부터 재야 한다. NULL(기존 시드)은
   //   created_at 폴백 — 시드는 생성 즉시 활성이라 두 값이 같다.
   'ALTER TABLE ad_discovery_keywords ADD COLUMN activated_at DATETIME',
+  // 🩹 현 물결 백필(2026-08-10) — activated_at 은 **새 활성화**에만 찍히므로, 이미 승격돼 있는 08-09
+  //   물결(미실행 auto ~26개)은 NULL → created_at(7월) 폴백으로 **여전히 가짜 starved 를 낸다**
+  //   (머지 직후 실제로 한 번 더 울렸다 — 대표 수신 2회째). 근사치 '-1 day'(=08-09 물결 시점)로 1회
+  //   스탬프해 즉시 끈다. 조건 가드(활성·미실행·NULL)라 재실행돼도 무해 — 미래 물결은 승격이 찍는다.
+  "UPDATE ad_discovery_keywords SET activated_at = datetime('now','-1 day') WHERE active = 1 AND last_run_at IS NULL AND activated_at IS NULL",
 ]
 
