@@ -354,6 +354,85 @@ adminStreamsRoutes.post('/alimtalk/pricing', cors(), async (c) => {
   }
 });
 
+/**
+ * 🏬 2026-08-10 상인회(몰) 일괄 크레딧 지급 — 대표 지시 2단계 "상인회 단위 알림톡 판매".
+ *
+ * ## 왜 '몰 크레딧'이라는 새 주체를 만들지 않았나
+ * 상인회는 **계정이 없다**(몰은 어드민이 만드는 데이터 행이고 운영자 로그인이 없다). 반면
+ * 소속 매장들은 **이미 크레딧 주체**다(`seller_credits`). ⇒ 새 잔액 주체를 만드는 대신
+ * **"상인회가 한 번 결제 → 소속 매장들에 배분"** 으로 모델링한다. 새 테이블 0, 운영자 계정 불필요,
+ * 1단계 마진 회계(`credit_transactions.price_paid` 합계 = 매출)에 **자동으로 잡힌다.**
+ *
+ * ## 🔴 멱등 — 돈이 오가는 자리라 두 번 눌러도 두 번 주면 안 된다
+ * `grant_ref`(세금계산서 번호 등 어드민이 입력하는 참조)를 `payment_key` 에 심고, 같은 ref 가
+ * 이미 있으면 **아무것도 하지 않고** 그대로 반환한다. 참조를 강제하는 부수효과로 **지급이 항상
+ * 문서와 짝지어진다** — 나중에 "이 크레딧 왜 나갔지"를 답할 수 있다.
+ *
+ * ⚠️ 발송 자체는 별개다 — ALIGO 3종 키가 설정돼야 실제로 나간다(현재 미설정 → 발송 0).
+ *    이 엔드포인트는 **판매·회계**만 성립시킨다.
+ */
+adminStreamsRoutes.post('/alimtalk/grant', cors(), async (c) => {
+  const { DB } = c.env;
+  try {
+    const body = await c.req.json<{
+      mall_id?: number; seller_ids?: number[]; credits_per_seller?: number;
+      total_price_paid?: number; grant_ref?: string; memo?: string;
+    }>();
+    const credits = Math.floor(Number(body.credits_per_seller));
+    const totalPaid = Math.floor(Number(body.total_price_paid ?? 0));
+    const ref = String(body.grant_ref ?? '').trim().slice(0, 80);
+    if (!Number.isFinite(credits) || credits <= 0 || credits > 1_000_000) {
+      return c.json({ success: false, error: '매장당 지급 건수는 1~1,000,000 사이여야 합니다' }, 400);
+    }
+    if (!Number.isFinite(totalPaid) || totalPaid < 0) {
+      return c.json({ success: false, error: '결제금액이 올바르지 않습니다' }, 400);
+    }
+    if (!ref) return c.json({ success: false, error: '지급 참조(세금계산서 번호 등)를 입력해주세요' }, 400);
+
+    const paymentKey = `grant:${ref}`;
+    // 🔴 멱등 — 같은 참조로 이미 지급했으면 재실행하지 않는다.
+    const dupe = await DB.prepare('SELECT id FROM credit_transactions WHERE payment_key = ? LIMIT 1')
+      .bind(paymentKey).first<IdRow>().catch(() => null);
+    if (dupe) return c.json({ success: true, data: { granted: 0, already: true } });
+
+    // 대상 매장 — 몰 소속(승인된 것만) 또는 명시 목록.
+    let sellerIds: number[] = Array.isArray(body.seller_ids)
+      ? body.seller_ids.map((v) => Number(v)).filter((n) => Number.isFinite(n) && n > 0).slice(0, 500)
+      : [];
+    if (sellerIds.length === 0) {
+      const mallId = Number(body.mall_id);
+      if (!Number.isFinite(mallId) || mallId <= 0) {
+        return c.json({ success: false, error: '몰을 선택하거나 매장을 지정해주세요' }, 400);
+      }
+      const rows = await DB.prepare(
+        "SELECT id FROM sellers WHERE COALESCE(mall_id, 1) = ? AND status = 'approved' LIMIT 500",
+      ).bind(mallId).all<IdRow>().catch(() => ({ results: [] as IdRow[] }));
+      sellerIds = (rows.results || []).map((r) => Number(r.id));
+    }
+    if (sellerIds.length === 0) return c.json({ success: false, error: '지급 대상 매장이 없습니다' }, 400);
+
+    // 매출 배분 — 나눠떨어지지 않는 나머지는 첫 매장에 몰아 **합계가 정확히 결제금액과 일치**하게.
+    const per = Math.floor(totalPaid / sellerIds.length);
+    const remainder = totalPaid - per * sellerIds.length;
+    const desc = String(body.memo ?? '').trim().slice(0, 200) || `상인회 일괄 지급 (${ref})`;
+
+    const stmts = sellerIds.flatMap((sid, i) => [
+      DB.prepare(
+        `INSERT INTO seller_credits (seller_id, balance, updated_at) VALUES (?, ?, datetime('now'))
+         ON CONFLICT(seller_id) DO UPDATE SET balance = balance + excluded.balance, updated_at = datetime('now')`,
+      ).bind(sid, credits),
+      DB.prepare(
+        `INSERT INTO credit_transactions (seller_id, type, amount, price_paid, description, payment_key, created_at)
+         VALUES (?, 'charge', ?, ?, ?, ?, datetime('now'))`,
+      ).bind(sid, credits, per + (i === 0 ? remainder : 0), desc, paymentKey),
+    ]);
+    await DB.batch(stmts);
+    return c.json({ success: true, data: { granted: sellerIds.length, credits_each: credits, total_price_paid: totalPaid } });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 adminStreamsRoutes.get('/alimtalk/accounts', cors(), async (c) => {
   const { DB } = c.env;
   try {
