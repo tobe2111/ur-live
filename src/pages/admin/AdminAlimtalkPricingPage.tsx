@@ -111,6 +111,31 @@ export default function AdminAlimtalkPricingPage() {
     } catch { toast.error('원가 저장에 실패했습니다') }
   }
 
+  // 🏬 상인회 일괄 지급 — 몰 소속 매장 전체에 크레딧 배분(멱등: 같은 참조는 1회만).
+  const [grant, setGrant] = useState({ mall_id: '', credits: '', price: '', ref: '' })
+  const [granting, setGranting] = useState(false)
+  async function grantCredits() {
+    const mallId = Number(grant.mall_id); const credits = Number(grant.credits); const price = Number(grant.price)
+    if (!Number.isFinite(mallId) || mallId <= 0) { toast.error('몰 ID를 입력해주세요'); return }
+    if (!Number.isFinite(credits) || credits <= 0) { toast.error('매장당 지급 건수를 입력해주세요'); return }
+    if (!grant.ref.trim()) { toast.error('지급 참조(계산서 번호 등)를 입력해주세요'); return }
+    if (!window.confirm(`몰 #${mallId} 소속 매장 전체에 각 ${credits.toLocaleString()}건을 지급합니다. 진행할까요?`)) return
+    setGranting(true)
+    try {
+      const r = await api.post('/api/admin/alimtalk/grant', {
+        mall_id: mallId, credits_per_seller: credits, total_price_paid: Number.isFinite(price) ? price : 0,
+        grant_ref: grant.ref.trim(),
+      }, { headers: authHeaders })
+      const d = r.data?.data
+      if (d?.already) toast.success('이미 지급된 참조입니다 (중복 지급 방지)')
+      else toast.success(`${d?.granted ?? 0}개 매장에 지급 완료`)
+      setGrant({ mall_id: '', credits: '', price: '', ref: '' })
+      loadAllData()
+    } catch (e) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '지급에 실패했습니다')
+    } finally { setGranting(false) }
+  }
+
   useEffect(() => {
     // 401 은 lib/api.ts interceptor 가 처리 — 그 외 실패만 기존과 동일하게 토스트.
     if (anyError) toast.error('데이터를 불러오지 못했습니다')
@@ -208,6 +233,32 @@ export default function AdminAlimtalkPricingPage() {
             원가 저장
           </button>
         </div>
+      </div>
+
+      {/* 🏬 2026-08-10 상인회(몰) 일괄 지급 — 상인회가 한 번 결제 → 소속 매장들에 크레딧 배분.
+          매출은 credit_transactions 에 기록돼 위 마진 집계에 자동 반영된다. */}
+      <div className="bg-white rounded-xl p-4 shadow-sm space-y-3">
+        <div>
+          <p className="text-sm font-bold text-gray-900">상인회 일괄 지급</p>
+          <p className="text-xs text-gray-400">
+            몰 소속 승인 매장 전체에 크레딧을 배분합니다. 결제금액은 매출로 기록돼 마진에 반영됩니다.
+            같은 지급 참조로는 두 번 지급되지 않습니다.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          <input type="number" min="1" value={grant.mall_id} onChange={(e) => setGrant(p => ({ ...p, mall_id: e.target.value }))}
+            placeholder="몰 ID" className="h-9 px-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" />
+          <input type="number" min="1" value={grant.credits} onChange={(e) => setGrant(p => ({ ...p, credits: e.target.value }))}
+            placeholder="매장당 건수" className="h-9 px-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" />
+          <input type="number" min="0" value={grant.price} onChange={(e) => setGrant(p => ({ ...p, price: e.target.value }))}
+            placeholder="총 결제금액(원)" className="h-9 px-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" />
+          <input value={grant.ref} onChange={(e) => setGrant(p => ({ ...p, ref: e.target.value }))}
+            placeholder="지급 참조(계산서번호)" className="h-9 px-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" />
+        </div>
+        <button onClick={grantCredits} disabled={granting}
+          className="px-3 h-9 rounded-lg bg-gray-900 text-white text-xs font-semibold disabled:opacity-40">
+          {granting ? '지급 중…' : '일괄 지급'}
+        </button>
       </div>
 
       {/* 통계 카드 */}
