@@ -15,7 +15,7 @@
  *   에러가 안 나고 조용히 틀린 채 남는, 이 레포의 단골 실패 모양이다.
  */
 import { describe, it, expect } from 'vitest'
-import { classifyLead, suspectCompanyName, unbalancedBracket, CLASSIFY_RULES_VERSION } from '@/features/marketing/api/company-classify'
+import { classifyLead, suspectCompanyName, unbalancedBracket, isGenericPhrase, CLASSIFY_RULES_VERSION } from '@/features/marketing/api/company-classify'
 
 type Input = Parameters<typeof classifyLead>[0]
 const cl = (i: Input) => classifyLead(i)
@@ -95,6 +95,48 @@ describe('webkr 오염 — 대표 신고 실제 행', () => {
    * — 2026-07-27 에 "인천교통공사…특강" 류가 정확히 그렇게 영구 제외됐다.
    */
   it('🔒 이번 규칙 변경분이 소급되도록 버전이 올라가 있다', () => {
-    expect(CLASSIFY_RULES_VERSION).toBeGreaterThanOrEqual(6)
+    expect(CLASSIFY_RULES_VERSION).toBeGreaterThanOrEqual(8)
+  })
+})
+
+/**
+ * 🏷️ **업종어뿐인 이름** — 2026-08-10 대표 신고 "파트너들 이름이 왜이래".
+ *
+ *   라이브 실측 4행: `가입인사`(당근 커뮤니티 글) · `소상공인 자생력 강화`(사업명) ·
+ *   `마케팅 대행`(검색어) · `상권활성화센터`(재단). 마지막만 제대로 기관으로 잡혀 있었다.
+ *   그중 `마케팅 대행` 이 가장 나빴다 — BIZ_RULES 의 `마케팅\s*대행` 에 **이름으로** 맞아
+ *   `대행사 tier1 · evidence` 가 됐고, `evidence` 는 이름 치유의 **제외 조건**이라 영구히 굳는다.
+ */
+describe('업종어뿐인 이름은 상호가 아니다', () => {
+  it('🔒 검색어가 그대로 상호가 된 것을 파트너로 승격하지 않는다 (실제 행)', () => {
+    const r = cl({ company_name: '마케팅 대행', source: 'webkr', website: 'https://sfast6.cafe24.com',
+      category: '대행사', subcategory: '마케팅대행', tier: 1, description: '마케팅 대행 전문' })
+    expect(r.lead_type).not.toBe('partner')
+    expect(r.confidence).not.toBe('evidence') // ← evidence 면 이름 치유에서 제외돼 영구히 굳는다
+  })
+
+  it('🔒 자기만의 토큰이 있으면 진짜 상호 — 레인을 죽이지 않는다', () => {
+    for (const n of ['남부종합광고기획', '애드업컴퍼니', '한빛기획']) {
+      const r = cl({ company_name: n, source: 'webkr', description: '광고' })
+      expect(isGenericPhrase(n), n).toBe(false)
+    }
+  })
+
+  /**
+   * 🩸 이 테스트는 처음에 `ok` 를 봤다가 **결함을 못 잡았다.** 일반구 규칙은 행을 버리지 않고
+   * **근거 등급만** 내린다 — 그러니 재야 할 값은 `ok` 가 아니라 `confidence` 다.
+   * (되돌려-검증에서 "등록부에도 적용" 주입이 초록으로 통과해 드러났다.)
+   */
+  it('🔒 등록부 상호에는 적용하지 않는다 (원부가 준 값을 우리가 의심하지 않는다)', () => {
+    const r = cl({ company_name: '마케팅 대행', source: 'commerce', category: '온라인판매' })
+    expect(r.ok).toBe(true)
+    expect(r.confidence).toBe('evidence') // 원부 상호는 근거로 인정된다
+    expect(r.lead_type).toBe('partner')
+  })
+
+  it('업종어 판정 자체', () => {
+    expect(isGenericPhrase('마케팅 대행')).toBe(true)
+    expect(isGenericPhrase('종합 광고 기획')).toBe(true)
+    expect(isGenericPhrase('(주)디스크프리')).toBe(false)
   })
 })

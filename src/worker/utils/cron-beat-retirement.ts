@@ -65,13 +65,30 @@ export type BeatVerdict = 'judge' | 'superseded' | 'retired'
  *
  * ⚠️ 나이나 임계를 **모르면 `judge`** 다(보수적) — 모른다고 조용히 빼면 그게 곧 사각지대다.
  */
-export function classifyBeat(beat: BeatLike, freshBaseNames: ReadonlySet<string>): BeatVerdict {
+export function classifyBeat(
+  beat: BeatLike,
+  freshBaseNames: ReadonlySet<string>,
+  /**
+   * 🪦 지금 **디스패처가 알고 있는** 레인 base 이름(런타임이 매 실행 남기는 목록). 주면 판정이 훨씬 빨라진다.
+   *
+   *   ⚠️ 이게 없으면 **코드에서 삭제된 레인이 16일 동안 "진짜 침묵"으로 보인다**(은퇴 임계가 자기 주기의
+   *   8배라서 — 48시간 주기면 384시간). 2026-08-10 에 그 때문에 실제로 오진했다: `collect-nara-vendor` 는
+   *   `collect-nara-contract` 로 대체되며 **코드에서 사라진** 레인인데 "114시간째 멈춤"으로 보고돼,
+   *   대표에게 **필요 없는 API 화면 캡처를 요청**했다. 나이는 은퇴를 늦게 말해 주지만 **"부르는 사람이
+   *   없다"는 사실은 즉시 알 수 있다** — `orphanLaneBeats` 가 쓰던 바로 그 신호다.
+   *   미지정이면 종전대로(나이 기반만) 동작한다.
+   */
+  knownBaseNames?: ReadonlySet<string>,
+): BeatVerdict {
   const age = Number(beat?.age_minutes)
   const gap = Number(beat?.max_gap_min)
   if (!Number.isFinite(age) || !Number.isFinite(gap) || gap <= 0) return 'judge'
   // ① 같은 일이 다른 이름으로 살아 있다 — **쿼리 붙은 변종만** 해당(base 자신은 자기를 대체 못 한다).
   const raw = String(beat?.name ?? '')
   if (raw.includes('?') && freshBaseNames.has(beatBaseName(raw))) return 'superseded'
+  // ①-b 아무도 안 부르는 이름 — 디스패처 목록에 없고 하루 넘게 조용하면 은퇴다(나이 8배를 안 기다린다).
+  //   ⚠️ 목록이 비어 있으면(부팅 직후·기록 유실) 판정하지 않는다 — 전 레인을 은퇴로 만들면 사각지대가 생긴다.
+  if (knownBaseNames?.size && raw.startsWith('ads:') && !knownBaseNames.has(beatBaseName(raw)) && age > RETIRED_MIN_AGE_MIN) return 'retired'
   // ② 자기 임계를 한참 넘겼다 = 늦은 게 아니라 없는 것.
   if (age > gap * RETIRED_GAP_MULTIPLE && age > RETIRED_MIN_AGE_MIN) return 'retired'
   return 'judge'

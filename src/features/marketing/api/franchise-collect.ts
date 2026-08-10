@@ -34,6 +34,25 @@ export const FRANCHISE_OP = 'getBrandinfo'
 const FRANCHISE_OP_FALLBACKS = ['getBrandInfo', 'getBrandList'] as const
 /** 실측으로 확정된 이름을 기억한다 — 다음 회차부터 첫 시도에 맞는다(재시도 0). */
 const OP_KEY = 'ads_franchise_op'
+/**
+ * 📅 **연도(`yr`) 자가치유** — 오퍼레이션 이름과 **똑같은 클래스**의 두 번째 함정.
+ *
+ *   2026-08-09 실측: 봉투 오독을 고치자 비로소 진짜 사유가 보였다 —
+ *   `NO_OPENAPI_SERVICE_ERROR`(코드 12, 주소 없음)가 **사라지고** `ESSENTIAL_PARAMETER_ERROR`
+ *   (코드 11, 필수 파라미터 누락)로 바뀌었다. 즉 **이름은 맞았고 파라미터가 빈 것**이다.
+ *   우리가 안 보내는 파라미터는 `yr`(연도) 하나뿐이다(정보공개서는 연 단위로 등록된다).
+ *
+ *   ⚠️ 그렇다고 연도를 코드에 박지 않는다 — 박으면 **내년에 같은 자리에서 또 죽는다.**
+ *   이름 때와 같은 방식으로 **한 번 실측해 스스로 정하게** 한다: 코드 11 이면 최근 연도부터
+ *   차례로 한 번씩 시도하고, 맞은 값을 저장해 다음 회차부터 첫 시도에 맞춘다.
+ *   ⚠️ **코드 11 일 때만** 넘어간다 — 키·트래픽 오류에 연도를 돌리면 같은 실패를 N배로 반복한다.
+ */
+const YR_KEY = 'ads_franchise_yr'
+/** 시도할 연도 — 최신부터. 등록이 갱신되는 시차 때문에 '올해'가 아직 비어 있을 수 있다. */
+const yearCandidates = (nowMs: number): string[] => {
+  const y = new Date(nowMs).getUTCFullYear()
+  return [String(y - 1), String(y), String(y - 2)]
+}
 /** 루프가 자기 기록(오퍼레이션 학습 · 통계 · 커서)에 쓸 몫 — 근거는 루프 위 주석. */
 const BOOKKEEPING_RESERVE = 1
 /**
@@ -107,7 +126,9 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
   const learnedOp = (await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(OP_KEY)
     .first<{ value: string }>().catch(() => null))?.value || ''
   const op = (env as unknown as { ADS_FRANCHISE_OP?: string }).ADS_FRANCHISE_OP || learnedOp || FRANCHISE_OP
-  const yr = (env as unknown as { ADS_FRANCHISE_YEAR?: string }).ADS_FRANCHISE_YEAR || ''
+  const learnedYr = (await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(YR_KEY)
+    .first<{ value: string }>().catch(() => null))?.value || ''
+  const yr = (env as unknown as { ADS_FRANCHISE_YEAR?: string }).ADS_FRANCHISE_YEAR || learnedYr || ''
   const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
   let prev: FranchiseStats | null = null
   try { prev = prevRaw?.value ? JSON.parse(prevRaw.value) as FranchiseStats : null } catch { prev = null }
@@ -130,7 +151,7 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
   const pagesPerRun = Math.min(30, Math.max(3, parseInt((env as unknown as { ADS_FRANCHISE_PAGES?: string }).ADS_FRANCHISE_PAGES || '', 10) || 8))
   const budget = { left: pagesPerRun }
   let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
-  let useOp = op
+  let useOp = op, useYr = yr
   // 🧾 **자기 기록 몫을 남긴다** — 이 루프는 이제 안에서 D1 을 쓸 수 있고(오퍼레이션 학습), 뒤에도 쓴다
   //   (통계·커서). D1 도 서브리퀘스트라, 0까지 태우면 그 쓰기들이 던지고 호출부가 전부 `.catch(() => null)`
   //   이라 **조용히 사라진다** — 하필 마지막이 자기 스탬프여서 *"돌았는데 안 돈 것"* 처럼 보인다
@@ -138,16 +159,25 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
   //   한 페이지를 양보하는 값이 스탬프를 잃는 값보다 훨씬 싸다.
   const runDeadline = now + FRANCHISE_RUN_MS
   for (let i = 0; i < budget.left + 3 && budget.left > BOOKKEEPING_RESERVE && Date.now() < runDeadline; i++) {
-    let { items, count, msg } = await fetchBrandPage(base, useOp, key, page, yr, budget)
+    let { items, count, msg } = await fetchBrandPage(base, useOp, key, page, useYr, budget)
     // 🔁 **주소 부재일 때만** 다음 후보로 — 첫 페이지에서 한 번만 시도한다(예산 낭비 방지).
     //   맞는 이름을 찾으면 저장해 다음 회차부터 재시도 0. 근거: `FRANCHISE_OP_FALLBACKS` 주석.
     if (i === 0 && !count && msg && /NO_OPENAPI_SERVICE_ERROR/i.test(msg)) {
       for (const cand of FRANCHISE_OP_FALLBACKS) {
         if (cand === useOp || budget.left <= 0) continue
-        const r = await fetchBrandPage(base, cand, key, page, yr, budget)
+        const r = await fetchBrandPage(base, cand, key, page, useYr, budget)
         if (r.count) { useOp = cand; items = r.items; count = r.count; msg = r.msg; break }
       }
       if (count) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(OP_KEY, useOp).run().catch(() => null)
+    }
+    // 📅 **필수 파라미터 누락(코드 11)일 때만** 연도를 하나씩 — 첫 페이지에서 한 번만. 근거: `YR_KEY` 주석.
+    if (i === 0 && !count && msg && /ESSENTIAL_PARAMETER_ERROR|필수.*파라미터/i.test(msg)) {
+      for (const cand of yearCandidates(now)) {
+        if (cand === useYr || budget.left <= BOOKKEEPING_RESERVE) continue
+        const r = await fetchBrandPage(base, useOp, key, page, cand, budget)
+        if (r.count) { useYr = cand; items = r.items; count = r.count; msg = r.msg; break }
+      }
+      if (count) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(YR_KEY, useYr).run().catch(() => null)
     }
     if (msg) lastMsg = msg
     if (!sample && items[0]) sample = items[0]

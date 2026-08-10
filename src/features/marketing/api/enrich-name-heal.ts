@@ -2,6 +2,15 @@
  * 🏷️ 이름 치유 소급 — 보강 폭포수의 Phase 3 (2026-07-28 모듈 분리).
  *
  *   대상: **연락처는 이미 있는데 이름만 제목-파편**("데이터 토론"·"insight")인 `source='webkr'` 행.
+ *
+ *   🩸 **2026-08-10 — 내가 만든 이음매를 내가 막는다.** 08-08 에 "webkr 의 description(=페이지 본문)은
+ *   업종 근거가 아니다" 규칙을 넣으면서, 본문에서만 맞던 행들이 `evidence` → **`keyword`** 로 내려갔다.
+ *   그런데 이 쿼리는 `confidence='none'` 만 봤다 → **방금 강등시킨 그 행들이 영영 치유 대상이 아니었다.**
+ *   그게 대표가 신고한 진흥원(`jepa.kr`) 유형이 계속 남는 이유다: 도메인이 평범한 `.kr` 이고 저장된
+ *   이름엔 `진흥원` 이 없어 기관 어휘가 못 잡는데, **사이트가 스스로 선언한 이름**(og:site_name)에는 있다.
+ *   ⇒ `keyword`(=검색어로 추정했을 뿐, 근거 없음)도 치유 대상에 넣는다. 실명을 얻으면 아래에서
+ *     `classifyLead` 가 다시 돌아 기관이면 `org` 로 내려간다 — 새 규칙 없이 기존 경로가 처리한다.
+ *   ⚠️ `evidence`(이름에서 근거를 얻은 행)는 넣지 않는다 — 이미 실명이라 크롤이 낭비다.
  *   Phase 2 는 연락처-없는 행만 돌기 때문에 이 행들은 영영 미치유 → 관리자 '분류 확인 카드'에 계속 쌓인다
  *   (2026-07-27 대표 "분류 확인 카드 수동 부담"). 홈페이지 `og:site_name` 으로 실명 교체 + 실명 기준 재분류.
  *
@@ -26,7 +35,7 @@ export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD
   const { suspectCompanyName, classifyLead } = await import('./company-classify')
   spendD1()
   const healTargets = (await DB.prepare(`SELECT id, company_name, category, source_keyword, website FROM ad_company_leads
-      WHERE source = 'webkr' AND merged_into IS NULL AND status = 'new' AND classify_confidence = 'none'
+      WHERE source = 'webkr' AND merged_into IS NULL AND status = 'new' AND classify_confidence IN ('none', 'keyword')
         AND website IS NOT NULL AND website != '' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
         AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))
       ORDER BY id DESC LIMIT 8`)
@@ -34,7 +43,15 @@ export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD
   for (const t of healTargets) {
     // 벽시계도 함께 본다 — 시간이 끝났는데 D1 치유만 계속 돌면 라운드 종료(스냅샷·학습)를 못 마친다.
     if (budget.left <= 2 || budget.limitHit || (!!budget.deadline && Date.now() >= budget.deadline)) break
-    if (!suspectCompanyName(t.company_name, t.source_keyword)) { await stamp(t.id); continue } // SQL 근사 필터의 오탐 스킵
+    // 🩸 2026-08-10 대표 신고("파트너들 이름이 왜이래") — 여기가 그 원인이었다.
+    //   라이브 실측으로 나온 이름들: `가입인사`(당근 커뮤니티 글 제목) · `소상공인 자생력 강화`(사업명) ·
+    //   `마케팅 대행`(검색어). 셋 다 괄호도 따옴표도 길지도 않아 `suspectCompanyName` 이 **false** 다.
+    //   그 휴리스틱은 "제목처럼 생겼나"를 볼 뿐, **평범하게 생긴 제목**은 못 가른다.
+    //
+    //   ⇒ 이 쿼리가 이미 고른 것은 `confidence IN ('none','keyword')` = **이름을 믿을 근거가 없는 행**이다.
+    //     근거가 없는데 휴리스틱으로 한 번 더 걸러 낼 이유가 없다 — 그냥 **사이트에 직접 물어본다**
+    //     (og:site_name). 허위 0 은 유지된다: 채택하는 값은 그 사이트가 스스로 선언한 이름뿐이다.
+    //   ⚠️ 비용은 7일 쿨다운 도장(`enrich_checked_at`) + 회당 8건 캡이 막는다 — 같은 행을 반복 크롤하지 않는다.
     const c = await crawlContact(t.website, budget, undefined, t.category === '미디어')
     if (c.siteName && c.siteName !== t.company_name) {
       // 실명 기준 재분류 — 근거 생기면 업종까지 교정, 아니면 keyword 로 승급(분류 확인 카드에서 탈출).

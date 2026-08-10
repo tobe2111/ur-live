@@ -8,7 +8,7 @@
 import type { Env } from '@/worker/types/env'
 import { envLaneBudget, envPlanValue } from './collect-budget'
 import { ensureNoticeSchema, saveNotices, type GovNotice } from './gov-notices'
-import { serviceKeyParam, isNoValue } from './public-data-diag'
+import { serviceKeyParam, isNoValue, describePublicDataFailure } from './public-data-diag'
 
 // ✅ 실 엔드포인트(대표 활용신청 승인 화면 확인 2026-07-27): 조달청_나라장터 **공공데이터개방표준서비스**
 //   /1230000/ao/PubDataOpnStdService — 입찰공고는 날짜구간 조회(getDataSetOpnStdBidPblancInfo) 후 키워드를
@@ -16,7 +16,19 @@ import { serviceKeyParam, isNoValue } from './public-data-diag'
 //   (같이 승인된 사용자정보서비스 UsrInfoService02 는 조달업체 명부 — 공고 스캔과 무관, 미배선.)
 const NARA_BASE = 'https://apis.data.go.kr/1230000/ao/PubDataOpnStdService'
 const BIZINFO_BASE = 'https://apis.data.go.kr/1421000/hpsBnaSituService'   // 기업마당(중기부) — 확정 대상
-const KEYWORDS = ['상권활성화', '소상공인', '마케팅', '창업', '상권']
+/**
+ * 🔎 스캔 키워드 — **그물의 크기**. 회전 커서가 있어 한 회차에 다 못 봐도 다음 회차가 이어받는다.
+ *
+ *   2026-08-10 확장(대표 "지원사업 DB도 받고 싶어"): 기존 5개는 **상권/창업 축만** 덮었다.
+ *   지원사업 공고는 *"지원사업·바우처·컨설팅·판로·온라인 진출"* 같은 말로 올라오는데 그 말이 하나도
+ *   없었다 — 그물이 좁아서 못 잡은 것이지 공고가 없던 게 아니다.
+ *   ⚠️ 키워드 하나 = 회차당 요청 1개다. 무료 플랜 인보케이션 예산(50~60)을 넘기지 않게
+ *     **회전 커서**가 잘라서 돈다(기아 0 — `KW_CURSOR_KEY`).
+ */
+const KEYWORDS = [
+  '상권활성화', '소상공인', '마케팅', '창업', '상권',
+  '지원사업', '바우처', '컨설팅', '판로', '온라인 진출', '전통시장', '골목상권',
+]
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
 // ⚠️ 별칭 폴백은 `isNoValue` 를 통과해야 한다 — 포털이 '값 없음'을 `"N/A"` 문자열로 주는데 truthy 라
 //   앞 별칭에서 걸리면 **뒤 별칭의 진짜 값을 건너뛴다**(통신판매에서 주소 31.7% 를 그렇게 잃었다).
@@ -30,12 +42,27 @@ function pickArray(data: Record<string, unknown> | null): Record<string, unknown
   return Array.isArray(items) ? items as Record<string, unknown>[] : []
 }
 
-async function fetchJson(url: string, budget: { left: number }): Promise<Record<string, unknown> | null> {
-  if (budget.left <= 0) return null
+/**
+ * 🩺 **실패 사유를 돌려준다** — 예전엔 네트워크·HTTP·JSON 실패를 전부 `null` 로 삼켰다.
+ *
+ *   그래서 기업마당(지원사업) 경로가 **10회 실행 내내 `grant: 0` 인데 `error` 는 비어 있었다**(실측).
+ *   0건이 '오늘 공고가 없어서'인지 '주소가 틀려서'인지 화면에서 구분되지 않으니, 아무도 못 고친다 —
+ *   공정위 가맹 레인이 오퍼레이션 이름 하나로 21회를 버린 것과 **정확히 같은 클래스**다.
+ *   ⇒ `describePublicDataFailure`(public-data-diag SSOT)로 본문의 원인 코드까지 회수한다.
+ */
+async function fetchJson(url: string, budget: { left: number }): Promise<{ data: Record<string, unknown> | null; msg?: string }> {
+  if (budget.left <= 0) return { data: null, msg: '예산 소진' }
   budget.left -= 1
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) }).catch(() => null)
-  if (!res || !res.ok) return null
-  return await res.json().catch(() => null) as Record<string, unknown> | null
+  let res: Response | null = null
+  try { res = await fetch(url, { signal: AbortSignal.timeout(15000) }) } catch (err) {
+    return { data: null, msg: `네트워크: ${String((err as Error)?.message || '').slice(0, 80)}` }
+  }
+  if (!res.ok) return { data: null, msg: await describePublicDataFailure(res, `HTTP ${res.status}`) }
+  const raw = await res.text().catch(() => '')
+  try { return { data: JSON.parse(raw) as Record<string, unknown> } } catch {
+    // JSON 을 요청했는데 XML/HTML 이 오면 대개 인증키·주소 문제다 — 본문 앞부분이 그걸 말해 준다.
+    return { data: null, msg: raw.slice(0, 160).replace(/<[^>]+>/g, ' ').trim() || '비JSON 응답' }
+  }
 }
 
 export interface NoticeStats { last_run: string; found: number; saved: number; bid: number; grant: number; total_runs: number; diag: { configured: boolean; error?: string; sampleBid?: unknown; sampleGrant?: unknown; stoppedBy?: string; kwFrom?: number } }
@@ -79,6 +106,7 @@ export async function runNoticeScan(env: Env): Promise<NoticeStats> {
   const runDeadlineMs = envPlanValue(undefined, RUN_DEADLINE_MS, RUN_DEADLINE_MS_PAID, env)
   let stoppedBy: string | undefined
   let bid = 0, grant = 0, sampleBid: unknown, sampleGrant: unknown
+  let bidMsg: string | undefined, grantMsg: string | undefined
   const all: GovNotice[] = []
 
   // 🔄 키워드 회전 — 이번 회차가 어디서 시작하는지. 마감선에 잘린 뒤쪽이 다음 회차의 앞이 된다.
@@ -95,7 +123,9 @@ export async function runNoticeScan(env: Env): Promise<NoticeStats> {
     const bgn = ymdhm(new Date(now.getTime() - 3 * 86400000), '0000')
     const end = ymdhm(now, '2359')
     const url = `${naraBase}/getDataSetOpnStdBidPblancInfo?serviceKey=${serviceKeyParam(key)}&pageNo=1&numOfRows=300&type=json&bidNtceBgnDt=${bgn}&bidNtceEndDt=${end}`
-    const items = pickArray(await fetchJson(url, budget))
+    const r = await fetchJson(url, budget)
+    if (r.msg) bidMsg = r.msg
+    const items = pickArray(r.data)
     if (!sampleBid && items[0]) sampleBid = items[0]
     for (const it of items) {
       const title = g(it, 'bidNtceNm', 'ntceNm')
@@ -119,7 +149,9 @@ export async function runNoticeScan(env: Env): Promise<NoticeStats> {
     if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }
     kwDone++
     const url = `${bizBase}/getSupportBusinessList?serviceKey=${serviceKeyParam(key)}&numOfRows=30&pageNo=1&resultType=json&searchCnst=${encodeURIComponent(kw)}`
-    const items = pickArray(await fetchJson(url, budget))
+    const r = await fetchJson(url, budget)
+    if (r.msg) grantMsg = r.msg
+    const items = pickArray(r.data)
     if (!sampleGrant && items[0]) sampleGrant = items[0]
     for (const it of items) {
       const no = stripTag(it.pblancId || it.pblancSn)
@@ -142,7 +174,10 @@ export async function runNoticeScan(env: Env): Promise<NoticeStats> {
   const s: NoticeStats = {
     last_run: stamp, found: all.length, saved, bid, grant, total_runs: (prev?.total_runs || 0) + 1,
     // 📟 왜 멈췄는지를 남긴다 — 없으면 "적게 걷혔다"가 고장인지 마감선인지 구분이 안 된다.
-    diag: { configured: true, sampleBid, sampleGrant, stoppedBy, kwFrom },
+    // 🔎 **0건인 축의 사유만** 올린다 — 정상 축의 잡음 없이 "무엇이 왜 비었는가"가 한 줄로 보인다.
+    //   축마다 따로 남기는 이유: 한쪽만 죽는 경우가 실제였다(입찰 15건 ↔ 지원사업 0건).
+    diag: { configured: true, sampleBid, sampleGrant, stoppedBy, kwFrom,
+      error: [bid === 0 && bidMsg ? `입찰: ${bidMsg}` : '', grant === 0 && grantMsg ? `지원사업: ${grantMsg}` : ''].filter(Boolean).join(' · ') || undefined },
   }
   await persist(s)
   return s
