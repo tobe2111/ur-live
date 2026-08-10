@@ -953,6 +953,7 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     { desc: 'wholesale_malls.ga_id', sql: "ALTER TABLE wholesale_malls ADD COLUMN ga_id TEXT" },
     { desc: 'wholesale_malls.naver_verification', sql: "ALTER TABLE wholesale_malls ADD COLUMN naver_verification TEXT" },
     { desc: 'wholesale_malls.privacy_md', sql: "ALTER TABLE wholesale_malls ADD COLUMN privacy_md TEXT" },
+    { desc: 'wholesale_malls.operator_user_id', sql: "ALTER TABLE wholesale_malls ADD COLUMN operator_user_id INTEGER" },
     { desc: 'wholesale_banners.mall_id', sql: "ALTER TABLE wholesale_banners ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'wholesale_proposal_tickets.mall_id', sql: "ALTER TABLE wholesale_proposal_tickets ADD COLUMN mall_id INTEGER DEFAULT 1" },
     // 🏬 2026-06-15 (sellpie형 게시판): 세부 카테고리(supply/codev/live/sns/report/inquiry). my-tickets/board SELECT 가 참조.

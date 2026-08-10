@@ -6,6 +6,7 @@ Disallow: /seller/login
 Disallow: /seller/register
 Disallow: /agency/login
 Disallow: /agency/register
+Disallow: /mall-admin
 Disallow: /api/
 Disallow: /auth/
 Disallow: /checkout

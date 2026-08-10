@@ -41,10 +41,12 @@ interface MallRow {
   license_label?: string | null
   features_json?: string | null
   company_json?: string | null
-  // 📣 2026-08-09 과업① — 몰별 GA4/네이버 확인/방문자 고지문.
+  // 📣 2026-08-09 몰별 GA4/네이버 확인/방문자 고지문.
   ga_id?: string | null
   naver_verification?: string | null
   privacy_md?: string | null
+  /** 🏬 2026-08-10 몰 운영자(users.id) — `/mall-admin` 콘솔 접근 열쇠. */
+  operator_user_id?: number | null
   active: number
 }
 
@@ -101,6 +103,7 @@ export default function AdminWholesaleMallsPage() {
       ga_id: m.ga_id || '',
       naver_verification: m.naver_verification || '',
       privacy_md: m.privacy_md || '',
+      operator_user_id: m.operator_user_id != null ? String(m.operator_user_id) : '',
       active: !!m.active,
     })
     setShowForm(true)
@@ -138,6 +141,8 @@ export default function AdminWholesaleMallsPage() {
       ga_id: form.ga_id.trim() || null,
       naver_verification: form.naver_verification.trim() || null,
       privacy_md: form.privacy_md.trim() || null,
+      // 🏬 운영자 지정 — 빈 문자열이면 해제(서버가 users 실재까지 확인해 400 을 준다).
+      operator_user_id: form.operator_user_id.trim() || null,
       active: form.active ? 1 : 0,
     }
     // features_json 유효성(입력했을 때만).
