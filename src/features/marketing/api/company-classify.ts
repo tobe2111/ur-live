@@ -42,6 +42,32 @@ export const NONPROFIT_HOST = /(?:^|\.)or\.kr$/i
 const BRACKETS: Array<[string, string]> = [['[', ']'], ['(', ')'], ['「', '」'], ['【', '】'], ['《', '》'], ['〈', '〉']]
 export const unbalancedBracket = (s: string): boolean =>
   BRACKETS.some(([o, c]) => (s.split(o).length - 1) !== (s.split(c).length - 1))
+/**
+ * 🏷️ **업종어만으로 이루어진 이름은 상호가 아니라 설명이다** (2026-08-10 대표 신고 "파트너들 이름이 왜이래").
+ *
+ *   라이브 실측으로 나온 이름: `마케팅 대행`. 이건 검색어가 그대로 상호가 된 것인데,
+ *   하필 **BIZ_RULES 의 `마케팅\s*대행` 에 이름으로 맞아** `대행사 · tier1 · evidence` 가 됐다.
+ *   `evidence` 는 이름 치유의 제외 조건이라 **그 이름이 영구히 굳는다** — 가장 나쁜 조합이다.
+ *
+ *   ## 무엇으로 가르나
+ *   진짜 상호에는 업종어 말고 **자기만의 토큰**이 있다(`남부`종합광고기획 · `애드업`).
+ *   업종어와 법인격 표기를 걷어내고 **남는 게 없으면** 그건 이름이 아니라 업종 설명이다.
+ *   ⇒ 그런 이름은 근거로 인정하지 않고 `keyword`(=모른다)로 떨어뜨려 **치유 대상**이 되게 한다.
+ *     사이트가 스스로 선언한 이름(og:site_name)을 받아오면 그때 제대로 분류된다.
+ *
+ *   ⚠️ **버리지 않는다.** 실제로 `마케팅대행`이 상호인 업체가 있을 수 있고, 그 경우 치유가
+ *     사이트 이름을 확인해 같은 값이면 그대로 둔다. 판단이 안 서면 사람에게 보인다(분류 확인 카드).
+ */
+const GENERIC_NAME_TOKENS = /(마케팅|대행|광고|홍보|기획|컨설팅|디자인|미디어|콘텐츠|브랜딩|프로모션|이벤트|행사|바이럴|퍼포먼스|온라인|디지털|종합|전문|서비스|센터|스튜디오|에이전시|플랫폼|솔루션|시스템|그룹|코리아|소상공인|상권|창업|지원|사업|업체|회사|주식회사|유한회사|영업|판매|유통|납품|제작|시공|설치)/g
+const CORP_MARKER = /[（(]?\s*(?:주|유|재|사|합|㈜|㈐)\s*[)）]?|주식회사|유한회사|합자회사|사단법인|재단법인/g
+export const isGenericPhrase = (name: string): boolean => {
+  const rest = String(name || '')
+    .replace(CORP_MARKER, '')
+    .replace(GENERIC_NAME_TOKENS, '')
+    .replace(/[\s·,.\-–—_/&()[\]]/g, '')
+  return rest.length < 2 // 자기만의 토큰이 사실상 남지 않았다
+}
+
 /** 설명(description)이 **페이지 본문**이라 업종 근거로 못 쓰는 소스 — 근거는 `classifyLead` ③ 주석. */
 const DESC_IS_PAGE_BODY = new Set(['webkr'])
 
@@ -74,7 +100,8 @@ export type ClassifyConfidence = 'registry' | 'evidence' | 'keyword' | 'none'
  *  자동으로 재검사 대상이 된다(안 올리면 이미 스탬프된 잘못된 행이 영구 방치 — 이 사고의 원인).
  *  v3 (2026-07-27): 안내-페이지 제목 어휘(위치안내/이용안내/오시는길/지정 게시대 — 대표 신고
  *  "지정 게시대 위치안내" 업체명) NOTICE_WORD 추가. */
-export const CLASSIFY_RULES_VERSION = 7 // 2026-08-08: or.kr=org · 잘린제목 거부 · 본문근거 불인정(대표 신고 진흥원)
+export const CLASSIFY_RULES_VERSION = 8 // 2026-08-10: 업종어뿐인 이름은 근거 불인정(대표 '이름이 왜이래')
+// v7 // 2026-08-08: or.kr=org · 잘린제목 거부 · 본문근거 불인정(대표 신고 진흥원)
 //  ⚠️ **6 이 아니라 7 인 이유** — 같은 신고를 두 세션이 각각 잡아 **둘 다 6 을 선점**했고(#1099 가 먼저
 //    머지돼 배포됨), 그쪽 규칙으로 이미 `classified_v=6` 이 찍히기 시작했다. 6 으로 합치면 이 파일의
 //    새 규칙(or.kr·본문근거)은 그 행들을 **영영 다시 안 본다** — 재검사 조건이 `< VERSION` 이라서다.
@@ -224,6 +251,9 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
    *   ⚠️ `local`(지도)의 description 은 지도 API 의 업종 문자열이라 **진짜 근거다** — 여기 포함하지 말 것.
    */
   const bodyUntrusted = DESC_IS_PAGE_BODY.has(input.source || '')
+  // 🏷️ 이름이 업종어뿐이면 그 이름을 근거로 쓰지 않는다 — 근거는 `isGenericPhrase` 주석.
+  //   ⚠️ 페이지 제목을 상호로 삼는 소스에만 적용한다(등록부 상호는 원부가 준 값이라 건드리지 않는다).
+  const nameIsGeneric = bodyUntrusted && isGenericPhrase(name)
   // 🏛 기관 선판정 — 업종 규칙보다 먼저. 재단·협회가 '행사 대행' 을 한다고 영업 대상(파트너)이 되지 않는다.
   if (orgByHost || ORG_WORD_STRICT.test(name)) {
     return { ok: true, category: input.category ?? '지역조직', subcategory: input.subcategory ?? null, tier: input.tier ?? 3, lead_type: 'org', confidence: 'evidence' }
@@ -231,6 +261,7 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
   for (const r of BIZ_RULES) {
     if (!r.re.test(hay)) continue
     if (bodyUntrusted && !r.re.test(name)) continue // 본문에서만 맞음 — 다음 규칙이 이름에서 맞을 기회를 준다
+    if (nameIsGeneric) continue                     // 이름이 업종어뿐 — 그건 상호가 아니라 설명이다
     if (r.type === 'store') {
       // 매장 자체 — 업종 라벨은 키워드 폴백을 유지하되 접촉 가치 축만 store 로.
       return { ok: true, category: input.category ?? null, subcategory: input.subcategory ?? null, tier: input.tier ?? r.tier, lead_type: 'store', confidence: 'evidence' }

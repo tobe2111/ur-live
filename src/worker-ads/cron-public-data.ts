@@ -47,6 +47,10 @@ export function registerPublicDataCrons(env: Env, gates: Gates): void {
   // 📢 공고 스캐너 — 일 1회(hourUTC===21 = KST 06시).
   //   ⏰ 2026-08-09 알람 이관(4차) — 08-08 21:00 UTC 잠정 회차(부모 사망)에 발화 실종. 판단 헬퍼는 commerce 와 동일.
   if (!laneAlarmDrivesEnrich(env) && e.ADS_NOTICE_ENABLED === 'true') {
-    gates.dailyAt(21, '/__ads/scan-notices', async () => { const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return runNoticeScan(env) })
+    // 📢 공고 스캔 — 일 1회 → **4시간마다**(2026-08-10 대표 "셋 다 해줘").
+    //   ⚠️ 매시간이 아니라 4시간인 이유: 대표가 *"실시간까진 필요없어"* 라고 못박았고, 지금 다른 레인들이
+    //   **CPU 한도 사망**을 겪는 중이라(08-08 에 B2B 3개 동시 사망) 24배 증설은 그쪽 예산을 뺏는다.
+    //   입찰공고·지원사업은 마감이 보통 1~2주라 4시간이면 놓치는 건 사실상 없다(6배 증설로 충분).
+    gates.everyNHours(4, 1, '/__ads/scan-notices', async () => { const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return runNoticeScan(env) })
   }
 }

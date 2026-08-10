@@ -43,7 +43,15 @@ export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD
   for (const t of healTargets) {
     // 벽시계도 함께 본다 — 시간이 끝났는데 D1 치유만 계속 돌면 라운드 종료(스냅샷·학습)를 못 마친다.
     if (budget.left <= 2 || budget.limitHit || (!!budget.deadline && Date.now() >= budget.deadline)) break
-    if (!suspectCompanyName(t.company_name, t.source_keyword)) { await stamp(t.id); continue } // SQL 근사 필터의 오탐 스킵
+    // 🩸 2026-08-10 대표 신고("파트너들 이름이 왜이래") — 여기가 그 원인이었다.
+    //   라이브 실측으로 나온 이름들: `가입인사`(당근 커뮤니티 글 제목) · `소상공인 자생력 강화`(사업명) ·
+    //   `마케팅 대행`(검색어). 셋 다 괄호도 따옴표도 길지도 않아 `suspectCompanyName` 이 **false** 다.
+    //   그 휴리스틱은 "제목처럼 생겼나"를 볼 뿐, **평범하게 생긴 제목**은 못 가른다.
+    //
+    //   ⇒ 이 쿼리가 이미 고른 것은 `confidence IN ('none','keyword')` = **이름을 믿을 근거가 없는 행**이다.
+    //     근거가 없는데 휴리스틱으로 한 번 더 걸러 낼 이유가 없다 — 그냥 **사이트에 직접 물어본다**
+    //     (og:site_name). 허위 0 은 유지된다: 채택하는 값은 그 사이트가 스스로 선언한 이름뿐이다.
+    //   ⚠️ 비용은 7일 쿨다운 도장(`enrich_checked_at`) + 회당 8건 캡이 막는다 — 같은 행을 반복 크롤하지 않는다.
     const c = await crawlContact(t.website, budget, undefined, t.category === '미디어')
     if (c.siteName && c.siteName !== t.company_name) {
       // 실명 기준 재분류 — 근거 생기면 업종까지 교정, 아니면 keyword 로 승급(분류 확인 카드에서 탈출).

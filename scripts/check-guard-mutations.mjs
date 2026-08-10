@@ -162,7 +162,7 @@ const MUTATIONS = [
   {
     name: '하트비트 목록이 유령 판정을 안 싣는다(화면과 경보가 갈라진다)',
     file: 'src/worker/utils/cron-heartbeat.ts',
-    find: '    for (const r of rows) r.verdict = classifyBeat({ name: r.name, age_minutes: r.age_minutes, max_gap_min: r.max_gap_min }, freshBases)',
+    find: '    for (const r of rows) r.verdict = classifyBeat({ name: r.name, age_minutes: r.age_minutes, max_gap_min: r.max_gap_min }, freshBases, knownBases)',
     replace: '    // (제거)',
     test: 'src/tests/unit/cron-heartbeat-verdict.test.ts',
     why:
@@ -192,6 +192,30 @@ const MUTATIONS = [
     why:
       '판정을 계산해 놓고 **쓰지 않으면** 화면은 그대로다 — "가드는 있는데 그 자리에 안 붙어 있다" 클래스. ' +
       '이 한 줄이 되돌아가면 유령 11건이 다시 침묵으로 집계되고, 다음 세션이 또 같은 오진을 한다.',
+  },
+  {
+    name: '업종어뿐인 이름을 근거로 인정한다(검색어가 상호가 되어 영구히 굳는다)',
+    file: 'src/features/marketing/api/company-classify.ts',
+    find: '    if (nameIsGeneric) continue                     // 이름이 업종어뿐 — 그건 상호가 아니라 설명이다',
+    replace: '    // (제거)',
+    test: 'src/tests/unit/company-classify-webkr-noise.test.ts',
+    why:
+      '2026-08-10 대표 신고 "파트너들 이름이 왜이래" 의 가장 나쁜 행이 `마케팅 대행` 이었다 — 검색어가 그대로 ' +
+      '상호가 됐는데 하필 BIZ_RULES 의 `마케팅\\s*대행` 에 **이름으로** 맞아 `대행사 tier1 · evidence` 가 됐다. ' +
+      '`evidence` 는 이름 치유의 **제외 조건**이라 그 이름이 **영구히 굳는다**(가장 나쁜 조합). ' +
+      '진짜 상호에는 업종어 말고 자기만의 토큰이 있다(`남부`종합광고기획) — 남는 게 없으면 설명이지 이름이 아니다.',
+  },
+  {
+    name: '업종어 판정을 등록부 상호에까지 적용한다(원부가 준 값을 의심)',
+    file: 'src/features/marketing/api/company-classify.ts',
+    find: '  const nameIsGeneric = bodyUntrusted && isGenericPhrase(name)',
+    replace: '  const nameIsGeneric = isGenericPhrase(name)',
+    test: 'src/tests/unit/company-classify-webkr-noise.test.ts',
+    why:
+      '⚠️ **넓히는 방향의 결함.** 등록부 상호는 정부가 신고받은 값이라 우리가 의심할 대상이 아니다 — ' +
+      '`commerce` 는 제안 가능 리드의 95.7% 라 그 근거 등급을 내리면 명단의 심장을 깎는다. ' +
+      '🩸 이 주입은 처음에 **초록으로 통과했다**: 테스트가 `ok` 를 봤는데 이 규칙은 행을 버리지 않고 ' +
+      '**근거 등급만** 내리기 때문이다. 재는 값을 `confidence` 로 바꿔서야 빨강이 됐다.',
   },
   {
     name: '잘린 제목 파편이 상호가 된다(webkr — 공공기관이 대행사 tier1 로)',
