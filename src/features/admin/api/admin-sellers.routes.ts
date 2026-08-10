@@ -897,15 +897,13 @@ async function sendBusinessRegistrationAlimtalk(
   action: 'verify' | 'reject',
   reason: string | null,
 ): Promise<void> {
-  const apiKey = env.ALIGO_API_KEY
-  const userId = env.ALIGO_USER_ID
-  const senderKey = env.ALIGO_SENDER_KEY
   // 🔔 2026-07-01: 승인/반려 본문이 완전히 달라 1코드=1본문 원칙상 tpl_code 분리
   //   (business_registration_verified / business_registration_rejected). env override 도 action 별.
   const templateCode = action === 'verify'
     ? (env.ALIGO_BUSINESS_REGISTRATION_VERIFIED || 'business_registration_verified')
     : (env.ALIGO_BUSINESS_REGISTRATION_REJECTED || 'business_registration_rejected')
-  if (!apiKey || !userId || !senderKey) return  // env 미설정 → skip
+  // env 미설정 → skip. 키는 sendSystemAlimtalk 이 직접 읽으므로 여기선 **존재 확인만**(무의미한 DB 조회 회피).
+  if (!env.ALIGO_API_KEY || !env.ALIGO_USER_ID || !env.ALIGO_SENDER_KEY) return
 
   const seller = await env.DB.prepare(
     'SELECT name, business_name, business_number, phone FROM sellers WHERE id = ?'
@@ -921,11 +919,12 @@ async function sendBusinessRegistrationAlimtalk(
     : `[유어딜] 사업자등록증 반려\n\n· 사유: ${reason || '미상'}\n\n다시 제출해주세요. 검증 완료 후 현금 정산이 가능합니다.`
 
   try {
-    const { sendAlimtalk } = await import('../../../lib/aligo')
-    await sendAlimtalk(
-      { ALIGO_API_KEY: apiKey, ALIGO_USER_ID: userId },
-      { senderKey, templateCode, to: phone, message },
-    )
+    // 🔔 2026-08-09: `lib/aligo` 직접 호출 → **공용 헬퍼 경유**. 이 경로만 우회해 **발송 실패가
+    //   `alimtalk_failures` 재시도 큐에 안 들어갔다**(retry cron 미포착 → 승인/반려 통보 영구 소실).
+    //   덤: dedup·rate-limit(phone+template 1h)·일일 cap·발송 로그. 문안·tpl_code 는 byte-불변(카카오 글자 일치).
+    //   ⚠️ 1h 내 재반려 skip 은 감수 — 위 `createDashboardNotification` 이 통보 채널을 0 으로 안 만든다.
+    const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
+    await sendSystemAlimtalk(env, phone, templateCode, message)
   } catch { /* silent fail */ }
 }
 
