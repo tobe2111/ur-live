@@ -102,7 +102,7 @@ export default function AdminAlimtalkPricingPage() {
   const [costInput, setCostInput] = useState<string>('')
   async function saveUnitCost() {
     const n = Number(costInput)
-    if (!Number.isFinite(n) || n < 0 || n > 1000) { toast.error('원가는 0~1000원 사이 숫자여야 합니다'); return }
+    if (!Number.isFinite(n) || n <= 0 || n > 1000) { toast.error('원가는 0보다 크고 1000원 이하여야 합니다'); return }
     try {
       await api.put('/api/admin/alimtalk/cost', { alimtalk: n }, { headers: authHeaders })
       toast.success('원가가 저장되었습니다')

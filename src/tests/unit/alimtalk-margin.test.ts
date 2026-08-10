@@ -52,7 +52,8 @@ describe('parseUnitCost — 잘못 저장된 값이 마진을 뒤집지 않게',
     expect(parseUnitCost('6.5', 9)).toBe(6.5)
   })
   it('빈값·문자·음수·비상식값(자릿수 오타)은 폴백', () => {
-    for (const bad of ['', '  ', 'abc', '-1', '6500', null, undefined]) {
+    // '' 은 특히 중요 — Number('')===0 이라 범위검사를 통과해 원가 0(마진 100%)이 되던 버그를 CI 가 잡았다.
+    for (const bad of ['', '  ', 'abc', '-1', '0', '6500', null, undefined]) {
       expect(parseUnitCost(bad, DEFAULT_ALIMTALK_UNIT_COST_KRW)).toBe(DEFAULT_ALIMTALK_UNIT_COST_KRW)
     }
   })

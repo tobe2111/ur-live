@@ -295,8 +295,9 @@ adminStreamsRoutes.put('/alimtalk/cost', cors(), async (c) => {
     for (const [key, raw] of pairs) {
       const n = Number(String(raw ?? '').trim());
       // 저장 시점에 막는다 — 잘못된 값이 들어가면 마진 표시가 통째로 거짓말이 된다.
-      if (!Number.isFinite(n) || n < 0 || n > 1000) {
-        return c.json({ success: false, error: '원가는 0~1000원 사이 숫자여야 합니다' }, 400);
+      // 0 도 거부 — 저장은 되는데 표시는 폴백으로 뜨는 불일치를 만들고, 마진율을 항상 100% 로 만든다.
+      if (!Number.isFinite(n) || n <= 0 || n > 1000) {
+        return c.json({ success: false, error: '원가는 0보다 크고 1000원 이하여야 합니다' }, 400);
       }
       await DB.prepare(
         `INSERT INTO platform_settings (key, value) VALUES (?, ?)

@@ -31,12 +31,18 @@ export const ALIMTALK_COST_SETTING_KEYS = {
 } as const
 
 /**
- * 저장값(문자열) → 원가. 음수·NaN·빈값·비상식적 큰 값은 폴백으로 되돌린다.
- * 상한 1,000원: 오타(예: 65 대신 6500)로 마진이 음수로 뒤집혀 보이는 걸 막는다.
+ * 저장값(문자열) → 원가. 빈값·문자·0 이하·비상식적 큰 값은 폴백으로 되돌린다.
+ * - 상한 1,000원: 오타(예: 6.5 대신 6500)로 마진이 음수로 뒤집혀 보이는 걸 막는다.
+ * - 🔴 **빈 문자열을 먼저 걸러야 한다** — `Number('')` 은 `0` 이고 그건 유한수라 범위검사를 통과한다.
+ *   그러면 원가가 0 으로 잡혀 **마진이 100% 로 표시된다**(이 파일이 막으려는 바로 그 거짓말).
+ *   2026-08-10 CI 가 실제로 이 케이스를 잡았다.
+ * - 0 도 폴백이다: 알림톡이 공짜일 수 없고, 0 원가는 마진율을 항상 100% 로 만든다.
  */
 export function parseUnitCost(raw: unknown, fallback: number): number {
-  const n = Number(String(raw ?? '').trim())
-  if (!Number.isFinite(n) || n < 0 || n > 1000) return fallback
+  const s = String(raw ?? '').trim()
+  if (!s) return fallback
+  const n = Number(s)
+  if (!Number.isFinite(n) || n <= 0 || n > 1000) return fallback
   return n
 }
 
