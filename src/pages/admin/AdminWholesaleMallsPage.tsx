@@ -19,6 +19,7 @@ import { toast } from '@/hooks/useToast'
 import { normalizeAdminRole } from '@/shared/admin-roles'
 import { validateMallColor } from '@/shared/mall/branding'
 import MallSellersPanel from './wholesale-malls/MallSellersPanel'
+import MallNoticesPanel from './wholesale-malls/MallNoticesPanel'
 import MallLinkRow from './wholesale-malls/MallLinkRow'
 import MallAdvancedFields from './wholesale-malls/MallAdvancedFields'
 import { EMPTY, type MallForm } from './wholesale-malls/mall-form'
@@ -40,6 +41,10 @@ interface MallRow {
   license_label?: string | null
   features_json?: string | null
   company_json?: string | null
+  // 📣 2026-08-09 과업① — 몰별 GA4/네이버 확인/방문자 고지문.
+  ga_id?: string | null
+  naver_verification?: string | null
+  privacy_md?: string | null
   active: number
 }
 
@@ -54,6 +59,8 @@ export default function AdminWholesaleMallsPage() {
   const [saving, setSaving] = useState(false)
   // 🏪 2026-08-03: 몰별 '매장' 패널 펼침. 목록이 길어지지 않게 **한 번에 하나만** 연다.
   const [openSellers, setOpenSellers] = useState<number | null>(null)
+  // 📣 2026-08-09: 몰별 '공지' 패널(팝업/배너 CRUD) — 매장 패널과 동일 규칙(한 번에 하나).
+  const [openNotices, setOpenNotices] = useState<number | null>(null)
 
   const { data: malls, isLoading: loading, isError, error, refetch } = useApiQuery<MallRow[]>(
     ['admin', 'wholesale-malls'], '/api/admin/wholesale-malls',
@@ -91,6 +98,9 @@ export default function AdminWholesaleMallsPage() {
       license_label: m.license_label || '',
       features_json: m.features_json || '',
       company: (() => { try { const cj = JSON.parse(m.company_json || ''); return (cj && typeof cj === 'object' && !Array.isArray(cj)) ? cj : {} } catch { return {} } })(),
+      ga_id: m.ga_id || '',
+      naver_verification: m.naver_verification || '',
+      privacy_md: m.privacy_md || '',
       active: !!m.active,
     })
     setShowForm(true)
@@ -124,6 +134,10 @@ export default function AdminWholesaleMallsPage() {
         const entries = Object.entries(form.company).filter(([, v]) => typeof v === 'string' && v.trim())
         return entries.length ? JSON.stringify(Object.fromEntries(entries.map(([k, v]) => [k, v.trim()]))) : null
       })(),
+      // 📣 몰별 GA4/네이버 확인/방문자 고지문 — 서버가 형식 재검증(G-*/영숫자).
+      ga_id: form.ga_id.trim() || null,
+      naver_verification: form.naver_verification.trim() || null,
+      privacy_md: form.privacy_md.trim() || null,
       active: form.active ? 1 : 0,
     }
     // features_json 유효성(입력했을 때만).
@@ -225,6 +239,11 @@ export default function AdminWholesaleMallsPage() {
                     className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${openSellers === m.id ? 'bg-gray-900 text-white border-gray-900' : 'text-gray-600 hover:bg-gray-50 border-gray-200'}`}>
                     매장
                   </button>
+                  {/* 📣 몰 팝업/공지 배너 — 몰 홈 상단 띠·1회 팝업으로 렌더(과업①). */}
+                  <button onClick={() => setOpenNotices(openNotices === m.id ? null : m.id)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${openNotices === m.id ? 'bg-gray-900 text-white border-gray-900' : 'text-gray-600 hover:bg-gray-50 border-gray-200'}`}>
+                    공지
+                  </button>
                   <button onClick={() => toggleActive(m)} title={m.active ? '비활성화' : '활성화'} className="px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 rounded-lg border border-gray-200">
                     {m.active ? t('admin.mall.deactivate', { defaultValue: '비활성' }) : t('admin.mall.activate', { defaultValue: '활성화' })}
                   </button>
@@ -232,6 +251,7 @@ export default function AdminWholesaleMallsPage() {
                 </div>
                 </div>
                 {openSellers === m.id && <MallSellersPanel mallId={m.id} mallName={m.name} />}
+                {openNotices === m.id && <MallNoticesPanel mallId={m.id} />}
               </div>
             ))}
           </div>

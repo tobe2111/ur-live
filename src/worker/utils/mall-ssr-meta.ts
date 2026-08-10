@@ -15,6 +15,8 @@
  *
  * > 잘못된 몰 정보를 뿌리는 것보다 **밋밋한 기본 카드**가 낫다. 전자는 회수가 안 되고 후자는 그냥 심심할 뿐이다.
  */
+import { getGbSessions } from './gb-session-store'
+import { resolveGbPricing } from '../../shared/gb-session'
 
 export interface MallMetaInput {
   /** URL 이 가리키는 몰(경로/호스트로 이미 해석된 것). */
@@ -68,6 +70,45 @@ function absImage(raw: string | undefined, origin: string): string {
   if (s.startsWith('http')) return s
   if (s.startsWith('/')) return `${origin}${s}`
   return `${origin}/og-image.svg`
+}
+
+/**
+ * 📣 2026-08-09 — **PRODUCT 슬롯용 배선 헬퍼** (사용자 "A-4 다 하자" — buildMallMeta 미배선 마감).
+ *
+ * 몰 상품 카드는 `/products/:id` 로 링크하므로 몰 링크 공유의 실제 표면은 PRODUCT 슬롯이다.
+ * payload 의 `mall_id`(>본진 1)로만 발동하고, 몰 미실재·비공개(`consumer_path=0`)·조회 실패는
+ * 전부 `null` — 호출부(worker)는 기존 `buildProductMeta` 로 폴백한다(fail-closed).
+ * 가격은 mall-public 과 동일하게 `resolveGbPricing`(공구 live 면 공구가·마감일) — 화면과 카드 일치.
+ * 본진 상품(`mall_id`≤1)은 DB 를 아예 안 본다(핫패스 불변).
+ */
+export async function buildMallProductMeta(
+  DB: D1Database,
+  ssrPayload: string,
+  origin: string,
+  pathname: string,
+): Promise<MallMeta | null> {
+  try {
+    const pd = (JSON.parse(ssrPayload) as { data?: { id?: number; name?: string; image_url?: string; price?: number; original_price?: number | null; mall_id?: number | null } })?.data
+    const pMallId = Number(pd?.mall_id)
+    if (!pd || !Number.isFinite(pMallId) || pMallId <= 1) return null
+    const mallRow = await DB.prepare(
+      'SELECT id, name, brand_name FROM wholesale_malls WHERE id = ? AND COALESCE(consumer_path, 0) = 1',
+    ).bind(pMallId).first<{ id: number; name: string; brand_name: string | null }>().catch(() => null)
+    if (!mallRow) return null
+    const sess = (await getGbSessions(DB, [Number(pd.id)]).catch(() => null))?.get(Number(pd.id))
+    const pr = sess ? resolveGbPricing(sess, Number(pd.price), pd.original_price, Date.now()) : null
+    return buildMallMeta({
+      mall: { id: mallRow.id, name: String(mallRow.brand_name || mallRow.name || '') },
+      product: {
+        id: pd.id, name: pd.name, image_url: pd.image_url,
+        gb_price: pr?.gbActive ? pr.effectivePrice : null,
+        price: pr ? pr.listPrice : Number(pd.price),
+        deadline: pr?.gbActive ? sess?.deadline : null,
+        mall_id: pMallId,
+      },
+      origin, pathname,
+    })
+  } catch { return null }
 }
 
 /**

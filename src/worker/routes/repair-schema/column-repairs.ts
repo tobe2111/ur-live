@@ -949,6 +949,10 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     { desc: 'wholesale_malls.company_json', sql: "ALTER TABLE wholesale_malls ADD COLUMN company_json TEXT" },
     // 🏬 소비자 경로(`urdeal.kr/{슬러그}`) 개방 표시. DEFAULT 0 = fail-closed(서비스 분리) — mall-consumer.ts 참조.
     { desc: 'wholesale_malls.consumer_path', sql: "ALTER TABLE wholesale_malls ADD COLUMN consumer_path INTEGER DEFAULT 0" },
+    // 📣 2026-08-09 과업①(상인회 SaaS) — 몰별 GA4/네이버 확인/방문자 고지문(ensureMallSchema 미러).
+    { desc: 'wholesale_malls.ga_id', sql: "ALTER TABLE wholesale_malls ADD COLUMN ga_id TEXT" },
+    { desc: 'wholesale_malls.naver_verification', sql: "ALTER TABLE wholesale_malls ADD COLUMN naver_verification TEXT" },
+    { desc: 'wholesale_malls.privacy_md', sql: "ALTER TABLE wholesale_malls ADD COLUMN privacy_md TEXT" },
     { desc: 'wholesale_banners.mall_id', sql: "ALTER TABLE wholesale_banners ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'wholesale_proposal_tickets.mall_id', sql: "ALTER TABLE wholesale_proposal_tickets ADD COLUMN mall_id INTEGER DEFAULT 1" },
     // 🏬 2026-06-15 (sellpie형 게시판): 세부 카테고리(supply/codev/live/sns/report/inquiry). my-tickets/board SELECT 가 참조.

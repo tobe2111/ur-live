@@ -64,7 +64,15 @@ import { STORAGE_LABEL, STORAGE_NOTICE, type StorageKind } from '@/shared/pickup
 interface MallInfo {
   id: number; slug: string; name: string; initial: string
   logoUrl: string | null; colorLight: string; colorDark: string; intro: string; contactUrl: string | null
+  // 📣 2026-08-09 과업①(상인회 SaaS) — 몰별 GA4 · 방문자 고지문 · 공지(팝업/배너). 전부 optional(구 캐시 응답 호환).
+  ga_id?: string | null
+  privacy_md?: string | null
+  notices?: MallNotice[]
 }
+interface MallNotice { id: number; type: string; title: string; body: string | null; link_url: string | null }
+
+/** 팝업 "다시 안 보기" — 공지 id 별 영구(localStorage). 새 공지는 새 id 라 다시 뜬다. */
+const popupSeenKey = (id: number) => `mall_popup_seen_${id}`
 interface MallItem {
   product_id: number; name: string; image_url: string | null
   list_price: number; gb_price: number; discount_pct: number
@@ -112,6 +120,23 @@ export default function MallHomePage() {
   const [mall, setMall] = useState<MallInfo | null>(null)
   const [items, setItems] = useState<MallItem[]>([])
   const [state, setState] = useState<'loading' | 'ok' | 'notfound'>('loading')
+  const [popupOpen, setPopupOpen] = useState(false)
+  const [policyOpen, setPolicyOpen] = useState(false)
+
+  // 📊 몰별 GA4 — 전역 gtag 스텁(index.html)에 추가 config. 상인회가 자기 속성으로 몰 트래픽을 본다.
+  //   GTM 스크립트 로드 전엔 dataLayer 큐잉이라 순서 무관. 잘못된 값은 저장 시점(어드민)에 걸러짐.
+  useEffect(() => {
+    const id = String(mall?.ga_id || '').trim()
+    if (!/^G-[A-Z0-9]{4,20}$/i.test(id)) return
+    try { (window as unknown as { gtag?: (...a: unknown[]) => void }).gtag?.('config', id) } catch { /* noop */ }
+  }, [mall?.ga_id])
+
+  // 📣 팝업 공지 — 활성 팝업 중 아직 안 닫은 첫 건만. "다시 안 보기"는 공지 id 별 영구.
+  const popup = (mall?.notices || []).find((n) => n.type === 'popup' && (() => {
+    try { return !localStorage.getItem(popupSeenKey(n.id)) } catch { return true }
+  })())
+  useEffect(() => { if (popup) setPopupOpen(true) }, [popup?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const banners = (mall?.notices || []).filter((n) => n.type === 'banner')
 
   useEffect(() => {
     let alive = true
@@ -161,6 +186,29 @@ export default function MallHomePage() {
           </div>
         </div>
       </header>
+
+      {/* 📣 공지 배너(운영자 작성) — 신뢰 띠 위, 상단 띠로. 링크 있으면 통째 링크. */}
+      {banners.length > 0 && (
+        <div className="px-5 ur-content-wide mx-auto space-y-2 mb-2">
+          {banners.map((n) => {
+            const inner = (
+              <span className="flex items-start gap-[7px]">
+                <Info className="w-[13px] h-[13px] flex-none mt-[2px]" strokeWidth={2.2} />
+                <span className="min-w-0">
+                  <span className="font-bold">{n.title}</span>
+                  {n.body && <span className="ml-1.5 font-medium opacity-80">{n.body}</span>}
+                </span>
+              </span>
+            )
+            const cls = 'block rounded-xl px-3.5 py-2.5 text-[12.5px] tracking-[-0.02em] bg-[#F7F5F6] dark:bg-[#1C181B] border border-[#EDE9EB] dark:border-[#292327] text-[#3F383C] dark:text-[#DAD4D7]'
+            return n.link_url ? (
+              <a key={n.id} href={n.link_url} className={cls} target={n.link_url.startsWith('http') ? '_blank' : undefined} rel="noreferrer">{inner}</a>
+            ) : (
+              <p key={n.id} className={cls}>{inner}</p>
+            )
+          })}
+        </div>
+      )}
 
       {/* 신뢰 — 대표 UX 기준 ③. 몰 색 띠로 올려 "처음 보는 가게" 불안을 첫 화면에서 받는다.
           ⚠️ 문구(PAYMENT_TRUST_NOTE)는 **법무 확인 대기**라 시안이 ~어요체로 그렸어도 바꾸지 않는다. */}
@@ -270,8 +318,59 @@ export default function MallHomePage() {
 
       {/* ⑤ 본진 입구 금지 — 링크가 아니라 **문자열**이다(클릭 안 됨). */}
       <footer className="ur-content-wide mx-auto px-5 pb-10 text-center border-t border-[#F1EDEF] dark:border-[#262023]">
-        <span className="inline-block pt-5 text-[10.5px] font-semibold tracking-[0.06em] text-[#BCB5B9] dark:text-[#5E5559] select-none cursor-default">{POWERED_BY}</span>
+        {/* 📣 몰 방문자 고지문(운영자 작성) — 있을 때만 열람 버튼. 전자 게시 = 과업① 전자동의 축의 고지 절반. */}
+        {mall.privacy_md && (
+          <button onClick={() => setPolicyOpen(true)}
+            className="block mx-auto pt-5 text-[11px] font-semibold tracking-[-0.01em] text-[#8A8288] dark:text-[#7C7479] underline underline-offset-2">
+            이용·개인정보 안내
+          </button>
+        )}
+        <span className={`inline-block ${mall.privacy_md ? 'pt-3' : 'pt-5'} text-[10.5px] font-semibold tracking-[0.06em] text-[#BCB5B9] dark:text-[#5E5559] select-none cursor-default`}>{POWERED_BY}</span>
       </footer>
+
+      {/* 📣 팝업 공지 — 표준 모달 z(10500, constants/z-index 스케일). "다시 안 보기"는 id 별 영구. */}
+      {popup && popupOpen && (
+        <div className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/50 px-6" role="dialog" aria-modal="true">
+          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#171317] p-5 shadow-xl">
+            <p className="text-[15.5px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">{popup.title}</p>
+            {popup.body && <p className="mt-2 text-[13px] leading-[1.6] tracking-[-0.02em] whitespace-pre-wrap text-[#524B4F] dark:text-[#BDB5BA]">{popup.body}</p>}
+            {popup.link_url && (
+              <a href={popup.link_url} target={popup.link_url.startsWith('http') ? '_blank' : undefined} rel="noreferrer"
+                className="mt-3 block w-full rounded-xl py-2.5 text-center text-[13px] font-bold text-white dark:text-[#1A1719]"
+                style={{ backgroundColor: 'var(--mall)' }}>
+                자세히 보기
+              </a>
+            )}
+            <div className="mt-4 flex items-center gap-2">
+              <button onClick={() => { try { localStorage.setItem(popupSeenKey(popup.id), '1') } catch { /* noop */ } setPopupOpen(false) }}
+                className="flex-1 rounded-xl border border-[#EDE9EB] dark:border-[#292327] py-2.5 text-[13px] font-semibold text-[#6B6469] dark:text-[#A29A9F]">
+                다시 안 보기
+              </button>
+              <button onClick={() => setPopupOpen(false)}
+                className="flex-1 rounded-xl bg-[#1A1719] dark:bg-[#F3EFF1] py-2.5 text-[13px] font-bold text-white dark:text-[#1A1719]">
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📣 이용·개인정보 안내 모달 — 운영자 privacy_md 원문 게시(줄바꿈 보존). */}
+      {policyOpen && mall.privacy_md && (
+        <div className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/50 px-6" role="dialog" aria-modal="true"
+          onClick={() => setPolicyOpen(false)}>
+          <div className="w-full max-w-md max-h-[80dvh] flex flex-col rounded-2xl bg-white dark:bg-[#171317] p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-[15.5px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">이용·개인정보 안내</p>
+            <div className="mt-3 flex-1 min-h-0 overflow-y-auto">
+              <p className="text-[13px] leading-[1.7] tracking-[-0.02em] whitespace-pre-wrap text-[#524B4F] dark:text-[#BDB5BA]">{mall.privacy_md}</p>
+            </div>
+            <button onClick={() => setPolicyOpen(false)}
+              className="mt-4 w-full rounded-xl bg-[#1A1719] dark:bg-[#F3EFF1] py-2.5 text-[13px] font-bold text-white dark:text-[#1A1719]">
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

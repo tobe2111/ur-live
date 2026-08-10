@@ -151,3 +151,32 @@ describe('🔴 워커 MALL 슬롯 배선', () => {
     expect(src).toContain(`ssrSlot === 'MALL' && ssrPayload`)
   })
 })
+
+/**
+ * 📣 2026-08-09 — **PRODUCT 슬롯의 buildMallMeta 배선** (이 파일 헤더가 "워커 배선 PR 에서 볼 것"
+ * 이라 미뤄 둔 그 검사). 몰 상품 카드는 `/products/:id` 로 링크하므로 몰 링크 공유의 실제 표면은
+ * PRODUCT 슬롯이다 — 여기 배선이 빠지면 buildMallMeta 는 도로 dead code 가 된다.
+ */
+describe('🔴 워커 PRODUCT 슬롯 — buildMallProductMeta 배선', () => {
+  const worker = readFileSync(resolve(process.cwd(), 'src/worker/index.ts'), 'utf8').replace(/\/\/[^\n]*/g, '')
+  const helper = readFileSync(resolve(process.cwd(), 'src/worker/utils/mall-ssr-meta.ts'), 'utf8')
+
+  it('워커가 buildMallProductMeta 를 import 하고 실제로 호출한다', () => {
+    expect(worker).toContain(`buildMallProductMeta } from './utils/mall-ssr-meta'`)
+    expect(worker).toContain('await buildMallProductMeta(')
+  })
+
+  it('몰 조회는 consumer_path=1 로 잠긴다 — 비공개 도매몰이 소비자 카드에 실리지 않는다', () => {
+    expect(helper).toContain('COALESCE(consumer_path, 0) = 1')
+  })
+
+  it('null 이면 기본 상품 메타로 폴백한다(fail-closed) — 몰 판정이 상품 카드를 없애면 안 된다', () => {
+    expect(worker).toMatch(/else \{\s*const pm = buildProductMeta\(/)
+  })
+
+  it('본진 상품(mall_id≤1)은 DB 를 아예 안 본다 — 핫패스 불변', () => {
+    // 주석 제거 후 조건문 자체를 검사(주석에만 남는 함정 차단).
+    const h = helper.replace(/\/\/[^\n]*/g, '')
+    expect(h).toContain('pMallId <= 1) return null')
+  })
+})

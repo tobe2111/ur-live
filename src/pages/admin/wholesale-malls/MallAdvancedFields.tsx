@@ -117,6 +117,31 @@ export default function MallAdvancedFields({ form, setForm }: { form: MallForm; 
             <p className="text-[11px] text-gray-400 mt-1">비우면 전 기능 켜짐 — <b>대부분 비워 두면 됩니다.</b></p>
           </div>
 
+          {/* 📣 2026-08-09 과업①(상인회 SaaS) — 몰별 마케팅/고지. 전부 선택(비우면 미사용). */}
+          <div className="rounded-lg border border-gray-200 p-3 space-y-3">
+            <p className="text-xs font-bold text-gray-700">마케팅 · 고지 <span className="font-normal text-gray-400">— 상인회(운영자) 몰용. 비우면 미사용</span></p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={LABEL}>GA4 측정 ID</label>
+                <input value={form.ga_id} onChange={(e) => setForm((f) => ({ ...f, ga_id: e.target.value }))} maxLength={30}
+                  className={INPUT} placeholder="G-XXXXXXXXXX" />
+                <p className="text-[11px] text-gray-400 mt-1">몰 방문이 운영자의 GA 속성으로도 집계됩니다.</p>
+              </div>
+              <div>
+                <label className={LABEL}>네이버 소유확인 값</label>
+                <input value={form.naver_verification} onChange={(e) => setForm((f) => ({ ...f, naver_verification: e.target.value }))} maxLength={80}
+                  className={INPUT} placeholder="naver-site-verification content 값" />
+                <p className="text-[11px] text-gray-400 mt-1">몰 페이지 head 에 메타로 주입 — 커스텀 도메인 연결 시 유효.</p>
+              </div>
+            </div>
+            <div>
+              <label className={LABEL}>이용·개인정보 안내문 (방문자 고지)</label>
+              <textarea value={form.privacy_md} onChange={(e) => setForm((f) => ({ ...f, privacy_md: e.target.value }))} rows={4}
+                className={AREA.replace(' font-mono', '')} placeholder={'예: 본 몰의 주문·픽업 안내, 개인정보 수집·이용 안내 …'} />
+              <p className="text-[11px] text-gray-400 mt-1">입력하면 몰 푸터에 "이용·개인정보 안내" 열람 버튼이 생깁니다.</p>
+            </div>
+          </div>
+
           {/* 🏢 회사(푸터) 정보 — 비운 칸은 기본(유통스타트) 정보로 폴백. */}
           <div className="rounded-lg border border-gray-200 p-3">
             <p className="text-xs font-bold text-gray-700 mb-2">푸터 사업자 정보 <span className="font-normal text-gray-400">— 비운 칸은 기본 정보 사용</span></p>

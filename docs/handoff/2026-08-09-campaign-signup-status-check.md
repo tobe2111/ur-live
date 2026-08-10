@@ -1,6 +1,38 @@
-# 2026-08-09 — 캠페인 신청 페이지(방배) + 현황 확인 5건
+# 2026-08-09 — 캠페인 신청 페이지(방배) + 현황 확인 5건 + A-3/A-4 후속
 
-## 이 세션이 한 일
+## 2차 지시 (같은 세션 후속 — 사용자 "A-1·A-2 보류, A-3 개선, A-4 다 하자")
+
+### A-3 유입 트래킹 개선
+- `ProductDetailPage` 의 인라인 ref 저장(중복 구현 — inflow 미발사·숫자검증/본인링크 skip 누락)을
+  `storeAffiliateRef`(SSOT)로 통일. 이제 상품 상세 `?ref/?aff` 도 inflow_clicks 적재.
+
+### A-4 상인회 SaaS 갭 마감 (전부 몰 레일 — 머니 무접촉)
+1. **몰 상품 OG**: `buildMallProductMeta`(mall-ssr-meta.ts 신설 헬퍼)를 워커 PRODUCT 슬롯에 배선
+   — 몰 상품(`mall_id>1`, `consumer_path=1` 잠금) 카톡 공유가 몰 이름·공구가·마감일 카드로.
+   실패/본진은 기존 `buildProductMeta` 폴백(fail-closed). 배선 불변식 4건을 `mall-ssr-meta.test.ts` 에 추가.
+2. **몰별 GA4/네이버**: `wholesale_malls.ga_id`/`naver_verification` 컬럼(ensure+repair-schema 미러)
+   + 어드민 폼(고급 설정 "마케팅·고지" 절) + `MallHomePage` gtag 추가 config + MALL 슬롯 head 에
+   `naver-site-verification` 메타 **추가**(전역 메타 보존). ⚠️ 네이버 등록은 도메인 단위라 경로 몰에선
+   참고용 — 커스텀 도메인 연결 시 유효(어드민 폼에 명시).
+3. **몰 팝업/공지 배너**: `mall_notices` 테이블 + 어드민 CRUD(`/api/admin/wholesale-malls/:id/notices`,
+   requireSuperAdmin) + 어드민 목록 행 "공지" 패널(`MallNoticesPanel`) + `MallHomePage` 렌더
+   (banner=상단 띠 / popup=모달, "다시 안 보기" localStorage id별 영구, z-10500 표준).
+4. **몰 방문자 고지문(전자동의 축의 고지 절반)**: `wholesale_malls.privacy_md` + 어드민 폼 +
+   몰 푸터 "이용·개인정보 안내" 모달. ⚠️ 방문자 **동의 수집**(체크박스+증적)은 몰에 동의를 받을
+   행위(주문/신청)가 소비자 결제 레일에 있어 이번 범위 밖 — 필요해지면 캠페인 신청 폼 패턴 재사용.
+
+### A-4 에서 코드로 안 되는 것 (대표/운영 몫)
+- SSL 커스텀 도메인: DNS·CF 설정(코드 밖 — operator-mall-saas-gap.md §호스트).
+- 몰별 GA 는 상인회가 자기 GA4 속성을 만들고 측정 ID 를 어드민에 입력해야 작동.
+- 몰 페이지 sitemap 등재는 **의도적 제외 유지**(색인 누수 방지 — 기존 결정 존중, 뒤집으려면 별도 판단).
+
+### 이번에 틀릴 뻔한 판단 (2차)
+- `buildMallMeta` 를 워커에 인라인 배선했다가 file-size 래칫(+52줄)에 걸림 → 헬퍼로 추출(+21줄로 축소
+  후 rebaseline). **잠금 파일에 새 로직은 처음부터 헬퍼로** — DETAIL/PRODUCT 메타가 이미 그 패턴이다.
+- `buildMallMeta` 의 "URL 이 가리키는 몰" 전제는 `/{slug}/...` 상품 URL 을 상정했지만 실제 몰 카드는
+  `/products/:id` 로 링크 — 몰 판정을 payload `mall_id` 기반으로 재해석(스코프 검증은 동일하게 유지).
+
+## 이 세션이 한 일 (1차 — 캠페인 신청)
 
 ### 1. 캠페인 신청 페이지 (B — 신규 구현, draft PR)
 방배 캠페인 인플루언서 모집: **신청 = 유어딜 인플루언서 파트너 등록**.
