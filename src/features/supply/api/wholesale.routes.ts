@@ -15,8 +15,6 @@ import { hashPassword, validatePasswordComplexity, verifyPassword } from '@/lib/
 import { DEFAULT_COMMISSION_RATE } from '@/shared/constants'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
-import { dispatchSignupContract } from '@/worker/utils/signup-contract'
-import { hasUnsignedContract } from '@/worker/utils/contract-signatures'
 import {
   resolveDistributorPrice, marginForGrade, effectiveGrade, tierUnitPrice, effectiveTierFloor, qtyTierDiscount,
   type GradeMargin, type DistributorGrade, type QtyTier,
@@ -305,9 +303,6 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 20, windowS
     createDashboardNotification(DB, 'admin', null, 'distributor_pending', '판매사 승인 요청',
       `${business_name} (${business_number})${ntsStatus2 ? ` — 국세청: ${ntsStatus2}` : ' — 국세청: 조회 안 됨'}`,
       '/admin/seller-approval').catch(swallow('wholesale:register:notify'))
-
-    // 🖋️ 2026-06-22: 가입 시 전자계약서 자동발송(모두싸인 카카오). fail-soft — 미설정/실패가 가입 안 막음.
-    dispatchSignupContract(c, { accountType: 'distributor', accountId: sellerId, signerName: representative || name, signerPhone: phone || manager_phone || representative_phone, businessName: business_name })
 
     // 🏭 2026-06-29 취급 카테고리 + 현재 주력 판매채널 (가입 메타 — 사이드테이블, fail-soft).
     await setWholesaleSignupMeta(DB, 'distributor', sellerId, body.categories, body.channel)
@@ -1442,11 +1437,9 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     if (!_distClaims.is_distributor) return c.json({ success: false, error: '판매사 전용 기능입니다' }, 403)
   } catch { return c.json({ success: false, error: '판매사 전용 기능입니다' }, 403) }
   const { DB } = c.env
-  // 🖋️ 2026-06-22 (전자계약 차단): 미서명 계약이 있으면 발주 차단 — 카카오 서명 완료 후 거래.
-  //   contract_signatures 행이 없으면(미설정·기존/자격증명 전 계정) 통과 → 락아웃 방지(grandfather).
-  if (await hasUnsignedContract(DB, 'distributor', sellerId)) {
-    return c.json({ success: false, error: '전자계약서 서명 완료 후 발주할 수 있습니다. 카카오로 받은 계약서에 서명해주세요.', code: 'CONTRACT_REQUIRED' }, 403)
-  }
+  // 🖋️ 2026-08-10: 유캔사인 전자계약 제거(대표 "유캔사인은 안 써" + 도매몰 중단) → 미서명 차단 게이트도 제거.
+  //   라이브 `contract_signatures` 0건이라 이 게이트는 **한 번도 발동한 적이 없다**(행이 없으면 통과였다).
+  //   ⇒ 동작 변화 0. 계약이 다시 필요해지면 자체 약관 승낙형(terms_consents)으로 만든다.
   // 🔐 2026-06-24 (전수조사): 승인 후 정지·거부된 판매사가 만료 전 토큰으로 발주(예치금 차감)하던 갭 차단.
   if (await isSellerBlocked(DB, sellerId)) {
     return c.json({ success: false, error: '계정이 정지·승인대기 상태입니다. 관리자에게 문의해주세요.', code: 'ACCOUNT_NOT_ACTIVE' }, 403)

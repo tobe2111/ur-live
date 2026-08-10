@@ -253,7 +253,6 @@ healthRoutes.get('/env-readiness', requireAuth(), async (c) => {
     { key: 'ALIGO_USER_ID', group: 'optional', note: '알림톡 발송 — Aligo 계정 아이디.' },
     { key: 'ALIGO_SENDER_KEY', group: 'optional', note: '알림톡 발송 — 카카오 발신프로필키(senderkey). 채널 등록 시 발급.' },
     { key: 'NAVER_SEARCH_CLIENT_ID', group: 'optional', note: '제조사 시중최저가 대조.' },
-    { key: 'UCANSIGN_API_KEY', group: 'optional', note: '전자계약 자동발송.' },
     { key: 'ANTHROPIC_API_KEY', group: 'optional', note: '유어애즈 AI마케터/리뷰생성.' },
     { key: 'SENTRY_DSN', group: 'optional', note: '에러 모니터링.' },
   ]
