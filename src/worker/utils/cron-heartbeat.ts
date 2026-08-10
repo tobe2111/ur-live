@@ -22,7 +22,7 @@
 import type { Env } from '../types/env'
 // 🔴 기대 목록 대조(트리거 미등록 탐지) — 정적 목록 vs 런타임 기록. 상세: cron-expected.ts
 import { findNeverFired, type NeverFiredEntry } from './cron-expected'
-import { classifyBeat, freshBaseNames, type BeatVerdict } from './cron-beat-retirement'
+import { classifyBeat, freshBaseNames, beatBaseName, type BeatVerdict } from './cron-beat-retirement'
 
 /**
  * 실패 사유를 **짧은 분류 코드**로 (순수 — 유닛 잠금).
@@ -345,7 +345,18 @@ export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[
     // 🪦 유령 판정을 목록에도 싣는다 — 근거는 `CronHeartbeat.verdict` 주석. 여기서 계산해 두면
     //   게이트·경보·어드민이 **같은 판정**을 쓰고, 화면과 알림이 갈라지지 않는다.
     const freshBases = freshBaseNames(rows)
-    for (const r of rows) r.verdict = classifyBeat({ name: r.name, age_minutes: r.age_minutes, max_gap_min: r.max_gap_min }, freshBases)
+    // 🪦 디스패처가 지금 아는 레인 목록 — 있으면 **코드에서 삭제된 레인을 즉시** 은퇴로 판정한다
+    //   (없으면 나이 8배를 기다리느라 16일간 "진짜 침묵"으로 보인다 — 2026-08-10 오진의 원인).
+    //   키 SSOT 는 `worker-ads/lane-cadence.ts KNOWN_LANES_KEY`. 계층을 넘지 않으려고 값만 읽는다.
+    let knownBases: Set<string> | undefined
+    try {
+      const kr = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind('ads_known_lanes').first<{ value: string }>()
+      const lanes = kr?.value ? (JSON.parse(kr.value) as { lanes?: string[] }).lanes : null
+      // ⚠️ 정규화는 `beatBaseName` 에 위임한다 — 그게 비교하는 반대쪽에도 쓰이는 함수다.
+      //   여기서 손으로 접두를 붙였다가 **양쪽 형태가 어긋나 살아 있는 레인이 은퇴로 찍혔다**(테스트가 잡음).
+      if (Array.isArray(lanes) && lanes.length) knownBases = new Set(lanes.map(l => beatBaseName(String(l))))
+    } catch { /* 목록이 없으면 종전대로 나이 기반만 — 판정을 넓히지 않는다 */ }
+    for (const r of rows) r.verdict = classifyBeat({ name: r.name, age_minutes: r.age_minutes, max_gap_min: r.max_gap_min }, freshBases, knownBases)
     return rows
   } catch {
     return []

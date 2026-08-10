@@ -72,6 +72,31 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '삭제된 레인을 나이로만 판정한다(16일간 "진짜 침묵"으로 보인다)',
+    file: 'src/worker/utils/cron-beat-retirement.ts',
+    find: "  if (knownBaseNames?.size && raw.startsWith('ads:') && !knownBaseNames.has(beatBaseName(raw)) && age > RETIRED_MIN_AGE_MIN) return 'retired'",
+    replace: '  // (제거)',
+    test: 'src/tests/unit/cron-heartbeat-verdict.test.ts',
+    why:
+      '은퇴 임계가 자기 주기의 **8배**라, 48시간 주기 레인은 코드에서 삭제돼도 **16일 동안 "진짜 침묵"** 으로 ' +
+      '보인다. 2026-08-10 에 그 때문에 오진했다: `collect-nara-vendor` 는 `collect-nara-contract` 로 대체되며 ' +
+      '**코드에서 사라진** 레인인데 "114시간째 멈춤"으로 보고돼, 대표에게 **필요 없는 API 화면 캡처를 요청**했다. ' +
+      '나이는 은퇴를 늦게 말하지만 **"디스패처가 안 부른다"는 사실은 즉시 알 수 있다**(orphanLaneBeats 와 같은 신호).',
+  },
+  {
+    name: '이름 치유가 keyword 행을 빼놓는다(강등시킨 행이 영영 미치유)',
+    file: 'src/features/marketing/api/enrich-name-heal.ts',
+    find: "classify_confidence IN ('none', 'keyword')",
+    replace: "classify_confidence = 'none'",
+    test: 'src/tests/unit/ads-name-heal-scope.test.ts',
+    why:
+      '2026-08-08 에 "webkr 의 본문은 업종 근거가 아니다" 규칙을 넣으면서 본문-매칭 행들이 evidence → ' +
+      '**keyword** 로 내려갔는데, 치유 쿼리는 `none` 만 봤다 → **방금 강등시킨 그 행들이 영영 치유 대상이 ' +
+      '아니었다.** 대표가 신고한 진흥원(jepa.kr) 유형이 남는 이유다: 도메인이 평범한 .kr 이고 저장된 이름엔 ' +
+      '`진흥원` 이 없지만 **og:site_name 에는 있다**. 실명만 얻으면 기존 classifyLead 가 org 로 내려보낸다 — ' +
+      '새 규칙이 필요한 게 아니라 그 경로에 도달하게만 하면 됐다. 이 한 줄이 되돌아가면 그 도달이 끊긴다.',
+  },
+  {
     name: '공정위 연도를 코드에 박는다(내년에 같은 자리에서 또 죽는다)',
     file: 'src/features/marketing/api/franchise-collect.ts',
     find: '  const y = new Date(nowMs).getUTCFullYear()',
