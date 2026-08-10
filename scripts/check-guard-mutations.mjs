@@ -72,6 +72,47 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '재검사 우선순위에 등록부 소스가 들어간다(우선순위가 무의미해진다)',
+    file: 'src/features/marketing/api/reclassify-priority.ts',
+    find: "export const RECLASSIFY_PRIORITY_TIERS: readonly (readonly string[])[] = [['webkr'], ['local']]",
+    replace: "export const RECLASSIFY_PRIORITY_TIERS: readonly (readonly string[])[] = [['webkr'], ['local'], ['commerce']]",
+    test: 'src/tests/unit/ads-reclassify-priority.test.ts',
+    why:
+      '등록부 소스는 **풀의 96%** 다. 앞줄에 넣으면 우선순위가 통째로 등록부로 채워져 원래의 38일 크롤과 ' +
+      '같아진다 — 우선순위의 값은 "작고 틀리기 쉬운 것"에 있다. 실측: 회차당 250행·시간당 1회라 23만 건 ' +
+      '한 바퀴가 38일이고, 오염된 webkr 1,092건은 전부 커서(id 55,380) 뒤에 있었다(69,053~471,880).',
+  },
+  {
+    name: '우선순위가 전체 크롤을 대체한다(등록부 행이 영영 재검사 안 됨)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: '  const prioDone = !prio',
+    replace: '  const prioDone = false',
+    test: 'src/tests/unit/ads-reclassify-priority.test.ts',
+    why:
+      '우선순위는 크롤을 **대체하는 게 아니라 앞에 끼워 넣는 것**이다. 폴백이 끊기면 등록부 20만 건이 ' +
+      '규칙 변경에도 영영 재검사되지 않는다 — 에러 없이 조용히. 이 레포가 반복해 만난 "실패가 아니라 부재" 클래스.',
+  },
+  {
+    name: '우선순위 회차가 전체 크롤 커서를 민다(그만큼 조용히 건너뛴다)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: "  if (prioDone) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, String(nextCursor)).run().catch(() => null)",
+    replace: "  if (true) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, String(nextCursor)).run().catch(() => null)",
+    test: 'src/tests/unit/ads-reclassify-priority.test.ts',
+    why:
+      '커서를 섞으면 우선순위 회차가 전체 크롤 커서를 **그만큼 앞으로 밀어**, 건너뛴 등록부 행이 이번 랩에서 ' +
+      '영영 재검사되지 않는다. 그리고 그 누락은 로그에도 안 남는다 — 커서는 그냥 전진했을 뿐이다.',
+  },
+  {
+    name: '랩 완료 시 우선순위 상태를 리셋 안 함(우선순위가 1회용이 된다)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: '    await writePrioState(DB, 0, 0)',
+    replace: '    // (제거)',
+    test: 'src/tests/unit/ads-reclassify-priority.test.ts',
+    why:
+      '티어가 끝에 고정되면 **다음 랩부터는 우선순위가 없다.** 규칙은 앞으로도 계속 바뀌므로 우선순위가 ' +
+      '1회용이면 이번만 고치고 다음 규칙 변경 때 다시 38일을 기다리게 된다.',
+  },
+  {
     name: '하트비트 목록이 유령 판정을 안 싣는다(화면과 경보가 갈라진다)',
     file: 'src/worker/utils/cron-heartbeat.ts',
     find: '    for (const r of rows) r.verdict = classifyBeat({ name: r.name, age_minutes: r.age_minutes, max_gap_min: r.max_gap_min }, freshBases)',

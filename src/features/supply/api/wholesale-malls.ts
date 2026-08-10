@@ -99,6 +99,29 @@ async function ensureMallSchema(DB: D1Database): Promise<void> {
   // 🏬 2026-08-01 세션 ③-a — `urdeal.kr/{슬러그}` 경로로 열 몰 표시. DEFAULT 0 = fail-closed
   //   (기존 도매몰은 자기 호스트에 그대로, 소비자 도메인 경로로 새로 열리는 것 0).
   await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN consumer_path INTEGER DEFAULT 0').run().catch(() => { /* 이미 존재 */ })
+  // 📣 2026-08-09 과업①(상인회 SaaS 갭) — 몰별 마케팅/고지 설정. 전부 NULL 기본 = 기존 몰 무영향.
+  //   ga_id: GA4 측정 ID(G-XXXX) — MallHomePage 가 전역 gtag 에 추가 config(몰 트래픽을 상인회 자기 속성으로).
+  //   naver_verification: 네이버 웹마스터 소유확인 content 값 — MALL 슬롯 서버 메타로 주입
+  //     (⚠️ 네이버 등록은 도메인 단위라 경로 몰(urdeal.kr/슬러그)에선 참고용, 커스텀 도메인 연결 시 유효).
+  //   privacy_md: 몰 방문자 고지문(개인정보 처리 안내·이용안내) — 몰 푸터에서 열람.
+  await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN ga_id TEXT').run().catch(() => { /* 이미 존재 */ })
+  await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN naver_verification TEXT').run().catch(() => { /* 이미 존재 */ })
+  await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN privacy_md TEXT').run().catch(() => { /* 이미 존재 */ })
+  // 📣 2026-08-09 몰 팝업/공지 배너 — 운영자(상인회)별 안내를 어드민이 생성, 몰 홈이 렌더.
+  //   type: 'popup'(1회 닫힘 모달) | 'banner'(상단 띠). 기간(starts_at/ends_at)은 NULL=상시.
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS mall_notices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mall_id INTEGER NOT NULL,
+    type TEXT NOT NULL DEFAULT 'banner',
+    title TEXT NOT NULL,
+    body TEXT,
+    link_url TEXT,
+    active INTEGER DEFAULT 1,
+    starts_at TEXT,
+    ends_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`).run().catch(swallow('wholesale-malls:ensure-notices'))
+  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_mall_notices_mall ON mall_notices(mall_id, active)').run().catch(() => { /* 이미 존재 */ })
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_malls_host ON wholesale_malls(host) WHERE host IS NOT NULL').run().catch(swallow('wholesale-malls:idx-host'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_malls_active ON wholesale_malls(active)').run().catch(swallow('wholesale-malls:idx-active'))
   // 기본 몰(id=1) 시드 — 행이 하나도 없을 때만(기존 유통스타트 = 기본 몰). host=현 도매 호스트.

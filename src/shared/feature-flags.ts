@@ -194,3 +194,14 @@ export const REGION_COUNT_INCLUDE_DEMO = true
  *   ("올리지 않으면 아예 보이지 않도록")을 셋 모두에 적용했다.
  */
 export const HOME_SHOWCASE_ENABLED = true
+
+
+/**
+ * CAMPAIGN_SIGNUP_ENABLED — 캠페인 인플루언서 모집 신청 페이지(/campaign/:code) 노출 (2026-08-09).
+ *   배경: 방배 상권 캠페인 인플루언서 모집 — 신청 = 유어딜 인플루언서 파트너 등록(카카오 계정 +
+ *   프로필 + 동의 2종 + ref 링크 즉시 발급). 캠페인 목록은 `shared/campaign-signup.ts` 레지스트리.
+ *   true: /campaign/{code}(예: bangbae) 라우트 노출. 링크로만 진입(홈/네비 미노출·sitemap 미제출).
+ *   false: 라우트만 숨김(가역) — **기존 가입·/creators 신청과 게이트 분리**라 그쪽엔 영향 0.
+ *   개별 캠페인의 접수 종료는 이 플래그가 아니라 레지스트리의 `active: false` 로(페이지가 종료 안내 렌더).
+ */
+export const CAMPAIGN_SIGNUP_ENABLED = true

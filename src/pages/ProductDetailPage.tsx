@@ -36,6 +36,7 @@ import { isMallProduct } from '@/shared/mall/resolve'
 import { PickupNotice, DeliveryNotice, hasPickupInfo, pickupSummaryLine } from '@/pages/product-detail/ReceiveMethodNotice'
 import { readMallOrigin } from '@/shared/mall/origin'
 import { parseUTCDate } from '@/utils/date'
+import { storeAffiliateRef } from '@/utils/affiliate-track'
 
 // 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection/
 //   GroupBuyCountdown 을 ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage,
@@ -54,17 +55,10 @@ export default function ProductDetailPage() {
   const invalidateVouchers = useInvalidateMyVouchers()
   const [searchParams] = useSearchParams()
 
-  // 추천 링크 ref 파라미터 저장 (24시간 유효)
-  useEffect(() => {
-    const ref = searchParams.get('ref')
-    if (ref) {
-      // 🧭 2026-07-12 (WP-C): 어트리뷰션 24h→7d (블로그 롱테일). affiliate-track.ts 와 동기.
-      localStorage.setItem('affiliate_ref', ref)
-      localStorage.setItem('affiliate_ref_expires', String(Date.now() + 7 * 24 * 60 * 60 * 1000))
-      // 쿠키로도 저장 (다른 탭/세션에서도 유지)
-      document.cookie = `affiliate_ref=${ref}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`
-    }
-  }, [searchParams])
+  // 추천 링크 ?ref/?aff 저장 — 공유 헬퍼(affiliate-track SSOT, 7d TTL·키·쿠키 동일).
+  //   📡 2026-08-09: 인라인 저장(중복 구현)이라 이 페이지만 유입 클릭(inflow_clicks) 미적재 +
+  //   숫자 검증·본인링크 skip 누락이던 것 → GroupBuyDetail/VoucherDetail 과 동일 경로로 통일.
+  useEffect(() => { storeAffiliateRef(searchParams.get('aff') || searchParams.get('ref')) }, [searchParams])
   
   // ✅ Region 기반 Store 선택
   const krUser = useAuthKR(state => state.user)

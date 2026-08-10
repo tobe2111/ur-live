@@ -18,7 +18,7 @@
 export const RESERVED_SLUGS: readonly string[] = [
   '500', 'a', 'about', 'account', 'admin', 'ads',
   'agency', 'agency-partner', 'area-report', 'auth', 'blog', 'browse',
-  'business', 'cart', 'checkout', 'community-group-buy', 'coupon', 'creator',
+  'business', 'campaign', 'cart', 'checkout', 'community-group-buy', 'coupon', 'creator',
   'creators', 'district', 'experience', 'fail', 'faq', 'following',
   'g', 'gb-market', 'gdpr', 'gift', 'group-buy', 'host',
   'influencer', 'interest-list', 'introduce', 'join', 'kakao-debug', 'local',

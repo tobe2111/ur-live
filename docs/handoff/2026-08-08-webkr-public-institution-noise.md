@@ -126,4 +126,15 @@ contactable_partner  26,839   ← **거의 안 변해야 한다**(commerce regis
 ```
 🔴 **`contactable_partner` 가 눈에 띄게 줄면 그건 성공이 아니라 사고다** — 이 수정의 대상은 webkr 1%
 뿐이고, `commerce` 를 건드렸다는 뜻이 된다(위 교훈 ②의 실패 모양). 그때는 즉시 되돌릴 것.
-⏳ 235k 를 회당 1,000행씩 훑으므로 **한 바퀴에 시간이 걸린다**(레인 주기 확인 필요) — 하루 뒤에 다시 재라.
+🩸 **위 "하루 뒤에 다시 재라" 는 틀렸다(2026-08-09 실측 정정).** 회당 1,000행이 아니라 **250행**이고
+(`stopped_by=deadline`) 시간당 1회다 → 229,456건 **한 바퀴 38일**. 게다가 커서는 id 55,380 인데 오염된
+webkr 1,092건은 **전부 그 뒤**(69,053~471,880)에 있어, 신고 행(id 401,793)까지는 그 38일을 거의 다
+기다려야 했다. **처리량을 안 재고 추정한 값을 인계에 적은 것** — 다음 세션은 `ads_reclassify_stats` 의
+`scanned` 를 먼저 보고 ETA 를 계산할 것.
+✅ 처방은 PR #1114(대표 승인 "1번") — 재검사 우선순위 티어(`webkr` → `local` → 전체 크롤).
+   배포 후 **약 5시간**이면 webkr 이 비어야 한다. 판정 쿼리:
+```sql
+SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL
+  AND source='webkr' AND (classified_v IS NULL OR classified_v < 7);   -- 0 이어야 한다
+```
+하트비트 `result` 에 `phase=prio:webkr` 이 찍힌다(어느 패스인지 안 보이면 또 오진한다).
