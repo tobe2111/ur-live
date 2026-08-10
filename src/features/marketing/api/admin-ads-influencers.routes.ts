@@ -560,7 +560,9 @@ app.post('/influencer-pool/keywords', async (c) => {
 app.patch('/influencer-pool/keywords/:id', async (c) => {
   const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
-  await c.env.DB.prepare('UPDATE ad_discovery_keywords SET active = ? WHERE id = ?').bind(b.active ? 1 : 0, id).run().catch(() => null)
+  // 🕐 켤 때 activated_at 스탬프 — keyword-store `setKeywordActive` 와 같은 규칙(순환 나이 = 활성화부터).
+  await c.env.DB.prepare("UPDATE ad_discovery_keywords SET active = ?, activated_at = CASE WHEN ? = 1 THEN datetime('now') ELSE activated_at END WHERE id = ?")
+    .bind(b.active ? 1 : 0, b.active ? 1 : 0, id).run().catch(() => null)
   return c.json({ success: true })
 })
 

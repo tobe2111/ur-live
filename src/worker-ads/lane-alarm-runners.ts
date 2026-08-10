@@ -75,6 +75,9 @@ function enrichShardLanes(shards: number): Record<string, AlarmLane> {
   for (let i = 0; i < k; i++) {
     out[i === 0 ? 'enrich-influencer' : `enrich-influencer-${i + 1}`] = {
       run: async (env) => {
+        // 🔌 킬스위치 — 규약 "게이트는 러너 안"(§2차 이관). 이 줄이 없으면 알람 모드에서 스위치가
+        //   죽은 손잡이가 된다(cron 폴백에만 게이트가 남는 "이사 중 유실" — 2026-08-09 발견·수리).
+        if ((env as unknown as { ADS_INFLUENCER_ENRICH_DISABLED?: string }).ADS_INFLUENCER_ENRICH_DISABLED === 'true') return { skipped: 'disabled' }
         const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
         return runInfluencerEnrich(env, 0, undefined, k > 1 ? { i, k } : null, { driver: 'alarm', naverOnly: i > 0 })
       },

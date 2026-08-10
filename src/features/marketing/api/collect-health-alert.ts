@@ -36,10 +36,13 @@ export async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: {
   // 🔄 2026-08-04 판정 교체 — 임계 "2일"이 이제 **한 바퀴(6.5일)보다 짧아** 완벽해도 80% 가 걸렸다.
   //   해제될 수 없는 경보라 매일 울리고, 시키는 처방(순환 가속)은 방향과 반대였다. 근거·배수는
   //   `judgeRotation` docblock. **쿼리 2개 → 1개**(왕복도 줄었다).
+  // 🕐 2026-08-10 미실행 나이 = **활성화 시각**(activated_at, 없으면 등록일) 기준 — 등록일로 재면
+  //   몇 주 잠자던 후보가 승격되는 순간 "3.7바퀴 굶음" 가짜 starved 가 울린다(#1106 물결 실측 '댕댕이').
+  //   승격 물결마다 재발하는 클래스라 측정 자체를 고쳤다. 시드는 생성 즉시 활성이라 폴백과 동치.
   const rot = await DB.prepare(`SELECT COUNT(*) AS active,
       SUM(CASE WHEN last_run_at >= datetime('now','-24 hours') THEN 1 ELSE 0 END) AS ran24h,
-      MAX(julianday('now') - julianday(COALESCE(last_run_at, created_at))) AS oldest_days,
-      AVG(julianday('now') - julianday(COALESCE(last_run_at, created_at))) AS avg_days
+      MAX(julianday('now') - julianday(COALESCE(last_run_at, activated_at, created_at))) AS oldest_days,
+      AVG(julianday('now') - julianday(COALESCE(last_run_at, activated_at, created_at))) AS avg_days
     FROM ad_discovery_keywords WHERE active = 1`)
     .first<{ active: number; ran24h: number; oldest_days: number; avg_days: number }>().catch(() => null)
   const activeTotal = rot?.active || 0

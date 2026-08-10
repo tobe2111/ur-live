@@ -89,3 +89,23 @@ describe('YT 쿼터 — 샤드를 늘려도 유튜브 호출은 안 곱해진다
     expect(ENRICH_SHARDS).toBeGreaterThanOrEqual(1)
   })
 })
+
+/**
+ * 🔌 **킬스위치는 러너 안에 산다** (2026-08-09 발견·수리 — "이사 중 유실" 클래스).
+ *
+ *   `ADS_INFLUENCER_ENRICH_DISABLED` 게이트가 **cron 폴백 호출부에만** 있었다. 알람 이관(2026-08-02)
+ *   후 라이브는 알람 러너가 모는데 러너엔 게이트가 없어 — **스위치를 켜도 아무 일도 안 일어나는
+ *   죽은 손잡이**였다. 2차 이관 규약("게이트는 러너 안", §12)이 이 레인만 빠져 있던 것.
+ *   행동 검사인 이유: 게이트가 없으면 run() 이 enrich 레인을 import 해 env.DB 접근으로 throw 한다 —
+ *   소스 정규식과 달리 "게이트가 실제로 먼저 돈다"까지 확인된다.
+ */
+describe('킬스위치 — 알람 러너 안에서도 산다', () => {
+  it('🔌 ADS_INFLUENCER_ENRICH_DISABLED=true 면 모든 샤드가 skipped 로 즉시 반환한다', async () => {
+    for (const n of enrichLanes()) {
+      const lane = lookupAlarmLane(n)
+      expect(lane, n).not.toBeNull()
+      const out = await lane!.run({ ADS_INFLUENCER_ENRICH_DISABLED: 'true' } as never)
+      expect(out, `${n} 이 킬스위치를 무시한다`).toEqual({ skipped: 'disabled' })
+    }
+  })
+})

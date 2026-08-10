@@ -94,6 +94,8 @@ export async function addDiscoveryKeyword(DB: D1Database, keyword: string, categ
 }
 
 export async function setKeywordActive(DB: D1Database, id: number, active: boolean): Promise<{ ok: boolean }> {
-  await DB.prepare('UPDATE ad_discovery_keywords SET active = ? WHERE id = ?').bind(active ? 1 : 0, id).run().catch(() => null)
+  // 🕐 켤 때 activated_at 스탬프 — 순환 나이 판정이 활성화 시각부터 세게(끄기는 시각 보존).
+  await DB.prepare("UPDATE ad_discovery_keywords SET active = ?, activated_at = CASE WHEN ? = 1 THEN datetime('now') ELSE activated_at END WHERE id = ?")
+    .bind(active ? 1 : 0, active ? 1 : 0, id).run().catch(() => null)
   return { ok: true }
 }

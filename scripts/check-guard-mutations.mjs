@@ -126,7 +126,8 @@ const MUTATIONS = [
   },
   {
     name: '어드민 화면이 유령을 빨갛게 칠한다(서버만 고치면 화면은 그대로다)',
-    file: 'src/pages/AdminSystemMonitoringPage.tsx',
+    // 2026-08-09: 카드 UI 가 600줄 래칫으로 HeartbeatCards.tsx 로 추출 — 표적도 따라간다.
+    file: 'src/pages/admin-system-monitoring/HeartbeatCards.tsx',
     find: '                  {realStale && <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-bold">멈춤 의심</span>}',
     replace: '                  {h.stale && <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-bold">멈춤 의심</span>}',
     test: 'src/tests/unit/cron-heartbeat-verdict.test.ts',
@@ -2094,14 +2095,58 @@ const MUTATIONS = [
   },
   {
     name: '키워드 수율 은퇴 소실 — 고갈 auto 가 슬롯을 영구 점유(신선도 회전 정지)',
-    file: 'src/features/marketing/api/influencer-auto-collect.ts',
-    find: "AND found_total >= 50 AND saved_total < 10 ORDER BY saved_total ASC, found_total DESC LIMIT 3",
-    replace: "AND found_total >= 999999 AND saved_total < 10 ORDER BY saved_total ASC, found_total DESC LIMIT 3",
+    // 2026-08-09: SQL 이 rotation SSOT 조각(AUTO_RETIRE_WHERE)으로 이사 — 주입 표적도 따라간다.
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: 'yield: `COALESCE(found_total, 0) >= 50',
+    replace: 'yield: `COALESCE(found_total, 0) >= 999999',
     test: 'src/tests/unit/ads-keyword-promotion-room.test.ts',
     why:
-      'barren_streak 은 "검색결과 0"만 세므로 "찾긴 하는데(found 50+) 새 리드가 안 남는(saved<10)" ' +
-      '고갈 키워드는 영영 은퇴하지 않는다(실측: 동작카페 91/2 · 중랑네일 94/3 이 자리 점유, ' +
+      'barren_streak 은 저장 0 회차 연속만 세므로 "가끔 1명씩 떨궈 streak 을 리셋하는"(found 50+/saved<10) ' +
+      '저수율 auto 는 영영 은퇴하지 않는다(실측: 동작카페 91/2 · 중랑네일 94/3 이 자리 점유, ' +
       '승격 대기 2,981개가 밖). 임계를 사실상 무한대로 올리는 이 주입은 은퇴를 무력화한다.',
+  },
+  {
+    name: 'enrich 킬스위치가 알람 러너에서 소실(죽은 손잡이 재발)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: "if ((env as unknown as { ADS_INFLUENCER_ENRICH_DISABLED?: string }).ADS_INFLUENCER_ENRICH_DISABLED === 'true') return { skipped: 'disabled' }",
+    replace: '',
+    test: 'src/tests/unit/ads-enrich-shards.test.ts',
+    why:
+      '게이트가 cron 폴백 호출부에만 있으면 알람 모드(라이브)에서 스위치를 켜도 아무 일도 안 ' +
+      '일어난다 — 2026-08-02 알람 이관 때 실제로 그렇게 유실됐고 2026-08-09 에 발견됐다. ' +
+      '행동 테스트(run() 이 skipped 반환)가 잡는다.',
+  },
+  {
+    name: '순환 나이가 등록일 기준으로 회귀(승격 물결마다 가짜 starved 경보)',
+    file: 'src/features/marketing/api/collect-health-alert.ts',
+    find: "MAX(julianday('now') - julianday(COALESCE(last_run_at, activated_at, created_at))) AS oldest_days",
+    replace: "MAX(julianday('now') - julianday(COALESCE(last_run_at, created_at))) AS oldest_days",
+    test: 'src/tests/unit/ads-rotation-health.test.ts',
+    why:
+      '미실행 키워드 나이를 등록일로 재면 몇 주 잠자던 후보가 승격되는 순간 "N주 굶음"으로 보인다 — ' +
+      '2026-08-10 실측: 댕댕이(07-21 생성→08-09 승격)가 즉시 3.7바퀴 starved 로 잡혀 대표에게 ' +
+      '가짜 경보가 나갔다. cap 상향·가석방 복귀 등 승격 물결마다 재발하는 클래스.',
+  },
+  {
+    name: '가석방 소실 — 은퇴 증거 유통기한이 빠지면 차단이 다시 영구 배제가 됨',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: ' AND COALESCE(saved_total, 0) < 10 AND ${FRESH_EVIDENCE}`',
+    replace: ' AND COALESCE(saved_total, 0) < 10`',
+    test: 'src/tests/unit/ads-keyword-promotion-room.test.ts',
+    why:
+      '대표 확정(2026-08-09) "영구 배제가 되면 안된다" — 은퇴 조건은 증거 신선도(30일)로 만료돼야 ' +
+      '승격 차단(그 부정)도 함께 만료된다. 신선도 절을 빼면 그 클래스의 좀비는 영영 재도전을 못 받는다.',
+  },
+  {
+    name: '은퇴↔승격 livelock 재무장 — 즉시-재은퇴 좀비가 승격 슬롯을 태움',
+    file: 'src/features/marketing/api/influencer-keyword-promote.ts',
+    find: 'AND ${PROMOTE_NOT_RETIRABLE_SQL} AND keyword IN',
+    replace: 'AND keyword IN',
+    test: 'src/tests/unit/ads-keyword-promotion-room.test.ts',
+    why:
+      '은퇴는 active=0 만 쓰고 hits 는 재채굴마다 쌓인다 — 이 가드가 빠지면 은퇴자가 hits DESC 로 ' +
+      '신선 큐를 제치고 재승격되고, 수율/F-30/barren 은 평생 카운터라 다음 회차 시작에 한 번도 안 돌고 ' +
+      '재은퇴된다(2026-08-09 실측 좀비 5 · 게이트 통과 4). 승격 슬롯이 좀비에게 새는 livelock.',
   },
   {
     name: '자동 키워드 cap 이 조용히 60 으로 회귀(신선 유입 재차단)',

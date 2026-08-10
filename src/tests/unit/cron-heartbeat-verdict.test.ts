@@ -61,7 +61,8 @@ describe('하트비트 유령 판정', () => {
    * "끝났다"고 할 뻔했다(대표가 "이제 영구적이냐"고 물어 다시 확인하다 발견).
    */
   it('🔒 화면이 유령을 빨갛게 칠하지 않는다 (서버만 고치면 화면은 그대로다)', () => {
-    const src = fs.readFileSync('src/pages/AdminSystemMonitoringPage.tsx', 'utf8')
+    // 2026-08-09: 카드 UI 가 600줄 래칫으로 HeartbeatCards.tsx 로 추출됨 — 앵커도 따라간다.
+    const src = fs.readFileSync('src/pages/admin-system-monitoring/HeartbeatCards.tsx', 'utf8')
     // 유령 판정을 실제로 계산해서 쓰는가
     expect(src).toMatch(/const ghost = [^\n]*verdict === 'superseded'/)
     // '멈춤 의심' 배지와 빨간 점이 raw `stale` 이 아니라 realStale 에 묶여 있는가
