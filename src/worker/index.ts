@@ -87,7 +87,6 @@ import { bannerRoutes } from '../features/banners/api/banners.routes';
 import { cartRoutes } from '../features/cart/api/cart.routes';
 import { notificationsRoutes } from '../features/notifications/api/notifications.routes';
 import { resendWebhookRoutes } from '../features/notifications/api/resend-webhook.routes';
-import { ucansignWebhookRoutes } from '../features/contracts/api/ucansign-webhook.routes';
 import { ordersRoutes as featureOrdersRoutes } from '../features/orders/api/orders.routes';
 import { productsRoutes as featureProductsRoutes } from '../features/products/api/products.routes';
 import { pushRoutes } from '../features/push/api/push.routes';
@@ -138,7 +137,6 @@ import { wishlistRoutes } from '../features/wishlists/api/wishlists.routes';
 //   소비자(ur-live) 번들에서 제외 — WHOLESALE_BUNDLE=1 빌드에서만 동적 import(esbuild DCE). 상세: mount-wholesale.ts 헤더.
 //   partnership(광고/제휴 문의)은 도매 아님 → 소비자 유지(아래 1줄 잔류).
 import { partnershipPublicRoutes, adminPartnershipRoutes } from './routes/partnership.routes';
-import { adminUcansignRoutes } from '../features/admin/api/admin-ucansign.routes';
 import { platformMetricsRoutes } from '../features/admin/api/platform-metrics.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
 import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/api/restaurant-suggestions.routes';
@@ -1772,7 +1770,6 @@ app.route('/api/notifications', notificationsRoutes);
 app.route('/api/webhooks/resend', resendWebhookRoutes);
 
 // 유캔싸인 전자계약 webhook (문서 상태변경 → contract_signatures 갱신)
-app.route('/api/webhooks/ucansign', ucansignWebhookRoutes);
 
 // Shipping addresses
 app.route('/api/shipping-addresses', shippingAddressRoutes);
@@ -1927,7 +1924,6 @@ app.post('/api/auth/logout-cookies', async (c) => {
   return c.json({ success: true });
 });
 // 🏭 [wholesale-split] 도매 admin 라우트(proposals/products/deposit-account/malls/overview) → mount-wholesale.ts
-app.route('/api/admin/ucansign', adminUcansignRoutes); // 🖋️ 전자계약(유캔싸인) 설정 진단 — read-only 준비완료 점검
 
 // 알림톡/브랜드메시지 크레딧 시스템 — rate limit send: 60/min per seller
 app.use('/api/seller/alimtalk/send', rateLimit({ action: 'alimtalk_send', max: 60, windowSec: 60 }));

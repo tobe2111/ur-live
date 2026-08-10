@@ -14,7 +14,6 @@ import { rateLimit } from '@/worker/middleware/rate-limit';
 import { requireAuth } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import { swallow } from '@/worker/utils/swallow';
-import { dispatchSignupContract } from '@/worker/utils/signup-contract';
 import { setWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta';
 import { startDashboardSession, isDashboardSessionCurrent, deriveDashboardSeat } from '@/worker/utils/dashboard-session';
 import { filterAliveRefreshRows, rotationGraceExpiryIso } from '@/worker/utils/refresh-rotation';
@@ -235,9 +234,7 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
       await saveWholesaleLicense(DB, 'supplier', supplierId, mallId, permitNo, permitUrl || null)
     }
 
-    // 🖋️ 2026-06-22: 가입 시 전자계약서 자동발송(모두싸인 카카오). fail-soft — 미설정/실패가 가입 안 막음.
     if (supplierId) {
-      dispatchSignupContract(c, { accountType: 'supplier', accountId: supplierId, signerName: body.representative || managerName, signerPhone: body.phone || managerPhone || representativePhone, businessName })
       // 🏭 2026-06-29 공급(취급) 카테고리 + 희망 유통채널 (가입 메타 — 사이드테이블, fail-soft).
       await setWholesaleSignupMeta(DB, 'supplier', supplierId, (body as Record<string, unknown>).categories, (body as Record<string, unknown>).channel)
     }

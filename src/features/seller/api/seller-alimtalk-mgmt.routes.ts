@@ -314,56 +314,23 @@ sellerAlimtalkMgmtRoutes.get('/alimtalk/messages', requireSeller(), async (c) =>
   }
 })
 
-sellerAlimtalkMgmtRoutes.post('/alimtalk/charge', requireSeller(), async (c) => {
-  const { DB } = c.env
-  try {
-    const authUser = getCurrentUser(c)
-    const sellerId = authUser?.id
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
-
-    const body = await c.req.json<{ amount: number; payment_method?: string }>()
-    const { amount, payment_method } = body
-
-    if (!amount || amount < 1000) {
-      return c.json({ success: false, error: '최소 1,000건 이상 충전 가능합니다.' }, 400)
-    }
-
-    const account = await DB.prepare(
-      `SELECT id FROM alimtalk_accounts WHERE seller_id = ? LIMIT 1`
-    ).bind(sellerId).first<{ id: number }>()
-
-    if (!account) return c.json({ success: false, error: '알림톡 계정이 없습니다. 먼저 계정을 등록해주세요.' }, 400)
-
-    const pricing = await DB.prepare(
-      `SELECT unit_price FROM alimtalk_pricing
-       WHERE is_active = 1 AND min_quantity <= ? AND (max_quantity IS NULL OR max_quantity >= ?)
-       ORDER BY unit_price ASC LIMIT 1`
-    ).bind(amount, amount).first<{ unit_price: number }>()
-
-    const unitPrice = pricing?.unit_price ?? 15
-    const totalPrice = amount * unitPrice
-
-    const orderId = `ALIM-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-
-    await DB.prepare(
-      `INSERT INTO alimtalk_charges (account_id, amount, price, unit_price, payment_method, payment_status, order_id, created_at)
-       VALUES (?, ?, ?, ?, ?, 'pending', ?, datetime('now'))`
-    ).bind(account.id, amount, totalPrice, unitPrice, payment_method || 'card', orderId).run()
-
-    await DB.prepare(
-      `UPDATE alimtalk_accounts SET balance = balance + ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(amount, account.id).run()
-
-    await DB.prepare(
-      `UPDATE alimtalk_charges SET payment_status = 'completed', completed_at = datetime('now') WHERE order_id = ?`
-    ).bind(orderId).run()
-
-    return c.json({
-      success: true,
-      message: `${Number(amount ?? 0).toLocaleString('ko-KR')}건 충전 완료 (${Number(totalPrice ?? 0).toLocaleString('ko-KR')}원)`,
-      data: { amount, unit_price: unitPrice, total_price: totalPrice, order_id: orderId },
-    })
-  } catch (err) {
-    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-alimtalk-mgmt]')
-  }
-})
+/**
+ * 🔴 2026-08-10 폐쇄 — **무결제 충전 구멍**(대표 지시 "마진" 작업 중 발견, 코드로 확인).
+ *
+ * 이 엔드포인트는 **결제 검증을 단 한 줄도 하지 않고** `alimtalk_accounts.balance` 를 올린 뒤
+ * `payment_status='completed'` 로 마킹했다. 셀러 JWT + 계정 행(스스로 등록 가능)만 있으면
+ * 임의 건수를 **무료로** 충전할 수 있었다.
+ *
+ * 지금까지 실제 피해가 없던 이유는 **우연**이다 — 이 잔액을 쓰는 레거시 발송이 `status='active'`
+ * 를 요구하는데 그 상태로 바꾸는 코드가 없었다. 즉 "계정 승인" 기능이 추가되는 순간 열리는 지뢰였다.
+ *
+ * 정상 충전 경로는 **토스 결제 연동이 붙은 현행 크레딧 시스템**이다:
+ *   `POST /api/seller/alimtalk/credits/charge` → `/credits/confirm` (features/alimtalk/api/alimtalk.routes.ts)
+ * 410 으로 남겨 옛 클라이언트가 조용히 성공했다고 믿지 않게 한다(프론트 호출부는 이미 0건).
+ */
+sellerAlimtalkMgmtRoutes.post('/alimtalk/charge', requireSeller(), (c) =>
+  c.json({
+    success: false,
+    error: '이 충전 경로는 종료되었습니다. 알림톡 크레딧 충전을 이용해주세요.',
+    code: 'ENDPOINT_RETIRED',
+  }, 410))

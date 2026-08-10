@@ -98,7 +98,8 @@ export const ALLOWED_ORIGINS = [
 // ============================================================
 export const DEFAULT_COMMISSION_RATE = 10.00;           // 셀러 기본 수수료율 (%)
 export const DONATION_COMMISSION_RATE = 0.10;           // 후원 플랫폼 수수료율 (10%)
-export const CREDIT_UNIT_PRICE = 8;                     // 알림톡 크레딧 1건 = 8원
+// 💰 2026-08-10 제거 — 죽은 상수였다(사용처 0) + 값(8원)이 실제 원가(6.5원)와도 판매가(9원)와도 달라
+//   읽는 사람을 오도했다. 원가·마진 SSOT 는 `@/shared/alimtalk-pricing`(원가는 platform_settings 에서 조정).
 export const MIN_PASSWORD_LENGTH = 8;                   // 비밀번호 최소 길이
 
 // ============================================================

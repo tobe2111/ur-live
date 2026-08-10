@@ -1,7 +1,9 @@
 /**
  * 알리고 카카오 알림톡 API 유틸리티
  *
- * 원가: 6.5원/건  |  판매가: 9원/건
+ * 💰 원가·판매가는 여기 적지 않는다(2026-08-10) — 주석에 흩어진 숫자가 서로 어긋나 마진을 오판하게 했다.
+ *   원가 = `platform_settings.alimtalk_unit_cost_krw`(어드민 조정) · 판매가 = `alimtalk_packages.price`.
+ *   기본값·마진 계산: `@/shared/alimtalk-pricing`.
  * API 문서: https://smartsms.aligo.in/shop/kakaoapispec.html
  */
 
