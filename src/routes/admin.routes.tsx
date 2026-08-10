@@ -109,6 +109,8 @@ const AdminInfluencerPayoutsPage = lazy(() => import('@/pages/AdminInfluencerPay
 const AdminInfluencerDisputesPage = lazy(() => import('@/pages/AdminInfluencerDisputesPage'))
 const AdminKakaoReviewsPage = lazy(() => import('@/pages/AdminKakaoReviewsPage'))
 const AdminDistrictCouponsPage = lazy(() => import('@/pages/AdminDistrictCouponsPage'))
+// 📣 2026-08-09 캠페인 인플루언서 모집 신청자(코드 필터 + CSV)
+const AdminCampaignApplicationsPage = lazy(() => import('@/pages/admin/AdminCampaignApplicationsPage'))
 const AdminGbCockpitPage = lazy(() => import('@/pages/AdminGbCockpitPage'))
 const AdminRevenueAnalyticsPage = lazy(() => import('@/pages/AdminRevenueAnalyticsPage'))
 const AdminAccountsPage = lazy(() => import('@/pages/AdminAccountsPage'))
@@ -676,6 +678,11 @@ export function AdminRoutes() {
       <Route path="/admin/district-coupons" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminDistrictCouponsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/campaign-applications" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminCampaignApplicationsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/gb-cockpit" element={

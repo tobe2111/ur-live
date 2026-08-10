@@ -209,6 +209,9 @@ import { areaReportPublicRoutes } from '../features/marketing/api/area-report-pu
 import { govNoticesRoutes } from '../features/marketing/api/gov-notices.routes';
 import { influencerApplyRoutes } from '../features/marketing/api/influencer-apply.routes';
 import { creatorClaimRoutes } from '../features/marketing/api/lead-claim'; // 🔗 신청 → 가입 연결(초대 코드 클레임)
+// 📣 2026-08-09 캠페인 인플루언서 모집(방배 등) — 신청 = 파트너 등록(계정+동의+ref 링크)
+import { campaignApplyRoutes } from '../features/marketing/api/campaign-apply.routes';
+import { adminCampaignApplicationsRoutes } from '../features/admin/api/admin-campaign-applications.routes';
 // ⏳ [TEMP-TEST] 도매 워커 배포 전 라이브 검증용 임시 마운트(아래 app.route 참조) — ur-wholesale 배포 시 제거.
 import { buyerPoolRoutes as buyerPoolTestRoutes } from '../features/supply/api/buyer-pool.routes';
 import { makerPoolRoutes as makerPoolTestRoutes } from '../features/supply/api/maker-pool.routes';
@@ -264,6 +267,8 @@ import { experienceCampaignPublicRoutes, experienceCampaignAdminRoutes, experien
 import { gbMarketplaceRoutes } from '../features/group-buy/api/gb-marketplace.routes';
 import { mallPublicRoutes } from '../features/mall/api/mall-public.routes';
 import { isMallLookupCandidate } from './utils/mall-consumer';
+// 🏬 2026-08-09 [UNLOCK_LOADING] 몰 상품 OG 배선 — 세션 ③-a 가 만들고 미배선(dead code)이던 것.
+import { buildMallProductMeta } from './utils/mall-ssr-meta';
 import { gbProposalsRoutes } from '../features/group-buy/api/gb-proposals.routes';
 import { voucherDisputeRoutes, voucherDisputeAdminRoutes } from '../features/group-buy/api/voucher-dispute.routes';
 // 🛡️ 2026-05-20: requireAdmin 은 위 (line 127) 에서 이미 import — 중복 제거.
@@ -932,7 +937,7 @@ app.use('*', async (c, next) => {
     //      추측하지 않고 **기본 메타를 그대로 둔다**(mall-ssr-meta.ts 의 fail-closed 와 같은 방침).
     if (ssrSlot === 'MALL' && ssrPayload) {
       try {
-        const m = (JSON.parse(ssrPayload) as { mall?: { name?: string; slug?: string; intro?: string; logoUrl?: string | null } })?.mall;
+        const m = (JSON.parse(ssrPayload) as { mall?: { name?: string; slug?: string; intro?: string; logoUrl?: string | null; naver_verification?: string | null } })?.mall;
         if (m && m.name) {
           const mTitle = `${m.name} - 공동구매`;
           const mDesc = String(m.intro || '').slice(0, 200) || `${m.name}의 공동구매`;
@@ -949,6 +954,14 @@ app.use('*', async (c, next) => {
             .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', mDesc); } })
             .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', mImg); } })
             .on('link[rel="canonical"]', { element(el) { el.setAttribute('href', mCanon); } });
+          // 📣 2026-08-09 과업① — 몰별 네이버 웹마스터 소유확인 메타(사이트 전역 메타는 보존, **추가**만).
+          //   영숫자만 저장되므로(어드민 검증) 속성 주입 안전. 경로 몰에선 참고용, 커스텀 도메인 연결 시 유효.
+          const mNaver = String(m.naver_verification || '').trim();
+          if (/^[a-zA-Z0-9]{8,80}$/.test(mNaver)) {
+            rb = rb.on('head', { element(el) {
+              el.append(`<meta name="naver-site-verification" content="${mNaver}">`, { html: true });
+            } });
+          }
         }
       } catch { /* 파싱 실패 — 기본 메타 유지 */ }
     }
@@ -1013,9 +1026,20 @@ app.use('*', async (c, next) => {
     //   그간 PRODUCT 는 데이터만 주입하고 메타는 제네릭 홈 → 카톡/소셜 공유 시 상품 대신 '유어딜 홈' 카드.
     //   가격·할인율 OG + Product JSON-LD 주입(카톡 커머스 공유 카드와 정합). SSR inject·0-RTT·로더 전부 불변 — 메타 rewrite만 additive.
     if (ssrSlot === 'PRODUCT' && ssrPayload) {
-      const pm = buildProductMeta(ssrPayload, origin2, url.pathname);
-      if (pm) {
-        rb = applySurfaceMeta(rb, pm);
+      // 🏬 2026-08-09 [UNLOCK_LOADING] 몰 상품이면 몰 카드가 우선 — "OG 메타가 곧 매대다"(세션 ③-a).
+      //   MallHomePage 카드는 `/products/:id` 로 링크하므로 몰 링크 공유의 실제 표면이 이 슬롯이다.
+      //   판정·조회·fail-closed 는 전부 buildMallProductMeta(mall-ssr-meta.ts) — null 이면 기본 폴백.
+      const mallMeta = await buildMallProductMeta(c.env.DB, ssrPayload, origin2, url.pathname).catch(() => null);
+      if (mallMeta) {
+        rb = applySurfaceMeta(rb, {
+          pageTitle: mallMeta.title, title: mallMeta.title, description: mallMeta.description,
+          canonical: mallMeta.canonical, ogType: mallMeta.ogType, ogImage: mallMeta.ogImage,
+        });
+      } else {
+        const pm = buildProductMeta(ssrPayload, origin2, url.pathname);
+        if (pm) {
+          rb = applySurfaceMeta(rb, pm);
+        }
       }
     }
     // 🔎 2026-07-29 [UNLOCK_LOADING] (대표 "소비자 쪽 성능·SEO·UX 점검" — 라이브 실측 수리):
@@ -1591,6 +1615,8 @@ app.route('/api/products', featureProductsRoutes);
 // app.route('/api/ads', marketingRoutes);
 // 📥 크리에이터 제휴 인바운드 신청(공개) — ad_influencer_leads 는 메인 D1 이라 메인 워커에서 처리(프록시 X).
 app.route('/api/creator-apply', influencerApplyRoutes); app.route('/api/creator-claim', creatorClaimRoutes);
+// 📣 캠페인 신청(로그인 필수) + 어드민 신청자 조회/CSV — campaign_applications 는 메인 D1.
+app.route('/api/campaign', campaignApplyRoutes); app.route('/api/admin/campaign-applications', adminCampaignApplicationsRoutes);
 // 💳 유어애즈 서비스몰 토스 결제 — 메인 워커 전용(/api/ads/* 위임과 별개 네임스페이스, TOSS 키가 여기 있음).
 //   게이트 ADS_TOSS_ENABLED(기본 OFF). SSOT 헬퍼 호출만(toss-gateway 무수정).
 app.route('/api/ads-pay', adsPayRoutes);

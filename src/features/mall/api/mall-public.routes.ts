@@ -41,10 +41,33 @@ app.get('/:slug', async (c) => {
       color: mall.brand_color,
       logoUrl: mall.logo_url,
     })
+    // 📣 2026-08-09 과업①(상인회 SaaS) — 몰별 GA4/네이버 확인/고지문 + 공지(팝업·배너) 동봉.
+    //   lookupConsumerMall 캐시 행에는 없는 컬럼이라 별도 1회 조회. 컬럼/테이블 미적용 환경은
+    //   fail-soft(null/빈배열) — 기존 응답 필드는 byte-불변, additive 만.
+    const extra = await c.env.DB.prepare(
+      'SELECT ga_id, naver_verification, privacy_md FROM wholesale_malls WHERE id = ?',
+    ).bind(Number(mall.id)).first<{ ga_id: string | null; naver_verification: string | null; privacy_md: string | null }>().catch(() => null)
+    const notices = await c.env.DB.prepare(
+      `SELECT id, type, title, body, link_url FROM mall_notices
+        WHERE mall_id = ? AND COALESCE(active, 1) = 1
+          AND (starts_at IS NULL OR starts_at <= datetime('now'))
+          AND (ends_at IS NULL OR ends_at >= datetime('now'))
+        ORDER BY id DESC LIMIT 10`,
+    ).bind(Number(mall.id)).all<{ id: number; type: string; title: string; body: string | null; link_url: string | null }>()
+      .catch(() => ({ results: [] as never[] }))
     // 익명 응답이라 엣지에 짧게 캐시해도 안전(몰 브랜딩은 자주 안 바뀐다).
     c.header('Cache-Control', 'public, max-age=60')
     c.header('CDN-Cache-Control', 'public, max-age=300')
-    return c.json({ success: true, mall: { id: mall.id, slug: mall.slug, ...b } })
+    return c.json({
+      success: true,
+      mall: {
+        id: mall.id, slug: mall.slug, ...b,
+        ga_id: extra?.ga_id ?? null,
+        naver_verification: extra?.naver_verification ?? null,
+        privacy_md: extra?.privacy_md ?? null,
+        notices: notices.results ?? [],
+      },
+    })
   } catch {
     return c.json({ success: false, error: '몰 정보를 불러오지 못했습니다' }, 500)
   }

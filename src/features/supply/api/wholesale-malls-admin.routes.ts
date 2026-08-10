@@ -119,7 +119,7 @@ app.get('/', async (c) => {
   try {
     await ensureMallSchema(DB)
     const { results } = await DB.prepare(
-      `SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, COALESCE(consumer_path,0) AS consumer_path, active, created_at
+      `SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, COALESCE(consumer_path,0) AS consumer_path, ga_id, naver_verification, privacy_md, active, created_at
        FROM wholesale_malls ORDER BY id ASC LIMIT 200`
     ).all()
     return c.json({ success: true, malls: results ?? [] })
@@ -189,15 +189,22 @@ app.post('/', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-cre
     const active = Number(body.active) === 0 ? 0 : 1
     // 🏬 세션 ③-a: `urdeal.kr/{슬러그}` 경로로 열 몰인가. **기본 0(fail-closed)** — 명시할 때만 열린다.
     const consumer_path = Number(body.consumer_path) === 1 ? 1 : 0
+    // 📣 2026-08-09 과업① — 몰별 GA4/네이버 확인/고지문(PATCH 와 동일 게이트 — 한쪽만 막으면 생성으로 우회된다).
+    const gaRaw = cleanText(body.ga_id, 30)
+    if (gaRaw && !/^G-[A-Z0-9]{4,20}$/i.test(gaRaw)) return c.json({ success: false, error: 'GA4 측정 ID 형식(G-XXXXXXX)을 확인해주세요' }, 400)
+    const ga_id = gaRaw ? gaRaw.toUpperCase() : null
+    const naver_verification = cleanText(body.naver_verification, 80)
+    if (naver_verification && !/^[a-zA-Z0-9]{8,80}$/.test(naver_verification)) return c.json({ success: false, error: '네이버 소유확인 값은 영숫자만 가능합니다' }, 400)
+    const privacy_md = cleanText(body.privacy_md, 10000)
 
     // slug 중복 차단 (UNIQUE 와 정합 — 친절한 메시지).
     const dupe = await DB.prepare('SELECT id FROM wholesale_malls WHERE slug = ?').bind(slug).first<{ id: number }>().catch(() => null)
     if (dupe) return c.json({ success: false, error: '이미 사용 중인 slug 입니다' }, 409)
 
     const ins = await DB.prepare(
-      `INSERT INTO wholesale_malls (slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, consumer_path, active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, consumer_path, active).run()
+      `INSERT INTO wholesale_malls (slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, consumer_path, ga_id, naver_verification, privacy_md, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, consumer_path, ga_id, naver_verification, privacy_md, active).run()
     const id = Number(ins.meta?.last_row_id)
     if (!id) return c.json({ success: false, error: '몰 생성 중 오류가 발생했습니다' }, 500)
     invalidateMallCache(DB)
@@ -244,6 +251,19 @@ app.patch('/:id', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall
     if ('license_label' in body) { sets.push('license_label = ?'); binds.push(cleanText(body.license_label, 80)) }
     if ('features_json' in body) { sets.push('features_json = ?'); binds.push(validFeaturesJson(body.features_json)) }
     if ('company_json' in body) { sets.push('company_json = ?'); binds.push(validCompanyJson(body.company_json)) }
+    // 📣 2026-08-09 과업①(상인회 SaaS) — 몰별 GA4 측정 ID / 네이버 소유확인 / 방문자 고지문.
+    if ('ga_id' in body) {
+      const v = cleanText(body.ga_id, 30)
+      if (v && !/^G-[A-Z0-9]{4,20}$/i.test(v)) return c.json({ success: false, error: 'GA4 측정 ID 형식(G-XXXXXXX)을 확인해주세요' }, 400)
+      sets.push('ga_id = ?'); binds.push(v ? v.toUpperCase() : null)
+    }
+    if ('naver_verification' in body) {
+      const v = cleanText(body.naver_verification, 80)
+      // 네이버 소유확인 content 값(영숫자) — 스크립트 주입 방지(메타 content 로만 나감).
+      if (v && !/^[a-zA-Z0-9]{8,80}$/.test(v)) return c.json({ success: false, error: '네이버 소유확인 값은 영숫자만 가능합니다' }, 400)
+      sets.push('naver_verification = ?'); binds.push(v)
+    }
+    if ('privacy_md' in body) { sets.push('privacy_md = ?'); binds.push(cleanText(body.privacy_md, 10000)) }
     if ('consumer_path' in body) { sets.push('consumer_path = ?'); binds.push(Number(body.consumer_path) === 1 ? 1 : 0) }
     if ('active' in body) {
       const act = Number(body.active) === 0 ? 0 : 1
@@ -356,6 +376,97 @@ app.delete('/:id/sellers/:sellerId', requireSuperAdmin(), rateLimit({ action: 'a
     return c.json({ success: true, data: { products_moved: mv?.meta?.changes ?? 0 } })
   } catch (err) {
     return safeError(c, err, '매장 연결 해제 중 오류가 발생했습니다', '[admin-wholesale-malls]')
+  }
+})
+
+// ── 📣 2026-08-09 몰 팝업/공지 배너 CRUD (과업① — "관리자 팝업 생성 기능") ─────────────
+//   mall_notices: type 'popup'(1회 닫힘 모달) | 'banner'(상단 띠). 몰 홈(mall-public)이 활성+기간 내만 렌더.
+const NOTICE_TYPES = ['popup', 'banner']
+const cleanIso = (raw: unknown): string | null => {
+  const s = String(raw ?? '').trim().slice(0, 25)
+  return /^\d{4}-\d{2}-\d{2}/.test(s) ? s : null
+}
+
+app.get('/:id/notices', requireSuperAdmin(), async (c) => {
+  const { DB } = c.env
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청' }, 400)
+  try {
+    await ensureMallSchema(DB)
+    const { results } = await DB.prepare(
+      'SELECT id, mall_id, type, title, body, link_url, active, starts_at, ends_at, created_at FROM mall_notices WHERE mall_id = ? ORDER BY id DESC LIMIT 100',
+    ).bind(id).all()
+    return c.json({ success: true, notices: results ?? [] })
+  } catch (err) {
+    return safeError(c, err, '공지 목록 조회 중 오류가 발생했습니다', '[admin-wholesale-malls]')
+  }
+})
+
+app.post('/:id/notices', requireSuperAdmin(), rateLimit({ action: 'admin-mall-notice-create', max: 30, windowSec: 60 }), async (c) => {
+  const { DB } = c.env
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청' }, 400)
+  try {
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const type = NOTICE_TYPES.includes(String(body.type)) ? String(body.type) : 'banner'
+    const title = cleanText(body.title, 120)
+    if (!title) return c.json({ success: false, error: '제목을 입력해주세요' }, 400)
+    const link = cleanText(body.link_url, 500)
+    if (link && !/^(https?:\/\/|\/)/i.test(link)) return c.json({ success: false, error: '링크는 http(s):// 또는 / 로 시작해야 합니다' }, 400)
+    await ensureMallSchema(DB)
+    const r = await DB.prepare(
+      `INSERT INTO mall_notices (mall_id, type, title, body, link_url, active, starts_at, ends_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(id, type, title, cleanText(body.body, 2000), link,
+      Number(body.active) === 0 ? 0 : 1, cleanIso(body.starts_at), cleanIso(body.ends_at)).run()
+    return c.json({ success: true, id: r.meta?.last_row_id ?? null })
+  } catch (err) {
+    return safeError(c, err, '공지 생성 중 오류가 발생했습니다', '[admin-wholesale-malls]')
+  }
+})
+
+app.patch('/:id/notices/:nid', requireSuperAdmin(), rateLimit({ action: 'admin-mall-notice-update', max: 60, windowSec: 60 }), async (c) => {
+  const { DB } = c.env
+  const id = Number(c.req.param('id'))
+  const nid = Number(c.req.param('nid'))
+  if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(nid) || nid <= 0) return c.json({ success: false, error: '잘못된 요청' }, 400)
+  try {
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const sets: string[] = []; const binds: (string | number | null)[] = []
+    if ('type' in body && NOTICE_TYPES.includes(String(body.type))) { sets.push('type = ?'); binds.push(String(body.type)) }
+    if ('title' in body) { const v = cleanText(body.title, 120); if (!v) return c.json({ success: false, error: '제목을 입력해주세요' }, 400); sets.push('title = ?'); binds.push(v) }
+    if ('body' in body) { sets.push('body = ?'); binds.push(cleanText(body.body, 2000)) }
+    if ('link_url' in body) {
+      const link = cleanText(body.link_url, 500)
+      if (link && !/^(https?:\/\/|\/)/i.test(link)) return c.json({ success: false, error: '링크는 http(s):// 또는 / 로 시작해야 합니다' }, 400)
+      sets.push('link_url = ?'); binds.push(link)
+    }
+    if ('active' in body) { sets.push('active = ?'); binds.push(Number(body.active) === 0 ? 0 : 1) }
+    if ('starts_at' in body) { sets.push('starts_at = ?'); binds.push(cleanIso(body.starts_at)) }
+    if ('ends_at' in body) { sets.push('ends_at = ?'); binds.push(cleanIso(body.ends_at)) }
+    if (!sets.length) return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400)
+    await ensureMallSchema(DB)
+    binds.push(nid, id)
+    const up = await DB.prepare(`UPDATE mall_notices SET ${sets.join(', ')} WHERE id = ? AND mall_id = ?`).bind(...binds).run()
+    if ((up.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '공지를 찾을 수 없습니다' }, 404)
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '공지 수정 중 오류가 발생했습니다', '[admin-wholesale-malls]')
+  }
+})
+
+app.delete('/:id/notices/:nid', requireSuperAdmin(), rateLimit({ action: 'admin-mall-notice-delete', max: 30, windowSec: 60 }), async (c) => {
+  const { DB } = c.env
+  const id = Number(c.req.param('id'))
+  const nid = Number(c.req.param('nid'))
+  if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(nid) || nid <= 0) return c.json({ success: false, error: '잘못된 요청' }, 400)
+  try {
+    await ensureMallSchema(DB)
+    const r = await DB.prepare('DELETE FROM mall_notices WHERE id = ? AND mall_id = ?').bind(nid, id).run()
+    if ((r.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '공지를 찾을 수 없습니다' }, 404)
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '공지 삭제 중 오류가 발생했습니다', '[admin-wholesale-malls]')
   }
 })
 

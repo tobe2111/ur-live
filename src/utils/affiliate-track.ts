@@ -33,6 +33,32 @@ export function storeAffiliateRef(ref: string | null | undefined): void {
   } catch { /* storage unavailable */ }
 }
 
+// 📣 2026-08-09 (캠페인 신청 페이지): URL 의 캠페인 코드(?c= 또는 ?campaign=)를 유입 클릭에 태운다.
+//   inflow_clicks.campaign 컬럼·서버 파라미터는 2026-07-13 부터 있었으나 클라가 안 보내 항상 NULL 이던 것.
+//   서버가 normalizeAcqSource 로 재검증하므로 여기선 형식만 거른다(fail-soft).
+function campaignFromUrl(): string | undefined {
+  try {
+    const q = new URLSearchParams(location.search)
+    const v = (q.get('c') || q.get('campaign') || '').trim().toLowerCase()
+    return /^[a-z0-9][a-z0-9-]{0,39}$/.test(v) ? v : undefined
+  } catch { return undefined }
+}
+
+/**
+ * 📣 2026-08-09: 유입 클릭만 기록(어필리에이트 귀속 없음) — 루트(/?ref=) 등 상세 밖 랜딩용.
+ *   affiliate_ref 저장(구매 귀속)은 건드리지 않아 머니 경로 무접촉 — 데이터 수집만.
+ *   서버 share_url(affiliate.routes)·캠페인 완료화면이 발급하는 `urdeal.kr/?ref=` 링크가
+ *   지금까지 inflow_clicks 에 안 남던 갭(전역 캡처 부재)을 닫는다.
+ */
+export function captureInflowRef(ref: string | null | undefined): void {
+  try {
+    if (!ref || !/^\d{1,12}$/.test(ref)) return
+    const myId = localStorage.getItem('user_id')
+    if (myId && myId === ref) return // 본인 링크 진입은 무귀속
+    fireInflowClick(ref)
+  } catch { /* noop */ }
+}
+
 /** 유입 클릭 서버 발사 — fail-soft·1회(ref별). 서버가 (anon_id, ref) UNIQUE 로 이중 방어. */
 function fireInflowClick(ref: string): void {
   try {
@@ -42,6 +68,7 @@ function fireInflowClick(ref: string): void {
       anon_id: anonId,
       ref,
       ref_type: 'curator',
+      campaign: campaignFromUrl(),
       path: (typeof location !== 'undefined' ? location.pathname : '').slice(0, 200),
     }).then(() => {
       try { localStorage.setItem(INFLOW_SENT_KEY, ref) } catch { /* noop */ }
