@@ -921,11 +921,15 @@ async function sendBusinessRegistrationAlimtalk(
     : `[유어딜] 사업자등록증 반려\n\n· 사유: ${reason || '미상'}\n\n다시 제출해주세요. 검증 완료 후 현금 정산이 가능합니다.`
 
   try {
-    const { sendAlimtalk } = await import('../../../lib/aligo')
-    await sendAlimtalk(
-      { ALIGO_API_KEY: apiKey, ALIGO_USER_ID: userId },
-      { senderKey, templateCode, to: phone, message },
-    )
+    // 🔔 2026-08-09: `lib/aligo` 직접 호출 → **공용 헬퍼 경유**로 전환(사용자 지시 — 알림톡 후속).
+    //   그간 이 경로만 `sendSystemAlimtalk` 을 우회해 **발송 실패 시 `alimtalk_failures` 재시도 큐에
+    //   안 들어갔다** → `retry-alimtalk` cron 이 못 잡아 승인/반려 통보가 **영구 소실**(가장 치명적).
+    //   함께 얻는 것: dedup·rate-limit(같은 phone+template 1h)·일일 비용 cap·발송 로그.
+    //   ⚠️ dedup 부작용(1h 내 재반려는 알림톡 skip)은 감수한다 — 두 경로 모두 위에서
+    //   `createDashboardNotification` 으로 셀러 대시보드에 결과를 남기므로 통보 채널이 0 이 되지 않는다.
+    //   ⚠️ 문안(message)·tpl_code 는 **byte-불변** — 카카오는 승인 본문과 글자 일치를 요구한다.
+    const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
+    await sendSystemAlimtalk(env, phone, templateCode, message)
   } catch { /* silent fail */ }
 }
 
