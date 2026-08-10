@@ -119,6 +119,30 @@ const MUTATIONS = [
       '무료 플랜은 인보케이션당 50~60 이라 그 낭비가 다른 레인의 예열 실패로 번진다(2026-07-29 실측 클래스).',
   },
   {
+    name: '규칙 버전이 올라가도 우선순위 커서를 리셋 안 함(우선순위가 1회용이 된다)',
+    file: 'src/features/marketing/api/reclassify-priority.ts',
+    find: '      if (rulesVersion != null && Number(p.v) !== rulesVersion) return { tier: 0, cursor: 0 }',
+    replace: '      // (제거)',
+    test: 'src/tests/unit/ads-reclassify-priority.test.ts',
+    why:
+      '2026-08-11 라이브에서 **실제로 물렸다.** 판정 때 webkr 잔량이 981 에서 한 건도 안 줄어 있었는데 ' +
+      '레인은 정상이었다(ok=true, 47분 전) — `phase=prio:local` 이었다. **커서가 webkr 을 지나쳐 다음 ' +
+      '티어로 넘어간 뒤에 버전이 올라갔고**, 그 981건은 다시 대상이 됐지만 커서가 지나간 자리라 ' +
+      '**한 바퀴(38일) 전엔 안 본다.** 버전 bump 의 의미는 "전부 다시 봐라" 이고, 그러면 우선순위 큐도 ' +
+      '앞줄부터 다시 서야 한다 — 안 그러면 우선순위가 **"첫 배포 때 한 번만" 듣는 장치**가 된다.',
+  },
+  {
+    name: '우선순위 상태에 규칙 버전을 안 적음(커서가 영영 전진 못 함)',
+    file: 'src/features/marketing/api/reclassify-priority.ts',
+    find: 'JSON.stringify({ tier, cursor, v: rulesVersion })',
+    replace: 'JSON.stringify({ tier, cursor })',
+    test: 'src/tests/unit/ads-reclassify-priority.test.ts',
+    why:
+      '위 리셋 판정의 짝이다. 버전을 안 적으면 읽을 때 `undefined !== 현행` 이 **항상 참**이라 매 회차 ' +
+      'tier 0·cursor 0 으로 되돌아간다 → 앞 250건만 무한 반복하고 뒤는 영영 안 본다. ' +
+      '리셋과 기록은 **한 쌍으로만 의미가 있다** — 한쪽만 있으면 반대 방향으로 고장난다.',
+  },
+  {
     name: '재검사 우선순위에 등록부 소스가 들어간다(우선순위가 무의미해진다)',
     file: 'src/features/marketing/api/reclassify-priority.ts',
     find: "export const RECLASSIFY_PRIORITY_TIERS: readonly (readonly string[])[] = [['webkr'], ['local']]",
@@ -152,7 +176,7 @@ const MUTATIONS = [
   {
     name: '랩 완료 시 우선순위 상태를 리셋 안 함(우선순위가 1회용이 된다)',
     file: 'src/features/marketing/api/company-discovery.ts',
-    find: '    await writePrioState(DB, 0, 0)',
+    find: '    await writePrioState(DB, 0, 0, CLASSIFY_RULES_VERSION)',
     replace: '    // (제거)',
     test: 'src/tests/unit/ads-reclassify-priority.test.ts',
     why:

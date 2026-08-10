@@ -388,7 +388,7 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     // 한 바퀴 완료 — 커서 리셋(다음 실행은 처음부터, 새로 들어온 미분류 행을 잡음).
     //   우선순위 상태도 같이 리셋해야 **다음 랩에서 다시 앞줄에 선다**(안 하면 티어가 끝에 고정돼 무력화).
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, '0').run().catch(() => null)
-    await writePrioState(DB, 0, 0)
+    await writePrioState(DB, 0, 0, CLASSIFY_RULES_VERSION)
     return { scanned: 0, updated: 0, removed: 0, held: 0, cursor: 0, done: true, phase }
   }
   let updated = 0, removed = 0, held = 0
@@ -440,7 +440,7 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
   // 커서 전진 — **이번 회차가 어느 패스였는지에 맞는 쪽만** 옮긴다. 섞으면 한쪽이 조용히 건너뛴다.
   const nextCursor = rows[rows.length - 1].id
   if (prioDone) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, String(nextCursor)).run().catch(() => null)
-  else await writePrioState(DB, prio!.tier, nextCursor)
+  else await writePrioState(DB, prio!.tier, nextCursor, CLASSIFY_RULES_VERSION)
   // 📊 진행률 가시화(2026-07-27 대표 "청소 얼마나 됐나 안 보임") — 남은 미분류 수 포함 스탬프.
   const remRow = await DB.prepare('SELECT COUNT(*) AS n FROM ad_company_leads WHERE merged_into IS NULL AND (classified_v IS NULL OR classified_v < ?)').bind(CLASSIFY_RULES_VERSION).first<{ n: number }>().catch(() => null)
   const prevStat = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>().catch(() => null)
