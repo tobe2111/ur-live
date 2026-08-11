@@ -6,6 +6,7 @@
  *   기존 import 경로 호환을 위해 본체에서 재수출한다.
  */
 import type { NaverEnrichDiag } from './influencer-performance'
+import type { CollectFunnel } from './influencer-collect-funnel'
 
 export interface DiscoveryKeyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; created_at: string }
 export interface AutoCollectStats {
@@ -40,6 +41,12 @@ export interface AutoCollectStats {
    *   있어(카운터가 07-29 까지 얼어 있었다) 고치기 전에 숫자로 남긴다 — 다음 세션이 추측 없이 결정하게.
    */
   picks?: { planned: number; processed: number; from_yt: number; from_cursor: number }
+  /**
+   * 📈 회차 퍼널 시계열(2026-08-11 대표 승인 "3번") — 이 blob 은 매 회차 덮어써지므로, 시계열을 **안에**
+   *   얹지 않으면 "어제와 오늘이 왜 다른가"를 영영 못 본다. 근거·유튜브 관련 금지사항은
+   *   `influencer-collect-funnel.ts` 헤더(⚠️ 대표가 유튜브 축소를 명시적으로 거부했다).
+   */
+  funnel?: CollectFunnel
   /** @deprecated 2026-07-28 — 링크인바이오/블로거 보강은 `influencer-enrich-lane.ts` 로 이전(스냅샷 `ads_influencer_enrich_last`).
    *  옛 실행이 남긴 값을 읽는 화면이 있어 타입은 유지(신규 실행은 안 채움). */
   bio_enriched?: number

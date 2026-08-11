@@ -45,7 +45,11 @@ adsInfluencersRoutes.get('/influencers/pool-stats', async (c) => {
     FROM ad_influencer_leads WHERE account_id = 0`).first().catch(() => null)
   const row = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_autocollect_stats'").first<{ value: string }>().catch(() => null)
   let run: unknown = null; try { run = row?.value ? JSON.parse(row.value) : null } catch { run = null }
-  return c.json({ success: true, pool: agg || {}, run, gate: c.env.ADS_AUTO_COLLECT_ENABLED === 'true' })
+  // 📈 일별 요약을 **미리 계산해서** 준다 — 원본(`run.funnel`)만 주면 결국 아무도 안 본다.
+  //   총계가 아니라 **요청당 수확**이라야 "왜 줄었나"가 보인다(근거는 influencer-collect-funnel.ts 헤더).
+  const { funnelSummary } = await import('../influencer-collect-funnel')
+  const funnel = funnelSummary((run as { funnel?: Parameters<typeof funnelSummary>[0] } | null)?.funnel)
+  return c.json({ success: true, pool: agg || {}, run, funnel, gate: c.env.ADS_AUTO_COLLECT_ENABLED === 'true' })
 })
 
 // POST /api/ads/influencers/discover { keyword, platform?, max? } — 발굴 + 저장
