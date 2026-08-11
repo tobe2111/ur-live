@@ -174,11 +174,23 @@ describe('🔌 배선 — 만들어 놓고 안 부르면 없는 것과 같다', 
     expect(SRC('src/worker-ads/lane-domains.ts')).toContain("'collect-nara-contract'")
   })
 
-  it('🪦 죽은 조달업체 레인의 잔재가 남아 있지 않다 — 낡은 지도는 다음 세션을 반대로 이끈다', () => {
-    for (const f of ['src/worker-ads/public-data.routes.ts', 'src/worker-ads/index.ts',
-      'src/worker-ads/lane-domains.ts', 'src/features/marketing/api/partner-pool.routes.ts']) {
-      expect(SRC(f), `${f} 에 구 레인 참조가 남았다`).not.toContain('nara-vendor')
-      expect(SRC(f), `${f} 에 구 스탯 키가 남았다`).not.toContain('naravendor')
-    }
+  /**
+   * 🪦→🏛️ **2026-08-11 정정 — 조달업체 레인은 죽지 않았다. 우리가 잘못 죽였다.**
+   *
+   * 원래 이 자리는 *"죽은 조달업체 레인의 잔재가 남아 있지 않다"* 를 지켰다. 그 전제는
+   * *"`UsrInfoService02` 는 코드 12 = 폐기된 주소"* 였는데 **그 판정이 틀렸다** — 대표가 공유한
+   * 포털 Swagger(2026-08-10)로 확정된 진짜 원인은 **오퍼레이션 이름에 `02` 가 빠진 것**이다.
+   * 코드 12 는 *주소 부재*와 *오퍼레이션 오타*를 구분하지 못한다(`public-data-diag` 가 명시한 함정).
+   *
+   * ⇒ 지키는 대상을 **"잔재가 없을 것"에서 "옛 오타가 기본값으로 돌아오지 않을 것"으로** 바꾼다.
+   *   레인 자체는 되살렸으므로 전자는 이제 틀린 요구이고, 그대로 두면 **이 테스트가 낡은 지도**가 된다.
+   */
+  it('🔒 되살린 조달업체 레인이 옛 오퍼레이션 오타로 돌아가지 않는다', () => {
+    const v = SRC('src/features/marketing/api/nara-vendor-collect.ts')
+    // 기본값은 반드시 '02' 가 붙은 이름. 이게 빠져서 15회를 버리고 레인을 지웠다.
+    expect(v).toContain("export const NARA_VENDOR_OP = 'getPrcrmntCorpBasicInfo02'")
+    // 계약 레인과 **다른 주소**여야 한다 — 같아지면 둘이 같은 원부를 두 번 긁는다.
+    expect(v).toContain('/1230000/ao/UsrInfoService02')
+    expect(v).not.toContain(`${NARA_CONTRACT_OP}`)
   })
 })
