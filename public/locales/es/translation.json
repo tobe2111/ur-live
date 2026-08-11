@@ -188,7 +188,8 @@
     "kakaoConsult": "Soporte KakaoTalk",
     "share": "Compartir",
     "currencyWon": "KRW",
-    "checkNetworkRetry": "Comprueba tu red e inténtalo de nuevo"
+    "checkNetworkRetry": "Comprueba tu red e inténtalo de nuevo",
+    "goHome": "Ir al inicio"
   },
   "seller": {
     "relink": {

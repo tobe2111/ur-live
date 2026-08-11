@@ -188,7 +188,8 @@
     "kakaoConsult": "KakaoTalk客服",
     "share": "分享",
     "currencyWon": "韩元",
-    "checkNetworkRetry": "请检查网络后重试"
+    "checkNetworkRetry": "请检查网络后重试",
+    "goHome": "返回首页"
   },
   "auth": {
     "email": "邮箱",

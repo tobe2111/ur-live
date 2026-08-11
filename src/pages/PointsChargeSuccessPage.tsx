@@ -8,6 +8,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
 import { useSetBalance } from '@/hooks/queries'
+import { TOPUP_DISABLED } from '@/shared/feature-flags'
 
 export default function PointsChargeSuccessPage() {
   const navigate = useNavigate()
@@ -75,9 +76,23 @@ export default function PointsChargeSuccessPage() {
         <SEO title={t('pointsCharge.failTitle', { defaultValue: '딜 충전 실패' })} description={t('pointsCharge.failDesc', { defaultValue: '딜 포인트 충전에 실패했습니다' })} url="/points/charge/success" noindex />
         <div className="max-w-md w-full text-center bg-white dark:bg-[#0F151D] rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-[#2A3446]">
           <p className="text-red-600 mb-4">{error}</p>
-          <button onClick={() => navigate('/points/charge')} className="px-6 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold">
-            {t('common.retry', { defaultValue: '다시 시도' })}
-          </button>
+          {/* 🚪 2026-08-11 (AB 스윕): 이 화면은 **막다른 길**이었다 — 헤더·네비 없이 텍스트 한 줄과
+              `다시 시도` 버튼뿐인데, 그 버튼이 보내는 `/points/charge` 는 2026-07-18 딜 충전 종료
+              (`TOPUP_DISABLED`) 이후 "충전이 종료됐어요" 안내만 띄운다. 즉 실패한 사람이 누를 수 있는
+              유일한 버튼이 또 다른 막다른 화면이었다. 충전이 살아 있을 때만 재시도를 권하고,
+              **어느 경우든 나갈 문(메인)은 항상 둔다.** */}
+          <div className="flex flex-col gap-2">
+            {!TOPUP_DISABLED && (
+              <button onClick={() => navigate('/points/charge')} className="px-6 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold">
+                {t('common.retry', { defaultValue: '다시 시도' })}
+              </button>
+            )}
+            <button onClick={() => navigate('/')} className={TOPUP_DISABLED
+              ? 'px-6 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold'
+              : 'px-6 py-3 text-gray-600 dark:text-gray-300 font-semibold'}>
+              {t('common.goHome', { defaultValue: '메인으로' })}
+            </button>
+          </div>
         </div>
       </div>
     )

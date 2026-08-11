@@ -188,7 +188,8 @@
     "kakaoConsult": "카카오 상담",
     "share": "공유",
     "currencyWon": "원",
-    "checkNetworkRetry": "네트워크 상태를 확인한 뒤 다시 시도해주세요"
+    "checkNetworkRetry": "네트워크 상태를 확인한 뒤 다시 시도해주세요",
+    "goHome": "메인으로"
   },
   "auth": {
     "email": "이메일",

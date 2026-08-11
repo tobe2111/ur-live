@@ -144,3 +144,25 @@ describe('③ 404 — 길 잃은 사람을 실제로 있는 곳으로 보낸다'
     for (const dead of ['라이브 쇼핑', '맛집딜']) expect(s, `"${dead}" 가 남아 있다`).not.toContain(dead)
   })
 })
+
+describe('⑤ 딜 충전 실패 화면이 막다른 길이 아니다', () => {
+  // 실측: 헤더·네비 없이 "결제 정보가 유효하지 않습니다 / 다시 시도" 두 줄뿐이었고,
+  //   그 버튼이 보내는 `/points/charge` 는 TOPUP_DISABLED(2026-07-18 충전 종료) 안내 화면이다.
+  //   즉 나갈 문이 없었다.
+  const pg = code('src/pages/PointsChargeSuccessPage.tsx')
+
+  it('🔴 어느 경우에도 메인으로 나가는 버튼이 있다', () => {
+    expect(pg).toContain("navigate('/')")
+    expect(pg).toContain('common.goHome')
+  })
+
+  it('🔴 충전이 종료된 동안에는 재시도를 권하지 않는다', () => {
+    // 되돌리면 다시 "막다른 화면 → 막다른 화면" 이 된다.
+    expect(pg).toContain('TOPUP_DISABLED')
+    expect(pg).toMatch(/!TOPUP_DISABLED &&[\s\S]{0,200}navigate\('\/points\/charge'\)/)
+  })
+
+  it.each(LOCALES)('[%s] common.goHome 이 번역돼 있다 — defaultValue 로 때우면 6개 언어가 한국어가 된다', (l) => {
+    expect(typeof tr(l).common?.goHome, `${l}.common.goHome 누락`).toBe('string')
+  })
+})

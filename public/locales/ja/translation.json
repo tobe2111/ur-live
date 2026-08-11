@@ -188,7 +188,8 @@
     "kakaoConsult": "カカオトークサポート",
     "share": "シェア",
     "currencyWon": "ウォン",
-    "checkNetworkRetry": "ネットワークを確認して再試行してください"
+    "checkNetworkRetry": "ネットワークを確認して再試行してください",
+    "goHome": "ホームへ"
   },
   "auth": {
     "email": "メールアドレス",

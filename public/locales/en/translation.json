@@ -188,7 +188,8 @@
     "kakaoConsult": "KakaoTalk Support",
     "share": "Share",
     "currencyWon": "KRW",
-    "checkNetworkRetry": "Check your network and try again"
+    "checkNetworkRetry": "Check your network and try again",
+    "goHome": "Go to home"
   },
   "auth": {
     "email": "Email",
