@@ -186,10 +186,8 @@ export async function handleCronScheduled(
 
   // 🛡️ 2026-06-09: 어드민 단체메일 큐 drainer — 2분마다 한 batch 씩 멱등 발송.
   //   요청 안에서 수천 명 발송하던 것을 cron 으로 이전 (CPU/wall 한도 + per-recipient 멱등 hardening).
-  //   ⏰ 2026-08-11: `*/2` 는 **등록된 적이 없어** 이 drainer 가 한 번도 안 돌았다. `*/5` 로 이사(주기 2→5분).
-  if (cron === '*/5 * * * *') {
-    ctx.waitUntil(safeCron('bulk-email-drain', () => handleBulkEmailDrain(env)));
-  }
+  // ⏰ 2026-08-11: `*/2` 미등록으로 이 drainer 는 한 번도 안 돌았다 → `*/5` 로 이사(주기 2→5분).
+  if (cron === '*/5 * * * *') ctx.waitUntil(safeCron('bulk-email-drain', () => handleBulkEmailDrain(env)));
 
   if (cron === '*/5 * * * *') {
     // 📰 2026-08-03 — 일일 다이제스트. 발화 안 하던 `0 * * * *` 에서 이사. **일간이 아니라 `*/5` 인 이유**:
@@ -235,8 +233,8 @@ export async function handleCronScheduled(
     // }
   }
 
-  // ⏰ 2026-08-11: `0 * * * *` 는 등록된 적이 없다 → 이 블록 7개가 통째로 침묵했다(하트비트 0).
-  //   계정 cron 한도 5개를 다 써서 트리거를 못 늘리므로 `*/5` 틱 위에서 **:25 게이트**로 시간당 1회.
+  // ⏰ 2026-08-11: `0 * * * *` 미등록으로 이 블록 7개가 침묵했다(하트비트 0). 트리거 한도(5)를 다 써
+  //   `*/5` 틱 위 :25 게이트로 시간당 1회. 왜 이 방식인지는 `cron-slot.ts` 참조.
   if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 25 })) {
     // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 홍보 유지보수 크론 배선 분리 — 소셜 자동화 그래프를 워커에서
     //   완전 제거해 CF 1MB 압축한도 회복. 기능 게이트 OFF·미사용이라 미실행 무해. 재도입 시 원복.
@@ -532,9 +530,8 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('d1-backup', () => handleD1Backup(env as any)));
   }
 
-  // 💸 2026-08-11: `0 0 * * 1` 도 등록된 적이 없어 주간 7개가 침묵했다. `payouts-generate` 는 **송금이
-  //   아니라 지급 대상 목록(pending 행) 생성**이고 송금은 어드민 수동 승인 + 멱등이라 재실행도 안전.
-  //   월요일 09:45 KST — 다른 게이트(:25 · 03:30/03:35 · 09:40)와 분이 겹치지 않게(예산 분리).
+  // 💸 2026-08-11: `0 0 * * 1` 도 미등록이라 주간 7개가 침묵했다. `payouts-generate` 는 송금이 아니라
+  //   지급 대상 목록 생성이고 송금은 어드민 수동 + 멱등. 월 09:45 KST(다른 게이트와 분 분리 = 예산 분리).
   if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 45, hour: 0, dow: 1 })) {
     // 🛡️ 2026-05-21 Phase C: 주 1회 정산 자동 생성 — admin 검토용 pending payouts 생성.
     ctx.waitUntil(safeCron('payouts-generate', () => handlePayoutsGenerate(env)));
