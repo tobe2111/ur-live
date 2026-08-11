@@ -1,22 +1,24 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { isPWAStandalone, isFeatureBlockedSync } from '@/lib/in-app-warning'
-import { useTranslation } from 'react-i18next'
-import { Bell, X } from 'lucide-react'
 
 /**
- * PushNotificationSetup
+ * PushNotificationSetup — **화면에 아무것도 그리지 않는다.**
  *
- * 🏁 2026-06-12 (전 플로우 감사 🟢 — soft-prompt 전환, 사용자 승인 "모두 이상적"):
- *   기존: 로그인 10초 후 **제스처 없이** Notification.requestPermission() 자동 호출 —
- *   Safari 는 무시, Chrome 은 quiet-UI 강등 + 맥락 없는 권한 팝업(수락률 최악 패턴).
- *   변경: 가치 설명 인앱 배너(soft prompt) → "켜기" 탭(제스처) 시에만 브라우저 권한 요청.
- *   '나중에' = 14일 스누즈. 구독/전송 로직(push-sw.js, /api/push/subscribe)은 동일.
+ * 🗑️ 2026-08-11 (대표 "팝업 삭제해줘"): "알림을 켜시겠어요?" **soft-prompt 배너를 제거**했다.
+ *   로그인 10초 뒤 뜨던 그 배너가 유일한 UI 였으므로 이 컴포넌트는 이제 headless 다.
+ *
+ *   ⚠️ **컴포넌트 자체는 지우지 않았다** — 배너는 "새로 켜자"는 권유일 뿐이고, 이 파일의 나머지는
+ *   **이미 알림을 켠 사람의 구독을 살려 두는 자가치유**다(아래 granted 분기). 그걸 같이 지우면
+ *   브라우저가 endpoint 를 교체하거나 서버가 410 으로 구독행을 지웠을 때 **조용히 두절**된다 —
+ *   어드민 시스템 경보(`/admin/system-monitoring` 푸시)가 그 경로를 쓴다.
+ *
+ *   복원: 이 파일을 `git show <이 커밋>^:src/components/PushNotificationSetup.tsx` 로 되돌리면 된다
+ *   (배너 JSX + `showBanner`/`snooze` + `push.prompt*` i18n 키 4개는 그대로 남겨 뒀다).
+ *   새로 켜려는 사용자는 그동안 브라우저 주소창의 사이트 설정에서 알림을 허용하면 이 자가치유가 잡는다.
  *
  * 🛡️ 2026-04-28: body 형식 — 서버 (push.routes.ts) 는 raw subscription 기대.
  *   role 토큰 자동 주입 (admin/seller/agency/user) + session cookie credentials.
  */
-const SNOOZE_KEY = 'push_prompt_snooze_until'
-const SNOOZE_DAYS = 14
 
 /**
  * 🔔 2026-07-01 (라이브 전수조사): VAPID 공개키 해석을 **런타임 서버 우선**으로.
@@ -45,9 +47,8 @@ function resolveVapidKey(): Promise<string> {
 }
 
 export default function PushNotificationSetup() {
-  const { t } = useTranslation()
-  const [showBanner, setShowBanner] = useState(false)
-  const [busy, setBusy] = useState(false)
+  // ⚠️ state 가 아니라 ref 다 — 이 컴포넌트는 아무것도 안 그리므로 재렌더가 의미 없다.
+  const busy = useRef(false)
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
@@ -74,32 +75,23 @@ export default function PushNotificationSetup() {
     void resolveVapidKey().then((vapidKey) => {
       if (cancelled || !vapidKey) return
 
-      // 🔔 2026-07-01: 권한이 이미 granted 면 배너 없이 **항상** 서버 구독을 재조정(self-heal).
+      // 🔔 2026-07-01: 권한이 이미 granted 면 **항상** 서버 구독을 재조정(self-heal).
       //   이전엔 localStorage.push_subscribed 플래그가 있으면 조기 return 해서, 브라우저가
       //   endpoint 를 교체하거나 서버가 410 으로 구독행을 지우면 클라는 '구독됨'으로 착각하고
       //   영구 두절됐음. 이제 getSubscription→재전송(ON CONFLICT 멱등)으로 매 마운트 self-heal.
-      //   push_subscribed 는 배너 억제용으로만 사용.
-      if (Notification.permission === 'granted') {
-        timer = setTimeout(() => { void subscribe(false) }, 8000)
-        return
-      }
-
-      // permission === 'default' (아직 안 물어봄) — 구독 이력/스누즈면 배너 skip
-      if (localStorage.getItem('push_subscribed')) return
-      try {
-        const until = Number(localStorage.getItem(SNOOZE_KEY) || 0)
-        if (until && Date.now() < until) return
-      } catch { /* */ }
-
-      timer = setTimeout(() => setShowBanner(true), 10000)
+      //
+      // 🗑️ 2026-08-11: granted 가 아니면 **아무 일도 하지 않는다.** 예전엔 여기서 10초 뒤
+      //   권유 배너를 띄웠다(대표 지시로 제거). 권한 요청은 브라우저 사이트 설정에서만 시작된다.
+      if (Notification.permission !== 'granted') return
+      timer = setTimeout(() => { void subscribe() }, 8000)
     })
     return () => { cancelled = true; if (timer) clearTimeout(timer) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const subscribe = useCallback(async (fromGesture: boolean) => {
-    if (busy) return
-    setBusy(true)
+  const subscribe = useCallback(async () => {
+    if (busy.current) return
+    busy.current = true
     try {
       const vapidKey = await resolveVapidKey()
       if (!vapidKey) return
@@ -124,12 +116,10 @@ export default function PushNotificationSetup() {
       let sub = await reg.pushManager.getSubscription()
 
       if (!sub) {
-        // 제스처 문맥에서만 권한 요청 (granted 재구독 경로는 요청 불필요)
-        if (Notification.permission !== 'granted') {
-          if (!fromGesture) return
-          const permission = await Notification.requestPermission()
-          if (permission !== 'granted') { setShowBanner(false); return }
-        }
+        // 🗑️ 2026-08-11: 권한 요청은 여기서 하지 않는다 — 이 경로는 granted 인 사람만 도달한다.
+        //   (배너 제거로 제스처 진입점이 없어졌고, 제스처 없는 requestPermission 은 Safari 가 무시하고
+        //    Chrome 은 quiet-UI 로 강등하는 최악 패턴이라 되살리면 안 된다.)
+        if (Notification.permission !== 'granted') return
         try {
           sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey })
         } catch (subErr) {
@@ -156,20 +146,19 @@ export default function PushNotificationSetup() {
       })
 
       localStorage.setItem('push_subscribed', 'true')
-      setShowBanner(false)
     } catch {
       // Silently fail — push is non-critical
     } finally {
-      setBusy(false)
+      busy.current = false
     }
-  }, [busy])
+  }, [])
 
-  function snooze() {
-    try { localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DAYS * 86400000)) } catch { /* */ }
-    setShowBanner(false)
-  }
+  return null
+}
 
-  if (!showBanner) return null
+/* 🗑️ 2026-08-11 제거된 soft-prompt 배너 (대표 "팝업 삭제해줘"). 되살리려면 아래를 컴포넌트 안으로
+   되돌리고 `showBanner` state·`snooze()`·`fromGesture` 인자를 함께 복원할 것. i18n 키(`push.prompt*`)는
+   지우지 않았다 — 문구가 사라지면 복원할 때 문안을 다시 짜게 된다.
 
   return (
     <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[400px] z-[9000] animate-sheet-up">
@@ -201,4 +190,4 @@ export default function PushNotificationSetup() {
       </div>
     </div>
   )
-}
+*/
