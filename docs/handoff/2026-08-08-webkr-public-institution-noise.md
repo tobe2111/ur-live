@@ -494,3 +494,30 @@ SELECT json_extract(value,'$.funnel.days') FROM platform_settings WHERE key='ads
 - `fill`(processed/planned)이 낮은 날 = 예산이 회차 중간에 마른 것 → 회차당 키워드 수/보강 깊이 조정 후보
 - `nbPerReq` 가 떨어지는 날 = 네이버 중복 상승(풀 포화) → 키워드 신선도 문제
 - ⚠️ **`ytPerReq` 가 낮다고 유튜브를 깎지 말 것** — 위 대표 결정.
+
+---
+
+## 8차 (2026-08-11 19:4x KST) — 머지 완료 · 조달업체는 **아직 시각 전**
+
+| | 실측 | 판정 |
+|---|---|---|
+| PR #1131 조달업체 레인 | Verify success → 머지 | ✅ |
+| PR #1132 회차 퍼널 시계열 | Verify success → 머지 | ✅ |
+| ② 조달업체 첫 회차 | `ads_naravendor_stats.last_run` = **2026-08-03 23:00** (레인이 지워지기 전 마지막 기록 그대로) | ⏳ **시각 전** — 슬롯이 15:00 UTC(KST 자정)다. 실패가 아니다 |
+| ③ 재분배 지속 | `deferred: []` (10:00Z 회차) | ✅ |
+| 🔴 안전지표 | 30,745 → **31,154** | ✅ |
+| 공고 스캔 4시간 주기 | `last_run` 08-11 09:00Z(KST 18:00) · `total_runs` 12 → **13** | ✅ **주기 안정 확인** |
+
+⚠️ `ads_naravendor_stats` 에 남아 있는 `NO_OPENAPI_SERVICE_ERROR` 는 **2026-08-03 의 옛 기록**이다.
+새 레인이 아직 안 돌았을 뿐이니 **그걸 보고 "또 실패했다"로 읽지 말 것** — 첫 회차 뒤에 `last_run` 이
+오늘 날짜로 바뀌는지부터 확인한다.
+
+### 다음 액션 (자정 이후)
+
+```sql
+SELECT substr(value,1,1200) FROM platform_settings WHERE key='ads_naravendor_stats';
+--  last_run 이 2026-08-11 로 바뀌었는가 → 그다음에 saved / diag.sample / diag.error 를 읽는다
+SELECT value FROM platform_settings WHERE key='ads_naravendor_op';   -- 후보 학습이 돌았으면 이름이 남는다
+-- 📈 퍼널이 쌓이기 시작했는가(배포 후 첫 수집 회차부터)
+SELECT json_extract(value,'$.funnel.days') FROM platform_settings WHERE key='ads_autocollect_stats';
+```
