@@ -2,20 +2,32 @@
 
 > 🚦 **유어애즈 레일.** 소비자(유어딜) 세션이 발견해 넘긴 신고를 이 세션이 처리했다.
 
+## ✅ 이 문서의 원래 과제(webkr 공공기관 오염)는 **2026-08-11 13:0x KST 에 닫혔다**
+
+`webkr lt8` **981 → 0** · `.or.kr` partner **0** · 괄호 파편 **0** · 🔴 안전지표 **30,745**(하락 없음).
+경위·판정 근거는 아래 1~5차 판정 절. **여기부터는 이어받은 후속 과제만 남는다.**
+
 ## 다음 세션의 첫 액션
 
-**PR #1096 머지 후 소급 재분류가 실제로 도는지 확인.** 규칙만 고치고 끝나는 일이 아니다 —
-`CLASSIFY_RULES_VERSION` **7** 이 기존 23만 행을 재검사 대상으로 만들었고, 그 스윕이 돌아야 정화된다.
-
-```sql
--- ① 재검사 잔량 (0 으로 수렴해야 한다)
-SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL
-  AND (classified_v IS NULL OR classified_v < 7);
--- ② 오염 잔량 (줄어야 한다 — 수정 전 webkr partner 496, 그중 or.kr 22 · 괄호파편 13)
-SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL
-  AND source='webkr' AND lead_type='partner' AND website LIKE '%.or.kr%';
-```
-①이 안 줄면 재분류 레인이 안 도는 것이다(레인 침묵 — 아래 "남은 것" 참조).
+1. **공고 스캔 6배가 발효됐는지** (KST 10·14·18·22·02·06시 슬롯 — 5차 판정 시점엔 아직 시각 전이었다)
+   ```sql
+   SELECT json_extract(value,'$.last_run'), json_extract(value,'$.total_runs'),
+          json_extract(value,'$.grant'), json_extract(value,'$.diag.error')
+     FROM platform_settings WHERE key='ads_notice_stats';
+   -- last_run 이 08-11 이후 + total_runs 12+ 면 발효. grant 0 은 정상(주소 미확정 — 대표 화면 대기)
+   ```
+2. **재분배가 계속 듣는가** — `deferred` 가 `[]` 를 유지하는지. 다시 생기면 `per_tick` 이 줄었거나 레인이 늘어난 것.
+   ```sql
+   SELECT json_extract(value,'$.deferred') FROM platform_settings WHERE key='ads_dispatch_last';
+   ```
+3. **🔴 안전지표는 30,745 밑으로 내려가면 안 된다** (모든 작업의 공통 안전판)
+   ```sql
+   SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL AND email IS NOT NULL AND email <> '';
+   ```
+4. **아직 착수 안 한 것** — ⓐ **나라장터 업체 레인 신설**(`조달청_나라장터 사용자정보 서비스`
+   `https://apis.data.go.kr/1230000/ao/UsrInfoService02` · `getPrcrmntCorpBasicInfo02` · 일 10,000 —
+   **전화번호·홈페이지가 응답에 직접 들어 있어** B2B 연락처 병목을 바로 푼다) ⓑ `마케팅 대행` 유형
+   (업종어만 있는 상호가 `evidence`/partner 로 남는 문제 — 미해결)
 
 ## 🩸 이번에 틀렸던 판단 — 이게 제일 값지다
 
