@@ -1,12 +1,4 @@
 {
   "_note": "이 슬롯들은 wrangler.toml crons 에 없어 발화하지 않는다(의도적 보류). 새 항목 추가는 check-cron-slot-registered.mjs 가 막는다.",
-  "dead": [
-    "agency-weekly-batch",
-    "blog-ai-draft",
-    "payouts-generate",
-    "social-draft",
-    "user-id-backfill-sweep",
-    "weekly-cohort-report",
-    "weekly-metrics-summary"
-  ]
+  "dead": []
 }
