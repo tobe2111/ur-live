@@ -1,16 +1,21 @@
 import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ArrowLeft, Radio, Utensils, Users } from 'lucide-react'
+import { Home, ArrowLeft, Gift, MapPin } from 'lucide-react'
 import SEO from '@/components/SEO'
 
 export default function NotFoundPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
+  // 🧭 2026-08-11 (AB 스윕): 세 칩이 전부 낡아 있었다 —
+  //   ① `라이브` 는 **영구 중단된 라이브커머스**(LIVE_COMMERCE_SUSPENDED) 라벨
+  //   ② `맛집딜` 은 폐기 명칭(현재 SSOT: 동네딜 / 이용권 / 교환권)
+  //   ③ `공동구매` 칩이 **`/referral`(추천 수익)** 으로 갔다 — 라벨과 목적지가 아예 다르다.
+  //   길 잃은 사람을 다시 태우는 자리라 하단바 5탭과 같은 곳을 가리키게 맞춘다.
   const popularLinks = [
-    { to: '/', label: t('notFound.linkLive'), Icon: Radio },
-    { to: '/map', label: t('notFound.linkRestaurant'), Icon: Utensils },
-    { to: '/referral', label: t('notFound.linkGroupBuy'), Icon: Users },
+    { to: '/', label: t('notFound.linkHome', { defaultValue: '홈' }), Icon: Home },
+    { to: '/vouchers', label: t('notFound.linkVouchers', { defaultValue: '교환권' }), Icon: Gift },
+    { to: '/map', label: t('notFound.linkMap', { defaultValue: '내 주변 동네딜' }), Icon: MapPin },
   ]
 
   return (

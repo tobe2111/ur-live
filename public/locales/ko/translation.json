@@ -786,13 +786,13 @@
   "notFound": {
     "title": "페이지를 찾을 수 없어요",
     "description": "요청하신 페이지가 사라졌거나, 잘못된 주소일 수 있어요.",
-    "seoDescription": "요청하신 페이지가 사라졌거나, 잘못된 주소일 수 있어요. 유어딜 메인에서 라이브 쇼핑과 맛집딜을 만나보세요.",
+    "seoDescription": "요청하신 페이지가 사라졌거나, 잘못된 주소일 수 있어요. 유어딜 메인에서 동네 이용권과 교환권을 만나보세요.",
     "goHome": "메인으로",
     "goBack": "이전 페이지",
     "popularPages": "인기 페이지 둘러보기",
-    "linkLive": "라이브",
-    "linkRestaurant": "맛집딜",
-    "linkGroupBuy": "공동구매"
+    "linkHome": "홈",
+    "linkVouchers": "교환권",
+    "linkMap": "내 주변 동네딜"
   },
   "serverError": {
     "title": "일시적인 오류",

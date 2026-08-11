@@ -38,7 +38,9 @@ describe('기대 목록 ↔ scheduled.ts 동기 (드리프트 차단)', () => {
 
   it('scheduled.ts 가 분기하는 cron 식을 실제로 찾는다 (빈 스캔 방지)', () => {
     // 정규식이 깨지거나 파일이 옮겨지면 0개가 잡히고, 그러면 아래 동일성 검사가 **무의미하게 통과**한다.
-    expect(branched.size).toBeGreaterThanOrEqual(8)
+    // 2026-08-11: 죽은 식 4개를 `*/5` 분 게이트로 옮겨 10 → 5 가 됐다. 하한도 같이 내린다
+    //   (하한의 목적은 "0개가 잡혀 동일성 검사가 무의미하게 통과"하는 것을 막는 것뿐이다).
+    expect(branched.size).toBeGreaterThanOrEqual(4)
   })
 
   it('기대 목록과 분기 목록이 정확히 같다', () => {
@@ -64,17 +66,21 @@ describe('findNeverFired — 부재 탐지', () => {
     const crons = out.map((o) => o.cron)
     expect(crons).toContain('0 0 * * 1')   // payouts-generate — 돈이 안 나간다
     expect(crons).toContain('0 20 * * 0')  // d1-backup — 못 되돌리는 축
-    expect(crons).toContain('0 * * * *')
+    expect(crons).toContain('0 18 * * *')  // 일간 — 30일이면 기회가 충분했다
     expect(crons).not.toContain('*/5 * * * *')
   })
 
   it('🛡️ 기회가 없었으면 판정을 미룬다 — 배포 직후 전건 빨강 금지', () => {
     // 실제 조사 때 추적 창이 4.7시간뿐이라 일간·주간을 "판정 불가"로 남겨야 했다.
     //   그 절제가 오진을 막았다 — `0 18`·`0 19` 는 실제로 등록돼 있었다.
-    const out = findNeverFired(['*/5 * * * *'], 4.7 * MIN, maxAge).map((o) => o.cron)
-    expect(out).not.toContain('0 0 * * 1')   // 주간 — 7일 안 지남
-    expect(out).not.toContain('0 18 * * *')  // 일간 — 하루 안 지남
-    expect(out).toContain('0 * * * *')       // 매시 — 4.7시간이면 충분히 기회가 있었다
+    const shortOut = findNeverFired(['*/5 * * * *'], 4.7 * MIN, maxAge).map((o) => o.cron)
+    expect(shortOut).not.toContain('0 0 * * 1')   // 주간 — 7일 안 지남
+    expect(shortOut).not.toContain('0 18 * * *')  // 일간 — 하루 안 지남
+    // 창을 사흘로 넓히면 일간은 판정 대상이 되고(기대 최대간격 2,910분 ≈ 2.02일) 주간은 여전히
+    // 미룬다(20,190분 ≈ 14일). 절제의 경계가 정확히 여기다.
+    const out = findNeverFired(['*/5 * * * *'], 3 * DAY, maxAge).map((o) => o.cron)
+    expect(out).toContain('0 18 * * *')
+    expect(out).not.toContain('0 0 * * 1')
   })
 
   it('한 번이라도 뛴 식은 잡지 않는다 (그건 stale 축이 본다)', () => {
@@ -87,7 +93,7 @@ describe('findNeverFired — 부재 탐지', () => {
   })
 
   it('null·빈 문자열 기록에 흔들리지 않는다', () => {
-    const out = findNeverFired([null, '', undefined, '  0 * * * *  '], 30 * DAY, maxAge).map((o) => o.cron)
-    expect(out).not.toContain('0 * * * *') // 공백 trim 후 매칭
+    const out = findNeverFired([null, '', undefined, '  0 18 * * *  '], 30 * DAY, maxAge).map((o) => o.cron)
+    expect(out).not.toContain('0 18 * * *') // 공백 trim 후 매칭
   })
 })

@@ -1,17 +1,11 @@
 import { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
-import GripFrameLayout from './GripFrameLayout'
 import MobileAppLayout from './MobileAppLayout'
 import { logger } from '@/utils/logger'
 
 interface FrameWrapperProps {
   children: ReactNode
 }
-
-// PC에서 프레임 안에 보여질 페이지 - introduce 페이지만
-const FRAME_PAGES = [
-  '/introduce'
-]
 
 // 모바일 레이아웃에서 제외할 페이지들 (자체 레이아웃이 있는 대시보드)
 const EXCLUDE_MOBILE_LAYOUT = [
@@ -24,22 +18,13 @@ const EXCLUDE_MOBILE_LAYOUT = [
 export default function FrameWrapper({ children }: FrameWrapperProps) {
   const location = useLocation()
   
-  // 🔥 중요: 프레임 페이지 체크를 먼저 수행 (EXCLUDE보다 우선)
-  const isFramePage = FRAME_PAGES.some(path => {
-    if (path.endsWith('/')) {
-      return location.pathname.startsWith(path)
-    }
-    return location.pathname === path || location.pathname.startsWith(path + '/')
-  })
-  
-  // 프레임 페이지면 GripFrameLayout으로 감싸기 (최우선)
-  if (isFramePage) {
-    logger.debug('🖼️ FrameWrapper: Wrapping with GripFrameLayout', {
-      pathname: location.pathname
-    })
-    return <GripFrameLayout>{children}</GripFrameLayout>
-  }
-  
+  // 🗑️ 2026-08-11 (AB 스윕): `/introduce` 를 `GripFrameLayout` 으로 감싸던 분기 제거.
+  //   그 액자는 **폐기된 라이브커머스** 홍보였다 — PC 로 회사소개에 들어가면 화면 대문이
+  //   "LIVE COMMERCE / LIVE NOW: 쇼핑의 새로운 물결" 이고, 진짜 회사소개는 폰 액자 안으로
+  //   밀려나 있었다(실측: PC 본문 430자 ↔ 모바일 1,852자). 그 안의 `회사소개서 보기` CTA 도
+  //   `/company-brochure.pdf` 가 없어 PDF 대신 SPA 셸(text/html)이 열리는 깨진 링크였다.
+  //   라이브커머스는 영구 중단(LIVE_COMMERCE_SUSPENDED)이라 되살릴 것이 아니라 걷어낸다.
+
   // 모바일 레이아웃 제외 페이지인지 확인 (셀러/어드민)
   const shouldExcludeMobileLayout = EXCLUDE_MOBILE_LAYOUT.some(path => {
     return location.pathname.startsWith(path)

@@ -786,13 +786,13 @@
   "notFound": {
     "title": "ページが見つかりません",
     "description": "お探しのページは移動または削除された可能性があります。",
-    "seoDescription": "ページが削除されたか、URLが無効です。ユアディールでライブショッピングとグルメディールを探しましょう。",
+    "seoDescription": "ページが移動したか、URLが正しくない可能性があります。urdealのホームで地域の利用券と交換券をご覧ください。",
     "goHome": "ホーム",
     "goBack": "戻る",
     "popularPages": "人気ページ",
-    "linkLive": "ライブ",
-    "linkRestaurant": "グルメディール",
-    "linkGroupBuy": "共同購入"
+    "linkHome": "ホーム",
+    "linkVouchers": "交換券",
+    "linkMap": "近くのディール"
   },
   "serverError": {
     "title": "一時的なエラー",

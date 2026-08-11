@@ -2650,7 +2650,9 @@ export default {
         //   클라 리다이렉트는 JS 를 돌리는 방문자에게만 통한다. SPA 내부 이동은 서버를 안 타므로
         //   App.tsx 의 <Navigate> 는 그대로 둔다(지우면 앱 안에서 갈 곳이 없어진다).
         const alias = resolveConsumerAlias(url.pathname);
-        if (alias) return Response.redirect(`${url.origin}${alias}${url.search || ''}`, 301);
+        // 🍽️ 2026-08-11: 목적지가 이미 쿼리를 갖는 별칭이 생겼다(`/meal-vouchers` → `/?category=…`).
+        //   그냥 이어붙이면 `…?category=x?foo=y` — 두 번째 `?` 는 값의 일부로 먹힌다.
+        if (alias) return Response.redirect(`${url.origin}${alias}${url.search ? (alias.includes('?') ? `&${url.search.slice(1)}` : url.search) : ''}`, 301);
       }
       let isWhHost = WHOLESALE_HOSTS.has(host);
       // 멀티몰: 정적 set 밖 + 소비자 호스트 아닌 미지 호스트만 등록 몰-호스트 조회(캐시 — 핫패스 영향 0).

@@ -4559,13 +4559,13 @@
   "notFound": {
     "title": "Page introuvable",
     "description": "La page demandée a peut-être été déplacée ou supprimée.",
-    "seoDescription": "La page a peut-être été supprimée ou l'URL est invalide. Découvrez le shopping en direct et les bons plans restaurants sur YourDeal.",
+    "seoDescription": "Cette page a peut-être été déplacée ou l'adresse est incorrecte. Retrouvez les bons locaux et cadeaux sur l'accueil urdeal.",
     "goHome": "Accueil",
     "goBack": "Retour",
     "popularPages": "Pages populaires",
-    "linkLive": "En direct",
-    "linkRestaurant": "Bons plans restaurants",
-    "linkGroupBuy": "Achat groupé"
+    "linkHome": "Accueil",
+    "linkVouchers": "Bons cadeaux",
+    "linkMap": "Offres près de moi"
   },
   "serverError": {
     "title": "Erreur temporaire",

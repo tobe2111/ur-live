@@ -786,13 +786,13 @@
   "notFound": {
     "title": "Page not found",
     "description": "The page you requested may have been moved or removed.",
-    "seoDescription": "The page may have been removed or the URL is invalid. Find live shopping and restaurant deals on YourDeal home.",
+    "seoDescription": "This page may have moved or the address may be wrong. Find local vouchers and gift vouchers on the urdeal home.",
     "goHome": "Home",
     "goBack": "Back",
     "popularPages": "Popular pages",
-    "linkLive": "Live",
-    "linkRestaurant": "Restaurant Deals",
-    "linkGroupBuy": "Group Buy"
+    "linkHome": "Home",
+    "linkVouchers": "Gift Vouchers",
+    "linkMap": "Deals Near Me"
   },
   "serverError": {
     "title": "Temporary error",

@@ -144,7 +144,6 @@ const MarketingUnlockPage = lazy(() => import('./pages/marketing/MarketingUnlock
 const MarketingDashboardPage = lazy(() => import('./pages/marketing/MarketingDashboardPage'))
 const MarketingKakaoCallbackPage = lazy(() => import('./pages/marketing/MarketingKakaoCallbackPage'))
 const VoucherDetailPage = lazy(() => import('./pages/VoucherDetailPage'))
-const MealVouchersPage = lazy(() => import('./pages/MealVouchersPage'))
 // 🗺️ 2026-07-03 (대표 결정 — /group-buy 은퇴): 홈(/)이 동네딜 목록·지도·지역선택을 담당 → 중복.
 //   /group-buy 는 홈으로 리다이렉트(아래 Route). GroupBuyListPage 는 미라우팅(파일 보존). /group-buy/:id 상세는 유지.
 const GroupBuyDetailPage = lazy(() => import('./pages/GroupBuyDetailPage'))
@@ -495,7 +494,7 @@ function AppContent() {
   // 네이티브 앱 + 모바일 브라우저: 페이지에 따라 상태바 스타일 / theme-color 변경
   useEffect(() => {
     // 화이트 테마 페이지 (CLAUDE.md 정책)
-    const lightPages = ['/browse', '/vouchers', '/meal-vouchers', '/checkout', '/my-orders', '/account/', '/cart',
+    const lightPages = ['/browse', '/vouchers', '/checkout', '/my-orders', '/account/', '/cart',
       '/referral/', '/map', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search', '/group-buy', '/community-group-buy']
     const isLight = lightPages.some(p => location.pathname === p || location.pathname.startsWith(p))
 
@@ -717,7 +716,8 @@ function AppContent() {
             <Route path="/ads/dashboard" element={<ErrorBoundary><MarketingDashboardPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-23: 교환권 전용 detail 페이지 (deal 결제). voucher 와 group-buy UI 분리. */}
             <Route path="/vouchers/:id" element={<VoucherDetailPage />} />
-            <Route path="/meal-vouchers" element={<MealVouchersPage />} />
+            {/* 🍽️ 2026-08-11: BrowsePage 로는 이용권이 구조적으로 0건이라 홈 카테고리 필터(정본)로. 서버 301 은 consumer-redirects.ts */}
+            <Route path="/meal-vouchers" element={<Navigate to="/?category=meal_voucher" replace />} />
             {/* 🗺️ 2026-07-03 (대표 결정): /group-buy 은퇴 → 홈 리다이렉트. 기존 15+ 링크·북마크·SEO 모두 홈으로 흡수. */}
             <Route path="/group-buy" element={<Navigate to="/" replace />} />
             {/* confirm-payment 가 :id 매칭 우선 — 더 구체적인 path 먼저 */}

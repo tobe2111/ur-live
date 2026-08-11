@@ -786,13 +786,13 @@
   "notFound": {
     "title": "找不到页面",
     "description": "您请求的页面可能已被移动或删除。",
-    "seoDescription": "页面可能已删除或URL无效。在 UR-DEAL 首页发现直播购物和餐厅团购。",
+    "seoDescription": "该页面可能已移动或网址有误。在 urdeal 首页查看本地使用券和兑换券。",
     "goHome": "返回首页",
     "goBack": "返回",
     "popularPages": "热门页面",
-    "linkLive": "直播",
-    "linkRestaurant": "餐厅团购",
-    "linkGroupBuy": "团购"
+    "linkHome": "首页",
+    "linkVouchers": "兑换券",
+    "linkMap": "附近优惠"
   },
   "serverError": {
     "title": "临时错误",
