@@ -2,20 +2,32 @@
 
 > 🚦 **유어애즈 레일.** 소비자(유어딜) 세션이 발견해 넘긴 신고를 이 세션이 처리했다.
 
+## ✅ 이 문서의 원래 과제(webkr 공공기관 오염)는 **2026-08-11 13:0x KST 에 닫혔다**
+
+`webkr lt8` **981 → 0** · `.or.kr` partner **0** · 괄호 파편 **0** · 🔴 안전지표 **30,745**(하락 없음).
+경위·판정 근거는 아래 1~5차 판정 절. **여기부터는 이어받은 후속 과제만 남는다.**
+
 ## 다음 세션의 첫 액션
 
-**PR #1096 머지 후 소급 재분류가 실제로 도는지 확인.** 규칙만 고치고 끝나는 일이 아니다 —
-`CLASSIFY_RULES_VERSION` **7** 이 기존 23만 행을 재검사 대상으로 만들었고, 그 스윕이 돌아야 정화된다.
-
-```sql
--- ① 재검사 잔량 (0 으로 수렴해야 한다)
-SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL
-  AND (classified_v IS NULL OR classified_v < 7);
--- ② 오염 잔량 (줄어야 한다 — 수정 전 webkr partner 496, 그중 or.kr 22 · 괄호파편 13)
-SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL
-  AND source='webkr' AND lead_type='partner' AND website LIKE '%.or.kr%';
-```
-①이 안 줄면 재분류 레인이 안 도는 것이다(레인 침묵 — 아래 "남은 것" 참조).
+1. **공고 스캔 6배가 발효됐는지** (KST 10·14·18·22·02·06시 슬롯 — 5차 판정 시점엔 아직 시각 전이었다)
+   ```sql
+   SELECT json_extract(value,'$.last_run'), json_extract(value,'$.total_runs'),
+          json_extract(value,'$.grant'), json_extract(value,'$.diag.error')
+     FROM platform_settings WHERE key='ads_notice_stats';
+   -- last_run 이 08-11 이후 + total_runs 12+ 면 발효. grant 0 은 정상(주소 미확정 — 대표 화면 대기)
+   ```
+2. **재분배가 계속 듣는가** — `deferred` 가 `[]` 를 유지하는지. 다시 생기면 `per_tick` 이 줄었거나 레인이 늘어난 것.
+   ```sql
+   SELECT json_extract(value,'$.deferred') FROM platform_settings WHERE key='ads_dispatch_last';
+   ```
+3. **🔴 안전지표는 30,745 밑으로 내려가면 안 된다** (모든 작업의 공통 안전판)
+   ```sql
+   SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL AND email IS NOT NULL AND email <> '';
+   ```
+4. **아직 착수 안 한 것** — ⓐ **나라장터 업체 레인 신설**(`조달청_나라장터 사용자정보 서비스`
+   `https://apis.data.go.kr/1230000/ao/UsrInfoService02` · `getPrcrmntCorpBasicInfo02` · 일 10,000 —
+   **전화번호·홈페이지가 응답에 직접 들어 있어** B2B 연락처 병목을 바로 푼다) ⓑ `마케팅 대행` 유형
+   (업종어만 있는 상호가 `evidence`/partner 로 남는 문제 — 미해결)
 
 ## 🩸 이번에 틀렸던 판단 — 이게 제일 값지다
 
@@ -260,3 +272,67 @@ webkr lt8                    981 → 731  (−250 = 정확히 한 배치)
 |---|---|---|
 | 공정위 | `getBrandinfo` **필수 파라미터** 화면 (`serviceKey=***` 마스킹) | 파라미터 교정 |
 | 기업마당 지원사업 | 포털 **"미리보기" 실제 호출 URL** | `ADS_BIZINFO_ENDPOINT` env 교체(무배포) |
+
+---
+
+## ✅ 5차 판정 (2026-08-11 13:0x KST) — **webkr 오염 건 종결 + 처리량 수리 발효 확인**
+
+`#1126` 머지 · ur-ads 배포 **12:25 KST**. 배포 후 첫 정각(13:00 KST) 스냅샷:
+
+### ① webkr 공공기관 오염 — **닫는다**
+
+```
+webkr lt8   981 → 731 → 231 → 0        🔴 안전지표 30,590 → 30,745 (하락 없음)
+```
+2026-08-08 에 시작한 이 건은 여기서 끝난다. 남은 것은 **`.or.kr`·브래킷 조각·진흥원 유형이
+다시 들어오지 않는지**뿐이고, 그건 `CLASSIFY_RULES_VERSION` + 우선순위 큐가 구조로 지킨다.
+
+### ② 도메인 예산 재분배 — 발효 확인 (**총량 불변**)
+
+```
+before 03:00Z   influencer 5 / company 5 / prospect 1(미룸 1) / wholesale 1   →  7개 중 6 실행
+after  04:00Z   influencer 5 / company 4 / prospect 2(미룸 0) / wholesale 1   →  7개 전부 실행
+                                    ↑ 안 쓰던 1자리가 굶던 도메인으로        합계 12 그대로
+```
+`deferred: []` — **미뤄지는 레인이 없다.** company 가 안 쓰던 몫이 prospect 로 넘어가
+`enrich-prospects` 가 처음으로 같은 회차에 돌았다(종전 실측 주기 2시간).
+
+⚠️ **이건 배분의 낭비를 없앤 것이지 총량을 늘린 것이 아니다.** 총량(`per_tick`)은 CPU 한도가
+정하고 코드로 못 늘린다 — 그 축의 레버는 유료 전환뿐이고 대표 판단이다.
+
+### ③ 공고 스캔 6배 — **아직 판정 전**(실패 아님)
+
+`last_run 2026-08-10 21:00 · total_runs 11` 그대로. 4시간 슬롯은 UTC `%4==1`
+(= KST 10·14·18·22·02·06시)이라 **다음 회차가 14:00 KST**. 그때 `last_run` 이 오늘로 바뀌고
+`total_runs` 가 12+ 가 되면 발효다.
+
+### 🩸 교훈 ⑫ — **내 검증 도구가 조회 실패를 "대기 중"으로 읽었다**
+
+CI 상태를 `curl api.github.com` 으로 폴링했는데 그 응답은 실제로
+`{"message":"GitHub access is not enabled for this session..."}` 였다. 파서의 `except` 가
+그걸 **`pending` 으로 뭉갰고**, 10분짜리 루프가 두 번 헛돌았다(타임아웃으로만 끝났다).
+
+⇒ **"결과가 안 나왔다"와 "조회가 실패했다"는 다르다.** 오늘 디스코드 알람에서 고친 것과 정확히
+같은 병을 내 도구가 앓고 있었다. GitHub 조회는 **MCP 도구로만** 할 것(직접 curl 은 권한 밖).
+
+### 다음 세션 첫 액션
+
+```sql
+-- ③ 공고 스캔이 4시간마다로 도는가 (14:00 KST 이후)
+SELECT json_extract(value,'$.last_run'), json_extract(value,'$.total_runs'),
+       json_extract(value,'$.grant'), json_extract(value,'$.diag.error')
+  FROM platform_settings WHERE key='ads_notice_stats';
+-- 재분배가 계속 듣는가 (미룸이 다시 생기면 per_tick 이 줄었거나 레인이 늘어난 것)
+SELECT json_extract(value,'$.deferred') FROM platform_settings WHERE key='ads_dispatch_last';
+-- 🔴 안전지표는 30,745 밑으로 내려가면 안 된다
+SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL AND email IS NOT NULL AND email <> '';
+```
+
+### 대표 대기 — 화면 2장 (둘 다 무배포 env 교체로 끝난다)
+
+| | 필요한 것 |
+|---|---|
+| 공정위 | `getBrandinfo` **필수 파라미터** 화면 (`serviceKey=***` 마스킹) — 연도 가설은 기각됐다(교훈 ⑪) |
+| 기업마당 | 지원사업 **"미리보기" 실제 호출 URL** → `ADS_BIZINFO_ENDPOINT` |
+
+⚠️ 지난번 대표가 공유한 화면에 **인증키가 그대로 찍혔다** — 그 키는 폐기·재발급 권고(미처리).
