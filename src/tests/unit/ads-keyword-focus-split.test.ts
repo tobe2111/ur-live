@@ -247,9 +247,11 @@ describe('📉🧊 수집 예산 회수 + 폭 동결', () => {
     expect(src, 'YT enrichMax 를 줄이려면 영상 스니펫의 실제 기여를 먼저 재야 한다').toMatch(/enrichMax: 8/)
   })
 
-  it('🔒 폭이 조용히 풀리지 않는다 — 회수한 예산이 자동으로 키워드 수가 되면 백로그가 증가 반전한다', () => {
+  it('🔒 폭은 승인된 범위 안에서만 — 조용한 상향/하향 둘 다 차단', () => {
     expect(COLLECT_KEYWORDS_PER_ROUND).toBeGreaterThanOrEqual(5)   // 실측 처리량 아래로 내리면 되레 후퇴
-    expect(COLLECT_KEYWORDS_PER_ROUND, '측정이 유입을 못 따라간다(여유 +289/일) — 올리려면 측정 처리량이 먼저다').toBeLessThanOrEqual(8)
+    // 상한 9 = 2026-08-11 대표 승인값("폭 9로 올려" — 측정 8,018 > 유입 5,045·차단 0 실측 후).
+    // 이 위로 올리는 것은 네이버 호출을 또 늘리는 일이라 다시 대표 판단 사항이다.
+    expect(COLLECT_KEYWORDS_PER_ROUND, '9 초과 상향은 대표 재승인 필요(네이버 차단 리스크)').toBeLessThanOrEqual(9)
   })
 
   it('🔒 env 로 재배포 없이 조정 가능(측정이 올라가면 즉시 푼다)', () => {
