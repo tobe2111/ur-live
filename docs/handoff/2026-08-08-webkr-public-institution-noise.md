@@ -521,3 +521,58 @@ SELECT value FROM platform_settings WHERE key='ads_naravendor_op';   -- 후보 �
 -- 📈 퍼널이 쌓이기 시작했는가(배포 후 첫 수집 회차부터)
 SELECT json_extract(value,'$.funnel.days') FROM platform_settings WHERE key='ads_autocollect_stats';
 ```
+
+---
+
+## ✅ 9차 자정 판정 (2026-08-12 00:3x KST) — **조달업체 레인 부활 · 퍼널 가동**
+
+### ② 🏛️ 조달업체 레인 — **성공**. 8일 만에 되살아났다
+
+```
+last_run   2026-08-11 15:00:00Z (KST 자정)   ← 옛 08-03 기록에서 바뀌었다(순서대로 이것부터 확인)
+op         getPrcrmntCorpBasicInfo02          ← 첫 시도에 맞음(후보 순회 0회)
+scanned 1,000 → matched 49 → saved 45         stoppedBy: pages (예산·시간에 안 걸림)
+대행사 풀 source='nara'   20 → 65 (+45)
+```
+**지웠던 판정이 틀렸다는 것이 숫자로 확정됐다** — 주소는 살아 있었고 오퍼레이션의 `02` 가 빠졌던 것뿐이다.
+
+### 🩸 그런데 **내가 이 API 의 값어치를 과대평가했다** (정정)
+
+*"전화번호·홈페이지가 응답에 직접 들어 있어 B2B 연락처 병목을 바로 푼다"* 고 적었는데, 첫 회차 원문이 반박한다:
+```
+"telNo": "***********"        ← 마스킹. 계약 레인과 같다
+"hmpgAdrs": ""                ← 빈 값. 홈페이지 보유는 65건 중 4건뿐
+연락처 보유 31 / 65
+```
+✅ 내가 넣은 `unmasked()` 가 그 마스킹 전화를 **정확히 버렸다**(안 버렸으면 "연락처 있음"으로 세어져
+명단 수가 거짓이 됐다). 그 방어는 값을 했지만, **기대했던 "연락처가 통째로 딸려 온다"는 아니었다.**
+⇒ 이 레인은 *"검증된 사업자 이름·주소·사업자번호"* 공급원이고 **연락처는 여전히 크롤·보강이 만든다.**
+⚠️ 다음 세션은 이 레인을 "연락처 소스"로 계획하지 말 것.
+
+### ③ 📈 퍼널 시계열 — **가동 확인**
+
+```
+08-11  n=4  saved 1,028  planned 64 → processed 28(44%)  spent 222
+            yt  found 447 · saved 77 · spend 141  → 0.55/요청
+            nb  found 2,126 · saved 951 · spend 81 → 11.7/요청
+08-12  n=1  saved 328    planned 16 → processed  7        spent 56
+```
+KST 일자 경계도 정상(자정에 08-12 로 넘어갔다). **이제 "어제와 오늘이 왜 다른가"를 잴 수 있다.**
+🚫 **`ytPerReq` 가 낮다고 유튜브를 깎지 말 것** — 대표가 명시적으로 거부했다(2026-08-11).
+
+### ④ 회귀 없음
+
+`deferred: []` · 🔴 안전지표 31,154 → **31,323**
+
+### 다음 세션 첫 액션
+
+```sql
+-- 퍼널이 며칠 쌓인 뒤: 총계가 아니라 fill(=processed/planned)과 요청당 수확을 본다
+SELECT json_extract(value,'$.funnel.days') FROM platform_settings WHERE key='ads_autocollect_stats';
+-- 조달업체 2회차 이후 — 커서가 전진하고 nara 가 계속 느는가
+SELECT json_extract(value,'$.page'), json_extract(value,'$.total_saved') FROM platform_settings WHERE key='ads_naravendor_stats';
+SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL AND category='대행사' AND source='nara';
+-- 🔴 안전지표 하한 31,323
+```
+남은 것: **대행사 새 루트 3개**(네이버·카카오 공식대행사, 광고단체 명부 — 대표 화면 필요) ·
+**고용24 기업회원 전환** · 공정위/기업마당 파라미터 · 시드 키워드 은퇴(트레이드오프, 대표 판단).
