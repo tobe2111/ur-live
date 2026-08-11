@@ -176,3 +176,52 @@ ads:reclassify-company?passes=5
 `ok=true` 와 최근 실행 시각만 보고 "정상"이라 하면 안 된다. 이번엔 레인이 정상 실행되면서
 **엉뚱한 티어를 훑고 있었다.** 판정은 하트비트 `result`(무엇을 했나)까지 봐야 한다 —
 그게 이 레포가 `result` 필드를 만든 이유이고, 이번에 그게 값을 했다.
+
+---
+
+## 🩸 3차 판정 (2026-08-11 09:2x KST) — 공정위 **연도 가설이 기각됐다**
+
+`#1120` 머지 09:24 KST · ur-ads 배포 성공 **09:24:46 KST**.
+
+| 항목 | 실측 | 판정 |
+|---|---|---|
+| ② 우선순위 커서 리셋 | `ads_company_reclassify_prio = {"tier":1,"cursor":272176}` — **`v` 없음**(구 상태) · webkr `lt8` **981 그대로** | ⏳ 배포가 방금이라 아직 회차를 안 탔다. **10시대 회차 뒤 재확인** |
+| ③ 지원사업 0건 | 입찰은 **정상**(`bid=15`, `gov_notices` 저장). 지원사업만 `HTTP 400 · NO_OPENAPI_SERVICE_ERROR` | 🔴 **주소가 게이트웨이에 없다** — 대표 확인 필요 |
+| ④ 공정위 연도 자가치유 | 회차 돌았고(`last_run` 08-11 07:00 KST) **여전히 `11 ESSENTIAL_PARAMETER_ERROR`** · `ads_franchise_yr` **미기록** | 🔴 **가설 기각** |
+| 🔴 안전지표(이메일 보유) | 29,232 → **30,500** (+1,268) | ✅ 계속 건강 |
+| 레인 침묵 | 99개 중 `judge` 판정 stale **0건** | ✅ |
+
+### 교훈 ⑪ — **자가치유가 돌았다는 것은 원인을 맞혔다는 뜻이 아니다**
+
+08-09 에 이렇게 적었다: *"우리가 안 보내는 파라미터는 `yr` 하나뿐이다"* — **그게 틀렸다.**
+자가치유는 설계대로 작동했다(코드 11 감지 → 2025·2026·2024 를 차례로 시도).
+그런데 셋 다 실패했고, 그 사실은 **`ads_franchise_yr` 이 안 적힌 것**으로 남았다
+(성공한 연도만 기록하므로 **키의 부재 자체가 "전부 실패"라는 증거**다 — 이 설계가 값을 했다).
+
+⇒ 필수 파라미터는 `yr` 이 **아니다**. 다른 이름이거나 둘 이상이다.
+⚠️ 여기서 다음 후보를 또 추측해 코드에 넣지 말 것 — 07-23 에 오퍼레이션 이름을 그렇게 추측해
+**21회를 버렸다.** 이 환경은 `apis.data.go.kr` 이 프록시 차단(CONNECT 403)이라 **찔러볼 수가 없다.**
+사양은 대표 화면으로만 확정된다.
+
+### 대표 액션 2건 — 둘 다 **무배포**(env 교체)로 끝난다
+
+1. **공정위**: 포털의 「공정거래위원회_가맹사업정보제공」 → `getBrandinfo` **필수 파라미터 목록** 화면
+   (Swagger 의 `required` 표시). ⚠️ `serviceKey=***` 로 가릴 것.
+   → 받으면 `ADS_FRANCHISE_OP` / 요청 파라미터를 맞춰 교정.
+2. **지원사업(기업마당)**: 포털 상세페이지의 **"미리보기" 실제 호출 URL**.
+   현재 코드가 쏘는 곳: `apis.data.go.kr/1421000/hpsBnaSituService/getSupportBusinessList`
+   → 다르면 `ADS_BIZINFO_ENDPOINT` **env 하나로 교체**(배포 불필요).
+
+### 다음 세션 첫 액션
+
+```sql
+-- ② 리셋이 실제로 먹었는가 (10시대 회차 이후)
+SELECT substr(value,1,200) FROM platform_settings WHERE key='ads_company_reclassify_prio';
+--    → {"tier":0,...,"v":8} 형태 + webkr lt8 이 981 에서 감소해야 한다
+SELECT COUNT(*) FROM ad_company_leads
+ WHERE source='webkr' AND merged_into IS NULL AND (classified_v IS NULL OR classified_v < 8);
+-- 🔴 안전지표는 30,500 밑으로 내려가면 안 된다
+SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL AND email IS NOT NULL AND email <> '';
+```
+
+⚠️ 하트비트 `result` 에 `phase=prio:webkr` 이 다시 찍히는지 함께 볼 것(교훈 ⑩).
