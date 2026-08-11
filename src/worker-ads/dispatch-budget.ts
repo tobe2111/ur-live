@@ -479,6 +479,59 @@ export function readDomainCursors(raw: unknown): DomainCursors {
   return out
 }
 
+/**
+ * 🔁 **놀고 있는 몫을 굶는 도메인에 넘긴다** — work-conserving 배분 (2026-08-11 대표 *"처리량 문제도 해결해줘"*).
+ *
+ * ## 왜 (라이브 스냅샷이 그대로 답이다 — `ads_dispatch_last`, 02:00 UTC)
+ * ```
+ *   per_tick 12  plan free
+ *   influencer  몫 5  run 3          → 2 놀고 있다
+ *   company     몫 5  run 1          → 4 놀고 있다
+ *   prospect    몫 1  run 1  미룸 1  ← enrich-prospects 가 여기서 매 회차 밀린다(실측 주기 2시간)
+ *   wholesale   몫 1  run 1  미룸 0
+ * ```
+ * **여섯 자리가 비어 있는데 한 레인이 밀렸다.** 비율(3:3:1:1)은 *경쟁이 있을 때* 나누는 규칙인데,
+ * 경쟁이 없는 도메인의 몫까지 붙잡아 두니 총 처리량이 구조적으로 손해다. 예산이 모자란 게 아니라
+ * **배분이 낭비하고 있었다** — 유료 전환 없이 코드로 회수할 수 있는 유일한 처리량이다.
+ *
+ * ## 규칙
+ * 1. `need[d]` = 그 도메인의 **미룰 수 있는** 레인 수(`always` 는 몫과 무관하게 도니까 뺀다).
+ * 2. 남는 몫(`budget − need`, 양수)을 모아 **부족한 도메인**(`need > budget`)에 준다.
+ * 3. 한 번에 1씩 **고정 순서 라운드로빈** — 한 도메인이 잉여를 독식하지 않게. 부족분을 다 채우거나
+ *    잉여가 마르면 끝.
+ *
+ * ## ⚠️ 안전 (이 함수가 절대 깨면 안 되는 것)
+ * - **총량 불변.** `Σ budgets` 는 그대로다 — 총량은 CPU 한도가 정하는 값이고(`FREE_LANES_PER_TICK`
+ *   docblock 의 실측), 여기서 늘리면 그 실측을 무시하고 부모를 죽이는 쪽으로 되돌아간다.
+ * - **필요 이상 안 준다.** 한 도메인의 몫이 자기 레인 수를 넘으면 그 자리는 어차피 논다.
+ * - **비율은 경쟁이 있을 때만 유지된다** — 네 도메인이 전부 몫을 다 쓰면 이 함수는 아무것도 안 한다
+ *   (그때가 대표가 정한 3:3:1:1 이 실제로 의미를 갖는 유일한 상태다).
+ */
+export function redistributeSlack(
+  budgets: Record<AdsDomain, number>,
+  need: Record<AdsDomain, number>,
+): Record<AdsDomain, number> {
+  const out = { ...budgets }
+  let slack = 0
+  for (const d of ADS_DOMAINS) {
+    const spare = (out[d] || 0) - Math.max(0, need[d] || 0)
+    if (spare > 0) { out[d] -= spare; slack += spare }
+  }
+  if (slack <= 0) return out
+  // 고정 순서 라운드로빈 — 회차마다 흔들리면 어떤 도메인이 언제 받을지 예측할 수 없다.
+  for (let moved = true; slack > 0 && moved;) {
+    moved = false
+    for (const d of ADS_DOMAINS) {
+      if (slack <= 0) break
+      if ((out[d] || 0) >= Math.max(0, need[d] || 0)) continue   // 이미 충분하다
+      out[d] = (out[d] || 0) + 1; slack -= 1; moved = true
+    }
+  }
+  // 아무도 안 받으면 원래 자리로 되돌린다(총량 불변 — 위 안전 규칙).
+  if (slack > 0) for (const d of ADS_DOMAINS) { if (slack <= 0) break; const back = Math.min(slack, Math.max(0, (budgets[d] || 0) - (out[d] || 0))); out[d] += back; slack -= back }
+  return out
+}
+
 export interface DomainSelection<T extends LaneCandidate> {
   run: T[]
   deferred: T[]
@@ -509,7 +562,10 @@ export function selectLanesByDomain<T extends LaneCandidate>(
     const arr = byDomain.get(d); if (arr) arr.push(l); else byDomain.set(d, [l])
   }
   const active = ADS_DOMAINS.filter(d => (byDomain.get(d)?.length || 0) > 0)
-  const budgets = domainBudgets(budget, active, tick)
+  // 🍰 비율 배분 → 🔁 **놀고 있는 몫을 굶는 도메인에** (총량은 그대로 — 아래 함수 주석의 실측이 근거)
+  const need = {} as Record<AdsDomain, number>
+  for (const d of ADS_DOMAINS) need[d] = (byDomain.get(d) || []).filter(isDeferrable).length
+  const budgets = redistributeSlack(domainBudgets(budget, active, tick), need)
 
   const run: T[] = [], deferred: T[] = []
   const nextCursors: DomainCursors = {}
