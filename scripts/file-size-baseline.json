@@ -1,5 +1,5 @@
 {
-  "src/App.tsx": 1108,
+  "src/App.tsx": 1110,
   "src/components/SellerLayout.tsx": 616,
   "src/features/admin/api/admin-products.routes.ts": 2350,
   "src/features/admin/api/admin-review-generator.routes.ts": 749,
@@ -65,7 +65,7 @@
   "src/routes/admin.routes.tsx": 756,
   "src/shared/db/production-schema.ts": 682,
   "src/worker/cron/scheduled-cleanup.ts": 1041,
-  "src/worker/index.ts": 2712,
+  "src/worker/index.ts": 2716,
   "src/worker/openapi.ts": 1544,
   "src/worker/repositories/order.repository.ts": 778,
   "src/worker/routes/curator.routes.ts": 1491,

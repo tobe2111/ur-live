@@ -116,7 +116,6 @@ export default function ProductDetailPage() {
   // 🧭 2026-06-22: 상품 종류별 정규(canonical) 상세 페이지로 정렬 — /products 는 온라인 일반 상품 전용.
   //   교환권 → /vouchers, 공구(voucher 카테고리) → /group-buy. 분류/경로는 canonicalDetailPath SSOT.
   //   ?ref= 는 위 useEffect 가 이미 localStorage/cookie 에 저장하지만, query 도 보존해 목적지 페이지가 URL 에서도 읽도록.
-  // 🏬 2026-08-11 몰 상품은 그 가게가 정본. canonical 과 **한 effect 안**에서 갈린다(나누면 경합).
   useEffect(() => {
     if (!product) return
     const dest = mallRedirectPathFor(product) ?? canonicalDetailPath(product)

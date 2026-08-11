@@ -187,10 +187,11 @@ describe('배선 — 몰 손님이 본진 상세로 새지 않는다', () => {
 
   it('서버가 몰 상품에 mall_slug 를 실어야 되돌릴 수 있다', () => {
     const routes = read('src/features/products/api/products.routes.ts')
-    expect(routes.includes('consumerMallSlugById')).toBe(true)
-    expect(/mall_slug/.test(routes)).toBe(true)
-    // 🔴 본진 상품은 조회 자체를 안 한다 — 핫패스에 왕복이 붙으면 안 된다.
-    expect(/mid !== MAIN_MALL/.test(routes)).toBe(true)
+    expect(routes).toContain('stampConsumerMall(DB,')
+    const mc = read('src/worker/utils/mall-consumer.ts')
+    expect(/mall_slug/.test(mc)).toBe(true)
+    // 🔴 본진 상품은 슬러그 조회 자체를 안 한다 — 핫패스에 왕복이 붙으면 안 된다.
+    expect(/if \(mid !== MAIN_MALL\)/.test(mc)).toBe(true)
   })
 })
 
@@ -241,11 +242,12 @@ describe('배선 — 서버가 mall_id 를 상세 응답에 싣는다', () => {
     expect(/SELECT is_supply_product, supply_source_id, mall_id FROM products WHERE id = \?/.test(routes)).toBe(true)
   })
   it('응답 본문에 mall_id 를 스탬프한다', () => {
-    // ⚠️ 2026-08-11 — 원래 대입식 **한 줄 전체**를 정규식으로 봤는데, 같은 값을 지역변수(`mid`)로
-    //   뽑아 슬러그 조회와 공유하도록 정리하자 **동작이 같은데 빨강**이 됐다.
-    //   불변식은 *"응답 본문에 mall_id 를 싣는다 · 값의 출처는 DB 행이고 폴백은 MAIN_MALL"* 이다.
-    expect(/\)\.mall_id = /.test(routes)).toBe(true)
-    expect(/Number\(sup\?\.mall_id \?\? MAIN_MALL\)/.test(routes)).toBe(true)
+    // ⚠️ 2026-08-11 — 스탬프가 `stampConsumerMall`(mall-consumer)로 이동했다. 불변식은
+    //   *"응답에 mall_id 를 싣는다 · 값의 출처는 DB 행이고 폴백은 MAIN_MALL 상수"* 이므로 그리로 앵커한다.
+    expect(routes).toContain('stampConsumerMall(DB,')
+    const mc = read('src/worker/utils/mall-consumer.ts')
+    expect(/target\.mall_id = mid/.test(mc)).toBe(true)
+    expect(/Number\(rawMallId \?\? MAIN_MALL\) \|\| MAIN_MALL/.test(mc)).toBe(true)
   })
 })
 

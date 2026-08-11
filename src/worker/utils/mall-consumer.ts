@@ -19,7 +19,7 @@
  * > 왜 `host IS NULL` 로 추론하지 않는가: 메디스타트(id=2)는 host 가 NULL 인 **도매몰**이다.
  * >   추론했으면 `urdeal.kr/medi` 로 B2B 몰이 열렸을 것이다. **추론 대신 표시**가 맞다.
  */
-import { isMallSlugCandidate } from '@/shared/mall/resolve'
+import { isMallSlugCandidate, MAIN_MALL } from '@/shared/mall/resolve'
 
 export interface ConsumerMallRow {
   id: number
@@ -104,6 +104,26 @@ export async function lookupConsumerMall(DB: D1Database | undefined, seg: string
   if (!isMallLookupCandidate(seg)) return null   // 🔴 핫패스 조기 탈출 — 기존 라우트는 여기서 끝난다
   const rows = await loadRows(DB)
   return pickConsumerMall(rows, String(seg))
+}
+
+/**
+ * 🏬 소비자 상품 상세 응답에 **몰 귀속**을 찍는다 (2026-08-11).
+ *
+ * `mall_id` = "이 손님이 몰 손님인가"(유어딜 영입 CTA 억제 — 대표 UX 기준 ⑤),
+ * `mall_slug` = "어느 가게로 되돌릴 것인가"(본진 상세는 공구가를 몰라 상시가를 보여준다).
+ *
+ * 🔴 값의 출처는 **DB 행 하나뿐**이다. 리터럴 몰 id 를 쓰지 않는다(폴백은 `MAIN_MALL` 상수).
+ * ⚠️ 본진 상품은 슬러그 조회 자체를 **안 한다** — 핫패스에 왕복이 붙으면 안 된다.
+ * ⚠️ 경로로 못 여는 몰이면 슬러그가 `null` → 되돌리지 않는다(막다른 골목 방지).
+ */
+export async function stampConsumerMall(
+  DB: D1Database | undefined,
+  target: Record<string, unknown>,
+  rawMallId: number | null | undefined,
+): Promise<void> {
+  const mid = Number(rawMallId ?? MAIN_MALL) || MAIN_MALL
+  target.mall_id = mid
+  if (mid !== MAIN_MALL) target.mall_slug = await consumerMallSlugById(DB, mid).catch(() => null)
 }
 
 /**
