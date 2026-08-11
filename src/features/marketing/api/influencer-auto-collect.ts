@@ -92,21 +92,10 @@ import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotatio
 import { buildRotationPools } from './keyword-contact-yield'
 import { mineHashtags } from './influencer-hashtag-mine'
 
-// ── 📅 YT 쿼터 하루 경계 — 구글 쿼터는 태평양 자정(한국 오후 4~5시) 리셋. 카운터 키에 사용. ──
-// ⚠️ 쿼터 경제(2026-07-27 "평균 0회 대부분" 실사고): search.list 1회=100 units → 검색 100회=일일 쿼터(10,000) 전부
-//   → 성과측정(각 1 unit)이 하루 종일 403. 검색 90회로 낮춰 측정용 ~1,000 units/day 예약(~750채널/일 측정 여력).
-//   env ADS_YT_SEARCH_BUDGET 로 조정(100 으로 되돌리면 측정 굶음 — ads-yt-scheduling.test 불변식이 차단).
-// 🎯 **유튜브도 일일 90%** (2026-08-04 대표 *"각각 90%씩"*) — 이미 그 값이다. 우연이 아니라 계산이다:
-//   10,000 units × 90% ÷ 100 units/search = **90 검색**. 남는 1,000 units 가 성과측정(각 1 unit) 몫이고,
-//   100 으로 올리면 그 몫이 0이 되어 측정이 하루 종일 403 이 된다(2026-07-27 실사고).
-//   ⚠️ 쿼터·단가 상수는 `influencer-enrich-lane`(YT_DAILY_QUOTA_UNITS/YT_SEARCH_UNIT_COST)이 SSOT 다 —
-//   그 모듈이 **이 모듈을 import** 하므로 여기서 되import 하면 순환이다. 관계식은 테스트가 고정한다.
-export const YT_DAILY_TARGET_PCT = 0.9
-export const YT_SEARCH_BUDGET_DEFAULT = 90
-export function ytQuotaDayKey(nowMs: number): string {
-  return new Date(nowMs).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) // YYYY-MM-DD
-}
-const YT_USED_KEY = 'ads_yt_search_used' // 값 형식 "YYYY-MM-DD:count" — 날짜 바뀌면 자동 0부터
+// 📅 YT 쿼터 하루 경계·검색 예산·검색 각도 → `influencer-yt-quota.ts`(600줄 래칫 분리).
+//   기존 import 경로 호환을 위해 재수출한다(`influencer-enrich-lane`·테스트 2개가 이 경로로 쓴다).
+export { YT_DAILY_TARGET_PCT, YT_SEARCH_BUDGET_DEFAULT, ytQuotaDayKey } from './influencer-yt-quota'
+import { YT_SEARCH_BUDGET_DEFAULT, ytQuotaDayKey, YT_USED_KEY, pickYtAngle } from './influencer-yt-quota'
 
 /**
  * 한 번의 자동 수집 실행(cron 1틱 또는 수동). 게이트 체크는 호출부에서.
@@ -273,16 +262,8 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const naverSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
   const hasNaver = !!(naverId && naverSecret)
   // 🗑️ 티스토리 트랙 제거(2026-07-27 대표 "티스토리는 안할거야") — 기수집 리드는 보존, 신규 수집만 중단.
-  // 🎥 YT 검색 각도 교대 — (검색타입 × 정렬)을 매 실행 순환. 같은 키워드도 각도가 다르면 다른 채널이 나옴
-  //   → top-N 재탕이 아니라 커버리지가 계속 확장(수렴). date=신생/소형, viewCount=인기, relevance=관련.
-  const YT_ANGLES: { searchType: 'channel' | 'video'; order: 'relevance' | 'date' | 'viewCount' }[] = [
-    { searchType: 'channel', order: 'relevance' },
-    { searchType: 'video', order: 'date' },       // 최신 — 계속 새로 생기는 소형 크리에이터
-    { searchType: 'channel', order: 'viewCount' }, // 인기 채널
-    { searchType: 'video', order: 'relevance' },
-    { searchType: 'video', order: 'viewCount' },
-  ]
-  const ytAngle = YT_ANGLES[(prev?.total_runs || 0) % YT_ANGLES.length]
+  // 🎥 YT 검색 각도 교대(회차마다 다른 그물) — 표·근거는 `influencer-yt-quota.ts` SSOT.
+  const ytAngle = pickYtAngle(prev?.total_runs || 0)
   // 네이버/티스토리도 정렬 교대(정확도↔최신) — 쿼터 여유라 순수 이득(최신순은 새 블로거 유입).
   const naverSort: 'sim' | 'date' = ((prev?.total_runs || 0) % 2 === 0) ? 'sim' : 'date'
   // 🔒 서브리퀘스트 예산(2026-07-20 실사고) — 한 실행의 외부 fetch 상한. 소진 시 조기 종료(에러 아님),
