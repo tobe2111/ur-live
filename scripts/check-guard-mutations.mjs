@@ -72,6 +72,30 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '침묵 요약이 임계를 반올림한다(150분을 "3시간"이라 말한다)',
+    file: 'src/worker-ads/silence-digest.ts',
+    find: '(임계 ${fmtDur(l.gap_min)})',
+    replace: '(임계 ${Math.round(l.gap_min / 60)}시간)',
+    test: 'src/tests/unit/ads-silence-digest-accuracy.test.ts',
+    why:
+      '대표 신고 2026-08-11 *"디스코드 알람이 부정확한가봐"*. 실제 임계 **150분**이 `Math.round(2.5)` = ' +
+      '**3시간** 으로 찍혀, 메시지가 *"3.0시간째 침묵 (임계 3시간)"* — **넘지도 않은 것처럼** 읽혔다. ' +
+      '숫자가 맞아도 **경보가 자기 근거를 틀리게 말하면 틀린 경보**이고, 그러면 다음부터 안 읽힌다.',
+  },
+  {
+    name: '침묵 요약이 한 번만 표본을 뜬다(자기와 같은 회차를 못 본다)',
+    file: 'src/worker-ads/silence-digest.ts',
+    find: '      silent = confirmSilent(first, pickSilentLanes(await listCronHeartbeats(DB)))',
+    replace: '      silent = first',
+    test: 'src/tests/unit/ads-silence-digest-accuracy.test.ts',
+    why:
+      '이 요약은 `gates.dailyAt(23)` 로 **레인들과 같은 정각 회차**에 도는데, 하트비트는 묶어서 나중에 ' +
+      '쓴다(`beat-batch.ts` — 대기 3초 + 레인 실행시간, 실측 최장 26초). 그래서 스냅샷 시점엔 **그 회차 ' +
+      '실행분이 아직 기록에 없다.** 2026-08-11 실측: 23:00:26Z 요약이 `collect-maker` 를 "3.0시간째 침묵" ' +
+      '이라 했는데 그 레인의 마지막 실행은 **23:00Z(같은 회차)** 였다 — 멈춘 적이 없다. ' +
+      '⇒ 순간값 한 번으로 지속 상태를 단정하지 않는다. 두 표본의 **교집합**만 신고한다.',
+  },
+  {
     name: '삭제된 레인을 나이로만 판정한다(16일간 "진짜 침묵"으로 보인다)',
     file: 'src/worker/utils/cron-beat-retirement.ts',
     find: "  if (knownBaseNames?.size && raw.startsWith('ads:') && !knownBaseNames.has(beatBaseName(raw)) && age > RETIRED_MIN_AGE_MIN) return 'retired'",
