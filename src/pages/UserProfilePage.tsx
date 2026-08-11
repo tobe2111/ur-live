@@ -23,6 +23,7 @@ import SettingsGroup from './user-profile/SettingsGroup'
 import { useMyCounts } from './user-profile/useMyCounts'
 import ThemeToggleSection from '@/components/settings/ThemeToggleSection'
 import LanguageSection from '@/components/settings/LanguageSection'
+import { CONSUMER_LANGUAGE_SWITCH_HIDDEN } from '@/shared/feature-flags'
 // 🛡️ 2026-05-24: /account/settings 와 통합 — unique 섹션들 import.
 import {
   NotificationToggleSection,
@@ -246,7 +247,9 @@ export default function UserProfilePage() {
       <SettingsGroup>
         <NotificationToggleSection />
         <ThemeToggleSection className="ur-content-medium px-4 lg:px-8 pt-5" />
-        <LanguageSection className="ur-content-medium px-4 lg:px-8 pt-3" />
+        {/* 🌐 2026-08-11: 번역이 반쯤 빈 상태(언어당 [TODO] 289개)에서 전환을 열어 두면
+            어중간한 화면이 된다. 한국 전용 서비스라 문을 닫는다 — 플래그 false 로 즉시 복원. */}
+        {!CONSUMER_LANGUAGE_SWITCH_HIDDEN && <LanguageSection className="ur-content-medium px-4 lg:px-8 pt-3" />}
         <AppVersionSection />
       </SettingsGroup>
 

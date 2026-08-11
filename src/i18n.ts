@@ -2,6 +2,7 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import { CRITICAL_I18N } from './i18n-critical'
+import { CONSUMER_LANGUAGE_SWITCH_HIDDEN } from './shared/feature-flags'
 
 // 🛡️ 2026-05-07: locales 청크 분할 — 6개 언어를 한 번에 로드하던 것을
 //   기본 언어만 eagerly load + 나머지는 lazy load 로 변경.
@@ -69,6 +70,10 @@ function detectDefaultLanguage(): Lang {
 }
 
 function detectInitialLanguage(): Lang {
+  // 🌐 2026-08-11: 언어 전환을 닫았으면 **저장된 선택도 무시하고 ko 로 고정**한다.
+  //   숨기기만 하면 이미 en 으로 바꿔 둔 사용자는 되돌릴 문이 없어 **갇힌다** — 숨김과 고정은 한 쌍이다.
+  //   (셀러 대시보드의 언어 전환은 이 함수를 안 타므로 영향 없다.)
+  if (CONSUMER_LANGUAGE_SWITCH_HIDDEN) return 'ko'
   if (typeof window !== 'undefined') {
     try {
       const stored = window.localStorage?.getItem('i18nextLng')

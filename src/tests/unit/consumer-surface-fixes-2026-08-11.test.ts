@@ -211,3 +211,65 @@ describe('⑥ 홈이 지도가 된 뒤의 연결 힌트 (index.html)', () => {
     expect(code('src/pages/pc-home/HomeRoute.tsx')).toContain('RestaurantMapPage')
   })
 })
+
+describe('⑦ 데모 결제 버튼이 "무료 응모"로 오인되지 않는다', () => {
+  // 🔴 같은 화면에 `응모하기` 가 둘이었고 하나는 공짜였다:
+  //     중간 FcfsApplyBlock : [응모하기]        "결제 없이 응모하면 추첨으로 선정돼요"  ← 진짜 무료
+  //     하단 결제 CTA       : [36,500원 응모하기]                                    ← 진짜 결제(handleJoin)
+  //   2026-08-08 주석은 "데모는 추첨이라 결제가 아니라 응모다" 라고 적었는데 **전제가 틀렸다** —
+  //   `onBuy` → `handleJoin` 은 토스 카드/딜 차감으로 간다. 결제 오인은 환불 분쟁으로 직행한다.
+  const box = code('src/pages/group-buy/DealPurchaseBox.tsx')
+  const detail = code('src/pages/GroupBuyDetailPage.tsx')
+
+  it('🔴 결제 CTA 가 데모에서도 "응모"라고 말하지 않는다 (두 변형 모두)', () => {
+    expect(box, 'PC 패널 결제 버튼이 응모로 되돌아갔다').not.toMatch(/isDemo \?\s*'응모하기'/)
+    expect(detail, '모바일 푸터 결제 버튼이 응모로 되돌아갔다').not.toMatch(/isDemoDeal \?\s*'응모하기'/)
+  })
+
+  it('데모 결제 CTA 는 돈이 나간다고 말한다', () => {
+    expect(box).toContain("isDemo ? '결제하기' : '구매하기'")
+    expect(detail).toContain("isDemoDeal ? '결제하기' : '구매하기'")
+  })
+
+  it('무료 추첨 응모 블록은 그대로 남는다 — 없애는 게 아니라 갈라놓는 것이다', () => {
+    expect(detail).toContain('FcfsApplyBlock')
+  })
+})
+
+describe('⑧ 쇼핑 데모(demo-linkshop)는 매장 사진으로 매대에 올리지 않는다', () => {
+  const rehost = code('src/worker/cron/demo-image-rehost.ts')
+
+  it('🔴 demo-linkshop 은 정비 회차에서 내려간다', () => {
+    // 사진 소스가 지도 대표사진뿐이라 "그 상품이 맞는가"를 보장 못 한다.
+    // 참기름 선물세트에 가게 홀 사진이 붙는 것은 사진이 없는 것과 같다.
+    expect(rehost).toMatch(/demo-linkshop-[\s\S]{0,400}is_active = 0/)
+  })
+
+  it('삭제가 아니라 가역이다 — 같은 마커를 쓴다', () => {
+    expect(rehost).toMatch(/demo-linkshop-[\s\S]{0,400}demo_hidden_no_photo/)
+  })
+
+  it('매장 이용권·숙소 데모까지 끌어내리지 않는다', () => {
+    // 이 둘은 매장 사진이 곧 상품이라 지도 사진이 맞다. 과잉 적용이면 매대가 통째로 빈다.
+    expect(rehost, 'demo-deal 까지 내리고 있다').not.toMatch(/startsWith\('demo-deal-'\)[\s\S]{0,200}is_active = 0/)
+    expect(rehost, 'demo-stay 까지 내리고 있다').not.toMatch(/startsWith\('demo-stay-'\)[\s\S]{0,200}is_active = 0/)
+  })
+})
+
+describe('⑨ 소비자 언어 전환은 닫혀 있고, 그 선택도 ko 로 고정된다', () => {
+  it('🔴 마이의 언어 카드가 플래그 뒤에 있다', () => {
+    const up = code('src/pages/UserProfilePage.tsx')
+    expect(up).toMatch(/!CONSUMER_LANGUAGE_SWITCH_HIDDEN && <LanguageSection/)
+  })
+
+  it('🔴 저장된 선택을 무시하고 ko 로 고정한다 — 숨김만 하면 en 사용자가 갇힌다', () => {
+    const i = code('src/i18n.ts')
+    expect(i, '고정이 빠지면 이미 전환해 둔 사용자는 되돌릴 문이 없다')
+      .toMatch(/if \(CONSUMER_LANGUAGE_SWITCH_HIDDEN\) return 'ko'/)
+  })
+
+  it('지운 게 아니라 닫은 것이다 — 컴포넌트·번역 파일은 그대로', () => {
+    expect(existsSync('src/components/settings/LanguageSection.tsx')).toBe(true)
+    for (const l of LOCALES) expect(existsSync(`public/locales/${l}/translation.json`), l).toBe(true)
+  })
+})

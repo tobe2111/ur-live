@@ -532,7 +532,10 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('d1-backup', () => handleD1Backup(env as any)));
   }
 
-  if (cron === '0 0 * * 1') {
+  // 💸 2026-08-11: `0 0 * * 1` 도 등록된 적이 없어 주간 7개가 침묵했다. `payouts-generate` 는 **송금이
+  //   아니라 지급 대상 목록(pending 행) 생성**이고 송금은 어드민 수동 승인 + 멱등이라 재실행도 안전.
+  //   월요일 09:45 KST — 다른 게이트(:25 · 03:30/03:35 · 09:40)와 분이 겹치지 않게(예산 분리).
+  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 45, hour: 0, dow: 1 })) {
     // 🛡️ 2026-05-21 Phase C: 주 1회 정산 자동 생성 — admin 검토용 pending payouts 생성.
     ctx.waitUntil(safeCron('payouts-generate', () => handlePayoutsGenerate(env)));
     // 📊 2026-07-05 (자문 ⑤): 주간 조종석 숫자 5개 — 어드민 벨 + Discord (read-only 집계, fail-soft).

@@ -64,8 +64,9 @@ describe('findNeverFired — 부재 탐지', () => {
     // 실사고 재현: `*/5` 만 돌고 나머지는 기록 0. 추적 30일이면 주간 작업까지 판정 가능.
     const out = findNeverFired(['*/5 * * * *'], 30 * DAY, maxAge)
     const crons = out.map((o) => o.cron)
-    expect(crons).toContain('0 0 * * 1')   // payouts-generate — 돈이 안 나간다
-    expect(crons).toContain('0 20 * * 0')  // d1-backup — 못 되돌리는 축
+    // 2026-08-11: `0 0 * * 1`(주간 정산)은 `*/5` 분 게이트로 옮겨져 이 목록에 없다. 주간 축의
+    //   대표는 이제 `0 20 * * 0`(백업) 하나다 — 못 되돌리는 축이라 더 중요하다.
+    expect(crons).toContain('0 20 * * 0')
     expect(crons).toContain('0 18 * * *')  // 일간 — 30일이면 기회가 충분했다
     expect(crons).not.toContain('*/5 * * * *')
   })
@@ -74,13 +75,13 @@ describe('findNeverFired — 부재 탐지', () => {
     // 실제 조사 때 추적 창이 4.7시간뿐이라 일간·주간을 "판정 불가"로 남겨야 했다.
     //   그 절제가 오진을 막았다 — `0 18`·`0 19` 는 실제로 등록돼 있었다.
     const shortOut = findNeverFired(['*/5 * * * *'], 4.7 * MIN, maxAge).map((o) => o.cron)
-    expect(shortOut).not.toContain('0 0 * * 1')   // 주간 — 7일 안 지남
+    expect(shortOut).not.toContain('0 20 * * 0')  // 주간 — 7일 안 지남
     expect(shortOut).not.toContain('0 18 * * *')  // 일간 — 하루 안 지남
     // 창을 사흘로 넓히면 일간은 판정 대상이 되고(기대 최대간격 2,910분 ≈ 2.02일) 주간은 여전히
     // 미룬다(20,190분 ≈ 14일). 절제의 경계가 정확히 여기다.
     const out = findNeverFired(['*/5 * * * *'], 3 * DAY, maxAge).map((o) => o.cron)
     expect(out).toContain('0 18 * * *')
-    expect(out).not.toContain('0 0 * * 1')
+    expect(out).not.toContain('0 20 * * 0')
   })
 
   it('한 번이라도 뛴 식은 잡지 않는다 (그건 stale 축이 본다)', () => {
