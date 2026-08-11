@@ -32,7 +32,7 @@ import GroupBuyCountdown from './product-detail/GroupBuyCountdown'
 import ProductReviews from './product-detail/ProductReviews'
 import ReferralSection from './product-detail/ReferralSection'
 import PurchasePicker from './product-detail/PurchasePicker'
-import { isMallProduct, mallProductPath } from '@/shared/mall/resolve'
+import { isMallProduct, mallRedirectPathFor } from '@/shared/mall/resolve'
 import { PickupNotice, DeliveryNotice, hasPickupInfo, pickupSummaryLine } from '@/pages/product-detail/ReceiveMethodNotice'
 import { readMallOrigin } from '@/shared/mall/origin'
 import { parseUTCDate } from '@/utils/date'
@@ -116,21 +116,10 @@ export default function ProductDetailPage() {
   // 🧭 2026-06-22: 상품 종류별 정규(canonical) 상세 페이지로 정렬 — /products 는 온라인 일반 상품 전용.
   //   교환권 → /vouchers, 공구(voucher 카테고리) → /group-buy. 분류/경로는 canonicalDetailPath SSOT.
   //   ?ref= 는 위 useEffect 가 이미 localStorage/cookie 에 저장하지만, query 도 보존해 목적지 페이지가 URL 에서도 읽도록.
-  // 🏬 2026-08-11 〔대표 "그 서비스는 유어딜과 철저히 분리되어야 해"〕 — 몰 상품은 **그 가게 화면**이 정본.
-  //   🔴 왜 여기서 되돌리는가: 이 화면은 **공구가를 모른다**(`current_price` 미주입). 몰 카드가 7,000원인
-  //     상품이 여기선 10,000원(상시가)으로 보였다. 단톡방에 남은 옛 `/products/:id` 링크·검색 유입도
-  //     전부 이 화면으로 떨어지므로, 링크만 바꾸는 것으로는 안 막힌다.
-  //   🔴 **한 effect 안에서 결정한다.** 별도 effect 로 두면 아래 canonical 리다이렉트와 둘 다 navigate 해
-  //     경합한다(마지막 것이 이겨 몰 손님이 다시 본진으로 나간다).
-  //   ⚠️ `mall_slug` 가 없으면(본진 상품·경로로 못 여는 몰) **아무것도 안 한다** — 현행 동작 그대로.
+  // 🏬 2026-08-11 몰 상품은 그 가게가 정본. canonical 과 **한 effect 안**에서 갈린다(나누면 경합).
   useEffect(() => {
     if (!product) return
-    const mallSlug = (product as { mall_slug?: string | null }).mall_slug
-    if (isMallProduct((product as { mall_id?: number | null }).mall_id) && mallSlug) {
-      navigate(`${mallProductPath(mallSlug, product.id)}${window.location.search}`, { replace: true })
-      return
-    }
-    const dest = canonicalDetailPath(product)
+    const dest = mallRedirectPathFor(product) ?? canonicalDetailPath(product)
     if (dest) navigate(`${dest}${window.location.search}`, { replace: true })
   }, [product, navigate])
 

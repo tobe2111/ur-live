@@ -171,6 +171,27 @@ export function isMallProduct(mallId: number | null | undefined): boolean {
 }
 
 /**
+ * 🏬 본진 상품 상세(`/products/:id`)가 **몰로 되돌려야 하는가** (2026-08-11).
+ *
+ * 🔴 왜 되돌리는가: 본진 상세는 **공구가를 모른다**(`resolveGbPricing` 미호출·`current_price` 미주입).
+ *   몰 카드가 7,000원인 상품이 거기선 10,000원(상시가)으로 보인다 — 손님이 살지 말지 정하는
+ *   바로 그 화면에서 가격이 올라간다. 단톡방에 남은 옛 링크·검색 유입도 전부 그 화면으로 떨어지므로
+ *   **카드 링크만 바꾸는 것으로는 안 막힌다.**
+ *
+ * ⚠️ **슬러그가 없으면 `null`** — 본진 상품이거나, 경로로 못 여는 몰(비활성·`consumer_path=0`)이다.
+ *   후자를 되돌리면 그 몰의 상세도 404 라 손님이 **막다른 골목에 갇힌다.** 모르면 안 보낸다.
+ */
+export function mallRedirectPathFor(
+  p: { id?: number | string | null; mall_id?: number | null; mall_slug?: string | null } | null | undefined,
+): string | null {
+  if (!p || !isMallProduct(p.mall_id)) return null
+  const slug = String(p.mall_slug ?? '').trim()
+  const id = Number(p.id)
+  if (!slug || !Number.isFinite(id) || id <= 0) return null
+  return mallProductPath(slug, id)
+}
+
+/**
  * 🏬 **상품이 꽂힐 몰** — 운영자(셀러)의 몰을 그대로 따른다 (세션 ③-b, O4).
  *
  * `products.mall_id` 는 `DEFAULT 1`(본진)이라 **스탬프하지 않으면 운영자 상품이 전부 본진으로 간다.**

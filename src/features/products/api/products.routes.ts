@@ -532,18 +532,12 @@ productsRoutes.get('/:id', cors(), async (c) => {
         (p as unknown as Record<string, unknown>).pickup = isEmptyPickup(pk) ? null : pk;
         // 🏬 몰 귀속(additive). 위 쿼리가 실패한 env(컬럼 미적용)는 `MAIN_MALL` — 그런 env 엔
         //   경로로 열리는 몰 자체가 없다(`consumer_path` fail-closed). ⇒ 현행과 동일한 동작.
-        (p as unknown as Record<string, unknown>).mall_id = Number(sup?.mall_id ?? MAIN_MALL) || MAIN_MALL;
-        // 🏬 2026-08-11 〔대표 "철저히 분리"〕 — 몰 상품이면 **그 가게의 슬러그**도 싣는다.
-        //   왜: 이 화면(본진 상세)은 공구가를 모른다. 몰 손님이 여기 도달하면 상시가를 보게 되므로
-        //   클라가 `/{슬러그}/p/:id` 로 되돌려야 하는데, 그러려면 슬러그가 필요하다.
-        //   ⚠️ 본진 상품(`MAIN_MALL`)은 **조회 자체를 안 한다** — 핫패스 왕복 추가 0.
-        //      (여기에 리터럴 몰 id 를 적으면 `mall-id-isolation` 래칫이 잡는다 — 실제로 잡혔다.)
-        //   ⚠️ 경로로 못 여는 몰(비활성·`consumer_path=0`)은 `null` → 리다이렉트 없음(막다른 골목 방지).
+        // 🏬 2026-08-11 — 몰 상품이면 슬러그도(클라가 몰로 되돌리는 근거·`mallRedirectPathFor` 참조).
+        //   본진(`MAIN_MALL`)은 슬러그 조회 자체를 안 한다 — 핫패스 왕복 추가 0.
         const mid = Number(sup?.mall_id ?? MAIN_MALL) || MAIN_MALL;
-        if (mid !== MAIN_MALL) {
-          const { consumerMallSlugById } = await import('../../../worker/utils/mall-consumer');
-          (p as unknown as Record<string, unknown>).mall_slug = await consumerMallSlugById(DB, mid).catch(() => null);
-        }
+        (p as unknown as Record<string, unknown>).mall_id = mid;
+        if (mid !== MAIN_MALL) (p as unknown as Record<string, unknown>).mall_slug =
+          await (await import('../../../worker/utils/mall-consumer')).consumerMallSlugById(DB, mid).catch(() => null);
       }
       return p;
     }, { ttl: 60, staleWhileRevalidate: 30 });

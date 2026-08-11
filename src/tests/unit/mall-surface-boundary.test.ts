@@ -17,7 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { isMallSlugCandidate, isMallSurfacePath, isMallProduct, MAIN_MALL } from '@/shared/mall/resolve'
+import { isMallSlugCandidate, isMallSurfacePath, isMallProduct, mallRedirectPathFor, MAIN_MALL } from '@/shared/mall/resolve'
 import { RESERVED_SLUGS } from '@/shared/mall/slug'
 import { hasPickupInfo } from '@/pages/product-detail/ReceiveMethodNotice'
 
@@ -165,16 +165,24 @@ describe('배선 — 몰 손님이 본진 상세로 새지 않는다', () => {
   it('본진 상세는 몰 상품을 그 가게로 되돌린다', () => {
     const page = read('src/pages/ProductDetailPage.tsx')
     // 단톡방에 남은 옛 링크·검색 유입도 전부 여기로 떨어지므로 링크 교체만으로는 안 막힌다.
-    expect(/isMallProduct\([\s\S]{0,80}?mall_id[\s\S]{0,120}?mallProductPath\(/.test(page)).toBe(true)
+    expect(page.includes('mallRedirectPathFor(product)')).toBe(true)
   })
 
   it('되돌림 판정과 canonical 리다이렉트가 **한 effect** 안에 있다', () => {
     const page = read('src/pages/ProductDetailPage.tsx')
     // 🔴 둘을 별도 effect 로 나누면 둘 다 navigate 해서 경합하고, 마지막 것이 이겨
-    //   몰 손님이 다시 본진으로 나간다. 같은 effect 안에서 early-return 으로 갈려야 한다.
+    //   몰 손님이 다시 본진으로 나간다. 한 표현식 안에서 갈려야 한다.
     const m = page.match(/useEffect\(\(\) => \{[\s\S]*?canonicalDetailPath\(product\)[\s\S]*?\}, \[product, navigate\]\)/)
     expect(m).not.toBeNull()
-    expect(m![0].includes('mallProductPath(')).toBe(true)
+    expect(m![0].includes('mallRedirectPathFor(')).toBe(true)
+  })
+
+  /** 되돌림 판정 자체(순수) — 배선 검사가 못 보는 '의미'를 여기서 값으로 고정한다. */
+  it('mallRedirectPathFor — 슬러그를 모르면 안 보낸다(막다른 골목 방지)', () => {
+    expect(mallRedirectPathFor({ id: 5, mall_id: 2, mall_slug: 'bangbae-mart' })).toBe('/bangbae-mart/p/5')
+    expect(mallRedirectPathFor({ id: 5, mall_id: 2, mall_slug: null })).toBeNull()   // 경로로 못 여는 몰
+    expect(mallRedirectPathFor({ id: 5, mall_id: MAIN_MALL, mall_slug: 'x' })).toBeNull() // 본진
+    expect(mallRedirectPathFor(null)).toBeNull()
   })
 
   it('서버가 몰 상품에 mall_slug 를 실어야 되돌릴 수 있다', () => {
@@ -196,10 +204,13 @@ describe('배선 — 몰 손님이 본진 상세로 새지 않는다', () => {
 describe('배선 — 몰 상품 경로에 OG 슬롯이 있다', () => {
   const worker = read('src/worker/index.ts')
   it('MALLPRODUCT 슬롯이 몰 상품 API 를 가리킨다', () => {
-    expect(/slot: 'MALLPRODUCT', path: `\/api\/mall\/\$\{encodeURIComponent\(mp\.slug\)\}\/products\/\$\{mp\.productId\}`/.test(worker)).toBe(true)
+    const helper = read('src/worker/utils/mall-ssr-meta.ts')
+    expect(/slot: 'MALLPRODUCT', path: `\/api\/mall\/\$\{encodeURIComponent\(mp\.slug\)\}\/products\/\$\{mp\.productId\}`/.test(helper)).toBe(true)
+    expect(worker).toContain('resolveMallProductSlot(url.pathname)')
   })
   it('경로 판정은 shared SSOT 를 쓴다 — 워커가 자체 정규식을 갖지 않는다', () => {
-    expect(/const mp = parseMallProductPath\(url\.pathname\)/.test(worker)).toBe(true)
+    const helper = read('src/worker/utils/mall-ssr-meta.ts')
+    expect(/const mp = parseMallProductPath\(pathname\)/.test(helper)).toBe(true)
   })
   it('payload 가 없으면 메타를 만들지 않는다(fail-closed — 추측해서 박제하지 않는다)', () => {
     expect(/ssrSlot === 'MALLPRODUCT' && ssrPayload/.test(worker)).toBe(true)
@@ -230,7 +241,11 @@ describe('배선 — 서버가 mall_id 를 상세 응답에 싣는다', () => {
     expect(/SELECT is_supply_product, supply_source_id, mall_id FROM products WHERE id = \?/.test(routes)).toBe(true)
   })
   it('응답 본문에 mall_id 를 스탬프한다', () => {
-    expect(/\)\.mall_id = Number\(sup\?\.mall_id \?\? MAIN_MALL\)/.test(routes)).toBe(true)
+    // ⚠️ 2026-08-11 — 원래 대입식 **한 줄 전체**를 정규식으로 봤는데, 같은 값을 지역변수(`mid`)로
+    //   뽑아 슬러그 조회와 공유하도록 정리하자 **동작이 같은데 빨강**이 됐다.
+    //   불변식은 *"응답 본문에 mall_id 를 싣는다 · 값의 출처는 DB 행이고 폴백은 MAIN_MALL"* 이다.
+    expect(/\)\.mall_id = /.test(routes)).toBe(true)
+    expect(/Number\(sup\?\.mall_id \?\? MAIN_MALL\)/.test(routes)).toBe(true)
   })
 })
 

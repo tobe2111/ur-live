@@ -17,6 +17,7 @@
  */
 import { getGbSessions } from './gb-session-store'
 import { resolveGbPricing } from '../../shared/gb-session'
+import { parseMallProductPath } from '../../shared/mall/resolve'
 
 export interface MallMetaInput {
   /** URL 이 가리키는 몰(경로/호스트로 이미 해석된 것). */
@@ -124,6 +125,28 @@ export async function buildMallProductMeta(
  *
  * @returns payload 가 몰 상품이 아니거나 모양이 다르면 `null`(호출부는 기본 메타 유지 — fail-closed).
  */
+/**
+ * `/{슬러그}/p/{id}` 면 그 SSR 슬롯 타깃, 아니면 `null`.
+ * 워커 안에서 경로를 또 파싱하지 않게 여기로 모은다(판정은 shared SSOT `parseMallProductPath`).
+ */
+export function resolveMallProductSlot(pathname: string): { slot: 'MALLPRODUCT'; path: string } | null {
+  const mp = parseMallProductPath(pathname)
+  if (!mp) return null
+  return { slot: 'MALLPRODUCT', path: `/api/mall/${encodeURIComponent(mp.slug)}/products/${mp.productId}` }
+}
+
+/**
+ * SSR payload → `applySurfaceMeta` 가 그대로 먹는 모양.
+ * (`MallMeta` 엔 `pageTitle` 이 없다 — 카드 제목이 곧 페이지 제목이다. PRODUCT 슬롯과 같은 매핑.)
+ */
+export function mallProductPathSurfaceMeta(
+  ssrPayload: string, origin: string, pathname: string,
+): { pageTitle: string; title: string; description: string; canonical: string; ogType?: string; ogImage?: string } | null {
+  const m = buildMallProductPathMeta(ssrPayload, origin, pathname)
+  if (!m) return null
+  return { pageTitle: m.title, title: m.title, description: m.description, canonical: m.canonical, ogType: m.ogType, ogImage: m.ogImage }
+}
+
 export function buildMallProductPathMeta(
   ssrPayload: string,
   origin: string,
