@@ -12,12 +12,29 @@
  * 실제 배송비 숫자(`calculateShippingFeeV2` 결과)와 Toss 청구액은 검증하지 않는다.
  * 그 축은 **staging 실결제**가 담당한다 — 통과 전에는 파일럿을 열지 않는다.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { itemHasNoShipping, allItemsNoShipping } from '@/shared/order-type'
+import { pickupToMeta } from '@/shared/pickup'
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
+
+/**
+ * 🔴 픽업 메타 조회를 가짜로 세워 **헬퍼의 동작 자체**를 본다.
+ *
+ * ⚠️ 왜 문자열 앵커로 안 되는가: 되돌려-검증에서 헬퍼의 `has_pickup: pick.has(...)` 를
+ *   `false` 로 바꿔 봤더니 **초록이 그대로 떴다.** 배선 검사는 "호출이 있는지"만 보지
+ *   "그 값이 실제로 쓰이는지"는 못 본다 — 이 레포가 반복해서 만난 *헛도는 가드* 클래스다.
+ */
+vi.mock('@/worker/utils/product-supply-meta', () => ({
+  getSupplyMeta: vi.fn(async (_db: unknown, ids: number[]) => {
+    const m = new Map<number, Record<string, string>>()
+    // 상품 1 만 픽업(11월 3일 · 냉장). 나머지는 메타 없음 = 배송 상품.
+    if (ids.includes(1)) m.set(1, pickupToMeta({ date: '2026-11-03', place: '가게 앞', storage: 'cold' }))
+    return m
+  }),
+}))
 
 describe('비배송 판정 — 픽업이 포함된다', () => {
   it('교환권·이용권은 기존대로 비배송', () => {
@@ -48,12 +65,49 @@ describe('비배송 판정 — 픽업이 포함된다', () => {
   })
 })
 
+describe('🔴 헬퍼 동작 — 픽업 조회 결과가 실제로 판정에 쓰인다', () => {
+  const fakeDB = {} as never   // getSupplyMeta 가 모킹돼 DB 를 안 쓴다
+
+  it('픽업 상품은 비배송으로 판정된다 (조회 → has_pickup 배선)', async () => {
+    const { resolveNoShipping } = await import('@/worker/utils/pickup-flags')
+    // 카테고리 'food' · deal_only 0 — **픽업 메타만이** 비배송의 근거다.
+    expect(await resolveNoShipping(fakeDB, [{ id: 1, deal_only: 0, category: 'food' }])).toBe(true)
+  })
+
+  it('픽업이 아닌 상품은 배송비 대상 그대로', async () => {
+    const { resolveNoShipping } = await import('@/worker/utils/pickup-flags')
+    expect(await resolveNoShipping(fakeDB, [{ id: 2, deal_only: 0, category: 'food' }])).toBe(false)
+  })
+
+  it('한 건이라도 배송이면 주문 전체가 배송', async () => {
+    const { resolveNoShipping } = await import('@/worker/utils/pickup-flags')
+    expect(await resolveNoShipping(fakeDB, [{ id: 1, category: 'food' }, { id: 2, category: 'food' }])).toBe(false)
+  })
+
+  it('견적용 판정기도 같은 결과를 낸다 (두 경로가 갈리지 않는다)', async () => {
+    const { loadNoShippingCheck } = await import('@/worker/utils/pickup-flags')
+    const check = await loadNoShippingCheck(fakeDB, [1, 2])
+    expect(check({ id: 1, deal_only: 0, category: 'food' })).toBe(true)
+    expect(check({ id: 2, deal_only: 0, category: 'food' })).toBe(false)
+  })
+
+  it('id 가 문자열이어도 맞는다 — 캐스팅 누락이면 그 상품만 조용히 배송비가 붙는다', async () => {
+    const { resolveNoShipping } = await import('@/worker/utils/pickup-flags')
+    expect(await resolveNoShipping(fakeDB, [{ id: '1', deal_only: 0, category: 'food' }])).toBe(true)
+  })
+})
+
 describe('배선 — 주문 생성과 견적이 같은 판정·같은 가격을 쓴다', () => {
   const routes = read('src/worker/routes/order.routes.ts')
 
-  it('두 곳 모두 allItemsNoShipping(SSOT)을 쓴다 — 인라인 규칙 복제 금지', () => {
-    const uses = routes.match(/allItemsNoShipping\(/g) ?? []
-    expect(uses.length).toBeGreaterThanOrEqual(2)   // 주문 생성 + 견적
+  it('두 곳 모두 pickup-flags 헬퍼를 쓴다 — 인라인 규칙 복제 금지', () => {
+    // ⚠️ 2026-08-11 — 처음엔 `allItemsNoShipping(` 호출 2회를 셌는데, 파일 크기 래칫 때문에
+    //   판정을 `pickup-flags` 헬퍼로 옮기자 **동작이 같은데 빨강**이 됐다. 불변식은
+    //   *"두 경로가 같은 판정을 쓴다 · 옛 인라인 규칙이 없다"* 이므로 그 둘로 고정한다.
+    expect(routes).toContain('resolveNoShipping(c.env.DB')   // 주문 생성
+    expect(routes).toContain('qNoShip(p)')                    // 견적
+    const helper = read('src/worker/utils/pickup-flags.ts')
+    expect((helper.match(/allItemsNoShipping\(/g) ?? []).length).toBeGreaterThanOrEqual(2)
     // 🔴 옛 인라인 규칙이 되살아나면 즉시 빨강. 픽업이 빠진 그 규칙이 오청구의 원인이었다.
     expect(/deal_only\) === 1 \|\| isVoucherCategory\(/.test(routes)).toBe(false)
   })

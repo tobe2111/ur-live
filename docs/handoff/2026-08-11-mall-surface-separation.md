@@ -148,3 +148,24 @@ curl -s https://urdeal.kr/api/products/{몰상품id} | python3 -m json.tool | gr
 - 몰 상품 목록 **200개 절단**(`mall-public.routes.ts`) — 파일럿 규모에선 미발생, 미착수.
 - `scripts/file-size-baseline.json` 의 `App.tsx`·`worker/index.ts` 2개 항목을 +6줄 갱신했다
   (blanket `file-size-ok` 로 god 파일 4개를 영구 면제하는 것보다 낫다고 판단). **대표 승인받음.**
+
+### 🔴 7. 이 세션에서 **두 번 반복한 검증 실수** (다음 세션 필독)
+
+**① `check-file-size` 를 CI 와 다른 모드로 돌려 두 번 놓쳤다.**
+- CI: `node scripts/check-file-size.mjs --changed-only -s` (**strict**)
+- 내가 돌린 것: `node scripts/check-file-size.mjs` (**기본 warn-only → exit 0 → 초록으로 보임**)
+⇒ **가드는 워크플로에 적힌 인자 그대로 돌릴 것.** `verify.yml` 에서 복사해 붙이는 게 안전하다.
+
+**② 로컬 `--changed-only` 가 조용히 전수 폴백을 타고 있었다.**
+`origin/main` ref 가 없어(얕은 clone) merge-base 계산이 실패하면 **전수(-a) 스캔으로 폴백**한다.
+전수 모드는 baseline 초과를 같은 방식으로 안 잡아 **초록이 뜬다.**
+⇒ 검증 전에 **`git fetch origin main --depth=50`** 을 먼저 하라. 그러면 출력이
+`changed-only vs origin/main — N개 판정` 으로 바뀐다(폴백이면 그 자리에 안내문이 뜬다 — 그게 신호다).
+
+**③ 문자열 앵커 가드가 헛돌았다 (되돌려-검증이 잡았다).**
+`pickup-flags.ts` 의 `has_pickup: pick.has(...)` 를 `false` 로 바꿔도 **초록**이었다 —
+배선 검사는 *"호출이 있는지"* 만 보고 *"그 값이 실제로 쓰이는지"* 는 못 본다.
+⇒ `vi.mock('@/worker/utils/product-supply-meta')` 로 **동작 테스트**(5건) 추가.
+이제 같은 변형이 빨강이 된다. **판정 로직에는 문자열 앵커만 두지 말 것.**
+
+> 세 개 다 "실패가 아니라 **조용한 통과**" 클래스다. 이 레포가 반복해 만나는 그 클래스다.
