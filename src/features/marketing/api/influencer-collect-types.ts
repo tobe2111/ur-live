@@ -66,7 +66,8 @@ export interface AutoCollectStats {
      *   ⇒ 끌지 말지는 수집 정책(대표 결정, `ADS_COLLECT_CAFE_ENABLED='false'`)이지만, **판단에 필요한
      *     비용/수확이 합산에 가려 안 보이던 것**은 결함이다. 결정하는 자리에 숫자를 놓는다.
      */
-    cafe?: { found: number; saved: number }
+    /** `enabled` = 이 회차에 카페 트랙이 실제로 돌았나(원클릭 게이트 결과 — 화면이 스위치 상태를 실행으로 확인). */
+    cafe?: { found: number; saved: number; enabled?: boolean }
     /** @deprecated 2026-07-28 — 블로거 보강은 전용 레인으로 이전. 옛 스냅샷 호환용. */
     naver_enrich?: NaverEnrichDiag
   }
