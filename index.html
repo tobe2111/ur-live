@@ -337,7 +337,25 @@
          + 524 (worker timeout) 발생 시 preload + axios fetch 둘 다 hang → 사용자 체감 더 나쁨.
             preload 없으면 axios 만 hang → React Query retry / fallback 동작 정상. -->
 
-    <!-- 🛡️ 2026-05-27 (Lighthouse 잠금 해제): dapi.kakao preconnect 제거 (메인 사용 X). dns-prefetch 만. -->
+    <!-- 🗺️ 2026-08-11 (AB 스윕 실측 — 위 2026-05-27 주석의 전제가 뒤집혔다):
+         그때는 "dapi.kakao 는 **메인 사용 X**" 라서 preconnect 를 떼고 dns-prefetch 만 남겼다.
+         그런데 2026-07-29 에 홈이 `HomeRoute`(모바일 = `RestaurantMapPage`)로 바뀌면서
+         **지도가 홈의 첫 화면**이 됐고, 이제 카카오맵이 LCP 경로 한복판에 있다. 라이브 실측(모바일):
+
+             FCP                                2,532ms
+             dapi.kakao.com/v2/maps/sdk.js  2,843 → 4,440   (1.6초, 전송 0KB = 거의 전부 연결/리다이렉트)
+             t1.daumcdn.net/…/kakao.js      4,442 → 5,686   (1.2초 — SDK 가 2단 직렬)
+             지도 타일 첫 장                 5,863 → 7,480
+             ⇒ LCP 8,372ms  (다른 표면은 364~1,448ms)
+
+         홉마다 DNS+TCP+TLS 를 새로 맺는 비용이 직렬로 쌓인다. 잠금표의 예외("preconnect 추가는 OK,
+         제거 금지")에 해당하는 **추가만** 한다 — 기존 dns-prefetch 도 그대로 둔다.
+         ⚠️ 실제 쓰이는 호스트는 `t1.daumcdn.net`(SDK 본체)·`mts.daumcdn.net`(타일)인데 목록엔
+            **안 쓰는 `map.daumcdn.net` 만** 있었다. 그것도 지우지 않고 둔 채 실호스트를 추가한다.
+         ⚠️ 이 변경은 연결 비용만 줄인다 — 2단 직렬 자체는 그대로다(SDK 로드 시점을 앞당기는 것은 별건). -->
+    <link rel="preconnect" href="https://dapi.kakao.com" crossorigin />
+    <link rel="preconnect" href="https://t1.daumcdn.net" crossorigin />
+    <link rel="preconnect" href="https://mts.daumcdn.net" crossorigin />
     <link rel="dns-prefetch" href="https://dapi.kakao.com" />
     <link rel="dns-prefetch" href="https://map.daumcdn.net" />
     <!-- 🛡️ 2026-05-27 (Lighthouse 잠금 해제): i.ibb preconnect 제거 — cf-image proxy 경유라 직접 fetch X.

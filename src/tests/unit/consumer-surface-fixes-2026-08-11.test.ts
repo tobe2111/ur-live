@@ -166,3 +166,31 @@ describe('⑤ 딜 충전 실패 화면이 막다른 길이 아니다', () => {
     expect(typeof tr(l).common?.goHome, `${l}.common.goHome 누락`).toBe('string')
   })
 })
+
+describe('⑥ 홈이 지도가 된 뒤의 연결 힌트 (index.html)', () => {
+  // 라이브 실측(모바일 홈): LCP 8,372ms — LCP 요소가 **카카오맵 타일**이고, SDK 가
+  //   dapi.kakao.com → t1.daumcdn.net → 타일(mts.daumcdn.net) 로 **4단 직렬**이다.
+  //   2026-05-27 주석은 "dapi.kakao 는 메인 사용 X" 라며 preconnect 를 뗐는데,
+  //   2026-07-29 에 홈이 지도(RestaurantMapPage)가 되면서 그 전제가 뒤집혔다.
+  const html = readFileSync('index.html', 'utf8')
+
+  it('🔴 LCP 경로의 카카오맵 호스트 3종에 preconnect 가 있다', () => {
+    for (const h of ['https://dapi.kakao.com', 'https://t1.daumcdn.net', 'https://mts.daumcdn.net']) {
+      expect(html, `${h} preconnect 누락 — 홈 LCP 경로다`).toMatch(
+        new RegExp(`rel="preconnect"\\s+href="${h.replace(/[/.]/g, '\\$&')}"`),
+      )
+    }
+  })
+
+  it('기존 힌트를 지우지 않았다 (잠금표: 추가는 OK, 제거 금지)', () => {
+    for (const h of ['https://cdn.jsdelivr.net', 'https://t1.kakaocdn.net', 'https://img1.kakaocdn.net']) {
+      expect(html, `${h} preconnect 이 사라졌다`).toContain(`href="${h}"`)
+    }
+  })
+
+  it('홈이 실제로 지도인지 — 이 전제가 다시 바뀌면 위 preconnect 도 재검토해야 한다', () => {
+    // 전제를 코드에 묶어 둔다. 홈이 지도가 아니게 되면 이 테스트가 먼저 빨강이 된다.
+    expect(code('src/App.tsx'), '홈 라우트가 HomeRoute 가 아니다').toMatch(/path="\/"[\s\S]{0,120}HomeRoute/)
+    expect(code('src/pages/pc-home/HomeRoute.tsx')).toContain('RestaurantMapPage')
+  })
+})
