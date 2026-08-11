@@ -40,13 +40,14 @@ import { RETIRED_CATEGORIES } from './influencer-classify'
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
 import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, pickStarvationRescue, AUTO_RETIRE_WHERE } from './influencer-keyword-rotation'
+import { CAFE_GATE_KEY, cafeCollectEnabled } from './collect-track-gates' // 🎛️ 수집 트랙 게이트(카페) SSOT
 
 // 🌱 시드 키워드(데이터)는 `influencer-seed-keywords.ts`, 그 시드를 테이블에 넣는 일은
 //   `influencer-keyword-store.ts` — 이 파일은 **둘 다 직접 안 만진다**(아래 재수출만).
 
 // 📊 결과 타입은 `influencer-collect-types.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
 export type { DiscoveryKeyword, AutoCollectStats } from './influencer-collect-types'
-import type { AutoCollectStats, DiscoveryKeyword } from './influencer-collect-types'
+import type { AutoCollectStats, DiscoveryKeyword, DiscoverCalls } from './influencer-collect-types'
 
 const CURSOR_KEY = 'ads_autocollect_cursor'
 /**
@@ -89,23 +90,13 @@ export async function getAutoCollectStats(DB: D1Database): Promise<AutoCollectSt
 export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS, type YtPickKeyword, MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
 import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotation'
 import { buildRotationPools } from './keyword-contact-yield'
+import { appendCollectFunnel } from './influencer-collect-funnel'
 import { mineHashtags } from './influencer-hashtag-mine'
 
-// ── 📅 YT 쿼터 하루 경계 — 구글 쿼터는 태평양 자정(한국 오후 4~5시) 리셋. 카운터 키에 사용. ──
-// ⚠️ 쿼터 경제(2026-07-27 "평균 0회 대부분" 실사고): search.list 1회=100 units → 검색 100회=일일 쿼터(10,000) 전부
-//   → 성과측정(각 1 unit)이 하루 종일 403. 검색 90회로 낮춰 측정용 ~1,000 units/day 예약(~750채널/일 측정 여력).
-//   env ADS_YT_SEARCH_BUDGET 로 조정(100 으로 되돌리면 측정 굶음 — ads-yt-scheduling.test 불변식이 차단).
-// 🎯 **유튜브도 일일 90%** (2026-08-04 대표 *"각각 90%씩"*) — 이미 그 값이다. 우연이 아니라 계산이다:
-//   10,000 units × 90% ÷ 100 units/search = **90 검색**. 남는 1,000 units 가 성과측정(각 1 unit) 몫이고,
-//   100 으로 올리면 그 몫이 0이 되어 측정이 하루 종일 403 이 된다(2026-07-27 실사고).
-//   ⚠️ 쿼터·단가 상수는 `influencer-enrich-lane`(YT_DAILY_QUOTA_UNITS/YT_SEARCH_UNIT_COST)이 SSOT 다 —
-//   그 모듈이 **이 모듈을 import** 하므로 여기서 되import 하면 순환이다. 관계식은 테스트가 고정한다.
-export const YT_DAILY_TARGET_PCT = 0.9
-export const YT_SEARCH_BUDGET_DEFAULT = 90
-export function ytQuotaDayKey(nowMs: number): string {
-  return new Date(nowMs).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) // YYYY-MM-DD
-}
-const YT_USED_KEY = 'ads_yt_search_used' // 값 형식 "YYYY-MM-DD:count" — 날짜 바뀌면 자동 0부터
+// 📅 YT 쿼터 하루 경계·검색 예산·검색 각도 → `influencer-yt-quota.ts`(600줄 래칫 분리).
+//   기존 import 경로 호환을 위해 재수출한다(`influencer-enrich-lane`·테스트 2개가 이 경로로 쓴다).
+export { YT_DAILY_TARGET_PCT, YT_SEARCH_BUDGET_DEFAULT, ytQuotaDayKey } from './influencer-yt-quota'
+import { YT_SEARCH_BUDGET_DEFAULT, ytQuotaDayKey, YT_USED_KEY, pickYtAngle } from './influencer-yt-quota'
 
 /**
  * 한 번의 자동 수집 실행(cron 1틱 또는 수동). 게이트 체크는 호출부에서.
@@ -210,7 +201,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   ⚠️ **여기 없는 키를 `settings[...]` 로 읽으면 값이 아니라 `undefined` 가 온다** — 에러가 아니라
   //   기본값으로 조용히 떨어진다. 집중 축 커서가 정확히 그래서 항상 0 이었다(#930 → 2026-08-03 수리).
   //   새 키를 읽기 전에 이 배열에 넣을 것. `ads-keyword-focus-split` 이 기계로 대조한다.
-  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY]
+  //   🏘️ `CAFE_GATE_KEY` — 어드민 원클릭 카페 게이트. **이 배치에 얹어 서브리퀘스트 추가 0**
+  //   (낱개로 읽으면 게이트 하나가 발굴 fetch 하나를 잡아먹는다 — 이 배열이 존재하는 이유).
+  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY, CAFE_GATE_KEY]
   const settings = await readSettings(DB, SETTING_KEYS)
   let prev: AutoCollectStats | null = null
   try { prev = settings[STATS_KEY] ? JSON.parse(settings[STATS_KEY] as string) as AutoCollectStats : null } catch { prev = null }
@@ -270,16 +263,8 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const naverSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
   const hasNaver = !!(naverId && naverSecret)
   // 🗑️ 티스토리 트랙 제거(2026-07-27 대표 "티스토리는 안할거야") — 기수집 리드는 보존, 신규 수집만 중단.
-  // 🎥 YT 검색 각도 교대 — (검색타입 × 정렬)을 매 실행 순환. 같은 키워드도 각도가 다르면 다른 채널이 나옴
-  //   → top-N 재탕이 아니라 커버리지가 계속 확장(수렴). date=신생/소형, viewCount=인기, relevance=관련.
-  const YT_ANGLES: { searchType: 'channel' | 'video'; order: 'relevance' | 'date' | 'viewCount' }[] = [
-    { searchType: 'channel', order: 'relevance' },
-    { searchType: 'video', order: 'date' },       // 최신 — 계속 새로 생기는 소형 크리에이터
-    { searchType: 'channel', order: 'viewCount' }, // 인기 채널
-    { searchType: 'video', order: 'relevance' },
-    { searchType: 'video', order: 'viewCount' },
-  ]
-  const ytAngle = YT_ANGLES[(prev?.total_runs || 0) % YT_ANGLES.length]
+  // 🎥 YT 검색 각도 교대(회차마다 다른 그물) — 표·근거는 `influencer-yt-quota.ts` SSOT.
+  const ytAngle = pickYtAngle(prev?.total_runs || 0)
   // 네이버/티스토리도 정렬 교대(정확도↔최신) — 쿼터 여유라 순수 이득(최신순은 새 블로거 유입).
   const naverSort: 'sim' | 'date' = ((prev?.total_runs || 0) % 2 === 0) ? 'sim' : 'date'
   // 🔒 서브리퀘스트 예산(2026-07-20 실사고) — 한 실행의 외부 fetch 상한. 소진 시 조기 종료(에러 아님),
@@ -330,13 +315,17 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   }
   // 🔎 플랫폼별 진단 누적 — fail-soft 로 삼키더라도 *사유는 기록*해 어드민에서 0건 원인 확인 가능.
   const hasKakao = !!(env as unknown as { KAKAO_REST_API_KEY?: string }).KAKAO_REST_API_KEY
+  // 🏘️ 카페 트랙 가동 여부 — 설정(원클릭) > env 폴백. 루프 밖에서 한 번만 판정(키워드마다 같은 값).
+  const cafeEnabled = cafeCollectEnabled(settings[CAFE_GATE_KEY], env)
   const diag = {
     yt: { configured: hasYouTube, found: 0, saved: 0, error: undefined as string | undefined },
     naver: { configured: hasNaver, found: 0, saved: 0, error: undefined as string | undefined },
     tistory: { configured: hasKakao, found: 0, saved: 0, error: undefined as string | undefined },
     // 🏘️ 카페는 블로그와 **따로** 센다 — 합산돼 있으면 "카페를 끌 가치가 있나"를 숫자로 답할 수 없다
     //   (라이브 표본 200건: 연락 가능 2건). 판정 근거는 `influencer-collect-types` 의 docblock.
-    cafe: { found: 0, saved: 0 },
+    //   🏘️ `enabled` — 스위치가 켜졌다는 말과 **그 회차에 실제로 돌았다**는 말은 다르다.
+    //   화면이 후자를 봐야 "켰는데 왜 안 늘지"를 오진하지 않는다(이 레포의 '죽은 손잡이' 클래스).
+    cafe: { found: 0, saved: 0, enabled: false },
   }
   if (!hasYouTube) diag.yt.error = 'NOT_CONFIGURED: ur-ads 워커에 YOUTUBE_API_KEY 미설정'
   if (!hasNaver) diag.naver.error = 'NOT_CONFIGURED: ur-ads 워커에 NAVER_SEARCH_CLIENT_ID/SECRET 미설정'
@@ -372,7 +361,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const spendBy = { yt: 0, naver: 0, cafe: 0, tistory: 0, save: 0 }
   // 🔬 유튜브 서브리퀘스트 **내역**(2026-08-04) — 쿼터는 90 중 3만 쓰는데 요청 예산은 다 쓴다.
   //   그 33개가 검색·채널조회·영상스니펫 중 어디로 갔는지 재야 줄일 자리가 정해진다(찍어 줄이면 수율이 같이 떨어진다).
-  const ytCalls = { search: 0, channels: 0, videos: 0 }
+  const ytCalls: DiscoverCalls = { search: 0, channels: 0, videos: 0 }
   const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
   const roundCap = keywordsPerRoundCap(env)
   let fromYt = 0, fromCursor = 0 // 🎯 처리된 픽의 출처 — 커서픽이 실제로 도달되는지 보이게(위 `picks` 주석)
@@ -402,7 +391,18 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
         const _b0 = budget.left
         const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytAngle.searchType, order: ytAngle.order, alreadyContacted })
         spendBy.yt += Math.max(0, _b0 - budget.left)
-        if (r.calls) { ytCalls.search += r.calls.search; ytCalls.channels += r.calls.channels; ytCalls.videos += r.calls.videos }
+        // 🔬 **세부 카운터까지 옮긴다**(2026-08-11) — `DiscoverCalls` 는 videos 콜의 *성과*를
+        //   (email/contact/cat/empty) 이미 세는데 여기서 3개만 옮겨 **스냅샷에 도달하지 못했다**
+        //   ("계산해 놓고 안 쓰면 소용없다" 클래스). 그 결과 `videos_empty` 비율 = 잘라도 되는 몫을
+        //   아무도 볼 수 없어, 예산의 60%를 쓰는 트랙을 **추측으로만** 논할 수 있었다.
+        //   ⚠️ 미증가 카운터는 키가 없다(`(x||0)+1` 패턴) → `?? 0` 필수.
+        if (r.calls) {
+          ytCalls.search += r.calls.search; ytCalls.channels += r.calls.channels; ytCalls.videos += r.calls.videos
+          ytCalls.videos_email = (ytCalls.videos_email ?? 0) + (r.calls.videos_email ?? 0)
+          ytCalls.videos_contact = (ytCalls.videos_contact ?? 0) + (r.calls.videos_contact ?? 0)
+          ytCalls.videos_cat = (ytCalls.videos_cat ?? 0) + (r.calls.videos_cat ?? 0)
+          ytCalls.videos_empty = (ytCalls.videos_empty ?? 0) + (r.calls.videos_empty ?? 0)
+        }
         if (r.ok) {
           kSearched++
           diag.yt.found += r.leads?.length || 0; kFound += r.leads?.length || 0
@@ -431,8 +431,12 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       //   `Too many subrequests` 로 죽고 활성 키워드 210개 중 124개가 이틀째 순번을 못 받는 상황에서,
       //   수확 가치 0 인 호출이 예산의 25~30% 를 먹는다. 끄면 그만큼 더 많은 키워드가 돈다.
       //   ⚠️ 기본값을 바꾸지 않는다(수집 정책은 대표 결정) — `ADS_COLLECT_CAFE_ENABLED='false'` 로 끈다.
-      if ((env as unknown as { ADS_COLLECT_CAFE_ENABLED?: string }).ADS_COLLECT_CAFE_ENABLED !== 'false') try {
+      //   🏘️ **원클릭 게이트**(2026-08-11) — `platform_settings.ads_collect_cafe` 가 설정돼 있으면
+      //   그것이 이기고, 미설정이면 종전 env 규칙 그대로다(설정이 빈 동안 동작 불변).
+      //   근거·실측(3,141명 이메일 0)·비용은 `cafeCollectEnabled` docblock 이 SSOT.
+      if (cafeEnabled) try {
         const _b0 = budget.left
+        diag.cafe.enabled = true // 실제로 이 트랙에 진입했다(스위치 상태가 아니라 실행 사실)
         const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget, sort: naverSort })
         spendBy.cafe += Math.max(0, _b0 - budget.left)
         if (r.ok) { kSearched++; if (r.leads?.length) { { const _s0 = budget.left; const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.cafe.found += r.leads.length; diag.cafe.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads); spendBy.save += Math.max(0, _s0 - budget.left) } } }
@@ -545,6 +549,13 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
     cursor: nextCursor, pri_cursor: nextPriCursor, focus_cursor: nextFocusCursor, focus_n: nFocus, promoted, kw_unjudged: starvedIds.size, ...(kwAuto ? { kw_auto: kwAuto } : {}), youtube_quota_hit: quotaHit, diag,
     picks: { planned: finalPicks.length, processed: processedIds.size, from_yt: fromYt, from_cursor: fromCursor },
+    // 📈 회차 퍼널을 시계열로 누적 — **새 쓰기 0개**(이 blob 이 어차피 저장된다). 근거는 그 모듈 헤더.
+    funnel: appendCollectFunnel(prev?.funnel, {
+      at: Date.now(), saved, planned: finalPicks.length, processed: processedIds.size,
+      spent: budgetTotal - budget.left, budget: budgetTotal,
+      yt: { found: diag.yt.found, saved: diag.yt.saved, spend: spendBy.yt },
+      nb: { found: diag.naver.found, saved: diag.naver.saved, spend: spendBy.naver },
+    }),
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
     // 🧾 소스별 서브리퀘스트 실사용 — `processed 5 / planned 16` 의 범인을 **재서** 찾기 위한 값(위 spendBy 주석).
     //   해석: 합이 spent 에 근접하면 그 소스가 병목. 특히 yt/naver 가 크면 발굴 시점 enrichMax(8/5)가 원인이고,

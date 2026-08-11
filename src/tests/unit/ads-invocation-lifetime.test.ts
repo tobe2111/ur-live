@@ -265,7 +265,13 @@ describe('수집 진단 — 카페는 따로 센다', () => {
   })
 
   it('diag 초기값에 cafe 가 있다 — 없으면 런타임에 undefined 증가로 조용히 NaN 이 된다', () => {
-    expect(col).toMatch(/cafe:\s*\{\s*found:\s*0,\s*saved:\s*0\s*\}/)
+    // 2026-08-11: 리터럴 전체를 고정하던 것을 **지키려는 사실**(두 카운터가 0 으로 초기화됨)로 바꿨다.
+    //   원클릭 게이트가 `enabled` 를 같은 객체에 추가했는데, 필드가 하나 늘었다는 이유로 빨간불이 떴다 —
+    //   그건 NaN 사고와 무관하다. 앵커가 형태를 고정하면 정상 확장이 막힌다(이 레포의 '낡은 지도' 짝).
+    const cafeInit = col.match(/cafe:\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(cafeInit, 'diag 초기값에 cafe 가 없다').not.toBe('')
+    expect(cafeInit).toMatch(/found:\s*0/)
+    expect(cafeInit).toMatch(/saved:\s*0/)
   })
 })
 

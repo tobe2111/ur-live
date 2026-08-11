@@ -72,6 +72,29 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '회차 퍼널을 UTC 로 묶는다(한국 기준 하루가 두 날로 갈린다)',
+    file: 'src/features/marketing/api/influencer-collect-funnel.ts',
+    find: 'export const kstDay = (ms: number): string => new Date(ms + 9 * 3600_000).toISOString().slice(0, 10)',
+    replace: 'export const kstDay = (ms: number): string => new Date(ms).toISOString().slice(0, 10)',
+    test: 'src/tests/unit/ads-collect-funnel.test.ts',
+    why:
+      '워커 런타임은 UTC 다. UTC 로 자르면 **한국 기준 하루가 두 날에 갈려** 일별 비교가 통째로 무의미해진다 — ' +
+      '이 시계열의 존재 이유가 "어제와 오늘이 왜 다른가"인데 그 축이 어긋난다. ' +
+      '이 레포가 반복해 틀린 자리라(CLAUDE.md 시각 규칙 · `check-utc-date-parse`) 경계값으로 못 박았다.',
+  },
+  {
+    name: '회차 퍼널이 이전 값을 안 이어받는다(매 회차 리셋 — 시계열이 안 쌓인다)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '    funnel: appendCollectFunnel(prev?.funnel, {',
+    replace: '    funnel: appendCollectFunnel(undefined, {',
+    test: 'src/tests/unit/ads-collect-funnel.test.ts',
+    why:
+      '`prev?.funnel` 을 안 넘기면 매 회차 빈 시계열로 시작해 **하루치 한 줄만 남는다** — 화면엔 값이 보이니 ' +
+      '고장으로 안 읽히고, 다음 세션은 또 "기록이 없다"로 시작한다(2026-08-11 조사가 오래 걸린 이유가 정확히 그것). ' +
+      '⚠️ 첫 초안의 주입은 `...(false ? {` 로 감싸는 것이었는데 **원본 문자열이 그대로 남아** 배선 검사가 계속 초록이었다 — ' +
+      '되돌려-검증도 틀릴 수 있다는 걸 또 확인했다.',
+  },
+  {
     name: '나라장터 업체 레인이 코드 12 밖에서도 후보 오퍼레이션을 돌린다(예산 낭비)',
     file: 'src/features/marketing/api/nara-vendor-collect.ts',
     find: "    if (i === 0 && !r.items.length && r.code === '12' && !envOp) {",
@@ -497,7 +520,9 @@ const MUTATIONS = [
   },
   {
     name: '유튜브 검색 예산을 100 으로 되돌린다(측정 몫 0)',
-    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    // 2026-08-11: 쿼터 정책이 `influencer-yt-quota.ts` 로 분리(600줄 래칫) — 표적도 따라간다.
+    //   원 모듈은 재수출만 하므로 여기서 바꿔야 실제 상수가 변이된다.
+    file: 'src/features/marketing/api/influencer-yt-quota.ts',
     find: 'export const YT_SEARCH_BUDGET_DEFAULT = 90',
     replace: 'export const YT_SEARCH_BUDGET_DEFAULT = 100',
     test: 'src/tests/unit/api-daily-target.test.ts',
@@ -2296,6 +2321,29 @@ const MUTATIONS = [
       '행동 테스트(run() 이 skipped 반환)가 잡는다.',
   },
   {
+    name: '카페 게이트 폴백 소실 — 배포만으로 카페가 켜져 회차 예산을 먹는다',
+    // 2026-08-11: 600줄 래칫으로 `collect-track-gates.ts` 로 분리 — 표적도 따라간다.
+    file: 'src/features/marketing/api/collect-track-gates.ts',
+    find: "  return (env as { ADS_COLLECT_CAFE_ENABLED?: string } | undefined)?.ADS_COLLECT_CAFE_ENABLED !== 'false'",
+    replace: '  return true',
+    test: 'src/tests/unit/ads-collect-gates.test.ts',
+    why:
+      '라이브 env 는 ADS_COLLECT_CAFE_ENABLED=false(카페 OFF)이고, 설정이 비어 있는 동안에는 그 env 를 ' +
+      '따라야 한다. 폴백을 true 로 만들면 배포하는 순간 카페가 켜져 키워드당 1 서브리퀘스트를 먹는다 — ' +
+      '지금은 회차 예산(56)이 캡이라 그만큼 키워드 폭이 줄어 발굴량이 직접 감소한다(카페 이메일은 0건).',
+  },
+  {
+    name: 'YT 콜 세부 계측이 집계에서 탈락(예산 60% 트랙의 낭비율을 영영 못 봄)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: "          ytCalls.videos_empty = (ytCalls.videos_empty ?? 0) + (r.calls.videos_empty ?? 0)",
+    replace: '',
+    test: 'src/tests/unit/ads-collect-gates.test.ts',
+    why:
+      'DiscoverCalls 는 videos 콜의 성과(email/contact/cat/empty)를 이미 세는데 집계부가 3개만 옮겨 ' +
+      '스냅샷에 도달하지 못했다("계산해 놓고 안 쓰면 소용없다"). videos_empty 가 곧 잘라도 되는 몫이라 ' +
+      '이 줄이 빠지면 예산 60%를 쓰는 트랙을 다시 추측으로만 논하게 된다.',
+  },
+  {
     name: '순환 나이가 등록일 기준으로 회귀(승격 물결마다 가짜 starved 경보)',
     file: 'src/features/marketing/api/collect-health-alert.ts',
     find: "MAX(julianday('now') - julianday(COALESCE(last_run_at, activated_at, created_at))) AS oldest_days",
@@ -2766,16 +2814,28 @@ const MUTATIONS = [
   },
   {
     name: '집중 축이 다시 앞머리 독점(일반 풀 커서 동결 — 커버리지 붕괴)',
-    // ⚠️ 600줄 래칫으로 병합 로직이 `influencer-keyword-rotation.ts` 로 추출됐다(순수 이동).
-    //   앵커가 안 따라오면 이 주입은 "find 가 소스에 없음"으로 낡은 지도 판정을 받는다.
-    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
-    find: '  for (let i = 0; i < Math.max(focus.length, pri.length, gen.length); i++) {',
-    replace: '  out.push(...focus)\n  for (let i = 0; i < Math.max(pri.length, gen.length); i++) {',
+    // ⚠️ 앵커가 두 번 이사했다: 600줄 래칫으로 이 파일에 추출(2026-08-04) → 병합이 1:1:1 에서
+    //   **몫 비례**로 바뀜(2026-08-11). 지키는 불변식(비지 않은 축이 앞 5개 안)은 그대로다.
+    file: 'src/features/marketing/api/influencer-keyword-order.ts',
+    find: '      const key = (taken[i] + 0.5) / pools[i].length   // 몫이 클수록 촘촘히 배치된다',
+    replace: '      const key = i === 0 ? -1 : (taken[i] + 0.5) / pools[i].length',
     test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
     why:
       '회차는 `planned 16 → processed 5`(예산 56/56 소진)다. 집중 축을 앞머리에 두면 4개가 앞자리를 먹고 ' +
       '일반 풀엔 1개만 남는다. `prefixDone` 은 처리된 **앞부분만** 세므로 뒤 풀은 커서도 안 움직여 ' +
       '**같은 키워드를 무한 재실행**한다 — 실측: 활성 399 중 323개가 이틀째 미실행, 24h 실행 54개뿐.',
+  },
+  {
+    name: '병합이 다시 1:1:1(잘림이 비대칭 — 큰 축만 깎임)',
+    file: 'src/features/marketing/api/influencer-keyword-order.ts',
+    find: '      const key = (taken[i] + 0.5) / pools[i].length   // 몫이 클수록 촘촘히 배치된다',
+    replace: '      const key = taken[i] + 0.5',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '세 축을 한 개씩 번갈아 놓으면 회차가 예산에서 끊길 때 **작은 축은 몫을 다 지키고 큰 축만 깎인다.** ' +
+      '라이브 실측(2026-08-11): 풀 집중 25·우선 358·일반 76 에서 계획 1/6/2 인데 예산 5 에서 잘려 ' +
+      '우선이 6→2 로 무너졌다. 키워드 1개당 회전율이 설계(1.5:1:0.5) 대비 **7.3 : 1 : 3.2** — ' +
+      '대표가 정한 축 우선순위가 코드에서 뒤집혀 본업 축(맛집·뷰티·숙소·공동구매, 전체의 78%)이 가장 느렸다.',
   },
   {
     name: '티스토리가 블로거 뒤로 밀림(잔여를 다 뺏겨 영원히 0)',
