@@ -135,10 +135,23 @@ function getSaveData(): boolean {
  * 라이브 영향: 갤러리 이미지에 `%` 를 가진 활성 상품 **134개**(커버 1개).
  *
  * ⚠️ `encodeURIComponent` 를 쓰면 안 된다 — `:` `/` 까지 인코딩돼 URL 이 통째로 깨진다.
- * 바꿔야 하는 것은 **`%` 하나뿐**이고, `%` 가 없는 URL 에는 아무 일도 일어나지 않는다(무해).
+ *
+ * 🔴 **쿼리스트링은 절대 건드리지 않는다.** 처음엔 URL 전체의 `%` 를 바꿨는데 라이브 표본 5개로
+ * 재보니 그게 **회귀**였다 — 카카오 썸네일은 쿼리에 서명을 달고(`…&signature=TKCd…%3D&ts=…`),
+ * 그 `%3D` 를 `%253D` 로 바꾸면 서명이 깨져 리사이저가 원본을 못 가져온다. 실측:
+ *
+ * ```
+ *                       raw        그대로     전체 %25    경로만 %25
+ * EUC-KR 한글 파일명   200/5.8M    404/151B   200/102KB   200/102KB   ← 수리 대상
+ * 쿼리에 서명(%3D)     200/117KB   200/225KB  200/820B🔴  200/225KB   ← 건드리면 안 되는 쪽
+ * ```
+ * 깨진 것은 **경로에 박힌 원본 URL** 이지 쿼리가 아니므로, 경로만 고치는 것이 정확히 맞는 범위다.
  */
 function cdnCgiSafe(src: string): string {
-  return src.includes('%') ? src.replace(/%/g, '%25') : src
+  if (!src.includes('%')) return src
+  const q = src.indexOf('?')
+  const path = q === -1 ? src : src.slice(0, q)
+  return path.replace(/%/g, '%25') + (q === -1 ? '' : src.slice(q))
 }
 
 export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}): string {

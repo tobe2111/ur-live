@@ -111,6 +111,23 @@ describe('④ 한글 파일명 사진이 cdn-cgi 에서 404 나지 않는다', (
   it('% 없는 URL 은 아무것도 바뀌지 않는다 (무해성)', () => {
     expect(cfImage(PLAIN, { width: 900 })).toContain(PLAIN)
   })
+
+  it('🔴 쿼리스트링의 %는 건드리지 않는다 — 서명이 깨져 오히려 이미지가 죽는다', () => {
+    // 라이브 표본에서 잡힌 **내 첫 수정의 회귀**. 카카오 썸네일은 쿼리에 서명을 단다:
+    //   raw 200/117KB · 그대로 200/225KB · 전체 %25 200/**820B**(깨짐) · 경로만 %25 200/225KB
+    const SIGNED = 'https://thumb.kakaocdn.net/dna/kamp/source/rvz/thumbs/1.jpg'
+      + '?credential=TuMuFGKUIcirOSjFzOpncbomGFEIdZWK&signature=TKCd5UKSu0MciDacHVHMO5Obb10%3D&ts=1781849599'
+    const out = cfImage(SIGNED, { width: 900 })
+    expect(out, '서명의 %3D 가 %253D 로 바뀌면 원본 fetch 가 실패한다').toContain('%3D&ts=')
+    expect(out).not.toContain('%253D')
+  })
+
+  it('경로와 쿼리에 둘 다 %가 있으면 경로만 바꾼다', () => {
+    const BOTH = 'https://ldb-phinf.pstatic.net/a/%B8%DE_1.jpg?type=w386&sig=x%3D'
+    const out = cfImage(BOTH, { width: 900 })
+    expect(out).toContain('%25B8%25DE_1.jpg')   // 경로: 이스케이프됨
+    expect(out).toContain('sig=x%3D')           // 쿼리: 원본 그대로
+  })
 })
 
 describe('③ 404 — 길 잃은 사람을 실제로 있는 곳으로 보낸다', () => {
