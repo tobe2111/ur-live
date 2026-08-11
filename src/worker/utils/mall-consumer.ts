@@ -105,3 +105,22 @@ export async function lookupConsumerMall(DB: D1Database | undefined, seg: string
   const rows = await loadRows(DB)
   return pickConsumerMall(rows, String(seg))
 }
+
+/**
+ * 몰 **id → 슬러그** (2026-08-11). 소비자 상품 상세가 "이 상품은 어느 가게 것인가"를 알아야
+ * 몰 손님을 그 가게로 돌려보낼 수 있다(`/products/:id` → `/{슬러그}/p/:id`).
+ *
+ * 🔴 **같은 캐시·같은 fail-closed 규칙을 쓴다.** 여기서 테이블을 따로 조회하면
+ *   `active`/`consumer_path` 판정이 두 벌이 되고, 갈리는 순간 "경로로는 안 열리는 몰로
+ *   리다이렉트하는" 막다른 골목이 생긴다(그 몰의 상세는 404 이므로 손님이 갇힌다).
+ *
+ * @returns 경로로 열 수 있는 몰이면 슬러그, 아니면 `null`(= 리다이렉트하지 않음 → 현행 동작)
+ */
+export async function consumerMallSlugById(DB: D1Database | undefined, mallId: number | null | undefined): Promise<string | null> {
+  if (!DB) return null
+  const id = Number(mallId)
+  if (!Number.isFinite(id) || id < 1) return null
+  const rows = await loadRows(DB)   // loadRows 는 이미 active=1 AND consumer_path=1 만 싣는다
+  for (const r of rows) if (Number(r.id) === Math.floor(id)) return String(r.slug ?? '').trim().toLowerCase() || null
+  return null
+}

@@ -47,11 +47,39 @@ describe('isMallSlugCandidate — 예약어가 먼저다', () => {
   })
 })
 
-describe('isMallSurfacePath — 한 세그먼트만 몰 표면', () => {
-  it('두 세그먼트 이상은 몰 표면이 아니다', () => {
-    // 🔴 상품 상세(`/products/123`)까지 몰 표면으로 잡으면 본진 상품 페이지에서 네비가 사라진다.
+describe('isMallSurfacePath — 몰 홈 + 몰 상품 상세만', () => {
+  it('본진 상품 상세와 몰 하위 임의 경로는 몰 표면이 아니다', () => {
+    // 🔴 본진 상품 상세(`/products/123`)를 몰 표면으로 잡으면 **본진** 상품 페이지에서 네비가 사라진다.
+    //   (`products` 는 예약어라 슬러그 후보 자체가 아니다.)
     expect(isMallSurfacePath('/products/123')).toBe(false)
+    // 🔴 넓힌 것은 `/p/{숫자}` **정확히 그 모양뿐**이다 — 나머지 몰 하위 경로는 그대로 false.
     expect(isMallSurfacePath('/bangbae-mart/anything')).toBe(false)
+    expect(isMallSurfacePath('/bangbae-mart/p')).toBe(false)          // id 없음
+    expect(isMallSurfacePath('/bangbae-mart/p/abc')).toBe(false)      // 숫자 아님
+    expect(isMallSurfacePath('/bangbae-mart/p/0')).toBe(false)        // 0 은 상품 id 가 아니다
+    expect(isMallSurfacePath('/bangbae-mart/p/12/extra')).toBe(false) // 더 깊은 경로
+  })
+
+  /**
+   * 🔴 2026-08-11 〔대표 "그 서비스는 유어딜과 철저히 분리되어야 해"〕
+   *
+   * 그전까지 몰 표면은 **홈 한 장뿐**이었다. 그래서 손님이 상품을 누르는 순간 본진
+   * `/products/:id` 로 나가 유어딜 탭바·배너를 보고, **가격도 상시가로 바뀌었다**
+   * (몰 카드는 공구가 — 본진 상세는 `resolveGbPricing` 을 안 부른다).
+   * ⇒ 상품 상세를 몰 표면에 포함한다. 그러면 App 셸의 `mallSurface` 배선이
+   *   그 화면에서도 유어딜 크롬을 안 그린다(아래 '배선' 블록이 그 배선을 고정한다).
+   */
+  it('몰 상품 상세는 몰 표면이다', () => {
+    expect(isMallSurfacePath('/bangbae-mart/p/123')).toBe(true)
+    expect(isMallSurfacePath('/bangbae-mart/p/123/')).toBe(true)
+    expect(isMallSurfacePath('/bangbae-mart/p/123?utm=kakao')).toBe(true)
+    expect(isMallSurfacePath('/bangbae-mart/p/123#top')).toBe(true)
+  })
+
+  it('예약어는 몰 상품 상세 모양이어도 몰 표면이 아니다', () => {
+    // `/products/p/1` 처럼 생겨도 1st 세그먼트가 예약어면 몰이 아니다.
+    expect(isMallSurfacePath('/products/p/1')).toBe(false)
+    expect(isMallSurfacePath('/admin/p/1')).toBe(false)
   })
   it('루트와 예약 라우트는 몰 표면이 아니다', () => {
     expect(isMallSurfacePath('/')).toBe(false)
@@ -113,6 +141,68 @@ describe('배선 — 상품 상세가 두 신호를 각각 쓴다', () => {
   })
   it('공유 버튼은 남는다 — 단톡방 확산은 운영자 이득이지 유어딜 영입이 아니다', () => {
     expect(page.includes('<KakaoShareButton')).toBe(true)
+  })
+})
+
+/**
+ * 🏬 **몰 손님이 본진으로 새지 않는다** (2026-08-11) 〔대표 "철저히 분리"〕
+ *
+ * 실측이 이 블록을 만들게 했다 — 같은 상품 하나가 세 화면에서 세 값을 냈다:
+ *   몰 카드 = 공구가 / 본진 상세 = **상시가** / 결제 = 공구가.
+ * 원인은 가격 한 줄이 아니라 **몰 카드가 본진으로 링크한 것**이었다(브랜드도 거기서 바뀌었다).
+ *
+ * ⚠️ 이 블록이 못 막는 것: 렌더/네트워크를 보지 않는다. **배선이 있는지**만 본다.
+ *   실제 화면의 가격 일치는 배포 후 눈으로(또는 스모크) 확인해야 한다.
+ */
+describe('배선 — 몰 손님이 본진 상세로 새지 않는다', () => {
+  it('몰 카드는 몰 경로로 링크한다 — 본진 /products 로 나가지 않는다', () => {
+    const home = read('src/pages/MallHomePage.tsx')
+    expect(/<Link to=\{mallProductPath\(mall\.slug, it\.product_id\)\}/.test(home)).toBe(true)
+    // 🔴 되돌아가면 즉시 빨강: 카드가 본진 상품 상세로 링크하는 순간 분리가 깨진다.
+    expect(/to=\{`\/products\/\$\{it\.product_id\}`\}/.test(home)).toBe(false)
+  })
+
+  it('본진 상세는 몰 상품을 그 가게로 되돌린다', () => {
+    const page = read('src/pages/ProductDetailPage.tsx')
+    // 단톡방에 남은 옛 링크·검색 유입도 전부 여기로 떨어지므로 링크 교체만으로는 안 막힌다.
+    expect(/isMallProduct\([\s\S]{0,80}?mall_id[\s\S]{0,120}?mallProductPath\(/.test(page)).toBe(true)
+  })
+
+  it('되돌림 판정과 canonical 리다이렉트가 **한 effect** 안에 있다', () => {
+    const page = read('src/pages/ProductDetailPage.tsx')
+    // 🔴 둘을 별도 effect 로 나누면 둘 다 navigate 해서 경합하고, 마지막 것이 이겨
+    //   몰 손님이 다시 본진으로 나간다. 같은 effect 안에서 early-return 으로 갈려야 한다.
+    const m = page.match(/useEffect\(\(\) => \{[\s\S]*?canonicalDetailPath\(product\)[\s\S]*?\}, \[product, navigate\]\)/)
+    expect(m).not.toBeNull()
+    expect(m![0].includes('mallProductPath(')).toBe(true)
+  })
+
+  it('서버가 몰 상품에 mall_slug 를 실어야 되돌릴 수 있다', () => {
+    const routes = read('src/features/products/api/products.routes.ts')
+    expect(routes.includes('consumerMallSlugById')).toBe(true)
+    expect(/mall_slug/.test(routes)).toBe(true)
+    // 🔴 본진 상품은 조회 자체를 안 한다 — 핫패스에 왕복이 붙으면 안 된다.
+    expect(/mid !== MAIN_MALL/.test(routes)).toBe(true)
+  })
+})
+
+/**
+ * 🖼️ **몰 상품 링크의 카톡 카드** (2026-08-11)
+ *
+ * 경로를 옮기면 2026-08-09 에 PRODUCT 슬롯으로 막아 둔 *"몰 상품 공유가 본진 일반 카드로 나가는"*
+ * 갭이 **새 경로에서 재발한다.** 잘못 나간 카드는 카톡 스크랩 캐시에 **박제**되고 회수 시점의
+ * 통제권이 우리에게 없다 — 그래서 경로 이전과 **같은 커밋**에서 막는다.
+ */
+describe('배선 — 몰 상품 경로에 OG 슬롯이 있다', () => {
+  const worker = read('src/worker/index.ts')
+  it('MALLPRODUCT 슬롯이 몰 상품 API 를 가리킨다', () => {
+    expect(/slot: 'MALLPRODUCT', path: `\/api\/mall\/\$\{encodeURIComponent\(mp\.slug\)\}\/products\/\$\{mp\.productId\}`/.test(worker)).toBe(true)
+  })
+  it('경로 판정은 shared SSOT 를 쓴다 — 워커가 자체 정규식을 갖지 않는다', () => {
+    expect(/const mp = parseMallProductPath\(url\.pathname\)/.test(worker)).toBe(true)
+  })
+  it('payload 가 없으면 메타를 만들지 않는다(fail-closed — 추측해서 박제하지 않는다)', () => {
+    expect(/ssrSlot === 'MALLPRODUCT' && ssrPayload/.test(worker)).toBe(true)
   })
 })
 

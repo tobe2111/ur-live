@@ -266,7 +266,9 @@ import { gbMarketplaceRoutes } from '../features/group-buy/api/gb-marketplace.ro
 import { mallPublicRoutes } from '../features/mall/api/mall-public.routes';
 import { isMallLookupCandidate } from './utils/mall-consumer';
 // 🏬 2026-08-09 [UNLOCK_LOADING] 몰 상품 OG 배선 — 세션 ③-a 가 만들고 미배선(dead code)이던 것.
-import { buildMallProductMeta } from './utils/mall-ssr-meta';
+import { buildMallProductMeta, buildMallProductPathMeta } from './utils/mall-ssr-meta';
+// 🏬 몰 상품 상세 경로 판정 — 클라(App.tsx)와 **같은 SSOT**(정규식을 두 벌 쓰면 반드시 갈린다).
+import { parseMallProductPath } from '../shared/mall/resolve';
 import { gbProposalsRoutes } from '../features/group-buy/api/gb-proposals.routes';
 import { voucherDisputeRoutes, voucherDisputeAdminRoutes } from '../features/group-buy/api/voucher-dispute.routes';
 // 🛡️ 2026-05-20: requireAdmin 은 위 (line 127) 에서 이미 import — 중복 제거.
@@ -647,6 +649,16 @@ app.use('*', async (c, next) => {
             const mallSeg = url.pathname.split('/')[1] || '';
             if (isMallLookupCandidate(mallSeg) && !url.pathname.slice(1).includes('/')) {
               ssrTarget = { slot: 'MALL', path: `/api/mall/${encodeURIComponent(mallSeg)}` };
+            } else {
+              // 🏬 2026-08-11 — 몰 **상품 상세** `/{슬러그}/p/{id}` 〔대표 "철저히 분리"〕.
+              //   🔴 이 분기가 없으면 몰 상품 링크의 카톡 카드가 **제네릭 유어딜 카드**로 나간다 —
+              //     2026-08-09 에 PRODUCT 슬롯으로 막아 둔 갭이 새 경로에서 재발하는 것이다.
+              //     잘못 나간 카드는 카톡 스크랩 캐시에 **박제**되므로 경로 이전과 같은 커밋에서 막는다.
+              //   판정은 `parseMallProductPath`(shared SSOT) — 여기서 정규식을 또 쓰면 클라와 갈린다.
+              const mp = parseMallProductPath(url.pathname);
+              if (mp) {
+                ssrTarget = { slot: 'MALLPRODUCT', path: `/api/mall/${encodeURIComponent(mp.slug)}/products/${mp.productId}` };
+              }
             }
           }
         }
@@ -933,6 +945,19 @@ app.use('*', async (c, next) => {
     //   카톡방에 몰 링크가 붙을 때 **누구의 판인지**가 먼저 읽혀야 한다. 몰 이름이 title 앞에 온다.
     //   ⚠️ 잘못 나간 미리보기는 카톡 스크랩 캐시에 **박제**된다 — 그래서 payload 가 없으면
     //      추측하지 않고 **기본 메타를 그대로 둔다**(mall-ssr-meta.ts 의 fail-closed 와 같은 방침).
+    // 🏬 2026-08-11 — 몰 상품 상세 카톡 카드. payload 가 없거나 모양이 다르면 **기본 메타 그대로**
+    //   (추측해서 박제하지 않는다 — MALL 슬롯과 같은 fail-closed 방침).
+    if (ssrSlot === 'MALLPRODUCT' && ssrPayload) {
+      const mpm = buildMallProductPathMeta(ssrPayload, origin2, url.pathname);
+      // `MallMeta → SurfaceRewriteMeta` 매핑은 위 PRODUCT 슬롯과 **같은 모양**으로 둔다
+      //   (MallMeta 엔 `pageTitle` 이 없다 — 카드 제목이 곧 페이지 제목이다).
+      if (mpm) {
+        rb = applySurfaceMeta(rb, {
+          pageTitle: mpm.title, title: mpm.title, description: mpm.description,
+          canonical: mpm.canonical, ogType: mpm.ogType, ogImage: mpm.ogImage,
+        });
+      }
+    }
     if (ssrSlot === 'MALL' && ssrPayload) {
       try {
         const m = (JSON.parse(ssrPayload) as { mall?: { name?: string; slug?: string; intro?: string; logoUrl?: string | null; naver_verification?: string | null } })?.mall;

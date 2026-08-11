@@ -56,6 +56,7 @@ import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import NotFoundPage from '@/pages/NotFoundPage'
 import { POWERED_BY, PAYMENT_TRUST_NOTE } from '@/shared/mall/branding'
+import { mallProductPath } from '@/shared/mall/resolve'
 import { cfImage } from '@/utils/cf-image'
 import { parseUTCDate } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
@@ -241,7 +242,10 @@ export default function MallHomePage() {
               const lowStock = typeof it.stock === 'number' && it.stock > 0 && it.stock <= 10
               return (
                 <li key={it.product_id}>
-                  <Link to={`/products/${it.product_id}`} className="block group">
+                  {/* 🏬 2026-08-11 — 본진 `/products/:id` 로 나가던 것을 **몰 상세**로 〔대표 "철저히 분리"〕.
+                      그전까지 이 링크 하나가 손님을 유어딜 크롬 + 상시가 화면으로 내보냈다.
+                      경로 조립은 `mallProductPath` 하나뿐이다(손으로 붙이면 판정과 갈린다). */}
+                  <Link to={mallProductPath(mall.slug, it.product_id)} className="block group">
                     <div className="relative aspect-square rounded-[14px] overflow-hidden bg-[#F1EDEF] dark:bg-[#221D20]">
                       {it.image_url && (
                         <img src={cfImage(it.image_url, { width: 400 })} alt="" loading="lazy"
