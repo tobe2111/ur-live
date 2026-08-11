@@ -52,7 +52,7 @@ describe('재검사 우선순위', () => {
   it('🔒 그 회차가 쓴 패스의 커서만 전진한다', () => {
     const src = fs.readFileSync(SRC, 'utf8')
     expect(src).toMatch(/if \(prioDone\) await DB\.prepare\([^\n]*\)\.bind\(RECLASSIFY_CURSOR/)
-    expect(src).toMatch(/else await writePrioState\(DB, prio!\.tier, nextCursor\)/)
+    expect(src).toMatch(/else await writePrioState\(DB, prio!\.tier, nextCursor, CLASSIFY_RULES_VERSION\)/)
   })
 
   /**
@@ -62,12 +62,41 @@ describe('재검사 우선순위', () => {
   it('🔒 랩 완료 시 우선순위 상태도 리셋된다 (안 하면 1회용이 된다)', () => {
     const src = fs.readFileSync(SRC, 'utf8')
     const lap = src.slice(src.indexOf('한 바퀴 완료'), src.indexOf('한 바퀴 완료') + 700)
-    expect(lap).toMatch(/writePrioState\(DB, 0, 0\)/)
+    expect(lap).toMatch(/writePrioState\(DB, 0, 0, CLASSIFY_RULES_VERSION\)/)
   })
 
   it('어느 패스였는지 결과에 남는다 (안 보이면 또 오진한다)', () => {
     const src = fs.readFileSync(SRC, 'utf8')
     expect(fs.readFileSync(PRIO, 'utf8')).toMatch(/phase: `prio:/)
     expect(src).toMatch(/done: false, phase/)
+  })
+})
+
+/**
+ * 🩸 **규칙 버전이 바뀌면 우선순위 커서도 리셋** — 2026-08-11 라이브에서 실제로 물렸다.
+ *
+ * 판정 때 webkr 잔량이 **981 에서 한 건도 안 줄어** 있었다. 레인은 정상이었고(`ok=true`, 47분 전)
+ * `phase=prio:local` 이었다 — **커서가 webkr 을 이미 지나쳐 다음 티어로 넘어간 뒤**에 버전이 8로
+ * 올라갔고, 그 981건은 다시 대상이 됐는데 커서가 지나간 자리라 **한 바퀴(38일) 전엔 안 본다.**
+ *
+ * 버전 bump 의 의미는 *"전부 다시 봐라"* 다 ⇒ 우선순위 큐도 앞줄부터 다시 서야 한다.
+ * 안 그러면 우선순위가 **"첫 배포 때 한 번만" 듣는 장치**가 된다.
+ */
+describe('규칙 버전 변경 시 우선순위 커서 리셋', () => {
+  const SRCP = fs.readFileSync(PRIO, 'utf8')
+
+  it('🔒 저장된 버전이 현행과 다르면 앞줄부터 (tier 0, cursor 0)', () => {
+    expect(SRCP).toMatch(/if \(rulesVersion != null && Number\(p\.v\) !== rulesVersion\) return \{ tier: 0, cursor: 0 \}/)
+  })
+
+  it('🔒 상태에 버전을 함께 적는다 (안 적으면 영원히 "다르다" → 커서가 안 전진한다)', () => {
+    expect(SRCP).toMatch(/JSON\.stringify\(\{ tier, cursor, v: rulesVersion \}\)/)
+  })
+
+  it('🔒 호출부가 현행 버전을 실제로 넘긴다 (계산해 놓고 안 쓰면 그대로다)', () => {
+    const src = fs.readFileSync(SRC, 'utf8')
+    expect(src).toMatch(/writePrioState\(DB, 0, 0, CLASSIFY_RULES_VERSION\)/)
+    expect(src).toMatch(/writePrioState\(DB, prio!\.tier, nextCursor, CLASSIFY_RULES_VERSION\)/)
+    expect(SRCP).toMatch(/readPrioState\(DB, rulesVersion\)/)
   })
 })

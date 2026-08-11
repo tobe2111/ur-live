@@ -33,20 +33,36 @@ export type ReclassifyRow = {
   phone: string | null; email: string | null; contact_source: string | null
 }
 
-/** 저장된 우선순위 상태를 읽는다. 깨진 값은 처음부터 — 재검사는 멱등이라 손해가 없다. */
-export async function readPrioState(DB: D1Database): Promise<{ tier: number; cursor: number }> {
+/**
+ * 저장된 우선순위 상태를 읽는다. 깨진 값은 처음부터 — 재검사는 멱등이라 손해가 없다.
+ *
+ * 🩸 **규칙 버전이 바뀌면 커서를 리셋한다** (2026-08-11 라이브에서 실제로 물렸다).
+ *   08-10 판정 때 webkr 잔량이 **981 에서 한 건도 안 줄어** 있었다. 레인은 정상이었다
+ *   (`ok=true`, 47분 전 실행) — `phase=prio:local` 이었다. 즉 **커서가 webkr 을 이미 지나쳐
+ *   다음 티어로 넘어간 뒤에 규칙 버전이 8로 올라갔고**, 그 981건은 다시 대상이 됐는데
+ *   커서가 지나간 자리라 **한 바퀴(38일)를 돌기 전엔 안 본다.**
+ *
+ *   ⇒ 버전 bump 의 의미는 *"전부 다시 봐라"* 다. 그러면 **우선순위 큐도 처음부터 다시 서야 한다.**
+ *   안 그러면 우선순위가 "첫 배포 때 한 번만" 듣는 장치가 된다 — 규칙은 앞으로도 계속 바뀐다.
+ */
+export async function readPrioState(DB: D1Database, rulesVersion?: number): Promise<{ tier: number; cursor: number }> {
   const raw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
     .bind(RECLASSIFY_PRIO_STATE).first<{ value: string }>().catch(() => null)
   try {
-    const p = raw?.value ? JSON.parse(raw.value) as { tier?: number; cursor?: number } : null
-    if (p) return { tier: Number(p.tier) || 0, cursor: Number(p.cursor) || 0 }
+    const p = raw?.value ? JSON.parse(raw.value) as { tier?: number; cursor?: number; v?: number } : null
+    if (p) {
+      // 버전이 다르면(=규칙이 바뀌었으면) 앞줄부터 다시. 미기록(구 상태)도 다른 것으로 친다.
+      if (rulesVersion != null && Number(p.v) !== rulesVersion) return { tier: 0, cursor: 0 }
+      return { tier: Number(p.tier) || 0, cursor: Number(p.cursor) || 0 }
+    }
   } catch { /* 깨진 값은 처음부터 */ }
   return { tier: 0, cursor: 0 }
 }
 
-export const writePrioState = (DB: D1Database, tier: number, cursor: number): Promise<unknown> =>
+/** ⚠️ `rulesVersion` 을 함께 적는다 — 안 적으면 위 리셋 판정이 영원히 "다르다"가 되어 커서가 안 전진한다. */
+export const writePrioState = (DB: D1Database, tier: number, cursor: number, rulesVersion?: number): Promise<unknown> =>
   DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind(RECLASSIFY_PRIO_STATE, JSON.stringify({ tier, cursor })).run().catch(() => null)
+    .bind(RECLASSIFY_PRIO_STATE, JSON.stringify({ tier, cursor, v: rulesVersion })).run().catch(() => null)
 
 /**
  * 우선순위 티어에서 다음 배치를 고른다. 비어 있으면 다음 티어로 넘어가고, 전부 비면 `null`
@@ -55,7 +71,7 @@ export const writePrioState = (DB: D1Database, tier: number, cursor: number): Pr
 export async function pickPriorityBatch(
   DB: D1Database, limit: number, rulesVersion: number,
 ): Promise<{ rows: ReclassifyRow[]; phase: string; tier: number } | null> {
-  let { tier, cursor } = await readPrioState(DB)
+  let { tier, cursor } = await readPrioState(DB, rulesVersion)
   while (tier < RECLASSIFY_PRIORITY_TIERS.length) {
     const srcs = RECLASSIFY_PRIORITY_TIERS[tier]
     const got = (await DB.prepare(
