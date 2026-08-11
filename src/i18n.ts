@@ -14,6 +14,39 @@ import { CRITICAL_I18N } from './i18n-critical'
 const SUPPORTED = ['ko', 'en', 'ja', 'zh', 'es', 'fr'] as const
 type Lang = typeof SUPPORTED[number]
 
+/**
+ * 🏷️ 2026-08-11 (AB 스윕 라이브 실측): **번역자용 표식이 사용자 화면에 나가고 있었다.**
+ *
+ * `scripts/check-i18n-sync.mjs --fix` 는 6개 언어의 **키 동수**를 맞추려고, 빠진 키를
+ * `"[TODO:en] 자주 묻는 질문"` 처럼 **ko 값에 마커를 붙여** 채운다. 번역자에게 "여기 아직 안 됐다"를
+ * 알리려는 표식인데, i18next 는 그 값을 그대로 렌더한다. 영어로 전환하고 `/faq` 를 열면 화면에
+ * 이렇게 뜬다:
+ *
+ *     [TODO:en] 자주 묻는 질문
+ *     [TODO:en] 무엇을 도와드릴까요?
+ *
+ * 실측: `[TODO:*]` 가 **언어당 289개**(ko 0). 대부분 소비자 표면이다 —
+ * `introduce` 65 · `register` 37 · `faq` 36 · `orderDetail` 35 · `groupbuy` 28 · `referral` 18.
+ * 언어 전환은 마이 페이지(`LanguageSection`)에 **실제로 노출**돼 있어 누구나 이 상태에 빠질 수 있다.
+ *
+ * ⚠️ **키를 지우면 안 된다** — `check-i18n-sync` 가 키 동수를 강제하므로 가드가 깨진다. 그래서
+ * **렌더 직전에 마커만 벗긴다.** 결과는 i18next 의 ko 폴백과 같은 화면(한국어)이고, 마커는 사라진다.
+ * 마커가 없는 값에는 아무 일도 하지 않는다.
+ *
+ * ⚠️ **이건 번역이 아니다.** 289개를 실제로 번역하는 것은 별건이고, 이 서비스가 한국 전용
+ * (`urdeal.kr` · GLOBAL 폐기 #804)이라 우선순위는 대표 판단 사항이다. 이 안전판은 그 판단과
+ * 무관하게 "표식이 사용자에게 보이는" 것만 영구히 막는다.
+ */
+export const TODO_MARKER = /^\[TODO:[a-z]{2}\]\s*/
+
+const stripTodoMarker = {
+  type: 'postProcessor' as const,
+  name: 'stripTodoMarker',
+  process(value: string) {
+    return typeof value === 'string' ? value.replace(TODO_MARKER, '') : value
+  },
+}
+
 // 빌드 시 각 언어별 dynamic import 함수 (각각 별도 청크 생성)
 const loaders: Record<Lang, () => Promise<{ default: Record<string, unknown> }>> = {
   ko: () => import('../public/locales/ko/translation.json'),
@@ -95,6 +128,7 @@ async function bootstrap() {
   // 우선 i18next init - critical resources 로 시작 (background 에 full translation 추가)
   await i18n
     .use(LanguageDetector)
+    .use(stripTodoMarker)
     .use(initReactI18next)
     .init({
       lng: initialLanguage,
@@ -113,6 +147,8 @@ async function bootstrap() {
       // 첫 로드 동안 화면이 한순간 빈 텍스트로 보이는 걸 막음
       partialBundledLanguages: true,
       react: { useSuspense: false },
+      // 🏷️ 번역자용 `[TODO:xx]` 표식이 화면에 나가지 않게 한다(위 stripTodoMarker 주석 참조).
+      postProcess: ['stripTodoMarker'],
     })
 
   // 초기 언어 + fallback 언어 동시 로드 (대부분 같은 ko 라 1번)
