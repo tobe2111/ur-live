@@ -361,11 +361,33 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
       return runNaraContractCollect(env)
     },
   },
+  /**
+   * 🏛️ **나라장터 조달업체** — 대행사 새 수집 루트 (2026-08-11 대표 *"아직 손 안댄거 다 해줘"*).
+   *   근거·왜 되살렸는지(코드 12 오독으로 지워졌던 레인)는 `nara-vendor-collect.ts` 헤더.
+   *   ⚠️ 게이트는 **opt-out**(기본 ON) — 계약 레인과 같은 규약(2026-08-04 대표 "자동으로 데이터 나오게끔").
+   */
+  'collect-nara-vendor': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_NARA_VENDOR_ENABLED?: string }).ADS_NARA_VENDOR_ENABLED === 'false') return { skipped: 'gate_off' }
+      if (new Date().getUTCHours() !== 15) return { skipped: 'off_hour' }
+      const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect')
+      return runNaraVendorCollect(env)
+    },
+  },
+  /**
+   * 🩸 **주기가 두 벌로 갈려 있었다** (2026-08-11 라이브 실측).
+   *   2026-08-10 에 cron 게이트를 `dailyAt(21)` → `everyNHours(4, 1)` 로 올렸는데(대표 "셋 다 해줘"),
+   *   그 게이트는 `!laneAlarmDrivesEnrich(env)` 뒤에 있고 **라이브는 알람이 몬다.** 여기 등록부는
+   *   `!== 21` 그대로였다 ⇒ **증설이 배포는 됐는데 한 번도 발효되지 않았다**(`ads_notice_stats`:
+   *   `last_run 2026-08-10 21:00`, `total_runs 11` = 계속 일 1회). 에러도 경보도 없었다.
+   *   ⇒ 같은 레인의 주기는 **두 곳이 반드시 같아야 한다** — `ads-lane-cadence-parity` 가 강제한다.
+   */
   'scan-notices': {
     runsPerHour: 1,
     run: async (env) => {
       if ((env as unknown as { ADS_NOTICE_ENABLED?: string }).ADS_NOTICE_ENABLED !== 'true') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 21) return { skipped: 'off_hour' }
+      if (new Date().getUTCHours() % 4 !== 1) return { skipped: 'off_hour' }
       const { runNoticeScan } = await import('@/features/marketing/api/notice-scan')
       return runNoticeScan(env)
     },

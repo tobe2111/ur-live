@@ -72,6 +72,113 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '회차 퍼널을 UTC 로 묶는다(한국 기준 하루가 두 날로 갈린다)',
+    file: 'src/features/marketing/api/influencer-collect-funnel.ts',
+    find: 'export const kstDay = (ms: number): string => new Date(ms + 9 * 3600_000).toISOString().slice(0, 10)',
+    replace: 'export const kstDay = (ms: number): string => new Date(ms).toISOString().slice(0, 10)',
+    test: 'src/tests/unit/ads-collect-funnel.test.ts',
+    why:
+      '워커 런타임은 UTC 다. UTC 로 자르면 **한국 기준 하루가 두 날에 갈려** 일별 비교가 통째로 무의미해진다 — ' +
+      '이 시계열의 존재 이유가 "어제와 오늘이 왜 다른가"인데 그 축이 어긋난다. ' +
+      '이 레포가 반복해 틀린 자리라(CLAUDE.md 시각 규칙 · `check-utc-date-parse`) 경계값으로 못 박았다.',
+  },
+  {
+    name: '회차 퍼널이 이전 값을 안 이어받는다(매 회차 리셋 — 시계열이 안 쌓인다)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '    funnel: appendCollectFunnel(prev?.funnel, {',
+    replace: '    funnel: appendCollectFunnel(undefined, {',
+    test: 'src/tests/unit/ads-collect-funnel.test.ts',
+    why:
+      '`prev?.funnel` 을 안 넘기면 매 회차 빈 시계열로 시작해 **하루치 한 줄만 남는다** — 화면엔 값이 보이니 ' +
+      '고장으로 안 읽히고, 다음 세션은 또 "기록이 없다"로 시작한다(2026-08-11 조사가 오래 걸린 이유가 정확히 그것). ' +
+      '⚠️ 첫 초안의 주입은 `...(false ? {` 로 감싸는 것이었는데 **원본 문자열이 그대로 남아** 배선 검사가 계속 초록이었다 — ' +
+      '되돌려-검증도 틀릴 수 있다는 걸 또 확인했다.',
+  },
+  {
+    name: '나라장터 업체 레인이 코드 12 밖에서도 후보 오퍼레이션을 돌린다(예산 낭비)',
+    file: 'src/features/marketing/api/nara-vendor-collect.ts',
+    find: "    if (i === 0 && !r.items.length && r.code === '12' && !envOp) {",
+    replace: '    if (i === 0 && !r.items.length && !envOp) {',
+    test: 'src/tests/unit/ads-nara-vendor.test.ts',
+    why:
+      '코드 12(주소 부재)는 **오퍼레이션 오타와 구분되지 않아** 후보를 한 번 더 쏘는 게 맞다. 그런데 조건을 ' +
+      '넓혀 키·트래픽·파라미터 오류에도 순회하면 **같은 실패를 N배로 반복**해 인보케이션당 50뿐인 ' +
+      '서브리퀘스트를 잘 도는 레인에서 빼앗는다(공정위 레인에서 실제로 겪었다). ' +
+      '⚠️ 이 레인은 바로 그 코드 12 를 "주소가 폐기됐다"로 오독해 2026-08-04 에 **통째로 삭제됐던** 것이다.',
+  },
+  {
+    name: '나라장터 업체 레인에 회차 마감선이 없다(커서 전진 0 으로 같은 페이지 무한 반복)',
+    file: 'src/features/marketing/api/nara-vendor-collect.ts',
+    find: "    if (Date.now() >= runDeadline) { stoppedBy = 'deadline'; break }",
+    replace: '    // (제거)',
+    test: 'src/tests/unit/ads-nara-vendor.test.ts',
+    why:
+      '커서 저장이 루프 **뒤**에 있으므로, 마감선이 없으면 인보케이션 한도에 맞아 죽을 때 저장에 도달하지 ' +
+      '못하고 다음 회차가 **같은 페이지를 또 훑는다(전진 0)**. 에러가 안 뜨니 "느린가 보다"로 읽힌다 — ' +
+      'commerce(08-02)·quality(08-03)가 정확히 그렇게 조용히 멈췄고, **지워진 옛 버전의 이 레인에는 ' +
+      '이 마감선이 없었다**(그래서 되살리면서 넣었다).',
+  },
+  {
+    name: '레인 주기가 cron 과 알람에서 갈린다(증설이 조용히 발효 안 된다)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: "      if (new Date().getUTCHours() % 4 !== 1) return { skipped: 'off_hour' }",
+    replace: "      if (new Date().getUTCHours() !== 21) return { skipped: 'off_hour' }",
+    test: 'src/tests/unit/ads-lane-cadence-parity.test.ts',
+    why:
+      '2026-08-10 에 대표 지시로 공고 스캔을 일 1회 → 4시간마다로 올렸는데, cron 게이트만 고쳤고 그 게이트는 ' +
+      '`!laneAlarmDrivesEnrich(env)` 뒤에 있다(**라이브는 알람이 몬다**). 등록부는 `!== 21` 그대로라 ' +
+      '**증설이 배포는 됐는데 한 번도 발효되지 않았다**(`ads_notice_stats`: last_run 21:00 · total_runs 11). ' +
+      '에러도 경보도 없다 — 이 레포의 "실패가 아니라 조용한 부재" 클래스이고, 이번엔 대표가 요청한 기능 자체가 그렇게 사라졌다.',
+  },
+  {
+    name: '알람이 모는 레인을 cron 도 무조건 킥한다(같은 큐를 두 번 집는다)',
+    file: 'src/worker-ads/index.ts',
+    find: "  if (!laneAlarmOn && (env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {",
+    replace: "  if ((env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {",
+    test: 'src/tests/unit/ads-lane-cadence-parity.test.ts',
+    why:
+      '알람과 cron 이 같이 돌면 **같은 큐를 두 번 집는다** — 이 큐의 SELECT 는 선점이 아니라 정렬+LIMIT 이라 ' +
+      '중복이 조용하고 예산만 탄다(`lane-alarm-boot.ts` 헤더). 게다가 그 중복이 부모 CPU 를 두 배로 태워 ' +
+      '꼬리 레인을 자른다. ⚠️ 이 판정은 **바로 감싸는 `if`** 를 봐야 한다 — 첫 초안은 "위 8줄 안에 가드가 ' +
+      '있으면 통과" 였는데, 바로 위 블록의 가드를 자기 것으로 착각해 `enrich-prospects` 를 통과시켰다.',
+  },
+  {
+    name: '도메인 예산 재분배가 총량을 늘린다(부모가 CPU 로 죽는다)',
+    file: 'src/worker-ads/dispatch-budget.ts',
+    find: '    if (spare > 0) { out[d] -= spare; slack += spare }',
+    replace: '    if (spare > 0) { slack += spare }',
+    test: 'src/tests/unit/ads-dispatch-slack.test.ts',
+    why:
+      '총량은 CPU 한도가 정한다 — `FREE_LANES_PER_TICK` docblock 의 실측대로 8 로 두면 **절반이 죽었다**' +
+      '(자식 CPU 가 호출자 몫이라 동시 레인 수 × 각자 시간으로 쌓인다). 재분배는 **같은 총량 안에서 자리를 ' +
+      '옮기는 것**이지 늘리는 게 아니다. 이 한 줄이 빠지면 잉여를 빼지 않고 나눠 주기만 해서 Σ 가 커지고, ' +
+      '그 실측을 무시하고 부모를 죽이던 자리로 되돌아간다.',
+  },
+  {
+    name: '침묵 요약이 임계를 반올림한다(150분을 "3시간"이라 말한다)',
+    file: 'src/worker-ads/silence-digest.ts',
+    find: '(임계 ${fmtDur(l.gap_min)})',
+    replace: '(임계 ${Math.round(l.gap_min / 60)}시간)',
+    test: 'src/tests/unit/ads-silence-digest-accuracy.test.ts',
+    why:
+      '대표 신고 2026-08-11 *"디스코드 알람이 부정확한가봐"*. 실제 임계 **150분**이 `Math.round(2.5)` = ' +
+      '**3시간** 으로 찍혀, 메시지가 *"3.0시간째 침묵 (임계 3시간)"* — **넘지도 않은 것처럼** 읽혔다. ' +
+      '숫자가 맞아도 **경보가 자기 근거를 틀리게 말하면 틀린 경보**이고, 그러면 다음부터 안 읽힌다.',
+  },
+  {
+    name: '침묵 요약이 한 번만 표본을 뜬다(자기와 같은 회차를 못 본다)',
+    file: 'src/worker-ads/silence-digest.ts',
+    find: '      silent = confirmSilent(first, pickSilentLanes(await listCronHeartbeats(DB)))',
+    replace: '      silent = first',
+    test: 'src/tests/unit/ads-silence-digest-accuracy.test.ts',
+    why:
+      '이 요약은 `gates.dailyAt(23)` 로 **레인들과 같은 정각 회차**에 도는데, 하트비트는 묶어서 나중에 ' +
+      '쓴다(`beat-batch.ts` — 대기 3초 + 레인 실행시간, 실측 최장 26초). 그래서 스냅샷 시점엔 **그 회차 ' +
+      '실행분이 아직 기록에 없다.** 2026-08-11 실측: 23:00:26Z 요약이 `collect-maker` 를 "3.0시간째 침묵" ' +
+      '이라 했는데 그 레인의 마지막 실행은 **23:00Z(같은 회차)** 였다 — 멈춘 적이 없다. ' +
+      '⇒ 순간값 한 번으로 지속 상태를 단정하지 않는다. 두 표본의 **교집합**만 신고한다.',
+  },
+  {
     name: '삭제된 레인을 나이로만 판정한다(16일간 "진짜 침묵"으로 보인다)',
     file: 'src/worker/utils/cron-beat-retirement.ts',
     find: "  if (knownBaseNames?.size && raw.startsWith('ads:') && !knownBaseNames.has(beatBaseName(raw)) && age > RETIRED_MIN_AGE_MIN) return 'retired'",
@@ -2707,16 +2814,28 @@ const MUTATIONS = [
   },
   {
     name: '집중 축이 다시 앞머리 독점(일반 풀 커서 동결 — 커버리지 붕괴)',
-    // ⚠️ 600줄 래칫으로 병합 로직이 `influencer-keyword-rotation.ts` 로 추출됐다(순수 이동).
-    //   앵커가 안 따라오면 이 주입은 "find 가 소스에 없음"으로 낡은 지도 판정을 받는다.
-    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
-    find: '  for (let i = 0; i < Math.max(focus.length, pri.length, gen.length); i++) {',
-    replace: '  out.push(...focus)\n  for (let i = 0; i < Math.max(pri.length, gen.length); i++) {',
+    // ⚠️ 앵커가 두 번 이사했다: 600줄 래칫으로 이 파일에 추출(2026-08-04) → 병합이 1:1:1 에서
+    //   **몫 비례**로 바뀜(2026-08-11). 지키는 불변식(비지 않은 축이 앞 5개 안)은 그대로다.
+    file: 'src/features/marketing/api/influencer-keyword-order.ts',
+    find: '      const key = (taken[i] + 0.5) / pools[i].length   // 몫이 클수록 촘촘히 배치된다',
+    replace: '      const key = i === 0 ? -1 : (taken[i] + 0.5) / pools[i].length',
     test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
     why:
       '회차는 `planned 16 → processed 5`(예산 56/56 소진)다. 집중 축을 앞머리에 두면 4개가 앞자리를 먹고 ' +
       '일반 풀엔 1개만 남는다. `prefixDone` 은 처리된 **앞부분만** 세므로 뒤 풀은 커서도 안 움직여 ' +
       '**같은 키워드를 무한 재실행**한다 — 실측: 활성 399 중 323개가 이틀째 미실행, 24h 실행 54개뿐.',
+  },
+  {
+    name: '병합이 다시 1:1:1(잘림이 비대칭 — 큰 축만 깎임)',
+    file: 'src/features/marketing/api/influencer-keyword-order.ts',
+    find: '      const key = (taken[i] + 0.5) / pools[i].length   // 몫이 클수록 촘촘히 배치된다',
+    replace: '      const key = taken[i] + 0.5',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '세 축을 한 개씩 번갈아 놓으면 회차가 예산에서 끊길 때 **작은 축은 몫을 다 지키고 큰 축만 깎인다.** ' +
+      '라이브 실측(2026-08-11): 풀 집중 25·우선 358·일반 76 에서 계획 1/6/2 인데 예산 5 에서 잘려 ' +
+      '우선이 6→2 로 무너졌다. 키워드 1개당 회전율이 설계(1.5:1:0.5) 대비 **7.3 : 1 : 3.2** — ' +
+      '대표가 정한 축 우선순위가 코드에서 뒤집혀 본업 축(맛집·뷰티·숙소·공동구매, 전체의 78%)이 가장 느렸다.',
   },
   {
     name: '티스토리가 블로거 뒤로 밀림(잔여를 다 뺏겨 영원히 0)',

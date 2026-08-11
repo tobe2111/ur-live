@@ -169,15 +169,24 @@ describe('도메인 격리 — 이게 "분리" 의 실체다', () => {
 
     const a = selectLanesByDomain(few, 8, {}, 0)
     const b = selectLanesByDomain(many, 8, {}, 0)
-    expect(b.perDomain.influencer.budget).toBe(a.perDomain.influencer.budget)
-    expect(b.perDomain.influencer.run.length).toBe(a.perDomain.influencer.run.length)
 
-    // 🐛 **위 두 줄만 있으면 헛돈다** — 주입 하네스가 잡아냈다. 두 픽스처를 *같은 코드*에서 비교하니
-    //   "도메인마다 전체 예산을 준다" 같은 전역 결함은 양쪽에 똑같이 적용돼 차이가 0 이 된다.
-    //   ⇒ **절대값을 박는다**: 인플루언서 4개 중 자기 몫 3개만 돌고, 회차 총합이 예산을 안 넘는다.
-    expect(b.perDomain.influencer.budget).toBe(3)
+    /**
+     * 🔧 **2026-08-11 — 등식에서 하한으로** (`redistributeSlack` 도입).
+     *   원래 여기는 `b.budget === a.budget` 이었다. 그런데 그 등식은 서로 다른 두 가지를 한데
+     *   묶고 있었다: **① 남이 늘어도 내 몫이 안 줄어든다(하한)** 와 **② 남이 놀아도 내가 더는
+     *   못 받는다(상한)**. 격리가 지키려던 것은 ①뿐이다 — ②는 라이브에서 **여섯 자리를 놀리면서
+     *   한 레인을 미루는** 손해로 나타났다(`ads_dispatch_last` 02:00 UTC 실측).
+     *   ⇒ 하한은 그대로 못 박고, 상한만 푼다. **`redistributeSlack` 은 쓰지 않는 몫만 옮기므로
+     *      어떤 도메인의 `run` 수도 이 하한 밑으로 내려갈 수 없다.**
+     */
+    expect(b.perDomain.influencer.budget).toBe(3)       // 경쟁이 있으면 대표 확정 비율 그대로
     expect(b.perDomain.influencer.run.length).toBe(3)   // 몫 3 < 후보 4
     expect(b.run.length).toBeLessThanOrEqual(8)         // 도메인 합이 회차 예산 안
+    // 하한: B2B 가 10개 늘어도 인플루언서가 자기 몫 아래로 안 내려간다(격리의 실체).
+    expect(b.perDomain.influencer.run.length).toBeGreaterThanOrEqual(3)
+    // 상한이 풀린 결과 — 남이 놀면 더 받는다(그게 이 회차의 낭비를 없앤다).
+    expect(a.perDomain.influencer.run.length).toBeGreaterThanOrEqual(b.perDomain.influencer.run.length)
+    expect(a.run.length).toBeLessThanOrEqual(8)
   })
 
   it('도메인별 상세를 스냅샷에 남긴다 — "누가 굶었나"가 보여야 한다', () => {

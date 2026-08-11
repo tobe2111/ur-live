@@ -90,6 +90,7 @@ export async function getAutoCollectStats(DB: D1Database): Promise<AutoCollectSt
 export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS, type YtPickKeyword, MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
 import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotation'
 import { buildRotationPools } from './keyword-contact-yield'
+import { appendCollectFunnel } from './influencer-collect-funnel'
 import { mineHashtags } from './influencer-hashtag-mine'
 
 // 📅 YT 쿼터 하루 경계·검색 예산·검색 각도 → `influencer-yt-quota.ts`(600줄 래칫 분리).
@@ -548,6 +549,13 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
     cursor: nextCursor, pri_cursor: nextPriCursor, focus_cursor: nextFocusCursor, focus_n: nFocus, promoted, kw_unjudged: starvedIds.size, ...(kwAuto ? { kw_auto: kwAuto } : {}), youtube_quota_hit: quotaHit, diag,
     picks: { planned: finalPicks.length, processed: processedIds.size, from_yt: fromYt, from_cursor: fromCursor },
+    // 📈 회차 퍼널을 시계열로 누적 — **새 쓰기 0개**(이 blob 이 어차피 저장된다). 근거는 그 모듈 헤더.
+    funnel: appendCollectFunnel(prev?.funnel, {
+      at: Date.now(), saved, planned: finalPicks.length, processed: processedIds.size,
+      spent: budgetTotal - budget.left, budget: budgetTotal,
+      yt: { found: diag.yt.found, saved: diag.yt.saved, spend: spendBy.yt },
+      nb: { found: diag.naver.found, saved: diag.naver.saved, spend: spendBy.naver },
+    }),
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
     // 🧾 소스별 서브리퀘스트 실사용 — `processed 5 / planned 16` 의 범인을 **재서** 찾기 위한 값(위 spendBy 주석).
     //   해석: 합이 spent 에 근접하면 그 소스가 병목. 특히 yt/naver 가 크면 발굴 시점 enrichMax(8/5)가 원인이고,

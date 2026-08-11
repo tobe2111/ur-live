@@ -5494,8 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 148건 · 최신순 · 이 목록은 자동 생성된다._
+_총 150건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-08-11**
+- [웹푸시 권유 팝업 제거 (2026-08-11)](handoff/2026-08-11-push-prompt-removed.md)
+- [키워드 순환 `starved` — 배분이 아니라 **잘림**이 범인이었다 (2026-08-11)](handoff/2026-08-11-keyword-merge-proportional.md)
 **2026-08-10**
 - [측정 샤드 2 → 4 — 하루 관측이 조건을 채웠다](handoff/2026-08-10-shards-4.md)
 **2026-08-09**

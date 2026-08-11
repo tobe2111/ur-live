@@ -487,6 +487,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   if (!laneAlarmOn && (env as unknown as { ADS_NARA_CONTRACT_ENABLED?: string }).ADS_NARA_CONTRACT_ENABLED !== 'false') {
     gates.dailyAt(23, '/__ads/collect-nara-contract', async () => { const { runNaraContractCollect } = await import('@/features/marketing/api/nara-contract-collect'); return runNaraContractCollect(env) })
   }
+  // 🏛️ 나라장터 **조달업체**(사용자정보) — 대행사 새 수집 루트. 계약 레인과 같은 opt-out 규약.
+  //   ⏰ 15 UTC(KST 00시) — 16~23 이 이미 다 찼다(nps·sweep-mx·daily-batch·sweep-nts·localdata/market·
+  //     scan-notices·franchise·nara-contract). 같은 시각에 겹치면 부모 CPU 를 나눠 쓰다 꼬리가 잘린다.
+  if (!laneAlarmOn && (env as unknown as { ADS_NARA_VENDOR_ENABLED?: string }).ADS_NARA_VENDOR_ENABLED !== 'false') {
+    gates.dailyAt(15, '/__ads/collect-nara-vendor', async () => { const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect'); return runNaraVendorCollect(env) })
+  }
   // 🏛️ 사업자 폐업 스윕 — 일 1회(hourUTC===19 = KST 04시). 사업자번호 보유 리드 100건/일 국세청 상태조회 →
   //   폐업이면 active=0(죽은 연락처에 아웃리치 낭비 방지). fail-soft(활용신청 전엔 no-op + note).
   if (!laneAlarmOn && env.ADS_COMPANY_COLLECT_ENABLED === 'true') {

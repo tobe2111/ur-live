@@ -215,6 +215,43 @@ describe('🔀 세 풀 병합 — 잘릴 때 공평하게 잘린다', () => {
     expect(merge([], [201, 202], [301, 302])).toEqual([201, 301, 202, 302])
   })
 
+  /**
+   * ⚖️ **잘림이 비례해야 한다** (2026-08-11 — `starved` 경보 + 라이브 실측).
+   *
+   * 1:1:1 로 번갈아 놓으면 회차가 예산에서 끊길 때 **작은 축은 몫을 다 지키고 큰 축만 깎인다.**
+   * 라이브 풀(집중 25 · 우선 358 · 일반 76)에서 `planKeywordSplit(9)` = 1/6/2 인데 예산이 5 에서
+   * 끊겨, 우선 축(전체의 78%·본업)이 6개 중 4개를 잃고 **키워드 1개당 회전율이 설계의 1/5** 이 됐다
+   * (24h 실측 focus:pri:gen = 7.3 : 1 : 3.2, 설계 목표 1.5 : 1 : 0.5).
+   *
+   * ⚠️ 완전 비례를 요구하진 않는다 — 정수 5개를 1:6:2 로 쪼갤 수 없고, `planKeywordSplit` 의
+   *   최소 1슬롯 바닥(불변식 ④)도 의도된 대가다. 고정하는 것은 **"가장 큰 몫을 가진 축이
+   *   앞부분에서도 가장 많아야 한다"** — 옛 구현은 이걸 깼다(우선 2 = 일반 2).
+   */
+  it('🔒 예산에서 잘려도 큰 몫 축이 앞부분에서 최다다 — 라이브 풀(1/6/2)', () => {
+    const head = merge([11], [21, 22, 23, 24, 25, 26], [31, 32]).slice(0, 5)
+    const nPri = head.filter(x => x >= 20 && x < 30).length
+    const nGen = head.filter(x => x >= 30).length
+    const nFocus = head.filter(x => x < 20).length
+    expect(nPri, `우선 몫 6/9 인데 앞 5개에 ${nPri}개뿐 — 잘림이 비대칭이다`).toBeGreaterThan(nGen)
+    expect(nPri).toBeGreaterThan(nFocus)
+    expect(nPri, '옛 1:1:1 구현이 내던 값(2)으로 회귀하면 안 된다').toBeGreaterThanOrEqual(3)
+  })
+
+  it('🔒 비지 않은 축은 여전히 앞 5개 안에 들어온다(2026-08-04 불변식 유지)', () => {
+    const head = merge([11], [21, 22, 23, 24, 25, 26], [31, 32]).slice(0, 5)
+    expect(head.filter(x => x < 20), '집중').not.toHaveLength(0)
+    expect(head.filter(x => x >= 30), '일반').not.toHaveLength(0)
+  })
+
+  it('🔒 풀 내부 상대 순서는 보존된다 — 어기면 prefixDone 커서가 깨진다', () => {
+    const merged = merge([11, 12], [21, 22, 23], [31, 32, 33, 34])
+    const only = (lo: number, hi: number) => merged.filter(x => x >= lo && x < hi)
+    expect(only(10, 20)).toEqual([11, 12])
+    expect(only(20, 30)).toEqual([21, 22, 23])
+    expect(only(30, 40)).toEqual([31, 32, 33, 34])
+    expect(merged).toHaveLength(9)   // 하나도 잃지 않는다
+  })
+
   it('🔌 배선 — 집중 축 프리픽스로 회귀하지 않는다', () => {
     const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')  // 주석 제외 — 근거 설명에 옛 코드가 인용된다
