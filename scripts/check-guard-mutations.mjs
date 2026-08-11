@@ -72,6 +72,30 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '나라장터 업체 레인이 코드 12 밖에서도 후보 오퍼레이션을 돌린다(예산 낭비)',
+    file: 'src/features/marketing/api/nara-vendor-collect.ts',
+    find: "    if (i === 0 && !r.items.length && r.code === '12' && !envOp) {",
+    replace: '    if (i === 0 && !r.items.length && !envOp) {',
+    test: 'src/tests/unit/ads-nara-vendor.test.ts',
+    why:
+      '코드 12(주소 부재)는 **오퍼레이션 오타와 구분되지 않아** 후보를 한 번 더 쏘는 게 맞다. 그런데 조건을 ' +
+      '넓혀 키·트래픽·파라미터 오류에도 순회하면 **같은 실패를 N배로 반복**해 인보케이션당 50뿐인 ' +
+      '서브리퀘스트를 잘 도는 레인에서 빼앗는다(공정위 레인에서 실제로 겪었다). ' +
+      '⚠️ 이 레인은 바로 그 코드 12 를 "주소가 폐기됐다"로 오독해 2026-08-04 에 **통째로 삭제됐던** 것이다.',
+  },
+  {
+    name: '나라장터 업체 레인에 회차 마감선이 없다(커서 전진 0 으로 같은 페이지 무한 반복)',
+    file: 'src/features/marketing/api/nara-vendor-collect.ts',
+    find: "    if (Date.now() >= runDeadline) { stoppedBy = 'deadline'; break }",
+    replace: '    // (제거)',
+    test: 'src/tests/unit/ads-nara-vendor.test.ts',
+    why:
+      '커서 저장이 루프 **뒤**에 있으므로, 마감선이 없으면 인보케이션 한도에 맞아 죽을 때 저장에 도달하지 ' +
+      '못하고 다음 회차가 **같은 페이지를 또 훑는다(전진 0)**. 에러가 안 뜨니 "느린가 보다"로 읽힌다 — ' +
+      'commerce(08-02)·quality(08-03)가 정확히 그렇게 조용히 멈췄고, **지워진 옛 버전의 이 레인에는 ' +
+      '이 마감선이 없었다**(그래서 되살리면서 넣었다).',
+  },
+  {
     name: '레인 주기가 cron 과 알람에서 갈린다(증설이 조용히 발효 안 된다)',
     file: 'src/worker-ads/lane-alarm-runners.ts',
     find: "      if (new Date().getUTCHours() % 4 !== 1) return { skipped: 'off_hour' }",

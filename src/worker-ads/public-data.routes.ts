@@ -73,6 +73,12 @@ publicDataRoutes.post('/__ads/collect-nara-contract', lane(async (env) => {
   const { runNaraContractCollect } = await import('@/features/marketing/api/nara-contract-collect'); return runNaraContractCollect(env)
 }))
 
+// 🏛️ 나라장터 조달업체(사용자정보) — 광고·마케팅 계열 대행사 새 수집 루트(2026-08-11).
+//   ⚠️ 이 레인은 2026-08-04 에 코드 12 를 "주소 폐기"로 오독해 통째로 지워졌던 것이다 — 근거는 모듈 헤더.
+publicDataRoutes.post('/__ads/collect-nara-vendor', lane(async (env) => {
+  const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect'); return runNaraVendorCollect(env)
+}))
+
 // 🎓 나이스 학원·교습소 · 🏥 심평원 병원.
 publicDataRoutes.post('/__ads/collect-neis', lane(async (env) => {
   const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return runNeisAcademyCollect(env, 6)
