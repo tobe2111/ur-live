@@ -72,6 +72,29 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '회차 퍼널을 UTC 로 묶는다(한국 기준 하루가 두 날로 갈린다)',
+    file: 'src/features/marketing/api/influencer-collect-funnel.ts',
+    find: 'export const kstDay = (ms: number): string => new Date(ms + 9 * 3600_000).toISOString().slice(0, 10)',
+    replace: 'export const kstDay = (ms: number): string => new Date(ms).toISOString().slice(0, 10)',
+    test: 'src/tests/unit/ads-collect-funnel.test.ts',
+    why:
+      '워커 런타임은 UTC 다. UTC 로 자르면 **한국 기준 하루가 두 날에 갈려** 일별 비교가 통째로 무의미해진다 — ' +
+      '이 시계열의 존재 이유가 "어제와 오늘이 왜 다른가"인데 그 축이 어긋난다. ' +
+      '이 레포가 반복해 틀린 자리라(CLAUDE.md 시각 규칙 · `check-utc-date-parse`) 경계값으로 못 박았다.',
+  },
+  {
+    name: '회차 퍼널이 이전 값을 안 이어받는다(매 회차 리셋 — 시계열이 안 쌓인다)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '    funnel: appendCollectFunnel(prev?.funnel, {',
+    replace: '    funnel: appendCollectFunnel(undefined, {',
+    test: 'src/tests/unit/ads-collect-funnel.test.ts',
+    why:
+      '`prev?.funnel` 을 안 넘기면 매 회차 빈 시계열로 시작해 **하루치 한 줄만 남는다** — 화면엔 값이 보이니 ' +
+      '고장으로 안 읽히고, 다음 세션은 또 "기록이 없다"로 시작한다(2026-08-11 조사가 오래 걸린 이유가 정확히 그것). ' +
+      '⚠️ 첫 초안의 주입은 `...(false ? {` 로 감싸는 것이었는데 **원본 문자열이 그대로 남아** 배선 검사가 계속 초록이었다 — ' +
+      '되돌려-검증도 틀릴 수 있다는 걸 또 확인했다.',
+  },
+  {
     name: '나라장터 업체 레인이 코드 12 밖에서도 후보 오퍼레이션을 돌린다(예산 낭비)',
     file: 'src/features/marketing/api/nara-vendor-collect.ts',
     find: "    if (i === 0 && !r.items.length && r.code === '12' && !envOp) {",
