@@ -2789,16 +2789,28 @@ const MUTATIONS = [
   },
   {
     name: '집중 축이 다시 앞머리 독점(일반 풀 커서 동결 — 커버리지 붕괴)',
-    // ⚠️ 600줄 래칫으로 병합 로직이 `influencer-keyword-rotation.ts` 로 추출됐다(순수 이동).
-    //   앵커가 안 따라오면 이 주입은 "find 가 소스에 없음"으로 낡은 지도 판정을 받는다.
-    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
-    find: '  for (let i = 0; i < Math.max(focus.length, pri.length, gen.length); i++) {',
-    replace: '  out.push(...focus)\n  for (let i = 0; i < Math.max(pri.length, gen.length); i++) {',
+    // ⚠️ 앵커가 두 번 이사했다: 600줄 래칫으로 이 파일에 추출(2026-08-04) → 병합이 1:1:1 에서
+    //   **몫 비례**로 바뀜(2026-08-11). 지키는 불변식(비지 않은 축이 앞 5개 안)은 그대로다.
+    file: 'src/features/marketing/api/influencer-keyword-order.ts',
+    find: '      const key = (taken[i] + 0.5) / pools[i].length   // 몫이 클수록 촘촘히 배치된다',
+    replace: '      const key = i === 0 ? -1 : (taken[i] + 0.5) / pools[i].length',
     test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
     why:
       '회차는 `planned 16 → processed 5`(예산 56/56 소진)다. 집중 축을 앞머리에 두면 4개가 앞자리를 먹고 ' +
       '일반 풀엔 1개만 남는다. `prefixDone` 은 처리된 **앞부분만** 세므로 뒤 풀은 커서도 안 움직여 ' +
       '**같은 키워드를 무한 재실행**한다 — 실측: 활성 399 중 323개가 이틀째 미실행, 24h 실행 54개뿐.',
+  },
+  {
+    name: '병합이 다시 1:1:1(잘림이 비대칭 — 큰 축만 깎임)',
+    file: 'src/features/marketing/api/influencer-keyword-order.ts',
+    find: '      const key = (taken[i] + 0.5) / pools[i].length   // 몫이 클수록 촘촘히 배치된다',
+    replace: '      const key = taken[i] + 0.5',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '세 축을 한 개씩 번갈아 놓으면 회차가 예산에서 끊길 때 **작은 축은 몫을 다 지키고 큰 축만 깎인다.** ' +
+      '라이브 실측(2026-08-11): 풀 집중 25·우선 358·일반 76 에서 계획 1/6/2 인데 예산 5 에서 잘려 ' +
+      '우선이 6→2 로 무너졌다. 키워드 1개당 회전율이 설계(1.5:1:0.5) 대비 **7.3 : 1 : 3.2** — ' +
+      '대표가 정한 축 우선순위가 코드에서 뒤집혀 본업 축(맛집·뷰티·숙소·공동구매, 전체의 78%)이 가장 느렸다.',
   },
   {
     name: '티스토리가 블로거 뒤로 밀림(잔여를 다 뺏겨 영원히 0)',
