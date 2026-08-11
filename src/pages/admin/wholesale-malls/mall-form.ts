@@ -36,10 +36,12 @@ export interface MallForm {
   license_label: string
   features_json: string
   company: Record<string, string>
-  // 📣 2026-08-09 과업①(상인회 SaaS) — 몰별 GA4 · 네이버 소유확인 · 방문자 고지문.
+  // 📣 2026-08-09 몰별 GA4 · 네이버 소유확인 · 방문자 고지문.
   ga_id: string
   naver_verification: string
   privacy_md: string
+  /** 🏬 2026-08-10 이 몰을 직접 관리할 운영자의 `users.id`. 비우면 어드민 전용(콘솔 비노출). */
+  operator_user_id: string
   active: boolean
 }
 
@@ -57,5 +59,5 @@ export const EMPTY: MallForm = {
   slug: '', name: '', host: '', brand_name: '', brand_color: '#111827',
   logo_url: '', deposit_account: '', commission_rate: '', categories_json: '',
   requires_license: false, consumer_path: true, license_label: '', features_json: '', company: {},
-  ga_id: '', naver_verification: '', privacy_md: '', active: true,
+  ga_id: '', naver_verification: '', privacy_md: '', operator_user_id: '', active: true,
 }

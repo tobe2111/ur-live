@@ -22,7 +22,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'creators', 'district', 'experience', 'fail', 'faq', 'following',
   'g', 'gb-market', 'gdpr', 'gift', 'group-buy', 'host',
   'influencer', 'interest-list', 'introduce', 'join', 'kakao-debug', 'local',
-  'login', 'map', 'meal-vouchers', 'my', 'my-appointments', 'my-commissions',
+  'login', 'mall-admin', 'map', 'meal-vouchers', 'my', 'my-appointments', 'my-commissions',
   'my-coupons', 'my-deal-history', 'my-orders', 'my-returns', 'my-reviews', 'my-stays',
   'my-store', 'my-vouchers', 'mypage', 'new-openings', 'notifications', 'orders',
   'partners', 'partnership', 'pay', 'payment', 'points', 'privacy',

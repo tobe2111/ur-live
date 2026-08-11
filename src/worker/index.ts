@@ -210,6 +210,8 @@ import { creatorClaimRoutes } from '../features/marketing/api/lead-claim'; // �
 // 📣 2026-08-09 캠페인 인플루언서 모집(방배 등) — 신청 = 파트너 등록(계정+동의+ref 링크)
 import { campaignApplyRoutes } from '../features/marketing/api/campaign-apply.routes';
 import { adminCampaignApplicationsRoutes } from '../features/admin/api/admin-campaign-applications.routes';
+// 🏬 2026-08-10 몰 운영자 콘솔(공구 서비스) — 카카오 세션 재사용, operator_user_id 로 "내 몰" 확정.
+import { mallAdminRoutes } from '../features/mall/api/mall-admin.routes';
 // ⏳ [TEMP-TEST] 도매 워커 배포 전 라이브 검증용 임시 마운트(아래 app.route 참조) — ur-wholesale 배포 시 제거.
 import { buyerPoolRoutes as buyerPoolTestRoutes } from '../features/supply/api/buyer-pool.routes';
 import { makerPoolRoutes as makerPoolTestRoutes } from '../features/supply/api/maker-pool.routes';
@@ -1615,6 +1617,8 @@ app.route('/api/products', featureProductsRoutes);
 app.route('/api/creator-apply', influencerApplyRoutes); app.route('/api/creator-claim', creatorClaimRoutes);
 // 📣 캠페인 신청(로그인 필수) + 어드민 신청자 조회/CSV — campaign_applications 는 메인 D1.
 app.route('/api/campaign', campaignApplyRoutes); app.route('/api/admin/campaign-applications', adminCampaignApplicationsRoutes);
+// 🏬 몰 운영자 콘솔 — 전 핸들러 requireAuth + 서버가 몰을 확정(URL 에 몰 id 없음 = IDOR 파라미터 부재).
+app.route('/api/mall-admin', mallAdminRoutes);
 // 💳 유어애즈 서비스몰 토스 결제 — 메인 워커 전용(/api/ads/* 위임과 별개 네임스페이스, TOSS 키가 여기 있음).
 //   게이트 ADS_TOSS_ENABLED(기본 OFF). SSOT 헬퍼 호출만(toss-gateway 무수정).
 app.route('/api/ads-pay', adsPayRoutes);

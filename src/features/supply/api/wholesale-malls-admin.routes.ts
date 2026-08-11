@@ -119,7 +119,7 @@ app.get('/', async (c) => {
   try {
     await ensureMallSchema(DB)
     const { results } = await DB.prepare(
-      `SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, COALESCE(consumer_path,0) AS consumer_path, ga_id, naver_verification, privacy_md, active, created_at
+      `SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, COALESCE(consumer_path,0) AS consumer_path, ga_id, naver_verification, privacy_md, operator_user_id, active, created_at
        FROM wholesale_malls ORDER BY id ASC LIMIT 200`
     ).all()
     return c.json({ success: true, malls: results ?? [] })
@@ -189,22 +189,38 @@ app.post('/', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-cre
     const active = Number(body.active) === 0 ? 0 : 1
     // 🏬 세션 ③-a: `urdeal.kr/{슬러그}` 경로로 열 몰인가. **기본 0(fail-closed)** — 명시할 때만 열린다.
     const consumer_path = Number(body.consumer_path) === 1 ? 1 : 0
-    // 📣 2026-08-09 과업① — 몰별 GA4/네이버 확인/고지문(PATCH 와 동일 게이트 — 한쪽만 막으면 생성으로 우회된다).
+    // 📣 2026-08-09 몰별 GA4/네이버 확인/고지문(PATCH 와 동일 게이트 — 한쪽만 막으면 생성으로 우회된다).
     const gaRaw = cleanText(body.ga_id, 30)
     if (gaRaw && !/^G-[A-Z0-9]{4,20}$/i.test(gaRaw)) return c.json({ success: false, error: 'GA4 측정 ID 형식(G-XXXXXXX)을 확인해주세요' }, 400)
     const ga_id = gaRaw ? gaRaw.toUpperCase() : null
     const naver_verification = cleanText(body.naver_verification, 80)
     if (naver_verification && !/^[a-zA-Z0-9]{8,80}$/.test(naver_verification)) return c.json({ success: false, error: '네이버 소유확인 값은 영숫자만 가능합니다' }, 400)
     const privacy_md = cleanText(body.privacy_md, 10000)
+    /**
+     * 🏬 2026-08-10 몰 운영자 — **생성 경로도 받는다.** INSERT 컬럼 목록에서 빼면 어드민이 만들면서
+     * 입력한 값이 **에러 없이 사라진다**(저장된 줄 알고 콘솔을 열면 403 — 원인이 화면에 안 나타난다).
+     * 검증은 PATCH 와 동일(실재하는 users.id 만).
+     */
+    let operator_user_id: number | null = null
+    {
+      const raw = String(body.operator_user_id ?? '').trim()
+      if (raw) {
+        const uid = Number(raw)
+        if (!Number.isInteger(uid) || uid <= 0) return c.json({ success: false, error: '운영자 회원번호는 양의 정수여야 합니다' }, 400)
+        const exists = await DB.prepare('SELECT 1 x FROM users WHERE id = ? LIMIT 1').bind(uid).first<{ x: number }>().catch(() => null)
+        if (!exists) return c.json({ success: false, error: `회원번호 ${uid} 를 찾을 수 없습니다` }, 400)
+        operator_user_id = uid
+      }
+    }
 
     // slug 중복 차단 (UNIQUE 와 정합 — 친절한 메시지).
     const dupe = await DB.prepare('SELECT id FROM wholesale_malls WHERE slug = ?').bind(slug).first<{ id: number }>().catch(() => null)
     if (dupe) return c.json({ success: false, error: '이미 사용 중인 slug 입니다' }, 409)
 
     const ins = await DB.prepare(
-      `INSERT INTO wholesale_malls (slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, consumer_path, ga_id, naver_verification, privacy_md, active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, consumer_path, ga_id, naver_verification, privacy_md, active).run()
+      `INSERT INTO wholesale_malls (slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, consumer_path, ga_id, naver_verification, privacy_md, operator_user_id, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, consumer_path, ga_id, naver_verification, privacy_md, operator_user_id, active).run()
     const id = Number(ins.meta?.last_row_id)
     if (!id) return c.json({ success: false, error: '몰 생성 중 오류가 발생했습니다' }, 500)
     invalidateMallCache(DB)
@@ -251,7 +267,7 @@ app.patch('/:id', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall
     if ('license_label' in body) { sets.push('license_label = ?'); binds.push(cleanText(body.license_label, 80)) }
     if ('features_json' in body) { sets.push('features_json = ?'); binds.push(validFeaturesJson(body.features_json)) }
     if ('company_json' in body) { sets.push('company_json = ?'); binds.push(validCompanyJson(body.company_json)) }
-    // 📣 2026-08-09 과업①(상인회 SaaS) — 몰별 GA4 측정 ID / 네이버 소유확인 / 방문자 고지문.
+    // 📣 2026-08-09 몰별 GA4 측정 ID / 네이버 소유확인 / 방문자 고지문.
     if ('ga_id' in body) {
       const v = cleanText(body.ga_id, 30)
       if (v && !/^G-[A-Z0-9]{4,20}$/i.test(v)) return c.json({ success: false, error: 'GA4 측정 ID 형식(G-XXXXXXX)을 확인해주세요' }, 400)
@@ -264,6 +280,23 @@ app.patch('/:id', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall
       sets.push('naver_verification = ?'); binds.push(v)
     }
     if ('privacy_md' in body) { sets.push('privacy_md = ?'); binds.push(cleanText(body.privacy_md, 10000)) }
+    /**
+     * 🏬 2026-08-10 몰 운영자 지정 — `/mall-admin` 콘솔의 **유일한 열쇠**.
+     * 이 값이 NULL 이면 그 몰은 종전과 같이 어드민 전용이다(운영자 콘솔에 아무것도 안 보인다).
+     * 🔴 **실재 확인 필수** — 오타 난 id 를 그대로 저장하면 "지정했는데 안 들어가진다"가 되고,
+     *   그때 원인이 화면에 안 나타난다(콘솔은 그냥 403 을 준다). 여기서 400 으로 되돌려 준다.
+     */
+    if ('operator_user_id' in body) {
+      const raw = String(body.operator_user_id ?? '').trim()
+      if (!raw) { sets.push('operator_user_id = ?'); binds.push(null) } // 빈값 = 해제
+      else {
+        const uid = Number(raw)
+        if (!Number.isInteger(uid) || uid <= 0) return c.json({ success: false, error: '운영자 회원번호는 양의 정수여야 합니다' }, 400)
+        const exists = await DB.prepare('SELECT 1 x FROM users WHERE id = ? LIMIT 1').bind(uid).first<{ x: number }>().catch(() => null)
+        if (!exists) return c.json({ success: false, error: `회원번호 ${uid} 를 찾을 수 없습니다` }, 400)
+        sets.push('operator_user_id = ?'); binds.push(uid)
+      }
+    }
     if ('consumer_path' in body) { sets.push('consumer_path = ?'); binds.push(Number(body.consumer_path) === 1 ? 1 : 0) }
     if ('active' in body) {
       const act = Number(body.active) === 0 ? 0 : 1
