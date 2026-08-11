@@ -40,13 +40,14 @@ import { RETIRED_CATEGORIES } from './influencer-classify'
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
 import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, pickStarvationRescue, AUTO_RETIRE_WHERE } from './influencer-keyword-rotation'
+import { CAFE_GATE_KEY, cafeCollectEnabled } from './collect-track-gates' // 🎛️ 수집 트랙 게이트(카페) SSOT
 
 // 🌱 시드 키워드(데이터)는 `influencer-seed-keywords.ts`, 그 시드를 테이블에 넣는 일은
 //   `influencer-keyword-store.ts` — 이 파일은 **둘 다 직접 안 만진다**(아래 재수출만).
 
 // 📊 결과 타입은 `influencer-collect-types.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
 export type { DiscoveryKeyword, AutoCollectStats } from './influencer-collect-types'
-import type { AutoCollectStats, DiscoveryKeyword } from './influencer-collect-types'
+import type { AutoCollectStats, DiscoveryKeyword, DiscoverCalls } from './influencer-collect-types'
 
 const CURSOR_KEY = 'ads_autocollect_cursor'
 /**
@@ -210,7 +211,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   ⚠️ **여기 없는 키를 `settings[...]` 로 읽으면 값이 아니라 `undefined` 가 온다** — 에러가 아니라
   //   기본값으로 조용히 떨어진다. 집중 축 커서가 정확히 그래서 항상 0 이었다(#930 → 2026-08-03 수리).
   //   새 키를 읽기 전에 이 배열에 넣을 것. `ads-keyword-focus-split` 이 기계로 대조한다.
-  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY]
+  //   🏘️ `CAFE_GATE_KEY` — 어드민 원클릭 카페 게이트. **이 배치에 얹어 서브리퀘스트 추가 0**
+  //   (낱개로 읽으면 게이트 하나가 발굴 fetch 하나를 잡아먹는다 — 이 배열이 존재하는 이유).
+  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY, CAFE_GATE_KEY]
   const settings = await readSettings(DB, SETTING_KEYS)
   let prev: AutoCollectStats | null = null
   try { prev = settings[STATS_KEY] ? JSON.parse(settings[STATS_KEY] as string) as AutoCollectStats : null } catch { prev = null }
@@ -330,13 +333,17 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   }
   // 🔎 플랫폼별 진단 누적 — fail-soft 로 삼키더라도 *사유는 기록*해 어드민에서 0건 원인 확인 가능.
   const hasKakao = !!(env as unknown as { KAKAO_REST_API_KEY?: string }).KAKAO_REST_API_KEY
+  // 🏘️ 카페 트랙 가동 여부 — 설정(원클릭) > env 폴백. 루프 밖에서 한 번만 판정(키워드마다 같은 값).
+  const cafeEnabled = cafeCollectEnabled(settings[CAFE_GATE_KEY], env)
   const diag = {
     yt: { configured: hasYouTube, found: 0, saved: 0, error: undefined as string | undefined },
     naver: { configured: hasNaver, found: 0, saved: 0, error: undefined as string | undefined },
     tistory: { configured: hasKakao, found: 0, saved: 0, error: undefined as string | undefined },
     // 🏘️ 카페는 블로그와 **따로** 센다 — 합산돼 있으면 "카페를 끌 가치가 있나"를 숫자로 답할 수 없다
     //   (라이브 표본 200건: 연락 가능 2건). 판정 근거는 `influencer-collect-types` 의 docblock.
-    cafe: { found: 0, saved: 0 },
+    //   🏘️ `enabled` — 스위치가 켜졌다는 말과 **그 회차에 실제로 돌았다**는 말은 다르다.
+    //   화면이 후자를 봐야 "켰는데 왜 안 늘지"를 오진하지 않는다(이 레포의 '죽은 손잡이' 클래스).
+    cafe: { found: 0, saved: 0, enabled: false },
   }
   if (!hasYouTube) diag.yt.error = 'NOT_CONFIGURED: ur-ads 워커에 YOUTUBE_API_KEY 미설정'
   if (!hasNaver) diag.naver.error = 'NOT_CONFIGURED: ur-ads 워커에 NAVER_SEARCH_CLIENT_ID/SECRET 미설정'
@@ -372,7 +379,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const spendBy = { yt: 0, naver: 0, cafe: 0, tistory: 0, save: 0 }
   // 🔬 유튜브 서브리퀘스트 **내역**(2026-08-04) — 쿼터는 90 중 3만 쓰는데 요청 예산은 다 쓴다.
   //   그 33개가 검색·채널조회·영상스니펫 중 어디로 갔는지 재야 줄일 자리가 정해진다(찍어 줄이면 수율이 같이 떨어진다).
-  const ytCalls = { search: 0, channels: 0, videos: 0 }
+  const ytCalls: DiscoverCalls = { search: 0, channels: 0, videos: 0 }
   const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
   const roundCap = keywordsPerRoundCap(env)
   let fromYt = 0, fromCursor = 0 // 🎯 처리된 픽의 출처 — 커서픽이 실제로 도달되는지 보이게(위 `picks` 주석)
@@ -402,7 +409,18 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
         const _b0 = budget.left
         const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytAngle.searchType, order: ytAngle.order, alreadyContacted })
         spendBy.yt += Math.max(0, _b0 - budget.left)
-        if (r.calls) { ytCalls.search += r.calls.search; ytCalls.channels += r.calls.channels; ytCalls.videos += r.calls.videos }
+        // 🔬 **세부 카운터까지 옮긴다**(2026-08-11) — `DiscoverCalls` 는 videos 콜의 *성과*를
+        //   (email/contact/cat/empty) 이미 세는데 여기서 3개만 옮겨 **스냅샷에 도달하지 못했다**
+        //   ("계산해 놓고 안 쓰면 소용없다" 클래스). 그 결과 `videos_empty` 비율 = 잘라도 되는 몫을
+        //   아무도 볼 수 없어, 예산의 60%를 쓰는 트랙을 **추측으로만** 논할 수 있었다.
+        //   ⚠️ 미증가 카운터는 키가 없다(`(x||0)+1` 패턴) → `?? 0` 필수.
+        if (r.calls) {
+          ytCalls.search += r.calls.search; ytCalls.channels += r.calls.channels; ytCalls.videos += r.calls.videos
+          ytCalls.videos_email = (ytCalls.videos_email ?? 0) + (r.calls.videos_email ?? 0)
+          ytCalls.videos_contact = (ytCalls.videos_contact ?? 0) + (r.calls.videos_contact ?? 0)
+          ytCalls.videos_cat = (ytCalls.videos_cat ?? 0) + (r.calls.videos_cat ?? 0)
+          ytCalls.videos_empty = (ytCalls.videos_empty ?? 0) + (r.calls.videos_empty ?? 0)
+        }
         if (r.ok) {
           kSearched++
           diag.yt.found += r.leads?.length || 0; kFound += r.leads?.length || 0
@@ -431,8 +449,12 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       //   `Too many subrequests` 로 죽고 활성 키워드 210개 중 124개가 이틀째 순번을 못 받는 상황에서,
       //   수확 가치 0 인 호출이 예산의 25~30% 를 먹는다. 끄면 그만큼 더 많은 키워드가 돈다.
       //   ⚠️ 기본값을 바꾸지 않는다(수집 정책은 대표 결정) — `ADS_COLLECT_CAFE_ENABLED='false'` 로 끈다.
-      if ((env as unknown as { ADS_COLLECT_CAFE_ENABLED?: string }).ADS_COLLECT_CAFE_ENABLED !== 'false') try {
+      //   🏘️ **원클릭 게이트**(2026-08-11) — `platform_settings.ads_collect_cafe` 가 설정돼 있으면
+      //   그것이 이기고, 미설정이면 종전 env 규칙 그대로다(설정이 빈 동안 동작 불변).
+      //   근거·실측(3,141명 이메일 0)·비용은 `cafeCollectEnabled` docblock 이 SSOT.
+      if (cafeEnabled) try {
         const _b0 = budget.left
+        diag.cafe.enabled = true // 실제로 이 트랙에 진입했다(스위치 상태가 아니라 실행 사실)
         const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget, sort: naverSort })
         spendBy.cafe += Math.max(0, _b0 - budget.left)
         if (r.ok) { kSearched++; if (r.leads?.length) { { const _s0 = budget.left; const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.cafe.found += r.leads.length; diag.cafe.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads); spendBy.save += Math.max(0, _s0 - budget.left) } } }

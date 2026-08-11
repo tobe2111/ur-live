@@ -2212,6 +2212,29 @@ const MUTATIONS = [
       '행동 테스트(run() 이 skipped 반환)가 잡는다.',
   },
   {
+    name: '카페 게이트 폴백 소실 — 배포만으로 카페가 켜져 회차 예산을 먹는다',
+    // 2026-08-11: 600줄 래칫으로 `collect-track-gates.ts` 로 분리 — 표적도 따라간다.
+    file: 'src/features/marketing/api/collect-track-gates.ts',
+    find: "  return (env as { ADS_COLLECT_CAFE_ENABLED?: string } | undefined)?.ADS_COLLECT_CAFE_ENABLED !== 'false'",
+    replace: '  return true',
+    test: 'src/tests/unit/ads-collect-gates.test.ts',
+    why:
+      '라이브 env 는 ADS_COLLECT_CAFE_ENABLED=false(카페 OFF)이고, 설정이 비어 있는 동안에는 그 env 를 ' +
+      '따라야 한다. 폴백을 true 로 만들면 배포하는 순간 카페가 켜져 키워드당 1 서브리퀘스트를 먹는다 — ' +
+      '지금은 회차 예산(56)이 캡이라 그만큼 키워드 폭이 줄어 발굴량이 직접 감소한다(카페 이메일은 0건).',
+  },
+  {
+    name: 'YT 콜 세부 계측이 집계에서 탈락(예산 60% 트랙의 낭비율을 영영 못 봄)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: "          ytCalls.videos_empty = (ytCalls.videos_empty ?? 0) + (r.calls.videos_empty ?? 0)",
+    replace: '',
+    test: 'src/tests/unit/ads-collect-gates.test.ts',
+    why:
+      'DiscoverCalls 는 videos 콜의 성과(email/contact/cat/empty)를 이미 세는데 집계부가 3개만 옮겨 ' +
+      '스냅샷에 도달하지 못했다("계산해 놓고 안 쓰면 소용없다"). videos_empty 가 곧 잘라도 되는 몫이라 ' +
+      '이 줄이 빠지면 예산 60%를 쓰는 트랙을 다시 추측으로만 논하게 된다.',
+  },
+  {
     name: '순환 나이가 등록일 기준으로 회귀(승격 물결마다 가짜 starved 경보)',
     file: 'src/features/marketing/api/collect-health-alert.ts',
     find: "MAX(julianday('now') - julianday(COALESCE(last_run_at, activated_at, created_at))) AS oldest_days",
