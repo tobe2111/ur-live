@@ -72,6 +72,66 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '레인 주기가 cron 과 알람에서 갈린다(증설이 조용히 발효 안 된다)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: "      if (new Date().getUTCHours() % 4 !== 1) return { skipped: 'off_hour' }",
+    replace: "      if (new Date().getUTCHours() !== 21) return { skipped: 'off_hour' }",
+    test: 'src/tests/unit/ads-lane-cadence-parity.test.ts',
+    why:
+      '2026-08-10 에 대표 지시로 공고 스캔을 일 1회 → 4시간마다로 올렸는데, cron 게이트만 고쳤고 그 게이트는 ' +
+      '`!laneAlarmDrivesEnrich(env)` 뒤에 있다(**라이브는 알람이 몬다**). 등록부는 `!== 21` 그대로라 ' +
+      '**증설이 배포는 됐는데 한 번도 발효되지 않았다**(`ads_notice_stats`: last_run 21:00 · total_runs 11). ' +
+      '에러도 경보도 없다 — 이 레포의 "실패가 아니라 조용한 부재" 클래스이고, 이번엔 대표가 요청한 기능 자체가 그렇게 사라졌다.',
+  },
+  {
+    name: '알람이 모는 레인을 cron 도 무조건 킥한다(같은 큐를 두 번 집는다)',
+    file: 'src/worker-ads/index.ts',
+    find: "  if (!laneAlarmOn && (env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {",
+    replace: "  if ((env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {",
+    test: 'src/tests/unit/ads-lane-cadence-parity.test.ts',
+    why:
+      '알람과 cron 이 같이 돌면 **같은 큐를 두 번 집는다** — 이 큐의 SELECT 는 선점이 아니라 정렬+LIMIT 이라 ' +
+      '중복이 조용하고 예산만 탄다(`lane-alarm-boot.ts` 헤더). 게다가 그 중복이 부모 CPU 를 두 배로 태워 ' +
+      '꼬리 레인을 자른다. ⚠️ 이 판정은 **바로 감싸는 `if`** 를 봐야 한다 — 첫 초안은 "위 8줄 안에 가드가 ' +
+      '있으면 통과" 였는데, 바로 위 블록의 가드를 자기 것으로 착각해 `enrich-prospects` 를 통과시켰다.',
+  },
+  {
+    name: '도메인 예산 재분배가 총량을 늘린다(부모가 CPU 로 죽는다)',
+    file: 'src/worker-ads/dispatch-budget.ts',
+    find: '    if (spare > 0) { out[d] -= spare; slack += spare }',
+    replace: '    if (spare > 0) { slack += spare }',
+    test: 'src/tests/unit/ads-dispatch-slack.test.ts',
+    why:
+      '총량은 CPU 한도가 정한다 — `FREE_LANES_PER_TICK` docblock 의 실측대로 8 로 두면 **절반이 죽었다**' +
+      '(자식 CPU 가 호출자 몫이라 동시 레인 수 × 각자 시간으로 쌓인다). 재분배는 **같은 총량 안에서 자리를 ' +
+      '옮기는 것**이지 늘리는 게 아니다. 이 한 줄이 빠지면 잉여를 빼지 않고 나눠 주기만 해서 Σ 가 커지고, ' +
+      '그 실측을 무시하고 부모를 죽이던 자리로 되돌아간다.',
+  },
+  {
+    name: '침묵 요약이 임계를 반올림한다(150분을 "3시간"이라 말한다)',
+    file: 'src/worker-ads/silence-digest.ts',
+    find: '(임계 ${fmtDur(l.gap_min)})',
+    replace: '(임계 ${Math.round(l.gap_min / 60)}시간)',
+    test: 'src/tests/unit/ads-silence-digest-accuracy.test.ts',
+    why:
+      '대표 신고 2026-08-11 *"디스코드 알람이 부정확한가봐"*. 실제 임계 **150분**이 `Math.round(2.5)` = ' +
+      '**3시간** 으로 찍혀, 메시지가 *"3.0시간째 침묵 (임계 3시간)"* — **넘지도 않은 것처럼** 읽혔다. ' +
+      '숫자가 맞아도 **경보가 자기 근거를 틀리게 말하면 틀린 경보**이고, 그러면 다음부터 안 읽힌다.',
+  },
+  {
+    name: '침묵 요약이 한 번만 표본을 뜬다(자기와 같은 회차를 못 본다)',
+    file: 'src/worker-ads/silence-digest.ts',
+    find: '      silent = confirmSilent(first, pickSilentLanes(await listCronHeartbeats(DB)))',
+    replace: '      silent = first',
+    test: 'src/tests/unit/ads-silence-digest-accuracy.test.ts',
+    why:
+      '이 요약은 `gates.dailyAt(23)` 로 **레인들과 같은 정각 회차**에 도는데, 하트비트는 묶어서 나중에 ' +
+      '쓴다(`beat-batch.ts` — 대기 3초 + 레인 실행시간, 실측 최장 26초). 그래서 스냅샷 시점엔 **그 회차 ' +
+      '실행분이 아직 기록에 없다.** 2026-08-11 실측: 23:00:26Z 요약이 `collect-maker` 를 "3.0시간째 침묵" ' +
+      '이라 했는데 그 레인의 마지막 실행은 **23:00Z(같은 회차)** 였다 — 멈춘 적이 없다. ' +
+      '⇒ 순간값 한 번으로 지속 상태를 단정하지 않는다. 두 표본의 **교집합**만 신고한다.',
+  },
+  {
     name: '삭제된 레인을 나이로만 판정한다(16일간 "진짜 침묵"으로 보인다)',
     file: 'src/worker/utils/cron-beat-retirement.ts',
     find: "  if (knownBaseNames?.size && raw.startsWith('ads:') && !knownBaseNames.has(beatBaseName(raw)) && age > RETIRED_MIN_AGE_MIN) return 'retired'",

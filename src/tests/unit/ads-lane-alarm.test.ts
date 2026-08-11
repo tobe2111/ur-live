@@ -313,9 +313,17 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
    * ⏰ 4차 이관 — 일 1회 레인 7개 (2026-08-09). 하루 한 번뿐인 발화가 부모 사망(잠정 회차 p:1)에
    *   걸리면 통째로 증발한다 — 08-08 하루에만 5개 실종. 근거는 lane-alarm-runners docblock.
    */
+  /**
+   * 🔧 2026-08-11 — `scan-notices` 는 **더 이상 일 1회가 아니다**(대표 "셋 다 해줘" → 4시간마다).
+   *   그 증설은 2026-08-10 에 cron 게이트에만 들어갔고 **여기 등록부가 안 따라와 한 번도 발효되지
+   *   않았다**(`ads_notice_stats`: last_run 21:00 · total_runs 11). 이 표가 옛 값을 못 박고 있어서
+   *   *증설이 빠진 상태가 오히려 초록불*이었다 — 회귀 앵커가 반대로 작동한 자리다.
+   *   ⇒ 값을 고치되, 두 소스가 갈리는 것 자체는 `ads-lane-cadence-parity` 가 따로 강제한다
+   *     (한 표만 고쳐서는 같은 사고가 또 난다).
+   */
   const WAVE4 = [
     ["'maintenance-rescan'", 'RESCAN_HOUR_UTC'], ["'collect-localdata-chain'", '20'], ["'collect-nps'", '16'],
-    ["'daily-batch'", '18'], ["'sweep-nts'", '19'], ["'collect-nara-contract'", '23'], ["'scan-notices'", '21'],
+    ["'daily-batch'", '18'], ["'sweep-nts'", '19'], ["'collect-nara-contract'", '23'], ["'scan-notices'", '%4'],
   ] as const
 
   it('🔒 4차 이관 7레인 — 등록 + runsPerHour 1 + 러너 안 시각 보존(일 1회 의도 복원)', () => {
@@ -325,7 +333,10 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
       const seg = runners.slice(runners.indexOf(`${lane}: {`), runners.indexOf(`${lane}: {`) + 700)
       expect(seg, `${lane} runsPerHour 1 아님`).toMatch(/runsPerHour: 1,/)
       // 시각 체크가 빠지면 일 1회 레인이 매시간 돌게 된다(외부 API 호출량 증설 — 대표 판단 사항)
-      expect(seg, `${lane} 시각 보존 누락`).toMatch(hour === 'RESCAN_HOUR_UTC' ? /!== RESCAN_HOUR_UTC/ : new RegExp(`getUTCHours\\(\\) !== ${hour}`))
+      const want = hour === 'RESCAN_HOUR_UTC' ? /!== RESCAN_HOUR_UTC/
+        : hour === '%4' ? /getUTCHours\(\) % 4 !== 1/
+          : new RegExp(`getUTCHours\\(\\) !== ${hour}`)
+      expect(seg, `${lane} 시각 보존 누락`).toMatch(want)
     }
   })
 
