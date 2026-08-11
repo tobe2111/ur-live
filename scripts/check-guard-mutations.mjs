@@ -413,7 +413,9 @@ const MUTATIONS = [
   },
   {
     name: '유튜브 검색 예산을 100 으로 되돌린다(측정 몫 0)',
-    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    // 2026-08-11: 쿼터 정책이 `influencer-yt-quota.ts` 로 분리(600줄 래칫) — 표적도 따라간다.
+    //   원 모듈은 재수출만 하므로 여기서 바꿔야 실제 상수가 변이된다.
+    file: 'src/features/marketing/api/influencer-yt-quota.ts',
     find: 'export const YT_SEARCH_BUDGET_DEFAULT = 90',
     replace: 'export const YT_SEARCH_BUDGET_DEFAULT = 100',
     test: 'src/tests/unit/api-daily-target.test.ts',
