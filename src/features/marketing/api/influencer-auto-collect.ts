@@ -39,7 +39,7 @@ import { RETIRED_CATEGORIES } from './influencer-classify'
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, pickStarvationRescue, AUTO_RETIRE_WHERE, planRoundWidth } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, pickStarvationRescue, AUTO_RETIRE_WHERE, planRoundWidth, parseAxisCarry, serializeAxisCarry, AXIS_CARRY_KEY } from './influencer-keyword-rotation'
 import { CAFE_GATE_KEY, cafeCollectEnabled } from './collect-track-gates' // 🎛️ 수집 트랙 게이트(카페) SSOT
 
 // 🌱 시드 키워드(데이터)는 `influencer-seed-keywords.ts`, 그 시드를 테이블에 넣는 일은
@@ -74,8 +74,8 @@ import { NAVER_USED_KEY, kstDayKey, parseNaverUsed, takeNaverCalls, NAVER_DAILY_
 //   ⚠️ 2026-08-04: 그 분리(2026-07-29)가 **병합으로 되돌아와** 두 파일에 byte-동일한 정의가 둘 있었고,
 //     추출본은 아무도 import 하지 않는 죽은 코드였다. 한쪽만 고치면 `runDdlOnce` 체크섬이 매 인보케이션
 //     엇갈려 **DDL+시드 200문장이 영원히 재실행**된다(그 재실행을 없애려던 최적화가 통째로 뒤집힌다).
-export { ensureDiscoveryKeywords, listDiscoveryKeywords, addDiscoveryKeyword, setKeywordActive } from './influencer-keyword-store'
-import { ensureDiscoveryKeywords } from './influencer-keyword-store'
+export { ensureDiscoveryKeywords, listDiscoveryKeywords, addDiscoveryKeyword, setKeywordActive, retireStaleAutoKeywords } from './influencer-keyword-store'
+import { ensureDiscoveryKeywords, retireStaleAutoKeywords } from './influencer-keyword-store'
 
 export async function getAutoCollectStats(DB: D1Database): Promise<AutoCollectStats | null> {
   const raw = await readSetting(DB, STATS_KEY)
@@ -168,25 +168,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   await ensureQualityColumns(DB)   // is_brand(저장 시점 태깅)·lead_score 컬럼 — INSERT 가 참조하므로 선보강
   await ensurePerfExtraColumns(DB) // last_post_at(블로거 마지막 글 날짜) — INSERT/백필이 참조
   await ensureDiscoveryKeywords(DB)
-  // 💤 자동확장 키워드 회수 3종 — 1 batch(=1 서브리퀘스트)로 묶는다(2026-07-29 예산 절약).
-  //   ⚠️ WHERE 조각은 `AUTO_RETIRE_WHERE`(rotation SSOT) — 승격 차단(`PROMOTE_NOT_RETIRABLE_SQL`)이 같은
-  //   문자열을 봐야 한다. 여기만 고치면 은퇴자가 재승격→즉시 재은퇴하는 livelock 이 되살아난다(2026-08-09).
-  await DB.batch([
-    // (F-30) 활성 이틀+ 인데 성과 0 인 auto 키워드 비활성(탐색 슬롯 영구 점유 차단, 멱등).
-    DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND ${AUTO_RETIRE_WHERE.f30}`),
-    // 🌵 **고갈** 회수(2026-07-29) — 위 조건은 `saved_total = 0`(한 번도 못 문 키워드)만 잡아서, *예전엔 잘 물었지만
-    //   지금은 다 훑은* auto 키워드를 영원히 놓친다. 연속 무수확 8회+면 비활성(성과가 있었어도 지금은 고갈).
-    //   ⚠️ seed 키워드는 비활성화하지 않는다 — 대표가 고른 지역/업종 축이라 사라지면 커버리지에 구멍이 난다.
-    //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
-    DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND ${AUTO_RETIRE_WHERE.barren}`),
-    // 🌾 **수율 은퇴**(2026-08-09 — 대표 "키워드 수율" 지시) — barren 의 사각지대를 슬롯 차원에서 닫는다:
-    //   barren 은 저장 0 회차 *연속*만 세므로, "찾긴 하는데(found 50+) 가끔 1명씩 떨궈 streak 을 리셋하는"
-    //   저수율(drip) auto 는 8연속에 영영 못 닿는다(정정 2026-08-09 — 예전 문구 "검색이 성공하니 안 오른다"는
-    //   코드와 달랐다. 카운터는 v.saved 바인딩이다). 실측: 동작카페 found 91/saved 2 · 중랑네일 94/3 이
-    //   자리를 점유하는 동안 승격 대기 2,981개가 밖에 있었다.
-    //   회차당 3개 상한 — 한꺼번에 비우면 승격·첫회차 수확이 몰려 요동한다(완만한 회전이 목적). seed 무접촉.
-    DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE id IN (SELECT id FROM ad_discovery_keywords WHERE source = 'auto' AND active = 1 AND ${AUTO_RETIRE_WHERE.yield} ORDER BY saved_total ASC, found_total DESC LIMIT 3)`),
-  ]).catch(() => null)
+  // 💤 자동확장 키워드 회수 3종(F-30·고갈·수율) — 구현·근거는 `retireStaleAutoKeywords`(키워드 수명주기 SSOT).
+  //   WHERE 조각은 `AUTO_RETIRE_WHERE` 를 그대로 넘긴다 — 승격 차단이 같은 문자열을 봐야 livelock 이 안 돌아온다.
+  await retireStaleAutoKeywords(DB, AUTO_RETIRE_WHERE)
   const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total, COALESCE(yt_leads,0) AS yt_leads, COALESCE(yt_contacts,0) AS yt_contacts, COALESCE(nb_measured,0) AS nb_measured, COALESCE(nb_contacts,0) AS nb_contacts FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   /**
@@ -203,7 +187,8 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   새 키를 읽기 전에 이 배열에 넣을 것. `ads-keyword-focus-split` 이 기계로 대조한다.
   //   🏘️ `CAFE_GATE_KEY` — 어드민 원클릭 카페 게이트. **이 배치에 얹어 서브리퀘스트 추가 0**
   //   (낱개로 읽으면 게이트 하나가 발굴 fetch 하나를 잡아먹는다 — 이 배열이 존재하는 이유).
-  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY, CAFE_GATE_KEY]
+  //   ⚖️ `AXIS_CARRY_KEY` — 축별 이월 지분(불변식 ④). 이 배치에 얹어 서브리퀘스트 추가 0.
+  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY, CAFE_GATE_KEY, AXIS_CARRY_KEY]
   const settings = await readSettings(DB, SETTING_KEYS)
   let prev: AutoCollectStats | null = null
   try { prev = settings[STATS_KEY] ? JSON.parse(settings[STATS_KEY] as string) as AutoCollectStats : null } catch { prev = null }
@@ -238,7 +223,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const totalPick = planRoundWidth((prev?.funnel?.recent || []).slice(-8).map(f => f.processed), batch + NAVER_EXTRA)
   // 🎯 [집중 · 우선 · 일반] 3분할 — 배분 규칙은 순수함수 SSOT(`planKeywordSplit`).
   //   집중 축이 비면(고갈로 자동 비활성) 그 몫이 **자동으로** 우선/일반에 돌아간다 — 그게 이 설계의 핵심이다.
-  const { nFocus, nPri, nGen } = planKeywordSplit(totalPick, focusPool.length, priPool.length, genPool.length)
+  //   ⚖️ 이월(carry)을 넘겨야 키워드당 회전율이 배수(3:2:1)에 수렴한다 — 안 넘기면 매 회차 0 에서
+  //   시작해 작은 축이 매 회차 0 이 된다(불변식 ④ 붕괴). 반환 carry 는 **아래 마감 batch 에 저장**.
+  const axisCarry = parseAxisCarry(settings[AXIS_CARRY_KEY])
+  const { nFocus, nPri, nGen, carry: nextAxisCarry } = planKeywordSplit(totalPick, focusPool.length, priPool.length, genPool.length, undefined, axisCarry)
   const focusPicks: { id: number; keyword: string; category: string | null }[] = []
   const priPicks: { id: number; keyword: string; category: string | null }[] = []
   const genPicks: { id: number; keyword: string; category: string | null }[] = []
@@ -583,6 +571,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     [FOCUS_CURSOR_KEY, String(nextFocusCursor)],
     ['ads_autocollect_cursor_pri', String(nextPriCursor)],
     [CURSOR_KEY, String(nextCursor)],
+    // ⚖️ 축별 이월 지분 — 이 줄이 없으면 carry 가 영구 0 이라 불변식 ④(작은 축 영구 0 불가)가 조용히
+    //   사라진다(집중 축 커서와 **정확히 같은** 실패 모드 — 위 FOCUS_CURSOR_KEY 주석).
+    [AXIS_CARRY_KEY, serializeAxisCarry(nextAxisCarry)],
     [STATS_KEY, JSON.stringify(stats)],
     // 🩹 학습 상한도 같은 batch 로(위 주석) — 자가교정 상태와 커서는 같은 회차의 결과라 운명을 함께해도 된다.
     ...(nextCap != null ? [[subreqCapKey('influencer'), String(nextCap)] as [string, string]] : []),

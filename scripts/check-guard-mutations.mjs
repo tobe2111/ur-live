@@ -2210,6 +2210,28 @@ const MUTATIONS = [
       '통계만 봐선 멀쩡해 보였다.',
   },
   {
+    name: '축 이월(carry) 적립을 버림 — 선언한 배수 3:2:1 이 조용히 뒤집힌다',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: '  if (wSum > 0) for (let i = 0; i < 3; i++) credit[i] += (budget * w[i]) / wSum',
+    replace: '  for (let i = 0; i < 3; i++) credit[i] = 0\n  if (wSum > 0) for (let i = 0; i < 3; i++) credit[i] += (budget * w[i]) / wSum',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '이월을 버리면 매 회차 0 에서 시작하니 비례 배분만 남고, 정수 슬롯 경쟁에서 **작은 축이 매 회차 0** 이 된다. ' +
+      '반대로 옛 바닥(매 회차 최소 1슬롯)을 되살리면 폭이 좁을 때 세금이 22% 가 되어 본업 축이 가장 느려진다 — ' +
+      '2026-08-12 라이브 실측: 우선 358개(전체 78% · 이메일 수율 24.4%)가 평균 7.04일 미실행(최악 15.94일)인 반면 ' +
+      '일반 76개는 3.26일 · 집중 25개는 1.34일. 선언한 정책이 코드에서 뒤집힌 것을 아무도 못 봤다.',
+  },
+  {
+    name: '축 이월을 저장하지 않음(carry 영구 0 — 불변식 ④ 가 조용히 사라짐)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '    [AXIS_CARRY_KEY, serializeAxisCarry(nextAxisCarry)],\n',
+    replace: '',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '집중 축 커서(#930)와 **정확히 같은 실패 모드**: 계산은 매 회차 하는데 저장이 없어 다음 회차가 항상 0 을 읽는다. ' +
+      '에러가 없고 슬롯 합계도 정상이라 통계만 보면 멀쩡하다 — 작은 축이 영구 0 이 되는 것만 달라진다.',
+  },
+  {
     name: '민 커서를 통계 JSON 에만 남기고 저장 안 함',
     file: 'src/features/marketing/api/influencer-auto-collect.ts',
     find: '    [FOCUS_CURSOR_KEY, String(nextFocusCursor)],\n',
@@ -3046,14 +3068,21 @@ const MUTATIONS = [
       '에러가 없어 안 보이고, 키워드를 더 넣을수록 조용히 나빠진다.',
   },
   {
-    name: '작은 축 바닥 1슬롯이 사라짐(반올림이 전략 축을 삼킴)',
+    // 🔁 **2026-08-12 표적 교체(낡은 지도 수리)**: 옛 주입은 바닥 루프
+    //   `for (const i of order) { if (left > 0 && avail[i] > 0) { out[i] = 1; left-- } }` 를 지웠다.
+    //   그 바닥 자체가 회차 간 이월(carry)로 대체돼 **코드에서 사라졌으므로** 그 표적은 더 이상 없다
+    //   (그대로 두면 `guard-mutations` 가 "주입 대상을 못 찾음"으로 빨간불 — 실제로 그렇게 잡혔다).
+    //   같은 불변식("작은 축이 굶지 않는다")의 새 형태는 위 '축 이월' 주입 2건이 지킨다. 이 자리는
+    //   같은 함수의 **다른 미보호 불변식**(③ 가용분 초과 금지)으로 돌려 커버리지를 줄이지 않는다.
+    name: '가용분 초과 가드가 사라짐(같은 키워드를 한 회차에 두 번 픽)',
     file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
-    find: '  for (const i of order) { if (left > 0 && avail[i] > 0) { out[i] = 1; left-- } }',
-    replace: '  void order',
+    find: '      if (out[i] >= avail[i]) continue                       // ③ 가용분 초과 금지',
+    replace: '',
     test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
     why:
-      '순수 비례만 하면 회차 6슬롯에서 집중 축(19)이 0.45 → **매 회차 0** 이 된다. 전략 축이 ' +
-      '정책이 아니라 반올림 때문에 꺼지는 형태 — 아무도 끈 적 없는데 안 돈다.',
+      '몫이 가용 키워드 수를 넘으면 커서가 `pool[(cursor+i) % len]` 로 감싸며 **같은 키워드를 한 배치에 ' +
+      '두 번** 내놓는다 — 희소한 회차(폭 9)를 중복에 쓰고, 그 키워드의 성과 카운터도 이중 계상된다. ' +
+      '풀이 작아지는 순간(은퇴·고갈)에 터지는 형태라 평소 테스트로는 안 보인다.',
   },
 ]
 /**

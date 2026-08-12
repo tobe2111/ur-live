@@ -57,51 +57,119 @@ export const FOCUS_CATEGORIES = ['마케팅대행사']
 export const AXIS_ROTATION_MULTIPLIER = { focus: 3, priority: 2, general: 1 } as const
 
 /**
+ * 축별 이월 지분(슬롯 단위 소수). 회차 사이에 남은 몫을 기억해 작은 축이 굶지 않게 한다.
+ *
+ * ⚠️ 키 문자열을 **여기 한 곳**에 둔다 — 읽기(SETTING_KEYS)와 쓰기(마감 batch)가 같은 문자열을 봐야 한다.
+ *   집중 축 커서가 리터럴 두 벌로 흩어져 **쓰기가 아예 없고 읽기는 항상 0** 이던 사고(#930, 2026-08-03)가
+ *   정확히 이 클래스다. 그때는 커서가 영구 0 이었고, 여기서 같은 일이 나면 carry 가 영구 0 =
+ *   비례 배분만 남아 작은 축이 매 회차 0 이 된다(불변식 ④ 가 조용히 사라진다).
+ */
+export const AXIS_CARRY_KEY = 'ads_autocollect_axis_carry'
+
+export interface AxisCarry { focus: number; priority: number; general: number }
+
+export const ZERO_AXIS_CARRY: AxisCarry = { focus: 0, priority: 0, general: 0 }
+
+/**
+ * 이월 상한 — 한 축이 무한히 빚/적립을 쌓지 못하게 자른다. 정상 상태에서는 |carry| < 1 로 머물고
+ * 이 값에 닿는 것은 풀 구성이 급변했을 때뿐이다(그때도 몇 회차면 소진된다).
+ */
+export const AXIS_CARRY_CLAMP = 4
+
+/** `"f:p:g"` 문자열 ↔ carry. 손상/부재는 0 으로(경보 아님 — 배분이 이번 회차만 비례로 떨어진다). */
+export function parseAxisCarry(raw: string | null | undefined): AxisCarry {
+  const parts = String(raw ?? '').split(':')
+  const num = (s: string | undefined) => {
+    const v = Number.parseFloat(String(s ?? ''))
+    return Number.isFinite(v) ? Math.max(-AXIS_CARRY_CLAMP, Math.min(AXIS_CARRY_CLAMP, v)) : 0
+  }
+  return { focus: num(parts[0]), priority: num(parts[1]), general: num(parts[2]) }
+}
+
+export function serializeAxisCarry(c: AxisCarry): string {
+  const f = (v: number) => (Number.isFinite(v) ? v : 0).toFixed(3)
+  return `${f(c.focus)}:${f(c.priority)}:${f(c.general)}`
+}
+
+/**
  * 배치를 [집중 · 우선 · 일반] 으로 나눈다 — **순수**(유닛으로 고정).
  *
  *   불변식 넷(앞 셋은 종전과 동일):
  *     ① 합계는 `total` 을 절대 안 넘는다
  *     ② 슬롯을 버리지 않는다 — 가용 키워드가 있으면 `min(total, 가용합계)` 만큼 꽉 채운다
  *     ③ 각 몫은 그 풀의 **실제 가용 수**를 안 넘는다(= 빈 풀은 자동 반납)
- *     ④ 🆕 비지 않은 축은 **최소 1슬롯**을 받는다(슬롯이 축 수보다 많을 때) —
- *        비례 배분만 하면 작은 풀(집중 19)이 큰 풀(우선 315) 옆에서 **매 회차 0** 이 되어
- *        전략 축이 사실상 꺼진다. 반올림이 정책을 삼키지 않게 하는 바닥이다.
+ *     ④ 비지 않은 축은 **몇 회차 안에 반드시** 슬롯을 받는다(영구 0 불가) — 아래 carry.
+ *
+ * ## ⚖️ ④ 를 "매 회차 최소 1슬롯" → **회차 간 이월(carry)** 로 교체 (2026-08-12 대표 "모두 다 해결")
+ *
+ * 옛 ④ 는 *매 회차* 축마다 1슬롯을 바닥으로 깔았다. 그 바닥은 회차 폭이 16 이던 시절 설계라
+ * 세금이 2/16(12%)이었는데, 폭이 9로 좁아진 뒤로는 **2/9 = 22%** 가 됐다. 라이브 실측(2026-08-12,
+ * 집중 25 · 우선 358 · 일반 76):
+ *
+ * ```
+ *   설계 배수 3 : 2 : 1  →  키워드당 회전율(우선=1) 이어야 할 값  1.50 : 1.00 : 0.50
+ *   폭 16  →  f2 p12 g2   실제  2.39 : 1.00 : 0.79
+ *   폭  9  →  f1 p6  g2   실제  2.39 : 1.00 : 1.57   ← 일반이 설계의 3.1배
+ *   24h 실측 축별 평균 미실행: 집중 1.34일 · 일반 3.26일 · **우선 7.04일**(최악 15.94일)
+ * ```
+ * ⇒ **대표가 정한 축 우선순위가 코드에서 조용히 뒤집혀 있었다** — 전체의 78%이고 이메일 수율이
+ * 가장 높은(24.4% vs 일반 23.2% · 집중 18.0%) 본업 축이 가장 느리게 돌았다. 폭을 줄인 것이
+ * 원인인데 아무도 배수를 바꾼 적이 없다(`AXIS_ROTATION_MULTIPLIER` docblock 이 경고한 사고의 재발 —
+ * 그때는 풀 크기가, 이번엔 폭이 방아쇠였다).
+ *
+ * **바닥의 목적(작은 전략 축이 꺼지지 않게)은 유지하되, 그 대가를 매 회차 물지 않는다.** 축마다
+ * 지분(`몫 × 배수 / 합`)을 소수로 적립하고 정수 슬롯은 적립이 가장 많은 축부터 준다(deficit
+ * round-robin). 못 받은 회차의 지분은 사라지지 않고 **다음 회차로 이월**되므로:
+ *   · 장기 평균은 설계 비율에 정확히 수렴한다(폭과 무관 — 그게 옛 바닥이 못 한 것)
+ *   · 작은 축은 `ceil(1/지분)` 회차 안에 반드시 1슬롯을 받는다(집중 25 → 지분 0.78/회차 → 2회차)
+ *
+ * ⚠️ **호출부는 반환된 `carry` 를 저장해 다음 회차에 넘겨야 한다** — 안 넘기면 매 회차 0 에서
+ *   시작해 비례 배분만 남고(작은 축이 매 회차 0) ④ 가 깨진다. `ads-keyword-focus-split` 이 배선을 검사한다.
+ * ⚠️ carry 는 D1 `platform_settings` 한 줄이고 **기존 쓰기 배치에 얹는다**(서브리퀘스트 추가 0).
  */
 export function planKeywordSplit(
   total: number, focusAvail: number, priAvail: number, genAvail: number,
   mult: { focus: number; priority: number; general: number } = AXIS_ROTATION_MULTIPLIER,
-): { nFocus: number; nPri: number; nGen: number } {
+  carryIn: AxisCarry = ZERO_AXIS_CARRY,
+): { nFocus: number; nPri: number; nGen: number; carry: AxisCarry } {
   const cap = Number.isFinite(total) ? Math.max(0, Math.floor(total)) : 0
   const av = (n: number) => (Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0)
   const avail = [av(focusAvail), av(priAvail), av(genAvail)]
   const w = [avail[0] * mult.focus, avail[1] * mult.priority, avail[2] * mult.general]
   const budget = Math.min(cap, avail[0] + avail[1] + avail[2])
   const out = [0, 0, 0]
-  if (budget <= 0) return { nFocus: 0, nPri: 0, nGen: 0 }
+  const clamp = (v: number) => Math.max(-AXIS_CARRY_CLAMP, Math.min(AXIS_CARRY_CLAMP, Number.isFinite(v) ? v : 0))
+  // 빈 축은 이월을 쌓지 않는다 — 며칠 비어 있던 축이 되살아나는 순간 몰아서 독식하면 안 된다.
+  const credit = [
+    avail[0] > 0 ? clamp(carryIn?.focus ?? 0) : 0,
+    avail[1] > 0 ? clamp(carryIn?.priority ?? 0) : 0,
+    avail[2] > 0 ? clamp(carryIn?.general ?? 0) : 0,
+  ]
+  const outCarry = () => ({
+    focus: avail[0] > 0 ? clamp(credit[0]) : 0,
+    priority: avail[1] > 0 ? clamp(credit[1]) : 0,
+    general: avail[2] > 0 ? clamp(credit[2]) : 0,
+  })
+  if (budget <= 0) return { nFocus: 0, nPri: 0, nGen: 0, carry: outCarry() }
 
-  // ④ 바닥 — 비지 않은 축부터 1씩(가중치 큰 순). 슬롯이 모자라면 큰 축이 먼저 받는다.
-  const order = [0, 1, 2].sort((a, b) => w[b] - w[a])
-  let left = budget
-  for (const i of order) { if (left > 0 && avail[i] > 0) { out[i] = 1; left-- } }
-
-  // 비례 배분(최대잔여) — 바닥을 뺀 나머지를 가중치대로.
+  // 이번 회차의 지분을 적립(∝ 가용수 × 배수 — 키워드당 회전율이 배수에 비례하게 되는 지점).
   const wSum = w[0] + w[1] + w[2]
-  if (left > 0 && wSum > 0) {
-    const want = w.map(x => (left * x) / wSum)
-    const base = want.map(x => Math.floor(x))
-    for (let i = 0; i < 3; i++) { const add = Math.min(base[i], avail[i] - out[i]); out[i] += add; left -= add }
-    // 남은 슬롯은 소수부 큰 축부터 — 가용분이 남아 있는 축에만.
-    const rest = [0, 1, 2].sort((a, b) => (want[b] - Math.floor(want[b])) - (want[a] - Math.floor(want[a])))
-    while (left > 0) {
-      const i = rest.find(k => out[k] < avail[k])
-      if (i === undefined) break
-      out[i]++; left--
-      rest.push(rest.splice(rest.indexOf(i), 1)[0])   // 라운드로빈으로 돌려 한 축이 독식하지 않게
+  if (wSum > 0) for (let i = 0; i < 3; i++) credit[i] += (budget * w[i]) / wSum
+
+  // 적립이 큰 축부터 1슬롯씩. 동률이면 큰 축 먼저(잘림 비대칭 방지 — mergeKeywordPicks 와 같은 규칙).
+  const EPS = 1e-9
+  let left = budget
+  while (left > 0) {
+    let best = -1
+    for (let i = 0; i < 3; i++) {
+      if (out[i] >= avail[i]) continue                       // ③ 가용분 초과 금지
+      if (best < 0 || credit[i] > credit[best] + EPS
+        || (Math.abs(credit[i] - credit[best]) <= EPS && w[i] > w[best])) best = i
     }
+    if (best < 0) break                                      // ② 더 담을 축이 없다(가용합계 소진)
+    out[best]++; credit[best] -= 1; left--
   }
-  // ② 슬롯을 버리지 않는다 — 위에서 남았으면 가용분 있는 축이 마저 가져간다.
-  for (const i of order) { while (left > 0 && out[i] < avail[i]) { out[i]++; left-- } }
-  return { nFocus: out[0], nPri: out[1], nGen: out[2] }
+  return { nFocus: out[0], nPri: out[1], nGen: out[2], carry: outCarry() }
 }
 
 export interface YtPickKeyword {

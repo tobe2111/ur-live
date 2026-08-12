@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { planKeywordSplit, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, FOCUS_CATEGORIES, PRIORITY_CATEGORIES } from '@/features/marketing/api/influencer-keyword-rotation'
+import { planKeywordSplit, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, FOCUS_CATEGORIES, PRIORITY_CATEGORIES, ZERO_AXIS_CARRY, AXIS_CARRY_CLAMP, parseAxisCarry, serializeAxisCarry } from '@/features/marketing/api/influencer-keyword-rotation'
+import type { AxisCarry } from '@/features/marketing/api/influencer-keyword-rotation'
 import { planRoundWidth } from '@/features/marketing/api/influencer-keyword-order'
 import { CLASSIFIED_CATEGORIES } from '@/features/marketing/api/influencer-classify'
 
@@ -44,12 +45,103 @@ describe('planKeywordSplit — 집중/우선/일반 3분할', () => {
     }
   })
 
-  it('🔒 작은 축이 큰 축 옆에서 0 이 되지 않는다 — 반올림이 전략 축을 삼키면 안 된다', () => {
-    // 라이브 실측 형상(집중 19 · 우선 315 · 일반 65)에 회차 6슬롯. 순수 비례면 집중이 0.45 → 0 이 된다.
-    const r = planKeywordSplit(6, 19, 315, 65)
-    expect(r.nFocus).toBeGreaterThanOrEqual(1)
-    expect(r.nGen).toBeGreaterThanOrEqual(1)
-    expect(r.nFocus + r.nPri + r.nGen).toBe(6)
+  /**
+   * 🔁 **2026-08-12 정책 교체** — 옛 검사는 `nFocus >= 1 && nGen >= 1` 을 **매 회차** 요구했다
+   *   (불변식 ④ 의 옛 형태 = 축마다 최소 1슬롯). 그 바닥은 폭 16 시절 세금 12% 였는데 폭 9 에서
+   *   **22%** 가 되어, 라이브에서 본업 축(우선 358개 · 전체의 78% · 이메일 수율 24.4%)을 가장 느리게
+   *   만들었다(축별 평균 미실행 우선 7.04일 vs 일반 3.26일 · 집중 1.34일).
+   *
+   *   ⇒ 지키려던 것은 "매 회차 1슬롯"이 아니라 **"작은 전략 축이 영구히 0 이 되지 않는 것"** 이다.
+   *     이제 그것을 회차 간 이월(carry)로 보장하므로, 검사도 한 회차가 아니라 **연속 회차**를 본다.
+   */
+  it('🔒 작은 축이 영구 0 이 되지 않는다 — 몇 회차 안에 반드시 슬롯을 받는다', () => {
+    let carry = ZERO_AXIS_CARRY
+    const got = { focus: 0, general: 0 }
+    const ROUNDS = 4
+    for (let i = 0; i < ROUNDS; i++) {
+      const r = planKeywordSplit(6, 19, 315, 65, undefined, carry)
+      expect(r.nFocus + r.nPri + r.nGen, `round ${i} 총량`).toBe(6)
+      got.focus += r.nFocus; got.general += r.nGen
+      carry = r.carry
+    }
+    // 집중 지분 = 6×(19×3)/(19×3+315×2+65×1) = 0.47/회차 → 4회차면 최소 1회는 받는다.
+    expect(got.focus, '집중 축이 4회차 내내 0 이면 전략 축이 꺼진 것').toBeGreaterThanOrEqual(1)
+    expect(got.general, '일반 축이 4회차 내내 0 이면 순환에 구멍').toBeGreaterThanOrEqual(1)
+  })
+
+  /**
+   * 🎯 **이 수리의 본체** — 장기 평균 회전율이 설계 배수(3:2:1)에 수렴하는가. 폭과 무관해야 한다:
+   *   폭이 좁아질 때 조용히 뒤집히던 것이 정확히 이번 사고였다(폭 9 에서 일반이 설계의 3.1배).
+   */
+  it('🎯 키워드당 회전율이 배수 3:2:1 에 수렴한다 — 폭 6·9·16 전부', () => {
+    for (const width of [6, 9, 16]) {
+      let carry = ZERO_AXIS_CARRY
+      const slots = { f: 0, p: 0, g: 0 }
+      const POOLS = { f: 25, p: 358, g: 76 } // 라이브 실측 형상(2026-08-12)
+      for (let i = 0; i < 200; i++) {
+        const r = planKeywordSplit(width, POOLS.f, POOLS.p, POOLS.g, undefined, carry)
+        slots.f += r.nFocus; slots.p += r.nPri; slots.g += r.nGen
+        carry = r.carry
+      }
+      // 키워드당 회전율을 '우선=1' 로 정규화 → 설계값은 1.5 : 1 : 0.5.
+      const rate = { f: slots.f / POOLS.f, p: slots.p / POOLS.p, g: slots.g / POOLS.g }
+      const nf = rate.f / rate.p, ng = rate.g / rate.p
+      expect(nf, `폭 ${width} focus 정규화(설계 1.5)`).toBeGreaterThan(1.35)
+      expect(nf, `폭 ${width} focus 정규화(설계 1.5)`).toBeLessThan(1.65)
+      expect(ng, `폭 ${width} general 정규화(설계 0.5)`).toBeGreaterThan(0.42)
+      expect(ng, `폭 ${width} general 정규화(설계 0.5)`).toBeLessThan(0.58)
+    }
+  })
+
+  /**
+   * ⚠️ **carry 를 안 돌려주면(호출부가 저장을 빠뜨리면) 무슨 일이 나는가** — 매 회차 0 에서 시작하니
+   *   비례 배분만 남아 작은 축이 **매 회차 0** 이 된다. 이 검사는 그 실패 모드를 명시적으로 고정해,
+   *   "carry 배선은 있어도 되고 없어도 되는 장식"으로 오독되지 않게 한다(#930 집중 커서와 같은 클래스).
+   */
+  it('🕳️ carry 를 이월하지 않으면 작은 축이 영구 0 이 된다(배선이 필수인 이유)', () => {
+    let zeroCarryFocus = 0
+    for (let i = 0; i < 10; i++) {
+      const r = planKeywordSplit(6, 19, 315, 65) // carry 미전달 = 매 회차 0 에서 시작
+      zeroCarryFocus += r.nFocus
+    }
+    expect(zeroCarryFocus, 'carry 없이도 집중이 슬롯을 받으면 이 검사가 무의미해진다').toBe(0)
+  })
+
+  it('🔒 carry 는 무한히 자라지 않는다 — 빈 축은 적립하지 않고, 상한에서 잘린다', () => {
+    // 집중 축이 비어 있는 동안 적립하면, 되살아나는 순간 몰아서 독식한다.
+    let carry: AxisCarry = { focus: 3.9, priority: 0, general: 0 }
+    for (let i = 0; i < 50; i++) carry = planKeywordSplit(9, 0, 300, 60, undefined, carry).carry
+    expect(carry.focus, '빈 축은 이월 0').toBe(0)
+    for (let i = 0; i < 200; i++) carry = planKeywordSplit(9, 25, 358, 76, undefined, carry).carry
+    for (const v of [carry.focus, carry.priority, carry.general]) {
+      expect(Number.isFinite(v)).toBe(true)
+      expect(Math.abs(v)).toBeLessThanOrEqual(AXIS_CARRY_CLAMP)
+    }
+  })
+
+  it('🔁 carry 직렬화 왕복 — 손상 입력은 0 으로(경보 아님)', () => {
+    const round = parseAxisCarry(serializeAxisCarry({ focus: 0.75, priority: -0.5, general: 0.125 }))
+    expect(round.focus).toBeCloseTo(0.75, 3)
+    expect(round.priority).toBeCloseTo(-0.5, 3)
+    expect(round.general).toBeCloseTo(0.125, 3)
+    for (const bad of ['', null, undefined, 'nope', '1:2', 'NaN:NaN:NaN']) {
+      const c = parseAxisCarry(bad as string | null | undefined)
+      for (const v of [c.focus, c.priority, c.general]) expect(Number.isFinite(v)).toBe(true)
+    }
+    // 상한 밖 값은 잘린다(손상된 저장값이 한 축을 독식하지 못하게).
+    expect(parseAxisCarry('999:0:0').focus).toBe(AXIS_CARRY_CLAMP)
+  })
+
+  /**
+   * 🔌 **배선 가드** — 순수함수가 옳아도 호출부가 carry 를 읽거나 저장하지 않으면 불변식 ④ 는
+   *   조용히 사라진다. 이 레포에서 정확히 그렇게 죽은 것이 집중 축 커서다(#930 — 통계 JSON 에는
+   *   있는데 **읽기 키에 없어** 항상 0). 코드(주석 제거본)를 읽어 4가지를 확인한다.
+   */
+  it('🔌 호출부가 carry 를 읽기·전달·저장 전부 한다', () => {
+    expect(CODE, 'SETTING_KEYS 에 carry 키가 없으면 읽기가 항상 undefined').toContain('AXIS_CARRY_KEY]')
+    expect(CODE, 'parseAxisCarry 로 읽지 않으면 이월이 전달되지 않는다').toMatch(/parseAxisCarry\(\s*settings\[AXIS_CARRY_KEY\]\s*\)/)
+    expect(CODE, 'planKeywordSplit 에 carry 를 안 넘기면 매 회차 0 에서 시작').toMatch(/planKeywordSplit\([^)]*axisCarry\s*\)/)
+    expect(CODE, '마감 batch 에 저장하지 않으면 다음 회차가 옛 값을 읽는다').toMatch(/\[AXIS_CARRY_KEY,\s*serializeAxisCarry\(/)
   })
 
   /**
@@ -114,7 +206,9 @@ describe('planKeywordSplit — 집중/우선/일반 3분할', () => {
 /** 🔌 배선 잠금 — 순수함수만 테스트하면 "함수는 있는데 부르는 곳이 없는" 사고를 못 잡는다. */
 describe('배선 — 수집 루프가 3분할을 실제로 쓴다', () => {
   it('🔒 planKeywordSplit 로 배분하고 세 풀이 서로 배타다', async () => {
-    expect(SRC).toMatch(/const \{ nFocus, nPri, nGen \} = planKeywordSplit\(/)
+    // ⚠️ 2026-08-12: destructuring 에 `carry` 가 추가됐다(불변식 ④ 이월). 이름 셋만 확인해
+    //   앵커가 문자열 형태에 다시 묶이지 않게 한다 — 위 "낡은 지도" 주석과 같은 이유.
+    expect(CODE).toMatch(/const \{[^}]*nFocus[^}]*nPri[^}]*nGen[^}]*\} = planKeywordSplit\(/)
     /**
      * ⚠️ **앵커가 이사했다**(2026-08-04, 600줄 래칫): 풀 구성이 `keyword-contact-yield.ts`
      *   `buildRotationPools` 로 추출됐다. 여기서 옛 문자열을 계속 찾으면 *낡은 지도*가 되고,
