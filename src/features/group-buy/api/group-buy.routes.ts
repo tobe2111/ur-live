@@ -35,6 +35,8 @@ import {
 } from './helpers'
 // 🛡️ 2026-05-21: 모든 voucher 카테고리에서 동작하려면 이용권 hardcode 제거 — getVoucherShortLabel 사용.
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
+// 🎟️ 2026-08-12 (소비자 공구 결제 결함 3건): 자기참여 판정·주문번호·가상계좌 가드 → gb-purchase-guards.ts
+import { isSelfOwnedGroupBuy, resolveGbOrderNumber, guardAwaitingDeposit } from './gb-purchase-guards'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 
@@ -193,7 +195,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       "SELECT id, name, price, group_buy_status, group_buy_deadline, voucher_expiry, seller_id, group_buy_tiers FROM products WHERE id = ? AND is_active = 1 AND (category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher') OR deal_only = 1)"
     ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; voucher_expiry: string | null; seller_id: number; group_buy_tiers: string | null }>()
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
-    if (product.seller_id && Number(product.seller_id) === Number(userId)) {
+    if (await isSelfOwnedGroupBuy(DB, product.seller_id, userId)) {
       return c.json({ success: false, error: '본인의 공동구매 상품에는 참여할 수 없습니다', code: 'SELF_PARTICIPATION_BLOCKED' }, 403)
     }
     if (product.group_buy_deadline && new Date(product.group_buy_deadline) < new Date()) {
@@ -242,12 +244,9 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
     // 🛡️ 2026-04-22: 셀러가 본인 공구에 자기 참여 차단 (목표 조작 방지)
-    if (product.seller_id && Number(product.seller_id) === Number(userId)) {
-      return c.json({
-        success: false,
-        error: '본인의 공동구매 상품에는 참여할 수 없습니다',
-        code: 'SELF_PARTICIPATION_BLOCKED'
-      }, 403)
+    //   🔴 2026-08-12: sellers.id ↔ users.id 를 비교하던 네임스페이스 오류 수리 (gb-purchase-guards.ts).
+    if (await isSelfOwnedGroupBuy(DB, product.seller_id, userId)) {
+      return c.json({ success: false, error: '본인의 공동구매 상품에는 참여할 수 없습니다', code: 'SELF_PARTICIPATION_BLOCKED' }, 403)
     }
 
     // 공동구매 마감 확인 (마감 시간이 참여보다 먼저 체크되도록)
@@ -1176,6 +1175,12 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     return c.json({ success: false, error: tossResult.message, code: tossResult.code },
       tossResult.status === 'CIRCUIT_OPEN' ? 503 : 400)
   }
+  // 🏦 2026-08-12: 주문번호 = **토스가 아는 값**(웹훅이 이 값으로 주문을 찾는다). 이 아래 전부 이 값을 쓴다.
+  const orderNumber = resolveGbOrderNumber(tossResult.data?.orderId, orderId, userId)
+  // 🏦 가상계좌(WAITING_FOR_DEPOSIT)는 **입금 전** — 발급 금지 + 자동 취소. 카드/간편결제는 이 분기 무접촉.
+  const vaBlock = await guardAwaitingDeposit(c.env, tossResult.data,
+    { paymentKey, orderNumber, userId, productId: Number(productId), sellerId: Number(product.seller_id) || null, amount: expectedAmount })
+  if (vaBlock) return c.json({ success: false, error: vaBlock.error, code: vaBlock.code }, 400)
 
   // 3. 멱등성 가드 (C3, 2026-05-30): 같은 paymentKey 로 이미 발급된 주문이 있으면 재발급 금지.
   //    confirmTossPayment 는 paymentKey 기준 멱등이라 success URL 새로고침/재시도 시 ok 재반환 →
@@ -1214,7 +1219,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   //          ledger 정합성 검증 + commission 집계에 카드 결제건도 잡힘.
   //          (인플루언서 attribution 도 아래 applyGroupBuyReferral 공유 헬퍼로 딜 경로와 동일 처리됨
   //           — 2026-05-31 구현 완료. influencer_attributions INSERT + influencer_balances 적립.)
-  const orderNumber = `GB-${userId}-${Date.now()}`
+  //   🔴 2026-08-12: orderNumber 는 위에서 **토스 orderId** 로 확정됐다(웹훅 연결). 여기서 새로 만들지 않는다.
   const expiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
   try {
     const orderInsert = await DB.prepare(`

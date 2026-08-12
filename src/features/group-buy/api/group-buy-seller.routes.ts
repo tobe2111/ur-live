@@ -22,6 +22,7 @@ import type { Env } from '@/worker/types/env'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
 import { clawbackVoucherCommission } from './helpers'
 import { intParam } from '@/shared/pagination'
+import { voucherCategoriesSqlClause } from '@/shared/constants/voucher-categories'
 
 interface RefundVoucherRow {
   id: number
@@ -44,9 +45,15 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
     const productId = productIdNum
 
     try {
+      // 🔴 2026-08-12: `category = 'meal_voucher'` 하드코드 수리.
+      //   `/join` 은 **이용권 전 카테고리 + 교환권(deal_only)** 을 팔았는데, 환불 조회만 식사 카테고리였다.
+      //   ⇒ 미용/숙소/기타 이용권 공구는 마감·미달성이어도 셀러가 **404 를 받고 환불을 못 했다**
+      //     (판매는 되고 환불은 안 되는 비대칭 — 소비자 돈이 묶인다). 판매 범위 = 환불 범위로 맞춘다.
+      const vc = voucherCategoriesSqlClause()
       const product = await DB.prepare(
-        `SELECT ${productDetailColsHealed('products')} FROM products WHERE id = ? AND category = 'meal_voucher'`
-      ).bind(productId).first<GroupBuyProductRow>()
+        `SELECT ${productDetailColsHealed('products')} FROM products
+          WHERE id = ? AND (category IN (${vc.placeholders}) OR COALESCE(deal_only, 0) = 1)`
+      ).bind(productId, ...vc.values).first<GroupBuyProductRow>()
 
       if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
