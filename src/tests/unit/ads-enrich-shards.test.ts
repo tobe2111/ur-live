@@ -79,7 +79,11 @@ describe('YT 쿼터 — 샤드를 늘려도 유튜브 호출은 안 곱해진다
     const c = code(laneSrc)
     expect(c).toMatch(/if \(opts\?\.naverOnly\) \{[\s\S]{0,120}runNaver\(/)
     // 그 분기 안에서 runFront 를 부르면 건너뛰는 게 아니다.
-    const branch = c.match(/if \(opts\?\.naverOnly\) \{([\s\S]{0,200}?)\n  \} else if/)?.[1] ?? ''
+    // ⚠️ 2026-08-12: 길이 상한(`{0,200}`)을 뒀다가 **가드가 헛돌았다** — 여력 자동배치 폴백이 붙어
+    //   분기가 200자를 넘자 매치가 실패해 `branch = ''` 이 되고, 결함을 심어도 초록이 떴다
+    //   (`check-guard-mutations` 가 잡았다). 상한을 없애고 **분기 끝까지** 본다.
+    const branch = c.match(/if \(opts\?\.naverOnly\) \{([\s\S]*?)\n  \} else if/)?.[1]
+    expect(branch, '분기를 못 찾음 — 이 검사가 통째로 무의미해진다(리네임됐다면 여기도 갱신할 것)').toBeTruthy()
     expect(branch, 'naverOnly 인데 앞 레인을 돈다').not.toMatch(/runFront\(/)
   })
 

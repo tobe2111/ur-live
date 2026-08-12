@@ -2681,8 +2681,10 @@ const MUTATIONS = [
   {
     name: 'naverOnly 가 앞 레인을 안 건너뜀(플래그만 있고 무력)',
     file: 'src/features/marketing/api/influencer-enrich-lane.ts',
-    find: '  if (opts?.naverOnly) {\n    await runNaver(0)\n  } else if (naverFirst) {',
-    replace: '  if (opts?.naverOnly) {\n    await runNaver(0); await runFront()\n  } else if (naverFirst) {',
+    // 🗺️ 2026-08-12 앵커 이사: 이 분기에 여력 자동배치 폴백이 붙었다(블로그가 마르면 링크인바이오).
+    //   지키는 불변식은 그대로 — **YT 는 여전히 안 부른다**(샤드 수만큼 쿼터가 곱해진다).
+    find: '    await runNaver(0)\n    // ♻️ 여력 자동배치',
+    replace: '    await runNaver(0); await runFront()\n    // ♻️ 여력 자동배치',
     test: 'src/tests/unit/ads-enrich-shards.test.ts',
     why:
       '플래그를 넘겨도 분기가 앞 레인(bio+YT)을 그대로 돌면 쿼터 보호가 무효다 — ' +
@@ -2969,6 +2971,27 @@ const MUTATIONS = [
       '라이브 실측(2026-08-11): 풀 집중 25·우선 358·일반 76 에서 계획 1/6/2 인데 예산 5 에서 잘려 ' +
       '우선이 6→2 로 무너졌다. 키워드 1개당 회전율이 설계(1.5:1:0.5) 대비 **7.3 : 1 : 3.2** — ' +
       '대표가 정한 축 우선순위가 코드에서 뒤집혀 본업 축(맛집·뷰티·숙소·공동구매, 전체의 78%)이 가장 느렸다.',
+  },
+  {
+    name: '여력 자동배치가 바쁜 트랙을 뺏음(고를 행이 있어도 갈아탐)',
+    file: 'src/features/marketing/api/enrich-capacity.ts',
+    find: '  if (i.selected > 0) return false                                            // 할 일이 있었다',
+    replace: '  if (false) return false',
+    test: 'src/tests/unit/ads-enrich-capacity.test.ts',
+    why:
+      '폴백 판정은 `selected === 0`(고를 행이 하나도 없음)일 때만이어야 한다. 이 가드가 죽으면 ' +
+      '**가장 바쁠 때** 블로그를 버리고 링크인바이오로 갈아탄다 — 백로그가 클수록 더 자주 갈아타는 최악의 형태다.',
+  },
+  {
+    name: '여력 자동배치 배선이 사라짐(블로그가 말라도 샤드가 논다)',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: '      try { bio = await enrichPoolFromLinkInBio(DB, budget, bioMax) } catch (err) { note(err) }',
+    replace: '      void bioMax',
+    test: 'src/tests/unit/ads-enrich-capacity.test.ts',
+    why:
+      '측정 샤드 1~3번은 블로그 전용이라, 블로그 백로그가 마르면 **예산이 남는데 아무 일도 안 한다.** ' +
+      '라이브(2026-08-12 20:35): 블로그 1,423(2시간 뒤 0) · 유튜브 667 미측정 · 측정 능력이 유입의 3.5배 — ' +
+      '사람이 그때 설정을 바꿔 주지 않으면 능력의 3분의 2가 논다. 대표 지시 "여력 자동배치".',
   },
   {
     name: '앞자리 회전이 사라짐(뒤쪽 축 커서가 영구 동결)',
