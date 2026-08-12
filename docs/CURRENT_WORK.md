@@ -5499,6 +5499,11 @@ _총 155건 · 최신순 · 이 목록은 자동 생성된다._
 **2026-08-12**
 - [🎟️ 유어딜 소비자 공구 — 결제 경로 결함 3건 수리 (2026-08-12)](handoff/2026-08-12-urdeal-groupbuy-money-fixes.md)
 - [🏪 공동구매 서비스 — 셸 누수 · 명칭 오류 · 두 PR 머지 (2026-08-12)](handoff/2026-08-12-mall-shell-leak.md)
+_총 154건 · 최신순 · 이 목록은 자동 생성된다._
+
+**2026-08-12**
+- [🎟️ 유어딜 소비자 공구 — 결제 경로 결함 3건 수리 (2026-08-12)](handoff/2026-08-12-urdeal-groupbuy-money-fixes.md)
+- [🔗 헛돌던 가드 하나 + 검증 데이 실행서 (2026-08-12)](handoff/2026-08-12-guard-blindspot-and-verification-runbook.md)
 - [키워드 순환 기아의 **진짜 원인** — 커서는 맨 앞 축 하나만 전진한다 (2026-08-12)](handoff/2026-08-12-cursor-freeze-root-cause.md)
 **2026-08-11**
 - [웹푸시 권유 팝업 제거 (2026-08-11)](handoff/2026-08-11-push-prompt-removed.md)
