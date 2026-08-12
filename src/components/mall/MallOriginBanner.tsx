@@ -33,13 +33,17 @@ export default function MallOriginBanner({ className = '' }: { className?: strin
     fetch(`/api/mall/${encodeURIComponent(slug)}`)
       .then((r) => (r.ok ? (r.json() as Promise<MallBrandResp>) : null))
       .then((j) => {
-        if (!alive || !j?.success || !j.mall?.name) return
+        // 이름을 **먼저 정규화하고 그 값으로 판정**한다. 예전엔 아래에서 `name.slice(0,1)` 이
+        // 이름 없는 응답에 TypeError 를 내 결과적으로 막혔는데, 그건 가드가 일한 게 아니라
+        // **우연히 안전했던 것**이다(되돌려-검증에서 드러났다). 우연에 기대지 않는다.
+        const name = String(j?.mall?.name ?? '').trim()
+        if (!alive || !j?.success || !name) return
         setBrand({
           slug,
-          name: String(j.mall.name),
-          logoUrl: j.mall.logoUrl ?? null,
-          initial: String(j.mall.initial || j.mall.name.slice(0, 1)),
-          colorLight: String(j.mall.colorLight || '#1F2937'),
+          name,
+          logoUrl: j.mall?.logoUrl ?? null,
+          initial: String(j.mall?.initial || name.slice(0, 1)),
+          colorLight: String(j.mall?.colorLight || '#1F2937'),
         })
       })
       .catch(() => { /* 몰 정보를 못 읽으면 간판을 안 건다 — 추측 금지 */ })
