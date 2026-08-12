@@ -72,6 +72,19 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '공구가 킬스위치를 어드민 화면에서 뺀다(돈 새는 중에 멈출 손잡이가 사라진다)',
+    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    find: "key: 'gb_pricing_enabled'",
+    replace: "key: 'gb_pricing_REMOVED'",
+    test: 'src/tests/unit/ops-gate-reachable.test.ts',
+    why:
+      '게이트를 만들어 놓고 **켜고 끌 화면을 안 만드는** 사고가 2026-08-03·08-12 에 세 번 났다. ' +
+      '가장 나빴던 것이 `gb_pricing_enabled` — *"잘못된 공구가로 과소청구가 날 때 false 로 내려 즉시 상시가로 ' +
+      '되돌린다"* 는 **긴급 킬스위치인데 당길 손잡이가 어느 화면에도 없었다**(돈이 새는 중에 멈출 방법 0). ' +
+      '⚠️ 게이트가 OFF 인 것을 "안 켰다"로 읽으면 안 된다 — **"못 켰다"** 일 수 있고, 그 상태는 ' +
+      '에러가 없어 아무도 모른다. 의도적으로 안 켤 게이트는 turn_on_when 에 "켜지 않는다"로 면제된다.',
+  },
+  {
     name: '내부 링크 가드에서 객체 리터럴 `to:` 패턴을 없앤다(칩·탭 링크가 다시 무검사)',
     file: 'scripts/check-internal-links.mjs',
     find: '\\bto:\\s*',

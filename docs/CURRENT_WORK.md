@@ -5494,6 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
+_총 155건 · 최신순 · 이 목록은 자동 생성된다._
 _총 153건 · 최신순 · 이 목록은 자동 생성된다._
 _총 154건 · 최신순 · 이 목록은 자동 생성된다._
 
@@ -5503,6 +5504,7 @@ _총 154건 · 최신순 · 이 목록은 자동 생성된다._
 - [키워드 순환 기아의 **진짜 원인** — 커서는 맨 앞 축 하나만 전진한다 (2026-08-12)](handoff/2026-08-12-cursor-freeze-root-cause.md)
 **2026-08-11**
 - [웹푸시 권유 팝업 제거 (2026-08-11)](handoff/2026-08-11-push-prompt-removed.md)
+- [🏬 공구 서비스(운영자 몰) — 소비자 표면을 유어딜에서 분리 (단계 1/4)](handoff/2026-08-11-mall-surface-separation.md)
 - [키워드 순환 `starved` — 배분이 아니라 **잘림**이 범인이었다 (2026-08-11)](handoff/2026-08-11-keyword-merge-proportional.md)
 - [2026-08-11 — 소비자 전면 AB 스윕 (브라우저 프록시 돌파 + 죽은 cron 부활)](handoff/2026-08-11-consumer-ab-sweep.md)
 **2026-08-10**
