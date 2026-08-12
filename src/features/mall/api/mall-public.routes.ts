@@ -84,15 +84,28 @@ app.get('/:slug/products', async (c) => {
     const nowMs = Date.now()
 
     // 🔴 몰 스코프가 **쿼리에** 있다. 애플리케이션에서 거르면 한 번만 빠뜨려도 타 몰 상품이 샌다.
+    //
+    // 🔧 2026-08-11 — **200개 절단 수정.** 그전엔 `LIMIT 200` 으로 먼저 자르고 JS 에서 공구만 남겼다.
+    //   상품이 200개를 넘는 몰에서는 **id 가 낮은(오래된) 상품의 진행 중 공구가 목록에서 사라졌다**
+    //   — "옛 상품으로 다시 공구를 연다"는 흔한 운영 패턴에서 조용히 안 보인다.
+    //   ⇒ 공구 후보를 **SQL 에서** 좁힌다(`gb_mode ∈ live|scheduled`). 최종 판정은 아래
+    //     `resolveGbPricing`(마감·시작시각까지 본다)이 그대로 하므로 **의미는 안 바뀌고**,
+    //     자르는 대상만 "전체 상품"에서 "공구 상품"으로 바뀐다.
+    //   ⚠️ 메타 테이블이 없는 env 는 조회가 throw → 빈 목록(fail-soft). 그런 env 엔 몰도 없다.
     const prodRows = await db.prepare(
       `SELECT p.id, p.name, p.price, p.original_price, p.image_url, p.category, p.stock
          FROM products p
         WHERE COALESCE(p.mall_id, 1) = ?
           AND p.is_active = 1
           AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = p.seller_id AND s.is_active = 0)
+          AND EXISTS (SELECT 1 FROM product_supply_meta m
+                       WHERE m.product_id = p.id AND m.key = 'gb_mode' AND m.value IN ('live', 'scheduled'))
         ORDER BY p.id DESC
-        LIMIT 200`
-    ).bind(Number(mall.id)).all<{
+        LIMIT ?`
+    // ⚠️ `limit` 딱 맞게 가져오면 안 된다 — 아래 `resolveGbPricing` 이 **마감 지난 것**을 걸러내
+    //   화면에 `limit` 보다 적게 남는다(모드는 live 인데 마감만 지난 상품이 쌓이는 몰에서 실제로 생긴다).
+    //   여유분을 받아 필터 후 자른다.
+    ).bind(Number(mall.id), Math.min(300, limit * 3)).all<{
       id: number; name: string; price: number; original_price: number | null
       image_url: string | null; category: string; stock: number | null
     }>().catch(() => ({ results: [] as never[] }))

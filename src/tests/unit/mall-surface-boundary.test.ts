@@ -196,6 +196,61 @@ describe('배선 — 몰 손님이 본진 상세로 새지 않는다', () => {
 })
 
 /**
+ * 📋 **몰 목록이 상품 수에 절단되지 않는다** (2026-08-11)
+ *
+ * 그전엔 `LIMIT 200` 으로 **전체 상품**을 먼저 자르고 JS 에서 공구만 남겼다. 상품이 200개를
+ * 넘는 몰에서는 **id 가 낮은(오래된) 상품의 진행 중 공구가 목록에서 사라진다** —
+ * "옛 상품으로 다시 공구를 연다"는 흔한 운영 패턴에서 조용히 안 보인다.
+ *
+ * ⚠️ 이 검사가 못 보는 것: 실제 SQL 실행 결과. D1 을 안 띄우므로 **쿼리 모양**만 고정한다.
+ */
+describe('몰 상품 목록 — 공구 후보를 SQL 에서 좁힌다', () => {
+  const routes = read('src/features/mall/api/mall-public.routes.ts')
+
+  it('공구 세션이 있는 상품만 SQL 에서 고른다', () => {
+    expect(/EXISTS \(SELECT 1 FROM product_supply_meta m[\s\S]{0,200}?key = 'gb_mode'[\s\S]{0,80}?IN \('live', 'scheduled'\)/.test(routes)).toBe(true)
+  })
+
+  it('전체 상품을 200개로 먼저 자르지 않는다', () => {
+    // ⚠️ **주석을 벗기고 본다.** 처음엔 원문 그대로 검사했는데, 같은 파일의 *설명 주석*에
+    //   "그전엔 `LIMIT 200` 으로…" 라고 적힌 것을 잡아 **정상 코드가 빨강**이 됐다 —
+    //   이 파일 헤더가 경고하는 바로 그 '주석 함정' 이다(이번엔 반대 방향으로 걸렸다).
+    const code = routes.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+    // 🔴 되돌아가면 즉시 빨강 — 이 리터럴이 바로 절단의 원인이었다.
+    expect(/LIMIT 200/.test(code)).toBe(false)
+  })
+
+  it('JS 필터(마감 지난 건 제거) 몫의 여유분을 두고 가져온다', () => {
+    // limit 딱 맞게 가져오면 필터 후 화면에 limit 보다 적게 남는다.
+    expect(/Math\.min\(300, limit \* 3\)/.test(routes)).toBe(true)
+  })
+})
+
+/**
+ * 🧭 **몰 손님이 갈 곳을 잃지 않는다** (2026-08-11)
+ *
+ * `rememberMallOrigin` 은 2026-08-02 에 만들어졌는데 **호출부가 0** 이었다 — 흔적이 한 번도
+ * 안 남아 `readMallOrigin()` 이 늘 `null` 이었고, 그래서 `ProductDetailPage` 의
+ * '가게로 돌아가기' 버튼이 **한 번도 뜬 적이 없다**(항상 유어딜 홈으로 보냈다).
+ * 만들어 놓고 안 부르는 것도 "실패가 아니라 조용한 부재" 클래스다.
+ */
+describe('배선 — 몰 흔적이 실제로 남고, 상품이 없어도 가게로 돌아간다', () => {
+  it('몰 홈과 몰 상품 상세가 **둘 다** 흔적을 남긴다', () => {
+    // 🔴 카톡에서 **상품 링크로 바로** 들어오는 것이 흔한 경로다 — 홈에서만 남기면 그 손님은 흔적이 없다.
+    for (const p of ['src/pages/MallHomePage.tsx', 'src/pages/MallProductPage.tsx']) {
+      expect(read(p), p).toContain('rememberMallOrigin(m.mall.slug)')
+    }
+  })
+
+  it('몰은 있고 상품만 없으면 유어딜 404 로 떨구지 않는다', () => {
+    const page = read('src/pages/MallProductPage.tsx')
+    // 몰 없음(notfound) 과 상품 없음(gone) 을 **다르게** 다룬다 — 하나로 합치면 몰 손님이 유어딜 404 를 본다.
+    expect(page).toContain("setState('gone')")
+    expect(/if \(state === 'gone'[\s\S]{0,600}?to=\{`\/\$\{mall\.slug\}`\}/.test(page)).toBe(true)
+  })
+})
+
+/**
  * 🖼️ **몰 상품 링크의 카톡 카드** (2026-08-11)
  *
  * 경로를 옮기면 2026-08-09 에 PRODUCT 슬롯으로 막아 둔 *"몰 상품 공유가 본진 일반 카드로 나가는"*

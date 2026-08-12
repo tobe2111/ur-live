@@ -26,10 +26,11 @@
  *   그래서 구매는 기존 `/checkout` 으로 간다 — 여기서 병렬 결제 경로를 만들지 않는다.
  *   (유어딜 공구의 `/confirm-toss` 가 그렇게 갈라져 나가 가상계좌 가드·웹훅 연결을 못 받은 선례가 있다.)
  *
- * 🔴 **아직 안 고쳐진 것 — `/checkout` 화면**: 거기서는 여전히 상시가로 보이고,
- *   픽업 상품에 **배송비 3,000원**이 붙는다(`order.routes.ts:1300` 의 `allNoShip` 이
- *   `deal_only` 와 이용권 카테고리만 비배송으로 친다). 이 파일은 `shipping_fee: 0` 을 넘겨
- *   클라 의도를 밝히지만, **서버 견적이 이기므로 그것만으로는 안 고쳐진다.** 후속(단계 2) 항목.
+ * ✅ **2026-08-11 후속 완료** — 이 주석에 *"아직 안 고쳐졌다"* 고 적혀 있던 두 가지는 같은 날 수리됐다:
+ *   ① `/checkout` 견적이 상시가를 보여주던 것 → 견적도 `loadGbOrderPricing`(주문 생성과 같은 헬퍼)
+ *   ② 픽업 상품에 배송비 3,000원이 붙던 것 → 비배송 판정 SSOT(`allItemsNoShipping`)에 `has_pickup` 축 추가
+ *   그래서 아래 `shipping_fee: 0` 은 이제 **서버 판정과 같은 방향**이다(여전히 서버가 권위).
+ *   ⚠️ 다만 **실제 청구액은 staging 실결제로만 판정된다** — 테스트는 판정·배선까지만 본다.
  */
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
@@ -40,6 +41,7 @@ import NotFoundPage from '@/pages/NotFoundPage'
 import { POWERED_BY, PAYMENT_TRUST_NOTE, resolveMallBranding } from '@/shared/mall/branding'
 import { STORAGE_LABEL, STORAGE_NOTICE, type PickupInfo } from '@/shared/pickup'
 import { hasConsumerSession } from '@/utils/auth'
+import { rememberMallOrigin } from '@/shared/mall/origin'
 import { toast } from '@/hooks/useToast'
 import { cfImage } from '@/utils/cf-image'
 import { parseUTCDate } from '@/utils/date'
@@ -93,7 +95,7 @@ export default function MallProductPage() {
   const [mall, setMall] = useState<MallInfo | null>(null)
   const [product, setProduct] = useState<MallProduct | null>(null)
   const [qty, setQty] = useState(1)
-  const [state, setState] = useState<'loading' | 'ready' | 'notfound'>('loading')
+  const [state, setState] = useState<'loading' | 'ready' | 'gone' | 'notfound'>('loading')
 
   useEffect(() => {
     if (!mallSlug || !id) { setState('notfound'); return }
@@ -107,10 +109,16 @@ export default function MallProductPage() {
       fetch(`/api/mall/${slug}/products/${encodeURIComponent(id)}`).then((r) => r.json() as Promise<ProdResp>).catch(() => null),
     ]).then(([m, p]) => {
       if (!alive) return
-      // 🔴 몰이 없거나(=`consumer_path=0` 포함) 상품이 그 몰 것이 아니면 **404 를 그대로 보여준다.**
-      //   조용히 본진으로 흘리지 않는다 — 홈과 같은 방침.
-      if (!m?.success || !m?.mall || !p?.success || !p?.data) { setState('notfound'); return }
+      // 🔴 **몰이 없으면** 404 를 그대로 보여준다(홈과 같은 방침 — 조용히 본진으로 흘리지 않는다).
+      if (!m?.success || !m?.mall) { setState('notfound'); return }
+      // 🧭 몰은 확인됐다 — 흔적을 남긴다. 카톡에서 **상품 링크로 바로 들어오는 것이 흔한 경로**라
+      //   홈에서만 남기면 그 손님에겐 흔적이 없다.
+      rememberMallOrigin(m.mall.slug)
       setMall(m.mall)
+      // 🔴 **몰은 있는데 상품만 없는 경우**(품절·공구 종료·삭제)는 유어딜 404 가 아니라
+      //   **그 가게 화면**으로 안내한다. 단톡방에 링크가 오래 남는 특성상 흔한 상황이고,
+      //   여기서 유어딜 404 를 보여주면 `MallHomePage` 주석이 말한 *"몰이 열렸다보다 나쁜 결과"* 가 된다.
+      if (!p?.success || !p?.data) { setState('gone'); return }
       setProduct(p.data)
       setState('ready')
     })
@@ -118,7 +126,23 @@ export default function MallProductPage() {
   }, [mallSlug, id])
 
   if (state === 'loading') return <BrandLoader fullScreen />
-  if (state === 'notfound' || !mall || !product) return <NotFoundPage />
+  // 몰 자체가 없으면 유어딜 404 가 맞다(오타·폐점).
+  if (state === 'notfound' || !mall) return <NotFoundPage />
+  // 🏬 몰은 있고 상품만 없다 — **그 가게의 화면**으로 안내한다(유어딜 404 로 떨구지 않는다).
+  if (state === 'gone' || !product) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center px-8 text-center bg-white dark:bg-[#0F151D]"
+        style={{ ['--mall-l' as string]: mall.colorLight, ['--mall-d' as string]: mall.colorDark }}>
+        <p className="text-[15px] font-bold tracking-[-0.03em] text-[#3F383C] dark:text-[#DAD4D7]">지금은 판매하지 않는 상품이에요</p>
+        <p className="mt-2 text-[13px] tracking-[-0.02em] text-[#8A8288] dark:text-[#7C7479]">공동구매가 끝났거나 준비된 수량이 모두 나갔어요</p>
+        <Link to={`/${mall.slug}`}
+          className="mt-6 px-6 py-2.5 rounded-xl text-[14px] font-extrabold tracking-[-0.03em] text-white dark:text-[#1A1719]"
+          style={{ backgroundColor: 'var(--mall-l)' }}>
+          {mall.name} 둘러보기
+        </Link>
+      </div>
+    )
+  }
 
   const remain = remainLabel(product.deadline)
   const closed = remain === '마감'

@@ -57,6 +57,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import NotFoundPage from '@/pages/NotFoundPage'
 import { POWERED_BY, PAYMENT_TRUST_NOTE } from '@/shared/mall/branding'
 import { mallProductPath } from '@/shared/mall/resolve'
+import { rememberMallOrigin } from '@/shared/mall/origin'
 import { cfImage } from '@/utils/cf-image'
 import { parseUTCDate } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
@@ -153,6 +154,10 @@ export default function MallHomePage() {
     Promise.all([p1, p2]).then(([m, list]) => {
       if (!alive) return
       if (!m?.success || !m?.mall) { setState('notfound'); return }
+      // 🧭 2026-08-11 — 몰 흔적을 남긴다. `rememberMallOrigin` 은 2026-08-02 에 만들어졌는데
+      //   **호출부가 0** 이라 흔적이 한 번도 안 남았고, 그래서 상품이 사라졌을 때의
+      //   '가게로 돌아가기' 가 한 번도 뜬 적이 없다(항상 유어딜 홈으로 보냈다).
+      rememberMallOrigin(m.mall.slug)
       setMall(m.mall)
       setItems(Array.isArray(list?.data) ? list.data : [])
       setState('ok')
