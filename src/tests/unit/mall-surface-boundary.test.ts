@@ -412,3 +412,60 @@ describe('배선 — 슬러그 판정이 한 벌뿐이다', () => {
     expect(/new Set\(RESERVED_SLUGS\)/.test(worker)).toBe(false)
   })
 })
+
+// 🏪 **운영자 SaaS 온보딩** (2026-08-12 — 대표 "모두 다 진행해줘")
+//   실측이었던 것: 운영자 화면 전체에 `mall_slug` 참조가 0건이라 **자기 링크를 몰랐다.**
+//   그리고 몰 미연결 셀러의 상품은 `mallIdForSeller` 기본값으로 조용히 본진(mall_id=1)에 들어간다.
+describe('운영자가 자기 가게를 안다', () => {
+  const read2 = (p: string) => readFileSync(p, 'utf8')
+  const noImp = (s: string) => s.replace(/^\s*import[^\n]*$/gm, '')
+
+  it('내 가게 조회 API 가 있고, 소비자 경로로 열리는 몰만 "내 가게"다', () => {
+    const r = read2('src/features/seller/api/seller-gb.routes.ts')
+    const fn = r.slice(r.indexOf("app.get('/mall'"))
+    expect(fn.length).toBeGreaterThan(0)
+    // fail-closed — 본진·도매몰·미연결은 전부 linked:false 여야 한다.
+    expect(/consumer_path, 0\) = 1/.test(fn)).toBe(true)
+    expect(/active, 1\) = 1/.test(fn)).toBe(true)
+  })
+
+  it('🔴 정적 경로가 `/:id` 보다 **앞에** 등록된다 — Hono 는 등록 순서대로 매칭한다', () => {
+    // 실측: `/:id` 를 먼저 걸면 `/support-contact` 가 id='support-contact' 로 삼켜져 400 이 된다.
+    //   그래서 이 라우트는 **한 번도 응답한 적이 없었다**(클라 .catch 가 삼켜 조용했다).
+    const r = read2('src/features/seller/api/seller-gb.routes.ts')
+    const param = r.indexOf("app.get('/:id'")
+    expect(param).toBeGreaterThan(0)
+    for (const stat of ["app.get('/mall'", "app.get('/support-contact'"]) {
+      expect(r.indexOf(stat)).toBeGreaterThan(0)
+      expect(r.indexOf(stat)).toBeLessThan(param)
+    }
+  })
+
+  it('문의처 클라 경로가 라우터 마운트(`/api/seller/gb`)와 맞는다', () => {
+    const c = read2('src/components/seller/SellerSupportContact.tsx')
+    expect(/\/api\/seller\/gb\/support-contact/.test(c)).toBe(true)
+    expect(/get\('\/api\/seller\/support-contact'\)/.test(c)).toBe(false)  // 옛 경로 재유입 금지
+  })
+
+  it('빠른 공구 등록 화면이 내 가게 주소를 보여준다', () => {
+    expect(/<MyMallAddress\b/.test(noImp(read2('src/pages/SellerQuickGbPage.tsx')))).toBe(true)
+  })
+
+  it('미연결이면 "본점에 올라간다"고 알린다 — 조용히 넘어가지 않는다', () => {
+    const m = read2('src/components/seller/MyMallAddress.tsx')
+    expect(/!info\.linked/.test(m)).toBe(true)
+    expect(/본점/.test(m)).toBe(true)
+  })
+})
+
+// 🏪 2026-08-12 — 간판만으론 부족하다. **손님은 큰 버튼을 누른다.**
+describe('결제 완료의 가장 큰 버튼이 몰 손님을 본진으로 보내지 않는다', () => {
+  const page = readFileSync(resolve(process.cwd(), 'src/pages/PaymentSuccessPage.tsx'), 'utf8')
+  const body = page.replace(/^\s*import[^\n]*$/gm, '')
+  it('실주문 경로의 주 버튼이 ContinueShoppingLink 다', () => {
+    expect(/<ContinueShoppingLink\b/.test(body)).toBe(true)
+  })
+  it('🔒 잠금 파일은 여전히 몰을 판정하지 않는다 — 컴포넌트가 스스로 한다', () => {
+    expect(/readMallOrigin|isFromMallSession|mall_id/.test(page)).toBe(false)
+  })
+})

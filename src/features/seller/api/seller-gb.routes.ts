@@ -59,6 +59,49 @@ async function ownedProduct(DB: D1Database, productId: number, sellerId: number)
     .bind(productId, sellerId).first<{ id: number; price: number }>().catch(() => null)
 }
 
+// ── 🔴 정적 경로는 `/:id` **앞에** 둔다 ───────────────────────────────────────
+//   Hono 는 **등록 순서대로** 매칭한다(실측: `/:id` 를 먼저 걸면 `/support-contact` 가
+//   `id='support-contact'` 로 삼켜진다 → `intParam` 이 0 → 400). React Router 처럼
+//   "더 구체적인 경로가 이긴다" 가 **아니다.** 아래 두 라우트가 여기 있는 이유다.
+
+// ── GET /mall — 내 가게(운영자 몰) 주소 ───────────────────────────────────────
+/**
+ * 🏪 2026-08-12: 운영자가 **자기 링크를 몰랐다.** 상품을 올려도 `urdeal.kr/{슬러그}` 가 어디에도
+ * 안 보여 카톡에 뿌릴 수가 없었다(운영자 화면 전체에 `mall_slug` 참조 0건이었다).
+ * 그리고 몰 연결이 안 된 셀러의 상품은 **조용히 본진(mall_id=1)으로** 들어간다
+ * (`mallIdForSeller` 기본값) — 운영자는 등록했는데 자기 가게에 안 뜨고, 왜인지 알 방법도 없었다.
+ * ⇒ 연결됐으면 슬러그를, 아니면 `linked:false` 를 돌려준다. **모르는 채로 두지 않는다.**
+ */
+app.get('/mall', async (c) => {
+  try {
+    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const row = await c.env.DB.prepare(
+      `SELECT m.slug AS slug, COALESCE(NULLIF(TRIM(m.brand_name), ''), m.name) AS name
+         FROM sellers s JOIN wholesale_malls m ON m.id = s.mall_id
+        WHERE s.id = ? AND COALESCE(m.consumer_path, 0) = 1 AND COALESCE(m.active, 1) = 1`,
+    ).bind(sellerId).first<{ slug: string; name: string }>().catch(() => null)
+    // 🔴 본진(mall_id=1)·미연결·도매몰은 전부 `linked:false` — 소비자 경로로 열리는 몰만 "내 가게"다.
+    return c.json({ success: true, linked: !!row?.slug, slug: row?.slug ?? null, name: row?.name ?? null })
+  } catch (err) {
+    return safeError(c, err, '가게 정보를 불러오지 못했습니다', '[seller-gb]')
+  }
+})
+
+app.get('/support-contact', async (c) => {
+  try {
+    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const row = await c.env.DB.prepare(
+      "SELECT value FROM platform_settings WHERE key = 'operator_support_contact'"
+    ).first<{ value: string }>().catch(() => null)
+    const contact = String(row?.value ?? '').trim().slice(0, 200)
+    return c.json({ success: true, contact: contact || null })
+  } catch (err) {
+    return safeError(c, err, '문의처를 불러오지 못했습니다', '[seller-gb]')
+  }
+})
+
 // ── GET /:id — 내 상품의 현재 공구 설정 ────────────────────────────────────────
 app.get('/:id', async (c) => {
   try {
@@ -142,18 +185,5 @@ app.put('/:id', async (c) => {
  *
  * ⚠️ 셀러 인증 뒤에 둔다 — 연락처가 공개 크롤에 노출되면 스팸 표적이 된다.
  */
-app.get('/support-contact', async (c) => {
-  try {
-    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
-    const row = await c.env.DB.prepare(
-      "SELECT value FROM platform_settings WHERE key = 'operator_support_contact'"
-    ).first<{ value: string }>().catch(() => null)
-    const contact = String(row?.value ?? '').trim().slice(0, 200)
-    return c.json({ success: true, contact: contact || null })
-  } catch (err) {
-    return safeError(c, err, '문의처를 불러오지 못했습니다', '[seller-gb]')
-  }
-})
 
 export { app as sellerGbRoutes }

@@ -12,6 +12,7 @@ import { formatNumber } from '@/utils/format'
 // 🔗 2026-07-03 구매 직후 셀러 전환 넛지 (자기완결 — 결제 로직과 분리)
 import SellerConversionNudge from './payment-success/SellerConversionNudge'
 import MallOriginBanner from '@/components/mall/MallOriginBanner'
+import ContinueShoppingLink from '@/components/mall/ContinueShoppingLink'
 
 export default function PaymentSuccessPage() {
   const { t } = useTranslation()
@@ -520,13 +521,14 @@ export default function PaymentSuccessPage() {
                 >
                   주문 내역 보기
                 </Button>
-                {/* 🗑️ 2026-07-07 라이브커머스 제거: 라이브 자동복귀 삭제 → 홈으로 쇼핑 계속. */}
-                <Button
-                  onClick={() => navigate('/')}
-                  className="w-full sm:flex-1 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
-                >
-                  쇼핑 계속하기
-                </Button>
+                {/* 🗑️ 2026-07-07 라이브커머스 제거: 라이브 자동복귀 삭제 → 홈으로 쇼핑 계속.
+                    🏪 2026-08-12 [UNLOCK]: **가장 큰 버튼**이 몰 손님도 유어딜 홈으로 보내고 있었다.
+                    간판(배너)만으론 부족하다 — 손님은 큰 버튼을 누른다. 컴포넌트가 스스로 판정하고
+                    흔적이 없으면 종전 그대로(`쇼핑 계속하기` → `/`). 결제 로직 무접촉. */}
+                <ContinueShoppingLink
+                  onFallback={() => navigate('/')}
+                  className="w-full sm:flex-1 rounded-md bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
+                />
               </>
             )}
           </div>
