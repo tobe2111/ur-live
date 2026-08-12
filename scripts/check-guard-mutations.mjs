@@ -72,6 +72,29 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '공정위 연도 파라미터를 `yr` 로 되돌린다(코드 11 로 다시 0건)',
+    file: 'src/features/marketing/api/franchise-collect.ts',
+    find: "export const FRANCHISE_YR_PARAM = 'jngBizCrtraYr'",
+    replace: "export const FRANCHISE_YR_PARAM = 'yr'",
+    test: 'src/tests/unit/ads-public-api-params.test.ts',
+    why:
+      '이 레인이 몇 달간 0건이던 진짜 원인이 **이 이름 하나**였다(포털 요청변수는 `jngBizCrtraYr`). ' +
+      '2026-08-11 에 나는 자가치유가 2025·2026·2024 를 다 시도하고도 실패한 것을 보고 *"연도 가설 기각"* ' +
+      '이라고 적었는데 **반만 맞았다** — 값이 아니라 **키**가 틀렸으니 어떤 값도 코드 11 이었다. ' +
+      '⚠️ 이 환경은 `apis.data.go.kr` 프록시 차단이라 되돌아가도 **개발 중엔 아무 증상이 없다**(라이브에서만 0건).',
+  },
+  {
+    name: '기업마당 주소를 옛 값으로 되돌린다(코드 12 로 다시 0건)',
+    file: 'src/features/marketing/api/notice-scan.ts',
+    find: "const BIZINFO_BASE = 'https://apis.data.go.kr/1421000/bizinfo'",
+    replace: "const BIZINFO_BASE = 'https://apis.data.go.kr/1421000/hpsBnaSituService'",
+    test: 'src/tests/unit/ads-public-api-params.test.ts',
+    why:
+      '옛 값은 주소·오퍼레이션이 **둘 다** 틀렸고, 게이트웨이는 그걸 코드 12 하나로만 답한다 — ' +
+      '*주소 부재*와 *오퍼레이션 오타*가 구분되지 않아 몇 달간 원인을 못 좁혔다. ' +
+      '대표가 공유한 포털 화면(2026-08-12)으로 확정된 값이라 **추측으로 되돌아가면 안 된다.**',
+  },
+  {
     name: '회차 퍼널을 UTC 로 묶는다(한국 기준 하루가 두 날로 갈린다)',
     file: 'src/features/marketing/api/influencer-collect-funnel.ts',
     find: 'export const kstDay = (ms: number): string => new Date(ms + 9 * 3600_000).toISOString().slice(0, 10)',
@@ -218,12 +241,17 @@ const MUTATIONS = [
   {
     name: '공정위 연도 순회를 모든 오류에서 돈다(같은 실패를 N배로)',
     file: 'src/features/marketing/api/franchise-collect.ts',
-    find: '    if (i === 0 && !count && msg && /ESSENTIAL_PARAMETER_ERROR|필수.*파라미터/i.test(msg)) {',
-    replace: '    if (i === 0 && !count && msg) {',
+    find: '    if (i === 0 && !count && (!msg || /ESSENTIAL_PARAMETER_ERROR|필수.*파라미터/i.test(msg))) {',
+    replace: '    if (i === 0 && !count) {',
     test: 'src/tests/unit/franchise-op-fallback.test.ts',
     why:
-      '키 오류·트래픽 초과에 연도 후보를 돌리면 **같은 실패를 3배로 반복**해 서브리퀘스트만 태운다. ' +
-      '무료 플랜은 인보케이션당 50~60 이라 그 낭비가 다른 레인의 예열 실패로 번진다(2026-07-29 실측 클래스).',
+      '키 오류·트래픽 초과에 연도 후보를 돌리면 **같은 실패를 N배로 반복**해 서브리퀘스트만 태운다. ' +
+      '무료 플랜은 인보케이션당 50~60 이라 그 낭비가 다른 레인의 예열 실패로 번진다(2026-07-29 실측 클래스). ' +
+      '🔧 **2026-08-12 앵커 갱신**: 게이트를 *"코드 11 **또는** 오류 없이 0건"* 으로 의도적으로 넓히면서 ' +
+      '이 `find` 가 낡은 지도가 됐고 **CI 가 그걸 잡았다**(harness 의 두 번째 목적이 정확히 이것). ' +
+      '지키는 뜻은 그대로다 — 넓힌 것은 "성공 응답인데 0건"까지이고, **키·트래픽 오류는 여전히 순회하지 않는다.** ' +
+      '⚠️ 이 사고의 교훈: 가드가 붙은 코드를 고쳤으면 `--only` 로 **그 파일의 기존 주입까지** 돌려 볼 것 ' +
+      '(내 새 항목만 돌리고 푸시했다가 CI 에서 걸렸다).',
   },
   {
     name: '규칙 버전이 올라가도 우선순위 커서를 리셋 안 함(우선순위가 1회용이 된다)',

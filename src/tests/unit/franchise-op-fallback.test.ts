@@ -114,7 +114,10 @@ describe('연도(yr) 자가치유 — 코드 11', () => {
   })
 
   it('🔒 첫 페이지에서만 — 매 페이지 순회는 예산 낭비', () => {
-    const m = SRC2.match(/if \(i === 0 && !count && msg && \/ESSENTIAL_PARAMETER_ERROR/)
+    // 🔧 2026-08-12: 게이트를 **의도적으로 넓혔다**(코드 11 뿐 아니라 '오류 없이 0건'도 순회).
+    //   이름을 `jngBizCrtraYr` 로 고친 뒤엔 코드 11 이 안 나오므로, 좁은 채로 두면 *연도만 틀린* 경우가
+    //   에러 없이 영원히 0건이 된다. 이 검사가 지키는 뜻은 여전히 **"첫 페이지에서만"** 이다.
+    const m = SRC2.match(/if \(i === 0 && !count && \(!msg \|\| \/ESSENTIAL_PARAMETER_ERROR/)
     expect(m, '연도 폴백이 i===0 가드 안에 있어야 한다').toBeTruthy()
   })
 
