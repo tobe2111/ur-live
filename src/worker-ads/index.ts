@@ -477,7 +477,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     gates.dailyAt(16, '/__ads/collect-nps', async () => { const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich'); return runNpsWorkplaceEnrich(env) })
   }
   // 📮 이메일 재검증 스윕 — 일 1회(hourUTC===17 = KST 02시). 기존 저장 이메일의 죽은 도메인(반송 확정) 정리.
-  if (env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
+  //   ⏰ 2026-08-12 알람 이관(5차) — 08-11 17:00 회차가 `ran=8`(그날 최다 타이) + `p:1`(부모가 꼬리 전에 사망).
+  //     근거·측정은 `lane-alarm-runners.ts` 의 5차 이관 주석.
+  if (!laneAlarmOn && env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
     gates.dailyAt(17, '/__ads/sweep-mx', async () => { const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep'); return sweepEmailMx(env) })
   }
   // 🏛️ 나라장터 계약정보(상권활성화 용역) — 일 1회(hourUTC===23 = KST 08시).

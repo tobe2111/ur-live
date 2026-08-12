@@ -128,3 +128,42 @@ describe('cron ↔ 알람 주기 정합', () => {
     expect(read(SRC.public)).toMatch(/everyNHours\(4, 1, '\/__ads\/scan-notices'/)
   })
 })
+
+/**
+ * 🕳️ **일 1회 레인이 cron 에 남아 있으면 혼잡한 시각의 꼬리가 된다** (2026-08-12, 5차 이관).
+ *
+ * `dailyAt` 은 `isDeferrable=false`(=`always`) 라 **회차 예산이 못 막는다.** 부모가 그 시각의 레인을
+ * 전부 띄우다 CPU 로 죽으면 `waitUntil` 이 안 비워지고 뒤쪽 자식은 **시작조차 못 한다.**
+ * 매시간 레인은 다음 정각이 있지만 **일 1회 레인은 그날이 끝**이고, 에러가 없어 경보도 안 울린다.
+ *
+ * 실측(`ads_tick_history`, 08-11):
+ * ```
+ *   h=17 ran=8 p:1  → sweep-mx 침묵      h=22 ran=8 p:1  → collect-franchise 침묵
+ *   ran<=6 인 16개 회차는 전부 정상 마감
+ * ```
+ *
+ * ## ⚠️ 이 테스트가 못 하는 것
+ * "혼잡한가"를 판정하지 못한다(런타임 사실이라 코드에 없다). 대신 **cron 무가드 잔류 목록을 고정**해
+ * 새 `dailyAt` 을 아무 생각 없이 cron 에 얹지 못하게 한다 — 얹으려면 이 목록을 고치며 근거를 보게 된다.
+ */
+describe('cron 잔류 일 1회 레인', () => {
+  const unguardedDaily = (): string[] => CRON.filter(r => r.kind === 'dailyAt' && !r.guarded).map(r => r.lane).sort()
+
+  /**
+   * 🔒 남은 둘은 **측정으로** 남긴 것이다:
+   *   - `silence-digest`(23h) — 같은 날 h=23 은 `ran=5` 정상 마감 + 하트비트 08-11 23:01 로 실제 발화.
+   *   - `collect-market`(20h) — `ADS_MARKET_ENABLED` 미설정이라 애초에 등록조차 안 된다(원부 1,393건
+   *     이미 전량 수집 `stopped_by:end`). 굶은 게 아니라 꺼진 것이다.
+   */
+  it('🔒 cron 무가드 dailyAt 은 이 둘뿐 — 늘리려면 5차 이관 근거를 먼저 읽어라', () => {
+    expect(unguardedDaily()).toEqual(['collect-market', 'silence-digest'])
+  })
+
+  it('🔒 5차 이관 두 레인은 알람이 몬다 (cron 으로 되돌리면 다시 굶는다)', () => {
+    for (const lane of ['sweep-mx', 'collect-franchise']) {
+      expect(ALARM.has(lane), `${lane} 이 알람 등록부에서 사라졌다`).toBe(true)
+      // 시각 보존 — 이관은 '누가 모는가'만 바꾸고 외부 호출량은 그대로여야 한다(R2 가 값도 대조한다).
+      expect(ALARM.get(lane)).toMatch(/getUTCHours\(\) !== (17|22)\b/)
+    }
+  })
+})

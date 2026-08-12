@@ -36,7 +36,10 @@ export function registerPublicDataCrons(env: Env, gates: Gates): void {
     gates.everyNHours(2, 0, '/__ads/collect-commerce', async () => { const { runCommerceCollect } = await import('@/features/marketing/api/commerce-notify-collect'); return runCommerceCollect(env) })
   }
   // 🏢 공정위 가맹 — 일 1회(주 1회 성격이지만 매일 소량 페이지로 커서를 흘린다).
-  if (e.ADS_FRANCHISE_ENABLED === 'true') {
+  //   ⏰ 2026-08-12 알람 이관(5차) — 08-11 22:00 회차가 `ran=8` + `p:1`(부모가 꼬리 전에 사망) →
+  //     이 레인의 자식이 아예 시작되지 않았다(`ads_franchise_stats.last_run` 이 08-10 그대로).
+  //     판단 헬퍼는 commerce·scan-notices 와 동일한 한 곳.
+  if (!laneAlarmDrivesEnrich(env) && e.ADS_FRANCHISE_ENABLED === 'true') {
     gates.dailyAt(22, '/__ads/collect-franchise', async () => { const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect'); return runFranchiseCollect(env) })
   }
   // 🏪 상권 축(전통시장 상인회) — 일 1회. 원부가 1,393건이라 회당 몇 페이지면 전량이 금방 돌고,
