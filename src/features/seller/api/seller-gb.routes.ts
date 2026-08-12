@@ -26,6 +26,9 @@ import { validateGbSession, resolveGbStatus, type GbSession, type GbMode } from 
 import { parsePickup, pickupToMeta, validatePickup, type PickupInfo } from '../../../shared/pickup'
 import { getSupplyMeta, setSupplyMeta } from '../../../worker/utils/product-supply-meta'
 import { safeError } from '../../../worker/utils/safe-error'
+import { rateLimit } from '../../../worker/middleware/rate-limit'
+import { isMallSlugCandidate } from '../../../shared/mall/resolve'
+import { ensureMallApplications, pendingApplication } from '../../../worker/utils/mall-applications'
 
 const app = new Hono<{ Bindings: Env }>()
 const MODES: readonly GbMode[] = ['off', 'scheduled', 'live', 'ended']
@@ -68,7 +71,7 @@ async function ownedProduct(DB: D1Database, productId: number, sellerId: number)
 /**
  * 🏪 2026-08-12: 운영자가 **자기 링크를 몰랐다.** 상품을 올려도 `urdeal.kr/{슬러그}` 가 어디에도
  * 안 보여 카톡에 뿌릴 수가 없었다(운영자 화면 전체에 `mall_slug` 참조 0건이었다).
- * 그리고 몰 연결이 안 된 셀러의 상품은 **조용히 본진(mall_id=1)으로** 들어간다
+ * 그리고 몰 연결이 안 된 셀러의 상품은 **조용히 본진 몰(id 1)으로** 들어간다
  * (`mallIdForSeller` 기본값) — 운영자는 등록했는데 자기 가게에 안 뜨고, 왜인지 알 방법도 없었다.
  * ⇒ 연결됐으면 슬러그를, 아니면 `linked:false` 를 돌려준다. **모르는 채로 두지 않는다.**
  */
@@ -81,10 +84,56 @@ app.get('/mall', async (c) => {
          FROM sellers s JOIN wholesale_malls m ON m.id = s.mall_id
         WHERE s.id = ? AND COALESCE(m.consumer_path, 0) = 1 AND COALESCE(m.active, 1) = 1`,
     ).bind(sellerId).first<{ slug: string; name: string }>().catch(() => null)
-    // 🔴 본진(mall_id=1)·미연결·도매몰은 전부 `linked:false` — 소비자 경로로 열리는 몰만 "내 가게"다.
-    return c.json({ success: true, linked: !!row?.slug, slug: row?.slug ?? null, name: row?.name ?? null })
+    // 🔴 본진 몰(id 1)·미연결·도매몰은 전부 `linked:false` — 소비자 경로로 열리는 몰만 "내 가게"다.
+    const pending = row?.slug ? null : await pendingApplication(c.env.DB, sellerId)
+    return c.json({
+      success: true, linked: !!row?.slug, slug: row?.slug ?? null, name: row?.name ?? null,
+      pending: pending ? { slug: pending.slug, name: pending.name, created_at: pending.created_at } : null,
+    })
   } catch (err) {
     return safeError(c, err, '가게 정보를 불러오지 못했습니다', '[seller-gb]')
+  }
+})
+
+// ── POST /mall/apply — 가게 개설 신청 ─────────────────────────────────────────
+/**
+ * 🏪 2026-08-12 최소안: 운영자가 **신청**하고 어드민이 **승인만** 한다.
+ * 🔴 신청은 **아무것도 만들지 않는다** — 슬러그는 `urdeal.kr/{슬러그}` 라는 영구 주소이고,
+ *   예약어와 충돌하면 소비자 라우트가 통째로 죽는다. 사람이 한 번 보는 단계를 남긴다.
+ */
+app.post('/mall/apply', rateLimit({ action: 'seller-mall-apply', max: 5, windowSec: 3600 }), async (c) => {
+  try {
+    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    await ensureMallApplications(c.env.DB)
+
+    const b = await c.req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>))
+    const slug = String(b.slug ?? '').trim().toLowerCase()
+    const name = String(b.name ?? '').trim().slice(0, 60)
+    // 🔴 예약어·문법은 소비자 라우트와 **같은 SSOT** 로 본다. 여기서 갈리면 승인 시점에야 터진다.
+    if (!isMallSlugCandidate(slug)) {
+      return c.json({ success: false, error: '주소는 영문 소문자·숫자·하이픈 3~30자여야 하고, 예약된 주소는 쓸 수 없습니다' }, 400)
+    }
+    if (!name) return c.json({ success: false, error: '가게 이름을 입력해주세요' }, 400)
+
+    // 이미 연결된 셀러는 신청 불가 — 가게가 둘이 되면 상품이 어디로 갈지 모호해진다.
+    const linked = await c.env.DB.prepare(
+      'SELECT 1 AS hit FROM sellers s JOIN wholesale_malls m ON m.id = s.mall_id WHERE s.id = ? AND COALESCE(m.consumer_path, 0) = 1',
+    ).bind(sellerId).first().catch(() => null)
+    if (linked) return c.json({ success: false, error: '이미 가게가 열려 있습니다' }, 409)
+
+    // 슬러그 선점 확인(친절한 메시지 — 최종 판정은 승인 시점에 한 번 더 한다).
+    const taken = await c.env.DB.prepare('SELECT 1 AS hit FROM wholesale_malls WHERE slug = ?').bind(slug).first().catch(() => null)
+    if (taken) return c.json({ success: false, error: '이미 사용 중인 주소입니다' }, 409)
+
+    // partial UNIQUE(seller_id WHERE status='pending')가 동시 신청을 막는다 — 실패는 곧 "이미 대기 중".
+    const ins = await c.env.DB.prepare(
+      "INSERT INTO mall_applications (seller_id, slug, name, status) VALUES (?, ?, ?, 'pending')",
+    ).bind(sellerId, slug, name).run().catch(() => null)
+    if (!ins?.meta?.last_row_id) return c.json({ success: false, error: '이미 심사 중인 신청이 있습니다' }, 409)
+    return c.json({ success: true, id: Number(ins.meta.last_row_id) })
+  } catch (err) {
+    return safeError(c, err, '신청 처리 중 오류가 발생했습니다', '[seller-gb]')
   }
 })
 

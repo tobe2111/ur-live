@@ -252,7 +252,51 @@ CLAUDE.md Toss audit log 에 `[UNLOCK]` 기록 추가(잠금 절차 3단계).
   프로덕션 데이터라 세션이 임의로 만들지 않았다.
 - **본진 결제 1회** — 몰 흔적 없는 결제에서 배너·버튼이 **이전과 동일**해야 한다(본진 무영향 실검증).
 
-## 12. 남은 설계 결정
+## 12. 운영자 셀프 온보딩 — **최소안 구현** (대표 "최소안으로 진행해줘")
+
+몰 생성(`super_admin` + IP whitelist)과 셀러↔몰 연결(`UPDATE sellers SET mall_id`)이 **둘 다 수동**이라
+매장이 열 곳만 돼도 대표가 매번 붙어야 했다. ⇒ **운영자가 신청 · 어드민은 승인만.**
+
+| | 무엇 |
+|---|---|
+| `worker/utils/mall-applications.ts` | 신규 — `mall_applications` ensure(WeakSet 메모이즈) + partial UNIQUE(셀러당 pending 1건) |
+| `POST /api/seller/gb/mall/apply` | 신청. 🔴 **아무것도 만들지 않는다** — 슬러그는 영구 주소라 사람이 한 번 본다 |
+| `GET /api/admin/wholesale-malls/applications` | 대기열(super only) |
+| `POST …/applications/:id/approve` | 몰 생성 + 셀러 연결 + **기존 본진 상품 이관**을 한 번에 |
+| `MyMallAddress` | 미연결이면 신청 폼, 심사 중이면 "심사 중" |
+| `MallApplicationsPanel` | 어드민 대기열(0건이면 미렌더) |
+
+### 🔴 승인은 **선점 먼저**(claim-before-create)
+
+`pending → approved` CAS 로 이 요청만 진행시킨다. 먼저 만들고 나중에 표시하면 동시 승인 두 건이
+**몰을 둘 만든다**(슬러그 UNIQUE 가 두 번째를 막아도 첫 번째는 이미 생겼다).
+실패하면 `pending` 으로 되돌린다 — 안 그러면 그 신청이 대기열에서 영영 사라진다.
+
+슬러그 판정은 **양쪽 모두 기존 SSOT** 를 쓴다(신청=`isMallSlugCandidate`, 승인=`rejectReservedSlug`
+— 그 파일의 몰 생성과 같은 함수). 경로마다 기준이 갈리면 신청 경유로만 통과하는 예약어가 생기고,
+그건 소비자 라우트를 죽인다.
+
+### 🐛 같은 실수를 하루에 두 번 했다
+
+주석에 **`mall_id=1`** 이라고 쓴 것만으로 `mall-id-isolation` 래칫이 빨강이 됐다 —
+오늘 아침 #1137 에서 이미 겪은 것과 **같은 함정**이다(그때도 가드가 아니라 주석을 고쳤다).
+⇒ 본문 표기를 `본진 몰(id 1)` 로. **가드는 옳았다.**
+
+그리고 CI 가 잡은 것: 나는 `mall-surface-boundary` 와 `mall-origin-banner` **둘만** 돌리고
+`mall-id-isolation` 을 안 돌렸다. ⇒ **`mall-*` 전체를 돌린다**(16파일 257건, 명령은 §13).
+
+되돌려-검증 5건 빨강 확인(신청이 몰 생성 · 슬러그 SSOT 우회 · 선점 없이 생성 · 실패 시 복원 없음 ·
+슈퍼관리자 게이트 제거).
+
+## 13. 다음 세션이 쓸 명령
+
+```bash
+# 몰 관련 전체 (부분만 돌리면 mall-id-isolation 래칫을 놓친다 — 실제로 CI 가 잡았다)
+npx vitest run $(ls src/tests/unit/mall-*.test.ts src/tests/unit/mall-*.test.tsx) src/tests/unit/wholesale-malls.test.ts
+git fetch origin main --depth=50 && node scripts/check-file-size.mjs --changed-only -s   # CI 동일 모드
+```
+
+## 14. 남은 설계 결정
 
 - **운영자 셀프 온보딩** — 몰 생성(`super_admin` + IP whitelist)과 셀러↔몰 연결이 **둘 다 수동**이다.
   파일럿 한두 곳이면 정상이지만 **매장이 열 곳만 돼도 대표가 매번 붙어야 한다.**

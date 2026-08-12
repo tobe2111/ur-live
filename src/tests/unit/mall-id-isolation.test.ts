@@ -92,6 +92,11 @@ describe('mall_id 격리 전제 — 신규 몰은 1·2 를 재사용하지 않�
       //   본진 조건(`COALESCE(p.mall_id,1)=1`)이 담당한다 — 다른 sitemap 쿼리와 동일한 헬퍼다.
       //   이 조건이 빠지면 몰 상품 기준으로 지역 URL 이 색인 요청된다(sitemap-mall-scope 가 잡았다).
       'src/features/group-buy/api/regions.routes.ts': '지역 집계 읽기 — mainScopeFor 본진 격리(쓰기 없음)',
+      // ✅ 2026-08-12 — 운영자가 **자기 가게 주소를 아는** 조회(`GET /api/seller/gb/mall`). **쓰기 0.**
+      //   `sellers.mall_id` 를 조인 키로만 쓰고 **리터럴 몰 id 를 어디에도 안 쓴다.**
+      //   격리는 조인 조건이 담당한다: `consumer_path=1 AND active=1` — 본진(1)·도매몰·미연결은
+      //   조인이 성립하지 않아 `linked:false` 로 떨어진다(도매몰이 "내 가게"로 뜨면 서비스 분리가 깨진다).
+      'src/features/seller/api/seller-gb.routes.ts': '운영자 자기 몰 조회 — sellers.mall_id 조인, consumer_path 격리(쓰기 없음)',
     }
     const mentions = files.filter((f) => /\bmall_id\b/.test(read(f)) && !(f in MENTION_BASELINE))
     expect(mentions, 'mall_id 를 쓰는 새 경로 — 1·2 가 아닌 운영자 몰 id 인지 확인 후 baseline 등록').toEqual([])

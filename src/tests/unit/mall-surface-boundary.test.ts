@@ -469,3 +469,67 @@ describe('결제 완료의 가장 큰 버튼이 몰 손님을 본진으로 보�
     expect(/readMallOrigin|isFromMallSession|mall_id/.test(page)).toBe(false)
   })
 })
+
+// 🏪 **운영자 셀프 온보딩 최소안** (2026-08-12 — 대표 "최소안으로 진행해줘")
+//   몰 생성과 셀러↔몰 연결이 둘 다 어드민 수동이라, 매장이 열 곳만 돼도 대표가 매번 붙어야 했다.
+//   ⇒ 운영자가 신청 · 어드민은 승인만. 🔴 **자동 생성이 아니다** — 슬러그는 영구 주소라 사람이 한 번 본다.
+describe('가게 개설 신청 — 신청은 아무것도 만들지 않는다', () => {
+  const readF = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
+  const sellerRoutes = readF('src/features/seller/api/seller-gb.routes.ts')
+  const adminRoutes = readF('src/features/supply/api/wholesale-malls-admin.routes.ts')
+
+  it('신청 경로는 몰을 만들지 않는다 — INSERT 대상은 신청 테이블뿐', () => {
+    const apply = sellerRoutes.slice(sellerRoutes.indexOf("app.post('/mall/apply'"))
+    expect(apply.length).toBeGreaterThan(0)
+    expect(/INSERT INTO mall_applications/.test(apply)).toBe(true)
+    expect(/INSERT INTO wholesale_malls/.test(apply)).toBe(false)   // 🔴 신청이 몰을 만들면 안 된다
+    expect(/UPDATE sellers SET mall_id/.test(apply)).toBe(false)    // 🔴 연결도 승인 시점에만
+  })
+
+  it('슬러그 판정은 소비자 라우트와 같은 SSOT — 여기서 갈리면 예약어가 통과한다', () => {
+    const apply = sellerRoutes.slice(sellerRoutes.indexOf("app.post('/mall/apply'"))
+    expect(/isMallSlugCandidate\(slug\)/.test(apply)).toBe(true)
+  })
+
+  it('승인은 **선점 먼저** — 동시 승인이 몰을 둘 만들지 않는다', () => {
+    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    const claim = ap.indexOf("SET status = 'approved'")
+    const create = ap.indexOf('INSERT INTO wholesale_malls')
+    expect(claim).toBeGreaterThan(0)
+    expect(create).toBeGreaterThan(0)
+    expect(claim).toBeLessThan(create)                       // CAS 가 생성보다 앞
+    expect(/meta\?\.changes/.test(ap.slice(claim, create))).toBe(true)  // 그리고 결과를 본다
+  })
+
+  it('승인 실패하면 pending 으로 되돌린다 — 신청이 대기열에서 사라지지 않게', () => {
+    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    expect(/SET status = 'pending', reviewed_at = NULL/.test(ap)).toBe(true)
+  })
+
+  it('승인이 만드는 몰은 소비자 경로로 열린다(consumer_path=1)', () => {
+    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    expect(/INSERT INTO wholesale_malls[\s\S]{0,200}consumer_path/.test(ap)).toBe(true)
+  })
+
+  it('🔴 정적 `/applications*` 가 `/:id` 보다 앞에 등록된다', () => {
+    const param = adminRoutes.indexOf("app.patch('/:id'")
+    expect(param).toBeGreaterThan(0)
+    for (const s of ["app.get('/applications'", "app.post('/applications/:id/approve'", "app.post('/applications/:id/reject'"]) {
+      expect(adminRoutes.indexOf(s)).toBeGreaterThan(0)
+      expect(adminRoutes.indexOf(s)).toBeLessThan(param)
+    }
+  })
+
+  it('승인/반려는 슈퍼관리자만', () => {
+    for (const s of ["app.post('/applications/:id/approve'", "app.post('/applications/:id/reject'"]) {
+      const i = adminRoutes.indexOf(s)
+      expect(adminRoutes.slice(i, i + 200)).toMatch(/requireSuperAdmin\(\)/)
+    }
+  })
+
+  it('화면이 배선돼 있다 — 운영자 신청 폼 · 어드민 대기열', () => {
+    const noImp = (x: string) => x.replace(/^\s*import[^\n]*$/gm, '')
+    expect(/mall\/apply/.test(readF('src/components/seller/MyMallAddress.tsx'))).toBe(true)
+    expect(/<MallApplicationsPanel\b/.test(noImp(readF('src/pages/admin/AdminWholesaleMallsPage.tsx')))).toBe(true)
+  })
+})
