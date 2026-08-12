@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { planKeywordSplit, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, FOCUS_CATEGORIES, PRIORITY_CATEGORIES } from '@/features/marketing/api/influencer-keyword-rotation'
+import { planRoundWidth } from '@/features/marketing/api/influencer-keyword-order'
 import { CLASSIFIED_CATEGORIES } from '@/features/marketing/api/influencer-classify'
 
 const SRC = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
@@ -215,11 +216,94 @@ describe('🔀 세 풀 병합 — 잘릴 때 공평하게 잘린다', () => {
     expect(merge([], [201, 202], [301, 302])).toEqual([201, 301, 202, 302])
   })
 
+  /**
+   * ⚖️ **잘림이 비례해야 한다** (2026-08-11 — `starved` 경보 + 라이브 실측).
+   *
+   * 1:1:1 로 번갈아 놓으면 회차가 예산에서 끊길 때 **작은 축은 몫을 다 지키고 큰 축만 깎인다.**
+   * 라이브 풀(집중 25 · 우선 358 · 일반 76)에서 `planKeywordSplit(9)` = 1/6/2 인데 예산이 5 에서
+   * 끊겨, 우선 축(전체의 78%·본업)이 6개 중 4개를 잃고 **키워드 1개당 회전율이 설계의 1/5** 이 됐다
+   * (24h 실측 focus:pri:gen = 7.3 : 1 : 3.2, 설계 목표 1.5 : 1 : 0.5).
+   *
+   * ⚠️ 완전 비례를 요구하진 않는다 — 정수 5개를 1:6:2 로 쪼갤 수 없고, `planKeywordSplit` 의
+   *   최소 1슬롯 바닥(불변식 ④)도 의도된 대가다. 고정하는 것은 **"가장 큰 몫을 가진 축이
+   *   앞부분에서도 가장 많아야 한다"** — 옛 구현은 이걸 깼다(우선 2 = 일반 2).
+   */
+  it('🔒 예산에서 잘려도 큰 몫 축이 앞부분에서 최다다 — 라이브 풀(1/6/2)', () => {
+    const head = merge([11], [21, 22, 23, 24, 25, 26], [31, 32]).slice(0, 5)
+    const nPri = head.filter(x => x >= 20 && x < 30).length
+    const nGen = head.filter(x => x >= 30).length
+    const nFocus = head.filter(x => x < 20).length
+    expect(nPri, `우선 몫 6/9 인데 앞 5개에 ${nPri}개뿐 — 잘림이 비대칭이다`).toBeGreaterThan(nGen)
+    expect(nPri).toBeGreaterThan(nFocus)
+    expect(nPri, '옛 1:1:1 구현이 내던 값(2)으로 회귀하면 안 된다').toBeGreaterThanOrEqual(3)
+  })
+
+  it('🔒 비지 않은 축은 여전히 앞 5개 안에 들어온다(2026-08-04 불변식 유지)', () => {
+    const head = merge([11], [21, 22, 23, 24, 25, 26], [31, 32]).slice(0, 5)
+    expect(head.filter(x => x < 20), '집중').not.toHaveLength(0)
+    expect(head.filter(x => x >= 30), '일반').not.toHaveLength(0)
+  })
+
+  it('🔒 풀 내부 상대 순서는 보존된다 — 어기면 prefixDone 커서가 깨진다', () => {
+    const merged = merge([11, 12], [21, 22, 23], [31, 32, 33, 34])
+    const only = (lo: number, hi: number) => merged.filter(x => x >= lo && x < hi)
+    expect(only(10, 20)).toEqual([11, 12])
+    expect(only(20, 30)).toEqual([21, 22, 23])
+    expect(only(30, 40)).toEqual([31, 32, 33, 34])
+    expect(merged).toHaveLength(9)   // 하나도 잃지 않는다
+  })
+
   it('🔌 배선 — 집중 축 프리픽스로 회귀하지 않는다', () => {
     const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')  // 주석 제외 — 근거 설명에 옛 코드가 인용된다
     expect(src).not.toMatch(/const picks[^=]*=\s*\[\.\.\.focusPicks\]/)
-    expect(src).toMatch(/mergeKeywordPicks\(focusPicks, priPicks, genPicks\)/)
+    // 🔄 2026-08-12: 네 번째 인자(lead)가 붙었다 — 앞자리를 회차마다 돌린다. 인자 유무는 느슨하게 보고,
+    //   **회전이 실제로 배선됐는지**는 아래 별도 검사가 고정한다(여기서 고정하면 둘이 갈린다).
+    expect(src).toMatch(/mergeKeywordPicks\(focusPicks, priPicks, genPicks/)
+  })
+
+  /**
+   * 🔄 **앞자리 회전** (2026-08-12 — 라이브 커서 실측으로 원인 확정).
+   *
+   * 커서 전진은 `prefixDone`(처리된 **선행** 픽 수)인데 회차가 예산에서 잘리므로(계획 16 → 처리 7),
+   * 뒤쪽 축은 매번 잘려 `prefixDone = 0` → 그 축 커서가 **영원히 제자리**다. 라이브 실측:
+   * ```
+   *   수리 전(집중이 앞)   집중 17 전진  ·  우선 5 정지   ·  일반 52 정지
+   *   수리 후(우선이 앞)   우선 5→51 전진 ·  집중 1 정지   ·  일반 53 정지
+   * ```
+   * 앞자리가 바뀌자 움직이는 커서도 그대로 바뀌었다 — **어느 축이 앞서든 나머지는 굶는다.**
+   *
+   * ⚠️ 이 테스트가 못 보는 것: 회전만으로 충분한가(3회차당 +1 은 일반 풀 한 바퀴에 9일).
+   *   그건 `planRoundWidth`(폭 맞춤)와 짝이고, 실제 회복 속도는 라이브 커서 값으로 판정한다.
+   */
+  it('🔒 lead 축의 첫 픽이 맨 앞에 온다 — 세 축 모두 앞자리를 받을 수 있어야 한다', () => {
+    const F = [11, 12], P = [21, 22, 23, 24, 25, 26], G = [31, 32]
+    expect(merge(F, P, G, 0)[0], '집중이 앞자리').toBe(11)
+    expect(merge(F, P, G, 1)[0], '우선이 앞자리').toBe(21)
+    expect(merge(F, P, G, 2)[0], '일반이 앞자리').toBe(31)
+  })
+
+  it('🔒 회전해도 몫·풀 내부 순서는 불변이다(잃는 픽 0)', () => {
+    for (const lead of [-1, 0, 1, 2]) {
+      const merged = merge([11, 12], [21, 22, 23], [31, 32, 33, 34], lead)
+      expect(merged, `lead=${lead}`).toHaveLength(9)
+      expect(merged.filter(x => x < 20)).toEqual([11, 12])
+      expect(merged.filter(x => x >= 20 && x < 30)).toEqual([21, 22, 23])
+      expect(merged.filter(x => x >= 30)).toEqual([31, 32, 33, 34])
+    }
+  })
+
+  it('🔒 lead 없이 부르면 종전과 동일하다(기본값 회귀 방지)', () => {
+    expect(merge([11], [21, 22, 23, 24, 25, 26], [31, 32]))
+      .toEqual(merge([11], [21, 22, 23, 24, 25, 26], [31, 32], -1))
+  })
+
+  it('🔌 배선 — 앞자리를 회차마다 돌린다(고정 축 회귀 금지)', () => {
+    expect(CODE).toMatch(/mergeKeywordPicks\(focusPicks, priPicks, genPicks,\s*roundIndex\s*%\s*3\)/)
+  })
+
+  it('🔒 빈 축을 lead 로 지정해도 깨지지 않는다', () => {
+    expect(merge([], [21, 22], [31, 32], 0)).toEqual([21, 31, 22, 32])
   })
 })
 
@@ -266,5 +350,48 @@ describe('📉🧊 수집 예산 회수 + 폭 동결', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
     expect(src).toMatch(/if \(processedIds\.size >= roundCap\) break/)
     expect(src).toMatch(/enrichMax: NAVER_COLLECT_ENRICH_MAX/)
+  })
+})
+
+/**
+ * 📏 **회차 폭을 처리 능력에 맞춘다** (2026-08-12 — 기아의 근본 원인).
+ *
+ * 계획 16 · 처리 7 이면 9개는 매 회차 뽑혔다가 잘린다. 그 자체는 무해해 보이지만, 커서 전진이
+ * `prefixDone`(처리된 **선행** 구간)이라 **잘리는 자리의 축은 커서가 안 밀리고 다음 회차에 같은
+ * 키워드를 또 내놓는다.** 라이브에서 102개가 15일간 순번을 못 받은 이유다.
+ * ⇒ 초과 계획은 "여유"가 아니라 **기아를 만드는 장치**였다.
+ *
+ * ⚠️ 이 테스트가 못 보는 것: 실제 커서 회복 속도(라이브 `ads_autocollect_cursor_*` 로 판정).
+ */
+describe('📏 planRoundWidth — 처리 능력에 맞춘 계획', () => {
+  it('🔒 증거가 없으면 종전 값 그대로(모르는 상태에서 좁히지 않는다)', () => {
+    expect(planRoundWidth([], 16)).toBe(16)
+    expect(planRoundWidth([0, 0], 16), '0 은 증거가 아니다').toBe(16)
+  })
+
+  it('🔒 관측 중앙값 + 여유 20% 로 좁힌다 — 라이브(처리 7, 계획 16)', () => {
+    expect(planRoundWidth([7, 7, 6, 8, 7], 16)).toBe(9)   // ceil(7*1.2)
+  })
+
+  it('🔒 처리량이 늘면 계획도 따라 오른다(자기 조율 — 한 방향 고착 금지)', () => {
+    const low = planRoundWidth([5, 5, 5], 16)
+    const high = planRoundWidth([13, 14, 13], 16)
+    expect(high).toBeGreaterThan(low)
+    expect(high).toBeLessThanOrEqual(16)               // hardMax 를 절대 안 넘는다
+  })
+
+  it('🔒 바닥이 있다 — 축이 셋이라 3 미만이면 한 축도 못 들어가는 회차가 생긴다', () => {
+    expect(planRoundWidth([1, 1, 1], 16)).toBeGreaterThanOrEqual(3)
+  })
+
+  it('🔒 이상값에 안 무너진다', () => {
+    expect(planRoundWidth([Number.NaN, -3, 7, 7], 16)).toBe(9)
+    expect(planRoundWidth([7], 0)).toBe(0)
+  })
+
+  it('🔌 배선 — 회차 이력(funnel.recent)의 processed 로 폭을 정한다', () => {
+    expect(CODE).toMatch(/planRoundWidth\(\s*\(prev\?\.funnel\?\.recent \|\| \[\]\)/)
+    expect(CODE).toMatch(/const totalPick = planRoundWidth\(/)
+    expect(CODE, '고정 폭으로 회귀 금지').not.toMatch(/const totalPick = batch \+ NAVER_EXTRA/)
   })
 })

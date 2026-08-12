@@ -15,7 +15,18 @@ import { serviceKeyParam, isNoValue, describePublicDataFailure } from './public-
 //   우리 쪽에서 필터(개방표준은 구간 조회가 표준 — 검색 파라미터 미보장). 이전 BidPublicInfoService 는 placeholder.
 //   (같이 승인된 사용자정보서비스 UsrInfoService02 는 조달업체 명부 — 공고 스캔과 무관, 미배선.)
 const NARA_BASE = 'https://apis.data.go.kr/1230000/ao/PubDataOpnStdService'
-const BIZINFO_BASE = 'https://apis.data.go.kr/1421000/hpsBnaSituService'   // 기업마당(중기부) — 확정 대상
+/**
+ * 🏢 기업마당(중기부) 지원사업 공고 — **대표가 공유한 포털 화면으로 확정**(2026-08-12).
+ *
+ * 🩸 그전 값은 `hpsBnaSituService/getSupportBusinessList` 였고 **주소와 오퍼레이션이 둘 다 틀렸다.**
+ *   게이트웨이가 `NO_OPENAPI_SERVICE_ERROR`(코드 12)를 돌려줬는데, 그 코드는 *주소 부재*와
+ *   *오퍼레이션 오타*를 구분하지 못한다 — 그래서 몇 달간 `grant: 0` 이었고 원인을 못 좁혔다.
+ *   이 환경은 `apis.data.go.kr` 프록시 차단이라 **찔러볼 수가 없어** 화면이 유일한 확정 수단이었다.
+ *
+ *   확정값: End Point `https://apis.data.go.kr/1421000/bizinfo` · 상세기능 `/pblancBsnsService`
+ */
+const BIZINFO_BASE = 'https://apis.data.go.kr/1421000/bizinfo'
+export const BIZINFO_OP = 'pblancBsnsService'
 /**
  * 🔎 스캔 키워드 — **그물의 크기**. 회전 커서가 있어 한 회차에 다 못 봐도 다음 회차가 이어받는다.
  *
@@ -148,7 +159,9 @@ export async function runNoticeScan(env: Env): Promise<NoticeStats> {
     if (budget.left <= 0) { stoppedBy = 'budget'; break }
     if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }
     kwDone++
-    const url = `${bizBase}/getSupportBusinessList?serviceKey=${serviceKeyParam(key)}&numOfRows=30&pageNo=1&resultType=json&searchCnst=${encodeURIComponent(kw)}`
+    // ⚠️ 포맷 파라미터가 **`dataType`** 이다(`resultType` 아님 — 공정위 쪽과 이름이 다르다).
+    //   검색은 `hashtags`(포털 요청변수 표) — 종전의 `searchCnst` 는 이 서비스에 없는 이름이었다.
+    const url = `${bizBase}/${BIZINFO_OP}?serviceKey=${serviceKeyParam(key)}&numOfRows=30&pageNo=1&dataType=json&hashtags=${encodeURIComponent(kw)}`
     const r = await fetchJson(url, budget)
     if (r.msg) grantMsg = r.msg
     const items = pickArray(r.data)

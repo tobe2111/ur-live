@@ -34,6 +34,12 @@ const ALIAS_EXACT: Readonly<Record<string, string>> = {
   '/privacy-policy': '/privacy',
   '/refund-policy': '/refund',
   '/shipping-policy': '/refund',
+  // 🍽️ 2026-08-11 (AB 스윕): `/meal-vouchers` 는 **구조적으로 영구 0건**이었다.
+  //   `BrowsePage(defaultCategory='meal_voucher')` 인데 BrowsePage 는 항상 `exclude_deal_only=1` 을
+  //   보내고, 그 필터는 **이용권 카테고리를 통째로 제외**한다(ProductRepository:169).
+  //   데이터는 224건 있는데 화면은 "상품이 없습니다" + 엉뚱한 쇼핑 칩(식품/패션/뷰티)이었다.
+  //   정본은 홈의 카테고리 필터다 — `StaysSearchPage` 의 칩도 이미 `/?category=meal_voucher` 로 간다.
+  '/meal-vouchers': '/?category=meal_voucher',
 }
 
 /** `/product/:id` → `/products/:id` (단수/복수 두 URL 이 같은 상품을 가리키던 것). */

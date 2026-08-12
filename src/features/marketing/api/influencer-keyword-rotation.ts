@@ -349,69 +349,7 @@ export function isUnjudgedRound(r: {
     || isSubrequestLimitError(r.ytError) || isSubrequestLimitError(r.naverError)
 }
 
-/**
- * 🔀 **YT 픽과 커서 픽을 번갈아 놓는다** — 커서가 영영 안 도는 것을 푼다 (2026-07-29 실측).
- *
- * ## 무엇이 고장이었나 (12:00 틱)
- * `picks { planned: 16, processed: 2, from_yt: 2, from_cursor: 0 }` — 16개를 계획했는데 예산으로 2개만
- * 돌았고 **둘 다 YT 픽**이었다. 배열이 `[...ytPicks, ...cursorPicks]` 라 커서 픽은 전부 꼬리에 있었다.
- *
- * 그런데 커서 전진은 `prefixDone`(처리된 **선행 구간** 길이)으로 계산한다 → 커서 픽이 한 번도 처리되지
- * 않으니 `nextCursor = cursor + 0` → **커서가 영원히 제자리**다. 두 결함이 서로를 강화한다:
- * 꼬리라서 못 돌고, 못 도니까 커서가 안 밀리고, 안 밀리니 다음 회차도 같은 자리다.
- * ⇒ 활성 키워드 330개 중 **매 회차 같은 소수만** 돌고 나머지는 순번을 못 받는다(수집 폭이 구조적으로 갇힘).
- *
- * ## 오늘 세 번째 같은 병
- * ① 보강 레인: 마지막 track(naver)이 **시계**를 못 받음 · ② 그 전엔 마지막 track 이 **예산**을 못 받음 ·
- * ③ 여기: 뒤쪽 픽이 **순번**을 못 받음. **줄을 세우면 꼬리가 굶는다** — 자원이 무엇이든.
- *
- * ⚠️ 이 함수만으론 부족하다: 순서를 섞으면 커서 픽이 YT 슬롯(희소 자원)을 가져가 성과가중 선택이 희석된다.
- *   그래서 호출부에서 YT 게이트를 **위치 기반(`ytUsed < batch`)에서 멤버십 기반(`ytIds.has`)으로** 함께 바꾼다.
- *   둘 중 하나만 하면 안 된다 — 순서와 쿼터 배분이 한 조건에 얽혀 있던 것이 원인이기 때문이다.
- *
- * ⚠️ 상대 순서는 보존한다 — `prefixDone` 이 각 목록의 **선행 구간**을 세므로 뒤섞으면 커서 계산이 깨진다.
- */
-export function interleavePicks<T>(ytPicks: T[], cursorPicks: T[], total: number): T[] {
-  const out: T[] = []
-  const cap = Number.isFinite(total) ? Math.max(0, total) : 0
-  for (let i = 0; i < Math.max(ytPicks.length, cursorPicks.length) && out.length < cap; i++) {
-    if (i < ytPicks.length && out.length < cap) out.push(ytPicks[i])
-    if (i < cursorPicks.length && out.length < cap) out.push(cursorPicks[i])
-  }
-  return out
-}
-
-/**
- * 🔀 **세 풀(집중·우선·일반)을 라운드로빈으로 병합** — 잘릴 때 공평하게 잘리도록 (2026-08-04).
- *
- * ## 무엇이 고장이었나 (커버리지 붕괴 경보, 라이브 실측)
- * ```
- *   활성 399  ·  never 117  ·  2일+ 206        ← 323개가 이틀째 미실행
- *   회차: planned 16 → processed 5 (spent 56/56, 예산 소진)
- *   24h 실제 실행 54개 = 집중 18 + 나머지 ~36  ← 하루 120슬롯인데 54개뿐
- * ```
- * 옛 코드는 `[...focusPicks, …]` 로 **집중 축을 무조건 앞머리**에 뒀다. 예산이 5개에서 끊기니
- * 집중 4개가 앞자리를 먹고 **일반 풀엔 1개**만 남았다. 게다가 커서 전진은 `prefixDone`
- * (처리된 **앞부분만** 셈)이라 뒤 풀은 잘릴 뿐 아니라 **커서도 안 움직여 다음 회차에 같은 키워드를
- * 또 내놓는다** — 일반 풀(~300개) 한 바퀴에 12일 이상.
- *
- * ## 🗺️ 앞머리의 근거는 이미 낡아 있었다
- * 옛 주석은 *"YT 슬롯(희소)에 확실히 들어가게"* 였는데, 지금 YT 픽은 `pickYtKeywords` 가
- * **전체 키워드에서 따로** 뽑고 호출부는 오히려 그 id 들을 **제외**한다. 앞머리는 YT 에 아무 도움이
- * 안 되면서 일반 풀만 굶기고 있었다(이 레포가 부르는 "낡은 지도").
- *
- * ⚠️ **몫은 안 바꾼다** — 배분은 `planKeywordSplit` 그대로고, 이 함수는 **순서만** 정한다.
- *   집중 풀은 18개뿐이라 회차당 ~2개로도 하루 두 바퀴 이상 돈다(과잉 해소).
- */
-export function mergeKeywordPicks<T>(focus: T[], pri: T[], gen: T[]): T[] {
-  const out: T[] = []
-  for (let i = 0; i < Math.max(focus.length, pri.length, gen.length); i++) {
-    if (i < focus.length) out.push(focus[i])
-    if (i < pri.length) out.push(pri[i])
-    if (i < gen.length) out.push(gen[i])
-  }
-  return out
-}
+export { interleavePicks, mergeKeywordPicks, planRoundWidth } from './influencer-keyword-order'
 
 /**
  * 📉 **네이버 발굴 시점 컨택 보강 상한** (2026-08-04 — 대표 *"수집과 보강 다 잘 되게 하면 안돼?"*).

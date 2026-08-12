@@ -21,6 +21,7 @@
 
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
 import type { Env } from './types/env';
+import { slotDue } from './cron-slot';
 
 // 🛡️ 2026-05-18: handleScheduled (49KB) dynamic import — cron 발생 시만 로드.
 import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
@@ -185,9 +186,8 @@ export async function handleCronScheduled(
 
   // 🛡️ 2026-06-09: 어드민 단체메일 큐 drainer — 2분마다 한 batch 씩 멱등 발송.
   //   요청 안에서 수천 명 발송하던 것을 cron 으로 이전 (CPU/wall 한도 + per-recipient 멱등 hardening).
-  if (cron === '*/2 * * * *') {
-    ctx.waitUntil(safeCron('bulk-email-drain', () => handleBulkEmailDrain(env)));
-  }
+  // ⏰ 2026-08-11: `*/2` 미등록으로 이 drainer 는 한 번도 안 돌았다 → `*/5` 로 이사(주기 2→5분).
+  if (cron === '*/5 * * * *') ctx.waitUntil(safeCron('bulk-email-drain', () => handleBulkEmailDrain(env)));
 
   if (cron === '*/5 * * * *') {
     // 📰 2026-08-03 — 일일 다이제스트. 발화 안 하던 `0 * * * *` 에서 이사. **일간이 아니라 `*/5` 인 이유**:
@@ -233,7 +233,9 @@ export async function handleCronScheduled(
     // }
   }
 
-  if (cron === '0 * * * *') {
+  // ⏰ 2026-08-11: `0 * * * *` 미등록으로 이 블록 7개가 침묵했다(하트비트 0). 트리거 한도(5)를 다 써
+  //   `*/5` 틱 위 :25 게이트로 시간당 1회. 왜 이 방식인지는 `cron-slot.ts` 참조.
+  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 25 })) {
     // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 홍보 유지보수 크론 배선 분리 — 소셜 자동화 그래프를 워커에서
     //   완전 제거해 CF 1MB 압축한도 회복. 기능 게이트 OFF·미사용이라 미실행 무해. 재도입 시 원복.
     // ctx.waitUntil(safeCron('social-maintenance', async () => {
@@ -394,11 +396,8 @@ export async function handleCronScheduled(
     }));
   }
 
-  // 🛡️ 2026-05-18 (PR 6/6): 숙소 예약 D-1 / D-day 알림 — 매일 09:00 UTC (KST 18:00).
-  //   KST 09:00 으로 옮기려면 '0 0 * * *' (UTC).
-  // 🛡️ 2026-05-19: KT Alpha catalog sync — 매일 03:00 UTC (KST 12:00).
-  //   하루 1회만 → KV write 한도 영향 없음 (D1 only).
-  if (cron === '0 3 * * *') {
+  // 🛡️ KT Alpha catalog sync — 매일 12:30 KST(03:30 UTC). 하루 1회 → KV 한도 무관(D1 only).
+  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 30, hour: 3 })) {
     ctx.waitUntil(safeCron('kt-alpha-catalog-sync', async () => {
       const { runKtAlphaCatalogSync } = await import('./cron/kt-alpha-catalog-sync')
       await runKtAlphaCatalogSync(env as { DB: D1Database })
@@ -410,10 +409,8 @@ export async function handleCronScheduled(
     }))
   }
 
-  // 🛡️ 2026-05-19: 이용권 주소 → 좌표 일괄 변환 cron — 매일 03:00 UTC 와 함께 실행.
-  //   클라이언트에서 페이지 진입 시마다 Kakao API 호출하던 패턴을 제거하기 위함.
-  //   효과: 일 트래픽 1000명 × 10건/명 = 10,000 호출/일 → 새 이용권만 (~10 호출/일) 로 감소.
-  if (cron === '0 3 * * *') {
+  // 🛡️ 이용권 주소 → 좌표 일괄 변환. 페이지 진입마다 Kakao 호출하던 것을 여기로 모았다(일 1만 → ~10).
+  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 35, hour: 3 })) {
     ctx.waitUntil(safeCron('restaurant-geocode', async () => {
       const { runRestaurantGeocode } = await import('./cron/restaurant-geocode')
       await runRestaurantGeocode(env as { DB: D1Database; KAKAO_REST_API_KEY?: string })
@@ -431,7 +428,7 @@ export async function handleCronScheduled(
     }))
   }
 
-  if (cron === '0 9 * * *' || cron === '0 0 * * *') {
+  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 40, hour: 9 })) {
     ctx.waitUntil(safeCron('stay-reminder', async () => {
       const { runStayReminderCron } = await import('./cron/stay-reminder')
       await runStayReminderCron(env as { DB: D1Database })
@@ -533,7 +530,9 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('d1-backup', () => handleD1Backup(env as any)));
   }
 
-  if (cron === '0 0 * * 1') {
+  // 💸 2026-08-11: `0 0 * * 1` 도 미등록이라 주간 7개가 침묵했다. `payouts-generate` 는 송금이 아니라
+  //   지급 대상 목록 생성이고 송금은 어드민 수동 + 멱등. 월 09:45 KST(다른 게이트와 분 분리 = 예산 분리).
+  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 45, hour: 0, dow: 1 })) {
     // 🛡️ 2026-05-21 Phase C: 주 1회 정산 자동 생성 — admin 검토용 pending payouts 생성.
     ctx.waitUntil(safeCron('payouts-generate', () => handlePayoutsGenerate(env)));
     // 📊 2026-07-05 (자문 ⑤): 주간 조종석 숫자 5개 — 어드민 벨 + Discord (read-only 집계, fail-soft).

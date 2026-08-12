@@ -9,6 +9,7 @@ import { formatKSTShort } from '@/utils/date' // 🕒 KST 표기 SSOT — 여기
 import DraftModal, { type OutreachDraftData } from './influencer-pool/DraftModal'
 import FunnelCard, { type CategoryFunnelRow } from './influencer-pool/FunnelCard'
 import CollectDiagPanel, { type RunStats, type MaintenanceRecord, type EnrichLaneRecord } from './influencer-pool/CollectDiagPanel'
+import CafeTrackToggle from './influencer-pool/CafeTrackToggle'
 import FulfillBanner from './influencer-pool/FulfillBanner'
 import { pickReach } from './influencer-pool/reach'
 import { useCollectRun } from './influencer-pool/useCollectRun'
@@ -385,6 +386,7 @@ export default function AdminInfluencerPoolPage() {
         <AutoRunLog />{/* 🕒 자동 실행 내역(KST) — 기본은 한 줄 요약, 펼치면 레인별 표 */}
         <CollectDiagPanel run={run} sheetsSync={sheets.sync} sheetsCron={sheets.cron} sheetsGate={sheets.gate} maintenance={maintenance} maintenanceRescan={maintenanceRescan} maintainRunning={maintainRunning}
           enrichLane={enrichLane} nbUnmeasured={Number(stats.nb_unmeasured) || 0} naverBlogTotal={Number(stats.naver_blog) || 0} />
+        <div className="mb-3"><CafeTrackToggle /></div>{/* 🏘️ 카페 수집 원클릭 — 스위치 + 켤 가치(전수 실측) */}
 
         {/* 핵심 액션 — 항상 보임(수집 + 내보내기 + 서비스몰 바로가기). 나머지(정비·발송)는 아래 접이식으로 정리해 UI 단순화(대표 요청). */}
         <div className="flex flex-wrap gap-2 mb-3">

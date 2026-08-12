@@ -118,6 +118,42 @@ function getSaveData(): boolean {
   return _saveDataCached
 }
 
+/**
+ * 🚑 2026-08-11 [UNLOCK_LOADING] (AB 스윕 라이브 실측): cdn-cgi **경로에 박히는 원본 URL** 의
+ * 퍼센트 기호를 한 번 더 이스케이프한다.
+ *
+ * 네이버 지도 사진 중 **파일명이 한글**인 것들은 URL 이 이미 퍼센트 인코딩돼 있다:
+ * `…/1781789159233fqISB_JPEG/%B8%DE%B4%BA%C6%C7_….jpg`(EUC-KR). 이걸 그대로
+ * `/cdn-cgi/image/<옵션>/<URL>` 경로에 이어붙이면 **리사이저가 경로를 디코딩**해 원본 fetch 주소가
+ * 달라지고 **404** 가 난다. 실측:
+ *
+ * ```
+ * raw            200  429,680B
+ * cdn-cgi 그대로  404      151B   ← onerror=redirect 도 안 걸린다(리사이저가 404 를 직접 반환)
+ * %→%25 한 번    200  151,961B   ← 정상 리사이즈
+ * ```
+ * 라이브 영향: 갤러리 이미지에 `%` 를 가진 활성 상품 **134개**(커버 1개).
+ *
+ * ⚠️ `encodeURIComponent` 를 쓰면 안 된다 — `:` `/` 까지 인코딩돼 URL 이 통째로 깨진다.
+ *
+ * 🔴 **쿼리스트링은 절대 건드리지 않는다.** 처음엔 URL 전체의 `%` 를 바꿨는데 라이브 표본 5개로
+ * 재보니 그게 **회귀**였다 — 카카오 썸네일은 쿼리에 서명을 달고(`…&signature=TKCd…%3D&ts=…`),
+ * 그 `%3D` 를 `%253D` 로 바꾸면 서명이 깨져 리사이저가 원본을 못 가져온다. 실측:
+ *
+ * ```
+ *                       raw        그대로     전체 %25    경로만 %25
+ * EUC-KR 한글 파일명   200/5.8M    404/151B   200/102KB   200/102KB   ← 수리 대상
+ * 쿼리에 서명(%3D)     200/117KB   200/225KB  200/820B🔴  200/225KB   ← 건드리면 안 되는 쪽
+ * ```
+ * 깨진 것은 **경로에 박힌 원본 URL** 이지 쿼리가 아니므로, 경로만 고치는 것이 정확히 맞는 범위다.
+ */
+function cdnCgiSafe(src: string): string {
+  if (!src.includes('%')) return src
+  const q = src.indexOf('?')
+  const path = q === -1 ? src : src.slice(0, q)
+  return path.replace(/%/g, '%25') + (q === -1 ? '' : src.slice(q))
+}
+
 export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}): string {
   if (!src) return ''
   if (typeof src !== 'string') return ''
@@ -222,7 +258,7 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       }
       const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com']  // giftishow 2026-07-13 재실측 복원(onerror=redirect 안전판)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
-        return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect/${src}`
+        return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect/${cdnCgiSafe(src)}`
       }
       return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
     }

@@ -188,7 +188,8 @@
     "kakaoConsult": "Soporte KakaoTalk",
     "share": "Compartir",
     "currencyWon": "KRW",
-    "checkNetworkRetry": "Comprueba tu red e inténtalo de nuevo"
+    "checkNetworkRetry": "Comprueba tu red e inténtalo de nuevo",
+    "goHome": "Ir al inicio"
   },
   "seller": {
     "relink": {
@@ -4559,13 +4560,13 @@
   "notFound": {
     "title": "Página no encontrada",
     "description": "La página solicitada puede haber sido movida o eliminada.",
-    "seoDescription": "La página fue eliminada o la URL no es válida. Descubre compras en vivo y ofertas de restaurantes en YourDeal.",
+    "seoDescription": "Esta página pudo haberse movido o la dirección es incorrecta. Encuentra vales locales y de regalo en el inicio de urdeal.",
     "goHome": "Inicio",
     "goBack": "Atrás",
     "popularPages": "Páginas populares",
-    "linkLive": "En vivo",
-    "linkRestaurant": "Ofertas de restaurantes",
-    "linkGroupBuy": "Compra grupal"
+    "linkHome": "Inicio",
+    "linkVouchers": "Vales de regalo",
+    "linkMap": "Ofertas cerca de mí"
   },
   "serverError": {
     "title": "Error temporal",

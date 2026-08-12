@@ -245,7 +245,6 @@ describe('페이지가 표를 실제로 읽는가 — 문구 두 벌 방지', ()
     ['/creators/apply', 'src/pages/CreatorApplyPage.tsx'],
     ['/partners', 'src/pages/PartnersPage.tsx'],
     ['/stays', 'src/pages/StaysSearchPage.tsx'],
-    ['/meal-vouchers', 'src/pages/MealVouchersPage.tsx'],
     ['/experience', 'src/pages/ExperienceCampaignsPage.tsx'],
     ['/new-openings', 'src/pages/NewOpeningsPage.tsx'],
     ['/influencer/rankings', 'src/pages/InfluencerRankingsPage.tsx'],
