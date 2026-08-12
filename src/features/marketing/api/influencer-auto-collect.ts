@@ -39,7 +39,7 @@ import { RETIRED_CATEGORIES } from './influencer-classify'
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, pickStarvationRescue, AUTO_RETIRE_WHERE, planRoundWidth, parseAxisCarry, serializeAxisCarry, AXIS_CARRY_KEY } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, naverOnlyRoundCap, isNaverOnlyRound, pickStarvationRescue, AUTO_RETIRE_WHERE, planRoundWidthForShape, parseAxisCarry, serializeAxisCarry, AXIS_CARRY_KEY } from './influencer-keyword-rotation'
 import { CAFE_GATE_KEY, cafeCollectEnabled } from './collect-track-gates' // 🎛️ 수집 트랙 게이트(카페) SSOT
 
 // 🌱 시드 키워드(데이터)는 `influencer-seed-keywords.ts`, 그 시드를 테이블에 넣는 일은
@@ -219,8 +219,29 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   2026-07-21: YT 검색 쿼터 확장이 어려워 네이버(실측 ~2% 활용)로 볼륨 이전 — 기본 4→12(틱당 네이버 총 batch+12).
   //   서브리퀘스트 예산(아래 300)이 실제 상한이라 초과분은 커서가 다음 틱에서 이어받음(커버리지 손실 0). 런어웨이 방지 max 40.
   const NAVER_EXTRA = Math.max(0, Math.min(40, parseInt(env.ADS_NAVER_EXTRA || '', 10) || 12))
+  // 🌙 YT 쿼터 상태를 **배분보다 먼저** 안다 — 이 회차가 네이버 전용인지에 따라 폭이 달라진다.
+  //   ⚠️ 아래 블록은 env/settings 만 읽는 **순수 파싱**이라 위로 올려도 부작용이 없다(2026-08-12 이동).
+  const hasYouTube = !!env.YOUTUBE_API_KEY
+  // YT 검색 페이지 수(키워드당 깊이). 쿼터는 quotaHit 가드가 관리.
+  // 기본 1페이지(1~50위) — YT 일일 쿼터(기본 10k) 안에서 더 많은 키워드·지역 커버(시드 소싱은 깊이<폭).
+  //   깊이가 더 필요하면 env ADS_YT_PAGES=2~5 로 상향(쿼터 여유/증액 시).
+  const ytPages = Math.max(1, Math.min(5, parseInt(env.ADS_YT_PAGES || '', 10) || 1))
+  let ytUsed = 0
+  // 🎯 YT 검색 예산 카운터(실병목 Search Queries/day, 태평양 자정 리셋) — 자동+수동이 같은 예산 공유.
+  //   소진 시 이번 틱 YT 스킵(네이버 계속) + 어드민에 "오늘 n/100" 노출. env ADS_YT_SEARCH_BUDGET 로 조정.
+  const ytBudgetTotal = Math.max(1, Math.min(100000, parseInt(env.ADS_YT_SEARCH_BUDGET || '', 10) || YT_SEARCH_BUDGET_DEFAULT))
+  const ytDay = ytQuotaDayKey(Date.now())
+  let ytSearchUsed = 0
+  {
+    const raw = settings[YT_USED_KEY]
+    if (raw) { const i = raw.indexOf(':'); if (i > 0 && raw.slice(0, i) === ytDay) ytSearchUsed = Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) }
+  }
+  // 🌙 네이버 전용 회차? — 그런 회차는 키워드당 비용이 3분의 1이라 같은 예산으로 넓게 돈다(판정·근거는 SSOT).
+  const naverOnlyRound = isNaverOnlyRound({ hasYouTube, ytSearchUsed, ytPages, ytBudgetTotal })
+  const hardMaxPick = batch + NAVER_EXTRA
   // 📏 초과 계획 = 기아 장치 · 🔄 앞자리 고정 = 나머지 축 커서 동결(2026-08-12). 근거는 두 함수 docblock.
-  const totalPick = planRoundWidth((prev?.funnel?.recent || []).slice(-8).map(f => f.processed), batch + NAVER_EXTRA)
+  // 📏 계획 폭 — 형상(YT 동반/네이버 전용)별 이력으로. 섞으면 둘 다 틀린다(`planRoundWidthForShape` docblock).
+  const totalPick = planRoundWidthForShape((prev?.funnel?.recent || []).slice(-8), naverOnlyRound, hardMaxPick)
   // 🎯 [집중 · 우선 · 일반] 3분할 — 배분 규칙은 순수함수 SSOT(`planKeywordSplit`).
   //   집중 축이 비면(고갈로 자동 비활성) 그 몫이 **자동으로** 우선/일반에 돌아간다 — 그게 이 설계의 핵심이다.
   //   ⚖️ 이월(carry)을 넘겨야 키워드당 회전율이 배수(3:2:1)에 수렴한다 — 안 넘기면 매 회차 0 에서
@@ -247,7 +268,6 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const rescue = pickStarvationRescue(kws, new Set(interleaved.map(p => p.id)))
   const finalPicks = rescue ? [rescue, ...interleaved.slice(0, Math.max(0, totalPick - 1))] : interleaved
 
-  const hasYouTube = !!env.YOUTUBE_API_KEY
   const naverId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
   const naverSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
   const hasNaver = !!(naverId && naverSecret)
@@ -319,20 +339,6 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   if (!hasYouTube) diag.yt.error = 'NOT_CONFIGURED: ur-ads 워커에 YOUTUBE_API_KEY 미설정'
   if (!hasNaver) diag.naver.error = 'NOT_CONFIGURED: ur-ads 워커에 NAVER_SEARCH_CLIENT_ID/SECRET 미설정'
 
-  // YT 검색 페이지 수(키워드당 깊이). 쿼터는 quotaHit 가드가 관리.
-  // 기본 1페이지(1~50위) — YT 일일 쿼터(기본 10k) 안에서 더 많은 키워드·지역 커버(시드 소싱은 깊이<폭).
-  //   깊이가 더 필요하면 env ADS_YT_PAGES=2~5 로 상향(쿼터 여유/증액 시).
-  const ytPages = Math.max(1, Math.min(5, parseInt(env.ADS_YT_PAGES || '', 10) || 1))
-  let ytUsed = 0
-  // 🎯 YT 검색 예산 카운터(실병목 Search Queries/day, 태평양 자정 리셋) — 자동+수동이 같은 예산 공유.
-  //   소진 시 이번 틱 YT 스킵(네이버 계속) + 어드민에 "오늘 n/100" 노출. env ADS_YT_SEARCH_BUDGET 로 조정.
-  const ytBudgetTotal = Math.max(1, Math.min(100000, parseInt(env.ADS_YT_SEARCH_BUDGET || '', 10) || YT_SEARCH_BUDGET_DEFAULT))
-  const ytDay = ytQuotaDayKey(Date.now())
-  let ytSearchUsed = 0
-  {
-    const raw = settings[YT_USED_KEY]
-    if (raw) { const i = raw.indexOf(':'); if (i > 0 && raw.slice(0, i) === ytDay) ytSearchUsed = Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) }
-  }
   let ytBudgetBlocked = false
   // 🔫 네이버 일일 목표(90% = 22,500) 장전 — 유튜브가 `ytBudgetTotal` 로 스스로를 묶는 것과 같은 자리.
   //   ⚠️ 회차 **시작**에 한 번만. 여기서 안 부르면 게이트가 `null`(무제한)로 남아 조용히 무효가 된다.
@@ -352,7 +358,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   그 33개가 검색·채널조회·영상스니펫 중 어디로 갔는지 재야 줄일 자리가 정해진다(찍어 줄이면 수율이 같이 떨어진다).
   const ytCalls: DiscoverCalls = { search: 0, channels: 0, videos: 0 }
   const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
-  const roundCap = keywordsPerRoundCap(env)
+  // 🌙 네이버 전용 회차만 넓힌다 — YT 살아있는 회차는 지금도 예산이 캡이라(실측 56/56) 넓혀도 무의미하고,
+  //   넓히면 YT 쿼터만 더 빨리 태운다. 실제 상한은 여전히 예산(`budget.left <= 0`)과 계획 폭이다.
+  const roundCap = naverOnlyRound ? naverOnlyRoundCap(env) : keywordsPerRoundCap(env)
   let fromYt = 0, fromCursor = 0 // 🎯 처리된 픽의 출처 — 커서픽이 실제로 도달되는지 보이게(위 `picks` 주석)
   // 💸 재조우 보강 스킵 훅 — 왜/예산회계는 `influencer-known-contacts.ts` docblock 이 SSOT.
   const alreadyContacted = makeAlreadyContacted(DB, POOL_ACCOUNT_ID, budget)
@@ -524,7 +532,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   🎯 집중 축도 **처리된 접두**만큼만 민다(2026-08-03). 예전엔 `+ nFocus`(계획한 수)였는데,
   //   예산은 보통 픽 4개를 다 못 돌아 안 돈 키워드를 건너뛰었다 — 위 leapfrog 와 같은 병이다.
   const focusDone = prefixDone(focusPicks)
-  const nextFocusCursor = focusPool.length ? (focusCursor + focusDone) % focusPool.length : 0
+  const nextFocusCursor = focusPool.length ? (focusCursor + nFocus) % focusPool.length : 0
   const nextCursor = genPool.length ? (cursor + genDone) % genPool.length : 0
   // 🎯 YT 예산 소진으로 스킵됐고 다른 에러가 없으면 사유 노출(QUOTA 프리픽스 = 기존 배너 스타일 재사용).
   if (ytBudgetBlocked && !diag.yt.error) diag.yt.error = `QUOTA: 오늘 YT 검색 예산(${ytBudgetTotal}회) 소진 — 쿼터 리셋(한국 오후 4~5시) 후 자동 재개`

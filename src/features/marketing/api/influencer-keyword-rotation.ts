@@ -417,7 +417,7 @@ export function isUnjudgedRound(r: {
     || isSubrequestLimitError(r.ytError) || isSubrequestLimitError(r.naverError)
 }
 
-export { interleavePicks, mergeKeywordPicks, planRoundWidth } from './influencer-keyword-order'
+export { interleavePicks, mergeKeywordPicks, planRoundWidth, planRoundWidthForShape } from './influencer-keyword-order'
 
 /**
  * 📉 **네이버 발굴 시점 컨택 보강 상한** (2026-08-04 — 대표 *"수집과 보강 다 잘 되게 하면 안돼?"*).
@@ -443,42 +443,8 @@ export { interleavePicks, mergeKeywordPicks, planRoundWidth } from './influencer
  */
 export const NAVER_COLLECT_ENRICH_MAX = 1
 
-/**
- * 🧊 **회차당 키워드 상한 — "폭 동결"** (2026-08-04, 대표 승인 "①만 진행").
- *
- * ## 왜 남은 예산으로 키워드를 더 돌리지 않는가
- * 위 `NAVER_COLLECT_ENRICH_MAX` 축소로 키워드당 비용이 ~10.4 → ~6 이 된다. 그대로 두면 루프가
- * **자동으로 회차당 5개 → 9개**를 돌아 커버리지가 1.8배가 된다. 매력적으로 들리지만 **지금 하면 손해다**:
- * ```
- *   블로그  유입 3,895/일  vs  측정 4,184/일   →  여유 +289 (백로그 19,963 → 69일)
- *   폭을 1.8배로 넓히면 유입 ~7,000/일  →  백로그가 **매일 +2,800 으로 증가 반전**
- * ```
- * 새 행은 이메일 1.3% 이고 그걸 25% 로 만드는 것이 측정인데, **측정이 병목**이다.
- * ⇒ 폭을 넓히면 행 수만 늘고 **발송 가능 리드는 거의 안 는다.** 지금 병목은 수집이 아니다.
- *
- * ## 🔓 6 → 9 (2026-08-11 — 대표 승인 "폭 9로 올려")
- * 위 해제 조건("측정 처리량이 올라간 뒤")이 **숫자로 충족**된 뒤의 승인이다:
- * ```
- *   측정 8,018/일(샤딩 2배 실측, 이후 4배 확대) > 유입 5,045/일 · 백로그 감소 중 · blocked 0
- *   §16 판정: 신규 키워드 79개 전원 saved≥10(평균 119) — 수율은 문제가 아니었고,
- *   경보 원문 "예산 37/56 · 키워드 6/16 처리" = 예산 19를 남기고 폭 상한에서 정지 — 폭이 캡이었다
- * ```
- * 9 = 동결 당시 주석이 "자동 확대되면 도달했을 값"으로 지목한 그 수(회수된 enrichMax 예산의 자연 폭).
- * ⚠️ 네이버 검색 호출 ~50% 증가 — **하루 뒤 `ads_naver_crawl_block.blocked` 0 유지 + 발굴량 상승을
- *   판정**하고, 차단이 뜨면 즉시 6 으로 되돌린다(이 상수 하나가 롤백 전부다).
- * ⚠️ 추가 상향(9 초과)은 다시 대표 판단 사항이다 — 테스트가 9 를 상한으로 잠근다.
- */
-export const COLLECT_KEYWORDS_PER_ROUND = 9
-
-/**
- * 회차당 키워드 상한 — env(`ADS_COLLECT_KEYWORD_CAP`)로 재배포 없이 조정 가능(1~40).
- * ⚠️ 파라미터가 `unknown` 인 이유: 워커 `Env` 타입에 이 키가 선언돼 있지 않아 좁은 구조 타입으로 받으면
- *   **TS2559**("공통 속성이 없다")가 난다. `alarmEnabled(env: unknown)` 과 같은 형태로 맞춘다.
- */
-export function keywordsPerRoundCap(env: unknown): number {
-  const raw = parseInt(String((env as { ADS_COLLECT_KEYWORD_CAP?: string } | undefined)?.ADS_COLLECT_KEYWORD_CAP ?? ''), 10)
-  return Number.isFinite(raw) && raw > 0 ? Math.min(40, raw) : COLLECT_KEYWORDS_PER_ROUND
-}
+// 📏 회차 폭 정책(폭 동결·네이버 전용 확장)은 `influencer-round-width.ts` — 호환 재수출.
+export { COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, COLLECT_KEYWORDS_PER_ROUND_NAVER_ONLY, naverOnlyRoundCap, isNaverOnlyRound } from './influencer-round-width'
 
 /* ────────────────────────────────────────────────────────────────────────────
  * 🩺 순환 건강 판정 — **한 바퀴를 관측으로 재고**, 상수와 비교하지 않는다 (2026-08-04)

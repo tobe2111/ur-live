@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { planKeywordSplit, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, FOCUS_CATEGORIES, PRIORITY_CATEGORIES, ZERO_AXIS_CARRY, AXIS_CARRY_CLAMP, parseAxisCarry, serializeAxisCarry } from '@/features/marketing/api/influencer-keyword-rotation'
 import type { AxisCarry } from '@/features/marketing/api/influencer-keyword-rotation'
-import { planRoundWidth } from '@/features/marketing/api/influencer-keyword-order'
+import { planRoundWidth, planRoundWidthForShape } from '@/features/marketing/api/influencer-keyword-order'
+import { naverOnlyRoundCap, isNaverOnlyRound } from '@/features/marketing/api/influencer-round-width'
 import { CLASSIFIED_CATEGORIES } from '@/features/marketing/api/influencer-classify'
 
 const SRC = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
@@ -484,8 +485,77 @@ describe('📏 planRoundWidth — 처리 능력에 맞춘 계획', () => {
   })
 
   it('🔌 배선 — 회차 이력(funnel.recent)의 processed 로 폭을 정한다', () => {
-    expect(CODE).toMatch(/planRoundWidth\(\s*\(prev\?\.funnel\?\.recent \|\| \[\]\)/)
-    expect(CODE).toMatch(/const totalPick = planRoundWidth\(/)
+    // ⚠️ 2026-08-12: 폭이 **형상별**(YT 동반/네이버 전용)로 갈려 `planRoundWidthForShape` 를 경유한다.
+    //   앵커를 따라간다 — 옛 문자열을 계속 찾으면 조용히 통과하는 낡은 지도가 된다.
+    expect(CODE).toMatch(/planRoundWidthForShape\(\s*\(prev\?\.funnel\?\.recent \|\| \[\]\)/)
+    expect(CODE).toMatch(/const totalPick = planRoundWidthForShape\(/)
     expect(CODE, '고정 폭으로 회귀 금지').not.toMatch(/const totalPick = batch \+ NAVER_EXTRA/)
+  })
+})
+
+/**
+ * 🌙 **YT 쿼터 소진 회차의 폭 확장** (2026-08-12 대표 승인 "응 해").
+ *
+ *   라이브 실측: YT 쿼터가 떨어진 뒤의 회차는 `spent 29 / 56` 으로 끝났다 — 폭 9 에서 멈춰
+ *   **예산 절반을 남기고** 종료. 네이버 전용은 키워드당 ~3.2 라 56 이면 ~17개를 돌 수 있다.
+ *   ⚠️ 이 테스트가 못 보는 것: 넓힌 뒤 네이버가 **차단**하는지(`ads_naver_crawl_block.blocked`).
+ *     그건 코드 밖 사실이라 배포 후 관측으로만 판정한다 — 차단이 뜨면 상수를 9 로 되돌린다.
+ */
+describe('회차 폭 — YT 쿼터 소진 회차만 예산까지 확장', () => {
+  it('🔒 YT 가 살아 있는 회차의 폭은 9 그대로 — 넓히면 YT 쿼터만 더 빨리 태운다', () => {
+    expect(COLLECT_KEYWORDS_PER_ROUND).toBe(9)
+    expect(keywordsPerRoundCap({})).toBe(9)
+  })
+
+  it('🌙 네이버 전용 회차는 더 넓다 — 좁아지는 방향은 구조적으로 불가', () => {
+    expect(naverOnlyRoundCap({})).toBeGreaterThan(keywordsPerRoundCap({}))
+    // env 로 9 미만을 넣어도 YT 회차보다 좁아지지 않는다(그러면 이 수리가 무의미해진다).
+    expect(naverOnlyRoundCap({ ADS_COLLECT_KEYWORD_CAP_NAVER_ONLY: '3' })).toBeLessThanOrEqual(40)
+    expect(naverOnlyRoundCap({ ADS_COLLECT_KEYWORD_CAP_NAVER_ONLY: '999' })).toBe(40) // 런어웨이 뚜껑
+  })
+
+  it('🌙 네이버 전용 판정 — 쿼터가 이 회차분을 못 감당하면 전용', () => {
+    const base = { hasYouTube: true, ytPages: 1, ytBudgetTotal: 90 }
+    expect(isNaverOnlyRound({ ...base, ytSearchUsed: 0 })).toBe(false)
+    expect(isNaverOnlyRound({ ...base, ytSearchUsed: 89 })).toBe(false) // 89+1 = 90 ≤ 90 → 아직 된다
+    expect(isNaverOnlyRound({ ...base, ytSearchUsed: 90 })).toBe(true)  // 90+1 > 90 → 전용
+    // 키가 없으면 항상 전용(쿼터와 무관).
+    expect(isNaverOnlyRound({ ...base, hasYouTube: false, ytSearchUsed: 0 })).toBe(true)
+  })
+
+  /**
+   * 📐 **형상별 계획 폭** — 두 형상을 한 중앙값에 섞으면 둘 다 틀린다. 이 검사가 그 혼합을 막는다.
+   *   섞으면: YT 회차는 과대 계획(#1142 가 고친 커서 기아 재발) · 네이버 회차는 과소 계획(수리 무효).
+   */
+  it('📐 계획 폭이 같은 형상의 회차만 본다 — 섞으면 둘 다 틀린다', () => {
+    const hist = [
+      { processed: 9, yt: { spend: 37 } }, { processed: 9, yt: { spend: 35 } }, { processed: 8, yt: { spend: 40 } },
+      { processed: 17, yt: { spend: 0 } }, { processed: 18, yt: { spend: 0 } }, { processed: 16, yt: { spend: 0 } },
+    ]
+    const ytRound = planRoundWidthForShape(hist, false, 40)
+    const nbRound = planRoundWidthForShape(hist, true, 40)
+    expect(nbRound, '네이버 전용 회차가 YT 회차보다 넓어야 한다').toBeGreaterThan(ytRound)
+    expect(ytRound, 'YT 회차는 ~9 처리 이력 기준(중앙값 9 × 1.2)').toBeLessThanOrEqual(12)
+    expect(nbRound, '네이버 회차는 ~17 처리 이력 기준').toBeGreaterThanOrEqual(17)
+    // 섞은 중앙값(~12.5×1.2≈15)은 둘 중 어느 것도 아니다 — 그게 섞으면 안 되는 이유다.
+    const mixed = planRoundWidth(hist.map(h => h.processed), 40)
+    expect(mixed).not.toBe(ytRound)
+    expect(mixed).not.toBe(nbRound)
+  })
+
+  it('📐 같은 형상 이력이 없으면 전체 이력으로 폴백 — 증거 없이 좁히지 않는다', () => {
+    const onlyYt = [{ processed: 9, yt: { spend: 37 } }, { processed: 9, yt: { spend: 35 } }]
+    // 네이버 전용 이력이 0 건이어도 계획이 0/1 로 무너지지 않는다.
+    expect(planRoundWidthForShape(onlyYt, true, 40)).toBeGreaterThanOrEqual(9)
+    expect(planRoundWidthForShape([], true, 40)).toBe(40) // 증거 전무 → hardMax(종전 규약)
+  })
+
+  it('🔌 호출부가 형상 판정과 폭 분기를 실제로 쓴다', () => {
+    expect(CODE, '네이버 전용 판정을 SSOT 로 하지 않으면 조건이 조용히 갈라진다')
+      .toMatch(/isNaverOnlyRound\(\{\s*hasYouTube/)
+    expect(CODE, '폭 분기가 없으면 유휴 예산이 그대로 남는다')
+      .toMatch(/naverOnlyRound \? naverOnlyRoundCap\(env\) : keywordsPerRoundCap\(env\)/)
+    expect(CODE, '계획 폭이 형상별 이력을 안 보면 두 형상이 섞인다')
+      .toMatch(/planRoundWidthForShape\(/)
   })
 })

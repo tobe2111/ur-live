@@ -316,3 +316,48 @@ SELECT value FROM platform_settings WHERE key='ads_autocollect_axis_carry';  -- 
    해제 조건 2개는 이미 초록: 측정 22,764/일 > 유입 6,434/일(3.5배 여유) · `blocked 0` · 네이버 0.3%.
    제안 형태는 "상수 상향"이 아니라 **"YT 쿼터 소진 시에만 네이버 전용 폭을 예산까지 확장"**(조건부)
    이어야 한다 — YT 가 사는 시간대의 회차는 지금도 예산이 캡이라 올려도 무의미하다.
+
+---
+
+## §15. YT 쿼터 소진 회차의 유휴 예산 회수 (2026-08-12 대표 승인 "응 해")
+
+§14 를 보고하며 남긴 관측을 대표가 승인해 같은 세션에서 구현했다.
+
+### 무엇이 유휴였나 (라이브 06:00 회차)
+```
+picks {planned 9, processed 9}   spent 29 / budget_total 56    ← 예산 27 유휴
+diag.yt.error "QUOTA: 오늘 YT 검색 예산(90회) 소진"   yt_calls 전부 0
+```
+YT 검색 쿼터(일 90회)는 하루의 이른 시간에 소진된다. 그 뒤의 회차는 **네이버 전용**이라 키워드당
+비용이 3분의 1(29/9 ≈ 3.2)인데도 폭 9 에서 멈췄다 — **이 시간대의 캡은 예산이 아니라 폭이었다.**
+
+### 수리 — 조건부다(상수를 그냥 올린 것이 아니다)
+- `isNaverOnlyRound()` 로 이 회차가 YT 검색을 못 하는 회차인지 판정(순수함수)
+- 그런 회차만 `naverOnlyRoundCap()`(18 — 실제 상한은 여전히 **예산**과 **계획 폭**)
+- **YT 살아있는 회차는 9 그대로** — 실측 56/56 이라 넓혀도 안 늘고 YT 쿼터만 빨리 태운다
+- 계획 폭도 **형상별 이력**으로(`planRoundWidthForShape`) — 두 형상(처리 ~9 / ~17)을 한 중앙값에
+  섞으면 둘 다 틀린다(YT 회차 과대 → #1142 커서 기아 재발 · 네이버 회차 과소 → 확장 무효)
+- 폭 정책을 `influencer-round-width.ts` 로 분리(600줄 래칫 + 관심사 분리 — 폭은 예산·쿼터·측정이라는
+  레포 밖 사실에 묶여 있어 배분과 바뀌는 이유가 다르다)
+
+### 🧨 이번 세션의 실수 1건 (기록 — 같은 실수 방지)
+되돌려-검증 중 복원을 `git checkout -- <file>` 로 했다가 **아직 커밋하지 않은 `planRoundWidthForShape`
+정의가 함께 날아갔다**(테스트 2건 빨강으로 즉시 발견·복구). 다른 두 파일은 `.bak` 복사로 복원했는데
+한 파일만 git 으로 되돌린 것이 원인이다.
+⇒ **주입 검증의 복원은 `.bak` 사본으로만 한다.** 작업트리에 미커밋 변경이 있는 동안 `git checkout --`
+는 복원 도구가 아니라 **파괴 도구**다.
+
+### 🎯 판정 (배포 +24h) — §14 와 지표가 다르다
+```sql
+-- ① YT 쿼터 소진 시간대 회차가 예산을 쓰나(핵심)
+SELECT json_extract(value,'$.picks.processed') processed,
+       json_extract(value,'$.spent') spent, json_extract(value,'$.budget_total') total,
+       json_extract(value,'$.diag.yt.error') yt_err
+  FROM platform_settings WHERE key='ads_autocollect_stats';
+-- 기대: yt_err 에 QUOTA 가 있는 회차에서 processed ~15-18 · spent 가 50 대(29 가 아니라)
+-- ② 그리고 차단이 안 났나 — 이것이 롤백 트리거
+SELECT value FROM platform_settings WHERE key='ads_naver_crawl_block';  -- blocked 0 유지
+```
+⚠️ **§14(축 비례)는 총량을 안 늘리지만 §15(폭 확장)는 늘린다** — 두 판정을 섞지 말 것.
+   §14 = 축별 역전 해소 · §15 = YT 소진 시간대의 `spent`/`processed` 상승 + 일 발굴량 상승.
+⚠️ 차단이 뜨면 `COLLECT_KEYWORDS_PER_ROUND_NAVER_ONLY` 를 9 로 되돌리는 것이 롤백 전부다.

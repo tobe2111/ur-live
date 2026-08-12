@@ -2854,6 +2854,38 @@ const MUTATIONS = [
       '이 작업의 출발점이었다(방배동 맛집 0% 가 계속 돌던 이유).',
   },
   {
+    name: '폭 분기 소실 — YT 쿼터 소진 회차가 예산 절반을 남기고 끝난다',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '  const roundCap = naverOnlyRound ? naverOnlyRoundCap(env) : keywordsPerRoundCap(env)',
+    replace: '  const roundCap = keywordsPerRoundCap(env)',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '라이브 실측(2026-08-12 06:00): YT 쿼터 소진 후 회차가 `spent 29 / 56` 으로 끝났다 — 폭 9 에서 멈춰 ' +
+      '**예산 27 을 남기고** 종료. 네이버 전용은 키워드당 ~3.2 라 56 이면 ~17개를 돌 수 있다. ' +
+      '분기가 사라지면 하루의 상당 시간(YT 쿼터는 이른 시간에 소진) 동안 예산 절반이 그냥 남는다.',
+  },
+  {
+    name: '네이버 전용 캡이 YT 캡보다 좁아짐(확장이 축소로 뒤집힘)',
+    file: 'src/features/marketing/api/influencer-round-width.ts',
+    find: '  return Math.max(COLLECT_KEYWORDS_PER_ROUND, COLLECT_KEYWORDS_PER_ROUND_NAVER_ONLY)',
+    replace: '  return Math.min(COLLECT_KEYWORDS_PER_ROUND, COLLECT_KEYWORDS_PER_ROUND_NAVER_ONLY)',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      'env 오타나 상수 되돌림으로 네이버 전용 폭이 YT 폭보다 좁아지면 이 수리가 **반대로 작동**한다 — ' +
+      '유휴 예산을 회수하려던 회차가 오히려 더 좁아진다. 에러가 없어 관측만으로는 안 보인다.',
+  },
+  {
+    name: '계획 폭이 두 형상을 섞음(YT 회차 과대 · 네이버 회차 과소)',
+    file: 'src/features/marketing/api/influencer-keyword-order.ts',
+    find: '  const src = sameShape.length ? sameShape : recent',
+    replace: '  const src = recent',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      'YT 동반 회차(처리 ~9)와 네이버 전용 회차(처리 ~17)를 한 중앙값(~15)에 섞으면 **둘 다 틀린다**: ' +
+      'YT 회차는 과대 계획이 되어 #1142 가 고친 커서 기아(잘리는 자리의 축이 매 회차 같은 키워드)가 되살아나고, ' +
+      '네이버 회차는 과소 계획이 되어 폭 확장이 무효가 된다.',
+  },
+  {
     name: '수집 폭 동결이 풀림(측정이 병목인데 백로그가 증가 반전)',
     file: 'src/features/marketing/api/influencer-auto-collect.ts',
     find: '    if (processedIds.size >= roundCap) break',

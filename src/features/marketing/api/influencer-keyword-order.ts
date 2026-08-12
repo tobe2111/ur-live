@@ -169,3 +169,27 @@ export function planRoundWidth(
   const median = seen[Math.floor(seen.length / 2)]
   return Math.max(floor, Math.min(cap, Math.ceil(median * headroom)))
 }
+
+/**
+ * 📐 **형상별 계획 폭** — YT 동반 회차와 네이버 전용 회차를 **다른 이력으로** 계획한다 (2026-08-12).
+ *
+ * `planRoundWidth` 는 "최근 처리량의 중앙값"을 쓰는데, 하루 안에 형상이 둘이면 그 중앙값이 둘 다 틀린다:
+ * ```
+ *   YT 동반 회차     처리 ~9   (키워드당 비용 ~6.2 — 예산 56 을 다 쓴다)
+ *   네이버 전용 회차  처리 ~17  (키워드당 비용 ~3.2 — YT 쿼터 소진 후 하루의 상당 시간)
+ *   섞은 중앙값 ~12.5 → YT 회차엔 과대 계획(#1142 가 고친 커서 기아 재발) · 네이버 회차엔 과소 계획
+ * ```
+ * 형상 표식은 `yt.spend > 0` 이다(그 회차가 YT 에 서브리퀘스트를 썼는가 = 이미 기록되는 값).
+ *
+ * ⚠️ 같은 형상의 이력이 없으면(배포 직후·형상 전환 직후) **전체 이력으로 폴백**한다 —
+ *   증거 없이 좁히면 커버리지가 줄고, 증거 없이 넓히면 예산을 넘겨 마감 기록이 깨진다.
+ *   폴백은 `planRoundWidth` 의 "증거 없으면 hardMax" 규약과 같은 철학이다.
+ */
+export function planRoundWidthForShape(
+  recent: readonly { processed?: number; yt?: { spend?: number } }[],
+  naverOnlyRound: boolean, hardMax: number,
+): number {
+  const sameShape = recent.filter(f => (Number(f.yt?.spend || 0) > 0) !== naverOnlyRound)
+  const src = sameShape.length ? sameShape : recent
+  return planRoundWidth(src.map(f => Number(f.processed) || 0), hardMax)
+}
