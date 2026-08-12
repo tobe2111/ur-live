@@ -95,10 +95,6 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     title: '숙소',
     description: '펜션·호텔·풀빌라 숙소 이용권 — 할인가로 예약하고 매장에서 바로 사용',
   },
-  '/meal-vouchers': {
-    title: '이용권',
-    description: '맛집 이용권을 할인가에 만나보세요. 치킨·피자·한식·카페 등 다양한 이용권 특가.',
-  },
   '/experience': {
     title: '체험단 응모',
     description: '무료로 응모하고 공정 추첨으로 매장 체험권을 받아보세요.',

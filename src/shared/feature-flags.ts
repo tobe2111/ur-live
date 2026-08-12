@@ -205,3 +205,25 @@ export const HOME_SHOWCASE_ENABLED = true
  *   개별 캠페인의 접수 종료는 이 플래그가 아니라 레지스트리의 `active: false` 로(페이지가 종료 안내 렌더).
  */
 export const CAMPAIGN_SIGNUP_ENABLED = true
+
+/**
+ * CONSUMER_LANGUAGE_SWITCH_HIDDEN — 소비자 **언어 전환 UI 숨김** (2026-08-11 대표 "모두 진행해").
+ *
+ * ## 왜
+ * 마이 페이지(`LanguageSection`)에 6개 언어 전환이 노출돼 있는데, **번역이 반쯤 비어 있다** —
+ * 라이브 실측 `[TODO:xx]` 채움 항목이 언어당 **289개**(`introduce` 65 · `register` 37 · `faq` 36 ·
+ * `orderDetail` 35 · `groupbuy` 28 · `referral` 18 …). 눌러 보면 일부만 번역되고 나머지는 한국어인
+ * **어중간한 화면**이 된다. 게다가 이 서비스는 `urdeal.kr` **한국 전용**이고 글로벌은 폐기(#804)라
+ * 그 문을 열어 둘 이유가 없다.
+ *
+ * ## 무엇을 하나
+ * true: ① 마이의 언어 카드 미노출 ② `detectInitialLanguage()` 가 **항상 ko** 를 반환.
+ *   ②가 없으면 **이미 en 으로 바꿔 둔 사용자가 되돌릴 문이 사라져 갇힌다**(스위치는 숨겼는데
+ *   저장된 선택은 남아 있으므로). 그래서 숨김과 고정은 **한 쌍**이다.
+ *
+ * ## 되살리려면
+ * `false` 로 바꾸면 즉시 복원(가역). 번역 파일·6개 언어 동기 가드(`check-i18n-sync`)·
+ * `LanguageSection` 컴포넌트·셀러 대시보드 언어 전환은 **전부 그대로 둔다** — 지운 게 아니라 닫은 것이다.
+ * (`[TODO:xx]` 표식이 화면에 나가는 것 자체는 `src/i18n.ts` 의 `stripTodoMarker` 가 별도로 막는다.)
+ */
+export const CONSUMER_LANGUAGE_SWITCH_HIDDEN = true

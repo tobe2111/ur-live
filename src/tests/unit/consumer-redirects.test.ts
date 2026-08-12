@@ -59,7 +59,10 @@ describe('App.tsx 와의 동기화 — 표가 낡으면 죽은 301 이 된다', 
   it('301 목적지도 App.tsx 에 실재한다 (없는 곳으로 보내면 죽은 리다이렉트)', () => {
     for (const target of new Set(Object.values(CONSUMER_ALIASES))) {
       // 루트('/')는 `path="/"` 로, 나머지는 그대로 매칭.
-      expect(APP.includes(`path="${target}"`), `${target} 라우트가 App.tsx 에 없다`).toBe(true)
+      // 🍽️ 2026-08-11: 목적지가 쿼리를 갖는 별칭이 생겼다(`/?category=meal_voucher`).
+      //   라우트로 실재해야 하는 것은 **경로**뿐이라 쿼리를 떼고 대조한다.
+      const path = target.split('?')[0]
+      expect(APP.includes(`path="${path}"`), `${target} 라우트가 App.tsx 에 없다`).toBe(true)
     }
   })
 

@@ -152,10 +152,18 @@ describe('④ 데모 상세는 "응모하기"', () => {
   })
 
   it('두 변형(모바일 푸터·PC 패널) 모두 문구가 갈린다', () => {
+    // 🔴 2026-08-11 정정: 원래 이 테스트는 `'응모하기'` 를 고정했다. 그런데 라이브에서 보니
+    //   **같은 화면에 `응모하기` 가 둘**이었고 하나는 공짜였다 —
+    //     중간 FcfsApplyBlock : [응모하기]        "결제 없이 응모하면 추첨으로 선정돼요"  ← 무료
+    //     하단 이 버튼        : [36,500원 응모하기]                                    ← 실제 결제
+    //   `onBuy` → `handleJoin` 은 토스 카드/딜 차감으로 간다. "결제 없이 응모"를 읽은 사람이
+    //   아래 버튼을 누르면 결제창이 뜬다 — 결제 오인은 환불 분쟁으로 직행한다.
+    //   ⇒ 데모 결제 CTA 는 `'결제하기'`. 대표가 데모엔 안 맞다고 한 '구매하기' 를 되살리지 않으면서
+    //     돈이 나간다는 사실은 라벨에 박는다. 무료 응모 블록은 그대로 남는다(갈라놓은 것).
     const box = code('src/pages/group-buy/DealPurchaseBox.tsx')
-    expect(box).toContain("isDemo ? '응모하기' : '구매하기'")
+    expect(box).toContain("isDemo ? '결제하기' : '구매하기'")
     const d = code('src/pages/GroupBuyDetailPage.tsx')
     // 모바일 푸터도 같이 바뀌어야 한다 — 한쪽만 고치면 화면에 따라 다른 말을 한다.
-    expect(d).toContain("isDemoDeal ? '응모하기' : '구매하기'")
+    expect(d).toContain("isDemoDeal ? '결제하기' : '구매하기'")
   })
 })

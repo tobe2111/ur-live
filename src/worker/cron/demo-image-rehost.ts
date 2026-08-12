@@ -155,6 +155,24 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
       await setSupplyMeta(DB, row.id, { demo_cond_tries: String(tries + 1) }).catch(() => {})
       continue
     }
+    // 📦 2026-08-11 (대표 "모두 진행해" — AB 스윕 §4-c): **쇼핑 데모는 지도 사진으로 못 채운다.**
+    //   이 파이프라인의 사진 소스는 카카오/네이버 **지도 대표사진** 하나뿐이라 "그 매장이 맞는가"는
+    //   보장하지만 "그 상품이 맞는가"는 보장하지 못한다. 매장 이용권(demo-deal)·숙소(demo-stay)는
+    //   매장 사진이 곧 상품이라 맞지만, `demo-linkshop-*` 는 **포장 식품**(참기름 선물세트·쌀조청·
+    //   어묵탕 밀키트·갈치)이라 사진이 그 가게 **홀/외관**으로 붙는다 — v4 규칙은 "근거 있는 사진"만
+    //   보므로 이걸 **통과시킨다**(규칙이 원리적으로 못 잡는 축).
+    //   ⇒ 상품과 무관한 사진은 없는 것과 같다. 위 "사진 0장이면 내린다"와 같은 판단을 적용한다.
+    //   ⚠️ `hasUsableCover` 예외를 두지 않는다 — 지금 붙어 있는 커버가 바로 그 매장 사진이라,
+    //     "멀쩡한 커버가 있으면 유지"를 적용하면 고쳐지지 않는다.
+    //   ⚠️ 삭제가 아니라 `is_active=0` + 같은 마커라 **가역**이다. 상품 사진 소스가 생기거나
+    //     이 분기를 지우면 다음 회차에 위 자동 복귀 로직이 되살린다.
+    if (row.slug.startsWith('demo-linkshop-')) {
+      await DB.prepare(`UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?`)
+        .bind(row.id).run().catch(() => {})
+      await setSupplyMeta(DB, row.id, { demo_hidden_no_photo: '1', demo_cond_v: DEMO_COND_V }).catch(() => {})
+      out.hiddenNoPhoto++
+      continue
+    }
     // 커버 결정:
     //   - placeUrl 있음 → imgs[0](카카오 대표사진)로 교체 = "가장 메인이 되는 사진" 확정.
     //   - placeUrl 없음 → 기존 커버가 실사진이고 **실제 로드되면** 유지, placeholder/깨짐이면 imgs[0].

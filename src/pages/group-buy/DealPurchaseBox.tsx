@@ -35,9 +35,20 @@ export default function DealPurchaseBox({
   quantity, setQuantity, maxQty, maxPerPerson,
   buyable, isJoinable, isPrelaunch, isDemo, joining, onBuy, onPrelaunchApply,
 }: Props) {
-  // 🎭 2026-08-08 (대표 "데모 상품들만 상품페이지에 구매하기 버튼 대신 응모하기로"): 데모는 추첨이라
-  //   '구매하기'가 거짓말이 된다(결제가 아니라 응모다). 문구만 바꾼다 — 동작(onBuy)은 그대로.
-  const ctaLabel = isDemo ? '응모하기' : '구매하기'
+  // 🎭 2026-08-08 (대표 "데모 상품들만 상품페이지에 구매하기 버튼 대신 응모하기로"): 데모는 '구매하기'가
+  //   어울리지 않아 문구를 바꿨다. 동작(onBuy)은 그대로.
+  // 🔴 2026-08-11 정정 (AB 스윕): 위 주석의 **전제가 틀렸다.** *"데모는 추첨이라 결제가 아니라 응모다"*
+  //   라고 적었는데, `onBuy` → `handleJoin` 은 **실제 결제**로 간다(토스 카드 / 딜 차감).
+  //   그래서 화면에 이런 상태가 만들어졌다 — 같은 페이지에 `응모하기` 가 **둘**인데 하나는 공짜다:
+  //
+  //     중간 FcfsApplyBlock : [응모하기]        "결제 없이 응모하면 추첨으로 선정돼요"  ← 진짜 무료
+  //     하단 이 버튼        : [36,500원 응모하기]                                    ← 진짜 결제
+  //
+  //   "결제 없이 응모"를 읽은 사람이 아래 큰 버튼을 누르면 결제창이 뜬다. 문구 불일치가 아니라
+  //   **오인 유도**이고, 결제 오인은 환불 분쟁으로 바로 이어진다.
+  //   ⇒ 데모에도 **돈이 나간다는 사실**을 라벨에 박는다. '구매하기'(대표가 데모엔 안 맞다고 한 말)
+  //     대신 '결제하기' 를 쓴다 — 무료 응모와 확실히 갈리고, 데모라는 정체성도 해치지 않는다.
+  const ctaLabel = isDemo ? '결제하기' : '구매하기'
   return (
     <div style={{ border: '1px solid var(--gbd-line2)', borderRadius: 18, padding: 18, background: 'var(--gbd-card)', boxShadow: '0 6px 24px rgba(0,0,0,.06)' }}>
       {/* 옵션(단일가) 카드 — 그루폰 옵션 패널의 유어딜 버전(즉시판매 단일가 모델) */}
