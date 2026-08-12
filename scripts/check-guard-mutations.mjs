@@ -154,6 +154,18 @@ const MUTATIONS = [
       '에러도 경보도 없다 — 이 레포의 "실패가 아니라 조용한 부재" 클래스이고, 이번엔 대표가 요청한 기능 자체가 그렇게 사라졌다.',
   },
   {
+    name: '손실 분포 누적이 이전 값을 참조로 물고 온다(어제 값이 조용히 바뀐다)',
+    file: 'src/features/marketing/api/enrich-telemetry.ts',
+    find: '    const acc: Record<string, number> = { ...(rollup?.day === day ? rollup.crawl_reason || {} : {}) }',
+    replace: '    const acc: Record<string, number> = (rollup?.day === day ? rollup.crawl_reason || {} : {})',
+    test: 'src/tests/unit/enrich-rollup.test.ts',
+    why:
+      '누적 레코드는 65행에서 **얕은 복사**되므로 객체 필드를 그대로 물고 온다 — 여기서 더하면 ' +
+      '**호출부가 들고 있는 이전 누적본까지 함께 바뀐다.** 같은 파일의 `deaths` 가 정확히 이 함정에 ' +
+      '빠진 전례가 있어 그때도 유닛으로 못 박았다. 오염되면 멱등 검사와 하루 경계가 동시에 거짓말을 하고, ' +
+      '그 위에서 "수율을 어디서 올릴까"를 판단하게 된다.',
+  },
+  {
     name: '일 1회 레인을 다시 cron 으로 되돌린다(혼잡한 시각의 꼬리가 되어 굶는다)',
     file: 'src/worker-ads/cron-public-data.ts',
     find: "  if (!laneAlarmDrivesEnrich(env) && e.ADS_FRANCHISE_ENABLED === 'true') {",

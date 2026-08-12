@@ -52,6 +52,43 @@ export interface EnrichRollup {
    *   추가 SELECT·UPDATE 가 없다(무료 플랜의 서브리퀘스트 지갑을 건드리지 않는다).
    */
   deaths?: string[]
+  /**
+   * 🎯 **하루치 손실 분포** — "연락처 수율을 어디서 올리나"의 유일한 근거 (2026-08-12 신설).
+   *
+   * ## 왜 (오늘 대표가 *"연락처 수율도 올려줘"* 라고 했을 때 답을 못 한 이유)
+   * 수율은 실측 **12~13%**(오늘 620건 처리 → 76건 획득)인데, **어디서 버려지는지는 회차 1건만 남는다** —
+   * `crawl_reason` 은 스냅샷 필드라 라운드마다 덮인다. 그래서 표본이 이렇게 흔들린다:
+   * ```
+   *   어떤 회차:  blocked_host 3 · deadline 3 · no_contact 2 · http_5xx 1 · ok 1   (크롤 10)
+   *   다른 회차:  no_name 3 · deadline 2 · blocked_host 1                          (크롤 6)
+   * ```
+   * 6~10건 표본으로 처방을 고르면 **이 세션에서 두 번 겪은 오진**과 같은 실수다(발굴량 하락을
+   * 30시간 창으로 보고 단정했다가 3주로 보니 17배 진폭이었던 건, 그리고 "예산이 못 막는다"를
+   * 무죄 증거로 읽었던 건). ⇒ 하루로 묶어야 처방이 갈린다:
+   *
+   * | 우세한 사유 | 처방 |
+   * |---|---|
+   * | `deadline`/`subreq_limit` | 무료 플랜 천장 — 코드가 아니라 **유료 전환** 판단 |
+   * | `blocked_host`/`bad_url` | 저장된 website 품질 — **발견 경로**로 우회 |
+   * | `no_name` | 상호 가드가 과하다 → 아래 `name_loose` 로 회수 가능분을 잰다 |
+   * | `no_contact` | 사이트에 정말 없다 — 크롤로는 못 올린다(다른 소스가 필요) |
+   *
+   * 💰 비용 0 — 이미 매 라운드 쓰는 누적 레코드에 정수 몇 개를 얹을 뿐이다(추가 쿼리 없음).
+   *   회차가 예산을 100% 쓰는 것이 실측이라, 여기서 쓰기를 하나라도 늘리면 그만큼 보강이 잘린다.
+   */
+  crawl_reason?: Record<string, number>
+  /**
+   * 🔎 **회수 가능분** — `no_name` 으로 버려졌지만 **느슨한 상호**(지점·법인격·괄호 제거)로는 맞았던 수.
+   *
+   * 상호 가드는 **웹검색으로 발견한 사이트에만** 걸린다(등록된 홈페이지는 무검사) — 설계가 맞다.
+   * 남의 사이트 연락처를 이 리드에 붙이면 **대표가 엉뚱한 회사에 제휴 제안을 보내게 된다.**
+   * 그래서 느슨한 일치는 지금 **채택하지 않고 세기만** 한다(`contact-enrich.ts` 의 `nameLoose`).
+   *
+   * ⚠️ **이 수가 크다고 바로 가드를 풀지 말 것.** 느슨한 일치는 *"강남점"↔"본점"* 도 통과시켜
+   *   프랜차이즈 본사에 오귀속될 수 있다. 이 값의 용도는 *"가드를 손볼 가치가 있는가"* 의 크기 판정이고,
+   *   실제로 풀 때는 표본을 눈으로 확인한 뒤 **출처별로**(place 등록 링크 vs 웹검색) 갈라야 한다.
+   */
+  name_loose?: number
   last_run_id?: string; updated_at?: string
 }
 
@@ -99,6 +136,20 @@ export function foldRound(rollup: EnrichRollup | null, snap: Record<string, unkn
   if (snap.crash) r.crash++
   r.processed += n(snap.processed); r.enriched += n(snap.enriched); r.crawls += n(snap.crawls)
   r.fetches += n(snap.fetches); r.d1 += n(snap.d1); r.spent += n(snap.spent)
+  // 🎯 손실 분포 합산 — 스냅샷의 사유별 계수를 하루로 누적(위 `crawl_reason` 주석의 판정표가 이 값을 쓴다).
+  //   ⚠️ 얕은 복사(위 65행)가 객체를 **참조로** 물고 오므로 반드시 새 객체를 만든다 — `deaths` 가 같은
+  //   함정으로 원본을 오염시킨 전례가 이 파일에 있다.
+  const cr = snap.crawl_reason
+  if (cr && typeof cr === 'object') {
+    const acc: Record<string, number> = { ...(rollup?.day === day ? rollup.crawl_reason || {} : {}) }
+    for (const [k, v] of Object.entries(cr as Record<string, unknown>)) acc[k] = (acc[k] || 0) + n(v)
+    r.crawl_reason = acc
+  } else if (rollup?.day === day && rollup.crawl_reason) {
+    r.crawl_reason = { ...rollup.crawl_reason }
+  }
+  // ⚠️ **0 도 쓴다.** 이 필드가 없으면 "재 봤는데 0 건"과 "아직 안 잰다"가 구분되지 않는데,
+  //   이 계측이 존재하는 이유가 정확히 그 모호함이다(유닛이 이 계약을 고정한다).
+  r.name_loose = (rollup?.day === day ? n(rollup.name_loose) : 0) + n(snap.name_loose)
   const ph = typeof snap.phase === 'string' && snap.phase ? snap.phase : 'unknown'
   r.phase[ph] = (r.phase[ph] || 0) + 1
   r.last_run_id = runId
