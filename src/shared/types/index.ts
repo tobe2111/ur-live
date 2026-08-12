@@ -265,6 +265,10 @@ export interface Order {
   seller_name?: string;
   seller_phone?: string;
   seller_kakao_chat_url?: string;
+  // 🏪 2026-08-12: "어느 가게에서 산 것인가" — 서버가 찍는다(`worker/utils/mall-consumer` stampOrdersMall).
+  //   주문 내역엔 세션 흔적이 없어 클라가 알 방법이 없다. 본진 주문에는 **없는 필드**(undefined).
+  mall_slug?: string;
+  mall_name?: string;
 }
 
 export interface OrderItem {

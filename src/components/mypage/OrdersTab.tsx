@@ -287,11 +287,17 @@ function OrderCard({
       >
         <div className="flex items-center justify-between mb-2">
           <span className={`text-[12px] font-bold ${status.cls}`}>{status.label}</span>
-          {order.seller_name && (
+          {/* 🏪 2026-08-12: 몰 주문이면 **그 가게 이름**이 판매처보다 앞선다 — 손님이 기억하는 건 가게다.
+                본진 주문엔 `mall_name` 이 아예 없어(undefined) 종전 표시 그대로. */}
+          {order.mall_name ? (
+            <span className="text-[12px] font-semibold text-gray-600 dark:text-gray-300 truncate max-w-[55%]">
+              🏪 {order.mall_name}
+            </span>
+          ) : order.seller_name ? (
             <span className="text-[12px] font-medium text-gray-400 dark:text-gray-500 truncate max-w-[55%]">
               {order.seller_name}
             </span>
-          )}
+          ) : null}
         </div>
 
         <div className="space-y-3 pb-1">

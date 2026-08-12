@@ -114,6 +114,11 @@ export interface Order {
   seller_name?: string
   seller_phone?: string
   seller_kakao_chat_url?: string
+  // 🏪 2026-08-12: "어느 가게에서 산 것인가" — 서버가 찍는다(`worker/utils/mall-consumer` stampOrdersMall).
+  //   주문 내역엔 세션 흔적이 없어 클라가 알 방법이 없다. 본진 주문엔 **없는 필드**(undefined).
+  //   ⚠️ 아래 인덱스 시그니처가 `unknown` 이라 명시하지 않으면 JSX 에서 `{}` 로 새어 타입 에러가 난다.
+  mall_slug?: string
+  mall_name?: string
   [key: string]: unknown              // 추가 필드 허용 (API 확장 대비)
 }
 

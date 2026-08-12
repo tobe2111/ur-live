@@ -195,6 +195,24 @@ describe('배선 — 유어딜 자기영업이 몰 손님에게 안 뜬다', () 
     expect(/if \(!brand\) return null/.test(b)).toBe(true)  // 조회 실패 → 간판 없음(추측 금지)
   })
 
+  // 🧾 주문 내역은 **지난 주문**이라 세션 흔적이 없다("이번 세션에 몰을 지나갔다" ≠ "이 주문이 몰 주문").
+  //    그래서 여기서만은 서버(`products.mall_id`)가 답이다.
+  it('주문 목록에 가게를 서버가 찍는다 — 클라 흔적으로 추측하지 않는다', () => {
+    const route = noImports(read('src/worker/routes/order.routes.ts'))
+    expect(/stampOrdersMall\(/.test(route)).toBe(true)
+    const util = read('src/worker/utils/mall-consumer.ts')
+    // fail-closed 3중 — 도매몰이 소비자 주문 내역에 가게로 뜨면 서비스 분리가 깨진다.
+    const fn = util.slice(util.indexOf('export async function stampOrdersMall'))
+    expect(/consumer_path, 0\) = 1/.test(fn)).toBe(true)
+    expect(/active, 1\) = 1/.test(fn)).toBe(true)
+  })
+
+  it('주문 카드가 몰 이름을 판매처보다 앞세운다 — 본진 주문은 종전 표시', () => {
+    const tab = noImports(read('src/components/mypage/OrdersTab.tsx'))
+    expect(/order\.mall_name \?/.test(tab)).toBe(true)
+    expect(/order\.seller_name \?/.test(tab)).toBe(true)   // 폴백이 살아 있어야 한다
+  })
+
   it('🔒 Toss 잠금 파일은 결제 로직 무접촉 — 배너 렌더 1줄만 추가됐다', () => {
     const page = read('src/pages/PaymentSuccessPage.tsx')
     // 잠금 파일에서 몰을 **판정**하면 안 된다. 배너가 스스로 판정하고, 이 파일은 렌더만 한다.

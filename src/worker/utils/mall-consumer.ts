@@ -127,6 +127,47 @@ export async function stampConsumerMall(
 }
 
 /**
+ * 🧾 **주문 목록에 "어느 가게에서 산 것인가" 를 찍는다** — 2026-08-12 (대표 *"완전 별개, 분리"*)
+ *
+ * 왜 서버가 해야 하는가: 결제 화면까지는 **세션 흔적**(`shared/mall/origin.ts`)으로 가게를 알 수 있지만,
+ * 주문 내역은 **지난 주문**이라 흔적이 없다("이번 세션에 몰을 지나갔다"와 "이 주문이 몰 주문이다"는
+ * 다른 명제다). 그래서 여기서만은 **서버 데이터**(`products.mall_id`)가 답이다.
+ *
+ * 🔴 fail-closed 3중은 `pickConsumerMall` 과 동일 — `consumer_path=1` · `active=1` 인 몰만.
+ *   도매몰(유통스타트·메디스타트)이 소비자 주문 내역에 가게로 뜨면 서비스 분리가 깨진다.
+ *
+ * 성능: 주문 N 개에 **쿼리 1회**(IN + GROUP BY). 본진 전용 주문만 있으면 결과 0행이라 표시도 없다.
+ * 실패·컬럼 미적용은 조용히 no-op — **주문 목록이 안 뜨는 것보다 가게 이름이 없는 편이 낫다.**
+ */
+export async function stampOrdersMall(
+  DB: D1Database | undefined,
+  orders: Array<Record<string, unknown>> | null | undefined,
+): Promise<void> {
+  if (!DB || !Array.isArray(orders) || orders.length === 0) return
+  const ids = orders.map((o) => Number(o?.id)).filter((n) => Number.isFinite(n) && n > 0)
+  if (ids.length === 0) return
+  try {
+    const ph = ids.map(() => '?').join(',')
+    const { results } = await DB.prepare(
+      `SELECT oi.order_id AS oid, m.slug AS slug,
+              COALESCE(NULLIF(TRIM(m.brand_name), ''), m.name) AS name
+         FROM order_items oi
+         JOIN products p ON p.id = oi.product_id
+         JOIN wholesale_malls m ON m.id = p.mall_id
+        WHERE oi.order_id IN (${ph})
+          AND COALESCE(m.consumer_path, 0) = 1 AND COALESCE(m.active, 1) = 1
+        GROUP BY oi.order_id`,
+    ).bind(...ids).all<{ oid: number; slug: string; name: string }>()
+    if (!results?.length) return
+    const byOrder = new Map(results.map((r) => [Number(r.oid), r]))
+    for (const o of orders) {
+      const hit = byOrder.get(Number(o?.id))
+      if (hit?.slug) { o.mall_slug = String(hit.slug); o.mall_name = String(hit.name || '') }
+    }
+  } catch { /* 컬럼/테이블 미적용 — 가게 표시 없이 정상 동작 */ }
+}
+
+/**
  * 몰 **id → 슬러그** (2026-08-11). 소비자 상품 상세가 "이 상품은 어느 가게 것인가"를 알아야
  * 몰 손님을 그 가게로 돌려보낼 수 있다(`/products/:id` → `/{슬러그}/p/:id`).
  *
