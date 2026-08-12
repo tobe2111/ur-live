@@ -36,7 +36,7 @@ import {
 // 🛡️ 2026-05-21: 모든 voucher 카테고리에서 동작하려면 이용권 hardcode 제거 — getVoucherShortLabel 사용.
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 // 🎟️ 2026-08-12 (소비자 공구 결제 결함 3건): 자기참여 판정·주문번호·가상계좌 가드 → gb-purchase-guards.ts
-import { isSelfOwnedGroupBuy, resolveGbOrderNumber, guardAwaitingDeposit } from './gb-purchase-guards'
+import { isSelfOwnedGroupBuy, resolveGbOrderNumber, guardAwaitingDeposit, issuedVoucherLabel } from './gb-purchase-guards'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 
@@ -1103,8 +1103,8 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   // 1. 상품 재검증 (Toss 결제 도중 마감/품절 등 상태 변경 가능).
   // 🧱 2026-06-26 서비스 분리: confirm-toss 재검증도 /join(category 격리)과 대칭으로 도매 원본 제외.
   const product = await DB.prepare(
-    "SELECT id, name, price, group_buy_status, group_buy_deadline, seller_id, voucher_expiry, category, group_buy_tiers, referral_disabled FROM products WHERE id = ? AND is_active = 1 AND NOT (COALESCE(is_supply_product, 0) = 1 AND COALESCE(supply_source_id, 0) = 0)"
-  ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; seller_id: number; voucher_expiry: string | null; category: string; group_buy_tiers: string | null; referral_disabled: number | null }>()
+    "SELECT id, name, price, group_buy_status, group_buy_deadline, seller_id, voucher_expiry, category, group_buy_tiers, referral_disabled, deal_only FROM products WHERE id = ? AND is_active = 1 AND NOT (COALESCE(is_supply_product, 0) = 1 AND COALESCE(supply_source_id, 0) = 0)"
+  ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; seller_id: number; voucher_expiry: string | null; category: string; group_buy_tiers: string | null; referral_disabled: number | null; deal_only: number | null }>()
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
   // 🛡️ 2026-05-31: 카드 결제 referral 추출 (딜 /join 과 동일 검증) — 인플 attribution 용.
@@ -1277,12 +1277,12 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
           await markAcquisitionFirstPurchase(DB, String(userId), orderNumber)
         } catch { /* fail-soft */ }
         // 🔔 2026-06-26 (소비자 감사 C): 카드 결제 buyer 무통보(딜 /join 은 알림톡 발송) 비대칭 보강.
-        //   ① 교환권 발급 인앱 기록(보관함 링크) ② 사용자 phone 알림톡 — 딜 경로와 동일 헬퍼/payload.
+        //   ① 발급 인앱 기록 ② 알림톡. 🏷️ 2026-08-12: '교환권' 고정 문구라 카드로 산 이용권에도 그게 떴다(셀러 알림은 '이용권') → issuedVoucherLabel.
         try {
           await DB.prepare(
             `INSERT INTO user_notifications (user_id, type, title, message, link)
              VALUES (?, 'voucher_issued', ?, ?, ?)`
-          ).bind(String(userId), '🎟️ 교환권이 발급됐어요', `${product.name} ×${qty} — 보관함에서 확인하세요`, '/my-vouchers').run().catch(() => {})
+          ).bind(String(userId), `🎟️ ${issuedVoucherLabel(product)}이 발급됐어요`, `${product.name} ×${qty} — 보관함에서 확인하세요`, '/my-vouchers').run().catch(() => {})
         } catch { /* ignore */ }
         try {
           const userRow = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(userId).first<{ phone: string | null }>()

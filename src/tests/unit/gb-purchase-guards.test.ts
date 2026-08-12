@@ -15,6 +15,7 @@ import {
   isSelfOwnedGroupBuy,
   resolveGbOrderNumber,
   guardAwaitingDeposit,
+  issuedVoucherLabel,
 } from '@/features/group-buy/api/gb-purchase-guards'
 
 const cancelTossPayment = vi.fn()
@@ -177,7 +178,33 @@ describe('③ 가상계좌 — 입금 전 발급 금지', () => {
 })
 
 // ──────────────────────────────────────────────────────────────────────────────
-describe('④ 셀러 환불 범위 = 판매 범위', () => {
+describe('④ 발급 알림 문구 — 교환권 ≠ 이용권', () => {
+  it('카드로 산 매장 이용권은 "교환권"이라 부르지 않는다', () => {
+    expect(issuedVoucherLabel({ deal_only: 0, category: 'meal_voucher' })).toBe('식사 이용권')
+    expect(issuedVoucherLabel({ deal_only: null, category: 'stay_voucher' })).toBe('숙소 이용권')
+    expect(issuedVoucherLabel({ category: 'beauty_voucher' })).not.toContain('교환권')
+  })
+
+  it('deal_only=1(기프티콘·KT)만 교환권이다', () => {
+    expect(issuedVoucherLabel({ deal_only: 1, category: 'etc_voucher' })).toBe('교환권')
+  })
+
+  it('카테고리를 모르면 우산말 "이용권" — 없는 정보를 지어내지 않는다', () => {
+    expect(issuedVoucherLabel({})).toBe('이용권')
+    expect(issuedVoucherLabel(null)).toBe('이용권')
+  })
+
+  it('배선: 알림 문구가 "교환권" 하드코드로 되돌아가지 않았다', () => {
+    const c = code(ROUTES)
+    expect(c).not.toMatch(/'🎟️ 교환권이 발급됐어요'/)
+    expect(c).toMatch(/issuedVoucherLabel\(product\)/)
+    // 라벨이 상품을 실제로 보려면 deal_only 가 SELECT 돼 있어야 한다(안 뽑으면 늘 undefined → 늘 '이용권').
+    expect(c).toMatch(/referral_disabled,\s*deal_only\s+FROM products/)
+  })
+})
+
+// ──────────────────────────────────────────────────────────────────────────────
+describe('⑤ 셀러 환불 범위 = 판매 범위', () => {
   it('환불 조회가 식사 카테고리로 좁혀져 있지 않다', () => {
     const c = code(SELLER)
     expect(c).not.toMatch(/category\s*=\s*'meal_voucher'/)

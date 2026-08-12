@@ -8,6 +8,26 @@
  * 세 함수 전부 결제 확정 경로에서 불리므로, 각 함수의 실패 방향(fail-open/closed)을 주석에 명시한다.
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ⓪ 발급 알림 문구 — **교환권 ≠ 이용권**
+// ──────────────────────────────────────────────────────────────────────────────
+/**
+ * 🏷️ 2026-08-12 수리: 카드 확정 경로의 구매자 알림이 `'🎟️ 교환권이 발급됐어요'` **고정 문구**였다.
+ *   그런데 명칭 SSOT(`shared/product-flow.ts` §명칭 주의)는 둘을 명확히 가른다:
+ *     교환권 = 기프티콘·KT(`deal_only=1`) → **딜 결제**
+ *     이용권 = 식당·뷰티·숙박 매장권(`meal_voucher` 등) → **카드 결제**
+ *   이 경로는 카드 결제라 나가는 것은 대부분 **이용권**인데 손님은 "교환권"을 받았다.
+ *   같은 결제 한 건에서 **셀러 알림은 '이용권 판매(카드)'** 였으니, 양쪽이 서로 다른 이름으로 불렀다.
+ *
+ * ⇒ 상품이 실제로 무엇인지로 부른다. 카테고리가 있으면 "식사 이용권"처럼 종류까지 붙는다
+ *   (`getVoucherShortLabel` — 2026-06-29 대표 확정 "{카테고리} 이용권" 형태).
+ */
+export function issuedVoucherLabel(p: { deal_only?: number | null; category?: string | null } | null | undefined): string {
+  if (Number(p?.deal_only) === 1) return '교환권'
+  return getVoucherShortLabel(p?.category)
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // ① 본인 공구 자기 참여 차단 — **네임스페이스 교정**
