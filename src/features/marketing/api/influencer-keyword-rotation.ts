@@ -57,51 +57,119 @@ export const FOCUS_CATEGORIES = ['마케팅대행사']
 export const AXIS_ROTATION_MULTIPLIER = { focus: 3, priority: 2, general: 1 } as const
 
 /**
+ * 축별 이월 지분(슬롯 단위 소수). 회차 사이에 남은 몫을 기억해 작은 축이 굶지 않게 한다.
+ *
+ * ⚠️ 키 문자열을 **여기 한 곳**에 둔다 — 읽기(SETTING_KEYS)와 쓰기(마감 batch)가 같은 문자열을 봐야 한다.
+ *   집중 축 커서가 리터럴 두 벌로 흩어져 **쓰기가 아예 없고 읽기는 항상 0** 이던 사고(#930, 2026-08-03)가
+ *   정확히 이 클래스다. 그때는 커서가 영구 0 이었고, 여기서 같은 일이 나면 carry 가 영구 0 =
+ *   비례 배분만 남아 작은 축이 매 회차 0 이 된다(불변식 ④ 가 조용히 사라진다).
+ */
+export const AXIS_CARRY_KEY = 'ads_autocollect_axis_carry'
+
+export interface AxisCarry { focus: number; priority: number; general: number }
+
+export const ZERO_AXIS_CARRY: AxisCarry = { focus: 0, priority: 0, general: 0 }
+
+/**
+ * 이월 상한 — 한 축이 무한히 빚/적립을 쌓지 못하게 자른다. 정상 상태에서는 |carry| < 1 로 머물고
+ * 이 값에 닿는 것은 풀 구성이 급변했을 때뿐이다(그때도 몇 회차면 소진된다).
+ */
+export const AXIS_CARRY_CLAMP = 4
+
+/** `"f:p:g"` 문자열 ↔ carry. 손상/부재는 0 으로(경보 아님 — 배분이 이번 회차만 비례로 떨어진다). */
+export function parseAxisCarry(raw: string | null | undefined): AxisCarry {
+  const parts = String(raw ?? '').split(':')
+  const num = (s: string | undefined) => {
+    const v = Number.parseFloat(String(s ?? ''))
+    return Number.isFinite(v) ? Math.max(-AXIS_CARRY_CLAMP, Math.min(AXIS_CARRY_CLAMP, v)) : 0
+  }
+  return { focus: num(parts[0]), priority: num(parts[1]), general: num(parts[2]) }
+}
+
+export function serializeAxisCarry(c: AxisCarry): string {
+  const f = (v: number) => (Number.isFinite(v) ? v : 0).toFixed(3)
+  return `${f(c.focus)}:${f(c.priority)}:${f(c.general)}`
+}
+
+/**
  * 배치를 [집중 · 우선 · 일반] 으로 나눈다 — **순수**(유닛으로 고정).
  *
  *   불변식 넷(앞 셋은 종전과 동일):
  *     ① 합계는 `total` 을 절대 안 넘는다
  *     ② 슬롯을 버리지 않는다 — 가용 키워드가 있으면 `min(total, 가용합계)` 만큼 꽉 채운다
  *     ③ 각 몫은 그 풀의 **실제 가용 수**를 안 넘는다(= 빈 풀은 자동 반납)
- *     ④ 🆕 비지 않은 축은 **최소 1슬롯**을 받는다(슬롯이 축 수보다 많을 때) —
- *        비례 배분만 하면 작은 풀(집중 19)이 큰 풀(우선 315) 옆에서 **매 회차 0** 이 되어
- *        전략 축이 사실상 꺼진다. 반올림이 정책을 삼키지 않게 하는 바닥이다.
+ *     ④ 비지 않은 축은 **몇 회차 안에 반드시** 슬롯을 받는다(영구 0 불가) — 아래 carry.
+ *
+ * ## ⚖️ ④ 를 "매 회차 최소 1슬롯" → **회차 간 이월(carry)** 로 교체 (2026-08-12 대표 "모두 다 해결")
+ *
+ * 옛 ④ 는 *매 회차* 축마다 1슬롯을 바닥으로 깔았다. 그 바닥은 회차 폭이 16 이던 시절 설계라
+ * 세금이 2/16(12%)이었는데, 폭이 9로 좁아진 뒤로는 **2/9 = 22%** 가 됐다. 라이브 실측(2026-08-12,
+ * 집중 25 · 우선 358 · 일반 76):
+ *
+ * ```
+ *   설계 배수 3 : 2 : 1  →  키워드당 회전율(우선=1) 이어야 할 값  1.50 : 1.00 : 0.50
+ *   폭 16  →  f2 p12 g2   실제  2.39 : 1.00 : 0.79
+ *   폭  9  →  f1 p6  g2   실제  2.39 : 1.00 : 1.57   ← 일반이 설계의 3.1배
+ *   24h 실측 축별 평균 미실행: 집중 1.34일 · 일반 3.26일 · **우선 7.04일**(최악 15.94일)
+ * ```
+ * ⇒ **대표가 정한 축 우선순위가 코드에서 조용히 뒤집혀 있었다** — 전체의 78%이고 이메일 수율이
+ * 가장 높은(24.4% vs 일반 23.2% · 집중 18.0%) 본업 축이 가장 느리게 돌았다. 폭을 줄인 것이
+ * 원인인데 아무도 배수를 바꾼 적이 없다(`AXIS_ROTATION_MULTIPLIER` docblock 이 경고한 사고의 재발 —
+ * 그때는 풀 크기가, 이번엔 폭이 방아쇠였다).
+ *
+ * **바닥의 목적(작은 전략 축이 꺼지지 않게)은 유지하되, 그 대가를 매 회차 물지 않는다.** 축마다
+ * 지분(`몫 × 배수 / 합`)을 소수로 적립하고 정수 슬롯은 적립이 가장 많은 축부터 준다(deficit
+ * round-robin). 못 받은 회차의 지분은 사라지지 않고 **다음 회차로 이월**되므로:
+ *   · 장기 평균은 설계 비율에 정확히 수렴한다(폭과 무관 — 그게 옛 바닥이 못 한 것)
+ *   · 작은 축은 `ceil(1/지분)` 회차 안에 반드시 1슬롯을 받는다(집중 25 → 지분 0.78/회차 → 2회차)
+ *
+ * ⚠️ **호출부는 반환된 `carry` 를 저장해 다음 회차에 넘겨야 한다** — 안 넘기면 매 회차 0 에서
+ *   시작해 비례 배분만 남고(작은 축이 매 회차 0) ④ 가 깨진다. `ads-keyword-focus-split` 이 배선을 검사한다.
+ * ⚠️ carry 는 D1 `platform_settings` 한 줄이고 **기존 쓰기 배치에 얹는다**(서브리퀘스트 추가 0).
  */
 export function planKeywordSplit(
   total: number, focusAvail: number, priAvail: number, genAvail: number,
   mult: { focus: number; priority: number; general: number } = AXIS_ROTATION_MULTIPLIER,
-): { nFocus: number; nPri: number; nGen: number } {
+  carryIn: AxisCarry = ZERO_AXIS_CARRY,
+): { nFocus: number; nPri: number; nGen: number; carry: AxisCarry } {
   const cap = Number.isFinite(total) ? Math.max(0, Math.floor(total)) : 0
   const av = (n: number) => (Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0)
   const avail = [av(focusAvail), av(priAvail), av(genAvail)]
   const w = [avail[0] * mult.focus, avail[1] * mult.priority, avail[2] * mult.general]
   const budget = Math.min(cap, avail[0] + avail[1] + avail[2])
   const out = [0, 0, 0]
-  if (budget <= 0) return { nFocus: 0, nPri: 0, nGen: 0 }
+  const clamp = (v: number) => Math.max(-AXIS_CARRY_CLAMP, Math.min(AXIS_CARRY_CLAMP, Number.isFinite(v) ? v : 0))
+  // 빈 축은 이월을 쌓지 않는다 — 며칠 비어 있던 축이 되살아나는 순간 몰아서 독식하면 안 된다.
+  const credit = [
+    avail[0] > 0 ? clamp(carryIn?.focus ?? 0) : 0,
+    avail[1] > 0 ? clamp(carryIn?.priority ?? 0) : 0,
+    avail[2] > 0 ? clamp(carryIn?.general ?? 0) : 0,
+  ]
+  const outCarry = () => ({
+    focus: avail[0] > 0 ? clamp(credit[0]) : 0,
+    priority: avail[1] > 0 ? clamp(credit[1]) : 0,
+    general: avail[2] > 0 ? clamp(credit[2]) : 0,
+  })
+  if (budget <= 0) return { nFocus: 0, nPri: 0, nGen: 0, carry: outCarry() }
 
-  // ④ 바닥 — 비지 않은 축부터 1씩(가중치 큰 순). 슬롯이 모자라면 큰 축이 먼저 받는다.
-  const order = [0, 1, 2].sort((a, b) => w[b] - w[a])
-  let left = budget
-  for (const i of order) { if (left > 0 && avail[i] > 0) { out[i] = 1; left-- } }
-
-  // 비례 배분(최대잔여) — 바닥을 뺀 나머지를 가중치대로.
+  // 이번 회차의 지분을 적립(∝ 가용수 × 배수 — 키워드당 회전율이 배수에 비례하게 되는 지점).
   const wSum = w[0] + w[1] + w[2]
-  if (left > 0 && wSum > 0) {
-    const want = w.map(x => (left * x) / wSum)
-    const base = want.map(x => Math.floor(x))
-    for (let i = 0; i < 3; i++) { const add = Math.min(base[i], avail[i] - out[i]); out[i] += add; left -= add }
-    // 남은 슬롯은 소수부 큰 축부터 — 가용분이 남아 있는 축에만.
-    const rest = [0, 1, 2].sort((a, b) => (want[b] - Math.floor(want[b])) - (want[a] - Math.floor(want[a])))
-    while (left > 0) {
-      const i = rest.find(k => out[k] < avail[k])
-      if (i === undefined) break
-      out[i]++; left--
-      rest.push(rest.splice(rest.indexOf(i), 1)[0])   // 라운드로빈으로 돌려 한 축이 독식하지 않게
+  if (wSum > 0) for (let i = 0; i < 3; i++) credit[i] += (budget * w[i]) / wSum
+
+  // 적립이 큰 축부터 1슬롯씩. 동률이면 큰 축 먼저(잘림 비대칭 방지 — mergeKeywordPicks 와 같은 규칙).
+  const EPS = 1e-9
+  let left = budget
+  while (left > 0) {
+    let best = -1
+    for (let i = 0; i < 3; i++) {
+      if (out[i] >= avail[i]) continue                       // ③ 가용분 초과 금지
+      if (best < 0 || credit[i] > credit[best] + EPS
+        || (Math.abs(credit[i] - credit[best]) <= EPS && w[i] > w[best])) best = i
     }
+    if (best < 0) break                                      // ② 더 담을 축이 없다(가용합계 소진)
+    out[best]++; credit[best] -= 1; left--
   }
-  // ② 슬롯을 버리지 않는다 — 위에서 남았으면 가용분 있는 축이 마저 가져간다.
-  for (const i of order) { while (left > 0 && out[i] < avail[i]) { out[i]++; left-- } }
-  return { nFocus: out[0], nPri: out[1], nGen: out[2] }
+  return { nFocus: out[0], nPri: out[1], nGen: out[2], carry: outCarry() }
 }
 
 export interface YtPickKeyword {
@@ -349,7 +417,7 @@ export function isUnjudgedRound(r: {
     || isSubrequestLimitError(r.ytError) || isSubrequestLimitError(r.naverError)
 }
 
-export { interleavePicks, mergeKeywordPicks, planRoundWidth } from './influencer-keyword-order'
+export { interleavePicks, mergeKeywordPicks, planRoundWidth, planRoundWidthForShape } from './influencer-keyword-order'
 
 /**
  * 📉 **네이버 발굴 시점 컨택 보강 상한** (2026-08-04 — 대표 *"수집과 보강 다 잘 되게 하면 안돼?"*).
@@ -375,42 +443,8 @@ export { interleavePicks, mergeKeywordPicks, planRoundWidth } from './influencer
  */
 export const NAVER_COLLECT_ENRICH_MAX = 1
 
-/**
- * 🧊 **회차당 키워드 상한 — "폭 동결"** (2026-08-04, 대표 승인 "①만 진행").
- *
- * ## 왜 남은 예산으로 키워드를 더 돌리지 않는가
- * 위 `NAVER_COLLECT_ENRICH_MAX` 축소로 키워드당 비용이 ~10.4 → ~6 이 된다. 그대로 두면 루프가
- * **자동으로 회차당 5개 → 9개**를 돌아 커버리지가 1.8배가 된다. 매력적으로 들리지만 **지금 하면 손해다**:
- * ```
- *   블로그  유입 3,895/일  vs  측정 4,184/일   →  여유 +289 (백로그 19,963 → 69일)
- *   폭을 1.8배로 넓히면 유입 ~7,000/일  →  백로그가 **매일 +2,800 으로 증가 반전**
- * ```
- * 새 행은 이메일 1.3% 이고 그걸 25% 로 만드는 것이 측정인데, **측정이 병목**이다.
- * ⇒ 폭을 넓히면 행 수만 늘고 **발송 가능 리드는 거의 안 는다.** 지금 병목은 수집이 아니다.
- *
- * ## 🔓 6 → 9 (2026-08-11 — 대표 승인 "폭 9로 올려")
- * 위 해제 조건("측정 처리량이 올라간 뒤")이 **숫자로 충족**된 뒤의 승인이다:
- * ```
- *   측정 8,018/일(샤딩 2배 실측, 이후 4배 확대) > 유입 5,045/일 · 백로그 감소 중 · blocked 0
- *   §16 판정: 신규 키워드 79개 전원 saved≥10(평균 119) — 수율은 문제가 아니었고,
- *   경보 원문 "예산 37/56 · 키워드 6/16 처리" = 예산 19를 남기고 폭 상한에서 정지 — 폭이 캡이었다
- * ```
- * 9 = 동결 당시 주석이 "자동 확대되면 도달했을 값"으로 지목한 그 수(회수된 enrichMax 예산의 자연 폭).
- * ⚠️ 네이버 검색 호출 ~50% 증가 — **하루 뒤 `ads_naver_crawl_block.blocked` 0 유지 + 발굴량 상승을
- *   판정**하고, 차단이 뜨면 즉시 6 으로 되돌린다(이 상수 하나가 롤백 전부다).
- * ⚠️ 추가 상향(9 초과)은 다시 대표 판단 사항이다 — 테스트가 9 를 상한으로 잠근다.
- */
-export const COLLECT_KEYWORDS_PER_ROUND = 9
-
-/**
- * 회차당 키워드 상한 — env(`ADS_COLLECT_KEYWORD_CAP`)로 재배포 없이 조정 가능(1~40).
- * ⚠️ 파라미터가 `unknown` 인 이유: 워커 `Env` 타입에 이 키가 선언돼 있지 않아 좁은 구조 타입으로 받으면
- *   **TS2559**("공통 속성이 없다")가 난다. `alarmEnabled(env: unknown)` 과 같은 형태로 맞춘다.
- */
-export function keywordsPerRoundCap(env: unknown): number {
-  const raw = parseInt(String((env as { ADS_COLLECT_KEYWORD_CAP?: string } | undefined)?.ADS_COLLECT_KEYWORD_CAP ?? ''), 10)
-  return Number.isFinite(raw) && raw > 0 ? Math.min(40, raw) : COLLECT_KEYWORDS_PER_ROUND
-}
+// 📏 회차 폭 정책(폭 동결·네이버 전용 확장)은 `influencer-round-width.ts` — 호환 재수출.
+export { COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, COLLECT_KEYWORDS_PER_ROUND_NAVER_ONLY, naverOnlyRoundCap, isNaverOnlyRound } from './influencer-round-width'
 
 /* ────────────────────────────────────────────────────────────────────────────
  * 🩺 순환 건강 판정 — **한 바퀴를 관측으로 재고**, 상수와 비교하지 않는다 (2026-08-04)

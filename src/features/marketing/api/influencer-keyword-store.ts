@@ -99,3 +99,36 @@ export async function setKeywordActive(DB: D1Database, id: number, active: boole
     .bind(active ? 1 : 0, active ? 1 : 0, id).run().catch(() => null)
   return { ok: true }
 }
+
+/**
+ * 💤 **자동확장 키워드 회수 3종** — 1 batch(=1 서브리퀘스트)로 묶는다(2026-07-29 예산 절약).
+ *
+ *   ⚠️ WHERE 조각은 `AUTO_RETIRE_WHERE`(rotation SSOT) — 승격 차단(`PROMOTE_NOT_RETIRABLE_SQL`)이 같은
+ *   문자열을 봐야 한다. 여기만 고치면 은퇴자가 재승격→즉시 재은퇴하는 livelock 이 되살아난다(2026-08-09).
+ *
+ *   ⚠️ 2026-08-12: `influencer-auto-collect.ts` 에서 **이동**했다(600줄 래칫). 로직·SQL·순서 byte-불변 —
+ *   은퇴는 키워드 *수명주기*라 이 파일이 제자리다(모듈 헤더의 분리 기준과 같은 이유).
+ *   ⚠️ 실측(2026-08-12): 이 배치는 밀린 게 없다 — auto 120개(캡 정확히 도달) · 은퇴 대기 f30/barren/yield
+ *   전부 0. 즉 "은퇴가 안 돌아 슬롯이 막혔다"는 진단은 **틀렸다**(순환 편식의 원인은 배분이었다).
+ */
+export async function retireStaleAutoKeywords(
+  DB: D1Database,
+  where: { f30: string; barren: string; yield: string },
+): Promise<void> {
+  await DB.batch([
+    // (F-30) 활성 이틀+ 인데 성과 0 인 auto 키워드 비활성(탐색 슬롯 영구 점유 차단, 멱등).
+    DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND ${where.f30}`),
+    // 🌵 **고갈** 회수(2026-07-29) — 위 조건은 `saved_total = 0`(한 번도 못 문 키워드)만 잡아서, *예전엔 잘 물었지만
+    //   지금은 다 훑은* auto 키워드를 영원히 놓친다. 연속 무수확 8회+면 비활성(성과가 있었어도 지금은 고갈).
+    //   ⚠️ seed 키워드는 비활성화하지 않는다 — 대표가 고른 지역/업종 축이라 사라지면 커버리지에 구멍이 난다.
+    //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
+    DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND ${where.barren}`),
+    // 🌾 **수율 은퇴**(2026-08-09 — 대표 "키워드 수율" 지시) — barren 의 사각지대를 슬롯 차원에서 닫는다:
+    //   barren 은 저장 0 회차 *연속*만 세므로, "찾긴 하는데(found 50+) 가끔 1명씩 떨궈 streak 을 리셋하는"
+    //   저수율(drip) auto 는 8연속에 영영 못 닿는다(정정 2026-08-09 — 예전 문구 "검색이 성공하니 안 오른다"는
+    //   코드와 달랐다. 카운터는 v.saved 바인딩이다). 실측: 동작카페 found 91/saved 2 · 중랑네일 94/3 이
+    //   자리를 점유하는 동안 승격 대기 2,981개가 밖에 있었다.
+    //   회차당 3개 상한 — 한꺼번에 비우면 승격·첫회차 수확이 몰려 요동한다(완만한 회전이 목적). seed 무접촉.
+    DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE id IN (SELECT id FROM ad_discovery_keywords WHERE source = 'auto' AND active = 1 AND ${where.yield} ORDER BY saved_total ASC, found_total DESC LIMIT 3)`),
+  ]).catch(() => null)
+}

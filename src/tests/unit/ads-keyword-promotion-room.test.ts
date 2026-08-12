@@ -53,6 +53,12 @@ describe('autoPromotionRoom — 신규 키워드 승격 자리', () => {
  */
 describe('키워드 신선도 회전 — cap 상향 + 수율 은퇴', () => {
   const src = () => readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
+  /**
+   * ⚠️ **앵커가 이사했다**(2026-08-12, 600줄 래칫): 은퇴 batch 가 `influencer-keyword-store.ts`
+   *   (키워드 수명주기 SSOT)로 옮겨졌다. 옛 파일에서 계속 찾으면 *낡은 지도*가 되어 조용히 통과한다 —
+   *   **지우지 말고 따라간다.** 지키는 불변식(세 조각 사용 · LIMIT 3 · auto 전용)은 그대로다.
+   */
+  const retireSrc = () => readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-keyword-store.ts'), 'utf8')
 
   it('🔒 cap 120 — 되돌리면 신선 키워드 유입이 다시 막힌다(승격 대기 수천 개 고착)', async () => {
     const { MAX_AUTO_KEYWORDS } = await import('@/features/marketing/api/influencer-keyword-rotation')
@@ -72,15 +78,17 @@ describe('키워드 신선도 회전 — cap 상향 + 수율 은퇴', () => {
     expect(AUTO_RETIRE_WHERE.yield).toMatch(/COALESCE\(found_total, 0\) >= 50/)
     expect(AUTO_RETIRE_WHERE.yield).toMatch(/COALESCE\(saved_total, 0\) < 10/)
     // 배선 — 은퇴 batch 가 세 조각을 실제로 쓴다. 수율 문은 LIMIT 3(회차당 상한 = 완만한 회전) 유지.
-    const s = src()
-    expect(s).toMatch(/\$\{AUTO_RETIRE_WHERE\.yield\} ORDER BY saved_total ASC, found_total DESC LIMIT 3/)
-    expect(s).toMatch(/\$\{AUTO_RETIRE_WHERE\.f30\}/)
-    expect(s).toMatch(/\$\{AUTO_RETIRE_WHERE\.barren\}/)
+    const s = retireSrc()
+    expect(s).toMatch(/\$\{where\.yield\} ORDER BY saved_total ASC, found_total DESC LIMIT 3/)
+    expect(s).toMatch(/\$\{where\.f30\}/)
+    expect(s).toMatch(/\$\{where\.barren\}/)
+    // 그리고 호출부가 rotation SSOT 조각을 **그대로** 넘긴다(다른 조각을 넘기면 livelock 이 돌아온다).
+    expect(src()).toMatch(/retireStaleAutoKeywords\(DB, AUTO_RETIRE_WHERE\)/)
   })
 
   it('🔒 수율 은퇴는 auto 전용 — seed(대표 커버리지 축)를 건드리면 커버리지에 구멍이 난다', () => {
     // 은퇴 UPDATE 3종 전부 source='auto' 가드를 갖는다(seed 를 만지는 은퇴문이 하나라도 생기면 실패).
-    const stmts = src().match(/UPDATE ad_discovery_keywords SET active = 0[^)]+/g) || []
+    const stmts = retireSrc().match(/UPDATE ad_discovery_keywords SET active = 0[^)]+/g) || []
     expect(stmts.length).toBeGreaterThanOrEqual(3)
     for (const st of stmts) expect(st, st.slice(0, 80)).toContain("source = 'auto'")
   })
