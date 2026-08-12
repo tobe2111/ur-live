@@ -47,11 +47,24 @@ const OP_KEY = 'ads_franchise_op'
  *   차례로 한 번씩 시도하고, 맞은 값을 저장해 다음 회차부터 첫 시도에 맞춘다.
  *   ⚠️ **코드 11 일 때만** 넘어간다 — 키·트래픽 오류에 연도를 돌리면 같은 실패를 N배로 반복한다.
  */
+/**
+ * 📛 **연도 파라미터의 진짜 이름** — 대표가 공유한 포털 요청변수 화면으로 확정(2026-08-12).
+ *
+ * 🩸 2026-08-11 에 나는 *"연도 가설은 기각됐다"* 고 적었다. **그건 반만 맞았다.**
+ *   연도가 필요한 것은 맞았고 **이름이 `yr` 이 아니라 `jngBizCrtraYr`(가맹사업기준년도)** 였다.
+ *   그래서 자가치유가 2025·2026·2024 를 다 시도해도 전부 실패했다 — 값이 아니라 **키**가 틀렸으니
+ *   어떤 값을 넣어도 코드 11 이었다. ⇒ *"자가치유가 돌았다 ≠ 원인을 맞혔다"*(교훈 ⑪)의 정확한 사례이고,
+ *   내가 그때 *"다음 후보를 추측하지 말고 화면을 받자"* 로 멈춘 판단은 옳았다.
+ * ⚠️ 포털 샘플값이 **2017** 이다 — 최신 연도에 데이터가 없을 수 있으므로 연도 순회는 그대로 둔다.
+ */
+export const FRANCHISE_YR_PARAM = 'jngBizCrtraYr'
 const YR_KEY = 'ads_franchise_yr'
 /** 시도할 연도 — 최신부터. 등록이 갱신되는 시차 때문에 '올해'가 아직 비어 있을 수 있다. */
 const yearCandidates = (nowMs: number): string[] => {
   const y = new Date(nowMs).getUTCFullYear()
-  return [String(y - 1), String(y), String(y - 2)]
+  // ⚠️ 포털 샘플이 2017 이라 **최신 연도가 비어 있을 수 있다.** 최신부터 훑되 몇 해 더 내려간다
+  //   (등록 갱신 시차 + 원부가 과거 기준년도로만 채워져 있을 가능성). 회차당 한 번만 도는 순회다.
+  return [String(y - 1), String(y), String(y - 2), String(y - 3), String(y - 4)]
 }
 /** 루프가 자기 기록(오퍼레이션 학습 · 통계 · 커서)에 쓸 몫 — 근거는 루프 위 주석. */
 const BOOKKEEPING_RESERVE = 1
@@ -73,7 +86,7 @@ const g = (it: RawFranchise, ...keys: string[]): string => { for (const k of key
 async function fetchBrandPage(base: string, op: string, key: string, page: number, yr: string, budget: { left: number }): Promise<{ items: RawFranchise[]; count: number; msg?: string }> {
   if (budget.left <= 0) return { items: [], count: 0 }
   budget.left -= 1
-  const url = `${base}/${op}?serviceKey=${serviceKeyParam(key)}&pageNo=${page}&numOfRows=100&type=json&_type=json&resultType=json${yr ? `&yr=${encodeURIComponent(yr)}` : ''}`
+  const url = `${base}/${op}?serviceKey=${serviceKeyParam(key)}&pageNo=${page}&numOfRows=100&resultType=json${yr ? `&${FRANCHISE_YR_PARAM}=${encodeURIComponent(yr)}` : ''}`
   // 실패 원인을 삼키지 않는다 — 특히 플랫폼 서브리퀘스트 한도는 '네트워크 오류'로 뭉뚱그리면 영영 오진된다
   //   (2026-07-28 보강 레인 실사고와 동일 클래스).
   let res: Response | null = null
@@ -171,7 +184,9 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
       if (count) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(OP_KEY, useOp).run().catch(() => null)
     }
     // 📅 **필수 파라미터 누락(코드 11)일 때만** 연도를 하나씩 — 첫 페이지에서 한 번만. 근거: `YR_KEY` 주석.
-    if (i === 0 && !count && msg && /ESSENTIAL_PARAMETER_ERROR|필수.*파라미터/i.test(msg)) {
+    // 📅 연도 순회 — **코드 11(이름/필수 누락) 또는 '오류 없이 0건'** 일 때. 후자를 안 보면,
+    //   이름을 고친 뒤 *연도만 틀린* 경우가 **에러 없이 영원히 0건**으로 남는다(조용한 부재).
+    if (i === 0 && !count && (!msg || /ESSENTIAL_PARAMETER_ERROR|필수.*파라미터/i.test(msg))) {
       for (const cand of yearCandidates(now)) {
         if (cand === useYr || budget.left <= BOOKKEEPING_RESERVE) continue
         const r = await fetchBrandPage(base, useOp, key, page, cand, budget)

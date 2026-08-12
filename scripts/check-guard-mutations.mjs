@@ -72,6 +72,29 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '공정위 연도 파라미터를 `yr` 로 되돌린다(코드 11 로 다시 0건)',
+    file: 'src/features/marketing/api/franchise-collect.ts',
+    find: "export const FRANCHISE_YR_PARAM = 'jngBizCrtraYr'",
+    replace: "export const FRANCHISE_YR_PARAM = 'yr'",
+    test: 'src/tests/unit/ads-public-api-params.test.ts',
+    why:
+      '이 레인이 몇 달간 0건이던 진짜 원인이 **이 이름 하나**였다(포털 요청변수는 `jngBizCrtraYr`). ' +
+      '2026-08-11 에 나는 자가치유가 2025·2026·2024 를 다 시도하고도 실패한 것을 보고 *"연도 가설 기각"* ' +
+      '이라고 적었는데 **반만 맞았다** — 값이 아니라 **키**가 틀렸으니 어떤 값도 코드 11 이었다. ' +
+      '⚠️ 이 환경은 `apis.data.go.kr` 프록시 차단이라 되돌아가도 **개발 중엔 아무 증상이 없다**(라이브에서만 0건).',
+  },
+  {
+    name: '기업마당 주소를 옛 값으로 되돌린다(코드 12 로 다시 0건)',
+    file: 'src/features/marketing/api/notice-scan.ts',
+    find: "const BIZINFO_BASE = 'https://apis.data.go.kr/1421000/bizinfo'",
+    replace: "const BIZINFO_BASE = 'https://apis.data.go.kr/1421000/hpsBnaSituService'",
+    test: 'src/tests/unit/ads-public-api-params.test.ts',
+    why:
+      '옛 값은 주소·오퍼레이션이 **둘 다** 틀렸고, 게이트웨이는 그걸 코드 12 하나로만 답한다 — ' +
+      '*주소 부재*와 *오퍼레이션 오타*가 구분되지 않아 몇 달간 원인을 못 좁혔다. ' +
+      '대표가 공유한 포털 화면(2026-08-12)으로 확정된 값이라 **추측으로 되돌아가면 안 된다.**',
+  },
+  {
     name: '회차 퍼널을 UTC 로 묶는다(한국 기준 하루가 두 날로 갈린다)',
     file: 'src/features/marketing/api/influencer-collect-funnel.ts',
     find: 'export const kstDay = (ms: number): string => new Date(ms + 9 * 3600_000).toISOString().slice(0, 10)',
