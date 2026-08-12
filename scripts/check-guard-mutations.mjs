@@ -72,6 +72,19 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '내부 링크 가드에서 객체 리터럴 `to:` 패턴을 없앤다(칩·탭 링크가 다시 무검사)',
+    file: 'scripts/check-internal-links.mjs',
+    find: '\\bto:\\s*',
+    replace: '\\bto_DISABLED:\\s*',
+    test: 'src/tests/unit/internal-links-target-patterns.test.ts',
+    why:
+      '`check-internal-links` 는 "죽은 링크 0" 이라고 초록을 띄우지만 그 0 은 **정규식이 본 것 안에서의 0** 이다. ' +
+      '2026-08-12 실측: JSX 속성 `to=` 만 보고 **객체 리터럴 `to: "/x"` 를 안 봤다** — 링크를 배열로 선언하고 ' +
+      '`.map()` 으로 렌더하는 흔한 패턴(NotFoundPage 의 "인기 페이지 둘러보기", 각종 칩·탭 목록)이 통째로 ' +
+      '사각지대였고, 패턴 한 줄을 지우면 검사 타깃이 **904 → 868** 로 준다(무검사 36건). ' +
+      '⚠️ 이 패턴이 조용히 사라져도 가드는 계속 초록이라 **사람이 알아챌 신호가 전혀 없다** — 그래서 주입으로 고정한다.',
+  },
+  {
     name: '공정위 연도 파라미터를 `yr` 로 되돌린다(코드 11 로 다시 0건)',
     file: 'src/features/marketing/api/franchise-collect.ts',
     find: "export const FRANCHISE_YR_PARAM = 'jngBizCrtraYr'",
@@ -152,6 +165,18 @@ const MUTATIONS = [
       '`!laneAlarmDrivesEnrich(env)` 뒤에 있다(**라이브는 알람이 몬다**). 등록부는 `!== 21` 그대로라 ' +
       '**증설이 배포는 됐는데 한 번도 발효되지 않았다**(`ads_notice_stats`: last_run 21:00 · total_runs 11). ' +
       '에러도 경보도 없다 — 이 레포의 "실패가 아니라 조용한 부재" 클래스이고, 이번엔 대표가 요청한 기능 자체가 그렇게 사라졌다.',
+  },
+  {
+    name: '손실 분포 누적이 이전 값을 참조로 물고 온다(어제 값이 조용히 바뀐다)',
+    file: 'src/features/marketing/api/enrich-telemetry.ts',
+    find: '    const acc: Record<string, number> = { ...(rollup?.day === day ? rollup.crawl_reason || {} : {}) }',
+    replace: '    const acc: Record<string, number> = (rollup?.day === day ? rollup.crawl_reason || {} : {})',
+    test: 'src/tests/unit/enrich-rollup.test.ts',
+    why:
+      '누적 레코드는 65행에서 **얕은 복사**되므로 객체 필드를 그대로 물고 온다 — 여기서 더하면 ' +
+      '**호출부가 들고 있는 이전 누적본까지 함께 바뀐다.** 같은 파일의 `deaths` 가 정확히 이 함정에 ' +
+      '빠진 전례가 있어 그때도 유닛으로 못 박았다. 오염되면 멱등 검사와 하루 경계가 동시에 거짓말을 하고, ' +
+      '그 위에서 "수율을 어디서 올릴까"를 판단하게 된다.',
   },
   {
     name: '일 1회 레인을 다시 cron 으로 되돌린다(혼잡한 시각의 꼬리가 되어 굶는다)',

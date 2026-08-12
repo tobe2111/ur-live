@@ -98,7 +98,8 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   operator_support_contact: optionalText(200),
   // ── boolean 스위치 (read-site === 'true') ──
   commission_budget_enabled: boolStr,          // order-commissions.ts:252
-  gb_engine_enabled: boolStr,                  // gb-marketplace:26 / gb-proposals:27 / seller-orders:1285
+  gb_pricing_enabled: boolStr,                 // 🔌 공구가 청구 킬스위치(기본 ON — 'false' 만 끔). gb-order-pricing
+  gb_engine_enabled: boolStr,                // gb-marketplace:26 / gb-proposals:27 / seller-orders:1285
   seller_promo_field_enabled: boolStr,         // seller-orders.routes.ts:814
   settlement_skip_ledgered: boolStr,           // auto-settlement.ts:54 / restaurant-settlement.routes.ts:87
   agency_auto_settle_legacy_enabled: boolStr,  // cron/agency-auto-settle.ts:59

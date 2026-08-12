@@ -162,7 +162,14 @@ describe('🔴 워커 PRODUCT 슬롯 — buildMallProductMeta 배선', () => {
   const helper = readFileSync(resolve(process.cwd(), 'src/worker/utils/mall-ssr-meta.ts'), 'utf8')
 
   it('워커가 buildMallProductMeta 를 import 하고 실제로 호출한다', () => {
-    expect(worker).toContain(`buildMallProductMeta } from './utils/mall-ssr-meta'`)
+    // ⚠️ 2026-08-11 — 원래 `buildMallProductMeta } from './utils/mall-ssr-meta'` 라는
+    //   **정확한 문자열**을 봤는데, 같은 모듈에서 심볼을 하나 더 import 하자
+    //   (`{ buildMallProductMeta, buildMallProductPathMeta }`) 정상 변경이 빨강이 됐다.
+    //   불변식은 *"그 모듈에서 이 심볼을 들여와 호출한다"* 이지 import 문 배열 순서가 아니다.
+    //   ⇒ import 문을 찾아 **그 안에 심볼이 있는지**로 본다(느슨해지지 않는다 — 모듈 경로도 함께 고정).
+    const imp = worker.match(/import\s*\{([^}]*)\}\s*from\s*'\.\/utils\/mall-ssr-meta'/)
+    expect(imp).not.toBeNull()
+    expect(imp![1]).toContain('buildMallProductMeta')
     expect(worker).toContain('await buildMallProductMeta(')
   })
 

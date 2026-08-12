@@ -2,8 +2,10 @@
  * 🎟️ 공구 엔진 어드민 조종석 (2026-07-14, STEP 2 선결 — gap A1 해소).
  *   상품별 gb_mode(off/scheduled/live/ended)·gb_price·gb_deadline·gb_promo_pct·gb_link_only 설정 UI 의 백엔드.
  *   저장 = product_supply_meta 의 gb_* 키(컬럼 예산 준수), 로직 SSOT = shared/gb-session.ts(saveGbSession/validateGbSession).
- *   ⚠️ 값 저장만 — 실제 공구가/소개비 적용은 platform_settings.gb_engine_enabled==='true' 게이트 뒤(엔진, gb-marketplace).
- *      게이트 OFF 면 이 설정은 저장돼도 소비자/결제엔 무영향(엔진이 안 읽음).
+ *   🔴 **2026-08-11 정정 — 공구가는 게이트 뒤가 아니다.** 여기 적혀 있던 *"게이트 OFF 면 저장돼도
+ *      소비자/결제엔 무영향"* 은 **사실이 아니었다**: `order.routes` 가 저장값을 곧바로 청구 단가로 쓴다
+ *      (2026-07-29 배선). `gb_engine_enabled` 가 가리는 것은 **마켓플레이스/소개비 표면**이고,
+ *      공구가를 되돌리는 손잡이는 `gb_pricing_enabled`(기본 ON, `'false'` 로 끔) 다.
  *   ⚠️ 머니 무접촉: gb 설정값만 기록. 결제/정산/커미션/net==5% 로직 전부 무변경.
  */
 import { Hono } from 'hono'

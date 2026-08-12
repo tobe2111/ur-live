@@ -149,3 +149,67 @@ describe('foldRound — 사망 지점 흔적(deaths)', () => {
     expect(r.deaths![0].length).toBe(60)
   })
 })
+
+/**
+ * 🎯 **하루치 손실 분포** (2026-08-12 신설 — 대표 *"연락처 수율 올리는 것도 진행해줘"*).
+ *
+ * 수율은 실측 12~13% 인데 **어디서 버려지는지는 회차 1건만 남아 있었다**(`crawl_reason` 은 스냅샷
+ * 필드라 라운드마다 덮인다). 6~10건 표본으로 처방을 고르면 이 세션에서 두 번 겪은 오진과 같은
+ * 실수가 된다 — 그래서 하루로 묶는다. 무엇이 우세하냐에 따라 처방이 **정반대**로 갈린다:
+ * `deadline`=무료 플랜 천장(유료 판단) / `blocked_host`=주소 품질(발견 경로) / `no_name`=가드 과잉.
+ */
+describe('foldRound — 하루치 손실 분포(crawl_reason · name_loose)', () => {
+  it('🔒 사유별 계수가 하루 단위로 합산된다 — 회차 하나로는 표본이 6~10건뿐이라 처방을 못 고른다', () => {
+    const a = foldRound(null, snap({ run_id: 'c1', crawl_reason: { ok: 1, deadline: 3 } }), '2026-08-12')!
+    const b = foldRound(a, snap({ run_id: 'c2', crawl_reason: { ok: 2, no_name: 5 } }), '2026-08-12')!
+    expect(b.crawl_reason).toEqual({ ok: 3, deadline: 3, no_name: 5 })
+  })
+
+  /** `deaths` 가 똑같은 함정에 빠진 전례가 이 파일에 있다(위 테스트) — 객체판도 같이 못 박는다. */
+  it('🔒 이전 누적본을 오염시키지 않는다 — 얕은 복사가 객체를 참조로 물고 온다', () => {
+    const first = foldRound(null, snap({ run_id: 'c3', crawl_reason: { ok: 1 } }), '2026-08-12')!
+    const before = { ...first.crawl_reason }
+    foldRound(first, snap({ run_id: 'c4', crawl_reason: { ok: 9 } }), '2026-08-12')
+    expect(first.crawl_reason, '원본이 함께 늘면 어제 값이 조용히 바뀐다').toEqual(before)
+  })
+
+  it('날짜가 바뀌면 분포도 리셋된다(하루 추세를 본다는 이 레코드의 규약)', () => {
+    const d1 = foldRound(null, snap({ run_id: 'c5', crawl_reason: { ok: 7 } }), '2026-08-11')!
+    const d2 = foldRound(d1, snap({ run_id: 'c6', crawl_reason: { ok: 1 } }), '2026-08-12')!
+    expect(d2.crawl_reason).toEqual({ ok: 1 })
+  })
+
+  /** 스냅샷이 사유를 못 남기고 죽어도(중도 사망) 그날 누적이 사라지면 안 된다. */
+  it('사유가 없는 라운드를 접어도 그날 누적은 보존된다', () => {
+    const a = foldRound(null, snap({ run_id: 'c7', crawl_reason: { ok: 4 } }), '2026-08-12')!
+    const b = foldRound(a, snap({ run_id: 'c8' }), '2026-08-12')!
+    expect(b.crawl_reason).toEqual({ ok: 4 })
+  })
+
+  /**
+   * 🔎 회수 가능분 — `no_name` 으로 버렸지만 느슨한 상호로는 맞은 수.
+   * ⚠️ 이 수가 크다고 가드를 바로 풀면 프랜차이즈 본사에 오귀속돼 **엉뚱한 회사에 제안이 나간다.**
+   *   여기서 고정하는 건 "센다"까지이고, 채택 여부는 표본을 눈으로 본 뒤 별도 결정이다.
+   */
+  it('🔒 name_loose 가 하루 단위로 합산된다 — 가드를 손볼 가치의 크기', () => {
+    const a = foldRound(null, snap({ run_id: 'n1', name_loose: 2 }), '2026-08-12')!
+    const b = foldRound(a, snap({ run_id: 'n2', name_loose: 3 }), '2026-08-12')!
+    expect(b.name_loose).toBe(5)
+    expect(foldRound(b, snap({ run_id: 'n3', name_loose: 1 }), '2026-08-13')!.name_loose).toBe(1)
+  })
+
+  /**
+   * 🔒 **0 도 기록한다** — "재 봤는데 0 건"과 "아직 안 잰다"가 구분돼야 한다.
+   *   이 계측이 생긴 이유가 정확히 그 모호함이라, 여기서 계약으로 못 박는다.
+   *   (첫 초안은 `>0` 일 때만 써서 이 테스트가 빨간불을 냈다 — 유닛이 설계 결함을 잡은 자리다.)
+   */
+  it('🔒 사유가 0 건이어도 필드를 남긴다 — 미측정과 구분되어야 한다', () => {
+    expect(foldRound(null, snap({ run_id: 'n5' }), '2026-08-12')!.name_loose).toBe(0)
+  })
+
+  it('숫자가 아닌 값은 0 으로 — 계측이 NaN 을 저장해 상태줄을 망가뜨리지 않게', () => {
+    const r = foldRound(null, snap({ run_id: 'n4', name_loose: 'x', crawl_reason: { ok: 'y' } }), '2026-08-12')!
+    expect(r.name_loose).toBe(0)
+    expect(r.crawl_reason).toEqual({ ok: 0 })
+  })
+})

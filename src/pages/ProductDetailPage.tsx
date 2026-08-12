@@ -32,7 +32,7 @@ import GroupBuyCountdown from './product-detail/GroupBuyCountdown'
 import ProductReviews from './product-detail/ProductReviews'
 import ReferralSection from './product-detail/ReferralSection'
 import PurchasePicker from './product-detail/PurchasePicker'
-import { isMallProduct } from '@/shared/mall/resolve'
+import { isMallProduct, mallRedirectPathFor } from '@/shared/mall/resolve'
 import { PickupNotice, DeliveryNotice, hasPickupInfo, pickupSummaryLine } from '@/pages/product-detail/ReceiveMethodNotice'
 import { readMallOrigin } from '@/shared/mall/origin'
 import { parseUTCDate } from '@/utils/date'
@@ -118,7 +118,7 @@ export default function ProductDetailPage() {
   //   ?ref= 는 위 useEffect 가 이미 localStorage/cookie 에 저장하지만, query 도 보존해 목적지 페이지가 URL 에서도 읽도록.
   useEffect(() => {
     if (!product) return
-    const dest = canonicalDetailPath(product)
+    const dest = mallRedirectPathFor(product) ?? canonicalDetailPath(product)
     if (dest) navigate(`${dest}${window.location.search}`, { replace: true })
   }, [product, navigate])
 

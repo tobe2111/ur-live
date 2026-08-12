@@ -56,6 +56,8 @@ import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import NotFoundPage from '@/pages/NotFoundPage'
 import { POWERED_BY, PAYMENT_TRUST_NOTE } from '@/shared/mall/branding'
+import { mallProductPath } from '@/shared/mall/resolve'
+import { rememberMallOrigin } from '@/shared/mall/origin'
 import { cfImage } from '@/utils/cf-image'
 import { parseUTCDate } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
@@ -152,6 +154,10 @@ export default function MallHomePage() {
     Promise.all([p1, p2]).then(([m, list]) => {
       if (!alive) return
       if (!m?.success || !m?.mall) { setState('notfound'); return }
+      // 🧭 2026-08-11 — 몰 흔적을 남긴다. `rememberMallOrigin` 은 2026-08-02 에 만들어졌는데
+      //   **호출부가 0** 이라 흔적이 한 번도 안 남았고, 그래서 상품이 사라졌을 때의
+      //   '가게로 돌아가기' 가 한 번도 뜬 적이 없다(항상 유어딜 홈으로 보냈다).
+      rememberMallOrigin(m.mall.slug)
       setMall(m.mall)
       setItems(Array.isArray(list?.data) ? list.data : [])
       setState('ok')
@@ -241,7 +247,10 @@ export default function MallHomePage() {
               const lowStock = typeof it.stock === 'number' && it.stock > 0 && it.stock <= 10
               return (
                 <li key={it.product_id}>
-                  <Link to={`/products/${it.product_id}`} className="block group">
+                  {/* 🏬 2026-08-11 — 본진 `/products/:id` 로 나가던 것을 **몰 상세**로 〔대표 "철저히 분리"〕.
+                      그전까지 이 링크 하나가 손님을 유어딜 크롬 + 상시가 화면으로 내보냈다.
+                      경로 조립은 `mallProductPath` 하나뿐이다(손으로 붙이면 판정과 갈린다). */}
+                  <Link to={mallProductPath(mall.slug, it.product_id)} className="block group">
                     <div className="relative aspect-square rounded-[14px] overflow-hidden bg-[#F1EDEF] dark:bg-[#221D20]">
                       {it.image_url && (
                         <img src={cfImage(it.image_url, { width: 400 })} alt="" loading="lazy"
