@@ -16,6 +16,7 @@ import { formatNumber } from '@/utils/format'
 import { hasConsumerSession } from '@/utils/auth'
 import CustomModal from './cart/CustomModal'
 import BrandLoader from '@/components/brand/BrandLoader'
+import ContinueShoppingLink from '@/components/mall/ContinueShoppingLink'
 
 // 🛡️ 2026-05-02: TD-018 분할 — CustomModal 을 ./cart/CustomModal 로 추출.
 //   CustomModal 내부에서 쓰던 lucide 아이콘 (AlertCircle, CheckCircle, Info) 은
@@ -60,9 +61,8 @@ export default function CartPage() {
           >
             {t('common.loginButton')}
           </button>
-          <button onClick={() => navigate('/')} className="text-[13px] text-gray-500 dark:text-gray-400 underline">
-            쇼핑 계속하기
-          </button>
+          {/* 🏪 2026-08-12: 몰을 거쳐 온 손님은 유어딜 홈이 아니라 **그 가게로** (근거는 컴포넌트 주석) */}
+          <ContinueShoppingLink onFallback={() => navigate('/')} />
         </div>
       </div>
     )

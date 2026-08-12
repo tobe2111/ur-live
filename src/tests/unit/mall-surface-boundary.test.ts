@@ -148,6 +148,41 @@ describe('배선 — 앱 셸이 몰 표면에서 유어딜 크롬을 안 그린�
   })
 })
 
+// 🏪 2026-08-12 — **결제 이후 동선에서 유어딜이 손님을 데려가지 않는다** (대표 "완전 별개, 분리")
+//   몰 홈·상품 상세를 분리해도, 손님이 **담는 순간부터** 유어딜 화면으로 넘어가면 분리가 아니다.
+//   실측이었던 것: 결제 완료 화면이 몰 손님에게도 "내 쇼핑몰에서도 팔 수 있어요"를 띄우고 있었다
+//   — 운영자가 데려온 손님에게 유어딜이 셀러 전환을 권하는 화면(브랜딩이 아니라 고객 가로채기).
+describe('배선 — 유어딜 자기영업이 몰 손님에게 안 뜬다', () => {
+  it('셀러 전환 넛지가 몰 세션이면 스스로 꺼진다', () => {
+    const nudge = read('src/pages/payment-success/SellerConversionNudge.tsx')
+    expect(/isFromMallSession/.test(nudge)).toBe(true)
+    // 조기 return 조건 안에 있어야 한다 — 아래에 두면 렌더는 그대로 된다.
+    expect(/if \([^)]*isFromMallSession\(\)\)\s*return/.test(nudge)).toBe(true)
+  })
+
+  it('호출부(PaymentSuccessPage)는 무접촉 — Toss 감사 잠금 파일이다', () => {
+    const page = read('src/pages/PaymentSuccessPage.tsx')
+    // 잠금 파일에 몰 분기를 심는 순간 승인 절차를 우회하게 된다. 넛지가 스스로 꺼져야 한다.
+    expect(/isFromMallSession|readMallOrigin/.test(page)).toBe(false)
+  })
+
+  // ⚠️ **import 줄을 벗기고 본다.** 첫 판정은 `/ContinueShoppingLink/` 로만 봤는데, 컴포넌트를
+  //   화면에서 통째로 들어내도 **import 문이 남아 초록**이었다(되돌려-검증에서 잡음).
+  //   주석 함정과 같은 클래스 — "언급이 있다"와 "실제로 쓴다"는 다르다.
+  const noImports = (s: string) => s.replace(/^\s*import[^\n]*$/gm, '')
+
+  it('장바구니의 "계속 쇼핑"이 몰 손님을 유어딜 홈으로 보내지 않는다', () => {
+    const cart = noImports(read('src/pages/CartPage.tsx'))
+    expect(/<ContinueShoppingLink\b/.test(cart)).toBe(true)   // 렌더돼야 한다(참조만으로는 부족)
+  })
+
+  it('그 링크가 흔적을 실제로 읽는다 — 없으면 폴백', () => {
+    const link = noImports(read('src/components/mall/ContinueShoppingLink.tsx'))
+    expect(/=\s*readMallOrigin\(\)/.test(link)).toBe(true)     // 호출 결과를 쓴다
+    expect(/onFallback\(\)/.test(link)).toBe(true)             // 흔적 없으면 종전 동작
+  })
+})
+
 describe('배선 — 상품 상세가 두 신호를 각각 쓴다', () => {
   const page = read('src/pages/ProductDetailPage.tsx')
   it('유어딜 영입 CTA 는 !mallProduct 게이트 뒤다', () => {
