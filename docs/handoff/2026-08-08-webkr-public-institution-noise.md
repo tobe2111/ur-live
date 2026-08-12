@@ -624,3 +624,47 @@ SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL AND category='�
 - **공정위**: 22:00 UTC(KST 07시) 슬롯 — `ads_franchise_stats` 의 `found`/`saved` 와 `ads_franchise_yr`
 - **기업마당**: 4시간 슬롯(KST 10·14·18·22·02·06) — `ads_notice_stats.grant` 가 0 을 벗어나는가
 - 둘 다 `diag.sample`(응답 원문 1건)로 **필드 매핑**까지 확인할 것. 이름이 맞아도 필드가 다르면 saved 0 이다.
+
+---
+
+## ✅ 11차 (2026-08-12 14:2x KST) — **기업마당 성공**(몇 달 만의 첫 수확) · 공정위는 별개 문제
+
+### ① 🏢 기업마당 지원사업 — **성공**
+
+```
+last_run   2026-08-12 05:00Z (KST 14:00)   total_runs 17 → 18   error: null
+grant      0 → 71          gov_notices 저장 62건
+bid        16 → 15         ← 입찰 경로 무영향(원래 정상이던 쪽을 안 건드렸다)
+```
+**필드 매핑까지 맞았다** — 저장된 62건 전부 `title`·`org`·`url` 이 채워져 있다(빈 값 0). 표본:
+```
+[울산] 2026년 하반기 중소기업 밀집지역 위기대응 체계 구축사업 …   중소벤처기업부  경영
+[대구] 2026년 첨단의료복합단지 메디코어 지원사업 …                 대구광역시     기술
+```
+대표가 준 화면 한 장이 **주소·오퍼레이션·포맷·검색 파라미터 네 가지를 한 번에** 확정했다.
+
+### ② 🔴 공정위 — **파라미터가 아니라 발화 문제**. 원인 미확정
+
+수정한 파라미터는 아직 **한 번도 실행되지 않았다**(레인이 안 돌아서). 실측으로 좁힌 것:
+
+| 후보 | 판정 |
+|---|---|
+| env 게이트 꺼짐 | ❌ `ADS_FRANCHISE_ENABLED = true`(CF API 실측) |
+| 실패 백오프 | ❌ `health` 에 `next_probe_at` 없음 |
+| 예산에 밀림 | ❌ `dailyAt` = `isDeferrable false` = `always`, **`selectLanesForTick` 의 모든 반환 경로가 `always` 를 무조건 포함** |
+| 내 재분배(#1126) 회귀 | ❌ 같은 이유 — 재분배는 `always` 를 못 건드린다 |
+| cron 경로 자체 사망 | ❌ 같은 경로의 `consented-reminder`·`inbound-onboarding`·`localdata backfill` 전부 23분 전 |
+| `dailyAt` 고장 | ❌ **`silence-digest`(23 UTC)는 오늘 아침 8시에 돌았다** |
+| 배포가 그 회차를 죽임 | 🟡 `sweep-mx`(17 UTC)는 설명된다(08-11 16:4x UTC 머지 → 배포). **franchise(22 UTC)는 설명 안 됨** |
+
+⚠️ **내 초기 판단 정정**: `ads_silence_digest_at` 이 08-10 에 멈춰 있길래 "그것도 멈췄다"고 읽을 뻔했는데,
+그 키는 **경보를 보낸 시각**이지 실행 시각이 아니다(조용하면 안 쓴다). 하트비트를 봐야 실행이 보인다.
+
+**남은 사실**: 멈춘 건 `collect-franchise`(22 UTC, 31시간)와 `sweep-mx`(17 UTC, 36시간) 둘뿐이고,
+둘 다 **cron 경로의 env-게이트드 dailyAt 레인**이다. `cron_failures` 는 2일간 **0건**(에러 기록조차 없다).
+⇒ **추측으로 고치지 말 것.** 다음 슬롯에서 재측정: `sweep-mx` 는 오늘 KST 02시, `franchise` 는 내일 KST 07시.
+   그때 하트비트 `at` 이 갱신되면 **일회성(배포 충돌)** 이고, 또 거르면 그때 파야 한다.
+
+### ③ 회귀 없음
+
+`deferred: []` · 🔴 안전지표 31,863 → **32,115** · nara 66 유지(2회차는 자정)
