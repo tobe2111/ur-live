@@ -5498,6 +5498,7 @@ _총 151건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-12**
 - [🎟️ 유어딜 소비자 공구 — 결제 경로 결함 3건 수리 (2026-08-12)](handoff/2026-08-12-urdeal-groupbuy-money-fixes.md)
+- [키워드 순환 기아의 **진짜 원인** — 커서는 맨 앞 축 하나만 전진한다 (2026-08-12)](handoff/2026-08-12-cursor-freeze-root-cause.md)
 **2026-08-11**
 - [웹푸시 권유 팝업 제거 (2026-08-11)](handoff/2026-08-11-push-prompt-removed.md)
 - [키워드 순환 `starved` — 배분이 아니라 **잘림**이 범인이었다 (2026-08-11)](handoff/2026-08-11-keyword-merge-proportional.md)
