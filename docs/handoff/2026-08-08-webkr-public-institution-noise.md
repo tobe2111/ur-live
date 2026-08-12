@@ -494,3 +494,133 @@ SELECT json_extract(value,'$.funnel.days') FROM platform_settings WHERE key='ads
 - `fill`(processed/planned)이 낮은 날 = 예산이 회차 중간에 마른 것 → 회차당 키워드 수/보강 깊이 조정 후보
 - `nbPerReq` 가 떨어지는 날 = 네이버 중복 상승(풀 포화) → 키워드 신선도 문제
 - ⚠️ **`ytPerReq` 가 낮다고 유튜브를 깎지 말 것** — 위 대표 결정.
+
+---
+
+## 8차 (2026-08-11 19:4x KST) — 머지 완료 · 조달업체는 **아직 시각 전**
+
+| | 실측 | 판정 |
+|---|---|---|
+| PR #1131 조달업체 레인 | Verify success → 머지 | ✅ |
+| PR #1132 회차 퍼널 시계열 | Verify success → 머지 | ✅ |
+| ② 조달업체 첫 회차 | `ads_naravendor_stats.last_run` = **2026-08-03 23:00** (레인이 지워지기 전 마지막 기록 그대로) | ⏳ **시각 전** — 슬롯이 15:00 UTC(KST 자정)다. 실패가 아니다 |
+| ③ 재분배 지속 | `deferred: []` (10:00Z 회차) | ✅ |
+| 🔴 안전지표 | 30,745 → **31,154** | ✅ |
+| 공고 스캔 4시간 주기 | `last_run` 08-11 09:00Z(KST 18:00) · `total_runs` 12 → **13** | ✅ **주기 안정 확인** |
+
+⚠️ `ads_naravendor_stats` 에 남아 있는 `NO_OPENAPI_SERVICE_ERROR` 는 **2026-08-03 의 옛 기록**이다.
+새 레인이 아직 안 돌았을 뿐이니 **그걸 보고 "또 실패했다"로 읽지 말 것** — 첫 회차 뒤에 `last_run` 이
+오늘 날짜로 바뀌는지부터 확인한다.
+
+### 다음 액션 (자정 이후)
+
+```sql
+SELECT substr(value,1,1200) FROM platform_settings WHERE key='ads_naravendor_stats';
+--  last_run 이 2026-08-11 로 바뀌었는가 → 그다음에 saved / diag.sample / diag.error 를 읽는다
+SELECT value FROM platform_settings WHERE key='ads_naravendor_op';   -- 후보 학습이 돌았으면 이름이 남는다
+-- 📈 퍼널이 쌓이기 시작했는가(배포 후 첫 수집 회차부터)
+SELECT json_extract(value,'$.funnel.days') FROM platform_settings WHERE key='ads_autocollect_stats';
+```
+
+---
+
+## ✅ 9차 자정 판정 (2026-08-12 00:3x KST) — **조달업체 레인 부활 · 퍼널 가동**
+
+### ② 🏛️ 조달업체 레인 — **성공**. 8일 만에 되살아났다
+
+```
+last_run   2026-08-11 15:00:00Z (KST 자정)   ← 옛 08-03 기록에서 바뀌었다(순서대로 이것부터 확인)
+op         getPrcrmntCorpBasicInfo02          ← 첫 시도에 맞음(후보 순회 0회)
+scanned 1,000 → matched 49 → saved 45         stoppedBy: pages (예산·시간에 안 걸림)
+대행사 풀 source='nara'   20 → 65 (+45)
+```
+**지웠던 판정이 틀렸다는 것이 숫자로 확정됐다** — 주소는 살아 있었고 오퍼레이션의 `02` 가 빠졌던 것뿐이다.
+
+### 🩸 그런데 **내가 이 API 의 값어치를 과대평가했다** (정정)
+
+*"전화번호·홈페이지가 응답에 직접 들어 있어 B2B 연락처 병목을 바로 푼다"* 고 적었는데, 첫 회차 원문이 반박한다:
+```
+"telNo": "***********"        ← 마스킹. 계약 레인과 같다
+"hmpgAdrs": ""                ← 빈 값. 홈페이지 보유는 65건 중 4건뿐
+연락처 보유 31 / 65
+```
+✅ 내가 넣은 `unmasked()` 가 그 마스킹 전화를 **정확히 버렸다**(안 버렸으면 "연락처 있음"으로 세어져
+명단 수가 거짓이 됐다). 그 방어는 값을 했지만, **기대했던 "연락처가 통째로 딸려 온다"는 아니었다.**
+⇒ 이 레인은 *"검증된 사업자 이름·주소·사업자번호"* 공급원이고 **연락처는 여전히 크롤·보강이 만든다.**
+⚠️ 다음 세션은 이 레인을 "연락처 소스"로 계획하지 말 것.
+
+### ③ 📈 퍼널 시계열 — **가동 확인**
+
+```
+08-11  n=4  saved 1,028  planned 64 → processed 28(44%)  spent 222
+            yt  found 447 · saved 77 · spend 141  → 0.55/요청
+            nb  found 2,126 · saved 951 · spend 81 → 11.7/요청
+08-12  n=1  saved 328    planned 16 → processed  7        spent 56
+```
+KST 일자 경계도 정상(자정에 08-12 로 넘어갔다). **이제 "어제와 오늘이 왜 다른가"를 잴 수 있다.**
+🚫 **`ytPerReq` 가 낮다고 유튜브를 깎지 말 것** — 대표가 명시적으로 거부했다(2026-08-11).
+
+### ④ 회귀 없음
+
+`deferred: []` · 🔴 안전지표 31,154 → **31,323**
+
+### 다음 세션 첫 액션
+
+```sql
+-- 퍼널이 며칠 쌓인 뒤: 총계가 아니라 fill(=processed/planned)과 요청당 수확을 본다
+SELECT json_extract(value,'$.funnel.days') FROM platform_settings WHERE key='ads_autocollect_stats';
+-- 조달업체 2회차 이후 — 커서가 전진하고 nara 가 계속 느는가
+SELECT json_extract(value,'$.page'), json_extract(value,'$.total_saved') FROM platform_settings WHERE key='ads_naravendor_stats';
+SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL AND category='대행사' AND source='nara';
+-- 🔴 안전지표 하한 31,323
+```
+남은 것: **대행사 새 루트 3개**(네이버·카카오 공식대행사, 광고단체 명부 — 대표 화면 필요) ·
+**고용24 기업회원 전환** · 공정위/기업마당 파라미터 · 시드 키워드 은퇴(트레이드오프, 대표 판단).
+
+---
+
+## 🎯 10차 (2026-08-12 01:0x KST) — **공정위·기업마당 두 건 다 원인 확정**(대표 화면)
+
+대표가 포털 **요청변수 화면**을 공유했다. 몇 달간 0건이던 두 레인의 원인이 **전부 이름 한 글자**였다.
+
+### ① 공정위 — 🩸 **내 08-11 판정("연도 가설 기각")은 반만 맞았다**
+
+```
+확정: 상세기능 /getBrandinfo   요청변수 serviceKey · pageNo · numOfRows · resultType · jngBizCrtraYr
+우리가 보내던 것: …&yr=2025            ← 연도는 맞았고 **이름**이 틀렸다
+```
+자가치유가 2025·2026·2024 를 다 시도하고도 실패한 이유가 이거다 — **값이 아니라 키**가 틀렸으니
+어떤 값을 넣어도 코드 11 이었다. 교훈 ⑪(*"자가치유가 돌았다 ≠ 원인을 맞혔다"*)의 정확한 사례이고,
+그때 **다음 후보를 추측하지 않고 화면을 요청한 판단은 옳았다**(추측했으면 또 회차를 버렸다).
+
+**수정**: `yr` → `jngBizCrtraYr`(상수 `FRANCHISE_YR_PARAM`) · 잉여 포맷 파라미터(`type`/`_type`) 제거.
+⚠️ **연도 순회 조건도 넓혔다** — 이름을 고치면 코드 11 이 안 나오므로, 조건이 코드 11 뿐이면
+*연도만 틀린* 경우가 **에러 없이 영원히 0건**이 된다(이 레포의 '조용한 부재'). 이제 "오류 없이 0건"에서도 돈다.
+포털 샘플값이 **2017** 이라 최신 연도가 비어 있을 수 있어 후보를 5개로 넓혔다.
+
+### ② 기업마당 — 주소·오퍼레이션·파라미터가 **전부** 달랐다
+
+```
+확정: End Point https://apis.data.go.kr/1421000/bizinfo   상세기능 /pblancBsnsService
+      포맷 dataType(=json)   검색 hashtags
+우리: …/1421000/hpsBnaSituService/getSupportBusinessList?…&resultType=json&searchCnst=…
+```
+게이트웨이는 이걸 **코드 12 하나**로만 답한다(주소 부재/오퍼레이션 오타 구분 없음) — 그래서 원인을 못 좁혔다.
+⚠️ **포맷 파라미터 이름이 두 서비스가 다르다**(공정위 `resultType` / 기업마당 `dataType`).
+한쪽 이름을 복사하면 다시 0건이 된다 — 실제로 그렇게 틀려 있었다.
+
+### 잠금
+
+`ads-public-api-params.test.ts` — 확정값 4종(주소·op·연도키·포맷/검색 파라미터)을 못 박고,
+주입 검증 2건 추가(→ 273). ⚠️ **이 환경은 프록시 차단이라 되돌아가도 개발 중엔 아무 증상이 없다** —
+라이브에서만 조용히 0건이 되므로 테스트가 유일한 방어다.
+
+🐛 첫 초안이 `not.toContain('hpsBnaSituService')` 를 **파일 전체**에 걸어, 옛 값을 설명하는 **주석까지** 잡아
+빨간불이 났다. 경위 기록은 남겨야 하므로 검사를 실제 코드로 좁혔다.
+🔧 기존 가드(`franchise-op-fallback`)가 옛 게이트 모양에 앵커돼 있어 새 모양으로 갱신(지키는 뜻은 동일 — "첫 페이지에서만").
+
+### 판정 시각
+
+- **공정위**: 22:00 UTC(KST 07시) 슬롯 — `ads_franchise_stats` 의 `found`/`saved` 와 `ads_franchise_yr`
+- **기업마당**: 4시간 슬롯(KST 10·14·18·22·02·06) — `ads_notice_stats.grant` 가 0 을 벗어나는가
+- 둘 다 `diag.sample`(응답 원문 1건)로 **필드 매핑**까지 확인할 것. 이름이 맞아도 필드가 다르면 saved 0 이다.

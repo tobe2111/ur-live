@@ -39,7 +39,7 @@ import { RETIRED_CATEGORIES } from './influencer-classify'
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, pickStarvationRescue, AUTO_RETIRE_WHERE } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, pickStarvationRescue, AUTO_RETIRE_WHERE, planRoundWidth } from './influencer-keyword-rotation'
 import { CAFE_GATE_KEY, cafeCollectEnabled } from './collect-track-gates' // 🎛️ 수집 트랙 게이트(카페) SSOT
 
 // 🌱 시드 키워드(데이터)는 `influencer-seed-keywords.ts`, 그 시드를 테이블에 넣는 일은
@@ -234,7 +234,8 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   2026-07-21: YT 검색 쿼터 확장이 어려워 네이버(실측 ~2% 활용)로 볼륨 이전 — 기본 4→12(틱당 네이버 총 batch+12).
   //   서브리퀘스트 예산(아래 300)이 실제 상한이라 초과분은 커서가 다음 틱에서 이어받음(커버리지 손실 0). 런어웨이 방지 max 40.
   const NAVER_EXTRA = Math.max(0, Math.min(40, parseInt(env.ADS_NAVER_EXTRA || '', 10) || 12))
-  const totalPick = batch + NAVER_EXTRA
+  // 📏 초과 계획 = 기아 장치 · 🔄 앞자리 고정 = 나머지 축 커서 동결(2026-08-12). 근거는 두 함수 docblock.
+  const totalPick = planRoundWidth((prev?.funnel?.recent || []).slice(-8).map(f => f.processed), batch + NAVER_EXTRA)
   // 🎯 [집중 · 우선 · 일반] 3분할 — 배분 규칙은 순수함수 SSOT(`planKeywordSplit`).
   //   집중 축이 비면(고갈로 자동 비활성) 그 몫이 **자동으로** 우선/일반에 돌아간다 — 그게 이 설계의 핵심이다.
   const { nFocus, nPri, nGen } = planKeywordSplit(totalPick, focusPool.length, priPool.length, genPool.length)
@@ -245,7 +246,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   for (let i = 0; i < nPri; i++) priPicks.push(priPool[(priCursor + i) % priPool.length])
   for (let i = 0; i < nGen; i++) genPicks.push(genPool[(cursor + i) % genPool.length])
   // 🔀 세 풀 라운드로빈 — 몫은 planKeywordSplit 그대로, 순서만 공평하게(근거·실측은 함수 docblock).
-  const picks = mergeKeywordPicks(focusPicks, priPicks, genPicks)
+  const picks = mergeKeywordPicks(focusPicks, priPicks, genPicks, roundIndex % 3)
   // 🎯 YT 슬롯(희소 자원 — Search Queries/day 기본 100회)은 성과 가중 선택으로 교체.
   //   커서 순환(picks)은 네이버 폭 커버 담당 그대로 — YT 픽과 중복만 제거해 총량(totalPick) 유지.
   const ytPicks = pickYtKeywords(kws, batch, Date.now())

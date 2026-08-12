@@ -349,7 +349,7 @@ export function isUnjudgedRound(r: {
     || isSubrequestLimitError(r.ytError) || isSubrequestLimitError(r.naverError)
 }
 
-export { interleavePicks, mergeKeywordPicks } from './influencer-keyword-order'
+export { interleavePicks, mergeKeywordPicks, planRoundWidth } from './influencer-keyword-order'
 
 /**
  * 📉 **네이버 발굴 시점 컨택 보강 상한** (2026-08-04 — 대표 *"수집과 보강 다 잘 되게 하면 안돼?"*).
