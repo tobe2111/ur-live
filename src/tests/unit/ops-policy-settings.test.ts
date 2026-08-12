@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { execSync } from 'node:child_process'
 
 import { OPS_POLICY_FIELDS } from '../../pages/AdminPlatformSettingsPage'
 import { parseUnclaimedPolicy, DEFAULT_UNCLAIMED_POLICY } from '../../shared/pickup-refund'
@@ -32,11 +33,25 @@ describe('운영 정책 입력칸', () => {
   })
 
   it('입력칸의 키를 코드가 실제로 읽는다 (죽은 키로 저장되면 아무 일도 안 일어난다)', () => {
-    const readers = [
-      readFileSync('src/shared/pickup-refund.ts', 'utf8'),
-      readFileSync('src/features/seller/api/seller-gb.routes.ts', 'utf8'),
-      readFileSync('src/worker/cron/auto-settlement.ts', 'utf8'),
-    ].join('\n')
+    // 🕳️ 2026-08-12: 원래 여기 **소비 파일 3개가 하드코딩**돼 있었다. 그래서 소비처가 그 셋 밖에
+    //   있는 키를 추가하면 실제로는 읽고 있는데도 "죽은 키"로 **오탐**한다 — `flip_pilot_seller_ids`
+    //   (`worker/utils/flip-pilot.ts` 가 읽는다)를 넣자마자 그렇게 됐다. 목록에 한 줄 더 적는 대신
+    //   **소비처를 전체에서 찾는다** — 그래야 새 소비 지점이 생겨도 이 테스트를 안 고쳐도 된다.
+    //
+    //   ⚠️ 단, **쓰는 쪽을 반드시 제외**해야 한다. 설정 화면(이 필드를 정의하는 파일)과 테스트가
+    //   포함되면 어떤 키든 자기 자신에 매칭돼 **항상 초록** — 가드가 통째로 헛돈다.
+    const consumers = execSync(
+      `git ls-files 'src/**/*.ts' 'src/**/*.tsx'` +
+        ` | grep -viE 'AdminPlatformSettingsPage|src/tests/'`,
+      { encoding: 'utf8' },
+    )
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+    // 측정 0 = 통과가 아니라 실패 (경로 규약이 바뀌면 조용히 초록이 뜬다)
+    expect(consumers.length, '소비처 스캔 대상이 0개다 — 경로 규약이 바뀌었다').toBeGreaterThan(100)
+
+    const readers = consumers.map((f) => readFileSync(f, 'utf8')).join('\n')
     const dead = OPS_POLICY_FIELDS.filter((f) => !readers.includes(f.key))
     expect(dead.map((f) => f.key), '읽는 코드가 없는 키').toEqual([])
   })
