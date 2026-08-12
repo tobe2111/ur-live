@@ -3,23 +3,35 @@
 > 대표: *"테스트 계정 만들어서 전체적으로 AB테스트 유어딜 해주면 안돼? 그리고 에러나 개선점 찾아주고."*
 > → *"모두 빠짐없이 다 AB테스트 진행해줘. 개선점 빠짐없이 끝까지."*
 
-## 0. 다음 세션의 첫 액션
+## 0. ✅ 배포·판정 완료 (2026-08-12 06:25Z / 15:25 KST) — **다시 확인할 필요 없다**
+
+머지 `003ca13`(PR #1136, squash) → 배포 4개 전부 성공, 특히 **`Deploy Worker (cron sync)` ✅**
+(cron 은 Pages 와 **별도 배포**라 이게 없으면 코드만 올라가고 cron 은 옛 것으로 돈다).
+
+| # | 판정 | 배포 전 | 배포 후 |
+|---|---|---|---|
+| ① | `demo-image-rehost` 하트비트 | **없음** | ✅ `06:25:59Z ok=true` `reconditioned=1` |
+| ② | `demo_cond_v` 수렴 | 3 = **294건** | ✅ **3=293 / 4=1** — 움직이기 시작 |
+| ③ | `demo-linkshop` 8개 내림 | 활성 8 | ⏳ 아직 8 — **회당 3건**이라 순번 대기(정상) |
+| ④ | 한글 파일명 사진 | 404 났던 URL | ✅ 200 / 152KB |
+| ⑤ | `/meal-vouchers` | 200(영구 0건) | ✅ **301 → `/?category=meal_voucher`** |
+
+함께 부활 확인: `demo-name-heal`(`skipped=254`) · `bulk-email-drain`(5분마다, **한 번도 안 돌던 것**).
+
+### 다음 세션이 실제로 할 일 (위 판정은 끝났다)
 
 ```bash
-# ① 데모 사진 정비가 실제로 도는지 — 이번 배포의 핵심 판정
-#    (이전엔 하트비트가 아예 없었다. 지금은 매시 :25 에 찍혀야 한다)
-curl -sS "https://live.ur-team.com/api/admin/cron-heartbeats" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA" \
-  | python3 -c "import sys,json;d=json.load(sys.stdin)['data'];print([x for x in d if 'demo-image' in str(x)][:2])"
-
-# ② v4 재조정 수렴 — 294건이 demo_cond_v=3 에 멈춰 있었다. 줄어들어야 한다(시간당 3건)
-#    D1: SELECT COALESCE(m.value,'(미처리)') v, COUNT(*) n FROM products p
-#        LEFT JOIN product_supply_meta m ON m.product_id=p.id AND m.key='demo_cond_v'
-#        WHERE p.slug LIKE 'demo-%' GROUP BY 1
-
-# ③ 한글 파일명 사진 404 수리 확인
-curl -sS -o /dev/null -w '%{http_code}\n' "https://urdeal.kr/cdn-cgi/image/width=900,quality=85,format=auto,onerror=redirect/https://ldb-phinf.pstatic.net/20260618_1/1781789159233fqISB_JPEG/%25B8%25DE%25B4%25BA%25C6%25C7_-001_-_4.jpg"
-# → 200 이면 수리됨 (이전: 원본 % 그대로 넣으면 404)
+# ③ 수렴 관찰만 — 334건 ÷ 회당 3건 ≈ 4~5일. demo-linkshop 8개가 순번에 오면 빠진다.
+#   D1: SELECT is_active, COUNT(*) FROM products WHERE slug LIKE 'demo-linkshop-%' GROUP BY 1
+#   D1: SELECT COALESCE(m.value,'(미처리)') v, COUNT(*) n FROM products p
+#       LEFT JOIN product_supply_meta m ON m.product_id=p.id AND m.key='demo_cond_v'
+#       WHERE p.slug LIKE 'demo-%' GROUP BY 1        -- v=4 가 계속 늘어야 한다
 ```
+- **주간 cron 첫 회차**: 다음 월요일 **09:45 KST**. `cron_hb:payouts-generate` 가 찍히고
+  `created=0`(payouts 0건이라 정상)이면 성공. 안 찍히면 `slotDue` 의 dow 계산을 다시 볼 것.
+- **이용권 실결제 1회** (대표 몫) — baseline: order 88 / product 2847 / ledger 2행.
+- ⚠️ 이용권 매대 개수가 며칠에 걸쳐 조금씩 줄 수 있다(사진 못 구한 데모가 내려감 — **가역**,
+  사진이 잡히면 자동 복귀). 대표에게 이미 알렸다.
 
 ## 1. 🔓 브라우저가 프록시를 뚫는 법 — **원인은 프록시가 아니라 TLS 1.3**
 
