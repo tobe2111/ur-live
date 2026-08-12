@@ -81,14 +81,41 @@ export function interleavePicks<T>(ytPicks: T[], cursorPicks: T[], total: number
  *   불변식 ④(최소 1슬롯)의 **의도된 대가**이며, 그 바닥을 없애면 작은 전략 축이 매 회차 0 이 된다.
  * ⚠️ 풀 내부 **상대 순서는 그대로** — `prefixDone` 이 선행 구간을 세므로 어기면 커서가 깨진다.
  * ⚠️ 비지 않은 축은 여전히 앞 5개 안에 들어온다(2026-08-04 불변식 — 테스트가 고정).
+ *
+ * ## 🔄 `lead` — **맨 앞자리를 회차마다 돌린다** (2026-08-12. 라이브 실측으로 원인 확정)
+ *
+ * 위 두 수리로도 안 풀린 게 남아 있었다: **커서는 맨 앞에 놓인 축 하나만 전진한다.**
+ * 커서 전진은 `prefixDone`(처리된 **선행** 픽 수)인데 회차가 예산에서 잘리므로(계획 16 → 처리 7),
+ * 뒤쪽 축의 픽은 매번 잘려 `prefixDone = 0` → 그 축 커서가 **영원히 제자리** → 다음 회차도 같은
+ * 키워드를 내놓고 또 잘린다. 라이브 커서 값이 이걸 그대로 보여줬다:
+ * ```
+ *   수리 전(집중이 앞)   집중 17 전진   ·  우선 5 정지    ·  일반 52 정지
+ *   수리 후(우선이 앞)   우선 5→51 전진 ·  집중 1 정지    ·  일반 53 정지
+ * ```
+ * **앞자리가 바뀌자 움직이는 커서도 그대로 바뀌었다.** 우선 축이 15일간 정지했던 구간(위치 50~149,
+ * 102개)이 앞자리를 받은 뒤 실제로 열렸다(11:00 회차에 위치 50·51·53~56 실행 — 되감김 아님, 통과).
+ *
+ * ⇒ 어느 축이 앞서든 **나머지는 굶는다.** 그래서 앞자리를 고정하지 않고 회차마다 돌린다.
+ *   `lead` 축의 첫 픽만 맨 앞으로 당기고 **나머지 순서는 비례 그대로** — 몫도, 풀 내부 순서도 불변이다.
+ *   호출부는 `roundIndex % 3` 을 넘긴다(집중 0 · 우선 1 · 일반 2). 모든 축이 3회차마다 한 번은
+ *   앞자리를 받아 커서가 최소 +1 전진한다 ⇒ **어떤 축도 구조적으로 얼어붙을 수 없다.**
+ *
+ * ⚠️ 이 회전만으론 **충분하지 않다** — 3회차당 +1 은 일반 풀(76) 한 바퀴에 9일이다. 근본 원인은
+ *   "계획을 처리 능력보다 크게 잡는 것"이고 그건 `planRoundWidth` 가 맡는다. 둘은 짝이다:
+ *   회전은 **얼어붙지 않게** 하는 보험, 폭 맞춤은 **빨리 돌게** 하는 처방.
+ * ⚠️ `lead` 를 안 넘기면(기본 −1) 종전과 **byte-동일**하다.
  */
-export function mergeKeywordPicks<T>(focus: T[], pri: T[], gen: T[]): T[] {
+export function mergeKeywordPicks<T>(focus: T[], pri: T[], gen: T[], lead = -1): T[] {
   const pools = [focus, pri, gen]
   const taken = [0, 0, 0]
   const out: T[] = []
   const total = pools[0].length + pools[1].length + pools[2].length
   const EPS = 1e-9
-  for (let n = 0; n < total; n++) {
+  // 🔄 앞자리 회전 — 지정된 축의 **첫 픽 하나만** 당긴다(그 축 내부 순서는 이미 첫 번째라 불변).
+  if (lead >= 0 && lead < pools.length && pools[lead].length > 0) {
+    out.push(pools[lead][taken[lead]++])
+  }
+  for (let n = out.length; n < total; n++) {
     let best = -1
     let bestKey = 0
     for (let i = 0; i < pools.length; i++) {
@@ -104,4 +131,34 @@ export function mergeKeywordPicks<T>(focus: T[], pri: T[], gen: T[]): T[] {
     out.push(pools[best][taken[best]++])
   }
   return out
+}
+
+/**
+ * 📏 **이번 회차에 몇 개를 계획할 것인가** — "처리 능력보다 크게 잡지 않는다" (2026-08-12).
+ *
+ * ## 왜 이게 근본 원인인가
+ * 계획 16 · 처리 7 이면 9개는 **매 회차 뽑혔다가 잘린다.** 그 자체는 무해해 보인다(다음 회차가
+ * 이어받으니까). 그런데 커서 전진이 `prefixDone`(처리된 **선행** 구간)이라, 잘리는 자리에 있는 축은
+ * 커서가 안 밀리고 **다음 회차에 똑같은 키워드를 다시 내놓는다.** 그래서 라이브에서 102개가 15일간
+ * 한 번도 순번을 못 받았다. 즉 초과 계획은 "여유"가 아니라 **기아를 만드는 장치**였다.
+ *
+ * ## 규칙
+ * 최근 회차들이 실제로 처리한 수(중앙값)에 **여유 20%** 를 얹어 계획한다. 처리량이 늘면(비용이
+ * 싸지면) 계획도 따라 오르고, 줄면 따라 내린다 — 자기 조율이다.
+ *
+ * ⚠️ **총 처리량은 안 줄어든다** — 어차피 예산이 상한이라 처리 수는 그대로다. 줄어드는 건
+ *   "뽑아 놓고 버리는 수"뿐이고, 그 대가로 **모든 축의 커서가 전진**한다.
+ * ⚠️ 증거가 없으면(첫 실행·이력 소실) `hardMax` 를 그대로 쓴다 — 모르는 상태에서 좁히면 커버리지가
+ *   준다. 좁히는 것은 관측이 있을 때만.
+ * ⚠️ 바닥(`minWidth`)이 필요한 이유: 축이 셋이라 3 미만이면 어떤 회차엔 한 축도 못 들어간다.
+ */
+export function planRoundWidth(
+  recentProcessed: readonly number[], hardMax: number, minWidth = 3, headroom = 1.2,
+): number {
+  const cap = Number.isFinite(hardMax) ? Math.max(0, Math.floor(hardMax)) : 0
+  const floor = Math.min(cap, Math.max(1, Math.floor(minWidth)))
+  const seen = recentProcessed.filter(n => Number.isFinite(n) && n > 0).sort((a, b) => a - b)
+  if (!seen.length) return cap                       // 증거 없음 → 종전 동작
+  const median = seen[Math.floor(seen.length / 2)]
+  return Math.max(floor, Math.min(cap, Math.ceil(median * headroom)))
 }

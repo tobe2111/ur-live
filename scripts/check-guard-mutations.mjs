@@ -2866,6 +2866,29 @@ const MUTATIONS = [
       '대표가 정한 축 우선순위가 코드에서 뒤집혀 본업 축(맛집·뷰티·숙소·공동구매, 전체의 78%)이 가장 느렸다.',
   },
   {
+    name: '앞자리 회전이 사라짐(뒤쪽 축 커서가 영구 동결)',
+    file: 'src/features/marketing/api/influencer-keyword-order.ts',
+    find: '    out.push(pools[lead][taken[lead]++])',
+    replace: '    void lead',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '커서 전진은 `prefixDone`(처리된 **선행** 픽 수)인데 회차가 예산에서 잘린다(계획 16 → 처리 7). ' +
+      '뒤쪽 축은 매번 잘려 prefixDone=0 → 커서가 영원히 제자리 → 다음 회차도 같은 키워드. ' +
+      '라이브 실측: 앞자리를 집중→우선으로 바꾸자 움직이는 커서도 그대로 바뀌었다(집중 17 전진/우선 5 정지 ' +
+      '→ 우선 5→51 전진/집중 1 정지). 우선 축 102개가 그 사이 15일간 순번을 못 받았다.',
+  },
+  {
+    name: '회차 폭이 처리 능력을 무시(초과 계획 = 기아 장치)',
+    file: 'src/features/marketing/api/influencer-keyword-order.ts',
+    find: '  if (!seen.length) return cap                       // 증거 없음 → 종전 동작',
+    replace: '  if (true) return cap',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '계획 16 · 처리 7 이면 9개가 매 회차 뽑혔다가 잘린다. 잘리는 자리의 축은 커서가 안 밀려 ' +
+      '**다음 회차에 같은 키워드를 또 내놓는다** — 초과 계획은 여유가 아니라 기아를 만드는 장치였다. ' +
+      '총 처리량은 어차피 예산이 상한이라 안 줄고, 줄어드는 건 "뽑아 놓고 버리는 수"뿐이다.',
+  },
+  {
     name: '티스토리가 블로거 뒤로 밀림(잔여를 다 뺏겨 영원히 0)',
     file: 'src/features/marketing/api/influencer-enrich-lane.ts',
     // 🗺️ 2026-08-04 앵커 이사: 몫이 상수 → `tistoryRoom(env)` 가 되고 `if (tisRoom > 0)` 으로 감싸졌다.
