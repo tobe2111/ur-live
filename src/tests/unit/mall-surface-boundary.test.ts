@@ -181,6 +181,25 @@ describe('배선 — 유어딜 자기영업이 몰 손님에게 안 뜬다', () 
     expect(/=\s*readMallOrigin\(\)/.test(link)).toBe(true)     // 호출 결과를 쓴다
     expect(/onFallback\(\)/.test(link)).toBe(true)             // 흔적 없으면 종전 동작
   })
+
+  // 🏪 결제 동선의 **가게 간판** (2026-08-12 [UNLOCK] — 대표 "허가해줄게")
+  it('체크아웃·결제완료에 가게 간판이 걸린다', () => {
+    for (const f of ['src/pages/CheckoutPage.tsx', 'src/pages/PaymentSuccessPage.tsx']) {
+      expect(/<MallOriginBanner\b/.test(noImports(read(f)))).toBe(true)
+    }
+  })
+
+  it('본진 손님 화면은 byte-불변 — 흔적/브랜드가 없으면 아무것도 안 그린다', () => {
+    const b = noImports(read('src/components/mall/MallOriginBanner.tsx'))
+    expect(/if \(!slug\) return/.test(b)).toBe(true)        // 흔적 없음 → 조회조차 안 한다
+    expect(/if \(!brand\) return null/.test(b)).toBe(true)  // 조회 실패 → 간판 없음(추측 금지)
+  })
+
+  it('🔒 Toss 잠금 파일은 결제 로직 무접촉 — 배너 렌더 1줄만 추가됐다', () => {
+    const page = read('src/pages/PaymentSuccessPage.tsx')
+    // 잠금 파일에서 몰을 **판정**하면 안 된다. 배너가 스스로 판정하고, 이 파일은 렌더만 한다.
+    expect(/readMallOrigin|isFromMallSession|mall_id/.test(page)).toBe(false)
+  })
 })
 
 describe('배선 — 상품 상세가 두 신호를 각각 쓴다', () => {

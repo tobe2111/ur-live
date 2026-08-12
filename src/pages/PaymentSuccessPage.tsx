@@ -11,6 +11,7 @@ import { addBreadcrumb, captureError } from '@/lib/sentry'
 import { formatNumber } from '@/utils/format'
 // 🔗 2026-07-03 구매 직후 셀러 전환 넛지 (자기완결 — 결제 로직과 분리)
 import SellerConversionNudge from './payment-success/SellerConversionNudge'
+import MallOriginBanner from '@/components/mall/MallOriginBanner'
 
 export default function PaymentSuccessPage() {
   const { t } = useTranslation()
@@ -488,6 +489,11 @@ export default function PaymentSuccessPage() {
                 제시해 로컬딜 미끼 → 링크샵 D2C 로 잇는다. 자기완결 컴포넌트라 결제 승인/금액검증/표시
                 로직 전부 byte-불변(additive only). 셀러(seller_token 보유)·데모·닫음 사용자에겐 미노출. */}
           {orderInfo && orderInfo.status !== 'demo' && <SellerConversionNudge />}
+
+          {/* 🏪 2026-08-12 [UNLOCK] (대표 "완전 별개, 분리" → "허가해줄게"): 몰 손님에게 **가게로 돌아갈 문**.
+                결제가 끝나면 유어딜 화면에 남겨져 운영자가 데려온 손님이 본진에 흡수된다. 흔적 없으면
+                아무것도 안 그린다(본진 화면 byte-불변). 결제 확정/금액검증/TossPaymentObject 표시 무접촉. */}
+          <MallOriginBanner className="mt-4 sm:mt-5" />
 
           {/* 액션 버튼 */}
           <div className="mt-5 sm:mt-6 lg:mt-8 flex flex-col sm:flex-row gap-2.5 sm:gap-3">
