@@ -17,7 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { isMallSlugCandidate, isMallSurfacePath, isMallProduct, MAIN_MALL } from '@/shared/mall/resolve'
+import { isMallSlugCandidate, isMallSurfacePath, isMallProduct, mallRedirectPathFor, MAIN_MALL } from '@/shared/mall/resolve'
 import { RESERVED_SLUGS } from '@/shared/mall/slug'
 import { hasPickupInfo } from '@/pages/product-detail/ReceiveMethodNotice'
 
@@ -47,11 +47,39 @@ describe('isMallSlugCandidate — 예약어가 먼저다', () => {
   })
 })
 
-describe('isMallSurfacePath — 한 세그먼트만 몰 표면', () => {
-  it('두 세그먼트 이상은 몰 표면이 아니다', () => {
-    // 🔴 상품 상세(`/products/123`)까지 몰 표면으로 잡으면 본진 상품 페이지에서 네비가 사라진다.
+describe('isMallSurfacePath — 몰 홈 + 몰 상품 상세만', () => {
+  it('본진 상품 상세와 몰 하위 임의 경로는 몰 표면이 아니다', () => {
+    // 🔴 본진 상품 상세(`/products/123`)를 몰 표면으로 잡으면 **본진** 상품 페이지에서 네비가 사라진다.
+    //   (`products` 는 예약어라 슬러그 후보 자체가 아니다.)
     expect(isMallSurfacePath('/products/123')).toBe(false)
+    // 🔴 넓힌 것은 `/p/{숫자}` **정확히 그 모양뿐**이다 — 나머지 몰 하위 경로는 그대로 false.
     expect(isMallSurfacePath('/bangbae-mart/anything')).toBe(false)
+    expect(isMallSurfacePath('/bangbae-mart/p')).toBe(false)          // id 없음
+    expect(isMallSurfacePath('/bangbae-mart/p/abc')).toBe(false)      // 숫자 아님
+    expect(isMallSurfacePath('/bangbae-mart/p/0')).toBe(false)        // 0 은 상품 id 가 아니다
+    expect(isMallSurfacePath('/bangbae-mart/p/12/extra')).toBe(false) // 더 깊은 경로
+  })
+
+  /**
+   * 🔴 2026-08-11 〔대표 "그 서비스는 유어딜과 철저히 분리되어야 해"〕
+   *
+   * 그전까지 몰 표면은 **홈 한 장뿐**이었다. 그래서 손님이 상품을 누르는 순간 본진
+   * `/products/:id` 로 나가 유어딜 탭바·배너를 보고, **가격도 상시가로 바뀌었다**
+   * (몰 카드는 공구가 — 본진 상세는 `resolveGbPricing` 을 안 부른다).
+   * ⇒ 상품 상세를 몰 표면에 포함한다. 그러면 App 셸의 `mallSurface` 배선이
+   *   그 화면에서도 유어딜 크롬을 안 그린다(아래 '배선' 블록이 그 배선을 고정한다).
+   */
+  it('몰 상품 상세는 몰 표면이다', () => {
+    expect(isMallSurfacePath('/bangbae-mart/p/123')).toBe(true)
+    expect(isMallSurfacePath('/bangbae-mart/p/123/')).toBe(true)
+    expect(isMallSurfacePath('/bangbae-mart/p/123?utm=kakao')).toBe(true)
+    expect(isMallSurfacePath('/bangbae-mart/p/123#top')).toBe(true)
+  })
+
+  it('예약어는 몰 상품 상세 모양이어도 몰 표면이 아니다', () => {
+    // `/products/p/1` 처럼 생겨도 1st 세그먼트가 예약어면 몰이 아니다.
+    expect(isMallSurfacePath('/products/p/1')).toBe(false)
+    expect(isMallSurfacePath('/admin/p/1')).toBe(false)
   })
   it('루트와 예약 라우트는 몰 표면이 아니다', () => {
     expect(isMallSurfacePath('/')).toBe(false)
@@ -95,6 +123,29 @@ describe('배선 — 앱 셸이 몰 표면에서 유어딜 크롬을 안 그린�
   it('mallSurface 는 shared SSOT 로 계산된다(자체 정규식 금지)', () => {
     expect(/const mallSurface = isMallSurfacePath\(location\.pathname\)/.test(app)).toBe(true)
   })
+
+  // 🔴 2026-08-12 — 위 세 검사는 **`App.tsx` 만** 봤다. 그래서 셸의 나머지 절반이 새는 걸 못 잡았다.
+  //   대표가 라이브 `urdeal.kr/test` 를 열자 몰 콘텐츠는 430px 유어딜 액자에 갇히고, 좌우 거터를
+  //   `ConsumerFrameRails`(urdeal 로고 · "내 손안의 동네 딜" · 홈/쇼핑/이용권/링크샵/마이 · "지도로 동네딜 보기")
+  //   가 채우고 있었다 — **몰 화면인데 사방이 유어딜 광고.** 원인: `MobileAppLayout.tsx` 에 `mall` 이라는
+  //   단어가 **0건**이었다(그 파일은 몰의 존재를 몰랐다).
+  //   ⇒ 크롬 경계는 **App.tsx 와 MobileAppLayout.tsx 둘 다** 지켜야 성립한다.
+  describe('레이아웃(액자·거터·사이드바)도 몰을 안다', () => {
+    const layout = read('src/components/MobileAppLayout.tsx')
+    it('같은 SSOT 로 판정한다 — 두 파일이 갈리면 한쪽만 샌다', () => {
+      expect(/isMallSurfacePath/.test(layout)).toBe(true)
+      expect(/const mallSurface = isMallSurfacePath\(location\.pathname\)/.test(layout)).toBe(true)
+    })
+    it('framed 에서 제외 — 몰이 430px 유어딜 액자에 갇히지 않는다', () => {
+      expect(/const framed =[^\n]*!mallSurface/.test(layout)).toBe(true)
+    })
+    it('사이드바에서도 제외 — 액자만 벗기면 그 자리를 유어딜 사이드바가 차지한다', () => {
+      expect(/const showSidebar =[^\n]*!mallSurface/.test(layout)).toBe(true)
+    })
+    it('거터 레일은 framed 를 따라가므로 자동으로 꺼진다(그 연결이 유지되는지)', () => {
+      expect(/const showFrameRails = framed\b/.test(layout)).toBe(true)
+    })
+  })
 })
 
 describe('배선 — 상품 상세가 두 신호를 각각 쓴다', () => {
@@ -113,6 +164,135 @@ describe('배선 — 상품 상세가 두 신호를 각각 쓴다', () => {
   })
   it('공유 버튼은 남는다 — 단톡방 확산은 운영자 이득이지 유어딜 영입이 아니다', () => {
     expect(page.includes('<KakaoShareButton')).toBe(true)
+  })
+})
+
+/**
+ * 🏬 **몰 손님이 본진으로 새지 않는다** (2026-08-11) 〔대표 "철저히 분리"〕
+ *
+ * 실측이 이 블록을 만들게 했다 — 같은 상품 하나가 세 화면에서 세 값을 냈다:
+ *   몰 카드 = 공구가 / 본진 상세 = **상시가** / 결제 = 공구가.
+ * 원인은 가격 한 줄이 아니라 **몰 카드가 본진으로 링크한 것**이었다(브랜드도 거기서 바뀌었다).
+ *
+ * ⚠️ 이 블록이 못 막는 것: 렌더/네트워크를 보지 않는다. **배선이 있는지**만 본다.
+ *   실제 화면의 가격 일치는 배포 후 눈으로(또는 스모크) 확인해야 한다.
+ */
+describe('배선 — 몰 손님이 본진 상세로 새지 않는다', () => {
+  it('몰 카드는 몰 경로로 링크한다 — 본진 /products 로 나가지 않는다', () => {
+    const home = read('src/pages/MallHomePage.tsx')
+    expect(/<Link to=\{mallProductPath\(mall\.slug, it\.product_id\)\}/.test(home)).toBe(true)
+    // 🔴 되돌아가면 즉시 빨강: 카드가 본진 상품 상세로 링크하는 순간 분리가 깨진다.
+    expect(/to=\{`\/products\/\$\{it\.product_id\}`\}/.test(home)).toBe(false)
+  })
+
+  it('본진 상세는 몰 상품을 그 가게로 되돌린다', () => {
+    const page = read('src/pages/ProductDetailPage.tsx')
+    // 단톡방에 남은 옛 링크·검색 유입도 전부 여기로 떨어지므로 링크 교체만으로는 안 막힌다.
+    expect(page.includes('mallRedirectPathFor(product)')).toBe(true)
+  })
+
+  it('되돌림 판정과 canonical 리다이렉트가 **한 effect** 안에 있다', () => {
+    const page = read('src/pages/ProductDetailPage.tsx')
+    // 🔴 둘을 별도 effect 로 나누면 둘 다 navigate 해서 경합하고, 마지막 것이 이겨
+    //   몰 손님이 다시 본진으로 나간다. 한 표현식 안에서 갈려야 한다.
+    const m = page.match(/useEffect\(\(\) => \{[\s\S]*?canonicalDetailPath\(product\)[\s\S]*?\}, \[product, navigate\]\)/)
+    expect(m).not.toBeNull()
+    expect(m![0].includes('mallRedirectPathFor(')).toBe(true)
+  })
+
+  /** 되돌림 판정 자체(순수) — 배선 검사가 못 보는 '의미'를 여기서 값으로 고정한다. */
+  it('mallRedirectPathFor — 슬러그를 모르면 안 보낸다(막다른 골목 방지)', () => {
+    expect(mallRedirectPathFor({ id: 5, mall_id: 2, mall_slug: 'bangbae-mart' })).toBe('/bangbae-mart/p/5')
+    expect(mallRedirectPathFor({ id: 5, mall_id: 2, mall_slug: null })).toBeNull()   // 경로로 못 여는 몰
+    expect(mallRedirectPathFor({ id: 5, mall_id: MAIN_MALL, mall_slug: 'x' })).toBeNull() // 본진
+    expect(mallRedirectPathFor(null)).toBeNull()
+  })
+
+  it('서버가 몰 상품에 mall_slug 를 실어야 되돌릴 수 있다', () => {
+    const routes = read('src/features/products/api/products.routes.ts')
+    expect(routes).toContain('stampConsumerMall(DB,')
+    const mc = read('src/worker/utils/mall-consumer.ts')
+    expect(/mall_slug/.test(mc)).toBe(true)
+    // 🔴 본진 상품은 슬러그 조회 자체를 안 한다 — 핫패스에 왕복이 붙으면 안 된다.
+    expect(/if \(mid !== MAIN_MALL\)/.test(mc)).toBe(true)
+  })
+})
+
+/**
+ * 📋 **몰 목록이 상품 수에 절단되지 않는다** (2026-08-11)
+ *
+ * 그전엔 `LIMIT 200` 으로 **전체 상품**을 먼저 자르고 JS 에서 공구만 남겼다. 상품이 200개를
+ * 넘는 몰에서는 **id 가 낮은(오래된) 상품의 진행 중 공구가 목록에서 사라진다** —
+ * "옛 상품으로 다시 공구를 연다"는 흔한 운영 패턴에서 조용히 안 보인다.
+ *
+ * ⚠️ 이 검사가 못 보는 것: 실제 SQL 실행 결과. D1 을 안 띄우므로 **쿼리 모양**만 고정한다.
+ */
+describe('몰 상품 목록 — 공구 후보를 SQL 에서 좁힌다', () => {
+  const routes = read('src/features/mall/api/mall-public.routes.ts')
+
+  it('공구 세션이 있는 상품만 SQL 에서 고른다', () => {
+    expect(/EXISTS \(SELECT 1 FROM product_supply_meta m[\s\S]{0,200}?key = 'gb_mode'[\s\S]{0,80}?IN \('live', 'scheduled'\)/.test(routes)).toBe(true)
+  })
+
+  it('전체 상품을 200개로 먼저 자르지 않는다', () => {
+    // ⚠️ **주석을 벗기고 본다.** 처음엔 원문 그대로 검사했는데, 같은 파일의 *설명 주석*에
+    //   "그전엔 `LIMIT 200` 으로…" 라고 적힌 것을 잡아 **정상 코드가 빨강**이 됐다 —
+    //   이 파일 헤더가 경고하는 바로 그 '주석 함정' 이다(이번엔 반대 방향으로 걸렸다).
+    const code = routes.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+    // 🔴 되돌아가면 즉시 빨강 — 이 리터럴이 바로 절단의 원인이었다.
+    expect(/LIMIT 200/.test(code)).toBe(false)
+  })
+
+  it('JS 필터(마감 지난 건 제거) 몫의 여유분을 두고 가져온다', () => {
+    // limit 딱 맞게 가져오면 필터 후 화면에 limit 보다 적게 남는다.
+    expect(/Math\.min\(300, limit \* 3\)/.test(routes)).toBe(true)
+  })
+})
+
+/**
+ * 🧭 **몰 손님이 갈 곳을 잃지 않는다** (2026-08-11)
+ *
+ * `rememberMallOrigin` 은 2026-08-02 에 만들어졌는데 **호출부가 0** 이었다 — 흔적이 한 번도
+ * 안 남아 `readMallOrigin()` 이 늘 `null` 이었고, 그래서 `ProductDetailPage` 의
+ * '가게로 돌아가기' 버튼이 **한 번도 뜬 적이 없다**(항상 유어딜 홈으로 보냈다).
+ * 만들어 놓고 안 부르는 것도 "실패가 아니라 조용한 부재" 클래스다.
+ */
+describe('배선 — 몰 흔적이 실제로 남고, 상품이 없어도 가게로 돌아간다', () => {
+  it('몰 홈과 몰 상품 상세가 **둘 다** 흔적을 남긴다', () => {
+    // 🔴 카톡에서 **상품 링크로 바로** 들어오는 것이 흔한 경로다 — 홈에서만 남기면 그 손님은 흔적이 없다.
+    for (const p of ['src/pages/MallHomePage.tsx', 'src/pages/MallProductPage.tsx']) {
+      expect(read(p), p).toContain('rememberMallOrigin(m.mall.slug)')
+    }
+  })
+
+  it('몰은 있고 상품만 없으면 유어딜 404 로 떨구지 않는다', () => {
+    const page = read('src/pages/MallProductPage.tsx')
+    // 몰 없음(notfound) 과 상품 없음(gone) 을 **다르게** 다룬다 — 하나로 합치면 몰 손님이 유어딜 404 를 본다.
+    expect(page).toContain("setState('gone')")
+    expect(/if \(state === 'gone'[\s\S]{0,600}?to=\{`\/\$\{mall\.slug\}`\}/.test(page)).toBe(true)
+  })
+})
+
+/**
+ * 🖼️ **몰 상품 링크의 카톡 카드** (2026-08-11)
+ *
+ * 경로를 옮기면 2026-08-09 에 PRODUCT 슬롯으로 막아 둔 *"몰 상품 공유가 본진 일반 카드로 나가는"*
+ * 갭이 **새 경로에서 재발한다.** 잘못 나간 카드는 카톡 스크랩 캐시에 **박제**되고 회수 시점의
+ * 통제권이 우리에게 없다 — 그래서 경로 이전과 **같은 커밋**에서 막는다.
+ */
+describe('배선 — 몰 상품 경로에 OG 슬롯이 있다', () => {
+  const worker = read('src/worker/index.ts')
+  it('MALLPRODUCT 슬롯이 몰 상품 API 를 가리킨다', () => {
+    const helper = read('src/worker/utils/mall-ssr-meta.ts')
+    expect(/slot: 'MALLPRODUCT', path: `\/api\/mall\/\$\{encodeURIComponent\(mp\.slug\)\}\/products\/\$\{mp\.productId\}`/.test(helper)).toBe(true)
+    expect(worker).toContain('resolveMallProductSlot(url.pathname)')
+  })
+  it('경로 판정은 shared SSOT 를 쓴다 — 워커가 자체 정규식을 갖지 않는다', () => {
+    const helper = read('src/worker/utils/mall-ssr-meta.ts')
+    expect(/const mp = parseMallProductPath\(pathname\)/.test(helper)).toBe(true)
+  })
+  it('payload 가 없으면 메타를 만들지 않는다(fail-closed — 추측해서 박제하지 않는다)', () => {
+    expect(/ssrSlot === 'MALLPRODUCT' && ssrPayload/.test(worker)).toBe(true)
   })
 })
 
@@ -140,7 +320,12 @@ describe('배선 — 서버가 mall_id 를 상세 응답에 싣는다', () => {
     expect(/SELECT is_supply_product, supply_source_id, mall_id FROM products WHERE id = \?/.test(routes)).toBe(true)
   })
   it('응답 본문에 mall_id 를 스탬프한다', () => {
-    expect(/\)\.mall_id = Number\(sup\?\.mall_id \?\? MAIN_MALL\)/.test(routes)).toBe(true)
+    // ⚠️ 2026-08-11 — 스탬프가 `stampConsumerMall`(mall-consumer)로 이동했다. 불변식은
+    //   *"응답에 mall_id 를 싣는다 · 값의 출처는 DB 행이고 폴백은 MAIN_MALL 상수"* 이므로 그리로 앵커한다.
+    expect(routes).toContain('stampConsumerMall(DB,')
+    const mc = read('src/worker/utils/mall-consumer.ts')
+    expect(/target\.mall_id = mid/.test(mc)).toBe(true)
+    expect(/Number\(rawMallId \?\? MAIN_MALL\) \|\| MAIN_MALL/.test(mc)).toBe(true)
   })
 })
 

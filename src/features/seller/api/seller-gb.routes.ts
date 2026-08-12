@@ -10,8 +10,10 @@
  *    경로에 따라 통과 기준이 갈리지 않는다. 특히 **공구가 < 상시가** 강제 — 가격을 올리는 방향은 막힌다.
  * ③ **저장도 SSOT** — `saveGbSession`(product_supply_meta upsert). 새 저장 경로를 만들지 않는다.
  *
- * ⚠️ **머니 무접촉**: 값 저장뿐이다. 실제 적용은 `platform_settings.gb_engine_enabled` 게이트 뒤이고,
- *   결제/정산/커미션 로직은 이 파일이 건드리지 않는다(gb-cockpit 과 동일 방침).
+ * ⚠️ **머니 무접촉**: 이 파일은 값 저장뿐이고 결제/정산/커미션 로직을 건드리지 않는다.
+ *   🔴 **2026-08-11 정정** — 여기 오래 적혀 있던 *"적용은 `gb_engine_enabled` 게이트 뒤"* 는 **사실이 아니었다.**
+ *   저장한 공구가는 `order.routes` 에서 **게이트 없이 곧바로 청구 단가**가 된다(2026-07-29 배선).
+ *   되돌릴 손잡이는 별도 킬스위치 `platform_settings.gb_pricing_enabled`(기본 ON, `'false'` 로 끔) 다.
  */
 import { Hono } from 'hono'
 import { verify } from 'hono/jwt'

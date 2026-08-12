@@ -266,7 +266,7 @@ import { gbMarketplaceRoutes } from '../features/group-buy/api/gb-marketplace.ro
 import { mallPublicRoutes } from '../features/mall/api/mall-public.routes';
 import { isMallLookupCandidate } from './utils/mall-consumer';
 // 🏬 2026-08-09 [UNLOCK_LOADING] 몰 상품 OG 배선 — 세션 ③-a 가 만들고 미배선(dead code)이던 것.
-import { buildMallProductMeta } from './utils/mall-ssr-meta';
+import { buildMallProductMeta, resolveMallProductSlot, mallProductPathSurfaceMeta } from './utils/mall-ssr-meta';
 import { gbProposalsRoutes } from '../features/group-buy/api/gb-proposals.routes';
 import { voucherDisputeRoutes, voucherDisputeAdminRoutes } from '../features/group-buy/api/voucher-dispute.routes';
 // 🛡️ 2026-05-20: requireAdmin 은 위 (line 127) 에서 이미 import — 중복 제거.
@@ -647,6 +647,9 @@ app.use('*', async (c, next) => {
             const mallSeg = url.pathname.split('/')[1] || '';
             if (isMallLookupCandidate(mallSeg) && !url.pathname.slice(1).includes('/')) {
               ssrTarget = { slot: 'MALL', path: `/api/mall/${encodeURIComponent(mallSeg)}` };
+            } else {
+              // 🏬 2026-08-11 몰 상품 상세 — 없으면 카톡 카드가 제네릭(근거: resolveMallProductSlot).
+              ssrTarget = resolveMallProductSlot(url.pathname) ?? ssrTarget;
             }
           }
         }
@@ -933,6 +936,11 @@ app.use('*', async (c, next) => {
     //   카톡방에 몰 링크가 붙을 때 **누구의 판인지**가 먼저 읽혀야 한다. 몰 이름이 title 앞에 온다.
     //   ⚠️ 잘못 나간 미리보기는 카톡 스크랩 캐시에 **박제**된다 — 그래서 payload 가 없으면
     //      추측하지 않고 **기본 메타를 그대로 둔다**(mall-ssr-meta.ts 의 fail-closed 와 같은 방침).
+    // 🏬 2026-08-11 몰 상품 카톡 카드. payload 없거나 모양이 다르면 기본 메타 그대로(fail-closed).
+    if (ssrSlot === 'MALLPRODUCT' && ssrPayload) {
+      const mpm = mallProductPathSurfaceMeta(ssrPayload, origin2, url.pathname);
+      if (mpm) rb = applySurfaceMeta(rb, mpm);
+    }
     if (ssrSlot === 'MALL' && ssrPayload) {
       try {
         const m = (JSON.parse(ssrPayload) as { mall?: { name?: string; slug?: string; intro?: string; logoUrl?: string | null; naver_verification?: string | null } })?.mall;

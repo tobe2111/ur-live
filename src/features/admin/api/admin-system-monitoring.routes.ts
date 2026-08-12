@@ -302,7 +302,10 @@ const OPS_GATES: OpsGate[] = [
   //   클라 `src/shared/feature-flags.ts` `GB_ENGINE_ENABLED`(현재 하드코딩 false).
   //   ⇒ 공구 특가를 결제에 배선해도(#844) **둘 다 켜지기 전에는 어디에도 적용되지 않는다.**
   //   여기 등재는 서버 겹만 값으로 보여준다 — 클라 겹은 배포가 필요하므로 라벨에 함께 적는다.
-  { key: 'gb_engine_enabled', kind: 'setting', label: '공구 엔진 (⚠️ 2겹 — 클라 GB_ENGINE_ENABLED 도 함께 켜야 적용)', default_value: 'false', staging_ref: null, turn_on_when: 'P9 실결제 통과 시(⑤ 1순위). ⚠️ 클라 GB_ENGINE_ENABLED 도 함께 켜야 적용' },
+  { key: 'gb_engine_enabled', kind: 'setting', label: '공구 엔진 (⚠️ 2겹 — 클라 GB_ENGINE_ENABLED 도 함께 켜야 적용)', default_value: 'false', staging_ref: null, turn_on_when: 'P9 실결제 통과 시(⑤ 1순위). ⚠️ 클라 GB_ENGINE_ENABLED 도 함께 켜야 적용. ⚠️ 공구가 청구는 이 키가 아니라 gb_pricing_enabled 가 지배한다(2026-08-11 정정)' },
+  // 🔌 2026-08-11 — **끄는 스위치**(기본 ON). 다른 게이트와 방향이 반대라 라벨에 명시한다:
+  //   미설정/조회실패 = 공구가 적용(현행). `'false'` 를 저장한 순간에만 상시가로 되돌아간다.
+  { key: 'gb_pricing_enabled', kind: 'setting', label: '공구가 청구 (🔴 킬스위치 — 기본 ON, false 로 저장해야 꺼짐)', default_value: 'true', staging_ref: null, turn_on_when: '항상 ON 이 정상. 잘못 설정된 공구가로 과소청구가 날 때 `false` 로 저장해 즉시 상시가로 되돌린다' },
   // 8월 promo flip 스코프 스위치 — 값이 비어 있지 않으면 그 매장만 flip 경로.
   { key: 'flip_pilot_seller_ids', kind: 'setting', label: '8월 flip 파일럿 매장 스코프', default_value: '', staging_ref: null, turn_on_when: '8월 promo flip 파일럿 매장이 정해지면 그 seller_id 를 넣는다' },
   { key: 'seller_promo_field_enabled', kind: 'setting', label: '셀러 promo% 입력 UI', default_value: 'false', staging_ref: null, turn_on_when: 'flip 파일럿 매장이 스스로 promo% 를 입력할 단계가 되면' },

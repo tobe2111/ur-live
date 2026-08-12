@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import DesktopLiveSidebar from './DesktopLiveSidebar'
 import { useTheme } from '@/shared/stores/useTheme'
 import { isFullBleedPcPath } from '@/shared/pc-fullbleed'
+import { isMallSurfacePath } from '@/shared/mall/resolve'
 
 // 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 제거.
 const LinkshopVisitorRails = lazy(() => import('./LinkshopVisitorRails'))
@@ -98,13 +99,23 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   //   (액자/사이드바/거터 제외)로. SSOT = `shared/pc-fullbleed.ts`. 모바일(<lg)은 프레임 CSS 가 lg+ 전용이라
   //   영향 0. 2026-06-20 "PC 단일 액자 정체성" 잠금을 이 경로들에 한해 해제.
   const isFullBleedHome = isFullBleedPcPath(location.pathname)
-  // 컨슈머 프레임 — 대시보드/도매몰/비디오 + 데스크탑 반응형 + 풀블리드 홈은 제외(풀너비).
-  const framed = !mobileOnly && !hideSidebar && !isDesktopResponsive && !isFullBleedHome
+  // 🏬 2026-08-12 (대표 — 라이브 화면 신고 "왜 지금 이 형태인거야?"): **운영자 몰은 유어딜 셸을 안 입는다.**
+  //   `App.tsx` 는 2026-08-02 에 몰 표면에서 하단바/상단 네비를 이미 껐는데(`hideBottomNav`), **이 파일은
+  //   몰을 몰랐다**(`mall` 이라는 단어가 0건이었다) → `framed=true` 로 몰이 430px 유어딜 액자에 갇히고,
+  //   비어 버린 좌우 거터를 `ConsumerFrameRails`(urdeal 로고·"내 손안의 동네 딜"·홈/쇼핑/이용권/링크샵/마이
+  //   바로가기·"지도로 동네딜 보기")가 채웠다. **몰 화면인데 사방이 유어딜 광고였다.**
+  //   ⇒ 판정은 `App.tsx` 와 **같은 SSOT**(`isMallSurfacePath`) 하나로 — 둘이 갈리면 한쪽만 새는 게 이 사고다.
+  //   🔴 `framed` 만 끄면 `showSidebar` 가 대신 켜져 유어딜 사이드바가 뜬다 → 아래에서 함께 막는다.
+  //   `MallHomePage` 는 이미 `ur-content-wide mx-auto`(1280) 라 액자를 벗으면 제 폭을 쓴다(블로그 선례와 동일).
+  const mallSurface = isMallSurfacePath(location.pathname)
+  // 컨슈머 프레임 — 대시보드/도매몰/비디오 + 데스크탑 반응형 + 풀블리드 홈 + **운영자 몰**은 제외(풀너비).
+  const framed = !mobileOnly && !hideSidebar && !isDesktopResponsive && !isFullBleedHome && !mallSurface
   // 🖥️ 2026-06-20 (대표 시안 — PC 단일 정체성): 액자 컨슈머 페이지는 좌측 사이드바 대신 거터 레일 +
   //   프레임 내부 하단 네비를 쓴다 → framed 면 사이드바 숨김. live/shorts(mobileOnly)·풀너비 반응형
   //   페이지는 종전처럼 사이드바 유지. 데코 거터 레일은 framed 이고 링크샵 방문자가 아닐 때만.
   // 🖥️ 풀블리드 홈은 앱 사이드바(DesktopLiveSidebar)도 숨김 — PcHomePage 자체 레일이 좌측을 담당.
-  const showSidebar = !hideSidebar && !linkshopVisitor && !framed && !isFullBleedHome
+  //   🏬 `!mallSurface` — 위 주석의 함정. 액자만 벗기면 그 자리를 유어딜 사이드바가 차지한다.
+  const showSidebar = !hideSidebar && !linkshopVisitor && !framed && !isFullBleedHome && !mallSurface
   const showFrameRails = framed && !linkshopVisitor
   // 📐 2026-06-17: 단일 폰 폭(430) — 페이지별 폭 분기 제거(액자가 페이지마다 안 튐).
   const frameWidth = '430px'

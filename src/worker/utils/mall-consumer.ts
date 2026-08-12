@@ -19,7 +19,7 @@
  * > 왜 `host IS NULL` 로 추론하지 않는가: 메디스타트(id=2)는 host 가 NULL 인 **도매몰**이다.
  * >   추론했으면 `urdeal.kr/medi` 로 B2B 몰이 열렸을 것이다. **추론 대신 표시**가 맞다.
  */
-import { isMallSlugCandidate } from '@/shared/mall/resolve'
+import { isMallSlugCandidate, MAIN_MALL } from '@/shared/mall/resolve'
 
 export interface ConsumerMallRow {
   id: number
@@ -104,4 +104,43 @@ export async function lookupConsumerMall(DB: D1Database | undefined, seg: string
   if (!isMallLookupCandidate(seg)) return null   // 🔴 핫패스 조기 탈출 — 기존 라우트는 여기서 끝난다
   const rows = await loadRows(DB)
   return pickConsumerMall(rows, String(seg))
+}
+
+/**
+ * 🏬 소비자 상품 상세 응답에 **몰 귀속**을 찍는다 (2026-08-11).
+ *
+ * `mall_id` = "이 손님이 몰 손님인가"(유어딜 영입 CTA 억제 — 대표 UX 기준 ⑤),
+ * `mall_slug` = "어느 가게로 되돌릴 것인가"(본진 상세는 공구가를 몰라 상시가를 보여준다).
+ *
+ * 🔴 값의 출처는 **DB 행 하나뿐**이다. 리터럴 몰 id 를 쓰지 않는다(폴백은 `MAIN_MALL` 상수).
+ * ⚠️ 본진 상품은 슬러그 조회 자체를 **안 한다** — 핫패스에 왕복이 붙으면 안 된다.
+ * ⚠️ 경로로 못 여는 몰이면 슬러그가 `null` → 되돌리지 않는다(막다른 골목 방지).
+ */
+export async function stampConsumerMall(
+  DB: D1Database | undefined,
+  target: Record<string, unknown>,
+  rawMallId: number | null | undefined,
+): Promise<void> {
+  const mid = Number(rawMallId ?? MAIN_MALL) || MAIN_MALL
+  target.mall_id = mid
+  if (mid !== MAIN_MALL) target.mall_slug = await consumerMallSlugById(DB, mid).catch(() => null)
+}
+
+/**
+ * 몰 **id → 슬러그** (2026-08-11). 소비자 상품 상세가 "이 상품은 어느 가게 것인가"를 알아야
+ * 몰 손님을 그 가게로 돌려보낼 수 있다(`/products/:id` → `/{슬러그}/p/:id`).
+ *
+ * 🔴 **같은 캐시·같은 fail-closed 규칙을 쓴다.** 여기서 테이블을 따로 조회하면
+ *   `active`/`consumer_path` 판정이 두 벌이 되고, 갈리는 순간 "경로로는 안 열리는 몰로
+ *   리다이렉트하는" 막다른 골목이 생긴다(그 몰의 상세는 404 이므로 손님이 갇힌다).
+ *
+ * @returns 경로로 열 수 있는 몰이면 슬러그, 아니면 `null`(= 리다이렉트하지 않음 → 현행 동작)
+ */
+export async function consumerMallSlugById(DB: D1Database | undefined, mallId: number | null | undefined): Promise<string | null> {
+  if (!DB) return null
+  const id = Number(mallId)
+  if (!Number.isFinite(id) || id < 1) return null
+  const rows = await loadRows(DB)   // loadRows 는 이미 active=1 AND consumer_path=1 만 싣는다
+  for (const r of rows) if (Number(r.id) === Math.floor(id)) return String(r.slug ?? '').trim().toLowerCase() || null
+  return null
 }

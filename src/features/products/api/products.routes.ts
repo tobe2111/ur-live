@@ -532,7 +532,7 @@ productsRoutes.get('/:id', cors(), async (c) => {
         (p as unknown as Record<string, unknown>).pickup = isEmptyPickup(pk) ? null : pk;
         // 🏬 몰 귀속(additive). 위 쿼리가 실패한 env(컬럼 미적용)는 `MAIN_MALL` — 그런 env 엔
         //   경로로 열리는 몰 자체가 없다(`consumer_path` fail-closed). ⇒ 현행과 동일한 동작.
-        (p as unknown as Record<string, unknown>).mall_id = Number(sup?.mall_id ?? MAIN_MALL) || MAIN_MALL;
+        await (await import('../../../worker/utils/mall-consumer')).stampConsumerMall(DB, p as unknown as Record<string, unknown>, sup?.mall_id);
       }
       return p;
     }, { ttl: 60, staleWhileRevalidate: 30 });

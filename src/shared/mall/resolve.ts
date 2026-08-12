@@ -90,7 +90,37 @@ export function isMallSlugCandidate(seg: string | null | undefined): boolean {
 }
 
 /**
- * 이 **경로**가 몰 표면(`urdeal.kr/{슬러그}`)인가 — 한 세그먼트짜리 슬러그 후보.
+ * 몰 상품 상세 경로의 **고정 중간 세그먼트**. `/{슬러그}/p/{상품id}`.
+ *
+ * 🔴 왜 `/{슬러그}/{id}` (2세그먼트)가 아닌가: 그러면 몰 표면이 **2세그먼트 전부**를 삼켜
+ *   나중에 `/{슬러그}/reviews` 같은 걸 추가할 때 판정이 또 흔들린다. 리터럴 하나를 끼워
+ *   **정확히 이 모양만** 몰 표면으로 넓힌다 — `/{슬러그}/anything` 은 계속 false 다.
+ */
+export const MALL_PRODUCT_SEGMENT = 'p'
+
+/** 몰 상품 상세 URL 을 만든다. 링크를 손으로 조립하지 말 것 — 여기가 유일한 조립처다. */
+export function mallProductPath(slug: string, productId: number | string): string {
+  return `/${String(slug).trim().toLowerCase()}/${MALL_PRODUCT_SEGMENT}/${Number(productId)}`
+}
+
+/**
+ * 경로가 몰 상품 상세면 `{ slug, productId }`, 아니면 null. (문법 판정 — 실재는 호출부가 DB 로 본다.)
+ */
+export function parseMallProductPath(
+  pathname: string | null | undefined,
+): { slug: string; productId: number } | null {
+  const path = String(pathname ?? '').split('?')[0].split('#')[0]
+  const segs = path.replace(/^\/+/, '').replace(/\/+$/, '').split('/')
+  if (segs.length !== 3) return null
+  if (segs[1] !== MALL_PRODUCT_SEGMENT) return null
+  if (!isMallSlugCandidate(segs[0])) return null
+  // 상품 id 는 양의 정수만. `/{슬러그}/p/abc` 는 몰 표면이 아니다(오타로 크롬이 사라지지 않게).
+  if (!/^[1-9][0-9]{0,11}$/.test(segs[2])) return null
+  return { slug: segs[0].toLowerCase(), productId: Number(segs[2]) }
+}
+
+/**
+ * 이 **경로**가 몰 표면인가 — 몰 홈(`/{슬러그}`) 또는 몰 상품 상세(`/{슬러그}/p/{id}`).
  *
  * ⚠️ **문법 판정이지 존재 판정이 아니다.** 실재하지 않는 슬러그(`/ossda`)도 true 다 —
  *   그 경로는 `MallHomePage` 가 스스로 404 를 그린다. 즉 이 함수가 true 인데 몰이 아니면
@@ -98,12 +128,19 @@ export function isMallSlugCandidate(seg: string | null | undefined): boolean {
  *   ① 진짜 몰 손님(파일럿의 전부)에게 탭바가 **한 프레임도** 안 뜨는 쪽이 중요하다
  *      — 나중에 숨기면 깜빡이고, 깜빡이는 순간 손님은 유어딜을 본다.
  *   ② `NotFoundPage` 는 자체 '홈으로'·인기 링크·뒤로가기를 갖고 있어 오타 방문자도 안 갇힌다.
+ *
+ * 🔴 **2026-08-11 — 상품 상세를 몰 표면에 포함하도록 넓혔다** 〔대표 지시 "그 서비스는 유어딜과
+ *   철저히 분리되어야 해"〕. 그전까지 이 함수는 **1세그먼트만** true 라, 몰 손님이 상품을 누르는
+ *   순간 본진 `/products/:id` 로 나가 **유어딜 탭바·브랜드·상시가**를 봤다(몰 카드는 공구가였다).
+ *   즉 분리가 걸려 있던 건 몰 홈 한 장뿐이었다.
+ *   ⚠️ 넓힌 것은 **`/{슬러그}/p/{숫자}` 정확히 이 모양뿐**이다 — `/products/123`(예약어)도,
+ *   `/{슬러그}/anything` 도 계속 false. 그 두 개는 테스트가 값으로 고정한다.
  */
 export function isMallSurfacePath(pathname: string | null | undefined): boolean {
   const path = String(pathname ?? '').split('?')[0].split('#')[0]
   const segs = path.replace(/^\/+/, '').replace(/\/+$/, '').split('/')
-  if (segs.length !== 1) return false
-  return isMallSlugCandidate(segs[0])
+  if (segs.length === 1) return isMallSlugCandidate(segs[0])
+  return parseMallProductPath(pathname) != null
 }
 
 /** URL 경로의 1st 세그먼트(소문자). 몰 슬러그 후보로만 쓰고, 실재 여부는 호출부가 DB 로 확인한다. */
@@ -131,6 +168,27 @@ export const MAIN_MALL = 1
 export function isMallProduct(mallId: number | null | undefined): boolean {
   const n = Number(mallId)
   return Number.isFinite(n) && Math.floor(n) !== MAIN_MALL && Math.floor(n) >= 1
+}
+
+/**
+ * 🏬 본진 상품 상세(`/products/:id`)가 **몰로 되돌려야 하는가** (2026-08-11).
+ *
+ * 🔴 왜 되돌리는가: 본진 상세는 **공구가를 모른다**(`resolveGbPricing` 미호출·`current_price` 미주입).
+ *   몰 카드가 7,000원인 상품이 거기선 10,000원(상시가)으로 보인다 — 손님이 살지 말지 정하는
+ *   바로 그 화면에서 가격이 올라간다. 단톡방에 남은 옛 링크·검색 유입도 전부 그 화면으로 떨어지므로
+ *   **카드 링크만 바꾸는 것으로는 안 막힌다.**
+ *
+ * ⚠️ **슬러그가 없으면 `null`** — 본진 상품이거나, 경로로 못 여는 몰(비활성·`consumer_path=0`)이다.
+ *   후자를 되돌리면 그 몰의 상세도 404 라 손님이 **막다른 골목에 갇힌다.** 모르면 안 보낸다.
+ */
+export function mallRedirectPathFor(
+  p: { id?: number | string | null; mall_id?: number | null; mall_slug?: string | null } | null | undefined,
+): string | null {
+  if (!p || !isMallProduct(p.mall_id)) return null
+  const slug = String(p.mall_slug ?? '').trim()
+  const id = Number(p.id)
+  if (!slug || !Number.isFinite(id) || id <= 0) return null
+  return mallProductPath(slug, id)
 }
 
 /**

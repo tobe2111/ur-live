@@ -34,9 +34,28 @@ export async function loadGbOrderPricing(
   viaRefLink: boolean,
   nowMs: number = Date.now(),
 ): Promise<GbOrderPricing> {
+  const applied = new Set<number>()
+  // 🔌 2026-08-11 킬스위치 〔대표 "게이트를 붙인다"〕 — 값이 정확히 `'false'` 일 때만 끈다.
+  //
+  // 🔴 **왜 `gb_engine_enabled` 를 안 쓰는가**: 그 키는 기본값이 `'false'`(미설정 포함)다.
+  //   그걸 여기에 걸면 **오늘 당장 공구가가 안 먹어** 몰 화면은 공구가인데 청구는 상시가가 된다
+  //   — 지금 상태보다 나쁘다. 그래서 **기본 ON 인 별도 스위치**를 둔다. 게이트의 목적은
+  //   "기능을 잠가 두는 것"이 아니라 **잘못 설정된 공구가를 즉시 되돌릴 손잡이**이기 때문이다.
+  //   (`seller-gb`·`gb-cockpit` 주석이 *"적용은 gb_engine_enabled 뒤"* 라고 적어 온 것은
+  //    **사실이 아니었다** — 이 커밋에서 그 문구도 함께 바로잡는다.)
+  //
+  // ⚠️ 조회 실패는 **켠 것으로 본다**(fail-open). DB 한 번 흔들렸다고 전 주문이 상시가로
+  //   청구되면 그게 더 큰 사고다. 끄는 것은 **명시적으로 'false' 를 저장했을 때만** 일어난다.
+  let killed = false
+  try {
+    const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'gb_pricing_enabled'")
+      .first<{ value: string }>()
+    killed = String(row?.value ?? '').trim() === 'false'
+  } catch { killed = false }
+  if (killed) return { applied, basePrice: (_id, listPrice) => Number(listPrice) || 0 }
+
   const sessions: Map<number, GbSession> = await getGbSessions(DB, productIds)
     .catch(() => new Map<number, GbSession>())
-  const applied = new Set<number>()
   return {
     applied,
     basePrice(productId, listPrice) {

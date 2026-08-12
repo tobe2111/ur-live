@@ -18,6 +18,8 @@ import { QueryBuilder } from '../repositories/query-builder';
 import { computeCouponDiscount } from '../../features/coupons/coupon-discount';
 // 🎟️ [gb-price-wiring 2026-07-29] 공구가 결제 배선 + 구 tier cap. 배경/이중할인 주의는 헬퍼 헤더 참조.
 import { loadGbOrderPricing, computeGroupBuyCap } from '../utils/gb-order-pricing';
+// 📦 픽업 = 배송 없음. 주문생성·견적이 **같은 판정**을 쓴다(헬퍼 헤더에 근거).
+import { loadNoShippingCheck, resolveNoShipping } from '../utils/pickup-flags';
 import { ensureOrdersDealUsed } from '../utils/ensure-order-columns';
 import { revokeReferralCommissionsForOrder } from '../utils/referral-commission-revoke';
 import { swallow } from '../utils/swallow';
@@ -335,14 +337,10 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     // 🛡️ 2026-07-02 (쇼핑 전수조사): 비배송 주문(교환권 deal_only=1 / 이용권 voucher 카테고리 — 매장 사용)은
     //   배송비 0. 클라(CheckoutPage allVoucher)와 동일 SSOT 신호 — 이전엔 서버만 V2 로 부과해
     //   confirm 금액 불일치 400 (threshold=0 버그와 상쇄돼 숨어있던 짝 — 반드시 같은 커밋).
+    // 📦 2026-08-11 — **픽업이 판정에 추가됐다**(그전까진 픽업 상품에 배송비 3,000원). 견적도 같은 헬퍼.
     let noShipping = false
-    try {
-      const { isVoucherCategory } = await import('../../shared/constants/voucher-categories')
-      noShipping = products.length > 0 && products.every(p => {
-        const row = p as unknown as { deal_only?: number | null; category?: string | null }
-        return Number(row.deal_only) === 1 || isVoucherCategory(row.category ?? null)
-      })
-    } catch { noShipping = false }
+    try { noShipping = await resolveNoShipping(c.env.DB, products as unknown as Parameters<typeof resolveNoShipping>[1]) }
+    catch { noShipping = false }
 
     const feeCalc = noShipping
       ? { baseFee: 0, regionFee: 0, totalFee: 0, region: 'normal' as const, freeShippingApplied: false }
@@ -1283,6 +1281,11 @@ ordersRouter.post('/shipping-quote', rateLimit({ action: 'shipping_quote', max: 
     type QuoteGroup = { seller_id: string | null; subtotal: number; allNoShip: boolean };
     const groups = new Map<string, QuoteGroup>();
     const quotedItems: Array<{ product_id: string; unit_price: number; quantity: number; available: boolean }> = [];
+    // 🎟️📦 2026-08-11 — 견적도 **공구가 + 픽업 비배송**. 그전엔 단가가 `Number(p.price)`(상시가)라
+    //   주문 생성과 어긋나 **청구는 공구가인데 화면은 상시가**였다. 이제 같은 헬퍼를 쓴다.
+    const qIds = items.map(i => Number(i.product_id));
+    const quoteGb = await loadGbOrderPricing(c.env.DB, qIds, Boolean(getCookie(c, 'affiliate_ref')));
+    const qNoShip = await loadNoShippingCheck(c.env.DB, qIds);
     for (const it of items) {
       const p = productMap.get(it.product_id);
       if (!p) {
@@ -1290,12 +1293,12 @@ ordersRouter.post('/shipping-quote', rateLimit({ action: 'shipping_quote', max: 
         quotedItems.push({ product_id: it.product_id, unit_price: 0, quantity: it.quantity, available: false });
         continue;
       }
-      const unitPrice = Math.max(0, Number(p.price) || 0);
+      const unitPrice = Math.max(0, quoteGb.basePrice(Number(p.id), Number(p.price) || 0));
       quotedItems.push({ product_id: it.product_id, unit_price: unitPrice, quantity: it.quantity, available: true });
       const key = String(p.seller_id ?? '');
       const g = groups.get(key) ?? { seller_id: p.seller_id ? String(p.seller_id) : null, subtotal: 0, allNoShip: true };
       g.subtotal += unitPrice * it.quantity;
-      g.allNoShip = g.allNoShip && (Number(p.deal_only) === 1 || isVoucherCategory(p.category ?? null));
+      g.allNoShip = g.allNoShip && qNoShip(p);
       groups.set(key, g);
     }
 

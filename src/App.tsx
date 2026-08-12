@@ -204,6 +204,7 @@ const CommunityGroupBuyMessagesPage = lazy(() => import('./pages/CommunityGroupB
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 // 🏬 운영자 몰 홈(`urdeal.kr/{슬러그}`) — 세션 ③-a. catch-all 직전 라우트라 lazy 로 둔다.
 const MallHomePage = lazy(() => import('./pages/MallHomePage'))
+const MallProductPage = lazy(() => import('./pages/MallProductPage'))
 const ServerErrorPage = lazy(() => import('./pages/ServerErrorPage'))
 
 // 약관 페이지들
@@ -1044,6 +1045,7 @@ function AppContent() {
                    나중에 추가되는 라우트가 조용히 죽는다(이 레포의 중복 라우트 사고와 같은 클래스).
                 🔴 슬러그가 몰이 아니면 페이지가 스스로 `NotFoundPage` 를 렌더한다 —
                    즉 여기 있어도 **기존 404 동작이 바뀌지 않는다.** */}
+            <Route path="/:mallSlug/p/:id" element={<MallProductPage />} />
             <Route path="/:mallSlug" element={<MallHomePage />} />
 
             <Route path="*" element={<NotFoundPage />} />

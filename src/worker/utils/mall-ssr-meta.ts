@@ -17,6 +17,7 @@
  */
 import { getGbSessions } from './gb-session-store'
 import { resolveGbPricing } from '../../shared/gb-session'
+import { parseMallProductPath } from '../../shared/mall/resolve'
 
 export interface MallMetaInput {
   /** URL 이 가리키는 몰(경로/호스트로 이미 해석된 것). */
@@ -105,6 +106,69 @@ export async function buildMallProductMeta(
         price: pr ? pr.listPrice : Number(pd.price),
         deadline: pr?.gbActive ? sess?.deadline : null,
         mall_id: pMallId,
+      },
+      origin, pathname,
+    })
+  } catch { return null }
+}
+
+/**
+ * 🏬 2026-08-11 — **몰 상품 상세 경로(`/{슬러그}/p/{id}`) 슬롯용** 〔대표 "철저히 분리"〕.
+ *
+ * 위 `buildMallProductMeta` 와 **하는 일이 같고 입력만 다르다**: 저쪽은 본진 `/api/products/:id`
+ * payload(그래서 몰·공구가를 DB 로 다시 찾아야 한다), 이쪽은 `/api/mall/:slug/products/:id` payload
+ * — **몰과 공구가가 이미 그 안에 있다.** 그래서 DB 를 한 번도 안 본다(순수 함수).
+ *
+ * 🔴 왜 이게 반드시 필요한가: 몰 카드 링크가 `/products/:id` → `/{슬러그}/p/{id}` 로 바뀌면,
+ *   2026-08-09 에 PRODUCT 슬롯으로 막아 둔 *"몰 상품 카톡 공유가 본진 일반 카드로 나가는"* 갭이
+ *   **새 경로에서 그대로 재발한다.** 잘못 나간 카드는 카톡 스크랩 캐시에 박제된다.
+ *
+ * @returns payload 가 몰 상품이 아니거나 모양이 다르면 `null`(호출부는 기본 메타 유지 — fail-closed).
+ */
+/**
+ * `/{슬러그}/p/{id}` 면 그 SSR 슬롯 타깃, 아니면 `null`.
+ * 워커 안에서 경로를 또 파싱하지 않게 여기로 모은다(판정은 shared SSOT `parseMallProductPath`).
+ */
+export function resolveMallProductSlot(pathname: string): { slot: 'MALLPRODUCT'; path: string } | null {
+  const mp = parseMallProductPath(pathname)
+  if (!mp) return null
+  return { slot: 'MALLPRODUCT', path: `/api/mall/${encodeURIComponent(mp.slug)}/products/${mp.productId}` }
+}
+
+/**
+ * SSR payload → `applySurfaceMeta` 가 그대로 먹는 모양.
+ * (`MallMeta` 엔 `pageTitle` 이 없다 — 카드 제목이 곧 페이지 제목이다. PRODUCT 슬롯과 같은 매핑.)
+ */
+export function mallProductPathSurfaceMeta(
+  ssrPayload: string, origin: string, pathname: string,
+): { pageTitle: string; title: string; description: string; canonical: string; ogType?: string; ogImage?: string } | null {
+  const m = buildMallProductPathMeta(ssrPayload, origin, pathname)
+  if (!m) return null
+  return { pageTitle: m.title, title: m.title, description: m.description, canonical: m.canonical, ogType: m.ogType, ogImage: m.ogImage }
+}
+
+export function buildMallProductPathMeta(
+  ssrPayload: string,
+  origin: string,
+  pathname: string,
+): MallMeta | null {
+  try {
+    const j = JSON.parse(ssrPayload) as {
+      mall?: { id?: number; name?: string }
+      data?: { product_id?: number; name?: string; image_url?: string | null; gb_price?: number; list_price?: number; deadline?: string | null }
+    }
+    const m = j?.mall
+    const d = j?.data
+    if (!m || !d) return null
+    return buildMallMeta({
+      mall: { id: Number(m.id), name: String(m.name || '') },
+      product: {
+        id: d.product_id, name: d.name, image_url: d.image_url ?? undefined,
+        gb_price: Number(d.gb_price), price: Number(d.list_price),
+        deadline: d.deadline ?? null,
+        // 이 API 는 **그 몰 상품만** 반환하므로 스코프는 이미 서버에서 확인됐다.
+        //   `buildMallMeta` 의 몰 일치 검사를 통과시키려 같은 값을 넣는다(검사 자체는 유지).
+        mall_id: Number(m.id),
       },
       origin, pathname,
     })
