@@ -72,6 +72,19 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '내부 링크 가드에서 객체 리터럴 `to:` 패턴을 없앤다(칩·탭 링크가 다시 무검사)',
+    file: 'scripts/check-internal-links.mjs',
+    find: '\\bto:\\s*',
+    replace: '\\bto_DISABLED:\\s*',
+    test: 'src/tests/unit/internal-links-target-patterns.test.ts',
+    why:
+      '`check-internal-links` 는 "죽은 링크 0" 이라고 초록을 띄우지만 그 0 은 **정규식이 본 것 안에서의 0** 이다. ' +
+      '2026-08-12 실측: JSX 속성 `to=` 만 보고 **객체 리터럴 `to: "/x"` 를 안 봤다** — 링크를 배열로 선언하고 ' +
+      '`.map()` 으로 렌더하는 흔한 패턴(NotFoundPage 의 "인기 페이지 둘러보기", 각종 칩·탭 목록)이 통째로 ' +
+      '사각지대였고, 패턴 한 줄을 지우면 검사 타깃이 **904 → 868** 로 준다(무검사 36건). ' +
+      '⚠️ 이 패턴이 조용히 사라져도 가드는 계속 초록이라 **사람이 알아챌 신호가 전혀 없다** — 그래서 주입으로 고정한다.',
+  },
+  {
     name: '공정위 연도 파라미터를 `yr` 로 되돌린다(코드 11 로 다시 0건)',
     file: 'src/features/marketing/api/franchise-collect.ts',
     find: "export const FRANCHISE_YR_PARAM = 'jngBizCrtraYr'",
