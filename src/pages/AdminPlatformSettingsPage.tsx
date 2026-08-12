@@ -110,6 +110,19 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
     options: [{ value: 'false', label: 'OFF (현행 — 전액 환불만)' }, { value: 'true', label: 'ON — 반품 화면에서 금액 지정 가능' }],
     hint: '🔴 머니 경로. OFF 면 금액 설정 API 가 403 이다(=현행 전액 환불 그대로). ON 시 결제액 초과는 서버가 클램프하고, 환불 실행 후에는 변경 불가. 검증 절차: docs/VERIFICATION_DAY.md (P11)',
   },
+  // 🚨 2026-08-12: **킬스위치인데 당길 손잡이가 없었다.**
+  //   `gb_pricing_enabled` 는 *"잘못 설정된 공구가로 과소청구가 날 때 false 로 저장해 즉시 상시가로
+  //   되돌린다"* 는 긴급 안전장치인데(OPS_GATES 의 turn_on_when), 어느 화면에도 없었다 —
+  //   즉 **돈이 새는 중에 멈출 방법이 없었다.** 위 ⑤⑥ 과 같은 클래스이고 이쪽이 더 급하다.
+  //
+  //   🔴 **다른 게이트와 반대로 기본이 ON 이다.** 그래서 `default: 'true'` 여야 한다 —
+  //   'false' 로 적으면 이 페이지를 **한 번 저장하는 것만으로** 공구가 청구가 꺼져
+  //   전 공구가 상시가로 청구된다(대표가 의도하지 않은 머니 변경). 바꾸지 말 것.
+  {
+    key: 'gb_pricing_enabled', label: '🚨 공구가 청구 킬스위치', default: 'true',
+    options: [{ value: 'true', label: 'ON (정상 — 공구가로 청구)' }, { value: 'false', label: 'OFF — 긴급 정지: 즉시 상시가로 청구' }],
+    hint: '🔴 평소엔 ON 이 정상이다. 잘못된 공구가로 **과소청구**가 발생할 때만 OFF 로 내려 즉시 상시가로 되돌린다. 되돌리면 곧바로 복구되므로 사고 시 주저하지 말 것',
+  },
 ]
 
 /**
@@ -130,6 +143,15 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
  *   `pickup_unclaimed_policy_enabled`(기본 OFF, `/admin/system-monitoring`)가 켜져야 한다.
  */
 export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string; text?: boolean }> = [
+  {
+    // 🎯 2026-08-12: 파일럿 매장을 정해도 **넣을 칸이 없었다**(어느 화면에도 없음).
+    //   ⚠️ 반드시 `text: true` — 값이 `5,12` 형태라 위 커미션 배열에 두면 `validateSetting` 이
+    //   `Number('5,12')=NaN` 으로 **저장 자체를 거부**한다(이 세션이 실제로 그렇게 만들 뻔했다).
+    key: 'flip_pilot_seller_ids',
+    label: '8월 flip 파일럿 매장 (seller_id)',
+    hint: '파일럿 매장이 정해지면 seller_id 를 쉼표로 구분해 넣는다(예: 5,12). 비우면 파일럿 스코프 없음',
+    text: true,
+  },
   {
     key: 'operator_support_contact',
     label: '운영자 문의 연락처',
