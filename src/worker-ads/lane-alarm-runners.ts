@@ -302,8 +302,9 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
    * 없어 자기 예산을 받는다 — 1~3차와 같은 처방을, 가장 취약한(기회가 가장 희소한) 레인에 적용.
    *
    * ## 규약 — 시각은 러너 안에서 보존(외부 호출량 불변), 나머지는 1~3차와 동일
-   * cron 잔류 일 1회 레인 중 **발화를 놓친 적 없는** sweep-mx(17h)·collect-franchise(22h)·
-   * silence-digest(23h)는 남긴다 — "얹을 근거"(굶거나 죽거나)가 아직 없다.
+   *
+   * ⚠️ **이 자리에 있던 "sweep-mx·collect-franchise 는 발화를 놓친 적 없으니 남긴다"는 전제는 2026-08-12 에
+   *   반증됐다** — 아래 5차 이관 참조. 전제를 적을 때는 *언제 다시 재는가*까지 적어야 낡지 않는다.
    */
   'maintenance-rescan': {
     runsPerHour: 1,
@@ -373,6 +374,50 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
       if (new Date().getUTCHours() !== 15) return { skipped: 'off_hour' }
       const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect')
       return runNaraVendorCollect(env)
+    },
+  },
+  /**
+   * ⏰ **5차 이관 — 마지막 cron 잔류 일 1회 레인 2개** (2026-08-12, 대표 *"남은거 다 해결하고 종료해야지"*).
+   *
+   * ## 왜 — 4차가 남겨 둔 전제("이 둘은 놓친 적 없다")가 반증됐다
+   * `collect-franchise` 는 08-11 오전 7시(KST) 슬롯을, `sweep-mx` 는 08-11 새벽 2시 슬롯을 걸렀다.
+   * 처음엔 배포 충돌로 읽었는데, **회차 이력(`ads_tick_history`)이 다른 답을 줬다**:
+   * ```
+   *   h=17  ran=8  p:1      ← sweep-mx 의 유일한 슬롯
+   *   h=22  ran=8  p:1      ← collect-franchise 의 유일한 슬롯
+   *   그날 24회차 중 ran=8 은 이 둘뿐이고, 침묵한 레인도 정확히 이 둘뿐이다.
+   *   ran<=6 인 회차는 16개 전부 정상 마감(p 없음).
+   * ```
+   * `p:1` 은 *"띄운 건 안다, 결과는 모른다"* 지 실패가 아니다 — 그래서 **레인 자기 통계**로 갈랐다:
+   * `ads_franchise_stats.last_run` 이 **08-10 그대로**였다. 부모가 센 `ran` 에는 있는데 자식이 자기
+   * 기록을 못 남겼다 ⇒ 자식이 **시작조차 못 했다**(부모가 `waitUntil` 을 비우기 전에 CPU 로 죽었다).
+   * `index.ts` 가 이미 적어 둔 *"같은 시각에 겹치면 부모 CPU 를 나눠 쓰다 꼬리가 잘린다"* 그대로다.
+   *
+   * 🔑 **`dailyAt` 은 `isDeferrable=false`(=`always`) 라 회차 예산이 못 막는다.** 예산을 조여도 이
+   *   둘은 항상 실려 나가고, 16~23 시가 이미 포화라 **혼잡한 시각의 꼬리**가 된다. 그래서 예산 조정이
+   *   아니라 이관이 처방이다 — 알람은 부모가 없어 자기 인보케이션 예산을 받는다(1~4차와 같은 처방).
+   *
+   * ## 남긴 것
+   * `silence-digest`(23h)는 **cron 에 남긴다** — 같은 날 h=23 회차는 `ran=5`로 정상 마감했고
+   * 하트비트도 08-11 23:01 로 실제 발화했다. 굶은 근거가 없다. (⚠️ 다음에 h=23 이 `ran>=7`+`p:1` 로
+   * 관측되면 그때 같은 처방을 적용할 것 — 이번엔 "놓친 적 없다"를 **측정으로** 확인했다.)
+   */
+  'sweep-mx': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if (env.ADS_COMPANY_COLLECT_ENABLED !== 'true') return { skipped: 'gate_off' }
+      if (new Date().getUTCHours() !== 17) return { skipped: 'off_hour' }
+      const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep')
+      return sweepEmailMx(env)
+    },
+  },
+  'collect-franchise': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if ((env as unknown as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED !== 'true') return { skipped: 'gate_off' }
+      if (new Date().getUTCHours() !== 22) return { skipped: 'off_hour' }
+      const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect')
+      return runFranchiseCollect(env)
     },
   },
   /**

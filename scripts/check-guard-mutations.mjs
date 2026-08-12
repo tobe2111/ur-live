@@ -154,6 +154,19 @@ const MUTATIONS = [
       '에러도 경보도 없다 — 이 레포의 "실패가 아니라 조용한 부재" 클래스이고, 이번엔 대표가 요청한 기능 자체가 그렇게 사라졌다.',
   },
   {
+    name: '일 1회 레인을 다시 cron 으로 되돌린다(혼잡한 시각의 꼬리가 되어 굶는다)',
+    file: 'src/worker-ads/cron-public-data.ts',
+    find: "  if (!laneAlarmDrivesEnrich(env) && e.ADS_FRANCHISE_ENABLED === 'true') {",
+    replace: "  if (e.ADS_FRANCHISE_ENABLED === 'true') {",
+    test: 'src/tests/unit/ads-lane-cadence-parity.test.ts',
+    why:
+      '`dailyAt` 은 `isDeferrable=false`(=`always`) 라 **회차 예산이 못 막는다.** 부모가 그 시각 레인을 다 띄우다 ' +
+      'CPU 로 죽으면 `waitUntil` 이 안 비워져 뒤쪽 자식은 **시작조차 못 한다**. 실측(`ads_tick_history` 08-11): ' +
+      'h=17·h=22 만 `ran=8 p:1` 이었고 침묵한 레인도 정확히 그 둘(sweep-mx·collect-franchise)이었다. ' +
+      '매시간 레인은 다음 정각이 있지만 **일 1회 레인은 그날이 끝**이고 에러가 없어 경보도 안 울린다 — ' +
+      '실제로 공정위 파라미터 수정이 그래서 이틀간 한 번도 실행되지 못했다.',
+  },
+  {
     name: '알람이 모는 레인을 cron 도 무조건 킥한다(같은 큐를 두 번 집는다)',
     file: 'src/worker-ads/index.ts',
     find: "  if (!laneAlarmOn && (env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {",
