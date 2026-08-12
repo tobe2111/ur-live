@@ -155,6 +155,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   }
   let enriched = 0, processed = 0
   const crawlReason: Record<string, number> = {} // 크롤 결과 사유 집계(ok/no_contact/http_403/network…) — 적중률 계측
+  let nameLoose = 0 // `no_name` 중 느슨한 상호로는 맞은 수 = 가드를 손볼 가치의 크기(채택은 안 한다)
   const failSamples: string[] = []                // 실패 URL 샘플 — 원인 특정용(호스트 형태·상태코드)
   // 카카오 place_url(지도페이지)은 홈페이지가 아니라 크롤 대상 아님 — 실제 홈페이지만 크롤.
   // 🩹 2026-07-28 실측 수리: 크롤 133건 중 `blocked_host` 가 **59건(44%)** — 저장된 website 가 블로그·SNS 같은
@@ -201,7 +202,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
     await writeEnrichSnapshot(DB, {
       processed, enriched, crawls, hit_rate: attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0,
       ...(typeof remaining === 'number' ? { remaining } : {}),
-      crawl_reason: crawlReason, fail_samples: failSamples,
+      crawl_reason: crawlReason, fail_samples: failSamples, name_loose: nameLoose,
       // fetches=순수 외부 fetch · d1=DB 쿼리 · spent=둘의 합(학습 상한이 보는 진짜 소비량)
       fetches: budgetStart - budget.left - d1, d1, budget_total: budgetTotal, spent: budgetTotal - budget.left,
       platform_cap: pcap, // 🧱 이 라운드가 절대 넘을 수 없는 천장(학습 상한과 별개) — 보는 사람이 다시 유추하지 않게
@@ -293,6 +294,10 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
       bump('crawl_try'); at = `cr:${site.slice(0, 60)}`
       const c = await crawlContact(site, budget, discovered ? t.company_name : undefined, t.category === '미디어')
       crawlReason[c.reason] = (crawlReason[c.reason] || 0) + 1 // 적중률 계측(사이트 방문 대비 결과 사유)
+      // 🔎 회수 가능분 — `no_name` 으로 버렸지만 **느슨한 상호로는 맞은** 건. `crawlContact` 가 이미
+      //   계산해 돌려주는데(`nameLoose`) 이 레인만 **세지 않아** 손실 크기를 아무도 몰랐다.
+      //   ⚠️ 세기만 한다 — 채택하면 프랜차이즈 본사 오귀속 위험(근거는 `EnrichRollup.name_loose` 주석).
+      if (c.nameLoose) nameLoose++
       // 실패 URL 샘플(최대 4) — '왜 못 가져왔나'를 실제 주소로 특정(2026-07-28 fetch 실패 45/45 진단).
       if (c.reason !== 'ok' && c.failUrl && failSamples.length < 4) failSamples.push(`${c.failUrl} (${c.reason}${c.failErr ? ` | ${c.failErr}` : ''})`)
       if (c.email || (c.phone && !t.phone)) await save(t.id, t.phone ? null : c.phone, c.email, site, 'homepage')
