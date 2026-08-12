@@ -123,6 +123,29 @@ describe('배선 — 앱 셸이 몰 표면에서 유어딜 크롬을 안 그린�
   it('mallSurface 는 shared SSOT 로 계산된다(자체 정규식 금지)', () => {
     expect(/const mallSurface = isMallSurfacePath\(location\.pathname\)/.test(app)).toBe(true)
   })
+
+  // 🔴 2026-08-12 — 위 세 검사는 **`App.tsx` 만** 봤다. 그래서 셸의 나머지 절반이 새는 걸 못 잡았다.
+  //   대표가 라이브 `urdeal.kr/test` 를 열자 몰 콘텐츠는 430px 유어딜 액자에 갇히고, 좌우 거터를
+  //   `ConsumerFrameRails`(urdeal 로고 · "내 손안의 동네 딜" · 홈/쇼핑/이용권/링크샵/마이 · "지도로 동네딜 보기")
+  //   가 채우고 있었다 — **몰 화면인데 사방이 유어딜 광고.** 원인: `MobileAppLayout.tsx` 에 `mall` 이라는
+  //   단어가 **0건**이었다(그 파일은 몰의 존재를 몰랐다).
+  //   ⇒ 크롬 경계는 **App.tsx 와 MobileAppLayout.tsx 둘 다** 지켜야 성립한다.
+  describe('레이아웃(액자·거터·사이드바)도 몰을 안다', () => {
+    const layout = read('src/components/MobileAppLayout.tsx')
+    it('같은 SSOT 로 판정한다 — 두 파일이 갈리면 한쪽만 샌다', () => {
+      expect(/isMallSurfacePath/.test(layout)).toBe(true)
+      expect(/const mallSurface = isMallSurfacePath\(location\.pathname\)/.test(layout)).toBe(true)
+    })
+    it('framed 에서 제외 — 몰이 430px 유어딜 액자에 갇히지 않는다', () => {
+      expect(/const framed =[^\n]*!mallSurface/.test(layout)).toBe(true)
+    })
+    it('사이드바에서도 제외 — 액자만 벗기면 그 자리를 유어딜 사이드바가 차지한다', () => {
+      expect(/const showSidebar =[^\n]*!mallSurface/.test(layout)).toBe(true)
+    })
+    it('거터 레일은 framed 를 따라가므로 자동으로 꺼진다(그 연결이 유지되는지)', () => {
+      expect(/const showFrameRails = framed\b/.test(layout)).toBe(true)
+    })
+  })
 })
 
 describe('배선 — 상품 상세가 두 신호를 각각 쓴다', () => {
