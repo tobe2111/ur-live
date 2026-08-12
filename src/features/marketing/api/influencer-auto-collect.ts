@@ -532,7 +532,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   🎯 집중 축도 **처리된 접두**만큼만 민다(2026-08-03). 예전엔 `+ nFocus`(계획한 수)였는데,
   //   예산은 보통 픽 4개를 다 못 돌아 안 돈 키워드를 건너뛰었다 — 위 leapfrog 와 같은 병이다.
   const focusDone = prefixDone(focusPicks)
-  const nextFocusCursor = focusPool.length ? (focusCursor + nFocus) % focusPool.length : 0
+  const nextFocusCursor = focusPool.length ? (focusCursor + focusDone) % focusPool.length : 0
   const nextCursor = genPool.length ? (cursor + genDone) % genPool.length : 0
   // 🎯 YT 예산 소진으로 스킵됐고 다른 에러가 없으면 사유 노출(QUOTA 프리픽스 = 기존 배너 스타일 재사용).
   if (ytBudgetBlocked && !diag.yt.error) diag.yt.error = `QUOTA: 오늘 YT 검색 예산(${ytBudgetTotal}회) 소진 — 쿼터 리셋(한국 오후 4~5시) 후 자동 재개`

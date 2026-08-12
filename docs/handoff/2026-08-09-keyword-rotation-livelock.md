@@ -361,3 +361,26 @@ SELECT value FROM platform_settings WHERE key='ads_naver_crawl_block';  -- block
 ⚠️ **§14(축 비례)는 총량을 안 늘리지만 §15(폭 확장)는 늘린다** — 두 판정을 섞지 말 것.
    §14 = 축별 역전 해소 · §15 = YT 소진 시간대의 `spent`/`processed` 상승 + 일 발굴량 상승.
 ⚠️ 차단이 뜨면 `COLLECT_KEYWORDS_PER_ROUND_NAVER_ONLY` 를 9 로 되돌리는 것이 롤백 전부다.
+
+### 🧨 §15 후속 — 이번 세션 두 번째 실수: `kill -9` 가 주입을 복원하지 못한다
+
+`audit-gate` 의 주입 검증(`check-guard-mutations.mjs -s`)이 도는 중에 커밋해야 할 상황이 되어
+러너를 종료했다. SIGTERM 이 안 먹는 것처럼 보여(실은 `pgrep -f` 가 **내 셸 명령줄까지 매칭**해
+판정을 흐렸다) **`kill -9`** 를 썼고, 그 순간 injected 상태였던 변이가 **복원되지 않았다**:
+
+```
+find    '(focusCursor + focusDone)'   →   replace   '(focusCursor + nFocus)'
+```
+그대로 커밋·푸시했고 CI 가 `ads-keyword-focus-split.test.ts:281` 에서 잡았다(main #1142 가 심어 둔
+바로 그 가드가 제 역할을 했다 — 커서 leapfrog 회귀 방지).
+
+⚠️ **왜 내 검증이 놓쳤나**: 커밋 전에 "주입 표적 문자열이 원본대로인가"를 확인했는데 **내가 이번에
+추가한 5개만** 봤다. 잔재는 *다른 사람의* 변이였다.
+
+⇒ 규칙 두 개:
+1. **주입 러너는 `SIGKILL` 로 죽이지 않는다.** 복원은 `process.on('SIGINT'/'SIGTERM'/'exit')` 훅에
+   달려 있어 SIGKILL 은 그것을 건너뛴다. 안 죽으면 **기다린다**(그게 유일하게 안전한 선택).
+2. **커밋 전 검증은 `git diff origin/main` 전문 검토**다 — 내 앵커 몇 개 확인이 아니다.
+   주입 잔재는 정의상 "내가 안 건드린 파일"에 남는다.
+3. `pgrep -f <패턴>` 은 **자기 자신의 셸을 매칭**한다(명령줄에 그 패턴이 들어 있으므로).
+   프로세스 판정은 `/proc/<pid>/cmdline` 을 직접 읽어 `node` 프로세스만 골라야 정확하다.
