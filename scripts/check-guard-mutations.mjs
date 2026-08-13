@@ -194,12 +194,14 @@ const MUTATIONS = [
   {
     name: '엔티티 디코딩에서 앰퍼샌드를 먼저 푼다(이중 디코딩)',
     file: 'src/features/marketing/api/company-lead-hygiene.ts',
-    find: "    .replace(/&amp;/g, '&')          // ⚠️ 반드시 마지막 — 먼저 하면 `&amp;lt;` 가 `<` 로 이중 디코딩된다",
-    replace: "    .replace(/&amp;/g, '&')",
+    find: "  return s\n    .replace(/&lt;/g, '<')",
+    replace: "  return s\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')",
     test: 'src/tests/unit/kr-phone-format.test.ts',
     why:
-      '주석만 지우는 변형처럼 보이지만, 이 주석이 **순서의 이유**다. 앰퍼샌드를 먼저 풀면 `&amp;lt;` 가 ' +
-      '`&lt;` → `<` 로 **이중 디코딩**돼 원문에 없던 글자가 생긴다. 유닛이 그 값을 직접 고정한다.',
+      '앰퍼샌드 디코딩을 **맨 앞으로** 옮긴다. 그러면 `&amp;lt;` 가 `&lt;` → `<` 로 **이중 디코딩**돼 ' +
+      '원문에 없던 글자가 생긴다(이름이 조용히 변조된다). 유닛이 그 값을 직접 고정한다.\n' +
+      '🩸 초안은 *주석만 지우는* 변형이었다 — 동작이 안 바뀌니 테스트가 통과했고 하네스가 ' +
+      '"이 가드는 아무것도 안 지킨다"로 잡아 냈다. **주입은 반드시 동작을 바꿔야 한다.**',
   },
   {
     name: 'webkr 상호 개명을 다시 suspectCompanyName 뒤에 가둔다',
