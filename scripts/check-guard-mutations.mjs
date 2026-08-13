@@ -2973,6 +2973,38 @@ const MUTATIONS = [
       '대표가 정한 축 우선순위가 코드에서 뒤집혀 본업 축(맛집·뷰티·숙소·공동구매, 전체의 78%)이 가장 느렸다.',
   },
   {
+    name: '회복 중에도 순환 경보가 울림(밀린 무리가 줄어도 starved)',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: '    if (Number.isFinite(now) && Number.isFinite(prev) && now < prev) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '`oldestDays` 는 최악값 하나라 밀린 키워드가 차례를 기다리는 동안 계속 커진다 — 수리가 먹혀 ' +
+      '밀린 무리를 갚는 며칠 내내 경보가 울린다. 실측: 7일+ 밀린 수 107 → 60(−44%) 인데 worstCycles 는 ' +
+      '3.46 으로 올랐다. 매일 울리는 경보는 진짜 정지를 덮는다(이 레포가 반복해 겪은 병).',
+  },
+  {
+    name: '순환 경보가 무조건 침묵(진짜 정지도 안 울림)',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: '    if (Number.isFinite(now) && Number.isFinite(prev) && now < prev) {',
+    replace: '    if (true) {',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '억제 조건이 무조건 참이 되면 밀린 무리가 **늘어도** 조용하다. 경보를 끄는 수리가 경보를 ' +
+      '죽이는 것으로 넘어가지 않게 양방향으로 고정한다(직전 표본이 없을 때도 울려야 한다).',
+  },
+  {
+    name: '슬롯 cron 이 캐리어 주기로 기록됨(하루 1회 작업이 매일 오탐)',
+    file: 'src/worker/scheduled.ts',
+    find: '  const slotCron = (expr: string) => (n: string, t: () => Promise<unknown>) => safeCron(n, t, expectedMaxAgeMinutes(expr) ?? undefined);',
+    replace: '  const slotCron = (_expr: string) => (n: string, t: () => Promise<unknown>) => safeCron(n, t);',
+    test: 'src/tests/unit/cron-slot-cadence.test.ts',
+    why:
+      '소비자 cron 은 5분 캐리어에 얹혀 `slotDue` 로 자기 시각에만 도는데, 하트비트엔 캐리어 식이 기록된다. ' +
+      '경보는 기대치를 **40분**(5×2+30)으로 잡아 하루 1회 작업을 23시간 내내 stale 로 신고한다 — ' +
+      '2026-08-13 실측 `cron 실패 24h 8건`이 **전부** 이 오탐이었다. 매일 울리는 경보는 진짜를 덮는다.',
+  },
+  {
     name: '여력 자동배치가 바쁜 트랙을 뺏음(고를 행이 있어도 갈아탐)',
     file: 'src/features/marketing/api/enrich-capacity.ts',
     find: '  if (i.selected > 0) return false                                            // 할 일이 있었다',

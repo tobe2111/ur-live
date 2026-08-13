@@ -45,7 +45,11 @@ const lines = src.split('\n')
 
 // 🛡️ 2026-07-29: **측정 0 = 통과가 아니라 실패.** scheduled.ts 에서 safeCron 등록을 하나도 못 찾으면
 //   "우회 0건" 이 당연해지고 그 초록은 아무것도 보장하지 않는다(파일 구조가 바뀌면 조용히 그렇게 된다).
-const registeredCount = lines.filter((l) => /safeCron\(\s*'/.test(l.replace(/\/\/.*$/, ''))).length
+// ⏰ 2026-08-13: `slotCron('<식>')('이름', …)` 도 등록으로 센다 — safeCron 을 감싼 **얇은 바인딩**이라
+//   하트비트를 그대로 남기고, 자기 주기(gapMin)까지 넘겨 하루 1회 작업의 매일 오탐을 없앤다.
+//   ⚠️ 이름만 비슷한 다른 래퍼를 여기 추가하지 말 것 — 진짜로 recordCronBeat 에 닿는 것만.
+const REGISTER_RE = /(?:safeCron|slotCron\([^)]*\))\(\s*'/
+const registeredCount = lines.filter((l) => REGISTER_RE.test(l.replace(/\/\/.*$/, ''))).length
 if (registeredCount === 0) {
   console.error(`❌ ${SCHEDULED} 에서 safeCron 등록을 하나도 못 찾았다 — 추출이 깨졌다(통과 아님).`)
   process.exit(1)
@@ -53,7 +57,7 @@ if (registeredCount === 0) {
 const bypass = []
 lines.forEach((l, i) => {
   if (!l.includes('ctx.waitUntil(')) return
-  if (l.includes('safeCron(') || l.includes(ALLOW_MARK)) return
+  if (REGISTER_RE.test(l) || l.includes('safeCron(') || l.includes(ALLOW_MARK)) return
   bypass.push(`${SCHEDULED}:${i + 1}  ${l.trim().slice(0, 100)}`)
 })
 if (bypass.length) {

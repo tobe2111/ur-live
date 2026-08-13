@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { planKeywordSplit, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, FOCUS_CATEGORIES, PRIORITY_CATEGORIES, ZERO_AXIS_CARRY, AXIS_CARRY_CLAMP, parseAxisCarry, serializeAxisCarry } from '@/features/marketing/api/influencer-keyword-rotation'
+import { planKeywordSplit, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, FOCUS_CATEGORIES, PRIORITY_CATEGORIES, ZERO_AXIS_CARRY, AXIS_CARRY_CLAMP, parseAxisCarry, serializeAxisCarry, judgeRotation } from '@/features/marketing/api/influencer-keyword-rotation'
 import type { AxisCarry } from '@/features/marketing/api/influencer-keyword-rotation'
 import { planRoundWidth, planRoundWidthForShape } from '@/features/marketing/api/influencer-keyword-order'
 import { naverOnlyRoundCap, isNaverOnlyRound } from '@/features/marketing/api/influencer-round-width'
@@ -557,5 +557,51 @@ describe('회차 폭 — YT 쿼터 소진 회차만 예산까지 확장', () => 
       .toMatch(/naverOnlyRound \? naverOnlyRoundCap\(env\) : keywordsPerRoundCap\(env\)/)
     expect(CODE, '계획 폭이 형상별 이력을 안 보면 두 형상이 섞인다')
       .toMatch(/planRoundWidthForShape\(/)
+  })
+})
+
+/**
+ * 🩹 **회복 중에는 안 울린다** (2026-08-13 — 대표 *"굳이 필요없는 알람은 없애줘"*).
+ *
+ * `starved` 는 `oldestDays / cycleDays` 로 판정하는데 `oldestDays` 는 **최악값 하나**라,
+ * 밀린 키워드가 자기 차례를 기다리는 동안 계속 커진다. 즉 수리가 먹혀 밀린 무리를 갚는 며칠 내내
+ * 경보가 울린다. 라이브 실측(커서 동결 수리 직후): **7일+ 밀린 수 107 → 60(−44%)** 인데
+ * `worstCycles` 는 3.46 으로 오히려 올랐다.
+ *
+ * ⇒ 고장이면 밀린 무리가 **늘고**, 회복이면 **준다**. 그 방향만 본다(임계가 아니라 추세).
+ * ⚠️ 이 테스트가 못 보는 것: 7일이라는 관측창이 타당한가(한 바퀴가 7일을 넘으면 의미가 흐려진다).
+ *   그 땐 창을 한 바퀴 배수로 바꿔야 하고, 그건 라이브 `cycleDays` 를 보고 판단할 일이다.
+ */
+describe('🩹 judgeRotation — 회복 중 경보 억제', () => {
+  const base = { active: 459, ran24h: 92, avgDays: 3 }   // 한 바퀴 5.0일
+
+  it('🔒 밀린 무리가 줄고 있으면 starved 를 내리지 않는다(라이브 실측 형상)', () => {
+    const v = judgeRotation({ ...base, oldestDays: 17.25, behindNow: 60, behindPrev: 107 })
+    expect(v.worstCycles).toBeGreaterThan(3)      // 임계는 여전히 넘는다
+    expect(v.stalled, '회복 중인데 경보').toBe(false)
+    expect(v.recovering).toBe(true)
+  })
+
+  it('🔒 밀린 무리가 늘거나 그대로면 그대로 울린다 — 진짜 고장을 덮으면 안 된다', () => {
+    expect(judgeRotation({ ...base, oldestDays: 17.25, behindNow: 120, behindPrev: 107 }).reason).toBe('starved')
+    expect(judgeRotation({ ...base, oldestDays: 17.25, behindNow: 107, behindPrev: 107 }).reason).toBe('starved')
+  })
+
+  it('🔒 직전 표본이 없으면 억제하지 않는다 — 모르면 침묵하지 않는다', () => {
+    expect(judgeRotation({ ...base, oldestDays: 17.25 }).reason).toBe('starved')
+    expect(judgeRotation({ ...base, oldestDays: 17.25, behindNow: 60 }).reason).toBe('starved')
+  })
+
+  it('🔒 순환 정지(stopped)는 추세와 무관하게 항상 울린다', () => {
+    const v = judgeRotation({ ...base, ran24h: 0, oldestDays: 30, behindNow: 1, behindPrev: 999 })
+    expect(v.reason).toBe('stopped')
+    expect(v.stalled).toBe(true)
+  })
+
+  it('🔌 배선 — 경보가 밀린 무리를 세고 직전 표본과 비교한다', () => {
+    const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/collect-health-alert.ts'), 'utf8')
+    expect(src).toMatch(/AS behind7/)
+    expect(src).toMatch(/behindNow: rot\?\.behind7/)
+    expect(src).toMatch(/writeSetting\(DB, BEHIND_KEY/)
   })
 })

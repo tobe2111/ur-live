@@ -462,6 +462,12 @@ export interface RotationSample {
   oldestDays: number
   /** 평균 나이(일). 완전한 라운드로빈이면 한 바퀴의 절반이다. */
   avgDays: number
+  /**
+   * 🩹 **밀린 무리의 크기**(7일 넘게 순번을 못 받은 수)와 **직전 표본의 같은 값**.
+   *   임계가 아니라 **추세**로만 쓴다 — 아래 `recovering` 참조. 없으면 종전 판정 그대로.
+   */
+  behindNow?: number
+  behindPrev?: number
 }
 
 export interface RotationVerdict {
@@ -472,6 +478,8 @@ export interface RotationVerdict {
   stalled: boolean
   /** `stopped` = 아예 안 돎 · `starved` = 도는데 특정 꼬리만 계속 건너뜀 · null = 건강. */
   reason: 'stopped' | 'starved' | null
+  /** 🩹 밀린 무리가 **줄고 있다** — 고장이 아니라 밀린 것을 갚는 중이라 경보를 내리지 않는다. */
+  recovering?: true
 }
 
 /**
@@ -547,6 +555,18 @@ export function judgeRotation(s: RotationSample): RotationVerdict {
   const worstCycles = Number.isFinite(cycleDays) && cycleDays > 0 ? oldest / cycleDays : Number.POSITIVE_INFINITY
   if (active < 20) return { cycleDays, worstCycles, stalled: false, reason: null }
   if (ran === 0) return { cycleDays, worstCycles, stalled: true, reason: 'stopped' }
-  if (worstCycles > ROTATION_STARVE_CYCLES) return { cycleDays, worstCycles, stalled: true, reason: 'starved' }
+  if (worstCycles > ROTATION_STARVE_CYCLES) {
+    // 🩹 **회복 중이면 울리지 않는다** (2026-08-13 — 대표 "굳이 필요없는 알람은 없애줘").
+    //   `oldestDays` 는 최악값 하나라 **밀린 키워드가 자기 차례를 기다리는 동안 계속 커진다** —
+    //   즉 수리가 먹혀 밀린 무리를 갚는 며칠 내내 경보가 울린다. 라이브 실측(커서 동결 수리 직후):
+    //   7일+ 밀린 수 107 → 60 으로 **44% 줄었는데** worstCycles 는 3.46 으로 오히려 올랐다.
+    //   ⇒ 고장이면 밀린 무리가 **늘고**, 회복이면 **준다**. 그 방향만 본다(임계가 아니라 추세).
+    //   ⚠️ 직전 표본이 없으면 억제하지 않는다 — 모르는 상태에서 침묵하는 건 이 경보의 존재 이유를 지운다.
+    const now = Number(s.behindNow), prev = Number(s.behindPrev)
+    if (Number.isFinite(now) && Number.isFinite(prev) && now < prev) {
+      return { cycleDays, worstCycles, stalled: false, reason: null, recovering: true }
+    }
+    return { cycleDays, worstCycles, stalled: true, reason: 'starved' }
+  }
   return { cycleDays, worstCycles, stalled: false, reason: null }
 }
