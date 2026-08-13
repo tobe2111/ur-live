@@ -12,8 +12,7 @@
 import { companyBreakdown, type CompanyDayInflow, type CompanySegments } from './company-breakdown'
 import type { Env } from '@/worker/types/env'
 import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
-import { NEWSROOM_EMAIL_LOCAL } from './contact-enrich'
-import { isValidKrPhone } from './contact-enrich'
+import { hygieneStatements } from './company-lead-hygiene'
 import { normalizeCompanyName } from './registry-email-match'
 import { runDdlOnce } from './ads-schema-guard'
 import { pickPriorityBatch, pickCrawlBatch, writePrioState, type ReclassifyRow } from './reclassify-priority'
@@ -417,16 +416,8 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     } else {
       stmts.push(DB.prepare('UPDATE ad_company_leads SET lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?').bind(c.lead_type, conf, CLASSIFY_RULES_VERSION, r.id))
     }
-    // ☎️ 쓰레기 전화 소급 정리(2026-07-27 대표 신고 "0405-120-0000") — 홈페이지 크롤 출처만(정부등록/카카오 번호는 신뢰).
-    //   실존 국번 검증 실패 → NULL + 이메일도 없으면 보류(active=0, "연락처 필수" 정책 복원).
-    if (r.contact_source === 'homepage' && r.phone && !isValidKrPhone(r.phone)) {
-      stmts.push(DB.prepare("UPDATE ad_company_leads SET phone = NULL, contact_source = CASE WHEN email IS NOT NULL AND email != '' THEN contact_source ELSE NULL END, active = CASE WHEN email IS NOT NULL AND email != '' THEN active ELSE 0 END WHERE id = ?").bind(r.id))
-    }
-    // 📰 뉴스룸 계정 이메일 소급 제거(press11@·pcoop@… — 기사/보도자료 페이지에서 긁힌 오염, B2B 영업 무의미).
-    //   '미디어' 카테고리(언론사 별도 수집 레인)는 뉴스룸 계정이 유효 연락처라 보존.
-    if (r.email && NEWSROOM_EMAIL_LOCAL.test(r.email) && r.category !== '미디어') {
-      stmts.push(DB.prepare("UPDATE ad_company_leads SET email = NULL, contact_source = CASE WHEN phone IS NOT NULL AND phone != '' THEN contact_source ELSE NULL END, active = CASE WHEN phone IS NOT NULL AND phone != '' THEN active ELSE 0 END WHERE id = ?").bind(r.id))
-    }
+    // 🧼 소급 위생(전화 형식·플랫폼 연락처·뉴스룸 이메일) — 판정과 근거는 `company-lead-hygiene.ts`.
+    for (const st of hygieneStatements(r, sql => DB.prepare(sql))) stmts.push(st)
     updated++
   }
   for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100)).catch(() => null)

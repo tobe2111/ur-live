@@ -123,13 +123,50 @@ export function isValidKrPhone(phone: string | null | undefined): boolean {
   return false
 }
 
+/**
+ * ☎️ **한국 번호 체계대로 하이픈을 찍는다** — 2026-08-12 대표 신고 *"연락처랑 업체명이 전혀 안맞아"*.
+ *
+ * ## 🩸 무엇이 틀렸었나
+ * 이전 포맷은 자리수만 보고 끊었다:
+ * ```ts
+ *   d.replace(/(\d{2,4})(\d{3,4})(\d{4})$/, '$1-$2-$3')
+ * ```
+ * `{2,4}` 가 **탐욕적**이라 앞 4자리를 먼저 먹는다. 국번을 모르니 이렇게 된다:
+ * ```
+ *   01042335119 → 0104-233-5119   (맞는 값: 010-4233-5119)
+ *   0234452030  → 023-445-2030    (맞는 값: 02-3445-2030)
+ *   07046672900 → 0704-667-2900   (맞는 값: 070-4667-2900)
+ *   16682606    → 16682606        (8자리는 아예 매칭 실패 → 하이픈 없음)
+ * ```
+ * 실측 `ad_company_leads` 8,850건 중 **873건**(약 10%)이 이 상태였다. 매장후보(117,179건)는
+ * 29건뿐인데, 그쪽 번호는 공공 API 가 이미 포맷해 주고 **우리가 포맷하는 건 이 레인뿐**이기 때문이다.
+ *
+ * ## 🔑 안전 성질 — **숫자는 절대 바꾸지 않는다**
+ * 하이픈 위치만 옮긴다. 그래서 이미 저장된 행도 **재크롤 없이 소급 교정**할 수 있고(정비 레인),
+ * 혹시 이 함수가 틀려도 원본 숫자는 보존된다. 유닛이 이 성질을 직접 고정한다.
+ *
+ * ⚠️ 국번 판정은 `isValidKrPhone` 과 **같은 지식**을 쓴다 — 둘이 갈리면 "유효한데 포맷 못 함"이 생긴다.
+ * @returns 정규화된 번호. 한국 번호가 아니면 `null`(호출부가 버릴지 말지 정한다).
+ */
+export function formatKrPhone(input: string | null | undefined): string | null {
+  const d = String(input || '').replace(/\D/g, '')
+  if (!isValidKrPhone(d)) return null
+  if (/^(15|16|18)\d{6}$/.test(d)) return `${d.slice(0, 4)}-${d.slice(4)}`  // 대표번호 1668-2606
+  // 국번 길이: 서울 02 / 안심번호 050X / 그 외(지역·휴대·070) 3자리
+  const head = d.startsWith('02') ? 2 : d.startsWith('050') ? 4 : 3
+  const rest = d.slice(head)
+  const mid = rest.length - 4   // 가입자 번호는 항상 뒤 4자리 — 나머지가 중간 블록
+  if (mid < 3) return `${d.slice(0, head)}-${rest}`  // 방어(정상 국번에선 안 나온다)
+  return `${d.slice(0, head)}-${rest.slice(0, mid)}-${rest.slice(mid)}`
+}
+
 // 한국 전화번호 추출 — 국번 화이트리스트(isValidKrPhone) + 숫자 경계((?<!\d)/(?!\d)) 로 긴 숫자열 조각 오탐 차단.
 const PHONE_RE = /(?<!\d)(0\d{1,2})[-.\s]?(\d{3,4})[-.\s]?(\d{4})(?!\d)|(?<!\d)(1[568]\d{2})[-.\s]?(\d{4})(?!\d)/g
 function pickPhone(text: string): string | null {
   const m = String(text || '').match(PHONE_RE)
   if (!m) return null
   const clean = m.map(x => x.replace(/[^\d]/g, '')).filter(d => isValidKrPhone(d))
-  return clean[0] ? clean[0].replace(/(\d{2,4})(\d{3,4})(\d{4})$/, '$1-$2-$3') : null
+  return clean[0] ? formatKrPhone(clean[0]) : null
 }
 
 /** 주소 지문 토큰(번지/동/로) — 두 주소가 같은 실매장인지 판정. */
@@ -192,6 +229,33 @@ export async function naverLocalLookup(clientId: string, clientSecret: string, n
 // ⚠️ 제3자/UGC 플랫폼 — 리뷰 블로그·카페 글이 상호를 제목에 달고 있어도 **그 페이지의 이메일은 글쓴이(제3자) 것**
 //   → 크롤 대상에서 제외(오귀속=허위 방지). 업체 *자체* 홈페이지만 발견 대상. (웹 발굴 레인도 재사용 — export)
 export const THIRD_PARTY_HOST = /(?:^|\.)(?:blog\.naver\.com|m\.blog\.naver\.com|cafe\.naver\.com|post\.naver\.com|in\.naver\.com|naver\.me|tistory\.com|brunch\.co\.kr|instagram\.com|facebook\.com|youtube\.com|youtu\.be|twitter\.com|x\.com|band\.us|daum\.net|kakao\.com|kmong\.com|saramin\.co\.kr|jobkorea\.co\.kr|wanted\.co\.kr|albamon\.com|incruit\.com|namu\.wiki|wikipedia\.org)$/i
+
+/**
+ * 🏢 **플랫폼 자기 페이지인가** — 그렇다면 거기서 긁은 연락처는 **그 플랫폼의 것**이지 이 리드의 것이 아니다.
+ *
+ * 2026-08-12 대표 신고("연락처랑 업체명이 전혀 안맞아") 조사에서 실제로 나온 행들:
+ * ```
+ *   이루더스   전화 1877-9737   사이트 www.daangn.com      ← 당근마켓 대표번호
+ *   블라인드   전화 031-192-5624 사이트 www.teamblind.com   ← 회사가 아니라 커뮤니티
+ *   가입인사   전화 1544-9796   사이트 cafe.daangn.com
+ * ```
+ * ⚠️ **경로가 있으면 다르다.** `blog.naver.com/nuricom6779` 는 그 업체가 직접 운영하는 블로그라
+ *   거기 적힌 번호는 **그 업체 번호가 맞다**(실측 `누리컴애드` 042-710-6779). 그래서 호스트만으로
+ *   판정하면 멀쩡한 연락처를 지운다 — **호스트가 플랫폼이고 경로가 비었을 때**만 참이다.
+ */
+export function isPlatformRootUrl(w: string | null | undefined): boolean {
+  if (!w) return false
+  try {
+    const u = new URL(/^https?:\/\//i.test(w) ? w : `https://${w}`)
+    const host = u.hostname.replace(/^www\./i, '')
+    const platform = THIRD_PARTY_HOST.test(u.hostname) || PLATFORM_ONLY_HOST.test(host)
+    if (!platform) return false
+    return u.pathname.replace(/\/+$/, '') === ''   // 경로 없음 = 플랫폼 자기 페이지
+  } catch { return false }
+}
+
+/** 회사가 아닌 플랫폼·커뮤니티·공공 포털 — `THIRD_PARTY_HOST`(크롤 차단용)에 없던 것들만 추가로 둔다. */
+const PLATFORM_ONLY_HOST = /(?:^|\.)(?:daangn\.com|teamblind\.com|jobplanet\.co\.kr|catch\.co\.kr|soomgo\.com|kmong\.com|numbeo\.com)$/i
 
 /**
  * 🔎 크롤 가능한 **자체 사이트**인가 — 지도/SNS/UGC/구인 플랫폼 URL 은 크롤해도 업체 이메일이 안 나온다.
