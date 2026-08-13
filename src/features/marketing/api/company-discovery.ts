@@ -13,7 +13,7 @@ import { companyBreakdown, type CompanyDayInflow, type CompanySegments } from '.
 import type { Env } from '@/worker/types/env'
 import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
 import { NEWSROOM_EMAIL_LOCAL } from './contact-enrich'
-import { isValidKrPhone } from './contact-enrich'
+import { isValidKrPhone, formatKrPhone } from './contact-enrich'
 import { normalizeCompanyName } from './registry-email-match'
 import { runDdlOnce } from './ads-schema-guard'
 import { pickPriorityBatch, pickCrawlBatch, writePrioState, type ReclassifyRow } from './reclassify-priority'
@@ -421,6 +421,15 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     //   실존 국번 검증 실패 → NULL + 이메일도 없으면 보류(active=0, "연락처 필수" 정책 복원).
     if (r.contact_source === 'homepage' && r.phone && !isValidKrPhone(r.phone)) {
       stmts.push(DB.prepare("UPDATE ad_company_leads SET phone = NULL, contact_source = CASE WHEN email IS NOT NULL AND email != '' THEN contact_source ELSE NULL END, active = CASE WHEN email IS NOT NULL AND email != '' THEN active ELSE 0 END WHERE id = ?").bind(r.id))
+    }
+    // ☎️ 하이픈 위치 소급 교정 (2026-08-12 대표 신고) — 이전 포맷이 국번을 몰라 `010-4233-5119` 를
+    //   `0104-233-5119` 로 찍었다. 실측 8,850건 중 **873건**. **숫자는 그대로**이므로 재크롤 없이
+    //   여기서 되돌린다(이 레인은 어차피 전 행을 한 바퀴 돈다 — 추가 스캔 0).
+    //   ⚠️ 출처를 가리지 않는다 — 정부등록 API 도 `0418-540-2114`(맞는 값 041-8540-2114)처럼 준다.
+    //   ⚠️ 값이 같으면 UPDATE 를 만들지 않는다(대부분이 이미 정상 — 쓸데없는 쓰기가 예산을 먹는다).
+    else if (r.phone) {
+      const fixed = formatKrPhone(r.phone)
+      if (fixed && fixed !== r.phone) stmts.push(DB.prepare('UPDATE ad_company_leads SET phone = ? WHERE id = ?').bind(fixed, r.id))
     }
     // 📰 뉴스룸 계정 이메일 소급 제거(press11@·pcoop@… — 기사/보도자료 페이지에서 긁힌 오염, B2B 영업 무의미).
     //   '미디어' 카테고리(언론사 별도 수집 레인)는 뉴스룸 계정이 유효 연락처라 보존.

@@ -123,13 +123,50 @@ export function isValidKrPhone(phone: string | null | undefined): boolean {
   return false
 }
 
+/**
+ * ☎️ **한국 번호 체계대로 하이픈을 찍는다** — 2026-08-12 대표 신고 *"연락처랑 업체명이 전혀 안맞아"*.
+ *
+ * ## 🩸 무엇이 틀렸었나
+ * 이전 포맷은 자리수만 보고 끊었다:
+ * ```ts
+ *   d.replace(/(\d{2,4})(\d{3,4})(\d{4})$/, '$1-$2-$3')
+ * ```
+ * `{2,4}` 가 **탐욕적**이라 앞 4자리를 먼저 먹는다. 국번을 모르니 이렇게 된다:
+ * ```
+ *   01042335119 → 0104-233-5119   (맞는 값: 010-4233-5119)
+ *   0234452030  → 023-445-2030    (맞는 값: 02-3445-2030)
+ *   07046672900 → 0704-667-2900   (맞는 값: 070-4667-2900)
+ *   16682606    → 16682606        (8자리는 아예 매칭 실패 → 하이픈 없음)
+ * ```
+ * 실측 `ad_company_leads` 8,850건 중 **873건**(약 10%)이 이 상태였다. 매장후보(117,179건)는
+ * 29건뿐인데, 그쪽 번호는 공공 API 가 이미 포맷해 주고 **우리가 포맷하는 건 이 레인뿐**이기 때문이다.
+ *
+ * ## 🔑 안전 성질 — **숫자는 절대 바꾸지 않는다**
+ * 하이픈 위치만 옮긴다. 그래서 이미 저장된 행도 **재크롤 없이 소급 교정**할 수 있고(정비 레인),
+ * 혹시 이 함수가 틀려도 원본 숫자는 보존된다. 유닛이 이 성질을 직접 고정한다.
+ *
+ * ⚠️ 국번 판정은 `isValidKrPhone` 과 **같은 지식**을 쓴다 — 둘이 갈리면 "유효한데 포맷 못 함"이 생긴다.
+ * @returns 정규화된 번호. 한국 번호가 아니면 `null`(호출부가 버릴지 말지 정한다).
+ */
+export function formatKrPhone(input: string | null | undefined): string | null {
+  const d = String(input || '').replace(/\D/g, '')
+  if (!isValidKrPhone(d)) return null
+  if (/^(15|16|18)\d{6}$/.test(d)) return `${d.slice(0, 4)}-${d.slice(4)}`  // 대표번호 1668-2606
+  // 국번 길이: 서울 02 / 안심번호 050X / 그 외(지역·휴대·070) 3자리
+  const head = d.startsWith('02') ? 2 : d.startsWith('050') ? 4 : 3
+  const rest = d.slice(head)
+  const mid = rest.length - 4   // 가입자 번호는 항상 뒤 4자리 — 나머지가 중간 블록
+  if (mid < 3) return `${d.slice(0, head)}-${rest}`  // 방어(정상 국번에선 안 나온다)
+  return `${d.slice(0, head)}-${rest.slice(0, mid)}-${rest.slice(mid)}`
+}
+
 // 한국 전화번호 추출 — 국번 화이트리스트(isValidKrPhone) + 숫자 경계((?<!\d)/(?!\d)) 로 긴 숫자열 조각 오탐 차단.
 const PHONE_RE = /(?<!\d)(0\d{1,2})[-.\s]?(\d{3,4})[-.\s]?(\d{4})(?!\d)|(?<!\d)(1[568]\d{2})[-.\s]?(\d{4})(?!\d)/g
 function pickPhone(text: string): string | null {
   const m = String(text || '').match(PHONE_RE)
   if (!m) return null
   const clean = m.map(x => x.replace(/[^\d]/g, '')).filter(d => isValidKrPhone(d))
-  return clean[0] ? clean[0].replace(/(\d{2,4})(\d{3,4})(\d{4})$/, '$1-$2-$3') : null
+  return clean[0] ? formatKrPhone(clean[0]) : null
 }
 
 /** 주소 지문 토큰(번지/동/로) — 두 주소가 같은 실매장인지 판정. */

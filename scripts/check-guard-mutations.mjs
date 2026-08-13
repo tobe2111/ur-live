@@ -167,6 +167,28 @@ const MUTATIONS = [
       '에러도 경보도 없다 — 이 레포의 "실패가 아니라 조용한 부재" 클래스이고, 이번엔 대표가 요청한 기능 자체가 그렇게 사라졌다.',
   },
   {
+    name: '전화번호를 국번 무시하고 자리수로만 끊는다(하이픈이 엉뚱한 자리에)',
+    file: 'src/features/marketing/api/contact-enrich.ts',
+    find: "  const head = d.startsWith('02') ? 2 : d.startsWith('050') ? 4 : 3",
+    replace: '  const head = 3',
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '2026-08-12 대표 신고. 이전 포맷 `(\\d{2,4})(\\d{3,4})(\\d{4})$` 는 `{2,4}` 가 탐욕적이라 앞 4자리를 ' +
+      '먼저 먹어 `010-4233-5119` 를 **`0104-233-5119`** 로 찍었다. 라이브 `ad_company_leads` 8,850건 중 ' +
+      '**873건**(10%)이 그 상태였다. 숫자는 맞고 하이픈만 틀려서 **에러가 안 나고**, 대표가 화면을 보고 ' +
+      '신고할 때까지 아무도 몰랐다 — 이 레포의 "실패가 아니라 조용한 오염" 클래스.',
+  },
+  {
+    name: '기존 행 전화 소급 교정이 계산만 하고 UPDATE 를 안 만든다',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: '      if (fixed && fixed !== r.phone) stmts.push',
+    replace: '      if (false) stmts.push',
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '포맷 함수만 고치면 **앞으로 들어올 번호**만 맞고 **이미 저장된 873건은 영원히 틀린 채** 남는다. ' +
+      '이 레포에서 반복된 "고쳤는데 소급이 없어 라이브는 그대로" 클래스라, 배선 자체를 가드로 고정한다.',
+  },
+  {
     name: '손실 분포 누적이 이전 값을 참조로 물고 온다(어제 값이 조용히 바뀐다)',
     file: 'src/features/marketing/api/enrich-telemetry.ts',
     find: '    const acc: Record<string, number> = { ...(rollup?.day === day ? rollup.crawl_reason || {} : {}) }',
