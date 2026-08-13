@@ -2915,15 +2915,16 @@ const MUTATIONS = [
       '유휴 예산을 회수하려던 회차가 오히려 더 좁아진다. 에러가 없어 관측만으로는 안 보인다.',
   },
   {
-    name: '계획 폭이 두 형상을 섞음(YT 회차 과대 · 네이버 회차 과소)',
+    name: '계획 폭이 두 형상을 섞음 — 폭 확장이 스스로를 영구 차단(부트스트랩 교착)',
     file: 'src/features/marketing/api/influencer-keyword-order.ts',
-    find: '  const src = sameShape.length ? sameShape : recent',
-    replace: '  const src = recent',
+    find: '  return planRoundWidth(sameShape.map(f => Number(f.processed) || 0), hardMax)',
+    replace: '  const src = sameShape.length ? sameShape : recent\n  return planRoundWidth(src.map(f => Number(f.processed) || 0), hardMax)',
     test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
     why:
-      'YT 동반 회차(처리 ~9)와 네이버 전용 회차(처리 ~17)를 한 중앙값(~15)에 섞으면 **둘 다 틀린다**: ' +
-      'YT 회차는 과대 계획이 되어 #1142 가 고친 커서 기아(잘리는 자리의 축이 매 회차 같은 키워드)가 되살아나고, ' +
-      '네이버 회차는 과소 계획이 되어 폭 확장이 무효가 된다.',
+      '**2026-08-13 라이브 판정에서 실제로 당한 결함**이다(그 폴백이 첫 구현이었다). 네이버 전용 회차를 넓히려면 ' +
+      '네이버 전용 이력이 필요한데, 넓혀진 적이 없으니 그 이력이 생길 수 없다 → 영원히 안 넓혀진다. ' +
+      '실측: 08-13 15:00 회차가 yt지출 0 인데 `planned 9 · spent 34/56`(예산 22 유휴)로 끝났다. ' +
+      '이 레포가 반복해 만난 "실패할 수 없는 가드"의 거울상 = **발동할 수 없는 정책**이고, 에러가 없어 안 보인다.',
   },
   {
     name: '수집 폭 동결이 풀림(측정이 병목인데 백로그가 증가 반전)',

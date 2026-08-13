@@ -543,10 +543,19 @@ describe('회차 폭 — YT 쿼터 소진 회차만 예산까지 확장', () => 
     expect(mixed).not.toBe(nbRound)
   })
 
-  it('📐 같은 형상 이력이 없으면 전체 이력으로 폴백 — 증거 없이 좁히지 않는다', () => {
-    const onlyYt = [{ processed: 9, yt: { spend: 37 } }, { processed: 9, yt: { spend: 35 } }]
-    // 네이버 전용 이력이 0 건이어도 계획이 0/1 로 무너지지 않는다.
-    expect(planRoundWidthForShape(onlyYt, true, 40)).toBeGreaterThanOrEqual(9)
+  /**
+   * 🧨 **부트스트랩 교착 회귀 가드** — 2026-08-13 라이브 판정에서 실제로 당한 결함이다.
+   *   첫 구현은 같은 형상 이력이 없을 때 **섞인 전체 이력**으로 폴백했다. 그러면 네이버 전용 회차를
+   *   넓히려면 네이버 전용 이력이 필요한데 넓혀진 적이 없어 그 이력이 생길 수 없다 → **영구 미발동**.
+   *   실측(08-13 15:00): yt지출 0 인 회차가 `planned 9 · spent 34/56` 로 끝났다(예산 22 유휴).
+   *   ⇒ 다른 형상의 관측은 이 형상의 증거가 아니다. 증거가 없으면 hardMax(원래 규약).
+   */
+  it('🧨 네이버 전용 이력이 없어도 좁은 혼합 이력으로 폴백하지 않는다(부트스트랩 교착)', () => {
+    const onlyYt = [{ processed: 9, yt: { spend: 37 } }, { processed: 9, yt: { spend: 35 } }, { processed: 7, yt: { spend: 34 } }]
+    // 혼합 폴백이면 median 9×1.2 = 11 (또는 더 좁게) 로 떨어져 **넓혀지지 않는다**.
+    expect(planRoundWidthForShape(onlyYt, true, 40), '증거 없음 → hardMax 여야 발동이 가능하다').toBe(40)
+    // 반대로 YT 형상은 자기 이력이 있으니 그걸로 좁게 계획한다(과대계획 = #1142 기아 방지).
+    expect(planRoundWidthForShape(onlyYt, false, 40)).toBeLessThanOrEqual(12)
     expect(planRoundWidthForShape([], true, 40)).toBe(40) // 증거 전무 → hardMax(종전 규약)
   })
 
