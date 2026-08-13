@@ -231,6 +231,33 @@ export async function naverLocalLookup(clientId: string, clientSecret: string, n
 export const THIRD_PARTY_HOST = /(?:^|\.)(?:blog\.naver\.com|m\.blog\.naver\.com|cafe\.naver\.com|post\.naver\.com|in\.naver\.com|naver\.me|tistory\.com|brunch\.co\.kr|instagram\.com|facebook\.com|youtube\.com|youtu\.be|twitter\.com|x\.com|band\.us|daum\.net|kakao\.com|kmong\.com|saramin\.co\.kr|jobkorea\.co\.kr|wanted\.co\.kr|albamon\.com|incruit\.com|namu\.wiki|wikipedia\.org)$/i
 
 /**
+ * 🏢 **플랫폼 자기 페이지인가** — 그렇다면 거기서 긁은 연락처는 **그 플랫폼의 것**이지 이 리드의 것이 아니다.
+ *
+ * 2026-08-12 대표 신고("연락처랑 업체명이 전혀 안맞아") 조사에서 실제로 나온 행들:
+ * ```
+ *   이루더스   전화 1877-9737   사이트 www.daangn.com      ← 당근마켓 대표번호
+ *   블라인드   전화 031-192-5624 사이트 www.teamblind.com   ← 회사가 아니라 커뮤니티
+ *   가입인사   전화 1544-9796   사이트 cafe.daangn.com
+ * ```
+ * ⚠️ **경로가 있으면 다르다.** `blog.naver.com/nuricom6779` 는 그 업체가 직접 운영하는 블로그라
+ *   거기 적힌 번호는 **그 업체 번호가 맞다**(실측 `누리컴애드` 042-710-6779). 그래서 호스트만으로
+ *   판정하면 멀쩡한 연락처를 지운다 — **호스트가 플랫폼이고 경로가 비었을 때**만 참이다.
+ */
+export function isPlatformRootUrl(w: string | null | undefined): boolean {
+  if (!w) return false
+  try {
+    const u = new URL(/^https?:\/\//i.test(w) ? w : `https://${w}`)
+    const host = u.hostname.replace(/^www\./i, '')
+    const platform = THIRD_PARTY_HOST.test(u.hostname) || PLATFORM_ONLY_HOST.test(host)
+    if (!platform) return false
+    return u.pathname.replace(/\/+$/, '') === ''   // 경로 없음 = 플랫폼 자기 페이지
+  } catch { return false }
+}
+
+/** 회사가 아닌 플랫폼·커뮤니티·공공 포털 — `THIRD_PARTY_HOST`(크롤 차단용)에 없던 것들만 추가로 둔다. */
+const PLATFORM_ONLY_HOST = /(?:^|\.)(?:daangn\.com|teamblind\.com|jobplanet\.co\.kr|catch\.co\.kr|soomgo\.com|kmong\.com|numbeo\.com)$/i
+
+/**
  * 🔎 크롤 가능한 **자체 사이트**인가 — 지도/SNS/UGC/구인 플랫폼 URL 은 크롤해도 업체 이메일이 안 나온다.
  *   (2026-07-28 실측: 사이트 보유 행의 **22.9%** 가 instagram·blog.naver·cafe.naver·youtube·facebook·
  *    pf.kakao·soomgo 같은 플랫폼 URL — 크롤 예산을 여기에 태우고 있었다.)

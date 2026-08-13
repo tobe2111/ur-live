@@ -304,9 +304,19 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
       // 🏷️ webkr 상호 치유(대표 신고 "회사명으로 수집 안 된 것들") — 페이지 제목을 상호로 삼은 행을
       //   사이트 **자기 이름**(og:site_name/title)으로 교정. 어차피 연 사이트라 추가 비용 0.
       //   미큐레이션(status=new)만 + 이름이 수상할 때만(정상 상호는 무접촉).
+      // 🏷️ **이름은 연락처와 같은 근거에서 나와야 한다** (2026-08-12 대표 *"이 불일치 문제는 무조건 해결"*).
+      //   webkr 은 네이버 **웹문서 검색**이라 상호 자리에 들어오는 값이 사실상 *검색결과 제목*이다:
+      //   `고객지원`(cherryparking.com) · `마케팅 홍보 대행사`(onmd.net) · `군포 중고차 장기렌트`.
+      //   전화는 그 사이트 것이 맞는데 이름이 딴판이라 대표 눈엔 "연락처랑 업체명이 안 맞는" 것으로 보인다.
+      //
+      //   🩸 이전엔 `suspectCompanyName` 이 참일 때만 개명했다. 그건 **"업체명이 아닌 것"을 열거**하는
+      //   방식이라 위 셋을 하나도 못 잡는다(실측: webkr 1,772건 중 플래그 330건뿐). 열거로는 못 이긴다.
+      //   ⇒ **긍정 근거로 뒤집는다**: 사이트가 스스로 밝힌 이름(og:site_name/title)이 있으면 그쪽이
+      //   검색 제목보다 항상 더 권위 있다. webkr 한정이고, 대표가 손댄 행(`status!=='new'`)은 불가침.
       if (t.source === 'webkr' && c.siteName && t.status === 'new') {
-        const { suspectCompanyName } = await import('./company-classify')
-        if (suspectCompanyName(t.company_name, t.source_keyword)) {
+        const norm = (s: string) => s.replace(/\s+/g, '').toLowerCase()
+        // 같은 이름을 다시 쓰지 않는다(회차 예산이 곧 수집량이다).
+        if (norm(c.siteName) !== norm(t.company_name || '')) {
           spendD1()
           await DB.prepare("UPDATE ad_company_leads SET company_name = ? WHERE id = ? AND status = 'new'").bind(c.siteName.slice(0, 120), t.id).run().catch(() => null)
         }
