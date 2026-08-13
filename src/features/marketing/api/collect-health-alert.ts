@@ -14,6 +14,7 @@ export type CollectDiag = {
 }
 
 const ALERT_KEY = 'ads_autocollect_alert_at' // 경보 throttle 상태(빈값=건강)
+const BEHIND_KEY = 'ads_autocollect_behind7' // 🩹 7일+ 밀린 키워드 수의 직전 표본(추세 판정 — 임계 아님)
 
 /** 🔔 조용한 실패 방어(2026-07-20 실사고 — deploy 가 시크릿 wipe, "신규 0건"이 며칠 무음): 키 소실 또는
  *  전 플랫폼 발굴 0 이면 Discord 경보(6h throttle · 회복 시 해제). fail-soft · 웹훅 미설정=no-op. */
@@ -42,14 +43,20 @@ export async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: {
   const rot = await DB.prepare(`SELECT COUNT(*) AS active,
       SUM(CASE WHEN last_run_at >= datetime('now','-24 hours') THEN 1 ELSE 0 END) AS ran24h,
       MAX(julianday('now') - julianday(COALESCE(last_run_at, activated_at, created_at))) AS oldest_days,
-      AVG(julianday('now') - julianday(COALESCE(last_run_at, activated_at, created_at))) AS avg_days
+      AVG(julianday('now') - julianday(COALESCE(last_run_at, activated_at, created_at))) AS avg_days,
+      SUM(CASE WHEN COALESCE(last_run_at, activated_at, created_at) <= datetime('now','-7 day') THEN 1 ELSE 0 END) AS behind7
     FROM ad_discovery_keywords WHERE active = 1`)
-    .first<{ active: number; ran24h: number; oldest_days: number; avg_days: number }>().catch(() => null)
+    .first<{ active: number; ran24h: number; oldest_days: number; avg_days: number; behind7: number }>().catch(() => null)
   const activeTotal = rot?.active || 0
+  // 🩹 밀린 무리(7일+)의 **직전 표본** — 추세로만 쓴다(고장이면 늘고, 회복이면 준다). 근거는 `judgeRotation`.
+  const behindPrevRaw = await readSetting(DB, BEHIND_KEY)
+  const behindPrev = behindPrevRaw ? Number(behindPrevRaw) : Number.NaN
   const verdict = judgeRotation({
     active: activeTotal, ran24h: rot?.ran24h || 0,
     oldestDays: rot?.oldest_days || 0, avgDays: rot?.avg_days || 0,
+    behindNow: rot?.behind7 ?? undefined, behindPrev: Number.isFinite(behindPrev) ? behindPrev : undefined,
   })
+  if (rot) await writeSetting(DB, BEHIND_KEY, String(rot.behind7 ?? 0)).catch(() => undefined)
   const rotationStalled = verdict.stalled
   const cycleTxt = Number.isFinite(verdict.cycleDays) ? `${verdict.cycleDays.toFixed(1)}일` : '∞(정지)'
   const unhealthy = keyMissing || (saved === 0 && foundTotal === 0) || rotationStalled

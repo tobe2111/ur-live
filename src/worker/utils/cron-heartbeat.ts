@@ -259,6 +259,17 @@ export function cpuRiskFromDeaths(deaths?: number | null, lastAt?: string | null
  * 경보로 올리면 곧 아무도 안 본다. "확실히 이상한 것만" 울리는 게 목적이다.
  * 해석 불가한 식은 null → **경보하지 않는다**(모르면 조용히 있는 편이 오탐보다 낫다).
  */
+/**
+ * ⏰ **슬롯 작업의 오탐** (2026-08-13 실측 — 대표 "굳이 필요없는 알람은 없애줘").
+ *
+ *   소비자 cron 은 대부분 **5분 캐리어**(매 5분 트리거)에 얹혀 `slotDue(...)` 로 자기 시각에만 돈다.
+ *   그런데 하트비트에 기록되는 건 캐리어 식이라 이 함수가 **40분**(5×2+30)을 기대치로 내놓고,
+ *   하루 1회 작업은 그 뒤 23시간 내내 `stale` 이 된다. 라이브 실측: `cron 실패 24h 8건`이
+ *   **전부** 이 오탐이었다(stay-reminder·meal-voucher-expire·district-coupon-expire 등 18:40 KST 일 1회).
+ *   ⚠️ 매일 울리는 경보는 곧 아무도 안 읽는 경보가 된다 — 이 모듈이 반복해 경고하는 그 병이다.
+ *   ⇒ `scheduled.ts` 의 `slotCron(expr)` 이 **자기 슬롯을 cron 식으로 표현해** 이 함수에 넘긴다.
+ *     기대치 규칙은 여기 한 곳뿐이라 두 벌로 갈라지지 않는다.
+ */
 export function expectedMaxAgeMinutes(cronExpr?: string | null): number | null {
   if (!cronExpr || typeof cronExpr !== 'string') return null
   const f = cronExpr.trim().split(/\s+/)
