@@ -94,8 +94,16 @@ describe('formatKrPhone — 국번별 하이픈', () => {
  * ⚠️ 이 테스트는 **코드가 있는지**만 본다(정적). 실제로 고쳐졌는지는 라이브에서만 보인다 —
  *   `SELECT COUNT(*) FROM ad_company_leads WHERE phone LIKE '010_-%' OR phone LIKE '02_-%'` 가 0 으로 가는지.
  */
-describe('소급 교정 배선 (재분류 레인)', () => {
-  const SRC = readFileSync('src/features/marketing/api/company-discovery.ts', 'utf8')
+describe('소급 교정 배선 (위생 모듈)', () => {
+  // ⚠️ 2026-08-12: 600줄 래칫에 걸려 `company-discovery.ts` → `company-lead-hygiene.ts` 로 분리했다.
+  //   경로가 바뀌면 이 앵커도 같이 옮겨야 한다 — 안 그러면 가드가 '낡은 지도'가 된다.
+  const SRC = readFileSync('src/features/marketing/api/company-lead-hygiene.ts', 'utf8')
+  const WIRE = readFileSync('src/features/marketing/api/company-discovery.ts', 'utf8')
+
+  it('🔒 재분류 레인이 위생 모듈을 실제로 호출한다 (분리했다고 배선이 사라지면 안 된다)', () => {
+    expect(WIRE).toMatch(/import \{ hygieneStatements \} from '\.\/company-lead-hygiene'/)
+    expect(WIRE).toMatch(/for \(const st of hygieneStatements\(r, sql => DB\.prepare\(sql\)\)\) stmts\.push\(st\)/)
+  })
 
   it('🔒 재분류 레인이 formatKrPhone 으로 기존 행을 교정한다', () => {
     // ⚠️ import 줄 **전체**를 문자열로 고정하지 말 것 — 같은 파일에 심볼이 하나 더 붙는 순간
@@ -103,7 +111,7 @@ describe('소급 교정 배선 (재분류 레인)', () => {
     expect(SRC).toMatch(/import \{[^}]*\bformatKrPhone\b[^}]*\} from '\.\/contact-enrich'/)
     expect(SRC).toMatch(/const fixed = formatKrPhone\(r\.phone\)/)
     // 값이 실제로 UPDATE 로 나가는가 — 계산만 하고 안 쓰면 조용히 아무 일도 안 일어난다.
-    expect(SRC).toMatch(/if \(fixed && fixed !== r\.phone\) stmts\.push\([\s\S]{0,200}UPDATE ad_company_leads SET phone = \?/)
+    expect(SRC).toMatch(/if \(fixed && fixed !== r\.phone\) out\.push\([\s\S]{0,200}UPDATE ad_company_leads SET phone = \?/)
   })
 
   /** 대부분의 행은 이미 정상이다 — 같은 값을 다시 쓰면 회차 예산만 먹는다(무료 플랜에선 그게 곧 수집량이다). */
@@ -172,9 +180,9 @@ describe('webkr 상호 = 사이트 자기 이름 (배선)', () => {
 })
 
 describe('플랫폼 연락처 소급 무효화 (배선)', () => {
-  const SRC = readFileSync('src/features/marketing/api/company-discovery.ts', 'utf8')
+  const SRC = readFileSync('src/features/marketing/api/company-lead-hygiene.ts', 'utf8')
 
-  it('🔒 재분류 레인이 플랫폼 루트 연락처를 비운다', () => {
+  it('🔒 위생 모듈이 플랫폼 루트 연락처를 비운다', () => {
     expect(SRC).toContain('isPlatformRootUrl')
     expect(SRC).toMatch(/isPlatformRootUrl\(r\.website\)[\s\S]{0,200}UPDATE ad_company_leads SET phone = NULL, email = NULL/)
   })

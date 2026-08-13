@@ -179,9 +179,9 @@ const MUTATIONS = [
   },
   {
     name: '플랫폼 자기 페이지에서 긁은 연락처를 그대로 둔다(남의 번호가 리드에 붙는다)',
-    file: 'src/features/marketing/api/company-discovery.ts',
-    find: '    if (r.contact_source === \'homepage\' && (r.phone || r.email) && isPlatformRootUrl(r.website)) {',
-    replace: '    if (false) {',
+    file: 'src/features/marketing/api/company-lead-hygiene.ts',
+    find: "  if (r.contact_source === 'homepage' && (r.phone || r.email) && isPlatformRootUrl(r.website)) {",
+    replace: '  if (false) {',
     test: 'src/tests/unit/kr-phone-format.test.ts',
     why:
       '실측: `이루더스` 에 당근마켓 대표번호(1877-9737), `블라인드` 에 teamblind 번호가 붙어 있었다. ' +
@@ -203,9 +203,9 @@ const MUTATIONS = [
   },
   {
     name: '기존 행 전화 소급 교정이 계산만 하고 UPDATE 를 안 만든다',
-    file: 'src/features/marketing/api/company-discovery.ts',
-    find: '      if (fixed && fixed !== r.phone) stmts.push',
-    replace: '      if (false) stmts.push',
+    file: 'src/features/marketing/api/company-lead-hygiene.ts',
+    find: "    if (fixed && fixed !== r.phone) out.push(prep('UPDATE ad_company_leads SET phone = ? WHERE id = ?').bind(fixed, r.id))",
+    replace: '    void fixed',
     test: 'src/tests/unit/kr-phone-format.test.ts',
     why:
       '포맷 함수만 고치면 **앞으로 들어올 번호**만 맞고 **이미 저장된 873건은 영원히 틀린 채** 남는다. ' +
