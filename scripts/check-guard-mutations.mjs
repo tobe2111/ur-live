@@ -180,6 +180,28 @@ const MUTATIONS = [
       '에러도 경보도 없다 — 이 레포의 "실패가 아니라 조용한 부재" 클래스이고, 이번엔 대표가 요청한 기능 자체가 그렇게 사라졌다.',
   },
   {
+    name: '상호 판정이 앰퍼샌드까지 잡는다(진짜 상호가 제목으로 오인된다)',
+    file: 'src/features/marketing/api/company-classify.ts',
+    find: "  if (/&(?:gt|lt|quot);|[|｜＞>《》＜<]/.test(n)) return true",
+    replace: '  if (/&[a-z]{2,6};|[|｜＞>《》＜<]/.test(n)) return true',
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '초안이 정확히 이 넓은 형태였고 **라이브에서 진짜 상호 14건을 오탐**했다 — `SM C&C 성수`(대형 ' +
+      '광고대행사) · `S&K세무회계컨설팅` · `H&L 컴퍼니` · `한결 A&C`. `&amp;` 는 그냥 `&` 이고 ' +
+      '앰퍼샌드는 상호에 흔하다. 여기서 오탐이 나면 **멀쩡한 업체가 이름을 사이트 이름으로 덮어쓰인다.** ' +
+      '좁힌 규칙(breadcrumb 구분자)은 52→29건이 되고 그 29건은 전부 진짜 제목 파편이었다.',
+  },
+  {
+    name: '엔티티 디코딩에서 앰퍼샌드를 먼저 푼다(이중 디코딩)',
+    file: 'src/features/marketing/api/company-lead-hygiene.ts',
+    find: "    .replace(/&amp;/g, '&')          // ⚠️ 반드시 마지막 — 먼저 하면 `&amp;lt;` 가 `<` 로 이중 디코딩된다",
+    replace: "    .replace(/&amp;/g, '&')",
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '주석만 지우는 변형처럼 보이지만, 이 주석이 **순서의 이유**다. 앰퍼샌드를 먼저 풀면 `&amp;lt;` 가 ' +
+      '`&lt;` → `<` 로 **이중 디코딩**돼 원문에 없던 글자가 생긴다. 유닛이 그 값을 직접 고정한다.',
+  },
+  {
     name: 'webkr 상호 개명을 다시 suspectCompanyName 뒤에 가둔다',
     file: 'src/features/marketing/api/enrich-lane.ts',
     find: "        if (norm(c.siteName) !== norm(t.company_name || '')) {",

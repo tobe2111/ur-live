@@ -301,6 +301,25 @@ export function suspectCompanyName(name: string, sourceKeyword?: string | null):
   if (unbalancedBracket(n)) return true
   if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(n)) return true // 도메인 그대로인 placeholder(미디어 레인 등) — 실명 치유 대상
   if (/["“”‘’',?？]/.test(n)) return true
+  /**
+   * 🔴 **breadcrumb 구분자 = 상호가 아니라 페이지 제목** (2026-08-13 대표 *"이 불일치 문제는 심각해"*).
+   *
+   *   실측(전부 `classify_confidence='evidence'` 라 기존 치유 경로에서 제외돼 있었다):
+   *   ```
+   *     현장교육 &gt; 현장교육조회               edu.sbiz.or.kr
+   *     기관소개&gt;유관기관현황&gt;광고회사현황   ← breadcrumb 통째로
+   *     성장대로｜인천소상공인종합지원포털        icsp.or.kr   (`｜` 는 title 태그 구분자)
+   *   ```
+   *   업종어(`교육`·`상권`)가 이름에 있어 분류기는 **근거 있음(evidence)** 으로 봤지만 회사 이름이 아니다.
+   *
+   *   🩸 **초안은 `&[a-z]{2,6};` 로 엔티티 전체를 잡았다가 라이브에서 오탐을 확인하고 좁혔다.**
+   *     `&amp;` 는 그냥 `&` 이고 **앰퍼샌드는 진짜 상호에 흔하다** — 실측으로 걸린 것들:
+   *     `SM C&C 성수`(대형 광고대행사) · `S&K세무회계컨설팅` · `H&L 컴퍼니` · `한결 A&C` · `B & J 창업컨설팅`.
+   *     52건 중 14건이 그런 정상 상호였다. **넓은 규칙이 정확한 규칙보다 나쁘다** — 여기서 오탐이 나면
+   *     멀쩡한 업체가 이름을 덮어쓰인다.
+   *   ⚠️ 하이픈·점·괄호·앰퍼샌드는 **절대 넣지 말 것**(`SK-매직`·`(주)A.B`·`SM C&C`).
+   */
+  if (/&(?:gt|lt|quot);|[|｜＞>《》＜<]/.test(n)) return true
   if (n.length >= 18 && n.split(/\s+/).length >= 5) return true
   if (/(?:된다|한다|않는다|안된다|났다|높여|커져|줄어|늘어)$/.test(n)) return true
   if (/[?？]|(?:무엇이|어떻게|왜)\s|까요\b|나요\b|인가요/.test(n)) return true

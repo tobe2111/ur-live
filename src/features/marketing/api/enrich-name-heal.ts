@@ -10,7 +10,13 @@
  *   이름엔 `진흥원` 이 없어 기관 어휘가 못 잡는데, **사이트가 스스로 선언한 이름**(og:site_name)에는 있다.
  *   ⇒ `keyword`(=검색어로 추정했을 뿐, 근거 없음)도 치유 대상에 넣는다. 실명을 얻으면 아래에서
  *     `classifyLead` 가 다시 돌아 기관이면 `org` 로 내려간다 — 새 규칙 없이 기존 경로가 처리한다.
- *   ⚠️ `evidence`(이름에서 근거를 얻은 행)는 넣지 않는다 — 이미 실명이라 크롤이 낭비다.
+ *   ⚠️ `evidence`(이름에서 근거를 얻은 행)는 **원칙적으로** 넣지 않는다 — 이미 실명이라 크롤이 낭비다.
+ *   🔴 **단 하나의 예외(2026-08-13)**: 이름에 **breadcrumb 구분자**(`&gt;`·`>`·`｜`)가 있으면 넣는다.
+ *     업종어가 들어 있어 `evidence` 로 분류됐지만 사람이 보면 회사 이름이 아닌 것들이다 —
+ *     `현장교육 &gt; 현장교육조회`(edu.sbiz.or.kr) · `성장대로｜인천소상공인종합지원포털`.
+ *     ⚠️ **앰퍼샌드(`&amp;`)는 제외한다** — 초안이 엔티티 전체를 잡았다가 `SM C&C 성수`·`S&K세무회계컨설팅`
+ *     같은 **진짜 상호 14건**을 오탐한 것을 라이브에서 확인하고 좁혔다.
+ *     실측 187건의 `evidence` 중 대부분은 `종합광고대행사 시월기획` 처럼 진짜 상호라 통째로 넣지 않는다.
  *   Phase 2 는 연락처-없는 행만 돌기 때문에 이 행들은 영영 미치유 → 관리자 '분류 확인 카드'에 계속 쌓인다
  *   (2026-07-27 대표 "분류 확인 카드 수동 부담"). 홈페이지 `og:site_name` 으로 실명 교체 + 실명 기준 재분류.
  *
@@ -34,8 +40,17 @@ interface HealDeps {
 export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD1 }: HealDeps): Promise<void> {
   const { suspectCompanyName, classifyLead } = await import('./company-classify')
   spendD1()
+  // 🔴 **`evidence` 인데 페이지 제목인 행도 집는다** (2026-08-13 대표 *"이 불일치 문제는 심각해"*).
+  //   기존 조건은 `confidence IN ('none','keyword')` 뿐이라, 업종어가 이름에 들어 있어 **근거 있음**으로
+  //   분류된 제목 파편이 통째로 빠졌다 — 실측 187건 중 `현장교육 &gt; 현장교육조회`(edu.sbiz.or.kr) ·
+  //   `성장대로｜인천소상공인종합지원포털` 류. **엔티티·제목 구분자를 가진 상호는 없다**(구조적 사실).
+  //   ⚠️ `evidence` 전체를 넣지는 않는다 — 그 187건 대부분은 `종합광고대행사 시월기획` 처럼 진짜 상호이고,
+  //     다시 크롤하면 예산만 태운다(무료 플랜에선 그게 곧 수집량이다).
   const healTargets = (await DB.prepare(`SELECT id, company_name, category, source_keyword, website FROM ad_company_leads
-      WHERE source = 'webkr' AND merged_into IS NULL AND status = 'new' AND classify_confidence IN ('none', 'keyword')
+      WHERE source = 'webkr' AND merged_into IS NULL AND status = 'new'
+        AND (classify_confidence IN ('none', 'keyword')
+             OR company_name LIKE '%&gt;%' OR company_name LIKE '%&lt;%' OR company_name LIKE '%&quot;%'
+             OR company_name LIKE '%|%' OR company_name LIKE '%｜%' OR company_name LIKE '%>%')
         AND website IS NOT NULL AND website != '' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
         AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))
       ORDER BY id DESC LIMIT 8`)

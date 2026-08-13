@@ -17,9 +17,27 @@
  */
 import { isValidKrPhone, formatKrPhone, isPlatformRootUrl, NEWSROOM_EMAIL_LOCAL } from './contact-enrich'
 
+/**
+ * 🔤 **HTML 엔티티 디코딩** — 화면에 `SM C&amp;C 성수` 가 **글자 그대로** 보인다 (2026-08-13 실측 24건).
+ *
+ * 크롤/검색 결과를 그대로 저장하면서 이스케이프가 풀리지 않았다. React 는 문자열을 텍스트로 렌더하므로
+ * 저장된 `&amp;` 는 화면에서도 `&amp;` 다 — 대표가 "이름이 이상하다"고 느끼는 것의 일부다.
+ *
+ * ⚠️ **디코딩은 이름을 고치는 게 아니라 되돌리는 것**이다(`&amp;`→`&`). 원래 글자로 돌릴 뿐이라
+ *   오탐 개념이 없다 — 아래 상호 판정(무엇이 상호가 아닌가)과는 성격이 전혀 다르다.
+ */
+export function decodeEntities(s: string): string {
+  return s
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+    .replace(/&#0?39;|&apos;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')          // ⚠️ 반드시 마지막 — 먼저 하면 `&amp;lt;` 가 `<` 로 이중 디코딩된다
+    .replace(/\s+/g, ' ').trim()
+}
+
 /** 위생 판정에 필요한 최소 필드 — `ReclassifyRow` 의 부분집합(타입 결합을 줄인다). */
 export interface HygieneRow {
   id: number
+  company_name?: string | null
   phone: string | null
   email: string | null
   website: string | null
@@ -37,6 +55,15 @@ export function hygieneStatements<T>(
   prep: (sql: string) => { bind: (...a: unknown[]) => T },
 ): T[] {
   const out: T[] = []
+
+  // 🔤 이름에 박힌 HTML 엔티티를 되돌린다(실측 24건 — `SM C&amp;C 성수` 가 화면에 그대로 보였다).
+  //   ⚠️ 값이 바뀔 때만 문장을 만든다. 대부분의 행은 멀쩡하다.
+  if (r.company_name) {
+    const decoded = decodeEntities(r.company_name)
+    if (decoded && decoded !== r.company_name) {
+      out.push(prep('UPDATE ad_company_leads SET company_name = ? WHERE id = ?').bind(decoded.slice(0, 120), r.id))
+    }
+  }
 
   // ☎️ 쓰레기 전화 소급 정리(2026-07-27 대표 신고 "0405-120-0000" — 페이지의 날짜/ID 숫자열 오인).
   //   홈페이지 크롤 출처만 — 정부등록/카카오 번호는 출처가 권위 있어 손대지 않는다.

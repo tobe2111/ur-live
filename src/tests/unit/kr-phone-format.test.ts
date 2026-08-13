@@ -22,6 +22,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { formatKrPhone, isValidKrPhone, isPlatformRootUrl } from '@/features/marketing/api/contact-enrich'
+import { decodeEntities } from '@/features/marketing/api/company-lead-hygiene'
 
 describe('formatKrPhone — 국번별 하이픈', () => {
   it('🔒 휴대폰 11자리는 3-4-4 (사고 당사자)', () => {
@@ -185,5 +186,105 @@ describe('플랫폼 연락처 소급 무효화 (배선)', () => {
   it('🔒 위생 모듈이 플랫폼 루트 연락처를 비운다', () => {
     expect(SRC).toContain('isPlatformRootUrl')
     expect(SRC).toMatch(/isPlatformRootUrl\(r\.website\)[\s\S]{0,200}UPDATE ad_company_leads SET phone = NULL, email = NULL/)
+  })
+})
+
+/**
+ * 🔴 **HTML 엔티티·제목 구분자는 상호가 아니다** (2026-08-13, 대표 *"이 불일치 문제는 심각해"* 3차).
+ *
+ * ## 내가 두 번 틀린 자리 (기록)
+ * 1차로 *"이메일 있는 webkr 509건은 영영 재크롤 안 된다"* 고 단정하고 대상 쿼리를 넓히려 했는데,
+ * **이미 `enrich-name-heal.ts`(Phase 3)가 그 코호트를 담당하고 있었다** — 쿼리가 명시적으로
+ * `(email IS NOT NULL OR phone IS NOT NULL)` 인 webkr 행을 고른다. 그 변경은 되돌렸다(중복 + 크롤 비용).
+ *
+ * 실제로 남아 있던 구멍은 훨씬 좁았다 — Phase 3 가 `confidence IN ('none','keyword')` 만 보기 때문에
+ * **업종어가 이름에 있어 `evidence` 로 분류된 제목 파편**이 빠진다:
+ * ```
+ *   현장교육 &gt; 현장교육조회        edu.sbiz.or.kr    ← 엔티티가 디코딩도 안 된 채 남았다
+ *   성장대로｜인천소상공인종합지원포털  icsp.or.kr        ← `｜` 는 title 태그 구분자
+ *   (evidence 187건 중 일부. 나머지 대부분은 `종합광고대행사 시월기획` 처럼 진짜 상호다)
+ * ```
+ * ⇒ `evidence` 전체를 다시 크롤하지 않고 **이 신호가 있는 것만** 집는다.
+ */
+describe('제목 파편 판정 — 엔티티·구분자', () => {
+  const CLS = readFileSync('src/features/marketing/api/company-classify.ts', 'utf8')
+  const HEAL = readFileSync('src/features/marketing/api/enrich-name-heal.ts', 'utf8')
+
+  it('🔒 breadcrumb 구분자 판정이 suspectCompanyName 에 있다', () => {
+    expect(CLS).toMatch(/&\(\?:gt\|lt\|quot\);\|\[\|｜＞>《》＜<\]/)
+  })
+
+  /**
+   * 🩸 **가장 중요한 회귀 가드** — 초안이 `&[a-z]{2,6};` 로 엔티티 전체를 잡아 `&amp;`(그냥 `&`)까지
+   *   걸렀고, 라이브에서 **진짜 상호 14건**(`SM C&C 성수`·`S&K세무회계컨설팅`·`H&L 컴퍼니`·`한결 A&C`)이
+   *   잡혔다. 오탐이 나면 멀쩡한 업체가 이름을 덮어쓰인다 — 넓은 규칙이 정확한 규칙보다 나쁘다.
+   */
+  it('🔒 앰퍼샌드는 잡지 않는다 (SM C&C 같은 진짜 상호)', () => {
+    const line = CLS.split('\n').find(l => l.includes('gt|lt|quot')) || ''
+    expect(line, '엔티티 전체 매칭으로 되돌아갔다').not.toMatch(/\[a-z\]\{2,6\}/)
+    expect(line).not.toContain('amp')
+  })
+
+  /** ⚠️ 정상 상호에 흔한 문자는 넣으면 안 된다 — 넣는 순간 진짜 업체가 대량으로 치유 대상이 된다. */
+  it('🔒 하이픈·점·괄호는 판정에 넣지 않았다 (정상 상호에 흔하다)', () => {
+    const line = CLS.split('\n').find(l => l.includes('&#\\d+;')) || ''
+    for (const ch of ['\\-', '\\.', '\\(']) expect(line).not.toContain(ch)
+  })
+
+  it('🔒 이름 치유가 evidence 제목 파편도 집는다 (전체가 아니라 신호 있는 것만)', () => {
+    expect(HEAL).toMatch(/classify_confidence IN \('none', 'keyword'\)/)      // 기존 대상 유지
+    expect(HEAL).toMatch(/OR company_name LIKE '%&gt;%'/)                      // + breadcrumb 엔티티
+    expect(HEAL).not.toMatch(/company_name LIKE '%&%;%'/)                      // ⚠️ 앰퍼샌드까지 잡던 초안 금지
+    expect(HEAL).toMatch(/OR company_name LIKE '%｜%'/)                        // + 전각 구분자
+    expect(HEAL).not.toMatch(/classify_confidence IN \('none', 'keyword', 'evidence'\)/) // evidence 통째 금지
+  })
+})
+
+/**
+ * 🔤 **HTML 엔티티 디코딩** — 화면에 `SM C&amp;C 성수` 가 글자 그대로 보였다(실측 24건, 2026-08-13).
+ *
+ * ⚠️ 디코딩은 **이름을 고치는 게 아니라 되돌리는 것**이라 오탐 개념이 없다.
+ *   (아래 "무엇이 상호가 아닌가" 판정과는 성격이 전혀 다르다 — 그쪽은 틀리면 멀쩡한 업체가 죽는다.)
+ */
+describe('decodeEntities — 이름의 이스케이프 복원', () => {
+  it('🔒 앰퍼샌드가 원래 글자로 돌아온다', () => {
+    expect(decodeEntities('SM C&amp;C 성수')).toBe('SM C&C 성수')
+    expect(decodeEntities('S&amp;K세무회계컨설팅')).toBe('S&K세무회계컨설팅')
+  })
+
+  /** 🩸 `&amp;` 를 먼저 풀면 `&amp;lt;` 가 `<` 로 **이중 디코딩**된다 — 순서가 곧 정확성이다. */
+  it('🔒 이중 디코딩되지 않는다 (앰퍼샌드를 마지막에 푼다)', () => {
+    expect(decodeEntities('A&amp;lt;B')).toBe('A&lt;B')
+  })
+
+  it('breadcrumb 엔티티도 원래 글자로 (판정은 양쪽 형태를 다 본다)', () => {
+    expect(decodeEntities('현장교육 &gt; 현장교육조회')).toBe('현장교육 > 현장교육조회')
+    expect(decodeEntities('&quot;섬지광고기획&quot;')).toBe('"섬지광고기획"')
+  })
+
+  it('멀쩡한 이름은 그대로 (불필요한 UPDATE 를 만들지 않는다)', () => {
+    for (const n of ['종합광고대행사 시월기획', '머리해요', '누리컴애드']) expect(decodeEntities(n)).toBe(n)
+  })
+})
+
+/**
+ * 🚫 **폐기한 규칙 — 문장 어미로 상호를 거르지 말 것** (2026-08-13 실측으로 기각).
+ *
+ * `강남서초 아파트사는 배달대행기사님들있네요`(게시글 제목)를 잡으려고 `~네요/~입니다/~해요` 어미를
+ * 규칙에 넣으려 했다. 라이브에서 재보니 **19건 중 18건이 진짜 상호**였다:
+ * ```
+ *   머리해요 · 꽃단장해요 · 홍입니다 · 준서입니다 · 다해요 · 신선하네요 · 나무네요 · 삼동이가추천해요
+ * ```
+ * 한국 소상공인 상호는 원래 구어체로 짓는다(통신판매 등록 상호에 특히 흔하다).
+ * ⇒ **이 규칙을 다시 넣지 말 것.** 넣으면 멀쩡한 업체 18건이 이름을 덮어쓰인다.
+ */
+describe('폐기된 규칙 회귀 차단', () => {
+  it('🔒 문장 어미(~네요/~입니다/~해요)를 상호 판정에 넣지 않았다', () => {
+    const CLS = readFileSync('src/features/marketing/api/company-classify.ts', 'utf8')
+    const body = CLS.slice(CLS.indexOf('export function suspectCompanyName'), CLS.indexOf('export const LEAD_TYPE_LABEL'))
+    const code = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    for (const bad of ['네요', '입니다', '해요', '하세요']) {
+      expect(code, `문장 어미 '${bad}' 규칙은 오탐 95% 라 기각됐다`).not.toContain(bad)
+    }
   })
 })
