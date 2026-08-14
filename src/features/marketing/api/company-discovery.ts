@@ -12,8 +12,8 @@
 import { companyBreakdown, type CompanyDayInflow, type CompanySegments } from './company-breakdown'
 import type { Env } from '@/worker/types/env'
 import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
-import { NEWSROOM_EMAIL_LOCAL } from './contact-enrich'
-import { isValidKrPhone } from './contact-enrich'
+import { hygieneStatements } from './company-lead-hygiene'
+import { emptyDelta, tallyVerdict, verdictChanged, writeReclassifyStats } from './reclassify-verdict-delta'
 import { normalizeCompanyName } from './registry-email-match'
 import { runDdlOnce } from './ads-schema-guard'
 import { pickPriorityBatch, pickCrawlBatch, writePrioState, type ReclassifyRow } from './reclassify-priority'
@@ -148,6 +148,11 @@ export const COMPANY_DDL: string[] = [
   'ALTER TABLE ad_company_leads ADD COLUMN kakao_checked_at DATETIME',
   'ALTER TABLE ad_company_leads ADD COLUMN classified_v INTEGER',
   'ALTER TABLE ad_company_leads ADD COLUMN enrich_v INTEGER',
+  // 🏷️ **상호를 사이트 자신에게 확인했는가** (2026-08-14 대표 *"최대한 이상적으로 끝까지"*).
+  //   webkr 행의 이름은 **검색결과 제목**이라 출처상 신뢰할 근거가 처음부터 없다. 그래서 분류
+  //   신뢰도로 거르지 않고 **전수 1회** 사이트에 물어본다. 이 플래그가 "정확히 한 번"을 보장한다:
+  //   없으면 7일마다 영원히 재크롤하거나(낭비) 신뢰도 필터로 일부가 영영 빠진다(미커버 158건이 그거였다).
+  'ALTER TABLE ad_company_leads ADD COLUMN name_verified INTEGER',
   `CREATE TABLE IF NOT EXISTS ad_email_suppress (
     email TEXT PRIMARY KEY,
     reason TEXT,
@@ -392,6 +397,7 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     return { scanned: 0, updated: 0, removed: 0, held: 0, cursor: 0, done: true, phase }
   }
   let updated = 0, removed = 0, held = 0
+  const delta = emptyDelta()   // 🔬 판정 *변화율* 계측(좁히기 판단 근거) — 동작은 안 바꾼다
   const stmts: D1PreparedStatement[] = []
   for (const r of rows) {
     const c = classifyLead(r)
@@ -417,16 +423,9 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     } else {
       stmts.push(DB.prepare('UPDATE ad_company_leads SET lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?').bind(c.lead_type, conf, CLASSIFY_RULES_VERSION, r.id))
     }
-    // ☎️ 쓰레기 전화 소급 정리(2026-07-27 대표 신고 "0405-120-0000") — 홈페이지 크롤 출처만(정부등록/카카오 번호는 신뢰).
-    //   실존 국번 검증 실패 → NULL + 이메일도 없으면 보류(active=0, "연락처 필수" 정책 복원).
-    if (r.contact_source === 'homepage' && r.phone && !isValidKrPhone(r.phone)) {
-      stmts.push(DB.prepare("UPDATE ad_company_leads SET phone = NULL, contact_source = CASE WHEN email IS NOT NULL AND email != '' THEN contact_source ELSE NULL END, active = CASE WHEN email IS NOT NULL AND email != '' THEN active ELSE 0 END WHERE id = ?").bind(r.id))
-    }
-    // 📰 뉴스룸 계정 이메일 소급 제거(press11@·pcoop@… — 기사/보도자료 페이지에서 긁힌 오염, B2B 영업 무의미).
-    //   '미디어' 카테고리(언론사 별도 수집 레인)는 뉴스룸 계정이 유효 연락처라 보존.
-    if (r.email && NEWSROOM_EMAIL_LOCAL.test(r.email) && r.category !== '미디어') {
-      stmts.push(DB.prepare("UPDATE ad_company_leads SET email = NULL, contact_source = CASE WHEN phone IS NOT NULL AND phone != '' THEN contact_source ELSE NULL END, active = CASE WHEN phone IS NOT NULL AND phone != '' THEN active ELSE 0 END WHERE id = ?").bind(r.id))
-    }
+    tallyVerdict(delta, r.source, r.classified_v, verdictChanged(r, c, registry))
+    // 🧼 소급 위생(전화 형식·플랫폼 연락처·뉴스룸 이메일) — 판정과 근거는 `company-lead-hygiene.ts`.
+    for (const st of hygieneStatements(r, sql => DB.prepare(sql))) stmts.push(st)
     updated++
   }
   for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100)).catch(() => null)
@@ -441,15 +440,8 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
   const nextCursor = rows[rows.length - 1].id
   if (prioDone) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, String(nextCursor)).run().catch(() => null)
   else await writePrioState(DB, prio!.tier, nextCursor, CLASSIFY_RULES_VERSION)
-  // 📊 진행률 가시화(2026-07-27 대표 "청소 얼마나 됐나 안 보임") — 남은 미분류 수 포함 스탬프.
-  const remRow = await DB.prepare('SELECT COUNT(*) AS n FROM ad_company_leads WHERE merged_into IS NULL AND (classified_v IS NULL OR classified_v < ?)').bind(CLASSIFY_RULES_VERSION).first<{ n: number }>().catch(() => null)
-  const prevStat = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>().catch(() => null)
-  let tot = { removed: 0, updated: 0 }
-  try { const p = prevStat?.value ? JSON.parse(prevStat.value) : null; if (p) tot = { removed: p.total_removed || 0, updated: p.total_updated || 0 } } catch { /* 초기 */ }
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_reclassify_stats', JSON.stringify({
-    last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), scanned: rows.length, updated, removed, held,
-    remaining_unclassified: Number(remRow?.n) || 0, total_removed: tot.removed + removed, total_updated: tot.updated + updated,
-  })).run().catch(() => null)
+  // 📊 진행률 가시화(2026-07-27 대표 "청소 얼마나 됐나 안 보임") + 판정 변화율 — `reclassify-verdict-delta.ts`.
+  await writeReclassifyStats(DB, CLASSIFY_RULES_VERSION, { scanned: rows.length, updated, removed, held, delta })
   return { scanned: rows.length, updated, removed, held, cursor: nextCursor, done: false, phase }
 }
 

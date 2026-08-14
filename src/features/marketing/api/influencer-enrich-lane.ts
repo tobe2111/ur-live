@@ -40,6 +40,7 @@ import { POOL_ACCOUNT_ID, readSetting, writeSetting, ytQuotaDayKey } from './inf
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs, envLaneBudget, ENRICH_DEADLINE_MS_ALARM } from './collect-budget'
 // 스냅샷 키는 leaf 모듈(enrich-telemetry)에 둔다 — 어드민 통계가 수집 엔진을 import 하지 않고 읽게.
 import { INFLUENCER_ENRICH_SNAPSHOT_KEY } from './enrich-telemetry'
+import { shouldFallbackToFront } from './enrich-capacity'
 
 /** 링크인바이오 플랫폼 자체 메일(안내/noreply) — 인플루언서 연락처가 아니라 저장 금지. */
 const PLATFORM_EMAIL_RE = /@(linktr\.ee|litt\.ly|inpock\.co\.kr|litelink\.at|taplink\.cc|link\.bio)$/i
@@ -104,6 +105,7 @@ export interface InfluencerEnrichSnapshot {
   chain?: EnrichChainRollup
   /** 🔀 이번 회차의 선두('naver' | 'front') — 다음 회차 교대의 유일한 근거(알람엔 depth 가 없다). */
   led?: string
+  fell_back?: true            // ♻️ 여력 자동배치 발동 — 블로그가 말라 링크인바이오가 남은 예산을 가져갔다
   /** 📗 티스토리 보강 결과 — 이 환경은 tistory.com 이 프록시 차단이라 **라이브 diag 가 유일한 판정 근거**다. */
   tistory?: TistoryEnrichDiag
   /** 📈 이 회차가 실제로 측정한 YT 채널 수 — units 대비 효율을 밖에서 계산하기 위한 값. */
@@ -508,7 +510,7 @@ export async function runInfluencerEnrich(
   const prev = await readSnapshot(DB)
   // ⚠️ `ytUnits` 는 **바깥 스코프**여야 한다 — 아래 스냅샷의 `yt_units` 가 읽는다.
   //   선두 교대를 넣으며 헬퍼 안에 가뒀다가 타입 에러가 났다(CI 가 잡음, npm 403 으로 로컬 tsc 미실행).
-  let ytUnits = 0
+  let ytUnits = 0; let fellBack = false   // ♻️ fellBack = 여력 자동배치 발동(스냅샷 `fell_back`)
   //   🩹 2026-07-29 보강 — `depth % 2` **하나로는 발화 못 하는 회차**가 있다. 위 주석은 "체인이 depth 2+ 로
   //   도는 것이 확인됐다"를 전제하는데, 배포(13:38) 이후 14:00 틱 실측은 **`depth: 0`** 이었다
   //   (`naver { selected 12, tried 0 }` 그대로). 체인이 한 라운드에서 끊기면 depth 는 영원히 0 이고,
@@ -546,6 +548,11 @@ export async function runInfluencerEnrich(
   //   예약분 0: 이 회차엔 YT 가 없으므로 블로거가 창을 전부 쓴다.
   if (opts?.naverOnly) {
     await runNaver(0)
+    // ♻️ 여력 자동배치 — 블로그가 마르면 남은 예산을 링크인바이오가 가져간다(근거는 `shouldFallbackToFront`).
+    if (shouldFallbackToFront({ selected: naver?.selected, budgetLeft: budget.left })) {
+      fellBack = true
+      try { bio = await enrichPoolFromLinkInBio(DB, budget, bioMax) } catch (err) { note(err) }
+    }
   } else if (naverFirst) {
     // 📌 YT 예약분을 떼고 준다 — 안 그러면 이 회차 YT 는 0행이다(위 `naverRoomWithYtReserve` docblock).
     await runNaver(ytPlanned) // 마감 전체를 블로거가 쓴다
@@ -571,6 +578,7 @@ export async function runInfluencerEnrich(
     last_run: stamp, bio, yt, naver, spent, budget_total: budgetTotal, depth,
     // 🔀 이번 회차의 선두 — 다음 회차가 이걸 보고 번갈아 간다(`pickNaverFirst`). 알람엔 depth 가 없다.
     led: naverFirst ? 'naver' : 'front',
+    ...(fellBack ? { fell_back: true as const } : {}),
     // 📗 티스토리 — 이 환경에선 tistory.com 이 프록시 차단이라 **라이브 diag 가 유일한 판정 근거**다.
     //   measured 가 계속 0 → RSS 경로가 틀림 · contacts/emails 가 계속 0 → 홈에 연락처가 없음(경로를 접을 것).
     tistory,

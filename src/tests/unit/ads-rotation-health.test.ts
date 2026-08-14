@@ -116,10 +116,19 @@ describe('기아 방지 슬롯 — 배선', () => {
 describe('순환 나이 — 활성화 시각 기준 (승격 물결 가짜 경보 차단)', () => {
   const read = (p: string) => require('node:fs').readFileSync(p, 'utf8') as string
 
+  /**
+   * ⚠️ **개수로 세지 않는다** — 2026-08-13 에 `behind7` 지표가 추가되며 같은 COALESCE 가 3곳이 됐고,
+   *   `>= 2` 로 세던 옛 검사는 **한 곳을 망가뜨려도 통과**했다(`check-guard-mutations` 가 잡았다).
+   *   지표마다 이름으로 앵커한다 — 지표가 늘어도 새로 추가된 것만 여기 한 줄 늘리면 된다.
+   */
   it('건강 판정 쿼리의 나이 COALESCE 에 activated_at 이 낀다(빼면 승격 물결마다 가짜 starved)', () => {
     const src = read('src/features/marketing/api/collect-health-alert.ts')
-    const hits = src.match(/COALESCE\(last_run_at, activated_at, created_at\)/g) || []
-    expect(hits.length, 'oldest_days 와 avg_days 둘 다').toBeGreaterThanOrEqual(2)
+    const AGE = String.raw`COALESCE\(last_run_at, activated_at, created_at\)`
+    for (const alias of ['oldest_days', 'avg_days']) {
+      expect(src, `${alias} 나이 기준`).toMatch(new RegExp(`${AGE}\\)\\) AS ${alias}`))
+    }
+    // 🩹 밀린 무리(추세 판정)도 같은 나이 기준을 써야 한다 — 다르면 두 지표가 서로 다른 세계를 잰다.
+    expect(src, 'behind7 나이 기준').toMatch(new RegExp(`${AGE} <= datetime`))
   })
 
   it('활성화 3경로 전부 activated_at 을 스탬프한다 — 한 경로라도 빠지면 그 경로 승격분이 가짜 경보를 낸다', () => {

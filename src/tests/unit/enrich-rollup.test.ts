@@ -213,3 +213,30 @@ describe('foldRound — 하루치 손실 분포(crawl_reason · name_loose)', ()
     expect(r.crawl_reason).toEqual({ ok: 0 })
   })
 })
+
+/**
+ * 🏷️ **이름 치유 진행률** — 2026-08-13 대표 *"연락처는 실재하는데 업체명이 틀린 경우도 많아"*.
+ *
+ * 커버리지(몇 건이 대상인가)는 쿼리로 셌지만 *"언제 다 없어지나"* 는 답할 수 없었다 —
+ * Phase 3 는 **회차당 8건 캡 + 잔여 예산이 있을 때만** 도는데 **계측이 0이었다.**
+ * ⇒ 남은 대상 ÷ 하루 `heal_renamed` = 며칠. `heal_no_sitename` 이 크면 크롤로는 못 고치는 몫이다.
+ */
+describe('foldRound — Phase 2/3 계수기 누적', () => {
+  it('🔒 이름 치유 계수가 하루 단위로 합산된다', () => {
+    const a = foldRound(null, snap({ run_id: 'h1', p2: { heal_try: 8, heal_renamed: 3 } }), '2026-08-13')!
+    const b = foldRound(a, snap({ run_id: 'h2', p2: { heal_try: 5, heal_renamed: 2, heal_no_sitename: 1 } }), '2026-08-13')!
+    expect(b.p2).toEqual({ heal_try: 13, heal_renamed: 5, heal_no_sitename: 1 })
+  })
+
+  it('🔒 이전 누적본을 오염시키지 않는다 (얕은 복사가 객체를 참조로 물고 온다)', () => {
+    const first = foldRound(null, snap({ run_id: 'h3', p2: { heal_renamed: 1 } }), '2026-08-13')!
+    const before = { ...first.p2 }
+    foldRound(first, snap({ run_id: 'h4', p2: { heal_renamed: 9 } }), '2026-08-13')
+    expect(first.p2).toEqual(before)
+  })
+
+  it('날짜가 바뀌면 리셋된다', () => {
+    const d1 = foldRound(null, snap({ run_id: 'h5', p2: { heal_renamed: 7 } }), '2026-08-12')!
+    expect(foldRound(d1, snap({ run_id: 'h6', p2: { heal_renamed: 1 } }), '2026-08-13')!.p2).toEqual({ heal_renamed: 1 })
+  })
+})

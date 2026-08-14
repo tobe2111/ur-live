@@ -93,6 +93,36 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
     options: [{ value: 'false', label: 'OFF (현행 — 표면 미노출)' }, { value: 'true', label: 'ON — 공구 엔진 서버 게이트' }],
     hint: '활성화 순서 ④ — ①예산캡 ②owner펀딩 ③promo필드가 staging 검증 후 켜진 뒤에만. ⚠️ 서버 게이트만 켜짐 — 클라 표면은 GB_ENGINE_ENABLED(코드 배포) 별도. 런북: commission-funding-restructure.md §1',
   },
+  // 🥡💳 2026-08-12: **켤 화면이 없어서 영영 못 켜던 게이트 2개** (검증 데이 블로커).
+  //   실측: `pickup_unclaimed_policy_enabled` 는 이 화면에 *"시스템 모니터링에서 켜라"* 는 **안내문만**
+  //   있었는데 그 화면(`/admin/system-monitoring`)은 **조회 전용**이라 쓰기 API 가 없다.
+  //   `partial_refund_enabled` 는 어느 화면에도 **아예 없었다**.
+  //   ⇒ 대표가 검증(P10·P11)을 시작할 방법 자체가 없었다. 같은 클래스가 바로 위 OPS_POLICY_FIELDS
+  //   주석이 기록한 사고(*"결정은 했는데 넣을 화면이 없어 값이 비어 있었다"*)와 동일하다.
+  //   기본값·환불 로직·계산은 전부 무변경 — **토글 노출만** 추가한다.
+  {
+    key: 'pickup_unclaimed_policy_enabled', label: '⑤ 미수령 환불 정책 (보관구분별)', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 항상 전액 환불)' }, { value: 'true', label: 'ON — 아래 보관구분 비율 적용' }],
+    hint: '🔴 머니 경로. 켜면 이미 흐르던 환불의 **금액이 바뀐다**. 아래 "운영 정책" 의 비율을 먼저 채울 것 — 비우면 100%(전액)로 동작한다. 끄면 즉시 전액 환불로 복귀. 검증 절차: docs/VERIFICATION_DAY.md (P10)',
+  },
+  {
+    key: 'partial_refund_enabled', label: '⑥ 부분환불 금액 지정', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 전액 환불만)' }, { value: 'true', label: 'ON — 반품 화면에서 금액 지정 가능' }],
+    hint: '🔴 머니 경로. OFF 면 금액 설정 API 가 403 이다(=현행 전액 환불 그대로). ON 시 결제액 초과는 서버가 클램프하고, 환불 실행 후에는 변경 불가. 검증 절차: docs/VERIFICATION_DAY.md (P11)',
+  },
+  // 🚨 2026-08-12: **킬스위치인데 당길 손잡이가 없었다.**
+  //   `gb_pricing_enabled` 는 *"잘못 설정된 공구가로 과소청구가 날 때 false 로 저장해 즉시 상시가로
+  //   되돌린다"* 는 긴급 안전장치인데(OPS_GATES 의 turn_on_when), 어느 화면에도 없었다 —
+  //   즉 **돈이 새는 중에 멈출 방법이 없었다.** 위 ⑤⑥ 과 같은 클래스이고 이쪽이 더 급하다.
+  //
+  //   🔴 **다른 게이트와 반대로 기본이 ON 이다.** 그래서 `default: 'true'` 여야 한다 —
+  //   'false' 로 적으면 이 페이지를 **한 번 저장하는 것만으로** 공구가 청구가 꺼져
+  //   전 공구가 상시가로 청구된다(대표가 의도하지 않은 머니 변경). 바꾸지 말 것.
+  {
+    key: 'gb_pricing_enabled', label: '🚨 공구가 청구 킬스위치', default: 'true',
+    options: [{ value: 'true', label: 'ON (정상 — 공구가로 청구)' }, { value: 'false', label: 'OFF — 긴급 정지: 즉시 상시가로 청구' }],
+    hint: '🔴 평소엔 ON 이 정상이다. 잘못된 공구가로 **과소청구**가 발생할 때만 OFF 로 내려 즉시 상시가로 되돌린다. 되돌리면 곧바로 복구되므로 사고 시 주저하지 말 것',
+  },
 ]
 
 /**
@@ -113,6 +143,15 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
  *   `pickup_unclaimed_policy_enabled`(기본 OFF, `/admin/system-monitoring`)가 켜져야 한다.
  */
 export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string; text?: boolean }> = [
+  {
+    // 🎯 2026-08-12: 파일럿 매장을 정해도 **넣을 칸이 없었다**(어느 화면에도 없음).
+    //   ⚠️ 반드시 `text: true` — 값이 `5,12` 형태라 위 커미션 배열에 두면 `validateSetting` 이
+    //   `Number('5,12')=NaN` 으로 **저장 자체를 거부**한다(이 세션이 실제로 그렇게 만들 뻔했다).
+    key: 'flip_pilot_seller_ids',
+    label: '8월 flip 파일럿 매장 (seller_id)',
+    hint: '파일럿 매장이 정해지면 seller_id 를 쉼표로 구분해 넣는다(예: 5,12). 비우면 파일럿 스코프 없음',
+    text: true,
+  },
   {
     key: 'operator_support_contact',
     label: '운영자 문의 연락처',

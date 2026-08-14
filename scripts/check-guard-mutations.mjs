@@ -72,6 +72,19 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '공구가 킬스위치를 어드민 화면에서 뺀다(돈 새는 중에 멈출 손잡이가 사라진다)',
+    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    find: "key: 'gb_pricing_enabled'",
+    replace: "key: 'gb_pricing_REMOVED'",
+    test: 'src/tests/unit/ops-gate-reachable.test.ts',
+    why:
+      '게이트를 만들어 놓고 **켜고 끌 화면을 안 만드는** 사고가 2026-08-03·08-12 에 세 번 났다. ' +
+      '가장 나빴던 것이 `gb_pricing_enabled` — *"잘못된 공구가로 과소청구가 날 때 false 로 내려 즉시 상시가로 ' +
+      '되돌린다"* 는 **긴급 킬스위치인데 당길 손잡이가 어느 화면에도 없었다**(돈이 새는 중에 멈출 방법 0). ' +
+      '⚠️ 게이트가 OFF 인 것을 "안 켰다"로 읽으면 안 된다 — **"못 켰다"** 일 수 있고, 그 상태는 ' +
+      '에러가 없어 아무도 모른다. 의도적으로 안 켤 게이트는 turn_on_when 에 "켜지 않는다"로 면제된다.',
+  },
+  {
     name: '내부 링크 가드에서 객체 리터럴 `to:` 패턴을 없앤다(칩·탭 링크가 다시 무검사)',
     file: 'scripts/check-internal-links.mjs',
     find: '\\bto:\\s*',
@@ -167,6 +180,161 @@ const MUTATIONS = [
       '에러도 경보도 없다 — 이 레포의 "실패가 아니라 조용한 부재" 클래스이고, 이번엔 대표가 요청한 기능 자체가 그렇게 사라졌다.',
   },
   {
+    name: '상호 판정이 앰퍼샌드까지 잡는다(진짜 상호가 제목으로 오인된다)',
+    file: 'src/features/marketing/api/company-classify.ts',
+    find: "  if (/&(?:gt|lt|quot);|[|｜＞>《》＜<]/.test(n)) return true",
+    replace: '  if (/&[a-z]{2,6};|[|｜＞>《》＜<]/.test(n)) return true',
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '초안이 정확히 이 넓은 형태였고 **라이브에서 진짜 상호 14건을 오탐**했다 — `SM C&C 성수`(대형 ' +
+      '광고대행사) · `S&K세무회계컨설팅` · `H&L 컴퍼니` · `한결 A&C`. `&amp;` 는 그냥 `&` 이고 ' +
+      '앰퍼샌드는 상호에 흔하다. 여기서 오탐이 나면 **멀쩡한 업체가 이름을 사이트 이름으로 덮어쓰인다.** ' +
+      '좁힌 규칙(breadcrumb 구분자)은 52→29건이 되고 그 29건은 전부 진짜 제목 파편이었다.',
+  },
+  {
+    name: '엔티티 디코딩에서 앰퍼샌드를 먼저 푼다(이중 디코딩)',
+    file: 'src/features/marketing/api/company-lead-hygiene.ts',
+    find: "  return s\n    .replace(/&lt;/g, '<')",
+    replace: "  return s\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')",
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '앰퍼샌드 디코딩을 **맨 앞으로** 옮긴다. 그러면 `&amp;lt;` 가 `&lt;` → `<` 로 **이중 디코딩**돼 ' +
+      '원문에 없던 글자가 생긴다(이름이 조용히 변조된다). 유닛이 그 값을 직접 고정한다.\n' +
+      '🩸 초안은 *주석만 지우는* 변형이었다 — 동작이 안 바뀌니 테스트가 통과했고 하네스가 ' +
+      '"이 가드는 아무것도 안 지킨다"로 잡아 냈다. **주입은 반드시 동작을 바꿔야 한다.**',
+  },
+  {
+    name: '변화율이 tier COALESCE 를 변화로 센다(등록부 이탈률이 부풀어 좁히기가 부당해 보인다)',
+    file: 'src/features/marketing/api/reclassify-verdict-delta.ts',
+    find: '      || (before.tier == null && after.tier != null)',
+    replace: '      || before.tier !== after.tier',
+    test: 'src/tests/unit/reclassify-verdict-delta.test.ts',
+    why:
+      'UPDATE 가 `COALESCE(tier, ?)` 라 **옛 tier 가 있으면 안 바뀐다.** 그걸 변화로 세면 tier 가 이미 ' +
+      '박힌 행이 전부 "판정이 달라졌다"로 잡혀 **변화율이 부풀고**, 그러면 "등록부도 규칙에 반응한다" 는 ' +
+      '거짓 결론이 나와 **랩 좁히기(38일→2일)가 부당해 보인다.** 계측은 결론을 뒤집는 숫자다.',
+  },
+  {
+    name: '변화율 분모에 첫 분류를 넣는다(새 행이 전부 "바뀜"으로 잡힌다)',
+    file: 'src/features/marketing/api/reclassify-verdict-delta.ts',
+    find: '  if (!(Number(classifiedV) > 0)) { d.first++; return }',
+    replace: '  if (false) { d.first++; return }',
+    test: 'src/tests/unit/reclassify-verdict-delta.test.ts',
+    why:
+      '처음 분류되는 행은 이전 판정이 없어 **무조건 "달라졌다"** 로 잡힌다. 그걸 분모에 넣으면 ' +
+      '변화율이 유입량에 끌려다녀 **규칙 변화와 무관한 숫자**가 된다 — 재려던 것을 못 재게 된다.',
+  },
+  {
+    name: '변화율을 회차마다 덮어쓴다(표본이 250건에 갇혀 누적이 무의미)',
+    file: 'src/features/marketing/api/reclassify-verdict-delta.ts',
+    find: '    delta: mergeDelta(prevDelta, s.delta),',
+    replace: '    delta: s.delta,',
+    test: 'src/tests/unit/reclassify-verdict-delta.test.ts',
+    why:
+      '회차당 250행이라 **한 회차 표본으로는 96%/4% 를 가를 수 없다.** 덮어쓰면 계측이 도는 것처럼 ' +
+      '보이면서(값이 매시간 갱신된다) 실제로는 마지막 250건만 남는다 — 조용히 틀린 근거로 ' +
+      '38일짜리 구조를 바꾸게 된다.',
+  },
+  {
+    name: '위생 스윕이 매칭 0 인 창을 완료로 읽는다(뒤쪽 결함이 영영 남는다)',
+    file: 'src/features/marketing/api/company-hygiene-sweep.ts',
+    find: '  const done = hi >= maxId',
+    replace: '  const done = rows.length === 0',
+    test: 'src/tests/unit/company-hygiene-sweep.test.ts',
+    why:
+      '결함은 30만 행 중 900건이라 **대부분의 창이 매칭 0** 이다. 그걸 완료로 읽으면 스윕이 첫 창에서 ' +
+      '끝나고 도장을 찍어 **다시는 안 돈다** — 에러도 카운터 변화도 없이 조용히 끝난다. ' +
+      '완주 판정은 매칭 건수가 아니라 **테이블 끝(MAX(id))** 이어야 한다.',
+  },
+  {
+    name: '위생 스윕 실패가 재분류 본업을 막는다',
+    file: 'src/features/marketing/api/reclassify-lane.ts',
+    find: '  const hygiene = await sweepCompanyHygiene(env.DB).catch(() => null)',
+    replace: '  const hygiene = await sweepCompanyHygiene(env.DB)',
+    test: 'src/tests/unit/company-hygiene-sweep.test.ts',
+    why:
+      '부가 작업이 본업을 죽이면 안 된다. 스윕이 던지면 **재분류 레인 전체가 그 회차를 통째로 잃고**, ' +
+      '이 레인은 시간당 1회뿐이라 손실이 곧 하루치다.',
+  },
+  {
+    name: '국번 술어가 정상 번호까지 잡는다(멀쩡한 행을 매 회차 헛돌린다)',
+    file: 'src/features/marketing/api/company-hygiene-sweep.ts',
+    find: "    OR (phone LIKE '01%'  AND phone NOT LIKE '01_-%')",
+    replace: "    OR (phone LIKE '01%')",
+    test: 'src/tests/unit/company-hygiene-sweep.test.ts',
+    why:
+      '술어는 *좁히개* 라 위양성이 무해해 보이지만, 010 전체가 잡히면 **회차 예산이 멀쩡한 행으로 채워져** ' +
+      '진짜 결함이 뒤로 밀린다(스윕이 사실상 랩으로 되돌아간다). 실제 SQLite 로 정상 모양을 고정한다.',
+  },
+  {
+    name: 'webkr 이름 확인을 다시 신뢰도로 거른다(evidence 158건이 영영 확인 밖)',
+    file: 'src/features/marketing/api/enrich-name-heal.ts',
+    find: '        AND COALESCE(name_verified, 0) = 0',
+    replace: "        AND classify_confidence IN ('none', 'keyword')",
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '`evidence` 는 *"이름에 업종어가 있다"* 는 뜻이지 *"진짜 상호다"* 가 아니다 — 페이지 제목에도 ' +
+      '업종어는 흔하다(`골목상권 분포`·`현장교육 > 현장교육조회`). 실측 778건 중 **158건**이 그 필터 ' +
+      '때문에 영영 확인 대상 밖이었다. webkr 은 이름 출처가 **검색결과 제목**이라 신뢰도로 거를 근거가 ' +
+      '처음부터 없다 — 전수 1회가 맞고, `name_verified` 도장이 그 1회를 보장한다.',
+  },
+  {
+    name: '크롤이 한도·시간에 잘려도 확인 도장을 찍는다(그 행이 영영 미확인으로 굳는다)',
+    file: 'src/features/marketing/api/enrich-name-heal.ts',
+    find: "    if (c.reason !== 'subreq_limit' && c.reason !== 'deadline') verified.push(t.id)",
+    replace: '    verified.push(t.id)',
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '한도·시간 초과는 **사이트의 문제가 아니라 우리 사정**이다. 그때 도장을 찍으면 전수 1회의 ' +
+      '"1회"를 **빈손으로 써 버려** 그 행은 영영 이름이 안 고쳐진다. 에러도 안 나고 카운터도 안 움직여 ' +
+      '조용하다 — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재" 클래스.',
+  },
+  {
+    name: 'webkr 상호 개명을 다시 suspectCompanyName 뒤에 가둔다',
+    file: 'src/features/marketing/api/enrich-lane.ts',
+    find: "        if (norm(c.siteName) !== norm(t.company_name || '')) {",
+    replace: '        if (false) {',
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '`suspectCompanyName` 은 **"업체명이 아닌 것"을 열거**하는 방식이라 `고객지원`·`군포 중고차 장기렌트` 를 ' +
+      '하나도 못 잡는다(실측 webkr 1,772건 중 플래그 330건뿐). 그 게이트 뒤에 개명을 가두면 대표가 신고한 ' +
+      '**이름↔연락처 불일치가 그대로 남는다.** 사이트가 스스로 밝힌 이름이 검색결과 제목보다 항상 권위 있다.',
+  },
+  {
+    name: '플랫폼 자기 페이지에서 긁은 연락처를 그대로 둔다(남의 번호가 리드에 붙는다)',
+    file: 'src/features/marketing/api/company-lead-hygiene.ts',
+    find: "  if (r.contact_source === 'homepage' && (r.phone || r.email) && isPlatformRootUrl(r.website)) {",
+    replace: '  if (false) {',
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '실측: `이루더스` 에 당근마켓 대표번호(1877-9737), `블라인드` 에 teamblind 번호가 붙어 있었다. ' +
+      '대표가 그 번호로 제휴 제안을 보내면 **엉뚱한 회사에 연락**하게 된다. ' +
+      '⚠️ 경로 있는 사용자 페이지(`blog.naver.com/{handle}`)는 그 업체 채널이라 건드리면 안 된다 — ' +
+      '그 경계는 `isPlatformRootUrl` 이 지키고 유닛이 양쪽을 고정한다.',
+  },
+  {
+    name: '전화번호를 국번 무시하고 자리수로만 끊는다(하이픈이 엉뚱한 자리에)',
+    file: 'src/features/marketing/api/contact-enrich.ts',
+    find: "  const head = d.startsWith('02') ? 2 : d.startsWith('050') ? 4 : 3",
+    replace: '  const head = 3',
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '2026-08-12 대표 신고. 이전 포맷 `(\\d{2,4})(\\d{3,4})(\\d{4})$` 는 `{2,4}` 가 탐욕적이라 앞 4자리를 ' +
+      '먼저 먹어 `010-4233-5119` 를 **`0104-233-5119`** 로 찍었다. 라이브 `ad_company_leads` 8,850건 중 ' +
+      '**873건**(10%)이 그 상태였다. 숫자는 맞고 하이픈만 틀려서 **에러가 안 나고**, 대표가 화면을 보고 ' +
+      '신고할 때까지 아무도 몰랐다 — 이 레포의 "실패가 아니라 조용한 오염" 클래스.',
+  },
+  {
+    name: '기존 행 전화 소급 교정이 계산만 하고 UPDATE 를 안 만든다',
+    file: 'src/features/marketing/api/company-lead-hygiene.ts',
+    find: "    if (fixed && fixed !== r.phone) out.push(prep('UPDATE ad_company_leads SET phone = ? WHERE id = ?').bind(fixed, r.id))",
+    replace: '    void fixed',
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '포맷 함수만 고치면 **앞으로 들어올 번호**만 맞고 **이미 저장된 873건은 영원히 틀린 채** 남는다. ' +
+      '이 레포에서 반복된 "고쳤는데 소급이 없어 라이브는 그대로" 클래스라, 배선 자체를 가드로 고정한다.',
+  },
+  {
     name: '손실 분포 누적이 이전 값을 참조로 물고 온다(어제 값이 조용히 바뀐다)',
     file: 'src/features/marketing/api/enrich-telemetry.ts',
     find: '    const acc: Record<string, number> = { ...(rollup?.day === day ? rollup.crawl_reason || {} : {}) }',
@@ -251,19 +419,13 @@ const MUTATIONS = [
       '**코드에서 사라진** 레인인데 "114시간째 멈춤"으로 보고돼, 대표에게 **필요 없는 API 화면 캡처를 요청**했다. ' +
       '나이는 은퇴를 늦게 말하지만 **"디스패처가 안 부른다"는 사실은 즉시 알 수 있다**(orphanLaneBeats 와 같은 신호).',
   },
-  {
-    name: '이름 치유가 keyword 행을 빼놓는다(강등시킨 행이 영영 미치유)',
-    file: 'src/features/marketing/api/enrich-name-heal.ts',
-    find: "classify_confidence IN ('none', 'keyword')",
-    replace: "classify_confidence = 'none'",
-    test: 'src/tests/unit/ads-name-heal-scope.test.ts',
-    why:
-      '2026-08-08 에 "webkr 의 본문은 업종 근거가 아니다" 규칙을 넣으면서 본문-매칭 행들이 evidence → ' +
-      '**keyword** 로 내려갔는데, 치유 쿼리는 `none` 만 봤다 → **방금 강등시킨 그 행들이 영영 치유 대상이 ' +
-      '아니었다.** 대표가 신고한 진흥원(jepa.kr) 유형이 남는 이유다: 도메인이 평범한 .kr 이고 저장된 이름엔 ' +
-      '`진흥원` 이 없지만 **og:site_name 에는 있다**. 실명만 얻으면 기존 classifyLead 가 org 로 내려보낸다 — ' +
-      '새 규칙이 필요한 게 아니라 그 경로에 도달하게만 하면 됐다. 이 한 줄이 되돌아가면 그 도달이 끊긴다.',
-  },
+  // 🗑️ **삭제(2026-08-14)** — `이름 치유가 keyword 행을 빼놓는다`.
+  //   그 주입은 `classify_confidence IN ('none','keyword')` 를 `= 'none'` 으로 되돌리는 것이었는데,
+  //   같은 날 **신뢰도 필터 자체를 폐기**했다(`evidence` 는 "이름에 업종어가 있다"는 뜻이지
+  //   "진짜 상호다"가 아니라서 — webkr 은 이름 출처가 검색결과 제목이다). 대상 문자열이 사라져
+  //   하네스가 **"낡은 지도"** 로 잡아 냈다 — 정확히 그러라고 만든 검사다.
+  //   ⚠️ 지키던 불변식은 사라진 게 아니라 **더 넓은 것으로 대체**됐다: 위쪽
+  //   `webkr 이름 확인을 다시 신뢰도로 거른다` 가 *어떤* 신뢰도 필터든 되돌아오면 빨간불을 낸다.
   {
     name: '공정위 연도를 코드에 박는다(내년에 같은 자리에서 또 죽는다)',
     file: 'src/features/marketing/api/franchise-collect.ts',
@@ -2668,8 +2830,10 @@ const MUTATIONS = [
   {
     name: 'naverOnly 가 앞 레인을 안 건너뜀(플래그만 있고 무력)',
     file: 'src/features/marketing/api/influencer-enrich-lane.ts',
-    find: '  if (opts?.naverOnly) {\n    await runNaver(0)\n  } else if (naverFirst) {',
-    replace: '  if (opts?.naverOnly) {\n    await runNaver(0); await runFront()\n  } else if (naverFirst) {',
+    // 🗺️ 2026-08-12 앵커 이사: 이 분기에 여력 자동배치 폴백이 붙었다(블로그가 마르면 링크인바이오).
+    //   지키는 불변식은 그대로 — **YT 는 여전히 안 부른다**(샤드 수만큼 쿼터가 곱해진다).
+    find: '    await runNaver(0)\n    // ♻️ 여력 자동배치',
+    replace: '    await runNaver(0); await runFront()\n    // ♻️ 여력 자동배치',
     test: 'src/tests/unit/ads-enrich-shards.test.ts',
     why:
       '플래그를 넘겨도 분기가 앞 레인(bio+YT)을 그대로 돌면 쿼터 보호가 무효다 — ' +
@@ -2956,6 +3120,59 @@ const MUTATIONS = [
       '라이브 실측(2026-08-11): 풀 집중 25·우선 358·일반 76 에서 계획 1/6/2 인데 예산 5 에서 잘려 ' +
       '우선이 6→2 로 무너졌다. 키워드 1개당 회전율이 설계(1.5:1:0.5) 대비 **7.3 : 1 : 3.2** — ' +
       '대표가 정한 축 우선순위가 코드에서 뒤집혀 본업 축(맛집·뷰티·숙소·공동구매, 전체의 78%)이 가장 느렸다.',
+  },
+  {
+    name: '회복 중에도 순환 경보가 울림(밀린 무리가 줄어도 starved)',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: '    if (Number.isFinite(now) && Number.isFinite(prev) && now < prev) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '`oldestDays` 는 최악값 하나라 밀린 키워드가 차례를 기다리는 동안 계속 커진다 — 수리가 먹혀 ' +
+      '밀린 무리를 갚는 며칠 내내 경보가 울린다. 실측: 7일+ 밀린 수 107 → 60(−44%) 인데 worstCycles 는 ' +
+      '3.46 으로 올랐다. 매일 울리는 경보는 진짜 정지를 덮는다(이 레포가 반복해 겪은 병).',
+  },
+  {
+    name: '순환 경보가 무조건 침묵(진짜 정지도 안 울림)',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: '    if (Number.isFinite(now) && Number.isFinite(prev) && now < prev) {',
+    replace: '    if (true) {',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '억제 조건이 무조건 참이 되면 밀린 무리가 **늘어도** 조용하다. 경보를 끄는 수리가 경보를 ' +
+      '죽이는 것으로 넘어가지 않게 양방향으로 고정한다(직전 표본이 없을 때도 울려야 한다).',
+  },
+  {
+    name: '슬롯 cron 이 캐리어 주기로 기록됨(하루 1회 작업이 매일 오탐)',
+    file: 'src/worker/scheduled.ts',
+    find: '  const slotCron = (expr: string) => (n: string, t: () => Promise<unknown>) => safeCron(n, t, expectedMaxAgeMinutes(expr) ?? undefined);',
+    replace: '  const slotCron = (_expr: string) => (n: string, t: () => Promise<unknown>) => safeCron(n, t);',
+    test: 'src/tests/unit/cron-slot-cadence.test.ts',
+    why:
+      '소비자 cron 은 5분 캐리어에 얹혀 `slotDue` 로 자기 시각에만 도는데, 하트비트엔 캐리어 식이 기록된다. ' +
+      '경보는 기대치를 **40분**(5×2+30)으로 잡아 하루 1회 작업을 23시간 내내 stale 로 신고한다 — ' +
+      '2026-08-13 실측 `cron 실패 24h 8건`이 **전부** 이 오탐이었다. 매일 울리는 경보는 진짜를 덮는다.',
+  },
+  {
+    name: '여력 자동배치가 바쁜 트랙을 뺏음(고를 행이 있어도 갈아탐)',
+    file: 'src/features/marketing/api/enrich-capacity.ts',
+    find: '  if (i.selected > 0) return false                                            // 할 일이 있었다',
+    replace: '  if (false) return false',
+    test: 'src/tests/unit/ads-enrich-capacity.test.ts',
+    why:
+      '폴백 판정은 `selected === 0`(고를 행이 하나도 없음)일 때만이어야 한다. 이 가드가 죽으면 ' +
+      '**가장 바쁠 때** 블로그를 버리고 링크인바이오로 갈아탄다 — 백로그가 클수록 더 자주 갈아타는 최악의 형태다.',
+  },
+  {
+    name: '여력 자동배치 배선이 사라짐(블로그가 말라도 샤드가 논다)',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: '      try { bio = await enrichPoolFromLinkInBio(DB, budget, bioMax) } catch (err) { note(err) }',
+    replace: '      void bioMax',
+    test: 'src/tests/unit/ads-enrich-capacity.test.ts',
+    why:
+      '측정 샤드 1~3번은 블로그 전용이라, 블로그 백로그가 마르면 **예산이 남는데 아무 일도 안 한다.** ' +
+      '라이브(2026-08-12 20:35): 블로그 1,423(2시간 뒤 0) · 유튜브 667 미측정 · 측정 능력이 유입의 3.5배 — ' +
+      '사람이 그때 설정을 바꿔 주지 않으면 능력의 3분의 2가 논다. 대표 지시 "여력 자동배치".',
   },
   {
     name: '앞자리 회전이 사라짐(뒤쪽 축 커서가 영구 동결)',

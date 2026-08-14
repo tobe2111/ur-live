@@ -100,7 +100,7 @@ export type ClassifyConfidence = 'registry' | 'evidence' | 'keyword' | 'none'
  *  자동으로 재검사 대상이 된다(안 올리면 이미 스탬프된 잘못된 행이 영구 방치 — 이 사고의 원인).
  *  v3 (2026-07-27): 안내-페이지 제목 어휘(위치안내/이용안내/오시는길/지정 게시대 — 대표 신고
  *  "지정 게시대 위치안내" 업체명) NOTICE_WORD 추가. */
-export const CLASSIFY_RULES_VERSION = 8 // 2026-08-10: 업종어뿐인 이름은 근거 불인정(대표 '이름이 왜이래')
+export const CLASSIFY_RULES_VERSION = 9 // 2026-08-13: breadcrumb 구분자는 상호가 아니다(대표 '연락처는 실재하는데 업체명이 틀려')
 // v7 // 2026-08-08: or.kr=org · 잘린제목 거부 · 본문근거 불인정(대표 신고 진흥원)
 //  ⚠️ **6 이 아니라 7 인 이유** — 같은 신고를 두 세션이 각각 잡아 **둘 다 6 을 선점**했고(#1099 가 먼저
 //    머지돼 배포됨), 그쪽 규칙으로 이미 `classified_v=6` 이 찍히기 시작했다. 6 으로 합치면 이 파일의
@@ -301,6 +301,25 @@ export function suspectCompanyName(name: string, sourceKeyword?: string | null):
   if (unbalancedBracket(n)) return true
   if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(n)) return true // 도메인 그대로인 placeholder(미디어 레인 등) — 실명 치유 대상
   if (/["“”‘’',?？]/.test(n)) return true
+  /**
+   * 🔴 **breadcrumb 구분자 = 상호가 아니라 페이지 제목** (2026-08-13 대표 *"이 불일치 문제는 심각해"*).
+   *
+   *   실측(전부 `classify_confidence='evidence'` 라 기존 치유 경로에서 제외돼 있었다):
+   *   ```
+   *     현장교육 &gt; 현장교육조회               edu.sbiz.or.kr
+   *     기관소개&gt;유관기관현황&gt;광고회사현황   ← breadcrumb 통째로
+   *     성장대로｜인천소상공인종합지원포털        icsp.or.kr   (`｜` 는 title 태그 구분자)
+   *   ```
+   *   업종어(`교육`·`상권`)가 이름에 있어 분류기는 **근거 있음(evidence)** 으로 봤지만 회사 이름이 아니다.
+   *
+   *   🩸 **초안은 `&[a-z]{2,6};` 로 엔티티 전체를 잡았다가 라이브에서 오탐을 확인하고 좁혔다.**
+   *     `&amp;` 는 그냥 `&` 이고 **앰퍼샌드는 진짜 상호에 흔하다** — 실측으로 걸린 것들:
+   *     `SM C&C 성수`(대형 광고대행사) · `S&K세무회계컨설팅` · `H&L 컴퍼니` · `한결 A&C` · `B & J 창업컨설팅`.
+   *     52건 중 14건이 그런 정상 상호였다. **넓은 규칙이 정확한 규칙보다 나쁘다** — 여기서 오탐이 나면
+   *     멀쩡한 업체가 이름을 덮어쓰인다.
+   *   ⚠️ 하이픈·점·괄호·앰퍼샌드는 **절대 넣지 말 것**(`SK-매직`·`(주)A.B`·`SM C&C`).
+   */
+  if (/&(?:gt|lt|quot);|[|｜＞>《》＜<]/.test(n)) return true
   if (n.length >= 18 && n.split(/\s+/).length >= 5) return true
   if (/(?:된다|한다|않는다|안된다|났다|높여|커져|줄어|늘어)$/.test(n)) return true
   if (/[?？]|(?:무엇이|어떻게|왜)\s|까요\b|나요\b|인가요/.test(n)) return true
