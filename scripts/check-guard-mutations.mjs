@@ -204,6 +204,29 @@ const MUTATIONS = [
       '"이 가드는 아무것도 안 지킨다"로 잡아 냈다. **주입은 반드시 동작을 바꿔야 한다.**',
   },
   {
+    name: 'webkr 이름 확인을 다시 신뢰도로 거른다(evidence 158건이 영영 확인 밖)',
+    file: 'src/features/marketing/api/enrich-name-heal.ts',
+    find: '        AND COALESCE(name_verified, 0) = 0',
+    replace: "        AND classify_confidence IN ('none', 'keyword')",
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '`evidence` 는 *"이름에 업종어가 있다"* 는 뜻이지 *"진짜 상호다"* 가 아니다 — 페이지 제목에도 ' +
+      '업종어는 흔하다(`골목상권 분포`·`현장교육 > 현장교육조회`). 실측 778건 중 **158건**이 그 필터 ' +
+      '때문에 영영 확인 대상 밖이었다. webkr 은 이름 출처가 **검색결과 제목**이라 신뢰도로 거를 근거가 ' +
+      '처음부터 없다 — 전수 1회가 맞고, `name_verified` 도장이 그 1회를 보장한다.',
+  },
+  {
+    name: '크롤이 한도·시간에 잘려도 확인 도장을 찍는다(그 행이 영영 미확인으로 굳는다)',
+    file: 'src/features/marketing/api/enrich-name-heal.ts',
+    find: "    if (c.reason !== 'subreq_limit' && c.reason !== 'deadline') verified.push(t.id)",
+    replace: '    verified.push(t.id)',
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '한도·시간 초과는 **사이트의 문제가 아니라 우리 사정**이다. 그때 도장을 찍으면 전수 1회의 ' +
+      '"1회"를 **빈손으로 써 버려** 그 행은 영영 이름이 안 고쳐진다. 에러도 안 나고 카운터도 안 움직여 ' +
+      '조용하다 — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재" 클래스.',
+  },
+  {
     name: 'webkr 상호 개명을 다시 suspectCompanyName 뒤에 가둔다',
     file: 'src/features/marketing/api/enrich-lane.ts',
     find: "        if (norm(c.siteName) !== norm(t.company_name || '')) {",

@@ -231,12 +231,25 @@ describe('제목 파편 판정 — 엔티티·구분자', () => {
     for (const ch of ['\\-', '\\.', '\\(']) expect(line).not.toContain(ch)
   })
 
-  it('🔒 이름 치유가 evidence 제목 파편도 집는다 (전체가 아니라 신호 있는 것만)', () => {
-    expect(HEAL).toMatch(/classify_confidence IN \('none', 'keyword'\)/)      // 기존 대상 유지
-    expect(HEAL).toMatch(/OR company_name LIKE '%&gt;%'/)                      // + breadcrumb 엔티티
-    expect(HEAL).not.toMatch(/company_name LIKE '%&%;%'/)                      // ⚠️ 앰퍼샌드까지 잡던 초안 금지
-    expect(HEAL).toMatch(/OR company_name LIKE '%｜%'/)                        // + 전각 구분자
-    expect(HEAL).not.toMatch(/classify_confidence IN \('none', 'keyword', 'evidence'\)/) // evidence 통째 금지
+  /**
+   * 🔴 **2026-08-14 — 신뢰도 필터를 통째로 버렸다** (대표 *"최대한 이상적으로 끝까지"*).
+   *   `keyword` 추가도, 제목 구분자 예외도 미봉책이었다: 778건 중 **158건이 `evidence` 라는 이유로
+   *   영영 확인 대상 밖**이었다(`골목상권 분포`). `evidence` 는 *"이름에 업종어가 있다"* 일 뿐이고
+   *   페이지 제목에도 업종어는 흔하다. webkr 은 이름 출처가 검색 제목이라 **거를 근거가 처음부터 없다.**
+   */
+  it('🔒 신뢰도로 거르지 않는다 — webkr 은 전수 1회 확인', () => {
+    expect(HEAL).not.toMatch(/classify_confidence IN/)        // 필터 부활 금지
+    expect(HEAL).toMatch(/AND COALESCE\(name_verified, 0\) = 0/)
+  })
+
+  /** 도장이 없으면 7일마다 영원히 재크롤하거나(낭비) 한 번 실패한 행이 영영 안 돌아온다. */
+  it('🔒 확인 도장은 판정이 났을 때만 — 한도·시간에 잘린 크롤은 다시 온다', () => {
+    expect(HEAL).toMatch(/if \(c\.reason !== 'subreq_limit' && c\.reason !== 'deadline'\) verified\.push\(t\.id\)/)
+    expect(HEAL).toMatch(/UPDATE ad_company_leads SET name_verified = 1 WHERE id IN/)
+  })
+
+  it('🔒 도장은 회차당 1회로 모아 쓴다 (행마다 쓰면 8건에 8쿼리)', () => {
+    expect(HEAL).toMatch(/if \(verified\.length\) \{[\s\S]{0,200}spendD1\(\)/)
   })
 })
 

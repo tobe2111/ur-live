@@ -3,22 +3,15 @@
  *
  *   대상: **연락처는 이미 있는데 이름만 제목-파편**("데이터 토론"·"insight")인 `source='webkr'` 행.
  *
- *   🩸 **2026-08-10 — 내가 만든 이음매를 내가 막는다.** 08-08 에 "webkr 의 description(=페이지 본문)은
- *   업종 근거가 아니다" 규칙을 넣으면서, 본문에서만 맞던 행들이 `evidence` → **`keyword`** 로 내려갔다.
- *   그런데 이 쿼리는 `confidence='none'` 만 봤다 → **방금 강등시킨 그 행들이 영영 치유 대상이 아니었다.**
- *   그게 대표가 신고한 진흥원(`jepa.kr`) 유형이 계속 남는 이유다: 도메인이 평범한 `.kr` 이고 저장된
- *   이름엔 `진흥원` 이 없어 기관 어휘가 못 잡는데, **사이트가 스스로 선언한 이름**(og:site_name)에는 있다.
- *   ⇒ `keyword`(=검색어로 추정했을 뿐, 근거 없음)도 치유 대상에 넣는다. 실명을 얻으면 아래에서
- *     `classifyLead` 가 다시 돌아 기관이면 `org` 로 내려간다 — 새 규칙 없이 기존 경로가 처리한다.
- *   ⚠️ `evidence`(이름에서 근거를 얻은 행)는 **원칙적으로** 넣지 않는다 — 이미 실명이라 크롤이 낭비다.
- *   🔴 **단 하나의 예외(2026-08-13)**: 이름에 **breadcrumb 구분자**(`&gt;`·`>`·`｜`)가 있으면 넣는다.
- *     업종어가 들어 있어 `evidence` 로 분류됐지만 사람이 보면 회사 이름이 아닌 것들이다 —
- *     `현장교육 &gt; 현장교육조회`(edu.sbiz.or.kr) · `성장대로｜인천소상공인종합지원포털`.
- *     ⚠️ **앰퍼샌드(`&amp;`)는 제외한다** — 초안이 엔티티 전체를 잡았다가 `SM C&C 성수`·`S&K세무회계컨설팅`
- *     같은 **진짜 상호 14건**을 오탐한 것을 라이브에서 확인하고 좁혔다.
- *     실측 187건의 `evidence` 중 대부분은 `종합광고대행사 시월기획` 처럼 진짜 상호라 통째로 넣지 않는다.
- *   Phase 2 는 연락처-없는 행만 돌기 때문에 이 행들은 영영 미치유 → 관리자 '분류 확인 카드'에 계속 쌓인다
- *   (2026-07-27 대표 "분류 확인 카드 수동 부담"). 홈페이지 `og:site_name` 으로 실명 교체 + 실명 기준 재분류.
+ *   🩸 **2026-08-10 — 내가 만든 이음매를 내가 막는다.** 08-08 규칙 변경으로 본문에서만 맞던 행이
+ *   `evidence` → `keyword` 로 내려갔는데 이 쿼리는 `none` 만 봤다 → 방금 강등시킨 행이 영영 치유 밖.
+ *
+ *   🔴 **2026-08-14 — 신뢰도 필터를 통째로 버렸다** (대표 *"최대한 이상적으로 끝까지"*).
+ *   `keyword` 를 넣고 `evidence` 를 뺀 것도, 제목 구분자만 예외로 넣은 것도 **미봉책이었다**:
+ *   실측 778건 중 **158건이 `evidence` 라는 이유로 영영 확인 대상 밖**이었다(`골목상권 분포`).
+ *   `evidence` 는 *"이름에 업종어가 있다"* 는 뜻이지 *"진짜 상호다"* 가 아니다 — 페이지 제목에도
+ *   업종어는 흔하다. ⇒ **webkr 은 이름 출처가 검색결과 제목이므로 신뢰도로 거를 근거가 처음부터 없다.**
+ *   **전수 1회** 확인으로 바꾸고, `name_verified` 도장이 '정확히 한 번'을 보장한다(총 크롤 = 행 수).
  *
  *   허위 0: 이름은 **그 사이트가 스스로 선언한 값**만 채택하고, 판단이 안 서면 건드리지 않는다.
  *   비용: 회당 8건 캡(잔여 예산에서만) + 시도 도장 공유(7일 쿨다운).
@@ -55,14 +48,12 @@ export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD
   //     다시 크롤하면 예산만 태운다(무료 플랜에선 그게 곧 수집량이다).
   const healTargets = (await DB.prepare(`SELECT id, company_name, category, source_keyword, website FROM ad_company_leads
       WHERE source = 'webkr' AND merged_into IS NULL AND status = 'new'
-        AND (classify_confidence IN ('none', 'keyword')
-             OR company_name LIKE '%&gt;%' OR company_name LIKE '%&lt;%' OR company_name LIKE '%&quot;%'
-             OR company_name LIKE '%|%' OR company_name LIKE '%｜%' OR company_name LIKE '%>%')
+        AND COALESCE(name_verified, 0) = 0
         AND website IS NOT NULL AND website != '' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
-        AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))
       ORDER BY id DESC LIMIT 8`)
     .all<{ id: number; company_name: string; category: string | null; source_keyword: string | null; website: string }>().catch(() => null))?.results || []
   bump?.('heal_picked')                 // 이번 회차가 Phase 3 에 도달은 했는가(예산이 남았는가)
+  const verified: number[] = []         // 이번 회차에 '확인 완료' 도장을 찍을 id (숫자만 — 문자열 보간 안전)
   for (const t of healTargets) {
     // 벽시계도 함께 본다 — 시간이 끝났는데 D1 치유만 계속 돌면 라운드 종료(스냅샷·학습)를 못 마친다.
     if (budget.left <= 2 || budget.limitHit || (!!budget.deadline && Date.now() >= budget.deadline)) break
@@ -71,10 +62,10 @@ export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD
     //   `마케팅 대행`(검색어). 셋 다 괄호도 따옴표도 길지도 않아 `suspectCompanyName` 이 **false** 다.
     //   그 휴리스틱은 "제목처럼 생겼나"를 볼 뿐, **평범하게 생긴 제목**은 못 가른다.
     //
-    //   ⇒ 이 쿼리가 이미 고른 것은 `confidence IN ('none','keyword')` = **이름을 믿을 근거가 없는 행**이다.
-    //     근거가 없는데 휴리스틱으로 한 번 더 걸러 낼 이유가 없다 — 그냥 **사이트에 직접 물어본다**
-    //     (og:site_name). 허위 0 은 유지된다: 채택하는 값은 그 사이트가 스스로 선언한 이름뿐이다.
-    //   ⚠️ 비용은 7일 쿨다운 도장(`enrich_checked_at`) + 회당 8건 캡이 막는다 — 같은 행을 반복 크롤하지 않는다.
+    //   ⇒ **webkr 은 이름 출처가 검색결과 제목이라 신뢰할 근거가 처음부터 없다.** 그래서 분류 신뢰도로
+    //     거르지 않고 **전수 1회** 사이트에 직접 물어본다(og:site_name). 허위 0 은 유지된다:
+    //     채택하는 값은 그 사이트가 스스로 선언한 이름뿐이다.
+    //   ⚠️ 비용은 `name_verified` 도장(행당 정확히 1회) + 회당 8건 캡이 막는다 — 총 크롤 = webkr 행 수.
     bump?.('heal_try')
     const c = await crawlContact(t.website, budget, undefined, t.category === '미디어')
     if (!c.siteName) bump?.('heal_no_sitename')   // 사이트가 자기 이름을 안 밝힌다 = 이 행은 못 고친다
@@ -90,7 +81,15 @@ export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD
             cls.lead_type, cls.confidence === 'none' ? 'keyword' : cls.confidence, t.id).run().catch(() => null)
       }
     }
-    if (budget.limitHit) break // 도장 없이 중단(한도 뒤 도장은 7일 쿨다운만 태운다)
+    if (budget.limitHit) break // 도장 없이 중단(한도 뒤 도장은 재시도 기회만 태운다)
+    // 🏷️ **판정이 났을 때만 확인 도장** — 한도·시간에 잘린 크롤은 사이트의 문제가 아니라 우리 사정이라
+    //   도장을 찍으면 그 행은 **영영 미확인으로 굳는다**(전수 1회의 '1회'를 빈손으로 써 버린다).
+    if (c.reason !== 'subreq_limit' && c.reason !== 'deadline') verified.push(t.id)
     await stamp(t.id)
+  }
+  // 확인 도장은 **한 번에** 쓴다(회차당 D1 1회) — 행마다 쓰면 8건에 8쿼리, 무료 플랜에선 그게 곧 수집량이다.
+  if (verified.length) {
+    spendD1()
+    await DB.prepare(`UPDATE ad_company_leads SET name_verified = 1 WHERE id IN (${verified.join(',')})`).run().catch(() => null)
   }
 }
