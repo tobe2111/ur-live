@@ -1093,3 +1093,30 @@ SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL AND phone IS NOT
 - 📌 이 PR 의 `CLASSIFY_RULES_VERSION` 8→9 는 우선순위 큐를 **다시 채운다**(버전이 다르면 커서 리셋).
   그러면 568건(webkr·local)은 며칠 안에 닿지만 **나머지 308건은 여전히 38일**이다 — 스윕이 그
   308건까지 몇 시간 안에 끝낸다는 것이 이 변경의 값이다.
+
+### ✅ 머지 (2026-08-14 10:29 KST)
+
+`2938404` — PR #1158 squash. Verify run 6377 초록(테스트 5,657 + 신규 12 · guard-mutations 299).
+
+**처리량은 두 번 재서 확정했다**(단일 판독으로 단정하지 않으려고 한 시간 간격):
+```
+00:00 회차  remaining 228,197
+01:00 회차  remaining 227,947     → 정확히 250행/시간 · 227,947 ÷ 250 ÷ 24 = 38.0일
+```
+
+**다음 세션 첫 액션**: 판정 예약 `trig_019KDjpkHt8pUeiLfaZFQ7Tc`(2026-08-15 08:00 KST 발화,
+새 세션). 그 프롬프트에 판정 SQL·해석 규칙·오보 방지 주의가 전부 들어 있다. 요지만:
+
+| 무엇 | 어디 | 성공 |
+|---|---|---|
+| 위생 스윕 | `platform_settings.ads_company_hygiene_sweep` · 하트비트 `hyg=` | `done:true` + 하이픈 잔여 876 → 0 근처 |
+| 상호 전수확인 | `name_verified=0` 인 webkr 연락처 보유 행 | 778 에서 감소 · `heal_no_sitename` 비율 보고 |
+| 회귀 감시 | 이메일 보유 수 **34,499** | ⚠️ 줄면 최우선(위생이 과했다는 뜻) |
+
+⚠️ **`remaining_unclassified` 가 한 번 크게 늘어나는 것은 정상이다** — 이 PR 이
+`CLASSIFY_RULES_VERSION` 을 8→9 로 올려 전 행이 재대상이 됐다. 사고로 보고하지 말 것.
+
+📔 **Notion 미기록** — 이 세션에 Notion MCP 가 연결돼 있지 않다(도구 목록에 `mcp__Notion__*` 없음).
+CLAUDE.md 규칙대로 건너뛰고 여기에 남긴다. 다음 세션이 연결돼 있으면 개발 업데이트 로그에
+한 줄 남길 것: 서비스=유어애즈 · 유형=버그수정 · 머니경로 없음 · PR #1158 ·
+*"파트너 풀에서 업체명과 전화번호가 어긋나 보이던 것을 고쳤습니다"*.
