@@ -147,6 +147,11 @@ export const COMPANY_DDL: string[] = [
   'ALTER TABLE ad_company_leads ADD COLUMN kakao_checked_at DATETIME',
   'ALTER TABLE ad_company_leads ADD COLUMN classified_v INTEGER',
   'ALTER TABLE ad_company_leads ADD COLUMN enrich_v INTEGER',
+  // 🏷️ **상호를 사이트 자신에게 확인했는가** (2026-08-14 대표 *"최대한 이상적으로 끝까지"*).
+  //   webkr 행의 이름은 **검색결과 제목**이라 출처상 신뢰할 근거가 처음부터 없다. 그래서 분류
+  //   신뢰도로 거르지 않고 **전수 1회** 사이트에 물어본다. 이 플래그가 "정확히 한 번"을 보장한다:
+  //   없으면 7일마다 영원히 재크롤하거나(낭비) 신뢰도 필터로 일부가 영영 빠진다(미커버 158건이 그거였다).
+  'ALTER TABLE ad_company_leads ADD COLUMN name_verified INTEGER',
   `CREATE TABLE IF NOT EXISTS ad_email_suppress (
     email TEXT PRIMARY KEY,
     reason TEXT,

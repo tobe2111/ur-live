@@ -180,6 +180,84 @@ const MUTATIONS = [
       '에러도 경보도 없다 — 이 레포의 "실패가 아니라 조용한 부재" 클래스이고, 이번엔 대표가 요청한 기능 자체가 그렇게 사라졌다.',
   },
   {
+    name: '상호 판정이 앰퍼샌드까지 잡는다(진짜 상호가 제목으로 오인된다)',
+    file: 'src/features/marketing/api/company-classify.ts',
+    find: "  if (/&(?:gt|lt|quot);|[|｜＞>《》＜<]/.test(n)) return true",
+    replace: '  if (/&[a-z]{2,6};|[|｜＞>《》＜<]/.test(n)) return true',
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '초안이 정확히 이 넓은 형태였고 **라이브에서 진짜 상호 14건을 오탐**했다 — `SM C&C 성수`(대형 ' +
+      '광고대행사) · `S&K세무회계컨설팅` · `H&L 컴퍼니` · `한결 A&C`. `&amp;` 는 그냥 `&` 이고 ' +
+      '앰퍼샌드는 상호에 흔하다. 여기서 오탐이 나면 **멀쩡한 업체가 이름을 사이트 이름으로 덮어쓰인다.** ' +
+      '좁힌 규칙(breadcrumb 구분자)은 52→29건이 되고 그 29건은 전부 진짜 제목 파편이었다.',
+  },
+  {
+    name: '엔티티 디코딩에서 앰퍼샌드를 먼저 푼다(이중 디코딩)',
+    file: 'src/features/marketing/api/company-lead-hygiene.ts',
+    find: "  return s\n    .replace(/&lt;/g, '<')",
+    replace: "  return s\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')",
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '앰퍼샌드 디코딩을 **맨 앞으로** 옮긴다. 그러면 `&amp;lt;` 가 `&lt;` → `<` 로 **이중 디코딩**돼 ' +
+      '원문에 없던 글자가 생긴다(이름이 조용히 변조된다). 유닛이 그 값을 직접 고정한다.\n' +
+      '🩸 초안은 *주석만 지우는* 변형이었다 — 동작이 안 바뀌니 테스트가 통과했고 하네스가 ' +
+      '"이 가드는 아무것도 안 지킨다"로 잡아 냈다. **주입은 반드시 동작을 바꿔야 한다.**',
+  },
+  {
+    name: '위생 스윕이 매칭 0 인 창을 완료로 읽는다(뒤쪽 결함이 영영 남는다)',
+    file: 'src/features/marketing/api/company-hygiene-sweep.ts',
+    find: '  const done = hi >= maxId',
+    replace: '  const done = rows.length === 0',
+    test: 'src/tests/unit/company-hygiene-sweep.test.ts',
+    why:
+      '결함은 30만 행 중 900건이라 **대부분의 창이 매칭 0** 이다. 그걸 완료로 읽으면 스윕이 첫 창에서 ' +
+      '끝나고 도장을 찍어 **다시는 안 돈다** — 에러도 카운터 변화도 없이 조용히 끝난다. ' +
+      '완주 판정은 매칭 건수가 아니라 **테이블 끝(MAX(id))** 이어야 한다.',
+  },
+  {
+    name: '위생 스윕 실패가 재분류 본업을 막는다',
+    file: 'src/features/marketing/api/reclassify-lane.ts',
+    find: '  const hygiene = await sweepCompanyHygiene(env.DB).catch(() => null)',
+    replace: '  const hygiene = await sweepCompanyHygiene(env.DB)',
+    test: 'src/tests/unit/company-hygiene-sweep.test.ts',
+    why:
+      '부가 작업이 본업을 죽이면 안 된다. 스윕이 던지면 **재분류 레인 전체가 그 회차를 통째로 잃고**, ' +
+      '이 레인은 시간당 1회뿐이라 손실이 곧 하루치다.',
+  },
+  {
+    name: '국번 술어가 정상 번호까지 잡는다(멀쩡한 행을 매 회차 헛돌린다)',
+    file: 'src/features/marketing/api/company-hygiene-sweep.ts',
+    find: "    OR (phone LIKE '01%'  AND phone NOT LIKE '01_-%')",
+    replace: "    OR (phone LIKE '01%')",
+    test: 'src/tests/unit/company-hygiene-sweep.test.ts',
+    why:
+      '술어는 *좁히개* 라 위양성이 무해해 보이지만, 010 전체가 잡히면 **회차 예산이 멀쩡한 행으로 채워져** ' +
+      '진짜 결함이 뒤로 밀린다(스윕이 사실상 랩으로 되돌아간다). 실제 SQLite 로 정상 모양을 고정한다.',
+  },
+  {
+    name: 'webkr 이름 확인을 다시 신뢰도로 거른다(evidence 158건이 영영 확인 밖)',
+    file: 'src/features/marketing/api/enrich-name-heal.ts',
+    find: '        AND COALESCE(name_verified, 0) = 0',
+    replace: "        AND classify_confidence IN ('none', 'keyword')",
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '`evidence` 는 *"이름에 업종어가 있다"* 는 뜻이지 *"진짜 상호다"* 가 아니다 — 페이지 제목에도 ' +
+      '업종어는 흔하다(`골목상권 분포`·`현장교육 > 현장교육조회`). 실측 778건 중 **158건**이 그 필터 ' +
+      '때문에 영영 확인 대상 밖이었다. webkr 은 이름 출처가 **검색결과 제목**이라 신뢰도로 거를 근거가 ' +
+      '처음부터 없다 — 전수 1회가 맞고, `name_verified` 도장이 그 1회를 보장한다.',
+  },
+  {
+    name: '크롤이 한도·시간에 잘려도 확인 도장을 찍는다(그 행이 영영 미확인으로 굳는다)',
+    file: 'src/features/marketing/api/enrich-name-heal.ts',
+    find: "    if (c.reason !== 'subreq_limit' && c.reason !== 'deadline') verified.push(t.id)",
+    replace: '    verified.push(t.id)',
+    test: 'src/tests/unit/kr-phone-format.test.ts',
+    why:
+      '한도·시간 초과는 **사이트의 문제가 아니라 우리 사정**이다. 그때 도장을 찍으면 전수 1회의 ' +
+      '"1회"를 **빈손으로 써 버려** 그 행은 영영 이름이 안 고쳐진다. 에러도 안 나고 카운터도 안 움직여 ' +
+      '조용하다 — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재" 클래스.',
+  },
+  {
     name: 'webkr 상호 개명을 다시 suspectCompanyName 뒤에 가둔다',
     file: 'src/features/marketing/api/enrich-lane.ts',
     find: "        if (norm(c.siteName) !== norm(t.company_name || '')) {",
@@ -309,19 +387,13 @@ const MUTATIONS = [
       '**코드에서 사라진** 레인인데 "114시간째 멈춤"으로 보고돼, 대표에게 **필요 없는 API 화면 캡처를 요청**했다. ' +
       '나이는 은퇴를 늦게 말하지만 **"디스패처가 안 부른다"는 사실은 즉시 알 수 있다**(orphanLaneBeats 와 같은 신호).',
   },
-  {
-    name: '이름 치유가 keyword 행을 빼놓는다(강등시킨 행이 영영 미치유)',
-    file: 'src/features/marketing/api/enrich-name-heal.ts',
-    find: "classify_confidence IN ('none', 'keyword')",
-    replace: "classify_confidence = 'none'",
-    test: 'src/tests/unit/ads-name-heal-scope.test.ts',
-    why:
-      '2026-08-08 에 "webkr 의 본문은 업종 근거가 아니다" 규칙을 넣으면서 본문-매칭 행들이 evidence → ' +
-      '**keyword** 로 내려갔는데, 치유 쿼리는 `none` 만 봤다 → **방금 강등시킨 그 행들이 영영 치유 대상이 ' +
-      '아니었다.** 대표가 신고한 진흥원(jepa.kr) 유형이 남는 이유다: 도메인이 평범한 .kr 이고 저장된 이름엔 ' +
-      '`진흥원` 이 없지만 **og:site_name 에는 있다**. 실명만 얻으면 기존 classifyLead 가 org 로 내려보낸다 — ' +
-      '새 규칙이 필요한 게 아니라 그 경로에 도달하게만 하면 됐다. 이 한 줄이 되돌아가면 그 도달이 끊긴다.',
-  },
+  // 🗑️ **삭제(2026-08-14)** — `이름 치유가 keyword 행을 빼놓는다`.
+  //   그 주입은 `classify_confidence IN ('none','keyword')` 를 `= 'none'` 으로 되돌리는 것이었는데,
+  //   같은 날 **신뢰도 필터 자체를 폐기**했다(`evidence` 는 "이름에 업종어가 있다"는 뜻이지
+  //   "진짜 상호다"가 아니라서 — webkr 은 이름 출처가 검색결과 제목이다). 대상 문자열이 사라져
+  //   하네스가 **"낡은 지도"** 로 잡아 냈다 — 정확히 그러라고 만든 검사다.
+  //   ⚠️ 지키던 불변식은 사라진 게 아니라 **더 넓은 것으로 대체**됐다: 위쪽
+  //   `webkr 이름 확인을 다시 신뢰도로 거른다` 가 *어떤* 신뢰도 필터든 되돌아오면 빨간불을 낸다.
   {
     name: '공정위 연도를 코드에 박는다(내년에 같은 자리에서 또 죽는다)',
     file: 'src/features/marketing/api/franchise-collect.ts',

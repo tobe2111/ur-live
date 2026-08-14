@@ -33,11 +33,21 @@ import type { Env } from '@/worker/types/env'
 export async function runReclassifyLane(env: Env): Promise<Record<string, unknown>> {
   const { reclassifyCompanyLeads } = await import('./company-discovery')
   const { reclassifyWorkPlan } = await import('./collect-budget')
+  const { sweepCompanyHygiene } = await import('./company-hygiene-sweep')
   const { rowsPerPass, maxRows, deadlineMs } = await reclassifyWorkPlan(env, env.DB) // 🧠 CPU 사망 학습분 반영(cpu-quantum.ts)
   const t0 = Date.now()
+  // 🧹 위생 백로그 스윕 — **랩보다 먼저**. 랩은 250행/시간이라 한 바퀴에 50일이고, 그 사이 대표가
+  //   화면에서 보는 것은 옛 번호다. 결함 행만 좁혀 도는 1회성이고 완주하면 설정 1행 읽기로 끝난다.
+  //   ⚠️ fail-soft — 이 스윕이 죽어도 재분류는 그대로 돌아야 한다(부가 작업이 본업을 막으면 안 된다).
+  const hygiene = await sweepCompanyHygiene(env.DB).catch(() => null)
   let last = await reclassifyCompanyLeads(env.DB, rowsPerPass) // 첫 패스만 housekeeping(억제 스윕)
   let passes = 1, rows = rowsPerPass
   for (; passes < 5 && !last.done && rows < maxRows && Date.now() - t0 < deadlineMs; passes++, rows += rowsPerPass) last = await reclassifyCompanyLeads(env.DB, rowsPerPass, false)
   // 관측: 매번 상한에서 끊기면 더 내려야 한다는 신호다(그때 커서 전진률을 같이 볼 것).
-  return { ...last, passes, rows, elapsed_ms: Date.now() - t0, stopped_by: last.done ? 'done' : (rows >= maxRows ? 'rows' : (Date.now() - t0 >= deadlineMs ? 'deadline' : 'passes')) }
+  return {
+    ...last, passes, rows, elapsed_ms: Date.now() - t0,
+    stopped_by: last.done ? 'done' : (rows >= maxRows ? 'rows' : (Date.now() - t0 >= deadlineMs ? 'deadline' : 'passes')),
+    // 위생 스윕 진척 — 완주 전엔 `hyg=fixed/scanned`, 완주 후엔 `hyg=done`(하트비트로 판정 가능하게).
+    hyg: hygiene ? (hygiene.skipped ? 'done' : `${hygiene.fixed}/${hygiene.scanned}@${hygiene.cursor}${hygiene.done ? ' done' : ''}`) : 'err',
+  }
 }

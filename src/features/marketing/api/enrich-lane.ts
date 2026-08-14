@@ -341,7 +341,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
 
   // ── Phase 3: 이름 치유 소급 — 별 모듈(enrich-name-heal)로 분리(2026-07-28). 왜 필요한지는 그 파일 상단 참조.
   if (budget.left > 4 && !budget.limitHit) {
-    await healSuspectNames({ DB, budget, stamp, crawlContact, spendD1 })
+    await healSuspectNames({ DB, budget, stamp, crawlContact, spendD1, bump })
     await flushStamps()
   }
 

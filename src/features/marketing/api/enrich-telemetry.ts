@@ -89,6 +89,18 @@ export interface EnrichRollup {
    *   실제로 풀 때는 표본을 눈으로 확인한 뒤 **출처별로**(place 등록 링크 vs 웹검색) 갈라야 한다.
    */
   name_loose?: number
+  /**
+   * 🏷️ **이름 치유 진행률** — 2026-08-13 대표 *"연락처는 실재하는데 업체명이 틀린 경우도 많아"*.
+   *
+   * 커버리지(**몇 건이 대상인가**)는 쿼리로 셀 수 있지만 *"언제 다 없어지나"* 는 답할 수 없었다 —
+   * Phase 3(`enrich-name-heal`)는 **회차당 8건 캡 + 잔여 예산이 있을 때만** 도는데 계측이 0이었다.
+   * `heal_picked`(도달 회차) · `heal_try`(크롤 시도) · `heal_renamed`(**실제 개명**) ·
+   * `heal_no_sitename`(사이트가 이름을 안 밝혀 못 고침)을 하루로 묶는다.
+   *
+   * 🔑 이 넷이 있으면 대표 질문에 숫자로 답한다: 남은 대상 ÷ 하루 `heal_renamed` = **며칠**.
+   *   그리고 `heal_no_sitename` 이 크면 **크롤로는 영영 못 고치는 몫**이라 다른 처방이 필요하다.
+   */
+  p2?: Record<string, number>
   last_run_id?: string; updated_at?: string
 }
 
@@ -150,6 +162,16 @@ export function foldRound(rollup: EnrichRollup | null, snap: Record<string, unkn
   // ⚠️ **0 도 쓴다.** 이 필드가 없으면 "재 봤는데 0 건"과 "아직 안 잰다"가 구분되지 않는데,
   //   이 계측이 존재하는 이유가 정확히 그 모호함이다(유닛이 이 계약을 고정한다).
   r.name_loose = (rollup?.day === day ? n(rollup.name_loose) : 0) + n(snap.name_loose)
+  // 🏷️ Phase 2/3 계수기(이름 치유 포함)를 하루로 누적 — `crawl_reason` 과 같은 방식·같은 주의점
+  //   (얕은 복사가 객체를 참조로 물고 오므로 반드시 새 객체를 만든다).
+  const sp2 = snap.p2
+  if (sp2 && typeof sp2 === 'object') {
+    const acc: Record<string, number> = { ...(rollup?.day === day ? rollup.p2 || {} : {}) }
+    for (const [k, v] of Object.entries(sp2 as Record<string, unknown>)) acc[k] = (acc[k] || 0) + n(v)
+    r.p2 = acc
+  } else if (rollup?.day === day && rollup.p2) {
+    r.p2 = { ...rollup.p2 }
+  }
   const ph = typeof snap.phase === 'string' && snap.phase ? snap.phase : 'unknown'
   r.phase[ph] = (r.phase[ph] || 0) + 1
   r.last_run_id = runId

@@ -13,7 +13,9 @@ import { PROSPECT_DDL } from '@/features/marketing/api/store-prospects'
 
 describe('COMPANY_DDL', () => {
   it('문장 수가 유지된다(이관 시 흘림 0)', () => {
-    expect(COMPANY_DDL).toHaveLength(21)
+    // 2026-08-14: `name_verified` 추가로 21 → 22. **의도적 증가만 여기서 올린다** —
+    //   이 래칫의 목적은 리팩토링 중 문장이 **조용히 사라지는 것**을 잡는 것이다.
+    expect(COMPANY_DDL).toHaveLength(22)
   })
 
   it('두 테이블을 만든다 — 리드 본체 + 반송 억제', () => {
