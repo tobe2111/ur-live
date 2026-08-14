@@ -16,7 +16,9 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '../../../worker/types/env'
-import { lookupConsumerMall } from '../../../worker/utils/mall-consumer'
+import { lookupConsumerMall, mallForOrderNumber } from '../../../worker/utils/mall-consumer'
+import { requireAuth } from '../../../worker/middleware/auth'
+import type { AuthVariables } from '../../../worker/middleware/auth.middleware'
 import { getGbSession, getGbSessions } from '../../../worker/utils/gb-session-store'
 import { resolveGbPricing } from '../../../shared/gb-session'
 import { intParam } from '../../../shared/pagination'
@@ -24,12 +26,34 @@ import { resolveMallBranding } from '../../../shared/mall/branding'
 import { parsePickup, isEmptyPickup } from '../../../shared/pickup'
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
 
-const app = new Hono<{ Bindings: Env }>()
+const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>()
 
 /** 몰 확정 — 없으면 null(호출부가 404). */
 async function resolve(c: { env: Env; req: { param: (k: string) => string } }) {
   return lookupConsumerMall(c.env.DB, c.req.param('slug'))
 }
+
+/**
+ * ── GET /of-order/:orderNumber — **이 주문은 어느 가게 것인가** (2026-08-12) ──────────────
+ *
+ * 결제 완료 화면이 세션 흔적 대신 쓰는 **서버 신호**. 흔적은 두 방향 모두 틀릴 수 있다:
+ * 새 탭·복귀면 몰 손님인데 흔적이 없고, 구경만 하고 본진 상품을 산 손님에겐 흔적이 남는다.
+ * 주문 자체를 보면 둘 다 정확해진다.
+ *
+ * 🔴 **정적 경로라 `/:slug` 보다 앞에 등록**한다(Hono 는 등록 순서대로 매칭).
+ * 🔴 `requireAuth` + `orders.user_id` 대조 — 주문번호만 알면 남의 주문 가게를 알 수 있게 두지 않는다.
+ *   비로그인·남의 주문·모르는 주문은 전부 `mall: null`(200) — 호출부가 세션 흔적으로 폴백한다.
+ */
+app.get('/of-order/:orderNumber', requireAuth(), async (c) => {
+  try {
+    const uid = Number(c.get('user')?.id)
+    const mall = await mallForOrderNumber(c.env.DB, String(c.req.param('orderNumber') || '').slice(0, 120), uid)
+    return c.json({ success: true, mall })
+  } catch {
+    // 실패도 `mall: null` — 화면은 "가게 없음"이 아니라 "서버가 모른다"로 읽고 흔적으로 폴백한다.
+    return c.json({ success: true, mall: null })
+  }
+})
 
 // ── GET /:slug — 몰 존재·브랜딩 ────────────────────────────────────────────────
 app.get('/:slug', async (c) => {

@@ -95,6 +95,34 @@ app.get('/mall', async (c) => {
   }
 })
 
+// ── GET /mall/slug-check — 주소가 쓸 수 있는가 ────────────────────────────────
+/**
+ * 🏪 2026-08-12: 신청 폼이 **제출해야만** 결과를 알려 줬다. 슬러그는 `urdeal.kr/{슬러그}` 라는
+ * 영구 주소라 운영자가 가장 신경 쓰는 값인데, 예약어인지 남이 썼는지를 **찍어 보고 알아야** 했다.
+ *
+ * 🔴 판정은 신청·승인과 **같은 SSOT**(`isMallSlugCandidate` + 슬러그 선점 조회)를 쓴다.
+ *   여기만 따로 판정하면 "여기선 된다는데 제출하면 안 되는" 주소가 생긴다 — 그게 더 나쁘다.
+ * ⚠️ 이 응답은 **예약**이 아니다. 확인과 제출 사이에 남이 가져갈 수 있고, 그래서 승인 시점에
+ *   한 번 더 본다(`wholesale-malls-admin` 의 재검증).
+ */
+app.get('/mall/slug-check', rateLimit({ action: 'seller-mall-slug-check', max: 60, windowSec: 60 }), async (c) => {
+  try {
+    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const slug = String(c.req.query('slug') ?? '').trim().toLowerCase().slice(0, 40)
+    if (!isMallSlugCandidate(slug)) {
+      return c.json({ success: true, available: false, reason: '영문 소문자·숫자·하이픈 3~30자, 예약된 주소는 쓸 수 없어요' })
+    }
+    const taken = await c.env.DB.prepare('SELECT 1 AS hit FROM wholesale_malls WHERE slug = ?')
+      .bind(slug).first().catch(() => null)
+    return c.json(taken
+      ? { success: true, available: false, reason: '이미 사용 중인 주소예요' }
+      : { success: true, available: true, reason: null })
+  } catch (err) {
+    return safeError(c, err, '주소를 확인하지 못했습니다', '[seller-gb]')
+  }
+})
+
 // ── POST /mall/apply — 가게 개설 신청 ─────────────────────────────────────────
 /**
  * 🏪 2026-08-12 최소안: 운영자가 **신청**하고 어드민이 **승인만** 한다.

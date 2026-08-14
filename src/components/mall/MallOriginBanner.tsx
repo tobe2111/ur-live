@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { readMallOrigin } from '@/shared/mall/origin'
 
 /**
@@ -18,37 +18,71 @@ import { readMallOrigin } from '@/shared/mall/origin'
  *   뜨는 것이 아무것도 없는 것보다 나쁘다).
  * - 🔴 **판정에 쓰지 않는다** — 가격·결제·상품 표시는 이 배너와 무관하다. 여기서 하는 일은
  *   *간판*과 *되돌아갈 문* 둘뿐이다(`shared/mall/origin.ts` 의 허용 용도).
+ *
+ * ## 🔴 판정 출처는 둘이고, **서버가 이긴다** (2026-08-12 후속)
+ *
+ * 세션 흔적은 *"이번 세션에 몰을 지나갔다"* 만 안다 — **양방향으로 틀릴 수 있다**:
+ * 새 탭·복귀면 몰 손님인데 흔적이 없고, 구경만 하고 본진 상품을 산 손님에겐 흔적이 남는다.
+ * ⇒ 주문번호가 있으면(`?orderId=`, 결제 완료 화면) **그 주문 자체**를 서버에 묻고, 서버가 답하면
+ *   그 답을 쓴다. **"이 주문은 몰 주문이 아니다" 라는 답도 그대로 존중해 아무것도 안 그린다.**
+ *   서버가 모르면(비로그인·조회 실패) 흔적으로 폴백한다 — 종전 동작과 같다.
+ *
+ * 🔒 이 판정이 전부 **여기 안에** 있는 것이 요점이다. 호출부인 `PaymentSuccessPage` 는 Toss 감사
+ *   잠금 파일이라 **렌더 1줄 말고는 아무것도 없어야** 하고, 그 무접촉을 테스트가 고정한다.
+ *   판정을 잠금 파일로 올리면 다음 세션이 거기에 조건을 얹기 시작하고 승인 절차가 이름만 남는다.
  */
 interface MallBrand { slug: string; name: string; logoUrl: string | null; initial: string; colorLight: string }
 interface MallBrandResp { success?: boolean; mall?: Partial<MallBrand> }
+interface OrderMallResp { success?: boolean; mall?: { slug?: string; name?: string } | null }
 
 export default function MallOriginBanner({ className = '' }: { className?: string }) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const orderId = searchParams.get('orderId')
   const [brand, setBrand] = useState<MallBrand | null>(null)
 
   useEffect(() => {
-    const slug = readMallOrigin()
-    if (!slug) return
     let alive = true
-    fetch(`/api/mall/${encodeURIComponent(slug)}`)
-      .then((r) => (r.ok ? (r.json() as Promise<MallBrandResp>) : null))
-      .then((j) => {
-        // 이름을 **먼저 정규화하고 그 값으로 판정**한다. 예전엔 아래에서 `name.slice(0,1)` 이
-        // 이름 없는 응답에 TypeError 를 내 결과적으로 막혔는데, 그건 가드가 일한 게 아니라
-        // **우연히 안전했던 것**이다(되돌려-검증에서 드러났다). 우연에 기대지 않는다.
-        const name = String(j?.mall?.name ?? '').trim()
-        if (!alive || !j?.success || !name) return
-        setBrand({
-          slug,
-          name,
-          logoUrl: j.mall?.logoUrl ?? null,
-          initial: String(j.mall?.initial || name.slice(0, 1)),
-          colorLight: String(j.mall?.colorLight || '#1F2937'),
+
+    /** 슬러그가 정해진 뒤의 공통 경로 — 브랜딩(로고·색)은 어느 출처든 몰 API 에서 읽는다. */
+    const paint = (slug: string) => {
+      fetch(`/api/mall/${encodeURIComponent(slug)}`)
+        .then((r) => (r.ok ? (r.json() as Promise<MallBrandResp>) : null))
+        .then((j) => {
+          // 이름을 **먼저 정규화하고 그 값으로 판정**한다. 예전엔 아래에서 `name.slice(0,1)` 이
+          // 이름 없는 응답에 TypeError 를 내 결과적으로 막혔는데, 그건 가드가 일한 게 아니라
+          // **우연히 안전했던 것**이다(되돌려-검증에서 드러났다). 우연에 기대지 않는다.
+          const name = String(j?.mall?.name ?? '').trim()
+          if (!alive || !j?.success || !name) return
+          setBrand({
+            slug,
+            name,
+            logoUrl: j.mall?.logoUrl ?? null,
+            initial: String(j.mall?.initial || name.slice(0, 1)),
+            colorLight: String(j.mall?.colorLight || '#1F2937'),
+          })
         })
+        .catch(() => { /* 몰 정보를 못 읽으면 간판을 안 건다 — 추측 금지 */ })
+    }
+
+    if (!orderId) { const s = readMallOrigin(); if (s) paint(s); return () => { alive = false } }
+
+    // 주문번호가 있으면 **서버에 먼저 묻는다**. 서버의 "몰 주문 아님"(mall === null)은 흔적보다 세다.
+    fetch(`/api/mall/of-order/${encodeURIComponent(orderId)}`, { credentials: 'include' })
+      .then((r) => (r.ok ? (r.json() as Promise<OrderMallResp>) : null))
+      .then((j) => {
+        if (!alive) return
+        if (j?.success) {
+          const slug = String(j.mall?.slug ?? '').trim()
+          if (slug) paint(slug)     // 서버가 가게를 지목 — 이게 정답이다
+          return                    // 지목이 없으면 **본진 주문** — 흔적이 있어도 안 그린다
+        }
+        const s = readMallOrigin(); if (s) paint(s)   // 서버가 모른다(비로그인 등) → 종전 폴백
       })
-      .catch(() => { /* 몰 정보를 못 읽으면 간판을 안 건다 — 추측 금지 */ })
+      .catch(() => { if (alive) { const s = readMallOrigin(); if (s) paint(s) } })
+
     return () => { alive = false }
-  }, [])
+  }, [orderId])
 
   if (!brand) return null
 

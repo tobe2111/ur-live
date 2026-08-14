@@ -34,8 +34,22 @@ const MALL_OK = {
   mall: { id: 3, slug: 'test', name: '테스트매장', logoUrl: null, initial: '테', colorLight: '#1F2937' },
 }
 
-function renderBanner() {
-  return render(<MemoryRouter><MallOriginBanner /></MemoryRouter>)
+function renderBanner(search = '') {
+  return render(
+    <MemoryRouter initialEntries={[`/payment/success${search}`]}><MallOriginBanner /></MemoryRouter>,
+  )
+}
+
+/** 주문 조회 → 브랜딩 조회 순서로 답하는 fetch 스텁. `orderMall: null` = 서버가 "본진 주문"이라고 답함. */
+function stubOrderThenBrand(orderMall: { slug: string; name: string } | null, ok = true) {
+  return vi.fn(async (url: string) => {
+    if (String(url).includes('/of-order/')) {
+      return ok
+        ? { ok: true, json: async () => ({ success: true, mall: orderMall }) }
+        : { ok: false, json: async () => ({ success: false }) }
+    }
+    return { ok: true, json: async () => MALL_OK }
+  })
 }
 
 describe('MallOriginBanner — 흔적이 있을 때만 간판을 건다', () => {
@@ -93,5 +107,54 @@ describe('MallOriginBanner — 흔적이 있을 때만 간판을 건다', () => 
     sessionStorage.setItem('ur_mall_origin', '../admin')
     renderBanner()
     await waitFor(() => expect(fetchSpy).not.toHaveBeenCalled())
+  })
+})
+
+/**
+ * 🔴 **서버 신호가 흔적을 이긴다** (2026-08-12 후속)
+ *
+ * 흔적은 양방향으로 틀린다 — 새 탭이면 몰 손님인데 없고, 구경만 한 손님에겐 남는다.
+ * 결제 완료 화면은 `?orderId=` 를 갖고 있으므로 **주문 자체**를 물어 두 방향 모두 바로잡는다.
+ *
+ * ⚠️ 이 테스트가 못 막는 것: 서버가 실제로 그 주문의 몰을 맞게 고르는지(그건 `mallByOrderId`
+ *   의 결정 규칙이고 DB 가 있어야 검증된다 — 여기서는 응답을 스텁한다).
+ */
+describe('MallOriginBanner — 주문번호가 있으면 서버 신호가 이긴다', () => {
+  beforeEach(() => { sessionStorage.clear() })
+  afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+
+  it('🔴 흔적은 있는데 **서버가 본진 주문이라고 답하면** 간판을 안 건다', async () => {
+    sessionStorage.setItem('ur_mall_origin', 'test')     // 구경만 하고 본진 상품을 산 손님
+    const f = stubOrderThenBrand(null)
+    vi.stubGlobal('fetch', f)
+    const { container } = renderBanner('?orderId=ORD-1')
+    await settle(f)
+    expect(container.innerHTML).toBe('')
+    // 브랜딩 조회까지 가지 않는다 — 서버가 이미 "아니다" 라고 답했다.
+    expect(f.mock.calls.some((c) => String(c[0]).includes('/api/mall/test'))).toBe(false)
+  })
+
+  it('🔴 흔적이 **없어도** 서버가 가게를 지목하면 간판을 건다 (새 탭·복귀)', async () => {
+    const f = stubOrderThenBrand({ slug: 'test', name: '테스트매장' })
+    vi.stubGlobal('fetch', f)
+    renderBanner('?orderId=ORD-2')
+    expect(await screen.findByText('테스트매장')).toBeTruthy()
+  })
+
+  it('서버가 모르면(비로그인·실패) 흔적으로 폴백한다 — 종전 동작', async () => {
+    sessionStorage.setItem('ur_mall_origin', 'test')
+    const f = stubOrderThenBrand(null, false)            // of-order 가 non-200
+    vi.stubGlobal('fetch', f)
+    renderBanner('?orderId=ORD-3')
+    expect(await screen.findByText('테스트매장')).toBeTruthy()
+  })
+
+  it('주문번호가 없으면(체크아웃) 주문 조회를 아예 안 한다', async () => {
+    sessionStorage.setItem('ur_mall_origin', 'test')
+    const f = stubOrderThenBrand(null)
+    vi.stubGlobal('fetch', f)
+    renderBanner()
+    await settle(f)
+    expect(f.mock.calls.some((c) => String(c[0]).includes('/of-order/'))).toBe(false)
   })
 })

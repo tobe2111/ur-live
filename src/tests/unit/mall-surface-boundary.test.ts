@@ -23,6 +23,13 @@ import { hasPickupInfo } from '@/pages/product-detail/ReceiveMethodNotice'
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
 
+/**
+ * 🔴 **import 줄을 벗기고 본다.** "그 이름이 파일에 있다" 는 "실제로 쓴다" 가 아니다 —
+ *   컴포넌트를 화면에서 통째로 들어내도 `import` 문이 남아 초록이던 사고가 실제로 있었다.
+ *   (주석 함정과 같은 클래스. 이 파일 여러 블록이 공유하므로 모듈 스코프에 둔다.)
+ */
+const noImports = (s: string) => s.replace(/^\s*import[^\n]*$/gm, '')
+
 describe('isMallSlugCandidate — 예약어가 먼저다', () => {
   it('실제 소비자 라우트는 하나도 몰 후보가 아니다', () => {
     // 이게 깨지면 그 라우트가 몰로 해석돼 **페이지가 통째로 죽는다**.
@@ -169,7 +176,6 @@ describe('배선 — 유어딜 자기영업이 몰 손님에게 안 뜬다', () 
   // ⚠️ **import 줄을 벗기고 본다.** 첫 판정은 `/ContinueShoppingLink/` 로만 봤는데, 컴포넌트를
   //   화면에서 통째로 들어내도 **import 문이 남아 초록**이었다(되돌려-검증에서 잡음).
   //   주석 함정과 같은 클래스 — "언급이 있다"와 "실제로 쓴다"는 다르다.
-  const noImports = (s: string) => s.replace(/^\s*import[^\n]*$/gm, '')
 
   it('장바구니의 "계속 쇼핑"이 몰 손님을 유어딜 홈으로 보내지 않는다', () => {
     const cart = noImports(read('src/pages/CartPage.tsx'))
@@ -191,7 +197,11 @@ describe('배선 — 유어딜 자기영업이 몰 손님에게 안 뜬다', () 
 
   it('본진 손님 화면은 byte-불변 — 흔적/브랜드가 없으면 아무것도 안 그린다', () => {
     const b = noImports(read('src/components/mall/MallOriginBanner.tsx'))
-    expect(/if \(!slug\) return/.test(b)).toBe(true)        // 흔적 없음 → 조회조차 안 한다
+    // 흔적을 읽었으면 **값이 있을 때만** 칠한다 — 빈 슬러그로 조회하면 본진 손님도 왕복이 생긴다.
+    //   (2026-08-12 서버 신호 도입으로 폴백이 세 갈래가 됐다. 셋 다 이 형태여야 한다.)
+    const guarded = b.match(/const s = readMallOrigin\(\); if \(s\) paint\(s\)/g) ?? []
+    expect(guarded.length).toBeGreaterThanOrEqual(3)
+    expect(/paint\(\s*readMallOrigin\(/.test(b)).toBe(false)   // 무가드 직접 전달 금지
     expect(/if \(!brand\) return null/.test(b)).toBe(true)  // 조회 실패 → 간판 없음(추측 금지)
   })
 
@@ -202,9 +212,15 @@ describe('배선 — 유어딜 자기영업이 몰 손님에게 안 뜬다', () 
     expect(/stampOrdersMall\(/.test(route)).toBe(true)
     const util = read('src/worker/utils/mall-consumer.ts')
     // fail-closed 3중 — 도매몰이 소비자 주문 내역에 가게로 뜨면 서비스 분리가 깨진다.
-    const fn = util.slice(util.indexOf('export async function stampOrdersMall'))
-    expect(/consumer_path, 0\) = 1/.test(fn)).toBe(true)
-    expect(/active, 1\) = 1/.test(fn)).toBe(true)
+    // fail-closed 조건은 이제 **공용 쿼리 한 곳**에 있다(주문 목록 · 주문번호 단건이 같이 쓴다).
+    //   한 곳으로 모았으니 여기만 지키면 두 진입점이 같이 지켜진다 — 갈라지면 한쪽만 샌다.
+    const q = util.slice(util.indexOf('async function mallByOrderId'))
+    expect(/consumer_path, 0\) = 1/.test(q)).toBe(true)
+    expect(/active, 1\) = 1/.test(q)).toBe(true)
+    for (const entry of ['export async function stampOrdersMall', 'export async function mallForOrderNumber']) {
+      const fn = util.slice(util.indexOf(entry), util.indexOf(entry) + 900)
+      expect(/mallByOrderId\(/.test(fn), `${entry} 가 공용 쿼리를 안 쓴다`).toBe(true)
+    }
   })
 
   it('주문 카드가 몰 이름을 판매처보다 앞세운다 — 본진 주문은 종전 표시', () => {
@@ -475,8 +491,8 @@ describe('결제 완료의 가장 큰 버튼이 몰 손님을 본진으로 보�
 //   ⇒ 운영자가 신청 · 어드민은 승인만. 🔴 **자동 생성이 아니다** — 슬러그는 영구 주소라 사람이 한 번 본다.
 describe('가게 개설 신청 — 신청은 아무것도 만들지 않는다', () => {
   const readF = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
-  const sellerRoutes = readF('src/features/seller/api/seller-gb.routes.ts')
-  const adminRoutes = readF('src/features/supply/api/wholesale-malls-admin.routes.ts')
+  const sellerRoutes = read('src/features/seller/api/seller-gb.routes.ts')
+  const adminRoutes = read('src/features/supply/api/wholesale-malls-admin.routes.ts')
 
   it('신청 경로는 몰을 만들지 않는다 — INSERT 대상은 신청 테이블뿐', () => {
     const apply = sellerRoutes.slice(sellerRoutes.indexOf("app.post('/mall/apply'"))
@@ -566,7 +582,114 @@ describe('가게 개설 신청 — 신청은 아무것도 만들지 않는다', 
 
   it('화면이 배선돼 있다 — 운영자 신청 폼 · 어드민 대기열', () => {
     const noImp = (x: string) => x.replace(/^\s*import[^\n]*$/gm, '')
-    expect(/mall\/apply/.test(readF('src/components/seller/MyMallAddress.tsx'))).toBe(true)
-    expect(/<MallApplicationsPanel\b/.test(noImp(readF('src/pages/admin/AdminWholesaleMallsPage.tsx')))).toBe(true)
+    expect(/mall\/apply/.test(read('src/components/seller/MyMallAddress.tsx'))).toBe(true)
+    expect(/<MallApplicationsPanel\b/.test(noImp(read('src/pages/admin/AdminWholesaleMallsPage.tsx')))).toBe(true)
+  })
+})
+
+/**
+ * 🧾 **한 주문에 두 가게가 섞였을 때** — 승자를 명시로 정한다 (2026-08-12 자체 점검)
+ *
+ * 처음 구현은 `GROUP BY oi.order_id` 에 몰 컬럼을 그냥 얹었다. SQLite 는 그때 **임의의 행**을
+ * 고르므로 같은 주문이 조회할 때마다 다른 가게로 보일 수 있었다 — 화면에 "어느 가게에서 샀는지"를
+ * 말해 놓고 그 답이 흔들리면 안 믿을 이유가 된다.
+ *
+ * ⚠️ 이 테스트가 못 막는 것: SQL 이 실제로 그 행들을 뽑아 오는지(DB 가 필요하다).
+ *   여기서 고정하는 것은 **주어진 행에서 누가 이기는가** 뿐이다.
+ */
+describe('주문 ↔ 가게 — 섞인 주문의 승자는 결정적이다', () => {
+  const rows = [
+    { oid: 7, mid: 9, slug: 'b-shop', name: 'B가게', n: 1 },
+    { oid: 7, mid: 5, slug: 'a-shop', name: 'A가게', n: 3 },
+  ]
+
+  it('품목 수가 많은 가게가 이긴다 — 행 순서를 뒤집어도 같은 답', async () => {
+    const { pickOrderMall } = await import('@/worker/utils/mall-consumer')
+    expect(pickOrderMall(rows).get(7)?.slug).toBe('a-shop')
+    expect(pickOrderMall([...rows].reverse()).get(7)?.slug).toBe('a-shop')
+  })
+
+  it('동수면 몰 id 가 작은 쪽(먼저 열린 가게) — 순서 무관', async () => {
+    const { pickOrderMall } = await import('@/worker/utils/mall-consumer')
+    const tie = [
+      { oid: 8, mid: 9, slug: 'b-shop', name: 'B가게', n: 2 },
+      { oid: 8, mid: 5, slug: 'a-shop', name: 'A가게', n: 2 },
+    ]
+    expect(pickOrderMall(tie).get(8)?.slug).toBe('a-shop')
+    expect(pickOrderMall([...tie].reverse()).get(8)?.slug).toBe('a-shop')
+  })
+
+  it('이름·슬러그가 빈 행은 후보가 아니다 — 빈 간판을 걸지 않는다', async () => {
+    const { pickOrderMall } = await import('@/worker/utils/mall-consumer')
+    const dirty = [
+      { oid: 9, mid: 3, slug: 'x', name: '   ', n: 5 },   // 이름 없음 — 이겨선 안 된다
+      { oid: 9, mid: 7, slug: 'y-shop', name: 'Y가게', n: 1 },
+    ]
+    expect(pickOrderMall(dirty).get(9)?.slug).toBe('y-shop')
+  })
+
+  it('🔴 주문↔가게 조회는 **소유자 대조**를 포함한다 — 주문번호만으로 남의 가게를 알 수 없다', () => {
+    const util = read('src/worker/utils/mall-consumer.ts')
+    const fn = util.slice(util.indexOf('export async function mallForOrderNumber'))
+    expect(/WHERE order_number = \? AND user_id = \?/.test(fn)).toBe(true)
+  })
+
+  it('🔴 `/of-order/:n` 은 인증 필수 + `/:slug` 보다 앞에 등록된다', () => {
+    const routes = read('src/features/mall/api/mall-public.routes.ts')
+    const ofOrder = routes.indexOf("app.get('/of-order/:orderNumber'")
+    const slug = routes.indexOf("app.get('/:slug'")
+    expect(ofOrder).toBeGreaterThan(0)
+    expect(ofOrder).toBeLessThan(slug)
+    expect(routes.slice(ofOrder, ofOrder + 200)).toMatch(/requireAuth\(\)/)
+  })
+})
+
+/**
+ * 🏪 **신청 화면이 운영자를 기다리게 두지 않는다** (2026-08-12 자체 점검)
+ *
+ * 두 갈래로 운영자가 막혀 있었다: ① 주소가 되는지 **제출해야** 알았다 ② 승인이 끝나도
+ * 화면은 "심사 중"인 채라 **새로고침해야** 주소가 나타났다(그 사이 "안 됐나 보다" 로 읽힌다).
+ *
+ * ⚠️ 이 테스트가 못 막는 것: 실제로 몇 초 만에 반영되는지(타이머는 여기서 안 돌린다).
+ */
+describe('가게 개설 — 확인과 반영', () => {
+  const seller = read('src/features/seller/api/seller-gb.routes.ts')
+  const ui = noImports(read('src/components/seller/MyMallAddress.tsx'))
+
+  it('🔴 주소 확인은 신청/승인과 **같은 SSOT** 로 판정한다', () => {
+    // ⚠️ 슬라이스를 **이 핸들러까지만** 자른다. 파일 끝까지 자르면 아래 `/mall/apply` 의
+    //   같은 호출이 잡혀, 이 핸들러가 SSOT 를 버려도 초록이 된다(되돌려-검증에서 실제로 그랬다).
+    const from = seller.indexOf("app.get('/mall/slug-check'")
+    const next = seller.indexOf('app.post(', from)
+    expect(from).toBeGreaterThan(0)
+    expect(next).toBeGreaterThan(from)
+    const chk = seller.slice(from, next)
+    expect(/isMallSlugCandidate\(slug\)/.test(chk)).toBe(true)
+    // 자체 정규식으로 문법을 다시 정의하면 신청/승인과 갈린다 — 그게 이 검사의 요점이다.
+    expect(/\{3,\s*30\}/.test(chk)).toBe(false)
+    // 선점 여부도 본다 — 문법만 보면 "된다" 해 놓고 제출에서 막힌다.
+    expect(/FROM wholesale_malls WHERE slug = \?/.test(chk)).toBe(true)
+  })
+
+  it('🔴 정적 `/mall/slug-check` 가 `/:id` 보다 앞에 등록된다', () => {
+    const chk = seller.indexOf("app.get('/mall/slug-check'")
+    const param = seller.indexOf("app.get('/:id'")
+    expect(chk).toBeGreaterThan(0)
+    expect(param).toBeGreaterThan(0)
+    expect(chk).toBeLessThan(param)
+  })
+
+  it('화면이 확인 결과를 쓴다 — 라우트만 있고 안 부르면 소용없다', () => {
+    expect(/slug-check/.test(ui)).toBe(true)
+  })
+
+  it('🔴 승인되면 스스로 다시 묻는다 — 새로고침을 요구하지 않는다', () => {
+    // ⚠️ 단어만 찾으면 **정리 코드와 타입 주석에 만족된다** — 되돌려-검증에서 실제로 그랬다:
+    //   `removeEventListener('visibilitychange'` 와 `ReturnType<typeof setInterval>` 가 남아 있어,
+    //   재조회를 통째로 지워도 초록이었다. ⇒ **거는 쪽**(add/대입)을 앵커한다.
+    expect(/addEventListener\(\s*'visibilitychange'/.test(ui)).toBe(true)
+    expect(/=\s*setInterval\(/.test(ui)).toBe(true)
+    // 그리고 연결된 뒤엔 그만 묻는다 — 영구 폴링은 비용이다.
+    expect(/clearInterval\(/.test(ui)).toBe(true)
   })
 })

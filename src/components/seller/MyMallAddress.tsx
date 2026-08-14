@@ -24,18 +24,50 @@ export default function MyMallAddress() {
   const [form, setForm] = useState<{ open: boolean; slug: string; name: string; busy: boolean; err: string }>(
     { open: false, slug: '', name: '', busy: false, err: '' },
   )
+  const [check, setCheck] = useState<{ slug: string; available: boolean; reason: string | null } | null>(null)
 
+  /**
+   * 🔴 **승인은 다른 사람이 다른 화면에서 한다** — 그래서 이 화면은 스스로 다시 물어야 한다.
+   *   안 그러면 승인이 끝났는데도 운영자 화면엔 "심사 중"이 남고, 새로고침해야 주소가 나타난다
+   *   (그 사이에 운영자는 "안 됐나 보다" 라고 판단한다).
+   * ⇒ **탭으로 돌아올 때**(가장 흔한 순간) + 심사 중일 때만 60초 간격. 연결된 뒤엔 폴링하지 않는다.
+   */
   useEffect(() => {
     let alive = true
-    api.get('/api/seller/gb/mall')
+    let timer: ReturnType<typeof setInterval> | null = null
+
+    const load = () => api.get('/api/seller/gb/mall')
       .then((r) => {
-        if (alive && r.data?.success) {
-          setInfo({ linked: !!r.data.linked, slug: r.data.slug ?? null, name: r.data.name ?? null, pending: r.data.pending ?? null })
+        if (!alive || !r.data?.success) return
+        const next: MallInfo = {
+          linked: !!r.data.linked, slug: r.data.slug ?? null,
+          name: r.data.name ?? null, pending: r.data.pending ?? null,
         }
+        setInfo(next)
+        if (next.linked && timer) { clearInterval(timer); timer = null }   // 열렸으면 그만 묻는다
       })
       .catch(() => { /* 조회 실패 = 미노출 */ })
-    return () => { alive = false }
+
+    const onFocus = () => { if (document.visibilityState === 'visible') load() }
+    load()
+    timer = setInterval(() => { if (!info?.linked) load() }, 60_000)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => { alive = false; if (timer) clearInterval(timer); document.removeEventListener('visibilitychange', onFocus) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  /** 주소 실시간 확인 — 판정은 서버(신청·승인과 같은 SSOT)가 한다. 여기서 따로 판정하지 않는다. */
+  useEffect(() => {
+    const slug = form.slug.trim().toLowerCase()
+    if (!form.open || slug.length < 3) { setCheck(null); return }
+    let alive = true
+    const t = setTimeout(() => {
+      api.get(`/api/seller/gb/mall/slug-check?slug=${encodeURIComponent(slug)}`)
+        .then((r) => { if (alive && r.data?.success) setCheck({ slug, available: !!r.data.available, reason: r.data.reason ?? null }) })
+        .catch(() => { if (alive) setCheck(null) })   // 확인 실패는 침묵 — 제출이 최종 판정이다
+    }, 350)
+    return () => { alive = false; clearTimeout(t) }
+  }, [form.slug, form.open])
 
   if (!info) return null
 
@@ -86,6 +118,11 @@ export default function MyMallAddress() {
                 placeholder="bangbae-mart"
                 className="mt-1 w-full rounded-lg border border-[#E3D3B4] bg-white px-3 py-2 text-[13.5px] text-gray-900"
               />
+              {check && check.slug === form.slug.trim().toLowerCase() && (
+                <p className={`mt-1 text-[11.5px] font-semibold ${check.available ? 'text-[#1E7A4B]' : 'text-[#B3352B]'}`}>
+                  {check.available ? `urdeal.kr/${check.slug} · 쓸 수 있어요` : check.reason}
+                </p>
+              )}
             </label>
             <label className="block">
               <span className="text-[11.5px] font-bold text-[#8A6320]">가게 이름</span>
