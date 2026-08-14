@@ -204,6 +204,37 @@ const MUTATIONS = [
       '"이 가드는 아무것도 안 지킨다"로 잡아 냈다. **주입은 반드시 동작을 바꿔야 한다.**',
   },
   {
+    name: '위생 스윕이 매칭 0 인 창을 완료로 읽는다(뒤쪽 결함이 영영 남는다)',
+    file: 'src/features/marketing/api/company-hygiene-sweep.ts',
+    find: '  const done = hi >= maxId',
+    replace: '  const done = rows.length === 0',
+    test: 'src/tests/unit/company-hygiene-sweep.test.ts',
+    why:
+      '결함은 30만 행 중 900건이라 **대부분의 창이 매칭 0** 이다. 그걸 완료로 읽으면 스윕이 첫 창에서 ' +
+      '끝나고 도장을 찍어 **다시는 안 돈다** — 에러도 카운터 변화도 없이 조용히 끝난다. ' +
+      '완주 판정은 매칭 건수가 아니라 **테이블 끝(MAX(id))** 이어야 한다.',
+  },
+  {
+    name: '위생 스윕 실패가 재분류 본업을 막는다',
+    file: 'src/features/marketing/api/reclassify-lane.ts',
+    find: '  const hygiene = await sweepCompanyHygiene(env.DB).catch(() => null)',
+    replace: '  const hygiene = await sweepCompanyHygiene(env.DB)',
+    test: 'src/tests/unit/company-hygiene-sweep.test.ts',
+    why:
+      '부가 작업이 본업을 죽이면 안 된다. 스윕이 던지면 **재분류 레인 전체가 그 회차를 통째로 잃고**, ' +
+      '이 레인은 시간당 1회뿐이라 손실이 곧 하루치다.',
+  },
+  {
+    name: '국번 술어가 정상 번호까지 잡는다(멀쩡한 행을 매 회차 헛돌린다)',
+    file: 'src/features/marketing/api/company-hygiene-sweep.ts',
+    find: "    OR (phone LIKE '01%'  AND phone NOT LIKE '01_-%')",
+    replace: "    OR (phone LIKE '01%')",
+    test: 'src/tests/unit/company-hygiene-sweep.test.ts',
+    why:
+      '술어는 *좁히개* 라 위양성이 무해해 보이지만, 010 전체가 잡히면 **회차 예산이 멀쩡한 행으로 채워져** ' +
+      '진짜 결함이 뒤로 밀린다(스윕이 사실상 랩으로 되돌아간다). 실제 SQLite 로 정상 모양을 고정한다.',
+  },
+  {
     name: 'webkr 이름 확인을 다시 신뢰도로 거른다(evidence 158건이 영영 확인 밖)',
     file: 'src/features/marketing/api/enrich-name-heal.ts',
     find: '        AND COALESCE(name_verified, 0) = 0',
