@@ -34,10 +34,17 @@ interface HealDeps {
   crawlContact: typeof import('./contact-enrich')['crawlContact']
   /** D1 도 서브리퀘스트 — 호출부(company-collect)의 지갑에서 함께 지불해야 학습 분모가 진실이 된다. */
   spendD1: (n?: number) => void
+  /**
+   * 📊 계수기 — **이 단계엔 계측이 아예 없었다**(2026-08-13 대표 *"실재하는데 업체명이 틀린 경우가 많아"*).
+   *   커버리지는 계산할 수 있어도 *"얼마나 빨리 없어지나"* 는 답할 수 없었다: 회차당 8건 캡이고
+   *   잔여 예산이 있을 때만 도는데, **몇 번 돌았고 몇 건을 고쳤는지 아무도 안 셌다.**
+   *   ⇒ 대표가 "아직도 많다"고 느끼는 이유가 커버리지인지 **속도**인지 이 숫자가 가른다.
+   */
+  bump?: (k: string) => void
 }
 
 /** Phase 3 실행 — 예산이 남아 있고 한도에 안 부딪혔을 때만 호출된다. */
-export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD1 }: HealDeps): Promise<void> {
+export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD1, bump }: HealDeps): Promise<void> {
   const { suspectCompanyName, classifyLead } = await import('./company-classify')
   spendD1()
   // 🔴 **`evidence` 인데 페이지 제목인 행도 집는다** (2026-08-13 대표 *"이 불일치 문제는 심각해"*).
@@ -55,6 +62,7 @@ export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD
         AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))
       ORDER BY id DESC LIMIT 8`)
     .all<{ id: number; company_name: string; category: string | null; source_keyword: string | null; website: string }>().catch(() => null))?.results || []
+  bump?.('heal_picked')                 // 이번 회차가 Phase 3 에 도달은 했는가(예산이 남았는가)
   for (const t of healTargets) {
     // 벽시계도 함께 본다 — 시간이 끝났는데 D1 치유만 계속 돌면 라운드 종료(스냅샷·학습)를 못 마친다.
     if (budget.left <= 2 || budget.limitHit || (!!budget.deadline && Date.now() >= budget.deadline)) break
@@ -67,11 +75,14 @@ export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD
     //     근거가 없는데 휴리스틱으로 한 번 더 걸러 낼 이유가 없다 — 그냥 **사이트에 직접 물어본다**
     //     (og:site_name). 허위 0 은 유지된다: 채택하는 값은 그 사이트가 스스로 선언한 이름뿐이다.
     //   ⚠️ 비용은 7일 쿨다운 도장(`enrich_checked_at`) + 회당 8건 캡이 막는다 — 같은 행을 반복 크롤하지 않는다.
+    bump?.('heal_try')
     const c = await crawlContact(t.website, budget, undefined, t.category === '미디어')
+    if (!c.siteName) bump?.('heal_no_sitename')   // 사이트가 자기 이름을 안 밝힌다 = 이 행은 못 고친다
     if (c.siteName && c.siteName !== t.company_name) {
       // 실명 기준 재분류 — 근거 생기면 업종까지 교정, 아니면 keyword 로 승급(분류 확인 카드에서 탈출).
       const cls = classifyLead({ company_name: c.siteName, category: t.category, source: 'webkr', source_keyword: t.source_keyword })
       if (cls.ok) {
+        bump?.('heal_renamed')            // 🎯 실제로 이름이 바뀐 건수 — "얼마나 빨리 없어지나"의 분자
         spendD1()
         await DB.prepare(`UPDATE ad_company_leads SET company_name = ?, category = COALESCE(?, category), subcategory = COALESCE(?, subcategory),
             lead_type = ?, classify_confidence = ? WHERE id = ? AND status = 'new'`)
