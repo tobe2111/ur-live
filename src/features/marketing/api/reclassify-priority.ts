@@ -23,14 +23,21 @@
 export const RECLASSIFY_PRIORITY_TIERS: readonly (readonly string[])[] = [['webkr'], ['local']]
 /** 우선순위 진행 상태(티어 + 커서) — 전체 크롤 커서와 **따로** 둔다(섞으면 한쪽이 조용히 건너뛴다). */
 export const RECLASSIFY_PRIO_STATE = 'ads_company_reclassify_prio'
-/** 재검사 대상 행의 SELECT 컬럼 — 우선순위 패스와 전체 크롤이 **같은 것을 읽어야** 한다(두 벌이면 갈라진다). */
-export const RECLASSIFY_COLS = 'id, company_name, description, website, category, subcategory, tier, source, source_keyword, status, memo, phone, email, contact_source'
+/**
+ * 재검사 대상 행의 SELECT 컬럼 — 우선순위 패스와 전체 크롤이 **같은 것을 읽어야** 한다(두 벌이면 갈라진다).
+ *
+ * 🔬 `lead_type`·`classify_confidence`·`classified_v` 는 **판정 변화율 계측**용이다(2026-08-14).
+ *   이 셋이 없으면 "다시 도장 찍은 행 수"는 세어도 **"판정이 실제로 달라진 행 수"는 못 센다** —
+ *   그 둘의 차이가 재분류 랩을 좁혀도 되는지(38일 → 2일)를 가르는 유일한 근거다.
+ */
+export const RECLASSIFY_COLS = 'id, company_name, description, website, category, subcategory, tier, source, source_keyword, status, memo, phone, email, contact_source, lead_type, classify_confidence, classified_v'
 
 export type ReclassifyRow = {
   id: number; company_name: string; description: string | null; website: string | null
   category: string | null; subcategory: string | null; tier: number | null
   source: string; source_keyword: string | null; status: string; memo: string | null
   phone: string | null; email: string | null; contact_source: string | null
+  lead_type: string | null; classify_confidence: string | null; classified_v: number | null
 }
 
 /**

@@ -204,6 +204,38 @@ const MUTATIONS = [
       '"이 가드는 아무것도 안 지킨다"로 잡아 냈다. **주입은 반드시 동작을 바꿔야 한다.**',
   },
   {
+    name: '변화율이 tier COALESCE 를 변화로 센다(등록부 이탈률이 부풀어 좁히기가 부당해 보인다)',
+    file: 'src/features/marketing/api/reclassify-verdict-delta.ts',
+    find: '      || (before.tier == null && after.tier != null)',
+    replace: '      || before.tier !== after.tier',
+    test: 'src/tests/unit/reclassify-verdict-delta.test.ts',
+    why:
+      'UPDATE 가 `COALESCE(tier, ?)` 라 **옛 tier 가 있으면 안 바뀐다.** 그걸 변화로 세면 tier 가 이미 ' +
+      '박힌 행이 전부 "판정이 달라졌다"로 잡혀 **변화율이 부풀고**, 그러면 "등록부도 규칙에 반응한다" 는 ' +
+      '거짓 결론이 나와 **랩 좁히기(38일→2일)가 부당해 보인다.** 계측은 결론을 뒤집는 숫자다.',
+  },
+  {
+    name: '변화율 분모에 첫 분류를 넣는다(새 행이 전부 "바뀜"으로 잡힌다)',
+    file: 'src/features/marketing/api/reclassify-verdict-delta.ts',
+    find: '  if (!(Number(classifiedV) > 0)) { d.first++; return }',
+    replace: '  if (false) { d.first++; return }',
+    test: 'src/tests/unit/reclassify-verdict-delta.test.ts',
+    why:
+      '처음 분류되는 행은 이전 판정이 없어 **무조건 "달라졌다"** 로 잡힌다. 그걸 분모에 넣으면 ' +
+      '변화율이 유입량에 끌려다녀 **규칙 변화와 무관한 숫자**가 된다 — 재려던 것을 못 재게 된다.',
+  },
+  {
+    name: '변화율을 회차마다 덮어쓴다(표본이 250건에 갇혀 누적이 무의미)',
+    file: 'src/features/marketing/api/reclassify-verdict-delta.ts',
+    find: '    delta: mergeDelta(prevDelta, s.delta),',
+    replace: '    delta: s.delta,',
+    test: 'src/tests/unit/reclassify-verdict-delta.test.ts',
+    why:
+      '회차당 250행이라 **한 회차 표본으로는 96%/4% 를 가를 수 없다.** 덮어쓰면 계측이 도는 것처럼 ' +
+      '보이면서(값이 매시간 갱신된다) 실제로는 마지막 250건만 남는다 — 조용히 틀린 근거로 ' +
+      '38일짜리 구조를 바꾸게 된다.',
+  },
+  {
     name: '위생 스윕이 매칭 0 인 창을 완료로 읽는다(뒤쪽 결함이 영영 남는다)',
     file: 'src/features/marketing/api/company-hygiene-sweep.ts',
     find: '  const done = hi >= maxId',

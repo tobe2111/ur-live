@@ -13,6 +13,7 @@ import { companyBreakdown, type CompanyDayInflow, type CompanySegments } from '.
 import type { Env } from '@/worker/types/env'
 import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
 import { hygieneStatements } from './company-lead-hygiene'
+import { emptyDelta, tallyVerdict, verdictChanged, writeReclassifyStats } from './reclassify-verdict-delta'
 import { normalizeCompanyName } from './registry-email-match'
 import { runDdlOnce } from './ads-schema-guard'
 import { pickPriorityBatch, pickCrawlBatch, writePrioState, type ReclassifyRow } from './reclassify-priority'
@@ -396,6 +397,7 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     return { scanned: 0, updated: 0, removed: 0, held: 0, cursor: 0, done: true, phase }
   }
   let updated = 0, removed = 0, held = 0
+  const delta = emptyDelta()   // 🔬 판정 *변화율* 계측(좁히기 판단 근거) — 동작은 안 바꾼다
   const stmts: D1PreparedStatement[] = []
   for (const r of rows) {
     const c = classifyLead(r)
@@ -421,6 +423,7 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     } else {
       stmts.push(DB.prepare('UPDATE ad_company_leads SET lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?').bind(c.lead_type, conf, CLASSIFY_RULES_VERSION, r.id))
     }
+    tallyVerdict(delta, r.source, r.classified_v, verdictChanged(r, c, registry))
     // 🧼 소급 위생(전화 형식·플랫폼 연락처·뉴스룸 이메일) — 판정과 근거는 `company-lead-hygiene.ts`.
     for (const st of hygieneStatements(r, sql => DB.prepare(sql))) stmts.push(st)
     updated++
@@ -437,15 +440,8 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
   const nextCursor = rows[rows.length - 1].id
   if (prioDone) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, String(nextCursor)).run().catch(() => null)
   else await writePrioState(DB, prio!.tier, nextCursor, CLASSIFY_RULES_VERSION)
-  // 📊 진행률 가시화(2026-07-27 대표 "청소 얼마나 됐나 안 보임") — 남은 미분류 수 포함 스탬프.
-  const remRow = await DB.prepare('SELECT COUNT(*) AS n FROM ad_company_leads WHERE merged_into IS NULL AND (classified_v IS NULL OR classified_v < ?)').bind(CLASSIFY_RULES_VERSION).first<{ n: number }>().catch(() => null)
-  const prevStat = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>().catch(() => null)
-  let tot = { removed: 0, updated: 0 }
-  try { const p = prevStat?.value ? JSON.parse(prevStat.value) : null; if (p) tot = { removed: p.total_removed || 0, updated: p.total_updated || 0 } } catch { /* 초기 */ }
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_reclassify_stats', JSON.stringify({
-    last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), scanned: rows.length, updated, removed, held,
-    remaining_unclassified: Number(remRow?.n) || 0, total_removed: tot.removed + removed, total_updated: tot.updated + updated,
-  })).run().catch(() => null)
+  // 📊 진행률 가시화(2026-07-27 대표 "청소 얼마나 됐나 안 보임") + 판정 변화율 — `reclassify-verdict-delta.ts`.
+  await writeReclassifyStats(DB, CLASSIFY_RULES_VERSION, { scanned: rows.length, updated, removed, held, delta })
   return { scanned: rows.length, updated, removed, held, cursor: nextCursor, done: false, phase }
 }
 
