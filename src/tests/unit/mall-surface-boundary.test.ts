@@ -506,6 +506,43 @@ describe('가게 개설 신청 — 신청은 아무것도 만들지 않는다', 
     expect(/SET status = 'pending', reviewed_at = NULL/.test(ap)).toBe(true)
   })
 
+  /**
+   * 🔴 **되돌리기는 반쪽이면 안 된다** — 첫 구현이 정확히 반쪽이었다(2026-08-12 자체 점검에서 발견).
+   *
+   * 몰 INSERT 는 성공하고 그 다음이 실패하면, 신청만 `pending` 으로 돌아오고 **몰은 남는다.**
+   * 그러면 재승인이 이 핸들러 위쪽의 slug 중복 검사(`이미 사용 중인 slug`)에 걸려 **영원히 409** 다
+   * — 대기열엔 보이는데 아무리 눌러도 안 열리고, 화면 어디에도 이유가 없다.
+   *
+   * ⚠️ 이 테스트가 못 막는 것: 되돌리기 SQL 이 **실제로 그 행을 지우는지**(DB 없이 정적 검사라
+   *   문장 존재만 본다). 바인딩이 틀려 0행 삭제여도 여기서는 통과한다.
+   */
+  it('🔴 실패 시 **만든 몰까지** 지운다 — 안 그러면 그 슬러그는 영원히 재승인 불가', () => {
+    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    const catchAt = ap.indexOf('} catch (e) {')
+    expect(catchAt).toBeGreaterThan(0)
+    const rollback = ap.slice(catchAt, ap.indexOf('throw e') + 8)
+    expect(/DELETE FROM wholesale_malls/.test(rollback)).toBe(true)
+    // 셀러 연결도 같이 되돌린다 — 몰만 지우면 sellers.mall_id 가 없는 몰을 가리킨다.
+    expect(/UPDATE sellers SET mall_id/.test(rollback)).toBe(true)
+  })
+
+  it('🔴 셀러 연결은 **본진에 있을 때만** — 묵은 신청이 남의 몰 연결을 덮어쓰지 않는다', () => {
+    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    const link = ap.slice(ap.indexOf('UPDATE sellers SET mall_id'))
+    // 가드 없는 `WHERE id = ?` 단독이면 어드민이 수동 연결해 둔 몰을 덮어쓴다.
+    expect(/WHERE id = \? AND COALESCE\(mall_id, \?\) = \?/.test(link)).toBe(true)
+    // 그리고 결과를 본다 — 0행이면 이미 다른 몰이라는 뜻이라 진행하면 안 된다.
+    expect(/link\.meta\?\.changes/.test(ap)).toBe(true)
+  })
+
+  it('🔴 상품 이관 실패를 삼키지 않는다 — 조용히 빈 가게가 열리면 안 된다', () => {
+    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    const migrate = ap.slice(ap.indexOf('UPDATE products SET mall_id'))
+    const stmtEnd = migrate.indexOf('.run()') + 6
+    // `.run().catch(() => null)` 이면 실패가 성공처럼 보인다 — ⑤가 없애려던 바로 그 혼란이다.
+    expect(/^\s*\.catch/.test(migrate.slice(stmtEnd, stmtEnd + 20))).toBe(false)
+  })
+
   it('승인이 만드는 몰은 소비자 경로로 열린다(consumer_path=1)', () => {
     const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
     expect(/INSERT INTO wholesale_malls[\s\S]{0,200}consumer_path/.test(ap)).toBe(true)
