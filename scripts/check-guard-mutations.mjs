@@ -387,19 +387,13 @@ const MUTATIONS = [
       '**코드에서 사라진** 레인인데 "114시간째 멈춤"으로 보고돼, 대표에게 **필요 없는 API 화면 캡처를 요청**했다. ' +
       '나이는 은퇴를 늦게 말하지만 **"디스패처가 안 부른다"는 사실은 즉시 알 수 있다**(orphanLaneBeats 와 같은 신호).',
   },
-  {
-    name: '이름 치유가 keyword 행을 빼놓는다(강등시킨 행이 영영 미치유)',
-    file: 'src/features/marketing/api/enrich-name-heal.ts',
-    find: "classify_confidence IN ('none', 'keyword')",
-    replace: "classify_confidence = 'none'",
-    test: 'src/tests/unit/ads-name-heal-scope.test.ts',
-    why:
-      '2026-08-08 에 "webkr 의 본문은 업종 근거가 아니다" 규칙을 넣으면서 본문-매칭 행들이 evidence → ' +
-      '**keyword** 로 내려갔는데, 치유 쿼리는 `none` 만 봤다 → **방금 강등시킨 그 행들이 영영 치유 대상이 ' +
-      '아니었다.** 대표가 신고한 진흥원(jepa.kr) 유형이 남는 이유다: 도메인이 평범한 .kr 이고 저장된 이름엔 ' +
-      '`진흥원` 이 없지만 **og:site_name 에는 있다**. 실명만 얻으면 기존 classifyLead 가 org 로 내려보낸다 — ' +
-      '새 규칙이 필요한 게 아니라 그 경로에 도달하게만 하면 됐다. 이 한 줄이 되돌아가면 그 도달이 끊긴다.',
-  },
+  // 🗑️ **삭제(2026-08-14)** — `이름 치유가 keyword 행을 빼놓는다`.
+  //   그 주입은 `classify_confidence IN ('none','keyword')` 를 `= 'none'` 으로 되돌리는 것이었는데,
+  //   같은 날 **신뢰도 필터 자체를 폐기**했다(`evidence` 는 "이름에 업종어가 있다"는 뜻이지
+  //   "진짜 상호다"가 아니라서 — webkr 은 이름 출처가 검색결과 제목이다). 대상 문자열이 사라져
+  //   하네스가 **"낡은 지도"** 로 잡아 냈다 — 정확히 그러라고 만든 검사다.
+  //   ⚠️ 지키던 불변식은 사라진 게 아니라 **더 넓은 것으로 대체**됐다: 위쪽
+  //   `webkr 이름 확인을 다시 신뢰도로 거른다` 가 *어떤* 신뢰도 필터든 되돌아오면 빨간불을 낸다.
   {
     name: '공정위 연도를 코드에 박는다(내년에 같은 자리에서 또 죽는다)',
     file: 'src/features/marketing/api/franchise-collect.ts',
