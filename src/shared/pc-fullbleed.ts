@@ -7,6 +7,10 @@
  *
  * 상단 네비 처리 차이:
  *   - `/` (홈): 전역 DesktopTopNav 를 콘텐츠 폭 모드로 표시(자체 헤더 없음 — PcHomePage).
+ *     ⚠️ **이건 `lg+` 에서만 참이다.** `lg` 미만의 홈은 `HomeRoute` 가 `RestaurantMapPage`
+ *     (자체 sticky 헤더 + 로고)를 렌더하므로, 그 구간에서 전역 네비를 띄우면 상단바가 둘이 된다
+ *     (2026-08-14 대표 태블릿 스크린샷). 그 억제는 `map-surface.ts` SSOT + DesktopTopNav 의
+ *     `LEGACY_OWN_HEADER` 가 담당한다 — 이 파일은 `lg+` 풀너비 판정만 한다.
  *   - `/vouchers` (교환권): 페이지 자체 헤더(교환권 타이틀/검색/잔액/카테고리)를 그대로 쓰므로
  *     전역 DesktopTopNav 는 숨김(중복 방지) → `OWN_HEADER_PC_PATHS`.
  */

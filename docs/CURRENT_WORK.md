@@ -5494,8 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 156건 · 최신순 · 이 목록은 자동 생성된다._
+_총 157건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-08-14**
+- [태블릿 이중 헤더 · 화면 비율 전수조사 (2026-08-14)](handoff/2026-08-14-tablet-viewport-audit.md)
 **2026-08-13**
 - [📔 Notion 서비스 개발 현황 허브 구축 + 자동 갱신 규칙](handoff/2026-08-13-notion-service-hub.md)
 **2026-08-12**

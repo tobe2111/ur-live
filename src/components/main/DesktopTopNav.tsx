@@ -12,6 +12,7 @@ import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
 import { isWholesaleSurface } from '@/utils/domain'
 import { hasOwnHeaderPc, isFullBleedPcPath } from '@/shared/pc-fullbleed'
+import { MAP_SCREEN_PATHS } from '@/shared/map-surface'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -101,7 +102,14 @@ export default function DesktopTopNav() {
   if (hasOwnHeaderPc(location.pathname)) return null
   // 🖥️ 2026-07-19 (상단 공통화 후속 — 태블릿 이중 헤더 방지): 이 경로들은 <lg 에서 자체 모바일 헤더
   //   (sticky/fixed top-0)를 쓰므로 전역 네비는 lg+ 에서만(겹치면 이중 헤더/가림).
-  const LEGACY_OWN_HEADER = ['/vouchers', '/stays', '/group-buy', '/map']
+  //   🐛 2026-08-14 (대표 태블릿 스크린샷 — 로고 2개·버튼 겹침): **`/` 가 빠져 있었다.**
+  //     이 네비는 `md`(768)부터 뜨는데 홈은 `lg`(1024) 미만에서 `RestaurantMapPage` 를 렌더한다
+  //     (`HomeRoute`). 그 페이지는 `/map` 과 **같은 컴포넌트·같은 자체 헤더**(sticky top-0 + 로고)라,
+  //     768~1023 구간에서 상단바가 둘이 됐다. `/map` 은 목록에 있어 보호됐고 홈만 새어 나갔다.
+  //     ⚠️ `pc-fullbleed.ts` 주석의 *"홈은 자체 헤더 없음(PcHomePage)"* 은 **lg+ 에서만 참**이다.
+  //     지도 경로는 `map-surface.ts` SSOT 에서 받는다(App.tsx 의 여백 게이트와 같은 목록 — 손으로
+  //     두 벌 적었더니 실제로 갈라졌다).
+  const LEGACY_OWN_HEADER = [...MAP_SCREEN_PATHS, '/vouchers', '/stays', '/group-buy']
   if (!isLg && LEGACY_OWN_HEADER.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))) return null
 
   // 🖥️ 2026-07-15~16 (당근 스타일 PC): 풀너비 페이지(홈·마이 등, 앱 사이드바 없음)는 상단바가 로고+탭을

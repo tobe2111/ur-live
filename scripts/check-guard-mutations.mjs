@@ -3358,6 +3358,27 @@ const MUTATIONS = [
       '두 번** 내놓는다 — 희소한 회차(폭 9)를 중복에 쓰고, 그 키워드의 성과 카운터도 이중 계상된다. ' +
       '풀이 작아지는 순간(은퇴·고갈)에 터지는 형태라 평소 테스트로는 안 보인다.',
   },
+  {
+    name: '지도 경로 SSOT 에서 홈(`/`)이 빠짐(태블릿 이중 헤더 · 전 폭 56px 넘침)',
+    file: 'src/shared/map-surface.ts',
+    find: "export const MAP_SCREEN_PATHS = ['/', '/map', '/restaurant-map'] as const",
+    replace: "export const MAP_SCREEN_PATHS = ['/map', '/restaurant-map'] as const",
+    test: 'src/tests/unit/home-map-surface.test.ts',
+    why:
+      '홈은 `lg` 미만에서 `RestaurantMapPage` 를 렌더한다 — 즉 `/` 와 `/map` 은 태블릿·모바일에서 같은 ' +
+      '화면이다. 이 사실이 두 곳에 손으로 적혀 있었고 둘 다 `/` 를 빠뜨려, 768~1023 에서 상단바가 2개가 되고 ' +
+      '(대표 스크린샷) **모든 폭에서** 문서가 뷰포트보다 56px 커져 바텀시트가 밀렸다. 에러가 없어 안 보인다.',
+  },
+  {
+    name: '네비가 지도 경로를 손으로 다시 적음(SSOT 우회 → 다시 갈라짐)',
+    file: 'src/components/main/DesktopTopNav.tsx',
+    find: "const LEGACY_OWN_HEADER = [...MAP_SCREEN_PATHS, '/vouchers', '/stays', '/group-buy']",
+    replace: "const LEGACY_OWN_HEADER = ['/map', '/vouchers', '/stays', '/group-buy']",
+    test: 'src/tests/unit/home-map-surface.test.ts',
+    why:
+      '이 버그의 형태는 "같은 질문에 답하는 손글씨 목록이 두 벌"이다. SSOT 를 만들어도 한쪽이 다시 ' +
+      '직접 적기 시작하면 원래 상태로 돌아간다 — 그 회귀가 바로 이 주입이다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
