@@ -75,8 +75,14 @@ export default function SearchHeader({
     setShowSuggestions(false)
   }
 
+  // 🐛 2026-08-14 (화면 고정 전수조사 — 실측): `top-0` 만 두면 md+ 에서 **전역 DesktopTopNav 위에**
+  //   달라붙는다(둘 다 sticky top-0, 이쪽 z-50 > 네비 z-40). 실측 @900 은 158px 만 스크롤해도
+  //   이 바(0~65)가 네비(0~102)를 덮어 **네비 아래 37px 만 삐져나온 반쪽 바**가 남았다.
+  //   ⇒ 형제 22곳이 쓰는 규약대로 네비 **아래**에 쌓는다. `/search` 는 풀너비 경로라 네비가
+  //   [로고행 + 카테고리행] = 102px — 일반 경로(57px, `md:top-14`)와 값이 다르다.
+  //   ⚠️ 이 102 는 `RestaurantMapPage` 의 `lg:h-[calc(100dvh-102px)]` 와 같은 수(현재 손으로 2벌).
   return (
-    <div className="sticky top-0 z-50 bg-white dark:bg-[#0F151D]">
+    <div className="sticky top-0 md:top-[102px] z-50 bg-white dark:bg-[#0F151D]">
       <div className="flex items-center gap-2 px-3 py-2.5">
         <button onClick={() => navigate(-1)} className="shrink-0 p-1">
           <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />

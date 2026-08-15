@@ -34,6 +34,7 @@ const RestoreAccountModal = lazy(() => import('./components/account/RestoreAccou
 const SideBanner = lazy(() => import('@/components/SideBanner'))
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/shared/config/region'
+import { isMapScreenPath } from '@/shared/map-surface'
 // TD-006: route group files
 import { SellerRoutes } from './routes/seller.routes'
 import { AdminRoutes } from './routes/admin.routes'
@@ -591,10 +592,9 @@ function AppContent() {
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
     || isWholesaleSurface(location.pathname) || isMarketingSurface(location.pathname) || embedHideNav
     || mallSurface
-  // 🗺️ 2026-06-20 (대표 — 홈=리스트 / 지도는 버튼 이동): 지도 페이지(/restaurant-map)만 h-screen 자체관리
-  //   풀스크린(바텀시트가 하단 담당) → main 하단 네비 여백 제외. 홈(/)=리스트는 일반 페이지(여백 필요).
-  //   ⚠️ 도매/제조사(isWholesaleSurface)는 위 hideBottomNav 가 이미 커버(여백 0) — 여기 중복 불필요.
-  const mapFullScreen = location.pathname === '/map' || location.pathname === '/restaurant-map'
+  // 🗺️ 지도 화면(h-[100dvh] 자체관리)은 main 하단 네비 여백 제외 — 경로 SSOT `map-surface.ts`. 도매/제조사는 hideBottomNav 가 이미 커버.
+  //   🐛 2026-08-14: 옛 주석("홈=리스트라 여백 필요")이 낡아 `/` 가 빠져, 홈만 전 폭에서 문서가 56px 컸다(바텀시트 밀림 — 근거는 SSOT 독블록).
+  const mapFullScreen = isMapScreenPath(location.pathname)
 
   return (
     <>
