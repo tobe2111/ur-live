@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { Ticket, AlertCircle, RefreshCw, TrendingUp, BarChart3 } from 'lucide-react'
+import { Ticket, AlertCircle, RefreshCw, TrendingUp, BarChart3, Store } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 
@@ -26,6 +26,10 @@ interface GroupBuyRow {
   seller_id: number
   seller_name?: string
   seller_avatar?: string
+  // 🏪 2026-08-14: 서버가 실어 준다 — '전체'로 볼 때 어느 서비스 행인지 화면에서 구분되게.
+  //   본진(유어딜) 행은 `null` 이다(몰 조인이 `consumer_path=1` 인 몰만 매칭).
+  mall_slug?: string | null
+  mall_name?: string | null
   created_at: string
   updated_at: string
 }
@@ -90,18 +94,41 @@ export default function AdminGroupBuyPage() {
   const [filter, setFilter] = useState<StatusFilter>('all')
   const [refunding, setRefunding] = useState<number | null>(null)
   const [tab, setTab] = useState<Tab>('monitor')
+  /**
+   * 🏪 **어느 서비스의 공구를 보는가** — 2026-08-14 (대표 *"페이지 구분을 잘 해야겠어"*)
+   *
+   * 이 화면은 원래 `products` 를 이용권 카테고리로만 걸러서, **🏪 공구 서비스(운영자 몰) 상품이
+   * 유어딜 목록·GMV 에 섞여** 있었다. 이제 서버가 스코프를 받고, **URL 이 진실**이다
+   * (어드민 nav 의 '몰 상품·공구' 항목이 `?mall=all` 로 들어온다 — 새로고침·북마크에도 유지된다).
+   */
+  const [searchParams, setSearchParams] = useSearchParams()
+  const scope: 'main' | 'mall' | 'all' =
+    searchParams.get('mall') === 'mall' ? 'mall' : searchParams.get('mall') === 'all' ? 'all' : 'main'
+  const setScope = (v: 'main' | 'mall' | 'all') => {
+    const next = new URLSearchParams(searchParams)
+    if (v === 'main') next.delete('mall'); else next.set('mall', v)
+    setSearchParams(next, { replace: true })
+  }
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login')
   }, [navigate])
 
   // 🛡️ 2026-06-03 Tier2(대시보드): 탭별 수동 페칭 → useApiQuery (monitor 리스트 + analytics).
-  const listQ = useApiQuery<GroupBuyRow[]>(['admin', 'gb-list', filter], '/api/group-buy/admin/list', {
-    params: filter === 'unsuccessful' ? { filter: 'unsuccessful' } : filter !== 'all' ? { status: filter } : {},
+  const listQ = useApiQuery<GroupBuyRow[]>(['admin', 'gb-list', filter, scope], '/api/group-buy/admin/list', {
+    // 🔴 스코프를 쿼리 키에 넣지 않으면 유어딜 목록과 몰 목록이 **같은 캐시**를 쓴다(섞임 재발).
+    params: {
+      ...(filter === 'unsuccessful' ? { filter: 'unsuccessful' } : filter !== 'all' ? { status: filter } : {}),
+      ...(scope === 'main' ? {} : { mall: scope }),
+    },
     enabled: tab === 'monitor',
     select: (r: any) => (r?.success ? r.data || [] : []),
   })
-  const analyticsQ = useApiQuery<AnalyticsData | null>(['admin', 'gb-analytics'], '/api/group-buy/admin/analytics', { enabled: tab === 'analytics', select: (r: any) => (r?.success ? r.data : null) })
+  const analyticsQ = useApiQuery<AnalyticsData | null>(['admin', 'gb-analytics', scope], '/api/group-buy/admin/analytics', {
+    params: scope === 'main' ? {} : { mall: scope },
+    enabled: tab === 'analytics',
+    select: (r: any) => (r?.success ? r.data : null),
+  })
   const items = listQ.data ?? []
   const analytics = analyticsQ.data ?? null
   const loading = listQ.isLoading
@@ -146,13 +173,45 @@ export default function AdminGroupBuyPage() {
   }
 
   return (
-    <AdminLayout title="공동구매 모니터링">
+    <AdminLayout title={scope === 'main' ? '이용권 공구 모니터링 (유어딜)' : '몰 상품·공구 모니터링 (공구 서비스)'}>
       <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="공동구매 모니터링"
-          subtitle="진행 중 / 달성 / 미달성 / 어드민 강제 환불 + 카테고리별 analytics"
+          title={scope === 'main' ? '이용권 공구 모니터링' : scope === 'mall' ? '몰 상품·공구 모니터링' : '전체 공구 모니터링'}
+          subtitle={
+            scope === 'main' ? '🎟️ 유어딜 본진 — 진행 중 / 달성 / 미달성 / 강제 환불 + 카테고리별 analytics'
+              : scope === 'mall' ? '🏪 공구 서비스 — 운영자 몰(urdeal.kr/{슬러그}) 상품만'
+                : '⚠️ 유어딜 + 운영자 몰을 **함께** 봅니다 — 실적 해석 시 주의'
+          }
           icon={<Ticket className="h-5 w-5" />}
         />
+
+        {/* 🏪 서비스 스코프 — 화면이 "지금 어느 서비스를 보는지" 스스로 말한다.
+            그전엔 두 서비스가 한 목록에 섞여 있었고, 화면 어디에도 그 사실이 없었다. */}
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white p-2">
+          <span className="px-1 text-xs font-bold text-gray-500">서비스</span>
+          {([
+            { k: 'main', label: '🎟️ 유어딜 본진', hint: '이용권 공구' },
+            { k: 'mall', label: '🏪 공구 서비스', hint: '운영자 몰' },
+            { k: 'all', label: '전체', hint: '섞어 보기' },
+          ] as const).map((o) => (
+            <button
+              key={o.k}
+              type="button"
+              onClick={() => setScope(o.k)}
+              title={o.hint}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                scope === o.k ? 'bg-gray-900 text-white' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+          {scope === 'all' && (
+            <span className="ml-auto text-[11px] font-semibold text-amber-700">
+              두 서비스가 섞여 있습니다 — 아래 '가게' 열로 구분하세요
+            </span>
+          )}
+        </div>
 
         {/* 탭 — 모니터링 / 분석 */}
         <div className="flex gap-1 border-b border-gray-200">
@@ -347,6 +406,11 @@ export default function AdminGroupBuyPage() {
                         <h4 className="text-sm font-bold text-gray-900 truncate">{p.name}</h4>
                       </div>
                       <p className="text-xs text-gray-500">
+                        {p.mall_slug ? (
+                          <span className="mr-1 inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 align-middle">
+                            <Store className="h-3 w-3" />{p.mall_name || p.mall_slug}
+                          </span>
+                        ) : null}
                         {p.seller_name || '셀러 없음'} · ₩{formatNumber(p.price)} · 등록 {formatKST(p.created_at)}
                       </p>
 

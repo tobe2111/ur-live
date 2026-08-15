@@ -116,11 +116,11 @@ export const NAV_GROUPS: NavGroup[] = [
     // 🏪 오프라인 공구 (매장 공구 / 교환권 / 숙소)
     title: '🏪 오프라인 공구',
     items: [
-      { path: '/admin/group-buy',        label: '공동구매',      icon: Ticket },
-      // 🏬 2026-08-03 (대표 "도매몰은 잔재도 없애는거야"): 몰 관리는 **도매 그룹에서 여기로 옮겼다.**
-      //   이 화면이 정하는 건 도매몰이 아니라 `urdeal.kr/{슬러그}`(운영자 몰 = 소비자 표면)의 존재·공개·색이다.
-      //   같은 날 API 도 도매 번들 밖으로 옮겼다(worker/index.ts). 철거 계획 §1(c) "몰 인프라는 물려받는다".
-      { path: '/admin/wholesale-malls',  label: '운영자 몰 관리', icon: Building2 },
+      // 🏷️ 2026-08-14 (대표 "이미 공동구매로 되어있는 것들이 있던데 · 페이지 구분을 잘 해야겠어"):
+      //   라벨이 '공동구매' 였는데 이 화면은 **유어딜 이용권 공구**다. 같은 이름의 별개 서비스
+      //   (🏪 공구 서비스 = 운영자 몰)가 아래 자기 섹션에 따로 있다. 이름이 겹치면 대표가 매번
+      //   "이건 어느 쪽이야?" 를 물어야 한다 ⇒ 명칭 SSOT 대로 **이용권**을 쓴다.
+      { path: '/admin/group-buy',        label: '이용권 공구',   icon: Ticket },
       { path: '/admin/gb-cockpit',       label: '공구 엔진 조종석', icon: Rocket },
       { path: '/admin/dongnedeal-import', label: '동네딜 상품 등록', icon: Upload },
       { path: '/admin/fcfs',             label: '추첨 응모 관리', icon: Gift },
@@ -131,6 +131,26 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/coupons',          label: '쿠폰 관리',     icon: Ticket },
       { path: '/admin/deals',            label: '딜 모니터링',   icon: Gift },
       { path: '/admin/restaurant-demand', label: '맛집 수요 신호', icon: TrendingUp },
+    ],
+  },
+  {
+    /**
+     * 🏪 **공구 서비스 (운영자 몰 SaaS)** — 2026-08-14 신설 (대표 "페이지 구분을 잘 해야겠어")
+     *
+     * 그전까지 이 서비스의 어드민은 **페이지 1개**(`운영자 몰 관리`)였고, 그것이 유어딜 그룹
+     * (`🏪 오프라인 공구`) 안에 섞여 있었다. 같은 그룹의 첫 항목 라벨이 하필 **'공동구매'**(유어딜
+     * 이용권)라, 대표가 화면만 보고는 **어느 서비스의 공동구매인지 알 수 없었다.**
+     *
+     * 🔴 서비스가 넷이면 밴드도 넷이어야 한다(`navSectionOf`). 한 서비스가 다른 서비스의 서랍에
+     *   세 들어 살면, 그 서비스의 할 일이 남의 목록에 섞이고 보고도 섞인다 — 이 레포가 8/3 에
+     *   실제로 겪은 사고다(CLAUDE.md §서비스 철저 분리 도입 배경).
+     */
+    title: '🏪 공구 서비스 (운영자 몰)',
+    items: [
+      { path: '/admin/wholesale-malls',  label: '운영자 몰 관리', icon: Building2 },
+      // 같은 '이용권 공구' 화면을 **몰 스코프로** 연다 — 유어딜 본진 목록과 섞이지 않게.
+      //   (쿼리 파라미터 하나로 갈린다: 유어딜=본진 기본값 / 여기=몰 전용)
+      { path: '/admin/group-buy?mall=all', label: '몰 상품·공구',  icon: Ticket },
     ],
   },
   {
@@ -280,15 +300,18 @@ export const VISIBLE_NAV_GROUPS: NavGroup[] = LIVE_COMMERCE_SUSPENDED
 // 🎟️🏭 2026-07-01 (대표 "유어딜·도매몰 철저히 UX/UI 분리 — 전체적으로"): 좌측 nav 를 서비스 밴드로 구획.
 //   super 어드민은 전 그룹을 보는데 유어딜(소비자)·유통스타트(도매몰)·공통 그룹이 섞여 보였음(구분=이모지 뿐) →
 //   섹션 헤더 밴드로 3분할(운영 '홈'은 최상단 무밴드). 그룹 정의/RBAC(도매 role=wholesale 그룹만)/collapse/active 전부 불변 — 렌더 구획만.
-export type NavSectionKey = 'home' | 'urdeal' | 'wholesale' | 'common'
+export type NavSectionKey = 'home' | 'urdeal' | 'mall' | 'wholesale' | 'common'
 export const navSectionOf = (g: NavGroup): NavSectionKey =>
   g.domain === 'wholesale' ? 'wholesale'
     : g.title === '운영' ? 'home'
-      : (g.title === '🏪 오프라인 공구' || g.title === '🛒 온라인 쇼핑') ? 'urdeal'
-        : 'common'
+      // 🏪 2026-08-14: 공구 서비스는 **유어딜이 아니다.** 자기 밴드를 준다(서비스 넷 = 밴드 넷).
+      : g.title === '🏪 공구 서비스 (운영자 몰)' ? 'mall'
+        : (g.title === '🏪 오프라인 공구' || g.title === '🛒 온라인 쇼핑') ? 'urdeal'
+          : 'common'
 export const NAV_SECTIONS: Array<{ key: NavSectionKey; label?: string; accent?: string }> = [
   { key: 'home' },
   { key: 'urdeal', label: '🎟️ 유어딜 · 소비자', accent: '#a5b4fc' },
+  { key: 'mall', label: '🏪 공구 서비스 · 운영자 몰 (SaaS)', accent: '#6ee7b7' },
   { key: 'wholesale', label: '🏭 유통스타트 · 도매몰 (B2B)', accent: '#fbbf24' },
   { key: 'common', label: '⚙️ 공통 · 회원·재무·검증·시스템', accent: '#94a3b8' },
 ]

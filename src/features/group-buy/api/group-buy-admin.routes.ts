@@ -17,6 +17,7 @@ import { require2FA } from '@/worker/middleware/require-2fa'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow'
+import { mainScopeFor } from '@/worker/utils/consumer-scope'
 
 const groupBuyAdminRoutes = new Hono<{ Bindings: Env }>()
 
@@ -24,7 +25,14 @@ const groupBuyAdminRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-15: 공구 의사결정 데이터 — 카테고리별 진행/달성률, 매출 top, 평균 참여율
 groupBuyAdminRoutes.get('/analytics', requireAdmin(), async (c) => {
   const { DB } = c.env
+  // 🏪 2026-08-14: 목록보다 이쪽이 더 나쁜 누수였다 — 몰 GMV 가 **유어딜 실적으로 집계**됐다.
+  //   같은 스코프 규칙을 쓴다(기본 `main`). `p.` 별칭이 없는 쿼리를 위해 무별칭 조각도 만든다.
+  const scope = parseGbAdminScope(c.req.query('mall'))
   try {
+    const mainP = await mainScopeFor(DB, 'products', 'p')
+    const mainBare = await mainScopeFor(DB, 'products')
+    const scopeP = scope === 'main' ? mainP : scope === 'mall' ? ` AND NOT (1=1${mainP})` : ''
+    const scopeBare = scope === 'main' ? mainBare : scope === 'mall' ? ` AND NOT (1=1${mainBare})` : ''
     // 카테고리별 통계
     const { results: byCategory } = await DB.prepare(`
       SELECT
@@ -38,6 +46,7 @@ groupBuyAdminRoutes.get('/analytics', requireAdmin(), async (c) => {
       FROM products
       WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
         AND group_buy_target > 0
+        ${scopeBare}
       GROUP BY category
       ORDER BY total_gmv DESC
     `).all().catch(() => ({ results: [] }))
@@ -52,6 +61,7 @@ groupBuyAdminRoutes.get('/analytics', requireAdmin(), async (c) => {
       WHERE p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
         AND p.group_buy_target > 0
         AND p.group_buy_current > 0
+        ${scopeP}
       ORDER BY gmv DESC
       LIMIT 10
     `).all().catch(() => ({ results: [] }))
@@ -67,6 +77,8 @@ groupBuyAdminRoutes.get('/analytics', requireAdmin(), async (c) => {
       WHERE o.order_number LIKE 'GB-%'
         AND o.created_at >= datetime('now', '-30 days')
         AND o.status = 'PAID'
+        ${scope === 'all' ? '' : `AND EXISTS (SELECT 1 FROM order_items oi JOIN products p ON p.id = oi.product_id
+                                              WHERE oi.order_id = o.id ${scopeP})`}
       GROUP BY DATE(o.created_at)
       ORDER BY day DESC
     `).all().catch(() => ({ results: [] }))
@@ -81,11 +93,12 @@ groupBuyAdminRoutes.get('/analytics', requireAdmin(), async (c) => {
       FROM products
       WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
         AND group_buy_target > 0
+        ${scopeBare}
     `).first().catch(() => null)
 
     return c.json({
       success: true,
-      data: { totals, by_category: byCategory ?? [], top_groups: topGroups ?? [], daily: daily ?? [] }
+      data: { totals, by_category: byCategory ?? [], top_groups: topGroups ?? [], daily: daily ?? [], scope }
     })
   } catch (err) {
     console.error('[admin gb analytics]', err)
@@ -95,19 +108,45 @@ groupBuyAdminRoutes.get('/analytics', requireAdmin(), async (c) => {
 
 // ── GET /admin/list — 전체 공구 현황 ──
 // 🛡️ 2026-05-15: 어드민이 진행중/만료/취소 전부 조회 + 미달성 공구 필터
+/**
+ * 🏪 **어느 서비스의 공구를 보는가** — 2026-08-14 (대표 *"페이지 구분을 잘 해야겠어"*)
+ *
+ * 이 목록은 `products` 를 이용권 카테고리로만 걸러 왔다. 그런데 **🏪 공구 서비스(운영자 몰)의
+ * 상품도 같은 테이블·같은 카테고리**다(코드가 둘 다 `group_buy_*` 라고 부른다). 몰 조건이 없으니
+ * 운영자 가게 상품이 **유어딜 어드민 목록에 그대로 섞여** 들어왔다 — 파일럿이 몰 1개라 안 터졌을 뿐이다.
+ *
+ * ⇒ `?mall=` 로 스코프를 **명시**한다. 기본값은 `main`(유어딜 본진) — 이 화면은 유어딜 운영 화면이고,
+ *   **모르면 자기 것만 보여주는 쪽**이 안전하다(남의 가게 상품을 유어딜 실적으로 오독하지 않는다).
+ *
+ * ⚠️ 컬럼 부재 환경을 위해 조건은 `mainScopeFor`/`mallScopeClause`(소비자 경로와 **같은 SSOT**)로 만든다.
+ *   여기서 조건을 손으로 쓰면 소비자 화면과 갈리고, 갈리면 한쪽만 샌다.
+ */
+type GbAdminScope = 'main' | 'mall' | 'all'
+export function parseGbAdminScope(raw: unknown): GbAdminScope {
+  const v = String(raw ?? '').trim().toLowerCase()
+  return v === 'mall' || v === 'all' ? v : 'main'
+}
+
 groupBuyAdminRoutes.get('/list', requireAdmin(), async (c) => {
   const { DB } = c.env
   const status = c.req.query('status') || 'all'
   const filter = c.req.query('filter') || ''
+  const scope = parseGbAdminScope(c.req.query('mall'))
   try {
+    const mainScope = await mainScopeFor(DB, 'products', 'p')
+    // `mall` = 본진이 아닌 모든 몰. 본진 조건의 여집합이라 같은 SSOT 에서 파생된다.
+    const scopeSql = scope === 'main' ? mainScope : scope === 'mall' ? ` AND NOT (1=1${mainScope})` : ''
     let sql = `
       SELECT p.id, p.name, p.price, p.image_url, p.category,
              p.group_buy_target, p.group_buy_current, p.group_buy_status, p.group_buy_deadline,
              p.seller_id, s.name AS seller_name, s.profile_image AS seller_avatar,
+             m.slug AS mall_slug, COALESCE(NULLIF(TRIM(m.brand_name), ''), m.name) AS mall_name,
              p.created_at, p.updated_at
       FROM products p
       LEFT JOIN sellers s ON s.id = p.seller_id
+      LEFT JOIN wholesale_malls m ON m.id = p.mall_id AND COALESCE(m.consumer_path, 0) = 1
       WHERE p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+      ${scopeSql}
     `
     const binds: unknown[] = []
     if (status !== 'all') { sql += ` AND p.group_buy_status = ?`; binds.push(status) }
@@ -116,7 +155,7 @@ groupBuyAdminRoutes.get('/list', requireAdmin(), async (c) => {
     }
     sql += ` ORDER BY p.created_at DESC LIMIT 200`
     const { results } = await DB.prepare(sql).bind(...binds).all()
-    return c.json({ success: true, data: results ?? [] })
+    return c.json({ success: true, data: results ?? [], scope })
   } catch (err) {
     console.error('[admin gb list]', err)
     return c.json({ success: false, error: '조회 실패' }, 500)
