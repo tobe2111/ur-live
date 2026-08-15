@@ -9,7 +9,7 @@
 ## 🚦 한 줄 점검
 
 ```bash
-bash scripts/audit-gate.sh           # 전체 (88개 불변식)
+bash scripts/audit-gate.sh           # 전체 (89개 불변식)
 bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|money|schema|classify|ui|structure|deploy)
 ```
 
@@ -36,6 +36,7 @@ bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|mone
 | **런타임 크래시(pagination NaN)** | request page/limit/offset/days 등이 비숫자('abc')일 때 `parseInt/Number → NaN → SQL .bind(NaN) → 500` 금지(전 서비스 목록 엔드포인트) — 정수 파싱은 `intParam(raw, def)`(`@/shared/pagination`) 경유 강제(0/음수 클램프 보존). ID 해석 parseInt(isNaN 가드 보유)는 무관 | `check-pagination-nan` | 2026-07-01 (도매몰 라이브 전수조사 — `/api/wholesale/catalog?page=abc` 500 발견 → 전 서비스 100+ 라인 intParam 전환 후 가드) |
 | **상품 종류·라우팅** | group_buy_status 로 종류판별·라우팅 금지(쇼핑↔교환권 오분류) | `check-groupbuy-status-classify` | (상시 가드) |
 | **동네딜↔쇼핑 완전분리** | 동네딜 표면/도구(리스트 API·데모 시드·alias·수기 폼)에 배송형(general) 유입 금지 — 동네딜=로컬 이용권 전용 | `check-dongnedeal-separation` | 2026-07-02 (대표 확정 — 유령 general 데모 사고 후 신설) |
+| **공구 인원조건 할인 약속 금지** | 공구/이용권/몰 표면이 "N명 모이면 할인" 류의 **조건부 약속**을 하지 않음 — 라이브 두 공구는 **인원과 무관**(유어딜=즉시 단일가 2026-05-30 · 공구 서비스=기간 특가, `resolveGbPricing` 이 `target` 미참조). "N명 함께 구매 중" 같은 **사실 진술은 허용** | `check-groupbuy-headcount-claim` | 2026-08-14 (대표 *"지금 공동구매 정의도 잘 된거야?"* — 2026-06-16 정직화에 가드가 없어 한 줄이면 되돌아갈 수 있었음) |
 | **도매주문 상태머신** | wholesale_orders.status 가 canonical 집합만(정의 밖 오타/고아 상태 write 0) — 전이는 transitionWholesaleOrder | `check-wholesale-order-status` | 2026-06-27 (B2B 플로우 상태머신 신설: 수락/거절/취소/구매확정 + 발송 전 정산보류) |
 | **UI·테마·첫페인트** | dark variant 일관성, RQ initialData 신선도, 모바일 하단잘림 | `check-theme-consistency` · `check-query-initialdata` · `check-mobile-viewport` | 2026-06-26 (크래시/빈상태 clean) |
 | **시각 표기(KST 정합)** | DB 타임스탬프(`CURRENT_TIMESTAMP`/`datetime('now')` = UTC·`Z` 없음)를 `new Date()` 로 순진하게 파싱 금지 — 브라우저는 로컬(KST)로 오해석하고 워커는 `.toLocaleString('ko-KR')` 이 UTC 시각을 한국어로 찍어 **9시간 어긋남**. SSOT = `src/utils/date.ts`(`parseUTCDate`/`formatKST*`/`kstDayStartMs`·`kstDayEndMs`). 규칙 A(어디서든 `new Date(x.created_at).toLocale*` 금지) + 규칙 B(pages/components/hooks 는 비교·정렬까지 금지). 래칫(`utc-date-baseline.json`) — 신규/증가만 차단, 잔여분은 점진 정리 | `check-utc-date-parse` (래칫, `--rebaseline`) | 2026-07-27 (어드민 최근 활동 전수조사 — 연속 주문 감지 영구 미발동·알림톡 주문일시 9h 이름·주문 날짜필터 경계 누락·교환권 만료일 하루 이름 fix 후 신설. **서버/워커측 잔여 0**, 클라 87건 동결) |

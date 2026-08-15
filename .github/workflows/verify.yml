@@ -413,6 +413,12 @@ jobs:
       # 🛡️ 2026-07-02: 동네딜↔쇼핑 완전 분리(대표 확정) — 동네딜 표면/도구에 배송형(general) 유입 차단.
       - name: dongnedeal separation guard (strict)
         run: node scripts/check-dongnedeal-separation.mjs
+
+      # 🎟️🏪 2026-08-14 (대표 "지금 공동구매 정의도 잘 된거야?"): 라이브 두 공구는 인원과 무관하다
+      #   (유어딜=즉시 단일가 · 공구 서비스=기간 특가). "모이면 할인" 문구는 거짓 표시가 된다.
+      #   2026-06-16 에 정직화해 놓고 가드가 없어, 한 줄이면 조용히 되돌아갈 수 있었다.
+      - name: 공구 인원조건 할인 약속 금지 (strict)
+        run: node scripts/check-groupbuy-headcount-claim.mjs --strict
         continue-on-error: false
 
       # 🛡️ 2026-07-01: pagination parseInt/Number NaN 크래시 방어 — 현재 위반 0 → strict.

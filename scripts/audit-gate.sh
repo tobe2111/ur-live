@@ -94,6 +94,7 @@ if domain classify; then
   echo "🏷️  상품 종류 판별 · 라우팅"
   run "group_buy_status 종류판별 금지"   node scripts/check-groupbuy-status-classify.mjs
   run "동네딜↔쇼핑 완전분리(general)"    node scripts/check-dongnedeal-separation.mjs
+  run "공구 인원조건 할인 약속 금지"     node scripts/check-groupbuy-headcount-claim.mjs --strict
   run "도매주문 상태 무결성"             env STRICT_WHS_STATUS=1       node scripts/check-wholesale-order-status.mjs
 fi
 
