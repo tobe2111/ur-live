@@ -86,6 +86,20 @@ const MUTATIONS = [
       '**메뉴가 다른 헤더 밑에 얌전히 그려질 뿐**이라 에러도 경고도 없다 — 사람이 알아챌 신호가 0.',
   },
   {
+    name: '이용권 상세 301 이 결제 확인 화면까지 삼킨다(결제 복귀가 없는 주소로 튕긴다)',
+    file: 'src/shared/seo/consumer-redirects.ts',
+    find: 'const GROUP_BUY_DETAIL = /^\\/group-buy\\/(\\d+)\\/?$/',
+    replace: 'const GROUP_BUY_DETAIL = /^\\/group-buy\\/([^/]+)\\/?$/',
+    test: 'src/tests/unit/pass-route-migration.test.ts',
+    why:
+      '`/group-buy/:id` → `/pass/:id` 이전(2026-08-16)에서 **숫자 id 만** 잡아야 한다. `[^/]+` 로 넓히면 ' +
+      '같은 접두사를 쓰는 **`/group-buy/confirm-payment`(Toss 결제 복귀 화면)** 까지 301 되어 ' +
+      '`/pass/confirm-payment`(없는 라우트)로 튕긴다 — 결제 직후에 터지므로 **돈이 빠져나간 뒤** 화면이 죽는다. ' +
+      '🐛 이 항목이 있는 이유: 같은 실수를 **실제로 저질렀다.** 일괄 치환 패턴에 `confirm-payment` 예외를 ' +
+      '빼먹어 `FLOW_CONFIG.group_buy_toss.successPath` 가 존재하지 않는 경로가 됐고, 타입도 빌드도 ' +
+      '통과했다(문자열이라서). 경로 이전은 **접두사를 공유하는 형제 라우트**에서 조용히 깨진다.',
+  },
+  {
     name: '어드민 상품 목록에서 몰 스코프를 뺀다(남의 가게 상품이 유어딜 목록에 조용히 섞인다)',
     file: 'src/features/admin/api/admin-products.routes.ts',
     find: "${where.join(' AND ')}${scopeP}",

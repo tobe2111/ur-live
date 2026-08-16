@@ -75,6 +75,6 @@ describe('App.tsx 와의 동기화 — 표가 낡으면 죽은 301 이 된다', 
   })
 
   it('`/product/:id` 는 App.tsx 에서 리다이렉트 컴포넌트다', () => {
-    expect(/path="\/product\/:id"\s+element=\{<ProductRedirect/.test(APP)).toBe(true)
+    expect(/path="\/product\/:id"\s+element=\{<PathRedirect base="\/products"/.test(APP)).toBe(true)
   })
 })

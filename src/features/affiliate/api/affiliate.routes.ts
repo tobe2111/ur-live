@@ -258,7 +258,7 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
     const data = (results ?? []).map((r: any) => ({
       ...r,
       type: 'group-buy' as const,
-      share_url: `https://urdeal.kr/group-buy/${r.id}?ref=${userId}`,
+      share_url: `https://urdeal.kr/pass/${r.id}?ref=${userId}`,
     }))
 
     // 🛡️ 2026-05-18: referral 활성화된 stay 도 같이 추가 (top 10).
@@ -298,7 +298,7 @@ affiliateRoutes.get('/link/:type/:id', requireAuth(), async (c) => {
   const id = c.req.param('id')
   // 🛡️ 2026-05-18: 'stay' 타입 추가 — 인플루언서 호텔 referral.
   const path = type === 'live' ? `/live/${id}`
-    : type === 'group-buy' ? `/group-buy/${id}`
+    : type === 'group-buy' ? `/pass/${id}`
     : type === 'stay' ? `/stays/${id}`
     : `/products/${id}`
   return c.json({

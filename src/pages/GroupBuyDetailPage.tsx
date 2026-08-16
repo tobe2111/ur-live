@@ -59,7 +59,7 @@ function DeferUntilVisible({ minHeight, children }: { minHeight: number; childre
   return <div ref={ref} style={{ minHeight: visible ? undefined : minHeight }}>{visible ? children : null}</div>
 }
 
-// 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
+// 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/pass/:id` — 2026-08-16 이전, 옛 `/group-buy/:id` 는 301)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
 //   - 일반 ProductDetailPage 와 분리: 공구 특화 UX (참여 후 voucher 발급 강조)
 
@@ -198,8 +198,8 @@ export default function GroupBuyDetailPage() {
   // 🛡️ 2026-05-15: 본인 추천 링크 (친구 초대 시 양쪽 1% 보너스 딜)
   const myUserId = localStorage.getItem('user_id') || localStorage.getItem('uid') || ''
   const shareLink = myUserId
-    ? `/group-buy/${productId}?ref=${myUserId}`
-    : `/group-buy/${productId}`
+    ? `/pass/${productId}?ref=${myUserId}`
+    : `/pass/${productId}`
 
   useEffect(() => {
     if (!Number.isFinite(productId) || productId <= 0) {
@@ -462,7 +462,7 @@ export default function GroupBuyDetailPage() {
       const successQs = new URLSearchParams({ productId: String(productId), qty: String(quantity), ...(_ref ? { ref: _ref } : {}) }).toString()
       const failQs = new URLSearchParams({ productId: String(productId) }).toString()
       const successPath = `/group-buy/confirm-payment?${successQs}`
-      const failPath = `/group-buy/${productId}?fail=1&${failQs}`
+      const failPath = `/pass/${productId}?fail=1&${failQs}`
 
       // 🛡️ 2026-05-23 v7: 모든 키 widgets() API 경로 (payment V2 폐기 — 사용자 환경에서 작동 안 함).
       const params = new URLSearchParams({
@@ -512,7 +512,7 @@ export default function GroupBuyDetailPage() {
             ? `🎉 ${detail.current_discount_pct}% 할인! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(unitPrice)}원`
             : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(detail.price)}원`
         }
-        url={`/group-buy/${productId}`}
+        url={`/pass/${productId}`}
         image={detail.image_url || `https://urdeal.kr/api/og/group-buy/${productId}.png`}
         type="product"
         jsonLd={[{
@@ -524,7 +524,7 @@ export default function GroupBuyDetailPage() {
           brand: detail.restaurant_name ? { '@type': 'Brand', name: detail.restaurant_name } : undefined,
           offers: {
             '@type': 'Offer',
-            url: `https://urdeal.kr/group-buy/${productId}`,
+            url: `https://urdeal.kr/pass/${productId}`,
             priceCurrency: 'KRW',
             price: unitPrice,
             availability: detail.group_buy_status === 'active' || detail.group_buy_status === 'achieved'
@@ -552,7 +552,7 @@ export default function GroupBuyDetailPage() {
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: '홈', item: 'https://urdeal.kr/' },
             { '@type': 'ListItem', position: 2, name: '공동구매', item: 'https://urdeal.kr/group-buy' },
-            { '@type': 'ListItem', position: 3, name: detail.name, item: `https://urdeal.kr/group-buy/${productId}` },
+            { '@type': 'ListItem', position: 3, name: detail.name, item: `https://urdeal.kr/pass/${productId}` },
           ],
         }]}
       />

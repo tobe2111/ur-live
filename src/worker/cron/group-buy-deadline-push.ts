@@ -52,7 +52,7 @@ export async function handleGroupBuyDeadlinePush(env: Env): Promise<void> {
             await DB.prepare(
               `INSERT INTO user_notifications (user_id, type, title, message, link)
                VALUES (?, 'group_buy_deadline', ?, ?, ?)`
-            ).bind(s.user_id, window.label, msg, `/group-buy/${p.id}`).run().catch(swallow('cron:group-buy-deadline-push:notify-insert'))
+            ).bind(s.user_id, window.label, msg, `/pass/${p.id}`).run().catch(swallow('cron:group-buy-deadline-push:notify-insert'))
           }
 
           await DB.prepare(`UPDATE products SET ${window.flag} = 1 WHERE id = ?`).bind(p.id).run()

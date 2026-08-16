@@ -7,7 +7,7 @@ import { canonicalDetailPath } from '@/shared/product-flow'
  * 검증 (사용자 권장 ① 자동화):
  *   - 교환권(deal_only=1)        → /vouchers/:id
  *   - 숙소(stay_voucher)         → /stays/:id (2026-07-20 신설 — 객실·날짜 예약 정규 상세)
- *   - 공구(voucher 카테고리)       → /group-buy/:id (레거시 카테고리 포함)
+ *   - 공구(voucher 카테고리)       → /pass/:id (레거시 카테고리 포함)
  *   - 온라인 일반 상품             → null (redirect 없이 /products/:id 유지)
  *   - 우선순위: 교환권 > 숙소 > 공구
  *   - ⚠️ group_buy_status 로 분류하지 않음 (모든 상품 DEFAULT 'active' 회귀 방지)
@@ -21,10 +21,10 @@ describe('canonicalDetailPath', () => {
     expect(canonicalDetailPath({ id: 7, deal_only: '1' as unknown as number })).toBe('/vouchers/7')
   })
 
-  it('공구(voucher 카테고리) → /group-buy/:id', () => {
-    expect(canonicalDetailPath({ id: 25, deal_only: 0, category: 'meal_voucher' })).toBe('/group-buy/25')
-    expect(canonicalDetailPath({ id: 31, category: 'beauty_voucher' })).toBe('/group-buy/31')
-    expect(canonicalDetailPath({ id: 4, category: 'etc_voucher' })).toBe('/group-buy/4')
+  it('공구(voucher 카테고리) → /pass/:id', () => {
+    expect(canonicalDetailPath({ id: 25, deal_only: 0, category: 'meal_voucher' })).toBe('/pass/25')
+    expect(canonicalDetailPath({ id: 31, category: 'beauty_voucher' })).toBe('/pass/31')
+    expect(canonicalDetailPath({ id: 4, category: 'etc_voucher' })).toBe('/pass/4')
   })
 
   it('숙소(stay_voucher) → /stays/:id (2026-07-20 — 객실·날짜 예약 정규 상세)', () => {
@@ -33,9 +33,9 @@ describe('canonicalDetailPath', () => {
   })
 
   it('레거시 voucher 카테고리도 공구로 인식', () => {
-    expect(canonicalDetailPath({ id: 12, category: 'health_voucher' })).toBe('/group-buy/12')
-    expect(canonicalDetailPath({ id: 13, category: 'pet_voucher' })).toBe('/group-buy/13')
-    expect(canonicalDetailPath({ id: 14, category: 'activity_voucher' })).toBe('/group-buy/14')
+    expect(canonicalDetailPath({ id: 12, category: 'health_voucher' })).toBe('/pass/12')
+    expect(canonicalDetailPath({ id: 13, category: 'pet_voucher' })).toBe('/pass/13')
+    expect(canonicalDetailPath({ id: 14, category: 'activity_voucher' })).toBe('/pass/14')
   })
 
   it('온라인 일반 상품 → null (redirect 없음)', () => {
@@ -55,6 +55,6 @@ describe('canonicalDetailPath', () => {
   })
 
   it('문자열 id 도 그대로 경로에 반영', () => {
-    expect(canonicalDetailPath({ id: 'abc', category: 'meal_voucher' })).toBe('/group-buy/abc')
+    expect(canonicalDetailPath({ id: 'abc', category: 'meal_voucher' })).toBe('/pass/abc')
   })
 })

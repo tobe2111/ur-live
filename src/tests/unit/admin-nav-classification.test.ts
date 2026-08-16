@@ -157,6 +157,17 @@ describe('R4 — 단일 서비스 화면이 공통 서랍에 눌러앉지 않는
     expect(bandOf('/admin/buyer-pool')).toBe('ads')
   })
 
+  it('🔴 공통 데스크에 남긴 단일 서비스 항목은 **라벨에 서비스를 밝힌다**', () => {
+    // 2026-08-16 확정: 머니·CS 데스크는 한 큐로 처리하므로 `common` 에 두되, 이름이 다른 서비스와
+    // 겹치는 항목은 라벨로 구분한다. `influencer_attributions` 는 전부 유어딜인데 '인플루언서' 라는
+    // 말이 📣 유어애즈의 외부 수집 DB 와 겹쳐, 대표가 "어느 쪽이야?" 를 묻게 만들던 자리다.
+    const labelOf = (p: string) =>
+      NAV_GROUPS.flatMap((g) => g.items).find((i) => i.path === p)?.label ?? ''
+    for (const p of ['/admin/influencer-payouts', '/admin/influencer-disputes']) {
+      expect(labelOf(p), `${p} 라벨에 서비스 표시가 없다`).toMatch(/유어딜/)
+    }
+  })
+
   it('🔴 …그리고 **슈퍼 전용**이다 — 밴드만 옮기면 도매 파트너에게 403 빈화면이 된다', () => {
     // 짝으로 성립하는 결정이다: 도매 밴드(데이터 소속) + super-only(리드 DB 는 내부 자산 · API 가
     // 도매 RBAC 스코프 밖). 한쪽만 되돌리면 조용히 깨지므로 여기서 함께 고정한다.

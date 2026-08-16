@@ -633,8 +633,8 @@ export default function ProductDetailPage() {
           <div className="px-5 py-5">
             {/* 🚑 2026-07-02 (상세 리뷰): ChevronRight 로 클릭 유도하면서 onClick 없던 dead 어포던스 → 공구 상세로 배선 */}
             <div className="rounded-2xl p-4 bg-gray-900 text-white cursor-pointer active:scale-[0.99] transition-transform" role="button" tabIndex={0}
-              onClick={() => navigate(`/group-buy/${id}`)}
-              onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/group-buy/${id}`) }}>
+              onClick={() => navigate(`/pass/${id}`)}
+              onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/pass/${id}`) }}>
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 bg-red-500 text-[9px] font-extrabold tracking-wide mb-2">{t('productDetail.groupBuyJoin')}</span>

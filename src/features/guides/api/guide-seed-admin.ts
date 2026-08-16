@@ -300,7 +300,7 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 - **낙전(breakage) 정책 (2026-05-30 명문화)**: 미사용 교환권이 유효기간 만료되면 **고객에게 자동 환불** (\`scheduled-cleanup\` 의 expired-voucher cron, 딜=즉시잔액 / 카드=토스환불). "사용 후 정산" 모델과 정합 — 셀러는 실제 사용분만 정산, 미사용분은 고객 환불이라 셀러/플랫폼 낙전수입 없음. 인플 커미션도 환불 시 clawback.
 
 ### 공동구매 — 2026-05-15 이상적 구현 완료
-1. **전용 detail page** (\`/group-buy/:id\`): 카운트다운, 참여자 아바타, KakaoLink share
+1. **전용 detail page** (\`/pass/:id\`): 카운트다운, 참여자 아바타, KakaoLink share
 2. **단일 공구가** (2026-05-30 단일가 모델): 인원수와 무관하게 모든 참여자에게 동일 공구가 적용, voucher 마다 실제 결제가(\`applied_price\`) 기록 — 동적 '단계별 할인(티어)' 은 '먼저 산 고객이 더 비싸지는 문제' 때문에 폐지
 3. **마일스톤 푸시** (50/80/lastone): interest_list 등록자에게 hot 알림 (atomic CAS dedup)
 4. **이메일 영수증**: Resend 로 voucher 코드 + 매장 정보 발송

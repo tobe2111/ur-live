@@ -263,7 +263,7 @@ export default function AdminGroupBuyPage() {
                 ) : (
                   <div className="space-y-2">
                     {analytics.top_groups.map((g, i) => (
-                      <div key={g.id} onClick={() => navigate(`/group-buy/${g.id}`)} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer">
+                      <div key={g.id} onClick={() => navigate(`/pass/${g.id}`)} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer">
                         <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 0 ? 'bg-yellow-400 text-yellow-900' : i === 1 ? 'bg-gray-300 text-gray-700' : i === 2 ? 'bg-orange-300 text-orange-900' : 'bg-gray-200 text-gray-600'}`}>
                           {i + 1}
                         </span>
@@ -417,7 +417,7 @@ export default function AdminGroupBuyPage() {
 
                   <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-2">
                     <button
-                      onClick={() => navigate(`/group-buy/${p.id}`)}
+                      onClick={() => navigate(`/pass/${p.id}`)}
                       className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200"
                     >
                       상품 보기

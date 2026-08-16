@@ -1011,7 +1011,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
       // 🧭 2026-06-10 (재방문 루프): 이용권(voucher)이면 공구 문구 + 공구 상세 링크 — 단골 알림 전환율 ↑.
       const isVoucherProduct = !!(category && VOUCHER_CATEGORY_SET.has(category));
       const notifTitle = isVoucherProduct ? `🍽️ 단골 매장이 새 공구를 열었어요!` : `🛍️ 새 상품 등록!`;
-      const notifLink = isVoucherProduct ? `/group-buy/${productId}` : `/products/${productId}`;
+      const notifLink = isVoucherProduct ? `/pass/${productId}` : `/products/${productId}`;
       notifyFollowers(db, Number(sellerId), isVoucherProduct ? 'new_group_buy' : 'new_product', notifTitle, productName, notifLink).catch(swallow('seller:api:seller-orders'));
       sendKakaoToFollowers(db, Number(sellerId), notifTitle, productName, notifLink, isVoucherProduct ? '공구 보기' : '상품 보기').catch(swallow('seller:api:seller-orders'));
     }

@@ -79,9 +79,11 @@ export const FLOW_CONFIG: Record<ProductFlow, {
     buttonLabel: '🎁 딜로 교환하기',
   },
   group_buy_toss: {
-    detailPath: id => `/group-buy/${id}`,
+    detailPath: id => `/pass/${id}`,
     apiPath: id => `/api/group-buy/join/${id}`,
     paymentMethod: 'toss',
+    // ⚠️ 결제 복귀 경로는 **옮기지 않았다** — 대표 확정 범위는 상세(`/group-buy/:id`→`/pass/:id`)뿐이고,
+    //   Toss 복귀 URL 은 머니 경로다. 라우트도 `/group-buy/confirm-payment` 그대로다.
     successPath: '/group-buy/confirm-payment',
     buttonLabel: '공구 참여하기',
   },

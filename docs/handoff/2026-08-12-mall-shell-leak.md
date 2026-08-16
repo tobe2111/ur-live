@@ -549,3 +549,52 @@ R2 고아 라우트 0 · R3 죽은 링크 0 · R4 단일 서비스 화면이 공
    ⇒ **분기마다 앵커**로 교정 + `check-guard-mutations` 에 등록(이 교정이 유지되는지 CI 가 확인).
 
 가드: `admin-service-separation.test.ts` 17건(신규 7) — 되돌려-검증 **7건** 빨강 확인 후 복원.
+
+## 21. `/group-buy/:id` → `/pass/:id` 주소 이전 (대표 2026-08-16 *"모두 다 해줘"*)
+
+대표가 8/12 에 확정하고 두 세션 미뤄 둔 것. **결제 버튼 색은 대표가 "그냥 두고" 라 해서 제외.**
+
+### 무엇을 옮겼나
+
+| | |
+|---|---|
+| 정본 | `/pass/:id`(신규 라우트) — 상세 화면은 그대로 `GroupBuyDetailPage` |
+| 옛 주소 | **살려 둔다** — 서버 301(`consumer-redirects`) + 앱 내부 폴백 라우트 |
+| 예약어 | `RESERVED_SLUGS` 에 `pass` 등재 (라이브 확인: 몰 `default`·`medi`·`test` — 충돌 없음) |
+| 인프라 | SSR 시드 매처 · 청크 프리로드 표면 · sitemap `loc` · prerender 힌트 · 빵부스러기 |
+| 링크 | 49곳 / 34파일 (SSOT `product-flow.detailPath` 포함) |
+
+**옛 주소를 지우지 않는 이유**: 서버 301 은 **하드로드에만** 걸린다. 앱 안에서 남은 링크를
+누르면 서버를 안 타므로 라우트가 없으면 갈 곳이 없어진다. 그리고 카톡 공유 카드·검색 색인·QR 에
+박힌 옛 주소는 **우리 배포와 무관하게** 남아 있고 회수 시점의 통제권이 없다.
+
+### 🐛 이번에 내가 깨뜨린 것 (되돌려-검증 아니라 **테스트가** 잡았다)
+
+일괄 치환 패턴에 **`confirm-payment` 예외를 빼먹었다.** 그 결과
+`FLOW_CONFIG.group_buy_toss.successPath` 가 존재하지 않는 `/pass/confirm-payment` 가 됐다 —
+**Toss 결제 복귀 URL**, 즉 돈이 빠져나간 직후에 터지는 자리다. 문자열이라 **타입도 빌드도 통과**했다.
+
+> 🔑 경로 이전은 **접두사를 공유하는 형제 라우트**에서 조용히 깨진다. `/group-buy/:id` 를 옮길 때
+> `/group-buy/confirm-payment` 이 같이 끌려간다. 301 정규식을 `(\d+)` 로 좁힌 것도 같은 이유다.
+> `check-guard-mutations` 에 등록했다.
+
+### ⚠️ 하마터면 더 크게 깨뜨릴 뻔한 것
+
+처음 센 "129곳"에는 **`features/group-buy/api/...` import 경로 25곳과 `/api/og/group-buy/` API** 가
+섞여 있었다. 그대로 일괄 치환했으면 공구 기능 전체가 import 에러로 죽는다. 맥락을 눈으로 본 뒤
+**따옴표/도메인 직후만** 잡는 패턴으로 좁혔고, `og-image.routes.ts`(API 라우트 등록)와
+`App.tsx`(옛 경로 정의 자체)는 **명시 제외**했다.
+
+### 가드
+
+`src/tests/unit/pass-route-migration.test.ts` 12건 — 예약어 · 301 생존 · **결제 화면 비휩쓸림** ·
+SSOT detailPath · 인프라 5종. 되돌려-검증 **6건** 빨강 확인 후 복원.
+
+⚠️ **못 막는 것**: 실제 배포에서의 301(워커 런타임) · 카카오 스크랩 캐시에 이미 박힌 옛 카드.
+후자는 코드로 못 고친다. 배포 후 `curl -I https://urdeal.kr/group-buy/2846` → **301 → /pass/2846** 확인 필요.
+
+### 파일 크기 래칫
+
+라우트 등록은 줄일 수 없어 App.tsx +3 · worker +1. 대신 ①에서 god 파일 둘을 실제로 줄였고
+(admin-products −15 · AdminProductsPage −14), 리베이스라인 순변화는 **−35줄**(대부분 조임)이다.
+`ProductRedirect` 는 `PathRedirect({base})` 로 일반화(리다이렉트 헬퍼가 두 벌일 이유가 없다).

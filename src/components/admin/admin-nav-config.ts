@@ -34,6 +34,23 @@ export interface NavItem {
  *   원인은 "추가한 사람이 밴드를 안 적었다"가 아니라 **아무것도 안 하면 공통으로 빨려 들어가는
  *   구조** 였다. 폴백을 없애고 타입으로 강제한다 — 새 그룹은 밴드를 *말해야만* 컴파일된다.
  *
+ * ## 그럼 `common` 에는 무엇이 남는가 (2026-08-16 확정 — 이 판단을 매번 다시 하지 않으려고 적는다)
+ *
+ * **밴드 = 서비스**가 원칙이지만, **정산·CS·회원**처럼 어드민이 *서비스 구분 없이 한 큐로 처리하는
+ * 데스크*는 `common` 에 둔다 — 그게 실제 작업 단위이기 때문이다(송금하는 사람은 유어딜 건과
+ * 몰 건을 번갈아 처리하지, 서비스별로 화면을 옮겨 다니지 않는다).
+ *
+ * 대신 **그 데스크 안의 항목이 단일 서비스면 라벨에 서비스를 밝힌다.** 대표가 물었던 것은
+ * *"이 메뉴가 어느 서비스냐"* 이지 *"메뉴를 어디로 옮겨 달라"* 가 아니었다.
+ *
+ * 실측으로 확인하고 **옮기지 않기로 한 것들**(다음 세션이 다시 파헤치지 않게):
+ *   - `인플루언서 송금·분쟁` → 전부 유어딜(`influencer_attributions` = 매장영입+공구추천)이지만
+ *     **머니 데스크**라 정산/CS 에 남기고 **라벨에 🎟️ 유어딜**을 붙였다(유어애즈 인플루언서 풀과 구분).
+ *   - `영업 추적`·`에이전시` → 유어딜 매장 영입이지만 **사람·조직 관리 데스크**.
+ *   - `매장 커미션` → 유어딜이지만 머니 데스크.
+ *   - `소비자 퍼널` → **유어딜 전용이 아니다.** `funnel_events` 는 서비스 무관 계측이라
+ *     전사 상황판('운영')이 맞다. ⚠️ 한때 "실제로는 유어딜"이라고 적었는데 **틀렸다.**
+ *
  * ⚠️ `section`(보이는 밴드)과 `domain`(RBAC·철거 필터)은 **다른 축이다.** 도매 그룹은 둘 다
  *   갖지만, `domain` 을 밴드 판정에 재사용하면 "도매 역할에게 보인다"와 "도매 밴드에 그린다"가
  *   한 값에 묶여 한쪽만 바꾸는 게 불가능해진다.
@@ -252,7 +269,10 @@ export const NAV_GROUPS: NavGroup[] = [
       //   상호 이동 — nav 는 진입점 1개만. 라우트는 전부 보존(북마크 안전).
       { path: '/admin/settlement',       label: '정산 센터',     icon: DollarSign, also: ['/admin/settlements-bulk', '/admin/payouts', '/admin/commission-withdrawals', '/admin/payout-center'] },
       // 돈 관련 고아 라우트를 재무 그룹으로 — URL 직접 입력 없이 도달 가능하게.
-      { path: '/admin/influencer-payouts', label: '인플루언서 송금', icon: Wallet },
+      // 🏷️ 2026-08-16: 라벨에 **서비스를 밝힌다.** `influencer_attributions` 는 전부 유어딜에서
+      //   생긴다(매장 영입 `store_intro` + 공구 추천)인데, 이름이 📣 유어애즈의 '인플루언서 풀'
+      //   (외부 수집 DB)과 겹쳐 대표가 "어느 쪽이야?" 를 묻게 만들던 자리다.
+      { path: '/admin/influencer-payouts', label: '🎟️ 유어딜 추천 커미션 송금', icon: Wallet },
       { path: '/admin/withholding',      label: '원천징수/지급조서', icon: Shield },
       { path: '/admin/commission-settings', label: '정산 마진 설정', icon: Settings },
       { path: '/admin/merchant-commissions', label: '매장 커미션', icon: Store },
@@ -269,7 +289,7 @@ export const NAV_GROUPS: NavGroup[] = [
     section: 'common',
     items: [
       { path: '/admin/disputes',         label: '분쟁 큐',       icon: AlertOctagon },
-      { path: '/admin/influencer-disputes', label: '인플루언서 분쟁', icon: AlertOctagon },
+      { path: '/admin/influencer-disputes', label: '🎟️ 유어딜 추천 커미션 분쟁', icon: AlertOctagon },
       { path: '/admin/business-verification', label: '사업자 검증', icon: Shield },
       { path: '/admin/review-moderation', label: '리뷰 관리',     icon: MessageSquare },
       { path: '/admin/policy',           label: '정책 대시보드', icon: Shield },

@@ -107,7 +107,7 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
       ).all<{ id: number; image_url: string | null; updated_at: string }>().catch(() => ({ results: [] as Array<{ id: number; image_url: string | null; updated_at: string }> }));
       for (const g of groupBuys.results || []) {
         urls.push({
-          loc: `/group-buy/${g.id}`,
+          loc: `/pass/${g.id}`,
           priority: 0.9,
           changefreq: 'hourly',
           image: g.image_url || `${origin}/api/og/group-buy/${g.id}`,

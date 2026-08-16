@@ -61,7 +61,7 @@ export default function InfluencerDiscoverPage() {
   )
 
   function genRefLink(productId: number): string {
-    return `https://urdeal.kr/group-buy/${productId}?ref=${encodeURIComponent(myId)}`
+    return `https://urdeal.kr/pass/${productId}?ref=${encodeURIComponent(myId)}`
   }
 
   async function copyLink(productId: number) {

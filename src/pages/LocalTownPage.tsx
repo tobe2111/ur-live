@@ -173,7 +173,7 @@ export default function LocalTownPage() {
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => navigate(`/group-buy/${p.id}`)}
+                  onClick={() => navigate(`/pass/${p.id}`)}
                   className="w-full flex gap-3 p-3 rounded-2xl border border-gray-100 dark:border-[#2A3446] bg-gray-50/60 dark:bg-[#0E0E0E] text-left active:scale-[0.995] transition-transform"
                 >
                   <div className="w-[72px] h-[72px] rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A2334] shrink-0">
@@ -223,7 +223,7 @@ export default function LocalTownPage() {
           ) : (
             <div className="grid grid-cols-2 gap-x-3 gap-y-5">
               {(deals || []).map(p => (
-                <DealCard key={p.id} p={p} onClick={() => navigate(`/group-buy/${p.id}`)} />
+                <DealCard key={p.id} p={p} onClick={() => navigate(`/pass/${p.id}`)} />
               ))}
             </div>
           )}

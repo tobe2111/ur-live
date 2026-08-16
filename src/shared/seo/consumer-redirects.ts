@@ -46,6 +46,17 @@ const ALIAS_EXACT: Readonly<Record<string, string>> = {
 const PRODUCT_SINGULAR = /^\/product\/([^/]+)\/?$/
 
 /**
+ * 🎟️ `/group-buy/:id` → `/pass/:id` — 이용권 상세 정본 이전 (2026-08-16, 대표 확정).
+ *
+ * 🔴 **숫자 id 만** 잡는다. `/group-buy/confirm-payment` 은 **다른 화면**이고 그 자리에 남아 있어,
+ *   `[^/]+` 로 잡으면 결제 확인 페이지가 `/pass/confirm-payment` 로 튕겨 **결제 흐름이 깨진다.**
+ *
+ * ⚠️ 이 301 은 지워도 되는 종류가 아니다 — 카톡 공유 카드·검색 색인·QR 에 박힌 옛 주소가
+ *   **우리 배포와 무관하게** 남아 있고, 그 회수 시점의 통제권이 우리에게 없다.
+ */
+const GROUP_BUY_DETAIL = /^\/group-buy\/(\d+)\/?$/
+
+/**
  * 별칭이면 정본 경로를, 아니면 `null`.
  *
  * 후행 슬래시(`/terms-of-service/`)도 같은 별칭으로 본다 — 안 그러면 그 변형이 301 을 피해
@@ -60,6 +71,8 @@ export function resolveConsumerAlias(pathname: string): string | null {
     // id 는 원문 그대로 넘긴다(이미 URL 인코딩된 상태). 빈 값이면 리다이렉트하지 않는다.
     return m[1] ? `/products/${m[1]}` : null
   }
+  const gb = GROUP_BUY_DETAIL.exec(p)
+  if (gb) return `/pass/${gb[1]}`
   return null
 }
 

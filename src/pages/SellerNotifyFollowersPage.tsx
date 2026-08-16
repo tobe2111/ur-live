@@ -166,7 +166,7 @@ export default function SellerNotifyFollowersPage() {
             <label className="block text-xs font-bold text-gray-700 mb-1">클릭 시 이동 URL</label>
             <input
               value={url} onChange={e => setUrl(e.target.value.slice(0, 200))}
-              placeholder="/group-buy/123"
+              placeholder="/pass/123"
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none font-mono"
             />
           </div>

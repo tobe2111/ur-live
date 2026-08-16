@@ -237,7 +237,7 @@ function TopGroupsToShare() {
               <Copy className="w-3 h-3 inline mr-0.5" /> 복사
             </button>
             <button
-              onClick={() => navigate(`/group-buy/${g.id}`)}
+              onClick={() => navigate(`/pass/${g.id}`)}
               className="px-2.5 py-1.5 bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300 rounded-lg text-[11px] font-bold shrink-0"
               aria-label="상세 보기"
             >

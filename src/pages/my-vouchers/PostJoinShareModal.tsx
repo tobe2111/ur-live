@@ -4,7 +4,7 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 export default function PostJoinShareModal({ data, onClose }: { data: { product_id: number; name: string; image_url?: string }; onClose: () => void }) {
   const userId = localStorage.getItem('user_id') || localStorage.getItem('uid') || ''
-  const shareUrl = `https://urdeal.kr/group-buy/${data.product_id}${userId ? `?ref=${userId}` : ''}`
+  const shareUrl = `https://urdeal.kr/pass/${data.product_id}${userId ? `?ref=${userId}` : ''}`
 
   async function shareToKakao() {
     try {

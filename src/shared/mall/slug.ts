@@ -25,7 +25,10 @@ export const RESERVED_SLUGS: readonly string[] = [
   'login', 'map', 'meal-vouchers', 'my', 'my-appointments', 'my-commissions',
   'my-coupons', 'my-deal-history', 'my-orders', 'my-returns', 'my-reviews', 'my-stays',
   'my-store', 'my-vouchers', 'mypage', 'new-openings', 'notifications', 'orders',
-  'partners', 'partnership', 'pay', 'payment', 'points', 'privacy',
+  // 🎟️ 2026-08-16: `pass` 는 이용권 상세 정본 경로(`/pass/:id`). 예약 안 하면 누가 그 슬러그로
+  //   몰을 만드는 순간 `urdeal.kr/pass` 가 그 가게를 가리키고 **이용권 상세가 통째로 사라진다.**
+  //   (등재 전 라이브 확인: 몰 3개 `default`·`medi`·`test` — 충돌 없음.)
+  'partners', 'partnership', 'pass', 'pay', 'payment', 'points', 'privacy',
   'privacy-policy', 'product', 'products', 'profile', 'referral', 'refund',
   'refund-policy', 'region', 'register', 'restaurant-map', 's', 'search', 'seller',
   'shipping-policy', 'stays', 'store', 'success', 'supplier', 'terms',

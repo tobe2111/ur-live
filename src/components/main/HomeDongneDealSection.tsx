@@ -82,7 +82,7 @@ export default function HomeDongneDealSection() {
               title={p.restaurant_name || p.name}
               priceText={`${(p.current_price ?? p.price).toLocaleString('ko-KR')}원`}
               dominantColor={p.dominant_color}
-              onClick={() => navigate(`/group-buy/${p.id}`)}
+              onClick={() => navigate(`/pass/${p.id}`)}
             />
           ))}
         </div>

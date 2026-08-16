@@ -282,7 +282,7 @@ export default function IntroducePage() {
           ] as GbItem[]).map((d, idx) => (
             <button
               key={`${d.id}-${idx}`}
-              onClick={() => d.id ? navigate(`/group-buy/${d.id}`) : navigate('/group-buy')}
+              onClick={() => d.id ? navigate(`/pass/${d.id}`) : navigate('/group-buy')}
               className="block rounded-2xl overflow-hidden border border-[#2A3446] hover:border-[#2A3446] transition-all hover:scale-[1.02]"
             >
               <div className="aspect-[3/4] relative bg-gradient-to-br from-[#1A0808] to-[#0F151D]">
