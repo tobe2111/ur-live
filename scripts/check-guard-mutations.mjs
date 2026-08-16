@@ -72,6 +72,27 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '어드민 nav 밴드 판정을 옛 제목매칭 폴백으로 되돌린다(서비스가 조용히 공통 서랍으로)',
+    file: 'src/components/admin/admin-nav-config.ts',
+    find: 'export const navSectionOf = (g: NavGroup): NavSectionKey => g.section',
+    replace: "export const navSectionOf = (g: NavGroup): NavSectionKey => (g.title === '운영' ? 'home' : 'common')",
+    test: 'src/tests/unit/admin-nav-classification.test.ts',
+    why:
+      '어드민 좌측 nav 는 서비스 넷(유어딜·공구 서비스·유어애즈·유통스타트)을 밴드로 가른다. 옛 구현은 그룹 ' +
+      '**제목을 문자열로 맞춰보고** 안 맞으면 조용히 `common` 으로 떨어뜨렸다 — 즉 **아무것도 안 하면 공통 ' +
+      '서랍으로 빨려 들어가는** 기본값이었고, 실제로 **유어애즈가 서비스인데도 "⚙️ 공통 · 회원·재무·검증·시스템" ' +
+      '아래 렌더**되고 있었다(2026-08-16 실측). 라벨은 자주 바뀌므로(8/14 에도 바꿨다) 제목 매칭은 ' +
+      '**이름을 고치면 밴드가 말없이 이동**하는 2차 취약점도 갖는다. ⚠️ 이 회귀는 화면이 안 깨지고 ' +
+      '**메뉴가 다른 헤더 밑에 얌전히 그려질 뿐**이라 에러도 경고도 없다 — 사람이 알아챌 신호가 0.',
+  },
+  // 📝 2026-08-16 — 여기에 *"도매 API 스코프 가드가 super 전용 화면까지 센다"* 항목을 넣으려다 뺐다.
+  //   그 결함은 `scripts/check-wholesale-admin-api-scope.mjs` 안에 있는데 검증자로 지정할 수 있는
+  //   vitest 테스트가 그 스크립트를 **실행하지 않는다** → 결함을 심어도 테스트는 통과하고, 매니페스트가
+  //   그 사실을 그대로 잡아냈다(자기 항목이 헛돎). 커버리지를 지어내는 대신 뺀다.
+  //   ⚠️ 뺀 것이 안전한 이유: 그 회귀는 **오탐(빨강)으로 나타난다** — 시끄럽고 자가교정된다.
+  //   매니페스트가 지키는 것은 *조용한* 실패이지 시끄러운 실패가 아니다.
+  //   (짝인 `/admin/maker-pool` 의 super-only 지정 자체는 `admin-nav-classification.test.ts` 가 고정한다.)
+  {
     name: '공구가 킬스위치를 어드민 화면에서 뺀다(돈 새는 중에 멈출 손잡이가 사라진다)',
     file: 'src/pages/AdminPlatformSettingsPage.tsx',
     find: "key: 'gb_pricing_enabled'",
