@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
@@ -9,6 +9,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { Ticket, AlertCircle, RefreshCw, TrendingUp, BarChart3, Store } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
+import { AdminServiceScopeTabs, useAdminMallScope } from '@/components/admin/AdminServiceScope'
 
 // 🛡️ 2026-05-15: 어드민 공구 모니터링 + 강제 환불 도구.
 //   기존 /admin/deals 는 결제/포인트 통계, 여기는 voucher 공구 (식사/뷰티/헬스/펫/숙박/액티비티) 전용.
@@ -101,14 +102,8 @@ export default function AdminGroupBuyPage() {
    * 유어딜 목록·GMV 에 섞여** 있었다. 이제 서버가 스코프를 받고, **URL 이 진실**이다
    * (어드민 nav 의 '몰 상품·공구' 항목이 `?mall=all` 로 들어온다 — 새로고침·북마크에도 유지된다).
    */
-  const [searchParams, setSearchParams] = useSearchParams()
-  const scope: 'main' | 'mall' | 'all' =
-    searchParams.get('mall') === 'mall' ? 'mall' : searchParams.get('mall') === 'all' ? 'all' : 'main'
-  const setScope = (v: 'main' | 'mall' | 'all') => {
-    const next = new URLSearchParams(searchParams)
-    if (v === 'main') next.delete('mall'); else next.set('mall', v)
-    setSearchParams(next, { replace: true })
-  }
+  // 🧭 2026-08-16: 같은 토글을 어드민 여러 화면이 쓰게 되어 공용 컴포넌트로 추출(동작 불변).
+  const { scope, setScope, scopeParams } = useAdminMallScope()
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login')
@@ -119,13 +114,13 @@ export default function AdminGroupBuyPage() {
     // 🔴 스코프를 쿼리 키에 넣지 않으면 유어딜 목록과 몰 목록이 **같은 캐시**를 쓴다(섞임 재발).
     params: {
       ...(filter === 'unsuccessful' ? { filter: 'unsuccessful' } : filter !== 'all' ? { status: filter } : {}),
-      ...(scope === 'main' ? {} : { mall: scope }),
+      ...scopeParams,
     },
     enabled: tab === 'monitor',
     select: (r: any) => (r?.success ? r.data || [] : []),
   })
   const analyticsQ = useApiQuery<AnalyticsData | null>(['admin', 'gb-analytics', scope], '/api/group-buy/admin/analytics', {
-    params: scope === 'main' ? {} : { mall: scope },
+    params: scopeParams,
     enabled: tab === 'analytics',
     select: (r: any) => (r?.success ? r.data : null),
   })
@@ -185,33 +180,7 @@ export default function AdminGroupBuyPage() {
           icon={<Ticket className="h-5 w-5" />}
         />
 
-        {/* 🏪 서비스 스코프 — 화면이 "지금 어느 서비스를 보는지" 스스로 말한다.
-            그전엔 두 서비스가 한 목록에 섞여 있었고, 화면 어디에도 그 사실이 없었다. */}
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white p-2">
-          <span className="px-1 text-xs font-bold text-gray-500">서비스</span>
-          {([
-            { k: 'main', label: '🎟️ 유어딜 본진', hint: '이용권 공구' },
-            { k: 'mall', label: '🏪 공구 서비스', hint: '운영자 몰' },
-            { k: 'all', label: '전체', hint: '섞어 보기' },
-          ] as const).map((o) => (
-            <button
-              key={o.k}
-              type="button"
-              onClick={() => setScope(o.k)}
-              title={o.hint}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
-                scope === o.k ? 'bg-gray-900 text-white' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              {o.label}
-            </button>
-          ))}
-          {scope === 'all' && (
-            <span className="ml-auto text-[11px] font-semibold text-amber-700">
-              두 서비스가 섞여 있습니다 — 아래 '가게' 열로 구분하세요
-            </span>
-          )}
-        </div>
+        <AdminServiceScopeTabs scope={scope} setScope={setScope} mixedHint="두 서비스가 섞여 있습니다 — 아래 '가게' 열로 구분하세요" />
 
         {/* 탭 — 모니터링 / 분석 */}
         <div className="flex gap-1 border-b border-gray-200">

@@ -102,6 +102,12 @@ describe('mall_id 격리 전제 — 신규 몰은 1·2 를 재사용하지 않�
       //   🔴 리터럴 몰 id 를 **어디에도 안 쓴다** — 조건은 `mainScopeFor(DB,'products','p')`(소비자 경로와
       //   같은 SSOT)가 만들고, '몰' 스코프는 그 조건의 여집합으로 파생한다. 조인도 `consumer_path=1` 격리.
       'src/features/group-buy/api/group-buy-admin.routes.ts': '어드민 서비스 스코프 — mainScopeFor 파생, consumer_path 조인(쓰기 없음)',
+      // ✅ 2026-08-16 — 공구 엔진 조종석의 상품 **검색** 스코프(대표 "모두 다 해줘"). **쓰기 0.**
+      //   그전까지 몰 조건이 없어 운영자 가게 상품이 검색에 잡혔고, 그대로 gb 세션을 저장하면
+      //   유어딜 어드민이 **남의 가게 공구가**를 바꾸게 된다(그 상품도 같은 `resolveGbPricing` 을 탄다).
+      //   🔴 리터럴 몰 id 를 안 쓴다 — 조건은 `productScopeSql`(→`mainScopeFor`, 소비자 경로와 같은 SSOT).
+      //   `mall_id` 자체는 **주석에만** 등장한다.
+      'src/features/group-buy/api/gb-cockpit.routes.ts': '조종석 상품 검색 스코프 — productScopeSql 파생(쓰기 없음)',
     }
     const mentions = files.filter((f) => /\bmall_id\b/.test(read(f)) && !(f in MENTION_BASELINE))
     expect(mentions, 'mall_id 를 쓰는 새 경로 — 1·2 가 아닌 운영자 몰 id 인지 확인 후 baseline 등록').toEqual([])

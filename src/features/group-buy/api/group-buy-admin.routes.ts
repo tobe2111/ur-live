@@ -18,6 +18,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow'
 import { mainScopeFor } from '@/worker/utils/consumer-scope'
+import { parseAdminMallScope } from '@/worker/utils/admin-mall-scope'
 
 const groupBuyAdminRoutes = new Hono<{ Bindings: Env }>()
 
@@ -121,11 +122,10 @@ groupBuyAdminRoutes.get('/analytics', requireAdmin(), async (c) => {
  * ⚠️ 컬럼 부재 환경을 위해 조건은 `mainScopeFor`/`mallScopeClause`(소비자 경로와 **같은 SSOT**)로 만든다.
  *   여기서 조건을 손으로 쓰면 소비자 화면과 갈리고, 갈리면 한쪽만 샌다.
  */
-type GbAdminScope = 'main' | 'mall' | 'all'
-export function parseGbAdminScope(raw: unknown): GbAdminScope {
-  const v = String(raw ?? '').trim().toLowerCase()
-  return v === 'mall' || v === 'all' ? v : 'main'
-}
+// 🧭 2026-08-16: 파서 SSOT 를 `worker/utils/admin-mall-scope` 로 옮겼다 — 같은 스코프를 어드민
+//   화면 다섯 곳이 쓰게 되면서, 파싱 규칙이 파일마다 복사되면 반드시 갈라지기 때문이다.
+//   이름은 유지한다(호출부·테스트가 이 이름을 쓴다).
+export const parseGbAdminScope = parseAdminMallScope
 
 groupBuyAdminRoutes.get('/list', requireAdmin(), async (c) => {
   const { DB } = c.env

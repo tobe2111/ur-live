@@ -24,6 +24,8 @@ import { getSupplyMeta, setSupplyMeta } from '@/worker/utils/product-supply-meta
 import { loadPlatformCommissionPct } from '../../supply/api/wholesale-settlement';
 import { distributorPriceFromCost } from '@/lib/distributor-pricing';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
+import { parseAdminMallScope, productScopeSql } from '@/worker/utils/admin-mall-scope';
+import { fetchProductCounts } from './admin-products-counts';
 import { isValidKakaoPlaceUrl, normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url';
 import { intParam } from '@/shared/pagination'
 // 🎯 2026-07-21: 시드 커버 재호스팅 — 본체는 worker/utils/rehost-image.ts (demo-image-rehost cron 과 공유 SSOT).
@@ -89,6 +91,10 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
     const maxPrice = Number(c.req.query('max_price') || 0);
     const sort = String(c.req.query('sort') || 'created');  // created | price | sold | name
     const order = String(c.req.query('order') || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    // 🏪 2026-08-16: 몰 조건이 없어 운영자 가게 상품이 목록·탭·카테고리 카운트에 섞였다. 기본 `main`.
+    const scope = parseAdminMallScope(c.req.query('mall'));
+    const scopeP = await productScopeSql(DB, scope, 'p');
+    const scopeBare = await productScopeSql(DB, scope);
 
     const where: string[] = [];
     const params: unknown[] = [];
@@ -103,7 +109,10 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
     if (Number.isFinite(minPrice) && minPrice > 0) { where.push('p.price >= ?'); params.push(minPrice); }
     if (Number.isFinite(maxPrice) && maxPrice > 0) { where.push('p.price <= ?'); params.push(maxPrice); }
 
-    const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    // 조각이 ` AND …` 형태라 붙일 WHERE 가 없으면 `WHERE 1=1` 을 깐다.
+    const whereClause = where.length
+      ? `WHERE ${where.join(' AND ')}${scopeP}`
+      : (scopeP ? `WHERE 1=1${scopeP}` : '');
 
     const sortCol: Record<string, string> = {
       created: 'p.created_at', price: 'p.price', sold: 'p.sold_count', name: 'p.name',
@@ -115,32 +124,8 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
       .bind(...params).first<{ cnt: number }>().catch(() => ({ cnt: 0 }));
     const total = totalRow?.cnt ?? 0;
 
-    // 상태별 카운트 (탭 표시용 — 필터 q/category 무시, source 만 반영).
-    const tabWhere: string[] = [];
-    const tabParams: unknown[] = [];
-    if (source === 'kt_alpha') tabWhere.push('kt_alpha_gift_code IS NOT NULL');
-    else if (source === 'regular') tabWhere.push('kt_alpha_gift_code IS NULL');
-    const tabClause = tabWhere.length ? `WHERE ${tabWhere.join(' AND ')}` : '';
-    const tabCounts = await DB.prepare(
-      `SELECT
-         COUNT(*) as all_count,
-         SUM(CASE WHEN is_active=1 THEN 1 ELSE 0 END) as active_count,
-         SUM(CASE WHEN is_active=0 THEN 1 ELSE 0 END) as inactive_count,
-         SUM(CASE WHEN stock=0 AND is_active=1 THEN 1 ELSE 0 END) as out_of_stock,
-         SUM(CASE WHEN kt_alpha_gift_code IS NOT NULL THEN 1 ELSE 0 END) as kt_alpha_count
-       FROM products ${tabClause}`
-    ).bind(...tabParams).first<{
-      all_count: number; active_count: number; inactive_count: number; out_of_stock: number; kt_alpha_count: number;
-    }>().catch(() => null);
-
-    // 카테고리별 카운트 (사이드바용).
-    const catCounts = await DB.prepare(
-      `SELECT COALESCE(category, '(미분류)') as category, COUNT(*) as cnt
-         FROM products
-        WHERE is_active = 1 OR is_active = 0
-        GROUP BY category
-        ORDER BY cnt DESC LIMIT 50`
-    ).all<{ category: string; cnt: number }>().catch(() => ({ results: [] }));
+    // 탭·카테고리 카운트는 필터를 일부만 반영해 조건이 다르다 → 별도 모듈(admin-products-counts).
+    const { tabs: tabCounts, categories: catCounts } = await fetchProductCounts(DB, source, scopeBare);
 
     // 🛡️ 2026-05-19: referral_enabled / referral_commission_rate 추가 (migration 0271).
     //   컬럼 없는 환경에서도 graceful — try/catch fallback.
@@ -171,8 +156,8 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
       data: products,
       page, limit, total,
       total_pages: Math.ceil(total / limit),
-      tabs: tabCounts || { all_count: 0, active_count: 0, inactive_count: 0, out_of_stock: 0, kt_alpha_count: 0 },
-      categories: catCounts.results || [],
+      tabs: tabCounts,
+      categories: catCounts,
       filters: { q, category, status, source, sort, order, min_price: minPrice, max_price: maxPrice },
     });
   } catch (err) {

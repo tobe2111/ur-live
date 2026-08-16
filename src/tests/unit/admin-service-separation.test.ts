@@ -63,6 +63,83 @@ describe('어드민 공구 조회 — 두 서비스가 섞이지 않는다', () 
   })
 })
 
+/**
+ * 🧭 2026-08-16 (대표 *"모두 다 해줘"*) — 위에서 막은 건 **공구 목록·GMV 두 곳뿐**이었다.
+ *   나머지 어드민 화면은 `mall_id` 를 한 번도 안 봐서 운영자 가게 상품·매출이 계속 섞였다.
+ *
+ * ⚠️ 이번에 **인계 문서가 틀렸다는 것도 확인**했다: §17 이 `/admin/deals` 를 "같은 클래스"로
+ *   적었지만 그 화면은 **딜포인트(`user_points`) 모니터링**이고 상품과 무관하다. 문서를 믿고
+ *   조건을 넣었으면 아무 의미 없는 스코프가 생길 뻔했다 — 그래서 여기서 세는 대상은 3곳이다.
+ */
+describe('어드민 몰 스코프 — 유어딜 숫자에 남의 가게가 안 섞인다', () => {
+  const PRODUCTS = 'src/features/admin/api/admin-products.routes.ts'
+  // 🧭 2026-08-16: 탭·카테고리 카운트는 god 파일 래칫 때문에 여기로 추출됐다. 가드도 따라간다
+  //   (안 따라가면 "그 파일에 그 문자열이 없다"로 조용히 빨강이 되거나, 더 나쁘게는 낡은 지도가 된다).
+  const COUNTS = 'src/features/admin/api/admin-products-counts.ts'
+  const STATS = 'src/features/admin/api/admin-stats.routes.ts'
+  const COCKPIT = 'src/features/group-buy/api/gb-cockpit.routes.ts'
+  const SCOPE = 'src/worker/utils/admin-mall-scope.ts'
+
+  it('🔴 조각을 만드는 곳이 **하나**다 — 화면마다 손으로 쓰면 갈라진다', () => {
+    for (const f of [PRODUCTS, STATS, COCKPIT]) {
+      expect(/from '[^']*admin-mall-scope'/.test(read(f)), `${f} 가 스코프 SSOT 를 안 쓴다`).toBe(true)
+      // 손으로 쓴 삼항(`scope === 'main' ? … : 'mall' ?`)이 다시 생기면 SSOT 가 무의미해진다.
+      expect(/scope === 'mall' \? ` AND NOT/.test(read(f)), `${f} 에 손으로 쓴 조건`).toBe(false)
+    }
+  })
+
+  it('🔴 상품 목록·탭 카운트·카테고리 카운트가 **전부** 스코프를 탄다', () => {
+    const src = read(PRODUCTS)
+    // 목록만 걸고 카운트를 빼먹으면 "0건인데 탭엔 120" 처럼 화면이 자기모순을 일으킨다.
+    //
+    // 🐛 **되돌려-검증이 이 검사의 첫 판을 깨뜨렸다.** 원래 `whereClause = where.length[\s\S]{0,120}${scopeP}`
+    //   였는데, 목록 분기에서 스코프를 빼도 **else 분기에 남은 `${scopeP}`** 가 120자 안에 들어와
+    //   초록이 떴다. 느슨한 근접 매칭은 "어딘가에 그 이름이 있다"만 확인한다 — 이 레포가 반복해
+    //   당한 클래스다. ⇒ **두 분기 각각에** 앵커한다.
+    expect(/`WHERE \$\{where\.join\(' AND '\)\}\$\{scopeP\}`/.test(src), '필터 있는 목록').toBe(true)
+    expect(/scopeP \? `WHERE 1=1\$\{scopeP\}`/.test(src), '필터 없는 목록').toBe(true)
+    // 🔴 라우트가 카운트 모듈에 스코프를 **실제로 넘기는지**까지 본다 — 모듈만 옳고 인자가 빠지면
+    //   그 모듈은 아무것도 안 거른다(추출이 만든 새 실패 지점이다).
+    expect(/fetchProductCounts\(DB, source, scopeBare\)/.test(src), '카운트에 스코프 전달').toBe(true)
+    const counts = read(COUNTS)
+    expect(/`WHERE \$\{tabWhere\.join\(' AND '\)\}\$\{scopeBare\}`/.test(counts), '탭 카운트').toBe(true)
+    expect(/scopeBare \? `WHERE 1=1\$\{scopeBare\}`/.test(counts), '탭 카운트(무필터)').toBe(true)
+  })
+
+  it('🔴 카테고리 카운트의 `OR` 이 괄호로 묶여 있다 — 연산자 우선순위 누수', () => {
+    // `WHERE a=1 OR a=0 AND mall=1` 은 AND 가 먼저 묶여 **스코프가 절반에만** 걸린다.
+    // 에러가 없고 숫자만 조용히 틀리는 종류라 눈으로는 못 잡는다.
+    expect(/WHERE \(is_active = 1 OR is_active = 0\)\$\{scopeBare\}/.test(read(COUNTS))).toBe(true)
+  })
+
+  it('🔴 대시보드 오늘 매출·주문수가 스코프를 탄다 (대표가 매일 보는 숫자)', () => {
+    const src = read(STATS)
+    expect(/SUM\(o\.total_amount\)[\s\S]{0,160}\$\{orderScope\}/.test(src), '오늘 매출').toBe(true)
+    expect(/COUNT\(\*\) as count FROM orders o[\s\S]{0,80}\$\{orderScope\}/.test(src), '오늘 주문수').toBe(true)
+  })
+
+  it('🔴 주문 스코프는 **EXISTS** 다 — JOIN 이면 품목 수만큼 매출이 부푼다', () => {
+    const src = read(SCOPE)
+    const fn = src.slice(src.indexOf('export async function orderScopeSql'))
+    expect(/EXISTS \(SELECT 1 FROM order_items/.test(fn)).toBe(true)
+    // 🔎 "JOIN 을 안 쓴다"를 부정문으로 적으면 **아무 일도 안 하는 검사**가 된다(그렇게 쓸 리가 없다).
+    //   대신 이 조각을 실제로 소비하는 쪽이 `orders o` 단일 테이블임을 고정한다 — 조각이 JOIN 으로
+    //   바뀌면 여기 붙는 SQL 이 깨지므로 이게 진짜 제약이다.
+    expect(/FROM orders o WHERE[\s\S]{0,120}\$\{orderScope\}/.test(read(STATS))).toBe(true)
+  })
+
+  it('🔴 공구 엔진 조종석 검색이 남의 가게 상품을 안 잡는다', () => {
+    // 잡히면 유어딜 어드민이 남의 가게 **공구가**를 바꾸게 된다(같은 resolveGbPricing 을 탄다).
+    const src = read(COCKPIT)
+    expect((src.match(/\$\{scopeSql\}/g) ?? []).length, '검색/무검색 두 쿼리 모두').toBeGreaterThanOrEqual(2)
+  })
+
+  it('`mall` 은 본진의 **여집합**으로 파생된다 — 따로 쓰면 갈라진다', () => {
+    const src = read(SCOPE)
+    expect(/AND NOT \(1=1\$\{main\}\)/.test(src)).toBe(true)
+  })
+})
+
 describe('어드민 nav — 서비스가 넷이면 밴드도 넷', () => {
   it('🔴 공구 서비스가 **자기 밴드**를 갖는다 (유어딜 서랍에 세 들지 않는다)', () => {
     const g = NAV_GROUPS.find((x) => x.title.includes('공구 서비스'))
