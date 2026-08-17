@@ -25,7 +25,7 @@ import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 // 🖥️ 2026-07-18 (교환권 PC 2단 분리): 카드/행 + VoucherProduct 타입은 ./vouchers/shared 로 추출(파일크기 래칫).
-import { VoucherCard, VoucherRow, BrandChip, type VoucherProduct } from './vouchers/shared'
+import { VoucherCard, VoucherRow, BrandChip, getCategoryIcon, type VoucherProduct } from './vouchers/shared'
 import { SortMenu } from '@/components/ui/sort-menu'
 import BrowseProductCard from './browse/BrowseProductCard'
 import type { Product } from './browse/types'
@@ -53,65 +53,6 @@ interface CategorySection {
   brands: BrandSummary[]
 }
 
-// 🛡️ 2026-05-19: KT Alpha 카테고리명 → 사용자 친화 이모지 매핑.
-//   DB의 category 값 (예: '편의점/마트') 을 그대로 키로 사용. 매핑 없으면 🎁 default.
-const CATEGORY_ICONS: Record<string, string> = {
-  '편의점/마트': '🏪',
-  '편의점': '🏪',
-  '마트/슈퍼': '🏪',
-  '카페/베이커리': '☕',
-  '카페': '☕',
-  '베이커리': '🥐',
-  '외식/배달': '🍔',
-  '외식': '🍔',
-  '패스트푸드': '🍟',
-  '한식': '🍚',
-  '양식': '🍝',
-  '치킨/피자': '🍕',
-  '치킨': '🍗',
-  '피자': '🍕',
-  '백화점/쇼핑': '🛍️',
-  '백화점': '🛍️',
-  '쇼핑': '🛍️',
-  '뷰티/패션': '💄',
-  '뷰티': '💄',
-  '패션': '👗',
-  '화장품': '💅',
-  '도서/문화': '📚',
-  '도서': '📚',
-  '문화': '🎭',
-  '영화': '🎬',
-  '공연': '🎭',
-  '모바일/디지털': '📱',
-  '모바일상품권': '📱',
-  '모바일': '📱',
-  '디지털': '💾',
-  '게임': '🎮',
-  '주유/생활': '⛽',
-  '주유': '⛽',
-  '생활': '🏠',
-  '통신': '📡',
-  // 🎨 2026-08-17 (UX 전수검사 P2 — 사이드바 절반이 🎁 반복): 라이브 실측 카테고리명(/api/vouchers/
-  //   categories 상위 20종) 기준으로 미매핑분 추가 — 스캔 변별력 확보. 값이 바뀌면 🎁 폴백은 그대로.
-  '커피/음료': '☕',
-  '버거': '🍔',
-  '베이커리/도넛': '🍩',
-  '아이스크림': '🍦',
-  '기타상품권': '🎫',
-  '생활/가전/디지털': '🔌',
-  '백화점상품권': '🛍️',
-  '올레': '📡',
-  '마트': '🛒',
-  '마트상품권': '🛒',
-  '주유상품권': '⛽',
-  '용역서비스': '🛠️',
-  '3사 통합데이터 상품': '📶',
-  '음악': '🎵',
-}
-
-function getCategoryIcon(category: string): string {
-  return CATEGORY_ICONS[category] || '🎁'
-}
 
 // 🏭 2026-06-05 (사용자 신고 — 교환권 스크롤해도 상품 다 안 나옴): SSR 주입 슬롯(MAIN/VOUCHERS) 이
 //   limit=20 인데 클라 PAGE_SIZE 가 30 이라 hasMore=(20===30)=false → 무한스크롤이 즉시 멈춰 20개만 노출됐고,
