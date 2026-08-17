@@ -142,6 +142,23 @@ export const S3_TRADES_NATIONWIDE: Trade[] = [
   { kw: '인플루언서 공동구매', category: '공동구매', subcategory: '공동구매 대행', tier: 1 },
   { kw: '식품 공동구매', category: '공동구매', subcategory: '공동구매 총판·벤더', tier: 2 },
   { kw: '생활용품 공동구매', category: '공동구매', subcategory: '공동구매 총판·벤더', tier: 2 },
+  // 🧪 **체험단 축**(2026-08-17 대표 지시 "체험단 키워드로도 b2b db 수집 필요해").
+  //   ⚠️ 분류기는 이미 준비돼 있었다 — `company-classify.ts` 의
+  //   `/(체험단|플레이스\s*마케팅|블로그\s*마케팅|리뷰\s*마케팅)/` → 대행사/체험단·플레이스/tier 1.
+  //   **없던 것은 수집 키워드뿐**이라 분류 규칙은 손대지 않는다(두 벌이 되면 갈라진다).
+  //   🔑 왜 유어딜에 맞는 축인가: 체험단 대행사는 **이미 매장을 모아 인플루언서에게 붙이는 일**을 한다 —
+  //   유어딜이 하려는 것과 같은 동작이라 전환 설명 비용이 가장 낮다(공동구매 축과 같은 논리).
+  //   ⚠️ **배열 끝에 붙인다** — `seedPrefixHash` 가 앞부분 불변을 확인해 이어받으므로, 중간에 끼우면
+  //   지문이 어긋나 4,500행을 처음부터 다시 훑는다(반나절 지연). 지역 확장은 후속으로.
+  { kw: '체험단 대행사', category: '대행사', subcategory: '체험단·플레이스', tier: 1 },
+  { kw: '체험단 마케팅', category: '대행사', subcategory: '체험단·플레이스', tier: 1 },
+  { kw: '체험단 모집 대행', category: '대행사', subcategory: '체험단·플레이스', tier: 1 },
+  { kw: '블로그 체험단', category: '대행사', subcategory: '체험단·플레이스', tier: 1 },
+  { kw: '맛집 체험단', category: '대행사', subcategory: '체험단·플레이스', tier: 1 },
+  { kw: '뷰티 체험단', category: '대행사', subcategory: '체험단·플레이스', tier: 1 },
+  { kw: '플레이스 마케팅', category: '대행사', subcategory: '체험단·플레이스', tier: 1 },
+  { kw: '리뷰 마케팅 대행', category: '대행사', subcategory: '체험단·플레이스', tier: 1 },
+  { kw: '체험단 플랫폼', category: '대행사', subcategory: '체험단·플레이스', tier: 2 },
 ]
 
 export type KeywordSeedRow = { keyword: string; category: string; subcategory: string; region: string; tier: number }

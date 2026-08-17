@@ -206,13 +206,96 @@ const MUTATIONS = [
   {
     name: '변화율이 tier COALESCE 를 변화로 센다(등록부 이탈률이 부풀어 좁히기가 부당해 보인다)',
     file: 'src/features/marketing/api/reclassify-verdict-delta.ts',
-    find: '      || (before.tier == null && after.tier != null)',
-    replace: '      || before.tier !== after.tier',
+    // ⚠️ 2026-08-17 병합 사고 흔적 — main 통합을 **유니온**으로 풀다가 이 객체에 `find`/`replace` 가
+    //   **두 벌**이 됐다(HEAD 의 `written.tier` + main 의 옛 `after.tier`). JS 는 뒤엣것이 이기므로
+    //   낡은 쪽이 실제 값이 되어 CI 가 "낡은 지도"로 잡았다 — **충돌 마커도 없고 파싱도 되는** 형태라
+    //   더 위험하다. 유니온 해소는 *목록*엔 안전해도 **객체 리터럴 안**에선 이렇게 조용히 깨진다.
+    find: '      || (before.tier == null && written.tier != null)',
+    replace: '      || before.tier !== written.tier',
     test: 'src/tests/unit/reclassify-verdict-delta.test.ts',
     why:
       'UPDATE 가 `COALESCE(tier, ?)` 라 **옛 tier 가 있으면 안 바뀐다.** 그걸 변화로 세면 tier 가 이미 ' +
       '박힌 행이 전부 "판정이 달라졌다"로 잡혀 **변화율이 부풀고**, 그러면 "등록부도 규칙에 반응한다" 는 ' +
       '거짓 결론이 나와 **랩 좁히기(38일→2일)가 부당해 보인다.** 계측은 결론을 뒤집는 숫자다.',
+  },
+  {
+    name: '최소 간격을 다시 시각의 짝수성으로(유실 회차가 영구 손실)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: '    minIntervalHours: 2,\n    run: async (env) => {\n      if ((env as unknown as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED !== \'true\') return { skipped: \'gate_off\' }',
+    replace: '    run: async (env) => {\n      if ((env as unknown as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED !== \'true\') return { skipped: \'gate_off\' }\n      if (new Date().getUTCHours() % 2 !== 0) return { skipped: \'odd_hour\' }',
+    test: 'src/tests/unit/lane-min-interval.test.ts',
+    why:
+      '알람은 가끔 안 깨어난다. 짝수성 판정이면 부트의 재무장이 **홀수시에 착지해 그냥 skip** 되고 ' +
+      '그 회차(~990건)가 영영 사라진다 — 자가치유가 돌았는데 아무것도 못 건진다. 실측(5일·짝수시 12칸): ' +
+      '각 칸이 3~5일만 채워져 **무작위로 1/4 유실**, commerce 기준 하루 ~2,300건. 경과 시간 판정이면 ' +
+      '다음 시간이 이어받는다(그때는 2시간이 지났으므로).',
+  },
+  {
+    name: 'skip 회차에도 lastRunAt 을 찍는다(간격이 영원히 안 차 레인이 멎는다)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: '    if (runs < cap && due) put.lastRunAt = t0',
+    replace: '    put.lastRunAt = t0',
+    test: 'src/tests/unit/lane-min-interval.test.ts',
+    why:
+      'skip 에도 시각을 찍으면 매 회차 기준점이 갱신돼 **경과가 영원히 N시간에 못 닿는다** — 간격 게이트가 ' +
+      '스스로를 잠가 그 레인이 통째로 멎는다. 에러도 경보도 없이 조용히 0 이 되는 클래스라 특히 위험하다.',
+  },
+  {
+    name: '에폭 은퇴를 승격 차단에 넣는다(자가치유가 막혀 30일 영구 배제)',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: '  `NOT ((${AUTO_RETIRE_WHERE.f30}) OR (${AUTO_RETIRE_WHERE.barren}) OR (${AUTO_RETIRE_WHERE.yield}))`',
+    replace: '  `NOT ((${AUTO_RETIRE_WHERE.f30}) OR (${AUTO_RETIRE_WHERE.barren}) OR (${AUTO_RETIRE_WHERE.yield}) OR (${AUTO_RETIRE_WHERE.epoch}))`',
+    test: 'src/tests/unit/influencer-keyword-epoch.test.ts',
+    why:
+      '평생 카운터 셋은 재승격 시 조건이 그대로 참이라 차단이 필요하지만, **에폭은 승격 시 리셋**되므로 ' +
+      'livelock 이 성립하지 않는다. 여기 넣으면 한 번 마른 키워드가 증거 유통기한(30일)까지 **영구 배제**된다 — ' +
+      '대표가 2026-08-09 에 명시로 거부한 바로 그것이다. 겉보기엔 "더 안전해 보이는" 변경이라 더 위험하다.',
+  },
+  {
+    name: '승격이 에폭을 리셋하지 않는다(재승격자가 즉시 재은퇴 — livelock)',
+    file: 'src/features/marketing/api/influencer-keyword-promote.ts',
+    find: "SET active = 1, activated_at = datetime('now'), epoch_runs = 0, epoch_saved = 0 WHERE id = ?",
+    replace: "SET active = 1, activated_at = datetime('now') WHERE id = ?",
+    test: 'src/tests/unit/influencer-keyword-epoch.test.ts',
+    why:
+      '에폭을 안 지우면 재승격자는 **은퇴시킨 그 에폭 그대로** 살아나 다음 회차에 즉시 다시 은퇴된다. ' +
+      '한 번도 안 돌고 승격 슬롯만 태우는 순환 — 2026-08-09 에 평생 카운터로 겪은 livelock 과 같은 모양이다. ' +
+      '리셋이 곧 "재도전은 백지에서" 이고, 그게 이 은퇴를 자가치유로 만드는 유일한 장치다.',
+  },
+  {
+    name: '에폭 은퇴가 retired_at 을 안 찍는다(쿨다운이 무력 — churn 복귀)',
+    file: 'src/features/marketing/api/influencer-keyword-store.ts',
+    find: "UPDATE ad_discovery_keywords SET active = 0, retired_at = datetime('now') WHERE id IN",
+    replace: 'UPDATE ad_discovery_keywords SET active = 0 WHERE id IN',
+    test: 'src/tests/unit/influencer-keyword-epoch.test.ts',
+    why:
+      '`retired_at` 이 NULL 이면 쿨다운 조건이 항상 참이라 **갓 은퇴한 키워드가 다음 회차에 바로 재승격**된다. ' +
+      '`hits DESC` 정렬이 옛 활성 키워드를 대기 큐 앞에 세우므로, 그 키워드는 8회 시험을 무한 반복하며 ' +
+      '슬롯을 태운다 — 대기 11,720개가 밖에 있는 채로.',
+  },
+  {
+    name: '🩸 변화율이 기록값 대신 classifyLead 날것을 본다(라이브에서 실제로 난 오계상)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: "      lead_type: registry && c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type,",
+    replace: '      lead_type: c.lead_type,',
+    test: 'src/tests/unit/reclassify-verdict-delta.test.ts',
+    why:
+      '**2026-08-17 라이브에서 실제로 난 사고다.** 호출부는 `classifyLead` 결과를 그대로 안 쓴다 — ' +
+      '등록부는 `unknown → partner` 로 매핑해서 쓴다. 그 매핑을 빼고 날것으로 비교하면 등록부 행 ' +
+      '대부분(원래 partner · 기록값도 partner)이 **"바뀜"으로 오계상**돼 실측이 `reg 8,333/8,500 = 98%` ' +
+      '라는 거짓값을 냈다. 그 숫자로 판단했으면 **랩 좁히기(38일→2일)를 근거 없이 포기**했을 것이다.\n' +
+      '⚠️ 이 주입은 동작도 바꾼다(등록부에 unknown 이 기록된다) — 계측 버그가 곧 데이터 버그였다는 뜻.',
+  },
+  {
+    name: '오염된 옛 세대 누계를 그대로 이어받는다(비율이 두 세대의 혼합이 된다)',
+    file: 'src/features/marketing/api/reclassify-verdict-delta.ts',
+    find: '  const p = Number(raw.v) === VERDICT_DELTA_VERSION ? raw : {}',
+    replace: '  const p = raw',
+    test: 'src/tests/unit/reclassify-verdict-delta.test.ts',
+    why:
+      '비교 규칙이 바뀌면 옛 값과 새 값은 **다른 것을 센 숫자**다. 더하면 어느 쪽도 아닌 비율이 되고, ' +
+      'v1 이 쌓은 8,333/8,500(98%) 위에 새 값이 얹히면 **한참 동안 거짓 결론이 유지된다** — 새 표본이 ' +
+      '옛 누계를 넘어서야 겨우 씻긴다.',
   },
   {
     name: '변화율 분모에 첫 분류를 넣는다(새 행이 전부 "바뀜"으로 잡힌다)',
@@ -2459,17 +2542,12 @@ const MUTATIONS = [
       '#930 집중 커서와 **정확히 같은 실패 모드**: 매 회차 계산은 하는데 저장이 없어 다음 회차가 항상 ' +
       '옛 캡을 읽는다. 통계에는 새 캡이 찍히므로 화면만 보면 조율이 되는 것처럼 보인다.',
   },
-  {
-    name: '다 훑은 키워드 은퇴가 승격 차단에서 빠짐(재승격→즉시재은퇴 livelock)',
-    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
-    find: ' OR (${AUTO_RETIRE_WHERE.exhausted})',
-    replace: '',
-    test: 'src/tests/unit/ads-freshness-control.test.ts',
-    why:
-      '은퇴는 active=0 만 쓰고 hits 는 계속 쌓이므로, 은퇴자가 그 회차 topTags 에 다시 채굴되면 즉시 ' +
-      '재승격되고 다음 회차 시작에 또 은퇴한다(2026-08-09 실사고 재현). 승격 자리를 무한히 돌려쓰며 ' +
-      '신선한 후보 3,996개가 계속 밖에 남는다 — 에러 없이 신선도 공급만 멎는다.',
-  },
+  // 🗑️ **삭제(2026-08-17)** — `다 훑은 키워드 은퇴가 승격 차단에서 빠짐`.
+  //   #1163 의 `exhausted` 조각을 **에폭으로 통합**하면서(대표 "에폭으로 통합해서 머지해줘")
+  //   그 조각 자체가 사라졌다. 그리고 에폭은 **차단에 넣으면 안 된다** — 승격이 리셋하므로 livelock 이
+  //   성립하지 않고, 넣으면 30일 영구 배제가 된다. 즉 이 주입의 전제가 반대로 뒤집혔다.
+  //   지키던 것은 두 갈래로 살아 있다: 평생 카운터 셋의 차단 포함(`ads-freshness-control` ·
+  //   `ads-keyword-promotion-room`)과, 그 역방향 주입 `에폭 은퇴를 승격 차단에 넣는다`.
   {
     name: '축 이월(carry) 적립을 버림 — 선언한 배수 3:2:1 이 조용히 뒤집힌다',
     file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
@@ -2691,8 +2769,10 @@ const MUTATIONS = [
   {
     name: '은퇴↔승격 livelock 재무장 — 즉시-재은퇴 좀비가 승격 슬롯을 태움',
     file: 'src/features/marketing/api/influencer-keyword-promote.ts',
-    find: 'AND ${PROMOTE_NOT_RETIRABLE_SQL} AND keyword IN',
-    replace: 'AND keyword IN',
+    // ⚠️ 2026-08-17 앵커 갱신 — 같은 줄에 `PROMOTE_COOLDOWN_SQL` 이 추가됐다. 옛 replace(`AND keyword IN`)는
+    //   새 줄의 **부분문자열이라 잔재 검사가 상시 오탐**을 냈다(실제로 그렇게 잡혔다). 두 조각을 다 적어 유일하게 만든다.
+    find: 'AND ${PROMOTE_NOT_RETIRABLE_SQL} AND ${PROMOTE_COOLDOWN_SQL} AND keyword IN',
+    replace: 'AND ${PROMOTE_COOLDOWN_SQL} AND keyword IN',
     test: 'src/tests/unit/ads-keyword-promotion-room.test.ts',
     why:
       '은퇴는 active=0 만 쓰고 hits 는 재채굴마다 쌓인다 — 이 가드가 빠지면 은퇴자가 hits DESC 로 ' +
@@ -2817,6 +2897,11 @@ const MUTATIONS = [
     why:
       '위 수리의 짝이다. 0 을 제대로 읽어도 하한 1 이 남아 있으면 쉬는 조가 매 회차 1개씩 띄운다 — ' +
       '도메인 수만큼 곱해지면 학습기 판단(cap 2)이 다시 안 맞는다. 하한은 *자리를 받은* 조에만 있어야 한다.',
+  },
+  {
+    // ⚠️ 2026-08-17 병합 사고 흔적 — 유니온 해소가 `},\n  {` 경계를 삼켜 **두 주입이 한 객체로 융합**됐다.
+    //   JS 는 뒤엣 키가 이기므로 위 `쉬는 회차 cap 하한` 주입이 **통째로 사라져 있었다**(에러 없이).
+    //   객체 리터럴을 유니온으로 풀 때의 두 번째 실패 형태다 — 첫째는 같은 키 두 벌(위 tier 주입).
     name: 'YT 건너뛴 행이 스탬프를 못 받아 영구 선두(재선택 churn)',
     // ⚠️ 2026-08-03 600줄 래칫으로 YT 성과가 이 파일로 분리됐다(순수 이동). 앵커가 안 따라오면
     //   이 주입은 "find 문자열이 소스에 없음"으로 낡은 지도 판정을 받는다 — 그게 이 러너의 모드 ②다.

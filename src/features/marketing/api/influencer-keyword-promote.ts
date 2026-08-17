@@ -9,7 +9,7 @@
  *   ⚠️ 서비스 분리: `ad_discovery_keywords` 만 접촉(소비자/도매 무관).
  */
 import { classifyCategory, canAutoPromote } from './influencer-classify'
-import { autoPromotionRoom, MAX_AUTO_KEYWORDS, PROMOTE_NOT_RETIRABLE_SQL } from './influencer-keyword-rotation'
+import { autoPromotionRoom, MAX_AUTO_KEYWORDS, PROMOTE_NOT_RETIRABLE_SQL, PROMOTE_COOLDOWN_SQL } from './influencer-keyword-rotation'
 
 /** 🛡️ 2026-07-23: 채널 단위 dedupe 도입과 함께 3→5 — '서로 다른 채널 5곳'이 쓴 태그만 승격(단일 실행 폭주 승격 방지). */
 export const AUTO_PROMOTE_HITS = 5
@@ -75,15 +75,18 @@ export async function promoteHashtagKeywords(
   //   이 가드가 없으면 은퇴자가 재채굴될 때마다 `hits DESC` 로 신선 큐를 제치고 재승격 → 다음 회차 시작의
   //   은퇴 batch 가 한 번도 안 돌리고 다시 은퇴 → 승격 슬롯만 태우는 livelock(근거·실측은
   //   `PROMOTE_NOT_RETIRABLE_SQL` docblock). 조각은 은퇴문과 같은 SSOT(rotation)라 갈라질 수 없다.
+  // 🕊️ 쿨다운(`PROMOTE_COOLDOWN_SQL`): 에폭 은퇴는 자가치유라 영구 차단이 아니고, `hits DESC` 가 옛 활성
+  //   키워드를 대기 큐 앞에 세우는 탓에 생기는 승격↔은퇴 churn 만 막는다(근거는 그 상수 docblock).
   const cands = await DB.prepare(`SELECT id, keyword FROM ad_discovery_keywords
-    WHERE active = 0 AND hits >= ? AND ${PROMOTE_NOT_RETIRABLE_SQL} AND keyword IN (${ph}) ORDER BY hits DESC LIMIT ?`)
+    WHERE active = 0 AND hits >= ? AND ${PROMOTE_NOT_RETIRABLE_SQL} AND ${PROMOTE_COOLDOWN_SQL} AND keyword IN (${ph}) ORDER BY hits DESC LIMIT ?`)
     .bind(AUTO_PROMOTE_HITS, ...gated.map(([t]) => t), room)
     .all<{ id: number; keyword: string }>().catch(() => null)
   const rows = cands?.results || []
   if (rows.length) {
     // 🕐 activated_at 스탬프 — 순환 건강 판정의 미실행 나이는 이 시각부터다(등록일 기준이면 몇 주 잠자던
     //   후보가 승격 즉시 "N주 굶음" 가짜 starved 경보를 낸다 — 2026-08-10, '댕댕이' 실측).
-    await DB.batch(rows.map(r => DB.prepare("UPDATE ad_discovery_keywords SET active = 1, activated_at = datetime('now') WHERE id = ?").bind(r.id))).catch(() => null)
+    // 🔄 에폭 리셋 — 재도전은 **백지에서** 시작해야 한다(안 하면 옛 에폭 그대로라 다음 회차에 즉시 재은퇴 = livelock).
+    await DB.batch(rows.map(r => DB.prepare("UPDATE ad_discovery_keywords SET active = 1, activated_at = datetime('now'), epoch_runs = 0, epoch_saved = 0 WHERE id = ?").bind(r.id))).catch(() => null)
     promoted.push(...rows.map(r => r.keyword))
   }
   return { promoted, kwAuto }

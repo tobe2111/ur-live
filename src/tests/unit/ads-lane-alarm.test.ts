@@ -301,11 +301,18 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
     expect((r as { skipped?: string }).skipped, 'match-registry 킬스위치 무시').toBe('gate_off')
   })
 
-  it('🔒 3차 이관 — 짝수시 레인은 러너 안에서 시각을 보존한다(외부 호출량 증설 금지)', () => {
-    const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
-    for (const lane of ["'collect-commerce'", "'collect-storeinfo'"]) {
-      const seg = runners.slice(runners.indexOf(`${lane}: {`), runners.indexOf(`${lane}: {`) + 500)
-      expect(seg, `${lane} 짝수시 보존 누락`).toMatch(/getUTCHours\(\) % 2 !== 0/)
+  it('🔒 3차 이관 — 2시간 주기 레인의 **외부 호출량 상한**이 보존된다', async () => {
+    const { ALARM_LANES } = await import('@/worker-ads/lane-alarm-runners')
+    // ⚠️ 2026-08-17: 이 검사는 원래 `getUTCHours() % 2 !== 0` 리터럴을 요구했다. 지키려던 것은
+    //   *짝수성*이 아니라 **"하루 12회를 넘지 않는다"** 이고, 짝수성은 그걸 표현하는 한 가지 방법이었다.
+    //   그런데 그 표현은 알람이 유실될 때 회차를 **영구히 잃는다**(부트 재무장이 홀수시에 착지해 skip).
+    //   실측 5일: 짝수시 12칸이 3~5일만 채워짐 = 무작위 1/4 유실. 그래서 경과 시간 판정으로 바꿨고,
+    //   상한은 `runsPerHour 1 × minIntervalHours 2` 로 **똑같이 하루 ≤12회**다. 의도로 검사한다.
+    for (const name of ['collect-commerce', 'collect-storeinfo']) {
+      const lane = ALARM_LANES[name]
+      expect(lane?.runsPerHour, `${name} 시간당 상한`).toBe(1)
+      expect(lane?.minIntervalHours, `${name} 최소 간격`).toBe(2)
+      expect((lane!.runsPerHour! * 24) / lane!.minIntervalHours!, `${name} 하루 상한`).toBeLessThanOrEqual(12)
     }
   })
 

@@ -13,6 +13,7 @@ import {
   alarmReviveKind,
 } from './lane-alarm-policy'
 import { lookupAlarmLane } from './lane-alarm-runners'
+import { dueByElapsed } from './lane-alarm-policy'
 import { buildCronBeatRow } from '@/worker/utils/cron-heartbeat'
 import { staleGapMinutes } from './lane-cadence'
 
@@ -65,20 +66,31 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     const runs = prevBucket === bucket ? ((await this.ctx.storage.get<number>('runs')) ?? 0) : 0
     const failStreak = (await this.ctx.storage.get<number>('failStreak')) ?? 0
 
+    // ⏳ 최소 간격은 **경과 시간**으로 본다(시각의 짝수성이 아니라) — 유실된 회차를 다음 시간이
+    //   이어받게 하는 것이 요점이다. 근거·실측은 `dueByElapsed` docblock.
+    const lastRunAt = (await this.ctx.storage.get<number>('lastRunAt')) ?? null
+    const due = dueByElapsed(lastRunAt, t0, lane.minIntervalHours ?? 0)
+
     let stats: unknown = null
     let error: string | undefined
-    if (runs < cap) {
+    if (runs < cap && due) {
       try {
         stats = await lane.run(this.env)
       } catch (err) {
         error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 200)}`
       }
+    } else if (!due) {
+      stats = { skipped: 'min_interval', last_run_at: lastRunAt }
     }
 
     const ran = runs < cap ? runs + 1 : runs
     const nextFail = error ? failStreak + 1 : 0
     // 🅿️ 상태를 먼저 저장한다 — 알람 예약 전에 죽어도 다음 부트스트랩이 이어받는다.
-    await this.ctx.storage.put({ bucket, runs: ran, failStreak: nextFail }).catch(() => undefined)
+    //   ⚠️ `lastRunAt` 은 **실제로 돈 회차만** 기록한다 — skip 에도 찍으면 간격이 영원히 안 차서
+    //     그 레인이 통째로 멎는다(간격 게이트를 스스로 잠그는 꼴).
+    const put: Record<string, unknown> = { bucket, runs: ran, failStreak: nextFail }
+    if (runs < cap && due) put.lastRunAt = t0
+    await this.ctx.storage.put(put).catch(() => undefined)
 
     const at = nextWakeAt(Date.now(), interval, ran, cap, nextFail)
     await this.ctx.storage.setAlarm(at).catch(() => undefined)

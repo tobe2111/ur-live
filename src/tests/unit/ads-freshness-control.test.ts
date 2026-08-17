@@ -123,36 +123,49 @@ describe('신선도 자동 조율 — 발굴량이 떨어지면 스스로 넓힌
 })
 
 describe('은퇴 — "다 훑은" 키워드가 자리를 비켜야 신선도가 들어온다', () => {
-  it('🍂 exhausted 조각이 "요즘"을 본다 — 누적만 보면 광맥을 다 캔 자리가 영원히 앉아 있다', () => {
-    expect(AUTO_RETIRE_WHERE.exhausted).toMatch(/COALESCE\(last_saved, 0\) <= 2/)
-    expect(AUTO_RETIRE_WHERE.exhausted).toMatch(/COALESCE\(saved_total, 0\) >= 100/)
+  it('🔄 epoch 조각이 "요즘"을 본다 — 누적만 보면 광맥을 다 캔 자리가 영원히 앉아 있다', () => {
+    // ⚠️ 2026-08-17 대표 "에폭으로 통합해서 머지해줘" — 이 검사는 원래 `exhausted`
+    //   (`last_saved<=2 AND saved_total>=100`)를 요구했다. 지키려던 것("누적이 아니라 요즘을 본다")은
+    //   그대로이고, **조각만** 8회 창으로 바뀌었다. 이유는 실측이다 — 직전 한 회차만 보면
+    //   맛집 회당 0.68(직전 7) · 여행 2.59(12) · 피부관리 1.24(11) 이 **전부 미검출**이었다.
+    expect(AUTO_RETIRE_WHERE.epoch).toMatch(/COALESCE\(epoch_runs, 0\) >= \d+/)
+    expect(AUTO_RETIRE_WHERE.epoch).toMatch(/COALESCE\(epoch_saved, 0\) \* 1\.0 \/ COALESCE\(epoch_runs, 1\) </)
   })
 
   /**
    * ⚠️ **livelock 회귀 가드** — 은퇴 조각이 승격 차단에 없으면 은퇴자가 그 회차에 재승격되고
    *   다음 회차 시작에 즉시 재은퇴된다(2026-08-09 실사고). 새 조각도 반드시 포함돼야 한다.
    */
-  it('🧟 승격 차단이 exhausted 를 포함한다(재승격→즉시재은퇴 livelock 방지)', () => {
-    for (const frag of [AUTO_RETIRE_WHERE.f30, AUTO_RETIRE_WHERE.barren, AUTO_RETIRE_WHERE.yield, AUTO_RETIRE_WHERE.exhausted]) {
+  it('🧟 승격 차단이 **평생 카운터** 조각을 포함한다(재승격→즉시재은퇴 livelock 방지)', () => {
+    for (const frag of [AUTO_RETIRE_WHERE.f30, AUTO_RETIRE_WHERE.barren, AUTO_RETIRE_WHERE.yield]) {
       expect(PROMOTE_NOT_RETIRABLE_SQL).toContain(frag)
     }
+  })
+
+  it('🔴 반대로 epoch 은 차단에 넣지 않는다 — 승격이 리셋하므로 livelock 이 성립하지 않는다', () => {
+    // 평생 카운터는 재승격해도 조건이 참이라 차단이 필요하다. 에폭은 승격이 0 으로 되돌리므로
+    // 재도전이 백지 8회에서 시작한다. 여기 넣으면 자가치유가 막혀 30일 영구 배제가 된다
+    // (대표가 2026-08-09 에 거부한 것). churn 은 `PROMOTE_COOLDOWN_SQL`(retired_at 14일)이 막는다.
+    expect(PROMOTE_NOT_RETIRABLE_SQL).not.toContain('epoch_runs')
   })
 
   /**
    * ⚠️ **영구 배제 금지**(2026-08-09 대표 "영구 배제가 되면 안되는데?") — 증거 유통기한이 가석방을
    *   만든다. 은퇴한 행은 안 돌아 `last_run_at` 이 늙고, 30일 뒤 조각에서 빠져 승격 차단도 풀린다.
    */
-  it('🕊️ exhausted 에도 증거 유통기한(가석방)이 있다', () => {
-    expect(AUTO_RETIRE_WHERE.exhausted).toMatch(/last_run_at >= datetime\('now','-30 days'\)/)
+  it('🕊️ epoch 에도 증거 유통기한(가석방)이 있다', () => {
+    expect(AUTO_RETIRE_WHERE.epoch).toMatch(/last_run_at >= datetime\('now','-30 days'\)/)
   })
 
   it('🔒 은퇴문은 auto 전용 + 회차당 상한 — seed(대표가 고른 축)는 무접촉', () => {
     const stmts = STORE.match(/UPDATE ad_discovery_keywords SET active = 0[^`]+/g) || []
-    expect(stmts.length).toBeGreaterThanOrEqual(4) // f30 · barren · yield · exhausted
+    expect(stmts.length).toBeGreaterThanOrEqual(4) // f30 · barren · yield · epoch
     for (const st of stmts) expect(st, st.slice(0, 60)).toContain("source = 'auto'")
-    // 다 훑음 문은 한꺼번에 비우지 않는다(승격 물결이 몰려 요동하는 것 방지).
-    const ex = stmts.find(st => st.includes('where.exhausted'))
-    expect(ex, 'exhausted 은퇴문이 배선돼 있어야 한다').toBeTruthy()
+    // 최근-창 은퇴문은 한꺼번에 비우지 않는다(승격 물결이 몰려 요동하는 것 방지).
+    //   ⚠️ 2026-08-17: `where.exhausted` → `where.epoch`(에폭 통합). 지키는 것은 같다 —
+    //   "요즘을 보는 은퇴문이 배선돼 있고, 회차당 상한이 있다".
+    const ex = stmts.find(st => st.includes('where.epoch'))
+    expect(ex, 'epoch 은퇴문이 배선돼 있어야 한다').toBeTruthy()
     expect(ex).toContain('LIMIT 3')
   })
 })

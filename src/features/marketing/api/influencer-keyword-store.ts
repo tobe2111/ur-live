@@ -113,9 +113,14 @@ export async function setKeywordActive(DB: D1Database, id: number, active: boole
  */
 export async function retireStaleAutoKeywords(
   DB: D1Database,
-  where: { f30: string; barren: string; yield: string; exhausted: string },
+  where: { f30: string; barren: string; yield: string; epoch: string },
 ): Promise<void> {
   await DB.batch([
+    // 🔄 **에폭 은퇴**(2026-08-17) — 위 셋의 사각지대. 셋 다 *평생 누계* 라 초기에 잘 나갔던 키워드가
+    //   말라붙어도 영구 면역이었다(실측: 활성 auto 120개 중 은퇴 후보 **0개**인데 '맛집' 회당 0.68건이
+    //   슬롯 점유, 대기 후보 기대값은 회당 23.6건). `retired_at` 을 찍어 즉시 재승격 churn 을 막는다.
+    //   ⚠️ 회차당 3개 상한 — 아래 수율 은퇴와 같은 이유(한꺼번에 비우면 첫회차 수확이 몰려 요동한다).
+    DB.prepare(`UPDATE ad_discovery_keywords SET active = 0, retired_at = datetime('now') WHERE id IN (SELECT id FROM ad_discovery_keywords WHERE source = 'auto' AND active = 1 AND ${where.epoch} ORDER BY COALESCE(epoch_saved, 0) * 1.0 / COALESCE(epoch_runs, 1) ASC LIMIT 3)`),
     // (F-30) 활성 이틀+ 인데 성과 0 인 auto 키워드 비활성(탐색 슬롯 영구 점유 차단, 멱등).
     DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND ${where.f30}`),
     // 🌵 **고갈** 회수(2026-07-29) — 위 조건은 `saved_total = 0`(한 번도 못 문 키워드)만 잡아서, *예전엔 잘 물었지만
@@ -130,9 +135,10 @@ export async function retireStaleAutoKeywords(
     //   자리를 점유하는 동안 승격 대기 2,981개가 밖에 있었다.
     //   회차당 3개 상한 — 한꺼번에 비우면 승격·첫회차 수확이 몰려 요동한다(완만한 회전이 목적). seed 무접촉.
     DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE id IN (SELECT id FROM ad_discovery_keywords WHERE source = 'auto' AND active = 1 AND ${where.yield} ORDER BY saved_total ASC, found_total DESC LIMIT 3)`),
-    // 🍂 **다 훑음** 회수(2026-08-17) — 누적은 좋은데 *요즘* 안 잡히는 자리를 비켜 신선한 키워드에 넘긴다.
-    //   근거·실측(08-12 6,366 → 08-16 3,773, 신규 활성화 7일간 0)은 `AUTO_RETIRE_WHERE.exhausted` docblock.
-    //   회차당 3개 상한 + 최근 수확이 가장 낮은 것부터 — 한꺼번에 비우면 승격 물결이 몰려 요동한다.
-    DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE id IN (SELECT id FROM ad_discovery_keywords WHERE source = 'auto' AND active = 1 AND ${where.exhausted} ORDER BY COALESCE(last_saved,0) ASC, saved_total DESC LIMIT 3)`),
+    // 🔄 **에폭 은퇴로 통합**(2026-08-17 대표 "에폭으로 통합해서 머지해줘") — #1163 의 `exhausted`
+    //   (`last_saved<=2 AND saved_total>=100`)는 **직전 한 회차**만 봐서 실측상 가장 심한 셋을 놓쳤다:
+    //   맛집 회당 0.68(직전 7) · 여행 2.59(12) · 피부관리 1.24(11) — 전부 미검출. 8회 창은 잡는다.
+    //   반대로 에폭이 놓치는 '직전만 우연히 마른' 경우는 다음 창에서 자연히 잡힌다(손실 없음).
+    //   #1163 의 동적 캡·자동조율은 그대로 살아 있다 — 바뀐 것은 **은퇴 조건 하나**뿐이다.
   ]).catch(() => null)
 }

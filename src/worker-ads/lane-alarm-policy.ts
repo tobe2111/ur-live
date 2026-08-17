@@ -159,3 +159,38 @@ export function alarmReviveKind(
   if (cur == null || !Number.isFinite(cur)) return 'none'
   return now - cur > Math.max(0, deadAfterMs) ? 'stale' : 'alive'
 }
+
+/**
+ * ⏳ **"N시간에 한 번"을 시각의 짝수성이 아니라 경과 시간으로 판정한다** (2026-08-17 라이브 실측).
+ *
+ * ## 무엇이 고장이었나 — 복구가 쓸모없는 시각에 착지한다
+ * `collect-commerce`·`collect-storeinfo` 는 외부 API 호출량을 묶으려고 `UTCHours % 2 !== 0` 이면
+ * 건너뛰었다. 그런데 알람은 **가끔 안 깨어난다**(런타임 특성). 그러면:
+ *
+ * ```
+ *   짝수시 HH:00   알람 유실 → 수집 0
+ *   HH+1:00        부트가 stale 판정 → 즉시 재무장 → 깨어남 → **홀수시라 그냥 skip**
+ *   HH+2:00        정상 실행
+ *   ⇒ 유실된 짝수시는 **영영 복구되지 않는다.** 자가치유가 돌았는데 아무것도 못 건졌다.
+ * ```
+ *
+ * 실측(2026-08-17, 최근 5일 · UTC 짝수시 12칸): 각 칸이 **3~5일만** 채워졌다 — 특정 시간대가 아니라
+ * **무작위로 1/4이 빈다**(시간대 제한이면 특정 칸이 통째로 비었을 것이다. 그래서 이 둘을 먼저 갈랐다).
+ * commerce 는 회차당 ~990건이라 이 유실이 **하루 ~2,300건**이다.
+ *
+ * ## 고침
+ * 짝수성 대신 **마지막 실행으로부터 N시간 경과**로 묻는다. 그러면 유실된 회차를 **다음 시간**이
+ * 이어받는다(그때는 2시간이 지났으므로). 외부 호출량은 그대로 묶인다 — 시간당 상한이 1이라
+ * 최악도 하루 12회로 같다.
+ *
+ * ⚠️ 첫 실행(기록 없음)은 **즉시 실행**한다. 여기서 막으면 배포 직후 그 레인이 N시간 굶는다.
+ */
+export function dueByElapsed(
+  lastRunAt: number | null | undefined, now: number, minHours: number,
+): boolean {
+  if (!(minHours > 0)) return true
+  if (lastRunAt == null || !Number.isFinite(lastRunAt)) return true   // 첫 실행은 막지 않는다
+  // 알람 발화는 정확하지 않다(수십 초 지연이 정상) — 그 오차로 한 칸을 통째로 미루면 안 되므로
+  // 1분의 여유를 둔다. 이게 없으면 HH:00:03 에 깨어난 회차가 "1시간 59분 57초"라 밀려 2시간을 더 기다린다.
+  return now - lastRunAt >= minHours * 3_600_000 - 60_000
+}

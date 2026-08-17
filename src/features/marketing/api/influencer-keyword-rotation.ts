@@ -8,6 +8,8 @@
  *   ⚠️ `influencer-auto-collect.ts` 에서 분리된 이유는 그 파일이 600줄 래칫에 닿았기 때문이다.
  *   호환을 위해 원래 모듈이 이 심볼들을 그대로 재수출한다(기존 import 경로 유지).
  */
+import { buildEpochRetireSql } from './influencer-keyword-epoch'
+export { EPOCH_MIN_RUNS, EPOCH_MIN_YIELD, RETIRE_COOLDOWN_DAYS, PROMOTE_COOLDOWN_SQL } from './influencer-keyword-epoch'
 import { isSubrequestLimitError } from './collect-budget'
 import { contactPenalty } from './influencer-keyword-yield'
 
@@ -374,24 +376,8 @@ export const AUTO_RETIRE_WHERE = {
   barren: `COALESCE(barren_streak, 0) >= 8 AND ${FRESH_EVIDENCE}`,
   /** 🌾 수율 — 찾긴 하는데(found 50+) 새 리드가 안 남음(saved <10). barren 의 drip 사각지대를 닫는다. */
   yield: `COALESCE(found_total, 0) >= 50 AND COALESCE(saved_total, 0) < 10 AND ${FRESH_EVIDENCE}`,
-  /**
-   * 🍂 **다 훑음**(2026-08-17 대표 "매일 발굴량 유지 혹은 늘리도록") — 위 셋이 못 잡는 마지막 형태:
-   *   *예전엔 잘 물었지만 지금은 다 훑은* 키워드. 세 조건 모두 **누적**을 보므로 누적 성적이 좋으면
-   *   영원히 자리를 지킨다. 그 결과가 라이브에서 관측됐다:
-   * ```
-   *   활성 459개 평균 누적 수확 232명 · auto 120 = 캡 포화 · 승격 대기 3,996 · 신규 활성화 7일간 0
-   *   ⇒ 08-12 6,366명(키워드당 74.0) → 08-16 3,773명(32.8). found 는 그대로, 신규율만 붕괴.
-   * ```
-   *   그래서 판정을 **누적이 아니라 "요즘"** 으로 본다: 직전 회차 수확(`last_saved`)이 2명 이하인데
-   *   누적은 100+ 인 것 = 광맥을 다 캔 자리.
-   *
-   * ⚠️ 한 회차 운으로 좋은 키워드를 내보내지 않게: 은퇴문은 **회차당 3개 상한**(수율 문과 동일)이고,
-   *   auto 전용이라 seed(대표가 고른 축)는 무접촉이며, `hits` 가 다시 쌓이면 재승격된다.
-   * ⚠️ `FRESH_EVIDENCE`(30일)가 여기서도 **가석방**을 만든다 — 은퇴한 행은 안 돌므로 `last_run_at` 이
-   *   늙어 30일 뒤 이 조각에서 빠지고, 그때 승격 차단도 함께 풀린다(영구 배제 불가 — 2026-08-09 대표
-   *   지시 "영구 배제가 되면 안되는데?"의 구조적 답이 이 유통기한이다).
-   */
-  exhausted: `COALESCE(last_saved, 0) <= 2 AND COALESCE(saved_total, 0) >= 100 AND ${FRESH_EVIDENCE}`,
+  /** 🔄 위 셋의 공통 사각지대(평생 누계 면역)를 닫는 최근-창 수율 — 근거·실측은 `influencer-keyword-epoch.ts`. */
+  epoch: buildEpochRetireSql(FRESH_EVIDENCE),
 } as const
 
 /**
@@ -414,7 +400,11 @@ export const AUTO_RETIRE_WHERE = {
  * (`RETIRE_EVIDENCE_FRESH_DAYS`) 은퇴 조건과 함께 만료되어 재도전 1회가 열린다(대표 확정 2026-08-09).
  */
 export const PROMOTE_NOT_RETIRABLE_SQL =
-  `NOT ((${AUTO_RETIRE_WHERE.f30}) OR (${AUTO_RETIRE_WHERE.barren}) OR (${AUTO_RETIRE_WHERE.yield}) OR (${AUTO_RETIRE_WHERE.exhausted}))`
+  `NOT ((${AUTO_RETIRE_WHERE.f30}) OR (${AUTO_RETIRE_WHERE.barren}) OR (${AUTO_RETIRE_WHERE.yield}))`
+
+// 🚫 **`epoch` 를 위 NOT(...) 에 넣지 마라** — 평생 카운터와 달리 에폭은 승격 시 리셋돼 livelock 이
+//   성립하지 않는다. 넣으면 자가치유가 막혀 30일 영구 배제가 된다(대표가 명시로 거부한 것).
+//   churn 은 `PROMOTE_COOLDOWN_SQL` 이 막는다 — 근거는 `influencer-keyword-epoch.ts`.
 
 /**
  * 🌵 **이 회차의 결과를 키워드 판정에 써도 되는가** (2026-07-29 — 순수함수로 승격).
