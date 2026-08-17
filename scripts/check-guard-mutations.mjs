@@ -2428,8 +2428,7 @@ const MUTATIONS = [
       '곱해지는 유일한 축(집중 전용 슬롯)이다. lookahead 가 없으면 그 신호가 전부 체험단으로 흘러 ' +
       '**집중 축이 조용히 비고** 전용 슬롯은 스스로 반납된다(=대행사 발굴 정지). 축을 지키는 것은 룰 순서가 아니라 이 lookahead 다.',
   },
-  {
-    name: '신선도 조율기의 차단 동결이 사라짐(확장이 네이버 차단을 부른다)',
+  {    name: '신선도 조율기의 차단 동결이 사라짐(확장이 네이버 차단을 부른다)',
     file: 'src/features/marketing/api/influencer-freshness-control.ts',
     find: "  if ((Number(s?.blocked) || 0) > 0) return { cap: cur, reason: 'blocked-freeze', ...base }",
     replace: '',
