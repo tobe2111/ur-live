@@ -215,6 +215,39 @@ const MUTATIONS = [
       '거짓 결론이 나와 **랩 좁히기(38일→2일)가 부당해 보인다.** 계측은 결론을 뒤집는 숫자다.',
   },
   {
+    name: '에폭 은퇴를 승격 차단에 넣는다(자가치유가 막혀 30일 영구 배제)',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: '  `NOT ((${AUTO_RETIRE_WHERE.f30}) OR (${AUTO_RETIRE_WHERE.barren}) OR (${AUTO_RETIRE_WHERE.yield}))`',
+    replace: '  `NOT ((${AUTO_RETIRE_WHERE.f30}) OR (${AUTO_RETIRE_WHERE.barren}) OR (${AUTO_RETIRE_WHERE.yield}) OR (${AUTO_RETIRE_WHERE.epoch}))`',
+    test: 'src/tests/unit/influencer-keyword-epoch.test.ts',
+    why:
+      '평생 카운터 셋은 재승격 시 조건이 그대로 참이라 차단이 필요하지만, **에폭은 승격 시 리셋**되므로 ' +
+      'livelock 이 성립하지 않는다. 여기 넣으면 한 번 마른 키워드가 증거 유통기한(30일)까지 **영구 배제**된다 — ' +
+      '대표가 2026-08-09 에 명시로 거부한 바로 그것이다. 겉보기엔 "더 안전해 보이는" 변경이라 더 위험하다.',
+  },
+  {
+    name: '승격이 에폭을 리셋하지 않는다(재승격자가 즉시 재은퇴 — livelock)',
+    file: 'src/features/marketing/api/influencer-keyword-promote.ts',
+    find: "SET active = 1, activated_at = datetime('now'), epoch_runs = 0, epoch_saved = 0 WHERE id = ?",
+    replace: "SET active = 1, activated_at = datetime('now') WHERE id = ?",
+    test: 'src/tests/unit/influencer-keyword-epoch.test.ts',
+    why:
+      '에폭을 안 지우면 재승격자는 **은퇴시킨 그 에폭 그대로** 살아나 다음 회차에 즉시 다시 은퇴된다. ' +
+      '한 번도 안 돌고 승격 슬롯만 태우는 순환 — 2026-08-09 에 평생 카운터로 겪은 livelock 과 같은 모양이다. ' +
+      '리셋이 곧 "재도전은 백지에서" 이고, 그게 이 은퇴를 자가치유로 만드는 유일한 장치다.',
+  },
+  {
+    name: '에폭 은퇴가 retired_at 을 안 찍는다(쿨다운이 무력 — churn 복귀)',
+    file: 'src/features/marketing/api/influencer-keyword-store.ts',
+    find: "UPDATE ad_discovery_keywords SET active = 0, retired_at = datetime('now') WHERE id IN",
+    replace: 'UPDATE ad_discovery_keywords SET active = 0 WHERE id IN',
+    test: 'src/tests/unit/influencer-keyword-epoch.test.ts',
+    why:
+      '`retired_at` 이 NULL 이면 쿨다운 조건이 항상 참이라 **갓 은퇴한 키워드가 다음 회차에 바로 재승격**된다. ' +
+      '`hits DESC` 정렬이 옛 활성 키워드를 대기 큐 앞에 세우므로, 그 키워드는 8회 시험을 무한 반복하며 ' +
+      '슬롯을 태운다 — 대기 11,720개가 밖에 있는 채로.',
+  },
+  {
     name: '🩸 변화율이 기록값 대신 classifyLead 날것을 본다(라이브에서 실제로 난 오계상)',
     file: 'src/features/marketing/api/company-discovery.ts',
     find: "      lead_type: registry && c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type,",
@@ -2641,8 +2674,10 @@ const MUTATIONS = [
   {
     name: '은퇴↔승격 livelock 재무장 — 즉시-재은퇴 좀비가 승격 슬롯을 태움',
     file: 'src/features/marketing/api/influencer-keyword-promote.ts',
-    find: 'AND ${PROMOTE_NOT_RETIRABLE_SQL} AND keyword IN',
-    replace: 'AND keyword IN',
+    // ⚠️ 2026-08-17 앵커 갱신 — 같은 줄에 `PROMOTE_COOLDOWN_SQL` 이 추가됐다. 옛 replace(`AND keyword IN`)는
+    //   새 줄의 **부분문자열이라 잔재 검사가 상시 오탐**을 냈다(실제로 그렇게 잡혔다). 두 조각을 다 적어 유일하게 만든다.
+    find: 'AND ${PROMOTE_NOT_RETIRABLE_SQL} AND ${PROMOTE_COOLDOWN_SQL} AND keyword IN',
+    replace: 'AND ${PROMOTE_COOLDOWN_SQL} AND keyword IN',
     test: 'src/tests/unit/ads-keyword-promotion-room.test.ts',
     why:
       '은퇴는 active=0 만 쓰고 hits 는 재채굴마다 쌓인다 — 이 가드가 빠지면 은퇴자가 hits DESC 로 ' +

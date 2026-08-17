@@ -36,5 +36,14 @@ export const KW_DDL: string[] = [
   //   (머지 직후 실제로 한 번 더 울렸다 — 대표 수신 2회째). 근사치 '-1 day'(=08-09 물결 시점)로 1회
   //   스탬프해 즉시 끈다. 조건 가드(활성·미실행·NULL)라 재실행돼도 무해 — 미래 물결은 승격이 찍는다.
   "UPDATE ad_discovery_keywords SET activated_at = datetime('now','-1 day') WHERE active = 1 AND last_run_at IS NULL AND activated_at IS NULL",
+  // 🔄 2026-08-17 **최근 창(에폭) 카운터** — 기존 은퇴 3조건은 전부 *평생 누계* 라, 초기에 잘 나갔던
+  //   키워드가 말라붙어도 **영구 면역**을 얻는다. 실측: 활성 auto 120개 중 은퇴 후보 **0개**인데
+  //   '맛집' 871회/591건(회당 0.68) · '피부관리' 453회/561건(1.24)이 슬롯을 점유하고, 대기 후보의
+  //   기대 수확은 회당 23.6건이었다. 누계로는 이 부류가 보이지 않는다 — 그래서 **지금**을 따로 센다.
+  //   승격 시 리셋되므로 재도전은 항상 백지에서 시작한다(livelock 아님).
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN epoch_runs INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN epoch_saved INTEGER NOT NULL DEFAULT 0',
+  // 🕊️ 에폭 은퇴는 자가치유(승격 시 리셋)라 영구 차단이 아니다 — 대신 **쿨다운**으로 즉시 재승격만 막는다.
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN retired_at DATETIME',
 ]
 

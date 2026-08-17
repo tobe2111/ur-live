@@ -8,6 +8,8 @@
  *   ⚠️ `influencer-auto-collect.ts` 에서 분리된 이유는 그 파일이 600줄 래칫에 닿았기 때문이다.
  *   호환을 위해 원래 모듈이 이 심볼들을 그대로 재수출한다(기존 import 경로 유지).
  */
+import { buildEpochRetireSql } from './influencer-keyword-epoch'
+export { EPOCH_MIN_RUNS, EPOCH_MIN_YIELD, RETIRE_COOLDOWN_DAYS, PROMOTE_COOLDOWN_SQL } from './influencer-keyword-epoch'
 import { isSubrequestLimitError } from './collect-budget'
 import { contactPenalty } from './influencer-keyword-yield'
 
@@ -369,6 +371,8 @@ export const AUTO_RETIRE_WHERE = {
   barren: `COALESCE(barren_streak, 0) >= 8 AND ${FRESH_EVIDENCE}`,
   /** 🌾 수율 — 찾긴 하는데(found 50+) 새 리드가 안 남음(saved <10). barren 의 drip 사각지대를 닫는다. */
   yield: `COALESCE(found_total, 0) >= 50 AND COALESCE(saved_total, 0) < 10 AND ${FRESH_EVIDENCE}`,
+  /** 🔄 위 셋의 공통 사각지대(평생 누계 면역)를 닫는 최근-창 수율 — 근거·실측은 `influencer-keyword-epoch.ts`. */
+  epoch: buildEpochRetireSql(FRESH_EVIDENCE),
 } as const
 
 /**
@@ -392,6 +396,10 @@ export const AUTO_RETIRE_WHERE = {
  */
 export const PROMOTE_NOT_RETIRABLE_SQL =
   `NOT ((${AUTO_RETIRE_WHERE.f30}) OR (${AUTO_RETIRE_WHERE.barren}) OR (${AUTO_RETIRE_WHERE.yield}))`
+
+// 🚫 **`epoch` 를 위 NOT(...) 에 넣지 마라** — 평생 카운터와 달리 에폭은 승격 시 리셋돼 livelock 이
+//   성립하지 않는다. 넣으면 자가치유가 막혀 30일 영구 배제가 된다(대표가 명시로 거부한 것).
+//   churn 은 `PROMOTE_COOLDOWN_SQL` 이 막는다 — 근거는 `influencer-keyword-epoch.ts`.
 
 /**
  * 🌵 **이 회차의 결과를 키워드 판정에 써도 되는가** (2026-07-29 — 순수함수로 승격).

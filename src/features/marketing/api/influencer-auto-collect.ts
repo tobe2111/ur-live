@@ -512,9 +512,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       ? DB.prepare('UPDATE ad_discovery_keywords SET found_total = found_total + ?, saved_total = saved_total + ? WHERE id = ?')
         .bind(v.found, v.saved, id)
       // 🌵 무수확이면 연속 카운터 +1, 한 명이라도 건지면 0 으로 리셋(고갈 판정의 유일한 근거).
-      : DB.prepare(`UPDATE ad_discovery_keywords SET found_total = found_total + ?, saved_total = saved_total + ?, last_saved = ?,
+      : DB.prepare(`UPDATE ad_discovery_keywords SET found_total = found_total + ?, saved_total = saved_total + ?, last_saved = ?, epoch_runs = COALESCE(epoch_runs, 0) + 1, epoch_saved = COALESCE(epoch_saved, 0) + ?,
         barren_streak = CASE WHEN ? > 0 THEN 0 ELSE COALESCE(barren_streak, 0) + 1 END, last_run_at = datetime('now') WHERE id = ?`)
-        .bind(v.found, v.saved, v.saved, v.saved, id))).catch(() => null)
+        .bind(v.found, v.saved, v.saved, v.saved, v.saved, id))).catch(() => null)
   }
 
   // ③ 해시태그 자동확장 — 승격 로직은 `influencer-keyword-promote.ts`(600줄 래칫 분리).

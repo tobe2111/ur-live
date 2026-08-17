@@ -113,9 +113,14 @@ export async function setKeywordActive(DB: D1Database, id: number, active: boole
  */
 export async function retireStaleAutoKeywords(
   DB: D1Database,
-  where: { f30: string; barren: string; yield: string },
+  where: { f30: string; barren: string; yield: string; epoch: string },
 ): Promise<void> {
   await DB.batch([
+    // 🔄 **에폭 은퇴**(2026-08-17) — 위 셋의 사각지대. 셋 다 *평생 누계* 라 초기에 잘 나갔던 키워드가
+    //   말라붙어도 영구 면역이었다(실측: 활성 auto 120개 중 은퇴 후보 **0개**인데 '맛집' 회당 0.68건이
+    //   슬롯 점유, 대기 후보 기대값은 회당 23.6건). `retired_at` 을 찍어 즉시 재승격 churn 을 막는다.
+    //   ⚠️ 회차당 3개 상한 — 아래 수율 은퇴와 같은 이유(한꺼번에 비우면 첫회차 수확이 몰려 요동한다).
+    DB.prepare(`UPDATE ad_discovery_keywords SET active = 0, retired_at = datetime('now') WHERE id IN (SELECT id FROM ad_discovery_keywords WHERE source = 'auto' AND active = 1 AND ${where.epoch} ORDER BY COALESCE(epoch_saved, 0) * 1.0 / COALESCE(epoch_runs, 1) ASC LIMIT 3)`),
     // (F-30) 활성 이틀+ 인데 성과 0 인 auto 키워드 비활성(탐색 슬롯 영구 점유 차단, 멱등).
     DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND ${where.f30}`),
     // 🌵 **고갈** 회수(2026-07-29) — 위 조건은 `saved_total = 0`(한 번도 못 문 키워드)만 잡아서, *예전엔 잘 물었지만

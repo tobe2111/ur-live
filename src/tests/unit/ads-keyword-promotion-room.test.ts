@@ -88,9 +88,16 @@ describe('키워드 신선도 회전 — cap 상향 + 수율 은퇴', () => {
 
   it('🔒 수율 은퇴는 auto 전용 — seed(대표 커버리지 축)를 건드리면 커버리지에 구멍이 난다', () => {
     // 은퇴 UPDATE 3종 전부 source='auto' 가드를 갖는다(seed 를 만지는 은퇴문이 하나라도 생기면 실패).
-    const stmts = retireSrc().match(/UPDATE ad_discovery_keywords SET active = 0[^)]+/g) || []
-    expect(stmts.length).toBeGreaterThanOrEqual(3)
-    for (const st of stmts) expect(st, st.slice(0, 80)).toContain("source = 'auto'")
+    // ⚠️ 2026-08-17: 옛 정규식은 `[^)]+` 라 **서브쿼리 여는 괄호에서 잘렸다** — 에폭 은퇴처럼
+    //   `WHERE id IN (SELECT … source='auto' …)` 형태면 가드가 잘린 뒤라 늘 실패한다(실제로 그랬다).
+    //   문장을 백틱/따옴표 종료까지 통째로 잡아 판정한다.
+    // ⚠️ 2026-08-17: 문장 끝을 정규식으로 잡으려던 두 시도가 다 틀렸다 — `[^)]+` 는 서브쿼리 여는 괄호에서,
+    //   ``(?=`\)|'\))`` 는 SQL 안의 `datetime('now')` 에서 잘린다. 끝을 찾지 말고 **시작 지점마다
+    //   뒤 500자 안에 가드가 있는지**만 본다(문장 형태가 바뀌어도 의도가 그대로 유지된다).
+    const src = retireSrc()
+    const starts = [...src.matchAll(/UPDATE ad_discovery_keywords SET active = 0/g)].map(m => m.index || 0)
+    expect(starts.length).toBeGreaterThanOrEqual(4)
+    for (const i of starts) expect(src.slice(i, i + 500), src.slice(i, i + 80)).toContain("source = 'auto'")
   })
 })
 
@@ -106,17 +113,27 @@ describe('키워드 신선도 회전 — cap 상향 + 수율 은퇴', () => {
 describe('은퇴↔승격 livelock 차단 — 즉시-재은퇴 클래스는 되살리지 않는다', () => {
   const promoteSrc = () => readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-keyword-promote.ts'), 'utf8')
 
-  it('차단 조각 = 은퇴 3문 전부의 부정 — 하나라도 빠지면 그 클래스가 재승격 루프를 돈다', async () => {
+  it('차단 조각 = **평생 카운터** 은퇴 3문의 부정 — 하나라도 빠지면 그 클래스가 재승격 루프를 돈다', async () => {
     const { PROMOTE_NOT_RETIRABLE_SQL, AUTO_RETIRE_WHERE } = await import('@/features/marketing/api/influencer-keyword-rotation')
     expect(PROMOTE_NOT_RETIRABLE_SQL.startsWith('NOT (')).toBe(true)
-    for (const [k, frag] of Object.entries(AUTO_RETIRE_WHERE)) {
-      expect(PROMOTE_NOT_RETIRABLE_SQL, `은퇴 조각 '${k}' 이 차단에서 빠졌다`).toContain(frag)
+    for (const k of ['f30', 'barren', 'yield'] as const) {
+      expect(PROMOTE_NOT_RETIRABLE_SQL, `은퇴 조각 '${k}' 이 차단에서 빠졌다`).toContain(AUTO_RETIRE_WHERE[k])
     }
+  })
+
+  it('🔴 반대로 **에폭은 차단에 들어가면 안 된다** — 넣으면 자가치유가 막혀 영구 배제가 된다', async () => {
+    // 평생 카운터 셋은 재승격해도 조건이 그대로 참이라 차단이 필요하다. 에폭은 **승격이 리셋**하므로
+    // 재도전이 백지에서 시작한다 — livelock 이 성립하지 않는다. 여기 넣으면 한 번 마른 키워드가
+    // 증거 유통기한(30일)까지 배제된다(대표가 2026-08-09 에 명시로 거부한 "영구 배제").
+    // churn 은 `PROMOTE_COOLDOWN_SQL` 이 따로 막는다.
+    const { PROMOTE_NOT_RETIRABLE_SQL } = await import('@/features/marketing/api/influencer-keyword-rotation')
+    expect(PROMOTE_NOT_RETIRABLE_SQL).not.toContain('epoch_runs')
+    expect(PROMOTE_NOT_RETIRABLE_SQL).not.toContain('epoch_saved')
   })
 
   it('승격 후보 쿼리가 차단 조각을 배선한다 — 순수함수만 테스트하면 이 클래스를 못 잡는다', () => {
     // 조각이 존재해도 쿼리에 안 실리면 무의미(이 레포가 반복해 겪은 "가드가 있는데 안 돎").
-    expect(promoteSrc()).toMatch(/active = 0 AND hits >= \? AND \$\{PROMOTE_NOT_RETIRABLE_SQL\} AND keyword IN/)
+    expect(promoteSrc()).toMatch(/active = 0 AND hits >= \? AND \$\{PROMOTE_NOT_RETIRABLE_SQL\} AND \$\{PROMOTE_COOLDOWN_SQL\} AND keyword IN/)
   })
 
   it('🕊️ 가석방 — 은퇴 증거는 낡는다(대표 확정 2026-08-09 "영구 배제가 되면 안된다")', async () => {
