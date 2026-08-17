@@ -337,7 +337,16 @@ describe('⑪ 홈이 기본으로 시안 모양이어야 한다 (2026-08-04 "시
 
   it('시드가 기존 섹션을 덮지 않는다 (제목이 같으면 건너뛴다)', () => {
     expect(seed).toMatch(/if \(existing\.has\(s\.title\)\) continue/)
-    expect(seed).not.toMatch(/\bUPDATE homepage_sections\b|\bDELETE FROM homepage_sections\b/)
+    expect(seed).not.toMatch(/\bDELETE FROM homepage_sections\b/)
+    // 🚑 2026-08-17 v2 heal 예외: UPDATE 는 **값이 정확히 '/group-buy'(홈 리다이렉트 별칭 — 어떤
+    // 의도로도 옳을 수 없는 죽은 링크)인 more_href 정정** 하나만 허용한다. 제목/부제/규칙을 덮는
+    // UPDATE 는 여전히 금지 — "대표 편집 보존"이 이 가드의 본질이다. 여기 걸리면 heal 이 아니라
+    // 편집 덮어쓰기를 넣은 것이니 시드 철학(주석 상단)을 다시 읽을 것.
+    const updates = seed.match(/UPDATE homepage_sections[^`]*/g) ?? []
+    expect(updates.length).toBeLessThanOrEqual(1)
+    for (const u of updates) {
+      expect(u).toMatch(/SET more_href = '[^']*' WHERE more_href = '\/group-buy'/)
+    }
   })
 
   it('시드가 **홈 조회** 경로에서 실행된다 (어드민이 안 열어도 떠야 한다)', () => {

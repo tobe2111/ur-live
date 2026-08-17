@@ -2,6 +2,7 @@ import { Fragment, memo } from 'react'
 import { Link } from 'react-router-dom'
 import { cfImage } from '@/utils/cf-image'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import { resolveConsumerAlias } from '@/shared/seo/consumer-redirects'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatWon } from '@/utils/format'
 import { canonicalDetailPath } from '@/shared/product-flow'
@@ -114,14 +115,21 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
   return (
     <>
       {visible.map((sec, i) => {
-        const more = sec.more_href ? safeInternalPath(sec.more_href, '') : ''
+        // 🐛 2026-08-17 (대표 신고 — 더보기 클릭 시 옛 프레임 플래시): 저장된 href 가 `/group-buy` 같은
+        // **별칭**(App.tsx `<Navigate>` 경로)이면 홈이 리마운트되며 플래시가 난다 — SSOT 로 정본 치환.
+        // (데이터는 section-seed v2 heal 이 고치지만, 어드민이 다시 별칭을 넣어도 여기서 막는다.)
+        const raw = sec.more_href ? safeInternalPath(sec.more_href, '') : ''
+        const qIdx = raw.indexOf('?')
+        const canon = raw ? resolveConsumerAlias(qIdx === -1 ? raw : raw.slice(0, qIdx)) : null
+        const more = canon ?? raw
         return (
           <Fragment key={sec.id}>
           {/* 📐 가로 여백은 홈 컨테이너가 준다 — 여기서 또 주면 좌우가 어긋난다. */}
-          <section className="pb-8">
-            <div className="flex items-end justify-between gap-4 mb-4">
+          {/* 📐 2026-08-17 (대표 — 컴팩트): 섹션 하단 여백·제목·그리드 gap 축소(피드 그리드와 동일 톤). */}
+          <section className="pb-6">
+            <div className="flex items-end justify-between gap-4 mb-3">
               <div className="min-w-0">
-                <h3 className="text-[18.5px] font-black tracking-tight text-gray-900 dark:text-white">
+                <h3 className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">
                   {sec.title}
                 </h3>
                 {sec.subtitle && (
@@ -137,7 +145,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
                 </Link>
               )}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
               {sec.products.map(p => <DealCard key={p.id} p={p} />)}
             </div>
           </section>

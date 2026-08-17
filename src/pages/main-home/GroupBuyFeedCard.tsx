@@ -186,8 +186,10 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
     >
       {/* 🎨 대표색 카드 + 사진 하단 같은색 번짐(그라데이션) — /group-buy GroupBuyGridCard 와 동일 룩.
           🖥️ PC(pc)는 그라데이션 없이 깔끔한 이미지 + 흰/다크 카드(가시성). */}
+      {/* 📐 2026-08-17 (대표 — 카드 컴팩트화): PC 는 정방형 → 4:3 — 행 높이가 25% 줄어 화면 밀도 ↑
+          (홈 섹션 DealCard 의 4:3 과 톤 정합). 모바일(!pc)은 기존 정방형 그대로. */}
       <div
-        className={`relative aspect-square w-full overflow-hidden ${pc ? 'bg-gray-100 dark:bg-[#222225]' : ''}`}
+        className={`relative ${pc ? 'aspect-[4/3]' : 'aspect-square'} w-full overflow-hidden ${pc ? 'bg-gray-100 dark:bg-[#222225]' : ''}`}
         style={pc ? undefined : { backgroundColor: grad.base }}
       >
         {p.image_url ? (
@@ -238,7 +240,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
         {fcfs && <FcfsBadge info={fcfs} variant="overlay" className="absolute top-2 right-2" />}
       </div>
 
-      <div className={pc ? 'px-3.5 pb-3.5 pt-2.5' : 'px-2.5 pb-2.5 pt-1.5'}>
+      <div className={pc ? 'px-3 pb-3 pt-2' : 'px-2.5 pb-2.5 pt-1.5'}>
         {/* 브랜드 (gift_catalog) — 있을 때만. 🏪 온누리 가맹 뱃지는 브랜드 유무와 무관 표시 */}
         {(brandName || p.onnuri_merchant) && (
           <p className={`flex items-center gap-1 text-[10px] leading-none mb-0.5 ${cSub}`} style={tSub}>
@@ -258,16 +260,16 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
         )}
 
         {/* 제목 — 2줄 max */}
-        <p className={`${pc ? 'text-[14.5px]' : 'text-[13px]'} font-semibold line-clamp-2 leading-tight mt-0.5 ${cText}`} style={tText}>
+        <p className={`${pc ? 'text-[13.5px]' : 'text-[13px]'} font-semibold line-clamp-2 leading-tight mt-0.5 ${cText}`} style={tText}>
           {stripStorePrefix(p.name, p.restaurant_name)}
         </p>
 
         {/* 할인% + 최종가 — 핵심 강조 */}
         <p className="flex items-baseline gap-1 mt-1">
           {discount > 0 && (
-            <span className={`${pc ? 'text-[17px]' : 'text-[15px]'} font-extrabold ${cAccent}`} style={tAccent}>{discount}%</span>
+            <span className={`${pc ? 'text-[16px]' : 'text-[15px]'} font-extrabold ${cAccent}`} style={tAccent}>{discount}%</span>
           )}
-          <span className={`${pc ? 'text-[17px]' : 'text-[15px]'} font-extrabold ${cText}`} style={tText}>
+          <span className={`${pc ? 'text-[16px]' : 'text-[15px]'} font-extrabold ${cText}`} style={tText}>
             {formatNumber(price)}원
           </span>
           {/* 🏨 2026-07-20: 숙소 가격 = 최저 객실 주중가 → 단위 명시(야놀자/아고다식 "1박~") */}

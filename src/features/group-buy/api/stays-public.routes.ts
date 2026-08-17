@@ -12,9 +12,42 @@ import { safeError } from '../../../worker/utils/safe-error'
 import { rateLimit } from '../../../worker/middleware/rate-limit'
 import { publicCache } from '../../../worker/middleware/edge-cache'
 import { releaseStayInventory } from '../../../worker/utils/stay-inventory'
+import { parseSessionCookie } from '../../../worker/utils/session'
 
 type Bindings = { DB: D1Database }
 export const staysPublicRoutes = new Hono<{ Bindings: Bindings }>()
+
+/**
+ * 🔐 2026-08-17 (대표 신고 — "로그인돼 있는데 예약하려면 '로그인이 필요합니다'하고 꺼짐"):
+ * 이 파일의 예약/조회 엔드포인트 7곳이 전부 **Bearer JWT 만** 수용했는데, 한국 소비자 로그인은
+ * 카카오 = httpOnly 세션 쿠키(`ur_session`)라 localStorage 토큰이 없다 → 로그인 상태여도 무조건
+ * 401 → 클라가 /login 으로 보내면 로그인 페이지가 "이미 로그인됨"으로 즉시 복귀 → 사용자에겐
+ * "창이 그냥 꺼짐"으로 보였다. CLAUDE.md 인증 원칙("Bearer 우선, 세션 쿠키 차선")대로
+ * requireAuth 미들웨어와 같은 SSOT(`parseSessionCookie`)로 폴백을 연다.
+ * 세션 쿠키는 isDbId=true(sub=숫자 users.id)라 이 파일의 "숫자 userId" 계약이 그대로 유지된다.
+ * Bearer 경로는 기존과 동일(우선 순위/검증 알고리즘 HS256 불변) — 폴백만 additive.
+ */
+async function resolveStayUserId(
+  c: { req: { header: (name: string) => string | undefined }; env: unknown },
+): Promise<number | null> {
+  const secret = (c.env as { JWT_SECRET?: string }).JWT_SECRET
+  if (!secret) return null
+  const auth = c.req.header('Authorization') || ''
+  if (auth.startsWith('Bearer ')) {
+    try {
+      const { verify } = await import('hono/jwt')
+      const payload = await verify(auth.substring(7), secret, 'HS256') as { user_id?: number; sub?: string }
+      const id = Number(payload.user_id ?? payload.sub)
+      if (Number.isFinite(id) && id > 0) return id
+    } catch { /* Bearer 무효 → 아래 세션 쿠키 폴백 */ }
+  }
+  const session = await parseSessionCookie(c.req.header('Cookie'), secret, ['user']).catch(() => null)
+  if (session?.userId != null) {
+    const id = Number(session.userId)
+    if (Number.isFinite(id) && id > 0) return id
+  }
+  return null
+}
 
 // 검색 — 지역 / 날짜 / 인원 / 가격대 필터
 staysPublicRoutes.get('/stays/search', cors(), async (c) => {
@@ -268,15 +301,8 @@ staysPublicRoutes.get('/stays/:productId/availability', cors(), async (c) => {
 //   voucher 모드: body.voucher_type ('weekday' | 'weekend') 필수, 날짜 없음.
 staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'stay_booking_create', max: 10, windowSec: 60 }), async (c) => {
   try {
-    const auth = c.req.header('Authorization') || ''
-    if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-    let userId: number | null = null
-    try {
-      const { verify } = await import('hono/jwt')
-      const payload = await verify(auth.substring(7), (c.env as unknown as { JWT_SECRET: string }).JWT_SECRET, 'HS256') as { user_id?: number; sub?: string }
-      userId = Number(payload.user_id ?? payload.sub) || null
-    } catch { return c.json({ success: false, error: '토큰 무효' }, 401) }
-    if (!userId) return c.json({ success: false, error: '사용자 정보 없음' }, 401)
+    const userId = await resolveStayUserId(c)
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
     type CreateBookingBody = {
       product_id?: number; room_id?: number;
@@ -545,15 +571,8 @@ function generateCheckInCode(): string {
 //   응답: { order_id, bookings: [...], total_amount, items: [...] }
 staysPublicRoutes.post('/stays/bookings/create-multi', cors(), rateLimit({ action: 'stay_booking_create', max: 10, windowSec: 60 }), async (c) => {
   try {
-    const auth = c.req.header('Authorization') || ''
-    if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-    let userId: number | null = null
-    try {
-      const { verify } = await import('hono/jwt')
-      const payload = await verify(auth.substring(7), (c.env as unknown as { JWT_SECRET: string }).JWT_SECRET, 'HS256') as { user_id?: number; sub?: string }
-      userId = Number(payload.user_id ?? payload.sub) || null
-    } catch { return c.json({ success: false, error: '토큰 무효' }, 401) }
-    if (!userId) return c.json({ success: false, error: '사용자 정보 없음' }, 401)
+    const userId = await resolveStayUserId(c)
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
     type Item = {
       room_id: number;
@@ -809,15 +828,8 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), rateLimit({ actio
 //   금액은 항상 서버 orders.total_amount — 클라이언트 재계산 금지.
 staysPublicRoutes.get('/stays/orders/:orderId', cors(), async (c) => {
   try {
-    const auth = c.req.header('Authorization') || ''
-    if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-    let userId: number | null = null
-    try {
-      const { verify } = await import('hono/jwt')
-      const payload = await verify(auth.substring(7), (c.env as unknown as { JWT_SECRET: string }).JWT_SECRET, 'HS256') as { user_id?: number; sub?: string }
-      userId = Number(payload.user_id ?? payload.sub) || null
-    } catch { return c.json({ success: false, error: '토큰 무효' }, 401) }
-    if (!userId) return c.json({ success: false, error: '사용자 정보 없음' }, 401)
+    const userId = await resolveStayUserId(c)
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
     const orderId = Number(c.req.param('orderId'))
     if (!Number.isFinite(orderId)) return c.json({ success: false, error: 'Invalid orderId' }, 400)
@@ -874,12 +886,8 @@ staysPublicRoutes.get('/stays/orders/:orderId', cors(), async (c) => {
 //     단건 주문은 루프가 1건이라 기존 동작과 동일.
 staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 'stay_booking_confirm', max: 10, windowSec: 300 }), async (c) => {
   try {
-    const auth = c.req.header('Authorization') || ''
-    if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(auth.substring(7), (c.env as unknown as { JWT_SECRET: string }).JWT_SECRET, 'HS256') as { user_id?: number; sub?: string }
-    const userId = Number(payload.user_id ?? payload.sub) || null
-    if (!userId) return c.json({ success: false, error: '토큰 무효' }, 401)
+    const userId = await resolveStayUserId(c)
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
     type ConfirmBody = { paymentKey?: string; orderId?: number; amount?: number }
     const body = await c.req.json<ConfirmBody>().catch(() => ({} as ConfirmBody))
@@ -1113,12 +1121,8 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 's
 // 🛡️ 2026-05-18 (PR 6): 사용자 예약 취소 — 취소 정책 따른 환불 비율 자동 계산.
 staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), rateLimit({ action: 'stay_booking_cancel', max: 10, windowSec: 3600 }), async (c) => {
   try {
-    const auth = c.req.header('Authorization') || ''
-    if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(auth.substring(7), (c.env as unknown as { JWT_SECRET: string }).JWT_SECRET, 'HS256') as { user_id?: number; sub?: string }
-    const userId = Number(payload.user_id ?? payload.sub) || null
-    if (!userId) return c.json({ success: false, error: '토큰 무효' }, 401)
+    const userId = await resolveStayUserId(c)
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
     const id = Number(c.req.param('id'))
     const cancelBody = await c.req.json<{ reason?: string }>().catch(() => ({} as { reason?: string }))
@@ -1277,12 +1281,8 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), rateLimit({ action
 // 🛡️ 2026-05-18 (PR 6): 리뷰 작성 — 체크아웃 완료 예약만.
 staysPublicRoutes.post('/stays/bookings/:id/review', cors(), async (c) => {
   try {
-    const auth = c.req.header('Authorization') || ''
-    if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(auth.substring(7), (c.env as unknown as { JWT_SECRET: string }).JWT_SECRET, 'HS256') as { user_id?: number; sub?: string }
-    const userId = Number(payload.user_id ?? payload.sub) || null
-    if (!userId) return c.json({ success: false, error: '토큰 무효' }, 401)
+    const userId = await resolveStayUserId(c)
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
     const bookingId = Number(c.req.param('id'))
     type ReviewBody = {
@@ -1337,12 +1337,8 @@ staysPublicRoutes.post('/stays/bookings/:id/review', cors(), async (c) => {
 // 사용자 본인 예약 목록 (마이페이지용).
 staysPublicRoutes.get('/stays/my-bookings', cors(), async (c) => {
   try {
-    const auth = c.req.header('Authorization') || ''
-    if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(auth.substring(7), (c.env as unknown as { JWT_SECRET: string }).JWT_SECRET, 'HS256') as { user_id?: number; sub?: string }
-    const userId = Number(payload.user_id ?? payload.sub) || null
-    if (!userId) return c.json({ success: false, error: '토큰 무효' }, 401)
+    const userId = await resolveStayUserId(c)
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
     // 🛡️ 2026-05-18: voucher 모드는 check_in_date 가 NULL — created_at 으로 fallback.
     const rows = await c.env.DB.prepare(
