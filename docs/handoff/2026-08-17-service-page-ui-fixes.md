@@ -44,3 +44,9 @@
 - staging: 숙소 예약 E2E 1회(위 ①) + PC 홈 밀도 눈 확인(대표 취향 — xl 5열/2xl 6열이 과하면 gridCls 한 줄 롤백).
 - 라이브 DB heal 은 배포 후 첫 `/api/sections` 조회에서 자동 실행(SECTION_SEED_VERSION=2). 확인: 홈 더보기 링크가 `/?sort=popular` 인지.
 - Notion 기록: PR 머지·배포 후 개발 업데이트 로그에 1행 기록 필요(이 세션이 머지를 확인하면 그때 기록).
+
+## (추가) 전체 UX/UI 라이브 검사 완료 — `docs/design/ux-audit-2026-08-17.md`
+라이브 urdeal.kr 을 Playwright(프록시 TLS1.2 캡 — `--ssl-version-max=tls1.2` 없이는 크로뮴이
+프록시 MITM 에서 ERR_CONNECTION_RESET)로 12페이지×2뷰포트 실측. P0 1건(연합뉴스 워터마크 숙소
+이미지 — 어드민 데이터, 대표 확인 필요), P1 8건(교환권 상세 "이용권" 배지 오표기·검색 자동완성
+잔존·카운트 불일치·지도 마커 겹침 등), P2 다수. 다음 세션 첫 액션: 감사 문서의 "다음 액션" 순서대로.
