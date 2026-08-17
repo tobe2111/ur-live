@@ -206,10 +206,12 @@ const MUTATIONS = [
   {
     name: '변화율이 tier COALESCE 를 변화로 센다(등록부 이탈률이 부풀어 좁히기가 부당해 보인다)',
     file: 'src/features/marketing/api/reclassify-verdict-delta.ts',
+    // ⚠️ 2026-08-17 병합 사고 흔적 — main 통합을 **유니온**으로 풀다가 이 객체에 `find`/`replace` 가
+    //   **두 벌**이 됐다(HEAD 의 `written.tier` + main 의 옛 `after.tier`). JS 는 뒤엣것이 이기므로
+    //   낡은 쪽이 실제 값이 되어 CI 가 "낡은 지도"로 잡았다 — **충돌 마커도 없고 파싱도 되는** 형태라
+    //   더 위험하다. 유니온 해소는 *목록*엔 안전해도 **객체 리터럴 안**에선 이렇게 조용히 깨진다.
     find: '      || (before.tier == null && written.tier != null)',
     replace: '      || before.tier !== written.tier',
-    find: '      || (before.tier == null && after.tier != null)',
-    replace: '      || before.tier !== after.tier',
     test: 'src/tests/unit/reclassify-verdict-delta.test.ts',
     why:
       'UPDATE 가 `COALESCE(tier, ?)` 라 **옛 tier 가 있으면 안 바뀐다.** 그걸 변화로 세면 tier 가 이미 ' +
@@ -2864,6 +2866,11 @@ const MUTATIONS = [
     why:
       '위 수리의 짝이다. 0 을 제대로 읽어도 하한 1 이 남아 있으면 쉬는 조가 매 회차 1개씩 띄운다 — ' +
       '도메인 수만큼 곱해지면 학습기 판단(cap 2)이 다시 안 맞는다. 하한은 *자리를 받은* 조에만 있어야 한다.',
+  },
+  {
+    // ⚠️ 2026-08-17 병합 사고 흔적 — 유니온 해소가 `},\n  {` 경계를 삼켜 **두 주입이 한 객체로 융합**됐다.
+    //   JS 는 뒤엣 키가 이기므로 위 `쉬는 회차 cap 하한` 주입이 **통째로 사라져 있었다**(에러 없이).
+    //   객체 리터럴을 유니온으로 풀 때의 두 번째 실패 형태다 — 첫째는 같은 키 두 벌(위 tier 주입).
     name: 'YT 건너뛴 행이 스탬프를 못 받아 영구 선두(재선택 churn)',
     // ⚠️ 2026-08-03 600줄 래칫으로 YT 성과가 이 파일로 분리됐다(순수 이동). 앵커가 안 따라오면
     //   이 주입은 "find 문자열이 소스에 없음"으로 낡은 지도 판정을 받는다 — 그게 이 러너의 모드 ②다.
