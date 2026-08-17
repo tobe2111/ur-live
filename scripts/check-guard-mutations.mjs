@@ -2397,6 +2397,49 @@ const MUTATIONS = [
       '통계만 봐선 멀쩡해 보였다.',
   },
   {
+    name: '신선도 조율기의 차단 동결이 사라짐(확장이 네이버 차단을 부른다)',
+    file: 'src/features/marketing/api/influencer-freshness-control.ts',
+    find: "  if ((Number(s?.blocked) || 0) > 0) return { cap: cur, reason: 'blocked-freeze', ...base }",
+    replace: '',
+    test: 'src/tests/unit/ads-freshness-control.test.ts',
+    why:
+      '조율기는 수확이 떨어지면 캡을 넓히는데, 차단 중에 넓히면 **차단을 더 세게 부른다**. 차단은 발굴 ' +
+      '전체를 멎게 하고(라이브에서 blocked>0 이면 크롤이 통째로 정지) 되돌리기도 어렵다(평판·IP). ' +
+      '그래서 하락 중이어도 차단이면 동결이 옳다 — 이 가드가 없으면 자동화가 스스로 목을 조른다.',
+  },
+  {
+    name: '신선도 조율기가 하락을 감지하지 못함(발굴량이 마르는 걸 방치)',
+    file: 'src/features/marketing/api/influencer-freshness-control.ts',
+    find: '  const declining = before > 0 && after < before * FRESHNESS_DECLINE_RATIO',
+    replace: '  const declining = false',
+    test: 'src/tests/unit/ads-freshness-control.test.ts',
+    why:
+      '이 한 줄이 조율기의 존재 이유다. 없으면 항상 stable 로 떨어져 **캡이 영구 고정** = 사람이 상수를 ' +
+      '올려 줄 때만 발굴량이 오르는 종전 구조로 회귀한다. 라이브 실측: 그 구조에서 08-12 6,366명 → ' +
+      '08-16 3,773명(−41%)이 났고 신규 활성화가 7일간 0 이었다. 에러가 없어 조용히 마른다.',
+  },
+  {
+    name: '조율기가 정한 캡을 저장하지 않음(계산만 하고 아무 일도 안 함)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '    [FRESHNESS_CAP_KEY, String(fresh.cap)],\n',
+    replace: '',
+    test: 'src/tests/unit/ads-freshness-control.test.ts',
+    why:
+      '#930 집중 커서와 **정확히 같은 실패 모드**: 매 회차 계산은 하는데 저장이 없어 다음 회차가 항상 ' +
+      '옛 캡을 읽는다. 통계에는 새 캡이 찍히므로 화면만 보면 조율이 되는 것처럼 보인다.',
+  },
+  {
+    name: '다 훑은 키워드 은퇴가 승격 차단에서 빠짐(재승격→즉시재은퇴 livelock)',
+    file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
+    find: ' OR (${AUTO_RETIRE_WHERE.exhausted})',
+    replace: '',
+    test: 'src/tests/unit/ads-freshness-control.test.ts',
+    why:
+      '은퇴는 active=0 만 쓰고 hits 는 계속 쌓이므로, 은퇴자가 그 회차 topTags 에 다시 채굴되면 즉시 ' +
+      '재승격되고 다음 회차 시작에 또 은퇴한다(2026-08-09 실사고 재현). 승격 자리를 무한히 돌려쓰며 ' +
+      '신선한 후보 3,996개가 계속 밖에 남는다 — 에러 없이 신선도 공급만 멎는다.',
+  },
+  {
     name: '축 이월(carry) 적립을 버림 — 선언한 배수 3:2:1 이 조용히 뒤집힌다',
     file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
     find: '  if (wSum > 0) for (let i = 0; i < 3; i++) credit[i] += (budget * w[i]) / wSum',

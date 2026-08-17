@@ -14,6 +14,8 @@ export interface RunStats {
   yt_budget?: { used: number; total: number; day?: string }
   /** 🎯 픽 소진 실태 — 계획한 키워드 중 실제로 몇 개를 돌았고, 그게 어느 경로에서 왔는지(성과가중/커서). */
   picks?: { planned: number; processed: number; from_yt: number; from_cursor: number }
+  /** 🌱 신선도 자동 조율 결정 — 발굴량이 마르지 않게 캡을 스스로 넓힌다(`influencer-freshness-control`). */
+  freshness?: { cap: number; prev_cap: number; reason: string; yield_before: number; yield_after: number }
 }
 /** 야간 정비 기록(platform_settings) — 실행된 단계만 키가 존재. *_error 는 그 단계 실패. */
 export interface MaintenanceRecord {
@@ -156,6 +158,22 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
           {run.picks.from_cursor === 0 && run.picks.planned > run.picks.processed
             ? ' — 커서순환 키워드가 한 개도 도달하지 못했습니다(예산이 앞쪽에서 소진). 순환 폭이 성과가중 픽에만 의존합니다.'
             : ''}
+        </div>
+      ) : null}
+
+      {/* 🌱 신선도 자동 조율 — "발굴량이 왜 줄었나/왜 안 늘었나"를 화면에서 바로 알 수 있게.
+          이걸 안 보여 주면 조율기가 돌고 있는지조차 코드를 뒤져야 안다(그게 이 레포의 상습 오진). */}
+      {run?.freshness ? (
+        <div className="mb-2 mt-1 text-[11px] text-gray-500">
+          🌱 신선도 조율 · 키워드 정원 {formatNumber(run.freshness.cap)}
+          {run.freshness.cap > run.freshness.prev_cap ? ` (↑ ${formatNumber(run.freshness.prev_cap)}에서 확대)` : ''}
+          {` · 키워드당 수확 ${run.freshness.yield_before} → ${run.freshness.yield_after}`}
+          {run.freshness.reason === 'yield-declining' ? ' — 수확 하락 감지, 신선한 키워드를 더 들입니다' : ''}
+          {run.freshness.reason === 'blocked-freeze' ? ' — ⚠️ 네이버 차단 감지로 확대를 멈췄습니다(안전 우선)' : ''}
+          {run.freshness.reason === 'at-ceiling' ? ' — ⚠️ 정원 상한 도달: 더 늘리려면 사람 판단이 필요합니다' : ''}
+          {run.freshness.reason === 'room-available' ? ' — 정원에 자리가 남아 있습니다(후보 부족이 원인)' : ''}
+          {run.freshness.reason === 'insufficient-evidence' ? ' — 회차 표본이 모자라 판단을 보류했습니다' : ''}
+          {run.freshness.reason === 'stable' ? ' — 수확이 안정적입니다' : ''}
         </div>
       ) : null}
 

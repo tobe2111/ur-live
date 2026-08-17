@@ -454,3 +454,72 @@ SELECT value FROM platform_settings WHERE key='ads_autocollect_stats';  -- $.fun
 ```
 ⚠️ **`stats` 최신 1건만 보고 ④를 판정하지 말 것** — 오늘 내가 그렇게 시작해 `yt_err null`(YT 살아있는
 회차)을 보고 잘못 짚을 뻔했다. 판정 대상은 **`funnel.recent` 안의 yt.spend=0 행**이다.
+
+---
+
+## §17. 발굴량 감소의 진짜 원인 = **키워드 신선도 공급 정지** → 자동 조율기 신설 (2026-08-17)
+
+대표 질문 *"지금 점점 수집량 발굴량이 줄어들고 있나?"* → 실측: **네, 추세다**(진폭이 아니다).
+
+### 실측 (KST 일별)
+```
+08-08  6,203        08-13  4,849        키워드당 수확:  08-12  74.0
+08-11  5,166        08-15  4,138                        08-16  32.8  (−56%)
+08-12  6,366 ←정점  08-16  3,773  (−41%)  ← 돌린 키워드는 86→115로 오히려 늘었다
+회차 found 620~840 은 **안 줄었다** — 그물은 그대로, 신규율만 8~41% 로 붕괴
+이메일도 동반 감소 1,466 → 795
+```
+
+### 원인 — 신선한 키워드가 7일간 **0개** 들어왔다
+```
+auto 활성 120 = MAX_AUTO_KEYWORDS 캡 **정확히 포화**
+승격 대기 3,996개가 밖에서 대기
+마지막 활성화 2026-08-10 05:00
+활성 459개 평균 누적 수확 232명 (= 고갈 곡선의 꼬리. CLAUDE.md 실측: 5~14회차 14.3 → 30회차+ 2.4)
+```
+08-10 의 마지막 승격 물결이 08-12 정점을 만들고 소진되며 −41%. **07-21 의 12,533명(전날 202개 활성화)과
+같은 메커니즘의 반대편**이다. 레인은 완벽했다(회차 12/12, `spent 56/56`, `blocked 0`) —
+*"발굴량 = 레인 안정성 × 키워드 신선도"* 에서 **신선도만 막혀 있었다.**
+
+왜 막혔나: auto 슬롯 120이 찼고 그 120개가 은퇴 조건에 안 걸린다. 세 조건(f30·barren·yield)이 전부
+**누적**을 보므로 *예전엔 잘 물었지만 지금 다 훑은* 키워드는 영원히 자리를 지킨다.
+
+### 수리 (대표 "모두 다 해주고 자동으로 계속 조율하게끔")
+- **A 동적 캡**: `MAX_AUTO_KEYWORDS` 상수 → `platform_settings.ads_auto_keyword_cap`(조율기가 씀).
+  `promoteHashtagKeywords(DB, freq, cap)` 로 주입(미전달 시 종전 상수 = 행동 불변).
+- **B 다 훑음 은퇴**: `AUTO_RETIRE_WHERE.exhausted` = `last_saved<=2 AND saved_total>=100 AND 증거30일`.
+  **누적이 아니라 "요즘"** 을 본다. auto 전용·회차당 3개 상한. **승격 차단에도 같은 조각 포함**(§14 교훈 —
+  안 넣으면 재승격→즉시재은퇴 livelock). 30일 유통기한이 가석방을 만든다(영구 배제 불가).
+- **자동 조율기** `influencer-freshness-control.ts`: 회차 이력의 `saved/processed`(키워드당 수확)를
+  앞·뒤 절반 중앙값으로 비교해 **15% 하락이면 캡 +20**. 노브는 **열리는 방향으로만**(대표 "줄어들면 안 돼").
+  안전장치: `blocked>0` 즉시 동결 · 자리 남으면 확장 안 함 · 표본 8회차 미만이면 판단 보류 · 상한 300.
+  결정 근거를 `stats.freshness`(cap/prev_cap/reason/yield_before/yield_after)로 남기고 **어드민에 노출**.
+- 서브리퀘스트 추가 **0** — 읽기는 기존 `SETTING_KEYS` 배치, 쓰기는 기존 마감 배치에 1줄.
+
+### 🛡️ 가드 (전부 되돌려-검증 빨강 확인)
+테스트 14건 신설 + mutation 4건: 차단 동결 제거 · 하락 감지 무력화 · 캡 저장 누락(#930 클래스) ·
+승격 차단에서 exhausted 제거(livelock).
+
+### ⚠️ 정직하게 — "절대 안 줄어든다"는 보장 못 한다
+조율기는 *사람이 개입하지 않아도 마르지 않게* 하는 장치다. 넘을 수 없는 것:
+- 후보 풀(`hits>=5` 대기)이 마르면 캡을 올려도 채울 게 없다 → 그때는 **해시태그 유입**이 병목
+- 무료 티어 하드 상한: 회차당 서브리퀘스트 56 · YT 검색 쿼터 90/일(이미 초과 상태)
+- 캡 상한 300(그 이상은 한 바퀴가 3.5일+ 로 늘어 신선도 효과가 상쇄) → `at-ceiling` 이 뜨면 사람 판단
+⇒ 이 세 경우 조율기는 **`reason` 으로 사실을 남긴다**(추측 대신 관측). 어드민 문구가 그대로 안내한다.
+
+### 🎯 다음 세션의 첫 액션 — 판정(배포 +24h, 그리고 +3일)
+```sql
+-- ① 조율기가 실제로 넓혔나 (0 으로 굳으면 배선 사망)
+SELECT value FROM platform_settings WHERE key='ads_auto_keyword_cap';   -- 120 에서 올라가야 한다
+SELECT json_extract(value,'$.freshness') FROM platform_settings WHERE key='ads_autocollect_stats';
+-- ② 신선도가 실제로 들어왔나
+SELECT MAX(activated_at), COUNT(*) FROM ad_discovery_keywords WHERE active=1 AND source='auto';
+-- ③ 그래서 발굴량이 돌아왔나 (일별로 볼 것 — 회차 하나로 판정 금지)
+SELECT DATE(collected_at,'+9 hours') d, COUNT(*) n FROM ad_influencer_leads
+ WHERE collected_at >= datetime('now','-7 days') GROUP BY d ORDER BY d;
+-- 🚨 그리고 차단 — 확장이 차단을 불렀으면 즉시 되돌린다
+SELECT value FROM platform_settings WHERE key='ads_naver_crawl_block';
+```
+기대: 캡 120 → 140~180 · auto 활성화 재개 · 일 발굴 3,400 → 5,000대 회복.
+⚠️ **하루로 판정하지 말 것** — 승격 물결은 다음날 수확으로 나타난다(08-10 활성화 → 08-12 정점).
+⚠️ 차단이 뜨면 조율기가 스스로 동결한다. 그래도 `blocked>0` 이 며칠 이어지면 캡을 손으로 되돌릴 것.

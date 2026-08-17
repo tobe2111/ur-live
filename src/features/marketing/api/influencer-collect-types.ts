@@ -80,6 +80,14 @@ export interface AutoCollectStats {
   spend_by?: { yt: number; naver: number; cafe: number; tistory: number; save: number }
   /** 🔬 유튜브 서브리퀘스트 **내역** — 검색/채널/영상 중 어디가 배수인지(`DiscoverCalls`). */
   yt_calls?: DiscoverCalls
+  /**
+   * 🌱 **신선도 자동 조율 결정**(2026-08-17) — 왜 캡이 이 값인지를 밖에서 볼 수 있게 남긴다.
+   *   이게 없으면 "발굴이 왜 안 늘지"를 다음 세션이 **추측**하게 된다(이 레포의 상습 오진).
+   *   `reason` 해석: `blocked-freeze`=차단으로 동결 · `room-available`=자리 남음(캡이 병목 아님) ·
+   *   `insufficient-evidence`=표본 부족 · `yield-declining`=하락 감지해 확장 · `at-ceiling`=상한 도달
+   *   (여기 오면 **사람 판단 필요** — 캡 상한이나 후보 유입을 봐야 한다) · `stable`=유지.
+   */
+  freshness?: { cap: number; prev_cap: number; reason: string; yield_before: number; yield_after: number }
   /** 🔒 다른 실행이 진행 중이라 이번 호출은 아무것도 안 함(lease busy) — 체인/버스트는 yt_budget 부재로 자연 종료. */
   busy?: boolean
   /**

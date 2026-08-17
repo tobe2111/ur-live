@@ -1,3 +1,5 @@
+import { YT_SEARCH_BUDGET_DEFAULT, ytQuotaDayKey, YT_USED_KEY } from './influencer-yt-quota'
+
 /**
  * 📏 **한 회차를 얼마나 넓게 돌 것인가** — 폭 정책 전용 모듈(순수, DB·fetch 없음).
  *
@@ -93,4 +95,28 @@ export function isNaverOnlyRound(r: {
   const pages = Math.max(1, Number(r.ytPages) || 1)
   const total = Number(r.ytBudgetTotal) || 0
   return used + pages > total
+}
+
+/**
+ * 🌙 **YT 예산 상태 파싱** — 회차 형상(YT 동반/네이버 전용)을 정하려면 **배분보다 먼저** 알아야 한다.
+ *
+ *   `env`/`settings` 만 읽는 순수 파싱이고, 회차 폭 정책의 입력이라 이 모듈이 제자리다
+ *   (`influencer-auto-collect` 를 얇게 유지 — 600줄 래칫).
+ *   ⚠️ 반환 `searchUsed` 는 **오늘 분만** 센다 — 저장 형식이 `"YYYY-MM-DD:n"` 이라 날짜가 다르면 0.
+ *     그 날짜 비교를 빼면 어제 소진량이 오늘로 넘어와 YT 를 하루 더 굶긴다.
+ */
+export function readYtBudgetState(
+  env: { YOUTUBE_API_KEY?: string; ADS_YT_PAGES?: string; ADS_YT_SEARCH_BUDGET?: string },
+  settings: Record<string, string | null | undefined>,
+): { hasYouTube: boolean; pages: number; budgetTotal: number; day: string; searchUsed: number } {
+  const hasYouTube = !!env.YOUTUBE_API_KEY
+  // 기본 1페이지(1~50위) — 쿼터 안에서 깊이보다 폭(키워드·지역 커버). env ADS_YT_PAGES=2~5 로 상향.
+  const pages = Math.max(1, Math.min(5, parseInt(env.ADS_YT_PAGES || '', 10) || 1))
+  // 실병목은 Search Queries/day(태평양 자정 리셋) — 자동+수동이 같은 예산을 공유한다.
+  const budgetTotal = Math.max(1, Math.min(100000, parseInt(env.ADS_YT_SEARCH_BUDGET || '', 10) || YT_SEARCH_BUDGET_DEFAULT))
+  const day = ytQuotaDayKey(Date.now())
+  let searchUsed = 0
+  const raw = settings[YT_USED_KEY]
+  if (raw) { const i = raw.indexOf(':'); if (i > 0 && raw.slice(0, i) === day) searchUsed = Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) }
+  return { hasYouTube, pages, budgetTotal, day, searchUsed }
 }
