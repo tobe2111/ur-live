@@ -288,9 +288,13 @@ export function useKakaoMap({
           // 🗺️ 2026-06-22: 핀 클릭 시 납작한 선택 카드가 뜨므로 'card' 기준으로 넓은 지도 중앙에 배치. 줌 유지.
           panToProduct(r.restaurant_lat, r.restaurant_lng, undefined, 'card')
         })
+        // 🗺️ 2026-08-17 (UX 전수검사 P1 — 핀·가격버블 상호 가림): 개별 핀에 기본 zIndex(3: 회색 장소 1 ↑,
+        //   클러스터 5 ↓) + 호버/터치 시 최상위(9)로 — 겹친 핀도 가리키면 온전히 드러나 클릭 가능.
         const overlay = new window.kakao.maps.CustomOverlay({
-          position: pos, content, yAnchor: 0.5, xAnchor: 0.5, map: mapInstance.current,
+          position: pos, content, yAnchor: 0.5, xAnchor: 0.5, zIndex: 3, map: mapInstance.current,
         })
+        content.addEventListener('mouseenter', () => { try { overlay.setZIndex(9) } catch { /* SDK 구버전 */ } })
+        content.addEventListener('mouseleave', () => { try { overlay.setZIndex(3) } catch { /* SDK 구버전 */ } })
         // ⚡ 선택 restyle 용 registry — 핀 루트 div 기억(선택 변경 시 전량 재빌드 없이 이 노드만 갱신).
         const rootEl = content.firstElementChild as HTMLElement | null
         if (rootEl) pinElsRef.current.set(r.id, rootEl)

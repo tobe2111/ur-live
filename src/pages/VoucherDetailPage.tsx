@@ -301,7 +301,10 @@ export default function VoucherDetailPage() {
   }
 
   const total = product.price * quantity
-  const label = getVoucherShortLabel(product.category)
+  // 🏷️ 2026-08-17 (UX 전수검사 P1): 딜 결제 기프티콘(deal_only=1)은 명칭 SSOT상 **교환권**이다 —
+  //   기존엔 getVoucherShortLabel 폴백("이용권")이 떠서 하단 네비의 교환권/이용권 탭 구분과 정면
+  //   충돌했다(교환권 상세인데 배지가 "이용권"). 카드 결제 이용권(비-deal)만 기존 라벨 유지.
+  const label = product.deal_only === 1 ? '교환권' : getVoucherShortLabel(product.category)
   // 🎨 2026-06-17 (리디자인): 로그인 시에만 잔액 박스 노출. 교환 후 = 보유 − 결제 딜.
   const loggedIn = isLoggedInSync()
   const afterBalance = balance - total

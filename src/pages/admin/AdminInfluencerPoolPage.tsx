@@ -191,7 +191,7 @@ export default function AdminInfluencerPoolPage() {
   // ⚡ 통계/키워드 분리 로드 — 정책은 `influencer-pool/usePoolMeta.ts`(첫 페인트 224KB 제거).
   const { keywords, loadStats, loadKeywords, loadMeta } = usePoolMeta(applyMeta)
 
-  useEffect(() => { loadStats() }, [loadStats])   // ⚡ 첫 페인트는 통계만 — 키워드는 패널 열 때
+  useEffect(() => { loadMeta() }, [loadMeta])   // ⚡ 첫 페인트는 통계만 — 키워드는 패널 열 때
   useEffect(() => { loadLeads() }, [loadLeads])
 
   // 🔥 통합 수집 = 오늘 YouTube 예산(하루 100회) 소진까지 백그라운드 연속 수집(self-chain).

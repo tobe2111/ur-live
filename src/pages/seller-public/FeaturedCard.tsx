@@ -30,8 +30,9 @@ export default function FeaturedCard({ product, to, eyebrow }: { product: Produc
           className="absolute inset-0 w-full h-full object-cover object-[center_38%]"
         />
       )}
-      {/* 하단 어둡게 — 텍스트 가독(2단 그라데이션: 하단 짙게 + 중간 부드럽게 이어짐, 음식 중앙은 밝게 유지) */}
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(6,6,10,.86) 0%, rgba(6,6,10,.40) 30%, rgba(6,6,10,.08) 55%, transparent 74%)' }} />
+      {/* 하단 어둡게 — 텍스트 가독(2단 그라데이션: 하단 짙게 + 중간 부드럽게 이어짐, 음식 중앙은 밝게 유지)
+          📐 2026-08-17 (UX 전수검사 P1): 밝은 사진(콜라주 등)에서 제목이 묻힘 — 중간 구간 농도 보강(.40→.58). */}
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(6,6,10,.88) 0%, rgba(6,6,10,.58) 32%, rgba(6,6,10,.12) 58%, transparent 76%)' }} />
       {disc > 0 && (
         <span className="absolute top-3 left-3 rounded-lg bg-[#DE5F27] text-white text-[12px] font-extrabold px-2.5 py-1">{disc}% 할인</span>
       )}

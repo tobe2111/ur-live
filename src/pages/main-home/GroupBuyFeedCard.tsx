@@ -193,6 +193,10 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
         style={pc ? undefined : { backgroundColor: grad.base }}
       >
         {p.image_url ? (
+          <>
+          {/* ⏳ 2026-08-17 (UX 전수검사 P1): 이미지 도착 전 대표색 단색 블록만 있어 "빈 카드"로 읽힘 —
+              로딩 셔머 언더레이(additive). 이미지가 opacity 1 이 되면 그대로 덮여 사라진다(상태 불필요). */}
+          <div className="absolute inset-0 skeleton-shimmer" aria-hidden="true" />
           <img
             // 🛡️ 2026-05-22 perf: Cloudflare Image Resizing (300px base, 1x/2x DPI).
             //   원본 1000px+ 다운로드 → 300-600px WebP/AVIF 자동 변환 (50-80% 트래픽 절감).
@@ -218,8 +222,9 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
             }}
             onError={(e) => cfImageOnError(e.currentTarget, p.image_url)}
             style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="relative w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <span className="text-3xl opacity-40">{cat.emoji}</span>

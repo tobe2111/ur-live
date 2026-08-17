@@ -91,6 +91,22 @@ const CATEGORY_ICONS: Record<string, string> = {
   '주유': '⛽',
   '생활': '🏠',
   '통신': '📡',
+  // 🎨 2026-08-17 (UX 전수검사 P2 — 사이드바 절반이 🎁 반복): 라이브 실측 카테고리명(/api/vouchers/
+  //   categories 상위 20종) 기준으로 미매핑분 추가 — 스캔 변별력 확보. 값이 바뀌면 🎁 폴백은 그대로.
+  '커피/음료': '☕',
+  '버거': '🍔',
+  '베이커리/도넛': '🍩',
+  '아이스크림': '🍦',
+  '기타상품권': '🎫',
+  '생활/가전/디지털': '🔌',
+  '백화점상품권': '🛍️',
+  '올레': '📡',
+  '마트': '🛒',
+  '마트상품권': '🛒',
+  '주유상품권': '⛽',
+  '용역서비스': '🛠️',
+  '3사 통합데이터 상품': '📶',
+  '음악': '🎵',
 }
 
 function getCategoryIcon(category: string): string {
@@ -644,7 +660,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               <h2 className="text-[19px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
                 <Gift className="w-5 h-5 text-amber-500 shrink-0" />
                 <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
-                <span className="text-[14px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{products.length}</span>
+                {/* 🐛 2026-08-17 (UX 전수검사 P1): 로드분 개수를 총계 자리에 그대로 쓰면 "커피/음료 775개"
+                    카테고리가 "20"으로 읽힌다 — 더 있으면 `20+` 로 표기(정확한 총계 API 없음). */}
+                <span className="text-[14px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
                 {brand && (
                   <button
                     onClick={() => setBrand('')}
@@ -663,7 +681,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-4">
+                {/* 📐 2026-08-17 (UX 전수검사 P2 — 그루폰 대비 최약 밀도): PC 4열→5열(xl). 카드 ~240→190px,
+                    첫 화면 노출 8→10개. 카드 내부(이미지 속성 잠금)는 무변경 — 열 수만. */}
+                <div className="grid grid-cols-3 xl:grid-cols-5 gap-x-3 gap-y-4">
                   {displayProducts.slice(0, embedVisible).map((p, idx) => (
                     <Fragment key={p.id}>
                       <VoucherCard p={p} aboveFold={idx < 8} />
@@ -905,7 +925,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             <Gift className="w-[18px] h-[18px] text-amber-500 shrink-0" />
             <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
             {!loading && (
-              <span className="text-[13px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{products.length}</span>
+              <span className="text-[13px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
             )}
             {brand && (
               <button
