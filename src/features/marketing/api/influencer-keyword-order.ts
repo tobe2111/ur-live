@@ -181,15 +181,30 @@ export function planRoundWidth(
  * ```
  * 형상 표식은 `yt.spend > 0` 이다(그 회차가 YT 에 서브리퀘스트를 썼는가 = 이미 기록되는 값).
  *
- * ⚠️ 같은 형상의 이력이 없으면(배포 직후·형상 전환 직후) **전체 이력으로 폴백**한다 —
- *   증거 없이 좁히면 커버리지가 줄고, 증거 없이 넓히면 예산을 넘겨 마감 기록이 깨진다.
- *   폴백은 `planRoundWidth` 의 "증거 없으면 hardMax" 규약과 같은 철학이다.
+ * ## 🧨 **부트스트랩 교착 — 첫 판이 스스로를 막았다** (2026-08-13 판정에서 발각)
+ * 첫 구현은 같은 형상 이력이 없으면 **전체(섞인) 이력으로 폴백**했다. 그 한 줄이 이 기능을
+ * *구조적으로 발동 불가*로 만들었다. 라이브 판정(배포 +24h) 실측:
+ * ```
+ *   08-13 15:00 회차   yt지출 0(= YT 쿼터 소진)   planned 9   spent 34/56   ← 안 넓혀졌다
+ * ```
+ * 넓히려면 "네이버 전용 이력"이 필요한데, 한 번도 넓혀진 적이 없으니 그 이력이 **생길 수 없고**,
+ * 그래서 영원히 안 넓혀진다 — 이 레포가 반복해 만난 *"실패할 수 없는 가드"* 의 거울상
+ * (**발동할 수 없는 정책**)이다. 게다가 섞인 중앙값(~7)은 넓히기는커녕 폭을 **좁히는** 쪽이었다.
+ *
+ * ⇒ 같은 형상 이력이 없으면 **`planRoundWidth` 의 원래 규약("증거 없음 → hardMax")을 그대로 따른다.**
+ *   다른 형상의 관측은 이 형상의 증거가 아니다 — 그게 이 함수가 존재하는 이유 자체다.
+ *
+ * ⚠️ 대가를 정직하게: 증거가 없는 **첫 회차 한 번은 과대 계획**이 될 수 있고, 그러면 잘린 자리의
+ *   축은 그 회차에 커서가 안 밀린다(#1142 가 고친 기아의 1회분). 그러나 그 회차가 곧 증거를 만들어
+ *   다음 회차부터 정확해진다 — **영구 미발동과 1회 과대계획의 교환**이고, 후자가 명백히 싸다.
+ * ⚠️ 예산이 진짜 상한이다(`budget.left <= 0` 이 루프를 끊고 마감 기록용 예약분 4 는 따로 뗀다) —
+ *   과대 계획이 예산을 넘겨 마감이 깨지는 일은 구조적으로 안 생긴다.
  */
 export function planRoundWidthForShape(
   recent: readonly { processed?: number; yt?: { spend?: number } }[],
   naverOnlyRound: boolean, hardMax: number,
 ): number {
   const sameShape = recent.filter(f => (Number(f.yt?.spend || 0) > 0) !== naverOnlyRound)
-  const src = sameShape.length ? sameShape : recent
-  return planRoundWidth(src.map(f => Number(f.processed) || 0), hardMax)
+  // 🧨 다른 형상으로 폴백하지 않는다 — 그러면 이 기능이 스스로를 영구 차단한다(위 docblock).
+  return planRoundWidth(sameShape.map(f => Number(f.processed) || 0), hardMax)
 }
