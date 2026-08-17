@@ -1320,3 +1320,38 @@ SELECT date(collected_at,'+9 hours') d, COUNT(*) FROM ad_influencer_leads
   ``(?=`\)|'\))`` → `datetime('now')` 에서 잘림). 끝을 찾지 말고 **시작마다 뒤 500자**를 보는 방식으로 바꿨다.
 - `--verify-clean` 이 잔재 오탐을 냈다 — 내 편집이 기존 주입의 `replace` 문자열을 **부분문자열로 만든** 탓.
   앵커를 갱신해 유일하게 만들었다. **가드가 붙은 줄을 고치면 그 줄의 기존 주입도 함께 갱신할 것.**
+
+### 🩸 정정 — "소진된 레인이 슬롯을 뺏는다"는 **틀렸다** (같은 세션, 착수 직전에 검증)
+
+18차 본문과 대표 보고에서 *"소진된 storeinfo 가 시간당 5~7개뿐인 슬롯을 먹어 commerce 가 회차를
+못 받는다"* 고 적었다. **인과를 확인하지 않고 인플루언서 쪽 구조를 그대로 옮겨 쓴 것이다.** 실측:
+
+```
+ads_lane_alarm_last:collect-commerce    runs_this_hour 1 · cap 1 · interval 300000 · next_at 다음 정시
+ads_lane_alarm_last:collect-storeinfo   runs_this_hour 1 · cap 1 · interval 300000 · next_at 다음 정시
+```
+
+⇒ 둘 다 **DO 알람**이고 **각자 독립 예산**이다. storeinfo 를 재워도 commerce 회차는 **1도 안 는다.**
+`ran=5~7 / n=33` 은 cron 순환의 수치이지 이 두 레인의 것이 아니었다(CLAUDE.md 의 *"B2B 는 cron 순환이라
+cap 이 직접 먹는다"* 는 **알람 이관 전** 서술이다 — 이관된 레인에는 더 이상 적용되지 않는다).
+
+**남은 진짜 질문**: commerce 는 짝수 UTC시마다 돌아야 하는데(하루 12회) 실측이 4~8회다.
+`cap 1/시간`이고 `next_at` 은 다음 정시라 구조상 12회가 나와야 한다 ⇒ **알람이 그 시간에 안 깨어난 것**이다.
+`lane-alarm-boot` cron 이 매시간 복구를 시도하는데도 절반이 빈다.
+
+**다음 세션 첫 액션(이 순서로)**:
+```sql
+-- ① 알람이 실제로 몇 번 깨는가 (레인별 at 이력)
+SELECT key, substr(value,1,120) FROM platform_settings WHERE key LIKE 'ads_lane_alarm_last:%';
+-- ② 부트가 무엇을 되살렸는가
+SELECT key, substr(value,1,160) FROM platform_settings WHERE key LIKE 'cron_hb:ads:lane-alarm-boot:%';
+-- ③ 시간대별 실제 수집 (짝수 UTC 중 몇 개가 비는가)
+SELECT strftime('%H', collected_at) h, COUNT(*) FROM ad_company_leads
+ WHERE source='commerce' AND collected_at >= datetime('now','-3 days') GROUP BY 1 ORDER BY 1;
+```
+③에서 **특정 시간대만 비는지**(외부 API 시간대 제한) vs **무작위로 비는지**(알람 유실)를 먼저 가를 것.
+전자면 고칠 게 없고, 후자면 부트가 `next_at` 과실을 못 잡는다는 뜻이다.
+
+⚠️ **storeinfo 소진은 별개로 사실이다**(`found=50 saved=0`, 1,680 → 50). 다만 그걸 재워도
+**발굴량은 안 는다** — 얻는 것은 2시간마다 32초 CPU + 공공 API 호출 1건뿐이다. 비용 절감이지
+발굴 증가가 아니므로 **그렇게 보고할 것**(내가 그걸 발굴 증가로 말했다).
