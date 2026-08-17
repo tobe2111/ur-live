@@ -215,6 +215,28 @@ const MUTATIONS = [
       '거짓 결론이 나와 **랩 좁히기(38일→2일)가 부당해 보인다.** 계측은 결론을 뒤집는 숫자다.',
   },
   {
+    name: '최소 간격을 다시 시각의 짝수성으로(유실 회차가 영구 손실)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: '    minIntervalHours: 2,\n    run: async (env) => {\n      if ((env as unknown as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED !== \'true\') return { skipped: \'gate_off\' }',
+    replace: '    run: async (env) => {\n      if ((env as unknown as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED !== \'true\') return { skipped: \'gate_off\' }\n      if (new Date().getUTCHours() % 2 !== 0) return { skipped: \'odd_hour\' }',
+    test: 'src/tests/unit/lane-min-interval.test.ts',
+    why:
+      '알람은 가끔 안 깨어난다. 짝수성 판정이면 부트의 재무장이 **홀수시에 착지해 그냥 skip** 되고 ' +
+      '그 회차(~990건)가 영영 사라진다 — 자가치유가 돌았는데 아무것도 못 건진다. 실측(5일·짝수시 12칸): ' +
+      '각 칸이 3~5일만 채워져 **무작위로 1/4 유실**, commerce 기준 하루 ~2,300건. 경과 시간 판정이면 ' +
+      '다음 시간이 이어받는다(그때는 2시간이 지났으므로).',
+  },
+  {
+    name: 'skip 회차에도 lastRunAt 을 찍는다(간격이 영원히 안 차 레인이 멎는다)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: '    if (runs < cap && due) put.lastRunAt = t0',
+    replace: '    put.lastRunAt = t0',
+    test: 'src/tests/unit/lane-min-interval.test.ts',
+    why:
+      'skip 에도 시각을 찍으면 매 회차 기준점이 갱신돼 **경과가 영원히 N시간에 못 닿는다** — 간격 게이트가 ' +
+      '스스로를 잠가 그 레인이 통째로 멎는다. 에러도 경보도 없이 조용히 0 이 되는 클래스라 특히 위험하다.',
+  },
+  {
     name: '에폭 은퇴를 승격 차단에 넣는다(자가치유가 막혀 30일 영구 배제)',
     file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
     find: '  `NOT ((${AUTO_RETIRE_WHERE.f30}) OR (${AUTO_RETIRE_WHERE.barren}) OR (${AUTO_RETIRE_WHERE.yield}))`',

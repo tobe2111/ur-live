@@ -111,8 +111,13 @@ describe('cron ↔ 알람 주기 정합', () => {
         }
       } else if (r.kind === 'everyNHours') {
         const [n, off] = arg
-        if (!new RegExp(`getUTCHours\\(\\)\\s*%\\s*${n}\\s*!==\\s*${off}\\b`).test(body)) {
-          bad.push(`${r.lane}: cron everyNHours(${n}, ${off}) ↔ 알람에 '% ${n} !== ${off}' 없음`)
+        // ⏳ 2026-08-17: 주기를 **경과 시간**으로 선언하는 표현도 정합으로 인정한다(`minIntervalHours: N`).
+        //   짝수성 리터럴만 인정하면, 유실 회차를 이어받게 만드는 그 수정이 이 가드에 막힌다.
+        //   지켜야 하는 것은 "표현"이 아니라 **주기 N 이 두 곳에서 같다**는 사실이다.
+        const parity = new RegExp(`getUTCHours\\(\\)\\s*%\\s*${n}\\s*!==\\s*${off}\\b`).test(body)
+        const elapsed = new RegExp(`minIntervalHours:\\s*${n}\\b`).test(body)
+        if (!parity && !elapsed) {
+          bad.push(`${r.lane}: cron everyNHours(${n}, ${off}) ↔ 알람에 '% ${n} !== ${off}' 도 'minIntervalHours: ${n}' 도 없음`)
         }
       } else if (/getUTCHours\(\)/.test(body)) {
         // 매시간 kick 인데 알람만 시각 게이트를 갖고 있으면 알람 쪽이 조용히 성기게 돈다.
