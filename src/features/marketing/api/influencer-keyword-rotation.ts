@@ -8,13 +8,20 @@
  *   ⚠️ `influencer-auto-collect.ts` 에서 분리된 이유는 그 파일이 600줄 래칫에 닿았기 때문이다.
  *   호환을 위해 원래 모듈이 이 심볼들을 그대로 재수출한다(기존 import 경로 유지).
  */
+import { buildEpochRetireSql } from './influencer-keyword-epoch'
+export { EPOCH_MIN_RUNS, EPOCH_MIN_YIELD, RETIRE_COOLDOWN_DAYS, PROMOTE_COOLDOWN_SQL } from './influencer-keyword-epoch'
 import { isSubrequestLimitError } from './collect-budget'
 import { contactPenalty } from './influencer-keyword-yield'
 
 /** 우선 카테고리 — 유어딜 딜과 결이 맞는 축(맛집·뷰티·숙소). 선택 점수에 가중된다. */
 //   🛒 '공동구매' 추가(2026-07-29 대표 지시) — 이미 자기 팔로워에게 직접 파는 층이라 링크샵 전환 장벽이
 //   가장 낮다. 우선풀에 넣어야 희소한 YT 검색 슬롯이 실제로 이 축에 배정된다(시드만 늘리면 균등 순환에 묻힌다).
-export const PRIORITY_CATEGORIES = ['공동구매', '맛집', '푸드', '외식창업', '숙소', '네일', '뷰티']
+//   🎁 '체험단' 추가(2026-08-17 대표 지시 "체험단 키워드로도 인플루언서 db 수집 필요해") — 이미 브랜드
+//   협업을 받아 본 층이라 제휴 전환 장벽이 낮다(공동구매를 우선에 둔 것과 같은 논리). 실측 이메일
+//   수율 21.5~33.1% 로 우선 축 평균(24.4%) 동급 이상 — 근거는 `influencer-classify` 의 '체험단' 룰 docblock.
+//   ⚠️ 대가: 우선 풀이 ~358 → ~370 으로 커져 그 축 안의 다른 키워드가 3% 정도 느려진다(축 간 영향은 0 —
+//     `AXIS_ROTATION_MULTIPLIER` 의 몫 비례 설계). 되돌리려면 이 배열에서 '체험단' 한 항목만 빼면 된다.
+export const PRIORITY_CATEGORIES = ['공동구매', '체험단', '맛집', '푸드', '외식창업', '숙소', '네일', '뷰티']
 
 /**
  * 🎯 **집중 축(focus)** — 배치의 일부를 통째로 떼어 주는 전용 슬롯 (2026-08-02 대표 확정 "C안").
@@ -369,6 +376,8 @@ export const AUTO_RETIRE_WHERE = {
   barren: `COALESCE(barren_streak, 0) >= 8 AND ${FRESH_EVIDENCE}`,
   /** 🌾 수율 — 찾긴 하는데(found 50+) 새 리드가 안 남음(saved <10). barren 의 drip 사각지대를 닫는다. */
   yield: `COALESCE(found_total, 0) >= 50 AND COALESCE(saved_total, 0) < 10 AND ${FRESH_EVIDENCE}`,
+  /** 🔄 위 셋의 공통 사각지대(평생 누계 면역)를 닫는 최근-창 수율 — 근거·실측은 `influencer-keyword-epoch.ts`. */
+  epoch: buildEpochRetireSql(FRESH_EVIDENCE),
 } as const
 
 /**
@@ -392,6 +401,10 @@ export const AUTO_RETIRE_WHERE = {
  */
 export const PROMOTE_NOT_RETIRABLE_SQL =
   `NOT ((${AUTO_RETIRE_WHERE.f30}) OR (${AUTO_RETIRE_WHERE.barren}) OR (${AUTO_RETIRE_WHERE.yield}))`
+
+// 🚫 **`epoch` 를 위 NOT(...) 에 넣지 마라** — 평생 카운터와 달리 에폭은 승격 시 리셋돼 livelock 이
+//   성립하지 않는다. 넣으면 자가치유가 막혀 30일 영구 배제가 된다(대표가 명시로 거부한 것).
+//   churn 은 `PROMOTE_COOLDOWN_SQL` 이 막는다 — 근거는 `influencer-keyword-epoch.ts`.
 
 /**
  * 🌵 **이 회차의 결과를 키워드 판정에 써도 되는가** (2026-07-29 — 순수함수로 승격).
@@ -444,7 +457,7 @@ export { interleavePicks, mergeKeywordPicks, planRoundWidth, planRoundWidthForSh
 export const NAVER_COLLECT_ENRICH_MAX = 1
 
 // 📏 회차 폭 정책(폭 동결·네이버 전용 확장)은 `influencer-round-width.ts` — 호환 재수출.
-export { COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, COLLECT_KEYWORDS_PER_ROUND_NAVER_ONLY, naverOnlyRoundCap, isNaverOnlyRound } from './influencer-round-width'
+export { COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, COLLECT_KEYWORDS_PER_ROUND_NAVER_ONLY, naverOnlyRoundCap, isNaverOnlyRound, readYtBudgetState } from './influencer-round-width'
 
 /* ────────────────────────────────────────────────────────────────────────────
  * 🩺 순환 건강 판정 — **한 바퀴를 관측으로 재고**, 상수와 비교하지 않는다 (2026-08-04)

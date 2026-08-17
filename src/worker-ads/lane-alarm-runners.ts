@@ -27,6 +27,11 @@ export interface AlarmLane {
   intervalMs?: number
   /** 시간당 상한 override. 미지정이면 정책 기본(12). */
   runsPerHour?: number
+  /**
+   * ⏳ 최소 실행 간격(시간). 지정하면 **경과 시간**으로 판정한다 — 시각의 짝수성으로 막으면
+   *   유실된 회차를 다음 시간이 못 이어받는다(근거·실측은 `dueByElapsed`).
+   */
+  minIntervalHours?: number
   run: (env: Env) => Promise<unknown>
 }
 
@@ -272,19 +277,21 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
   },
   'collect-commerce': {
     runsPerHour: 1,
+    // cron 시절 everyNHours(2,0) 의도 보존 — 외부(data.go.kr) 호출량은 그대로 하루 12회 상한.
+    //   ⚠️ 짝수시 판정이 아니라 **경과 2시간**이다: 알람이 유실된 짝수시를 다음 시간이 이어받아야
+    //   한다(짝수성이면 복구가 홀수시에 착지해 그냥 skip → 그 회차 ~990건이 영영 사라진다).
+    minIntervalHours: 2,
     run: async (env) => {
       if ((env as unknown as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED !== 'true') return { skipped: 'gate_off' }
-      // cron 시절 짝수시(everyNHours(2,0)) 의도 보존 — 외부(data.go.kr) 호출량 불변.
-      if (new Date().getUTCHours() % 2 !== 0) return { skipped: 'odd_hour' }
       const { runCommerceCollect } = await import('@/features/marketing/api/commerce-notify-collect')
       return runCommerceCollect(env)
     },
   },
   'collect-storeinfo': {
     runsPerHour: 1,
+    minIntervalHours: 2,   // 위 commerce 와 같은 이유(유실 회차를 다음 시간이 이어받는다).
     run: async (env) => {
       if (env.ADS_STOREINFO_ENABLED !== 'true') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() % 2 !== 0) return { skipped: 'odd_hour' }
       const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect')
       return runStoreInfoCollect(env)
     },

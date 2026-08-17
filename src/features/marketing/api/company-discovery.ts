@@ -413,17 +413,24 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     const conf = r.source === 'webkr' && c.confidence !== 'evidence' && suspect ? 'none' : c.confidence
     // 카테고리 권위 위계: registry(공식 업종) 소스는 category 불가침 — lead_type/confidence 만 스탬프.
     const registry = REGISTRY_CATEGORY_SOURCES.has(r.source || '') && !!r.category
+    // 🔬 **기록값을 한 번만 계산해 UPDATE 와 변화율 비교가 같은 값을 쓰게 한다.**
+    //   v1 계측이 `classifyLead` 날것을 비교해 등록부 98% 라는 거짓값을 쌓았다(unknown→partner 매핑 누락).
+    const written = {
+      category: c.category, subcategory: c.subcategory, tier: c.tier,
+      lead_type: registry && c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type,
+      confidence: registry ? 'registry' : conf,
+    }
     if (registry) {
       stmts.push(DB.prepare("UPDATE ad_company_leads SET lead_type = ?, classify_confidence = 'registry', classified_v = ? WHERE id = ?")
-        .bind(c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type, CLASSIFY_RULES_VERSION, r.id))
+        .bind(written.lead_type, CLASSIFY_RULES_VERSION, r.id))
     } else if (c.confidence === 'evidence') {
       // 업종은 근거(evidence) 있을 때만 덮어쓰고, 그 외엔 기존 값 유지(대표 수동 분류 보존).
       stmts.push(DB.prepare('UPDATE ad_company_leads SET category = ?, subcategory = ?, tier = COALESCE(tier, ?), lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?')
-        .bind(c.category, c.subcategory, c.tier, c.lead_type, c.confidence, CLASSIFY_RULES_VERSION, r.id))
+        .bind(written.category, written.subcategory, written.tier, written.lead_type, written.confidence, CLASSIFY_RULES_VERSION, r.id))
     } else {
-      stmts.push(DB.prepare('UPDATE ad_company_leads SET lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?').bind(c.lead_type, conf, CLASSIFY_RULES_VERSION, r.id))
+      stmts.push(DB.prepare('UPDATE ad_company_leads SET lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?').bind(written.lead_type, written.confidence, CLASSIFY_RULES_VERSION, r.id))
     }
-    tallyVerdict(delta, r.source, r.classified_v, verdictChanged(r, c, registry))
+    tallyVerdict(delta, r.source, r.classified_v, verdictChanged(r, written, registry ? 'registry' : c.confidence === 'evidence' ? 'evidence' : 'other'))
     // 🧼 소급 위생(전화 형식·플랫폼 연락처·뉴스룸 이메일) — 판정과 근거는 `company-lead-hygiene.ts`.
     for (const st of hygieneStatements(r, sql => DB.prepare(sql))) stmts.push(st)
     updated++
