@@ -30,11 +30,30 @@ export interface VerdictBefore {
   category: string | null; subcategory: string | null; tier: number | null
   lead_type: string | null; classify_confidence: string | null
 }
-/** 재판정 **후** 값(`classifyLead` 결과). */
-export interface VerdictAfter {
+/**
+ * 재판정 **후 DB 에 실제로 들어가는** 값.
+ *
+ * 🩸 **v1 은 여기서 틀렸다(2026-08-17 라이브에서 잡힘).** `classifyLead` 의 **날것** 결과를 비교했는데,
+ *   호출부는 그걸 그대로 안 쓴다 — registry 분기는 `unknown → partner` 로 **매핑해서** 쓰고
+ *   그 외 분기는 webkr 의심 이름을 `none` 으로 **강등해서** 쓴다. 그래서 등록부 행 대부분
+ *   (`classifyLead`=unknown → 기록값 partner, 원래도 partner)이 **"바뀜"으로 오계상**됐다:
+ *
+ *   ```
+ *   v1 측정   reg 8,333/8,500 = 98.0%   ← 거짓. 실제로 lead_type 은 partner 그대로였다
+ *             (등록부 316,410행이 이미 partner · v9 재판정분도 전부 partner)
+ *   ```
+ *
+ *   ⇒ **비교는 반드시 "바인드에 들어가는 그 값"과 해야 한다.** 그래서 이 인터페이스는
+ *   `classifyLead` 결과가 아니라 **기록값**을 받는다. 이름이 `VerdictAfter` 가 아니라
+ *   `VerdictWritten` 인 이유다 — 헷갈리면 같은 실수를 또 한다.
+ */
+export interface VerdictWritten {
   category: string | null; subcategory: string | null; tier: number | null
   lead_type: string; confidence: string
 }
+
+/** UPDATE 세 갈래. 어느 컬럼을 실제로 쓰는지가 분기마다 다르다. */
+export type VerdictBranch = 'registry' | 'evidence' | 'other'
 
 /**
  * 이 행의 판정이 실제로 달라졌는가.
@@ -45,31 +64,34 @@ export interface VerdictAfter {
  * ⚠️ `tier` 는 UPDATE 가 `COALESCE(tier, ?)` 라 **원래 값이 있으면 안 바뀐다** — 그 경우를
  *   변화로 세면 안 된다.
  */
-export function verdictChanged(before: VerdictBefore, after: VerdictAfter, registryBranch: boolean): boolean {
-  if (registryBranch) {
-    // registry 분기: lead_type + confidence('registry' 고정) 만 쓴다. category 는 불가침이라 비교 대상 아님.
-    return before.lead_type !== after.lead_type || before.classify_confidence !== 'registry'
+export function verdictChanged(before: VerdictBefore, written: VerdictWritten, branch: VerdictBranch): boolean {
+  if (branch === 'evidence') {
+    // evidence 분기만 업종까지 덮어쓴다: category·subcategory·lead_type·confidence + tier(COALESCE).
+    return before.category !== written.category
+      || before.subcategory !== written.subcategory
+      || before.lead_type !== written.lead_type
+      || before.classify_confidence !== written.confidence
+      || (before.tier == null && written.tier != null)
   }
-  if (after.confidence === 'evidence') {
-    // evidence 분기: category·subcategory·lead_type·confidence + tier(COALESCE).
-    return before.category !== after.category
-      || before.subcategory !== after.subcategory
-      || before.lead_type !== after.lead_type
-      || before.classify_confidence !== after.confidence
-      || (before.tier == null && after.tier != null)
-  }
-  // 그 외: lead_type + confidence 만 쓴다(업종은 기존 값 보존 — 대표 수동 분류 불가침).
-  return before.lead_type !== after.lead_type || before.classify_confidence !== after.confidence
+  // registry·other: lead_type + confidence 만 쓴다(업종은 불가침 / 기존 값 보존).
+  return before.lead_type !== written.lead_type || before.classify_confidence !== written.confidence
 }
 
 /** 누적 계수기. `seen` 은 **재판정한 행**만 센다(첫 분류는 제외 — 그건 변화가 아니라 최초 판정이다). */
 export interface VerdictDelta {
+  v: number
   reg_seen: number; reg_changed: number
   guess_seen: number; guess_changed: number
   first: number
 }
 
-export const emptyDelta = (): VerdictDelta => ({ reg_seen: 0, reg_changed: 0, guess_seen: 0, guess_changed: 0, first: 0 })
+/**
+ * 계측 세대. **비교 규칙이 바뀌면 반드시 +1** — 안 올리면 옛 세대의 오염된 누계 위에 새 값이 얹혀
+ * 영영 안 씻긴다(v1 은 날것 비교라 등록부 98% 라는 거짓 값을 쌓았다).
+ */
+export const VERDICT_DELTA_VERSION = 2
+
+export const emptyDelta = (): VerdictDelta => ({ v: VERDICT_DELTA_VERSION, reg_seen: 0, reg_changed: 0, guess_seen: 0, guess_changed: 0, first: 0 })
 
 /**
  * 행 하나를 계수기에 반영한다.
@@ -85,10 +107,16 @@ export function tallyVerdict(d: VerdictDelta, source: string | null, classifiedV
   if (reg) { d.reg_seen++; if (changed) d.reg_changed++ } else { d.guess_seen++; if (changed) d.guess_changed++ }
 }
 
-/** 누적 병합 — 회차마다 덮어쓰면 누적이 아니라 "마지막 회차"가 되어 표본이 250건에 갇힌다. */
+/**
+ * 누적 병합 — 회차마다 덮어쓰면 누적이 아니라 "마지막 회차"가 되어 표본이 250건에 갇힌다.
+ * ⚠️ **세대가 다르면 이전 누계를 버린다** — 옛 규칙으로 센 값과 새 규칙으로 센 값을 더하면
+ *   비율이 두 세대의 혼합이 되어 어느 쪽도 아닌 숫자가 된다(그걸로 38일짜리 구조를 바꾸게 된다).
+ */
 export function mergeDelta(prev: unknown, add: VerdictDelta): VerdictDelta {
-  const p = (prev && typeof prev === 'object' ? prev : {}) as Partial<VerdictDelta>
+  const raw = (prev && typeof prev === 'object' ? prev : {}) as Partial<VerdictDelta>
+  const p = Number(raw.v) === VERDICT_DELTA_VERSION ? raw : {}
   return {
+    v: VERDICT_DELTA_VERSION,
     reg_seen: (Number(p.reg_seen) || 0) + add.reg_seen,
     reg_changed: (Number(p.reg_changed) || 0) + add.reg_changed,
     guess_seen: (Number(p.guess_seen) || 0) + add.guess_seen,

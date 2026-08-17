@@ -206,13 +206,37 @@ const MUTATIONS = [
   {
     name: '변화율이 tier COALESCE 를 변화로 센다(등록부 이탈률이 부풀어 좁히기가 부당해 보인다)',
     file: 'src/features/marketing/api/reclassify-verdict-delta.ts',
-    find: '      || (before.tier == null && after.tier != null)',
-    replace: '      || before.tier !== after.tier',
+    find: '      || (before.tier == null && written.tier != null)',
+    replace: '      || before.tier !== written.tier',
     test: 'src/tests/unit/reclassify-verdict-delta.test.ts',
     why:
       'UPDATE 가 `COALESCE(tier, ?)` 라 **옛 tier 가 있으면 안 바뀐다.** 그걸 변화로 세면 tier 가 이미 ' +
       '박힌 행이 전부 "판정이 달라졌다"로 잡혀 **변화율이 부풀고**, 그러면 "등록부도 규칙에 반응한다" 는 ' +
       '거짓 결론이 나와 **랩 좁히기(38일→2일)가 부당해 보인다.** 계측은 결론을 뒤집는 숫자다.',
+  },
+  {
+    name: '🩸 변화율이 기록값 대신 classifyLead 날것을 본다(라이브에서 실제로 난 오계상)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: "      lead_type: registry && c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type,",
+    replace: '      lead_type: c.lead_type,',
+    test: 'src/tests/unit/reclassify-verdict-delta.test.ts',
+    why:
+      '**2026-08-17 라이브에서 실제로 난 사고다.** 호출부는 `classifyLead` 결과를 그대로 안 쓴다 — ' +
+      '등록부는 `unknown → partner` 로 매핑해서 쓴다. 그 매핑을 빼고 날것으로 비교하면 등록부 행 ' +
+      '대부분(원래 partner · 기록값도 partner)이 **"바뀜"으로 오계상**돼 실측이 `reg 8,333/8,500 = 98%` ' +
+      '라는 거짓값을 냈다. 그 숫자로 판단했으면 **랩 좁히기(38일→2일)를 근거 없이 포기**했을 것이다.\n' +
+      '⚠️ 이 주입은 동작도 바꾼다(등록부에 unknown 이 기록된다) — 계측 버그가 곧 데이터 버그였다는 뜻.',
+  },
+  {
+    name: '오염된 옛 세대 누계를 그대로 이어받는다(비율이 두 세대의 혼합이 된다)',
+    file: 'src/features/marketing/api/reclassify-verdict-delta.ts',
+    find: '  const p = Number(raw.v) === VERDICT_DELTA_VERSION ? raw : {}',
+    replace: '  const p = raw',
+    test: 'src/tests/unit/reclassify-verdict-delta.test.ts',
+    why:
+      '비교 규칙이 바뀌면 옛 값과 새 값은 **다른 것을 센 숫자**다. 더하면 어느 쪽도 아닌 비율이 되고, ' +
+      'v1 이 쌓은 8,333/8,500(98%) 위에 새 값이 얹히면 **한참 동안 거짓 결론이 유지된다** — 새 표본이 ' +
+      '옛 누계를 넘어서야 겨우 씻긴다.',
   },
   {
     name: '변화율 분모에 첫 분류를 넣는다(새 행이 전부 "바뀜"으로 잡힌다)',
