@@ -39,7 +39,8 @@ import { RETIRED_CATEGORIES } from './influencer-classify'
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, naverOnlyRoundCap, isNaverOnlyRound, pickStarvationRescue, AUTO_RETIRE_WHERE, planRoundWidthForShape, parseAxisCarry, serializeAxisCarry, AXIS_CARRY_KEY } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, naverOnlyRoundCap, isNaverOnlyRound, readYtBudgetState, pickStarvationRescue, AUTO_RETIRE_WHERE, planRoundWidthForShape, parseAxisCarry, serializeAxisCarry, AXIS_CARRY_KEY } from './influencer-keyword-rotation'
+import { FRESHNESS_CAP_KEY, parseFreshnessCap, decideFreshness } from './influencer-freshness-control'
 import { CAFE_GATE_KEY, cafeCollectEnabled } from './collect-track-gates' // 🎛️ 수집 트랙 게이트(카페) SSOT
 
 // 🌱 시드 키워드(데이터)는 `influencer-seed-keywords.ts`, 그 시드를 테이블에 넣는 일은
@@ -188,7 +189,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   🏘️ `CAFE_GATE_KEY` — 어드민 원클릭 카페 게이트. **이 배치에 얹어 서브리퀘스트 추가 0**
   //   (낱개로 읽으면 게이트 하나가 발굴 fetch 하나를 잡아먹는다 — 이 배열이 존재하는 이유).
   //   ⚖️ `AXIS_CARRY_KEY` — 축별 이월 지분(불변식 ④). 이 배치에 얹어 서브리퀘스트 추가 0.
-  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY, CAFE_GATE_KEY, AXIS_CARRY_KEY]
+  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY, CAFE_GATE_KEY, AXIS_CARRY_KEY, FRESHNESS_CAP_KEY, 'ads_naver_crawl_block']
   const settings = await readSettings(DB, SETTING_KEYS)
   let prev: AutoCollectStats | null = null
   try { prev = settings[STATS_KEY] ? JSON.parse(settings[STATS_KEY] as string) as AutoCollectStats : null } catch { prev = null }
@@ -219,23 +220,11 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   2026-07-21: YT 검색 쿼터 확장이 어려워 네이버(실측 ~2% 활용)로 볼륨 이전 — 기본 4→12(틱당 네이버 총 batch+12).
   //   서브리퀘스트 예산(아래 300)이 실제 상한이라 초과분은 커서가 다음 틱에서 이어받음(커버리지 손실 0). 런어웨이 방지 max 40.
   const NAVER_EXTRA = Math.max(0, Math.min(40, parseInt(env.ADS_NAVER_EXTRA || '', 10) || 12))
-  // 🌙 YT 쿼터 상태를 **배분보다 먼저** 안다 — 이 회차가 네이버 전용인지에 따라 폭이 달라진다.
-  //   ⚠️ 아래 블록은 env/settings 만 읽는 **순수 파싱**이라 위로 올려도 부작용이 없다(2026-08-12 이동).
-  const hasYouTube = !!env.YOUTUBE_API_KEY
-  // YT 검색 페이지 수(키워드당 깊이). 쿼터는 quotaHit 가드가 관리.
-  // 기본 1페이지(1~50위) — YT 일일 쿼터(기본 10k) 안에서 더 많은 키워드·지역 커버(시드 소싱은 깊이<폭).
-  //   깊이가 더 필요하면 env ADS_YT_PAGES=2~5 로 상향(쿼터 여유/증액 시).
-  const ytPages = Math.max(1, Math.min(5, parseInt(env.ADS_YT_PAGES || '', 10) || 1))
+  // 🌙 YT 예산 상태를 **배분보다 먼저** 읽는다(순수 파싱 — 파서는 `readYtBudgetState` SSOT).
+  const ytState = readYtBudgetState(env, settings)
+  const { hasYouTube, pages: ytPages, budgetTotal: ytBudgetTotal, day: ytDay } = ytState
+  let ytSearchUsed = ytState.searchUsed
   let ytUsed = 0
-  // 🎯 YT 검색 예산 카운터(실병목 Search Queries/day, 태평양 자정 리셋) — 자동+수동이 같은 예산 공유.
-  //   소진 시 이번 틱 YT 스킵(네이버 계속) + 어드민에 "오늘 n/100" 노출. env ADS_YT_SEARCH_BUDGET 로 조정.
-  const ytBudgetTotal = Math.max(1, Math.min(100000, parseInt(env.ADS_YT_SEARCH_BUDGET || '', 10) || YT_SEARCH_BUDGET_DEFAULT))
-  const ytDay = ytQuotaDayKey(Date.now())
-  let ytSearchUsed = 0
-  {
-    const raw = settings[YT_USED_KEY]
-    if (raw) { const i = raw.indexOf(':'); if (i > 0 && raw.slice(0, i) === ytDay) ytSearchUsed = Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) }
-  }
   // 🌙 네이버 전용 회차? — 그런 회차는 키워드당 비용이 3분의 1이라 같은 예산으로 넓게 돈다(판정·근거는 SSOT).
   const naverOnlyRound = isNaverOnlyRound({ hasYouTube, ytSearchUsed, ytPages, ytBudgetTotal })
   const hardMaxPick = batch + NAVER_EXTRA
@@ -520,7 +509,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // ③ 해시태그 자동확장 — 승격 로직은 `influencer-keyword-promote.ts`(600줄 래칫 분리).
   //   적합성 게이트(2026-07-29 대표 승인)도 그 안에 있다 — 승격을 결정하는 자리와 같은 파일이라야
   //   "게이트를 우회하는 두 번째 승격 경로"가 생기지 않는다.
-  const { promoted, kwAuto } = await promoteHashtagKeywords(DB, hashtagFreq)
+  // 🌱 auto 캡은 상수가 아니라 **자동 조율기**가 정한 값(발굴량이 떨어지면 스스로 넓힌다).
+  const freshCap = parseFreshnessCap(settings[FRESHNESS_CAP_KEY])
+  const { promoted, kwAuto } = await promoteHashtagKeywords(DB, hashtagFreq, freshCap)
 
   // 두 커서 각각 전진(우선/일반 풀 독립 순환) — 처리된 **연속 접두 길이**만큼만 전진(멤버십 카운트 아님).
   //   ⚠️ ytPicks(성과가중)가 커서 앞선 키워드를 처리하면 filter 카운트는 그 '중간' 처리를 세어 갭을 건너뛴다
@@ -570,6 +561,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     budget_exhausted: budget.left <= 0,
     // ✅ 성공했으면 옛 crash 표식을 남기지 않는다(회복 후에도 빨간 줄이 남으면 다음 사람이 오진한다).
   }
+  // 🌱 신선도 자동 조율 — 판단·파싱·기록 형식은 `decideFreshness`(SSOT). 추가 왕복 0(이 blob 은 어차피 저장된다).
+  const fresh = decideFreshness(settings, stats.funnel?.recent || [], kwAuto?.active ?? 0)
+  stats.freshness = fresh.stamp
   // 🧮 커서·카운터·통계를 1 batch 로 저장(2026-07-29) — 낱개 4 write = 4 서브리퀘스트였다.
   await writeSettings(DB, [
     [YT_USED_KEY, `${ytDay}:${ytSearchUsed}`],
@@ -582,6 +576,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     // ⚖️ 축별 이월 지분 — 이 줄이 없으면 carry 가 영구 0 이라 불변식 ④(작은 축 영구 0 불가)가 조용히
     //   사라진다(집중 축 커서와 **정확히 같은** 실패 모드 — 위 FOCUS_CURSOR_KEY 주석).
     [AXIS_CARRY_KEY, serializeAxisCarry(nextAxisCarry)],
+    // 🌱 자동 조율된 auto 캡 — 이 줄이 없으면 캡이 영구 고정되어 조율기가 **계산만 하고 아무 일도 안 한다**
+    //   (#930 집중 커서와 같은 실패 모드). 상한/하한은 순수함수가 이미 clamp 했다.
+    [FRESHNESS_CAP_KEY, String(fresh.cap)],
     [STATS_KEY, JSON.stringify(stats)],
     // 🩹 학습 상한도 같은 batch 로(위 주석) — 자가교정 상태와 커서는 같은 회차의 결과라 운명을 함께해도 된다.
     ...(nextCap != null ? [[subreqCapKey('influencer'), String(nextCap)] as [string, string]] : []),

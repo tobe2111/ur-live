@@ -113,7 +113,7 @@ export async function setKeywordActive(DB: D1Database, id: number, active: boole
  */
 export async function retireStaleAutoKeywords(
   DB: D1Database,
-  where: { f30: string; barren: string; yield: string },
+  where: { f30: string; barren: string; yield: string; exhausted: string },
 ): Promise<void> {
   await DB.batch([
     // (F-30) 활성 이틀+ 인데 성과 0 인 auto 키워드 비활성(탐색 슬롯 영구 점유 차단, 멱등).
@@ -130,5 +130,9 @@ export async function retireStaleAutoKeywords(
     //   자리를 점유하는 동안 승격 대기 2,981개가 밖에 있었다.
     //   회차당 3개 상한 — 한꺼번에 비우면 승격·첫회차 수확이 몰려 요동한다(완만한 회전이 목적). seed 무접촉.
     DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE id IN (SELECT id FROM ad_discovery_keywords WHERE source = 'auto' AND active = 1 AND ${where.yield} ORDER BY saved_total ASC, found_total DESC LIMIT 3)`),
+    // 🍂 **다 훑음** 회수(2026-08-17) — 누적은 좋은데 *요즘* 안 잡히는 자리를 비켜 신선한 키워드에 넘긴다.
+    //   근거·실측(08-12 6,366 → 08-16 3,773, 신규 활성화 7일간 0)은 `AUTO_RETIRE_WHERE.exhausted` docblock.
+    //   회차당 3개 상한 + 최근 수확이 가장 낮은 것부터 — 한꺼번에 비우면 승격 물결이 몰려 요동한다.
+    DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE id IN (SELECT id FROM ad_discovery_keywords WHERE source = 'auto' AND active = 1 AND ${where.exhausted} ORDER BY COALESCE(last_saved,0) ASC, saved_total DESC LIMIT 3)`),
   ]).catch(() => null)
 }
