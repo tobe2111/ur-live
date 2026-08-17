@@ -208,6 +208,8 @@ const MUTATIONS = [
     file: 'src/features/marketing/api/reclassify-verdict-delta.ts',
     find: '      || (before.tier == null && written.tier != null)',
     replace: '      || before.tier !== written.tier',
+    find: '      || (before.tier == null && after.tier != null)',
+    replace: '      || before.tier !== after.tier',
     test: 'src/tests/unit/reclassify-verdict-delta.test.ts',
     why:
       'UPDATE 가 `COALESCE(tier, ?)` 라 **옛 tier 가 있으면 안 바뀐다.** 그걸 변화로 세면 tier 가 이미 ' +
@@ -2476,6 +2478,44 @@ const MUTATIONS = [
       '통계만 봐선 멀쩡해 보였다.',
   },
   {
+    name: '신선도 조율기의 차단 동결이 사라짐(확장이 네이버 차단을 부른다)',
+    file: 'src/features/marketing/api/influencer-freshness-control.ts',
+    find: "  if ((Number(s?.blocked) || 0) > 0) return { cap: cur, reason: 'blocked-freeze', ...base }",
+    replace: '',
+    test: 'src/tests/unit/ads-freshness-control.test.ts',
+    why:
+      '조율기는 수확이 떨어지면 캡을 넓히는데, 차단 중에 넓히면 **차단을 더 세게 부른다**. 차단은 발굴 ' +
+      '전체를 멎게 하고(라이브에서 blocked>0 이면 크롤이 통째로 정지) 되돌리기도 어렵다(평판·IP). ' +
+      '그래서 하락 중이어도 차단이면 동결이 옳다 — 이 가드가 없으면 자동화가 스스로 목을 조른다.',
+  },
+  {
+    name: '신선도 조율기가 하락을 감지하지 못함(발굴량이 마르는 걸 방치)',
+    file: 'src/features/marketing/api/influencer-freshness-control.ts',
+    find: '  const declining = before > 0 && after < before * FRESHNESS_DECLINE_RATIO',
+    replace: '  const declining = false',
+    test: 'src/tests/unit/ads-freshness-control.test.ts',
+    why:
+      '이 한 줄이 조율기의 존재 이유다. 없으면 항상 stable 로 떨어져 **캡이 영구 고정** = 사람이 상수를 ' +
+      '올려 줄 때만 발굴량이 오르는 종전 구조로 회귀한다. 라이브 실측: 그 구조에서 08-12 6,366명 → ' +
+      '08-16 3,773명(−41%)이 났고 신규 활성화가 7일간 0 이었다. 에러가 없어 조용히 마른다.',
+  },
+  {
+    name: '조율기가 정한 캡을 저장하지 않음(계산만 하고 아무 일도 안 함)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: '    [FRESHNESS_CAP_KEY, String(fresh.cap)],\n',
+    replace: '',
+    test: 'src/tests/unit/ads-freshness-control.test.ts',
+    why:
+      '#930 집중 커서와 **정확히 같은 실패 모드**: 매 회차 계산은 하는데 저장이 없어 다음 회차가 항상 ' +
+      '옛 캡을 읽는다. 통계에는 새 캡이 찍히므로 화면만 보면 조율이 되는 것처럼 보인다.',
+  },
+  // 🗑️ **삭제(2026-08-17)** — `다 훑은 키워드 은퇴가 승격 차단에서 빠짐`.
+  //   #1163 의 `exhausted` 조각을 **에폭으로 통합**하면서(대표 "에폭으로 통합해서 머지해줘")
+  //   그 조각 자체가 사라졌다. 그리고 에폭은 **차단에 넣으면 안 된다** — 승격이 리셋하므로 livelock 이
+  //   성립하지 않고, 넣으면 30일 영구 배제가 된다. 즉 이 주입의 전제가 반대로 뒤집혔다.
+  //   지키던 것은 두 갈래로 살아 있다: 평생 카운터 셋의 차단 포함(`ads-freshness-control` ·
+  //   `ads-keyword-promotion-room`)과, 그 역방향 주입 `에폭 은퇴를 승격 차단에 넣는다`.
+  {
     name: '축 이월(carry) 적립을 버림 — 선언한 배수 3:2:1 이 조용히 뒤집힌다',
     file: 'src/features/marketing/api/influencer-keyword-rotation.ts',
     find: '  if (wSum > 0) for (let i = 0; i < 3; i++) credit[i] += (budget * w[i]) / wSum',
@@ -3145,15 +3185,16 @@ const MUTATIONS = [
       '유휴 예산을 회수하려던 회차가 오히려 더 좁아진다. 에러가 없어 관측만으로는 안 보인다.',
   },
   {
-    name: '계획 폭이 두 형상을 섞음(YT 회차 과대 · 네이버 회차 과소)',
+    name: '계획 폭이 두 형상을 섞음 — 폭 확장이 스스로를 영구 차단(부트스트랩 교착)',
     file: 'src/features/marketing/api/influencer-keyword-order.ts',
-    find: '  const src = sameShape.length ? sameShape : recent',
-    replace: '  const src = recent',
+    find: '  return planRoundWidth(sameShape.map(f => Number(f.processed) || 0), hardMax)',
+    replace: '  const src = sameShape.length ? sameShape : recent\n  return planRoundWidth(src.map(f => Number(f.processed) || 0), hardMax)',
     test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
     why:
-      'YT 동반 회차(처리 ~9)와 네이버 전용 회차(처리 ~17)를 한 중앙값(~15)에 섞으면 **둘 다 틀린다**: ' +
-      'YT 회차는 과대 계획이 되어 #1142 가 고친 커서 기아(잘리는 자리의 축이 매 회차 같은 키워드)가 되살아나고, ' +
-      '네이버 회차는 과소 계획이 되어 폭 확장이 무효가 된다.',
+      '**2026-08-13 라이브 판정에서 실제로 당한 결함**이다(그 폴백이 첫 구현이었다). 네이버 전용 회차를 넓히려면 ' +
+      '네이버 전용 이력이 필요한데, 넓혀진 적이 없으니 그 이력이 생길 수 없다 → 영원히 안 넓혀진다. ' +
+      '실측: 08-13 15:00 회차가 yt지출 0 인데 `planned 9 · spent 34/56`(예산 22 유휴)로 끝났다. ' +
+      '이 레포가 반복해 만난 "실패할 수 없는 가드"의 거울상 = **발동할 수 없는 정책**이고, 에러가 없어 안 보인다.',
   },
   {
     name: '수집 폭 동결이 풀림(측정이 병목인데 백로그가 증가 반전)',

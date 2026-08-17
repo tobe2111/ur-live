@@ -37,6 +37,12 @@ export interface PromoteResult {
 export async function promoteHashtagKeywords(
   DB: D1Database,
   hashtagFreq: Map<string, number>,
+  /**
+   * 🌱 auto 키워드 캡 — **자동 조율기**(`planFreshnessCap`)가 정한 값. 미전달이면 종전 상수(행동 불변).
+   *   ⚠️ 이 인자가 상수를 대체하는 이유: 발굴량이 떨어질 때 사람이 상수를 올려 주지 않으면
+   *   신선도 공급이 멎는다(라이브 실측 08-12→08-16 −41%). 근거는 `influencer-freshness-control.ts`.
+   */
+  cap: number = MAX_AUTO_KEYWORDS,
 ): Promise<PromoteResult> {
   const promoted: string[] = []
   const topTags = Array.from(hashtagFreq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 50)
@@ -53,8 +59,8 @@ export async function promoteHashtagKeywords(
   //   승격이 영구 0 이었다(`MAX_AUTO_KEYWORDS` 주석의 실측 참조).
   const autoRow = await DB.prepare("SELECT COUNT(*) AS n FROM ad_discovery_keywords WHERE active = 1 AND source = 'auto'")
     .first<{ n: number }>().catch(() => null)
-  const room = autoPromotionRoom(autoRow?.n ?? 0)
-  const kwAuto = { active: autoRow?.n ?? 0, room, cap: MAX_AUTO_KEYWORDS } // 자리 0 이면 발굴이 굶는 중 — 밖에서 보이게
+  const room = autoPromotionRoom(autoRow?.n ?? 0, cap)
+  const kwAuto = { active: autoRow?.n ?? 0, room, cap } // 자리 0 이면 발굴이 굶는 중 — 밖에서 보이게
   if (room <= 0) return { promoted, kwAuto }
 
   // 🚪 적합성 게이트(2026-07-29 대표 승인) — 승격 후보를 **거래가 일어나는 축**으로 좁힌다.

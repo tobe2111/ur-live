@@ -135,5 +135,10 @@ export async function retireStaleAutoKeywords(
     //   자리를 점유하는 동안 승격 대기 2,981개가 밖에 있었다.
     //   회차당 3개 상한 — 한꺼번에 비우면 승격·첫회차 수확이 몰려 요동한다(완만한 회전이 목적). seed 무접촉.
     DB.prepare(`UPDATE ad_discovery_keywords SET active = 0 WHERE id IN (SELECT id FROM ad_discovery_keywords WHERE source = 'auto' AND active = 1 AND ${where.yield} ORDER BY saved_total ASC, found_total DESC LIMIT 3)`),
+    // 🔄 **에폭 은퇴로 통합**(2026-08-17 대표 "에폭으로 통합해서 머지해줘") — #1163 의 `exhausted`
+    //   (`last_saved<=2 AND saved_total>=100`)는 **직전 한 회차**만 봐서 실측상 가장 심한 셋을 놓쳤다:
+    //   맛집 회당 0.68(직전 7) · 여행 2.59(12) · 피부관리 1.24(11) — 전부 미검출. 8회 창은 잡는다.
+    //   반대로 에폭이 놓치는 '직전만 우연히 마른' 경우는 다음 창에서 자연히 잡힌다(손실 없음).
+    //   #1163 의 동적 캡·자동조율은 그대로 살아 있다 — 바뀐 것은 **은퇴 조건 하나**뿐이다.
   ]).catch(() => null)
 }

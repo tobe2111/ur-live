@@ -452,7 +452,7 @@ export { interleavePicks, mergeKeywordPicks, planRoundWidth, planRoundWidthForSh
 export const NAVER_COLLECT_ENRICH_MAX = 1
 
 // 📏 회차 폭 정책(폭 동결·네이버 전용 확장)은 `influencer-round-width.ts` — 호환 재수출.
-export { COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, COLLECT_KEYWORDS_PER_ROUND_NAVER_ONLY, naverOnlyRoundCap, isNaverOnlyRound } from './influencer-round-width'
+export { COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, COLLECT_KEYWORDS_PER_ROUND_NAVER_ONLY, naverOnlyRoundCap, isNaverOnlyRound, readYtBudgetState } from './influencer-round-width'
 
 /* ────────────────────────────────────────────────────────────────────────────
  * 🩺 순환 건강 판정 — **한 바퀴를 관측으로 재고**, 상수와 비교하지 않는다 (2026-08-04)
