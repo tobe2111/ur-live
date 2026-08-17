@@ -2397,6 +2397,38 @@ const MUTATIONS = [
       '통계만 봐선 멀쩡해 보였다.',
   },
   {
+    name: '체험단 분류 룰 소실 — 승격 게이트가 그 축을 영구 차단(hits 78 이 영원히 대기)',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: "  { cat: '체험단', re: /체험단(?!\\s*(모집|대행|운영))|서포터즈|협찬|리뷰어/i },\n",
+    replace: '',
+    test: 'src/tests/unit/ads-experience-group-axis.test.ts',
+    why:
+      '분류 불가는 category=\'자동\' 이 되고 `canAutoPromote` 가 막는다 → **hits 가 아무리 쌓여도 승격 0**. ' +
+      '라이브 실측(2026-08-17): 체험단(78) · 블로그체험단(40) · 협찬플러스(21) · 제품협찬(12) 이 그 상태로 ' +
+      '대기하고 있었다. 키워드 정원을 늘려도 소용없다 — 게이트가 정원보다 먼저 막는다. 에러 없이 축 하나가 통째로 꺼진다.',
+  },
+  {
+    name: '체험단이 승격 허용목록에서 빠짐(분류는 되는데 게이트가 막음)',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: "  '체험단',                                     // 이미 브랜드 협업을 받아 본 층(행위 신호 — 위 룰 docblock 실측)\n",
+    replace: '',
+    test: 'src/tests/unit/ads-experience-group-axis.test.ts',
+    why:
+      '분류와 게이트는 **다른 층**이다 — 룰이 살아 있어도 허용목록에 없으면 승격이 0 이다. 두 곳을 함께 ' +
+      '봐야 하는 구조라 한쪽만 고치는 실수가 나기 쉽고, 그 결과는 "분류는 잘 되는데 왜 안 늘지" 다.',
+  },
+  {
+    name: '체험단 lookahead 소실 — 대행사(집중 축)를 통째로 훔친다',
+    file: 'src/features/marketing/api/influencer-classify.ts',
+    find: "re: /체험단(?!\\s*(모집|대행|운영))|서포터즈|협찬|리뷰어/i",
+    replace: 're: /체험단|서포터즈|협찬|리뷰어/i',
+    test: 'src/tests/unit/ads-experience-group-axis.test.ts',
+    why:
+      '`체험단 모집`·`체험단 대행` 은 체험단을 **운영하는** 대행사이고, 대행사는 리드 1건이 매장 N건으로 ' +
+      '곱해지는 유일한 축(집중 전용 슬롯)이다. lookahead 가 없으면 그 신호가 전부 체험단으로 흘러 ' +
+      '**집중 축이 조용히 비고** 전용 슬롯은 스스로 반납된다(=대행사 발굴 정지). 축을 지키는 것은 룰 순서가 아니라 이 lookahead 다.',
+  },
+  {
     name: '신선도 조율기의 차단 동결이 사라짐(확장이 네이버 차단을 부른다)',
     file: 'src/features/marketing/api/influencer-freshness-control.ts',
     find: "  if ((Number(s?.blocked) || 0) > 0) return { cap: cur, reason: 'blocked-freeze', ...base }",
