@@ -104,10 +104,11 @@ export default function GroupBuyFeed({
   const setCategory = (c: CategoryKey) => { if (onCategoryChange) onCategoryChange(c); else setCategoryState(c) }
   const setSort = (s: SortKey) => { if (onSortChange) onSortChange(s); else setSortState(s) }
   // 🖥️ PC 홈(pc): 모바일은 기존 2~3열. lg 미만 값은 `/region/*`(PC·모바일 공용 페이지)이 쓴다.
-  // 📐 2026-08-17 (대표 — "카드가 커, 컴팩트하게" · 여기어때/그루폰 참고): 2026-07-15 의 "4열 카드 크게"를
-  //   **대체** — xl 5열 · 2xl 6열 + gap 축소. 컨테이너 1440(PcHomePage)과 짝 → 카드 ~220-260px(그루폰 스케일).
+  // 📐 2026-08-17 (대표 — "카드가 커, 컴팩트하게" → 재지시 "1줄에 이용권 5개"): 2026-07-15 의
+  //   "4열 카드 크게"를 **대체** — PC 는 **5열 고정**(xl+), lg(좁은 노트북)만 4열, gap 축소.
+  //   컨테이너 1440(PcHomePage)과 짝 → 카드 ~260px. 2xl 6열은 대표 재지시로 제거(5개가 기준).
   const gridCls = pc
-    ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 lg:gap-4 pb-8'
+    ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 lg:gap-4 pb-8'
     : 'grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8'
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
