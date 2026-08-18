@@ -159,11 +159,11 @@ export default function StayDetailPage() {
         // 🏨 2026-07-20 (숙소 상세 SSOT 안전판): stay_info 미보유 stay_voucher(구형 딜 등)는
         //   죽은 화면 대신 일반 딜 상세로 폴백 — canonicalDetailPath 가 숙소를 /stays 로 보내는
         //   단방향 정규화의 역방향 안전판(딜 상세는 숙소로 재리다이렉트 안 하므로 루프 0).
-        else navigate(`/group-buy/${productId}`, { replace: true })
+        else navigate(`/pass/${productId}`, { replace: true })
       })
       .catch((err) => {
         const st = (err as { response?: { status?: number } }).response?.status
-        if (st && st >= 400 && st < 500) navigate(`/group-buy/${productId}`, { replace: true })
+        if (st && st >= 400 && st < 500) navigate(`/pass/${productId}`, { replace: true })
       })
       .finally(() => setLoading(false))
   }, [productId, navigate])

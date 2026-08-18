@@ -110,7 +110,9 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
       '@context': 'https://schema.org', '@type': 'BreadcrumbList',
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: '홈', item: `${origin}/` },
-        { '@type': 'ListItem', position: 2, name: '동네딜', item: `${origin}/group-buy` },
+        // 🎟️ 2026-08-16: `/group-buy` 는 홈으로 301 되는 별칭이라 **빵부스러기가 리다이렉트를
+        //   가리키고 있었다**(색인 신호가 한 홉 낭비된다). 정본인 홈으로 직접.
+        { '@type': 'ListItem', position: 2, name: '동네딜', item: `${origin}/` },
         { '@type': 'ListItem', position: 3, name, item: canonical },
       ],
     }

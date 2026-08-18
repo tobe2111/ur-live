@@ -34,6 +34,7 @@ import { getTossClientKey } from '@/lib/toss-preload'
 // 🛡️ 2026-06-12 (전수조사 4차 B-1): 숙소 예약 결제 분기 — /checkout?order_id=N&stay=1.
 import StayCheckout from './checkout/StayCheckout'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
+import MallOriginBanner from '@/components/mall/MallOriginBanner'
 
 const clientKey = getTossClientKey()
 
@@ -463,6 +464,8 @@ function CartCheckout() {
         ) : (
           <div className="flex flex-col">
             <div className="flex flex-1 flex-col lg:rounded-3xl">
+              {/* 🏪 2026-08-12: 몰 손님이면 결제 화면에도 **가게 간판**을 남긴다(흔적 없으면 미렌더). */}
+              <MallOriginBanner className="mx-5 mt-4" />
               {/* 🛡️ 2026-05-21: 교환권만 담긴 주문 — 배송지/쿠폰 섹션 숨김.
                     KT Alpha 자동 발송이 users.phone 으로 직접 처리 → 사용자 주소 입력 불요.
                     쿠폰도 deal_only 상품엔 적용 안 됨 (백엔드 차단). */}

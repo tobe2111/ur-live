@@ -569,7 +569,7 @@ export default function GroupBuyListPage() {
               '@type': 'ListItem',
               position: i + 1,
               name: p.name,
-              url: `https://urdeal.kr/group-buy/${p.id}`,
+              url: `https://urdeal.kr/pass/${p.id}`,
               ...(p.image_url ? { image: p.image_url } : {}),
             })),
           }] : []),

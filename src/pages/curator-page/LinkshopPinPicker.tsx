@@ -384,7 +384,7 @@ function PickCard({ item, pinned, busy, onToggle }: { item: PickItem; pinned: bo
   }
   // dominant_color 없고 외부호스트 CORS 로 추출 실패 시 회색 단색 방지(PinCard 와 동일 폴백).
   const fallbackColor = item.dominant_color || seededColor(item.category || item.id)
-  const to = item.gb ? `/group-buy/${item.id}` : `/products/${item.id}`
+  const to = item.gb ? `/pass/${item.id}` : `/products/${item.id}`
   const commission = Math.round(Number(item.referral_commission_rate) || 0)
 
   function handleToggle(e: React.MouseEvent) {

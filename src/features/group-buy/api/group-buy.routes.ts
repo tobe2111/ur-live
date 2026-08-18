@@ -880,7 +880,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
               try {
                 await sendSystemPush(c.env, 'user', u.user_id, {
                   title: m.title, body: m.body,
-                  url: `/group-buy/${productId}`, tag: `gb-milestone-${productId}-${m.flag}`,
+                  url: `/pass/${productId}`, tag: `gb-milestone-${productId}-${m.flag}`,
                 })
               } catch { /* ignore */ }
             }
@@ -914,13 +914,13 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             await DB.prepare(
               `INSERT INTO user_notifications (user_id, type, title, message, link)
                VALUES (?, 'group_buy_achieved', ?, ?, ?)`
-            ).bind(p.user_id, '🎉 공구 성공!', `${product.name} 곧 ${getVoucherShortLabel(product.category)}이 발급됩니다`, `/group-buy/${productId}`).run()
+            ).bind(p.user_id, '🎉 공구 성공!', `${product.name} 곧 ${getVoucherShortLabel(product.category)}이 발급됩니다`, `/pass/${productId}`).run()
           } catch { /* ignore */ }
           try {
             await sendSystemPush(c.env, 'user', p.user_id, {
               title: '🎉 공구 성공!',
               body: `${product.name} 곧 ${getVoucherShortLabel(product.category)}이 발급됩니다`,
-              url: `/group-buy/${productId}`,
+              url: `/pass/${productId}`,
               tag: `gb-achieved-${productId}`,
             })
           } catch { /* ignore */ }

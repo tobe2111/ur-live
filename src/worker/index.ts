@@ -618,8 +618,9 @@ app.use('*', async (c, next) => {
       // 🛡️ 2026-05-30 (loading): /products/:id 상세 SSR inject — 기존엔 누락되어 마운트 후
       //   useProduct fetch 워터폴(HTML→JS→fetch 3-RTT). /api/products/:id 는 publicCache(120) → edge-hit.
       const productMatch = url.pathname.match(/^\/products\/(\d+)(?:[/?#]|$)/);
-      // 🛡️ 2026-05-27: /group-buy/:id 와 /vouchers/:id 둘 다 같은 endpoint 사용 → 같은 SSR slot.
-      const detailMatch = url.pathname.match(/^\/(?:group-buy|vouchers)\/(\d+)(?:[/?#]|$)/);
+      // 🛡️ 2026-05-27: 셋 다 같은 endpoint → 같은 SSR slot. 🎟️ 2026-08-16 정본은 `/pass/:id`
+      //   (옛 `/group-buy/:id` 도 남긴다 — 301 이 안 걸린 요청도 시드를 받게, 방어적).
+      const detailMatch = url.pathname.match(/^\/(?:pass|group-buy|vouchers)\/(\d+)(?:[/?#]|$)/);
       // 🏨 2026-07-20 (대표 — 숙소 상세 SSR/OG): /stays/:id 도 DETAIL 패턴으로 0-RTT + 서버 메타.
       const stayMatch = url.pathname.match(/^\/stays\/(\d+)(?:[/?#]|$)/);
       if (productMatch) {
@@ -773,7 +774,7 @@ app.use('*', async (c, next) => {
     //   맵은 빌드 시 vite manifest 로 생성(generate-route-chunk-map.mjs → generated/route-chunk-map.ts,
     //   같은 빌드의 해시와 항상 일치). 맵에 없는 표면/빈 맵(로컬 워커 단독 빌드)은 조용히 생략.
     const chunkSurface = url.pathname === '/' || url.pathname === '/index.html' ? 'home'
-      : /^\/group-buy\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'gbDetail'
+      : /^\/(?:pass|group-buy)\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'gbDetail'
       : /^\/vouchers\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'voucherDetail'
       : /^\/products\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'product'
       : /^\/(u|profile|s)(\/|$)/.test(url.pathname) ? 'linkshop'

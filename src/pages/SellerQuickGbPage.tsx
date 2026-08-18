@@ -45,6 +45,7 @@ import ImageUpload from '@/components/ImageUpload'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { STORAGE_LABEL, STORAGE_NOTICE, type StorageKind } from '@/shared/pickup'
+import MyMallAddress from '@/components/seller/MyMallAddress'
 
 /** 마감 프리셋 — 날짜 피커 대신. 한 손으로 누를 수 있는 것만 남긴다. */
 const DEADLINE_PRESETS = [
@@ -171,6 +172,8 @@ export default function SellerQuickGbPage() {
       </header>
 
       <div className="px-4 pt-5 max-w-lg mx-auto">
+        {/* 🏪 2026-08-12: 운영자가 자기 링크를 몰라 카톡에 뿌릴 수 없었다(미연결이면 그 사실을 알린다) */}
+        <MyMallAddress />
         {/* 🔴 시안 B-2 — "저장 실패"가 아니라 **고칠 항목을 지목**한다. */}
         {showIssues && (
           <div className="mb-5 rounded-[14px] bg-[#FDEEEE] border border-[#F3C9C9] px-4 py-[15px] flex gap-2.5">

@@ -350,7 +350,7 @@ curatorRoutes.get('/:handle/p/:productId/redirect', async (c) => {
       //   일반 쇼핑 상품까지 voucher 흐름으로 오분류 → /group-buy 교환권 chrome 으로 떨어짐.
       //   order-type.ts SSOT 와 동일하게 deal_only=1(교환권) 또는 voucher 카테고리(오프라인 공구)만 voucher 흐름.
       const isVoucherFlow = !!prod && (Number(prod.deal_only) === 1 || isVoucherCategory(prod.category))
-      if (isVoucherFlow) return c.redirect(`/group-buy/${productId}?aff=${pin.user_id}`, 302)
+      if (isVoucherFlow) return c.redirect(`/pass/${productId}?aff=${pin.user_id}`, 302)
     } catch { /* 판별 실패 — 기존 경로 */ }
     // 물리상품 — ProductDetailPage 가 localStorage.affiliate_ref 저장 (기존 시스템 재활용)
     return c.redirect(`/products/${productId}?ref=${pin.user_id}`, 302)

@@ -204,7 +204,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
               {v.product_id != null && (
                 <button
                   type="button"
-                  onClick={() => navigate(`/group-buy/${v.product_id}`)}
+                  onClick={() => navigate(`/pass/${v.product_id}`)}
                   className="w-full py-2.5 rounded-xl border border-gray-200 dark:border-[#2A3446] text-gray-900 dark:text-white text-[13px] font-bold active:scale-[0.98] transition-transform"
                 >
                   {t('voucher.rebuy', { defaultValue: '다시 구매하기' })}

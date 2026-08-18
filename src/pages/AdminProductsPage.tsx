@@ -5,6 +5,8 @@ import { normalizeAdminRole } from '@/shared/admin-roles'
 import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { AdminServiceScopeTabs, useAdminMallScope } from '@/components/admin/AdminServiceScope'
+import { SourceSegments } from './admin-products/SourceSegments'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import {
@@ -80,7 +82,10 @@ export default function AdminProductsPage() {
   // 🛡️ 2026-06-03 Tier2(대시보드): 탭별 수동 페칭 → useApiQuery (products 필터 key 반응형 + 3 탭 enabled).
   const queryClient = useQueryClient()
   const adminAuth = { Authorization: `Bearer ${localStorage.getItem('admin_token') || localStorage.getItem('access_token')}` }
-  const productsKey = ['admin', 'products', page, pageLimit, statusFilter, sourceFilter, categoryFilter, sortField, sortOrder, search]
+  // 🏪 2026-08-16 서비스 스코프. 🔴 쿼리 키에 필수 — 빠지면 본진/몰이 같은 캐시를 써 섞임 재발.
+  const { scope: mallScope, setScope: setMallScope, scopeParams } = useAdminMallScope()
+  const pickScope = (v: typeof mallScope) => { setMallScope(v); setPage(1) }
+  const productsKey = ['admin', 'products', page, pageLimit, statusFilter, sourceFilter, categoryFilter, sortField, sortOrder, search, mallScope]
   // 로컬 optimistic patch (toggle/rate 즉시 반영) — 현재 필터 key 의 캐시 rows 직접 수정.
   const patchProducts = (fn: (rows: Product[]) => Product[]) =>
     queryClient.setQueryData(productsKey, (old: any) => (old ? { ...old, rows: fn(old.rows || []) } : old))
@@ -90,7 +95,7 @@ export default function AdminProductsPage() {
     {
       enabled: activeTab === 'products',
       headers: adminAuth,
-      params: { page, limit: pageLimit, status: statusFilter, source: sourceFilter, sort: sortField, order: sortOrder, ...(search ? { q: search } : {}), ...(categoryFilter ? { category: categoryFilter } : {}) },
+      params: { page, limit: pageLimit, status: statusFilter, source: sourceFilter, sort: sortField, order: sortOrder, ...(search ? { q: search } : {}), ...(categoryFilter ? { category: categoryFilter } : {}), ...scopeParams },
       select: (r: any) => ({ rows: r?.success ? (r.data || []) : [], total: r?.total ?? 0, total_pages: r?.total_pages ?? 0, tabs: r?.tabs ?? EMPTY_TABS, categories: r?.categories ?? [] }),
     },
   )
@@ -488,37 +493,18 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {/* 🛡️ 2026-06-14: 교환권 / 쇼핑 상품 명시 분리 — 상단 1차 세그먼트 (사용자 요구).
-          교환권 = kt_alpha_gift_code 있음(기프티콘/교환권), 쇼핑 = 일반 배송 상품. */}
+      {/* 🏪 2026-08-16: "누구 가게인가"는 "무엇인가"(아래 교환권/쇼핑)보다 상위 질문이라 위에 둔다. */}
       {activeTab === 'products' && (
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          {[
-            { key: 'all' as const, label: '전체 상품', desc: '교환권 + 쇼핑 모두', icon: '📦' },
-            { key: 'kt_alpha' as const, label: '교환권 (기프티콘)', desc: 'KT 기프티쇼 자동발송 상품', icon: '🎁' },
-            { key: 'regular' as const, label: '쇼핑 상품 (배송)', desc: '실물 배송/일반 판매 상품', icon: '🛍️' },
-          ].map(seg => (
-            <button
-              key={seg.key}
-              onClick={() => { setSourceFilter(seg.key); setPage(1) }}
-              className={`flex-1 min-w-[180px] text-left px-4 py-3 rounded-xl border-2 transition-colors ${
-                sourceFilter === seg.key
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{seg.icon}</span>
-                <div>
-                  <p className={`text-sm font-bold ${sourceFilter === seg.key ? 'text-blue-700' : 'text-gray-900'}`}>
-                    {seg.label}
-                    {seg.key === 'kt_alpha' && <span className="ml-1.5 text-xs font-medium text-amber-600">{tabCounts.kt_alpha_count.toLocaleString()}</span>}
-                  </p>
-                  <p className="text-[11px] text-gray-500">{seg.desc}</p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
+        <AdminServiceScopeTabs scope={mallScope} setScope={pickScope} className="mb-3"
+          mixedHint="운영자 몰 상품이 함께 보입니다 — 유어딜 실적으로 읽지 마세요" />
+      )}
+
+      {activeTab === 'products' && (
+        <SourceSegments
+          value={sourceFilter}
+          onChange={(v) => { setSourceFilter(v); setPage(1) }}
+          ktAlphaCount={tabCounts.kt_alpha_count}
+        />
       )}
 
       {/* 상품 목록 탭 */}

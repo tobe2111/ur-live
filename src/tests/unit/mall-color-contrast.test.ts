@@ -19,7 +19,7 @@ import { readCode } from '../helpers/source-text'
 import {
   MALL_COLOR_LIGHT, MALL_COLOR_DARK,
   MALL_ON_COLOR_LIGHT, MALL_ON_COLOR_DARK, MALL_CONTRAST_MIN,
-  contrastRatio, validateMallColor,
+  contrastRatio, validateMallColor, deriveMallColorDark, resolveMallBranding,
 } from '@/shared/mall/branding'
 
 describe('🔴 R1 — 기본 몰 색은 흰 글자를 받칠 수 있다 (라이트)', () => {
@@ -93,5 +93,64 @@ describe('validateMallColor — 저장 전 게이트', () => {
 
   it('`#` 유무를 가리지 않는다', () => {
     expect(validateMallColor('2E7D5B').ok).toBe(true)
+  })
+})
+
+/**
+ * 🌗 **다크 짝 파생 — 색상 공간 전체를 쓸어 본다** (2026-08-12)
+ *
+ * 주석이 *"임의 파생이 AA 를 깨면 확정을 어긴다"* 고 파생을 미뤄 뒀었다. 맞는 경계였지만,
+ * 그건 파생 금지가 아니라 **증명하며 파생하라**는 뜻이다. 여기서 그 증명을 한다.
+ *
+ * ⚠️ 이 테스트가 **못 막는 것**: 실제 화면에서 그 색이 *예쁜지*. 여기서 고정하는 것은
+ *   "잉크 글자가 읽히는가" 하나뿐이다(규격).
+ */
+describe('deriveMallColorDark — 다크에서도 글자가 읽힌다', () => {
+  const sweep: string[] = []
+  for (let h = 0; h < 360; h += 15) {
+    // HSL→RGB 를 쓰지 않고 채도·명도 조합을 직접 만든다(의존 없이 넓게 쓸기).
+    const f = (n: number) => {
+      const k = (n + h / 30) % 12
+      const a = 0.5 * Math.min(0.4, 1)     // s=0.4 고정 대역
+      return Math.round(255 * (0.45 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))))
+    }
+    sweep.push(`#${[f(0), f(8), f(4)].map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('')}`)
+  }
+  const extremes = ['#000000', '#000080', '#2E7D5B', '#7A1F1F', '#FFFFFF', '#FFE082', '#123456']
+
+  it('🔴 파생색은 예외 없이 잉크 글자 대비 AA 를 만족한다', () => {
+    for (const c of [...sweep, ...extremes]) {
+      const dark = deriveMallColorDark(c)
+      const ratio = contrastRatio(dark, MALL_ON_COLOR_DARK)
+      expect(ratio, `${c} → ${dark}`).not.toBeNull()
+      expect(ratio as number, `${c} → ${dark} 대비 ${(ratio as number).toFixed(2)}`).toBeGreaterThanOrEqual(MALL_CONTRAST_MIN)
+    }
+  })
+
+  it('형식이 틀리면 추측하지 않고 기본값', () => {
+    for (const bad of ['', '   ', 'red', '#12345', null, undefined]) {
+      expect(deriveMallColorDark(bad as string)).toBe(MALL_COLOR_DARK)
+    }
+  })
+
+  it('결과는 결정적이다 — 같은 입력이면 같은 색', () => {
+    expect(deriveMallColorDark('#2E7D5B')).toBe(deriveMallColorDark('#2E7D5B'))
+  })
+
+  it('🔴 저장 가능한 색(라이트 AA 통과)은 다크에서도 **운영자 색 계열**로 남는다', () => {
+    // 규격 때문에 매번 기본 딥그린으로 물러나면 "색 승계"라는 말이 무의미해진다.
+    const ok = ['#2E7D5B', '#7A1F1F', '#123456', '#3B4A6B']
+    for (const c of ok) {
+      expect(validateMallColor(c).ok, `${c} 는 저장 가능해야 이 검사가 의미 있다`).toBe(true)
+      expect(deriveMallColorDark(c), `${c} 가 기본값으로 물러났다`).not.toBe(MALL_COLOR_DARK)
+    }
+  })
+
+  it('resolveMallBranding 이 그 파생을 실제로 쓴다 — 함수만 있고 안 쓰면 소용없다', () => {
+    const r = resolveMallBranding({ name: '방배마트', color: '#7A1F1F' })
+    expect(r.colorDark).toBe(deriveMallColorDark('#7A1F1F'))
+    expect(r.colorDark).not.toBe(MALL_COLOR_DARK)
+    // 색 미지정이면 종전대로 기본 짝
+    expect(resolveMallBranding({ name: '방배마트' }).colorDark).toBe(MALL_COLOR_DARK)
   })
 })

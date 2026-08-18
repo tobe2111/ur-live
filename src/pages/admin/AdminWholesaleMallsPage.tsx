@@ -19,6 +19,7 @@ import { toast } from '@/hooks/useToast'
 import { normalizeAdminRole } from '@/shared/admin-roles'
 import { validateMallColor } from '@/shared/mall/branding'
 import MallSellersPanel from './wholesale-malls/MallSellersPanel'
+import MallApplicationsPanel from './wholesale-malls/MallApplicationsPanel'
 import MallNoticesPanel from './wholesale-malls/MallNoticesPanel'
 import MallLinkRow from './wholesale-malls/MallLinkRow'
 import MallAdvancedFields from './wholesale-malls/MallAdvancedFields'
@@ -200,6 +201,9 @@ export default function AdminWholesaleMallsPage() {
             <Plus className="w-4 h-4" /> {t('admin.mall.addMall', { defaultValue: '몰 추가' })}
           </button>
         </div>
+
+        {/* 🏪 2026-08-12: 운영자 셀프 온보딩 — 대기 중인 가게 개설 신청(0 건이면 미렌더) */}
+        <MallApplicationsPanel />
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>

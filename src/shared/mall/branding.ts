@@ -82,6 +82,50 @@ export const MALL_CONTRAST_MIN = 4.5
  * (다크 짝은 운영자 지정과 무관하게 `MALL_COLOR_DARK` 고정이라 여기서 검사 대상이 아니다 —
  *  `resolveMallBranding` 참조. 그 값은 아래 테스트가 잉크 글자 기준으로 고정한다.)
  */
+/**
+ * 🌗 **다크 짝 파생** — 운영자 색을 어두운 화면에서도 쓸 수 있게 (2026-08-12)
+ *
+ * 그전까지 `resolveMallBranding` 은 다크에서 **항상 기본 딥그린**을 썼다. 주석이 그 이유를 이렇게
+ * 적어 뒀다: *"임의 파생이 AA 를 깨면 '대비는 규격'이라는 확정을 어긴다."* 맞는 판단이었지만,
+ * 그 말은 **파생을 하지 말라**가 아니라 **AA 를 증명하며 파생하라**는 뜻이다.
+ * ⇒ 밝기를 올리며 **잉크 글자(`MALL_ON_COLOR_DARK`) 대비 AA 를 만족하는 첫 지점**을 고른다.
+ *
+ * 🔴 **못 만들면 기본값으로 물러난다.** 아주 어두운 색(예: `#000080`)은 색상을 유지한 채로는
+ *   AA 를 못 만드는 경우가 있고, 그때 *비슷한 색*을 억지로 내놓는 것보다 **규격을 지키는 다른 색**이
+ *   낫다 — 안 보이는 버튼은 브랜딩이 아니다.
+ *
+ * ⚠️ 이 함수가 **하지 않는 것**: 색상(hue)을 바꾸지 않는다. 밝기만 올린다 — 운영자가 고른 색과
+ *   같은 계열로 남아야 "내 가게 색"으로 읽힌다.
+ */
+function hexToRgb(hex: string): [number, number, number] | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex ?? '').trim())
+  if (!m) return null
+  const n = parseInt(m[1], 16)
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  const c = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')
+  return `#${c(r)}${c(g)}${c(b)}`.toUpperCase()
+}
+
+/** 원색 방향으로 흰색을 섞는다(0=원색, 1=흰색). 색상은 유지되고 밝기만 오른다. */
+function lightenToward(rgb: [number, number, number], t: number): string {
+  return rgbToHex(rgb[0] + (255 - rgb[0]) * t, rgb[1] + (255 - rgb[1]) * t, rgb[2] + (255 - rgb[2]) * t)
+}
+
+export function deriveMallColorDark(raw: string | null | undefined): string {
+  const rgb = hexToRgb(String(raw ?? ''))
+  if (!rgb) return MALL_COLOR_DARK
+  // 원색이 이미 충분히 밝으면 그대로 쓴다(불필요하게 바래지 않는다).
+  for (let i = 0; i <= 20; i++) {
+    const cand = lightenToward(rgb, i / 20)
+    const ratio = contrastRatio(cand, MALL_ON_COLOR_DARK)
+    if (ratio !== null && ratio >= MALL_CONTRAST_MIN) return cand
+  }
+  return MALL_COLOR_DARK   // 색상을 지키면서는 규격을 못 맞춘다 — 규격이 이긴다
+}
+
 export function validateMallColor(raw: string): { ok: true } | { ok: false; reason: string } {
   const s = String(raw ?? '').trim()
   if (!/^#?[0-9a-fA-F]{6}$/.test(s)) {
@@ -146,10 +190,11 @@ export function resolveMallBranding(b: MallBranding): ResolvedMallBranding {
     name,
     logoUrl: b.logoUrl?.trim() || null,
     initial: initialOf(name),
-    // 운영자 지정색은 라이트에만 적용. 다크 짝 파생은 별도 판단이 필요해 P0 에선 기본값을 쓴다
-    //   (임의 파생이 AA 를 깨면 "대비는 규격"이라는 확정을 어긴다).
+    // 라이트는 운영자 지정색 그대로(저장 시 `validateMallColor` 가 흰 글자 AA 를 이미 통과시켰다).
+    // 다크는 **AA 를 증명하며 파생**한다(`deriveMallColorDark`) — 못 만들면 기본값으로 물러난다.
+    //   2026-08-12 이전엔 다크가 항상 기본 딥그린이라, 운영자 색이 다크에서 통째로 사라졌다.
     colorLight: color || MALL_COLOR_LIGHT,
-    colorDark: color ? MALL_COLOR_DARK : MALL_COLOR_DARK,
+    colorDark: color ? deriveMallColorDark(color) : MALL_COLOR_DARK,
     intro: b.intro?.trim() || defaultIntro(name),
     contactUrl: b.contactUrl?.trim() || null,
     showBanner: false,

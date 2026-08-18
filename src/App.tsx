@@ -224,9 +224,10 @@ const FAQPage = lazy(() => import('./pages/FAQPage'))
 const KakaoDebugPage = lazy(() => import('./pages/KakaoDebugPage'))
 
 // Redirect component for old product URL
-function ProductRedirect() {
+/** 옛 `:id` 경로 → 정본 (앱 내부 이동용; 하드로드용 서버 301 은 `shared/seo/consumer-redirects.ts`). */
+function PathRedirect({ base }: { base: string }) {
   const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/products/${id}`} replace />;
+  return <Navigate to={`${base}/${id}`} replace />;
 }
 
 // 🛡️ 2026-05-25 (migration 0278): 큐레이터 핀 SPA fallback
@@ -723,7 +724,9 @@ function AppContent() {
             <Route path="/group-buy" element={<Navigate to="/" replace />} />
             {/* confirm-payment 가 :id 매칭 우선 — 더 구체적인 path 먼저 */}
             <Route path="/group-buy/confirm-payment" element={<GroupBuyConfirmPaymentPage />} />
-            <Route path="/group-buy/:id" element={<GroupBuyDetailPage />} />
+            <Route path="/pass/:id" element={<GroupBuyDetailPage />} />{/* 🎟️ 이용권 상세 정본(2026-08-16 이전) */}
+            {/* 옛 경로는 지우지 않는다 — 서버 301 은 하드로드에만 걸려서, 앱 안 링크는 갈 곳이 없어진다. */}
+            <Route path="/group-buy/:id" element={<PathRedirect base="/pass" />} />
             {/* 🏙️ 2026-07-04 상권관 랜딩 — 지역코드 하나로 그 상권의 동네딜+체험단 전체(B2G QR/링크 진입). */}
             <Route path="/local/:code" element={<LocalTownPage />} />
             <Route path="/district/:slug" element={<ErrorBoundary><DistrictCouponPage /></ErrorBoundary>} />
@@ -746,7 +749,7 @@ function AppContent() {
             {/* 🗑️ 2026-07-07 라이브커머스 제거: /live·/live/recap·/live/:streamId 라우트 제거 */}
             <Route path="/products/:id" element={<ErrorBoundary><ProductDetailPage /></ErrorBoundary>} />
             {/* Redirect old single product URL to plural */}
-            <Route path="/product/:id" element={<ProductRedirect />} />
+            <Route path="/product/:id" element={<PathRedirect base="/products" />} />
             <Route path="/search" element={<SearchPage />} />
 
             {/* 🛡️ 2026-05-25 큐레이터 링크샵 (migration 0278) */}

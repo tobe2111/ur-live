@@ -213,7 +213,7 @@ export default function InfluencerDashboardPage() {
                       <Link to={
                         item.type === 'stay' ? `/stays/${item.id}` :
                         item.type === 'live' ? `/live/${item.id}` :
-                        item.type === 'group-buy' ? `/group-buy/${item.id}` :
+                        item.type === 'group-buy' ? `/pass/${item.id}` :
                         `/products/${item.id}`
                       } className="w-12 h-12 shrink-0 rounded bg-[#1A2334] overflow-hidden">
                         {item.image_url ? <img src={cfImage(item.image_url, { width: 200, quality: 82, format: 'auto' }) || item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, item.image_url)} /> : null}

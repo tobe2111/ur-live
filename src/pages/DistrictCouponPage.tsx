@@ -134,7 +134,7 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
           <p className="text-3xl" aria-hidden>✅</p>
           <p className="mt-2 text-[17px] font-extrabold text-gray-900 dark:text-white">사용 완료!</p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">결제 금액에서 쿠폰 금액을 빼고 결제하세요</p>
-          <button type="button" onClick={() => navigate(`/group-buy/${doneBridge.product_id}`)}
+          <button type="button" onClick={() => navigate(`/pass/${doneBridge.product_id}`)}
             className="mt-4 w-full rounded-2xl border border-gray-200 dark:border-[#2A3446] px-3 py-3 text-left active:scale-[0.98] transition-transform">
             <span className="block text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400">🎟 이 상권의 동네딜</span>
             <span className="mt-0.5 block truncate text-[13px] font-bold text-gray-900 dark:text-white">{doneBridge.name} 보러가기 →</span>
@@ -252,7 +252,7 @@ export default function DistrictCouponPage() {
                     {s.address && <span className="ml-1.5 inline-flex items-center gap-0.5 text-[11px] text-gray-400 dark:text-gray-500"><MapPin className="h-3 w-3" />{s.address}</span>}
                     {/* 🔗 전환 다리(게이트 ON 시에만 서버가 동봉): 이 매장의 유어딜 동네딜 병기 */}
                     {!!s.deal_product_id && (
-                      <button type="button" onClick={() => navigate(`/group-buy/${s.deal_product_id}`)}
+                      <button type="button" onClick={() => navigate(`/pass/${s.deal_product_id}`)}
                         className="ml-1.5 inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-[10.5px] font-bold text-emerald-700 dark:text-emerald-400 active:opacity-70">
                         동네딜 {s.deal_count && s.deal_count > 1 ? `${s.deal_count}개` : ''} →
                       </button>

@@ -41,7 +41,7 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
   const timeLeft = formatTimeLeft(p.group_buy_deadline)
   return (
     <button
-      onClick={() => navigate(`/group-buy/${p.id}`)}
+      onClick={() => navigate(`/pass/${p.id}`)}
       onMouseEnter={() => prefetch(p.id)}
       onTouchStart={() => prefetch(p.id)}
       onFocus={() => prefetch(p.id)}

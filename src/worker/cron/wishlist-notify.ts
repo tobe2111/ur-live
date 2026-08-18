@@ -47,7 +47,7 @@ async function ensureTables(DB: D1Database) {
 }
 
 function productLink(productId: number, category: string | null): string {
-  return isVoucherCategory(category) ? `/group-buy/${productId}` : `/products/${productId}`
+  return isVoucherCategory(category) ? `/pass/${productId}` : `/products/${productId}`
 }
 
 /**

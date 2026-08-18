@@ -127,6 +127,111 @@ export async function stampConsumerMall(
 }
 
 /**
+ * 🧾 **주문 목록에 "어느 가게에서 산 것인가" 를 찍는다** — 2026-08-12 (대표 *"완전 별개, 분리"*)
+ *
+ * 왜 서버가 해야 하는가: 결제 화면까지는 **세션 흔적**(`shared/mall/origin.ts`)으로 가게를 알 수 있지만,
+ * 주문 내역은 **지난 주문**이라 흔적이 없다("이번 세션에 몰을 지나갔다"와 "이 주문이 몰 주문이다"는
+ * 다른 명제다). 그래서 여기서만은 **서버 데이터**(`products.mall_id`)가 답이다.
+ *
+ * 🔴 fail-closed 3중은 `pickConsumerMall` 과 동일 — `consumer_path=1` · `active=1` 인 몰만.
+ *   도매몰(유통스타트·메디스타트)이 소비자 주문 내역에 가게로 뜨면 서비스 분리가 깨진다.
+ *
+ * 성능: 주문 N 개에 **쿼리 1회**(IN + GROUP BY). 본진 전용 주문만 있으면 결과 0행이라 표시도 없다.
+ * 실패·컬럼 미적용은 조용히 no-op — **주문 목록이 안 뜨는 것보다 가게 이름이 없는 편이 낫다.**
+ */
+export interface OrderMall { slug: string; name: string }
+
+/**
+ * 주문 id 묶음 → 가게. **한 주문에 두 가게 상품이 섞였을 때의 승자를 명시로 정한다.**
+ *
+ * ⚠️ 처음 구현은 `GROUP BY oi.order_id` 에 몰 컬럼을 그냥 얹었다 — SQLite 는 그때 **임의의 행**을
+ *   고르므로 같은 주문이 새로고침마다 다른 가게로 보일 수 있었다(2026-08-12 자체 점검에서 발견).
+ *   화면에 "어느 가게에서 샀는지"를 말해 놓고 그 답이 흔들리면 안 믿을 이유가 된다.
+ * ⇒ **품목 수가 많은 가게**가 이긴다(동수면 몰 id 가 작은 쪽 — 먼저 열린 가게). 판정을 JS 에서
+ *   하므로 SQL 방언(윈도 함수 지원 여부)에 의존하지 않는다.
+ */
+export interface OrderMallRow { oid: number; mid: number; slug: string; name: string; n: number }
+
+/**
+ * 승자 결정 — **순수함수**라 DB 없이 테스트된다(이 레포의 `auditMallSlugs` 와 같은 방침).
+ * 규칙: 품목 수 많은 가게 → 동수면 몰 id 작은 쪽. 슬러그·이름이 비면 후보에서 제외한다.
+ */
+export function pickOrderMall(rows: OrderMallRow[] | null | undefined): Map<number, OrderMall> {
+  const best = new Map<number, { mid: number; n: number; row: OrderMall }>()
+  for (const r of rows ?? []) {
+    const oid = Number(r?.oid)
+    const slug = String(r?.slug ?? '').trim()
+    const name = String(r?.name ?? '').trim()
+    if (!Number.isFinite(oid) || oid <= 0 || !slug || !name) continue
+    const cand = { mid: Number(r.mid) || 0, n: Number(r.n) || 0, row: { slug, name } }
+    const cur = best.get(oid)
+    if (!cur || cand.n > cur.n || (cand.n === cur.n && cand.mid < cur.mid)) best.set(oid, cand)
+  }
+  return new Map([...best].map(([oid, v]) => [oid, v.row]))
+}
+
+async function mallByOrderId(DB: D1Database, ids: number[]): Promise<Map<number, OrderMall>> {
+  const ph = ids.map(() => '?').join(',')
+  const { results } = await DB.prepare(
+    `SELECT oi.order_id AS oid, m.id AS mid, m.slug AS slug,
+            COALESCE(NULLIF(TRIM(m.brand_name), ''), m.name) AS name,
+            COUNT(*) AS n
+       FROM order_items oi
+       JOIN products p ON p.id = oi.product_id
+       JOIN wholesale_malls m ON m.id = p.mall_id
+      WHERE oi.order_id IN (${ph})
+        AND COALESCE(m.consumer_path, 0) = 1 AND COALESCE(m.active, 1) = 1
+      GROUP BY oi.order_id, m.id`,
+  ).bind(...ids).all<OrderMallRow>()
+  return pickOrderMall(results)
+}
+
+export async function stampOrdersMall(
+  DB: D1Database | undefined,
+  orders: Array<Record<string, unknown>> | null | undefined,
+): Promise<void> {
+  if (!DB || !Array.isArray(orders) || orders.length === 0) return
+  const ids = orders.map((o) => Number(o?.id)).filter((n) => Number.isFinite(n) && n > 0)
+  if (ids.length === 0) return
+  try {
+    const byOrder = await mallByOrderId(DB, ids)
+    if (byOrder.size === 0) return
+    for (const o of orders) {
+      const hit = byOrder.get(Number(o?.id))
+      if (hit) { o.mall_slug = hit.slug; o.mall_name = hit.name }
+    }
+  } catch { /* 컬럼/테이블 미적용 — 가게 표시 없이 정상 동작 */ }
+}
+
+/**
+ * 🧾 **주문번호 → 그 주문의 가게** (2026-08-12) — 결제 완료 화면이 세션 흔적 대신 쓸 **서버 신호**.
+ *
+ * 세션 흔적(`shared/mall/origin.ts`)은 "이번 세션에 몰을 지나갔다" 만 안다. 새 탭·복귀·오래된 세션엔
+ * 흔적이 없고, 반대로 **몰을 구경만 하고 본진 상품을 산 손님에게도 흔적이 남는다.**
+ * 이 함수는 **그 주문 자체**를 보므로 양방향 모두 정확하다 — 몰 주문이면 가게를, 아니면 `null` 을 준다.
+ *
+ * 🔴 **소유자 확인은 호출부의 몫이 아니라 여기 조건**이다(`orders.user_id`) — 주문번호만 알면 남의
+ *   주문이 어느 가게 것인지 알 수 있게 두지 않는다.
+ * 🔴 fail-closed 는 위와 동일(`consumer_path=1` · `active=1`) — 도매몰은 소비자 화면에 안 뜬다.
+ */
+export async function mallForOrderNumber(
+  DB: D1Database | undefined,
+  orderNumber: string,
+  userId: number,
+): Promise<OrderMall | null> {
+  if (!DB || !orderNumber || !Number.isFinite(userId) || userId <= 0) return null
+  try {
+    const row = await DB.prepare('SELECT id FROM orders WHERE order_number = ? AND user_id = ? LIMIT 1')
+      .bind(orderNumber, userId).first<{ id: number }>()
+    const oid = Number(row?.id)
+    if (!oid) return null
+    return (await mallByOrderId(DB, [oid])).get(oid) ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
  * 몰 **id → 슬러그** (2026-08-11). 소비자 상품 상세가 "이 상품은 어느 가게 것인가"를 알아야
  * 몰 손님을 그 가게로 돌려보낼 수 있다(`/products/:id` → `/{슬러그}/p/:id`).
  *

@@ -56,7 +56,7 @@ export default function RecentlyViewedStrip() {
         {items.slice(0, 8).map(item => (
           <button
             key={item.id}
-            onClick={() => navigate(`/group-buy/${item.id}`)}
+            onClick={() => navigate(`/pass/${item.id}`)}
             className="snap-start shrink-0 w-[120px] text-left"
             aria-label={`${item.name} 다시 보기`}
           >

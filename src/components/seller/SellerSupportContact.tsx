@@ -40,7 +40,9 @@ export default function SellerSupportContact() {
 
   useEffect(() => {
     let alive = true
-    api.get('/api/seller/support-contact')
+    // 🔴 2026-08-12: 경로가 `/api/seller/support-contact` 였는데 라우터 마운트는 `/api/seller/gb` 다
+    //   (실측). 404 를 아래 `.catch` 가 삼켜 **문의처가 한 번도 뜬 적이 없었다** — 조용한 부재.
+    api.get('/api/seller/gb/support-contact')
       .then((r) => { if (alive) setContact((r.data?.contact as string) || null) })
       .catch(() => { /* 조회 실패 = 미노출. 문의 안내 때문에 대시보드가 시끄러워지지 않게 */ })
     return () => { alive = false }
