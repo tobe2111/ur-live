@@ -32,6 +32,8 @@ export interface LaneRunEntry {
   ok: boolean
   /** 저장 건수(레인마다 이름이 달라 아래에서 흡수). 모르면 `null`. */
   n: number | null
+  /** 조회 건수. `n/f` 가 **신규율**이고, 그게 "이 소스가 아직 줄 게 남았나"의 유일한 신호다. */
+  f?: number | null
   /** 실패 사유 앞머리. 성공이면 생략. */
   e?: string
 }
@@ -41,6 +43,7 @@ export const LANE_RUN_HISTORY_MAX = 12
 
 /** 레인마다 저장 건수 필드 이름이 다르다. 하나로 못 정하니 **읽는 쪽에서** 흡수한다. */
 const SAVED_KEYS = ['saved', 'last_saved', 'n', 'count'] as const
+const FOUND_KEYS = ['found', 'last_found'] as const
 
 /**
  * 회차 하나를 요약한다.
@@ -61,10 +64,16 @@ export function summarizeLaneRun(stats: unknown, error: string | undefined, at: 
   const diag = (s?.diag && typeof s.diag === 'object' ? s.diag : null) as Record<string, unknown> | null
   const softErr = typeof diag?.error === 'string' ? diag.error : undefined
   const e = error || softErr
+  let f: number | null = null
+  for (const k of FOUND_KEYS) {
+    const v = s?.[k]
+    if (typeof v === 'number' && Number.isFinite(v)) { f = v; break }
+  }
   return {
     t: new Date(at).toISOString().slice(0, 16),
     ok: !e,
     n,
+    ...(f == null ? {} : { f }),
     ...(e ? { e: e.slice(0, 60) } : {}),
   }
 }

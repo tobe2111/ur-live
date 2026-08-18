@@ -17,6 +17,8 @@ import { dueByElapsed } from './lane-alarm-policy'
 import { buildCronBeatRow } from '@/worker/utils/cron-heartbeat'
 import { staleGapMinutes } from './lane-cadence'
 import { summarizeLaneRun, appendRunHistory, serializeRunHistory, serializeLaneStamp, LANE_RUNS_KEY } from './lane-run-history'
+import type { LaneRunEntry } from './lane-run-history'
+import { adaptiveIntervalHours } from './lane-adaptive-interval'
 
 interface AlarmEnv {
   ADS_LANE_ALARM_INTERVAL_MS?: string
@@ -70,7 +72,10 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     // ⏳ 최소 간격은 **경과 시간**으로 본다(시각의 짝수성이 아니라) — 유실된 회차를 다음 시간이
     //   이어받게 하는 것이 요점이다. 근거·실측은 `dueByElapsed` docblock.
     const lastRunAt = (await this.ctx.storage.get<number>('lastRunAt')) ?? null
-    const due = dueByElapsed(lastRunAt, t0, lane.minIntervalHours ?? 0)
+    // 🔁 주기는 고정이 아니라 **최근 성적으로 조율**한다 — 잘 돌고 신규율이 높으면 조이고, 삐끗하면
+    //   기본으로 되돌아간다. 왜 상수를 그냥 올리지 않는지(공공 API 일일 한도 미상)는 모듈 docblock.
+    const prevHistory = appendRunHistory(await this.ctx.storage.get<unknown>('runHistory'), null) as LaneRunEntry[]
+    const due = dueByElapsed(lastRunAt, t0, adaptiveIntervalHours(lane.minIntervalHours ?? 0, prevHistory))
 
     let stats: unknown = null
     let error: string | undefined
@@ -86,15 +91,18 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
 
     const ran = runs < cap ? runs + 1 : runs
     const nextFail = error ? failStreak + 1 : 0
+    // 🎞️ 회차 이력 — 마지막 1건만 남기면 "안 돌았나 / 돌았는데 실패했나"를 못 가른다(근거는 모듈 docblock).
+    //   skip 회차는 `summarizeLaneRun` 이 null 을 줘서 이력을 밀어내지 않는다.
+    const entry = summarizeLaneRun(stats, error, t0)
+    const runHistory = appendRunHistory(prevHistory, entry)
     // 🅿️ 상태를 먼저 저장한다 — 알람 예약 전에 죽어도 다음 부트스트랩이 이어받는다.
     //   ⚠️ `lastRunAt` 은 **실제로 돈 회차만** 기록한다 — skip 에도 찍으면 간격이 영원히 안 차서
     //     그 레인이 통째로 멎는다(간격 게이트를 스스로 잠그는 꼴).
-    const put: Record<string, unknown> = { bucket, runs: ran, failStreak: nextFail }
-    if (runs < cap && due) put.lastRunAt = t0
-    // 🎞️ 회차 이력 — 마지막 1건만 남기면 "안 돌았나 / 돌았는데 실패했나"를 못 가른다(근거는 모듈 docblock).
-    //   skip 회차는 `summarizeLaneRun` 이 null 을 줘서 이력을 밀어내지 않는다.
-    const runHistory = appendRunHistory(await this.ctx.storage.get<unknown>('runHistory'), summarizeLaneRun(stats, error, t0))
-    put.runHistory = runHistory
+    // 🕳️ **실패한 회차도 자리를 안 먹는다** — 스탬프를 찍으면 다음 간격까지 그 슬롯이 통째로 버려진다.
+    //   실측(2026-08-18): 00:00 회차가 외부 API 네트워크 오류로 0건 → 01:00 유휴 → 02:00 에야 982건.
+    //   안 찍으면 다음 시간이 곧바로 재시도한다(시간당 1회 상한 `cap` 이 폭주를 막는다).
+    const put: Record<string, unknown> = { bucket, runs: ran, failStreak: nextFail, runHistory }
+    if (runs < cap && due && (!entry || entry.ok)) put.lastRunAt = t0
     await this.ctx.storage.put(put).catch(() => undefined)
 
     const at = nextWakeAt(Date.now(), interval, ran, cap, nextFail)

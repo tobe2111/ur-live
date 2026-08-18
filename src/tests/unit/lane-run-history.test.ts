@@ -4,6 +4,7 @@ import {
   summarizeLaneRun, appendRunHistory, serializeRunHistory, serializeLaneStamp,
   LANE_RUN_HISTORY_MAX, LANE_RUNS_KEY,
 } from '@/worker-ads/lane-run-history'
+import type { LaneRunEntry } from '@/worker-ads/lane-run-history'
 
 /**
  * 🎞️ **회차 이력 + 스탬프 안전 직렬화**
@@ -43,9 +44,9 @@ describe('summarizeLaneRun — 무엇을 회차로 세는가', () => {
 })
 
 describe('appendRunHistory', () => {
-  const mk = (t: string) => ({ t, ok: true, n: 1 })
+  const mk = (t: string): LaneRunEntry => ({ t, ok: true, n: 1 })
   it('최신이 앞이고 상한을 넘으면 오래된 것부터 버린다', () => {
-    let h = [] as ReturnType<typeof mk>[]
+    let h: LaneRunEntry[] = []
     for (let i = 0; i < LANE_RUN_HISTORY_MAX + 5; i++) h = appendRunHistory(h, mk(`t${i}`))
     expect(h).toHaveLength(LANE_RUN_HISTORY_MAX)
     expect(h[0].t).toBe(`t${LANE_RUN_HISTORY_MAX + 4}`)
@@ -90,7 +91,7 @@ describe('🔌 DO 배선 — 계측이 실제로 기록되는 자리', () => {
   const src = readFileSync('src/worker-ads/lane-alarm.ts', 'utf8')
   it('회차 이력을 DO 저장소와 D1 양쪽에 남긴다', () => {
     expect(src).toContain('summarizeLaneRun(stats, error, t0)')
-    expect(src).toContain('put.runHistory = runHistory')
+    expect(src).toContain('failStreak: nextFail, runHistory }')
     expect(src).toMatch(new RegExp(`\\$\\{${'LANE_RUNS_KEY'}\\}`))
   })
   it('스탬프에 생 slice 가 돌아오지 않는다(그게 파싱 불가의 원인이었다)', () => {
