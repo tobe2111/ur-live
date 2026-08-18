@@ -16,6 +16,7 @@ import { lookupAlarmLane } from './lane-alarm-runners'
 import { dueByElapsed } from './lane-alarm-policy'
 import { buildCronBeatRow } from '@/worker/utils/cron-heartbeat'
 import { staleGapMinutes } from './lane-cadence'
+import { summarizeLaneRun, appendRunHistory, serializeRunHistory, serializeLaneStamp, LANE_RUNS_KEY } from './lane-run-history'
 
 interface AlarmEnv {
   ADS_LANE_ALARM_INTERVAL_MS?: string
@@ -90,6 +91,10 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     //     그 레인이 통째로 멎는다(간격 게이트를 스스로 잠그는 꼴).
     const put: Record<string, unknown> = { bucket, runs: ran, failStreak: nextFail }
     if (runs < cap && due) put.lastRunAt = t0
+    // 🎞️ 회차 이력 — 마지막 1건만 남기면 "안 돌았나 / 돌았는데 실패했나"를 못 가른다(근거는 모듈 docblock).
+    //   skip 회차는 `summarizeLaneRun` 이 null 을 줘서 이력을 밀어내지 않는다.
+    const runHistory = appendRunHistory(await this.ctx.storage.get<unknown>('runHistory'), summarizeLaneRun(stats, error, t0))
+    put.runHistory = runHistory
     await this.ctx.storage.put(put).catch(() => undefined)
 
     const at = nextWakeAt(Date.now(), interval, ran, cap, nextFail)
@@ -111,13 +116,16 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
         const hb = buildCronBeatRow(`ads:${this.lane}`, !error, Date.now() - t0, undefined, stats,
           staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))))
         await DB.batch([
-          put.bind(`${LANE_ALARM_STAMP_KEY}:${this.lane}`, JSON.stringify({
+          // ⚠️ 자르지 않는다 — `.slice(0, 2000)` 은 라이브에서 실제로 JSON 을 중간에서 끊어
+          //   두 레인의 스탬프를 파싱 불가로 만들었다(`serializeLaneStamp` docblock 의 실측).
+          put.bind(`${LANE_ALARM_STAMP_KEY}:${this.lane}`, serializeLaneStamp({
             at: new Date().toISOString(), lane: this.lane, ms: Date.now() - t0, runs_this_hour: ran, cap,
             interval_ms: interval, next_at: new Date(at).toISOString(), fail_streak: nextFail,
             ...(error ? { error: error.slice(0, 200) } : {}),
-            stats: stats ? JSON.parse(JSON.stringify(stats)) : null,
-          }).slice(0, 2000)),
+          }, stats ? JSON.parse(JSON.stringify(stats)) : null)),
           put.bind(hb.key, hb.value),
+          // 🎞️ 같은 batch = 서브리퀘스트 1개 그대로(낱개로 쓰면 가장 빠듯한 지점에 하나를 더 얹는다).
+          put.bind(`${LANE_RUNS_KEY}:${this.lane}`, serializeRunHistory(runHistory)),
         ])
       }
     } catch { /* 관측 실패가 체인을 끊지 않는다 */ }
