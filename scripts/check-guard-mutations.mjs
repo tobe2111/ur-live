@@ -233,7 +233,9 @@ const MUTATIONS = [
   {
     name: 'skip 회차에도 lastRunAt 을 찍는다(간격이 영원히 안 차 레인이 멎는다)',
     file: 'src/worker-ads/lane-alarm.ts',
-    find: '    if (runs < cap && due) put.lastRunAt = t0',
+    // 🔄 2026-08-18: 조건에 `(!entry || entry.ok)` 가 붙어 앵커를 갱신했다(실패 회차도 슬롯을 안 먹는다).
+    //   이 주입이 지키는 것은 그대로 **"skip 은 안 찍는다"** 이므로 `due` 를 지우는 형태를 유지한다.
+    find: '    if (runs < cap && due && (!entry || entry.ok)) put.lastRunAt = t0',
     replace: '    put.lastRunAt = t0',
     test: 'src/tests/unit/lane-min-interval.test.ts',
     why:
@@ -272,6 +274,109 @@ const MUTATIONS = [
       '`retired_at` 이 NULL 이면 쿨다운 조건이 항상 참이라 **갓 은퇴한 키워드가 다음 회차에 바로 재승격**된다. ' +
       '`hits DESC` 정렬이 옛 활성 키워드를 대기 큐 앞에 세우므로, 그 키워드는 8회 시험을 무한 반복하며 ' +
       '슬롯을 태운다 — 대기 11,720개가 밖에 있는 채로.',
+  },
+  {
+    name: '🔁 주기 자가조율을 고정 상수로 되돌린다(잘 돌아도 확대가 없다)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'adaptiveIntervalHours(lane.minIntervalHours ?? 0, prevHistory)',
+    replace: 'lane.minIntervalHours ?? 0',
+    test: 'src/tests/unit/lane-adaptive-interval.test.ts',
+    why:
+      'B2B 수집은 회차당 수확(~990)이 CPU 가드에 막혀 못 올리고, 남은 손잡이는 주기뿐이다. ' +
+      '고정 상수로 되돌리면 소스가 98% 신규를 주고 있어도 하루 12회에 영원히 갇힌다.',
+  },
+  {
+    name: '실패한 회차가 슬롯을 먹는다(다음 간격까지 통째로 버려진다)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'if (runs < cap && due && (!entry || entry.ok)) put.lastRunAt = t0',
+    replace: 'if (runs < cap && due) put.lastRunAt = t0',
+    test: 'src/tests/unit/lane-adaptive-interval.test.ts',
+    why:
+      '2026-08-18 00:00 회차가 외부 API 네트워크 오류로 0건이었는데 스탬프가 찍혀 01:00 이 통째로 ' +
+      '유휴가 됐고 02:00 에야 982건을 받았다. 실패한 회차에 자리를 내주면 그 슬롯(≈1,000건)은 영영 못 찾는다.',
+  },
+  {
+    name: '조인 간격을 ceil 대신 floor 로 계산한다(외부 호출이 3배까지 튄다)',
+    file: 'src/worker-ads/lane-adaptive-interval.ts',
+    find: 'Math.max(MIN_INTERVAL_HOURS, Math.ceil(base / 2))',
+    replace: 'Math.max(MIN_INTERVAL_HOURS, Math.floor(base / 2))',
+    test: 'src/tests/unit/lane-adaptive-interval.test.ts',
+    why:
+      'base 3 이 floor 로 1 이 되면 하루 8회 → 24회로 **3배**다. 공공 API 일일 한도를 모르는 상태에서 ' +
+      '두 배는 감수하기로 한 위험이고 세 배는 아니다. 지금 모든 레인이 base 2 라 겉으론 같아 보이는 것이 함정이다.',
+  },
+  {
+    name: '신규율 게이트를 뺀다(마른 소스를 두 배로 두드린다)',
+    file: 'src/worker-ads/lane-adaptive-interval.ts',
+    find: '  if (nov == null || nov < TIGHTEN_MIN_NOVELTY) return base',
+    replace: '  if (false) return base',
+    test: 'src/tests/unit/lane-adaptive-interval.test.ts',
+    why:
+      '소진된 레인(storeinfo 실측: found 50 · saved 0)은 오류가 없어 무사고로 보인다. 신규율 게이트가 ' +
+      '없으면 그런 레인까지 조여져 **중복만 두 배**로 긁는다 — 얻는 것 없이 외부 호출만 늘어난다.',
+  },
+  {
+    name: '🚰 대기 큐 배수를 뺀다(자리가 열려도 이번 회차 태그만 들어간다)',
+    file: 'src/features/marketing/api/influencer-keyword-promote.ts',
+    find: "      ORDER BY hits DESC LIMIT ?`)\n      .bind(AUTO_PROMOTE_HITS, Math.min(QUEUE_SCAN_MAX, left * QUEUE_OVERFETCH))",
+    replace: "      ORDER BY hits DESC LIMIT 0`)\n      .bind(AUTO_PROMOTE_HITS, Math.min(QUEUE_SCAN_MAX, left * QUEUE_OVERFETCH))",
+    test: 'src/tests/unit/ads-promote-queue-drain.test.ts',
+    why:
+      '이걸 빼면 승격 후보가 다시 `keyword IN (이번 회차 해시태그)` 로 묶인다 — 대기 11,720개는 ' +
+      '같은 태그가 우연히 재채굴될 때만 뽑히는 **큐 아닌 큐**로 돌아간다. 2026-08-18 실측에서 ' +
+      '39.8건/회차짜리 협찬·체험단 후보 34개가 그 상태로 놀고 있었다(기존 활성 평균 16.4).',
+  },
+  {
+    name: '빈 회차에 조기 반환한다(자리가 비어 있어도 큐를 안 본다)',
+    file: 'src/features/marketing/api/influencer-keyword-promote.ts',
+    find: '  if (topTags.length) await DB.batch(topTags.map',
+    replace: '  if (!topTags.length) return { promoted }\n  if (topTags.length) await DB.batch(topTags.map',
+    test: 'src/tests/unit/ads-promote-queue-drain.test.ts',
+    why:
+      '대기 큐 배수는 **이번 회차가 무엇을 채굴했는지와 무관해야** 한다. 조기 반환이 있으면 ' +
+      '태그를 못 캔 회차엔 자리가 남아도 아무도 안 들어간다 — 그게 "큐"가 아니게 되는 지점이다.',
+  },
+  {
+    name: '🎞️ 회차 이력을 안 남긴다(유실↔실패를 다시 못 가른다)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: "          put.bind(`${LANE_RUNS_KEY}:${this.lane}`, serializeRunHistory(runHistory)),",
+    replace: '',
+    test: 'src/tests/unit/lane-run-history.test.ts',
+    why:
+      '2026-08-17 에 매장/업체 수집의 빈 칸을 "알람 유실"로 단정했다가, 다음 날 실측에서 ' +
+      '**레인은 돌았고 외부 API 가 네트워크 오류**였음이 드러났다. 마지막 1건만 남기면 나머지 칸이 ' +
+      '유실인지 실패인지 구조적으로 알 수 없다 — 이 줄이 그 구분을 만든다.',
+  },
+  {
+    name: 'skip 회차도 이력에 쌓는다(12칸이 skip 으로 차서 돈 회차가 밀려난다)',
+    file: 'src/worker-ads/lane-run-history.ts',
+    find: "  if (!error && s && typeof s.skipped === 'string') return null",
+    replace: '  // skip 도 남긴다',
+    test: 'src/tests/unit/lane-run-history.test.ts',
+    why:
+      '간격 게이트에 걸린 회차는 매시간 발생한다. 그것까지 남기면 12칸이 skip 으로 가득 차서 ' +
+      '정작 보려던 "실제로 돈 회차"가 밀려난다 — 이력이 스스로를 지운다.',
+  },
+  {
+    name: 'diag.error 만 있는 실패를 성공으로 센다(조용한 0건이 정상으로 보인다)',
+    file: 'src/worker-ads/lane-run-history.ts',
+    find: '  const e = error || softErr',
+    replace: '  const e = error',
+    test: 'src/tests/unit/lane-run-history.test.ts',
+    why:
+      '라이브 실측의 실패는 예외가 아니었다 — 34.9초 정상 종료 + found 0 + `diag.error` 였다. ' +
+      '예외만 실패로 세면 그 회차는 "성공인데 0건"으로 남아, 다시 원인을 못 찾는다.',
+  },
+  {
+    name: '스탬프를 다시 잘라 쓴다(라이브에서 JSON 이 실제로 깨졌던 그 코드)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: '          }, stats ? JSON.parse(JSON.stringify(stats)) : null)),',
+    replace: '            stats: stats ? JSON.parse(JSON.stringify(stats)) : null,\n          }).slice(0, 2000)),',
+    test: 'src/tests/unit/lane-run-history.test.ts',
+    why:
+      '2026-08-18 실측: `collect`·`scan-notices` 스탬프가 **정확히 2000자**로 잘려 파싱 불가였다. ' +
+      '`collect` 는 인플루언서 발굴 본체라 그 값을 읽는 쪽이 전부 조용히 실패하고 있었다. ' +
+      '자르는 대신 가장 큰 조각(stats)을 통째로 빼야 한다.',
   },
   {
     name: '🩸 변화율이 기록값 대신 classifyLead 날것을 본다(라이브에서 실제로 난 오계상)',

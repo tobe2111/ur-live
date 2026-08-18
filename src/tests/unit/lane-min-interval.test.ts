@@ -75,11 +75,19 @@ describe('🔌 배선 — 짝수시 게이트가 사라지고 간격 선언으�
   })
 
   it('DO 가 실제로 그 게이트를 건다', () => {
-    expect(alarm).toMatch(/dueByElapsed\(lastRunAt, t0, lane\.minIntervalHours \?\? 0\)/)
+    // 🔄 2026-08-18: 간격이 **고정 상수에서 자가조율 값**으로 바뀌었다(`lane-adaptive-interval`).
+    //   지키려던 것은 *상수 그 자체*가 아니라 **"DO 가 경과시간 게이트를 건다"** 이므로, 앵커를
+    //   그 사실로 다시 쓴다(러너 안의 시각 게이트로 되돌아가면 여전히 빨간불이다).
+    expect(alarm).toMatch(/dueByElapsed\(lastRunAt, t0, /)
+    expect(alarm).toMatch(/lane\.minIntervalHours \?\? 0/)
     expect(alarm).toMatch(/if \(runs < cap && due\)/)
   })
 
   it('🔴 lastRunAt 은 실제로 돈 회차만 기록한다 — skip 에도 찍으면 간격이 영원히 안 찬다', () => {
-    expect(alarm).toMatch(/if \(runs < cap && due\) put\.lastRunAt = t0/)
+    // 조건은 `due` 를 반드시 포함해야 한다(그게 skip 을 배제한다). 2026-08-18 에 **실패한 회차**도
+    //   빼도록 조건이 늘었지만(`entry.ok`), 이 불변식이 지키는 것은 여전히 "skip 은 안 찍는다" 다.
+    const line = alarm.split('\n').find(l => l.includes('put.lastRunAt = t0'))!
+    expect(line).toMatch(/if \(runs < cap && due/)
+    expect(line).toContain('put.lastRunAt = t0')
   })
 })
