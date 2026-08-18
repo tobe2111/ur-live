@@ -58,10 +58,12 @@ describe('adaptiveIntervalHours — 조이기는 어렵게, 풀기는 쉽게', (
     expect(adaptiveIntervalHours(2, h)).toBe(2)
   })
 
-  it('🔒 신규율이 낮으면(소스가 마르는 중) 조이지 않는다 — 중복만 는다', () => {
-    const dry = { t: 'x', ok: true, n: 1, f: 50 } as LaneRunEntry // storeinfo 실측 형상(found 50 · saved 0~1)
-    expect(recentNovelty(many(TIGHTEN_CLEAN_RUNS, dry))!).toBeLessThan(TIGHTEN_MIN_NOVELTY)
-    expect(adaptiveIntervalHours(2, many(TIGHTEN_CLEAN_RUNS, dry))).toBe(2)
+  it('🔒 신규율이 낮으면(중복이 많아지는 중) 조이지 않는다', () => {
+    // ⚠️ 절대량은 있는데 신규율만 낮은 형상이어야 한다 — 절대량까지 0 이면 그건 **마름**이고
+    //   아래 별도 절이 담당한다(주기를 늘린다). 두 상태를 한 픽스처로 재면 무엇을 검사하는지 흐려진다.
+    const stale = { t: 'x', ok: true, n: 5, f: 500 } as LaneRunEntry
+    expect(recentNovelty(many(TIGHTEN_CLEAN_RUNS, stale))!).toBeLessThan(TIGHTEN_MIN_NOVELTY)
+    expect(adaptiveIntervalHours(2, many(TIGHTEN_CLEAN_RUNS, stale))).toBe(2)
   })
 
   it('🔒 하한 아래로는 절대 안 간다', () => {
@@ -118,5 +120,35 @@ describe('🛑 실패 재시도 상한 — 영구 장애를 영원히 두드리�
     const { RETRY_MAX_FAIL_STREAK } = await import('@/worker-ads/lane-adaptive-interval')
     expect(RETRY_MAX_FAIL_STREAK).toBeGreaterThanOrEqual(2)
     expect(RETRY_MAX_FAIL_STREAK).toBeLessThanOrEqual(6)
+  })
+})
+
+describe('🌵 마른 레인은 늦춘다 — 조이기와 대칭', () => {
+  const dry = (): LaneRunEntry => ({ t: '2026-08-18T00:00', ok: true, n: 0, f: 50 })
+  it('🩸 라이브 형상(storeinfo: found 50 · saved 0)이 반복되면 주기를 늘린다', async () => {
+    const { isBarren, BARREN_INTERVAL_MULT, BARREN_RUNS } = await import('@/worker-ads/lane-adaptive-interval')
+    expect(isBarren(many(BARREN_RUNS, dry()))).toBe(true)
+    expect(adaptiveIntervalHours(2, many(BARREN_RUNS, dry()))).toBe(2 * BARREN_INTERVAL_MULT)
+  })
+  it('🔒 한 번이라도 제대로 수확하면 마른 게 아니다 — 늦추지 않는다', async () => {
+    const { isBarren, BARREN_RUNS } = await import('@/worker-ads/lane-adaptive-interval')
+    const h = [ok(982, 1000), ...many(BARREN_RUNS, dry())]
+    expect(isBarren(h)).toBe(false)
+    // 늦추지 않는다는 것이 요점이다(최근 창에 큰 수확이 남아 있으면 오히려 조여질 수 있다).
+    expect(adaptiveIntervalHours(2, h)).toBeLessThanOrEqual(2)
+  })
+  it('🔒 실패(고장)를 마름으로 세지 않는다 — 처방이 정반대다', async () => {
+    const { isBarren, BARREN_RUNS } = await import('@/worker-ads/lane-adaptive-interval')
+    expect(isBarren(many(BARREN_RUNS, bad()))).toBe(false)
+    expect(adaptiveIntervalHours(2, many(BARREN_RUNS, bad()))).toBe(2)
+  })
+  it('🔒 근거가 얇으면 안 늦춘다', async () => {
+    const { BARREN_RUNS } = await import('@/worker-ads/lane-adaptive-interval')
+    expect(adaptiveIntervalHours(2, many(BARREN_RUNS - 1, dry()))).toBe(2)
+  })
+  it('🔒 마른 레인을 끄지는 않는다 — 소스에 새 항목이 들어오면 스스로 돌아와야 한다', async () => {
+    const { BARREN_INTERVAL_MULT } = await import('@/worker-ads/lane-adaptive-interval')
+    expect(BARREN_INTERVAL_MULT).toBeGreaterThan(1)
+    expect(Number.isFinite(adaptiveIntervalHours(2, many(20, dry())))).toBe(true)
   })
 })

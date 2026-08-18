@@ -170,3 +170,50 @@ describe('🔕 경보 반복 억제 — 무시당한 감시는 없는 것과 같
     expect(src).toMatch(/delete alerts\[axis\.key\][\s\S]{0,120}회복/)
   })
 })
+
+describe('🎯 발송 가능 리드 — 대표가 정한 유일한 지표', () => {
+  it('🩸 수집일별로 세면 안 된다 — 이메일은 나중에 채워져 최근이 늘 낮아 보인다', async () => {
+    const { totalsToDaily } = await import('@/features/marketing/api/inflow-watchdog')
+    // 누계 스냅샷의 증분으로 재면 보강 지연과 무관하다.
+    const all = { '2026-08-15': { influencer: 100, company: 10 }, '2026-08-16': { influencer: 140, company: 12 }, '2026-08-17': { influencer: 150, company: 12 } }
+    expect(totalsToDaily(all, 'influencer')).toEqual([{ d: '2026-08-16', n: 40 }, { d: '2026-08-17', n: 10 }])
+  })
+
+  it('🔒 반송 억제로 누계가 줄어도 하락으로 세지 않는다(청소할 때마다 경보가 뜨면 안 된다)', async () => {
+    const { totalsToDaily } = await import('@/features/marketing/api/inflow-watchdog')
+    const all = { '2026-08-16': { influencer: 200, company: 5 }, '2026-08-17': { influencer: 150, company: 5 } }
+    expect(totalsToDaily(all, 'influencer')[0].n).toBe(0)
+  })
+
+  it('🔒 어제 값이 없으면 증분을 지어내지 않는다', async () => {
+    const { totalsToDaily } = await import('@/features/marketing/api/inflow-watchdog')
+    expect(totalsToDaily({ '2026-08-17': { influencer: 9, company: 9 } }, 'influencer')).toEqual([])
+  })
+
+  it('오래된 날짜는 버린다 — 이 칸이 무한히 자라면 안 된다', async () => {
+    const { pruneTotals, TOTALS_KEEP_DAYS } = await import('@/features/marketing/api/inflow-watchdog')
+    const all: Record<string, { influencer: number; company: number }> = {}
+    for (let i = 0; i < TOTALS_KEEP_DAYS + 10; i++) all[`2026-07-${String(i + 1).padStart(2, '0')}`] = { influencer: i, company: i }
+    expect(Object.keys(pruneTotals(all))).toHaveLength(TOTALS_KEEP_DAYS)
+  })
+
+  it('🔒 누계를 못 재면 기록하지 않는다 — 0 으로 적으면 다음 날 증분이 거짓 급등이 된다', async () => {
+    const { readSendableTotals } = await import('@/features/marketing/api/inflow-watchdog')
+    const failDB = { prepare: () => ({ first: async () => null }) } as unknown as D1Database
+    expect(await readSendableTotals(failDB)).toBeNull()
+  })
+
+  it('깨진 저장값에도 죽지 않는다', async () => {
+    const { parseTotals } = await import('@/features/marketing/api/inflow-watchdog')
+    expect(parseTotals('not json')).toEqual({})
+    expect(parseTotals('[1,2]')).toEqual({})
+    expect(parseTotals(null)).toEqual({})
+  })
+
+  it('🔌 배선 — 발송 가능 축이 경보 대상에 들어 있다', () => {
+    const src = readFileSync('src/features/marketing/api/inflow-watchdog.ts', 'utf8')
+    expect(src).toContain("key: 'sendable_influencer'")
+    expect(src).toContain("key: 'sendable_company'")
+    expect(src).toContain('judgeSendable(DB, today)')
+  })
+})

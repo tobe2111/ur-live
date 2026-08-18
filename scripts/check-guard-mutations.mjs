@@ -276,6 +276,99 @@ const MUTATIONS = [
       '슬롯을 태운다 — 대기 11,720개가 밖에 있는 채로.',
   },
   {
+    name: '🌱 신규 키워드 우선 자리를 뺀다(새 키워드가 72일을 기다린다)',
+    file: 'src/features/marketing/api/company-keyword-pick.ts',
+    find: '  const freshLimit = Math.max(0, Math.min(batchSize, FRESH_KEYWORD_SLOTS))',
+    replace: '  const freshLimit = 0',
+    test: 'src/tests/unit/company-fresh-keyword-slots.test.ts',
+    why:
+      '실측: 활성 4,555 중 **미실행 3,279** · 커서 시간당 1.9칸 → 끝까지 72일. tier 우선 정렬만으로는 ' +
+      '부족하다(새 키워드는 같은 tier 안에서 id 가 뒤라 맨 끝에 선다). 대표가 요청한 체험단 9개가 ' +
+      '전부 그 줄 끝에 `last_run_at IS NULL` 로 있었다.',
+  },
+  {
+    name: '우선 픽을 정렬(ORDER BY)로 구현한다(OFFSET 창에 건너뜀·중복)',
+    file: 'src/features/marketing/api/company-keyword-pick.ts',
+    find: "  const seen = new Set(kws.map(k => k.id))",
+    replace: '  const seen = new Set()',
+    test: 'src/tests/unit/company-fresh-keyword-slots.test.ts',
+    why:
+      '`last_run_at IS NULL` 을 ORDER BY 에 넣으면 키워드가 돌 때마다 순서가 바뀌어 OFFSET 창에 ' +
+      '건너뜀·중복이 생긴다(이 블록의 원래 주석이 경고하는 바로 그것). 그래서 **앞에 끼워 넣고** ' +
+      'id 중복만 제거한다 — dedup 이 빠지면 같은 키워드를 한 회차에 두 번 호출한다.',
+  },
+  {
+    name: '🌵 마른 레인 감속을 뺀다(0건에 CPU·서브리퀘스트를 계속 쓴다)',
+    file: 'src/worker-ads/lane-adaptive-interval.ts',
+    find: '  if (isBarren(history)) return base * BARREN_INTERVAL_MULT',
+    replace: '  if (false) return base * BARREN_INTERVAL_MULT',
+    test: 'src/tests/unit/lane-adaptive-interval.test.ts',
+    why:
+      '실측: storeinfo 가 1,700/일 → 0 으로 소진됐는데도 2시간마다 계속 돈다. 얻는 건 0인데 ' +
+      '희소 자원(서브리퀘스트·CPU)을 써서 **실제로 캐는 레인의 예산을 갉는다.**',
+  },
+  {
+    name: '실패를 마름으로 센다(장애 때 주기를 늘려 회복을 늦춘다)',
+    file: 'src/worker-ads/lane-adaptive-interval.ts',
+    find: '  const ran = history.filter(r => r && r.ok && typeof r.n === \'number\')',
+    replace: "  const ran = history.filter(r => r && typeof r.n === 'number')",
+    test: 'src/tests/unit/lane-adaptive-interval.test.ts',
+    why:
+      '실패(고장)와 소진은 처방이 정반대다 — 고장은 재시도, 소진은 감속. 섞으면 외부 API 가 잠깐 ' +
+      '죽었을 때 주기를 3배로 늘려 **복구를 스스로 늦춘다.**',
+  },
+  {
+    name: '🎯 발송 가능 축을 감시에서 뺀다(총량만 보면 지표가 안 보인다)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: "    axes.push({ key: 'sendable_influencer', label: '발송가능(인플루언서)', v: sendable.sendable_influencer || null })",
+    replace: '',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      'CLAUDE.md 가 못 박은 유일한 성공 지표는 "제안 보낼 수 있는 리드 수"다. 총량은 늘어도 ' +
+      '수율 낮은 축만 늘면 발송 가능 리드는 제자리다(실측: youtube 38.3% vs commerce 13.2%).',
+  },
+  {
+    name: '누계 감소를 하락으로 센다(반송 억제 청소 때마다 경보)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: '    out.push({ d: days[i], n: Math.max(0, cur - prev) })',
+    replace: '    out.push({ d: days[i], n: cur - prev })',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '반송 억제(`ad_email_suppress`)로 이메일이 비워지면 누계가 줄 수 있다. 그건 "발굴이 멈췄다"가 ' +
+      '아니라 "정리했다"이고, 하락으로 세면 청소할 때마다 경보가 떠 채널이 무시당한다.',
+  },
+  {
+    name: '⚡ 벌크 전진이 첫 분류 행까지 건너뛴다(영영 미분류로 남는다)',
+    file: 'src/features/marketing/api/reclassify-registry-fastpath.ts',
+    find: "  + ` AND category IS NOT NULL AND COALESCE(classified_v, 0) < ? AND id > ?`",
+    replace: "  + ` AND COALESCE(classified_v, 0) < ? AND id > ?`",
+    test: 'src/tests/unit/reclassify-registry-fastpath.test.ts',
+    why:
+      '`classify_confidence = \'registry\'` 와 `category IS NOT NULL` 이 이 최적화의 안전핀이다 — ' +
+      '건너뛰는 것이 *재판정*이지 *첫 판정*이 아님을 보장한다. 빠지면 한 번도 분류 안 된 행에 ' +
+      '도장만 찍혀 영영 분류되지 않는다(에러 없는 부재).',
+  },
+  {
+    name: '표본이 바뀌어도 벌크를 강행한다(규칙 변경이 등록부에 안 닿는다)',
+    file: 'src/features/marketing/api/reclassify-registry-fastpath.ts',
+    find: "  if (regChanged > 0) return { allow: false, reason: `등록부 판정이 바뀌는 중(${regChanged}/${regSeen}) — 전수 재판정 유지` }",
+    replace: '  // 표본 무시',
+    test: 'src/tests/unit/reclassify-registry-fastpath.test.ts',
+    why:
+      '"등록부는 안 바뀐다"를 상수로 믿으면, 앞으로 규칙이 등록부를 흔드는 순간 그 변경이 조용히 ' +
+      '반영되지 않는다. 매 회차 표본이 그 판단 근거를 새로 만드는 것이 이 설계의 핵심이다.',
+  },
+  {
+    name: '벌크 UPDATE 실패에도 커서를 옮긴다(그 구간이 영영 미분류)',
+    file: 'src/features/marketing/api/reclassify-registry-fastpath.ts',
+    find: '  if (done) { return { cursor: Number(span.m), reason: `${d.reason} · ${span.n}행` } }',
+    replace: '  { return { cursor: Number(span.m), reason: `${d.reason} · ${span.n}행` } }',
+    test: 'src/tests/unit/reclassify-registry-fastpath.test.ts',
+    why:
+      '커서만 넘어가고 도장은 안 찍히면 그 5,000행은 다음 랩(며칠 뒤)까지 미분류로 남는다. ' +
+      '실패를 성공처럼 취급하는 것이 이 레포가 반복해 온 사고 모양이다.',
+  },
+  {
     name: '🐕 유입 감시에서 B2B 축을 뺀다(−70% 가 또 6일간 안 잡힌다)',
     file: 'src/features/marketing/api/inflow-watchdog.ts',
     find: "  { key: 'company', label: '업체(B2B)', table: 'ad_company_leads',",

@@ -182,8 +182,15 @@ export async function maybeAlertInflow(env: { DISCORD_WEBHOOK_URL?: string }, DB
     const alerts = { ...(st.alerts || {}) }
     const lines: string[] = []
     let worst: InflowLevel = 'ok'
-    for (const axis of INFLOW_AXES) {
-      const v = await sampleAxis(DB, axis)
+    // 🎯 **발송 가능 리드**(대표가 정한 유일한 지표)도 같은 판정을 받는다 — 총량이 늘어도 이게 안 늘면
+    //   진척이 아니다. 누계 스냅샷의 증분으로 재므로 보강 지연에 안 속는다(위 docblock).
+    const sendable = await judgeSendable(DB, today).catch(() => ({} as Record<string, InflowVerdict>))
+    const axes: { key: string; label: string; v: InflowVerdict | null }[] = []
+    for (const axis of INFLOW_AXES) axes.push({ key: axis.key, label: axis.label, v: await sampleAxis(DB, axis) })
+    axes.push({ key: 'sendable_influencer', label: '발송가능(인플루언서)', v: sendable.sendable_influencer || null })
+    axes.push({ key: 'sendable_company', label: '발송가능(업체)', v: sendable.sendable_company || null })
+    for (const axis of axes) {
+      const v = axis.v
       if (!v) continue
       verdicts[axis.key] = v
       const prev = alerts[axis.key]
@@ -216,5 +223,90 @@ export async function maybeAlertInflow(env: { DISCORD_WEBHOOK_URL?: string }, DB
     return { ran: true, verdicts }
   } catch {
     return { ran: false }   // 감시가 수집을 못 멈추게 한다
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 🎯 **발송 가능 리드** — 대표가 정한 유일한 성공 지표를 직접 감시한다.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * ## 왜 총량 감시로는 부족한가 (2026-08-18 실측)
+ * ```
+ * 인플루언서  118,933 중 이메일  28,339 (23.8%)      측정은 96.5% 완료 — 병목이 아니다
+ * 업체        334,949 중 이메일  38,914 (11.6%)      소스가 도메인을 안 줘 크롤 여지 1.3%
+ * 수율 차이   youtube 38.3%  ·  naver_blog 22.9%  ·  webkr 27.3%  ·  commerce 13.2%
+ * ```
+ * ⇒ 총량이 늘어도 **발송 가능 리드는 안 늘 수 있다**(수율 낮은 축만 늘면). CLAUDE.md 가 못 박은
+ *   *"총계로 진척을 보고하지 말 것 — 유일한 성공 지표는 제안 보낼 수 있는 리드 수"* 가 바로 이것이다.
+ *
+ * ## 🩸 왜 "수집일별 이메일 보유 건수"로 세면 안 되는가
+ * 이메일은 **수집 이후에** 채워진다(측정·보강). 그래서 최근 며칠은 항상 낮아 보이고,
+ * 그걸 그대로 재면 **매일 "하락" 경보가 뜬다** — 이 파일이 이미 한 번 피한 함정(오늘 제외)과 같은 모양이다.
+ *
+ * ⇒ 그래서 **날짜별 누계 스냅샷을 저장**하고, 그 **증분**을 본다. 언제 수집됐는지와 무관하게
+ *   *"오늘 발송 가능 리드가 몇 개 늘었나"* 를 정확히 센다.
+ */
+const TOTALS_KEY = 'ads_sendable_totals'   // { 'YYYY-MM-DD': { influencer: n, company: n }, ... }
+/** 보관 일수 — `judgeInflow` 가 먼 기준선까지 쓰려면 최근+기준선×2 만큼은 있어야 한다. */
+export const TOTALS_KEEP_DAYS = SPAN + 2
+
+export interface SendableTotals { influencer: number; company: number }
+
+/** 저장된 일별 누계. 깨진 값은 빈 것으로 — 감시가 죽으면 안 된다. */
+export function parseTotals(raw: string | null | undefined): Record<string, SendableTotals> {
+  try {
+    const o = raw ? JSON.parse(raw) : null
+    return o && typeof o === 'object' && !Array.isArray(o) ? o as Record<string, SendableTotals> : {}
+  } catch { return {} }
+}
+
+/** 오래된 날짜를 버린다 — 안 버리면 이 칸이 무한히 자란다. */
+export function pruneTotals(all: Record<string, SendableTotals>, keep = TOTALS_KEEP_DAYS): Record<string, SendableTotals> {
+  const days = Object.keys(all).sort().slice(-keep)
+  const out: Record<string, SendableTotals> = {}
+  for (const d of days) out[d] = all[d]
+  return out
+}
+
+/**
+ * 누계 시계열 → **증분** 시계열. 어제 값이 없는 날은 건너뛴다(증분을 지어내지 않는다).
+ *
+ * ⚠️ 음수 증분은 0 으로 — 반송 억제(`ad_email_suppress`)로 이메일이 비워지면 누계가 줄 수 있는데,
+ *   그건 "발굴이 멈췄다"가 아니라 "정리했다"이다. 그걸 하락으로 세면 청소할 때마다 경보가 뜬다.
+ */
+export function totalsToDaily(all: Record<string, SendableTotals>, key: keyof SendableTotals): InflowDay[] {
+  const days = Object.keys(all).sort()
+  const out: InflowDay[] = []
+  for (let i = 1; i < days.length; i++) {
+    const prev = Number(all[days[i - 1]]?.[key]), cur = Number(all[days[i]]?.[key])
+    if (!Number.isFinite(prev) || !Number.isFinite(cur)) continue
+    out.push({ d: days[i], n: Math.max(0, cur - prev) })
+  }
+  return out
+}
+
+/** 현재 누계를 잰다. 실패하면 null — 모르는 값을 0 으로 적으면 다음 날 증분이 거짓 급등이 된다. */
+export async function readSendableTotals(DB: D1Database): Promise<SendableTotals | null> {
+  const r = await DB.prepare(
+    `SELECT (SELECT COUNT(*) FROM ad_influencer_leads WHERE email IS NOT NULL AND email <> '') AS influencer,
+            (SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL AND email IS NOT NULL AND email <> '') AS company`,
+  ).first<SendableTotals>().catch(() => null)
+  if (!r || !Number.isFinite(Number(r.influencer)) || !Number.isFinite(Number(r.company))) return null
+  return { influencer: Number(r.influencer), company: Number(r.company) }
+}
+
+/** 오늘 누계를 기록하고, 증분 시계열로 두 축을 판정한다. */
+export async function judgeSendable(DB: D1Database, today: string): Promise<Record<string, InflowVerdict>> {
+  const cur = await readSendableTotals(DB)
+  if (!cur) return {}
+  const raw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(TOTALS_KEY)
+    .first<{ value: string }>().catch(() => null)
+  const all = pruneTotals({ ...parseTotals(raw?.value), [today]: cur })
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(TOTALS_KEY, JSON.stringify(all)).run().catch(() => null)
+  return {
+    sendable_influencer: judgeInflow(totalsToDaily(all, 'influencer')),
+    sendable_company: judgeInflow(totalsToDaily(all, 'company')),
   }
 }

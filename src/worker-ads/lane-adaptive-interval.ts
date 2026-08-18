@@ -44,6 +44,25 @@ export const MIN_INTERVAL_HOURS = 1
 export const RETRY_MAX_FAIL_STREAK = 3
 
 /**
+ * 🌵 **마른 레인은 주기를 늘린다** (2026-08-18 실측 — 조이기와 대칭).
+ *
+ * ```
+ * collect-storeinfo   08-14 까지 1,413~1,747/일   →  08-15 부터 4 · 50 · 1
+ *                     회차는 정상(found 50) 인데 saved 0 — 업종 목록을 한 바퀴 다 돌았다
+ * ```
+ * 소진된 레인도 2시간마다 꼬박꼬박 돈다. 얻는 건 0인데 CPU 와 서브리퀘스트(이 시스템의 희소 자원)를
+ * 계속 쓰고, 그만큼 **실제로 캐고 있는 레인의 예산을 갉는다.**
+ *
+ * ⚠️ **끄지는 않는다** — 소스에 새 항목이 들어오면 스스로 돌아와야 한다. 주기만 늘리고,
+ *   한 번이라도 수확이 나오면 즉시 기본으로 복귀한다(조이기와 같은 비대칭).
+ */
+export const BARREN_RUNS = 6
+/** 이 아래면 '말랐다'. 0 이 아니라 소수로 두는 이유: 중복 사이에 한두 건이 섞여도 마른 건 마른 것이다. */
+export const BARREN_MAX_YIELD = 1
+/** 마른 레인의 주기 배수. 12회/일 → 4회/일(관측은 유지하면서 비용은 3분의 1). */
+export const BARREN_INTERVAL_MULT = 3
+
+/**
  * 연속 무사고 회차 수 — 앞(최신)에서부터 오류 없는 회차를 센다.
  * ⚠️ **저장 0 은 사고가 아니다** — 이미 다 아는 소스(예: 소진된 storeinfo)는 정상적으로 0을 낸다.
  *   그건 신규율 게이트가 따로 잡는다. 여기서 0을 사고로 세면 두 신호가 섞인다.
@@ -73,11 +92,26 @@ export function recentNovelty(history: readonly LaneRunEntry[], take = TIGHTEN_C
  *   애초에 이 손잡이를 쓰지 않으므로 건드리면 의미가 바뀐다.
  */
 export function adaptiveIntervalHours(base: number, history: readonly LaneRunEntry[]): number {
-  if (!Number.isFinite(base) || base <= MIN_INTERVAL_HOURS) return base
+  if (!Number.isFinite(base) || base <= 0) return base
+  // 🌵 먼저 **마름**을 본다 — 마른 레인은 조일 대상이 아니라 늦출 대상이다(둘을 같이 보면 신규율
+  //   게이트가 조이기만 막고 비용은 그대로 나간다).
+  if (isBarren(history)) return base * BARREN_INTERVAL_MULT
+  if (base <= MIN_INTERVAL_HOURS) return base
   if (cleanStreak(history) < TIGHTEN_CLEAN_RUNS) return base
   const nov = recentNovelty(history)
   if (nov == null || nov < TIGHTEN_MIN_NOVELTY) return base
   // ⚠️ `ceil` 이다 — `floor` 면 base 3 이 1 이 되어 **3배**가 된다. 외부 호출이 두 배를 넘지
   //   않는다는 보장은 테스트가 아니라 **여기서** 나와야 한다(테스트는 그걸 확인만 한다).
   return Math.max(MIN_INTERVAL_HOURS, Math.ceil(base / 2))
+}
+
+/**
+ * 최근 회차가 **꾸준히 마른가**. 한 번이라도 제대로 수확했으면 마른 게 아니다.
+ * ⚠️ 실패 회차(`ok=false`)는 마름 판정에서 **제외**한다 — 실패는 "소진"이 아니라 "고장"이고,
+ *   처방이 정반대다(고장은 재시도, 소진은 감속). 섞으면 장애 때 주기를 늘려 회복을 늦춘다.
+ */
+export function isBarren(history: readonly LaneRunEntry[]): boolean {
+  const ran = history.filter(r => r && r.ok && typeof r.n === 'number')
+  if (ran.length < BARREN_RUNS) return false
+  return ran.slice(0, BARREN_RUNS).every(r => (r.n as number) <= BARREN_MAX_YIELD)
 }

@@ -17,7 +17,8 @@ import { noteNaverCall, flushNaverCalls, armNaverAndReadSettings } from './naver
 import { KAKAO_SWEEP_SQL, tallySweep, type KakaoSweepRow, type SweepSourceTally } from './kakao-sweep-query'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
-import { buildKeywordRows, rotationWindow, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
+import { buildKeywordRows, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
+import { pickCompanyKeywords, FRESH_KEYWORD_SLOTS } from './company-keyword-pick'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
 const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
@@ -289,6 +290,7 @@ export { enrichHeldLeads } from './enrich-lane'
 export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; total_keywords?: number; spent?: number; limit_hit?: boolean; run_ms?: number; deadline_hit?: boolean; diag: { configured: boolean; error?: string } }
 const STATS_KEY = 'ads_company_stats'
 const CURSOR_KEY = 'ads_company_cursor'
+export { FRESH_KEYWORD_SLOTS }
 
 /** 한 번의 업체 자동수집(cron 홀수시 틱 또는 수동). 게이트 체크는 호출부. 커서 순환으로 며칠에 걸쳐 전 키워드 커버. */
 export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectStats> {
@@ -317,12 +319,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   let cursor = prev?.cursor || 0
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
   const batchSize = Math.max(1, parseInt(env.ADS_COMPANY_BATCH || '', 10) || 12)
-  const kws: CompanyKeyword[] = []
-  for (const w of rotationWindow(total, cursor, batchSize)) {
-    const rs = await DB.prepare('SELECT id, keyword, category, subcategory, region, tier FROM ad_company_keywords WHERE active = 1 ORDER BY (tier IS NULL) ASC, tier ASC, id ASC LIMIT ? OFFSET ?')
-      .bind(w.limit, w.offset).all<CompanyKeyword>().catch(() => null)
-    kws.push(...(rs?.results || []))
-  }
+  const kws = await pickCompanyKeywords(DB, total, cursor, batchSize)
   if (!kws.length) {
     // ⚠️ 커서를 0 으로 되감지 않는다 — D1 일시 실패로 창이 비었을 뿐인데 리셋하면 진행분(수천 키워드)을 잃는다.
     const s: CompanyCollectStats = { last_run: stamp, found: 0, saved: 0, keywords: [], cursor, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: true } }
