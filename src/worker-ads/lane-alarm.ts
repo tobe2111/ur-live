@@ -18,7 +18,7 @@ import { buildCronBeatRow } from '@/worker/utils/cron-heartbeat'
 import { staleGapMinutes } from './lane-cadence'
 import { summarizeLaneRun, appendRunHistory, serializeRunHistory, serializeLaneStamp, LANE_RUNS_KEY } from './lane-run-history'
 import type { LaneRunEntry } from './lane-run-history'
-import { adaptiveIntervalHours } from './lane-adaptive-interval'
+import { adaptiveIntervalHours, RETRY_MAX_FAIL_STREAK } from './lane-adaptive-interval'
 
 interface AlarmEnv {
   ADS_LANE_ALARM_INTERVAL_MS?: string
@@ -101,8 +101,13 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     // 🕳️ **실패한 회차도 자리를 안 먹는다** — 스탬프를 찍으면 다음 간격까지 그 슬롯이 통째로 버려진다.
     //   실측(2026-08-18): 00:00 회차가 외부 API 네트워크 오류로 0건 → 01:00 유휴 → 02:00 에야 982건.
     //   안 찍으면 다음 시간이 곧바로 재시도한다(시간당 1회 상한 `cap` 이 폭주를 막는다).
+    // ⚠️ **다만 무한 재시도는 안 된다.** `nextWakeAt` 은 회차를 쓴 뒤엔 다음 정시로 잡으므로
+    //   `failStreak` 백오프가 이 경로엔 안 걸린다 — 영구 장애면 하루 24번을 계속 두드리게 된다.
+    //   `RETRY_MAX_FAIL_STREAK` 회를 넘기면 재시도를 접고 **기본 주기로 돌아간다**(일시적 실패만 즉시
+    //   되찾고, 고장 난 소스는 조용히 두는 것 — 서브리퀘스트는 이 시스템의 희소 자원이다).
+    const retryable = nextFail <= RETRY_MAX_FAIL_STREAK
     const put: Record<string, unknown> = { bucket, runs: ran, failStreak: nextFail, runHistory }
-    if (runs < cap && due && (!entry || entry.ok)) put.lastRunAt = t0
+    if (runs < cap && due && (!entry || entry.ok || !retryable)) put.lastRunAt = t0
     await this.ctx.storage.put(put).catch(() => undefined)
 
     const at = nextWakeAt(Date.now(), interval, ran, cap, nextFail)

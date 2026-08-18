@@ -99,10 +99,24 @@ describe('🔌 DO 배선', () => {
     expect(src).not.toMatch(/dueByElapsed\(lastRunAt, t0, lane\.minIntervalHours \?\? 0\)/)
   })
   it('🕳️ 실패한 회차는 lastRunAt 을 안 찍는다(슬롯을 버리지 않는다)', () => {
-    expect(src).toContain('if (runs < cap && due && (!entry || entry.ok)) put.lastRunAt = t0')
+    // 🔄 상한(`!retryable`)이 붙어 앵커를 갱신했다 — 지키는 것은 여전히 "성공한 회차만 자리를 먹는다".
+    expect(src).toContain('if (runs < cap && due && (!entry || entry.ok || !retryable)) put.lastRunAt = t0')
   })
   it('🔒 skip 은 여전히 안 찍는다 — 찍으면 간격이 안 차서 레인이 스스로 멎는다', () => {
     const line = src.split('\n').find(l => l.includes('put.lastRunAt = t0'))!
     expect(line).toContain('due')
+  })
+})
+
+describe('🛑 실패 재시도 상한 — 영구 장애를 영원히 두드리지 않는다', () => {
+  const src = readFileSync('src/worker-ads/lane-alarm.ts', 'utf8')
+  it('연속 실패가 상한을 넘으면 재시도를 접고 기본 주기로 돌아간다', () => {
+    expect(src).toContain('const retryable = nextFail <= RETRY_MAX_FAIL_STREAK')
+    expect(src).toContain('(!entry || entry.ok || !retryable)')
+  })
+  it('상한은 일시적 장애와 구분될 만큼은 크다(1회는 즉시 재시도해야 한다)', async () => {
+    const { RETRY_MAX_FAIL_STREAK } = await import('@/worker-ads/lane-adaptive-interval')
+    expect(RETRY_MAX_FAIL_STREAK).toBeGreaterThanOrEqual(2)
+    expect(RETRY_MAX_FAIL_STREAK).toBeLessThanOrEqual(6)
   })
 })

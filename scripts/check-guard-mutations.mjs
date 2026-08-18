@@ -235,7 +235,7 @@ const MUTATIONS = [
     file: 'src/worker-ads/lane-alarm.ts',
     // 🔄 2026-08-18: 조건에 `(!entry || entry.ok)` 가 붙어 앵커를 갱신했다(실패 회차도 슬롯을 안 먹는다).
     //   이 주입이 지키는 것은 그대로 **"skip 은 안 찍는다"** 이므로 `due` 를 지우는 형태를 유지한다.
-    find: '    if (runs < cap && due && (!entry || entry.ok)) put.lastRunAt = t0',
+    find: '    if (runs < cap && due && (!entry || entry.ok || !retryable)) put.lastRunAt = t0',
     replace: '    put.lastRunAt = t0',
     test: 'src/tests/unit/lane-min-interval.test.ts',
     why:
@@ -276,6 +276,76 @@ const MUTATIONS = [
       '슬롯을 태운다 — 대기 11,720개가 밖에 있는 채로.',
   },
   {
+    name: '🐕 유입 감시에서 B2B 축을 뺀다(−70% 가 또 6일간 안 잡힌다)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: "  { key: 'company', label: '업체(B2B)', table: 'ad_company_leads',",
+    replace: "  { key: 'company_disabled', label: '업체(B2B)', table: 'ad_influencer_leads',",
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '기존 경보는 인플루언서 전용이었고, 정작 −70% 로 무너진 건 B2B 였다(13,409 → 4,223, 6일간 무음). ' +
+      'B2B 축이 빠지면 이 모듈의 존재 이유가 사라진다.',
+  },
+  {
+    name: '날짜 구멍을 0 으로 안 채운다(완전 정지가 "정상"으로 읽힌다)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: '    out.push({ d, n: by.get(d) ?? 0 })',
+    replace: '    if (by.has(d)) out.push({ d, n: by.get(d) ?? 0 })',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '수집이 0이면 GROUP BY 결과에 그 날짜가 **아예 안 나온다**. 구멍을 안 채우면 최근 3일이 ' +
+      '예전 잘 되던 날들로 채워져 완전 정지가 "정상"이 된다 — 에러 없이 조용히 틀리는 그 클래스다.',
+  },
+  {
+    name: '오늘(진행 중인 날)을 판정에 넣는다(매일 아침 오경보)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: '  for (let i = span; i >= 1; i--) {',
+    replace: '  for (let i = span; i >= 0; i--) {',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '진행 중인 날은 항상 낮다. 넣으면 매일 아침 "하락" 경보가 뜨고, 그 채널은 곧 무시당한다 — ' +
+      '오경보는 감시의 고장이지 부작용이 아니다.',
+  },
+  {
+    name: '먼 기준선을 뺀다(완만한 하락이 창 비교를 빠져나간다)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: '  const baseline = Math.max(near ?? 0, far ?? 0) || null',
+    replace: '  const baseline = near',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '천천히 내려가면 **기준선도 같이 내려간다** — 어제와 비교하면 어제도 나쁘다. 실측 인플루언서 ' +
+      '하락이 직전 7일 기준으로는 76%(무경보)였다. 먼 기준선이 그 사각지대를 닫는다.',
+  },
+  {
+    name: '기준선을 평균으로 바꾼다(17배 스파이크 하나가 이후를 전부 하락으로 만든다)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: '  const s = [...xs].sort((a, b) => a - b)',
+    replace: '  return xs.reduce((a, b) => a + b, 0) / xs.length; const s = [...xs].sort((a, b) => a - b)',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '이 시스템의 일별 진폭은 17배다(07-21 12,533 vs 07-30 1건). 평균 기준선이면 스파이크 하나가 ' +
+      '기준선을 들어 올려 그 뒤 정상 구간이 전부 "하락"으로 보인다.',
+  },
+  {
+    name: '무너진 동안 매일 경보를 보낸다(채널이 곧 무시당한다)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: '        if (!escalated) continue',
+    replace: '        if (false) continue',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '같은 사실을 매일 반복해 보내면 사람은 그 채널을 끈다. 그러면 **다음에 진짜로 다른 것이 ' +
+      '무너졌을 때도** 안 보인다 — 감시가 스스로를 무력화하는 경로다.',
+  },
+  {
+    name: '실패 재시도에 상한이 없다(영구 장애 소스를 하루 24번 두드린다)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: '    const retryable = nextFail <= RETRY_MAX_FAIL_STREAK',
+    replace: '    const retryable = true',
+    test: 'src/tests/unit/lane-adaptive-interval.test.ts',
+    why:
+      '`nextWakeAt` 은 회차를 쓴 뒤엔 다음 정시로 잡으므로 failStreak 백오프가 이 경로엔 안 걸린다. ' +
+      '상한이 없으면 죽은 소스를 영원히 하루 24번 두드린다 — 서브리퀘스트는 이 시스템의 희소 자원이다.',
+  },
+  {
     name: '🔁 주기 자가조율을 고정 상수로 되돌린다(잘 돌아도 확대가 없다)',
     file: 'src/worker-ads/lane-alarm.ts',
     find: 'adaptiveIntervalHours(lane.minIntervalHours ?? 0, prevHistory)',
@@ -288,7 +358,7 @@ const MUTATIONS = [
   {
     name: '실패한 회차가 슬롯을 먹는다(다음 간격까지 통째로 버려진다)',
     file: 'src/worker-ads/lane-alarm.ts',
-    find: 'if (runs < cap && due && (!entry || entry.ok)) put.lastRunAt = t0',
+    find: 'if (runs < cap && due && (!entry || entry.ok || !retryable)) put.lastRunAt = t0',
     replace: 'if (runs < cap && due) put.lastRunAt = t0',
     test: 'src/tests/unit/lane-adaptive-interval.test.ts',
     why:
