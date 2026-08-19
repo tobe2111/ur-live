@@ -174,7 +174,11 @@ export default function StaysSearchPage() {
                     {s.image_url ? (
                       // 🖼️ 2026-07-21 (대표 "상세엔 사진 있는데 메인 카드엔 빈 사진"): raw src → cfImage
                       //   (네이버 블로그 CDN 핫링크 우회·리사이즈) + cfImageOnError(깨지면 원본 재시도→숨김).
-                      <img src={cfImage(s.image_url, { width: 400, quality: 82, format: 'auto' }) || s.image_url} alt={s.name} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, s.image_url)} />
+                      // ⏳ 2026-08-17 (UX 전수검사 P1): 로딩 중 빈 회색 블록 → 셔머 언더레이(이미지가 덮으면 사라짐).
+                      <>
+                      <div className="absolute inset-0 skeleton-shimmer" aria-hidden="true" />
+                      <img src={cfImage(s.image_url, { width: 400, quality: 82, format: 'auto' }) || s.image_url} alt={s.name} className="relative w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, s.image_url)} />
+                      </>
                     ) : null}
                     {s.property_type && (
                       <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-sm rounded text-[10px] font-semibold text-white">

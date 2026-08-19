@@ -103,12 +103,12 @@ export default function GroupBuyFeed({
   const sort = sortProp ?? sortState
   const setCategory = (c: CategoryKey) => { if (onCategoryChange) onCategoryChange(c); else setCategoryState(c) }
   const setSort = (s: SortKey) => { if (onSortChange) onSortChange(s); else setSortState(s) }
-  // 🖥️ PC 홈(pc)은 한 줄 4개(대표 요청 — 카드 크게), 모바일은 기존 2~3열. PcHomePage 는 lg+ 에서만
-  //   렌더되므로 grid-cols-4 고정으로 충분(레일 옆 flex-1 폭에서 카드가 그만큼 커짐). 로딩/본문/더보기 공통.
-  // 🗺️ 2026-08-03: `grid-cols-4` 고정 → 반응형. **PC 홈은 lg+ 에서만 렌더되므로 4열 그대로**(무변경)이고,
-  //   lg 미만 값은 `/region/*`(PC·모바일 공용 페이지)이 쓴다 — 고정 4열이면 모바일에서 카드가 뭉개진다.
+  // 🖥️ PC 홈(pc): 모바일은 기존 2~3열. lg 미만 값은 `/region/*`(PC·모바일 공용 페이지)이 쓴다.
+  // 📐 2026-08-17 (대표 — "카드가 커, 컴팩트하게" → 재지시 "1줄에 이용권 5개"): 2026-07-15 의
+  //   "4열 카드 크게"를 **대체** — PC 는 **5열 고정**(xl+), lg(좁은 노트북)만 4열, gap 축소.
+  //   컨테이너 1440(PcHomePage)과 짝 → 카드 ~260px. 2xl 6열은 대표 재지시로 제거(5개가 기준).
   const gridCls = pc
-    ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-5 pb-10'
+    ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 lg:gap-4 pb-8'
     : 'grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8'
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.

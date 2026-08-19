@@ -72,6 +72,28 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '카드 캐러셀 화살표에서 preventDefault 를 없앤다(사진 넘기려던 클릭이 상세로 튄다)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'e.preventDefault()',
+    replace: 'void 0',
+    test: 'src/tests/unit/deal-card-gallery.test.ts',
+    why:
+      '카드 캐러셀은 `<Link>` **안**에 있다 — 화살표가 기본동작을 막지 않으면 사진을 넘기려는 클릭이 ' +
+      '매번 상세 페이지로 튄다. 에러가 없고 화면도 멀쩡해서 **직접 눌러 보기 전엔 아무도 모르는** 종류다. ' +
+      '2026-08-19 그루폰 카드 도입과 함께 들어온 안전장치라, 나중에 리팩토링하다 지워질 위험이 크다.',
+  },
+  {
+    name: '카드가 갤러리를 전부 미리 로드한다(첫 화면 트래픽 몇 배)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'if (!seen.has(i)) return null',
+    replace: 'if (false) return null',
+    test: 'src/tests/unit/deal-card-gallery.test.ts',
+    why:
+      '홈 한 화면에 카드가 50개다. 캐러셀 장면을 전부 `<img>` 로 만들면 **첫 화면 이미지 요청이 4배**가 된다 — ' +
+      '이 레포가 로딩 최적화 잠금으로 지켜 온 값을 한 줄로 되돌리는 셈이다. 사용자가 실제로 넘긴 장면만 ' +
+      '받는다는 규칙이라, 안 지켜져도 **화면은 똑같아 보여서** 리뷰로는 안 걸린다.',
+  },
+  {
     name: '공구가 킬스위치를 어드민 화면에서 뺀다(돈 새는 중에 멈출 손잡이가 사라진다)',
     file: 'src/pages/AdminPlatformSettingsPage.tsx',
     find: "key: 'gb_pricing_enabled'",
@@ -3622,6 +3644,48 @@ const MUTATIONS = [
       '몫이 가용 키워드 수를 넘으면 커서가 `pool[(cursor+i) % len]` 로 감싸며 **같은 키워드를 한 배치에 ' +
       '두 번** 내놓는다 — 희소한 회차(폭 9)를 중복에 쓰고, 그 키워드의 성과 카운터도 이중 계상된다. ' +
       '풀이 작아지는 순간(은퇴·고갈)에 터지는 형태라 평소 테스트로는 안 보인다.',
+  },
+  {
+    // 📉 유입 추세 배지(2026-08-19 대표 "점점 줄어드는지도 봐줘").
+    name: '진행 중인 오늘을 추세에 포함(오후마다 멀쩡한 날이 "폭락"으로 보인다)',
+    file: 'src/shared/ads/inflow-trend.ts',
+    find: ".filter(x => !!x?.d && (!todayKst || x.d !== todayKst))",
+    replace: ".filter(x => !!x?.d)",
+    test: 'src/tests/unit/ads-inflow-trend.test.ts',
+    why:
+      '오늘 막대는 지금까지 쌓인 만큼만 있다(실측: 13:47 시점 누적이 하루치의 57%). 그걸 평균에 넣으면 ' +
+      '**하락이 아닌 날도 하락 판정**이 나고, 그 배지를 보고 멀쩡한 시스템을 파게 된다.',
+  },
+  {
+    name: '인플루언서 페이지가 todayKst 를 안 넘김(배지·진행중 표시가 통째로 죽음)',
+    file: 'src/pages/admin/AdminInfluencerPoolPage.tsx',
+    find: '<InflowTimeline byDay={byDay} label="이메일" todayKst={todayKst} />',
+    replace: '<InflowTimeline byDay={byDay} label="이메일" />',
+    test: 'src/tests/unit/ads-inflow-trend.test.ts',
+    why:
+      '순수 함수가 맞아도 화면에 안 걸리면 아무 일도 안 일어난다 — 이 레포의 상습 사고("계산해 놓고 ' +
+      '안 쓰는 계측"). prop 하나가 빠지면 오늘 막대가 완성된 날처럼 보여 절반짜리 값이 추세로 읽힌다.',
+  },
+  {
+    // 📖 검색 깊이 커서(2026-08-19 대표 "왜 줄어드는지 원인을 파악하고 해결해줘 영구적으로").
+    name: '검색 URL 에서 start 가 빠짐(다시 매번 같은 상위 100건만 본다)',
+    file: 'src/features/marketing/api/influencer-discovery.ts',
+    find: '&sort=${sort}&start=${depth.start}`',
+    replace: '&sort=${sort}`',
+    test: 'src/tests/unit/ads-search-depth.test.ts',
+    why:
+      '이 파라미터 하나가 없어서 발굴량이 말랐다 — 회차당 found 는 555~793 로 멀쩡한데 신규율만 ' +
+      '8.4%~38.6% 였다(찾아온 사람의 62~92% 가 이미 DB 에 있음). 조용히 사라져도 아무 에러가 안 난다.',
+  },
+  {
+    name: '다음 커서를 저장하지 않음(영원히 1페이지에 머문다)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: 'nb_start = COALESCE(?, nb_start), last_run_at',
+    replace: 'last_run_at',
+    test: 'src/tests/unit/ads-search-depth.test.ts',
+    why:
+      '읽기만 하고 저장을 안 하면 커서가 항상 1 이라 수정 전과 **동일하게** 동작한다. 그리고 그 상태는 ' +
+      '에러도 경보도 안 낸다 — 이 레포의 "계산해 놓고 안 쓰는" 사고 클래스 그대로다.',
   },
 ]
 /**

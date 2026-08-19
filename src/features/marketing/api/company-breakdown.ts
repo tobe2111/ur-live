@@ -22,7 +22,7 @@ export interface CompanyDayInflow { d: string; n: number; reachable: number }
 /** 두 사업의 즉시 발송 가능 명단 수. 총계가 아니라 이 둘이 화면 맨 위에 온다. */
 export interface CompanySegments { payback_ready: number; agency_ready: number }
 
-export async function companyBreakdown(DB: D1Database): Promise<{ seg: CompanySegments; byDay: CompanyDayInflow[] }> {
+export async function companyBreakdown(DB: D1Database): Promise<{ seg: CompanySegments; byDay: CompanyDayInflow[]; todayKst: string }> {
   const s = await DB.prepare(`SELECT
       SUM(CASE WHEN category = '온라인판매' AND email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS payback_ready,
       SUM(CASE WHEN category = '대행사' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != '')) THEN 1 ELSE 0 END) AS agency_ready
@@ -31,8 +31,13 @@ export async function companyBreakdown(DB: D1Database): Promise<{ seg: CompanySe
       SUM(CASE WHEN (email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != '') THEN 1 ELSE 0 END) AS reachable
     FROM ad_company_leads WHERE merged_into IS NULL AND collected_at >= datetime('now','-14 days')
     GROUP BY d ORDER BY d DESC LIMIT 14`).all<CompanyDayInflow>().catch(() => null))?.results || []
+  // 🕐 오늘(KST)이 **어느 날짜인지는 서버가 정한다** — 화면은 이 날짜의 막대를 '진행 중'으로 표시하고
+  //   추세 계산에서 뺀다. 클라가 `new Date()` 로 오늘을 구하면 브라우저 TZ 에 따라 9시간 어긋나
+  //   멀쩡한 날이 '폭락'으로 읽힌다(이 파일 위의 KST 경계 주석과 같은 클래스).
+  const t = await DB.prepare("SELECT DATE('now','+9 hours') AS d").first<{ d: string }>().catch(() => null)
   return {
     seg: { payback_ready: Number(s?.payback_ready) || 0, agency_ready: Number(s?.agency_ready) || 0 },
     byDay,
+    todayKst: String(t?.d || ''),
   }
 }

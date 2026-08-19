@@ -92,7 +92,11 @@ export async function buildInfluencerPoolStats(env: Env): Promise<Record<string,
       SUM(CASE WHEN platform = 'youtube' AND subscriber_count > 0 THEN 1 ELSE 0 END) AS yt_with_subs,
       -- 📣 모집 전환: 안내한 리드(분모) 대비 실제 신청(동의)한 리드(분자) — 풀이 '쓸 수 있는 재고'로 바뀌는 비율.
       SUM(CASE WHEN recruited_at IS NOT NULL THEN 1 ELSE 0 END) AS recruited,
-      SUM(CASE WHEN recruited_at IS NOT NULL AND consented_at IS NOT NULL THEN 1 ELSE 0 END) AS recruit_converted
+      SUM(CASE WHEN recruited_at IS NOT NULL AND consented_at IS NOT NULL THEN 1 ELSE 0 END) AS recruit_converted,
+      -- 🕐 화면이 '오늘'을 진행 중으로 표시하고 추세에서 빼는 데 쓰는 KST 날짜. **서버가 정한다** —
+      --    클라가 브라우저에서 오늘을 구하면 TZ 에 따라 9시간 어긋난다(반복 사고 클래스).
+      --    ⚠️ 이 주석은 템플릿 리터럴 안이다 — 백틱을 쓰면 SQL 문자열이 거기서 끊긴다(실제로 한 번 냈다).
+      DATE('now','+9 hours') AS today_kst
     FROM ad_influencer_leads WHERE account_id = ?`).bind(POOL).first().catch(() => null)
   // 📊 카테고리별 전환 — "어떤 카테고리가 실제로 회신·계약으로 이어지나"(발송 문구/타겟 조정 근거).
   //   컨택 이력이 있는 카테고리만, 컨택 많은 순 상위 8개.
@@ -105,6 +109,16 @@ export async function buildInfluencerPoolStats(env: Env): Promise<Record<string,
     FROM ad_influencer_leads WHERE account_id = ?
     GROUP BY COALESCE(category, '미분류') HAVING reached > 0 ORDER BY reached DESC LIMIT 8`)
     .bind(POOL).all().catch(() => null)
+  // 🕐 **최신화 내역(최근 14일 유입)** — 2026-08-19 대표 *"인플루언서 수집 페이지도 B2B 처럼 14일치를"*.
+  //   총계(43,995 …)는 수집이 며칠 멈춰도 안 변한다 — **멈춤이 안 보이는 지표**다. 날짜별로만 보인다.
+  //   ⚠️ KST 경계(`+9 hours`)로 센다. UTC 로 자르면 한국의 '오늘'이 09:00 에 시작한다.
+  //   ⚠️ `reachable` = **이메일 보유**. 인스타/틱톡 링크는 세지 않는다 — CLAUDE.md 가 못 박은 대로
+  //      이 DB 의 성공 지표는 총원이 아니라 *제안을 보낼 수 있는 리드 수*이고, 발송 채널은 이메일뿐이다.
+  //      (`with_contact` 는 링크까지 포함하는 다른 숫자다. 둘을 섞으면 "연락 가능"이 부풀려진다.)
+  const byDay = (await DB.prepare(`SELECT DATE(collected_at,'+9 hours') AS d, COUNT(*) AS n,
+      SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS reachable
+    FROM ad_influencer_leads WHERE account_id = ? AND collected_at >= datetime('now','-14 days')
+    GROUP BY d ORDER BY d DESC LIMIT 14`).bind(POOL).all().catch(() => null))?.results || []
   // 🔗 퍼널 뒷단(가입 → 첫 판매) — 별도 쿼리(적립 원장 조인이라 위 집계와 분리). 실패 시 0.
   const tail = await getFunnelTailStats(DB).catch(() => ({ joined: 0, first_sale: 0 }))
   // 📊 진단 스탬프 묶음(마지막 수집·lease·시트 동기화·야간 정비·📝 보강 레인) — `ads-pool-diag.ts` SSOT.
@@ -127,6 +141,8 @@ export async function buildInfluencerPoolStats(env: Env): Promise<Record<string,
   } catch { /* 폴백 유지 */ }
   return {
     stats: { ...(agg || {}), ...tail },
+    by_day: byDay,
+    today_kst: String(agg?.today_kst || ''), // 화면의 '진행 중' 표시·추세 제외 기준(서버 권위)
     gate,
     sheets_gate: sheetsGate, // null = ur-ads 미바인딩/조회 실패(알 수 없음 — 경고를 단정하지 않는다)
     ...diag,

@@ -237,9 +237,16 @@ describe('재조우 보강 스킵 — 배선과 예산 회계', () => {
     expect(known).toMatch(/platform === 'naver_blog'\s*\n?\s*\?/)
   })
 
-  it('수집 엔진이 훅을 만들어 발굴에 넘긴다', () => {
+  /**
+   * ⚠️ **2026-08-19 앵커 교정** — 예전 판은 `alreadyContacted\s*\}` 를 셌다. 즉 그 훅이 옵션 객체의
+   *   **마지막 속성**일 때만 맞는 검사였다. 네이버 호출에 무관한 옵션(`start`)이 뒤에 하나 붙자
+   *   훅은 그대로인데 검사만 빨개졌다(= 거짓 경보). 위치가 아니라 **호출부에 실제로 넘어가는가**를 본다.
+   *   🔎 못 막는 것: 이름이 같은 지역변수를 넘겨도 통과한다 — 실제 스킵 동작은 위 SQL 검사들의 몫이다.
+   */
+  it('수집 엔진이 훅을 만들어 두 발굴 레인(YT·네이버)에 넘긴다', () => {
     expect(col).toMatch(/makeAlreadyContacted\(DB,\s*POOL_ACCOUNT_ID,\s*budget\)/)
-    expect((col.match(/alreadyContacted\s*\}/g) || []).length).toBeGreaterThanOrEqual(2)
+    const passedToDiscovery = (col.match(/discover\w+\([^)]*\balreadyContacted\b/g) || []).length
+    expect(passedToDiscovery, '발굴 호출부 2곳(YT·네이버) 모두에 훅이 넘어가야 한다').toBeGreaterThanOrEqual(2)
   })
 })
 

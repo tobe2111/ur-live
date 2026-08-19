@@ -15,6 +15,7 @@ import { pickReach } from './influencer-pool/reach'
 import { useCollectRun } from './influencer-pool/useCollectRun'
 import KeywordManager from './influencer-pool/KeywordManager'
 import { usePoolMeta } from './influencer-pool/usePoolMeta'
+import InflowTimeline, { type DayInflow } from './partner-pool/InflowTimeline' // 🔁 파트너 풀과 공용(두 벌로 두면 갈라진다)
 import SendModeButtons from './influencer-pool/SendModeButtons'
 import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
 import ColdSendPanel from './influencer-pool/ColdSendPanel'
@@ -82,6 +83,9 @@ export default function AdminInfluencerPoolPage() {
   const [stats, setStats] = useState<PoolStats>({})
   const [run, setRun] = useState<RunStats | null>(null)
   const [gate, setGate] = useState(false)
+  /** 🕐 최신화 내역 — 총계는 며칠 멈춰도 안 변한다. "요즘 들어오고는 있나 · 줄고 있나"는 이 줄로만 보인다. */
+  const [byDay, setByDay] = useState<DayInflow[]>([])
+  const [todayKst, setTodayKst] = useState<string>('') // 서버 권위(클라가 오늘을 구하면 9시간 어긋난다)
   // 📊 시트 동기화 상태(무음 실패 가시화) + 🚦 게이트 실값 — gate 가 '고장'과 '꺼짐'을 가른다(null=알 수 없음).
   const [sheets, setSheets] = useState<{ sync: { ok: boolean; at?: string; error?: string | null } | null; cron: { at?: string; ok?: boolean } | null; gate: boolean | null }>({ sync: null, cron: null, gate: null })
   const [maintenance, setMaintenance] = useState<MaintenanceRecord | null>(null)          // 🌙 야간 자동 정비 결과(03시)
@@ -168,6 +172,7 @@ export default function AdminInfluencerPoolPage() {
     setMaintainRunning(!!d.maintain_running)
     setMaintenance(g<MaintenanceRecord>('maintenance') || null); setMaintenanceRescan(g<MaintenanceRecord>('maintenance_rescan') || null); setCatFunnel(g<CategoryFunnelRow[]>('category_funnel') || [])
     setEnrichLane(g<EnrichLaneRecord>('enrich_lane') || null)
+    setByDay(g<DayInflow[]>('by_day') || []); setTodayKst(typeof d.today_kst === 'string' ? d.today_kst : '')
   }, [])
 
   // 🔁 2026-07-28: 정비가 도는 동안만 10초 폴링 — 끝나면 스스로 멈추고 완료를 알린다.
@@ -326,6 +331,9 @@ export default function AdminInfluencerPoolPage() {
         {/* 📊 요약 카드(클릭 = 필터) — 컴포넌트로 분리(600줄 래칫). 근거는 그 파일 헤더. */}
         <PoolStatCards stats={stats} platform={platform} setPlatform={setPlatform}
           hasEmail={hasEmail} setHasEmail={setHasEmail} collectedToday={collectedToday} setCollectedToday={setCollectedToday} />
+
+        {/* 🕐 최신화 내역 — 파트너 풀과 같은 컴포넌트. 채운 부분 = 이메일(= 제안 보낼 수 있는 수). */}
+        <InflowTimeline byDay={byDay} label="이메일" todayKst={todayKst} />
 
         {/* 📊 아웃리치 전환 퍼널 — '모은 게 성과로 이어지나' 측정(컨택 이력 있을 때만). */}
         <FunnelCard stats={stats} categories={catFunnel} />

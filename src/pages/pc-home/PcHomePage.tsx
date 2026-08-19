@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import SiteFooter from '@/components/main/SiteFooter'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
@@ -31,6 +31,7 @@ const SORT_CHIPS = [
 type SortKey = typeof SORT_CHIPS[number]['key'] | 'near'
 
 const DEAL_CATEGORY_KEYS: DealCategory[] = ['all', 'meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher']
+const SORT_KEYS: SortKey[] = ['popular', 'newest', 'deadline', 'discount']
 
 export default function PcHomePage() {
   // 🧭 2026-07-20 (카테고리 이동 전수조사): `/?category=` 딥링크로 초기 카테고리 지정 지원 —
@@ -43,7 +44,31 @@ export default function PcHomePage() {
   })
   // 🏷️ 선택된 카테고리의 한글 라벨 — 'all' 이면 빈 문자열(= 홈 기본 문구 유지). 라벨 SSOT 는 PcHomeRail.
   const catLabel = category === 'all' ? '' : (DEAL_CATS.find(c => c.key === category)?.label || '')
-  const [sort, setSort] = useState<SortKey>('popular')
+  const [sort, setSort] = useState<SortKey>(() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get('sort') as SortKey | null
+      return q && SORT_KEYS.includes(q) ? q : 'popular'
+    } catch { return 'popular' }
+  })
+
+  // 🔗 2026-08-17 (대표 신고 — 섹션 '더보기' 플래시): 더보기가 `/?sort=popular` 같은 **쿼리 전용 이동**을
+  //   쓴다(App.tsx key=pathname 이라 리마운트 0 = 플래시 0). 그런데 이 페이지는 카테고리/정렬을 마운트
+  //   시점에만 읽어서, 쿼리만 바뀌면 아무 일도 안 일어난다 → 내비게이션마다 쿼리를 state 에 반영하고
+  //   그리드 제목으로 스크롤해 "더보기 = 전체 목록으로 이동"이 눈에 보이게 한다. 첫 마운트는 스킵
+  //   (일반 홈 진입에서 점프 금지) — 칩 클릭(쿼리 무변경)에는 영향 없다.
+  const location = useLocation()
+  const gridHeaderRef = useRef<HTMLElement | null>(null)
+  const firstQuerySync = useRef(true)
+  useEffect(() => {
+    const q = new URLSearchParams(location.search)
+    const qCat = q.get('category') as DealCategory | null
+    const qSort = q.get('sort') as SortKey | null
+    if (qCat && DEAL_CATEGORY_KEYS.includes(qCat)) setCategory(qCat)
+    if (qSort && SORT_KEYS.includes(qSort)) setSort(qSort)
+    if (firstQuerySync.current) { firstQuerySync.current = false; return }
+    if (qSort || qCat) gridHeaderRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // location.key = 내비게이션마다 갱신 — 같은 더보기를 두 번 눌러도 다시 스크롤된다.
+  }, [location.key, location.search])
   // 🗺️ 2026-07-16 (대표 — PC 홈 위치 필터): 선택 지역(초기값 = 지난 방문 저장분). GroupBuyFeed 로 주입.
   const [region, setRegion] = useState<HomeRegion>(() => readHomeRegion())
   // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): GPS 좌표. 세팅되면 sort='near'(거리순, 숨기지 않고 재배열).
@@ -54,7 +79,10 @@ export default function PcHomePage() {
   const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
 
   return (
-    <div className="bg-white dark:bg-[#0F151D] min-h-[100dvh]">
+    /* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면): PC 메인 배경을 브랜드 잉크(#1A2C42)로 덮고
+       콘텐츠는 흰 패널로 띄운다. 그루폰이 초록으로 하는 것을 우리 딥네이비로.
+       ⚠️ PC 메인 한정(대표 지시) — 다른 소비자 페이지는 흰 배경 그대로. */
+    <div className="bg-[#1A2C42] min-h-[100dvh]">
       <SEO
         title="유어딜 — 동네 이용권·공동구매·교환권을 할인가로"
         description="우리 동네 이용권·동네딜·교환권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요."
@@ -66,13 +94,15 @@ export default function PcHomePage() {
           등록된 히어로가 없으면 아무것도 안 그린다 → 아래 컨테이너가 그대로 최상단(현행과 동일). */}
       {HOME_SHOWCASE_ENABLED && <HomeHeroBanner />}
 
-      {/* 🖥️ 2026-07-19 (대표 — "왼쪽 카테고리보단 위에"): 좌측 레일 제거 → 풀너비. 카테고리는 상단 가로 바(PcHomeRail). */}
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-10 pt-6">
+      {/* 🖥️ 2026-07-19 (대표 — "왼쪽 카테고리보단 위에"): 좌측 레일 제거 → 풀너비. 카테고리는 상단 가로 바(PcHomeRail).
+          📐 2026-08-17 (대표 — "컴팩트하게, 여백이 많은 느낌" · 여기어때/그루폰 참고): 컨테이너 1600→1440
+          + 상하 여백 축소. 카드 밀도는 GroupBuyFeed pc 그리드(xl 5열·2xl 6열)와 짝. */}
+      <div className="max-w-[1440px] mx-auto px-6 lg:px-8 pt-4">
         <main className="min-w-0">
           {/* 🗺️ 상단 헤더 행 — 좌: 위치바+카테고리 / 우: 지도 썸네일 버튼(대표 지정 위치 — 빈 공간 활용). */}
-          <div className="mb-5 border-b border-gray-100 dark:border-[#2A3446] pb-3 flex items-start justify-between gap-8">
+          <div className="ur-home-panel mb-4 flex items-start justify-between gap-8">
             <div className="flex-1 min-w-0">
-              <div className="mb-4">
+              <div className="mb-3">
                 <PcHomeLocationBar value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} />
               </div>
               <PcHomeRail category={category} onCategory={setCategory} />
@@ -97,13 +127,15 @@ export default function PcHomePage() {
 
           {/* 🏷️ 2026-08-08: 카테고리를 고르면 제목·설명이 **그 카테고리를 말한다.** 이전엔 숙소를 눌러도
               제목이 "내 주변 가까운 딜"이라, 화면이 걸러졌다는 신호가 어디에도 없었다. */}
-          <header className="mb-4">
-            <h1 className="text-[24px] font-black tracking-tight text-gray-900 dark:text-white">
+          {/* 🎨 그루폰 구조 — 제목·정렬칩·그리드를 하나의 흰 패널에 담는다(색면 위에 뜬 매대). */}
+          <div className="ur-home-panel">
+          <header ref={gridHeaderRef} className="mb-3 scroll-mt-24">
+            <h1 className="text-[20px] font-black tracking-tight text-gray-900 dark:text-white">
               {catLabel
                 ? `${catLabel} 이용권`
                 : userLoc ? '내 주변 가까운 딜' : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
             </h1>
-            <p className="mt-1.5 text-[14px] text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
               {catLabel
                 ? `${catLabel} 이용권만 모아 봤어요.`
                 : '이용권 · 공동구매 · 교환권을 할인가로 바로 만나보세요.'}
@@ -111,12 +143,12 @@ export default function PcHomePage() {
           </header>
 
           {/* 정렬 칩 — 현위치 설정 시 '가까운 순' 칩 노출(거리순). */}
-          <div className="flex items-center gap-2 mb-5 flex-wrap">
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
             {userLoc && (
               <button
                 onClick={() => setSort('near')}
                 aria-pressed={sort === 'near'}
-                className={`px-4 py-2 rounded-full text-[13px] font-bold border transition-colors inline-flex items-center gap-1 ${
+                className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-bold border transition-colors inline-flex items-center gap-1 ${
                   sort === 'near'
                     ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
                     : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
@@ -132,7 +164,7 @@ export default function PcHomePage() {
                   key={s.key}
                   onClick={() => setSort(s.key)}
                   aria-pressed={active}
-                  className={`px-4 py-2 rounded-full text-[13px] font-bold border transition-colors ${
+                  className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-bold border transition-colors ${
                     active
                       ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
                       : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
@@ -168,13 +200,16 @@ export default function PcHomePage() {
             districtKey={region.districtKey}
             userLoc={userLoc}
           />
+          </div>
         </main>
       </div>
 
       {/* 🗺️ 2026-08-03 (대표 — 여기어때 하단 링크 그리드 차용): 지역 텍스트 링크.
           크롤러가 `/region/*` 페이지를 발견하는 통로 + 사용자 지역 탐색. 이미지 0 → LCP 영향 없음.
           플래그 OFF 면 아무것도 안 그린다(홈은 2026-07-19 확정 구조로 즉시 복귀). */}
-      {REGION_PAGES_ENABLED && <RegionLinkGrid />}
+      {/* 🎨 2026-08-19: 색면 위에서는 자체 배경이 없으면 글자가 묻힌다(gray-900 on 잉크).
+          지역 링크는 흰 밴드로 깔아 하단을 마무리한다 — 그루폰 하단 링크 영역과 같은 처리. */}
+      {REGION_PAGES_ENABLED && <RegionLinkGrid className="bg-white dark:bg-[#0F151D]" />}
 
       <PcHomeAppBand />
       <SiteFooter />

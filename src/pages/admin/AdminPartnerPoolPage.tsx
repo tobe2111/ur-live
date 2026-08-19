@@ -65,8 +65,8 @@ export default function AdminPartnerPoolPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
   const [stats, setStats] = useState<Stats | null>(null)
-  /** 🕐 최신화 내역 — 총계는 며칠 멈춰도 안 변한다. "요즘 들어오고는 있나"는 이 줄로만 보인다. */
-  const [byDay, setByDay] = useState<Array<{ d: string; n: number; reachable: number }>>([])
+  /** 🕐 최신화 내역 — 총계는 며칠 멈춰도 안 변한다. "요즘 들어오고는 있나"는 이 줄로만 보인다. `todayKst`=서버 권위(오늘 막대는 진행 중이라 추세에서 뺀다). */
+  const [inflow, setInflow] = useState<{ byDay: Array<{ d: string; n: number; reachable: number }>; todayKst: string }>({ byDay: [], todayKst: '' })
   /** 🎯 두 사업의 발송 가능 명단(온라인판매=페이백 · 대행사=제휴). 근거는 `BusinessSegments.tsx` 헤더. */
   const [segments, setSegments] = useState<{ payback_ready: number; agency_ready: number } | null>(null)
   const [showOps, setShowOps] = useState(false) // 수집 상태·키워드는 기본 접힘
@@ -121,7 +121,7 @@ export default function AdminPartnerPoolPage() {
   const loadStats = useCallback(async (): Promise<Record<string, unknown> | null> => {
     try {
       const r = await api.get('/api/admin/partner-pool/stats')
-      if (r.data?.success) { setStats(r.data.stats); setByDay(r.data.byDay || []); setSegments(r.data.segments || null); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setLocaldata(r.data.localdata || null); setEnrichInfo(r.data.enrichLast || null); setEnrichRollup(r.data.enrichRollup || null); setKakaoSweep(r.data.kakaoSweep || null); setRegistryMatch(r.data.registryMatch || null); setRunning(r.data.running || null); setLaneHealth(r.data.laneHealth || []) }
+      if (r.data?.success) { setStats(r.data.stats); setInflow({ byDay: r.data.byDay || [], todayKst: typeof r.data.todayKst === 'string' ? r.data.todayKst : '' }); setSegments(r.data.segments || null); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setLocaldata(r.data.localdata || null); setEnrichInfo(r.data.enrichLast || null); setEnrichRollup(r.data.enrichRollup || null); setKakaoSweep(r.data.kakaoSweep || null); setRegistryMatch(r.data.registryMatch || null); setRunning(r.data.running || null); setLaneHealth(r.data.laneHealth || []) }
       return r.data || null // 완료 감지 폴러가 원시 응답을 함께 사용
     } catch { return null }
   }, [])
@@ -358,7 +358,7 @@ export default function AdminPartnerPoolPage() {
           {statCard('review', '분류 확인 필요', stats?.needs_review || 0, '근거 없이 키워드 추정')}
         </div>
 
-        <InflowTimeline byDay={byDay} />
+        <InflowTimeline byDay={inflow.byDay} todayKst={inflow.todayKst} />
 
         {/* 액션 바 — 수집 5종 / 정리·보강 4종을 드롭다운으로 묶음(상시 노출 축소) */}
         <div className="flex flex-wrap items-center gap-2 mb-3">

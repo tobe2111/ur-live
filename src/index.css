@@ -814,6 +814,36 @@ html.dark .gbd {
 .gbd .noscroll::-webkit-scrollbar{display:none;}
 .gbd .noscroll{scrollbar-width:none;-ms-overflow-style:none;}
 
+/* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면 홈): 잉크 색면 위에 뜨는 **흰 패널**.
+   그루폰 홈이 초록 배경 위에 흰 카드 패널을 얹는 그 구조를 우리 딥네이비(#1A2C42)로 한다.
+   ⚠️ PC 메인 전용 — 다른 페이지는 흰 배경이라 이 클래스를 쓰지 않는다.
+   다크모드에서도 색면은 그대로(이미 어두운 색)이고 패널만 어두운 서피스로 바꾼다. */
+.ur-home-panel {
+  background: #fff;
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 2px rgba(10, 20, 40, .06), 0 8px 24px -12px rgba(10, 20, 40, .28);
+}
+.dark .ur-home-panel { background: #0F151D; box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6); }
+@media (max-width: 1023px) { .ur-home-panel { padding: 14px; border-radius: 14px; margin-bottom: 14px; } }
+
+/* ✨ 카드가 색면 위에서 살짝 떠오르는 인터랙션(대표 — "버튼 나타날 때 효과") */
+.ur-lift { transition: transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .18s ease-out; }
+.ur-lift:hover { transform: translateY(-3px); box-shadow: 0 10px 26px -10px rgba(10, 20, 40, .35); }
+@media (prefers-reduced-motion: reduce) { .ur-lift, .ur-lift:hover { transition: none; transform: none; } }
+
+/* ✨ 하트·화살표처럼 **나타나는** 컨트롤 — 페이드 + 살짝 확대(툭 튀지 않게 부드럽게) */
+.ur-appear { opacity: 0; transform: scale(.86); transition: opacity .16s ease-out, transform .16s cubic-bezier(.2,.7,.3,1); }
+.group\/media:hover .ur-appear, .group:hover .ur-appear, .ur-appear:focus-visible, .ur-appear.is-on { opacity: 1; transform: scale(1); }
+@media (hover: none) { .ur-appear { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ur-appear { transition: none; } }
+
+/* 💗 찜 눌렀을 때 한 번 통 튀는 피드백 */
+@keyframes ur-pop { 0% { transform: scale(1) } 40% { transform: scale(1.28) } 100% { transform: scale(1) } }
+.ur-pop { animation: ur-pop .32s cubic-bezier(.2,.7,.3,1); }
+@media (prefers-reduced-motion: reduce) { .ur-pop { animation: none; } }
+
 /* 📐 2026-06-16: PC 컨슈머 프레임 (app-framed) — 모바일 완성도를 PC 로 그대로 (가운데 액자 + 배경).
    lg+ 에서만 적용. 모바일(<lg)은 풀너비(영향 없음). 대시보드/도매몰/비디오 제외.
    고정 바(footer/header)는 같은 var(--app-frame) 로 정렬 (lg:left-1/2 -translate-x-1/2 max-w-[var(--app-frame)]). */

@@ -49,17 +49,20 @@ export default function SearchHeader({
   }, [])
 
   // 입력값 변경 시 자동완성 로드
+  // 🐛 2026-08-17 (UX 전수검사 P1): `/search?q=…` 로 **진입만 해도** 드롭다운이 결과 위에 열린 채
+  //   남았다 — 마운트 시 query→inputValue 동기화가 이 효과를 발화시켜, 사용자가 아무것도 안 했는데
+  //   자동완성이 떠서 필터 칩을 가렸다. **입력창이 포커스된 동안만** 로드/오픈한다(입력 중 = 의도).
   useEffect(() => {
-    if (inputValue && inputValue.length >= 2) {
+    if (isFocused && inputValue && inputValue.length >= 2) {
       onLoadSuggestions(inputValue)
       if (suggestions.length > 0) {
         setShowSuggestions(true)
       }
-    } else {
+    } else if (!inputValue || inputValue.length < 2) {
       setShowSuggestions(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputValue, suggestions.length])
+  }, [inputValue, suggestions.length, isFocused])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
