@@ -26,6 +26,7 @@ import { productDetailCols, productDetailColsHealed, withColumnPruning } from '@
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import type { GroupBuyProductRow, VoucherRow } from '@/shared/db/group-buy-types'
 import { ensureTables, maxTierDiscount, getMealVoucherCommissionRate, getSellerCommissionRate } from './helpers'
+import { sliceCardGallery } from './card-gallery'
 // 🍽️ 2026-06-17 (#5 대표 메뉴): products god-table 증식 차단용 K-V 사이드테이블에서 메뉴 읽기.
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
 import { intParam } from '@/shared/pagination'
@@ -320,31 +321,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //   AS-IS: 리스트는 price(기준가) 만 보내 카드가 tier 미반영 → 상세(할인가)와 불일치.
     //   current_price = round(price × (1 - maxTier)) 주입. 카드는 current_price ?? price 사용.
     //   캐시 헤더(Cache-Control/CDN-Cache-Control) 불변 — body enrich 만. design/groupbuy-instant-sale.md
-    // 🖼️ 2026-08-19 [UNLOCK_LOADING] (대표 시안 — 그루폰 카드 hover 캐러셀): 카드가 넘겨 볼
-    //   갤러리를 body 에 enrich. **서버에서 잘라 보낸다** — 상품당 원본이 5~8장이라 그대로 실으면
-    //   50개 카드 페이로드가 몇 배가 된다(로딩 잠금의 트래픽 원칙). 커버(image_url)와 중복은 빼고
-    //   **최대 3장**만: 카드 캐러셀은 커버 포함 4장이면 충분하다.
-    //   클라이언트 JSON.parse 제거도 tiers parse(2026-05-27)와 같은 이유로 여기서 한다.
-    const CARD_GALLERY_MAX = 3
     const mapped = (results as Array<Record<string, unknown>>).map((p): Record<string, unknown> => {
-      let gallery: string[] | undefined
-      try {
-        const raw = p.images
-        if (typeof raw === 'string' && raw.startsWith('[')) {
-          const arr = JSON.parse(raw)
-          if (Array.isArray(arr)) {
-            const cover = String(p.image_url ?? '')
-            gallery = arr
-              .filter((u): u is string => typeof u === 'string' && !!u && u !== cover)
-              .slice(0, CARD_GALLERY_MAX)
-          }
-        }
-      } catch { /* JSON 깨짐 — 갤러리 없이(커버만) 나간다. 카드는 그대로 동작 */ }
       const md = maxTierDiscount((p.group_buy_tiers as string | null) ?? null)
-      const withImgs = gallery && gallery.length ? { ...p, images: gallery } : { ...p, images: undefined }
-      if (md <= 0) return withImgs
-      const base = Number(p.price) || 0
-      return { ...withImgs, current_price: Math.round(base * (1 - md / 100)), current_discount_pct: md }
+      const g = sliceCardGallery(p.images, p.image_url)  // 🖼️ 2026-08-19 카드 캐러셀 갤러리(SSOT·cron 공용)
+      return { ...p, images: g.length ? g : undefined, ...(md > 0 ? { current_price: Math.round((Number(p.price) || 0) * (1 - md / 100)), current_discount_pct: md } : {}) }
     })
 
     // 🎯 2026-07-02 [UNLOCK_LOADING] (대표 신고 "홈이 미완성으로 먼저 뜨고 응모 버튼이 나중에 등장"):
