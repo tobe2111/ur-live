@@ -294,7 +294,7 @@ guideRoutes.post('/:type/reseed', async (c) => {
 
     const GUIDE_SEEDS = await loadSeedAsset(c.env as unknown as SeedAssetEnv, SEED_ASSET_PATHS.guides, isGuideSeed)
     if (!GUIDE_SEEDS) {
-      return c.json({ success: false, error: '시드 자산(_seed/guides.json)을 읽지 못했습니다 — 배포 산출물을 확인하세요' }, 503)
+      return c.json({ success: false, error: '시드 자산(seed/guides.json)을 읽지 못했습니다 — 배포 산출물을 확인하세요' }, 503)
     }
     const seed = GUIDE_SEEDS[type] || []
     if (seed.length === 0) {

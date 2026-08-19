@@ -6,8 +6,12 @@
  * 워커 번들에 항상 상주해 Cloudflare 무료 플랜의 압축 1MB 한도를 밀어 올린다(2026-08-19 배포가
  * 실제로 이것 때문에 막혔다). ⇒ 빌드 시 JSON 으로 뽑아 정적 자산으로 서빙한다.
  *
- * 출력: `dist/client/_seed/blog.json`, `dist/client/_seed/guides.json`
+ * 출력: `dist/client/seed/blog.json`, `dist/client/seed/guides.json`
  * 읽는 쪽: `src/worker/utils/seed-assets.ts` (경로 SSOT 는 그 파일의 SEED_ASSET_PATHS)
+ *
+ * ⚠️ **디렉터리 이름에 밑줄을 쓰지 않는다.** Cloudflare Pages 는 `_worker.js`·`_routes.json`·`_headers`
+ *    처럼 밑줄로 시작하는 것을 **설정 파일로 특수 취급**한다. `_seed/` 로 두면 자산으로 안 올라갈 수
+ *    있고, 그러면 워커가 영영 못 읽는다 — 게다가 fail-soft 라 **조용히** 시드가 멈춘다.
  *
  * ⚠️ **빈 결과면 실패로 끝낸다.** 빈 JSON 을 배포하면 워커가 그걸 '시드 없음'으로 읽고 지나가는데,
  *    호출부가 버전을 올려 버리면 라이브 문서가 조용히 낡는다. 여기서 막는 게 가장 싸다.
@@ -18,7 +22,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 
 const ROOT = process.cwd()
-const OUT_DIR = path.join(ROOT, 'dist/client/_seed')
+const OUT_DIR = path.join(ROOT, 'dist/client/seed')
 const TMP = path.join(ROOT, 'node_modules/.cache/seed-assets')
 
 /** 시드 모듈을 번들→import 해서 순수 데이터로 뽑는다(TS 를 그대로 못 import 하므로 한 번 굽는다). */

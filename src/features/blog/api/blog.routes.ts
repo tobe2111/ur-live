@@ -335,7 +335,7 @@ app.post('/seed', async (c) => {
   //   관리자가 "동기화했다"고 믿는데 라이브는 그대로다.
   const synced = await syncBlogSeed(c.env.DB, c.env as unknown as SeedAssetEnv)
   if (!synced) {
-    return c.json({ success: false, error: '시드 자산(_seed/blog.json)을 읽지 못했습니다 — 배포 산출물을 확인하세요' }, 503)
+    return c.json({ success: false, error: '시드 자산(seed/blog.json)을 읽지 못했습니다 — 배포 산출물을 확인하세요' }, 503)
   }
   await c.env.DB.prepare(
     `INSERT INTO blog_meta (key, value) VALUES ('seed_version', ?)

@@ -23,8 +23,8 @@ export interface SeedAssetEnv {
 
 /** 정적 자산 경로 SSOT — 빌드 스크립트(`scripts/build-seed-assets.mjs`)와 **같은 이름**을 써야 한다. */
 export const SEED_ASSET_PATHS = {
-  blog: '/_seed/blog.json',
-  guides: '/_seed/guides.json',
+  blog: '/seed/blog.json',
+  guides: '/seed/guides.json',
 } as const
 
 /**
