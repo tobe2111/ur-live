@@ -40,6 +40,7 @@ export default function PcHomeLocationBar({
   onChange,
   onLocate,
   located = false,
+  tone = 'panel',
 }: {
   value: HomeRegion
   onChange: (r: HomeRegion) => void
@@ -47,6 +48,13 @@ export default function PcHomeLocationBar({
   onLocate?: (loc: { lat: number; lng: number }) => void
   // 거리순(near) 모드 활성 여부 — 라벨을 '내 주변'으로 표시.
   located?: boolean
+  /**
+   * 🎨 2026-08-19 (대표 확정 — 통합형 히어로): 이 바가 **잉크 히어로 안**으로 들어갔다.
+   *   `panel` = 예전처럼 흰 패널 위(라이트 테두리) · `hero` = 잉크 색면 위(반투명 흰 칩).
+   *   ⚠️ 바뀌는 건 **트리거 버튼 두 개의 색뿐**이다 — 드롭다운 패널은 어느 tone 이든 흰색으로
+   *   둔다(지역 목록은 17개 시/도 × 세부지역이라, 반투명 위에 얹으면 읽기가 나빠진다).
+   */
+  tone?: 'panel' | 'hero'
 }) {
   const [open, setOpen] = useState(false)
   const [locating, setLocating] = useState(false)
@@ -89,23 +97,28 @@ export default function PcHomeLocationBar({
   }
 
   const sido = KOREA_REGIONS.find(r => r.key === activeSido) || KOREA_REGIONS[0]
+  const hero = tone === 'hero'
+  // 히어로(잉크 색면) 위에서는 흰 테두리 칩, 흰 패널 위에서는 기존 라이트 버튼.
+  const chip = hero
+    ? 'border-white/30 bg-white/[0.13] hover:bg-white/20 text-white'
+    : 'border-gray-200 dark:border-[#2A3446] bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-white/[0.04]'
 
   return (
     <div ref={boxRef} className="relative inline-block">
       <div className="flex items-center gap-2">
         <button
           onClick={() => setOpen(o => !o)}
-          className="inline-flex items-center gap-1.5 pl-2.5 pr-2 py-2 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
+          className={`inline-flex items-center gap-1.5 ${hero ? 'pl-3 pr-2.5 py-2 rounded-full' : 'pl-2.5 pr-2 py-2 rounded-xl'} border transition-colors ${chip}`}
           aria-expanded={open}
         >
-          <MapPin className="w-[18px] h-[18px] text-gray-900 dark:text-white shrink-0" />
-          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white max-w-[220px] truncate">{located ? '내 주변' : labelFor(value)}</span>
-          <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+          <MapPin className={`${hero ? 'w-4 h-4' : 'w-[18px] h-[18px]'} shrink-0 ${hero ? 'text-white' : 'text-gray-900 dark:text-white'}`} />
+          <span className={`${hero ? 'text-[13px] font-bold text-white' : 'text-[15px] font-extrabold text-gray-900 dark:text-white'} max-w-[220px] truncate`}>{located ? '내 주변' : labelFor(value)}</span>
+          <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${hero ? 'text-white/70' : 'text-gray-400'} ${open ? 'rotate-180' : ''}`} />
         </button>
         <button
           onClick={useMyLocation}
           disabled={locating}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-white/[0.04] text-[13px] font-bold text-gray-700 dark:text-gray-200 transition-colors disabled:opacity-60"
+          className={`inline-flex items-center gap-1.5 ${hero ? 'px-4 py-2 rounded-full' : 'px-3 py-2 rounded-xl'} border text-[13px] font-bold transition-colors disabled:opacity-60 ${chip} ${hero ? '' : 'text-gray-700 dark:text-gray-200'}`}
         >
           {locating ? <Loader2 className="w-[15px] h-[15px] animate-spin" /> : <LocateFixed className="w-[15px] h-[15px]" />}
           현 위치로 설정

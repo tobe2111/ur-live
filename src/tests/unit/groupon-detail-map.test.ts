@@ -1,0 +1,116 @@
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { derivePricing } from '@/pages/group-buy/pricing'
+
+const read = (p: string) => readFileSync(p, 'utf8')
+/** 주석을 걷어낸 코드만 본다 — "주석에만 남아도 통과"하는 헛도는 가드를 막는다. */
+const code = (p: string) =>
+  read(p).replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+
+const DETAIL = 'src/pages/GroupBuyDetailPage.tsx'
+const MAP = 'src/pages/RestaurantMapPage.tsx'
+const TOPBAR = 'src/pages/restaurant-map/MapTopBar.tsx'
+
+/**
+ * 🎟️ 이용권 상세 — 그루폰 정석(1안) · 🗺️ /map PC 컨트롤 이동 (2026-08-19 대표 확정).
+ *
+ * ⚠️ 이 파일이 **못 막는 것**: 실제 렌더 결과(높이·겹침·읽기 쉬움). 소스 문자열만 본다.
+ *   최종 판정은 라이브 스크린샷이다.
+ */
+describe('이용권 상세 — 제목이 사진 위로 (대표 확정 1안)', () => {
+  it('제목 헤더가 갤러리보다 **먼저** 온다', () => {
+    const s = code(DETAIL)
+    const header = s.indexOf('<DetailTitleHeader')
+    const gallery = s.indexOf('<DetailGallery')
+    expect(header).toBeGreaterThan(-1)
+    expect(gallery).toBeGreaterThan(-1)
+    expect(header).toBeLessThan(gallery)
+  })
+
+  it('제목·가격이 PC 에서 두 벌로 나오지 않는다 (모바일 블록은 lg:hidden)', () => {
+    const s = code(DETAIL)
+    // 모바일 타이틀/가격 블록은 반드시 lg:hidden 을 달고 있어야 한다.
+    expect(s).toMatch(/className="lg:hidden" style=\{\{ padding: '20px 18px 0' \}\}/)
+    expect(s).toMatch(/className="lg:hidden" style=\{\{ padding: '18px 18px 22px' \}\}/)
+  })
+
+  it('제목 헤더는 PC 전용이다 (모바일은 사진이 먼저)', () => {
+    expect(code('src/pages/group-buy/DetailTitleHeader.tsx')).toMatch(/hidden lg:block/)
+  })
+
+  it('제목 헤더에 별점·주소가 함께 온다 (그루폰 상단 3요소)', () => {
+    const s = code('src/pages/group-buy/DetailTitleHeader.tsx')
+    expect(s).toMatch(/<StarRating/)
+    expect(s).toMatch(/address/)
+  })
+
+  it('구매 패널이 최종가를 스스로 말한다 — 할인율 pill + 정가 취소선', () => {
+    const s = code('src/pages/group-buy/DealPurchaseBox.tsx')
+    // PC 본문에서 가격 블록을 뺐으므로 여기가 유일한 가격 자리다.
+    expect(s).toMatch(/discountPct > 0[\s\S]{0,400}-\{discountPct\}%/)
+    expect(s).toMatch(/unitSaving > 0[\s\S]{0,300}<s[\s\S]{0,200}formatNumber\(refPrice\)/)
+  })
+})
+
+describe('할인율은 카드·상세·공유가 같은 값을 쓴다 (표시 SSOT)', () => {
+  it('상세는 표시용 할인율을 쓰고, 서버값을 직접 찍지 않는다', () => {
+    const s = code(DETAIL)
+    // 타입 선언(interface) 한 곳을 빼면 화면·공유 어디에서도 raw 값을 쓰지 않아야 한다.
+    const raws = s.match(/detail\.current_discount_pct/g) || []
+    expect(raws).toHaveLength(0)
+    expect(s).toMatch(/displayDiscountPct/)
+  })
+
+  it('결제가는 표시용 폴백에 오염되지 않는다 (서버 할인율만)', () => {
+    // 정가 32,000 · 공구가 23,800 · 서버 할인율 0  → 결제가는 23,800 그대로,
+    // 화면 할인율만 26% 로 채운다(카드가 보여 주는 값과 같아진다).
+    const p = derivePricing({ price: 23800, original_price: 32000, current_discount_pct: 0 })
+    expect(p.unitPrice).toBe(23800)          // ⚠️ 26% 를 또 곱하면 안 된다(이중 할인)
+    expect(p.displayDiscountPct).toBe(26)
+    expect(p.unitSaving).toBe(8200)
+  })
+
+  it('서버 할인율이 있으면 그게 이긴다 (티어 할인 존중)', () => {
+    const p = derivePricing({ price: 10000, original_price: 12000, current_discount_pct: 30 })
+    expect(p.unitPrice).toBe(7000)
+    expect(p.displayDiscountPct).toBe(30)
+  })
+
+  it('할인이 없으면 0 — 안 깎인 상품에 취소선/할인율을 만들지 않는다', () => {
+    const p = derivePricing({ price: 10000, current_discount_pct: 0 })
+    expect(p.displayDiscountPct).toBe(0)
+    expect(p.unitSaving).toBe(0)
+    expect(derivePricing(null).unitPrice).toBe(0)
+  })
+})
+
+describe('/map — 지도 위 컨트롤이 왼쪽 리스트 상단으로 (PC)', () => {
+  it('지도 오버레이는 PC 에서 숨는다 (지도는 지도만)', () => {
+    const s = code(TOPBAR)
+    // overlay 분기의 클래스에 lg:hidden 이 있어야 한다.
+    expect(s).toMatch(/lg:hidden absolute top-0/)
+  })
+
+  it('PC 는 같은 바를 좌측 패널 안에 그린다', () => {
+    const s = code(MAP)
+    expect(s).toMatch(/<MapTopBar variant="panel"/)
+    // 패널 호출은 **좌측 400px 시트 컨테이너 안**, 그리고 결과 리스트보다 위(헤더 자리)에 있어야 한다.
+    // ⚠️ `<SheetFilterBar` 로 위치를 잡으면 안 된다 — 홈 리스트 모드에도 하나 있어서 첫 번째가 잡힌다
+    //    (이 테스트를 만들 때 실제로 그렇게 헛짚었다).
+    const panelAt = s.indexOf('<MapTopBar variant="panel"')
+    expect(panelAt).toBeGreaterThan(s.indexOf('lg:w-[400px]'))
+    expect(panelAt).toBeLessThan(s.indexOf('<RestaurantList', panelAt))
+  })
+
+  it('두 자리가 같은 props 를 쓴다 — 칩 하나만 한쪽에 추가되는 드리프트 차단', () => {
+    const s = code(MAP)
+    expect(s).toMatch(/const topBarProps = \{/)
+    // 두 호출부 모두 spread 로만 넘긴다(개별 나열로 되돌아가면 반드시 갈린다).
+    expect(s).toMatch(/<MapTopBar \{\.\.\.topBarProps\} \/>/)
+    expect(s).toMatch(/<MapTopBar variant="panel" \{\.\.\.topBarProps\} \/>/)
+  })
+
+  it('패널에서는 칩이 줄바꿈된다 — 400px 에서 잘려 안 보이면 아무도 못 찾는다', () => {
+    expect(code(TOPBAR)).toMatch(/panel \? 'flex-wrap'/)
+  })
+})
