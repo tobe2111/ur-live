@@ -5,7 +5,7 @@
   "src/features/admin/api/admin-review-generator.routes.ts": 749,
   "src/features/admin/api/admin-sellers.routes.ts": 1078,
   "src/features/admin/api/admin-stays.routes.ts": 640,
-  "src/features/agency/api/agency.routes.ts": 1117,
+  "src/features/agency/api/agency.routes.ts": 1094,
   "src/features/auction/api/auction.routes.ts": 833,
   "src/features/auth/api/admin.routes.ts": 641,
   "src/features/auth/api/kakao.routes.ts": 1057,

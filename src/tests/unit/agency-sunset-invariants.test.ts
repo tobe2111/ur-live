@@ -143,6 +143,12 @@ describe('🌇 에이전시 일몰 — 머니/공개 경로는 절대 같이 죽
     expect(read('src/features/seller/api/seller-registration.routes.ts')).toMatch(/consumeInviteCode/)
   })
 
+  it('에이전시가 셀러 대신 방송을 예약하는 엔드포인트는 없다 (라이브커머스 영구 중단)', () => {
+    // 2026-08-19 일몰에서 제거. 화면(AgencyProductsPage·schedule)이 사라져 도달 경로가 0이었고,
+    // LIVE_COMMERCE_SUSPENDED 는 영구 결정이라 되살아나면 안 된다.
+    expect(agencyApi).not.toMatch(/app\.post\('\/sellers\/:id\/streams'/)
+  })
+
   it('셀러측 promote-boosts 라우터는 살아 있다', () => {
     expect(workerIndex).toMatch(/^app\.route\('\/api\/seller\/promote-boosts', promoteBoostsSellerRoutes\);/m)
   })

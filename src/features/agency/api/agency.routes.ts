@@ -974,32 +974,6 @@ app.put('/sellers/:id/products/:productId', rateLimit({ action: 'agency_seller_p
   return c.json({ success: true })
 })
 
-// ── POST /sellers/:id/streams — 셀러 대신 방송 예약 ───────────────
-app.post('/sellers/:id/streams', rateLimit({ action: 'agency_seller_stream_create', max: 20, windowSec: 60 }), async (c) => {
-  await ensureAgencyTables(c.env.DB)
-  const { id: agencyId } = c.get('agency') as { id: number }
-  const sellerId = Number(c.req.param('id'))
-
-  const belongs = await c.env.DB.prepare('SELECT id FROM agency_sellers WHERE agency_id = ? AND seller_id = ?')
-    .bind(agencyId, sellerId).first()
-  if (!belongs) return c.json({ success: false, error: '소속 셀러가 아닙니다.' }, 403)
-
-  const { title, description, scheduled_at } = await c.req.json<{
-    title: string; description?: string; scheduled_at?: string;
-  }>()
-
-  if (!title) return c.json({ success: false, error: '방송 제목은 필수입니다.' }, 400)
-
-  // 🛡️ 2026-05-18: youtube_video_id NOT NULL — 사전 예약 시점 미발급 상태이므로 빈 문자열로.
-  //   실제 송출 시작 시 update 됨. 마이그레이션 0259 가 기존 NULL row 도 ''로 정리.
-  const result = await c.env.DB.prepare(`
-    INSERT INTO live_streams (seller_id, title, description, youtube_video_id, status, scheduled_at, created_at, updated_at)
-    VALUES (?, ?, ?, '', 'scheduled', ?, datetime('now'), datetime('now'))
-  `).bind(sellerId, title, description || null, scheduled_at || null).run()
-
-  return c.json({ success: true, data: { id: result.meta.last_row_id } }, 201)
-})
-
 // ── POST /invite-seller — 셀러 초대 (에이전시가 셀러 계정 생성) ─────
 // 🛡️ 2026-04-22 배치 147: rate limit + 비밀번호 복잡도 검증 추가
 app.post('/invite-seller', rateLimit({ action: 'agency_invite_seller', max: 20, windowSec: 3600 }), async (c) => {
