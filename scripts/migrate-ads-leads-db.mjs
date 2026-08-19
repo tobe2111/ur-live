@@ -32,8 +32,15 @@ const TOKEN = process.env.CLOUDFLARE_API_TOKEN
 const SRC_DB = opt('from', 'd9530ba6-7a26-4c02-9295-3ce5aef112a3')  // 라이브(현재 통합 DB)
 const DST_DB = opt('to')
 const CHUNK = Number(opt('chunk', '500'))
-/** 한 INSERT 문의 최대 길이(문자). D1 은 문장이 너무 길면 SQLITE_TOOBIG 로 거부한다. */
-const SQL_BUDGET = Number(opt('sql-budget', '80000'))
+/**
+ * 한 INSERT 문의 최대 길이(문자).
+ *
+ * 🧪 실측(2026-08-19): **바이트만의 문제가 아니다.** 2컬럼 테이블은 50 KB 문장이 통과하는데
+ *   `ad_influencer_leads`(약 50컬럼)는 80 KB 에서 `SQLITE_TOOBIG` 이 났다 — VALUES 목록 × 컬럼 수가
+ *   파스 트리를 키우기 때문이다. 그래서 넉넉히 낮춘 30 KB 를 기본으로 둔다(40 KB 도 통과했다).
+ *   ⚠️ 100 KB 는 TOOBIG 이 아니라 **rate-limit(code 971)** 이 먼저 온다 — 크게 잡을 이유가 없다.
+ */
+const SQL_BUDGET = Number(opt('sql-budget', '30000'))
 
 /** 이사 대상 — 코드 SSOT(`src/shared/ads/leads-db.ts`)에서 읽는다. 두 벌로 적으면 반드시 어긋난다. */
 function loadTables() {
