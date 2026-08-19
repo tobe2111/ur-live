@@ -15,6 +15,7 @@
  *   node scripts/migrate-ads-leads-db.mjs --to <새-D1-uuid> --plan      # 무엇을 옮길지만 출력
  *   node scripts/migrate-ads-leads-db.mjs --to <새-D1-uuid> --schema    # ① 스키마만
  *   node scripts/migrate-ads-leads-db.mjs --to <새-D1-uuid> --copy      # ② 복사(재시작 가능)
+ *   node scripts/migrate-ads-leads-db.mjs --to <새-D1-uuid> --sync      # ②-b 델타 동기(양방향)
  *   node scripts/migrate-ads-leads-db.mjs --to <새-D1-uuid> --verify    # ③ 대조
  *
  * 자격증명: `CLOUDFLARE_API_TOKEN` · `CLOUDFLARE_ACCOUNT_ID` (환경변수).
@@ -136,6 +137,63 @@ async function main() {
         process.stdout.write(`\r  ${t}: ${done}/${srcN}   `)
       }
       console.log(`\r  ✓ ${t}: ${done}행 복사 (원본 ${srcN})       `)
+    }
+  }
+
+  // ── ②-b 동기(sync) — **양방향으로 맞춘다.** 살아 있는 원본은 복사 중에도 변한다 ──────
+  //
+  //   🩸 왜 필요한가(2026-08-19 실측): 복사 직후 대조가 `원본 122,742 / 사본 122,747` 로 어긋났다.
+  //      **사본이 5행 더 많았다** — 정비 레인(`influencer-maintenance`)이 그 사이 저품질 리드를
+  //      원본에서 지웠기 때문이다. 단순 복사는 원본의 *삭제*를 따라가지 못한다. 그대로 전환하면
+  //      운영자가 지운 리드가 새 DB에서 **되살아난다.**
+  //
+  //   어떻게: rowid 를 10,000 단위 버킷으로 묶어 양쪽의 (개수, rowid합)을 비교하고 **다른 버킷만**
+  //   실제 rowid 목록으로 내려가 좁힌다. 716,000행을 전수 대조하지 않아도 되고, 삭제가 드물수록
+  //   빨라진다(버킷 하나만 다르면 그 1만개만 본다).
+  if (flag('sync')) {
+    const BUCKET = 10000
+    for (const t of TABLES) {
+      const cols = (await q(SRC_DB, `SELECT name FROM pragma_table_info('${t}')`)).map((c) => c.name)
+      const colList = cols.map((c) => `"${c}"`).join(',')
+      const bucketSql = `SELECT rowid/${BUCKET} AS b, COUNT(*) n, SUM(rowid) s FROM "${t}" GROUP BY b`
+      const [sb, db_] = [await q(SRC_DB, bucketSql), await q(DST_DB, bucketSql)]
+      const m = (rows) => new Map(rows.map((r) => [Number(r.b), `${r.n}:${r.s}`]))
+      const [ms, md] = [m(sb), m(db_)]
+      const diff = [...new Set([...ms.keys(), ...md.keys()])].filter((b) => ms.get(b) !== md.get(b))
+      if (!diff.length) { console.log(`  ✓ ${t}: 일치 (버킷 ${ms.size}개)`); continue }
+      let added = 0, removed = 0
+      for (const b of diff) {
+        const lo = b * BUCKET, hi = lo + BUCKET
+        const ids = async (db) => new Set((await q(db,
+          `SELECT rowid AS r FROM "${t}" WHERE rowid >= ${lo} AND rowid < ${hi}`)).map((x) => Number(x.r)))
+        const [si, di] = [await ids(SRC_DB), await ids(DST_DB)]
+        const missing = [...si].filter((x) => !di.has(x))
+        const extra = [...di].filter((x) => !si.has(x))
+        // 원본에 있고 사본에 없는 것 → 채운다
+        for (let i = 0; i < missing.length; i += 200) {
+          const part = missing.slice(i, i + 200)
+          const rows = await q(SRC_DB, `SELECT rowid AS __rid, ${colList} FROM "${t}" WHERE rowid IN (${part.join(',')})`)
+          let buf = [], bytes = 0
+          const flush = async () => {
+            if (!buf.length) return
+            await q(DST_DB, `INSERT OR IGNORE INTO "${t}" (rowid,${colList}) VALUES ${buf.join(',')}`)
+            buf = []; bytes = 0
+          }
+          for (const r of rows) {
+            const v = `(${r.__rid},${cols.map((c) => lit(r[c])).join(',')})`
+            if (bytes + v.length > SQL_BUDGET) await flush()
+            buf.push(v); bytes += v.length + 1; added++
+          }
+          await flush()
+        }
+        // 사본에만 있는 것 → **지운다**(원본에서 정비 레인이 지운 행이 되살아나면 안 된다)
+        for (let i = 0; i < extra.length; i += 400) {
+          const part = extra.slice(i, i + 400)
+          await q(DST_DB, `DELETE FROM "${t}" WHERE rowid IN (${part.join(',')})`)
+          removed += part.length
+        }
+      }
+      console.log(`  ↻ ${t}: 버킷 ${diff.length}개 조정 — 추가 ${added} · 제거 ${removed}`)
     }
   }
 
