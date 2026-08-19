@@ -18,7 +18,7 @@ import { buildCronBeatRow } from '@/worker/utils/cron-heartbeat'
 import { staleGapMinutes } from './lane-cadence'
 import { summarizeLaneRun, appendRunHistory, serializeRunHistory, serializeLaneStamp, LANE_RUNS_KEY } from './lane-run-history'
 import type { LaneRunEntry } from './lane-run-history'
-import { adaptiveIntervalHours, RETRY_MAX_FAIL_STREAK } from './lane-adaptive-interval'
+import { adaptiveIntervalHours, RETRY_MAX_FAIL_STREAK, failStreakFromHistory } from './lane-adaptive-interval'
 
 interface AlarmEnv {
   ADS_LANE_ALARM_INTERVAL_MS?: string
@@ -105,7 +105,9 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     //   `failStreak` 백오프가 이 경로엔 안 걸린다 — 영구 장애면 하루 24번을 계속 두드리게 된다.
     //   `RETRY_MAX_FAIL_STREAK` 회를 넘기면 재시도를 접고 **기본 주기로 돌아간다**(일시적 실패만 즉시
     //   되찾고, 고장 난 소스는 조용히 두는 것 — 서브리퀘스트는 이 시스템의 희소 자원이다).
-    const retryable = nextFail <= RETRY_MAX_FAIL_STREAK
+    // ⚠️ **`nextFail` 이 아니라 이력으로 센다** — `failStreak` 은 예외를 던진 회차만 세는데, 실제 장애는
+    //   예외 없이 `diag.error` 로만 온다(실측: 4회 연속 실패인데 `fail_streak: 0`). 근거는 그 함수 docblock.
+    const retryable = failStreakFromHistory(runHistory) <= RETRY_MAX_FAIL_STREAK
     const put: Record<string, unknown> = { bucket, runs: ran, failStreak: nextFail, runHistory }
     if (runs < cap && due && (!entry || entry.ok || !retryable)) put.lastRunAt = t0
     await this.ctx.storage.put(put).catch(() => undefined)

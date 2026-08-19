@@ -113,7 +113,9 @@ describe('🔌 DO 배선', () => {
 describe('🛑 실패 재시도 상한 — 영구 장애를 영원히 두드리지 않는다', () => {
   const src = readFileSync('src/worker-ads/lane-alarm.ts', 'utf8')
   it('연속 실패가 상한을 넘으면 재시도를 접고 기본 주기로 돌아간다', () => {
-    expect(src).toContain('const retryable = nextFail <= RETRY_MAX_FAIL_STREAK')
+    // 🔄 2026-08-19: 근거가 `failStreak`(예외 전용) → **이력**으로 바뀌었다. 지키는 것은 그대로
+    //   "연속 실패가 상한을 넘으면 재시도를 접는다" 이므로 앞의 절이 그 사실을 따로 고정한다.
+    expect(src).toContain('<= RETRY_MAX_FAIL_STREAK')
     expect(src).toContain('(!entry || entry.ok || !retryable)')
   })
   it('상한은 일시적 장애와 구분될 만큼은 크다(1회는 즉시 재시도해야 한다)', async () => {
@@ -150,5 +152,21 @@ describe('🌵 마른 레인은 늦춘다 — 조이기와 대칭', () => {
     const { BARREN_INTERVAL_MULT } = await import('@/worker-ads/lane-adaptive-interval')
     expect(BARREN_INTERVAL_MULT).toBeGreaterThan(1)
     expect(Number.isFinite(adaptiveIntervalHours(2, many(20, dry())))).toBe(true)
+  })
+})
+
+describe('🩸 재시도 상한은 **소프트 실패**까지 세야 한다 (2026-08-19 라이브)', () => {
+  it('failStreakFromHistory 가 diag.error 만 있는 실패도 센다', async () => {
+    const { failStreakFromHistory } = await import('@/worker-ads/lane-adaptive-interval')
+    // 실측 형상: 예외 없이 diag.error 로만 4회 연속 실패 — 그때 alarm 의 fail_streak 는 0 이었다.
+    expect(failStreakFromHistory(many(4, bad()))).toBe(4)
+    expect(failStreakFromHistory([ok(), ...many(4, bad())])).toBe(0)
+    expect(failStreakFromHistory([])).toBe(0)
+  })
+
+  it('🔴 상한 판정이 failStreak(예외 전용)이 아니라 이력을 본다 — 안 그러면 상한이 영영 안 걸린다', () => {
+    const src = readFileSync('src/worker-ads/lane-alarm.ts', 'utf8')
+    expect(src).toContain('const retryable = failStreakFromHistory(runHistory) <= RETRY_MAX_FAIL_STREAK')
+    expect(src).not.toContain('const retryable = nextFail <=')
   })
 })

@@ -44,6 +44,24 @@ export const MIN_INTERVAL_HOURS = 1
 export const RETRY_MAX_FAIL_STREAK = 3
 
 /**
+ * 연속 실패 회차 수 — **이력 기준**.
+ *
+ * 🩸 **`failStreak` 로는 못 센다(2026-08-19 라이브에서 잡힘).** 그 카운터는 러너가 **예외를 던졌을 때만**
+ *   증가하는데, 실제 장애는 예외 없이 `diag.error` 로만 나타난다:
+ *   ```
+ *   ads_lane_alarm_last:collect-commerce   fail_streak: 0   ← 4회 연속 실패한 직후인데도 0
+ *   ads_lane_runs:collect-commerce         04:00 실패 · 03:00 실패 · 02:00 실패 · 01:00 실패
+ *   ```
+ *   ⇒ `failStreak` 에 재시도 상한을 걸면 **그 상한이 정작 필요한 경우에 한 번도 안 걸린다.**
+ *   이력은 `entry.ok` 로 소프트 실패까지 세므로 여기가 옳은 근거다.
+ */
+export function failStreakFromHistory(history: readonly LaneRunEntry[]): number {
+  let n = 0
+  for (const r of history) { if (!r || r.ok) break; n++ }
+  return n
+}
+
+/**
  * 🌵 **마른 레인은 주기를 늘린다** (2026-08-18 실측 — 조이기와 대칭).
  *
  * ```

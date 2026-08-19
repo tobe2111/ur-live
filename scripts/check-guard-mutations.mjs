@@ -298,6 +298,17 @@ const MUTATIONS = [
       'id 중복만 제거한다 — dedup 이 빠지면 같은 키워드를 한 회차에 두 번 호출한다.',
   },
   {
+    name: '🩸 재시도 상한을 failStreak(예외 전용)으로 센다 — 정작 필요할 때 안 걸린다',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'failStreakFromHistory(runHistory) <= RETRY_MAX_FAIL_STREAK',
+    replace: 'nextFail <= RETRY_MAX_FAIL_STREAK',
+    test: 'src/tests/unit/lane-adaptive-interval.test.ts',
+    why:
+      '2026-08-19 라이브: commerce 가 4회 연속 실패한 직후인데 `fail_streak: 0` 이었다 — 그 카운터는 ' +
+      '**예외를 던진 회차만** 세는데 실제 장애는 예외 없이 `diag.error` 로만 온다. ' +
+      'failStreak 에 상한을 걸면 그 상한이 **정작 필요한 경우에 한 번도 안 걸린다.**',
+  },
+  {
     name: '🌵 마른 레인 감속을 뺀다(0건에 CPU·서브리퀘스트를 계속 쓴다)',
     file: 'src/worker-ads/lane-adaptive-interval.ts',
     find: '  if (isBarren(history)) return base * BARREN_INTERVAL_MULT',
@@ -431,7 +442,7 @@ const MUTATIONS = [
   {
     name: '실패 재시도에 상한이 없다(영구 장애 소스를 하루 24번 두드린다)',
     file: 'src/worker-ads/lane-alarm.ts',
-    find: '    const retryable = nextFail <= RETRY_MAX_FAIL_STREAK',
+    find: '    const retryable = failStreakFromHistory(runHistory) <= RETRY_MAX_FAIL_STREAK',
     replace: '    const retryable = true',
     test: 'src/tests/unit/lane-adaptive-interval.test.ts',
     why:
