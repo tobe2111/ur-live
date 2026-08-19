@@ -123,7 +123,13 @@ ADS_STORE_KAKAO_ENABLED       ADS_FRANCHISE_ENABLED   ADS_COLLECT_CAFE_ENABLED
 
 `Storage & Databases → D1 → Create database`
 - 이름: **`urads-leads-db`**
-- 생성 후 **Database ID(uuid)를 복사**해서 저에게 알려 주십시오. 그게 있어야 이사를 시작합니다.
+- 생성 후 **Database ID(uuid)를 복사**해서 저에게 알려 주십시오.
+
+> 🔴 **uuid 는 이사 때문만이 아니라 이것 때문에도 꼭 필요합니다** — `wrangler.toml` ·
+> `wrangler-ads.toml` 에 선언해 두지 않으면 **다음 `wrangler deploy` 가 대시보드 바인딩을 지웁니다.**
+> 이 파일들이 선언한 것으로 워커 설정을 **통째로 교체**하기 때문입니다(없으면 "추가 안 함"이 아니라 삭제).
+> 2026-08-02 에 `BACKUP_BUCKET` 이 정확히 그렇게 날아갔습니다 — 백업 cron 을 켠 그 배포가
+> 백업이 쓸 버킷을 지웠습니다. 두 파일에 자리와 경고는 미리 만들어 뒀고, **uuid 만 채우면 됩니다.**
 
 ### 7-3. 바인딩을 **두 곳**에 붙인다
 

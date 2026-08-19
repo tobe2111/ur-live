@@ -88,6 +88,8 @@ lead-claim.ts getFunnelTailStats:
 
 1. **새 D1 생성 + `ADS_DB` 바인딩 2곳**(ur-ads · ur-live Pages Production/Preview) — 절차는
    `docs/design/ads-leads-db-split.md` §7 에 화면 이름까지 적어 뒀다. **uuid 를 알려 주셔야** ③을 시작한다.
+   🔴 **uuid 를 받으면 두 wrangler toml 의 주석 블록을 반드시 실선언으로 바꿔라** — 대시보드에만 있으면
+   다음 `wrangler deploy` 가 지운다(2026-08-02 `BACKUP_BUCKET` 이 그렇게 날아갔다. 자리와 경고는 준비돼 있다).
 2. **수집 레인 일시정지 여부** — 안 껐으면 이사 중 들어온 행을 ③에서 다시 복사해야 한다(더 느릴 뿐 안전).
 3. **파일 크기는 안 줄어들 수 있다** — SQLite 는 삭제로 파일이 안 줄고 D1 은 `VACUUM` 이 막혀 있다
    (`PRAGMA freelist_count` → `not authorized`). 이 작업의 목표는 **"안전"이 아니라 "안정"** 이다:
