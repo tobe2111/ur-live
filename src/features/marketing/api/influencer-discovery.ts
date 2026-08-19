@@ -18,6 +18,7 @@ import { isSelfBlogLink } from './influencer-self-link'
 import { fetchWithErr, outOfBudget, spendBudget } from './fetch-with-err'
 import { stripVideoTitles } from './influencer-parse'
 import { noteCrawlStatus, naverCrawlBlocked } from './naver-crawl-block'
+import { planSearchDepth } from './influencer-search-depth' // 📖 검색 깊이 커서(같은 상위 100건 반복 방지)
 
 import { deobfuscateEmail } from './contact-deobfuscate'
 
@@ -200,7 +201,8 @@ async function fetchRecentVideoSnippets(key: string, uploadsPlaylistId: string):
 }
 
 export type DiscoverResult =
-  | { ok: true; leads: InfluencerLead[]; calls?: import('./influencer-collect-types').DiscoverCalls }
+  /** `nextStart` = 📖 저장할 다음 검색 커서. **저장 안 하면 영원히 1페이지** — 규칙·근거는 `influencer-search-depth.ts`. */
+  | { ok: true; leads: InfluencerLead[]; nextStart?: number; calls?: import('./influencer-collect-types').DiscoverCalls }
   | { ok: false; error: 'NOT_CONFIGURED' | 'QUOTA' | 'FAILED'; message?: string; calls?: import('./influencer-collect-types').DiscoverCalls }
 
 /** 🔒 서브리퀘스트 예산(2026-07-20) — Cloudflare Worker 1회 실행의 subrequest 한도 방어.
@@ -398,7 +400,9 @@ async function filterUncontacted<T>(hook: AlreadyContacted | undefined, platform
 }
 
 export async function discoverNaverBloggers(
-  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; enrichMax?: number; budget?: FetchBudget; sort?: 'sim' | 'date'; alreadyContacted?: AlreadyContacted } = {},
+  clientId: string | undefined, clientSecret: string | undefined, keyword: string,
+  /** `start` = 저장돼 있던 검색 커서(없으면 1페이지). `sim` 회차에서만 전진. */
+  opts: { display?: number; enrichMax?: number; budget?: FetchBudget; sort?: 'sim' | 'date'; alreadyContacted?: AlreadyContacted; start?: number } = {},
 ): Promise<DiscoverResult> {
   if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
   const q = (keyword || '').trim()
@@ -407,7 +411,9 @@ export async function discoverNaverBloggers(
   spendBudget(opts.budget)
   const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
   const sort = opts.sort === 'date' ? 'date' : 'sim' // sim=정확도(관련) / date=최신(신규 블로거 유입)
-  const url = `${NAVER_OPENAPI}/v1/search/blog.json?query=${encodeURIComponent(q)}&display=${display}&sort=${sort}`
+  // 📖 **start 부재가 발굴량 감소의 원인이었다**(신규율 8~38% 붕괴). 근거·규칙은 `influencer-search-depth.ts`.
+  const depth = planSearchDepth(sort, opts.start, display)
+  const url = `${NAVER_OPENAPI}/v1/search/blog.json?query=${encodeURIComponent(q)}&display=${display}&sort=${sort}&start=${depth.start}`
   const { res, err: fetchErr } = await fetchWithErr(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) })
   if (!res) return { ok: false, error: 'FAILED', message: `블로그 검색 호출 실패 — ${fetchErr || '네트워크'}` }
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; bloggername?: string; bloggerlink?: string; postdate?: string }>; errorMessage?: string } | null
@@ -466,7 +472,8 @@ export async function discoverNaverBloggers(
     if (!l.tiktok && c.tiktok[0]) l.tiktok = c.tiktok[0]
     if (!l.links && c.links.length) l.links = c.links.join(' ')
   }
-  return { ok: true, leads }
+  // 📖 커서는 검색이 **실제로 일어난** 경우에만 전진(예산 소진 조기 종료는 위에서 반환 = 안 본 페이지 안 건너뜀).
+  return { ok: true, leads, nextStart: depth.nextStart }
 }
 
 function existingOrNew(m: Map<string, InfluencerLead & { _matches: number; _titles: string[] }>, key: string, name: string, url: string, handle: string | null): InfluencerLead & { _matches: number; _titles: string[] } {
