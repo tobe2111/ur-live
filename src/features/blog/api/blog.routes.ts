@@ -13,6 +13,7 @@ import { generateBlogDraft, PROMO_TOPICS, type PromoTopic } from './blog-ai';
 // 🥗 2026-07-15 워커 다이어트(대표 승인): blog-seed(임베드 블로그 글 ~62KB)는 syncBlogSeed 안에서만 쓰이므로
 //   정적 import → 동적 import 로 이동(guide-seed 와 동일 검증된 패턴). 시드 동기화 발생 시에만 로드 → 메인 워커 번들 축소.
 import { intParam } from '@/shared/pagination'
+import { loadSeedAsset, isBlogSeed, SEED_ASSET_PATHS, type SeedAssetEnv } from '../../../worker/utils/seed-assets'
 const app = new Hono<{ Bindings: Env }>()
 
 // AI 초안: 미검토(비공개) 초안이 이만큼 쌓이면 추가 생성 중단(관리자 검토 유도).
@@ -65,7 +66,7 @@ async function ensureBlogTable(DB: D1Database) {
 app.get('/public', async (c) => {
   await ensureBlogTable(c.env.DB)
   // 버전 재시드: 코드의 시드 버전이 DB 보다 높으면 자동 반영(수동편집 글 보존)
-  await maybeSyncBlogSeed(c.env.DB)
+  await maybeSyncBlogSeed(c.env.DB, c.env as unknown as SeedAssetEnv)
   const page = Math.max(1, intParam(c.req.query('page'), 1))
   const limit = Math.min(Math.max(1, intParam(c.req.query('limit'), 9)), 100)
   const tag = c.req.query('tag')
@@ -144,7 +145,7 @@ app.use('*', async (c, next) => {
 // ── 어드민: 전체 목록 ─────────────────────────────────────────
 app.get('/', async (c) => {
   await ensureBlogTable(c.env.DB)
-  await maybeSyncBlogSeed(c.env.DB)
+  await maybeSyncBlogSeed(c.env.DB, c.env as unknown as SeedAssetEnv)
   const posts = await c.env.DB.prepare(`
     SELECT id, slug, title, summary, tags, author, is_published, published_at, created_at, updated_at, is_seed, manually_edited, ai_generated, view_count
     FROM blog_posts ORDER BY created_at DESC
@@ -248,9 +249,15 @@ const LEGACY_SEED_SLUGS = [
 
 // 시드↔DB 동기화: 신규 글 삽입 / 시드 관리 글 최신화 / 낡은 시드 글 비공개.
 // 관리자가 수정(manually_edited=1)하거나 직접 작성(is_seed=0)한 글은 절대 건드리지 않음.
-async function syncBlogSeed(DB: D1Database) {
-  const { blogSeedPosts } = await import('./blog-seed') // 🥗 동적 로드(위 import 주석 참조) — 시드 동기화 시에만
-  const posts = blogSeedPosts()
+/**
+ * @returns 실제로 동기화했으면 true. **false 면 호출부는 시드 버전을 올리면 안 된다** —
+ *   올려 버리면 다음부터 "이미 최신"으로 판단해 재시드를 영영 건너뛴다(라이브 블로그가 조용히 낡는다).
+ */
+async function syncBlogSeed(DB: D1Database, env?: SeedAssetEnv): Promise<boolean> {
+  // 🌱 2026-08-19: 시드 산문(63KB)을 워커 번들에서 빼 **정적 자산**으로 읽는다.
+  //   무료 플랜 압축 1MB 한도에 걸려 배포가 막힌 뒤의 조치(상세: worker/utils/seed-assets.ts).
+  const posts = await loadSeedAsset(env, SEED_ASSET_PATHS.blog, isBlogSeed)
+  if (!posts) return false
 
   // 구 시드 글을 시드 관리 대상으로 표시(1회, 멱등) → 낡은 글 정리 가능하게
   if (LEGACY_SEED_SLUGS.length) {
@@ -293,11 +300,12 @@ async function syncBlogSeed(DB: D1Database) {
        WHERE is_seed = 1 AND manually_edited = 0 AND slug NOT IN (${qs})`
     ).bind(...keep).run().catch(swallow('blog:api:blog'))
   }
+  return true
 }
 
 // 버전 게이트: 코드 시드 버전 > DB 저장 버전일 때만 동기화(isolate 당 1회 메모)
 let _seedSyncedVersion = -1
-async function maybeSyncBlogSeed(DB: D1Database) {
+async function maybeSyncBlogSeed(DB: D1Database, env?: SeedAssetEnv) {
   if (_seedSyncedVersion >= BLOG_SEED_VERSION) return
   try {
     const row = await DB.prepare(
@@ -305,7 +313,10 @@ async function maybeSyncBlogSeed(DB: D1Database) {
     ).first<{ value: string }>().catch(() => null)
     const stored = row ? Number(row.value) || 0 : 0
     if (stored < BLOG_SEED_VERSION) {
-      await syncBlogSeed(DB)
+      // ⚠️ 시드 자산을 못 읽었으면(false) **버전을 올리지 않는다** — 다음 요청에서 재시도.
+      //   여기서 올려 버리면 재시드가 영영 안 돌아 라이브 블로그가 조용히 낡는다.
+      const synced = await syncBlogSeed(DB, env)
+      if (!synced) return
       await DB.prepare(
         `INSERT INTO blog_meta (key, value) VALUES ('seed_version', ?)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value`
@@ -320,7 +331,12 @@ async function maybeSyncBlogSeed(DB: D1Database) {
 // 관리자 수동 트리거: 버전과 무관하게 강제 재동기화
 app.post('/seed', async (c) => {
   await ensureBlogTable(c.env.DB)
-  await syncBlogSeed(c.env.DB)
+  // ⚠️ 시드 자산을 못 읽으면 버전을 올리지 않고 **실패를 알린다** — 조용히 성공으로 처리하면
+  //   관리자가 "동기화했다"고 믿는데 라이브는 그대로다.
+  const synced = await syncBlogSeed(c.env.DB, c.env as unknown as SeedAssetEnv)
+  if (!synced) {
+    return c.json({ success: false, error: '시드 자산(_seed/blog.json)을 읽지 못했습니다 — 배포 산출물을 확인하세요' }, 503)
+  }
   await c.env.DB.prepare(
     `INSERT INTO blog_meta (key, value) VALUES ('seed_version', ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`
