@@ -51,6 +51,25 @@ export default function DealPurchaseBox({
   const ctaLabel = isDemo ? '결제하기' : '구매하기'
   return (
     <div style={{ border: '1px solid var(--gbd-line2)', borderRadius: 18, padding: 18, background: 'var(--gbd-card)', boxShadow: '0 6px 24px rgba(0,0,0,.06)' }}>
+      {/* 💰 가격 헤드라인 (2026-08-19 — 대표 확정 상세 1안). PC 본문에서 가격 블록을 뺐으므로
+          **최종가는 여기 하나뿐**이다. 할인율 pill → 판매가 → 정가 취소선 순서(그루폰과 동일:
+          "얼마 깎였나 → 얼마인가 → 원래 얼마였나"). 정가가 없거나 같으면 취소선을 그리지 않는다 —
+          안 깎인 상품에 취소선을 붙이면 그건 거짓 표시다. */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap', marginBottom: 4 }}>
+        {discountPct > 0 && (
+          <span style={{ background: 'var(--gbd-danger)', color: '#fff', fontSize: 15, fontWeight: 900, borderRadius: 7, padding: '3px 9px', letterSpacing: '-.02em' }}>-{discountPct}%</span>
+        )}
+        <span style={{ fontSize: 28, fontWeight: 900, color: 'var(--gbd-ink)', letterSpacing: '-.035em' }}>{formatNumber(unitPrice)}원</span>
+        {unitSaving > 0 && (
+          <s style={{ fontSize: 15, color: 'var(--gbd-sub2)', fontWeight: 600 }}>{formatNumber(refPrice)}원</s>
+        )}
+      </div>
+      {unitSaving > 0 && (
+        <div style={{ fontSize: 12.5, color: 'var(--gbd-ink2)', fontWeight: 600, marginBottom: 14 }}>
+          1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-danger)' }}>{formatNumber(unitSaving)}원</b> 저렴 · 결제 즉시 교환권 발급
+        </div>
+      )}
+
       {/* 옵션(단일가) 카드 — 그루폰 옵션 패널의 유어딜 버전(즉시판매 단일가 모델) */}
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gbd-sub)', marginBottom: 10 }}>구매 옵션</div>
       <div style={{ border: '1.5px solid var(--gbd-accent)', borderRadius: 12, padding: '12px 14px', background: 'var(--gbd-accent-soft, transparent)' }}>

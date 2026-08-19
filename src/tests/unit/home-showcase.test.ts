@@ -69,7 +69,9 @@ describe('② 대표 확정 — 없으면 아무것도 안 그린다', () => {
   it('히어로는 배너가 없으면 **브랜드 기본 배경**을 그린다 (2026-08-04 대표 지시)', () => {
     // ⚠️ 히어로만 예외다. "배너 안 올리면 안 보이게" 는 **배너 콘텐츠** 규칙이고,
     //    히어로 자리 자체는 화면 뼈대라 대표가 직접 기본 배경을 요구했다.
-    expect(code('src/components/home/HomeHeroBanner.tsx')).toMatch(/if\s*\(\s*!hero\s*\)\s*return\s+<HomeHeroDefault\s*\/>/)
+    // 2026-08-19: 히어로가 controls(위치·지도 칩)를 받게 되면서 `<HomeHeroDefault controls={…} />`
+    //   형태가 됐다. 지키려는 건 **"배너가 없어도 히어로를 그린다"** 이지 props 유무가 아니다.
+    expect(code('src/components/home/HomeHeroBanner.tsx')).toMatch(/if\s*\(\s*!hero\s*\)\s*return\s+<HomeHeroDefault[^>]*\/>/)
   })
 
   /**
@@ -84,8 +86,13 @@ describe('② 대표 확정 — 없으면 아무것도 안 그린다', () => {
    */
   it('기본 히어로는 무거운 미디어를 새로 들이지 않는다 (영상 0 · 하드코딩 URL 0 · 리사이즈 · lazy)', () => {
     const def = code('src/components/home/HomeHeroDefault.tsx')
-    // ① 영상은 여전히 금지 — 수 MB 가 첫 화면에 얹힌다.
-    expect(def).not.toMatch(/<video/)
+    // ① 영상은 **어드민이 올렸을 때만**(2026-08-19 대표 확정 "히어로 사진은 어드민에서 직접 지정").
+    //    기본 상태에서 수 MB 를 첫 화면에 얹는 것이 원래 막으려던 사고이고, 그건 여전히 막는다 —
+    //    `<video>` 가 있다면 반드시 `content` prop(=어드민 배너)에서만 소스를 받아야 한다.
+    if (/<video/.test(def)) {
+      expect(def).toMatch(/content\?\.videoUrl\s*\?/)      // 렌더 조건이 어드민 값이다
+      expect(def).toMatch(/src=\{content\.videoUrl\}/)       // 소스도 어드민 값이다(하드코딩 금지)
+    }
     // ② 외부 주소를 코드에 박지 않는다(출처 불명 이미지 유입 경로 차단 — 2026-08-04 워터마크 사고).
     expect(def).not.toMatch(/["'`(]https?:\/\//)
     // ③ 사진을 쓴다면 반드시 리사이저를 거친다(원본 1MB 직결 금지).
@@ -103,8 +110,27 @@ describe('② 대표 확정 — 없으면 아무것도 안 그린다', () => {
     expect(def).toMatch(/demo-deal-/)                 // 데모 상품은 제외한다
   })
 
-  it('기본 히어로가 장식으로 끝나지 않는다 — 실제 검색 진입점을 갖는다', () => {
-    expect(code('src/components/home/HomeHeroDefault.tsx')).toMatch(/\/search\?q=/)
+  /**
+   * 🔎 2026-08-19 (대표 — *"그 부분엔 검색창이 없어야 할 것 같어"*): 히어로에서 검색을 뺐다.
+   *   이 항목이 원래 지키던 건 "검색"이 아니라 **"히어로가 장식으로 끝나지 않는다"** 였다.
+   *   검색은 헤더 2행 개편으로 상단 46px 대형 검색바가 생겨 중복이 됐고, 히어로가 실제로 하는
+   *   일은 이제 **위치 설정 + 지도 진입**이다. 그래서 판정 대상만 바꾼다(규칙은 그대로).
+   */
+  it('기본 히어로가 장식으로 끝나지 않는다 — 위치·지도 진입점을 갖는다', () => {
+    const def = code('src/components/home/HomeHeroDefault.tsx')
+    expect(def).toMatch(/<PcHomeLocationBar/)     // 지역 선택 · 현 위치
+    expect(def).toMatch(/to="\/map"/)             // 지도 진입
+    // 그리고 검색은 **여기 있으면 안 된다** — 헤더 검색바와 두 벌이 되면 반드시 갈린다.
+    expect(def).not.toMatch(/\/search\?q=/)
+  })
+
+  /**
+   * 🗺️ 위치 컨트롤이 홈에 **한 벌**만 있어야 한다. 통합형 히어로 이전엔 히어로 아래 흰 패널에
+   *   또 있었고, 그때는 "어느 쪽이 진짜 선택인가"가 화면상 모호했다(둘 다 같은 state 를 쓰지만
+   *   사용자는 두 개로 본다). 히어로로 흡수한 뒤에도 누군가 패널을 되살리면 그 상태로 되돌아간다.
+   */
+  it('위치바는 홈에 한 벌뿐 — PcHomePage 가 직접 그리지 않는다', () => {
+    expect(code('src/pages/pc-home/PcHomePage.tsx')).not.toMatch(/<PcHomeLocationBar/)
   })
 
   it('기본 히어로 배경 애니메이션이 prefers-reduced-motion 을 존중한다', () => {
@@ -145,15 +171,29 @@ describe('③ 되돌리기 — 플래그 하나로 전부 꺼진다', () => {
     }
     expect(gated.length).toBeGreaterThan(0)
 
+    // ⚠️ 2026-08-19 — 히어로는 **일부러 게이트 밖**이다. 위치·지도 칩이 히어로 안으로 들어갔기
+    //    때문에, 플래그를 끄면 홈에서 지역 선택·현 위치·지도 진입이 통째로 사라진다(칩이 여기
+    //    말고는 없다). 되돌리기 규칙이 지배하는 건 **편성 콘텐츠**(①섹션·③배너)이고, 히어로의
+    //    편성 콘텐츠(어드민 배너)는 없으면 기본값으로 그려진다 — 아래 별도 항목이 그걸 고정한다.
     const renders: number[] = []
-    for (const comp of ['HomeHeroBanner', 'HomeSections', 'HomeBannerStrip']) {
+    for (const comp of ['HomeSections', 'HomeBannerStrip']) {
       const re = new RegExp(`<${comp}\\b`, 'g')
       for (let m = re.exec(page); m; m = re.exec(page)) renders.push(m.index)
     }
-    expect(renders.length).toBeGreaterThanOrEqual(3) // 세 컴포넌트가 실제로 배선돼 있을 것
+    expect(renders.length).toBeGreaterThanOrEqual(2) // 두 컴포넌트가 실제로 배선돼 있을 것
 
     const ungated = renders.filter(i => !gated.some(([a, b]) => i > a && i < b))
     expect(ungated).toEqual([])
+  })
+
+  it('히어로는 플래그와 무관하게 항상 그려진다 (위치·지도 칩이 사라지면 안 된다)', () => {
+    const page = code('src/pages/pc-home/PcHomePage.tsx')
+    const at = page.indexOf('<HomeHeroBanner')
+    expect(at).toBeGreaterThan(-1)
+    // 히어로 렌더 앞 200자 안에 플래그 게이트가 붙어 있으면 안 된다(예전 형태로의 회귀).
+    expect(page.slice(Math.max(0, at - 200), at)).not.toMatch(/HOME_SHOWCASE_ENABLED\s*&&\s*$/)
+    // 그리고 위치 컨트롤을 실제로 넘겨받아야 칩이 동작한다(넘기지 않으면 조용히 사라진다).
+    expect(page).toMatch(/<HomeHeroBanner[\s\S]{0,200}controls=\{/)
   })
 
   it('플래그가 feature-flags SSOT 에 있다', () => {

@@ -72,6 +72,37 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '이용권 상세 제목이 다시 사진 아래로 내려간다',
+    file: 'src/pages/GroupBuyDetailPage.tsx',
+    find: '<DetailTitleHeader name',
+    replace: '<span data-broken name',
+    test: 'src/tests/unit/groupon-detail-map.test.ts',
+    why:
+      '2026-08-19 대표 확정(상세 1안 "그루폰 정석"). 제목·별점·주소가 사진 위에 있어야 첫 화면이 ' +
+      '"무엇을 파는지 / 얼마나 좋은지"를 말한다. 되돌아가도 화면은 멀쩡해 보여서(사진은 여전히 크다) ' +
+      '리뷰로는 안 걸린다 — 그래서 기계가 지킨다.',
+  },
+  {
+    name: '상세가 서버 raw 할인율로 되돌아간다(카드와 숫자가 갈린다)',
+    file: 'src/pages/GroupBuyDetailPage.tsx',
+    find: 'discountPct={displayDiscountPct}',
+    replace: 'discountPct={detail.current_discount_pct}',
+    test: 'src/tests/unit/groupon-detail-map.test.ts',
+    why:
+      '실측(2026-08-19, id 2846 정가 32,000→23,800): 홈 카드는 -26%, 상세는 할인 표시 없음이었다. ' +
+      '가격 표시가 화면마다 다르면 UI 불일치가 아니라 **신뢰 문제**다. 되돌리면 조용히 다시 갈린다.',
+  },
+  {
+    name: '/map 지도 위 컨트롤 오버레이가 PC 에서 되살아난다',
+    file: 'src/pages/restaurant-map/MapTopBar.tsx',
+    find: "'lg:hidden absolute top-0",
+    replace: "'absolute top-0",
+    test: 'src/tests/unit/groupon-detail-map.test.ts',
+    why:
+      '2026-08-19 대표 지시 — 검색·필터 칩을 왼쪽 리스트 상단으로 옮기고 지도는 지도만 보이게. ' +
+      '오버레이가 되살아나면 좌측 패널과 **같은 컨트롤이 두 벌**이 되고 지도 상단이 다시 가려진다.',
+  },
+  {
     name: '죽은 사진을 그대로 보여 준다(카드가 빈 칸으로 남는다)',
     file: 'src/components/deal/DealCardMedia.tsx',
     find: 'const shown = dead.has(idx) ? (alive[0] ?? idx) : idx',
@@ -85,8 +116,10 @@ const MUTATIONS = [
   {
     name: '히어로 사진이 리사이저를 건너뛴다(첫 화면에 원본 1MB)',
     file: 'src/components/home/HomeHeroDefault.tsx',
-    find: 'cfImage(photo.src',
-    replace: 'String(photo.src',
+    // 2026-08-19: 히어로가 어드민 지정 사진을 받게 되면서 변수명이 `photo.src` → `photoSrc` 로 바뀌었다.
+    //   (`find` 가 소스에 없으면 이 검증은 **낡은 지도**로 판정돼 RED 가 뜬다 — 실제로 그렇게 잡혔다.)
+    find: 'cfImage(photoSrc',
+    replace: 'String(photoSrc',
     test: 'src/tests/unit/home-showcase.test.ts',
     why:
       '히어로는 화면 맨 위라 사진이 곧 첫인상이자 첫 바이트다. 2026-08-19 실측에서 카카오 CDN 원본이 ' +

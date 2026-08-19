@@ -121,7 +121,10 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             onClick={() => has && setLightbox(true)}
             aria-label={has ? '사진 크게 보기' : alt}
             className="relative block w-full text-6xl flex items-center justify-center cursor-zoom-in"
-            style={{ aspectRatio: multi ? '4 / 3' : '1 / 1', ...bg(main, 1200) }}
+            /* 📐 2026-08-19 (대표 확정 — 상세 1안): 제목·별점이 사진 **위**로 올라갔으므로 사진이
+               화면을 통째로 먹으면 안 된다. 1장짜리도 정사각(=800px 높이) 대신 16:9 로 눕힌다.
+               모바일 스와이프(위 블록)는 1:1 그대로 — 세로 화면에선 정사각이 맞다. */
+            style={{ aspectRatio: multi ? '4 / 3' : '16 / 9', ...bg(main, 1200) }}
           >
             {!has && fallback}
             {/* 배지·그라데이션은 **대형 사진 기준**으로 얹는다(그리드 전체를 덮으면 썸네일까지 어두워진다). */}

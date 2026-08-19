@@ -1,29 +1,27 @@
 import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
-import { cfImage } from '@/utils/cf-image'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useHomeBanners } from './useHomeBanners'
-import HomeHeroDefault from './HomeHeroDefault'
+import HomeHeroDefault, { type HeroControls } from './HomeHeroDefault'
 
 /**
- * 🏠 ④ 히어로 배너 (2026-08-04 대표 시안 승인 "좋다 이렇게 가자").
+ * 🏠 히어로 — **어드민이 지정한 사진·카피를 넣는 자리** (2026-08-19 대표 확정
+ * *"히어로 사진은 어드민에서 직접 지정"*).
  *
- * 홈 최상단, 배경(이미지 **또는 영상**) 위에 카피가 얹힌다. 어드민이 `banner_type='hero'` 로
- * 올린 배너 중 첫 번째만 쓴다 — 히어로는 하나여야 하고, 여러 개면 캐러셀이 되어
- * 첫 화면이 산만해진다(그건 별도 결정이지 이 시안이 아니다).
+ * ## 이전 판과 무엇이 다른가
+ * 예전엔 배너가 **있고 없고에 따라 레이아웃이 통째로 갈렸다** — 배너가 있으면 이 파일이 그린
+ * 전면 사진 히어로(300px), 없으면 `HomeHeroDefault`. 그래서 대표가 사진을 올리는 순간
+ * **위치·지도 칩이 사라졌다**(그 칩은 기본 히어로에만 있었으니까).
+ * ⇒ 이제 레이아웃은 **하나**(`HomeHeroDefault`, 통합형 190px)고, 이 파일은 *콘텐츠 소스*만
+ *   고른다: 어드민 배너가 있으면 그 사진·제목·설명·링크를, 없으면 기본값(홈 시드 사진 + D안 카피).
+ *   무엇을 올리든 위치·지도 칩은 항상 그 자리에 있다.
  *
- * 🔄 **등록된 히어로가 없으면 브랜드 기본 배경**(`HomeHeroDefault`)을 그린다
- *    — 2026-08-04 대표 지시 *"히어로도 브랜드 배경으로 적합한 거 영상으로 넣어줘"*.
- *    ⚠️ 이전 판은 여기서 `null` 을 반환했다(대표의 "배너 안 올리면 안 보이게" 규칙 적용).
- *    그 규칙은 **배너 콘텐츠**에 대한 것이고, 히어로 자리 자체는 화면의 뼈대라 대표가 직접
- *    기본 배경을 요구했다. 중간·와이드 배너는 **여전히 없으면 안 그린다**(규칙 유지).
+ * 어드민이 `banner_type='hero'` 로 올린 배너 중 **첫 번째만** 쓴다 — 히어로는 하나여야 하고,
+ * 여러 개면 캐러셀이 되어 첫 화면이 산만해진다(그건 별도 결정이지 이 시안이 아니다).
  *
- * 영상 배경 주의:
- *  - `muted`·`playsInline` 없으면 모바일 사파리가 재생을 거부한다(그러면 검은 화면만 남는다).
- *  - `poster` 에 이미지가 있으면 영상이 로드되기 전까지 그 그림이 보인다 — 빈 검정 방지.
- *  - `prefers-reduced-motion` 이면 영상을 아예 붙이지 않고 이미지로 간다.
+ * 영상 배경 주의: `muted`·`playsInline` 없으면 모바일 사파리가 재생을 거부한다(검은 화면만 남는다).
+ * `prefers-reduced-motion` 이면 영상을 붙이지 않고 이미지로 간다.
  */
-export default function HomeHeroBanner() {
+export default function HomeHeroBanner({ controls }: { controls?: HeroControls }) {
   const banners = useHomeBanners('hero')
   const hero = banners[0]
 
@@ -32,63 +30,19 @@ export default function HomeHeroBanner() {
     try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return false }
   }, [])
 
-  if (!hero) return <HomeHeroDefault />
+  if (!hero) return <HomeHeroDefault controls={controls} />
 
-  const poster = hero.image_url ? cfImage(hero.image_url, { width: 1600, quality: 78 }) : ''
-  const useVideo = !!hero.video_url && !reduceMotion
-  const href = hero.link_url ? safeInternalPath(hero.link_url, '') : ''
-
-  const body = (
-    <div className="relative h-[240px] lg:h-[300px] overflow-hidden isolate">
-      {useVideo ? (
-        <video
-          className="absolute inset-0 -z-10 w-full h-full object-cover"
-          src={hero.video_url as string}
-          poster={poster || undefined}
-          autoPlay
-          muted
-          loop
-          playsInline
-          aria-hidden="true"
-        />
-      ) : poster ? (
-        <img
-          className="absolute inset-0 -z-10 w-full h-full object-cover"
-          src={poster}
-          alt=""
-          aria-hidden="true"
-          fetchPriority="high"
-        />
-      ) : (
-        <div className="absolute inset-0 -z-10 bg-gray-800 dark:bg-[#1A2334]" aria-hidden="true" />
-      )}
-
-      {/* 좌측이 진한 그라디언트 — 어떤 사진이 와도 흰 글자가 읽힌다.
-          (사진마다 밝기가 달라서 오버레이 없이는 글자가 사라지는 경우가 반드시 생긴다.) */}
-      <div
-        className="absolute inset-0 -z-10 bg-gradient-to-r from-black/70 via-black/35 to-black/10"
-        aria-hidden="true"
-      />
-
-      <div className="relative h-full max-w-[1600px] mx-auto px-6 lg:px-10 flex items-center">
-        <div className="max-w-[560px]">
-          <h2 className="text-[26px] lg:text-[31px] font-black tracking-tight text-white leading-[1.22] [text-wrap:balance] drop-shadow-[0_2px_18px_rgba(0,0,0,0.35)]">
-            {hero.title}
-          </h2>
-          {hero.description && (
-            <p className="mt-2 text-[14px] lg:text-[15px] text-white/85">{hero.description}</p>
-          )}
-          {href && (
-            <span className="mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-[14px] font-bold transition-colors">
-              자세히 보기 →
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
+  return (
+    <HomeHeroDefault
+      controls={controls}
+      content={{
+        photo: hero.image_url || undefined,
+        // 어드민이 링크를 지정했으면 그 딜/페이지로. 외부 URL 은 safeInternalPath 가 걸러낸다.
+        photoHref: hero.link_url ? safeInternalPath(hero.link_url, '') || undefined : undefined,
+        title: hero.title || undefined,
+        description: hero.description || undefined,
+        videoUrl: !reduceMotion && hero.video_url ? hero.video_url : undefined,
+      }}
+    />
   )
-
-  return href
-    ? <Link to={href} className="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white">{body}</Link>
-    : body
 }

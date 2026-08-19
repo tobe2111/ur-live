@@ -22,6 +22,13 @@ interface Props {
   activeFilterCount: number
   onOpenFilter: () => void
   home?: boolean
+  /**
+   * 🗺️ 2026-08-19 (대표 — "지도 위 검색·버튼들을 왼쪽 상품 리스트 상단으로"):
+   *   `overlay` = 지도 위 플로팅(모바일 — 리스트가 시트로 접혀 있어 여기 말고 둘 데가 없다)
+   *   `panel`   = PC 좌측 400px 리스트 패널의 헤더(지도는 지도만 보이게)
+   *   ⚠️ 마크업은 **한 벌**이다. 두 벌로 두면 칩 하나 추가할 때 한쪽만 고쳐져 반드시 갈린다.
+   */
+  variant?: 'overlay' | 'panel'
 }
 
 /**
@@ -46,17 +53,24 @@ export default function MapTopBar({
   activeFilterCount,
   onOpenFilter,
   home = false,
+  variant = 'overlay',
 }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
+  const panel = variant === 'panel'
+
   return (
-    /* 🗺️ 2026-07-16 (대표 — PC 지도뷰 분할): lg+ 에서 검색/카테고리 바를 좌측 400px 리스트 패널 오른쪽(지도 영역)에만. */
-    <div className="absolute top-0 left-0 right-0 lg:left-[400px] z-40 px-3 pt-3 pointer-events-none">
-      <div className="ur-content-wide pointer-events-auto space-y-2">
+    /* 🗺️ 2026-08-19 (대표 확정): PC(lg+)는 이 바가 **왼쪽 리스트 패널 안**(variant='panel')으로 들어가고,
+       지도 위 오버레이(variant='overlay')는 `lg:hidden` 으로 모바일 전용이 된다. 이전엔 오버레이가
+       지도 상단을 가로로 덮어(96px) 지도의 그 부분을 못 봤다. */
+    <div className={panel
+      ? 'hidden lg:block px-3 pt-3 pb-2.5 space-y-2 border-b border-gray-100 dark:border-[#2A3446]'
+      : 'lg:hidden absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none'}>
+      <div className={panel ? 'space-y-2' : 'ur-content-wide pointer-events-auto space-y-2'}>
         {/* ── Row 1: 흰 네모박스 검색바 ── */}
         <div className="flex items-center gap-2">
-          {home ? (
+          {panel ? null : home ? (
             <Link
               to="/"
               aria-label={t('nav.home', { defaultValue: '홈' })}
@@ -121,7 +135,7 @@ export default function MapTopBar({
               </div>
             )}
           </div>
-          {home && (
+          {home && !panel && (
             <>
               <button
                 onClick={() => navigate('/notifications')}
@@ -141,8 +155,10 @@ export default function MapTopBar({
           )}
         </div>
 
-        {/* ── Row 2: 카테고리 칩 (흰 알약) ── */}
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar items-center">
+        {/* ── Row 2: 카테고리 칩 (흰 알약) ──
+            🖥️ 패널(PC 400px)에서는 **줄바꿈**한다. 가로 스크롤로 두면 '기타'가 잘려 보이지 않고,
+               잘린 줄 모른 채로는 아무도 옆으로 밀지 않는다(지도 오버레이는 폭이 넓어 스크롤 유지). */}
+        <div className={`flex gap-1.5 items-center ${panel ? 'flex-wrap' : 'overflow-x-auto no-scrollbar'}`}>
           {/* 필터 */}
           <button
             data-testid="open-filter"

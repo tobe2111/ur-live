@@ -4,9 +4,8 @@ import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import SiteFooter from '@/components/main/SiteFooter'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import { DEAL_CATS, type DealCategory } from './PcHomeRail'
-import PcHomeMapButton from './PcHomeMapButton'
 import PcHomeAppBand from './PcHomeAppBand'
-import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from './PcHomeLocationBar'
+import { readHomeRegion, type HomeRegion } from './PcHomeLocationBar'
 import RegionLinkGrid from '@/components/region/RegionLinkGrid'
 import HomeHeroBanner from '@/components/home/HomeHeroBanner'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
@@ -92,24 +91,21 @@ export default function PcHomePage() {
         jsonLd={[organizationJsonLd, webSiteJsonLd]}
       />
 
-      {/* 🏠 ④ 히어로 배너 (2026-08-04 대표 시안 승인) — 풀블리드, 컨테이너 **밖**.
-          등록된 히어로가 없으면 아무것도 안 그린다 → 아래 컨테이너가 그대로 최상단(현행과 동일). */}
-      {HOME_SHOWCASE_ENABLED && <HomeHeroBanner />}
+      {/* 🏠 ④ 히어로 (2026-08-19 대표 확정 — 통합형 190px) — 풀블리드, 컨테이너 **밖**.
+          위치·지도 칩이 이 안으로 들어갔으므로 **쇼케이스 플래그와 무관하게 항상 그린다**.
+          ⚠️ 예전처럼 `HOME_SHOWCASE_ENABLED &&` 로 감싸면 플래그를 끄는 순간 지역 선택·현 위치·
+          지도 진입이 홈에서 통째로 사라진다(칩이 여기 말고는 없다). 플래그가 지배하는 건
+          아래 ①섹션·③배너뿐이고, 히어로 **콘텐츠**(어드민 배너)는 없으면 기본값으로 그려진다. */}
+      <HomeHeroBanner controls={{ region, onRegionChange: handleRegion, onLocate: handleLocate, located: !!userLoc }} />
 
       {/* 🖥️ 2026-07-19 (대표 — "왼쪽 카테고리보단 위에"): 좌측 레일 제거 → 풀너비. 카테고리는 상단 가로 바(PcHomeRail).
           📐 2026-08-17 (대표 — "컴팩트하게, 여백이 많은 느낌" · 여기어때/그루폰 참고): 컨테이너 1600→1440
           + 상하 여백 축소. 카드 밀도는 GroupBuyFeed pc 그리드(xl 5열·2xl 6열)와 짝. */}
       <div className="max-w-[1440px] mx-auto px-6 lg:px-8 pt-4">
         <main className="min-w-0">
-          {/* 🗺️ 상단 헤더 행 — 좌: 위치바+카테고리 / 우: 지도 썸네일 버튼(대표 지정 위치 — 빈 공간 활용). */}
-          {/* 🧭 2026-08-19 (대표 확정 — 그루폰): 카테고리 칩은 **상단 2행**(DesktopTopNav)으로 올라갔다.
-              여기 남겨 두면 같은 카테고리가 화면에 두 벌이 되어 반드시 갈린다. 위치바는 홈 전용이라 유지. */}
-          <div className="ur-home-panel mb-4 flex items-center justify-between gap-8">
-            <div className="flex-1 min-w-0">
-              <PcHomeLocationBar value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} />
-            </div>
-            <PcHomeMapButton />
-          </div>
+          {/* 🗺️ 2026-08-19 (대표 확정 — 통합형 히어로): 여기 있던 **위치바 흰 패널(145px)**을 없앴다.
+              위치 선택·현 위치·지도 진입은 전부 히어로 안 칩으로 옮겼다 — 헤더 114 + 히어로 190 =
+              304px 만에 딜이 시작된다(이전 559px). 두 벌로 두면 어느 쪽이 진짜인지 갈린다. */}
 
           {/* 🏠 ① 카테고리 섹션(+더보기) · ③ 중간 배너 (2026-08-04 대표 시안 승인).
               어드민이 만든 섹션·배너가 하나도 없으면 **전부 null** → 아래 딜 그리드가 그대로
