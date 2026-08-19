@@ -79,3 +79,35 @@ describe('검색 깊이 커서 — 같은 페이지를 반복해서 긁지 않�
     expect(COLLECT, '다음 커서를 저장 안 하면 영원히 1페이지에 머문다').toMatch(/nb_start\s*=/)
   })
 })
+
+/**
+ * 🚀 **커서 시딩** — 커서만 넣으면 효과가 몇 주 뒤에 온다(배포 +2.5h 실측으로 알게 된 것).
+ *
+ *   커서는 "다음에 쓸 값"이라 어떤 키워드의 **첫 sim 회차는 여전히 1페이지**를 읽는다. 그리고 한
+ *   키워드가 다시 뽑히는 주기가 ~3일(활성 558 ÷ 회차당 8 × 시간당 1회차)이고 sim 은 그 절반이라
+ *   **두 번째 sim 회차가 약 6일 뒤**다. 실측이 그대로였다: 배포 직후 sim 회차 신규율 8.9%(기준선과 동일),
+ *   그 회차에 7개가 1→101 로 **저장만** 됐다.
+ *   ⇒ 이미 몇 달간 1페이지만 훑힌 키워드는 그 페이지에서 출발할 이유가 없다.
+ */
+describe('커서 시딩 — 이미 훑은 키워드는 1페이지에서 출발하지 않는다', () => {
+  const DDL = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-keyword-ddl.ts'), 'utf8')
+  const seed = DDL.split('\n').find(l => l.includes('SET nb_start') && l.includes('UPDATE')) || ''
+
+  it('🚀 잘 훑힌 키워드를 2페이지로 1회 시딩한다', () => {
+    expect(seed, '시딩 문장이 없으면 효과가 몇 주 뒤에 온다').toContain('SET nb_start = 101')
+  })
+
+  it('🛡️ 갓 만든 키워드는 건드리지 않는다 — 거긴 1페이지가 아직 미개척지다', () => {
+    expect(seed, 'saved_total 가드가 없으면 신규 키워드의 1페이지를 건너뛴다').toMatch(/saved_total[^)]*\)?\s*>=\s*100/)
+  })
+
+  it('🔁 멱등 — 이미 전진한 커서를 되돌리지 않는다', () => {
+    expect(seed, 'nb_start=1 가드가 없으면 재적용 때 깊이 판 커서를 101 로 되돌린다').toMatch(/nb_start,\s*1\)\s*=\s*1/)
+  })
+
+  it('🚧 시딩 값도 API 상한 안이다', () => {
+    const m = /SET nb_start = (\d+)/.exec(seed)
+    expect(m).toBeTruthy()
+    expect(Number(m![1])).toBeLessThanOrEqual(lastValidStart())
+  })
+})
