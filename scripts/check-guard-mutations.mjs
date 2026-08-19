@@ -459,8 +459,8 @@ const MUTATIONS = [
   {
     name: '위생 스윕 실패가 재분류 본업을 막는다',
     file: 'src/features/marketing/api/reclassify-lane.ts',
-    find: '  const hygiene = await sweepCompanyHygiene(env.DB).catch(() => null)',
-    replace: '  const hygiene = await sweepCompanyHygiene(env.DB)',
+    find: '  const hygiene = await sweepCompanyHygiene(adsLeadsDb(env)).catch(() => null)',
+    replace: '  const hygiene = await sweepCompanyHygiene(adsLeadsDb(env))',
     test: 'src/tests/unit/company-hygiene-sweep.test.ts',
     why:
       '부가 작업이 본업을 죽이면 안 된다. 스윕이 던지면 **재분류 레인 전체가 그 회차를 통째로 잃고**, ' +
@@ -1701,8 +1701,8 @@ const MUTATIONS = [
   {
     name: '내보내기가 화면 필터를 무시(손에 안 잡히는 지표)',
     file: 'src/features/marketing/api/partner-pool.routes.ts',
-    find: 'listCompanyLeads(c.env.DB, { ...filter, limit: EXPORT_MAX })',
-    replace: 'listCompanyLeads(c.env.DB, { limit: EXPORT_MAX })',
+    find: 'listCompanyLeads(adsLeadsDb(c.env), { ...filter, limit: EXPORT_MAX })',
+    replace: 'listCompanyLeads(adsLeadsDb(c.env), { limit: EXPORT_MAX })',
     // 2026-08-03: 파싱이 `pool-export.ts` 로 이동했지만 **넘기는 지점**은 여전히 여기다(지도 유효).
     test: 'src/tests/unit/ads-export-filter-parity.test.ts',
     why:
