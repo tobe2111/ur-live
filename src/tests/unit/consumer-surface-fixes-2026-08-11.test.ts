@@ -249,10 +249,16 @@ describe('⑧ 쇼핑 데모(demo-linkshop)는 매장 사진으로 매대에 올�
     expect(rehost).toMatch(/demo-linkshop-[\s\S]{0,400}demo_hidden_no_photo/)
   })
 
-  it('매장 이용권·숙소 데모까지 끌어내리지 않는다', () => {
-    // 이 둘은 매장 사진이 곧 상품이라 지도 사진이 맞다. 과잉 적용이면 매대가 통째로 빈다.
+  it('매장 이용권 데모까지 끌어내리지 않는다 · 숙소는 무조건-숨김이 아니다', () => {
+    // 매장 이용권(demo-deal)은 매장 사진이 곧 상품이라 지도 사진이 맞다 — 과잉 적용이면 매대가 빈다.
     expect(rehost, 'demo-deal 까지 내리고 있다').not.toMatch(/startsWith\('demo-deal-'\)[\s\S]{0,200}is_active = 0/)
-    expect(rehost, 'demo-stay 까지 내리고 있다').not.toMatch(/startsWith\('demo-stay-'\)[\s\S]{0,200}is_active = 0/)
+    // 🔄 2026-08-17 갱신: 숙소(demo-stay)에 대한 "절대 내리지 않는다"는 **좁혔다** — 라이브에서
+    //   연합뉴스 워터마크 사진이 R2 로 세탁된 채(출처 판정 불가) 이 보호 덕에 살아남는 실사고가 났다
+    //   (demo-image-provenance.test.ts). 이제 숙소는 **근거 사진을 새로 못 구한 경우에 한해** 내려간다
+    //   (가역 is_active=0 + 자동 복귀). 단, linkshop 처럼 사진을 구했는데도 무조건 숨기는 블록은
+    //   여전히 금지 — 그건 매대를 통째로 비우는 과잉이다.
+    expect(rehost, 'demo-stay 를 linkshop 처럼 무조건 숨기고 있다')
+      .not.toMatch(/if \(row\.slug\.startsWith\('demo-stay-'\)\) \{[\s\S]{0,300}is_active = 0/)
   })
 })
 

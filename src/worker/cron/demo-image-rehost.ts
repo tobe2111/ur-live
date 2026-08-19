@@ -28,7 +28,14 @@ import { fetchDemoPhotos, isBlockedPhotoUrl } from '../utils/demo-photo-set'
 //   버전을 올리면 **기존 데모 전량이 재조정 대상**이 된다(meta demo_cond_v ≠ 현재값 → 재처리 후 마킹 → 수렴).
 //   그래야 새 사진 규칙(언론사/스톡 하드배제 + 업종·지역 일반검색 폴백 제거, demo-photo-set.ts)이
 //   **신규분뿐 아니라 이미 박힌 332장에도** 적용된다. 안 올리면 새 규칙은 앞으로 만들 데모에만 걸린다.
-export const DEMO_COND_V = '4'
+// 🔴 2026-08-17 UX 전수검사 — '4' → '5'. **v4 가 놓친 실사고**: 라이브 /stays 첫 화면에 연합뉴스
+//   워터마크 사진(demo-stay-80, id 2791 — 즉시 어드민 비활성화 조치함). v4 규칙이 못 잡은 이유 3가지,
+//   전부 이 파일에서 수리:
+//   ① 그 사진은 08-08 이전에 이미 R2(/api/media/…)로 **이관(세탁)**돼 언론사 호스트 차단이 URL 로
+//      못 잡는다 → demo-stay 는 keepOld(옛 커버 유지) 경로를 **없앤다**(아래 주석).
+//   ② keepOld 가 isBlockedPhotoUrl 을 검사 안 해 외부 언론사 커버도 "로드만 되면" 살아남았다.
+//   ③ 이관 경로가 차단 URL 을 검사 안 해 언론사 사진을 R2 로 계속 세탁할 수 있었다.
+export const DEMO_COND_V = '5'
 
 const RECONDITION_PER_RUN = 3
 const REHOST_PER_RUN = 2
@@ -72,6 +79,10 @@ export async function rehostDemoImagesBulk(env: Env, perRun = 8): Promise<{ reho
   //   DB 반영 순차(D1 트랜잭션 안전). 라운드당 소요 ≈ 가장 느린 커버 1개 시간이라 라운드 수↓·체감 속도↑.
   const fetched = await Promise.all((results || []).map(async (row) => {
     if (!isExternalImageUrl(row.image_url)) return { row, hosted: null as string | null }
+    // 🚫 2026-08-17: 차단 출처(언론사/스톡)는 **이관하지 않는다** — R2 로 옮기는 순간 URL 이 세탁돼
+    //   차단 목록이 영영 못 잡는다(연합뉴스 사진이 정확히 이 경로로 라이브에 박제됐다).
+    //   교체/비활성은 recondition(v5)이 담당 — 여기선 세탁만 막는다.
+    if (isBlockedPhotoUrl(row.image_url || '')) return { row, hosted: null as string | null }
     const hosted = await rehostImageToR2(bucketEnv, row.image_url, 'demo-bulk-rehost').catch(() => null)
     return { row, hosted }
   }))
@@ -125,9 +136,20 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
 
   for (const row of rows) {
     const meta = metaMap.get(row.id) || {}
-    const tries = Number(meta.demo_cond_tries || 0)
+    // 🔢 2026-08-17: 시도 카운터는 **버전별**로 센다(demo_cond_try_v ≠ 현재버전이면 0 부터).
+    //   안 그러면 v4 에서 3회 소진된 행이 v5 에 들어오자마자 처리 없이 버전-마킹돼, 버전을 올린
+    //   의미(전량 재점검)가 정확히 문제 행들에서 무효가 된다.
+    const tries = meta.demo_cond_try_v === DEMO_COND_V ? Number(meta.demo_cond_tries || 0) : 0
     if (tries >= MAX_TRIES) {
       // 반복 실패(매칭/사진 확보 불가) — 현재 상태 유지하고 버전만 마킹(큐에서 제외, 수렴).
+      // 🚫 2026-08-17: 단, 커버가 차단 출처(언론사/스톡)로 판정되면 유지가 아니라 **내린다**(가역
+      //   is_active=0). "없는 것보다 틀린 게 나쁘다" — 저작권 사진을 3회 실패했다고 남겨둘 수는 없다.
+      if (isBlockedPhotoUrl(row.image_url || '')) {
+        await DB.prepare(`UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?`)
+          .bind(row.id).run().catch(() => {})
+        await setSupplyMeta(DB, row.id, { demo_hidden_no_photo: '1' }).catch(() => {})
+        out.hiddenNoPhoto++
+      }
       await setSupplyMeta(DB, row.id, { demo_cond_v: DEMO_COND_V }).catch(() => {})
       out.skipped++
       continue
@@ -145,14 +167,19 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
       //   사진 없는 상품을 목록에 두는 건 나쁜 사진을 두는 것과 같은 종류의 거짓말이다.
       //   ⚠️ 삭제가 아니라 `is_active=0` — 다음 회차에 사진이 잡히면 아래에서 자동 복귀한다(가역).
       //   현재 커버가 실사진이면(=예전에 확보됨) 내리지 않는다 — 멀쩡한 걸 끌어내리지 않기 위해.
-      const hasUsableCover = !isPlaceholderUrl(row.image_url) && !isBlockedPhotoUrl(row.image_url || '')
+      // 🏨 2026-08-17: demo-stay 는 "실사진처럼 보이는 커버" 예외를 **적용하지 않는다** — 라이브에서
+      //   연합뉴스 워터마크 사진이 R2 로 세탁된 채(demo-stay-80) 이 예외로 살아남았다. 세탁된 URL 은
+      //   출처 판정이 불가능하므로, 숙소는 **근거(카카오/네이버 지도) 있는 사진을 새로 못 구하면 내린다**
+      //   (08-11 demo-linkshop 결정과 동일 논리 — 근거 없는 사진은 없는 것과 같다. 가역 is_active=0).
+      const hasUsableCover = !row.slug.startsWith('demo-stay-')
+        && !isPlaceholderUrl(row.image_url) && !isBlockedPhotoUrl(row.image_url || '')
       if (!hasUsableCover) {
         await DB.prepare(`UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?`)
           .bind(row.id).run().catch(() => {})
         await setSupplyMeta(DB, row.id, { demo_hidden_no_photo: '1' }).catch(() => {})
         out.hiddenNoPhoto++
       }
-      await setSupplyMeta(DB, row.id, { demo_cond_tries: String(tries + 1) }).catch(() => {})
+      await setSupplyMeta(DB, row.id, { demo_cond_tries: String(tries + 1), demo_cond_try_v: DEMO_COND_V }).catch(() => {})
       continue
     }
     // 📦 2026-08-11 (대표 "모두 진행해" — AB 스윕 §4-c): **쇼핑 데모는 지도 사진으로 못 채운다.**
@@ -178,7 +205,11 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
     //   - placeUrl 없음 → 기존 커버가 실사진이고 **실제 로드되면** 유지, placeholder/깨짐이면 imgs[0].
     //   🩹 2026-07-21 전수조사 #4: 기존 커버를 무조건 유지하던 것 → validateImageLoads 로 검증해
     //     깨진/핫링크 커버가 살아남지 않게(감사 지적 — 깨진 커버가 recondition 을 통과하던 구멍).
-    const keepOld = !placeUrl && !isPlaceholderUrl(row.image_url) && await validateImageLoads(row.image_url)
+    // 🚫 2026-08-17: keepOld 는 ① 차단 출처(언론사/스톡) 커버 금지 ② demo-stay 금지 — 숙소의 옛 커버는
+    //   7월 이관분(출처 불명·세탁된 언론사 사진 포함)이라 "로드된다"가 근거가 못 된다. 숙소 커버는
+    //   항상 이번에 확보한 근거 있는 사진(imgs[0])으로 교체한다.
+    const keepOld = !row.slug.startsWith('demo-stay-') && !placeUrl && !isPlaceholderUrl(row.image_url)
+      && !isBlockedPhotoUrl(row.image_url || '') && await validateImageLoads(row.image_url)
     const cover = keepOld ? (row.image_url as string) : imgs[0]
     const gallery = Array.from(new Set([cover, ...imgs])).slice(0, 5)
     await DB.prepare(`UPDATE products SET image_url = ?, images = ?, updated_at = datetime('now') WHERE id = ?`)
@@ -276,6 +307,9 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
     for (const u of externals) {
       if (fetches >= MAX_IMAGES_PER_PRODUCT) break
       if (mapping.has(u)) continue
+      // 🚫 2026-08-17: 차단 출처는 이관(세탁) 금지 — mapping 에 안 들어가므로 마지막 시도에서
+      //   "깨진 외부"로 판정돼 갤러리에서 제거된다(의도된 경로).
+      if (isBlockedPhotoUrl(u)) continue
       fetches++
       const hosted = await rehostImageToR2(bucketEnv, u, 'demo-image-rehost')
       if (hosted) mapping.set(u, hosted)

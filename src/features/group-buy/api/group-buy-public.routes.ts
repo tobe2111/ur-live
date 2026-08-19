@@ -26,6 +26,7 @@ import { productDetailCols, productDetailColsHealed, withColumnPruning } from '@
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import type { GroupBuyProductRow, VoucherRow } from '@/shared/db/group-buy-types'
 import { ensureTables, maxTierDiscount, getMealVoucherCommissionRate, getSellerCommissionRate } from './helpers'
+import { sliceCardGallery } from './card-gallery'
 // 🍽️ 2026-06-17 (#5 대표 메뉴): products god-table 증식 차단용 K-V 사이드테이블에서 메뉴 읽기.
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
 import { intParam } from '@/shared/pagination'
@@ -216,7 +217,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           p.discount_rate, p.sold_count, p.avg_rating, p.deal_only,
           p.brand_name, p.brand_icon_url, p.created_at, p.seller_id,
           p.restaurant_name, p.restaurant_address, p.slug,
-          p.restaurant_lat, p.restaurant_lng,
+          p.restaurant_lat, p.restaurant_lng, p.images,
           ${_dominantColorCol === false ? '' : 'p.dominant_color,'}
           s.name AS seller_name, s.profile_image AS seller_avatar
         `
@@ -320,11 +321,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //   AS-IS: 리스트는 price(기준가) 만 보내 카드가 tier 미반영 → 상세(할인가)와 불일치.
     //   current_price = round(price × (1 - maxTier)) 주입. 카드는 current_price ?? price 사용.
     //   캐시 헤더(Cache-Control/CDN-Cache-Control) 불변 — body enrich 만. design/groupbuy-instant-sale.md
-    const mapped = (results as Array<Record<string, unknown>>).map((p) => {
+    const mapped = (results as Array<Record<string, unknown>>).map((p): Record<string, unknown> => {
       const md = maxTierDiscount((p.group_buy_tiers as string | null) ?? null)
-      if (md <= 0) return p
-      const base = Number(p.price) || 0
-      return { ...p, current_price: Math.round(base * (1 - md / 100)), current_discount_pct: md }
+      const g = sliceCardGallery(p.images, p.image_url)  // 🖼️ 2026-08-19 카드 캐러셀 갤러리(SSOT·cron 공용)
+      return { ...p, images: g.length ? g : undefined, ...(md > 0 ? { current_price: Math.round((Number(p.price) || 0) * (1 - md / 100)), current_discount_pct: md } : {}) }
     })
 
     // 🎯 2026-07-02 [UNLOCK_LOADING] (대표 신고 "홈이 미완성으로 먼저 뜨고 응모 버튼이 나중에 등장"):

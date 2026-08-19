@@ -166,10 +166,20 @@ describe('④ 상품 선정 — 홈 피드와 같은 조건 + 몰 격리', () =>
 
 describe('⑤ 카드 링크는 canonicalDetailPath SSOT — 손으로 찍지 않는다', () => {
   it('카드가 SSOT 로 목적지를 정한다 (하드코딩 분기 금지)', () => {
+    // 🔄 2026-08-19 갱신: 섹션이 자체 카드를 갖고 있던 구조가 **피드 카드 재사용**으로 바뀌었다
+    //   (대표 신고 "섹션 카드와 동네딜 카드가 다르네"). 그래서 이 파일에는 링크 생성 코드가 없고,
+    //   목적지 판정은 그 카드가 한다 — 검사 대상도 함께 옮긴다. 불변식 자체는 그대로:
+    //   **홈 섹션 카드의 목적지는 손으로 찍지 않는다.**
     const src = code('src/components/home/HomeSections.tsx')
-    expect(src).toMatch(/canonicalDetailPath\(/)
+    const card = code('src/pages/main-home/GroupBuyFeedCard.tsx')
+    expect(card).toMatch(/canonicalDetailPath\(/)
     // 손으로 찍은 삼항(`? '/vouchers/..' : '/group-buy/..'`)이 되살아나면 숙소가 틀린 상세로 간다.
     expect(src).not.toMatch(/\?\s*`\/vouchers\//)
+    expect(card).not.toMatch(/\?\s*`\/vouchers\//)
+    // 섹션이 다시 자기 카드를 만들면(=두 카드가 갈리면) 여기서 걸린다.
+    // ⚠️ **`import` 줄이 아니라 렌더(JSX)를 본다.** 처음엔 `/GroupBuyFeedCard/` 로 썼다가
+    //    카드를 `<div>` 로 바꿔도 초록이 뜨는 걸 되돌려-검증에서 잡았다 — import 는 남으니까.
+    expect(src, '홈 섹션은 피드와 같은 카드를 렌더해야 한다').toMatch(/<GroupBuyFeedCard\b/)
   })
 
   it('판정에 필요한 컬럼(deal_only·category)을 SELECT 가 싣는다', () => {
@@ -337,7 +347,16 @@ describe('⑪ 홈이 기본으로 시안 모양이어야 한다 (2026-08-04 "시
 
   it('시드가 기존 섹션을 덮지 않는다 (제목이 같으면 건너뛴다)', () => {
     expect(seed).toMatch(/if \(existing\.has\(s\.title\)\) continue/)
-    expect(seed).not.toMatch(/\bUPDATE homepage_sections\b|\bDELETE FROM homepage_sections\b/)
+    expect(seed).not.toMatch(/\bDELETE FROM homepage_sections\b/)
+    // 🚑 2026-08-17 v2 heal 예외: UPDATE 는 **값이 정확히 '/group-buy'(홈 리다이렉트 별칭 — 어떤
+    // 의도로도 옳을 수 없는 죽은 링크)인 more_href 정정** 하나만 허용한다. 제목/부제/규칙을 덮는
+    // UPDATE 는 여전히 금지 — "대표 편집 보존"이 이 가드의 본질이다. 여기 걸리면 heal 이 아니라
+    // 편집 덮어쓰기를 넣은 것이니 시드 철학(주석 상단)을 다시 읽을 것.
+    const updates = seed.match(/UPDATE homepage_sections[^`]*/g) ?? []
+    expect(updates.length).toBeLessThanOrEqual(1)
+    for (const u of updates) {
+      expect(u).toMatch(/SET more_href = '[^']*' WHERE more_href = '\/group-buy'/)
+    }
   })
 
   it('시드가 **홈 조회** 경로에서 실행된다 (어드민이 안 열어도 떠야 한다)', () => {

@@ -30,7 +30,7 @@ export default function HomeHeroDefault() {
   }
 
   return (
-    <section className="relative isolate overflow-hidden bg-[#0F151D] h-[268px] lg:h-[320px]">
+    <section className="relative isolate overflow-hidden bg-[#1A2C42] h-[280px] lg:h-[380px]">
       {/* 배경 — 잉크 위에 로즈 블룸 2개 + 빛줄기. 전부 CSS. */}
       <div
         className="absolute -z-10 -inset-[18%] ur-hero-bloom-a"
@@ -51,15 +51,19 @@ export default function HomeHeroDefault() {
       <div
         className="absolute inset-0 -z-10"
         aria-hidden="true"
-        style={{ background: 'linear-gradient(90deg, rgba(15,21,29,0.86) 0%, rgba(15,21,29,0.45) 46%, rgba(15,21,29,0.12) 100%)' }}
+        style={{ background: 'linear-gradient(90deg, rgba(26,44,66,0.88) 0%, rgba(26,44,66,0.46) 46%, rgba(26,44,66,0.10) 100%)' }}
       />
 
-      <div className="relative h-full max-w-[1600px] mx-auto px-6 lg:px-10 flex flex-col justify-center">
+      {/* 🌗 2026-08-19: 히어로 → 아래 색면으로 이어지는 페이드. 경계선이 딱 떨어지면 '잘린 배너'로 보인다. */}
+      <div className="absolute inset-x-0 bottom-0 h-16 -z-10" aria-hidden="true"
+        style={{ background: 'linear-gradient(180deg, transparent, #1A2C42)' }} />
+
+      <div className="relative h-full max-w-[1440px] mx-auto px-6 lg:px-8 flex flex-col justify-center">
         <p className="text-[12.5px] font-bold tracking-[0.14em] text-white/60">URDEAL</p>
-        <h2 className="mt-1.5 text-[27px] lg:text-[34px] font-black tracking-tight text-white leading-[1.2] [text-wrap:balance]">
+        <h2 className="mt-2 text-[30px] lg:text-[46px] font-black tracking-tight text-white leading-[1.14] [text-wrap:balance]">
           우리 동네 이용권, <span className="text-brand">할인가로 바로</span>
         </h2>
-        <p className="mt-2 text-[13.5px] lg:text-[15px] text-white/72">
+        <p className="mt-2.5 text-[14px] lg:text-[16.5px] text-white/75">
           식사 · 미용 · 숙소 · 교환권을 온라인에서 사고 매장에서 바로 쓰세요.
         </p>
 

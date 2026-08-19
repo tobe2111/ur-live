@@ -18,6 +18,7 @@
 import type { Env } from '../types/env'
 import { swallow } from '../utils/swallow'
 import { VOUCHER_CATEGORIES } from '../../shared/constants/voucher-categories'
+import { sliceCardGallery } from '../../features/group-buy/api/card-gallery'
 
 const STATUSES = ['active', 'achieved', 'expired', 'all'] as const
 
@@ -28,7 +29,7 @@ const COLS = `
   p.discount_rate, p.sold_count, p.avg_rating, p.deal_only,
   p.brand_name, p.brand_icon_url, p.created_at, p.seller_id,
   p.restaurant_name, p.restaurant_address, p.slug,
-  p.restaurant_lat, p.restaurant_lng,
+  p.restaurant_lat, p.restaurant_lng, p.images,
   s.name AS seller_name, s.profile_image AS seller_avatar
 `
 
@@ -71,7 +72,13 @@ export async function handleGroupBuyFeedCache(env: Env): Promise<{
           LIMIT 50
         `).bind(...categories, status, status).all()
 
-        const rows = r.results ?? []
+        // 🖼️ 2026-08-19: 저장 시점에 자른다 — 라이브 쿼리와 **같은 SSOT**(`card-gallery`).
+        //   안 자르면 캐시 row 가 원본 전량을 안고, 그 크기를 캐시 hit 마다 파싱한다.
+        const rows = (r.results ?? []).map((row) => {
+          const p = row as Record<string, unknown>
+          const g = sliceCardGallery(p.images, p.image_url)
+          return { ...p, images: g.length ? JSON.stringify(g) : null }
+        })
         const json = JSON.stringify(rows)
 
         await DB.prepare(`

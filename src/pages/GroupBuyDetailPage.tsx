@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import DetailGallery from './group-buy/DetailGallery'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, ShieldCheck, RefreshCcw } from 'lucide-react'
@@ -166,9 +167,7 @@ export default function GroupBuyDetailPage() {
   const [quantity, setQuantity] = useState(1)
   const [showPropose, setShowPropose] = useState(false)
   // 🎨 2026-06-16 리디자인: 스와이프 갤러리 활성 인덱스 + 이 셀러의 다른 공구
-  const [activeImage, setActiveImage] = useState(0)
   const [otherDeals, setOtherDeals] = useState<Array<{ id: number; name: string; price: number; original_price?: number | null; image_url?: string | null; discount_pct?: number | null }>>([])
-  const galRef = useRef<HTMLDivElement | null>(null)
   // 🏭 2026-06-07 (당근 스타일 hero 재설계): 스크롤-aware 헤더.
   //   hero 이미지를 지나치면 투명 overlay → solid 테마 바로 전환 + 제목 fade-in.
   //   passive scroll listener + ref 로 hero 높이 측정 (threshold ≈ heroHeight - headerHeight).
@@ -356,11 +355,6 @@ export default function GroupBuyDetailPage() {
     }
     return Array.from(new Set(out)).slice(0, 8)
   })()
-  const onGalScroll = () => {
-    const el = galRef.current; if (!el) return
-    const i = Math.round(el.scrollLeft / el.clientWidth)
-    if (i !== activeImage) setActiveImage(i)
-  }
 
   // 🎨 2026-06-16 리디자인: 할인코드(promo) 입력 UI 제거 — checkPromo/clearPromo 삭제.
 
@@ -625,34 +619,32 @@ export default function GroupBuyDetailPage() {
           하단 고정 구매바 그대로(불변). */}
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10 lg:max-w-[1200px] lg:mx-auto lg:items-start lg:pt-5">
       <div className="lg:min-w-0">{/* 좌측 콘텐츠 컬럼 */}
-      {/* 🎨 2026-06-16 리디자인: 스와이프 이미지 갤러리 (fixed 헤더가 위에 floating) */}
+      {/* 🎨 2026-06-16 리디자인: 이미지 갤러리 (fixed 헤더가 위에 floating)
+          🖼️ 2026-08-19 (대표 시안 — 그루폰 상세): 사진이 여러 장이면 PC 에서 [좌 대형 + 우 썸네일]로
+          펴고, 마지막 썸네일의 `+N` 으로 전체 사진 모달을 연다. 모바일은 스와이프 그대로.
+          레이아웃/상태는 `DetailGallery`(SSOT)로 추출 — 이 파일은 배지만 넘긴다. */}
       <div ref={heroRef} className="relative lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#2A3446]" style={{ background: 'var(--gbd-card)' }}>
-        <div ref={galRef} onScroll={onGalScroll} className="noscroll" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '1/1', scrollSnapType: 'x mandatory' }}>
-          {(galleryImages.length ? galleryImages : ['']).map((src, i) => (
-            <div key={i} role="img" aria-label={detail.name} className="flex items-center justify-center text-6xl" style={{ flex: '0 0 100%', scrollSnapAlign: 'center', backgroundColor: '#1A2334', backgroundImage: src ? `url("${cfImage(src, { width: 900, format: 'auto' }) || src}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-              {!src && <CategoryEmoji cat={detail.category} />}
-            </div>
-          ))}
-        </div>
-        <div style={{ position: 'absolute', inset: '0 0 auto 0', height: 110, pointerEvents: 'none', background: 'linear-gradient(180deg, rgba(0,0,0,.4), transparent)' }} />
-        <div style={{ position: 'absolute', inset: 'auto 0 0 0', height: 120, pointerEvents: 'none', background: 'linear-gradient(0deg, rgba(0,0,0,.32), transparent)' }} />
-        <div style={{ position: 'absolute', left: 16, bottom: 17, display: 'flex', alignItems: 'center', gap: 6 }}>
-          {detail.current_discount_pct > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>{detail.current_discount_pct}% 할인</span>
-          )}
-          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 10px', borderRadius: 6, background: 'rgba(18,20,23,.5)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
-            {({ meal_voucher: '식사', beauty_voucher: '뷰티', health_voucher: '건강', pet_voucher: '반려', stay_voucher: '숙박', activity_voucher: '액티비티' } as Record<string, string>)[detail.category] || '교환권'}
-          </span>
-          {detail.group_buy_status === 'expired' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'rgba(55,55,55,.78)', color: '#fff', fontSize: 12, fontWeight: 700 }}>마감</span>}
-          {detail.group_buy_status === 'cancelled' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 700 }}>취소</span>}
-        </div>
-        {galleryImages.length > 1 && (
-          <div style={{ position: 'absolute', right: 16, bottom: 19, display: 'flex', alignItems: 'center', gap: 5 }}>
-            {galleryImages.map((_, i) => (
-              <span key={i} style={{ height: 5, borderRadius: 99, transition: 'width .25s, background .25s', width: i === activeImage ? 16 : 5, background: i === activeImage ? '#fff' : 'rgba(255,255,255,.5)' }} />
-            ))}
-          </div>
-        )}
+        <DetailGallery
+          images={galleryImages}
+          alt={detail.name}
+          fallback={<CategoryEmoji cat={detail.category} />}
+          badges={
+            <>
+              <div style={{ position: 'absolute', inset: '0 0 auto 0', height: 110, pointerEvents: 'none', background: 'linear-gradient(180deg, rgba(0,0,0,.4), transparent)' }} />
+              <div style={{ position: 'absolute', inset: 'auto 0 0 0', height: 120, pointerEvents: 'none', background: 'linear-gradient(0deg, rgba(0,0,0,.32), transparent)' }} />
+              <div style={{ position: 'absolute', left: 16, bottom: 17, display: 'flex', alignItems: 'center', gap: 6 }}>
+                {detail.current_discount_pct > 0 && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>{detail.current_discount_pct}% 할인</span>
+                )}
+                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 10px', borderRadius: 6, background: 'rgba(18,20,23,.5)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  {({ meal_voucher: '식사', beauty_voucher: '뷰티', health_voucher: '건강', pet_voucher: '반려', stay_voucher: '숙박', activity_voucher: '액티비티' } as Record<string, string>)[detail.category] || '교환권'}
+                </span>
+                {detail.group_buy_status === 'expired' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'rgba(55,55,55,.78)', color: '#fff', fontSize: 12, fontWeight: 700 }}>마감</span>}
+                {detail.group_buy_status === 'cancelled' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 700 }}>취소</span>}
+              </div>
+            </>
+          }
+        />
       </div>
 
       <main id="gb-main" role="main">

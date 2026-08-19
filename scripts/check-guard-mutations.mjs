@@ -72,6 +72,28 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '카드 캐러셀 화살표에서 preventDefault 를 없앤다(사진 넘기려던 클릭이 상세로 튄다)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'e.preventDefault()',
+    replace: 'void 0',
+    test: 'src/tests/unit/deal-card-gallery.test.ts',
+    why:
+      '카드 캐러셀은 `<Link>` **안**에 있다 — 화살표가 기본동작을 막지 않으면 사진을 넘기려는 클릭이 ' +
+      '매번 상세 페이지로 튄다. 에러가 없고 화면도 멀쩡해서 **직접 눌러 보기 전엔 아무도 모르는** 종류다. ' +
+      '2026-08-19 그루폰 카드 도입과 함께 들어온 안전장치라, 나중에 리팩토링하다 지워질 위험이 크다.',
+  },
+  {
+    name: '카드가 갤러리를 전부 미리 로드한다(첫 화면 트래픽 몇 배)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'if (!seen.has(i)) return null',
+    replace: 'if (false) return null',
+    test: 'src/tests/unit/deal-card-gallery.test.ts',
+    why:
+      '홈 한 화면에 카드가 50개다. 캐러셀 장면을 전부 `<img>` 로 만들면 **첫 화면 이미지 요청이 4배**가 된다 — ' +
+      '이 레포가 로딩 최적화 잠금으로 지켜 온 값을 한 줄로 되돌리는 셈이다. 사용자가 실제로 넘긴 장면만 ' +
+      '받는다는 규칙이라, 안 지켜져도 **화면은 똑같아 보여서** 리뷰로는 안 걸린다.',
+  },
+  {
     name: '공구가 킬스위치를 어드민 화면에서 뺀다(돈 새는 중에 멈출 손잡이가 사라진다)',
     file: 'src/pages/AdminPlatformSettingsPage.tsx',
     find: "key: 'gb_pricing_enabled'",

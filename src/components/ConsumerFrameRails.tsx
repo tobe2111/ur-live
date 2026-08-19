@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 //   홈 modulepreload 에 딸려옴(PC 는 거터 QR 렌더, 모바일은 안 쓰는데도 preload). QR 은 장식용 모바일-앱
 //   다운로드 코드라 첫 페인트 비필수 → lazy 로 빼 홈 첫 페인트 preload 에서 18KB 제거.
 const QRCodeSVG = lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeSVG })))
-import { Home, ShoppingBag, Ticket, Sparkles, User, ChevronRight, Smartphone, MapPin, ShieldCheck, Percent, Store } from 'lucide-react'
+import { Home, Gift, Ticket, Sparkles, User, ChevronRight, Smartphone, MapPin, ShieldCheck, Percent, Store } from 'lucide-react'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 /**
@@ -120,7 +120,9 @@ export default function ConsumerFrameRails() {
               {t('frameRails.quicklinks', { defaultValue: '바로가기' })}
             </p>
             <QuickLink icon={Home} label={t('nav.home', { defaultValue: '홈' })} onClick={() => navigate('/')} />
-            <QuickLink icon={ShoppingBag} label={t('nav.shopping', { defaultValue: '쇼핑' })} onClick={() => navigate('/vouchers')} />
+            {/* 🏷️ 2026-08-17 (UX 전수검사 P2): 라벨 "쇼핑"은 잠정 숨김된 쇼핑탭 잔재 — 목적지(/vouchers)에
+                맞는 정본 라벨 "교환권"(하단 네비 탭2와 동일 Gift 아이콘)으로 정정. */}
+            <QuickLink icon={Gift} label={t('nav.vouchers', { defaultValue: '교환권' })} onClick={() => navigate('/vouchers')} />
             <QuickLink icon={Ticket} label={t('nav.myGbVouchers', { defaultValue: '이용권' })} onClick={() => navigate('/my-vouchers')} />
             <QuickLink icon={Sparkles} label={t('nav.linkshop', { defaultValue: '링크샵' })} onClick={() => navigate('/u/me')} />
             <QuickLink icon={User} label={t('nav.my', { defaultValue: '마이' })} onClick={() => navigate('/user/profile')} />
