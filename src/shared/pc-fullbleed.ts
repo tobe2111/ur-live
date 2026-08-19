@@ -19,6 +19,22 @@ const FULLBLEED_PC_PATHS = new Set<string>([
   '/user/profile', '/my-vouchers', '/my-orders',
   // 검색/찜(브라우징 그리드 — 전역 상단바 유지). ur-content-wide 중앙정렬.
   '/search', '/wishlist',
+  /**
+   * 🖥️ 2026-08-19 (대표 — "PC 친화적이지 않은 페이지들 확인해서 PC 버전의 페이지도 완벽히 구사해줘").
+   *
+   * 실측(1440px, 소비자 라우트 15개): **9개가 430px 모바일 액자**에 갇혀 있었다.
+   * 특히 `/cart` 는 **PC 2단 코드(좌 목록 + 우 sticky 요약)를 이미 갖고 있었는데**, 액자 폭이
+   * 430px 이라 `lg:grid` 가 발현될 자리가 없어 죽은 코드였다 — 만들어 놓고 못 쓰고 있었다.
+   *
+   * ⚠️ 등재 조건(이 파일 위 주석): 하단 고정바가 `app-frame-bar` 를 쓰면 pc-fullbleed 가 그 바를
+   *   숨기므로 안 된다. 아래 경로는 전부 확인했다 —
+   *   `/cart` 는 `app-frame-bar` 를 쓰지만 **`lg:hidden` 이 함께 붙어** PC 에선 우측 요약이 대신한다.
+   *   `/notifications`·`/browse` 는 고정바 자체가 없다.
+   *   (`/account/settings` 는 `/user/profile` 로 가는 리다이렉트 스텁이라 등재 대상이 아니다 —
+   *    도착지가 이미 등재돼 있다. 넣어 봐야 아무 효과가 없고 목록만 헷갈린다.)
+   *   `/referral` 은 `lg:hidden` 없는 `app-frame-bar` 를 써서 **일부러 제외**했다(CTA 가 사라진다).
+   */
+  '/cart', '/notifications', '/browse',
 ])
 
 // 🖥️ 2026-07-16 (대표 — 상세 PC 2단): 상세 라우트(동적 :id)는 prefix 로 풀너비화 → 좌 이미지 + 우 정보 2단.

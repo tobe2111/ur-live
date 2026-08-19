@@ -219,3 +219,31 @@ describe('상세 페이지는 같은 갤러리를 쓴다 (카테고리별로 갈
     expect(gal).not.toMatch(/aspectRatio: '4 \/ 3', \.\.\.bg\(main, 1600\)/)
   })
 })
+
+/**
+ * 🖥️ PC 친화성 (2026-08-19 대표 — "PC 친화적이지 않은 페이지들 확인해서 PC 버전의 페이지도 완벽히").
+ *
+ * 실측(1440px, 소비자 라우트 15개): **9개가 430px 모바일 액자**에 갇혀 있었다. 가장 아까운 건
+ * `/cart` — PC 2단(좌 목록 + 우 sticky 요약) 코드를 **이미 갖고 있었는데** 액자 폭이 430px 이라
+ * `lg:grid` 가 발현될 자리가 없어 죽은 코드였다.
+ */
+describe('PC 풀너비 등재 (모바일 액자에 갇히지 않게)', () => {
+  const fb = code('src/shared/pc-fullbleed.ts')
+
+  it('장바구니·알림·쇼핑이 PC 풀너비다', () => {
+    for (const p of ["'/cart'", "'/notifications'", "'/browse'"]) expect(fb).toContain(p)
+  })
+
+  it('하단 고정바가 PC 에서도 뜨는 페이지는 등재하지 않는다', () => {
+    // pc-fullbleed 는 `app-frame-bar` 를 숨긴다 — `lg:hidden` 없이 그 바를 쓰는 페이지를 넣으면
+    // PC 에서 CTA 가 통째로 사라진다. /referral 이 그런 페이지라 일부러 제외했다.
+    expect(fb).not.toMatch(/'\/referral'/)
+    const cart = code('src/pages/CartPage.tsx')
+    expect(cart).toMatch(/app-frame-bar[\s\S]{0,160}lg:hidden/)  // 카트 하단바는 PC 에서 숨는다
+  })
+
+  it('쇼핑 그리드가 넓은 화면에서 열을 늘린다', () => {
+    // 풀너비인데 3열이면 카드가 과하게 커진다.
+    expect(code('src/pages/BrowsePage.tsx')).toMatch(/lg:grid-cols-4/)
+  })
+})
