@@ -540,7 +540,7 @@ export interface SourceContactRate {
   with_any: number
 }
 
-export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStats; byCategory: Array<{ k: string; n: number }>; byDay: CompanyDayInflow[]; segments: CompanySegments; byTier: Array<{ k: number | null; n: number }>; byLeadType: Array<{ k: string; n: number }>; agencyEmailFunnel: AgencyEmailFunnel; bySource: SourceContactRate[] }> {
+export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStats; byCategory: Array<{ k: string; n: number }>; byDay: CompanyDayInflow[]; todayKst: string; segments: CompanySegments; byTier: Array<{ k: number | null; n: number }>; byLeadType: Array<{ k: string; n: number }>; agencyEmailFunnel: AgencyEmailFunnel; bySource: SourceContactRate[] }> {
   await ensureCompanySchema(DB)
   const t = await DB.prepare(`SELECT
       COUNT(*) AS total,
@@ -553,7 +553,7 @@ export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStat
       SUM(CASE WHEN lead_type IS NULL OR lead_type = 'unknown' THEN 1 ELSE 0 END) AS needs_review
     FROM ad_company_leads`).first<Record<string, number>>().catch(() => null)
   const byCategory = (await DB.prepare("SELECT COALESCE(category,'?') AS k, COUNT(*) AS n FROM ad_company_leads GROUP BY category ORDER BY n DESC LIMIT 20").all<{ k: string; n: number }>().catch(() => null))?.results || []
-  const { seg, byDay } = await companyBreakdown(DB)
+  const { seg, byDay, todayKst } = await companyBreakdown(DB)
   const byTier = (await DB.prepare('SELECT tier AS k, COUNT(*) AS n FROM ad_company_leads GROUP BY tier ORDER BY (tier IS NULL) ASC, tier ASC').all<{ k: number | null; n: number }>().catch(() => null))?.results || []
   const byLeadType = (await DB.prepare("SELECT COALESCE(NULLIF(lead_type,''),'unknown') AS k, COUNT(*) AS n FROM ad_company_leads GROUP BY 1 ORDER BY n DESC").all<{ k: string; n: number }>().catch(() => null))?.results || []
   // 📧 대행사 이메일 퍼널(2026-07-27 대표 "대행사인데도 이메일 수집 안 되는 경우 있는지") — 미보유를 원인별로 분해:
@@ -583,7 +583,7 @@ export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStat
       active_pipeline: Number(t?.active_pipeline) || 0, recent7: Number(t?.recent7) || 0,
       needs_review: Number(t?.needs_review) || 0,
     },
-    byCategory, byDay, byTier, byLeadType, bySource,
+    byCategory, byDay, todayKst, byTier, byLeadType, bySource,
     segments: seg,
     agencyEmailFunnel: {
       total: Number(af?.total) || 0, with_email: Number(af?.with_email) || 0,

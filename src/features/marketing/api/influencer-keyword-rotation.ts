@@ -400,7 +400,7 @@ export const AUTO_RETIRE_WHERE = {
  * (`RETIRE_EVIDENCE_FRESH_DAYS`) 은퇴 조건과 함께 만료되어 재도전 1회가 열린다(대표 확정 2026-08-09).
  */
 export const PROMOTE_NOT_RETIRABLE_SQL =
-  `NOT ((${AUTO_RETIRE_WHERE.f30}) OR (${AUTO_RETIRE_WHERE.barren}) OR (${AUTO_RETIRE_WHERE.yield}))`
+  `NOT ((${AUTO_RETIRE_WHERE.f30}) OR (${AUTO_RETIRE_WHERE.barren}) OR (${AUTO_RETIRE_WHERE.yield}) OR (${AUTO_RETIRE_WHERE.epoch}))`
 
 // 🚫 **`epoch` 를 위 NOT(...) 에 넣지 마라** — 평생 카운터와 달리 에폭은 승격 시 리셋돼 livelock 이
 //   성립하지 않는다. 넣으면 자가치유가 막혀 30일 영구 배제가 된다(대표가 명시로 거부한 것).

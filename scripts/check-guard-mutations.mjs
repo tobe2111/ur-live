@@ -3623,6 +3623,27 @@ const MUTATIONS = [
       '두 번** 내놓는다 — 희소한 회차(폭 9)를 중복에 쓰고, 그 키워드의 성과 카운터도 이중 계상된다. ' +
       '풀이 작아지는 순간(은퇴·고갈)에 터지는 형태라 평소 테스트로는 안 보인다.',
   },
+  {
+    // 📉 유입 추세 배지(2026-08-19 대표 "점점 줄어드는지도 봐줘").
+    name: '진행 중인 오늘을 추세에 포함(오후마다 멀쩡한 날이 "폭락"으로 보인다)',
+    file: 'src/shared/ads/inflow-trend.ts',
+    find: ".filter(x => !!x?.d && (!todayKst || x.d !== todayKst))",
+    replace: ".filter(x => !!x?.d)",
+    test: 'src/tests/unit/ads-inflow-trend.test.ts',
+    why:
+      '오늘 막대는 지금까지 쌓인 만큼만 있다(실측: 13:47 시점 누적이 하루치의 57%). 그걸 평균에 넣으면 ' +
+      '**하락이 아닌 날도 하락 판정**이 나고, 그 배지를 보고 멀쩡한 시스템을 파게 된다.',
+  },
+  {
+    name: '인플루언서 페이지가 todayKst 를 안 넘김(배지·진행중 표시가 통째로 죽음)',
+    file: 'src/pages/admin/AdminInfluencerPoolPage.tsx',
+    find: '<InflowTimeline byDay={byDay} label="이메일" todayKst={todayKst} />',
+    replace: '<InflowTimeline byDay={byDay} label="이메일" />',
+    test: 'src/tests/unit/ads-inflow-trend.test.ts',
+    why:
+      '순수 함수가 맞아도 화면에 안 걸리면 아무 일도 안 일어난다 — 이 레포의 상습 사고("계산해 놓고 ' +
+      '안 쓰는 계측"). prop 하나가 빠지면 오늘 막대가 완성된 날처럼 보여 절반짜리 값이 추세로 읽힌다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
