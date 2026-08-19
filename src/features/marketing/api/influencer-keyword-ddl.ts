@@ -45,5 +45,11 @@ export const KW_DDL: string[] = [
   'ALTER TABLE ad_discovery_keywords ADD COLUMN epoch_saved INTEGER NOT NULL DEFAULT 0',
   // 🕊️ 에폭 은퇴는 자가치유(승격 시 리셋)라 영구 차단이 아니다 — 대신 **쿨다운**으로 즉시 재승격만 막는다.
   'ALTER TABLE ad_discovery_keywords ADD COLUMN retired_at DATETIME',
+  // 📖 2026-08-19 **검색 깊이 커서** — 네이버 블로그 검색을 `start` 없이 부르고 있었다. 즉 어떤
+  //   키워드든 **매번 같은 상위 100건**만 봤다(API 는 1~1000 을 받는다). 실측: 회차당 found 555~793 은
+  //   안 줄었는데 신규율만 8.4%~38.6% — 찾아온 사람의 62~92% 가 이미 DB 에 있었다. 키워드가 고갈된
+  //   게 아니라 **우리가 같은 페이지를 계속 본 것**이다. 규칙·근거는 `influencer-search-depth.ts`.
+  //   ⚠️ 1 = 아직 한 번도 안 민 상태(1페이지). `sim` 회차에서만 100씩 민다(`date` 는 신규 유입 창).
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN nb_start INTEGER NOT NULL DEFAULT 1',
 ]
 
