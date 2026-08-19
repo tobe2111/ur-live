@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import DealCardMedia from '@/components/deal/DealCardMedia'
+import StarRating from '@/components/deal/StarRating'
 import WishlistHeart from '@/components/deal/WishlistHeart'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
@@ -139,13 +140,16 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
   const cat = CATEGORY_META[rawCategory] || { emoji: '🎁', label: rawCategory }
   const price = p.current_price ?? p.price ?? 0
   const originalPrice = p.original_price ?? 0
-  // 할인율 계산 (있는 값 우선, 없으면 직접 계산).
-  const discount = p.discount_rate ?? (
-    originalPrice > price && originalPrice > 0
-      ? Math.round(((originalPrice - price) / originalPrice) * 100)
-      : 0
-  )
+  // 💸 할인율 — 🐛 2026-08-19 (대표 신고 "할인율도 나타나야 할 것 같다"): 이전엔 `p.discount_rate ?? 계산`
+  //   이라 서버가 **0 을 내려주면**(컬럼 기본값 0) `??` 가 그 0 을 채택해 계산식에 못 갔다 →
+  //   38,000 → 30,100 처럼 명백한 할인에도 pill 이 안 떴다. 둘 중 **큰 값**을 쓴다.
+  const declaredDiscount = Number(p.discount_rate) || 0
+  const computedDiscount = originalPrice > price && originalPrice > 0
+    ? Math.round(((originalPrice - price) / originalPrice) * 100)
+    : 0
+  const discount = Math.max(declaredDiscount, computedDiscount)
   const rating = p.avg_rating ?? 0
+  const reviewCount = p.review_count ?? 0
   const soldCount = p.sold_count ?? 0
   // 📍 2026-07-16 (대표 — PC 카드도 주소·거리, 모바일처럼): 주소 축약(시/구/동) + 현위치 거리(km, userLoc 있을 때).
   const addrShort = (p.restaurant_address || '').trim().split(/\s+/).slice(0, 3).join(' ')
@@ -184,7 +188,11 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
       onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
       onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
       onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}
-      className={`block group active:scale-[0.98] rounded-2xl overflow-hidden flex flex-col ${pc ? 'ur-lift bg-white dark:bg-[#161618] border border-gray-200 dark:border-[#2A3446] hover:border-gray-300 dark:hover:border-[#3A3A3A]' : 'transition-transform'}`}
+      // 🧹 2026-08-19 (대표 신고 — "그루폰처럼 테두리를 없애줘. AI가 만든 티가 나"):
+      //   PC 카드에서 **테두리·카드 배경·박스 그림자**를 걷어낸다. 그루폰 카드는 컨테이너가 아니라
+      //   [둥근 사진] + 그 아래 맨 텍스트다 — 흰 패널이 이미 배경을 맡고 있어 박스가 한 겹 더 필요 없다.
+      //   ⚠️ 모바일(!pc)은 대표색 카드가 정체성이라 **그대로 유지**한다.
+      className={`block group active:scale-[0.98] flex flex-col ${pc ? '' : 'rounded-2xl overflow-hidden transition-transform'}`}
       style={pc ? undefined : { backgroundColor: grad.base }}
     >
       {/* 🎨 대표색 카드 + 사진 하단 같은색 번짐(그라데이션) — /group-buy GroupBuyGridCard 와 동일 룩.
@@ -199,7 +207,8 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
         eager={aboveFold}
         width={pc ? 400 : 300}
         aspectClass={pc ? 'aspect-[4/3]' : 'aspect-square'}
-        className={pc ? 'bg-gray-100 dark:bg-[#222225]' : ''}
+        /* 🧹 2026-08-19: 카드 박스가 사라졌으니 **사진 자신이** 모서리를 갖는다(그루폰과 동일). */
+        className={pc ? 'rounded-xl bg-gray-100 dark:bg-[#222225]' : ''}
         fallback={<span className="text-3xl opacity-40">{cat.emoji}</span>}
         onCoverLoad={(el) => {
           const color = extractDominantColor(el)
@@ -230,7 +239,8 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
       {/* 🛍️ 2026-08-19 (대표 시안 — 그루폰 카드): 정보 위계를 그루폰과 같게 재배열.
           [머천트(작은 회색)] → [제목 2줄] → [주소 · 거리] → [★평점 (구매수)] → [정가취소선 · 판매가 · 할인 pill]
           이전엔 정가가 제목 **위**에 떠 있고 가격이 중간에 있어, 카드마다 눈이 가는 자리가 달랐다. */}
-      <div className={pc ? 'px-3 pb-3 pt-2.5' : 'px-2.5 pb-2.5 pt-2'}>
+      {/* 🧹 PC 는 카드 박스가 없으므로 좌우 패딩도 0 — 사진 왼쪽 끝과 글자가 딱 맞아야 그루폰처럼 보인다. */}
+      <div className={pc ? 'pt-2.5' : 'px-2.5 pb-2.5 pt-2'}>
         {/* 머천트 — 매장명 우선, 없으면 브랜드(gift_catalog). 🏪 온누리 가맹 뱃지는 그 옆. */}
         {(p.restaurant_name || brandName || p.onnuri_merchant) && (
           <p className={`flex items-center gap-1 text-[11px] leading-none mb-1 ${cSub}`} style={tSub}>
@@ -255,16 +265,18 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
           </p>
         )}
 
-        {/* ⭐ 평점 + 구매수 */}
+        {/* ⭐ 평점 — 🌟 2026-08-19 (대표 "별 5개 형태로"): 별 하나 + 숫자 → **별 5개(부분 채움)** +
+            숫자 + 리뷰수. 그루폰 카드의 그 줄이다. 리뷰가 없으면 구매수라도 보여 줘 줄이 비지 않게. */}
         {(rating > 0 || soldCount > 0) && (
           <p className={`flex items-center gap-1.5 mt-1 text-[11px] ${cSub}`} style={tSub}>
-            {rating > 0 && (
-              <span className="flex items-center gap-0.5">
-                <span className="text-yellow-500">★</span>
+            {rating > 0 ? (
+              <>
+                <StarRating value={rating} />
                 <span className={`font-bold ${cText}`} style={tText}>{rating.toFixed(1)}</span>
-              </span>
-            )}
-            {soldCount > 0 && <span>구매 {formatSoldCount(soldCount)}</span>}
+                {reviewCount > 0 && <span>({formatNumber(reviewCount)})</span>}
+              </>
+            ) : null}
+            {soldCount > 0 && <span>{rating > 0 ? '· ' : ''}구매 {formatSoldCount(soldCount)}</span>}
           </p>
         )}
 
@@ -282,7 +294,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
           )}
           {discount > 0 && (
             <span className="shrink-0 px-1.5 py-[1px] rounded text-[11px] font-extrabold bg-brand/10 text-brand-text dark:bg-brand/20 dark:text-brand">
-              {discount}%
+              -{discount}%
             </span>
           )}
         </p>

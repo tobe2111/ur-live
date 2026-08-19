@@ -26,7 +26,7 @@ const COLS = `
   p.id, p.name, p.price, p.original_price, p.image_url, p.category,
   p.group_buy_current, p.group_buy_target, p.group_buy_status,
   p.group_buy_deadline AS expires_at, p.group_buy_tiers,
-  p.discount_rate, p.sold_count, p.avg_rating, p.deal_only,
+  p.discount_rate, p.sold_count, p.avg_rating, p.review_count, p.deal_only,
   p.brand_name, p.brand_icon_url, p.created_at, p.seller_id,
   p.restaurant_name, p.restaurant_address, p.slug,
   p.restaurant_lat, p.restaurant_lng, p.images,

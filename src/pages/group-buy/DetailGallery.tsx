@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cfImage } from '@/utils/cf-image'
 import { Z } from '@/constants/z-index'
@@ -26,10 +26,21 @@ interface Props {
 /** PC 우측 썸네일 칸 수 — 그루폰은 2칸. 그 이상은 `+N` 으로 접는다. */
 const PC_THUMBS = 2
 
-export default function DetailGallery({ images, alt, badges, fallback }: Props) {
+export default function DetailGallery({ images: rawImages, alt, badges, fallback }: Props) {
   const [active, setActive] = useState(0)
   const [lightbox, setLightbox] = useState(false)
   const galRef = useRef<HTMLDivElement | null>(null)
+
+  /**
+   * 💀 2026-08-19 (대표 확정 B): **원본까지 죽은 사진**을 목록에서 뺀다.
+   *
+   * 라이브에 실제로 있었다(보드람치킨 id 2822 — 커버 `t1.daumcdn.net/cfile/…` 가 403, 갤러리 4장은 정상).
+   * ⚠️ 여기 사진들은 CSS `background-image` 로 그려서 **오류 이벤트가 아예 없다** — 그래서 지금까지
+   *    빈 칸으로 남았다. 레이아웃을 건드리지 않고 감지만 하려고, 지금 보이는 사진과 **똑같은 URL** 의
+   *    숨은 `<img>` 한 장을 얹는다. 브라우저가 같은 요청을 재사용하므로 **추가 트래픽 0**.
+   */
+  const [dead, setDead] = useState<Set<string>>(() => new Set())
+  const images = useMemo(() => rawImages.filter((u) => !dead.has(u)), [rawImages, dead])
 
   const has = images.length > 0
   const multi = images.length > 1
@@ -69,6 +80,19 @@ export default function DetailGallery({ images, alt, badges, fallback }: Props) 
 
   return (
     <>
+      {/* 🕵️ 죽은 사진 감지용 — 화면에 보이지 않는다. 위 `bg()` 와 **같은 URL** 이라 요청이 재사용된다.
+          실패하면 그 사진을 목록에서 빼고 다음 사진이 자동으로 올라온다. */}
+      {main && (
+        <img
+          src={cfImage(main, { width: 1200, format: 'auto' }) || main}
+          alt=""
+          aria-hidden="true"
+          loading="eager"
+          style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+          onError={() => setDead((prev) => (prev.has(main) ? prev : new Set(prev).add(main)))}
+        />
+      )}
+
       {/* 📱 모바일 — 기존 스와이프 갤러리(불변). */}
       <div className={`relative lg:hidden`}>
         <div ref={galRef} onScroll={onGalScroll} className="noscroll" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '1/1', scrollSnapType: 'x mandatory' }}>

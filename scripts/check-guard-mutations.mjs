@@ -72,6 +72,38 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '죽은 사진을 그대로 보여 준다(카드가 빈 칸으로 남는다)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'const shown = dead.has(idx) ? (alive[0] ?? idx) : idx',
+    replace: 'const shown = idx',
+    test: 'src/tests/unit/deal-card-gallery.test.ts',
+    why:
+      '2026-08-19 라이브에 실제로 있었다 — 커버가 403 인데 갤러리 4장은 멀쩡한 상품(보드람치킨 id 2822). ' +
+      '`cfImageOnError` 는 [리사이저 → 원본 → 숨김] 까지만 하므로 **에러도 안 나고 화면만 빈다.** ' +
+      '대표가 "사진이 안 뜬다"고 말해 주기 전엔 아무도 모르는 종류라, 지워져도 조용히 되돌아간다.',
+  },
+  {
+    name: '히어로 사진이 리사이저를 건너뛴다(첫 화면에 원본 1MB)',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: 'cfImage(photo.src',
+    replace: 'String(photo.src',
+    test: 'src/tests/unit/home-showcase.test.ts',
+    why:
+      '히어로는 화면 맨 위라 사진이 곧 첫인상이자 첫 바이트다. 2026-08-19 실측에서 카카오 CDN 원본이 ' +
+      '**957KB** 였다 — 리사이저를 거치면 53KB 다. 원본 직결은 화면이 똑같이 보여서 리뷰로는 안 걸리고, ' +
+      '느려진 것만 남는다(대표 신고 "사진 불러오는게 많이 느리네?" 가 정확히 그 증상이었다).',
+  },
+  {
+    name: '히어로가 데모 상품 사진을 홈 얼굴로 쓴다',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: "slug.startsWith('demo-deal-')",
+    replace: 'false',
+    test: 'src/tests/unit/home-showcase.test.ts',
+    why:
+      '홈 최상단 사진은 서비스의 얼굴이다. 데모 시드가 그 자리에 올라와도 **에러가 없고 그림도 멀쩡**해서 ' +
+      '아무도 모른다. 2026-08-04 에는 여기 계열의 데모 사진에 타사 워터마크 보도사진이 섞여 있었다.',
+  },
+  {
     name: '카드 캐러셀 화살표에서 preventDefault 를 없앤다(사진 넘기려던 클릭이 상세로 튄다)',
     file: 'src/components/deal/DealCardMedia.tsx',
     find: 'e.preventDefault()',

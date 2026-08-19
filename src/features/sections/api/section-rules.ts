@@ -37,6 +37,9 @@ import {
 export const CARD_COLS = `
   p.id, p.name, p.price, p.original_price, p.image_url, p.category,
   p.discount_rate, p.sold_count, p.dominant_color,
+  -- ⭐ 2026-08-19 (대표 "별 5개 형태도"): 섹션 카드도 피드 카드와 **같은 컴포넌트**를 쓰는데
+  --    이 두 컬럼이 없어 섹션에서만 평점 줄이 비어 있었다(피드는 떴다).
+  p.avg_rating, p.review_count,
   p.deal_only,
   p.restaurant_name, p.restaurant_address, p.slug,
   p.images

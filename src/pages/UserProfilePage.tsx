@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useNavigate, useSearchParams, Navigate } from 'react-router-dom'
+import { useNavigate, useSearchParams, Navigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/shared/config/region'
@@ -33,6 +33,7 @@ import {
 } from './user-profile/AccountControlsSection'
 import api from '@/lib/api'
 import BrandLoader from '@/components/brand/BrandLoader'
+import AccountSideNav from './user-profile/AccountSideNav'
 
 /**
  * 🛡️ 2026-05-01: TD-018 분할 — sub-component 들을 ./user-profile/ 디렉토리로 이동.
@@ -165,6 +166,19 @@ export default function UserProfilePage() {
         </div>
       </div>
       </div>{/* /헤더 그라데이션 wrapper */}
+
+      {/* 🧭 2026-08-19 (대표 시안 — 그루폰 `My Account`): PC 는 [좌 내비 | 우 내용] 2단.
+          모바일(<lg)에서는 `ur-account-pc` 가 아무 일도 하지 않아 **지금 흐름 그대로**다. */}
+      <div className="hidden lg:block max-w-[1200px] mx-auto px-8 pt-1 pb-3">
+        <p className="text-[12px] text-gray-400 dark:text-gray-500">
+          <Link to="/" className="hover:underline">홈</Link>
+          <span className="mx-1.5">/</span>
+          <span className="text-gray-600 dark:text-gray-300 font-semibold">내 계정</span>
+        </p>
+      </div>
+      <div className="ur-account-pc">
+        <AccountSideNav />
+        <div className="ur-account-pane min-w-0">
 
       {/* v4 딜 잔액 + 충전 (큰 박스) */}
       <TeamPointsCard />
@@ -341,6 +355,9 @@ export default function UserProfilePage() {
         </div>
         <p className="text-[10px] text-gray-400 dark:text-white/30 mt-2">{t('userProfile.kakaoConsultSub', { defaultValue: '평일 10:00~18:00 응대' })}</p>
       </div>
+
+        </div>{/* /우측 내용 칸 */}
+      </div>{/* /ur-account-pc */}
 
       {/* 🛡️ 2026-05-24: 프로필 편집 모달 (/account/settings 에서 흡수). */}
       <ProfileEditModal

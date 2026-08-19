@@ -72,10 +72,35 @@ describe('② 대표 확정 — 없으면 아무것도 안 그린다', () => {
     expect(code('src/components/home/HomeHeroBanner.tsx')).toMatch(/if\s*\(\s*!hero\s*\)\s*return\s+<HomeHeroDefault\s*\/>/)
   })
 
-  it('기본 히어로는 영상·이미지 파일을 요청하지 않는다 (첫 화면 무게 0)', () => {
-    // 홈 최상단에 수 MB 를 얹으면 이 레포가 로딩에 들인 노력을 한 번에 되돌린다.
+  /**
+   * 🖼️ 2026-08-19 — 대표가 히어로에 **사진**을 요구했다(그루폰처럼 우측 사진 + 양쪽 그라데이션).
+   *
+   * 원래 이 항목은 `<img` 자체를 금지했는데, 그 규칙이 지키려던 건 태그가 아니라
+   * **"첫 화면에 무거운 미디어를 새로 들이지 마라"** 였다. 그래서 금지를 지우지 않고
+   * *무게를 만드는 조건*으로 좁힌다 — 아래 네 가지가 전부 성립해야 통과한다.
+   *
+   * ⚠️ 이 테스트가 못 막는 것: 실제 전송 바이트. 시드 이미지가 거대하면 리사이저가 줄여 주지만
+   *    원본 fetch 는 리사이저 쪽에서 일어난다. 라이브 실측(Resource Timing)이 최종 판정이다.
+   */
+  it('기본 히어로는 무거운 미디어를 새로 들이지 않는다 (영상 0 · 하드코딩 URL 0 · 리사이즈 · lazy)', () => {
     const def = code('src/components/home/HomeHeroDefault.tsx')
-    expect(def).not.toMatch(/<video|<img|url\(https?:/)
+    // ① 영상은 여전히 금지 — 수 MB 가 첫 화면에 얹힌다.
+    expect(def).not.toMatch(/<video/)
+    // ② 외부 주소를 코드에 박지 않는다(출처 불명 이미지 유입 경로 차단 — 2026-08-04 워터마크 사고).
+    expect(def).not.toMatch(/["'`(]https?:\/\//)
+    // ③ 사진을 쓴다면 반드시 리사이저를 거친다(원본 1MB 직결 금지).
+    if (/<img/.test(def)) {
+      expect(def).toMatch(/cfImage\(/)
+      // ④ 그리고 lazy — 히어로 카피/검색보다 먼저 받을 이유가 없다.
+      expect(def).toMatch(/loading="lazy"/)
+    }
+  })
+
+  it('히어로 사진은 우리가 파는 딜에서 고르고, 데모는 얼굴로 쓰지 않는다', () => {
+    const def = code('src/components/home/HomeHeroDefault.tsx')
+    if (!/<img/.test(def)) return  // 사진을 안 쓰는 형태로 되돌아가면 이 항목은 무의미
+    expect(def).toMatch(/__SSR_INITIAL_MAIN__/)      // 출처 = 홈 시드(권리 확보된 우리 상품)
+    expect(def).toMatch(/demo-deal-/)                 // 데모 상품은 제외한다
   })
 
   it('기본 히어로가 장식으로 끝나지 않는다 — 실제 검색 진입점을 갖는다', () => {
