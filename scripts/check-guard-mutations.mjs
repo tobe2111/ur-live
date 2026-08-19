@@ -3645,6 +3645,48 @@ const MUTATIONS = [
       '두 번** 내놓는다 — 희소한 회차(폭 9)를 중복에 쓰고, 그 키워드의 성과 카운터도 이중 계상된다. ' +
       '풀이 작아지는 순간(은퇴·고갈)에 터지는 형태라 평소 테스트로는 안 보인다.',
   },
+  {
+    // 📉 유입 추세 배지(2026-08-19 대표 "점점 줄어드는지도 봐줘").
+    name: '진행 중인 오늘을 추세에 포함(오후마다 멀쩡한 날이 "폭락"으로 보인다)',
+    file: 'src/shared/ads/inflow-trend.ts',
+    find: ".filter(x => !!x?.d && (!todayKst || x.d !== todayKst))",
+    replace: ".filter(x => !!x?.d)",
+    test: 'src/tests/unit/ads-inflow-trend.test.ts',
+    why:
+      '오늘 막대는 지금까지 쌓인 만큼만 있다(실측: 13:47 시점 누적이 하루치의 57%). 그걸 평균에 넣으면 ' +
+      '**하락이 아닌 날도 하락 판정**이 나고, 그 배지를 보고 멀쩡한 시스템을 파게 된다.',
+  },
+  {
+    name: '인플루언서 페이지가 todayKst 를 안 넘김(배지·진행중 표시가 통째로 죽음)',
+    file: 'src/pages/admin/AdminInfluencerPoolPage.tsx',
+    find: '<InflowTimeline byDay={byDay} label="이메일" todayKst={todayKst} />',
+    replace: '<InflowTimeline byDay={byDay} label="이메일" />',
+    test: 'src/tests/unit/ads-inflow-trend.test.ts',
+    why:
+      '순수 함수가 맞아도 화면에 안 걸리면 아무 일도 안 일어난다 — 이 레포의 상습 사고("계산해 놓고 ' +
+      '안 쓰는 계측"). prop 하나가 빠지면 오늘 막대가 완성된 날처럼 보여 절반짜리 값이 추세로 읽힌다.',
+  },
+  {
+    // 📖 검색 깊이 커서(2026-08-19 대표 "왜 줄어드는지 원인을 파악하고 해결해줘 영구적으로").
+    name: '검색 URL 에서 start 가 빠짐(다시 매번 같은 상위 100건만 본다)',
+    file: 'src/features/marketing/api/influencer-discovery.ts',
+    find: '&sort=${sort}&start=${depth.start}`',
+    replace: '&sort=${sort}`',
+    test: 'src/tests/unit/ads-search-depth.test.ts',
+    why:
+      '이 파라미터 하나가 없어서 발굴량이 말랐다 — 회차당 found 는 555~793 로 멀쩡한데 신규율만 ' +
+      '8.4%~38.6% 였다(찾아온 사람의 62~92% 가 이미 DB 에 있음). 조용히 사라져도 아무 에러가 안 난다.',
+  },
+  {
+    name: '다음 커서를 저장하지 않음(영원히 1페이지에 머문다)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: 'nb_start = COALESCE(?, nb_start), last_run_at',
+    replace: 'last_run_at',
+    test: 'src/tests/unit/ads-search-depth.test.ts',
+    why:
+      '읽기만 하고 저장을 안 하면 커서가 항상 1 이라 수정 전과 **동일하게** 동작한다. 그리고 그 상태는 ' +
+      '에러도 경보도 안 낸다 — 이 레포의 "계산해 놓고 안 쓰는" 사고 클래스 그대로다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

@@ -195,6 +195,8 @@ export interface YtPickKeyword {
   yt_contacts?: number
   /** 🌾 누적 **발견** 수. `saved_total` 과 짝을 이뤄 '수확률'을 만든다 — 아래 `yieldPenalty` 참조. */
   found_total?: number
+  /** 📖 네이버 블로그 검색 커서(1-기반). 규칙·근거는 `influencer-search-depth.ts`. 없으면 1페이지. */
+  nb_start?: number
 }
 
 /**
