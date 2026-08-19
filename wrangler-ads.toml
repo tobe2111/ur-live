@@ -42,7 +42,7 @@ binding = "DB"
 database_name = "toss-live-commerce-db"
 database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 
-# 📣 **유어애즈 발굴 리드 전용 D1** (2026-08-19) — 아직 미선언. uuid 가 나오면 **반드시 여기 박는다.**
+# 📣 **유어애즈 발굴 리드 전용 D1** (2026-08-19) — 716,203행 이사 완료 후 선언.
 #
 #   🔴 대시보드에만 붙이면 **다음 `wrangler deploy` 가 지운다.** 이 파일이 선언한 것으로 워커 설정을
 #      통째로 교체하기 때문이다 — 여기 없으면 "추가 안 함"이 아니라 **삭제**다.
@@ -55,10 +55,10 @@ database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 #
 #   미선언 상태는 **안전하다** — `adsLeadsDb()` 가 바인딩이 없으면 `DB` 를 그대로 쓴다(현행 동일).
 #
-# [[d1_databases]]
-# binding = "ADS_DB"
-# database_name = "urads-leads-db"
-# database_id = "<대표가 대시보드에서 생성 후 알려줄 uuid>"
+[[d1_databases]]
+binding = "ADS_DB"
+database_name = "urads-leads-db"
+database_id = "d4630482-b97e-4e96-bb96-abde4ef8cc95"
 
 
 # ⏰ **DO 알람 레인** (2026-08-02) — cron 부모의 CPU 천장을 우회하는 유일한 무료 경로.
