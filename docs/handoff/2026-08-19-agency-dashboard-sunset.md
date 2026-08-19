@@ -43,10 +43,10 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://urdeal.kr/api/agency/delegatio
 | 가입 차단 | 클라(`AgencySunsetPage`) + 서버(`signupClosedResponse` 403) **한 쌍** |
 | 라우트 | **39 → 16** |
 | 페이지 삭제 | 23개 / **5,137줄** |
-| API 언마운트 | 13개 (파일 보존) |
+| API 언마운트 | 13개 (파일 보존) · 죽은 엔드포인트 `POST /sellers/:id/streams` 제거 |
 | nav | 30항목 → 10항목, 죽은 링크 0 |
 | cron | `handleAgencySellerMatch` 정지 |
-| 가드 | `agency-sunset-invariants.test.ts` **17건** + `check-guard-mutations` 주입 **3건** |
+| 가드 | `agency-sunset-invariants.test.ts` **18건** + `check-guard-mutations` 주입 **3건** |
 | 문서 | `store-operator-model.md` 신설 · `urdeal-platform-model.md` 3곳 · `design/README.md` |
 | 시드 | `GUIDE_SEED_VERSION` 14→15(섹션 5개 제거 + 변경 안내) · `BLOG_SEED_VERSION` 8→9(에이전시 모집 글 제거) |
 
@@ -71,7 +71,17 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://urdeal.kr/api/agency/delegatio
    `influencer-keyword-rotation.ts` 가 수정된 채 남아 있었다(러너는 try/finally 로 복원하지만 SIGKILL
    에는 못 이긴다). **전체 실행은 백그라운드로 돌리거나 `--only` 로 좁힐 것.** 중단했으면 `git status` 확인 필수.
 
-4. **"라우트 개수만 세는 가드"는 파일이 통째로 비어도 통과한다.** 그래서 하한(`> 5`)도 함께 걸었다.
+4. **`[SKIP_SIZE]` 같은 커밋 태그는 CI 에서 안 통한다 — 로컬 pre-commit 전용이다.**
+   PR 의 HEAD 는 **머지 커밋**이라 CI 검사기가 내 커밋 메시지를 못 읽는다. 로컬에서
+   `✅ file-size: [SKIP_SIZE] — skip (pre-commit)` 이 떠서 CI 도 통과할 줄 알았는데
+   `STRICT_FILE_SIZE — 차단` 으로 실패했다(PR #1179 첫 Verify).
+   ⇒ **우회 태그로 CI 를 넘기려 하지 말 것.** 실제로 고쳐야 한다. 이번엔 마침 PR 취지에 맞는
+   대상이 있었다 — `POST /api/agency/sellers/:id/streams`(도달 경로 0: 화면 삭제 +
+   `LIVE_COMMERCE_SUSPENDED` 영구 결정) 26줄 제거로 1120 → 1094줄. baseline 도 1094 로 **조였다**
+   (느슨하게 두면 다음에 그만큼 다시 자란다).
+   ⚠️ CI 와 같은 조건으로 미리 확인하는 법: `node scripts/check-file-size.mjs --changed-only -s`
+
+5. **"라우트 개수만 세는 가드"는 파일이 통째로 비어도 통과한다.** 그래서 하한(`> 5`)도 함께 걸었다.
    nav 파싱도 0건이면 실패로 뒤집었다(측정 대상 0 = 통과 아님 — CLAUDE.md 가드 레지스트리 교훈 ⓐ).
 
 ---
