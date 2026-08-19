@@ -98,6 +98,7 @@ import { mineHashtags } from './influencer-hashtag-mine'
 //   기존 import 경로 호환을 위해 재수출한다(`influencer-enrich-lane`·테스트 2개가 이 경로로 쓴다).
 export { YT_DAILY_TARGET_PCT, YT_SEARCH_BUDGET_DEFAULT, ytQuotaDayKey } from './influencer-yt-quota'
 import { YT_SEARCH_BUDGET_DEFAULT, ytQuotaDayKey, YT_USED_KEY, pickYtAngle } from './influencer-yt-quota'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 /**
  * 한 번의 자동 수집 실행(cron 1틱 또는 수동). 게이트 체크는 호출부에서.
@@ -136,21 +137,21 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
       // `spent` 는 위에서 `ctx.budgetTotal - ctx.budget.left`(시작값 기준 실사용)로 계산 — 가드가 요구하는
       //   형태와 값이 같지만 예산 변수가 클로저 밖(ctx)이라 그 리터럴을 못 쓴다.
       const next = nextSubreqCap(spent, true, ctx.learnedCap, ctx.envBudget, envSubreqCap(env)) // subreq-cap-lane-ok
-      if (next != null) await writeSetting(env.DB, subreqCapKey('influencer'), String(next)).catch(() => undefined)
+      if (next != null) await writeSetting(adsLeadsDb(env), subreqCapKey('influencer'), String(next)).catch(() => undefined)
     }
     // ① 증거 — 옛 스냅샷 위에 crash 만 덧씌운다(마지막 성공 시각·누적치 보존).
-    const prev = await getAutoCollectStats(env.DB).catch(() => null)
+    const prev = await getAutoCollectStats(adsLeadsDb(env)).catch(() => null)
     const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
     const snap = { ...(prev || { last_run: '', last_saved: 0, last_keywords: [], total_runs: 0, total_saved: 0, cursor: 0 }),
       crash, crash_at: stamp, crash_spent: spent, crash_budget: ctx.budgetTotal } as AutoCollectStats
-    await writeSetting(env.DB, STATS_KEY, JSON.stringify(snap)).catch(() => undefined)
+    await writeSetting(adsLeadsDb(env), STATS_KEY, JSON.stringify(snap)).catch(() => undefined)
     await ctx.release?.().catch(() => undefined) // ③ 즉시 해제
     return snap
   }
 }
 
 async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   // 🔒 실행 단일화 lease(2026-07-23 전수조사 #1~#3·#11) — 매시간 cron·수동 버튼·self-chain 이 **동시에** 돌면
   //   YT 예산 카운터(ads_yt_search_used)·키워드 커서가 read-modify-write 레이스로 소실 갱신 → 같은 키워드 중복
   //   검색으로 하루 예산(100회)의 절반까지 낭비 + QUOTA 소진 마커가 늦은 쓰기에 덮여 실패 호출 반복.
@@ -291,7 +292,6 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   ctx.budgetTotal = budgetTotal; ctx.learnedCap = learnedCap; ctx.envBudget = envBudget; ctx.budget = budget
   // 🍽️ 2026-07-28: **이 실행은 발굴만 한다.** 보강(블로거 활동성·링크인바이오·YT 성과)은 전부
   //   `influencer-enrich-lane.ts` 의 독립 인보케이션(시간당 N라운드)으로 이전했다.
-  //
   //   경위: 보강이 여기 얹혀 있던 동안 발굴 루프가 예산을 **0 까지** 먹어 보강 4종이 매 실행 즉시 반환했고
   //   (라이브: `naver_enrich.tried=0` · `bio_enriched=0` · `perf_enriched=0`), 예약분(`enrichReserve`)을 둬도
   //   **키워드 경계에서만** 검사해 한 키워드(최대 16)가 예약분을 뚫고 0 까지 파고들었다.

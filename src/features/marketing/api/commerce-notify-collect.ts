@@ -15,6 +15,7 @@ import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from '
 import { serviceKeyParam, isNoValue } from './public-data-diag'
 import { fieldCoverage, coverageNote, type FieldCoverage } from './field-coverage'
 import { redactServiceKey } from './license-url'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 // ✅ 두 서비스 모두 수집(사업자번호로 자동 병합, 대표 확인 2026-07-23):
 //   ① 등록현황 MllBs_2Service/getMllBsInfo_2 = **전자우편(이메일) 포함** (이메일 핵심)
@@ -328,7 +329,7 @@ const STATS_KEY = 'ads_commerce_stats'
 const CURSOR_KEY = 'ads_commerce_cursor'
 
 export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   await ensureCompanySchema(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const key = env.PUBLIC_DATA_SERVICE_KEY || (env as unknown as { NTS_API_KEY?: string }).NTS_API_KEY || ''

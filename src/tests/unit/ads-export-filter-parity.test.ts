@@ -37,6 +37,9 @@ const exportBlock = (src: string) => {
   return src.slice(i, i + 3200)
 }
 
+// 🔀 2026-08-19: 유어애즈 리드 DB 분리로 핸들이 `env.DB` → `adsLeadsDb(env)` 가 됐다.
+//   여기서 보려는 것은 **'요청 스코프 DB 핸들을 넘기는가'** 이지 그 표현식의 철자가 아니다 —
+//   철자로 고정하면 리팩토링이 배선 가드를 조용히 무력화한다(dashboard-session 에서 겪은 그 함정).
 describe('서버 — 내보내기가 필터를 읽는다', () => {
   // ⚠️ 2026-08-03: 파싱이 **`pool-export.ts` 로 이동**했다(파일크기 래칫). 지켜야 할 것은 위치가 아니라
   //   "화면과 같은 키를 읽고, 읽은 것을 실제로 넘긴다" 이므로 두 곳으로 나눠 본다.
@@ -49,7 +52,7 @@ describe('서버 — 내보내기가 필터를 읽는다', () => {
   it('🔒 파트너: 라우트가 그 파서를 쓰고 결과를 **넘긴다** — 만들어 놓고 안 넘기면 아무 일도 안 일어난다', () => {
     const b = exportBlock(PARTNER_API)
     expect(b).toMatch(/parseCompanyExportFilter\(k => c\.req\.query\(k\), intParam\)/)
-    expect(b).toMatch(/listCompanyLeads\(c\.env\.DB, \{ \.\.\.filter/)
+    expect(b).toMatch(/listCompanyLeads\((?:adsLeadsDb\((?:c\.)?env\)|(?:c\.)?env\.DB), \{ \.\.\.filter/)
   })
 
   it('🔒 매장: 화면과 같은 필터 키를 읽는다 — 📞 전화 필터가 핵심이다(이메일 8건 · 전화 27,831건)', () => {
@@ -57,7 +60,7 @@ describe('서버 — 내보내기가 필터를 읽는다', () => {
     for (const k of ['category', 'region', 'status', 'hasPhone', 'hasEmail', 'q']) {
       expect(b, `${k} 필터가 내보내기에서 빠졌다`).toContain(`c.req.query('${k}')`)
     }
-    expect(b).toMatch(/listProspects\(c\.env\.DB, \{ \.\.\.filter/)
+    expect(b).toMatch(/listProspects\((?:adsLeadsDb\((?:c\.)?env\)|(?:c\.)?env\.DB), \{ \.\.\.filter/)
   })
 
   it('🔒 **조용히 자르지 않는다** — 상한에 닿으면 파일 안에 적는다(공용 `csvResponse`)', () => {

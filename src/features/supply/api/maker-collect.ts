@@ -12,6 +12,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { saveMakerLeads, ensureMakerSchema, type MakerLead } from './maker-leads'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
 
@@ -98,7 +99,7 @@ async function searchKakao(key: string, keyword: string, category: string, regio
 
 /** 제조사 수집 1틱 — 지역×품목 커서 순환(회당 4키워드 = 최대 180건 발굴). */
 export async function runMakerCollect(env: Env): Promise<MakerCollectStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   await ensureMakerSchema(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const key = env.KAKAO_REST_API_KEY || ''
@@ -145,7 +146,7 @@ const IMPORT_CURSOR = 'supply_reseller_import_cursor'
 export interface ResellerImportStats { last_run: string; scanned: number; saved: number; cursor: number; done: boolean; total_saved: number }
 
 export async function runResellerImport(env: Env, limit = 500): Promise<ResellerImportStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   await ensureMakerSchema(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const curRow = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(IMPORT_CURSOR).first<{ value: string }>().catch(() => null)

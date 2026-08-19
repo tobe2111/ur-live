@@ -105,6 +105,7 @@ export interface RegistryMatchStats {
   d1?: number; d1_budget?: number; budget_exhausted?: boolean
 }
 import { phoneMatchKey, pickRegistryContact, type RegistryPhoneRow } from './registry-phone-match'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const STATS_KEY = 'ads_registry_match_stats'
 const CURSOR_KEY = 'ads_registry_match_cursor'
@@ -126,12 +127,12 @@ export async function matchRegistryEmails(env: Env, batch = 400, budget?: D1Budg
     //   백필이 끝났는데도 상태줄이 영영 `backfilling:true` 를 보여줬다 — "모르는 것"을 "남았다"로
     //   적는 것도 거짓 보고다. 남은 것은 아래 두 줄(실패=미지 / 실제 잔여)에서만 참이 된다.
     if (budget && budget.left <= 12) break // 매칭 몫은 남겨둔다
-    const r = await backfillNameNorm(env.DB, 500, budget).catch(() => null)
+    const r = await backfillNameNorm(adsLeadsDb(env), 500, budget).catch(() => null)
     if (!r) { backfilling = true; break } // 실패 = 미지 → 보수적으로 '남음'
     if (r.done) break                     // 실제로 다 채워졌다
     backfilling = true                    // 아직 남았다(다음 패스/틱이 이어받는다)
   }
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   spend(budget, 2) // 아래 stats/cursor SELECT 2회
   const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)

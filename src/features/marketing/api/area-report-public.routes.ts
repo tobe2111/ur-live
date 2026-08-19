@@ -9,6 +9,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { ensureProspectSchema } from './store-prospects'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -19,20 +20,20 @@ const ymdDaysAgo = (days: number): string => {
 
 // GET /api/public/area-report?region=서초구 — region 없으면 지역 목록만(선택 화면용).
 app.get('/', async (c) => {
-  await ensureProspectSchema(c.env.DB)
+  await ensureProspectSchema(adsLeadsDb(c.env))
   const region = (c.req.query('region') || '').trim().slice(0, 20)
   const cut90 = ymdDaysAgo(90)
   c.header('Cache-Control', 'public, max-age=60')
   c.header('CDN-Cache-Control', 'public, max-age=900')
 
-  const regions = (await c.env.DB.prepare(
+  const regions = (await adsLeadsDb(c.env).prepare(
     `SELECT region AS k, COUNT(*) AS n FROM store_prospects
      WHERE active = 1 AND region IS NOT NULL AND region != '' GROUP BY region ORDER BY n DESC LIMIT 40`)
     .all<{ k: string; n: number }>().catch(() => null))?.results || []
   if (!region) return c.json({ success: true, regions })
 
   // 업종별 집계 — 영업중 / 90일 개업 / 90일 폐업(인허가 변동 감지 기준).
-  const byCategory = (await c.env.DB.prepare(
+  const byCategory = (await adsLeadsDb(c.env).prepare(
     `SELECT COALESCE(category,'기타') AS k,
        SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) AS active_n,
        SUM(CASE WHEN active = 1 AND apv_perm_ymd >= ? THEN 1 ELSE 0 END) AS opened_90d,
@@ -40,7 +41,7 @@ app.get('/', async (c) => {
      FROM store_prospects WHERE region = ? GROUP BY category HAVING active_n > 0 ORDER BY active_n DESC LIMIT 20`)
     .bind(cut90, cut90, region).all<{ k: string; active_n: number; opened_90d: number; closed_90d: number }>().catch(() => null))?.results || []
 
-  const recent = (await c.env.DB.prepare(
+  const recent = (await adsLeadsDb(c.env).prepare(
     `SELECT biz_name, category, uptae, addr_road, apv_perm_ymd FROM store_prospects
      WHERE region = ? AND active = 1 AND is_new_open = 1 ORDER BY apv_perm_ymd DESC, id DESC LIMIT 10`)
     .bind(region).all<Record<string, unknown>>().catch(() => null))?.results || []

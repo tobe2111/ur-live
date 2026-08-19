@@ -20,6 +20,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { ensureMakerSchema } from './maker-leads'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 /** 🔢 크롤 규칙 버전 — 크롤 경로/추출기를 개선하면 +1 하면 이전 시도분 전량이 즉시 재시도 대상이 된다
  *   (`COALESCE(enrich_v,0) < MAKER_CRAWL_VERSION`). 소비자 트랙의 CRAWL_RULES_VERSION 과 동일 철학. */
@@ -264,7 +265,7 @@ const STATS_KEY = 'supply_maker_enrich_last'
  *   못 찾으면 비워둔다(허위 0). 한도에 부딪히면 **도장 없이** 중단해 다음 실행이 같은 행을 다시 집는다.
  */
 export async function enrichMakerLeads(env: Env): Promise<MakerEnrichStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   await ensureMakerSchema(DB)
   const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''

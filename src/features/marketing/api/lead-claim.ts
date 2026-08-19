@@ -18,6 +18,7 @@ import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { parseSessionCookie } from '@/worker/utils/session'
 import { resolveUserId } from '@/worker/utils/resolve-user-id'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const POOL = 0 // 공용 풀 센티넬(ad_influencer_leads.account_id)
 
@@ -95,15 +96,40 @@ export async function claimLead(DB: D1Database, code: string, userId: number): P
  * 퍼널 뒷단 집계 — 가입(joined) / 첫 판매(first_sale).
  * 첫 판매는 적립 원장(affiliate_earnings) 을 직접 본다(사본 미보관 = 환불 역전까지 자동 반영).
  * 테이블/컬럼이 아직 없는 환경에서도 0 으로 안전하게 떨어진다.
+ *
+ * 🔀 **2026-08-19 — 쿼리를 둘로 쪼갰다(리드 DB 분리).** 원래는 한 문장 안에서
+ *   `ad_influencer_leads`(→ 유어애즈 DB로 이사)와 `affiliate_earnings`(→ 결제 DB에 잔류)를
+ *   `EXISTS` 로 상관시켰다. 두 테이블이 다른 D1 에 있으면 **그 문장은 실행 자체가 불가능**하다.
+ *
+ *   ⚠️ 이건 리뷰가 아니라 **가드가 잡았다.** 처음 만든 스캐너가 따옴표를 정규식으로 짝지어
+ *   이 쿼리를 못 봤고, 그 상태로 "교차 조인 0건"이라고 판단했다(`ads-leads-db.test.ts` 의
+ *   `stringLiterals` 주석 참조). 문자 단위 스캐너로 바꾸자 **레포 전체에서 딱 이 하나**가 나왔다.
+ *
+ *   `adsLeadsDb` 핸들은 SQL 을 보고 목적지를 고르므로 **호출부는 그대로 한 핸들만 넘기면 된다** —
+ *   ①은 유어애즈 DB, ②는 결제 DB로 자동으로 갈린다.
  */
 export async function getFunnelTailStats(DB: D1Database): Promise<{ joined: number; first_sale: number }> {
   await ensureClaimSchema(DB)
-  const row = await DB.prepare(`SELECT
-      COUNT(*) AS joined,
-      SUM(CASE WHEN EXISTS (SELECT 1 FROM affiliate_earnings ae WHERE ae.referrer_id = CAST(l.linked_user_id AS TEXT)) THEN 1 ELSE 0 END) AS first_sale
-    FROM ad_influencer_leads l WHERE l.account_id = ? AND l.linked_user_id IS NOT NULL`)
-    .bind(POOL).first<{ joined: number; first_sale: number | null }>().catch(() => null)
-  return { joined: Number(row?.joined) || 0, first_sale: Number(row?.first_sale) || 0 }
+  // ① 연결된 유저 id — 유어애즈 DB
+  const linked = await DB.prepare(
+    'SELECT linked_user_id AS uid FROM ad_influencer_leads WHERE account_id = ? AND linked_user_id IS NOT NULL',
+  ).bind(POOL).all<{ uid: number | string | null }>().catch(() => null)
+  const ids = (linked?.results || []).map((r) => String(r.uid)).filter((v) => v && v !== 'null')
+  if (!ids.length) return { joined: 0, first_sale: 0 }
+
+  // ② 그중 실제로 판 사람 — 적립 원장(결제 DB). IN 목록이 길어지지 않게 나눠 조회한다.
+  //    가입자 수만큼만 도므로 규모는 '연결된 리드 수'에 비례한다(수백~수천 수준).
+  const CHUNK = 200
+  let sold = 0
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const part = ids.slice(i, i + CHUNK)
+    const ph = part.map(() => '?').join(',')
+    const row = await DB.prepare(
+      `SELECT COUNT(DISTINCT referrer_id) AS n FROM affiliate_earnings WHERE referrer_id IN (${ph})`,
+    ).bind(...part).first<{ n: number }>().catch(() => null)
+    sold += Number(row?.n) || 0
+  }
+  return { joined: ids.length, first_sale: sold }
 }
 
 // ── POST /api/creator-claim — 로그인한 유저가 초대 코드를 자기 계정에 연결 ──────────
@@ -116,9 +142,9 @@ app.post('/', rateLimit({ action: 'creator-claim', max: 30, windowSec: 3600 }), 
   // 소비자 세션 쿠키만 인정(역할 토큰 무관 — 링크샵/적립의 주체는 소비자 계정).
   const su = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['user']).catch(() => null)
   if (!su) return c.json({ success: false, need_login: true, error: '로그인이 필요합니다' }, 401)
-  const uid = await resolveUserId(c.env.DB, su.userId, su.isDbId)
+  const uid = await resolveUserId(adsLeadsDb(c.env), su.userId, su.isDbId)
   if (!uid) return c.json({ success: false, error: '계정을 확인할 수 없습니다' }, 401)
-  const r = await claimLead(c.env.DB, code, uid)
+  const r = await claimLead(adsLeadsDb(c.env), code, uid)
   if (!r.ok) return c.json({ success: false, error: r.error, conflict: r.conflict === true }, r.conflict ? 409 : 400)
   return c.json({ success: true, status: r.status, name: r.name || null })
 })

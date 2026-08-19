@@ -6,7 +6,6 @@
  *   그중 네이버 블로거(27,864명 = 풀의 74%)는 이메일이 사실상 0(전체 이메일 2,262 중 유튜브가 2,077).
  *   그리고 마지막 수집 스냅샷은 `bio_enriched:0 · perf_enriched:0 · naver_enrich.tried:0` —
  *   **보강 4종이 한 건도 못 돌고 있었다.** 표본 1,000행에서 `perf_checked_at` 이 채워진 행은 **0개**.
- *
  *   원인은 예산 구조다. 보강 레인이 수집(`influencer-auto-collect`)과 **같은 인보케이션**에 얹혀 있어
  *   무료 플랜의 인보케이션당 서브리퀘스트 한도(≈50, D1 포함)를 발굴 루프가 먼저 다 써버린다.
  *   `enrichReserve`(예약분)를 뒀지만 **키워드 경계에서만** 검사해서, 한 키워드가 예약분보다 많이 쓰면
@@ -127,6 +126,7 @@ export interface InfluencerEnrichSnapshot {
 /** 📐 예산 배분 정책(순수) — SSOT 는 `influencer-enrich-plan.ts`. 재수출이라 기존 import 경로는 그대로. */
 export { planInfluencerEnrich, naverRoomFromRemaining, naverRoomWithYtReserve } from './influencer-enrich-plan'
 import { planInfluencerEnrich, naverRoomWithYtReserve } from './influencer-enrich-plan'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 /** 📗 티스토리 몫 — 정책·근거는 `influencer-tistory-performance.ts`(SSOT). 여기선 재수출만. */
 export { TISTORY_ROOM, tistoryRoom } from './influencer-tistory-performance'
@@ -429,7 +429,7 @@ export async function runInfluencerEnrich(
     naverOnly?: boolean
   },
 ): Promise<InfluencerEnrichSnapshot> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   const started = Date.now()
   await ensureInfluencerSchema(DB)   // bio_checked_at · perf_checked_at · recent_posts_30d
   await ensurePerfExtraColumns(DB)   // last_post_at (블로거 마지막 글 날짜)

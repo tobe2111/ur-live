@@ -7,6 +7,7 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 export const partnerPoolDedupeRoutes = new Hono<{ Bindings: Env }>()
 
@@ -19,7 +20,7 @@ export const partnerPoolDedupeRoutes = new Hono<{ Bindings: Env }>()
 partnerPoolDedupeRoutes.post('/dedupe', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { dryRun?: boolean; maxGroups?: number }
   const { dedupeCompanyLeads } = await import('./company-dedupe')
-  const r = await dedupeCompanyLeads(c.env.DB, { dryRun: b.dryRun !== false, maxGroups: b.maxGroups })
+  const r = await dedupeCompanyLeads(adsLeadsDb(c.env), { dryRun: b.dryRun !== false, maxGroups: b.maxGroups })
   return c.json({ success: true, data: r })
 })
 
@@ -29,7 +30,7 @@ partnerPoolDedupeRoutes.post('/dedupe-undo', async (c) => {
   const id = Number(b.survivorId)
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'survivorId 필요' }, 400)
   const { undoDedupe } = await import('./company-dedupe')
-  return c.json({ success: true, restored: await undoDedupe(c.env.DB, id) })
+  return c.json({ success: true, restored: await undoDedupe(adsLeadsDb(c.env), id) })
 })
 
 export default partnerPoolDedupeRoutes

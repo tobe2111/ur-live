@@ -18,6 +18,7 @@ import { KAKAO_SWEEP_SQL, tallySweep, type KakaoSweepRow, type SweepSourceTally 
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
 import { buildKeywordRows, rotationWindow, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
 const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
@@ -292,7 +293,7 @@ const CURSOR_KEY = 'ads_company_cursor'
 
 /** 한 번의 업체 자동수집(cron 홀수시 틱 또는 수동). 게이트 체크는 호출부. 커서 순환으로 며칠에 걸쳐 전 키워드 커버. */
 export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   const schemaSpent = await ensureCompanySchema(DB) // 스키마 DDL 실비 — 아래 예산에서 차감
   const seedSpent = await ensureCompanyKeywords(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
@@ -510,7 +511,7 @@ const SWEEP_RUN_DEADLINE_MS = 12_000
 const SWEEP_RUN_DEADLINE_MS_PAID = 24_000
 
 export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; found: number; cursor: number; done: boolean; tried?: number; limit_hit?: boolean; day_lookups?: number }> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   const schemaSpent = await ensureCompanySchema(DB) // 스키마 DDL 실비(아래 예산에서 차감)
   const { kakaoLocalLookup } = await import('./contact-enrich')
   const key = env.KAKAO_REST_API_KEY || ''

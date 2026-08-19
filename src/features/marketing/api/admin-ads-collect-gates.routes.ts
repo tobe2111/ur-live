@@ -13,12 +13,13 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { CAFE_GATE_KEY, cafeCollectEnabled } from './collect-track-gates'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 export const adminAdsCollectGatesRoutes = new Hono<{ Bindings: Env }>()
 
 /** 화면이 "켜면 무엇을 얻고 무엇을 잃는가"를 추측 없이 보여주도록, 스위치와 **실측을 함께** 준다. */
 adminAdsCollectGatesRoutes.get('/influencer-pool/collect-gates', async (c) => {
-  const { DB } = c.env
+  const DB = adsLeadsDb(c.env)
   const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
     .bind(CAFE_GATE_KEY).first<{ value: string }>().catch(() => null)
   const setting = row?.value ?? null
@@ -51,7 +52,7 @@ adminAdsCollectGatesRoutes.patch('/influencer-pool/collect-gates', async (c) => 
   const body = await c.req.json().catch(() => null) as { cafe?: unknown } | null
   if (typeof body?.cafe !== 'boolean') return c.json({ success: false, error: 'cafe(boolean) 필요' }, 400)
   const value = body.cafe ? 'on' : 'off'
-  await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+  await adsLeadsDb(c.env).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(CAFE_GATE_KEY, value).run().catch(() => null)
   // 저장된 값으로 **다시 판정해서** 반환한다 — 보낸 값을 그대로 믿고 그리면 화면과 실제가 갈라진다
   //   (`CollectConfigPanel` 이 서버 clamp 결과를 반영하는 것과 같은 이유).

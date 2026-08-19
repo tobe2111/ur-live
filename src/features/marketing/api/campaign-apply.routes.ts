@@ -18,6 +18,7 @@ import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { getSignupCampaign, CAMPAIGN_CATEGORIES, buildCampaignRefLink } from '@/shared/campaign-signup'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureClaimSchema } from './lead-claim'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const app = new Hono<{ Bindings: Env }>()
 const POOL = 0 // ad_influencer_leads 공용 풀 센티넬(influencer-apply.routes 와 동일)
@@ -60,9 +61,9 @@ app.get('/:code/me', requireAuth(), async (c) => {
   if (!campaign) return c.json({ success: false, error: '알 수 없는 캠페인입니다' }, 404)
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  await ensureCampaignApplicationsTable(c.env.DB)
-  const uid = await resolveUserIdString(c.env.DB, user.id, user.isDbId)
-  const row = await c.env.DB.prepare(
+  await ensureCampaignApplicationsTable(adsLeadsDb(c.env))
+  const uid = await resolveUserIdString(adsLeadsDb(c.env), user.id, user.isDbId)
+  const row = await adsLeadsDb(c.env).prepare(
     'SELECT id, created_at FROM campaign_applications WHERE campaign_code = ? AND user_id = ?',
   ).bind(campaign.code, uid).first<{ id: number; created_at: string }>().catch(() => null)
   return c.json({
@@ -92,7 +93,7 @@ app.post('/:code/apply', rateLimit({ action: 'campaign-apply', max: 10, windowSe
   if (b.privacy_agree !== true) return c.json({ success: false, error: '개인정보 수집·이용에 동의해주세요' }, 400)
   if (b.marketing_agree !== true) return c.json({ success: false, error: '캠페인 안내 수신에 동의해주세요' }, 400)
 
-  const { DB } = c.env
+  const DB = adsLeadsDb(c.env)
   await ensureCampaignApplicationsTable(DB)
   const uid = await resolveUserIdString(DB, user.id, user.isDbId)
   // 연락처 스냅샷 — 어드민 목록/CSV 에서 바로 쓰도록 users 값을 복사(카카오 가입은 phone 이 없을 수 있어 폼 contact 병행).

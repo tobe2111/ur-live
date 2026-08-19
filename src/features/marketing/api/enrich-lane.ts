@@ -16,6 +16,7 @@ import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitErro
 import { writeEnrichSnapshot, recordEnrichCrash, foldEnrichRollup, ENRICH_SNAPSHOT_KEY, ENRICH_ROLLUP_KEY } from './enrich-telemetry'
 import { healSuspectNames } from './enrich-name-heal'
 import { ensureCompanySchema } from './company-discovery'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
 const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
@@ -64,11 +65,11 @@ export function noSiteSlotCap(targetCount: number, share = NO_SITE_SLOT_SHARE): 
 export async function enrichHeldLeads(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
   // 💥 예외를 증거로 남기고 rethrow — 기록 책임은 enrich-telemetry 가 전담(왜 필요한지는 그 파일 상단 참조).
   try { return await enrichHeldLeadsInner(env) }
-  catch (err) { await recordEnrichCrash(env.DB, err); throw err }
+  catch (err) { await recordEnrichCrash(adsLeadsDb(env), err); throw err }
 }
 
 async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   // 🧾 스키마 DDL 35개 실비를 예산에서 뺀다(2026-07-29) — 안 빼면 콜드 격리에서 우리 계수 60 vs
   //   플랫폼 계수 95 로 갈라져 라운드가 잡을 예외 없이 죽는다(partial:true 조기 사망의 유력한 실체).
   const schemaSpent = await ensureCompanySchema(DB)

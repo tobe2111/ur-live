@@ -15,6 +15,9 @@ import {
 
 const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
 
+// 🔀 2026-08-19: 유어애즈 리드 DB 분리로 핸들이 `env.DB` → `adsLeadsDb(env)` 가 됐다.
+//   여기서 보려는 것은 **'요청 스코프 DB 핸들을 넘기는가'** 이지 그 표현식의 철자가 아니다 —
+//   철자로 고정하면 리팩토링이 배선 가드를 조용히 무력화한다(dashboard-session 에서 겪은 그 함정).
 describe('이메일 정규화 — 매칭은 소문자 기준(DB 에 대소문자가 섞여 있다)', () => {
   it('🔒 trim + 소문자', () => {
     expect(normEmail('  Foo@Bar.COM ')).toBe('foo@bar.com')
@@ -148,7 +151,7 @@ describe('🔌 배선 — 엔드포인트가 실제로 있다', () => {
   it('🔒 라우트가 붙어 있고 ingest 를 부른다', () => {
     const c = code(ROUTE)
     expect(c).toMatch(/app\.post\('\/outreach\/status'/)
-    expect(c).toMatch(/ingestOutreachStatuses\(c\.env\.DB, parsed\.items, nowIso\)/)
+    expect(c).toMatch(/ingestOutreachStatuses\((?:adsLeadsDb\((?:c\.)?env\)|(?:c\.)?env\.DB), parsed\.items, nowIso\)/)
   })
 
   it('🔒 어드민 전용 — 이 파일 전체가 requireAdmin 뒤에 있다', () => {

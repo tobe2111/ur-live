@@ -18,16 +18,17 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { listCompanyKeywords, addCompanyKeyword, setCompanyKeywordActive } from './company-collect'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const app = new Hono<{ Bindings: Env }>()
 
 // GET /api/admin/partner-pool/keywords — 레인 A 지역검색 키워드 풀(지역 × 업종 시드 + 수기 추가).
-app.get('/keywords', async (c) => c.json({ success: true, keywords: await listCompanyKeywords(c.env.DB) }))
+app.get('/keywords', async (c) => c.json({ success: true, keywords: await listCompanyKeywords(adsLeadsDb(c.env)) }))
 
 // POST /api/admin/partner-pool/keywords { keyword, category?, subcategory?, region?, tier? }
 app.post('/keywords', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { keyword?: string; category?: string; subcategory?: string; region?: string; tier?: number }
-  const r = await addCompanyKeyword(c.env.DB, b.keyword || '', b.category, b.subcategory, b.region, b.tier)
+  const r = await addCompanyKeyword(adsLeadsDb(c.env), b.keyword || '', b.category, b.subcategory, b.region, b.tier)
   return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
 })
 
@@ -41,7 +42,7 @@ app.patch('/keywords/:id', async (c) => {
   const id = Number(c.req.param('id'))
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'INVALID_ID' }, 400)
   const b = await c.req.json().catch(() => ({})) as { active?: number | boolean }
-  const r = await setCompanyKeywordActive(c.env.DB, id, b.active ? 1 : 0)
+  const r = await setCompanyKeywordActive(adsLeadsDb(c.env), id, b.active ? 1 : 0)
   return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 404)
 })
 

@@ -28,6 +28,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, type CompanyLead } from './company-discovery'
 import { POOL_ACCOUNT_ID } from './influencer-auto-collect'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 /**
  * 🏢 업체(사업자)가 운영하는 블로그/카페인가 — **보수적**(강한 신호 1개 이상).
@@ -119,7 +120,7 @@ const CURSOR_KEY = 'ads_bizblog_route_cursor'
 export async function routeBusinessBlogsToPartnerPool(
   env: Env, opts: { dryRun?: boolean; max?: number; reset?: boolean } = {},
 ): Promise<BizRouteResult> {
-  const DB: D1Database = env.DB
+  const DB: D1Database = adsLeadsDb(env)
   const dryRun = opts.dryRun !== false // 명시적으로 false 일 때만 실제 저장
   const MAX = Math.max(100, Math.min(20_000, opts.max ?? 3000))
   const PAGE = 500
