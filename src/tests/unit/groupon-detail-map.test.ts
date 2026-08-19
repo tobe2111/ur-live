@@ -170,3 +170,52 @@ describe('이용권 상세 — 죽은 사진이 빈 칸으로 남지 않는다',
     expect(s).toMatch(/rawImages\.filter\(\(u\) => !dead\.has\(u\)\)/)
   })
 })
+
+/**
+ * 🧩 상세 페이지는 **한 벌의 갤러리**를 쓴다 (2026-08-19 대표 지시 —
+ * *"앞으로는 이런 개선은 다른 카테고리와 함께 개선이 되어야 해"*).
+ *
+ * ## 왜 이 가드가 필요한가
+ * 그루폰식 갤러리(좌 대형 + 우 썸네일 + `+N` 모달 + 죽은 사진 대체)를 만들었을 때 그것을 쓰는 곳은
+ * **이용권/공구 상세 하나뿐**이었다. 숙소 상세는 자체 스와이프 갤러리라 개편이 닿지 않았고,
+ * 대표가 숙소 화면을 보고 *"상세페이지 여전한데?"* 라고 신고했다. 원인은 디자인이 아니라 **구조**다 —
+ * 같은 것을 두 벌로 갖고 있으면 반드시 한쪽만 고쳐진다.
+ *
+ * ⚠️ 이 테스트가 **못 막는 것**: 쇼핑 상세(`/products/:id`)는 아직 단일 이미지 구조라 대상 밖이다.
+ *   그쪽을 갤러리로 올릴 때 이 목록에 추가할 것.
+ */
+describe('상세 페이지는 같은 갤러리를 쓴다 (카테고리별로 갈리지 않게)', () => {
+  const PAGES = [
+    ['이용권·공구', 'src/pages/GroupBuyDetailPage.tsx'],
+    ['숙소', 'src/pages/StayDetailPage.tsx'],
+  ] as const
+
+  for (const [label, file] of PAGES) {
+    it(`${label} 상세가 공용 DetailGallery 를 쓴다`, () => {
+      expect(code(file)).toMatch(/<DetailGallery\b/)
+    })
+
+    it(`${label} 상세가 공용 제목 헤더를 쓴다 (제목·별점·주소가 사진 위)`, () => {
+      expect(code(file)).toMatch(/<DetailTitleHeader\b/)
+    })
+  }
+
+  it('자체 스와이프 갤러리를 다시 만들지 않는다', () => {
+    // 숙소가 갖고 있던 형태(scroll-snap + 자체 인덱스 상태)가 되살아나면 또 갈린다.
+    const stay = code('src/pages/StayDetailPage.tsx')
+    expect(stay).not.toMatch(/snap-x snap-mandatory/)
+    expect(stay).not.toMatch(/setActiveImage/)
+  })
+
+  it('공용 제목 헤더는 표면에 의존하는 색을 쓰지 않는다', () => {
+    // `.gbd` CSS 변수는 공구 상세 표면에서만 정의된다 — 숙소에서 쓰면 글자가 안 보인다.
+    expect(code('src/pages/group-buy/DetailTitleHeader.tsx')).not.toMatch(/var\(--gbd-/)
+  })
+
+  it('라이트박스는 사진을 자르지 않고 화면 안에 넣는다', () => {
+    // 대표 신고 2건이 한 줄에 있었다: 4:3 cover 배경 → 화면 밖으로 넘치고, 404 여도 검은 화면.
+    const gal = code('src/pages/group-buy/DetailGallery.tsx')
+    expect(gal).toMatch(/max-h-\[85vh\] object-contain/)
+    expect(gal).not.toMatch(/aspectRatio: '4 \/ 3', \.\.\.bg\(main, 1600\)/)
+  })
+})
