@@ -19,6 +19,7 @@ import { staleGapMinutes } from './lane-cadence'
 import { summarizeLaneRun, appendRunHistory, serializeRunHistory, serializeLaneStamp, LANE_RUNS_KEY } from './lane-run-history'
 import type { LaneRunEntry } from './lane-run-history'
 import { adaptiveIntervalHours, RETRY_MAX_FAIL_STREAK, failStreakFromHistory } from './lane-adaptive-interval'
+import { readBoost, laneCanAbsorb, MAX_BOOST_RUNS_PER_HOUR, BOOST_TTL_MS } from './lane-boost'
 
 interface AlarmEnv {
   ADS_LANE_ALARM_INTERVAL_MS?: string
@@ -32,6 +33,16 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
   /** 부트스트랩 — 알람이 없으면 건다. **멱등**이라 cron 이 매 정각 불러도 안전하다. */
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
+    // 📈 부족분 보강 — 하루 1회 판정이 여기로 값을 밀어 넣는다. **DO 저장소**에 두므로 알람 핫패스에
+    //   D1 읽기가 안 생긴다(러너가 같은 인보케이션의 서브리퀘스트 예산을 쓴다 — 근거는 `lane-boost` docblock).
+    if (url.pathname === '/boost') {
+      const runs = Math.max(0, Math.min(MAX_BOOST_RUNS_PER_HOUR, Math.floor(Number(url.searchParams.get('runs')) || 0)))
+      // 🔒 **자기가 건강할 때만** 받는다 — 실패 중인 레인을 3배로 돌리면 실패가 3배다.
+      const hist = appendRunHistory(await this.ctx.storage.get<unknown>('runHistory'), null) as LaneRunEntry[]
+      const accept = runs > 0 && laneCanAbsorb(hist)
+      await this.ctx.storage.put('boost', accept ? { runs, until: Date.now() + BOOST_TTL_MS } : { runs: 0, until: 0 }).catch(() => undefined)
+      return Response.json({ ok: true, lane: this.lane, accepted: accept, runs: accept ? runs : 0 })
+    }
     if (url.pathname !== '/start') return new Response('Not Found', { status: 404 })
     if (!alarmEnabled(this.env)) return Response.json({ ok: true, enabled: false })
     const cur = await this.ctx.storage.getAlarm()
@@ -62,7 +73,9 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     // 우선순위: 레인별 override → env → 요금제 기본값(policy 가 `env` 로 판단). 셋이 한 줄에 있어야
     // "어디서 온 값인가"가 한눈에 보인다 — 나눠 쓰면 한쪽만 고쳐진다.
     const interval = resolveInterval(lane.intervalMs != null ? String(lane.intervalMs) : e.ADS_LANE_ALARM_INTERVAL_MS, e)
-    const cap = resolveRunsPerHour(lane.runsPerHour != null ? String(lane.runsPerHour) : e.ADS_LANE_ALARM_RUNS_PER_HOUR, e)
+    const baseCap = resolveRunsPerHour(lane.runsPerHour != null ? String(lane.runsPerHour) : e.ADS_LANE_ALARM_RUNS_PER_HOUR, e)
+    // 📈 보강분 — 기한이 지났으면 자동으로 0 이다(켜진 채 잊히지 않는다).
+    const cap = Math.max(baseCap, readBoost(await this.ctx.storage.get<unknown>('boost'), t0))
 
     const bucket = hourBucket(t0)
     const prevBucket = (await this.ctx.storage.get<number>('bucket')) ?? -1

@@ -111,7 +111,9 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
       //   ⚠️ **rescan 양보보다 앞**이다 — 뒤에 두면 19시엔 감시가 통째로 안 돈다.
       try {
         const { maybeAlertInflow } = await import('@/features/marketing/api/inflow-watchdog')
-        await maybeAlertInflow(env, env.DB)
+        const r = await maybeAlertInflow(env, env.DB)
+        // 📈 부족하면 **다른 레인을 더 돌린다** — 판정이 실제로 돈 회차에서만(매시간 밀어 넣으면 진동한다).
+        if (r.ran && r.verdicts) { const { applyLaneBoost } = await import('./lane-boost-apply'); await applyLaneBoost(env, r.verdicts) }
       } catch { /* 감시가 정비를 멈추게 하지 않는다 */ }
       // 🤝 19시(UTC)는 야간 재보정에 양보 — cron 시절 `hourlySchedule(PHASES, [RESCAN_HOUR_UTC])` 의
       //   양보를 알람에서도 복원한다(2026-08-09 4차). 둘이 같은 MAINT_LEASE 를 다투면 진 쪽이

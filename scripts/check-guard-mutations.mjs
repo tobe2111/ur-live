@@ -298,6 +298,47 @@ const MUTATIONS = [
       'id 중복만 제거한다 — dedup 이 빠지면 같은 키워드를 한 회차에 두 번 호출한다.',
   },
   {
+    name: '📈 보강이 실패 중인 레인도 올린다(실패가 3배가 된다)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: '      const accept = runs > 0 && laneCanAbsorb(hist)',
+    replace: '      const accept = runs > 0',
+    test: 'src/tests/unit/lane-boost.test.ts',
+    why:
+      '보강은 외부 API 를 더 두드리는 일이다. 이미 실패 중인 레인을 3배로 돌리면 얻는 것 없이 ' +
+      '실패만 3배가 되고, 상대 쪽에서 보면 장애 중에 요청이 3배로 늘어난다.',
+  },
+  {
+    name: '보강에 기한이 없다(켜진 채 잊혀 영구 증설이 된다)',
+    file: 'src/worker-ads/lane-boost.ts',
+    find: '  if (Number(b.until) <= now) return 0',
+    replace: '  // 기한 무시',
+    test: 'src/tests/unit/lane-boost.test.ts',
+    why:
+      '기한이 없으면 감시가 멎어도 보강이 남는다 — 사람이 모르는 채 외부 호출이 3배로 유지된다. ' +
+      '이 레포가 반복해 온 "켜 놓고 잊는" 클래스이고, 유효기간이 그 클래스를 구조적으로 막는다.',
+  },
+  {
+    name: '회복해도 보강을 안 걷는다(한 번 오르면 영구)',
+    file: 'src/worker-ads/lane-boost-apply.ts',
+    find: 'runs=${runs > 1 ? runs : 0}',
+    replace: 'runs=${runs}',
+    test: 'src/tests/unit/lane-boost.test.ts',
+    why:
+      '올리기만 하고 안 내리면 제어 루프가 아니라 일회성 증설이다. 회복 시 0 을 보내는 것이 ' +
+      '이 호출의 절반이다(조이기·감속과 같은 대칭).',
+  },
+  {
+    name: '🔒 인플루언서 collect 를 보강 대상에 넣는다(대표 확인 사항을 자동화가 넘본다)',
+    file: 'src/worker-ads/lane-boost.ts',
+    find: "  company: ['collect-company'],",
+    replace: "  company: ['collect-company'], influencer: ['collect'],",
+    test: 'src/tests/unit/lane-boost.test.ts',
+    why:
+      '그 레인의 `runsPerHour: 1` 은 **직접 크롤 차단 리스크** 때문에 정해진 값이고, CLAUDE.md 가 ' +
+      '"올리려면 대표 확인" 이라고 명시했다. 공식 API 쿼터 문제인 collect-company 와 성격이 다르다 — ' +
+      '자동 루프가 넘볼 자리가 아니다.',
+  },
+  {
     name: '🩸 재시도 상한을 failStreak(예외 전용)으로 센다 — 정작 필요할 때 안 걸린다',
     file: 'src/worker-ads/lane-alarm.ts',
     find: 'failStreakFromHistory(runHistory) <= RETRY_MAX_FAIL_STREAK',
