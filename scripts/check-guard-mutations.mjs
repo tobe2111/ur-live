@@ -72,6 +72,37 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '/map 패널 칩이 다시 줄바꿈된다(카카오맵 한 줄이 깨진다)',
+    file: 'src/pages/restaurant-map/MapTopBar.tsx',
+    find: "panel ? 'grid grid-cols-7 gap-0.5'",
+    replace: "panel ? 'flex flex-wrap gap-1.5'",
+    test: 'src/tests/unit/groupon-detail-map.test.ts',
+    why:
+      '2026-08-19 대표 시안(카카오맵) — 같은 날 한 번 뒤집힌 자리다. 알약 칩은 400px 에 7개가 안 들어가 ' +
+      '2줄이 되는데, 화면은 "그냥 좀 큰 칩"으로 보여서 리뷰로는 안 걸린다.',
+  },
+  {
+    name: '/map 헤더에 딜 카테고리가 되살아난다(좌측 패널과 두 벌)',
+    file: 'src/components/main/DesktopTopNav.tsx',
+    find: '{!hideDealCats && DEAL_CATS.map',
+    replace: '{DEAL_CATS.map',
+    test: 'src/tests/unit/groupon-detail-map.test.ts',
+    why:
+      '헤더 칩과 패널 칩은 **다른 상태**를 쓴다 — 헤더는 홈의 `?category=` 로 이동시키고, 패널은 지도 ' +
+      '필터를 그 자리에서 바꾼다. 두 벌이 보이면 어느 쪽이 지금 걸린 필터인지 알 수 없다.',
+  },
+  {
+    name: '상세 갤러리가 썸네일의 죽은 사진을 감시하지 않는다',
+    file: 'src/pages/group-buy/DetailGallery.tsx',
+    find: 'for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, w: 600 })',
+    replace: '/* 감시 제거됨 */',
+    test: 'src/tests/unit/groupon-detail-map.test.ts',
+    why:
+      '실측(2026-08-19, 활성 50개·갤러리 226장): 앱 경로로도 죽는 7장 중 **6장이 커버가 아닌 갤러리 사진**. ' +
+      '사진을 CSS background-image 로 그려서 **오류 이벤트가 없고**, 실패하면 그냥 회색 칸이 된다 — ' +
+      '에러도 로그도 없어 대표가 말해 주기 전엔 아무도 모른다(실제로 그렇게 신고받았다).',
+  },
+  {
     name: '이용권 상세 제목이 다시 사진 아래로 내려간다',
     file: 'src/pages/GroupBuyDetailPage.tsx',
     find: '<DetailTitleHeader name',

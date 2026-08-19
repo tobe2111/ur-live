@@ -110,7 +110,63 @@ describe('/map — 지도 위 컨트롤이 왼쪽 리스트 상단으로 (PC)', 
     expect(s).toMatch(/<MapTopBar variant="panel" \{\.\.\.topBarProps\} \/>/)
   })
 
-  it('패널에서는 칩이 줄바꿈된다 — 400px 에서 잘려 안 보이면 아무도 못 찾는다', () => {
-    expect(code(TOPBAR)).toMatch(/panel \? 'flex-wrap'/)
+  /**
+   * 🗺️ 2026-08-19 (대표 시안 — 카카오맵): "한 줄 안에 모든 카테고리가 다 들어가면 좋겠는데?"
+   *
+   * ⚠️ 이 항목은 **같은 날 한 번 뒤집혔다.** 처음엔 알약 칩을 `flex-wrap` 으로 2줄에 넣었는데
+   *   (잘림 방지), 대표가 카카오맵처럼 한 줄을 원했다. 알약으로는 400px 에 7개가 안 들어가므로
+   *   모양 자체를 [아이콘 위 · 라벨 아래] 7칸 그리드로 바꿨다. ⇒ **줄바꿈으로 되돌아가면 실패**다.
+   */
+  it('패널 칩은 한 줄 7칸 그리드다 (줄바꿈 금지 — 카카오맵식)', () => {
+    const s = code(TOPBAR)
+    expect(s).toMatch(/panel \? 'grid grid-cols-7/)
+    expect(s).not.toMatch(/panel \? 'flex-wrap'/)
+  })
+
+  it('좁은 칸에서 긴 라벨이 잘리지 않게 짧은 라벨을 쓴다', () => {
+    // 칸당 ~53px 라 '뷰티·헬스'(5자)는 잘린다. SSOT 에 shortLabel 을 두고 패널에서만 쓴다
+    // (지도 오버레이는 폭이 넓어 긴 라벨 유지 — 카테고리 이름 자체를 줄이는 게 아니다).
+    expect(code('src/pages/restaurant-map/voucher-types.ts')).toMatch(/shortLabel: '뷰티'/)
+    expect(code(TOPBAR)).toMatch(/panel && v\.shortLabel \? v\.shortLabel :/)
+  })
+
+  it('/map 에서는 헤더의 딜 카테고리를 숨긴다 (좌측 패널과 두 벌 금지)', () => {
+    const s = code('src/components/main/DesktopTopNav.tsx')
+    expect(s).toMatch(/const hideDealCats = location\.pathname === '\/map'/)
+    expect(s).toMatch(/\{!hideDealCats && DEAL_CATS\.map/)
+    // ⚠️ 서비스 축(홈·교환권·동네딜·링크샵·블로그)까지 지우면 /map 에서 나갈 통로가 없어진다.
+    expect(s).toMatch(/categoryItems\.map/)
+  })
+})
+
+/**
+ * 💀 죽은 사진 (2026-08-19 대표 신고 — "눌러보면 사진이 안 뜨는 경우가 있어").
+ *
+ * 라이브 실측: 활성 50개 · 갤러리 226장 중 **7장이 앱 경로로도 실패**(인스타 CDN·siksinhot·
+ * daumcdn 403 · alba.kr 415). 그중 **6장이 커버가 아닌 갤러리 사진**이었다 — 이전 판은 대형
+ * 사진만 감시해서 썸네일 칸의 실패를 못 잡았고, 그 칸이 회색으로 남았다.
+ */
+describe('이용권 상세 — 죽은 사진이 빈 칸으로 남지 않는다', () => {
+  const GAL = 'src/pages/group-buy/DetailGallery.tsx'
+
+  it('화면에 그려지는 사진 전부를 감시한다 (대형 + PC 썸네일)', () => {
+    const s = code(GAL)
+    // 감시 목록에 썸네일이 포함돼야 한다 — 대형 한 장만 넣으면 예전 상태로 되돌아간다.
+    expect(s).toMatch(/images\.slice\(1, 1 \+ PC_THUMBS\)[\s\S]{0,120}list\.push/)
+    expect(s).toMatch(/probes\.map\(/)
+  })
+
+  it('감시 URL 이 실제 렌더 URL 과 같은 폭을 쓴다 (추가 트래픽 0)', () => {
+    // 폭이 다르면 리사이저 URL 이 달라져 요청이 재사용되지 않는다 = 진짜 추가 다운로드.
+    const s = code(GAL)
+    expect(s).toMatch(/\{ src: main, w: 1200 \}/)   // 대형 bg 도 1200
+    expect(s).toMatch(/list\.push\(\{ src: t, w: 600 \}\)/) // 썸네일 bg 도 600
+    expect(s).toMatch(/bg\(src, 600\)/)
+  })
+
+  it('실패한 사진은 목록에서 빠진다 (다음 사진이 그 자리로)', () => {
+    const s = code(GAL)
+    expect(s).toMatch(/onError=\{\(\) => setDead\(/)
+    expect(s).toMatch(/rawImages\.filter\(\(u\) => !dead\.has\(u\)\)/)
   })
 })

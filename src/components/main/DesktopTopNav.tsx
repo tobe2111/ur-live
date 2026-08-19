@@ -117,6 +117,15 @@ export default function DesktopTopNav() {
 
   // 🏷️ 딜 카테고리 활성 표시 — 홈에서 `?category=` 를 그대로 읽는다(상태 미러링 금지: 갈리면 어긋난다).
   const onHomeSurface = location.pathname === '/'
+  /**
+   * 🗺️ 2026-08-19 (대표 — "위에 똑같이 카테고리 버튼들이 있는데 그건 없애도 될듯"):
+   *   `/map` 은 **왼쪽 리스트 패널에 같은 카테고리 칩**을 갖는다(MapTopBar panel). 위·아래에 두 벌이면
+   *   어느 쪽이 지금 적용된 필터인지 화면상 알 수 없다 — 실제로 둘은 **다른 상태**를 쓴다
+   *   (헤더 칩은 홈의 `?category=` 로 **이동**시키고, 패널 칩은 지도 필터를 **그 자리에서** 바꾼다).
+   *   ⇒ 서비스 축(홈·교환권·동네딜·링크샵·블로그)은 남기고 **딜 카테고리만** 숨긴다.
+   *   서비스 축까지 지우면 /map 에서 다른 데로 갈 통로가 없어진다.
+   */
+  const hideDealCats = location.pathname === '/map'
   const activeDealCat = onHomeSurface
     ? (new URLSearchParams(location.search).get('category') || 'all')
     : ''
@@ -373,9 +382,11 @@ export default function DesktopTopNav() {
                 )
               })}
 
-              <span aria-hidden="true" className="shrink-0 w-px h-4 mx-2 bg-gray-200 dark:bg-[#2A3446]" />
+              {!hideDealCats && (
+                <span aria-hidden="true" className="shrink-0 w-px h-4 mx-2 bg-gray-200 dark:bg-[#2A3446]" />
+              )}
 
-              {DEAL_CATS.map(({ key, label, icon: Icon }) => {
+              {!hideDealCats && DEAL_CATS.map(({ key, label, icon: Icon }) => {
                 const active = onHomeSurface && activeDealCat === key
                 return (
                   <button

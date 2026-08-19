@@ -78,20 +78,40 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
 
   const rest = images.length - 1 - PC_THUMBS // 썸네일 칸에 다 못 넣고 남는 장수
 
+  /**
+   * 🕵️ **지금 화면에 실제로 그려지는 사진 전부**를 감시한다 — 대형 1장 + PC 썸네일 2장.
+   *
+   * ⚠️ 2026-08-19 정정: 이전 판은 **대형 사진만** 감시했다. 그런데 라이브 실측(활성 50개 · 갤러리
+   *   226장)에서 앱 경로로도 죽는 7장 중 **6장이 커버가 아닌 갤러리 사진**이었다 — 즉 실패는
+   *   주로 *썸네일 칸*에서 났고, 거기엔 감시가 없어 회색 칸으로 남았다(대표 신고
+   *   "눌러보면 사진이 안 뜨는 경우가 있어"). 실패 호스트: 인스타 CDN·siksinhot·daumcdn 등 403,
+   *   alba.kr 415.
+   *
+   * 폭(`width=`)을 **실제 렌더와 같게** 맞춘다 — 다르면 리사이저 URL 이 달라져 요청이 재사용되지
+   * 않고 진짜 추가 트래픽이 된다(대형 1200 · 썸네일 600).
+   */
+  const probes = useMemo(() => {
+    const list: Array<{ src: string; w: number }> = []
+    if (main) list.push({ src: main, w: 1200 })
+    for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, w: 600 })
+    return list
+  }, [main, images])
+
   return (
     <>
-      {/* 🕵️ 죽은 사진 감지용 — 화면에 보이지 않는다. 위 `bg()` 와 **같은 URL** 이라 요청이 재사용된다.
-          실패하면 그 사진을 목록에서 빼고 다음 사진이 자동으로 올라온다. */}
-      {main && (
+      {/* 화면에 보이지 않는다. 위 `bg()` 와 **같은 URL** 이라 브라우저가 요청을 재사용한다(추가 트래픽 0).
+          실패하면 그 사진을 목록에서 빼고 다음 사진이 자동으로 그 자리에 올라온다. */}
+      {probes.map(({ src, w }) => (
         <img
-          src={cfImage(main, { width: 1200, format: 'auto' }) || main}
+          key={`${src}@${w}`}
+          src={cfImage(src, { width: w, format: 'auto' }) || src}
           alt=""
           aria-hidden="true"
           loading="eager"
           style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-          onError={() => setDead((prev) => (prev.has(main) ? prev : new Set(prev).add(main)))}
+          onError={() => setDead((prev) => (prev.has(src) ? prev : new Set(prev).add(src)))}
         />
-      )}
+      ))}
 
       {/* 📱 모바일 — 기존 스와이프 갤러리(불변). */}
       <div className={`relative lg:hidden`}>

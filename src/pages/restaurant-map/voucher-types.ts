@@ -18,13 +18,20 @@ export interface MapVoucherDef {
   labelKey: string
   defaultLabel: string
   emoji: string
+  /**
+   * 🗺️ 2026-08-19 (대표 — "카카오맵처럼 한 줄 안에 모든 카테고리"): PC 좌측 400px 패널은
+   *   7칸을 한 줄에 넣으므로 칸당 ~53px 다. '뷰티·헬스'(5자)는 그 폭에서 잘린다.
+   *   ⇒ **좁은 자리 전용 짧은 라벨**. 없으면 `defaultLabel` 을 쓴다(대부분 이미 짧다).
+   *   ⚠️ 카테고리 자체를 줄이는 게 아니다 — 넓은 지도 오버레이는 계속 긴 라벨을 쓴다.
+   */
+  shortLabel?: string
 }
 
 /** 칩 정의 — 헬스는 '뷰티·헬스'(beauty)에, 반려·액티비티는 '기타'(etc)에 통합됨. */
 export const MAP_VOUCHER_DEFS: MapVoucherDef[] = [
   { key: 'all', labelKey: 'map.voucher.all', defaultLabel: '전체', emoji: '✨' },
   { key: 'meal_voucher', labelKey: 'map.voucher.meal', defaultLabel: '식사', emoji: '🍽️' },
-  { key: 'beauty_voucher', labelKey: 'map.voucher.beauty', defaultLabel: '뷰티·헬스', emoji: '💇' },
+  { key: 'beauty_voucher', labelKey: 'map.voucher.beauty', defaultLabel: '뷰티·헬스', emoji: '💇', shortLabel: '뷰티' },
   { key: 'stay_voucher', labelKey: 'map.voucher.stay', defaultLabel: '숙소', emoji: '🏨' },
   { key: 'etc_voucher', labelKey: 'map.voucher.etc', defaultLabel: '기타', emoji: '🎯' },
 ]

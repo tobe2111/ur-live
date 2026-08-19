@@ -150,7 +150,10 @@ describe('죽은 사진은 다음 사진으로 대체된다', () => {
 
   it('상세: CSS 배경은 오류를 못 잡으므로 같은 URL 의 감지용 img 를 얹는다', () => {
     // 같은 URL·같은 옵션이어야 브라우저가 요청을 재사용한다(추가 트래픽 0).
-    expect(detail).toMatch(/cfImage\(main, \{ width: 1200, format: 'auto' \}\)/)
+    // 🔄 2026-08-19: 감시 대상이 **대형 1장 → 대형 + PC 썸네일**로 늘면서(실측상 실패의 대부분이
+    //   썸네일 칸이었다) 렌더가 배열 map 이 됐다. 지키는 것은 그대로 — "실제 렌더와 같은 URL/폭".
+    expect(detail).toMatch(/cfImage\(src, \{ width: w, format: 'auto' \}\)/)
+    expect(detail).toMatch(/\{ src: main, w: 1200 \}/)
     expect(detail).toMatch(/onError=\{\(\) => setDead\(/)
   })
 
