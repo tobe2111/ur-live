@@ -1,51 +1,45 @@
 /**
  * Agency routes — TD-006 분리 (2026-05-06)
+ *
+ * 🌇 2026-08-19 **일몰 축소** (대표 확정): 39 라우트 → 16.
+ *   근거(라이브 실측): `agency_sellers` 0행 · `store_agency_delegation` 0행 ·
+ *   `introduced_by_agency_id` 0명 · `agency_invites`/`coupons`/`incentives`/`messages`/`notices`/
+ *   `targets` 는 **테이블조차 없음**(지연 생성 패턴 = 프로덕션에서 한 번도 실행 안 됨).
+ *   제거분 다수는 `LIVE_COMMERCE_SUSPENDED`(영구 중단) 의존(pk·schedule·calendar·ranking·promote-boosts).
+ *
+ *   남긴 기준 = **살아남는 모델(관계·정산·승계)에 직접 봉사하는 것 + 인증**:
+ *     introduced-stores(영입 보상 근거) · delegations(위임) · transfers(승계 동의) ·
+ *     settlements/ledger(정산) · sellers(로스터) · profile · guide
+ *
+ *   ⚠️ **페이지 컴포넌트·API 파일은 삭제하지 않았다** — 일부 API 파일이 머니 경로 심볼을 함께
+ *      export 한다(`agency-incentives.routes.ts` 의 `computeCommission` → `order-commissions.ts`·
+ *      `commission-budget.ts`). 라우트/마운트만 내렸으므로 되돌리기는 이 파일 복원 + 마운트 복원.
+ *   설계 SSOT: docs/design/store-operator-model.md
  */
 import { lazy } from 'react'
 import { Route, Navigate } from 'react-router-dom'
+import { AGENCY_DASHBOARD_SUNSET } from '@/shared/feature-flags'
 
 const AgencyLoginPage = lazy(() => import('@/pages/AgencyLoginPage'))
 const AgencyForgotPasswordPage = lazy(() => import('@/pages/AgencyForgotPasswordPage'))
 const AgencyResetPasswordPage = lazy(() => import('@/pages/AgencyResetPasswordPage'))
 const AgencyPage = lazy(() => import('@/pages/AgencyPage'))
 const AgencySellersPage = lazy(() => import('@/pages/AgencySellersPage'))
-const AgencyOrdersPage = lazy(() => import('@/pages/AgencyOrdersPage'))
-const AgencyStatsPage = lazy(() => import('@/pages/AgencyStatsPage'))
 // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2)
 const AgencyIntroducedStoresPage = lazy(() => import('@/pages/AgencyIntroducedStoresPage'))
 // 🤝 2026-07-10: 3단 위임 모델 (§4.3) — 매장 위임 조회/요청
 const AgencyDelegationsPage = lazy(() => import('@/pages/AgencyDelegationsPage'))
 const AgencySettlementsPage = lazy(() => import('@/pages/AgencySettlementsPage'))
 const MyLedgerPage = lazy(() => import('@/pages/MyLedgerPage'))
-const AgencyRankingPage = lazy(() => import('@/pages/AgencyRankingPage'))
-const AgencySchedulePage = lazy(() => import('@/pages/AgencySchedulePage'))
-const AgencyReturnsPage = lazy(() => import('@/pages/AgencyReturnsPage'))
-const AgencyProductsPage = lazy(() => import('@/pages/AgencyProductsPage'))
 const AgencyProfilePage = lazy(() => import('@/pages/AgencyProfilePage'))
-const AgencyNoticesPage = lazy(() => import('@/pages/AgencyNoticesPage'))
-const AgencyComparePage = lazy(() => import('@/pages/AgencyComparePage'))
-const AgencyContractsPage = lazy(() => import('@/pages/AgencyContractsPage'))
-const AgencyTargetsPage = lazy(() => import('@/pages/AgencyTargetsPage'))
-const AgencyCampaignsPage = lazy(() => import('@/pages/AgencyCampaignsPage'))
-const AgencyIncentivesPage = lazy(() => import('@/pages/AgencyIncentivesPage'))
-const AgencyMessagesPage = lazy(() => import('@/pages/AgencyMessagesPage'))
-const AgencyCouponsPage = lazy(() => import('@/pages/AgencyCouponsPage'))
-const AgencyMembersPage = lazy(() => import('@/pages/AgencyMembersPage'))
-const AgencyCalendarPage = lazy(() => import('@/pages/AgencyCalendarPage'))
-const AgencyInvitesPage = lazy(() => import('@/pages/AgencyInvitesPage'))
 const AgencyPublicPage = lazy(() => import('@/pages/AgencyPublicPage'))
-const AgencyPKBattlesPage = lazy(() => import('@/pages/AgencyPKBattlesPage'))
 const AgencyTransfersPage = lazy(() => import('@/pages/AgencyTransfersPage'))
-const AgencyMatchSuggestionsPage = lazy(() => import('@/pages/AgencyMatchSuggestionsPage'))
-const AgencySelfEventsPage = lazy(() => import('@/pages/AgencySelfEventsPage'))
-const AgencyPromoteBoostsPage = lazy(() => import('@/pages/AgencyPromoteBoostsPage'))
 const AgencyRegisterPage = lazy(() => import('@/pages/AgencyRegisterPage'))
-const AgencyGroupBuyPage = lazy(() => import('@/pages/AgencyGroupBuyPage'))
-// 🛡️ 2026-05-18: 숙소 공구 에이전시 — PR 5/6.
-const AgencyStaysPage = lazy(() => import('@/pages/AgencyStaysPage'))
 const AgencyRegisterBusinessPage = lazy(() => import('@/pages/AgencyRegisterBusinessPage'))
 const AgencyWaitingPage = lazy(() => import('@/pages/AgencyWaitingPage'))
 const AgencyGuidePage = lazy(() => import('@/pages/AgencyGuidePage'))
+// 🌇 일몰 안내 — 가입 라우트를 404 로 죽이지 않고 "다음 행선지"를 알려준다.
+const AgencySunsetPage = lazy(() => import('@/pages/AgencySunsetPage'))
 
 function AgencyAuthGuard({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('agency_token')
@@ -54,50 +48,32 @@ function AgencyAuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 export function AgencyRoutes() {
+  // 🌇 신규 가입 종료 — 서버(`POST /api/agency/register` 403)와 **한 쌍**이다.
+  //    화면만 막으면 직접 POST 로 우회되고, 서버만 막으면 사용자가 폼을 다 채운 뒤 에러를 본다.
+  const Register = AGENCY_DASHBOARD_SUNSET ? AgencySunsetPage : AgencyRegisterPage
+  const RegisterBusiness = AGENCY_DASHBOARD_SUNSET ? AgencySunsetPage : AgencyRegisterBusinessPage
+
   return (
     <>
       {/* Public agency pages */}
       <Route path="/agency/login" element={<AgencyLoginPage />} />
-      <Route path="/agency/register" element={<AgencyRegisterPage />} />
-      <Route path="/agency/register/business" element={<AgencyRegisterBusinessPage />} />
+      <Route path="/agency/register" element={<Register />} />
+      <Route path="/agency/register/business" element={<RegisterBusiness />} />
       <Route path="/agency/waiting" element={<AgencyWaitingPage />} />
       <Route path="/agency/forgot-password" element={<AgencyForgotPasswordPage />} />
       <Route path="/agency/reset-password" element={<AgencyResetPasswordPage />} />
       <Route path="/a/:slug" element={<AgencyPublicPage />} />
 
-      {/* Protected agency pages */}
+      {/* Protected agency pages — 관계·정산·승계만 */}
       <Route path="/agency" element={<AgencyAuthGuard><AgencyPage /></AgencyAuthGuard>} />
       <Route path="/agency/sellers" element={<AgencyAuthGuard><AgencySellersPage /></AgencyAuthGuard>} />
-      <Route path="/agency/orders" element={<AgencyAuthGuard><AgencyOrdersPage /></AgencyAuthGuard>} />
-      <Route path="/agency/stats" element={<AgencyAuthGuard><AgencyStatsPage /></AgencyAuthGuard>} />
       <Route path="/agency/introduced-stores" element={<AgencyAuthGuard><AgencyIntroducedStoresPage /></AgencyAuthGuard>} />
       <Route path="/agency/delegations" element={<AgencyAuthGuard><AgencyDelegationsPage /></AgencyAuthGuard>} />
-      <Route path="/agency/guide" element={<AgencyAuthGuard><AgencyGuidePage /></AgencyAuthGuard>} />
+      <Route path="/agency/transfers" element={<AgencyAuthGuard><AgencyTransfersPage /></AgencyAuthGuard>} />
       <Route path="/agency/settlements" element={<AgencyAuthGuard><AgencySettlementsPage /></AgencyAuthGuard>} />
       <Route path="/agency/ledger" element={<AgencyAuthGuard><MyLedgerPage /></AgencyAuthGuard>} />
-      <Route path="/agency/ranking" element={<AgencyAuthGuard><AgencyRankingPage /></AgencyAuthGuard>} />
-      <Route path="/agency/schedule" element={<AgencyAuthGuard><AgencySchedulePage /></AgencyAuthGuard>} />
-      <Route path="/agency/returns" element={<AgencyAuthGuard><AgencyReturnsPage /></AgencyAuthGuard>} />
-      <Route path="/agency/sellers/:sellerId/products" element={<AgencyAuthGuard><AgencyProductsPage /></AgencyAuthGuard>} />
-      <Route path="/agency/notices" element={<AgencyAuthGuard><AgencyNoticesPage /></AgencyAuthGuard>} />
-      <Route path="/agency/compare" element={<AgencyAuthGuard><AgencyComparePage /></AgencyAuthGuard>} />
-      <Route path="/agency/contracts" element={<AgencyAuthGuard><AgencyContractsPage /></AgencyAuthGuard>} />
-      <Route path="/agency/targets" element={<AgencyAuthGuard><AgencyTargetsPage /></AgencyAuthGuard>} />
-      <Route path="/agency/campaigns" element={<AgencyAuthGuard><AgencyCampaignsPage /></AgencyAuthGuard>} />
-      <Route path="/agency/incentives" element={<AgencyAuthGuard><AgencyIncentivesPage /></AgencyAuthGuard>} />
-      <Route path="/agency/messages" element={<AgencyAuthGuard><AgencyMessagesPage /></AgencyAuthGuard>} />
-      <Route path="/agency/coupons" element={<AgencyAuthGuard><AgencyCouponsPage /></AgencyAuthGuard>} />
-      <Route path="/agency/members" element={<AgencyAuthGuard><AgencyMembersPage /></AgencyAuthGuard>} />
-      <Route path="/agency/calendar" element={<AgencyAuthGuard><AgencyCalendarPage /></AgencyAuthGuard>} />
-      <Route path="/agency/invites" element={<AgencyAuthGuard><AgencyInvitesPage /></AgencyAuthGuard>} />
-      <Route path="/agency/pk" element={<AgencyAuthGuard><AgencyPKBattlesPage /></AgencyAuthGuard>} />
-      <Route path="/agency/transfers" element={<AgencyAuthGuard><AgencyTransfersPage /></AgencyAuthGuard>} />
-      <Route path="/agency/match-suggestions" element={<AgencyAuthGuard><AgencyMatchSuggestionsPage /></AgencyAuthGuard>} />
-      <Route path="/agency/events" element={<AgencyAuthGuard><AgencySelfEventsPage /></AgencyAuthGuard>} />
-      <Route path="/agency/promote-boosts" element={<AgencyAuthGuard><AgencyPromoteBoostsPage /></AgencyAuthGuard>} />
       <Route path="/agency/profile" element={<AgencyAuthGuard><AgencyProfilePage /></AgencyAuthGuard>} />
-      <Route path="/agency/group-buy" element={<AgencyAuthGuard><AgencyGroupBuyPage /></AgencyAuthGuard>} />
-      <Route path="/agency/stays" element={<AgencyAuthGuard><AgencyStaysPage /></AgencyAuthGuard>} />
+      <Route path="/agency/guide" element={<AgencyAuthGuard><AgencyGuidePage /></AgencyAuthGuard>} />
     </>
   )
 }

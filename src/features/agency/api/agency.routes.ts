@@ -29,6 +29,7 @@ import { sendEmail } from '@/services/email'
 import { maskEmail } from '@/lib/mask'
 import { startDashboardSession, isDashboardSessionCurrent } from '@/worker/utils/dashboard-session'
 import type { Env } from '@/worker/types/env'
+import { agencySignupClosed } from './agency-sunset' // 🌇 일몰 게이트(클라 라우트 분기와 한 쌍)
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout'
 
 import { swallow } from '@/worker/utils/swallow';
@@ -233,6 +234,7 @@ const requireAgency = async (c: AgencyCtx, next: Next) => {
 // ── POST /register (공개) ─────────────────────────────────────
 // 🛡️ 2026-04-22 배치 147: rate limit 추가 (spam registration 차단 버그 fix)
 app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, windowSec: 3600 }), async (c) => {
+  { const closed = agencySignupClosed(c); if (closed) return closed }
   await ensureAgencyTables(c.env.DB)
   const { name, contact_name, email, password, phone, terms_agreed_version, core_terms_agreed } = await c.req.json<{
     name: string; contact_name: string; email: string; password: string; phone?: string
@@ -310,6 +312,7 @@ app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, win
 // 🛡️ 카카오 로그인된 유저가 같은 계정에 에이전시 role 추가.
 // 별도 이메일/비밀번호 없이 세션 쿠키 + 비즈니스 정보만 입력.
 app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_from_user', max: 3, windowSec: 3600 }), async (c) => {
+  { const closed = agencySignupClosed(c); if (closed) return closed }
   try {
     await ensureAgencyTables(c.env.DB)
     const db = c.env.DB
