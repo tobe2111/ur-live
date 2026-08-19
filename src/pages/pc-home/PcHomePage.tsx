@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import SiteFooter from '@/components/main/SiteFooter'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
-import PcHomeRail, { DEAL_CATS, type DealCategory } from './PcHomeRail'
+import { DEAL_CATS, type DealCategory } from './PcHomeRail'
 import PcHomeMapButton from './PcHomeMapButton'
 import PcHomeAppBand from './PcHomeAppBand'
 import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from './PcHomeLocationBar'
@@ -63,7 +63,9 @@ export default function PcHomePage() {
     const q = new URLSearchParams(location.search)
     const qCat = q.get('category') as DealCategory | null
     const qSort = q.get('sort') as SortKey | null
-    if (qCat && DEAL_CATEGORY_KEYS.includes(qCat)) setCategory(qCat)
+    // 🧭 2026-08-19: 카테고리 칩이 상단 2행으로 올라가면서 **URL 이 유일한 근거**가 됐다.
+    //   파라미터가 없으면 'all' 로 되돌린다 — 안 그러면 '전체'(= `/`)를 눌러도 이전 필터가 남는다.
+    setCategory(qCat && DEAL_CATEGORY_KEYS.includes(qCat) ? qCat : 'all')
     if (qSort && SORT_KEYS.includes(qSort)) setSort(qSort)
     if (firstQuerySync.current) { firstQuerySync.current = false; return }
     if (qSort || qCat) gridHeaderRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -100,12 +102,11 @@ export default function PcHomePage() {
       <div className="max-w-[1440px] mx-auto px-6 lg:px-8 pt-4">
         <main className="min-w-0">
           {/* 🗺️ 상단 헤더 행 — 좌: 위치바+카테고리 / 우: 지도 썸네일 버튼(대표 지정 위치 — 빈 공간 활용). */}
-          <div className="ur-home-panel mb-4 flex items-start justify-between gap-8">
+          {/* 🧭 2026-08-19 (대표 확정 — 그루폰): 카테고리 칩은 **상단 2행**(DesktopTopNav)으로 올라갔다.
+              여기 남겨 두면 같은 카테고리가 화면에 두 벌이 되어 반드시 갈린다. 위치바는 홈 전용이라 유지. */}
+          <div className="ur-home-panel mb-4 flex items-center justify-between gap-8">
             <div className="flex-1 min-w-0">
-              <div className="mb-3">
-                <PcHomeLocationBar value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} />
-              </div>
-              <PcHomeRail category={category} onCategory={setCategory} />
+              <PcHomeLocationBar value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} />
             </div>
             <PcHomeMapButton />
           </div>
