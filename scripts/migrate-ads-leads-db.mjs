@@ -155,28 +155,36 @@ async function main() {
     for (const t of TABLES) {
       const cols = (await q(SRC_DB, `SELECT name FROM pragma_table_info('${t}')`)).map((c) => c.name)
       const colList = cols.map((c) => `"${c}"`).join(',')
-      const bucketSql = `SELECT rowid/${BUCKET} AS b, COUNT(*) n, SUM(rowid) s FROM "${t}" GROUP BY b`
+      // 🕳️ **개수와 rowid 만 보면 UPDATE 를 놓친다.** 보강 레인은 행을 새로 만들지 않고 기존 행의
+      //   이메일·성과 컬럼을 채운다 — 그러면 개수도 rowid 도 그대로다. 그래서 버킷 지문에
+      //   **전 컬럼 바이트 길이 합**을 함께 넣는다(D1 에 해시 함수가 없다). 값이 바뀌면 길이도
+      //   거의 항상 바뀌므로, 완벽한 해시는 아니어도 "복사 이후 손댄 버킷"을 실용적으로 잡아낸다.
+      const lenExpr = cols.map((c) => `COALESCE(LENGTH(CAST("${c}" AS BLOB)),0)`).join('+')
+      const bucketSql = `SELECT rowid/${BUCKET} AS b, COUNT(*) n, SUM(rowid) s, SUM(${lenExpr}) c FROM "${t}" GROUP BY b`
       const [sb, db_] = [await q(SRC_DB, bucketSql), await q(DST_DB, bucketSql)]
-      const m = (rows) => new Map(rows.map((r) => [Number(r.b), `${r.n}:${r.s}`]))
+      const m = (rows) => new Map(rows.map((r) => [Number(r.b), `${r.n}:${r.s}:${r.c}`]))
       const [ms, md] = [m(sb), m(db_)]
       const diff = [...new Set([...ms.keys(), ...md.keys()])].filter((b) => ms.get(b) !== md.get(b))
       if (!diff.length) { console.log(`  ✓ ${t}: 일치 (버킷 ${ms.size}개)`); continue }
       let added = 0, removed = 0
       for (const b of diff) {
         const lo = b * BUCKET, hi = lo + BUCKET
-        const ids = async (db) => new Set((await q(db,
-          `SELECT rowid AS r FROM "${t}" WHERE rowid >= ${lo} AND rowid < ${hi}`)).map((x) => Number(x.r)))
-        const [si, di] = [await ids(SRC_DB), await ids(DST_DB)]
-        const missing = [...si].filter((x) => !di.has(x))
-        const extra = [...di].filter((x) => !si.has(x))
-        // 원본에 있고 사본에 없는 것 → 채운다
-        for (let i = 0; i < missing.length; i += 200) {
-          const part = missing.slice(i, i + 200)
+        // 🎯 **버킷째 다시 쓰지 않는다.** 실측(2026-08-19): 버킷 하나의 지문 차이가 4~18바이트였다
+        //    — 600만 바이트 중 몇 행이다. 버킷 전체를 재기록하면 10,000행을 쓰면서 실제로 바뀐 건
+        //    2~3행이다. 그래서 **버킷 안을 행 단위로 한 번 더 좁힌다**(쿼리 2회면 된다).
+        const sig = async (db) => new Map((await q(db,
+          `SELECT rowid AS r, ${lenExpr} AS c FROM "${t}" WHERE rowid >= ${lo} AND rowid < ${hi}`))
+          .map((x) => [Number(x.r), String(x.c)]))
+        const [ss, ds] = [await sig(SRC_DB), await sig(DST_DB)]
+        const rewrite = [...ss.keys()].filter((r) => ds.get(r) !== ss.get(r))
+        const extra = [...ds.keys()].filter((r) => !ss.has(r))
+        for (let i = 0; i < rewrite.length; i += 200) {
+          const part = rewrite.slice(i, i + 200)
           const rows = await q(SRC_DB, `SELECT rowid AS __rid, ${colList} FROM "${t}" WHERE rowid IN (${part.join(',')})`)
           let buf = [], bytes = 0
           const flush = async () => {
             if (!buf.length) return
-            await q(DST_DB, `INSERT OR IGNORE INTO "${t}" (rowid,${colList}) VALUES ${buf.join(',')}`)
+            await q(DST_DB, `INSERT OR REPLACE INTO "${t}" (rowid,${colList}) VALUES ${buf.join(',')}`)
             buf = []; bytes = 0
           }
           for (const r of rows) {
@@ -186,14 +194,14 @@ async function main() {
           }
           await flush()
         }
-        // 사본에만 있는 것 → **지운다**(원본에서 정비 레인이 지운 행이 되살아나면 안 된다)
+        // 사본에만 있는 것 → 지운다(정비 레인이 원본에서 지운 행이 되살아나면 안 된다)
         for (let i = 0; i < extra.length; i += 400) {
           const part = extra.slice(i, i + 400)
           await q(DST_DB, `DELETE FROM "${t}" WHERE rowid IN (${part.join(',')})`)
           removed += part.length
         }
       }
-      console.log(`  ↻ ${t}: 버킷 ${diff.length}개 조정 — 추가 ${added} · 제거 ${removed}`)
+      console.log(`  ↻ ${t}: 버킷 ${diff.length}개 → 실제 재기록 ${added}행 · 제거 ${removed}행`)
     }
   }
 
