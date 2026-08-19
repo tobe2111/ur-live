@@ -9,7 +9,7 @@ import { memo, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
-import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
+import DealCardMedia from '@/components/deal/DealCardMedia'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
@@ -57,6 +57,8 @@ interface FeedCardProduct extends Product {
   gc_goods_type_detail?: string | null
   // 🏪 2026-07-05: 온누리상품권 가맹 매장 (seller_meta enrich — B2G 표시)
   onnuri_merchant?: boolean
+  /** 🖼️ 2026-08-19: 카드 hover 캐러셀용 갤러리(서버가 3장으로 잘라 배열로 내려줌). */
+  images?: string[] | string | null
 }
 
 // 🛡️ 2026-05-21: 구매 수 사람 친화 포맷 (4 자리 이상 → 만 단위).
@@ -185,126 +187,101 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
       style={pc ? undefined : { backgroundColor: grad.base }}
     >
       {/* 🎨 대표색 카드 + 사진 하단 같은색 번짐(그라데이션) — /group-buy GroupBuyGridCard 와 동일 룩.
-          🖥️ PC(pc)는 그라데이션 없이 깔끔한 이미지 + 흰/다크 카드(가시성). */}
-      {/* 📐 2026-08-17 (대표 — 카드 컴팩트화): PC 는 정방형 → 4:3 — 행 높이가 25% 줄어 화면 밀도 ↑
-          (홈 섹션 DealCard 의 4:3 과 톤 정합). 모바일(!pc)은 기존 정방형 그대로. */}
-      <div
-        className={`relative ${pc ? 'aspect-[4/3]' : 'aspect-square'} w-full overflow-hidden ${pc ? 'bg-gray-100 dark:bg-[#222225]' : ''}`}
-        style={pc ? undefined : { backgroundColor: grad.base }}
-      >
-        {p.image_url ? (
+          🖥️ PC(pc)는 그라데이션 없이 깔끔한 이미지 + 흰/다크 카드(가시성).
+          🖼️ 2026-08-19 (대표 시안 — 그루폰): 이미지 영역을 `DealCardMedia`(SSOT)로 교체 —
+          hover 좌우 화살표 캐러셀 + 도트. 홈 섹션 카드도 **같은 컴포넌트**를 써서 두 카드가
+          갈리지 않는다. 잠금 계약(aboveFold eager/fetchPriority·fade-in·대표색 추출)은 그대로 승계. */}
+      <DealCardMedia
+        cover={p.image_url}
+        images={p.images}
+        alt={p.name || cat.label}
+        eager={aboveFold}
+        width={pc ? 400 : 300}
+        aspectClass={pc ? 'aspect-[4/3]' : 'aspect-square'}
+        className={pc ? 'bg-gray-100 dark:bg-[#222225]' : ''}
+        fallback={<span className="text-3xl opacity-40">{cat.emoji}</span>}
+        onCoverLoad={(el) => {
+          const color = extractDominantColor(el)
+          if (color) {
+            if (!cardColor) setCardColor(color)
+            if (!p.dominant_color) reportDominantColor(p.id, color)
+          }
+        }}
+        overlay={
           <>
-          {/* ⏳ 2026-08-17 (UX 전수검사 P1): 이미지 도착 전 대표색 단색 블록만 있어 "빈 카드"로 읽힘 —
-              로딩 셔머 언더레이(additive). 이미지가 opacity 1 이 되면 그대로 덮여 사라진다(상태 불필요). */}
-          <div className="absolute inset-0 skeleton-shimmer" aria-hidden="true" />
-          <img
-            // 🛡️ 2026-05-22 perf: Cloudflare Image Resizing (300px base, 1x/2x DPI).
-            //   원본 1000px+ 다운로드 → 300-600px WebP/AVIF 자동 변환 (50-80% 트래픽 절감).
-            // 🛡️ 2026-05-28 (사용자 보고 — 흐림): 200 → 300px.
-            //   이전: 카드 영역 PC 320-400px 인데 src 200px → 1.5x stretched (흐림).
-            //   변경: 300px → PC 정확 매칭, 모바일 50vw (207px) 도 약간 high-res.
-            //   트래픽: 200→300 = 약 +50KB/카드. 단 cf-image WebP 변환으로 net 영향 작음.
-            src={cfImage(p.image_url, { width: 300, format: 'auto' }) || p.image_url}
-            srcSet={cfSrcSet(p.image_url, 300) || undefined}
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
-            alt={p.name || cat.label}
-            loading={aboveFold ? 'eager' : 'lazy'}
-            fetchPriority={aboveFold ? 'high' : 'auto'}
-            decoding="async"
-            onLoad={(e) => {
-              const el = e.currentTarget as HTMLImageElement
-              el.style.opacity = '1'
-              const color = extractDominantColor(el)
-              if (color) {
-                if (!cardColor) setCardColor(color)
-                if (!p.dominant_color) reportDominantColor(p.id, color)
-              }
-            }}
-            onError={(e) => cfImageOnError(e.currentTarget, p.image_url)}
-            style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
-            className="relative w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
+            {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거). 🖥️ PC 는 깔끔한 이미지(번짐 제거). */}
+            {!pc && <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none z-[1]" style={{ background: grad.imageFade }} />}
+            {/* 마감 임박 배지 (시간/분 단위면 좌상단 빨강) */}
+            {isUrgent && (
+              <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-brand text-[10px] font-extrabold text-white shadow-sm z-[2]">
+                ⏰ {remaining}
+              </span>
+            )}
+            {/* 🎯 추첨 응모 배지 (우상단) — 결제 없이 응모 → 추첨. 상세에서 응모 가능. */}
+            {fcfs && <FcfsBadge info={fcfs} variant="overlay" className="absolute top-2 right-2 z-[2]" />}
           </>
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="text-3xl opacity-40">{cat.emoji}</span>
-          </div>
-        )}
+        }
+      />
 
-        {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거). 🖥️ PC 는 깔끔한 이미지(번짐 제거). */}
-        {!pc && <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />}
-
-        {/* 마감 임박 배지 (시간/분 단위면 좌상단 빨강) */}
-        {isUrgent && (
-          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-brand text-[10px] font-extrabold text-white shadow-sm">
-            ⏰ {remaining}
-          </span>
-        )}
-
-        {/* 🎯 추첨 응모 배지 (우상단) — 결제 없이 응모 → 추첨. 상세에서 응모 가능. */}
-        {fcfs && <FcfsBadge info={fcfs} variant="overlay" className="absolute top-2 right-2" />}
-      </div>
-
-      <div className={pc ? 'px-3 pb-3 pt-2' : 'px-2.5 pb-2.5 pt-1.5'}>
-        {/* 브랜드 (gift_catalog) — 있을 때만. 🏪 온누리 가맹 뱃지는 브랜드 유무와 무관 표시 */}
-        {(brandName || p.onnuri_merchant) && (
-          <p className={`flex items-center gap-1 text-[10px] leading-none mb-0.5 ${cSub}`} style={tSub}>
-            {brandIcon && <img src={brandIcon} alt="" className="w-3 h-3 rounded-full object-contain" loading="lazy" />}
-            {brandName && <span className="truncate">{brandName}</span>}
+      {/* 🛍️ 2026-08-19 (대표 시안 — 그루폰 카드): 정보 위계를 그루폰과 같게 재배열.
+          [머천트(작은 회색)] → [제목 2줄] → [주소 · 거리] → [★평점 (구매수)] → [정가취소선 · 판매가 · 할인 pill]
+          이전엔 정가가 제목 **위**에 떠 있고 가격이 중간에 있어, 카드마다 눈이 가는 자리가 달랐다. */}
+      <div className={pc ? 'px-3 pb-3 pt-2.5' : 'px-2.5 pb-2.5 pt-2'}>
+        {/* 머천트 — 매장명 우선, 없으면 브랜드(gift_catalog). 🏪 온누리 가맹 뱃지는 그 옆. */}
+        {(p.restaurant_name || brandName || p.onnuri_merchant) && (
+          <p className={`flex items-center gap-1 text-[11px] leading-none mb-1 ${cSub}`} style={tSub}>
+            {brandIcon && !p.restaurant_name && <img src={brandIcon} alt="" className="w-3 h-3 rounded-full object-contain shrink-0" loading="lazy" />}
+            <span className="truncate">{p.restaurant_name || brandName}</span>
             {p.onnuri_merchant && (
               <span className="shrink-0 px-1 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[9px] font-bold">온누리</span>
             )}
           </p>
         )}
 
-        {/* 원가 strikethrough (있을 때만) */}
-        {originalPrice > price && originalPrice > 0 && (
-          <p className={`text-[11px] line-through leading-tight ${cSub}`} style={tSub}>
-            {formatNumber(originalPrice)}원
-          </p>
-        )}
-
         {/* 제목 — 2줄 max */}
-        <p className={`${pc ? 'text-[13.5px]' : 'text-[13px]'} font-semibold line-clamp-2 leading-tight mt-0.5 ${cText}`} style={tText}>
+        <p className={`${pc ? 'text-[13.5px]' : 'text-[13px]'} font-bold line-clamp-2 leading-snug ${cText}`} style={tText}>
           {stripStorePrefix(p.name, p.restaurant_name)}
         </p>
 
-        {/* 할인% + 최종가 — 핵심 강조 */}
-        <p className="flex items-baseline gap-1 mt-1">
-          {discount > 0 && (
-            <span className={`${pc ? 'text-[16px]' : 'text-[15px]'} font-extrabold ${cAccent}`} style={tAccent}>{discount}%</span>
-          )}
-          <span className={`${pc ? 'text-[16px]' : 'text-[15px]'} font-extrabold ${cText}`} style={tText}>
-            {formatNumber(price)}원
-          </span>
-          {/* 🏨 2026-07-20: 숙소 가격 = 최저 객실 주중가 → 단위 명시(야놀자/아고다식 "1박~") */}
-          {p.category === 'stay_voucher' && price > 0 && (
-            <span className={`text-[11px] font-semibold ${cSub}`} style={tSub}>/1박~</span>
-          )}
-        </p>
-
-        {/* 📍 주소 + 거리 (동네딜 — 대표 요청: PC 카드도 모바일처럼) */}
-        {(p.restaurant_name || addrShort || distKm != null) && (
-          <p className={`flex items-center gap-1 mt-0.5 text-[11px] min-w-0 ${cSub}`} style={tSub}>
-            <span className="shrink-0">📍</span>
-            <span className="truncate">{[p.restaurant_name, addrShort].filter(Boolean).join(' · ')}</span>
-            {distKm != null && <span className={`shrink-0 whitespace-nowrap font-bold ${cText}`} style={tText}>· {distKm}km</span>}
+        {/* 📍 주소(좌) · 거리(우) — 그루폰처럼 양끝 정렬(거리가 항상 같은 자리에 온다) */}
+        {(addrShort || distKm != null) && (
+          <p className={`flex items-center justify-between gap-2 mt-1 text-[11px] min-w-0 ${cSub}`} style={tSub}>
+            <span className="truncate">{addrShort}</span>
+            {distKm != null && <span className="shrink-0 whitespace-nowrap">{distKm}km</span>}
           </p>
         )}
+
         {/* ⭐ 평점 + 구매수 */}
         {(rating > 0 || soldCount > 0) && (
-          <p className={`flex items-center gap-1.5 mt-0.5 text-[11px] ${cSub}`} style={tSub}>
+          <p className={`flex items-center gap-1.5 mt-1 text-[11px] ${cSub}`} style={tSub}>
             {rating > 0 && (
               <span className="flex items-center gap-0.5">
                 <span className="text-yellow-500">★</span>
                 <span className={`font-bold ${cText}`} style={tText}>{rating.toFixed(1)}</span>
               </span>
             )}
-            {soldCount > 0 && (
-              <span>구매 {formatSoldCount(soldCount)}</span>
-            )}
+            {soldCount > 0 && <span>구매 {formatSoldCount(soldCount)}</span>}
           </p>
         )}
+
+        {/* 💰 가격 — 한 줄에 [정가 취소선] [판매가] [할인 pill]. 그루폰의 마지막 줄과 같은 순서. */}
+        <p className="flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5 mt-1.5">
+          {originalPrice > price && originalPrice > 0 && (
+            <span className={`text-[11.5px] line-through ${cSub}`} style={tSub}>{formatNumber(originalPrice)}원</span>
+          )}
+          <span className={`${pc ? 'text-[16px]' : 'text-[15px]'} font-extrabold tracking-tight ${cText}`} style={tText}>
+            {formatNumber(price)}원
+          </span>
+          {/* 🏨 2026-07-20: 숙소 가격 = 최저 객실 주중가 → 단위 명시(야놀자/아고다식 "1박~") */}
+          {p.category === 'stay_voucher' && price > 0 && (
+            <span className={`text-[11px] font-semibold ${cSub}`} style={tSub}>/1박~</span>
+          )}
+          {discount > 0 && (
+            <span className="shrink-0 px-1.5 py-[1px] rounded text-[11px] font-extrabold bg-brand/10 text-brand-text dark:bg-brand/20 dark:text-brand">
+              {discount}%
+            </span>
+          )}
+        </p>
       </div>
     </Link>
   )

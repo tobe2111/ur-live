@@ -38,7 +38,8 @@ export const CARD_COLS = `
   p.id, p.name, p.price, p.original_price, p.image_url, p.category,
   p.discount_rate, p.sold_count, p.dominant_color,
   p.deal_only,
-  p.restaurant_name, p.restaurant_address, p.slug
+  p.restaurant_name, p.restaurant_address, p.slug,
+  p.images
 `
 
 /**

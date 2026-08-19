@@ -28,7 +28,7 @@ const COLS = `
   p.discount_rate, p.sold_count, p.avg_rating, p.deal_only,
   p.brand_name, p.brand_icon_url, p.created_at, p.seller_id,
   p.restaurant_name, p.restaurant_address, p.slug,
-  p.restaurant_lat, p.restaurant_lng,
+  p.restaurant_lat, p.restaurant_lng, p.images,
   s.name AS seller_name, s.profile_image AS seller_avatar
 `
 
@@ -71,7 +71,20 @@ export async function handleGroupBuyFeedCache(env: Env): Promise<{
           LIMIT 50
         `).bind(...categories, status, status).all()
 
-        const rows = r.results ?? []
+        // 🖼️ 2026-08-19: 카드 캐러셀용 갤러리는 **저장 시점에 3장으로 자른다**. 라이브 쿼리 경로
+        //   (group-buy-public `mapped`)와 같은 규칙 — 안 자르면 캐시 row 가 상품당 8장을 통째로
+        //   안고 있게 되고, 그 크기를 캐시 hit 마다 파싱한다.
+        const rows = (r.results ?? []).map((row) => {
+          const p = row as Record<string, unknown>
+          if (typeof p.images !== 'string' || !p.images.startsWith('[')) return p
+          try {
+            const arr = JSON.parse(p.images)
+            if (!Array.isArray(arr)) return { ...p, images: null }
+            const cover = String(p.image_url ?? '')
+            const g = arr.filter((u): u is string => typeof u === 'string' && !!u && u !== cover).slice(0, 3)
+            return { ...p, images: g.length ? JSON.stringify(g) : null }
+          } catch { return { ...p, images: null } }
+        })
         const json = JSON.stringify(rows)
 
         await DB.prepare(`
