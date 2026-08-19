@@ -8,6 +8,18 @@ import type { D1Database, KVNamespace, DurableObjectNamespace } from '@cloudflar
 export interface Env {
   // ---- D1 Database ----
   DB: D1Database;
+  /**
+   * 📣 유어애즈 **발굴 리드 전용** D1 (2026-08-19 신설). 미바인딩이면 전부 `DB` 로 간다 —
+   *   즉 **없어도 동작이 오늘과 같다**(`shared/ads/leads-db.ts` 의 `adsLeadsDb`).
+   *
+   * 왜 나눴나: `ur-ads` 는 워커만 분리돼 있었고 DB 는 `DB` 와 같은 uuid 였다. 수집 리드가
+   *   결제와 같은 파일에 쌓여 494 MB(무료 한도 500 MB의 99%)까지 자랐고, 실데이터의 **92%**
+   *   가 수집분이었다. 한도에 닿으면 주문·결제 쓰기까지 같이 죽는다.
+   *
+   * ⚠️ 이 바인딩을 **`ur-live`(Pages·워커)와 `ur-ads` 양쪽에** 붙여야 한다 — 어드민 화면
+   *   (`/api/admin/partner-pool` 등)은 메인 워커에서 이 테이블들을 읽는다.
+   */
+  ADS_DB?: D1Database;
 
   // ---- KV Namespaces ----
   RATE_LIMIT_KV?: KVNamespace;

@@ -21,6 +21,7 @@ import { applyQuantum, quantumFromRaw, CPU_QUANTA_KEY } from './cpu-quantum'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envLaneBudget, envEnrichDeadlineMs , envPlanValue} from './collect-budget'
 import { runPooled, resolveConcurrency } from './lane-pool'
 import { foldEnrichRollup, PROSPECT_ROLLUP_KEY } from './enrich-telemetry'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 export interface ProspectEnrichResult {
   processed: number; email_found: number; phone_found: number; site_found: number; remaining_no_email: number
@@ -45,7 +46,7 @@ const STATS_KEY = 'ads_prospect_enrich_stats'
 
 /** 보류 없이 active 매장 후보의 이메일/홈페이지/전화를 예산 내에서 채운다. 신규개업·홈페이지보유 우선. */
 export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichResult> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   // 스키마 DDL 실비도 예산에서 차감(localdata 와 동일 — store-prospects 주석 참조).
   const schemaSpent = await ensureProspectSchema(DB)
   const { crawlContact, naverLocalLookup, naverHomepageSearch, kakaoLocalLookup, CRAWL_RULES_VERSION, realSite, PLATFORM_URL_SQL_EXCLUDE } = await import('./contact-enrich')

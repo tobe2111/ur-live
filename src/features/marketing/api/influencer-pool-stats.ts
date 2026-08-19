@@ -11,6 +11,7 @@ import { ensurePerfExtraColumns, personalEmailSqlClause } from './influencer-per
 import { ensureQualityColumns } from './influencer-quality'
 import { getFunnelTailStats } from './lead-claim'
 import { getAdsPoolDiag } from './ads-pool-diag' // 진단 스탬프(수집/정비/시트/보강 레인) SSOT — 중복 구현 금지
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const POOL = 0
 
@@ -24,7 +25,7 @@ export async function ensureRecruitColumn(DB: D1Database) {
 
 /** 어드민 인플루언서 풀 대시보드 1회 조회 페이로드(집계 + 마지막 실행/정비/보강 스냅샷 + 게이트). */
 export async function buildInfluencerPoolStats(env: Env): Promise<Record<string, unknown>> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   await ensureInfluencerSchema(DB)  // 통계도 최신 컬럼(contact_channel/consented_at 등) 참조 — 스키마 선보강(멱등)
   await ensureOutreachColumns(DB)   // opened/bounced 집계 컬럼 선보강
   await ensureQualityColumns(DB)    // is_brand/lead_score 집계 선보강

@@ -53,6 +53,9 @@ function freshDb() {
 
 const digits = (s: string | null) => String(s || '').replace(/\D/g, '')
 
+// 🔀 2026-08-19: 유어애즈 리드 DB 분리로 핸들이 `env.DB` → `adsLeadsDb(env)` 가 됐다.
+//   여기서 보려는 것은 **'요청 스코프 DB 핸들을 넘기는가'** 이지 그 표현식의 철자가 아니다 —
+//   철자로 고정하면 리팩토링이 배선 가드를 조용히 무력화한다(dashboard-session 에서 겪은 그 함정).
 describe('☎️ 국번 술어 — 정상 번호는 건드리지 않고 결함만 잡는다', () => {
   const db = freshDb()
   /** 라이브에서 실제로 본 정상/결함 모양. 정상이 잡히면 멀쩡한 행을 매 회차 헛돌린다. */
@@ -144,15 +147,15 @@ describe('🔌 배선 — 랩보다 먼저 돌고, 죽어도 재분류를 막지
   const lane = readFileSync('src/features/marketing/api/reclassify-lane.ts', 'utf8')
 
   it('reclassify 레인이 스윕을 부른다', () => {
-    expect(lane).toMatch(/sweepCompanyHygiene\(env\.DB\)/)
+    expect(lane).toMatch(/sweepCompanyHygiene\((?:adsLeadsDb\((?:c\.)?env\)|(?:c\.)?env\.DB)\)/)
   })
 
   it('fail-soft — 스윕 실패가 재분류를 못 막는다', () => {
-    expect(lane).toMatch(/sweepCompanyHygiene\(env\.DB\)\.catch\(/)
+    expect(lane).toMatch(/sweepCompanyHygiene\((?:adsLeadsDb\((?:c\.)?env\)|(?:c\.)?env\.DB)\)\.catch\(/)
   })
 
   it('패스 루프보다 앞에서 부른다(랩을 기다리지 않는 것이 요점)', () => {
-    expect(lane.indexOf('sweepCompanyHygiene(env.DB)')).toBeLessThan(lane.indexOf('for (; passes <'))
+    expect(lane.search(/sweepCompanyHygiene\((?:adsLeadsDb\((?:c\.)?env\)|(?:c\.)?env\.DB)\)/)).toBeLessThan(lane.indexOf('for (; passes <'))
   })
 
   it('진척이 하트비트에 남는다 — 안 보이면 판정을 못 한다', () => {

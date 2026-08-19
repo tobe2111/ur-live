@@ -21,6 +21,7 @@ import tradeRoutes from './partner-pool-trades.routes'
 import { partnerPoolDedupeRoutes } from './partner-pool-dedupe.routes'
 import { partnerPoolKeywordRoutes } from './partner-pool-keywords.routes'
 import { judgeLanes } from './lane-yield-health'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -70,8 +71,8 @@ app.get('/', async (c) => {
     q: (c.req.query('q') || '').trim() || undefined,
   }
   const [leads, total] = await Promise.all([
-    listCompanyLeads(c.env.DB, { ...filter, limit, offset }),
-    countCompanyLeads(c.env.DB, filter),
+    listCompanyLeads(adsLeadsDb(c.env), { ...filter, limit, offset }),
+    countCompanyLeads(adsLeadsDb(c.env), filter),
   ])
   return c.json({ success: true, leads, total, limit, offset })
 })
@@ -81,13 +82,13 @@ app.get('/', async (c) => {
 app.post('/:id/bounce', async (c) => {
   const id = intParam(c.req.param('id'), 0)
   if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
-  await ensureCompanySchema(c.env.DB)
+  await ensureCompanySchema(adsLeadsDb(c.env))
   // merged-filter-ok — id 지정 단건 조회(어드민이 명시한 행).
-  const row = await c.env.DB.prepare('SELECT email, phone FROM ad_company_leads WHERE id = ?').bind(id).first<{ email: string | null; phone: string | null }>().catch(() => null)
+  const row = await adsLeadsDb(c.env).prepare('SELECT email, phone FROM ad_company_leads WHERE id = ?').bind(id).first<{ email: string | null; phone: string | null }>().catch(() => null)
   const email = (row?.email || '').trim().toLowerCase()
   if (!email) return c.json({ success: false, error: '이 리드에 이메일이 없습니다' }, 400)
-  await c.env.DB.prepare("INSERT OR IGNORE INTO ad_email_suppress (email, reason) VALUES (?, 'bounce')").bind(email).run().catch(() => null)
-  await c.env.DB.prepare("UPDATE ad_company_leads SET email = NULL, contact_source = CASE WHEN phone IS NOT NULL AND phone != '' THEN contact_source ELSE NULL END, active = CASE WHEN phone IS NOT NULL AND phone != '' THEN active ELSE 0 END WHERE id = ?").bind(id).run().catch(() => null)
+  await adsLeadsDb(c.env).prepare("INSERT OR IGNORE INTO ad_email_suppress (email, reason) VALUES (?, 'bounce')").bind(email).run().catch(() => null)
+  await adsLeadsDb(c.env).prepare("UPDATE ad_company_leads SET email = NULL, contact_source = CASE WHEN phone IS NOT NULL AND phone != '' THEN contact_source ELSE NULL END, active = CASE WHEN phone IS NOT NULL AND phone != '' THEN active ELSE 0 END WHERE id = ?").bind(id).run().catch(() => null)
   return c.json({ success: true })
 })
 
@@ -96,12 +97,12 @@ app.post('/:id/bounce', async (c) => {
 //   응답은 즉시 반환하고 waitUntil 로 최대 25패스×1000행(≈2.5만 행/클릭)을 소진. 남으면 재클릭/시간당
 //   cron 이 이어받음. 이중 실행 잠금(4분 하트비트). 진행률은 상태줄(ads_reclassify_stats)이 매 패스 갱신.
 app.post('/reclassify', async (c) => {
-  const lockRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_burst_lock'").first<{ value: string }>().catch(() => null)
+  const lockRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_burst_lock'").first<{ value: string }>().catch(() => null)
   try {
     const lock = lockRow?.value ? JSON.parse(lockRow.value) as { at?: string } : null
     if (lock?.at && Date.now() - Date.parse(lock.at) < 240_000) return c.json({ success: false, error: '분류 정리가 이미 진행 중입니다 — 상태줄 확인' }, 409)
   } catch { /* 손상 잠금은 무시 */ }
-  const heartbeat = () => c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+  const heartbeat = () => adsLeadsDb(c.env).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind('ads_reclassify_burst_lock', JSON.stringify({ at: new Date().toISOString() })).run().catch(() => null)
   const burn = async () => {
     const startedAt = Date.now()
@@ -109,20 +110,20 @@ app.post('/reclassify', async (c) => {
     for (let i = 0; i < 25; i++) {
       if (Date.now() - startedAt > 200_000) break // 잔여는 cron/재클릭이 이어받음
       await heartbeat()
-      const r = await reclassifyCompanyLeads(c.env.DB, 1000, i === 0).catch(() => null) // 억제 스윕은 첫 패스만(처리량 3×)
+      const r = await reclassifyCompanyLeads(adsLeadsDb(c.env), 1000, i === 0).catch(() => null) // 억제 스윕은 첫 패스만(처리량 3×)
       if (!r) break
       passes++; scanned += r.scanned; updated += r.updated; removed += r.removed
       if (r.done) { done = true; break } // 재검사 대상 소진(전량 현행 규칙 통과)
     }
-    await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    await adsLeadsDb(c.env).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind('ads_reclassify_burst_last', JSON.stringify({ at: new Date().toISOString(), passes, scanned, updated, removed, done })).run().catch(() => null)
-    await c.env.DB.prepare("DELETE FROM platform_settings WHERE key = 'ads_reclassify_burst_lock'").run().catch(() => null)
+    await adsLeadsDb(c.env).prepare("DELETE FROM platform_settings WHERE key = 'ads_reclassify_burst_lock'").run().catch(() => null)
     // 🔔 완료 알림벨(결과 포함) — 페이지를 닫아도 결과가 남는다(대표 "완료되었다고 알람 + 결과값").
     try {
-      const remRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>()
+      const remRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>()
       let rem = -1; try { rem = Number((remRow?.value ? JSON.parse(remRow.value) : {}).remaining_unclassified ?? -1) } catch { /* 표시 생략 */ }
       const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
-      await createDashboardNotification(c.env.DB, 'admin', null, 'partner_pool_job', '🧭 분류 정리 풀가동 완료',
+      await createDashboardNotification(adsLeadsDb(c.env), 'admin', null, 'partner_pool_job', '🧭 분류 정리 풀가동 완료',
         `검사 ${scanned.toLocaleString()} · 갱신 ${updated.toLocaleString()} · 제거 ${removed.toLocaleString()}${done ? ' · 재검사 전량 소진 ✅' : rem >= 0 ? ` · 잔여 ${rem.toLocaleString()}건(재클릭 또는 시간당 자동)` : ''}`,
         '/admin/partner-pool')
     } catch { /* 알림 실패가 정리 자체를 막지 않음 */ }
@@ -140,7 +141,7 @@ app.post('/reclassify', async (c) => {
 app.post('/run-all', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const DB = c.env.DB
+  const DB = adsLeadsDb(c.env)
   const getLock = async (k: string) => {
     const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
     try { const l = row?.value ? JSON.parse(row.value) as { at?: string } : null; return !!(l?.at && Date.now() - Date.parse(l.at) < 240_000) } catch { return false }
@@ -218,20 +219,20 @@ app.get('/meta', (c) => c.json({
 //   ⚠️ 이 테이블의 시각 컬럼은 `created_at` 이다(인플루언서는 `collected_at`) — pool-timeline.ts 표 참조.
 app.get('/timeline', async (c) => {
   const { getPoolTimeline, resolveDays } = await import('./pool-timeline')
-  return c.json({ success: true, timeline: await getPoolTimeline(c.env.DB, 'company', resolveDays(c.req.query('days'))) })
+  return c.json({ success: true, timeline: await getPoolTimeline(adsLeadsDb(c.env), 'company', resolveDays(c.req.query('days'))) })
 })
 
 // GET /api/admin/partner-pool/stats
 app.get('/stats', async (c) => {
-  const s = await companyStats(c.env.DB)
+  const s = await companyStats(adsLeadsDb(c.env))
   // 🤝 레인 A 수집 상태 — 게이트 + 마지막 실행(ads_company_stats). ur-ads 서비스바인딩 존재여부.
-  const runRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_stats'").first<{ value: string }>().catch(() => null)
+  const runRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_stats'").first<{ value: string }>().catch(() => null)
   let run: unknown = null; try { run = runRow?.value ? JSON.parse(runRow.value) : null } catch { run = null }
   // 🏪 소스 ① 상가정보 수집 상태(ads_storeinfo_stats) — 게이트 + 마지막 실행.
-  const siRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_storeinfo_stats'").first<{ value: string }>().catch(() => null)
+  const siRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_storeinfo_stats'").first<{ value: string }>().catch(() => null)
   let storeinfoRun: unknown = null; try { storeinfoRun = siRow?.value ? JSON.parse(siRow.value) : null } catch { storeinfoRun = null }
   // 🛒 통신판매 수집 상태(ads_commerce_stats) — 원본 응답 필드 진단(이메일 필드 유무 확인용).
-  const cmRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_commerce_stats'").first<{ value: string }>().catch(() => null)
+  const cmRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_commerce_stats'").first<{ value: string }>().catch(() => null)
   let commerceRun: Record<string, unknown> | null = null; try { commerceRun = cmRow?.value ? JSON.parse(cmRow.value) : null } catch { commerceRun = null }
   // 원본 첫 항목에서 필드명 목록 + 이메일 형태 값 존재여부를 뽑아 UI 에 노출(추측 대신 실제 확인).
   let commerceProbe: { keys?: string[]; hasEmail?: boolean; emailField?: string } | undefined
@@ -245,20 +246,20 @@ app.get('/stats', async (c) => {
     commerceProbe = { keys, hasEmail: !!emailField || hasEmailVal, emailField }
   }
   // 🏢 공정위 가맹(프랜차이즈) 수집 상태(ads_franchise_stats).
-  const frRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_franchise_stats'").first<{ value: string }>().catch(() => null)
+  const frRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_franchise_stats'").first<{ value: string }>().catch(() => null)
   let franchiseRun: unknown = null; try { franchiseRun = frRow?.value ? JSON.parse(frRow.value) : null } catch { franchiseRun = null }
   // 🏛️ 국세청 폐업 스윕 상태(ads_ntsstatus_stats) — 활용신청 검증(note 에 오류 노출).
-  const ntsRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_ntsstatus_stats'").first<{ value: string }>().catch(() => null)
+  const ntsRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_ntsstatus_stats'").first<{ value: string }>().catch(() => null)
   let ntsRun: unknown = null; try { ntsRun = ntsRow?.value ? JSON.parse(ntsRow.value) : null } catch { ntsRun = null }
   // 👥 국민연금 규모 검증 상태(ads_nps_stats) — diag.sample 로 실응답 필드 검증(추측 대신 실제 확인).
-  const npsRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_nps_stats'").first<{ value: string }>().catch(() => null)
+  const npsRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_nps_stats'").first<{ value: string }>().catch(() => null)
   let npsRun: unknown = null; try { npsRun = npsRow?.value ? JSON.parse(npsRow.value) : null } catch { npsRun = null }
   // 🧭 소급 정리(재분류) 진행률(ads_reclassify_stats) — 6만 행 청소가 며칠 걸려 가시화 필수.
-  const rcRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>().catch(() => null)
+  const rcRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>().catch(() => null)
   let rcRun: unknown = null; try { rcRun = rcRow?.value ? JSON.parse(rcRow.value) : null } catch { rcRun = null }
   // 🔔 버튼 완료 감지용(2026-07-27 대표 "된 건지 안 된 건지 알 수가 없어") — 나라장터/MX/보강/버스트 결과 스탬프.
   const readKey = async (k: string): Promise<unknown> => {
-    const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
+    const row = await adsLeadsDb(c.env).prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
     try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
   }
   const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll, registryMatch, lkAll, lkEnrich, lkReclassify, localdataRun, enrichRollup, kakaoSweep] = await Promise.all([
@@ -313,12 +314,12 @@ app.get('/stats', async (c) => {
 //   [이메일 보유 → 전화만] 순으로 미접촉(new)만 추려 반환 — "누구부터 접촉?"의 원버튼 답.
 app.get('/contact-list', async (c) => {
   const limit = Math.min(30, Math.max(3, intParam(c.req.query('limit'), 10)))
-  const companies = (await c.env.DB.prepare(
+  const companies = (await adsLeadsDb(c.env).prepare(
     `SELECT id, company_name, category, subcategory, tier, region, email, phone, website FROM ad_company_leads
      WHERE active = 1 AND merged_into IS NULL AND status = 'new' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
      ORDER BY (CASE WHEN email IS NOT NULL AND email != '' THEN 0 ELSE 1 END), (tier IS NULL) ASC, tier ASC, id DESC LIMIT ?`
   ).bind(limit).all<Record<string, unknown>>().catch(() => null))?.results || []
-  const stores = (await c.env.DB.prepare(
+  const stores = (await adsLeadsDb(c.env).prepare(
     `SELECT id, biz_name, category, region, email, phone, website, is_new_open FROM store_prospects
      WHERE active = 1 AND status = 'new' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
      ORDER BY (CASE WHEN email IS NOT NULL AND email != '' THEN 0 ELSE 1 END), is_new_open DESC, apv_perm_ymd DESC, id DESC LIMIT ?`
@@ -342,7 +343,7 @@ app.post('/collect', async (c) => {
   const kick = async () => { try {
     const r = await ads.fetch(new Request('https://ur-ads/__ads/collect-company', { method: 'POST' }))
     const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
-    await notifyJobDone(c.env.DB, '🔍 레인 A 수집', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
+    await notifyJobDone(adsLeadsDb(c.env), '🔍 레인 A 수집', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
   } catch { /* fail-soft */ } }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
   try { await kick(); return c.json({ success: true, started: false }) }
@@ -376,7 +377,7 @@ app.post('/enrich', async (c) => {
   const kick = async () => { try {
     const r = await ads.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
     const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
-    await notifyJobDone(c.env.DB, '📧 연락처 보강', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
+    await notifyJobDone(adsLeadsDb(c.env), '📧 연락처 보강', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
   } catch { /* fail-soft */ } }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
   try { await kick(); return c.json({ success: true, started: false }) }
@@ -394,7 +395,7 @@ function delegateCollect(path: string, label: string) {
       try {
         const r = await ads.fetch(new Request(`https://ur-ads/__ads/${path}`, { method: 'POST' }))
         const body = (await r.json().catch(() => null)) as { ok?: boolean; stats?: Record<string, unknown> } | null
-        await notifyJobDone(c.env.DB, label, body?.stats ?? null)
+        await notifyJobDone(adsLeadsDb(c.env), label, body?.stats ?? null)
       } catch { /* fail-soft */ }
     }
     if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
@@ -431,12 +432,12 @@ app.post('/collect-nps', delegateCollect('collect-nps', '👥 국민연금 규�
 // ── 🤝 파트너 매장 소개(리퍼럴) 접수·추적 — 머니 무접촉(지급 배선은 별도 세션, partner-referrals.ts 주석) ──
 app.get('/referrals', async (c) => {
   const { listReferrals } = await import('./partner-referrals')
-  return c.json({ success: true, referrals: await listReferrals(c.env.DB) })
+  return c.json({ success: true, referrals: await listReferrals(adsLeadsDb(c.env)) })
 })
 app.post('/referrals', async (c) => {
   const { addReferral } = await import('./partner-referrals')
   const b = await c.req.json().catch(() => ({})) as Record<string, unknown>
-  const r = await addReferral(c.env.DB, {
+  const r = await addReferral(adsLeadsDb(c.env), {
     partner_lead_id: b.partner_lead_id != null ? Number(b.partner_lead_id) : null,
     partner_name: String(b.partner_name || ''), store_name: String(b.store_name || ''),
     region: b.region != null ? String(b.region) : null, phone: b.phone != null ? String(b.phone) : null,
@@ -450,11 +451,11 @@ app.patch('/referrals/:id', async (c) => {
   if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
   const b = await c.req.json().catch(() => ({})) as { status?: string; reward_amount?: number | null; reward_memo?: string | null; mark_paid?: boolean }
   if (b.status !== undefined) {
-    const r = await updateReferralStatus(c.env.DB, id, String(b.status || ''))
+    const r = await updateReferralStatus(adsLeadsDb(c.env), id, String(b.status || ''))
     if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   }
   if (b.reward_amount !== undefined || b.reward_memo !== undefined || b.mark_paid) {
-    const r = await updateReferralReward(c.env.DB, id, { amount: b.reward_amount, memo: b.reward_memo, markPaid: !!b.mark_paid })
+    const r = await updateReferralReward(adsLeadsDb(c.env), id, { amount: b.reward_amount, memo: b.reward_memo, markPaid: !!b.mark_paid })
     if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   }
   return c.json({ success: true })
@@ -468,12 +469,12 @@ app.post('/enrich-burst', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
   // 이중 실행 잠금(4분 하트비트) — 병렬 버스트는 같은 타깃(email IS NULL 상위 200)을 중복 크롤 → 쿼터 낭비.
-  const lockRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_enrich_burst_lock'").first<{ value: string }>().catch(() => null)
+  const lockRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_enrich_burst_lock'").first<{ value: string }>().catch(() => null)
   try {
     const lock = lockRow?.value ? JSON.parse(lockRow.value) as { at?: string } : null
     if (lock?.at && Date.now() - Date.parse(lock.at) < 240_000) return c.json({ success: false, error: '보강 풀가동이 이미 진행 중입니다 — 잠시 후 상태줄 확인' }, 409)
   } catch { /* 손상 잠금은 무시 */ }
-  const heartbeat = () => c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+  const heartbeat = () => adsLeadsDb(c.env).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind('ads_enrich_burst_lock', JSON.stringify({ at: new Date().toISOString() })).run().catch(() => null)
   const burn = async () => {
     const startedAt = Date.now()
@@ -497,14 +498,14 @@ app.post('/enrich-burst', async (c) => {
       if ((body.stats.processed ?? 0) === 0) { reason = 'backlog_done'; break } // 보강 대상 소진
     }
     const hitRate = crawls ? Math.round((hits / crawls) * 100) : 0
-    await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    await adsLeadsDb(c.env).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind('ads_enrich_burst_last', JSON.stringify({ at: new Date().toISOString(), rounds, processed, enriched, lastEnriched, crawls, hit_rate: hitRate, reason })).run().catch(() => null)
-    await c.env.DB.prepare("DELETE FROM platform_settings WHERE key = 'ads_enrich_burst_lock'").run().catch(() => null)
+    await adsLeadsDb(c.env).prepare("DELETE FROM platform_settings WHERE key = 'ads_enrich_burst_lock'").run().catch(() => null)
     // 🔔 완료 알림벨(결과 포함) — 페이지를 닫아도 결과가 남는다. 크롤 적중률로 다음 개선 방향(시도량 vs 추출력) 판단.
     try {
       const reasonLabel = reason === 'backlog_done' ? '백로그 소진 ✅' : reason === 'time_cap' ? '시간 상한 — 잔여는 자동/재클릭' : reason === 'loop_cap' ? '라운드 상한 — 잔여는 자동/재클릭' : '중단(응답 오류)'
       const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
-      await createDashboardNotification(c.env.DB, 'admin', null, 'partner_pool_job', '🚀 보강 풀가동 완료',
+      await createDashboardNotification(adsLeadsDb(c.env), 'admin', null, 'partner_pool_job', '🚀 보강 풀가동 완료',
         `${rounds}라운드 · 처리 ${processed.toLocaleString()} · 연락처 확보 ${enriched.toLocaleString()} · 크롤 ${crawls.toLocaleString()}(이메일 적중 ${hitRate}%) · ${reasonLabel}`, '/admin/partner-pool')
     } catch { /* 알림 실패가 보강 자체를 막지 않음 */ }
   }
@@ -532,7 +533,7 @@ app.post('/', async (c) => {
     source: 'manual',
     source_keyword: b.source_keyword ? String(b.source_keyword) : 'manual',
   }
-  const saved = await saveCompanyLeads(c.env.DB, [lead]).catch(() => 0)
+  const saved = await saveCompanyLeads(adsLeadsDb(c.env), [lead]).catch(() => 0)
   return c.json({ success: saved > 0, saved })
 })
 
@@ -542,7 +543,7 @@ app.post('/import', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { text?: string }
   const leads = parsePartnerPaste(String(b.text || ''))
   if (!leads.length) return c.json({ success: false, error: '헤더(회사명 포함)가 있는 표(CSV/TSV)를 붙여넣어 주세요', parsed: 0, saved: 0 }, 400)
-  const saved = await saveCompanyLeads(c.env.DB, leads).catch(() => 0)
+  const saved = await saveCompanyLeads(adsLeadsDb(c.env), leads).catch(() => 0)
   return c.json({ success: true, parsed: leads.length, saved })
 })
 
@@ -553,7 +554,7 @@ app.patch('/:id', async (c) => {
   const b = await c.req.json().catch(() => ({})) as {
     status?: string; memo?: string; tier?: number | null; follow_up_at?: string | null; contact_channel?: string | null
   }
-  const r = await updateCompanyLead(c.env.DB, id, b)
+  const r = await updateCompanyLead(adsLeadsDb(c.env), id, b)
   return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
 })
 
@@ -561,7 +562,7 @@ app.patch('/:id', async (c) => {
 app.delete('/:id', async (c) => {
   const id = parseInt(c.req.param('id'), 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'INVALID_ID' }, 400)
-  const r = await deleteCompanyLead(c.env.DB, id)
+  const r = await deleteCompanyLead(adsLeadsDb(c.env), id)
   return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
 })
 
@@ -570,7 +571,7 @@ app.post('/delete-bulk', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { ids?: unknown }
   const ids = Array.isArray(b.ids) ? b.ids.map(n => Number(n)) : []
   if (!ids.length) return c.json({ success: false, error: '선택된 항목이 없습니다' }, 400)
-  const deleted = await deleteCompanyLeads(c.env.DB, ids)
+  const deleted = await deleteCompanyLeads(adsLeadsDb(c.env), ids)
   return c.json({ success: true, deleted })
 })
 
@@ -580,9 +581,9 @@ const EXPORT_MAX = 5000
 
 // 🩸 화면 필터를 그대로 따른다(2026-08-03 수리 — 이전엔 무시했다). 배경·근거는 `pool-export.ts` 헤더.
 app.get('/export', async (c) => {
-  await ensureCompanySchema(c.env.DB)
+  await ensureCompanySchema(adsLeadsDb(c.env))
   const filter = parseCompanyExportFilter(k => c.req.query(k), intParam) as CompanyLeadFilter
-  const rows = await listCompanyLeads(c.env.DB, { ...filter, limit: EXPORT_MAX })
+  const rows = await listCompanyLeads(adsLeadsDb(c.env), { ...filter, limit: EXPORT_MAX })
   return csvResponse({
     filename: 'partner-leads.csv',
     header: ['tier', 'category', 'subcategory', 'company_name', 'region', 'phone', 'email', 'website', 'address', 'status', 'contact_channel', 'follow_up_at', 'memo', 'source', 'source_keyword', 'collected_at'],

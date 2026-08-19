@@ -13,6 +13,7 @@ import {
 } from '../influencer-discovery'
 import { providerAvailable } from '../provider-discovery'
 import { naverOpenId, naverOpenSecret } from './helpers'
+import { adsLeadsDb } from '../../../../shared/ads/leads-db'
 
 const adsInfluencersRoutes = new Hono<{ Bindings: Env }>()
 
@@ -22,7 +23,7 @@ const acctId = (c: { req: { header: (k: string) => string | undefined }; env: En
 adsInfluencersRoutes.get('/influencers', async (c) => {
   const id = await acctId(c)
   if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  const leads = await listInfluencerLeads(c.env.DB, id, {
+  const leads = await listInfluencerLeads(adsLeadsDb(c.env), id, {
     status: c.req.query('status') || undefined,
     hasContact: c.req.query('has_contact') === '1',
   })
@@ -38,12 +39,12 @@ adsInfluencersRoutes.get('/influencers', async (c) => {
 adsInfluencersRoutes.get('/influencers/pool-stats', async (c) => {
   const id = await acctId(c)
   if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  const agg = await c.env.DB.prepare(`SELECT COUNT(*) AS total,
+  const agg = await adsLeadsDb(c.env).prepare(`SELECT COUNT(*) AS total,
       SUM(CASE WHEN platform='youtube' THEN 1 ELSE 0 END) AS youtube,
       SUM(CASE WHEN platform='naver_blog' THEN 1 ELSE 0 END) AS naver_blog,
       SUM(CASE WHEN collected_at >= datetime('now','-1 day') THEN 1 ELSE 0 END) AS recent24h
     FROM ad_influencer_leads WHERE account_id = 0`).first().catch(() => null)
-  const row = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_autocollect_stats'").first<{ value: string }>().catch(() => null)
+  const row = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_autocollect_stats'").first<{ value: string }>().catch(() => null)
   let run: unknown = null; try { run = row?.value ? JSON.parse(row.value) : null } catch { run = null }
   // 📈 일별 요약을 **미리 계산해서** 준다 — 원본(`run.funnel`)만 주면 결국 아무도 안 본다.
   //   총계가 아니라 **요청당 수확**이라야 "왜 줄었나"가 보인다(근거는 influencer-collect-funnel.ts 헤더).
@@ -67,8 +68,8 @@ adsInfluencersRoutes.post('/influencers/discover', rateLimit({ action: 'ads-inf-
       const status = r.error === 'NOT_CONFIGURED' ? 503 : r.error === 'QUOTA' ? 429 : 400
       return c.json({ success: false, error: r.message || (r.error === 'NOT_CONFIGURED' ? 'YouTube 수집이 설정되지 않았습니다 (YOUTUBE_API_KEY)' : '발굴 실패'), code: r.error }, status)
     }
-    const saved = await saveInfluencerLeads(c.env.DB, id, r.leads)
-    return c.json({ success: true, found: r.leads.length, saved, leads: await listInfluencerLeads(c.env.DB, id) })
+    const saved = await saveInfluencerLeads(adsLeadsDb(c.env), id, r.leads)
+    return c.json({ success: true, found: r.leads.length, saved, leads: await listInfluencerLeads(adsLeadsDb(c.env), id) })
   }
 
   // 네이버 블로거 — 네이버 검색 오픈API(무료, 보유 키).
@@ -78,8 +79,8 @@ adsInfluencersRoutes.post('/influencers/discover', rateLimit({ action: 'ads-inf-
       const status = r.error === 'NOT_CONFIGURED' ? 503 : 400
       return c.json({ success: false, error: r.message || (r.error === 'NOT_CONFIGURED' ? '네이버 검색 API가 설정되지 않았습니다' : '발굴 실패'), code: r.error }, status)
     }
-    const saved = await saveInfluencerLeads(c.env.DB, id, r.leads)
-    return c.json({ success: true, found: r.leads.length, saved, leads: await listInfluencerLeads(c.env.DB, id) })
+    const saved = await saveInfluencerLeads(adsLeadsDb(c.env), id, r.leads)
+    return c.json({ success: true, found: r.leads.length, saved, leads: await listInfluencerLeads(adsLeadsDb(c.env), id) })
   }
 
   // 네이버 카페 — 커뮤니티(카페) 단위 발굴(동일 네이버 키).
@@ -89,8 +90,8 @@ adsInfluencersRoutes.post('/influencers/discover', rateLimit({ action: 'ads-inf-
       const status = r.error === 'NOT_CONFIGURED' ? 503 : 400
       return c.json({ success: false, error: r.message || (r.error === 'NOT_CONFIGURED' ? '네이버 검색 API가 설정되지 않았습니다' : '발굴 실패'), code: r.error }, status)
     }
-    const saved = await saveInfluencerLeads(c.env.DB, id, r.leads)
-    return c.json({ success: true, found: r.leads.length, saved, leads: await listInfluencerLeads(c.env.DB, id) })
+    const saved = await saveInfluencerLeads(adsLeadsDb(c.env), id, r.leads)
+    return c.json({ success: true, found: r.leads.length, saved, leads: await listInfluencerLeads(adsLeadsDb(c.env), id) })
   }
 
   // 인스타/틱톡 직접 발굴 = 데이터 제공사 API 필요(자체 스크래핑은 Workers 불가 + ToS/법 리스크).
@@ -115,7 +116,7 @@ adsInfluencersRoutes.patch('/influencers/:id', rateLimit({ action: 'ads-inf-patc
   const leadId = Number(c.req.param('id'))
   if (!Number.isFinite(leadId)) return c.json({ success: false, error: '잘못된 ID' }, 400)
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
-  const r = await updateInfluencerLead(c.env.DB, id, leadId, {
+  const r = await updateInfluencerLead(adsLeadsDb(c.env), id, leadId, {
     status: b.status !== undefined ? String(b.status) : undefined,
     memo: b.memo !== undefined ? String(b.memo) : undefined,
   })
@@ -129,7 +130,7 @@ adsInfluencersRoutes.delete('/influencers/:id', rateLimit({ action: 'ads-inf-del
   if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const leadId = Number(c.req.param('id'))
   if (!Number.isFinite(leadId)) return c.json({ success: false, error: '잘못된 ID' }, 400)
-  const r = await deleteInfluencerLead(c.env.DB, id, leadId)
+  const r = await deleteInfluencerLead(adsLeadsDb(c.env), id, leadId)
   if (!r.ok) return c.json({ success: false, error: r.error }, 404)
   return c.json({ success: true })
 })

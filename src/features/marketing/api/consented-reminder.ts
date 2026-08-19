@@ -15,6 +15,7 @@ import { sendEmail } from '@/services/email'
 import { withAdLabel, buildCampaignBody, textToHtml, isNightKST } from './outreach-send'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const POOL = 0                 // 공용 풀(account_id=0) — 어드민 발송과 동일 스코프
 const REMIND_AFTER_DAYS = 4    // 1차 발송 후 대기일
@@ -41,11 +42,11 @@ export async function runConsentedReminder(env: Env): Promise<ReminderResult> {
   if (env.ADS_REMINDER_ENABLED !== 'true') return { scanned: 0, sent: 0, suppressed: 0, failed: 0, disabled: true }
   if (!env.RESEND_API_KEY) return { scanned: 0, sent: 0, suppressed: 0, failed: 0, disabled: true }
   if (isNightKST(Date.now())) return { scanned: 0, sent: 0, suppressed: 0, failed: 0, skipped_night: true }
-  await ensureInfluencerSchema(env.DB)
-  await ensureOutreachColumns(env.DB)
-  await ensureRemindColumn(env.DB)
+  await ensureInfluencerSchema(adsLeadsDb(env))
+  await ensureOutreachColumns(adsLeadsDb(env))
+  await ensureRemindColumn(adsLeadsDb(env))
   // ⚖️ 대상 강제: 동의 + 이메일 1차 발송(contacted, N일 경과) + 무회신 + 무리마인드 + 억제상태 아님.
-  const rows = (await env.DB.prepare(`SELECT id, name, email FROM ad_influencer_leads
+  const rows = (await adsLeadsDb(env).prepare(`SELECT id, name, email FROM ad_influencer_leads
     WHERE account_id = ? AND consented_at IS NOT NULL AND email IS NOT NULL
       AND contact_channel = 'email' AND contacted_at IS NOT NULL AND contacted_at <= datetime('now', ?)
       AND reminded_at IS NULL AND replied_at IS NULL
@@ -58,11 +59,11 @@ export async function runConsentedReminder(env: Env): Promise<ReminderResult> {
   const subject = withAdLabel('협찬 제안 리마인드 — 유어애즈')
   for (const r of rows) {
     // 멱등 선점(CAS) — 동시 cron/재시도가 같은 리드에 이중 발송 못 하게 발송 전 마킹.
-    const claim = await env.DB.prepare("UPDATE ad_influencer_leads SET reminded_at = datetime('now') WHERE id = ? AND account_id = ? AND reminded_at IS NULL")
+    const claim = await adsLeadsDb(env).prepare("UPDATE ad_influencer_leads SET reminded_at = datetime('now') WHERE id = ? AND account_id = ? AND reminded_at IS NULL")
       .bind(r.id, POOL).run().catch(() => null)
     if (claim?.meta?.changes !== 1) continue
     const body = buildCampaignBody(REMIND_TEMPLATE, r.name) // {name} 치환 + 수신거부·전송자정보 강제
-    const res = await sendEmail({ to: r.email, subject, html: textToHtml(body) }, env.RESEND_API_KEY, env.RESEND_FROM, env.DB)
+    const res = await sendEmail({ to: r.email, subject, html: textToHtml(body) }, env.RESEND_API_KEY, env.RESEND_FROM, adsLeadsDb(env))
       .catch(() => ({ success: false as const, error: 'throw' }))
     if (res.success) sent++
     else if ((res as { error?: string }).error === 'suppressed') suppressed++

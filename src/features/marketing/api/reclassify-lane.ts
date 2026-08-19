@@ -24,25 +24,26 @@
  *   ⏰ **2026-08-05 — 그래도 죽어서 알람으로 이관.** 행상한·시간상한을 다 넣고도 부모 cron 꼬리에서
  *     끌려 죽었다(같은 정각의 다른 레인이 부모 CPU 를 소진). DO 알람은 부모가 없어 자기 예산을 받는다.
  *   🧠 **2026-08-05 머지 이식 — CPU 사망 학습분 반영.** main(#1076)이 인라인 본문에
- *     `reclassifyWorkPlan(env, env.DB)`(async — cpu-quantum 학습배수 소비)를 배선했는데 같은 시각
+ *     `reclassifyWorkPlan(env, adsLeadsDb(env))`(async — cpu-quantum 학습배수 소비)를 배선했는데 같은 시각
  *     이 파일로 본문이 추출되고 있었다. 두 벌이 갈리지 않게 여기(단일 본문)로 옮겨 왔다 —
  *     cron·알람 어느 경로로 돌아도 사망 이력만큼 행 상한이 자동으로 줄어든다.
  */
 import type { Env } from '@/worker/types/env'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 export async function runReclassifyLane(env: Env): Promise<Record<string, unknown>> {
   const { reclassifyCompanyLeads } = await import('./company-discovery')
   const { reclassifyWorkPlan } = await import('./collect-budget')
   const { sweepCompanyHygiene } = await import('./company-hygiene-sweep')
-  const { rowsPerPass, maxRows, deadlineMs } = await reclassifyWorkPlan(env, env.DB) // 🧠 CPU 사망 학습분 반영(cpu-quantum.ts)
+  const { rowsPerPass, maxRows, deadlineMs } = await reclassifyWorkPlan(env, adsLeadsDb(env)) // 🧠 CPU 사망 학습분 반영(cpu-quantum.ts)
   const t0 = Date.now()
   // 🧹 위생 백로그 스윕 — **랩보다 먼저**. 랩은 250행/시간이라 한 바퀴에 50일이고, 그 사이 대표가
   //   화면에서 보는 것은 옛 번호다. 결함 행만 좁혀 도는 1회성이고 완주하면 설정 1행 읽기로 끝난다.
   //   ⚠️ fail-soft — 이 스윕이 죽어도 재분류는 그대로 돌아야 한다(부가 작업이 본업을 막으면 안 된다).
-  const hygiene = await sweepCompanyHygiene(env.DB).catch(() => null)
-  let last = await reclassifyCompanyLeads(env.DB, rowsPerPass) // 첫 패스만 housekeeping(억제 스윕)
+  const hygiene = await sweepCompanyHygiene(adsLeadsDb(env)).catch(() => null)
+  let last = await reclassifyCompanyLeads(adsLeadsDb(env), rowsPerPass) // 첫 패스만 housekeeping(억제 스윕)
   let passes = 1, rows = rowsPerPass
-  for (; passes < 5 && !last.done && rows < maxRows && Date.now() - t0 < deadlineMs; passes++, rows += rowsPerPass) last = await reclassifyCompanyLeads(env.DB, rowsPerPass, false)
+  for (; passes < 5 && !last.done && rows < maxRows && Date.now() - t0 < deadlineMs; passes++, rows += rowsPerPass) last = await reclassifyCompanyLeads(adsLeadsDb(env), rowsPerPass, false)
   // 관측: 매번 상한에서 끊기면 더 내려야 한다는 신호다(그때 커서 전진률을 같이 볼 것).
   return {
     ...last, passes, rows, elapsed_ms: Date.now() - t0,

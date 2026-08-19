@@ -28,6 +28,7 @@ import {
   shouldProbe, usableVariantState, LICENSE_STATE_VERSION, type ProbeAttempt, type VariantState,
 } from './license-url'
 import { fieldCoverage, coverageNote, type FieldCoverage } from './field-coverage'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 /**
  * 🧮 서브리퀘스트 예산 (2026-07-29 근본수리 — 이 레인이 `total_saved: 0` 이던 진짜 이유).
@@ -60,7 +61,7 @@ interface PendingDay { day: string; idx: number }
 /** 이 레인의 예산 산출(env × 관측 학습 상한) — 다른 레인 키와 절대 공유하지 않는다(collect-budget 주석 참조). */
 async function resolveLocalDataBudget(env: Env): Promise<{ budget: FetchBudget; envBudget: number; learnedCap: number; total: number }> {
   const envBudget = Math.min(300, Math.max(20, envPlanValue((env as unknown as { ADS_LOCALDATA_BUDGET?: string }).ADS_LOCALDATA_BUDGET, 40, 240, env)))
-  const learnedCap = Math.max(0, parseInt((await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('localdata'))
+  const learnedCap = Math.max(0, parseInt((await adsLeadsDb(env).prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('localdata'))
     .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = envSubreqCap(env)
@@ -76,7 +77,7 @@ async function resolveLocalDataBudget(env: Env): Promise<{ budget: FetchBudget; 
 async function persistLocalDataCap(env: Env, total: number, budget: FetchBudget, learnedCap: number, envBudget: number): Promise<void> {
   const nextCap = nextSubreqCap(total - budget.left, !!budget.limitHit, learnedCap, envBudget, envSubreqCap(env))
   if (nextCap == null) return
-  await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+  await adsLeadsDb(env).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(subreqCapKey('localdata'), String(nextCap)).run().catch(() => null)
 }
 
@@ -290,7 +291,7 @@ function resolveEndpoints(env: Env): Record<string, string> {
 
 /** 인허가 변동분 1틱(cron 일1회 또는 수동). 전일 변동분 × 업종별 엔드포인트 × 페이지네이션. */
 export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   // 🧾 스키마 DDL 비용도 예산에서 뺀다(2026-07-29) — 안 빼면 우리 계수(40)와 플랫폼 계수(49)가
   //   갈라져 그 차이만큼 조용히 죽는다. 이 레인이 total_saved:0 이던 잔여 원인.
   const schemaSpent = await ensureProspectSchema(DB)
@@ -455,7 +456,7 @@ export async function runLocalDataBackfill(env: Env, maxDaysArg?: number): Promi
   // 🎚️ 회차당 일감도 **요금제를 따른다** — 예산만 커지고 이 숫자가 고정이면 늘어난 예산이 남는다.
   //   호출부가 명시로 넘기면 그 값이 이긴다(수동 트리거·테스트가 그렇게 쓴다).
   const maxDaysPerRun = maxDaysArg ?? envPlanValue(undefined, 2, 6, env)
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   const windowDays = Math.max(0, parseInt((env as unknown as { ADS_LOCALDATA_BACKFILL_DAYS?: string }).ADS_LOCALDATA_BACKFILL_DAYS || '0', 10) || 0)
   if (!windowDays) return { enabled: false, done: true, days: [], found: 0, saved: 0 }
   const schemaSpent = await ensureProspectSchema(DB) // 스키마 DDL 실비(아래 예산에서 차감)

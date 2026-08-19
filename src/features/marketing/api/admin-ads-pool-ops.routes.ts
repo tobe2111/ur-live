@@ -12,6 +12,7 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import { isCollectRunning, isMaintainRunning } from './collect-lease'
 import { parseOutreachCsv, normalizeOutreachItems, ingestOutreachStatuses, OUTREACH_INGEST_MAX } from './outreach-status-ingest' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -31,7 +32,7 @@ app.post('/influencer-pool/collect-burst', async (c) => {
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
   // 🔒 이미 돌고 있으면 시작하지 않고 그대로 알린다 — 예전엔 lease 가 조용히 막는데 UI 는 "시작했어요" 라고
   //   거짓 성공을 띄웠다(페이지 이탈 후 재진입 시 흔한 경로). 경합 방지는 여전히 lease 가 담당.
-  if (await isCollectRunning(c.env.DB).catch(() => false)) return c.json({ success: true, busy: true, started: false })
+  if (await isCollectRunning(adsLeadsDb(c.env)).catch(() => false)) return c.json({ success: true, busy: true, started: false })
   const burn = async () => {
     const startedAt = Date.now()
     let prevUsed = -1
@@ -55,7 +56,7 @@ app.post('/influencer-pool/collect-burst', async (c) => {
       if (yb.used <= prevUsed) { reason = 'no_progress'; break }   // 진전 없음(YT 키워드 소진/YT 불가)
       prevUsed = yb.used
     }
-    await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    await adsLeadsDb(c.env).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind('ads_burst_last', JSON.stringify({ at: new Date().toISOString(), reason, lastUsed: prevUsed })).run().catch(() => null)
   }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(burn()); return c.json({ success: true, started: true }) }
@@ -76,8 +77,8 @@ app.post('/influencer-pool/maintain-all', async (c) => {
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 야간 cron 만 동작' }, 503)
   // 🔒 이미 정비가 돌고 있으면 새로 시작하지 않는다 — 버튼이 waitUntil 이라 즉시 다시 활성화되므로
   //   연타하면 파이프라인이 겹쳐 병합 레이스 + YouTube 쿼터 중복 소모가 난다(진짜 가드는 파이프라인 내부 lease).
-  if (await isMaintainRunning(c.env.DB).catch(() => false)) return c.json({ success: true, busy: true, started: false })
-  const collecting = await isCollectRunning(c.env.DB).catch(() => false)
+  if (await isMaintainRunning(adsLeadsDb(c.env)).catch(() => false)) return c.json({ success: true, busy: true, started: false })
+  const collecting = await isCollectRunning(adsLeadsDb(c.env)).catch(() => false)
   const hop = async (path: string) => {
     try {
       const r = await ads.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
@@ -89,7 +90,7 @@ app.post('/influencer-pool/maintain-all', async (c) => {
     const out: Record<string, unknown> = { at: new Date().toISOString(), skipped_rescan: collecting }
     out.maintenance = await hop('/__ads/maintenance')
     if (!collecting) out.rescan = await hop('/__ads/maintenance-rescan') // YT 쿼터 경합 회피
-    await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    await adsLeadsDb(c.env).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind('ads_maintain_all_last', JSON.stringify(out).slice(0, 1000)).run().catch(() => null)
   }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(runAll()); return c.json({ success: true, started: true, skipped_rescan: collecting }) }
@@ -256,6 +257,6 @@ app.post('/outreach/status', async (c) => {
     return c.json({ success: false, error: '반영할 행이 없습니다', invalid: parsed.invalid }, 400)
   }
   const nowIso = new Date().toISOString().slice(0, 19).replace('T', ' ')
-  const r = await ingestOutreachStatuses(c.env.DB, parsed.items, nowIso)
+  const r = await ingestOutreachStatuses(adsLeadsDb(c.env), parsed.items, nowIso)
   return c.json({ success: !r.error, ...r, invalid: parsed.invalid, error: r.error })
 })

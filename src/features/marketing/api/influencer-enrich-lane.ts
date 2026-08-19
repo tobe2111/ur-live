@@ -127,6 +127,7 @@ export interface InfluencerEnrichSnapshot {
 /** 📐 예산 배분 정책(순수) — SSOT 는 `influencer-enrich-plan.ts`. 재수출이라 기존 import 경로는 그대로. */
 export { planInfluencerEnrich, naverRoomFromRemaining, naverRoomWithYtReserve } from './influencer-enrich-plan'
 import { planInfluencerEnrich, naverRoomWithYtReserve } from './influencer-enrich-plan'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 /** 📗 티스토리 몫 — 정책·근거는 `influencer-tistory-performance.ts`(SSOT). 여기선 재수출만. */
 export { TISTORY_ROOM, tistoryRoom } from './influencer-tistory-performance'
@@ -429,7 +430,7 @@ export async function runInfluencerEnrich(
     naverOnly?: boolean
   },
 ): Promise<InfluencerEnrichSnapshot> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   const started = Date.now()
   await ensureInfluencerSchema(DB)   // bio_checked_at · perf_checked_at · recent_posts_30d
   await ensurePerfExtraColumns(DB)   // last_post_at (블로거 마지막 글 날짜)

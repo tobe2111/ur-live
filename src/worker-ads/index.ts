@@ -37,6 +37,7 @@ import { socialMediaRoutes } from '@/features/social-media/api/social-media.rout
 // 🌙 야간 재보정 시각 — 정의는 `rescan-hour.ts`(정비 cron 모듈과 공유하며 순환 import 를 피한다).
 export { RESCAN_HOUR_UTC } from './rescan-hour'
 import { RESCAN_HOUR_UTC } from './rescan-hour'
+import { adsLeadsDb } from '../shared/ads/leads-db'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -142,9 +143,9 @@ app.post('/__ads/reclassify-company', async (c) => {
     // passes: 한 인보케이션에서 N패스(기본 1) — cron 이 5패스로 호출(2026-07-28 실측: SELF 바인딩이면
     //   엔드포인트가 1패스만 돌아 시간당 1,000행에 그쳤음. 잔여 10.9만 → 4.5일 소요되던 병목).
     const passes = Math.min(8, Math.max(1, parseInt(c.req.query('passes') || '1', 10) || 1))
-    let stats = await reclassifyCompanyLeads(c.env.DB, 1000, c.req.query('light') !== '1') // light=억제스윕 생략
+    let stats = await reclassifyCompanyLeads(adsLeadsDb(c.env), 1000, c.req.query('light') !== '1') // light=억제스윕 생략
     let total = stats.scanned
-    for (let i = 1; i < passes && !stats.done; i++) { stats = await reclassifyCompanyLeads(c.env.DB, 1000, false); total += stats.scanned }
+    for (let i = 1; i < passes && !stats.done; i++) { stats = await reclassifyCompanyLeads(adsLeadsDb(c.env), 1000, false); total += stats.scanned }
     return c.json({ ok: true, stats: { ...stats, scanned: total } })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
@@ -579,7 +580,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
 
   // 🧾 디스패치 후 한 번에 쓴다(빈 배치를 쓰면 이후 기록이 영영 못 나간다) + 이력 한 줄. ⏳ 단 **무한정
   //   기다리지 않는다** — 근거·실측·못 기다린 레인을 왜 판정에서 빼는지는 `tail-bound.ts` 헤더에 있다.
-  ctx.waitUntil(closeTick({ DB: env.DB, env: env as never, kicked, ranNames, at: tickStartIso, hourUTC, beats }))
+  ctx.waitUntil(closeTick({ DB: adsLeadsDb(env), env: env as never, kicked, ranNames, at: tickStartIso, hourUTC, beats }))
 }
 
 // ⏰ DO 알람 레인 — wrangler-ads.toml 의 durable_objects 바인딩이 이 export 를 찾는다.

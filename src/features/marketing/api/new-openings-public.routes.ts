@@ -11,12 +11,13 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { intParam } from '@/shared/pagination'
 import { ensureProspectSchema } from './store-prospects'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const app = new Hono<{ Bindings: Env }>()
 
 // GET /api/public/new-openings?region=&days=30&limit=60
 app.get('/', async (c) => {
-  await ensureProspectSchema(c.env.DB)
+  await ensureProspectSchema(adsLeadsDb(c.env))
   const days = Math.min(60, Math.max(3, intParam(c.req.query('days'), 30)))
   const limit = Math.min(120, Math.max(6, intParam(c.req.query('limit'), 60)))
   const region = (c.req.query('region') || '').trim().slice(0, 20)
@@ -25,11 +26,11 @@ app.get('/', async (c) => {
   const where: string[] = ['active = 1', 'is_new_open = 1', 'apv_perm_ymd >= ?']
   const binds: (string | number)[] = [cutoff]
   if (region) { where.push('region LIKE ?'); binds.push(`%${region}%`) }
-  const rows = (await c.env.DB.prepare(
+  const rows = (await adsLeadsDb(c.env).prepare(
     `SELECT biz_name, category, uptae, region, addr_road, apv_perm_ymd FROM store_prospects
      WHERE ${where.join(' AND ')} ORDER BY apv_perm_ymd DESC, id DESC LIMIT ?`)
     .bind(...binds, limit).all<Record<string, unknown>>().catch(() => null))?.results || []
-  const regions = (await c.env.DB.prepare(
+  const regions = (await adsLeadsDb(c.env).prepare(
     `SELECT COALESCE(region,'') AS k, COUNT(*) AS n FROM store_prospects
      WHERE active = 1 AND is_new_open = 1 AND apv_perm_ymd >= ? AND region IS NOT NULL AND region != ''
      GROUP BY region ORDER BY n DESC LIMIT 20`)

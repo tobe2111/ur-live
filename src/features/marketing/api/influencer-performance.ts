@@ -365,7 +365,7 @@ export async function runYtLiveRefetch(env: Env, passes = 3): Promise<{ processe
   const budget: FetchBudget = { left: Math.min(envSubreqCap(env), 250) }
   let processed = 0
   for (let i = 0; i < Math.max(1, Math.min(10, passes)) && budget.left > 5; i++) {
-    const n = await enrichYouTubePerformance(env.YOUTUBE_API_KEY, env.DB, budget, 20, 'refresh').catch(() => 0)
+    const n = await enrichYouTubePerformance(env.YOUTUBE_API_KEY, adsLeadsDb(env), budget, 20, 'refresh').catch(() => 0)
     processed += n
     if (n === 0) break // 더 처리할 대상 없음
   }
@@ -381,7 +381,7 @@ export async function runYtLiveRefetch(env: Env, passes = 3): Promise<{ processe
 export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number }): Promise<{ scanned: number; changed: number; confirmed: number }> {
   const apiKey = env.YOUTUBE_API_KEY
   if (!apiKey) return { scanned: 0, changed: 0, confirmed: 0 }
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   await ensurePerfExtraColumns(DB)
   // 🛡️ 2026-07-23 전수조사: 이 함수만 fetch 예산·진행 커서가 없어 20k 풀에서 무제한 fetch → 인보케이션 중도 사망 시
   //   조용히 앞부분만 처리되고, OFFSET 재시작이라 **재클릭해도 항상 같은 앞부분만** 도달하던 결함 수리:
@@ -447,6 +447,7 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
 // ⏱️ 풀 전수 스캔 작업 상한(순수)은 `pool-scan-budget.ts` — 기존 import 경로 호환을 위해 재수출.
 export { poolScanShouldStop, POOL_SCAN_MAX_ROWS, POOL_SCAN_MAX_MS } from './pool-scan-budget'
 import { poolScanShouldStop } from './pool-scan-budget'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudget }): Promise<{ scanned: number; changed: number; stamped: number; done: boolean }> {
   // 🧭 2026-07-28: OFFSET 전수스캔 → **id 커서**. 무료 플랜 예산(인보케이션당 ~29 D1 연산)에선 한 번에

@@ -44,6 +44,9 @@ const LOOP = SRC.slice(AT, AT + 2600)
 const IDX = readFileSync(resolve(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
 const RUNNERS = readFileSync(resolve(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
 
+// 🔀 2026-08-19: 유어애즈 리드 DB 분리로 핸들이 `env.DB` → `adsLeadsDb(env)` 가 됐다.
+//   여기서 보려는 것은 **'요청 스코프 DB 핸들을 넘기는가'** 이지 그 표현식의 철자가 아니다 —
+//   철자로 고정하면 리팩토링이 배선 가드를 조용히 무력화한다(dashboard-session 에서 겪은 그 함정).
 describe('재분류 — 인보케이션당 총량에 상한이 있다', () => {
   it('🔒 패스 루프가 **마감선**을 본다 — 없으면 5패스를 무조건 돌아 CPU 한도에 닿는다', () => {
     expect(AT, 'runReclassifyLane 을 못 찾았다 — 이름이 바뀌었으면 이 시험을 고쳐라').toBeGreaterThan(0)
@@ -61,7 +64,7 @@ describe('재분류 — 인보케이션당 총량에 상한이 있다', () => {
   })
 
   it('🔒 첫 패스는 **상한 검사 전에** 무조건 돈다 — 0패스로 끝나면 커서가 영영 안 나간다', () => {
-    const first = LOOP.indexOf('let last = await reclassifyCompanyLeads(env.DB, rowsPerPass)')
+    const first = LOOP.search(/let last = await reclassifyCompanyLeads\((?:adsLeadsDb\((?:c\.)?env\)|(?:c\.)?env\.DB), rowsPerPass\)/)
     const loopAt = LOOP.indexOf('for (; passes < 5')
     expect(first, '첫 패스를 못 찾았다').toBeGreaterThan(0)
     expect(first, '첫 패스가 루프 앞에 있어야 한다').toBeLessThan(loopAt)
@@ -74,7 +77,7 @@ describe('재분류 — 인보케이션당 총량에 상한이 있다', () => {
   })
 
   it('🔒 `housekeeping` 은 첫 패스만 — 뒤 패스도 켜면 대형 테이블 풀스캔이 패스마다 반복된다', () => {
-    expect(LOOP).toMatch(/reclassifyCompanyLeads\(env\.DB, rowsPerPass, false\)/)
+    expect(LOOP).toMatch(/reclassifyCompanyLeads\((?:adsLeadsDb\((?:c\.)?env\)|(?:c\.)?env\.DB), rowsPerPass, false\)/)
   })
 
   it('🔒 두 실행 경로(cron kick · DO 알람)가 **같은 본문**을 부른다 — 반쪽 추출이면 도로 두 벌', () => {
