@@ -16,6 +16,7 @@
 
 import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
+import { loadSeedAsset, isGuideSeed, SEED_ASSET_PATHS, type SeedAssetEnv } from '../../../worker/utils/seed-assets'
 // 🛡️ 2026-05-18: GUIDE_SEEDS (87KB) dynamic import — worker bundle 외 분리.
 
 const app = new Hono<{ Bindings: Env }>();
@@ -94,10 +95,14 @@ app.get('/search', async (c) => {
       sections = rows?.results || [];
     } catch { /* skip */ }
 
-    // 2차: DB 비어있으면 시드 사용 (dynamic import — 87KB)
+    // 2차: DB 비어있으면 시드 사용.
+    // 🌱 2026-08-19: 정적 자산으로 읽는다. 이전엔 `import('./guide-seed')` 라 **가이드 산문 313KB 가
+    //   통째로 워커 번들에 상주**했다(동적 import 여도 워커는 단일 파일이라 번들에 들어간다 —
+    //   "dynamic import 라 제외된다"는 옛 주석은 사실이 아니었다). 못 읽으면 DB 결과만 쓴다.
     if (!sections.length) {
-      const { GUIDE_SEEDS } = await import('./guide-seed');
-      sections = GUIDE_SEEDS[r].map((s: any) => ({
+      const GUIDE_SEEDS = await loadSeedAsset(c.env as unknown as SeedAssetEnv, SEED_ASSET_PATHS.guides, isGuideSeed);
+      const seed = GUIDE_SEEDS?.[r] || [];
+      sections = seed.map((s) => ({
         section_key: s.key,
         title: s.title,
         content: s.content,
