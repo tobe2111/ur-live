@@ -67,23 +67,63 @@ function DealCardMedia({
   const [idx, setIdx] = useState(0)
   // 실제로 본 장면만 네트워크를 태운다(위 트래픽 보호 주석 참조).
   const [seen, setSeen] = useState<Set<number>>(() => new Set([0]))
+  /**
+   * 💀 2026-08-19 (대표 확정 B — 라이브 실측): **원본까지 죽은** 장면의 인덱스.
+   *
+   * 배경: 홈에 사진이 안 뜨는 카드가 있었다(보드람치킨 id 2822). 커버가
+   * `t1.daumcdn.net/cfile/…` 인데 그 원본이 **403** 이었고, 정작 갤러리 4장은 멀쩡했다.
+   * `cfImageOnError` 는 [리사이저 실패 → 원본 → 숨김] 까지만 하므로 **카드가 그냥 빈 채로** 남았다.
+   * ⇒ 죽은 장면을 기억해 두고, 그게 지금 보이는 장면이면 **살아 있는 다음 사진으로 넘어간다.**
+   * 데이터를 한 건 고치는 대신 같은 사고 전체를 막는다(대표 판단: "코드로 방어").
+   */
+  const [dead, setDead] = useState<Set<number>>(() => new Set())
+
+  /** 살아 있는 장면들 — 화살표·도트는 이 목록 위에서만 움직인다(죽은 칸을 세지 않는다). */
+  const alive = useMemo(
+    () => slides.map((_, i) => i).filter((i) => !dead.has(i)),
+    [slides, dead],
+  )
+
+  /** 지금 보이는 장면이 죽었으면 살아 있는 첫 장면으로 대체(그 장면은 이제 '본' 것이 된다). */
+  const shown = dead.has(idx) ? (alive[0] ?? idx) : idx
+
+  const markDead = useCallback((i: number) => {
+    setDead((prev) => {
+      if (prev.has(i)) return prev
+      const next = new Set(prev)
+      next.add(i)
+      return next
+    })
+    // 대체 장면은 실제로 보여 줘야 하므로 네트워크를 태운다(트래픽 보호의 예외가 아니라, 사용자가
+    // 지금 보고 있는 한 장을 채우는 것뿐이다 — 갤러리를 통째로 받지 않는다).
+    setSeen((sv) => {
+      const nextIdx = slides.map((_, k) => k).find((k) => k !== i && !sv.has(k))
+      if (nextIdx == null) return sv
+      const n = new Set(sv)
+      n.add(nextIdx)
+      return n
+    })
+  }, [slides])
 
   const go = useCallback((e: React.MouseEvent, delta: number) => {
     // <Link> 안이라 이걸 빼면 사진 넘기기가 페이지 이동이 된다.
     e.preventDefault()
     e.stopPropagation()
     setIdx((cur) => {
-      const next = (cur + delta + slides.length) % slides.length
-      setSeen((s) => (s.has(next) ? s : new Set(s).add(next)))
+      const list = slides.map((_, i) => i).filter((i) => !dead.has(i))
+      if (list.length === 0) return cur
+      const at = Math.max(0, list.indexOf(dead.has(cur) ? (list[0] ?? cur) : cur))
+      const next = list[(at + delta + list.length) % list.length]
+      setSeen((sv) => (sv.has(next) ? sv : new Set(sv).add(next)))
       return next
     })
-  }, [slides.length])
+  }, [slides, dead])
 
-  const multi = slides.length > 1
+  const multi = alive.length > 1
 
   return (
     <div className={`relative ${aspectClass} w-full overflow-hidden group/media ${className}`}>
-      {slides.length === 0 ? (
+      {slides.length === 0 || alive.length === 0 ? (
         <div className="w-full h-full flex items-center justify-center">{fallback}</div>
       ) : (
         slides.map((src, i) => {
@@ -101,13 +141,18 @@ function DealCardMedia({
               decoding="async"
               onLoad={(e) => {
                 const el = e.currentTarget as HTMLImageElement
-                el.style.opacity = i === idx ? '1' : '0'
+                el.style.opacity = i === shown ? '1' : '0'
                 if (isCover) onCoverLoad?.(el)
               }}
-              onError={(e) => cfImageOnError(e.currentTarget, src)}
-              style={{ opacity: i === idx ? 1 : 0, transition: 'opacity 220ms ease-out' }}
+              onError={(e) => {
+                const el = e.currentTarget as HTMLImageElement
+                cfImageOnError(el, src)
+                // `cfFallback === '2'` = 리사이저도 원본도 실패해 숨긴 상태 = 이 장면은 죽었다.
+                if (el.dataset.cfFallback === '2') markDead(i)
+              }}
+              style={{ opacity: i === shown ? 1 : 0, transition: 'opacity 220ms ease-out' }}
               className={`absolute inset-0 w-full h-full object-cover ${
-                i === idx ? 'transition-transform duration-300 group-hover:scale-[1.03]' : 'pointer-events-none'
+                i === shown ? 'transition-transform duration-300 group-hover:scale-[1.03]' : 'pointer-events-none'
               }`}
             />
           )
@@ -137,13 +182,13 @@ function DealCardMedia({
             <ChevronRight className="w-4 h-4" aria-hidden="true" />
           </button>
           <div className="absolute inset-x-0 bottom-1.5 flex items-center justify-center gap-1 z-[2] pointer-events-none">
-            {slides.map((_, i) => (
+            {alive.map((i) => (
               <span
                 key={i}
                 className="h-1 rounded-full transition-all"
                 style={{
-                  width: i === idx ? 10 : 4,
-                  background: i === idx ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.55)',
+                  width: i === shown ? 10 : 4,
+                  background: i === shown ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.55)',
                   boxShadow: '0 0 2px rgba(0,0,0,.35)',
                 }}
               />

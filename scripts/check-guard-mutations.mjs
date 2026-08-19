@@ -72,6 +72,17 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '죽은 사진을 그대로 보여 준다(카드가 빈 칸으로 남는다)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'const shown = dead.has(idx) ? (alive[0] ?? idx) : idx',
+    replace: 'const shown = idx',
+    test: 'src/tests/unit/deal-card-gallery.test.ts',
+    why:
+      '2026-08-19 라이브에 실제로 있었다 — 커버가 403 인데 갤러리 4장은 멀쩡한 상품(보드람치킨 id 2822). ' +
+      '`cfImageOnError` 는 [리사이저 → 원본 → 숨김] 까지만 하므로 **에러도 안 나고 화면만 빈다.** ' +
+      '대표가 "사진이 안 뜬다"고 말해 주기 전엔 아무도 모르는 종류라, 지워져도 조용히 되돌아간다.',
+  },
+  {
     name: '히어로 사진이 리사이저를 건너뛴다(첫 화면에 원본 1MB)',
     file: 'src/components/home/HomeHeroDefault.tsx',
     find: 'cfImage(photo.src',

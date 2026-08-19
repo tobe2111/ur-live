@@ -20,8 +20,7 @@ import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { trackFunnel } from '@/lib/funnel'
-import DesktopTopNav from '@/components/main/DesktopTopNav'
-import PromoBar from '@/components/main/PromoBar'  // 📣 어드민이 켰을 때만 뜨는 최상단 띠(PC)
+import ConsumerTopChrome from '@/components/main/ConsumerTopChrome'
 import { swallow } from '@/shared/utils/swallow'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
 import { featureFlags } from '@/shared/config/feature-flags'
@@ -613,8 +612,7 @@ function AppContent() {
               MobileAppLayout 의 `data-mobile-only="true"` (라이브/쇼츠) 페이지는 여전히 430px 액자 유지. */}
           <div className="min-h-dvh">
           {/* 📐 2026-05-03: PC 상단 네비게이션 — 모바일 BottomNav 의 PC 대응. lg+ 에서만 표시. */}
-          {!hideBottomNav && <div className="hidden md:block"><PromoBar /></div>}
-          {!hideBottomNav && <DesktopTopNav />}
+          {!hideBottomNav && <ConsumerTopChrome />}
           <div className="flex-1">
           {/* 🗑️ 2026-06-20 (대표 요청): InAppBrowserBanner 미마운트(노이즈) — 카카오 로그인은 카톡 인앱에서도
               정상. 2026-07-23: 카톡 자동 외부-redirect 도 제거(autoRedirectKakaoToExternal=no-op) → 모든 인앱은
