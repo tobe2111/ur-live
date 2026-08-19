@@ -142,6 +142,10 @@ describe('죽은 사진은 다음 사진으로 대체된다', () => {
   it('카드: 죽음 대체가 트래픽 보호를 깨지 않는다 (여전히 본 장면만 로드)', () => {
     // 이 한 줄이 사라지면 카드 50개 × 갤러리 전량 = 첫 화면 요청 폭증.
     expect(media).toMatch(/if \(!seen\.has\(i\)\) return null/)
+    // 대체본은 **보이던 장면이 죽었을 때만** 받는다 — 안 보이는 뒷장이 죽었다고 미리 받으면
+    // 사용자가 넘기지도 않은 사진을 네트워크에 태우는 셈이다.
+    expect(media).toMatch(/markDead\(i, i === shown\)/)
+    expect(media).toMatch(/if \(!isShown\) return/)
   })
 
   it('상세: CSS 배경은 오류를 못 잡으므로 같은 URL 의 감지용 img 를 얹는다', () => {

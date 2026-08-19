@@ -87,15 +87,21 @@ function DealCardMedia({
   /** 지금 보이는 장면이 죽었으면 살아 있는 첫 장면으로 대체(그 장면은 이제 '본' 것이 된다). */
   const shown = dead.has(idx) ? (alive[0] ?? idx) : idx
 
-  const markDead = useCallback((i: number) => {
+  const markDead = useCallback((i: number, isShown: boolean) => {
     setDead((prev) => {
       if (prev.has(i)) return prev
       const next = new Set(prev)
       next.add(i)
       return next
     })
-    // 대체 장면은 실제로 보여 줘야 하므로 네트워크를 태운다(트래픽 보호의 예외가 아니라, 사용자가
-    // 지금 보고 있는 한 장을 채우는 것뿐이다 — 갤러리를 통째로 받지 않는다).
+    /**
+     * 🚦 대체본은 **지금 화면에 보이던 장면이 죽었을 때만** 받는다.
+     *
+     * 보이지도 않는 뒷장이 죽었다고 다음 장을 미리 받으면, 사용자가 넘기지도 않은 사진을
+     * 네트워크에 태우는 셈이라 이 컴포넌트의 1원칙(본 장면만 로드)이 깨진다.
+     * 보이던 장면이 죽은 경우에만 **한 장**을 채운다 — 갤러리를 통째로 받지 않는다.
+     */
+    if (!isShown) return
     setSeen((sv) => {
       const nextIdx = slides.map((_, k) => k).find((k) => k !== i && !sv.has(k))
       if (nextIdx == null) return sv
@@ -148,7 +154,7 @@ function DealCardMedia({
                 const el = e.currentTarget as HTMLImageElement
                 cfImageOnError(el, src)
                 // `cfFallback === '2'` = 리사이저도 원본도 실패해 숨긴 상태 = 이 장면은 죽었다.
-                if (el.dataset.cfFallback === '2') markDead(i)
+                if (el.dataset.cfFallback === '2') markDead(i, i === shown)
               }}
               style={{ opacity: i === shown ? 1 : 0, transition: 'opacity 220ms ease-out' }}
               className={`absolute inset-0 w-full h-full object-cover ${
