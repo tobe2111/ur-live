@@ -62,23 +62,25 @@ describe('홈 카드는 한 벌이다 (섹션 ↔ 피드)', () => {
 })
 
 describe('서버가 카드 갤러리를 잘라서 보낸다', () => {
-  it('리스트 API 가 상한을 걸고 커버 중복을 뺀다', () => {
-    const routes = code('src/features/group-buy/api/group-buy-public.routes.ts')
-    expect(routes).toMatch(/CARD_GALLERY_MAX\s*=\s*\d+/)
-    expect(routes).toMatch(/\.slice\(0, CARD_GALLERY_MAX\)/)
-    expect(routes).toMatch(/u !== cover/)
+  it('자르기 규칙은 SSOT 헬퍼가 갖는다 (상한 + 커버 중복 제거)', () => {
+    // 🔄 2026-08-19: 인라인이던 파싱을 `card-gallery`(SSOT)로 옮겼다 — 파일 크기 래칫 때문이기도 하지만,
+    //   본질은 **라우트와 cron 이 같은 규칙을 써야 한다**는 것. 검사 대상도 함께 옮긴다.
+    const helper = code('src/features/group-buy/api/card-gallery.ts')
+    expect(helper).toMatch(/CARD_GALLERY_MAX\s*=\s*\d+/)
+    expect(helper).toMatch(/\.slice\(0, CARD_GALLERY_MAX\)/)
+    expect(helper).toMatch(/u !== coverUrl/)
   })
 
-  it('materialized 캐시(cron)도 같은 규칙으로 잘라 저장한다', () => {
-    // 안 자르면 캐시 row 가 원본 전량을 안고 있고, 그 크기를 캐시 hit 마다 파싱한다.
-    const cron = code('src/worker/cron/group-buy-feed-cache.ts')
-    expect(cron).toMatch(/p\.images/)
-    expect(cron).toMatch(/\.slice\(0, 3\)/)
+  it('🔴 라이브 쿼리와 materialized cron 이 **같은 함수**를 쓴다', () => {
+    // 한쪽만 자르면 캐시 hit 여부에 따라 페이로드가 달라진다 — 에러가 없어 아무도 모른다.
+    expect(code('src/features/group-buy/api/group-buy-public.routes.ts')).toMatch(/sliceCardGallery\(/)
+    expect(code('src/worker/cron/group-buy-feed-cache.ts')).toMatch(/sliceCardGallery\(/)
   })
 
   it('갤러리를 실을 컬럼이 SELECT 에 있다 (섹션·피드 양쪽)', () => {
     expect(code('src/features/sections/api/section-rules.ts')).toMatch(/p\.images/)
     expect(code('src/features/group-buy/api/group-buy-public.routes.ts')).toMatch(/p\.restaurant_lat, p\.restaurant_lng, p\.images/)
+    expect(code('src/worker/cron/group-buy-feed-cache.ts')).toMatch(/p\.images/)
   })
 })
 

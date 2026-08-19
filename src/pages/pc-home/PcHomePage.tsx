@@ -79,7 +79,10 @@ export default function PcHomePage() {
   const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
 
   return (
-    <div className="bg-white dark:bg-[#0F151D] min-h-[100dvh]">
+    /* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면): PC 메인 배경을 브랜드 잉크(#1A2C42)로 덮고
+       콘텐츠는 흰 패널로 띄운다. 그루폰이 초록으로 하는 것을 우리 딥네이비로.
+       ⚠️ PC 메인 한정(대표 지시) — 다른 소비자 페이지는 흰 배경 그대로. */
+    <div className="bg-[#1A2C42] min-h-[100dvh]">
       <SEO
         title="유어딜 — 동네 이용권·공동구매·교환권을 할인가로"
         description="우리 동네 이용권·동네딜·교환권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요."
@@ -97,7 +100,7 @@ export default function PcHomePage() {
       <div className="max-w-[1440px] mx-auto px-6 lg:px-8 pt-4">
         <main className="min-w-0">
           {/* 🗺️ 상단 헤더 행 — 좌: 위치바+카테고리 / 우: 지도 썸네일 버튼(대표 지정 위치 — 빈 공간 활용). */}
-          <div className="mb-4 border-b border-gray-100 dark:border-[#2A3446] pb-3 flex items-start justify-between gap-8">
+          <div className="ur-home-panel mb-4 flex items-start justify-between gap-8">
             <div className="flex-1 min-w-0">
               <div className="mb-3">
                 <PcHomeLocationBar value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} />
@@ -124,6 +127,8 @@ export default function PcHomePage() {
 
           {/* 🏷️ 2026-08-08: 카테고리를 고르면 제목·설명이 **그 카테고리를 말한다.** 이전엔 숙소를 눌러도
               제목이 "내 주변 가까운 딜"이라, 화면이 걸러졌다는 신호가 어디에도 없었다. */}
+          {/* 🎨 그루폰 구조 — 제목·정렬칩·그리드를 하나의 흰 패널에 담는다(색면 위에 뜬 매대). */}
+          <div className="ur-home-panel">
           <header ref={gridHeaderRef} className="mb-3 scroll-mt-24">
             <h1 className="text-[20px] font-black tracking-tight text-gray-900 dark:text-white">
               {catLabel
@@ -195,13 +200,16 @@ export default function PcHomePage() {
             districtKey={region.districtKey}
             userLoc={userLoc}
           />
+          </div>
         </main>
       </div>
 
       {/* 🗺️ 2026-08-03 (대표 — 여기어때 하단 링크 그리드 차용): 지역 텍스트 링크.
           크롤러가 `/region/*` 페이지를 발견하는 통로 + 사용자 지역 탐색. 이미지 0 → LCP 영향 없음.
           플래그 OFF 면 아무것도 안 그린다(홈은 2026-07-19 확정 구조로 즉시 복귀). */}
-      {REGION_PAGES_ENABLED && <RegionLinkGrid />}
+      {/* 🎨 2026-08-19: 색면 위에서는 자체 배경이 없으면 글자가 묻힌다(gray-900 on 잉크).
+          지역 링크는 흰 밴드로 깔아 하단을 마무리한다 — 그루폰 하단 링크 영역과 같은 처리. */}
+      {REGION_PAGES_ENABLED && <RegionLinkGrid className="bg-white dark:bg-[#0F151D]" />}
 
       <PcHomeAppBand />
       <SiteFooter />

@@ -124,7 +124,7 @@ function DealCardMedia({
             type="button"
             aria-label="이전 사진"
             onClick={(e) => go(e, -1)}
-            className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center opacity-0 group-hover/media:opacity-100 focus:opacity-100 transition-opacity hover:bg-black/65 z-[2]"
+            className="ur-appear absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center hover:bg-black/70 z-[2]"
           >
             <ChevronLeft className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -132,7 +132,7 @@ function DealCardMedia({
             type="button"
             aria-label="다음 사진"
             onClick={(e) => go(e, 1)}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center opacity-0 group-hover/media:opacity-100 focus:opacity-100 transition-opacity hover:bg-black/65 z-[2]"
+            className="ur-appear absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center hover:bg-black/70 z-[2]"
           >
             <ChevronRight className="w-4 h-4" aria-hidden="true" />
           </button>

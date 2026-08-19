@@ -85,7 +85,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
           <Fragment key={sec.id}>
           {/* 📐 가로 여백은 홈 컨테이너가 준다 — 여기서 또 주면 좌우가 어긋난다. */}
           {/* 📐 2026-08-17 (대표 — 컴팩트): 섹션 하단 여백·제목·그리드 gap 축소(피드 그리드와 동일 톤). */}
-          <section className="pb-6">
+          <section className="ur-home-panel">
             <div className="flex items-end justify-between gap-4 mb-3">
               <div className="min-w-0">
                 <h3 className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">

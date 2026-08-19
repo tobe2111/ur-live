@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import DealCardMedia from '@/components/deal/DealCardMedia'
+import WishlistHeart from '@/components/deal/WishlistHeart'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
@@ -183,7 +184,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
       onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
       onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
       onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}
-      className={`block group active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col ${pc ? 'bg-white dark:bg-[#161618] border border-gray-200 dark:border-[#2A3446] hover:shadow-lg hover:border-gray-300 dark:hover:border-[#3A3A3A]' : ''}`}
+      className={`block group active:scale-[0.98] rounded-2xl overflow-hidden flex flex-col ${pc ? 'ur-lift bg-white dark:bg-[#161618] border border-gray-200 dark:border-[#2A3446] hover:border-gray-300 dark:hover:border-[#3A3A3A]' : 'transition-transform'}`}
       style={pc ? undefined : { backgroundColor: grad.base }}
     >
       {/* 🎨 대표색 카드 + 사진 하단 같은색 번짐(그라데이션) — /group-buy GroupBuyGridCard 와 동일 룩.
@@ -217,8 +218,11 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
                 ⏰ {remaining}
               </span>
             )}
-            {/* 🎯 추첨 응모 배지 (우상단) — 결제 없이 응모 → 추첨. 상세에서 응모 가능. */}
-            {fcfs && <FcfsBadge info={fcfs} variant="overlay" className="absolute top-2 right-2 z-[2]" />}
+            {/* 🎯 추첨 응모 배지 — 💗 2026-08-19 우상단을 찜 하트에 내주고 **좌상단**으로 이동
+                (마감임박 배지가 있으면 그 아래). 겹치면 둘 다 못 읽는다. */}
+            {fcfs && <FcfsBadge info={fcfs} variant="overlay" className={`absolute ${isUrgent ? 'top-9' : 'top-2'} left-2 z-[2]`} />}
+            {/* 💗 찜 — 그루폰 카드 우상단 하트. hover 시 나타나고(찜된 건 항상 보임) 누르면 통 튄다. */}
+            <WishlistHeart productId={p.id} className="absolute top-2 right-2 z-[3]" />
           </>
         }
       />
