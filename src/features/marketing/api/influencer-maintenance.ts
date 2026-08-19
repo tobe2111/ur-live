@@ -223,7 +223,6 @@ export async function reextractPoolContacts(DB: D1Database, opts?: { budget?: Op
   }
   // 🅿️ 다 훑었어도 **0 으로 되돌리지 않는다** — 그게 매 회차 전수 재스캔의 원인이었다(위 docblock).
   //   다음 회차는 여기서 이어받아 새 행만 본다. 전수 재스캔은 규칙 버전 bump 로만 일어난다.
-  //
   // 🩸 **커서 저장은 예산 밖(raw DB)에서 한다** (2026-08-03 라이브 실측). 호출부가 넘기는 `DB` 는
   //   `budgetedDb` 라 예산이 바닥나면 쓰기가 잘리는데, 이 저장은 함수의 **마지막** 동작이라 하필
   //   그때 실행된다. 그리고 `.catch(() => null)` 이 삼켜 조용히 사라진다 —
