@@ -298,6 +298,26 @@ const MUTATIONS = [
       'id 중복만 제거한다 — dedup 이 빠지면 같은 키워드를 한 회차에 두 번 호출한다.',
   },
   {
+    name: '🩺 소진 레인을 실패로 싣는다(매일 "완료"를 경보로 보낸다)',
+    file: 'src/features/marketing/api/lane-health-report.ts',
+    find: '    .filter(h => h.runs > 0 && h.fails / h.runs >= REPORT_FAIL_RATIO)',
+    replace: '    .filter(h => h.runs > 0 && (h.barren || h.fails / h.runs >= REPORT_FAIL_RATIO))',
+    test: 'src/tests/unit/lane-health-report.test.ts',
+    why:
+      '소진(성공하는데 수확 0)은 손해가 아니라 **완료**다 — 매일 경보로 보내면 채널이 곧 무시당하고, ' +
+      '그러면 정작 실패가 났을 때도 안 보인다. 소진은 `isBarren` 감속이 조용히 처리한다.',
+  },
+  {
+    name: '레인 상태를 경보 없이도 붙인다(정상인 날에도 소음)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: "        if (bad.length) lines.push('', '**레인 상태**', ...bad)",
+    replace: "        lines.push('', '**레인 상태**', ...bad)",
+    test: 'src/tests/unit/lane-health-report.test.ts',
+    why:
+      '실패한 레인이 없으면 한 줄도 안 늘어나야 한다. 빈 헤더만 매번 붙으면 경보가 길어지고, ' +
+      '길어진 경보는 안 읽힌다 — 오경보와 같은 클래스의 실패다.',
+  },
+  {
     name: '📈 보강이 실패 중인 레인도 올린다(실패가 3배가 된다)',
     file: 'src/worker-ads/lane-alarm.ts',
     find: '      const accept = runs > 0 && laneCanAbsorb(hist)',

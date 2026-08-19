@@ -212,6 +212,15 @@ export async function maybeAlertInflow(env: { DISCORD_WEBHOOK_URL?: string }, DB
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind(STATE_KEY, JSON.stringify({ day: today, alerts })).run().catch(() => null)
 
+    // 🩺 **왜 줄었는지까지 실어 보낸다** — "줄었다"만 말하는 경보는 받는 사람에게 숙제를 넘기는 것이다.
+    //   실패한 레인이 있을 때만 붙는다(정상이면 한 줄도 안 늘어난다).
+    if (lines.length) {
+      try {
+        const { summarizeLaneHealth, reportLines } = await import('./lane-health-report')
+        const bad = reportLines(await summarizeLaneHealth(DB))
+        if (bad.length) lines.push('', '**레인 상태**', ...bad)
+      } catch { /* 관측 실패가 경보를 막지 않는다 */ }
+    }
     const webhook = env.DISCORD_WEBHOOK_URL
     if (webhook && lines.length) {
       // ⚠️ 상대경로 — 워커 런타임엔 `@/` alias 가 없다(2026-08-04 에 이 줄이 alias 라 경보가 못 나갔다).
