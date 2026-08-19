@@ -14,11 +14,26 @@ import { ADS_LEADS_TABLES, touchesAdsLeadsTable, adsLeadsDb } from '../../shared
  *
  * ⚠️ 이 테스트가 **못** 잡는 것:
  *   - 런타임 D1 동작(실제 두 DB 간 조회) — 바인딩이 붙은 뒤 라이브에서만 판정된다.
- *   - 문자열로 조립된 동적 테이블명(`FROM ${t}`) — 정적 스캔의 원리적 한계다.
+ *   - 문자열로 조립된 동적 테이블명(`FROM ${t}`) — **정적 스캔의** 한계다.
+ *
+ * 🟢 다만 동적 조립이 **런타임 구멍은 아니다**(2026-08-19 확인). 보간은 `prepare()` **전에**
+ *   끝나므로 라우터가 보는 것은 이미 완성된 SQL 이다 — 예: `pool-timeline.ts` 의
+ *   `FROM ${table}` 은 `POOL_SOURCE` 의 리터럴(`ad_influencer_leads`)로 채워진 뒤 넘어간다.
+ *   그리고 그 리터럴이 소스에 있으므로 R1 도 그 파일을 정상적으로 본다.
+ *   ⇒ 위험한 형태는 **테이블명이 소스에 리터럴로 없는** 경우뿐이고, 현재 그런 코드는 없다.
  */
 
+/**
+ * ⚠️ `git ls-files` 는 **추적되는 파일만** 준다 — 새로 만든 파일은 커밋 전까지 이 목록에 없다.
+ *   그래서 "새 파일을 만들고 테스트가 초록"이어도 그건 **아직 안 본 것**일 수 있다
+ *   (실제로 이 PR 에서 `leads-db.ts` 가 커밋되는 순간 R1 이 처음 그 파일을 봤다).
+ *   커밋 후 한 번 더 돌릴 것.
+ */
 const SRC = execSync(`git ls-files 'src/**/*.ts' 'src/*.ts' | grep -v '/tests/'`, { encoding: 'utf8' })
   .trim().split('\n').filter(Boolean)
+
+/** 라우터 본체는 예외 — **여기가 바로 `env.DB` 를 정당하게 읽는 유일한 자리**다. */
+const ROUTER = 'src/shared/ads/leads-db.ts'
 
 /** 주석은 배선이 아니다 — 테이블 이름이 설명문에만 남아도 통과하는 함정을 막는다. */
 function codeOnly(s: string): string {
@@ -52,6 +67,7 @@ describe('R1 · 리드 테이블을 만지는 파일은 adsLeadsDb 로 핸들을
   it('bare env.DB 로 리드 테이블을 건드리는 파일이 없다', () => {
     const bad: string[] = []
     for (const f of SRC) {
+      if (f === ROUTER) continue
       const code = codeOnly(readFileSync(f, 'utf8'))
       if (!TABLE_RX.test(code)) continue
       // adsLeadsDb(...) 로 감싸이지 않은 env.DB 참조가 남아 있으면 바인딩 후 깨진다.
