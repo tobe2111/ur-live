@@ -77,10 +77,17 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
         // 🐛 2026-08-17 (대표 신고 — 더보기 클릭 시 옛 프레임 플래시): 저장된 href 가 `/group-buy` 같은
         // **별칭**(App.tsx `<Navigate>` 경로)이면 홈이 리마운트되며 플래시가 난다 — SSOT 로 정본 치환.
         // (데이터는 section-seed v2 heal 이 고치지만, 어드민이 다시 별칭을 넣어도 여기서 막는다.)
+        // 🐛 2026-08-19 (대표 신고 — "더보기 버튼 클릭 시 아무런 반응이 없고"):
+        //   위 별칭 치환이 **쿼리를 통째로 버리고 있었다.** 서버가 주는 `/?sort=popular` 에서
+        //   경로 부분 `/` 만 정규화하고 그 결과로 링크를 만들었기 때문에 최종 href 가 `/` 가 됐다
+        //   — 홈에서 홈으로 가는 링크라 눌러도 화면이 그대로다(에러도 없어 고장으로 안 보인다).
+        //   ⇒ 정규화는 **경로에만** 적용하고 쿼리·해시는 그대로 다시 붙인다.
         const raw = sec.more_href ? safeInternalPath(sec.more_href, '') : ''
         const qIdx = raw.indexOf('?')
-        const canon = raw ? resolveConsumerAlias(qIdx === -1 ? raw : raw.slice(0, qIdx)) : null
-        const more = canon ?? raw
+        const rawPath = qIdx === -1 ? raw : raw.slice(0, qIdx)
+        const rawQuery = qIdx === -1 ? '' : raw.slice(qIdx)
+        const canonPath = raw ? resolveConsumerAlias(rawPath) : null
+        const more = raw ? `${canonPath ?? rawPath}${rawQuery}` : ''
         return (
           <Fragment key={sec.id}>
           {/* 📐 가로 여백은 홈 컨테이너가 준다 — 여기서 또 주면 좌우가 어긋난다. */}

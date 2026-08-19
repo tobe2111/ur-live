@@ -193,7 +193,19 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
           <div className="relative w-full max-w-[1100px] px-4" onClick={(e) => e.stopPropagation()}>
-            <div className="w-full rounded-xl" style={{ aspectRatio: '4 / 3', ...bg(main, 1600) }} role="img" aria-label={alt} />
+            {/* 🖼️ 2026-08-19 (대표 신고 — "사진이 너무 커서 잘리는 문제" + "사진 클릭 시 안 나오는 문제가 다수"):
+                두 결함이 한 줄에 겹쳐 있었다. 이전엔 `aspectRatio: 4/3` 배경(cover)이라
+                  ① 1100px 폭 × 4:3 = **825px 높이** → 노트북 화면(뷰포트 ~800)에서 위아래가 화면 밖으로 나갔고,
+                  ② `cover` 라 사진 자체도 가장자리가 **잘려** 보였다(전체 사진을 보려고 연 자리인데),
+                  ③ 배경 이미지라 **404 여도 오류 이벤트가 없어** 그냥 검은 화면이었다 — "눌러도 안 나온다".
+                ⇒ `<img object-contain max-h-[85vh]>` 로 바꾼다: 화면 안에 들어오고, 사진이 안 잘리고,
+                  실패하면 onError 로 그 사진을 목록에서 뺀다(다음 사진이 올라온다). */}
+            <img
+              src={cfImage(main, { width: 1600, format: 'auto' }) || main}
+              alt={alt}
+              className="w-full max-h-[85vh] object-contain rounded-xl bg-black/40"
+              onError={() => setDead((prev) => (prev.has(main) ? prev : new Set(prev).add(main)))}
+            />
             {multi && (
               <>
                 <button type="button" onClick={() => step(-1)} aria-label="이전 사진"
