@@ -3719,6 +3719,28 @@ const MUTATIONS = [
       '읽기만 하고 저장을 안 하면 커서가 항상 1 이라 수정 전과 **동일하게** 동작한다. 그리고 그 상태는 ' +
       '에러도 경보도 안 낸다 — 이 레포의 "계산해 놓고 안 쓰는" 사고 클래스 그대로다.',
   },
+  {
+    // 🚀 커서 시딩(2026-08-19, 배포 +2.5h 실측 후) — 커서만 넣으면 효과가 몇 주 뒤에 온다.
+    name: '커서 시딩이 사라짐(효과가 키워드마다 약 6일씩 밀린다)',
+    file: 'src/features/marketing/api/influencer-keyword-ddl.ts',
+    find: "  'UPDATE ad_discovery_keywords SET nb_start = 101 WHERE COALESCE(nb_start, 1) = 1 AND COALESCE(saved_total, 0) >= 100',",
+    replace: '',
+    test: 'src/tests/unit/ads-search-depth.test.ts',
+    why:
+      '커서는 "다음에 쓸 값"이라 첫 sim 회차는 **여전히 1페이지**를 읽고 101 을 저장만 한다. 한 키워드가 ' +
+      '다시 뽑히는 주기가 ~3일이고 sim 은 그 절반이라 두 번째 sim 회차가 약 6일 뒤다 — 실측으로 확인했다' +
+      '(배포 직후 sim 회차 신규율 8.9% = 기준선 동일, 그 회차엔 커서만 7개 올랐다).',
+  },
+  {
+    name: '시딩 가드가 사라짐(신규 키워드의 1페이지를 건너뛰고, 재적용 때 깊은 커서를 되돌린다)',
+    file: 'src/features/marketing/api/influencer-keyword-ddl.ts',
+    find: 'WHERE COALESCE(nb_start, 1) = 1 AND COALESCE(saved_total, 0) >= 100',
+    replace: 'WHERE 1=1',
+    test: 'src/tests/unit/ads-search-depth.test.ts',
+    why:
+      '가드 둘이 각각 다른 사고를 막는다: `saved_total>=100` 이 없으면 **갓 만든 키워드의 미개척지인 ' +
+      '1페이지**를 건너뛰고, `nb_start=1` 이 없으면 DDL 재적용 때 **901 까지 파 놓은 커서를 101 로 되돌린다**.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

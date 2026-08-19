@@ -772,3 +772,56 @@ SELECT DATE(collected_at,'+9 hours') d, COUNT(*) n,
 ```
 ✅ 통과 = `nb_start` 가 101/201… 로 퍼지고 신규율이 기준선 위로 · ❌ 실패 = 전부 1(배선) 또는
 네이버가 `start` 를 무시(신규율 불변 → 그때는 `display` 를 낮추고 `start` 를 더 잘게 미는 실험)
+
+### ✅ 판정 (2026-08-19 17:51 KST, 배포 +2.5h) — **배선 살아 있음. 효과는 아직. 그래서 가속했다**
+
+| 항목 | 결과 |
+|---|---|
+| ① 커서 전진 | ✅ `nb_start=101` **7개** / 1 이 551개 — 컬럼·DDL·저장 배선 전부 정상 |
+| ② 신규율 | ⚠️ 배포 후 sim 회차 **8.9%**(nbF 684 / nbS 61) — 기준선(8.4~38.6%)과 **동일** |
+| ③ 일별 | 08-18 4,418 → 08-19 2,488(17:51, 74.6% 경과 → 예상 ~3,335) |
+| ④ 차단 | ✅ `blocked 0` · ok 28,861 · 네이버 오류 없음(`diag.naver` 에 error 부재) |
+
+#### 🧠 ②가 왜 당연했나 — **커서 의미론 때문에 첫 방문은 여전히 1페이지다**
+`planSearchDepth` 는 `start` = *저장된 값*, `nextStart` = *다음에 쓸 값*을 준다. 그래서 어떤 키워드의
+**첫 sim 회차는 start=1 을 읽고 101 을 저장만** 한다. 그 회차가 바로 위 8.9% 다(커서 7개가 올랐다).
+그리고 재방문 주기가 실측으로 이렇다:
+```
+활성 558개 ÷ 회차당 8개 = 70회차마다 한 번   ·   회차는 **시간당 1회**(funnel.recent 간격 3,602초)
+⇒ 한 키워드는 ~3일마다 뽑히고, sim 은 그 절반 ⇒ **두 번째 sim 회차 = 약 6일 뒤**
+```
+⇒ 커서만 넣으면 **효과가 키워드마다 6일씩, 풀 전체로는 몇 주** 밀린다. "영구적으로 해결"에 안 맞는다.
+
+#### 🚀 가속 — 커서 1회 시딩(같은 커밋)
+```sql
+UPDATE ad_discovery_keywords SET nb_start = 101
+ WHERE COALESCE(nb_start,1) = 1 AND COALESCE(saved_total,0) >= 100    -- 활성 343개 해당
+```
+**몇 달간 1페이지만 훑힌 키워드는 그 페이지에 새 사람이 거의 없다** — 거기서 출발할 이유가 없다.
+다음 방문부터 바로 미개척지(2페이지)를 읽는다. 비용 0, 되돌리기 = 이 문장 제거.
+- `saved_total>=100` 가드 — 갓 만든 키워드는 1페이지가 **아직 미개척지**다(건드리면 오히려 손해)
+- `nb_start=1` 가드 — DDL 재적용 때 901 까지 파 놓은 커서를 101 로 **되돌리지 않게**
+- **101 한 칸만** — 네이버가 `start` 를 존중하는지 아직 라이브 증거가 0 이라 가장 얕고 안전한 칸으로.
+  존중하면 이후는 커서가 알아서 깊어지고, 무시하면 결과가 종전과 같아 **손실 0**.
+
+#### 🔎 관측 팁 — 새 계측을 넣지 않고 sim/date 를 가릴 수 있다
+`naverSort = (prev.total_runs % 2 === 0) ? 'sim' : 'date'` 이고 `total_runs` 는 저장된다.
+그러니 **`total_runs` 에서 거꾸로 세면** funnel.recent 각 회차의 정렬을 알 수 있다(실측: 653 → 17:00
+회차는 652 를 썼으니 sim). `influencer-auto-collect.ts`(600줄 캡)·`influencer-discovery.ts`(659 동결)
+둘 다 파일크기 여유가 0 이라, **계측을 추가하는 대신 이 유도법을 쓴다**.
+
+#### 🎯 다음 판정 (08-20 21:00 본 판정에 합칠 것)
+```sql
+SELECT nb_start, COUNT(*) FROM ad_discovery_keywords WHERE active=1 GROUP BY 1 ORDER BY 1;
+-- 시딩이 돌면 101 이 343개 근처. 그 뒤 sim 회차부터 201 이 생긴다.
+SELECT json_extract(value,'$.funnel.recent') FROM platform_settings WHERE key='ads_autocollect_stats';
+-- ✅ 통과 = start>1 을 쓴 sim 회차의 신규율이 기준선 상단(38.6%)을 넘음
+-- ❌ 실패 = 신규율 불변 → 네이버가 start 를 무시. 그때는 display 50 + start 51,101,… 로 실험
+SELECT value FROM platform_settings WHERE key='ads_naver_crawl_block';   -- blocked 0 유지
+```
+⚠️ **`diag.naver.error` 를 반드시 함께 볼 것** — start 가 범위 밖이면 네이버는 400 을 준다. 오류가
+   뜨면 시딩 문장을 제거(롤백)하고 규칙만 남긴다.
+
+📔 **Notion 미기록** — 이 세션에 Notion MCP 가 붙어 있지 않다. 다음 세션이 붙어 있으면 개발 업데이트
+   로그에 1행(서비스=유어애즈, "매번 같은 검색 결과 100건만 보던 것을 고쳐 새 사람이 더 걸리게 했습니다",
+   PR #1170 · #1172).
