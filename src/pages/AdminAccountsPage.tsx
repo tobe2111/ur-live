@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -6,9 +6,11 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
-import { UserCog, Plus, Trash2, Key, Edit2, X, ShieldOff } from 'lucide-react'
+import { UserCog, Plus, Trash2, Key, Edit2, X, ShieldOff, Monitor } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+// 📱 2026-08-12: 세션(기기) 관리 — 동시 로그인을 허용하는 대신 두는 도용 탐지 장치.
+const SessionManagerModal = lazy(() => import('./admin-accounts/SessionManagerModal'))
 
 interface Admin {
   id: number
@@ -65,6 +67,7 @@ export default function AdminAccountsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [showEdit, setShowEdit] = useState<Admin | null>(null)
   const [showResetPw, setShowResetPw] = useState<Admin | null>(null)
+  const [showSessions, setShowSessions] = useState<Admin | null>(null)
   const [form, setForm] = useState({ email: '', name: '', password: '', role: 'admin' })
   const [editForm, setEditForm] = useState({ name: '', role: '', email: '' })
   const [newPassword, setNewPassword] = useState('')
@@ -243,6 +246,7 @@ export default function AdminAccountsPage() {
                         <div className="flex items-center gap-2">
                           <button onClick={() => openEdit(admin)} className="p-1 rounded hover:bg-gray-100" aria-label={t("common.edit", { defaultValue: "수정" })} title={t("common.edit")}><Edit2 className="w-3.5 h-3.5 text-gray-500" /></button>
                           <button onClick={() => { setShowResetPw(admin); setNewPassword('') }} className="p-1 rounded hover:bg-gray-100" aria-label={t("admin.accounts.changePassword", { defaultValue: "비밀번호 변경" })} title={t("admin.accounts.changePassword")}><Key className="w-3.5 h-3.5 text-amber-500" /></button>
+                          <button onClick={() => setShowSessions(admin)} className="p-1 rounded hover:bg-gray-100" aria-label="로그인된 기기" title="로그인된 기기 보기 / 개별 로그아웃"><Monitor className="w-3.5 h-3.5 text-blue-500" /></button>
                           <button onClick={() => resetPin(admin)} className="p-1 rounded hover:bg-gray-100" aria-label="로그인 PIN 초기화" title="로그인 PIN 초기화 (분실 복구)"><ShieldOff className="w-3.5 h-3.5 text-orange-500" /></button>
                           <button onClick={() => deleteAdmin(admin)} className="p-1 rounded hover:bg-gray-100" aria-label={t("common.delete", { defaultValue: "삭제" })} title={t("common.delete")}><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
                         </div>
@@ -339,7 +343,32 @@ export default function AdminAccountsPage() {
           </div>
         </div>
       )}
+
+      {/* 📱 로그인된 기기 — 동시 로그인을 허용하는 대신 "누가 어디서 들어와 있나"를 보고 개별로 끊는다. */}
+      {showSessions && (
+        <Suspense fallback={null}>
+          <SessionManagerModal
+            adminId={showSessions.id}
+            adminEmail={showSessions.email}
+            currentIat={currentTokenIat()}
+            onClose={() => setShowSessions(null)}
+          />
+        </Suspense>
+      )}
       </div>
     </AdminLayout>
   )
+}
+
+/**
+ * 지금 이 브라우저 토큰의 `iat` — 목록에서 "현재 기기" 를 표시해 자기 세션을 실수로 끊는 걸 막는다.
+ * ⚠️ 서명 검증이 아니라 **표시용 파싱**이다(권한 판단에 쓰지 말 것). 실패하면 조용히 null.
+ */
+function currentTokenIat(): number | null {
+  try {
+    const raw = localStorage.getItem('admin_token')
+    if (!raw) return null
+    const payload = JSON.parse(atob(raw.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return typeof payload?.iat === 'number' ? payload.iat : null
+  } catch { return null }
 }

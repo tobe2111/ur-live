@@ -15,10 +15,14 @@ import {
 type Row = { min_valid_iat: number }
 
 function makeFakeDB() {
-  const store = new Map<string, number>() // `${type}:${id}` -> min_valid_iat
+  const store = new Map<string, number>()        // `${type}:${id}` -> min_valid_iat
+  const multi = new Map<string, number>()        // `${type}:${id}` -> multi_session
+  const revoked = new Set<string>()              // `${type}:${id}:${iat}` (개별 기기 종료)
   let failNext = false
   const db = {
     setFail(v: boolean) { failNext = v },
+    setMulti(type: string, id: number, on: boolean) { multi.set(`${type}:${id}`, on ? 1 : 0) },
+    revoke(type: string, id: number, iat: number) { revoked.add(`${type}:${id}:${iat}`) },
     prepare(sql: string) {
       return {
         _args: [] as unknown[],
@@ -27,17 +31,30 @@ function makeFakeDB() {
           if (failNext) throw new Error('D1 down')
           if (/INSERT INTO dashboard_sessions/i.test(sql)) {
             const [type, id, miat] = this._args as [string, number, number]
-            store.set(`${type}:${id}`, Number(miat))
+            // 🤝 multi_session=1 이면 경계를 올리지 않는다(실제 SQL 의 CASE WHEN 과 같은 의미)
+            const key = `${type}:${id}`
+            if (Number(multi.get(key) ?? 0) === 1 && store.has(key)) { /* 경계 유지 */ }
+            else store.set(key, Number(miat))
           }
-          // CREATE TABLE 등은 no-op
+          // CREATE TABLE / device INSERT / ALTER 등은 no-op
           return { meta: { changes: 1 } }
         },
         async first<T = unknown>(): Promise<T | null> {
           if (failNext) throw new Error('D1 down')
-          if (/SELECT min_valid_iat/i.test(sql)) {
-            const [type, id] = this._args as [string, number]
-            const v = store.get(`${type}:${id}`)
-            return (v === undefined ? null : ({ min_valid_iat: v } as unknown as T))
+          // ⚠️ 2026-08-12: 검증 SQL 이 LEFT JOIN 형태로 바뀌면서 컬럼이 `s.min_valid_iat AS min_valid_iat`
+          //   가 됐다. 예전 매처(`/SELECT min_valid_iat/`)는 그때 조용히 null 을 돌려주고,
+          //   함수는 그걸 "추적행 없음 = grandfather" 로 읽어 **단일 세션 강제가 통째로 사라진 것처럼**
+          //   테스트가 빨개졌다. 매처는 SQL 모양이 아니라 **의도**에 맞춰 넓게 잡는다.
+          if (/FROM dashboard_sessions/i.test(sql)) {
+            const [iat, type, id] = this._args as [number, string, number]
+            const key = `${type}:${id}`
+            const v = store.get(key)
+            if (v === undefined) return null
+            return {
+              min_valid_iat: v,
+              multi_session: multi.get(key) ?? 0,
+              revoked: revoked.has(`${type}:${id}:${iat}`) ? 1 : 0,
+            } as unknown as T
           }
           return null
         },
@@ -133,5 +150,50 @@ describe('dashboard-session 단일 세션 강제', () => {
   it('startDashboardSession 도 fail-soft(예외 안 던짐)', async () => {
     db.setFail(true)
     await expect(startDashboardSession(asDB(db), 'admin', 7, 2000)).resolves.toBeUndefined()
+  })
+})
+
+/**
+ * 📱 2026-08-12 (대표 "제대로 만들기"): 동시 로그인 + 기기별 강제 로그아웃.
+ *
+ * 단일 세션은 불편한 대신 **도용 탐지 신호**였다(남이 들어오면 내가 튕긴다). 동시 로그인을 켜면
+ * 그 신호가 사라지므로 **개별 종료가 그 자리를 대신한다** — 아래 두 번째 테스트가 그 계약이다.
+ */
+describe('기기별 세션 종료(revoke)', () => {
+  let db: ReturnType<typeof makeFakeDB>
+  beforeEach(() => { db = makeFakeDB() })
+
+  it('종료된 기기의 토큰은 거부된다', async () => {
+    await startDashboardSession(asDB(db), 'admin', 7, 1000)
+    expect(await isDashboardSessionCurrent(asDB(db), 'admin', 7, 1000)).toBe(true)
+    db.revoke('admin', 7, 1000)
+    expect(await isDashboardSessionCurrent(asDB(db), 'admin', 7, 1000)).toBe(false)
+  })
+
+  it('🔑 동시 로그인 허용(multi_session) 계정에서도 개별 종료가 동작한다', async () => {
+    // 이게 깨지면 "목록은 보이는데 끊을 수는 없는" 무용한 화면이 된다.
+    db.setMulti('admin', 5, true)
+    await startDashboardSession(asDB(db), 'admin', 5, 2000)
+    await startDashboardSession(asDB(db), 'admin', 5, 3000)   // 다른 기기
+    expect(await isDashboardSessionCurrent(asDB(db), 'admin', 5, 2000)).toBe(true)
+    expect(await isDashboardSessionCurrent(asDB(db), 'admin', 5, 3000)).toBe(true)
+
+    db.revoke('admin', 5, 2000)                                // 한 기기만 끊는다
+    expect(await isDashboardSessionCurrent(asDB(db), 'admin', 5, 2000)).toBe(false)
+    expect(await isDashboardSessionCurrent(asDB(db), 'admin', 5, 3000), '다른 기기는 살아 있어야 한다').toBe(true)
+  })
+
+  it('multi_session 계정은 새 로그인이 기존 세션을 밀어내지 않는다', async () => {
+    db.setMulti('admin', 9, true)
+    await startDashboardSession(asDB(db), 'admin', 9, 1000)
+    await startDashboardSession(asDB(db), 'admin', 9, 5000)
+    expect(await isDashboardSessionCurrent(asDB(db), 'admin', 9, 1000), '먼저 로그인한 기기가 유지돼야 한다').toBe(true)
+  })
+
+  it('D1 장애 시 fail-open 유지 — 종료 판정 때문에 대시보드가 잠기면 안 된다', async () => {
+    await startDashboardSession(asDB(db), 'admin', 3, 1000)
+    db.revoke('admin', 3, 1000)
+    db.setFail(true)
+    expect(await isDashboardSessionCurrent(asDB(db), 'admin', 3, 1000)).toBe(true)
   })
 })
