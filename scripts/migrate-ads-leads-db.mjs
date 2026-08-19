@@ -31,7 +31,9 @@ const ACCOUNT = process.env.CLOUDFLARE_ACCOUNT_ID
 const TOKEN = process.env.CLOUDFLARE_API_TOKEN
 const SRC_DB = opt('from', 'd9530ba6-7a26-4c02-9295-3ce5aef112a3')  // 라이브(현재 통합 DB)
 const DST_DB = opt('to')
-const CHUNK = Number(opt('chunk', '400'))
+const CHUNK = Number(opt('chunk', '500'))
+/** 한 INSERT 문의 최대 길이(문자). D1 은 문장이 너무 길면 SQLITE_TOOBIG 로 거부한다. */
+const SQL_BUDGET = Number(opt('sql-budget', '80000'))
 
 /** 이사 대상 — 코드 SSOT(`src/shared/ads/leads-db.ts`)에서 읽는다. 두 벌로 적으면 반드시 어긋난다. */
 function loadTables() {
@@ -101,14 +103,29 @@ async function main() {
       let after = 0
       try { const [r] = await q(DST_DB, `SELECT COALESCE(MAX(rowid),0) m FROM "${t}"`); after = r.m } catch { /* 빈 테이블 */ }
       let done = 0
+      const colList = cols.map((c) => `"${c}"`).join(',')
       for (;;) {
         const rows = await q(SRC_DB,
-          `SELECT rowid AS __rid, ${cols.map((c) => `"${c}"`).join(',')} FROM "${t}" WHERE rowid > ${after} ORDER BY rowid LIMIT ${CHUNK}`)
+          `SELECT rowid AS __rid, ${colList} FROM "${t}" WHERE rowid > ${after} ORDER BY rowid LIMIT ${CHUNK}`)
         if (!rows.length) break
-        const values = rows.map((r) => `(${r.__rid},${cols.map((c) => lit(r[c])).join(',')})`).join(',')
-        await q(DST_DB, `INSERT OR IGNORE INTO "${t}" (rowid,${cols.map((c) => `"${c}"`).join(',')}) VALUES ${values}`)
+        // 🧱 **행 수가 아니라 바이트로 자른다.** ad_influencer_leads 는 행당 ~1 KB 라
+        //   400행 INSERT 가 430 KB 가 되고 D1 이 `statement too long (SQLITE_TOOBIG)` 로 거부한다.
+        //   (첫 실행이 정확히 여기서 죽었다 — 행 수 기준은 테이블마다 다른 행 폭을 못 본다.)
+        let buf = []
+        let bytes = 0
+        const flush = async () => {
+          if (!buf.length) return
+          await q(DST_DB, `INSERT OR IGNORE INTO "${t}" (rowid,${colList}) VALUES ${buf.join(',')}`)
+          buf = []; bytes = 0
+        }
+        for (const r of rows) {
+          const v = `(${r.__rid},${cols.map((c) => lit(r[c])).join(',')})`
+          if (bytes + v.length > SQL_BUDGET) await flush()
+          buf.push(v); bytes += v.length + 1
+          done++
+        }
+        await flush()
         after = rows[rows.length - 1].__rid
-        done += rows.length
         process.stdout.write(`\r  ${t}: ${done}/${srcN}   `)
       }
       console.log(`\r  ✓ ${t}: ${done}행 복사 (원본 ${srcN})       `)
