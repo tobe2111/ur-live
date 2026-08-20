@@ -105,6 +105,20 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
   ...enrichShardLanes(ENRICH_SHARDS),
   maintenance: {
     run: async (env) => {
+      // 🐕 유입량 감시 — **매시간 들여다보고 하루 한 번만 판정**한다(날짜 도장). 일 1회 레인에 두면
+      //   그 회차를 놓친 날이 통째로 비는데, 이 레포는 그 사고를 이미 겪었다(`daily-batch` 주석).
+      //   완전 fail-soft 라 여기서 무슨 일이 나도 아래 정비 단계는 그대로 돈다.
+      //   ⚠️ **rescan 양보보다 앞**이다 — 뒤에 두면 19시엔 감시가 통째로 안 돈다.
+      try {
+        const { maybeAlertInflow } = await import('@/features/marketing/api/inflow-watchdog')
+        // 🗄️ **리드 테이블은 이사했다** — `ad_influencer_leads`·`ad_company_leads` 는 `ADS_DB` 로 간다.
+        //   `env.DB` 를 그대로 넘기면 바인딩 후 "테이블이 없다"로 조용히 깨진다(감시가 먼저 눈이 먼다).
+        //   라우터는 문장 단위라 같은 핸들로 `platform_settings`(안 옮김)도 정상 라우팅된다.
+        const { adsLeadsDb } = await import('@/shared/ads/leads-db')
+        const r = await maybeAlertInflow(env, adsLeadsDb(env as never) as never)
+        // 📈 부족하면 **다른 레인을 더 돌린다** — 판정이 실제로 돈 회차에서만(매시간 밀어 넣으면 진동한다).
+        if (r.ran && r.verdicts) { const { applyLaneBoost } = await import('./lane-boost-apply'); await applyLaneBoost(env, r.verdicts) }
+      } catch { /* 감시가 정비를 멈추게 하지 않는다 */ }
       // 🤝 19시(UTC)는 야간 재보정에 양보 — cron 시절 `hourlySchedule(PHASES, [RESCAN_HOUR_UTC])` 의
       //   양보를 알람에서도 복원한다(2026-08-09 4차). 둘이 같은 MAINT_LEASE 를 다투면 진 쪽이
       //   스냅샷도 안 남기고 사라진다(maintenance-cron.ts 의 원 규약 — 시각 상수도 같은 SSOT).

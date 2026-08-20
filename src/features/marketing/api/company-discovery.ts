@@ -14,6 +14,8 @@ import type { Env } from '@/worker/types/env'
 import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
 import { hygieneStatements } from './company-lead-hygiene'
 import { emptyDelta, tallyVerdict, verdictChanged, writeReclassifyStats } from './reclassify-verdict-delta'
+import { advanceRegistryFastPath } from './reclassify-registry-fastpath'
+import { sweepSuppressedEmails } from './company-lead-hygiene'
 import { normalizeCompanyName } from './registry-email-match'
 import { runDdlOnce } from './ads-schema-guard'
 import { pickPriorityBatch, pickCrawlBatch, writePrioState, type ReclassifyRow } from './reclassify-priority'
@@ -379,7 +381,7 @@ export async function countCompanyLeads(DB: D1Database, filter: CompanyLeadFilte
  *   커서(platform_settings)로 매 실행 이어서. 허위 0(연락처 무접촉). */
 const RECLASSIFY_CURSOR = 'ads_company_reclassify_cursor'
 // 🎯 재검사 우선순위(추측 많은 소스 먼저) — 근거·티어·상태는 `reclassify-priority.ts` SSOT.
-export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housekeeping = true): Promise<{ scanned: number; updated: number; removed: number; held: number; cursor: number; done: boolean; phase?: string }> {
+export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housekeeping = true): Promise<{ scanned: number; updated: number; removed: number; held: number; cursor: number; done: boolean; phase?: string; fastPath?: string }> {
   await ensureCompanySchema(DB)
   const n = Math.min(1000, Math.max(1, limit))
 
@@ -436,20 +438,19 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     updated++
   }
   for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100)).catch(() => null)
-  // 📵 반송 억제 스윕 — 레지스트리 재수집(COALESCE 백필)으로 되살아난 억제 이메일을 다시 비움.
-  //   ⚡ housekeeping 패스에서만(2026-07-27 실측 — 대형 테이블 2개 풀스캔 UPDATE 를 버스트가 패스마다
-  //   반복해 회당 처리량이 계획(2.5만)의 1/3 로 떨어졌음 → 버스트는 첫 패스만, cron 은 시간당 1회면 충분).
-  if (housekeeping) {
-    await DB.prepare('UPDATE ad_company_leads SET email = NULL WHERE email IS NOT NULL AND email IN (SELECT email FROM ad_email_suppress)').run().catch(() => null)
-    await DB.prepare('UPDATE store_prospects SET email = NULL WHERE email IS NOT NULL AND email IN (SELECT email FROM ad_email_suppress)').run().catch(() => null)
-  }
+  if (housekeeping) await sweepSuppressedEmails(DB)
   // 커서 전진 — **이번 회차가 어느 패스였는지에 맞는 쪽만** 옮긴다. 섞으면 한쪽이 조용히 건너뛴다.
-  const nextCursor = rows[rows.length - 1].id
+  let nextCursor = rows[rows.length - 1].id
+  // ⚡ 등록부 벌크 전진 — **이 회차의 표본이 "안 바뀐다"를 증명했을 때만**(근거·안전핀은 모듈 docblock).
+  //   전체 크롤 패스에서만 한다: 우선순위 티어(webkr·local)는 애초에 등록부가 아니고, 거기서 커서를
+  //   건드리면 두 상태가 섞인다(이 파일이 이미 겪은 "한쪽이 조용히 건너뜀").
+  const fp = prioDone ? await advanceRegistryFastPath(DB, CLASSIFY_RULES_VERSION, nextCursor, delta.reg_seen, delta.reg_changed) : null
+  if (fp) nextCursor = fp.cursor
   if (prioDone) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, String(nextCursor)).run().catch(() => null)
   else await writePrioState(DB, prio!.tier, nextCursor, CLASSIFY_RULES_VERSION)
   // 📊 진행률 가시화(2026-07-27 대표 "청소 얼마나 됐나 안 보임") + 판정 변화율 — `reclassify-verdict-delta.ts`.
   await writeReclassifyStats(DB, CLASSIFY_RULES_VERSION, { scanned: rows.length, updated, removed, held, delta })
-  return { scanned: rows.length, updated, removed, held, cursor: nextCursor, done: false, phase }
+  return { scanned: rows.length, updated, removed, held, cursor: nextCursor, done: false, phase, fastPath: fp?.reason }
 }
 
 /* ── 큐레이션(상태머신·tier·메모·팔로업·채널) ──────────────────────────────────── */

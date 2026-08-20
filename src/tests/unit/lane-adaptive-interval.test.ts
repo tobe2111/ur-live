@@ -58,10 +58,12 @@ describe('adaptiveIntervalHours — 조이기는 어렵게, 풀기는 쉽게', (
     expect(adaptiveIntervalHours(2, h)).toBe(2)
   })
 
-  it('🔒 신규율이 낮으면(소스가 마르는 중) 조이지 않는다 — 중복만 는다', () => {
-    const dry = { t: 'x', ok: true, n: 1, f: 50 } as LaneRunEntry // storeinfo 실측 형상(found 50 · saved 0~1)
-    expect(recentNovelty(many(TIGHTEN_CLEAN_RUNS, dry))!).toBeLessThan(TIGHTEN_MIN_NOVELTY)
-    expect(adaptiveIntervalHours(2, many(TIGHTEN_CLEAN_RUNS, dry))).toBe(2)
+  it('🔒 신규율이 낮으면(중복이 많아지는 중) 조이지 않는다', () => {
+    // ⚠️ 절대량은 있는데 신규율만 낮은 형상이어야 한다 — 절대량까지 0 이면 그건 **마름**이고
+    //   아래 별도 절이 담당한다(주기를 늘린다). 두 상태를 한 픽스처로 재면 무엇을 검사하는지 흐려진다.
+    const stale = { t: 'x', ok: true, n: 5, f: 500 } as LaneRunEntry
+    expect(recentNovelty(many(TIGHTEN_CLEAN_RUNS, stale))!).toBeLessThan(TIGHTEN_MIN_NOVELTY)
+    expect(adaptiveIntervalHours(2, many(TIGHTEN_CLEAN_RUNS, stale))).toBe(2)
   })
 
   it('🔒 하한 아래로는 절대 안 간다', () => {
@@ -99,10 +101,72 @@ describe('🔌 DO 배선', () => {
     expect(src).not.toMatch(/dueByElapsed\(lastRunAt, t0, lane\.minIntervalHours \?\? 0\)/)
   })
   it('🕳️ 실패한 회차는 lastRunAt 을 안 찍는다(슬롯을 버리지 않는다)', () => {
-    expect(src).toContain('if (runs < cap && due && (!entry || entry.ok)) put.lastRunAt = t0')
+    // 🔄 상한(`!retryable`)이 붙어 앵커를 갱신했다 — 지키는 것은 여전히 "성공한 회차만 자리를 먹는다".
+    expect(src).toContain('if (runs < cap && due && (!entry || entry.ok || !retryable)) put.lastRunAt = t0')
   })
   it('🔒 skip 은 여전히 안 찍는다 — 찍으면 간격이 안 차서 레인이 스스로 멎는다', () => {
     const line = src.split('\n').find(l => l.includes('put.lastRunAt = t0'))!
     expect(line).toContain('due')
+  })
+})
+
+describe('🛑 실패 재시도 상한 — 영구 장애를 영원히 두드리지 않는다', () => {
+  const src = readFileSync('src/worker-ads/lane-alarm.ts', 'utf8')
+  it('연속 실패가 상한을 넘으면 재시도를 접고 기본 주기로 돌아간다', () => {
+    // 🔄 2026-08-19: 근거가 `failStreak`(예외 전용) → **이력**으로 바뀌었다. 지키는 것은 그대로
+    //   "연속 실패가 상한을 넘으면 재시도를 접는다" 이므로 앞의 절이 그 사실을 따로 고정한다.
+    expect(src).toContain('<= RETRY_MAX_FAIL_STREAK')
+    expect(src).toContain('(!entry || entry.ok || !retryable)')
+  })
+  it('상한은 일시적 장애와 구분될 만큼은 크다(1회는 즉시 재시도해야 한다)', async () => {
+    const { RETRY_MAX_FAIL_STREAK } = await import('@/worker-ads/lane-adaptive-interval')
+    expect(RETRY_MAX_FAIL_STREAK).toBeGreaterThanOrEqual(2)
+    expect(RETRY_MAX_FAIL_STREAK).toBeLessThanOrEqual(6)
+  })
+})
+
+describe('🌵 마른 레인은 늦춘다 — 조이기와 대칭', () => {
+  const dry = (): LaneRunEntry => ({ t: '2026-08-18T00:00', ok: true, n: 0, f: 50 })
+  it('🩸 라이브 형상(storeinfo: found 50 · saved 0)이 반복되면 주기를 늘린다', async () => {
+    const { isBarren, BARREN_INTERVAL_MULT, BARREN_RUNS } = await import('@/worker-ads/lane-adaptive-interval')
+    expect(isBarren(many(BARREN_RUNS, dry()))).toBe(true)
+    expect(adaptiveIntervalHours(2, many(BARREN_RUNS, dry()))).toBe(2 * BARREN_INTERVAL_MULT)
+  })
+  it('🔒 한 번이라도 제대로 수확하면 마른 게 아니다 — 늦추지 않는다', async () => {
+    const { isBarren, BARREN_RUNS } = await import('@/worker-ads/lane-adaptive-interval')
+    const h = [ok(982, 1000), ...many(BARREN_RUNS, dry())]
+    expect(isBarren(h)).toBe(false)
+    // 늦추지 않는다는 것이 요점이다(최근 창에 큰 수확이 남아 있으면 오히려 조여질 수 있다).
+    expect(adaptiveIntervalHours(2, h)).toBeLessThanOrEqual(2)
+  })
+  it('🔒 실패(고장)를 마름으로 세지 않는다 — 처방이 정반대다', async () => {
+    const { isBarren, BARREN_RUNS } = await import('@/worker-ads/lane-adaptive-interval')
+    expect(isBarren(many(BARREN_RUNS, bad()))).toBe(false)
+    expect(adaptiveIntervalHours(2, many(BARREN_RUNS, bad()))).toBe(2)
+  })
+  it('🔒 근거가 얇으면 안 늦춘다', async () => {
+    const { BARREN_RUNS } = await import('@/worker-ads/lane-adaptive-interval')
+    expect(adaptiveIntervalHours(2, many(BARREN_RUNS - 1, dry()))).toBe(2)
+  })
+  it('🔒 마른 레인을 끄지는 않는다 — 소스에 새 항목이 들어오면 스스로 돌아와야 한다', async () => {
+    const { BARREN_INTERVAL_MULT } = await import('@/worker-ads/lane-adaptive-interval')
+    expect(BARREN_INTERVAL_MULT).toBeGreaterThan(1)
+    expect(Number.isFinite(adaptiveIntervalHours(2, many(20, dry())))).toBe(true)
+  })
+})
+
+describe('🩸 재시도 상한은 **소프트 실패**까지 세야 한다 (2026-08-19 라이브)', () => {
+  it('failStreakFromHistory 가 diag.error 만 있는 실패도 센다', async () => {
+    const { failStreakFromHistory } = await import('@/worker-ads/lane-adaptive-interval')
+    // 실측 형상: 예외 없이 diag.error 로만 4회 연속 실패 — 그때 alarm 의 fail_streak 는 0 이었다.
+    expect(failStreakFromHistory(many(4, bad()))).toBe(4)
+    expect(failStreakFromHistory([ok(), ...many(4, bad())])).toBe(0)
+    expect(failStreakFromHistory([])).toBe(0)
+  })
+
+  it('🔴 상한 판정이 failStreak(예외 전용)이 아니라 이력을 본다 — 안 그러면 상한이 영영 안 걸린다', () => {
+    const src = readFileSync('src/worker-ads/lane-alarm.ts', 'utf8')
+    expect(src).toContain('const retryable = failStreakFromHistory(runHistory) <= RETRY_MAX_FAIL_STREAK')
+    expect(src).not.toContain('const retryable = nextFail <=')
   })
 })
