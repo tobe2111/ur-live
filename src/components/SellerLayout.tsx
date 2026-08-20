@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket, Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Home, Undo2} from 'lucide-react'
+import { LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket, Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Home, Undo2, Users} from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import api from '@/lib/api'
 import { HOSTING_HIDDEN, LIVE_COMMERCE_SUSPENDED, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
@@ -11,6 +11,7 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { applyBizFavicon, restoreDefaultFavicon } from '@/lib/biz-favicon'
 import DashboardNotificationBell from './DashboardNotificationBell'
+import StoreSwitcher from '@/components/seller/StoreSwitcher'
 import SellerKakaoLinkBanner from './SellerKakaoLinkBanner'
 import SellerSimpleNav from './seller-layout/SellerSimpleNav'
 
@@ -108,6 +109,9 @@ const NAV_GROUPS: {
       // 🤝 2026-07-10: 3단 위임/promo 투명성 (§4.3) — promo 지출(불변원칙 #1)·매장 위임(grant/revoke)
       { path: '/seller/promo-spend', labelKey: 'seller.nav.promoSpend', icon: Receipt, mode: 'common' },
       { path: '/seller/agency-delegation', labelKey: 'seller.nav.agencyDelegation', icon: Handshake, mode: 'common' },
+      // 🏪 2026-08-19 매장 운영자 관리 (store-operator-model.md 2단계) — 소유자만 실제로 쓸 수 있고,
+      //   비소유자가 들어가면 서버가 403 을 준다(화면 숨김은 편의, 게이트는 서버).
+      { path: '/seller/operators', labelKey: 'seller.nav.operators', icon: Users, mode: 'common' },
       { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, hideFor: ['store_owner'], mode: 'live' },
       { path: '/seller/castings', labelKey: 'seller.nav.castings', icon: Megaphone, mode: 'live' },
       { path: '/seller/promote-boosts', labelKey: 'seller.nav.promoteBoosts', icon: Rocket, mode: 'live' },
@@ -548,6 +552,8 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             <h1 className="text-base font-semibold text-gray-900">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* 🏪 2026-08-19 매장 전환 — 운영 매장이 2곳 이상일 때만 스스로 렌더한다(store-operator-model.md). */}
+            <StoreSwitcher />
             {/* 🏠 2026-07-16 (대표 요청 — 셀러 대시보드에서 메인 서비스로 이동 버튼): 유어딜 소비자 홈(/)으로. */}
             <Link
               to="/"

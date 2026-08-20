@@ -42,6 +42,8 @@ const StoreOwnerDashboardPage = lazy(() => import('@/pages/StoreOwnerDashboardPa
 const SellerProfileEditPage = lazy(() => import('@/pages/SellerProfileEditPage'))
 const SellerPublicPage = lazy(() => import('@/pages/SellerPublicPage'))
 const SellerSettlementsPage = lazy(() => import('@/pages/SellerSettlementsPage'))
+// 🏪 2026-08-19 매장 운영자 관리 (store-operator-model.md 2단계) — 소유자 전용, 서버가 최종 게이트.
+const SellerOperatorsPage = lazy(() => import('@/pages/SellerOperatorsPage'))
 const SellerAlimtalkPage = lazy(() => import('@/pages/SellerAlimtalkPage'))
 const SellerYoutubeGrowthPage = lazy(() => import('@/pages/SellerYoutubeGrowthPage'))
 const SellerYoutubeGrowthSuccessPage = lazy(() => import('@/pages/SellerYoutubeGrowthSuccessPage'))
@@ -208,6 +210,11 @@ export function SellerRoutes() {
       <Route path="/seller/settlements" element={
         <ProtectedRoute requireSeller>
           <SellerSettlementsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/operators" element={
+        <ProtectedRoute requireSeller>
+          <SellerOperatorsPage />
         </ProtectedRoute>
       } />
       <Route path="/seller/youtube-growth" element={

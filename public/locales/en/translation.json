@@ -2486,7 +2486,8 @@
       "experienceCampaigns": "Experience Campaigns",
       "myLinkshop": "My Linkshop",
       "reviewVerifications": "Review Checks",
-      "returns": "Returns"
+      "returns": "Returns",
+      "operators": "Operators"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",

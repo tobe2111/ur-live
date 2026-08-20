@@ -72,6 +72,38 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '매장 전환이 권한 검사 없이 토큰을 내준다 (IDOR)',
+    file: 'src/features/seller/api/seller-operators.routes.ts',
+    find: 'const access = await canOperateStore(c.env.DB, userId, sellerId)',
+    replace: "const access = { ok: true, role: 'operator' as const, source: 'grant' as const }",
+    test: 'src/tests/unit/seller-operators-invariants.test.ts',
+    why:
+      '2026-08-19 매장 운영 주체 모델 2단계. 셀러 대시보드의 모든 라우트는 seller_token 의 seller_id 로 ' +
+      '**자동 스코프**되므로, 다른 매장 토큰을 받는 순간 그 매장의 주문·정산·상품이 전부 열린다. ' +
+      '이 한 줄이 유일한 방어선이고, 없어져도 화면은 멀쩡히 동작해서 리뷰로는 안 걸린다.',
+  },
+  {
+    name: '매장 운영자가 사장님을 로그아웃시킨다 (좌석 분리 제거)',
+    file: 'src/worker/utils/dashboard-session.ts',
+    find: "    return Number.isFinite(id) && id > 0 ? { role: 'seller_operator', id } : null",
+    replace: '    return null',
+    test: 'src/tests/unit/seller-operators-invariants.test.ts',
+    why:
+      '좌석을 안 나누면 운영자 토큰의 시트가 (seller, 매장id) 라, 운영자가 매장에 들어가는 순간 ' +
+      '**그 매장 사장님이 SESSION_SUPERSEDED 로 튕긴다.** 단일 세션 강제의 부작용이라 기능 테스트로는 ' +
+      '절대 안 잡히고, 라이브에서 "갑자기 로그아웃돼요" 로만 나타난다.',
+  },
+  {
+    name: '운영자가 다른 운영자를 부르거나 자를 수 있게 된다 (권한 확산)',
+    file: 'src/features/seller/api/seller-operators.routes.ts',
+    find: '  if (!(await isStoreOwner(c.env.DB, userId, sellerId))) {',
+    replace: '  if (false) {',
+    test: 'src/tests/unit/seller-operators-invariants.test.ts',
+    why:
+      '운영자가 운영자를 추가할 수 있으면 소유자가 모르는 사이에 접근이 번진다(회수해도 다시 부른다). ' +
+      '운영자 관리는 소유자만 — 이 게이트가 그 경계다.',
+  },
+  {
     name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
     file: 'src/features/agency/api/agency-sunset.ts',
     find: "    code: 'AGENCY_SIGNUP_CLOSED',",

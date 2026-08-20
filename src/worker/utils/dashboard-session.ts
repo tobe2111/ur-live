@@ -20,12 +20,13 @@ import type { D1Database } from '@cloudflare/workers-types'
 
 /** 단일 세션 강제 대상 시트 역할(라벨). */
 export const SINGLE_SESSION_ROLES: ReadonlySet<string> = new Set([
-  'admin', 'seller', 'supplier', 'agency', 'agency_member', 'seller_sub',
+  'admin', 'seller', 'supplier', 'agency', 'agency_member', 'seller_sub', 'seller_operator',
 ])
 
 /**
  * 토큰/세션 payload 에서 단일 세션 '시트(seat)' 키를 도출. 로그인·미들웨어·리프레시가 동일 함수를
  * 써서 키 일치 보장. null = 강제 비대상(user 등).
+ *   - operator_user_id (매장 운영자)   → ('seller_operator', operator_user_id)
  *   - sub_account_id (도매 직원)      → ('seller_sub', sub_account_id)
  *   - type='agency' + member_id        → ('agency_member', member_id)
  *   - type='agency' (멤버 없음/카카오)  → ('agency', agencyId)
@@ -33,9 +34,17 @@ export const SINGLE_SESSION_ROLES: ReadonlySet<string> = new Set([
  */
 export function deriveDashboardSeat(p: {
   type?: unknown; sub?: unknown; userId?: unknown;
-  sub_account_id?: unknown; member_id?: unknown;
+  sub_account_id?: unknown; member_id?: unknown; operator_user_id?: unknown;
 }): { role: string; id: number } | null {
   const toId = (v: unknown): number => Number(typeof v === 'string' ? v : v as number)
+  // 🏪 2026-08-19 매장 운영자(store-operator-model.md 2단계) — **소유자와 시트를 나눈다.**
+  //   안 나누면 운영자가 매장 B 로 전환하는 순간 시트가 ('seller', B) 라 **그 매장 사장님이
+  //   튕긴다**(SESSION_SUPERSEDED). 운영자는 자기 계정(user id) 시트를 쓰므로 서로 안 밀어낸다.
+  //   ⚠️ 이 분기가 sub_account_id 보다 **먼저** 올 필요는 없지만 seller 분기보다는 먼저여야 한다.
+  if (p.operator_user_id != null) {
+    const id = toId(p.operator_user_id)
+    return Number.isFinite(id) && id > 0 ? { role: 'seller_operator', id } : null
+  }
   if (p.sub_account_id != null) {
     const id = toId(p.sub_account_id)
     return Number.isFinite(id) && id > 0 ? { role: 'seller_sub', id } : null

@@ -370,6 +370,21 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     )` },
     { desc: 'idx_wh_sub_accounts_email', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_wh_sub_accounts_email ON wholesale_sub_accounts(email)" },
     { desc: 'idx_wh_sub_accounts_parent', sql: "CREATE INDEX IF NOT EXISTS idx_wh_sub_accounts_parent ON wholesale_sub_accounts(parent_seller_id)" },
+    // 🏪 2026-08-19 매장 운영 주체(operator) — 한 계정이 여러 매장을 운영할 수 있게 하는 관계.
+    //   설계 SSOT: docs/design/store-operator-model.md · 런타임 ensureSellerOperators 도 best-effort CREATE.
+    //   ⚠️ revoked_at 은 행 삭제 대신 — 누가 언제 운영했는지가 분쟁 시 유일한 근거다.
+    { desc: 'seller_operators', sql: `CREATE TABLE IF NOT EXISTS seller_operators (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      role TEXT NOT NULL DEFAULT 'operator',
+      granted_by_user_id INTEGER,
+      granted_at DATETIME DEFAULT (datetime('now')),
+      revoked_at DATETIME,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { desc: 'idx_seller_operators_pair', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_seller_operators_pair ON seller_operators(seller_id, user_id)" },
+    { desc: 'idx_seller_operators_user', sql: "CREATE INDEX IF NOT EXISTS idx_seller_operators_user ON seller_operators(user_id, revoked_at)" },
     // 🔐 2026-06-17 단일 세션 강제 (대시보드) — account 별 min_valid_iat. 로그인 시 갱신,
     //   미들웨어가 토큰 iat < min_valid_iat 면 거부. (런타임 ensureDashboardSessionsTable 도 best-effort CREATE.)
     { desc: 'dashboard_sessions', sql: `CREATE TABLE IF NOT EXISTS dashboard_sessions (

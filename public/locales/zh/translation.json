@@ -2476,7 +2476,8 @@
       "experienceCampaigns": "体验活动",
       "myLinkshop": "我的链接商店",
       "reviewVerifications": "评价确认",
-      "returns": "退货申请"
+      "returns": "退货申请",
+      "operators": "运营者管理"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

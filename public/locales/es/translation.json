@@ -1796,7 +1796,8 @@
       "experienceCampaigns": "Campañas de prueba",
       "myLinkshop": "Mi Linkshop",
       "reviewVerifications": "Verificar reseñas",
-      "returns": "Devoluciones"
+      "returns": "Devoluciones",
+      "operators": "Operadores"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
