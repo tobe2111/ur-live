@@ -40,6 +40,7 @@ import type { Env } from '@/worker/types/env'
 import { envPlanValue } from './collect-budget'
 import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { describePublicDataFailure, serviceKeyParam, laneShouldSkip, updateLaneHealth, laneHealthNote, type LaneHealth, isNoValue } from './public-data-diag'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 /** 조달청 공공데이터개방표준서비스 — 2026-08-03 프로브로 **살아있음 확인**(구 `UsrInfoService02` 는 code 12). */
 export const NARA_CONTRACT_BASE = 'https://apis.data.go.kr/1230000/ao/PubDataOpnStdService'
@@ -224,7 +225,7 @@ const STATS_KEY = 'ads_naracontract_stats'
 const CURSOR_KEY = 'ads_naracontract_cursor'
 
 export async function runNaraContractCollect(env: Env): Promise<NaraContractStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   await ensureCompanySchema(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const key = env.PUBLIC_DATA_SERVICE_KEY || ''
