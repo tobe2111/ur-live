@@ -153,8 +153,13 @@ export default function DesktopTopNav() {
   if (hasOwnHeaderPc(location.pathname)) return null
   // 🖥️ 2026-07-19 (상단 공통화 후속 — 태블릿 이중 헤더 방지): 이 경로들은 <lg 에서 자체 모바일 헤더
   //   (sticky/fixed top-0)를 쓰므로 전역 네비는 lg+ 에서만(겹치면 이중 헤더/가림).
-  const LEGACY_OWN_HEADER = ['/vouchers', '/stays', '/group-buy', '/map']
-  if (!isLg && LEGACY_OWN_HEADER.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))) return null
+  // 🏠 2026-08-19 (대표 신고 — "현재 모바일에서 UI가 깨짐"): **홈(`/`)이 이 목록에 없었다.**
+  //   홈은 <lg 에서 지도 홈(RestaurantMapPage)이고 자체 헤더(MapTopBar)를 갖는데, 이 상단바는
+  //   `hidden md:block` 이라 **md~lg 구간**(태블릿·큰 폰 가로)에서 함께 떠 두 헤더가 겹쳤다
+  //   — 로고·검색·카테고리 2행 위에 지도 검색바와 칩이 포개져 글자가 서로 겹쳐 보였다.
+  //   헤더가 68px 2행으로 커지면서 눈에 띄게 됐을 뿐, 구멍 자체는 그 전부터 있었다.
+  const LEGACY_OWN_HEADER = ['/', '/vouchers', '/stays', '/group-buy', '/map']
+  if (!isLg && LEGACY_OWN_HEADER.some((p) => location.pathname === p || (p !== '/' && location.pathname.startsWith(p + '/')))) return null
 
   // 🖥️ 2026-07-15~16 (당근 스타일 PC): 풀너비 페이지(홈·마이 등, 앱 사이드바 없음)는 상단바가 로고+탭을
   //   항상 보이고(xl:hidden 해제) 사이드바용 좌패딩 대신 콘텐츠 폭(1600)에 정렬. 자체헤더 카탈로그(교환권/숙소)는
