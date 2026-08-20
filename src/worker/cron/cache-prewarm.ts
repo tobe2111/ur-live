@@ -50,6 +50,10 @@ const HOT_PATHS: readonly string[] = [
   //   몇 달간 매 5분마다 404 를 세 번씩 받아오고 있었다. 아래 예산 주석이 말하듯 이 cron 은
   //   서브리퀘스트 상한(50)에 붙어 있어(≈49), 그 낭비가 곧 다른 경로의 예열 실패다.
   '/api/banners',
+  // 🏠 2026-08-19 (대표 신고 — 홈에서 '지금 인기 이용권'이 늦게 뜬다): 어드민 편성 섹션.
+  //   edgeCache(120) 를 붙였으니 여기서 미리 데워 두면 **첫 사용자도** 캐시 히트로 받는다
+  //   (안 데우면 콜드 콜로의 첫 방문자가 그 0.6~1.2초를 그대로 맞는다).
+  '/api/sections',
   '/api/group-buy/products',
   // 🛡️ 2026-05-27 (loading P0): SSR inject key 와 정확히 일치 (path+query).
   //   이 key 를 cron 이 warm 하지 않으면 readKvCacheForSSR miss → 첫 사용자 skeleton.

@@ -72,6 +72,28 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '홈 섹션 API 가 다시 엣지 캐시를 안 탄다',
+    file: 'src/features/sections/api/sections.routes.ts',
+    find: "sectionsRoutes.get('/', edgeCache(120), async (c) => {",
+    replace: "sectionsRoutes.get('/', async (c) => {",
+    test: 'src/tests/unit/home-first-paint.test.ts',
+    why:
+      '2026-08-19 실측: `cf-cache-status: DYNAMIC` · 응답 0.6~1.2s — 미들웨어가 아예 안 붙어 있었다. ' +
+      '그래서 홈에서 "지금 인기 이용권"만 늦게 끼어들었다(동네딜은 SSR 0-RTT). ' +
+      '⚠️ 소스 주석은 "on top of edge cache" 라고 적혀 있었다 — **주석을 믿으면 다시 놓친다.**',
+  },
+  {
+    name: '히어로 사진이 다시 lazy 가 된다',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: 'loading="eager"',
+    replace: 'loading="lazy"',
+    test: 'src/tests/unit/home-first-paint.test.ts',
+    why:
+      '히어로 사진은 첫 화면 최상단 = 사실상 LCP 요소다. lazy 로 두면 다른 자원을 다 받은 뒤에야 ' +
+      '시작해 늦게 나타난다(대표 신고). 예전 가드가 오히려 lazy 를 **요구**하고 있었으므로, ' +
+      '근거를 모르면 "원래대로" 되돌리기 쉬운 자리다.',
+  },
+  {
     name: '모바일 메인이 지도로 되돌아간다',
     file: 'src/pages/pc-home/HomeRoute.tsx',
     find: '<MobileHomePage />',

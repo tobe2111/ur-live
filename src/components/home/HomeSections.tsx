@@ -56,7 +56,7 @@ interface HomeSection {
  *   남는다 — 배너 컴포넌트 자신이 "없으면 null" 이라 결국 아무것도 안 그려진다.
  */
 export default function HomeSections({ midBanner }: { midBanner?: React.ReactNode }) {
-  const { data: sections = [] } = useApiQuery<HomeSection[]>(
+  const { data: sections = [], isLoading } = useApiQuery<HomeSection[]>(
     ['home', 'sections'],
     '/api/sections',
     {
@@ -69,6 +69,35 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
   )
 
   const visible = sections.filter(s => Array.isArray(s.products) && s.products.length > 0)
+
+  /**
+   * 🧱 2026-08-19 (대표 신고 — "첫 접속하면 지금 인기 이용권이 먼저 안뜨고 … 시간 지나면 보여"):
+   *   섹션은 동네딜 피드(SSR 0-RTT)와 달리 **응답이 온 뒤에야** 존재했다. 그래서 늦게 *끼어들며*
+   *   아래 콘텐츠를 밀어냈다 — 사용자에겐 "없다가 갑자기 생긴다"로 보인다.
+   *   ⇒ 응답을 기다리는 동안 **자리를 잡아 둔다**(제목 줄 + 카드 4칸). 늦게 와도 화면이 안 밀린다.
+   *   ⚠️ 로딩이 끝났는데 섹션이 0건이면 자리를 **남기지 않는다** — 대표 확정 "안 올리면 아예 안 보이게".
+   */
+  if (isLoading && visible.length === 0) {
+    return (
+      <>
+        <section className="ur-home-panel" aria-hidden="true">
+          <div className="h-[22px] w-40 rounded bg-gray-100 dark:bg-white/[0.06] mb-1" />
+          <div className="h-[15px] w-56 rounded bg-gray-100 dark:bg-white/[0.06] mb-3" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i}>
+                <div className="aspect-[4/3] rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
+                <div className="h-[13px] w-3/4 rounded bg-gray-100 dark:bg-white/[0.06] mt-2.5" />
+                <div className="h-[13px] w-1/2 rounded bg-gray-100 dark:bg-white/[0.06] mt-1.5" />
+              </div>
+            ))}
+          </div>
+        </section>
+        {midBanner}
+      </>
+    )
+  }
+
   if (visible.length === 0) return <>{midBanner}</>
 
   return (

@@ -129,7 +129,11 @@ export default function HomeHeroDefault({
             <img
               src={cfImage(photoSrc, { width: 900, quality: 72 }) || photoSrc}
               alt=""
-              loading="lazy"
+              /* 🐢 2026-08-19 (대표 — "히어로에 있는 사진 이미지도 마찬가지고"): `lazy` 였다.
+                 히어로는 **첫 화면 최상단**이라 lazy 는 틀린 선택이다 — 브라우저가 다른 자원을
+                 다 받은 뒤에야 시작해서 늦게 나타났다. 이 사진은 사실상 LCP 요소다. */
+              loading="eager"
+              fetchPriority="high"
               decoding="async"
               className="w-full h-full object-cover"
             />

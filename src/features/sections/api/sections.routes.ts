@@ -15,6 +15,7 @@
  */
 
 import { Hono } from 'hono';
+import { edgeCache } from '../../../worker/middleware/edge-cache';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { cacheGet, cacheInvalidate } from '@/worker/utils/cache';
@@ -86,8 +87,19 @@ async function ensureTables(DB: D1Database) {
 }
 
 // GET /api/sections — 메인페이지용 (활성 섹션 + 상품)
-// ✅ PERF: KV cross-colo cache (120s) on top of edge cache. 어드민 mutation 시 invalidate 권장.
-sectionsRoutes.get('/', async (c) => {
+/**
+ * 🐢 2026-08-19 (대표 신고 — "첫 접속하면 지금 인기 이용권이 먼저 안뜨고 가까운 동네딜이 먼저 보여.
+ *   시간 지나면 … 지금 인기 이용권과 주말에 떠나는 숙소가 보여"): **엣지 캐시가 아예 없었다.**
+ *
+ *   실측: `cf-cache-status: DYNAMIC` · 응답 0.6~1.2s. 위 주석은 "on top of edge cache" 라고 적고
+ *   있었지만 그런 미들웨어가 이 라우트에 **붙어 있지 않았다**(cacheGet 의 L2 KV 는 2026-06-04 에
+ *   무료한도 보호로 꺼져 있어 사실상 매 요청 D1). 반면 동네딜 피드는 SSR 시드로 0-RTT 라,
+ *   같은 화면에서 **한쪽만 늦게 끼어드는** 것처럼 보였다.
+ *   ⇒ `edgeCache(120)` — 응답 뒤 `caches.default` 에 저장, 다음 요청은 ~5ms.
+ *   ⚠️ 120s 인 이유: 어드민이 편성을 바꾸면 최대 그만큼 늦게 반영된다(5분은 편집 확인이 답답하다).
+ *      `bypassIfAuthed` 라 어드민 자신은 항상 최신을 본다.
+ */
+sectionsRoutes.get('/', edgeCache(120), async (c) => {
   const { DB, SESSION_KV } = c.env as Env & { SESSION_KV?: KVNamespace };
   try {
     const result = await cacheGet(
