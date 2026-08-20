@@ -42,7 +42,7 @@ import { handleWholesaleOrphanSweep } from './cron/wholesale-orphan-sweep';
 import { handleWholesaleRestockNotify } from './cron/wholesale-restock-notify';
 import { handleAnomalyDetection } from './cron/anomaly-detect';
 import { handleSellerDailyReport } from './cron/seller-daily-report';
-import { handleAgencySellerMatch } from './cron/agency-seller-match';
+// 🌇 일몰 정지(롤백 시 아래 호출과 함께 해제): import { handleAgencySellerMatch } from './cron/agency-seller-match';
 import { handleAdSlotsAward } from './cron/ad-slots-award';
 import { handleD1Backup } from './cron/d1-backup';
 import { handleRetryAlimtalk } from './cron/retry-alimtalk';
@@ -389,8 +389,9 @@ export async function handleCronScheduled(
       await handleAgencySelfEventsTick(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/self-events', e));
       // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)
       await handleSellerDailyReport(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/seller-daily-report', e));
-      // 2026-05-05: 신규 셀러 ↔ 에이전시 자동 매칭 제안
-      await handleAgencySellerMatch(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/agency-seller-match', e));
+      // 🌇 2026-08-19 일몰 정지 — 목적지 화면(/agency/match-suggestions)이 제거됐다(알림만 남는 게 최악).
+      //    같은 배치의 self-events·campaigns 는 채무/집계 경로라 유지. 롤백: 아래 한 줄 주석 해제.
+      // await handleAgencySellerMatch(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/agency-seller-match', e));
       // 2026-05-05: 광고 슬롯 낙찰 처리
       await handleAdSlotsAward(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/ad-slots-award', e));
     }));

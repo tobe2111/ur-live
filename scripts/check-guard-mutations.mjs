@@ -72,6 +72,37 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
+    file: 'src/features/agency/api/agency-sunset.ts',
+    find: "    code: 'AGENCY_SIGNUP_CLOSED',",
+    replace: "    code: 'OK',",
+    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    why:
+      '2026-08-19 에이전시 대시보드 일몰. 가입 차단은 **클라+서버 한 쌍**이다 — 화면만 막으면 ' +
+      '직접 POST 로 우회되고(계정이 조용히 생긴다), 서버만 막으면 사용자가 폼을 다 채운 뒤 403 을 본다. ' +
+      '반쪽 롤백은 화면상 멀쩡해 보여서 리뷰로 안 걸린다.',
+  },
+  {
+    name: '에이전시 nav 가 존재하지 않는 라우트를 가리킨다(죽은 링크 부활)',
+    file: 'src/components/AgencyLayout.tsx',
+    find: "{ path: '/agency/settlements'",
+    replace: "{ path: '/agency/streams', label: 'X', i18nKey: 'x', icon: Settings, mode: 'common' },\n      { path: '/agency/settlements'",
+    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    why:
+      '일몰 전 이미 /agency/streams·/agency/pending 이 라우트 없이 nav 에 남아 있었다(누르면 아무 일도 ' +
+      '안 일어난다). 화면을 지우면서 nav 를 안 지우면 그 부채가 즉시 다시 쌓인다.',
+  },
+  {
+    name: '일몰로 내린 에이전시 API 가 다시 마운트된다',
+    file: 'src/worker/index.ts',
+    find: "app.route('/api/agency/delegation', agencyDelegationRoutes);",
+    replace: "app.route('/api/agency/campaigns', agencyCampaignsRoutes);",
+    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    why:
+      '화면 없는 인증 API 가 살아 있으면 축소의 의미가 없다(공격 표면만 남는다). 파일은 일부러 ' +
+      '남겼기 때문에(머니 심볼 computeCommission 이 함께 export 된다) 마운트 한 줄이면 되살아난다.',
+  },
+  {
     name: '이용권 상세 제목이 다시 사진 아래로 내려간다',
     file: 'src/pages/GroupBuyDetailPage.tsx',
     find: '<DetailTitleHeader name',
