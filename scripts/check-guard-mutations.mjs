@@ -72,6 +72,26 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '모바일 메인이 지도로 되돌아간다',
+    file: 'src/pages/pc-home/HomeRoute.tsx',
+    find: '<MobileHomePage />',
+    replace: '<RestaurantMapPage home mode="map" />',
+    test: 'src/tests/unit/mobile-home.test.ts',
+    why:
+      '2026-08-19 대표 확정(그루폰 모바일 홈 시안) — 모바일 메인은 딜 피드다. 2026-07-15 의 ' +
+      '"홈=지도" 결정을 대체한 것이라, 옛 결정을 근거로 되돌리기 쉬운 자리다.',
+  },
+  {
+    name: '모바일 홈에서 지도로 가는 유일한 통로가 사라진다',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: 'to="/map"',
+    replace: 'to="/"',
+    test: 'src/tests/unit/mobile-home.test.ts',
+    why:
+      '홈이 지도였으므로 이 배너가 없으면 사용자는 지도를 찾을 방법이 없다 — 하단 탭에도 지도가 없다 ' +
+      '(대표 확정 "안 넣기 — 상단 배너만"). 지워도 화면은 멀쩡해 보여 리뷰로는 안 걸린다.',
+  },
+  {
     name: '/map 패널 칩이 다시 줄바꿈된다(카카오맵 한 줄이 깨진다)',
     file: 'src/pages/restaurant-map/MapTopBar.tsx',
     find: "panel ? 'grid grid-cols-7 gap-0.5'",
