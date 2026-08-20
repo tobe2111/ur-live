@@ -98,6 +98,7 @@ import { mineHashtags } from './influencer-hashtag-mine'
 //   기존 import 경로 호환을 위해 재수출한다(`influencer-enrich-lane`·테스트 2개가 이 경로로 쓴다).
 export { YT_DAILY_TARGET_PCT, YT_SEARCH_BUDGET_DEFAULT, ytQuotaDayKey } from './influencer-yt-quota'
 import { YT_SEARCH_BUDGET_DEFAULT, ytQuotaDayKey, YT_USED_KEY, pickYtAngle } from './influencer-yt-quota'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 /**
  * 한 번의 자동 수집 실행(cron 1틱 또는 수동). 게이트 체크는 호출부에서.
@@ -136,21 +137,21 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
       // `spent` 는 위에서 `ctx.budgetTotal - ctx.budget.left`(시작값 기준 실사용)로 계산 — 가드가 요구하는
       //   형태와 값이 같지만 예산 변수가 클로저 밖(ctx)이라 그 리터럴을 못 쓴다.
       const next = nextSubreqCap(spent, true, ctx.learnedCap, ctx.envBudget, envSubreqCap(env)) // subreq-cap-lane-ok
-      if (next != null) await writeSetting(env.DB, subreqCapKey('influencer'), String(next)).catch(() => undefined)
+      if (next != null) await writeSetting(adsLeadsDb(env), subreqCapKey('influencer'), String(next)).catch(() => undefined)
     }
     // ① 증거 — 옛 스냅샷 위에 crash 만 덧씌운다(마지막 성공 시각·누적치 보존).
-    const prev = await getAutoCollectStats(env.DB).catch(() => null)
+    const prev = await getAutoCollectStats(adsLeadsDb(env)).catch(() => null)
     const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
     const snap = { ...(prev || { last_run: '', last_saved: 0, last_keywords: [], total_runs: 0, total_saved: 0, cursor: 0 }),
       crash, crash_at: stamp, crash_spent: spent, crash_budget: ctx.budgetTotal } as AutoCollectStats
-    await writeSetting(env.DB, STATS_KEY, JSON.stringify(snap)).catch(() => undefined)
+    await writeSetting(adsLeadsDb(env), STATS_KEY, JSON.stringify(snap)).catch(() => undefined)
     await ctx.release?.().catch(() => undefined) // ③ 즉시 해제
     return snap
   }
 }
 
 async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   // 🔒 실행 단일화 lease(2026-07-23 전수조사 #1~#3·#11) — 매시간 cron·수동 버튼·self-chain 이 **동시에** 돌면
   //   YT 예산 카운터(ads_yt_search_used)·키워드 커서가 read-modify-write 레이스로 소실 갱신 → 같은 키워드 중복
   //   검색으로 하루 예산(100회)의 절반까지 낭비 + QUOTA 소진 마커가 늦은 쓰기에 덮여 실패 호출 반복.
@@ -172,7 +173,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // 💤 자동확장 키워드 회수 3종(F-30·고갈·수율) — 구현·근거는 `retireStaleAutoKeywords`(키워드 수명주기 SSOT).
   //   WHERE 조각은 `AUTO_RETIRE_WHERE` 를 그대로 넘긴다 — 승격 차단이 같은 문자열을 봐야 livelock 이 안 돌아온다.
   await retireStaleAutoKeywords(DB, AUTO_RETIRE_WHERE)
-  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total, COALESCE(yt_leads,0) AS yt_leads, COALESCE(yt_contacts,0) AS yt_contacts, COALESCE(nb_measured,0) AS nb_measured, COALESCE(nb_contacts,0) AS nb_contacts FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
+  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total, COALESCE(yt_leads,0) AS yt_leads, COALESCE(yt_contacts,0) AS yt_contacts, COALESCE(nb_measured,0) AS nb_measured, COALESCE(nb_contacts,0) AS nb_contacts, COALESCE(nb_start,1) AS nb_start FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   /**
    * 🪦 은퇴 축 키워드는 **슬롯을 안 먹는다**(2026-08-03). 축을 접었는데 그 키워드가 계속 돌면
@@ -181,6 +182,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
    *   보존해야 한다. **선택에서만 빼는** 것이 가역적이다.
    */
   const kws = (active?.results || []).filter(k => !k.category || !RETIRED_CATEGORIES.has(k.category))
+  const nbStartById = new Map<number, number>((active?.results || []).map(k => [k.id, Number(k.nb_start) || 1])) // 📖 커서는 **원본 행에서**(픽 배열 타입은 축·구제픽이 섞여 좁아진다 — tsc 가 잡았다)
   // 🧮 이 실행이 쓰는 설정을 **한 번에** 읽는다(2026-07-29) — 통계·커서3·학습상한·YT카운터를 낱개로 읽으면
   //   읽기에만 5 서브리퀘스트, 그만큼 발굴 fetch 가 줄어든다(D1 도 한도에 포함, #784).
   //   ⚠️ **여기 없는 키를 `settings[...]` 로 읽으면 값이 아니라 `undefined` 가 온다** — 에러가 아니라
@@ -290,7 +292,6 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   ctx.budgetTotal = budgetTotal; ctx.learnedCap = learnedCap; ctx.envBudget = envBudget; ctx.budget = budget
   // 🍽️ 2026-07-28: **이 실행은 발굴만 한다.** 보강(블로거 활동성·링크인바이오·YT 성과)은 전부
   //   `influencer-enrich-lane.ts` 의 독립 인보케이션(시간당 N라운드)으로 이전했다.
-  //
   //   경위: 보강이 여기 얹혀 있던 동안 발굴 루프가 예산을 **0 까지** 먹어 보강 4종이 매 실행 즉시 반환했고
   //   (라이브: `naver_enrich.tried=0` · `bio_enriched=0` · `perf_enriched=0`), 예약분(`enrichReserve`)을 둬도
   //   **키워드 경계에서만** 검사해 한 키워드(최대 16)가 예약분을 뚫고 0 까지 파고들었다.
@@ -301,6 +302,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   let quotaHit = false
   const used: string[] = []
   const kwStats = new Map<number, { found: number; saved: number }>() // 📊 키워드별 발굴/저장(성과 관측)
+  const nbNext = new Map<number, number>() // 📖 다음 검색 커서(실제 검색한 키워드만). 비면 예전=항상 1페이지 동작
   const starvedIds = new Set<number>() // 🌵 예산 고갈/한도 오류로 '공정한 시도'가 못 된 키워드(무판정 대상)
   const hashtagFreq = new Map<string, number>()
   const mine = (leads: { description: string; links: string | null; name: string }[]) => {
@@ -402,10 +404,11 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     if (hasNaver) {
       try {
         const _b0 = budget.left
-        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: NAVER_COLLECT_ENRICH_MAX, budget, sort: naverSort, alreadyContacted })
+        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: NAVER_COLLECT_ENRICH_MAX, budget, sort: naverSort, alreadyContacted, start: nbStartById.get(k.id) })
         spendBy.naver += Math.max(0, _b0 - budget.left)
         if (r.ok) {
           kSearched++
+          if (typeof r.nextStart === 'number') nbNext.set(k.id, r.nextStart) // 📖 커서 전진(저장은 아래 batch — 왕복 0). 안 하면 영원히 1페이지
           diag.naver.found += r.leads?.length || 0; kFound += r.leads?.length || 0
           if (r.leads?.length) { { const _s0 = budget.left; const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; kSaved += s; mine(r.leads); spendBy.save += Math.max(0, _s0 - budget.left) } }
         } else if (!diag.naver.error) diag.naver.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
@@ -501,9 +504,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       ? DB.prepare('UPDATE ad_discovery_keywords SET found_total = found_total + ?, saved_total = saved_total + ? WHERE id = ?')
         .bind(v.found, v.saved, id)
       // 🌵 무수확이면 연속 카운터 +1, 한 명이라도 건지면 0 으로 리셋(고갈 판정의 유일한 근거).
+      // 📖 `nb_start` 는 네이버를 실제로 검색한 키워드만 전진(COALESCE = 아니면 기존값 유지 — YT 전용 회차가 되돌리지 않게).
       : DB.prepare(`UPDATE ad_discovery_keywords SET found_total = found_total + ?, saved_total = saved_total + ?, last_saved = ?, epoch_runs = COALESCE(epoch_runs, 0) + 1, epoch_saved = COALESCE(epoch_saved, 0) + ?,
-        barren_streak = CASE WHEN ? > 0 THEN 0 ELSE COALESCE(barren_streak, 0) + 1 END, last_run_at = datetime('now') WHERE id = ?`)
-        .bind(v.found, v.saved, v.saved, v.saved, v.saved, id))).catch(() => null)
+        barren_streak = CASE WHEN ? > 0 THEN 0 ELSE COALESCE(barren_streak, 0) + 1 END, nb_start = COALESCE(?, nb_start), last_run_at = datetime('now') WHERE id = ?`)
+        .bind(v.found, v.saved, v.saved, v.saved, v.saved, nbNext.has(id) ? nbNext.get(id)! : null, id))).catch(() => null)
   }
 
   // ③ 해시태그 자동확장 — 승격 로직은 `influencer-keyword-promote.ts`(600줄 래칫 분리).

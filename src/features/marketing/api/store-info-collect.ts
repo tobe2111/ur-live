@@ -20,6 +20,7 @@ import { kakaoLocalLookup, naverLocalLookup, crawlContact } from './contact-enri
 import { envSubreqCap, envLaneBudget } from './collect-budget'
 import { applyQuantum, readLaneSettings } from './cpu-quantum'
 import { isNoValue } from './public-data-diag'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const outOfBudget = (b?: FetchBudget) => !!b && b.left <= 0
 const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
@@ -76,7 +77,7 @@ const CURSOR_KEY = 'ads_storeinfo_cursor' // 'targetIdx:page'
 
 /** 상가정보 1틱(cron 짝수시 또는 수동). 게이트 체크는 호출부. 커서 순환(타깃×페이지)로 전국 커버. */
 export async function runStoreInfoCollect(env: Env): Promise<StoreInfoStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   const schemaSpent = await ensureCompanySchema(DB) // 스키마 DDL 실비(아래 예산에서 차감)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const serviceKey = env.PUBLIC_DATA_SERVICE_KEY || (env as unknown as { NTS_API_KEY?: string }).NTS_API_KEY || ''

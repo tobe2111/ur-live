@@ -8,6 +8,7 @@ import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Settings, Save, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import PromoBarSection from './admin-platform-settings/PromoBarSection'
 
 // 🛡️ 2026-04-22: 실제 코드에서 읽는 키로 정정 (UI-코드 매핑 수정).
 // 이전: seller_commission_rate 키가 UI 에만 있고 코드에선 안 읽혀서 어드민 수정이 반영되지 않는 버그.
@@ -379,6 +380,9 @@ export default function AdminPlatformSettingsPage() {
               ))}
             </div>
           </div>
+
+          {/* 📣 2026-08-19 (대표 확정): 소비자 홈 최상단 프로모 바 — 켜고 끄기 + 문구/버튼/색 */}
+          <PromoBarSection settings={settings} setSettings={setSettings} />
 
           {/* ☁️ 진단용 Cloudflare 자격 — 입력칸이 없어 대표가 넣을 방법이 없던 것(2026-07-29) */}
           <CloudflareCredsSection settings={settings} setSettings={setSettings} savedTick={savedTick} />

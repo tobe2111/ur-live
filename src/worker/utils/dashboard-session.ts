@@ -75,6 +75,23 @@ export async function ensureDashboardSessionsTable(DB: D1Database): Promise<void
   } catch { /* 이미 존재 */ }
   // 🤝 2026-07-28 동시 로그인 허용 플래그(대표 지시). 기존 테이블에도 붙도록 best-effort ALTER.
   try { await DB.prepare('ALTER TABLE dashboard_sessions ADD COLUMN multi_session INTEGER NOT NULL DEFAULT 0').run() } catch { /* 이미 존재 */ }
+  // 📱 2026-08-12 (대표 "제대로 만들기"): 기기별 세션 추적. 동시 로그인을 허용하면 "지금 누가 어디서
+  //   들어와 있나"를 볼 방법이 필요하다 — 단일 세션이 갖고 있던 **도용 탐지 신호**를 목록+개별 종료로
+  //   대체한다. 세션 키는 토큰에 이미 있는 `iat` 다(payload 변경 0 — 이 모듈의 기존 설계 철학 그대로).
+  try {
+    await DB.prepare(
+      `CREATE TABLE IF NOT EXISTS dashboard_session_devices (
+        account_type TEXT    NOT NULL,
+        account_id   INTEGER NOT NULL,
+        iat          INTEGER NOT NULL,
+        first_seen   TEXT,
+        user_agent   TEXT,
+        ip           TEXT,
+        revoked      INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (account_type, account_id, iat)
+      )`,
+    ).run()
+  } catch { /* 이미 존재 */ }
 }
 
 /**
@@ -109,6 +126,14 @@ export async function startDashboardSession(
          user_agent    = excluded.user_agent,
          ip            = excluded.ip`,
     ).bind(role, id, Math.floor(loginIatSec), meta?.userAgent ?? null, meta?.ip ?? null).run()
+    // 📱 기기 행 — "지금 어디서 들어와 있나" 목록의 원천. 로그인당 1행(키 = iat).
+    //   ⚠️ INSERT OR IGNORE: 같은 초에 두 번 로그인해도 같은 키라 조용히 무시된다(중복 무해).
+    //   last_seen 은 **일부러 갱신하지 않는다** — 인증된 매 요청마다 UPDATE 하면 D1 쓰기가 폭증한다.
+    await DB.prepare(
+      `INSERT OR IGNORE INTO dashboard_session_devices
+         (account_type, account_id, iat, first_seen, user_agent, ip, revoked)
+       VALUES (?, ?, ?, datetime('now'), ?, ?, 0)`,
+    ).bind(role, id, Math.floor(loginIatSec), meta?.userAgent ?? null, meta?.ip ?? null).run()
   } catch (e) {
     try { if (typeof console !== 'undefined') console.error('[dashboard-session] start failed (fail-soft):', String(e)) } catch { /* noop */ }
   }
@@ -133,10 +158,20 @@ export async function isDashboardSessionCurrent(
     await ensureDashboardSessionsTable(DB)
     // ⚠️ 이 조회는 **인증된 매 요청**에서 돈다 — 플래그를 같은 SELECT 에 실어 추가 왕복을 만들지 않는다.
     const row = await DB.prepare(
-      `SELECT min_valid_iat, COALESCE(multi_session, 0) AS multi_session
-         FROM dashboard_sessions WHERE account_type = ? AND account_id = ?`,
-    ).bind(role, id).first<{ min_valid_iat: number; multi_session: number }>()
+      // 📱 기기 무효화(revoked)를 **같은 쿼리에 LEFT JOIN** 으로 실어 왕복을 1회로 유지한다.
+      //   이 조회는 인증된 매 요청에서 돌기 때문에 추가 왕복은 곧 전 대시보드의 지연·비용이 된다.
+      `SELECT s.min_valid_iat AS min_valid_iat,
+              COALESCE(s.multi_session, 0) AS multi_session,
+              COALESCE(d.revoked, 0)       AS revoked
+         FROM dashboard_sessions s
+         LEFT JOIN dashboard_session_devices d
+                ON d.account_type = s.account_type AND d.account_id = s.account_id AND d.iat = ?
+        WHERE s.account_type = ? AND s.account_id = ?`,
+    ).bind(Math.floor(tokenIatSec), role, id).first<{ min_valid_iat: number; multi_session: number; revoked: number }>()
     if (!row) return true                           // 추적행 없음(롤아웃 전 로그인) = grandfather
+    // 🔒 개별 기기 강제 로그아웃 — multi_session 여부와 무관하게 **가장 먼저** 판정한다.
+    //   동시 로그인을 허용한 계정에서도 "이 기기만 끊기"가 동작해야 목록이 의미를 갖는다.
+    if (Number(row.revoked) === 1) return false
     if (Number(row.multi_session) === 1) return true // 🤝 동시 로그인 허용 시트(자동화 계정 등)
     return tokenIatSec >= (Number(row.min_valid_iat) - 1)  // 1초 skew 허용
   } catch {

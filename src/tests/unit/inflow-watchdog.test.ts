@@ -128,7 +128,11 @@ describe('🔌 배선 — 감시가 실제로 돌고, B2B 를 본다', () => {
   })
 
   it('매시간 도는 레인에 걸려 있다 — 일 1회 레인이면 놓친 날이 통째로 빈다', () => {
-    const maint = runners.slice(runners.indexOf('  maintenance: {'), runners.indexOf('  maintenance: {') + 900)
+    // ⚠️ 고정 오프셋으로 자르지 않는다 — 이 블록 앞뒤에 코드가 붙을 때마다 창이 밀려
+    //   불변식은 멀쩡한데 테스트만 빨간불이 난다(이 세션에서 두 번 겪었다). 다음 레인 키까지로.
+    const mStart = runners.indexOf('  maintenance: {')
+    const mEnd = runners.indexOf('\n  collect: {', mStart)
+    const maint = runners.slice(mStart, mEnd > mStart ? mEnd : mStart + 3000)
     expect(maint).toContain('maybeAlertInflow')
     // rescan 양보(early return)보다 앞이어야 그 시각에도 감시가 돈다
     expect(maint.indexOf('maybeAlertInflow')).toBeLessThan(maint.indexOf('RESCAN_HOUR_UTC'))
@@ -215,5 +219,19 @@ describe('🎯 발송 가능 리드 — 대표가 정한 유일한 지표', () =
     expect(src).toContain("key: 'sendable_influencer'")
     expect(src).toContain("key: 'sendable_company'")
     expect(src).toContain('judgeSendable(DB, today)')
+  })
+})
+
+describe('🗄️ 리드 DB 이사 — 감시가 옛 DB를 보면 안 된다', () => {
+  it('🩸 감시에 넘기는 핸들이 `adsLeadsDb` 라우터를 거친다', () => {
+    // ad_influencer_leads·ad_company_leads 는 ADS_DB 로 이사했다. env.DB 를 그대로 넘기면
+    // 바인딩 후 "테이블이 없다"로 조용히 깨지고, **감시가 가장 먼저 눈이 먼다**.
+    const runners = readFileSync('src/worker-ads/lane-alarm-runners.ts', 'utf8')
+    expect(runners).toContain('maybeAlertInflow(env, adsLeadsDb(env as never) as never)')
+    expect(runners).not.toContain('maybeAlertInflow(env, env.DB)')
+  })
+  it('감시가 읽는 두 테이블이 실제 이사 목록에 있다(전제 확인)', async () => {
+    const { ADS_LEADS_TABLES } = await import('@/shared/ads/leads-db')
+    for (const a of INFLOW_AXES) expect(ADS_LEADS_TABLES as readonly string[]).toContain(a.table)
   })
 })

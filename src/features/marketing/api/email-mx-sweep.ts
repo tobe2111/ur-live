@@ -14,6 +14,7 @@ import { domainAcceptsMail, isKnownMailDomain } from './contact-enrich'
 import { ensureCompanySchema } from './company-discovery'
 import { ensureProspectSchema } from './store-prospects'
 import { envSubreqCap, envLaneBudget, envPlanValue } from './collect-budget'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 export interface MxSweepStats { last_run: string; checked: number; removed: number; cursor_c: number; cursor_s: number; total_removed: number; note?: string; stopped_by?: string; first_block?: string }
 const STATS_KEY = 'ads_mxsweep_stats'
@@ -41,7 +42,7 @@ const RUN_DEADLINE_MS = 10_000
 const RUN_DEADLINE_MS_PAID = 24_000
 
 export async function sweepEmailMx(env: Env): Promise<MxSweepStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   // 스키마 DDL 실비를 예산에서 뺀다(2026-07-29) — 안 빼면 우리 계수와 플랫폼 계수가 갈라진다.
   const schemaSpent = (await ensureCompanySchema(DB)) + (await ensureProspectSchema(DB))
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')

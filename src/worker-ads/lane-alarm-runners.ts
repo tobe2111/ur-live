@@ -111,7 +111,11 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
       //   ⚠️ **rescan 양보보다 앞**이다 — 뒤에 두면 19시엔 감시가 통째로 안 돈다.
       try {
         const { maybeAlertInflow } = await import('@/features/marketing/api/inflow-watchdog')
-        const r = await maybeAlertInflow(env, env.DB)
+        // 🗄️ **리드 테이블은 이사했다** — `ad_influencer_leads`·`ad_company_leads` 는 `ADS_DB` 로 간다.
+        //   `env.DB` 를 그대로 넘기면 바인딩 후 "테이블이 없다"로 조용히 깨진다(감시가 먼저 눈이 먼다).
+        //   라우터는 문장 단위라 같은 핸들로 `platform_settings`(안 옮김)도 정상 라우팅된다.
+        const { adsLeadsDb } = await import('@/shared/ads/leads-db')
+        const r = await maybeAlertInflow(env, adsLeadsDb(env as never) as never)
         // 📈 부족하면 **다른 레인을 더 돌린다** — 판정이 실제로 돈 회차에서만(매시간 밀어 넣으면 진동한다).
         if (r.ran && r.verdicts) { const { applyLaneBoost } = await import('./lane-boost-apply'); await applyLaneBoost(env, r.verdicts) }
       } catch { /* 감시가 정비를 멈추게 하지 않는다 */ }

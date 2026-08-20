@@ -11,13 +11,14 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { getPoolTimeline, resolveDays } from './pool-timeline'
 import { buildInfluencerPoolStats } from './influencer-pool-stats'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const app = new Hono<{ Bindings: Env }>()
 
 // GET /api/admin/ads/influencer-pool/timeline?days=30 — **며칠에 얼마나 수집됐나**.
 //   누적 총계만으로는 "언제 멈췄나"를 못 본다 — 라이브 판정에서 매번 하트비트를 손으로 뒤지던 자리다.
 app.get('/influencer-pool/timeline', async (c) =>
-  c.json({ success: true, timeline: await getPoolTimeline(c.env.DB, 'influencer', resolveDays(c.req.query('days'))) }))
+  c.json({ success: true, timeline: await getPoolTimeline(adsLeadsDb(c.env), 'influencer', resolveDays(c.req.query('days'))) }))
 
 // GET /api/admin/ads/influencer-pool/stats — 누적/최근 실행 통계 + 플랫폼별 카운트
 //   집계 본문은 `influencer-pool-stats.ts`(SSOT) — 이 라우트는 인증/응답만.

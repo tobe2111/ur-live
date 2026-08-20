@@ -13,6 +13,7 @@ import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error';
 import { swallow } from '@/worker/utils/swallow';
 import { executeQuery } from '@/worker/utils/database'
+import { loadSeedAsset, isGuideSeed, SEED_ASSET_PATHS, type SeedAssetEnv } from '../../../worker/utils/seed-assets'
 // 🛡️ 2026-05-18: GUIDE_SEEDS (87KB) 는 dynamic import — 본 모듈에 정적 포함 X (worker bundle 축소).
 
 export const guideRoutes = new Hono<{ Bindings: Env }>()
@@ -54,7 +55,7 @@ async function requireRole(c: any, roles: string[]): Promise<{ id: number; type:
   } catch { return null }
 }
 
-async function ensureSeeded(DB: D1Database, guideType: GuideType): Promise<void> {
+async function ensureSeeded(DB: D1Database, guideType: GuideType, env?: SeedAssetEnv): Promise<void> {
   if (_done_ensureSeeded.has(DB)) return
   _done_ensureSeeded.add(DB)
   const existing = await DB.prepare(
@@ -62,9 +63,10 @@ async function ensureSeeded(DB: D1Database, guideType: GuideType): Promise<void>
   ).bind(guideType).first<{ n: number }>()
   if ((existing?.n ?? 0) > 0) return
 
-  // 🛡️ 2026-05-18: 87KB GUIDE_SEEDS dynamic import — worker bundle 에서 제외.
-  //   첫 진입 시 1회만 fetch (operation_guides 비어있을 때).
-  const { GUIDE_SEEDS } = await import('./guide-seed')
+  // 🌱 2026-08-19: 시드 산문(209KB)을 워커 번들에서 빼 **정적 자산**으로 읽는다(무료 압축 1MB 한도).
+  //   못 읽으면 아무것도 넣지 않는다 — 빈 시드로 채우면 '있는데 비어 있는' 가이드가 된다.
+  const GUIDE_SEEDS = await loadSeedAsset(env, SEED_ASSET_PATHS.guides, isGuideSeed)
+  if (!GUIDE_SEEDS) { _done_ensureSeeded.delete(DB); return }  // 메모 해제 → 다음 요청에서 재시도
   const seed = GUIDE_SEEDS[guideType] || []
   for (const s of seed) {
     try {
@@ -92,7 +94,11 @@ async function ensureGuideEditColumn(DB: D1Database): Promise<void> {
 //   (a) 최초 1회 보수적 백필, (b) 신규 섹션 INSERT, (c) manually_edited=0 섹션 시드 최신화.
 //   ❗ 아무것도 DELETE 하지 않음 — 시드에서 빠진 섹션은 그대로 둠(가이드는 블로그 글처럼
 //   '낡아서 은퇴'가 아니라 운영자가 큐레이션하는 문서 — 정리는 관리자 DELETE/reseed 로).
-async function syncGuideSeed(DB: D1Database, firstRun: boolean): Promise<void> {
+/**
+ * @returns 실제로 동기화했으면 true. **false 면 호출부는 guide_seed_version 을 올리면 안 된다** —
+ *   올리면 다음부터 "이미 최신"으로 판단해 재시드를 영영 건너뛴다(라이브 가이드가 조용히 낡는다).
+ */
+async function syncGuideSeed(DB: D1Database, firstRun: boolean, env?: SeedAssetEnv): Promise<boolean> {
   // ⚠️ 보수적 백필 (최초 버전-동기화 1회만): 기존 프로덕션 행들엔 수동 편집 여부를 구분할
   //   방법이 없음(컬럼이 지금 생겼으므로). 안전하게 **현재 라이브 내용 전부를 수동편집으로 간주**
   //   (auto-reference 는 기계 생성이라 제외) → 지금 라이브에 있는 문구는 아무것도 안 덮어씀.
@@ -105,7 +111,8 @@ async function syncGuideSeed(DB: D1Database, firstRun: boolean): Promise<void> {
     ).run().catch(swallow('guides:seed-sync:backfill'))
   }
 
-  const { GUIDE_SEEDS } = await import('./guide-seed')
+  const GUIDE_SEEDS = await loadSeedAsset(env, SEED_ASSET_PATHS.guides, isGuideSeed)
+  if (!GUIDE_SEEDS) return false
   for (const type of VALID_GUIDE_TYPES) {
     const seed = GUIDE_SEEDS[type] || []
     for (const s of seed) {
@@ -125,12 +132,13 @@ async function syncGuideSeed(DB: D1Database, firstRun: boolean): Promise<void> {
         .run().catch(swallow('guides:seed-sync:update'))
     }
   }
+  return true
 }
 
 // 버전 게이트: 코드 시드 버전 > DB 저장 버전일 때만 동기화 (isolate 당 1회 메모 — blog 미러).
 // fail-soft — 동기화 실패가 가이드 조회를 절대 막지 않음(다음 요청에서 재시도).
 let _guideSeedSyncedVersion = -1
-async function maybeSyncGuideSeed(DB: D1Database): Promise<void> {
+async function maybeSyncGuideSeed(DB: D1Database, env?: SeedAssetEnv): Promise<void> {
   if (_guideSeedSyncedVersion >= GUIDE_SEED_VERSION) return
   try {
     await ensureGuideEditColumn(DB)
@@ -139,7 +147,9 @@ async function maybeSyncGuideSeed(DB: D1Database): Promise<void> {
     ).first<{ value: string }>().catch(() => null)
     const stored = row ? Number(row.value) || 0 : 0
     if (stored < GUIDE_SEED_VERSION) {
-      await syncGuideSeed(DB, !row)
+      // ⚠️ 시드 자산을 못 읽었으면 버전을 올리지 않는다 — 다음 요청에서 재시도.
+      const synced = await syncGuideSeed(DB, !row, env)
+      if (!synced) return
       await DB.prepare(
         `INSERT INTO platform_settings (key, value, updated_at)
          VALUES ('guide_seed_version', ?, datetime('now'))
@@ -171,9 +181,9 @@ guideRoutes.get('/:type', cors(), async (c) => {
   if (!user) return c.json({ success: false, error: '인증이 필요합니다' }, 401)
 
   try {
-    await ensureSeeded(c.env.DB, type)
+    await ensureSeeded(c.env.DB, type, c.env as unknown as SeedAssetEnv)
     // 🔄 버전 재시드: 코드의 시드 버전이 DB 보다 높으면 자동 반영(수동편집 섹션 보존). fail-soft.
-    await maybeSyncGuideSeed(c.env.DB)
+    await maybeSyncGuideSeed(c.env.DB, c.env as unknown as SeedAssetEnv)
     const rows = await executeQuery<GuideSection>(c.env.DB,
       `SELECT id, guide_type, section_key, section_icon, section_title, section_order, content_md, updated_at
        FROM operation_guides WHERE guide_type = ? ORDER BY section_order ASC`,
@@ -282,7 +292,10 @@ guideRoutes.post('/:type/reseed', async (c) => {
       return c.json({ success: false, error: '재시드는 기존 가이드 내용을 전부 교체합니다. { "confirm": true } 로 다시 요청하세요.' }, 400)
     }
 
-    const { GUIDE_SEEDS } = await import('./guide-seed')
+    const GUIDE_SEEDS = await loadSeedAsset(c.env as unknown as SeedAssetEnv, SEED_ASSET_PATHS.guides, isGuideSeed)
+    if (!GUIDE_SEEDS) {
+      return c.json({ success: false, error: '시드 자산(seed/guides.json)을 읽지 못했습니다 — 배포 산출물을 확인하세요' }, 503)
+    }
     const seed = GUIDE_SEEDS[type] || []
     if (seed.length === 0) {
       return c.json({ success: false, error: '해당 type 의 시드가 없습니다' }, 400)
@@ -291,7 +304,7 @@ guideRoutes.post('/:type/reseed', async (c) => {
     await ensureGuideEditColumn(c.env.DB)
     // 버전-동기화를 먼저 완주 — 최초 실행(버전키 부재)이라면 여기서 전 type 보수적 백필이 돌아야
     // 아래의 버전 저장이 다른 type 들의 백필 기회를 건너뛰지 않음.
-    await maybeSyncGuideSeed(c.env.DB)
+    await maybeSyncGuideSeed(c.env.DB, c.env as unknown as SeedAssetEnv)
     await c.env.DB.prepare('DELETE FROM operation_guides WHERE guide_type = ?').bind(type).run()
     let inserted = 0
     for (const s of seed) {

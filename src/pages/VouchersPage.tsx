@@ -25,7 +25,7 @@ import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 // 🖥️ 2026-07-18 (교환권 PC 2단 분리): 카드/행 + VoucherProduct 타입은 ./vouchers/shared 로 추출(파일크기 래칫).
-import { VoucherCard, VoucherRow, BrandChip, type VoucherProduct } from './vouchers/shared'
+import { VoucherCard, VoucherRow, BrandChip, getCategoryIcon, type VoucherProduct } from './vouchers/shared'
 import { SortMenu } from '@/components/ui/sort-menu'
 import BrowseProductCard from './browse/BrowseProductCard'
 import type { Product } from './browse/types'
@@ -53,49 +53,6 @@ interface CategorySection {
   brands: BrandSummary[]
 }
 
-// 🛡️ 2026-05-19: KT Alpha 카테고리명 → 사용자 친화 이모지 매핑.
-//   DB의 category 값 (예: '편의점/마트') 을 그대로 키로 사용. 매핑 없으면 🎁 default.
-const CATEGORY_ICONS: Record<string, string> = {
-  '편의점/마트': '🏪',
-  '편의점': '🏪',
-  '마트/슈퍼': '🏪',
-  '카페/베이커리': '☕',
-  '카페': '☕',
-  '베이커리': '🥐',
-  '외식/배달': '🍔',
-  '외식': '🍔',
-  '패스트푸드': '🍟',
-  '한식': '🍚',
-  '양식': '🍝',
-  '치킨/피자': '🍕',
-  '치킨': '🍗',
-  '피자': '🍕',
-  '백화점/쇼핑': '🛍️',
-  '백화점': '🛍️',
-  '쇼핑': '🛍️',
-  '뷰티/패션': '💄',
-  '뷰티': '💄',
-  '패션': '👗',
-  '화장품': '💅',
-  '도서/문화': '📚',
-  '도서': '📚',
-  '문화': '🎭',
-  '영화': '🎬',
-  '공연': '🎭',
-  '모바일/디지털': '📱',
-  '모바일상품권': '📱',
-  '모바일': '📱',
-  '디지털': '💾',
-  '게임': '🎮',
-  '주유/생활': '⛽',
-  '주유': '⛽',
-  '생활': '🏠',
-  '통신': '📡',
-}
-
-function getCategoryIcon(category: string): string {
-  return CATEGORY_ICONS[category] || '🎁'
-}
 
 // 🏭 2026-06-05 (사용자 신고 — 교환권 스크롤해도 상품 다 안 나옴): SSR 주입 슬롯(MAIN/VOUCHERS) 이
 //   limit=20 인데 클라 PAGE_SIZE 가 30 이라 hasMore=(20===30)=false → 무한스크롤이 즉시 멈춰 20개만 노출됐고,
@@ -644,7 +601,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               <h2 className="text-[19px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
                 <Gift className="w-5 h-5 text-amber-500 shrink-0" />
                 <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
-                <span className="text-[14px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{products.length}</span>
+                {/* 🐛 2026-08-17 (UX 전수검사 P1): 로드분 개수를 총계 자리에 그대로 쓰면 "커피/음료 775개"
+                    카테고리가 "20"으로 읽힌다 — 더 있으면 `20+` 로 표기(정확한 총계 API 없음). */}
+                <span className="text-[14px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
                 {brand && (
                   <button
                     onClick={() => setBrand('')}
@@ -663,7 +622,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-4">
+                {/* 📐 2026-08-17 (UX 전수검사 P2 — 그루폰 대비 최약 밀도): PC 4열→5열(xl). 카드 ~240→190px,
+                    첫 화면 노출 8→10개. 카드 내부(이미지 속성 잠금)는 무변경 — 열 수만. */}
+                <div className="grid grid-cols-3 xl:grid-cols-5 gap-x-3 gap-y-4">
                   {displayProducts.slice(0, embedVisible).map((p, idx) => (
                     <Fragment key={p.id}>
                       <VoucherCard p={p} aboveFold={idx < 8} />
@@ -905,7 +866,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             <Gift className="w-[18px] h-[18px] text-amber-500 shrink-0" />
             <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
             {!loading && (
-              <span className="text-[13px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{products.length}</span>
+              <span className="text-[13px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
             )}
             {brand && (
               <button

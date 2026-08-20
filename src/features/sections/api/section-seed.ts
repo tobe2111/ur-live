@@ -19,8 +19,13 @@ import { SECTION_DEFAULT_LIMIT } from '@/shared/constants/home-showcase'
  * ⇒ 마음에 안 들면 어드민에서 지우거나 고치면 되고, 그 선택이 유지된다.
  */
 
-/** 올릴 때마다 "아직 없는 시드 섹션"만 추가된다. 기존 행은 건드리지 않는다. */
-export const SECTION_SEED_VERSION = 1
+/** 올릴 때마다 "아직 없는 시드 섹션"만 추가된다. 기존 행은 건드리지 않는다.
+ *  v2 (2026-08-17 대표 신고 — "더보기 누르면 이상한 페이지가 잠깐 보였다 사라짐"): '지금 인기 이용권'의
+ *  more_href 가 `/group-buy` 였는데 그 경로는 **라우트가 아니라 홈으로 가는 별칭**(`<Navigate to="/">`
+ *  + 서버 301)이다 — 클릭하면 홈이 통째로 리마운트되며 옛 프레임이 플래시한 뒤 제자리로 돌아오는
+ *  죽은 버튼이었다. `/?sort=popular`(홈 인기순 그리드 — 쿼리 전용 이동이라 리마운트 0)로 교체.
+ *  기존 행도 값이 정확히 `/group-buy` 면 아래 heal 이 고쳐 준다(별칭은 어떤 의도로도 옳을 수 없는 값). */
+export const SECTION_SEED_VERSION = 2
 
 interface SeedSection {
   title: string
@@ -43,7 +48,7 @@ export const HOME_SECTION_SEED: SeedSection[] = [
     source: 'popular',
     source_value: null,
     limit_count: SECTION_DEFAULT_LIMIT,
-    more_href: '/group-buy',
+    more_href: '/?sort=popular',
   },
   {
     title: '주말에 떠나는 숙소',
@@ -84,6 +89,12 @@ export async function maybeSeedHomeSections(env: Env): Promise<void> {
 
     const maxRow = await DB.prepare('SELECT MAX(sort_order) AS m FROM homepage_sections').first<{ m: number | null }>()
     let order = (maxRow?.m ?? 0) + 1
+
+    // 🚑 v2 heal — 라이브에 v1 으로 이미 들어간 `/group-buy` 더보기를 정정한다. 대표가 편집한
+    // 다른 값은 건드리지 않는다(정확히 별칭 값일 때만 — 별칭은 홈 리다이렉트라 항상 잘못된 값).
+    await DB.prepare(
+      `UPDATE homepage_sections SET more_href = '/?sort=popular' WHERE more_href = '/group-buy'`
+    ).run().catch(() => {})
 
     for (const s of HOME_SECTION_SEED) {
       if (existing.has(s.title)) continue

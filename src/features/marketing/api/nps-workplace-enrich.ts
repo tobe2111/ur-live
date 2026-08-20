@@ -24,6 +24,7 @@ import { envLaneBudget , envPlanValue} from './collect-budget'
 import { ensureCompanySchema } from './company-discovery'
 import { parseItems } from './hira-hospital-collect'
 import { describePublicDataFailure, serviceKeyParam, isNoValue } from './public-data-diag'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const NPS_BASE = 'https://apis.data.go.kr/B552015/NpsBplcInfoInqireServiceV2'
 const norm = (s: unknown) => String(s ?? '').toLowerCase().replace(/[\s()㈜]|주식회사|유한회사|\(주\)|\(유\)/g, '')
@@ -52,7 +53,7 @@ export async function runNpsWorkplaceEnrich(env: Env, maxLeadsArg?: number): Pro
   //   CPU 한도(26초)에 걸려 죽었고, 죽으면 커서가 안 올라가 다음 회차가 같은 구간을 또 훑는다.
   //   ⚠️ 유료(120)는 CPU 한도가 다른 세계라 별개 값이다. **무료 40 을 올리는 것과 혼동하지 말 것.**
   const maxLeads = maxLeadsArg ?? envPlanValue(undefined, 40, 120, env)
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   await ensureCompanySchema(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const key = env.PUBLIC_DATA_SERVICE_KEY || (env as unknown as { NTS_API_KEY?: string }).NTS_API_KEY || ''

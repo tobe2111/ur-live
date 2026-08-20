@@ -10,13 +10,14 @@
 import type { Env } from '@/worker/types/env'
 import { ensureCompanySchema } from './company-discovery'
 import { describePublicDataFailure, serviceKeyParam } from './public-data-diag'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 export interface NtsSweepStats { last_run: string; checked: number; closed: number; cursor: number; total_closed: number; note?: string }
 const STATS_KEY = 'ads_ntsstatus_stats'
 const CURSOR_KEY = 'ads_ntsstatus_cursor'
 
 export async function sweepBusinessStatus(env: Env): Promise<NtsSweepStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   await ensureCompanySchema(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const key = env.PUBLIC_DATA_SERVICE_KEY || (env as unknown as { NTS_API_KEY?: string }).NTS_API_KEY || ''

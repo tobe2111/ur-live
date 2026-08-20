@@ -21,6 +21,7 @@ import { healNaverHandles } from './influencer-handle-heal'
 import { backfillRegions, recheckBlankRegions } from './influencer-region'
 // 🏘️ 카페 회원수 — 발굴 API 가 안 주는 값이라 카페 홈에서 1회성으로 채운다(그 파일 헤더 참조).
 import { fillCafeMemberCounts } from './influencer-cafe-members'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const POOL = 0
 
@@ -222,7 +223,6 @@ export async function reextractPoolContacts(DB: D1Database, opts?: { budget?: Op
   }
   // 🅿️ 다 훑었어도 **0 으로 되돌리지 않는다** — 그게 매 회차 전수 재스캔의 원인이었다(위 docblock).
   //   다음 회차는 여기서 이어받아 새 행만 본다. 전수 재스캔은 규칙 버전 bump 로만 일어난다.
-  //
   // 🩸 **커서 저장은 예산 밖(raw DB)에서 한다** (2026-08-03 라이브 실측). 호출부가 넘기는 `DB` 는
   //   `budgetedDb` 라 예산이 바닥나면 쓰기가 잘리는데, 이 저장은 함수의 **마지막** 동작이라 하필
   //   그때 실행된다. 그리고 `.catch(() => null)` 이 삼켜 조용히 사라진다 —
@@ -411,7 +411,7 @@ export async function sweepRegions(DB: D1Database, budget: OpBudget, reserve = 0
  *   반환·기록 형태는 기존 `ads_maintenance_last`(어드민 패널)와 호환(단계 키를 병합 갱신).
  */
 export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<Record<string, unknown>> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   const at = new Date().toISOString()
   if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, PHASE_LEASE_TTL_MS)) return { at, kind: 'maintenance', phase, busy: true }
 
@@ -494,7 +494,7 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
  *   ⚠️ 리스는 `runMaintenancePhase` 가 잡는다 — 야간 재보정과 겹치면 `busy: true` 로 조용히 비켜난다.
  */
 export async function runNextMaintenancePhase(env: Env): Promise<Record<string, unknown>> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   const raw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
     .bind(MAINT_PHASE_CURSOR_KEY).first<{ value: string }>().catch(() => null)
   const cursor = parsePhaseCursor(raw?.value, MAINT_SCHEDULE_VERSION)
@@ -509,7 +509,7 @@ export async function runNextMaintenancePhase(env: Env): Promise<Record<string, 
  *   🧭 카테고리 전체 재보정(커서 이어받기) + 🔄 라이브 재조회 2패스(0회·무메일·미분류 우선)
  *   + 📝 블로거 스윕(활동성·이웃수·프로필 연락처 — 시간당 20 개로는 백로그가 느려 밤에 60 개 추가). */
 export async function runNightlyRescan(env: Env): Promise<Record<string, unknown>> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   // 🔒 정비와 같은 lease — 이쪽은 **YouTube 쿼터를 쓰기 때문에** 중복 실행이 곧 하루 예산 낭비(수집 몫 잠식).
   if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS)) {
     // 🔇 진 쪽도 흔적을 남긴다 — 없으면 '경합에 졌다'와 '한 번도 안 돌았다'가 구분되지 않는다.

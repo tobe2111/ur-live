@@ -18,6 +18,7 @@ import { textToHtml, isNightKST, withOptOut, withSenderInfo } from './outreach-s
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
 import { getOrCreateClaimCode } from './lead-claim'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const POOL = 0
 const DELAY_HOURS = 20 // 신청 후 대기(익일 도착 — 약속한 '2~3일 내'보다 빠르게)
@@ -67,10 +68,10 @@ export async function runInboundOnboarding(env: Env): Promise<OnboardingResult> 
   if ((env as unknown as { ADS_ONBOARDING_DISABLED?: string }).ADS_ONBOARDING_DISABLED === 'true') return { scanned: 0, sent: 0, failed: 0, disabled: true }
   if (!env.RESEND_API_KEY) return { scanned: 0, sent: 0, failed: 0, disabled: true }
   if (isNightKST(Date.now())) return { scanned: 0, sent: 0, failed: 0, skipped_night: true }
-  await ensureInfluencerSchema(env.DB)
-  await ensureOutreachColumns(env.DB)
-  await ensureOnboardColumn(env.DB)
-  const rows = (await env.DB.prepare(`SELECT id, name, email FROM ad_influencer_leads
+  await ensureInfluencerSchema(adsLeadsDb(env))
+  await ensureOutreachColumns(adsLeadsDb(env))
+  await ensureOnboardColumn(adsLeadsDb(env))
+  const rows = (await adsLeadsDb(env).prepare(`SELECT id, name, email FROM ad_influencer_leads
     WHERE account_id = ? AND source = 'inbound' AND consented_at IS NOT NULL AND email IS NOT NULL
       AND onboarded_at IS NULL AND consented_at <= datetime('now', ?)
       AND (email_status IS NULL OR email_status NOT IN ('bounced','complained','opt_out'))
@@ -80,13 +81,13 @@ export async function runInboundOnboarding(env: Env): Promise<OnboardingResult> 
   let sent = 0, failed = 0
   for (const r of rows) {
     // 발송 전 선점(CAS) — 동시 cron/재시도에도 1인 1회.
-    const claim = await env.DB.prepare("UPDATE ad_influencer_leads SET onboarded_at = datetime('now') WHERE id = ? AND account_id = ? AND onboarded_at IS NULL")
+    const claim = await adsLeadsDb(env).prepare("UPDATE ad_influencer_leads SET onboarded_at = datetime('now') WHERE id = ? AND account_id = ? AND onboarded_at IS NULL")
       .bind(r.id, POOL).run().catch(() => null)
     if (claim?.meta?.changes !== 1) continue
     // 🔗 가입 추적 코드(없으면 맨 링크로 폴백 — 발급 실패가 안내 자체를 막지 않는다).
-    const code = await getOrCreateClaimCode(env.DB, r.id).catch(() => null)
+    const code = await getOrCreateClaimCode(adsLeadsDb(env), r.id).catch(() => null)
     const m = onboardingEmail(r.name, code)
-    const res = await sendEmail({ to: r.email, subject: m.subject, html: textToHtml(m.body) }, env.RESEND_API_KEY, env.RESEND_FROM, env.DB)
+    const res = await sendEmail({ to: r.email, subject: m.subject, html: textToHtml(m.body) }, env.RESEND_API_KEY, env.RESEND_FROM, adsLeadsDb(env))
       .catch(() => ({ success: false as const }))
     if (res.success) sent++; else failed++ // 실패해도 재시도 안 함(중복 안내 방지 — 수동 팔로업이 안전)
   }

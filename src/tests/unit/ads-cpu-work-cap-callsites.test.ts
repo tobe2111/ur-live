@@ -40,6 +40,9 @@ const read = (rel: string) => {
   return s
 }
 
+// 🔀 2026-08-19: 유어애즈 리드 DB 분리로 핸들이 `env.DB` → `adsLeadsDb(env)` 가 됐다.
+//   여기서 보려는 것은 **'요청 스코프 DB 핸들을 넘기는가'** 이지 그 표현식의 철자가 아니다 —
+//   철자로 고정하면 리팩토링이 배선 가드를 조용히 무력화한다(dashboard-session 에서 겪은 그 함정).
 describe('rowsWorthReading — 예산이 못 쓸 행은 안 읽는다', () => {
   it('예산보다 훨씬 큰 상한은 예산 쪽으로 잘린다', () => {
     expect(rowsWorthReading(50, 600)).toBe(54)        // 50 + slack 4
@@ -105,10 +108,10 @@ describe('🚧 배선 — 순수함수만 만들고 호출부에 안 걸면 아�
   //   main(#1076)의 cpu-quantum 배선(`await … env.DB`)도 추출 모듈에서 그대로 지킨다.
   it('재분류 루프가 행 총량으로도 멈춘다 — 시간 조건만 남으면 08-04 상태 그대로다', () => {
     const src = read('src/features/marketing/api/reclassify-lane.ts')
-    expect(src).toMatch(/const \{ rowsPerPass, maxRows, deadlineMs \} = await reclassifyWorkPlan\(env, env\.DB\)/)
+    expect(src).toMatch(/const \{ rowsPerPass, maxRows, deadlineMs \} = await reclassifyWorkPlan\(env, (?:adsLeadsDb\((?:c\.)?env\)|(?:c\.)?env\.DB)\)/)
     expect(src).toMatch(/rows < maxRows/)
     // 고정 1000 이 루프에 다시 박히면 요금제가 닿을 길이 없다
-    expect(src).not.toMatch(/reclassifyCompanyLeads\(env\.DB, 1000/)
+    expect(src).not.toMatch(/reclassifyCompanyLeads\((?:adsLeadsDb\((?:c\.)?env\)|(?:c\.)?env\.DB), 1000/)
   })
 
   it('무엇이 멈췄는지 남긴다 — "행에서 끊겼다"와 "시간에서 끊겼다"가 같아 보이면 조정할 수 없다', () => {

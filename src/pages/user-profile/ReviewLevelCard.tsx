@@ -31,6 +31,10 @@ export default function ReviewLevelCard() {
     : 100
 
   return (
+    // 📐 2026-08-17 (대표 신고 — PC 에서 이 카드만 화면 풀폭으로 벌어짐): 형제 섹션(OrderStatusBar·
+    // TeamPointsCard·ShoppingGroup …)은 전부 `ur-content-medium px-4 lg:px-8` 로 자기 폭을 감싸는데
+    // 이 카드만 bare `w-full` 이라 /user/profile 풀블리드(PC)에서 혼자 컨테이너 밖까지 늘어났다.
+    <div className="ur-content-medium px-4 lg:px-8">
     <button
       type="button"
       onClick={() => navigate('/my-vouchers')}
@@ -55,5 +59,6 @@ export default function ReviewLevelCard() {
         <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-white/30 shrink-0" aria-hidden="true" />
       </div>
     </button>
+    </div>
   )
 }

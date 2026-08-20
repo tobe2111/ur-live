@@ -1,10 +1,9 @@
-import { Fragment, memo } from 'react'
+import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
-import { cfImage } from '@/utils/cf-image'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import { resolveConsumerAlias } from '@/shared/seo/consumer-redirects'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
-import { formatWon } from '@/utils/format'
-import { canonicalDetailPath } from '@/shared/product-flow'
+import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 
 /**
  * 🏠 ① 카테고리 섹션 + 더보기 (2026-08-04 대표 시안 승인).
@@ -19,17 +18,23 @@ import { canonicalDetailPath } from '@/shared/product-flow'
  * 숙소는 `/stays`, 나머지 이용권은 `/group-buy` 다. 이름으로 찍으면 반드시 틀린다.
  */
 
+/** 서버 `CARD_COLS`(section-rules.ts)가 실어 주는 필드 — 카드(`GroupBuyFeedCard`) 계약과 같은 모양. */
 interface SectionProduct {
   id: number
   name: string
-  price?: number | null
-  original_price?: number | null
-  image_url?: string | null
-  category?: string | null
-  deal_only?: number | null
+  price: number
+  original_price?: number
+  image_url?: string
+  category?: string
+  deal_only?: number
   dominant_color?: string | null
-  restaurant_name?: string | null
-  restaurant_address?: string | null
+  restaurant_name?: string
+  restaurant_address?: string
+  discount_rate?: number
+  sold_count?: number
+  avg_rating?: number
+  /** 🖼️ 2026-08-19: hover 캐러셀용 갤러리(서버가 잘라 내려줌). */
+  images?: string[] | string | null
 }
 interface HomeSection {
   id: number
@@ -39,57 +44,12 @@ interface HomeSection {
   products: SectionProduct[]
 }
 
-function discountPct(p: SectionProduct): number | null {
-  const now = Number(p.price), was = Number(p.original_price)
-  if (!Number.isFinite(now) || !Number.isFinite(was) || was <= 0 || now >= was) return null
-  return Math.round((1 - now / was) * 100)
-}
-
-const DealCard = memo(function DealCard({ p }: { p: SectionProduct }) {
-  // 목적지는 `canonicalDetailPath` SSOT 만 쓴다 — 교환권 /vouchers · 숙소 /stays · 그 외 이용권
-  // /group-buy 로 갈린다. 카테고리를 손으로 찍으면 숙소가 객실·날짜 없는 상세로 떨어진다.
-  const href = canonicalDetailPath({ id: p.id, deal_only: p.deal_only, category: p.category })
-    ?? `/products/${p.id}`
-  const img = p.image_url ? cfImage(p.image_url, { width: 480, quality: 76 }) : ''
-  const off = discountPct(p)
-  const where = [p.restaurant_name, (p.restaurant_address || '').split(' ').slice(0, 2).join(' ')]
-    .filter(Boolean).join(' · ')
-
-  return (
-    <Link to={href} className="block min-w-0 group">
-      <div
-        className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A2334]"
-        style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}
-      >
-        {img && (
-          <img
-            src={img}
-            alt=""
-            loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-          />
-        )}
-      </div>
-      <h4 className="mt-2.5 text-[13.5px] font-bold leading-snug text-gray-900 dark:text-white line-clamp-2">
-        {p.name}
-      </h4>
-      {where && <div className="mt-0.5 text-[11.5px] text-gray-400 dark:text-gray-500 truncate">{where}</div>}
-      <div className="mt-1.5 flex items-baseline gap-1.5 tabular-nums">
-        <span className="text-[15px] font-black tracking-tight text-gray-900 dark:text-white">
-          {formatWon(p.price)}
-        </span>
-        {off !== null && (
-          <>
-            <span className="text-[11.5px] text-gray-400 dark:text-gray-500 line-through">
-              {Number(p.original_price).toLocaleString()}
-            </span>
-            <span className="text-[12px] font-bold text-brand">{off}%</span>
-          </>
-        )}
-      </div>
-    </Link>
-  )
-})
+/**
+ * 🛍️ 2026-08-19 (대표 신고 — "지금 인기 이용권 카드 디자인과 가까운 동네딜 카드가 다르네"):
+ * 이 파일이 갖고 있던 자체 `DealCard`(이미지+제목+가격만)를 **삭제**하고 피드와 **같은 카드**
+ * (`GroupBuyFeedCard`)를 쓴다. 카드가 두 벌이면 한쪽만 고쳐지고 결국 갈린다 — 실제로 그렇게 됐다.
+ * 링크 목적지(`canonicalDetailPath`)·hover 캐러셀·평점/거리/할인 pill 전부 그 카드가 SSOT 다.
+ */
 
 /**
  * @param midBanner 첫 섹션 **뒤에** 끼워 넣을 노드(③ 중간 배너). 섹션이 하나도 없으면 이것만
@@ -113,15 +73,22 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
 
   return (
     <>
-      {visible.map((sec, i) => {
-        const more = sec.more_href ? safeInternalPath(sec.more_href, '') : ''
+      {visible.map((sec, sIdx) => {
+        // 🐛 2026-08-17 (대표 신고 — 더보기 클릭 시 옛 프레임 플래시): 저장된 href 가 `/group-buy` 같은
+        // **별칭**(App.tsx `<Navigate>` 경로)이면 홈이 리마운트되며 플래시가 난다 — SSOT 로 정본 치환.
+        // (데이터는 section-seed v2 heal 이 고치지만, 어드민이 다시 별칭을 넣어도 여기서 막는다.)
+        const raw = sec.more_href ? safeInternalPath(sec.more_href, '') : ''
+        const qIdx = raw.indexOf('?')
+        const canon = raw ? resolveConsumerAlias(qIdx === -1 ? raw : raw.slice(0, qIdx)) : null
+        const more = canon ?? raw
         return (
           <Fragment key={sec.id}>
           {/* 📐 가로 여백은 홈 컨테이너가 준다 — 여기서 또 주면 좌우가 어긋난다. */}
-          <section className="pb-8">
-            <div className="flex items-end justify-between gap-4 mb-4">
+          {/* 📐 2026-08-17 (대표 — 컴팩트): 섹션 하단 여백·제목·그리드 gap 축소(피드 그리드와 동일 톤). */}
+          <section className="ur-home-panel">
+            <div className="flex items-end justify-between gap-4 mb-3">
               <div className="min-w-0">
-                <h3 className="text-[18.5px] font-black tracking-tight text-gray-900 dark:text-white">
+                <h3 className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">
                   {sec.title}
                 </h3>
                 {sec.subtitle && (
@@ -137,11 +104,13 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
                 </Link>
               )}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-5">
-              {sec.products.map(p => <DealCard key={p.id} p={p} />)}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+              {sec.products.map((p, i) => (
+                <GroupBuyFeedCard key={p.id} p={p} pc aboveFold={i < 4 && sIdx === 0} />
+              ))}
             </div>
           </section>
-          {i === 0 && midBanner}
+          {sIdx === 0 && midBanner}
           </Fragment>
         )
       })}

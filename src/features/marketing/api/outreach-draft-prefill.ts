@@ -28,6 +28,7 @@ import type { Env } from '@/worker/types/env'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
 import { buildSendQueueWhere, SEND_QUEUE_ORDER_BY } from './outreach-queue'
 import { POOL_ACCOUNT_ID } from './influencer-auto-collect'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const STATS_KEY = 'ads_outreach_prefill_last'
 
@@ -69,7 +70,7 @@ export function resolveBufferTarget(raw: string | undefined): number {
 }
 
 export async function runOutreachDraftPrefill(env: Env): Promise<PrefillSnapshot> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   const bufferTarget = resolveBufferTarget((env as unknown as { ADS_OUTREACH_PREFILL_BUFFER?: string }).ADS_OUTREACH_PREFILL_BUFFER)
   const persist = async (s: PrefillSnapshot) => {
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')

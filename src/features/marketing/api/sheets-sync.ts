@@ -16,6 +16,7 @@ import type { Env } from '@/worker/types/env'
 import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns } from './influencer-performance'
 import { ensureOutreachColumns } from './outreach-webhook'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const TAB = 'pool' // 대상 탭 이름(없으면 자동 생성) — 이름 변경 시 동기화 끊김(변경 금지)
 /**
@@ -176,7 +177,7 @@ export async function syncInfluencerPoolToSheets(env: Env, trigger: SyncTrigger 
     const e = err as { name?: string; message?: string } | null
     r = { ok: false, error: `CRASH ${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }
   }
-  await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+  await adsLeadsDb(env).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind('ads_sheets_last_sync', JSON.stringify({
       at: new Date().toISOString(), ok: r.ok, rows: r.rows ?? null,
       error: (r.error || '').slice(0, 300) || null, subreq: cost.subreq, trigger,
@@ -184,7 +185,7 @@ export async function syncInfluencerPoolToSheets(env: Env, trigger: SyncTrigger 
   // 🕘 cron 회차는 **성공/실패 무관** 별도 키에도 마지막 시각을 남긴다 — 위 스탬프는 수동 실행이 덮어쓰므로
   //   "자동으로 돈 적이 있는가"를 보존하지 못한다(바로 그 덮어쓰기가 41시간 오진의 원인이었다).
   if (trigger === 'cron') {
-    await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    await adsLeadsDb(env).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind('ads_sheets_last_cron', JSON.stringify({ at: new Date().toISOString(), ok: r.ok })).run().catch(() => null)
   }
   return r
@@ -202,11 +203,11 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncR
   if (!token) return { ok: false, error: 'AUTH: 서비스계정 토큰 발급 실패 — SA 키/이메일 확인' }
   const sheetId = env.GSHEETS_SHEET_ID
   // 확장 열(점수/성과/메일상태/분류근거) 보장 — 미보강 DB 에서 'no such column' READ 실패 방지.
-  await ensureQualityColumns(env.DB); await ensurePerfExtraColumns(env.DB); await ensureOutreachColumns(env.DB)
+  await ensureQualityColumns(adsLeadsDb(env)); await ensurePerfExtraColumns(adsLeadsDb(env)); await ensureOutreachColumns(adsLeadsDb(env))
   cost.subreq += 3 // DDL 3종 — 전부 runDdlOnce(체크섬 1회 조회). 2026-07-28 이전엔 ALTER 10회였다.
 
   // 🧭 커서 — 이번 회차가 어디부터 미러할지. `off=0` 은 새 사이클(그리드 확장 + 총계 재계산).
-  const cRaw = await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY)
+  const cRaw = await adsLeadsDb(env).prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY)
     .first<{ value: string }>().catch(() => null)
   cost.subreq += 1
   const cur = startCursor(parseSheetCursor(cRaw?.value))
@@ -214,7 +215,7 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncR
   let total = cur.total
 
   if (off === 0) {
-    const cnt = await env.DB.prepare('SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE account_id = 0')
+    const cnt = await adsLeadsDb(env).prepare('SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE account_id = 0')
       .first<{ n: number }>().catch(() => null)
     cost.subreq += 1
     total = Math.max(0, Number(cnt?.n) || 0)
@@ -242,7 +243,7 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncR
     const room = cycleRoom(off, total)
     if (room <= 0) { done = true; break }
     const take = Math.min(PAGE, ROWS_PER_RUN - wrote, room)
-    const res = await env.DB.prepare(`SELECT id, platform, name, handle, url, subscriber_count, recent_avg_views, recent_avg_comments, recent_posts_30d, email, instagram, tiktok, links,
+    const res = await adsLeadsDb(env).prepare(`SELECT id, platform, name, handle, url, subscriber_count, recent_avg_views, recent_avg_comments, recent_posts_30d, email, instagram, tiktok, links,
         category, source_keyword, status, contact_channel, contacted_at, follow_up_at, source, consented_at, memo, collected_at,
         lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source, opted_out
       FROM ad_influencer_leads WHERE account_id = 0 ORDER BY id ASC LIMIT ? OFFSET ?`)
@@ -323,6 +324,6 @@ export function parseSheetCursor(raw: string | null | undefined): { off: number;
 }
 
 async function saveSheetCursor(env: Env, off: number, total: number): Promise<void> {
-  await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+  await adsLeadsDb(env).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(CURSOR_KEY, JSON.stringify({ off, total, at: new Date().toISOString() })).run().catch(() => null)
 }

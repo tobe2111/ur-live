@@ -34,11 +34,19 @@ import {
  *    `canonicalDetailPath` SSOT 가 `deal_only`+`category` 로 정한다. 빼면 교환권(딜 결제)이
  *    이용권 상세로 가고, 그건 `check-payment-flow-ssot` 가 막으려는 바로 그 사고다.
  */
+/**
+ * 카드 한 장을 그리는 데 필요한 최소 컬럼.
+ * ⭐ 2026-08-19: `avg_rating`·`review_count` 추가 — 섹션 카드도 피드와 **같은 컴포넌트**를 쓰는데
+ *   이 둘이 없어 섹션에서만 평점 줄이 비어 있었다.
+ * ⚠️ 설명은 **SQL 문자열 밖**에 둔다 — 안에 쓰면 워커 번들과 D1 쿼리에 매번 실려 나간다.
+ */
 export const CARD_COLS = `
   p.id, p.name, p.price, p.original_price, p.image_url, p.category,
   p.discount_rate, p.sold_count, p.dominant_color,
+  p.avg_rating, p.review_count,
   p.deal_only,
-  p.restaurant_name, p.restaurant_address, p.slug
+  p.restaurant_name, p.restaurant_address, p.slug,
+  p.images
 `
 
 /**

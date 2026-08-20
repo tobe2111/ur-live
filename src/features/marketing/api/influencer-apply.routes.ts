@@ -11,6 +11,7 @@ import { ensureInfluencerSchema } from './influencer-discovery'
 import { welcomeEmail, textToHtml } from './outreach-send'
 import { getOrCreateClaimCode } from './lead-claim'
 import { sendEmail } from '@/services/email'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const app = new Hono<{ Bindings: Env }>()
 const POOL = 0 // 공용 풀 센티넬
@@ -41,7 +42,7 @@ app.post('/', rateLimit({ action: 'creator-apply', max: 10, windowSec: 3600 }), 
   if (!email && !contact) return c.json({ success: false, error: '이메일 또는 연락처(인스타·카톡 등) 중 하나는 입력해주세요' }, 400)
   if (b.agree !== true) return c.json({ success: false, error: '제휴 제안 수신에 동의해주세요' }, 400)
 
-  await ensureInfluencerSchema(c.env.DB)
+  await ensureInfluencerSchema(adsLeadsDb(c.env))
   const channelId = url.replace(/\/+$/, '').toLowerCase().slice(0, 200) // URL 기준 멱등(재신청 중복 방지)
   const memo = [message && `신청 메모: ${message}`, contact && `연락처: ${contact}`].filter(Boolean).join(' / ').slice(0, 500) || null
   // 자기신고 프로필 → description(어드민 풀 검색 대상 필드 — '방배' 같은 지역 검색이 바로 동작).
@@ -51,7 +52,7 @@ app.post('/', rateLimit({ action: 'creator-apply', max: 10, windowSec: 3600 }), 
     rate && `희망단가: ${rate}`, `분야: ${category}`,
   ].filter(Boolean).join(' · ').slice(0, 400)
   // 신청 = 사전동의. 기존 리드면 컨택/동의만 보강(수동 상태·메모 불변), 신규면 삽입.
-  await c.env.DB.prepare(`INSERT INTO ad_influencer_leads
+  await adsLeadsDb(c.env).prepare(`INSERT INTO ad_influencer_leads
       (account_id, platform, channel_id, name, url, email, category, source_keyword, source, memo, description, consented_at, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, 'inbound-신청', 'inbound', ?, ?, datetime('now'), 'new')
     ON CONFLICT(account_id, platform, channel_id) DO UPDATE SET
@@ -64,14 +65,14 @@ app.post('/', rateLimit({ action: 'creator-apply', max: 10, windowSec: 3600 }), 
     .bind(POOL, platform, channelId, name, url, email || null, category, memo, selfProfile).run().catch(() => null)
   // 🔗 가입 추적 코드 — 신청 직후 바로 시작하려는 사람을 위해 응답에 실어준다(온보딩 메일과 같은 코드).
   //   실패해도 접수는 유효(코드 없으면 프론트가 일반 가입 링크로 폴백).
-  const leadRow = await c.env.DB.prepare('SELECT id FROM ad_influencer_leads WHERE account_id = ? AND platform = ? AND channel_id = ?')
+  const leadRow = await adsLeadsDb(c.env).prepare('SELECT id FROM ad_influencer_leads WHERE account_id = ? AND platform = ? AND channel_id = ?')
     .bind(POOL, platform, channelId).first<{ id: number }>().catch(() => null)
-  const claimCode = leadRow ? await getOrCreateClaimCode(c.env.DB, leadRow.id).catch(() => null) : null
+  const claimCode = leadRow ? await getOrCreateClaimCode(adsLeadsDb(c.env), leadRow.id).catch(() => null) : null
   // 📨 접수 확인 메일(거래성 — 신청 행위에 대한 확인, 신청 = 사전동의라 발송 적법). fail-soft: 발송 실패가 접수를 안 막음.
   if (email && c.env.RESEND_API_KEY) {
     const send = async () => {
       const w = welcomeEmail(name)
-      await sendEmail({ to: email, subject: w.subject, html: textToHtml(w.body) }, c.env.RESEND_API_KEY!, c.env.RESEND_FROM, c.env.DB).catch(() => null)
+      await sendEmail({ to: email, subject: w.subject, html: textToHtml(w.body) }, c.env.RESEND_API_KEY!, c.env.RESEND_FROM, adsLeadsDb(c.env)).catch(() => null)
     }
     if (c.executionCtx?.waitUntil) c.executionCtx.waitUntil(send()); else await send().catch(() => null)
   }

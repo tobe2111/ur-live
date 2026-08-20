@@ -1,37 +1,91 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Search } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowRight, Map } from 'lucide-react'
+import { cfImage } from '@/utils/cf-image'
+import PcHomeLocationBar, { type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
 
 /**
- * 🏠 히어로 **기본 배경** (2026-08-04 대표 *"히어로도 브랜드 배경으로 적합한 거 영상으로"*).
+ * 🏠 히어로 (2026-08-19 대표 확정 — **통합형 190px**, 시안 4개 중 ②안).
  *
- * 어드민이 히어로 배너를 올리지 않았을 때 홈 최상단에 깔리는 화면.
- * 배너를 올리면 그 이미지/영상이 **이걸 대체한다** — 여기는 '아무것도 없을 때'의 기본값이다.
+ * ## 무엇이 바뀌었나
+ * 이전엔 [히어로 300px] 아래에 [위치바 흰 패널 145px]이 따로 있었다. 헤더까지 더하면
+ * **딜이 나오기까지 559px** — 첫 화면의 절반 이상이 딜이 아니었다(라이브 실측).
+ * ⇒ 위치·지도 버튼을 **히어로 안 칩으로 흡수**하고, 자리만 먹던 검색창을 뺐다(상단 헤더에
+ *   이미 대형 검색이 있다 — 같은 기능이 한 화면에 두 벌이면 반드시 갈린다).
+ *   결과: 헤더 114 + 히어로 190 = **304px**(−255px).
  *
- * ## 왜 영상 파일이 아닌가
- * ① 저작권이 확인된 소스가 없다 ② 외부 영상 호스트는 CSP 가 막는다
- * ③ **홈 최상단에 수 MB 를 얹으면 첫 화면이 느려진다** — 이 레포가 로딩에 들인 노력을
- *    한 번에 되돌리는 짓이다(잠금표가 지키는 바로 그 경로).
- * ⇒ 브랜드 로즈 블룸이 서로 다른 주기로 흐르고 빛줄기가 가로지르는 **코드 배경**으로
- *   같은 인상을 만든다. 용량 0 · 네트워크 요청 0 · `prefers-reduced-motion` 존중(index.css).
+ * ## 왜 검색창을 지웠나
+ * 2026-08-19 이전 판 주석은 *"장식만 있는 히어로는 자리만 먹는다"* 며 검색을 넣었다.
+ * 그 뒤 헤더 2행 개편에서 **헤더 검색바가 46px 대형으로 커졌다** — 그래서 히어로 검색은
+ * 중복이 됐다. 대표 지시: *"그 부분엔 검색창이 없어야 할 것 같어."*
  *
- * ## 검색바를 둔 이유
- * 시안의 히어로에는 검색이 있었다. 장식만 있는 히어로는 자리만 먹는다 — 실제로 쓰이는
- * 진입점(`/search?q=`)을 얹어 첫 화면이 **일을 하게** 만든다.
+ * ## 📸 사진 — 어드민이 지정한다 (대표 확정)
+ * `banner_type='hero'` 배너를 올리면 그 사진·카피가 여기에 들어온다(`HomeHeroBanner` 가 넘긴다).
+ * **안 올리면** 홈 SSR 시드(`__SSR_INITIAL_MAIN__`, 0-RTT)에서 우리가 실제로 파는 딜 사진을
+ * 하나 골라 쓴다 — 네트워크 왕복 0, 출처 안전(우리 상품), 데모(`demo-deal-*`)는 제외.
+ * 사진 좌·우는 색면(#1A2C42)으로 페이드시켜 '잘라 붙인 배너'가 아니라 색면에 녹아들게 한다.
  */
-export default function HomeHeroDefault() {
-  const navigate = useNavigate()
-  const [q, setQ] = useState('')
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault()
-    const term = q.trim()
-    navigate(term ? `/search?q=${encodeURIComponent(term)}` : '/search')
-  }
+/** 기본 카피 — 대표 확정 D안(가치형: 사서 바로 쓴다). 어드민 배너에 제목이 있으면 그게 이긴다. */
+const DEFAULT_TITLE_HEAD = '사서 '
+const DEFAULT_TITLE_ACCENT = '바로 쓰는'
+const DEFAULT_TITLE_TAIL = ' 동네 이용권'
+const DEFAULT_DESC = '예약도 대기도 없이. 식사 · 미용 · 숙소 · 교환권.'
+
+/** 홈 SSR 시드에서 히어로에 쓸 사진 1장. 없으면 null(= 사진 없는 색면). */
+export function pickHeroPhoto(): { src: string; href: string } | null {
+  if (typeof document === 'undefined') return null
+  try {
+    const el = document.getElementById('__SSR_INITIAL_MAIN__')
+    if (!el?.textContent) return null
+    const parsed = JSON.parse(el.textContent) as { success?: boolean; data?: unknown }
+    if (!parsed?.success || !Array.isArray(parsed.data)) return null
+    for (const raw of parsed.data as Array<Record<string, unknown>>) {
+      const img = typeof raw?.image_url === 'string' ? raw.image_url : ''
+      const slug = typeof raw?.slug === 'string' ? raw.slug : ''
+      const id = raw?.id
+      if (!img || slug.startsWith('demo-deal-')) continue
+      return { src: img, href: id != null ? `/group-buy/${id}` : '/' }
+    }
+  } catch { /* 손상된 inject — 사진 없이 간다 */ }
+  return null
+}
+
+export interface HeroContent {
+  /** 어드민이 올린 히어로 사진(없으면 시드에서 고른다). */
+  photo?: string
+  /** 사진을 눌렀을 때 갈 곳(어드민 배너의 link_url). */
+  photoHref?: string
+  title?: string
+  description?: string
+  /** 어드민이 올린 영상 배경(있으면 사진 대신). */
+  videoUrl?: string
+}
+
+export interface HeroControls {
+  region: HomeRegion
+  onRegionChange: (r: HomeRegion) => void
+  onLocate: (loc: { lat: number; lng: number }) => void
+  located: boolean
+}
+
+export default function HomeHeroDefault({
+  content,
+  controls,
+}: {
+  content?: HeroContent
+  controls?: HeroControls
+}) {
+  // 시드는 하드로드 시점에 이미 문서에 있으므로 **동기 1회**로 읽는다(리렌더/왕복 0).
+  const seed = content?.photo ? null : pickHeroPhoto()
+  const photoSrc = content?.photo || seed?.src || ''
+  const photoHref = content?.photoHref || seed?.href || '/map'
+  const hasMedia = !!photoSrc || !!content?.videoUrl
 
   return (
-    <section className="relative isolate overflow-hidden bg-[#0F151D] h-[268px] lg:h-[320px]">
-      {/* 배경 — 잉크 위에 로즈 블룸 2개 + 빛줄기. 전부 CSS. */}
+    /* 📐 통합형 190px — 고정 높이가 아니라 최소 높이다. 카피가 길어지면 잘리는 대신 늘어난다
+       (시안 작업 중 고정 높이로 카피가 잘리는 걸 실제로 겪었다). */
+    <section className="relative isolate overflow-hidden bg-[#1A2C42] min-h-[190px] flex">
+      {/* 배경 — 잉크 위에 로즈 블룸 2개 + 빛줄기. 전부 CSS(용량 0 · 요청 0). */}
       <div
         className="absolute -z-10 -inset-[18%] ur-hero-bloom-a"
         aria-hidden="true"
@@ -47,40 +101,88 @@ export default function HomeHeroDefault() {
         aria-hidden="true"
         style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent)' }}
       />
+
+      {/* 📸 우측 미디어 — 좌·우 양끝을 색면으로 페이드한다(대표 요청 "양쪽 그라데이션").
+          `mask-image` 로 픽셀을 투명하게 깎아 색면이 그대로 비치게 한다 — 위에 반투명 막을
+          덧대는 방식은 사진이 뿌옇게 죽는다. 세로 끝도 눌러 위아래 경계선을 없앤다. */}
+      {hasMedia && (
+        <div className="hidden lg:block absolute inset-y-0 right-0 w-[54%] -z-10" aria-hidden="true"
+          style={{
+            WebkitMaskImage:
+              'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 12%, #000 84%, transparent 100%)',
+            maskImage:
+              'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 12%, #000 84%, transparent 100%)',
+            WebkitMaskComposite: 'source-in',
+            maskComposite: 'intersect',
+          }}
+        >
+          {content?.videoUrl ? (
+            <video className="w-full h-full object-cover" src={content.videoUrl} autoPlay muted loop playsInline />
+          ) : (
+            <img
+              src={cfImage(photoSrc, { width: 900, quality: 72 }) || photoSrc}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover"
+            />
+          )}
+        </div>
+      )}
+
       {/* 좌측을 눌러 흰 글자가 어떤 순간에도 읽히게 — 블룸이 흐르며 밝아지는 구간이 있다. */}
       <div
         className="absolute inset-0 -z-10"
         aria-hidden="true"
-        style={{ background: 'linear-gradient(90deg, rgba(15,21,29,0.86) 0%, rgba(15,21,29,0.45) 46%, rgba(15,21,29,0.12) 100%)' }}
+        style={{
+          background: hasMedia
+            ? 'linear-gradient(90deg, rgba(26,44,66,0.96) 0%, rgba(26,44,66,0.88) 38%, rgba(26,44,66,0.30) 62%, rgba(26,44,66,0.05) 100%)'
+            : 'linear-gradient(90deg, rgba(26,44,66,0.88) 0%, rgba(26,44,66,0.46) 46%, rgba(26,44,66,0.10) 100%)',
+        }}
       />
 
-      <div className="relative h-full max-w-[1600px] mx-auto px-6 lg:px-10 flex flex-col justify-center">
-        <p className="text-[12.5px] font-bold tracking-[0.14em] text-white/60">URDEAL</p>
-        <h2 className="mt-1.5 text-[27px] lg:text-[34px] font-black tracking-tight text-white leading-[1.2] [text-wrap:balance]">
-          우리 동네 이용권, <span className="text-brand">할인가로 바로</span>
+      {/* 🌗 히어로 → 아래 색면으로 이어지는 페이드. 경계선이 딱 떨어지면 '잘린 배너'로 보인다. */}
+      <div className="absolute inset-x-0 bottom-0 h-12 -z-10" aria-hidden="true"
+        style={{ background: 'linear-gradient(180deg, transparent, #1A2C42)' }} />
+
+      <div className="relative w-full max-w-[1440px] mx-auto px-6 lg:px-8 py-6 flex flex-col justify-center">
+        <h2 className="text-[26px] lg:text-[32px] font-black tracking-tight text-white leading-[1.16] [text-wrap:balance]">
+          {content?.title || (
+            <>{DEFAULT_TITLE_HEAD}<span className="text-brand">{DEFAULT_TITLE_ACCENT}</span>{DEFAULT_TITLE_TAIL}</>
+          )}
         </h2>
-        <p className="mt-2 text-[13.5px] lg:text-[15px] text-white/72">
-          식사 · 미용 · 숙소 · 교환권을 온라인에서 사고 매장에서 바로 쓰세요.
+        <p className="mt-1.5 text-[13px] lg:text-[14px] text-white/75">
+          {content?.description || DEFAULT_DESC}
         </p>
 
-        <form onSubmit={submit} className="mt-5 w-full max-w-[520px]">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
-            <input
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              placeholder="지역 · 매장 · 메뉴로 찾기"
-              aria-label="딜 검색"
-              className="w-full pl-11 pr-24 py-3 rounded-xl bg-white/95 backdrop-blur text-[14px] text-gray-900 placeholder:text-gray-400 shadow-lg focus:outline-none focus:ring-2 focus:ring-brand"
+        {/* 🗺️ 위치·지도 — 이전엔 히어로 **아래 흰 패널**에 있던 것을 여기로 흡수했다(대표 확정).
+            잉크 배경 위라 칩은 `tone="hero"`(반투명 흰 테두리)로 그린다 — 드롭다운 패널은
+            그대로 흰색이라 지역 목록의 가독성은 손해 보지 않는다. */}
+        <div className="mt-3.5 flex items-center gap-2.5 flex-wrap">
+          {controls && (
+            <PcHomeLocationBar
+              tone="hero"
+              value={controls.region}
+              onChange={controls.onRegionChange}
+              onLocate={controls.onLocate}
+              located={controls.located}
             />
-            <button
-              type="submit"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 px-4 py-2 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-bold transition-colors"
-            >
-              검색
-            </button>
-          </div>
-        </form>
+          )}
+          <Link
+            to="/map"
+            className="inline-flex items-center gap-1.5 shrink-0 px-5 py-2 rounded-full border border-white/45 text-white text-[13px] font-bold tracking-wide hover:bg-white hover:text-[#1A2C42] transition-colors"
+          >
+            <Map className="w-4 h-4" strokeWidth={2} aria-hidden="true" />
+            지도에서 가까운 딜 보기
+            <ArrowRight className="w-4 h-4" strokeWidth={2.2} aria-hidden="true" />
+          </Link>
+          {/* 사진이 실제 딜이면 그 딜로 가는 통로를 남긴다(사진만 있고 갈 곳이 없으면 장식이 된다). */}
+          {hasMedia && photoHref !== '/map' && (
+            <Link to={photoHref} className="text-[12.5px] font-bold text-white/60 hover:text-white transition-colors">
+              사진 속 딜 보기 →
+            </Link>
+          )}
+        </div>
       </div>
     </section>
   )

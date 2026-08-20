@@ -16,6 +16,7 @@ import {
 } from './store-prospects'
 import { listStoreTrades, setStoreTradeActive, addStoreTrade, getStoreConfig, setStoreConfig } from './store-trades'
 import { REGION_GROUPS } from './company-keyword-grid'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -35,8 +36,8 @@ app.get('/', async (c) => {
     q: (c.req.query('q') || '').trim() || undefined,
   }
   const [prospects, total] = await Promise.all([
-    listProspects(c.env.DB, { ...filter, limit, offset }),
-    countProspects(c.env.DB, filter),
+    listProspects(adsLeadsDb(c.env), { ...filter, limit, offset }),
+    countProspects(adsLeadsDb(c.env), filter),
   ])
   return c.json({ success: true, prospects, total, limit, offset })
 })
@@ -51,9 +52,9 @@ app.get('/meta', (c) => c.json({
 
 // GET /api/admin/store-prospects/stats — 통계 + 수집 게이트/최근실행.
 app.get('/stats', async (c) => {
-  const s = await prospectStats(c.env.DB)
+  const s = await prospectStats(adsLeadsDb(c.env))
   const readJson = async (k: string): Promise<unknown> => {
-    const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
+    const row = await adsLeadsDb(c.env).prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
     try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
   }
   const run = await readJson('ads_localdata_stats')
@@ -100,27 +101,27 @@ app.get('/stats', async (c) => {
 
 // 🎛️ 수집 업태 제어 — 배포 없이 켜고 끈다(설계·폴백 규칙은 store-trades.ts 헤더).
 //   ⚠️ `/:id` 보다 **위**에 둔다 — 아래에 두면 'trades' 가 :id 로 먹혀 조용히 404 가 된다.
-app.get('/trades', async (c) => c.json({ success: true, trades: await listStoreTrades(c.env.DB) }))
+app.get('/trades', async (c) => c.json({ success: true, trades: await listStoreTrades(adsLeadsDb(c.env)) }))
 app.patch('/trades', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { trade?: string; active?: boolean }
-  const r = await setStoreTradeActive(c.env.DB, b.trade || '', b.active === true)
+  const r = await setStoreTradeActive(adsLeadsDb(c.env), b.trade || '', b.active === true)
   return c.json(r.ok ? { success: true, changed: r.changed } : { success: false, error: r.error }, r.ok ? 200 : 400)
 })
 app.post('/trades', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { block?: string; trade?: string; category?: string }
-  const r = await addStoreTrade(c.env.DB, b.block || '', b.trade || '', b.category || '')
+  const r = await addStoreTrade(adsLeadsDb(c.env), b.block || '', b.trade || '', b.category || '')
   return c.json(r.ok ? { success: true } : { success: false, error: r.error }, r.ok ? 200 : 400)
 })
 
 // 🎛️ 회차 조건(권역·비중·페이지·예산). ⚠️ 값은 **서버가 clamp** 한다 — 화면이 상한을 못 뚫는다.
 app.get('/config', async (c) => c.json({
   success: true,
-  config: await getStoreConfig(c.env.DB, Object.keys(REGION_GROUPS)),
+  config: await getStoreConfig(adsLeadsDb(c.env), Object.keys(REGION_GROUPS)),
   groups: Object.keys(REGION_GROUPS),
 }))
 app.patch('/config', async (c) => {
   const b = await c.req.json().catch(() => ({}))
-  return c.json({ success: true, config: await setStoreConfig(c.env.DB, b, Object.keys(REGION_GROUPS)) })
+  return c.json({ success: true, config: await setStoreConfig(adsLeadsDb(c.env), b, Object.keys(REGION_GROUPS)) })
 })
 
 // PATCH /api/admin/store-prospects/:id — 큐레이션(상태/메모/채널/팔로업).
@@ -128,7 +129,7 @@ app.patch('/:id', async (c) => {
   const id = intParam(c.req.param('id'), 0)
   if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
   const b = await c.req.json().catch(() => ({})) as Record<string, unknown>
-  const r = await updateProspect(c.env.DB, id, {
+  const r = await updateProspect(adsLeadsDb(c.env), id, {
     status: b.status !== undefined ? String(b.status) : undefined,
     memo: b.memo !== undefined ? String(b.memo) : undefined,
     contact_channel: b.contact_channel !== undefined ? (b.contact_channel === null ? null : String(b.contact_channel)) : undefined,
@@ -182,7 +183,7 @@ app.post('/enrich-contacts', async (c) => {
 app.get('/new-open-digest', async (c) => {
   const { newOpenDigest } = await import('./opening-briefing')
   const days = Math.min(90, Math.max(1, intParam(c.req.query('days'), 14)))
-  const d = await newOpenDigest(c.env.DB, days, 30)
+  const d = await newOpenDigest(adsLeadsDb(c.env), days, 30)
   return c.json({ success: true, ...d })
 })
 
@@ -191,7 +192,7 @@ app.get('/:id/briefing', async (c) => {
   const id = intParam(c.req.param('id'), 0)
   if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
   const { openingBriefing } = await import('./opening-briefing')
-  const b = await openingBriefing(c.env.DB, id)
+  const b = await openingBriefing(adsLeadsDb(c.env), id)
   if (!b) return c.json({ success: false, error: '매장을 찾을 수 없습니다' }, 404)
   return c.json({ success: true, ...b })
 })
@@ -217,7 +218,7 @@ app.get('/export', async (c) => {
     hasEmail: c.req.query('hasEmail') === '1',
     q: (c.req.query('q') || '').trim() || undefined,
   }
-  const rows = await listProspects(c.env.DB, { ...filter, limit: EXPORT_MAX })
+  const rows = await listProspects(adsLeadsDb(c.env), { ...filter, limit: EXPORT_MAX })
   return csvResponse({
     filename: 'store-prospects.csv',
     header: ['category', 'biz_name', 'region', 'phone', 'email', 'website', 'addr_road', 'status', 'is_new_open', 'apv_perm_ymd', 'collected_at'],

@@ -99,6 +99,9 @@ const EXTERNAL_PROXY_HOSTS = new Set([
   //   **완전 깨짐**. cdn-cgi 리사이저는 http 원본 fetch 가능(라이브 실측 cf-resized ok, 50KB) → same-origin
   //   https 로 서빙되며 CSP/cert 문제 원천 해소. apex 등재로 shop1/shop2… 전 서브도메인 커버.
   'phinf.naver.net',
+  // 🚀 2026-08-19: apex 등재로 kakaocdn 전 서브도메인 커버(추가만 — 제거 0).
+  'kakaocdn.net',
+  'daumcdn.net',
 ])
 
 // 🛡️ 2026-05-27 (mobile data saver): Save-Data 감지 — 데이터 절약 모드 사용자에게 quality 65 로 다운.
@@ -256,7 +259,16 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       if (HOTLINK_BLOCKED_HOSTS.some(h => host === h || host.endsWith('.' + h))) {
         return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
       }
-      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com']  // giftishow 2026-07-13 재실측 복원(onerror=redirect 안전판)
+      // 🚀 2026-08-19 [UNLOCK_LOADING] (대표 신고 "사진 불러오는게 많이 느리네?" — 라이브 실측):
+      //   홈 카드의 **카카오 CDN 사진이 원본 그대로** 내려오고 있었다(카드 3장에 2.6MB). 이 목록에
+      //   없으면 워커 프록시로 가는데 그 경로는 리사이즈를 못 한다(2026-06-11 실측) → 270px 카드에 1MB.
+      //   프로덕션 실측으로 승격 조건 충족(전부 `cf-resized: internal=ok`):
+      //     img1.kakaocdn.net  957KB/5.27s → 53KB/1.87s  (18×)
+      //     t1.daumcdn.net     747KB → 13.7KB (55×) · 937KB → 70.7KB (13×)
+      //   ⚠️ 2026-06-11 에 kakaocdn 이 cdn-cgi 직결로 깨진 적이 있는데, 그때는 `onerror=redirect`
+      //   안전판이 없었다(2026-07-02 도입). 지금은 리사이저가 실패하면 원본으로 302 → 현행과 동일 →
+      //   최악의 경우 다운사이드 0. 핫링크 차단 호스트는 위 HOTLINK_BLOCKED_HOSTS 가 먼저 걸러 낸다.
+      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com', 'kakaocdn.net', 'daumcdn.net']  // giftishow 2026-07-13 재실측 복원 · kakao/daum 2026-08-19 실측 승격(전부 onerror=redirect 안전판)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
         return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect/${cdnCgiSafe(src)}`
       }

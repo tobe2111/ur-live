@@ -481,3 +481,46 @@ publicUtilityRoutes.get('/api/home/categories', async (c) => {
     console.error("[home/categories] error:", e); return c.json({ success: false, error: "카테고리 로드 중 오류가 발생했습니다" }, 500)
   }
 })
+
+// ── GET /api/promo-bar ───────────────────────────
+/**
+ * 📣 최상단 프로모 바 (2026-08-19 — 대표 확정 "만들기, 어드민에서 켜고 끄기").
+ *
+ * 그루폰 홈 맨 위의 프로모 띠. 문구·버튼·링크·색을 **어드민이 정하고, 꺼두면 아예 안 나온다**.
+ * 지금은 홍보할 게 없으니 기본 OFF — 필요할 때 어드민에서 켜면 된다.
+ *
+ * 저장은 `platform_settings`(어드민 조정값 SSOT). 새 테이블을 만들지 않는다 —
+ * 한 줄짜리 설정에 테이블을 붙이면 마이그레이션·백업 대상만 늘어난다.
+ *
+ * 🔒 **비활성이면 `enabled:false` 만 내려보낸다** — 꺼둔 문구가 응답에 남으면 그것도 노출이다.
+ * ⚡ 60초 브라우저 / 5분 엣지 캐시. 문구를 바꾸면 최대 5분 뒤 반영된다(즉시성이 필요한 값이 아니다).
+ */
+publicUtilityRoutes.get('/api/promo-bar', async (c) => {
+  const empty = { success: true, data: { enabled: false } as Record<string, unknown> }
+  try {
+    const { results } = await c.env.DB.prepare(
+      `SELECT key, value FROM platform_settings WHERE key IN
+         ('promo_bar_enabled','promo_bar_text','promo_bar_cta','promo_bar_href','promo_bar_bg','promo_bar_version')`
+    ).all<{ key: string; value: string }>()
+    const s: Record<string, string> = {}
+    for (const r of results || []) s[r.key] = r.value
+    if (s.promo_bar_enabled !== 'true' || !s.promo_bar_text) return c.json(empty)
+    c.header('Cache-Control', 'public, max-age=60')
+    c.header('CDN-Cache-Control', 'public, max-age=300')
+    return c.json({
+      success: true,
+      data: {
+        enabled: true,
+        text: s.promo_bar_text,
+        cta: s.promo_bar_cta || '',
+        // 내부 경로만 허용 — 외부 URL 이 들어오면 링크를 통째로 버린다(오픈 리다이렉트 방지).
+        href: /^\/[^/\\]/.test(s.promo_bar_href || '') ? s.promo_bar_href : '',
+        bg: /^#[0-9a-fA-F]{6}$/.test(s.promo_bar_bg || '') ? s.promo_bar_bg : '',
+        version: s.promo_bar_version || '1',
+      },
+    })
+  } catch {
+    // 테이블 미존재/조회 실패 = 안 보여준다(빈 띠가 뜨는 것보다 낫다).
+    return c.json(empty)
+  }
+})

@@ -10,18 +10,19 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { listCompanyTrades, setCompanyTradeActive } from './company-trades'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const app = new Hono<{ Bindings: Env }>()
 
 // GET /api/admin/partner-pool/keyword-trades — 업종별 집계(키워드 수·활성 수·누적 수확).
-app.get('/', async (c) => c.json({ success: true, trades: await listCompanyTrades(c.env.DB) }))
+app.get('/', async (c) => c.json({ success: true, trades: await listCompanyTrades(adsLeadsDb(c.env)) }))
 
 // PATCH /api/admin/partner-pool/keyword-trades { trade, active } — 그 업종의 전 지역 키워드 일괄 on/off.
 //   ⚠️ 마지막 활성 업종은 거부한다(`LAST_ACTIVE_TRADE`) — 전부 끄면 수집이 **에러 없이** 멈추고
 //   하트비트는 초록으로 남는다. 조용히 무시하지 않고 사유를 응답으로 돌려준다.
 app.patch('/', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { trade?: string; active?: boolean }
-  const r = await setCompanyTradeActive(c.env.DB, b.trade || '', b.active === true)
+  const r = await setCompanyTradeActive(adsLeadsDb(c.env), b.trade || '', b.active === true)
   return c.json(r.ok ? { success: true, changed: r.changed } : { success: false, error: r.error }, r.ok ? 200 : 400)
 })
 

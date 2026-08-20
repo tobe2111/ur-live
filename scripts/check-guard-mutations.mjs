@@ -72,6 +72,93 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '이용권 상세 제목이 다시 사진 아래로 내려간다',
+    file: 'src/pages/GroupBuyDetailPage.tsx',
+    find: '<DetailTitleHeader name',
+    replace: '<span data-broken name',
+    test: 'src/tests/unit/groupon-detail-map.test.ts',
+    why:
+      '2026-08-19 대표 확정(상세 1안 "그루폰 정석"). 제목·별점·주소가 사진 위에 있어야 첫 화면이 ' +
+      '"무엇을 파는지 / 얼마나 좋은지"를 말한다. 되돌아가도 화면은 멀쩡해 보여서(사진은 여전히 크다) ' +
+      '리뷰로는 안 걸린다 — 그래서 기계가 지킨다.',
+  },
+  {
+    name: '상세가 서버 raw 할인율로 되돌아간다(카드와 숫자가 갈린다)',
+    file: 'src/pages/GroupBuyDetailPage.tsx',
+    find: 'discountPct={displayDiscountPct}',
+    replace: 'discountPct={detail.current_discount_pct}',
+    test: 'src/tests/unit/groupon-detail-map.test.ts',
+    why:
+      '실측(2026-08-19, id 2846 정가 32,000→23,800): 홈 카드는 -26%, 상세는 할인 표시 없음이었다. ' +
+      '가격 표시가 화면마다 다르면 UI 불일치가 아니라 **신뢰 문제**다. 되돌리면 조용히 다시 갈린다.',
+  },
+  {
+    name: '/map 지도 위 컨트롤 오버레이가 PC 에서 되살아난다',
+    file: 'src/pages/restaurant-map/MapTopBar.tsx',
+    find: "'lg:hidden absolute top-0",
+    replace: "'absolute top-0",
+    test: 'src/tests/unit/groupon-detail-map.test.ts',
+    why:
+      '2026-08-19 대표 지시 — 검색·필터 칩을 왼쪽 리스트 상단으로 옮기고 지도는 지도만 보이게. ' +
+      '오버레이가 되살아나면 좌측 패널과 **같은 컨트롤이 두 벌**이 되고 지도 상단이 다시 가려진다.',
+  },
+  {
+    name: '죽은 사진을 그대로 보여 준다(카드가 빈 칸으로 남는다)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'const shown = dead.has(idx) ? (alive[0] ?? idx) : idx',
+    replace: 'const shown = idx',
+    test: 'src/tests/unit/deal-card-gallery.test.ts',
+    why:
+      '2026-08-19 라이브에 실제로 있었다 — 커버가 403 인데 갤러리 4장은 멀쩡한 상품(보드람치킨 id 2822). ' +
+      '`cfImageOnError` 는 [리사이저 → 원본 → 숨김] 까지만 하므로 **에러도 안 나고 화면만 빈다.** ' +
+      '대표가 "사진이 안 뜬다"고 말해 주기 전엔 아무도 모르는 종류라, 지워져도 조용히 되돌아간다.',
+  },
+  {
+    name: '히어로 사진이 리사이저를 건너뛴다(첫 화면에 원본 1MB)',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    // 2026-08-19: 히어로가 어드민 지정 사진을 받게 되면서 변수명이 `photo.src` → `photoSrc` 로 바뀌었다.
+    //   (`find` 가 소스에 없으면 이 검증은 **낡은 지도**로 판정돼 RED 가 뜬다 — 실제로 그렇게 잡혔다.)
+    find: 'cfImage(photoSrc',
+    replace: 'String(photoSrc',
+    test: 'src/tests/unit/home-showcase.test.ts',
+    why:
+      '히어로는 화면 맨 위라 사진이 곧 첫인상이자 첫 바이트다. 2026-08-19 실측에서 카카오 CDN 원본이 ' +
+      '**957KB** 였다 — 리사이저를 거치면 53KB 다. 원본 직결은 화면이 똑같이 보여서 리뷰로는 안 걸리고, ' +
+      '느려진 것만 남는다(대표 신고 "사진 불러오는게 많이 느리네?" 가 정확히 그 증상이었다).',
+  },
+  {
+    name: '히어로가 데모 상품 사진을 홈 얼굴로 쓴다',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: "slug.startsWith('demo-deal-')",
+    replace: 'false',
+    test: 'src/tests/unit/home-showcase.test.ts',
+    why:
+      '홈 최상단 사진은 서비스의 얼굴이다. 데모 시드가 그 자리에 올라와도 **에러가 없고 그림도 멀쩡**해서 ' +
+      '아무도 모른다. 2026-08-04 에는 여기 계열의 데모 사진에 타사 워터마크 보도사진이 섞여 있었다.',
+  },
+  {
+    name: '카드 캐러셀 화살표에서 preventDefault 를 없앤다(사진 넘기려던 클릭이 상세로 튄다)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'e.preventDefault()',
+    replace: 'void 0',
+    test: 'src/tests/unit/deal-card-gallery.test.ts',
+    why:
+      '카드 캐러셀은 `<Link>` **안**에 있다 — 화살표가 기본동작을 막지 않으면 사진을 넘기려는 클릭이 ' +
+      '매번 상세 페이지로 튄다. 에러가 없고 화면도 멀쩡해서 **직접 눌러 보기 전엔 아무도 모르는** 종류다. ' +
+      '2026-08-19 그루폰 카드 도입과 함께 들어온 안전장치라, 나중에 리팩토링하다 지워질 위험이 크다.',
+  },
+  {
+    name: '카드가 갤러리를 전부 미리 로드한다(첫 화면 트래픽 몇 배)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'if (!seen.has(i)) return null',
+    replace: 'if (false) return null',
+    test: 'src/tests/unit/deal-card-gallery.test.ts',
+    why:
+      '홈 한 화면에 카드가 50개다. 캐러셀 장면을 전부 `<img>` 로 만들면 **첫 화면 이미지 요청이 4배**가 된다 — ' +
+      '이 레포가 로딩 최적화 잠금으로 지켜 온 값을 한 줄로 되돌리는 셈이다. 사용자가 실제로 넘긴 장면만 ' +
+      '받는다는 규칙이라, 안 지켜져도 **화면은 똑같아 보여서** 리뷰로는 안 걸린다.',
+  },
+  {
     name: '공구가 킬스위치를 어드민 화면에서 뺀다(돈 새는 중에 멈출 손잡이가 사라진다)',
     file: 'src/pages/AdminPlatformSettingsPage.tsx',
     find: "key: 'gb_pricing_enabled'",
@@ -296,6 +383,17 @@ const MUTATIONS = [
       '`last_run_at IS NULL` 을 ORDER BY 에 넣으면 키워드가 돌 때마다 순서가 바뀌어 OFFSET 창에 ' +
       '건너뜀·중복이 생긴다(이 블록의 원래 주석이 경고하는 바로 그것). 그래서 **앞에 끼워 넣고** ' +
       'id 중복만 제거한다 — dedup 이 빠지면 같은 키워드를 한 회차에 두 번 호출한다.',
+  },
+  {
+    name: '🗄️ 감시가 이사 전 DB를 본다(바인딩 후 감시가 가장 먼저 눈이 먼다)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: 'maybeAlertInflow(env, adsLeadsDb(env as never) as never)',
+    replace: 'maybeAlertInflow(env, env.DB)',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '`ad_influencer_leads`·`ad_company_leads` 는 `ADS_DB` 로 이사한다. `env.DB` 를 넘기면 대표가 ' +
+      '바인딩을 붙이는 순간 "테이블이 없다"로 조용히 깨지고, 하필 **감시가 가장 먼저** 눈이 먼다 — ' +
+      '그러면 다음 하락도 아무도 모른다.',
   },
   {
     name: '🩺 소진 레인을 실패로 싣는다(매일 "완료"를 경보로 보낸다)',
@@ -672,8 +770,8 @@ const MUTATIONS = [
   {
     name: '위생 스윕 실패가 재분류 본업을 막는다',
     file: 'src/features/marketing/api/reclassify-lane.ts',
-    find: '  const hygiene = await sweepCompanyHygiene(env.DB).catch(() => null)',
-    replace: '  const hygiene = await sweepCompanyHygiene(env.DB)',
+    find: '  const hygiene = await sweepCompanyHygiene(adsLeadsDb(env)).catch(() => null)',
+    replace: '  const hygiene = await sweepCompanyHygiene(adsLeadsDb(env))',
     test: 'src/tests/unit/company-hygiene-sweep.test.ts',
     why:
       '부가 작업이 본업을 죽이면 안 된다. 스윕이 던지면 **재분류 레인 전체가 그 회차를 통째로 잃고**, ' +
@@ -1914,8 +2012,8 @@ const MUTATIONS = [
   {
     name: '내보내기가 화면 필터를 무시(손에 안 잡히는 지표)',
     file: 'src/features/marketing/api/partner-pool.routes.ts',
-    find: 'listCompanyLeads(c.env.DB, { ...filter, limit: EXPORT_MAX })',
-    replace: 'listCompanyLeads(c.env.DB, { limit: EXPORT_MAX })',
+    find: 'listCompanyLeads(adsLeadsDb(c.env), { ...filter, limit: EXPORT_MAX })',
+    replace: 'listCompanyLeads(adsLeadsDb(c.env), { limit: EXPORT_MAX })',
     // 2026-08-03: 파싱이 `pool-export.ts` 로 이동했지만 **넘기는 지점**은 여전히 여기다(지도 유효).
     test: 'src/tests/unit/ads-export-filter-parity.test.ts',
     why:
@@ -3857,6 +3955,70 @@ const MUTATIONS = [
       '몫이 가용 키워드 수를 넘으면 커서가 `pool[(cursor+i) % len]` 로 감싸며 **같은 키워드를 한 배치에 ' +
       '두 번** 내놓는다 — 희소한 회차(폭 9)를 중복에 쓰고, 그 키워드의 성과 카운터도 이중 계상된다. ' +
       '풀이 작아지는 순간(은퇴·고갈)에 터지는 형태라 평소 테스트로는 안 보인다.',
+  },
+  {
+    // 📉 유입 추세 배지(2026-08-19 대표 "점점 줄어드는지도 봐줘").
+    name: '진행 중인 오늘을 추세에 포함(오후마다 멀쩡한 날이 "폭락"으로 보인다)',
+    file: 'src/shared/ads/inflow-trend.ts',
+    find: ".filter(x => !!x?.d && (!todayKst || x.d !== todayKst))",
+    replace: ".filter(x => !!x?.d)",
+    test: 'src/tests/unit/ads-inflow-trend.test.ts',
+    why:
+      '오늘 막대는 지금까지 쌓인 만큼만 있다(실측: 13:47 시점 누적이 하루치의 57%). 그걸 평균에 넣으면 ' +
+      '**하락이 아닌 날도 하락 판정**이 나고, 그 배지를 보고 멀쩡한 시스템을 파게 된다.',
+  },
+  {
+    name: '인플루언서 페이지가 todayKst 를 안 넘김(배지·진행중 표시가 통째로 죽음)',
+    file: 'src/pages/admin/AdminInfluencerPoolPage.tsx',
+    find: '<InflowTimeline byDay={byDay} label="이메일" todayKst={todayKst} />',
+    replace: '<InflowTimeline byDay={byDay} label="이메일" />',
+    test: 'src/tests/unit/ads-inflow-trend.test.ts',
+    why:
+      '순수 함수가 맞아도 화면에 안 걸리면 아무 일도 안 일어난다 — 이 레포의 상습 사고("계산해 놓고 ' +
+      '안 쓰는 계측"). prop 하나가 빠지면 오늘 막대가 완성된 날처럼 보여 절반짜리 값이 추세로 읽힌다.',
+  },
+  {
+    // 📖 검색 깊이 커서(2026-08-19 대표 "왜 줄어드는지 원인을 파악하고 해결해줘 영구적으로").
+    name: '검색 URL 에서 start 가 빠짐(다시 매번 같은 상위 100건만 본다)',
+    file: 'src/features/marketing/api/influencer-discovery.ts',
+    find: '&sort=${sort}&start=${depth.start}`',
+    replace: '&sort=${sort}`',
+    test: 'src/tests/unit/ads-search-depth.test.ts',
+    why:
+      '이 파라미터 하나가 없어서 발굴량이 말랐다 — 회차당 found 는 555~793 로 멀쩡한데 신규율만 ' +
+      '8.4%~38.6% 였다(찾아온 사람의 62~92% 가 이미 DB 에 있음). 조용히 사라져도 아무 에러가 안 난다.',
+  },
+  {
+    name: '다음 커서를 저장하지 않음(영원히 1페이지에 머문다)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: 'nb_start = COALESCE(?, nb_start), last_run_at',
+    replace: 'last_run_at',
+    test: 'src/tests/unit/ads-search-depth.test.ts',
+    why:
+      '읽기만 하고 저장을 안 하면 커서가 항상 1 이라 수정 전과 **동일하게** 동작한다. 그리고 그 상태는 ' +
+      '에러도 경보도 안 낸다 — 이 레포의 "계산해 놓고 안 쓰는" 사고 클래스 그대로다.',
+  },
+  {
+    // 🚀 커서 시딩(2026-08-19, 배포 +2.5h 실측 후) — 커서만 넣으면 효과가 몇 주 뒤에 온다.
+    name: '커서 시딩이 사라짐(효과가 키워드마다 약 6일씩 밀린다)',
+    file: 'src/features/marketing/api/influencer-keyword-ddl.ts',
+    find: "  'UPDATE ad_discovery_keywords SET nb_start = 101 WHERE COALESCE(nb_start, 1) = 1 AND COALESCE(saved_total, 0) >= 100',",
+    replace: '',
+    test: 'src/tests/unit/ads-search-depth.test.ts',
+    why:
+      '커서는 "다음에 쓸 값"이라 첫 sim 회차는 **여전히 1페이지**를 읽고 101 을 저장만 한다. 한 키워드가 ' +
+      '다시 뽑히는 주기가 ~3일이고 sim 은 그 절반이라 두 번째 sim 회차가 약 6일 뒤다 — 실측으로 확인했다' +
+      '(배포 직후 sim 회차 신규율 8.9% = 기준선 동일, 그 회차엔 커서만 7개 올랐다).',
+  },
+  {
+    name: '시딩 가드가 사라짐(신규 키워드의 1페이지를 건너뛰고, 재적용 때 깊은 커서를 되돌린다)',
+    file: 'src/features/marketing/api/influencer-keyword-ddl.ts',
+    find: 'WHERE COALESCE(nb_start, 1) = 1 AND COALESCE(saved_total, 0) >= 100',
+    replace: 'WHERE 1=1',
+    test: 'src/tests/unit/ads-search-depth.test.ts',
+    why:
+      '가드 둘이 각각 다른 사고를 막는다: `saved_total>=100` 이 없으면 **갓 만든 키워드의 미개척지인 ' +
+      '1페이지**를 건너뛰고, `nb_start=1` 이 없으면 DDL 재적용 때 **901 까지 파 놓은 커서를 101 로 되돌린다**.',
   },
 ]
 /**

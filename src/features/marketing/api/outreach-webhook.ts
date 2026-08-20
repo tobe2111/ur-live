@@ -17,6 +17,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
 import { sendDiscordAlert } from '@/worker/utils/discord-alert'
 import { runDdlOnce } from './ads-schema-guard'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const POOL = 0 // 공용 풀 sentinel(자동수집·인바운드 전부 account_id=0)
 
@@ -110,7 +111,7 @@ export async function applyInboundReplyToPool(DB: D1Database, fromEmail: string,
  *   회신 도착(interested, 사람이 답장 → 즉시 대응 필요)을 Discord 로 요약. 0건이면 무발송(no-op).
  */
 export async function runFollowupReminder(env: Env): Promise<{ need: number; interested: number; sent: boolean }> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   await ensureOutreachColumns(DB)
   // 무응답 팔로업 대상(어드민 needFollowup 조건과 동일 SSOT).
   const NEED_COND = `((follow_up_at IS NOT NULL AND follow_up_at <= date('now'))

@@ -69,17 +69,68 @@ describe('② 대표 확정 — 없으면 아무것도 안 그린다', () => {
   it('히어로는 배너가 없으면 **브랜드 기본 배경**을 그린다 (2026-08-04 대표 지시)', () => {
     // ⚠️ 히어로만 예외다. "배너 안 올리면 안 보이게" 는 **배너 콘텐츠** 규칙이고,
     //    히어로 자리 자체는 화면 뼈대라 대표가 직접 기본 배경을 요구했다.
-    expect(code('src/components/home/HomeHeroBanner.tsx')).toMatch(/if\s*\(\s*!hero\s*\)\s*return\s+<HomeHeroDefault\s*\/>/)
+    // 2026-08-19: 히어로가 controls(위치·지도 칩)를 받게 되면서 `<HomeHeroDefault controls={…} />`
+    //   형태가 됐다. 지키려는 건 **"배너가 없어도 히어로를 그린다"** 이지 props 유무가 아니다.
+    expect(code('src/components/home/HomeHeroBanner.tsx')).toMatch(/if\s*\(\s*!hero\s*\)\s*return\s+<HomeHeroDefault[^>]*\/>/)
   })
 
-  it('기본 히어로는 영상·이미지 파일을 요청하지 않는다 (첫 화면 무게 0)', () => {
-    // 홈 최상단에 수 MB 를 얹으면 이 레포가 로딩에 들인 노력을 한 번에 되돌린다.
+  /**
+   * 🖼️ 2026-08-19 — 대표가 히어로에 **사진**을 요구했다(그루폰처럼 우측 사진 + 양쪽 그라데이션).
+   *
+   * 원래 이 항목은 `<img` 자체를 금지했는데, 그 규칙이 지키려던 건 태그가 아니라
+   * **"첫 화면에 무거운 미디어를 새로 들이지 마라"** 였다. 그래서 금지를 지우지 않고
+   * *무게를 만드는 조건*으로 좁힌다 — 아래 네 가지가 전부 성립해야 통과한다.
+   *
+   * ⚠️ 이 테스트가 못 막는 것: 실제 전송 바이트. 시드 이미지가 거대하면 리사이저가 줄여 주지만
+   *    원본 fetch 는 리사이저 쪽에서 일어난다. 라이브 실측(Resource Timing)이 최종 판정이다.
+   */
+  it('기본 히어로는 무거운 미디어를 새로 들이지 않는다 (영상 0 · 하드코딩 URL 0 · 리사이즈 · lazy)', () => {
     const def = code('src/components/home/HomeHeroDefault.tsx')
-    expect(def).not.toMatch(/<video|<img|url\(https?:/)
+    // ① 영상은 **어드민이 올렸을 때만**(2026-08-19 대표 확정 "히어로 사진은 어드민에서 직접 지정").
+    //    기본 상태에서 수 MB 를 첫 화면에 얹는 것이 원래 막으려던 사고이고, 그건 여전히 막는다 —
+    //    `<video>` 가 있다면 반드시 `content` prop(=어드민 배너)에서만 소스를 받아야 한다.
+    if (/<video/.test(def)) {
+      expect(def).toMatch(/content\?\.videoUrl\s*\?/)      // 렌더 조건이 어드민 값이다
+      expect(def).toMatch(/src=\{content\.videoUrl\}/)       // 소스도 어드민 값이다(하드코딩 금지)
+    }
+    // ② 외부 주소를 코드에 박지 않는다(출처 불명 이미지 유입 경로 차단 — 2026-08-04 워터마크 사고).
+    expect(def).not.toMatch(/["'`(]https?:\/\//)
+    // ③ 사진을 쓴다면 반드시 리사이저를 거친다(원본 1MB 직결 금지).
+    if (/<img/.test(def)) {
+      expect(def).toMatch(/cfImage\(/)
+      // ④ 그리고 lazy — 히어로 카피/검색보다 먼저 받을 이유가 없다.
+      expect(def).toMatch(/loading="lazy"/)
+    }
   })
 
-  it('기본 히어로가 장식으로 끝나지 않는다 — 실제 검색 진입점을 갖는다', () => {
-    expect(code('src/components/home/HomeHeroDefault.tsx')).toMatch(/\/search\?q=/)
+  it('히어로 사진은 우리가 파는 딜에서 고르고, 데모는 얼굴로 쓰지 않는다', () => {
+    const def = code('src/components/home/HomeHeroDefault.tsx')
+    if (!/<img/.test(def)) return  // 사진을 안 쓰는 형태로 되돌아가면 이 항목은 무의미
+    expect(def).toMatch(/__SSR_INITIAL_MAIN__/)      // 출처 = 홈 시드(권리 확보된 우리 상품)
+    expect(def).toMatch(/demo-deal-/)                 // 데모 상품은 제외한다
+  })
+
+  /**
+   * 🔎 2026-08-19 (대표 — *"그 부분엔 검색창이 없어야 할 것 같어"*): 히어로에서 검색을 뺐다.
+   *   이 항목이 원래 지키던 건 "검색"이 아니라 **"히어로가 장식으로 끝나지 않는다"** 였다.
+   *   검색은 헤더 2행 개편으로 상단 46px 대형 검색바가 생겨 중복이 됐고, 히어로가 실제로 하는
+   *   일은 이제 **위치 설정 + 지도 진입**이다. 그래서 판정 대상만 바꾼다(규칙은 그대로).
+   */
+  it('기본 히어로가 장식으로 끝나지 않는다 — 위치·지도 진입점을 갖는다', () => {
+    const def = code('src/components/home/HomeHeroDefault.tsx')
+    expect(def).toMatch(/<PcHomeLocationBar/)     // 지역 선택 · 현 위치
+    expect(def).toMatch(/to="\/map"/)             // 지도 진입
+    // 그리고 검색은 **여기 있으면 안 된다** — 헤더 검색바와 두 벌이 되면 반드시 갈린다.
+    expect(def).not.toMatch(/\/search\?q=/)
+  })
+
+  /**
+   * 🗺️ 위치 컨트롤이 홈에 **한 벌**만 있어야 한다. 통합형 히어로 이전엔 히어로 아래 흰 패널에
+   *   또 있었고, 그때는 "어느 쪽이 진짜 선택인가"가 화면상 모호했다(둘 다 같은 state 를 쓰지만
+   *   사용자는 두 개로 본다). 히어로로 흡수한 뒤에도 누군가 패널을 되살리면 그 상태로 되돌아간다.
+   */
+  it('위치바는 홈에 한 벌뿐 — PcHomePage 가 직접 그리지 않는다', () => {
+    expect(code('src/pages/pc-home/PcHomePage.tsx')).not.toMatch(/<PcHomeLocationBar/)
   })
 
   it('기본 히어로 배경 애니메이션이 prefers-reduced-motion 을 존중한다', () => {
@@ -120,15 +171,29 @@ describe('③ 되돌리기 — 플래그 하나로 전부 꺼진다', () => {
     }
     expect(gated.length).toBeGreaterThan(0)
 
+    // ⚠️ 2026-08-19 — 히어로는 **일부러 게이트 밖**이다. 위치·지도 칩이 히어로 안으로 들어갔기
+    //    때문에, 플래그를 끄면 홈에서 지역 선택·현 위치·지도 진입이 통째로 사라진다(칩이 여기
+    //    말고는 없다). 되돌리기 규칙이 지배하는 건 **편성 콘텐츠**(①섹션·③배너)이고, 히어로의
+    //    편성 콘텐츠(어드민 배너)는 없으면 기본값으로 그려진다 — 아래 별도 항목이 그걸 고정한다.
     const renders: number[] = []
-    for (const comp of ['HomeHeroBanner', 'HomeSections', 'HomeBannerStrip']) {
+    for (const comp of ['HomeSections', 'HomeBannerStrip']) {
       const re = new RegExp(`<${comp}\\b`, 'g')
       for (let m = re.exec(page); m; m = re.exec(page)) renders.push(m.index)
     }
-    expect(renders.length).toBeGreaterThanOrEqual(3) // 세 컴포넌트가 실제로 배선돼 있을 것
+    expect(renders.length).toBeGreaterThanOrEqual(2) // 두 컴포넌트가 실제로 배선돼 있을 것
 
     const ungated = renders.filter(i => !gated.some(([a, b]) => i > a && i < b))
     expect(ungated).toEqual([])
+  })
+
+  it('히어로는 플래그와 무관하게 항상 그려진다 (위치·지도 칩이 사라지면 안 된다)', () => {
+    const page = code('src/pages/pc-home/PcHomePage.tsx')
+    const at = page.indexOf('<HomeHeroBanner')
+    expect(at).toBeGreaterThan(-1)
+    // 히어로 렌더 앞 200자 안에 플래그 게이트가 붙어 있으면 안 된다(예전 형태로의 회귀).
+    expect(page.slice(Math.max(0, at - 200), at)).not.toMatch(/HOME_SHOWCASE_ENABLED\s*&&\s*$/)
+    // 그리고 위치 컨트롤을 실제로 넘겨받아야 칩이 동작한다(넘기지 않으면 조용히 사라진다).
+    expect(page).toMatch(/<HomeHeroBanner[\s\S]{0,200}controls=\{/)
   })
 
   it('플래그가 feature-flags SSOT 에 있다', () => {
@@ -166,10 +231,20 @@ describe('④ 상품 선정 — 홈 피드와 같은 조건 + 몰 격리', () =>
 
 describe('⑤ 카드 링크는 canonicalDetailPath SSOT — 손으로 찍지 않는다', () => {
   it('카드가 SSOT 로 목적지를 정한다 (하드코딩 분기 금지)', () => {
+    // 🔄 2026-08-19 갱신: 섹션이 자체 카드를 갖고 있던 구조가 **피드 카드 재사용**으로 바뀌었다
+    //   (대표 신고 "섹션 카드와 동네딜 카드가 다르네"). 그래서 이 파일에는 링크 생성 코드가 없고,
+    //   목적지 판정은 그 카드가 한다 — 검사 대상도 함께 옮긴다. 불변식 자체는 그대로:
+    //   **홈 섹션 카드의 목적지는 손으로 찍지 않는다.**
     const src = code('src/components/home/HomeSections.tsx')
-    expect(src).toMatch(/canonicalDetailPath\(/)
+    const card = code('src/pages/main-home/GroupBuyFeedCard.tsx')
+    expect(card).toMatch(/canonicalDetailPath\(/)
     // 손으로 찍은 삼항(`? '/vouchers/..' : '/group-buy/..'`)이 되살아나면 숙소가 틀린 상세로 간다.
     expect(src).not.toMatch(/\?\s*`\/vouchers\//)
+    expect(card).not.toMatch(/\?\s*`\/vouchers\//)
+    // 섹션이 다시 자기 카드를 만들면(=두 카드가 갈리면) 여기서 걸린다.
+    // ⚠️ **`import` 줄이 아니라 렌더(JSX)를 본다.** 처음엔 `/GroupBuyFeedCard/` 로 썼다가
+    //    카드를 `<div>` 로 바꿔도 초록이 뜨는 걸 되돌려-검증에서 잡았다 — import 는 남으니까.
+    expect(src, '홈 섹션은 피드와 같은 카드를 렌더해야 한다').toMatch(/<GroupBuyFeedCard\b/)
   })
 
   it('판정에 필요한 컬럼(deal_only·category)을 SELECT 가 싣는다', () => {
@@ -337,7 +412,16 @@ describe('⑪ 홈이 기본으로 시안 모양이어야 한다 (2026-08-04 "시
 
   it('시드가 기존 섹션을 덮지 않는다 (제목이 같으면 건너뛴다)', () => {
     expect(seed).toMatch(/if \(existing\.has\(s\.title\)\) continue/)
-    expect(seed).not.toMatch(/\bUPDATE homepage_sections\b|\bDELETE FROM homepage_sections\b/)
+    expect(seed).not.toMatch(/\bDELETE FROM homepage_sections\b/)
+    // 🚑 2026-08-17 v2 heal 예외: UPDATE 는 **값이 정확히 '/group-buy'(홈 리다이렉트 별칭 — 어떤
+    // 의도로도 옳을 수 없는 죽은 링크)인 more_href 정정** 하나만 허용한다. 제목/부제/규칙을 덮는
+    // UPDATE 는 여전히 금지 — "대표 편집 보존"이 이 가드의 본질이다. 여기 걸리면 heal 이 아니라
+    // 편집 덮어쓰기를 넣은 것이니 시드 철학(주석 상단)을 다시 읽을 것.
+    const updates = seed.match(/UPDATE homepage_sections[^`]*/g) ?? []
+    expect(updates.length).toBeLessThanOrEqual(1)
+    for (const u of updates) {
+      expect(u).toMatch(/SET more_href = '[^']*' WHERE more_href = '\/group-buy'/)
+    }
   })
 
   it('시드가 **홈 조회** 경로에서 실행된다 (어드민이 안 열어도 떠야 한다)', () => {

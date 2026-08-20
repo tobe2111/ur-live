@@ -1,5 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import DetailGallery from './group-buy/DetailGallery'
+import DetailTitleHeader from './group-buy/DetailTitleHeader'
+import { derivePricing } from './group-buy/pricing'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, ShieldCheck, RefreshCcw } from 'lucide-react'
@@ -92,6 +95,8 @@ interface GroupBuyDetail {
   prelaunch?: boolean
   /** 🎯 카카오 장소 페이지 URL (등록 시 캡처, 있으면 매장 페이지 직접 연결). */
   kakao_place_url?: string
+  /** ⭐ 2026-08-19 (상세 1안): 제목 헤더의 별점 — 서버가 리스트/상세 공통으로 준다. */
+  avg_rating?: number; review_count?: number
   seller_id?: number
   seller_name?: string
   seller_username?: string
@@ -166,9 +171,7 @@ export default function GroupBuyDetailPage() {
   const [quantity, setQuantity] = useState(1)
   const [showPropose, setShowPropose] = useState(false)
   // 🎨 2026-06-16 리디자인: 스와이프 갤러리 활성 인덱스 + 이 셀러의 다른 공구
-  const [activeImage, setActiveImage] = useState(0)
   const [otherDeals, setOtherDeals] = useState<Array<{ id: number; name: string; price: number; original_price?: number | null; image_url?: string | null; discount_pct?: number | null }>>([])
-  const galRef = useRef<HTMLDivElement | null>(null)
   // 🏭 2026-06-07 (당근 스타일 hero 재설계): 스크롤-aware 헤더.
   //   hero 이미지를 지나치면 투명 overlay → solid 테마 바로 전환 + 제목 fade-in.
   //   passive scroll listener + ref 로 hero 높이 측정 (threshold ≈ heroHeight - headerHeight).
@@ -324,18 +327,12 @@ export default function GroupBuyDetailPage() {
   //   공구가는 인원 무관 고정(최대 할인 적용)이라 group_buy_tiers 렌더링 불필요.
 
   // 🧭 2026-06-17: 즉시판매 단일가 모델 — 진행률 바/티어 사다리 제거 후 미사용이던 progress 변수 정리.
-  const unitPrice = detail ? Math.round(detail.price * (1 - (detail.current_discount_pct || 0) / 100)) : 0
+  // 💰 가격 파생값은 SSOT(`group-buy/pricing.ts`)에서 — 카드와 상세가 다른 할인율을 보이던 것을 막는다.
+  const { unitPrice, refPrice, unitSaving, displayDiscountPct } = derivePricing(detail)
   const total = unitPrice * quantity
+  const totalSaving = unitSaving * quantity
   // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도"): 셀러 설정값으로 스텝퍼 상한. 미설정=기존 10.
   const maxQty = detail?.max_per_person && detail.max_per_person > 0 ? detail.max_per_person : 10
-  // 🏭 2026-06-06 (사용자 요청 — 가격 설득력): 정가(있으면) 대비 실제 결제가 절약액 계산.
-  //   기준가 = original_price(정가, MSRP) 가 있고 결제가보다 크면 그것, 없으면 공구 기준가(price).
-  //   순수 파생값 — SSR/폴링/잠금 동작 불변(렌더 카피만 추가).
-  const refPrice = detail
-    ? (detail.original_price && detail.original_price > unitPrice ? detail.original_price : detail.price)
-    : 0
-  const unitSaving = Math.max(0, refPrice - unitPrice)
-  const totalSaving = unitSaving * quantity
   const isJoinable = detail?.group_buy_status === 'active' || detail?.group_buy_status === 'achieved'
   // 🏷️ 2026-07-05 (대표 "옵션으로 선택"): 오픈 예정형은 구매 불가 — 사전 응모(FcfsApplyBlock)로 유도.
   const isPrelaunch = !!detail?.prelaunch
@@ -356,11 +353,6 @@ export default function GroupBuyDetailPage() {
     }
     return Array.from(new Set(out)).slice(0, 8)
   })()
-  const onGalScroll = () => {
-    const el = galRef.current; if (!el) return
-    const i = Math.round(el.scrollLeft / el.clientWidth)
-    if (i !== activeImage) setActiveImage(i)
-  }
 
   // 🎨 2026-06-16 리디자인: 할인코드(promo) 입력 UI 제거 — checkPromo/clearPromo 삭제.
 
@@ -508,8 +500,8 @@ export default function GroupBuyDetailPage() {
       <SEO
         title={`${detail.name} 공동구매 - ${detail.restaurant_name || '유어딜'}`}
         description={
-          detail.current_discount_pct > 0
-            ? `🎉 ${detail.current_discount_pct}% 할인! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(unitPrice)}원`
+          displayDiscountPct > 0
+            ? `🎉 ${displayDiscountPct}% 할인! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(unitPrice)}원`
             : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(detail.price)}원`
         }
         url={`/group-buy/${productId}`}
@@ -603,13 +595,13 @@ export default function GroupBuyDetailPage() {
           />
           <KakaoShareButton
             title={`${detail.name} 공구 참여하기`}
-            description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
+            description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중 · ${displayDiscountPct > 0 ? `${displayDiscountPct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
             imageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}
             link={shareLink}
             buttonText="나도 참여하기"
             {...(Number((detail as { deal_only?: number }).deal_only) === 1 ? {} : {
               salePrice: detail.price,
-              discountRate: detail.current_discount_pct,
+              discountRate: displayDiscountPct,
               secondaryButtonText: '자세히 보기',
             })}
             compact
@@ -623,36 +615,39 @@ export default function GroupBuyDetailPage() {
       {/* 🖥️ 2026-07-19 (대표 승인 — 그루폰식 상세): lg+ = [좌 넓은 콘텐츠(갤러리+본문)] + [우 360px sticky 구매박스].
           이전 2단(좌 sticky 갤러리 | 우 본문)에서 그루폰 딜 상세 구조로 전환. 모바일(<lg)은 세로 1열 +
           하단 고정 구매바 그대로(불변). */}
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10 lg:max-w-[1200px] lg:mx-auto lg:items-start lg:pt-5">
+      {/* 🏷️ 2026-08-19 (대표 확정 — 상세 1안 "그루폰 정석"): PC 는 제목·별점·주소가 사진 **위**. 모바일은 그대로. */}
+      <DetailTitleHeader name={detail.name} storeName={detail.restaurant_name} address={detail.restaurant_address}
+        phone={detail.restaurant_phone} rating={detail.avg_rating} reviewCount={detail.review_count}
+        onnuri={(detail as { onnuri_merchant?: boolean }).onnuri_merchant} />
+
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10 lg:max-w-[1200px] lg:mx-auto lg:items-start lg:pt-1">
       <div className="lg:min-w-0">{/* 좌측 콘텐츠 컬럼 */}
-      {/* 🎨 2026-06-16 리디자인: 스와이프 이미지 갤러리 (fixed 헤더가 위에 floating) */}
+      {/* 🎨 2026-06-16 리디자인: 이미지 갤러리 (fixed 헤더가 위에 floating)
+          🖼️ 2026-08-19 (대표 시안 — 그루폰 상세): 사진이 여러 장이면 PC 에서 [좌 대형 + 우 썸네일]로
+          펴고, 마지막 썸네일의 `+N` 으로 전체 사진 모달을 연다. 모바일은 스와이프 그대로.
+          레이아웃/상태는 `DetailGallery`(SSOT)로 추출 — 이 파일은 배지만 넘긴다. */}
       <div ref={heroRef} className="relative lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#2A3446]" style={{ background: 'var(--gbd-card)' }}>
-        <div ref={galRef} onScroll={onGalScroll} className="noscroll" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '1/1', scrollSnapType: 'x mandatory' }}>
-          {(galleryImages.length ? galleryImages : ['']).map((src, i) => (
-            <div key={i} role="img" aria-label={detail.name} className="flex items-center justify-center text-6xl" style={{ flex: '0 0 100%', scrollSnapAlign: 'center', backgroundColor: '#1A2334', backgroundImage: src ? `url("${cfImage(src, { width: 900, format: 'auto' }) || src}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-              {!src && <CategoryEmoji cat={detail.category} />}
-            </div>
-          ))}
-        </div>
-        <div style={{ position: 'absolute', inset: '0 0 auto 0', height: 110, pointerEvents: 'none', background: 'linear-gradient(180deg, rgba(0,0,0,.4), transparent)' }} />
-        <div style={{ position: 'absolute', inset: 'auto 0 0 0', height: 120, pointerEvents: 'none', background: 'linear-gradient(0deg, rgba(0,0,0,.32), transparent)' }} />
-        <div style={{ position: 'absolute', left: 16, bottom: 17, display: 'flex', alignItems: 'center', gap: 6 }}>
-          {detail.current_discount_pct > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>{detail.current_discount_pct}% 할인</span>
-          )}
-          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 10px', borderRadius: 6, background: 'rgba(18,20,23,.5)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
-            {({ meal_voucher: '식사', beauty_voucher: '뷰티', health_voucher: '건강', pet_voucher: '반려', stay_voucher: '숙박', activity_voucher: '액티비티' } as Record<string, string>)[detail.category] || '교환권'}
-          </span>
-          {detail.group_buy_status === 'expired' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'rgba(55,55,55,.78)', color: '#fff', fontSize: 12, fontWeight: 700 }}>마감</span>}
-          {detail.group_buy_status === 'cancelled' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 700 }}>취소</span>}
-        </div>
-        {galleryImages.length > 1 && (
-          <div style={{ position: 'absolute', right: 16, bottom: 19, display: 'flex', alignItems: 'center', gap: 5 }}>
-            {galleryImages.map((_, i) => (
-              <span key={i} style={{ height: 5, borderRadius: 99, transition: 'width .25s, background .25s', width: i === activeImage ? 16 : 5, background: i === activeImage ? '#fff' : 'rgba(255,255,255,.5)' }} />
-            ))}
-          </div>
-        )}
+        <DetailGallery
+          images={galleryImages}
+          alt={detail.name}
+          fallback={<CategoryEmoji cat={detail.category} />}
+          badges={
+            <>
+              <div style={{ position: 'absolute', inset: '0 0 auto 0', height: 110, pointerEvents: 'none', background: 'linear-gradient(180deg, rgba(0,0,0,.4), transparent)' }} />
+              <div style={{ position: 'absolute', inset: 'auto 0 0 0', height: 120, pointerEvents: 'none', background: 'linear-gradient(0deg, rgba(0,0,0,.32), transparent)' }} />
+              <div style={{ position: 'absolute', left: 16, bottom: 17, display: 'flex', alignItems: 'center', gap: 6 }}>
+                {displayDiscountPct > 0 && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>{displayDiscountPct}% 할인</span>
+                )}
+                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 10px', borderRadius: 6, background: 'rgba(18,20,23,.5)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  {({ meal_voucher: '식사', beauty_voucher: '뷰티', health_voucher: '건강', pet_voucher: '반려', stay_voucher: '숙박', activity_voucher: '액티비티' } as Record<string, string>)[detail.category] || '교환권'}
+                </span>
+                {detail.group_buy_status === 'expired' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'rgba(55,55,55,.78)', color: '#fff', fontSize: 12, fontWeight: 700 }}>마감</span>}
+                {detail.group_buy_status === 'cancelled' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 700 }}>취소</span>}
+              </div>
+            </>
+          }
+        />
       </div>
 
       <main id="gb-main" role="main">
@@ -679,7 +674,7 @@ export default function GroupBuyDetailPage() {
               buttonText="나도 참여하기"
               {...(Number((detail as { deal_only?: number }).deal_only) === 1 ? {} : {
                 salePrice: detail.price,
-                discountRate: detail.current_discount_pct,
+                discountRate: displayDiscountPct,
                 secondaryButtonText: '자세히 보기',
               })}
               compact
@@ -698,8 +693,8 @@ export default function GroupBuyDetailPage() {
           </div>
         )}
 
-        {/* 타이틀 */}
-        <div style={{ padding: '20px 18px 0' }}>
+        {/* 타이틀 — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번 나온다). */}
+        <div className="lg:hidden" style={{ padding: '20px 18px 0' }}>
           {detail.restaurant_name && (
             <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', letterSpacing: '.01em' }}>
               {detail.restaurant_name} · 정식 등록 매장
@@ -724,11 +719,11 @@ export default function GroupBuyDetailPage() {
           )}
         </div>
 
-        {/* 가격 */}
-        <div style={{ padding: '18px 18px 22px' }}>
+        {/* 가격 — 📱 모바일 전용. PC 는 우측 구매 패널 헤드라인이 담당(두 곳에 두면 최종가가 흐려진다). */}
+        <div className="lg:hidden" style={{ padding: '18px 18px 22px' }}>
           {unitSaving > 0 && <div style={{ fontSize: 13.5, color: 'var(--gbd-sub2)', textDecoration: 'line-through', letterSpacing: '-.01em' }}>{formatNumber(refPrice)}원</div>}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginTop: 3 }}>
-            {detail.current_discount_pct > 0 && <span style={{ fontSize: 27, fontWeight: 800, color: 'var(--gbd-danger)', letterSpacing: '-.03em' }}>{detail.current_discount_pct}%</span>}
+            {displayDiscountPct > 0 && <span style={{ fontSize: 27, fontWeight: 800, color: 'var(--gbd-danger)', letterSpacing: '-.03em' }}>{displayDiscountPct}%</span>}
             <span style={{ fontSize: 30, fontWeight: 900, color: 'var(--gbd-ink)', letterSpacing: '-.035em' }}>{formatNumber(unitPrice)}원</span>
           </div>
           <div style={{ marginTop: 9, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>{unitSaving > 0 && <>1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-danger)' }}>{formatNumber(unitSaving)}원</b> 저렴 · </>}결제 즉시 교환권 발급</div>
@@ -928,7 +923,7 @@ export default function GroupBuyDetailPage() {
       <aside className="hidden lg:block lg:sticky lg:top-[116px] lg:self-start lg:pb-10">
         <DealPurchaseBox
           name={detail.name}
-          discountPct={detail.current_discount_pct || 0}
+          discountPct={displayDiscountPct}
           unitPrice={unitPrice}
           refPrice={refPrice}
           unitSaving={unitSaving}

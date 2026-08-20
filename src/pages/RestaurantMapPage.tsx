@@ -631,6 +631,14 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sdkLoaded])
   // 시트 드래그 훅 — 모바일(<lg)만. listScrollRef 는 H4 콘텐츠 드래그 위임 대상.
+  // 🗺️ 2026-08-19 (대표 — 지도 위 컨트롤을 왼쪽 리스트 상단으로): 같은 컨트롤을 두 자리에 그린다
+  //   (📱 지도 오버레이 / 🖥️ 좌측 패널 헤더). props 를 한 곳에 모아 **두 호출부가 절대 갈리지 않게** 한다.
+  const topBarProps = {
+    search, setSearch, onSubmitSearch: submitMapSearch, searchFocused, setSearchFocused,
+    searchHistory, setSearchHistory, pushSearchHistory, voucherType, setVoucherType: selectVoucherType,
+    nearMeMode, requestNearMe, activeFilterCount, onOpenFilter: () => setFilterSheetOpen(true), home,
+  }
+
   const { sheetRef, dragging: sheetDragging, handleProps: sheetHandleProps } = useSheetDrag({
     sheetSnap, setSheetSnap, enabled: !isLgViewport, listRef: listScrollRef,
   })
@@ -759,24 +767,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         </div>
       )}
 
-      {/* ═══ 상단 floating 바 — 카테고리 칩(상단 이동) + 검색 아이콘 버튼 ═══ */}
-      <MapTopBar
-        search={search}
-        setSearch={setSearch}
-        onSubmitSearch={submitMapSearch}
-        searchFocused={searchFocused}
-        setSearchFocused={setSearchFocused}
-        searchHistory={searchHistory}
-        setSearchHistory={setSearchHistory}
-        pushSearchHistory={pushSearchHistory}
-        voucherType={voucherType}
-        setVoucherType={selectVoucherType}
-        nearMeMode={nearMeMode}
-        requestNearMe={requestNearMe}
-        activeFilterCount={activeFilterCount}
-        onOpenFilter={() => setFilterSheetOpen(true)}
-        home={home}
-      />
+      {/* ═══ 상단 floating 바 — 📱 **모바일 전용**(2026-08-19 대표 확정). PC(lg+)는 같은 컨트롤이
+           좌측 리스트 패널 헤더로 들어간다(아래 `variant="panel"`) — 지도를 가리지 않게. ═══ */}
+      <MapTopBar {...topBarProps} />
 
       {/* 🗺️ 2026-07-16 (대표 요청 — 위치 로딩 표시): 측위 중이면 상단 중앙(검색바 아래)에 작은 알약.
           지도를 안 가리게 pointer-events-none. PC 분할에선 지도 영역(좌 400px 패널 오른쪽) 중앙 정렬. */}
@@ -853,6 +846,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           >
             <div className="w-10 h-1 rounded-full bg-gray-300" />
           </div>
+
+          {/* 🗺️ 2026-08-19 (대표 — "지도 위 검색·버튼들을 왼쪽 상품 리스트 상단으로"): PC 전용 헤더.
+              같은 `MapTopBar` 를 `variant="panel"` 로 그린다(마크업 한 벌 — 두 벌이면 반드시 갈린다). */}
+          <MapTopBar variant="panel" {...topBarProps} />
 
           {/* count + sort (칩은 상단으로 — hideChips) */}
           <SheetFilterBar

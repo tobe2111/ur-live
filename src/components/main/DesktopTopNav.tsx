@@ -5,10 +5,13 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap, Sparkles, Smartphone, Store, MapPin, BookOpen } from 'lucide-react'
+import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap, Sparkles, Smartphone, Store, MapPin, BookOpen, Heart, ChevronRight, ChevronDown } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import AppDownloadModal from './AppDownloadModal'
+import AccountMenu from './AccountMenu'
 import { useUnreadCount, useCartCount } from '@/hooks/queries'
+import { useWishlist } from '@/hooks/queries/useWishlist'
+import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
 import { isLoggedInSync } from '@/utils/auth'
 import { isWholesaleSurface } from '@/utils/domain'
 import { hasOwnHeaderPc, isFullBleedPcPath } from '@/shared/pc-fullbleed'
@@ -24,6 +27,9 @@ export default function DesktopTopNav() {
   const [searchQuery, setSearchQuery] = useState('')
   const [notifOpen, setNotifOpen] = useState(false)
   const [appOpen, setAppOpen] = useState(false)
+  // 👤 2026-08-19 (대표 확정 — 그루폰식 헤더): '로그인' 버튼 → 아바타+캐럿 드롭다운.
+  const [acctOpen, setAcctOpen] = useState(false)
+  const acctRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const loggedIn = isLoggedInSync()
   // 🔗 2026-06-17 (대표 신고): 링크샵 탭이 항상 /host/new 로 가던 버그 — 본인 링크샵 경로로 정합(BottomNav 와 동일).
@@ -54,6 +60,22 @@ export default function DesktopTopNav() {
   // 🛡️ 2026-05-22 v5: 공통 hook 사용. MainHomePage 와 자동 dedup + localStorage 즉시 표시.
   const { data: unreadCount = 0 } = useUnreadCount(isDesktop)
   const { data: cartCount = 0 } = useCartCount(isDesktop)
+  // 💗 2026-08-19 (대표 확정): 상단 찜 아이콘 — 카드 하트와 **같은 훅**을 읽는다(네트워크 추가 0,
+  //   카드에서 찜하면 헤더 숫자가 그 자리에서 같이 바뀐다). 비로그인은 훅이 disabled 라 항상 0.
+  const { data: wishItems } = useWishlist()
+  const wishCount = Array.isArray(wishItems) ? wishItems.length : 0
+
+  // 👤 계정 드롭다운 — 바깥 클릭/Esc 로 닫기(알림 드롭다운과 같은 감각).
+  useEffect(() => {
+    if (!acctOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (acctRef.current && !acctRef.current.contains(e.target as Node)) setAcctOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setAcctOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
+  }, [acctOpen])
 
   // 🛡️ 2026-06-10 [UNLOCK_LOADING] (사용자 결정): 라이브 영구 중단 + 쇼핑 잠정 숨김 — 플래그 가역.
   //   링크샵 탭 추가(하단바와 정합). 쇼핑 라우트(/browse·/cart)는 보존 — 장바구니 아이콘으로 도달 가능.
@@ -77,6 +99,27 @@ export default function DesktopTopNav() {
     { icon: Sparkles, label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
     { icon: BookOpen, label: t('nav.blog', { defaultValue: '블로그' }), path: '/blog' },
   ]
+
+  // 🧭 2026-08-19: 2행 가로 스크롤 — 넘칠 때만 우측 화살표(그루폰). 끝에 닿으면 숨긴다.
+  const catScrollRef = useRef<HTMLElement>(null)
+  const [catOverflow, setCatOverflow] = useState(false)
+  const syncCatArrow = () => {
+    const el = catScrollRef.current
+    if (!el) return
+    setCatOverflow(el.scrollWidth - el.clientWidth - el.scrollLeft > 8)
+  }
+  useEffect(() => {
+    syncCatArrow()
+    if (typeof window === 'undefined') return
+    window.addEventListener('resize', syncCatArrow)
+    return () => window.removeEventListener('resize', syncCatArrow)
+  })
+
+  // 🏷️ 딜 카테고리 활성 표시 — 홈에서 `?category=` 를 그대로 읽는다(상태 미러링 금지: 갈리면 어긋난다).
+  const onHomeSurface = location.pathname === '/'
+  const activeDealCat = onHomeSurface
+    ? (new URLSearchParams(location.search).get('category') || 'all')
+    : ''
 
   const isActivePath = (path: string) => {
     const cur = location.pathname
@@ -115,9 +158,10 @@ export default function DesktopTopNav() {
 
   return (
     <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2A3446]">
+      {/* 📐 2026-08-19: 검색바가 46px 로 커져 행 높이도 56→68px(그루폰 헤더 비율). */}
       <div className={isHome
-        ? 'flex items-center gap-4 h-14 max-w-[1600px] mx-auto w-full px-6 lg:px-10'
-        : 'flex items-center gap-4 px-4 md:pl-[76px] lg:pl-[76px] xl:pl-60 h-14'}>
+        ? 'flex items-center gap-4 h-[68px] max-w-[1440px] mx-auto w-full px-6 lg:px-8'
+        : 'flex items-center gap-4 px-4 md:pl-[76px] lg:pl-[76px] xl:pl-60 h-[68px]'}>
         {/* 로고 — xl 이상에서는 사이드바에 있으므로 숨김(홈은 사이드바 없음 → 항상 표시) */}
         <Link to="/" className={isHome ? 'flex items-center shrink-0' : 'flex items-center shrink-0 xl:hidden'}>
           <UrDealLogo size={20} />
@@ -154,17 +198,27 @@ export default function DesktopTopNav() {
         {isMapSurface ? (
           <div className="flex-1" />
         ) : (
-          <form onSubmit={handleSearch} className="flex-1 max-w-md xl:max-w-lg">
+          /* 🔎 2026-08-19 (대표 확정 — 그루폰식): 작은 회색 알약 → **큰 흰 인풋 + 브랜드 테두리 +
+             우측 원형 검색 버튼**. 그루폰 헤더에서 가장 눈에 띄는 요소라 여기부터 맞춘다.
+             버튼은 submit 이라 엔터/클릭 둘 다 같은 `handleSearch` 로 간다(동작 SSOT 1개). */
+          <form onSubmit={handleSearch} className="flex-1 max-w-lg xl:max-w-2xl">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400 pointer-events-none" />
               <input
                 ref={searchRef}
                 type="search"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder={t('search.placeholder', { defaultValue: '동네딜, 교환권, 상품 검색' })}
-                className="w-full pl-9 pr-4 py-2 text-[13px] bg-gray-100 dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 rounded-full border-none outline-none focus:ring-2 focus:ring-gray-400/40 dark:focus:ring-white/20"
+                className="w-full h-[46px] pl-11 pr-[52px] text-[14px] bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 rounded-full border-2 border-brand dark:border-brand/70 outline-none focus:ring-2 focus:ring-brand/25"
               />
+              <button
+                type="submit"
+                aria-label={t('common.search', { defaultValue: '검색' })}
+                className="absolute right-[5px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-brand hover:bg-brand-dark text-white flex items-center justify-center transition-colors"
+              >
+                <Search className="w-[18px] h-[18px]" strokeWidth={2.2} />
+              </button>
             </div>
           </form>
         )}
@@ -192,8 +246,26 @@ export default function DesktopTopNav() {
             <span className="flex items-center gap-1"><UrDealLogo size={13} />에서 판매하세요</span>
           </button>
 
-          {/* 알림 — 🖥️ 2026-07-18 (대표 요청): PC 는 페이지 이동 대신 드롭다운으로 그 자리에서 바로 표시. */}
-          {loggedIn && (
+          {/* 💗 찜 — 🖥️ 2026-08-19 (대표 확정, 그루폰 헤더): 카드 하트로 담은 것들의 **입구**.
+              카드 하트와 같은 `useWishlist` 를 읽어 숫자가 즉시 맞는다. 비로그인은 로그인으로 안내. */}
+          <button
+            onClick={() => navigate(loggedIn ? '/wishlist' : `/login?returnUrl=${encodeURIComponent('/wishlist')}`)}
+            aria-label={wishCount > 0 ? `찜 ${wishCount}개` : '찜'}
+            className={`relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${
+              isActivePath('/wishlist') ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white' : ''
+            }`}
+          >
+            <Heart className="w-5 h-5" strokeWidth={1.75} />
+            {wishCount > 0 && (
+              <span className="absolute top-1 right-1 bg-brand text-white text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
+                {wishCount > 99 ? '99+' : wishCount}
+              </span>
+            )}
+          </button>
+
+          {/* 알림 — 🖥️ 2026-07-18 (대표 요청): PC 는 페이지 이동 대신 드롭다운으로 그 자리에서 바로 표시.
+              🔔 2026-08-19 (대표 확정): 비로그인에도 **보이게** 한다(그루폰과 동일) — 누르면 로그인으로. */}
+          {loggedIn ? (
             <div className="relative">
               <button
                 onClick={() => setNotifOpen((v) => !v)}
@@ -210,6 +282,14 @@ export default function DesktopTopNav() {
               </button>
               {notifOpen && <NotificationDropdown onClose={() => setNotifOpen(false)} />}
             </div>
+          ) : (
+            <button
+              onClick={() => navigate(`/login?returnUrl=${encodeURIComponent('/notifications')}`)}
+              aria-label="알림"
+              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"
+            >
+              <Bell className="w-5 h-5" strokeWidth={1.75} />
+            </button>
           )}
 
           {/* 장바구니 */}
@@ -226,53 +306,107 @@ export default function DesktopTopNav() {
             )}
           </button>
 
-          {/* 로그인 or 프로필 */}
-          {loggedIn ? (
+          {/* 👤 계정 — 🖥️ 2026-08-19 (대표 확정, 그루폰): '로그인' 버튼/아이콘 → **아바타 + 캐럿 드롭다운**.
+              로그인이면 마이·주문·이용권·로그아웃, 비로그인이면 로그인·회원가입이 그 자리에서 펼쳐진다.
+              ⚠️ 비로그인에게도 '로그인' 이 드롭다운 **첫 항목**이라 진입 동선은 유지된다. */}
+          <div className="relative" ref={acctRef}>
             <button
-              onClick={() => navigate('/user/profile')}
+              onClick={() => setAcctOpen(v => !v)}
               aria-label={t('nav.my', { defaultValue: '마이' })}
-              className={`w-9 h-9 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] ${
-                isActivePath('/user/profile') ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white' : ''
+              aria-expanded={acctOpen}
+              aria-haspopup="menu"
+              className={`flex items-center gap-0.5 pl-1 pr-1.5 h-9 rounded-full border border-gray-200 dark:border-[#2A3446] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors ${
+                acctOpen || isActivePath('/user/profile') ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white' : ''
               }`}
             >
-              <User className="w-5 h-5" strokeWidth={1.75} />
+              <span className="w-7 h-7 rounded-full bg-gray-100 dark:bg-white/[0.10] flex items-center justify-center">
+                <User className="w-[17px] h-[17px]" strokeWidth={1.9} />
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${acctOpen ? 'rotate-180' : ''}`} strokeWidth={2.2} />
             </button>
-          ) : (
-            <button
-              onClick={() => navigate('/login')}
-              className="px-4 py-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13px] font-bold rounded-full hover:bg-black dark:hover:bg-gray-100 transition-colors"
-            >
-              {t('auth.login', { defaultValue: '로그인' })}
-            </button>
-          )}
+            {acctOpen && (
+              <AccountMenu
+                loggedIn={loggedIn}
+                unreadCount={unreadCount}
+                wishCount={wishCount}
+                onClose={() => setAcctOpen(false)}
+                onOpenApp={() => { setAcctOpen(false); setAppOpen(true) }}
+              />
+            )}
+          </div>
         </div>
       </div>
 
       {/* 🖥️ 2026-07-19 (대표 요청 — "왼쪽 카테고리보단 위에"): 그루폰식 상단 카테고리 바(2번째 행).
           홈/풀블리드 상단바에서만. 좌측 사이드바 대신 가로 카테고리 네비. */}
+      {/* 🧭 2026-08-19 (대표 확정 — "카테고리를 같은 줄에 합치기"): 그루폰 2행은 '카테고리'인데 우리 2행은
+          '서비스 축'이었다. 둘을 **한 줄**에 두되 세로 구분선으로 성격을 나눈다 —
+          [홈·교환권·동네딜·링크샵·블로그] │ [식사·미용·숙소·기타]. 넘치면 그루폰처럼 우측 화살표로 스크롤.
+          ⚠️ 딜 카테고리는 **홈의 쿼리**(`/?category=`)로 간다 — PcHomePage 가 쿼리 변화에 제자리 반응하므로
+          리마운트 0(2026-08-17 '더보기 플래시' 수리와 같은 경로). 라벨/아이콘 SSOT 는 `DEAL_CATS`. */}
       {isHome && (
         <div className="border-t border-gray-100 dark:border-[#2A3446]">
-          <nav className="max-w-[1600px] mx-auto w-full px-6 lg:px-10 h-11 flex items-center gap-1 overflow-x-auto no-scrollbar">
-            {categoryItems.map((item) => {
-              const active = isActivePath(item.path)
-              const Icon = item.icon
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  aria-current={active ? 'page' : undefined}
-                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors ${
-                    active
-                      ? 'text-brand'
-                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" strokeWidth={active ? 2 : 1.6} />
-                  {item.label}
-                </button>
-              )
-            })}
-          </nav>
+          <div className="relative max-w-[1440px] mx-auto w-full px-6 lg:px-8">
+            <nav
+              ref={catScrollRef}
+              onScroll={syncCatArrow}
+              aria-label={t('nav.categories', { defaultValue: '카테고리' })}
+              className="h-11 flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth"
+            >
+              {categoryItems.map((item) => {
+                const active = isActivePath(item.path)
+                const Icon = item.icon
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => navigate(item.path)}
+                    aria-current={active ? 'page' : undefined}
+                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors ${
+                      active
+                        ? 'text-brand'
+                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" strokeWidth={active ? 2 : 1.6} />
+                    {item.label}
+                  </button>
+                )
+              })}
+
+              <span aria-hidden="true" className="shrink-0 w-px h-4 mx-2 bg-gray-200 dark:bg-[#2A3446]" />
+
+              {DEAL_CATS.map(({ key, label, icon: Icon }) => {
+                const active = onHomeSurface && activeDealCat === key
+                return (
+                  <button
+                    key={key}
+                    onClick={() => navigate(key === 'all' ? '/' : `/?category=${key}`)}
+                    aria-current={active ? 'true' : undefined}
+                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors ${
+                      active
+                        ? 'text-brand'
+                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" strokeWidth={active ? 2 : 1.6} />
+                    {label}
+                  </button>
+                )
+              })}
+            </nav>
+
+            {/* ▶ 넘칠 때만 뜨는 스크롤 화살표(그루폰과 동일). 끝에 닿으면 사라진다. */}
+            {catOverflow && (
+              <button
+                onClick={() => catScrollRef.current?.scrollBy({ left: 260, behavior: 'smooth' })}
+                aria-label={t('common.more', { defaultValue: '더 보기' })}
+                className="ur-appear absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white dark:bg-[#141C27] border border-gray-200 dark:border-[#2A3446] shadow-sm flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06]"
+                style={{ opacity: 1, transform: 'translateY(-50%) scale(1)' }}
+              >
+                <ChevronRight className="w-4 h-4" strokeWidth={2.2} />
+              </button>
+            )}
+          </div>
         </div>
       )}
 

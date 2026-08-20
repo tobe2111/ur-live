@@ -13,6 +13,9 @@ import {
   TIMELINE_MAX_DAYS, TIMELINE_DEFAULT_DAYS,
 } from '@/features/marketing/api/pool-timeline'
 
+// 🔀 2026-08-19: 유어애즈 리드 DB 분리로 핸들이 `env.DB` → `adsLeadsDb(env)` 가 됐다.
+//   여기서 보려는 것은 **'요청 스코프 DB 핸들을 넘기는가'** 이지 그 표현식의 철자가 아니다 —
+//   철자로 고정하면 리팩토링이 배선 가드를 조용히 무력화한다(dashboard-session 에서 겪은 그 함정).
 describe('🔒 시각 컬럼은 DDL 이 진실이다', () => {
   /**
    * 🔴 **2026-08-02 실사고 — 이 테스트의 첫 판은 실패할 수 없었다.**
@@ -146,10 +149,10 @@ describe('🚧 배선 — 두 라우터가 실제로 이 SSOT 를 쓴다', () =>
     //   가드가 옛 파일만 보면 **불변식은 멀쩡한데 빨간불**이 난다(오늘 self-beat 에서 겪은 '낡은 지도').
     const inf = fs.readFileSync('src/features/marketing/api/pool-timeline.routes.ts', 'utf8')
     expect(inf).toMatch(/app\.get\('\/influencer-pool\/timeline'/)
-    expect(inf).toContain("getPoolTimeline(c.env.DB, 'influencer'")
+    expect(inf).toMatch(/getPoolTimeline\((?:adsLeadsDb\((?:c\.)?env\)|(?:c\.)?env\.DB), 'influencer'/)
 
     const co = fs.readFileSync('src/features/marketing/api/partner-pool.routes.ts', 'utf8')
     expect(co).toMatch(/app\.get\('\/timeline'/)
-    expect(co).toContain("getPoolTimeline(c.env.DB, 'company'")
+    expect(co).toMatch(/getPoolTimeline\((?:adsLeadsDb\((?:c\.)?env\)|(?:c\.)?env\.DB), 'company'/)
   })
 })

@@ -16,6 +16,7 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 export const resendWebhookRoutes = new Hono<{ Bindings: Env }>()
 
@@ -108,7 +109,7 @@ resendWebhookRoutes.post('/', async (c) => {
     if (email) {
       try {
         // Ensure table exists (idempotent — will not overwrite existing data)
-        await c.env.DB.prepare(`
+        await adsLeadsDb(c.env).prepare(`
           CREATE TABLE IF NOT EXISTS email_suppressions (
             email TEXT PRIMARY KEY,
             reason TEXT,
@@ -116,7 +117,7 @@ resendWebhookRoutes.post('/', async (c) => {
           )
         `).run()
 
-        await c.env.DB.prepare(
+        await adsLeadsDb(c.env).prepare(
           'INSERT OR IGNORE INTO email_suppressions (email, reason) VALUES (?, ?)'
         ).bind(email, body.type).run()
       } catch (err) {
@@ -135,7 +136,7 @@ resendWebhookRoutes.post('/', async (c) => {
     if (t === 'email.bounced' || t === 'email.complained' || t === 'email.opened' || t === 'email.delivered') {
       const to = body.data?.to
       const email = Array.isArray(to) ? to[0] : to
-      if (email) await applyResendEventToPool(c.env.DB, t, email)
+      if (email) await applyResendEventToPool(adsLeadsDb(c.env), t, email)
     } else if (/inbound|received|reply/i.test(t)) {
       // Resend Inbound(MX) 설정 시 도달 — 보낸사람(from) 기준으로 관심 리드 승격.
       //   ⚖️ 제목+본문을 함께 넘겨 수신거부 표현("보내지 마세요" 등) 감지 → rejected+억제(내용 무관 interested 승격 방지).
@@ -143,7 +144,7 @@ resendWebhookRoutes.post('/', async (c) => {
       const fromEmail = typeof from === 'string' ? from : (from?.email || '')
       const subj = typeof body.data?.subject === 'string' ? body.data.subject : ''
       const text = typeof body.data?.text === 'string' ? body.data.text : (typeof body.data?.html === 'string' ? body.data.html : '')
-      if (fromEmail) await applyInboundReplyToPool(c.env.DB, fromEmail, `${subj}\n${String(text).slice(0, 4000)}`)
+      if (fromEmail) await applyInboundReplyToPool(adsLeadsDb(c.env), fromEmail, `${subj}\n${String(text).slice(0, 4000)}`)
     }
   } catch (err) {
     console.error('[ResendWebhook] pool sync error:', err)

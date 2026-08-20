@@ -34,7 +34,9 @@ function ChipRow({ tags, author }: { tags: string[]; author?: string }) {
       {tags[0] && (
         <span className="text-[11px] font-semibold bg-blue-50 dark:bg-blue-900/25 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded-md">{tags[0]}</span>
       )}
-      {author && (
+      {/* 🐛 2026-08-17 (UX 전수검사 P1): 첫 태그와 작성자가 같은 값이면(둘 다 "유어딜") 칩이
+          "유어딜 · 유어딜" 로 중복돼 오타처럼 보였다 — 같으면 작성자 칩 생략. */}
+      {author && author !== tags[0] && (
         <span className="text-[11px] font-medium bg-gray-100 dark:bg-[#1C1C1E] text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-md">{author}</span>
       )}
     </div>

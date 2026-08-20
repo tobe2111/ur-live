@@ -14,6 +14,7 @@ import {
 } from './maker-leads'
 import { runMakerCollect, runResellerImport } from './maker-collect'
 import { enrichMakerLeads } from './maker-enrich'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -31,17 +32,17 @@ app.get('/', async (c) => {
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 100)))
   const offset = Math.max(0, intParam(c.req.query('offset'), 0))
   const [leads, total] = await Promise.all([
-    listMakerLeads(c.env.DB, { ...filter, limit, offset }),
-    countMakerLeads(c.env.DB, filter),
+    listMakerLeads(adsLeadsDb(c.env), { ...filter, limit, offset }),
+    countMakerLeads(adsLeadsDb(c.env), filter),
   ])
   return c.json({ success: true, leads, total, limit, offset })
 })
 
 // GET /api/admin/maker-pool/stats — 카드 + 수집/임포트 상태.
 app.get('/stats', async (c) => {
-  const s = await makerStats(c.env.DB)
+  const s = await makerStats(adsLeadsDb(c.env))
   const readKey = async (k: string): Promise<unknown> => {
-    const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
+    const row = await adsLeadsDb(c.env).prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
     try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
   }
   const [collect, importRun, enrichLast] = await Promise.all([
@@ -102,7 +103,7 @@ app.patch('/:id', async (c) => {
   const id = intParam(c.req.param('id'), 0)
   if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
   const b = await c.req.json().catch(() => ({})) as { status?: string; memo?: string; category?: string; brand_name?: string }
-  const r = await updateMakerLead(c.env.DB, id, b)
+  const r = await updateMakerLead(adsLeadsDb(c.env), id, b)
   return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
 })
 
@@ -124,14 +125,14 @@ app.post('/', async (c) => {
     business_no: b.business_no ? String(b.business_no) : null,
     contact_source: 'manual', source: 'manual',
   }
-  const n = await saveMakerLeads(c.env.DB, [lead])
+  const n = await saveMakerLeads(adsLeadsDb(c.env), [lead])
   return c.json({ success: n > 0 })
 })
 
 // GET /api/admin/maker-pool/export?format=csv — 엑셀 호환(BOM). 수식 인젝션 가드 포함.
 app.get('/export', async (c) => {
-  await ensureMakerSchema(c.env.DB)
-  const rows = await listMakerLeads(c.env.DB, { kind: c.req.query('kind') || undefined, limit: 500 })
+  await ensureMakerSchema(adsLeadsDb(c.env))
+  const rows = await listMakerLeads(adsLeadsDb(c.env), { kind: c.req.query('kind') || undefined, limit: 500 })
   const esc = (v: unknown): string => {
     const s = v == null ? '' : String(v)
     const guarded = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s // CSV 수식 인젝션 방어(check-csv-injection 준수)

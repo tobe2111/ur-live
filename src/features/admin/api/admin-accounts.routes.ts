@@ -456,4 +456,79 @@ adminAccountsRoutes.patch('/admins/:id/multi-session', cors(), async (c) => {
   }
 });
 
+/**
+ * 📱 대시보드 세션(기기) 관리 — 2026-08-12 대표 지시 "제대로 만들기".
+ *
+ * 배경: 단일 세션은 불편한 대신 **도용 탐지 신호**였다(남이 내 계정으로 들어오면 내가 튕겨서 안다).
+ *   동시 로그인을 허용하면 그 신호가 사라지므로, **대체 장치**로 이 두 API 를 둔다 —
+ *   "지금 어디서 들어와 있나"를 보고, 낯선 기기를 **개별로** 끊을 수 있어야 한다.
+ *
+ * 세션 키는 토큰의 `iat` 다(payload 변경 0). 상세는 `worker/utils/dashboard-session.ts` 주석.
+ * 권한: **본인 세션은 본인이**, 남의 것은 super_admin 만. (자기 기기를 못 끊으면 장치가 무용하다.)
+ */
+async function canManageSessions(DB: D1Database, meId: unknown, targetId: number): Promise<boolean> {
+  if (Number(meId) === targetId) return true
+  const me = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(meId).first<{ role: string }>()
+  return me?.role === 'super_admin'
+}
+
+adminAccountsRoutes.get('/admins/:id/sessions', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const currentUser = c.get('user' as never) as { id?: string | number } | undefined;
+    const adminId = Number(c.req.param('id'));
+    if (!Number.isFinite(adminId) || adminId <= 0) return c.json({ success: false, error: '유효하지 않은 id 입니다' }, 400);
+    if (!(await canManageSessions(DB, currentUser?.id, adminId))) {
+      return c.json({ success: false, error: '본인 세션이거나 super_admin 만 조회할 수 있습니다' }, 403);
+    }
+    await ensureDashboardSessionsTable(DB);
+    const rows = await DB.prepare(
+      `SELECT d.iat, d.first_seen, d.user_agent, d.ip, d.revoked,
+              COALESCE(s.multi_session, 0) AS multi_session, COALESCE(s.min_valid_iat, 0) AS min_valid_iat
+         FROM dashboard_session_devices d
+         LEFT JOIN dashboard_sessions s
+                ON s.account_type = d.account_type AND s.account_id = d.account_id
+        WHERE d.account_type = 'admin' AND d.account_id = ?
+        ORDER BY d.iat DESC LIMIT 50`,
+    ).bind(adminId).all<{ iat: number; first_seen: string; user_agent: string; ip: string; revoked: number; multi_session: number; min_valid_iat: number }>()
+      .catch(() => ({ results: [] as never[] }));
+    const list = (rows.results ?? []).map((r) => ({
+      ...r,
+      // 🔎 "살아 있는 세션"의 정의는 두 가지를 **함께** 봐야 한다: 개별 종료(revoked)와 전체 경계(min_valid_iat).
+      //   둘 중 하나만 보면 이미 끊긴 기기를 접속 중으로 표시한다.
+      active: Number(r.revoked) !== 1 && Number(r.iat) >= Number(r.min_valid_iat) - 1,
+    }));
+    return c.json({ success: true, data: { sessions: list, count: list.length } });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] list sessions error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+adminAccountsRoutes.post('/admins/:id/sessions/:iat/revoke', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const currentUser = c.get('user' as never) as { id?: string | number } | undefined;
+    const adminId = Number(c.req.param('id'));
+    const iat = Number(c.req.param('iat'));
+    if (!Number.isFinite(adminId) || adminId <= 0 || !Number.isFinite(iat) || iat <= 0) {
+      return c.json({ success: false, error: '유효하지 않은 파라미터입니다' }, 400);
+    }
+    if (!(await canManageSessions(DB, currentUser?.id, adminId))) {
+      return c.json({ success: false, error: '본인 세션이거나 super_admin 만 종료할 수 있습니다' }, 403);
+    }
+    await ensureDashboardSessionsTable(DB);
+    const r = await DB.prepare(
+      `UPDATE dashboard_session_devices SET revoked = 1
+        WHERE account_type = 'admin' AND account_id = ? AND iat = ?`,
+    ).bind(adminId, Math.floor(iat)).run().catch(() => null);
+    const changed = (r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0;
+    if (changed === 0) return c.json({ success: false, error: '해당 세션을 찾을 수 없습니다' }, 404);
+    return c.json({ success: true, data: { admin_id: adminId, iat: Math.floor(iat), revoked: true } });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] revoke session error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 export default adminAccountsRoutes;
