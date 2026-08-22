@@ -5494,6 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
+_총 163건 · 최신순 · 이 목록은 자동 생성된다._
+
+**2026-08-22**
+- [2026-08-22 — 백업이 없었다 · D1 용량은 사실 남아돌았다](handoff/2026-08-22-backup-and-d1-capacity.md)
 _총 165건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-22**
