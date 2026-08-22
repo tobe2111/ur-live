@@ -40,6 +40,7 @@ import type { Env } from '@/worker/types/env'
 import { envPlanValue } from './collect-budget'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { describePublicDataFailure, serviceKeyParam, laneShouldSkip, updateLaneHealth, laneHealthNote, type LaneHealth, isNoValue } from './public-data-diag'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 export const NARA_VENDOR_BASE = 'https://apis.data.go.kr/1230000/ao/UsrInfoService02'
 /** 대표 Swagger 화면(2026-08-10)으로 확정. 옛 코드의 `getPrcrmntCorpBasicInfo`(02 없음)가 코드 12 의 원인이었다. */
@@ -127,7 +128,7 @@ const CURSOR_KEY = 'ads_naravendor_cursor'
 export async function runNaraVendorCollect(env: Env, maxPagesArg?: number): Promise<NaraVendorStats> {
   // 🎚️ 회차당 일감도 요금제를 따른다 — 예산만 커지고 이 숫자가 고정이면 늘어난 예산이 남는다.
   const maxPages = maxPagesArg ?? envPlanValue(undefined, 5, 15, env)
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   await ensureCompanySchema(DB)
   const now = new Date()
   const nowMs = now.getTime()

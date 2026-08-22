@@ -2074,3 +2074,72 @@ SELECT substr(key,16) lane, substr(value,1,120) FROM platform_settings WHERE key
 공공데이터 계열 실패율이 내려가면 회복, 그대로면 대표와 (a)타임아웃 상향 (b)새 소스를 상의.
 
 📔 **Notion 미기록** — 이 세션은 Notion MCP 미연결.
+
+---
+
+## 세션 26 — 🏠 홈페이지 출처(webkr)를 최대한 확보하는 레인 (2026-08-22)
+
+대표 질문: *"홈페이지 출처인 경우에 이메일 연락처를 잘 수집하는 것 같은데 지금 시점에서
+홈페이지 출처 DB를 최대한 많이 확보할 수도 있어?"* → **"모두 진행"**.
+
+### 대표의 관찰이 맞다 (라이브 실측, `ADS_DB` 원본)
+```
+출처별            행        이메일        수율      크롤이 만든 이메일(contact_source='homepage') 1,117
+webkr          2,860        828        29.0%        └ webkr 824 · local 240 · storeinfo 53
+commerce     302,591     40,042        13.2%   ← 등록부가 준 값(크롤 성과 아님)
+local         11,852        429         3.6%
+storeinfo     33,844         74         0.2%
+```
+webkr 은 **전 행이 사이트를 갖고 들어온다** — 그래서 크롤이 통하고 수율이 1위다.
+
+### 🩸 그런데 병목은 크롤이 아니었다 — **먼저 재고를 셌다**
+```
+사이트 보유 · 이메일 없음   4,271   그중 이미 크롤 시도  3,671 (86%)
+webkr 미크롤 잔량                                          124
+```
+⇒ 크롤 용량은 남는다(`enrich-company` 는 출처 무관으로 사이트 보유 행을 훑는다).
+**병목은 새 사이트를 못 찾는 것**이었다. 구조를 보고 단정하기 전에 그 축의 숫자를 먼저 잰다 —
+이 세션이 반복해 틀렸던 지점이라 이번엔 순서를 지켰다.
+
+### 진짜 원인 = 예산이 아니라 **벽시계**
+```
+ads_company_stats   keywords: 3 · spent: 12/50 · run_ms: 12,571 · deadline_hit: true
+```
+`collect-company` 는 키워드마다 [네이버 지역검색 → 카카오 로컬 → 웹문서]를 **순차**로 돌고
+회차 마감이 **12초**(무료)다. 웹문서는 줄의 **맨 끝**이라 가장 먼저 잘린다.
+**예산은 12/50 밖에 안 썼다 — 예산을 키워도 안 늘어난다.** 게다가 그 레인은 홀수시만(하루 12회).
+
+### 처방 — 웹문서 전용 알람 레인 `collect-webkr`
+알람 레인은 이름별 DO 인스턴스라 **자기 인보케이션·자기 12초·자기 예산**을 받는다.
+등록부 헤더가 요구하는 승격 근거(*"회차를 못 받아 굶는다"*)에 정확히 해당한다.
+
+- `webkr-search.ts` — `searchNaverWeb`/`laneFetch` 를 company-collect 에서 **이동만**(로직 불변).
+  company-collect 599→516줄(600 래칫 코앞이라 어차피 분리가 필요했다).
+- `webkr-collect.ts` — 웹문서만. 지도·카카오·크롤 없음. 폭 4 병렬(벽시계가 천장이므로 이게 처방이다).
+  커서·스냅샷 키 분리(`ads_webkr_stats`), 저장 1회 + 키워드 부기 `DB.batch` 1회.
+- 게이트: `ADS_COMPANY_COLLECT_ENABLED` 공유 + 롤백 스위치 `ADS_WEBKR_LANE_DISABLED='true'`.
+  🔑 **새 ON 스위치를 만들지 않았다** — 만들면 대시보드에서 켜 줄 때까지 아무 일도 안 일어난다(무음 실패).
+- 네이버 쿼터: 일 25,000 중 **0.7%** 사용. 이 레인 최대치로도 하루 ~600콜(2.4%).
+
+### 가드
+`ads-webkr-lane.test.ts` 10건(가짜 D1 + fetch 스텁으로 **실제 실행**) + 주입 4건 전부 빨강 확인.
+🩸 **또 걸렸다**: 첫 판 두 검사가 **주석에 남은 문자열**로 통과했다(`ads_company_stats`·`cursor = 0`).
+→ 주석을 제거한 본문(`code()`)으로만 판정하도록 고쳤다. 이 레포의 반복 함정이다.
+
+### 다음 세션 첫 액션 (배포 ~1일 뒤)
+```sql
+-- ① 레인이 실제로 도는가
+SELECT substr(key,16) lane, substr(value,1,160) FROM platform_settings WHERE key LIKE 'ads_lane_runs:collect-webkr%';
+SELECT substr(value,1,300) FROM platform_settings WHERE key='ads_webkr_stats';
+```
+판정: `keywords` 가 회차당 8~12 인가(3 이면 여전히 벽시계에 걸린 것) · `deadline_hit` · `limit_hit`.
+```sql
+-- ② 사이트 유입이 늘었나 (기준선: 하루 120~176행 · 이메일 27~36)
+SELECT DATE(collected_at,'+9 hours') d, COUNT(*) n FROM ad_company_leads WHERE source='webkr' GROUP BY d ORDER BY d DESC LIMIT 5;
+```
+기대: 하루 400~600행. **늘지 않으면 원인은 중복(같은 도메인 재발견)일 가능성이 크다** —
+그때는 `upserted` 대 `saved` 비율을 보고 키워드 신선도(`MAX_AUTO_KEYWORDS`) 쪽을 볼 것.
+
+### 남은 결정(대표)
+- 늘어난 사이트를 크롤이 못 따라가면 `enrich-company` 샤딩(인플루언서 측 검증된 패턴)이 다음 수다.
+  지금은 잔량 124라 불필요 — **미리 하지 않는다.**

@@ -24,6 +24,7 @@ import { regionFromAddress } from './company-collect'
 import { saveProspects, type StoreProspect } from './store-prospects'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envLaneBudget , envPlanValue} from './collect-budget'
 import { ensureStoreTrades, loadActiveStoreTrades, bumpStoreTradeStats, getStoreConfig } from './store-trades'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 /** 무인매장 업태 — 대표 요청분(2026-07-28). 카테고리는 `store_prospects.category` 표시값이 된다. */
 export const UNMANNED_TRADES: Array<{ kw: string; category: string }> = [
@@ -174,7 +175,7 @@ function toProspect(d: Record<string, unknown>, kwRegion: string, category: stri
 
 /** 1틱 — 두 블록(우선업종·무인)이 각자 커서로 회전한다. */
 export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   const startedAt = Date.now()
   // 🎚️ 마감선도 요금제를 따른다 — 유료 CPU 한도가 커지는데 12초로 묶으면 회차가 일찍 끊긴다.
   const runDeadlineMs = envPlanValue(undefined, RUN_DEADLINE_MS, RUN_DEADLINE_MS_PAID, env)

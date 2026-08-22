@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { planKeywordSplit, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, FOCUS_CATEGORIES, PRIORITY_CATEGORIES, ZERO_AXIS_CARRY, AXIS_CARRY_CLAMP, parseAxisCarry, serializeAxisCarry, judgeRotation } from '@/features/marketing/api/influencer-keyword-rotation'
+import { planKeywordSplit, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, YT_COLLECT_ENRICH_MAX, COLLECT_KEYWORDS_PER_ROUND, keywordsPerRoundCap, FOCUS_CATEGORIES, PRIORITY_CATEGORIES, ZERO_AXIS_CARRY, AXIS_CARRY_CLAMP, parseAxisCarry, serializeAxisCarry, judgeRotation } from '@/features/marketing/api/influencer-keyword-rotation'
 import type { AxisCarry } from '@/features/marketing/api/influencer-keyword-rotation'
 import { planRoundWidth, planRoundWidthForShape } from '@/features/marketing/api/influencer-keyword-order'
 import { naverOnlyRoundCap, isNaverOnlyRound } from '@/features/marketing/api/influencer-round-width'
@@ -421,9 +421,19 @@ describe('📉🧊 수집 예산 회수 + 폭 동결', () => {
     expect(NAVER_COLLECT_ENRICH_MAX).toBe(1)
   })
 
-  it('🔒 유튜브는 안 건드린다 — 22.4%는 enrichMax 가 아니라 channels.list 에서 나온다', () => {
+  /**
+   * 🔓 **2026-08-22 해제** — 이 잠금은 *조건부*였다: **"줄이려면 영상 스니펫의 실제 기여를 먼저 재라."**
+   *   그 측정을 했고(회차 `yt_calls` · 보강 레인 커버율 · 분류율), 근거는 `YT_COLLECT_ENRICH_MAX`
+   *   docblock 과 `ads-yt-enrich-budget.test.ts` 에 있다. 요지:
+   *     · 이메일 몫은 **보강 레인이 96% 커버**(미측정 13.3% → 측정됨 38.4%) = 수집 시점엔 중복
+   *     · 분류 몫은 레인이 **못 한다**(영상 제목을 안 본다) = 그래서 0 이 아니라 4, 대상도 분류 실패분만
+   *   ⚠️ **잠금의 정신은 남긴다** — 리터럴 금지(조정 지점에 근거가 붙어 있어야 한다) + 8 로 회귀 금지.
+   */
+  it('🔓 유튜브 보강은 측정 후 4로 — 리터럴 8 로 되돌아가지 않는다', () => {
     const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
-    expect(src, 'YT enrichMax 를 줄이려면 영상 스니펫의 실제 기여를 먼저 재야 한다').toMatch(/enrichMax: 8/)
+    expect(src, '상수를 써야 근거(docblock 실측)가 조정 지점에 남는다').toMatch(/enrichMax: YT_COLLECT_ENRICH_MAX/)
+    expect(src, '리터럴 8 로 되돌리려면 반박할 실측이 필요하다').not.toMatch(/enrichMax: 8/)
+    expect(YT_COLLECT_ENRICH_MAX).toBeLessThan(8)
   })
 
   it('🔒 폭은 승인된 범위 안에서만 — 조용한 상향/하향 둘 다 차단', () => {

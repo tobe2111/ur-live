@@ -267,6 +267,59 @@ canvas {
       '에러도 로그도 없어 대표가 말해 주기 전엔 아무도 모른다(실제로 그렇게 신고받았다).',
   },
   {
+    name: '🏠 웹문서 레인에 홀짝 시각 게이트가 붙는다(회차 절반 소멸)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: "      if (env.ADS_WEBKR_LANE_DISABLED === 'true') return { skipped: 'gate_off' }",
+    replace: "      if (new Date().getUTCHours() % 2 !== 1) return { skipped: 'even_hour' }",
+    test: 'src/tests/unit/ads-webkr-lane.test.ts',
+    why:
+      '이 레인이 존재하는 이유가 "회차를 못 받아 굶는다" 다(실측 keywords:3 · deadline_hit:true). ' +
+      '홀짝 게이트를 달면 하루 24회가 12회로 반토막 나는데 화면·로그 어디에도 티가 안 난다 — ' +
+      '수집량이 줄 뿐이고 그건 외부 요인으로 오인되기 쉽다(이번 세션이 실제로 그 오진을 반복했다).',
+  },
+  {
+    name: '🏠 웹문서 레인 커서가 계획분만큼 전진한다(그 자리는 영영 안 돌아온다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: 'const nextCursor = total > 0 ? (cursor + used.length) % total : 0',
+    replace: 'const nextCursor = total > 0 ? (cursor + batchSize) % total : 0',
+    test: 'src/tests/unit/ads-webkr-lane.test.ts',
+    why:
+      'company-collect 가 2026-08-02 에 실제로 당한 사고의 복제다 — 예산·마감으로 못 돈 키워드를 ' +
+      '건너뛰면 전진폭이 창 크기와 같아져 회전 경계가 고정되고 **같은 자리가 매 바퀴 빠진다**. ' +
+      '지연이 아니라 영구 사각지대이고, 집계상으로는 "그 키워드는 결과가 없었나 보다"로 읽힌다.',
+  },
+  {
+    name: '🏠 웹문서 레인이 collect-company 커서를 같이 쓴다',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: "const STATS_KEY = 'ads_webkr_stats'",
+    replace: "const STATS_KEY = 'ads_company_stats'",
+    test: 'src/tests/unit/ads-webkr-lane.test.ts',
+    why:
+      '두 레인이 한 커서를 나눠 쓰면 서로의 진행분을 건너뛴다(각자 자기가 전진시킨 만큼만 알고 있다). ' +
+      '게다가 스냅샷을 서로 덮어써 상태줄이 어느 레인 것인지 알 수 없게 된다 — 관측이 먼저 죽는다.',
+  },
+  {
+    name: '🏠 웹문서 레인이 예산을 0까지 태운다(회차가 자기 기록을 못 남긴다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: 'budget.left > BOOKKEEPING_RESERVE',
+    replace: 'budget.left > 0',
+    test: 'src/tests/unit/ads-webkr-lane.test.ts',
+    why:
+      'CI 의 check-budget-bookkeeping 이 첫 판에서 실제로 잡은 결함이다. 루프가 예산을 다 쓰면 ' +
+      '저장·부기·스냅샷·네이버 flush 가 못 나가서, 수집은 했는데 상태줄이 안 갱신된다 — ' +
+      '"돌았는데 안 돈 것"으로 보이는 이 모양이 원인 규명이 가장 어렵다.',
+  },
+  {
+    name: '🏠 웹문서 레인이 키워드 부기를 건건이 쓴다(예산을 부기에 태운다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '    await DB.batch(stmts).catch(() => null)',
+    replace: '    for (const st of stmts) await st.run().catch(() => null)',
+    test: 'src/tests/unit/ads-webkr-lane.test.ts',
+    why:
+      '무료 플랜은 인보케이션당 서브리퀘스트 50이라 키워드 12개면 부기만 12(예산의 24%)다. ' +
+      'enrich 레인이 2026-07-28 에 정확히 이걸로 굶었다 — 크롤에 쓸 예산을 도장 찍는 데 썼다.',
+  },
+  {
     name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
     file: 'src/features/agency/api/agency-sunset.ts',
     find: "    code: 'AGENCY_SIGNUP_CLOSED',",
@@ -4245,6 +4298,38 @@ canvas {
     why:
       '가드 둘이 각각 다른 사고를 막는다: `saved_total>=100` 이 없으면 **갓 만든 키워드의 미개척지인 ' +
       '1페이지**를 건너뛰고, `nb_start=1` 이 없으면 DDL 재적용 때 **901 까지 파 놓은 커서를 101 로 되돌린다**.',
+  },
+  {
+    // 📺 유튜브 보강 예산(2026-08-22) — 회차 예산 56이 매번 100% 소진되므로 여기 1요청 = 네이버 6.59명 포기.
+    name: '유튜브 보강 상한이 8로 되돌아감(예산 62%를 다시 유튜브가 먹는다)',
+    file: 'src/features/marketing/api/influencer-round-width.ts',
+    find: 'export const YT_COLLECT_ENRICH_MAX = 4',
+    replace: 'export const YT_COLLECT_ENRICH_MAX = 8',
+    test: 'src/tests/unit/ads-yt-enrich-budget.test.ts',
+    why:
+      '실측: YT 382요청 → 신규 77(0.20/요청) · 네이버 227요청 → 신규 1,497(6.59/요청). 그리고 유튜브 ' +
+      '이메일은 보강 레인이 어차피 채운다(커버 96% · 미측정 13.3% → 측정됨 38.4%). 상한이 돌아가면 ' +
+      '그 중복이 다시 예산의 절반을 먹는다 — 에러는 안 난다.',
+  },
+  {
+    name: '보강 후보가 다시 넓어짐(이메일만 없는 채널까지 — 레인이 더 싸게 하는 일)',
+    file: 'src/features/marketing/api/influencer-discovery.ts',
+    find: '.filter(l => l._uploads && !classifyCategory(l.name, l.description))',
+    replace: '.filter(l => l._uploads && (!l.email || !classifyCategory(l.name, l.description)))',
+    test: 'src/tests/unit/ads-yt-enrich-budget.test.ts',
+    why:
+      '상한만 낮추고 대상을 안 좁히면 남은 4회를 **레인이 더 잘하는 일**(이메일)에 쓴다. 수집 시점의 ' +
+      '고유 기여는 영상 제목뿐이다(분류율 73.0% → 82.1%, 더 어려운 코호트에서).',
+  },
+  {
+    name: '호출부가 상수 대신 리터럴로 되돌아감(조정 지점이 두 곳이 된다)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: 'enrichMax: YT_COLLECT_ENRICH_MAX',
+    replace: 'enrichMax: 8',
+    test: 'src/tests/unit/ads-yt-enrich-budget.test.ts',
+    why:
+      '상수 옆에 근거(실측)를 적어 두는 이유가 사라진다. 리터럴로 돌아가면 다음 세션이 숫자를 ' +
+      '못 보고 바꾼다 — 이 레포가 반복해 겪은 "근거 없는 되돌리기".',
   },
 ]
 /**

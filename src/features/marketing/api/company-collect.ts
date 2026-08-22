@@ -13,7 +13,7 @@
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue, rowsWorthReading, companyRunDeadlineMs } from './collect-budget'
-import { noteNaverCall, flushNaverCalls, armNaverAndReadSettings } from './naver-api-usage'
+import { flushNaverCalls, armNaverAndReadSettings } from './naver-api-usage'
 import { KAKAO_SWEEP_SQL, tallySweep, type KakaoSweepRow, type SweepSourceTally } from './kakao-sweep-query'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
@@ -21,30 +21,10 @@ import { buildKeywordRows, resumeSeedIndex, seedPrefixHash } from './company-key
 // 🌱 회차 키워드 선택(회전 창 + 미실행 우선)은 `company-keyword-pick.ts` 로 분리됐다 — `rotationWindow`
 //   호출부가 그쪽으로 옮겨 갔으므로 여기서는 더 이상 import 하지 않는다.
 import { pickCompanyKeywords, FRESH_KEYWORD_SLOTS } from './company-keyword-pick'
+import { searchNaverWeb, laneFetch, stripTag, NAVER_OPENAPI, outOfBudget, spendBudget } from './webkr-search'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
-// 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
-const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
-const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
-
-/**
- * 🚨 2026-07-28: 이 레인의 검색 fetch 3종이 전부 `.catch(() => null)` 로 **플랫폼 한도 오류를 삼켰다**.
- *   "Too many subrequests" 가 나도 그냥 빈 결과로 보여서, 라운드 중간에 한도를 넘으면 **남은 키워드가
- *   조용히 0건**이 되고 아무 신호도 안 남는다(집계만 보면 "그 키워드는 결과가 없었나 보다" 로 읽힌다).
- *   → 한도 신호를 잡아 `budget.limitHit` 을 세우고, 상태줄(diag)에 노출해 판독 가능하게 한다.
- *   ⚠️ 이 레인은 학습 상한을 쓰지 않지만(고정 예산), limitHit 이 서면 루프가 즉시 멈춰 헛돈을 막는다.
- */
-async function laneFetch(url: string, init: RequestInit & { timeoutMs?: number }, budget?: FetchBudget): Promise<Response | null> {
-  const { timeoutMs = 12000, ...rest } = init
-  if (!noteNaverCall(url)) return null // 📟 계측+일일목표(90%) 게이트. 실패분도 쿼터를 먹어 호출 전에 센다
-  try {
-    return await fetch(url, { ...rest, signal: AbortSignal.timeout(timeoutMs) })
-  } catch (err) {
-    const msg = String((err as { message?: string } | null)?.message || '')
-    if (/too many subrequests/i.test(msg) && budget) budget.limitHit = true
-    return null
-  }
-}
+// 🌐 웹문서 검색·네이버 레인 fetch·예산 헬퍼는 `webkr-search.ts` SSOT (2026-08-22 분리 — 이동만, 로직 불변).
 
 /**
  * 📍 실제 소재지에서 지역을 뽑는다 — **키워드 지역을 그대로 박으면 안 된다**.
@@ -67,8 +47,6 @@ export function regionFromAddress(addr: string | null | undefined, fallback: str
   return hits[0]
 }
 
-const NAVER_OPENAPI = 'https://openapi.naver.com'
-const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
 
 /** 🟡 카카오 로컬 수집 레인(2026-07-27) — 네이버 지역검색은 키워드당 5건 한도인데 카카오는 **15건×3페이지=45건**
  *   + 전화·주소가 응답에 직접 실림(무료 일 10만 쿼터, 네이버와 별도). 아인종합기획형(지도 등록 오프라인 업체)
@@ -217,68 +195,6 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
       description: stripTag(it.description) || (it.category ? `[${stripTag(it.category)}]` : null),
       source: 'local',
       source_keyword: kw.keyword,
-    })
-  }
-  return out
-}
-
-/** 🌐 레인 A-웹: 네이버 **웹문서 검색**으로 대행사 자체 사이트 발굴 (2026-07-27 — 대표 "대행사 많이 모집").
- *   대행사는 사무실업이라 지도(지역검색) 미등록이 많고 display=5 제약도 큼 — 반면 **웹엔 자기 사이트가 반드시 있음**.
- *   사이트 자체가 리드(도메인이 dedup 키) → 보강 크롤이 그 사이트에서 이메일/전화 확보(대행사 이메일 수율 최고 경로).
- *   제3자/UGC/구인 플랫폼 도메인 제외. 상호는 페이지 제목에서 유도(표시 라벨용 — 정체성 키는 도메인). */
-async function searchNaverWeb(clientId: string, clientSecret: string, kw: CompanyKeyword, budget?: FetchBudget, pages = 1): Promise<CompanyLead[]> {
-  if (outOfBudget(budget)) return []
-  const { THIRD_PARTY_HOST, NEWS_MEDIA_HOST } = await import('./contact-enrich')
-  const { NON_BUSINESS_HOST, unbalancedBracket } = await import('./company-classify')
-  // 📄 2026-07-28: 이 레인이 **이메일 수율 최고**(라이브 실측 webkr 75% vs 지도 2%)인데 1페이지(30건)만 봤다.
-  //   start=1,31,61… 로 더 깊게 판다. dedup(seen)이 페이지 간에도 유지돼 중복 도메인은 1건으로 접힌다.
-  const items: Array<{ title?: string; link?: string; description?: string }> = []
-  for (let p = 0; p < Math.max(1, pages); p++) {
-    if (outOfBudget(budget)) break
-    spendBudget(budget)
-    const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=30&start=${p * 30 + 1}`
-    const res = await laneFetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret } }, budget)
-    if (!res || !res.ok) break
-    const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
-    const got = data?.items || []
-    items.push(...got)
-    if (got.length < 30) break // 마지막 페이지
-  }
-  const out: CompanyLead[] = []
-  const seen = new Set<string>()
-  for (const it of items) {
-    const link = (it.link || '').trim()
-    if (!/^https?:\/\//i.test(link)) continue
-    let u: URL
-    try { u = new URL(link) } catch { continue }
-    const host = u.hostname.replace(/^www\./, '')
-    // 제3자/UGC + **정부·학교 도메인** 제외 — 구청 공고 페이지가 '대행사' 리드로 저장되던 오염원(2026-07-27 대표 신고).
-    if (THIRD_PARTY_HOST.test(u.hostname) || NON_BUSINESS_HOST.test(u.hostname) || seen.has(host)) continue
-    // 📰 언론사 = 기사제목 리드로 버리지 않고 **'미디어' 카테고리로 별도 수집**(2026-07-27 대표
-    //   "언론사도 따로 수집을 하던가" — 지역 언론은 소상공인 접점 큰 잠재 광고제휴 파트너).
-    //   이름은 도메인 placeholder(기사제목 오염 방지) → 보강 크롤 og:site_name 치유가 실명으로 교체.
-    if (NEWS_MEDIA_HOST.test(u.hostname)) {
-      seen.add(host)
-      out.push({
-        company_name: host, category: '미디어', subcategory: '지역신문·매거진', tier: 3, region: kw.region,
-        website: u.origin, phone: null, email: null, address: null,
-        description: stripTag(it.description).slice(0, 200) || null,
-        source: 'webkr', source_keyword: kw.keyword,
-      })
-      continue
-    }
-    // 뉴스 기사 URL 제외(비언론 호스트의 기사 CMS 경로 — 보도자료/미디어 섹션 페이지는 업체 홈이 아님).
-    if (/(\/news|\/article|articleview|newsview|\/press\/|\/media\/)/i.test((u.pathname + u.search).toLowerCase())) continue
-    seen.add(host)
-    // 상호 라벨: 제목 첫 구획(구분자 앞) — 정체성은 도메인(company_key=w:host)이라 라벨 오차 무해.
-    const cut = stripTag(it.title).split(/[|\-–—:·]/)[0].trim().slice(0, 60)
-    const name = cut.length >= 2 && !unbalancedBracket(cut) ? cut : host // 괄호 안에서 끊긴 파편("[광주")은 상호가 아니다 → 도메인(og:site_name 치유가 실명으로)
-    out.push({
-      company_name: name, category: kw.category, subcategory: kw.subcategory, tier: kw.tier, region: kw.region,
-      website: u.origin, // origin 만 저장 — 도메인 dedup + 크롤 진입점
-      phone: null, email: null, address: null,
-      description: stripTag(it.description).slice(0, 200) || null,
-      source: 'webkr', source_keyword: kw.keyword,
     })
   }
   return out

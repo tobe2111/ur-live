@@ -183,6 +183,12 @@ export interface Env {
                                         //   이메일 수율이 가장 높은 레인이라 깊이가 곧 이메일 보유 대행사 수.
   ADS_COMPANY_WEB_TIER_MAX?: string;    // 웹문서 레인을 붙일 최대 tier(기본 2 = 대행사+간판 계열).
                                         //   1 이면 대행사 전용(구 동작), 올리면 세무·POS 까지 웹 발굴.
+  // ---- 🏠 홈페이지 출처 전용 레인 `collect-webkr` (2026-08-22) ----
+  //   웹문서 검색만 도는 별도 알람 레인. 이유: 위 레인은 12초 벽시계에 걸려 웹문서(줄의 맨 끝)가
+  //   가장 먼저 잘린다(실측 `keywords: 3 · deadline_hit: true`). 게이트는 ADS_COMPANY_COLLECT_ENABLED 공유.
+  ADS_WEBKR_LANE_DISABLED?: string;     // 'true' 면 이 레인만 정지(롤백 스위치). 기본 미설정 = 동작.
+  ADS_WEBKR_BATCH?: string;             // 1회 실행당 키워드 수(기본 12).
+  ADS_WEBKR_SUBREQUEST_BUDGET?: string; // 1회 실행 외부 fetch 상한(기본 40) — 웹문서 검색 + 저장 배치.
   ADS_ENRICH_BUDGET?: string;             // 연락처 보강 전용 예산(기본 300) — 수집과 분리, 백로그 대량 소진용.
   ADS_ENRICH_DEADLINE_MS?: string;        // 보강 1라운드 벽시계 상한(기본 7000 — 부모 수명 ≈10.5s, 5000~120000). 가드가 너무 일찍/늦게 끊으면 무배포 재조정.
   // 🧱 서브리퀘스트 **플랫폼 천장**(기본 60 — 잘 도는 레인의 관측 생존선 55~65 에서 역산). 학습 상한이 이걸 못 넘는다.
