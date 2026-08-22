@@ -13,6 +13,7 @@ import { envLaneBudget , envPlanValue} from './collect-budget'
 import { applyQuantum, readLaneSettings } from './cpu-quantum'
 import { ensureProspectSchema, saveProspects, type StoreProspect } from './store-prospects'
 import { serviceKeyParam } from './public-data-diag'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const HIRA_BASE = 'https://apis.data.go.kr/B551182/hospInfoServicev2'
 const HIRA_OP = 'getHospBasisList'
@@ -87,7 +88,7 @@ const HIRA_DEADLINE_MS = 20_000
 const HIRA_DEADLINE_MS_PAID = 60_000
 
 export async function runHiraHospitalCollect(env: Env, maxPagesArg?: number): Promise<HiraStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   await ensureProspectSchema(DB)
   // 🧠 통계·커서·CPU 학습배수를 **한 문장으로** 읽는다(예전 2회 → 1회, 서브리퀘스트 절약).
   const cfg = await readLaneSettings(DB, [STATS_KEY, CURSOR_KEY], 'ads:collect-hira')

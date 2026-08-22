@@ -215,6 +215,31 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
       return runCompanyAutoCollect(env)
     },
   },
+  /**
+   * 🏠 **홈페이지 출처 전용 발굴** (2026-08-22, 대표 *"홈페이지 출처 DB를 최대한 많이 확보할 수도 있어?"*)
+   *
+   * ## 승격 근거 = 이 등록부 헤더가 요구하는 "회차를 못 받아 굶는다" (라이브 실측)
+   * ```
+   *   ads_company_stats   keywords: 3 · spent: 12/50 · run_ms: 12,571 · deadline_hit: true
+   * ```
+   * 위 `collect-company` 는 키워드마다 [지역검색 → 카카오 → 웹문서] 를 순차로 돌고 **12초 마감**이라,
+   * 줄의 맨 끝인 웹문서가 가장 먼저 잘린다. **예산이 아니라 벽시계가 천장**이라(12/50 밖에 안 썼다)
+   * 예산을 키워도 안 늘어난다. 게다가 그 레인은 홀수시만 = 하루 12회다.
+   * 웹문서는 **연락처 수율 1위 경로**다(webkr 29.0% vs commerce 13.2% vs storeinfo 0.2%).
+   *
+   * ⇒ 웹문서만 도는 별도 인스턴스를 준다. 알람 레인은 자기 인보케이션·자기 12초를 받으므로
+   *   무료 플랜에서도 회차가 곱해진다. 매시간(홀짝 게이트 없음) — 네이버 쿼터는 0.7% 만 쓰고 있다.
+   * 🔻 롤백: env `ADS_WEBKR_LANE_DISABLED='true'`.
+   */
+  'collect-webkr': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if (env.ADS_COMPANY_COLLECT_ENABLED !== 'true') return { skipped: 'gate_off' }
+      if (env.ADS_WEBKR_LANE_DISABLED === 'true') return { skipped: 'gate_off' }
+      const { runWebkrCollect } = await import('@/features/marketing/api/webkr-collect')
+      return runWebkrCollect(env)
+    },
+  },
   'sweep-kakao-chain': {
     runsPerHour: 1,
     run: async (env) => {

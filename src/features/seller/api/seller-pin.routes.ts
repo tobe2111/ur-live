@@ -7,7 +7,7 @@
  *   - 대량 상품 삭제
  *
  * 구조:
- *   - sellers.pin_hash: 4~6자리 숫자 PIN 의 bcrypt 해시
+ *   - seller_meta.pin_hash: 4~6자리 숫자 PIN 의 bcrypt 해시 (sellers 는 100컬럼 한도라 컬럼 추가 불가)
  *   - 한 번 인증하면 15분 유효한 "pin_verified" 쿠키 발급 (http-only)
  *   - 민감 엔드포인트는 cookie 유무 체크
  *
@@ -18,12 +18,12 @@
  */
 
 import { Hono } from 'hono'
-import { getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta'
 import { cors } from 'hono/cors'
 import { verify as verifyJwt, sign as signJwt } from 'hono/jwt'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import { hashPassword, verifyPassword } from '@/lib/password'
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { ensureSellerMetaTable, getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 
@@ -42,26 +42,38 @@ async function getSellerId(authorization: string | undefined, jwtSecret: string)
   } catch { return null }
 }
 
-// 🔧 2026-08-20 근본수정: PIN 해시를 sellers 컬럼 → **seller_meta 사이드테이블**로 이전.
-//   라이브 sellers 는 정확히 100컬럼(D1 결과셋 한도)이라 `ALTER TABLE ADD pin_hash` 가 **조용히 실패**했고,
-//   이어지는 `SELECT pin_hash` 가 'no such column' → **pin-status 가 항상 500** 이었다(대표 신고, 라이브 실측).
-//   sellers 컬럼 예산제 룰("새 셀러 메타는 seller_meta")의 정확한 적용 사례다.
-//   읽기는 [meta 우선 → 레거시 컬럼 fallback] — pin_hash 컬럼이 실재하는 환경(로컬 등)의 기존 PIN 도 살린다.
+/** 셀러 PIN 해시가 사는 곳 — `seller_meta` 의 키. */
+const PIN_META_KEY = 'pin_hash'
+
+/**
+ * 🚨 2026-08-21 — **PIN 을 `sellers` 컬럼에서 `seller_meta` K-V 로 옮겼다.**
+ *
+ * 원래는 `ALTER TABLE sellers ADD COLUMN pin_hash TEXT` 를 매번 시도하고 실패를 `catch {}` 로
+ * 삼켰다. 그런데 **`sellers` 는 정확히 100컬럼 = D1 한도**라 그 ALTER 가 *영원히* 실패한다.
+ * 실패가 "이미 있음"으로 읽혀서, 바로 다음 줄의 `SELECT pin_hash` 가 `no such column` 으로 터졌다
+ * — `/api/seller/pin-status` 500(2026-08-21 라이브 실측). set-pin·verify-pin 도 같은 이유로 못 썼다.
+ *
+ * 즉 **셀러 PIN 기능은 한 번도 동작한 적이 없다.** 옮길 기존 데이터도 없다(컬럼이 존재하지 않으니까).
+ * CLAUDE.md 의 "sellers 컬럼 추가 금지 — 새 메타는 seller_meta" 규칙이 정확히 이 사고를 예고했다.
+ */
+async function ensurePinColumn(DB: D1Database) {
+  if (_done_ensurePinColumn.has(DB)) return
+  _done_ensurePinColumn.add(DB)
+  await ensureSellerMetaTable(DB)
+}
+
+/** 셀러 PIN 해시 읽기 — 미설정이면 null. */
 async function readPinHash(DB: D1Database, sellerId: number): Promise<string | null> {
-  const meta = await getSellerMeta(DB, [sellerId]).catch(() => new Map())
-  const fromMeta = meta.get(sellerId)?.pin_hash
-  if (fromMeta) return fromMeta
-  try {
-    const row = await DB.prepare('SELECT pin_hash FROM sellers WHERE id = ?').bind(sellerId)
-      .first<{ pin_hash: string | null }>()
-    return row?.pin_hash || null
-  } catch { return null }  // 컬럼 없는 환경(라이브) — meta 만이 진실
+  const m = await getSellerMeta(DB, [sellerId])
+  return m.get(sellerId)?.[PIN_META_KEY] || null
 }
 
 // ── POST /set-pin — PIN 설정 (기존 비밀번호 확인) ──
 sellerPinRoutes.post('/set-pin', rateLimit({ action: 'seller_set_pin', max: 5, windowSec: 300 }), async (c) => {
   const sellerId = await getSellerId(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  await ensurePinColumn(c.env.DB)
 
   const { current_password, pin } = await c.req.json<{ current_password?: string; pin: string }>()
   if (!pin || !/^\d{4,6}$/.test(pin)) {
@@ -84,7 +96,7 @@ sellerPinRoutes.post('/set-pin', rateLimit({ action: 'seller_set_pin', max: 5, w
   }
 
   const pinHash = await hashPassword(pin)
-  await setSellerMeta(c.env.DB, sellerId, { pin_hash: pinHash })
+  await setSellerMeta(c.env.DB, sellerId, { [PIN_META_KEY]: pinHash })
 
   return c.json({ success: true, message: 'PIN이 설정되었습니다' })
 })
@@ -94,15 +106,17 @@ sellerPinRoutes.post('/verify-pin', rateLimit({ action: 'seller_verify_pin', max
   const sellerId = await getSellerId(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
+  await ensurePinColumn(c.env.DB)
+
   const { pin } = await c.req.json<{ pin: string }>()
   if (!pin) return c.json({ success: false, error: 'PIN을 입력해주세요' }, 400)
 
-  const pinHash0 = await readPinHash(c.env.DB, sellerId)
-  if (!pinHash0) {
+  const pinHash = await readPinHash(c.env.DB, sellerId)
+  if (!pinHash) {
     return c.json({ success: false, error: 'PIN이 설정되지 않았습니다. 먼저 PIN을 설정해주세요.', code: 'PIN_NOT_SET' }, 412)
   }
 
-  const ok = await verifyPassword(pin, pinHash0)
+  const ok = await verifyPassword(pin, pinHash)
   if (!ok) return c.json({ success: false, error: 'PIN이 틀렸습니다' }, 401)
 
   // 15분 유효 토큰 발급 (JWT with short exp)
@@ -159,8 +173,8 @@ sellerPinRoutes.post('/request-kakao-stepup', rateLimit({ action: 'seller_kakao_
 sellerPinRoutes.get('/pin-status', async (c) => {
   const sellerId = await getSellerId(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  const pinHash1 = await readPinHash(c.env.DB, sellerId)
-  return c.json({ success: true, data: { pin_set: !!pinHash1 } })
+  await ensurePinColumn(c.env.DB)
+  return c.json({ success: true, data: { pin_set: !!(await readPinHash(c.env.DB, sellerId)) } })
 })
 
 /**
@@ -195,3 +209,4 @@ export async function isPinVerified(cookieHeader: string | undefined, sellerId: 
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+const _done_ensurePinColumn = new WeakSet<object>()

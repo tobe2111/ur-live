@@ -108,6 +108,53 @@ function stringLiterals(src: string): string[] {
   return out
 }
 
+describe('R4 · 헬퍼를 거쳐 리드를 쓰는 파일도 adsLeadsDb 를 써야 한다', () => {
+  /**
+   * 🩸 **R1 이 이걸 못 봤고, 그래서 라이브가 갈렸다** (2026-08-19 실측).
+   *
+   * `nara-vendor-collect.ts` 는 `const DB = env.DB` 로 핸들을 만들어 `saveCompanyLeads(DB, …)` 에
+   * 넘긴다. **이 파일에는 리드 테이블 이름이 한 번도 안 나온다**(SQL 은 `company-save.ts` 안에 있다).
+   * R1 은 "테이블 이름이 있는 파일"만 검사하므로 통째로 지나쳤고, 전환 후에도 그 레인만 **옛 DB**
+   * 에 계속 썼다 — 화면은 새 DB, 수집은 옛 DB. 이런 파일이 7개였다.
+   *
+   * 그래서 **호출 그래프로** 본다: 리드 SQL 을 가진 모듈이 export 하는 `(DB, …)` 함수를 뿌리로 잡고
+   * 전이 확장한 뒤, 그 함수에 **bare `env.DB` 에서 나온 핸들**을 넘기는 파일을 위반으로 센다.
+   *
+   * ⚠️ 못 잡는 것: 핸들을 객체 속성이나 함수 인자로 여러 단계 태워 보내는 경우. 그건 정적으로
+   *    추적이 안 된다 — 새 수집 레인을 만들 때 `adsLeadsDb(env)` 로 시작하는 습관이 최종 방어선이다.
+   */
+  it('bare env.DB 를 리드 헬퍼에 넘기는 파일이 없다', () => {
+    const codes = new Map(SRC.map((f) => [f, codeOnly(readFileSync(f, 'utf8'))]))
+    const leaf = new Map<string, string>()
+    const addExports = (f: string, c: string) => {
+      for (const m of c.matchAll(/export\s+(?:async\s+)?function\s+([A-Za-z0-9_]+)\s*\(\s*DB\b/g)) {
+        if (!leaf.has(m[1])) leaf.set(m[1], f)
+      }
+    }
+    for (const [f, c] of codes) if (TABLE_RX.test(c)) addExports(f, c)
+    for (let i = 0; i < 3; i++) {
+      for (const [f, c] of codes) {
+        for (const fn of leaf.keys()) {
+          if (new RegExp(`\\b${fn}\\s*\\(`).test(c)) { addExports(f, c); break }
+        }
+      }
+    }
+    expect(leaf.size, '리드 헬퍼가 하나도 안 잡혔다 — 탐지가 죽었다').toBeGreaterThan(20)
+
+    const bad: string[] = []
+    for (const [f, c] of codes) {
+      const bare = new Set([...c.matchAll(/const\s+([A-Za-z0-9_]+)\s*=\s*(?:c\.)?env\.DB\b/g)].map((m) => m[1]))
+      for (const fn of leaf.keys()) {
+        for (const m of c.matchAll(new RegExp(`\\b${fn}\\s*\\(\\s*([A-Za-z0-9_.]+)`, 'g'))) {
+          const arg = m[1]
+          if (bare.has(arg) || arg === 'env.DB' || arg === 'c.env.DB') { bad.push(`${f} → ${fn}`); break }
+        }
+      }
+    }
+    expect([...new Set(bad)], 'bare env.DB 가 리드 헬퍼로 흘러든다 — 그 레인만 옛 DB 에 쓴다').toEqual([])
+  })
+})
+
 describe('R2 · 이사 대상은 남는 테이블과 같은 쿼리에 등장하지 않는다 (라우팅의 전제)', () => {
   it('한 SQL 안에서 리드 테이블과 다른 테이블이 섞이지 않는다', () => {
     // `ON CONFLICT ... DO UPDATE SET` 의 SET 처럼 **키워드가 테이블로 잡히는** 것을 제외한다.

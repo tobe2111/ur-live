@@ -79,6 +79,7 @@ export const LANE_DOMAIN: Record<string, AdsDomain> = {
 
   // ── 업체/파트너 B2B (ad_company_leads)
   'collect-company': 'company',
+  'collect-webkr': 'company',    // 🏠 웹문서(홈페이지) 전용 발굴 — 같은 테이블(ad_company_leads)
   'collect-commerce': 'company',
   'collect-storeinfo': 'company',
   'collect-franchise': 'company',
