@@ -101,3 +101,16 @@ export function hygieneStatements<T>(
 
   return out
 }
+
+/**
+ * 📵 **반송 억제 스윕** — 레지스트리 재수집(COALESCE 백필)으로 되살아난 억제 이메일을 다시 비운다.
+ *
+ * ⚡ **housekeeping 패스에서만** 부른다 (2026-07-27 실측): 대형 테이블 2개의 풀스캔 UPDATE 를
+ *   버스트가 패스마다 반복해 회당 처리량이 계획(2.5만)의 **1/3** 로 떨어졌다.
+ *   버스트는 첫 패스만, cron 은 시간당 1회면 충분하다.
+ * ⚠️ fail-soft — 위생 작업이 재분류를 멈추게 하면 안 된다.
+ */
+export async function sweepSuppressedEmails(DB: D1Database): Promise<void> {
+  await DB.prepare('UPDATE ad_company_leads SET email = NULL WHERE email IS NOT NULL AND email IN (SELECT email FROM ad_email_suppress)').run().catch(() => null)
+  await DB.prepare('UPDATE store_prospects SET email = NULL WHERE email IS NOT NULL AND email IN (SELECT email FROM ad_email_suppress)').run().catch(() => null)
+}

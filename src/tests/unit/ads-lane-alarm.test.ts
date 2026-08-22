@@ -378,6 +378,10 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
 
   it('🔒 정비는 재보정 시각을 양보한다 — cron 규약의 알람 복원(둘이 리스를 다투면 진 쪽이 사라진다)', () => {
     const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
-    const seg = runners.slice(runners.indexOf('maintenance: {'), runners.indexOf('maintenance: {') + 900)
+    // ⚠️ **고정 오프셋으로 자르지 않는다** — 2026-08-19 에 이 블록 앞에 코드가 붙자 900자 창이
+    //   양보 줄에 못 닿아, 불변식은 멀쩡한데 테스트만 빨간불이 났다. 다음 레인 키까지로 자른다.
+    const start = runners.indexOf('maintenance: {')
+    const end = runners.indexOf('\n  collect: {', start)
+    const seg = runners.slice(start, end > start ? end : start + 3000)
     expect(seg).toMatch(/getUTCHours\(\) === RESCAN_HOUR_UTC\) return \{ skipped: 'rescan_hour' \}/)
   })

@@ -145,6 +145,37 @@ const MUTATIONS = [
       '에러도 로그도 없어 대표가 말해 주기 전엔 아무도 모른다(실제로 그렇게 신고받았다).',
   },
   {
+    name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
+    file: 'src/features/agency/api/agency-sunset.ts',
+    find: "    code: 'AGENCY_SIGNUP_CLOSED',",
+    replace: "    code: 'OK',",
+    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    why:
+      '2026-08-19 에이전시 대시보드 일몰. 가입 차단은 **클라+서버 한 쌍**이다 — 화면만 막으면 ' +
+      '직접 POST 로 우회되고(계정이 조용히 생긴다), 서버만 막으면 사용자가 폼을 다 채운 뒤 403 을 본다. ' +
+      '반쪽 롤백은 화면상 멀쩡해 보여서 리뷰로 안 걸린다.',
+  },
+  {
+    name: '에이전시 nav 가 존재하지 않는 라우트를 가리킨다(죽은 링크 부활)',
+    file: 'src/components/AgencyLayout.tsx',
+    find: "{ path: '/agency/settlements'",
+    replace: "{ path: '/agency/streams', label: 'X', i18nKey: 'x', icon: Settings, mode: 'common' },\n      { path: '/agency/settlements'",
+    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    why:
+      '일몰 전 이미 /agency/streams·/agency/pending 이 라우트 없이 nav 에 남아 있었다(누르면 아무 일도 ' +
+      '안 일어난다). 화면을 지우면서 nav 를 안 지우면 그 부채가 즉시 다시 쌓인다.',
+  },
+  {
+    name: '일몰로 내린 에이전시 API 가 다시 마운트된다',
+    file: 'src/worker/index.ts',
+    find: "app.route('/api/agency/delegation', agencyDelegationRoutes);",
+    replace: "app.route('/api/agency/campaigns', agencyCampaignsRoutes);",
+    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    why:
+      '화면 없는 인증 API 가 살아 있으면 축소의 의미가 없다(공격 표면만 남는다). 파일은 일부러 ' +
+      '남겼기 때문에(머니 심볼 computeCommission 이 함께 export 된다) 마운트 한 줄이면 되살아난다.',
+  },
+  {
     name: '이용권 상세 제목이 다시 사진 아래로 내려간다',
     file: 'src/pages/GroupBuyDetailPage.tsx',
     find: '<DetailTitleHeader name',
@@ -395,7 +426,7 @@ const MUTATIONS = [
     file: 'src/worker-ads/lane-alarm.ts',
     // 🔄 2026-08-18: 조건에 `(!entry || entry.ok)` 가 붙어 앵커를 갱신했다(실패 회차도 슬롯을 안 먹는다).
     //   이 주입이 지키는 것은 그대로 **"skip 은 안 찍는다"** 이므로 `due` 를 지우는 형태를 유지한다.
-    find: '    if (runs < cap && due && (!entry || entry.ok)) put.lastRunAt = t0',
+    find: '    if (runs < cap && due && (!entry || entry.ok || !retryable)) put.lastRunAt = t0',
     replace: '    put.lastRunAt = t0',
     test: 'src/tests/unit/lane-min-interval.test.ts',
     why:
@@ -436,6 +467,252 @@ const MUTATIONS = [
       '슬롯을 태운다 — 대기 11,720개가 밖에 있는 채로.',
   },
   {
+    name: '🌱 신규 키워드 우선 자리를 뺀다(새 키워드가 72일을 기다린다)',
+    file: 'src/features/marketing/api/company-keyword-pick.ts',
+    find: '  const freshLimit = Math.max(0, Math.min(batchSize, FRESH_KEYWORD_SLOTS))',
+    replace: '  const freshLimit = 0',
+    test: 'src/tests/unit/company-fresh-keyword-slots.test.ts',
+    why:
+      '실측: 활성 4,555 중 **미실행 3,279** · 커서 시간당 1.9칸 → 끝까지 72일. tier 우선 정렬만으로는 ' +
+      '부족하다(새 키워드는 같은 tier 안에서 id 가 뒤라 맨 끝에 선다). 대표가 요청한 체험단 9개가 ' +
+      '전부 그 줄 끝에 `last_run_at IS NULL` 로 있었다.',
+  },
+  {
+    name: '우선 픽을 정렬(ORDER BY)로 구현한다(OFFSET 창에 건너뜀·중복)',
+    file: 'src/features/marketing/api/company-keyword-pick.ts',
+    find: "  const seen = new Set(kws.map(k => k.id))",
+    replace: '  const seen = new Set()',
+    test: 'src/tests/unit/company-fresh-keyword-slots.test.ts',
+    why:
+      '`last_run_at IS NULL` 을 ORDER BY 에 넣으면 키워드가 돌 때마다 순서가 바뀌어 OFFSET 창에 ' +
+      '건너뜀·중복이 생긴다(이 블록의 원래 주석이 경고하는 바로 그것). 그래서 **앞에 끼워 넣고** ' +
+      'id 중복만 제거한다 — dedup 이 빠지면 같은 키워드를 한 회차에 두 번 호출한다.',
+  },
+  {
+    name: '🗄️ 감시가 이사 전 DB를 본다(바인딩 후 감시가 가장 먼저 눈이 먼다)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: 'maybeAlertInflow(env, adsLeadsDb(env as never) as never)',
+    replace: 'maybeAlertInflow(env, env.DB)',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '`ad_influencer_leads`·`ad_company_leads` 는 `ADS_DB` 로 이사한다. `env.DB` 를 넘기면 대표가 ' +
+      '바인딩을 붙이는 순간 "테이블이 없다"로 조용히 깨지고, 하필 **감시가 가장 먼저** 눈이 먼다 — ' +
+      '그러면 다음 하락도 아무도 모른다.',
+  },
+  {
+    name: '🩺 소진 레인을 실패로 싣는다(매일 "완료"를 경보로 보낸다)',
+    file: 'src/features/marketing/api/lane-health-report.ts',
+    find: '    .filter(h => h.runs > 0 && h.fails / h.runs >= REPORT_FAIL_RATIO)',
+    replace: '    .filter(h => h.runs > 0 && (h.barren || h.fails / h.runs >= REPORT_FAIL_RATIO))',
+    test: 'src/tests/unit/lane-health-report.test.ts',
+    why:
+      '소진(성공하는데 수확 0)은 손해가 아니라 **완료**다 — 매일 경보로 보내면 채널이 곧 무시당하고, ' +
+      '그러면 정작 실패가 났을 때도 안 보인다. 소진은 `isBarren` 감속이 조용히 처리한다.',
+  },
+  {
+    name: '레인 상태를 경보 없이도 붙인다(정상인 날에도 소음)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: "        if (bad.length) lines.push('', '**레인 상태**', ...bad)",
+    replace: "        lines.push('', '**레인 상태**', ...bad)",
+    test: 'src/tests/unit/lane-health-report.test.ts',
+    why:
+      '실패한 레인이 없으면 한 줄도 안 늘어나야 한다. 빈 헤더만 매번 붙으면 경보가 길어지고, ' +
+      '길어진 경보는 안 읽힌다 — 오경보와 같은 클래스의 실패다.',
+  },
+  {
+    name: '📈 보강이 실패 중인 레인도 올린다(실패가 3배가 된다)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: '      const accept = runs > 0 && laneCanAbsorb(hist)',
+    replace: '      const accept = runs > 0',
+    test: 'src/tests/unit/lane-boost.test.ts',
+    why:
+      '보강은 외부 API 를 더 두드리는 일이다. 이미 실패 중인 레인을 3배로 돌리면 얻는 것 없이 ' +
+      '실패만 3배가 되고, 상대 쪽에서 보면 장애 중에 요청이 3배로 늘어난다.',
+  },
+  {
+    name: '보강에 기한이 없다(켜진 채 잊혀 영구 증설이 된다)',
+    file: 'src/worker-ads/lane-boost.ts',
+    find: '  if (Number(b.until) <= now) return 0',
+    replace: '  // 기한 무시',
+    test: 'src/tests/unit/lane-boost.test.ts',
+    why:
+      '기한이 없으면 감시가 멎어도 보강이 남는다 — 사람이 모르는 채 외부 호출이 3배로 유지된다. ' +
+      '이 레포가 반복해 온 "켜 놓고 잊는" 클래스이고, 유효기간이 그 클래스를 구조적으로 막는다.',
+  },
+  {
+    name: '회복해도 보강을 안 걷는다(한 번 오르면 영구)',
+    file: 'src/worker-ads/lane-boost-apply.ts',
+    find: 'runs=${runs > 1 ? runs : 0}',
+    replace: 'runs=${runs}',
+    test: 'src/tests/unit/lane-boost.test.ts',
+    why:
+      '올리기만 하고 안 내리면 제어 루프가 아니라 일회성 증설이다. 회복 시 0 을 보내는 것이 ' +
+      '이 호출의 절반이다(조이기·감속과 같은 대칭).',
+  },
+  {
+    name: '🔒 인플루언서 collect 를 보강 대상에 넣는다(대표 확인 사항을 자동화가 넘본다)',
+    file: 'src/worker-ads/lane-boost.ts',
+    find: "  company: ['collect-company'],",
+    replace: "  company: ['collect-company'], influencer: ['collect'],",
+    test: 'src/tests/unit/lane-boost.test.ts',
+    why:
+      '그 레인의 `runsPerHour: 1` 은 **직접 크롤 차단 리스크** 때문에 정해진 값이고, CLAUDE.md 가 ' +
+      '"올리려면 대표 확인" 이라고 명시했다. 공식 API 쿼터 문제인 collect-company 와 성격이 다르다 — ' +
+      '자동 루프가 넘볼 자리가 아니다.',
+  },
+  {
+    name: '🩸 재시도 상한을 failStreak(예외 전용)으로 센다 — 정작 필요할 때 안 걸린다',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'failStreakFromHistory(runHistory) <= RETRY_MAX_FAIL_STREAK',
+    replace: 'nextFail <= RETRY_MAX_FAIL_STREAK',
+    test: 'src/tests/unit/lane-adaptive-interval.test.ts',
+    why:
+      '2026-08-19 라이브: commerce 가 4회 연속 실패한 직후인데 `fail_streak: 0` 이었다 — 그 카운터는 ' +
+      '**예외를 던진 회차만** 세는데 실제 장애는 예외 없이 `diag.error` 로만 온다. ' +
+      'failStreak 에 상한을 걸면 그 상한이 **정작 필요한 경우에 한 번도 안 걸린다.**',
+  },
+  {
+    name: '🌵 마른 레인 감속을 뺀다(0건에 CPU·서브리퀘스트를 계속 쓴다)',
+    file: 'src/worker-ads/lane-adaptive-interval.ts',
+    find: '  if (isBarren(history)) return base * BARREN_INTERVAL_MULT',
+    replace: '  if (false) return base * BARREN_INTERVAL_MULT',
+    test: 'src/tests/unit/lane-adaptive-interval.test.ts',
+    why:
+      '실측: storeinfo 가 1,700/일 → 0 으로 소진됐는데도 2시간마다 계속 돈다. 얻는 건 0인데 ' +
+      '희소 자원(서브리퀘스트·CPU)을 써서 **실제로 캐는 레인의 예산을 갉는다.**',
+  },
+  {
+    name: '실패를 마름으로 센다(장애 때 주기를 늘려 회복을 늦춘다)',
+    file: 'src/worker-ads/lane-adaptive-interval.ts',
+    find: '  const ran = history.filter(r => r && r.ok && typeof r.n === \'number\')',
+    replace: "  const ran = history.filter(r => r && typeof r.n === 'number')",
+    test: 'src/tests/unit/lane-adaptive-interval.test.ts',
+    why:
+      '실패(고장)와 소진은 처방이 정반대다 — 고장은 재시도, 소진은 감속. 섞으면 외부 API 가 잠깐 ' +
+      '죽었을 때 주기를 3배로 늘려 **복구를 스스로 늦춘다.**',
+  },
+  {
+    name: '🎯 발송 가능 축을 감시에서 뺀다(총량만 보면 지표가 안 보인다)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: "    axes.push({ key: 'sendable_influencer', label: '발송가능(인플루언서)', v: sendable.sendable_influencer || null })",
+    replace: '',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      'CLAUDE.md 가 못 박은 유일한 성공 지표는 "제안 보낼 수 있는 리드 수"다. 총량은 늘어도 ' +
+      '수율 낮은 축만 늘면 발송 가능 리드는 제자리다(실측: youtube 38.3% vs commerce 13.2%).',
+  },
+  {
+    name: '누계 감소를 하락으로 센다(반송 억제 청소 때마다 경보)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: '    out.push({ d: days[i], n: Math.max(0, cur - prev) })',
+    replace: '    out.push({ d: days[i], n: cur - prev })',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '반송 억제(`ad_email_suppress`)로 이메일이 비워지면 누계가 줄 수 있다. 그건 "발굴이 멈췄다"가 ' +
+      '아니라 "정리했다"이고, 하락으로 세면 청소할 때마다 경보가 떠 채널이 무시당한다.',
+  },
+  {
+    name: '⚡ 벌크 전진이 첫 분류 행까지 건너뛴다(영영 미분류로 남는다)',
+    file: 'src/features/marketing/api/reclassify-registry-fastpath.ts',
+    find: "  + ` AND category IS NOT NULL AND COALESCE(classified_v, 0) < ? AND id > ?`",
+    replace: "  + ` AND COALESCE(classified_v, 0) < ? AND id > ?`",
+    test: 'src/tests/unit/reclassify-registry-fastpath.test.ts',
+    why:
+      '`classify_confidence = \'registry\'` 와 `category IS NOT NULL` 이 이 최적화의 안전핀이다 — ' +
+      '건너뛰는 것이 *재판정*이지 *첫 판정*이 아님을 보장한다. 빠지면 한 번도 분류 안 된 행에 ' +
+      '도장만 찍혀 영영 분류되지 않는다(에러 없는 부재).',
+  },
+  {
+    name: '표본이 바뀌어도 벌크를 강행한다(규칙 변경이 등록부에 안 닿는다)',
+    file: 'src/features/marketing/api/reclassify-registry-fastpath.ts',
+    find: "  if (regChanged > 0) return { allow: false, reason: `등록부 판정이 바뀌는 중(${regChanged}/${regSeen}) — 전수 재판정 유지` }",
+    replace: '  // 표본 무시',
+    test: 'src/tests/unit/reclassify-registry-fastpath.test.ts',
+    why:
+      '"등록부는 안 바뀐다"를 상수로 믿으면, 앞으로 규칙이 등록부를 흔드는 순간 그 변경이 조용히 ' +
+      '반영되지 않는다. 매 회차 표본이 그 판단 근거를 새로 만드는 것이 이 설계의 핵심이다.',
+  },
+  {
+    name: '벌크 UPDATE 실패에도 커서를 옮긴다(그 구간이 영영 미분류)',
+    file: 'src/features/marketing/api/reclassify-registry-fastpath.ts',
+    find: '  if (done) { return { cursor: Number(span.m), reason: `${d.reason} · ${span.n}행` } }',
+    replace: '  { return { cursor: Number(span.m), reason: `${d.reason} · ${span.n}행` } }',
+    test: 'src/tests/unit/reclassify-registry-fastpath.test.ts',
+    why:
+      '커서만 넘어가고 도장은 안 찍히면 그 5,000행은 다음 랩(며칠 뒤)까지 미분류로 남는다. ' +
+      '실패를 성공처럼 취급하는 것이 이 레포가 반복해 온 사고 모양이다.',
+  },
+  {
+    name: '🐕 유입 감시에서 B2B 축을 뺀다(−70% 가 또 6일간 안 잡힌다)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: "  { key: 'company', label: '업체(B2B)', table: 'ad_company_leads',",
+    replace: "  { key: 'company_disabled', label: '업체(B2B)', table: 'ad_influencer_leads',",
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '기존 경보는 인플루언서 전용이었고, 정작 −70% 로 무너진 건 B2B 였다(13,409 → 4,223, 6일간 무음). ' +
+      'B2B 축이 빠지면 이 모듈의 존재 이유가 사라진다.',
+  },
+  {
+    name: '날짜 구멍을 0 으로 안 채운다(완전 정지가 "정상"으로 읽힌다)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: '    out.push({ d, n: by.get(d) ?? 0 })',
+    replace: '    if (by.has(d)) out.push({ d, n: by.get(d) ?? 0 })',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '수집이 0이면 GROUP BY 결과에 그 날짜가 **아예 안 나온다**. 구멍을 안 채우면 최근 3일이 ' +
+      '예전 잘 되던 날들로 채워져 완전 정지가 "정상"이 된다 — 에러 없이 조용히 틀리는 그 클래스다.',
+  },
+  {
+    name: '오늘(진행 중인 날)을 판정에 넣는다(매일 아침 오경보)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: '  for (let i = span; i >= 1; i--) {',
+    replace: '  for (let i = span; i >= 0; i--) {',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '진행 중인 날은 항상 낮다. 넣으면 매일 아침 "하락" 경보가 뜨고, 그 채널은 곧 무시당한다 — ' +
+      '오경보는 감시의 고장이지 부작용이 아니다.',
+  },
+  {
+    name: '먼 기준선을 뺀다(완만한 하락이 창 비교를 빠져나간다)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: '  const baseline = Math.max(near ?? 0, far ?? 0) || null',
+    replace: '  const baseline = near',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '천천히 내려가면 **기준선도 같이 내려간다** — 어제와 비교하면 어제도 나쁘다. 실측 인플루언서 ' +
+      '하락이 직전 7일 기준으로는 76%(무경보)였다. 먼 기준선이 그 사각지대를 닫는다.',
+  },
+  {
+    name: '기준선을 평균으로 바꾼다(17배 스파이크 하나가 이후를 전부 하락으로 만든다)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: '  const s = [...xs].sort((a, b) => a - b)',
+    replace: '  return xs.reduce((a, b) => a + b, 0) / xs.length; const s = [...xs].sort((a, b) => a - b)',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '이 시스템의 일별 진폭은 17배다(07-21 12,533 vs 07-30 1건). 평균 기준선이면 스파이크 하나가 ' +
+      '기준선을 들어 올려 그 뒤 정상 구간이 전부 "하락"으로 보인다.',
+  },
+  {
+    name: '무너진 동안 매일 경보를 보낸다(채널이 곧 무시당한다)',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: '        if (!escalated) continue',
+    replace: '        if (false) continue',
+    test: 'src/tests/unit/inflow-watchdog.test.ts',
+    why:
+      '같은 사실을 매일 반복해 보내면 사람은 그 채널을 끈다. 그러면 **다음에 진짜로 다른 것이 ' +
+      '무너졌을 때도** 안 보인다 — 감시가 스스로를 무력화하는 경로다.',
+  },
+  {
+    name: '실패 재시도에 상한이 없다(영구 장애 소스를 하루 24번 두드린다)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: '    const retryable = failStreakFromHistory(runHistory) <= RETRY_MAX_FAIL_STREAK',
+    replace: '    const retryable = true',
+    test: 'src/tests/unit/lane-adaptive-interval.test.ts',
+    why:
+      '`nextWakeAt` 은 회차를 쓴 뒤엔 다음 정시로 잡으므로 failStreak 백오프가 이 경로엔 안 걸린다. ' +
+      '상한이 없으면 죽은 소스를 영원히 하루 24번 두드린다 — 서브리퀘스트는 이 시스템의 희소 자원이다.',
+  },
+  {
     name: '🔁 주기 자가조율을 고정 상수로 되돌린다(잘 돌아도 확대가 없다)',
     file: 'src/worker-ads/lane-alarm.ts',
     find: 'adaptiveIntervalHours(lane.minIntervalHours ?? 0, prevHistory)',
@@ -448,7 +725,7 @@ const MUTATIONS = [
   {
     name: '실패한 회차가 슬롯을 먹는다(다음 간격까지 통째로 버려진다)',
     file: 'src/worker-ads/lane-alarm.ts',
-    find: 'if (runs < cap && due && (!entry || entry.ok)) put.lastRunAt = t0',
+    find: 'if (runs < cap && due && (!entry || entry.ok || !retryable)) put.lastRunAt = t0',
     replace: 'if (runs < cap && due) put.lastRunAt = t0',
     test: 'src/tests/unit/lane-adaptive-interval.test.ts',
     why:

@@ -3,10 +3,13 @@
  *
  * 표시:
  *   - churn risk 셀러 (last 14일 등록 X)
- *   - 미달성 위험 공구 (24h + 50%-)
- *   - 미해결 분쟁
+ *   - 진행중/위험 공구 · 미해결 분쟁 = **카운트만 표시**(이동 없음)
  *
- * 클릭 → /agency/group-buy 또는 /agency/sellers
+ * 🌇 2026-08-19 일몰 축소: `/agency/group-buy` 라우트가 제거돼 그 두 블록의 이동을 없앴다.
+ *    "24h 내 마감 공구"를 눌렀는데 셀러 로스터가 뜨는 건 죽은 링크보다 나쁘다 — 행선지가
+ *    없으면 버튼이 아니라 지표로 둔다. 공구 운영은 셀러 대시보드로 이관(store-operator-model.md).
+ *
+ * 클릭 → /agency/sellers (churn 만)
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -77,31 +80,23 @@ export default function AgencyGroupBuyAlert() {
         )}
 
         {data.at_risk_groups > 0 && (
-          <button
-            onClick={() => navigate('/agency/group-buy')}
-            className="w-full bg-white rounded-xl p-3 flex items-center gap-3 hover:bg-gray-50 transition-colors"
-          >
+          <div className="w-full bg-white rounded-xl p-3 flex items-center gap-3">
             <Ticket className="w-5 h-5 text-amber-500 shrink-0" />
             <div className="flex-1 text-left">
               <p className="text-xs font-bold text-gray-900">{data.at_risk_groups}개 공구 — 미달성 위험</p>
               <p className="text-[10px] text-gray-500 mt-0.5">24h 이내 마감 + 진행률 50% 미만 — share 부스트 권장</p>
             </div>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
-          </button>
+          </div>
         )}
 
         {data.pending_disputes > 0 && (
-          <button
-            onClick={() => navigate('/agency/group-buy')}
-            className="w-full bg-white rounded-xl p-3 flex items-center gap-3 hover:bg-gray-50 transition-colors"
-          >
+          <div className="w-full bg-white rounded-xl p-3 flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
             <div className="flex-1 text-left">
               <p className="text-xs font-bold text-gray-900">{data.pending_disputes}건 미해결 분쟁</p>
               <p className="text-[10px] text-gray-500 mt-0.5">셀러 측 응대 필요</p>
             </div>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
-          </button>
+          </div>
         )}
       </div>
     </div>

@@ -24,7 +24,7 @@ const MAX_PENDING_AI_DRAFTS = 5
 // 관리자가 /admin/blog 에서 직접 수정한 글(manually_edited=1)은 재시드해도 보존됩니다.
 // 💸 2026-07-05 v5: 딜 가이드에 유상/무상 버킷 정책 반영.
 // v6 (2026-07-18): 딜 충전 종료(대표 확정) — 딜=활동 적립 리워드 프레임으로 딜포인트/결제 관련 글 갱신
-const BLOG_SEED_VERSION = 8
+const BLOG_SEED_VERSION = 9 // 2026-08-19 에이전시 일몰 — 신규 가입이 닫혔는데 모집 글이 게시 중이어서 시드에서 제거(재시드가 비공개 처리)
 
 // 테이블 자동 생성
 async function ensureBlogTable(DB: D1Database) {
