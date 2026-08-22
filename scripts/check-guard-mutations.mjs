@@ -72,6 +72,48 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '수확 봇 차단이 공개 콘텐츠 API 에서 사라진다',
+    file: 'src/worker/index.ts',
+    find: "app.use('/api/group-buy/*', contentScrapeGuard);",
+    replace: '',
+    test: 'src/tests/unit/content-protection.test.ts',
+    why:
+      '2026-08-22 대표 지시 "크롤링도 마찬가지". 배선을 지워도 화면은 100% 동일하고 에러도 없다 — ' +
+      '수확 봇만 조용히 다시 들어온다. 리뷰로는 절대 안 걸리는 자리다.',
+  },
+  {
+    name: '수확 차단이 빈 UA 까지 막는다(인앱 웹뷰가 조용히 깨진다)',
+    file: 'src/worker/middleware/bot-detection.ts',
+    find: "  if (!userAgent || userAgent.trim() === '') return false;",
+    replace: "  if (!userAgent || userAgent.trim() === '') return true;",
+    test: 'src/tests/unit/content-protection.test.ts',
+    why:
+      '옆에 있는 `detectBot()` 은 빈 UA 를 의심으로 본다 — 그 판정을 여기로 "통일"하기 쉬운데, ' +
+      '공개 목록에 적용하면 UA 를 안 보내는 정상 클라이언트가 403 이 된다. 우리 눈엔 안 보이고 ' +
+      '그 사용자만 빈 화면을 본다.',
+  },
+  {
+    name: '우클릭을 페이지 전체에서 막는다(주소 복사·새 탭이 죽는다)',
+    file: 'src/lib/image-protect.ts',
+    find: '      if (!imageAtEvent(e.target)) return',
+    replace: '      /* 전체 차단 */',
+    test: 'src/tests/unit/content-protection.test.ts',
+    why:
+      '"우클릭 방지"를 요청받으면 document 전체 차단이 가장 먼저 떠오른다. 그러면 훔치는 사람은 ' +
+      '개발자도구로 그대로 받아 가고, 매장 주소를 복사하려던 손님만 막힌다.',
+  },
+  {
+    name: 'iOS 길게 눌러 저장 차단(CSS)이 사라진다',
+    file: 'src/index.css',
+    find: '  -webkit-touch-callout: none;',
+    replace: '  /* 제거됨 */',
+    test: 'src/tests/unit/content-protection.test.ts',
+    why:
+      'iOS Safari 는 길게 눌러도 `contextmenu` 를 안 쏜다 — JS 만 남기면 **모바일에서는 아무것도 ' +
+      '안 막힌 것**이 된다. 우리 트래픽 대부분이 모바일이라 그 상태는 기능이 없는 것과 같은데, ' +
+      'PC 에서 테스트하면 멀쩡해 보인다.',
+  },
+  {
     name: '홈 섹션 API 가 다시 엣지 캐시를 안 탄다',
     file: 'src/features/sections/api/sections.routes.ts',
     find: "sectionsRoutes.get('/', edgeCache(120), async (c) => {",

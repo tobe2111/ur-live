@@ -154,7 +154,7 @@ import { adminIpWhitelist, adminAuditMiddleware } from './middleware/admin-secur
 import { adminRbacMiddleware } from './middleware/admin-rbac';
 import { rateLimit } from './middleware/rate-limit';
 import { hashPassword } from '../lib/password';
-import { botProtection } from './middleware/bot-detection';
+import { botProtection, scrapeProtection } from './middleware/bot-detection';
 import { bodyLimit } from './middleware/body-limit';
 import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 
@@ -1614,6 +1614,20 @@ app.use('/api/seller/upload-*', rateLimit({ action: 'upload', max: 10, windowSec
 // ============================================================
 // Product & Seller Routes
 // ============================================================
+
+// 🕷️ 2026-08-22 대표 지시 "크롤링도 마찬가지" — 공개 콘텐츠 API 수확 차단.
+//   자기 이름을 밝힌 수확 봇(GPTBot·AhrefsBot·HTTrack …)만 403. **빈 UA 는 통과**시키므로
+//   UA 를 안 보내는 인앱 웹뷰가 안 깨지고, 검색엔진·카카오 스크랩은 allowlist 가 먼저 통과시킨다.
+//   ⚠️ `botProtection()`(로그인 POST 전용, 빈 UA=차단)과 섞지 말 것 — 공개 목록에 쓰면 오탐이 난다.
+//   ⚠️ 상세 단건(`/api/group-buy/products/:id`)까지 prefix 로 함께 걸린다(의도) — 목록만 막으면
+//      id 를 훑는 수확은 그대로다.
+const contentScrapeGuard = scrapeProtection();
+app.use('/api/products', contentScrapeGuard);
+app.use('/api/products/*', contentScrapeGuard);
+app.use('/api/group-buy/*', contentScrapeGuard);
+app.use('/api/vouchers/*', contentScrapeGuard);
+app.use('/api/sections', contentScrapeGuard);
+app.use('/api/curator/*', contentScrapeGuard);
 
 // Feature products (extended CRUD) — 유일한 /api/products 핸들러
 app.route('/api/products', featureProductsRoutes);
