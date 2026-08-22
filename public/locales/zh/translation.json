@@ -979,7 +979,10 @@
       "tip1": "正方形（1:1）图片显示效果最佳",
       "tip2": "把核心关键词放在商品名称前面",
       "tip3": "登记后随时可以修改",
-      "cameraHint": "在手机上可以拍照或从相册选择"
+      "cameraHint": "在手机上可以拍照或从相册选择",
+      "storeName": "门店名称",
+      "storeAddress": "门店地址",
+      "storePhone": "门店电话"
     },
     "orders": "订单管理",
     "revenue": "Deal结算",

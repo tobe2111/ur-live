@@ -155,54 +155,73 @@ export default function MapTopBar({
           )}
         </div>
 
-        {/* ── Row 2: 카테고리 칩 (흰 알약) ──
-            🖥️ 패널(PC 400px)에서는 **줄바꿈**한다. 가로 스크롤로 두면 '기타'가 잘려 보이지 않고,
-               잘린 줄 모른 채로는 아무도 옆으로 밀지 않는다(지도 오버레이는 폭이 넓어 스크롤 유지). */}
-        <div className={`flex gap-1.5 items-center ${panel ? 'flex-wrap' : 'overflow-x-auto no-scrollbar'}`}>
+        {/* ── Row 2: 카테고리 ──
+            🖥️ 2026-08-19 (대표 시안 — 카카오맵): 패널(PC 400px)은 **7칸을 한 줄**에 넣는다.
+               [아이콘 위 · 라벨 아래]의 작은 버튼 7개를 균등 분배(grid-cols-7) — 카카오맵 하단
+               '주변 탐색'(음식점·카페·버스·지하철·숙박·은행·편의점)과 같은 형태다.
+               ⚠️ 이전 판은 알약 칩을 **줄바꿈**했다(2줄). 대표가 한 줄을 원했고, 알약으로는
+                 400px 에 7개가 안 들어간다 — 그래서 모양 자체를 바꾼다.
+               지도 오버레이(모바일)는 폭이 넓어 기존 알약 + 가로 스크롤 그대로. */}
+        <div className={panel ? 'grid grid-cols-7 gap-0.5' : 'flex gap-1.5 items-center overflow-x-auto no-scrollbar'}>
           {/* 필터 */}
           <button
             data-testid="open-filter"
             onClick={onOpenFilter}
             aria-label={t('map.sheet.filterAria', { defaultValue: '지역·카테고리 필터 열기' })}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[12px] font-semibold shrink-0 shadow-sm border transition-all ${
-              activeFilterCount > 0
-                ? 'bg-brand text-white border-brand'
-                : 'bg-white dark:bg-[#0F151D] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A3446]'
-            }`}
+            className={panel
+              ? `relative flex flex-col items-center justify-center gap-1 py-1.5 rounded-lg transition-colors ${
+                  activeFilterCount > 0 ? 'text-brand' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05]'}`
+              : `flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[12px] font-semibold shrink-0 shadow-sm border transition-all ${
+                  activeFilterCount > 0
+                    ? 'bg-brand text-white border-brand'
+                    : 'bg-white dark:bg-[#0F151D] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A3446]'}`}
           >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <SlidersHorizontal className={panel ? 'w-[17px] h-[17px]' : 'w-3.5 h-3.5'} />
+            {panel && <span className="text-[10.5px] font-semibold leading-none">필터</span>}
             {activeFilterCount > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[15px] h-3.5 px-1 rounded-full bg-white/25 text-[10px] font-bold">{activeFilterCount}</span>
+              panel
+                ? <span className="absolute top-0.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand" aria-hidden="true" />
+                : <span className="inline-flex items-center justify-center min-w-[15px] h-3.5 px-1 rounded-full bg-white/25 text-[10px] font-bold">{activeFilterCount}</span>
             )}
           </button>
           {/* 내 주변 */}
           <button
             onClick={requestNearMe}
             aria-pressed={nearMeMode}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[12px] font-semibold shrink-0 shadow-sm border transition-all ${
-              nearMeMode
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white dark:bg-[#0F151D] text-blue-600 dark:text-blue-400 border-gray-200 dark:border-[#2A3446]'
-            }`}
+            className={panel
+              ? `flex flex-col items-center justify-center gap-1 py-1.5 rounded-lg transition-colors ${
+                  nearMeMode ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05]'}`
+              : `flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[12px] font-semibold shrink-0 shadow-sm border transition-all ${
+                  nearMeMode
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white dark:bg-[#0F151D] text-blue-600 dark:text-blue-400 border-gray-200 dark:border-[#2A3446]'}`}
           >
-            <Navigation className="w-3 h-3" />
-            <span>{t('restaurantMap.nearMe')}</span>
+            <Navigation className={panel ? 'w-[17px] h-[17px]' : 'w-3 h-3'} />
+            <span className={panel ? 'text-[10.5px] font-semibold leading-none' : undefined}>{t('restaurantMap.nearMe')}</span>
           </button>
           {/* 카테고리 칩 */}
-          {MAP_VOUCHER_DEFS.map(v => (
-            <button
-              key={v.key}
-              onClick={() => setVoucherType(v.key)}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[12px] font-semibold shrink-0 shadow-sm border transition-all ${
-                voucherType === v.key
-                  ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
-                  : 'bg-white dark:bg-[#0F151D] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446]'
-              }`}
-            >
-              <span>{v.emoji}</span>
-              <span>{t(v.labelKey, { defaultValue: v.defaultLabel })}</span>
-            </button>
-          ))}
+          {MAP_VOUCHER_DEFS.map(v => {
+            const on = voucherType === v.key
+            // 패널은 칸당 ~53px 라 긴 라벨이 잘린다 → shortLabel(있으면). 오버레이는 긴 라벨 그대로.
+            const label = panel && v.shortLabel ? v.shortLabel : t(v.labelKey, { defaultValue: v.defaultLabel })
+            return (
+              <button
+                key={v.key}
+                onClick={() => setVoucherType(v.key)}
+                aria-pressed={on}
+                className={panel
+                  ? `flex flex-col items-center justify-center gap-1 py-1.5 rounded-lg transition-colors ${
+                      on ? 'text-gray-900 dark:text-white bg-gray-100 dark:bg-white/[0.09] font-bold' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05]'}`
+                  : `flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[12px] font-semibold shrink-0 shadow-sm border transition-all ${
+                      on
+                        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
+                        : 'bg-white dark:bg-[#0F151D] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446]'}`}
+              >
+                <span className={panel ? 'text-[16px] leading-none' : undefined}>{v.emoji}</span>
+                <span className={panel ? 'text-[10.5px] leading-none whitespace-nowrap' : undefined}>{label}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

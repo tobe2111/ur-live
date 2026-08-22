@@ -72,6 +72,201 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '이용권 수정 폼이 다시 식사 이용권 전용이 된다',
+    file: 'src/pages/SellerProductEditPage.tsx',
+    find: '{isVoucherCategory(formData.category) && (',
+    replace: "{formData.category === 'meal_voucher' && (",
+    test: 'src/tests/unit/seller-voucher-limit.test.ts',
+    why:
+      '2026-08-22 대표 "1인당 이용권 구매 갯수를 셀러가 설정할 수 있도록". 진짜 결함이 이것이었다 — ' +
+      '서버는 원래 카테고리를 안 가리는데 **이 화면만** meal_voucher 로 막혀 뷰티·숙박·기타 이용권은 ' +
+      '한도를 처음부터 끝까지 설정할 수 없었다. 식사 이용권으로 테스트하면 멀쩡해 보인다.',
+  },
+  {
+    name: '레거시 이용권 카테고리 정규화가 사라진다(등록되는데 안 뜬다)',
+    file: 'src/features/seller/api/seller-orders.routes.ts',
+    find: '    const category = canonicalCategory(body.category) ?? undefined;',
+    replace: '    const category = body.category;',
+    test: 'src/tests/unit/seller-voucher-limit.test.ts',
+    why:
+      '등록 화면은 헬스/반려/액티비티를 고르게 해 주는데 그 값들은 소비자 피드 필터' +
+      '(`category IN VOUCHER_CATEGORIES`)와 공구 활성화 판정에 **둘 다 안 걸린다**. 정규화를 빼면 ' +
+      '셀러는 "등록 완료" 화면을 보고 상품은 유어딜 어디에도 안 뜬다 — 에러가 0 이라 아무도 모른다.',
+  },
+  {
+    name: '한도 재검증(과금 직전)이 사라져 다른 탭으로 뚫린다',
+    file: 'src/features/group-buy/api/group-buy.routes.ts',
+    find: `      const ownedRow = await DB.prepare(
+        "SELECT COUNT(*) AS n FROM vouchers WHERE product_id = ? AND user_id = ? AND status IN ('unused','used')"
+      ).bind(productId, userId).first<{ n: number }>().catch(() => ({ n: 0 }))
+      const owned = Number(ownedRow?.n ?? 0)
+      if (owned + qty > maxPerPerson) {`,
+    replace: '      const owned = 0\n      if (owned + qty > maxPerPerson) {',
+    test: 'src/tests/unit/seller-voucher-limit.test.ts',
+    why:
+      '같은 쿼리가 두 곳에 있다(사전검증 / 과금 직전 레이스 차단). 한쪽만 지워도 정상 구매는 ' +
+      '전부 통과해서 눈으로는 못 본다. ⚠️ 이 가드는 처음에 "파일에 쿼리가 있는가" 로 판정해 ' +
+      '**헛돌았다** — 되돌려-검증에서 잡아 개수 판정으로 고쳤다.',
+  },
+  {
+    name: '즐겨찾기가 다시 localStorage 단독 저장이 된다',
+    file: 'src/components/AdminLayout.tsx',
+    find: "    void api.put('/api/admin/me/prefs/nav_pins', { value: next }).catch(() => null)",
+    replace: '    /* 서버 저장 제거 */',
+    test: 'src/tests/unit/admin-nav-pins.test.ts',
+    why:
+      '2026-08-22 대표 신고 "즐겨찾기가 계속 초기화 돼". 원인은 저장 **위치**였다 — localStorage 는 ' +
+      '오리진·브라우저·프로필마다 따로이고 시크릿창·사이트데이터삭제·기기변경에 조용히 사라진다. ' +
+      '이 줄을 지워도 **그 브라우저에서는 멀쩡히 동작**해서(로컬 캐시가 받친다) 리뷰로 절대 안 걸린다.',
+  },
+  {
+    name: '최초 진입의 기본값이 계정에 승격 저장되지 않는다',
+    file: 'src/components/AdminLayout.tsx',
+    find: '        setPinnedPaths((prev) => { persistPins(prev); return prev })',
+    replace: '        /* 승격 안 함 */',
+    test: 'src/tests/unit/admin-nav-pins.test.ts',
+    why:
+      '원래 버그의 **절반**이 이것이었다: 기본 4개를 화면에는 보여 주면서 저장은 안 했다. ' +
+      '그래서 저장소가 비는 순간(다른 기기·시크릿창) 항상 기본값으로 돌아갔다 = "초기화". ' +
+      '지워도 화면은 똑같아서 눈으로는 못 본다.',
+  },
+  {
+    name: '어드민 개인설정이 `me` 세그먼트를 통째로 열어 RBAC 를 우회한다',
+    file: 'src/shared/admin-roles.ts',
+    find: "  if (/^\\/api\\/admin\\/me\\/prefs\\/[a-z0-9_]+$/i.test(String(pathname || ''))) return true;",
+    replace: "  if (adminPathSegment(pathname) === 'me') return true;",
+    test: 'src/tests/unit/admin-nav-pins.test.ts',
+    why:
+      '"me = 본인 것이니 다 열어도 된다" 는 자연스러운 단순화지만, 그러면 앞으로 `/api/admin/me/*` 에 ' +
+      '붙는 **모든** 라우트가 역할 검사를 조용히 건너뛴다(읽기전용 viewer 도 포함). 개인 취향 설정만 열고 ' +
+      '나머지는 닫아 둬야 한다.',
+  },
+  {
+    name: '수확 봇 차단이 공개 콘텐츠 API 에서 사라진다',
+    file: 'src/worker/index.ts',
+    find: "app.use('/api/group-buy/*', contentScrapeGuard);",
+    replace: '',
+    test: 'src/tests/unit/content-protection.test.ts',
+    why:
+      '2026-08-22 대표 지시 "크롤링도 마찬가지". 배선을 지워도 화면은 100% 동일하고 에러도 없다 — ' +
+      '수확 봇만 조용히 다시 들어온다. 리뷰로는 절대 안 걸리는 자리다.',
+  },
+  {
+    name: '수확 차단이 빈 UA 까지 막는다(인앱 웹뷰가 조용히 깨진다)',
+    file: 'src/worker/middleware/bot-detection.ts',
+    find: "  if (!userAgent || userAgent.trim() === '') return false;",
+    replace: "  if (!userAgent || userAgent.trim() === '') return true;",
+    test: 'src/tests/unit/content-protection.test.ts',
+    why:
+      '옆에 있는 `detectBot()` 은 빈 UA 를 의심으로 본다 — 그 판정을 여기로 "통일"하기 쉬운데, ' +
+      '공개 목록에 적용하면 UA 를 안 보내는 정상 클라이언트가 403 이 된다. 우리 눈엔 안 보이고 ' +
+      '그 사용자만 빈 화면을 본다.',
+  },
+  {
+    name: '우클릭을 페이지 전체에서 막는다(주소 복사·새 탭이 죽는다)',
+    file: 'src/lib/image-protect.ts',
+    // ⚠️ 앵커는 **정확히 1회**여야 한다 — 같은 줄이 dragstart 핸들러에도 있어 짧게 잡으면
+    //    엉뚱한 쪽이 바뀌고 의도한 결함이 안 생긴다(2026-08-22 에 실제로 그랬다).
+    find: `      if (isEditable(e.target as Element)) return
+      if (!imageAtEvent(e.target)) return`,
+    replace: '      /* 전체 차단 */',
+    test: 'src/tests/unit/content-protection.test.ts',
+    why:
+      '"우클릭 방지"를 요청받으면 document 전체 차단이 가장 먼저 떠오른다. 그러면 훔치는 사람은 ' +
+      '개발자도구로 그대로 받아 가고, 매장 주소를 복사하려던 손님만 막힌다.',
+  },
+  {
+    name: 'iOS 길게 눌러 저장 차단(CSS)이 사라진다',
+    file: 'src/index.css',
+    // ⚠️ 같은 속성이 `html.native-app *` 규칙에도 있다 — 셀렉터까지 포함해 유일하게 잡는다.
+    find: `img,
+picture,
+canvas {
+  -webkit-touch-callout: none;`,
+    replace: `img,
+picture,
+canvas {
+  /* 제거됨 */`,
+    test: 'src/tests/unit/content-protection.test.ts',
+    why:
+      'iOS Safari 는 길게 눌러도 `contextmenu` 를 안 쏜다 — JS 만 남기면 **모바일에서는 아무것도 ' +
+      '안 막힌 것**이 된다. 우리 트래픽 대부분이 모바일이라 그 상태는 기능이 없는 것과 같은데, ' +
+      'PC 에서 테스트하면 멀쩡해 보인다.',
+  },
+  {
+    name: '홈 섹션 API 가 다시 엣지 캐시를 안 탄다',
+    file: 'src/features/sections/api/sections.routes.ts',
+    find: "sectionsRoutes.get('/', edgeCache(120), async (c) => {",
+    replace: "sectionsRoutes.get('/', async (c) => {",
+    test: 'src/tests/unit/home-first-paint.test.ts',
+    why:
+      '2026-08-19 실측: `cf-cache-status: DYNAMIC` · 응답 0.6~1.2s — 미들웨어가 아예 안 붙어 있었다. ' +
+      '그래서 홈에서 "지금 인기 이용권"만 늦게 끼어들었다(동네딜은 SSR 0-RTT). ' +
+      '⚠️ 소스 주석은 "on top of edge cache" 라고 적혀 있었다 — **주석을 믿으면 다시 놓친다.**',
+  },
+  {
+    name: '히어로 사진이 다시 lazy 가 된다',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: 'loading="eager"',
+    replace: 'loading="lazy"',
+    test: 'src/tests/unit/home-first-paint.test.ts',
+    why:
+      '히어로 사진은 첫 화면 최상단 = 사실상 LCP 요소다. lazy 로 두면 다른 자원을 다 받은 뒤에야 ' +
+      '시작해 늦게 나타난다(대표 신고). 예전 가드가 오히려 lazy 를 **요구**하고 있었으므로, ' +
+      '근거를 모르면 "원래대로" 되돌리기 쉬운 자리다.',
+  },
+  {
+    name: '모바일 메인이 지도로 되돌아간다',
+    file: 'src/pages/pc-home/HomeRoute.tsx',
+    find: '<MobileHomePage />',
+    replace: '<RestaurantMapPage home mode="map" />',
+    test: 'src/tests/unit/mobile-home.test.ts',
+    why:
+      '2026-08-19 대표 확정(그루폰 모바일 홈 시안) — 모바일 메인은 딜 피드다. 2026-07-15 의 ' +
+      '"홈=지도" 결정을 대체한 것이라, 옛 결정을 근거로 되돌리기 쉬운 자리다.',
+  },
+  {
+    name: '모바일 홈에서 지도로 가는 유일한 통로가 사라진다',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: 'to="/map"',
+    replace: 'to="/"',
+    test: 'src/tests/unit/mobile-home.test.ts',
+    why:
+      '홈이 지도였으므로 이 배너가 없으면 사용자는 지도를 찾을 방법이 없다 — 하단 탭에도 지도가 없다 ' +
+      '(대표 확정 "안 넣기 — 상단 배너만"). 지워도 화면은 멀쩡해 보여 리뷰로는 안 걸린다.',
+  },
+  {
+    name: '/map 패널 칩이 다시 줄바꿈된다(카카오맵 한 줄이 깨진다)',
+    file: 'src/pages/restaurant-map/MapTopBar.tsx',
+    find: "panel ? 'grid grid-cols-7 gap-0.5'",
+    replace: "panel ? 'flex flex-wrap gap-1.5'",
+    test: 'src/tests/unit/groupon-detail-map.test.ts',
+    why:
+      '2026-08-19 대표 시안(카카오맵) — 같은 날 한 번 뒤집힌 자리다. 알약 칩은 400px 에 7개가 안 들어가 ' +
+      '2줄이 되는데, 화면은 "그냥 좀 큰 칩"으로 보여서 리뷰로는 안 걸린다.',
+  },
+  {
+    name: '/map 헤더에 딜 카테고리가 되살아난다(좌측 패널과 두 벌)',
+    file: 'src/components/main/DesktopTopNav.tsx',
+    find: '{!hideDealCats && DEAL_CATS.map',
+    replace: '{DEAL_CATS.map',
+    test: 'src/tests/unit/groupon-detail-map.test.ts',
+    why:
+      '헤더 칩과 패널 칩은 **다른 상태**를 쓴다 — 헤더는 홈의 `?category=` 로 이동시키고, 패널은 지도 ' +
+      '필터를 그 자리에서 바꾼다. 두 벌이 보이면 어느 쪽이 지금 걸린 필터인지 알 수 없다.',
+  },
+  {
+    name: '상세 갤러리가 썸네일의 죽은 사진을 감시하지 않는다',
+    file: 'src/pages/group-buy/DetailGallery.tsx',
+    find: 'for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, w: 600 })',
+    replace: '/* 감시 제거됨 */',
+    test: 'src/tests/unit/groupon-detail-map.test.ts',
+    why:
+      '실측(2026-08-19, 활성 50개·갤러리 226장): 앱 경로로도 죽는 7장 중 **6장이 커버가 아닌 갤러리 사진**. ' +
+      '사진을 CSS background-image 로 그려서 **오류 이벤트가 없고**, 실패하면 그냥 회색 칸이 된다 — ' +
+      '에러도 로그도 없어 대표가 말해 주기 전엔 아무도 모른다(실제로 그렇게 신고받았다).',
+  },
+  {
     name: '🏠 웹문서 레인에 홀짝 시각 게이트가 붙는다(회차 절반 소멸)',
     file: 'src/worker-ads/lane-alarm-runners.ts',
     find: "      if (env.ADS_WEBKR_LANE_DISABLED === 'true') return { skipped: 'gate_off' }",

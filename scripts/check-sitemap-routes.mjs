@@ -80,7 +80,40 @@ const sitemap = readFileSync(SITEMAP, 'utf8')
 const code = sitemap.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n')
 
 const robots = existsSync('public/robots.txt') ? readFileSync('public/robots.txt', 'utf8') : ''
-const disallow = [...robots.matchAll(/^Disallow:\s*(\S+)/gm)].map((m) => m[1].replace(/\*$/, ''))
+
+/**
+ * robots.txt 의 **`User-agent: *` 그룹**의 Disallow 만 모은다.
+ *
+ * ⚠️ 2026-08-22 수리: 예전엔 파일 전체의 `Disallow:` 를 무차별로 긁었다. 그때는 그룹이 하나뿐이라
+ *    맞았지만, 수확 봇 차단 그룹(`User-agent: GPTBot` … `Disallow: /`)이 생기자 **모든 URL 이
+ *    "robots 가 막는다"로 잡혔다** — 사이트맵 전체가 위반으로 뜨는 오탐이다.
+ *    일반 크롤러(Googlebot·Yeti)는 자기 그룹이 없으면 `*` 그룹만 따르는 것이 robots 규약이고,
+ *    사이트맵 모순 판정도 그 기준이어야 한다.
+ * ⚠️ 이 함수를 다시 "전체 긁기"로 되돌리면 조용히 **전부 위반**이 되어, 실제 모순이 소음에 묻힌다.
+ */
+function starGroupDisallows(txt) {
+  const out = []
+  let inStar = false
+  let sawAgentInBlock = false
+  for (const rawLine of txt.split('\n')) {
+    const line = rawLine.trim()
+    if (!line || line.startsWith('#')) continue
+    const ua = line.match(/^User-agent:\s*(\S+)/i)
+    if (ua) {
+      // 연속된 User-agent 줄은 같은 그룹을 공유한다(하나라도 '*' 면 그 그룹이 '*' 를 포함).
+      if (!sawAgentInBlock) inStar = false
+      sawAgentInBlock = true
+      if (ua[1] === '*') inStar = true
+      continue
+    }
+    sawAgentInBlock = false
+    if (!inStar) continue
+    const d = line.match(/^Disallow:\s*(\S+)/i)
+    if (d) out.push(d[1].replace(/\*$/, ''))
+  }
+  return out
+}
+const disallow = starGroupDisallows(robots)
 
 const violations = []
 let checked = 0

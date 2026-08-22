@@ -11,7 +11,12 @@ import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
  * 🚦 **트래픽 보호가 1원칙** (로딩 최적화 잠금의 정신):
  *   - 한 화면에 카드가 50개다. 갤러리를 전부 미리 받으면 트래픽이 5배가 된다.
  *   - 그래서 **커버(0번)만 즉시 로드**하고, 나머지는 *사용자가 실제로 넘긴 장면*만 `<img>` 로 만든다
- *     (`seen` 집합). hover 만으로는 아무것도 더 받지 않는다 — 화살표를 눌러야 받는다.
+ *     (`seen` 집합).
+ *   - 🕐 **다만 딱 한 장은 미리 받는다** (2026-08-19 대표 신고 — "화면이 너무 늦게 떠 다른 사진으로
+ *     보려고 할 때"). 이전엔 화살표를 **누른 그 순간부터** 다운로드가 시작돼, 누른 뒤 빈 회색 칸을
+ *     쳐다보는 시간이 생겼다 — 트래픽 보호가 만든 체감 지연이다. ⇒ 마우스를 올렸을 때(=넘길
+ *     의사가 보일 때) **다음 1장만** 받아 둔다. 카드 50개가 아니라 **hover 한 카드에서 +1장**이라
+ *     첫 화면 트래픽은 그대로다. 연속으로 넘길 때를 위해 넘긴 뒤에도 그다음 1장을 미리 받는다.
  *   - 잠금 항목인 커버의 `loading`/`fetchPriority`/fade-in 은 호출부가 그대로 넘겨 유지한다.
  *
  * ⚠️ 이 컴포넌트는 `<Link>` **안**에 놓인다 → 화살표/도트는 반드시 `preventDefault + stopPropagation`.
@@ -111,6 +116,20 @@ function DealCardMedia({
     })
   }, [slides])
 
+  /**
+   * 🕐 다음 1장만 미리 받아 둔다 — "넘겼는데 빈 칸" 을 없애는 최소 비용.
+   * ⚠️ 전량 프리페치가 아니다. `alive` 기준 **바로 다음 한 장**만 `seen` 에 넣는다.
+   */
+  const prefetchNext = useCallback(() => {
+    setSeen((sv) => {
+      const list = slides.map((_, i) => i).filter((i) => !dead.has(i))
+      if (list.length < 2) return sv
+      const at = Math.max(0, list.indexOf(idx))
+      const next = list[(at + 1) % list.length]
+      return sv.has(next) ? sv : new Set(sv).add(next)
+    })
+  }, [slides, dead, idx])
+
   const go = useCallback((e: React.MouseEvent, delta: number) => {
     // <Link> 안이라 이걸 빼면 사진 넘기기가 페이지 이동이 된다.
     e.preventDefault()
@@ -120,7 +139,12 @@ function DealCardMedia({
       if (list.length === 0) return cur
       const at = Math.max(0, list.indexOf(dead.has(cur) ? (list[0] ?? cur) : cur))
       const next = list[(at + delta + list.length) % list.length]
-      setSeen((sv) => (sv.has(next) ? sv : new Set(sv).add(next)))
+      // 지금 갈 장면 + 같은 방향의 **그다음 한 장**(연속으로 넘겨도 빈 칸이 안 뜨게).
+      const after = list[(at + delta * 2 + list.length * 2) % list.length]
+      setSeen((sv) => {
+        if (sv.has(next) && sv.has(after)) return sv
+        const n = new Set(sv); n.add(next); n.add(after); return n
+      })
       return next
     })
   }, [slides, dead])
@@ -128,7 +152,11 @@ function DealCardMedia({
   const multi = alive.length > 1
 
   return (
-    <div className={`relative ${aspectClass} w-full overflow-hidden group/media ${className}`}>
+    <div
+      className={`relative ${aspectClass} w-full overflow-hidden group/media ${className}`}
+      onMouseEnter={prefetchNext}
+      onTouchStart={prefetchNext}
+    >
       {slides.length === 0 || alive.length === 0 ? (
         <div className="w-full h-full flex items-center justify-center">{fallback}</div>
       ) : (

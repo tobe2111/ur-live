@@ -84,20 +84,27 @@ export default function HomeHeroDefault({
   return (
     /* 📐 통합형 190px — 고정 높이가 아니라 최소 높이다. 카피가 길어지면 잘리는 대신 늘어난다
        (시안 작업 중 고정 높이로 카피가 잘리는 걸 실제로 겪었다). */
-    <section className="relative isolate overflow-hidden bg-[#1A2C42] min-h-[190px] flex">
+    <section className="relative bg-[#1A2C42] min-h-[190px] flex">
+      {/* 🪟 2026-08-19 (대표 신고 — "전국 버튼 클릭 시, 지역선택 탭이 가려져서 안보여"):
+          배경 레이어를 **이 래퍼 안으로** 넣고 `overflow-hidden` 을 여기에만 준다.
+          ⚠️ 이전엔 `<section>` 자체가 `overflow-hidden isolate` 였다. 사진 마스크·블룸이 히어로 밖으로
+             번지지 않게 하려던 것인데, 같은 속성이 **콘텐츠까지** 잘랐다 — 위치 드롭다운은 히어로
+             아래로 펼쳐지는 요소라 상단 몇 px 만 보이고 잘려 나갔다(`isolate` 는 z-index 를 이 안에
+             가둬서, z-10500 을 줘도 밖으로 못 나온다). 배경만 가두면 둘 다 성립한다. */}
+      <div className="absolute inset-0 overflow-hidden isolate pointer-events-none" aria-hidden="true">
       {/* 배경 — 잉크 위에 로즈 블룸 2개 + 빛줄기. 전부 CSS(용량 0 · 요청 0). */}
       <div
-        className="absolute -z-10 -inset-[18%] ur-hero-bloom-a"
+        className="absolute -inset-[18%] ur-hero-bloom-a"
         aria-hidden="true"
         style={{ background: 'radial-gradient(closest-side, rgba(224,82,107,0.55), transparent 72%)' }}
       />
       <div
-        className="absolute -z-10 -inset-[10%] ur-hero-bloom-b"
+        className="absolute -inset-[10%] ur-hero-bloom-b"
         aria-hidden="true"
         style={{ background: 'radial-gradient(closest-side, rgba(120,90,220,0.34), transparent 70%)' }}
       />
       <div
-        className="absolute -z-10 inset-y-0 w-1/3 ur-hero-sweep"
+        className="absolute inset-y-0 w-1/3 ur-hero-sweep"
         aria-hidden="true"
         style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent)' }}
       />
@@ -106,7 +113,7 @@ export default function HomeHeroDefault({
           `mask-image` 로 픽셀을 투명하게 깎아 색면이 그대로 비치게 한다 — 위에 반투명 막을
           덧대는 방식은 사진이 뿌옇게 죽는다. 세로 끝도 눌러 위아래 경계선을 없앤다. */}
       {hasMedia && (
-        <div className="hidden lg:block absolute inset-y-0 right-0 w-[54%] -z-10" aria-hidden="true"
+        <div className="hidden lg:block absolute inset-y-0 right-0 w-[54%]" aria-hidden="true"
           style={{
             WebkitMaskImage:
               'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 12%, #000 84%, transparent 100%)',
@@ -122,7 +129,11 @@ export default function HomeHeroDefault({
             <img
               src={cfImage(photoSrc, { width: 900, quality: 72 }) || photoSrc}
               alt=""
-              loading="lazy"
+              /* 🐢 2026-08-19 (대표 — "히어로에 있는 사진 이미지도 마찬가지고"): `lazy` 였다.
+                 히어로는 **첫 화면 최상단**이라 lazy 는 틀린 선택이다 — 브라우저가 다른 자원을
+                 다 받은 뒤에야 시작해서 늦게 나타났다. 이 사진은 사실상 LCP 요소다. */
+              loading="eager"
+              fetchPriority="high"
               decoding="async"
               className="w-full h-full object-cover"
             />
@@ -132,7 +143,7 @@ export default function HomeHeroDefault({
 
       {/* 좌측을 눌러 흰 글자가 어떤 순간에도 읽히게 — 블룸이 흐르며 밝아지는 구간이 있다. */}
       <div
-        className="absolute inset-0 -z-10"
+        className="absolute inset-0"
         aria-hidden="true"
         style={{
           background: hasMedia
@@ -142,10 +153,12 @@ export default function HomeHeroDefault({
       />
 
       {/* 🌗 히어로 → 아래 색면으로 이어지는 페이드. 경계선이 딱 떨어지면 '잘린 배너'로 보인다. */}
-      <div className="absolute inset-x-0 bottom-0 h-12 -z-10" aria-hidden="true"
+      <div className="absolute inset-x-0 bottom-0 h-12" aria-hidden="true"
         style={{ background: 'linear-gradient(180deg, transparent, #1A2C42)' }} />
 
-      <div className="relative w-full max-w-[1440px] mx-auto px-6 lg:px-8 py-6 flex flex-col justify-center">
+      </div>{/* ← 배경 래퍼 끝. 아래 콘텐츠는 잘리지 않는다(드롭다운이 히어로 밖으로 펼쳐진다). */}
+
+      <div className="relative z-10 w-full max-w-[1440px] mx-auto px-6 lg:px-8 py-6 flex flex-col justify-center">
         <h2 className="text-[26px] lg:text-[32px] font-black tracking-tight text-white leading-[1.16] [text-wrap:balance]">
           {content?.title || (
             <>{DEFAULT_TITLE_HEAD}<span className="text-brand">{DEFAULT_TITLE_ACCENT}</span>{DEFAULT_TITLE_TAIL}</>

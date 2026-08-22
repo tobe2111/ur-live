@@ -299,7 +299,10 @@
       "tip1": "Les images carrées (1:1) rendent le mieux",
       "tip2": "Placez les mots-clés au début du nom",
       "tip3": "Vous pouvez modifier à tout moment après l'enregistrement",
-      "cameraHint": "Sur mobile, vous pouvez prendre une photo ou choisir dans la galerie"
+      "cameraHint": "Sur mobile, vous pouvez prendre une photo ou choisir dans la galerie",
+      "storeName": "Nom du commerce",
+      "storeAddress": "Adresse du commerce",
+      "storePhone": "Téléphone du commerce"
     },
     "orders": "Commandes",
     "revenue": "Règlement Deal",

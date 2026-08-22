@@ -117,6 +117,15 @@ export default function DesktopTopNav() {
 
   // 🏷️ 딜 카테고리 활성 표시 — 홈에서 `?category=` 를 그대로 읽는다(상태 미러링 금지: 갈리면 어긋난다).
   const onHomeSurface = location.pathname === '/'
+  /**
+   * 🗺️ 2026-08-19 (대표 — "위에 똑같이 카테고리 버튼들이 있는데 그건 없애도 될듯"):
+   *   `/map` 은 **왼쪽 리스트 패널에 같은 카테고리 칩**을 갖는다(MapTopBar panel). 위·아래에 두 벌이면
+   *   어느 쪽이 지금 적용된 필터인지 화면상 알 수 없다 — 실제로 둘은 **다른 상태**를 쓴다
+   *   (헤더 칩은 홈의 `?category=` 로 **이동**시키고, 패널 칩은 지도 필터를 **그 자리에서** 바꾼다).
+   *   ⇒ 서비스 축(홈·교환권·동네딜·링크샵·블로그)은 남기고 **딜 카테고리만** 숨긴다.
+   *   서비스 축까지 지우면 /map 에서 다른 데로 갈 통로가 없어진다.
+   */
+  const hideDealCats = location.pathname === '/map'
   const activeDealCat = onHomeSurface
     ? (new URLSearchParams(location.search).get('category') || 'all')
     : ''
@@ -144,8 +153,13 @@ export default function DesktopTopNav() {
   if (hasOwnHeaderPc(location.pathname)) return null
   // 🖥️ 2026-07-19 (상단 공통화 후속 — 태블릿 이중 헤더 방지): 이 경로들은 <lg 에서 자체 모바일 헤더
   //   (sticky/fixed top-0)를 쓰므로 전역 네비는 lg+ 에서만(겹치면 이중 헤더/가림).
-  const LEGACY_OWN_HEADER = ['/vouchers', '/stays', '/group-buy', '/map']
-  if (!isLg && LEGACY_OWN_HEADER.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))) return null
+  // 🏠 2026-08-19 (대표 신고 — "현재 모바일에서 UI가 깨짐"): **홈(`/`)이 이 목록에 없었다.**
+  //   홈은 <lg 에서 지도 홈(RestaurantMapPage)이고 자체 헤더(MapTopBar)를 갖는데, 이 상단바는
+  //   `hidden md:block` 이라 **md~lg 구간**(태블릿·큰 폰 가로)에서 함께 떠 두 헤더가 겹쳤다
+  //   — 로고·검색·카테고리 2행 위에 지도 검색바와 칩이 포개져 글자가 서로 겹쳐 보였다.
+  //   헤더가 68px 2행으로 커지면서 눈에 띄게 됐을 뿐, 구멍 자체는 그 전부터 있었다.
+  const LEGACY_OWN_HEADER = ['/', '/vouchers', '/stays', '/group-buy', '/map']
+  if (!isLg && LEGACY_OWN_HEADER.some((p) => location.pathname === p || (p !== '/' && location.pathname.startsWith(p + '/')))) return null
 
   // 🖥️ 2026-07-15~16 (당근 스타일 PC): 풀너비 페이지(홈·마이 등, 앱 사이드바 없음)는 상단바가 로고+탭을
   //   항상 보이고(xl:hidden 해제) 사이드바용 좌패딩 대신 콘텐츠 폭(1600)에 정렬. 자체헤더 카탈로그(교환권/숙소)는
@@ -373,9 +387,11 @@ export default function DesktopTopNav() {
                 )
               })}
 
-              <span aria-hidden="true" className="shrink-0 w-px h-4 mx-2 bg-gray-200 dark:bg-[#2A3446]" />
+              {!hideDealCats && (
+                <span aria-hidden="true" className="shrink-0 w-px h-4 mx-2 bg-gray-200 dark:bg-[#2A3446]" />
+              )}
 
-              {DEAL_CATS.map(({ key, label, icon: Icon }) => {
+              {!hideDealCats && DEAL_CATS.map(({ key, label, icon: Icon }) => {
                 const active = onHomeSurface && activeDealCat === key
                 return (
                   <button

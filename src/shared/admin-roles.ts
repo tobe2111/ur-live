@@ -52,6 +52,11 @@ export function isSuperOnlyAdminPath(pathname: string): boolean {
  *    본인 토큰으로 본인 계정(user.id)만 변경하므로 도메인 격리와 무관하게 안전.
  */
 export function isSelfServiceAdminPath(pathname: string): boolean {
+  // ⭐ 2026-08-22: 본인 UI 개인설정(즐겨찾기 등)도 self-service — 읽기전용(viewer)이라도
+  //    자기 메뉴는 고정할 수 있어야 한다(권한이 아니라 취향이다).
+  //    ⚠️ 세그먼트 `me` 를 통째로 열지 않는다 — 그러면 앞으로 `/api/admin/me/*` 에 붙는
+  //       모든 라우트가 RBAC 를 조용히 우회한다. **`/me/prefs/` 만** 정확히 연다.
+  if (/^\/api\/admin\/me\/prefs\/[a-z0-9_]+$/i.test(String(pathname || ''))) return true;
   const seg = adminPathSegment(pathname);
   return seg === 'set-login-pin' || seg === '2fa';
 }
