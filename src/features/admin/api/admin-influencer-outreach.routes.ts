@@ -23,7 +23,7 @@ type OutreachStatus = (typeof STATUSES)[number]
 // ── GET / — 접수 목록 ────────────────────────────────────────────────────────────────
 app.get('/', async (c) => {
   try {
-    const rows = await c.env.DB.prepare(
+    const rows = await adsLeadsDb(c.env).prepare(
       `SELECT o.id, o.seller_id, s.business_name AS seller_name, o.product_id, p.name AS product_name,
               o.target_count, o.commission_pct, o.product_support, o.channels, o.period_days,
               o.message, o.status, o.quoted_fee_krw, o.admin_note, o.created_at
@@ -55,7 +55,7 @@ app.get('/:id', async (c) => {
     ).bind(id).first<Record<string, unknown>>()
     if (!req) return c.json({ success: false, error: '제안을 찾을 수 없습니다' }, 404)
 
-    await ensureOfferInvitesTable(c.env.DB)
+    await ensureOfferInvitesTable(db)
     // 접수 시 토큰 생성이 실패했던 건 여기서 보충 생성(멱등 — 없는 리드만).
     const leadIds: number[] = (() => { try { return JSON.parse(String(req.target_lead_ids || '[]')) } catch { return [] } })()
     const invRows = await db.prepare(
@@ -111,7 +111,7 @@ app.post('/:id/status', async (c) => {
       return c.json({ success: false, error: 'status 는 approved/sent/rejected 중 하나' }, 400)
     }
     const note = typeof b.admin_note === 'string' ? b.admin_note.slice(0, 500) : null
-    const r = await c.env.DB.prepare(
+    const r = await adsLeadsDb(c.env).prepare(
       `UPDATE influencer_outreach_requests SET status = ?, admin_note = COALESCE(?, admin_note), updated_at = datetime('now') WHERE id = ?`
     ).bind(status, note, id).run()
     if (!r.meta?.changes) return c.json({ success: false, error: '제안을 찾을 수 없습니다' }, 404)
