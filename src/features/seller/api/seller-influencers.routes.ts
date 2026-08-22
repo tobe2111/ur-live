@@ -12,12 +12,15 @@
  *      대표 명시 지시이고, 직접 매장도 발송을 유어딜이 대행하므로 v1 에서 연락처가 필요 없다.
  *      (연락처 열람 판매는 과금 배선과 함께 별도 결정 — design doc §6)
  *
- * 데이터: ADS_DB(유어애즈 전용 D1, wrangler.toml 바인딩) 의 ad_influencer_leads — **읽기 전용**.
- *   ADS_DB 미바인딩 환경(로컬 등)은 빈 목록 + configured:false (fail-soft).
+ * 데이터: ad_influencer_leads — **읽기 전용**. DB 핸들은 반드시 `adsLeadsDb(c.env)` 라우터로
+ *   얻는다(ads-leads-db.test.ts R1 강제) — 리드 테이블 SQL 은 ADS_DB, 나머지(platform_settings·
+ *   products·outreach)는 메인 DB 로 문장 단위 자동 라우팅. ADS_DB 미바인딩이면 메인 DB 그대로
+ *   (이사 전 데이터가 원래 거기 있으므로 올바른 폴백), 테이블 자체가 없으면 catch → 빈 목록.
  */
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 import type { Env } from '@/worker/types/env'
+import { adsLeadsDb } from '@/shared/ads/leads-db'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
@@ -40,10 +43,11 @@ const OUTREACH_CHANNELS = ['instagram', 'youtube', 'tiktok', 'blog', 'naver_clip
 type OutreachChannel = (typeof OUTREACH_CHANNELS)[number]
 
 // ── 제안 테이블 (메인 DB — repair-schema 에도 동일 등록) ────────────────────────────
-const _ensured = new WeakSet<object>()
+// adsLeadsDb 라우터는 호출마다 새 객체라 WeakSet 메모가 안 먹는다 → isolate 단위 boolean.
+let _ensuredOnce = false
 async function ensureOutreachTable(DB: D1Database) {
-  if (_ensured.has(DB)) return
-  _ensured.add(DB)
+  if (_ensuredOnce) return
+  _ensuredOnce = true
   try {
     await DB.prepare(`CREATE TABLE IF NOT EXISTS influencer_outreach_requests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,8 +73,7 @@ async function ensureOutreachTable(DB: D1Database) {
 // ── GET /list — 인플루언서 탐색 (연락처 무반환) ─────────────────────────────────────
 app.get('/list', async (c) => {
   try {
-    const ads = c.env.ADS_DB
-    if (!ads) return c.json({ success: true, data: [], total: 0, configured: false })
+    const db = adsLeadsDb(c.env)
 
     const q = c.req.query()
     const page = Math.max(1, intParam(q.page, 1))
@@ -98,7 +101,7 @@ app.get('/list', async (c) => {
     const orderBy = SORTS[String(q.sort || '')] || 'subscriber_count DESC'
 
     // 🔒 연락처 컬럼(email/instagram/links)은 SELECT 목록에 아예 없다 — 실수로도 안 나간다.
-    const rows = await ads.prepare(`
+    const rows = await db.prepare(`
       SELECT id, platform, handle, name, category, region, thumbnail,
              subscriber_count, video_count, recent_avg_views, recent_avg_comments, last_post_at
         FROM ad_influencer_leads
@@ -107,11 +110,11 @@ app.get('/list', async (c) => {
        LIMIT ? OFFSET ?
     `).bind(...binds, limit, offset).all().catch(() => ({ results: [] as never[] }))
 
-    const cnt = await ads.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${where.join(' AND ')}`)
+    const cnt = await db.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${where.join(' AND ')}`)
       .bind(...binds).first<{ n: number }>().catch(() => null)
 
     // 컨택 단가(표시용) — 청구 배선은 머니 경로라 별도(기본 0 = 미청구 안내)
-    const fee = await c.env.DB.prepare(`SELECT value FROM platform_settings WHERE key = 'influencer_contact_fee_krw'`)
+    const fee = await db.prepare(`SELECT value FROM platform_settings WHERE key = 'influencer_contact_fee_krw'`)
       .first<{ value: string }>().catch(() => null)
 
     return c.json({
@@ -127,9 +130,8 @@ app.get('/list', async (c) => {
 // ── GET /categories — 필터용 카테고리 분포 ─────────────────────────────────────────
 app.get('/categories', async (c) => {
   try {
-    const ads = c.env.ADS_DB
-    if (!ads) return c.json({ success: true, data: [] })
-    const rows = await ads.prepare(`
+    const db = adsLeadsDb(c.env)
+    const rows = await db.prepare(`
       SELECT category, COUNT(*) AS n FROM ad_influencer_leads
        WHERE category IS NOT NULL AND category != '' AND COALESCE(opted_out,0)=0 AND COALESCE(is_brand,0)=0
        GROUP BY category ORDER BY n DESC LIMIT 30
@@ -144,7 +146,8 @@ app.get('/categories', async (c) => {
 app.post('/outreach', rateLimit({ action: 'influencer_outreach', max: 10, windowSec: 3600 }), async (c) => {
   try {
     const sellerId = sid(c as Ctx)
-    await ensureOutreachTable(c.env.DB)
+    const db = adsLeadsDb(c.env)
+    await ensureOutreachTable(db)
     const b = await c.req.json<{
       target_lead_ids?: unknown; product_id?: number
       commission_pct?: number; product_support?: string
@@ -173,16 +176,16 @@ app.post('/outreach', rateLimit({ action: 'influencer_outreach', max: 10, window
     const productId = Number.isFinite(Number(b.product_id)) && Number(b.product_id) > 0 ? Number(b.product_id) : null
     if (productId) {
       // 자기 매장 이용권만 걸 수 있다 (IDOR)
-      const own = await c.env.DB.prepare('SELECT id FROM products WHERE id = ? AND seller_id = ? LIMIT 1')
+      const own = await db.prepare('SELECT id FROM products WHERE id = ? AND seller_id = ? LIMIT 1')
         .bind(productId, sellerId).first().catch(() => null)
       if (!own) return c.json({ success: false, error: '내 매장의 이용권만 제안에 담을 수 있습니다' }, 403)
     }
 
-    const fee = await c.env.DB.prepare(`SELECT value FROM platform_settings WHERE key = 'influencer_contact_fee_krw'`)
+    const fee = await db.prepare(`SELECT value FROM platform_settings WHERE key = 'influencer_contact_fee_krw'`)
       .first<{ value: string }>().catch(() => null)
     const unitFee = Number(fee?.value) || 0
 
-    const ins = await c.env.DB.prepare(`
+    const ins = await db.prepare(`
       INSERT INTO influencer_outreach_requests
         (seller_id, product_id, target_lead_ids, target_count, commission_pct, product_support, channels, period_days, message, status, quoted_fee_krw)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?)
@@ -190,7 +193,7 @@ app.post('/outreach', rateLimit({ action: 'influencer_outreach', max: 10, window
 
     // 유어딜 운영이 받아 발송한다 — 어드민 벨 (fail-soft)
     await createDashboardNotification(
-      c.env.DB, 'admin', null, 'influencer_outreach',
+      db, 'admin', null, 'influencer_outreach',
       `📣 인플루언서 제안 요청 ${ids.length}명`,
       `셀러 #${sellerId} — 커미션 ${pct}% · ${support === 'free' ? '무상 제공' : '유상'} · ${channels.join(', ')}${unitFee ? ` · 예상 비용 ${(unitFee * ids.length).toLocaleString('ko-KR')}원` : ''}`,
       '/admin/influencer-outreach',
@@ -215,8 +218,9 @@ app.post('/outreach', rateLimit({ action: 'influencer_outreach', max: 10, window
 app.get('/outreach', async (c) => {
   try {
     const sellerId = sid(c as Ctx)
-    await ensureOutreachTable(c.env.DB)
-    const rows = await c.env.DB.prepare(`
+    const db = adsLeadsDb(c.env)
+    await ensureOutreachTable(db)
+    const rows = await db.prepare(`
       SELECT id, product_id, target_count, commission_pct, product_support, channels, period_days,
              status, quoted_fee_krw, created_at
         FROM influencer_outreach_requests WHERE seller_id = ? ORDER BY created_at DESC LIMIT 50
