@@ -26,20 +26,21 @@ export type AdminPrefKey = (typeof ADMIN_PREF_KEYS)[number];
 /** 값 상한 — 즐겨찾기 경로 수십 개면 충분하다. 넘으면 저장 거부(무한 성장 차단). */
 export const ADMIN_PREF_MAX_BYTES = 4000;
 
+/** 테이블 DDL — repair-schema 와 **같은 문자열**을 쓴다(두 벌이면 갈린다). */
+export const ADMIN_PREFS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS admin_prefs (
+  admin_id INTEGER NOT NULL,
+  pref_key TEXT NOT NULL,
+  pref_value TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (admin_id, pref_key)
+)`;
+
 const ensured = new WeakSet<D1Database>();
 
 /** per-request DDL 금지(머니 룰 부수 규칙) — 인스턴스당 1회만. */
 export async function ensureAdminPrefs(DB: D1Database): Promise<void> {
   if (ensured.has(DB)) return;
-  await DB.prepare(
-    `CREATE TABLE IF NOT EXISTS admin_prefs (
-      admin_id INTEGER NOT NULL,
-      pref_key TEXT NOT NULL,
-      pref_value TEXT NOT NULL,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (admin_id, pref_key)
-    )`,
-  ).run();
+  await DB.prepare(ADMIN_PREFS_TABLE_SQL).run();
   ensured.add(DB);
 }
 

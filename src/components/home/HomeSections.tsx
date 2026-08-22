@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { resolveConsumerAlias } from '@/shared/seo/consumer-redirects'
@@ -56,6 +56,24 @@ interface HomeSection {
  *   남는다 — 배너 컴포넌트 자신이 "없으면 null" 이라 결국 아무것도 안 그려진다.
  */
 export default function HomeSections({ midBanner }: { midBanner?: React.ReactNode }) {
+  /**
+   * 🏠 2026-08-22 (대표 "인기 이용권이 먼저 안 뜨고 가까운 동네딜이 먼저 보여"): 워커가 홈 HTML 에
+   * `__SSR_INITIAL_SECTIONS__` 를 함께 실어 보낸다(`worker/index.ts` SECTIONS 보조 슬롯).
+   * **첫 render 에서 동기로** 읽어야 의미가 있다 — useEffect 로 읽으면 이미 한 프레임 늦어
+   * 스켈레톤이 한 번 깜빡이고, 그게 대표가 본 "늦게 끼어든다"의 실체다.
+   * 시드가 없으면(다른 표면·콜드 타임아웃) undefined → 평소대로 fetch. 회귀 0.
+   */
+  const ssrSections = useMemo<HomeSection[] | undefined>(() => {
+    try {
+      const el = document.getElementById('__SSR_INITIAL_SECTIONS__')
+      if (!el?.textContent) return undefined
+      const r = JSON.parse(el.textContent) as { success?: boolean; data?: HomeSection[] }
+      return r?.success && Array.isArray(r.data) ? r.data : undefined
+    } catch {
+      return undefined // 깨진 시드 하나가 홈을 못 열게 하면 안 된다
+    }
+  }, [])
+
   const { data: sections = [], isLoading } = useApiQuery<HomeSection[]>(
     ['home', 'sections'],
     '/api/sections',
@@ -65,6 +83,10 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
         return r?.success && Array.isArray(r.data) ? r.data : []
       },
       staleTime: 5 * 60_000,
+      initialData: ssrSections,
+      // ⚠️ initialData 는 기본적으로 "신선함"으로 간주된다 — 그대로 두면 시드가 낡아도 갱신이 안 된다.
+      //   (가드: check-query-initialdata) 마운트마다 백그라운드 갱신시켜 화면은 즉시, 값은 최신으로.
+      refetchOnMount: 'always',
     },
   )
 

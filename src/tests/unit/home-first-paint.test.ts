@@ -46,3 +46,48 @@ describe('홈 첫 화면 — 섹션이 늦게 끼어들지 않는다', () => {
     expect(s).not.toMatch(/loading="lazy"/)
   })
 })
+
+describe('홈 섹션 0-RTT — 피드와 섹션이 같은 화면이면 시드도 같이 와야 한다', () => {
+  const read = (p: string) => readFileSync(p, 'utf-8')
+  const WORKER = 'src/worker/index.ts'
+  const SECTIONS = 'src/components/home/HomeSections.tsx'
+
+  it('워커가 홈에서 SECTIONS 보조 슬롯을 잡는다', () => {
+    const lines = read(WORKER).split('\n').map((l) => l.trim()).filter((l) => !l.startsWith('//'))
+    expect(
+      lines.some((l) => l.includes("ssrExtra = { slot: 'SECTIONS'") && l.includes("'/api/sections'")),
+      '홈 보조 슬롯이 사라졌다 — 섹션만 브라우저가 따로 받아 늦게 끼어든다',
+    ).toBe(true)
+  })
+
+  it('두 시드를 병렬로 받는다 (직렬이면 그만큼 TTFB 가 늘어난다)', () => {
+    const s = read(WORKER)
+    expect(s).toMatch(/Promise\.all\(\[\s*\n?\s*fetchSsrPayload\(ssrTarget/)
+  })
+
+  it('보조 시드는 fail-soft — 없으면 주입만 건너뛴다', () => {
+    const s = read(WORKER)
+    expect(s).toContain('if (ssrExtraPayload) {')
+    expect(s).toContain('__SSR_INITIAL_SECTIONS__')
+  })
+
+  it('클라가 첫 render 에서 동기로 읽는다 (useEffect 면 한 프레임 늦다)', () => {
+    const s = read(SECTIONS)
+    expect(s).toMatch(/useMemo<HomeSection\[\] \| undefined>/)
+    expect(s).toContain("getElementById('__SSR_INITIAL_SECTIONS__')")
+    expect(s).toContain('initialData: ssrSections')
+    // initialData 는 기본이 "신선함" — 보호가 없으면 시드가 낡아도 갱신이 안 된다.
+    expect(s).toContain("refetchOnMount: 'always'")
+  })
+
+  it('깨진 시드가 홈을 못 열게 하지 않는다', () => {
+    const s = read(SECTIONS)
+    const seed = s.slice(s.indexOf('const ssrSections'), s.indexOf('const { data: sections'))
+    expect(seed).toContain('catch')
+  })
+
+  it('/api/sections 가 예열·엣지캐시와 한 세트다 (self-fetch 가 콜드 D1 을 타면 의미 없다)', () => {
+    expect(read('src/worker/cron/cache-prewarm.ts')).toContain("'/api/sections'")
+    expect(read('src/features/sections/api/sections.routes.ts')).toContain("sectionsRoutes.get('/', edgeCache(120)")
+  })
+})

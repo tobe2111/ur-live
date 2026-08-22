@@ -22,19 +22,9 @@ import { enrichSellerOrderRows } from '../../../worker/utils/order-list-enrich';
 import { rateLimit } from '../../../worker/middleware/rate-limit';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
 import { swallow } from '@/worker/utils/swallow';
-import { VOUCHER_CATEGORY_SET, normalizeCategory, isVoucherCategory } from '@/shared/constants/voucher-categories';
+import { VOUCHER_CATEGORY_SET, canonicalCategory, isVoucherCategory } from '@/shared/constants/voucher-categories';
+import { writeDigitalProductFields, writeVoucherProductFields } from './product-field-writers';
 
-/**
- * 🐛 2026-08-22: 셀러 이용권 등록 화면은 `health_voucher`·`pet_voucher`·`activity_voucher` 도
- * 고르게 해 주는데, 이 값들은 **레거시**라 소비자 피드 필터(`category IN VOUCHER_CATEGORIES`)와
- * 공구 활성화 판정(`VOUCHER_CATEGORY_SET.has`)에 둘 다 안 걸린다. 결과: 셀러는 등록에 성공했다는
- * 화면을 보는데 **유어딜 어디에도 안 뜬다**(에러 0). 저장 시점에 정규화해서 그 갭 자체를 없앤다.
- * 이용권이 아닌 카테고리(fashion 등)는 그대로 통과시킨다.
- */
-function canonicalCategory(raw: string | null | undefined): string | null {
-  if (!raw) return raw ?? null;
-  return normalizeCategory(raw) ?? raw;
-}
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility';
 import { intParam } from '@/shared/pagination'
@@ -821,8 +811,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
     }>();
 
     const { name, description, price, stock, image_url } = body;
-    // 레거시 이용권 카테고리를 저장 전에 정규화 — 안 하면 등록은 되는데 피드에 안 뜬다.
-    const category = canonicalCategory(body.category) ?? undefined;
+    const category = canonicalCategory(body.category) ?? undefined; // 레거시 → canonical (안 하면 피드에 안 뜬다)
     if (!name || price === undefined) {
       return c.json({ success: false, error: '상품명과 가격은 필수입니다.' }, 400);
     }
@@ -927,8 +916,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
       } catch { /* meta 저장 실패 — 상품 생성은 유지 (fail-soft) */ }
     }
 
-    // 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당" — 셀러가 이용권 등록 시 설정):
-    //   product_supply_meta.max_per_person. 0/미설정/범위밖 = 무제한(미저장). 1~99 만 저장.
+    // 🎯 1인당 결제 한도(2026-07-01) — product_supply_meta.max_per_person.
+    //   0/미설정/범위밖 = 무제한(미저장). 1~99 만 저장. 강제는 group-buy.routes `/join`.
     {
       const mpp = Number((body as { max_per_person?: number | string }).max_per_person);
       if (Number.isFinite(mpp) && mpp >= 1 && mpp <= 99) {
@@ -949,31 +938,11 @@ sellerOrdersRoutes.post('/products', async (c) => {
       }
     }
 
-    // 🛡️ 2026-05-05: 디지털 상품 필드 저장 (UPDATE — migration 0243 후 컬럼 존재)
-    if (body.product_kind && body.product_kind !== 'physical') {
-      const digitalFields: Array<['product_kind' | 'delivery_type' | 'content_url' | 'content_format' | 'access_duration_days' | 'preview_url', unknown]> = [
-        ['product_kind', body.product_kind],
-        ['delivery_type', body.delivery_type || 'instant_url'],
-        ['content_url', body.content_url || null],
-        ['content_format', body.content_format || null],
-        ['access_duration_days', body.access_duration_days ?? null],
-        ['preview_url', body.preview_url || null],
-      ];
-      for (const [field, val] of digitalFields) {
-        try { await db.prepare(`UPDATE products SET ${field} = ? WHERE id = ?`).bind(val, productId).run() } catch { /* column may not exist */ }
-      }
-    }
+    // 🛡️ 디지털 상품 필드 저장 — 컬럼별 개별 UPDATE(마이그레이션 미실행 환경 대비). SSOT: product-field-writers.
+    await writeDigitalProductFields(db, Number(productId), body);
 
-    // 손으로 적은 6-way 목록이었다 — 카테고리가 하나 늘 때마다 여기서 갈린다(그리고 실제로 갈렸다).
-    // 정규화 후이므로 SSOT 판정 하나면 충분하다.
-    if (isVoucherCategory(category)) {
-      const mealFields = ['restaurant_name', 'restaurant_address', 'restaurant_phone', 'voucher_terms', 'voucher_expiry', 'group_buy_target', 'group_buy_deadline', 'store_verify_pin', 'group_buy_tiers', 'restaurant_lat', 'restaurant_lng', 'external_booking_url', 'region_si', 'region_gu'] as const;
-      for (const field of mealFields) {
-        const val = body[field];
-        if (val !== undefined && val !== null && val !== '') {
-          try { await db.prepare(`UPDATE products SET ${field} = ? WHERE id = ?`).bind(val, productId).run() } catch { /* column may not exist */ }
-        }
-      }
+    if (isVoucherCategory(category)) { // 손으로 적던 6-way 목록 → SSOT 판정(정규화 후라 충분)
+      await writeVoucherProductFields(db, Number(productId), body as Record<string, unknown>);
 
       // 🧭 2026-07-02 (대표 승인 "가장 이상적으로"): 주소만 있고 좌표 없이 등록되면 즉시 지오코딩
       //   (waitUntil, fail-soft) — 일일 cron 전의 갭 동안 방문자마다 클라 지오코딩 폴백이 발동하던

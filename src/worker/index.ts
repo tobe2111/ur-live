@@ -169,6 +169,7 @@ import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
 import { resolveConsumerAlias } from '../shared/seo/consumer-redirects';
 import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity, resolveRegionSeo } from './utils/surface-ssr-meta';
+import { fetchSsrPayload, applySsrDiagHeaders, type SsrTarget } from './utils/ssr-payload';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
@@ -576,8 +577,11 @@ app.use('*', async (c, next) => {
     //   - main: /api/group-buy/products?status=active&category=all
     //   - detail (/group-buy/:id): /api/group-buy/products/:id
     //   - seller (/profile/:username): /api/sellers/:username/public
-    type SsrTarget = { slot: string; path: string };
+
     let ssrTarget: SsrTarget | null = null;
+    // 홈 전용 보조 시드(섹션). 다른 표면은 null.
+    let ssrExtra: SsrTarget | null = null;
+    let ssrExtraPayload: string | null = null;
 
     if (isMainPage) {
       // 🛡️ 2026-06-18 [UNLOCK_LOADING] (대표 결정 — 홈 = 동네딜 중심): 홈 SSR 슬롯을 교환권(deal_only) →
@@ -585,6 +589,13 @@ app.use('*', async (c, next) => {
       //   consume → 0-RTT. 이 path 는 cache-prewarm HOT_PATHS 의 '/api/group-buy/products?status=active&category=all'
       //   와 1:1 일치(이미 prewarm 됨). 교환권은 홈에서 강등 → /vouchers(자체 __SSR_INITIAL_VOUCHERS__).
       ssrTarget = { slot: 'MAIN', path: '/api/group-buy/products?status=active&category=all' };
+      // 🏠 2026-08-22 (대표 "인기 이용권이 먼저 안 뜨고 가까운 동네딜이 먼저 보여"): 홈 화면은
+      //   피드(MAIN)와 섹션(SECTIONS, '지금 인기 이용권'·'주말에 떠나는 숙소')을 **함께** 그린다.
+      //   그런데 시드는 피드에만 있어서 섹션만 브라우저가 따로 받아 왔다(실측 0.6~1.2s).
+      //   같은 화면인데 한쪽만 늦게 끼어드니 "순서가 뒤바뀐 것"으로 보인다.
+      //   ⚠️ `/api/sections` 는 cache-prewarm HOT_PATHS 에 있고 `edgeCache(120)` 도 붙어 있어야
+      //      이 self-fetch 가 콜드 D1 을 안 탄다 — 셋은 한 세트다(하나 빠지면 느려진다).
+      ssrExtra = { slot: 'SECTIONS', path: '/api/sections' };
     } else if (url.pathname === '/vouchers' && !url.search) {
       // 🛡️ 2026-05-27: VouchersPage first-paint inject (no query — default 페이지).
       //   클라이언트가 categoryParam/brand 변경 시 새 fetch — SSR 첫 진입만 효과.
@@ -657,88 +668,28 @@ app.use('*', async (c, next) => {
     }
 
     let ssrPayload: string | null = null;
+    const origin0 = new URL(c.req.url).origin;
     let ssrStatus = 'skip';
     // 🛡️ 2026-05-27 (production 측정): Server-Timing 헤더 — Chrome DevTools 에서 직접 확인.
     //   edge-read / self-fetch 각각 시간 기록 → 어디서 시간 쓰는지 즉시 파악.
     const timings: string[] = [];
+    // 🌍 SSR 페이로드 획득 — 3계층(엣지 → 전역 KV → self-fetch)은 `utils/ssr-payload.ts` SSOT.
+    //   ⚠️ 잠긴 로딩 최적화다. 계층 순서·슬롯별 타임아웃을 바꾸면 콜드 콜로 TTFB 가 회귀한다.
+    // 🏠 2026-08-22 (대표 "인기 이용권이 먼저 안 뜨고 가까운 동네딜이 먼저 보여"): 홈은 시드가
+    //   **두 개** 필요하다 — 피드(MAIN)와 섹션(SECTIONS). 한쪽만 0-RTT 면 같은 화면에서 한쪽만
+    //   늦게 끼어들어 "순서가 뒤바뀐 것"처럼 보인다. 둘을 **병렬**로 받는다(직렬이면 그만큼 느려진다).
     if (ssrTarget) {
-      // 🛡️ 2026-05-27 (비용 최적화 + 속도): edge cache (`caches.default`) 직접 read.
-      //   기존: KV second-layer read (~50ms) → KV write 한도 초과 → 비용 발생.
-      //   변경: edge cache 직접 read (~5ms). KV 의존성 0, 비용 $0, 속도 더 빠름.
-      //   miss 시 self-fetch fallback (publicCache middleware 가 edge cache 자동 write).
-      const edgeStart = Date.now();
-      try {
-        const origin = new URL(c.req.url).origin;
-        const cacheKey = new Request(`${origin}${ssrTarget.path}`, { method: 'GET' });
-        // @ts-expect-error — Cloudflare Workers 전역 caches
-        const cached = await caches.default.match(cacheKey);
-        if (cached && cached.status >= 200 && cached.status < 300) {
-          const body = await cached.text();
-          ssrPayload = body.replace(/<\/script/gi, '<\\/script');
-          ssrStatus = 'edge-hit';
-        }
-      } catch { /* edge cache unavailable */ }
-      timings.push(`edge;dur=${Date.now() - edgeStart}`);
-
-      // 🌍 2026-07-12 [UNLOCK_LOADING] (대표 "계속, 이상적으로" — 콜드 콜로 TTFB 마감): edge(콜로별) miss 여도
-      //   self-fetch(콜드 D1, 0.5~1.5s 를 응답 전에 대기) 전에 **전역 KV**(cron 이 15분 표본화로 기록,
-      //   cache-prewarm.ts SSR_KV_PATHS)를 먼저 본다 — 어느 콜로든 ~수십 ms 에 페이로드 확보 → TTFB 급감.
-      //   CACHE_KV 미바인딩/미기록 키(상세 등 롱테일)는 miss → 기존 self-fetch 로 폴백(현행 100% 동일).
-      //   잠긴 caches.default read·self-fetch 타임아웃·주입 로직 전부 불변 — 계층 1개 additive.
-      if (!ssrPayload && c.env.CACHE_KV) {
-        const kvStart = Date.now();
-        try {
-          const raw = await c.env.CACHE_KV.get(`ssr:${ssrTarget.path}`, 'text');
-          if (raw && raw.startsWith('{')) {
-            ssrPayload = raw.replace(/<\/script/gi, '<\\/script');
-            ssrStatus = 'kv-hit';
-          }
-        } catch { /* KV 불가 — self-fetch 폴백 */ }
-        timings.push(`kv;dur=${Date.now() - kvStart}`);
-      }
-
-      if (!ssrPayload) {
-        // 🛡️ 2026-05-27 v2: timeout 증가 — cold start 시 fresh inject 보장.
-        //   이전: MAIN 150ms / DETAIL 250ms — cold 시 self-fetch-timeout → 클라가 직접 fetch → 10초+ timeout
-        //   변경: MAIN 1500ms / DETAIL/SELLER 2000ms — wait 후 fresh data inject 보장.
-        //   trade-off: cold 첫 사용자 1-2초 wait. warm 사용자 (99%+) 영향 0 (edge-hit 가 먼저 응답).
-        // 🏭 2026-06-19 [UNLOCK_LOADING] (대표 신고 — 도매 카탈로그 스켈레톤 고착, HTML 증거: __SSR_INITIAL_WHOLESALE__
-        //   미주입): 저트래픽 도매몰은 colo 캐시가 대부분 cold → self-fetch 가 콜드 D1(isolate 콜드스타트+ensure+조회)을
-        //   1.5초 안에 못 끝내 timeout → 빈 ssrPayload → 주입 스킵 → 클라가 또 콜드 fetch(스켈레톤 장기화).
-        //   WHOLESALE 만 3000ms 로 상향 → 콜드여도 데이터 주입 완료(첫 사용자만 ~2-3초 문서 wait, 이후 colo 캐시 300s).
-        //   warm(edge-hit) 경로·타 슬롯·소비자 페이지 전부 불변. 근본 해결은 CACHE_KV 전역 워밍(self-fetch=KV-HIT).
-        // 🧭 2026-06-30 [UNLOCK_LOADING] (대표 신고 — /u/ 링크샵 로딩): CURATOR(/u/:handle)는 사업자면
-        //   SELLER(/profile)와 **동일한 SellerPublicPage** 를 그리고 콜드 D1 비용도 비슷한데 타임아웃이 1500ms 라
-        //   /profile(2000ms)보다 cold self-fetch 가 더 자주 timeout → SSR 미주입 → CuratorPage 스켈레톤 더 자주 노출.
-        //   같은 페이지군이므로 CURATOR 를 2000ms 로 맞춤(warm/edge-hit·타 슬롯·소비자 페이지 불변 — 콜드 첫 사용자만 영향).
-        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT' || ssrTarget.slot === 'CURATOR' || ssrTarget.slot === 'BLOGPOST' || ssrTarget.slot === 'BLOG' || ssrTarget.slot === 'STAYDETAIL') ? 2000
-          : ssrTarget.slot === 'WHOLESALE' ? 3000
-          : 1500;
-        const ctlr = new AbortController();
-        const timer = setTimeout(() => ctlr.abort(), timeoutMs);
-        const selfStart = Date.now();
-        try {
-          const origin = new URL(c.req.url).origin;
-          const r = await fetch(`${origin}${ssrTarget.path}`, {
-            signal: ctlr.signal,
-            headers: { 'x-ssr-prefetch': '1', 'User-Agent': 'ur-live-ssr-prefetch/1.0' },
-          });
-          if (r.ok) {
-            const body = await r.text();
-            ssrPayload = body.replace(/<\/script/gi, '<\\/script');
-            ssrStatus = 'self-fetch-hit';
-          } else {
-            ssrStatus = `self-fetch-${r.status}`;
-          }
-        } catch {
-          ssrStatus = 'self-fetch-timeout';
-        } finally {
-          clearTimeout(timer);
-        }
-        timings.push(`self;dur=${Date.now() - selfStart}`);
-      }
-      c.res.headers.set('X-SSR-Status', `${ssrTarget.slot}:${ssrStatus}`);
-      if (timings.length > 0) c.res.headers.set('Server-Timing', timings.join(', '));
+      const [r, extra] = await Promise.all([
+        fetchSsrPayload(ssrTarget, origin0, c.env),
+        ssrExtra ? fetchSsrPayload(ssrExtra, origin0, c.env) : Promise.resolve(null),
+      ]);
+      ssrPayload = r.payload;
+      // ⚠️ 'ssrStatus' 는 아래 soft-404 판정(shouldNoindexMissingEntity)이 읽는다 — 지우지 말 것.
+      ssrStatus = r.status;
+      timings.push(...r.timings);
+      // 보조 시드는 **fail-soft** — 없으면 클라가 평소대로 fetch 한다(홈이 안 뜨면 안 된다).
+      if (extra?.payload) ssrExtraPayload = extra.payload;
+      applySsrDiagHeaders(c, ssrTarget.slot, { ...r, timings });
     }
 
     // 🛡️ 2026-05-30 (loading): Early Hints — cross-origin preconnect 를 응답 Link 헤더로 송출.
@@ -809,6 +760,13 @@ app.use('*', async (c, next) => {
               `<script id="${scriptId}" type="application/json">${ssrPayload}</script>`,
               { html: true },
             );
+            // 홈 보조 시드(섹션). 없으면 아무것도 안 넣는다 — 클라가 평소대로 fetch 한다(fail-soft).
+            if (ssrExtraPayload) {
+              el.append(
+                `<script id="__SSR_INITIAL_SECTIONS__" type="application/json">${ssrExtraPayload}</script>`,
+                { html: true },
+              );
+            }
             // 🖼️ 2026-07-02 [UNLOCK_LOADING] (대표 "사진이 빠르게 안 나타남"): 공구/교환권 상세 히어로가
             //   프리로드 스캐너를 못 타(공구=CSS background-image, 교환권=React 렌더 후 <img>)
             //   [엔트리→페이지 청크→렌더] 뒤에야 다운로드 시작 → 사진이 늦게 뜸. seed 의 image_url 로

@@ -158,7 +158,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
     : ['/admin', '/admin/orders', '/admin/settlement', '/admin/seller-approval']
   // 🐛 2026-08-22 대표 신고 "즐겨찾기가 계속 초기화 돼" — 저장 위치를 **계정**으로 옮겼다.
   //   localStorage 는 오리진·브라우저·프로필마다 따로이고 시크릿창·"사이트 데이터 지우기"·
-  //   기기 변경·도메인 전환(구 live.ur-team.com ↔ urdeal.kr)에 조용히 사라진다. 게다가 아래
+  //   기기 변경·도메인 전환(구 도메인 ↔ urdeal.kr 은 서로 다른 오리진)에 조용히 사라진다. 게다가 아래
   //   기본값 시드가 **저장되지 않아서**, 저장소가 비는 순간 항상 기본 4개로 돌아갔다 —
   //   그게 대표가 본 "초기화"의 모습이다.
   //   ⇒ localStorage 는 **첫 페인트용 캐시로만** 남기고(서버 왕복 동안 깜빡이지 않게),

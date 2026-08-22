@@ -16,6 +16,8 @@ import { isVoucherCategory, normalizeCategory, VOUCHER_CATEGORIES } from '../../
 
 const read = (p: string) => readFileSync(p, 'utf-8')
 const EDIT = 'src/pages/SellerProductEditPage.tsx'
+/** 이용권 입력 묶음은 2026-08-22 에 컴포넌트로 분리됐다(파일 크기 래칫). */
+const FIELDS = 'src/pages/seller-product-edit/VoucherFields.tsx'
 const NEW = 'src/pages/SellerMealVoucherNewPage.tsx'
 const SELLER_API = 'src/features/seller/api/seller-orders.routes.ts'
 const JOIN = 'src/features/group-buy/api/group-buy.routes.ts'
@@ -43,21 +45,23 @@ describe('수정 폼이 이용권 4종 전부를 다룬다', () => {
   })
 
   it('1인당 한도 입력이 그 블록 안에 살아 있다', () => {
-    const s = read(EDIT)
+    const s = read(FIELDS)
     expect(s).toMatch(/name="max_per_person"/)
     // 서버 상한과 같아야 한다(1~99). 여기만 늘리면 저장이 조용히 무시된다.
     expect(s).toMatch(/name="max_per_person"[^>]*max=\{99\}/)
+    // 분리한 컴포넌트가 실제로 렌더되는가 — 파일만 있고 안 붙으면 화면에서 사라진다.
+    expect(read(EDIT)).toContain('<VoucherFields formData={formData} onChange={handleChange} />')
   })
 
   it('안내 문구가 서버 판정과 같은 말을 한다 (보유분 합산)', () => {
-    const s = read(EDIT)
+    const s = read(FIELDS)
     const near = s.slice(s.indexOf('name="max_per_person"'))
     expect(near.slice(0, 900), '"이미 보유한 이용권까지 합산" 을 안 말하면 셀러가 "한 번에 N개"로 오해한다')
       .toMatch(/보유한 이용권/)
   })
 
   it('매장 라벨이 식당 전용 문구가 아니다 (뷰티/숙박에 "식당명"은 거짓말)', () => {
-    const s = read(EDIT)
+    const s = read(FIELDS)
     expect(s).toContain("t('seller.products.storeName'")
     expect(s).not.toContain("t('seller.products.restaurantName')")
   })
@@ -77,7 +81,8 @@ describe('레거시 카테고리가 조용히 사라지지 않는다', () => {
 
   it('서버가 저장 전에 정규화한다 (등록·수정 양쪽)', () => {
     const s = read(SELLER_API)
-    expect(s).toContain('function canonicalCategory')
+    // 함수 자체는 SSOT(`shared/constants/voucher-categories.ts`)에 산다 — 라우트는 호출만 한다.
+    expect(read('src/shared/constants/voucher-categories.ts')).toContain('export function canonicalCategory')
     expect(s, '등록 경로 미적용').toContain('const category = canonicalCategory(body.category)')
     expect(s, '수정 경로 미적용').toContain("values.push(canonicalCategory(body.category))")
   })

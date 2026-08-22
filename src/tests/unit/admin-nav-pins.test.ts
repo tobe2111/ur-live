@@ -18,7 +18,8 @@ import { isSelfServiceAdminPath } from '../../shared/admin-roles'
 
 const read = (p: string) => readFileSync(p, 'utf-8')
 const LAYOUT = 'src/components/AdminLayout.tsx'
-const ROUTES = 'src/features/auth/api/admin.routes.ts'
+const ROUTES = 'src/features/auth/api/admin-prefs.routes.ts'
+const ADMIN_ROUTES = 'src/features/auth/api/admin.routes.ts'
 const PREFS = 'src/worker/utils/admin-prefs.ts'
 const REPAIR = 'src/worker/routes/repair-schema.routes.ts'
 
@@ -77,6 +78,10 @@ describe('서버 라우트 — 본인 것만, 형태 강제', () => {
     expect(read(PREFS)).toContain('ADMIN_PREF_KEYS')
   })
 
+  it('분리된 라우트가 실제로 마운트된다 (파일만 있고 안 붙으면 404)', () => {
+    expect(read(ADMIN_ROUTES)).toContain('registerAdminPrefRoutes(adminRoutes)')
+  })
+
   it('nav_pins 형태를 서버가 강제한다 (다음 로드에서 렌더가 터지지 않게)', () => {
     const s = read(ROUTES)
     const put = s.slice(s.indexOf("adminRoutes.put('/me/prefs/:key'"))
@@ -95,7 +100,10 @@ describe('서버 라우트 — 본인 것만, 형태 강제', () => {
   })
 
   it('테이블이 repair-schema 에 등록돼 있다 (마이그레이션 CI 미작동)', () => {
-    expect(read(REPAIR)).toContain("{ name: 'admin_prefs'")
+    // 정의는 `repair-schema/admin-tables.ts`, 배선은 본 파일의 스프레드. **둘 다** 봐야 한다 —
+    // 정의만 있고 스프레드가 빠지면 테이블이 안 만들어지는데 파일은 멀쩡해 보인다.
+    expect(read('src/worker/routes/repair-schema/admin-tables.ts')).toContain("{ name: 'admin_prefs'")
+    expect(read(REPAIR), 'ADMIN_REPAIRS 스프레드가 빠졌다 — 정의만 있고 실행이 안 된다').toContain('...ADMIN_REPAIRS')
   })
 })
 

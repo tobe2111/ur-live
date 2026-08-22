@@ -165,7 +165,10 @@ const MUTATIONS = [
   {
     name: '우클릭을 페이지 전체에서 막는다(주소 복사·새 탭이 죽는다)',
     file: 'src/lib/image-protect.ts',
-    find: '      if (!imageAtEvent(e.target)) return',
+    // ⚠️ 앵커는 **정확히 1회**여야 한다 — 같은 줄이 dragstart 핸들러에도 있어 짧게 잡으면
+    //    엉뚱한 쪽이 바뀌고 의도한 결함이 안 생긴다(2026-08-22 에 실제로 그랬다).
+    find: `      if (isEditable(e.target as Element)) return
+      if (!imageAtEvent(e.target)) return`,
     replace: '      /* 전체 차단 */',
     test: 'src/tests/unit/content-protection.test.ts',
     why:
@@ -175,8 +178,15 @@ const MUTATIONS = [
   {
     name: 'iOS 길게 눌러 저장 차단(CSS)이 사라진다',
     file: 'src/index.css',
-    find: '  -webkit-touch-callout: none;',
-    replace: '  /* 제거됨 */',
+    // ⚠️ 같은 속성이 `html.native-app *` 규칙에도 있다 — 셀렉터까지 포함해 유일하게 잡는다.
+    find: `img,
+picture,
+canvas {
+  -webkit-touch-callout: none;`,
+    replace: `img,
+picture,
+canvas {
+  /* 제거됨 */`,
     test: 'src/tests/unit/content-protection.test.ts',
     why:
       'iOS Safari 는 길게 눌러도 `contextmenu` 를 안 쏜다 — JS 만 남기면 **모바일에서는 아무것도 ' +
