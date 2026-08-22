@@ -149,7 +149,7 @@ export async function handleCronScheduled(
   const cron = event.cron;
 
   // 🔬 2026-08-22 진단 프로브(`__tick`) — 왜 맨 앞인지·무엇을 가르는지는 `utils/cron-heartbeat.ts` 상단 주석.
-  ctx.waitUntil(recordCronBeat(env, '__tick', true, 0, cron));
+  ctx.waitUntil(recordCronBeat(env, '__tick', true, 0, cron)); // cron-heartbeat-ok: 작업이 아니라 하트비트 **자체**다 — safeCron 으로 감싸면 진단의 핵심인 '아무도 예산을 안 쓴 시점'을 잃는다
   // 💓 2026-07-28: 성공·실패 무관 하트비트. safeCron 은 **예외가 날 때만** 기록했는데,
   //   실제로 아픈 정지는 예외가 없다(cron 미발화 / 게이트 OFF 조기 return / 내부 .catch 로 전부 삼킴).
   //   유어애즈 자동 정비가 셋째 경우로 07-26 부터 멈춘 걸 아무도 몰랐다(#793).
