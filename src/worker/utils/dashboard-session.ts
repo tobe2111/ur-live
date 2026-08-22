@@ -18,9 +18,17 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 
-/** 단일 세션 강제 대상 시트 역할(라벨). */
+/** 단일 세션 강제 대상 시트 역할(라벨).
+ *
+ * 🔓 2026-08-20 대표 확정 — **셀러 대시보드는 동시 로그인 허용**("여러 브라우저나 여러 명이
+ * 하나의 계정에 로그인할 수 있게, 계속 로그인 유지"). 'seller'·'seller_operator' 를 강제 대상에서
+ * 제외한다. 실제로 단일세션 강제가 대표의 멀티브라우저 사용과 충돌해 **온 대시보드가 401 폭풍**
+ * (알림벨 ×9 · 가이드 안 불러와짐 · returns 403)을 일으키고 있었다 — 새 창에서 로그인할 때마다
+ * 이전 창의 토큰이 SESSION_SUPERSEDED 로 죽었기 때문이다.
+ * ⚠️ admin·supplier·agency·seller_sub(도매 직원 — 별도 서비스)는 **그대로 강제** — 계정 공유·도용
+ * 탐지 신호를 유지한다. 셀러도 되돌리려면 아래 목록에 두 역할을 복원하면 된다(가역). */
 export const SINGLE_SESSION_ROLES: ReadonlySet<string> = new Set([
-  'admin', 'seller', 'supplier', 'agency', 'agency_member', 'seller_sub', 'seller_operator',
+  'admin', 'supplier', 'agency', 'agency_member', 'seller_sub',
 ])
 
 /**

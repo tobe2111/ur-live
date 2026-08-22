@@ -5494,10 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 163건 · 최신순 · 이 목록은 자동 생성된다._
+_총 164건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-20**
 - [2026-08-20 — 매장 운영 주체 모델 2단계 (`seller_operators`)](handoff/2026-08-20-seller-operators-stage2.md)
+- [2026-08-20 — 셀러 대시보드 V2 1차 구현 (대표 일괄 지시 "빠짐없이 모두 + 최종 판정")](handoff/2026-08-20-seller-dashboard-v2.md)
 **2026-08-19**
 - [2026-08-19 — 그루폰식 개편 ③ 히어로 통합형 · 이용권 상세 1안 · /map PC 컨트롤 이동](handoff/2026-08-19-groupon-hero-detail-map.md)
 - [2026-08-19 — 이용권 카드/갤러리 그루폰식 전환 (대표 시안)](handoff/2026-08-19-groupon-card-gallery.md)

@@ -2416,7 +2416,7 @@
       "imageSizeLimit": "5MB 이하 이미지만 업로드 가능합니다",
       "imageSearchFailed": "이미지 검색 실패",
       "pinHint": "💡 식당 전화번호를 입력하시면 사장님께 통계 페이지 링크가 알림톡으로 자동 발송됩니다 (PIN 불필요).",
-      "imageAiNotice": "AI 추천이라 정확하지 않을 수 있어요. 마음에 드는 게 없으면 아래에서 직접 검색하거나 파일을 업로드하세요.",
+      "imageAiNotice": "마음에 드는 게 없으면 아래에서 직접 검색하거나 파일을 업로드하세요.",
       "uploadPhoto": "📁 내 사진 업로드",
       "imageSearchPlaceholder": "다른 키워드로 이미지 재검색 (예: 가게 인테리어, 대표 메뉴 이름)",
       "promoLabel": "추천 소개비 (%)",
@@ -2502,7 +2502,7 @@
       "guide": "운영 가이드",
       "promoCodes": "프로모 코드",
       "followers": "팔로워",
-      "miniShop": "미니샵",
+      "miniShop": "링크샵 설정",
       "streamingGuide": "송출 가이드",
       "notifyFollowers": "팔로워 알림",
       "stays": "숙소 공구",
@@ -2516,8 +2516,10 @@
       "experienceCampaigns": "체험 캠페인",
       "myLinkshop": "내 링크샵",
       "reviewVerifications": "리뷰 확인",
-      "returns": "반품 요청",
-      "operators": "운영자 관리"
+      "returns": "환불 요청",
+      "operators": "운영자 관리",
+      "stores": "매장 관리",
+      "findInfluencers": "인플루언서 찾기"
     },
     "guide": {
       "title": "셀러 운영 가이드",

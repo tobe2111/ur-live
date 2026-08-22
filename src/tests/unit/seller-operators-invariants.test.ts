@@ -79,8 +79,14 @@ describe('🪑 운영자 좌석 분리 — 운영자가 사장님을 튕기지 �
     expect(owner).not.toEqual(operator)
   })
 
-  it('seller_operator 도 단일 세션 강제 대상이다', () => {
-    expect(SINGLE_SESSION_ROLES.has('seller_operator')).toBe(true)
+  it('셀러 시트는 단일 세션 강제 비대상이다 (2026-08-20 대표 확정 — 동시 로그인 허용)', () => {
+    // 단일세션 강제가 멀티브라우저 사용과 충돌해 401 폭풍을 만들었다. 셀러·운영자는 자유 로그인.
+    // ⚠️ admin·supplier·agency·seller_sub(도매)는 그대로 강제 — 여기가 뒤집히면 계정 공유 탐지가 죽는다.
+    expect(SINGLE_SESSION_ROLES.has('seller')).toBe(false)
+    expect(SINGLE_SESSION_ROLES.has('seller_operator')).toBe(false)
+    for (const kept of ['admin', 'supplier', 'agency', 'agency_member', 'seller_sub']) {
+      expect(SINGLE_SESSION_ROLES.has(kept), `${kept} 는 강제 유지여야 한다`).toBe(true)
+    }
   })
 
   it('토큰 발급부가 위임(grant)일 때만 별도 좌석을 준다', () => {

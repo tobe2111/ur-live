@@ -21,6 +21,8 @@ import { ADMIN_SEED } from './guide-seed-admin'
 // 🫀 2026-07-05: 자동 관측 체계 섹션 — guide-seed-admin.ts 는 file-size baseline 동결이라 별도 파일.
 import { ADMIN_OPS_SECTIONS } from './guide-seed-admin-ops'
 import { SELLER_SEED } from './guide-seed-seller'
+// 🧭 2026-08-20: 셀러 가이드 후기 섹션 — 본체가 file-size baseline 동결이라 별도 파일(admin-ops 선례).
+import { SELLER_OPS_SECTIONS } from './guide-seed-seller-ops'
 import { AGENCY_SEED } from './guide-seed-agency'
 // 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 가이드 — admin 가이드에서 분리.
 import { WHOLESALE_SEED } from './guide-seed-wholesale'
@@ -39,7 +41,7 @@ function autoRefSection(role: GuideRole): SeedSection {
 
 export const GUIDE_SEEDS: Record<GuideRole, SeedSection[]> = {
   admin: [...ADMIN_SEED, ...ADMIN_OPS_SECTIONS, autoRefSection('admin')],
-  seller: [...SELLER_SEED, autoRefSection('seller')],
+  seller: [...SELLER_SEED, ...SELLER_OPS_SECTIONS, autoRefSection('seller')],
   agency: [...AGENCY_SEED, autoRefSection('agency')],
   wholesale: [...WHOLESALE_SEED, autoRefSection('wholesale')],
 }

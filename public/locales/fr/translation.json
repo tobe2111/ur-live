@@ -1779,7 +1779,7 @@
       "bundles": "Lots",
       "promoCodes": "Codes promo",
       "followers": "Abonnés",
-      "miniShop": "Mini boutique",
+      "miniShop": "Paramètres Linkshop",
       "streamingGuide": "Guide de diffusion",
       "notifyFollowers": "Notifier les abonnés",
       "stays": "Bons d hébergement",
@@ -1796,8 +1796,10 @@
       "experienceCampaigns": "Campagnes d'essai",
       "myLinkshop": "Ma boutique",
       "reviewVerifications": "Vérifier les avis",
-      "returns": "Retours",
-      "operators": "Opérateurs"
+      "returns": "Demandes de remboursement",
+      "operators": "Opérateurs",
+      "stores": "Mes boutiques",
+      "findInfluencers": "Trouver des influenceurs"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

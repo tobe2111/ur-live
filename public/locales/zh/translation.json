@@ -2459,7 +2459,7 @@
       "bundles": "套装商品",
       "promoCodes": "促销码",
       "followers": "粉丝",
-      "miniShop": "迷你商店",
+      "miniShop": "链接商店设置",
       "streamingGuide": "直播指南",
       "notifyFollowers": "通知粉丝",
       "stays": "住宿团购",
@@ -2476,8 +2476,10 @@
       "experienceCampaigns": "体验活动",
       "myLinkshop": "我的链接商店",
       "reviewVerifications": "评价确认",
-      "returns": "退货申请",
-      "operators": "运营者管理"
+      "returns": "退款请求",
+      "operators": "运营者管理",
+      "stores": "门店管理",
+      "findInfluencers": "寻找达人"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

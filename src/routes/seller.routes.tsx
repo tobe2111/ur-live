@@ -44,6 +44,9 @@ const SellerPublicPage = lazy(() => import('@/pages/SellerPublicPage'))
 const SellerSettlementsPage = lazy(() => import('@/pages/SellerSettlementsPage'))
 // 🏪 2026-08-19 매장 운영자 관리 (store-operator-model.md 2단계) — 소유자 전용, 서버가 최종 게이트.
 const SellerOperatorsPage = lazy(() => import('@/pages/SellerOperatorsPage'))
+// 🏪📣 2026-08-20 seller-dashboard-v2: 매장 관리(카카오맵 등록·삭제·위임) · 인플루언서 탐색/제안
+const SellerStoresPage = lazy(() => import('@/pages/SellerStoresPage'))
+const SellerInfluencersPage = lazy(() => import('@/pages/SellerInfluencersPage'))
 const SellerAlimtalkPage = lazy(() => import('@/pages/SellerAlimtalkPage'))
 const SellerYoutubeGrowthPage = lazy(() => import('@/pages/SellerYoutubeGrowthPage'))
 const SellerYoutubeGrowthSuccessPage = lazy(() => import('@/pages/SellerYoutubeGrowthSuccessPage'))
@@ -215,6 +218,16 @@ export function SellerRoutes() {
       <Route path="/seller/operators" element={
         <ProtectedRoute requireSeller>
           <SellerOperatorsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/stores" element={
+        <ProtectedRoute requireSeller>
+          <SellerStoresPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/influencers" element={
+        <ProtectedRoute requireSeller>
+          <SellerInfluencersPage />
         </ProtectedRoute>
       } />
       <Route path="/seller/youtube-growth" element={

@@ -385,6 +385,25 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     )` },
     { desc: 'idx_seller_operators_pair', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_seller_operators_pair ON seller_operators(seller_id, user_id)" },
     { desc: 'idx_seller_operators_user', sql: "CREATE INDEX IF NOT EXISTS idx_seller_operators_user ON seller_operators(user_id, revoked_at)" },
+    // 📣 2026-08-20 인플루언서 협업 제안(아웃리치) — 셀러가 작성·저장, 발송은 유어딜 대행(seller-dashboard-v2).
+    { desc: 'influencer_outreach_requests', sql: `CREATE TABLE IF NOT EXISTS influencer_outreach_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      product_id INTEGER,
+      target_lead_ids TEXT NOT NULL,
+      target_count INTEGER NOT NULL DEFAULT 0,
+      commission_pct REAL NOT NULL DEFAULT 0,
+      product_support TEXT NOT NULL DEFAULT 'free',
+      channels TEXT NOT NULL DEFAULT '[]',
+      period_days INTEGER,
+      message TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'submitted',
+      quoted_fee_krw INTEGER NOT NULL DEFAULT 0,
+      admin_note TEXT,
+      created_at DATETIME DEFAULT (datetime('now')),
+      updated_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { desc: 'idx_outreach_seller', sql: "CREATE INDEX IF NOT EXISTS idx_outreach_seller ON influencer_outreach_requests(seller_id, created_at DESC)" },
     // 🔐 2026-06-17 단일 세션 강제 (대시보드) — account 별 min_valid_iat. 로그인 시 갱신,
     //   미들웨어가 토큰 iat < min_valid_iat 면 거부. (런타임 ensureDashboardSessionsTable 도 best-effort CREATE.)
     { desc: 'dashboard_sessions', sql: `CREATE TABLE IF NOT EXISTS dashboard_sessions (
