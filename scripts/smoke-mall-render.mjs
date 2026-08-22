@@ -220,7 +220,8 @@ try {
 
   for (const [name, path, expect1] of [
     ['B 빠른 공구 등록', '/seller/products/quick', '빠른 공구 등록'],
-    ['D 반품 큐', '/seller/returns', '반품 요청이에요'],
+    // 2026-08-20 대표: 사용자-가시 라벨 반품→환불 (이용권엔 배송 반품이 없다)
+    ['D 환불 요청 큐', '/seller/returns', '환불 요청이에요'],
   ]) {
     const page = await sellerCtx.newPage()
     const errs = []
