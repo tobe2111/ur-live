@@ -72,6 +72,43 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '이용권 수정 폼이 다시 식사 이용권 전용이 된다',
+    file: 'src/pages/SellerProductEditPage.tsx',
+    find: '{isVoucherCategory(formData.category) && (',
+    replace: "{formData.category === 'meal_voucher' && (",
+    test: 'src/tests/unit/seller-voucher-limit.test.ts',
+    why:
+      '2026-08-22 대표 "1인당 이용권 구매 갯수를 셀러가 설정할 수 있도록". 진짜 결함이 이것이었다 — ' +
+      '서버는 원래 카테고리를 안 가리는데 **이 화면만** meal_voucher 로 막혀 뷰티·숙박·기타 이용권은 ' +
+      '한도를 처음부터 끝까지 설정할 수 없었다. 식사 이용권으로 테스트하면 멀쩡해 보인다.',
+  },
+  {
+    name: '레거시 이용권 카테고리 정규화가 사라진다(등록되는데 안 뜬다)',
+    file: 'src/features/seller/api/seller-orders.routes.ts',
+    find: '    const category = canonicalCategory(body.category) ?? undefined;',
+    replace: '    const category = body.category;',
+    test: 'src/tests/unit/seller-voucher-limit.test.ts',
+    why:
+      '등록 화면은 헬스/반려/액티비티를 고르게 해 주는데 그 값들은 소비자 피드 필터' +
+      '(`category IN VOUCHER_CATEGORIES`)와 공구 활성화 판정에 **둘 다 안 걸린다**. 정규화를 빼면 ' +
+      '셀러는 "등록 완료" 화면을 보고 상품은 유어딜 어디에도 안 뜬다 — 에러가 0 이라 아무도 모른다.',
+  },
+  {
+    name: '한도 재검증(과금 직전)이 사라져 다른 탭으로 뚫린다',
+    file: 'src/features/group-buy/api/group-buy.routes.ts',
+    find: `      const ownedRow = await DB.prepare(
+        "SELECT COUNT(*) AS n FROM vouchers WHERE product_id = ? AND user_id = ? AND status IN ('unused','used')"
+      ).bind(productId, userId).first<{ n: number }>().catch(() => ({ n: 0 }))
+      const owned = Number(ownedRow?.n ?? 0)
+      if (owned + qty > maxPerPerson) {`,
+    replace: '      const owned = 0\n      if (owned + qty > maxPerPerson) {',
+    test: 'src/tests/unit/seller-voucher-limit.test.ts',
+    why:
+      '같은 쿼리가 두 곳에 있다(사전검증 / 과금 직전 레이스 차단). 한쪽만 지워도 정상 구매는 ' +
+      '전부 통과해서 눈으로는 못 본다. ⚠️ 이 가드는 처음에 "파일에 쿼리가 있는가" 로 판정해 ' +
+      '**헛돌았다** — 되돌려-검증에서 잡아 개수 판정으로 고쳤다.',
+  },
+  {
     name: '즐겨찾기가 다시 localStorage 단독 저장이 된다',
     file: 'src/components/AdminLayout.tsx',
     find: "    void api.put('/api/admin/me/prefs/nav_pins', { value: next }).catch(() => null)",

@@ -22,7 +22,19 @@ import { enrichSellerOrderRows } from '../../../worker/utils/order-list-enrich';
 import { rateLimit } from '../../../worker/middleware/rate-limit';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
 import { swallow } from '@/worker/utils/swallow';
-import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories';
+import { VOUCHER_CATEGORY_SET, normalizeCategory, isVoucherCategory } from '@/shared/constants/voucher-categories';
+
+/**
+ * 🐛 2026-08-22: 셀러 이용권 등록 화면은 `health_voucher`·`pet_voucher`·`activity_voucher` 도
+ * 고르게 해 주는데, 이 값들은 **레거시**라 소비자 피드 필터(`category IN VOUCHER_CATEGORIES`)와
+ * 공구 활성화 판정(`VOUCHER_CATEGORY_SET.has`)에 둘 다 안 걸린다. 결과: 셀러는 등록에 성공했다는
+ * 화면을 보는데 **유어딜 어디에도 안 뜬다**(에러 0). 저장 시점에 정규화해서 그 갭 자체를 없앤다.
+ * 이용권이 아닌 카테고리(fashion 등)는 그대로 통과시킨다.
+ */
+function canonicalCategory(raw: string | null | undefined): string | null {
+  if (!raw) return raw ?? null;
+  return normalizeCategory(raw) ?? raw;
+}
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility';
 import { intParam } from '@/shared/pagination'
@@ -808,7 +820,9 @@ sellerOrdersRoutes.post('/products', async (c) => {
       referral_commission_rate?: number;
     }>();
 
-    const { name, description, price, stock, image_url, category } = body;
+    const { name, description, price, stock, image_url } = body;
+    // 레거시 이용권 카테고리를 저장 전에 정규화 — 안 하면 등록은 되는데 피드에 안 뜬다.
+    const category = canonicalCategory(body.category) ?? undefined;
     if (!name || price === undefined) {
       return c.json({ success: false, error: '상품명과 가격은 필수입니다.' }, 400);
     }
@@ -950,7 +964,9 @@ sellerOrdersRoutes.post('/products', async (c) => {
       }
     }
 
-    if (category === 'meal_voucher' || category === 'beauty_voucher' || category === 'health_voucher' || category === 'pet_voucher' || category === 'stay_voucher' || category === 'activity_voucher') {
+    // 손으로 적은 6-way 목록이었다 — 카테고리가 하나 늘 때마다 여기서 갈린다(그리고 실제로 갈렸다).
+    // 정규화 후이므로 SSOT 판정 하나면 충분하다.
+    if (isVoucherCategory(category)) {
       const mealFields = ['restaurant_name', 'restaurant_address', 'restaurant_phone', 'voucher_terms', 'voucher_expiry', 'group_buy_target', 'group_buy_deadline', 'store_verify_pin', 'group_buy_tiers', 'restaurant_lat', 'restaurant_lng', 'external_booking_url', 'region_si', 'region_gu'] as const;
       for (const field of mealFields) {
         const val = body[field];
@@ -1119,7 +1135,7 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       fields.push('image_url = ?', 'thumbnail_url = ?');
       values.push(body.image_url, body.image_url);
     }
-    if (body.category !== undefined) { fields.push('category = ?'); values.push(body.category); }
+    if (body.category !== undefined) { fields.push('category = ?'); values.push(canonicalCategory(body.category)); }
     // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 저장(길이·형식 방어). detail_images 는 JSON 문자열.
     if (body.long_description !== undefined && (typeof body.long_description === 'string') && body.long_description.length <= 50000) {
       fields.push('long_description = ?'); values.push(body.long_description);
