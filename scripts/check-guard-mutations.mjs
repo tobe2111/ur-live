@@ -72,6 +72,27 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🗄️ 백업이 빈 테이블 목록을 "완료"로 기록한다(있다고 믿는 빈 백업)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: "  if (!tables.length) {",
+    replace: "  if (false) {",
+    test: 'src/tests/unit/d1-backup-chunked.test.ts',
+    why:
+      '이 DB 를 백업하는 길은 이 모듈뿐이다(서버측 export 는 2026-08 에 두 번 다 실패). ' +
+      '읽기가 실패해 목록이 비면 루프를 한 번도 안 돌고 manifest 를 쓰고 커서를 지우고 done:true 를 ' +
+      '반환한다 — 아무것도 안 담긴 백업이 성공으로 남는다. 백업에서 이건 없는 것보다 나쁘다.',
+  },
+  {
+    name: '🗄️ 페이지 읽기 실패를 빈 결과로 삼킨다(그 테이블의 남은 행이 통째로 빠진다)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: "        readFail = `${t} rowid>${last}: ${(e as Error)?.message || e}`",
+    replace: "        void e; rows = []",
+    test: 'src/tests/unit/d1-backup-chunked.test.ts',
+    why:
+      '빈 결과는 "테이블 끝"으로 해석돼 drained 처리된다 — 즉 읽기 실패가 **정상 완료**로 둔갑하고 ' +
+      '남은 행은 백업에서 조용히 사라진다. 복구 시점에야 알게 되는데, 그때는 늦다.',
+  },
+  {
     name: '🏠 웹문서 레인에 홀짝 시각 게이트가 붙는다(회차 절반 소멸)',
     file: 'src/worker-ads/lane-alarm-runners.ts',
     find: "      if (env.ADS_WEBKR_LANE_DISABLED === 'true') return { skipped: 'gate_off' }",
