@@ -68,6 +68,16 @@ export const WEBKR_CONCURRENCY = 4
 const DEFAULT_BATCH = 12
 
 /**
+ * 🧾 **부기(簿記) 몫** — 루프가 예산을 다 태우면 회차가 **자기 기록을 못 남긴다.**
+ *
+ * 루프 뒤에 반드시 도는 D1 접근: 리드 저장(전후 COUNT + 청크 batch ≈ 4) · 키워드 부기 batch(1)
+ * · 스냅샷 저장(1) · 네이버 누적 flush(읽기 1 + 쓰기 1). 이걸 안 남기면 수집은 실제로 했는데
+ * `ads_webkr_stats` 가 안 갱신돼 **"돌았는데 안 돈 것"** 으로 보인다 — 원인 규명이 가장 어려운 모양이다.
+ * (같은 이유로 `runKakaoPhoneSweep` 이 `SWEEP_BOOKKEEPING_RESERVE` 를 둔다.)
+ */
+const BOOKKEEPING_RESERVE = 8
+
+/**
  * 한 회차. 게이트 체크는 호출부(레인 등록부).
  *
  * 커서는 `collect-company` 와 **별도 키**(`ads_webkr_stats.cursor`)다 — 같은 커서를 나눠 쓰면
@@ -111,7 +121,8 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
     return save({ ...base, cursor, total_keywords: total, run_ms: Date.now() - startedAt, diag: { configured: true } })
   }
 
-  const budgetTotal = Math.max(1, Math.min(Math.max(5, envLaneBudget(env.ADS_WEBKR_SUBREQUEST_BUDGET, 40, env)), envSubreqCap(env)) - schemaSpent)
+  // ⚠️ 하한이 예약 몫보다 커야 한다 — 안 그러면 루프 조건이 처음부터 거짓이라 **한 키워드도 안 돈다**.
+  const budgetTotal = Math.max(BOOKKEEPING_RESERVE + 4, Math.min(Math.max(5, envLaneBudget(env.ADS_WEBKR_SUBREQUEST_BUDGET, 40, env)), envSubreqCap(env)) - schemaSpent)
   const budget: FetchBudget = { left: budgetTotal }
   const runDeadlineMs = companyRunDeadlineMs(env)
   const overDeadline = () => Date.now() - startedAt > runDeadlineMs
@@ -119,7 +130,7 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
   const leads: CompanyLead[] = []
   const used: string[] = []
   const perKeyword = new Map<number, number>()
-  for (let i = 0; i < kws.length && !budget.limitHit && budget.left > 0 && !overDeadline(); i += WEBKR_CONCURRENCY) {
+  for (let i = 0; i < kws.length && !budget.limitHit && budget.left > BOOKKEEPING_RESERVE && !overDeadline(); i += WEBKR_CONCURRENCY) {
     const group = kws.slice(i, i + WEBKR_CONCURRENCY)
     const results = await Promise.all(group.map(async (kw: PickKeyword) => {
       // tier1(대행사)만 2페이지 — `collect-company` 와 같은 깊이 규칙을 그대로 승계한다.

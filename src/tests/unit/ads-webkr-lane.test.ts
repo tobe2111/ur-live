@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 import { runWebkrCollect, WEBKR_CONCURRENCY } from '@/features/marketing/api/webkr-collect'
 import { ALARM_LANES } from '@/worker-ads/lane-alarm-runners'
 import { LANE_DOMAIN } from '@/worker-ads/lane-domains'
+import { ddlChecksum } from '@/features/marketing/api/ads-schema-guard'
+import { COMPANY_DDL } from '@/features/marketing/api/company-discovery'
 
 /**
  * 🏠 **홈페이지 출처 전용 발굴 레인**(`collect-webkr`) — 2026-08-22.
@@ -57,6 +59,12 @@ function fakeDb(opts: { total: number; fresh: number; rotation: number; prevCurs
       async first<T>(): Promise<T | null> {
         if (/COUNT\(\*\) AS n FROM ad_company_keywords/.test(sql)) return { n: opts.total } as unknown as T
         if (/COUNT\(\*\) AS n FROM ad_company_leads/.test(sql)) return { n: 0 } as unknown as T
+        // 🧾 스키마가 **이미 최신**이라고 답한다. 안 그러면 매 테스트가 DDL 전량을 '돌린' 것으로 쳐서
+        //   회차 예산이 스키마 비용으로 거의 다 깎이고, 그러면 이 테스트는 커서가 아니라
+        //   **가짜 DB 의 스키마 비용**을 재게 된다(실서비스는 WeakSet + 체크섬으로 1회만 돈다).
+        if (/key = \?/.test(sql) && String(st.args[0] || '') === 'ads_ddl_company') {
+          return { value: ddlChecksum(COMPANY_DDL) } as unknown as T
+        }
         if (/FROM platform_settings/.test(sql)) return { value: '1' } as unknown as T
         return null
       },
@@ -135,6 +143,13 @@ describe('회차', () => {
     const s = await runWebkrCollect(envOf({ DB: db, ADS_WEBKR_SUBREQUEST_BUDGET: '4' } as never) as never)
     expect(fetches.length).toBeLessThanOrEqual(4 + WEBKR_CONCURRENCY)
     expect(s.keywords.length).toBeLessThan(12)
+  })
+
+  it('🧾 루프가 자기 기록 쓸 몫을 남긴다 — 다 태우면 "돌았는데 안 돈 것"이 된다', () => {
+    // 루프 뒤에 저장·부기·스냅샷·네이버 flush 가 반드시 돈다. 예산을 0까지 태우면 그것들이 못 나가고,
+    // 수집은 실제로 했는데 `ads_webkr_stats` 가 안 갱신돼 회차가 통째로 관측 밖이 된다.
+    expect(runCode).toMatch(/budget\.left > BOOKKEEPING_RESERVE/)
+    expect(runCode).not.toMatch(/budget\.left > 0 &&/)
   })
 
   it('💾 저장은 회차 끝 1회 + 키워드 부기는 batch 1회 — 건건이 쓰면 예산을 부기에 태운다', async () => {

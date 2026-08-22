@@ -104,6 +104,17 @@ const MUTATIONS = [
       '게다가 스냅샷을 서로 덮어써 상태줄이 어느 레인 것인지 알 수 없게 된다 — 관측이 먼저 죽는다.',
   },
   {
+    name: '🏠 웹문서 레인이 예산을 0까지 태운다(회차가 자기 기록을 못 남긴다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: 'budget.left > BOOKKEEPING_RESERVE',
+    replace: 'budget.left > 0',
+    test: 'src/tests/unit/ads-webkr-lane.test.ts',
+    why:
+      'CI 의 check-budget-bookkeeping 이 첫 판에서 실제로 잡은 결함이다. 루프가 예산을 다 쓰면 ' +
+      '저장·부기·스냅샷·네이버 flush 가 못 나가서, 수집은 했는데 상태줄이 안 갱신된다 — ' +
+      '"돌았는데 안 돈 것"으로 보이는 이 모양이 원인 규명이 가장 어렵다.',
+  },
+  {
     name: '🏠 웹문서 레인이 키워드 부기를 건건이 쓴다(예산을 부기에 태운다)',
     file: 'src/features/marketing/api/webkr-collect.ts',
     find: '    await DB.batch(stmts).catch(() => null)',
