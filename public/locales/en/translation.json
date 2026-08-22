@@ -979,7 +979,10 @@
       "tip1": "Square (1:1) images look best",
       "tip2": "Put key keywords at the start of the name",
       "tip3": "You can edit anytime after registering",
-      "cameraHint": "On mobile you can take a photo or pick from your gallery"
+      "cameraHint": "On mobile you can take a photo or pick from your gallery",
+      "storeName": "Store name",
+      "storeAddress": "Store address",
+      "storePhone": "Store phone"
     },
     "orders": "Orders",
     "revenue": "Deal Settlement",

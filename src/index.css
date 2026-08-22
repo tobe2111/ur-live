@@ -1232,3 +1232,27 @@ html.dark .gbd {
     padding-right: 0;
   }
 }
+
+/* 🖼️ 사진 저장 억제 — iOS 짝 (2026-08-22 대표 지시)
+   iOS Safari 는 사진을 길게 눌러도 `contextmenu` 를 **안 쏜다**. 그래서 JS 로만 막으면
+   (`src/lib/image-protect.ts`) 모바일에서는 아무것도 안 막힌 것이 된다 — 우리 트래픽의
+   대부분이 모바일이므로 이 CSS 가 없으면 그 기능은 사실상 없는 것이다.
+   ⚠️ `user-select` 는 건드리지 않는다 — 매장 주소·전화번호 복사는 정상 사용이다.
+   ⚠️ 대시보드(`*-light-theme` 래퍼)는 되돌린다 — 운영자는 상품 사진을 저장·교체해야 한다. */
+img,
+picture,
+canvas {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
+
+.admin-light-theme img,
+.seller-light-theme img,
+.agency-light-theme img,
+.wholesale-light-theme img,
+.admin-light-theme canvas,
+.seller-light-theme canvas,
+.agency-light-theme canvas {
+  -webkit-touch-callout: default;
+  -webkit-user-drag: auto;
+}

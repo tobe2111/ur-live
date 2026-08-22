@@ -118,10 +118,13 @@ export default function PcHomeLocationBar({
         <button
           onClick={useMyLocation}
           disabled={locating}
-          className={`inline-flex items-center gap-1.5 ${hero ? 'px-4 py-2 rounded-full' : 'px-3 py-2 rounded-xl'} border text-[13px] font-bold transition-colors disabled:opacity-60 ${chip} ${hero ? '' : 'text-gray-700 dark:text-gray-200'}`}
+          className={`inline-flex items-center gap-1.5 ${hero ? 'px-4 py-2 rounded-full' : 'px-3 py-2 rounded-xl'} border text-[13px] font-bold whitespace-nowrap transition-colors disabled:opacity-60 ${chip} ${hero ? '' : 'text-gray-700 dark:text-gray-200'}`}
         >
           {locating ? <Loader2 className="w-[15px] h-[15px] animate-spin" /> : <LocateFixed className="w-[15px] h-[15px]" />}
-          현 위치로 설정
+          {/* 📱 2026-08-19: 좁은 폭(<640)에서는 **아이콘만**. 360px 기기에서 이 라벨이 세 줄로 터져
+              헤더가 무너졌다(모바일 홈이 이 바를 쓰게 되면서 드러났다). PC 히어로는 항상 sm 이상이라
+              라벨이 그대로 보인다. `whitespace-nowrap` 으로 어떤 폭에서도 줄바꿈은 금지. */}
+          <span className="hidden sm:inline whitespace-nowrap">현 위치로 설정</span>
         </button>
       </div>
 

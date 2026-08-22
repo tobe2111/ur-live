@@ -299,7 +299,10 @@
       "tip1": "Las imágenes cuadradas (1:1) se ven mejor",
       "tip2": "Pon las palabras clave al inicio del nombre",
       "tip3": "Puedes editarlo en cualquier momento tras registrarlo",
-      "cameraHint": "En el móvil puedes hacer una foto o elegir de la galería"
+      "cameraHint": "En el móvil puedes hacer una foto o elegir de la galería",
+      "storeName": "Nombre del local",
+      "storeAddress": "Dirección del local",
+      "storePhone": "Teléfono del local"
     },
     "orders": "Pedidos",
     "revenue": "Liquidación Deal",
