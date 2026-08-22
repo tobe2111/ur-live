@@ -511,10 +511,7 @@ export async function sendBuyerVoucherIssuedAlimtalk(
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
-    // 2026-08-22 대표: 매장이 유효기간을 안 정했으면 무기한 — 만료일 대신 '제한 없음' 안내.
-    const expDate = data.expiresAt
-      ? new Date(data.expiresAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }) + '까지'
-      : '제한 없음'
+    const expDate = data.expiresAt ? new Date(data.expiresAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }) + '까지' : '제한 없음' // 미설정 = 무기한(2026-08-22 대표)
     // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 — categoryLabel 옵션.
     const label = data.categoryLabel || '이용권'
     const message = `[유어딜] ${label} 발급 완료
