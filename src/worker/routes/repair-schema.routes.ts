@@ -721,6 +721,17 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       user_agent TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )` },
+    // ⭐ 2026-08-22 어드민 개인 설정(즐겨찾기 등) — 대표 신고 "즐겨찾기가 계속 초기화 돼".
+    //   localStorage 는 기기·브라우저·오리진마다 따로라 조용히 사라진다 → 계정에 붙인다.
+    //   ⚠️ 테이블이 없으면 라우트가 `ensureAdminPrefs` 로 만들지만, 그건 첫 요청 1회 비용이라
+    //      여기서도 보장한다(마이그레이션 CI 미작동 — TECHNICAL_DEBT).
+    { name: 'admin_prefs', sql: `CREATE TABLE IF NOT EXISTS admin_prefs (
+      admin_id INTEGER NOT NULL,
+      pref_key TEXT NOT NULL,
+      pref_value TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (admin_id, pref_key)
+    )` },
     { name: 'admin_login_history', sql: `CREATE TABLE IF NOT EXISTS admin_login_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       admin_id TEXT NOT NULL,

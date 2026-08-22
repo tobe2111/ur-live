@@ -72,6 +72,39 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '즐겨찾기가 다시 localStorage 단독 저장이 된다',
+    file: 'src/components/AdminLayout.tsx',
+    find: "    void api.put('/api/admin/me/prefs/nav_pins', { value: next }).catch(() => null)",
+    replace: '    /* 서버 저장 제거 */',
+    test: 'src/tests/unit/admin-nav-pins.test.ts',
+    why:
+      '2026-08-22 대표 신고 "즐겨찾기가 계속 초기화 돼". 원인은 저장 **위치**였다 — localStorage 는 ' +
+      '오리진·브라우저·프로필마다 따로이고 시크릿창·사이트데이터삭제·기기변경에 조용히 사라진다. ' +
+      '이 줄을 지워도 **그 브라우저에서는 멀쩡히 동작**해서(로컬 캐시가 받친다) 리뷰로 절대 안 걸린다.',
+  },
+  {
+    name: '최초 진입의 기본값이 계정에 승격 저장되지 않는다',
+    file: 'src/components/AdminLayout.tsx',
+    find: '        setPinnedPaths((prev) => { persistPins(prev); return prev })',
+    replace: '        /* 승격 안 함 */',
+    test: 'src/tests/unit/admin-nav-pins.test.ts',
+    why:
+      '원래 버그의 **절반**이 이것이었다: 기본 4개를 화면에는 보여 주면서 저장은 안 했다. ' +
+      '그래서 저장소가 비는 순간(다른 기기·시크릿창) 항상 기본값으로 돌아갔다 = "초기화". ' +
+      '지워도 화면은 똑같아서 눈으로는 못 본다.',
+  },
+  {
+    name: '어드민 개인설정이 `me` 세그먼트를 통째로 열어 RBAC 를 우회한다',
+    file: 'src/shared/admin-roles.ts',
+    find: "  if (/^\\/api\\/admin\\/me\\/prefs\\/[a-z0-9_]+$/i.test(String(pathname || ''))) return true;",
+    replace: "  if (adminPathSegment(pathname) === 'me') return true;",
+    test: 'src/tests/unit/admin-nav-pins.test.ts',
+    why:
+      '"me = 본인 것이니 다 열어도 된다" 는 자연스러운 단순화지만, 그러면 앞으로 `/api/admin/me/*` 에 ' +
+      '붙는 **모든** 라우트가 역할 검사를 조용히 건너뛴다(읽기전용 viewer 도 포함). 개인 취향 설정만 열고 ' +
+      '나머지는 닫아 둬야 한다.',
+  },
+  {
     name: '수확 봇 차단이 공개 콘텐츠 API 에서 사라진다',
     file: 'src/worker/index.ts',
     find: "app.use('/api/group-buy/*', contentScrapeGuard);",
