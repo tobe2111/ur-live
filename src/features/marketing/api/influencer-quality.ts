@@ -271,7 +271,7 @@ export async function runQualityPass(DB: D1Database, opts?: { max?: number; budg
   let stoppedBy: 'rows' | 'deadline' | 'page' | 'budget' = 'rows'
   let scanned = 0, branded = 0, scored = 0, optedOut = 0, done = false
   while (scanned < MAX) {
-    if (Date.now() - t0 >= deadlineMs) { stoppedBy = 'deadline'; break }
+
     // ⚠️ url·last_post_at 이 빠지면 아래 scoreLead 의 '연락 가능성'·'미측정 활동성' 보정이 통째로 무력화된다
     //   (undefined → 연락 불가로 오판 / 활동성 중립 폴백 불가). 컬럼 추가 시 이 SELECT 를 함께 볼 것.
     const rows = (await DB.prepare(`SELECT id, platform, name, description, subscriber_count, recent_avg_views,

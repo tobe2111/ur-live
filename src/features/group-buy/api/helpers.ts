@@ -505,13 +505,16 @@ ${data.statsUrl}
 export async function sendBuyerVoucherIssuedAlimtalk(
   env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
   phone: string,
-  data: { productName: string; restaurantName?: string; qty: number; expiresAt: string; categoryLabel?: string }
+  data: { productName: string; restaurantName?: string; qty: number; expiresAt: string | null; categoryLabel?: string }
 ): Promise<void> {
   if (!env.ALIMTALK_API_KEY || !phone) return
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
-    const expDate = new Date(data.expiresAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+    // 2026-08-22 대표: 매장이 유효기간을 안 정했으면 무기한 — 만료일 대신 '제한 없음' 안내.
+    const expDate = data.expiresAt
+      ? new Date(data.expiresAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }) + '까지'
+      : '제한 없음'
     // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 — categoryLabel 옵션.
     const label = data.categoryLabel || '이용권'
     const message = `[유어딜] ${label} 발급 완료
@@ -522,7 +525,7 @@ ${data.qty}장 발급되었습니다.
 📱 매장에서 QR 코드 보여주세요:
 https://urdeal.kr/my-vouchers
 
-⏰ 유효기간: ${expDate}까지
+⏰ 유효기간: ${expDate}
 
 문의: 유어딜 고객센터`
     await fetch('https://api.solapi.com/messages/v4/send', {

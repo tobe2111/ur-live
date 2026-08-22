@@ -479,9 +479,9 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
       return c.json({ success: false, error: '주문 생성 실패' }, 500)
     }
 
-    // voucher 모드는 유효기간 계산 (default 180일).
-    const voucherValidityDays = Number(room.voucher_validity_days) || 180
-    const voucherExpiresAt = saleMode === 'voucher'
+    // 유효기간: 매장이 설정하면 있고, 미설정이면 무기한 (2026-08-22 대표 — 180일 강제 기본값 폐지).
+    const voucherValidityDays = Number(room.voucher_validity_days) > 0 ? Number(room.voucher_validity_days) : null
+    const voucherExpiresAt = saleMode === 'voucher' && voucherValidityDays
       ? new Date(Date.now() + voucherValidityDays * 86400000).toISOString().slice(0, 19).replace('T', ' ')
       : null
 
@@ -675,8 +675,9 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), rateLimit({ actio
         nights = Math.max(1, Math.min(7, Number(it.voucher_nights) || 1))
         if (voucherType === 'weekday' && room.voucher_weekend_only) return c.json({ success: false, error: `${room.name}: 주말권만 판매 중` }, 400)
         if (voucherType === 'weekend' && room.voucher_weekday_only) return c.json({ success: false, error: `${room.name}: 평일권만 판매 중` }, 400)
-        const days = Number(room.voucher_validity_days) || 180
-        voucherExpiresAt = new Date(Date.now() + days * 86400000).toISOString().slice(0, 19).replace('T', ' ')
+        // 2026-08-22 대표: 미설정 = 무기한 (180일 강제 기본값 폐지)
+        const days = Number(room.voucher_validity_days) > 0 ? Number(room.voucher_validity_days) : null
+        voucherExpiresAt = days ? new Date(Date.now() + days * 86400000).toISOString().slice(0, 19).replace('T', ' ') : null
       }
 
       // 가격 계산.
