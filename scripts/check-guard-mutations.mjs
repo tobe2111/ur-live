@@ -93,8 +93,6 @@ const MUTATIONS = [
       '남은 행은 백업에서 조용히 사라진다. 복구 시점에야 알게 되는데, 그때는 늦다.',
   },
   {
-  },
-  {
     name: '매장 전환이 권한 검사 없이 토큰을 내준다 (IDOR)',
     file: 'src/features/seller/api/seller-operators.routes.ts',
     find: 'const access = await canOperateStore(c.env.DB, userId, sellerId)',
