@@ -25,7 +25,10 @@ const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
 const code = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
 const WRAPPERS = [
   'src/features/marketing/api/fetch-with-err.ts',      // 인플루언서 발굴(블로그·카페 검색)
-  'src/features/marketing/api/company-collect.ts',     // B2B 수집
+  // 🚚 2026-08-22: B2B 수집의 fetch 래퍼(`laneFetch`)가 `webkr-search.ts` 로 이사했다 —
+  //   웹문서 전용 레인(`collect-webkr`)이 같은 함수를 쓰기 때문. company-collect 는 이제 그것을 import 만 한다.
+  //   ⚠️ 경로만 옮겼다. 불변식은 그대로 — 네이버 레인의 모든 fetch 래퍼는 계측 게이트를 통과해야 한다.
+  'src/features/marketing/api/webkr-search.ts',        // B2B 수집(지역·카카오·웹문서 공용 래퍼)
   'src/features/marketing/api/contact-enrich.ts',      // 연락처 보강(local/webkr)
 ]
 const COLLECT = read('src/features/marketing/api/influencer-auto-collect.ts')
