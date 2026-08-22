@@ -148,6 +148,8 @@ export async function handleCronScheduled(
 ): Promise<void> {
   const cron = event.cron;
 
+  // 🔬 2026-08-22 진단 프로브(`__tick`) — 왜 맨 앞인지·무엇을 가르는지는 `utils/cron-heartbeat.ts` 상단 주석.
+  ctx.waitUntil(recordCronBeat(env, '__tick', true, 0, cron));
   // 💓 2026-07-28: 성공·실패 무관 하트비트. safeCron 은 **예외가 날 때만** 기록했는데,
   //   실제로 아픈 정지는 예외가 없다(cron 미발화 / 게이트 OFF 조기 return / 내부 .catch 로 전부 삼킴).
   //   유어애즈 자동 정비가 셋째 경우로 07-26 부터 멈춘 걸 아무도 몰랐다(#793).
@@ -223,9 +225,7 @@ export async function handleCronScheduled(
       const { handleProspectsCommissionActivate } = await import('./cron/prospects-commission-activate')
       return handleProspectsCommissionActivate(env)
     }));
-    // 🎯 [urads-split Phase E 2026-07-18] ads-autobid 는 ur-ads worker cron(`*/5`)으로 이관 — 이중실행
-    //   방지로 메인에서 제거했다. 재도입하려면 `features/marketing/api/autobid` 의 `runAutobidAll` 을
-    //   `ADS_AUTOBID_ENABLED` 게이트 뒤에 safeCron 으로 배선한다.
+    // 🎯 [urads-split Phase E 2026-07-18] ads-autobid 는 ur-ads 로 이관(이중실행 방지). 재도입은 `autobid` 의 `runAutobidAll` 을 `ADS_AUTOBID_ENABLED` 게이트 뒤 safeCron 으로.
   }
 
   // ⏰ 2026-08-11: `0 * * * *` 미등록으로 이 블록 7개가 침묵했다(하트비트 0). 트리거 한도(5)를 다 써
