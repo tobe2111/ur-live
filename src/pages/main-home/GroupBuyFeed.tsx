@@ -108,7 +108,9 @@ export default function GroupBuyFeed({
   //   "4열 카드 크게"를 **대체** — PC 는 **5열 고정**(xl+), lg(좁은 노트북)만 4열, gap 축소.
   //   컨테이너 1440(PcHomePage)과 짝 → 카드 ~260px. 2xl 6열은 대표 재지시로 제거(5개가 기준).
   const gridCls = pc
-    ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 lg:gap-4 pb-8'
+    // 📐 2026-08-19 (대표 — "한 줄에 이용권 5개에서 4개로"): xl 5열을 뺀다. 카드가 커져 사진·가격이
+    //   읽히고, 위 섹션 그리드(lg:grid-cols-4)와도 열 수가 같아진다(같은 화면에서 열이 갈리지 않는다).
+    ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4 pb-8'
     : 'grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8'
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.

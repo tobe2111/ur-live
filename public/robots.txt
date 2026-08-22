@@ -69,6 +69,54 @@ Disallow: /wholesale/statement
 Disallow: /wholesale/login
 Disallow: /supplier
 
+# 🕷️ 2026-08-22 대표 지시 "크롤링도 마찬가지" — AI 학습·콘텐츠 수확 크롤러 전면 차단.
+#   우리 상품 사진·설명·가격은 매장이 제공한 영업 자산이다. 검색 유입(색인)은 원하지만
+#   학습 데이터셋·경쟁사 가격표로 통째로 복사되는 것은 원하지 않는다 — 둘은 다른 봇이다.
+#   ⚠️ robots.txt 는 **부탁**이라 지키지 않는 쪽이 실제 문제다. 그래서 짝으로 헤더 차단이 있다:
+#      `src/worker/middleware/bot-detection.ts` SCRAPER_UA_PATTERNS / scrapeProtection().
+#      한쪽만 고치면 반쪽이 된다 — 목록을 늘릴 땐 **양쪽 같이**.
+#   ⚠️ 여기에 Googlebot·Yeti(네이버)·Daum·KakaoTalk·facebookexternalhit 를 넣지 말 것.
+#      색인과 카톡 공유 미리보기가 이 서비스의 유입이다.
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: OAI-SearchBot
+User-agent: ClaudeBot
+User-agent: anthropic-ai
+User-agent: Claude-Web
+User-agent: CCBot
+User-agent: Google-Extended
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Bytespider
+User-agent: Amazonbot
+User-agent: Applebot-Extended
+User-agent: cohere-ai
+User-agent: Diffbot
+User-agent: Omgilibot
+User-agent: Timpibot
+User-agent: ImagesiftBot
+User-agent: Meta-ExternalAgent
+User-agent: FriendlyCrawler
+User-agent: AhrefsBot
+User-agent: SemrushBot
+User-agent: MJ12bot
+User-agent: DotBot
+User-agent: BLEXBot
+User-agent: DataForSeoBot
+User-agent: SeekportBot
+User-agent: serpstatbot
+User-agent: PetalBot
+User-agent: ZoominfoBot
+User-agent: Barkrowler
+User-agent: magpie-crawler
+User-agent: HTTrack
+User-agent: SiteSucker
+User-agent: WebCopier
+User-agent: WebZIP
+User-agent: Nutch
+User-agent: heritrix
+Disallow: /
+
 Sitemap: https://urdeal.kr/sitemap.xml
 
 # NOTE(orchestrator → worker/index.ts): utongstart.com 은 호스트별 robots 를 서빙하는 것이 이상적.

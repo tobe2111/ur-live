@@ -26,7 +26,11 @@ const OUT = join(ROOT, 'src/worker/generated/route-chunk-map.ts')
 
 // 표면 키 → 페이지 소스 모듈(매니페스트 키). 워커(index.ts)의 라우트 매칭과 1:1.
 const ROUTES = {
-  home: ['src/pages/RestaurantMapPage.tsx'],
+  // 🏠 2026-08-22: 홈은 `HomeRoute` 뷰포트 분기다 — lg+ = PcHomePage / 그 외 = MobileHomePage.
+  //   ⚠️ 여기 `RestaurantMapPage` 가 남아 있었다(2026-07-15 "홈=지도" 결정의 잔재). 그 결과 홈 첫
+  //      화면이 **안 쓰는 지도 청크 23KB(gzip)를 미리 받고**, 정작 쓰는 홈 청크는 병렬화 못 받았다
+  //      — 양쪽으로 손해였고 에러가 없어 아무도 몰랐다. 지도는 `/map` 전용이다.
+  home: ['src/pages/pc-home/PcHomePage.tsx', 'src/pages/mobile-home/MobileHomePage.tsx'],
   gbDetail: ['src/pages/GroupBuyDetailPage.tsx'],
   voucherDetail: ['src/pages/VoucherDetailPage.tsx'],
   product: ['src/pages/ProductDetailPage.tsx'],
@@ -78,16 +82,23 @@ const entryCss = new Set(entry.css)
 
 const out = {}
 for (const [surface, keys] of Object.entries(ROUTES)) {
-  const js = []
+  // 🧱 2026-08-22: 진입점이 여러 개인 표면(home = PC/모바일, linkshop = 큐레이터/셀러)은
+  //   **각 진입점의 페이지 청크를 먼저** 모은 뒤 공유 청크를 붙인다.
+  //   ⚠️ 예전엔 키 순서대로 폐쇄를 이어붙여서, 첫 키의 폐쇄가 MAX_LINKS 를 채우면 **두 번째
+  //      진입점의 페이지 청크가 통째로 잘렸다**(실측: linkshop 에서 `SellerPublicPage` 가 빠져
+  //      사업자 링크샵이 preload 를 못 받고 있었다 — 그 표면의 본체인데도).
+  //      페이지 청크는 작고(2~5KB) 표면마다 유일하므로, 캡이 깎아야 할 것은 공유 청크 쪽이다.
+  const pageJs = []
+  const sharedJs = []
   const css = []
   const seen = new Set()
   for (const k of keys) {
     if (!manifest[k]) { console.warn(`[route-chunk-map] 매니페스트에 없음: ${k} (surface=${surface})`); continue }
     const c = closure(k, seen)
-    js.push(...c.js)
+    if (c.js.length) { pageJs.push(c.js[0]); sharedJs.push(...c.js.slice(1)) }
     css.push(...c.css)
   }
-  const jsOut = [...new Set(js)].filter((f) => !entryJs.has(f)).slice(0, MAX_LINKS)
+  const jsOut = [...new Set([...pageJs, ...sharedJs])].filter((f) => !entryJs.has(f)).slice(0, MAX_LINKS)
   const cssOut = [...new Set(css)].filter((f) => !entryCss.has(f)).slice(0, 4)
   if (jsOut.length) out[surface] = { js: jsOut, css: cssOut }
 }

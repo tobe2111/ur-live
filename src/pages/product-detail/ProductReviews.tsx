@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SharePrompt from '@/components/SharePrompt'
-import { formatKSTDate } from '@/utils/date'
+import ReviewCard, { type ReviewItem } from './ReviewCard'
 
 function ReviewForm({ productId, onSubmitted }: { productId: string | number; onSubmitted: () => void }) {
   const { t } = useTranslation()
@@ -174,17 +174,8 @@ interface ReviewSummary {
   [key: string]: number | undefined
 }
 
-interface Review {
-  id: number | string
-  rating: number
-  content?: string
-  user_name?: string
-  created_at: string
-  seller_reply?: string | null
-  seller_reply_at?: string | null
-  // 🎁 2026-07-05: 체험단(FCFS) 참여 리뷰 — 서버 자동 판정(표시광고법 의무 표시)
-  is_sponsored?: number | boolean
-}
+// 🧩 2026-08-19: 리뷰 모양은 `ReviewCard`(카드 SSOT)의 타입을 그대로 쓴다 — 두 벌이면 갈린다.
+type Review = ReviewItem
 
 export default function ProductReviews({ productId, limit = 5 }: { productId: number | string; limit?: number }) {
   const { t } = useTranslation()
@@ -270,40 +261,14 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
         api.get(`/api/reviews/product/${productId}/summary`).then(r => { if (r.data.success) setSummary(r.data.data) })
       }} />
 
+      {/* ⭐ 2026-08-19 (대표 시안 — 그루폰 리뷰): 카드 한 벌(`ReviewCard`) + **PC 2열**.
+          한 줄에 하나씩 쌓으면 리뷰 5개가 화면을 다 먹는다(그루폰도 2열이다).
+          구분선은 카드 사이에만 — 테두리 상자를 씌우면 "AI가 만든 티"가 난다(대표 지적). */}
       {reviews.length > 0 && (
-        <div className="space-y-3 mt-3">
+        <div className="mt-2 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-10 divide-y divide-gray-100 dark:divide-[#2A3446] lg:divide-y-0">
           {reviews.map((r) => (
-            <div key={r.id} className="border border-gray-200 dark:border-[#2A3446]/50 rounded-xl p-3">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-1.5">
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3, 4, 5].map(s => (
-                      <span key={s} className={`text-xs ${s <= r.rating ? 'text-yellow-400' : 'text-gray-200'}`}>★</span>
-                    ))}
-                  </div>
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400">{r.user_name}</span>
-                  {/* 🎁 표시광고법: 체험단 리뷰 자동 뱃지 — 서버 판정(작성자가 끌 수 없음) */}
-                  {!!r.is_sponsored && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[9px] font-bold border border-amber-200 dark:border-amber-500/30">
-                      {t('reviews.sponsoredBadge', { defaultValue: '체험 제공' })}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatKSTDate(r.created_at)}</span>
-              </div>
-              {r.content && <p className="text-xs text-gray-900 dark:text-white leading-relaxed">{r.content}</p>}
-              {/* 🏁 2026-06-12 (전수조사 🟡): 셀러 답글 — 셀러는 달 수 있는데 구매자에겐 비노출이던 갭 */}
-              {r.seller_reply && (
-                <div className="mt-2 bg-gray-50 dark:bg-[#1A2334] rounded-lg p-2.5">
-                  <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mb-0.5">
-                    {t('reviews.sellerReplyLabel', { defaultValue: '판매자 답글' })}
-                    {r.seller_reply_at && (
-                      <span className="ml-1.5 font-normal text-gray-400 dark:text-gray-500">{new Date(r.seller_reply_at).toLocaleDateString('ko-KR')}</span>
-                    )}
-                  </p>
-                  <p className="text-xs text-gray-700 dark:text-gray-200 leading-relaxed">{r.seller_reply}</p>
-                </div>
-              )}
+            <div key={r.id} className="lg:border-t lg:border-gray-100 dark:lg:border-[#2A3446]">
+              <ReviewCard r={r} />
             </div>
           ))}
         </div>

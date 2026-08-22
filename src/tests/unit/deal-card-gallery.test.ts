@@ -34,8 +34,23 @@ describe('카드 hover 캐러셀 (DealCardMedia)', () => {
   it('🔴 안 본 장면은 네트워크를 태우지 않는다 (첫 화면 트래픽 보호)', () => {
     // `seen` 집합에 없는 인덱스는 <img> 자체를 만들지 않는다.
     expect(media).toMatch(/if\s*\(!seen\.has\(i\)\)\s*return null/)
-    // 초기값은 커버(0)뿐 — hover 만으로 더 받지 않는다.
+    // 첫 화면 초기값은 **커버(0)뿐** — 스크롤만 해서는 갤러리를 받지 않는다.
     expect(media).toMatch(/useState<Set<number>>\(\(\)\s*=>\s*new Set\(\[0\]\)\)/)
+  })
+
+  /**
+   * 🕐 2026-08-19 (대표 신고 — "화면이 너무 늦게 떠 다른 사진으로 보려고 할 때").
+   *
+   * 트래픽 보호가 만든 체감 지연이었다: 화살표를 **누른 순간부터** 받기 시작해 빈 회색 칸이 보였다.
+   * ⚠️ 고치는 방향이 "전량 프리페치"로 새면 원래 막으려던 사고(첫 화면 트래픽 5배)로 되돌아간다.
+   *   그래서 **딱 한 장**이라는 것 자체를 불변식으로 고정한다.
+   */
+  it('hover 하면 다음 1장을 미리 받는다 (넘겼는데 빈 칸 방지)', () => {
+    expect(media).toMatch(/const prefetchNext = useCallback/)
+    expect(media).toMatch(/onMouseEnter=\{prefetchNext\}/)
+    // 한 장만: 다음 인덱스 하나를 계산해 add 한다(반복문·전체 add 금지).
+    expect(media).toMatch(/const next = list\[\(at \+ 1\) % list\.length\]/)
+    expect(media).not.toMatch(/setSeen\(new Set\(slides\.map/)
   })
 
   it('커버는 aboveFold 계약(eager·fetchPriority)을 그대로 지킨다', () => {
@@ -150,7 +165,10 @@ describe('죽은 사진은 다음 사진으로 대체된다', () => {
 
   it('상세: CSS 배경은 오류를 못 잡으므로 같은 URL 의 감지용 img 를 얹는다', () => {
     // 같은 URL·같은 옵션이어야 브라우저가 요청을 재사용한다(추가 트래픽 0).
-    expect(detail).toMatch(/cfImage\(main, \{ width: 1200, format: 'auto' \}\)/)
+    // 🔄 2026-08-19: 감시 대상이 **대형 1장 → 대형 + PC 썸네일**로 늘면서(실측상 실패의 대부분이
+    //   썸네일 칸이었다) 렌더가 배열 map 이 됐다. 지키는 것은 그대로 — "실제 렌더와 같은 URL/폭".
+    expect(detail).toMatch(/cfImage\(src, \{ width: w, format: 'auto' \}\)/)
+    expect(detail).toMatch(/\{ src: main, w: 1200 \}/)
     expect(detail).toMatch(/onError=\{\(\) => setDead\(/)
   })
 

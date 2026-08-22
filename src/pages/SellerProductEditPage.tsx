@@ -7,6 +7,8 @@ import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import ImageUpload from '@/components/ImageUpload'
 import ProductOptionForm, { ProductOption } from '@/components/ProductOptionForm'
+import VoucherFields from '@/pages/seller-product-edit/VoucherFields'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { 
   ArrowLeft, 
   Package,
@@ -23,6 +25,17 @@ import { DashboardPageHeader } from '@/components/dashboard'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types 를 ./seller-product-edit/types 로 추출.
 import type { LiveStream, Product } from './seller-product-edit/types'
+
+/**
+ * 레거시 이용권 카테고리(2026 이전 등록분). 새로 고를 수는 없고, **이미 그 값을 가진 상품을
+ * 열었을 때만** 옵션으로 보여 준다 — 안 그러면 select 가 빈칸이 되고, 저장 한 번에 카테고리가
+ * 조용히 바뀐다. 정규화 SSOT 는 `shared/constants/voucher-categories.ts`.
+ */
+const LEGACY_VOUCHER_OPTIONS = [
+  { value: 'health_voucher', label: '💪 헬스 이용권 (구)' },
+  { value: 'pet_voucher', label: '🐶 반려 이용권 (구)' },
+  { value: 'activity_voucher', label: '🎯 액티비티 이용권 (구)' },
+] as const
 
 export default function SellerProductEditPage() {
   const { t } = useTranslation()
@@ -120,7 +133,7 @@ export default function SellerProductEditPage() {
         detail_images: JSON.stringify(formData.detail_images),
         product_type: formData.product_type,
         category: formData.category,
-        ...(formData.category === 'meal_voucher' ? {
+        ...(isVoucherCategory(formData.category) ? {
           restaurant_name: formData.restaurant_name || null,
           restaurant_address: formData.restaurant_address || null,
           restaurant_phone: formData.restaurant_phone || null,
@@ -382,55 +395,26 @@ export default function SellerProductEditPage() {
               <option value="food">{t('common.food')}</option>
               <option value="electronics">{t('common.electronics')}</option>
               <option value="lifestyle">{t('common.lifestyle')}</option>
-              <option value="meal_voucher">🍽️ 이용권 (공동구매)</option>
+              {/* 🐛 2026-08-22: 이용권이 `meal_voucher` 하나뿐이라, 뷰티/숙박/기타 이용권을 열면
+                  select 에 **일치하는 option 이 없어** 빈칸으로 보였다. 그 상태에서 다른 값을
+                  한 번만 건드리면 카테고리가 조용히 바뀐다(= 소비자 피드에서 사라진다). */}
+              <option value="meal_voucher">🍽️ 식사 이용권</option>
+              <option value="beauty_voucher">💇 뷰티 이용권</option>
+              <option value="stay_voucher">🏨 숙박 이용권</option>
+              <option value="etc_voucher">🎯 기타 이용권</option>
+              {/* 레거시 카테고리 — 기존 상품이 갖고 있으면 그대로 보이게(정규화는 서버 SSOT 담당). */}
+              {LEGACY_VOUCHER_OPTIONS.filter((o) => o.value === formData.category).map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
             </select>
           </div>
 
-          {/* 이용권 전용 필드 */}
-          {formData.category === 'meal_voucher' && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
-              <h3 className="text-sm font-bold text-orange-800">{t('seller.products.mealVoucherInfo')}</h3>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.restaurantName')}</label>
-                <input name="restaurant_name" value={formData.restaurant_name} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.restaurantAddress')}</label>
-                <input name="restaurant_address" value={formData.restaurant_address} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.restaurantPhone')}</label>
-                <input name="restaurant_phone" value={formData.restaurant_phone} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.voucherTerms')}</label>
-                <input name="voucher_terms" value={formData.voucher_terms} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.expiryDate')}</label>
-                  <input type="date" name="voucher_expiry" value={formData.voucher_expiry} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.groupBuyTarget')}</label>
-                  <input type="number" name="group_buy_target" value={formData.group_buy_target} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-                </div>
-              </div>
-              {/* 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당"): 1인당 구매 수량 제한 (0=무제한). */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">1인당 최대 구매 수량</label>
-                <input type="number" name="max_per_person" value={formData.max_per_person} onChange={handleChange} min={0} max={99} placeholder="0 = 무제한" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-                <p className="text-[11px] text-gray-400 mt-1">한 사람이 최대 몇 개까지 구매할 수 있는지 (0 = 제한 없음, 최대 99)</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.groupBuyDeadline')}</label>
-                <input type="datetime-local" name="group_buy_deadline" value={formData.group_buy_deadline} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.storeVerifyPin')}</label>
-                <input name="store_verify_pin" value={formData.store_verify_pin} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-              </div>
-            </div>
+          {/* 이용권 전용 필드 — 🐛 2026-08-22 대표 "1인당 이용권 구매 갯수를 셀러가 설정할 수
+              있도록". 실제 결함은 **이용권 4종 중 식사 하나에서만** 이 블록이 뜬 것이었다.
+              그래서 뷰티/숙박/기타 이용권은 1인당 한도를 처음부터 끝까지 설정할 수 없었다.
+              (서버는 원래 카테고리를 안 가린다 — 막고 있던 건 이 화면뿐이었다.) */}
+          {isVoucherCategory(formData.category) && (
+            <VoucherFields formData={formData} onChange={handleChange} />
           )}
 
           {/* Product Type Selection */}

@@ -20,6 +20,7 @@ import { swallow } from '@/shared/utils/swallow';
 import { ensureAdminsRoleUnconstrained } from '@/worker/utils/ensure-admins-role';
 // 컬럼 ALTER 목록은 데이터라 분리했다 — 이 파일은 *실행 로직*만 갖는다(2026-08-01).
 import { COLUMN_REPAIRS, type ColumnRepair } from './repair-schema/column-repairs';
+import { ADMIN_REPAIRS } from './repair-schema/admin-tables';
 
 const repairSchemaRoutes = new Hono<{ Bindings: Env }>();
 
@@ -705,35 +706,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'relabel: distributor_grades B→Standard', sql: "UPDATE distributor_grades SET label = 'Standard' WHERE grade = 'B' AND label IN ('프로','프로 등급')" },
     { name: 'relabel: distributor_grades C→Basic', sql: "UPDATE distributor_grades SET label = 'Basic' WHERE grade = 'C' AND label IN ('일반','일반 등급')" },
 
-    // 🛡️ 2026-06-16 어드민 활동 감사로그 — writeAuditLog/adminAuditMiddleware 가 기록(모든 어드민 변경 자동).
-    //   ⚠️ 마이그레이션(0126/0128)에만 있어 prod(마이그 미실행)엔 테이블이 없을 수 있음 → writeAuditLog 가
-    //   조용히 실패(try-catch)해 로그 유실. repair-schema 에 보장해야 실제로 기록됨.
-    { name: 'admin_audit_logs', sql: `CREATE TABLE IF NOT EXISTS admin_audit_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      admin_id TEXT NOT NULL,
-      admin_email TEXT,
-      action TEXT NOT NULL,
-      target_type TEXT,
-      target_id TEXT,
-      before_value TEXT,
-      after_value TEXT,
-      ip TEXT,
-      user_agent TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )` },
-    { name: 'admin_login_history', sql: `CREATE TABLE IF NOT EXISTS admin_login_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      admin_id TEXT NOT NULL,
-      email TEXT,
-      ip TEXT,
-      user_agent TEXT,
-      success INTEGER NOT NULL DEFAULT 1,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )` },
-    { name: 'idx_admin_login_history_created', sql: `CREATE INDEX IF NOT EXISTS idx_admin_login_history_created ON admin_login_history(created_at DESC)` },
-    { name: 'idx_admin_audit_admin_id', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_admin_id ON admin_audit_logs(admin_id, created_at)` },
-    { name: 'idx_admin_audit_action', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_action ON admin_audit_logs(action, created_at)` },
-    { name: 'idx_admin_audit_created', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_logs(created_at DESC)` },
+    // 🗂️ 어드민 전용 테이블·인덱스(감사로그·로그인이력·개인설정) — `repair-schema/admin-tables.ts`.
+    ...ADMIN_REPAIRS,
 
     // 🏭 2026-06-01 유통스타트: B2B 선결제 도매 주문 (판매사→유통스타트).
     { name: 'wholesale_orders', sql: `CREATE TABLE IF NOT EXISTS wholesale_orders (

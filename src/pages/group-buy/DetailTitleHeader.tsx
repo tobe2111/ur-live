@@ -13,7 +13,11 @@ import StarRating from '@/components/deal/StarRating'
  * 세로 화면에서는 사진이 먼저 오는 게 자연스럽고(썸네일→상세의 시각적 연결), 제목은 바로 아래
  * 한 스크롤 안에 들어온다. PC 만 폭이 남아서 생기던 문제였다. ⇒ 이 컴포넌트는 `hidden lg:block`.
  *
- * ⚠️ 색은 `.gbd` CSS 변수(테마 자동) — 상세 표면과 동톤이어야 한다.
+ * 🧩 2026-08-19 (대표 — "앞으로는 다른 카테고리와 함께"): **상세 종류를 가리지 않는다.**
+ *   공구/이용권(`.gbd` 표면)과 숙소(일반 tailwind 표면)가 같이 쓴다. 그래서 색을 `.gbd` CSS
+ *   변수에서 **tailwind 토큰으로 옮겼다** — 그 변수는 `.gbd` 밖에서 정의되지 않아, 그대로 뒀다면
+ *   숙소 상세에서 제목이 안 보였을 것이다(같은 컴포넌트를 두 표면에서 쓰려면 색이 표면에
+ *   의존하면 안 된다).
  */
 export default function DetailTitleHeader({
   name, storeName, address, phone, rating, reviewCount, onnuri,
@@ -31,31 +35,31 @@ export default function DetailTitleHeader({
   return (
     <header className="hidden lg:block lg:max-w-[1200px] lg:mx-auto lg:pt-6 lg:pb-3">
       {storeName && (
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', letterSpacing: '.01em' }}>
+        <div className="text-[12.5px] font-bold tracking-[.01em] text-brand">
           {storeName} · 정식 등록 매장
           {onnuri && (
             <span className="ml-1.5 px-1.5 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold align-middle">온누리 사용 가능</span>
           )}
         </div>
       )}
-      <h1 style={{ margin: '6px 0 0', fontSize: 29, lineHeight: 1.24, fontWeight: 900, letterSpacing: '-.028em', color: 'var(--gbd-ink)' }}>{name}</h1>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 9, fontSize: 13.5, color: 'var(--gbd-sub)' }}>
+      <h1 className="mt-1.5 text-[29px] leading-[1.24] font-black tracking-[-.028em] text-gray-900 dark:text-white">{name}</h1>
+      <div className="mt-2.5 flex items-center gap-2.5 flex-wrap text-[13.5px] text-gray-500 dark:text-gray-400">
         {hasRating && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span className="inline-flex items-center gap-1.5">
             <StarRating value={Number(rating)} size={15} />
-            <b style={{ color: 'var(--gbd-ink)', fontWeight: 800 }}>{Number(rating).toFixed(1)}</b>
-            {Number(reviewCount) > 0 && <span style={{ color: 'var(--gbd-sub2)' }}>({reviewCount})</span>}
+            <b className="font-extrabold text-gray-900 dark:text-white">{Number(rating).toFixed(1)}</b>
+            {Number(reviewCount) > 0 && <span className="text-gray-400 dark:text-gray-500">({reviewCount})</span>}
           </span>
         )}
         {address && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            {hasRating && <span style={{ color: 'var(--gbd-line2)' }}>|</span>}
-            <MapPin style={{ width: 15, height: 15, flex: '0 0 auto' }} />
+          <span className="inline-flex items-center gap-1.5">
+            {hasRating && <span className="text-gray-200 dark:text-[#2A3446]">|</span>}
+            <MapPin className="w-[15px] h-[15px] shrink-0" />
             {address}
           </span>
         )}
         {phone && (
-          <a href={`tel:${phone}`} style={{ color: 'var(--gbd-ink2)', textDecoration: 'none', fontWeight: 600, borderBottom: '1px solid var(--gbd-line2)' }}>{phone}</a>
+          <a href={`tel:${phone}`} className="font-semibold no-underline text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-[#2A3446]">{phone}</a>
         )}
       </div>
     </header>

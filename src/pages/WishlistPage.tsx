@@ -1,131 +1,20 @@
-import React, { useState, useEffect, memo } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { isLoggedInSync, getUserIdSync } from '@/utils/auth'
-import WishlistButton from '../components/WishlistButton'
 import { ArrowLeft, Heart } from 'lucide-react'
 import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
 import { useTheme } from '@/shared/stores/useTheme'
-import { formatNumber } from '@/utils/format'
 import { useWishlist, type WishlistItem } from '@/hooks/queries/useWishlist'
-import { cfImage } from '@/utils/cf-image'
-import { cardGradient } from '@/utils/card-gradient'
-import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import BrandLoader from '@/components/brand/BrandLoader'
+import GroupBuyFeedCard from './main-home/GroupBuyFeedCard'
 
-// 🎨 2026-06-10 (사용자 요청): 쇼핑(BrowseProductCard)과 동일한 대표색 그라데이션 카드.
-//   사진 하단이 카드색으로 번져 텍스트 블록과 경계 없이 이어짐 + 글자색 밝기 자동대비.
-//   React.memo — 토글/refetch 시 전체 카드 reconcile 방지 (기존 피드 카드 패턴).
-const WishlistCard = memo(function WishlistCard({
-  item, userId, onOpen, onAddToCart, onToggle, t,
-}: {
-  item: WishlistItem
-  userId: number | null
-  onOpen: (productId: number) => void
-  onAddToCart: (item: WishlistItem, e: React.MouseEvent) => void
-  onToggle: (productId: number, isWishlisted: boolean) => void
-  t: (key: string, opts?: Record<string, unknown>) => string
-}) {
-  const [cardColor, setCardColor] = useState<string | null>(item.dominant_color || null)
-  const grad = cardGradient(cardColor)
-  const unit = Number(item.deal_only) === 1 ? ' 딜' : '원'
-  return (
-    <div
-      onClick={() => onOpen(item.product_id)}
-      className="rounded-2xl overflow-hidden cursor-pointer group transition-all active:scale-[0.99] flex flex-col"
-      style={{ background: grad.base }}
-    >
-      <div className="relative aspect-square" style={{ background: grad.base }}>
-        <img
-          src={cfImage(item.image_url, { width: 300, format: 'auto' }) || item.image_url || '/placeholder.png'}
-          alt={item.product_name}
-          width={300}
-          height={300}
-          loading="lazy" decoding="async"
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onLoad={(e) => {
-            const color = extractDominantColor(e.currentTarget as HTMLImageElement)
-            if (color) {
-              if (!cardColor) setCardColor(color)
-              if (!item.dominant_color) reportDominantColor(item.product_id, color)
-            }
-          }}
-          onError={(e) => {
-            const target = e.target as HTMLImageElement
-            target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23F2F2F7" width="200" height="200"/%3E%3Ctext fill="%23C7C7CC" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
-          }}
-        />
-        {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
-        <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
-
-        <div className="absolute top-2 right-2 z-10">
-          <WishlistButton
-            productId={item.product_id}
-            userId={userId}
-            initialWishlisted={true}
-            size="md"
-            className="rounded-full p-2 backdrop-blur-sm shadow-sm bg-black/55"
-            onToggle={(isWishlisted) => onToggle(item.product_id, isWishlisted)}
-          />
-        </div>
-
-        {item.stock === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
-            <span className="px-4 py-2 rounded-full font-semibold text-sm bg-white text-gray-900">{t('product.outOfStock')}</span>
-          </div>
-        )}
-
-        {item.discount_rate > 0 && (
-          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md"
-            style={{ background: '#EF4444', color: '#fff', fontSize: 10, fontWeight: 800 }}>
-            -{item.discount_rate}%
-          </div>
-        )}
-      </div>
-
-      <div className="px-3 pt-1 pb-3 flex flex-col flex-1" style={{ color: grad.text }}>
-        <p style={{ fontSize: 10, color: grad.sub }} className="mb-1">@{item.seller_name}</p>
-        <h3 className="line-clamp-2 leading-tight" style={{ fontSize: 12, fontWeight: 500, marginBottom: 6 }}>
-          {item.product_name}
-        </h3>
-
-        <div className="mb-3">
-          {item.discount_rate > 0 ? (
-            <>
-              <p style={{ fontSize: 10, color: grad.sub, textDecoration: 'line-through' }}>
-                {formatNumber(item.original_price)}{unit}
-              </p>
-              <div className="flex items-baseline gap-1">
-                <span style={{ fontSize: 13, fontWeight: 800, color: grad.accent }}>{item.discount_rate}%</span>
-                <span style={{ fontSize: 13, fontWeight: 800 }}>{formatNumber(item.price)}{unit}</span>
-              </div>
-            </>
-          ) : (
-            <p style={{ fontSize: 13, fontWeight: 800 }}>
-              {formatNumber(item.price)}{unit}
-            </p>
-          )}
-        </div>
-
-        <button
-          onClick={(e) => onAddToCart(item, e)}
-          disabled={item.stock === 0}
-          className="w-full mt-auto py-2 rounded-xl text-sm font-medium transition-colors disabled:cursor-not-allowed"
-          style={{
-            background: item.stock === 0 ? 'rgba(127,127,127,0.25)' : (grad.isLight ? '#1A2334' : '#ffffff'),
-            color: item.stock === 0 ? grad.sub : (grad.isLight ? '#ffffff' : '#1A2334'),
-          }}
-        >
-          {item.stock === 0 ? t('product.outOfStock') : t('wishlist.addToCart')}
-        </button>
-      </div>
-    </div>
-  )
-})
+// 💗 2026-08-19: 자체 그라데이션 카드(WishlistCard)를 제거했다 — 찜 목록도 홈과 **같은 카드**를 쓴다
+//   (대표 "기존 이용권 UI로 해줘야지"). 카드가 한 벌이어야 화면마다 같은 상품이 다르게 안 보인다.
 
 const WishlistPage: React.FC = () => {
   const { t } = useTranslation()
@@ -150,31 +39,6 @@ const WishlistPage: React.FC = () => {
     navigate(`/products/${productId}`)
   }
 
-  const handleAddToCart = async (item: WishlistItem, e: React.MouseEvent) => {
-    e.stopPropagation()
-
-    if (item.stock === 0) {
-      toast.info(t('common.outOfStock'))
-      return
-    }
-
-    try {
-      // ✅ UX C3 FIX: snake_case + userId 미포함 (서버 미들웨어가 세션에서 추출)
-      const response = await api.post('/api/cart', {
-        product_id: item.product_id,
-        quantity: 1,
-        price_snapshot: item.price,
-      })
-
-      if (response.data.success) {
-        toast.success(t('cart.itemAdded'))
-      }
-    } catch (error: unknown) {
-      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      if (import.meta.env.DEV) console.error('[Wishlist] Add to cart error:', error)
-      toast.error(error_.response?.data?.error || t('wishlist.addCartError'))
-    }
-  }
 
   const handleWishlistToggle = (_productId: number, isWishlisted: boolean) => {
     if (!isWishlisted) refetch()
@@ -244,16 +108,29 @@ const WishlistPage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {wishlists.map((item) => (
-              <WishlistCard
+          /* 💗 2026-08-19 (대표 — "찜한 이용권도 기존 이용권 UI로 해줘야지"):
+             자체 그라데이션 카드를 버리고 **홈과 같은 카드**(`GroupBuyFeedCard`)를 쓴다.
+             찜 목록만 다른 모양이면 같은 상품이 화면마다 달라 보인다(그루폰 wishlist 도 같은 카드다).
+             하트는 카드가 내장하고 있어 여기서 따로 그리지 않는다 — 누르면 목록에서 빠진다. */
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+            {wishlists.map((item, i) => (
+              <GroupBuyFeedCard
                 key={item.id}
-                item={item}
-                userId={userId}
-                onOpen={handleProductClick}
-                onAddToCart={handleAddToCart}
-                onToggle={handleWishlistToggle}
-                t={t}
+                pc
+                aboveFold={i < 4}
+                p={{
+                  id: item.product_id,
+                  name: item.product_name,
+                  price: item.price,
+                  original_price: item.original_price,
+                  discount_rate: item.discount_rate,
+                  image_url: item.image_url,
+                  category: item.category,
+                  deal_only: item.deal_only,
+                  seller_id: item.seller_id,
+                  seller_name: item.seller_name,
+                  dominant_color: item.dominant_color,
+                } as never}
               />
             ))}
           </div>

@@ -10,9 +10,12 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { MapPin, Calendar, Users, Star, Wifi, Coffee, Car, Waves, Sparkles, ChevronLeft, ChevronRight, Shield, Flame, Utensils, Wind, Bath, Dumbbell, Check, PawPrint, CigaretteOff } from 'lucide-react'
+import { MapPin, Calendar, Users, Star, Wifi, Coffee, Car, Waves, Sparkles, ChevronLeft, Shield, Flame, Utensils, Wind, Bath, Dumbbell, Check, PawPrint, CigaretteOff } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import DetailGallery from './group-buy/DetailGallery'
+import DetailTitleHeader from './group-buy/DetailTitleHeader'
+import StayDateGuestPicker, { type DayPrice } from './stay-detail/StayDateGuestPicker'
 import BrandLoader from '@/components/brand/BrandLoader'
 
 // 🗺️ 2026-07-21 (대표 "숙소 카카오맵 연결 무조건 되게"): 딜 상세와 동일한 잠금 lazy 패턴 —
@@ -70,6 +73,8 @@ interface AvailRoom {
   available: boolean
   available_count: number
   total_price: number
+  /** 🗓️ 날짜별 1박 요금/재고 — 달력에 그대로 쓴다(서버가 주는 값만). */
+  dates?: Array<{ date: string; price?: number; available?: boolean }>
   discounted_price?: number
   discount_pct?: number
   avg_per_night_discounted?: number
@@ -135,10 +140,6 @@ export default function StayDetailPage() {
   const [cartQty, setCartQty] = useState<Record<number, number>>({})
   const [multiBookingOpen, setMultiBookingOpen] = useState(false)
 
-  // 🖼️ 2026-07-21: 히어로 스와이프 갤러리(사진 3~5장) — 스크롤 스냅 + 인덱스 도트.
-  const galRef = useRef<HTMLDivElement>(null)
-  const [activeImage, setActiveImage] = useState(0)
-
   // 🛡️ 2026-05-18: 인플 referral — URL ?ref=USER_ID 유지.
   const referrerId = params.get('ref') || ''
 
@@ -150,6 +151,35 @@ export default function StayDetailPage() {
   // voucher 모드 입력.
   const [voucherType, setVoucherType] = useState<'weekday' | 'weekend'>('weekday')
   const [voucherNights, setVoucherNights] = useState(1)
+
+  /**
+   * 🗓️ 달력에 채울 **두 달치** 날짜별 요금. 예약 조회(availability)는 고른 기간만 주므로,
+   *   달력을 채우려면 넓은 범위로 한 번 더 물어야 한다. 실패하면 빈 배열 → 달력은 요금 없이 뜬다
+   *   (모르는 값을 "최저가"처럼 지어내지 않는다).
+   */
+  const [dayPrices, setDayPrices] = useState<DayPrice[]>([])
+  useEffect(() => {
+    if (!Number.isFinite(productId)) return
+    const from = todayIso()
+    const to = new Date(); to.setDate(to.getDate() + 62)
+    const toIso = `${to.getFullYear()}-${String(to.getMonth() + 1).padStart(2, '0')}-${String(to.getDate()).padStart(2, '0')}`
+    api.get(`/api/group-buy/stays/${productId}/availability?check_in=${from}&check_out=${toIso}`)
+      .then((r) => {
+        const rooms = (r.data?.data?.rooms || []) as AvailRoom[]
+        // 여러 객실이면 그 날의 **최저가**를 쓴다(야놀자 "1박 기준 최저가"와 같은 의미).
+        const best = new Map<string, DayPrice>()
+        for (const room of rooms) for (const d of room.dates || []) {
+          if (!d?.date) continue
+          const cur = best.get(d.date)
+          const price = Number(d.price) || 0
+          if (!cur || (price > 0 && (!cur.price || price < cur.price))) {
+            best.set(d.date, { date: d.date, price: price || cur?.price, available: (cur?.available ?? false) || d.available !== false })
+          }
+        }
+        setDayPrices([...best.values()])
+      })
+      .catch(() => setDayPrices([]))
+  }, [productId])
 
   useEffect(() => {
     if (!Number.isFinite(productId)) { navigate('/stays'); return }
@@ -203,17 +233,8 @@ export default function StayDetailPage() {
     }
     return Array.from(new Set(out)).slice(0, 8)
   })()
-  const onGalScroll = () => {
-    const el = galRef.current; if (!el) return
-    const i = Math.round(el.scrollLeft / el.clientWidth)
-    if (i !== activeImage) setActiveImage(i)
-  }
-  // 🖼️ 2026-07-21 (대표 "사진 좌우 스크롤 안 됨"): PC 는 스와이프가 없으므로 화살표·도트 클릭으로 이동.
-  const scrollToImage = (i: number) => {
-    const el = galRef.current; if (!el) return
-    const clamped = Math.max(0, Math.min((/* len */ el.children.length) - 1, i))
-    el.scrollTo({ left: clamped * el.clientWidth, behavior: 'smooth' })
-  }
+  // 🖼️ 2026-08-19: 스와이프/화살표/도트 상태는 전부 `DetailGallery`(공용) 안으로 옮겼다 —
+  //   숙소만 자체 갤러리를 갖고 있어서 이용권 상세 개편이 여기 안 닿던 문제의 근본 수리.
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일) + 2026-07-20 테마 정합: 테마-가변 BrandLoader.
   if (loading) return <BrandLoader fullScreen />
@@ -286,21 +307,18 @@ export default function StayDetailPage() {
         </>
       ) : (
         <>
-          {/* date 모드 (기존) */}
-          <div className="grid grid-cols-2 gap-2 mb-2">
-            <div>
-              <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">체크인</label>
-              <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">체크아웃</label>
-              <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className={inputCls} />
-            </div>
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">인원</label>
-            <input type="number" min={1} max={20} value={guests} onChange={(e) => setGuests(Number(e.target.value) || 1)} className={inputCls} />
-          </div>
+          {/* 🏨 2026-08-19 (대표 — "nol 처럼 숙소 일자 정하는 UI"): `<input type="date">` 두 개(=OS 기본
+              피커)를 야놀자식 [기간·인원 트리거 → 달력/스테퍼 패널]로 교체. 며칠 묵는지와 그날 요금을
+              한 화면에서 고른다. 날짜별 요금은 서버가 준 값만 쓴다(없으면 표시 안 함). */}
+          <StayDateGuestPicker
+            checkIn={checkIn}
+            checkOut={checkOut}
+            guests={guests}
+            dayPrices={dayPrices}
+            maxGuests={rooms.reduce((m, r) => Math.max(m, r.max_guests || 0), 0) || 20}
+            baseGuests={rooms.reduce((m, r) => Math.max(m, r.base_guests || 0), 0) || undefined}
+            onApply={({ checkIn: ci, checkOut: co, guests: g }) => { setCheckIn(ci); setCheckOut(co); setGuests(g) }}
+          />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{nights}박 · 체크인 {stay.check_in_time} / 체크아웃 {stay.check_out_time}</p>
         </>
       )}
@@ -312,63 +330,37 @@ export default function StayDetailPage() {
       <SEO title={`${stay.restaurant_name || stay.name} - 유어딜`} description={stay.description} url={`/stays/${stay.id}`} />
 
       <div className="lg:max-w-[1200px] lg:mx-auto lg:px-8 lg:pt-5">
-      {/* Hero — 🖼️ 2026-07-21: 단일 이미지 → 스와이프 갤러리(사진 3~5장, 딜 상세와 동일 UX) */}
-      <div className="relative aspect-[16/10] sm:aspect-[21/9] bg-gray-100 dark:bg-[#1A2334] lg:rounded-2xl lg:overflow-hidden">
-        {galleryImages.length > 1 ? (
-          <>
-            <div
-              ref={galRef}
-              onScroll={onGalScroll}
-              className="absolute inset-0 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
-              style={{ scrollbarWidth: 'none' }}
-            >
-              {galleryImages.map((src, i) => (
-                <img
-                  key={src}
-                  src={cfImage(src, { width: 1200, quality: 82, format: 'auto' }) || src}
-                  alt={`${stay.restaurant_name || stay.name} 사진 ${i + 1}`}
-                  className="w-full h-full object-cover shrink-0 snap-center"
-                  loading={i === 0 ? 'eager' : 'lazy'}
-                  onError={(e) => cfImageOnError(e.currentTarget, src)}
-                />
-              ))}
-            </div>
-            {/* ◀▶ 좌우 이동(PC — 스와이프 없음). 첫/마지막에선 해당 화살표 숨김. */}
-            {activeImage > 0 && (
-              <button type="button" onClick={() => scrollToImage(activeImage - 1)} aria-label="이전 사진"
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/45 hover:bg-black/65 backdrop-blur flex items-center justify-center text-white transition-colors">
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-            )}
-            {activeImage < galleryImages.length - 1 && (
-              <button type="button" onClick={() => scrollToImage(activeImage + 1)} aria-label="다음 사진"
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/45 hover:bg-black/65 backdrop-blur flex items-center justify-center text-white transition-colors">
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            )}
-            {/* 인덱스 도트(클릭 이동) + 장수 배지 */}
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
-              {galleryImages.map((_, i) => (
-                <button key={i} type="button" onClick={() => scrollToImage(i)} aria-label={`${i + 1}번째 사진`}
-                  className={`rounded-full transition-all ${i === activeImage ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/50 hover:bg-white/80'}`} />
-              ))}
-            </div>
-            <span className="absolute bottom-3 right-3 px-2 py-0.5 rounded-full bg-black/55 text-white text-[10px] font-semibold">
-              {activeImage + 1} / {galleryImages.length}
-            </span>
-          </>
-        ) : (
-          stay.image_url && <img src={cfImage(stay.image_url, { width: 1200, quality: 82, format: 'auto' }) || stay.image_url} alt={stay.name} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, stay.image_url)} />
-        )}
-        <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white lg:hidden">
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-      </div>
+      {/* 🏷️ 2026-08-19 (대표 — "숙소 이용권은 이용권 상세페이지가 함께 개선이 안됐네.
+          앞으로는 이런 개선은 다른 카테고리와 함께 개선이 되어야 해"):
+          제목·별점·주소를 사진 **위**로 올리고(이용권 상세와 동일), 갤러리도 **같은 컴포넌트**를 쓴다.
+          그 전까지 숙소는 자체 스와이프 갤러리라, 이용권 상세를 그루폰식으로 고쳐도 여기엔 안 닿았다. */}
+      <DetailTitleHeader
+        name={stay.restaurant_name || stay.name}
+        storeName={stay.property_type}
+        address={[stay.region_sido, stay.region_sigungu, stay.address].filter(Boolean).join(' ')}
+        rating={stay.avg_rating ?? undefined}
+        reviewCount={stay.review_count ?? undefined}
+      />
+
 
       <div className="px-4 py-5 lg:px-0 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8 lg:items-start">
         <div className="min-w-0">
-        {/* Title + meta */}
-        <div className="mb-5">
+        {/* 🖼️ 갤러리는 **좌측 컬럼 안**에 둔다 — 이용권 상세와 같은 [좌 사진·본문 | 우 예약 패널] 배치.
+            그리드 밖 풀폭으로 두면 같은 16:9 라도 폭이 1140px 이라 사진만 640px 높이로 커진다
+            (제목을 위로 올린 의미가 사라진다). */}
+        <div className="relative bg-gray-100 dark:bg-[#1A2334] lg:rounded-2xl lg:overflow-hidden">
+          <DetailGallery
+            images={galleryImages}
+            alt={stay.restaurant_name || stay.name}
+            fallback={<span className="text-6xl" aria-hidden="true">🏨</span>}
+          />
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="absolute top-4 left-4 z-10 w-9 h-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white lg:hidden">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Title + meta — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번). */}
+        <div className="mb-5 lg:hidden">
           <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 mb-1">
             <span className="px-2 py-0.5 bg-gray-100 dark:bg-white/[0.06] rounded font-semibold">{stay.property_type}</span>
             {stay.star_rating ? (
