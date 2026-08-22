@@ -95,7 +95,9 @@ describe('🔌 배선 — 게이트가 안 불리면 상수만 남고 아무도 
   it.each([
     ['src/features/marketing/api/fetch-with-err.ts', /if \(!noteNaverCall\(url\)\) return \{ res: null/],
     ['src/features/marketing/api/contact-enrich.ts', /if \(!noteNaverCall\(url\)\) \{[\s\S]{0,120}return null \}/],
-    ['src/features/marketing/api/company-collect.ts', /if \(!noteNaverCall\(url\)\) return null/],
+    // 🚚 2026-08-22: `laneFetch` 가 `webkr-search.ts` 로 이사했다(웹문서 전용 레인이 같은 함수를 쓴다).
+    //   ⚠️ 파일 경로만 옮긴 것 — 지키는 불변식은 그대로다(네이버 레인 fetch 는 반드시 계측 게이트를 통과).
+    ['src/features/marketing/api/webkr-search.ts', /if \(!noteNaverCall\(url\)\) return null/],
   ])('%s 가 반환값을 실제로 본다 — 무시하면 게이트가 헛돈다', (file, re) => {
     expect(SRC(file)).toMatch(re)
   })
