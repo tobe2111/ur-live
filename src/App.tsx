@@ -162,6 +162,7 @@ const SellerProspectsPage = lazy(() => import('./pages/SellerProspectsPage'))
 const SellerProxyProductsPage = lazy(() => import('./pages/SellerProxyProductsPage'))
 const SellerPlusFriendGuidePage = lazy(() => import('./pages/SellerPlusFriendGuidePage'))
 const InfluencerLandingPage = lazy(() => import('./pages/InfluencerLandingPage'))
+const InfluencerOfferAcceptPage = lazy(() => import('./pages/InfluencerOfferAcceptPage'))
 const AgencyPartnerLandingPage = lazy(() => import('./pages/AgencyPartnerLandingPage'))
 const InterestListPage = lazy(() => import('./pages/InterestListPage'))
 const CouponClaimPage = lazy(() => import('./pages/CouponClaimPage'))
@@ -737,6 +738,7 @@ function AppContent() {
             {/* 🛡️ 2026-05-15: B2B 랜딩 — PC 풀 너비, 영업/모집용. ⚠️ 2026-07-29: `/influencer` 가 중복 등록돼 이 랜딩이 두 달간 도달 불가였다(대시보드가 선점) → 대시보드를 /influencer/dashboard 로 이사. 가드: check-duplicate-routes */}
             <Route path="/business" element={<BusinessLandingPage />} />
             <Route path="/influencer" element={<InfluencerLandingPage />} />
+            <Route path="/i/offer/:token" element={<InfluencerOfferAcceptPage />} />
             <Route path="/agency-partner" element={<AgencyPartnerLandingPage />} />
             {/* 🛡️ 2026-05-27 (영업 검증 Layer 2): 영업자 prospects dashboard. */}
             <Route path="/agency/prospects" element={<SellerProspectsPage />} />

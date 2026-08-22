@@ -1,0 +1,82 @@
+/**
+ * 📣 인플루언서 제안 수락 다리 + 심플 커미션 모델 — 2026-08-22 대표 확정
+ *   ① "어필리에이트 전략은 빼려고 해. 심플하게" — 유저/큐레이터 링크 커미션 종료(스위치 기본 OFF)
+ *   ② 인플루언서 수익 = 매장 제안 딜 % 하나 — 딜 % 는 플랫폼 캡에 잘리지 않는다
+ *   ③ 수락 다리: CAS 선점 후에만 딜 발효(재사용·동시수락 차단) — 머니 룰 #1
+ *
+ * ⚠️ 이 테스트가 못 막는 것: 실제 D1 동작(수락→적립→지급 E2E — staging 판정),
+ *   라이브 platform_settings 값(어드민 설정은 코드 밖).
+ */
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { calcInfluencerCommissionPct, type CommissionRates } from '../../features/group-buy/api/commission-rates'
+
+const read = (p: string) => readFileSync(p, 'utf8')
+const invites = read('src/features/marketing/api/influencer-offer-invites.routes.ts')
+const affiliate = read('src/worker/utils/affiliate-credit.ts')
+const rates = read('src/features/group-buy/api/commission-rates.ts')
+const sellerList = read('src/features/seller/api/seller-influencers.routes.ts')
+
+const RATES: CommissionRates = {
+  platform_pct: 5, influencer_pct: 0, user_referral_bonus_pct: 0,
+  seller_referral_bonus_pct: 1, max_influencer_commission_pct: 2,
+} as CommissionRates
+
+describe('② 딜 % 는 캡에 잘리지 않는다 (제안서 % 그대로)', () => {
+  it('딜 15% + 캡 2% → 15% (이게 깨지면 제안서와 다른 돈이 적립된다)', () => {
+    expect(calcInfluencerCommissionPct(RATES, {
+      is_referred_by_this_influencer: false, referral_bonus_active: false, deal_commission_pct: 15,
+    })).toBe(15)
+  })
+  it('자동분(base+referral)은 여전히 캡 적용', () => {
+    expect(calcInfluencerCommissionPct({ ...RATES, influencer_pct: 5 }, {
+      is_referred_by_this_influencer: false, referral_bonus_active: false, deal_commission_pct: null,
+    })).toBe(2)
+  })
+  it('딜 % 상한 90 (입력검증선과 동일)', () => {
+    expect(calcInfluencerCommissionPct(RATES, {
+      is_referred_by_this_influencer: false, referral_bonus_active: false, deal_commission_pct: 200,
+    })).toBe(90)
+  })
+})
+
+describe('① 어필리에이트 종료 — 심플 모델', () => {
+  it('affiliate-credit 에 프로그램 스위치가 있고, 기본(행 부재)은 꺼짐', () => {
+    expect(affiliate).toContain("affiliate_program_enabled")
+    // 스위치 판정이 !== 'true' (행 부재 = 꺼짐) — === 'false' 로 쓰면 행 부재 시 켜진 것이 된다.
+    expect(affiliate).toMatch(/sw\?\.value !== 'true'/)
+    expect(affiliate).toContain("'PROGRAM_DISABLED'")
+  })
+  it('기본 요율도 0 — influencer 자동분·구매자 보너스(링크만 붙이면 받던 돈)', () => {
+    const m = rates.match(/const DEFAULTS: CommissionRates = \{[\s\S]*?\}/)
+    expect(m, 'DEFAULTS 블록을 못 찾았다').toBeTruthy()
+    expect(m![0]).toMatch(/influencer_pct: 0,/)
+    expect(m![0]).toMatch(/user_referral_bonus_pct: 0,/)
+  })
+})
+
+describe('③ 수락 다리 — CAS 선점 후 딜 발효', () => {
+  it('accept 는 pending→accepted CAS 를 지나야 딜 INSERT 에 닿는다', () => {
+    const casIdx = invites.indexOf("AND status = 'pending'")
+    const dealIdx = invites.indexOf('INSERT INTO seller_influencer_deals')
+    expect(casIdx, 'CAS UPDATE 가 없다').toBeGreaterThan(0)
+    expect(dealIdx, '딜 INSERT 가 없다').toBeGreaterThan(0)
+    expect(casIdx, '딜 발효가 CAS 앞에 있다 — 토큰 재사용으로 딜이 덧씌워진다').toBeLessThan(dealIdx)
+    // CAS 실패(changes 0) 시 반드시 이탈
+    expect(invites).toMatch(/if \(!cas\.meta\?\.changes\)/)
+  })
+  it('딜 발효는 status=active + 제안서 % (0~90 클램프)', () => {
+    expect(invites).toMatch(/VALUES \(\?, \?, \?, 'active', 'outreach', \?\)/)
+    expect(invites).toMatch(/Math\.max\(0, Math\.min\(90, Number\(inv\.commission_pct\)/)
+  })
+})
+
+describe('🔒 연락처 비공개(셀러) — 대표 명시 정책의 회귀 가드', () => {
+  it('셀러 탐색 SELECT 에 email 컬럼이 없다', () => {
+    // 탐색 쿼리 블록으로 앵커 — 파일 전체 검색은 주석에 걸린다.
+    const block = sellerList.slice(sellerList.indexOf('SELECT id, platform, handle'), sellerList.indexOf('FROM ad_influencer_leads'))
+    expect(block.length).toBeGreaterThan(10)
+    expect(block).not.toMatch(/\bemail\b/)
+    expect(block).not.toMatch(/\binstagram\b/)
+  })
+})

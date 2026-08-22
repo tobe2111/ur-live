@@ -67,6 +67,7 @@ const AdminAdsAccountsPage = lazy(() => import('@/pages/admin/AdminAdsAccountsPa
 // 🎯 2026-07-02: 유어애즈 마케팅 서비스몰 운영(주문 접수함·상품 관리).
 const AdminAdsServicesPage = lazy(() => import('@/pages/admin/AdminAdsServicesPage'))
 const AdminInfluencerPoolPage = lazy(() => import('@/pages/admin/AdminInfluencerPoolPage'))
+const AdminInfluencerOutreachPage = lazy(() => import('@/pages/admin/AdminInfluencerOutreachPage'))
 const AdminBuyerPoolPage = lazy(() => import('@/pages/admin/AdminBuyerPoolPage'))
 const AdminMakerPoolPage = lazy(() => import('@/pages/admin/AdminMakerPoolPage'))
 const AdminPartnerPoolPage = lazy(() => import('@/pages/admin/AdminPartnerPoolPage'))
@@ -188,6 +189,11 @@ export function AdminRoutes() {
       <Route path="/admin/influencer-pool" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminInfluencerPoolPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/influencer-outreach" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminInfluencerOutreachPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/buyer-pool" element={

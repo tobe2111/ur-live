@@ -60,6 +60,17 @@
   → 현행 원장과 정합: 이용권 매출 원장 기록이 이미 **사용 시점**이다(`/:code/use`). 커미션 성숙(T+7)도 동일 사상.
   ⏳ 인플루언서별 링크(기존 affiliate_ref 재사용) + 성과 대시보드에 [구매 n건 / 사용 확정 n건] 병기.
 
+### 4.5 ✅ 심플 커미션 모델 확정 (2026-08-22 대표 "어필리에이트 전략은 빼려고 해. 심플하게")
+
+- **인플루언서 수익 = 매장 제안 딜 %(seller_influencer_deals) 하나.** 캡 미적용(당사자 합의값, 상한 90 입력검증).
+- **어필리에이트(유저/큐레이터 링크 2%) 종료** — `affiliate_program_enabled` 스위치(기본 OFF, affiliate-credit.ts).
+  자동분 기본요율(influencer_pct·user_referral_bonus_pct)도 0. 재개는 전부 어드민 platform_settings.
+- **수락 다리**: 제안 접수 시 타깃 리드별 토큰(influencer_offer_invites) → 어드민 발송 큐(/admin/influencer-outreach,
+  연락처는 어드민 전용)에서 수락 URL 복사·발송 → 인플루언서 /i/offer/{token} 카카오 로그인·수락 →
+  딜 활성 + 전용 링크(`/group-buy/{id}?ref={userId}`) 발급 → 기존 ?ref 귀속·적립(매장 부담)·환불 회수·지급 레일 재사용.
+- 가드: `influencer-offer-bridge.test.ts` (CAS 선점·캡 미적용·스위치 기본 OFF·연락처 비공개).
+- ⏳ 남은 것: 성숙 트리거를 시간(refund_window)→**사용 확정**으로 옮기는 게이트(머니 — staging 검증 후).
+
 ### 4.4 정산 모델 — ✅ **대표 승인 (2026-08-22 "정산 모델은 승인할게")**
 
 > 승인된 내용: 아래 **원천 분배** — 소비자 결제액을 유어딜이 받아, 유어딜 수수료·인플루언서 커미션을 떼고

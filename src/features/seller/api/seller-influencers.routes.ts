@@ -26,6 +26,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { intParam } from '@/shared/pagination'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
+import { ensureOfferInvitesTable, generateOfferToken } from '@/features/marketing/api/influencer-offer-invites.routes'
 
 const app = new Hono<{ Bindings: Env }>()
 type Ctx = Context<{ Bindings: Env }>
@@ -190,6 +191,17 @@ app.post('/outreach', rateLimit({ action: 'influencer_outreach', max: 10, window
         (seller_id, product_id, target_lead_ids, target_count, commission_pct, product_support, channels, period_days, message, status, quoted_fee_krw)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?)
     `).bind(sellerId, productId, JSON.stringify(ids), ids.length, pct, support, JSON.stringify(channels), periodDays, message, unitFee * ids.length).run()
+
+    // 타깃 리드별 수락 토큰 — 어드민 큐가 발송 시 이 URL 을 함께 전달한다(수락 → 딜 발효 다리).
+    const outreachId = Number(ins.meta?.last_row_id)
+    if (outreachId) {
+      await ensureOfferInvitesTable(db)
+      const inviteStmts = ids.map((leadId) => db.prepare(
+        `INSERT INTO influencer_offer_invites (outreach_id, lead_id, token, seller_id, product_id, commission_pct, product_support, channels, message)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(outreachId, leadId, generateOfferToken(), sellerId, productId, pct, support, JSON.stringify(channels), message))
+      await db.batch(inviteStmts).catch(() => null) // fail-soft — 실패 시 어드민 큐에서 재생성 가능
+    }
 
     // 유어딜 운영이 받아 발송한다 — 어드민 벨 (fail-soft)
     await createDashboardNotification(
