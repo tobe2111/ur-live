@@ -42,7 +42,7 @@ import { handleWholesaleOrphanSweep } from './cron/wholesale-orphan-sweep';
 import { handleWholesaleRestockNotify } from './cron/wholesale-restock-notify';
 import { handleAnomalyDetection } from './cron/anomaly-detect';
 import { handleSellerDailyReport } from './cron/seller-daily-report';
-import { handleAgencySellerMatch } from './cron/agency-seller-match';
+// 🌇 일몰 정지(롤백 시 아래 호출과 함께 해제): import { handleAgencySellerMatch } from './cron/agency-seller-match';
 import { handleAdSlotsAward } from './cron/ad-slots-award';
 import { handleD1Backup } from './cron/d1-backup';
 import { handleRetryAlimtalk } from './cron/retry-alimtalk';
@@ -223,25 +223,25 @@ export async function handleCronScheduled(
       const { handleProspectsCommissionActivate } = await import('./cron/prospects-commission-activate')
       return handleProspectsCommissionActivate(env)
     }));
-    // 🎯 [urads-split Phase E 2026-07-18] ads-autobid → ur-ads worker cron 으로 이관(wrangler-ads.toml "*/5").
-    //   이중실행 방지 위해 메인에서 제거 — 재도입=원복.
-    // if (env.ADS_AUTOBID_ENABLED === 'true') {
-    //   ctx.waitUntil(safeCron('ads-autobid', async () => {
-    //     const { runAutobidAll } = await import('../features/marketing/api/autobid')
-    //     return runAutobidAll(env)
-    //   }));
-    // }
+    // 🎯 [urads-split Phase E 2026-07-18] ads-autobid 는 ur-ads worker cron(`*/5`)으로 이관 — 이중실행
+    //   방지로 메인에서 제거했다. 재도입하려면 `features/marketing/api/autobid` 의 `runAutobidAll` 을
+    //   `ADS_AUTOBID_ENABLED` 게이트 뒤에 safeCron 으로 배선한다.
   }
 
   // ⏰ 2026-08-11: `0 * * * *` 미등록으로 이 블록 7개가 침묵했다(하트비트 0). 트리거 한도(5)를 다 써
   //   `*/5` 틱 위 :25 게이트로 시간당 1회. 왜 이 방식인지는 `cron-slot.ts` 참조.
+  // 🗄️ 2026-08-22: 재개 가능한 분할 백업(커서로 시간당 조금씩). 기존 주간 백업은 DB 가 263 MB 로
+  //   자라 워커 메모리를 넘겨 08-02 이후 조용히 멈춰 있었다 — 근거는 `cron/d1-backup-chunked.ts` 헤더.
+  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 50 })) {
+    ctx.waitUntil(slotCron('50 * * * *')('d1-backup-chunked', async () => {
+      const { handleChunkedBackup } = await import('./cron/d1-backup-chunked')
+      return handleChunkedBackup(env as never)
+    }));
+  }
+
   if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 25 })) {
-    // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 홍보 유지보수 크론 배선 분리 — 소셜 자동화 그래프를 워커에서
-    //   완전 제거해 CF 1MB 압축한도 회복. 기능 게이트 OFF·미사용이라 미실행 무해. 재도입 시 원복.
-    // ctx.waitUntil(slotCron('25 * * * *')('social-maintenance', async () => {
-    //   const { handleSocialMaintenance } = await import('./cron/social-maintenance')
-    //   return handleSocialMaintenance(env)
-    // }));
+    // 🥗 2026-07-15 워커 다이어트(대표 승인): social-maintenance 배선 제거 — CF 1MB 압축한도 회복.
+    //   게이트 OFF·미사용이라 무해. 재도입은 `./cron/social-maintenance` 를 slotCron('25 * * * *') 로 배선.
     // ⏰ 2026-07-02 (#5 승인 SLA): 24h+ 대기 셀러 전환 신청 어드민 리마인드(20h dedup = 하루 1회꼴).
     ctx.waitUntil(slotCron('25 * * * *')('seller-approval-reminder', async () => {
       const { handleSellerApprovalReminder } = await import('./cron/seller-approval-reminder')
@@ -389,8 +389,9 @@ export async function handleCronScheduled(
       await handleAgencySelfEventsTick(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/self-events', e));
       // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)
       await handleSellerDailyReport(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/seller-daily-report', e));
-      // 2026-05-05: 신규 셀러 ↔ 에이전시 자동 매칭 제안
-      await handleAgencySellerMatch(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/agency-seller-match', e));
+      // 🌇 2026-08-19 일몰 정지 — 목적지 화면(/agency/match-suggestions)이 제거됐다(알림만 남는 게 최악).
+      //    같은 배치의 self-events·campaigns 는 채무/집계 경로라 유지. 롤백: 아래 한 줄 주석 해제.
+      // await handleAgencySellerMatch(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/agency-seller-match', e));
       // 2026-05-05: 광고 슬롯 낙찰 처리
       await handleAdSlotsAward(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/ad-slots-award', e));
     }));

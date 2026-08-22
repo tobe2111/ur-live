@@ -125,6 +125,37 @@ const MUTATIONS = [
       'enrich 레인이 2026-07-28 에 정확히 이걸로 굶었다 — 크롤에 쓸 예산을 도장 찍는 데 썼다.',
   },
   {
+    name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
+    file: 'src/features/agency/api/agency-sunset.ts',
+    find: "    code: 'AGENCY_SIGNUP_CLOSED',",
+    replace: "    code: 'OK',",
+    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    why:
+      '2026-08-19 에이전시 대시보드 일몰. 가입 차단은 **클라+서버 한 쌍**이다 — 화면만 막으면 ' +
+      '직접 POST 로 우회되고(계정이 조용히 생긴다), 서버만 막으면 사용자가 폼을 다 채운 뒤 403 을 본다. ' +
+      '반쪽 롤백은 화면상 멀쩡해 보여서 리뷰로 안 걸린다.',
+  },
+  {
+    name: '에이전시 nav 가 존재하지 않는 라우트를 가리킨다(죽은 링크 부활)',
+    file: 'src/components/AgencyLayout.tsx',
+    find: "{ path: '/agency/settlements'",
+    replace: "{ path: '/agency/streams', label: 'X', i18nKey: 'x', icon: Settings, mode: 'common' },\n      { path: '/agency/settlements'",
+    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    why:
+      '일몰 전 이미 /agency/streams·/agency/pending 이 라우트 없이 nav 에 남아 있었다(누르면 아무 일도 ' +
+      '안 일어난다). 화면을 지우면서 nav 를 안 지우면 그 부채가 즉시 다시 쌓인다.',
+  },
+  {
+    name: '일몰로 내린 에이전시 API 가 다시 마운트된다',
+    file: 'src/worker/index.ts',
+    find: "app.route('/api/agency/delegation', agencyDelegationRoutes);",
+    replace: "app.route('/api/agency/campaigns', agencyCampaignsRoutes);",
+    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    why:
+      '화면 없는 인증 API 가 살아 있으면 축소의 의미가 없다(공격 표면만 남는다). 파일은 일부러 ' +
+      '남겼기 때문에(머니 심볼 computeCommission 이 함께 export 된다) 마운트 한 줄이면 되살아난다.',
+  },
+  {
     name: '이용권 상세 제목이 다시 사진 아래로 내려간다',
     file: 'src/pages/GroupBuyDetailPage.tsx',
     find: '<DetailTitleHeader name',
@@ -4072,6 +4103,38 @@ const MUTATIONS = [
     why:
       '가드 둘이 각각 다른 사고를 막는다: `saved_total>=100` 이 없으면 **갓 만든 키워드의 미개척지인 ' +
       '1페이지**를 건너뛰고, `nb_start=1` 이 없으면 DDL 재적용 때 **901 까지 파 놓은 커서를 101 로 되돌린다**.',
+  },
+  {
+    // 📺 유튜브 보강 예산(2026-08-22) — 회차 예산 56이 매번 100% 소진되므로 여기 1요청 = 네이버 6.59명 포기.
+    name: '유튜브 보강 상한이 8로 되돌아감(예산 62%를 다시 유튜브가 먹는다)',
+    file: 'src/features/marketing/api/influencer-round-width.ts',
+    find: 'export const YT_COLLECT_ENRICH_MAX = 4',
+    replace: 'export const YT_COLLECT_ENRICH_MAX = 8',
+    test: 'src/tests/unit/ads-yt-enrich-budget.test.ts',
+    why:
+      '실측: YT 382요청 → 신규 77(0.20/요청) · 네이버 227요청 → 신규 1,497(6.59/요청). 그리고 유튜브 ' +
+      '이메일은 보강 레인이 어차피 채운다(커버 96% · 미측정 13.3% → 측정됨 38.4%). 상한이 돌아가면 ' +
+      '그 중복이 다시 예산의 절반을 먹는다 — 에러는 안 난다.',
+  },
+  {
+    name: '보강 후보가 다시 넓어짐(이메일만 없는 채널까지 — 레인이 더 싸게 하는 일)',
+    file: 'src/features/marketing/api/influencer-discovery.ts',
+    find: '.filter(l => l._uploads && !classifyCategory(l.name, l.description))',
+    replace: '.filter(l => l._uploads && (!l.email || !classifyCategory(l.name, l.description)))',
+    test: 'src/tests/unit/ads-yt-enrich-budget.test.ts',
+    why:
+      '상한만 낮추고 대상을 안 좁히면 남은 4회를 **레인이 더 잘하는 일**(이메일)에 쓴다. 수집 시점의 ' +
+      '고유 기여는 영상 제목뿐이다(분류율 73.0% → 82.1%, 더 어려운 코호트에서).',
+  },
+  {
+    name: '호출부가 상수 대신 리터럴로 되돌아감(조정 지점이 두 곳이 된다)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: 'enrichMax: YT_COLLECT_ENRICH_MAX',
+    replace: 'enrichMax: 8',
+    test: 'src/tests/unit/ads-yt-enrich-budget.test.ts',
+    why:
+      '상수 옆에 근거(실측)를 적어 두는 이유가 사라진다. 리터럴로 돌아가면 다음 세션이 숫자를 ' +
+      '못 보고 바꾼다 — 이 레포가 반복해 겪은 "근거 없는 되돌리기".',
   },
 ]
 /**

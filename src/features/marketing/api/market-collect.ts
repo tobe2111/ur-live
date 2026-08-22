@@ -34,6 +34,7 @@
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { describePublicDataFailure, serviceKeyParam, laneShouldSkip, updateLaneHealth, laneHealthNote, type LaneHealth, isNoValue } from './public-data-diag'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 /** 표준데이터 게이트웨이 — `apis.` 가 아니라 `api.` 다(글자 하나 차이의 **별개 호스트**). */
 export const MARKET_BASE = 'https://api.data.go.kr/openapi'
@@ -135,7 +136,7 @@ const STATS_KEY = 'ads_market_stats'
 const CURSOR_KEY = 'ads_market_cursor'
 
 export async function runMarketCollect(env: Env): Promise<MarketStats> {
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   await ensureCompanySchema(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const key = env.PUBLIC_DATA_SERVICE_KEY || ''

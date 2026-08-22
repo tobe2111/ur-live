@@ -150,6 +150,24 @@ async function main() {
   //   어떻게: rowid 를 10,000 단위 버킷으로 묶어 양쪽의 (개수, rowid합)을 비교하고 **다른 버킷만**
   //   실제 rowid 목록으로 내려가 좁힌다. 716,000행을 전수 대조하지 않아도 되고, 삭제가 드물수록
   //   빨라진다(버킷 하나만 다르면 그 1만개만 본다).
+  // 🛑 **전환 후에는 sync 를 쓰면 안 된다** — 방향이 뒤집힌다.
+  //
+  //   sync 는 "사본을 원본에 맞춘다". 바인딩이 붙은 뒤에는 **사본이 곧 라이브**이고 원본은 멈춘
+  //   과거다. 그 상태로 돌리면 **오늘 수집한 것을 전부 지운다**(사본에만 있는 행 = 삭제 대상).
+  //   2026-08-19 실측: 전환 몇 시간 뒤 사본에 1,500건이 더 있었다 — 그때 무심코 돌렸으면 날렸다.
+  //
+  //   판정은 "어느 쪽이 더 최근에 쓰였나" 하나로 한다. 사본이 더 최근이면 전환이 끝난 것이다.
+  if (flag('sync') && !flag('i-know-direction')) {
+    const t = 'ad_influencer_leads'
+    const [a] = await q(SRC_DB, `SELECT MAX(collected_at) m FROM "${t}"`)
+    const [b] = await q(DST_DB, `SELECT MAX(collected_at) m FROM "${t}"`)
+    if (b?.m && a?.m && String(b.m) > String(a.m)) {
+      console.error(`❌ 사본이 원본보다 최신이다(사본 ${b.m} > 원본 ${a.m}) — 이미 전환이 끝났다.`)
+      console.error('   지금 sync 를 돌리면 전환 후 수집분을 삭제한다. 정말 필요하면 --i-know-direction.')
+      process.exit(4)
+    }
+  }
+
   if (flag('sync')) {
     const BUCKET = 10000
     for (const t of TABLES) {

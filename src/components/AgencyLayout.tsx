@@ -9,13 +9,8 @@ import { usePersistScroll } from '@/hooks/usePersistScroll'
 import DashboardNotificationBell from './DashboardNotificationBell'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import {
-  LayoutDashboard, Users, ShoppingBag, BarChart2, LogOut, Menu, X,
-  Settings, Bell, Target, Calendar, Utensils, FileText, GitCompare,
-  TrendingUp, Radio, UserPlus, BookOpen, Megaphone, Award, MessageSquare, Ticket, QrCode, Swords, ArrowRightLeft, Trophy, Rocket,
-  Building2,
-  Store,
-  Handshake,
-  type LucideIcon
+  LayoutDashboard, Users, LogOut, Menu, X, Settings, Calendar, Utensils, TrendingUp, UserPlus, BookOpen, ArrowRightLeft, Store, Handshake,
+  type LucideIcon,
 } from 'lucide-react'
 
 /**
@@ -53,78 +48,28 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    // 🏪 핵심 그룹 — 매장 영입 → 입점 → 공구 운영
-    label: '매장 영입', i18nKey: 'agency.nav.storeRecruit',
+    // 🏪 매장 관계 — 영입 → 위임 → 승계. 일몰 후 남는 유일한 운영 축이다.
+    label: '매장 관계', i18nKey: 'agency.nav.storeRecruit',
     items: [
       { path: '/agency/introduced-stores', label: '내 입점 가게', i18nKey: 'agency.nav.introducedStores', icon: Store, mode: 'common' },
       // 🤝 2026-07-10: 3단 위임 모델 (§4.3) — 매장 위임 조회/요청
       { path: '/agency/delegations', label: '매장 위임', i18nKey: 'agency.nav.delegations', icon: Handshake, mode: 'common' },
       { path: '/agency/prospects',  label: '매장 영입 현황', i18nKey: 'agency.nav.prospects', icon: UserPlus, mode: 'common' },
-      { path: '/agency/group-buy', label: '공동구매',  i18nKey: 'agency.nav.groupBuy', icon: Utensils, mode: 'store' },
-      // 🛡️ 2026-05-18: 숙소 공구 — PR 5/6.
-      { path: '/agency/stays', label: '숙소 운영', i18nKey: 'agency.nav.stays', icon: Building2, mode: 'store' },
-    ],
-  },
-  {
-    label: '판매 관리', i18nKey: 'agency.nav.sales',
-    items: [
-      { path: '/agency/orders',    label: '주문 현황', i18nKey: 'agency.nav.orders', icon: ShoppingBag, mode: 'common' },
-      { path: '/agency/returns',   label: '반품/CS',  i18nKey: 'agency.nav.returns', icon: ShoppingBag, mode: 'common' },
-    ],
-  },
-  // 🛡️ 2026-04-26: TikTok Backstage 학습 기반 신규 운영 도구 (공구 매출 촉진)
-  {
-    label: '캠페인 & 영업', i18nKey: 'agency.nav.campaignSales',
-    items: [
-      { path: '/agency/campaigns',  label: '캠페인',       i18nKey: 'agency.nav.campaigns', icon: Megaphone, mode: 'common' },
-      { path: '/agency/incentives', label: '인센티브 규칙', i18nKey: 'agency.nav.incentives', icon: Award, mode: 'common' },
-      { path: '/agency/messages',   label: '메시지 템플릿', i18nKey: 'agency.nav.messages', icon: MessageSquare, mode: 'common' },
-      { path: '/agency/coupons',    label: '쿠폰 배포',     i18nKey: 'agency.nav.coupons', icon: Ticket, mode: 'common' },
-      { path: '/agency/events',     label: '자사 챌린지',   i18nKey: 'agency.nav.events', icon: Trophy, mode: 'common' },
-      { path: '/agency/calendar',   label: '라이브 캘린더', i18nKey: 'agency.nav.calendar', icon: Calendar, mode: 'live' },
-      { path: '/agency/match-suggestions', label: '자동 매칭 제안', i18nKey: 'agency.nav.matchSuggestions', icon: UserPlus, mode: 'live' },
-      { path: '/agency/pk',         label: 'PK 이벤트',     i18nKey: 'agency.nav.pk', icon: Swords, mode: 'live' },
-      { path: '/agency/promote-boosts', label: '노출 부스팅', i18nKey: 'agency.nav.promoteBoosts', icon: Rocket, mode: 'live' },
-    ],
-  },
-  {
-    label: '분석 & 성과', i18nKey: 'agency.nav.analytics',
-    items: [
-      { path: '/agency/stats',   label: '통계 분석', i18nKey: 'agency.nav.stats', icon: BarChart2, mode: 'common' },
-      { path: '/agency/targets', label: '매출 목표', i18nKey: 'agency.nav.targets', icon: Target, mode: 'common' },
-    ],
-  },
-  {
-    // 소속 셀러 관리 (라이브 시대 유산 — 보존, 후순위 노출)
-    label: '셀러 관리', i18nKey: 'agency.nav.sellerMgmt',
-    items: [
       { path: '/agency/sellers',  label: '담당 셀러',   i18nKey: 'agency.nav.sellers', icon: Users, mode: 'common' },
-      { path: '/agency/ranking', label: '셀러 랭킹', i18nKey: 'agency.nav.ranking', icon: BarChart2, mode: 'common' },
-      { path: '/agency/compare', label: '셀러 비교', i18nKey: 'agency.nav.compare', icon: GitCompare, mode: 'common' },
-      { path: '/agency/invites',    label: '셀러 영입',     i18nKey: 'agency.nav.invites', icon: QrCode, mode: 'common' },
-      { path: '/agency/transfers',  label: '셀러 이전',     i18nKey: 'agency.nav.transfers', icon: ArrowRightLeft, mode: 'common' },
-      { path: '/agency/streams',  label: '라이브 현황',  i18nKey: 'agency.nav.streams', icon: Radio, liveBadge: true, mode: 'live' },
-      { path: '/agency/schedule', label: '방송 캘린더',  i18nKey: 'agency.nav.schedule', icon: Calendar, mode: 'live' },
+      // 승계 = 매장 본인 동의 필수(TD-016). 일몰 후에도 남는 이유가 이것이다.
+      { path: '/agency/transfers',  label: '매장 이전',     i18nKey: 'agency.nav.transfers', icon: ArrowRightLeft, mode: 'common' },
     ],
   },
   {
-    label: '팀 운영', i18nKey: 'agency.nav.teamOps',
-    items: [
-      { path: '/agency/members', label: '팀 멤버', i18nKey: 'agency.nav.members', icon: Users, mode: 'common' },
-    ],
-  },
-  {
-    label: '재무 & 설정', i18nKey: 'agency.nav.finance',
+    label: '정산 & 설정', i18nKey: 'agency.nav.finance',
     items: [
       { path: '/agency/settlements', label: '정산 관리',   i18nKey: 'agency.nav.settlements', icon: TrendingUp, mode: 'common' },
       // 📒 2026-08-01: 이 원장 화면(MyLedgerPage)은 **동작하는데 nav 에 없어** 아무도 못 갔다.
       //   ⚠️ 주석에 경로를 따옴표/백틱으로 적지 말 것 — orphan 가드가 그걸 '링크'로 세어
       //      nav 를 지워도 초록이 뜬다(이 줄을 쓰다가 실제로 그랬고 되돌려-검증이 잡았다).
-      //   `GET /api/ledger/my` 핸들러가 `user.type === 'agency'` 를 **명시적으로 지원**한다(`agency:{id}` 계정)
-      //   — 셀러 쪽 `/seller/ledger` 와 대칭이고, 정산 관리(확정 내역)와 달리 **실시간 미수/원장**을 본다.
+      //   GET /api/ledger/my 핸들러가 user.type === 'agency' 를 **명시적으로 지원**한다(agency 계정)
+      //   — 셀러 쪽 실시간 원장과 대칭이고, 정산 관리(확정 내역)와 달리 **실시간 미수/원장**을 본다.
       { path: '/agency/ledger', label: '실시간 원장', i18nKey: 'agency.nav.ledger', icon: BookOpen, mode: 'common' },
-      { path: '/agency/contracts',   label: '계약 관리',   i18nKey: 'agency.nav.contracts', icon: FileText, mode: 'common' },
-      { path: '/agency/notices',     label: '셀러 공지',   i18nKey: 'agency.nav.notices', icon: Bell, mode: 'common' },
       { path: '/agency/guide',       label: '운영 가이드',  i18nKey: 'agency.nav.guide', icon: BookOpen, mode: 'common' },
       { path: '/agency/profile',     label: '프로필 설정',  i18nKey: 'agency.nav.profile', icon: Settings, mode: 'common' },
     ],

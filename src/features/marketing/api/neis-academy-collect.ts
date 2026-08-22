@@ -13,6 +13,7 @@ import type { Env } from '@/worker/types/env'
 import { envLaneBudget , envPlanValue} from './collect-budget'
 import { ensureProspectSchema, saveProspects, type StoreProspect } from './store-prospects'
 import { serviceKeyParam, isNoValue } from './public-data-diag'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 // 17개 시도교육청 코드(나이스 표준) — 커서가 이 순서로 순환.
 const NEIS_OFFICES: Array<[string, string]> = [
@@ -96,7 +97,7 @@ export async function runNeisAcademyCollect(env: Env, maxPagesArg?: number): Pro
   //   회복이 없었다). 무료에서 다시 올리려면 하트비트의 `ms` 를 먼저 볼 것 — 26,000 근처면 그게 천장이다.
   //   ⚠️ 유료(8)는 CPU 한도가 다른 세계라 별개 값이다. **무료 3 을 올리는 것과 혼동하지 말 것.**
   const maxPages = maxPagesArg ?? envPlanValue(undefined, 3, 8, env)
-  const DB = env.DB
+  const DB = adsLeadsDb(env)
   await ensureProspectSchema(DB)
   const now = new Date()
   const stamp = now.toISOString().slice(0, 19).replace('T', ' ')
