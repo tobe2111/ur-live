@@ -69,6 +69,25 @@ curl -sS "https://live.ur-team.com/api/admin/tools/backup-chunk" -H "Authorizati
 3. **유어애즈 DB 종류별 분리**(인플루언서/업체/매장) — 라우터(`adsLeadsDb`)에 줄 추가 + D1 3개 생성.
    **D1 생성은 대표가 대시보드에서** (플랫폼 쓰기는 세션이 하지 않는다).
 
+## 3-b. ❓ 판정 불가로 확정된 것 — **다시 시도하지 말 것**
+
+**"D1 에서 행을 지우면 `file_size` 가 실제로 줄어드는가"는 이 환경에서 읽기로 판정할 수 없다.**
+직접 재 봤고 D1 이 막는다:
+
+```
+PRAGMA page_size      → 4096            (통과)
+PRAGMA page_count     → not authorized: SQLITE_AUTH
+PRAGMA freelist_count → not authorized: SQLITE_AUTH
+```
+
+공식 문서에도 VACUUM/회수에 대한 언급이 없다. 다만 한도 문서가 *"included storage 한도에 닿으면
+**불필요한 DB 를 지우거나 stale 데이터를 정리**해야 새 데이터를 넣을 수 있다"* 고 안내하므로,
+**정리가 용량을 되돌린다는 전제는 문서가 지지한다**(단정은 금물 — `file_size` 표시가 줄어드는지는 별개).
+
+⇒ 이건 **실제로 지워 보고 `file_size` 를 다시 재는 것**으로만 판정된다. 그러니 순서가 중요하다:
+백업 1벌 확보 → 중복분 정리 → **`file_size` 재측정**. 줄지 않으면 "정리로 공간 확보"는 폐기하고
+**DB 분리**(§3-3)로 간다. 어느 쪽이든 계정 총량은 18% 라 길은 있다.
+
 ## 4. ⚠️ 아직 원인 미상 (다음 세션이 이어받을 것)
 
 **cron 하트비트 129개가 08-22 11:00(KST) 이후 전부 멈췄다.** 그런데 작업은 돌고 DB 쓰기도 된다
