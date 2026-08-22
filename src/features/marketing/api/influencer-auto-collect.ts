@@ -39,7 +39,7 @@ import { RETIRED_CATEGORIES } from './influencer-classify'
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, keywordsPerRoundCap, naverOnlyRoundCap, isNaverOnlyRound, readYtBudgetState, pickStarvationRescue, AUTO_RETIRE_WHERE, planRoundWidthForShape, parseAxisCarry, serializeAxisCarry, AXIS_CARRY_KEY } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound, mergeKeywordPicks, NAVER_COLLECT_ENRICH_MAX, YT_COLLECT_ENRICH_MAX, keywordsPerRoundCap, naverOnlyRoundCap, isNaverOnlyRound, readYtBudgetState, pickStarvationRescue, AUTO_RETIRE_WHERE, planRoundWidthForShape, parseAxisCarry, serializeAxisCarry, AXIS_CARRY_KEY } from './influencer-keyword-rotation'
 import { FRESHNESS_CAP_KEY, parseFreshnessCap, decideFreshness } from './influencer-freshness-control'
 import { CAFE_GATE_KEY, cafeCollectEnabled } from './collect-track-gates' // 🎛️ 수집 트랙 게이트(카페) SSOT
 
@@ -377,7 +377,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       ytSearchUsed += ytPages // 검색 1페이지 = search.list 1회(예산 차감은 시도 기준 — 실패 호출도 구글이 카운트)
       try {
         const _b0 = budget.left
-        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytAngle.searchType, order: ytAngle.order, alreadyContacted })
+        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: YT_COLLECT_ENRICH_MAX, budget, searchType: ytAngle.searchType, order: ytAngle.order, alreadyContacted })
         spendBy.yt += Math.max(0, _b0 - budget.left)
         // 🔬 **세부 카운터까지 옮긴다**(2026-08-11) — `DiscoverCalls` 는 videos 콜의 *성과*를
         //   (email/contact/cat/empty) 이미 세는데 여기서 3개만 옮겨 **스냅샷에 도달하지 못했다**

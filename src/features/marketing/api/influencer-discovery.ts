@@ -311,7 +311,7 @@ export async function discoverYouTubeInfluencers(
   //    pickBusinessEmail 노이즈 방지) 소개글로 카테고리 분류가 안 되는(영상 제목으로 교정) 채널. 같은 1콜로 둘 다 보강(쿼터 0).
   const enrichMax = Math.max(0, Math.min(30, opts.enrichMax ?? 15))
   const ytCand = (leads as Array<InfluencerLead & { _uploads?: string }>)
-    .filter(l => l._uploads && (!l.email || !classifyCategory(l.name, l.description)))
+    .filter(l => l._uploads && !classifyCategory(l.name, l.description)) // 🎯 분류 실패분만 — 이메일은 보강 레인이 더 싸게 한다(YT_COLLECT_ENRICH_MAX docblock 실측)
     .sort((a, b) => b.subscriber_count - a.subscriber_count)
   // 💸 **이미 연락처를 가진 리드는 보강하지 않는다**(2026-07-29). 저장은 빈 칸만 COALESCE 백필하므로,
   //   이미 채워진 리드를 보강하면 결과가 통째로 버려진다 — 순수 낭비다. 그런데 이 레인의 병목은 정확히

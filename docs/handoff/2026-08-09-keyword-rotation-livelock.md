@@ -900,3 +900,59 @@ Naver     spend 227 (37%)   found 5,881   saved 1,497   →  요청당 신규 6.
 - 되돌리기: 상수 하나(`enrichMax`) 환원
 - 판정: 회차 `spend_by.yt` 감소 · `nb.saved` 증가 · 일별 발굴량
 - ⚠️ 캡(300)은 **내리지 말 것**(대표 지시). 다만 캡을 더 올리는 것도 지금은 무의미하다 — 예산이 먼저 막는다.
+
+### 🎬 처방 실행 — 유튜브 보강 예산 재배분 (2026-08-22 대표 승인 "가장 이상적으로 · 네가 제안한대로")
+
+#### 정정 두 개 (내가 대표에게 잘못 말한 것)
+1. ❌ *"유튜버를 덜 모으는 거래"* → **아니다. 채널 수는 똑같다.** 리드는 2단계(`channels.list`)에서
+   만들어지고 3단계(영상 스니펫)는 **이미 만든 리드의 빈 칸만** 채운다. `saveLeadsBatch` 의 필터도
+   연락처가 아니라 **노이즈·구독자 1,000명** 기준이다. 실제 거래는 *"유튜브 이메일·업종 채우는 속도"* ↔
+   *"블로거 신규 발굴량"* 이다.
+2. ❌ *"업종 분류가 안 되면 제안 대상에서 빠진다"* → **과장.** `resolveCategory(name, desc, 키워드카테고리)`
+   가 **키워드 업종으로 폴백**하므로 카테고리는 있다. 잃는 건 *정확도*(`category_source='content'`)다.
+
+#### 그리고 앞선 세션이 남긴 숙제를 풀었다
+`NAVER_COLLECT_ENRICH_MAX` 를 5→1 로 내린 세션이 *"유튜브는 그 몫의 실제 기여를 **아직 안 쟀다**.
+재기 전에 줄이지 않는다"* 고 못 박아 뒀다. 그 측정이 이번에 나왔다:
+```
+회차 yt_calls   search 3 · channels 3 · videos 24     ← 30요청 중 24가 영상 보강
+                videos_email 1 · videos_contact 3 · videos_cat 24
+
+보강 레인이 유튜브도 커버한다 (그러니 이메일 몫은 중복이다)
+  유튜브 미측정      610건  이메일 13.3%
+  유튜브 측정됨   13,873건  이메일 38.4%     ← 커버 96% · 수율 3배
+
+다만 분류 신호는 레인이 못 한다 (그래서 0 이 아니다)
+                    n        content 분류율   카테고리 없음
+  보강 없음    11,118          73.0%           6.4%
+  보강 받음     3,365          82.1%           2.7%    ← 더 어려운 코호트인데 9%p 높다
+```
+
+#### 변경 (상수 1개 + 필터 1줄, 새 줄 0)
+| | |
+|---|---|
+| 상한 | `YT_COLLECT_ENRICH_MAX = 4`(신규 SSOT, `influencer-round-width.ts`) — 종전 리터럴 8 |
+| 대상 | 후보 필터에서 `!l.email ||` 제거 → **분류 실패분만**. 이메일은 레인에 맡긴다 |
+| 배선 | rotation 재수출 + auto-collect import 에 **얹기만** (파일 600/659 줄 불변) |
+
+기대: 회차당 YT 보강 24 → 한 자리수, 남는 요청이 네이버로(요청당 6.59명).
+⚠️ **절감분이 실제로 네이버로 흘러가는지는 라이브 `spend_by` 로만 보인다** — 테스트는 "상수가 낮아졌고·
+호출부가 쓰고·대상이 좁혀졌다"까지만 고정한다.
+
+#### 🎯 판정 (다음 세션)
+```sql
+-- ① 예산이 옮겨갔나 (기준선: yt 33 / naver 18 per round)
+SELECT json_extract(value,'$.spend_by'), json_extract(value,'$.yt_calls'),
+       json_extract(value,'$.funnel.recent') FROM platform_settings WHERE key='ads_autocollect_stats';
+-- ② 발굴량 (기준선 08-20 3,834 · 08-21 3,790)  ⚠️ 리드는 새 DB d4630482
+SELECT DATE(collected_at,'+9 hours') d, COUNT(*) n,
+       SUM(CASE WHEN email IS NOT NULL AND email<>'' THEN 1 ELSE 0 END) em
+  FROM ad_influencer_leads WHERE account_id=0 AND collected_at >= datetime('now','-8 days') GROUP BY d;
+-- ③ 유튜브가 손해 안 봤나 — 채널 수는 그대로여야 한다(보강만 줄였다)
+SELECT DATE(collected_at,'+9 hours') d, COUNT(*) FROM ad_influencer_leads
+ WHERE account_id=0 AND platform='youtube' AND collected_at >= datetime('now','-8 days') GROUP BY d;
+```
+✅ 통과 = `yt_calls.videos` 한 자리수 · `spend_by.naver` 증가 · 일별 발굴량 증가 · 유튜브 채널 수 유지
+❌ 되돌리기 = 상수 4 → 8 + 필터에 `!l.email ||` 복원(둘 다 mutation 으로 고정돼 있다)
+
+📔 **Notion 미기록**(이 세션 MCP 미연결) — 붙어 있는 다음 세션이 1행 남길 것.

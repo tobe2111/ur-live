@@ -4051,6 +4051,38 @@ const MUTATIONS = [
       '가드 둘이 각각 다른 사고를 막는다: `saved_total>=100` 이 없으면 **갓 만든 키워드의 미개척지인 ' +
       '1페이지**를 건너뛰고, `nb_start=1` 이 없으면 DDL 재적용 때 **901 까지 파 놓은 커서를 101 로 되돌린다**.',
   },
+  {
+    // 📺 유튜브 보강 예산(2026-08-22) — 회차 예산 56이 매번 100% 소진되므로 여기 1요청 = 네이버 6.59명 포기.
+    name: '유튜브 보강 상한이 8로 되돌아감(예산 62%를 다시 유튜브가 먹는다)',
+    file: 'src/features/marketing/api/influencer-round-width.ts',
+    find: 'export const YT_COLLECT_ENRICH_MAX = 4',
+    replace: 'export const YT_COLLECT_ENRICH_MAX = 8',
+    test: 'src/tests/unit/ads-yt-enrich-budget.test.ts',
+    why:
+      '실측: YT 382요청 → 신규 77(0.20/요청) · 네이버 227요청 → 신규 1,497(6.59/요청). 그리고 유튜브 ' +
+      '이메일은 보강 레인이 어차피 채운다(커버 96% · 미측정 13.3% → 측정됨 38.4%). 상한이 돌아가면 ' +
+      '그 중복이 다시 예산의 절반을 먹는다 — 에러는 안 난다.',
+  },
+  {
+    name: '보강 후보가 다시 넓어짐(이메일만 없는 채널까지 — 레인이 더 싸게 하는 일)',
+    file: 'src/features/marketing/api/influencer-discovery.ts',
+    find: '.filter(l => l._uploads && !classifyCategory(l.name, l.description))',
+    replace: '.filter(l => l._uploads && (!l.email || !classifyCategory(l.name, l.description)))',
+    test: 'src/tests/unit/ads-yt-enrich-budget.test.ts',
+    why:
+      '상한만 낮추고 대상을 안 좁히면 남은 4회를 **레인이 더 잘하는 일**(이메일)에 쓴다. 수집 시점의 ' +
+      '고유 기여는 영상 제목뿐이다(분류율 73.0% → 82.1%, 더 어려운 코호트에서).',
+  },
+  {
+    name: '호출부가 상수 대신 리터럴로 되돌아감(조정 지점이 두 곳이 된다)',
+    file: 'src/features/marketing/api/influencer-auto-collect.ts',
+    find: 'enrichMax: YT_COLLECT_ENRICH_MAX',
+    replace: 'enrichMax: 8',
+    test: 'src/tests/unit/ads-yt-enrich-budget.test.ts',
+    why:
+      '상수 옆에 근거(실측)를 적어 두는 이유가 사라진다. 리터럴로 돌아가면 다음 세션이 숫자를 ' +
+      '못 보고 바꾼다 — 이 레포가 반복해 겪은 "근거 없는 되돌리기".',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
