@@ -3,6 +3,12 @@
  *
  * 대표 확정 정책 (2026-06-25, docs/design/product-ownership-model.md):
  *   1. 플랫폼 수수료: 남의 상품(3P, 이용권+쇼핑) = 5% / 유어딜 직판(1P 쇼핑) = 0%
+ *      🔴 2026-08-20 대표 최종 확정("이게 최종이야") — **매장 유입 채널로 이원화**:
+ *        · 중개사(중개 업체)가 관리하는 매장 = **5%** (기존 값 유지)
+ *        · 매장 업주가 직접 등록·운영    = **10%**
+ *      채널은 매장 등록 시 선택(seller_meta.store_channel = 'direct'|'brokered').
+ *      ⚠️ 채널 미지정(기존 매장)은 **brokered(5%)로 폴백** — 기존 매장을 조용히 10%로
+ *      재가격하지 않는다(기존 9개 매장의 채널 백필은 대표 확인 후 별도). 설계: seller-dashboard-v2.md
  *   2. 홍보 소개비(핀): 주인 자율 (플랫폼 기본값/상한 없음, 음수 방지 가드만) · 주인 몫에서
  *   3. 에이전시: 지속배분+시한부 — 영입 가게 GMV 1%(플랫폼 5%에서), 실판매 시에만,
  *      가게당 24개월 한도. 율·기간은 어드민이 에이전시별 조절(여기선 기본값만).
@@ -21,8 +27,10 @@ export type ProductKind = 'voucher' | 'shopping';
 
 /** 정책 요율 — platform_settings 에서 로드(loadFeeRates). 여기 값은 *기본값(박제)*. */
 export interface FeeRates {
-  /** 3P 플랫폼 수수료 % (1P 는 항상 0 강제). 기본 5. */
+  /** 3P 플랫폼 수수료 % — **중개(brokered) 채널** (1P 는 항상 0 강제). 기본 5. */
   platformPct: number;
+  /** 3P 플랫폼 수수료 % — **직접(direct) 채널**(매장 업주 직접 등록). 기본 10. 2026-08-20 확정. */
+  platformPctDirect: number;
   /** 에이전시 GMV % (플랫폼 수수료에서 분배). 기본 1. */
   agencyPct: number;
   /** 에이전시 지속배분 시한(개월). 기본 24. (리졸버는 withinTerm boolean 만 받음 — 참고용 상수) */
@@ -32,6 +40,7 @@ export interface FeeRates {
 /** 대표 확정 기본값 — platform_settings 미설정 시 폴백 + 정책 SSOT. */
 export const DEFAULT_FEE_RATES: Readonly<FeeRates> = Object.freeze({
   platformPct: 5,
+  platformPctDirect: 10,
   agencyPct: 1,
   agencyTermMonths: 24,
 });
@@ -72,6 +81,9 @@ export interface FeeContext {
   agency?: AgencyContext | null;
   /** 홍보(핀) 소개비(없으면 미적용). */
   promo?: PromoSpec | null;
+  /** 매장 유입 채널 — 'direct'(업주 직접, 10%) | 'brokered'(중개 관리, 5%).
+   *  미지정 = brokered 폴백(기존 매장 무재가격). seller_meta.store_channel 에서 로드. */
+  storeChannel?: 'direct' | 'brokered';
 }
 
 /** 분배 결과 — 슬라이스 합 = amount (정확히, 반올림 잔차는 ownerNet 흡수). */
@@ -112,8 +124,10 @@ export function resolveOrderFees(ctx: FeeContext, rates: FeeRates = DEFAULT_FEE_
   const ownership: Ownership = ctx.ownership === '1P' ? '1P' : '3P';
   const productKind: ProductKind = ctx.productKind === 'shopping' ? 'shopping' : 'voucher';
 
-  // 규칙 1: 플랫폼 수수료 — 1P 는 0, 3P 는 platformPct%.
-  const platformPct = clampPct(rates.platformPct, DEFAULT_FEE_RATES.platformPct);
+  // 규칙 1: 플랫폼 수수료 — 1P 는 0, 3P 는 채널별(직접 10% / 중개 5%, 2026-08-20 대표 최종).
+  const platformPct = ctx.storeChannel === 'direct'
+    ? clampPct(rates.platformPctDirect, DEFAULT_FEE_RATES.platformPctDirect)
+    : clampPct(rates.platformPct, DEFAULT_FEE_RATES.platformPct);
   const platform = ownership === '1P' ? 0 : Math.round((amount * platformPct) / 100);
 
   // 규칙 3: 에이전시 — 실판매 + 시한 내 + 영입 에이전시 있을 때만. platform 안에서 분배(≤ platform 가드).
@@ -185,7 +199,8 @@ export function assertFeeInvariants(b: FeeBreakdown): void {
  *
  * 전용 네임스페이스 `fee_*` 키 사용 — 기존 산재 키(commission_rate_default / agency_commission_pct 등)와
  * 충돌 없음. 어드민이 이 키로 정책 요율을 조절. 리졸버 배선 시 이 로더로 요율 주입.
- *   fee_platform_pct_3p   (기본 5)   — 3P 플랫폼 수수료 %
+ *   fee_platform_pct_3p        (기본 5)  — 3P 플랫폼 수수료 % (중개 채널)
+ *   fee_platform_pct_3p_direct (기본 10) — 3P 플랫폼 수수료 % (직접 채널, 2026-08-20)
  *   fee_agency_pct        (기본 1)   — 에이전시 GMV %
  *   fee_agency_term_months(기본 24)  — 에이전시 지속배분 시한(개월)
  */
@@ -203,12 +218,13 @@ export async function loadFeeRates(
       return fallback;
     }
   };
-  const [platformPct, agencyPct, agencyTermMonths] = await Promise.all([
+  const [platformPct, platformPctDirect, agencyPct, agencyTermMonths] = await Promise.all([
     read('fee_platform_pct_3p', DEFAULT_FEE_RATES.platformPct),
+    read('fee_platform_pct_3p_direct', DEFAULT_FEE_RATES.platformPctDirect),
     read('fee_agency_pct', DEFAULT_FEE_RATES.agencyPct),
     read('fee_agency_term_months', DEFAULT_FEE_RATES.agencyTermMonths),
   ]);
-  return { platformPct, agencyPct, agencyTermMonths };
+  return { platformPct, platformPctDirect, agencyPct, agencyTermMonths };
 }
 
 /**

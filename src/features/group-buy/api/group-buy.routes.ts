@@ -614,7 +614,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       // 🛡️ 2026-05-24 Q4 perf:
       //   1) 코드 생성을 Promise.all 병렬 (이전: sequential await SELECT — qty=N 일 때 N awaits).
       //   2) order_items + vouchers INSERT 를 단일 DB.batch() 로 통합 (이전: 2 awaits).
-      const expiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
+      const expiresAt = product.voucher_expiry || null // 2026-08-22 대표: 미설정 = 무기한(90일 강제 기본값 폐지)
       const codes = await Promise.all(
         Array.from({ length: qty }, () => generateUniqueVoucherCode(DB))
       )
@@ -1220,7 +1220,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   //          (인플루언서 attribution 도 아래 applyGroupBuyReferral 공유 헬퍼로 딜 경로와 동일 처리됨
   //           — 2026-05-31 구현 완료. influencer_attributions INSERT + influencer_balances 적립.)
   //   🔴 2026-08-12: orderNumber 는 위에서 **토스 orderId** 로 확정됐다(웹훅 연결). 여기서 새로 만들지 않는다.
-  const expiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
+  const expiresAt = product.voucher_expiry || null // 2026-08-22 대표: 미설정 = 무기한(90일 강제 기본값 폐지)
   try {
     const orderInsert = await DB.prepare(`
       INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, payment_key, idempotency_key)

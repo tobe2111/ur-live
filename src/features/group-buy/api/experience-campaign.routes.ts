@@ -120,8 +120,9 @@ async function issueExperienceVoucher(
     const p = await DB.prepare('SELECT name, seller_id, voucher_validity_days FROM products WHERE id = ?')
       .bind(campaign.product_id).first<{ name: string; seller_id: number | null; voucher_validity_days: number | null }>()
       .catch(() => null)
-    const validityDays = Number(p?.voucher_validity_days) > 0 ? Number(p!.voucher_validity_days) : 90
-    const expiresAt = new Date(Date.now() + validityDays * 86400_000).toISOString()
+    // 2026-08-22 대표: 미설정 = 무기한 (90일 강제 기본값 폐지)
+    const validityDays = Number(p?.voucher_validity_days) > 0 ? Number(p!.voucher_validity_days) : null
+    const expiresAt = validityDays ? new Date(Date.now() + validityDays * 86400_000).toISOString() : null
     const orderNumber = `EXP-${campaign.id}-${userId}-${cryptoInt(0x7fffffff)}`
 
     // 0원 order (payment_method='experience' — 만료환불 cron 자연 skip). status='PAID' (사용 가능).

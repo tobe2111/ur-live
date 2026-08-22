@@ -178,6 +178,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
 
           {v.status === 'unused' ? (
             /* 풋: QR 힌트 + 코드 (탭하면 복사) */
+            <>
             <button
               type="button"
               onClick={(e) => {
@@ -198,6 +199,28 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
                 <span className="block text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{t('voucher.tapForQr', { defaultValue: '탭하면 코드 복사 · 사용하기로 QR 제시' })}</span>
               </div>
             </button>
+            {/* ↩️ 2026-08-20 (대표): 유저도 서비스에서 환불 요청 가능 — 미사용 이용권 한정.
+                접수만 한다(돈은 안 움직임) — 승인·환불 실행은 운영자 확인 후 어드민(머니 경로). */}
+            {v.order_id ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const reason = window.prompt(t('voucher.refundReasonPrompt', { defaultValue: '환불 요청 사유를 입력해주세요 (예: 방문 계획 취소)' }))
+                  if (!reason || !reason.trim()) return
+                  api.post('/api/returns/request', { order_id: v.order_id, reason: '이용권 환불 요청', detail_reason: reason.trim().slice(0, 500) })
+                    .then(r => {
+                      if (r.data?.success) toast.success(t('voucher.refundRequested', { defaultValue: '환불 요청이 접수되었어요. 확인 후 처리해 드릴게요.' }))
+                      else toast.error(r.data?.error || t('voucher.refundFailed', { defaultValue: '환불 요청에 실패했어요' }))
+                    })
+                    .catch(err => toast.error(err?.response?.data?.error || t('voucher.refundFailed', { defaultValue: '환불 요청에 실패했어요' })))
+                }}
+                className="w-full px-4 pb-2.5 -mt-1 text-left text-[10px] text-gray-400 dark:text-gray-500 underline underline-offset-2 active:opacity-70"
+              >
+                {t('voucher.requestRefund', { defaultValue: '사용 전이라면 환불 요청' })}
+              </button>
+            ) : null}
+            </>
           ) : (
             /* 🎨 2026-06-21 (개선 #4): 사용완료/만료 동선 — 재구매 + (사용완료만) 후기 보너스 */
             <div className="px-4 pt-3 pb-3.5">

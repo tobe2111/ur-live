@@ -82,6 +82,8 @@ import { adminReviewGeneratorRoutes } from '../features/admin/api/admin-review-g
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
 import { kakaoRoutes } from '../features/auth/api/kakao.routes';
 import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
+import { sellerOperatorsRoutes } from '../features/seller/api/seller-operators.routes'; // 🏪 매장 운영 주체(store-operator-model.md 2단계)
+import { sellerStoresRoutes } from '../features/seller/api/seller-stores.routes'; import { sellerInfluencersRoutes } from '../features/seller/api/seller-influencers.routes'; import { influencerOfferInvitesRoutes } from '../features/marketing/api/influencer-offer-invites.routes'; import { adminInfluencerOutreachRoutes } from '../features/admin/api/admin-influencer-outreach.routes'; // 🏪📣 seller-dashboard-v2 (+제안 수락 다리·어드민 발송 큐)
 // import { googleRoutes } from '../features/auth/api/google.routes';  // 🔒 2026-07-28 마운트 해제(#806)
 import { bannerRoutes } from '../features/banners/api/banners.routes';
 import { cartRoutes } from '../features/cart/api/cart.routes';
@@ -1451,19 +1453,16 @@ app.use('/api/admin-payouts/*', adminRbacMiddleware());
 app.route('/api/admin', adminAuthRoutes);
 
 // -------------------------------------------------------
-// Seller routing: FOUR routers on /api/seller (non-overlapping sub-routes).
-//
-// sellerAuthRoutes       → POST /login, /register, GET /me  (auth)
-// sellerManagementRoutes → /products/*, /profile, /dashboard (management CRUD)
-// sellerOrdersRoutes     → /orders/*, /store-verify/*        (order management)
-// sellerDonationsRoutes  → /donations/*                      (donation endpoints)
-//
+// Seller routing: multiple routers on /api/seller (non-overlapping sub-routes) —
+// auth(login/register/me) · management(products/profile/dashboard) · orders(orders/store-verify) · donations.
 // ⚠️ All mounted on /api/seller — sellerAuthRoutes registered first for priority.
 //    Rate limiting applied to /api/seller/login before route registration.
 // -------------------------------------------------------
 // Feature: Seller auth — rate limited: 10 attempts per 5 min per IP
 app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, windowSec: 300 }));
 app.route('/api/seller', sellerAuthRoutes);
+app.route('/api/seller', sellerOperatorsRoutes); // 🏪 my-stores · 매장 전환 · 운영자 관리
+app.route('/api/seller', sellerStoresRoutes); app.route('/api/seller/influencers', sellerInfluencersRoutes); app.route('/api/influencer-offers', influencerOfferInvitesRoutes); app.route('/api/admin/influencer-outreach', adminInfluencerOutreachRoutes); // 매장관리/인플탐색·제안/수락다리/어드민 발송큐
 
 // 🔒 2026-07-28: Google/Firebase 로그인 마운트 해제 — 사유·복원법은 auth.ts 주석 / AUDIT_INVARIANTS.md
 // app.route('/api/auth/google', googleRoutes);

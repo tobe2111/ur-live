@@ -51,7 +51,7 @@ export interface AffiliateCreditInput {
 
 export type AffiliateCreditResult =
   | { ok: true; commission: number }
-  | { ok: false; code: 'NOT_FOUND' | 'NOT_PAID' | 'SELF_REFERRAL' | 'SELF_PURCHASE' | 'SELF_SELLER' | 'DUPLICATE' | 'IP_ABUSE' | 'REFERRER_CAP' | 'REFERRAL_DISABLED' | 'BUDGET_EXHAUSTED' | 'ERROR' }
+  | { ok: false; code: 'NOT_FOUND' | 'NOT_PAID' | 'SELF_REFERRAL' | 'SELF_PURCHASE' | 'SELF_SELLER' | 'DUPLICATE' | 'IP_ABUSE' | 'REFERRER_CAP' | 'REFERRAL_DISABLED' | 'BUDGET_EXHAUSTED' | 'PROGRAM_DISABLED' | 'ERROR' }
 
 interface CommissionBreakdown {
   commission: number
@@ -128,6 +128,15 @@ export async function creditAffiliateForOrder(
 ): Promise<AffiliateCreditResult> {
   const { referrerId, orderId, productId, productName, buyerIp } = input
   try {
+    // 🛑 2026-08-22 대표 확정: "어필리에이트 전략은 빼려고 해. 심플하게" — 유저/큐레이터 추천 링크
+    //   커미션(2%) 프로그램 종료. 인플루언서 수익은 매장 제안 커미션(seller_influencer_deals)만.
+    //   재개 스위치: platform_settings.affiliate_program_enabled = 'true' (행 부재 = 꺼짐).
+    //   의도 저장(order_referrer_intents)·per-product referral 설정은 보존 — 스위치만 닫는다.
+    const sw = await DB.prepare(
+      "SELECT value FROM platform_settings WHERE key = 'affiliate_program_enabled'"
+    ).first<{ value: string }>().catch(() => null)
+    if (sw?.value !== 'true') return { ok: false, code: 'PROGRAM_DISABLED' }
+
     const order = await DB.prepare(
       'SELECT id, user_id, total_amount, status FROM orders WHERE id = ?'
     ).bind(orderId).first<{ id: number; user_id: string | number; total_amount: number; status: string }>()

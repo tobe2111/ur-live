@@ -36,8 +36,10 @@ interface CommissionRates {
 
 const DEFAULTS: CommissionRates = {
   platform_pct: 5,
-  influencer_pct: 0.5,
-  user_referral_bonus_pct: 0.5,
+  // 🛑 2026-08-22 대표(심플 모델): 링크만 붙이면 아무나 받던 자동 커미션·구매자 보너스 기본 0 —
+  //   인플루언서 수익은 매장이 제안한 딜 %(seller_influencer_deals)만. 재개는 어드민 platform_settings.
+  influencer_pct: 0,
+  user_referral_bonus_pct: 0,
   agency_pct: 2,
   refund_window_days: 7,
   influencer_payout_min: 100000,
@@ -154,9 +156,11 @@ export function calcInfluencerCommissionPct(
     : 0
   const candidateBase = base + referralPct
   const candidateDeal = ctx.deal_commission_pct ?? 0
-  // 우대 deal 이 base+referral 보다 크면 deal 우선
-  const winner = Math.max(candidateBase, candidateDeal)
-  return Math.min(winner, rates.max_influencer_commission_pct)
+  // 2026-08-22 대표(심플 모델): 매장이 명시 합의한 딜 % 는 플랫폼 캡 미적용 — 매장 부담 재원의
+  //   당사자 합의값이라 그대로 존중한다(상한 90 은 입력 검증선). 캡은 자동분(base+referral)에만.
+  const cappedAuto = Math.min(candidateBase, rates.max_influencer_commission_pct)
+  const deal = Math.max(0, Math.min(candidateDeal, 90))
+  return Math.max(cappedAuto, deal)
 }
 
 export type { CommissionRates, SplitInput, SplitResult }
