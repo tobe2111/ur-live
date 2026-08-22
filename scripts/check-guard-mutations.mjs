@@ -72,6 +72,48 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🏠 웹문서 레인에 홀짝 시각 게이트가 붙는다(회차 절반 소멸)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: "      if (env.ADS_WEBKR_LANE_DISABLED === 'true') return { skipped: 'gate_off' }",
+    replace: "      if (new Date().getUTCHours() % 2 !== 1) return { skipped: 'even_hour' }",
+    test: 'src/tests/unit/ads-webkr-lane.test.ts',
+    why:
+      '이 레인이 존재하는 이유가 "회차를 못 받아 굶는다" 다(실측 keywords:3 · deadline_hit:true). ' +
+      '홀짝 게이트를 달면 하루 24회가 12회로 반토막 나는데 화면·로그 어디에도 티가 안 난다 — ' +
+      '수집량이 줄 뿐이고 그건 외부 요인으로 오인되기 쉽다(이번 세션이 실제로 그 오진을 반복했다).',
+  },
+  {
+    name: '🏠 웹문서 레인 커서가 계획분만큼 전진한다(그 자리는 영영 안 돌아온다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: 'const nextCursor = total > 0 ? (cursor + used.length) % total : 0',
+    replace: 'const nextCursor = total > 0 ? (cursor + batchSize) % total : 0',
+    test: 'src/tests/unit/ads-webkr-lane.test.ts',
+    why:
+      'company-collect 가 2026-08-02 에 실제로 당한 사고의 복제다 — 예산·마감으로 못 돈 키워드를 ' +
+      '건너뛰면 전진폭이 창 크기와 같아져 회전 경계가 고정되고 **같은 자리가 매 바퀴 빠진다**. ' +
+      '지연이 아니라 영구 사각지대이고, 집계상으로는 "그 키워드는 결과가 없었나 보다"로 읽힌다.',
+  },
+  {
+    name: '🏠 웹문서 레인이 collect-company 커서를 같이 쓴다',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: "const STATS_KEY = 'ads_webkr_stats'",
+    replace: "const STATS_KEY = 'ads_company_stats'",
+    test: 'src/tests/unit/ads-webkr-lane.test.ts',
+    why:
+      '두 레인이 한 커서를 나눠 쓰면 서로의 진행분을 건너뛴다(각자 자기가 전진시킨 만큼만 알고 있다). ' +
+      '게다가 스냅샷을 서로 덮어써 상태줄이 어느 레인 것인지 알 수 없게 된다 — 관측이 먼저 죽는다.',
+  },
+  {
+    name: '🏠 웹문서 레인이 키워드 부기를 건건이 쓴다(예산을 부기에 태운다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '    await DB.batch(stmts).catch(() => null)',
+    replace: '    for (const st of stmts) await st.run().catch(() => null)',
+    test: 'src/tests/unit/ads-webkr-lane.test.ts',
+    why:
+      '무료 플랜은 인보케이션당 서브리퀘스트 50이라 키워드 12개면 부기만 12(예산의 24%)다. ' +
+      'enrich 레인이 2026-07-28 에 정확히 이걸로 굶었다 — 크롤에 쓸 예산을 도장 찍는 데 썼다.',
+  },
+  {
     name: '이용권 상세 제목이 다시 사진 아래로 내려간다',
     file: 'src/pages/GroupBuyDetailPage.tsx',
     find: '<DetailTitleHeader name',
