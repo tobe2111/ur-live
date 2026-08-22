@@ -89,3 +89,67 @@ curl -s https://urdeal.kr/robots.txt | grep -c 'GPTBot'
 막는 것은 우클릭 저장·드래그·iOS 길게 눌러 저장이라는 **손쉬운 경로**뿐이다.
 ⚠️ **iOS 는 CSS(`-webkit-touch-callout`)가 본체다** — Safari 는 길게 눌러도 `contextmenu` 를
 안 쏘므로, CSS 를 지우면 PC 에선 멀쩡한데 **모바일에선 기능이 통째로 없다.**
+
+---
+
+# 📉 유어딜 최적화 — 실측 기록 (2026-08-22 후반)
+
+대표: *"유어딜 최적화는 해야하지 않을까?"*
+
+## 🩸 먼저: 제가 한 번 오진했다. 같은 함정을 반복하지 말 것
+
+*"홈 HTML 112KB 중 SSR 시드가 57KB — 1순위"* 라고 보고했는데 **압축 전 숫자**였다.
+
+```
+raw   111,967B
+wire   33,950B  (brotli, content-encoding: br)   ← 실제
+```
+
+URL 이 반복되는 JSON 은 brotli 가 3.3배로 줄인다. ⇒ **압축 후로 재지 않으면 우선순위가 통째로
+틀린다.** (CLAUDE.md 의 `check-bundle-size` 사고 — gzip 사이드카가 없어 측정값이 늘 0이던 것 —
+과 같은 클래스다.)
+
+그리고 시드는 **줄이면 안 된다**: `useMapProducts` 는 `seed.length < 50` 이면 "마지막 페이지"로
+간주하고 나머지를 **아예 안 받는다**(`_cache.set` 후 return). 12개로 줄였다면 홈에 상품이 12개만
+뜨고 끝났을 것이다. (`HomeSections` 는 `refetchOnMount:'always'` 라 다르다 — 두 훅을 혼동하지 말 것.)
+
+## 압축 후 실측 — 무게는 JS/CSS 에 있다
+
+```
+JS/CSS  377KB   ← 11배
+HTML     34KB
+```
+
+| 자산 | wire | 메모 |
+|---|---|---|
+| app-components | 61KB | 공유 |
+| react-core | 46KB | |
+| **index.css** | **34KB** | CSS 하나가 HTML 전체와 같다 — **미조사, 다음 후보** |
+| app-utils | 33KB | |
+| ~~RestaurantMapPage~~ | ~~23KB~~ | ✅ 이번에 제거(419460222) |
+| i18n | 21KB | |
+| axios | 18KB | |
+| app-wholesale-hooks | 2.5KB | 🚫 **손대지 않기로 판단** — 공유 청크(`app-components`)가 끌어와서 떼려면 잠긴 `manualChunks` 를 건드려야 하는데 이득이 2.5KB 뿐 |
+
+## ✅ 이번에 고친 것 (`419460222`)
+
+`scripts/generate-route-chunk-map.mjs` 의 `ROUTES` 는 **라우팅이 바뀌어도 자동으로 안 따라온다.**
+
+① **홈이 안 쓰는 지도 청크 23KB 를 미리 받고 있었다** — `home: ['RestaurantMapPage.tsx']` 가
+2026-07-15 "홈=지도" 잔재. 홈은 `HomeRoute`(PC/모바일 분기)로 바뀐 지 오래다. **양쪽 손해**였다:
+지도 23KB 를 받고, 정작 쓰는 `PcHomePage`(4.8KB)+`MobileHomePage`(2.0KB)+`GroupBuyFeed`(3.6KB)는
+병렬화를 못 받았다.
+
+② **링크샵의 `SellerPublicPage` 가 `MAX_LINKS` 10 에 잘려 있었다** — 진입점이 둘인데 첫 키의
+폐쇄가 캡을 채웠다. 사업자 링크샵의 본체인데도. ⇒ 각 진입점의 **페이지 청크를 먼저** 모으고
+공유 청크를 뒤로.
+
+가드: `route-chunk-surfaces.test.ts` — **`HomeRoute` 의 lazy import 를 읽어 표와 대조**한다.
+
+## 🔴 다음 세션 최적화 첫 액션
+
+1. **배포 후 효과 판정**: `curl -s https://urdeal.kr/ | grep -c RestaurantMapPage` → **0**
+   (생성 맵은 빌드 산출물이라 커밋본은 비어 있다 — CI 빌드에서 채워진다.)
+2. **`index.css` 34KB 조사** — 이번에 손 못 댔다. Tailwind 빌드 산출이라 미사용 유틸리티가
+   얼마나 되는지, 대시보드 전용 CSS 가 소비자 표면에 실리는지 볼 것.
+3. ⚠️ **측정은 반드시 `Accept-Encoding: br, gzip` 으로.** raw 로 재면 또 틀린다.
