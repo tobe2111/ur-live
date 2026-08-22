@@ -1,10 +1,10 @@
 /**
- * ↩️ **운영자 반품 큐** — 세션 ⑤ (체크리스트 §5.4 🟡)
+ * ↩️ **운영자 환불 큐** — 세션 ⑤ (체크리스트 §5.4 🟡)
  *
  * `GET /api/returns/seller` 는 **있는데 소비 화면이 0건**이었다(returns.routes.ts:312).
- * 운영자가 **자기 상품의 반품 요청을 볼 데가 없었다** — 소비자가 신청해도 운영자는 모르고,
+ * 운영자가 **자기 상품의 환불 요청을 볼 데가 없었다** — 소비자가 신청해도 운영자는 모르고,
  * 어드민(`AdminReturnsPage`)만 본다. 파일럿에서 그 어드민은 **대표 한 명**이라
- * 반품이 늘면 그대로 대표 부담이 된다.
+ * 환불이 늘면 그대로 대표 부담이 된다.
  *
  * ## 🔴 이 화면이 하는 일과 안 하는 일
  * - **한다**: 목록 조회 · 승인 · 거절 (이미 있는 `PUT /:id/approve` · `/:id/reject`)
@@ -105,14 +105,14 @@ export default function SellerReturnsPage() {
   }
 
   return (
-    <SellerLayout title="반품 요청">
-      <SEO title="반품 요청 - 유어딜" description="내 상품의 반품 요청" noindex />
+    <SellerLayout title="환불 요청">
+      <SEO title="환불 요청 - 유어딜" description="내 상품의 환불 요청" noindex />
       <div className="p-4 max-w-4xl mx-auto">
         {/* 🔴 이 화면의 권한 경계를 첫 줄에 말한다 — 승인은 하되 돈은 못 만진다. */}
         <div className="flex gap-2 rounded-[10px] bg-[#F5F2F3] px-3 py-[11px]">
           <AlertCircle className="w-[15px] h-[15px] text-[#8A8288] flex-none mt-px" strokeWidth={2} />
           <p className="text-[12px] leading-[1.6] text-[#6B6469] tracking-[-0.02em]">
-            내 상품에 들어온 반품 요청이에요. 환불 실행은 관리자가 처리해요.
+            내 상품에 들어온 환불 요청이에요. 환불 실행은 관리자가 처리해요.
           </p>
         </div>
 
@@ -140,7 +140,7 @@ export default function SellerReturnsPage() {
           <StateCard
             tone="neutral"
             icon={<PackageOpen className="w-6 h-6 text-[#B7B0B4]" strokeWidth={1.9} />}
-            title="반품 요청이 없어요"
+            title="환불 요청이 없어요"
           />
         )}
 

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket, Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Home, Undo2} from 'lucide-react'
+import { Settings, LogOut, Menu, X, MessageCircle, Globe, Home } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import api from '@/lib/api'
 import { HOSTING_HIDDEN, LIVE_COMMERCE_SUSPENDED, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
@@ -11,141 +11,13 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { applyBizFavicon, restoreDefaultFavicon } from '@/lib/biz-favicon'
 import DashboardNotificationBell from './DashboardNotificationBell'
+import StoreSwitcher from '@/components/seller/StoreSwitcher'
 import SellerKakaoLinkBanner from './SellerKakaoLinkBanner'
 import SellerSimpleNav from './seller-layout/SellerSimpleNav'
 
-type SellerType = 'influencer' | 'store_owner' | 'both'
+import { NAV_GROUPS, modesForSellerType, type SellerType, type SellerMode } from '@/components/seller/seller-nav'
 
-/**
- * 🛡️ 2026-05-17: Mode-based IA — 각 nav 항목에 'mode' 표시.
- *   live   = 라이브 송출 (인플루언서) 전용
- *   store  = 매장 운영 (이용권 발행) 전용
- *   common = 둘 다 사용
- * 사용자가 selectedMode 토글하면 해당 mode + common 만 노출.
- * 'both' 셀러는 상단에 segmented control 로 모드 전환 가능.
- */
-type SellerMode = 'live' | 'store' | 'common'
 
-const NAV_GROUPS: {
-  label?: string
-  labelKey?: string
-  hideFor?: SellerType[]
-  items: {
-    path: string
-    labelKey: string
-    icon: any
-    exact?: boolean
-    highlight?: boolean
-    hideFor?: SellerType[]
-    mode?: SellerMode
-    /** 🧭 탭으로 묶인 형제 라우트 — 이 경로들에서도 본 항목을 활성 표시. */
-    also?: string[]
-  }[]
-  mode?: SellerMode
-}[] = [
-  {
-    label: '', // 홈 (그룹 라벨 없음)
-    items: [
-      { path: '/seller', labelKey: 'seller.dashboard', icon: LayoutDashboard, exact: true, mode: 'common' },
-      // 🏪 2026-07-19 (대표 확정 — "상품은 링크샵에서만"): 상품(물건) 판매 표면 = 링크샵. nav 최상단 진입.
-      ...(SELLER_STORE_ONLY_MODE ? [{ path: '/u/me', labelKey: 'seller.nav.myLinkshop', icon: Sparkles, mode: 'common' as SellerMode }] : []),
-    ],
-  },
-  // 🏭 2026-06-04 (사용자 요청): 방송 그룹(라이브 방송/송출 키/쇼츠/라이브 분석) 숨김 — 셀러 대시보드 간소화.
-  // 🏪 2026-07-19 (대표 확정 — SELLER_STORE_ONLY_MODE): 상품·소싱 그룹(온라인 상품 관리/도매 소싱) 숨김 —
-  //   셀러 대시보드 = 순수 매장(이용권) 콘솔. 상품 판매는 링크샵으로 일원화. 라우트/코드 보존(가역).
-  ...(SELLER_STORE_ONLY_MODE ? [] : [{
-    // 🛡️ 2026-06-01: '판매'(12) → 상품·소싱 / 공구·숙소 / 주문·고객 3그룹 분할 (탐색성). mode/hideFor 보존.
-    labelKey: 'seller.layout.products',
-    items: [
-      // 🧭 2026-06-09 IA 정리: 묶음/재고는 상품 페이지 상단 SellerProductTabs 로 이동 — nav 1항목.
-      //   라우트는 보존(딥링크 안전), also 로 탭 형제 라우트에서도 활성 표시.
-      { path: '/seller/products', labelKey: 'seller.nav.products', icon: Package, mode: 'common' as SellerMode, also: ['/seller/bundles', '/seller/inventory'] },
-      // 🛡️ 2026-06-01 도매몰 노출: 셀러가 도매 카탈로그에서 상품 소싱 → 내 스토어 등록.
-      { path: '/seller/supply', labelKey: 'seller.nav.supply', icon: Boxes, mode: 'common' as SellerMode },
-    ],
-  }]),
-  {
-    labelKey: 'seller.layout.groupbuy',
-    mode: 'store',
-    items: [
-      // group-buy(교환권/공구) 는 매장·크리에이터 공통 (둘 다 발행).
-      // 🧭 2026-06-10: 계산대 스캔 — 현장에서 가장 자주 쓰는 동선이라 그룹 최상단.
-      { path: '/seller/scan', labelKey: 'seller.nav.voucherScan', icon: ScanLine, mode: 'store' },
-      // 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 손님 후기 인증 확인(승인 시 보너스+레벨 점수)
-      { path: '/seller/review-verifications', labelKey: 'seller.nav.reviewVerifications', icon: Sparkles, mode: 'store' },
-      { path: '/seller/group-buy', labelKey: 'seller.nav.mealVoucher', icon: Ticket, mode: 'store' },
-      // 🏁 2026-06-12 (4차 감사 D5) → 🏪 2026-07-19 상품그룹 숨김에 따라 이용권 그룹으로 이동:
-      //   크리에이터 대행 등록 검토/승인(매장) — 이용권 운영의 일부.
-      { path: '/seller/proxy-products', labelKey: 'seller.nav.proxyProducts', icon: Package, mode: 'store' },
-      // 🏭 2026-06-04 역할 큐레이션 — 숙소는 매장(오프라인 숙박) 전용. 크리에이터에겐 숨김.
-      { path: '/seller/stays', labelKey: 'seller.nav.stays', icon: Building2, mode: 'store', hideFor: ['influencer'] },
-      { path: '/seller/stays/bookings', labelKey: 'seller.nav.staysBookings', icon: BarChart3, mode: 'store', hideFor: ['influencer'] },
-    ],
-  },
-  {
-    labelKey: 'seller.layout.ordersCustomers',
-    items: [
-      { path: '/seller/orders', labelKey: 'seller.orders', icon: ShoppingBag, mode: 'common' },
-      // ↩️ 2026-08-01 세션 ⑤ — 반품 큐. API(`GET /api/returns/seller`)는 있었는데 **소비 화면이 0건**이라
-      //    운영자가 자기 상품 반품을 볼 데가 없었다(체크리스트 §5.4 🟡).
-      { path: '/seller/returns', labelKey: 'seller.nav.returns', icon: Undo2, mode: 'common' },
-      { path: '/seller/reviews', labelKey: 'seller.nav.reviews', icon: Star, mode: 'common' },
-      { path: '/seller/coupons', labelKey: 'seller.nav.coupons', icon: Ticket, mode: 'common' },
-      { path: '/seller/promo-codes', labelKey: 'seller.nav.promoCodes', icon: Tag, mode: 'common' },
-      // 🤝 2026-07-10: 인플루언서 우대 커미션 협업 deal (marketing.routes sellerApp — 기존 API)
-      { path: '/seller/influencer-deals', labelKey: 'seller.nav.influencerDeals', icon: Handshake, mode: 'common' },
-      // 🎁 2026-07-12 WP-A: 체험 캠페인(무료 응모·추첨 체험단). 생성은 게이트 뒤, 관리는 상시.
-      { path: '/seller/experience-campaigns', labelKey: 'seller.nav.experienceCampaigns', icon: Gift, mode: 'common' },
-      { path: '/seller/followers', labelKey: 'seller.nav.followers', icon: Heart, mode: 'common' },
-    ],
-  },
-  {
-    labelKey: 'seller.layout.revenue',
-    items: [
-      { path: '/seller/analytics', labelKey: 'seller.analytics', icon: BarChart2, mode: 'common' },
-      { path: '/seller/settlements', labelKey: 'seller.revenue', icon: DollarSign, mode: 'common' },
-      // 🤝 2026-07-10: 3단 위임/promo 투명성 (§4.3) — promo 지출(불변원칙 #1)·매장 위임(grant/revoke)
-      { path: '/seller/promo-spend', labelKey: 'seller.nav.promoSpend', icon: Receipt, mode: 'common' },
-      { path: '/seller/agency-delegation', labelKey: 'seller.nav.agencyDelegation', icon: Handshake, mode: 'common' },
-      { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, hideFor: ['store_owner'], mode: 'live' },
-      { path: '/seller/castings', labelKey: 'seller.nav.castings', icon: Megaphone, mode: 'live' },
-      { path: '/seller/promote-boosts', labelKey: 'seller.nav.promoteBoosts', icon: Rocket, mode: 'live' },
-    ],
-  },
-  // 🛡️ 2026-05-25 (migration 0278/0280): 큐레이터 링크샵 통합 — 셀러도 본인 user 계정 큐레이터 가능
-  // 🏭 2026-06-04 역할 큐레이션 — 링크샵/큐레이터/영입은 크리에이터 전용. 매장사장님에겐 숨김.
-  {
-    labelKey: 'seller.layout.curator',
-    hideFor: ['store_owner'],
-    items: [
-      { path: '/host', labelKey: 'seller.nav.hosting', icon: Sparkles, mode: 'common' },
-      { path: '/u/me/earnings', labelKey: 'seller.nav.curatorEarnings', icon: Sparkles, mode: 'common' },
-      // 🛡️ 2026-05-27: 매장 영입 prospects (인플루언서 only)
-      { path: '/seller/prospects', labelKey: 'seller.nav.prospects', icon: Sparkles, mode: 'common' },
-    ],
-  },
-  {
-    labelKey: 'seller.layout.settings',
-    items: [
-      { path: '/seller/business-info', labelKey: 'seller.businessInfo', icon: Building2, mode: 'common' },
-      { path: '/seller/mini-shop', labelKey: 'seller.nav.miniShop', icon: Megaphone, mode: 'common' },
-      { path: '/seller/streaming-guide', labelKey: 'seller.nav.streamingGuide', icon: Play, mode: 'live' },
-      { path: '/seller/alimtalk', labelKey: 'seller.brandMessage', icon: Bell, mode: 'common' },
-      { path: '/seller/notify-followers', labelKey: 'seller.nav.notifyFollowers', icon: Megaphone, mode: 'live' },
-      { path: '/seller/guide', labelKey: 'seller.nav.guide', icon: BookOpen, mode: 'common' },
-    ],
-  },
-]
-
-/** mode segmented control 가시성: 'both' 셀러만 토글 가능. 다른 타입은 고정.
- *  라이브 중단 시 모두 'store'(공구/매장) 단일 모드 → 토글 숨김 + 라이브 메뉴 비노출. */
-function modesForSellerType(st: SellerType): SellerMode[] {
-  if (LIVE_COMMERCE_SUSPENDED) return ['store']
-  if (st === 'influencer') return ['live']
-  if (st === 'store_owner') return ['store']
-  return ['live', 'store']  // both
-}
 
 interface SellerLayoutProps {
   title: string
@@ -548,6 +420,8 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             <h1 className="text-base font-semibold text-gray-900">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* 🏪 2026-08-19 매장 전환 — 운영 매장이 2곳 이상일 때만 스스로 렌더한다(store-operator-model.md). */}
+            <StoreSwitcher />
             {/* 🏠 2026-07-16 (대표 요청 — 셀러 대시보드에서 메인 서비스로 이동 버튼): 유어딜 소비자 홈(/)으로. */}
             <Link
               to="/"

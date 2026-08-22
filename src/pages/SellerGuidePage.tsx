@@ -26,7 +26,7 @@ export default function SellerGuidePage() {
       <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('seller.guide.title', '셀러 운영 가이드')}
-          subtitle={t('seller.guide.subtitle', '유어딜에서 성공적인 라이브 커머스를 운영하는 방법')}
+          subtitle={t('seller.guide.subtitle', '유어딜에서 매장과 이용권을 운영하는 방법')}
           icon={<BookOpen className="h-5 w-5" />}
         />
 

@@ -1,6 +1,6 @@
 # 🏪 매장 운영 주체 모델 — 소유(owner) ↔ 운영(operator) 분리
 
-> **상태**: 1단계 구현 완료(2026-08-19) · **2·3단계는 설계 박제(미구현)**
+> **상태**: 1·2단계 구현 완료(2026-08-19) · **3단계는 설계 박제(미구현)**
 > **결정자**: 대표 (2026-08-19 — "에이전시 대시보드를 없애고 셀러 대시보드가 여러 매장을 운영하게" → "모두 하자")
 > **선행 설계**: `vendor-commission-passthrough.md` §4.3(3단 위임) · `urdeal-platform-model.md` §2
 > **서비스 축**: 유어딜(소비자) 레일. 도매몰·공구 서비스(운영자 몰)·유어애즈와 무관.
@@ -92,7 +92,7 @@
 
 ---
 
-## 4. 2단계 — `seller_operators` (첫 실수요가 생기면)
+## 4. 2단계 — `seller_operators` ✅ **구현 완료 (2026-08-19)**
 
 ```sql
 CREATE TABLE IF NOT EXISTS seller_operators (
@@ -108,6 +108,36 @@ CREATE INDEX IF NOT EXISTS idx_seller_operators_user ON seller_operators(user_id
 ```
 
 UI 는 **셀러 대시보드 상단 매장 전환 셀렉터** 하나가 전부다. 이게 대표가 말한 "여러 매장 운영"의 실체다.
+매장이 1곳이면 **아무것도 렌더하지 않는다** — 대부분의 사장님에게 "전환할 곳이 하나뿐인 드롭다운"은 소음이다.
+
+### 🔐 보안 급소는 딱 한 곳이다 (구현하며 확정)
+셀러 대시보드의 모든 라우트는 `seller_token` 의 `seller_id` 로 **자동 스코프**된다.
+⇒ **다른 매장 토큰을 받는 순간 그 매장의 주문·정산·상품이 전부 열린다.**
+그래서 `POST /api/seller/stores/:sellerId/token` 의 `canOperateStore` 검사가 **유일한 방어선**이고,
+이 파일 밖에서 `seller_token` 을 새로 mint 하면 안 된다.
+
+주체(`users.id`)는 **세션 쿠키 또는 seller_token 에서만** 나온다 — 클라이언트가 보낸 user_id 는 안 쓴다.
+
+### 🪑 좌석(seat) 분리 — 구현하며 발견한 함정
+단일 세션 강제(`dashboard_sessions`)는 시트별로 동작한다. 운영자 토큰을 그냥 발급하면 시트가
+`('seller', 매장id)` 라 **운영자가 들어가는 순간 그 매장 사장님이 튕긴다**(SESSION_SUPERSEDED).
+⇒ 위임(`source === 'grant'`)일 때만 payload 에 `operator_user_id` 를 넣어 시트를
+`('seller_operator', 운영자 user id)` 로 分리했다. 소유자 본인은 기존 시트 그대로(회귀 0).
+
+### 구현 목록
+| 항목 | 파일 |
+|---|---|
+| SSOT 유틸 | `src/worker/utils/seller-operators.ts` (ensure/list/can/isOwner/grant/revoke) |
+| API | `src/features/seller/api/seller-operators.routes.ts` (`/api/seller` 마운트) |
+| 좌석 분리 | `src/worker/utils/dashboard-session.ts` (`seller_operator` 시트 추가) |
+| 스키마 | `repair-schema/column-repairs.ts` (테이블 + UNIQUE/보조 인덱스) |
+| UI | `src/components/seller/StoreSwitcher.tsx` · `src/pages/SellerOperatorsPage.tsx` (`/seller/operators`) |
+| 가드 | `src/tests/unit/seller-operators-invariants.test.ts` 20건 + 주입 3건 |
+
+### 💰 돈은 안 움직였다 (설계 문서의 이전 서술을 정정한다)
+이 문서는 2단계를 "머니 경로"라고 적었는데, 구현해 보니 **정산 목적지는 `sellers.bank_account` 그대로**다.
+운영자는 볼 수 있는 매장이 늘 뿐 정산 귀속을 못 바꾼다. **진짜 위험은 돈이 아니라 인가(IDOR)** 이고,
+그 기준으로 가드를 짰다. (정산 계좌·사업자정보 편집을 소유자 전용으로 좁히는 것은 3단계다.)
 
 **설계 규칙 3가지:**
 1. `owner` 는 매장당 **최대 1명**. 0명(대리 등록 상태)은 허용 — 사장님이 아직 안 왔을 뿐이다.
@@ -115,8 +145,8 @@ UI 는 **셀러 대시보드 상단 매장 전환 셀렉터** 하나가 전부�
    (위임 모드 `full` 이면 promo 세팅까지 — §4.3 표 그대로.)
 3. `revoked_at` 은 **행 삭제 대신**. 누가 언제 운영했는지가 분쟁 시 유일한 근거다.
 
-⚠️ **머니 경로다.** 정산 귀속(누구 통장으로 나가는가)이 이 관계에 걸리므로
-CLAUDE.md 룰상 **단독 세션 + staging 실결제** 필요.
+⚠️ **배포 후에만 판정 가능한 것**: 마운트가 실제로 붙었는지(Workers 라우팅) · D1 권한 쿼리의 실제 판정.
+단위테스트는 **배선**만 본다. 확인 절차는 인계 문서.
 
 ---
 
@@ -145,13 +175,13 @@ CLAUDE.md 룰상 **단독 세션 + staging 실결제** 필요.
 
 ---
 
-## 6. 지금 2·3단계를 짓지 않는 이유
+## 6. 3단계를 아직 짓지 않는 이유
 
-셀러 10개 · 한 유저가 매장 2개 가진 사례 **0건** · 에이전시 관계 **0건**.
-**수요가 0인 걸 정교하게 지으면 또 16,000줄이 빈 채로 남는다 — 에이전시 대시보드가 정확히 그렇게 생긴
-물건이다.** 같은 실수를 반대편에서 반복할 이유가 없다.
+2단계는 **관계 뼈대**라 지금 넣어도 행이 0이면 동작이 0이다(자연스럽게 무해). 반면 3단계는
+**사업자등록증 검증 파이프라인 + 소유권 승계 + 보상 분리**라 훨씬 크고, 아직 대리 등록 매장이 0건이다.
+**수요가 0인 걸 정교하게 지으면 또 빈 코드가 남는다 — 에이전시 대시보드가 정확히 그렇게 생긴 물건이다.**
 
-### 착수 조건 (둘 중 하나면 2단계 시작)
+### 착수 조건 (둘 중 하나면 3단계 시작)
 1. 한 사람이 **매장 2개 이상**을 실제로 운영해야 하는 상황이 생김, 또는
 2. 중개자/대행사가 **남의 매장**을 올려 운영하기 시작함(= `owner_verified=0` 매장 발생).
 
@@ -162,6 +192,8 @@ SELECT linked_user_id, COUNT(*) c FROM sellers
  WHERE linked_user_id IS NOT NULL GROUP BY linked_user_id HAVING c > 1;
 -- ② 대리 등록 수요 (사업자번호는 있는데 대표자 계정이 따로 있는 매장)
 SELECT COUNT(*) FROM sellers WHERE business_number IS NOT NULL AND linked_user_id IS NULL;
+-- ③ 2단계가 실제로 쓰이기 시작했는가 (위임 관계 발생)
+SELECT COUNT(*) FROM seller_operators WHERE revoked_at IS NULL;
 ```
 
 ---

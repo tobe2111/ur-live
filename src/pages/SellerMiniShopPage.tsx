@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-15 (PRISM 따라잡기): 셀러 미니샵 설정 페이지.
+ * 🛡️ 2026-05-15 (PRISM 따라잡기): 셀러 링크샵 설정 페이지.
  *
  * mallpro 의 "메인페이지 커스터마이징" 따라잡기.
  *
@@ -141,7 +141,7 @@ export default function SellerMiniShopPage() {
       }
       const res = await api.put('/api/seller/profile', payload, { headers })
       if (res.data?.success !== false) {
-        toast.success('✅ 미니샵 설정 저장 완료')
+        toast.success('✅ 링크샵 설정 저장 완료')
       } else {
         toast.error(res.data?.error || '저장 실패')
       }
@@ -154,14 +154,14 @@ export default function SellerMiniShopPage() {
   }
 
   if (loading) {
-    return <SellerLayout title="미니샵 설정"><BrandLoader /></SellerLayout>
+    return <SellerLayout title="링크샵 설정"><BrandLoader /></SellerLayout>
   }
 
   return (
-    <SellerLayout title="미니샵 설정">
+    <SellerLayout title="링크샵 설정">
       <div className="mx-auto max-w-2xl space-y-5 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="미니샵 설정"
+          title="링크샵 설정"
           subtitle="셀러 페이지를 본인 브랜드에 맞게 커스터마이징"
           icon={<Palette className="h-5 w-5" />}
         />
@@ -176,7 +176,7 @@ export default function SellerMiniShopPage() {
             className="bg-white rounded-2xl p-3 border border-gray-200 flex items-center gap-3 hover:bg-gray-50 transition-colors"
           >
             <Eye className="w-4 h-4 text-pink-500" />
-            <span className="text-sm font-medium text-gray-700">내 미니샵 미리보기</span>
+            <span className="text-sm font-medium text-gray-700">내 링크샵 미리보기</span>
             <ExternalLink className="w-3.5 h-3.5 text-gray-400 ml-auto" />
           </a>
         )}

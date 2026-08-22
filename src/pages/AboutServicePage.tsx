@@ -16,7 +16,7 @@ const BENEFITS = [
 ]
 
 const TRIANGLE = [
-  { icon: Store, t: '매장', d: '선불 광고비 없이 새 손님 — 팔린 만큼만 수수료 5%' },
+  { icon: Store, t: '매장', d: '선불 광고비 없이 새 손님 — 팔린 만큼만 내는 판매 수수료' },
   { icon: Megaphone, t: '인플루언서', d: '링크 하나로 동네 딜을 소개하고 판매 커미션' },
   { icon: Users, t: '소비자', d: '검증된 동네 가게를 할인가로, QR 로 간편하게' },
 ]
@@ -78,6 +78,28 @@ export default function AboutServicePage() {
           <div className="mt-3 grid grid-cols-2 gap-2">
             <Link to="/partners" className="h-11 rounded-xl border border-[#1A2C42]/15 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] flex items-center justify-center text-[13px] font-bold text-[#1A2C42] dark:text-[#F5F3F1]">매장 입점 안내 →</Link>
             <Link to="/creators" className="h-11 rounded-xl border border-[#1A2C42]/15 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] flex items-center justify-center text-[13px] font-bold text-[#1A2C42] dark:text-[#F5F3F1]">크리에이터 모집 →</Link>
+          </div>
+        </section>
+
+        {/* 🧭 2026-08-20 (대표 — 브랜드커넥트 참고): 사장님 진행 방법 4단계 */}
+        <section className="pb-10">
+          <h2 className="text-[19px] font-extrabold text-[#1A2C42] dark:text-[#F5F3F1] mb-1">사장님은 이렇게 진행해요</h2>
+          <p className="text-[12.5px] text-gray-500 dark:text-gray-400 mb-4">가입부터 정산까지, 전부 셀러 대시보드 하나에서</p>
+          <div className="space-y-2">
+            {[
+              ['01', '매장 등록', '카카오맵에서 내 가게를 검색해 등록 — 사업자번호 확인으로 바로 활성화'],
+              ['02', '이용권 등록', '메뉴·가격·할인 설정. 판매 1건당 실수령가를 그 자리에서 확인'],
+              ['03', '인플루언서 제안', '유어딜 인플루언서 목록에서 골라 커미션 조건으로 협업 제안 — 발송은 유어딜이 대행'],
+              ['04', '판매 · 정산', '고객이 앱에서 결제, 매장에서 QR 사용. 사용 확정분이 자동 정산'],
+            ].map(([n, t, d]) => (
+              <div key={n} className="rounded-2xl bg-white dark:bg-[#1A2334] p-3.5 flex items-start gap-3">
+                <span className="text-[13px] font-extrabold text-brand shrink-0 mt-0.5">{n}</span>
+                <div>
+                  <p className="text-[14px] font-extrabold text-[#1A2C42] dark:text-[#F5F3F1]">{t}</p>
+                  <p className="text-[11.5px] text-gray-500 dark:text-gray-400 leading-snug mt-0.5">{d}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 

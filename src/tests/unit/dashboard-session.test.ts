@@ -72,10 +72,14 @@ describe('dashboard-session 단일 세션 강제', () => {
   let db: ReturnType<typeof makeFakeDB>
   beforeEach(() => { db = makeFakeDB() })
 
-  it('대상 시트 역할 집합 = admin/seller/supplier/agency/agency_member/seller_sub (user 제외)', () => {
-    for (const r of ['admin', 'seller', 'supplier', 'agency', 'agency_member', 'seller_sub']) {
+  it('대상 시트 역할 집합 = admin/supplier/agency/agency_member/seller_sub (user·seller 계열 제외)', () => {
+    for (const r of ['admin', 'supplier', 'agency', 'agency_member', 'seller_sub']) {
       expect(SINGLE_SESSION_ROLES.has(r)).toBe(true)
     }
+    // 2026-08-20 대표 결정: 셀러 대시보드는 멀티 로그인(여러 브라우저·여러 명) 허용 —
+    // seller/seller_operator 를 단일세션 강제에서 제외(401 폭풍 재발 방지). 되돌리면 그 사고가 재발한다.
+    expect(SINGLE_SESSION_ROLES.has('seller')).toBe(false)
+    expect(SINGLE_SESSION_ROLES.has('seller_operator')).toBe(false)
     expect(SINGLE_SESSION_ROLES.has('user')).toBe(false)
   })
 
@@ -121,13 +125,14 @@ describe('dashboard-session 단일 세션 강제', () => {
   })
 
   it('1초 skew 허용(경계의 자기 토큰 거부 방지)', async () => {
-    await startDashboardSession(asDB(db), 'seller', 3, 5000)
-    expect(await isDashboardSessionCurrent(asDB(db), 'seller', 3, 4999)).toBe(true)  // -1 허용
-    expect(await isDashboardSessionCurrent(asDB(db), 'seller', 3, 4998)).toBe(false) // -2 거부
+    // seller 는 2026-08-20 부터 단일세션 비대상(멀티 로그인) — 강제 대상인 admin 으로 검증
+    await startDashboardSession(asDB(db), 'admin', 3, 5000)
+    expect(await isDashboardSessionCurrent(asDB(db), 'admin', 3, 4999)).toBe(true)  // -1 허용
+    expect(await isDashboardSessionCurrent(asDB(db), 'admin', 3, 4998)).toBe(false) // -2 거부
   })
 
   it('추적행 없음(롤아웃 전 로그인) = grandfather 통과', async () => {
-    expect(await isDashboardSessionCurrent(asDB(db), 'seller', 999, 1000)).toBe(true)
+    expect(await isDashboardSessionCurrent(asDB(db), 'supplier', 999, 1000)).toBe(true)
   })
 
   it('iat 없는 레거시 토큰 = grandfather 통과', async () => {

@@ -40,7 +40,7 @@ export default function SellerSupportContact() {
 
   useEffect(() => {
     let alive = true
-    api.get('/api/seller/support-contact')
+    api.get('/api/seller/gb/support-contact')
       .then((r) => { if (alive) setContact((r.data?.contact as string) || null) })
       .catch(() => { /* 조회 실패 = 미노출. 문의 안내 때문에 대시보드가 시끄러워지지 않게 */ })
     return () => { alive = false }

@@ -21,6 +21,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'business', 'campaign', 'cart', 'checkout', 'community-group-buy', 'coupon', 'creator',
   'creators', 'district', 'experience', 'fail', 'faq', 'following',
   'g', 'gb-market', 'gdpr', 'gift', 'group-buy', 'host',
+  'i', // 인플루언서 제안 수락 /i/offer/:token (2026-08-22)
   'influencer', 'interest-list', 'introduce', 'join', 'kakao-debug', 'local',
   'login', 'map', 'meal-vouchers', 'my', 'my-appointments', 'my-commissions',
   'my-coupons', 'my-deal-history', 'my-orders', 'my-returns', 'my-reviews', 'my-stays',
