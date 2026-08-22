@@ -132,13 +132,24 @@ describe('사진 저장 억제 — JS 와 CSS 는 한 쌍이다', () => {
   })
 
   it('iOS 길게 눌러 저장이 막힌다 (JS contextmenu 는 iOS 에서 안 뜬다)', () => {
+    // ⚠️ 2026-08-22 CI 가 잡은 헛도는 판정 수리: 예전엔 "파일 어딘가에 `-webkit-touch-callout: none`
+    //    이 있는가" 로 봤다. 그런데 **기존 `html.native-app *` 규칙**(네이티브 앱 터치 최적화)이
+    //    같은 속성을 이미 갖고 있어서, 사진 보호 블록을 통째로 지워도 초록이 떴다.
+    //    ⇒ 판정은 반드시 **`img`/`picture`/`canvas` 셀렉터에 앵커**해야 한다.
     const s = read(CSS)
-    expect(s, '-webkit-touch-callout 규칙이 없다 — 모바일에선 아무것도 안 막힌다').toMatch(
-      /-webkit-touch-callout:\s*none/,
+    const block = s.match(
+      /(?:^|\n)img,\s*\n\s*picture,\s*\n\s*canvas\s*\{([^}]*)\}/,
     )
-    expect(s).toMatch(/-webkit-user-drag:\s*none/)
-    // 대시보드는 되돌린다.
-    expect(s).toMatch(/-webkit-touch-callout:\s*default/)
+    expect(block, '사진(img/picture/canvas) 대상 보호 블록이 사라졌다 — 모바일에선 아무것도 안 막힌다')
+      .toBeTruthy()
+    expect(block![1]).toMatch(/-webkit-touch-callout:\s*none/)
+    expect(block![1]).toMatch(/-webkit-user-drag:\s*none/)
+    // 대시보드는 되돌린다 — 운영자는 상품 사진을 저장·교체해야 한다.
+    const revert = s.match(
+      /\.admin-light-theme img[^{]*\{([^}]*)\}/,
+    )
+    expect(revert, '대시보드 되돌림 규칙이 사라졌다').toBeTruthy()
+    expect(revert![1]).toMatch(/-webkit-touch-callout:\s*default/)
   })
 
   it('텍스트 선택은 막지 않는다 (주소·전화 복사는 정상 사용)', () => {
