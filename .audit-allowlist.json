@@ -18,22 +18,6 @@
       "review": "wrangler/miniflare 업그레이드로 faye-websocket 갱신 시 재확인 후 제거."
     },
     {
-      "ghsa": "GHSA-23hp-3jrh-7fpw",
-      "pkg": "tar",
-      "reason": "dev/빌드툴 전용 transitive(node-tar, wrangler/npm 툴체인 경유). package.json 직접 의존 아님 + src/ 미참조 → production Workers/브라우저 번들 미포함, 런타임 도달 불가. 2026-07 신규 published advisory 가 전 PR 배포를 차단해 등재.",
-      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스(2026-06-22·2026-07-15 선례와 동일)",
-      "date": "2026-07-21",
-      "review": "wrangler/npm 툴체인 업그레이드로 tar 갱신 시 재확인 후 제거."
-    },
-    {
-      "ghsa": "GHSA-8x88-c5mf-7j5w",
-      "pkg": "tar",
-      "reason": "dev/빌드툴 전용 transitive(node-tar 아카이브 replace 무한루프). 위 GHSA-23hp 와 동일 패키지·동일 도달불가 근거 — production 트리 미포함.",
-      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스",
-      "date": "2026-07-21",
-      "review": "tar 갱신 시 재확인."
-    },
-    {
       "ghsa": "GHSA-52cp-r559-cp3m",
       "pkg": "js-yaml",
       "reason": "dev/빌드툴 전용 transitive(YAML merge-key 이차 CPU DoS, 빌드 설정 파서 경유). 직접 의존 아님 + src/ 미참조 → production 번들 미포함, 신뢰된 빌드 입력만 파싱 → 도달 불가.",
