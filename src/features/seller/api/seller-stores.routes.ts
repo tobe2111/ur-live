@@ -130,7 +130,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
     if (b.kakao_place_id) {
       const dup = await c.env.DB.prepare(
         `SELECT m.seller_id FROM seller_meta m JOIN sellers s ON s.id = m.seller_id
-          WHERE m.key = 'kakao_place_id' AND m.value = ? AND s.status NOT IN ('closed') LIMIT 1`
+          WHERE m.key = 'kakao_place_id' AND m.value = ? AND s.status != 'suspended' LIMIT 1`
       ).bind(String(b.kakao_place_id)).first<{ seller_id: number }>().catch(() => null)
       if (dup) return c.json({ success: false, error: '이미 유어딜에 등록된 매장입니다', code: 'STORE_EXISTS', seller_id: dup.seller_id }, 409)
     }
@@ -207,9 +207,12 @@ app.post('/stores/:id/close', async (c) => {
     if (!access.ok) return c.json({ success: false, error: '이 매장에 대한 권한이 없습니다' }, 403)
 
     if (access.role === 'owner') {
-      // 소유자: 매장을 닫는다(소프트 — 행 보존: 주문·정산 이력은 남아야 한다). 판매 노출은 status 게이트가 자연 차단.
+      // 소유자: 매장을 닫는다(소프트 — 행 보존: 주문·정산 이력은 남아야 한다).
+      // ⚠️ sellers.status CHECK 는 pending/approved/rejected/suspended 만 허용('closed' 는 SqlError 500,
+      //    check-status-constraints 가 잡았다) → 허용값 'suspended' 로 노출 차단(소비자 카탈로그가 정지
+      //    셀러를 이미 제외)하고, "폐점 vs 어드민 정지" 구분은 seller_meta.closed_at 마커가 담당한다.
       await c.env.DB.prepare(
-        `UPDATE sellers SET status = 'closed', updated_at = datetime('now') WHERE id = ? AND status NOT IN ('closed')`
+        `UPDATE sellers SET status = 'suspended', updated_at = datetime('now') WHERE id = ? AND status != 'suspended'`
       ).bind(sellerId).run()
       await setSellerMeta(c.env.DB, sellerId, { closed_at: new Date().toISOString(), closed_by_user_id: String(userId) })
       return c.json({ success: true, data: { closed: true } })
