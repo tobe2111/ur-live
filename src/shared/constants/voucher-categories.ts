@@ -47,6 +47,20 @@ export function normalizeCategory(category: string | undefined | null): VoucherC
   return LEGACY_CATEGORY_MAP[category] ?? null
 }
 
+/**
+ * 저장 직전 카테고리 정규화 — 이용권이면 canonical 로, 아니면 그대로.
+ *
+ * 🐛 2026-08-22: 셀러 이용권 등록 화면은 `health_voucher`·`pet_voucher`·`activity_voucher` 도
+ * 고르게 해 주는데, 이 값들은 **레거시**라 소비자 피드 필터(`category IN VOUCHER_CATEGORIES`)와
+ * 공구 활성화 판정(`VOUCHER_CATEGORY_SET.has`)에 둘 다 안 걸린다. 결과: 셀러는 "등록 완료"
+ * 화면을 보는데 **유어딜 어디에도 안 뜬다**(에러 0 — 그래서 아무도 모른다).
+ * ⚠️ 이용권이 아닌 카테고리(fashion 등)는 손대지 않는다.
+ */
+export function canonicalCategory(raw: string | null | undefined): string | null {
+  if (!raw) return raw ?? null
+  return normalizeCategory(raw) ?? raw
+}
+
 /** 🛡️ 대분류 — 오프라인 (voucher 4종) vs 온라인 (일반 상품). */
 export function isOfflineProduct(category: string | undefined | null): boolean {
   return isVoucherCategory(category)

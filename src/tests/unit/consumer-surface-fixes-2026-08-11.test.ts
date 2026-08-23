@@ -184,16 +184,20 @@ describe('⑤ 딜 충전 실패 화면이 막다른 길이 아니다', () => {
   })
 })
 
-describe('⑥ 홈이 지도가 된 뒤의 연결 힌트 (index.html)', () => {
-  // 라이브 실측(모바일 홈): LCP 8,372ms — LCP 요소가 **카카오맵 타일**이고, SDK 가
-  //   dapi.kakao.com → t1.daumcdn.net → 타일(mts.daumcdn.net) 로 **4단 직렬**이다.
-  //   2026-05-27 주석은 "dapi.kakao 는 메인 사용 X" 라며 preconnect 를 뗐는데,
-  //   2026-07-29 에 홈이 지도(RestaurantMapPage)가 되면서 그 전제가 뒤집혔다.
+describe('⑥ 카카오맵 연결 힌트 (index.html)', () => {
+  // 라이브 실측(2026-08-11, 당시 모바일 홈=지도): LCP 8,372ms — LCP 요소가 **카카오맵 타일**이고,
+  //   SDK 가 dapi.kakao.com → t1.daumcdn.net → 타일(mts.daumcdn.net) 로 **4단 직렬**이었다.
+  //
+  // 🔄 2026-08-19 전제 갱신: 대표 확정으로 **모바일 메인이 지도 → 딜 피드**가 됐다.
+  //   그래서 이 힌트들은 더 이상 *홈* LCP 경로가 아니다. 그렇다고 지우지 않는다 —
+  //   ① 지도는 `/map` 으로 남았고(홈 상단 배너가 그리로 보낸다) ② 공구 상세의 매장 미니맵도
+  //   같은 SDK 를 탄다. 즉 **경로가 바뀌었을 뿐 여전히 쓰인다.**
+  //   ⚠️ 잠금표(로딩 최적화)도 "추가는 OK, 제거 금지" 다. 근거만 정정하고 힌트는 유지한다.
   const html = readFileSync('index.html', 'utf8')
 
-  it('🔴 LCP 경로의 카카오맵 호스트 3종에 preconnect 가 있다', () => {
+  it('🔴 카카오맵 호스트 3종에 preconnect 가 있다 (/map · 상세 미니맵 경로)', () => {
     for (const h of ['https://dapi.kakao.com', 'https://t1.daumcdn.net', 'https://mts.daumcdn.net']) {
-      expect(html, `${h} preconnect 누락 — 홈 LCP 경로다`).toMatch(
+      expect(html, `${h} preconnect 누락 — 지도 SDK 4단 직렬의 첫 단이다`).toMatch(
         new RegExp(`rel="preconnect"\\s+href="${h.replace(/[/.]/g, '\\$&')}"`),
       )
     }
@@ -205,10 +209,18 @@ describe('⑥ 홈이 지도가 된 뒤의 연결 힌트 (index.html)', () => {
     }
   })
 
-  it('홈이 실제로 지도인지 — 이 전제가 다시 바뀌면 위 preconnect 도 재검토해야 한다', () => {
-    // 전제를 코드에 묶어 둔다. 홈이 지도가 아니게 되면 이 테스트가 먼저 빨강이 된다.
+  /**
+   * 🧭 이 항목은 **실제로 제 일을 했다.** 2026-08-19 에 모바일 메인을 지도 → 딜 피드로 바꾸자
+   *   가장 먼저 빨간불이 됐고, 그래서 "홈 LCP" 라는 낡은 근거가 코드에 남는 것을 막았다.
+   *   ⇒ 전제를 **지도가 아직 살아 있는 경로**로 옮겨 다시 묶는다. 지도로 가는 길이 통째로
+   *     사라지면(그때는 preconnect 도 뗄 때다) 이 테스트가 먼저 알려 준다.
+   */
+  it('지도 경로가 아직 살아 있는지 — 사라지면 위 preconnect 도 재검토해야 한다', () => {
     expect(code('src/App.tsx'), '홈 라우트가 HomeRoute 가 아니다').toMatch(/path="\/"[\s\S]{0,120}HomeRoute/)
-    expect(code('src/pages/pc-home/HomeRoute.tsx')).toContain('RestaurantMapPage')
+    // `/map` 라우트 + 홈에서 그리로 가는 통로(모바일 배너 · PC 히어로 칩) 둘 다 있어야 한다.
+    expect(code('src/App.tsx'), '/map 라우트가 사라졌다').toMatch(/path="\/map"/)
+    expect(code('src/pages/mobile-home/MobileHomePage.tsx'), '모바일 홈에 지도 진입이 없다').toMatch(/to="\/map"/)
+    expect(code('src/components/home/HomeHeroDefault.tsx'), 'PC 히어로에 지도 진입이 없다').toMatch(/to="\/map"/)
   })
 })
 

@@ -15,7 +15,8 @@ import { readCode, usesSymbol, sliceFrom } from '../helpers/source-text'
 
 const page = readCode('src/pages/SellerReturnsPage.tsx')
 const routes = readCode('src/routes/seller.routes.tsx')
-const layout = readCode('src/components/SellerLayout.tsx')
+// 2026-08-20: 네비 정의가 SellerLayout 에서 seller-nav.ts(SSOT)로 추출됨 — 항목 존재는 그쪽에서 본다.
+const layout = readCode('src/components/seller/seller-nav.ts')
 
 describe('🔴 돈을 만지지 않는다', () => {
   it('환불 API 를 호출하지 않는다', () => {

@@ -22,7 +22,9 @@ import { enrichSellerOrderRows } from '../../../worker/utils/order-list-enrich';
 import { rateLimit } from '../../../worker/middleware/rate-limit';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
 import { swallow } from '@/worker/utils/swallow';
-import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories';
+import { VOUCHER_CATEGORY_SET, canonicalCategory, isVoucherCategory } from '@/shared/constants/voucher-categories';
+import { writeDigitalProductFields, writeVoucherProductFields } from './product-field-writers';
+
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility';
 import { intParam } from '@/shared/pagination'
@@ -808,7 +810,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
       referral_commission_rate?: number;
     }>();
 
-    const { name, description, price, stock, image_url, category } = body;
+    const { name, description, price, stock, image_url } = body;
+    const category = canonicalCategory(body.category) ?? undefined; // 레거시 → canonical (안 하면 피드에 안 뜬다)
     if (!name || price === undefined) {
       return c.json({ success: false, error: '상품명과 가격은 필수입니다.' }, 400);
     }
@@ -913,8 +916,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
       } catch { /* meta 저장 실패 — 상품 생성은 유지 (fail-soft) */ }
     }
 
-    // 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당" — 셀러가 이용권 등록 시 설정):
-    //   product_supply_meta.max_per_person. 0/미설정/범위밖 = 무제한(미저장). 1~99 만 저장.
+    // 🎯 1인당 결제 한도(2026-07-01) — product_supply_meta.max_per_person.
+    //   0/미설정/범위밖 = 무제한(미저장). 1~99 만 저장. 강제는 group-buy.routes `/join`.
     {
       const mpp = Number((body as { max_per_person?: number | string }).max_per_person);
       if (Number.isFinite(mpp) && mpp >= 1 && mpp <= 99) {
@@ -935,29 +938,11 @@ sellerOrdersRoutes.post('/products', async (c) => {
       }
     }
 
-    // 🛡️ 2026-05-05: 디지털 상품 필드 저장 (UPDATE — migration 0243 후 컬럼 존재)
-    if (body.product_kind && body.product_kind !== 'physical') {
-      const digitalFields: Array<['product_kind' | 'delivery_type' | 'content_url' | 'content_format' | 'access_duration_days' | 'preview_url', unknown]> = [
-        ['product_kind', body.product_kind],
-        ['delivery_type', body.delivery_type || 'instant_url'],
-        ['content_url', body.content_url || null],
-        ['content_format', body.content_format || null],
-        ['access_duration_days', body.access_duration_days ?? null],
-        ['preview_url', body.preview_url || null],
-      ];
-      for (const [field, val] of digitalFields) {
-        try { await db.prepare(`UPDATE products SET ${field} = ? WHERE id = ?`).bind(val, productId).run() } catch { /* column may not exist */ }
-      }
-    }
+    // 🛡️ 디지털 상품 필드 저장 — 컬럼별 개별 UPDATE(마이그레이션 미실행 환경 대비). SSOT: product-field-writers.
+    await writeDigitalProductFields(db, Number(productId), body);
 
-    if (category === 'meal_voucher' || category === 'beauty_voucher' || category === 'health_voucher' || category === 'pet_voucher' || category === 'stay_voucher' || category === 'activity_voucher') {
-      const mealFields = ['restaurant_name', 'restaurant_address', 'restaurant_phone', 'voucher_terms', 'voucher_expiry', 'group_buy_target', 'group_buy_deadline', 'store_verify_pin', 'group_buy_tiers', 'restaurant_lat', 'restaurant_lng', 'external_booking_url', 'region_si', 'region_gu'] as const;
-      for (const field of mealFields) {
-        const val = body[field];
-        if (val !== undefined && val !== null && val !== '') {
-          try { await db.prepare(`UPDATE products SET ${field} = ? WHERE id = ?`).bind(val, productId).run() } catch { /* column may not exist */ }
-        }
-      }
+    if (isVoucherCategory(category)) { // 손으로 적던 6-way 목록 → SSOT 판정(정규화 후라 충분)
+      await writeVoucherProductFields(db, Number(productId), body as Record<string, unknown>);
 
       // 🧭 2026-07-02 (대표 승인 "가장 이상적으로"): 주소만 있고 좌표 없이 등록되면 즉시 지오코딩
       //   (waitUntil, fail-soft) — 일일 cron 전의 갭 동안 방문자마다 클라 지오코딩 폴백이 발동하던
@@ -1119,7 +1104,7 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       fields.push('image_url = ?', 'thumbnail_url = ?');
       values.push(body.image_url, body.image_url);
     }
-    if (body.category !== undefined) { fields.push('category = ?'); values.push(body.category); }
+    if (body.category !== undefined) { fields.push('category = ?'); values.push(canonicalCategory(body.category)); }
     // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 저장(길이·형식 방어). detail_images 는 JSON 문자열.
     if (body.long_description !== undefined && (typeof body.long_description === 'string') && body.long_description.length <= 50000) {
       fields.push('long_description = ?'); values.push(body.long_description);

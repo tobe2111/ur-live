@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import NetProceedsCard from './seller-meal-voucher/NetProceedsCard'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MapPin, Phone, Users, Utensils, CheckCircle, Camera, Sparkles, Loader2 } from 'lucide-react'
@@ -283,50 +284,7 @@ export default function SellerMealVoucherNewPage() {
           subtitle={t('seller.mealVoucher.subtitle', { defaultValue: '이용권/공동구매 상품 등록' })}
           icon={<Utensils className="h-5 w-5" />}
         />
-        {/* 🛡️ 2026-05-15: OCR Quick Start — 메뉴판 사진 1장으로 30초 등록 */}
-        <div className="bg-gradient-to-br from-gray-50 to-gray-50 border-2 border-dashed border-pink-300 rounded-2xl p-5">
-          <div className="flex items-start gap-3">
-            <div className="w-12 h-12 rounded-xl bg-pink-500 text-white flex items-center justify-center shrink-0">
-              <Sparkles className="w-6 h-6" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-extrabold text-gray-900">메뉴판 사진 1장으로 자동 등록</p>
-              <p className="text-[11px] text-gray-600 mt-0.5">AI 가 메뉴/가격/상품명을 추출합니다 (3분 → 30초)</p>
-              <label className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors">
-                {ocrLoading ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> 분석 중…</>
-                ) : (
-                  <><Camera className="w-4 h-4" /> 메뉴판 사진 업로드</>
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  disabled={ocrLoading}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) handleOcrUpload(f)
-                    e.target.value = ''  // re-upload 가능
-                  }}
-                />
-              </label>
-              {ocrItems.length > 0 && (
-                <div className="mt-3 p-2.5 bg-white rounded-lg border border-pink-200">
-                  <p className="text-[10px] font-bold text-pink-700 mb-1.5">✨ 추출된 메뉴 ({ocrItems.length}개)</p>
-                  <div className="space-y-0.5 max-h-24 overflow-y-auto">
-                    {ocrItems.map((item, i) => (
-                      <div key={i} className="flex justify-between text-[11px]">
-                        <span className="text-gray-700 truncate">{item.menu}</span>
-                        <span className="text-gray-600 font-mono ml-2">{item.price.toLocaleString('ko-KR')}원</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        {/* 🗑️ 2026-08-20 (대표): "AI로 자동 입력한다는 건 빼줘" — OCR 메뉴판 자동등록 블록 제거. */}
 
         {/* 🛡️ 2026-05-21: 빠른 등록 / 상세 등록 토글 — 신규 셀러는 빠른 등록 (5필드) 으로 시작. */}
         <div className="bg-white rounded-xl border border-gray-200 p-3 mb-4 flex items-center gap-2">
@@ -488,7 +446,7 @@ export default function SellerMealVoucherNewPage() {
                 <span className="text-lg">📸</span>
                 <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.mainImage')}</h2>
               </div>
-              <p className="text-[11px] text-gray-500 mb-3">{t('seller.mealVoucher.imageAiNotice', { defaultValue: 'AI 추천이라 정확하지 않을 수 있어요. 마음에 드는 게 없으면 아래에서 직접 검색하거나 파일을 업로드하세요.' })}</p>
+              <p className="text-[11px] text-gray-500 mb-3">{t('seller.mealVoucher.imageAiNotice', { defaultValue: '마음에 드는 게 없으면 아래에서 직접 검색하거나 파일을 업로드하세요.' })}</p>
               {/* 📸 2026-07-19 (대표 — 대표사진 가이드): 판매 전환이 잘 되는 사진 유형 안내(등록 플로우 개선). */}
               <SellerVoucherPhotoGuide />
 
@@ -636,6 +594,9 @@ export default function SellerMealVoucherNewPage() {
                   />
                 </div>
               </div>
+
+              {/* 💰 2026-08-20 (대표): 판매 1건당 실수령가 — 항상 표시(채널별 수수료 SSOT). */}
+              <NetProceedsCard price={form.price} promoPct={form.promo_pct} />
 
               {/* 💰 2026-07-05 (§1 인플루언서 엔진): 소개비(promo)% + 매장 실수령 계산기.
                   SELLER_PROMO_FIELD_ENABLED = false (기본) → owner-funding 스테이징 검증 전까지 미노출. */}

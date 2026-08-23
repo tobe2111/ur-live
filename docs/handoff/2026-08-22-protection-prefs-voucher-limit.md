@@ -1,0 +1,155 @@
+# 2026-08-22 — 사진/크롤링 보호 · 어드민 즐겨찾기 · 이용권 1인당 한도 · 홈 섹션 0-RTT
+
+브랜치 `claude/service-page-ui-redesign-gkm900` (PR #1178). 대표 지시 4건 + 최적화.
+
+## 🔴 다음 세션의 첫 액션
+
+**배포 후 판정 명령** (이 4건은 배포돼야 판정된다):
+
+```bash
+UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36'
+# ① 수확 봇 차단이 실제로 먹는가 (403 이어야 함)
+curl -s -o /dev/null -w '%{http_code}\n' -A 'GPTBot/1.2' https://urdeal.kr/api/sections
+# ② 검색엔진은 통과하는가 (200 이어야 함 — 여기가 막히면 색인이 죽는다)
+curl -s -o /dev/null -w '%{http_code}\n' -A 'Yeti/1.1 (+http://naver.me/spd)' https://urdeal.kr/api/sections
+# ③ 홈 섹션 0-RTT (스크립트 태그가 있어야 함)
+curl -s https://urdeal.kr/ | grep -c '__SSR_INITIAL_SECTIONS__'
+# ④ robots 가 실제로 우리 파일인가 (Cloudflare Managed robots.txt 로 덮이는 사고 전례 있음)
+curl -s https://urdeal.kr/robots.txt | grep -c 'GPTBot'
+```
+
+**손으로 볼 것 2가지**
+- 어드민 ★ 하나 토글 → **다른 브라우저**로 로그인해 그대로 있는지.
+  ⚠️ 같은 브라우저에서만 보면 로컬 캐시 때문에 고쳐진 것처럼 보인다.
+- **뷰티 이용권** 하나 열어 1인당 한도 저장 → 소비자 상세에 "1인당 최대 N개" 표시 →
+  한도만큼 산 뒤 하나 더 담으면 `PER_PERSON_LIMIT`.
+
+## ✅ 완료 (commit)
+
+| 커밋 | 내용 |
+|---|---|
+| `3f9d498` | PR #1178 머지 충돌 해소(main 이동 — 매니페스트 union) |
+| `5d120ab` | 사진 우클릭 저장 억제 + 수확 크롤러 차단 |
+| `19313d1` | 어드민 즐겨찾기 초기화 — 저장을 브라우저 → 계정 |
+| `8551e17` | 1인당 이용권 한도 — 이용권 4종 전부에서 설정 가능 |
+| (이 커밋) | 홈 섹션 SSR 0-RTT + 파일 크기 래칫 복구 5건 |
+
+## 🩸 이번에 틀렸던 판단 (제일 값진 것)
+
+1. **"즐겨찾기가 사라진다" 의 원인을 코드 버그로만 찾다가 헛돌았다.** localStorage 를 지우는
+   코드는 **없었다**(prefix wipe 도 없다). 진짜 원인은 **저장 위치**였다 — localStorage 는
+   오리진·브라우저·프로필마다 따로다. 게다가 최초 기본값 시드를 **저장하지 않아** 저장소가
+   비면 항상 기본 4개로 돌아갔다. ⇒ *"어느 트리거인가"* 를 특정하려 하지 말고
+   **증상이 불가능한 저장 위치**로 옮기는 쪽이 옳았다.
+
+2. **"1인당 한도를 셀러가 설정 못 한다" 를 미구현으로 읽을 뻔했다.** 서버는 2026-07-01 부터
+   저장·강제를 다 하고 있었다. 막고 있던 건 **화면의 한 줄**(`category === 'meal_voucher'`)이었고,
+   그래서 **식사 이용권으로 테스트하면 멀쩡히 동작한다.** 신고를 받으면 "없다" 가 아니라
+   "**어떤 경우에만** 없나" 를 먼저 볼 것.
+
+3. **주석 제거 헬퍼가 경로 `'/api/products/*'` 의 `/*` 를 블록주석 시작으로 오인**해 파일 뒤쪽을
+   통째로 잘랐다. 그대로 뒀으면 "배선 확인" 가드가 헛돌았다. → 줄 단위 검사로 교체.
+
+4. **같은 쿼리가 두 곳에 있는 걸 모르고 "파일에 있는가" 로 판정**해 가드가 헛돌았다(한쪽을
+   지워도 초록). 되돌려-검증이 잡았다. → **개수** 판정으로 교체.
+   ⇒ 이 레포의 재발 클래스 그대로다: *실패할 수 없는 가드*.
+
+5. **컨테이너가 리셋되며 미커밋 작업(홈 섹션 SSR)이 통째로 날아갔다.** 로컬 브랜치가
+   `origin` 보다 뒤처져 있었고(PR #1177 이 squash 머지돼 해시가 갈렸다), 그대로 작업했으면
+   덮어쓸 뻔했다. ⇒ **세션 시작 시 `git fetch` + `git log origin/<branch>` 로 실제 tip 확인.**
+
+## 🧱 파일 크기 래칫 — 이번에 5건 걸렸고 전부 **실제 분리**로 풀었다
+
+주석을 깎아 카운터를 맞추는 건 코드의 설명력을 깎는 것이라 하지 않았다. 새로 생긴 파일:
+
+| 새 파일 | 무엇 |
+|---|---|
+| `worker/utils/ssr-payload.ts` | SSR 3계층(엣지→KV→self-fetch) SSOT. **잠긴 로딩 최적화** — 순서·타임아웃 불변 |
+| `features/auth/api/admin-2fa.routes.ts` | 어드민 2FA setup/verify/validate (한 세트) |
+| `features/auth/api/admin-prefs.routes.ts` | 어드민 개인설정 GET/PUT |
+| `features/seller/api/product-field-writers.ts` | 컬럼별 개별 UPDATE(마이그레이션 미실행 대비 — 합치지 말 것) |
+| `pages/seller-product-edit/VoucherFields.tsx` | 이용권 입력 묶음(4종 공통) |
+| `worker/routes/repair-schema/admin-tables.ts` | 어드민 테이블 복구 정의 |
+
+⚠️ **분리하면 가드가 "낡은 지도"가 된다.** 실제로 전체 테스트에서 5건이 빨개졌다(가드가 옛 파일을
+가리켰다). 각 가드에 **"분리된 것이 실제로 마운트/렌더되는가"** 검사를 함께 넣었다 —
+파일만 있고 안 붙으면 화면에서 조용히 사라지기 때문이다.
+
+## ⏳ 남은 것
+
+- **못 본 시안 1건** — 2026-08-19 대표가 보낸 "앱+모바일 메인 디자인" 첨부 2장이 **빈 파일로
+  도착**했다. 다시 받아야 한다.
+- **PC 친화성 전수 점검 나머지** — 15개 라우트 중 9개를 풀너비로 등재했고, `/referral` 은
+  `lg:hidden` 없는 하단 고정바 때문에 **일부러 제외**(등재하면 PC 에서 CTA 가 사라진다).
+- **대표 판단 대기**: 어드민 542KB / 유어애즈 321KB 워커 분리 · 도매 잔재 154KB.
+
+## 🔒 보호 기능의 한계 (대표에게 이미 말했지만 다음 세션도 알 것)
+
+사진 우클릭 차단은 **억제이지 보호가 아니다.** URL 이 있으므로 개발자도구로 받을 수 있다.
+막는 것은 우클릭 저장·드래그·iOS 길게 눌러 저장이라는 **손쉬운 경로**뿐이다.
+⚠️ **iOS 는 CSS(`-webkit-touch-callout`)가 본체다** — Safari 는 길게 눌러도 `contextmenu` 를
+안 쏘므로, CSS 를 지우면 PC 에선 멀쩡한데 **모바일에선 기능이 통째로 없다.**
+
+---
+
+# 📉 유어딜 최적화 — 실측 기록 (2026-08-22 후반)
+
+대표: *"유어딜 최적화는 해야하지 않을까?"*
+
+## 🩸 먼저: 제가 한 번 오진했다. 같은 함정을 반복하지 말 것
+
+*"홈 HTML 112KB 중 SSR 시드가 57KB — 1순위"* 라고 보고했는데 **압축 전 숫자**였다.
+
+```
+raw   111,967B
+wire   33,950B  (brotli, content-encoding: br)   ← 실제
+```
+
+URL 이 반복되는 JSON 은 brotli 가 3.3배로 줄인다. ⇒ **압축 후로 재지 않으면 우선순위가 통째로
+틀린다.** (CLAUDE.md 의 `check-bundle-size` 사고 — gzip 사이드카가 없어 측정값이 늘 0이던 것 —
+과 같은 클래스다.)
+
+그리고 시드는 **줄이면 안 된다**: `useMapProducts` 는 `seed.length < 50` 이면 "마지막 페이지"로
+간주하고 나머지를 **아예 안 받는다**(`_cache.set` 후 return). 12개로 줄였다면 홈에 상품이 12개만
+뜨고 끝났을 것이다. (`HomeSections` 는 `refetchOnMount:'always'` 라 다르다 — 두 훅을 혼동하지 말 것.)
+
+## 압축 후 실측 — 무게는 JS/CSS 에 있다
+
+```
+JS/CSS  377KB   ← 11배
+HTML     34KB
+```
+
+| 자산 | wire | 메모 |
+|---|---|---|
+| app-components | 61KB | 공유 |
+| react-core | 46KB | |
+| **index.css** | **34KB** | CSS 하나가 HTML 전체와 같다 — **미조사, 다음 후보** |
+| app-utils | 33KB | |
+| ~~RestaurantMapPage~~ | ~~23KB~~ | ✅ 이번에 제거(419460222) |
+| i18n | 21KB | |
+| axios | 18KB | |
+| app-wholesale-hooks | 2.5KB | 🚫 **손대지 않기로 판단** — 공유 청크(`app-components`)가 끌어와서 떼려면 잠긴 `manualChunks` 를 건드려야 하는데 이득이 2.5KB 뿐 |
+
+## ✅ 이번에 고친 것 (`419460222`)
+
+`scripts/generate-route-chunk-map.mjs` 의 `ROUTES` 는 **라우팅이 바뀌어도 자동으로 안 따라온다.**
+
+① **홈이 안 쓰는 지도 청크 23KB 를 미리 받고 있었다** — `home: ['RestaurantMapPage.tsx']` 가
+2026-07-15 "홈=지도" 잔재. 홈은 `HomeRoute`(PC/모바일 분기)로 바뀐 지 오래다. **양쪽 손해**였다:
+지도 23KB 를 받고, 정작 쓰는 `PcHomePage`(4.8KB)+`MobileHomePage`(2.0KB)+`GroupBuyFeed`(3.6KB)는
+병렬화를 못 받았다.
+
+② **링크샵의 `SellerPublicPage` 가 `MAX_LINKS` 10 에 잘려 있었다** — 진입점이 둘인데 첫 키의
+폐쇄가 캡을 채웠다. 사업자 링크샵의 본체인데도. ⇒ 각 진입점의 **페이지 청크를 먼저** 모으고
+공유 청크를 뒤로.
+
+가드: `route-chunk-surfaces.test.ts` — **`HomeRoute` 의 lazy import 를 읽어 표와 대조**한다.
+
+## 🔴 다음 세션 최적화 첫 액션
+
+1. **배포 후 효과 판정**: `curl -s https://urdeal.kr/ | grep -c RestaurantMapPage` → **0**
+   (생성 맵은 빌드 산출물이라 커밋본은 비어 있다 — CI 빌드에서 채워진다.)
+2. **`index.css` 34KB 조사** — 이번에 손 못 댔다. Tailwind 빌드 산출이라 미사용 유틸리티가
+   얼마나 되는지, 대시보드 전용 CSS 가 소비자 표면에 실리는지 볼 것.
+3. ⚠️ **측정은 반드시 `Accept-Encoding: br, gzip` 으로.** raw 로 재면 또 틀린다.

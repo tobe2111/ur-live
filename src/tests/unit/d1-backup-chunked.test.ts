@@ -14,7 +14,8 @@ import { backupChunked } from '../../worker/cron/d1-backup-chunked'
  */
 
 /** 최소 가짜 D1 — 테이블 목록과 rowid 페이징만 흉내 낸다. */
-function fakeDb(rowsPerTable: Record<string, number>) {
+function fakeDb(rowsPerTable: Record<string, number>, opts?: { failPageAfter?: number }) {
+  let pageReads = 0
   return {
     prepare(sql: string) {
       const bindArgs: unknown[] = []
@@ -29,6 +30,10 @@ function fakeDb(rowsPerTable: Record<string, number>) {
           if (pt) return { results: [{ name: 'id' }, { name: 'body' }] as T[] }
           const m = /FROM "([^"]+)" WHERE rowid > \? ORDER BY rowid LIMIT (\d+)/.exec(sql)
           if (m) {
+            pageReads++
+            if (opts?.failPageAfter !== undefined && pageReads > opts.failPageAfter) {
+              throw new Error('D1_ERROR: simulated read failure')
+            }
             const total = rowsPerTable[m[1]] ?? 0
             const after = Number(bindArgs[0] ?? 0)
             const lim = Number(m[2])
@@ -71,9 +76,15 @@ function fakeStateDb(store: Map<string, string>) {
   } as unknown as D1Database
 }
 
-function fakeBucket() {
-  const puts: Array<{ key: string; size: number }> = []
-  return { puts, put: async (key: string, body: string) => { puts.push({ key, size: body.length }) } }
+function fakeBucket(opts?: { failOn?: RegExp }) {
+  const puts: Array<{ key: string; size: number; body: string }> = []
+  return {
+    puts,
+    put: async (key: string, body: string) => {
+      if (opts?.failOn?.test(key)) throw new Error('R2 put failed')
+      puts.push({ key, size: body.length, body })
+    },
+  }
 }
 
 describe('분할 백업', () => {
@@ -120,7 +131,7 @@ describe('분할 백업', () => {
     const bucket = fakeBucket()
     // 행당 약 200자 → 6 MB 파트면 대략 3만 행에서 갈린다. 넉넉히 넘겨 본다.
     await backupChunked({ BACKUP_BUCKET: bucket } as never,
-      { db: fakeDb({ leads: 60_000 }), label: 'ads', stateDb: fakeStateDb(new Map()) })
+      { db: fakeDb({ leads: 60_000 }), label: 'ads', stateDb: fakeStateDb(new Map()), maxReads: 1000 })
     const parts = bucket.puts.filter((p) => p.key.includes('leads.'))
     expect(parts.length, '한 파트로 다 나왔다면 메모리 상한이 안 걸린 것').toBeGreaterThan(1)
     for (const p of parts) expect(p.size).toBeLessThanOrEqual(7 * 1024 * 1024)
@@ -129,7 +140,7 @@ describe('분할 백업', () => {
   it('파트 파일명이 정렬 가능하다 (복구 때 순서가 곧 정확성이다)', async () => {
     const bucket = fakeBucket()
     await backupChunked({ BACKUP_BUCKET: bucket } as never,
-      { db: fakeDb({ leads: 60_000 }), label: 'ads', stateDb: fakeStateDb(new Map()) })
+      { db: fakeDb({ leads: 60_000 }), label: 'ads', stateDb: fakeStateDb(new Map()), maxReads: 1000 })
     const keys = bucket.puts.filter((p) => p.key.endsWith('.sql')).map((p) => p.key)
     expect([...keys].sort()).toEqual(keys)          // 생성 순서 == 사전순
     expect(keys[0]).toMatch(/leads\.0000\.sql$/)     // 0 패딩이 없으면 10번이 2번 앞에 온다
@@ -149,5 +160,69 @@ describe('분할 백업', () => {
     const src = readFileSync('src/worker/cron/d1-backup-chunked.ts', 'utf8')
     expect(src).toMatch(/X'\$\{hex\}'/)
     expect(src).toMatch(/ArrayBuffer\.isView/)
+  })
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 🩸 2026-08-22 — "성공했다는 빈 백업" 클래스. 아래 넷은 **실제로 났던 버그**를 고정한다.
+  //    첫 판은 모든 D1 읽기에 `.catch(() => ({ results: [] }))` 가 달려 있어서, 읽기가 실패하면
+  //    "할 게 없다"로 오인하고 manifest 를 쓰고 커서를 지우고 done:true 를 반환했다.
+  //    백업에서 이건 없는 것보다 나쁘다 — 있다고 믿게 만든다.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  it('🩸 테이블 목록이 비면 "완료"가 아니라 던진다 (빈 백업을 성공으로 기록하지 않는다)', async () => {
+    const bucket = fakeBucket()
+    await expect(backupChunked({ BACKUP_BUCKET: bucket } as never,
+      { db: fakeDb({}), label: 'ads', stateDb: fakeStateDb(new Map()) })).rejects.toThrow()
+    expect(bucket.puts.some((p) => p.key.endsWith('manifest.json')),
+      '빈 목록으로 manifest 를 썼다 — 복구 때 "온전한 백업"으로 오인된다').toBe(false)
+  })
+
+  it('🩸 페이지 읽기가 실패하면 남은 행을 건너뛰지 않는다 (조용한 부분 유실 방지)', async () => {
+    const bucket = fakeBucket()
+    const store = new Map<string, string>()
+    // 첫 페이지는 성공, 두 번째부터 실패 → 이 테이블은 아직 안 끝났다.
+    const r = await backupChunked({ BACKUP_BUCKET: bucket } as never,
+      { db: fakeDb({ leads: 5_000 }, { failPageAfter: 1 }), label: 'ads', stateDb: fakeStateDb(store) })
+    expect(r.done, '실패했는데 완료로 보고했다').toBe(false)
+    expect(r.reason).toBe('error')
+    expect(r.error, '무엇이 실패했는지 남기지 않으면 다음 세션이 또 판다').toBeTruthy()
+    expect(bucket.puts.some((p) => p.key.endsWith('manifest.json')),
+      '실패한 회차가 manifest 를 썼다').toBe(false)
+    const cur = JSON.parse(store.get('backup_chunk:ads') || '{}')
+    expect(cur.ti, '실패했는데 다음 테이블로 넘어갔다 — 남은 행이 통째로 빠진다').toBe(0)
+  })
+
+  it('🩸 R2 업로드가 실패하면 커서를 전진시키지 않는다 (다음 회차가 그 파트를 재시도한다)', async () => {
+    const bucket = fakeBucket({ failOn: /leads\.0000\.sql$/ })
+    const store = new Map<string, string>()
+    const r = await backupChunked({ BACKUP_BUCKET: bucket } as never,
+      { db: fakeDb({ leads: 1_000 }), label: 'ads', stateDb: fakeStateDb(store) })
+    expect(r.reason).toBe('error')
+    const cur = JSON.parse(store.get('backup_chunk:ads') || '{}')
+    expect(cur.part, '올리지도 못한 파트 번호를 전진시켰다 — 그 파트는 영영 비어 있게 된다').toBe(0)
+  })
+
+  it('🔑 읽기 예산을 넘기면 커서를 남기고 멈춘다 (같은 인보케이션의 남의 작업을 굶기지 않는다)', async () => {
+    const bucket = fakeBucket()
+    const store = new Map<string, string>()
+    const r = await backupChunked({ BACKUP_BUCKET: bucket } as never,
+      { db: fakeDb({ leads: 200_000 }), label: 'ads', stateDb: fakeStateDb(store), maxReads: 6 })
+    expect(r.reason).toBe('reads')
+    expect(r.done).toBe(false)
+    expect((r.reads ?? 0), '예산을 넘겨 읽었다').toBeLessThanOrEqual(8)
+    expect(store.has('backup_chunk:ads'), '멈췄는데 커서를 안 남겼다 — 다음 회차가 처음부터 다시 한다').toBe(true)
+  })
+
+  it('🔑 manifest 에 테이블별 파트·행 수가 들어간다 (잘린 백업과 온전한 백업을 구분한다)', async () => {
+    const bucket = fakeBucket()
+    const r = await backupChunked({ BACKUP_BUCKET: bucket } as never,
+      { db: fakeDb({ orders: 3, users: 7 }), label: 'main', stateDb: fakeStateDb(new Map()) })
+    expect(r.done).toBe(true)
+    const man = bucket.puts.find((p) => p.key.endsWith('manifest.json'))
+    expect(man, 'manifest 가 없다').toBeTruthy()
+    const j = JSON.parse(man!.body) as { counts: Record<string, [number, number]>; total_rows: number }
+    expect(j.counts.orders?.[1], 'orders 행 수가 안 적혔다').toBe(3)
+    expect(j.counts.users?.[1], 'users 행 수가 안 적혔다').toBe(7)
+    expect(j.total_rows).toBe(10)
   })
 })

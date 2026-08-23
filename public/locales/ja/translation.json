@@ -979,7 +979,10 @@
       "tip1": "画像は正方形（1:1）が最もきれいに表示されます",
       "tip2": "商品名の先頭に重要なキーワードを入れましょう",
       "tip3": "登録後でもいつでも編集できます",
-      "cameraHint": "スマホでは撮影またはギャラリーから選択できます"
+      "cameraHint": "スマホでは撮影またはギャラリーから選択できます",
+      "storeName": "店舗名",
+      "storeAddress": "店舗住所",
+      "storePhone": "店舗電話番号"
     },
     "orders": "注文管理",
     "revenue": "ディール精算",
@@ -2475,7 +2478,7 @@
       "bundles": "バンドル商品",
       "promoCodes": "プロモコード",
       "followers": "フォロワー",
-      "miniShop": "ミニショップ",
+      "miniShop": "リンクショップ設定",
       "streamingGuide": "配信ガイド",
       "notifyFollowers": "フォロワー通知",
       "stays": "宿泊共同購入",
@@ -2492,7 +2495,10 @@
       "experienceCampaigns": "体験キャンペーン",
       "myLinkshop": "マイリンクショップ",
       "reviewVerifications": "レビュー確認",
-      "returns": "返品リクエスト"
+      "returns": "返金リクエスト",
+      "operators": "運営者管理",
+      "stores": "店舗管理",
+      "findInfluencers": "インフルエンサー探し"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",

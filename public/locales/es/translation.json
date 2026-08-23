@@ -299,7 +299,10 @@
       "tip1": "Las imágenes cuadradas (1:1) se ven mejor",
       "tip2": "Pon las palabras clave al inicio del nombre",
       "tip3": "Puedes editarlo en cualquier momento tras registrarlo",
-      "cameraHint": "En el móvil puedes hacer una foto o elegir de la galería"
+      "cameraHint": "En el móvil puedes hacer una foto o elegir de la galería",
+      "storeName": "Nombre del local",
+      "storeAddress": "Dirección del local",
+      "storePhone": "Teléfono del local"
     },
     "orders": "Pedidos",
     "revenue": "Liquidación Deal",
@@ -1779,7 +1782,7 @@
       "bundles": "Paquetes",
       "promoCodes": "Códigos promo",
       "followers": "Seguidores",
-      "miniShop": "Mini tienda",
+      "miniShop": "Ajustes de Linkshop",
       "streamingGuide": "Guía de streaming",
       "notifyFollowers": "Notificar seguidores",
       "stays": "Vales de alojamiento",
@@ -1796,7 +1799,10 @@
       "experienceCampaigns": "Campañas de prueba",
       "myLinkshop": "Mi Linkshop",
       "reviewVerifications": "Verificar reseñas",
-      "returns": "Devoluciones"
+      "returns": "Solicitudes de reembolso",
+      "operators": "Operadores",
+      "stores": "Mis tiendas",
+      "findInfluencers": "Buscar influencers"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

@@ -80,6 +80,7 @@ import { logRegionInfo, isKorea } from '@/shared/config/region'
 import { initNativeFeatures, isNative } from '@/lib/native'
 import { isKeyboardOpen, isEditableElementFocused } from '@/lib/keyboard-viewport'
 import { swallow } from '@/shared/utils/swallow'
+import { installImageProtection } from '@/lib/image-protect'
 import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
 
 declare global {
@@ -190,6 +191,11 @@ if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
 if (import.meta.env.DEV) {
   try { logRegionInfo() } catch { /* ignore */ }
 }
+
+// 🖼️ 사진 저장 억제(우클릭/드래그) — 소비자 표면만, 대시보드 제외.
+//   문서 레벨 리스너 1쌍뿐이라 번들·런타임 비용이 사실상 0 이라 eager 로 둔다
+//   (lazy 로 미루면 첫 화면 카드에서 잠깐 우클릭이 열린다).
+installImageProtection()
 
 // 빌드 버전 자동 감지 & 자동 리로드
 import('@/lib/version-check').then(({ startVersionCheck }) => startVersionCheck()).catch(swallow('main:version-check'))

@@ -340,3 +340,53 @@ adminToolsRoutes.get('/commission-budget-logs', async (c) => {
   ).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
   return c.json({ success: true, data: results || [] })
 })
+
+// ── 🗄️ 분할 백업 수동 실행 ────────────────────────────────────────────────
+/**
+ * **왜 수동 실행이 필요한가** (2026-08-22)
+ *
+ * 분할 백업은 5분 cron 의 **다른 작업 10여 개와 같은 인보케이션**을 쓴다. 무료 플랜은 인보케이션당
+ * 서브리퀘스트가 50이라, 앞선 작업들이 예산을 다 쓰면 백업은 **한 줄도 못 읽고** 끝난다. 실제로
+ * 08-22 에 하트비트 129개가 통째로 멈춘 정황이 이 클래스이고, 백업은 그 사이 한 번도 진행하지 못했다.
+ *
+ * 이 엔드포인트는 두 가지를 준다:
+ *   1. **진짜 에러를 눈으로 본다** — cron 은 실패를 `try/catch` 로 삼키고 하트비트조차 못 남긴다.
+ *   2. **자기 인보케이션 예산으로 돈다** — 요청 한 번이 곧 회차 하나라, 반복 호출하면 첫 스냅샷을
+ *      cron 을 기다리지 않고 끝까지 밀 수 있다.
+ *
+ * ⚠️ `maxReads` 를 크게 잡으면 요청이 CPU 로 끊긴다(무료 플랜 수동 경로의 알려진 벽 —
+ *    `admin-ads-pool-ops.routes.ts` 의 실측표 참조). 작게 여러 번이 정답이다.
+ */
+adminToolsRoutes.post('/backup-chunk', async (c) => {
+  const body = await c.req.json<{ maxReads?: number }>().catch(() => ({} as { maxReads?: number }))
+  // 1~40 으로 조인다 — 위 경고대로 크게 잡으면 CPU 로 끊겨 **0건 처리**가 된다.
+  const maxReads = Math.max(1, Math.min(40, Number(body.maxReads) || 12))
+  const t0 = Date.now()
+  try {
+    const { handleChunkedBackup } = await import('../../../worker/cron/d1-backup-chunked')
+    const r = await handleChunkedBackup(c.env as never, { maxReads })
+    await writeAuditLog(c, {
+      action: 'backup_chunk_run', targetType: 'backup',
+      targetId: String((r as { label?: string }).label || ''), after: r,
+    }).catch(() => {})
+    return c.json({ success: true, ms: Date.now() - t0, ...r })
+  } catch (err) {
+    // 🩸 여기서 삼키지 않는다 — 이 엔드포인트의 존재 이유가 "실패를 보이게 하는 것"이다.
+    return c.json({ success: false, ms: Date.now() - t0, error: (err as Error)?.message || String(err) }, 500)
+  }
+})
+
+/** 진행 상황 — 커서가 어디까지 갔는지. 없으면 진행 중인 스냅샷이 없다는 뜻이다. */
+adminToolsRoutes.get('/backup-chunk', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    "SELECT key, value, updated_at FROM platform_settings WHERE key LIKE 'backup_chunk:%' ORDER BY key",
+  ).all<{ key: string; value: string; updated_at: string }>()
+  return c.json({
+    success: true,
+    cursors: (results || []).map((r) => {
+      let parsed: unknown = null
+      try { parsed = JSON.parse(r.value) } catch { parsed = r.value }
+      return { key: r.key, updated_at: r.updated_at, cursor: parsed }
+    }),
+  })
+})

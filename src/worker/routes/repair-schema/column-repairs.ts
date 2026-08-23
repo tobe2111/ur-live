@@ -370,6 +370,73 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     )` },
     { desc: 'idx_wh_sub_accounts_email', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_wh_sub_accounts_email ON wholesale_sub_accounts(email)" },
     { desc: 'idx_wh_sub_accounts_parent', sql: "CREATE INDEX IF NOT EXISTS idx_wh_sub_accounts_parent ON wholesale_sub_accounts(parent_seller_id)" },
+    // 🏪 2026-08-19 매장 운영 주체(operator) — 한 계정이 여러 매장을 운영할 수 있게 하는 관계.
+    //   설계 SSOT: docs/design/store-operator-model.md · 런타임 ensureSellerOperators 도 best-effort CREATE.
+    //   ⚠️ revoked_at 은 행 삭제 대신 — 누가 언제 운영했는지가 분쟁 시 유일한 근거다.
+    { desc: 'seller_operators', sql: `CREATE TABLE IF NOT EXISTS seller_operators (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      role TEXT NOT NULL DEFAULT 'operator',
+      granted_by_user_id INTEGER,
+      granted_at DATETIME DEFAULT (datetime('now')),
+      revoked_at DATETIME,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { desc: 'idx_seller_operators_pair', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_seller_operators_pair ON seller_operators(seller_id, user_id)" },
+    { desc: 'idx_seller_operators_user', sql: "CREATE INDEX IF NOT EXISTS idx_seller_operators_user ON seller_operators(user_id, revoked_at)" },
+    // 📣 2026-08-20 인플루언서 협업 제안(아웃리치) — 셀러가 작성·저장, 발송은 유어딜 대행(seller-dashboard-v2).
+    { desc: 'influencer_outreach_requests', sql: `CREATE TABLE IF NOT EXISTS influencer_outreach_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      product_id INTEGER,
+      target_lead_ids TEXT NOT NULL,
+      target_count INTEGER NOT NULL DEFAULT 0,
+      commission_pct REAL NOT NULL DEFAULT 0,
+      product_support TEXT NOT NULL DEFAULT 'free',
+      channels TEXT NOT NULL DEFAULT '[]',
+      period_days INTEGER,
+      message TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'submitted',
+      quoted_fee_krw INTEGER NOT NULL DEFAULT 0,
+      admin_note TEXT,
+      created_at DATETIME DEFAULT (datetime('now')),
+      updated_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { desc: 'idx_outreach_seller', sql: "CREATE INDEX IF NOT EXISTS idx_outreach_seller ON influencer_outreach_requests(seller_id, created_at DESC)" },
+    { desc: 'influencer_offer_invites', sql: `CREATE TABLE IF NOT EXISTS influencer_offer_invites (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      outreach_id INTEGER NOT NULL,
+      lead_id INTEGER,
+      token TEXT NOT NULL UNIQUE,
+      seller_id INTEGER NOT NULL,
+      product_id INTEGER,
+      commission_pct REAL NOT NULL DEFAULT 0,
+      product_support TEXT NOT NULL DEFAULT 'free',
+      channels TEXT NOT NULL DEFAULT '[]',
+      message TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      accepted_user_id TEXT,
+      accepted_at DATETIME,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { desc: 'idx_offer_invites_outreach', sql: "CREATE INDEX IF NOT EXISTS idx_offer_invites_outreach ON influencer_offer_invites(outreach_id)" },
+    { desc: 'outreach_email_queue', sql: `CREATE TABLE IF NOT EXISTS outreach_email_queue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      outreach_id INTEGER NOT NULL,
+      invite_id INTEGER,
+      lead_id INTEGER,
+      email TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      html TEXT NOT NULL,
+      unsubscribe_token TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at DATETIME DEFAULT (datetime('now')),
+      sent_at DATETIME,
+      UNIQUE(outreach_id, lead_id)
+    )` },
+    { desc: 'idx_outreach_email_status', sql: "CREATE INDEX IF NOT EXISTS idx_outreach_email_status ON outreach_email_queue(status, created_at)" },
+    { desc: 'idx_outreach_email_addr', sql: "CREATE INDEX IF NOT EXISTS idx_outreach_email_addr ON outreach_email_queue(email, sent_at)" },
     // 🔐 2026-06-17 단일 세션 강제 (대시보드) — account 별 min_valid_iat. 로그인 시 갱신,
     //   미들웨어가 토큰 iat < min_valid_iat 면 거부. (런타임 ensureDashboardSessionsTable 도 best-effort CREATE.)
     { desc: 'dashboard_sessions', sql: `CREATE TABLE IF NOT EXISTS dashboard_sessions (

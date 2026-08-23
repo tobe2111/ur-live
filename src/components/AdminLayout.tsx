@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
@@ -156,18 +156,55 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   const DEFAULT_PINS = adminRole === 'wholesale'
     ? ['/admin/wholesale-overview', '/admin/wholesale-orders', '/admin/suppliers']
     : ['/admin', '/admin/orders', '/admin/settlement', '/admin/seller-approval']
+  // 🐛 2026-08-22 대표 신고 "즐겨찾기가 계속 초기화 돼" — 저장 위치를 **계정**으로 옮겼다.
+  //   localStorage 는 오리진·브라우저·프로필마다 따로이고 시크릿창·"사이트 데이터 지우기"·
+  //   기기 변경·도메인 전환(구 도메인 ↔ urdeal.kr 은 서로 다른 오리진)에 조용히 사라진다. 게다가 아래
+  //   기본값 시드가 **저장되지 않아서**, 저장소가 비는 순간 항상 기본 4개로 돌아갔다 —
+  //   그게 대표가 본 "초기화"의 모습이다.
+  //   ⇒ localStorage 는 **첫 페인트용 캐시로만** 남기고(서버 왕복 동안 깜빡이지 않게),
+  //     진짜 출처는 `GET/PUT /api/admin/me/prefs/nav_pins`(본인 토큰 id 만 사용).
+  const persistPins = (next: string[]) => {
+    try { localStorage.setItem('admin_nav_pinned_v1', JSON.stringify(next)) } catch { /* quota */ }
+    // 서버 저장은 fail-soft — 실패해도 이번 세션 화면은 그대로다(로컬 캐시가 받친다).
+    void api.put('/api/admin/me/prefs/nav_pins', { value: next }).catch(() => null)
+  }
   const [pinnedPaths, setPinnedPaths] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem('admin_nav_pinned_v1')
-      if (raw == null) return DEFAULT_PINS // 최초 진입: 기본값 시드(저장은 첫 토글 때)
+      if (raw == null) return DEFAULT_PINS // 최초 진입: 기본값 시드(서버 응답이 오면 대체)
       const arr = JSON.parse(raw)
       return Array.isArray(arr) ? arr.filter((p): p is string => typeof p === 'string') : []
-    } catch { return [] }
+    } catch { return DEFAULT_PINS }
   })
+  // 서버 값으로 1회 하이드레이트. 서버에 아무것도 없으면(최초) **지금 화면의 값을 승격 저장**한다 —
+  // 시드를 저장하지 않은 것이 초기화의 절반이었다.
+  const pinsHydrated = useRef(false)
+  useEffect(() => {
+    if (pinsHydrated.current) return
+    pinsHydrated.current = true
+    let alive = true
+    api
+      .get<{ success?: boolean; data?: { value?: unknown } }>('/api/admin/me/prefs/nav_pins')
+      .then((res) => {
+        if (!alive) return
+        const v = res?.data?.data?.value
+        if (Array.isArray(v)) {
+          const clean = v.filter((p): p is string => typeof p === 'string')
+          setPinnedPaths(clean)
+          try { localStorage.setItem('admin_nav_pinned_v1', JSON.stringify(clean)) } catch { /* quota */ }
+          return
+        }
+        // 서버에 없음 = 이 계정의 최초 진입. 현재(로컬/기본) 값을 계정에 승격시킨다.
+        setPinnedPaths((prev) => { persistPins(prev); return prev })
+      })
+      .catch(() => null) // 조회 실패 시 로컬 값 유지 — 대시보드가 안 열리면 안 된다
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const togglePin = (path: string) => {
     setPinnedPaths((prev) => {
       const next = prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path]
-      try { localStorage.setItem('admin_nav_pinned_v1', JSON.stringify(next)) } catch { /* quota */ }
+      persistPins(next)
       return next
     })
   }

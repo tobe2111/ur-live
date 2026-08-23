@@ -205,7 +205,7 @@ describe('요율 주입(platform_settings override 시뮬)', () => {
   it('커스텀 요율 주입 시 그 값 사용', () => {
     const b = resolveOrderFees(
       { amount: 10_000, ownership: '3P', productKind: 'voucher', agency: activeAgency() },
-      { platformPct: 8, agencyPct: 2, agencyTermMonths: 12 },
+      { platformPct: 8, platformPctDirect: 10, agencyPct: 2, agencyTermMonths: 12 },
     );
     expect(b.platform).toBe(800);
     expect(b.agency).toBe(200);
@@ -222,3 +222,26 @@ describe('입력 방어', () => {
     expect(resolveOrderFees({ amount: 9_999.9, ownership: '3P', productKind: 'voucher' }).amount).toBe(9_999);
   });
 });
+
+describe('🔴 채널별 플랫폼 수수료 (2026-08-20 대표 최종 — "이게 최종이야")', () => {
+  it('직접(direct) 채널 매장 = 10%', () => {
+    const r = resolveOrderFees({ amount: 10000, ownership: '3P', productKind: 'voucher', storeChannel: 'direct' })
+    expect(r.platform).toBe(1000)
+  })
+  it('중개(brokered) 채널 매장 = 5%', () => {
+    const r = resolveOrderFees({ amount: 10000, ownership: '3P', productKind: 'voucher', storeChannel: 'brokered' })
+    expect(r.platform).toBe(500)
+  })
+  it('채널 미지정(기존 매장) = 5% 폴백 — 기존 매장을 조용히 재가격하지 않는다', () => {
+    const r = resolveOrderFees({ amount: 10000, ownership: '3P', productKind: 'voucher' })
+    expect(r.platform).toBe(500)
+  })
+  it('1P(유어딜 직판)는 채널 무관 0%', () => {
+    const r = resolveOrderFees({ amount: 10000, ownership: '1P', productKind: 'shopping', storeChannel: 'direct' })
+    expect(r.platform).toBe(0)
+  })
+  it('합 항등식 유지 — direct 채널에서도 슬라이스 합 = amount', () => {
+    const r = resolveOrderFees({ amount: 9999, ownership: '3P', productKind: 'voucher', storeChannel: 'direct', promo: { promoterId: 1, pct: 7 } })
+    expect(r.platform + r.promo + r.supply + r.ownerNet).toBe(9999)
+  })
+})

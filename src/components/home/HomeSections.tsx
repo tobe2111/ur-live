@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { resolveConsumerAlias } from '@/shared/seo/consumer-redirects'
@@ -56,7 +56,25 @@ interface HomeSection {
  *   남는다 — 배너 컴포넌트 자신이 "없으면 null" 이라 결국 아무것도 안 그려진다.
  */
 export default function HomeSections({ midBanner }: { midBanner?: React.ReactNode }) {
-  const { data: sections = [] } = useApiQuery<HomeSection[]>(
+  /**
+   * 🏠 2026-08-22 (대표 "인기 이용권이 먼저 안 뜨고 가까운 동네딜이 먼저 보여"): 워커가 홈 HTML 에
+   * `__SSR_INITIAL_SECTIONS__` 를 함께 실어 보낸다(`worker/index.ts` SECTIONS 보조 슬롯).
+   * **첫 render 에서 동기로** 읽어야 의미가 있다 — useEffect 로 읽으면 이미 한 프레임 늦어
+   * 스켈레톤이 한 번 깜빡이고, 그게 대표가 본 "늦게 끼어든다"의 실체다.
+   * 시드가 없으면(다른 표면·콜드 타임아웃) undefined → 평소대로 fetch. 회귀 0.
+   */
+  const ssrSections = useMemo<HomeSection[] | undefined>(() => {
+    try {
+      const el = document.getElementById('__SSR_INITIAL_SECTIONS__')
+      if (!el?.textContent) return undefined
+      const r = JSON.parse(el.textContent) as { success?: boolean; data?: HomeSection[] }
+      return r?.success && Array.isArray(r.data) ? r.data : undefined
+    } catch {
+      return undefined // 깨진 시드 하나가 홈을 못 열게 하면 안 된다
+    }
+  }, [])
+
+  const { data: sections = [], isLoading } = useApiQuery<HomeSection[]>(
     ['home', 'sections'],
     '/api/sections',
     {
@@ -65,10 +83,43 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
         return r?.success && Array.isArray(r.data) ? r.data : []
       },
       staleTime: 5 * 60_000,
+      initialData: ssrSections,
+      // ⚠️ initialData 는 기본적으로 "신선함"으로 간주된다 — 그대로 두면 시드가 낡아도 갱신이 안 된다.
+      //   (가드: check-query-initialdata) 마운트마다 백그라운드 갱신시켜 화면은 즉시, 값은 최신으로.
+      refetchOnMount: 'always',
     },
   )
 
   const visible = sections.filter(s => Array.isArray(s.products) && s.products.length > 0)
+
+  /**
+   * 🧱 2026-08-19 (대표 신고 — "첫 접속하면 지금 인기 이용권이 먼저 안뜨고 … 시간 지나면 보여"):
+   *   섹션은 동네딜 피드(SSR 0-RTT)와 달리 **응답이 온 뒤에야** 존재했다. 그래서 늦게 *끼어들며*
+   *   아래 콘텐츠를 밀어냈다 — 사용자에겐 "없다가 갑자기 생긴다"로 보인다.
+   *   ⇒ 응답을 기다리는 동안 **자리를 잡아 둔다**(제목 줄 + 카드 4칸). 늦게 와도 화면이 안 밀린다.
+   *   ⚠️ 로딩이 끝났는데 섹션이 0건이면 자리를 **남기지 않는다** — 대표 확정 "안 올리면 아예 안 보이게".
+   */
+  if (isLoading && visible.length === 0) {
+    return (
+      <>
+        <section className="ur-home-panel" aria-hidden="true">
+          <div className="h-[22px] w-40 rounded bg-gray-100 dark:bg-white/[0.06] mb-1" />
+          <div className="h-[15px] w-56 rounded bg-gray-100 dark:bg-white/[0.06] mb-3" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i}>
+                <div className="aspect-[4/3] rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
+                <div className="h-[13px] w-3/4 rounded bg-gray-100 dark:bg-white/[0.06] mt-2.5" />
+                <div className="h-[13px] w-1/2 rounded bg-gray-100 dark:bg-white/[0.06] mt-1.5" />
+              </div>
+            ))}
+          </div>
+        </section>
+        {midBanner}
+      </>
+    )
+  }
+
   if (visible.length === 0) return <>{midBanner}</>
 
   return (
@@ -77,10 +128,17 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
         // 🐛 2026-08-17 (대표 신고 — 더보기 클릭 시 옛 프레임 플래시): 저장된 href 가 `/group-buy` 같은
         // **별칭**(App.tsx `<Navigate>` 경로)이면 홈이 리마운트되며 플래시가 난다 — SSOT 로 정본 치환.
         // (데이터는 section-seed v2 heal 이 고치지만, 어드민이 다시 별칭을 넣어도 여기서 막는다.)
+        // 🐛 2026-08-19 (대표 신고 — "더보기 버튼 클릭 시 아무런 반응이 없고"):
+        //   위 별칭 치환이 **쿼리를 통째로 버리고 있었다.** 서버가 주는 `/?sort=popular` 에서
+        //   경로 부분 `/` 만 정규화하고 그 결과로 링크를 만들었기 때문에 최종 href 가 `/` 가 됐다
+        //   — 홈에서 홈으로 가는 링크라 눌러도 화면이 그대로다(에러도 없어 고장으로 안 보인다).
+        //   ⇒ 정규화는 **경로에만** 적용하고 쿼리·해시는 그대로 다시 붙인다.
         const raw = sec.more_href ? safeInternalPath(sec.more_href, '') : ''
         const qIdx = raw.indexOf('?')
-        const canon = raw ? resolveConsumerAlias(qIdx === -1 ? raw : raw.slice(0, qIdx)) : null
-        const more = canon ?? raw
+        const rawPath = qIdx === -1 ? raw : raw.slice(0, qIdx)
+        const rawQuery = qIdx === -1 ? '' : raw.slice(qIdx)
+        const canonPath = raw ? resolveConsumerAlias(rawPath) : null
+        const more = raw ? `${canonPath ?? rawPath}${rawQuery}` : ''
         return (
           <Fragment key={sec.id}>
           {/* 📐 가로 여백은 홈 컨테이너가 준다 — 여기서 또 주면 좌우가 어긋난다. */}

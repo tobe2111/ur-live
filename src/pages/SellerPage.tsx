@@ -23,7 +23,6 @@ import SellerKpiDashboard from '@/components/seller/SellerKpiDashboard'
 import { formatNumber } from '@/utils/format'
 import { swallow } from '@/shared/utils/swallow'
 import LazyChart from './seller-page/LazyChart'
-import MonthlyGoalCard from './seller-page/MonthlyGoalCard'
 import NewSellerSteps from './seller-page/NewSellerSteps'
 import ConversionFunnel from './seller-page/ConversionFunnel'
 import QuickActions from './seller-page/QuickActions'
@@ -105,9 +104,10 @@ function readSellerDashCache(period: string): SellerDashBundle | undefined {
 async function fetchSellerDashboard(period: string): Promise<SellerDashBundle> {
   const token = getSellerToken()
   const headers = token ? { Authorization: `Bearer ${token}` } : {}
-  const [dashRes, streamsRes, stockRes, followerRes, productsRes, profileRes] = await Promise.allSettled([
+  // 🗑️ 2026-08-20 라이브 잔재 제거: /api/seller/streams 는 서버에서 사라진 라우트(영구 중단)인데
+  //    대시보드가 매 로드마다 불러 404 콘솔 소음을 만들었다(대표 신고). streams/hasLiveHistory 는 빈 값 고정.
+  const [dashRes, stockRes, followerRes, productsRes, profileRes] = await Promise.allSettled([
     api.get(`/api/seller/dashboard/stats?period=${period}`, { headers }),
-    api.get('/api/seller/streams', { headers }),
     api.get('/api/inventory/stock/alerts', { headers }),
     api.get(`/api/social/followers/${getSellerId()}`),
     api.get('/api/seller/products', { headers }),
@@ -134,13 +134,6 @@ async function fetchSellerDashboard(period: string): Promise<SellerDashBundle> {
     }
     bundle.dailyStats = d.daily || []
     bundle.topProducts = d.topProducts || []
-  }
-  if (streamsRes.status === 'fulfilled' && streamsRes.value.data.success) {
-    const s: LiveStream[] = streamsRes.value.data.data || []
-    bundle.streams = s
-    bundle.stats.activeStreams = s.filter(x => x.status === 'live').length
-    bundle.stats.totalViewers = s.reduce((sum, x) => sum + (x.viewer_count || 0), 0)
-    bundle.hasLiveHistory = s.length > 0
   }
   if (stockRes.status === 'fulfilled' && stockRes.value.data?.success) {
     const alerts = stockRes.value.data.data || []
@@ -224,13 +217,6 @@ export default function SellerPage() {
   const hasMealVouchers = dashQ.data?.hasMealVouchers ?? false
   const mealVoucherCount = dashQ.data?.mealVoucherCount ?? 0
   const activeGroupBuys = dashQ.data?.activeGroupBuys ?? 0
-
-  // 월간 매출 목표 (localStorage 저장)
-  const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
-    const stored = Number(localStorage.getItem('seller_monthly_goal') || '0')
-    return stored > 0 ? stored : 10_000_000
-  })
-  const [editingGoal, setEditingGoal] = useState(false)
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -328,12 +314,6 @@ export default function SellerPage() {
       }
     }
   } catch { /* ignore */ }
-
-  // 월간 매출 목표 진행률 (이번 달 기준)
-  const now = new Date()
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const daysLeft = Math.max(0, daysInMonth - now.getDate())
-  const goalProgress = monthlyGoal > 0 ? (stats.totalRevenue / monthlyGoal) * 100 : 0
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   function fmtPrice(n: number) {
@@ -452,7 +432,8 @@ export default function SellerPage() {
 
   return (
     <SellerLayout title={t('seller.dashboard')} headerRight={headerRight} pendingOrders={stats.pendingOrders}>
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      {/* 🧱 2026-08-20 (대표): "너무 공백이 많아 — 컴팩트하게" → 세로 간격·패딩 축소. */}
+      <div className="mx-auto max-w-7xl space-y-3 p-3 sm:p-4">
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.dashboard')}
@@ -499,21 +480,11 @@ export default function SellerPage() {
         {/* 🏭 2026-06-04 (사용자 요청): 현재 등급(TierBadge) · 광고 슬롯 입찰 배너 · 시작 가이드(온보딩) ·
             7일 부트캠프 위젯 제거 — 셀러 대시보드 간소화. */}
 
-          {/* ── 월간 매출 목표 진행률 ── */}
-          <MonthlyGoalCard
-            totalRevenue={stats.totalRevenue}
-            monthlyGoal={monthlyGoal}
-            setMonthlyGoal={setMonthlyGoal}
-            editingGoal={editingGoal}
-            setEditingGoal={setEditingGoal}
-            goalProgress={goalProgress}
-            daysLeft={daysLeft}
-          />
-
+          {/* 🗑️ 2026-08-20 (대표): 월간 매출 목표 카드 제거 — "매출 목표 필요없고, 컴팩트하게". */}
           {/* ── Stats row ── */}
           {/* 🛡️ 2026-05-14: 태블릿 (md+) 4 cols → 풀 너비 활용 (iPad sidebar 있어도 588px+ 콘텐츠 영역).
               2026-05-18: Mode-specific 4번째 카드 — live 모드는 '진행 라이브', store 모드는 '진행 공구'. */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {[
               {
                 label: t('seller.totalRevenue'), value: fmtPrice(stats.totalRevenue),
@@ -638,7 +609,7 @@ export default function SellerPage() {
               🖥️ 2026-07-16 (대표 신고 — 공간활용 안 됨): 실시간 주문 패널 제거(2026-06-04) 후 3열 그리드에
               오른쪽 패널 1개만 남아 2/3 가 비었음. 4개 블록(빠른액션·전환퍼널·알림·공개페이지)을 직접
               그리드 자식으로 펼쳐 2×2(md+)로 폭을 꽉 채움. items-start 로 상단 정렬. */}
-          <div className="grid md:grid-cols-2 gap-3 sm:gap-5 items-start">
+          <div className="grid md:grid-cols-2 gap-3 items-start">
 
             {/* 빠른 액션 — 활동 데이터 기반 동적 배치(가장 자주 쓰는 액션 → 좌상단) */}
             <QuickActions
@@ -673,7 +644,7 @@ export default function SellerPage() {
 
           {/* ── Chart ── */}
           {dailyStats.length > 0 && (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
               {/* Sales chart — 스크롤 진입 시 recharts 번들 로드 */}
               <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-5">
                 <div className="flex items-center justify-between mb-4">

@@ -20,6 +20,9 @@ interface SendEmailParams {
   subject: string
   html: string
   from?: string
+  /** 커스텀 헤더 (예: List-Unsubscribe — Gmail/야후 대량발송 필수요건). Resend API `headers` 로 전달. */
+  headers?: Record<string, string>
+  replyTo?: string
 }
 
 /**
@@ -90,7 +93,9 @@ export async function sendEmail(
               from: fromAddress,
               to,
               subject,
-              html
+              html,
+              ...(params.headers ? { headers: params.headers } : {}),
+              ...(params.replyTo ? { reply_to: params.replyTo } : {}),
             }),
             signal: AbortSignal.timeout(30000) // 30s timeout
           }),
