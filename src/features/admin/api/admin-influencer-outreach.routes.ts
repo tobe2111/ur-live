@@ -13,6 +13,7 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error'
 import { adsLeadsDb } from '@/shared/ads/leads-db'
 import { ensureOfferInvitesTable, generateOfferToken } from '@/features/marketing/api/influencer-offer-invites.routes'
+import { enqueueOutreachEmails } from '@/features/marketing/api/outreach-email'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -98,6 +99,21 @@ app.get('/:id', async (c) => {
     return c.json({ success: true, data: { request: req, targets } })
   } catch (err) {
     return safeError(c, err, '제안 상세를 불러오지 못했습니다', '[admin-outreach]')
+  }
+})
+
+// ── POST /:id/send — 시스템 발송 시작 (드립 큐 적재 — 스팸 방어는 outreach-email.ts 7겹) ──
+app.post('/:id/send', async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청' }, 400)
+    const r = await enqueueOutreachEmails(c.env, id)
+    await adsLeadsDb(c.env).prepare(
+      `UPDATE influencer_outreach_requests SET status = 'sent', admin_note = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(`큐 적재 ${r.queued}건 · 제외 ${Object.entries(r.skipped).filter(([, n]) => n > 0).map(([k, n]) => `${k}:${n}`).join(' ') || '0'}`, id).run().catch(() => null)
+    return c.json({ success: true, data: r, message: `${r.queued}건이 발송 큐에 올라갔어요. 일일 한도 안에서 5분마다 조금씩 발송됩니다.` })
+  } catch (err) {
+    return safeError(c, err, '발송 큐 적재 중 오류가 발생했습니다', '[admin-outreach]')
   }
 })
 

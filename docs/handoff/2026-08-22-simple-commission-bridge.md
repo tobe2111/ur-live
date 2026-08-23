@@ -34,3 +34,11 @@
 ## 대표 대기
 - 컨택 과금 단가(influencer_contact_fee_krw).
 - 라이브 platform_settings 에 어필리에이트 관련 값이 이미 세팅돼 있으면(예: affiliate_commission_rate) 스위치 OFF 가 우선하므로 무관 — 단, **멀티티어 트리(10/3/1%)·초대 보상은 이번 결정 범위 밖**으로 남겨 둠. 함께 끌지 대표 확인.
+
+
+## (같은 날 2차) 이메일 스팸 방어 + 락인 — 대표 "1,2번 모두 해줘"
+- `outreach-email.ts` 드립 발송 파이프라인(7겹 방어, 위 design doc §4.6) + 어드민 "이메일 발송 시작" 버튼 + `outreach_auto_send` 게이트(기본 OFF) + 원클릭 수신거부 엔드포인트 + `outreach_email_queue`(repair-schema 등재) + scheduled 5분 tick `outreach-email-drain`.
+- `SameStoreDeals` — QR 사용완료 화면 재구매 락인.
+- 가드: `outreach-email-spam-guard.test.ts` 8건. R1(adsLeadsDb) 준수 — 새 파일 2개 전부 라우터 경유.
+- ⚠️ 대표 확인 1건: **Resend 발신 도메인 SPF/DKIM/DMARC 인증 상태** (dashboard → Domains). 미인증이면 코드 방어 무관 스팸함.
+- ⚠️ 배포 후 판정: 어드민 큐에서 발송 시작 → 5분 내 첫 메일 도착 + 수신거부 클릭 → 재발송 0.

@@ -13,6 +13,7 @@ import { safeDate } from '@/utils/safe-date'
 import { CheckCircle, MapPin, Phone, Share2, X, XCircle } from 'lucide-react'
 import type { Voucher } from './types'
 import ReviewBonusButton from './ReviewBonusButton'
+import SameStoreDeals from './SameStoreDeals'
 
 // 🛡️ 2026-05-16: 외부 QR API (api.qrserver.com) 의존 제거 → qrcode.react 로컬 SVG.
 // 🛡️ 2026-06-01 (loading): qrcode.react 는 QR 모달 열 때만 필요 → lazy (페이지 chunk -10KB).
@@ -386,9 +387,12 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           </>
         )}
 
-        {/* 🛡️ 2026-05-16: 사용한 voucher 에 후기 보너스 안내 */}
+        {/* 🛡️ 2026-05-16: 사용한 voucher 에 후기 보너스 안내 + 🎯 2026-08-22 같은 매장 재구매 락인 */}
         {voucher.status === 'used' && (
-          <ReviewBonusButton voucherCode={voucher.code} restaurantName={voucher.restaurant_name} restaurantAddress={voucher.restaurant_address} />
+          <>
+            <ReviewBonusButton voucherCode={voucher.code} restaurantName={voucher.restaurant_name} restaurantAddress={voucher.restaurant_address} />
+            <SameStoreDeals productId={voucher.product_id} />
+          </>
         )}
       </div>
       {showRedeem && (
