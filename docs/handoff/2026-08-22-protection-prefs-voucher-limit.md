@@ -153,3 +153,56 @@ HTML     34KB
 2. **`index.css` 34KB 조사** — 이번에 손 못 댔다. Tailwind 빌드 산출이라 미사용 유틸리티가
    얼마나 되는지, 대시보드 전용 CSS 가 소비자 표면에 실리는지 볼 것.
 3. ⚠️ **측정은 반드시 `Accept-Encoding: br, gzip` 으로.** raw 로 재면 또 틀린다.
+
+---
+
+# 🔬 소비자 첫 화면 최적화 — 전수 실측 결론 (2026-08-22 최종)
+
+**결론부터: 소비자 첫 화면은 이미 잘 최적화돼 있다. 실재하던 낭비는 지도 청크 23KB 하나였고
+그건 고쳤다(`#1178`). 나머지 후보 4개는 전부 "이미 최적" 또는 "위험 대비 이득 없음" 이다.**
+
+⚠️ **다음 세션은 아래를 다시 파지 말 것.** 근거를 남기는 이유가 그것이다.
+
+## 실측 방법 (이대로 해야 안 틀린다)
+
+```bash
+# ① 반드시 압축 후로 — raw 로 재면 우선순위가 통째로 뒤집힌다(내가 한 번 틀렸다)
+curl -sS --compressed -A "$UA" https://urdeal.kr/ -o /tmp/h.html -w '%{size_download}\n'
+# ② 실제 첫 화면 바이트는 브라우저로 — HTML 만 보면 폰트/이미지를 놓친다
+CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome node ./_measure.mjs
+#    ⚠️ 스크립트를 **레포 루트에** 두어야 playwright 모듈이 해석된다(/tmp 는 ERR_MODULE_NOT_FOUND)
+```
+
+## 모바일 390px 첫 화면 실측 (라이브, br 압축)
+
+```
+font         15개   358KB   ← 최대 항목이지만 렌더 무영향(아래)
+image        11개   171~496KB
+stylesheet    3개    12KB
+HTML                 34KB
+```
+
+## 후보별 판정 — 왜 안 건드렸는가
+
+| 후보 | 실측 | 판정 |
+|---|---|---|
+| **SSR 시드 57KB** | raw 57KB지만 **wire 34KB**(brotli 3.3×) | 🚫 게다가 `useMapProducts` 가 `seed.length<50` 을 "마지막 페이지"로 봐서 **줄이면 홈에 12개만 뜬다** |
+| **index.css 34KB** | `cache-control: public, max-age=31536000, **immutable**` | 🚫 첫 방문 1회뿐, 재방문 0바이트. 표면별 CSS 분리는 구조 변경 — 위험 대비 이득 없음 |
+| **Pretendard 358KB** | `font-display: **optional**` 강제(index.html:383) | 🚫 늦으면 아예 안 쓰고 시스템 폰트로 그린다 → **LCP 영향 0**. 주석에 2MB 통짜로 받다 LCP 13.8s 났던 이력까지 있다 |
+| **capacitor 4KB** | 플러그인은 전부 `await import()`, 정적은 `Capacitor` 판정용 1개 | 🚫 이미 옳다 |
+| **이미지** | 과대해상도 **0건**, 전부 `cdn-cgi/image` + `format=auto` + `quality=85` + `onerror=redirect` | 🚫 이미 옳다 |
+| **app-wholesale-hooks 2.5KB** | 공유 청크(`app-components`)가 끌어옴 | 🚫 떼려면 잠긴 `manualChunks` 를 만져야 하는데 이득 2.5KB |
+| ~~**지도 청크 23KB**~~ | `ROUTES.home` 이 `RestaurantMapPage` 를 가리키는 낡은 지도 | ✅ **고침** — 배포 후 preload 0 확인 |
+
+## 🔑 이 조사에서 얻은 규칙
+
+1. **압축 후로 재라.** raw 숫자는 3배 넘게 부풀어 있다.
+2. **캐시 헤더를 보라.** `immutable` 자산은 첫 방문 1회 비용이라 우선순위가 낮다.
+3. **`font-display` 를 보라.** 큰 폰트가 곧 느린 폰트는 아니다(`optional`/`swap`이면 렌더 무영향).
+4. **HTML 만 재지 말고 브라우저로 재라.** 폰트 358KB 는 HTML 을 아무리 봐도 안 보인다.
+
+## 남은(미조사) 것
+
+- **PC(1024px+) 첫 화면**은 안 쟀다 — 모바일만 측정했다. `PcHomePage` 경로는 별도 확인 필요.
+- `index.html` 의 kakao preconnect 주석이 *"모바일 = RestaurantMapPage"* 를 근거로 삼는데
+  **그 전제가 뒤집혔다**(이제 피드). 지도 SDK preconnect 가 홈에서 불필요해졌을 수 있다 — 작지만 실재.
