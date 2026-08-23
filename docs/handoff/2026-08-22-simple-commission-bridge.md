@@ -50,3 +50,10 @@
 DNS 실측(UDP 53 직결 — DoH 는 프록시 차단): **ur-team.com 은 Resend 인증 완료**(send.ur-team.com SPF/MX + resend._domainkey DKIM 실재), **urdeal.kr 은 레코드 0**, **DMARC 는 양쪽 다 없음**.
 수리(코드): ① 어드민 발송 API 가 키 미설정이면 503 명시 에러(무음 스킵 차단) ② outreach 발신 기본값을 인증 도메인 `유어딜 <noreply@ur-team.com>` 로 (onboarding@resend.dev 폴백 제거).
 **대표 액션 2건**: ① Resend API 키를 CF Pages(ur-live) env `RESEND_API_KEY` 로 등록 (+발신주소 바꾸려면 `RESEND_FROM`) ② DNS TXT 1줄: `_dmarc.ur-team.com` = `"v=DMARC1; p=none;"` (Gmail 대량발송 요건). urdeal.kr 발신 전환은 Resend 에 도메인 추가+DKIM 등록 필요 — 선택(나중).
+
+
+## (2026-08-23 4차) 심플 모델 완결 — 대표 "응 해줘. 모두 다. 3번도 끄자"
+1. **수락 알림 + 셀러 제안 현황**: accept 시 셀러 대시보드 벨(`offer_accepted`) · GET /outreach 에 `accepted_count` · SellerInfluencersPage 에 `SentOutreachList`(보낸 제안 — 상태/수락 n명).
+2. **인플루언서 성과**: GET `/api/influencer-offers/my/performance`(딜 목록+딜별 주문수/pending·확정 적립+링크) · `/my-commissions` 상단 `CollabPerformance` 섹션(딜 없으면 미렌더).
+3. **멀티티어(10/3/1%)·초대 보상(1,000딜) 종료**: `multi_tier_enabled`·`invite_reward_enabled` 스위치(행 부재=OFF) + **라이브 시드 치유**(repair-schema: influencer_commission_pct/user_referral_bonus_pct 0.5→0, 어드민 변경값은 보존) + 소비자 문구·블로그 시드 정리(BLOG_SEED_VERSION 10).
+⚠️ 오판 방지: 코드 DEFAULTS 만 0 으로 바꾸면 **라이브는 안 바뀐다** — platform_settings 에 0.5 시드 행이 실존(INSERT OR IGNORE 는 기존 행을 못 고침). 그래서 repair-schema UPDATE 가 본체다.

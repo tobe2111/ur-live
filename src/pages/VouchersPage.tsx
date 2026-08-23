@@ -752,7 +752,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           </div>
           {dealBalance != null && dealBalance < 10000 && (
             <p className="text-[11px] text-amber-400 mt-3">
-              {TOPUP_DISABLED ? '딜은 친구 초대·링크샵 추천으로 모을 수 있어요' : '잔액이 부족해요 — 지금 충전하기'}
+              {TOPUP_DISABLED ? '딜은 리뷰 인증 같은 활동으로 모을 수 있어요' : '잔액이 부족해요 — 지금 충전하기'}
             </p>
           )}
         </button>
@@ -761,10 +761,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           <button type="button" onClick={() => navigate('/map')} className="text-gray-500 dark:text-gray-400 hover:underline">
             공구로 적립
           </button>
-          <span className="text-gray-300 dark:text-gray-700">·</span>
-          <button type="button" onClick={() => navigate('/influencer/dashboard')} className="text-gray-500 dark:text-gray-400 hover:underline">
-            친구 추천 5%
-          </button>
+
         </div>
       </div>
 
