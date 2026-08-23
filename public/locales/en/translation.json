@@ -2424,7 +2424,10 @@
       "previewTitle": "Customer view preview",
       "registerStoreHint": "Register this store to auto-fill it next time",
       "registerStore": "Register store",
-      "storeRegistered": "Store registered — you can pick it from your store list"
+      "storeRegistered": "Store registered — you can pick it from your store list",
+      "shareDesc": "Get it at a discount on UrDeal",
+      "copyLink": "Copy sale link",
+      "linkCopied": "Link copied — paste it into your regulars' chat"
     },
     "analyticsTitle": "Sales Analytics",
     "revenueChart": "Revenue Chart",

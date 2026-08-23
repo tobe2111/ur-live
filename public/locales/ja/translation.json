@@ -2423,7 +2423,10 @@
       "previewTitle": "お客様画面プレビュー",
       "registerStoreHint": "この店舗を登録すると次回から自動で読み込まれます",
       "registerStore": "店舗登録",
-      "storeRegistered": "店舗を登録しました — 店舗一覧から選択できます"
+      "storeRegistered": "店舗を登録しました — 店舗一覧から選択できます",
+      "shareDesc": "ユアディールで割引価格で",
+      "copyLink": "販売リンクをコピー",
+      "linkCopied": "リンクをコピーしました — 常連チャットに貼り付けてください"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

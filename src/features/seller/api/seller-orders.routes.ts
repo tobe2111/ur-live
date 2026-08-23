@@ -980,6 +980,21 @@ sellerOrdersRoutes.post('/products', async (c) => {
       } catch { /* graceful */ }
     }
 
+    // 🏪 2026-08-23 매장 프로필 단일화 — 역방향 채택(fill-if-empty): 첫 이용권 등록이 곧 매장
+    //   프로필이 된다. 비어 있는 키만 채우고 절대 덮지 않는다(SSOT: worker/utils/store-profile.ts).
+    //   fail-soft — 채택 실패가 상품 등록을 막으면 안 된다.
+    if (body.restaurant_name) {
+      try {
+        const { adoptStoreProfileFromProduct } = await import('../../../worker/utils/store-profile');
+        const adopt = adoptStoreProfileFromProduct(db, Number(sellerId), {
+          restaurant_name: body.restaurant_name, restaurant_address: body.restaurant_address,
+          restaurant_phone: body.restaurant_phone, restaurant_lat: body.restaurant_lat,
+          restaurant_lng: body.restaurant_lng, store_verify_pin: body.store_verify_pin,
+        }).catch(swallow('seller:store-profile-adopt'));
+        try { c.executionCtx.waitUntil(adopt); } catch { /* ctx 미가용 — promise 는 이미 시작됨 */ }
+      } catch { /* graceful */ }
+    }
+
     const newProduct = await db.prepare(
       `SELECT id, seller_id, name, description, price,
               COALESCE(stock_quantity, stock, 0) AS stock,

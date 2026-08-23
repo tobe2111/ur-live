@@ -14,6 +14,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { Store, Plus, Loader2, Trash2, Users } from 'lucide-react'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
+import StoreProfileModal from '@/components/seller/StoreProfileModal'
 
 interface OperableStore {
   seller_id: number; role: 'owner' | 'operator'; source: 'link' | 'grant'
@@ -25,6 +26,7 @@ export default function SellerStoresPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState<OperableStore | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -95,6 +97,10 @@ export default function SellerStoresPage() {
                       {s.status === 'approved' || s.status === 'active' ? '운영 중' : s.status === 'pending' ? '승인 대기 (사업자 확인 중)' : s.status}
                     </p>
                   </div>
+                  <button onClick={() => setEditing(s)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-[11px] font-semibold hover:bg-gray-50">
+                    정보
+                  </button>
                   {s.role === 'owner' && (
                     <Link to="/seller/operators" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-[11px] font-semibold hover:bg-gray-50">
                       <Users className="w-3.5 h-3.5" /> 위임
@@ -117,6 +123,14 @@ export default function SellerStoresPage() {
       </div>
 
       {adding && <StoreRegisterModal onClose={() => setAdding(false)} onDone={() => { setAdding(false); load() }} />}
+      {editing && (
+        <StoreProfileModal
+          sellerId={editing.seller_id}
+          storeName={editing.business_name || editing.name || undefined}
+          onClose={() => setEditing(null)}
+          onDone={(n) => { setEditing(null); load(); alert(n > 0 ? `매장 정보가 저장됐어요 — 이용권 ${n}개에 반영됐습니다` : '매장 정보가 저장됐어요') }}
+        />
+      )}
     </SellerLayout>
   )
 }

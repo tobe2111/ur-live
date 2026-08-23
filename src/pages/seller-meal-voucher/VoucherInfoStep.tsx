@@ -4,6 +4,8 @@
  */
 import { useTranslation } from 'react-i18next'
 import { Utensils } from 'lucide-react'
+import api from '@/lib/api'
+import { getSellerToken } from '@/lib/seller-auth'
 import { toast } from '@/hooks/useToast'
 import { compressForUpload } from '@/lib/image-compress'
 import { SELLER_PROMO_FIELD_ENABLED } from '@/shared/feature-flags'
@@ -199,9 +201,25 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
                   try {
                     // 클라이언트 압축 (CF Images 유료 회피, WebP 1280px ≤300KB)
                     const compressed = await compressForUpload(f, { maxSizeMB: 0.3, maxWidthOrHeight: 1280, toWebP: true })
-                    const r = new FileReader()
-                    r.onload = () => { update('image_url', r.result as string); toast.success(t('common.uploadComplete', { defaultValue: '업로드 완료' })) }
-                    r.readAsDataURL(compressed)
+                    // 🚀 2026-08-23: base64 를 DB 에 넣던 것 → R2 업로드(검증된 /api/upload/image) 후 URL 만 저장.
+                    //   base64 는 상품 행·목록 응답·임시저장까지 수백 KB 를 끌고 다녔다. 업로드 실패 시에만
+                    //   종전 data URL 로 폴백(등록 자체는 계속돼야 한다 — fail-soft).
+                    try {
+                      const fd = new FormData()
+                      fd.append('file', new File([compressed], 'voucher.webp', { type: compressed.type || 'image/webp' }))
+                      const token = getSellerToken()
+                      const res = await api.post('/api/upload/image', fd, {
+                        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'Content-Type': 'multipart/form-data' },
+                      })
+                      const url = res.data?.data?.url
+                      if (!res.data?.success || !url) throw new Error(res.data?.error || 'upload failed')
+                      update('image_url', url)
+                      toast.success(t('common.uploadComplete', { defaultValue: '업로드 완료' }))
+                    } catch {
+                      const r = new FileReader()
+                      r.onload = () => { update('image_url', r.result as string); toast.success(t('common.uploadComplete', { defaultValue: '업로드 완료' })) }
+                      r.readAsDataURL(compressed)
+                    }
                   } catch {
                     toast.error(t('common.uploadFailed', { defaultValue: '업로드 실패' }))
                   }

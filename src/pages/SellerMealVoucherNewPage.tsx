@@ -20,6 +20,7 @@ import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { SELLER_PROMO_FIELD_ENABLED } from '@/shared/feature-flags'
 import SellerLayout from '@/components/SellerLayout'
+import KakaoShareButton from '@/components/KakaoShareButton'
 import { DashboardPageHeader } from '@/components/dashboard'
 import type { KakaoPlace } from '@/components/KakaoMapPicker'
 import StoreStep from './seller-meal-voucher/StoreStep'
@@ -40,6 +41,7 @@ export default function SellerMealVoucherNewPage() {
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  const [createdId, setCreatedId] = useState<number | null>(null)
   const [placeSelected, setPlaceSelected] = useState(false)
   const [suggestedImages, setSuggestedImages] = useState<string[]>([])
   const [loadingImages, setLoadingImages] = useState(false)
@@ -230,6 +232,7 @@ export default function SellerMealVoucherNewPage() {
       if (res.data.success) {
         clearVoucherDraft()
         deleteServerDraft()
+        setCreatedId(Number(res.data.data?.id) || null)
         setDone(true)
         toast.success(t('seller.mealVoucher.registered'))
       } else {
@@ -260,6 +263,29 @@ export default function SellerMealVoucherNewPage() {
             <p className="text-sm text-gray-500 mt-2">
               {t('seller.mealVoucher.doneDesc', { defaultValue: '인플루언서에게 제안을 보내면 추천 판매가 시작돼요. 커미션은 판매됐을 때만 발생합니다.' })}
             </p>
+            {/* 📣 2026-08-23: 첫 판로는 단골 카톡방 — 등록 즉시 공유(커머스 카드: 정가취소선+할인가). */}
+            {createdId && (
+              <div className="mt-5 space-y-2">
+                <KakaoShareButton
+                  title={form.name || t('seller.mealVoucher.title')}
+                  description={form.restaurant_name ? `${form.restaurant_name} · ${t('seller.mealVoucher.shareDesc', { defaultValue: '유어딜에서 할인가로 만나요' })}` : t('seller.mealVoucher.shareDesc', { defaultValue: '유어딜에서 할인가로 만나요' })}
+                  imageUrl={form.image_url && !form.image_url.startsWith('data:') ? form.image_url : undefined}
+                  link={`/group-buy/${createdId}`}
+                  regularPrice={form.original_price > form.price ? form.original_price : undefined}
+                  salePrice={form.price || undefined}
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard?.writeText(`https://urdeal.kr/group-buy/${createdId}`)
+                      .then(() => toast.success(t('seller.mealVoucher.linkCopied', { defaultValue: '링크가 복사됐어요 — 단골 채팅방에 붙여넣어 보세요' })))
+                      .catch(() => toast.error(t('common.copyFailed', { defaultValue: '복사에 실패했습니다' })))
+                  }}
+                  className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-bold"
+                >
+                  🔗 {t('seller.mealVoucher.copyLink', { defaultValue: '판매 링크 복사' })}
+                </button>
+              </div>
+            )}
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => navigate('/seller/group-buy')}
