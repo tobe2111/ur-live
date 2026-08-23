@@ -299,7 +299,10 @@ export function expectedMaxAgeMinutes(cronExpr?: string | null): number | null {
   let base: number
   const everyN = /^\*\/(\d{1,3})$/.exec(min || '')
   if (everyN && hour === '*') base = Math.max(1, Number(everyN[1]))
-  else if (hour === '*') base = 60              // 매시 (분 고정)
+  // 🕓 분 목록(`5,20,35,50 * * * *`)은 **시간당 그 개수만큼** 돈다. 예전엔 이걸 "매시 1회"로 읽어
+  //   기대 간격이 4배 느슨해졌다 — 15분마다 도는 작업이 2시간 멈춰도 조용했다는 뜻이다.
+  //   단일 분(`50 * * * *`)이면 목록 길이 1 이라 종전과 **같은 값**이 나온다(하위호환).
+  else if (hour === '*') base = Math.max(1, Math.floor(60 / Math.max(1, (min || '').split(',').length)))
   else if (dow !== '*') base = 60 * 24 * 7      // 주간
   else if (dom !== '*') base = 60 * 24 * 31     // 월간
   else base = 60 * 24                           // 매일

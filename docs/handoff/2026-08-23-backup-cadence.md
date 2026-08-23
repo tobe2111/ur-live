@@ -1,0 +1,64 @@
+# 2026-08-23 — 백업 주기: 시간당 1회 → 4회 (전체 스냅샷 60시간 → 15시간)
+
+## 0. 다음 세션의 첫 액션
+
+배포 후 **한 시간만 지켜보면 판정된다.** `5·20·35·50분`에 각각 하트비트가 갱신되어야 한다.
+
+```bash
+# 어드민 로그인 없이 D1 로 직접 (로그인은 IP당 5회/5분 — 아껴 쓸 것)
+python3 - <<'PY'
+import json,urllib.request
+CF='https://api.cloudflare.com/client/v4'; A=open('/tmp/cfa.txt').read().strip(); T=open('/tmp/cft.txt').read().strip()
+MAIN='d9530ba6-7a26-4c02-9295-3ce5aef112a3'
+req=urllib.request.Request(f'{CF}/accounts/{A}/d1/database/{MAIN}/query',
+  data=json.dumps({'sql':"SELECT key,value,updated_at FROM platform_settings WHERE key IN ('cron_hb:d1-backup-chunked','backup_chunk:ads','backup_chunk:main')"}).encode(),
+  headers={'Authorization':f'Bearer {T}','Content-Type':'application/json'})
+for r in json.load(urllib.request.urlopen(req))['result'][0]['results']: print(r['updated_at'], r['key'], r['value'][:160])
+PY
+```
+- 하트비트 `updated_at` 이 15분 간격으로 움직이면 성공.
+- `backup_chunk:ads` 커서의 `counts` 합이 늘어나면 진행 중. 사라지면 **한 벌 완주**(다음은 새 날짜).
+
+## 1. 왜 바꿨나 (실측)
+
+```
+cron 1회차 실측(08-23 06:51)   reads 25 · 6.69MB · 약 12,500행
+유어애즈 DB                     약 754,000행
+                               → 시간당 1회면 60.3시간
+```
+문제는 느린 것만이 아니다. 한 벌이 **2.5일에 걸쳐** 만들어지면 첫 테이블은 월요일, 마지막은
+수요일 상태로 담긴다 — **시점이 어긋난 스냅샷**이라 복구했을 때 정합이 깨진다.
+
+시간당 4회면 15시간 → **하루 안에 한 벌**이 들어온다. 대표 선택(A안): 코드만 바꾸고
+**cron 스케줄(트리거)은 손대지 않는다** — 스케줄 PUT 은 원자적 전체 교체라 과거에 전체 cron
+등록이 무산된 사고가 있었다.
+
+## 2. 무엇을 바꿨나
+
+- `scheduled.ts` — `slotDue(minute:50)` → `[5,20,35,50].some(...)`. 5분 캐리어 위에 올라타므로
+  **5의 배수만 유효**하다(아니면 그 슬롯은 영원히 안 걸리고 조용히 무동작).
+- `cron-heartbeat.ts` `expectedMaxAgeMinutes` — **분 목록을 시간당 N회로 읽는다.**
+  종전엔 `5,20,35,50 * * * *` 를 "매시 1회"로 봐서 기대 간격이 4배 느슨했다 —
+  15분마다 돌아야 할 작업이 **2시간 멈춰도 조용**하다는 뜻이다. 단일 분은 값 불변(하위호환).
+- 가드 `backup-cadence.test.ts` 3건 + 주입 매니페스트 2건. **되돌려-검증 4종 전부 빨강 확인**.
+
+## 3. 아직 남은 것
+
+1. **유어애즈 DB ~92%** — 다음 벽. 처방은 종류별 DB 분리(라우터에 줄 추가 + D1 3개 생성).
+   D1 생성은 대표 몫(플랫폼 쓰기). 계정 슬롯 7/10 이라 정확히 3개 여유.
+2. **본진 DB 백업은 아직 한 번도 안 돌았다.** 분할 백업은 `ads` 를 먼저 끝내고 `main` 으로 넘어간다
+   (`handleChunkedBackup` 의 targets 순서). ads 가 완주해야 main 차례가 온다.
+3. **죽은 주간 백업 `0 20 * * SUN`** 이 트리거 5칸 중 하나를 차지한 채 매주 실패한다(08-02 이후).
+   분할 백업이 안정되면 회수 대상 — 다만 스케줄 변경이라 대표 판단.
+4. **`__probe` 테이블**이 유어애즈 DB 에 남아 있다(이관 스크립트 잔재). 백업 대상에 포함돼 있다.
+5. **Notion 미기록** — 이 세션에 Notion MCP 가 연결돼 있지 않았다. CLAUDE.md 룰상 개발 업데이트
+   로그를 남겨야 하는데 못 했다. 다음 세션이 연결돼 있으면 08-22~23 장애·복구를 한 줄 남길 것.
+
+## 4. 🩸 이번에 틀렸던 판단
+
+**"하트비트가 굶는 건 서브리퀘스트 예산 경쟁 때문"** 이라고 가설을 세우고 진단 프로브(`__tick`)까지
+넣었는데 **틀렸다.** 진짜 원인은 본진 DB 가 꽉 차서 하트비트 INSERT 가 실패한 것이었고, 공간을
+비우자 129개가 즉시 살아났다. 오늘 06:51 cron 백업도 25 reads 를 쓰고 정상 완료했다 —
+**예산은 애초에 부족하지 않았다.**
+⇒ 프로브는 결과적으로 "cron 이 살아 있는가"의 canary 로 유용해 남겨 뒀다(비용 서브리퀘스트 1).
+⇒ 교훈: **증상이 여럿이면 공통 원인을 먼저 의심**하라. 나는 증상별로 따로 설명을 만들고 있었다.
