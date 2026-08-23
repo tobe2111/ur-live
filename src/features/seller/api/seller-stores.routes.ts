@@ -77,6 +77,52 @@ app.get('/fee-context', async (c) => {
   }
 })
 
+// ── GET /stores/context — 이용권 등록 프리필 (2026-08-23 대표 "매장 등록돼 있으면 자동으로") ──
+//   현재 좌석(seller_token) 매장의 정보를 한 번에 돌려준다. 우선순위:
+//   최근 상품의 restaurant_*(실제 폼과 1:1) > seller_meta(store_lat/lng·kakao_place_url) > sellers 행.
+app.get('/stores/context', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
+    const [seller, metaMap, lastProduct] = await Promise.all([
+      c.env.DB.prepare('SELECT name, business_name, phone, address FROM sellers WHERE id = ? LIMIT 1')
+        .bind(sellerId).first<{ name: string | null; business_name: string | null; phone: string | null; address: string | null }>()
+        .catch(() => null),
+      getSellerMeta(c.env.DB, [sellerId]).catch(() => new Map<number, Record<string, string>>()),
+      c.env.DB.prepare(
+        `SELECT restaurant_name, restaurant_address, restaurant_phone, restaurant_lat, restaurant_lng, store_verify_pin, category
+           FROM products
+          WHERE seller_id = ? AND restaurant_name IS NOT NULL AND restaurant_name != ''
+          ORDER BY id DESC LIMIT 1`
+      ).bind(sellerId).first<{
+        restaurant_name: string | null; restaurant_address: string | null; restaurant_phone: string | null
+        restaurant_lat: number | string | null; restaurant_lng: number | string | null
+        store_verify_pin: string | null; category: string | null
+      }>().catch(() => null),
+    ])
+    const meta = metaMap.get(sellerId) || {}
+    const str = (v: unknown) => (v == null ? '' : String(v))
+    return c.json({
+      success: true,
+      data: {
+        store: {
+          name: str(lastProduct?.restaurant_name) || str(seller?.business_name) || str(seller?.name),
+          address: str(lastProduct?.restaurant_address) || str(seller?.address),
+          phone: str(lastProduct?.restaurant_phone) || str(seller?.phone),
+          lat: str(lastProduct?.restaurant_lat) || str(meta.store_lat),
+          lng: str(lastProduct?.restaurant_lng) || str(meta.store_lng),
+          kakao_place_url: str(meta.kakao_place_url),
+          verify_pin: str(lastProduct?.store_verify_pin),
+          category: str(lastProduct?.category),
+        },
+        has_product_history: !!lastProduct,
+      },
+    })
+  } catch (err) {
+    return safeError(c, err, '매장 정보를 불러오지 못했습니다', '[seller-stores]')
+  }
+})
+
 // ── POST /stores/verify-business — 국세청 진위확인 (등록 전 사전 검증) ────────────
 app.post('/stores/verify-business', rateLimit({ action: 'store_nts_verify', max: 10, windowSec: 300 }), async (c) => {
   try {
