@@ -20,7 +20,7 @@ import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './compa
 import { buildKeywordRows, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
 // 🌱 회차 키워드 선택(회전 창 + 미실행 우선)은 `company-keyword-pick.ts` 로 분리됐다 — `rotationWindow`
 //   호출부가 그쪽으로 옮겨 갔으므로 여기서는 더 이상 import 하지 않는다.
-import { pickCompanyKeywords, FRESH_KEYWORD_SLOTS } from './company-keyword-pick'
+import { pickCompanyKeywords, rotationAdvance, FRESH_KEYWORD_SLOTS, type PickKeyword } from './company-keyword-pick'
 import { searchNaverWeb, laneFetch, stripTag, NAVER_OPENAPI, outOfBudget, spendBudget } from './webkr-search'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
@@ -258,12 +258,14 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
 
   let found = 0, saved = 0
   const used: string[] = []
+  const usedKw: PickKeyword[] = [] // 커서 전진 근거(우선 픽 제외) — 아래 nextCursor 주석
   // ⏱️ 회차 벽시계 마감선 — 실측 27,410ms(사망선 26,000 초과인데 "성공"). 근거·한계·커버리지 불변식은 `companyRunDeadlineMs` 헤더.
   const startedAt = Date.now(), runDeadlineMs = companyRunDeadlineMs(env)
   for (let i = 0; i < batch; i++) {
     if (outOfBudget(budget) || budget.limitHit || Date.now() - startedAt > runDeadlineMs) break // 한도/마감 도달 시 즉시 중단
     const kw = kws[i]
     used.push(kw.keyword)
+    usedKw.push(kw)
     const leads = await searchNaverLocal(clientId, clientSecret, kw, budget)
     // 🟡 카카오 로컬 병행(45건/키워드 — 네이버 5건의 9배, 전화 직접) — 지도 등록 업체 발굴 주력.
     const kakaoKeyLane = env.KAKAO_REST_API_KEY || ''
@@ -349,7 +351,9 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
    *   ⚠️ `consumed === 0`(첫 키워드 전에 예산 고갈)이면 전진 0 — 맞는 동작이다. 아무것도 안 봤으니
    *      전진할 근거가 없다(전진시키면 안 본 것을 본 것으로 표시하게 된다).
    */
-  const consumed = used.length
+  // ⚠️ 2026-08-23: `used.length` 는 **우선 픽(미실행)까지** 센다. 그것들은 커서 시퀀스 밖이라
+  //   세는 순간 안 읽은 회전 자리를 읽은 것으로 표시하게 된다 — 우선 자리 수만큼 매 회차 영구 누락.
+  const consumed = rotationAdvance(usedKw)
   const nextCursor = total > 0 ? (cursor + consumed) % total : 0
 
   const s: CompanyCollectStats = {

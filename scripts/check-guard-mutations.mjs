@@ -375,6 +375,38 @@ canvas {
       '에러도 로그도 없어 대표가 말해 주기 전엔 아무도 모른다(실제로 그렇게 신고받았다).',
   },
   {
+    name: '🧭 커서가 우선 픽까지 세어 전진한다(회전 자리가 영구 사각지대)',
+    file: 'src/features/marketing/api/company-keyword-pick.ts',
+    find: '  return used.filter(k => !k.fresh).length',
+    replace: '  return used.length',
+    test: 'src/tests/unit/company-fresh-keyword-slots.test.ts',
+    why:
+      '2026-08-23 라이브에서 실제로 났다 — 우선 자리를 4→9 로 넓히자 회전은 3칸만 읽는데 커서는 ' +
+      '12칸 전진해 **매 회차 9칸이 영영 조회되지 않았다.** 증상이 조용한 것이 가장 위험한 점이다: ' +
+      '에러 없이 백로그 감소가 14.6/h → 11.4/h 로 *느려졌을* 뿐이었다(늘어야 정상인 자리에서).',
+  },
+  {
+    name: '🌱 신선도 자리가 다시 고정된다(미실행 백로그가 30일씩 방치)',
+    file: 'src/features/marketing/api/company-keyword-pick.ts',
+    find: '    Math.max(FRESH_KEYWORD_SLOTS, Math.floor(batchSize * FRESH_MAX_SHARE))))',
+    replace: '    FRESH_KEYWORD_SLOTS))',
+    test: 'src/tests/unit/company-fresh-keyword-slots.test.ts',
+    why:
+      '실측(2026-08-23): 한 회차 안에서 이미 훑은 키워드는 saved 0, 첫 실행은 saved 10/10 이었다. ' +
+      '자리가 4로 고정이면 미실행 2,843개가 30일간 방치되고 회전은 가장 마른 구간을 돈다 — ' +
+      '수집량이 조용히 낮게 유지될 뿐이라 에러로는 절대 안 드러난다.',
+  },
+  {
+    name: '🌱 신선도가 회전 몫을 통째로 먹는다(다음 백로그를 만든다)',
+    file: 'src/features/marketing/api/company-keyword-pick.ts',
+    find: 'export const FRESH_MAX_SHARE = 0.75',
+    replace: 'export const FRESH_MAX_SHARE = 1',
+    test: 'src/tests/unit/company-fresh-keyword-slots.test.ts',
+    why:
+      '신선도만 쫓으면 이미 도는 키워드가 갱신을 못 받아 **그것이 다음 백로그**가 된다. ' +
+      '회전 몫을 남기는 것이 이 배분의 절반이다.',
+  },
+  {
     name: '🏠 웹문서 레인에 홀짝 시각 게이트가 붙는다(회차 절반 소멸)',
     file: 'src/worker-ads/lane-alarm-runners.ts',
     find: "      if (env.ADS_WEBKR_LANE_DISABLED === 'true') return { skipped: 'gate_off' }",
@@ -388,7 +420,7 @@ canvas {
   {
     name: '🏠 웹문서 레인 커서가 계획분만큼 전진한다(그 자리는 영영 안 돌아온다)',
     file: 'src/features/marketing/api/webkr-collect.ts',
-    find: 'const nextCursor = total > 0 ? (cursor + used.length) % total : 0',
+    find: 'const nextCursor = total > 0 ? (cursor + rotationAdvance(usedKw)) % total : 0',
     replace: 'const nextCursor = total > 0 ? (cursor + batchSize) % total : 0',
     test: 'src/tests/unit/ads-webkr-lane.test.ts',
     why:
@@ -773,8 +805,9 @@ canvas {
   {
     name: '🌱 신규 키워드 우선 자리를 뺀다(새 키워드가 72일을 기다린다)',
     file: 'src/features/marketing/api/company-keyword-pick.ts',
-    find: '  const freshLimit = Math.max(0, Math.min(batchSize, FRESH_KEYWORD_SLOTS))',
-    replace: '  const freshLimit = 0',
+    // 2026-08-23: 자리 수가 고정 → 재고에 따라 스스로 넓히는 식으로 바뀌었다(같은 불변식, 새 표현).
+    find: '    Math.max(FRESH_KEYWORD_SLOTS, Math.floor(batchSize * FRESH_MAX_SHARE))))',
+    replace: '    0))',
     test: 'src/tests/unit/company-fresh-keyword-slots.test.ts',
     why:
       '실측: 활성 4,555 중 **미실행 3,279** · 커서 시간당 1.9칸 → 끝까지 72일. tier 우선 정렬만으로는 ' +

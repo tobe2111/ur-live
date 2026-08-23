@@ -41,7 +41,7 @@ import type { FetchBudget } from './influencer-discovery'
 import { envLaneBudget, envSubreqCap, companyRunDeadlineMs } from './collect-budget'
 import { flushNaverCalls, armNaverAndReadSettings } from './naver-api-usage'
 import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
-import { pickCompanyKeywords, type PickKeyword } from './company-keyword-pick'
+import { pickCompanyKeywords, rotationAdvance, type PickKeyword } from './company-keyword-pick'
 import { searchNaverWeb } from './webkr-search'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
@@ -155,6 +155,7 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
 
   const leads: CompanyLead[] = []
   const used: string[] = []
+  const usedKw: PickKeyword[] = [] // 커서 전진 근거 — 우선 픽(미실행)은 회전 시퀀스 밖이라 빼야 한다
   const perKeyword = new Map<number, number>()
   for (let i = 0; i < kws.length && !budget.limitHit && budget.left > BOOKKEEPING_RESERVE && !overDeadline(); i += WEBKR_CONCURRENCY) {
     const group = kws.slice(i, i + WEBKR_CONCURRENCY)
@@ -166,6 +167,7 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
     }))
     for (const r of results) {
       used.push(r.kw.keyword)
+      usedKw.push(r.kw)
       perKeyword.set(r.kw.id, r.got.length)
       leads.push(...r.got)
     }
@@ -188,9 +190,11 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
     await DB.batch(stmts).catch(() => null)
   }
 
-  // 커서는 **실제로 돈 만큼**만 전진한다(계획한 창 크기가 아니라) — 예산·마감으로 못 돈 키워드를
-  //   건너뛰면 그 자리는 회전 경계에 고정돼 **영영 조회되지 않는다**(company-collect 주석의 실사고).
-  const nextCursor = total > 0 ? (cursor + used.length) % total : 0
+  // 커서는 **회전 창에서 실제로 돈 만큼**만 전진한다.
+  //   ⚠️ 두 가지를 동시에 지켜야 한다 — ① 예산·마감으로 못 돈 자리를 건너뛰지 않을 것
+  //   ② **우선 픽(미실행)은 커서 시퀀스 밖이므로 세지 않을 것**. ②를 빼먹으면 우선 자리 수만큼
+  //   매 회차 건너뛰어 그 자리가 영영 조회되지 않는다(2026-08-23 라이브에서 실제로 9칸씩 났다).
+  const nextCursor = total > 0 ? (cursor + rotationAdvance(usedKw)) % total : 0
 
   const s: WebkrCollectStats = {
     last_run: stamp, found: leads.length, saved: counted.inserted, upserted: counted.upserted,
