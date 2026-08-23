@@ -320,6 +320,27 @@ canvas {
       '에러도 로그도 없어 대표가 말해 주기 전엔 아무도 모른다(실제로 그렇게 신고받았다).',
   },
   {
+    name: '🌱 신선도 자리가 다시 고정된다(미실행 백로그가 30일씩 방치)',
+    file: 'src/features/marketing/api/company-keyword-pick.ts',
+    find: '    Math.max(FRESH_KEYWORD_SLOTS, Math.floor(batchSize * FRESH_MAX_SHARE))))',
+    replace: '    FRESH_KEYWORD_SLOTS))',
+    test: 'src/tests/unit/company-fresh-keyword-slots.test.ts',
+    why:
+      '실측(2026-08-23): 한 회차 안에서 이미 훑은 키워드는 saved 0, 첫 실행은 saved 10/10 이었다. ' +
+      '자리가 4로 고정이면 미실행 2,843개가 30일간 방치되고 회전은 가장 마른 구간을 돈다 — ' +
+      '수집량이 조용히 낮게 유지될 뿐이라 에러로는 절대 안 드러난다.',
+  },
+  {
+    name: '🌱 신선도가 회전 몫을 통째로 먹는다(다음 백로그를 만든다)',
+    file: 'src/features/marketing/api/company-keyword-pick.ts',
+    find: 'export const FRESH_MAX_SHARE = 0.75',
+    replace: 'export const FRESH_MAX_SHARE = 1',
+    test: 'src/tests/unit/company-fresh-keyword-slots.test.ts',
+    why:
+      '신선도만 쫓으면 이미 도는 키워드가 갱신을 못 받아 **그것이 다음 백로그**가 된다. ' +
+      '회전 몫을 남기는 것이 이 배분의 절반이다.',
+  },
+  {
     name: '🏠 웹문서 레인에 홀짝 시각 게이트가 붙는다(회차 절반 소멸)',
     file: 'src/worker-ads/lane-alarm-runners.ts',
     find: "      if (env.ADS_WEBKR_LANE_DISABLED === 'true') return { skipped: 'gate_off' }",
