@@ -130,12 +130,14 @@ describe('회차', () => {
     expect(runCode).toMatch(/kws\.slice\(i, i \+ WEBKR_CONCURRENCY\)/)
   })
 
-  it('커서는 **실제로 돈 키워드 수**만큼만 전진한다 — 계획분으로 감으면 그 자리는 영영 안 돌아온다', async () => {
+  it('커서는 **회전 창에서 돈 만큼**만 전진한다 — 계획분으로도, 우선 픽으로도 감으면 안 된다', async () => {
     const db = fakeDb({ total: 100, fresh: 4, rotation: 8 })
     const s = await runWebkrCollect(envOf({ DB: db } as never) as never)
-    expect(s.keywords.length).toBe(12)
-    expect(s.cursor).toBe(12)
-    expect(runCode).toMatch(/const nextCursor = total > 0 \? \(cursor \+ used\.length\) % total : 0/)
+    expect(s.keywords.length, '12개를 돌긴 돈다(우선 4 + 회전 8)').toBe(12)
+    // 🩸 2026-08-23 라이브 사고: 12 로 전진시키면 회전이 읽지도 않은 4칸을 읽은 것으로 표시한다.
+    //   우선 자리가 9로 넓어졌을 때 회차마다 9칸이 영영 조회되지 않았다(에러 없이 백로그만 느려짐).
+    expect(s.cursor, '회전에서 온 8만').toBe(8)
+    expect(runCode).toMatch(/const nextCursor = total > 0 \? \(cursor \+ rotationAdvance\(usedKw\)\) % total : 0/)
   })
 
   it('예산이 마르면 남은 키워드를 안 돈다(폭만큼의 초과는 허용 — 같은 조가 이미 출발했다)', async () => {
@@ -185,7 +187,7 @@ describe('회차', () => {
     expect(runCode).not.toMatch(/ads_company_stats|ads_company_cursor/)
     const db = fakeDb({ total: 100, fresh: 4, rotation: 8, prevCursor: 40 })
     const s = await runWebkrCollect(envOf({ DB: db } as never) as never)
-    expect(s.cursor).toBe(52)
+    expect(s.cursor, '40 + 회전 8').toBe(48)
     expect(db.writes.some(w => /INSERT OR REPLACE INTO platform_settings/.test(w.sql) && w.args[0] === 'ads_webkr_stats')).toBe(true)
   })
 

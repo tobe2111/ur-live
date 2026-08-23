@@ -320,6 +320,17 @@ canvas {
       '에러도 로그도 없어 대표가 말해 주기 전엔 아무도 모른다(실제로 그렇게 신고받았다).',
   },
   {
+    name: '🧭 커서가 우선 픽까지 세어 전진한다(회전 자리가 영구 사각지대)',
+    file: 'src/features/marketing/api/company-keyword-pick.ts',
+    find: '  return used.filter(k => !k.fresh).length',
+    replace: '  return used.length',
+    test: 'src/tests/unit/company-fresh-keyword-slots.test.ts',
+    why:
+      '2026-08-23 라이브에서 실제로 났다 — 우선 자리를 4→9 로 넓히자 회전은 3칸만 읽는데 커서는 ' +
+      '12칸 전진해 **매 회차 9칸이 영영 조회되지 않았다.** 증상이 조용한 것이 가장 위험한 점이다: ' +
+      '에러 없이 백로그 감소가 14.6/h → 11.4/h 로 *느려졌을* 뿐이었다(늘어야 정상인 자리에서).',
+  },
+  {
     name: '🌱 신선도 자리가 다시 고정된다(미실행 백로그가 30일씩 방치)',
     file: 'src/features/marketing/api/company-keyword-pick.ts',
     find: '    Math.max(FRESH_KEYWORD_SLOTS, Math.floor(batchSize * FRESH_MAX_SHARE))))',
@@ -354,7 +365,7 @@ canvas {
   {
     name: '🏠 웹문서 레인 커서가 계획분만큼 전진한다(그 자리는 영영 안 돌아온다)',
     file: 'src/features/marketing/api/webkr-collect.ts',
-    find: 'const nextCursor = total > 0 ? (cursor + used.length) % total : 0',
+    find: 'const nextCursor = total > 0 ? (cursor + rotationAdvance(usedKw)) % total : 0',
     replace: 'const nextCursor = total > 0 ? (cursor + batchSize) % total : 0',
     test: 'src/tests/unit/ads-webkr-lane.test.ts',
     why:
