@@ -10,6 +10,7 @@ import { SELLER_PROMO_FIELD_ENABLED } from '@/shared/feature-flags'
 import NetProceedsCard from './NetProceedsCard'
 import PromoMarginCalculator, { promoGuideFor } from '../seller-product-new/PromoMarginCalculator'
 import SellerVoucherPhotoGuide from '@/components/SellerVoucherPhotoGuide'
+import CardPreview from './CardPreview'
 import type { VoucherCategory, VoucherForm } from './voucher-form'
 
 interface Props {
@@ -243,6 +244,9 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
           )}
         </div>
       </div>
+
+      {/* 👀 입력하는 대로 소비자 카드가 어떻게 보일지 실시간 반영 */}
+      <CardPreview form={form} />
     </div>
   )
 }

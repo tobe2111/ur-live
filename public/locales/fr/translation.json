@@ -1738,8 +1738,9 @@
       "draftDiscard": "Recommencer",
       "draftResume": "Reprendre",
       "draftRestored": "Brouillon restauré",
-      "draftSaved": "Brouillon enregistré — reprenez à tout moment",
-      "saveDraft": "Enregistrer le brouillon"
+      "draftSaved": "Brouillon enregistré — reprenez sur n'importe quel appareil",
+      "saveDraft": "Enregistrer le brouillon",
+      "previewTitle": "Aperçu côté client"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

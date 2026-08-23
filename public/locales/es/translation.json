@@ -1738,8 +1738,9 @@
       "draftDiscard": "Empezar de nuevo",
       "draftResume": "Continuar",
       "draftRestored": "Borrador restaurado",
-      "draftSaved": "Borrador guardado — continúa cuando quieras",
-      "saveDraft": "Guardar borrador"
+      "draftSaved": "Borrador guardado — continúa desde cualquier dispositivo",
+      "saveDraft": "Guardar borrador",
+      "previewTitle": "Vista previa del cliente"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

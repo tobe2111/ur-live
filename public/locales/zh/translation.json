@@ -2418,8 +2418,9 @@
       "draftDiscard": "重新填写",
       "draftResume": "继续填写",
       "draftRestored": "已恢复草稿",
-      "draftSaved": "草稿已保存 — 随时可继续",
-      "saveDraft": "暂存"
+      "draftSaved": "草稿已保存 — 可在其他设备继续",
+      "saveDraft": "暂存",
+      "previewTitle": "消费者页面预览"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

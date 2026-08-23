@@ -2418,8 +2418,9 @@
       "draftDiscard": "新規作成",
       "draftResume": "続きから",
       "draftRestored": "下書きを復元しました",
-      "draftSaved": "下書きを保存しました — いつでも再開できます",
-      "saveDraft": "下書き保存"
+      "draftSaved": "下書きを保存しました — 他の端末でも再開できます",
+      "saveDraft": "下書き保存",
+      "previewTitle": "お客様画面プレビュー"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

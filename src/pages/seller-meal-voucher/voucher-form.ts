@@ -106,3 +106,17 @@ export function saveVoucherDraft(form: VoucherForm, sellerId: number): void {
 export function clearVoucherDraft(): void {
   try { localStorage.removeItem(DRAFT_KEY) } catch { /* noop */ }
 }
+
+/**
+ * 로컬(localStorage) vs 서버 드래프트 중 **더 최근 것**을 고른다 — 기기 간 이어쓰기의 심장.
+ *   둘 다 있으면 저장 시각(ms) 비교, 한쪽만 있으면 그쪽. 저장할 가치 없는(빈) 드래프트는 무시.
+ *   ⚠️ 서버 updated_ms 는 서버가 epoch(ms) 로 내려준다 — 클라에서 DB 문자열을 Date 파싱하지
+ *   않기 위한 계약(check-utc-date-parse 클래스 차단).
+ */
+export function pickNewerDraft(local: VoucherDraft | null, server: VoucherDraft | null): VoucherDraft | null {
+  const l = local && isDraftWorthSaving(local.form) ? local : null
+  const s = server && isDraftWorthSaving(server.form) ? server : null
+  if (!l) return s
+  if (!s) return l
+  return s.savedAt > l.savedAt ? s : l
+}

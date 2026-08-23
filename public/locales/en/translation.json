@@ -2419,8 +2419,9 @@
       "draftDiscard": "Start over",
       "draftResume": "Resume",
       "draftRestored": "Draft restored",
-      "draftSaved": "Draft saved — resume anytime",
-      "saveDraft": "Save draft"
+      "draftSaved": "Draft saved — resume on any device",
+      "saveDraft": "Save draft",
+      "previewTitle": "Customer view preview"
     },
     "analyticsTitle": "Sales Analytics",
     "revenueChart": "Revenue Chart",

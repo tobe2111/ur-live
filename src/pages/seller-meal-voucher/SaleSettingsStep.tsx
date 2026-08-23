@@ -5,7 +5,7 @@
  */
 import { useTranslation } from 'react-i18next'
 import { Users } from 'lucide-react'
-import { formatNumber } from '@/utils/format'
+import CardPreview from './CardPreview'
 import type { VoucherForm } from './voucher-form'
 
 interface Props {
@@ -145,16 +145,8 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
         </div>
       </div>
 
-      {/* 최종 미리보기 */}
-      <div className="bg-pink-50 border border-pink-200 rounded-xl p-4">
-        <p className="text-sm font-bold text-pink-700 mb-2">📋 {t('seller.mealVoucher.preview')}</p>
-        <p className="text-xs text-pink-600">
-          {form.name || t('seller.mealVoucher.namePlaceholder')} · {form.restaurant_name || t('seller.mealVoucher.restaurantPlaceholder')} ·
-          {form.price ? ` ${formatNumber(form.price)}${t('common.won')}` : ` ${t('seller.mealVoucher.priceUndecided')}`}
-          {form.original_price > form.price && ` (${t('seller.mealVoucher.originalPriceShort')} ${formatNumber(form.original_price)}${t('common.won')}, ${Math.round((1 - form.price / form.original_price) * 100)}% ${t('seller.mealVoucher.discount')})`}
-          {` · ${expiryEnabled ? `~${form.voucher_expiry}` : t('seller.mealVoucher.noExpiry', { defaultValue: '유효기간 제한 없음' })}`}
-        </p>
-      </div>
+      {/* 최종 미리보기 — 소비자 카드 그대로 */}
+      <CardPreview form={form} />
     </div>
   )
 }

@@ -27,9 +27,10 @@ import VoucherInfoStep from './seller-meal-voucher/VoucherInfoStep'
 import SaleSettingsStep from './seller-meal-voucher/SaleSettingsStep'
 import {
   emptyVoucherForm, applyStoreContext, isDraftWorthSaving,
-  loadVoucherDraft, saveVoucherDraft, clearVoucherDraft,
+  loadVoucherDraft, saveVoucherDraft, clearVoucherDraft, pickNewerDraft,
   type StoreContext, type VoucherDraft, type VoucherForm,
 } from './seller-meal-voucher/voucher-form'
+import { fetchServerDraft, pushServerDraft, deleteServerDraft } from './seller-meal-voucher/draft-sync'
 
 export default function SellerMealVoucherNewPage() {
   const { t } = useTranslation()
@@ -82,10 +83,18 @@ export default function SellerMealVoucherNewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 💾 임시저장 감지 (마운트 1회) — 있으면 복원 배너.
+  // 💾 임시저장 감지 (마운트 1회) — 로컬 vs 서버 중 더 최근 것을 복원 배너로.
+  //   로컬 드래프트는 마운트 시점에 동기 캡처(클로저) — 서버 응답 전 자동저장이 localStorage 를
+  //   덮어써도 복원은 캡처본에서 하므로 안전하다.
   useEffect(() => {
-    const d = loadVoucherDraft()
-    if (d && isDraftWorthSaving(d.form)) setPendingDraft(d)
+    let alive = true
+    const local = loadVoucherDraft()
+    fetchServerDraft().then(server => {
+      if (!alive) return
+      const best = pickNewerDraft(local, server)
+      if (best) setPendingDraft(best)
+    })
+    return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -111,6 +120,14 @@ export default function SellerMealVoucherNewPage() {
     const id = setTimeout(() => {
       saveVoucherDraft(form, Number(localStorage.getItem('seller_id') || 0))
     }, 800)
+    return () => clearTimeout(id)
+  }, [form, pendingDraft, done])
+
+  // ☁️ 서버 자동저장 (5s 디바운스) — 기기 간 이어쓰기. 연속 타이핑 중엔 타이머가 리셋되므로
+  //   쓰기는 타이핑이 멈춘 뒤 1회만 나간다(fail-soft — 로컬이 1차 방어선).
+  useEffect(() => {
+    if (pendingDraft || done || !isDraftWorthSaving(form)) return
+    const id = setTimeout(() => pushServerDraft(form), 5000)
     return () => clearTimeout(id)
   }, [form, pendingDraft, done])
 
@@ -212,6 +229,7 @@ export default function SellerMealVoucherNewPage() {
       const res = await api.post('/api/seller/products', payload, { headers })
       if (res.data.success) {
         clearVoucherDraft()
+        deleteServerDraft()
         setDone(true)
         toast.success(t('seller.mealVoucher.registered'))
       } else {
@@ -283,7 +301,7 @@ export default function SellerMealVoucherNewPage() {
             <div className="flex gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => { clearVoucherDraft(); setPendingDraft(null) }}
+                onClick={() => { clearVoucherDraft(); deleteServerDraft(); setPendingDraft(null) }}
                 className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-600"
               >
                 {t('seller.mealVoucher.draftDiscard', { defaultValue: '새로 작성' })}
@@ -361,7 +379,7 @@ export default function SellerMealVoucherNewPage() {
             )}
             <button
               type="button"
-              onClick={() => { saveVoucherDraft(form, Number(localStorage.getItem('seller_id') || 0)); toast.success(t('seller.mealVoucher.draftSaved', { defaultValue: '임시저장 완료 — 언제든 이어서 작성할 수 있어요' })) }}
+              onClick={() => { saveVoucherDraft(form, Number(localStorage.getItem('seller_id') || 0)); pushServerDraft(form); toast.success(t('seller.mealVoucher.draftSaved', { defaultValue: '임시저장 완료 — 다른 기기에서도 이어서 작성할 수 있어요' })) }}
               className="shrink-0 px-4 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-sm flex items-center gap-1.5"
             >
               <Save className="w-4 h-4" /> {t('seller.mealVoucher.saveDraft', { defaultValue: '임시저장' })}

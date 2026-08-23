@@ -57,3 +57,26 @@ seller-voucher-limit 12 pass. 전체 vitest/빌드/가드는 CI 판정.
 ## 남은 결정/대기 (변동 없음 — 2026-08-22 인계 참조)
 - 대표: Resend API 키 등록(미룸) · DMARC · 컨택 단가 · `outreach_auto_send` ON 여부
 - 별도 세션(실결제 후): FEE_RESOLVER authoritative · 인플 커미션 사용-시점 확정
+
+## 2차 (같은 세션 — 대표 "응 모두 해줘")
+
+이상형 갭 ①③ 구현 (②매장 엔티티 단일화는 권고대로 보류 — 효익 대비 리스크):
+
+- **① 서버 임시저장(기기 간 이어쓰기)**: `seller_voucher_drafts` 테이블(셀러 좌석당 1행,
+  inline ensure + repair-schema 등록) + `GET/PUT/DELETE /api/seller/voucher-draft`.
+  PUT 은 upsert(ON CONFLICT) + 900KB 상한 + rate limit(120/h). `updated_ms` 를 epoch 로
+  내려 클라 Date 파싱 금지 계약(check-utc-date-parse 클래스 차단).
+  ⚠️ seller_meta 를 안 쓴 이유: getSellerMeta 가 전 키를 읽어 수백 KB 드래프트가 모든
+  meta 조회(fee-context 등)에 끌려다닌다 — 라우트 주석 + 테스트 R5 로 고정.
+  클라: 마운트 시 로컬(동기 캡처) vs 서버 중 더 최근 것 복원 배너(`pickNewerDraft` 순수함수),
+  서버 자동저장 5s 디바운스 + 명시 버튼 + 제출/폐기 시 양쪽 삭제. 전부 fail-soft.
+- **③ 소비자 카드 실시간 미리보기**: `CardPreview.tsx` — 그루폰 위계(커버+할인 pill →
+  머천트 → 제목 → 주소 → 정가취소선·판매가 → 유효기간) 미러. 2단계 하단 + 3단계(종전
+  텍스트 요약 대체). ⚠️ 실제 GroupBuyFeedCard 를 안 쓴 이유: prefetch 계약이 미존재
+  상품 id 로 허수 API 요청을 쏜다 — 컴포넌트 주석에 명시.
+- 테스트: `voucher-draft.test.ts` 9건(R1 병합 우선순위 · R2 upsert+상한 · R3 epoch 계약 ·
+  R4 양쪽 삭제 · R5 seller_meta 금지). **되돌려-검증**: upsert 를 DO NOTHING 으로 바꿔
+  빨강 확인 후 복원.
+- i18n: draftSaved 문구 갱신 + previewTitle — 6개 언어.
+
+검증: tsc 0 · sql 3종 0 · theme 0 · voucher-draft 9 + seller-voucher-limit 12 pass.
