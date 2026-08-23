@@ -47,6 +47,16 @@ export default function AdminInfluencerOutreachPage() {
     api.post(`/api/admin/influencer-outreach/${id}/status`, { status }).then(load).catch(() => {})
   }
 
+  const [sending, setSending] = useState<number | null>(null)
+  const startSend = (id: number) => {
+    if (sending) return
+    setSending(id)
+    api.post(`/api/admin/influencer-outreach/${id}/send`)
+      .then((r) => { alert(r.data?.message || '발송 큐에 올라갔어요.'); load() })
+      .catch((e) => alert(e?.response?.data?.error || '발송 큐 적재에 실패했어요'))
+      .finally(() => setSending(null))
+  }
+
   const copyAll = () => {
     const lines = targets.filter((t) => t.accept_url).map((t) =>
       `${t.name || t.handle} <${t.email || '이메일 없음'}> — 수락링크: ${t.accept_url}`)
@@ -90,7 +100,9 @@ export default function AdminInfluencerOutreachPage() {
                 <button className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-700" onClick={() => openDetail(r.id)}>타깃 보기</button>
                 {r.status === 'submitted' && (
                   <>
-                    <button className="text-xs px-2 py-1 rounded bg-gray-900 text-white" onClick={() => setStatus(r.id, 'sent')}>발송 완료로</button>
+                    {/* 📮 시스템 발송 — 드립 큐(일일 한도·수신거부·쿨다운은 서버가 강제) */}
+                    <button className="text-xs px-2 py-1 rounded bg-gray-900 text-white disabled:opacity-50" disabled={sending === r.id} onClick={() => startSend(r.id)}>{sending === r.id ? '적재 중…' : '이메일 발송 시작'}</button>
+                    <button className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-700" onClick={() => setStatus(r.id, 'sent')}>수동 발송 완료로</button>
                     <button className="text-xs px-2 py-1 rounded border border-red-300 text-red-600" onClick={() => setStatus(r.id, 'rejected')}>반려</button>
                   </>
                 )}

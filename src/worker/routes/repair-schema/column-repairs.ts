@@ -421,6 +421,22 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
       created_at DATETIME DEFAULT (datetime('now'))
     )` },
     { desc: 'idx_offer_invites_outreach', sql: "CREATE INDEX IF NOT EXISTS idx_offer_invites_outreach ON influencer_offer_invites(outreach_id)" },
+    { desc: 'outreach_email_queue', sql: `CREATE TABLE IF NOT EXISTS outreach_email_queue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      outreach_id INTEGER NOT NULL,
+      invite_id INTEGER,
+      lead_id INTEGER,
+      email TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      html TEXT NOT NULL,
+      unsubscribe_token TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at DATETIME DEFAULT (datetime('now')),
+      sent_at DATETIME,
+      UNIQUE(outreach_id, lead_id)
+    )` },
+    { desc: 'idx_outreach_email_status', sql: "CREATE INDEX IF NOT EXISTS idx_outreach_email_status ON outreach_email_queue(status, created_at)" },
+    { desc: 'idx_outreach_email_addr', sql: "CREATE INDEX IF NOT EXISTS idx_outreach_email_addr ON outreach_email_queue(email, sent_at)" },
     // 🔐 2026-06-17 단일 세션 강제 (대시보드) — account 별 min_valid_iat. 로그인 시 갱신,
     //   미들웨어가 토큰 iat < min_valid_iat 면 거부. (런타임 ensureDashboardSessionsTable 도 best-effort CREATE.)
     { desc: 'dashboard_sessions', sql: `CREATE TABLE IF NOT EXISTS dashboard_sessions (

@@ -27,6 +27,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { intParam } from '@/shared/pagination'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { ensureOfferInvitesTable, generateOfferToken } from '@/features/marketing/api/influencer-offer-invites.routes'
+import { enqueueOutreachEmails } from '@/features/marketing/api/outreach-email'
 
 const app = new Hono<{ Bindings: Env }>()
 type Ctx = Context<{ Bindings: Env }>
@@ -202,6 +203,16 @@ app.post('/outreach', rateLimit({ action: 'influencer_outreach', max: 10, window
       ).bind(outreachId, leadId, generateOfferToken(), sellerId, productId, pct, support, JSON.stringify(channels), message))
       await db.batch(inviteStmts).catch(() => null) // fail-soft — 실패 시 어드민 큐에서 재생성 가능
     }
+
+    // ①(2026-08-22 대표): 자동발송 게이트 — 켜면 어드민 검토 없이 즉시 드립 큐 적재(발송은 여전히
+    //   유어딜 시스템 — 연락처는 끝까지 셀러에게 안 보인다). 기본 OFF = 어드민 검토 유지.
+    try {
+      const auto = await db.prepare("SELECT value FROM platform_settings WHERE key = 'outreach_auto_send'")
+        .first<{ value: string }>()
+      if (auto?.value === 'true' && outreachId) {
+        await enqueueOutreachEmails(c.env, outreachId)
+      }
+    } catch { /* fail-soft */ }
 
     // 유어딜 운영이 받아 발송한다 — 어드민 벨 (fail-soft)
     await createDashboardNotification(

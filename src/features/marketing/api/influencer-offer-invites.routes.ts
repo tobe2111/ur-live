@@ -15,6 +15,7 @@ import type { Env } from '@/worker/types/env'
 import { requireAuth } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
+import { adsLeadsDb } from '@/shared/ads/leads-db'
 
 type OfferVars = { user?: { id: string | number; email?: string } }
 const app = new Hono<{ Bindings: Env; Variables: OfferVars }>()
@@ -53,13 +54,47 @@ export function generateOfferToken(): string {
 
 const TOKEN_RX = /^[0-9a-f]{36}$/
 
+// ── 수신거부 (원클릭 — RFC 8058: Gmail/야후는 POST, 사람은 링크로 GET) ──────────────
+// 인증 없음: 메일 수신자가 로그인 없이 즉시 끊을 수 있어야 한다. 토큰만으로 리드 특정.
+async function handleUnsubscribe(c: { env: Env; req: { param: (k: string) => string | undefined } }) {
+  const token = c.req.param('token') || ''
+  if (!TOKEN_RX.test(token)) return null
+  const db = adsLeadsDb(c.env)
+  const inv = await db.prepare('SELECT lead_id FROM influencer_offer_invites WHERE token = ? LIMIT 1')
+    .bind(token).first<{ lead_id: number | null }>().catch(() => null)
+  if (!inv) return null
+  let email: string | null = null
+  if (inv.lead_id) {
+    const lead = await db.prepare('SELECT email FROM ad_influencer_leads WHERE id = ? LIMIT 1')
+      .bind(inv.lead_id).first<{ email: string | null }>().catch(() => null)
+    email = (lead?.email || '').trim().toLowerCase() || null
+    // 3중 서프레션 등록 — 리드 플래그 + 유어애즈 억제 + 메인 억제(발송기 최종 필터)
+    await db.prepare('UPDATE ad_influencer_leads SET opted_out = 1 WHERE id = ?').bind(inv.lead_id).run().catch(() => null)
+    if (email) {
+      await db.prepare("INSERT OR IGNORE INTO ad_email_suppress (email, reason) VALUES (?, 'unsubscribe')").bind(email).run().catch(() => null)
+      await db.prepare("INSERT OR IGNORE INTO email_suppressions (email, reason) VALUES (?, 'unsubscribe')").bind(email).run().catch(() => null)
+    }
+  }
+  return true
+}
+const UNSUB_HTML = `<!doctype html><html lang="ko"><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:90vh;margin:0"><div style="text-align:center"><h1 style="font-size:20px">수신거부가 완료되었습니다</h1><p style="color:#666;font-size:14px">더 이상 유어딜의 제안 메일이 발송되지 않습니다.</p></div></body></html>`
+app.get('/unsubscribe/:token', async (c) => {
+  const ok = await handleUnsubscribe(c as never).catch(() => null)
+  return c.html(ok ? UNSUB_HTML : UNSUB_HTML) // 토큰 불명이어도 같은 화면 — 열람으로 존재 추측 못 하게
+})
+app.post('/unsubscribe/:token', async (c) => {
+  await handleUnsubscribe(c as never).catch(() => null)
+  return c.text('ok') // RFC 8058 원클릭 — 메일 클라이언트가 POST
+})
+
 // ── GET /:token — 제안 미리보기 (공개 — 발송받은 사람이 로그인 전에 본다) ──────────────
 app.get('/:token', async (c) => {
   try {
     const token = c.req.param('token') || ''
     if (!TOKEN_RX.test(token)) return c.json({ success: false, error: '유효하지 않은 제안 링크입니다' }, 404)
-    await ensureOfferInvitesTable(c.env.DB)
-    const inv = await c.env.DB.prepare(
+    const db = adsLeadsDb(c.env)
+    await ensureOfferInvitesTable(db)
+    const inv = await db.prepare(
       `SELECT i.id, i.seller_id, i.product_id, i.commission_pct, i.product_support, i.channels, i.message, i.status,
               s.business_name AS seller_name,
               p.name AS product_name, p.price AS product_price, p.image_url AS product_image
@@ -81,9 +116,10 @@ app.post('/:token/accept', requireAuth(), rateLimit({ action: 'offer_accept', ma
     const token = c.req.param('token') || ''
     if (!TOKEN_RX.test(token)) return c.json({ success: false, error: '유효하지 않은 제안 링크입니다' }, 404)
     const userId = String((c.get('user') as { id: string | number }).id)
-    await ensureOfferInvitesTable(c.env.DB)
+    const db = adsLeadsDb(c.env)
+    await ensureOfferInvitesTable(db)
 
-    const inv = await c.env.DB.prepare(
+    const inv = await db.prepare(
       `SELECT id, seller_id, product_id, commission_pct, message, status, accepted_user_id
          FROM influencer_offer_invites WHERE token = ? LIMIT 1`
     ).bind(token).first<{ id: number; seller_id: number; product_id: number | null; commission_pct: number; message: string | null; status: string; accepted_user_id: string | null }>()
@@ -96,7 +132,7 @@ app.post('/:token/accept', requireAuth(), rateLimit({ action: 'offer_accept', ma
     if (inv.status !== 'pending') return c.json({ success: false, error: '이미 사용된 제안 링크입니다' }, 409)
 
     // 💸 머니 룰 #1 CAS: pending → accepted 선점 후에만 딜 생성 (동시 수락/재사용 차단)
-    const cas = await c.env.DB.prepare(
+    const cas = await db.prepare(
       `UPDATE influencer_offer_invites SET status = 'accepted', accepted_user_id = ?, accepted_at = datetime('now')
         WHERE id = ? AND status = 'pending'`
     ).bind(userId, inv.id).run()
@@ -104,7 +140,7 @@ app.post('/:token/accept', requireAuth(), rateLimit({ action: 'offer_accept', ma
 
     // 딜 발효 — marketing.routes 의 propose 와 동일 upsert 형태. 제안서 % 그대로(당사자 합의값).
     const pct = Math.max(0, Math.min(90, Number(inv.commission_pct) || 0))
-    await c.env.DB.prepare(
+    await db.prepare(
       `INSERT INTO seller_influencer_deals (seller_id, influencer_id, commission_pct, status, proposed_by, message)
        VALUES (?, ?, ?, 'active', 'outreach', ?)
        ON CONFLICT(seller_id, influencer_id) DO UPDATE SET
