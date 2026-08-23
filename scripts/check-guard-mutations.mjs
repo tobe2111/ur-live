@@ -72,6 +72,28 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '홈 피드가 화면 밖 4장을 다시 최우선으로 받는다',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: 'aboveFold={firstScreen && idx < 4}',
+    replace: 'aboveFold={idx < 4}',
+    test: 'src/tests/unit/home-image-priority.test.ts',
+    why:
+      '2026-08-22 라이브 실측: 홈에서 이 피드는 [히어로 → 편성 섹션 2개] 아래 **세 번째 블록**이라 ' +
+      '첫 행이 모바일 1,605px / PC 1,385px 에 있다(뷰포트 844 / 1,080). 위치와 무관하게 앞 4장을 ' +
+      'eager+fetchPriority=high 로 받으면 낭비일 뿐 아니라 **진짜 첫 화면 이미지와 대역폭을 다툰다** ' +
+      '(레티나 PC 약 240KB). 화면은 똑같이 보이므로 리뷰로는 절대 안 걸린다.',
+  },
+  {
+    name: '편성 섹션의 aboveFold 까지 꺼 버린다(과잉 수정)',
+    file: 'src/components/home/HomeSections.tsx',
+    find: 'aboveFold={i < 4 && sIdx === 0}',
+    replace: 'aboveFold={false}',
+    test: 'src/tests/unit/home-image-priority.test.ts',
+    why:
+      '피드 쪽을 끄면서 "섹션도 같이" 끄고 싶어지는 자리다. 하지만 실측상 첫 섹션 카드는 259·516px 로 ' +
+      '**실제 화면 안**이고, 끄면 진짜 LCP 이미지가 우선순위를 잃는다 — 고치려다 더 느려진다.',
+  },
+  {
     name: '🗄️ 백업이 빈 테이블 목록을 "완료"로 기록한다(있다고 믿는 빈 백업)',
     file: 'src/worker/cron/d1-backup-chunked.ts',
     find: "  if (!tables.length) {",
