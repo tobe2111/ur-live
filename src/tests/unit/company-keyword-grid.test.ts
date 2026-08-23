@@ -166,14 +166,19 @@ describe('resumeSeedIndex — 버전 bump 시 이어받기', () => {
  */
 describe('커서 전진폭 — 끊기는 회차가 반복돼도 전량이 결국 돈다', () => {
   /** 매 회차 `canRun` 개만 돌고 끊기는 상황을 그대로 흉내낸다. */
-  const simulate = (advance: 'window' | 'consumed', total: number, batch: number, canRun: number, runs = 500) => {
+  const simulate = (advance: 'window' | 'consumed' | 'withFresh', total: number, batch: number, canRun: number, runs = 500, fresh = 0) => {
     let cursor = 0
     const seen = new Set<number>()
     for (let r = 0; r < runs; r++) {
-      const offsets = rotationWindow(total, cursor, batch).flatMap(w => Array.from({ length: w.limit }, (_, i) => w.offset + i))
+      // 우선 픽(미실행)은 커서 시퀀스 **밖**에서 온다 — 회전이 읽는 칸은 그만큼 줄어든다.
+      const win = Math.max(1, batch - fresh)
+      const offsets = rotationWindow(total, cursor, win).flatMap(w => Array.from({ length: w.limit }, (_, i) => w.offset + i))
       const consumed = Math.min(canRun, offsets.length)
       for (const o of offsets.slice(0, consumed)) seen.add(o)
-      cursor = total > 0 ? (cursor + (advance === 'window' ? offsets.length : consumed)) % total : 0
+      // 'consumed' = 회전에서 실제로 돈 만큼(정답)
+      // 'window'    = 계획한 창 크기(2026-08-02 사고) · 'withFresh' = 우선 픽까지 셈(2026-08-23 사고)
+      const step = advance === 'window' ? offsets.length : advance === 'withFresh' ? consumed + fresh : consumed
+      cursor = total > 0 ? (cursor + step) % total : 0
     }
     return seen.size
   }
@@ -200,7 +205,25 @@ describe('커서 전진폭 — 끊기는 회차가 반복돼도 전량이 결국
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const src = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/company-collect.ts'), 'utf8')
-    expect(src).toMatch(/const consumed = used\.length/)
+    // 2026-08-23: `used.length` 는 **우선 픽까지** 센다 → `rotationAdvance` 로 회전분만.
+    //   지키는 불변식은 그대로다 — 커서는 계획분이 아니라 **회전에서 실제로 돈 만큼**만 전진한다.
+    expect(src).toMatch(/const consumed = rotationAdvance\(usedKw\)/)
     expect(src).toMatch(/const nextCursor = total > 0 \? \(cursor \+ consumed\) % total : 0/)
+  })
+
+  /**
+   * 🩸 **2026-08-23 라이브 사고를 행동으로 고정한다.**
+   *   우선 픽(미실행) 자리를 4→9 로 넓혔더니 회전은 3칸만 읽는데 커서는 12칸 전진해
+   *   **매 회차 9칸이 영영 조회되지 않았다.** 에러 없이 백로그 감소가 느려졌을 뿐이라
+   *   문자열 검사로는 절대 안 걸린다 — 그래서 시뮬레이션에 우선 픽 축을 넣었다.
+   */
+  it('🚨 우선 픽까지 세어 전진하면 영구 사각지대가 생긴다', () => {
+    const seen = simulate('withFresh', 120, 12, 12, 500, 9)
+    expect(seen, '우선 픽을 세는데도 전량이 돌면 이 시험은 아무것도 안 지키는 것이다').toBeLessThan(120)
+  })
+
+  it('🔒 회전분만 세면 우선 픽이 넓어져도 전량이 결국 돈다', () => {
+    expect(simulate('consumed', 120, 12, 12, 500, 9)).toBe(120)
+    expect(simulate('consumed', 4546, 12, 11, 6000, 9)).toBe(4546)
   })
 })

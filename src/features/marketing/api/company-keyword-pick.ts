@@ -17,7 +17,19 @@
  */
 import { rotationWindow } from './company-keyword-grid'
 
-export interface PickKeyword { id: number; keyword: string; category: string | null; subcategory: string | null; region: string | null; tier: number | null }
+export interface PickKeyword {
+  id: number; keyword: string; category: string | null; subcategory: string | null; region: string | null; tier: number | null
+  /**
+   * 🧭 **회전 창 밖에서 뽑혔는가**(미실행 우선 픽). 커서 전진에 세면 안 되는 표시다.
+   *
+   * ## 왜 필요한가 — 2026-08-23 라이브에서 실제로 난 사고
+   * 회전은 `batchSize - 우선픽` 칸만 읽는데 커서는 **돈 키워드 수 전체**만큼 전진했다.
+   * 우선 자리가 4→9 로 넓어지자 회차마다 **9칸이 통째로 건너뛰어졌고**, 그 자리는 회전 경계에
+   * 고정돼 **영영 조회되지 않는다**(company-collect 가 2026-08-02 에 당한 것과 같은 클래스).
+   * 증상은 조용하다 — 백로그 감소가 14.6/h → 11.4/h 로 *느려졌을* 뿐 에러는 없었다.
+   */
+  fresh?: boolean
+}
 
 /**
  * 🌱 회차당 **미실행 키워드**에 내주는 자리 — 이제 하한이다(상한은 아래 `FRESH_MAX_SHARE`).
@@ -52,6 +64,15 @@ export const FRESH_MAX_SHARE = 0.75
 const COLS = 'id, keyword, category, subcategory, region, tier'
 const ORDER = 'ORDER BY (tier IS NULL) ASC, tier ASC, id ASC'
 
+/**
+ * 🧭 **커서를 얼마나 전진시킬 것인가** — 회전 창에서 온 것만 센다.
+ *   우선 픽(미실행)은 커서 시퀀스 **밖**이라 세면 안 읽은 자리를 읽은 것으로 표시하게 된다.
+ *   호출부가 각자 세면 또 갈리므로 여기 한 곳에 둔다.
+ */
+export function rotationAdvance(used: PickKeyword[]): number {
+  return used.filter(k => !k.fresh).length
+}
+
 export async function pickCompanyKeywords(DB: D1Database, total: number, cursor: number, batchSize: number): Promise<PickKeyword[]> {
   const kws: PickKeyword[] = []
   // 하한(기존 동작) 과 상한(75%) 중 **큰 쪽**을 요청한다 — 열리는 방향으로만 움직인다.
@@ -61,7 +82,7 @@ export async function pickCompanyKeywords(DB: D1Database, total: number, cursor:
   if (freshLimit > 0) {
     const fresh = await DB.prepare(`SELECT ${COLS} FROM ad_company_keywords WHERE active = 1 AND last_run_at IS NULL ${ORDER} LIMIT ?`)
       .bind(freshLimit).all<PickKeyword>().catch(() => null)
-    kws.push(...(fresh?.results || []))
+    kws.push(...(fresh?.results || []).map(k => ({ ...k, fresh: true })))
   }
   // id dedup — 우선 픽이 회전 창에도 들어 있으면 같은 키워드를 한 회차에 두 번 호출하게 된다.
   const seen = new Set(kws.map(k => k.id))

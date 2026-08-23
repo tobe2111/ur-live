@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { FRESH_KEYWORD_SLOTS, FRESH_MAX_SHARE, pickCompanyKeywords } from '@/features/marketing/api/company-keyword-pick'
+import { FRESH_KEYWORD_SLOTS, FRESH_MAX_SHARE, pickCompanyKeywords, rotationAdvance } from '@/features/marketing/api/company-keyword-pick'
 
 /**
  * 🌱 **신규 키워드 우선 자리** — 새로 넣은 키워드가 커서를 기다리지 않게 한다.
@@ -81,6 +81,27 @@ describe('배선', () => {
     expect(FRESH_MAX_SHARE).toBeLessThan(1)
     expect(FRESH_MAX_SHARE).toBeLessThanOrEqual(0.75)
     expect(src).toContain('Math.floor(batchSize * FRESH_MAX_SHARE)')
+  })
+
+  /**
+   * 🧭 **커서는 회전 창에서 온 것만 센다** — 2026-08-23 라이브 사고.
+   *   우선 자리를 4→9 로 넓혔더니 회전은 3칸만 읽는데 커서는 12칸 전진해 **매 회차 9칸이
+   *   영영 조회되지 않았다.** 증상이 조용해서 더 위험하다 — 에러 없이 백로그 감소가
+   *   14.6/h → 11.4/h 로 *느려졌을* 뿐이었다(늘어야 정상인 자리에서).
+   */
+  it('🩸 우선 픽은 커서 전진에 안 센다(세면 그 자리가 영구 사각지대)', () => {
+    const kw = (id: number, fresh?: boolean) => ({ id, keyword: `k${id}`, category: null, subcategory: null, region: null, tier: 1, ...(fresh ? { fresh: true } : {}) })
+    expect(rotationAdvance([kw(1, true), kw(2, true), kw(3), kw(4)]), '회전에서 온 2개만').toBe(2)
+    expect(rotationAdvance([kw(1, true), kw(2, true)]), '전부 우선 픽이면 커서는 제자리').toBe(0)
+    expect(rotationAdvance([]), '한 개도 못 돌았으면 전진 0').toBe(0)
+  })
+
+  it('🔒 두 레인 모두 회전분으로만 커서를 옮긴다(한쪽만 고치면 그쪽만 샌다)', () => {
+    for (const f of ['src/features/marketing/api/webkr-collect.ts', 'src/features/marketing/api/company-collect.ts']) {
+      const code = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+      expect(code, `${f} 가 rotationAdvance 를 안 쓴다`).toMatch(/rotationAdvance\(/)
+      expect(code, `${f} 가 아직 used.length 로 커서를 옮긴다`).not.toMatch(/cursor \+ used\.length/)
+    }
   })
 
   it('🔒 전부를 앞세우지 않는다 — 그러면 회전이 몇 주 멈춘다', () => {
