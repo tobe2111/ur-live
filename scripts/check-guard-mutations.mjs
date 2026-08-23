@@ -72,6 +72,18 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '히어로가 다시 단일 폭이 된다(레티나에서 0.43배로 흐려짐)',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: 'srcSet={cfSrcSet(photoSrc, 1024)}',
+    replace: '',
+    test: 'src/tests/unit/hero-image-resolution.test.ts',
+    why:
+      '2026-08-22 대표 "이미지 화질이 깨지는 문제" — 실측으로 규명한 유일한 진짜 결함. 히어로는 PC 에서 ' +
+      '1,037px 폭인데 width=900 한 장만 요청했다(레티나 필요 2,074px). ⚠️ 리사이저는 정상이라 ' +
+      'quality 를 올려도 안 고쳐진다 — 요청 폭이 원인이다. 지워도 흐릿함은 "원본이 안 좋아서"로 ' +
+      '오해되기 쉬워 리뷰로 안 걸린다.',
+  },
+  {
     name: '홈 피드가 화면 밖 4장을 다시 최우선으로 받는다',
     file: 'src/pages/main-home/GroupBuyFeed.tsx',
     find: 'aboveFold={firstScreen && idx < 4}',
