@@ -2143,3 +2143,28 @@ SELECT DATE(collected_at,'+9 hours') d, COUNT(*) n FROM ad_company_leads WHERE s
 ### 남은 결정(대표)
 - 늘어난 사이트를 크롤이 못 따라가면 `enrich-company` 샤딩(인플루언서 측 검증된 패턴)이 다음 수다.
   지금은 잔량 124라 불필요 — **미리 하지 않는다.**
+
+### ✅ 배포 판정 — 새 레인이 돈다 (2026-08-22 01:25 KST)
+
+머지 `1aa9c88e0`(23:30 KST 배포). **결정적 신호로 판정했다**:
+```
+배포 전 4일   webkr 578행  →  홀수시 578 · 짝수시 0     (기존 레인은 홀수시 전용 = 구조적 0)
+배포 후       16:00 UTC(짝수) webkr 10행                 ⇒ 새 레인만이 만들 수 있는 결과
+             15:00 UTC(홀수) 66행 = :00 53 · :05 5 · :10 8  (기존 레인은 정시 1회만 쓴다)
+```
+⚠️ **`ads_webkr_stats` 로는 판정할 수 없었다** — 이 시스템의 스냅샷 쓰기가 2026-08-22 02:00 UTC
+이후 멈춰 있다(`ads_lane_alarm_last:*` **전 레인** · `ads_company_stats` 가 08-21 21:00 에 정지).
+**하마터면 "전 레인 12시간 정지"로 보고할 뻔했다** — 유입을 재 보니 수집은 정상이었다
+(collect-company 가 홀수시마다 돌아 local·webkr 행이 계속 들어온다).
+🔑 **부재하는 기록은 부재하는 작업의 증거가 아니다.** 관측면이 죽으면 그 축으로 판정하지 말고
+   **결과물(행)** 로 판정할 것. 이번엔 "짝수시 = 새 레인" 이라는 결정적 판별자가 있어서 가능했다.
+
+### 🩺 남은 항목 — 스냅샷 쓰기 정지(선재, 이 PR 무관)
+`platform_settings` 의 일부 키만 갱신이 멈췄다. 같은 시각 다른 키는 정상 갱신된다:
+```
+정상(14:00 UTC): ads_neis_cursor · ads_tail_bound_last · ads_commerce_cursor_detail · ads_enrich_last
+정지(02:00 UTC~): ads_lane_alarm_last:* 전부 · ads_tick_history · ads_lanes_learned · ads_sheets_* …
+```
+⚠️ **원인을 추측하지 말 것.** 라우터(`adsLeadsDb`)는 `platform_settings` 를 main DB 로 보낸다(확인함)
+— 라우터 탓으로 단정할 근거가 없다. 관측이 죽은 상태라 다음 세션이 레인 건강을 오판할 수 있으니
+**이것부터 규명**하는 게 맞다. 첫 액션: 정상/정지 키를 쓰는 코드 경로의 차이를 대조.

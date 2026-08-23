@@ -161,6 +161,25 @@ describe('회차', () => {
     expect(runCode).toMatch(/await DB\.batch\(stmts\)/)
   })
 
+  it('📸 회차 **시작 시점**에 스냅샷을 남긴다 — 중간에 죽어도 그 회차가 보여야 한다', async () => {
+    // 라이브에서 실제로 겪은 것: 행은 저장되는데 ads_webkr_stats 도 하트비트도 11시간 동안 0.
+    // 끝에서만 쓰면 죽는 회차는 영원히 기록이 없다 → 관측면만 죽고 수집은 돌아 알아채기가 가장 어렵다.
+    const db = fakeDb({ total: 100, fresh: 4, rotation: 8 })
+    await runWebkrCollect(envOf({ DB: db } as never) as never)
+    const stampWrites = db.writes.filter(w => /INSERT OR REPLACE INTO platform_settings/.test(w.sql) && w.args[0] === 'ads_webkr_stats')
+    expect(stampWrites.length, '조기 1회 + 최종 1회').toBeGreaterThanOrEqual(2)
+    expect(String(stampWrites[0]!.args[1])).toContain('partial')
+  })
+
+  it('🧾 D1 도 예산에서 센다 — fetch 만 세면 예약 몫이 헛돈다', () => {
+    // BOOKKEEPING_RESERVE 가 8을 남겼다고 믿는 동안 플랫폼 한도(D1 포함 50)는 이미 말라 있었다.
+    expect(runCode).toMatch(/const spendD1 = \(n = 1\) => \{ budget\.left -= n \}/)
+    expect(runCode).toMatch(/spendD1\(UPFRONT_D1 - 1\)/)          // 루프 전 소급 계상
+    expect(runCode).toMatch(/spendD1\(leads\.length \? 3 \+ Math\.ceil/) // 저장 실비
+    // 하한이 [예약 + 선불 + 한 조] 를 못 덮으면 콜드 회차에서 한 키워드도 안 돈다.
+    expect(runCode).toMatch(/const budgetFloor = BOOKKEEPING_RESERVE \+ UPFRONT_D1 \+ WEBKR_CONCURRENCY \* 2/)
+  })
+
   it('🔑 커서·스냅샷 키가 collect-company 와 분리돼 있다 — 같이 쓰면 서로의 진행분을 건너뛴다', async () => {
     expect(runCode).toMatch(/const STATS_KEY = 'ads_webkr_stats'/)
     expect(runCode).not.toMatch(/ads_company_stats|ads_company_cursor/)

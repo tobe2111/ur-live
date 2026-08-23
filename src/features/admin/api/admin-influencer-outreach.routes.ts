@@ -107,6 +107,11 @@ app.post('/:id/send', async (c) => {
   try {
     const id = Number(c.req.param('id'))
     if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청' }, 400)
+    // 🔴 조용한 부재 차단 (2026-08-23 실측: 라이브에 RESEND_API_KEY 미등록 → 모든 메일이 무음 스킵되던 상태)
+    //   — 키 없이 큐에 쌓으면 '발송했다'고 믿게 된다. 적재 전에 명시적으로 막는다.
+    if (!c.env.RESEND_API_KEY) {
+      return c.json({ success: false, error: 'RESEND_API_KEY 가 등록되지 않아 이메일을 보낼 수 없습니다. Cloudflare Pages(ur-live) 환경변수에 Resend API 키를 등록해주세요.' }, 503)
+    }
     const r = await enqueueOutreachEmails(c.env, id)
     await adsLeadsDb(c.env).prepare(
       `UPDATE influencer_outreach_requests SET status = 'sent', admin_note = ?, updated_at = datetime('now') WHERE id = ?`

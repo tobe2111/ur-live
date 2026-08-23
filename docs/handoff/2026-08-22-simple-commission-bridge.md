@@ -42,3 +42,11 @@
 - 가드: `outreach-email-spam-guard.test.ts` 8건. R1(adsLeadsDb) 준수 — 새 파일 2개 전부 라우터 경유.
 - ⚠️ 대표 확인 1건: **Resend 발신 도메인 SPF/DKIM/DMARC 인증 상태** (dashboard → Domains). 미인증이면 코드 방어 무관 스팸함.
 - ⚠️ 배포 후 판정: 어드민 큐에서 발송 시작 → 5분 내 첫 메일 도착 + 수신거부 클릭 → 재발송 0.
+
+
+## (2026-08-23 3차) 이메일 실측 판정 — "지금이 가장 이상적이야?" 후속
+**🔴 결정적 실측: 라이브에 `RESEND_API_KEY` 가 없다** (`/api/version` secrets: `RESEND_API_KEY: false`).
+→ 셀러 승인 메일·단체메일·제안 메일 **전부 지금껏 무음 스킵**되고 있었다 (sendEmail 이 warn 만 찍고 통과).
+DNS 실측(UDP 53 직결 — DoH 는 프록시 차단): **ur-team.com 은 Resend 인증 완료**(send.ur-team.com SPF/MX + resend._domainkey DKIM 실재), **urdeal.kr 은 레코드 0**, **DMARC 는 양쪽 다 없음**.
+수리(코드): ① 어드민 발송 API 가 키 미설정이면 503 명시 에러(무음 스킵 차단) ② outreach 발신 기본값을 인증 도메인 `유어딜 <noreply@ur-team.com>` 로 (onboarding@resend.dev 폴백 제거).
+**대표 액션 2건**: ① Resend API 키를 CF Pages(ur-live) env `RESEND_API_KEY` 로 등록 (+발신주소 바꾸려면 `RESEND_FROM`) ② DNS TXT 1줄: `_dmarc.ur-team.com` = `"v=DMARC1; p=none;"` (Gmail 대량발송 요건). urdeal.kr 발신 전환은 Resend 에 도메인 추가+DKIM 등록 필요 — 선택(나중).
