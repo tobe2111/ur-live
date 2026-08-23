@@ -104,6 +104,27 @@ const MUTATIONS = [
       '게다가 스냅샷을 서로 덮어써 상태줄이 어느 레인 것인지 알 수 없게 된다 — 관측이 먼저 죽는다.',
   },
   {
+    name: '🏠 웹문서 레인이 조기 스냅샷을 안 남긴다(죽는 회차가 영원히 안 보인다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: "    diag: { configured: true, error: 'partial: 회차 진행 중(정상 종료 시 덮어씀)' } })",
+    replace: '    diag: { configured: true } })',
+    test: 'src/tests/unit/ads-webkr-lane.test.ts',
+    why:
+      '2026-08-23 라이브에서 실제로 일어난 일 — 행은 저장되는데 ads_webkr_stats 도 레인 하트비트도 ' +
+      '11시간 동안 0. 끝에서만 쓰면 중간에 죽는 회차는 기록이 영원히 없고, 수집은 돌고 있어서 ' +
+      '**관측면만 죽은 상태**가 가장 알아채기 어렵다.',
+  },
+  {
+    name: '🏠 웹문서 레인이 D1 을 예산에서 빼먹는다(예약 몫이 헛돈다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '  spendD1(UPFRONT_D1 - 1)',
+    replace: '  void UPFRONT_D1;',
+    test: 'src/tests/unit/ads-webkr-lane.test.ts',
+    why:
+      '무료 인보케이션의 서브리퀘스트 50에는 **D1 도 포함**된다. fetch 만 세면 BOOKKEEPING_RESERVE 가 ' +
+      '8을 남겼다고 믿는 동안 한도는 이미 말라 회차 끝의 기록 쓰기가 조용히 실패한다.',
+  },
+  {
     name: '🏠 웹문서 레인이 예산을 0까지 태운다(회차가 자기 기록을 못 남긴다)',
     file: 'src/features/marketing/api/webkr-collect.ts',
     find: 'budget.left > BOOKKEEPING_RESERVE',

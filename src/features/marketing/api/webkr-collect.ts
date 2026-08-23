@@ -77,6 +77,9 @@ const DEFAULT_BATCH = 12
  */
 const BOOKKEEPING_RESERVE = 8
 
+/** 루프 전에 이미 쓴 D1: settings 읽기 · 활성 키워드 COUNT · 키워드 픽 · 조기 스냅샷 1. */
+const UPFRONT_D1 = 4
+
 /**
  * 한 회차. 게이트 체크는 호출부(레인 등록부).
  *
@@ -121,11 +124,34 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
     return save({ ...base, cursor, total_keywords: total, run_ms: Date.now() - startedAt, diag: { configured: true } })
   }
 
-  // ⚠️ 하한이 예약 몫보다 커야 한다 — 안 그러면 루프 조건이 처음부터 거짓이라 **한 키워드도 안 돈다**.
-  const budgetTotal = Math.max(BOOKKEEPING_RESERVE + 4, Math.min(Math.max(5, envLaneBudget(env.ADS_WEBKR_SUBREQUEST_BUDGET, 40, env)), envSubreqCap(env)) - schemaSpent)
+  // ⚠️ 하한은 [부기 예약 + 선불 D1 + 한 조(폭 4 × 최대 2페이지)] 를 다 덮어야 한다 —
+  //   못 덮으면 루프 조건이 처음부터 거짓이라 **한 키워드도 안 돈다**(스키마 DDL 이 도는 콜드 회차가 그렇다).
+  const budgetFloor = BOOKKEEPING_RESERVE + UPFRONT_D1 + WEBKR_CONCURRENCY * 2
+  const budgetTotal = Math.max(budgetFloor, Math.min(Math.max(5, envLaneBudget(env.ADS_WEBKR_SUBREQUEST_BUDGET, 40, env)), envSubreqCap(env)) - schemaSpent)
   const budget: FetchBudget = { left: budgetTotal }
+  /**
+   * 🧾 **D1 도 서브리퀘스트다** (2026-08-23 라이브 실측으로 배운 것).
+   *
+   * 첫 판은 이 카운터가 **웹문서 fetch 만** 셌다. 그래서 `BOOKKEEPING_RESERVE` 가 8을 남겨 놨다고
+   * 믿는 동안 플랫폼 한도(무료 인보케이션당 50, D1 포함)는 이미 말라 있었고, **회차 끝의 기록 쓰기가
+   * 조용히 실패**했다 — 행은 저장되는데 `ads_webkr_stats` 도 레인 하트비트도 11시간 동안 한 번도
+   * 안 찍혔다(관측면만 죽고 수집은 돌아 더 알아채기 어려웠다).
+   * ⇒ 예산을 쓰는 모든 D1 호출을 여기서 함께 센다(보강 레인 `enrich-lane` 이 쓰는 검증된 패턴).
+   */
+  const spendD1 = (n = 1) => { budget.left -= n }
+  spendD1(UPFRONT_D1 - 1) // 소급 계상: settings 읽기 · COUNT · 키워드 픽 (조기 스냅샷 1은 아래에서)
   const runDeadlineMs = companyRunDeadlineMs(env)
   const overDeadline = () => Date.now() - startedAt > runDeadlineMs
+
+  /**
+   * 📸 **먼저 남기고 시작한다.** 회차가 중간에 죽어도(한도·CPU·벽시계) 그 사실이 보이게.
+   *   끝에서 한 번만 쓰면, 죽는 회차는 **영원히 기록이 없다** — 그게 이 레인이 겪은 실제 증상이다.
+   *   비용 1. `partial: true` 로 남기고 정상 종료 시 최종본으로 덮는다.
+   */
+  spendD1()
+  await save({ ...base, cursor, total_keywords: total, keywords: kws.map(k => k.keyword),
+    spent: budgetTotal - budget.left, run_ms: Date.now() - startedAt,
+    diag: { configured: true, error: 'partial: 회차 진행 중(정상 종료 시 덮어씀)' } })
 
   const leads: CompanyLead[] = []
   const used: string[] = []
@@ -149,6 +175,7 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
   //   `requireContact`(기본 ON)는 collect-company 와 동일 — webkr 리드는 연락처가 없어 보류(active=0)로
   //   들어가고, `enrich-company` 크롤이 이메일을 붙이면 그때 승격된다(그게 이 파이프라인의 설계다).
   const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false'
+  spendD1(leads.length ? 3 + Math.ceil(leads.length / 50) : 0) // 전후 COUNT 2 + 스키마 보장 1 + 청크 batch
   const counted = leads.length
     ? await saveCompanyLeadsCounted(DB, leads, { requireContact }).catch(() => ({ inserted: 0, upserted: 0 }))
     : { inserted: 0, upserted: 0 }
@@ -157,6 +184,7 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
   if (perKeyword.size) {
     const stmts = [...perKeyword.entries()].map(([id, n]) =>
       DB.prepare("UPDATE ad_company_keywords SET found_total = found_total + ?, last_run_at = datetime('now') WHERE id = ?").bind(n, id))
+    spendD1()
     await DB.batch(stmts).catch(() => null)
   }
 
