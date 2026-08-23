@@ -60,8 +60,7 @@ import { handleGroupBuyDeadlinePush } from './cron/group-buy-deadline-push';
 import { handleGroupBuyFeedCache } from './cron/group-buy-feed-cache';
 import { handleCachePrewarm } from './cron/cache-prewarm';
 // 🛡️ 2026-06-09: 어드민 단체메일 큐 drainer (요청 안에서 발송 X → CPU/멱등 hardening).
-import { handleBulkEmailDrain } from './cron/bulk-email-drain';
-import { drainOutreachEmails } from '../features/marketing/api/outreach-email';
+import { handleBulkEmailDrain } from './cron/bulk-email-drain'; import { drainOutreachEmails } from '../features/marketing/api/outreach-email';
 // 🛡️ 2026-05-24: 모든 신규 활성 상품 (공구/쇼핑/교환권) 에 자동 허위리뷰 시드.
 import { handleAutoSeedReviews } from './cron/auto-seed-reviews';
 import { renewDemoFcfs } from './cron/demo-fcfs-renew';
@@ -190,8 +189,7 @@ export async function handleCronScheduled(
   // 🛡️ 2026-06-09: 어드민 단체메일 큐 drainer — 2분마다 한 batch 씩 멱등 발송.
   //   요청 안에서 수천 명 발송하던 것을 cron 으로 이전 (CPU/wall 한도 + per-recipient 멱등 hardening).
   // ⏰ 2026-08-11: `*/2` 미등록으로 이 drainer 는 한 번도 안 돌았다 → `*/5` 로 이사(주기 2→5분).
-  if (cron === '*/5 * * * *') ctx.waitUntil(safeCron('bulk-email-drain', () => handleBulkEmailDrain(env)));
-  if (cron === '*/5 * * * *') ctx.waitUntil(safeCron('outreach-email-drain', () => drainOutreachEmails(env))); // 📮 제안 이메일 드립(일일캡·CAS)
+  if (cron === '*/5 * * * *') { ctx.waitUntil(safeCron('bulk-email-drain', () => handleBulkEmailDrain(env))); ctx.waitUntil(safeCron('outreach-email-drain', () => drainOutreachEmails(env))); } // 📮 제안 이메일 드립(일일캡·CAS)
 
   if (cron === '*/5 * * * *') {
     // 📰 2026-08-03 — 일일 다이제스트. 발화 안 하던 `0 * * * *` 에서 이사. **일간이 아니라 `*/5` 인 이유**:
