@@ -26,6 +26,10 @@ const PER_TICK = 10          // 서브리퀘스트 예산(무료 ~50) + 드립 �
 const SEND_DELAY_MS = 300
 const DEFAULT_DAILY_CAP = 30 // 워밍업 기본 — platform_settings.outreach_daily_email_cap 로 조정
 const COOLDOWN_DAYS = 30
+// 발신 기본값 — ⚠️ 2026-08-23 DNS 실측: Resend 인증이 완료된 도메인은 ur-team.com 뿐이다
+// (send.ur-team.com SPF/MX + resend._domainkey.ur-team.com DKIM 실재 · urdeal.kr 은 레코드 0).
+// onboarding@resend.dev(공용) 폴백은 스팸함 직행이라 제안 메일에는 쓰지 않는다.
+const DEFAULT_FROM = '유어딜 <noreply@ur-team.com>'
 
 let _ensured = false
 export async function ensureOutreachEmailTables(DB: D1Database) {
@@ -189,7 +193,7 @@ export async function drainOutreachEmails(env: Env): Promise<void> {
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
         },
       },
-      env.RESEND_API_KEY, env.RESEND_FROM || '유어딜 <onboarding@resend.dev>', db,
+      env.RESEND_API_KEY, env.RESEND_FROM || DEFAULT_FROM, db,
     ).catch(() => ({ success: false as const, error: 'exception' }))
     if (!r.success) {
       // 실패 표시 (재시도 안 함 — 중복 방지 우선, bulk-email-drain 과 동일 원칙)
