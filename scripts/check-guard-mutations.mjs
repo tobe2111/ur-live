@@ -739,8 +739,9 @@ canvas {
   {
     name: '🌱 신규 키워드 우선 자리를 뺀다(새 키워드가 72일을 기다린다)',
     file: 'src/features/marketing/api/company-keyword-pick.ts',
-    find: '  const freshLimit = Math.max(0, Math.min(batchSize, FRESH_KEYWORD_SLOTS))',
-    replace: '  const freshLimit = 0',
+    // 2026-08-23: 자리 수가 고정 → 재고에 따라 스스로 넓히는 식으로 바뀌었다(같은 불변식, 새 표현).
+    find: '    Math.max(FRESH_KEYWORD_SLOTS, Math.floor(batchSize * FRESH_MAX_SHARE))))',
+    replace: '    0))',
     test: 'src/tests/unit/company-fresh-keyword-slots.test.ts',
     why:
       '실측: 활성 4,555 중 **미실행 3,279** · 커서 시간당 1.9칸 → 끝까지 72일. tier 우선 정렬만으로는 ' +
