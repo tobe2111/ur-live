@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight, Map } from 'lucide-react'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import PcHomeLocationBar, { type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
 
 /**
@@ -127,7 +127,13 @@ export default function HomeHeroDefault({
             <video className="w-full h-full object-cover" src={content.videoUrl} autoPlay muted loop playsInline />
           ) : (
             <img
-              src={cfImage(photoSrc, { width: 900, quality: 72 }) || photoSrc}
+              src={cfImage(photoSrc, { width: 1280, quality: 76 }) || photoSrc}
+              /* 🔍 2026-08-22 (대표 — "이미지 화질이 깨지는 문제"): `width: 900` **한 장**이었다.
+                 이 사진은 PC 에서 **1,037px 폭**으로 그려지므로 레티나(DPR 2)면 2,074px 이 필요하다
+                 → 실효 0.43배로 눈에 띄게 흐렸다. ⚠️ 리사이저는 정상이다(요청한 폭을 그대로 준다) —
+                 **우리가 작게 요청한 것**이 원인이라 quality 만 올려선 안 고쳐진다.
+                 base 1024 → 1x 1024 / 2x 2048 / 3x 3072 중 브라우저가 DPR 에 맞는 한 장만 받는다. */
+              srcSet={cfSrcSet(photoSrc, 1024)}
               alt=""
               /* 🐢 2026-08-19 (대표 — "히어로에 있는 사진 이미지도 마찬가지고"): `lazy` 였다.
                  히어로는 **첫 화면 최상단**이라 lazy 는 틀린 선택이다 — 브라우저가 다른 자원을

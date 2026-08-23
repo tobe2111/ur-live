@@ -109,7 +109,9 @@ export default function MobileHomePage() {
           </h2>
           <p className="mt-0.5 text-[12.5px] text-gray-500 dark:text-gray-400">이용권 · 공동구매 · 교환권을 할인가로</p>
         </header>
+        {/* 실측: 이 피드는 히어로·편성섹션 아래라 첫 행이 접힘 밖(모바일 1,605px / PC 1,385px) */}
         <GroupBuyFeed
+          firstScreen={false}
           category={category}
           onCategoryChange={setCategory}
           sort={sort}

@@ -93,6 +93,61 @@ const MUTATIONS = [
       '15분마다 돌아야 할 작업이 **2시간 멈춰도 조용하다**. 침묵을 잡으려고 만든 장치가 침묵을 봐 준다.',
   },
   {
+    name: '예열 cron 이 다시 서브리퀘스트 예산을 넘는다(뒤쪽이 조용히 실패)',
+    file: 'src/worker/cron/cache-prewarm.ts',
+    find: 'export const DYNAMIC_PREWARM_BUDGET = 12;',
+    replace: 'export const DYNAMIC_PREWARM_BUDGET = 40;',
+    test: 'src/tests/unit/cache-prewarm-budget.test.ts',
+    why:
+      '무료 플랜 서브리퀘스트 상한은 인보케이션당 50 이고 fetch 뿐 아니라 KV·D1 도 센다. 초과분은 ' +
+      '`catch { dynFailed++ }` 가 삼켜 **에러 없이** 실패한다 — 그래서 몇 달간 아무도 몰랐고, 실제로 ' +
+      '`CACHE_KV` 의 `ssr:` 키가 0개였다(전역 워밍이 한 번도 기록된 적 없음). 리뷰로는 못 잡는다.',
+  },
+  {
+    name: '예열 회전이 사라져 뒷부분이 영영 안 데워진다',
+    file: 'src/worker/cron/cache-prewarm.ts',
+    find: '  return [...items.slice(start), ...items.slice(0, start)].slice(0, budget);',
+    replace: '  void start; return [...items].slice(0, budget);',
+    test: 'src/tests/unit/cache-prewarm-budget.test.ts',
+    why:
+      '예산 안으로 줄일 때 앞에서 자르면 목록 뒤쪽(큐레이터 링크샵 등)은 **한 번도** 예열되지 않는다. ' +
+      '회전이라 조용히 사라져도 로그가 같아 보인다 — 회차마다 다른 구간을 쏘는지 테스트가 지킨다.',
+  },
+  {
+    name: '히어로가 다시 단일 폭이 된다(레티나에서 0.43배로 흐려짐)',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: 'srcSet={cfSrcSet(photoSrc, 1024)}',
+    replace: '',
+    test: 'src/tests/unit/hero-image-resolution.test.ts',
+    why:
+      '2026-08-22 대표 "이미지 화질이 깨지는 문제" — 실측으로 규명한 유일한 진짜 결함. 히어로는 PC 에서 ' +
+      '1,037px 폭인데 width=900 한 장만 요청했다(레티나 필요 2,074px). ⚠️ 리사이저는 정상이라 ' +
+      'quality 를 올려도 안 고쳐진다 — 요청 폭이 원인이다. 지워도 흐릿함은 "원본이 안 좋아서"로 ' +
+      '오해되기 쉬워 리뷰로 안 걸린다.',
+  },
+  {
+    name: '홈 피드가 화면 밖 4장을 다시 최우선으로 받는다',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: 'aboveFold={firstScreen && idx < 4}',
+    replace: 'aboveFold={idx < 4}',
+    test: 'src/tests/unit/home-image-priority.test.ts',
+    why:
+      '2026-08-22 라이브 실측: 홈에서 이 피드는 [히어로 → 편성 섹션 2개] 아래 **세 번째 블록**이라 ' +
+      '첫 행이 모바일 1,605px / PC 1,385px 에 있다(뷰포트 844 / 1,080). 위치와 무관하게 앞 4장을 ' +
+      'eager+fetchPriority=high 로 받으면 낭비일 뿐 아니라 **진짜 첫 화면 이미지와 대역폭을 다툰다** ' +
+      '(레티나 PC 약 240KB). 화면은 똑같이 보이므로 리뷰로는 절대 안 걸린다.',
+  },
+  {
+    name: '편성 섹션의 aboveFold 까지 꺼 버린다(과잉 수정)',
+    file: 'src/components/home/HomeSections.tsx',
+    find: 'aboveFold={i < 4 && sIdx === 0}',
+    replace: 'aboveFold={false}',
+    test: 'src/tests/unit/home-image-priority.test.ts',
+    why:
+      '피드 쪽을 끄면서 "섹션도 같이" 끄고 싶어지는 자리다. 하지만 실측상 첫 섹션 카드는 259·516px 로 ' +
+      '**실제 화면 안**이고, 끄면 진짜 LCP 이미지가 우선순위를 잃는다 — 고치려다 더 느려진다.',
+  },
+  {
     name: '🗄️ 백업이 빈 테이블 목록을 "완료"로 기록한다(있다고 믿는 빈 백업)',
     file: 'src/worker/cron/d1-backup-chunked.ts',
     find: "  if (!tables.length) {",

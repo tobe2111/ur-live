@@ -16,6 +16,7 @@ import { requireAuth } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
 import { adsLeadsDb } from '@/shared/ads/leads-db'
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 
 type OfferVars = { user?: { id: string | number; email?: string } }
 const app = new Hono<{ Bindings: Env; Variables: OfferVars }>()
@@ -53,6 +54,48 @@ export function generateOfferToken(): string {
 }
 
 const TOKEN_RX = /^[0-9a-f]{36}$/
+
+// ── GET /my/performance — 내 협업 딜 성과 (수락한 인플루언서의 화면 뒤 API) ─────────────
+//   딜 목록 + 딜별 적립(구매 n건·pending/확정 금액). 데이터는 기존 레일(seller_influencer_deals ·
+//   influencer_attributions)에 이미 쌓인다 — 이 API 는 조회만.
+app.get('/my/performance', requireAuth(), async (c) => {
+  try {
+    const userId = String((c.get('user') as { id: string | number }).id)
+    const db = adsLeadsDb(c.env)
+    const deals = await db.prepare(
+      `SELECT d.id, d.seller_id, s.business_name AS seller_name, d.commission_pct, d.status, d.created_at
+         FROM seller_influencer_deals d LEFT JOIN sellers s ON s.id = d.seller_id
+        WHERE d.influencer_id = ? ORDER BY d.created_at DESC LIMIT 50`
+    ).bind(userId).all<Record<string, unknown>>().catch(() => ({ results: [] as never[] }))
+    const stats = await db.prepare(
+      `SELECT seller_id,
+              COUNT(*) AS orders_count,
+              SUM(CASE WHEN status IN ('pending') THEN commission_amount ELSE 0 END) AS pending_krw,
+              SUM(CASE WHEN status IN ('available','paid') THEN commission_amount ELSE 0 END) AS confirmed_krw,
+              SUM(CASE WHEN status = 'clawed_back' THEN 1 ELSE 0 END) AS clawed_count
+         FROM influencer_attributions WHERE influencer_id = ? GROUP BY seller_id`
+    ).bind(userId).all<{ seller_id: number; orders_count: number; pending_krw: number; confirmed_krw: number; clawed_count: number }>().catch(() => ({ results: [] as never[] }))
+    const bySeller = new Map((stats.results || []).map((r) => [Number(r.seller_id), r]))
+    const data = (deals.results || []).map((d) => {
+      const st = bySeller.get(Number(d.seller_id))
+      return {
+        ...d,
+        tracking_url: `https://urdeal.kr/?ref=${userId}`,
+        orders_count: Number(st?.orders_count || 0),
+        pending_krw: Number(st?.pending_krw || 0),
+        confirmed_krw: Number(st?.confirmed_krw || 0),
+      }
+    })
+    const totals = (stats.results || []).reduce((a, r) => ({
+      orders: a.orders + Number(r.orders_count || 0),
+      pending: a.pending + Number(r.pending_krw || 0),
+      confirmed: a.confirmed + Number(r.confirmed_krw || 0),
+    }), { orders: 0, pending: 0, confirmed: 0 })
+    return c.json({ success: true, data: { deals: data, totals } })
+  } catch (err) {
+    return safeError(c, err, '성과를 불러오지 못했습니다', '[offer-invite]')
+  }
+})
 
 // ── 수신거부 (원클릭 — RFC 8058: Gmail/야후는 POST, 사람은 링크로 GET) ──────────────
 // 인증 없음: 메일 수신자가 로그인 없이 즉시 끊을 수 있어야 한다. 토큰만으로 리드 특정.
@@ -150,6 +193,14 @@ app.post('/:token/accept', requireAuth(), rateLimit({ action: 'offer_accept', ma
          message = excluded.message,
          responded_at = datetime('now')`
     ).bind(inv.seller_id, userId, pct, inv.message || null).run()
+
+    // 🔔 사장님에게 즉시 알림 — 수락은 사장이 기다리는 사건인데 지금까지 조용했다 (fail-soft)
+    await createDashboardNotification(
+      db, 'seller', String(inv.seller_id), 'offer_accepted',
+      '🤝 인플루언서가 제안을 수락했어요',
+      `커미션 ${pct}% 협업이 시작됐어요. 인플루언서의 전용 링크로 판매되면 자동 적립·정산됩니다.`,
+      '/seller/influencers',
+    ).catch(() => {})
 
     return c.json({ success: true, data: acceptPayload(inv.product_id, userId) })
   } catch (err) {

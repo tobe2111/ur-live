@@ -12,6 +12,7 @@ import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { formatWon } from '@/utils/format'
 import { useMyCommissions } from '@/hooks/queries/useMyCommissions'
+import CollabPerformance from './my-commissions/CollabPerformance'
 import { formatKST, formatKSTDate } from '@/utils/date'
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; icon: typeof CheckCircle }> = {
@@ -90,6 +91,8 @@ export default function MyCommissionsPage() {
           </div>
         ) : (
         <>
+        {/* 🤝 2026-08-23: 협업 딜 성과 — 수락한 인플루언서만 렌더(없으면 null) */}
+        <CollabPerformance />
         {/* 잔액 카드 */}
         <div className="rounded-3xl p-6 bg-gray-900 dark:bg-[#1A2334] text-white mb-4">
           <p className="text-[12px] opacity-80">출금 가능 수익</p>

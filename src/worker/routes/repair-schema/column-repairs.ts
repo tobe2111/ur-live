@@ -683,8 +683,12 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     { desc: 'idx_seller_blocked_inf_seller', sql: "CREATE INDEX IF NOT EXISTS idx_seller_blocked_inf_seller ON seller_blocked_influencers(seller_id, unblocked_at)" },
     // platform_settings default rows (INSERT OR IGNORE — 이미 있으면 skip)
     { desc: 'seed: platform_margin_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('platform_margin_pct', '5', '유어딜 운영 마진 (%)', datetime('now'))" },
-    { desc: 'seed: influencer_commission_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_commission_pct', '0.5', '인플루언서 referral commission (%)', datetime('now'))" },
-    { desc: 'seed: user_referral_bonus_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('user_referral_bonus_pct', '0.5', '사용자 referral 보너스 (%)', datetime('now'))" },
+    { desc: 'seed: influencer_commission_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_commission_pct', '0', '인플루언서 자동 referral commission (%) — 2026-08-23 심플 모델로 종료(딜 % 만)', datetime('now'))" },
+    // 🛑 2026-08-23 대표(심플 모델): 과거 시드가 심은 0.5% 기본값을 0 으로 치유 — 어드민이 다른 값으로
+    //   바꾼 행(≠0.5)은 보존. INSERT OR IGNORE 는 기존 행을 못 고치므로 이 UPDATE 가 필요하다.
+    { desc: 'heal: influencer_commission_pct 0.5→0 (심플 모델)', sql: "UPDATE platform_settings SET value='0', updated_at=datetime('now') WHERE key='influencer_commission_pct' AND value='0.5'" },
+    { desc: 'heal: user_referral_bonus_pct 0.5→0 (심플 모델)', sql: "UPDATE platform_settings SET value='0', updated_at=datetime('now') WHERE key='user_referral_bonus_pct' AND value='0.5'" },
+    { desc: 'seed: user_referral_bonus_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('user_referral_bonus_pct', '0', '사용자 referral 보너스 (%) — 2026-08-23 심플 모델로 종료', datetime('now'))" },
     { desc: 'seed: agency_commission_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('agency_commission_pct', '2', '에이전시 commission (%)', datetime('now'))" },
     { desc: 'seed: refund_window_days', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('refund_window_days', '7', '매장 송금 전 환불 가능 기간 (일)', datetime('now'))" },
     { desc: 'seed: influencer_payout_min', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_payout_min', '100000', '인플루언서 월 최소 송금액 (원)', datetime('now'))" },
