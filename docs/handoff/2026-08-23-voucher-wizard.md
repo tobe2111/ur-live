@@ -80,3 +80,16 @@ seller-voucher-limit 12 pass. 전체 vitest/빌드/가드는 CI 판정.
 - i18n: draftSaved 문구 갱신 + previewTitle — 6개 언어.
 
 검증: tsc 0 · sql 3종 0 · theme 0 · voucher-draft 9 + seller-voucher-limit 12 pass.
+
+## 3차 (같은 세션 — 대표 "매장 등록에도 쓰이게 해줘")
+
+지도 검색+자동입력을 **매장 등록**에도 배선 (두 방향):
+- `components/seller/StoreRegisterModal.tsx` 신설 — SellerStoresPage 인라인 모달을 추출하며
+  ①단계를 텍스트 목록 검색 → **KakaoMapPicker(지도+마커 선택+자동입력)** 로 교체.
+  `initialPlace` prop 으로 미리 선택된 채 열 수 있다. ②채널 ③국세청 확인·POST /stores 계약 불변
+  (kakao_place_id 중복은 서버 409 가 방어).
+- `SellerStoresPage` 287→122줄(공용 모달 위임).
+- 위저드 1단계: 지도에서 매장을 방금 고르면(placeSelected) "매장 등록" 브릿지 배너 —
+  누르면 그 매장이 프리필된 등록 모달 → 성공 시 매장 칩 목록 갱신.
+  ⚠️ 자동 등록은 하지 않는다: POST /stores 는 **새 sellers 행**을 만들므로, 첫 셀러의 자기
+  좌석 매장까지 자동 등록하면 중복 행이 생긴다. 명시 버튼 + 서버 dedup 이 옳은 형태.

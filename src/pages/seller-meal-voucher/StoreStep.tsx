@@ -13,6 +13,7 @@ import { MapPin, CheckCircle, Store, Loader2, Search } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
+import StoreRegisterModal, { type RegisterPlace } from '@/components/seller/StoreRegisterModal'
 import type { StoreContext, VoucherForm } from './voucher-form'
 
 interface OperableStore {
@@ -24,6 +25,20 @@ interface OperableStore {
 }
 
 const storeLabel = (s: OperableStore) => s.business_name || s.name || `매장 #${s.seller_id}`
+
+/** 폼의 매장 필드 → 매장 등록 모달 프리필 (플레이스 id 는 저장해 둔 place_url 에서 복원). */
+function formToRegisterPlace(f: VoucherForm): RegisterPlace {
+  const id = f.kakao_place_url.match(/place\.map\.kakao\.com\/(\d+)/)?.[1]
+  return {
+    id,
+    name: f.restaurant_name,
+    address: f.restaurant_address,
+    phone: f.restaurant_phone,
+    place_url: f.kakao_place_url || undefined,
+    lat: Number(f.restaurant_lat) || undefined,
+    lng: Number(f.restaurant_lng) || undefined,
+  }
+}
 
 interface Props {
   form: VoucherForm
@@ -43,14 +58,15 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
   // 매장 정보가 이미 있으면 지도는 접어 둔다 — "다시 검색"으로 언제든 편다.
   const [showMap, setShowMap] = useState(!hasStoreInfo)
   const mapAutoOpened = useRef(false)
+  // 🏪 2026-08-23 대표 "매장 등록에도 쓰이게": 지도에서 찾은 매장을 그 자리에서 매장 관리에 등록.
+  const [registering, setRegistering] = useState(false)
 
-  useEffect(() => {
-    let alive = true
+  function loadStores() {
     api.get('/api/seller/my-stores')
-      .then(r => { if (alive && r.data?.success) setStores(r.data.data || []) })
+      .then(r => { if (r.data?.success) setStores(r.data.data || []) })
       .catch(() => { /* 다매장 기능이 없어도 등록은 계속돼야 한다 */ })
-    return () => { alive = false }
-  }, [])
+  }
+  useEffect(() => { loadStores() }, [])
 
   // 프리필이 나중에 도착해 매장 정보가 생기면 지도를 접는다(사용자가 연 적 없을 때만).
   useEffect(() => {
@@ -200,6 +216,22 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
             </div>
           )}
 
+          {/* 🏪 지도에서 방금 찾은 매장 → 매장 관리에 바로 등록(다음부터 자동 상속 + 다매장 목록) */}
+          {placeSelected && (
+            <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5">
+              <p className="text-[11px] text-gray-600 leading-snug">
+                {t('seller.mealVoucher.registerStoreHint', { defaultValue: '이 매장을 매장 관리에 등록하면 다음부터 자동으로 불러와요' })}
+              </p>
+              <button
+                type="button"
+                onClick={() => setRegistering(true)}
+                className="shrink-0 ml-2 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[11px] font-bold"
+              >
+                {t('seller.mealVoucher.registerStore', { defaultValue: '매장 등록' })}
+              </button>
+            </div>
+          )}
+
           {/* 자동 입력된 정보 (수정 가능) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.restaurantNameLabel')} *</label>
@@ -263,6 +295,19 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
           </div>
         </div>
       </div>
+
+      {/* 매장 등록 모달 — 지도에서 찾은 매장이 미리 선택된 채 열린다 */}
+      {registering && (
+        <StoreRegisterModal
+          initialPlace={formToRegisterPlace(form)}
+          onClose={() => setRegistering(false)}
+          onDone={() => {
+            setRegistering(false)
+            loadStores()
+            toast.success(t('seller.mealVoucher.storeRegistered', { defaultValue: '매장이 등록됐어요 — 매장 목록에서 선택할 수 있어요' }))
+          }}
+        />
+      )}
     </div>
   )
 }

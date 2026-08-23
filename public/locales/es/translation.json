@@ -1740,7 +1740,10 @@
       "draftRestored": "Borrador restaurado",
       "draftSaved": "Borrador guardado — continúa desde cualquier dispositivo",
       "saveDraft": "Guardar borrador",
-      "previewTitle": "Vista previa del cliente"
+      "previewTitle": "Vista previa del cliente",
+      "registerStoreHint": "Registra esta tienda para autocompletarla la próxima vez",
+      "registerStore": "Registrar tienda",
+      "storeRegistered": "Tienda registrada — puedes elegirla en tu lista"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

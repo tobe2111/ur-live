@@ -1740,7 +1740,10 @@
       "draftRestored": "Brouillon restauré",
       "draftSaved": "Brouillon enregistré — reprenez sur n'importe quel appareil",
       "saveDraft": "Enregistrer le brouillon",
-      "previewTitle": "Aperçu côté client"
+      "previewTitle": "Aperçu côté client",
+      "registerStoreHint": "Enregistrez cette boutique pour la pré-remplir la prochaine fois",
+      "registerStore": "Enregistrer la boutique",
+      "storeRegistered": "Boutique enregistrée — sélectionnable dans votre liste"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

@@ -2420,7 +2420,10 @@
       "draftRestored": "已恢复草稿",
       "draftSaved": "草稿已保存 — 可在其他设备继续",
       "saveDraft": "暂存",
-      "previewTitle": "消费者页面预览"
+      "previewTitle": "消费者页面预览",
+      "registerStoreHint": "注册此门店后，下次将自动填入",
+      "registerStore": "注册门店",
+      "storeRegistered": "门店已注册 — 可在门店列表中选择"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

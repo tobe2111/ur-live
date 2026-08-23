@@ -2421,7 +2421,10 @@
       "draftRestored": "Draft restored",
       "draftSaved": "Draft saved — resume on any device",
       "saveDraft": "Save draft",
-      "previewTitle": "Customer view preview"
+      "previewTitle": "Customer view preview",
+      "registerStoreHint": "Register this store to auto-fill it next time",
+      "registerStore": "Register store",
+      "storeRegistered": "Store registered — you can pick it from your store list"
     },
     "analyticsTitle": "Sales Analytics",
     "revenueChart": "Revenue Chart",
