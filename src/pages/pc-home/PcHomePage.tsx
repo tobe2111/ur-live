@@ -187,8 +187,10 @@ export default function PcHomePage() {
 
           {/* 딜 그리드 — 모바일 홈과 동일 GroupBuyFeed (pc 레이아웃).
               GroupBuyFeed 하단에 '전체 동네딜 보기 →' 링크가 이미 포함됨(중복 방지 위해 여기선 미추가). */}
+          {/* 실측: 이 피드는 히어로·편성섹션 아래라 첫 행이 접힘 밖(모바일 1,605px / PC 1,385px) */}
           <GroupBuyFeed
             pc
+            firstScreen={false}
             category={category}
             onCategoryChange={setCategory}
             sort={sort}

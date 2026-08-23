@@ -73,6 +73,7 @@ type CategoryKey = typeof CATEGORIES[number]['key']
 //   동작 byte-불변(홈 <GroupBuyFeed/> 무변경). 데이터/SSR시드/prefetch/페이지네이션 전부 공유.
 export default function GroupBuyFeed({
   pc = false,
+  firstScreen = true,
   category: categoryProp,
   onCategoryChange,
   sort: sortProp,
@@ -83,6 +84,18 @@ export default function GroupBuyFeed({
   userLoc,
 }: {
   pc?: boolean
+  /**
+   * 이 피드의 **첫 행이 첫 화면에 보이는가**. 보일 때만 앞 4장을 eager + fetchPriority=high 로
+   * 받는다(잠긴 aboveFold 계약 — `GroupBuyFeedCard`).
+   *
+   * 🔴 2026-08-22 라이브 실측: 홈에서 이 피드는 [히어로 → 편성 섹션 2개] **아래 세 번째 블록**이라
+   *    첫 행이 모바일 1,605px / PC 1,385px 에 있다(뷰포트 844 / 1,080). 그런데 위치와 무관하게
+   *    앞 4장을 무조건 최우선으로 받고 있었다 — 낭비일 뿐 아니라 fetchPriority=high 라
+   *    **진짜 첫 화면 이미지(259·516px)와 대역폭을 다퉜다.** 레티나 PC 기준 그 4장이 약 240KB.
+   * ⚠️ 기본값 `true` = 기존 동작(지역 페이지 등 피드가 최상단인 호출부 불변). 홈 2곳만 false.
+   *    레이아웃을 바꿔 피드를 위로 올리면 **이 값을 되돌려야 한다.**
+   */
+  firstScreen?: boolean
   category?: CategoryKey
   onCategoryChange?: (c: CategoryKey) => void
   sort?: SortKey
@@ -359,7 +372,7 @@ export default function GroupBuyFeed({
           {sorted.map((p, idx) => {
             const emb = (p as { fcfs?: { enabled?: boolean; prelaunch?: boolean; spots?: number; appliedDisplay?: number; deadline?: string | null } }).fcfs
             const seed = emb?.enabled ? { spots: emb.spots || 0, appliedDisplay: emb.appliedDisplay || 0, deadline: emb.deadline ?? null, prelaunch: !!emb.prelaunch } : undefined
-            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} pc={pc} userLoc={userLoc} />
+            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={firstScreen && idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} pc={pc} userLoc={userLoc} />
           })}
         </div>
         </>
