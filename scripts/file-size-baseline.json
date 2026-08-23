@@ -23,7 +23,7 @@
   "src/features/products/api/products.routes.ts": 761,
   "src/features/referral/api/referral-tree.routes.ts": 1186,
   "src/features/returns/api/returns.routes.ts": 865,
-  "src/features/seller/api/seller-orders.routes.ts": 1425,
+  "src/features/seller/api/seller-orders.routes.ts": 1440,
   "src/features/seller/api/seller-profile.routes.ts": 691,
   "src/features/seller/api/seller-registration.routes.ts": 787,
   "src/features/seller/api/seller-settlements.routes.ts": 1076,

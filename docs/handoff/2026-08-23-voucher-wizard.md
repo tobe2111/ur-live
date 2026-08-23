@@ -93,3 +93,35 @@ seller-voucher-limit 12 pass. 전체 vitest/빌드/가드는 CI 판정.
   누르면 그 매장이 프리필된 등록 모달 → 성공 시 매장 칩 목록 갱신.
   ⚠️ 자동 등록은 하지 않는다: POST /stores 는 **새 sellers 행**을 만들므로, 첫 셀러의 자기
   좌석 매장까지 자동 등록하면 중복 행이 생긴다. 명시 버튼 + 서버 dedup 이 옳은 형태.
+
+## 4차 (같은 세션 — 대표 "그냥 지금 하자 끝까지 신중하게" = 매장 단일화 + 승인분 2건)
+
+PR #1195 는 squash 머지 완료(8b45409). 이번 조각은 새 PR.
+
+**매장 프로필 단일화** (`src/worker/utils/store-profile.ts` SSOT — 빅뱅 재작성 대신
+canonical + 쓰기 시 전파):
+- canonical = seller_meta `store_*` 키(sellers 100컬럼 한도 — ALTER 금지 준수).
+- `saveStoreProfileAndPropagate`: meta upsert + sellers 라벨 미러(business_name/phone/address)
+  + **그 매장(seller_id 스코프) 상품 복사본 한 UPDATE 동기화**(기존 restaurant_name 보유분만 —
+  쇼핑 상품에 매장 필드를 새로 만들지 않음). PIN 은 비어 있지 않을 때만(빈 값 전파 = 매장 검증
+  무장해제). 읽는 쪽(소비자 상세·지도·SSR·캐시)은 **한 줄도 안 바꿈** — 복사본이 canonical 의
+  물질화가 되므로 잠금 영역 무접촉.
+- `adoptStoreProfileFromProduct`(fill-if-empty): 상품 등록 성공 시 빈 프로필 키만 채움 —
+  첫 이용권 등록 = 매장 프로필 생성. seller-orders POST /products 에 fail-soft 배선
+  (파일 1425→1440 rebaseline).
+- 라우트: GET/PATCH `/api/seller/stores/:id/profile`(canOperateStore — brokered 매장은 owner
+  부재라 owner-only 면 아무도 못 고침) + `/stores/context` 를 `mergeStoreProfile` 공유로 리팩터.
+- UI: `StoreProfileModal`(매장 관리 "정보" 버튼) — "저장하면 이용권 N개에 반영" 카운트 표시,
+  지도 재선택으로 좌표 갱신.
+- 병합 우선순위 불변식: **최근 상품 > meta > sellers 행** — 전파가 상품을 항상 canonical 로
+  갱신하고 위저드 상품 단위 수정은 상품을 더 신선하게 만들므로 이 순서가 항상 옳다.
+- 테스트 `store-profile.test.ts` 8건(R1 스코프·R2 fill-if-empty·R3 PIN 가드·R4 권한·R5 병합·
+  R6 배선) — **되돌려-검증**: 전파 WHERE 에서 seller_id 스코프 제거 → 빨강 확인 후 복원.
+
+**승인 개선 2건**:
+- 사진 R2 업로드: VoucherInfoStep 업로드가 base64→DB 대신 `/api/upload/image`(셀러 Bearer)
+  → URL 저장. 실패 시에만 종전 data URL 폴백(fail-soft).
+- 등록 완료 화면: KakaoShareButton(커머스 카드 — 정가취소선+할인가) + 판매 링크 복사.
+
+**의도적으로 안 한 것**: 기존 상품 대량 백필(전파는 다음 프로필 저장 때 자연 수렴 — 프로덕션
+대량 UPDATE 를 선제로 쏘지 않음), 읽기 경로 참조 전환(효익 0 리스크 +).

@@ -2423,7 +2423,10 @@
       "previewTitle": "消费者页面预览",
       "registerStoreHint": "注册此门店后，下次将自动填入",
       "registerStore": "注册门店",
-      "storeRegistered": "门店已注册 — 可在门店列表中选择"
+      "storeRegistered": "门店已注册 — 可在门店列表中选择",
+      "shareDesc": "在 UrDeal 享受优惠价",
+      "copyLink": "复制销售链接",
+      "linkCopied": "链接已复制 — 粘贴到熟客群里吧"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

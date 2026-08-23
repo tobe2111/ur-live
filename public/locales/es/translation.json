@@ -1743,7 +1743,10 @@
       "previewTitle": "Vista previa del cliente",
       "registerStoreHint": "Registra esta tienda para autocompletarla la próxima vez",
       "registerStore": "Registrar tienda",
-      "storeRegistered": "Tienda registrada — puedes elegirla en tu lista"
+      "storeRegistered": "Tienda registrada — puedes elegirla en tu lista",
+      "shareDesc": "Consíguelo con descuento en UrDeal",
+      "copyLink": "Copiar enlace de venta",
+      "linkCopied": "Enlace copiado — pégalo en el chat de tus clientes"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
