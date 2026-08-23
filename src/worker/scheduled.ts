@@ -232,8 +232,8 @@ export async function handleCronScheduled(
   //   `*/5` 틱 위 :25 게이트로 시간당 1회. 왜 이 방식인지는 `cron-slot.ts` 참조.
   // 🗄️ 2026-08-22: 재개 가능한 분할 백업(커서로 시간당 조금씩). 기존 주간 백업은 DB 가 263 MB 로
   //   자라 워커 메모리를 넘겨 08-02 이후 조용히 멈춰 있었다 — 근거는 `cron/d1-backup-chunked.ts` 헤더.
-  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 50 })) {
-    ctx.waitUntil(slotCron('50 * * * *')('d1-backup-chunked', async () => {
+  if (cron === '*/5 * * * *' && [5, 20, 35, 50].some((m) => slotDue(event.scheduledTime, { minute: m }))) {
+    ctx.waitUntil(slotCron('5,20,35,50 * * * *')('d1-backup-chunked', async () => {
       const { handleChunkedBackup } = await import('./cron/d1-backup-chunked')
       return handleChunkedBackup(env as never)
     }));

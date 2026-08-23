@@ -67,7 +67,19 @@ describe('slotDue — 분/시/요일 게이트', () => {
 })
 
 describe('호출부 — 조용히 다시 죽는 두 길', () => {
-  const specs = [...code.matchAll(/slotDue\(\s*event\.scheduledTime\s*,\s*\{([^}]*)\}/g)]
+  /**
+   * 🗄️ 2026-08-23: 한 작업이 **여러 슬롯**을 쓰는 형태가 생겼다 —
+   *   `[5, 20, 35, 50].some((m) => slotDue(event.scheduledTime, { minute: m }))`
+   *   (백업이 시간당 1회면 전체 스냅샷에 60시간이라 4회로 올렸다).
+   *   그러면 `minute: m` 이 **변수**라 아래 리터럴 파서가 `Number('m') = NaN` 을 만든다.
+   *   ⚠️ 이걸 "그냥 NaN 은 건너뛰자"로 처리하면 **그 슬롯들이 검사 밖으로 나간다** — 5의 배수
+   *   규칙도, 겹침 규칙도 안 걸린다. 그래서 **배열 값을 펼쳐서 똑같이 검사**한다.
+   */
+  const arrayForm = [...code.matchAll(
+    /\[([\d,\s]+)\]\.some\(\((\w+)\) => slotDue\(\s*event\.scheduledTime\s*,\s*\{\s*minute:\s*\2\s*\}\s*\)\)/g,
+  )].flatMap((m) => m[1].split(',').map((x): Record<string, number> => ({ minute: Number(x.trim()) })))
+
+  const literalForm = [...code.matchAll(/slotDue\(\s*event\.scheduledTime\s*,\s*\{([^}]*)\}/g)]
     .map((m) => {
       const o: Record<string, number> = {}
       for (const kv of m[1].split(',')) {
@@ -76,6 +88,10 @@ describe('호출부 — 조용히 다시 죽는 두 길', () => {
       }
       return o
     })
+    // 배열 형태의 `{ minute: m }` 은 위에서 이미 펼쳤다 — 여기선 리터럴 숫자만 남긴다.
+    .filter((o) => Number.isFinite(o.minute))
+
+  const specs = [...literalForm, ...arrayForm]
 
   it('호출부가 실제로 존재한다 — 0건이면 통과가 아니라 실패다', () => {
     expect(specs.length, 'slotDue 호출부를 하나도 못 찾았다(파일 구조가 바뀌었나?)').toBeGreaterThanOrEqual(4)

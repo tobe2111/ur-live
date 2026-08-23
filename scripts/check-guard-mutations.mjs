@@ -72,6 +72,27 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🗄️ 백업이 다시 시간당 1회로 줄어든다(전체 스냅샷 60시간 → 일 1회 불가)',
+    file: 'src/worker/scheduled.ts',
+    find: '[5, 20, 35, 50].some((m) => slotDue(event.scheduledTime, { minute: m }))',
+    replace: 'slotDue(event.scheduledTime, { minute: 50 })',
+    test: 'src/tests/unit/backup-cadence.test.ts',
+    why:
+      '실측: cron 1회차가 약 12,500행이고 유어애즈 DB 는 약 754,000행이다. 시간당 1회면 **60시간** — ' +
+      '"일 1회 백업"이 원리적으로 불가능해지고, 한 벌이 2.5일에 걸쳐 만들어져 **시점이 어긋난 스냅샷**이 ' +
+      '된다. 그런데 화면·로그 어디에도 티가 안 난다 — 백업은 여전히 "돌고 있다"고 보이기 때문이다.',
+  },
+  {
+    name: '🕓 분 목록 cron 을 "매시 1회"로 오해석한다(멈춰도 경보가 안 울린다)',
+    file: 'src/worker/utils/cron-heartbeat.ts',
+    find: "else if (hour === '*') base = Math.max(1, Math.floor(60 / Math.max(1, (min || '').split(',').length)))",
+    replace: "else if (hour === '*') base = 60",
+    test: 'src/tests/unit/backup-cadence.test.ts',
+    why:
+      '`5,20,35,50 * * * *` 는 시간당 4회인데 60분 기준으로 읽으면 기대 간격이 4배 느슨해진다 — ' +
+      '15분마다 돌아야 할 작업이 **2시간 멈춰도 조용하다**. 침묵을 잡으려고 만든 장치가 침묵을 봐 준다.',
+  },
+  {
     name: '예열 cron 이 다시 서브리퀘스트 예산을 넘는다(뒤쪽이 조용히 실패)',
     file: 'src/worker/cron/cache-prewarm.ts',
     find: 'export const DYNAMIC_PREWARM_BUDGET = 12;',
