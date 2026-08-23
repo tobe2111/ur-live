@@ -83,7 +83,7 @@ async function searchKakaoLocal(kakaoKey: string, kw: CompanyKeyword, budget?: F
 interface CompanyKeyword { id: number; keyword: string; category: string | null; subcategory: string | null; region: string | null; tier: number | null }
 
 /** 키워드 시드 버전 — 그리드(지역/업종)를 늘렸으면 +1 해야 기존 배포에 새 키워드가 들어간다. */
-const KEYWORD_SEED_VERSION = 4 // 2026-08-17: 체험단 축 9개(전국) — 대표 지시. 배열 끝 추가라 앞부분은 이어받는다
+const KEYWORD_SEED_VERSION = 5 // 2026-08-23: 4단계 고수율 광맥 6업종×시군구 — 이메일 수율 실측 기반. 배열 끝 추가라 이어받는다
 const KEYWORD_SEED_KEY = 'ads_company_kw_seed'
 const KEYWORD_SEED_CHUNK = 500 // 1회 실행당 시드 상한(=5 batch) — 첫 시드가 수집 예산을 잡아먹지 않게
 

@@ -43,12 +43,15 @@ import { flushNaverCalls, armNaverAndReadSettings } from './naver-api-usage'
 import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { pickCompanyKeywords, rotationAdvance, type PickKeyword } from './company-keyword-pick'
 import { searchNaverWeb } from './webkr-search'
+import { flushOpenapiBlock, naverOpenapiBlocked, openapiBlockSnapshot } from './naver-openapi-block'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 export interface WebkrCollectStats {
   last_run: string; found: number; saved: number; upserted: number; keywords: string[]
   cursor: number; total_runs: number; total_saved: number; total_keywords: number
   spent: number; limit_hit: boolean; run_ms: number; deadline_hit: boolean
+  /** 🚧 네이버 오픈API 차단 관측(회차 단위). `tripped` 면 이 회차가 **중간에 멈춘 것**이다 — 수율 0 과 구분된다. */
+  openapi_block?: { streak: number; blocked: number; ok: number; tripped: boolean; last_status: number | null }
   diag: { configured: boolean; error?: string }
 }
 
@@ -71,11 +74,12 @@ const DEFAULT_BATCH = 12
  * 🧾 **부기(簿記) 몫** — 루프가 예산을 다 태우면 회차가 **자기 기록을 못 남긴다.**
  *
  * 루프 뒤에 반드시 도는 D1 접근: 리드 저장(전후 COUNT + 청크 batch ≈ 4) · 키워드 부기 batch(1)
- * · 스냅샷 저장(1) · 네이버 누적 flush(읽기 1 + 쓰기 1). 이걸 안 남기면 수집은 실제로 했는데
+ * · 스냅샷 저장(1) · 네이버 누적 flush(읽기 1 + 쓰기 1) · **차단 관측 flush(읽기 1 + 쓰기 1)**.
+ * 이걸 안 남기면 수집은 실제로 했는데
  * `ads_webkr_stats` 가 안 갱신돼 **"돌았는데 안 돈 것"** 으로 보인다 — 원인 규명이 가장 어려운 모양이다.
  * (같은 이유로 `runKakaoPhoneSweep` 이 `SWEEP_BOOKKEEPING_RESERVE` 를 둔다.)
  */
-const BOOKKEEPING_RESERVE = 8
+const BOOKKEEPING_RESERVE = 10
 
 /** 루프 전에 이미 쓴 D1: settings 읽기 · 활성 키워드 COUNT · 키워드 픽 · 조기 스냅샷 1. */
 const UPFRONT_D1 = 4
@@ -157,7 +161,9 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
   const used: string[] = []
   const usedKw: PickKeyword[] = [] // 커서 전진 근거 — 우선 픽(미실행)은 회전 시퀀스 밖이라 빼야 한다
   const perKeyword = new Map<number, number>()
-  for (let i = 0; i < kws.length && !budget.limitHit && budget.left > BOOKKEEPING_RESERVE && !overDeadline(); i += WEBKR_CONCURRENCY) {
+  // 🚧 `naverOpenapiBlocked()` — 429/403 이 연속 3회면 즉시 멈춘다. 막힌 채로 남은 조를 다 돌면
+  //   그 회차 결과가 전부 0 이 되고(수율 학습 오염), 실패 호출이 그날 쿼터만 태운다.
+  for (let i = 0; i < kws.length && !budget.limitHit && !naverOpenapiBlocked() && budget.left > BOOKKEEPING_RESERVE && !overDeadline(); i += WEBKR_CONCURRENCY) {
     const group = kws.slice(i, i + WEBKR_CONCURRENCY)
     const results = await Promise.all(group.map(async (kw: PickKeyword) => {
       // tier1(대행사)만 2페이지 — `collect-company` 와 같은 깊이 규칙을 그대로 승계한다.
@@ -202,9 +208,11 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
     total_saved: (prev?.total_saved || 0) + counted.inserted, total_keywords: total,
     spent: budgetTotal - budget.left, limit_hit: !!budget.limitHit,
     run_ms: Date.now() - startedAt, deadline_hit: overDeadline(),
+    openapi_block: openapiBlockSnapshot(),
     diag: { configured: true },
   }
   await save(s)
   await flushNaverCalls(DB, Date.now())
+  await flushOpenapiBlock(DB, Date.now())
   return s
 }
