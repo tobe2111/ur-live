@@ -45,6 +45,11 @@ export async function grantInviteRewardForFirstPurchase(
 ): Promise<InviteRewardResult> {
   try {
     if (!invitedUserId) return { granted: false, reason: 'no_user' }
+    // 🛑 2026-08-23 대표(심플 모델 확장 — "3번도 끄자"): 초대 보상(첫 구매 1,000딜) 종료.
+    //   재개: platform_settings invite_reward_enabled='true' (행 부재 = 꺼짐). 기지급분 보존.
+    const sw = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'invite_reward_enabled'")
+      .first<{ value: string }>().catch(() => null)
+    if (sw?.value !== 'true') return { granted: false, reason: 'program_disabled' }
     await ensureInviteRewardsTable(DB)
 
     // 초대자 = referral_tree.parent_id (SSOT — users.referred_by 는 프로덕션에 없음)

@@ -342,6 +342,14 @@ export async function calculateMultiTierCommission(
   buyerUserId: string,
   opts?: { totalCapKrw?: number },
 ): Promise<Array<{ tier: number; beneficiary_id: string; commission_amount: number }>> {
+  // 🛑 2026-08-23 대표(심플 모델 확장 — "3번도 끄자"): 멀티티어 추천 트리(10/3/1%) 종료.
+  //   인플루언서 수익은 매장 제안 딜 % 하나(seller_influencer_deals). 재개: platform_settings
+  //   multi_tier_enabled='true' (행 부재 = 꺼짐). 기존 적립분·역전·조회는 보존 — 신규 적립만 닫는다.
+  try {
+    const sw = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'multi_tier_enabled'")
+      .first<{ value: string }>()
+    if (sw?.value !== 'true') return []
+  } catch { return [] }
   let commissions = await computeMultiTierEntries(DB, orderId, orderAmount, buyerUserId)
   if (commissions.length === 0) return []
 

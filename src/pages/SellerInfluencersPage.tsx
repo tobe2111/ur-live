@@ -6,6 +6,7 @@
  */
 import { useEffect, useState, useCallback } from 'react'
 import SellerLayout from '@/components/SellerLayout'
+import SentOutreachList from './seller-influencers/SentOutreachList'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
@@ -29,6 +30,7 @@ const CHANNELS = [
 ]
 
 export default function SellerInfluencersPage() {
+  const [outreachRefresh, setOutreachRefresh] = useState(0)
   const [rows, setRows] = useState<Lead[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -72,6 +74,9 @@ export default function SellerInfluencersPage() {
           <p className="text-sm font-extrabold text-gray-900">내 이용권을 팔아 줄 크리에이터를 찾아 제안해 보세요</p>
           <p className="text-[11px] text-gray-600 mt-0.5">제안을 접수하면 유어딜이 검토 후 인플루언서에게 직접 전달해 드려요{contactFee > 0 ? ` · 발송 1명당 ${formatNumber(contactFee)}원` : ''}</p>
         </div>
+
+        {/* 📣 보낸 제안 현황 (없으면 미렌더) */}
+        <SentOutreachList refreshKey={outreachRefresh} />
 
         {/* 필터 */}
         <div className="flex flex-wrap items-center gap-2">
@@ -153,7 +158,7 @@ export default function SellerInfluencersPage() {
       {proposing && (
         <ProposalModal count={selected.size} leadIds={[...selected]} contactFee={contactFee}
           onClose={() => setProposing(false)}
-          onDone={() => { setProposing(false); setSelected(new Set()) }} />
+          onDone={() => { setProposing(false); setSelected(new Set()); setOutreachRefresh(k => k + 1) }} />
       )}
     </SellerLayout>
   )

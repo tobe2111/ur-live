@@ -244,9 +244,10 @@ app.get('/outreach', async (c) => {
     const db = adsLeadsDb(c.env)
     await ensureOutreachTable(db)
     const rows = await db.prepare(`
-      SELECT id, product_id, target_count, commission_pct, product_support, channels, period_days,
-             status, quoted_fee_krw, created_at
-        FROM influencer_outreach_requests WHERE seller_id = ? ORDER BY created_at DESC LIMIT 50
+      SELECT o.id, o.product_id, o.target_count, o.commission_pct, o.product_support, o.channels, o.period_days,
+             o.status, o.quoted_fee_krw, o.created_at,
+             (SELECT COUNT(*) FROM influencer_offer_invites v WHERE v.outreach_id = o.id AND v.status = 'accepted') AS accepted_count
+        FROM influencer_outreach_requests o WHERE o.seller_id = ? ORDER BY o.created_at DESC LIMIT 50
     `).bind(sellerId).all().catch(() => ({ results: [] as never[] }))
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {

@@ -55,6 +55,30 @@ describe('① 어필리에이트 종료 — 심플 모델', () => {
   })
 })
 
+describe('①-확장 심플 모델 (2026-08-23 대표 "3번도 끄자") — 멀티티어·초대보상 종료', () => {
+  it('멀티티어 트리: multi_tier_enabled 스위치, 행 부재 = 꺼짐 (빈 배열 반환)', () => {
+    const tree = readFileSync('src/features/referral/api/referral-tree.routes.ts', 'utf8')
+    expect(tree).toContain("multi_tier_enabled")
+    expect(tree).toMatch(/sw\?\.value !== 'true'\) return \[\]/)
+    // 스위치가 compute 보다 앞이어야 한다 — 뒤면 계산은 돌고 INSERT 만 막는 반쪽이 된다
+    const swIdx = tree.indexOf("multi_tier_enabled")
+    const computeIdx = tree.indexOf('await computeMultiTierEntries(DB, orderId')
+    expect(swIdx).toBeGreaterThan(0)
+    expect(swIdx, '스위치가 compute 뒤에 있다').toBeLessThan(computeIdx)
+  })
+  it('초대 보상: invite_reward_enabled 스위치, 행 부재 = 꺼짐', () => {
+    const inv = readFileSync('src/worker/utils/invite-reward.ts', 'utf8')
+    expect(inv).toContain("invite_reward_enabled")
+    expect(inv).toMatch(/sw\?\.value !== 'true'/)
+    expect(inv).toContain("'program_disabled'")
+  })
+  it('라이브 시드 치유 — 과거 0.5% 기본 시드를 0 으로 (repair-schema)', () => {
+    const rep = readFileSync('src/worker/routes/repair-schema/column-repairs.ts', 'utf8')
+    expect(rep).toMatch(/SET value='0'[^\n]*influencer_commission_pct' AND value='0\.5'/)
+    expect(rep).toMatch(/SET value='0'[^\n]*user_referral_bonus_pct' AND value='0\.5'/)
+  })
+})
+
 describe('③ 수락 다리 — CAS 선점 후 딜 발효', () => {
   it('accept 는 pending→accepted CAS 를 지나야 딜 INSERT 에 닿는다', () => {
     const casIdx = invites.indexOf("AND status = 'pending'")
