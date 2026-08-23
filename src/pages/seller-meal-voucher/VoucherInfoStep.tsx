@@ -1,0 +1,252 @@
+/**
+ * 🎟️ 위저드 2단계 — 이용권 정보 (종류·이름·가격·사진·실수령가)
+ *   기존 SellerMealVoucherNewPage 의 해당 블록을 그대로 추출 — 로직 불변, 배치만 위저드.
+ */
+import { useTranslation } from 'react-i18next'
+import { Utensils } from 'lucide-react'
+import { toast } from '@/hooks/useToast'
+import { compressForUpload } from '@/lib/image-compress'
+import { SELLER_PROMO_FIELD_ENABLED } from '@/shared/feature-flags'
+import NetProceedsCard from './NetProceedsCard'
+import PromoMarginCalculator, { promoGuideFor } from '../seller-product-new/PromoMarginCalculator'
+import SellerVoucherPhotoGuide from '@/components/SellerVoucherPhotoGuide'
+import CardPreview from './CardPreview'
+import type { VoucherCategory, VoucherForm } from './voucher-form'
+
+interface Props {
+  form: VoucherForm
+  update: (key: string, value: string | number) => void
+  setCategory: (c: VoucherCategory) => void
+  suggestedImages: string[]
+  loadingImages: boolean
+  onSearchImages: (query: string) => void
+}
+
+export default function VoucherInfoStep({ form, update, setCategory, suggestedImages, loadingImages, onSearchImages }: Props) {
+  const { t } = useTranslation()
+
+  return (
+    <div className="space-y-4">
+      {/* 이용권 종류 (식사/뷰티/헬스/반려/숙박/액티비티) */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-base font-bold text-gray-900">
+            {t('seller.voucher.categoryTitle', { defaultValue: '이용권 종류' })}
+          </h2>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { key: 'meal_voucher' as const, emoji: '🍽️', label: t('seller.voucher.categoryMeal', { defaultValue: '식사 이용권' }), desc: t('seller.voucher.categoryMealDesc', { defaultValue: '맛집·카페' }) },
+            { key: 'beauty_voucher' as const, emoji: '💇', label: t('seller.voucher.categoryBeauty', { defaultValue: '뷰티 이용권' }), desc: t('seller.voucher.categoryBeautyDesc', { defaultValue: '헤어·네일·피부' }) },
+            { key: 'health_voucher' as const, emoji: '💪', label: t('seller.voucher.categoryHealth', { defaultValue: '헬스 이용권' }), desc: t('seller.voucher.categoryHealthDesc', { defaultValue: 'PT·요가·필라테스' }) },
+            { key: 'pet_voucher' as const, emoji: '🐶', label: t('seller.voucher.categoryPet', { defaultValue: '반려 이용권' }), desc: t('seller.voucher.categoryPetDesc', { defaultValue: '미용·호텔·병원' }) },
+            { key: 'stay_voucher' as const, emoji: '🏨', label: t('seller.voucher.categoryStay', { defaultValue: '숙박 이용권' }), desc: t('seller.voucher.categoryStayDesc', { defaultValue: '펜션·호텔·모텔' }) },
+            { key: 'activity_voucher' as const, emoji: '🎯', label: t('seller.voucher.categoryActivity', { defaultValue: '액티비티 이용권' }), desc: t('seller.voucher.categoryActivityDesc', { defaultValue: '방탈출·볼링·클래스' }) },
+          ].map(c => (
+            <button
+              type="button"
+              key={c.key}
+              onClick={() => setCategory(c.key)}
+              className={`p-3 rounded-lg border-2 text-center transition-all ${
+                form.category === c.key
+                  ? 'border-pink-500 bg-pink-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="text-2xl mb-1">{c.emoji}</div>
+              <div className={`text-xs font-bold ${form.category === c.key ? 'text-pink-700' : 'text-gray-900'}`}>{c.label}</div>
+              <div className="text-[10px] text-gray-500 mt-0.5">{c.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 이용권 정보 */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Utensils className="w-5 h-5 text-pink-500" />
+          <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.voucherInfo')}</h2>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.voucherNameLabel')} *</label>
+            <input
+              value={form.name}
+              onChange={e => update('name', e.target.value)}
+              placeholder={t('seller.mealVoucher.voucherNamePlaceholder')}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.description')}</label>
+            <textarea
+              value={form.description}
+              onChange={e => update('description', e.target.value)}
+              placeholder={t('seller.mealVoucher.descriptionPlaceholder')}
+              rows={3}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none resize-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.sellingPrice')} *</label>
+              <input
+                type="number"
+                value={form.price || ''}
+                onChange={e => update('price', Number(e.target.value))}
+                placeholder="25000"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.originalPrice')}</label>
+              <input
+                type="number"
+                value={form.original_price || ''}
+                onChange={e => update('original_price', Number(e.target.value))}
+                placeholder="50000"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* 💰 판매 1건당 실수령가 — 항상 표시(채널별 수수료 SSOT). */}
+          <NetProceedsCard price={form.price} promoPct={form.promo_pct} />
+
+          {/* 💰 소개비(promo)% + 매장 실수령 계산기 — SELLER_PROMO_FIELD_ENABLED 게이트. */}
+          {SELLER_PROMO_FIELD_ENABLED && (
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('seller.mealVoucher.promoLabel', { defaultValue: '추천 소개비 (%)' })}
+                  <span className="ml-2 text-[11px] font-normal text-gray-400">
+                    {t('seller.mealVoucher.promoRecommend', {
+                      defaultValue: `권장 ${promoGuideFor(form.category).min}~${promoGuideFor(form.category).max}%`,
+                      min: promoGuideFor(form.category).min, max: promoGuideFor(form.category).max,
+                    })}
+                  </span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number" min={0} max={50} step={1}
+                    value={form.promo_pct || ''}
+                    onChange={e => update('promo_pct', Math.max(0, Math.min(50, Number(e.target.value))))}
+                    placeholder="0"
+                    className="w-full px-3 py-2.5 pr-8 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                  {t('seller.mealVoucher.promoHint', { defaultValue: '인플루언서가 추천 링크로 팔면 이 비율만큼 소개비를 지급해요. 할인과 함께 하나의 마케팅 예산으로 설계하세요. 추천 판매가 없으면 발생하지 않아요.' })}
+                </p>
+              </div>
+              <PromoMarginCalculator
+                price={form.price}
+                originalPrice={form.original_price}
+                promoPct={form.promo_pct}
+                category={form.category}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 대표 이미지 — 매장 선택 시 추천 이미지가 자동으로 도착 */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-lg">📸</span>
+          <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.mainImage')}</h2>
+        </div>
+        <p className="text-[11px] text-gray-500 mb-3">{t('seller.mealVoucher.imageAiNotice', { defaultValue: '마음에 드는 게 없으면 아래에서 직접 검색하거나 파일을 업로드하세요.' })}</p>
+        <SellerVoucherPhotoGuide />
+
+        <div className="space-y-3">
+          {form.image_url && (
+            <div className="relative inline-block">
+              <img src={form.image_url} alt={t('seller.mealVoucher.mainImage', { defaultValue: '대표 이미지' })} className="w-full max-w-[240px] h-48 rounded-lg object-cover border border-gray-200" loading="lazy" />
+              <button
+                type="button"
+                onClick={() => update('image_url', '')}
+                aria-label={t('common.removeImage', { defaultValue: '이미지 제거' })}
+                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white text-xs hover:bg-black/80"
+              >✕</button>
+            </div>
+          )}
+
+          <input
+            value={form.image_url}
+            onChange={e => update('image_url', e.target.value)}
+            placeholder={t('seller.mealVoucher.imageUrlPlaceholder')}
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+          />
+
+          <div className="flex gap-2 flex-wrap">
+            <label className="cursor-pointer flex items-center gap-1.5 px-3 py-2 bg-pink-50 border border-pink-200 text-pink-600 text-xs font-semibold rounded-lg hover:bg-pink-100">
+              {t('seller.mealVoucher.uploadPhoto', { defaultValue: '📁 내 사진 업로드' })}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0]
+                  if (!f) return
+                  if (f.size > 5 * 1024 * 1024) { toast.error(t('seller.mealVoucher.imageSizeLimit', { defaultValue: '5MB 이하 이미지만 업로드 가능합니다' })); return }
+                  try {
+                    // 클라이언트 압축 (CF Images 유료 회피, WebP 1280px ≤300KB)
+                    const compressed = await compressForUpload(f, { maxSizeMB: 0.3, maxWidthOrHeight: 1280, toWebP: true })
+                    const r = new FileReader()
+                    r.onload = () => { update('image_url', r.result as string); toast.success(t('common.uploadComplete', { defaultValue: '업로드 완료' })) }
+                    r.readAsDataURL(compressed)
+                  } catch {
+                    toast.error(t('common.uploadFailed', { defaultValue: '업로드 실패' }))
+                  }
+                }}
+              />
+            </label>
+            <input
+              placeholder={t('seller.mealVoucher.imageSearchPlaceholder', { defaultValue: '다른 키워드로 이미지 재검색 (예: 가게 인테리어, 대표 메뉴 이름)' })}
+              className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-900 focus:border-pink-500 focus:outline-none"
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return
+                e.preventDefault()
+                const q = (e.target as HTMLInputElement).value.trim()
+                if (q) onSearchImages(q)
+              }}
+            />
+          </div>
+
+          {loadingImages && (
+            <p className="text-xs text-gray-500">{t('seller.mealVoucher.searchingImages')}</p>
+          )}
+          {suggestedImages.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-gray-600 mb-2">{t('seller.mealVoucher.suggestedImages')}</p>
+              <div className="grid grid-cols-3 gap-2">
+                {suggestedImages.map((url, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => { update('image_url', url); toast.success(t('seller.mealVoucher.imageSelected')) }}
+                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                      form.image_url === url ? 'border-pink-500 ring-2 ring-pink-200' : 'border-gray-200 hover:border-gray-400'
+                    }`}
+                  >
+                    <img src={url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 👀 입력하는 대로 소비자 카드가 어떻게 보일지 실시간 반영 */}
+      <CardPreview form={form} />
+    </div>
+  )
+}

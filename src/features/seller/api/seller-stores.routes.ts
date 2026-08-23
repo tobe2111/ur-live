@@ -77,6 +77,127 @@ app.get('/fee-context', async (c) => {
   }
 })
 
+// ── 이용권 임시저장(서버 드래프트) — 2026-08-23 대표 "임시저장도 돼야 해" 후속 승인 ─────────
+//   localStorage 드래프트의 서버 짝 — PC 에서 쓰다 폰에서 이어 쓴다. 셀러(좌석)당 1개.
+//   ⚠️ seller_meta 를 쓰지 않는 이유: getSellerMeta 는 그 셀러의 **모든** 키를 읽는다 —
+//   base64 이미지가 든 수백 KB 드래프트를 넣으면 fee-context 등 모든 meta 조회가 그걸 끌고 다닌다.
+let _draftEnsured = false
+async function ensureVoucherDraftTable(DB: D1Database) {
+  if (_draftEnsured) return
+  _draftEnsured = true
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS seller_voucher_drafts (
+      seller_id INTEGER PRIMARY KEY,
+      draft_json TEXT NOT NULL,
+      updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+    )`).run()
+  } catch { /* 이미 있으면 그만 — repair-schema 가 정식 등록 */ }
+}
+/** 드래프트 크기 상한 — 압축 업로드(≤300KB)의 base64(~400KB)까지 수용, 그 이상은 거절. */
+const DRAFT_MAX_BYTES = 900_000
+
+app.get('/voucher-draft', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
+    await ensureVoucherDraftTable(c.env.DB)
+    // updated_ms: epoch(ms) 로 내려 클라가 Date 파싱 없이 숫자 비교만 하게 한다(UTC 오해석 클래스 차단).
+    const row = await c.env.DB.prepare(
+      `SELECT draft_json, CAST(strftime('%s', updated_at) AS INTEGER) * 1000 AS updated_ms
+         FROM seller_voucher_drafts WHERE seller_id = ? LIMIT 1`
+    ).bind(sellerId).first<{ draft_json: string; updated_ms: number }>().catch(() => null)
+    if (!row) return c.json({ success: true, data: null })
+    let form: unknown = null
+    try { form = JSON.parse(row.draft_json) } catch { /* 깨진 드래프트는 없는 것 */ }
+    if (!form || typeof form !== 'object') return c.json({ success: true, data: null })
+    return c.json({ success: true, data: { form, updated_ms: Number(row.updated_ms) || 0 } })
+  } catch (err) {
+    return safeError(c, err, '임시저장을 불러오지 못했습니다', '[seller-stores]')
+  }
+})
+
+app.put('/voucher-draft', rateLimit({ action: 'voucher_draft_save', max: 120, windowSec: 3600 }), async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
+    const body = await c.req.json<{ form?: unknown }>().catch(() => ({} as { form?: unknown }))
+    if (!body.form || typeof body.form !== 'object') {
+      return c.json({ success: false, error: '저장할 내용이 없습니다' }, 400)
+    }
+    const json = JSON.stringify(body.form)
+    if (json.length > DRAFT_MAX_BYTES) {
+      return c.json({ success: false, error: '임시저장 용량을 초과했습니다 (이미지를 줄여주세요)' }, 413)
+    }
+    await ensureVoucherDraftTable(c.env.DB)
+    await c.env.DB.prepare(
+      `INSERT INTO seller_voucher_drafts (seller_id, draft_json, updated_at)
+       VALUES (?, ?, datetime('now'))
+       ON CONFLICT(seller_id) DO UPDATE SET draft_json = excluded.draft_json, updated_at = datetime('now')`
+    ).bind(sellerId, json).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '임시저장에 실패했습니다', '[seller-stores]')
+  }
+})
+
+app.delete('/voucher-draft', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
+    await ensureVoucherDraftTable(c.env.DB)
+    await c.env.DB.prepare('DELETE FROM seller_voucher_drafts WHERE seller_id = ?').bind(sellerId).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '임시저장 삭제에 실패했습니다', '[seller-stores]')
+  }
+})
+
+// ── GET /stores/context — 이용권 등록 프리필 (2026-08-23 대표 "매장 등록돼 있으면 자동으로") ──
+//   현재 좌석(seller_token) 매장의 정보를 한 번에 돌려준다. 우선순위:
+//   최근 상품의 restaurant_*(실제 폼과 1:1) > seller_meta(store_lat/lng·kakao_place_url) > sellers 행.
+app.get('/stores/context', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
+    const [seller, metaMap, lastProduct] = await Promise.all([
+      c.env.DB.prepare('SELECT name, business_name, phone, address FROM sellers WHERE id = ? LIMIT 1')
+        .bind(sellerId).first<{ name: string | null; business_name: string | null; phone: string | null; address: string | null }>()
+        .catch(() => null),
+      getSellerMeta(c.env.DB, [sellerId]).catch(() => new Map<number, Record<string, string>>()),
+      c.env.DB.prepare(
+        `SELECT restaurant_name, restaurant_address, restaurant_phone, restaurant_lat, restaurant_lng, store_verify_pin, category
+           FROM products
+          WHERE seller_id = ? AND restaurant_name IS NOT NULL AND restaurant_name != ''
+          ORDER BY id DESC LIMIT 1`
+      ).bind(sellerId).first<{
+        restaurant_name: string | null; restaurant_address: string | null; restaurant_phone: string | null
+        restaurant_lat: number | string | null; restaurant_lng: number | string | null
+        store_verify_pin: string | null; category: string | null
+      }>().catch(() => null),
+    ])
+    const meta = metaMap.get(sellerId) || {}
+    const str = (v: unknown) => (v == null ? '' : String(v))
+    return c.json({
+      success: true,
+      data: {
+        store: {
+          name: str(lastProduct?.restaurant_name) || str(seller?.business_name) || str(seller?.name),
+          address: str(lastProduct?.restaurant_address) || str(seller?.address),
+          phone: str(lastProduct?.restaurant_phone) || str(seller?.phone),
+          lat: str(lastProduct?.restaurant_lat) || str(meta.store_lat),
+          lng: str(lastProduct?.restaurant_lng) || str(meta.store_lng),
+          kakao_place_url: str(meta.kakao_place_url),
+          verify_pin: str(lastProduct?.store_verify_pin),
+          category: str(lastProduct?.category),
+        },
+        has_product_history: !!lastProduct,
+      },
+    })
+  } catch (err) {
+    return safeError(c, err, '매장 정보를 불러오지 못했습니다', '[seller-stores]')
+  }
+})
+
 // ── POST /stores/verify-business — 국세청 진위확인 (등록 전 사전 검증) ────────────
 app.post('/stores/verify-business', rateLimit({ action: 'store_nts_verify', max: 10, windowSec: 300 }), async (c) => {
   try {
