@@ -5494,21 +5494,17 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 163건 · 최신순 · 이 목록은 자동 생성된다._
+_총 169건 · 최신순 · 이 목록은 자동 생성된다._
 
-**2026-08-22**
-- [2026-08-22 — 백업이 없었다 · D1 용량은 사실 남아돌았다](handoff/2026-08-22-backup-and-d1-capacity.md)
-_총 165건 · 최신순 · 이 목록은 자동 생성된다._
-
+**2026-08-23**
+- [2026-08-23 — 본진 D1 이 꽉 차서 쓰기가 멈췄다 · 중복 460MB 회수로 복구](handoff/2026-08-23-d1-full-outage-recovery.md)
 **2026-08-22**
 - [2026-08-22 — 심플 커미션 모델 + 제안 수락 다리 + 어드민 발송 큐 (셀러 V2 2단계)](handoff/2026-08-22-simple-commission-bridge.md)
+- [2026-08-22 — 사진/크롤링 보호 · 어드민 즐겨찾기 · 이용권 1인당 한도 · 홈 섹션 0-RTT](handoff/2026-08-22-protection-prefs-voucher-limit.md)
+- [2026-08-22 — 백업이 없었다 · D1 용량은 사실 남아돌았다](handoff/2026-08-22-backup-and-d1-capacity.md)
 **2026-08-20**
 - [2026-08-20 — 매장 운영 주체 모델 2단계 (`seller_operators`)](handoff/2026-08-20-seller-operators-stage2.md)
 - [2026-08-20 — 셀러 대시보드 V2 1차 구현 (대표 일괄 지시 "빠짐없이 모두 + 최종 판정")](handoff/2026-08-20-seller-dashboard-v2.md)
-_총 164건 · 최신순 · 이 목록은 자동 생성된다._
-
-**2026-08-22**
-- [2026-08-22 — 사진/크롤링 보호 · 어드민 즐겨찾기 · 이용권 1인당 한도 · 홈 섹션 0-RTT](handoff/2026-08-22-protection-prefs-voucher-limit.md)
 **2026-08-19**
 - [2026-08-19 — 그루폰 개편 ④ 라이브 결함 일괄 + 상세 구조 통일 + PC 친화성](handoff/2026-08-19-groupon-sweep-detail-map-pc.md)
 - [2026-08-19 — 그루폰식 개편 ③ 히어로 통합형 · 이용권 상세 1안 · /map PC 컨트롤 이동](handoff/2026-08-19-groupon-hero-detail-map.md)
