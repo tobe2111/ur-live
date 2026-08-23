@@ -72,6 +72,27 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '예열 cron 이 다시 서브리퀘스트 예산을 넘는다(뒤쪽이 조용히 실패)',
+    file: 'src/worker/cron/cache-prewarm.ts',
+    find: 'export const DYNAMIC_PREWARM_BUDGET = 12;',
+    replace: 'export const DYNAMIC_PREWARM_BUDGET = 40;',
+    test: 'src/tests/unit/cache-prewarm-budget.test.ts',
+    why:
+      '무료 플랜 서브리퀘스트 상한은 인보케이션당 50 이고 fetch 뿐 아니라 KV·D1 도 센다. 초과분은 ' +
+      '`catch { dynFailed++ }` 가 삼켜 **에러 없이** 실패한다 — 그래서 몇 달간 아무도 몰랐고, 실제로 ' +
+      '`CACHE_KV` 의 `ssr:` 키가 0개였다(전역 워밍이 한 번도 기록된 적 없음). 리뷰로는 못 잡는다.',
+  },
+  {
+    name: '예열 회전이 사라져 뒷부분이 영영 안 데워진다',
+    file: 'src/worker/cron/cache-prewarm.ts',
+    find: '  return [...items.slice(start), ...items.slice(0, start)].slice(0, budget);',
+    replace: '  void start; return [...items].slice(0, budget);',
+    test: 'src/tests/unit/cache-prewarm-budget.test.ts',
+    why:
+      '예산 안으로 줄일 때 앞에서 자르면 목록 뒤쪽(큐레이터 링크샵 등)은 **한 번도** 예열되지 않는다. ' +
+      '회전이라 조용히 사라져도 로그가 같아 보인다 — 회차마다 다른 구간을 쏘는지 테스트가 지킨다.',
+  },
+  {
     name: '히어로가 다시 단일 폭이 된다(레티나에서 0.43배로 흐려짐)',
     file: 'src/components/home/HomeHeroDefault.tsx',
     find: 'srcSet={cfSrcSet(photoSrc, 1024)}',

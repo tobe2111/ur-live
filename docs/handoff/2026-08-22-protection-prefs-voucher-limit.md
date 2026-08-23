@@ -206,3 +206,88 @@ HTML                 34KB
 - **PC(1024px+) 첫 화면**은 안 쟀다 — 모바일만 측정했다. `PcHomePage` 경로는 별도 확인 필요.
 - `index.html` 의 kakao preconnect 주석이 *"모바일 = RestaurantMapPage"* 를 근거로 삼는데
   **그 전제가 뒤집혔다**(이제 피드). 지도 SDK preconnect 가 홈에서 불필요해졌을 수 있다 — 작지만 실재.
+
+---
+
+# 🔍 2026-08-23 이어서 — 화질 신고 + 예열 cron 예산 초과 (대표 "이미지 화질이 깨지는 문제는? 다른 곳 더 최적화할 곳 봐줘")
+
+## ① 화질 — 진짜 결함은 **히어로 한 곳**뿐이었다 (`72a3ebe`)
+
+```
+PC 히어로: 표시 1,037px × DPR2 = 필요 2,074px  →  요청 width=900  (0.43배)
+카드:      필요 800  →  실제 800×449                                 (정상)
+상세:      필요 512  →  512                                          (정상)
+```
+
+⚠️ **리사이저는 정상이다** — 요청한 폭을 그대로 준다(`width=1200` → `1080×607` 실측).
+   **우리가 작게 요청한 것**이 원인이라 `quality` 를 올려도 안 고쳐진다.
+
+수정: 단일 폭 → `cfSrcSet(photoSrc, 1024)`(1x 1024 / 2x 2048 / 3x 3072 중 브라우저가 한 장) +
+폴백 `src` 900→1280, quality 72→76. `loading="eager"`·`fetchPriority="high"` 불변.
+
+### 🩸 `naturalWidth` 를 믿고 **두 번** 오진했다
+
+카드도 흐리다고 두 번 보고했는데 틀렸다. 페이지 안 `<img>.naturalWidth` 가 400 이었지만
+**같은 URL 을 독립 `new Image()` 로 로드하면 800×449** — Chrome 이 AVIF 를 메모리 절약을 위해
+**축소 디코드**한 값이었다. ⇒ 화질 판정은 반드시 `currentSrc` 를 **독립 로드**해서 잴 것.
+
+## ② 예열 cron 이 서브리퀘스트 예산을 **76+/50** 으로 넘고 있었다
+
+라이브 실측에서 시작했다:
+
+```
+/vouchers  x-ssr-status: VOUCHERS:self-fetch-hit   server-timing: edge;dur=4, kv;dur=128, self;dur=30
+/browse    x-ssr-status: BROWSE:self-fetch-hit     server-timing: edge;dur=2, kv;dur=145, self;dur=25
+```
+
+**KV 를 128~145ms 지불하고 100% miss** 하는데, 그게 대체하려던 self-fetch 는 25~30ms 다.
+CF API 로 확인하니 `CACHE_KV`(=`ur-cashe` 25aef979…) 의 **`ssr:` 키가 0개** — 2026-07-12 에 넣은
+전역 워밍이 **한 번도 기록된 적이 없다**.
+
+원인: 무료 플랜 서브리퀘스트 상한은 **인보케이션당 50** 이고 `fetch` 뿐 아니라 **KV·D1 도 센다.**
+```
+normalize D1 3 + HOT_PATHS 23 + KV put ≤4 + 도매 4 + 동적 D1 3 + 동적 fetch 40  =  77
+```
+소스 주석은 *"HOT 13 + dynamic 20 = 33 안전"* 이라고 적혀 있었다 — **2026-06-04 에 셀러당 sub-data 를
+한 줄 더 넣고 큐레이터 10개가 붙어 두 배가 됐는데 주석만 그대로**였다. 초과분은
+`catch { dynFailed++ }` 가 삼켜 **에러 없이** 실패한다. 그래서 몇 달간 아무도 몰랐다.
+
+**수정**: `/api/sections` 중복 1건 제거 + `rotateForBudget()` — 자르지 말고 **회전**(회차당 12개,
+5분×12슬롯이면 한 시간에 40개를 여러 번 돈다). 앞에서 자르면 뒤쪽(큐레이터 링크샵)이 **영영** 안 데워진다.
+가드: `cache-prewarm-budget.test.ts` 7건 + 주입 매니페스트 2건(되돌려-검증 4건 red 확인).
+
+## ③ 🔴 대표 판단 필요 — **무거운 */5 cron 두 개가 83~88분째 안 돌고 있다**
+
+```
+cache-prewarm         age 83분  ms 3658  stale=true     ← 가장 무거운 축
+group-buy-feed-cache  age 88분  ms 6263  stale=true
+(같은 시각 가벼운 */5 cron 13개는 age 0분)
+```
+가장 오래 걸리는 둘만 stale 이다. ②의 예산 초과가 원인일 가능성이 크고, 이번 수정으로 회복되는지
+**배포 후 판정**할 것. 회복 안 되면 그건 코드가 아니라 스케줄러/플랜 문제다(유료 전환 = 서브리퀘스트 1,000).
+
+## 판정 명령 (배포 후)
+
+```bash
+# 1) 히어로 화질 — srcSet 후보가 나가는지
+curl -s https://urdeal.kr/ | grep -o 'cdn-cgi/image/width=[0-9]*[^"]*' | sort -u | head
+
+# 2) KV 가 실제로 채워졌는지 (15분 표본화라 :00/:15/:30/:45 이후)
+#    → x-ssr-status 가 VOUCHERS:kv-hit 로 바뀌면 성공
+curl -sI https://urdeal.kr/vouchers | grep -i "x-ssr-status\|server-timing"
+
+# 3) cron 이 다시 도는지
+#    /api/admin/cron-heartbeats 에서 cache-prewarm 의 age_minutes < 10
+```
+
+## 이번에 틀렸던 판단 (다음 세션이 반복하지 말 것)
+
+1. **롤백된 트리의 파일로 최신 코드를 덮어썼다** — `/tmp` 에 보존해 둔 `HomeHeroDefault.tsx` 가
+   `loading="lazy"` 시절 것이라 `eager` 회귀를 만들었다. 가드 2개가 잡았다.
+   ⇒ **세션 재개 후에는 `git fetch` + `reset --hard origin/…` 이 먼저다. 보존본을 믿지 마라.**
+2. **캐시버스트 쿼리(`?cb=$RANDOM`)로 SSR 캐시를 쟀다** — 엣지 캐시 키가 달라져 전부 miss 로 보였고
+   슬롯 매처가 `!url.search` 를 요구하는 표면은 슬롯 자체가 안 잡혔다. **SSR 측정에 쿼리를 붙이지 마라.**
+3. **KV 네임스페이스를 이름으로 골랐다** — 계정에 `CACHE_KV` 라는 **동명의 다른 네임스페이스**가 있고
+   실제로 쓰는 것은 제목이 `ur-cashe` 인 25aef979… 다. `wrangler.toml` 주석이 이미 경고하고 있었다.
+4. **Pretendard CSS 가 FCP 를 막는 줄 알았다** — A/B(차단 vs 아님)로 재니 FCP 1208 ↔ 1232 로
+   **차이 없음**. 인라인화하려던 것을 접었다. **고치기 전에 A/B 로 재라.**

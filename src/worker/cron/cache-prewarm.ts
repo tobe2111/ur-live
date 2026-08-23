@@ -88,7 +88,9 @@ const HOT_PATHS: readonly string[] = [
   // 🛡️ 2026-05-27: VouchersPage 카테고리 칩 — 2번째 endpoint warm 유지.
   '/api/vouchers/categories',
   '/api/group-buy/live-ticker',
-  '/api/sections',
+  // 🚫 2026-08-23: 여기 있던 `/api/sections` 중복 제거 — 위(56행)에 이미 있다. 같은 URL 을
+  //   두 번 fetch 하면 예열 결과는 같고 **서브리퀘스트만 한 칸 더** 쓴다. 이 cron 은 상한(50)에
+  //   붙어 있어서 그 한 칸이 곧 뒤쪽 경로의 예열 실패다.
   // 🚫 2026-07-29: '/api/shorts' 제거 — 라이브 실측 404(쇼츠도 중단). 위 streams 와 같은 이유.
   '/api/currency/rates',
   // 📝 2026-07-01: 블로그 공개 목록 — 이 fetch 가 maybeSyncBlogSeed() 를 트리거해 배포 후
@@ -122,7 +124,37 @@ const SSR_KV_PATHS: readonly string[] = [
   //   둘 다 404 라 `if (res.ok)` 를 통과한 적이 없다(KV 기록 0). 남은 4키가 실제로 쓰이는 슬롯이다.
   '/api/blog/public?limit=100',                                    // BLOG
 ];
-const SSR_KV_TTL_S = 1800; // 15분 표본화 × TTL 30분 — 항상 커버(최대 stale ~30분, edge 900s 와 동급 수준)
+const SSR_KV_TTL_S = 1800; // 15분 표본화 × TTL 30분 — 항상 커버(최대 stale ~30분, edge 900s 와 동급)
+
+/**
+ * 🧮 동적 예열 1회분 상한 (2026-08-23 — 라이브 실측으로 규명한 **예산 초과** 수리).
+ *
+ * 무료 플랜의 서브리퀘스트 상한은 **인보케이션당 50** 이고 `fetch` 뿐 아니라 **KV·D1 도 포함**된다.
+ * 이 cron 의 실제 소비는 아래와 같아 오래전부터 상한을 넘고 있었다:
+ *
+ *   normalize D1 3 + HOT_PATHS 22 + KV put ≤4 + 도매 4 + 동적 D1 3 = 36
+ *   → 동적 fetch 에 남는 몫은 **14** 인데 실제로는 **40개**(셀러 10×2 + 상품 10 + 큐레이터 10)를 쐈다.
+ *
+ * ⚠️ 아래 주석이 "dynamic 20" 이라고 적어 둔 것은 **낡았다** — 2026-06-04 에 셀러당 sub-data 를
+ *    한 줄 더 넣고 큐레이터 10개가 붙으면서 두 배가 됐는데 주석만 그대로였다. 그래서 아무도
+ *    예산 초과를 눈치채지 못했다(초과분은 조용히 실패한다 — `catch { dynFailed++ }`).
+ *
+ * 🩸 그 결과가 실제로 관측된다: `CACHE_KV`(ur-cashe) 의 `ssr:` 키가 **0개**다. 즉 2026-07-12 에
+ *    넣은 전역 워밍은 **한 번도 기록된 적이 없고**, 읽기 쪽만 살아서 `/vouchers` `kv;dur=128ms`
+ *    `/browse` `kv;dur=145ms` 를 **100% miss 로 지불**하고 있었다(self-fetch 는 25~30ms 다).
+ *
+ * 자르는 대신 **회전**시킨다 — 상한을 넘겨 매번 같은 뒷부분이 영영 안 데워지는 것보다,
+ * 매 회차 다른 12개를 데워 5분 × 12슬롯 = 한 시간에 전체를 여러 번 도는 편이 낫다.
+ */
+export const DYNAMIC_PREWARM_BUDGET = 12;
+
+/** 회전 창 — 5분 cron 이므로 슬롯은 0..11. 순수함수(테스트가 이 계약을 고정한다). */
+export function rotateForBudget<T>(items: readonly T[], minute: number, budget = DYNAMIC_PREWARM_BUDGET): T[] {
+  if (items.length <= budget) return [...items];
+  const slot = Math.floor(((minute % 60) + 60) % 60 / 5); // 0..11
+  const start = (slot * budget) % items.length;
+  return [...items.slice(start), ...items.slice(0, start)].slice(0, budget);
+}
 
 export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
   const baseUrl = env.FRONTEND_URL || 'https://urdeal.kr';
@@ -214,7 +246,10 @@ export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
   // 🛡️ 2026-05-27 (loading P0): 인기 셀러 + 인기 상품 detail dynamic prewarm.
   //   메인/카테고리 페이지에서 가장 많이 클릭되는 detail / 셀러 페이지 미리 채움.
   //   첫 사용자도 SSR inject hit 보장 → 0 RTT first paint.
-  //   sub-request 한도 50/invocation 안전 (HOT 13 + dynamic 20 = 33).
+  //   ⚠️ 2026-08-23 정정: 여기 있던 "HOT 13 + dynamic 20 = 33" 은 **틀린 계산이었다**.
+  //     HOT 은 22, 동적은 40(셀러 10×2 + 상품 10 + 큐레이터 10)이고 KV·D1 도 서브리퀘스트다.
+  //     실제 소비는 76 이상 — 상한 50 을 한참 넘겨 뒤쪽이 매번 조용히 실패하고 있었다.
+  //     이제 `rotateForBudget` 이 회차당 12개만 쏘고 회전한다(위 상수 주석 참조).
   if (env.DB) {
     try {
       // Top 10 인기 셀러 (recent 30일 매출 기준 — 없으면 sellers.id 최신순 fallback)
@@ -250,9 +285,12 @@ export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
         if (c.handle) dynamicPaths.push(`/api/curator/${c.handle}`)
       }
 
+      // 🧮 2026-08-23: 서브리퀘스트 예산 안으로 — 자르지 말고 회전(위 DYNAMIC_PREWARM_BUDGET 주석).
+      const dynamicThisRun = rotateForBudget(dynamicPaths, new Date().getMinutes())
+
       let dynSuccess = 0, dynFailed = 0
       await Promise.all(
-        dynamicPaths.map(async (path) => {
+        dynamicThisRun.map(async (path) => {
           try {
             const r = await fetch(`${baseUrl}${path}`, {
               method: 'GET',
@@ -262,8 +300,8 @@ export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
           } catch { dynFailed++ }
         })
       )
-      if (dynamicPaths.length > 0) {
-        logInfo(`[cron:cache-prewarm] dynamic warmed ${dynSuccess}/${dynamicPaths.length} (sellers + products detail)`)
+      if (dynamicThisRun.length > 0) {
+        logInfo(`[cron:cache-prewarm] dynamic warmed ${dynSuccess}/${dynamicThisRun.length} of ${dynamicPaths.length} (rotating window)`)
       }
     } catch (e) {
       logError('[cron:cache-prewarm] dynamic prewarm failed', { error: String(e) })
