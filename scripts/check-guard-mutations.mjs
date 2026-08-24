@@ -72,6 +72,27 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '홈 색면이 다시 리터럴 hex 로 흩어진다(페이지와 히어로가 갈림)',
+    file: 'src/pages/pc-home/PcHomePage.tsx',
+    find: '<div className="bg-[var(--home-field)] min-h-[100dvh]">',
+    replace: '<div className="bg-[#1A2C42] min-h-[100dvh]">',
+    test: 'src/tests/unit/home-color-field.test.ts',
+    why:
+      '색면은 페이지 전체와 히어로 두 군데서 그려진다. 두 값이 다르면 **이음매가 그대로 보이는데** ' +
+      '한쪽만 고쳐도 빌드는 통과하고 테스트도 없으면 조용히 어긋난다. 2026-08-23 차콜 전환 때 ' +
+      '토큰 하나로 묶었다.',
+  },
+  {
+    name: '어드민 배너 안내가 다시 손으로 적은 규격 문장이 된다',
+    file: 'src/pages/AdminBannersPage.tsx',
+    find: 'const spec = BANNER_SLOT_SPECS[formData.banner_slot as BannerSlot]',
+    replace: 'const spec = { recommendedWidth: 1600, recommendedHeight: 500, renderedNote: \'\', notes: [] } as never',
+    test: 'src/tests/unit/banner-slot-specs.test.ts',
+    why:
+      '2026-08-19 히어로 개편 때 안내만 옛 값으로 남아 "1600×500 / 500KB / dots / 그라디언트 4종" 이 ' +
+      '전부 사실과 달랐다. 틀린 안내는 사진 올리는 사람을 헛수고시키고 **코드 리뷰로는 안 걸린다**.',
+  },
+  {
     name: '🏢 업체 판정이 리드 판정보다 뒤로 밀린다(업체가 새 DB로 안 가고 옛 DB로 샌다)',
     file: 'src/shared/ads/leads-db.ts',
     find: "    (touchesAdsCompanyTable(sql) ? 'company' : touchesAdsLeadsTable(sql) ? 'ads' : 'main')",
@@ -148,7 +169,7 @@ const MUTATIONS = [
   {
     name: '히어로가 다시 단일 폭이 된다(레티나에서 0.43배로 흐려짐)',
     file: 'src/components/home/HomeHeroDefault.tsx',
-    find: 'srcSet={cfSrcSet(photoSrc, 1024)}',
+    find: 'srcSet={cfSrcSet(photoSrc, BANNER_SLOT_SPECS.hero.srcSetBase!)}',
     replace: '',
     test: 'src/tests/unit/hero-image-resolution.test.ts',
     why:

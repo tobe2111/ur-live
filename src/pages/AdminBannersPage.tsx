@@ -10,7 +10,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import BannerMediaUpload from './admin/banners/BannerMediaUpload'
 // 🏠 2026-08-04: 배너 **자리**(히어로/중간/와이드) + **영상 배경**. 자리 종류는 SSOT 에서만 온다.
 //   🔴 '노출 안 함'(null)이 기본 상태다 — 자리를 고른 배너만 홈에 뜬다.
-import { BANNER_SLOTS, BANNER_SLOT_LABELS, NEW_BANNER_SLOT, type BannerSlot } from '@/shared/constants/home-showcase'
+import { BANNER_SLOTS, BANNER_SLOT_LABELS, BANNER_SLOT_SPECS, BANNER_MAX_UPLOAD_MB, NEW_BANNER_SLOT, type BannerSlot } from '@/shared/constants/home-showcase'
 
 interface Banner {
   id: number
@@ -203,19 +203,39 @@ export default function AdminBannersPage() {
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.banners.k017', { defaultValue: '이미지 URL *' })}</label>
               <BannerMediaUpload kind="image" value={formData.image_url} onChange={url => setFormData({ ...formData, image_url: url })} />
-              <div className="mt-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                <p className="text-xs font-semibold text-blue-700 mb-1.5">📐 권장 이미지 규격 (메인 hero 배너)</p>
-                <ul className="space-y-1 text-xs text-blue-600">
-                  <li><strong>⭐ 권장 사이즈:</strong> 1600 × 500 px (16:5) — 모바일/PC 모두 자연</li>
-                  <li>대체 사이즈: 1200 × 420 px (≈2.86:1)</li>
-                  <li><strong>안전영역:</strong> 이미지 중앙 16:7 (1120×490) 안에 핵심 텍스트/로고</li>
-                  <li>화면 적용 aspect: 모바일 16:7 / sm 21:6 / PC 28:5 (max-h 280px)</li>
-                  <li><strong>최대 용량:</strong> 500KB 이하 (큰 이미지 = 페이지 느려짐)</li>
-                  <li><strong>형식:</strong> WebP &gt; PNG &gt; JPEG</li>
-                </ul>
-                <p className="text-xs text-blue-500 mt-1.5">※ 여러 배너 등록 시 사용자가 dots 클릭으로 전환 / 자동 슬라이드 X</p>
-                <p className="text-xs text-blue-500 mt-0.5">※ image_url 없이 등록 시 코드 fallback 그라디언트 (4종) 사용</p>
-              </div>
+              {/* 📐 규격 안내 — 문장이 아니라 **렌더가 쓰는 상수**(BANNER_SLOT_SPECS)에서 나온다.
+                  2026-08-23: 이전엔 손으로 적은 6줄이었고 히어로 개편(08-19) 때 안내만 옛 값으로 남아
+                  "1600×500 / 최대 500KB / dots 전환 / 그라디언트 4종" 이 전부 사실과 달랐다.
+                  틀린 안내는 사진 올리는 사람을 헛수고시키고, 코드 리뷰로는 안 걸린다. */}
+              {formData.banner_slot ? (() => {
+                const spec = BANNER_SLOT_SPECS[formData.banner_slot as BannerSlot]
+                return (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                    <p className="text-xs font-semibold text-blue-700 mb-1.5">
+                      📐 {BANNER_SLOT_LABELS[formData.banner_slot as BannerSlot]} — 권장 규격
+                    </p>
+                    <ul className="space-y-1 text-xs text-blue-600">
+                      <li>
+                        <strong>⭐ 원본 최소:</strong> {spec.recommendedWidth.toLocaleString()} × {spec.recommendedHeight.toLocaleString()} px
+                        <span className="text-blue-500"> — 이보다 작으면 확대가 안 돼 흐립니다</span>
+                      </li>
+                      <li><strong>실제 표시:</strong> {spec.renderedNote}</li>
+                      <li>
+                        <strong>용량:</strong> {BANNER_MAX_UPLOAD_MB}MB 이하
+                        <span className="text-blue-500"> — 작게 줄이지 마세요. 화면 크기에 맞춰 자동 변환되므로 <strong>원본이 커야 선명</strong>합니다</span>
+                      </li>
+                      <li><strong>형식:</strong> WebP &gt; PNG &gt; JPEG (사진은 WebP/JPEG 권장)</li>
+                    </ul>
+                    {spec.notes.map((n, i) => (
+                      <p key={i} className="text-xs text-blue-500 mt-1.5">※ {n}</p>
+                    ))}
+                  </div>
+                )
+              })() : (
+                <p className="mt-2 text-xs text-gray-400">
+                  위에서 자리를 고르면 그 자리에 맞는 권장 규격이 표시됩니다.
+                </p>
+              )}
               {formData.image_url && <img src={formData.image_url} alt={t('admin.banners.k029', { defaultValue: "미리보기" })} className="mt-2 w-full max-w-sm aspect-video object-cover rounded-lg" loading="lazy" />}
             </div>
             {/* 🎬 영상 배경 — 히어로에서만 쓴다. 비워두면 이미지가 배경. */}

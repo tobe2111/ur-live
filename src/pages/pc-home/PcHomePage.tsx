@@ -83,7 +83,7 @@ export default function PcHomePage() {
     /* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면): PC 메인 배경을 브랜드 잉크(#1A2C42)로 덮고
        콘텐츠는 흰 패널로 띄운다. 그루폰이 초록으로 하는 것을 우리 딥네이비로.
        ⚠️ PC 메인 한정(대표 지시) — 다른 소비자 페이지는 흰 배경 그대로. */
-    <div className="bg-[#1A2C42] min-h-[100dvh]">
+    <div className="bg-[var(--home-field)] min-h-[100dvh]">
       <SEO
         title="유어딜 — 동네 이용권·공동구매·교환권을 할인가로"
         description="우리 동네 이용권·동네딜·교환권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요."
