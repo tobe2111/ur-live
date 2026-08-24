@@ -535,8 +535,8 @@ canvas {
   {
     name: '🚧 차단 관측을 flush 하지 않는다(회차가 끝나면 증거가 사라진다)',
     file: 'src/features/marketing/api/webkr-collect.ts',
-    find: '  await flushOpenapiBlock(DB, Date.now())',
-    replace: '  void flushOpenapiBlock;',
+    find: '  await flushOpenapiBlock(DB, Date.now(), ',
+    replace: '  void flushOpenapiBlock; void (',
     test: 'src/tests/unit/ads-naver-openapi-block.test.ts',
     why:
       '모듈 스코프 카운터는 인보케이션이 끝나면 소멸한다. 일별 누적을 안 남기면 ' +
@@ -572,6 +572,97 @@ canvas {
     why:
       '버전 게이트가 완료 상태면 platform_settings 조회 1회로 끝난다 — 에러 없이 아무 일도 안 일어난다. ' +
       '이 레포가 GUIDE/BLOG 시드에서 두 번 겪은 무음 스킵과 정확히 같은 구조다.',
+  },
+  {
+    name: '🎯 증거 부족 업종도 은퇴시킨다(갓 넣은 업종이 태어나자마자 죽는다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: '  if (r.tried < SUBCAT_EVIDENCE_MIN) return false',
+    replace: '  if (false) return false',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      'webkr 리드는 발굴 시점에 이메일이 없다 — 크롤이 나중에 붙인다. 증거 게이트가 없으면 ' +
+      '새 업종이 무조건 0%로 찍혀 즉시 은퇴하고, 은퇴하면 더 수집이 안 되니 증거도 영영 안 갱신된다. ' +
+      '우리 백로그를 업종 탓으로 돌리는 구조(influencer-keyword-yield 헤더가 경고하는 바로 그것).',
+  },
+  {
+    name: '🎯 탐침 회차가 사라진다(은퇴가 영구 배제로 굳는다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: '  if (!blob || roundIndex % SUBCAT_PROBE_EVERY === 0) return new Set()',
+    replace: '  if (!blob) return new Set()',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '은퇴한 업종은 더 이상 수집되지 않으므로 증거가 갱신되지 않는다. 주기적 통과가 없으면 ' +
+      '판정이 틀렸어도 스스로 뒤집힐 수 없다 — 그건 자동 조율이 아니라 조용한 축 삭제다.',
+  },
+  {
+    name: '🎯 미실행 키워드까지 은퇴 대상에 든다(새 지역을 시험할 기회가 사라진다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: '  pool.forEach((k, i) => { if (!k.fresh && k.subcategory && suppress.has(k.subcategory)) idx.add(i) })',
+    replace: '  pool.forEach((k, i) => { if (k.subcategory && suppress.has(k.subcategory)) idx.add(i) })',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '한 번도 안 돈 키워드는 증거가 없다. 같은 업종의 기존 성적으로 막으면 탐색이 통째로 죽고, ' +
+      '그 업종은 영원히 옛 지역의 성적으로만 평가된다.',
+  },
+  {
+    name: '🎯 회전 몫이 전부 막혀도 억제한다(그 축이 통째로 멈춘다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: '  return idx.size >= rotationCount ? new Set() : idx',
+    replace: '  return idx',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '전부 저조하면 빈 회차가 된다 — 고칠 것은 업종이지 수집이 아니다. 이 레포는 같은 클래스를 ' +
+      '이미 겪었다(집중 축 커서 동결 → 커버리지 붕괴).',
+  },
+  {
+    name: '🎯 수율 분모가 전체 행이 된다(새 업종이 0%로 낙인)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: "             SUM(CASE WHEN enrich_checked_at IS NOT NULL THEN 1 ELSE 0 END) AS tried,",
+    replace: '             COUNT(*) AS tried,',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '분모가 이 설계의 핵심이다. 크롤이 안 가 본 행까지 세면 갓 넣은 업종은 구조적으로 0%가 되어 ' +
+      '증거 게이트를 통과하는 순간 은퇴한다.',
+  },
+  {
+    name: '🎯 승격 문턱이 은퇴 문턱과 같아진다(경계 업종이 진동한다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: 'export const SUBCAT_PROMOTE_RATE = 0.25',
+    replace: 'export const SUBCAT_PROMOTE_RATE = 0.15',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '이력현상(hysteresis)이 없으면 경계에 있는 업종이 승격(수천 행 삽입)과 은퇴를 반복한다. ' +
+      '승격은 되돌리기가 비싸므로 더 보수적이어야 한다.',
+  },
+  {
+    name: '🎯 건너뛴 자리를 커서가 소비하지 않는다(회전이 제자리에 갇힌다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '      usedKw.push(r.kw) // 건너뛴 자리도 회전에서는 소비된 것 — 위 주석 참조\n      if (r.skip) { skipped.push(r.kw.keyword); continue }',
+    replace: '      if (r.skip) { skipped.push(r.kw.keyword); continue }\n      usedKw.push(r.kw)',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '2026-08-23 에 실제로 겪은 사고와 같은 클래스 — 읽은 자리를 커서가 안 넘기면 다음 회차가 ' +
+      '같은 자리를 또 읽는다. 에러가 없고 백로그만 안 줄어 원인 규명이 가장 어렵다.',
+  },
+  {
+    name: '🎯 건너뛴 키워드에 0건 부기를 남긴다(자기 판정을 자기가 정당화한다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '      if (r.skip) { skipped.push(r.kw.keyword); continue }',
+    replace: '      if (r.skip) { skipped.push(r.kw.keyword); perKeyword.set(r.kw.id, 0) }',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '쏘지도 않고 0건을 기록하면 "재 봤더니 없더라"로 읽힌다. 은퇴가 스스로를 뒷받침하는 증거를 ' +
+      '만들어 내면 탐침 회차가 있어도 뒤집히지 않는다.',
+  },
+  {
+    name: '🚧 회차 간 백오프가 사라진다(막힌 채 매 회차 헛쏜다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '  if (isBackedOff(blockBlob, Date.now())) {',
+    replace: '  if (false) {',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '모듈 스코프는 인보케이션마다 초기화된다 — 저장된 시각이 없으면 다음 회차가 아무것도 기억 못 하고 ' +
+      '다시 쏜다. 실패 응답도 쿼터를 먹으므로 막힘이 길수록 손해가 누적된다.',
   },
   {
     name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
