@@ -72,6 +72,27 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🏢 업체 판정이 리드 판정보다 뒤로 밀린다(업체가 새 DB로 안 가고 옛 DB로 샌다)',
+    file: 'src/shared/ads/leads-db.ts',
+    find: "    (touchesAdsCompanyTable(sql) ? 'company' : touchesAdsLeadsTable(sql) ? 'ads' : 'main')",
+    replace: "    (touchesAdsLeadsTable(sql) ? 'ads' : touchesAdsCompanyTable(sql) ? 'company' : 'main')",
+    test: 'src/tests/unit/ads-company-db.test.ts',
+    why:
+      '업체 테이블은 ADS_LEADS_TABLES 에도 들어 있다 — 리드를 먼저 보면 **전부 옛 DB로 샌다.** ' +
+      '그런데 화면은 멀쩡히 뜬다(옛 DB에도 아직 데이터가 있으므로). 옛 테이블을 정리한 뒤에야 ' +
+      '0건으로 드러나고, 그때는 원인이 이 한 줄이라는 걸 아무도 모른다.',
+  },
+  {
+    name: '🏢 ADS_COMPANY_DB 미바인딩 폴백이 사라진다(배선 선배포에 업체 화면이 통째로 0건)',
+    file: 'src/shared/ads/leads-db.ts',
+    find: "  const company = companyDb && typeof companyDb.prepare === 'function' ? companyDb : ads",
+    replace: '  const company = companyDb as D1Like',
+    test: 'src/tests/unit/ads-company-db.test.ts',
+    why:
+      '바인딩은 대시보드 소관이라 코드보다 늦게 붙을 수 있다. 폴백이 없으면 그 사이 업체 쿼리가 ' +
+      '`undefined.prepare` 로 죽는다 — 배포는 초록불인데 업체 수집·화면만 조용히 멎는다.',
+  },
+  {
     name: '🗄️ 백업이 다시 시간당 1회로 줄어든다(전체 스냅샷 60시간 → 일 1회 불가)',
     file: 'src/worker/scheduled.ts',
     find: '[5, 20, 35, 50].some((m) => slotDue(event.scheduledTime, { minute: m }))',
