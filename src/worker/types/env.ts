@@ -20,6 +20,9 @@ export interface Env {
    *   (`/api/admin/partner-pool` 등)은 메인 워커에서 이 테이블들을 읽는다.
    */
   ADS_DB?: D1Database;
+  // 🏢 2026-08-23: 업체 계열(ad_company_leads·ad_company_keywords) 전용. 유어애즈 DB 가 94% 에
+  //    닿아 한 칸 더 나눴다. 미바인딩이면 라우터가 ADS_DB 로 폴백한다(`shared/ads/leads-db.ts`).
+  ADS_COMPANY_DB?: D1Database;
 
   // ---- KV Namespaces ----
   RATE_LIMIT_KV?: KVNamespace;

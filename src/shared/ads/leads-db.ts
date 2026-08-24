@@ -57,14 +57,35 @@ export const ADS_LEADS_TABLES = [
 export type AdsLeadsTable = (typeof ADS_LEADS_TABLES)[number]
 
 /**
+ * 🏢 **업체 계열은 한 칸 더 나간다** (2026-08-23) — `ADS_COMPANY_DB`.
+ *
+ * 유어애즈 DB 가 500MB 한도의 94% 에 닿아, 본진에서 겪은 것과 같은 정지가 예고됐다.
+ * 실측으로 회수량이 가장 큰 조합을 골랐다 — 업체 리드는 **데이터 50MB 인데 358,185행**이라
+ * 인덱스 항목이 압도적이다(인플루언서는 데이터가 크지만 행이 137,385로 적다).
+ *
+ * ⚠️ **여기 둘은 반드시 같이 움직인다** — 갈라놓으면 `company-discovery` 의 키워드↔리드 흐름이
+ *    두 DB에 걸친다. (JOIN·혼합 batch 는 실측 0건이라 다른 조합도 안전하지만, 이 쌍만은 묶는다.)
+ *
+ * 🔁 **미바인딩이면 `ADS_DB` 로 폴백**한다 — 배선을 먼저 배포해도 조용히 깨지지 않는다.
+ *    (반대로 이관 전에 바인딩만 켜면 빈 DB를 읽는다 — 그래서 **이관 → 검증 → 배선** 순서다.)
+ */
+export const ADS_COMPANY_TABLES = ['ad_company_leads', 'ad_company_keywords'] as const
+
+/**
  * ⚠️ **여기 없는 `ad_*` 는 옮기지 않는다.** 특히 `ad_slots`·`ad_bids`·`ad_accounts` 는
  * 유어딜 셀러의 광고슬롯 판매 기능이라 `sellers` 와 조인한다 — 옮기면 그 조인이 깨진다.
  */
 const TABLE_RX = new RegExp(`\\b(?:${ADS_LEADS_TABLES.join('|')})\\b`)
+const COMPANY_RX = new RegExp(`\\b(?:${ADS_COMPANY_TABLES.join('|')})\\b`)
 
 /** 이 SQL 이 이사 대상 테이블을 건드리는가. SELECT·INSERT·UPDATE·DELETE·DDL 전부 포함. */
 export function touchesAdsLeadsTable(sql: string): boolean {
   return TABLE_RX.test(sql)
+}
+
+/** 이 SQL 이 **업체 계열**을 건드리는가(`ADS_COMPANY_DB` 대상). */
+export function touchesAdsCompanyTable(sql: string): boolean {
+  return COMPANY_RX.test(sql)
 }
 
 /** 최소 D1 표면 — `@cloudflare/workers-types` 에 의존하지 않고 구조적으로만 맞춘다. */
@@ -74,20 +95,23 @@ interface D1Like {
   exec?(sql: string): Promise<unknown>
   dump?(): Promise<unknown>
 }
-interface EnvLike { DB: unknown; ADS_DB?: unknown }
+interface EnvLike { DB: unknown; ADS_DB?: unknown; ADS_COMPANY_DB?: unknown }
 
 /** batch() 가 원래 문장을 되찾을 수 있도록 래퍼에 심어 두는 표식. */
 const RAW = Symbol.for('ur.adsLeadsDb.raw')
 const SIDE = Symbol.for('ur.adsLeadsDb.side')
 
-function wrapStatement(stmt: Record<string, unknown>, leads: boolean): unknown {
+/** 어느 DB로 갔는지 — batch 혼합 검사가 **세 갈래**를 구분해야 하므로 불리언이 아니다. */
+type Side = 'main' | 'ads' | 'company'
+
+function wrapStatement(stmt: Record<string, unknown>, side: Side): unknown {
   // 프록시 대신 명시적 위임 — D1PreparedStatement 의 표면이 좁고(bind/first/all/run/raw)
   // 프록시는 `this` 바인딩이 어긋날 때 조용히 깨진다.
   const call = (name: string) => (...args: unknown[]) => (stmt[name] as (...a: unknown[]) => unknown).apply(stmt, args)
   return {
     [RAW]: stmt,
-    [SIDE]: leads,
-    bind: (...args: unknown[]) => wrapStatement((stmt.bind as (...a: unknown[]) => Record<string, unknown>).apply(stmt, args), leads),
+    [SIDE]: side,
+    bind: (...args: unknown[]) => wrapStatement((stmt.bind as (...a: unknown[]) => Record<string, unknown>).apply(stmt, args), side),
     first: call('first'),
     all: call('all'),
     run: call('run'),
@@ -103,21 +127,32 @@ export function adsLeadsDb<E extends EnvLike>(env: E): E['DB'] {
   const main = env.DB as D1Like
   const ads = env.ADS_DB as D1Like | undefined
   if (!ads || typeof ads.prepare !== 'function') return main as E['DB']
+  // 🏢 업체 전용 DB. 미바인딩이면 `ads` 로 폴백 — 배선을 먼저 배포해도 깨지지 않는다.
+  const companyDb = env.ADS_COMPANY_DB as D1Like | undefined
+  const company = companyDb && typeof companyDb.prepare === 'function' ? companyDb : ads
 
-  const pick = (sql: string): D1Like => (touchesAdsLeadsTable(sql) ? ads : main)
+  /** ⚠️ 업체 판정이 **먼저**다 — 업체 테이블은 리드 목록에도 들어 있어 순서가 뒤집히면 새 DB로 안 간다. */
+  const sideOf = (sql: string): Side =>
+    (touchesAdsCompanyTable(sql) ? 'company' : touchesAdsLeadsTable(sql) ? 'ads' : 'main')
+  const dbOf = (side: Side): D1Like => (side === 'company' ? company : side === 'ads' ? ads : main)
+  const pick = (sql: string): D1Like => dbOf(sideOf(sql))
 
   const router = {
     prepare(sql: string) {
-      const leads = touchesAdsLeadsTable(sql)
-      return wrapStatement((leads ? ads : main).prepare(sql) as Record<string, unknown>, leads)
+      const side = sideOf(sql)
+      return wrapStatement(dbOf(side).prepare(sql) as Record<string, unknown>, side)
     },
     async batch(stmts: unknown[]) {
-      const sides = new Set(stmts.map((s) => Boolean((s as Record<symbol, unknown>)?.[SIDE])))
-      if (sides.size > 1) {
-        // 두 DB에 걸친 batch 는 원자성이 없다 — 조용히 반쪽만 반영되느니 즉시 터뜨린다.
-        throw new Error('[adsLeadsDb] batch 가 리드 DB와 메인 DB를 섞었다 — 쿼리를 나눠야 한다')
+      const sides = stmts.map((s) => ((s as Record<symbol, unknown>)?.[SIDE] as Side) ?? 'main')
+      // ⚠️ 판정은 **이름(side)이 아니라 실제 DB 객체**로 한다. `ADS_COMPANY_DB` 미바인딩이면
+      //   company 와 ads 가 같은 DB 를 가리키므로 섞여도 안전한데, 이름으로 세면 그 창에서
+      //   멀쩡한 batch 를 터뜨린다(배선 선배포 = 수집 레인 정지). 폴백을 둔 의미가 사라진다.
+      const targets = new Set(sides.map(dbOf))
+      if (targets.size > 1) {
+        // 여러 DB에 걸친 batch 는 원자성이 없다 — 조용히 반쪽만 반영되느니 즉시 터뜨린다.
+        throw new Error(`[adsLeadsDb] batch 가 서로 다른 DB를 섞었다(${[...new Set(sides)].join('+')}) — 쿼리를 나눠야 한다`)
       }
-      const target = sides.has(true) ? ads : main
+      const target = [...targets][0] ?? main
       const raw = stmts.map((s) => (s as Record<symbol, unknown>)?.[RAW] ?? s)
       return (target.batch as (x: unknown[]) => Promise<unknown>)(raw)
     },

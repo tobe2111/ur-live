@@ -5494,12 +5494,14 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
+_총 171건 · 최신순 · 이 목록은 자동 생성된다._
 _총 170건 · 최신순 · 이 목록은 자동 생성된다._
 _총 169건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-23**
 - [2026-08-23 — 본진 D1 이 꽉 차서 쓰기가 멈췄다 · 중복 460MB 회수로 복구](handoff/2026-08-23-d1-full-outage-recovery.md)
 - [2026-08-23 — 백업 주기: 시간당 1회 → 4회 (전체 스냅샷 60시간 → 15시간)](handoff/2026-08-23-backup-cadence.md)
+- [2026-08-23 — 유어애즈 DB 2차 분리: 업체 계열 → `urads-company-db`](handoff/2026-08-23-ads-company-db-split.md)
 **2026-08-22**
 - [2026-08-22 — 심플 커미션 모델 + 제안 수락 다리 + 어드민 발송 큐 (셀러 V2 2단계)](handoff/2026-08-22-simple-commission-bridge.md)
 - [2026-08-22 — 사진/크롤링 보호 · 어드민 즐겨찾기 · 이용권 1인당 한도 · 홈 섹션 0-RTT](handoff/2026-08-22-protection-prefs-voucher-limit.md)
