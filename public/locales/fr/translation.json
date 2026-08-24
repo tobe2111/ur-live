@@ -2262,7 +2262,9 @@
     "mailOrderNumberPlaceholder": "ex. 2026-Seoul-01234",
     "mailOrderNumberHint": "Affiché publiquement dans les infos vendeur de votre linkshop",
     "primary": {
-      "addProductDesc": "Publier bons et achats groupés"
+      "addProductDesc": "Publier bons et achats groupés",
+      "voucherManageDesc": "Ventes et statut",
+      "findInfluencersDesc": "Envoyer des propositions"
     },
     "delegation": {
       "title": "Délégation d'agence",

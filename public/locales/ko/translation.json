@@ -2942,7 +2942,9 @@
     "mailOrderNumberPlaceholder": "예: 2026-서울강남-01234",
     "mailOrderNumberHint": "링크샵 판매자 정보에 공개 표시됩니다 (전자상거래법 표시 항목)",
     "primary": {
-      "addProductDesc": "이용권·공구 등록"
+      "addProductDesc": "이용권·공구 등록",
+      "voucherManageDesc": "판매·현황",
+      "findInfluencersDesc": "협업 제안 보내기"
     },
     "delegation": {
       "title": "매장 위임",
