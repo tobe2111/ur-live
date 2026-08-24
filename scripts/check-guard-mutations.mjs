@@ -749,6 +749,37 @@ canvas {
       '429 를 받은 키워드가 부기돼 위 사고가 그대로 재발한다.',
   },
   {
+    name: '🎯 company 레인이 은퇴를 무시한다(은퇴한 업종이 다른 문으로 들어온다)',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: '    if (!webBlocked && (kw.tier ?? 9) <= webTierMax && !outOfBudget(budget)) {',
+    replace: '    if ((kw.tier ?? 9) <= webTierMax && !outOfBudget(budget)) {',
+    test: 'src/tests/unit/company-lane-web-suppression.test.ts',
+    why:
+      '2026-08-24 3회차 점검에서 드러난 실제 누락 — 은퇴를 collect-webkr 에만 걸어 뒀는데 이 레인도 ' +
+      '같은 웹문서 검색으로 같은 source=webkr 행을 만든다. 수율 표가 두 레인의 행을 합쳐 세므로 ' +
+      '은퇴한 업종이 이쪽으로 계속 들어와 **자기 판정 근거를 스스로 갱신**한다(반쪽만 잠긴 상태).',
+  },
+  {
+    name: '🎯 company 레인이 수율 표를 안 읽는다(은퇴 집합이 늘 비어 있다)',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: '  const webSuppress = suppressedSubcats(parseSubcatYield(pick(SUBCAT_YIELD_KEY)), prev?.total_runs || 0)',
+    replace: '  const webSuppress = new Set()',
+    test: 'src/tests/unit/company-lane-web-suppression.test.ts',
+    why:
+      '표를 안 읽으면 판정 자체가 없다. 조용히 통과하는 형태라 화면에도 로그에도 티가 안 나고, ' +
+      'web_suppressed 가 늘 빈 배열이라 "저수율 업종이 없다"로 오독된다.',
+  },
+  {
+    name: '🎯 company 레인이 은퇴 시 레인 전체를 멈춘다(지도·카카오까지 죽는다)',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: '    if (webBlocked) webSkipped.push(kw.keyword)',
+    replace: '    if (webBlocked) { webSkipped.push(kw.keyword); continue }',
+    test: 'src/tests/unit/company-lane-web-suppression.test.ts',
+    why:
+      '수율 표는 source=webkr 만 센다 — 지역검색·카카오는 심판한 적이 없다. 통째로 막으면 ' +
+      '판정 근거가 없는 수집까지 죽고, 그 손실은 웹문서 절약분보다 크다.',
+  },
+  {
     name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
     file: 'src/features/agency/api/agency-sunset.ts',
     find: "    code: 'AGENCY_SIGNUP_CLOSED',",
