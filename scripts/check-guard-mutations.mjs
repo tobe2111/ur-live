@@ -523,6 +523,78 @@ canvas {
       'enrich 레인이 2026-07-28 에 정확히 이걸로 굶었다 — 크롤에 쓸 예산을 도장 찍는 데 썼다.',
   },
   {
+    name: '🚧 오픈API 차단(429/403) 게이트가 계측 뒤로 밀린다(막힌 채 쿼터만 태운다)',
+    file: 'src/features/marketing/api/webkr-search.ts',
+    find: '  if (naverOpenapiBlocked()) return null',
+    replace: '  // gate removed',
+    test: 'src/tests/unit/ads-naver-openapi-block.test.ts',
+    why:
+      '실패 응답도 네이버 쿼터를 먹는다. 게이트가 없으면 막힌 회차가 남은 조를 전부 헛쏘고, ' +
+      '호출부는 429 와 "결과 없음"을 구분하지 못해 수율 학습이 멀쩡한 키워드를 나쁘다고 배운다 ' +
+      '(naver-crawl-block 헤더가 기록한 오염 경로와 같은 모양).',
+  },
+  {
+    name: '🚧 laneFetch 가 응답 상태코드를 기록하지 않는다(차단이 관측 밖)',
+    file: 'src/features/marketing/api/webkr-search.ts',
+    find: '    noteOpenapiStatus(res.status)',
+    replace: '    void res;',
+    test: 'src/tests/unit/ads-naver-openapi-block.test.ts',
+    why:
+      '연속(streak)을 세는 유일한 입력이다. 안 기록하면 차단 판정이 영원히 거짓이고 ' +
+      '`ads_naver_openapi_block` 도 비어 있어 사람이 대조할 근거조차 없다.',
+  },
+  {
+    name: '🚧 webkr 회차 루프가 차단 상태를 안 본다(막힌 채 남은 조를 헛돈다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '!budget.limitHit && !naverOpenapiBlocked() &&',
+    replace: '!budget.limitHit &&',
+    test: 'src/tests/unit/ads-naver-openapi-block.test.ts',
+    why:
+      'laneFetch 가 null 을 주더라도 루프는 계속 돌아 그 회차 12 키워드가 전부 0건으로 기록된다. ' +
+      '수율 0 과 차단이 구분되지 않는 것이 이 클래스의 핵심 피해다.',
+  },
+  {
+    name: '🚧 차단 관측을 flush 하지 않는다(회차가 끝나면 증거가 사라진다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '  await flushOpenapiBlock(DB, Date.now())',
+    replace: '  void flushOpenapiBlock;',
+    test: 'src/tests/unit/ads-naver-openapi-block.test.ts',
+    why:
+      '모듈 스코프 카운터는 인보케이션이 끝나면 소멸한다. 일별 누적을 안 남기면 ' +
+      '"어제 몇 번 막혔나"를 사후에 알 방법이 전혀 없다(소프트 스로틀 판정의 유일한 근거이기도 하다).',
+  },
+  {
+    name: '🧭 저수율 업종이 전국 그리드에 섞인다(회전만 길어지고 발송 대상은 안 는다)',
+    file: 'src/features/marketing/api/company-keyword-grid.ts',
+    find: "  { kw: '외식업 컨설팅', category: '창업', subcategory: '창업 컨설팅', tier: 1 },",
+    replace: "  { kw: '주방설비 납품', category: '인테리어', subcategory: '주방설비', tier: 1 },",
+    test: 'src/tests/unit/company-keyword-grid-s4.test.ts',
+    why:
+      '실측 이메일 수율 — 창업 컨설팅 34.8% vs 주방설비 0% · 인테리어 0.5%(2,876행 중 14건). ' +
+      '이 레인은 사이트를 전제로 도는데 매장 생태계 업종은 사이트 보유율 자체가 낮다. ' +
+      'CLAUDE.md 가 못 박은 지표는 총계가 아니라 "제안 보낼 수 있는 리드 수" 다.',
+  },
+  {
+    name: '🧭 4단계가 배열 중간에 끼어든다(시드 이어받기가 0 으로 떨어진다)',
+    file: 'src/features/marketing/api/company-keyword-grid.ts',
+    find: "    ...S2_REGIONS.flatMap(r => S4_TRADES_LOCAL.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),\n  ]",
+    replace: "  ].concat(S2_REGIONS.flatMap(r => S4_TRADES_LOCAL.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier })))).sort((a, b) => a.keyword.localeCompare(b.keyword))",
+    test: 'src/tests/unit/company-keyword-grid-s4.test.ts',
+    why:
+      'seedPrefixHash 는 앞부분이 그대로일 때만 이어받는다. 재정렬하면 지문이 어긋나 0 으로 떨어지고 ' +
+      '회당 500행 × 10회 = 반나절 뒤에야 새 업종이 들어간다(앞 4,500행은 아무것도 안 바뀌는데).',
+  },
+  {
+    name: '🧭 시드 버전을 안 올린다(새 키워드가 기존 배포에 영영 안 들어간다)',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: 'const KEYWORD_SEED_VERSION = 5',
+    replace: 'const KEYWORD_SEED_VERSION = 4',
+    test: 'src/tests/unit/company-keyword-grid-s4.test.ts',
+    why:
+      '버전 게이트가 완료 상태면 platform_settings 조회 1회로 끝난다 — 에러 없이 아무 일도 안 일어난다. ' +
+      '이 레포가 GUIDE/BLOG 시드에서 두 번 겪은 무음 스킵과 정확히 같은 구조다.',
+  },
+  {
     name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
     file: 'src/features/agency/api/agency-sunset.ts',
     find: "    code: 'AGENCY_SIGNUP_CLOSED',",

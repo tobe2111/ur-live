@@ -18,7 +18,8 @@ const read = (p: string) => readFileSync(p, 'utf-8')
 const EDIT = 'src/pages/SellerProductEditPage.tsx'
 /** 이용권 입력 묶음은 2026-08-22 에 컴포넌트로 분리됐다(파일 크기 래칫). */
 const FIELDS = 'src/pages/seller-product-edit/VoucherFields.tsx'
-const NEW = 'src/pages/SellerMealVoucherNewPage.tsx'
+// 2026-08-23 위저드 리뉴얼: 카테고리 그리드는 2단계 스텝 컴포넌트로 이동했다.
+const NEW = 'src/pages/seller-meal-voucher/VoucherInfoStep.tsx'
 const SELLER_API = 'src/features/seller/api/seller-orders.routes.ts'
 const JOIN = 'src/features/group-buy/api/group-buy.routes.ts'
 

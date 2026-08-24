@@ -26,6 +26,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta'
 import { ntsValidateBusiness, ntsCheckStatus } from '@/worker/utils/nts-business-verify'
 import { canOperateStore, grantOperator, revokeOperator, isStoreOwner } from '../../../worker/utils/seller-operators'
+import { mergeStoreProfile, loadLatestProductCopy, saveStoreProfileAndPropagate } from '@/worker/utils/store-profile'
 import { parseSessionCookie } from '@/worker/utils/session'
 import { loadFeeRates } from '@/worker/utils/fee-resolver'
 
@@ -74,6 +75,159 @@ app.get('/fee-context', async (c) => {
     })
   } catch (err) {
     return safeError(c, err, '수수료 정보를 불러오지 못했습니다', '[seller-stores]')
+  }
+})
+
+// ── 이용권 임시저장(서버 드래프트) — 2026-08-23 대표 "임시저장도 돼야 해" 후속 승인 ─────────
+//   localStorage 드래프트의 서버 짝 — PC 에서 쓰다 폰에서 이어 쓴다. 셀러(좌석)당 1개.
+//   ⚠️ seller_meta 를 쓰지 않는 이유: getSellerMeta 는 그 셀러의 **모든** 키를 읽는다 —
+//   base64 이미지가 든 수백 KB 드래프트를 넣으면 fee-context 등 모든 meta 조회가 그걸 끌고 다닌다.
+let _draftEnsured = false
+async function ensureVoucherDraftTable(DB: D1Database) {
+  if (_draftEnsured) return
+  _draftEnsured = true
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS seller_voucher_drafts (
+      seller_id INTEGER PRIMARY KEY,
+      draft_json TEXT NOT NULL,
+      updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+    )`).run()
+  } catch { /* 이미 있으면 그만 — repair-schema 가 정식 등록 */ }
+}
+/** 드래프트 크기 상한 — 압축 업로드(≤300KB)의 base64(~400KB)까지 수용, 그 이상은 거절. */
+const DRAFT_MAX_BYTES = 900_000
+
+app.get('/voucher-draft', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
+    await ensureVoucherDraftTable(c.env.DB)
+    // updated_ms: epoch(ms) 로 내려 클라가 Date 파싱 없이 숫자 비교만 하게 한다(UTC 오해석 클래스 차단).
+    const row = await c.env.DB.prepare(
+      `SELECT draft_json, CAST(strftime('%s', updated_at) AS INTEGER) * 1000 AS updated_ms
+         FROM seller_voucher_drafts WHERE seller_id = ? LIMIT 1`
+    ).bind(sellerId).first<{ draft_json: string; updated_ms: number }>().catch(() => null)
+    if (!row) return c.json({ success: true, data: null })
+    let form: unknown = null
+    try { form = JSON.parse(row.draft_json) } catch { /* 깨진 드래프트는 없는 것 */ }
+    if (!form || typeof form !== 'object') return c.json({ success: true, data: null })
+    return c.json({ success: true, data: { form, updated_ms: Number(row.updated_ms) || 0 } })
+  } catch (err) {
+    return safeError(c, err, '임시저장을 불러오지 못했습니다', '[seller-stores]')
+  }
+})
+
+app.put('/voucher-draft', rateLimit({ action: 'voucher_draft_save', max: 120, windowSec: 3600 }), async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
+    const body = await c.req.json<{ form?: unknown }>().catch(() => ({} as { form?: unknown }))
+    if (!body.form || typeof body.form !== 'object') {
+      return c.json({ success: false, error: '저장할 내용이 없습니다' }, 400)
+    }
+    const json = JSON.stringify(body.form)
+    if (json.length > DRAFT_MAX_BYTES) {
+      return c.json({ success: false, error: '임시저장 용량을 초과했습니다 (이미지를 줄여주세요)' }, 413)
+    }
+    await ensureVoucherDraftTable(c.env.DB)
+    await c.env.DB.prepare(
+      `INSERT INTO seller_voucher_drafts (seller_id, draft_json, updated_at)
+       VALUES (?, ?, datetime('now'))
+       ON CONFLICT(seller_id) DO UPDATE SET draft_json = excluded.draft_json, updated_at = datetime('now')`
+    ).bind(sellerId, json).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '임시저장에 실패했습니다', '[seller-stores]')
+  }
+})
+
+app.delete('/voucher-draft', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
+    await ensureVoucherDraftTable(c.env.DB)
+    await c.env.DB.prepare('DELETE FROM seller_voucher_drafts WHERE seller_id = ?').bind(sellerId).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '임시저장 삭제에 실패했습니다', '[seller-stores]')
+  }
+})
+
+// ── 매장 프로필 병합(공유) — SSOT: worker/utils/store-profile.ts (2026-08-23 단일화) ────────
+async function loadMergedProfile(DB: D1Database, sellerId: number) {
+  const [seller, metaMap, lastProduct] = await Promise.all([
+    DB.prepare('SELECT name, business_name, phone, address FROM sellers WHERE id = ? LIMIT 1')
+      .bind(sellerId).first<{ name: string | null; business_name: string | null; phone: string | null; address: string | null }>()
+      .catch(() => null),
+    getSellerMeta(DB, [sellerId]).catch(() => new Map<number, Record<string, string>>()),
+    loadLatestProductCopy(DB, sellerId),
+  ])
+  return {
+    store: mergeStoreProfile({ product: lastProduct, meta: metaMap.get(sellerId), seller }),
+    has_product_history: !!lastProduct,
+  }
+}
+
+// ── GET /stores/context — 이용권 등록 프리필 (2026-08-23 대표 "매장 등록돼 있으면 자동으로") ──
+app.get('/stores/context', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
+    return c.json({ success: true, data: await loadMergedProfile(c.env.DB, sellerId) })
+  } catch (err) {
+    return safeError(c, err, '매장 정보를 불러오지 못했습니다', '[seller-stores]')
+  }
+})
+
+// ── GET/PATCH /stores/:id/profile — 매장 정보 보기·수정 + 전 이용권 전파 (2026-08-23 단일화) ──
+//   권한: canOperateStore — 소유자뿐 아니라 위임 운영자도 허용한다. 주소/전화/PIN 은 운영 정보이고,
+//   중개(brokered) 등록 매장은 owner 가 아직 없어(owner 승계 3단계 전) owner-only 면 아무도 못 고친다.
+app.get('/stores/:id/profile', async (c) => {
+  try {
+    const userId = await resolveActorUserId(c)
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    const sellerId = Number(c.req.param('id'))
+    if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: false, error: '잘못된 매장입니다' }, 400)
+    const access = await canOperateStore(c.env.DB, userId, sellerId)
+    if (!access.ok) return c.json({ success: false, error: '이 매장에 대한 권한이 없습니다' }, 403)
+    const merged = await loadMergedProfile(c.env.DB, sellerId)
+    // 전파 대상 수 미리 안내 — "저장하면 이용권 N개에 반영" 을 모달이 보여줄 수 있게.
+    const cnt = await c.env.DB.prepare(
+      `SELECT COUNT(*) AS n FROM products WHERE seller_id = ? AND restaurant_name IS NOT NULL AND restaurant_name != ''`
+    ).bind(sellerId).first<{ n: number }>().catch(() => null)
+    return c.json({ success: true, data: { ...merged, product_count: Number(cnt?.n) || 0 } })
+  } catch (err) {
+    return safeError(c, err, '매장 정보를 불러오지 못했습니다', '[seller-stores]')
+  }
+})
+
+app.patch('/stores/:id/profile', rateLimit({ action: 'store_profile_save', max: 30, windowSec: 3600 }), async (c) => {
+  try {
+    const userId = await resolveActorUserId(c)
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    const sellerId = Number(c.req.param('id'))
+    if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: false, error: '잘못된 매장입니다' }, 400)
+    const access = await canOperateStore(c.env.DB, userId, sellerId)
+    if (!access.ok) return c.json({ success: false, error: '이 매장에 대한 권한이 없습니다' }, 403)
+    const b = await c.req.json<{
+      name?: string; address?: string; phone?: string; lat?: string | number; lng?: string | number
+      verify_pin?: string; kakao_place_url?: string
+    }>().catch(() => ({} as Record<string, never>))
+    if (b.kakao_place_url && !/^https:\/\/place\.map\.kakao\.com\//.test(String(b.kakao_place_url))) {
+      return c.json({ success: false, error: '카카오 플레이스 링크 형식이 아닙니다' }, 400)
+    }
+    const { propagated } = await saveStoreProfileAndPropagate(c.env.DB, sellerId, {
+      name: b.name != null ? String(b.name) : undefined,
+      address: b.address != null ? String(b.address) : undefined,
+      phone: b.phone != null ? String(b.phone) : undefined,
+      lat: b.lat != null ? String(b.lat) : undefined,
+      lng: b.lng != null ? String(b.lng) : undefined,
+      verify_pin: b.verify_pin != null ? String(b.verify_pin) : undefined,
+      kakao_place_url: b.kakao_place_url != null ? String(b.kakao_place_url) : undefined,
+    })
+    return c.json({ success: true, data: { propagated } })
+  } catch (err) {
+    return safeError(c, err, '매장 정보 저장에 실패했습니다', '[seller-stores]')
   }
 })
 

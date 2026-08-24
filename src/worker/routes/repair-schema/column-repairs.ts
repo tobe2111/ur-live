@@ -421,6 +421,13 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
       created_at DATETIME DEFAULT (datetime('now'))
     )` },
     { desc: 'idx_offer_invites_outreach', sql: "CREATE INDEX IF NOT EXISTS idx_offer_invites_outreach ON influencer_offer_invites(outreach_id)" },
+    // 💾 2026-08-23 이용권 등록 서버 임시저장 — 셀러(좌석)당 1행. seller_meta 를 안 쓰는 이유는
+    //   seller-stores.routes.ts 주석 참조(수백 KB 드래프트가 모든 meta 조회에 끌려다님).
+    { desc: 'seller_voucher_drafts', sql: `CREATE TABLE IF NOT EXISTS seller_voucher_drafts (
+      seller_id INTEGER PRIMARY KEY,
+      draft_json TEXT NOT NULL,
+      updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+    )` },
     { desc: 'outreach_email_queue', sql: `CREATE TABLE IF NOT EXISTS outreach_email_queue (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       outreach_id INTEGER NOT NULL,

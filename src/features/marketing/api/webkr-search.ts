@@ -20,6 +20,7 @@ import type { FetchBudget } from './influencer-discovery'
 import type { CompanyLead } from './company-discovery'
 import type { PickKeyword } from './company-keyword-pick'
 import { noteNaverCall } from './naver-api-usage'
+import { naverOpenapiBlocked, noteOpenapiStatus } from './naver-openapi-block'
 
 export const NAVER_OPENAPI = 'https://openapi.naver.com'
 export const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
@@ -35,12 +36,18 @@ export const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
  */
 export async function laneFetch(url: string, init: RequestInit & { timeoutMs?: number }, budget?: FetchBudget): Promise<Response | null> {
   const { timeoutMs = 12000, ...rest } = init
+  // 🚧 429/403 이 연속으로 오면 **쏘지 않는다**. 실패 응답도 쿼터를 먹으므로, 막힌 채로 계속 쏘는 건
+  //   그날의 허용량만 태우는 짓이다. 상세·판정규칙: `naver-openapi-block.ts`.
+  if (naverOpenapiBlocked()) return null
   if (!noteNaverCall(url)) return null // 📟 계측+일일목표(90%) 게이트. 실패분도 쿼터를 먹어 호출 전에 센다
   try {
-    return await fetch(url, { ...rest, signal: AbortSignal.timeout(timeoutMs) })
+    const res = await fetch(url, { ...rest, signal: AbortSignal.timeout(timeoutMs) })
+    noteOpenapiStatus(res.status)
+    return res
   } catch (err) {
     const msg = String((err as { message?: string } | null)?.message || '')
     if (/too many subrequests/i.test(msg) && budget) budget.limitHit = true
+    noteOpenapiStatus(null) // 예외는 차단의 증거도, 회복의 증거도 아니다 — 연속을 건드리지 않는다
     return null
   }
 }
