@@ -5,7 +5,7 @@
  *   전국 3,800개 규모에서는 눈으로 못 잡으므로 순수함수로 분리해 여기서 고정한다.
  */
 import { describe, it, expect } from 'vitest'
-import { rotationWindow, buildKeywordRows, S2_REGIONS, S2_TRADES, resumeSeedIndex, seedPrefixHash, S3_TRADES_LOCAL, S3_TRADES_NATIONWIDE } from '@/features/marketing/api/company-keyword-grid'
+import { rotationWindow, buildKeywordRows, S2_REGIONS, S2_TRADES, resumeSeedIndex, seedPrefixHash, S3_TRADES_LOCAL, S3_TRADES_NATIONWIDE, S4_TRADES_LOCAL } from '@/features/marketing/api/company-keyword-grid'
 
 describe('rotationWindow', () => {
   it('창이 끝을 안 넘으면 단일 구간', () => {
@@ -71,9 +71,9 @@ describe('키워드 그리드', () => {
     const rows = buildKeywordRows()
     const unique = new Set(rows.map(r => r.keyword))
     expect(unique.size).toBeGreaterThan(3000)
-    // tier1 = (전국 그리드에 얹히는 업종 × 지역) + (지역 없는 전국 축). 2026-07-29 공동구매(S3) 추가로
-    //   S2 만 세면 안 된다 — 새 축을 더할 때 이 식도 함께 늘어나야 '다수' 주장이 유지된다.
-    const gridTier1 = [...S2_TRADES, ...S3_TRADES_LOCAL].filter(t => t.tier === 1).length
+    // tier1 = (전국 그리드에 얹히는 업종 × 지역) + (지역 없는 전국 축). 2026-07-29 공동구매(S3),
+    //   2026-08-23 고수율 심화(S4) 추가 — 새 축을 더할 때 이 식도 함께 늘어나야 '다수' 주장이 유지된다.
+    const gridTier1 = [...S2_TRADES, ...S3_TRADES_LOCAL, ...S4_TRADES_LOCAL].filter(t => t.tier === 1).length
     const nationTier1 = S3_TRADES_NATIONWIDE.filter(t => t.tier === 1).length
     expect(rows.filter(r => r.tier === 1).length).toBe(S2_REGIONS.length * gridTier1 + nationTier1)
   })

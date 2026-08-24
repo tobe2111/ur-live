@@ -161,6 +161,35 @@ export const S3_TRADES_NATIONWIDE: Trade[] = [
   { kw: '체험단 플랫폼', category: '대행사', subcategory: '체험단·플레이스', tier: 2 },
 ]
 
+// ── 4단계: 고수율 광맥 심화 (2026-08-23 — 대표 "모두 다 하자") ──────────────────────────────
+//
+//   🔑 **총계가 아니라 "발송 가능 리드"로 골랐다.** webkr 출처 실측(2026-08-23, `ad_company_leads`)에서
+//   **신규 행 비율과 이메일 수율이 갈렸다** — 이게 이 단계의 전부다:
+//   ```
+//     창업 컨설팅        356행 · 이메일 124 (34.8%)   ← 가장 높다
+//     마케팅 대행사      400행 · 이메일 130 (32.5%)
+//     퍼포먼스 마케팅    207행 · 이메일  66 (31.9%)
+//     바이럴 마케팅      148행 · 이메일  45 (30.4%)
+//     행사·이벤트        466행 · 이메일 120 (25.8%)
+//     종합광고기획       385행 · 이메일  91 (23.6%)
+//     간판·광고물 제작    64행 · 이메일   6 ( 9.4%)   ← 신규 행 비율은 99.6%인데 이메일은 최하위
+//   ```
+//   ⚠️ **"새 행이 많이 나온다"에 속지 말 것.** 간판은 행을 가장 잘 만들지만 발송 가능 리드는 거의 못 만든다.
+//   같은 이유로 **매장 생태계 업종(주류 도매·식자재·주방설비·POS·인테리어)은 전국으로 넓히지 않았다** —
+//   실측 이메일 수율이 0~10%이고 사이트 보유율 자체가 낮아, 사이트를 전제로 도는 이 레인엔 맞지 않는다
+//   (인테리어 2,876행 중 이메일 14건 = 0.5%). 넓히면 회전 주기만 길어지고 발송 대상은 안 는다.
+//
+//   ⚠️ **배열 끝 · 곱셈 순서 끝** — `seedPrefixHash` 가 앞부분 불변으로 이어받으므로, 이 단계는
+//   `buildKeywordRows()` 의 **마지막**에 붙는다. 중간에 끼우면 4,555행을 처음부터 다시 훑는다.
+export const S4_TRADES_LOCAL: Trade[] = [
+  { kw: 'SNS 마케팅 대행', category: '대행사', subcategory: '마케팅 대행사', tier: 1 },
+  { kw: '온라인 마케팅 대행', category: '대행사', subcategory: '마케팅 대행사', tier: 1 },
+  { kw: '홍보대행사', category: '대행사', subcategory: '마케팅 대행사', tier: 1 },
+  { kw: '블로그 마케팅 대행', category: '대행사', subcategory: '바이럴 마케팅 대행사', tier: 1 },
+  { kw: '프랜차이즈 창업 컨설팅', category: '창업', subcategory: '창업 컨설팅', tier: 1 },
+  { kw: '외식업 컨설팅', category: '창업', subcategory: '창업 컨설팅', tier: 1 },
+]
+
 export type KeywordSeedRow = { keyword: string; category: string; subcategory: string; region: string; tier: number }
 
 /** 시드 행 전체(1 → 2 → 3단계 순). 같은 keyword 는 UNIQUE + INSERT OR IGNORE 로 자동 dedup. */
@@ -171,6 +200,8 @@ export function buildKeywordRows(): KeywordSeedRow[] {
     ...S2_REGIONS.flatMap(r => S3_TRADES_LOCAL.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),
     // 전국 축은 지역 접두 없음 — region 은 빈 문자열(리드에 지역이 안 붙는다는 뜻, 거짓 지역 라벨 금지).
     ...S3_TRADES_NATIONWIDE.map(t => ({ keyword: t.kw, category: t.category, subcategory: t.subcategory, region: '', tier: t.tier })),
+    // 4단계는 **맨 뒤**여야 한다 — 앞 인덱스가 하나라도 밀리면 시드 이어받기가 0 으로 떨어진다.
+    ...S2_REGIONS.flatMap(r => S4_TRADES_LOCAL.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),
   ]
 }
 
