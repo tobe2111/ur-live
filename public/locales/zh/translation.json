@@ -2942,7 +2942,9 @@
     "mailOrderNumberPlaceholder": "例: 2026-首尔江南-01234",
     "mailOrderNumberHint": "将公开显示在链接商店的卖家信息中",
     "primary": {
-      "addProductDesc": "登记使用券·团购"
+      "addProductDesc": "登记使用券·团购",
+      "voucherManageDesc": "销售·状态",
+      "findInfluencersDesc": "发送合作提案"
     },
     "delegation": {
       "title": "门店委托",

@@ -6,7 +6,7 @@
  */
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, ScanLine, DollarSign, Ticket, ChevronDown } from 'lucide-react'
+import { LayoutDashboard, ScanLine, DollarSign, Ticket, PlusCircle, ChevronDown } from 'lucide-react'
 
 interface Props {
   isActive: (path: string, exact?: boolean, also?: string[]) => boolean
@@ -19,10 +19,12 @@ interface Props {
 export default function SellerSimpleNav({ isActive, onNavigate, fullMenuOpen, onToggleFullMenu }: Props) {
   const { t } = useTranslation()
   const items = [
-    { path: '/seller/scan', label: t('seller.simple.scan', { defaultValue: 'QR 스캔' }), icon: ScanLine, also: undefined as string[] | undefined },
+    // 🎟️ 2026-08-23 (대표 AB테스트 — "왼쪽 카테고리에도 이용권 등록 버튼"): 심플 모드에도 상시 노출.
+    { path: '/seller/meal-voucher/new', label: t('seller.registerVoucher', { defaultValue: '이용권 등록' }), icon: PlusCircle, also: undefined as string[] | undefined },
+    { path: '/seller/scan', label: t('seller.simple.scan', { defaultValue: 'QR 스캔' }), icon: ScanLine, also: undefined },
     { path: '/seller/settlements', label: t('seller.simple.settlement', { defaultValue: '정산' }), icon: DollarSign, also: undefined },
-    // 내 딜 = 이용권/딜 관리(승인 대기 = 대납 검토 포함 — also 로 활성 표시)
-    { path: '/seller/group-buy', label: t('seller.simple.myDeals', { defaultValue: '내 딜' }), icon: Ticket, also: ['/seller/proxy-products', '/seller/meal-voucher'] },
+    // 내 딜 = 이용권/딜 관리(승인 대기 = 대납 검토 포함 — also 로 활성 표시. meal-voucher 는 위 등록 항목이 담당)
+    { path: '/seller/group-buy', label: t('seller.simple.myDeals', { defaultValue: '내 딜' }), icon: Ticket, also: ['/seller/proxy-products'] },
   ]
   return (
     <div className="mt-1">

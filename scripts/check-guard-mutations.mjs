@@ -72,6 +72,38 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🏢 업체 판정이 리드 판정보다 뒤로 밀린다(업체가 새 DB로 안 가고 옛 DB로 샌다)',
+    file: 'src/shared/ads/leads-db.ts',
+    find: "    (touchesAdsCompanyTable(sql) ? 'company' : touchesAdsLeadsTable(sql) ? 'ads' : 'main')",
+    replace: "    (touchesAdsLeadsTable(sql) ? 'ads' : touchesAdsCompanyTable(sql) ? 'company' : 'main')",
+    test: 'src/tests/unit/ads-company-db.test.ts',
+    why:
+      '업체 테이블은 ADS_LEADS_TABLES 에도 들어 있다 — 리드를 먼저 보면 **전부 옛 DB로 샌다.** ' +
+      '그런데 화면은 멀쩡히 뜬다(옛 DB에도 아직 데이터가 있으므로). 옛 테이블을 정리한 뒤에야 ' +
+      '0건으로 드러나고, 그때는 원인이 이 한 줄이라는 걸 아무도 모른다.',
+  },
+  {
+    name: '🏢 ADS_COMPANY_DB 미바인딩 폴백이 사라진다(배선 선배포에 업체 화면이 통째로 0건)',
+    file: 'src/shared/ads/leads-db.ts',
+    find: "  const company = companyDb && typeof companyDb.prepare === 'function' ? companyDb : ads",
+    replace: '  const company = companyDb as D1Like',
+    test: 'src/tests/unit/ads-company-db.test.ts',
+    why:
+      '바인딩은 대시보드 소관이라 코드보다 늦게 붙을 수 있다. 폴백이 없으면 그 사이 업체 쿼리가 ' +
+      '`undefined.prepare` 로 죽는다 — 배포는 초록불인데 업체 수집·화면만 조용히 멎는다.',
+  },
+  {
+    name: '🏢 batch 혼합 판정이 실제 DB가 아니라 이름으로 돌아간다(폴백 창에 수집 레인 정지)',
+    file: 'src/shared/ads/leads-db.ts',
+    find: '      const targets = new Set(sides.map(dbOf))',
+    replace: '      const targets = new Set(sides) as unknown as Set<D1Like>',
+    test: 'src/tests/unit/ads-company-db.test.ts',
+    why:
+      '`ADS_COMPANY_DB` 미바인딩이면 company 와 ads 는 **같은 DB** 다. 그때 이름으로 세면 ' +
+      '멀쩡한 batch 가 예외로 죽어 배선 선배포 창에서 수집 레인이 통째로 멈춘다 — 폴백을 둔 의미가 ' +
+      '사라진다. CI 가 실제로 이 회귀를 잡았다(2026-08-24, 기존 ads-leads-db 테스트가 빨강).',
+  },
+  {
     name: '🗄️ 백업이 다시 시간당 1회로 줄어든다(전체 스냅샷 60시간 → 일 1회 불가)',
     file: 'src/worker/scheduled.ts',
     find: '[5, 20, 35, 50].some((m) => slotDue(event.scheduledTime, { minute: m }))',
@@ -4621,6 +4653,38 @@ canvas {
       '읽힌다. 이 레포의 상습 사고 클래스(`check-utc-date-parse` 가 존재하는 이유). ' +
       '⚠️ 이 주입은 **CI 컨테이너 TZ 가 UTC 라 그냥은 안 잡힌다** — 테스트가 TZ 를 KST 로 바꿔 놓기 때문에 ' +
       '빨간불이 뜬다(첫 판이 실제로 헛돌았고 되돌려-검증에서 잡혔다).',
+  },
+  {
+    name: '🗄️ 백업 라벨 회전이 사라진다(메인 DB 가 영영 백업 안 된다)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: '    if (done?.value === today) continue',
+    replace: '    if (false && done?.value === today) continue',
+    test: 'src/tests/unit/d1-backup-chunked.test.ts',
+    why:
+      '이 줄이 없으면 진행 중인 커서가 없을 때 항상 목록 첫 번째(ads)를 잡는다. ads 는 끝나자마자 ' +
+      '그날 것을 또 시작하므로 **main 차례가 영영 오지 않는다.** 2026-08-24 실측으로 확인된 실제 ' +
+      '상태였고(`backup_chunk:main` 커서 부재 · 마지막 메인 백업 08-02), 백업은 없다는 걸 ' +
+      '필요할 때까지 아무도 모른다.',
+  },
+  {
+    name: '🗄️ 백업 완료 마커를 안 남긴다(회전 판단 근거가 사라진다)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: "    .bind(doneKey(label), cur.date).run().catch(() => null)",
+    replace: "    .bind('backup_noop:' + label, cur.date).run().catch(() => null)",
+    test: 'src/tests/unit/d1-backup-chunked.test.ts',
+    why:
+      '완료 마커는 커서와 분리돼야 한다 — 커서는 완료 시 지워지므로 그것만 보면 "진행 중인 게 없다" ' +
+      '와 "오늘 것을 끝냈다"가 구분되지 않는다.',
+  },
+  {
+    name: '🏢 분리된 업체 DB 가 백업 대상 목록에서 빠진다(백업 경로가 아예 없어진다)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: "    { db: env.ADS_COMPANY_DB, label: 'company' },",
+    replace: '',
+    test: 'src/tests/unit/d1-backup-chunked.test.ts',
+    why:
+      'DB 를 나눌 때 백업 대상 목록을 같이 안 늘리면 그 DB 는 **조용히 무방비**가 된다 — ' +
+      '에러도 경고도 없고, 필요해질 때까지 아무도 모른다. 메인 DB 가 3주간 그 상태였다.',
   },
 ]
 /**

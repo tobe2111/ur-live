@@ -358,13 +358,17 @@ adminToolsRoutes.get('/commission-budget-logs', async (c) => {
  *    `admin-ads-pool-ops.routes.ts` 의 실측표 참조). 작게 여러 번이 정답이다.
  */
 adminToolsRoutes.post('/backup-chunk', async (c) => {
-  const body = await c.req.json<{ maxReads?: number }>().catch(() => ({} as { maxReads?: number }))
+  const body = await c.req.json<{ maxReads?: number; label?: string }>()
+    .catch(() => ({} as { maxReads?: number; label?: string }))
   // 1~40 으로 조인다 — 위 경고대로 크게 잡으면 CPU 로 끊겨 **0건 처리**가 된다.
   const maxReads = Math.max(1, Math.min(40, Number(body.maxReads) || 12))
+  // 라벨을 주면 그 DB 만 민다(기본은 회전). 화이트리스트 — 임의 문자열은 안 받는다.
+  const label = body.label === 'ads' || body.label === 'main' || body.label === 'company'
+    ? body.label : undefined
   const t0 = Date.now()
   try {
     const { handleChunkedBackup } = await import('../../../worker/cron/d1-backup-chunked')
-    const r = await handleChunkedBackup(c.env as never, { maxReads })
+    const r = await handleChunkedBackup(c.env as never, { maxReads, label })
     await writeAuditLog(c, {
       action: 'backup_chunk_run', targetType: 'backup',
       targetId: String((r as { label?: string }).label || ''), after: r,
@@ -379,7 +383,7 @@ adminToolsRoutes.post('/backup-chunk', async (c) => {
 /** 진행 상황 — 커서가 어디까지 갔는지. 없으면 진행 중인 스냅샷이 없다는 뜻이다. */
 adminToolsRoutes.get('/backup-chunk', async (c) => {
   const { results } = await c.env.DB.prepare(
-    "SELECT key, value, updated_at FROM platform_settings WHERE key LIKE 'backup_chunk:%' ORDER BY key",
+    "SELECT key, value, updated_at FROM platform_settings WHERE key LIKE 'backup_chunk:%' OR key LIKE 'backup_done:%' ORDER BY key",
   ).all<{ key: string; value: string; updated_at: string }>()
   return c.json({
     success: true,

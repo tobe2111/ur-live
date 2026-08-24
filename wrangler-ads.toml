@@ -60,6 +60,14 @@ binding = "ADS_DB"
 database_name = "urads-leads-db"
 database_id = "d4630482-b97e-4e96-bb96-abde4ef8cc95"
 
+[[d1_databases]]
+# 🏢 2026-08-23: 업체 계열 전용(ad_company_leads·ad_company_keywords). 유어애즈 DB 가 500MB 한도의
+#   94% 에 닿아 한 칸 더 나눴다 — 본진에서 겪은 "꽉 차서 쓰기 정지"를 유어애즈에서 반복하지 않기 위해.
+#   ⚠️ 미바인딩이면 라우터가 ADS_DB 로 폴백한다(`shared/ads/leads-db.ts`) — 배선 선배포가 안전하다.
+binding = "ADS_COMPANY_DB"
+database_name = "urads-company-db"
+database_id = "0e9a8f82-32fb-4584-878c-cdaec6c0aff0"
+
 
 # ⏰ **DO 알람 레인** (2026-08-02) — cron 부모의 CPU 천장을 우회하는 유일한 무료 경로.
 #   부모가 `SELF.fetch` 로 띄운 자식의 CPU 는 **호출자 몫에서 나가서**, 부모가 3.6초에 죽으며
