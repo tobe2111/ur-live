@@ -42,7 +42,7 @@ import { envLaneBudget, envSubreqCap, companyRunDeadlineMs } from './collect-bud
 import { flushNaverCalls, armNaverAndReadSettings } from './naver-api-usage'
 import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { pickCompanyKeywords, rotationAdvance, type PickKeyword } from './company-keyword-pick'
-import { searchNaverWeb } from './webkr-search'
+import { searchNaverWeb, type SearchOutcome } from './webkr-search'
 import {
   OPENAPI_BLOCK_KEY, flushOpenapiBlock, isBackedOff, naverOpenapiBlocked, openapiBlockSnapshot, parseOpenapiBlock,
 } from './naver-openapi-block'
@@ -59,6 +59,8 @@ export interface WebkrCollectStats {
   openapi_block?: { streak: number; blocked: number; ok: number; tripped: boolean; last_status: number | null }
   /** 🎯 이번 회차에 수율 미달로 건너뛴 업종(자동 은퇴). 비어 있으면 아무도 안 막혔다는 뜻이다. */
   suppressed?: string[]
+  /** 📮 응답을 못 받아 **부기하지 않은** 키워드(429·타임아웃·게이트). 수율 학습 오염 방지의 관측면. */
+  unanswered?: string[]
   diag: { configured: boolean; error?: string }
 }
 
@@ -196,21 +198,32 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
   const suppress = suppressedSubcats(parseSubcatYield(pick(SUBCAT_YIELD_KEY)), prev?.total_runs || 0)
   const skipIdx = suppressCompanyPool(kws, suppress)
   const skipped: string[] = []
+  const unanswered: string[] = [] // 📮 응답 못 받은 키워드 — 부기 제외 대상(수율 오염 방지)
 
   // 🚧 `naverOpenapiBlocked()` — 429/403 이 연속 3회면 즉시 멈춘다. 막힌 채로 남은 조를 다 돌면
   //   그 회차 결과가 전부 0 이 되고(수율 학습 오염), 실패 호출이 그날 쿼터만 태운다.
   for (let i = 0; i < kws.length && !budget.limitHit && !naverOpenapiBlocked() && budget.left > BOOKKEEPING_RESERVE && !overDeadline(); i += WEBKR_CONCURRENCY) {
     const group = kws.slice(i, i + WEBKR_CONCURRENCY)
     const results = await Promise.all(group.map(async (kw: PickKeyword, gi: number) => {
-      if (skipIdx.has(i + gi)) return { kw, got: [] as CompanyLead[], skip: true }
+      if (skipIdx.has(i + gi)) return { kw, got: [] as CompanyLead[], skip: true, answered: false }
       // tier1(대행사)만 2페이지 — `collect-company` 와 같은 깊이 규칙을 그대로 승계한다.
       const pages = kw.tier === 1 ? 2 : 1
-      const got = await searchNaverWeb(clientId, clientSecret, kw, budget, pages).catch(() => [] as CompanyLead[])
-      return { kw, got, skip: false }
+      const outcome: SearchOutcome = {} // 📮 키워드마다 새 객체 — 폭 4 병렬이라 공유하면 서로 덮어쓴다
+      const got = await searchNaverWeb(clientId, clientSecret, kw, budget, pages, outcome).catch(() => [] as CompanyLead[])
+      return { kw, got, skip: false, answered: !!outcome.responded }
     }))
     for (const r of results) {
       usedKw.push(r.kw) // 건너뛴 자리도 회전에서는 소비된 것 — 위 주석 참조
       if (r.skip) { skipped.push(r.kw.keyword); continue }
+      /**
+       * 📮 **응답을 못 받은 키워드는 부기하지 않는다** (2026-08-24 — 라이브에서 429 16건 실측 후).
+       *   429·타임아웃·게이트 거부는 빈 배열로 돌아온다. 그걸 `found_total = 0` 으로 적으면
+       *   *"재 봤더니 없더라"* 가 되어 **업종 수율 학습이 멀쩡한 업종을 은퇴시킨다.**
+       *   같은 파일이 은퇴로 건너뛴 키워드에는 이미 이 보호를 걸어 놨는데, **실패한 키워드가
+       *   그 보호 밖**이었다 — 차단이 곧 오판으로 이어지는 경로였다.
+       *   ⚠️ 결과 0건이어도 **응답을 받았으면 부기한다** — 그건 진짜 증거다.
+       */
+      if (!r.answered) { unanswered.push(r.kw.keyword); continue }
       used.push(r.kw.keyword)
       perKeyword.set(r.kw.id, r.got.length)
       leads.push(...r.got)
@@ -248,6 +261,7 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
     run_ms: Date.now() - startedAt, deadline_hit: overDeadline(),
     openapi_block: openapiBlockSnapshot(),
     suppressed: skipped,
+    unanswered,
     diag: { configured: true },
   }
   await save(s)

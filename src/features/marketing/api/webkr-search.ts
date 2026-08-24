@@ -52,11 +52,29 @@ export async function laneFetch(url: string, init: RequestInit & { timeoutMs?: n
   }
 }
 
+/**
+ * 📮 **응답을 받았는가** — 호출부가 "결과 0건"과 "못 물어봤다"를 구분하기 위한 회신함.
+ *
+ * ## 왜 필요한가 (2026-08-24 라이브에서 드러난 오염)
+ * 이 함수는 429·타임아웃·쿼터 게이트에서 **빈 배열**을 돌려준다. 호출부는 그걸 그대로
+ * `found_total = 0` 으로 기록했고, 그러면:
+ * ```
+ *   네이버가 거절했을 뿐인데 → "이 키워드는 재 봤더니 아무것도 없더라" 로 남는다
+ *   → 업종 수율 학습이 그 기록을 읽고 멀쩡한 업종을 은퇴시킨다
+ * ```
+ * 실측: 2026-08-24 하루에 429 가 **16건**(요청의 15%). 같은 파일의 은퇴 장치가 이미
+ * *"건너뛴 키워드는 부기를 남기지 않는다"* 를 지키는데, **실패한 키워드는 그 보호 밖**이었다.
+ *
+ * ⚠️ `responded` 는 **성공 응답을 한 번이라도 받았는가**다. 결과가 0건이어도 응답을 받았으면
+ *   그건 진짜 증거이므로 `true` 다. 반대로 타임아웃도 `false` — *"느리다"는 "없다"가 아니다*.
+ */
+export interface SearchOutcome { responded?: boolean }
+
 /** 🌐 레인 A-웹: 네이버 **웹문서 검색**으로 대행사 자체 사이트 발굴 (2026-07-27 — 대표 "대행사 많이 모집").
  *   대행사는 사무실업이라 지도(지역검색) 미등록이 많고 display=5 제약도 큼 — 반면 **웹엔 자기 사이트가 반드시 있음**.
  *   사이트 자체가 리드(도메인이 dedup 키) → 보강 크롤이 그 사이트에서 이메일/전화 확보(대행사 이메일 수율 최고 경로).
  *   제3자/UGC/구인 플랫폼 도메인 제외. 상호는 페이지 제목에서 유도(표시 라벨용 — 정체성 키는 도메인). */
-export async function searchNaverWeb(clientId: string, clientSecret: string, kw: PickKeyword, budget?: FetchBudget, pages = 1): Promise<CompanyLead[]> {
+export async function searchNaverWeb(clientId: string, clientSecret: string, kw: PickKeyword, budget?: FetchBudget, pages = 1, outcome?: SearchOutcome): Promise<CompanyLead[]> {
   if (outOfBudget(budget)) return []
   const { THIRD_PARTY_HOST, NEWS_MEDIA_HOST } = await import('./contact-enrich')
   const { NON_BUSINESS_HOST, unbalancedBracket } = await import('./company-classify')
@@ -68,7 +86,9 @@ export async function searchNaverWeb(clientId: string, clientSecret: string, kw:
     spendBudget(budget)
     const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=30&start=${p * 30 + 1}`
     const res = await laneFetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret } }, budget)
+    // 📮 성공 응답만 "물어봤다"로 센다 — 429·타임아웃·게이트 거부는 증거가 아니다(위 SearchOutcome 참조).
     if (!res || !res.ok) break
+    if (outcome) outcome.responded = true
     const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
     const got = data?.items || []
     items.push(...got)
