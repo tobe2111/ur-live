@@ -249,7 +249,8 @@ describe('라벨 회전 — 메인 DB 가 자기 차례를 받는가', () => {
     } as unknown as D1Database
   }
   const envOf = (store: Map<string, string>, bucket: unknown) => ({
-    DB: fakeMainDb(store), ADS_DB: fakeDb({ a: 1 }), BACKUP_BUCKET: bucket,
+    DB: fakeMainDb(store), ADS_DB: fakeDb({ a: 1 }), ADS_COMPANY_DB: fakeDb({ c: 1 }),
+    BACKUP_BUCKET: bucket,
   }) as never
 
   it('완료하면 backup_done:{label} 에 날짜를 남긴다', async () => {
@@ -270,13 +271,21 @@ describe('라벨 회전 — 메인 DB 가 자기 차례를 받는가', () => {
     expect(r.label, 'ads 를 또 잡았다 — 메인은 영영 백업 안 된다').toBe('main')
   })
 
-  it('둘 다 오늘 끝났으면 쉬고, 같은 날 다시 뜨지 않는다', async () => {
+  it('전부 오늘 끝났으면 쉬고, 같은 날 다시 뜨지 않는다', async () => {
+    const store = new Map<string, string>()
+    const today = new Date().toISOString().slice(0, 10)
+    for (const l of ['ads', 'main', 'company']) store.set(`backup_done:${l}`, today)
+    const r = await handleChunkedBackup(envOf(store, fakeBucket()), {}) as { skipped?: string }
+    expect(r.skipped).toBe('all-done-today')
+  })
+
+  it('🏢 분리된 업체 DB 도 백업 대상이다 (DB 를 나눴으면 백업도 늘려야 한다)', async () => {
     const store = new Map<string, string>()
     const today = new Date().toISOString().slice(0, 10)
     store.set('backup_done:ads', today)
     store.set('backup_done:main', today)
-    const r = await handleChunkedBackup(envOf(store, fakeBucket()), {}) as { skipped?: string }
-    expect(r.skipped).toBe('all-done-today')
+    const r = await handleChunkedBackup(envOf(store, fakeBucket()), {}) as { label?: string; skipped?: string }
+    expect(r.label, '업체 DB 가 대상 목록에 없다 — 그 DB 는 백업 경로가 아예 없어진다').toBe('company')
   })
 
   it('label 을 주면 그 대상만 민다 (운영자가 "메인 지금 떠라"를 할 수 있어야 한다)', async () => {

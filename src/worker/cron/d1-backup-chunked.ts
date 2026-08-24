@@ -48,6 +48,7 @@ interface R2Like {
 interface Env {
   DB?: D1Database
   ADS_DB?: D1Database
+  ADS_COMPANY_DB?: D1Database
   BACKUP_BUCKET?: R2Like
 }
 
@@ -265,6 +266,9 @@ export async function handleChunkedBackup(
   const all: Array<{ db: D1Database | undefined; label: string }> = [
     { db: env.ADS_DB, label: 'ads' },   // 큰 쪽 먼저 — 여기가 기존 백업이 죽던 원인이다
     { db: env.DB, label: 'main' },
+    // 🏢 2026-08-24 분리된 업체 DB. **여기 없으면 그 DB 는 백업 경로가 아예 없다** —
+    //   DB 를 나눌 때 백업 대상 목록을 같이 안 늘리면 조용히 무방비가 된다.
+    { db: env.ADS_COMPANY_DB, label: 'company' },
   ]
   const targets = opts?.label ? all.filter((t) => t.label === opts.label) : all
   if (!targets.length) return { skipped: 'unknown-label', label: opts?.label }

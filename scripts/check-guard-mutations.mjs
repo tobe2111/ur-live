@@ -4640,6 +4640,16 @@ canvas {
       '완료 마커는 커서와 분리돼야 한다 — 커서는 완료 시 지워지므로 그것만 보면 "진행 중인 게 없다" ' +
       '와 "오늘 것을 끝냈다"가 구분되지 않는다.',
   },
+  {
+    name: '🏢 분리된 업체 DB 가 백업 대상 목록에서 빠진다(백업 경로가 아예 없어진다)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: "    { db: env.ADS_COMPANY_DB, label: 'company' },",
+    replace: '',
+    test: 'src/tests/unit/d1-backup-chunked.test.ts',
+    why:
+      'DB 를 나눌 때 백업 대상 목록을 같이 안 늘리면 그 DB 는 **조용히 무방비**가 된다 — ' +
+      '에러도 경고도 없고, 필요해질 때까지 아무도 모른다. 메인 DB 가 3주간 그 상태였다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

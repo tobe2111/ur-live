@@ -363,7 +363,8 @@ adminToolsRoutes.post('/backup-chunk', async (c) => {
   // 1~40 으로 조인다 — 위 경고대로 크게 잡으면 CPU 로 끊겨 **0건 처리**가 된다.
   const maxReads = Math.max(1, Math.min(40, Number(body.maxReads) || 12))
   // 라벨을 주면 그 DB 만 민다(기본은 회전). 화이트리스트 — 임의 문자열은 안 받는다.
-  const label = body.label === 'ads' || body.label === 'main' ? body.label : undefined
+  const label = body.label === 'ads' || body.label === 'main' || body.label === 'company'
+    ? body.label : undefined
   const t0 = Date.now()
   try {
     const { handleChunkedBackup } = await import('../../../worker/cron/d1-backup-chunked')
