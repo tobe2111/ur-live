@@ -30,13 +30,25 @@ describe('키워드 축 지정 — 화이트리스트', () => {
     expect(isAssignableKeywordCategory('자동')).toBe(true)
   })
 
-  /** 오타는 **에러가 아니라 존재하지 않는 축**이 된다(조용히 일반 축으로 떨어짐) — 그래서 거부한다. */
-  it('모르는 값·공백 오타는 거부 — 400 사유를 돌려준다', () => {
-    expect(isAssignableKeywordCategory('마케팅대행사 ')).toBe(false)
+  /**
+   * 오타는 **에러가 아니라 존재하지 않는 축**이 된다(조용히 일반 축으로 떨어짐) — 그래서 거부한다.
+   *
+   * ⚠️ **두 층을 구분할 것**(2026-08-24 라이브에서 내가 착각한 자리):
+   *   · `isAssignableKeywordCategory` 는 **받은 문자열 그대로** 본다 → `'마케팅대행사 '` 는 false.
+   *   · `planKeywordPatch`(=라우트가 쓰는 것)는 **`trim()` 후** 검증한다 → 앞뒤 공백은 **통과**한다.
+   * 앞뒤 공백은 사람의 입력 실수라 고쳐 주는 게 맞다. 진짜로 막아야 하는 건 `'마케팅 대행사'` 처럼
+   * **다른 문자열**이다. 라이브 실측: 뒤 공백 → `{"success":true}` · 중간 공백 → 400 `알 수 없는 축`.
+   */
+  it('모르는 값은 거부 — 400 사유를 돌려준다 (앞뒤 공백은 trim 으로 구제)', () => {
+    expect(isAssignableKeywordCategory('마케팅대행사 '), '검증 함수는 원문 그대로 본다').toBe(false)
     expect(isAssignableKeywordCategory('없는축')).toBe(false)
-    const r = planKeywordPatch({ active: true, category: '없는축' })
-    expect('error' in r).toBe(true)
-    expect((r as { error: string }).error).toContain('없는축')
+    for (const bad of ['없는축', '마케팅 대행사', '마케팅대행']) {
+      const r = planKeywordPatch({ active: true, category: bad })
+      expect('error' in r, `${bad} 가 통과했다`).toBe(true)
+      expect((r as { error: string }).error).toContain(bad)
+    }
+    // 앞뒤 공백은 **통과가 정답**이다 — 라우트 계약을 여기 고정해 둔다(문서와 코드가 갈리지 않게).
+    expect(planKeywordPatch({ active: true, category: ' 마케팅대행사 ' })).toEqual({ active: 1, category: '마케팅대행사' })
   })
 
   /** 은퇴 축은 `runAutoCollect` 가 선택에서 빼므로 지정해 봐야 **켜도 안 돈다**. */
