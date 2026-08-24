@@ -50,14 +50,8 @@ import { CAFE_GATE_KEY, cafeCollectEnabled } from './collect-track-gates' // �
 export type { DiscoveryKeyword, AutoCollectStats } from './influencer-collect-types'
 import type { AutoCollectStats, DiscoveryKeyword, DiscoverCalls } from './influencer-collect-types'
 
-const CURSOR_KEY = 'ads_autocollect_cursor'
-/**
- * 🎯 집중 축(마케팅대행사) 커서 — **읽기와 쓰기가 같은 문자열을 봐야 한다**.
- *   2026-08-03 라이브 실측: 이 키를 리터럴로 두 곳(읽기·통계)에 흩어 놨더니 **쓰기가 아예 없었고**
- *   읽기는 배치 목록에 없어 항상 `undefined` 였다 → 커서 영구 0 → 대행사 키워드 18개 중 앞 4개만
- *   무한 반복(뒤 14개는 `found_total = 0`, `last_run_at = null`). 상수로 묶어 갈라지지 않게 한다.
- */
-const FOCUS_CURSOR_KEY = 'ads_autocollect_cursor_focus'
+// 🗑️ 위치 커서 3종(`ads_autocollect_cursor{,_pri,_focus}`)은 2026-08-24 에 제거했다 — 선택이 나이순이
+//   됐다(`influencer-keyword-staleness.ts`). 남은 값은 아무도 안 읽으므로 무해하다(정리는 불필요).
 const STATS_KEY = 'ads_autocollect_stats'
 
 
@@ -91,6 +85,7 @@ export async function getAutoCollectStats(DB: D1Database): Promise<AutoCollectSt
 export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS, type YtPickKeyword, MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
 import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotation'
 import { buildRotationPools } from './keyword-contact-yield'
+import { pickStalest } from './influencer-keyword-staleness' // ⏳ 축 안의 순서 = 굶은 순(위치 커서 폐기)
 import { appendCollectFunnel } from './influencer-collect-funnel'
 import { mineHashtags } from './influencer-hashtag-mine'
 
@@ -142,7 +137,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     // ① 증거 — 옛 스냅샷 위에 crash 만 덧씌운다(마지막 성공 시각·누적치 보존).
     const prev = await getAutoCollectStats(adsLeadsDb(env)).catch(() => null)
     const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    const snap = { ...(prev || { last_run: '', last_saved: 0, last_keywords: [], total_runs: 0, total_saved: 0, cursor: 0 }),
+    const snap = { ...(prev || { last_run: '', last_saved: 0, last_keywords: [], total_runs: 0, total_saved: 0 }),
       crash, crash_at: stamp, crash_spent: spent, crash_budget: ctx.budgetTotal } as AutoCollectStats
     await writeSetting(adsLeadsDb(env), STATS_KEY, JSON.stringify(snap)).catch(() => undefined)
     await ctx.release?.().catch(() => undefined) // ③ 즉시 해제
@@ -162,7 +157,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const { acquired, abandoned: abandonedPrev } = await acquireLeaseDetect(DB, LEASE_KEY, LEASE_TTL_MS)
   if (!acquired) {
     const prevStats = await getAutoCollectStats(DB)
-    return { last_run: '', last_saved: 0, last_keywords: [], total_runs: prevStats?.total_runs || 0, total_saved: prevStats?.total_saved || 0, cursor: prevStats?.cursor || 0, busy: true }
+    return { last_run: '', last_saved: 0, last_keywords: [], total_runs: prevStats?.total_runs || 0, total_saved: prevStats?.total_saved || 0, busy: true }
   }
   const releaseLease = async () => { await DB.prepare(`UPDATE platform_settings SET value = '0' WHERE key = '${LEASE_KEY}'`).run().catch(() => null) }
   ctx.release = releaseLease
@@ -191,13 +186,13 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   🏘️ `CAFE_GATE_KEY` — 어드민 원클릭 카페 게이트. **이 배치에 얹어 서브리퀘스트 추가 0**
   //   (낱개로 읽으면 게이트 하나가 발굴 fetch 하나를 잡아먹는다 — 이 배열이 존재하는 이유).
   //   ⚖️ `AXIS_CARRY_KEY` — 축별 이월 지분(불변식 ④). 이 배치에 얹어 서브리퀘스트 추가 0.
-  const SETTING_KEYS = [STATS_KEY, FOCUS_CURSOR_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY, CAFE_GATE_KEY, AXIS_CARRY_KEY, FRESHNESS_CAP_KEY, 'ads_naver_crawl_block']
+  const SETTING_KEYS = [STATS_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY, CAFE_GATE_KEY, AXIS_CARRY_KEY, FRESHNESS_CAP_KEY, 'ads_naver_crawl_block']
   const settings = await readSettings(DB, SETTING_KEYS)
   let prev: AutoCollectStats | null = null
   try { prev = settings[STATS_KEY] ? JSON.parse(settings[STATS_KEY] as string) as AutoCollectStats : null } catch { prev = null }
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   if (!kws.length) {
-    const empty: AutoCollectStats = { last_run: stamp, last_saved: 0, last_keywords: [], total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, cursor: 0 }
+    const empty: AutoCollectStats = { last_run: stamp, last_saved: 0, last_keywords: [], total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0 }
     await writeSetting(DB, STATS_KEY, JSON.stringify(empty))
     await releaseLease()
     return empty
@@ -211,12 +206,6 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // ⭐ 3분할 풀(집중·우선·일반) 구성 + 연락처 수율 솎아내기 — 규칙·근거는 `buildRotationPools` docblock(SSOT).
   const roundIndex = (prev?.total_runs || 0) + 1
   const { focusPool, priPool, genPool } = buildRotationPools(kws, roundIndex, { focus: FOCUS_CATEGORIES, priority: PRIORITY_CATEGORIES })
-  let priCursor = parseInt(settings['ads_autocollect_cursor_pri'] || '0', 10)
-  if (!Number.isFinite(priCursor) || priCursor < 0) priCursor = 0
-  let focusCursor = parseInt(settings[FOCUS_CURSOR_KEY] || '0', 10)
-  if (!Number.isFinite(focusCursor) || focusCursor < 0) focusCursor = 0
-  let cursor = parseInt(settings[CURSOR_KEY] || '0', 10)
-  if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
   // 🚀 "최대한 많이"(2026-07-20): 네이버 쿼터(25k/day)는 남아돌아 — YT 배정(batch)에 더해
   //   **네이버 전용 추가 키워드**(NAVER_EXTRA)를 같은 순환에서 더 돌림. YT 는 앞 batch 개만.
   //   2026-07-21: YT 검색 쿼터 확장이 어려워 네이버(실측 ~2% 활용)로 볼륨 이전 — 기본 4→12(틱당 네이버 총 batch+12).
@@ -239,23 +228,24 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   시작해 작은 축이 매 회차 0 이 된다(불변식 ④ 붕괴). 반환 carry 는 **아래 마감 batch 에 저장**.
   const axisCarry = parseAxisCarry(settings[AXIS_CARRY_KEY])
   const { nFocus, nPri, nGen, carry: nextAxisCarry } = planKeywordSplit(totalPick, focusPool.length, priPool.length, genPool.length, undefined, axisCarry)
-  const focusPicks: { id: number; keyword: string; category: string | null }[] = []
-  const priPicks: { id: number; keyword: string; category: string | null }[] = []
-  const genPicks: { id: number; keyword: string; category: string | null }[] = []
-  for (let i = 0; i < nFocus; i++) focusPicks.push(focusPool[(focusCursor + i) % focusPool.length])
-  for (let i = 0; i < nPri; i++) priPicks.push(priPool[(priCursor + i) % priPool.length])
-  for (let i = 0; i < nGen; i++) genPicks.push(genPool[(cursor + i) % genPool.length])
+  // ⏳ 축 **안의 순서는 "얼마나 굶었나"** — 위치 커서를 쓰면 풀 길이가 회차마다 변해(억제·승격·은퇴)
+  //   같은 인덱스가 다른 키워드를 가리키고, 건너뛰어진 키워드는 그 사실을 아무 데도 안 남긴다.
+  //   실측 편식(집중 25개인데 최악 13.6일 미실행)과 근거·할인율은 `pickStalest` docblock(SSOT).
+  const pickNow = Date.now()
+  const focusPicks = pickStalest(focusPool, nFocus, pickNow)
+  const priPicks = pickStalest(priPool, nPri, pickNow)
+  const genPicks = pickStalest(genPool, nGen, pickNow)
   // 🔀 세 풀 라운드로빈 — 몫은 planKeywordSplit 그대로, 순서만 공평하게(근거·실측은 함수 docblock).
   const picks = mergeKeywordPicks(focusPicks, priPicks, genPicks, roundIndex % 3)
   // 🎯 YT 슬롯(희소 자원 — Search Queries/day 기본 100회)은 성과 가중 선택으로 교체.
-  //   커서 순환(picks)은 네이버 폭 커버 담당 그대로 — YT 픽과 중복만 제거해 총량(totalPick) 유지.
+  //   순환 픽(picks)은 네이버 폭 커버 담당 그대로 — YT 픽과 중복만 제거해 총량(totalPick) 유지.
   const ytPicks = pickYtKeywords(kws, batch, Date.now())
   const ytIds = new Set(ytPicks.map(k => k.id))
-  // 🔀 번갈아 배치 — 꼬리의 커서 픽이 영영 안 돌던 것(실측 `from_cursor: 0`). 근거는 `interleavePicks` docblock.
+  // 🔀 번갈아 배치 — 꼬리의 순환 픽이 영영 안 돌던 것(실측 `from_cursor: 0`). 근거는 `interleavePicks` docblock.
   const interleaved = interleavePicks(ytPicks, picks.filter(p => !ytIds.has(p.id)), totalPick)
   // 🛟 기아 방지 슬롯 — **맨 앞**에 둔다(예산이 앞에서부터 끊기므로 앞자리만 처리가 보장된다).
-  //   커서 수학 무접촉: 이 픽은 풀 커서 시퀀스 밖의 별도 1픽이라, 커서 전진(prefixDone)은 실제 처리된
-  //   풀 픽만 세므로 그대로 옳다. 근거·실측(14.9일 미실행 24개)은 `pickStarvationRescue` docblock.
+  //   ⚠️ 2026-08-24 이후로는 **백스톱**이다 — 미실행(`last_run_at IS NULL`)은 나이 ∞ 라 자기 축에서
+  //   이미 1순위로 뽑힌다. 남는 역할은 "그 축이 이번 회차에 몫을 0 받았을 때"의 축간 구제뿐이다.
   const rescue = pickStarvationRescue(kws, new Set(interleaved.map(p => p.id)))
   const finalPicks = rescue ? [rescue, ...interleaved.slice(0, Math.max(0, totalPick - 1))] : interleaved
 
@@ -352,7 +342,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // 🌙 네이버 전용 회차만 넓힌다 — YT 살아있는 회차는 지금도 예산이 캡이라(실측 56/56) 넓혀도 무의미하고,
   //   넓히면 YT 쿼터만 더 빨리 태운다. 실제 상한은 여전히 예산(`budget.left <= 0`)과 계획 폭이다.
   const roundCap = naverOnlyRound ? naverOnlyRoundCap(env) : keywordsPerRoundCap(env)
-  let fromYt = 0, fromCursor = 0 // 🎯 처리된 픽의 출처 — 커서픽이 실제로 도달되는지 보이게(위 `picks` 주석)
+  // 🎯 처리된 픽의 출처 — 순환 픽이 실제로 도달되는지 보이게(위 `picks` 주석).
+  //   ⚠️ 필드명 `from_cursor` 는 **누적 통계 키라 유지**한다(바꾸면 지난 회차와 비교가 끊긴다).
+  //   뜻은 "위치 커서에서 왔다"가 아니라 **"YT 성과픽이 아닌 축 순환 픽"** 이다.
+  let fromYt = 0, fromCursor = 0
   // 💸 재조우 보강 스킵 훅 — 왜/예산회계는 `influencer-known-contacts.ts` docblock 이 SSOT.
   const alreadyContacted = makeAlreadyContacted(DB, POOL_ACCOUNT_ID, budget)
 
@@ -517,18 +510,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const freshCap = parseFreshnessCap(settings[FRESHNESS_CAP_KEY])
   const { promoted, kwAuto } = await promoteHashtagKeywords(DB, hashtagFreq, freshCap)
 
-  // 두 커서 각각 전진(우선/일반 풀 독립 순환) — 처리된 **연속 접두 길이**만큼만 전진(멤버십 카운트 아님).
-  //   ⚠️ ytPicks(성과가중)가 커서 앞선 키워드를 처리하면 filter 카운트는 그 '중간' 처리를 세어 갭을 건너뛴다
-  //   (leapfrog). prefix 방식은 앞에서 처리 안 된 키워드가 나오면 멈춰, 못 돈 키워드를 다음 틱이 정확히 이어받음.
-  const prefixDone = (ps: { id: number }[]) => { let n = 0; for (const p of ps) { if (processedIds.has(p.id)) n++; else break } return n }
-  const priDone = prefixDone(priPicks)
-  const genDone = prefixDone(genPicks)
-  const nextPriCursor = priPool.length ? (priCursor + priDone) % priPool.length : 0
-  //   🎯 집중 축도 **처리된 접두**만큼만 민다(2026-08-03). 예전엔 `+ nFocus`(계획한 수)였는데,
-  //   예산은 보통 픽 4개를 다 못 돌아 안 돈 키워드를 건너뛰었다 — 위 leapfrog 와 같은 병이다.
-  const focusDone = prefixDone(focusPicks)
-  const nextFocusCursor = focusPool.length ? (focusCursor + focusDone) % focusPool.length : 0
-  const nextCursor = genPool.length ? (cursor + genDone) % genPool.length : 0
+  // 🗑️ 위치 커서 3종(집중·우선·일반)은 2026-08-24 에 제거했다 — 선택이 나이순이 되면서 **커서가 하던 일을
+  //   구조가 대신한다**: 예산 소진으로 처리 못 한 픽은 `last_run_at` 이 안 갱신되므로 다음 회차에 저절로
+  //   맨 앞이다(옛 `prefixDone` 전진의 목적 그대로, leapfrog 도 원천적으로 불가능).
+  //   ⚠️ 되살리지 말 것 — 풀 길이가 회차마다 변하는 한 위치 커서는 반드시 편식한다(`pickStalest` docblock).
   // 🎯 YT 예산 소진으로 스킵됐고 다른 에러가 없으면 사유 노출(QUOTA 프리픽스 = 기존 배너 스타일 재사용).
   if (ytBudgetBlocked && !diag.yt.error) diag.yt.error = `QUOTA: 오늘 YT 검색 예산(${ytBudgetTotal}회) 소진 — 쿼터 리셋(한국 오후 4~5시) 후 자동 재개`
   // 📟 네이버 오픈API 일일 사용량 — **아래 batch 에 얹어 서브리퀘스트 추가 0**(읽기는 SETTING_KEYS 에 이미 포함).
@@ -539,7 +524,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
-    cursor: nextCursor, pri_cursor: nextPriCursor, focus_cursor: nextFocusCursor, focus_n: nFocus, promoted, kw_unjudged: starvedIds.size, ...(kwAuto ? { kw_auto: kwAuto } : {}), youtube_quota_hit: quotaHit, diag,
+    focus_n: nFocus, promoted, kw_unjudged: starvedIds.size, ...(kwAuto ? { kw_auto: kwAuto } : {}), youtube_quota_hit: quotaHit, diag,
     picks: { planned: finalPicks.length, processed: processedIds.size, from_yt: fromYt, from_cursor: fromCursor },
     // 📈 회차 퍼널을 시계열로 누적 — **새 쓰기 0개**(이 blob 이 어차피 저장된다). 근거는 그 모듈 헤더.
     funnel: appendCollectFunnel(prev?.funnel, {
@@ -572,13 +557,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   await writeSettings(DB, [
     [YT_USED_KEY, `${ytDay}:${ytSearchUsed}`],
     [NAVER_USED_KEY, `${naverDay}:${naverCalls}`],
-    // 🎯 집중 축 커서 — 이 줄이 없어서 대행사 키워드 18개 중 앞 4개만 무한 반복했다(2026-08-03 수리).
-    //   통계 JSON 에 `focus_cursor` 를 넣는 것만으론 **다음 회차가 안 읽는다**(읽기는 이 키를 본다).
-    [FOCUS_CURSOR_KEY, String(nextFocusCursor)],
-    ['ads_autocollect_cursor_pri', String(nextPriCursor)],
-    [CURSOR_KEY, String(nextCursor)],
     // ⚖️ 축별 이월 지분 — 이 줄이 없으면 carry 가 영구 0 이라 불변식 ④(작은 축 영구 0 불가)가 조용히
-    //   사라진다(집중 축 커서와 **정확히 같은** 실패 모드 — 위 FOCUS_CURSOR_KEY 주석).
+    //   사라진다. 이 레포에서 실제로 난 사고다(#930 집중 축 커서: 읽기 키와 쓰기 키가 갈려 값이 영구 0).
+    //   ⇒ **상태를 다음 회차가 읽는다면 그 쓰기가 이 배치에 있어야 한다.**
     [AXIS_CARRY_KEY, serializeAxisCarry(nextAxisCarry)],
     // 🌱 자동 조율된 auto 캡 — 이 줄이 없으면 캡이 영구 고정되어 조율기가 **계산만 하고 아무 일도 안 한다**
     //   (#930 집중 커서와 같은 실패 모드). 상한/하한은 순수함수가 이미 clamp 했다.

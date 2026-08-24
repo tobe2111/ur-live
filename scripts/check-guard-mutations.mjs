@@ -3440,16 +3440,16 @@ canvas {
       '무관한 코드 변경을 기다려야 적용된다(수리를 검증할 방법이 없는 자기참조적 사각지대).',
   },
   {
-    name: '집중 축 커서를 읽어오지 않음(항상 0 — 앞 4개만 무한 반복)',
+    name: '읽는 설정 키를 배치 목록에서 뺌(에러 없이 기본값으로 떨어짐)',
     file: 'src/features/marketing/api/influencer-auto-collect.ts',
-    find: '[STATS_KEY, FOCUS_CURSOR_KEY,',
-    replace: '[STATS_KEY,',
+    find: 'CAFE_GATE_KEY, AXIS_CARRY_KEY,',
+    replace: 'CAFE_GATE_KEY,',
     test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
     why:
-      'readSettings 목록에 없는 키는 **에러가 아니라 undefined** 로 온다 → parseInt(\'0\') → 커서 0 고정. ' +
-      '라이브 실측: 활성 대행사 키워드 18개 중 앞 4개만 돌고 "체험단 대행"·"인플루언서 섭외" 등 14개는 ' +
-      '`found_total = 0 · last_run_at = null`(한 번도 검색된 적 없음). 슬롯 배정(`focus_n: 4`)은 정상이라 ' +
-      '통계만 봐선 멀쩡해 보였다.',
+      'readSettings 목록에 없는 키는 **에러가 아니라 undefined** 로 온다 → 조용히 기본값. ' +
+      '#930 이 그렇게 났다(집중 축 커서: 읽기 배선 누락 → 항상 0 → 대행사 키워드 18개 중 앞 4개만 무한 반복, ' +
+      '`focus_n: 4` 는 정상이라 통계만 봐선 멀쩡했다). 그 커서는 2026-08-24 에 사라졌지만 **같은 실패 모드가 ' +
+      'carry 에 그대로 남아 있다** — carry 가 영구 0 이면 작은 축이 매 회차 0 슬롯(불변식 ④ 소멸).',
   },
   {
     name: '체험단 분류 룰 소실 — 승격 게이트가 그 축을 영구 차단(hits 78 이 영원히 대기)',
@@ -3543,25 +3543,16 @@ canvas {
       '에러가 없고 슬롯 합계도 정상이라 통계만 보면 멀쩡하다 — 작은 축이 영구 0 이 되는 것만 달라진다.',
   },
   {
-    name: '민 커서를 통계 JSON 에만 남기고 저장 안 함',
+    name: '축 선택이 위치 커서로 회귀(길이 변하는 풀 → 편식 재발)',
     file: 'src/features/marketing/api/influencer-auto-collect.ts',
-    find: '    [FOCUS_CURSOR_KEY, String(nextFocusCursor)],\n',
-    replace: '',
+    find: 'const genPicks = pickStalest(genPool, nGen, pickNow)',
+    replace: 'const genPicks = genPool.slice(0, nGen)',
     test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
     why:
-      '다음 회차가 읽는 곳은 `platform_settings` 이지 통계 blob 이 아니다. 라이브 실측에서 ' +
-      'cursor_pri=158 · cursor=6 은 있는데 cursor_focus 는 **행 자체가 없었다** — 계산은 매 회차 했는데 ' +
-      '아무 데도 안 남았다. 커서가 있는 레인이라면 어디서든 같은 형태로 재발한다.',
-  },
-  {
-    name: '집중 축 커서를 계획한 수만큼 밀어 안 돈 키워드를 건너뜀',
-    file: 'src/features/marketing/api/influencer-auto-collect.ts',
-    find: '(focusCursor + focusDone)',
-    replace: '(focusCursor + nFocus)',
-    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
-    why:
-      '예산은 픽 4개를 다 못 돈다(보통 1~2개). 계획한 수만큼 밀면 처리 못 한 키워드를 지나쳐 ' +
-      '**한 바퀴에 한 번도 안 걸리는 자리**가 생긴다 — 우선/일반 커서가 `prefixDone` 을 쓰는 이유와 같은 병(leapfrog).',
+      '`pool[(cursor+i) % pool.length]` 는 **풀 길이가 회차마다 변하면**(저수율 억제 5회차 중 4회차 · ' +
+      '승격/은퇴) 같은 인덱스가 다른 키워드를 가리켜 어떤 자리는 영영 안 걸린다. 라이브 실측(2026-08-24): ' +
+      '한 바퀴 3.5일이어야 하는데 최악 28.1일 · 7일+ 밀린 것 168개(26%) · 집중 축은 25개인데 최악 13.6일 ' +
+      '(하루 24회차면 못 도는 게 불가능한 크기). 에러도 경보도 없이 조용히 굶는다.',
   },
   {
     name: "bare '마케터' 가 소개글까지 대행사로(이용권 축에서 훔쳐옴)",
@@ -4585,6 +4576,51 @@ canvas {
     why:
       '상수 옆에 근거(실측)를 적어 두는 이유가 사라진다. 리터럴로 돌아가면 다음 세션이 숫자를 ' +
       '못 보고 바꾼다 — 이 레포가 반복해 겪은 "근거 없는 되돌리기".',
+  },
+  {
+    name: '나이순 정렬을 뒤집음(가장 최근 것부터 — 굶은 것이 영영 안 뽑힘)',
+    file: 'src/features/marketing/api/influencer-keyword-staleness.ts',
+    find: '(a.age > b.age ? -1 : 1)',
+    replace: '(a.age > b.age ? 1 : -1)',
+    test: 'src/tests/unit/ads-keyword-staleness.test.ts',
+    why:
+      '이 한 부호가 순환의 방향 전체다. 뒤집히면 방금 돈 키워드만 계속 돌고 굶은 꼬리는 영구 대기 — ' +
+      '위치 커서 시절보다 나쁘다(그때는 최소한 커서가 앞으로는 갔다). 에러가 없고 회차당 처리량도 같아 ' +
+      '통계로는 구분이 안 된다.',
+  },
+  {
+    name: '미실행(last_run_at NULL)이 1순위에서 빠짐',
+    file: 'src/features/marketing/api/influencer-keyword-staleness.ts',
+    find: 'if (ran == null) return Number.POSITIVE_INFINITY',
+    replace: 'if (ran == null) return 0',
+    test: 'src/tests/unit/ads-keyword-staleness.test.ts',
+    why:
+      '나이 0 이면 **막 돈 것과 같은 취급**이라 신규/승격 키워드가 맨 뒤로 간다 — 우선순위 스케줄링의 ' +
+      '고전적 기아(aging 없는 strict priority). 2026-08-04 에 이미 한 번 났다(자동확장 24개가 생성 14.9일 · ' +
+      '실행 0회). 그때는 `pickStarvationRescue` 로 막았지만, 이제 1순위 보장은 여기 있다.',
+  },
+  {
+    name: '저수율 나이 할인 제거(억제가 죽은 손잡이가 됨)',
+    file: 'src/features/marketing/api/influencer-keyword-staleness.ts',
+    find: 'return isLowRotationYield(k) ? age * LOW_YIELD_STALENESS_DISCOUNT : age',
+    replace: 'return age',
+    test: 'src/tests/unit/ads-keyword-staleness.test.ts',
+    why:
+      '할인이 없으면 저수율 키워드는 4/5 회차를 건너뛴 탓에 **항상 남들보다 늙어 있어** 탐침 회차마다 ' +
+      '맨 앞을 싹쓸이한다 → 억제 이전과 같은 비율로 수렴(= `suppressLowRotationYield` 가 아무 일도 안 함). ' +
+      '연락 수율 <15% 인 키워드에 예산이 새는데 어떤 에러도 나지 않는다.',
+  },
+  {
+    name: 'D1 UTC-naive 시각을 로컬로 파싱(9시간 어긋남)',
+    file: 'src/features/marketing/api/influencer-keyword-staleness.ts',
+    find: "`${s.replace(' ', 'T')}Z`",
+    replace: 's',
+    test: 'src/tests/unit/ads-keyword-staleness.test.ts',
+    why:
+      "D1 `datetime('now')` 는 **`Z` 없는 UTC**(`'2026-08-24 01:02:03'`)라 그냥 파싱하면 런타임 TZ 로 " +
+      '읽힌다. 이 레포의 상습 사고 클래스(`check-utc-date-parse` 가 존재하는 이유). ' +
+      '⚠️ 이 주입은 **CI 컨테이너 TZ 가 UTC 라 그냥은 안 잡힌다** — 테스트가 TZ 를 KST 로 바꿔 놓기 때문에 ' +
+      '빨간불이 뜬다(첫 판이 실제로 헛돌았고 되돌려-검증에서 잡혔다).',
   },
 ]
 /**
