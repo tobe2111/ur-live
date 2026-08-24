@@ -43,7 +43,12 @@ import { flushNaverCalls, armNaverAndReadSettings } from './naver-api-usage'
 import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { pickCompanyKeywords, rotationAdvance, type PickKeyword } from './company-keyword-pick'
 import { searchNaverWeb } from './webkr-search'
-import { flushOpenapiBlock, naverOpenapiBlocked, openapiBlockSnapshot } from './naver-openapi-block'
+import {
+  OPENAPI_BLOCK_KEY, flushOpenapiBlock, isBackedOff, naverOpenapiBlocked, openapiBlockSnapshot, parseOpenapiBlock,
+} from './naver-openapi-block'
+import {
+  SUBCAT_YIELD_KEY, kstDay, parseSubcatYield, recomputeSubcatYield, suppressCompanyPool, suppressedSubcats,
+} from './company-subcat-yield'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 export interface WebkrCollectStats {
@@ -52,6 +57,8 @@ export interface WebkrCollectStats {
   spent: number; limit_hit: boolean; run_ms: number; deadline_hit: boolean
   /** 🚧 네이버 오픈API 차단 관측(회차 단위). `tripped` 면 이 회차가 **중간에 멈춘 것**이다 — 수율 0 과 구분된다. */
   openapi_block?: { streak: number; blocked: number; ok: number; tripped: boolean; last_status: number | null }
+  /** 🎯 이번 회차에 수율 미달로 건너뛴 업종(자동 은퇴). 비어 있으면 아무도 안 막혔다는 뜻이다. */
+  suppressed?: string[]
   diag: { configured: boolean; error?: string }
 }
 
@@ -74,12 +81,13 @@ const DEFAULT_BATCH = 12
  * 🧾 **부기(簿記) 몫** — 루프가 예산을 다 태우면 회차가 **자기 기록을 못 남긴다.**
  *
  * 루프 뒤에 반드시 도는 D1 접근: 리드 저장(전후 COUNT + 청크 batch ≈ 4) · 키워드 부기 batch(1)
- * · 스냅샷 저장(1) · 네이버 누적 flush(읽기 1 + 쓰기 1) · **차단 관측 flush(읽기 1 + 쓰기 1)**.
+ * · 스냅샷 저장(1) · 네이버 누적 flush(읽기 1 + 쓰기 1) · **차단 관측 flush(읽기 1 + 쓰기 1)**
+ * · 하루 한 번 도는 업종 수율 재계산(읽기 1 + 쓰기 1).
  * 이걸 안 남기면 수집은 실제로 했는데
  * `ads_webkr_stats` 가 안 갱신돼 **"돌았는데 안 돈 것"** 으로 보인다 — 원인 규명이 가장 어려운 모양이다.
  * (같은 이유로 `runKakaoPhoneSweep` 이 `SWEEP_BOOKKEEPING_RESERVE` 를 둔다.)
  */
-const BOOKKEEPING_RESERVE = 10
+const BOOKKEEPING_RESERVE = 12
 
 /** 루프 전에 이미 쓴 D1: settings 읽기 · 활성 키워드 COUNT · 키워드 픽 · 조기 스냅샷 1. */
 const UPFRONT_D1 = 4
@@ -97,7 +105,8 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const clientId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
   const clientSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
-  const pick = await armNaverAndReadSettings(DB, [STATS_KEY]) // 쿼터는 앱 단위 — 이 레인도 같은 통에 센다
+  // 🎯 수율 표를 **이미 하던 설정 읽기에 얹는다** — 서브리퀘스트 추가 0(`armNaverAndReadSettings` 의 존재 이유).
+  const pick = await armNaverAndReadSettings(DB, [STATS_KEY, SUBCAT_YIELD_KEY, OPENAPI_BLOCK_KEY]) // 쿼터는 앱 단위 — 이 레인도 같은 통에 센다
   let prev: WebkrCollectStats | null = null
   try { const v = pick(STATS_KEY); prev = v ? JSON.parse(v) as WebkrCollectStats : null } catch { prev = null }
 
@@ -115,6 +124,19 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
 
   if (!clientId || !clientSecret) {
     return save({ ...base, run_ms: Date.now() - startedAt, diag: { configured: false, error: 'NOT_CONFIGURED: NAVER_SEARCH_CLIENT_ID/SECRET 미설정' } })
+  }
+
+  /**
+   * 🚧 **회차를 넘는 백오프** — 지난 회차가 차단으로 끝났으면 그 시각까지 아예 안 쏜다.
+   *   안 그러면 막힘이 몇 시간 갈 때 매 회차 3번씩 헛쏘고, 실패 응답도 그날 쿼터를 먹는다.
+   *   깨끗한 회차 한 번이면 저장된 `until` 이 0 이 되어 즉시 풀린다(회복 즉시 인정).
+   */
+  const blockBlob = parseOpenapiBlock(pick(OPENAPI_BLOCK_KEY))
+  if (isBackedOff(blockBlob, Date.now())) {
+    return save({
+      ...base, run_ms: Date.now() - startedAt,
+      diag: { configured: true, error: `backoff: 네이버 오픈API 차단(연속 ${blockBlob.trips || 1}회) — ${new Date(Number(blockBlob.until)).toISOString().slice(0, 19).replace('T', ' ')} 이후 재시도` },
+    })
   }
 
   const totalRow = await DB.prepare('SELECT COUNT(*) AS n FROM ad_company_keywords WHERE active = 1').first<{ n: number }>().catch(() => null)
@@ -161,19 +183,35 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
   const used: string[] = []
   const usedKw: PickKeyword[] = [] // 커서 전진 근거 — 우선 픽(미실행)은 회전 시퀀스 밖이라 빼야 한다
   const perKeyword = new Map<number, number>()
+
+  /**
+   * 🎯 **저수율 업종 자동 은퇴** — 이번 회차에 건너뛸 자리를 미리 정한다.
+   *
+   * ⚠️ 건너뛴 자리도 `usedKw` 에 **넣는다**. 회전 커서에서 이 자리는 *소비된* 것이라야 한다 —
+   *   안 넣으면 다음 회차가 같은 자리를 또 읽어 **회전이 제자리에 갇힌다**(2026-08-23 에 실제로 겪은
+   *   사고와 같은 클래스: 조용하고, 에러가 없고, 백로그만 안 준다).
+   *   대신 fetch 를 안 하므로 예산·쿼터는 아끼고, 부기(`perKeyword`)에는 안 넣는다 —
+   *   0건을 기록하면 "재 봤더니 없더라"로 읽혀 **자기가 만든 증거로 자기를 정당화**하게 된다.
+   */
+  const suppress = suppressedSubcats(parseSubcatYield(pick(SUBCAT_YIELD_KEY)), prev?.total_runs || 0)
+  const skipIdx = suppressCompanyPool(kws, suppress)
+  const skipped: string[] = []
+
   // 🚧 `naverOpenapiBlocked()` — 429/403 이 연속 3회면 즉시 멈춘다. 막힌 채로 남은 조를 다 돌면
   //   그 회차 결과가 전부 0 이 되고(수율 학습 오염), 실패 호출이 그날 쿼터만 태운다.
   for (let i = 0; i < kws.length && !budget.limitHit && !naverOpenapiBlocked() && budget.left > BOOKKEEPING_RESERVE && !overDeadline(); i += WEBKR_CONCURRENCY) {
     const group = kws.slice(i, i + WEBKR_CONCURRENCY)
-    const results = await Promise.all(group.map(async (kw: PickKeyword) => {
+    const results = await Promise.all(group.map(async (kw: PickKeyword, gi: number) => {
+      if (skipIdx.has(i + gi)) return { kw, got: [] as CompanyLead[], skip: true }
       // tier1(대행사)만 2페이지 — `collect-company` 와 같은 깊이 규칙을 그대로 승계한다.
       const pages = kw.tier === 1 ? 2 : 1
       const got = await searchNaverWeb(clientId, clientSecret, kw, budget, pages).catch(() => [] as CompanyLead[])
-      return { kw, got }
+      return { kw, got, skip: false }
     }))
     for (const r of results) {
+      usedKw.push(r.kw) // 건너뛴 자리도 회전에서는 소비된 것 — 위 주석 참조
+      if (r.skip) { skipped.push(r.kw.keyword); continue }
       used.push(r.kw.keyword)
-      usedKw.push(r.kw)
       perKeyword.set(r.kw.id, r.got.length)
       leads.push(...r.got)
     }
@@ -209,10 +247,20 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
     spent: budgetTotal - budget.left, limit_hit: !!budget.limitHit,
     run_ms: Date.now() - startedAt, deadline_hit: overDeadline(),
     openapi_block: openapiBlockSnapshot(),
+    suppressed: skipped,
     diag: { configured: true },
   }
   await save(s)
   await flushNaverCalls(DB, Date.now())
-  await flushOpenapiBlock(DB, Date.now())
+  // 📉 `foundZero` — 키워드를 실제로 돌았는데 한 건도 못 얻은 회차. 소프트 스로틀(200+빈 결과) 대조용
+  //   **관측치일 뿐**이다 — 키워드가 정말 마른 경우와 구분하지 못하므로 이 값으로 판단하지 않는다.
+  await flushOpenapiBlock(DB, Date.now(), { foundZero: used.length > 0 && leads.length === 0 })
+  /**
+   * 🎯 **하루 한 번** 업종 수율을 다시 잰다 — 그래서 오늘의 판정이 내일 스스로 갱신된다.
+   *   저장된 표의 기준일이 오늘이 아닐 때만 돈다(서브리퀘스트 2/일). 실패해도 던지지 않는다.
+   *   ⚠️ 부기 예약 밖에서 돌리지 말 것 — 이건 회차의 마지막 D1 사용이고, 예약이 이 몫을 덮는다.
+   */
+  const yieldBlob = parseSubcatYield(pick(SUBCAT_YIELD_KEY))
+  if (!yieldBlob || yieldBlob.day !== kstDay(Date.now())) await recomputeSubcatYield(DB, Date.now())
   return s
 }
