@@ -4686,6 +4686,48 @@ canvas {
       'DB 를 나눌 때 백업 대상 목록을 같이 안 늘리면 그 DB 는 **조용히 무방비**가 된다 — ' +
       '에러도 경고도 없고, 필요해질 때까지 아무도 모른다. 메인 DB 가 3주간 그 상태였다.',
   },
+  {
+    name: '축 지정을 검증만 하고 UPDATE 에 안 넣음(축이 영영 안 바뀐다)',
+    file: 'src/features/marketing/api/admin-ads-influencers.routes.ts',
+    find: 'SET active = ?, category = COALESCE(?, category), activated_at',
+    replace: 'SET active = ?, activated_at',
+    test: 'src/tests/unit/ads-keyword-category.test.ts',
+    why:
+      '요청은 200 으로 성공하고 화면도 지정한 대로 보이는데 **저장만 안 된다**. auto 키워드는 계속 ' +
+      "`'자동'`(가장 느린 일반 축)으로 돌고, 대표가 중요하다고 지목한 키워드가 제일 늦게 돈다. " +
+      '에러가 없어 아무도 모른다 — 이 레포의 "조용한 부재" 클래스.',
+  },
+  {
+    name: '축 화이트리스트 검증 제거(오타가 존재하지 않는 축이 된다)',
+    file: 'src/features/marketing/api/influencer-keyword-category.ts',
+    find: 'if (raw && !isAssignableKeywordCategory(raw)) {',
+    replace: 'if (false) {',
+    test: 'src/tests/unit/ads-keyword-category.test.ts',
+    why:
+      "`'마케팅대행사 '`(뒤 공백) 같은 오타는 에러가 아니라 **아무 축에도 안 속하는 값**이 된다 → " +
+      '그 키워드는 조용히 일반 축으로 떨어지는데 화면엔 지정한 대로 찍힌다. 400 으로 되돌려 줘야 ' +
+      '사람이 그 자리에서 안다.',
+  },
+  {
+    name: '은퇴 축 제외가 사라짐(켜도 안 도는 축에 배정)',
+    file: 'src/features/marketing/api/influencer-keyword-category.ts',
+    find: 'return ASSIGNABLE_KEYWORD_CATEGORIES.includes(v) && !retired.has(v)',
+    replace: 'return ASSIGNABLE_KEYWORD_CATEGORIES.includes(v)',
+    test: 'src/tests/unit/ads-keyword-category.test.ts',
+    why:
+      '`runAutoCollect` 는 `RETIRED_CATEGORIES` 축을 선택에서 뺀다. 은퇴 축으로 지정하면 **켜져 있는데 ' +
+      '영원히 안 도는** 키워드가 되고, 목록에는 활성으로 보인다.',
+  },
+  {
+    name: '축 목록을 SSOT 대신 하드코딩(축을 늘려도 지정 불가)',
+    file: 'src/features/marketing/api/influencer-keyword-category.ts',
+    find: '  ...FOCUS_CATEGORIES, ...PRIORITY_CATEGORIES,',
+    replace: "  '맛집',",
+    test: 'src/tests/unit/ads-keyword-category.test.ts',
+    why:
+      '목록이 두 벌이 되면 `PRIORITY_CATEGORIES` 에 축을 추가해도 어드민에서 **그 축으로 지정할 수 없다** ' +
+      '— 한쪽만 늘어나는 전형적 드리프트(이 레포는 같은 클래스를 여러 번 겪었다).',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
