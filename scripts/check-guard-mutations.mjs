@@ -4618,6 +4618,28 @@ canvas {
       '상수 옆에 근거(실측)를 적어 두는 이유가 사라진다. 리터럴로 돌아가면 다음 세션이 숫자를 ' +
       '못 보고 바꾼다 — 이 레포가 반복해 겪은 "근거 없는 되돌리기".',
   },
+  {
+    name: '🗄️ 백업 라벨 회전이 사라진다(메인 DB 가 영영 백업 안 된다)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: '    if (done?.value === today) continue',
+    replace: '    if (false && done?.value === today) continue',
+    test: 'src/tests/unit/d1-backup-chunked.test.ts',
+    why:
+      '이 줄이 없으면 진행 중인 커서가 없을 때 항상 목록 첫 번째(ads)를 잡는다. ads 는 끝나자마자 ' +
+      '그날 것을 또 시작하므로 **main 차례가 영영 오지 않는다.** 2026-08-24 실측으로 확인된 실제 ' +
+      '상태였고(`backup_chunk:main` 커서 부재 · 마지막 메인 백업 08-02), 백업은 없다는 걸 ' +
+      '필요할 때까지 아무도 모른다.',
+  },
+  {
+    name: '🗄️ 백업 완료 마커를 안 남긴다(회전 판단 근거가 사라진다)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: "    .bind(doneKey(label), cur.date).run().catch(() => null)",
+    replace: "    .bind('backup_noop:' + label, cur.date).run().catch(() => null)",
+    test: 'src/tests/unit/d1-backup-chunked.test.ts',
+    why:
+      '완료 마커는 커서와 분리돼야 한다 — 커서는 완료 시 지워지므로 그것만 보면 "진행 중인 게 없다" ' +
+      '와 "오늘 것을 끝냈다"가 구분되지 않는다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

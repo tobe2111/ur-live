@@ -107,6 +107,9 @@ async function writeCursor(DB: D1Database, key: string, c: Cursor | null): Promi
     .bind(key, JSON.stringify(c)).run().catch(() => null)
 }
 
+/** 라벨별 '마지막으로 완료한 날짜' 마커 키 — 커서와 **분리**해야 완료 후에도 남는다. */
+const doneKey = (label: string): string => `backup_done:${label}`
+
 export interface ChunkedResult {
   label: string; date: string; done: boolean
   tables: number; tableIndex: number; partsWritten: number; bytes: number
@@ -238,6 +241,12 @@ export async function backupChunked(
     counts, total_parts: totalParts, total_rows: totalRows,
   }, null, 1), { httpMetadata: { contentType: 'application/json' } })
   await writeCursor(stateDb, stateKey, null)
+  // 🔁 **어느 날짜까지 끝냈는지**를 남긴다. 이게 없으면 다음 회차가 커서만 보고 판단하는데,
+  //   커서는 방금 지웠으므로 "진행 중인 게 없다" → 목록 첫 번째(ads)를 또 시작한다.
+  //   실제로 그래서 메인 DB 는 분할 백업이 도입된 뒤 **한 번도 백업된 적이 없었다**(2026-08-24 실측:
+  //   `backup_chunk:main` 커서 부재 · 마지막 메인 백업은 08-02 주간분). 회전은 이 마커로 한다.
+  await stateDb.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(doneKey(label), cur.date).run().catch(() => null)
   logInfo(`[D1 Backup/chunked] ✅ ${label} ${cur.date} — ${tables.length} tables · ${totalParts} parts · ${totalRows} rows`)
   return { label, date: cur.date, done: true, tables: tables.length, tableIndex: tables.length, partsWritten, bytes, reads, reason: 'complete' }
 }
@@ -246,13 +255,19 @@ export async function backupChunked(
  * cron 진입점 — 메인 DB 와 유어애즈 DB 를 **번갈아** 진행한다.
  * 한 회차에 둘 다 밀면 예산을 반씩 나눠 쓰게 되므로, 안 끝난 쪽을 먼저 민다.
  */
-export async function handleChunkedBackup(env: Env, opts?: { maxReads?: number }): Promise<Record<string, unknown>> {
+export async function handleChunkedBackup(
+  env: Env,
+  /** `label` 을 주면 그 대상만 민다 — 운영자가 "메인부터 지금 떠라"를 할 수 있어야 한다. */
+  opts?: { maxReads?: number; label?: string },
+): Promise<Record<string, unknown>> {
   const stateDb = env.DB
   if (!stateDb) return { skipped: 'no-state-db' }
-  const targets: Array<{ db: D1Database | undefined; label: string }> = [
+  const all: Array<{ db: D1Database | undefined; label: string }> = [
     { db: env.ADS_DB, label: 'ads' },   // 큰 쪽 먼저 — 여기가 기존 백업이 죽던 원인이다
     { db: env.DB, label: 'main' },
   ]
+  const targets = opts?.label ? all.filter((t) => t.label === opts.label) : all
+  if (!targets.length) return { skipped: 'unknown-label', label: opts?.label }
   for (const t of targets) {
     if (!t.db) continue
     const cur = await readCursor(stateDb, `backup_chunk:${t.label}`)
@@ -260,11 +275,18 @@ export async function handleChunkedBackup(env: Env, opts?: { maxReads?: number }
     const r = await backupChunked(env, { db: t.db, label: t.label, stateDb, maxReads: opts?.maxReads })
     return r as unknown as Record<string, unknown>   // 진행 중인 것 하나만 밀고 끝낸다
   }
-  // 진행 중인 게 없으면 새 스냅샷을 시작한다(큰 쪽부터).
+  // 진행 중인 게 없으면 **오늘 아직 안 끝낸** 쪽을 시작한다.
+  // ⚠️ 예전엔 무조건 targets[0](ads)부터 시작했다. ads 는 끝나자마자 그날 것을 또 시작하므로
+  //   **main 차례가 영영 오지 않았다** — 분할 백업 도입 후 메인 DB 는 한 번도 백업된 적이 없다.
+  const today = new Date().toISOString().slice(0, 10)
   for (const t of targets) {
     if (!t.db) continue
+    const done = await stateDb.prepare('SELECT value FROM platform_settings WHERE key = ?')
+      .bind(doneKey(t.label)).first<{ value: string }>().catch(() => null)
+    if (done?.value === today) continue        // 오늘 것은 이미 끝났다 — 다음 대상으로
     const r = await backupChunked(env, { db: t.db, label: t.label, stateDb, maxReads: opts?.maxReads })
     return r as unknown as Record<string, unknown>
   }
-  return { skipped: 'no-targets' }
+  // 전부 오늘 것을 끝냈다 — 다음 날짜까지 쉰다(같은 날 두 번 뜨지 않는다).
+  return { skipped: 'all-done-today', date: today }
 }
