@@ -93,6 +93,17 @@ const MUTATIONS = [
       '`undefined.prepare` 로 죽는다 — 배포는 초록불인데 업체 수집·화면만 조용히 멎는다.',
   },
   {
+    name: '🏢 batch 혼합 판정이 실제 DB가 아니라 이름으로 돌아간다(폴백 창에 수집 레인 정지)',
+    file: 'src/shared/ads/leads-db.ts',
+    find: '      const targets = new Set(sides.map(dbOf))',
+    replace: '      const targets = new Set(sides) as unknown as Set<D1Like>',
+    test: 'src/tests/unit/ads-company-db.test.ts',
+    why:
+      '`ADS_COMPANY_DB` 미바인딩이면 company 와 ads 는 **같은 DB** 다. 그때 이름으로 세면 ' +
+      '멀쩡한 batch 가 예외로 죽어 배선 선배포 창에서 수집 레인이 통째로 멈춘다 — 폴백을 둔 의미가 ' +
+      '사라진다. CI 가 실제로 이 회귀를 잡았다(2026-08-24, 기존 ads-leads-db 테스트가 빨강).',
+  },
+  {
     name: '🗄️ 백업이 다시 시간당 1회로 줄어든다(전체 스냅샷 60시간 → 일 1회 불가)',
     file: 'src/worker/scheduled.ts',
     find: '[5, 20, 35, 50].some((m) => slotDue(event.scheduledTime, { minute: m }))',

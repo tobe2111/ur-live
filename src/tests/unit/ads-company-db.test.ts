@@ -93,4 +93,18 @@ describe('업체 전용 DB 라우팅', () => {
     const c = db.prepare('UPDATE ad_company_keywords SET hits = 1')
     await expect(db.batch([a, c])).resolves.toBeDefined()
   })
+
+  it('🔁 미바인딩 창에서는 업체+리드 batch 가 터지면 안 된다(둘이 같은 DB다)', async () => {
+    // 배선을 먼저 배포하는 창(=`ADS_COMPANY_DB` 아직 없음)에서 company 는 ads 로 폴백한다.
+    // 그때 이름으로 판정하면 멀쩡한 batch 가 죽어 **수집 레인이 통째로 멈춘다** —
+    // 그래서 판정은 이름이 아니라 실제 DB 객체로 한다. (CI 가 이 회귀를 실제로 잡았다.)
+    const main = fakeDb('main'); const ads = fakeDb('ads')
+    const db = adsLeadsDb({ DB: main, ADS_DB: ads } as never) as never as {
+      prepare: (s: string) => unknown; batch: (a: unknown[]) => Promise<unknown>
+    }
+    const a = db.prepare('INSERT INTO ad_company_leads (a) VALUES (1)')
+    const b = db.prepare('DELETE FROM store_prospects WHERE id = 1')
+    await expect(db.batch([a, b])).resolves.toBeDefined()
+    expect(ads.seen.includes('BATCH:2'), '폴백 batch 가 옛 리드 DB로 안 갔다').toBe(true)
+  })
 })

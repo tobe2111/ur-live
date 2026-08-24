@@ -143,12 +143,16 @@ export function adsLeadsDb<E extends EnvLike>(env: E): E['DB'] {
       return wrapStatement(dbOf(side).prepare(sql) as Record<string, unknown>, side)
     },
     async batch(stmts: unknown[]) {
-      const sides = new Set(stmts.map((s) => ((s as Record<symbol, unknown>)?.[SIDE] as Side) ?? 'main'))
-      if (sides.size > 1) {
+      const sides = stmts.map((s) => ((s as Record<symbol, unknown>)?.[SIDE] as Side) ?? 'main')
+      // ⚠️ 판정은 **이름(side)이 아니라 실제 DB 객체**로 한다. `ADS_COMPANY_DB` 미바인딩이면
+      //   company 와 ads 가 같은 DB 를 가리키므로 섞여도 안전한데, 이름으로 세면 그 창에서
+      //   멀쩡한 batch 를 터뜨린다(배선 선배포 = 수집 레인 정지). 폴백을 둔 의미가 사라진다.
+      const targets = new Set(sides.map(dbOf))
+      if (targets.size > 1) {
         // 여러 DB에 걸친 batch 는 원자성이 없다 — 조용히 반쪽만 반영되느니 즉시 터뜨린다.
-        throw new Error(`[adsLeadsDb] batch 가 서로 다른 DB를 섞었다(${[...sides].join('+')}) — 쿼리를 나눠야 한다`)
+        throw new Error(`[adsLeadsDb] batch 가 서로 다른 DB를 섞었다(${[...new Set(sides)].join('+')}) — 쿼리를 나눠야 한다`)
       }
-      const target = dbOf([...sides][0] ?? 'main')
+      const target = [...targets][0] ?? main
       const raw = stmts.map((s) => (s as Record<symbol, unknown>)?.[RAW] ?? s)
       return (target.batch as (x: unknown[]) => Promise<unknown>)(raw)
     },
