@@ -718,6 +718,37 @@ canvas {
       '다시 쏜다. 실패 응답도 쿼터를 먹으므로 막힘이 길수록 손해가 누적된다.',
   },
   {
+    name: '📮 응답 못 받은 키워드도 부기한다(429 한 번에 신규 자격을 잃는다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '      if (!r.answered) { unanswered.push(r.kw.keyword); continue }',
+    replace: '      if (!r.answered) { unanswered.push(r.kw.keyword) }',
+    test: 'src/tests/unit/webkr-unanswered-bookkeeping.test.ts',
+    why:
+      '2026-08-24 라이브 실측 — 429 가 하루 16건(요청의 15%)이다. 부기하면 last_run_at 이 찍혀 ' +
+      '`pickCompanyKeywords` 의 우선 픽 조건(last_run_at IS NULL)에서 탈락한다 ⇒ 08-23 에 넣은 ' +
+      '신규 1,410개가 **물어보지도 못한 채** 회전 뒤로 밀린다. 에러가 없어 안 보인다.',
+  },
+  {
+    name: '📮 429 를 성공 응답으로 센다(못 물어본 것이 증거가 된다)',
+    file: 'src/features/marketing/api/webkr-search.ts',
+    find: '    if (!res || !res.ok) break\n    if (outcome) outcome.responded = true',
+    replace: '    if (outcome) outcome.responded = true\n    if (!res || !res.ok) break',
+    test: 'src/tests/unit/webkr-unanswered-bookkeeping.test.ts',
+    why:
+      '순서가 뒤집히면 429·타임아웃도 "물어봤다"가 되어 부기 제외 장치가 통째로 무의미해진다. ' +
+      '이 한 줄이 "결과 0건"과 "못 물어봤다"를 가르는 유일한 근거다.',
+  },
+  {
+    name: '📮 outcome 객체를 병렬 조가 공유한다(서로 덮어써 판정이 섞인다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '      const outcome: SearchOutcome = {}',
+    replace: '      const outcome: SearchOutcome = sharedOutcome',
+    test: 'src/tests/unit/webkr-unanswered-bookkeeping.test.ts',
+    why:
+      '폭 4 로 병렬 실행하므로 한 객체를 나눠 쓰면 하나만 성공해도 넷 다 "응답 받음"이 된다 — ' +
+      '429 를 받은 키워드가 부기돼 위 사고가 그대로 재발한다.',
+  },
+  {
     name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
     file: 'src/features/agency/api/agency-sunset.ts',
     find: "    code: 'AGENCY_SIGNUP_CLOSED',",
