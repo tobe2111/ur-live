@@ -93,6 +93,38 @@ const MUTATIONS = [
       '전부 사실과 달랐다. 틀린 안내는 사진 올리는 사람을 헛수고시키고 **코드 리뷰로는 안 걸린다**.',
   },
   {
+    name: '🏢 업체 판정이 리드 판정보다 뒤로 밀린다(업체가 새 DB로 안 가고 옛 DB로 샌다)',
+    file: 'src/shared/ads/leads-db.ts',
+    find: "    (touchesAdsCompanyTable(sql) ? 'company' : touchesAdsLeadsTable(sql) ? 'ads' : 'main')",
+    replace: "    (touchesAdsLeadsTable(sql) ? 'ads' : touchesAdsCompanyTable(sql) ? 'company' : 'main')",
+    test: 'src/tests/unit/ads-company-db.test.ts',
+    why:
+      '업체 테이블은 ADS_LEADS_TABLES 에도 들어 있다 — 리드를 먼저 보면 **전부 옛 DB로 샌다.** ' +
+      '그런데 화면은 멀쩡히 뜬다(옛 DB에도 아직 데이터가 있으므로). 옛 테이블을 정리한 뒤에야 ' +
+      '0건으로 드러나고, 그때는 원인이 이 한 줄이라는 걸 아무도 모른다.',
+  },
+  {
+    name: '🏢 ADS_COMPANY_DB 미바인딩 폴백이 사라진다(배선 선배포에 업체 화면이 통째로 0건)',
+    file: 'src/shared/ads/leads-db.ts',
+    find: "  const company = companyDb && typeof companyDb.prepare === 'function' ? companyDb : ads",
+    replace: '  const company = companyDb as D1Like',
+    test: 'src/tests/unit/ads-company-db.test.ts',
+    why:
+      '바인딩은 대시보드 소관이라 코드보다 늦게 붙을 수 있다. 폴백이 없으면 그 사이 업체 쿼리가 ' +
+      '`undefined.prepare` 로 죽는다 — 배포는 초록불인데 업체 수집·화면만 조용히 멎는다.',
+  },
+  {
+    name: '🏢 batch 혼합 판정이 실제 DB가 아니라 이름으로 돌아간다(폴백 창에 수집 레인 정지)',
+    file: 'src/shared/ads/leads-db.ts',
+    find: '      const targets = new Set(sides.map(dbOf))',
+    replace: '      const targets = new Set(sides) as unknown as Set<D1Like>',
+    test: 'src/tests/unit/ads-company-db.test.ts',
+    why:
+      '`ADS_COMPANY_DB` 미바인딩이면 company 와 ads 는 **같은 DB** 다. 그때 이름으로 세면 ' +
+      '멀쩡한 batch 가 예외로 죽어 배선 선배포 창에서 수집 레인이 통째로 멈춘다 — 폴백을 둔 의미가 ' +
+      '사라진다. CI 가 실제로 이 회귀를 잡았다(2026-08-24, 기존 ads-leads-db 테스트가 빨강).',
+  },
+  {
     name: '🗄️ 백업이 다시 시간당 1회로 줄어든다(전체 스냅샷 60시간 → 일 1회 불가)',
     file: 'src/worker/scheduled.ts',
     find: '[5, 20, 35, 50].some((m) => slotDue(event.scheduledTime, { minute: m }))',
@@ -556,8 +588,8 @@ canvas {
   {
     name: '🚧 차단 관측을 flush 하지 않는다(회차가 끝나면 증거가 사라진다)',
     file: 'src/features/marketing/api/webkr-collect.ts',
-    find: '  await flushOpenapiBlock(DB, Date.now())',
-    replace: '  void flushOpenapiBlock;',
+    find: '  await flushOpenapiBlock(DB, Date.now(), ',
+    replace: '  void flushOpenapiBlock; void (',
     test: 'src/tests/unit/ads-naver-openapi-block.test.ts',
     why:
       '모듈 스코프 카운터는 인보케이션이 끝나면 소멸한다. 일별 누적을 안 남기면 ' +
@@ -593,6 +625,97 @@ canvas {
     why:
       '버전 게이트가 완료 상태면 platform_settings 조회 1회로 끝난다 — 에러 없이 아무 일도 안 일어난다. ' +
       '이 레포가 GUIDE/BLOG 시드에서 두 번 겪은 무음 스킵과 정확히 같은 구조다.',
+  },
+  {
+    name: '🎯 증거 부족 업종도 은퇴시킨다(갓 넣은 업종이 태어나자마자 죽는다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: '  if (r.tried < SUBCAT_EVIDENCE_MIN) return false',
+    replace: '  if (false) return false',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      'webkr 리드는 발굴 시점에 이메일이 없다 — 크롤이 나중에 붙인다. 증거 게이트가 없으면 ' +
+      '새 업종이 무조건 0%로 찍혀 즉시 은퇴하고, 은퇴하면 더 수집이 안 되니 증거도 영영 안 갱신된다. ' +
+      '우리 백로그를 업종 탓으로 돌리는 구조(influencer-keyword-yield 헤더가 경고하는 바로 그것).',
+  },
+  {
+    name: '🎯 탐침 회차가 사라진다(은퇴가 영구 배제로 굳는다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: '  if (!blob || roundIndex % SUBCAT_PROBE_EVERY === 0) return new Set()',
+    replace: '  if (!blob) return new Set()',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '은퇴한 업종은 더 이상 수집되지 않으므로 증거가 갱신되지 않는다. 주기적 통과가 없으면 ' +
+      '판정이 틀렸어도 스스로 뒤집힐 수 없다 — 그건 자동 조율이 아니라 조용한 축 삭제다.',
+  },
+  {
+    name: '🎯 미실행 키워드까지 은퇴 대상에 든다(새 지역을 시험할 기회가 사라진다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: '  pool.forEach((k, i) => { if (!k.fresh && k.subcategory && suppress.has(k.subcategory)) idx.add(i) })',
+    replace: '  pool.forEach((k, i) => { if (k.subcategory && suppress.has(k.subcategory)) idx.add(i) })',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '한 번도 안 돈 키워드는 증거가 없다. 같은 업종의 기존 성적으로 막으면 탐색이 통째로 죽고, ' +
+      '그 업종은 영원히 옛 지역의 성적으로만 평가된다.',
+  },
+  {
+    name: '🎯 회전 몫이 전부 막혀도 억제한다(그 축이 통째로 멈춘다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: '  return idx.size >= rotationCount ? new Set() : idx',
+    replace: '  return idx',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '전부 저조하면 빈 회차가 된다 — 고칠 것은 업종이지 수집이 아니다. 이 레포는 같은 클래스를 ' +
+      '이미 겪었다(집중 축 커서 동결 → 커버리지 붕괴).',
+  },
+  {
+    name: '🎯 수율 분모가 전체 행이 된다(새 업종이 0%로 낙인)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: "             SUM(CASE WHEN enrich_checked_at IS NOT NULL THEN 1 ELSE 0 END) AS tried,",
+    replace: '             COUNT(*) AS tried,',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '분모가 이 설계의 핵심이다. 크롤이 안 가 본 행까지 세면 갓 넣은 업종은 구조적으로 0%가 되어 ' +
+      '증거 게이트를 통과하는 순간 은퇴한다.',
+  },
+  {
+    name: '🎯 승격 문턱이 은퇴 문턱과 같아진다(경계 업종이 진동한다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: 'export const SUBCAT_PROMOTE_RATE = 0.25',
+    replace: 'export const SUBCAT_PROMOTE_RATE = 0.15',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '이력현상(hysteresis)이 없으면 경계에 있는 업종이 승격(수천 행 삽입)과 은퇴를 반복한다. ' +
+      '승격은 되돌리기가 비싸므로 더 보수적이어야 한다.',
+  },
+  {
+    name: '🎯 건너뛴 자리를 커서가 소비하지 않는다(회전이 제자리에 갇힌다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '      usedKw.push(r.kw) // 건너뛴 자리도 회전에서는 소비된 것 — 위 주석 참조\n      if (r.skip) { skipped.push(r.kw.keyword); continue }',
+    replace: '      if (r.skip) { skipped.push(r.kw.keyword); continue }\n      usedKw.push(r.kw)',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '2026-08-23 에 실제로 겪은 사고와 같은 클래스 — 읽은 자리를 커서가 안 넘기면 다음 회차가 ' +
+      '같은 자리를 또 읽는다. 에러가 없고 백로그만 안 줄어 원인 규명이 가장 어렵다.',
+  },
+  {
+    name: '🎯 건너뛴 키워드에 0건 부기를 남긴다(자기 판정을 자기가 정당화한다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '      if (r.skip) { skipped.push(r.kw.keyword); continue }',
+    replace: '      if (r.skip) { skipped.push(r.kw.keyword); perKeyword.set(r.kw.id, 0) }',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '쏘지도 않고 0건을 기록하면 "재 봤더니 없더라"로 읽힌다. 은퇴가 스스로를 뒷받침하는 증거를 ' +
+      '만들어 내면 탐침 회차가 있어도 뒤집히지 않는다.',
+  },
+  {
+    name: '🚧 회차 간 백오프가 사라진다(막힌 채 매 회차 헛쏜다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '  if (isBackedOff(blockBlob, Date.now())) {',
+    replace: '  if (false) {',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '모듈 스코프는 인보케이션마다 초기화된다 — 저장된 시각이 없으면 다음 회차가 아무것도 기억 못 하고 ' +
+      '다시 쏜다. 실패 응답도 쿼터를 먹으므로 막힘이 길수록 손해가 누적된다.',
   },
   {
     name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
@@ -4606,6 +4729,38 @@ canvas {
     why:
       '상수 옆에 근거(실측)를 적어 두는 이유가 사라진다. 리터럴로 돌아가면 다음 세션이 숫자를 ' +
       '못 보고 바꾼다 — 이 레포가 반복해 겪은 "근거 없는 되돌리기".',
+  },
+  {
+    name: '🗄️ 백업 라벨 회전이 사라진다(메인 DB 가 영영 백업 안 된다)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: '    if (done?.value === today) continue',
+    replace: '    if (false && done?.value === today) continue',
+    test: 'src/tests/unit/d1-backup-chunked.test.ts',
+    why:
+      '이 줄이 없으면 진행 중인 커서가 없을 때 항상 목록 첫 번째(ads)를 잡는다. ads 는 끝나자마자 ' +
+      '그날 것을 또 시작하므로 **main 차례가 영영 오지 않는다.** 2026-08-24 실측으로 확인된 실제 ' +
+      '상태였고(`backup_chunk:main` 커서 부재 · 마지막 메인 백업 08-02), 백업은 없다는 걸 ' +
+      '필요할 때까지 아무도 모른다.',
+  },
+  {
+    name: '🗄️ 백업 완료 마커를 안 남긴다(회전 판단 근거가 사라진다)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: "    .bind(doneKey(label), cur.date).run().catch(() => null)",
+    replace: "    .bind('backup_noop:' + label, cur.date).run().catch(() => null)",
+    test: 'src/tests/unit/d1-backup-chunked.test.ts',
+    why:
+      '완료 마커는 커서와 분리돼야 한다 — 커서는 완료 시 지워지므로 그것만 보면 "진행 중인 게 없다" ' +
+      '와 "오늘 것을 끝냈다"가 구분되지 않는다.',
+  },
+  {
+    name: '🏢 분리된 업체 DB 가 백업 대상 목록에서 빠진다(백업 경로가 아예 없어진다)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: "    { db: env.ADS_COMPANY_DB, label: 'company' },",
+    replace: '',
+    test: 'src/tests/unit/d1-backup-chunked.test.ts',
+    why:
+      'DB 를 나눌 때 백업 대상 목록을 같이 안 늘리면 그 DB 는 **조용히 무방비**가 된다 — ' +
+      '에러도 경고도 없고, 필요해질 때까지 아무도 모른다. 메인 DB 가 3주간 그 상태였다.',
   },
 ]
 /**

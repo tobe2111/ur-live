@@ -41,6 +41,9 @@ export const NAV_GROUPS: {
     label: '', // 홈 (그룹 라벨 없음)
     items: [
       { path: '/seller', labelKey: 'seller.dashboard', icon: LayoutDashboard, exact: true, mode: 'common' },
+      // 🎟️ 2026-08-23 (대표 AB테스트 — "왼쪽 카테고리에도 이용권 등록 버튼이 있어야지"):
+      //   셀러의 1번 작업이라 대시보드 바로 아래 상시 노출.
+      { path: '/seller/meal-voucher/new', labelKey: 'seller.registerVoucher', icon: Ticket, mode: 'common' as SellerMode },
       // 🏪 2026-07-19 (대표 확정 — "상품은 링크샵에서만"): 상품(물건) 판매 표면 = 링크샵. nav 최상단 진입.
       ...(SELLER_STORE_ONLY_MODE ? [{ path: '/u/me', labelKey: 'seller.nav.myLinkshop', icon: Sparkles, mode: 'common' as SellerMode }] : []),
     ],

@@ -125,3 +125,21 @@ canonical + 쓰기 시 전파):
 
 **의도적으로 안 한 것**: 기존 상품 대량 백필(전파는 다음 프로필 저장 때 자연 수렴 — 프로덕션
 대량 UPDATE 를 선제로 쏘지 않음), 읽기 경로 참조 전환(효익 0 리스크 +).
+
+## 5차 (같은 세션 — 대표 AB테스트 개시: 셀러 대시보드 컴팩트화)
+
+대표 지시: "여백이 많잖아. 컴팩트하게. 중요한 작업들이 모여있어야 해. 왼쪽 카테고리에도
+이용권 등록 버튼. 재고부족 같은 라이브커머스 잔재 다 지워."
+
+- **사이드바**: `seller-nav.ts` 홈 그룹에 '이용권 등록'(대시보드 바로 아래) + 심플 모드
+  (`SellerSimpleNav`)에도 첫 항목으로(내 딜의 meal-voucher also 중복 활성 제거).
+- **핵심 작업 결집**: PrimaryActions 를 가로형 컴팩트 5버튼으로 재작성해 헤더 바로 아래로 —
+  [이용권 등록(다크 주역)·주문 확인·이용권 관리·정산·인플루언서 찾기]. QuickActions 는 흡수·삭제.
+- **잔재 제거**: AlertsGrid(재고 부족 타일 포함 — 나머지는 stat 카드와 중복)·ConversionFunnel
+  (시청자 지표)·라이브 stat 카드·both 모드 배지·GroupBuyOverview 이중 렌더·
+  `/api/inventory/stock/alerts` 호출·재고 인사이트·할 일 재고 칩 전부 삭제.
+  '상품 없음' 인사이트 CTA → /seller/meal-voucher/new.
+- **컴팩트**: 4번째 stat = 정산 예정(실데이터, 종전 '진행 현황👇' 필러 대체).
+  내 공개 페이지 = 큰 이미지 카드 → 한 줄(아이콘+경로+팔로워 칩+링크복사/새 탭/프로필 편집).
+- SellerPage 695→593줄. 삭제: QuickActions/AlertsGrid/ConversionFunnel.tsx.
+- 검증: tsc 0 · dashboard-theme 0 · theme 0 · seller 앵커 테스트 13 pass · i18n 2키 6언어.

@@ -4,15 +4,13 @@ import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import {
-  Package, ShoppingBag, Play, DollarSign,
+  Package, ShoppingBag, DollarSign,
   TrendingUp,
   AlertCircle,
-  AlertTriangle, CreditCard,
+  CreditCard,
   LayoutDashboard
 } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
-import { useSellerMode } from '@/hooks/useSellerMode'
-import { LIVE_COMMERCE_SUSPENDED, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
 import SellerLayout from '@/components/SellerLayout'
 import RoleGate from '@/components/RoleGate'
 import { getRoleLabel, getRoleMeta, getCurrentSellerRole, isInfluencer as checkInfluencer } from '@/shared/seller-roles'
@@ -24,13 +22,10 @@ import { formatNumber } from '@/utils/format'
 import { swallow } from '@/shared/utils/swallow'
 import LazyChart from './seller-page/LazyChart'
 import NewSellerSteps from './seller-page/NewSellerSteps'
-import ConversionFunnel from './seller-page/ConversionFunnel'
-import QuickActions from './seller-page/QuickActions'
 import StoreQuickTrio from './seller-page/StoreQuickTrio'
-import AlertsGrid from './seller-page/AlertsGrid'
 import PrimaryActions from './seller-page/PrimaryActions'
 import PublicPagePreview from './seller-page/PublicPagePreview'
-import type { DashboardStats, DailyStats, TopProduct, Order, LiveStream } from './seller-page/types'
+import type { DashboardStats, DailyStats, TopProduct, Order } from './seller-page/types'
 import SellerSupportContact from '@/components/seller/SellerSupportContact'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / LazyChart / OnboardingChecklist / RealtimeOrdersPanel
@@ -64,10 +59,7 @@ type SellerDashBundle = {
   stats: DashboardStats
   dailyStats: DailyStats[]
   topProducts: TopProduct[]
-  streams: LiveStream[]
-  stockAlertCount: number
   followerCount: number
-  hasLiveHistory: boolean
   hasMealVouchers: boolean
   mealVoucherCount: number
   activeGroupBuys: number
@@ -90,10 +82,7 @@ function readSellerDashCache(period: string): SellerDashBundle | undefined {
       stats: c.stats ?? DEFAULT_DASH_STATS,
       dailyStats: c.dailyStats ?? [],
       topProducts: c.topProducts ?? [],
-      streams: c.streams ?? [],
-      stockAlertCount: typeof c.stockAlertCount === 'number' ? c.stockAlertCount : 0,
       followerCount: typeof c.followerCount === 'number' ? c.followerCount : 0,
-      hasLiveHistory: !!c.hasLiveHistory,
       hasMealVouchers: !!c.hasMealVouchers,
       mealVoucherCount: typeof c.mealVoucherCount === 'number' ? c.mealVoucherCount : 0,
       activeGroupBuys: typeof c.activeGroupBuys === 'number' ? c.activeGroupBuys : 0,
@@ -104,19 +93,19 @@ function readSellerDashCache(period: string): SellerDashBundle | undefined {
 async function fetchSellerDashboard(period: string): Promise<SellerDashBundle> {
   const token = getSellerToken()
   const headers = token ? { Authorization: `Bearer ${token}` } : {}
-  // 🗑️ 2026-08-20 라이브 잔재 제거: /api/seller/streams 는 서버에서 사라진 라우트(영구 중단)인데
-  //    대시보드가 매 로드마다 불러 404 콘솔 소음을 만들었다(대표 신고). streams/hasLiveHistory 는 빈 값 고정.
-  const [dashRes, stockRes, followerRes, productsRes, profileRes] = await Promise.allSettled([
+  // 🗑️ 2026-08-20 라이브 잔재 제거: /api/seller/streams 는 서버에서 사라진 라우트(영구 중단).
+  // 🗑️ 2026-08-23 (대표 AB테스트 — "재고부족 같은 라이브커머스 잔재 다 지워"): 재고 경보
+  //    (/api/inventory/stock/alerts — 쇼핑 재고 레일) 호출·타일 제거. 이용권 콘솔에 무의미.
+  const [dashRes, followerRes, productsRes, profileRes] = await Promise.allSettled([
     api.get(`/api/seller/dashboard/stats?period=${period}`, { headers }),
-    api.get('/api/inventory/stock/alerts', { headers }),
     api.get(`/api/social/followers/${getSellerId()}`),
     api.get('/api/seller/products', { headers }),
     api.get('/api/seller/profile', { headers }),
   ])
 
   const bundle: SellerDashBundle = {
-    hasBank: false, stats: { ...DEFAULT_DASH_STATS }, dailyStats: [], topProducts: [], streams: [],
-    stockAlertCount: 0, followerCount: 0, hasLiveHistory: false, hasMealVouchers: false, mealVoucherCount: 0, activeGroupBuys: 0,
+    hasBank: false, stats: { ...DEFAULT_DASH_STATS }, dailyStats: [], topProducts: [],
+    followerCount: 0, hasMealVouchers: false, mealVoucherCount: 0, activeGroupBuys: 0,
   }
 
   if (profileRes.status === 'fulfilled' && profileRes.value.data?.success) {
@@ -135,10 +124,6 @@ async function fetchSellerDashboard(period: string): Promise<SellerDashBundle> {
     bundle.dailyStats = d.daily || []
     bundle.topProducts = d.topProducts || []
   }
-  if (stockRes.status === 'fulfilled' && stockRes.value.data?.success) {
-    const alerts = stockRes.value.data.data || []
-    bundle.stockAlertCount = Array.isArray(alerts) ? alerts.length : 0
-  }
   if (followerRes.status === 'fulfilled' && followerRes.value.data?.success) {
     bundle.followerCount = followerRes.value.data.data?.count || 0
   }
@@ -155,8 +140,7 @@ async function fetchSellerDashboard(period: string): Promise<SellerDashBundle> {
   try {
     sessionStorage.setItem(`seller_dashboard_cache_${period}`, JSON.stringify({
       ts: Date.now(), stats: bundle.stats, dailyStats: bundle.dailyStats, topProducts: bundle.topProducts,
-      streams: bundle.streams, stockAlertCount: bundle.stockAlertCount, followerCount: bundle.followerCount,
-      hasLiveHistory: bundle.hasLiveHistory, hasMealVouchers: bundle.hasMealVouchers,
+      followerCount: bundle.followerCount, hasMealVouchers: bundle.hasMealVouchers,
       mealVoucherCount: bundle.mealVoucherCount, activeGroupBuys: bundle.activeGroupBuys,
     }))
   } catch { /* quota 무시 */ }
@@ -172,13 +156,8 @@ export default function SellerPage() {
   const sellerType = localStorage.getItem('seller_type') || 'influencer'
   // 🛡️ 2026-05-21 Phase D-5: helper 사용 (직접 비교 금지).
   const isInfluencer = checkInfluencer(sellerType)
-  // 🛡️ 2026-05-18: Mode-specific 대시보드 — SellerLayout 의 mode 토글과 동기화.
-  //   'live' 모드 = 라이브 셀러용 (시청자/방송 KPI 강조)
-  //   'store' 모드 = 공구 셀러용 (공구 진행률/매장 voucher 매출 강조)
-  // 'both' 사용자는 토글로 전환, 단일 타입은 자동 고정.
-  const activeMode = useSellerMode()
-  const isLiveMode = activeMode === 'live'
-  const isStoreMode = activeMode === 'store'
+  // 🗑️ 2026-08-23 (대표 AB테스트): live/store 모드 분기 제거 — 라이브 영구 중단으로 모드는 늘
+  //   'store' 하나였다(modesForSellerType 이 LIVE_COMMERCE_SUSPENDED 에서 ['store'] 고정).
 
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('7d')
 
@@ -199,7 +178,6 @@ export default function SellerPage() {
   const stats = dashQ.data?.stats ?? DEFAULT_DASH_STATS
   const dailyStats = dashQ.data?.dailyStats ?? []
   const topProducts = dashQ.data?.topProducts ?? []
-  const streams = dashQ.data?.streams ?? []
   const loading = dashQ.isLoading && !dashQ.data
 
   // Real-time orders
@@ -210,12 +188,8 @@ export default function SellerPage() {
   const lastMaxIdRef = useRef<number>(0)
   const newOrderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // 대시보드 번들에서 파생 (stock/follower/활동 데이터)
-  const stockAlertCount = dashQ.data?.stockAlertCount ?? 0
+  // 대시보드 번들에서 파생 (follower/활동 데이터)
   const followerCount = dashQ.data?.followerCount ?? 0
-  const hasLiveHistory = dashQ.data?.hasLiveHistory ?? false
-  const hasMealVouchers = dashQ.data?.hasMealVouchers ?? false
-  const mealVoucherCount = dashQ.data?.mealVoucherCount ?? 0
   const activeGroupBuys = dashQ.data?.activeGroupBuys ?? 0
 
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -302,15 +276,13 @@ export default function SellerPage() {
   // pending/viewers: sessionStorage에 이전 스냅샷이 있으면 비교
   const snapshotKey = `seller_stats_prev_snapshot`
   let pendingDelta = 0
-  let viewersDelta = 0
   try {
     const raw = sessionStorage.getItem(snapshotKey)
     if (raw) {
-      const prevSnap = JSON.parse(raw) as { pendingOrders?: number; totalViewers?: number; activeStreams?: number; ts?: number }
+      const prevSnap = JSON.parse(raw) as { pendingOrders?: number; ts?: number }
       // 24시간 이상 된 스냅샷만 비교용으로 사용
       if (prevSnap.ts && Date.now() - prevSnap.ts > 24 * 60 * 60 * 1000) {
         pendingDelta = pctDelta(stats.pendingOrders || 0, prevSnap.pendingOrders || 0)
-        viewersDelta = pctDelta(stats.totalViewers || 0, prevSnap.totalViewers || 0)
       }
     }
   } catch { /* ignore */ }
@@ -318,11 +290,6 @@ export default function SellerPage() {
   // ── Helpers ────────────────────────────────────────────────────────────────
   function fmtPrice(n: number) {
     return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(n || 0)
-  }
-  function fmtShort(n: number) {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
-    return String(n)
   }
   function timeAgo(date: Date) {
     const s = Math.floor((Date.now() - date.getTime()) / 1000)
@@ -334,7 +301,7 @@ export default function SellerPage() {
   // ── Actionable insights ────────────────────────────────────────────────────
   // 대시보드 데이터로 자동 파생되는 배너. 우선순위/심각도 기준 최대 몇 건 노출.
   type InsightSeverity = 'high' | 'medium' | 'info'
-  type InsightIcon = typeof Package | typeof AlertTriangle | typeof TrendingUp | typeof DollarSign
+  type InsightIcon = typeof Package | typeof TrendingUp | typeof DollarSign
   interface Insight {
     severity: InsightSeverity
     icon: InsightIcon
@@ -356,17 +323,7 @@ export default function SellerPage() {
       })
     }
 
-    // 2) 재고 부족 상품 ≥ 3
-    const lowStock = stats.lowStockCount ?? 0
-    if (lowStock >= 3) {
-      list.push({
-        severity: 'medium',
-        icon: AlertTriangle,
-        title: t('seller.insightLowStockTitle', { count: lowStock }),
-        description: t('seller.insightLowStockDesc'),
-        action: { label: t('seller.insightManageInventory'), path: '/seller/inventory' },
-      })
-    }
+    // 🗑️ 2026-08-23 (대표): 재고 부족 인사이트 제거 — 쇼핑 재고 레일 잔재, 이용권 콘솔에 무의미.
 
     // 3) 오늘 매출 > 어제 매출 * 1.2  (dailyStats 마지막 2개 비교)
     if (dailyStats.length >= 2) {
@@ -383,14 +340,14 @@ export default function SellerPage() {
       }
     }
 
-    // 4) 등록된 상품이 없음 (totalProducts === 0)
+    // 4) 등록된 상품이 없음 (totalProducts === 0) — 등록 동선은 이용권 위저드로.
     if ((stats.totalProducts ?? -1) === 0) {
       list.push({
         severity: 'high',
         icon: Package,
         title: t('seller.insightNoProductsTitle'),
         description: t('seller.insightNoProductsDesc'),
-        action: { label: t('seller.insightRegisterProduct'), path: '/seller/products/new' },
+        action: { label: t('seller.insightRegisterProduct'), path: '/seller/meal-voucher/new' },
       })
     }
 
@@ -444,6 +401,14 @@ export default function SellerPage() {
         {/* 🗑️ 2026-06-26 (대표 — '의미 없음'): 셀러 트래킹 링크(/browse?seller=) 제거.
             대상 /browse(쇼핑)는 SHOPPING_TAB_HIDDEN 으로 숨김 + 정식 공유 경로는 링크샵(/u/{handle}) 이라 obsolete. */}
 
+        {/* 🧱 2026-08-23 (대표 AB테스트 — "중요한 작업들이 모여있어야"): 핵심 작업 5버튼을
+            헤더 바로 아래로 — 이용권 등록(주역)·주문·이용권 관리·정산·인플루언서 찾기. */}
+        <PrimaryActions
+          pendingOrders={stats.pendingOrders || 0}
+          activeGroupBuys={activeGroupBuys}
+          settlementAvailable={stats.pendingSettlement ?? 0}
+        />
+
         {/* 🧭 2026-07-19 (대표 UI v2 P2 — 심플 모드): 🏪 스캔 안내 카드 → 3액션 트리오(QR스캔·정산·내 딜)로 대체 */}
         <RoleGate showFor="store-or-both">
           <StoreQuickTrio />
@@ -453,29 +418,11 @@ export default function SellerPage() {
         {/* 🛡️ 2026-05-27: 영입자 + commission 분배 가시화 (영입자 있을 때만 표시) */}
         <SellerReferralInfoCard />
 
-        {/* 🛡️ 2026-05-18: Mode-specific 헤더 배지 — 어느 모드인지 시각적으로 즉시 인지. */}
-        {sellerType.toLowerCase() === 'both' && (
-          <div className={`rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm font-bold ${
-            isLiveMode
-              ? 'bg-red-50 text-red-700 border border-red-200'
-              : 'bg-amber-50 text-amber-800 border border-amber-200'
-          }`}>
-            {isLiveMode ? '📺 라이브 셀러 모드' : '🏪 공구 셀러 모드'}
-            <span className="text-xs font-normal text-gray-500">
-              · {isLiveMode ? '라이브 송출 + 시청자 + 일반 상품 KPI 강조' : '공구 진행률 + 매장 voucher 매출 강조'}
-            </span>
-          </div>
-        )}
-
-        {/* 🛡️ 2026-05-18: Mode-specific 섹션 순서.
-              store 모드: 공구 진행 현황을 KPI 위에 (공구 셀러의 1순위 관심사).
-              live 모드: 기존 순서 유지 (KPI → 공구) — 라이브 셀러는 공구가 부수 활동. */}
-        {isStoreMode && <SellerGroupBuyOverview />}
+        {/* 🗑️ 2026-08-23 (대표): 라이브/공구 모드 배지·이중 렌더 제거 — 라이브 영구 중단으로 모드는 하나다. */}
+        <SellerGroupBuyOverview />
 
         {/* 🛡️ 2026-05-15: KPI 통합 대시보드 (단골 / 공구 / 매출 / 분쟁) */}
         <SellerKpiDashboard />
-
-        {isLiveMode && <SellerGroupBuyOverview />}
 
         {/* 🏭 2026-06-04 (사용자 요청): 현재 등급(TierBadge) · 광고 슬롯 입찰 배너 · 시작 가이드(온보딩) ·
             7일 부트캠프 위젯 제거 — 셀러 대시보드 간소화. */}
@@ -504,21 +451,14 @@ export default function SellerPage() {
                 icon: <AlertCircle className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50',
                 visible: true, delta: pendingDelta, showDelta: pendingDelta !== 0,
               },
-              // 🛡️ 2026-05-18: live 모드 — 진행 중 라이브 + 누적 시청자
+              // 💰 2026-08-23 (대표 AB테스트): 4번째 카드 = 정산 예정 — 종전 '진행 현황 👇' 필러 CTA
+              //   (라이브/모드 잔재)를 실데이터 카드로 대체.
               {
-                label: t('seller.activeStreams'), value: `${stats.activeStreams || 0}`,
-                sub: stats.totalViewers > 0 ? t('seller.viewerCount', { count: stats.totalViewers }) : t('seller.noStreams'),
-                icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50',
-                visible: isLiveMode && isInfluencer, delta: viewersDelta, showDelta: viewersDelta !== 0,
-              },
-              // 🛡️ 2026-05-18: store 모드 — '진행 공구 보기' CTA 카드 (데이터는 SellerGroupBuyOverview 가 표시).
-              //   KPI 카드 4칸 채우면서 SellerGroupBuyOverview 섹션으로 자연스럽게 유도.
-              {
-                label: t('seller.groupBuysCta', { defaultValue: '공구 운영' }),
-                value: t('seller.viewGroupBuys', { defaultValue: '진행 현황' }),
-                sub: t('seller.groupBuysCtaSub', { defaultValue: '👇 아래 섹션 확인' }),
-                icon: <Package className="w-5 h-5" />, color: 'text-amber-700', bg: 'bg-amber-50',
-                visible: isStoreMode, delta: 0, showDelta: false,
+                label: t('seller.expectedSettlement', { defaultValue: '정산 예정' }),
+                value: fmtPrice(stats.pendingSettlement ?? 0),
+                sub: t('seller.primary.settlementsDesc', { defaultValue: '딜/현금 출금' }),
+                icon: <CreditCard className="w-5 h-5" />, color: 'text-green-600', bg: 'bg-green-50',
+                visible: true, delta: 0, showDelta: false,
               },
             ].filter(card => card.visible).map(card => (
               <div key={card.label} className="bg-white rounded-xl p-3 sm:p-4 shadow-sm">
@@ -553,12 +493,6 @@ export default function SellerPage() {
             <NewSellerSteps isStoreOwner={!isInfluencer} />
           )}
 
-          {/* 🛡️ 2026-05-20: 큰 CTA 카드 그리드 (사용자 요청 — 작은 link 보다 명확) */}
-          <PrimaryActions
-            pendingOrders={stats.pendingOrders || 0}
-            isInfluencer={isInfluencer}
-          />
-
           {/* ── Actionable insights callouts ── */}
           {insights.length > 0 && (
             <div className="space-y-2 mb-4">
@@ -582,18 +516,14 @@ export default function SellerPage() {
           )}
 
           {/* ── 할 일 목록 ── */}
-          {(stats.pendingOrders > 0 || (stats.lowStockCount ?? 0) > 0 || (stats.pendingSettlement ?? 0) > 0) && (
+          {/* 🗑️ 2026-08-23 (대표): 재고 부족 칩 제거 — 쇼핑 재고 레일 잔재. */}
+          {(stats.pendingOrders > 0 || (stats.pendingSettlement ?? 0) > 0) && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
               <h3 className="text-sm font-bold text-amber-800 mb-2">📋 {t('seller.actionItems')}</h3>
               <div className="flex flex-wrap gap-2">
                 {stats.pendingOrders > 0 && (
                   <Link to="/seller/orders" className="flex items-center gap-1.5 px-3 py-2 bg-white rounded-lg text-xs font-medium text-amber-700 border border-amber-200 hover:bg-amber-100">
                     <ShoppingBag className="w-3.5 h-3.5" /> {t('seller.unprocessedOrderCount', { count: stats.pendingOrders })}
-                  </Link>
-                )}
-                {(stats.lowStockCount ?? 0) > 0 && (
-                  <Link to="/seller/inventory" className="flex items-center gap-1.5 px-3 py-2 bg-white rounded-lg text-xs font-medium text-orange-700 border border-orange-200 hover:bg-orange-100">
-                    <AlertTriangle className="w-3.5 h-3.5" /> {t('seller.lowStockCount', { count: stats.lowStockCount })}
                   </Link>
                 )}
                 {(stats.pendingSettlement ?? 0) > 0 && (
@@ -605,42 +535,10 @@ export default function SellerPage() {
             </div>
           )}
 
-          {/* ── Main grid ──
-              🖥️ 2026-07-16 (대표 신고 — 공간활용 안 됨): 실시간 주문 패널 제거(2026-06-04) 후 3열 그리드에
-              오른쪽 패널 1개만 남아 2/3 가 비었음. 4개 블록(빠른액션·전환퍼널·알림·공개페이지)을 직접
-              그리드 자식으로 펼쳐 2×2(md+)로 폭을 꽉 채움. items-start 로 상단 정렬. */}
-          <div className="grid md:grid-cols-2 gap-3 items-start">
-
-            {/* 빠른 액션 — 활동 데이터 기반 동적 배치(가장 자주 쓰는 액션 → 좌상단) */}
-            <QuickActions
-              hasMealVouchers={hasMealVouchers}
-              sellerType={sellerType}
-              activeGroupBuys={activeGroupBuys}
-              isInfluencer={isInfluencer}
-              hasLiveHistory={hasLiveHistory}
-            />
-
-            {/* 알림 */}
-            <AlertsGrid
-              followerCount={followerCount}
-              stockAlertCount={stockAlertCount}
-              pendingOrders={stats.pendingOrders || 0}
-              pendingSettlement={stats.pendingSettlement ?? Math.round(stats.totalRevenue * 0.85)}
-              fmtShort={fmtShort}
-            />
-
-            {/* 전환 퍼널(시청자→주문 — 라이브커머스 지표) — 🏪 2026-07-19 SELLER_STORE_ONLY_MODE:
-                매장 콘솔에선 숨김(라이브 영구중단 + 매장 업주에게 무의미한 '시청자' 지표 = 정신없음의 일부). */}
-            {!SELLER_STORE_ONLY_MODE && (
-              <ConversionFunnel
-                totalViewers={stats.totalViewers}
-                totalOrders={stats.totalOrders}
-              />
-            )}
-
-            {/* 내 공개 페이지 미리보기 */}
-            <PublicPagePreview />
-          </div>
+          {/* 🗑️ 2026-08-23 (대표 AB테스트): 빠른 액션(→상단 핵심 작업으로 통합)·알림 그리드(재고 부족
+              등 잔재, 나머지는 stat 카드와 중복)·전환 퍼널(시청자 지표 = 라이브 잔재) 제거.
+              내 공개 페이지는 컴팩트 한 줄로. */}
+          <PublicPagePreview followerCount={followerCount} />
 
           {/* ── Chart ── */}
           {dailyStats.length > 0 && (

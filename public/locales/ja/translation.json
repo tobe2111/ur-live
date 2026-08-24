@@ -2942,7 +2942,9 @@
     "mailOrderNumberPlaceholder": "例: 2026-ソウル江南-01234",
     "mailOrderNumberHint": "リンクショップの販売者情報に公開表示されます",
     "primary": {
-      "addProductDesc": "利用券・共同購入を登録"
+      "addProductDesc": "利用券・共同購入を登録",
+      "voucherManageDesc": "販売・状況",
+      "findInfluencersDesc": "コラボ提案を送る"
     },
     "delegation": {
       "title": "店舗委任",

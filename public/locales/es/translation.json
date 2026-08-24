@@ -2262,7 +2262,9 @@
     "mailOrderNumberPlaceholder": "ej. 2026-Seul-01234",
     "mailOrderNumberHint": "Se muestra públicamente en la información del vendedor de tu linkshop",
     "primary": {
-      "addProductDesc": "Publicar vales y compras grupales"
+      "addProductDesc": "Publicar vales y compras grupales",
+      "voucherManageDesc": "Ventas y estado",
+      "findInfluencersDesc": "Enviar propuestas"
     },
     "delegation": {
       "title": "Delegación de agencia",
