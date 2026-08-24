@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 
-import { backupChunked } from '../../worker/cron/d1-backup-chunked'
+import { backupChunked, handleChunkedBackup } from '../../worker/cron/d1-backup-chunked'
 
 /**
  * 🗄️ 분할 백업 — **"한 회차에 다 못 한다"를 전제로 만든 것**이 지켜지는지 본다.
@@ -224,5 +224,75 @@ describe('분할 백업', () => {
     expect(j.counts.orders?.[1], 'orders 행 수가 안 적혔다').toBe(3)
     expect(j.counts.users?.[1], 'users 행 수가 안 적혔다').toBe(7)
     expect(j.total_rows).toBe(10)
+  })
+})
+
+describe('라벨 회전 — 메인 DB 가 자기 차례를 받는가', () => {
+  /**
+   * 🩸 2026-08-24 실측: 분할 백업 도입 뒤 **메인 DB 는 한 번도 백업된 적이 없었다.**
+   * 진행 중인 커서가 없으면 무조건 목록 첫 번째(ads)부터 시작했는데, ads 는 끝나자마자
+   * 그날 것을 또 시작하므로 main 차례가 영영 오지 않았다. 상태 테이블에 `backup_chunk:main`
+   * 커서가 아예 없었고, 마지막 메인 백업은 08-02 주간분(3주 전)이었다.
+   * 그래서 회전은 커서가 아니라 **완료 마커**로 판단한다.
+   */
+  /**
+   * 메인 DB 는 **상태 저장소이자 백업 대상**이다 — 두 역할을 다 하는 가짜가 필요하다.
+   * (커서 read/write 는 상태 쪽, 테이블 목록·페이징은 대상 쪽으로 간다.)
+   */
+  const fakeMainDb = (store: Map<string, string>) => {
+    const st = fakeStateDb(store) as unknown as { prepare: (s: string) => Record<string, unknown> }
+    const tgt = fakeDb({ m: 1 }) as unknown as { prepare: (s: string) => Record<string, unknown> }
+    return {
+      prepare(sql: string) {
+        return /platform_settings/.test(sql) ? st.prepare(sql) : tgt.prepare(sql)
+      },
+    } as unknown as D1Database
+  }
+  const envOf = (store: Map<string, string>, bucket: unknown) => ({
+    DB: fakeMainDb(store), ADS_DB: fakeDb({ a: 1 }), ADS_COMPANY_DB: fakeDb({ c: 1 }),
+    BACKUP_BUCKET: bucket,
+  }) as never
+
+  it('완료하면 backup_done:{label} 에 날짜를 남긴다', async () => {
+    const store = new Map<string, string>()
+    const bucket = fakeBucket()
+    const r = await backupChunked({ BACKUP_BUCKET: bucket } as never, {
+      db: fakeDb({ a: 1 }), label: 'ads', stateDb: fakeStateDb(store),
+    })
+    expect(r.done).toBe(true)
+    expect(store.get('backup_done:ads'), '완료 마커가 없으면 회전이 불가능하다').toBe(r.date)
+  })
+
+  it('🔑 ads 가 오늘 끝났으면 다음 시작은 main 이다 (ads 를 또 잡으면 안 된다)', async () => {
+    const store = new Map<string, string>()
+    const today = new Date().toISOString().slice(0, 10)
+    store.set('backup_done:ads', today)
+    const r = await handleChunkedBackup(envOf(store, fakeBucket()), {}) as { label?: string }
+    expect(r.label, 'ads 를 또 잡았다 — 메인은 영영 백업 안 된다').toBe('main')
+  })
+
+  it('전부 오늘 끝났으면 쉬고, 같은 날 다시 뜨지 않는다', async () => {
+    const store = new Map<string, string>()
+    const today = new Date().toISOString().slice(0, 10)
+    for (const l of ['ads', 'main', 'company']) store.set(`backup_done:${l}`, today)
+    const r = await handleChunkedBackup(envOf(store, fakeBucket()), {}) as { skipped?: string }
+    expect(r.skipped).toBe('all-done-today')
+  })
+
+  it('🏢 분리된 업체 DB 도 백업 대상이다 (DB 를 나눴으면 백업도 늘려야 한다)', async () => {
+    const store = new Map<string, string>()
+    const today = new Date().toISOString().slice(0, 10)
+    store.set('backup_done:ads', today)
+    store.set('backup_done:main', today)
+    const r = await handleChunkedBackup(envOf(store, fakeBucket()), {}) as { label?: string; skipped?: string }
+    expect(r.label, '업체 DB 가 대상 목록에 없다 — 그 DB 는 백업 경로가 아예 없어진다').toBe('company')
+  })
+
+  it('label 을 주면 그 대상만 민다 (운영자가 "메인 지금 떠라"를 할 수 있어야 한다)', async () => {
+    const store = new Map<string, string>()
+    store.set('backup_done:main', new Date().toISOString().slice(0, 10))
+    // 오늘 끝났다고 표시돼 있어도, 명시 지정이면 그 대상을 민다.
+    const r = await handleChunkedBackup(envOf(store, fakeBucket()), { label: 'main' }) as { label?: string; skipped?: string }
+    expect(r.label ?? r.skipped).not.toBe('ads')
   })
 })
