@@ -122,6 +122,17 @@
     --surface: #FFFFFF;     /* 카드/시트/입력창 */
     --line: #EAE4E0;        /* 구분선/테두리 */
     --brand-text: #E0526B;  /* 로즈 '글자·뱃지'용 — 라이트에선 brand 와 동일, 다크에선 밝힌 로즈 */
+
+    /* 🎨 2026-08-23 (대표 확정 — 시안 6종 비교 후 "차콜 블랙으로 가자"): **홈 색면**.
+       그루폰식 홈은 어두운 색면 위에 흰 패널을 얹는데, 그 색면이 여기 하나에서 나온다.
+       ⚠️ 색면은 **잉크(--ink)와 다른 값**이다 — 이전엔 둘 다 #1A2C42 라 같아 보였을 뿐이다.
+          제목·가격 잉크는 딥네이비로 두고 색면만 무채색으로 옮겼다(무채색 배경이 딜 사진의
+          색을 가장 살리고 로즈 강조가 제일 또렷하게 튄다 — 그게 이 색을 고른 이유다).
+       ⚠️ 페이지 색면(PcHomePage)과 히어로 색면(HomeHeroDefault)이 **반드시 같아야** 경계가
+          안 생긴다. 예전엔 양쪽에 hex 를 따로 적어 둬서 한쪽만 바꾸면 이음매가 드러났다.
+       `--home-field-rgb` 는 스크림·페이드가 알파를 얹을 때 쓴다: rgb(var(--home-field-rgb) / .88) */
+    --home-field: #16181C;
+    --home-field-rgb: 22 24 28;
   }
 
   /* 🎨 2026-07-19 지시서 §6 STEP B — 다크 테마 토큰 (html.dark = 기존 토글/시스템 감지, data-theme 별칭 겸용).
@@ -815,7 +826,7 @@ html.dark .gbd {
 .gbd .noscroll{scrollbar-width:none;-ms-overflow-style:none;}
 
 /* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면 홈): 잉크 색면 위에 뜨는 **흰 패널**.
-   그루폰 홈이 초록 배경 위에 흰 카드 패널을 얹는 그 구조를 우리 딥네이비(#1A2C42)로 한다.
+   그루폰 홈이 초록 배경 위에 흰 카드 패널을 얹는 그 구조를 우리 색면(--home-field)으로 한다.
    ⚠️ PC 메인 전용 — 다른 페이지는 흰 배경이라 이 클래스를 쓰지 않는다.
    다크모드에서도 색면은 그대로(이미 어두운 색)이고 패널만 어두운 서피스로 바꾼다. */
 .ur-home-panel {
@@ -823,14 +834,14 @@ html.dark .gbd {
   border-radius: 18px;
   padding: 20px;
   margin-bottom: 20px;
-  box-shadow: 0 1px 2px rgba(10, 20, 40, .06), 0 8px 24px -12px rgba(10, 20, 40, .28);
+  box-shadow: 0 1px 2px rgba(10, 11, 14, .06), 0 8px 24px -12px rgba(10, 11, 14, .30);
 }
 .dark .ur-home-panel { background: #0F151D; box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6); }
 @media (max-width: 1023px) { .ur-home-panel { padding: 14px; border-radius: 14px; margin-bottom: 14px; } }
 
 /* ✨ 카드가 색면 위에서 살짝 떠오르는 인터랙션(대표 — "버튼 나타날 때 효과") */
 .ur-lift { transition: transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .18s ease-out; }
-.ur-lift:hover { transform: translateY(-3px); box-shadow: 0 10px 26px -10px rgba(10, 20, 40, .35); }
+.ur-lift:hover { transform: translateY(-3px); box-shadow: 0 10px 26px -10px rgba(10, 11, 14, .38); }
 @media (prefers-reduced-motion: reduce) { .ur-lift, .ur-lift:hover { transition: none; transform: none; } }
 
 /* ✨ 하트·화살표처럼 **나타나는** 컨트롤 — 페이드 + 살짝 확대(툭 튀지 않게 부드럽게) */
