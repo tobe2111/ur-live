@@ -2942,7 +2942,9 @@
     "mailOrderNumberPlaceholder": "e.g. 2026-Seoul-01234",
     "mailOrderNumberHint": "Shown publicly in your linkshop seller info (e-commerce law disclosure)",
     "primary": {
-      "addProductDesc": "List vouchers & group buys"
+      "addProductDesc": "List vouchers & group buys",
+      "voucherManageDesc": "Sales & status",
+      "findInfluencersDesc": "Send collab offers"
     },
     "delegation": {
       "title": "Agency Delegation",
