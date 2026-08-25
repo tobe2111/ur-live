@@ -95,8 +95,11 @@ function main() {
   }
 
   // 🛡️ **측정 대상 0건은 통과가 아니라 실패다** — 경로가 낡아 조용히 비면 이 가드가 헛돈다.
+  //   ⚠️ 여기만 `STRICT` 와 무관하게 **무조건 exit 1** 이다. 나머지 위반은 warn/strict 관례를 따르지만,
+  //   "잴 대상이 0개"는 위반이 아니라 **가드 자신이 고장난 것**이라 경고로 넘길 성질이 아니다.
   if (!sawAny || head.size === 0) {
     err(`디스패치 파일에서 하트비트 이름을 하나도 못 찾았다 — 경로(${DISPATCH_FILES.join(', ')})가 낡았다`)
+    process.exit(1)
   } else if (main_.size === 0) {
     console.log(`   ℹ️ origin/main 을 못 읽었다(얕은 클론?) — 비교를 건너뛴다. HEAD 이름 ${head.size}개.`)
   } else {
