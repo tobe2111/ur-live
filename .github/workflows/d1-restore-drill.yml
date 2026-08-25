@@ -32,10 +32,24 @@ jobs:
           set -e
           # d1-backup.yml 의 가장 최근 성공 run → 그 run 의 d1-backup-* artifact
           RUN_ID=$(gh api "repos/${{ github.repository }}/actions/workflows/d1-backup.yml/runs?status=success&per_page=1" --jq '.workflow_runs[0].id')
+          RUN_AT=$(gh api "repos/${{ github.repository }}/actions/workflows/d1-backup.yml/runs?status=success&per_page=1" --jq '.workflow_runs[0].created_at')
           if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
             echo "❌ 성공한 d1-backup run 없음 — 백업 파이프라인부터 확인 필요"; exit 1
           fi
-          echo "최근 성공 백업 run: $RUN_ID"
+          echo "최근 성공 백업 run: $RUN_ID ($RUN_AT)"
+          # 🔴 2026-08-25 신설 — **신선도 검사.** 이 훈련은 "가장 최근 *성공*"을 집어오므로,
+          #   백업이 몇 주째 실패해도 옛 성공분을 복원해 보고 **초록불**을 낸다. 즉 "복원 가능한
+          #   백업이 있다"는 결론이 사실이 아닌데도 초록이다 — 이 레포가 반복해 만난 조용한 부재다.
+          #   실측 배경: 08-05·08-12·08-19 3주 연속 실패 중이었고, 08-01 훈련은 07-29 분을 검증했다.
+          #   주간 백업이므로 14일(2주기)을 넘기면 실패로 본다.
+          AGE_DAYS=$(BK_AT="$RUN_AT" python3 -c "import os,datetime;a=os.environ.get('BK_AT','');t=datetime.datetime.strptime(a,'%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=datetime.timezone.utc) if a else None;print(999 if t is None else int((datetime.datetime.now(datetime.timezone.utc)-t).total_seconds()//86400))")
+          echo "백업 나이: ${AGE_DAYS}일"
+          if [ "$AGE_DAYS" -gt 14 ]; then
+            echo "❌ 최신 성공 백업이 ${AGE_DAYS}일 전이다(한도 14일) — 주간 백업이 연속 실패 중이라는 뜻이다."
+            echo "   복원 자체는 될 수 있으나 **그 사이 데이터는 어디에도 없다**. 백업 파이프라인부터 고칠 것."
+            echo "   (d1-backup.yml 실행 로그 → wrangler stderr 확인)"
+            exit 1
+          fi
           gh run download "$RUN_ID" -R "${{ github.repository }}" --dir backup-dl
           ls -la backup-dl/*/
           GZ=$(find backup-dl -name '*.sql.gz' | head -1)

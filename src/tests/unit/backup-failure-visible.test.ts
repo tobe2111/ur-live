@@ -67,3 +67,39 @@ describe('🚨 d1-backup.yml — 실패가 보이는가', () => {
     expect(yml, '캡처만 하고 안 찍으면 똑같다').toMatch(/cat wrangler\.err/)
   })
 })
+
+/**
+ * 🧪 **복원 훈련이 "옛 백업으로 초록불"을 내지 않는다** (2026-08-25)
+ *
+ * 훈련은 `d1-backup.yml` 의 **가장 최근 *성공*** run 을 집어온다. 그래서 백업이 몇 주째
+ * 실패해도 옛 성공분을 복원해 보고 **성공**을 낸다 — *"복원 가능한 백업이 있다"* 는 결론이
+ * 사실이 아닌데도 초록이다.
+ *
+ * 실측(2026-08-25): 마지막 성공 백업이 **26일 전**(07-29)인데 08-01 훈련은 초록이었고,
+ * 09-01 훈련도 그대로면 또 초록이었을 것이다. 주간 백업이라 14일(2주기)을 한도로 둔다.
+ *
+ * ⚠️ 못 막는 것: 백업이 *성공했지만 내용이 비었을* 경우는 이 검사 밖이다
+ *   (그건 같은 워크플로의 `CREATE TABLE` 검사가 본다).
+ */
+describe('🧪 d1-restore-drill.yml — 옛 백업으로 초록불을 내지 않는다', () => {
+  const drill = readFileSync('.github/workflows/d1-restore-drill.yml', 'utf8')
+
+  it('파일을 읽었다 (0바이트면 통과가 아니라 실패)', () => {
+    expect(drill.length).toBeGreaterThan(500)
+  })
+
+  it('🔴 백업 나이를 재고 한도를 넘기면 실패한다', () => {
+    expect(drill, '나이 계산이 없다 — 5주 묵은 백업도 초록이 된다').toMatch(/AGE_DAYS=/)
+    expect(drill, '한도 비교가 없다').toMatch(/AGE_DAYS.*-gt 14/)
+    // 재기만 하고 안 죽으면 똑같다 — 비교 줄 **다음 8줄 안**에 exit 가 있어야 한다.
+    const lines = drill.split('\n')
+    const at = lines.findIndex((l) => /AGE_DAYS.*-gt 14/.test(l))
+    expect(at, '한도 비교 줄을 못 찾았다').toBeGreaterThan(-1)
+    expect(lines.slice(at, at + 8).join('\n'), '한도를 넘겨도 exit 하지 않는다').toContain('exit 1')
+  })
+
+  it('🔴 시각을 못 읽으면 통과가 아니라 실패 쪽으로 기운다', () => {
+    // 빈 값 → 999일 → 한도 초과 → 실패. 0 으로 떨어지면 "방금 만든 백업"으로 읽혀 늘 통과한다.
+    expect(drill).toMatch(/print\(999 if t is None else/)
+  })
+})

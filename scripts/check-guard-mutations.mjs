@@ -2390,6 +2390,17 @@ canvas {
       '고치려던 것과 **부호만 반대인 같은 고착**이다. 끝난 레인만 판정 대상이어야 한다.',
   },
   {
+    name: '🧪 복원 훈련이 다시 옛 백업으로 초록불을 낸다 (신선도 검사 제거)',
+    file: '.github/workflows/d1-restore-drill.yml',
+    find: '          if [ "$AGE_DAYS" -gt 14 ]; then',
+    replace: '          if [ "$AGE_DAYS" -gt 99999 ]; then',
+    test: 'src/tests/unit/backup-failure-visible.test.ts',
+    why:
+      '훈련은 "가장 최근 *성공*" 을 집어오므로 백업이 몇 주째 실패해도 옛 성공분으로 초록을 낸다. ' +
+      '실측: 마지막 성공이 26일 전(07-29)인데 08-01 훈련은 초록이었고 09-01 도 그대로면 또 초록이다. ' +
+      '"복원 가능한 백업이 있다"가 사실이 아닌데 초록인 상태 — 이 레포의 조용한 부재 클래스다.',
+  },
+  {
     name: '🚨 백업 실패 통보가 다시 디스코드 훅 하나에만 걸린다 (그 훅은 비어 있었다)',
     file: '.github/workflows/d1-backup.yml',
     find: '              await github.rest.issues.create({',
