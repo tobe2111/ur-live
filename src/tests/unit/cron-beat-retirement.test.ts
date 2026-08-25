@@ -146,6 +146,18 @@ describe('🔀 개명한 이름은 후임이 살아 있을 때만 대체로 친�
     expect(classifyBeat(OLD, stale)).toBe('judge')
   })
 
+  it('🔴 전역 진단 틱 __tick 도 지도에 있다 — 트리거별로 쪼개며 고아가 됐다', () => {
+    expect(BEAT_RENAMED_TO['__tick']).toBe('__tick:*/5 * * * *')
+    const fresh = freshBaseNames([{ name: '__tick:*/5 * * * *', age_minutes: 2, max_gap_min: 40 }])
+    expect(classifyBeat({ name: '__tick', age_minutes: 90, max_gap_min: 40 }, fresh)).toBe('superseded')
+  })
+
+  it('🔴 후임 이름이 옛 이름과 같으면 안 된다 — 자기가 자기를 대체하면 영원히 숨는다', () => {
+    for (const [oldName, next] of Object.entries(BEAT_RENAMED_TO)) {
+      expect(next, `${oldName} 이 자기 자신을 가리킨다`).not.toBe(oldName)
+    }
+  })
+
   it('지도에 없는 이름은 종전대로', () => {
     expect(classifyBeat({ name: 'payouts-generate', age_minutes: 200, max_gap_min: 10080 },
       freshBaseNames([{ name: 'd1-backup-chunked', age_minutes: 4, max_gap_min: 60 }]))).toBe('judge')

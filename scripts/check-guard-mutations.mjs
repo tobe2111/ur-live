@@ -2390,6 +2390,27 @@ canvas {
       '고치려던 것과 **부호만 반대인 같은 고착**이다. 끝난 레인만 판정 대상이어야 한다.',
   },
   {
+    name: '🫀 cron 침묵 경보가 다시 이진 판정으로 — 열려 있으면 영원히 조용해진다',
+    file: '.github/workflows/uptime.yml',
+    find: '            } else if (down && open && parsed) {',
+    replace: '            } else if (false) {',
+    test: 'src/tests/unit/uptime-cron-silence.test.ts',
+    why:
+      '이슈 #1056 이 08-04 부터 21일째 열린 채 한 줄도 갱신되지 않았다. 그 사이 08-24 에 일간 16개 ' +
+      '(정산 성숙·원장 정합 포함)가 통째로 빠졌는데 **새 신호가 0** 이었다 — 이미 열려 있었기 때문이다. ' +
+      '죽은 이름을 걷어내는 것만으로는 부족하다: 오래 사는 빨간불은 또 생기고, 그때마다 채널이 통째로 죽는다.',
+  },
+  {
+    name: '🫀 침묵 목록 파싱 실패가 "전부 회복"으로 읽힌다 (거짓 해소)',
+    file: '.github/workflows/uptime.yml',
+    find: "            const parsed = raw === '?' ? null : raw.split(',').map(s => s.trim()).filter(Boolean)",
+    replace: "            const parsed = raw.split(',').map(s => s.trim()).filter(Boolean)",
+    test: 'src/tests/unit/uptime-cron-silence.test.ts',
+    why:
+      '응답을 못 받았을 때(타임아웃·5xx)와 "침묵 0건"은 정반대인데 둘 다 빈 목록이 된다. 섞으면 ' +
+      '헬스체크가 죽은 순간 **전부 해소됐다는 코멘트**가 나가고, 그게 이 경보의 신뢰를 끝낸다.',
+  },
+  {
     name: '개명 지도가 빠져 죽은 이름이 5주 더 빨간불 (상시 빨강이 진짜 다운을 가린다)',
     file: 'src/worker/utils/cron-beat-retirement.ts',
     find: "  if (successor && freshBaseNames.has(successor)) return 'superseded'",

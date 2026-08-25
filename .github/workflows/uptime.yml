@@ -56,13 +56,22 @@ jobs:
           #   경보의 목적이 정반대로 뒤집힌 상태였다(가려진 dead-man's switch).
           #   ⇒ cron 은 `CRON_DOWN` 으로 **따로** 집계하고, 사이트 다운 이슈와 라벨을 나눈다.
           #   ⚠️ 무시하는 게 아니다 — 아래 별도 스텝이 자기 이슈를 연다. 섞지만 않는다.
-          cron_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://urdeal.kr/api/_healthcheck/cron" || echo "000")
+          cron_body=$(curl -s --max-time 20 -w "\n%{http_code}" "https://urdeal.kr/api/_healthcheck/cron" || printf "\n000")
+          cron_code=$(printf '%s' "$cron_body" | tail -n1)
           echo "Cron heartbeat (침묵 감지) → $cron_code"
           case "$cron_code" in
             5*|000) echo "cron_down=true" >> "$GITHUB_OUTPUT" ;;
             *)      echo "cron_down=false" >> "$GITHUB_OUTPUT" ;;
           esac
           echo "cron_code=$cron_code" >> "$GITHUB_OUTPUT"
+          # 🔬 **무엇이 침묵 중인지**까지 뽑는다 (2026-08-25). 종전엔 HTTP 코드만 봐서
+          #   "빨간불이 계속 빨간불"과 "빨간불인데 원인이 통째로 바뀜"을 구분할 수 없었다.
+          #   ⚠️ 파싱 실패는 빈 목록이 아니라 `?` — 빈 목록으로 두면 응답을 못 받은 것이
+          #   "전부 회복"으로 읽혀 거짓 해소 코멘트가 나간다.
+          printf '%s' "$cron_body" | sed '$d' > /tmp/cron_hc.json
+          cron_stale=$(python3 -c "import sys,json;d=json.load(open('/tmp/cron_hc.json'));print(','.join(sorted({str(x.get('name','')) for x in (d.get('data') or {}).get('stale') or []} - {''}))[:900])" 2>/dev/null || echo '?')
+          if [ -z "$cron_stale" ] && [ "$cron_code" != "200" ]; then cron_stale='?'; fi
+          echo "cron_stale=$cron_stale" >> "$GITHUB_OUTPUT"
           if [ -n "$FAILS" ]; then
             echo "down=true" >> "$GITHUB_OUTPUT"
             printf "fails<<EOF\n${FAILS}EOF\n" >> "$GITHUB_OUTPUT"
@@ -108,14 +117,33 @@ jobs:
       #   위 스텝과 섞으면 며칠 가는 cron 빨간불이 다운 감지를 통째로 가린다(2026-08-04 실측 6일).
       #   ⚠️ 코멘트를 매 회차(10분) 달지 않는다 — #845 가 코멘트 84개로 불어나 아무도 안 읽게 된 원인이다.
       #     상태가 바뀔 때(열림/닫힘)만 쓴다.
+      #
+      # 🔴 **2026-08-25 수리 — "상태"가 열림/닫힘 두 값뿐이라 채널이 통째로 죽어 있었다.**
+      #   이슈 #1056 이 08-04 부터 **21일째 열린 채 한 줄도 갱신되지 않았다.** 원인은 `d1-backup`
+      #   하나 — 08-02 에 OOM 으로 죽고 후임이 인수한 **이름만 남은 행**이라 영원히 회복할 수 없었고,
+      #   그래서 `down` 이 영원히 true 였다. 그 사이 **08-24 에 일간 16개(정산 성숙·원장 정합 포함)가
+      #   통째로 빠졌는데 새 신호가 0** 이었다 — 이미 열려 있었으니 아무 일도 안 일어난 것이다.
+      #   경보를 나누고(#845 수리) 죽은 이름을 걷어내도(개명 지도), **"열려 있는 동안은 침묵"이라는
+      #   설계가 남아 있는 한 같은 사고가 반복된다.**
+      #   ⇒ 판정 단위를 `down` 이 아니라 **침묵 중인 이름의 집합**으로 올린다. 집합이 바뀔 때만
+      #     코멘트하므로 10분마다 쌓이지 않는다(#845 의 교훈은 그대로 지킨다).
       - name: Open/close cron-silence issue
         uses: actions/github-script@v7
         env:
           CRON_DOWN: ${{ steps.probe.outputs.cron_down }}
           CRON_CODE: ${{ steps.probe.outputs.cron_code }}
+          CRON_STALE: ${{ steps.probe.outputs.cron_stale }}
         with:
           script: |
             const down = process.env.CRON_DOWN === 'true'
+            const raw = String(process.env.CRON_STALE || '')
+            // `?` = 응답을 못 읽었다. 빈 목록(=전부 회복)과 절대 섞지 않는다.
+            const parsed = raw === '?' ? null : raw.split(',').map(s => s.trim()).filter(Boolean)
+            const MARK = (list) => `<!-- stale:${list.join(',')} -->`
+            const readMark = (body) => {
+              const m = /<!-- stale:([^>]*) -->/.exec(body || '')
+              return m ? m[1].split(',').map(s => s.trim()).filter(Boolean) : null
+            }
             const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner, repo: context.repo.repo,
               state: 'open', labels: 'cron-silence',
@@ -130,9 +158,30 @@ jobs:
                   + `상세: \`GET /api/_healthcheck/cron\` 의 \`stale\` 목록.\n`
                   + `⚠️ \`retired\`(개명·인수된 이름)는 판정에서 제외됩니다 — 남은 건 진짜 침묵입니다.\n\n`
                   + `복구되면 자동으로 닫힙니다. **상태가 바뀔 때만** 코멘트가 달립니다.\n`
-                  + `유어애즈 레인이면 디스코드 일 1회 요약도 함께 옵니다(\`silence-digest\`).`,
+                  + `유어애즈 레인이면 디스코드 일 1회 요약도 함께 옵니다(\`silence-digest\`).\n\n`
+                  + (parsed && parsed.length ? `침묵 중(${parsed.length}): ${parsed.join(' · ')}\n\n` : '')
+                  + MARK(parsed || []),
                 labels: ['cron-silence'],
               })
+            } else if (down && open && parsed) {
+              // 🔬 열려 있는 동안에도 **무엇이 침묵 중인지 바뀌면** 알린다. 안 바뀌면 조용하다.
+              const prev = readMark(open.body) || []
+              const added = parsed.filter(n => !prev.includes(n))
+              const gone = prev.filter(n => !parsed.includes(n))
+              if (added.length || gone.length) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner, repo: context.repo.repo, issue_number: open.number,
+                  body: `🔄 **침묵 목록이 바뀌었습니다** (${now} KST)\n\n`
+                    + (added.length ? `➕ 새로 침묵(${added.length}): ${added.join(' · ')}\n` : '')
+                    + (gone.length ? `➖ 해소(${gone.length}): ${gone.join(' · ')}\n` : '')
+                    + `\n현재 침묵 중(${parsed.length}): ${parsed.join(' · ')}`,
+                })
+                const body = String(open.body || '').replace(/<!-- stale:[^>]* -->/, '').trimEnd()
+                await github.rest.issues.update({
+                  owner: context.repo.owner, repo: context.repo.repo, issue_number: open.number,
+                  body: `${body}\n\n${MARK(parsed)}`,
+                })
+              }
             } else if (!down && open) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner, repo: context.repo.repo, issue_number: open.number,
