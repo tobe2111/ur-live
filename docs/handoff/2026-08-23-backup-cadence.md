@@ -550,3 +550,51 @@ down &&  open  → (아무것도 안 함)        ← 여기서 21일이 지나�
 라이브 판정은 **다음 회차에 침묵 목록이 바뀔 때** 난다(코멘트가 #1056 에 달리는지).
 가장 빠른 기회는 오늘 18:00 UTC 일간 회차 — 16개가 해소되면 `➖ 해소(16)` 코멘트가 떠야 한다.
 안 뜨면 워크플로 배선을 의심할 것(텍스트 시험은 분기 존재까지만 본다).
+
+---
+
+## 🧬 후속 12 — **검증기 자신이 헛돌고 있었다** + 커밋 시점 가드 신설 (2026-08-25 20:10 KST)
+
+### 1) `check-guard-mutations` 의 `runTest` 가 스크립트 가드를 한 번도 안 돌렸다
+
+`test` 가 `scripts/check-*.mjs` 를 가리키면 `npx vitest run <그 경로>` 는
+**"No test files found" 로 exit 1** 을 낸다. 그 1 이 *"실패 = 가드가 잡았다"* 로 읽혀
+**가드를 실행하지 않고 ✅** 가 찍혔다.
+
+```
+영향: 1건 — 💸 [INV-#44] 에이전시 share 가 platform:revenue 하드코딩으로 되돌아감
+      (머니 불변식이다. flip 을 켜면 그 축만 조용히 5% 를 계속 잠식한다)
+```
+
+**헛도는 가드를 잡으려고 만든 도구 안에 같은 병이 있었다.** 수리 둘:
+- 경로 모양으로 갈라 **스크립트는 `node <path> -s`** 로 직접 돌린다.
+- 🔑 **`baselineGreen`** — 주입 *전에* 그 테스트가 초록인지 먼저 잰다(경로별 캐시).
+  빨간 것이 빨간 채로 남은 걸 "잡았다"로 읽으면 이 클래스가 그대로 재발한다.
+  이쪽이 근본 수리다 — 경로 모양이 또 바뀌어도 잡힌다.
+
+수리 후 실측: 그 주입은 이제 실제로 `check-commission-budget.mjs` 를 돌리고(clean exit 0 확인),
+주입하면 빨갛다. **처음으로 진짜 검증됐다.**
+
+### 2) 신설 `check-beat-name-retirement` — 오늘 사고를 커밋 시점에 잡는다
+
+`d1-backup`·`__tick` 둘 다 **배포 후에** 라이브를 들여다보고서야 알았다. 그런데 둘 다
+`origin/main` 대비 **디스패치 파일에서 리터럴 이름이 사라진 것**이라 커밋 시점에 알 수 있다.
+
+검증(실제 사례로): `#1210 직전(70개) → 지금(69개)  사라진 이름: ['__tick']` — 정확히 잡는다.
+
+⚠️ 판정 본체는 **순수 함수로 분리**했다(`findOrphans`). 스크립트가 `origin/main` 을 필요로 해
+단위 시험이 통째로 못 돌리는데, 종료코드만 보는 시험을 붙이면 그게 또 헛도는 가드가 된다.
+⚠️ `import` 시 본체가 돌면 `process.exit` 가 **시험 러너를 죽인다**(첫 판이 실제로 그랬다) —
+`INVOKED_DIRECTLY` 로 감쌌다.
+
+### 3) 이 세션이 만든 가드·시험 요약
+
+| 무엇 | 어디 | 되돌려-검증 |
+|---|---|---|
+| 개명 지도(`BEAT_RENAMED_TO`) | `cron-beat-retirement.ts` | 주입 2건 red |
+| BACKUP_BUCKET 슬롯 이사 | `cron-required-env.ts` | 주입 1건 red |
+| 침묵 목록 변화 보고 | `.github/workflows/uptime.yml` | 주입 2건 red |
+| 이름 은퇴 커밋 가드 | `scripts/check-beat-name-retirement.mjs` | 주입 1건 red |
+| 검증기 baseline 확인 | `scripts/check-guard-mutations.mjs` | (도구 자체) |
+
+audit-gate 89개 불변식 · guard-registry 109개 등록 · `AUDIT_INVARIANTS.md` 동기.

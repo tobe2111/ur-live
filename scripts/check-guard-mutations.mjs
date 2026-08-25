@@ -2390,6 +2390,16 @@ canvas {
       '고치려던 것과 **부호만 반대인 같은 고착**이다. 끝난 레인만 판정 대상이어야 한다.',
   },
   {
+    name: '🪦 사라진 하트비트 이름을 그냥 보내 준다 (영원한 빨간불이 채널을 침묵시킨다)',
+    file: 'scripts/check-beat-name-retirement.mjs',
+    find: '  return removed.filter((n) => !mapped.has(n) && !String(mapSrc || \'\').includes(`${ALLOW_MARK} ${n}`))',
+    replace: '  return []',
+    test: 'src/tests/unit/beat-name-retirement.test.ts',
+    why:
+      '이 판정을 빼면 이름을 조용히 없애도 아무 말이 없다. 그 결과가 #1056 이다 — 죽은 이름 하나로 ' +
+      '경보 채널이 21일 침묵했고, 그 사이 정산 16개 누락이 신호 0 이었다. 하루에 두 번 난 사고다.',
+  },
+  {
     name: '🫀 cron 침묵 경보가 다시 이진 판정으로 — 열려 있으면 영원히 조용해진다',
     file: '.github/workflows/uptime.yml',
     find: '            } else if (down && open && parsed) {',
@@ -5171,11 +5181,42 @@ for (const sig of ['SIGINT', 'SIGTERM', 'uncaughtException']) {
 process.on('exit', restoreAll)
 lockOn()   // 여기서부터 소스에 손을 댄다 — pre-commit 이 이 자물쇠를 보고 커밋을 거절한다
 
+/**
+ * 🩸 **2026-08-25 — 이 함수 자신이 헛돌고 있었다.**
+ *
+ * `test` 가 `scripts/check-*.mjs` 를 가리키면 `vitest run <그 경로>` 는
+ * **"No test files found" 로 exit 1** 을 낸다. 그 1 이 여기서 "실패(= 가드가 잡았다)"로 읽혀,
+ * 가드를 **한 번도 실행하지 않고** ✅ 가 찍혔다. 헛도는 가드를 잡으려고 만든 도구 안에
+ * 같은 병이 들어 있었던 것이다. 실측 피해: INV-#44(에이전시 share 가 `platform:revenue` 로
+ * 되돌아가는 머니 불변식) 한 건이 그 상태였다.
+ *
+ * ⇒ 경로 모양으로 갈라 **스크립트는 node 로 직접** 돌린다. 그리고 아래 `baselineGreen` 이
+ *   "주입 전에도 빨갛지 않은가"를 먼저 확인한다 — 그게 이 클래스 전체를 막는 쪽이다.
+ */
+const isScriptGuard = (p) => /^scripts\/.*\.(mjs|js|sh)$/.test(p)
+
 function runTest(testPath) {
   try {
-    execFileSync('npx', ['vitest', 'run', testPath], { cwd: ROOT, stdio: 'pipe', timeout: 180_000 })
+    if (isScriptGuard(testPath)) {
+      const args = testPath.endsWith('.sh') ? [testPath, '-s'] : [testPath, '-s']
+      execFileSync(testPath.endsWith('.sh') ? 'bash' : 'node', args, { cwd: ROOT, stdio: 'pipe', timeout: 180_000 })
+    } else {
+      execFileSync('npx', ['vitest', 'run', testPath], { cwd: ROOT, stdio: 'pipe', timeout: 180_000 })
+    }
     return true   // 통과
   } catch { return false }  // 실패(= 우리가 원하는 것)
+}
+
+/**
+ * 🟢 **주입 전에 초록인가** — 아니면 그 주입은 아무것도 증명하지 못한다.
+ *
+ * 빨간 것이 빨간 채로 남는 걸 "가드가 잡았다"로 읽으면 위 사고가 그대로 재발한다.
+ * 테스트 경로별로 한 번만 재고, 결과를 캐시한다(대부분의 주입이 파일을 공유한다).
+ */
+const baselineCache = new Map()
+function baselineGreen(testPath) {
+  if (!baselineCache.has(testPath)) baselineCache.set(testPath, runTest(testPath))
+  return baselineCache.get(testPath)
 }
 
 if (MUTATIONS.length === 0) {
@@ -5303,7 +5344,12 @@ for (const m of MUTATIONS) {
     pending.delete(abs)
   }
   if (stillGreen) problems.push(`${m.name}: 결함을 심었는데 \`${m.test}\` 가 **통과** — 이 가드는 아무것도 안 지킨다.\n      (${m.why})`)
-  console.log(`   ${stillGreen ? '❌' : '✅'} ${m.name}`)
+  // 🟢 빨간 것이 빨간 채로 남은 걸 "잡았다"로 읽지 않는다 — 주입 전 상태를 확인한다.
+  const base = stillGreen ? true : baselineGreen(m.test)
+  if (!stillGreen && !base) {
+    problems.push(`${m.name}: \`${m.test}\` 가 **주입 전에도 빨갛다** — 이 주입은 아무것도 증명하지 못한다.\n      (경로가 틀렸거나 그 테스트가 이미 깨져 있다)`)
+  }
+  console.log(`   ${stillGreen || !base ? '❌' : '✅'} ${m.name}`)
 }
 
 // 🔒 마지막 안전 확인 — 어떤 경로로든 소스가 바뀐 채 남지 않았는지.
