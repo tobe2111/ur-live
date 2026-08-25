@@ -327,6 +327,14 @@ node scripts/check-current-work-sync.mjs || true
 echo "==> Pre-commit: 마이그레이션/repair-schema drift (warn-only)..."
 node scripts/check-migration-repair-drift.mjs || true
 
+# 🚨 주입 검증(check-guard-mutations)이 도는 중이면 커밋 금지 — 그 도구는 소스를 일부러
+#    망가뜨렸다가 되돌린다. 2026-08-25 에 실제로 그 중간 상태가 커밋에 담겼다(`721edf1`:
+#    백업의 읽기-실패 처리가 되돌려짐). 충돌 마커와 같은 클래스 — `git add -A` 가 무심코 담는다.
+bash scripts/check-no-injection-in-progress.sh || {
+  echo "커밋 중단: 주입 검증이 실행 중이다. 끝난 뒤 git diff --stat 로 의도한 변경만 있는지 보고 커밋하라."
+  exit 1
+}
+
 # 🩹 머지 충돌 마커 — 커밋 전 마지막 방어선. `git add -A` 는 충돌 파일도 '해결됨'으로 표시한다.
 node scripts/check-conflict-markers.mjs -s || {
   echo "커밋 중단: 충돌 마커가 남아 있다. 양쪽 내용을 직접 보고 합쳐라."

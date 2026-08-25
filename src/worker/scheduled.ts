@@ -24,36 +24,22 @@ import type { Env } from './types/env';
 import { slotDue } from './cron-slot';
 
 // 🛡️ 2026-05-18: handleScheduled (49KB) dynamic import — cron 발생 시만 로드.
-import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
 import { runReconciliation } from './cron/reconciliation';
-import { runDailySelfDiagnostic } from './cron/daily-self-diagnostic';
 import { handleAgencyAutoSettle } from './cron/agency-auto-settle';
 import { handleAgencyTierEval } from './cron/agency-tier-eval';
-import { handleAgencyCreatorEval } from './cron/agency-creator-eval';
-import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
 import { handleAgencyMonthlyInvoices } from './cron/agency-monthly-invoices';
-import { handleTikTokVideosSync } from './cron/tiktok-videos-sync';
-import { handleAgencyInactiveSellers } from './cron/agency-inactive-sellers';
 import { handleAgencyMonthlyReport } from './cron/agency-monthly-report';
-import { handleAgencySelfEventsTick } from './cron/agency-self-events-tick';
 import { handleSellerTierEval } from './cron/seller-tier-eval';
 import { handleWholesaleGradeEval } from './cron/wholesale-grade-eval';
-import { handleWholesaleOrphanSweep } from './cron/wholesale-orphan-sweep';
 import { handleWholesaleRestockNotify } from './cron/wholesale-restock-notify';
 import { handleAnomalyDetection } from './cron/anomaly-detect';
-import { handleSellerDailyReport } from './cron/seller-daily-report';
 // 🌇 일몰 정지(롤백 시 아래 호출과 함께 해제): import { handleAgencySellerMatch } from './cron/agency-seller-match';
-import { handleAdSlotsAward } from './cron/ad-slots-award';
 import { handleRetryAlimtalk } from './cron/retry-alimtalk';
 import { retryEmailFailures, retryPushFailures } from './cron/retry-notifications';
 import { handleAppointmentReminder } from './cron/appointment-reminder';
 import { handleAppointmentNoshowAlert } from './cron/appointment-noshow-alert';
 import { handlePayoutsGenerate } from './cron/payouts-generate';
-import { handleLedgerIntegrityCheck } from './cron/ledger-integrity-check';
-import { handleDisputesEscalation } from './cron/disputes-escalation';
 import { handleTossRefundRetry } from './cron/toss-refund-retry';
-import { handleSellerChurnDetect } from './cron/seller-churn-detect';
-import { handleLedgerReconcile } from './cron/ledger-reconcile';
 import { handleInfluencerPayout } from './cron/influencer-payout';
 import { handleGroupBuyDeadlinePush } from './cron/group-buy-deadline-push';
 import { handleGroupBuyFeedCache } from './cron/group-buy-feed-cache';
@@ -62,19 +48,18 @@ import { handleCachePrewarm } from './cron/cache-prewarm';
 import { handleBulkEmailDrain } from './cron/bulk-email-drain'; import { drainOutreachEmails } from '../features/marketing/api/outreach-email';
 // 🛡️ 2026-05-24: 모든 신규 활성 상품 (공구/쇼핑/교환권) 에 자동 허위리뷰 시드.
 import { handleAutoSeedReviews } from './cron/auto-seed-reviews';
-import { renewDemoFcfs } from './cron/demo-fcfs-renew';
-import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
 import { getFeatureFlags } from './utils/feature-flags';
 // 🏭 2026-06-05 (사용자 요청 — 라이브 중단 중 cron 낭비 제거): 라이브 전용 cron 게이팅.
 //   LIVE_COMMERCE_SUSPENDED=true 동안 라이브 방송 관련 cron(5분마다 헛도는 DB 조회)을 건너뜀.
 //   플래그만 false 로 되돌리면 즉시 복원 — 코드 보존.
 import { LIVE_COMMERCE_SUSPENDED } from '../shared/feature-flags';
-import { logError, logInfo } from './utils/logger';
+import { logError } from './utils/logger';
 import { reportCronFailure } from './utils/cron-reporter';
 import { recordCronBeat, expectedMaxAgeMinutes } from './utils/cron-heartbeat';
 import { ACCEPTED_CRON_EXPRESSIONS } from './utils/cron-expected';
 import { envBeatFor } from './utils/cron-required-env';
+import { runDailyLane } from './cron/daily-lane';
 
 /**
  * 🔔 2026-06-12 (4차 감사 D3): cron 내부 실패 공용 통지 — logError + Discord (fail-soft).
@@ -148,7 +133,12 @@ export async function handleCronScheduled(
   const cron = event.cron;
 
   // 🔬 2026-08-22 진단 프로브(`__tick`) — 왜 맨 앞인지·무엇을 가르는지는 `utils/cron-heartbeat.ts` 상단 주석.
-  ctx.waitUntil(recordCronBeat(env, '__tick', true, 0, cron)); // cron-heartbeat-ok: 작업이 아니라 하트비트 **자체**다 — safeCron 으로 감싸면 진단의 핵심인 '아무도 예산을 안 쓴 시점'을 잃는다
+  // 🔬 2026-08-25: 키를 **트리거별**로 쪼갠다(`__tick:<cron식>`). 전역 키 하나였을 땐 같은 분에
+  //   여러 트리거가 울리면 마지막 하나가 덮어써서 **어느 트리거가 울렸는지 알 수 없었다.**
+  //   지금 못 가리고 있는 두 질문이 정확히 그것이다: ① `*/15` 전용 트리거가 실제로 발화하는가
+  //   (`*/5` 와 매 분 겹친다) ② 2026-08-24 에 `0 18` 이 안 울린 건가 인보케이션이 죽은 건가.
+  //   ⚠️ **쓰기 횟수는 그대로다** — 키만 달라진다(진단을 영구 부채로 남기지 않는다는 원칙 준수).
+  ctx.waitUntil(recordCronBeat(env, `__tick:${cron}`, true, 0, cron)); // cron-heartbeat-ok: 작업이 아니라 하트비트 **자체**다 — safeCron 으로 감싸면 진단의 핵심인 '아무도 예산을 안 쓴 시점'을 잃는다
   // 💓 2026-07-28: 성공·실패 무관 하트비트. safeCron 은 **예외가 날 때만** 기록했는데,
   //   실제로 아픈 정지는 예외가 없다(cron 미발화 / 게이트 OFF 조기 return / 내부 .catch 로 전부 삼킴).
   //   유어애즈 자동 정비가 셋째 경우로 07-26 부터 멈춘 걸 아무도 몰랐다(#793).
@@ -275,125 +265,21 @@ export async function handleCronScheduled(
     }));
   }
 
+  // 🌆 2026-08-25: 일간 블록을 **네 인보케이션으로 분리**했다(`cron/daily-lane.ts`).
+  //   그전엔 작업 16개가 한 인보케이션에서 서브리퀘스트 예산(무료 ~50)을 나눠 썼고, 마르면
+  //   뒤쪽이 **에러 없이 잘렸다**. 실측 2026-08-24: 16개 전부 하트비트 없음(정산 성숙 포함).
+  //   ⚠️ 분은 5의 배수 + 기존 게이트와 비충돌이어야 한다 — 겹치면 같은 인보케이션이라 분리가 무의미.
   if (cron === '0 18 * * *') {
-    ctx.waitUntil(safeCron('auto-settlement', () => handleAutoSettlement(env)));
-    ctx.waitUntil(safeCron('expired-voucher-refund', () => handleExpiredVoucherRefunds(env)));
-    // 🎭 2026-08-03 — 시간당 블록에서 **여기로 이사**. 데모 추첨 마감 롤링 연장 + 추첨 설정이 없는
-    //   이용권 데모(숙박 72개)에 seed. 원래 자리(`0 * * * *`)가 wrangler crons 에 없어 **한 번도
-    //   안 돌았다**(하트비트 0건 실측) → 숙박 데모가 배지 없이 "진짜 상품"으로 보이고 있었다.
-    //   ⚠️ 머니 무관 · `demo-%` slug 만 건드림 · 완전 멱등이라 하루 1회면 충분하다.
-    ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env)));
-    // 🛡️ 2026-06-01 도매몰: 공급자 정산 성숙 (환불창 지난 pending → available).
-    ctx.waitUntil(safeCron('supplier-settlement-mature', async () => {
-      const { matureSupplierSettlements } = await import('../features/supply/api/supply-settlement');
-      await matureSupplierSettlements(env.DB);
-    }));
-    // ⏳ 2026-06-15 링크샵: 추천 적립 성숙 — holding 상태 T+7(환불창) 경과 + 미환불 주문분을
-    //   granted 로 확정 + 그때 딜 잔액 적립. 즉시적립 후 환불 시 회수불가(MAX0 clamp) 누수 차단.
-    ctx.waitUntil(safeCron('affiliate-mature', async () => {
-      const { matureAffiliateEarnings } = await import('./utils/affiliate-credit');
-      await matureAffiliateEarnings(env.DB, env);
-    }));
-    // ⏳ 2026-06-15 추천 트리(referral_commissions) 적립도 동일 T+7 hold — pending→granted 확정 시 잔액 적립.
-    ctx.waitUntil(safeCron('referral-mature', async () => {
-      const { matureReferralCommissions } = await import('../features/referral/api/referral-tree.routes');
-      await matureReferralCommissions(env.DB, env);
-    }));
-    ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
-    // 🎯 [urads-split Phase E 2026-07-18] 유어애즈 일일 cron 5종(price-refresh/rank-track/metrics-snapshot/
-    //   alerts/autobid-shadow) → ur-ads worker cron("0 18 * * *")으로 이관 — src/worker-ads/index.ts scheduled().
-    //   같은 D1 이라 데이터 정합 무변. 이중실행 방지 위해 메인에서 제거(마지막 marketing 참조 → 번들 추가 감소). 재도입=원복.
-    // 🏭 2026-06-08 DATA-1: 도매 고아행(FK 부재) 일일 스윕 (flag-only, 삭제 X).
-    ctx.waitUntil(safeCron('wholesale-orphan-sweep', () => handleWholesaleOrphanSweep(env)));
-    // 🛡️ 2026-05-21 Phase D-3: 매일 ledger 정합성 검증 — orphan entries 알림.
-    ctx.waitUntil(safeCron('ledger-integrity-check', () => handleLedgerIntegrityCheck(env)));
-    // 🛡️ 2026-05-21 Phase E-4: 분쟁 자동 escalation (24시간 미처리 + 재발 매장 + 어뷰징 사용자).
-    ctx.waitUntil(safeCron('disputes-escalation', () => handleDisputesEscalation(env)));
-    // 🛡️ 2026-05-20: 운영자 액션 자동화 (사용자 요청).
-    //   매일 1회 schema-repair 자동 호출 — migrations 0271-0274 의 누락 컬럼/테이블 보장.
-    //   기존: 어드민이 수동으로 POST /api/_internal/repair-schema 호출 필요했음.
-    //   변경: 매일 18 UTC cron 에 자동 통합 → 신규 migration 추가 시 다음날 자동 적용.
-    ctx.waitUntil(safeCron('schema-repair-daily', async () => {
-      const { runSchemaRepair } = await import('./routes/repair-schema.routes')
-      const result = await runSchemaRepair(env.DB)
-      const colErr = result.columns.filter(r => r.status === 'error').length
-      const tabErr = result.tables.filter(r => r.status === 'error').length
-      const colAdded = result.columns.filter(r => r.status === 'added').length
-      if (colErr > 0 || tabErr > 0) {
-        logError('[cron] schema-repair has errors', { colErr, tabErr })
-      } else if (colAdded > 0) {
-        logInfo(`[cron] schema-repair: +${colAdded} columns added (others existed)`)
-      }
-    }));
-    // 🛡️ 2026-05-21: 리뷰 user_name 백필 — 카카오 이름 masked 자동 적용 (사용자 요청 영구).
-    //   idempotent — user_name IS NULL 인 row 만 처리. 매일 실행해도 안전.
-    ctx.waitUntil(safeCron('review-username-backfill', async () => {
-      try {
-        await env.DB.prepare(`ALTER TABLE product_reviews ADD COLUMN user_name TEXT`).run().catch(() => null);
-        const r = await env.DB.prepare(`
-          UPDATE product_reviews
-             SET user_name = (
-               SELECT CASE
-                 WHEN name IS NULL OR name = '' THEN NULL
-                 WHEN LENGTH(name) = 1 THEN name
-                 WHEN LENGTH(name) = 2 THEN SUBSTR(name, 1, 1) || '*'
-                 ELSE SUBSTR(name, 1, 1) || '*' || SUBSTR(name, -1, 1)
-               END
-               FROM users WHERE id = product_reviews.user_id
-             )
-           WHERE (user_name IS NULL OR user_name = '')
-             AND EXISTS (SELECT 1 FROM users WHERE id = product_reviews.user_id AND name IS NOT NULL AND name != '')
-        `).run().catch(() => null);
-        if (r && r.meta.changes > 0) {
-          logInfo(`[cron] review-username-backfill: +${r.meta.changes} reviews updated`)
-        }
-      } catch (e) { logError('[cron] review-username-backfill', { error: String(e) }) }
-    }));
-    // 🛡️ 2026-05-24: 신규 활성 상품 (공구/쇼핑/교환권) 자동 허위리뷰 시드 — 1일당 최대 200개.
-    //   정책 B: is_active=1 검수 통과한 상품만. 어떤 경로 (셀러/관리자/카페24/대량업로드/KT Alpha)
-    //   로 생성됐든 1일 안에 카드 별점·리뷰 노출. idempotent.
-    ctx.waitUntil(safeCron('auto-seed-reviews', () => handleAutoSeedReviews(env)));
-    // 🛡️ 2026-05-15: 셀러 churn 탐지 — 14일+ 등록 X + 평균 진행률 < 50% → 에이전시 alert
-    ctx.waitUntil(safeCron('seller-churn-detect', () => handleSellerChurnDetect(env)));
-    // 🛡️ 2026-05-15 (TD-G08): ledger 정합성 검증 — Σdebit ≠ Σcredit / 음수 wallet → Discord alert
-    ctx.waitUntil(safeCron('ledger-reconcile', () => handleLedgerReconcile(env)));
-    ctx.waitUntil(safeCron('agency-cron-batch', async () => {
-      const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);
-      if (flags.enable_agency_campaigns_aggregate) {
-        await recomputeAllActiveCampaigns(env.DB).catch(e => notifyCronFailure(env, 'agency-cron-batch/campaigns', e));
-      }
-      if (flags.enable_agency_creator_eval) {
-        await handleAgencyCreatorEval(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/creator-eval', e));
-      }
-      if (flags.enable_agency_monthly_tasks) {
-        await handleAgencyMonthlyTasks(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/monthly-tasks', e));
-      }
-      if (flags.enable_tiktok_videos_sync) {
-        await handleTikTokVideosSync(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/tiktok', e));
-      }
-      // Phase 1-2: 부진 셀러 알림 (매일)
-      await handleAgencyInactiveSellers(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/inactive-sellers', e));
-      // 🛡️ 2026-05-20: 에이전시 입점 가게 월 성장 보너스 — 매일 체크하지만 동월 중복은 내부 가드.
-      //   실질적으로 매월 1일 첫 실행만 의미 있음 (전월 매출 fix 됨).
-      // 🔐 2026-06-11 (정합성 감사 🔴): 매월 1일에만 실행 — 기존 매일 실행 + note-LIKE 멱등(약함)이라
-      //   같은 날 cron 중복/재시도 시 growth_bonus 이중 적립 위험. 1일 게이트로 실행 빈도 자체를 월1회로.
-      if (new Date().getUTCDate() === 1) try {
-        const { runAgencyStoreIntroMonthlyBonus } = await import('./cron/agency-store-intro-monthly-bonus')
-        const r = await runAgencyStoreIntroMonthlyBonus(env)
-        if (r.awarded > 0) {
-          logInfo(`[cron] agency-store-intro monthly bonus: awarded ${r.awarded} stores, total ₩${r.totalAmount.toLocaleString()}`)
-        }
-      } catch (e) { await notifyCronFailure(env, 'agency-cron-batch/agency-intro-monthly-bonus', e) }
-      // 2026-04-27: 자사 이벤트 진행값 자동 갱신 + 보상 지급 (매일)
-      await handleAgencySelfEventsTick(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/self-events', e));
-      // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)
-      await handleSellerDailyReport(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/seller-daily-report', e));
-      // 🌇 2026-08-19 일몰 정지 — 목적지 화면(/agency/match-suggestions)이 제거됐다(알림만 남는 게 최악).
-      //    같은 배치의 self-events·campaigns 는 채무/집계 경로라 유지. 롤백: 아래 한 줄 주석 해제.
-      // await handleAgencySellerMatch(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/agency-seller-match', e));
-      // 2026-05-05: 광고 슬롯 낙찰 처리
-      await handleAdSlotsAward(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/ad-slots-award', e));
-    }));
+    runDailyLane('money', { env, ctx, run: safeCron, onFailure: (n, e) => notifyCronFailure(env, n, e) });
+  }
+  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 10, hour: 18 })) {
+    runDailyLane('integrity', { env, ctx, run: slotCron('10 18 * * *'), onFailure: (n, e) => notifyCronFailure(env, n, e) });
+  }
+  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 30, hour: 18 })) {
+    runDailyLane('maintenance', { env, ctx, run: slotCron('30 18 * * *'), onFailure: (n, e) => notifyCronFailure(env, n, e) });
+  }
+  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 40, hour: 18 })) {
+    runDailyLane('growth', { env, ctx, run: slotCron('40 18 * * *'), onFailure: (n, e) => notifyCronFailure(env, n, e) });
   }
 
   // 🛡️ KT Alpha catalog sync — 매일 12:30 KST(03:30 UTC). 하루 1회 → KV 한도 무관(D1 only).
@@ -523,12 +409,14 @@ export async function handleCronScheduled(
     }));
   }
 
-  // 🗄️ 2026-08-25 (대표 트리거 교체): 죽어 있던 주간 백업 슬롯 → **백업 전용 트리거**. `*/15`(:00/:15/:30/:45)는
-  //   위 `*/5` 백업 슬롯(:05/:20/:35/:50)과 안 겹치고 **전용 인보케이션**이라 서브리퀘스트 예산(~50)을 통째로
-  //   쓴다 — 5분 틱은 40개가 나눠 써서 백업이 하루 7시간씩 굶었다. 옛 `handleD1Backup`(전체 덤프)은 DB 가 커져
+  // 🗄️ 2026-08-25 (대표 트리거 교체): 죽어 있던 주간 백업 슬롯 → **백업 전용 트리거**(:02/:17/:32/:47).
+  //   위 `*/5` 백업 슬롯(:05/:20/:35/:50)과도, **`*/5` 트리거 자체와도** 한 분도 안 겹친다(:02/:17/:32/:47).
+  //   전용 인보케이션이라 예산(~50)을 통째로 쓴다 — 5분 틱은 40개가 나눠 써서 백업이 하루 7시간씩 굶었다.
+  //   🩸 처음엔 `*`+`/15` 였는데 **등록되고도 한 번도 안 울렸다**(3/3). 그 분이 전부 `*`+`/5` 의 분이라 가려진다.
+  //   옛 `handleD1Backup`(전체 덤프)은 DB 가 커져
   //   08-02 이후 OOM 으로 죽은 코드. 주간 표기 3종도 같이 받는다 — 옛 트리거가 남아 있어도 회차를 안 버린다.
-  if (cron === '*/15 * * * *' || cron === '0 20 * * 0' || cron === '0 20 * * SUN' || cron === '0 20 * * 7') {
-    ctx.waitUntil(slotCron('*/15 * * * *')('d1-backup-chunked', () => import('./cron/d1-backup-chunked').then((m) => m.handleChunkedBackup(env as never))));
+  if (cron === '2,17,32,47 * * * *' || cron === '0 20 * * 0' || cron === '0 20 * * SUN' || cron === '0 20 * * 7') {
+    ctx.waitUntil(slotCron('2,17,32,47 * * * *')('d1-backup-chunked', () => import('./cron/d1-backup-chunked').then((m) => m.handleChunkedBackup(env as never))));
   }
 
   // 💸 2026-08-11: `0 0 * * 1` 도 미등록이라 주간 7개가 침묵했다. `payouts-generate` 는 송금이 아니라

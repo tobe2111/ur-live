@@ -75,11 +75,44 @@ describe('데모 추첨 자가치유가 실제로 발화하는 슬롯에 있다'
     expect(slots.length, 'crons 배열을 못 읽었다 — 형식이 바뀌었다').toBeGreaterThan(0)
   })
 
+  /**
+   * 🌆 2026-08-25: 일간 작업이 `scheduled.ts` → `cron/daily-lane.ts` 로 **이사**했다.
+   *   그래서 "scheduled.ts 안에서 safeCron 이름을 찾는다"는 판정이 더는 성립하지 않는다 —
+   *   그대로 두면 *배선이 멀쩡한데* 빨간불이고(오탐), 반대로 조건을 느슨하게 풀면 *배선이 빠져도*
+   *   초록이 된다(미탐). ⇒ **한 단계 간접을 따라간다**: 작업 → 그룹 → 그 그룹을 띄우는 cron 블록.
+   */
+  function laneSlotOf(jobName: string): string | null {
+    const lane = read('src/worker/cron/daily-lane.ts')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n')
+    // 작업이 어느 그룹 블록 안에 있나 — 그룹 표식 사이 구간으로 자른다.
+    const marks = [...lane.matchAll(/group === '([a-z]+)'|^\s*\/\/ growth$/gm)]
+    let group: string | null = null
+    const idx = lane.indexOf(`run('${jobName}'`)
+    if (idx < 0) return null
+    for (const m of marks) {
+      if ((m.index ?? 0) < idx) group = m[1] ?? 'growth'
+    }
+    if (!group) group = 'growth'
+    // 그 그룹을 띄우는 `if (cron === 'X' …) { runDailyLane('<group>' …`
+    const re = new RegExp(`if \\(cron === '([^']+)'[^)]*\\)[^{]*\\{[^}]*runDailyLane\\('${group}'`, 's')
+    return re.exec(scheduled)?.[1] ?? null
+  }
+
   it('🔴 demo-fcfs-renew 가 등록된 슬롯에 배선돼 있다', () => {
-    const slot = slotOf(scheduled, 'demo-fcfs-renew')
-    expect(slot, 'scheduled.ts 어느 cron 블록에도 demo-fcfs-renew 가 없다').toBeTruthy()
+    const slot = slotOf(scheduled, 'demo-fcfs-renew') ?? laneSlotOf('demo-fcfs-renew')
+    expect(slot, 'scheduled.ts / daily-lane.ts 어디에서도 demo-fcfs-renew 배선을 못 찾았다').toBeTruthy()
     expect(slots, `슬롯 '${slot}' 은 wrangler.toml crons 에 없다 — 배포해도 한 번도 안 돈다`)
       .toContain(slot as string)
+  })
+
+  it('🔴 머니 작업도 등록된 슬롯에 있다 — 이사하면서 죽은 슬롯으로 가지 않았나', () => {
+    for (const job of ['auto-settlement', 'supplier-settlement-mature', 'affiliate-mature']) {
+      const slot = slotOf(scheduled, job) ?? laneSlotOf(job)
+      expect(slot, `${job} 배선을 못 찾았다`).toBeTruthy()
+      expect(slots, `${job} 의 슬롯 '${slot}' 이 wrangler.toml crons 에 없다 — 한 번도 안 돈다`)
+        .toContain(slot as string)
+    }
   })
 
   it('추첨 seed 가 그 cron 안에 실제로 있다 (연장만 하고 seed 는 빠지는 것 방지)', () => {

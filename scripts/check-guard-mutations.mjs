@@ -137,7 +137,8 @@ const MUTATIONS = [
   },
   {
     name: '🕓 분 목록 cron 을 "매시 1회"로 오해석한다(멈춰도 경보가 안 울린다)',
-    file: 'src/worker/utils/cron-heartbeat.ts',
+    // 🩸 2026-08-25: 주기 계산이 cron-cadence.ts 로 이사했다 — 좌표를 안 옮기면 '낡은 지도'.
+    file: 'src/worker/utils/cron-cadence.ts',
     find: "else if (hour === '*') base = Math.max(1, Math.floor(60 / Math.max(1, (min || '').split(',').length)))",
     replace: "else if (hour === '*') base = 60",
     test: 'src/tests/unit/backup-cadence.test.ts',
@@ -2262,8 +2263,10 @@ canvas {
   },
   {
     name: '데모 추첨 자가치유가 발화 안 하는 cron 슬롯에 배선됨',
-    file: 'src/worker/scheduled.ts',
-    find: "    ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env)));",
+    // 🌆 2026-08-25: 일간 작업이 `cron/daily-lane.ts` 로 이사했다 — 좌표도 같이 옮긴다.
+    //   (안 옮기면 '낡은 지도'로 빨간불이고, 그게 이 가드가 하라고 만든 일이다.)
+    file: 'src/worker/cron/daily-lane.ts',
+    find: "    ctx.waitUntil(run('demo-fcfs-renew', () => renewDemoFcfs(env)))",
     replace: "    if (cron === '0 * * * *') { ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env))); }",
     test: 'src/tests/unit/cron-slot-registered.test.ts',
     why:
@@ -3485,8 +3488,8 @@ canvas {
     name: 'cron 계정 한도 초과(스케줄 PUT 전면 거부)',
     file: 'wrangler.toml',
     // 🔁 2026-08-25: 4번째 슬롯이 주간 백업 → 백업 전용 `*/15` 로 교체됐다(대표 트리거 변경).
-    find: 'crons = ["*/5 * * * *", "0 18 * * *", "0 19 * * *", "*/15 * * * *"]',
-    replace: 'crons = ["*/5 * * * *", "0 18 * * *", "0 19 * * *", "*/15 * * * *", "0 21 * * SUN"]',
+    find: 'crons = ["*/5 * * * *", "0 18 * * *", "0 19 * * *", "2,17,32,47 * * * *"]',
+    replace: 'crons = ["*/5 * * * *", "0 18 * * *", "0 19 * * *", "2,17,32,47 * * * *", "0 21 * * SUN"]',
     test: 'src/tests/unit/cron-schedule.test.ts',
     why:
       '무료 플랜은 **계정당** cron 5개다(code 10072). 이 계정은 지금 정확히 5(ur-live 4 + ads 1) — 6번째를 넣으면 ' +
@@ -3494,9 +3497,21 @@ canvas {
       '배포가 전면 정지한다. 2026-08-02 13:19Z 에 실제로 그렇게 됐고, 한 파일만 보는 검사로는 못 잡는다.',
   },
   {
+    name: '🩸 트리거끼리 분이 겹침(등록됐는데 한 번도 안 울린다)',
+    file: 'wrangler.toml',
+    find: '"2,17,32,47 * * * *"]',
+    replace: '"*/15 * * * *"]',
+    test: 'src/tests/unit/cron-schedule.test.ts',
+    why:
+      '2026-08-25 실사고 재현. 백업 전용 트리거를 `*/15` 로 넣었더니 **등록은 됐는데 발화 기회 ' +
+      '3/3(07:45·08:00·08:15) 전부 미실행**이었다. 그 분(:00/:15/:30/:45)이 전부 `*/5` 의 분이라 ' +
+      '같은 스크립트·같은 분에서 가려진다. 에러도 경보도 없다 — 새 트리거를 넣을 때 봐야 하는 건 ' +
+      '"슬롯 게이트와 겹치나"가 아니라 **"기존 트리거의 분과 겹치나"** 다.',
+  },
+  {
     name: '백업 전용 트리거 미등록(코드만 있고 발화 0)',
     file: 'wrangler.toml',
-    find: '"*/15 * * * *"]',
+    find: '"2,17,32,47 * * * *"]',
     replace: ']',
     test: 'src/tests/unit/cron-schedule.test.ts',
     why:
@@ -3507,7 +3522,7 @@ canvas {
   {
     name: '백업 분기가 등록된 식을 안 받음(cron-unmatched 로 버려짐)',
     file: 'src/worker/scheduled.ts',
-    find: "if (cron === '*/15 * * * *' || cron === '0 20 * * 0'",
+    find: "if (cron === '2,17,32,47 * * * *' || cron === '0 20 * * 0'",
     replace: "if (cron === '0 20 * * 0'",
     test: 'src/tests/unit/cron-schedule.test.ts',
     why:
@@ -3515,10 +3530,12 @@ canvas {
       '받으면 매 회차가 `cron-unmatched` 로 버려진다 — 트리거도 있고 코드도 있는데 백업이 0.',
   },
   {
-    name: '백업 슬롯 분이 */15 격자와 겹침(커서 동시 갱신)',
+    name: '백업 슬롯 분이 전용 트리거와 겹침(커서 동시 갱신)',
     file: 'src/worker/scheduled.ts',
     find: '[5, 20, 35, 50].some',
-    replace: '[0, 20, 35, 50].some',
+    // 🩸 2026-08-25: 전용 트리거가 `*/15`(:00/…) → `2,17,32,47` 로 옮겨서 주입값도 :2 로 바꾼다.
+    //   옛 `0` 은 이제 아무와도 안 겹쳐 **주입해도 초록**이 된다(= 이 가드가 헛돌게 된다).
+    replace: '[2, 20, 35, 50].some',
     test: 'src/tests/unit/cron-schedule.test.ts',
     why:
       '`*/5` 폴백 슬롯(:05/:20/:35/:50)과 전용 `*/15`(:00/:15/:30/:45)이 같은 분에 겹치면 ' +
@@ -4986,6 +5003,69 @@ canvas {
     why:
       '조각 파일도 생기고 매니페스트도 "완료"로 찍히는데 **행의 절반이 비어 있다.** ' +
       '복구를 시도하는 순간에야 안다 — 이 레포가 반복해 만난 "조용한 부재" 중 가장 비싼 종류.',
+  },
+  {
+    name: '🔬 진단 tick 이 전역 키로 되돌아감(어느 트리거가 울렸는지 못 가린다)',
+    file: 'src/worker/scheduled.ts',
+    find: 'recordCronBeat(env, `__tick:${cron}`, true, 0, cron)',
+    replace: "recordCronBeat(env, '__tick', true, 0, cron)",
+    test: 'src/tests/unit/cron-tick-per-trigger.test.ts',
+    why:
+      '전역 키 하나면 같은 분에 여러 트리거가 울릴 때 **마지막 하나가 덮어쓴다.** 그러면 ' +
+      '"안 울렸다"와 "울렸는데 덮였다"가 같아 보인다 — 2026-08-25 에 `*/15` 발화 여부와 ' +
+      '08-24 `0 18` 누락 원인을 둘 다 이것 때문에 못 가렸다. 쓰기 비용은 같으니 되돌릴 이유가 없다.',
+  },
+  {
+    name: '⏰ 일간 관용이 ×2 로 되돌아감(하루를 건너뛰어도 조용해진다)',
+    // 🩸 2026-08-25: `staleToleranceMinutes` 가 cron-cadence.ts 로 이사했다 — 좌표도 같이.
+    file: 'src/worker/utils/cron-cadence.ts',
+    find: '  if (base >= 60 * 24) return base + Math.min(Math.floor(base / 4), 6 * 60)',
+    replace: '  if (false) return 0',
+    test: 'src/tests/unit/cron-stale-detection.test.ts',
+    why:
+      '×2 는 관용이 아니라 실명이다. 하루 1회 작업에 48.5시간을 주면 **한 회차를 통째로 건너뛰어도 ' +
+      '정상**이다. 2026-08-24 에 `0 18` 블록 17개(정산 성숙·원장 정합 포함)가 그렇게 빠졌고 경보가 ' +
+      '0이었다 — 사람이 하트비트를 손으로 세어서 알았다.',
+  },
+  {
+    name: '⏰ ur-ads 관용 공식이 메인과 갈라짐',
+    file: 'src/worker-ads/lane-cadence.ts',
+    find: '  if (base >= 60 * 24) return base + Math.min(Math.floor(base / 4), 6 * 60)',
+    replace: '  if (base >= 60 * 24) return base * 2 + 30',
+    test: 'src/tests/unit/ads-lane-cadence.test.ts',
+    why:
+      'ur-ads 는 별도 워커라 공식을 **복제**한다. 갈라지면 같은 주기의 레인이 워커마다 다른 시점에 ' +
+      '울린다(또는 한쪽만 조용하다). 동치성을 테스트로 못박은 이유가 이것이다.',
+  },
+  {
+    name: '🌆 일간 레인 분리가 되돌아감(16개가 한 인보케이션으로)',
+    file: 'src/worker/scheduled.ts',
+    find: "  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 10, hour: 18 })) {",
+    replace: "  if (false) {",
+    test: 'src/tests/unit/cron-heartbeat-dispatch.test.ts',
+    why:
+      '한 인보케이션에 16개를 몰면 서브리퀘스트 예산(무료 ~50)이 말라 뒤쪽이 **에러 없이 잘린다**. ' +
+      '그리고 잘린 것과 정상이 구분되지 않는다 — 백업이 하루 7시간씩 굶은 것과 같은 가족이다.',
+  },
+  {
+    name: '🌆 분리된 레인에 기록 안 하는 래퍼 주입(그룹 전체가 관측 밖)',
+    file: 'src/worker/scheduled.ts',
+    find: "runDailyLane('money', { env, ctx, run: safeCron,",
+    replace: "runDailyLane('money', { env, ctx, run: bareRun,",
+    test: 'src/tests/unit/cron-heartbeat-dispatch.test.ts',
+    why:
+      '`run` 은 이름일 뿐이다. safeCron/slotCron 이 아닌 것을 넘기면 그 그룹 전체가 하트비트를 ' +
+      '안 남기고, 안 남으면 침묵 판정 대상에서도 빠진다(부재는 침묵과 다르게 생겼다).',
+  },
+  {
+    name: '💸 쇼핑 원장이 채널 요율을 안 본다(직접 입점도 5% 만)',
+    file: 'src/worker/utils/order-ledger-credit.ts',
+    find: '  const rate = channelRate !== undefined ? channelRate * 100 : Number(order.commission_rate) // 플랫폼 take %',
+    replace: '  const rate = Number(order.commission_rate) // 플랫폼 take %',
+    test: 'src/tests/unit/shopping-channel-rate.test.ts',
+    why:
+      '이용권은 10% 를 떼는데 쇼핑은 5% 만 떼면 **같은 매장이 상품 종류에 따라 갈린다.** ' +
+      '화면·에러 어디에도 안 나타나고 원장 합계로만 드러난다.',
   },
   {
     name: '💸 채널별 요율 승격이 무효화된다(직접 입점도 5% 만 뗀다)',

@@ -24,8 +24,8 @@ const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '
 describe('⏰ 슬롯 cron 은 자기 주기를 신고한다', () => {
   it('🔴 5분 캐리어로 판정하면 하루 1회 작업은 40분 뒤부터 stale 이다 — 이것이 오탐의 정체', () => {
     expect(expectedMaxAgeMinutes('*/5 * * * *')).toBe(40)
-    expect(expectedMaxAgeMinutes('40 9 * * *')).toBe(2910)      // 하루 + 여유
-    expect(expectedMaxAgeMinutes('45 0 * * 1')).toBe(20190)     // 주간 + 여유
+    expect(expectedMaxAgeMinutes('40 9 * * *')).toBe(1800)      // 하루 + 6h (회차 누락이 보이게)
+    expect(expectedMaxAgeMinutes('45 0 * * 1')).toBe(10440)     // 주간 + 6h
     expect(expectedMaxAgeMinutes('25 * * * *')).toBe(150)       // 매시 + 여유
   })
 

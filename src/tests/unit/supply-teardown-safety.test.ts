@@ -31,7 +31,11 @@ describe('도매 철거 안전망 — 소비자가 부르는 supply 파일은 �
   const CONSUMER_DEPENDENCIES: Array<[string, string, string]> = [
     ['src/worker/utils/order-commissions.ts', 'src/features/supply/api/supply-settlement.ts', '주문 확정 시 공급자 적립'],
     ['src/worker/utils/order-refund.ts', 'src/features/supply/api/supply-settlement.ts', '환불 시 적립 역전'],
-    ['src/worker/scheduled.ts', 'src/features/supply/api/supply-settlement.ts', 'cron 정산 성숙'],
+    // 🌆 2026-08-25: 일간 cron 을 인보케이션 단위로 쪼개면서 정산 성숙 호출이 `scheduled.ts` →
+    //   `cron/daily-lane.ts`(money 그룹)로 **이사**했다. 이 줄을 안 고치면 "소비자가 안 부른다"로
+    //   읽혀 도매 철거 때 이 파일이 지워질 수 있다 — 그러면 공급자 정산이 런타임에 멎는다.
+    //   ⚠️ 지도(호출부 경로)는 코드를 옮길 때마다 같이 옮겨야 한다. 오늘만 세 번 걸렸다.
+    ['src/worker/cron/daily-lane.ts', 'src/features/supply/api/supply-settlement.ts', 'cron 정산 성숙'],
     ['src/worker/scheduled.ts', 'src/features/supply/api/wholesale-deposit-core.ts', 'cron 예치금 reconcile'],
     ['src/worker/scheduled.ts', 'src/features/supply/api/supplier-withdrawal-core.ts', 'cron 출금 reconcile'],
     ['src/worker/cron/cache-prewarm.ts', 'src/features/supply/api/supply-visibility.ts', '캐시 워밍 정규화'],

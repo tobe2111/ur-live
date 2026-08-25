@@ -19,9 +19,11 @@ import { MAINT_PHASES, MAINT_SCHEDULE, MAINT_SLOT_INTENT } from '../../features/
 import { RESCAN_HOUR_UTC } from '../../worker-ads/index'
 
 describe('staleGapMinutes — cron-heartbeat 와 같은 공식', () => {
-  it('기대주기 × 2 + 30', () => {
+  it('잦은 주기는 × 2 + 30, 하루 이상은 주기 + min(주기/4, 6h)', () => {
     expect(staleGapMinutes(60)).toBe(150)
-    expect(staleGapMinutes(24 * 60)).toBe(2910)
+    // 🩸 2026-08-25: 하루 1회 레인에 ×2 를 쓰면 하루를 건너뛰어도 조용하다 — 근거는
+    //   `staleToleranceMinutes` docblock(그날 정산 cron 17개가 그렇게 빠졌다).
+    expect(staleGapMinutes(24 * 60)).toBe(24 * 60 + 6 * 60)
   })
 
   it('매시간 주기는 expectedMaxAgeMinutes("0 * * * *") 와 동치 — 공식이 갈라지면 실패한다', () => {

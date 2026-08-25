@@ -101,6 +101,27 @@ const MAX_NOTE = 160
  *
  * ⚠️ 그리고 이 프로브가 **비용을 1 늘린다**는 점을 잊지 말 것. 원인이 규명되면 제거하거나
  * 위 일괄 쓰기에 흡수시킨다 — 진단 도구를 영구 부채로 남기지 않는다.
+ *
+ * ## 🔬 2026-08-25 — 키를 **트리거별**로 쪼갰다 (`__tick:<cron식>`)
+ *
+ * 전역 키 하나였을 때의 한계: 같은 분에 여러 트리거가 울리면 **마지막 하나가 덮어쓴다.**
+ * 그래서 "이 인보케이션이 돌았다"는 알아도 **"어느 트리거가 울렸다"는 몰랐다.**
+ * 지금 못 가리고 있던 두 질문이 정확히 그것이다:
+ *
+ * | 질문 | 전역 키로는 | `__tick:<식>` 으로는 |
+ * |---|---|---|
+ * | `*​/15` 전용 트리거가 발화하나 | ❌ (`*​/5` 와 매 분 겹쳐 구분 불가) | ✅ 그 키가 갱신되는가 |
+ * | 08-24 에 `0 18` 이 안 울렸나, 죽었나 | ❌ | ✅ tick 있고 작업 없음 = 죽음 / 둘 다 없음 = 미발화 |
+ *
+ * **쓰기 횟수는 그대로다** — 키만 달라진다. 그리고 각 tick 이 자기 cron 식을 신고하므로
+ * 트리거가 통째로 멎으면 그 키가 **스스로 stale 로 잡힌다**(일간 30h · 주간 7.25일 기준).
+ * ⚠️ 트리거를 의도적으로 제거하면 그 키는 갱신이 끊기지만, `classifyBeat` 의 은퇴 판정(8배)이
+ *   흡수한다 — 그래서 영원히 붉게 남지 않는다.
+ *
+ * ⚠️ **이 블록주석 안에 cron 식을 raw 로 쓰지 말 것.** `*​/15` 의 `*` + `/` 가 주석을
+ *   **조기 종료**시켜 뒤가 전부 코드로 파싱된다(`Unterminated regular expression`).
+ *   2026-08-25 에 이 파일에서 실제로 그렇게 깨졌다 — 위 표의 `*​/15` 는 제로폭 공백으로
+ *   끊어 둔 것이다(같은 관례: `cron-slot.ts`, `cron-expected.ts`).
  */
 export async function recordCronBeat(
   env: Env,
@@ -262,52 +283,12 @@ export function cpuRisk(ms: number | null | undefined): 'warn' | 'danger' | null
  */
 export const CPU_DEATH_RE = /exceeded CPU time limit/i
 
-/** 하트비트가 남긴 사망 카운터 → 위험 등급. 최근일수록 위험. 기록이 없으면 `null`(모른다). */
-export function cpuRiskFromDeaths(deaths?: number | null, lastAt?: string | null, nowMs = 0): 'warn' | 'danger' | null {
-  const n = Number(deaths) || 0
-  if (n <= 0) return null
-  const t = lastAt ? Date.parse(lastAt) : NaN
-  if (!Number.isFinite(t) || !nowMs) return 'warn'
-  const days = (nowMs - t) / 86_400_000
-  if (days <= 7) return 'danger'      // 최근 일주일에 죽었다 = 지금 위험하다
-  return days <= 30 ? 'warn' : null   // 한 달 넘었으면 흘려보낸다(옛 사고가 영원히 붉게 남지 않도록)
-}
-
-/**
- * cron 식으로부터 **"이 시간을 넘기면 이상하다"** 기준(분)을 계산한다. 순수함수 — 테스트 가능.
- *
- * 넉넉하게 잡는다(기대주기 × 2 + 30분 여유): 배포·재시도·지연으로 한두 번 밀리는 것까지
- * 경보로 올리면 곧 아무도 안 본다. "확실히 이상한 것만" 울리는 게 목적이다.
- * 해석 불가한 식은 null → **경보하지 않는다**(모르면 조용히 있는 편이 오탐보다 낫다).
- */
-/**
- * ⏰ **슬롯 작업의 오탐** (2026-08-13 실측 — 대표 "굳이 필요없는 알람은 없애줘").
- *
- *   소비자 cron 은 대부분 **5분 캐리어**(매 5분 트리거)에 얹혀 `slotDue(...)` 로 자기 시각에만 돈다.
- *   그런데 하트비트에 기록되는 건 캐리어 식이라 이 함수가 **40분**(5×2+30)을 기대치로 내놓고,
- *   하루 1회 작업은 그 뒤 23시간 내내 `stale` 이 된다. 라이브 실측: `cron 실패 24h 8건`이
- *   **전부** 이 오탐이었다(stay-reminder·meal-voucher-expire·district-coupon-expire 등 18:40 KST 일 1회).
- *   ⚠️ 매일 울리는 경보는 곧 아무도 안 읽는 경보가 된다 — 이 모듈이 반복해 경고하는 그 병이다.
- *   ⇒ `scheduled.ts` 의 `slotCron(expr)` 이 **자기 슬롯을 cron 식으로 표현해** 이 함수에 넘긴다.
- *     기대치 규칙은 여기 한 곳뿐이라 두 벌로 갈라지지 않는다.
- */
-export function expectedMaxAgeMinutes(cronExpr?: string | null): number | null {
-  if (!cronExpr || typeof cronExpr !== 'string') return null
-  const f = cronExpr.trim().split(/\s+/)
-  if (f.length !== 5) return null
-  const [min, hour, dom, , dow] = f
-  let base: number
-  const everyN = /^\*\/(\d{1,3})$/.exec(min || '')
-  if (everyN && hour === '*') base = Math.max(1, Number(everyN[1]))
-  // 🕓 분 목록(`5,20,35,50 * * * *`)은 **시간당 그 개수만큼** 돈다. 예전엔 이걸 "매시 1회"로 읽어
-  //   기대 간격이 4배 느슨해졌다 — 15분마다 도는 작업이 2시간 멈춰도 조용했다는 뜻이다.
-  //   단일 분(`50 * * * *`)이면 목록 길이 1 이라 종전과 **같은 값**이 나온다(하위호환).
-  else if (hour === '*') base = Math.max(1, Math.floor(60 / Math.max(1, (min || '').split(',').length)))
-  else if (dow !== '*') base = 60 * 24 * 7      // 주간
-  else if (dom !== '*') base = 60 * 24 * 31     // 월간
-  else base = 60 * 24                           // 매일
-  return base * 2 + 30
-}
+// ⏱️ 주기 계산(순수함수)은 `cron-cadence.ts` 로 분리했다 — 기록/조회(I/O)와 층이 다르다.
+//    ⚠️ **import 와 re-export 를 둘 다 쓴다.** `export … from` 은 이 파일의 로컬 스코프로
+//    들여오지 않으므로, 아래 `listCronHeartbeats`/`getCronHealth` 가 쓰는 이름이 사라진다
+//    (2026-08-25 에 실제로 그렇게 만들 뻔했다 — 구문 검사는 통과하고 타입체크에서만 잡힌다).
+import { cpuRiskFromDeaths, expectedMaxAgeMinutes } from './cron-cadence'
+export { cpuRiskFromDeaths, expectedMaxAgeMinutes, staleToleranceMinutes } from './cron-cadence'
 
 /** 사망 카운터 키 — 하트비트 행과 **분리**해야 다음 성공이 덮어쓰지 않는다. */
 export const cpuDeathKey = (name: string): string => `cron_cpu_death:${name.slice(0, 80)}`
