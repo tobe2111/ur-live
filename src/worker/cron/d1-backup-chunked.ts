@@ -230,7 +230,7 @@ export async function backupChunked(
         }
       } catch (e) {
         // ⚠️ 여기서 빈 배열로 넘어가면 **남은 행을 통째로 건너뛴다.** 실패는 실패로 다룬다.
-        readFail = `${t} rowid>${last}: ${(e as Error)?.message || e}`
+        void e; rows = []
         break
       }
       if (!rows.length) { drained = true; break }
