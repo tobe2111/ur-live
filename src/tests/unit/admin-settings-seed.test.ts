@@ -21,6 +21,8 @@ import { join } from 'node:path'
 import { buildSettingsPayload } from '../../pages/AdminPlatformSettingsPage'
 
 const SRC = readFileSync(join(process.cwd(), 'src/pages/AdminPlatformSettingsPage.tsx'), 'utf8')
+/** 2026-08-25 — 자격 카드는 파일 크기 래칫 때문에 별도 파일로 분리됐다. 그 마크업은 여기서 본다. */
+const CARD = readFileSync(join(process.cwd(), 'src/pages/admin-platform-settings/CloudflareCredsSection.tsx'), 'utf8')
 
 describe('플랫폼 설정 — 서버 값이 입력을 덮어쓰지 않는다', () => {
   it('🔒 시드는 첫 도착 때만 — 무조건 setSettings(data) 로 되돌리면 입력이 사라진다', () => {
@@ -39,7 +41,8 @@ describe('플랫폼 설정 — 서버 값이 입력을 덮어쓰지 않는다', 
    * 끝 4자리가 있었으면 07-29 세션이 토큰을 오진하지 않았다.
    */
   it('🔎 자격은 끝 4자리를 보여 준다 — 바뀌었는지 눈으로 확인할 유일한 수단', () => {
-    expect(SRC).toMatch(/설정됨 · …\{\(settings\[f\.key\] \|\| ''\)\.slice\(-4\)\}/)
+    expect(CARD.length, '자격 카드 파일을 못 읽었다 — 이 시험이 헛돈다').toBeGreaterThan(500)
+    expect(CARD).toMatch(/설정됨 · …\{\(settings\[f\.key\] \|\| ''\)\.slice\(-4\)\}/)
   })
 
   it('🔎 저장 토스트가 무엇이 교체됐는지 말한다 — 빈 자격은 조용히 걸러지므로', () => {

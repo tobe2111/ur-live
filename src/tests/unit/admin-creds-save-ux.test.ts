@@ -22,6 +22,11 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 
 const src = readFileSync('src/pages/AdminPlatformSettingsPage.tsx', 'utf8')
+/**
+ * 2026-08-25 — 자격 카드는 파일 크기 래칫 때문에 **별도 파일로 분리**됐다.
+ *   판정 대상이 두 파일로 갈리므로 둘 다 읽는다(한쪽만 읽으면 시험이 조용히 헛돈다).
+ */
+const card = readFileSync('src/pages/admin-platform-settings/CloudflareCredsSection.tsx', 'utf8')
 
 describe('🔑 어드민 자격 저장 — 화면이 이유를 말한다', () => {
   it('파일을 읽었다 (0바이트면 통과가 아니라 실패)', () => {
@@ -41,7 +46,7 @@ describe('🔑 어드민 자격 저장 — 화면이 이유를 말한다', () =>
   })
 
   it('🔴 자격 카드에 자체 저장 버튼이 있다 (헤더까지 스크롤하지 않게)', () => {
-    const card = src.slice(src.indexOf('function CloudflareCredsSection'))
+    expect(card.length, '자격 카드 파일을 못 읽었다 — 이 시험이 헛돈다').toBeGreaterThan(500)
     expect(card, '자격 카드를 못 찾았다 — 이 시험이 헛돈다').toContain('Cloudflare API 토큰')
     expect(card, '카드 안에 저장 버튼이 없다').toMatch(/onClick=\{onSave\}/)
     // 부모가 실제로 넘겨야 동작한다(prop 만 받고 안 넘기면 조용히 undefined).
@@ -49,7 +54,7 @@ describe('🔑 어드민 자격 저장 — 화면이 이유를 말한다', () =>
   })
 
   it('🔴 권한 안내가 낡지 않았다 — D1 Read 만 시키면 주간 백업이 죽는다', () => {
-    const hint = /key: 'cf_api_token'[\s\S]{0,600}?hint: '([^']*)'/.exec(src)?.[1] ?? ''
+    const hint = /key: 'cf_api_token'[\s\S]{0,600}?hint: '([^']*)'/.exec(card)?.[1] ?? ''
     expect(hint.length, '토큰 안내문을 못 찾았다').toBeGreaterThan(30)
     expect(hint, '아직 "D1 = Read 하나면 됩니다" 다 — 그 토큰으로는 export 가 안 된다')
       .not.toMatch(/D1\s*=\s*Read\s*하나/)

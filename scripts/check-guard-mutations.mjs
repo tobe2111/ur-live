@@ -2454,7 +2454,7 @@ canvas {
   },
   {
     name: '🔑 빈 자격 값이 다시 페이로드에 실린다 (저장만 눌러도 토큰이 지워진다)',
-    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    file: 'src/pages/admin-platform-settings/settings-payload.ts',
     find: "    if (!v || base[k] === v) continue",
     replace: '    if (base[k] === v) continue',
     test: 'src/tests/unit/admin-settings-save-payload.test.ts',
@@ -2464,7 +2464,7 @@ canvas {
   },
   {
     name: '💾 저장이 다시 전체 스냅샷을 보낸다 (서브리퀘스트 한도 → 무조건 저장 실패)',
-    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    file: 'src/pages/admin-platform-settings/settings-payload.ts',
     find: '    if (base[k] !== v) payload[k] = v',
     replace: '    payload[k] = v',
     test: 'src/tests/unit/admin-settings-save-payload.test.ts',
@@ -2495,7 +2495,7 @@ canvas {
   },
   {
     name: '🔑 자격 카드의 저장 버튼이 사라진다 (맨 위 헤더까지 스크롤해야 함)',
-    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    file: 'src/pages/admin-platform-settings/CloudflareCredsSection.tsx',
     find: '        <button onClick={onSave} disabled={saving}',
     replace: '        <button disabled={saving}',
     test: 'src/tests/unit/admin-creds-save-ux.test.ts',
@@ -2505,7 +2505,7 @@ canvas {
   },
   {
     name: '🔑 토큰 권한 안내가 다시 D1 Read 로 좁아진다 (주간 백업이 죽는다)',
-    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    file: 'src/pages/admin-platform-settings/CloudflareCredsSection.tsx',
     find: "만료일은 비워 두세요(무기한). 권한: Account → D1 / Workers Scripts / Workers KV / Workers R2 / Pages = Edit",
     replace: "권한은 D1 = Read 하나면 됩니다",
     test: 'src/tests/unit/admin-creds-save-ux.test.ts',
