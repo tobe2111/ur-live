@@ -972,3 +972,64 @@ UI 3건을 고쳐 올린 뒤에도 대표는 **여전히 "저장 실패"** 였�
 **"엔드포인트가 200 을 준다"는 "이 화면이 저장된다"가 아니다.** 재현할 때는 *화면이 보내는 것*을
 보내야 한다. 후속 21 에서 한 키만 찔러 보고 "서버는 멀쩡"이라 적은 탓에, 원인을 UI 쪽에서만
 찾다가 한 사이클을 더 썼다.
+
+---
+
+## 후속 23 — **토큰 하나가 배포 전체를 세웠다** + 일간 4분할 첫 판정 (2026-08-25 밤)
+
+### 🔴 지금 라이브에 아무것도 배포할 수 없다
+
+PR #1214 는 머지됐는데(`a51e9bc`) **배포 3종이 전부 실패**했다:
+
+```
+Deploy to Cloudflare Pages   failure   ← A request to the Cloudflare API failed. Authentication error [code: 10000]
+Deploy Worker (cron sync)    failure       (4번 재시도 전부 같은 이유; 4회차만 rate limit 10429)
+Deploy ur-wholesale          failure
+```
+
+⇒ **GitHub Actions 시크릿 `CLOUDFLARE_API_TOKEN` 도 그 죽은 토큰이다.** 어드민 D1 에 저장된 값과
+같은 것이었다. 마지막 성공 배포는 **13:19 UTC(22:19 KST, `7a7db07`)** 이고 그 뒤로 전무하다.
+
+🩸 **내가 이 사실을 반나절 늦게 알았다.** 토큰이 죽은 걸 17:0x 에 확인하고도 *"D1 조회와 백업이 안 된다"*
+로만 보고했다. **같은 토큰이 배포에도 쓰인다는 것을 확인하지 않았다** — 시크릿 이름이 같은데도.
+⇒ **자격이 죽으면 "그 자격을 쓰는 곳 전부"를 먼저 세어라.** 여기서는 3곳이었다(배포 · 백업 · 세션 진단).
+
+**대표 조치 순서 (이 순서가 아니면 안 된다)**
+1. GitHub → Settings → Secrets and variables → Actions → `CLOUDFLARE_API_TOKEN` 교체
+2. 배포 재실행 (3종)
+3. 그 다음에 어드민에 같은 토큰 저장 — ①②가 끝나야 #1214 의 저장 수리가 라이브에 있다.
+   ⚠️ 3번을 먼저 하면 **여전히 "저장 실패"** 가 뜬다(옛 코드가 전체 스냅샷을 보낸다).
+
+### 일간 cron 4분할 — 첫 회차 판정: **분할이 문제를 좁혔다**
+
+| 레인 | 슬롯(UTC) | 결과 |
+|---|---|---|
+| money(정산 성숙·voucher 환불·affiliate/referral 성숙) | `0 18` **전용 트리거** | ✅ |
+| **integrity**(ledger-reconcile · ledger-integrity-check · disputes-escalation · wholesale-orphan-sweep · daily-self-diagnostic) | `*/5` + :10 | ❌ **유일한 실패** |
+| maintenance | `*/5` + :30 | ✅ |
+| growth | `*/5` + :40 | ✅ |
+
+08-24 에는 **16개 전부** 누락이었다. 오늘은 11개가 회복되고 5개만 남았다 —
+즉 원인이 "일간 블록 전체"가 아니라 **integrity 레인 하나**로 좁혀졌다. 분할 자체가 진단 도구였다.
+
+세 레인의 소스는 구조가 동일하다(`runDailyLane` + `slotDue`). 남은 가설 둘, 공개 healthcheck 로는 못 가린다:
+- ⓐ integrity 작업이 무거워(원장 전수) 서브리퀘스트 예산이 그 회차에 먼저 마름
+- ⓑ 18:10 의 `*/5` 인보케이션이 한 번 건너뛴 것(무료 플랜)
+
+⇒ **08-26 18:20 UTC 재판정 예약**(`trig_01Czj1dFJBthzFPMGCz6sBUz`). 또 비면 ⓐ 확정 —
+처방은 그 레인만 더 쪼개거나 전용 트리거로 이사. **계정 cron 한도가 5/5 라 자리는 교체로만 난다**
+(`wrangler.toml` 의 `crons` 는 원자적 전체 교체 — 늘리려면 Workers Paid).
+
+### 부수 확인 — `25 * * * *` 슬롯은 스스로 회복했다
+
+낮에 "5시간째 무기록"으로 잡았던 시간당 5개(`demo-name-heal`·`seller-approval-reminder`·
+`channel-watchdog`·`auto-seed-reviews-hourly`·`demo-image-rehost`)는 그 뒤 정상 복귀했다.
+⇒ 그때 본 것은 고장이 아니라 **몇 회차 굶음**이었다. 짧은 창으로 "슬롯이 죽었다"고 단정할 뻔했다
+(이 문서가 반복해 적어 온 관측창 함정과 같은 것).
+
+### 다음 세션의 첫 액션
+
+1. `CLOUDFLARE_API_TOKEN` 시크릿이 교체됐는지 → 배포 재실행 → `curl https://urdeal.kr/api/version` 의
+   `version` 이 바뀌는지로 판정.
+2. 배포가 살아나면 대표에게 **어드민 토큰 저장**을 안내하고, 저장 후 `verify` 로 실제 반영 확인.
+3. 08-26 03:10 KST integrity 레인 재발 여부(위 예약).
