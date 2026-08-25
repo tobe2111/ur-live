@@ -31,8 +31,8 @@
 | C1 어필리에이트/핀 | owner 스위치로 이전됨 (`order-commissions.ts:183` + `debitOwnerPromoForOrder` `ledger.ts:471`) | flip 시 `promo_funding_source='owner'` — 이미 커버 | ✅ 확정 |
 | C2 멀티티어 트리 | **5% (예산 캡, owner 미이전)** | owner 제외 분기 + `referral_commissions` owner debit 신설 | ❌ 미구현(갭) |
 | C3 인플루언서 매장영입(1.5%) | **5%** — owner 레버 없음 | owner-펀딩으로 이전 (C1 과 동일 패턴) | ❌ 미구현(갭) |
-| 이용권 사용시 인플 20% share | **5%** (`recordIntroductionCommissionShare` `ledger.ts:356` → `debit platform:revenue`) | owner 이전 또는 flip 시 off | ❌ 미구현(갭) |
-| C4 에이전시 매장영입 1%/24mo + signup ₩30k + 이용권 30% share(`recordAgencyCommissionShare` `ledger.ts:206`) | **5%** (예산 우선보호) | **promo 기반 재설계** — 에이전시 몫도 매장 promo(조율 마진)에서, `platform:revenue` debit 제거. 판매 커미션과 동일 owner-펀딩 처리 | 🟢 flip 시 promo(재설계) |
+| 이용권 사용시 인플 20% share | ~~5%~~ → **flip 시 `merchant:{id}`** (`recordIntroductionCommissionShare` → `creditUserCommission({ownerAccount})`) | owner 이전 | ✅ **구현(2026-08-25)** — 게이트 OFF 라 현행 무변화 |
+| C4 에이전시 매장영입 1%/24mo + signup ₩30k + 이용권 30% share(`recordAgencyCommissionShare`) | ~~5%~~ → **flip 시 `merchant:{id}`** | promo 기반 — `platform:revenue` debit 제거 | ✅ **구현(2026-08-25)** — 산식(platform_fee×share)은 *크기 기준*으로만 유지, 재원은 매장 |
 | 공급자 B2B (`supply-settlement.ts`) | 매장(공급가) | 없음 — 이미 정합 | ✅ 확정 |
 | 인플 라이브셀/`seller_influencer_deals` 딜% (`group-buy.routes.ts:517`) | 매장(seller receivable debit) | 없음 — 이미 owner-펀딩(=B 의 선례) | ✅ 확정 |
 | 우회 사이트: `/track`(`affiliate.routes.ts:81`, uncapped) · `/calculate-commission`(`referral-tree.routes.ts:629`, uncapped) · 숙소 referral 직접 INSERT(`payment.routes.ts:604`, owner debit 미적용) · agency-incentives 병렬 엔진(`agency-incentives.routes.ts:255`, 아비터 미배선) | 혼재 | flip 전 오케스트레이터/owner 경유로 정리 또는 폐기 | ⚠️ 확인필요 |
@@ -58,7 +58,7 @@
 | **C1 어필리에이트** | 딜포인트, `affiliate_earnings(status IN holding/granted)` | ✅ 완료 — `debitOwnerPromoForOrder` 가 이미 이 합 debit |
 | **C2 멀티티어** | 딜포인트, `referral_commissions(order_id, commission_amount, status)` | ① `budgetedCreditForOrder` 에서 `promoOwnerFunded` 시 mtReq 예산 제외 ② `debitOwnerPromoForOrder` 합에 `SUM(commission_amount) WHERE order_id=? AND status != 'withdrawn'` 추가. ⚠️ status vocabulary(`pending/granted/withdrawal_requested/paid_out/withdrawn`) 중 '되갚을 활성분' 정의를 staging 에서 확정 |
 | **C3 크리에이터 영입** | 현금/딜, `influencer_attributions(source='store_intro', commission_amount, status)` | ① infReq 예산 제외 ② owner debit 합에 `SUM(commission_amount) WHERE order_id=? AND source='store_intro' AND 활성상태` 추가 |
-| **(V) 이용권 20% 인플 share** | **원장 직접** `recordIntroductionCommissionShare` = `debit platform:revenue → user:N` | **debit 계정을 platform:revenue → 주인 계정으로 변경**(when owner) — 이 축은 딜 합산이 아니라 원장 debit 이라 debitOwnerPromoForOrder 가 아니라 *이 함수 자체*를 owner-redirect. 기존 역전이 debit_account 를 읽어 복원하므로 대칭 유지 |
+| **(V) 이용권 20% 인플 share** | **원장 직접** `recordIntroductionCommissionShare` = `debit platform:revenue → user:N` | **debit 계정을 platform:revenue → 주인 계정으로 변경**(when owner) — 이 축은 딜 합산이 아니라 원장 debit 이라 debitOwnerPromoForOrder 가 아니라 *이 함수 자체*를 owner-redirect. ~~기존 역전이 debit_account 를 읽어 복원하므로 대칭 유지~~ → **🩸 2026-08-25 실측: 그런 역전은 없었다.** `voucher:N:agency`/`:intro-inf` 를 되돌리는 코드가 어디에도 없었고(`clawbackVoucherCommission`=influencer_balances 만, `recordVoucherRefundLedger`=호출부 0인 죽은 함수), 이 문장을 믿고 넘어갈 뻔했다. `reverseVoucherCommissionShares` 신설로 **이제 사실이 됐다** |
 | **C4 에이전시 매장영입 + (V) 30% agency share** | `agency_store_intro_commissions` + 원장 `recordAgencyCommissionShare`(platform_fee 30% debit platform:revenue) | **promo 재설계 — 판매 커미션과 동일**: 예산 제외 + owner(매장 promo) debit. `recordAgencyCommissionShare` 는 debit 계정을 platform:revenue → 주인으로 redirect. 에이전시는 조율 마진(promo)에서 먹으므로 5% 무관 |
 
 **#44 가드(전환 후 신설):** owner-redirect 가 완료되면 `check-commission-budget.mjs` R4 = "**어떤** 성장 커미션(C1/C2/C3·V인플·**C4 에이전시 포함**)도 `debit_account:'platform:revenue'` 로 5% 를 빼는 곳 0"(**예외 없음**) 정적 단언 + `commission-budget.test.ts` 에 flip 플래그 시 `platformNet == round(total×5/100)` 항등식. ⚠️ 이 가드는 **owner-redirect 리팩토링 후에** 추가(그 전엔 현행 platform:revenue debit 이 정상이라 false-positive).
@@ -273,3 +273,43 @@ agency_signup_bonus_monthly_budget_krw 미설정=무제한
   ③ 캡 **발동 시에만**(Σ요청>예산) `commission_budget_logs`(order_id·budget·requested·granted·축별 JSON)
   1행 기록(평시 write 0, fail-soft) → `GET /api/admin/tools/commission-budget-logs` + 설정 페이지
   "커미션 캡 발동 이력" 표. 캡이 언제 누굴 얼마 깎았는지 어드민이 직접 확인 가능.
+
+---
+
+## 📌 2026-08-25 구현 현황 (S4b — 직접 redirect)
+
+대표 지시 *"정산 게이트 켜줘 + 플로우가 서비스와 맞나"* 에 따른 작업. **게이트는 여전히 기본 OFF** 라
+라이브 동작은 무변화다 — 켜는 순간 아래가 발효된다.
+
+### 닫은 갭
+| 축 | 무엇을 했나 |
+|---|---|
+| C4 에이전시 share | `recordAgencyCommissionShare` debit → flip 시 `merchant:{id}` |
+| 이용권 인플 20% share | `creditUserCommission` 에 `ownerAccount` 신설 → flip 시 그쪽 debit |
+| 예산 (Layer 1) | `computeCommissionBudget({flipOwnerFunded:true})` → **예산 0 강제** |
+| 가드 (Layer 2) | `check-commission-budget.mjs` **R4b** — 사용시점 셰어의 debit 하드코딩 금지 |
+
+flip 판정은 `owner-promo.isOwnerFunded`(전역 `promo_funding_source='owner'` 또는 파일럿 매장)로
+**한 곳에 모았다** — 축마다 게이트가 갈리면 "일부만 flip 된" 상태가 생기고 그건 원장에서만 보인다.
+
+> ⚠️ `ledger.ts` → `owner-promo.ts` 는 **동적 import** 다. owner-promo 가 ledger 를 static import
+> 하므로 되받으면 순환 참조가 된다.
+
+### 아직 안 닫은 것 (다음 세션)
+- **C2 멀티티어 트리** — `referral_commissions` owner debit 미신설. 단 #1194 로 멀티티어가 종료됐는지
+  먼저 확인할 것(종료면 이 행은 갭이 아니라 삭제 대상이다).
+- **C3 인플루언서 매장영입 1.5%** — 이 축은 애초에 **원장을 안 탄다**(`influencer_attributions` +
+  별도 payout cron). 그래서 "debit 을 돌린다"가 성립하지 않고, C1 처럼 **owner 되갚기**를 새로
+  붙여야 한다. 표의 "owner-펀딩으로 이전 (C1 과 동일 패턴)"이 정확한 서술이다.
+- ~~`voucher_refund` 역전의 flip 대칭~~ → **같은 세션에서 닫았다.** 조사해 보니 후보가 아니라
+  **실제 위반**이었다 — 셰어 원장을 되돌리는 코드가 아예 없었다. `reverseVoucherCommissionShares`
+  (원본 엔트리의 debit/credit 을 읽어 뒤집음 → flip 상태 무관 자동 대칭) 신설 + `clawbackVoucherCommission`
+  에 배선. ⚠️ **남은 것**: 비사업자에게 **딜포인트**로 나간 분의 회수(원장이 아니라 `point_transactions`
+  경로라 별건).
+- **우회 사이트 4곳**(§표 마지막 행) — 미착수.
+
+### ⚠️ 켜기 전 조건
+1. `voucher_refund` 대칭을 먼저 정리할 것 — flip ON + 환불이 겹치면 원장이 어긋난다.
+2. staging 실결제 1건으로 원장 확인: `platform:revenue` 순수취가 **정확히 결제액의 5%** 인가.
+3. 라이브 실측(2026-08-25): 확정 주문 22건 전부 **1P(seller_id 없음)** · 원장 2행 · payout 0회.
+   즉 지금 켜도 **발효 대상이 0건**이다 — 그래서 "켜는 것"보다 **위 1번을 닫는 것**이 먼저다.

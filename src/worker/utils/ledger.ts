@@ -29,6 +29,21 @@ interface LedgerEntry {
   metadata?: Record<string, unknown>
 }
 
+/**
+ * 💸 [INV-#44] promo flip 판정 — `owner-promo.isOwnerFunded` 로 위임.
+ *
+ * ⚠️ **동적 import 인 게 의도다.** `owner-promo.ts` 가 이 파일을 static import 하므로,
+ *   여기서 되받아 static 으로 걸면 순환 참조가 된다(워커 번들에서 초기화 순서 사고).
+ *   fail-soft: 실패 시 false = 현행 플랫폼 재원 — **모르면 바꾸지 않는다.**
+ */
+async function ownerFundedFor(DB: D1Database, ownerAccount: string): Promise<boolean> {
+  try {
+    const sellerId = /(?:merchant|seller):(\d+)/.exec(ownerAccount)?.[1] ?? null
+    const { isOwnerFunded } = await import('./owner-promo')
+    return await isOwnerFunded(DB, sellerId)
+  } catch { return false }
+}
+
 let DDL_DONE = false
 
 export async function ensureLedgerTable(DB: D1Database): Promise<void> {
@@ -262,13 +277,21 @@ export async function recordAgencyCommissionShare(
   const agencyAmount = Math.floor(params.platform_fee * sharePct)
   if (agencyAmount <= 0) return { agency_id: seller.introduced_by_agency_id, amount: 0 }
 
+  // 💸 [INV-#44] promo flip — 에이전시는 **매장-인플 조율 독립 사업자**이므로 그 몫도
+  //   매장 promo(5% 밖)에서 나온다(대표 확정 2026-07-08 §확정 원칙 3). flip 이 켜지면
+  //   debit 을 `merchant:{id}` 로 돌려 **platform:revenue 를 한 푼도 건드리지 않는다**.
+  //   OFF(기본)면 종전과 byte-동일. 산식(platform_fee×share_pct)은 **크기 기준일 뿐**이라 불변.
+  const ownerFunded = await ownerFundedFor(DB, `merchant:${params.merchant_id}`)
   await recordLedger(DB, {
     event_type: 'agency_commission',
     reference_id: ref,
     amount: agencyAmount,
-    debit_account: 'platform:revenue',
+    debit_account: ownerFunded ? `merchant:${params.merchant_id}` : 'platform:revenue',
     credit_account: `agency:${seller.introduced_by_agency_id}`,
-    metadata: { kind: 'agency_share', voucher_id: params.voucher_id, share_pct: sharePct },
+    metadata: {
+      kind: 'agency_share', voucher_id: params.voucher_id, share_pct: sharePct,
+      ...(ownerFunded ? { funding: 'owner' } : {}),
+    },
   })
 
   return { agency_id: seller.introduced_by_agency_id, amount: agencyAmount }
@@ -297,10 +320,20 @@ export async function creditUserCommission(
     dealTxType?: string      // point_transactions.type (딜 경로)
     description?: string
     meta?: Record<string, unknown>
+    /**
+     * 💸 [INV-#44] 매장 promo 재원 계정(예: `merchant:{id}`). 전달 + flip ON 이면
+     *   이 커미션의 debit 이 **platform:revenue 대신 여기**로 간다 = 5% 무접촉.
+     *   미전달(기존 호출부)이면 종전과 byte-동일 — additive 하다.
+     */
+    ownerAccount?: string | null
   },
 ): Promise<{ payout: 'cash' | 'deal'; amount: number }> {
   if (params.amount <= 0) return { payout: 'deal', amount: 0 }
   const eventType = params.eventType || 'commission'
+  // flip 판정: ownerAccount 가 있을 때만 조회한다(없으면 왕복 0 — 기존 호출부 성능 불변).
+  const debitAcct = params.ownerAccount && await ownerFundedFor(DB, params.ownerAccount)
+    ? params.ownerAccount
+    : 'platform:revenue'
   const baseMeta = { kind: params.kind, ...(params.meta || {}) }
 
   const u = await DB.prepare(
@@ -313,9 +346,9 @@ export async function creditUserCommission(
       event_type: eventType,
       reference_id: params.referenceId,
       amount: params.amount,
-      debit_account: 'platform:revenue',
+      debit_account: debitAcct,
       credit_account: `user:${params.userId}`,
-      metadata: { ...baseMeta, payout: 'cash' },
+      metadata: { ...baseMeta, payout: 'cash', ...(debitAcct !== 'platform:revenue' ? { funding: 'owner' } : {}) },
     })
     return { payout: 'cash', amount: params.amount }
   }
@@ -324,9 +357,9 @@ export async function creditUserCommission(
     event_type: eventType,
     reference_id: params.referenceId,
     amount: params.amount,
-    debit_account: 'platform:revenue',
+    debit_account: debitAcct,
     credit_account: `userdeal:${params.userId}`,
-    metadata: { ...baseMeta, payout: 'deal' },
+    metadata: { ...baseMeta, payout: 'deal', ...(debitAcct !== 'platform:revenue' ? { funding: 'owner' } : {}) },
   })
   // 비사업자 → 딜 즉시 적립 (signup-bonus 와 동일 패턴).
   try {
@@ -429,9 +462,60 @@ export async function recordIntroductionCommissionShare(
     dealTxType: 'intro_commission',
     description: `영입 매장 공구 커미션 (voucher ${params.voucher_id})`,
     meta: { voucher_id: params.voucher_id, share_pct: sharePct },
+    // 💸 [INV-#44] flip ON 이면 이 20% 도 매장 promo 재원에서 — 5% 무접촉.
+    ownerAccount: `merchant:${params.merchant_id}`,
   })
 
   return { influencer_id: influencerUserId, amount }
+}
+
+/**
+ * 💸 [머니 룰 #2] 이용권 커미션 셰어(에이전시 30% · 인플 20%) **원장 역전**.
+ *
+ * 🩸 2026-08-25 실측으로 확인한 갭: `recordAgencyCommissionShare` / `recordIntroductionCommissionShare`
+ *   가 쓴 원장 엔트리(`voucher:N:agency` · `voucher:N:intro-inf`)를 **되돌리는 코드가 어디에도
+ *   없었다.** `clawbackVoucherCommission` 은 `influencer_balances` 만 만지고 원장은 무접촉,
+ *   `recordVoucherRefundLedger` 는 호출부 0(죽은 함수)였다. 설계 문서는 *"기존 역전이 debit_account 를
+ *   읽어 복원하므로 대칭 유지"* 라고 적혀 있었지만 **그런 코드는 없었다** — 문서가 앞서간 것이다.
+ *
+ * ⚠️ **flip 이 켜지면 이게 더 나빠진다**: debit 이 `merchant:{id}` 로 가므로, 역전이 없으면
+ *   **매장이 환불된 주문의 커미션을 영구 부담**한다(플랫폼 돈이 아니라 남의 돈이다).
+ *
+ * 설계: 원본 엔트리의 **debit/credit 을 읽어 그대로 뒤집는다** → flip 상태와 무관하게 자동 대칭.
+ *   (그래서 flip ON/OFF 어느 시점에 적립됐든 되돌아가는 곳이 정확히 맞는다.)
+ * 멱등: `{ref}:reversal` 이 이미 있으면 no-op. fail-soft — 역전 실패가 환불을 막지 않는다.
+ */
+export async function reverseVoucherCommissionShares(
+  DB: D1Database,
+  voucherId: number | string,
+  reason: string,
+): Promise<{ reversed: number }> {
+  await ensureLedgerTable(DB)
+  let reversed = 0
+  for (const suffix of ['agency', 'intro-inf']) {
+    const ref = `voucher:${voucherId}:${suffix}`
+    try {
+      const src = await DB.prepare(
+        `SELECT amount, debit_account, credit_account FROM ledger_entries
+          WHERE reference_id = ? ORDER BY id LIMIT 1`,
+      ).bind(ref).first<{ amount: number; debit_account: string; credit_account: string }>()
+      if (!src || !(Number(src.amount) > 0)) continue
+      const revRef = `${ref}:reversal`
+      const dup = await DB.prepare('SELECT id FROM ledger_entries WHERE reference_id = ? LIMIT 1')
+        .bind(revRef).first().catch(() => null)
+      if (dup) continue
+      await recordLedger(DB, {
+        event_type: 'commission_reversal',
+        reference_id: revRef,
+        amount: Number(src.amount),
+        debit_account: src.credit_account,   // 뒤집는다 — 받았던 쪽에서 회수
+        credit_account: src.debit_account,   // 냈던 쪽으로 복원(platform:revenue 또는 merchant:N)
+        metadata: { kind: 'voucher_share_reversal', voucher_id: voucherId, reason, of: ref },
+      })
+      reversed++
+    } catch { /* fail-soft — 역전 실패가 환불을 막으면 안 된다 */ }
+  }
+  return { reversed }
 }
 
 /**

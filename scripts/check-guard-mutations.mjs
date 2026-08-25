@@ -4650,6 +4650,27 @@ canvas {
       'DB 를 나눌 때 백업 대상 목록을 같이 안 늘리면 그 DB 는 **조용히 무방비**가 된다 — ' +
       '에러도 경고도 없고, 필요해질 때까지 아무도 모른다. 메인 DB 가 3주간 그 상태였다.',
   },
+  {
+    name: '💸 [INV-#44] flip 인데 플랫폼-펀딩 예산이 0 이 아니다(성장 커미션이 5% 를 잠식)',
+    file: 'src/worker/utils/commission-budget.ts',
+    find: '  if (p.flipOwnerFunded === true) return 0',
+    replace: '  if (p.flipOwnerFunded === false) return 0',
+    test: 'src/tests/unit/commission-budget.test.ts',
+    why:
+      '대표 확정(2026-07-08): 유어딜 5% 는 어떤 커미션에도 안 쓴다. flip 이 켜졌는데 예산이 ' +
+      '0 이 아니면 그만큼 5% 가 잠식되고, 그건 정책 변경이 아니라 **버그**다. 화면엔 안 보이고 ' +
+      '원장을 합산해야 드러난다.',
+  },
+  {
+    name: '💸 [INV-#44] 에이전시 share 가 platform:revenue 하드코딩으로 되돌아감',
+    file: 'src/worker/utils/ledger.ts',
+    find: "    debit_account: ownerFunded ? `merchant:${params.merchant_id}` : 'platform:revenue',",
+    replace: "    debit_account: 'platform:revenue',",
+    test: 'scripts/check-commission-budget.mjs',
+    why:
+      'flip 을 켜도 이 축만 조용히 5% 를 계속 잠식한다. 에러도 없고 화면도 멀쩡해서 ' +
+      '원장을 열어보기 전엔 모른다 — 이 레포가 반복해 만난 "조용한 부재" 클래스다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

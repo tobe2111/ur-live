@@ -195,6 +195,15 @@ export async function clawbackVoucherCommission(
   reason: string,
 ): Promise<number> {
   let clawed = 0
+  // 💸 2026-08-25 [머니 룰 #2] 원장 셰어 역전 — 이 함수는 여태 `influencer_balances` 만 만지고
+  //   **원장(`voucher:N:agency` / `voucher:N:intro-inf`)은 손대지 않았다.** 그래서 환불·만료된
+  //   이용권의 에이전시/인플 셰어가 원장에 영구히 남았다(플랫폼 수익 과소·수취인 과대).
+  //   flip 이 켜지면 그 부담이 **매장**으로 가므로 더 나쁘다 → 여기서 같이 되돌린다.
+  //   fail-soft: 역전 실패가 기존 clawback 을 막지 않는다.
+  try {
+    const { reverseVoucherCommissionShares } = await import('../../../worker/utils/ledger')
+    await reverseVoucherCommissionShares(DB, voucherId, reason)
+  } catch { /* 관측 실패가 회수를 막지 않는다 */ }
   // 🛡️ 2026-05-31: attribution 은 주문(order_id) 단위 1행(커미션=주문 총액 기준), 환불은 바우처 단위.
   //   이전 버그: attribution.voucher_id 는 항상 NULL(insert 누락) → `WHERE voucher_id=?` 매칭 0건
   //   → 환불/취소/만료 시 인플 커미션이 전혀 회수 안 됨(누수). order_id 로 연결하고 바우처 비례 clawback.

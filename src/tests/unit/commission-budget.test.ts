@@ -213,3 +213,49 @@ describe('assertCommissionBudgetInvariants', () => {
     ).toThrow(/sum\(granted\) > budget/)
   })
 })
+
+/**
+ * 💸 [INV-#44] 2026-08 promo flip — "원장상 platform:revenue = 5% 전액, 성장 커미션 debit 0".
+ *
+ * 대표 확정(2026-07-08): 판매 커미션·에이전시 수수료는 **전부 매장 promo(5% 밖) 재원**이고,
+ * 유어딜 5% 는 누가 얼마를 받든 **불변**이다. 그 불변식이 깨지면 그건 정책 변경이 아니라 **버그**다.
+ *
+ * ⚠️ 이 테스트가 못 막는 것: 원장에 실제로 기록되는 debit 계정(=런타임 D1). 그건 `ledger.ts` 의
+ *   `ownerFundedFor` 분기와 정적 가드 `check-commission-budget.mjs` R4 가 나눠서 지킨다.
+ */
+describe('[INV-#44] flip — 성장 커미션은 5% 를 잠식하지 못한다', () => {
+  it('🔑 flip ON 이면 플랫폼-펀딩 예산이 0 이다', () => {
+    const on = computeCommissionBudget({
+      amountKrw: 100_000, platformFeeKrw: 5_000, pgReservePct: 2.75, flipOwnerFunded: true,
+    })
+    expect(on, 'flip 인데 5% 에서 예산이 나온다 — 그만큼 유어딜 몫이 잠식된다').toBe(0)
+  })
+
+  it('flip ON 에서는 주문 금액이 아무리 커도 예산이 0 을 넘지 않는다', () => {
+    for (const amt of [10_000, 1_000_000, 50_000_000]) {
+      expect(computeCommissionBudget({
+        amountKrw: amt, platformFeeKrw: Math.round(amt * 0.05), pgReservePct: 0, flipOwnerFunded: true,
+      })).toBe(0)
+    }
+  })
+
+  it('🛡️ flip OFF/미전달이면 종전과 동일하다 (기본 OFF = 현행 무변화)', () => {
+    const base = computeCommissionBudget({ amountKrw: 100_000, platformFeeKrw: 5_000, pgReservePct: 2.75 })
+    const off = computeCommissionBudget({
+      amountKrw: 100_000, platformFeeKrw: 5_000, pgReservePct: 2.75, flipOwnerFunded: false,
+    })
+    expect(off).toBe(base)
+    expect(base).toBeGreaterThan(0)   // 측정 대상 0건이면 통과가 아니라 무의미 — 실제로 예산이 나와야 한다
+  })
+
+  it('flip ON 이면 배분 결과도 전부 0 이다 (예산 0 → granted 0)', () => {
+    const budget = computeCommissionBudget({
+      amountKrw: 200_000, platformFeeKrw: 10_000, pgReservePct: 2.75, flipOwnerFunded: true,
+    })
+    const grants = allocateCommissions(
+      [{ key: 'affiliate', amountKrw: 4_000 }, { key: 'agency', amountKrw: 3_000 }],
+      budget,
+    )
+    expect(grants.every((g) => g.grantedKrw === 0), '예산 0 인데 배분이 나갔다').toBe(true)
+  })
+})

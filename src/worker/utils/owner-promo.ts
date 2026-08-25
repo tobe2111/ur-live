@@ -16,6 +16,27 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import { recordLedger, ensureLedgerTable } from './ledger'
 
+/**
+ * 💸 [INV-#44] 이 매장이 **owner-펀딩(promo flip)** 대상인가.
+ *
+ * 전역 스위치(`promo_funding_source='owner'`) 또는 파일럿 매장 스코프(`flip-pilot.ts`) 중 하나면 true.
+ * `debitOwnerPromoForOrder` 가 쓰던 판정을 그대로 뽑아낸 것이다 — 같은 flip 을 여러 축
+ * (어필리에이트 / 에이전시 share / 인플 소개 share)이 **공유**해야 "5% 불가침"이 축마다 갈리지 않는다.
+ *
+ * fail-soft: 조회 실패 시 false(= 현행 플랫폼 재원). **모르면 바꾸지 않는다**가 안전한 방향이다.
+ */
+export async function isOwnerFunded(DB: D1Database, sellerId?: number | string | null): Promise<boolean> {
+  try {
+    const src = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'promo_funding_source'")
+      .first<{ value: string }>().catch(() => null)
+    if (src?.value === 'owner') return true
+    const id = Number(sellerId)
+    if (!Number.isFinite(id) || id <= 0) return false
+    const { readFlipPilotSellerIds } = await import('./flip-pilot')
+    return (await readFlipPilotSellerIds(DB)).has(id)
+  } catch { return false }
+}
+
 /** @returns 차감된 금액 (no-op 이면 0) */
 export async function debitOwnerPromoForOrder(
   DB: D1Database,

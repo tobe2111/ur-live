@@ -153,9 +153,11 @@ try {
 //   "성장 커미션이 원장 platform:revenue 를 debit 해 5% 를 잠식하지 않는다."
 //   범위(현 단계): **딜 지급 축(확정시점 C1~C4)** 헬퍼는 user_points 로만 지급(platform:revenue
 //   debit 0). owner 되갚기(debitOwnerPromoForOrder)는 merchant→platform:revenue 를 **credit**(회수).
-//   ⚠️ 사용시점 셰어(recordAgency/IntroductionCommissionShare, creditUserCommission)는 아직
-//   platform:revenue 를 debit → **S4b(직접 redirect + 환불 대칭 rework, staging 검증) 후** R4 범위 확장.
-//   그 전까지 범위 밖(false-positive 방지 — 설계 SSOT §불변식 #44 "리팩토링 후 추가" 지침).
+//   ✅ 2026-08-25 **범위 확장 완료(S4b 직접 redirect)** — 사용시점 셰어
+//   (recordAgencyCommissionShare / creditUserCommission)의 debit 이 flip 인지 분기로 바뀌었다.
+//   이제 그 자리에 **하드코딩된 platform:revenue 가 다시 나타나면 위반**이다(R4b).
+//   ⚠️ 범위 밖으로 남기는 것: `voucher_refund` 역전(성장 커미션이 아니라 환불 부기다) —
+//   flip 상태에서 이 역전의 대칭은 아직 미해결이고, 그건 staging 실결제 검증이 필요한 별건이다.
 const R4_DEALFUNDED_FILES = [
   'src/worker/utils/affiliate-credit.ts',
   'src/worker/utils/influencer-store-intro-commission.ts',
@@ -180,6 +182,29 @@ try {
     violations.push('   - [R4] ledger.ts debitOwnerPromoForOrder — promo_fee 가 platform:revenue 를 credit(회수)하지 않음 — owner 되갚기 방향 역전')
   }
 } catch { violations.push('   - [R4] ledger.ts 읽기 실패(owner 되갚기 검증)') }
+
+// ── R4b: 사용시점 셰어의 debit 이 flip 인지 분기여야 한다 (하드코딩 platform:revenue 금지) ──
+//   여기가 하드코딩으로 되돌아가면 flip 을 켜도 **그 축만 조용히 5% 를 계속 잠식**한다.
+//   에러가 안 나고 화면도 멀쩡하다 — 원장을 열어봐야 보이는 종류다.
+try {
+  const src = stripComments(readFileSync('src/worker/utils/ledger.ts', 'utf8'))
+  const blocks = [
+    { name: 'recordAgencyCommissionShare', anchor: "event_type: 'agency_commission'", span: 400 },
+    { name: 'creditUserCommission', anchor: 'const debitAcct', span: 1400 },
+  ]
+  for (const b of blocks) {
+    const i = src.indexOf(b.anchor)
+    if (i < 0) {
+      violations.push(`   - [R4b] ledger.ts — ${b.name} 앵커('${b.anchor}') 미발견. 코드가 이동했으면 이 가드를 같이 옮겨라(낡은 지도 금지).`)
+      continue
+    }
+    if (PLATREV_DEBIT_RE.test(src.slice(i, i + b.span))) {
+      violations.push(
+        `   - [R4b] ledger.ts ${b.name} — debit_account 가 platform:revenue 로 하드코딩됨 — flip 을 켜도 이 축은 5% 를 계속 잠식한다(#44 위반). ownerFunded 분기로 되돌릴 것.`,
+      )
+    }
+  }
+} catch { violations.push('   - [R4b] ledger.ts 읽기 실패(사용시점 셰어 검증)') }
 
 if (violations.length) {
   console.error('❌ [INV-CB] 커미션 예산 아비터 우회 감지 (docs/design/commission-funding-restructure.md):')
