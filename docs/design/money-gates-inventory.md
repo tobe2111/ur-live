@@ -52,3 +52,22 @@ SELECT reference_id, amount, fee_amount, debit_account, credit_account, metadata
 - 직접 입점 매장 주문: `platform:revenue` 몫이 결제액의 **10%**
 - 중개 매장 주문: **5%**
 - 성장 커미션(agency/intro)의 debit 이 `platform:revenue` 가 **아니어야** 함(flip ON 시) — [INV-#44]
+
+## ⚠️ 알려진 비대칭 — 요율 승격이 **이용권에만** 걸려 있다 (2026-08-25 실측)
+
+`fee_channel_rates_enabled` 를 켜면 **이용권 원장**(`recordVoucherUsedLedger`)은 채널 요율
+(직접 10% / 중개 5%)로 계산한다. 그런데 **일반 쇼핑 원장**(`order-ledger-credit.ts`)은 여전히
+`orders.commission_rate ?? COMMISSION_DEFAULTS.PLATFORM_FEE_PCT`(=5) 를 쓴다 —
+`store_channel` 을 **한 번도 읽지 않는다**(실측: 참조 0건).
+
+⇒ 게이트를 켜면 **같은 직접 입점 매장이 이용권은 10%, 쇼핑은 5%** 로 갈린다.
+
+**지금 라이브 영향은 0이다**: 쇼핑 탭이 숨김(`SHOPPING_TAB_HIDDEN`)이고 `SHOPPING_LEDGER_ENABLED`
+도 OFF라 그 경로가 원장을 아예 안 건드린다. 그래서 **급하지 않지만, 쇼핑을 재오픈하기 전에는
+반드시 맞춰야 한다** — 안 맞추면 재오픈 시점에 조용히 절반 요율로 정산된다.
+
+**왜 이번에 같이 안 고쳤나**: 머니 경로 변경이라 룰상 *단독 세션 + staging 실결제*가 붙는다
+(CLAUDE.md §서비스 분리 4항). 이용권 승격과 한 PR 에 묶으면 staging 에서 **어느 쪽이 틀렸는지
+가릴 수 없다.** 순서를 지키는 편이 낫다.
+
+**대표 판단 대기**: 쇼핑 재오픈 일정이 잡히면 그 전에 이 배선을 별도 PR 로.
