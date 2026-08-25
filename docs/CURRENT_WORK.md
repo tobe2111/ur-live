@@ -5494,11 +5494,15 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 171건 · 최신순 · 이 목록은 자동 생성된다._
-_총 170건 · 최신순 · 이 목록은 자동 생성된다._
-_총 169건 · 최신순 · 이 목록은 자동 생성된다._
+_총 176건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-08-24**
+- [2026-08-24 — 429 를 "결과 0건"으로 적던 것 (유어애즈 webkr 레인)](handoff/2026-08-24-unanswered-bookkeeping.md)
+- [2026-08-24 — 은퇴가 레인 하나에만 걸려 있던 것 (유어애즈)](handoff/2026-08-24-two-lane-retirement.md)
+- [2026-08-24 — 업종 자동 은퇴·승격 + 회차 간 백오프 (유어애즈)](handoff/2026-08-24-subcat-yield-autotune.md)
 **2026-08-23**
+- [2026-08-23 — 이용권 등록 3단계 위저드 (카카오맵 자동입력 · 매장 상속 · 다매장 · 임시저장)](handoff/2026-08-23-voucher-wizard.md)
+- [2026-08-23 — 오픈API 차단 자동 방어 + 4단계 고수율 키워드 (유어애즈)](handoff/2026-08-23-openapi-block-and-s4-keywords.md)
 - [2026-08-23 — 본진 D1 이 꽉 차서 쓰기가 멈췄다 · 중복 460MB 회수로 복구](handoff/2026-08-23-d1-full-outage-recovery.md)
 - [2026-08-23 — 백업 주기: 시간당 1회 → 4회 (전체 스냅샷 60시간 → 15시간)](handoff/2026-08-23-backup-cadence.md)
 - [2026-08-23 — 유어애즈 DB 2차 분리: 업체 계열 → `urads-company-db`](handoff/2026-08-23-ads-company-db-split.md)
