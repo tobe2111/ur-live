@@ -3,6 +3,7 @@ import { cfImage } from '@/utils/cf-image'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useHomeBanners, type HomeBanner } from './useHomeBanners'
 import type { BannerSlot } from '@/shared/constants/home-showcase'
+import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
 
 /**
  * 🏠 ③ 중간 배너 (2026-08-04 대표 시안 승인).
@@ -37,7 +38,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
   if (variant === 'wide') {
     const b = banners[0]
     const href = bannerHref(b)
-    const bg = b.image_url ? cfImage(b.image_url, { width: 1600, quality: 76 }) : ''
+    const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.inline.requestWidth, quality: 76 }) : ''
     return (
       <div className="pb-6">
         <Wrap
@@ -71,7 +72,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
       }`}>
         {banners.slice(0, 3).map(b => {
           const href = bannerHref(b)
-          const bg = b.image_url ? cfImage(b.image_url, { width: 700, quality: 76 }) : ''
+          const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.wide.requestWidth, quality: 76 }) : ''
           return (
             <Wrap
               key={b.id}

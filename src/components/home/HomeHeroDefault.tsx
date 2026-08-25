@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight, Map } from 'lucide-react'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
 import PcHomeLocationBar, { type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
 
 /**
@@ -22,7 +23,8 @@ import PcHomeLocationBar, { type HomeRegion } from '@/pages/pc-home/PcHomeLocati
  * `banner_type='hero'` 배너를 올리면 그 사진·카피가 여기에 들어온다(`HomeHeroBanner` 가 넘긴다).
  * **안 올리면** 홈 SSR 시드(`__SSR_INITIAL_MAIN__`, 0-RTT)에서 우리가 실제로 파는 딜 사진을
  * 하나 골라 쓴다 — 네트워크 왕복 0, 출처 안전(우리 상품), 데모(`demo-deal-*`)는 제외.
- * 사진 좌·우는 색면(#1A2C42)으로 페이드시켜 '잘라 붙인 배너'가 아니라 색면에 녹아들게 한다.
+ * 사진 좌·우는 색면(`--home-field`)으로 페이드시켜 '잘라 붙인 배너'가 아니라 색면에 녹아들게 한다.
+ * ⚠️ 색면 hex 를 여기 적지 말 것 — 페이지 색면(`PcHomePage`)과 **같은 값이어야** 이음매가 안 생긴다.
  */
 
 /** 기본 카피 — 대표 확정 D안(가치형: 사서 바로 쓴다). 어드민 배너에 제목이 있으면 그게 이긴다. */
@@ -84,7 +86,7 @@ export default function HomeHeroDefault({
   return (
     /* 📐 통합형 190px — 고정 높이가 아니라 최소 높이다. 카피가 길어지면 잘리는 대신 늘어난다
        (시안 작업 중 고정 높이로 카피가 잘리는 걸 실제로 겪었다). */
-    <section className="relative bg-[#1A2C42] min-h-[190px] flex">
+    <section className="relative bg-[var(--home-field)] min-h-[190px] flex">
       {/* 🪟 2026-08-19 (대표 신고 — "전국 버튼 클릭 시, 지역선택 탭이 가려져서 안보여"):
           배경 레이어를 **이 래퍼 안으로** 넣고 `overflow-hidden` 을 여기에만 준다.
           ⚠️ 이전엔 `<section>` 자체가 `overflow-hidden isolate` 였다. 사진 마스크·블룸이 히어로 밖으로
@@ -133,7 +135,7 @@ export default function HomeHeroDefault({
                  → 실효 0.43배로 눈에 띄게 흐렸다. ⚠️ 리사이저는 정상이다(요청한 폭을 그대로 준다) —
                  **우리가 작게 요청한 것**이 원인이라 quality 만 올려선 안 고쳐진다.
                  base 1024 → 1x 1024 / 2x 2048 / 3x 3072 중 브라우저가 DPR 에 맞는 한 장만 받는다. */
-              srcSet={cfSrcSet(photoSrc, 1024)}
+              srcSet={cfSrcSet(photoSrc, BANNER_SLOT_SPECS.hero.srcSetBase!)}
               alt=""
               /* 🐢 2026-08-19 (대표 — "히어로에 있는 사진 이미지도 마찬가지고"): `lazy` 였다.
                  히어로는 **첫 화면 최상단**이라 lazy 는 틀린 선택이다 — 브라우저가 다른 자원을
@@ -153,14 +155,14 @@ export default function HomeHeroDefault({
         aria-hidden="true"
         style={{
           background: hasMedia
-            ? 'linear-gradient(90deg, rgba(26,44,66,0.96) 0%, rgba(26,44,66,0.88) 38%, rgba(26,44,66,0.30) 62%, rgba(26,44,66,0.05) 100%)'
-            : 'linear-gradient(90deg, rgba(26,44,66,0.88) 0%, rgba(26,44,66,0.46) 46%, rgba(26,44,66,0.10) 100%)',
+            ? 'linear-gradient(90deg, rgb(var(--home-field-rgb) / 0.96) 0%, rgb(var(--home-field-rgb) / 0.88) 38%, rgb(var(--home-field-rgb) / 0.30) 62%, rgb(var(--home-field-rgb) / 0.05) 100%)'
+            : 'linear-gradient(90deg, rgb(var(--home-field-rgb) / 0.88) 0%, rgb(var(--home-field-rgb) / 0.46) 46%, rgb(var(--home-field-rgb) / 0.10) 100%)',
         }}
       />
 
       {/* 🌗 히어로 → 아래 색면으로 이어지는 페이드. 경계선이 딱 떨어지면 '잘린 배너'로 보인다. */}
       <div className="absolute inset-x-0 bottom-0 h-12" aria-hidden="true"
-        style={{ background: 'linear-gradient(180deg, transparent, #1A2C42)' }} />
+        style={{ background: 'linear-gradient(180deg, transparent, var(--home-field))' }} />
 
       </div>{/* ← 배경 래퍼 끝. 아래 콘텐츠는 잘리지 않는다(드롭다운이 히어로 밖으로 펼쳐진다). */}
 
@@ -189,7 +191,7 @@ export default function HomeHeroDefault({
           )}
           <Link
             to="/map"
-            className="inline-flex items-center gap-1.5 shrink-0 px-5 py-2 rounded-full border border-white/45 text-white text-[13px] font-bold tracking-wide hover:bg-white hover:text-[#1A2C42] transition-colors"
+            className="inline-flex items-center gap-1.5 shrink-0 px-5 py-2 rounded-full border border-white/45 text-white text-[13px] font-bold tracking-wide hover:bg-white hover:text-[var(--home-field)] transition-colors"
           >
             <Map className="w-4 h-4" strokeWidth={2} aria-hidden="true" />
             지도에서 가까운 딜 보기

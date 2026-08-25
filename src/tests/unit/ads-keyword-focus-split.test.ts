@@ -247,10 +247,18 @@ describe('배선 — 수집 루프가 3분할을 실제로 쓴다', () => {
  * "체험단 대행"·"인플루언서 섭외"처럼 **대행사를 가장 잘 찾을 키워드가 한 번도 검색된 적이 없다.**
  * 슬롯은 정상 배정되고 있었으므로(`focus_n: 4`) 통계만 봐선 정상으로 보였다.
  *
- * ⚠️ 이 테스트가 못 보는 것: 커서가 **얼마나** 도는지(그건 예산과 라이브 수율의 문제다).
- *   여기서 고정하는 건 "읽는 키를 실제로 읽어오는가 · 민 값을 실제로 저장하는가" 둘뿐이다.
+ * ## 🗑️ 그리고 2026-08-24 에 **커서 자체를 없앴다**
+ * 위 수리(읽기/쓰기 배선)는 옳았지만 병의 절반만 고쳤다. 남은 절반: `pool[(cursor + i) % pool.length]` 의
+ * `pool` 은 **회차마다 길이가 변한다**(저수율 억제가 5회차 중 4회차 솎아내고, 승격/은퇴가 멤버십을 바꾼다).
+ * 길이가 변하면 같은 커서 값이 다른 키워드를 가리켜, 어떤 자리는 반복 방문되고 어떤 자리는 안 걸린다.
+ * 라이브 실측(08-24): **집중 축 25개인데 최악 13.6일 미실행** — 하루 24회차면 못 도는 게 불가능한 크기다.
+ * ⇒ 선택 기준을 위치 → **나이**(`pickStalest`)로 바꿨다. 건너뛰어진 키워드는 더 굶어서 스스로 앞으로 온다.
+ *
+ * ⚠️ 이 테스트가 못 보는 것: 실제 회전 속도(그건 예산과 라이브 수율의 문제다).
+ *   여기서 고정하는 건 "읽는 키를 실제로 읽어오는가 · 회차 간 상태를 실제로 저장하는가 ·
+ *   위치 커서가 돌아오지 않는가" 셋이다.
  */
-describe('설정 키 — 읽는 키는 읽어오고, 민 커서는 저장한다', () => {
+describe('설정 키 — 읽는 키는 읽어오고, 회차 간 상태는 저장한다', () => {
   /** `settings[X]` 로 읽는 키를 전부 뽑는다(리터럴·상수 양쪽). */
   const READS = Array.from(CODE.matchAll(/\bsettings\[([^\]]+)\]/g)).map(m => m[1]!.trim())
 
@@ -266,19 +274,31 @@ describe('설정 키 — 읽는 키는 읽어오고, 민 커서는 저장한다'
     }
   })
 
-  it('🔒 계산한 커서는 전부 platform_settings 에 저장된다 — 통계 JSON 은 다음 회차가 안 읽는다', () => {
+  it('🔒 회차 간 상태(축 이월)는 platform_settings 에 저장된다 — 통계 JSON 은 다음 회차가 안 읽는다', () => {
     const writes = /await writeSettings\(DB, \[([\s\S]*?)\n {2}\]\)/.exec(CODE)?.[1]
     expect(writes, 'writeSettings 블록을 못 찾음').toBeTruthy()
-    const cursors = Array.from(new Set(Array.from(CODE.matchAll(/\bconst (next\w*Cursor)\b/g)).map(m => m[1]!)))
-    expect(cursors.length, '커서 변수를 못 찾음').toBeGreaterThanOrEqual(3)
-    for (const v of cursors) {
-      expect(writes, `${v} 를 계산하고 저장하지 않는다 — 다음 회차가 같은 자리에서 다시 돈다`).toContain(v)
-    }
+    // carry 는 #930 과 **정확히 같은 실패 모드**를 갖는 유일한 잔존 상태다(안 쓰면 영구 0 → 불변식 ④ 소멸).
+    expect(writes, 'nextAxisCarry 를 계산하고 저장하지 않는다 — carry 가 영구 0 이 된다')
+      .toMatch(/AXIS_CARRY_KEY, serializeAxisCarry\(nextAxisCarry\)/)
   })
 
-  it('🔒 집중 축 커서도 **처리된 접두**만큼만 민다 — 계획한 수만큼 밀면 안 돈 키워드를 건너뛴다', () => {
-    expect(SRC).toMatch(/const focusDone = prefixDone\(focusPicks\)/)
-    expect(SRC).toMatch(/nextFocusCursor = focusPool\.length \? \(focusCursor \+ focusDone\)/)
+  /**
+   * 🚫 **위치 커서 금지** — 되살리면 편식이 그대로 돌아온다. 코드가 이동하더라도 이 세 패턴
+   *   (`% <풀>.length` 인덱싱 · `prefixDone` 전진)은 다시 나타나면 안 된다.
+   */
+  it('🚫 축 선택이 위치 커서로 되돌아가지 않는다', () => {
+    for (const pool of ['focusPool', 'priPool', 'genPool']) {
+      expect(CODE, `${pool} 을 인덱스로 순환하고 있다 — 풀 길이가 변하면 반드시 편식한다`)
+        .not.toMatch(new RegExp(`${pool}\\[\\(`))
+    }
+    expect(CODE, 'prefixDone 커서 전진이 되살아났다 — 나이순 선택이 이미 같은 일을 한다')
+      .not.toMatch(/prefixDone\(/)
+  })
+
+  it('⏳ 축 안의 순서는 나이순(pickStalest)이다 — 세 축 모두', () => {
+    expect(CODE).toMatch(/focusPicks = pickStalest\(focusPool, nFocus/)
+    expect(CODE).toMatch(/priPicks = pickStalest\(priPool, nPri/)
+    expect(CODE).toMatch(/genPicks = pickStalest\(genPool, nGen/)
   })
 })
 

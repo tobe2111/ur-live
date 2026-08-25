@@ -18,6 +18,7 @@ import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX, withAdLabel, isNight
 import { COLD_SEND_MAX, COLD_COOLDOWN_DAYS, coldDailyKey, evaluateColdGuards } from './outreach-cold'
 import { sendEmail } from '@/services/email'
 import { classifyCategory } from './influencer-classify'
+import { planKeywordPatch } from './influencer-keyword-category' // 🎯 축 지정 화이트리스트(SSOT)
 import { buildInfluencerExportResponse } from './influencer-pool-export'
 import { mergeDuplicatePool, reextractPoolContacts } from './influencer-maintenance'
 import { getOrCreateClaimCode } from './lead-claim'
@@ -556,13 +557,12 @@ app.post('/influencer-pool/keywords', async (c) => {
   return c.json({ success: true })
 })
 
-// PATCH /api/admin/ads/influencer-pool/keywords/:id { active } — 활성/비활성
+// PATCH …/keywords/:id { active, category? } — 활성/비활성 + **축 지정**(못 주면 auto 는 영원히 가장 느린 일반 축). 🕐 활성화 시 activated_at 스탬프 · 🎯 축은 준 경우에만(COALESCE). 근거는 `planKeywordPatch` docblock
 app.patch('/influencer-pool/keywords/:id', async (c) => {
-  const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
-  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
-  // 🕐 켤 때 activated_at 스탬프 — keyword-store `setKeywordActive` 와 같은 규칙(순환 나이 = 활성화부터).
-  await adsLeadsDb(c.env).prepare("UPDATE ad_discovery_keywords SET active = ?, activated_at = CASE WHEN ? = 1 THEN datetime('now') ELSE activated_at END WHERE id = ?")
-    .bind(b.active ? 1 : 0, b.active ? 1 : 0, id).run().catch(() => null)
+  const id = Number(c.req.param('id')); const p = planKeywordPatch(await c.req.json().catch(() => ({} as Record<string, unknown>)))
+  if (!Number.isFinite(id) || 'error' in p) return c.json({ success: false, error: 'error' in p ? p.error : '잘못된 ID' }, 400)
+  await adsLeadsDb(c.env).prepare("UPDATE ad_discovery_keywords SET active = ?, category = COALESCE(?, category), activated_at = CASE WHEN ? = 1 THEN datetime('now') ELSE activated_at END WHERE id = ?")
+    .bind(p.active, p.category, p.active, id).run().catch(() => null)
   return c.json({ success: true })
 })
 

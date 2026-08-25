@@ -11,15 +11,17 @@ import type { CollectFunnel } from './influencer-collect-funnel'
 export interface DiscoveryKeyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; created_at: string }
 export interface AutoCollectStats {
   last_run: string; last_saved: number; last_keywords: string[]
-  total_runs: number; total_saved: number; cursor: number
-  pri_cursor?: number // ⭐ 우선 풀(맛집·뷰티 등) 커서 — 배치 3/4 를 배정하는 풀의 순환 위치(관측용)
+  total_runs: number; total_saved: number
   promoted?: string[]; youtube_quota_hit?: boolean
   /**
-   * 🎯 집중 축(마케팅대행사) 전용 슬롯 — 커서와 이번 회차 배정 수.
-   *   `focus_n` 이 0 이면 **그 축이 고갈돼 슬롯을 반납한 것**이다(정상 동작 — 그 몫은 우선/일반이 가져간다).
+   * 🎯 집중 축(마케팅대행사) 전용 슬롯의 이번 회차 배정 수.
+   *   0 이면 **그 축이 고갈돼 슬롯을 반납한 것**이다(정상 동작 — 그 몫은 우선/일반이 가져간다).
    *   이 값이 없으면 "대행사를 돌고 있는가"를 밖에서 판정할 수 없다.
+   *
+   * 🗑️ 짝이던 `cursor`/`pri_cursor`/`focus_cursor` 는 2026-08-24 에 제거됐다 — 선택이 위치가 아니라
+   *   나이(`pickStalest`)로 바뀌어 커서 자체가 없다. **관측용으로도 남기지 않는다**: 아무것도 조종하지
+   *   않는 값이 화면에 남으면 다음 세션이 그걸 근거로 오진한다(이 레포의 "죽은 손잡이" 클래스).
    */
-  focus_cursor?: number
   focus_n?: number
   /**
    * 🌵 이번 회차에 **무판정 처리된 키워드 수**(2026-07-29). 0 이면 모든 키워드가 공정한 시도를 받았다는 뜻.

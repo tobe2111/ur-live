@@ -17,7 +17,10 @@ import { flushNaverCalls, armNaverAndReadSettings } from './naver-api-usage'
 import { KAKAO_SWEEP_SQL, tallySweep, type KakaoSweepRow, type SweepSourceTally } from './kakao-sweep-query'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
-import { buildKeywordRows, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
+import { S1_TRADES, S2_REGIONS, S2_TRADES, S3_TRADES_LOCAL, S4_TRADES_LOCAL, buildKeywordRows, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
+import {
+  PROMOTE_CHUNK, PROMOTE_KEY, SUBCAT_YIELD_KEY, nextPromotion, parsePromoteState, parseSubcatYield, suppressedSubcats,
+} from './company-subcat-yield'
 // 🌱 회차 키워드 선택(회전 창 + 미실행 우선)은 `company-keyword-pick.ts` 로 분리됐다 — `rotationWindow`
 //   호출부가 그쪽으로 옮겨 갔으므로 여기서는 더 이상 import 하지 않는다.
 import { pickCompanyKeywords, rotationAdvance, FRESH_KEYWORD_SLOTS, type PickKeyword } from './company-keyword-pick'
@@ -140,6 +143,60 @@ export async function ensureCompanyKeywords(DB: D1Database): Promise<number> {
   return spent + 1
 }
 
+/**
+ * ⬆️ **좁게 도는 업종 중 수율이 증명된 것을 전국으로 넓힌다** (2026-08-24 대표 *"남은거 다 해줘"*).
+ *
+ * 이 함수가 없으면 격자는 **2026-08-23 에 사람이 내린 판단에 영원히 묶인다.** 그날 매장 생태계
+ * 업종은 이메일 수율이 낮아 제외됐는데, 나중에 좋아져도 다시 재는 장치가 없었다.
+ *
+ * ## 설계 — 시드 이어받기를 건드리지 않는다
+ * `buildKeywordRows()` 와 `seedPrefixHash` 는 **손대지 않는다.** 승격분은 별도 진행값
+ * (`ads_company_promote`)으로 따로 넣는다 — 격자 배열을 동적으로 바꾸면 지문이 어긋나
+ * 4,555 행을 처음부터 다시 훑는다(그 함정은 grid 파일 주석이 경고하는 바로 그것).
+ *
+ * ## 언제 도는가
+ * **본 시드가 끝난 뒤에만.** 안 그러면 첫 시드와 승격이 같은 회차의 예산을 다툰다.
+ * 한 회차에 한 업종, {@link PROMOTE_CHUNK} 행까지만 — 나머지는 다음 회차가 이어받는다.
+ *
+ * @returns 이번 호출이 쓴 D1 쿼리 수(호출부가 예산에서 뺀다 — 시드와 같은 계약).
+ */
+export async function promoteCompanyKeywords(DB: D1Database): Promise<number> {
+  let spent = 0
+  try {
+    const rows = await DB.prepare('SELECT key, value FROM platform_settings WHERE key IN (?, ?, ?)')
+      .bind(SUBCAT_YIELD_KEY, PROMOTE_KEY, KEYWORD_SEED_KEY).all<{ key: string; value: string }>()
+    spent += 1
+    const get = (k: string) => rows?.results?.find(r => r.key === k)?.value
+    // 🌱 **본 시드가 끝난 뒤에만** 넓힌다 — 같은 회차 예산을 첫 시드와 다투면 둘 다 느려진다.
+    //   판정을 같은 왕복에서 하므로 서브리퀘스트 추가는 0 이다.
+    const [sv, sn] = String(get(KEYWORD_SEED_KEY) || '').split(':')
+    if (sv !== String(KEYWORD_SEED_VERSION) || (Number(sn) || 0) < buildKeywordRows().length) return spent
+    const blob = parseSubcatYield(get(SUBCAT_YIELD_KEY))
+    const state = parsePromoteState(get(PROMOTE_KEY))
+    // 이미 전국(또는 전국 격자에 얹혀) 도는 업종은 후보가 아니다 — 넓힐 여지가 없다.
+    const wide = new Set([...S2_TRADES, ...S3_TRADES_LOCAL, ...S4_TRADES_LOCAL].map(t => t.subcategory))
+    const target = nextPromotion(S1_TRADES.filter(t => !wide.has(t.subcategory)), blob, state)
+    if (!target) return spent
+    const start = state.kw === target.kw ? state.cursor : 0
+    const end = Math.min(S2_REGIONS.length, start + PROMOTE_CHUNK)
+    for (let i = start; i < end; i += 100) {
+      const slice = S2_REGIONS.slice(i, Math.min(end, i + 100))
+      await DB.batch(slice.map(r => DB.prepare(
+        "INSERT OR IGNORE INTO ad_company_keywords (keyword, category, subcategory, region, tier, active, source) VALUES (?, ?, ?, ?, ?, 1, 'promote')",
+      ).bind(`${r} ${target.kw}`, target.category, target.subcategory, r, target.tier))).catch(() => null)
+      spent += 1
+    }
+    const finished = end >= S2_REGIONS.length
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(PROMOTE_KEY, JSON.stringify({
+      done: finished ? [...state.done, target.kw] : state.done,
+      cursor: finished ? 0 : end,
+      kw: finished ? null : target.kw,
+    })).run().catch(() => null)
+    spent += 1
+  } catch { /* 승격 실패는 수집을 막지 않는다 — 다음 회차가 다시 시도한다 */ }
+  return spent
+}
+
 export async function listCompanyKeywords(DB: D1Database): Promise<Array<CompanyKeyword & { active: number; found_total: number; saved_total: number; last_run_at: string | null }>> {
   await ensureCompanyKeywords(DB)
   // ⚠️ 전국 확장(3,800개+) 후 LIMIT 1000 이면 어드민 화면에서 뒤쪽 키워드가 조용히 안 보인다.
@@ -206,7 +263,10 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
 // 📇 연락처 보강 레인은 `enrich-lane.ts` 로 분리(2026-07-28, 600줄 한도) — 기존 import 경로 유지용 re-export.
 export { enrichHeldLeads } from './enrich-lane'
 
-export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; total_keywords?: number; spent?: number; limit_hit?: boolean; run_ms?: number; deadline_hit?: boolean; diag: { configured: boolean; error?: string } }
+export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; total_keywords?: number; spent?: number; limit_hit?: boolean; run_ms?: number; deadline_hit?: boolean;
+  /** 🎯 수율 미달로 **웹문서 단계만** 건너뛴 키워드(지도·카카오는 그대로 돈다). 자동 은퇴의 이 레인 몫. */
+  web_suppressed?: string[]
+  diag: { configured: boolean; error?: string } }
 const STATS_KEY = 'ads_company_stats'
 const CURSOR_KEY = 'ads_company_cursor'
 export { FRESH_KEYWORD_SLOTS }
@@ -215,11 +275,13 @@ export { FRESH_KEYWORD_SLOTS }
 export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectStats> {
   const DB = adsLeadsDb(env)
   const schemaSpent = await ensureCompanySchema(DB) // 스키마 DDL 실비 — 아래 예산에서 차감
-  const seedSpent = await ensureCompanyKeywords(DB)
+  // ⬆️ 승격은 시드 뒤에 붙는다 — 본 시드가 안 끝났으면 스스로 물러난다(같은 왕복에서 판정).
+  const seedSpent = await ensureCompanyKeywords(DB) + await promoteCompanyKeywords(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const clientId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
   const clientSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
-  const pick = await armNaverAndReadSettings(DB, [STATS_KEY]) // 🔫 쿼터는 앱 단위 — B2B 도 같은 90% 목표에 묶는다(왕복 추가 0)
+  // 🎯 수율 표를 **이미 하던 설정 읽기에 얹는다** — 서브리퀘스트 추가 0.
+  const pick = await armNaverAndReadSettings(DB, [STATS_KEY, SUBCAT_YIELD_KEY]) // 🔫 쿼터는 앱 단위 — B2B 도 같은 90% 목표에 묶는다(왕복 추가 0)
   let prev: CompanyCollectStats | null = null
   try { const v = pick(STATS_KEY); prev = v ? JSON.parse(v) as CompanyCollectStats : null } catch { prev = null }
 
@@ -247,6 +309,20 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   }
 
   const batch = kws.length // 회전 창이 이미 batchSize 만큼(끝에서 감김 포함) 읽어왔다
+
+  /**
+   * 🎯 **저수율 업종은 웹문서 단계만 건너뛴다** (2026-08-24 — 대표 *"이제 영구적이야?"* 3회차 점검에서
+   *   드러난 **누락**. `collect-webkr` 에만 은퇴를 걸어 둬서, 같은 업종이 이 레인을 통해 계속 유입되며
+   *   **자기 통계를 스스로 갱신**하고 있었다 — 반쪽만 잠근 상태였다).
+   *
+   * ⚠️ **레인 전체를 막으면 안 된다.** 이 레인은 [지역검색 → 카카오 → 웹문서] 를 순차로 도는데,
+   *   앞의 둘은 수율 표(`source='webkr'`)가 심판하는 대상이 **아니다**. 통째로 막으면 심판한 적도 없는
+   *   지도 수집까지 죽는다. 그래서 **웹문서 호출 한 곳만** 건너뛴다.
+   * ⚠️ 부기(`last_run_at`)는 그대로 남긴다 — 그 키워드는 실제로 **돌았다**(지도·카카오를 했다).
+   *   `collect-webkr` 이 부기를 빼는 것과 다른 이유다: 거기선 아무것도 안 했지만 여기선 했다.
+   */
+  const webSuppress = suppressedSubcats(parseSubcatYield(pick(SUBCAT_YIELD_KEY)), prev?.total_runs || 0)
+  const webSkipped: string[] = []
   const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false' // 기본 ON — 연락처 없는 리드는 보류.
   // 시작값을 상수로 고정 — 소비량을 다른 기준으로 재면 백오프/관측이 통째로 틀어진다(2026-07-28 kakao_sweep 실사고).
   const envBudgetRaw = Math.max(5, envLaneBudget(env.ADS_COMPANY_SUBREQUEST_BUDGET, 110, env)) // 카카오 레인 추가로 60→110(12kw×4콜+webkr)
@@ -282,7 +358,9 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     //   간판·판촉물·인쇄·현수막(tier2)은 대행사와 같은 생태계라 자체 사이트 보유율이 높다 → tier2 까지 확장.
     //   깊이는 tier1 만 여러 페이지(수율 최고 레인), tier2 는 1페이지로 예산을 아낀다.
     const webTierMax = Math.min(5, Math.max(1, parseInt(env.ADS_COMPANY_WEB_TIER_MAX || '', 10) || 2))
-    if ((kw.tier ?? 9) <= webTierMax && !outOfBudget(budget)) {
+    const webBlocked = !!kw.subcategory && webSuppress.has(kw.subcategory)
+    if (webBlocked) webSkipped.push(kw.keyword)
+    if (!webBlocked && (kw.tier ?? 9) <= webTierMax && !outOfBudget(budget)) {
       const deepPages = Math.min(5, Math.max(1, parseInt(env.ADS_COMPANY_WEB_PAGES || '', 10) || 2))
       const webPages = kw.tier === 1 ? deepPages : 1
       const webLeads = await searchNaverWeb(clientId, clientSecret, kw, budget, webPages)
@@ -358,7 +436,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
 
   const s: CompanyCollectStats = {
     last_run: stamp, found, saved, emailed, keywords: used, cursor: nextCursor,
-    total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
+    total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, web_suppressed: webSkipped,
     // 📊 관측 필드 — 예산이 실제로 얼마나 쓰였고 한도에 닿았는지, 전국 확장 후 한 바퀴가 얼마나 되는지.
     //   (전국 확장 + webkr 페이지네이션으로 키워드당 비용이 올라 예산이 먼저 마를 수 있다 → 눈에 보이게.)
     total_keywords: total, spent: budgetTotal - budget.left, limit_hit: !!budget.limitHit,

@@ -72,6 +72,27 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '홈 색면이 다시 리터럴 hex 로 흩어진다(페이지와 히어로가 갈림)',
+    file: 'src/pages/pc-home/PcHomePage.tsx',
+    find: '<div className="bg-[var(--home-field)] min-h-[100dvh]">',
+    replace: '<div className="bg-[#1A2C42] min-h-[100dvh]">',
+    test: 'src/tests/unit/home-color-field.test.ts',
+    why:
+      '색면은 페이지 전체와 히어로 두 군데서 그려진다. 두 값이 다르면 **이음매가 그대로 보이는데** ' +
+      '한쪽만 고쳐도 빌드는 통과하고 테스트도 없으면 조용히 어긋난다. 2026-08-23 차콜 전환 때 ' +
+      '토큰 하나로 묶었다.',
+  },
+  {
+    name: '어드민 배너 안내가 다시 손으로 적은 규격 문장이 된다',
+    file: 'src/pages/AdminBannersPage.tsx',
+    find: 'const spec = BANNER_SLOT_SPECS[formData.banner_slot as BannerSlot]',
+    replace: 'const spec = { recommendedWidth: 1600, recommendedHeight: 500, renderedNote: \'\', notes: [] } as never',
+    test: 'src/tests/unit/banner-slot-specs.test.ts',
+    why:
+      '2026-08-19 히어로 개편 때 안내만 옛 값으로 남아 "1600×500 / 500KB / dots / 그라디언트 4종" 이 ' +
+      '전부 사실과 달랐다. 틀린 안내는 사진 올리는 사람을 헛수고시키고 **코드 리뷰로는 안 걸린다**.',
+  },
+  {
     name: '🏢 업체 판정이 리드 판정보다 뒤로 밀린다(업체가 새 DB로 안 가고 옛 DB로 샌다)',
     file: 'src/shared/ads/leads-db.ts',
     find: "    (touchesAdsCompanyTable(sql) ? 'company' : touchesAdsLeadsTable(sql) ? 'ads' : 'main')",
@@ -148,7 +169,7 @@ const MUTATIONS = [
   {
     name: '히어로가 다시 단일 폭이 된다(레티나에서 0.43배로 흐려짐)',
     file: 'src/components/home/HomeHeroDefault.tsx',
-    find: 'srcSet={cfSrcSet(photoSrc, 1024)}',
+    find: 'srcSet={cfSrcSet(photoSrc, BANNER_SLOT_SPECS.hero.srcSetBase!)}',
     replace: '',
     test: 'src/tests/unit/hero-image-resolution.test.ts',
     why:
@@ -567,8 +588,8 @@ canvas {
   {
     name: '🚧 차단 관측을 flush 하지 않는다(회차가 끝나면 증거가 사라진다)',
     file: 'src/features/marketing/api/webkr-collect.ts',
-    find: '  await flushOpenapiBlock(DB, Date.now())',
-    replace: '  void flushOpenapiBlock;',
+    find: '  await flushOpenapiBlock(DB, Date.now(), ',
+    replace: '  void flushOpenapiBlock; void (',
     test: 'src/tests/unit/ads-naver-openapi-block.test.ts',
     why:
       '모듈 스코프 카운터는 인보케이션이 끝나면 소멸한다. 일별 누적을 안 남기면 ' +
@@ -604,6 +625,159 @@ canvas {
     why:
       '버전 게이트가 완료 상태면 platform_settings 조회 1회로 끝난다 — 에러 없이 아무 일도 안 일어난다. ' +
       '이 레포가 GUIDE/BLOG 시드에서 두 번 겪은 무음 스킵과 정확히 같은 구조다.',
+  },
+  {
+    name: '🎯 증거 부족 업종도 은퇴시킨다(갓 넣은 업종이 태어나자마자 죽는다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: '  if (r.tried < SUBCAT_EVIDENCE_MIN) return false',
+    replace: '  if (false) return false',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      'webkr 리드는 발굴 시점에 이메일이 없다 — 크롤이 나중에 붙인다. 증거 게이트가 없으면 ' +
+      '새 업종이 무조건 0%로 찍혀 즉시 은퇴하고, 은퇴하면 더 수집이 안 되니 증거도 영영 안 갱신된다. ' +
+      '우리 백로그를 업종 탓으로 돌리는 구조(influencer-keyword-yield 헤더가 경고하는 바로 그것).',
+  },
+  {
+    name: '🎯 탐침 회차가 사라진다(은퇴가 영구 배제로 굳는다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: '  if (!blob || roundIndex % SUBCAT_PROBE_EVERY === 0) return new Set()',
+    replace: '  if (!blob) return new Set()',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '은퇴한 업종은 더 이상 수집되지 않으므로 증거가 갱신되지 않는다. 주기적 통과가 없으면 ' +
+      '판정이 틀렸어도 스스로 뒤집힐 수 없다 — 그건 자동 조율이 아니라 조용한 축 삭제다.',
+  },
+  {
+    name: '🎯 미실행 키워드까지 은퇴 대상에 든다(새 지역을 시험할 기회가 사라진다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: '  pool.forEach((k, i) => { if (!k.fresh && k.subcategory && suppress.has(k.subcategory)) idx.add(i) })',
+    replace: '  pool.forEach((k, i) => { if (k.subcategory && suppress.has(k.subcategory)) idx.add(i) })',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '한 번도 안 돈 키워드는 증거가 없다. 같은 업종의 기존 성적으로 막으면 탐색이 통째로 죽고, ' +
+      '그 업종은 영원히 옛 지역의 성적으로만 평가된다.',
+  },
+  {
+    name: '🎯 회전 몫이 전부 막혀도 억제한다(그 축이 통째로 멈춘다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: '  return idx.size >= rotationCount ? new Set() : idx',
+    replace: '  return idx',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '전부 저조하면 빈 회차가 된다 — 고칠 것은 업종이지 수집이 아니다. 이 레포는 같은 클래스를 ' +
+      '이미 겪었다(집중 축 커서 동결 → 커버리지 붕괴).',
+  },
+  {
+    name: '🎯 수율 분모가 전체 행이 된다(새 업종이 0%로 낙인)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: "             SUM(CASE WHEN enrich_checked_at IS NOT NULL THEN 1 ELSE 0 END) AS tried,",
+    replace: '             COUNT(*) AS tried,',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '분모가 이 설계의 핵심이다. 크롤이 안 가 본 행까지 세면 갓 넣은 업종은 구조적으로 0%가 되어 ' +
+      '증거 게이트를 통과하는 순간 은퇴한다.',
+  },
+  {
+    name: '🎯 승격 문턱이 은퇴 문턱과 같아진다(경계 업종이 진동한다)',
+    file: 'src/features/marketing/api/company-subcat-yield.ts',
+    find: 'export const SUBCAT_PROMOTE_RATE = 0.25',
+    replace: 'export const SUBCAT_PROMOTE_RATE = 0.15',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '이력현상(hysteresis)이 없으면 경계에 있는 업종이 승격(수천 행 삽입)과 은퇴를 반복한다. ' +
+      '승격은 되돌리기가 비싸므로 더 보수적이어야 한다.',
+  },
+  {
+    name: '🎯 건너뛴 자리를 커서가 소비하지 않는다(회전이 제자리에 갇힌다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '      usedKw.push(r.kw) // 건너뛴 자리도 회전에서는 소비된 것 — 위 주석 참조\n      if (r.skip) { skipped.push(r.kw.keyword); continue }',
+    replace: '      if (r.skip) { skipped.push(r.kw.keyword); continue }\n      usedKw.push(r.kw)',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '2026-08-23 에 실제로 겪은 사고와 같은 클래스 — 읽은 자리를 커서가 안 넘기면 다음 회차가 ' +
+      '같은 자리를 또 읽는다. 에러가 없고 백로그만 안 줄어 원인 규명이 가장 어렵다.',
+  },
+  {
+    name: '🎯 건너뛴 키워드에 0건 부기를 남긴다(자기 판정을 자기가 정당화한다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '      if (r.skip) { skipped.push(r.kw.keyword); continue }',
+    replace: '      if (r.skip) { skipped.push(r.kw.keyword); perKeyword.set(r.kw.id, 0) }',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '쏘지도 않고 0건을 기록하면 "재 봤더니 없더라"로 읽힌다. 은퇴가 스스로를 뒷받침하는 증거를 ' +
+      '만들어 내면 탐침 회차가 있어도 뒤집히지 않는다.',
+  },
+  {
+    name: '🚧 회차 간 백오프가 사라진다(막힌 채 매 회차 헛쏜다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '  if (isBackedOff(blockBlob, Date.now())) {',
+    replace: '  if (false) {',
+    test: 'src/tests/unit/company-subcat-yield.test.ts',
+    why:
+      '모듈 스코프는 인보케이션마다 초기화된다 — 저장된 시각이 없으면 다음 회차가 아무것도 기억 못 하고 ' +
+      '다시 쏜다. 실패 응답도 쿼터를 먹으므로 막힘이 길수록 손해가 누적된다.',
+  },
+  {
+    name: '📮 응답 못 받은 키워드도 부기한다(429 한 번에 신규 자격을 잃는다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '      if (!r.answered) { unanswered.push(r.kw.keyword); continue }',
+    replace: '      if (!r.answered) { unanswered.push(r.kw.keyword) }',
+    test: 'src/tests/unit/webkr-unanswered-bookkeeping.test.ts',
+    why:
+      '2026-08-24 라이브 실측 — 429 가 하루 16건(요청의 15%)이다. 부기하면 last_run_at 이 찍혀 ' +
+      '`pickCompanyKeywords` 의 우선 픽 조건(last_run_at IS NULL)에서 탈락한다 ⇒ 08-23 에 넣은 ' +
+      '신규 1,410개가 **물어보지도 못한 채** 회전 뒤로 밀린다. 에러가 없어 안 보인다.',
+  },
+  {
+    name: '📮 429 를 성공 응답으로 센다(못 물어본 것이 증거가 된다)',
+    file: 'src/features/marketing/api/webkr-search.ts',
+    find: '    if (!res || !res.ok) break\n    if (outcome) outcome.responded = true',
+    replace: '    if (outcome) outcome.responded = true\n    if (!res || !res.ok) break',
+    test: 'src/tests/unit/webkr-unanswered-bookkeeping.test.ts',
+    why:
+      '순서가 뒤집히면 429·타임아웃도 "물어봤다"가 되어 부기 제외 장치가 통째로 무의미해진다. ' +
+      '이 한 줄이 "결과 0건"과 "못 물어봤다"를 가르는 유일한 근거다.',
+  },
+  {
+    name: '📮 outcome 객체를 병렬 조가 공유한다(서로 덮어써 판정이 섞인다)',
+    file: 'src/features/marketing/api/webkr-collect.ts',
+    find: '      const outcome: SearchOutcome = {}',
+    replace: '      const outcome: SearchOutcome = sharedOutcome',
+    test: 'src/tests/unit/webkr-unanswered-bookkeeping.test.ts',
+    why:
+      '폭 4 로 병렬 실행하므로 한 객체를 나눠 쓰면 하나만 성공해도 넷 다 "응답 받음"이 된다 — ' +
+      '429 를 받은 키워드가 부기돼 위 사고가 그대로 재발한다.',
+  },
+  {
+    name: '🎯 company 레인이 은퇴를 무시한다(은퇴한 업종이 다른 문으로 들어온다)',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: '    if (!webBlocked && (kw.tier ?? 9) <= webTierMax && !outOfBudget(budget)) {',
+    replace: '    if ((kw.tier ?? 9) <= webTierMax && !outOfBudget(budget)) {',
+    test: 'src/tests/unit/company-lane-web-suppression.test.ts',
+    why:
+      '2026-08-24 3회차 점검에서 드러난 실제 누락 — 은퇴를 collect-webkr 에만 걸어 뒀는데 이 레인도 ' +
+      '같은 웹문서 검색으로 같은 source=webkr 행을 만든다. 수율 표가 두 레인의 행을 합쳐 세므로 ' +
+      '은퇴한 업종이 이쪽으로 계속 들어와 **자기 판정 근거를 스스로 갱신**한다(반쪽만 잠긴 상태).',
+  },
+  {
+    name: '🎯 company 레인이 수율 표를 안 읽는다(은퇴 집합이 늘 비어 있다)',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: '  const webSuppress = suppressedSubcats(parseSubcatYield(pick(SUBCAT_YIELD_KEY)), prev?.total_runs || 0)',
+    replace: '  const webSuppress = new Set()',
+    test: 'src/tests/unit/company-lane-web-suppression.test.ts',
+    why:
+      '표를 안 읽으면 판정 자체가 없다. 조용히 통과하는 형태라 화면에도 로그에도 티가 안 나고, ' +
+      'web_suppressed 가 늘 빈 배열이라 "저수율 업종이 없다"로 오독된다.',
+  },
+  {
+    name: '🎯 company 레인이 은퇴 시 레인 전체를 멈춘다(지도·카카오까지 죽는다)',
+    file: 'src/features/marketing/api/company-collect.ts',
+    find: '    if (webBlocked) webSkipped.push(kw.keyword)',
+    replace: '    if (webBlocked) { webSkipped.push(kw.keyword); continue }',
+    test: 'src/tests/unit/company-lane-web-suppression.test.ts',
+    why:
+      '수율 표는 source=webkr 만 센다 — 지역검색·카카오는 심판한 적이 없다. 통째로 막으면 ' +
+      '판정 근거가 없는 수집까지 죽고, 그 손실은 웹문서 절약분보다 크다.',
   },
   {
     name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
@@ -3472,16 +3646,16 @@ canvas {
       '무관한 코드 변경을 기다려야 적용된다(수리를 검증할 방법이 없는 자기참조적 사각지대).',
   },
   {
-    name: '집중 축 커서를 읽어오지 않음(항상 0 — 앞 4개만 무한 반복)',
+    name: '읽는 설정 키를 배치 목록에서 뺌(에러 없이 기본값으로 떨어짐)',
     file: 'src/features/marketing/api/influencer-auto-collect.ts',
-    find: '[STATS_KEY, FOCUS_CURSOR_KEY,',
-    replace: '[STATS_KEY,',
+    find: 'CAFE_GATE_KEY, AXIS_CARRY_KEY,',
+    replace: 'CAFE_GATE_KEY,',
     test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
     why:
-      'readSettings 목록에 없는 키는 **에러가 아니라 undefined** 로 온다 → parseInt(\'0\') → 커서 0 고정. ' +
-      '라이브 실측: 활성 대행사 키워드 18개 중 앞 4개만 돌고 "체험단 대행"·"인플루언서 섭외" 등 14개는 ' +
-      '`found_total = 0 · last_run_at = null`(한 번도 검색된 적 없음). 슬롯 배정(`focus_n: 4`)은 정상이라 ' +
-      '통계만 봐선 멀쩡해 보였다.',
+      'readSettings 목록에 없는 키는 **에러가 아니라 undefined** 로 온다 → 조용히 기본값. ' +
+      '#930 이 그렇게 났다(집중 축 커서: 읽기 배선 누락 → 항상 0 → 대행사 키워드 18개 중 앞 4개만 무한 반복, ' +
+      '`focus_n: 4` 는 정상이라 통계만 봐선 멀쩡했다). 그 커서는 2026-08-24 에 사라졌지만 **같은 실패 모드가 ' +
+      'carry 에 그대로 남아 있다** — carry 가 영구 0 이면 작은 축이 매 회차 0 슬롯(불변식 ④ 소멸).',
   },
   {
     name: '체험단 분류 룰 소실 — 승격 게이트가 그 축을 영구 차단(hits 78 이 영원히 대기)',
@@ -3575,25 +3749,16 @@ canvas {
       '에러가 없고 슬롯 합계도 정상이라 통계만 보면 멀쩡하다 — 작은 축이 영구 0 이 되는 것만 달라진다.',
   },
   {
-    name: '민 커서를 통계 JSON 에만 남기고 저장 안 함',
+    name: '축 선택이 위치 커서로 회귀(길이 변하는 풀 → 편식 재발)',
     file: 'src/features/marketing/api/influencer-auto-collect.ts',
-    find: '    [FOCUS_CURSOR_KEY, String(nextFocusCursor)],\n',
-    replace: '',
+    find: 'const genPicks = pickStalest(genPool, nGen, pickNow)',
+    replace: 'const genPicks = genPool.slice(0, nGen)',
     test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
     why:
-      '다음 회차가 읽는 곳은 `platform_settings` 이지 통계 blob 이 아니다. 라이브 실측에서 ' +
-      'cursor_pri=158 · cursor=6 은 있는데 cursor_focus 는 **행 자체가 없었다** — 계산은 매 회차 했는데 ' +
-      '아무 데도 안 남았다. 커서가 있는 레인이라면 어디서든 같은 형태로 재발한다.',
-  },
-  {
-    name: '집중 축 커서를 계획한 수만큼 밀어 안 돈 키워드를 건너뜀',
-    file: 'src/features/marketing/api/influencer-auto-collect.ts',
-    find: '(focusCursor + focusDone)',
-    replace: '(focusCursor + nFocus)',
-    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
-    why:
-      '예산은 픽 4개를 다 못 돈다(보통 1~2개). 계획한 수만큼 밀면 처리 못 한 키워드를 지나쳐 ' +
-      '**한 바퀴에 한 번도 안 걸리는 자리**가 생긴다 — 우선/일반 커서가 `prefixDone` 을 쓰는 이유와 같은 병(leapfrog).',
+      '`pool[(cursor+i) % pool.length]` 는 **풀 길이가 회차마다 변하면**(저수율 억제 5회차 중 4회차 · ' +
+      '승격/은퇴) 같은 인덱스가 다른 키워드를 가리켜 어떤 자리는 영영 안 걸린다. 라이브 실측(2026-08-24): ' +
+      '한 바퀴 3.5일이어야 하는데 최악 28.1일 · 7일+ 밀린 것 168개(26%) · 집중 축은 25개인데 최악 13.6일 ' +
+      '(하루 24회차면 못 도는 게 불가능한 크기). 에러도 경보도 없이 조용히 굶는다.',
   },
   {
     name: "bare '마케터' 가 소개글까지 대행사로(이용권 축에서 훔쳐옴)",
@@ -4619,6 +4784,51 @@ canvas {
       '못 보고 바꾼다 — 이 레포가 반복해 겪은 "근거 없는 되돌리기".',
   },
   {
+    name: '나이순 정렬을 뒤집음(가장 최근 것부터 — 굶은 것이 영영 안 뽑힘)',
+    file: 'src/features/marketing/api/influencer-keyword-staleness.ts',
+    find: '(a.age > b.age ? -1 : 1)',
+    replace: '(a.age > b.age ? 1 : -1)',
+    test: 'src/tests/unit/ads-keyword-staleness.test.ts',
+    why:
+      '이 한 부호가 순환의 방향 전체다. 뒤집히면 방금 돈 키워드만 계속 돌고 굶은 꼬리는 영구 대기 — ' +
+      '위치 커서 시절보다 나쁘다(그때는 최소한 커서가 앞으로는 갔다). 에러가 없고 회차당 처리량도 같아 ' +
+      '통계로는 구분이 안 된다.',
+  },
+  {
+    name: '미실행(last_run_at NULL)이 1순위에서 빠짐',
+    file: 'src/features/marketing/api/influencer-keyword-staleness.ts',
+    find: 'if (ran == null) return Number.POSITIVE_INFINITY',
+    replace: 'if (ran == null) return 0',
+    test: 'src/tests/unit/ads-keyword-staleness.test.ts',
+    why:
+      '나이 0 이면 **막 돈 것과 같은 취급**이라 신규/승격 키워드가 맨 뒤로 간다 — 우선순위 스케줄링의 ' +
+      '고전적 기아(aging 없는 strict priority). 2026-08-04 에 이미 한 번 났다(자동확장 24개가 생성 14.9일 · ' +
+      '실행 0회). 그때는 `pickStarvationRescue` 로 막았지만, 이제 1순위 보장은 여기 있다.',
+  },
+  {
+    name: '저수율 나이 할인 제거(억제가 죽은 손잡이가 됨)',
+    file: 'src/features/marketing/api/influencer-keyword-staleness.ts',
+    find: 'return isLowRotationYield(k) ? age * LOW_YIELD_STALENESS_DISCOUNT : age',
+    replace: 'return age',
+    test: 'src/tests/unit/ads-keyword-staleness.test.ts',
+    why:
+      '할인이 없으면 저수율 키워드는 4/5 회차를 건너뛴 탓에 **항상 남들보다 늙어 있어** 탐침 회차마다 ' +
+      '맨 앞을 싹쓸이한다 → 억제 이전과 같은 비율로 수렴(= `suppressLowRotationYield` 가 아무 일도 안 함). ' +
+      '연락 수율 <15% 인 키워드에 예산이 새는데 어떤 에러도 나지 않는다.',
+  },
+  {
+    name: 'D1 UTC-naive 시각을 로컬로 파싱(9시간 어긋남)',
+    file: 'src/features/marketing/api/influencer-keyword-staleness.ts',
+    find: "`${s.replace(' ', 'T')}Z`",
+    replace: 's',
+    test: 'src/tests/unit/ads-keyword-staleness.test.ts',
+    why:
+      "D1 `datetime('now')` 는 **`Z` 없는 UTC**(`'2026-08-24 01:02:03'`)라 그냥 파싱하면 런타임 TZ 로 " +
+      '읽힌다. 이 레포의 상습 사고 클래스(`check-utc-date-parse` 가 존재하는 이유). ' +
+      '⚠️ 이 주입은 **CI 컨테이너 TZ 가 UTC 라 그냥은 안 잡힌다** — 테스트가 TZ 를 KST 로 바꿔 놓기 때문에 ' +
+      '빨간불이 뜬다(첫 판이 실제로 헛돌았고 되돌려-검증에서 잡혔다).',
+  },
+  {
     name: '🗄️ 백업 라벨 회전이 사라진다(메인 DB 가 영영 백업 안 된다)',
     file: 'src/worker/cron/d1-backup-chunked.ts',
     find: '    if (done?.value === today) continue',
@@ -4670,6 +4880,48 @@ canvas {
     why:
       'flip 을 켜도 이 축만 조용히 5% 를 계속 잠식한다. 에러도 없고 화면도 멀쩡해서 ' +
       '원장을 열어보기 전엔 모른다 — 이 레포가 반복해 만난 "조용한 부재" 클래스다.',
+  },
+  {
+    name: '축 지정을 검증만 하고 UPDATE 에 안 넣음(축이 영영 안 바뀐다)',
+    file: 'src/features/marketing/api/admin-ads-influencers.routes.ts',
+    find: 'SET active = ?, category = COALESCE(?, category), activated_at',
+    replace: 'SET active = ?, activated_at',
+    test: 'src/tests/unit/ads-keyword-category.test.ts',
+    why:
+      '요청은 200 으로 성공하고 화면도 지정한 대로 보이는데 **저장만 안 된다**. auto 키워드는 계속 ' +
+      "`'자동'`(가장 느린 일반 축)으로 돌고, 대표가 중요하다고 지목한 키워드가 제일 늦게 돈다. " +
+      '에러가 없어 아무도 모른다 — 이 레포의 "조용한 부재" 클래스.',
+  },
+  {
+    name: '축 화이트리스트 검증 제거(오타가 존재하지 않는 축이 된다)',
+    file: 'src/features/marketing/api/influencer-keyword-category.ts',
+    find: 'if (raw && !isAssignableKeywordCategory(raw)) {',
+    replace: 'if (false) {',
+    test: 'src/tests/unit/ads-keyword-category.test.ts',
+    why:
+      "`'마케팅대행사 '`(뒤 공백) 같은 오타는 에러가 아니라 **아무 축에도 안 속하는 값**이 된다 → " +
+      '그 키워드는 조용히 일반 축으로 떨어지는데 화면엔 지정한 대로 찍힌다. 400 으로 되돌려 줘야 ' +
+      '사람이 그 자리에서 안다.',
+  },
+  {
+    name: '은퇴 축 제외가 사라짐(켜도 안 도는 축에 배정)',
+    file: 'src/features/marketing/api/influencer-keyword-category.ts',
+    find: 'return ASSIGNABLE_KEYWORD_CATEGORIES.includes(v) && !retired.has(v)',
+    replace: 'return ASSIGNABLE_KEYWORD_CATEGORIES.includes(v)',
+    test: 'src/tests/unit/ads-keyword-category.test.ts',
+    why:
+      '`runAutoCollect` 는 `RETIRED_CATEGORIES` 축을 선택에서 뺀다. 은퇴 축으로 지정하면 **켜져 있는데 ' +
+      '영원히 안 도는** 키워드가 되고, 목록에는 활성으로 보인다.',
+  },
+  {
+    name: '축 목록을 SSOT 대신 하드코딩(축을 늘려도 지정 불가)',
+    file: 'src/features/marketing/api/influencer-keyword-category.ts',
+    find: '  ...FOCUS_CATEGORIES, ...PRIORITY_CATEGORIES,',
+    replace: "  '맛집',",
+    test: 'src/tests/unit/ads-keyword-category.test.ts',
+    why:
+      '목록이 두 벌이 되면 `PRIORITY_CATEGORIES` 에 축을 추가해도 어드민에서 **그 축으로 지정할 수 없다** ' +
+      '— 한쪽만 늘어나는 전형적 드리프트(이 레포는 같은 클래스를 여러 번 겪었다).',
   },
 ]
 /**

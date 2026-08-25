@@ -104,7 +104,9 @@ describe('webkr 레인 배선', () => {
   it('회차 스냅샷에 차단 관측을 싣고 flush 한다 — 안 남기면 "수율 0" 과 구분이 안 된다', () => {
     const body = code(runSrc)
     expect(body).toMatch(/openapi_block: openapiBlockSnapshot\(\)/)
-    expect(body).toMatch(/await flushOpenapiBlock\(DB, Date\.now\(\)\)/)
+    // ⚠️ 인자까지 앵커하지 않는다 — 2026-08-24 에 세 번째 인자(회차 관측)를 더하자 이 줄이 깨졌다.
+    //   지켜야 할 것은 "flush 가 호출되는가"이지 인자 개수가 아니다(낡은 지도 클래스).
+    expect(body).toMatch(/await flushOpenapiBlock\(DB, Date\.now\(\)/)
   })
 
   it('🧾 부기 예약이 flush 2회(읽기+쓰기)를 덮는다 — 안 덮으면 관측이 예산 밖으로 밀려 조용히 실패', () => {

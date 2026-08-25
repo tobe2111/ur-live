@@ -19,6 +19,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
 
 const HERO = 'src/components/home/HomeHeroDefault.tsx'
 const read = () => readFileSync(HERO, 'utf-8')
@@ -33,9 +34,16 @@ describe('히어로가 레티나에서 흐리지 않다', () => {
     // base 는 **표시 폭(1,037px) 이상**이어야 DPR2 후보(2x)가 필요 해상도를 채운다.
     // ⚠️ `cfSrcSet` 은 x-디스크립터(1x/2x/3x)를 낸다 — 그래서 `sizes` 는 브라우저가 **무시**한다.
     //    (처음엔 sizes 를 요구했는데, 무의미한 속성을 강제하는 검사였다.)
-    const base = s.match(/cfSrcSet\(photoSrc,\s*(\d+)\)/)
-    expect(base, 'cfSrcSet base 폭을 못 읽었다').toBeTruthy()
-    expect(Number(base![1]), 'base 가 표시 폭보다 작다 — 2x 후보가 레티나에 부족해진다').toBeGreaterThanOrEqual(1024)
+    // 🔁 2026-08-23: base 가 리터럴에서 `BANNER_SLOT_SPECS` 로 옮겨졌다(어드민 안내와 같은 값을
+    //    쓰게 하려고). 그때 이 검사가 리터럴을 찾다 빨간불이 떴다 — 가드가 제 역할을 한 것이다.
+    //    이제 값은 상수에서 읽고, 배선(그 상수를 실제로 쓰는지)만 파일에서 본다.
+    expect(s, 'base 를 상수에서 읽지 않는다 — 어드민 권장 규격과 갈린다').toMatch(
+      /cfSrcSet\(photoSrc,\s*BANNER_SLOT_SPECS\.hero\.srcSetBase/,
+    )
+    expect(
+      BANNER_SLOT_SPECS.hero.srcSetBase,
+      'base 가 표시 폭(1,037px)보다 작다 — 2x 후보가 레티나에 부족해진다',
+    ).toBeGreaterThanOrEqual(1024)
   })
 
   it('기본 src 도 표시 폭 이상이다 (srcSet 미지원 폴백)', () => {
