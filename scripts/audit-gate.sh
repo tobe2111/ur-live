@@ -131,6 +131,7 @@ if domain deploy; then
   run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
   run "cron 하트비트 커버리지"           node scripts/check-cron-heartbeat.mjs
   run "cron 슬롯 등록(안 도는 cron)"     node scripts/check-cron-slot-registered.mjs -s
+  run "하트비트 이름 은퇴"              node scripts/check-beat-name-retirement.mjs -s
   run "머지 충돌 마커"                  node scripts/check-conflict-markers.mjs -s
   run "처리량 노브 요금제 커버리지"    env X=1                       node scripts/check-plan-knob-coverage.mjs -s
   run "cron 표현식 문법(CF)"           env STRICT_CRON_SYNTAX=1      node scripts/check-cron-syntax.mjs

@@ -12,7 +12,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   classifyBeat, freshBaseNames, beatBaseName,
-  RETIRED_GAP_MULTIPLE, RETIRED_MIN_AGE_MIN,
+  RETIRED_GAP_MULTIPLE, RETIRED_MIN_AGE_MIN, BEAT_RENAMED_TO,
 } from '@/worker/utils/cron-beat-retirement'
 import { pickSilentLanes } from '@/worker-ads/silence-digest'
 
@@ -112,5 +112,54 @@ describe('pickSilentLanes — 디스코드 요약 입력', () => {
 
   it('전부 신선하면 빈 목록 — 조용하면 아무것도 안 보낸다', () => {
     expect(pickSilentLanes([{ name: 'ads:collect', age_minutes: 3, max_gap_min: 150 }])).toEqual([])
+  })
+})
+
+/**
+ * 🔀 **개명** — 옛 이름이 후임에게 자리를 넘겼는데 하트비트 행만 남은 경우.
+ *
+ * 라이브 실측(2026-08-25): `d1-backup` 은 `age 32,545 / gap 10,440 = 3.1×` 라 나이 규칙(8배)에
+ * 아직 안 걸린다 → **58일째까지 빨간불**이다. 그 5주 동안 상시 빨강은 진짜 다운을 가린다.
+ *
+ * ⚠️ 이 시험이 못 막는 것: 지도에 **안 적힌** 개명. 지도는 손으로 채우는 사본이라
+ *   개명할 때 한 줄 추가하는 것을 대체하지 못한다.
+ */
+describe('🔀 개명한 이름은 후임이 살아 있을 때만 대체로 친다', () => {
+  const OLD = { name: 'd1-backup', age_minutes: 32545, max_gap_min: 10440 }
+
+  it('지도에 d1-backup → d1-backup-chunked 가 있다', () => {
+    expect(BEAT_RENAMED_TO['d1-backup']).toBe('d1-backup-chunked')
+  })
+
+  it('🔴 나이 규칙만으론 아직 안 걷힌다 — 그래서 지도가 필요하다', () => {
+    expect(OLD.age_minutes / OLD.max_gap_min).toBeLessThan(RETIRED_GAP_MULTIPLE)
+    expect(classifyBeat(OLD, new Set())).toBe('judge')
+  })
+
+  it('🔴 후임이 자기 임계 안에서 뛰고 있으면 superseded', () => {
+    const fresh = freshBaseNames([{ name: 'd1-backup-chunked', age_minutes: 4, max_gap_min: 60 }])
+    expect(classifyBeat(OLD, fresh)).toBe('superseded')
+  })
+
+  it('🔴 후임도 죽었으면 숨기지 않는다 — 옛 이름이 후임 고장을 가리면 안 된다', () => {
+    const stale = freshBaseNames([{ name: 'd1-backup-chunked', age_minutes: 5000, max_gap_min: 60 }])
+    expect(classifyBeat(OLD, stale)).toBe('judge')
+  })
+
+  it('🔴 전역 진단 틱 __tick 도 지도에 있다 — 트리거별로 쪼개며 고아가 됐다', () => {
+    expect(BEAT_RENAMED_TO['__tick']).toBe('__tick:*/5 * * * *')
+    const fresh = freshBaseNames([{ name: '__tick:*/5 * * * *', age_minutes: 2, max_gap_min: 40 }])
+    expect(classifyBeat({ name: '__tick', age_minutes: 90, max_gap_min: 40 }, fresh)).toBe('superseded')
+  })
+
+  it('🔴 후임 이름이 옛 이름과 같으면 안 된다 — 자기가 자기를 대체하면 영원히 숨는다', () => {
+    for (const [oldName, next] of Object.entries(BEAT_RENAMED_TO)) {
+      expect(next, `${oldName} 이 자기 자신을 가리킨다`).not.toBe(oldName)
+    }
+  })
+
+  it('지도에 없는 이름은 종전대로', () => {
+    expect(classifyBeat({ name: 'payouts-generate', age_minutes: 200, max_gap_min: 10080 },
+      freshBaseNames([{ name: 'd1-backup-chunked', age_minutes: 4, max_gap_min: 60 }]))).toBe('judge')
   })
 })

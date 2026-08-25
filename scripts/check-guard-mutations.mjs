@@ -2390,6 +2390,121 @@ canvas {
       '고치려던 것과 **부호만 반대인 같은 고착**이다. 끝난 레인만 판정 대상이어야 한다.',
   },
   {
+    name: '🧾 게이트가 없는 검증 절차를 가리켜도 통과한다 (엉뚱한 절차로 머니 게이트를 켠다)',
+    file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
+    find: "staging_ref: 'S7'",
+    replace: "staging_ref: 'S99'",
+    test: 'src/tests/unit/ops-gate-reachable.test.ts',
+    why:
+      'CLAUDE.md 는 게이트를 만들 때 체크리스트 항목을 함께 추가하라고 규정하는데 **그 참조가 맞는지는 ' +
+      '아무도 안 봤다.** 실측: 이 게이트를 등록하며 S1(커미션 예산 캡)을 붙였다 — 켜려는 사람이 ' +
+      '엉뚱한 검증 절차를 읽게 된다. 게이트가 없어서 나는 사고보다 잘못된 절차로 켜서 나는 사고가 더 비싸다.',
+  },
+  {
+    name: '🧪 복원 훈련이 다시 옛 백업으로 초록불을 낸다 (신선도 검사 제거)',
+    file: '.github/workflows/d1-restore-drill.yml',
+    find: '          if [ "$AGE_DAYS" -gt 14 ]; then',
+    replace: '          if [ "$AGE_DAYS" -gt 99999 ]; then',
+    test: 'src/tests/unit/backup-failure-visible.test.ts',
+    why:
+      '훈련은 "가장 최근 *성공*" 을 집어오므로 백업이 몇 주째 실패해도 옛 성공분으로 초록을 낸다. ' +
+      '실측: 마지막 성공이 26일 전(07-29)인데 08-01 훈련은 초록이었고 09-01 도 그대로면 또 초록이다. ' +
+      '"복원 가능한 백업이 있다"가 사실이 아닌데 초록인 상태 — 이 레포의 조용한 부재 클래스다.',
+  },
+  {
+    name: '🚨 백업 실패 통보가 다시 디스코드 훅 하나에만 걸린다 (그 훅은 비어 있었다)',
+    file: '.github/workflows/d1-backup.yml',
+    find: '              await github.rest.issues.create({',
+    replace: '              await Promise.resolve({ /* 이슈 생성 제거 */ } && {',
+    test: 'src/tests/unit/backup-failure-visible.test.ts',
+    why:
+      '`DISCORD_WEBHOOK_URL` 이 실제로 비어 있어 08-05·08-12·08-19 3주 연속 실패가 통보 0 이었다. ' +
+      '그 artifact 가 월간 복원 훈련의 입력이라, 결과적으로 07-29 이후 "복원되는 것이 확인된 백업"이 0 이다. ' +
+      '설정되지 않은 시크릿에 알림을 걸면 알림이 없는 것과 같다.',
+  },
+  {
+    name: '🚨 wrangler 실패가 다시 원인을 안 남긴다 (3주치 로그가 그 상태였다)',
+    file: '.github/workflows/d1-backup.yml',
+    find: ' > tables.json 2> wrangler.err; then',
+    replace: ' > tables.json; then',
+    test: 'src/tests/unit/backup-failure-visible.test.ts',
+    why:
+      'stdout 만 파일로 보내고 stderr 를 안 붙잡으면 `bash -e` 가 그 자리에서 죽어 로그에 원인이 ' +
+      '한 줄도 안 남는다. 실패를 3주간 못 고친 이유가 정확히 이것이다 — 무엇이 틀렸는지 알 수가 없었다.',
+  },
+  {
+    name: '🪦 사라진 하트비트 이름을 그냥 보내 준다 (영원한 빨간불이 채널을 침묵시킨다)',
+    file: 'scripts/check-beat-name-retirement.mjs',
+    find: '  return removed.filter((n) => !mapped.has(n) && !String(mapSrc || \'\').includes(`${ALLOW_MARK} ${n}`))',
+    replace: '  return []',
+    test: 'src/tests/unit/beat-name-retirement.test.ts',
+    why:
+      '이 판정을 빼면 이름을 조용히 없애도 아무 말이 없다. 그 결과가 #1056 이다 — 죽은 이름 하나로 ' +
+      '경보 채널이 21일 침묵했고, 그 사이 정산 16개 누락이 신호 0 이었다. 하루에 두 번 난 사고다.',
+  },
+  {
+    name: '🫀 표식을 안 심어 같은 변화를 매 회차 반복 보고한다 (#845 재발)',
+    file: '.github/workflows/uptime.yml',
+    find: `                const body = String(open.body || '').replace(/<!-- stale:[^>]* -->/, '').trimEnd()`,
+    replace: '                const body = String(open.body || \'\')  // 표식 갱신 제거',
+    test: 'src/tests/unit/uptime-silence-behavior.test.ts',
+    why:
+      '비교 기준(표식)을 갱신하지 않으면 다음 회차가 같은 diff 를 또 낸다 — 10분마다 코멘트가 쌓여 ' +
+      '#845 처럼 84개가 되고 아무도 안 읽게 된다. 이 경보를 죽이는 두 가지 방법 중 하나다(다른 하나는 침묵).',
+  },
+  {
+    name: '🫀 cron 침묵 경보가 다시 이진 판정으로 — 열려 있으면 영원히 조용해진다',
+    file: '.github/workflows/uptime.yml',
+    find: '            } else if (down && open && parsed) {',
+    replace: '            } else if (false) {',
+    test: 'src/tests/unit/uptime-cron-silence.test.ts',
+    why:
+      '이슈 #1056 이 08-04 부터 21일째 열린 채 한 줄도 갱신되지 않았다. 그 사이 08-24 에 일간 16개 ' +
+      '(정산 성숙·원장 정합 포함)가 통째로 빠졌는데 **새 신호가 0** 이었다 — 이미 열려 있었기 때문이다. ' +
+      '죽은 이름을 걷어내는 것만으로는 부족하다: 오래 사는 빨간불은 또 생기고, 그때마다 채널이 통째로 죽는다.',
+  },
+  {
+    name: '🫀 침묵 목록 파싱 실패가 "전부 회복"으로 읽힌다 (거짓 해소)',
+    file: '.github/workflows/uptime.yml',
+    find: "            const parsed = raw === '?' ? null : raw.split(',').map(s => s.trim()).filter(Boolean)",
+    replace: "            const parsed = raw.split(',').map(s => s.trim()).filter(Boolean)",
+    test: 'src/tests/unit/uptime-cron-silence.test.ts',
+    why:
+      '응답을 못 받았을 때(타임아웃·5xx)와 "침묵 0건"은 정반대인데 둘 다 빈 목록이 된다. 섞으면 ' +
+      '헬스체크가 죽은 순간 **전부 해소됐다는 코멘트**가 나가고, 그게 이 경보의 신뢰를 끝낸다.',
+  },
+  {
+    name: '개명 지도가 빠져 죽은 이름이 5주 더 빨간불 (상시 빨강이 진짜 다운을 가린다)',
+    file: 'src/worker/utils/cron-beat-retirement.ts',
+    find: "  if (successor && freshBaseNames.has(successor)) return 'superseded'",
+    replace: '  // (개명 판정 제거)',
+    test: 'src/tests/unit/cron-beat-retirement.test.ts',
+    why:
+      '`d1-backup` 은 08-02 에 OOM 으로 죽고 `d1-backup-chunked` 가 이어받았는데 옛 하트비트 행은 남았다. ' +
+      '나이 규칙(8배)은 주간 임계(10,440분) 기준이라 **58일**을 기다린다 — 라이브 실측 3.1× 라 아직 `judge`, ' +
+      '즉 5주를 더 빨갛게 있는다. 이 파일 자신이 적어 둔 대로 상시 빨강은 진짜 다운을 가린다.',
+  },
+  {
+    name: '개명 대체가 후임의 고장까지 숨긴다 (사각지대 자가생성)',
+    file: 'src/worker/utils/cron-beat-retirement.ts',
+    find: "  if (successor && freshBaseNames.has(successor)) return 'superseded'",
+    replace: "  if (successor) return 'superseded'",
+    test: 'src/tests/unit/cron-beat-retirement.test.ts',
+    why:
+      '후임이 신선할 때만 대체로 쳐야 한다. 신선도 검사를 빼면 후임이 죽어도 옛 이름이 조용해져, ' +
+      '백업이 통째로 멎었는데 아무 데도 안 뜨는 상태가 된다 — 걷어내려던 것보다 나쁜 사고다.',
+  },
+  {
+    name: 'BACKUP_BUCKET 요구가 죽은 슬롯에만 남는다 (명부가 평가되지 않음)',
+    file: 'src/worker/utils/cron-required-env.ts',
+    find: "  '2,17,32,47 * * * *': [",
+    replace: "  'ZZ 죽은 슬롯 * * * *': [",
+    test: 'src/tests/unit/cron-required-env.test.ts',
+    why:
+      '백업은 `2,17,32,47` 전용 트리거로 이사했다. 요구사항이 옛 `0 20 * * 0` 에만 붙어 있으면 ' +
+      '그 슬롯은 등록돼 있지 않아 **한 번도 평가되지 않는다** — BACKUP_BUCKET 이 사라져도 명부가 침묵한다.',
+  },
+  {
     name: '개명된 하트비트가 다시 게이트를 물어 영구 503 (사이트 다운 감지가 가려짐)',
     file: 'src/worker/utils/cron-beat-retirement.ts',
     find: "  if (raw.includes('?') && freshBaseNames.has(beatBaseName(raw))) return 'superseded'",
@@ -5119,11 +5234,42 @@ for (const sig of ['SIGINT', 'SIGTERM', 'uncaughtException']) {
 process.on('exit', restoreAll)
 lockOn()   // 여기서부터 소스에 손을 댄다 — pre-commit 이 이 자물쇠를 보고 커밋을 거절한다
 
+/**
+ * 🩸 **2026-08-25 — 이 함수 자신이 헛돌고 있었다.**
+ *
+ * `test` 가 `scripts/check-*.mjs` 를 가리키면 `vitest run <그 경로>` 는
+ * **"No test files found" 로 exit 1** 을 낸다. 그 1 이 여기서 "실패(= 가드가 잡았다)"로 읽혀,
+ * 가드를 **한 번도 실행하지 않고** ✅ 가 찍혔다. 헛도는 가드를 잡으려고 만든 도구 안에
+ * 같은 병이 들어 있었던 것이다. 실측 피해: INV-#44(에이전시 share 가 `platform:revenue` 로
+ * 되돌아가는 머니 불변식) 한 건이 그 상태였다.
+ *
+ * ⇒ 경로 모양으로 갈라 **스크립트는 node 로 직접** 돌린다. 그리고 아래 `baselineGreen` 이
+ *   "주입 전에도 빨갛지 않은가"를 먼저 확인한다 — 그게 이 클래스 전체를 막는 쪽이다.
+ */
+const isScriptGuard = (p) => /^scripts\/.*\.(mjs|js|sh)$/.test(p)
+
 function runTest(testPath) {
   try {
-    execFileSync('npx', ['vitest', 'run', testPath], { cwd: ROOT, stdio: 'pipe', timeout: 180_000 })
+    if (isScriptGuard(testPath)) {
+      const args = testPath.endsWith('.sh') ? [testPath, '-s'] : [testPath, '-s']
+      execFileSync(testPath.endsWith('.sh') ? 'bash' : 'node', args, { cwd: ROOT, stdio: 'pipe', timeout: 180_000 })
+    } else {
+      execFileSync('npx', ['vitest', 'run', testPath], { cwd: ROOT, stdio: 'pipe', timeout: 180_000 })
+    }
     return true   // 통과
   } catch { return false }  // 실패(= 우리가 원하는 것)
+}
+
+/**
+ * 🟢 **주입 전에 초록인가** — 아니면 그 주입은 아무것도 증명하지 못한다.
+ *
+ * 빨간 것이 빨간 채로 남는 걸 "가드가 잡았다"로 읽으면 위 사고가 그대로 재발한다.
+ * 테스트 경로별로 한 번만 재고, 결과를 캐시한다(대부분의 주입이 파일을 공유한다).
+ */
+const baselineCache = new Map()
+function baselineGreen(testPath) {
+  if (!baselineCache.has(testPath)) baselineCache.set(testPath, runTest(testPath))
+  return baselineCache.get(testPath)
 }
 
 if (MUTATIONS.length === 0) {
@@ -5251,7 +5397,12 @@ for (const m of MUTATIONS) {
     pending.delete(abs)
   }
   if (stillGreen) problems.push(`${m.name}: 결함을 심었는데 \`${m.test}\` 가 **통과** — 이 가드는 아무것도 안 지킨다.\n      (${m.why})`)
-  console.log(`   ${stillGreen ? '❌' : '✅'} ${m.name}`)
+  // 🟢 빨간 것이 빨간 채로 남은 걸 "잡았다"로 읽지 않는다 — 주입 전 상태를 확인한다.
+  const base = stillGreen ? true : baselineGreen(m.test)
+  if (!stillGreen && !base) {
+    problems.push(`${m.name}: \`${m.test}\` 가 **주입 전에도 빨갛다** — 이 주입은 아무것도 증명하지 못한다.\n      (경로가 틀렸거나 그 테스트가 이미 깨져 있다)`)
+  }
+  console.log(`   ${stillGreen || !base ? '❌' : '✅'} ${m.name}`)
 }
 
 // 🔒 마지막 안전 확인 — 어떤 경로로든 소스가 바뀐 채 남지 않았는지.

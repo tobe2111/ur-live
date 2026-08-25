@@ -60,6 +60,15 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
     hint: '예산 = 플랫폼 수수료 − 결제액×이 비율',
   },
   {
+    // 💸 2026-08-25 (누락 발견): **플랫폼 take 율 자체를 정하는 게이트인데 켤 화면이 없었다.**
+    //   `channelPlatformRate` 가 이 값으로 직판 10% / 중개 5% 를 가른다(OFF 면 종전 `commission_rate`).
+    //   `ops-gate-reachable` 가 즉시 잡아 줬다 — 그 시험의 docblock 이 말하는
+    //   *"안 켠 게 아니라 못 켠"* 경우다. 게이트를 만들 때 손잡이를 같이 만들지 않으면 이렇게 된다.
+    key: 'fee_channel_rates_enabled', label: '③ 채널별 플랫폼 요율 (직판 10% / 중개 5%)', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — sellers.commission_rate)' }, { value: 'true', label: 'ON — 채널로 요율 분기' }],
+    hint: '직판(자기 상품)=10% · 중개(벤더 상품)=5%. ⚠️ 원장 fee 가 바뀐다 — staging 실결제 각 1건 확인 후 ON',
+  },
+  {
     key: 'promo_funding_source', label: '② 핀 추천(어필리에이트) 재원', default: 'platform',
     options: [{ value: 'platform', label: '플랫폼 부담 (현행)' }, { value: 'owner', label: '주인(셀러) 부담 — promo 슬라이스' }],
     hint: "'owner' 시 추천인 딜 적립은 유지, 같은 금액을 매장/셀러 정산에서 차감",

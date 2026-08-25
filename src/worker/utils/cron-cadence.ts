@@ -88,6 +88,18 @@ export function expectedMaxAgeMinutes(cronExpr?: string | null): number | null {
  *   그리고 **두 회차 연속 누락과 한 회차 누락을 구분하지 않는다**(둘 다 그냥 stale). 필요해지면
  *   기대 발화 시각을 역산해 누락 횟수를 세야 하는데, 지금은 "한 번이라도 빠지면 보인다"로 충분하다.
  */
+/**
+ * ⏳ **이 값은 하트비트에 *기록 시점*으로 박힌다** — 규칙을 고쳐도 각 작업이 *다음에 뛸 때*까지
+ *   옛 값이 남는다. 그래서 배포 직후 어드민에서 옛 임계가 보이는 것은 **정상**이다.
+ *
+ *   🩸 2026-08-25 에 이걸로 5분을 헛썼다: 배포 직후 라이브에서 `ads:weekly-report gap=20190`
+ *   (= 옛 `×2+30`)을 보고 *"ur-ads 에 배포가 안 됐다"* 고 판정했는데, 실제로는 배포는 09:49 에
+ *   성공했고 그 레인이 **월요일에 마지막으로 뛴 뒤 아직 안 뛴 것**뿐이었다.
+ *   ⇒ 배포 여부는 이 값이 아니라 **워크플로 실행 기록**으로 판정할 것.
+ *
+ *   자기치유 주기는 작업의 주기와 같다(일간 하루 · 주간 최대 7일). 그 창 동안은 **옛(더 느슨한)**
+ *   임계로 판정되므로 놓치는 쪽이 아니라 **늦게 우는 쪽**으로 기운다 — 안전한 방향이라 그대로 둔다.
+ */
 export function staleToleranceMinutes(baseMinutes: number): number {
   const base = Math.max(1, Math.floor(baseMinutes))
   if (base >= 60 * 24) return base + Math.min(Math.floor(base / 4), 6 * 60)
