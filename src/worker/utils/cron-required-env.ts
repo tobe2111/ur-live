@@ -117,6 +117,18 @@ export const CRON_REQUIRED_ENV: Readonly<Record<string, readonly CronEnvRequirem
         '주간 D1 백업이 R2 에 못 올라간다 — Time Travel(30일) 밖 보존이 0 이 되어 재해복구 수단이 사라진다.',
     },
   ],
+  // 🗄️ 2026-08-25: **백업이 이 트리거로 이사했다**(`2,17,32,47` 전용 — 5분 격자를 피해야 안 가려진다).
+  //   위 `0 20 * * 0` 블록만 두면 그 슬롯은 **더 이상 등록돼 있지 않아 평가되지 않는다** — 즉
+  //   BACKUP_BUCKET 이 사라져도 명부가 아무 말을 안 한다. 요구사항은 *실제로 도는 슬롯*에 붙어야 한다.
+  //   옛 블록은 지우지 않는다(대시보드에 옛 트리거가 남아 있으면 그 회차에도 판정돼야 한다).
+  '2,17,32,47 * * * *': [
+    {
+      key: 'BACKUP_BUCKET',
+      jobs: ['d1-backup-chunked'],
+      silently:
+        '조각 백업이 R2 에 못 올라간다 — `no-binding` 으로 조용히 빈손 반환하고, Time Travel(30일) 밖 보존이 0 이 된다.',
+    },
+  ],
 }
 
 /**

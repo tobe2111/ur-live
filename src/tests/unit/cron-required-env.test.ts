@@ -201,3 +201,26 @@ describe('별칭 cron 도 명부에 닿는다', () => {
     expect(bad, `별칭을 키로 쓴 항목: ${bad.join(', ')}`).toEqual([])
   })
 })
+
+/**
+ * 🗄️ **요구사항은 *실제로 도는* 슬롯에 붙어 있어야 한다** (2026-08-25).
+ *
+ * 백업이 `0 20 * * 0`(주간) → `2,17,32,47 * * * *`(전용)로 이사했는데 명부는 옛 슬롯에만 있었다.
+ * 옛 슬롯은 **더 이상 등록돼 있지 않아 한 번도 평가되지 않는다** — 즉 `BACKUP_BUCKET` 이 사라져도
+ * 명부가 아무 말을 안 한다. "명부에 있으니 지켜진다"가 사실이 아닌 상태였다.
+ *
+ * ⚠️ 이 시험이 못 막는 것: 대시보드의 *실제* 트리거 목록(레포는 못 읽는다). 여기서 보는 것은
+ *   "코드가 도는 슬롯이라고 아는 곳에 요구사항이 붙어 있나"까지다.
+ */
+describe('🗄️ 백업 슬롯 이사 — BACKUP_BUCKET 이 살아 있는 트리거에 붙어 있다', () => {
+  it('🔴 전용 백업 트리거가 BACKUP_BUCKET 을 요구한다', () => {
+    expect(envBeatFor('2,17,32,47 * * * *', {})).toContain('BACKUP_BUCKET')
+    expect(envBeatFor('2,17,32,47 * * * *', { BACKUP_BUCKET: {} })).toBe(ENV_ALL_PRESENT)
+  })
+
+  it('🔴 그 요구사항이 지목하는 작업이 지금 도는 이름이다', () => {
+    const reqs = CRON_REQUIRED_ENV['2,17,32,47 * * * *'] || []
+    const jobs = reqs.flatMap((r) => r.jobs)
+    expect(jobs, '옛 이름(d1-backup)을 가리키면 명부가 낡은 지도가 된다').toContain('d1-backup-chunked')
+  })
+})

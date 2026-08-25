@@ -54,6 +54,26 @@ export interface BeatLike {
 export type BeatVerdict = 'judge' | 'superseded' | 'retired'
 
 /**
+ * 🔀 **개명 지도** — 옛 이름 → 그 일을 지금 하는 이름.
+ *
+ * ## 왜 필요한가 (2026-08-25 라이브)
+ * `d1-backup`(전체 덤프)은 DB 가 커져 08-02 이후 OOM 으로 죽었고, 같은 일을
+ * `d1-backup-chunked` 가 이어받았다. 그런데 옛 하트비트 행은 남아 **영원히 빨간불**이다 —
+ * 아래 ② 나이 규칙(8배)이 걷어 주긴 하지만 주간 임계(10,440분)의 8배라 **58일**이 걸린다.
+ * 실측 그날 값: `age 32,545 / gap 10,440 = 3.1×` → 아직 `judge`, 즉 **5주를 더 빨갛게** 있는다.
+ *
+ * 이 파일 맨 위가 적어 둔 그대로다 — 빨간불이 상시가 되면 **진짜 다운을 가린다.**
+ * ①(쿼리스트링 변종)은 `name?query` 만 보므로 *개명*은 못 잡는다. 그래서 지도를 둔다.
+ *
+ * ⚠️ **후임이 자기 임계 안에서 뛰고 있을 때만** 대체로 친다(`freshBaseNames`). 후임까지 죽으면
+ *   옛 이름이 후임의 고장을 숨겨선 안 된다 — 그때는 후임 자신이 빨갛게 뜬다.
+ * ⚠️ 지우지 않는다 — `superseded` 로 **계속 보여 주되** `ok` 만 안 문다(이 파일의 원칙).
+ */
+export const BEAT_RENAMED_TO: Readonly<Record<string, string>> = {
+  'd1-backup': 'd1-backup-chunked',
+}
+
+/**
  * 하트비트 하나를 분류한다.
  *
  * - `superseded` … **같은 base 이름의 더 신선한 기록이 있다.** `maintenance?phase=quality` 가
@@ -86,6 +106,9 @@ export function classifyBeat(
   // ① 같은 일이 다른 이름으로 살아 있다 — **쿼리 붙은 변종만** 해당(base 자신은 자기를 대체 못 한다).
   const raw = String(beat?.name ?? '')
   if (raw.includes('?') && freshBaseNames.has(beatBaseName(raw))) return 'superseded'
+  // ①-a 개명 — 옛 이름의 일을 새 이름이 **지금** 하고 있다(위 지도). 나이 8배를 기다리지 않는다.
+  const successor = BEAT_RENAMED_TO[beatBaseName(raw)]
+  if (successor && freshBaseNames.has(successor)) return 'superseded'
   // ①-b 아무도 안 부르는 이름 — 디스패처 목록에 없고 하루 넘게 조용하면 은퇴다(나이 8배를 안 기다린다).
   //   ⚠️ 목록이 비어 있으면(부팅 직후·기록 유실) 판정하지 않는다 — 전 레인을 은퇴로 만들면 사각지대가 생긴다.
   if (knownBaseNames?.size && raw.startsWith('ads:') && !knownBaseNames.has(beatBaseName(raw)) && age > RETIRED_MIN_AGE_MIN) return 'retired'

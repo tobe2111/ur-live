@@ -2390,6 +2390,37 @@ canvas {
       '고치려던 것과 **부호만 반대인 같은 고착**이다. 끝난 레인만 판정 대상이어야 한다.',
   },
   {
+    name: '개명 지도가 빠져 죽은 이름이 5주 더 빨간불 (상시 빨강이 진짜 다운을 가린다)',
+    file: 'src/worker/utils/cron-beat-retirement.ts',
+    find: "  if (successor && freshBaseNames.has(successor)) return 'superseded'",
+    replace: '  // (개명 판정 제거)',
+    test: 'src/tests/unit/cron-beat-retirement.test.ts',
+    why:
+      '`d1-backup` 은 08-02 에 OOM 으로 죽고 `d1-backup-chunked` 가 이어받았는데 옛 하트비트 행은 남았다. ' +
+      '나이 규칙(8배)은 주간 임계(10,440분) 기준이라 **58일**을 기다린다 — 라이브 실측 3.1× 라 아직 `judge`, ' +
+      '즉 5주를 더 빨갛게 있는다. 이 파일 자신이 적어 둔 대로 상시 빨강은 진짜 다운을 가린다.',
+  },
+  {
+    name: '개명 대체가 후임의 고장까지 숨긴다 (사각지대 자가생성)',
+    file: 'src/worker/utils/cron-beat-retirement.ts',
+    find: "  if (successor && freshBaseNames.has(successor)) return 'superseded'",
+    replace: "  if (successor) return 'superseded'",
+    test: 'src/tests/unit/cron-beat-retirement.test.ts',
+    why:
+      '후임이 신선할 때만 대체로 쳐야 한다. 신선도 검사를 빼면 후임이 죽어도 옛 이름이 조용해져, ' +
+      '백업이 통째로 멎었는데 아무 데도 안 뜨는 상태가 된다 — 걷어내려던 것보다 나쁜 사고다.',
+  },
+  {
+    name: 'BACKUP_BUCKET 요구가 죽은 슬롯에만 남는다 (명부가 평가되지 않음)',
+    file: 'src/worker/utils/cron-required-env.ts',
+    find: "  '2,17,32,47 * * * *': [",
+    replace: "  'ZZ 죽은 슬롯 * * * *': [",
+    test: 'src/tests/unit/cron-required-env.test.ts',
+    why:
+      '백업은 `2,17,32,47` 전용 트리거로 이사했다. 요구사항이 옛 `0 20 * * 0` 에만 붙어 있으면 ' +
+      '그 슬롯은 등록돼 있지 않아 **한 번도 평가되지 않는다** — BACKUP_BUCKET 이 사라져도 명부가 침묵한다.',
+  },
+  {
     name: '개명된 하트비트가 다시 게이트를 물어 영구 503 (사이트 다운 감지가 가려짐)',
     file: 'src/worker/utils/cron-beat-retirement.ts',
     find: "  if (raw.includes('?') && freshBaseNames.has(beatBaseName(raw))) return 'superseded'",
