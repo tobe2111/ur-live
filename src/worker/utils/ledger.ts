@@ -18,6 +18,9 @@
  * 정합성 검증 (cron): SELECT account, SUM(debit) - SUM(credit) FROM ... GROUP BY account
  */
 
+// 💸 커미션 재원·요율 **정책**은 별도 모듈(파일크기 래칫 — 원장 기록과 정책 판단은 층이 다르다).
+import { ownerFundedFor, channelPlatformRate } from './ledger-commission-policy'
+
 interface LedgerEntry {
   event_type: string  // group_buy_join | refund | charge | settlement | dispute_refund
   reference_id: string  // order_number / voucher_id / dispute_id
@@ -126,6 +129,17 @@ export async function recordVoucherUsedLedger(
   // 🛡️ 2026-05-21 Phase D: platform_settings 에서 비율 조회 — 어드민 조정 가능.
   let platformRate = params.platform_rate
   let sellerRate = params.seller_rate
+  // 💸 2026-08-25 채널별 요율 승격 — **직접 입점 10% / 중개 5%**(대표 최종 2026-08-20).
+  //   그 규칙은 `fee-resolver.ts` 에 두 달째 있었지만 **그림자**(계산만 기록)였고, 실제 정산인
+  //   이 함수는 채널을 몰라 단일 `platform_fee_pct` 만 봤다 — 즉 직접 입점 매장도 5% 만 뗐다.
+  //   여기서 채널을 읽어 authoritative 로 올린다.
+  //   게이트: `platform_settings.fee_channel_rates_enabled === 'true'`(기본 OFF = 종전 동일).
+  //   ⚠️ env 가 아니라 platform_settings 인 게 의도다 — 어드민에서 **재배포 없이** 끌 수 있어야
+  //   되돌리기가 빠르다(머니 경로의 롤백 시간이 곧 손실 크기다).
+  //   명시 override(`params.platform_rate`, 어드민 캠페인)가 있으면 그게 최우선 — 여기 안 들어온다.
+  if (platformRate === undefined) {
+    platformRate = await channelPlatformRate(DB, params.merchant_id)
+  }
   if (platformRate === undefined || sellerRate === undefined) {
     try {
       const rows = await DB.prepare(
@@ -262,13 +276,21 @@ export async function recordAgencyCommissionShare(
   const agencyAmount = Math.floor(params.platform_fee * sharePct)
   if (agencyAmount <= 0) return { agency_id: seller.introduced_by_agency_id, amount: 0 }
 
+  // 💸 [INV-#44] promo flip — 에이전시는 **매장-인플 조율 독립 사업자**이므로 그 몫도
+  //   매장 promo(5% 밖)에서 나온다(대표 확정 2026-07-08 §확정 원칙 3). flip 이 켜지면
+  //   debit 을 `merchant:{id}` 로 돌려 **platform:revenue 를 한 푼도 건드리지 않는다**.
+  //   OFF(기본)면 종전과 byte-동일. 산식(platform_fee×share_pct)은 **크기 기준일 뿐**이라 불변.
+  const ownerFunded = await ownerFundedFor(DB, `merchant:${params.merchant_id}`)
   await recordLedger(DB, {
     event_type: 'agency_commission',
     reference_id: ref,
     amount: agencyAmount,
-    debit_account: 'platform:revenue',
+    debit_account: ownerFunded ? `merchant:${params.merchant_id}` : 'platform:revenue',
     credit_account: `agency:${seller.introduced_by_agency_id}`,
-    metadata: { kind: 'agency_share', voucher_id: params.voucher_id, share_pct: sharePct },
+    metadata: {
+      kind: 'agency_share', voucher_id: params.voucher_id, share_pct: sharePct,
+      ...(ownerFunded ? { funding: 'owner' } : {}),
+    },
   })
 
   return { agency_id: seller.introduced_by_agency_id, amount: agencyAmount }
@@ -297,10 +319,20 @@ export async function creditUserCommission(
     dealTxType?: string      // point_transactions.type (딜 경로)
     description?: string
     meta?: Record<string, unknown>
+    /**
+     * 💸 [INV-#44] 매장 promo 재원 계정(예: `merchant:{id}`). 전달 + flip ON 이면
+     *   이 커미션의 debit 이 **platform:revenue 대신 여기**로 간다 = 5% 무접촉.
+     *   미전달(기존 호출부)이면 종전과 byte-동일 — additive 하다.
+     */
+    ownerAccount?: string | null
   },
 ): Promise<{ payout: 'cash' | 'deal'; amount: number }> {
   if (params.amount <= 0) return { payout: 'deal', amount: 0 }
   const eventType = params.eventType || 'commission'
+  // flip 판정: ownerAccount 가 있을 때만 조회한다(없으면 왕복 0 — 기존 호출부 성능 불변).
+  const debitAcct = params.ownerAccount && await ownerFundedFor(DB, params.ownerAccount)
+    ? params.ownerAccount
+    : 'platform:revenue'
   const baseMeta = { kind: params.kind, ...(params.meta || {}) }
 
   const u = await DB.prepare(
@@ -313,9 +345,9 @@ export async function creditUserCommission(
       event_type: eventType,
       reference_id: params.referenceId,
       amount: params.amount,
-      debit_account: 'platform:revenue',
+      debit_account: debitAcct,
       credit_account: `user:${params.userId}`,
-      metadata: { ...baseMeta, payout: 'cash' },
+      metadata: { ...baseMeta, payout: 'cash', ...(debitAcct !== 'platform:revenue' ? { funding: 'owner' } : {}) },
     })
     return { payout: 'cash', amount: params.amount }
   }
@@ -324,9 +356,9 @@ export async function creditUserCommission(
     event_type: eventType,
     reference_id: params.referenceId,
     amount: params.amount,
-    debit_account: 'platform:revenue',
+    debit_account: debitAcct,
     credit_account: `userdeal:${params.userId}`,
-    metadata: { ...baseMeta, payout: 'deal' },
+    metadata: { ...baseMeta, payout: 'deal', ...(debitAcct !== 'platform:revenue' ? { funding: 'owner' } : {}) },
   })
   // 비사업자 → 딜 즉시 적립 (signup-bonus 와 동일 패턴).
   try {
@@ -429,6 +461,8 @@ export async function recordIntroductionCommissionShare(
     dealTxType: 'intro_commission',
     description: `영입 매장 공구 커미션 (voucher ${params.voucher_id})`,
     meta: { voucher_id: params.voucher_id, share_pct: sharePct },
+    // 💸 [INV-#44] flip ON 이면 이 20% 도 매장 promo 재원에서 — 5% 무접촉.
+    ownerAccount: `merchant:${params.merchant_id}`,
   })
 
   return { influencer_id: influencerUserId, amount }

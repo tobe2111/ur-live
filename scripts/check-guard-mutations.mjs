@@ -3484,13 +3484,56 @@ canvas {
   {
     name: 'cron 계정 한도 초과(스케줄 PUT 전면 거부)',
     file: 'wrangler.toml',
-    find: 'crons = ["*/5 * * * *", "0 18 * * *", "0 19 * * *", "0 20 * * SUN"]',
-    replace: 'crons = ["*/5 * * * *", "0 18 * * *", "0 19 * * *", "0 20 * * SUN", "0 21 * * SUN"]',
+    // 🔁 2026-08-25: 4번째 슬롯이 주간 백업 → 백업 전용 `*/15` 로 교체됐다(대표 트리거 변경).
+    find: 'crons = ["*/5 * * * *", "0 18 * * *", "0 19 * * *", "*/15 * * * *"]',
+    replace: 'crons = ["*/5 * * * *", "0 18 * * *", "0 19 * * *", "*/15 * * * *", "0 21 * * SUN"]',
     test: 'src/tests/unit/cron-schedule.test.ts',
     why:
       '무료 플랜은 **계정당** cron 5개다(code 10072). 이 계정은 지금 정확히 5(ur-live 4 + ads 1) — 6번째를 넣으면 ' +
       '스케줄 PUT 이 통째로 거부되고 **그 뒤 모든 worker-deploy 가 이 단계에서 실패**해 cron 코드 ' +
       '배포가 전면 정지한다. 2026-08-02 13:19Z 에 실제로 그렇게 됐고, 한 파일만 보는 검사로는 못 잡는다.',
+  },
+  {
+    name: '백업 전용 트리거 미등록(코드만 있고 발화 0)',
+    file: 'wrangler.toml',
+    find: '"*/15 * * * *"]',
+    replace: ']',
+    test: 'src/tests/unit/cron-schedule.test.ts',
+    why:
+      '분할 백업은 `*/5` 틱 위 게이트로 돌 때 **작업 40개와 서브리퀘스트 예산(무료 ~50)을 나눠 써** ' +
+      '하루 7시간씩 굶었다 — 에러 0, 하트비트만 늙는다. 전용 트리거가 배열에서 빠지면 코드 분기는 ' +
+      '멀쩡한데 **한 번도 발화하지 않는다**(이 레포가 반복해 만난 "실패가 아니라 조용한 부재").',
+  },
+  {
+    name: '백업 분기가 등록된 식을 안 받음(cron-unmatched 로 버려짐)',
+    file: 'src/worker/scheduled.ts',
+    find: "if (cron === '*/15 * * * *' || cron === '0 20 * * 0'",
+    replace: "if (cron === '0 20 * * 0'",
+    test: 'src/tests/unit/cron-schedule.test.ts',
+    why:
+      'CF 는 **등록된 문자열 그대로** event.cron 에 넣는다. 등록은 `*/15` 인데 분기가 주간 표기만 ' +
+      '받으면 매 회차가 `cron-unmatched` 로 버려진다 — 트리거도 있고 코드도 있는데 백업이 0.',
+  },
+  {
+    name: '백업 슬롯 분이 */15 격자와 겹침(커서 동시 갱신)',
+    file: 'src/worker/scheduled.ts',
+    find: '[5, 20, 35, 50].some',
+    replace: '[0, 20, 35, 50].some',
+    test: 'src/tests/unit/cron-schedule.test.ts',
+    why:
+      '`*/5` 폴백 슬롯(:05/:20/:35/:50)과 전용 `*/15`(:00/:15/:30/:45)이 같은 분에 겹치면 ' +
+      '두 인보케이션이 **같은 백업 커서를 동시에 민다** — 청크가 어긋나 스냅샷이 조용히 깨진다.',
+  },
+  {
+    name: '죽은 전체덤프 백업 복귀(OOM 으로 08-02 부터 안 돌던 것)',
+    file: 'src/worker/scheduled.ts',
+    find: 'm.handleChunkedBackup(env as never)',
+    replace: 'handleD1Backup(env as never)',
+    test: 'src/tests/unit/cron-schedule.test.ts',
+    why:
+      '`handleD1Backup` 은 DB 전체를 메모리에 덤프한다. DB 가 263 MB 로 자라 워커 메모리를 넘겨 ' +
+      '2026-08-02 이후 **조용히 실패**했고, 그 사실이 분할 백업을 만든 이유다. 되돌리면 백업이 ' +
+      '다시 0 이 되는데 배포는 초록불이다.',
   },
   {
     name: 'cron day-of-week 0 재유입(배열 전체 거부)',
@@ -4861,6 +4904,27 @@ canvas {
       '에러도 경고도 없고, 필요해질 때까지 아무도 모른다. 메인 DB 가 3주간 그 상태였다.',
   },
   {
+    name: '💸 [INV-#44] flip 인데 플랫폼-펀딩 예산이 0 이 아니다(성장 커미션이 5% 를 잠식)',
+    file: 'src/worker/utils/commission-budget.ts',
+    find: '  if (p.flipOwnerFunded === true) return 0',
+    replace: '  if (p.flipOwnerFunded === false) return 0',
+    test: 'src/tests/unit/commission-budget.test.ts',
+    why:
+      '대표 확정(2026-07-08): 유어딜 5% 는 어떤 커미션에도 안 쓴다. flip 이 켜졌는데 예산이 ' +
+      '0 이 아니면 그만큼 5% 가 잠식되고, 그건 정책 변경이 아니라 **버그**다. 화면엔 안 보이고 ' +
+      '원장을 합산해야 드러난다.',
+  },
+  {
+    name: '💸 [INV-#44] 에이전시 share 가 platform:revenue 하드코딩으로 되돌아감',
+    file: 'src/worker/utils/ledger.ts',
+    find: "    debit_account: ownerFunded ? `merchant:${params.merchant_id}` : 'platform:revenue',",
+    replace: "    debit_account: 'platform:revenue',",
+    test: 'scripts/check-commission-budget.mjs',
+    why:
+      'flip 을 켜도 이 축만 조용히 5% 를 계속 잠식한다. 에러도 없고 화면도 멀쩡해서 ' +
+      '원장을 열어보기 전엔 모른다 — 이 레포가 반복해 만난 "조용한 부재" 클래스다.',
+  },
+  {
     name: '축 지정을 검증만 하고 UPDATE 에 안 넣음(축이 영영 안 바뀐다)',
     file: 'src/features/marketing/api/admin-ads-influencers.routes.ts',
     find: 'SET active = ?, category = COALESCE(?, category), activated_at',
@@ -4901,6 +4965,51 @@ canvas {
     why:
       '목록이 두 벌이 되면 `PRIORITY_CATEGORIES` 에 축을 추가해도 어드민에서 **그 축으로 지정할 수 없다** ' +
       '— 한쪽만 늘어나는 전형적 드리프트(이 레포는 같은 클래스를 여러 번 겪었다).',
+  },
+  {
+    name: '🗄️ 백업이 넓은 테이블을 한 번에 SELECT(D1 컬럼 한도 초과로 영구 정지)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: '    const COL_CHUNK = 60',
+    replace: '    const COL_CHUNK = 9999',
+    test: 'src/tests/unit/backup-wide-table.test.ts',
+    why:
+      'D1 은 결과셋 컬럼 한도(100)가 있고 products 는 그 한도까지 꽉 차 있다. 한 번에 읽으면 ' +
+      '`too many columns in result set` 으로 **같은 자리에서 무한 재시도**한다 — 재시도가 실패를 ' +
+      '보여 주긴 하지만 그 백업은 영원히 못 끝난다(= 백업이 없는 것과 같다). 2026-08-25 실측.',
+  },
+  {
+    name: '🗄️ 나눠 읽은 컬럼을 안 합침(백업에 일부 컬럼이 통째로 빠진다)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: '            for (const m of more) Object.assign(byRid.get(Number(m.__rid)) ?? {}, m)',
+    replace: '            void more',
+    test: 'src/tests/unit/backup-wide-table.test.ts',
+    why:
+      '조각 파일도 생기고 매니페스트도 "완료"로 찍히는데 **행의 절반이 비어 있다.** ' +
+      '복구를 시도하는 순간에야 안다 — 이 레포가 반복해 만난 "조용한 부재" 중 가장 비싼 종류.',
+  },
+  {
+    name: '💸 채널별 요율 승격이 무효화된다(직접 입점도 5% 만 뗀다)',
+    // ⚠️ 좌표는 **호출부**(ledger.ts)다 — 정책 함수는 ledger-commission-policy.ts 로 옮겼지만
+    //   "그 함수를 실제로 부르는가"를 지키는 것이라 여기 남는다. 2026-08-25 추출 때 파일명을
+    //   일괄 치환했다가 이 항목이 '낡은 지도'로 빨간불이 떴고, 그게 정확히 이 가드의 일이다.
+    file: 'src/worker/utils/ledger.ts',
+    find: '    platformRate = await channelPlatformRate(DB, params.merchant_id)',
+    replace: '    platformRate = undefined',
+    test: 'src/tests/unit/channel-platform-rate.test.ts',
+    why:
+      '대표 최종(2026-08-20) 직접 10% / 중개 5%. 이 줄이 없으면 실제 정산이 단일 요율로 돌아가 ' +
+      '**직접 입점 매장에서 절반만 뗀다.** 화면·에러 어디에도 안 나타나고 원장 합계로만 드러난다 — ' +
+      '실제로 이 규칙은 fee-resolver 에 두 달간 있었지만 그림자라 정산에 안 닿았다.',
+  },
+  {
+    name: '💸 채널 미지정을 직접 입점으로 간주(모르는데 더 뗀다)',
+    file: 'src/worker/utils/ledger-commission-policy.ts',
+    find: "    if (meta?.store_channel !== 'direct') return undefined   // 중개/미지정 → 종전 경로(5%)",
+    replace: "    if (meta?.store_channel === 'nope') return undefined",
+    test: 'src/tests/unit/channel-platform-rate.test.ts',
+    why:
+      'fail-soft 방향이 뒤집힌다. 모르면 낮은 쪽(5%)으로 떨어져야 한다 — 잘못 10% 를 물리면 ' +
+      '매장에서 더 뗀 것이고 되돌리기가 훨씬 비싸다(환급 + 신뢰).',
   },
 ]
 /**

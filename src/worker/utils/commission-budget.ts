@@ -49,7 +49,15 @@ export function computeCommissionBudget(p: {
   amountKrw: number
   platformFeeKrw: number
   pgReservePct: number
+  /**
+   * 💸 [INV-#44] 2026-08 promo flip — **판매 커미션은 5% 밖 매장 promo 재원**(대표 확정 2026-07-08).
+   *   flip 이 켜진 주문은 플랫폼-펀딩 예산이 **0** 이다: 성장 커미션이 5% 를 한 푼도 못 가져간다.
+   *   (재원은 owner promo 슬라이스 — `debitOwnerPromoForOrder` / merchant debit 경로.)
+   *   ⚠️ 이걸 "예산을 크게 잡는" 방향으로 바꾸면 5% 불가침 원칙이 깨진다.
+   */
+  flipOwnerFunded?: boolean
 }): number {
+  if (p.flipOwnerFunded === true) return 0
   const amount = toNonNegInt(p.amountKrw)
   const fee = toNonNegInt(p.platformFeeKrw)
   const pct = typeof p.pgReservePct === 'number' && Number.isFinite(p.pgReservePct) && p.pgReservePct >= 0 && p.pgReservePct <= 100
