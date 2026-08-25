@@ -92,7 +92,8 @@ describe('wrangler.toml cron 배열', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n')
   /** 백업을 발화시키는 `if (...)` 조건 한 줄. */
-  const backupBranch = scheduledCode.split('\n').find((l) => /^\s*if \(cron === .*\*\/15/.test(l)) ?? ''
+  const backupBranch = scheduledCode.split('\n').find((l) => /^\s*if \(cron === .*d1-backup|^\s*if \(cron === '2,17,32,47/.test(l))
+    ?? scheduledCode.split('\n').find((l) => /^\s*if \(cron === .*'0 20 \* \* 0'/.test(l)) ?? ''
 
   it('D1 백업 트리거가 배열에 있다 (등록된 식 중 하나가 백업 분기에 걸린다)', () => {
     // 2026-08-02 점화. 여기서 빠지면 재해복구가 다시 0 이 된다 — 몇 달간 그 상태였다.
@@ -128,31 +129,74 @@ describe('wrangler.toml cron 배열', () => {
    * 🗄️ 2026-08-25 — **백업 전용 트리거**. 조용히 되돌아가는 길 셋을 각각 앵커로 박는다.
    *   되돌아가면 에러 없이 백업만 다시 굶는다(이 레포의 "실패가 아니라 조용한 부재" 클래스).
    */
-  describe('백업 전용 트리거(*/15)', () => {
+  describe('백업 전용 트리거(2,17,32,47)', () => {
     const scheduled = readFileSync('src/worker/scheduled.ts', 'utf8')
     const toml = readFileSync('wrangler.toml', 'utf8')
-    const liveCrons = (/crons\s*=\s*\[([^\]]*)\]/.exec(
+    // ⚠️ **따옴표 단위로 읽는다.** 쉼표로 split 하면 `2,17,32,47 * * * *` 처럼 **분 목록을 가진 식**이
+    //   네 조각으로 부서진다(2026-08-25 에 실제로 그렇게 빨간불이 났다). cron 식 안에 쉼표가
+    //   합법이므로 쉼표는 구분자가 아니다 — 다른 파서(`cron-slot-registered`)도 같은 방식이다.
+    const liveCrons = [...((/crons\s*=\s*\[([^\]]*)\]/.exec(
       toml.split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n'),
-    )?.[1] ?? '').split(',').map((x) => x.trim().replace(/^["']|["']$/g, '')).filter(Boolean)
+    )?.[1] ?? '').matchAll(/["']([^"']+)["']/g))].map((m) => m[1].trim()).filter(Boolean)
 
-    it('🔴 `*/15` 가 실제로 등록돼 있다 — 코드 분기만 있으면 한 번도 안 돈다', () => {
-      expect(liveCrons, `등록된 crons=${liveCrons.join(' , ')}`).toContain('*/15 * * * *')
+    it('🔴 전용 트리거가 실제로 등록돼 있다 — 코드 분기만 있으면 한 번도 안 돈다', () => {
+      expect(liveCrons, `등록된 crons=${liveCrons.join(' , ')}`).toContain('2,17,32,47 * * * *')
     })
 
     it('🔴 계정 한도(5, ur-ads 1개 포함)를 넘지 않는다 — 넘으면 PUT 이 거부돼 배열 전체가 사라진다', () => {
       expect(liveCrons.length, `ur-live crons=${liveCrons.length} (ur-ads 1개 별도)`).toBeLessThanOrEqual(4)
     })
 
-    it('🔴 `*/15`(:00/:15/:30/:45) 와 `*/5` 백업 슬롯(:05/:20/:35/:50)이 안 겹친다', () => {
+    it('🔴 전용 트리거(:02/:17/:32/:47) 와 `*/5` 백업 슬롯(:05/:20/:35/:50)이 안 겹친다', () => {
       // 겹치면 두 인보케이션이 같은 커서를 동시에 밀어 백업 파일이 깨진다.
       const slots = /\[([\d,\s]+)\]\.some\(\(m\) => slotDue/.exec(scheduled)?.[1] ?? ''
       const mins = slots.split(',').map((x) => Number(x.trim())).filter(Number.isFinite)
       expect(mins.length, '`*/5` 백업 슬롯 목록을 못 찾았다(구조가 바뀌었나?)').toBeGreaterThan(0)
-      for (const m of mins) expect(m % 15, `분 ${m} 이 */15 격자와 겹친다`).not.toBe(0)
+      for (const m of mins) expect([2, 17, 32, 47], `슬롯 분 ${m} 이 전용 트리거 분과 겹친다`).not.toContain(m)
     })
 
-    it('🔴 분기가 `*/15` 를 받는다 — 안 받으면 발화해도 cron-unmatched 로 버려진다', () => {
-      expect(scheduled).toContain("cron === '*/15 * * * *'")
+    it('🔴 분기가 전용 트리거 식을 받는다 — 안 받으면 발화해도 cron-unmatched 로 버려진다', () => {
+      expect(scheduled).toContain("cron === '2,17,32,47 * * * *'")
+    })
+
+    /**
+     * 🩸 **등록됐는데 한 번도 안 울린 트리거** (2026-08-25 실측 — 이 파일의 가장 값진 불변식).
+     *
+     * 처음엔 백업 전용 트리거를 `*`+`/15` 로 넣었다. CF API 로 등록을 확인했고 코드도 정상인데
+     * **발화 기회 3/3(07:45·08:00·08:15) 전부 미실행**이었다. 원인: 그 분(:00/:15/:30/:45)이
+     * **전부 `*`+`/5` 의 분**이라 같은 스크립트·같은 분에서 가려진다.
+     *
+     * 설계할 때 *"`*`+`/5` **슬롯 게이트**(:05/:20/:35/:50)와 안 겹친다"* 만 확인했다.
+     * **`*`+`/5` 트리거 자체와는 매 회 겹친다**는 걸 놓쳤다. 에러도 경보도 없다 —
+     * 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".
+     *
+     * ⚠️ **이 테스트가 못 막는 것**: CF 가 정말 같은 분을 하나로 합치는지(레포 밖 동작).
+     *   여기서 고정하는 것은 **"겹치는 분을 애초에 만들지 않는다"** 는 우리 쪽 규칙이다.
+     */
+    it('🔴 트리거끼리 같은 분을 공유하지 않는다 — 겹치면 조용히 가려진다', () => {
+      /** 한 cron 식이 한 시간 안에 발화하는 분들(시/요일 무관한 식만 판정). */
+      const minutesOf = (expr: string): number[] | null => {
+        const f = expr.trim().split(/\s+/)
+        if (f.length !== 5 || f[1] !== '*') return null   // 시가 고정이면 분 충돌만으론 못 겹친다
+        const min = f[0]
+        const every = /^\*\/(\d+)$/.exec(min)
+        if (every) {
+          const n = Number(every[1])
+          return Array.from({ length: Math.ceil(60 / n) }, (_, i) => i * n).filter((m) => m < 60)
+        }
+        if (/^\d+(,\d+)*$/.test(min)) return min.split(',').map(Number)
+        return null
+      }
+      const perMinute = liveCrons.map((c) => ({ c, mins: minutesOf(c) })).filter((x) => x.mins)
+      expect(perMinute.length, '분 단위 트리거를 못 찾았다(형식이 바뀌었나?) — 통과 아님').toBeGreaterThanOrEqual(2)
+      for (let i = 0; i < perMinute.length; i++) {
+        for (let j = i + 1; j < perMinute.length; j++) {
+          const a = perMinute[i], b = perMinute[j]
+          const shared = a.mins!.filter((m) => b.mins!.includes(m))
+          expect(shared, `'${a.c}' 와 '${b.c}' 가 분 ${shared.join(',')} 을 공유한다 — 뒤엣것이 조용히 안 울린다`)
+            .toEqual([])
+        }
+      }
     })
   })
 })
