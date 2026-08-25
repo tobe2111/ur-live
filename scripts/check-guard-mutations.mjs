@@ -2262,8 +2262,10 @@ canvas {
   },
   {
     name: '데모 추첨 자가치유가 발화 안 하는 cron 슬롯에 배선됨',
-    file: 'src/worker/scheduled.ts',
-    find: "    ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env)));",
+    // 🌆 2026-08-25: 일간 작업이 `cron/daily-lane.ts` 로 이사했다 — 좌표도 같이 옮긴다.
+    //   (안 옮기면 '낡은 지도'로 빨간불이고, 그게 이 가드가 하라고 만든 일이다.)
+    file: 'src/worker/cron/daily-lane.ts',
+    find: "    ctx.waitUntil(run('demo-fcfs-renew', () => renewDemoFcfs(env)))",
     replace: "    if (cron === '0 * * * *') { ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env))); }",
     test: 'src/tests/unit/cron-slot-registered.test.ts',
     why:
