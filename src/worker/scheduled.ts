@@ -44,7 +44,6 @@ import { handleAnomalyDetection } from './cron/anomaly-detect';
 import { handleSellerDailyReport } from './cron/seller-daily-report';
 // 🌇 일몰 정지(롤백 시 아래 호출과 함께 해제): import { handleAgencySellerMatch } from './cron/agency-seller-match';
 import { handleAdSlotsAward } from './cron/ad-slots-award';
-import { handleD1Backup } from './cron/d1-backup';
 import { handleRetryAlimtalk } from './cron/retry-alimtalk';
 import { retryEmailFailures, retryPushFailures } from './cron/retry-notifications';
 import { handleAppointmentReminder } from './cron/appointment-reminder';
@@ -524,11 +523,12 @@ export async function handleCronScheduled(
     }));
   }
 
-  // 🔴 2026-07-29: 세 표기를 전부 받는다. CF 는 **등록된 문자열 그대로** event.cron 에 넣기 때문에,
-  //   `0 20 * * 0`(CF 가 거부하는 표기)을 `0 20 * * SUN` 으로 교정해 등록하는 순간 이 분기가
-  //   조용히 매칭 실패한다 — 등록은 됐는데 아무 일도 안 일어나는, 이 감사가 다룬 바로 그 클래스.
-  if (cron === '0 20 * * 0' || cron === '0 20 * * SUN' || cron === '0 20 * * 7') {
-    ctx.waitUntil(safeCron('d1-backup', () => handleD1Backup(env as any)));
+  // 🗄️ 2026-08-25 (대표 트리거 교체): 죽어 있던 주간 백업 슬롯 → **백업 전용 트리거**. `*/15`(:00/:15/:30/:45)는
+  //   위 `*/5` 백업 슬롯(:05/:20/:35/:50)과 안 겹치고 **전용 인보케이션**이라 서브리퀘스트 예산(~50)을 통째로
+  //   쓴다 — 5분 틱은 40개가 나눠 써서 백업이 하루 7시간씩 굶었다. 옛 `handleD1Backup`(전체 덤프)은 DB 가 커져
+  //   08-02 이후 OOM 으로 죽은 코드. 주간 표기 3종도 같이 받는다 — 옛 트리거가 남아 있어도 회차를 안 버린다.
+  if (cron === '*/15 * * * *' || cron === '0 20 * * 0' || cron === '0 20 * * SUN' || cron === '0 20 * * 7') {
+    ctx.waitUntil(slotCron('*/15 * * * *')('d1-backup-chunked', () => import('./cron/d1-backup-chunked').then((m) => m.handleChunkedBackup(env as never))));
   }
 
   // 💸 2026-08-11: `0 0 * * 1` 도 미등록이라 주간 7개가 침묵했다. `payouts-generate` 는 송금이 아니라
