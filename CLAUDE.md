@@ -1337,10 +1337,21 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
   - 예외: 순수 프론트엔드 (pages/components/shared/stores) 는 Vite 가 alias resolve → OK
   - 이중 방어: `esbuild.worker.config.js` alias + Pre-commit hook 차단
 
-## 🛠️ 개발 환경 셋업 (새 컨트리뷰터)
+## 🛠️ 개발 환경 셋업 (새 컨트리뷰터 **+ 모든 원격 세션**)
 1. `npm install`
 2. `bash scripts/install-git-hooks.sh` — pre-commit 훅 설치
 3. 이후 모든 커밋 전 자동 검증
+
+> 🔴 **원격 세션(Claude Code on the web)은 세션마다 이걸 다시 돌려야 한다** (2026-08-25 실측).
+> 컨테이너는 매번 새로 만들어지고 `.git/hooks/` 는 클론에 안 딸려 온다 —
+> `ls .git/hooks/pre-commit` 이 비어 있으면 **그 세션의 모든 커밋이 pre-commit 가드를 통과하지
+> 않은 것**이다(충돌 마커·테마·스키마·타입체크·워커빌드·주입중단 검사 전부).
+>
+> 🩸 그날 실제로 이랬다: 오전에 주입된 결함을 커밋했고(`git add -A` 가 `check-guard-mutations`
+> 실행 중의 주입본을 집었다), 재발 방지로 `check-no-injection-in-progress.sh` 를 만들었는데
+> **훅이 없어 그것도 안 돌고 있었다.** 설치한 뒤 30분 만에 같은 사고를 실제로 막았다
+> (`DealCardMedia.tsx` 의 홈 카드 트래픽 보호 제거 주입분이 staged 됐다).
+> ⇒ **가드를 만드는 것 · 등록되는 것 · 실제로 도는 것은 셋 다 다른 일이다.**
 
 ## 🛡️ 영구 방어선 (사고 재발 방지)
 
