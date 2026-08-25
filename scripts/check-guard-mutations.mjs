@@ -2453,6 +2453,27 @@ canvas {
       '#845 처럼 84개가 되고 아무도 안 읽게 된다. 이 경보를 죽이는 두 가지 방법 중 하나다(다른 하나는 침묵).',
   },
   {
+    name: '💾 저장이 다시 전체 스냅샷을 보낸다 (서브리퀘스트 한도 → 무조건 저장 실패)',
+    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    find: '    if (base[k] !== v) payload[k] = v',
+    replace: '    payload[k] = v',
+    test: 'src/tests/unit/admin-settings-save-payload.test.ts',
+    why:
+      '이 폼은 `platform_settings` **전체**로 시드된다(하트비트만 129행). 전부 보내면 서버가 ' +
+      '키당 write 를 돌려 무료 플랜 서브리퀘스트 50 을 넘고 **한 줄도 저장되지 않는다** — ' +
+      '2026-08-25 에 대표가 무엇을 넣어도 "저장 실패" 만 뜨던 진짜 이유다.',
+  },
+  {
+    name: '💾 서버가 다시 키당 왕복으로 쓴다 (호출부가 커지면 같은 사고 재발)',
+    file: 'src/features/admin/api/admin-tools.routes.ts',
+    find: '    await c.env.DB.batch(entries.slice(i, i + 100).map(([key, value]) => stmt.bind(key, String(value))))',
+    replace: '    for (const [key, value] of Object.entries(body)) { await stmt.bind(key, String(value)).run() }',
+    test: 'src/tests/unit/admin-settings-save-payload.test.ts',
+    why:
+      'batch 는 몇 개를 담든 왕복 1회다. 키당 왕복으로 돌아가면 페이로드 크기가 곧 생사가 되고, ' +
+      '호출부가 언제든 다시 커질 수 있다(실제로 그렇게 8월 내내 먹통이었다).',
+  },
+  {
     name: '🔑 저장 실패가 다시 이유를 안 말한다 (원인 불명 왕복)',
     file: 'src/pages/AdminPlatformSettingsPage.tsx',
     find: '        detail ? `저장 실패 — ${detail}`',

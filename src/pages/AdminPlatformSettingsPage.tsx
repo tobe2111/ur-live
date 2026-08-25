@@ -185,6 +185,39 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
   },
 ]
 
+/**
+ * 🩸 **바뀐 키만 골라낸다** (2026-08-25 — 이 페이지가 8월 내내 아무것도 저장 못 하던 원인).
+ *
+ *   `settings` 는 서버가 준 `platform_settings` **전체**로 시드된다 — 설정이 아닌 행까지 전부다
+ *   (`cron_hb:*` 하트비트만 **129개**, `backup_chunk:*` 커서 등). 예전 코드는 그걸 통째로 PUT 했고
+ *   서버는 키 하나당 D1 write 를 순차로 돌렸다. 무료 플랜은 인보케이션당 서브리퀘스트가 50 이라
+ *   200행대 페이로드는 **매번 한도에서 끊긴다** → 500 → 화면엔 "저장 실패".
+ *   ⇒ 대표가 무엇을 넣든 저장이 안 됐다. **값이 틀려서가 아니라 페이로드가 커서.**
+ *   (하트비트가 하나씩 쌓이며 조용히 넘어간 선이라, 어느 날부터 페이지가 통째로 먹통이었다.)
+ *
+ * @param settings 화면의 현재 값(서버 스냅샷 + 사용자가 고친 것)
+ * @param base     서버가 준 스냅샷 원본
+ */
+export function buildSettingsPayload(
+  settings: Record<string, string>,
+  base: Record<string, string>,
+): { payload: Record<string, string>; creds: string[] } {
+  const payload: Record<string, string> = {}
+  for (const [k, v] of Object.entries(settings)) {
+    if ((CREDENTIAL_KEYS as readonly string[]).includes(k)) continue
+    if (base[k] !== v) payload[k] = v
+  }
+  const creds: string[] = []
+  for (const k of CREDENTIAL_KEYS) {
+    const v = (settings[k] || '').trim()
+    // 빈 값 = '교체' 를 눌러 칸만 열어 둔 상태. 보내면 저장돼 있던 토큰이 **지워진다**.
+    if (!v || base[k] === v) continue
+    payload[k] = v
+    creds.push(k === 'cf_api_token' ? 'API 토큰' : '계정 ID')
+  }
+  return { payload, creds }
+}
+
 export default function AdminPlatformSettingsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -214,8 +247,17 @@ export default function AdminPlatformSettingsPage() {
    *   고침: **첫 도착 때만 시드**한다. 이후 서버 값 반영이 필요하면 저장 성공 시 명시적으로 다시 시드한다.
    */
   const seeded = useRef(false)
+  /**
+   * 🩸 2026-08-25 — **서버가 준 스냅샷을 그대로 보관한다.** 저장은 이 스냅샷과 *다른* 키만 보낸다.
+   *   왜 필요한지는 아래 `save()` 의 주석에 있다(전체를 보내면 저장이 통째로 실패한다).
+   */
+  const serverSnapshot = useRef<Record<string, string>>({})
   useEffect(() => {
-    if (settingsQ.data && !seeded.current) { seeded.current = true; setSettings(settingsQ.data) }
+    if (settingsQ.data && !seeded.current) {
+      seeded.current = true
+      serverSnapshot.current = settingsQ.data
+      setSettings(settingsQ.data)
+    }
   }, [settingsQ.data])
 
   function validateSetting(key: string, value: string): string | null {
@@ -264,15 +306,23 @@ export default function AdminPlatformSettingsPage() {
     setSaving(true)
     try {
       /**
-       * 🔒 빈 자격 값은 **보내지 않는다** — 이 endpoint 는 받은 키를 그대로 upsert 하므로
-       *   빈 문자열을 보내면 저장돼 있던 토큰이 지워진다. '교체'를 눌러 칸을 열어 두고 저장만 해도
-       *   자격이 날아가는 셈이라, 페이로드에서 걸러 낸다(입력했을 때만 교체).
+       * 🩸 2026-08-25 — **바뀐 키만 보낸다. 전체를 보내면 저장이 반드시 실패한다.**
+       *
+       *   이 폼은 서버가 준 `platform_settings` **전체**로 시드된다(그 테이블의 모든 행).
+       *   그런데 거기엔 설정이 아닌 것들이 잔뜩 들어 있다 — `cron_hb:*` 하트비트만 **129개**,
+       *   그 밖에 `backup_chunk:*` 커서 등. 예전 코드는 그 전부를 `{ ...settings }` 로 PUT 했고,
+       *   서버는 키 하나당 D1 write 를 **순차로** 돌린다. 무료 플랜은 인보케이션당 서브리퀘스트가
+       *   50 이라, 200개짜리 페이로드는 **매번 한도에서 끊긴다** → 500 → 화면엔 "저장 실패".
+       *   ⇒ 대표가 무엇을 입력하든 저장이 안 됐다. 값이 틀려서가 아니라 **페이로드가 커서**.
+       *   (하트비트가 쌓이면서 조용히 넘어간 선이라, 8월 어느 날부터 이 페이지가 통째로 먹통이었다.)
+       *
+       * 🔒 빈 자격 값은 여전히 **보내지 않는다** — 이 endpoint 는 받은 키를 그대로 upsert 하므로
+       *   빈 문자열을 보내면 저장돼 있던 토큰이 지워진다('교체'만 누르고 저장해도 날아간다).
        */
-      const payload: Record<string, string> = { ...settings }
-      const creds: string[] = []
-      for (const k of CREDENTIAL_KEYS) {
-        if (!(payload[k] || '').trim()) delete payload[k]
-        else creds.push(k === 'cf_api_token' ? 'API 토큰' : '계정 ID')
+      const { payload, creds } = buildSettingsPayload(settings, serverSnapshot.current)
+      if (Object.keys(payload).length === 0) {
+        toast.info('변경된 값이 없습니다')
+        return
       }
       await api.put('/api/admin/tools/settings', payload, h)
       /**
