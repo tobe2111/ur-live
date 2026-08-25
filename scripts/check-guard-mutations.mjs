@@ -2453,6 +2453,16 @@ canvas {
       '#845 처럼 84개가 되고 아무도 안 읽게 된다. 이 경보를 죽이는 두 가지 방법 중 하나다(다른 하나는 침묵).',
   },
   {
+    name: '🔑 빈 자격 값이 다시 페이로드에 실린다 (저장만 눌러도 토큰이 지워진다)',
+    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    find: "    if (!v || base[k] === v) continue",
+    replace: '    if (base[k] === v) continue',
+    test: 'src/tests/unit/admin-settings-save-payload.test.ts',
+    why:
+      "'교체' 를 누르면 입력칸이 빈 채로 열린다. 그 상태로 저장하면 빈 문자열이 upsert 돼 " +
+      '**저장돼 있던 토큰이 지워진다.** 화면엔 "저장되었습니다" 만 뜨고 자격은 사라진다.',
+  },
+  {
     name: '💾 저장이 다시 전체 스냅샷을 보낸다 (서브리퀘스트 한도 → 무조건 저장 실패)',
     file: 'src/pages/AdminPlatformSettingsPage.tsx',
     find: '    if (base[k] !== v) payload[k] = v',
