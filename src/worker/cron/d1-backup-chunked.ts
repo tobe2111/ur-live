@@ -184,6 +184,23 @@ export async function backupChunked(
     }
     if (!cols.length) { cur.ti++; cur.rowid = 0; cur.part = 0; continue }
     const colList = cols.map((c) => `"${c}"`).join(',')
+    /**
+     * 🩸 2026-08-25: **D1 은 결과셋 컬럼 수에 한도(100)가 있다.** `products` 는 그 한도까지
+     *   꽉 차 있어서(그래서 CLAUDE.md 가 products 컬럼 추가를 예산제로 막는다) `rowid` 를
+     *   하나 얹는 순간 넘는다 → `too many columns in result set`.
+     *
+     *   실측: 라벨 회전을 고쳐 **메인 DB 백업 차례가 처음 왔더니** 바로 이 벽에 부딪혀
+     *   `products` 에서 무한 재시도했다(같은 자리에서 4회/분, 전진 0). 재시도는 실패를 보이게
+     *   해 줬지만 **그 백업은 영원히 못 끝난다** — 백업이 없는 것과 같다.
+     *
+     *   ⇒ 넓은 테이블은 컬럼을 나눠 읽고 **같은 rowid 창**으로 합친다. 좁은 테이블(대다수)은
+     *   `colChunks.length === 1` 이라 쿼리가 종전과 **byte-동일**하다(추가 비용 0).
+     */
+    const COL_CHUNK = 60
+    const colChunks: string[] = []
+    for (let i = 0; i < cols.length; i += COL_CHUNK) {
+      colChunks.push(cols.slice(i, i + COL_CHUNK).map((c) => `"${c}"`).join(','))
+    }
 
     // 한 파트를 채운다 — 예산을 넘거나 테이블이 끝나면 멈춘다.
     const buf: string[] = [`-- ${t} part ${cur.part} (rowid > ${cur.rowid})`]
@@ -197,8 +214,20 @@ export async function backupChunked(
       let rows: Array<Record<string, unknown>>
       try {
         rows = ((await db.prepare(
-          `SELECT rowid AS __rid, ${colList} FROM "${t}" WHERE rowid > ? ORDER BY rowid LIMIT ${PAGE}`,
+          `SELECT rowid AS __rid, ${colChunks[0]} FROM "${t}" WHERE rowid > ? ORDER BY rowid LIMIT ${PAGE}`,
         ).bind(last).all<Record<string, unknown>>()).results) || []
+        // 🩸 넓은 테이블은 나머지 컬럼을 **같은 rowid 창**으로 이어 붙인다(아래 COL_CHUNK 주석 참조).
+        if (rows.length && colChunks.length > 1) {
+          const lo = Number(rows[0].__rid), hi = Number(rows[rows.length - 1].__rid)
+          const byRid = new Map(rows.map((r) => [Number(r.__rid), r]))
+          for (let ci = 1; ci < colChunks.length; ci++) {
+            reads += 1
+            const more = ((await db.prepare(
+              `SELECT rowid AS __rid, ${colChunks[ci]} FROM "${t}" WHERE rowid >= ? AND rowid <= ? ORDER BY rowid`,
+            ).bind(lo, hi).all<Record<string, unknown>>()).results) || []
+            for (const m of more) Object.assign(byRid.get(Number(m.__rid)) ?? {}, m)
+          }
+        }
       } catch (e) {
         // ⚠️ 여기서 빈 배열로 넘어가면 **남은 행을 통째로 건너뛴다.** 실패는 실패로 다룬다.
         readFail = `${t} rowid>${last}: ${(e as Error)?.message || e}`

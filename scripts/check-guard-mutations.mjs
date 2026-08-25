@@ -4923,6 +4923,27 @@ canvas {
       '목록이 두 벌이 되면 `PRIORITY_CATEGORIES` 에 축을 추가해도 어드민에서 **그 축으로 지정할 수 없다** ' +
       '— 한쪽만 늘어나는 전형적 드리프트(이 레포는 같은 클래스를 여러 번 겪었다).',
   },
+  {
+    name: '🗄️ 백업이 넓은 테이블을 한 번에 SELECT(D1 컬럼 한도 초과로 영구 정지)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: '    const COL_CHUNK = 60',
+    replace: '    const COL_CHUNK = 9999',
+    test: 'src/tests/unit/backup-wide-table.test.ts',
+    why:
+      'D1 은 결과셋 컬럼 한도(100)가 있고 products 는 그 한도까지 꽉 차 있다. 한 번에 읽으면 ' +
+      '`too many columns in result set` 으로 **같은 자리에서 무한 재시도**한다 — 재시도가 실패를 ' +
+      '보여 주긴 하지만 그 백업은 영원히 못 끝난다(= 백업이 없는 것과 같다). 2026-08-25 실측.',
+  },
+  {
+    name: '🗄️ 나눠 읽은 컬럼을 안 합침(백업에 일부 컬럼이 통째로 빠진다)',
+    file: 'src/worker/cron/d1-backup-chunked.ts',
+    find: '            for (const m of more) Object.assign(byRid.get(Number(m.__rid)) ?? {}, m)',
+    replace: '            void more',
+    test: 'src/tests/unit/backup-wide-table.test.ts',
+    why:
+      '조각 파일도 생기고 매니페스트도 "완료"로 찍히는데 **행의 절반이 비어 있다.** ' +
+      '복구를 시도하는 순간에야 안다 — 이 레포가 반복해 만난 "조용한 부재" 중 가장 비싼 종류.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
