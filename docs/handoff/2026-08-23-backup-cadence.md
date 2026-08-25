@@ -689,3 +689,48 @@ npx wrangler@4 d1 execute … > tables.json     # stdout 만 파일로. stderr �
 
 *"복원 가능한 백업이 있다"* 가 사실이 아닌데 초록인 상태다. **신선도 검사(14일 = 2주기)** 를 넣었다.
 ⚠️ 시각을 못 읽으면 `999` 로 떨어뜨린다 — `0` 으로 두면 "방금 만든 백업"으로 읽혀 늘 통과한다.
+
+---
+
+## 🎉 후속 15 — **메인 DB 첫 완전 스냅샷 완료** (2026-08-25 20:25 KST)
+
+```
+d1-backup-chunked  label=main date=2026-08-24 done=true tables=318 tableIndex=318 reason=complete
+```
+
+08-19 에 조각 백업을 도입한 뒤 **처음으로 끝까지 간 회차**다. 오늘 오전만 해도
+`products`(100컬럼 + rowid = 101 > D1 한도)에서 영구히 멈춰 있었다.
+
+⚠️ **정확히 말하면 "워커가 다 썼다"까지다.** 이 환경 CF 토큰은 R2 권한이 없어
+(`r2/buckets` → Authentication error) **파일이 실제로 R2 에 있는지는 확인하지 못했다.**
+그리고 조각 형식은 복원 훈련 대상이 아니다(후속 13 §남은 구멍) — 즉 **"복구된다"는 아직 미확인**이다.
+
+## 💸 후속 16 — 머니 게이트 하나가 **켤 화면조차 없었다** (2026-08-25 20:35 KST)
+
+라이브 게이트 현황을 읽다가 `fee_channel_rates_enabled` 가 **명부(`OPS_GATES`)에 없는 것**을 봤다.
+이건 플랫폼 take 율 자체를 정하는 게이트다 — `channelPlatformRate` 가 이 값으로
+**직판 10% / 중개 5%** 를 가른다(OFF 면 종전 `sellers.commission_rate`).
+
+명부에 넣었더니 **기존 가드 `ops-gate-reachable` 가 즉시 빨간불**을 냈다:
+
+```
+이 게이트들은 어드민 화면에서 켜고 끌 수 없다 — 코드에만 존재하고 영영 OFF 로 남는다:
+  - fee_channel_rates_enabled
+```
+
+⇒ 등록만 빠진 게 아니라 **대표가 켤 손잡이가 아예 없었다.** 그 시험의 docblock 이 말하는
+*"게이트가 OFF 다를 '안 켰다'로 읽으면 안 된다 — '못 켰다'일 수 있다"* 의 네 번째 사례다.
+`AdminPlatformSettingsPage` 편집 배열에 select 로 추가(서버측 `boolStr` 검증은 이미 있었다).
+
+### 라이브 게이트 현황 (2026-08-25, 전부 기본값)
+
+| 게이트 | 값 | 비고 |
+|---|---|---|
+| `fee_channel_rates_enabled` | 미설정(=OFF) | **이번에 손잡이 신설** |
+| `commission_budget_enabled` | 미설정(=OFF) | S1 |
+| `promo_funding_source` | 미설정(=platform) | S2 |
+| `SHOPPING_LEDGER_ENABLED` | 미설정(=OFF) | S3 · 쇼핑탭 숨김 상태 |
+| `FEE_RESOLVER_ENABLED` | 미설정(=OFF) | S4 |
+| 그 외 9개 | 전부 기본값 | — |
+
+**전부 기본값 = 정산 경로가 아직 한 번도 바뀐 적 없다.** 켜는 순서·검증은 대표 판단 대기.
