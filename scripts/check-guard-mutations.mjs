@@ -2443,6 +2443,16 @@ canvas {
       '경보 채널이 21일 침묵했고, 그 사이 정산 16개 누락이 신호 0 이었다. 하루에 두 번 난 사고다.',
   },
   {
+    name: '🫀 표식을 안 심어 같은 변화를 매 회차 반복 보고한다 (#845 재발)',
+    file: '.github/workflows/uptime.yml',
+    find: `                const body = String(open.body || '').replace(/<!-- stale:[^>]* -->/, '').trimEnd()`,
+    replace: '                const body = String(open.body || \'\')  // 표식 갱신 제거',
+    test: 'src/tests/unit/uptime-silence-behavior.test.ts',
+    why:
+      '비교 기준(표식)을 갱신하지 않으면 다음 회차가 같은 diff 를 또 낸다 — 10분마다 코멘트가 쌓여 ' +
+      '#845 처럼 84개가 되고 아무도 안 읽게 된다. 이 경보를 죽이는 두 가지 방법 중 하나다(다른 하나는 침묵).',
+  },
+  {
     name: '🫀 cron 침묵 경보가 다시 이진 판정으로 — 열려 있으면 영원히 조용해진다',
     file: '.github/workflows/uptime.yml',
     find: '            } else if (down && open && parsed) {',
