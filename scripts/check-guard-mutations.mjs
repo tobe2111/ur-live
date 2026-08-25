@@ -4989,6 +4989,9 @@ canvas {
   },
   {
     name: '💸 채널별 요율 승격이 무효화된다(직접 입점도 5% 만 뗀다)',
+    // ⚠️ 좌표는 **호출부**(ledger.ts)다 — 정책 함수는 ledger-commission-policy.ts 로 옮겼지만
+    //   "그 함수를 실제로 부르는가"를 지키는 것이라 여기 남는다. 2026-08-25 추출 때 파일명을
+    //   일괄 치환했다가 이 항목이 '낡은 지도'로 빨간불이 떴고, 그게 정확히 이 가드의 일이다.
     file: 'src/worker/utils/ledger.ts',
     find: '    platformRate = await channelPlatformRate(DB, params.merchant_id)',
     replace: '    platformRate = undefined',
@@ -5000,7 +5003,7 @@ canvas {
   },
   {
     name: '💸 채널 미지정을 직접 입점으로 간주(모르는데 더 뗀다)',
-    file: 'src/worker/utils/ledger.ts',
+    file: 'src/worker/utils/ledger-commission-policy.ts',
     find: "    if (meta?.store_channel !== 'direct') return undefined   // 중개/미지정 → 종전 경로(5%)",
     replace: "    if (meta?.store_channel === 'nope') return undefined",
     test: 'src/tests/unit/channel-platform-rate.test.ts',

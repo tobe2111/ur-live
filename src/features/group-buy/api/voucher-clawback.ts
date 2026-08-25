@@ -24,7 +24,7 @@ export async function clawbackVoucherCommission(
   //   flip 이 켜지면 그 부담이 **매장**으로 가므로 더 나쁘다 → 여기서 같이 되돌린다.
   //   fail-soft: 역전 실패가 기존 clawback 을 막지 않는다.
   try {
-    const { reverseVoucherCommissionShares } = await import('../../../worker/utils/ledger')
+    const { reverseVoucherCommissionShares } = await import('../../../worker/utils/ledger-commission-policy')
     await reverseVoucherCommissionShares(DB, voucherId, reason)
   } catch { /* 관측 실패가 회수를 막지 않는다 */ }
   // 🛡️ 2026-05-31: attribution 은 주문(order_id) 단위 1행(커미션=주문 총액 기준), 환불은 바우처 단위.

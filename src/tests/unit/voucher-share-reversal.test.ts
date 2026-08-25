@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { reverseVoucherCommissionShares } from '../../worker/utils/ledger'
+import { reverseVoucherCommissionShares } from '../../worker/utils/ledger-commission-policy'
 
 /**
  * 💸 [머니 룰 #2] 이용권 커미션 셰어의 **적립-역전 대칭**.

@@ -18,6 +18,9 @@
  * 정합성 검증 (cron): SELECT account, SUM(debit) - SUM(credit) FROM ... GROUP BY account
  */
 
+// 💸 커미션 재원·요율 **정책**은 별도 모듈(파일크기 래칫 — 원장 기록과 정책 판단은 층이 다르다).
+import { ownerFundedFor, channelPlatformRate } from './ledger-commission-policy'
+
 interface LedgerEntry {
   event_type: string  // group_buy_join | refund | charge | settlement | dispute_refund
   reference_id: string  // order_number / voucher_id / dispute_id
@@ -27,51 +30,6 @@ interface LedgerEntry {
   fee_amount?: number
   fee_account?: string  // 'platform:commission' | 'platform:pg_fee'
   metadata?: Record<string, unknown>
-}
-
-/**
- * 💸 [INV-#44] promo flip 판정 — `owner-promo.isOwnerFunded` 로 위임.
- *
- * ⚠️ **동적 import 인 게 의도다.** `owner-promo.ts` 가 이 파일을 static import 하므로,
- *   여기서 되받아 static 으로 걸면 순환 참조가 된다(워커 번들에서 초기화 순서 사고).
- *   fail-soft: 실패 시 false = 현행 플랫폼 재원 — **모르면 바꾸지 않는다.**
- */
-async function ownerFundedFor(DB: D1Database, ownerAccount: string): Promise<boolean> {
-  try {
-    const sellerId = /(?:merchant|seller):(\d+)/.exec(ownerAccount)?.[1] ?? null
-    const { isOwnerFunded } = await import('./owner-promo')
-    return await isOwnerFunded(DB, sellerId)
-  } catch { return false }
-}
-
-/**
- * 💸 채널별 플랫폼 요율 — **직접 입점 10% / 중개 5%**(대표 최종 2026-08-20).
- *
- * @returns 비율(0~1). 게이트 OFF·채널 미상·조회 실패면 `undefined`(= 호출부가 종전 단일 요율 사용).
- *
- * 🩸 **fail-soft 방향이 중요하다**: 모르면 `undefined` 를 돌려 **낮은 쪽(5%)** 으로 떨어진다.
- *   반대로 잘못 10% 를 물리면 매장에서 더 떼는 것이고, 그건 되돌리기 훨씬 비싸다.
- *   (채널 미지정 기존 매장을 brokered 로 폴백하는 `fee-resolver` 의 판단과 같은 방향.)
- */
-async function channelPlatformRate(
-  DB: D1Database, merchantId: number | string | null | undefined,
-): Promise<number | undefined> {
-  try {
-    const id = Number(merchantId)
-    if (!Number.isFinite(id) || id <= 0) return undefined
-    const gate = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'fee_channel_rates_enabled'")
-      .first<{ value: string }>().catch(() => null)
-    if (gate?.value !== 'true') return undefined
-    const { getSellerMeta } = await import('./seller-meta')
-    const meta = (await getSellerMeta(DB, [id])).get(id)
-    if (meta?.store_channel !== 'direct') return undefined   // 중개/미지정 → 종전 경로(5%)
-    const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'platform_fee_pct_direct'")
-      .first<{ value: string }>().catch(() => null)
-    const { DEFAULT_FEE_RATES } = await import('./fee-resolver')
-    const pct = Number.parseFloat(row?.value ?? '')
-    const use = Number.isFinite(pct) && pct >= 0 && pct <= 100 ? pct : DEFAULT_FEE_RATES.platformPctDirect
-    return use / 100
-  } catch { return undefined }
 }
 
 let DDL_DONE = false
@@ -508,55 +466,6 @@ export async function recordIntroductionCommissionShare(
   })
 
   return { influencer_id: influencerUserId, amount }
-}
-
-/**
- * 💸 [머니 룰 #2] 이용권 커미션 셰어(에이전시 30% · 인플 20%) **원장 역전**.
- *
- * 🩸 2026-08-25 실측으로 확인한 갭: `recordAgencyCommissionShare` / `recordIntroductionCommissionShare`
- *   가 쓴 원장 엔트리(`voucher:N:agency` · `voucher:N:intro-inf`)를 **되돌리는 코드가 어디에도
- *   없었다.** `clawbackVoucherCommission` 은 `influencer_balances` 만 만지고 원장은 무접촉,
- *   `recordVoucherRefundLedger` 는 호출부 0(죽은 함수)였다. 설계 문서는 *"기존 역전이 debit_account 를
- *   읽어 복원하므로 대칭 유지"* 라고 적혀 있었지만 **그런 코드는 없었다** — 문서가 앞서간 것이다.
- *
- * ⚠️ **flip 이 켜지면 이게 더 나빠진다**: debit 이 `merchant:{id}` 로 가므로, 역전이 없으면
- *   **매장이 환불된 주문의 커미션을 영구 부담**한다(플랫폼 돈이 아니라 남의 돈이다).
- *
- * 설계: 원본 엔트리의 **debit/credit 을 읽어 그대로 뒤집는다** → flip 상태와 무관하게 자동 대칭.
- *   (그래서 flip ON/OFF 어느 시점에 적립됐든 되돌아가는 곳이 정확히 맞는다.)
- * 멱등: `{ref}:reversal` 이 이미 있으면 no-op. fail-soft — 역전 실패가 환불을 막지 않는다.
- */
-export async function reverseVoucherCommissionShares(
-  DB: D1Database,
-  voucherId: number | string,
-  reason: string,
-): Promise<{ reversed: number }> {
-  await ensureLedgerTable(DB)
-  let reversed = 0
-  for (const suffix of ['agency', 'intro-inf']) {
-    const ref = `voucher:${voucherId}:${suffix}`
-    try {
-      const src = await DB.prepare(
-        `SELECT amount, debit_account, credit_account FROM ledger_entries
-          WHERE reference_id = ? ORDER BY id LIMIT 1`,
-      ).bind(ref).first<{ amount: number; debit_account: string; credit_account: string }>()
-      if (!src || !(Number(src.amount) > 0)) continue
-      const revRef = `${ref}:reversal`
-      const dup = await DB.prepare('SELECT id FROM ledger_entries WHERE reference_id = ? LIMIT 1')
-        .bind(revRef).first().catch(() => null)
-      if (dup) continue
-      await recordLedger(DB, {
-        event_type: 'commission_reversal',
-        reference_id: revRef,
-        amount: Number(src.amount),
-        debit_account: src.credit_account,   // 뒤집는다 — 받았던 쪽에서 회수
-        credit_account: src.debit_account,   // 냈던 쪽으로 복원(platform:revenue 또는 merchant:N)
-        metadata: { kind: 'voucher_share_reversal', voucher_id: voucherId, reason, of: ref },
-      })
-      reversed++
-    } catch { /* fail-soft — 역전 실패가 환불을 막으면 안 된다 */ }
-  }
-  return { reversed }
 }
 
 /**

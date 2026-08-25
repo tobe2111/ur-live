@@ -211,3 +211,20 @@ products rowid>0: D1_ERROR: too many columns in result set: SQLITE_ERROR
    유지되는지(=자동 회차가 실제로 도는지). 종전엔 400분대까지 늙었다.
 2. **메인 DB 백업이 `products` 를 통과하는지** — D1 100컬럼 한도 수리(후속 3)의 유일한 판정.
    `GET /api/admin/tools/backup-chunk` 의 커서가 `products` 를 넘어가면 통과.
+
+## 후속 5 — `ledger.ts` 634줄 → 분리 (2026-08-25, CI 차단 해소)
+
+채널 요율 승격 + 셰어 역전을 얹으면서 `ledger.ts` 가 **634줄**이 됐고 `STRICT_FILE_SIZE` 가 PR 을 막았다.
+`--rebaseline` 은 **줄였을 때** 쓰는 것이라 쓰지 않고 **추출**했다 → `ledger.ts` 543줄.
+
+**가른 기준은 크기가 아니라 층이다**: `ledger.ts`=기록(복식부기 엔트리) ↔
+`ledger-commission-policy.ts`=판단(재원 flip · 채널 요율 · 셰어 역전).
+
+⚠️ **순환 참조 주의** — `ledger → policy` 가 static 이라 policy 가 `recordLedger` 를 static 으로 되받으면
+`ledger → policy → ledger` 로 고리가 닫힌다(워커 번들 초기화 순서 사고). 역전 함수만 **동적 import**.
+`owner-promo` 도 같은 고리에 있다(`owner-promo → ledger`).
+
+🩸 **가드가 내 실수를 잡았다**: 주입 좌표 2건의 파일명을 일괄 치환했는데 그중 하나는 **호출부가
+`ledger.ts` 에 남는** 항목이라 `check-guard-mutations` 가 *"낡은 지도"* 로 빨간불을 냈다. 되돌리고
+왜 거기 남는지 주석으로 박았다. ⇒ **파일을 옮기면 그 파일을 가리키는 가드 좌표를 전수로 다시 볼 것**
+(일괄 치환은 "함수가 옮겨간 것"과 "호출부가 남은 것"을 구분하지 못한다).
