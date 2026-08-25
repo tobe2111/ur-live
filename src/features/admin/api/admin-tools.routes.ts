@@ -318,9 +318,22 @@ adminToolsRoutes.put('/settings', async (c) => {
     CREATE TABLE IF NOT EXISTS platform_settings (
       key TEXT PRIMARY KEY, value TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`).run() } catch {}
-  for (const [key, value] of Object.entries(body)) {
-    await c.env.DB.prepare('INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime(\'now\')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime(\'now\')')
-      .bind(key, String(value)).run()
+  /**
+   * 🩸 2026-08-25 — **키 하나당 왕복 하나면 이 endpoint 는 큰 저장에서 반드시 죽는다.**
+   *
+   *   무료 플랜은 인보케이션당 서브리퀘스트가 50 이고 D1 호출도 거기에 센다. 어드민 설정 페이지가
+   *   `platform_settings` 전체(하트비트 `cron_hb:*` 129개 포함, 200행대)를 되보내던 시절엔
+   *   이 루프가 매번 한도에서 끊겨 **어떤 값도 저장되지 않았다**(화면엔 "저장 실패"만).
+   *   호출부는 고쳤지만(바뀐 키만 전송), 서버가 페이로드 크기에 목숨을 걸면 같은 사고가 또 난다.
+   *   ⇒ `batch()` 는 몇 개를 담든 **왕복 1회**다. 조각도 100개로 잘라 상한을 눈에 보이게 둔다.
+   */
+  const stmt = c.env.DB.prepare(
+    "INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now')) " +
+    'ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime(\'now\')',
+  )
+  const entries = Object.entries(body)
+  for (let i = 0; i < entries.length; i += 100) {
+    await c.env.DB.batch(entries.slice(i, i + 100).map(([key, value]) => stmt.bind(key, String(value))))
   }
   // 🛡️ 2026-05-25: dynamic-policy cache 무효화 — 어드민 변경 즉시 반영 (60s TTL 대기 X).
   try {

@@ -9,11 +9,17 @@ import { Settings, Save, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import PromoBarSection from './admin-platform-settings/PromoBarSection'
+import CloudflareCredsSection from './admin-platform-settings/CloudflareCredsSection'
+import { CREDENTIAL_KEYS, buildSettingsPayload } from './admin-platform-settings/settings-payload'
+
+/**
+ * 🔁 재수출 — 이 페이지가 이 두 심볼의 **공개 표면**이다(시험·다른 화면이 여기서 가져간다).
+ *   구현은 파일 크기 래칫 때문에 `admin-platform-settings/settings-payload.ts` 로 옮겼다.
+ */
+export { CREDENTIAL_KEYS, buildSettingsPayload }
 
 // 🛡️ 2026-04-22: 실제 코드에서 읽는 키로 정정 (UI-코드 매핑 수정).
 // 이전: seller_commission_rate 키가 UI 에만 있고 코드에선 안 읽혀서 어드민 수정이 반영되지 않는 버그.
-/** ☁️ 자격 키 — 빈 값이면 저장 페이로드에서 제외한다(아래 save 참조). 섹션과 공유. */
-export const CREDENTIAL_KEYS = ['cf_api_token', 'cf_account_id'] as const
 
 const SETTINGS_FIELDS = [
   { key: 'commission_rate_default', label: '기본 수수료율 — 일반 상품 (%)', default: '10' },
@@ -214,8 +220,17 @@ export default function AdminPlatformSettingsPage() {
    *   고침: **첫 도착 때만 시드**한다. 이후 서버 값 반영이 필요하면 저장 성공 시 명시적으로 다시 시드한다.
    */
   const seeded = useRef(false)
+  /**
+   * 🩸 2026-08-25 — **서버가 준 스냅샷을 그대로 보관한다.** 저장은 이 스냅샷과 *다른* 키만 보낸다.
+   *   왜 필요한지는 아래 `save()` 의 주석에 있다(전체를 보내면 저장이 통째로 실패한다).
+   */
+  const serverSnapshot = useRef<Record<string, string>>({})
   useEffect(() => {
-    if (settingsQ.data && !seeded.current) { seeded.current = true; setSettings(settingsQ.data) }
+    if (settingsQ.data && !seeded.current) {
+      seeded.current = true
+      serverSnapshot.current = settingsQ.data
+      setSettings(settingsQ.data)
+    }
   }, [settingsQ.data])
 
   function validateSetting(key: string, value: string): string | null {
@@ -264,15 +279,23 @@ export default function AdminPlatformSettingsPage() {
     setSaving(true)
     try {
       /**
-       * 🔒 빈 자격 값은 **보내지 않는다** — 이 endpoint 는 받은 키를 그대로 upsert 하므로
-       *   빈 문자열을 보내면 저장돼 있던 토큰이 지워진다. '교체'를 눌러 칸을 열어 두고 저장만 해도
-       *   자격이 날아가는 셈이라, 페이로드에서 걸러 낸다(입력했을 때만 교체).
+       * 🩸 2026-08-25 — **바뀐 키만 보낸다. 전체를 보내면 저장이 반드시 실패한다.**
+       *
+       *   이 폼은 서버가 준 `platform_settings` **전체**로 시드된다(그 테이블의 모든 행).
+       *   그런데 거기엔 설정이 아닌 것들이 잔뜩 들어 있다 — `cron_hb:*` 하트비트만 **129개**,
+       *   그 밖에 `backup_chunk:*` 커서 등. 예전 코드는 그 전부를 `{ ...settings }` 로 PUT 했고,
+       *   서버는 키 하나당 D1 write 를 **순차로** 돌린다. 무료 플랜은 인보케이션당 서브리퀘스트가
+       *   50 이라, 200개짜리 페이로드는 **매번 한도에서 끊긴다** → 500 → 화면엔 "저장 실패".
+       *   ⇒ 대표가 무엇을 입력하든 저장이 안 됐다. 값이 틀려서가 아니라 **페이로드가 커서**.
+       *   (하트비트가 쌓이면서 조용히 넘어간 선이라, 8월 어느 날부터 이 페이지가 통째로 먹통이었다.)
+       *
+       * 🔒 빈 자격 값은 여전히 **보내지 않는다** — 이 endpoint 는 받은 키를 그대로 upsert 하므로
+       *   빈 문자열을 보내면 저장돼 있던 토큰이 지워진다('교체'만 누르고 저장해도 날아간다).
        */
-      const payload: Record<string, string> = { ...settings }
-      const creds: string[] = []
-      for (const k of CREDENTIAL_KEYS) {
-        if (!(payload[k] || '').trim()) delete payload[k]
-        else creds.push(k === 'cf_api_token' ? 'API 토큰' : '계정 ID')
+      const { payload, creds } = buildSettingsPayload(settings, serverSnapshot.current)
+      if (Object.keys(payload).length === 0) {
+        toast.info('변경된 값이 없습니다')
+        return
       }
       await api.put('/api/admin/tools/settings', payload, h)
       /**
@@ -286,7 +309,24 @@ export default function AdminPlatformSettingsPage() {
       seeded.current = false
       await settingsQ.refetch().catch(() => undefined)
       setSavedTick(n => n + 1)
-    } catch { toast.error(t('admin.platformSettings.saveFailed', { defaultValue: '저장 실패' })) }
+    } catch (err) {
+      /**
+       * 🩸 2026-08-25 — **서버가 이유를 말해 주는데 화면이 버렸다.**
+       *   이 endpoint 는 검증 위반 시 400 + `error` 에 **어느 키가 왜 틀렸는지**를 담아 준다.
+       *   그런데 여기서 통째로 삼키고 "저장 실패" 만 띄워, 대표가 토큰을 넣어도 왜 안 되는지
+       *   알 길이 없었다(그날 왕복 4회). 401 은 api 인터셉터가 따로 처리하므로 여기 오면
+       *   대개 검증 거부이거나 네트워크다 — **셋을 구분해서 말한다.**
+       */
+      const e = err as { response?: { status?: number; data?: { error?: string } } }
+      const status = e?.response?.status
+      const detail = e?.response?.data?.error
+      toast.error(
+        detail ? `저장 실패 — ${detail}`
+          : status === 401 || status === 403 ? '저장 실패 — 세션이 끊겼습니다. 다시 로그인해 주세요.'
+          : status ? `저장 실패 (HTTP ${status})`
+          : '저장 실패 — 서버에 닿지 못했습니다(네트워크).',
+      )
+    }
     finally { setSaving(false) }
   }
 
@@ -394,7 +434,7 @@ export default function AdminPlatformSettingsPage() {
           <PromoBarSection settings={settings} setSettings={setSettings} />
 
           {/* ☁️ 진단용 Cloudflare 자격 — 입력칸이 없어 대표가 넣을 방법이 없던 것(2026-07-29) */}
-          <CloudflareCredsSection settings={settings} setSettings={setSettings} savedTick={savedTick} />
+          <CloudflareCredsSection settings={settings} setSettings={setSettings} savedTick={savedTick} onSave={save} saving={saving} />
 
           {/* 📊 Q10 캡 관측성 — 발동 이력 (order-commissions 가 Σ요청>예산 주문만 기록) */}
           <CommissionCapLogsSection />
@@ -507,65 +547,3 @@ function CommissionCapLogsSection() {
   )
 }
 
-/**
- * ☁️ **Cloudflare 진단 자격** — 값은 `platform_settings` 에 있는데 **넣을 칸이 없었다**(2026-07-29 발견).
- *
- *   이 페이지는 `SETTINGS_FIELDS`/`COMMISSION_BUDGET_FIELDS` 라는 **고정 목록**만 렌더한다.
- *   저장 API(`PUT /api/admin/tools/settings`)는 임의 키를 받으므로 서버는 문제가 없었고,
- *   **화면에만 자리가 없어** 토큰이 만료됐을 때 대표가 갱신할 방법이 없었다.
- *
- *   용도: 세션이 라이브 인프라를 **조회**할 때 쓴다(빌드로그·배포상태·D1 읽기).
- *   ⚠️ 스코프는 **읽기 전용**이면 충분하다 — CLAUDE.md 가 "플랫폼 쓰기는 세션이 하지 않는다"로 정해 뒀다.
- *
- * 🔒 표시 규칙: 이미 저장돼 있으면 **값을 화면에 뿌리지 않고** "설정됨"만 보여 준다(어깨너머 노출 방지).
- *   비워 두면 기존 값이 그대로 유지되고, 새로 입력할 때만 교체된다 — 실수로 지워지지 않는다.
- */
-function CloudflareCredsSection({ settings, setSettings, savedTick }: { settings: Record<string, string>; setSettings: (fn: (prev: Record<string, string>) => Record<string, string>) => void; savedTick: number }) {
-  const has = (k: string) => !!(settings[k] || '').trim()
-  const [edit, setEdit] = useState<Record<string, boolean>>({})
-  // 저장이 끝나면 입력칸을 닫아 '설정됨 · 끝4자리' 로 되돌린다 — 그래야 반영을 눈으로 확인할 수 있다.
-  useEffect(() => { if (savedTick) setEdit({}) }, [savedTick])
-  const FIELDS: { key: typeof CREDENTIAL_KEYS[number]; label: string; hint: string }[] = [
-    { key: 'cf_api_token', label: 'Cloudflare API 토큰', hint: 'My Profile → API Tokens → Custom Token. 권한은 D1 = Read 하나면 됩니다. 값은 생성 화면에서 한 번만 보입니다.' },
-    { key: 'cf_account_id', label: 'Cloudflare 계정 ID', hint: '대시보드 우측 사이드바에 표시됩니다.' },
-  ]
-  return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mt-6">
-      <div className="px-5 py-4 border-b border-gray-100">
-        <h2 className="text-sm font-semibold text-gray-900">☁️ Cloudflare 진단 자격 (선택)</h2>
-        <p className="text-xs text-gray-400 mt-0.5">라이브 인프라 조회용. 없어도 서비스는 정상 동작합니다.</p>
-      </div>
-      <div className="divide-y divide-gray-100">
-        {FIELDS.map(f => (
-          <div key={f.key} className="px-5 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900">{f.label}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{f.hint}</p>
-              </div>
-              {has(f.key) && !edit[f.key] ? (
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* 🔎 끝 4자리 — 값이 **바뀌었는지**를 눈으로 구분할 유일한 수단이다. "설정됨" 만으로는
-                      옛 토큰과 새 토큰을 못 가린다(둘 다 길이가 같으면 화면이 완전히 동일하다 —
-                      2026-08-02 에 실제로 이래서 죽은 토큰이 남아 있는 줄 몰랐다). */}
-                  <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-2 py-1">
-                    설정됨 · …{(settings[f.key] || '').slice(-4)}
-                  </span>
-                  <button onClick={() => { setEdit(p => ({ ...p, [f.key]: true })); setSettings(p => ({ ...p, [f.key]: '' })) }}
-                    className="text-xs px-3 py-2 rounded-lg border border-gray-300 text-gray-700">교체</button>
-                </div>
-              ) : (
-                <input
-                  type="password" autoComplete="off" placeholder="붙여넣기"
-                  value={settings[f.key] ?? ''}
-                  onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  className="w-64 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
-                />
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}

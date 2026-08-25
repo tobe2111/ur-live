@@ -18,8 +18,11 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { buildSettingsPayload } from '../../pages/AdminPlatformSettingsPage'
 
 const SRC = readFileSync(join(process.cwd(), 'src/pages/AdminPlatformSettingsPage.tsx'), 'utf8')
+/** 2026-08-25 — 자격 카드는 파일 크기 래칫 때문에 별도 파일로 분리됐다. 그 마크업은 여기서 본다. */
+const CARD = readFileSync(join(process.cwd(), 'src/pages/admin-platform-settings/CloudflareCredsSection.tsx'), 'utf8')
 
 describe('플랫폼 설정 — 서버 값이 입력을 덮어쓰지 않는다', () => {
   it('🔒 시드는 첫 도착 때만 — 무조건 setSettings(data) 로 되돌리면 입력이 사라진다', () => {
@@ -38,14 +41,28 @@ describe('플랫폼 설정 — 서버 값이 입력을 덮어쓰지 않는다', 
    * 끝 4자리가 있었으면 07-29 세션이 토큰을 오진하지 않았다.
    */
   it('🔎 자격은 끝 4자리를 보여 준다 — 바뀌었는지 눈으로 확인할 유일한 수단', () => {
-    expect(SRC).toMatch(/설정됨 · …\{\(settings\[f\.key\] \|\| ''\)\.slice\(-4\)\}/)
+    expect(CARD.length, '자격 카드 파일을 못 읽었다 — 이 시험이 헛돈다').toBeGreaterThan(500)
+    expect(CARD).toMatch(/설정됨 · …\{\(settings\[f\.key\] \|\| ''\)\.slice\(-4\)\}/)
   })
 
   it('🔎 저장 토스트가 무엇이 교체됐는지 말한다 — 빈 자격은 조용히 걸러지므로', () => {
     expect(SRC).toMatch(/교체됨/)
   })
 
+  /**
+   * 2026-08-25 — **문자열 매칭에서 실제 동작으로 바꿨다.** 저장 경로가 순수 함수
+   * `buildSettingsPayload` 로 분리되면서(페이로드 크기 사고 수리) 구현 모양은 바뀌었지만
+   * 불변식은 그대로다: **빈 자격 값은 절대 나가지 않는다.** 예전 판정은 `delete payload[k]` 라는
+   * *글자*를 찾았기 때문에, 같은 불변식을 지키는 리팩토링에도 빨간불이 났다.
+   */
   it('🔒 빈 자격은 여전히 페이로드에서 제외 — 저장만 눌러도 토큰이 지워지면 안 된다', () => {
-    expect(SRC).toMatch(/for \(const k of CREDENTIAL_KEYS\)[\s\S]{0,120}delete payload\[k\]/)
+    const base = { cf_api_token: 'old-2254', cf_account_id: 'acct-1' }
+    // '교체' 를 눌러 칸만 열어 둔 상태(빈 문자열) — 저장해도 자격은 건드리면 안 된다.
+    const { payload, creds } = buildSettingsPayload({ ...base, cf_api_token: '' }, base)
+    expect(payload, '빈 값이 나가면 저장돼 있던 토큰이 지워진다').not.toHaveProperty('cf_api_token')
+    expect(creds).toEqual([])
+    // 값을 실제로 넣었을 때는 반드시 나가야 한다(반대 방향도 고정 — 안 그러면 늘 통과한다).
+    const typed = buildSettingsPayload({ ...base, cf_api_token: 'new-9999' }, base)
+    expect(typed.payload.cf_api_token).toBe('new-9999')
   })
 })
