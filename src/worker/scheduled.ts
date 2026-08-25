@@ -133,7 +133,12 @@ export async function handleCronScheduled(
   const cron = event.cron;
 
   // 🔬 2026-08-22 진단 프로브(`__tick`) — 왜 맨 앞인지·무엇을 가르는지는 `utils/cron-heartbeat.ts` 상단 주석.
-  ctx.waitUntil(recordCronBeat(env, '__tick', true, 0, cron)); // cron-heartbeat-ok: 작업이 아니라 하트비트 **자체**다 — safeCron 으로 감싸면 진단의 핵심인 '아무도 예산을 안 쓴 시점'을 잃는다
+  // 🔬 2026-08-25: 키를 **트리거별**로 쪼갠다(`__tick:<cron식>`). 전역 키 하나였을 땐 같은 분에
+  //   여러 트리거가 울리면 마지막 하나가 덮어써서 **어느 트리거가 울렸는지 알 수 없었다.**
+  //   지금 못 가리고 있는 두 질문이 정확히 그것이다: ① `*/15` 전용 트리거가 실제로 발화하는가
+  //   (`*/5` 와 매 분 겹친다) ② 2026-08-24 에 `0 18` 이 안 울린 건가 인보케이션이 죽은 건가.
+  //   ⚠️ **쓰기 횟수는 그대로다** — 키만 달라진다(진단을 영구 부채로 남기지 않는다는 원칙 준수).
+  ctx.waitUntil(recordCronBeat(env, `__tick:${cron}`, true, 0, cron)); // cron-heartbeat-ok: 작업이 아니라 하트비트 **자체**다 — safeCron 으로 감싸면 진단의 핵심인 '아무도 예산을 안 쓴 시점'을 잃는다
   // 💓 2026-07-28: 성공·실패 무관 하트비트. safeCron 은 **예외가 날 때만** 기록했는데,
   //   실제로 아픈 정지는 예외가 없다(cron 미발화 / 게이트 OFF 조기 return / 내부 .catch 로 전부 삼킴).
   //   유어애즈 자동 정비가 셋째 경우로 07-26 부터 멈춘 걸 아무도 몰랐다(#793).

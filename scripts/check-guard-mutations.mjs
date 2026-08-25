@@ -4990,6 +4990,17 @@ canvas {
       '복구를 시도하는 순간에야 안다 — 이 레포가 반복해 만난 "조용한 부재" 중 가장 비싼 종류.',
   },
   {
+    name: '🔬 진단 tick 이 전역 키로 되돌아감(어느 트리거가 울렸는지 못 가린다)',
+    file: 'src/worker/scheduled.ts',
+    find: 'recordCronBeat(env, `__tick:${cron}`, true, 0, cron)',
+    replace: "recordCronBeat(env, '__tick', true, 0, cron)",
+    test: 'src/tests/unit/cron-tick-per-trigger.test.ts',
+    why:
+      '전역 키 하나면 같은 분에 여러 트리거가 울릴 때 **마지막 하나가 덮어쓴다.** 그러면 ' +
+      '"안 울렸다"와 "울렸는데 덮였다"가 같아 보인다 — 2026-08-25 에 `*/15` 발화 여부와 ' +
+      '08-24 `0 18` 누락 원인을 둘 다 이것 때문에 못 가렸다. 쓰기 비용은 같으니 되돌릴 이유가 없다.',
+  },
+  {
     name: '⏰ 일간 관용이 ×2 로 되돌아감(하루를 건너뛰어도 조용해진다)',
     file: 'src/worker/utils/cron-heartbeat.ts',
     find: '  if (base >= 60 * 24) return base + Math.min(Math.floor(base / 4), 6 * 60)',
