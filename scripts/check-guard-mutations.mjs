@@ -4988,6 +4988,57 @@ canvas {
       '복구를 시도하는 순간에야 안다 — 이 레포가 반복해 만난 "조용한 부재" 중 가장 비싼 종류.',
   },
   {
+    name: '⏰ 일간 관용이 ×2 로 되돌아감(하루를 건너뛰어도 조용해진다)',
+    file: 'src/worker/utils/cron-heartbeat.ts',
+    find: '  if (base >= 60 * 24) return base + Math.min(Math.floor(base / 4), 6 * 60)',
+    replace: '  if (false) return 0',
+    test: 'src/tests/unit/cron-stale-detection.test.ts',
+    why:
+      '×2 는 관용이 아니라 실명이다. 하루 1회 작업에 48.5시간을 주면 **한 회차를 통째로 건너뛰어도 ' +
+      '정상**이다. 2026-08-24 에 `0 18` 블록 17개(정산 성숙·원장 정합 포함)가 그렇게 빠졌고 경보가 ' +
+      '0이었다 — 사람이 하트비트를 손으로 세어서 알았다.',
+  },
+  {
+    name: '⏰ ur-ads 관용 공식이 메인과 갈라짐',
+    file: 'src/worker-ads/lane-cadence.ts',
+    find: '  if (base >= 60 * 24) return base + Math.min(Math.floor(base / 4), 6 * 60)',
+    replace: '  if (base >= 60 * 24) return base * 2 + 30',
+    test: 'src/tests/unit/ads-lane-cadence.test.ts',
+    why:
+      'ur-ads 는 별도 워커라 공식을 **복제**한다. 갈라지면 같은 주기의 레인이 워커마다 다른 시점에 ' +
+      '울린다(또는 한쪽만 조용하다). 동치성을 테스트로 못박은 이유가 이것이다.',
+  },
+  {
+    name: '🌆 일간 레인 분리가 되돌아감(16개가 한 인보케이션으로)',
+    file: 'src/worker/scheduled.ts',
+    find: "  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 10, hour: 18 })) {",
+    replace: "  if (false) {",
+    test: 'src/tests/unit/cron-heartbeat-dispatch.test.ts',
+    why:
+      '한 인보케이션에 16개를 몰면 서브리퀘스트 예산(무료 ~50)이 말라 뒤쪽이 **에러 없이 잘린다**. ' +
+      '그리고 잘린 것과 정상이 구분되지 않는다 — 백업이 하루 7시간씩 굶은 것과 같은 가족이다.',
+  },
+  {
+    name: '🌆 분리된 레인에 기록 안 하는 래퍼 주입(그룹 전체가 관측 밖)',
+    file: 'src/worker/scheduled.ts',
+    find: "runDailyLane('money', { env, ctx, run: safeCron,",
+    replace: "runDailyLane('money', { env, ctx, run: bareRun,",
+    test: 'src/tests/unit/cron-heartbeat-dispatch.test.ts',
+    why:
+      '`run` 은 이름일 뿐이다. safeCron/slotCron 이 아닌 것을 넘기면 그 그룹 전체가 하트비트를 ' +
+      '안 남기고, 안 남으면 침묵 판정 대상에서도 빠진다(부재는 침묵과 다르게 생겼다).',
+  },
+  {
+    name: '💸 쇼핑 원장이 채널 요율을 안 본다(직접 입점도 5% 만)',
+    file: 'src/worker/utils/order-ledger-credit.ts',
+    find: '  const rate = channelRate !== undefined ? channelRate * 100 : Number(order.commission_rate) // 플랫폼 take %',
+    replace: '  const rate = Number(order.commission_rate) // 플랫폼 take %',
+    test: 'src/tests/unit/shopping-channel-rate.test.ts',
+    why:
+      '이용권은 10% 를 떼는데 쇼핑은 5% 만 떼면 **같은 매장이 상품 종류에 따라 갈린다.** ' +
+      '화면·에러 어디에도 안 나타나고 원장 합계로만 드러난다.',
+  },
+  {
     name: '💸 채널별 요율 승격이 무효화된다(직접 입점도 5% 만 뗀다)',
     // ⚠️ 좌표는 **호출부**(ledger.ts)다 — 정책 함수는 ledger-commission-policy.ts 로 옮겼지만
     //   "그 함수를 실제로 부르는가"를 지키는 것이라 여기 남는다. 2026-08-25 추출 때 파일명을

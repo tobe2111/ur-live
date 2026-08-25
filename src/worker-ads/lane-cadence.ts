@@ -25,10 +25,20 @@
 
 /**
  * 주기(분) → "이만큼 지나면 이상하다" 기준(분).
- * `cron-heartbeat.ts` 의 `expectedMaxAgeMinutes` 와 **같은 공식**을 쓴다(기대주기 × 2 + 30분 여유).
+ * `cron-heartbeat.ts` 의 `staleToleranceMinutes` 와 **같은 공식**을 쓴다.
  * 공식을 바꾸려면 두 곳이 아니라 이 함수 하나만 바꾸도록 유닛이 동치성을 고정한다.
+ *
+ * 🩸 2026-08-25: `× 2 + 30` 고정에서 **주기 비례**로 바뀌었다. 하루 1회 레인에 ×2 를 쓰면
+ *   "하루를 통째로 건너뛰어도 조용하다"는 뜻이고, 실제로 그날 정산 cron 17개가 그렇게 빠졌다.
+ *   근거·규칙은 `staleToleranceMinutes` docblock 참조(그쪽이 SSOT 서술).
+ *
+ * ⚠️ ur-ads 는 별도 워커라 여기 값을 **복제**한다. 갈라지면 `ads-lane-cadence.test.ts` 가 빨강.
  */
-export const staleGapMinutes = (periodMinutes: number): number => Math.max(1, periodMinutes) * 2 + 30
+export const staleGapMinutes = (periodMinutes: number): number => {
+  const base = Math.max(1, Math.floor(periodMinutes))
+  if (base >= 60 * 24) return base + Math.min(Math.floor(base / 4), 6 * 60)
+  return base * 2 + 30
+}
 
 /**
  * 매시간 레인 — `kick` 이 `gap` 없이 호출될 때의 기본값.

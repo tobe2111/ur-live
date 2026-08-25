@@ -17,6 +17,7 @@
 import { recordLedger } from './ledger'
 import { COMMISSION_DEFAULTS } from '../../shared/constants/policy'
 import { VOUCHER_CATEGORIES } from '../../shared/constants/voucher-categories'
+import { channelPlatformRate } from './ledger-commission-policy'
 
 interface OrderRow {
   id: number
@@ -63,7 +64,13 @@ export async function creditSellerOrderToLedger(
   ).bind(orderId, ...VOUCHER_CATEGORIES).first<{ n: number }>().catch(() => ({ n: 0 }))
   if (Number(voucherish?.n ?? 0) > 0) return null
 
-  const rate = Number(order.commission_rate) // 플랫폼 take %
+  // 💸 2026-08-25: 채널별 요율(직접 입점 10% / 중개 5%)을 **쇼핑에도** 적용한다.
+  //   그전엔 이용권 원장만 채널을 봤고 쇼핑은 flat 5% 였다 — 같은 직접 입점 매장이 이용권 10%,
+  //   쇼핑 5% 로 갈렸다. 화면·에러 어디에도 안 나타나고 원장 합계로만 드러나는 종류다.
+  //   게이트(`fee_channel_rates_enabled`) OFF·채널 미상이면 `undefined` → **종전 `commission_rate`**
+  //   그대로. fail-soft 방향은 이용권과 같다: 모르면 낮은 쪽으로 떨어진다(더 떼는 쪽이 되돌리기 비싸다).
+  const channelRate = await channelPlatformRate(DB, order.seller_id)
+  const rate = channelRate !== undefined ? channelRate * 100 : Number(order.commission_rate) // 플랫폼 take %
   const platformFee = Math.max(0, Math.round(total * rate / 100))
 
   // 💸 2026-07-04 [INV-CB §3-D] promo owner-펀딩: 게이트 'owner' 일 때 이 주문의 핀 소개비

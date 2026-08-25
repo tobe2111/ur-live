@@ -21,19 +21,50 @@ describe('expectedMaxAgeMinutes — cron 식별 기대주기(분)', () => {
     expect(expectedMaxAgeMinutes('30 * * * *')).toBe(60 * 2 + 30)
   })
 
-  it('매일: 1440분 기준', () => {
-    expect(expectedMaxAgeMinutes('0 18 * * *')).toBe(60 * 24 * 2 + 30)
-    expect(expectedMaxAgeMinutes('0 3 * * *')).toBe(60 * 24 * 2 + 30)
-    expect(expectedMaxAgeMinutes('0 0 * * *')).toBe(60 * 24 * 2 + 30)
+  // 🩸 2026-08-25: 하루 이상 주기는 `× 2` 를 쓰지 않는다. ×2 는 **한 회차를 통째로 건너뛰어도
+  //   조용하다**는 뜻이고, 실제로 그날 `0 18` 블록 17개(정산 cron 포함)가 08-24 회차를 빠뜨렸는데
+  //   37시간은 허용 48.5시간 안이라 경보가 0이었다. 규칙은 `주기 + min(주기/4, 6시간)`.
+  it('매일: 한 회차를 건너뛰면 반드시 보인다 (24h + 6h)', () => {
+    expect(expectedMaxAgeMinutes('0 18 * * *')).toBe(60 * 24 + 6 * 60)
+    expect(expectedMaxAgeMinutes('0 3 * * *')).toBe(60 * 24 + 6 * 60)
+    expect(expectedMaxAgeMinutes('0 0 * * *')).toBe(60 * 24 + 6 * 60)
   })
 
-  it('주간(요일 지정): 일 단위보다 길게', () => {
-    expect(expectedMaxAgeMinutes('0 0 * * 1')).toBe(60 * 24 * 7 * 2 + 30)
-    expect(expectedMaxAgeMinutes('0 20 * * 0')).toBe(60 * 24 * 7 * 2 + 30)
+  it('주간(요일 지정): 일 단위보다 길게 (7일 + 6h)', () => {
+    expect(expectedMaxAgeMinutes('0 0 * * 1')).toBe(60 * 24 * 7 + 6 * 60)
+    expect(expectedMaxAgeMinutes('0 20 * * 0')).toBe(60 * 24 * 7 + 6 * 60)
   })
 
   it('월간(일자 지정)', () => {
-    expect(expectedMaxAgeMinutes('0 21 1 * *')).toBe(60 * 24 * 31 * 2 + 30)
+    expect(expectedMaxAgeMinutes('0 21 1 * *')).toBe(60 * 24 * 31 + 6 * 60)
+  })
+
+  /**
+   * 🔴 **이 describe 가 이 파일의 존재 이유다** — 위 숫자들은 이 불변식의 결과일 뿐이다.
+   *   숫자를 바꾸고 싶어지면 먼저 여기를 보라: 회차를 건너뛴 게 보이는가?
+   */
+  describe('🔴 회차 누락이 보여야 한다 (2026-08-24 실사고)', () => {
+    it('일간 작업이 한 회차를 건너뛰면(37h) stale 로 판정된다', () => {
+      // 08-23 18:00 에 돌고 08-24 18:00 회차가 없는 채 08-25 07:20 이 된 실제 상황.
+      const limit = expectedMaxAgeMinutes('0 18 * * *')!
+      expect(37 * 60, `허용 ${limit}분 — 하루를 건너뛰었는데 조용하다`).toBeGreaterThan(limit)
+    })
+
+    it('늦게라도 그 회차가 돌면 조용하다 — 오탐을 늘리지 않는다', () => {
+      const limit = expectedMaxAgeMinutes('0 18 * * *')!
+      expect(25 * 60, '한 시간 늦게 돈 것까지 울리면 아무도 안 본다').toBeLessThan(limit)
+    })
+
+    it('주간도 같다 — 한 주를 건너뛰면 보인다', () => {
+      const limit = expectedMaxAgeMinutes('45 0 * * 1')!
+      expect(13 * 24 * 60).toBeGreaterThan(limit)   // 한 주 누락
+      expect(7 * 24 * 60 + 60).toBeLessThan(limit)  // 한 시간 지연
+    })
+
+    it('잦은 작업은 종전대로 넉넉하다 — 한두 틱 밀린다고 울리지 않는다', () => {
+      expect(expectedMaxAgeMinutes('*/5 * * * *')).toBe(40)
+      expect(expectedMaxAgeMinutes('0 * * * *')).toBe(150)
+    })
   })
 
   it('⚠️ 해석 불가하면 null — 경보하지 않는다(모르면 조용한 편이 오탐보다 낫다)', () => {

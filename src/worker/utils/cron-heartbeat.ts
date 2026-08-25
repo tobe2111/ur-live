@@ -306,6 +306,41 @@ export function expectedMaxAgeMinutes(cronExpr?: string | null): number | null {
   else if (dow !== '*') base = 60 * 24 * 7      // 주간
   else if (dom !== '*') base = 60 * 24 * 31     // 월간
   else base = 60 * 24                           // 매일
+  return staleToleranceMinutes(base)
+}
+
+/**
+ * 🩸 **관용은 주기에 비례해야 한다** (2026-08-25 실사고로 신설).
+ *
+ * ## 무엇이 있었나
+ *
+ * 규칙이 주기와 무관하게 `기대주기 × 2 + 30분` 이었다. 잦은 작업에는 옳다 — 5분 작업이 한두 틱
+ * 밀리는 건 노이즈고, 매번 울리면 아무도 안 본다(이 모듈이 반복해 경고하는 병).
+ *
+ * **그런데 하루 1회 작업에 ×2 를 쓰면 "하루를 통째로 건너뛰어도 조용하다"는 뜻이 된다.**
+ * 그건 관용이 아니라 실명이다. 2026-08-25 실측:
+ *
+ * ```
+ * 0 18 * * * 블록 17개 전부 — 마지막 실행 08-23 18:00 (37시간 전)
+ *   ledger-reconcile · ledger-integrity-check · auto-settlement
+ *   supplier-settlement-mature · affiliate-mature · referral-mature · expired-voucher-refund …
+ * 08-24 회차가 통째로 없었는데 경보 0건. 허용이 48.5시간이라 37시간은 '정상'이었다.
+ * ```
+ * 정산 cron 이 하루 안 돈 것을 **사람이 하트비트를 손으로 세어서** 알았다. 다음에 또 나면 또 그래야 한다.
+ *
+ * ## 규칙
+ *
+ * - **하루 이상 주기**: `주기 + min(주기/4, 6시간)` — 한 회차를 건너뛰면 **반드시 보인다**.
+ *   (일간 30h · 주간 7.25일 · 월간 31.25일. 늦게라도 그 회차가 돌면 조용하다.)
+ * - **그 미만**: 종전 `× 2 + 30분` 유지 — 잦은 작업의 오탐을 늘리지 않는다.
+ *
+ * ⚠️ **이 함수가 못 보는 것**: "돌긴 도는데 내부에서 조기 return" — 그건 하트비트 `result` 로만 보인다.
+ *   그리고 **두 회차 연속 누락과 한 회차 누락을 구분하지 않는다**(둘 다 그냥 stale). 필요해지면
+ *   기대 발화 시각을 역산해 누락 횟수를 세야 하는데, 지금은 "한 번이라도 빠지면 보인다"로 충분하다.
+ */
+export function staleToleranceMinutes(baseMinutes: number): number {
+  const base = Math.max(1, Math.floor(baseMinutes))
+  if (base >= 60 * 24) return base + Math.min(Math.floor(base / 4), 6 * 60)
   return base * 2 + 30
 }
 

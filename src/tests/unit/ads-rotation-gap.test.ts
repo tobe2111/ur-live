@@ -77,8 +77,10 @@ describe('🔑 라이브 경보 6건 재판정 — 오탐은 침묵, 진짜는 �
   it('🔴 진짜 1건 — `scan-notices`(일 1회, 3일 침묵)는 그대로 울린다', () => {
     // 일 1회 레인은 명시 `gap` 을 갖고 **회전 대상이 아니다**(미룰 수 없어 항상 돈다).
     // 그래서 이 완화가 닿지 않는다 — 그게 설계가 지키려는 성질이다.
-    const dailyGap = staleGapMinutes(24 * 60)     // 2910
-    expect(dailyGap).toBe(2910)
+    // 🩸 2026-08-25: 일간 임계가 2910 → 1800(24h+6h)으로 **좁아졌다**(회차 누락이 보이게).
+    //   이 케이스는 3일 침묵이라 좁아진 뒤에도 그대로 울린다 — 완화가 안 닿는 성질이 유지된다.
+    const dailyGap = staleGapMinutes(24 * 60)     // 1800
+    expect(dailyGap).toBe(24 * 60 + 6 * 60)
     expect(verdict(4139, dailyGap)).toBe('울린다')
   })
 })
