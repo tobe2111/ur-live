@@ -298,7 +298,7 @@ const OPS_GATES: OpsGate[] = [
   //   `channelPlatformRate` 가 이 값으로 직판 10% / 중개 5% 를 가른다(OFF 면 종전 `commission_rate`).
   //   CLAUDE.md 는 게이트 플래그를 여기 등록하라고 규정하는데 이것만 빠져 있어, 운영 화면에서
   //   **켜져 있는지조차 볼 수 없었다** — 머니 경로에서 가장 보여야 할 값이다.
-  { key: 'fee_channel_rates_enabled', kind: 'setting', label: '채널별 플랫폼 요율(직판 10% / 중개 5%)', default_value: 'false', staging_ref: 'S1', turn_on_when: '직판·중개 주문 각 1건의 원장 fee 가 의도한 요율로 찍히는 것이 staging 실결제로 확인되면' },
+  { key: 'fee_channel_rates_enabled', kind: 'setting', label: '채널별 플랫폼 요율(직판 10% / 중개 5%)', default_value: 'false', staging_ref: 'S7', turn_on_when: '직판·중개 주문 각 1건의 원장 fee 가 의도한 요율로 찍히는 것이 staging 실결제로 확인되면' },
   { key: 'BLOG_AI_DRAFTS_ENABLED', kind: 'env', label: '블로그 AI 초안 주간 cron', default_value: 'false', staging_ref: null, turn_on_when: '주간 AI 초안이 필요해지고 ANTHROPIC_API_KEY 가 ur-live 에 설정되면' },
   { key: 'ADS_AUTOBID_ENABLED', kind: 'env', label: '유어애즈 자동입찰', default_value: 'false', staging_ref: null, turn_on_when: '유어애즈 광고주가 실제로 입찰을 시작하면(현재 인플루언서 DB 수집 단계라 미해당)' },
   { key: 'wholesale_auto_grade_enabled', kind: 'setting', label: '도매 등급 자동평가', default_value: '0', staging_ref: null, turn_on_when: '🔴 켜지 않는다 — 도매몰은 철거 대상(2026-08-02 대표 확정 ⑦)' },

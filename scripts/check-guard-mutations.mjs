@@ -2390,6 +2390,17 @@ canvas {
       '고치려던 것과 **부호만 반대인 같은 고착**이다. 끝난 레인만 판정 대상이어야 한다.',
   },
   {
+    name: '🧾 게이트가 없는 검증 절차를 가리켜도 통과한다 (엉뚱한 절차로 머니 게이트를 켠다)',
+    file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
+    find: "staging_ref: 'S7'",
+    replace: "staging_ref: 'S99'",
+    test: 'src/tests/unit/ops-gate-reachable.test.ts',
+    why:
+      'CLAUDE.md 는 게이트를 만들 때 체크리스트 항목을 함께 추가하라고 규정하는데 **그 참조가 맞는지는 ' +
+      '아무도 안 봤다.** 실측: 이 게이트를 등록하며 S1(커미션 예산 캡)을 붙였다 — 켜려는 사람이 ' +
+      '엉뚱한 검증 절차를 읽게 된다. 게이트가 없어서 나는 사고보다 잘못된 절차로 켜서 나는 사고가 더 비싸다.',
+  },
+  {
     name: '🧪 복원 훈련이 다시 옛 백업으로 초록불을 낸다 (신선도 검사 제거)',
     file: '.github/workflows/d1-restore-drill.yml',
     find: '          if [ "$AGE_DAYS" -gt 14 ]; then',
