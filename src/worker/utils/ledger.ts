@@ -44,6 +44,36 @@ async function ownerFundedFor(DB: D1Database, ownerAccount: string): Promise<boo
   } catch { return false }
 }
 
+/**
+ * 💸 채널별 플랫폼 요율 — **직접 입점 10% / 중개 5%**(대표 최종 2026-08-20).
+ *
+ * @returns 비율(0~1). 게이트 OFF·채널 미상·조회 실패면 `undefined`(= 호출부가 종전 단일 요율 사용).
+ *
+ * 🩸 **fail-soft 방향이 중요하다**: 모르면 `undefined` 를 돌려 **낮은 쪽(5%)** 으로 떨어진다.
+ *   반대로 잘못 10% 를 물리면 매장에서 더 떼는 것이고, 그건 되돌리기 훨씬 비싸다.
+ *   (채널 미지정 기존 매장을 brokered 로 폴백하는 `fee-resolver` 의 판단과 같은 방향.)
+ */
+async function channelPlatformRate(
+  DB: D1Database, merchantId: number | string | null | undefined,
+): Promise<number | undefined> {
+  try {
+    const id = Number(merchantId)
+    if (!Number.isFinite(id) || id <= 0) return undefined
+    const gate = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'fee_channel_rates_enabled'")
+      .first<{ value: string }>().catch(() => null)
+    if (gate?.value !== 'true') return undefined
+    const { getSellerMeta } = await import('./seller-meta')
+    const meta = (await getSellerMeta(DB, [id])).get(id)
+    if (meta?.store_channel !== 'direct') return undefined   // 중개/미지정 → 종전 경로(5%)
+    const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'platform_fee_pct_direct'")
+      .first<{ value: string }>().catch(() => null)
+    const { DEFAULT_FEE_RATES } = await import('./fee-resolver')
+    const pct = Number.parseFloat(row?.value ?? '')
+    const use = Number.isFinite(pct) && pct >= 0 && pct <= 100 ? pct : DEFAULT_FEE_RATES.platformPctDirect
+    return use / 100
+  } catch { return undefined }
+}
+
 let DDL_DONE = false
 
 export async function ensureLedgerTable(DB: D1Database): Promise<void> {
@@ -141,6 +171,17 @@ export async function recordVoucherUsedLedger(
   // 🛡️ 2026-05-21 Phase D: platform_settings 에서 비율 조회 — 어드민 조정 가능.
   let platformRate = params.platform_rate
   let sellerRate = params.seller_rate
+  // 💸 2026-08-25 채널별 요율 승격 — **직접 입점 10% / 중개 5%**(대표 최종 2026-08-20).
+  //   그 규칙은 `fee-resolver.ts` 에 두 달째 있었지만 **그림자**(계산만 기록)였고, 실제 정산인
+  //   이 함수는 채널을 몰라 단일 `platform_fee_pct` 만 봤다 — 즉 직접 입점 매장도 5% 만 뗐다.
+  //   여기서 채널을 읽어 authoritative 로 올린다.
+  //   게이트: `platform_settings.fee_channel_rates_enabled === 'true'`(기본 OFF = 종전 동일).
+  //   ⚠️ env 가 아니라 platform_settings 인 게 의도다 — 어드민에서 **재배포 없이** 끌 수 있어야
+  //   되돌리기가 빠르다(머니 경로의 롤백 시간이 곧 손실 크기다).
+  //   명시 override(`params.platform_rate`, 어드민 캠페인)가 있으면 그게 최우선 — 여기 안 들어온다.
+  if (platformRate === undefined) {
+    platformRate = await channelPlatformRate(DB, params.merchant_id)
+  }
   if (platformRate === undefined || sellerRate === undefined) {
     try {
       const rows = await DB.prepare(

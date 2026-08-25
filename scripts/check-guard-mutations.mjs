@@ -4944,6 +4944,27 @@ canvas {
       '조각 파일도 생기고 매니페스트도 "완료"로 찍히는데 **행의 절반이 비어 있다.** ' +
       '복구를 시도하는 순간에야 안다 — 이 레포가 반복해 만난 "조용한 부재" 중 가장 비싼 종류.',
   },
+  {
+    name: '💸 채널별 요율 승격이 무효화된다(직접 입점도 5% 만 뗀다)',
+    file: 'src/worker/utils/ledger.ts',
+    find: '    platformRate = await channelPlatformRate(DB, params.merchant_id)',
+    replace: '    platformRate = undefined',
+    test: 'src/tests/unit/channel-platform-rate.test.ts',
+    why:
+      '대표 최종(2026-08-20) 직접 10% / 중개 5%. 이 줄이 없으면 실제 정산이 단일 요율로 돌아가 ' +
+      '**직접 입점 매장에서 절반만 뗀다.** 화면·에러 어디에도 안 나타나고 원장 합계로만 드러난다 — ' +
+      '실제로 이 규칙은 fee-resolver 에 두 달간 있었지만 그림자라 정산에 안 닿았다.',
+  },
+  {
+    name: '💸 채널 미지정을 직접 입점으로 간주(모르는데 더 뗀다)',
+    file: 'src/worker/utils/ledger.ts',
+    find: "    if (meta?.store_channel !== 'direct') return undefined   // 중개/미지정 → 종전 경로(5%)",
+    replace: "    if (meta?.store_channel === 'nope') return undefined",
+    test: 'src/tests/unit/channel-platform-rate.test.ts',
+    why:
+      'fail-soft 방향이 뒤집힌다. 모르면 낮은 쪽(5%)으로 떨어져야 한다 — 잘못 10% 를 물리면 ' +
+      '매장에서 더 뗀 것이고 되돌리기가 훨씬 비싸다(환급 + 신뢰).',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

@@ -98,6 +98,9 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   operator_support_contact: optionalText(200),
   // ── boolean 스위치 (read-site === 'true') ──
   commission_budget_enabled: boolStr,          // order-commissions.ts:252
+  // 💸 채널별 요율(직접10%/중개5%) 승격 게이트 — read-site: ledger.ts channelPlatformRate.
+  //   env 가 아니라 여기 둔 이유: 어드민에서 **재배포 없이** 끌 수 있어야 롤백이 빠르다.
+  fee_channel_rates_enabled: boolStr,
   gb_pricing_enabled: boolStr,                 // 🔌 공구가 청구 킬스위치(기본 ON — 'false' 만 끔). gb-order-pricing
   gb_engine_enabled: boolStr,                // gb-marketplace:26 / gb-proposals:27 / seller-orders:1285
   seller_promo_field_enabled: boolStr,         // seller-orders.routes.ts:814
@@ -106,6 +109,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
 
   // ── enum ──
   promo_funding_source: enumOf(['platform', 'owner']),           // ledger.ts:482 등 === 'owner'
+  platform_fee_pct_direct: optionalPct,                          // 직접 입점 요율(기본 10) — ledger.ts
   commission_priority_axes: priorityAxes,                        // order-commissions.ts:257 CSV parse
   flip_pilot_seller_ids: csvPosInts,                             // flip-pilot.ts (전역 스위치 OFF 여도 지정 매장만 flip 검증)
   influencer_payout_frequency: enumOf(['weekly', 'biweekly', 'monthly']), // AdminCommissionSettingsPage select
