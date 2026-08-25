@@ -3,6 +3,7 @@
  *   본문은 추출 시점과 동일 + 원장 셰어 역전 배선 1건. 호출부는 `helpers` 재수출로 무수정.
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import { adjustUserPoints } from '../../../worker/utils/point-ledger'
 
 /**
  * 🛡️ 2026-05-30: 인플루언서 커미션 clawback — voucher 환불/취소 시 미지급 커미션 회수.
@@ -113,8 +114,18 @@ export async function clawbackVoucherCommission(
       ).bind(orderId).all<{ id: number; referrer_id: string; commission: number }>()
       for (const row of aff.results || []) {
         const share = Math.min(row.commission, Math.max(1, Math.floor(row.commission / denom)))
-        await DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?")
-          .bind(share, row.referrer_id).run().catch(() => null)
+        // 💸 2026-08-25: 여태 잔액만 깎고 **`point_transactions` 이력을 안 남겼다.**
+        //   유저 딜이 줄었는데 왜 줄었는지 기록이 없다는 뜻이다(문의가 오면 답할 근거가 없다).
+        //   `helpers.ts` 에 있을 땐 파일 다른 곳의 point_transactions 덕에 가드를 통과했다 —
+        //   **근접성으로 통과한 것이지 옳아서가 아니었다.** 추출하니 드러났다.
+        //   ⇒ SSOT(`adjustUserPoints`)로 — 잔액과 이력을 한 번에, free 버킷 우선 소진 규칙도 승계.
+        await adjustUserPoints(DB, {
+          userId: row.referrer_id,
+          delta: -share,
+          type: 'affiliate_clawback',
+          description: `추천 커미션 회수 (${reason})`,
+          orderId,
+        }).catch(() => null)
         const remaining = row.commission - share
         if (remaining <= 0) {
           await DB.prepare("UPDATE affiliate_earnings SET status = 'refunded', commission = 0 WHERE id = ?").bind(row.id).run()
