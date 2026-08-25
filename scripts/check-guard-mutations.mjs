@@ -2453,6 +2453,36 @@ canvas {
       '#845 처럼 84개가 되고 아무도 안 읽게 된다. 이 경보를 죽이는 두 가지 방법 중 하나다(다른 하나는 침묵).',
   },
   {
+    name: '🔑 저장 실패가 다시 이유를 안 말한다 (원인 불명 왕복)',
+    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    find: '        detail ? `저장 실패 — ${detail}`',
+    replace: "        false ? `저장 실패` ",
+    test: 'src/tests/unit/admin-creds-save-ux.test.ts',
+    why:
+      '서버는 400 과 함께 **어느 키가 왜 틀렸는지**를 준다. 그걸 버리고 "저장 실패" 만 띄우면 ' +
+      '대표는 토큰을 넣어도 왜 안 되는지 알 길이 없다 — 2026-08-25 에 그것 때문에 왕복이 네 번 났다.',
+  },
+  {
+    name: '🔑 자격 카드의 저장 버튼이 사라진다 (맨 위 헤더까지 스크롤해야 함)',
+    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    find: '        <button onClick={onSave} disabled={saving}',
+    replace: '        <button disabled={saving}',
+    test: 'src/tests/unit/admin-creds-save-ux.test.ts',
+    why:
+      '입력칸은 페이지 맨 아래인데 저장 버튼이 맨 위 헤더에만 있으면, 붙여넣고 저장을 못 찾는다. ' +
+      '실제로 대표가 그래서 저장을 못 했고 D1 값이 23일째 옛것이었다.',
+  },
+  {
+    name: '🔑 토큰 권한 안내가 다시 D1 Read 로 좁아진다 (주간 백업이 죽는다)',
+    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    find: "만료일은 비워 두세요(무기한). 권한: Account → D1 / Workers Scripts / Workers KV / Workers R2 / Pages = Edit",
+    replace: "권한은 D1 = Read 하나면 됩니다",
+    test: 'src/tests/unit/admin-creds-save-ux.test.ts',
+    why:
+      'wrangler d1 export 는 **D1 = Edit** 이 필요하다. 화면이 Read 만 시키면 그대로 만들어지고, ' +
+      '그 토큰으로 주간 백업이 3주 연속 실패했다(2026-08-05·12·19 실측). 안내문이 사고를 만든 사례다.',
+  },
+  {
     name: '🫀 cron 침묵 경보가 다시 이진 판정으로 — 열려 있으면 영원히 조용해진다',
     file: '.github/workflows/uptime.yml',
     find: '            } else if (down && open && parsed) {',

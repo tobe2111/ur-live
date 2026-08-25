@@ -285,10 +285,10 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 66 | 256 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 69 | 276 |
 | 링크샵 / 큐레이터 | `linkshop-brief.md` | 13 | 60 |
-| 에이전시 | `agency-brief.md` | 52 | 168 |
-| **합계** | — | **203** | **583** |
+| 에이전시 | `agency-brief.md` | 29 | 167 |
+| **합계** | — | **183** | **602** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -297,12 +297,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 397 | 1205 |
-| 도메인 버킷 (5개 소개서) | 203 | 583 |
-| 공통/인프라 (의도적 제외) | 162 | 453 |
-| **미커버 (점검 필요)** | **32** | **169** |
+| 전체 | 379 | 1235 |
+| 도메인 버킷 (5개 소개서) | 183 | 602 |
+| 공통/인프라 (의도적 제외) | 163 | 461 |
+| **미커버 (점검 필요)** | **33** | **172** |
 
-⚠️ **미커버 201건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 205건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -328,6 +328,7 @@
 - `/district/:slug`
 - `/experience`
 - `/gb-market`
+- `/i/offer/:token`
 - `/local/:code`
 - `/map`
 - `/my-store`
@@ -375,6 +376,7 @@
 - `POST /api/gb-proposals/seller/:id/respond` (`src/features/group-buy/api/gb-proposals.routes.ts`)
 - `GET /api/gb-proposals/seller/list` (`src/features/group-buy/api/gb-proposals.routes.ts`)
 - `POST /api/partnership/inquiry` (`src/worker/routes/partnership.routes.ts`)
+- `GET /api/promo-bar` (`src/worker/routes/public-utility.routes.ts`)
 - `GET /api/regions/` (`src/features/group-buy/api/regions.routes.ts`)
 - `GET /api/seller-experience-campaigns/` (`src/features/group-buy/api/experience-campaign.routes.ts`)
 - `POST /api/seller-experience-campaigns/` (`src/features/group-buy/api/experience-campaign.routes.ts`)
@@ -411,6 +413,8 @@
 - `GET /mall` (`src/features/supply/api/wholesale.routes.ts`)
 - `GET /market-signal` (`src/features/supply/api/wholesale.routes.ts`)
 - `GET /me` (`src/features/supply/api/supplier-dashboard.routes.ts`)
+- `GET /me/prefs/:key` (`src/features/auth/api/admin-prefs.routes.ts`)
+- `PUT /me/prefs/:key` (`src/features/auth/api/admin-prefs.routes.ts`)
 - `GET /naver-price-check` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /notifications` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `POST /notifications/read-all` (`src/features/supply/api/supplier-dashboard.routes.ts`)
@@ -878,7 +882,7 @@
 
 #### 온라인 입점 / 라이브커머스
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (66개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (69개)
 
 - `/browse`
 - `/cart`
@@ -906,11 +910,13 @@
 - `/seller/group-buy`
 - `/seller/guide`
 - `/seller/influencer-deals`
+- `/seller/influencers`
 - `/seller/inventory`
 - `/seller/ledger`
 - `/seller/login`
 - `/seller/marketing`
 - `/seller/notify-followers`
+- `/seller/operators`
 - `/seller/orders`
 - `/seller/plus-friend-guide`
 - `/seller/products`
@@ -933,6 +939,7 @@
 - `/seller/scan`
 - `/seller/settlements`
 - `/seller/signup`
+- `/seller/stores`
 - `/seller/tier`
 - `/seller/tiktok-callback`
 - `/seller/transfers`
@@ -947,7 +954,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (256개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (276개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1176,6 +1183,9 @@
 - `POST /api/seller/delegation/:agencyId/grant`
 - `POST /api/seller/delegation/:agencyId/revoke`
 
+**/api/seller/fee-context**
+- `GET /api/seller/fee-context`
+
 **/api/seller/forgot-password**
 - `POST /api/seller/forgot-password`
 
@@ -1183,6 +1193,12 @@
 - `GET /api/seller/gb/:id`
 - `PUT /api/seller/gb/:id`
 - `GET /api/seller/gb/support-contact`
+
+**/api/seller/influencers**
+- `GET /api/seller/influencers/categories`
+- `GET /api/seller/influencers/list`
+- `GET /api/seller/influencers/outreach`
+- `POST /api/seller/influencers/outreach`
 
 **/api/seller/kakao-link-status**
 - `GET /api/seller/kakao-link-status`
@@ -1196,9 +1212,17 @@
 **/api/seller/my-seller-status**
 - `GET /api/seller/my-seller-status`
 
+**/api/seller/my-stores**
+- `GET /api/seller/my-stores`
+
 **/api/seller/onboarding**
 - `GET /api/seller/onboarding/`
 - `POST /api/seller/onboarding/complete/:step_key`
+
+**/api/seller/operators**
+- `GET /api/seller/operators`
+- `POST /api/seller/operators`
+- `POST /api/seller/operators/:userId/revoke`
 
 **/api/seller/optimal-time**
 - `GET /api/seller/optimal-time/`
@@ -1313,6 +1337,16 @@
 **/api/seller/stays-quota**
 - `GET /api/seller/stays-quota`
 
+**/api/seller/stores**
+- `POST /api/seller/stores`
+- `POST /api/seller/stores/:id/channel`
+- `POST /api/seller/stores/:id/close`
+- `GET /api/seller/stores/:id/profile`
+- `PATCH /api/seller/stores/:id/profile`
+- `POST /api/seller/stores/:sellerId/token`
+- `GET /api/seller/stores/context`
+- `POST /api/seller/stores/verify-business`
+
 **/api/seller/surface**
 - `GET /api/seller/surface`
 
@@ -1353,6 +1387,11 @@
 
 **/api/seller/voucher-catalog**
 - `GET /api/seller/voucher-catalog`
+
+**/api/seller/voucher-draft**
+- `DELETE /api/seller/voucher-draft`
+- `GET /api/seller/voucher-draft`
+- `PUT /api/seller/voucher-draft`
 
 **/api/seller/voucher-orders**
 - `GET /api/seller/voucher-orders`
@@ -1617,7 +1656,7 @@
 
 #### 에이전시
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (52개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (29개)
 
 - `/a/:slug`
 - `/admin/agencies`
@@ -1626,42 +1665,19 @@
 - `/admin/influencer-payouts`
 - `/agency`
 - `/agency-partner`
-- `/agency/calendar`
-- `/agency/campaigns`
-- `/agency/compare`
-- `/agency/contracts`
-- `/agency/coupons`
 - `/agency/delegations`
-- `/agency/events`
 - `/agency/forgot-password`
-- `/agency/group-buy`
 - `/agency/guide`
-- `/agency/incentives`
 - `/agency/introduced-stores`
-- `/agency/invites`
 - `/agency/ledger`
 - `/agency/login`
-- `/agency/match-suggestions`
-- `/agency/members`
-- `/agency/messages`
-- `/agency/notices`
-- `/agency/orders`
-- `/agency/pk`
 - `/agency/profile`
-- `/agency/promote-boosts`
 - `/agency/prospects`
-- `/agency/ranking`
 - `/agency/register`
 - `/agency/register/business`
 - `/agency/reset-password`
-- `/agency/returns`
-- `/agency/schedule`
 - `/agency/sellers`
-- `/agency/sellers/:sellerId/products`
 - `/agency/settlements`
-- `/agency/stats`
-- `/agency/stays`
-- `/agency/targets`
 - `/agency/transfers`
 - `/agency/waiting`
 - `/influencer`
@@ -1672,7 +1688,7 @@
 - `/influencer/settlement`
 - `/seller/prospects`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (168개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (167개)
 
 
 **/api/admin-payouts/disputes**
@@ -1881,7 +1897,6 @@
 - `POST /api/agency/sellers/:id/products`
 - `PUT /api/agency/sellers/:id/products/:productId`
 - `GET /api/agency/sellers/:id/stats`
-- `POST /api/agency/sellers/:id/streams`
 - `GET /api/agency/sellers/compare`
 
 **/api/agency/set-pin**
@@ -1987,7 +2002,7 @@
 
 
 
-> 마지막 생성: 2026-08-12T13:34:08.105Z
+> 마지막 생성: 2026-08-25T15:58:06.035Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

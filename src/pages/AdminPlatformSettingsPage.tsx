@@ -286,7 +286,24 @@ export default function AdminPlatformSettingsPage() {
       seeded.current = false
       await settingsQ.refetch().catch(() => undefined)
       setSavedTick(n => n + 1)
-    } catch { toast.error(t('admin.platformSettings.saveFailed', { defaultValue: '저장 실패' })) }
+    } catch (err) {
+      /**
+       * 🩸 2026-08-25 — **서버가 이유를 말해 주는데 화면이 버렸다.**
+       *   이 endpoint 는 검증 위반 시 400 + `error` 에 **어느 키가 왜 틀렸는지**를 담아 준다.
+       *   그런데 여기서 통째로 삼키고 "저장 실패" 만 띄워, 대표가 토큰을 넣어도 왜 안 되는지
+       *   알 길이 없었다(그날 왕복 4회). 401 은 api 인터셉터가 따로 처리하므로 여기 오면
+       *   대개 검증 거부이거나 네트워크다 — **셋을 구분해서 말한다.**
+       */
+      const e = err as { response?: { status?: number; data?: { error?: string } } }
+      const status = e?.response?.status
+      const detail = e?.response?.data?.error
+      toast.error(
+        detail ? `저장 실패 — ${detail}`
+          : status === 401 || status === 403 ? '저장 실패 — 세션이 끊겼습니다. 다시 로그인해 주세요.'
+          : status ? `저장 실패 (HTTP ${status})`
+          : '저장 실패 — 서버에 닿지 못했습니다(네트워크).',
+      )
+    }
     finally { setSaving(false) }
   }
 
@@ -394,7 +411,7 @@ export default function AdminPlatformSettingsPage() {
           <PromoBarSection settings={settings} setSettings={setSettings} />
 
           {/* ☁️ 진단용 Cloudflare 자격 — 입력칸이 없어 대표가 넣을 방법이 없던 것(2026-07-29) */}
-          <CloudflareCredsSection settings={settings} setSettings={setSettings} savedTick={savedTick} />
+          <CloudflareCredsSection settings={settings} setSettings={setSettings} savedTick={savedTick} onSave={save} saving={saving} />
 
           {/* 📊 Q10 캡 관측성 — 발동 이력 (order-commissions 가 Σ요청>예산 주문만 기록) */}
           <CommissionCapLogsSection />
@@ -520,13 +537,16 @@ function CommissionCapLogsSection() {
  * 🔒 표시 규칙: 이미 저장돼 있으면 **값을 화면에 뿌리지 않고** "설정됨"만 보여 준다(어깨너머 노출 방지).
  *   비워 두면 기존 값이 그대로 유지되고, 새로 입력할 때만 교체된다 — 실수로 지워지지 않는다.
  */
-function CloudflareCredsSection({ settings, setSettings, savedTick }: { settings: Record<string, string>; setSettings: (fn: (prev: Record<string, string>) => Record<string, string>) => void; savedTick: number }) {
+function CloudflareCredsSection({ settings, setSettings, savedTick, onSave, saving }: { settings: Record<string, string>; setSettings: (fn: (prev: Record<string, string>) => Record<string, string>) => void; savedTick: number; onSave: () => void; saving: boolean }) {
   const has = (k: string) => !!(settings[k] || '').trim()
   const [edit, setEdit] = useState<Record<string, boolean>>({})
   // 저장이 끝나면 입력칸을 닫아 '설정됨 · 끝4자리' 로 되돌린다 — 그래야 반영을 눈으로 확인할 수 있다.
   useEffect(() => { if (savedTick) setEdit({}) }, [savedTick])
   const FIELDS: { key: typeof CREDENTIAL_KEYS[number]; label: string; hint: string }[] = [
-    { key: 'cf_api_token', label: 'Cloudflare API 토큰', hint: 'My Profile → API Tokens → Custom Token. 권한은 D1 = Read 하나면 됩니다. 값은 생성 화면에서 한 번만 보입니다.' },
+    // 🔑 2026-08-25 실측으로 확정된 권한 — 종전 안내는 "D1 = Read 하나면 됩니다" 였는데
+    //   그대로 만들면 **주간 백업이 안 된다**(wrangler d1 export 는 D1 = Edit 이 필요).
+    //   화면 안내가 좁아서 좁게 만들어진 토큰이 3주간 백업을 죽인 적이 있다.
+    { key: 'cf_api_token', label: 'Cloudflare API 토큰', hint: 'My Profile → API Tokens → Custom Token · 만료일은 비워 두세요(무기한). 권한: Account → D1 / Workers Scripts / Workers KV / Workers R2 / Pages = Edit · Account Settings = Read · User → API Tokens · User Details = Read. 값은 생성 화면에서 한 번만 보입니다.' },
     { key: 'cf_account_id', label: 'Cloudflare 계정 ID', hint: '대시보드 우측 사이드바에 표시됩니다.' },
   ]
   return (
@@ -565,6 +585,24 @@ function CloudflareCredsSection({ settings, setSettings, savedTick }: { settings
             </div>
           </div>
         ))}
+      </div>
+      {/**
+        * 💾 2026-08-25 — **이 카드에 저장 버튼이 없었다.**
+        *   페이지의 유일한 저장 버튼이 맨 위 헤더에 있어서, 맨 아래인 이 칸에 토큰을 붙여넣고
+        *   저장을 찾다가 못 찾는다(그날 대표가 실제로 그랬고 왕복이 여러 번 났다).
+        *   같은 `save()` 를 부르므로 동작은 헤더 버튼과 동일하다 — 손이 닿는 자리에 하나 더 둘 뿐이다.
+        */}
+      <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
+        <p className="text-xs text-gray-500">
+          {Object.keys(edit).some(k => edit[k])
+            ? '값을 붙여넣고 저장하세요. 성공하면 토스트에 “API 토큰 교체됨” 이 뜹니다.'
+            : '바꾸려면 위의 교체를 누르세요.'}
+        </p>
+        <button onClick={onSave} disabled={saving}
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          저장
+        </button>
       </div>
     </div>
   )

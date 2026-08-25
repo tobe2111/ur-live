@@ -780,7 +780,7 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (66개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (69개)
 
 - `/browse`
 - `/cart`
@@ -808,11 +808,13 @@
 - `/seller/group-buy`
 - `/seller/guide`
 - `/seller/influencer-deals`
+- `/seller/influencers`
 - `/seller/inventory`
 - `/seller/ledger`
 - `/seller/login`
 - `/seller/marketing`
 - `/seller/notify-followers`
+- `/seller/operators`
 - `/seller/orders`
 - `/seller/plus-friend-guide`
 - `/seller/products`
@@ -835,6 +837,7 @@
 - `/seller/scan`
 - `/seller/settlements`
 - `/seller/signup`
+- `/seller/stores`
 - `/seller/tier`
 - `/seller/tiktok-callback`
 - `/seller/transfers`
@@ -849,7 +852,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (256개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (276개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1078,6 +1081,9 @@
 - `POST /api/seller/delegation/:agencyId/grant`
 - `POST /api/seller/delegation/:agencyId/revoke`
 
+**/api/seller/fee-context**
+- `GET /api/seller/fee-context`
+
 **/api/seller/forgot-password**
 - `POST /api/seller/forgot-password`
 
@@ -1085,6 +1091,12 @@
 - `GET /api/seller/gb/:id`
 - `PUT /api/seller/gb/:id`
 - `GET /api/seller/gb/support-contact`
+
+**/api/seller/influencers**
+- `GET /api/seller/influencers/categories`
+- `GET /api/seller/influencers/list`
+- `GET /api/seller/influencers/outreach`
+- `POST /api/seller/influencers/outreach`
 
 **/api/seller/kakao-link-status**
 - `GET /api/seller/kakao-link-status`
@@ -1098,9 +1110,17 @@
 **/api/seller/my-seller-status**
 - `GET /api/seller/my-seller-status`
 
+**/api/seller/my-stores**
+- `GET /api/seller/my-stores`
+
 **/api/seller/onboarding**
 - `GET /api/seller/onboarding/`
 - `POST /api/seller/onboarding/complete/:step_key`
+
+**/api/seller/operators**
+- `GET /api/seller/operators`
+- `POST /api/seller/operators`
+- `POST /api/seller/operators/:userId/revoke`
 
 **/api/seller/optimal-time**
 - `GET /api/seller/optimal-time/`
@@ -1215,6 +1235,16 @@
 **/api/seller/stays-quota**
 - `GET /api/seller/stays-quota`
 
+**/api/seller/stores**
+- `POST /api/seller/stores`
+- `POST /api/seller/stores/:id/channel`
+- `POST /api/seller/stores/:id/close`
+- `GET /api/seller/stores/:id/profile`
+- `PATCH /api/seller/stores/:id/profile`
+- `POST /api/seller/stores/:sellerId/token`
+- `GET /api/seller/stores/context`
+- `POST /api/seller/stores/verify-business`
+
 **/api/seller/surface**
 - `GET /api/seller/surface`
 
@@ -1255,6 +1285,11 @@
 
 **/api/seller/voucher-catalog**
 - `GET /api/seller/voucher-catalog`
+
+**/api/seller/voucher-draft**
+- `DELETE /api/seller/voucher-draft`
+- `GET /api/seller/voucher-draft`
+- `PUT /api/seller/voucher-draft`
 
 **/api/seller/voucher-orders**
 - `GET /api/seller/voucher-orders`
@@ -1367,7 +1402,7 @@
 - `GET /api/youtube/shorts/sync`
 
 
-> 마지막 생성: 2026-08-02T15:37:42.355Z
+> 마지막 생성: 2026-08-25T15:58:06.027Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

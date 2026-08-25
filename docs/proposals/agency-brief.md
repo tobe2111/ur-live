@@ -621,7 +621,7 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (52개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (29개)
 
 - `/a/:slug`
 - `/admin/agencies`
@@ -630,42 +630,19 @@
 - `/admin/influencer-payouts`
 - `/agency`
 - `/agency-partner`
-- `/agency/calendar`
-- `/agency/campaigns`
-- `/agency/compare`
-- `/agency/contracts`
-- `/agency/coupons`
 - `/agency/delegations`
-- `/agency/events`
 - `/agency/forgot-password`
-- `/agency/group-buy`
 - `/agency/guide`
-- `/agency/incentives`
 - `/agency/introduced-stores`
-- `/agency/invites`
 - `/agency/ledger`
 - `/agency/login`
-- `/agency/match-suggestions`
-- `/agency/members`
-- `/agency/messages`
-- `/agency/notices`
-- `/agency/orders`
-- `/agency/pk`
 - `/agency/profile`
-- `/agency/promote-boosts`
 - `/agency/prospects`
-- `/agency/ranking`
 - `/agency/register`
 - `/agency/register/business`
 - `/agency/reset-password`
-- `/agency/returns`
-- `/agency/schedule`
 - `/agency/sellers`
-- `/agency/sellers/:sellerId/products`
 - `/agency/settlements`
-- `/agency/stats`
-- `/agency/stays`
-- `/agency/targets`
 - `/agency/transfers`
 - `/agency/waiting`
 - `/influencer`
@@ -676,7 +653,7 @@
 - `/influencer/settlement`
 - `/seller/prospects`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (168개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (167개)
 
 
 **/api/admin-payouts/disputes**
@@ -885,7 +862,6 @@
 - `POST /api/agency/sellers/:id/products`
 - `PUT /api/agency/sellers/:id/products/:productId`
 - `GET /api/agency/sellers/:id/stats`
-- `POST /api/agency/sellers/:id/streams`
 - `GET /api/agency/sellers/compare`
 
 **/api/agency/set-pin**
@@ -990,7 +966,7 @@
 - `POST /api/seller/promote-boosts/:id/activate`
 
 
-> 마지막 생성: 2026-08-02T15:37:42.359Z
+> 마지막 생성: 2026-08-25T15:58:06.031Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
