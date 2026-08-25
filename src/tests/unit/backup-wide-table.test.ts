@@ -22,7 +22,7 @@ function wideDb(seenSql: string[]) {
         async all<T>() {
           if (/VIRTUAL TABLE/.test(sql)) return { results: [] as T[] }
           if (/FROM sqlite_master WHERE type='table' ORDER BY name/.test(sql)) {
-            return { results: [{ name: 'wide' }] as T[] }
+            return { results: [{ name: 'products' }] as T[] }
           }
           if (/pragma_table_info/.test(sql)) return { results: cols.map((name) => ({ name })) as T[] }
           // 페이지 쿼리 — 어느 컬럼 묶음을 물었든 그 묶음만 돌려준다(실제 D1 처럼).
@@ -52,7 +52,7 @@ describe('넓은 테이블 백업 (D1 컬럼 한도)', () => {
     await backupChunked({ BACKUP_BUCKET: { put: async (key: string, body: string) => { puts.push({ key, body }) } } } as never, {
       db: wideDb(seen), label: 'x', stateDb: wideDb([]),
     })
-    const pageSqls = seen.filter((s) => /FROM "wide"/.test(s))
+    const pageSqls = seen.filter((s) => /FROM "products"/.test(s))
     expect(pageSqls.length, '페이지 쿼리가 하나도 안 나갔다 — 측정 대상 0건은 통과가 아니다').toBeGreaterThan(0)
     for (const s of pageSqls) {
       const n = [...s.matchAll(/"c\d+"/g)].length + 1   // +1 = rowid
@@ -66,7 +66,7 @@ describe('넓은 테이블 백업 (D1 컬럼 한도)', () => {
       db: wideDb([]), label: 'x', stateDb: wideDb([]),
     })
     const dump = puts.map((p) => p.body).join('\n')
-    const insert = dump.split('\n').find((l) => l.startsWith('INSERT OR IGNORE INTO "wide"'))
+    const insert = dump.split('\n').find((l) => l.startsWith('INSERT OR IGNORE INTO "products"'))
     expect(insert, 'INSERT 문이 없다').toBeTruthy()
     // 130개 컬럼 값이 전부 들어 있어야 한다 — 마지막 묶음이 빠지면 여기서 걸린다.
     for (const c of ['c0', 'c59', 'c60', 'c119', 'c129']) {
