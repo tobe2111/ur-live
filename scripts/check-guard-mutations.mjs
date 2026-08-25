@@ -2390,6 +2390,27 @@ canvas {
       '고치려던 것과 **부호만 반대인 같은 고착**이다. 끝난 레인만 판정 대상이어야 한다.',
   },
   {
+    name: '🚨 백업 실패 통보가 다시 디스코드 훅 하나에만 걸린다 (그 훅은 비어 있었다)',
+    file: '.github/workflows/d1-backup.yml',
+    find: '              await github.rest.issues.create({',
+    replace: '              await Promise.resolve({ /* 이슈 생성 제거 */ } && {',
+    test: 'src/tests/unit/backup-failure-visible.test.ts',
+    why:
+      '`DISCORD_WEBHOOK_URL` 이 실제로 비어 있어 08-05·08-12·08-19 3주 연속 실패가 통보 0 이었다. ' +
+      '그 artifact 가 월간 복원 훈련의 입력이라, 결과적으로 07-29 이후 "복원되는 것이 확인된 백업"이 0 이다. ' +
+      '설정되지 않은 시크릿에 알림을 걸면 알림이 없는 것과 같다.',
+  },
+  {
+    name: '🚨 wrangler 실패가 다시 원인을 안 남긴다 (3주치 로그가 그 상태였다)',
+    file: '.github/workflows/d1-backup.yml',
+    find: ' > tables.json 2> wrangler.err; then',
+    replace: ' > tables.json; then',
+    test: 'src/tests/unit/backup-failure-visible.test.ts',
+    why:
+      'stdout 만 파일로 보내고 stderr 를 안 붙잡으면 `bash -e` 가 그 자리에서 죽어 로그에 원인이 ' +
+      '한 줄도 안 남는다. 실패를 3주간 못 고친 이유가 정확히 이것이다 — 무엇이 틀렸는지 알 수가 없었다.',
+  },
+  {
     name: '🪦 사라진 하트비트 이름을 그냥 보내 준다 (영원한 빨간불이 채널을 침묵시킨다)',
     file: 'scripts/check-beat-name-retirement.mjs',
     find: '  return removed.filter((n) => !mapped.has(n) && !String(mapSrc || \'\').includes(`${ALLOW_MARK} ${n}`))',

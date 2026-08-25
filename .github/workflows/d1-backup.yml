@@ -24,6 +24,15 @@ on:
     - cron: '0 20 * * 3' # 수요일 20:00 UTC (Worker cron 은 일요일 20:00 UTC — 분산)
   workflow_dispatch:
 
+# 🚨 2026-08-25: 실패를 **볼 수 있게** — 이슈를 열려면 issues:write 가 필요하다.
+#   그 전엔 알림이 `DISCORD_WEBHOOK_URL` 하나였는데 그게 **비어 있었다**(로그 실측). 결과:
+#   08-05·08-12·08-19 **3주 연속 실패가 아무 데도 안 알려졌다.** 마지막 성공은 07-29 이고,
+#   월간 복원 훈련(d1-restore-drill)은 바로 그 07-29 artifact 를 08-01 에 한 번 검증한 게 전부다
+#   — 즉 **그 뒤로 검증된 백업이 하나도 없다.**
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   backup:
     runs-on: ubuntu-latest
@@ -60,8 +69,18 @@ jobs:
           #   --table 로 지정해 내보냄. products_fts 및 그 shadow(products_fts_*)는 검색 인덱스라 배포 시
           #   마이그레이션(0080)이 자동 재생성 → 백업 제외해도 무손실.
           echo "==> 실 테이블 목록 조회 (가상테이블/FTS/sqlite 내부 제외)"
-          npx wrangler@4 d1 execute "$DB_NAME" --remote --json \
-            --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT LIKE 'products_fts%' AND (sql IS NULL OR sql NOT LIKE 'CREATE VIRTUAL TABLE%') ORDER BY name" > tables.json
+          # 🩸 2026-08-25: 종전엔 stdout 만 파일로 보내고 **stderr 를 안 붙잡아**, 이 명령이 죽으면
+          #   로그에 원인이 한 줄도 안 남았다(3주치 실패 로그가 전부 그 상태였다 — `bash -e` 라
+          #   다음 `cat` 도 못 가고 바로 끝난다). 실패하면 **stderr 를 그대로 찍고** 죽는다.
+          if ! npx wrangler@4 d1 execute "$DB_NAME" --remote --json \
+            --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT LIKE 'products_fts%' AND (sql IS NULL OR sql NOT LIKE 'CREATE VIRTUAL TABLE%') ORDER BY name" > tables.json 2> wrangler.err; then
+            echo "❌ 테이블 목록 조회 실패 — wrangler stderr:"
+            cat wrangler.err
+            echo "---"
+            echo "가장 흔한 원인: CLOUDFLARE_D1_BACKUP_TOKEN 이 만료됐거나 D1 권한이 부족하다"
+            echo "(이 워크플로는 그 시크릿이 있으면 CLOUDFLARE_API_TOKEN 으로 폴백하지 **않는다**)."
+            exit 1
+          fi
           cat tables.json | head -c 300; echo
           TABLE_ARGS=$(node -e "
             const fs=require('fs');
@@ -74,7 +93,9 @@ jobs:
             process.stdout.write(rows.map(r=>'--table '+r.name).join(' '));
           ")
           echo "==> wrangler d1 export $DB_NAME (--remote, FTS 제외 실 테이블만)"
-          npx wrangler@4 d1 export "$DB_NAME" --remote --output=backup.sql $TABLE_ARGS
+          if ! npx wrangler@4 d1 export "$DB_NAME" --remote --output=backup.sql $TABLE_ARGS 2> export.err; then
+            echo "❌ export 실패 — wrangler stderr:"; cat export.err; exit 1
+          fi
           ls -la backup.sql
           # 빈/깨진 덤프 방어 — schema 문장이 하나도 없으면 실패 처리
           if ! grep -qi 'CREATE TABLE' backup.sql; then
@@ -107,4 +128,59 @@ jobs:
             curl -fsS -X POST -H 'Content-Type: application/json' \
               -d "{\"content\":\"🚨 D1 weekly backup (GitHub Actions) FAILED — run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
               "$DISCORD_WEBHOOK_URL" || true
+          else
+            echo "⚠️ DISCORD_WEBHOOK_URL 미설정 — 아래 이슈 스텝이 유일한 통보 경로다"
           fi
+
+      # 🚨 2026-08-25 신설 — **설정되지 않은 시크릿에 알림을 걸지 않는다.**
+      #   위 디스코드 훅은 비어 있었고(실측), 그래서 3주 연속 실패가 통보 0 이었다.
+      #   이슈는 시크릿 없이 `GITHUB_TOKEN` 만으로 열린다 = 꺼질 수 없는 경로다.
+      #   ⚠️ 열려 있으면 코멘트만 단다 — 매주 새 이슈를 쌓으면 아무도 안 읽게 된다(#845 의 교훈).
+      - name: 실패 이슈 열기/갱신
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'backup-failed',
+            })
+            const body = `🚨 **주간 D1 백업 실패** (${now} KST)\n\n`
+              + `실행 로그: ${run}\n\n`
+              + `이 백업이 곧 **월간 복원 훈련(d1-restore-drill)의 입력**이다 — 실패가 이어지면 `
+              + `"복원되는 것이 확인된 백업"이 0 이 된다.\n`
+              + `복구되면 자동으로 닫힌다.`
+            if (issues[0]) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: issues[0].number, body,
+              })
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: `🚨 [백업] 주간 D1 백업 실패 — ${now}`, body, labels: ['backup-failed'],
+              })
+            }
+
+      # ✅ 성공하면 열려 있던 실패 이슈를 닫는다 — 안 닫으면 그 이슈가 또 영구 빨간불이 된다
+      #   (오늘 `d1-backup` 하트비트로 정확히 그 사고를 봤다).
+      - name: 복구 시 실패 이슈 닫기
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'backup-failed',
+            })
+            const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
+            for (const it of issues) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: it.number,
+                body: `🟢 **백업 복구** (${now} KST) — 이번 회차 성공. 이슈를 닫는다.`,
+              })
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: it.number, state: 'closed',
+              })
+            }
