@@ -137,7 +137,8 @@ const MUTATIONS = [
   },
   {
     name: '🕓 분 목록 cron 을 "매시 1회"로 오해석한다(멈춰도 경보가 안 울린다)',
-    file: 'src/worker/utils/cron-heartbeat.ts',
+    // 🩸 2026-08-25: 주기 계산이 cron-cadence.ts 로 이사했다 — 좌표를 안 옮기면 '낡은 지도'.
+    file: 'src/worker/utils/cron-cadence.ts',
     find: "else if (hour === '*') base = Math.max(1, Math.floor(60 / Math.max(1, (min || '').split(',').length)))",
     replace: "else if (hour === '*') base = 60",
     test: 'src/tests/unit/backup-cadence.test.ts',
@@ -5016,7 +5017,8 @@ canvas {
   },
   {
     name: '⏰ 일간 관용이 ×2 로 되돌아감(하루를 건너뛰어도 조용해진다)',
-    file: 'src/worker/utils/cron-heartbeat.ts',
+    // 🩸 2026-08-25: `staleToleranceMinutes` 가 cron-cadence.ts 로 이사했다 — 좌표도 같이.
+    file: 'src/worker/utils/cron-cadence.ts',
     find: '  if (base >= 60 * 24) return base + Math.min(Math.floor(base / 4), 6 * 60)',
     replace: '  if (false) return 0',
     test: 'src/tests/unit/cron-stale-detection.test.ts',
