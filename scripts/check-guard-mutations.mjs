@@ -5300,6 +5300,48 @@ canvas {
       '매번 치환 직후엔 깨끗했다가 옛 이름이 슬금슬금 돌아왔다 — 새 문구를 쓰는 사람이 낡은 문서를 보고 쓴다.',
   },
   {
+    name: '🏪 "내 가게 등록" 버튼이 다시 사업자 가입 폼으로 보낸다',
+    file: 'src/pages/JoinChoicePage.tsx',
+    find: "    to: '/store/new',",
+    replace: "    to: '/seller/register/supplier',",
+    test: 'src/tests/unit/urshop-naming.test.ts',
+    why:
+      '확정 순서는 **매장 등록이 선행**인데(StoreClaimPage 헤더), 문구는 "내 가게 등록"이면서 ' +
+      '목적지가 사업자 가입 폼이면 등록하러 온 사장님이 사업자등록번호 화면에서 멈춘다. ' +
+      '2026-08-26 실측으로 그런 진입점이 **14곳** 있었다 — 버튼은 눌리고 화면은 떠서 아무도 몰랐다.',
+  },
+  {
+    name: '🏷️ 유어샵을 "새로 여는 것"처럼 다시 말한다',
+    file: 'src/pages/user-profile/RoleCtaGrid.tsx',
+    find: "t('roleCta.openShop', { defaultValue: '내 가게 등록' })",
+    replace: "t('roleCta.openShop', { defaultValue: '내 쇼핑몰 열기' })",
+    test: 'src/tests/unit/urshop-naming.test.ts',
+    why:
+      '유어샵은 **가입 시점에 자동 생성**된다(KakaoAuthService.upsertUser). 새로 만드는 것은 매장이다. ' +
+      '섞으면 이미 샵이 있는 사람에게 "만들기" 화면을 다시 들이밀게 된다 — 대표가 실제로 지적한 사고.',
+  },
+  {
+    name: '🔎 검색결과 문구가 사람을 다시 신분으로 부른다',
+    file: 'src/shared/seo/consumer-surfaces.ts',
+    find: "    title: '동네 딜 소개하고 수익 받기',",
+    replace: "    title: '크리에이터 모집',",
+    test: 'src/tests/unit/urshop-naming.test.ts',
+    why:
+      '대표 확정 모델은 "사람을 인플루언서/대행사로 나누지 않고 행위 2개(담기·운영)로 말한다" 이고, ' +
+      'SEO 표는 **검색결과에 그대로 노출**되는 자리다. 여기서 새면 우리가 안 쓰기로 한 말로 사람들이 우리를 찾는다.',
+  },
+  {
+    name: '🌏 옛 이름이 라틴문자로 다시 돌아온다 (en/es/fr)',
+    file: 'public/locales/en/translation.json',
+    find: '"makeMine": "Make my own UrShop — earn by recommending"',
+    replace: '"makeMine": "Make my own linkshop — earn by recommending"',
+    test: 'src/tests/unit/urshop-naming.test.ts',
+    why:
+      '2026-08-26 실측: 한글 \'링크샵\' 만 지우고 "나머지는 번역돼 있으니 됐다" 로 넘긴 결과 ' +
+      'en/es/fr 값에 linkshop 이 **25건** 살아 있었다. 옛 이름은 **언어를 바꿔서 돌아온다** — ' +
+      'N1 이 한글만 보던 사각지대였다.',
+  },
+  {
     name: '🏪 "판매하세요" 가 비셀러를 다시 로그인 벽으로 보낸다',
     file: 'src/utils/seller-entry.ts',
     find: "  return hasSellerToken() ? '/seller' : '/partners'",
