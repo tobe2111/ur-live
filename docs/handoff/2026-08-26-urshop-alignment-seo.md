@@ -6,6 +6,43 @@
 
 ---
 
+## 🩸 이번 세션이 낸 사고 — 다음 세션은 **첫 액션으로** 이걸 확인할 것
+
+```bash
+ls .git/hooks/pre-commit || bash scripts/install-git-hooks.sh
+```
+
+**원격 컨테이너에는 git 훅이 없다.** 매번 새로 만들어지고 `.git/hooks/` 는 클론에 안 딸려 온다.
+CLAUDE.md 가 2026-08-25 에 이미 적어 둔 것을 내가 안 읽고 시작했고, 그래서 **같은 사고를 냈다.**
+
+무슨 일이 있었나: `audit-gate` 가 계속 타임아웃돼서 **세 번 띄웠는데 셋 다 살아 있었다.**
+그 스크립트의 `check-guard-mutations` 는 가드가 진짜 도는지 보려고 **일부러 결함을 심었다가
+되돌리는데**, 셋이 동시에 같은 작업트리를 만지는 사이 `git add -A` 가 주입본을 집어갔다.
+
+커밋에 섞여 들어간 것(전부 내가 건드린 적 없는 파일):
+
+| 파일 | 주입된 결함 | 배포됐다면 |
+|---|---|---|
+| `worker-ads/index.ts` | 존재하지 않는 `__probe-lane` import | **유어애즈 워커 런타임 크래시** |
+| `worker-ads/index.ts` | `!laneAlarmOn` 게이트 제거 | 2026-08-03 CPU 사망(6시간 20분)의 그 원인 |
+| `company-classify.ts` | breadcrumb 정규식 약화 | 업체명 오분류 |
+| `franchise-collect.ts` | 공공 API 파라미터 `jngBizCrtraYr`→`yr` | 프랜차이즈 수집 전멸 |
+| `error-rate-monitor.ts` | 5xx 집계 action `'5xx_path'`→`'x'` | 에러율 관측 무력화 |
+| `column-repairs.ts` | `ALTER TABLE zz ADD x TEXT` 가짜 항목 | repair-schema 오염 |
+
+되돌림: `1ba82ae`. 훅 설치 직후 **그 커밋을 실제로 한 번 막았다**(죽은 프로세스의 자물쇠 잔존 감지).
+
+### 여기서 배운 것 셋
+
+1. **원격 세션 첫 액션 = 훅 설치 확인.** 가드를 만드는 것 · 등록되는 것 · **실제로 도는 것**은 셋 다 다른 일이다.
+2. **`audit-gate` 를 두 번 이상 동시에 띄우지 말 것.** 타임아웃이 나도 기다리거나 `TaskStop` 으로
+   먼저 죽여라 — 주입이 서로 겹치면 트리가 계속 흔들린다.
+3. **테스트가 깨지면 내 변경 탓이라고 먼저 단정하지 말 것.** `kr-phone-format` 이 빨간불이길래
+   내가 바꾼 문구 탓인 줄 알고 한참 엉뚱한 데를 팠다. `git diff origin/main...HEAD -- <무관해 보이는 경로>`
+   를 먼저 훑었으면 1분이었다.
+
+---
+
 ## 다음 세션의 첫 액션
 
 배포 후 **라이브 curl 로만 판정되는 것**이 셋 있다(HTMLRewriter·시드는 단위테스트 밖):
