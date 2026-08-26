@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DetailGallery from './group-buy/DetailGallery'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
@@ -34,6 +34,8 @@ import { isDemoSlug } from '@/shared/constants/demo-products'
 import DealPurchaseBox from './group-buy/DealPurchaseBox'
 import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
 import OtherDealsRow from './group-buy/OtherDealsRow'
+import ShareRewardBanner from './group-buy/ShareRewardBanner'
+import DeferUntilVisible from './group-buy/DeferUntilVisible'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -44,23 +46,6 @@ const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
 const ProductReviews = lazy(() => import('./product-detail/ProductReviews'))
 // 🎟️ 2026-07-06 (§2-B B1): 인플루언서 공구 제안 모달 (게이트 OFF, lazy)
 const GbProposeModal = lazy(() => import('./group-buy/GbProposeModal'))
-
-// 🎯 2026-06-23 (대표 신고 — '불필요한 로딩들'): below-fold 섹션(지도/후기)의 lazy 청크가 첫 paint 에
-//   즉시 로드돼 회색 Suspense 블록이 화면 밖에서 깜빡였음. 뷰포트 근처(300px)에 올 때만 mount → 그전엔
-//   공간만 예약(중립, 로딩 표시 X). 스크롤해 도달하면 그때 로드(정상). RestaurantMiniMap 내부 SDK 게이트와 별개의 chunk 게이트.
-function DeferUntilVisible({ minHeight, children }: { minHeight: number; children: ReactNode }) {
-  const [visible, setVisible] = useState(false)
-  const ref = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    if (visible) return
-    const el = ref.current
-    if (!el || typeof IntersectionObserver === 'undefined') { setVisible(true); return }
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect() } }, { rootMargin: '300px' })
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [visible])
-  return <div ref={ref} style={{ minHeight: visible ? undefined : minHeight }}>{visible ? children : null}</div>
-}
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
@@ -100,7 +85,7 @@ interface GroupBuyDetail {
   seller_id?: number
   seller_name?: string
   seller_username?: string
-  // 🔗 2026-06-21 (대표 제안): 셀러의 유저 링크샵 handle. 있으면 /u/{handle}(통합 링크샵)로, 없으면 /profile 폴백.
+  // 🔗 2026-06-21 (대표 제안): 셀러의 유저 유어샵 handle. 있으면 /u/{handle}(통합 유어샵)로, 없으면 /profile 폴백.
   seller_handle?: string
   seller_avatar?: string
   // 🛡️ 2026-05-27: 셀러 SNS 버튼 — 채팅/매너온도 X, SNS 만.
@@ -132,7 +117,7 @@ export default function GroupBuyDetailPage() {
   }, [])
   // 🛡️ 2026-05-15: 인플루언서 link 진입 (?ref=) — 단독 랜딩 모드
   const refUserId = searchParams.get('ref')
-  // 🧭 2026-06-10 (링크샵 적립): 핀 리다이렉트 ?aff=(유저 큐레이터) — 인플 ?ref= 와 별도 레일
+  // 🧭 2026-06-10 (유어샵 적립): 핀 리다이렉트 ?aff=(유저 큐레이터) — 인플 ?ref= 와 별도 레일
   // 🧭 2026-07-11 (감사 §R2): ?ref=(인플 share_url) 도 커미션 레일에 저장 — 기존엔 랜딩 배너
   //   플래그(refUserId)로만 쓰고 미저장 → share_url 진입 구매가 무적립. aff 우선(명시적 공구 파라미터).
   useEffect(() => { storeAffiliateRef(searchParams.get('aff') || searchParams.get('ref')) }, [searchParams])
@@ -404,7 +389,7 @@ export default function GroupBuyDetailPage() {
         if (code === 'INSUFFICIENT_POINTS') {
           // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
           if (TOPUP_DISABLED) {
-            toast.error('딜이 부족해요. 딜은 친구 초대·링크샵 추천으로 모을 수 있어요.')
+            toast.error('딜이 부족해요. 딜은 친구 초대·유어샵 추천으로 모을 수 있어요.')
             return
           }
           const charge = await confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')
@@ -586,7 +571,7 @@ export default function GroupBuyDetailPage() {
           >
             {detail.name}
           </h2>
-          {/* 🛡️ 2026-06-12: 내 링크샵 핀 — 공유 옆 1탭 (ProductCard 의 PinButton 재사용) */}
+          {/* 🛡️ 2026-06-12: 내 유어샵 핀 — 공유 옆 1탭 (ProductCard 의 PinButton 재사용) */}
           <PinButton
             productId={detail.id}
             price={detail.price}
@@ -693,6 +678,8 @@ export default function GroupBuyDetailPage() {
           </div>
         )}
 
+        {/* 🎁 2026-08-26: 활성 딜 보유자에게만 뜬다(딜 없으면 null) — 근거는 ShareRewardBanner 헤더 주석. */}
+        <div className="px-[18px]"><ShareRewardBanner sellerId={detail.seller_id as number | null} productId={detail.id} /></div>
         {/* 타이틀 — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번 나온다). */}
         <div className="lg:hidden" style={{ padding: '20px 18px 0' }}>
           {detail.restaurant_name && (

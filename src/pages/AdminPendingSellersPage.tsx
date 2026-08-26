@@ -97,7 +97,7 @@ export default function AdminPendingSellersPage() {
     }
   }
 
-  // 🔗 2026-06-23 (대표 요청): 셀러 ↔ 유저(링크샵 handle) 수동 연결. 이메일이 달라 자동연결이 안 되는
+  // 🔗 2026-06-23 (대표 요청): 셀러 ↔ 유저(유어샵 handle) 수동 연결. 이메일이 달라 자동연결이 안 되는
   //   셀러를, 운영자가 셀러 ID + 유저 핸들로 직접 묶음 → /u/{handle} 가 셀러 storefront 표시 + 프로필 링크 /u/ 통일.
   const [linkSellerId, setLinkSellerId] = useState('')
   const [linkHandle, setLinkHandle] = useState('')
@@ -157,11 +157,11 @@ export default function AdminPendingSellersPage() {
         </header>
 
         <div className="max-w-5xl mx-auto px-4 py-4 space-y-3">
-          {/* 🔗 셀러 ↔ 유저(링크샵) 수동 연결 도구 */}
+          {/* 🔗 셀러 ↔ 유저(유어샵) 수동 연결 도구 */}
           <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <p className="text-sm font-bold text-gray-900">🔗 셀러 ↔ 유저(링크샵) 연결</p>
+            <p className="text-sm font-bold text-gray-900">🔗 셀러 ↔ 유저(유어샵) 연결</p>
             <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-              이메일이 달라 자동 연결이 안 된 셀러를 유저 링크샵에 직접 묶습니다. 연결하면 셀러 프로필/공구가 <b>/u/&#123;핸들&#125;</b> 로 통일돼요.
+              이메일이 달라 자동 연결이 안 된 셀러를 유저 유어샵에 직접 묶습니다. 연결하면 셀러 프로필/공구가 <b>/u/&#123;핸들&#125;</b> 로 통일돼요.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <input
@@ -194,7 +194,7 @@ export default function AdminPendingSellersPage() {
                 </span>
               </p>
               <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                링크샵 유저와 아직 연결되지 않은 셀러입니다. 이메일이 정확히 1명과 일치하면 추정 매칭이 표시돼요 — <b>연결</b> 한 번이면 <b>/u/&#123;핸들&#125;</b> 로 통일됩니다. 매칭이 없으면 위 도구로 핸들을 직접 입력하세요.
+                유어샵 유저와 아직 연결되지 않은 셀러입니다. 이메일이 정확히 1명과 일치하면 추정 매칭이 표시돼요 — <b>연결</b> 한 번이면 <b>/u/&#123;핸들&#125;</b> 로 통일됩니다. 매칭이 없으면 위 도구로 핸들을 직접 입력하세요.
               </p>
               <div className="mt-3 divide-y divide-gray-100">
                 {unlinked.map((u) => (

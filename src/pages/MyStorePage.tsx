@@ -137,7 +137,7 @@ export default function MyStorePage() {
       </div>
 
       <div className="ur-content-medium px-4 lg:px-8 pt-4">
-        {/* 🔗 2026-07-02 (대표 #5 — 대시보드 안 가도 링크샵/마이에서 셀러 기능 조정):
+        {/* 🔗 2026-07-02 (대표 #5 — 대시보드 안 가도 유어샵/마이에서 셀러 기능 조정):
             고빈도 셀러 작업 빠른 진입. 세밀 설정(정산계좌·세금·커미션·알림톡)만 셀러 대시보드로. */}
         <div className="grid grid-cols-3 gap-2 pb-4">
           {[
@@ -145,7 +145,7 @@ export default function MyStorePage() {
             { label: '상품 관리', emoji: '🏷️', to: '/seller/products' },
             { label: '상품 등록', emoji: '➕', to: '/seller/products/new' },
             { label: '이용권 등록', emoji: '🎟️', to: '/seller/meal-voucher/new' },
-            { label: '내 링크샵', emoji: '🔗', to: '/u/me' },
+            { label: '내 유어샵', emoji: '🔗', to: '/u/me' },
             { label: '셀러 대시보드', emoji: '⚙️', to: '/seller' },
           ].map(a => (
             <button

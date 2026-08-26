@@ -509,7 +509,7 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
   }
 });
 
-// 🔗 2026-06-23 (대표 요청): 셀러 ↔ 유저(링크샵 handle) 수동 연결.
+// 🔗 2026-06-23 (대표 요청): 셀러 ↔ 유저(유어샵 handle) 수동 연결.
 //   same-email 자동연결이 안 되는(이메일 다른) 계정을 운영자가 직접 묶음 → /u/{handle} 가 셀러
 //   storefront 를 표시 + 공구/상품의 셀러 프로필 링크가 /profile 대신 /u/{handle} 로 통일됨.
 adminSellersRoutes.patch('/sellers/:id/link-user', cors(), async (c) => {

@@ -82,7 +82,7 @@ export default function SellerBusinessInfoPage() {
     postal_code: '',
     address: '',
     address_detail: '',
-    mail_order_number: '', // 🖼️ 2026-07-01 통신판매업신고번호 (링크샵 판매자 정보 표시용)
+    mail_order_number: '', // 🖼️ 2026-07-01 통신판매업신고번호 (유어샵 판매자 정보 표시용)
     phone: '',
     email: '',
     onnuri_merchant: false // 🏪 2026-07-05 온누리상품권 가맹 (동네딜 카드/상세 뱃지)

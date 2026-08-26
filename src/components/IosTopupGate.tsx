@@ -25,7 +25,7 @@ function TopupClosedNotice() {
       <h1 className="text-lg font-bold text-gray-900 dark:text-white">딜 충전이 종료되었어요</h1>
       <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
         이제 딜은 충전이 아니라 <b className="text-gray-900 dark:text-white">활동으로 모으는 리워드</b>예요.<br />
-        친구 초대·링크샵 추천으로 딜을 모아 교환권과 이용권에 사용하세요.<br />
+        친구 초대·유어샵 추천으로 딜을 모아 교환권과 이용권에 사용하세요.<br />
         이미 보유하신 딜은 그대로 사용·환불 가능합니다.
       </p>
       <div className="mt-6 flex gap-2">

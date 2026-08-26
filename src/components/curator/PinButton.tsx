@@ -65,7 +65,7 @@ export default function PinButton({ productId, price, variant = 'card-overlay', 
   return (
     <button
       type="button"
-      aria-label={pinned ? '내 링크샵에서 제거' : '내 링크샵에 핀 추가'}
+      aria-label={pinned ? '내 유어샵에서 제거' : '내 유어샵에 핀 추가'}
       onClick={handleClick}
       disabled={isPinning}
       className={`${baseStyle} ${className} ${isPinning ? 'opacity-50 cursor-wait' : ''}`}

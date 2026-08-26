@@ -41,7 +41,7 @@ export function issuedVoucherLabel(p: { deal_only?: number | null; category?: st
  *     ⓑ 엉뚱한 사람을 막는다 — users.id 가 우연히 그 sellers.id 와 같은 숫자면 **무고한 구매자가 403**.
  *   두 방향 다 조용하다(에러가 안 난다). 실제 연결고리는 `sellers.linked_user_id` 뿐이다.
  *
- * 연결이 아직 백필 안 된 계정을 위해 **같은 이메일 폴백**도 본다 — 링크샵/셀러 페이로드
+ * 연결이 아직 백필 안 된 계정을 위해 **같은 이메일 폴백**도 본다 — 유어샵/셀러 페이로드
  * (`seller-public-payload.ts`)가 이미 쓰는 것과 같은 폴백이라 판정이 갈리지 않는다.
  *
  * @returns 이 유저가 그 상품의 **판매자 본인**이면 true.

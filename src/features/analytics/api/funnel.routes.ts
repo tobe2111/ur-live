@@ -26,7 +26,7 @@ export const funnelRoutes = new Hono<{ Bindings: Env }>()
 // 화이트리스트 — 이탈 지도 6지점. 이 밖의 이벤트는 무시(오염/남용 방지).
 const FUNNEL_EVENTS = new Set([
   'app_open',            // 세션 시작(세션당 1회) — DAU/리텐션
-  'login_wall_shown',    // 로그인 벽 노출(결제/링크샵) — 이탈 1위 후보
+  'login_wall_shown',    // 로그인 벽 노출(결제/유어샵) — 이탈 1위 후보
   'login_succeeded',     // 로그인 성공
   'checkout_started',    // 결제 시작
   'payment_succeeded',   // 결제 완료

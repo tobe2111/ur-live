@@ -112,7 +112,7 @@ async function getRoleAndId(c: { env: Bindings; req: { header: (k: string) => st
       if (p.user_id || p.sub) return { role: 'user', id: Number(p.user_id || p.sub) }
     } catch { /* Bearer 실패 시 세션 쿠키로 폴백 */ }
   }
-  // 🏭 2026-06-05 (사용자 신고 — 링크샵 사진 업로드 401): 카카오 유저는 Bearer 없이 httpOnly 세션 쿠키
+  // 🏭 2026-06-05 (사용자 신고 — 유어샵 사진 업로드 401): 카카오 유저는 Bearer 없이 httpOnly 세션 쿠키
   //   (ur_session) 로 인증됨. 기존엔 Bearer 만 검사해 401. requireAuth 와 동일한 parseSessionCookie 로 폴백.
   try {
     const cookieHeader = c.req.header('Cookie')
@@ -194,7 +194,7 @@ uploadRoutes.post('/upload/image', cors(), rateLimit({ action: 'image-upload', m
     const finalSize = await resizeStoredImageInPlace(c.env, new URL(c.req.url).origin, key, detected, file.size)
 
     // 5. 공개 URL.
-    // 🏭 2026-06-05 (사용자 신고 — 링크샵 배경 이미지 실패): PUBLIC_R2_URL 미설정 시 'r2://key'(실 URL 아님)를
+    // 🏭 2026-06-05 (사용자 신고 — 유어샵 배경 이미지 실패): PUBLIC_R2_URL 미설정 시 'r2://key'(실 URL 아님)를
     //   반환해 업로드 이미지(배너 등)가 깨졌음. 사업자등록증과 동일하게 same-origin 워커 서빙(/api/media/*)으로.
     //   key 는 'uploads/...' prefix 라 /media/:key 가 허용·서빙. MEDIA_BUCKET 만 있으면 항상 표시됨.
     const publicBase = c.env.PUBLIC_R2_URL || ''

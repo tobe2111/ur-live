@@ -5290,6 +5290,26 @@ canvas {
       '매장에서 더 뗀 것이고 되돌리기가 훨씬 비싸다(환급 + 신뢰).',
   },
   {
+    name: '🏷️ 옛 이름 "링크샵" 이 사용자 화면으로 돌아온다',
+    file: 'src/components/main/BottomNav.tsx',
+    find: "label: t('nav.linkshop'",
+    replace: "label: '링크샵' || t('nav.linkshop'",
+    test: 'src/tests/unit/urshop-naming.test.ts',
+    why:
+      '이 레포는 같은 일괄 치환을 세 번 했고(식사권→공구권→이용권, 유통사→판매사, 링크샵→유어샵) ' +
+      '매번 치환 직후엔 깨끗했다가 옛 이름이 슬금슬금 돌아왔다 — 새 문구를 쓰는 사람이 낡은 문서를 보고 쓴다.',
+  },
+  {
+    name: '🏪 "판매하세요" 가 비셀러를 다시 로그인 벽으로 보낸다',
+    file: 'src/utils/seller-entry.ts',
+    find: "  return hasSellerToken() ? '/seller' : '/partners'",
+    replace: "  return '/seller'",
+    test: 'src/tests/unit/urshop-naming.test.ts',
+    why:
+      '`/seller` 는 requireSeller 라 셀러 토큰이 없으면 `/seller/login` 으로 튕긴다. 입점에 관심을 ' +
+      '보인 사장님이 안내가 아니라 문 닫힘을 만나는 것이고, 에러가 안 나서 아무도 모른다.',
+  },
+  {
     name: '☎️ 담당자 전화번호 없이 매장 등록이 통과된다',
     file: 'src/features/seller/api/seller-stores.routes.ts',
     find: '    if (!isManagerPhone(managerPhone)) {',

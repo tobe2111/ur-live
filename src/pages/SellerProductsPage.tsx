@@ -194,7 +194,7 @@ export default function SellerProductsPage() {
           }
         />
 
-        {/* 🗑️ 2026-06-26 (대표 — '의미 없음'): 셀러 트래킹 링크(/browse?seller=) 제거 — 쇼핑 숨김 + 링크샵(/u/{handle})이 정식 공유 경로. */}
+        {/* 🗑️ 2026-06-26 (대표 — '의미 없음'): 셀러 트래킹 링크(/browse?seller=) 제거 — 쇼핑 숨김 + 유어샵(/u/{handle})이 정식 공유 경로. */}
 
         {/* Error Message */}
         {error && (

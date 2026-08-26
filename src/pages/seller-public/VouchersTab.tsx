@@ -1,6 +1,6 @@
-// 🏁 2026-07-07 (대표 — "이용권 UI 저러면 안되지"): 링크샵 카드 단일화. 이용권도 표준 BrowseProductCard
+// 🏁 2026-07-07 (대표 — "이용권 UI 저러면 안되지"): 유어샵 카드 단일화. 이용권도 표준 BrowseProductCard
 //   2열 그리드로 — 내 상품·추천템과 동일한 그라데이션 카드(★평점·할인·구매수 내장). "카드 1종"(2026-06-25 대표).
-// 🧹 2026-07-20 (링크샵 전수조사): 도달불가 빈-상태 분기 제거(호출부가 gridVouchers.length>0 일 때만 렌더) +
+// 🧹 2026-07-20 (유어샵 전수조사): 도달불가 빈-상태 분기 제거(호출부가 gridVouchers.length>0 일 때만 렌더) +
 //   @deprecated textClass·미사용 isOwner prop 제거.
 import BrowseProductCard from '@/pages/browse/BrowseProductCard'
 import type { Product as BrowseProduct } from '@/pages/browse/types'

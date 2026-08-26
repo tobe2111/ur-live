@@ -68,7 +68,7 @@ export default function ConsumerFrameRails() {
             {[
               { icon: ShieldCheck, title: t('frameRails.valTrust', { defaultValue: '유어딜 안전결제' }), desc: t('frameRails.valTrustDesc', { defaultValue: '결제·정산을 보증해요' }) },
               { icon: Percent, title: t('frameRails.valDeal', { defaultValue: '매일 새로운 동네 딜' }), desc: t('frameRails.valDealDesc', { defaultValue: '할인가로 발견·구매' }) },
-              { icon: Store, title: t('frameRails.valShop', { defaultValue: '내 쇼핑몰, 링크샵' }), desc: t('frameRails.valShopDesc', { defaultValue: '누구나 5분이면 오픈' }) },
+              { icon: Store, title: t('frameRails.valShop', { defaultValue: '내 쇼핑몰, 유어샵' }), desc: t('frameRails.valShopDesc', { defaultValue: '누구나 5분이면 오픈' }) },
             ].map((v) => (
               <div key={v.title} className="flex items-start gap-2.5">
                 <span className="mt-0.5 w-7 h-7 shrink-0 rounded-lg bg-gray-900 dark:bg-white/10 text-white dark:text-white flex items-center justify-center">
@@ -114,7 +114,7 @@ export default function ConsumerFrameRails() {
       >
         <div className="pointer-events-auto flex flex-col gap-4">
           {/* 🧭 2026-07-03 (대표 — 바로가기 업데이트): 하단 네비 정본 5탭과 통일
-              (홈·쇼핑·이용권·링크샵·마이). 낡은 라벨(교환권/내 지갑)·중복 동네딜(→은퇴한 /group-buy) 제거. */}
+              (홈·쇼핑·이용권·유어샵·마이). 낡은 라벨(교환권/내 지갑)·중복 동네딜(→은퇴한 /group-buy) 제거. */}
           <div className={`${cardCls} p-2`}>
             <p className="px-3.5 pt-2 pb-1 text-[11px] font-bold tracking-wide text-gray-500 dark:text-gray-400">
               {t('frameRails.quicklinks', { defaultValue: '바로가기' })}
@@ -124,7 +124,7 @@ export default function ConsumerFrameRails() {
                 맞는 정본 라벨 "교환권"(하단 네비 탭2와 동일 Gift 아이콘)으로 정정. */}
             <QuickLink icon={Gift} label={t('nav.vouchers', { defaultValue: '교환권' })} onClick={() => navigate('/vouchers')} />
             <QuickLink icon={Ticket} label={t('nav.myGbVouchers', { defaultValue: '이용권' })} onClick={() => navigate('/my-vouchers')} />
-            <QuickLink icon={Sparkles} label={t('nav.linkshop', { defaultValue: '링크샵' })} onClick={() => navigate('/u/me')} />
+            <QuickLink icon={Sparkles} label={t('nav.linkshop', { defaultValue: '유어샵' })} onClick={() => navigate('/u/me')} />
             <QuickLink icon={User} label={t('nav.my', { defaultValue: '마이' })} onClick={() => navigate('/user/profile')} />
           </div>
 

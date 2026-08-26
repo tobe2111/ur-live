@@ -139,7 +139,7 @@ app.post('/', rateLimit({ action: 'creator-claim', max: 30, windowSec: 3600 }), 
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const code = String(b.code ?? '').trim().toUpperCase().slice(0, 32)
   if (!/^[A-Z0-9]{8,32}$/.test(code)) return c.json({ success: false, error: '초대 코드 형식이 올바르지 않습니다' }, 400)
-  // 소비자 세션 쿠키만 인정(역할 토큰 무관 — 링크샵/적립의 주체는 소비자 계정).
+  // 소비자 세션 쿠키만 인정(역할 토큰 무관 — 유어샵/적립의 주체는 소비자 계정).
   const su = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['user']).catch(() => null)
   if (!su) return c.json({ success: false, need_login: true, error: '로그인이 필요합니다' }, 401)
   const uid = await resolveUserId(adsLeadsDb(c.env), su.userId, su.isDbId)

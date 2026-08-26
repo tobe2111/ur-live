@@ -105,7 +105,7 @@ export async function clawbackVoucherCommission(
     } catch (e) { if (import.meta.env?.DEV) console.warn('[agency intro clawback]', e) }
   }
 
-  // 🧭 2026-06-10 (링크샵×교환권 적립 루프): 유저-큐레이터 레일(affiliate_earnings)도 동일 비례 역전.
+  // 🧭 2026-06-10 (유어샵×교환권 적립 루프): 유저-큐레이터 레일(affiliate_earnings)도 동일 비례 역전.
   //   /track 이 적립 시 user_points 즉시 충전하므로 회수도 포인트 차감 + 권위행 감액(물리상품 returns 패턴).
   if (orderId) {
     try {

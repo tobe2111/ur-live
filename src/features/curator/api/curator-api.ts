@@ -25,7 +25,7 @@ export interface CuratorPin {
   is_active: number
   commission_rate: number
   dominant_color?: string | null
-  // 🏁 2026-06-26 (대표 — 링크샵 카드를 쇼핑 카드와 동일하게): 할인/평점/구매수.
+  // 🏁 2026-06-26 (대표 — 유어샵 카드를 쇼핑 카드와 동일하게): 할인/평점/구매수.
   discount_rate?: number | null
   avg_rating?: number | null
   review_count?: number | null
@@ -41,12 +41,12 @@ export interface CuratorProfile {
   banner_url?: string | null
   headline?: string | null // 🎨 2026-06-18 마퀴(흐르는 헤드라인)
   accent?: string | null // 🎨 2026-06-19 마퀴 액센트 색 (#RRGGBB)
-  // 🔗 2026-07-01 (대표 결정): linkshop_theme 필드 제거 — 링크샵은 방문자 전역 테마를 따름(죽은 필드였음).
-  // 🎨 2026-06-16 링크샵 시안: 크리에이터 SNS 링크.
+  // 🔗 2026-07-01 (대표 결정): linkshop_theme 필드 제거 — 유어샵은 방문자 전역 테마를 따름(죽은 필드였음).
+  // 🎨 2026-06-16 유어샵 시안: 크리에이터 SNS 링크.
   youtube_url?: string | null
   instagram_url?: string | null
   tiktok_url?: string | null
-  /** ✨ 2026-07-04 링크샵 1단계: 매장 링크샵 하단 추천(핀) 섹션 opt-in (0/1, 기본 0). */
+  /** ✨ 2026-07-04 유어샵 1단계: 매장 유어샵 하단 추천(핀) 섹션 opt-in (0/1, 기본 0). */
   linkshop_show_recommend?: number
 }
 

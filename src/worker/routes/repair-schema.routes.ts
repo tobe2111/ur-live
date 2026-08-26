@@ -506,9 +506,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_deleted_accounts_kakao', sql: `CREATE INDEX IF NOT EXISTS idx_deleted_accounts_kakao ON deleted_accounts(kakao_id) WHERE kakao_id IS NOT NULL` },
     { name: 'idx_deleted_accounts_email', sql: `CREATE INDEX IF NOT EXISTS idx_deleted_accounts_email ON deleted_accounts(email) WHERE email IS NOT NULL` },
 
-    // ── 큐레이터 링크샵 (migration 0278, 2026-05-25) ─────────
+    // ── 큐레이터 유어샵 (migration 0278, 2026-05-25) ─────────
     { name: 'idx_users_handle_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_handle_unique ON users(handle) WHERE handle IS NOT NULL` },
-    // 🧭 2026-06-10 (사용자 신고 — 링크샵 영구 슬로우패스): 레거시 generic/예약 핸들('user' 등, 한글 닉네임
+    // 🧭 2026-06-10 (사용자 신고 — 유어샵 영구 슬로우패스): 레거시 generic/예약 핸들('user' 등, 한글 닉네임
     //   빈 슬러그 시절 산물)을 user{id} 로 백필. 예약 핸들은 BottomNav 가드가 캐시를 매번 purge →
     //   매 탭 /u/me 홉 + cold fetch 의 자기파괴 루프였음. UNIQUE 충돌 시 해당 행만 skip(다음 실행 수렴).
     { name: 'backfill: users.handle reserved rename', sql: `UPDATE users SET handle = 'user' || id
@@ -1005,7 +1005,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_invite_rewards_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_invite_rewards_pair ON invite_rewards(inviter_user_id, invited_user_id)` },
     // 🛡️ 2026-06-11 머니 감사: 주간 정산 cron 이중실행 시 (payee, 기간) 중복 pending payout 차단.
     { name: 'idx_payouts_period_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_payouts_period_unique ON payouts(payee_type, payee_id, period_start, period_end)` },
-    // 🔐 2026-06-15 (링크샵 적립 머니룰 #3): affiliate_earnings 멱등 — referrer+order 당 1행만.
+    // 🔐 2026-06-15 (유어샵 적립 머니룰 #3): affiliate_earnings 멱등 — referrer+order 당 1행만.
     //   기존 SELECT 체크만으론 동시요청 이중적립 race. INSERT OR IGNORE 가 이 인덱스에 의존.
     //   기존 중복 행 존재 시 생성 실패 → 리포트로 발견 후 정리(다른 _pair 인덱스와 동일 컨벤션).
     { name: 'idx_affiliate_earnings_referrer_order', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_affiliate_earnings_referrer_order ON affiliate_earnings(referrer_id, order_id) WHERE order_id IS NOT NULL` },

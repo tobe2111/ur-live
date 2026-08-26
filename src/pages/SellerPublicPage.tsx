@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-// 🏁 2026-06-26 (대표 결정 — "추천템은 사업자 링크샵에선 숨김"): 사업자 = 본인 상품이 주인공.
+// 🏁 2026-06-26 (대표 결정 — "추천템은 사업자 유어샵에선 숨김"): 사업자 = 본인 상품이 주인공.
 //   추천 핀(CuratorPinsSection) 섹션 제거 → 추천 적립 동선은 크리에이터 콘솔(/creator)에서 유지.
-//   (일반 유저 링크샵(CuratorPage)은 추천템이 메인이라 그대로.)
+//   (일반 유저 유어샵(CuratorPage)은 추천템이 메인이라 그대로.)
 // 🏁 2026-06-26 (대표 — "상품·이용권 모두 전체 등록 페이지로"): 얄팍한 빠른등록 모달(QuickProductModal) 제거 →
 //   등록은 정식 풀페이지(/seller/products/new · /seller/meal-voucher/new)로. (lazy/Suspense 도 미사용→제거)
 import { useTranslation } from 'react-i18next'
@@ -13,7 +13,7 @@ import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 // 🗑️ 2026-07-07 라이브커머스 제거: StreamCard/VideosTab import 제거.
 import VouchersTab from './seller-public/VouchersTab'
-// 🏁 2026-06-25 (대표 "통일"): 사업자 링크샵 헤더를 canonical CuratorHeader 로 — ProfileHeader 폐기(헤더 1개).
+// 🏁 2026-06-25 (대표 "통일"): 사업자 유어샵 헤더를 canonical CuratorHeader 로 — ProfileHeader 폐기(헤더 1개).
 import CuratorHeader from './curator-page/CuratorHeader'
 import type { CuratorProfile } from '@/features/curator/api/curator-api'
 // 🏁 2026-06-25 (대표 "카드 1종"): 내 상품도 표준 BrowseProductCard(★평점·판매수 내장) — EditorialProductCard 폐기.
@@ -37,16 +37,16 @@ interface SellerPublicPageProps {
    *  (redirect 없이) → URL 통합. 미지정 시 useParams 사용 (legacy /profile/:sellerId 호환). */
   sellerIdOverride?: string
   /** 🏁 2026-06-25 (대표 "통일"): CuratorPage(/u/{handle})가 내려주는 큐레이터 정체성.
-   *  사업자 링크샵도 canonical CuratorHeader 를 렌더 → 헤더 컴포넌트 1개로 통일(ProfileHeader 폐기).
+   *  사업자 유어샵도 canonical CuratorHeader 를 렌더 → 헤더 컴포넌트 1개로 통일(ProfileHeader 폐기).
    *  배너/이름 등은 curator 우선·seller 폴백으로 병합(저장 위치 분산 흡수). 비-/u/ 진입은 undefined. */
   curator?: CuratorProfile | null
   /** 🏁 2026-06-26 [UNLOCK_LOADING] (대표 — 로딩 워터폴 제거): CuratorPage 가 가진 linked_seller.id(숫자).
    *  넘기면 셀러 /public 응답을 기다리지 않고 상품 fetch 를 병렬로 시작(RTT 1개 절감). */
   sellerNumericId?: number
-  /** 🔑 2026-07-07 (대표 — "복잡하게 꼬여있다"): 링크샵 소유권 단일화. `/u/{handle}` 의 주인은 **로그인 유저**
+  /** 🔑 2026-07-07 (대표 — "복잡하게 꼬여있다"): 유어샵 소유권 단일화. `/u/{handle}` 의 주인은 **로그인 유저**
    *  (user_id === curator.id)이며 CuratorPage 가 이미 그걸 안다. 그 신호를 내려주면, 별도 seller_token 이
    *  없어도 소유자에게 편집 뷰를 보인다(프로필 편집은 헤더가 소비자 API `/api/curator/me/profile` 로 처리).
-   *  seller_token 은 이제 셀러 대시보드(/seller/*) 접근용일 뿐, 링크샵 뷰를 가르지 않는다. */
+   *  seller_token 은 이제 셀러 대시보드(/seller/*) 접근용일 뿐, 유어샵 뷰를 가르지 않는다. */
   ownerOverride?: boolean
   /** 🚀 2026-07-11 (1-RTT): CuratorPage 가 서버 동봉(linked_seller_public)으로 받은 셀러 공개 페이로드.
    *  일치 검증 후 동기 소비 → 셀러 /public fetch 자체를 생략(구캐시/미동봉이면 기존 fetch 폴백). */
@@ -95,7 +95,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(seller == null)
 
-  // 🔗 2026-06-21 (대표 승인): 레거시 셀러 공개 URL(/profile·/s) standalone 진입을 연결된 유저 링크샵
+  // 🔗 2026-06-21 (대표 승인): 레거시 셀러 공개 URL(/profile·/s) standalone 진입을 연결된 유저 유어샵
   //   (/u/{handle})으로 통일. CuratorPage 임베드(sellerIdOverride)면 이미 /u/ 라 skip, 연결 핸들 없는
   //   셀러-only 계정은 그대로 이 페이지 렌더(폴백). (탭 state 는 2026-06-25 탭→섹션 전환으로 제거)
   const curatorHandle = (seller as { curator_handle?: string | null } | null)?.curator_handle || null
@@ -107,14 +107,14 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     if (rawParam && rawParam.toLowerCase().replace(/^@/, '') === h) return  // 이미 핸들 = 루프 방지
     navigate(`/u/${encodeURIComponent(curatorHandle)}`, { replace: true })
   }, [curatorHandle, sellerIdOverride, rawParam, navigate])
-  // 🔍 2026-06-16 링크샵 시안: 상품 탭 검색 (이름 필터).
+  // 🔍 2026-06-16 유어샵 시안: 상품 탭 검색 (이름 필터).
   const [shopQuery, setShopQuery] = useState('')
   // 🏁 2026-06-26 (대표 결정 — "상품·이용권 각자 전체 등록 페이지로"): 등록 종류 선택 시트(상품/이용권).
   //   둘 다 정식 등록 풀페이지로 네비게이트(상품=/seller/products/new, 이용권=/seller/meal-voucher/new).
   const [showAddSheet, setShowAddSheet] = useState(false)
   // 🏁 2026-06-25 (대표 "통일"): canonical CuratorHeader 의 인라인 편집 반영(낙관적). curator 우선·seller 폴백.
   const [curatorEdits, setCuratorEdits] = useState<Partial<CuratorProfile>>({})
-  // 🧹 2026-07-20 (대표 — "추천템 필요없음"): 사업자 링크샵 = 본인 상품이 주인공(2026-06-18 타겟 포지셔닝).
+  // 🧹 2026-07-20 (대표 — "추천템 필요없음"): 사업자 유어샵 = 본인 상품이 주인공(2026-06-18 타겟 포지셔닝).
   //   하단 추천(핀) opt-in 섹션 + 토글 제거. (추천 적립 동선은 크리에이터 콘솔/CuratorEarningsPage 에서 유지.)
   const copyLink = async () => {
     try { await navigator.clipboard.writeText(window.location.href); toast.success(t('seller.linkCopiedToast', { defaultValue: '링크가 복사되었어요' })) } catch { /* ignore */ }
@@ -125,7 +125,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   // 🛡️ 2026-05-16: storedSellerId 가 username 으로 저장된 경우도 매칭 (id vs username 모두 비교)
   const storedSellerId = localStorage.getItem('seller_id')
   const sellerToken = localStorage.getItem('seller_token')
-  // 🔑 2026-07-07 소유권 단일화: seller_token 기반(레거시 /profile·/s standalone 진입 폴백) ∪ 링크샵
+  // 🔑 2026-07-07 소유권 단일화: seller_token 기반(레거시 /profile·/s standalone 진입 폴백) ∪ 유어샵
   //   소유자 신호(ownerOverride — CuratorPage 의 user_id===curator.id). /u/{handle} 소유자는 seller_token
   //   이 없어도(카카오 소비자 로그인만) 편집 뷰를 본다. seller_token 은 아래 셀러-API 편집에만 별도로 필요.
   const tokenOwner = !!sellerToken && !!seller && (
@@ -145,7 +145,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     })
   }
 
-  // 🎨 2026-06-17 (#6 링크샵 통일): 큐레이터 링크샵과 동일한 '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
+  // 🎨 2026-06-17 (#6 유어샵 통일): 큐레이터 유어샵과 동일한 '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
   //   previewAsVisitor=false 기본이라 ownerView===isOwner → 기존 동작 불변(편집 어포던스만 ownerView 로 게이트).
   const [previewAsVisitor, setPreviewAsVisitor] = useState(false)
   const ownerView = isOwner && !previewAsVisitor
@@ -153,7 +153,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   // ── 인라인 편집 상태 ──
   // 🧹 2026-07-20 (대표 — "카카오 채팅 링크 추가 없어도 됨"): InfoTab 카카오 인라인 편집 machinery
   //   (editingField/editKakao/saving state + startEdit/saveEdit)·canSellerEdit 제거. 연락처 편집은
-  //   셀러 대시보드 전담 → 링크샵 InfoTab 은 표시 전용. (bio/SNS 는 CuratorHeader 가 이미 편집 전담.)
+  //   셀러 대시보드 전담 → 유어샵 InfoTab 은 표시 전용. (bio/SNS 는 CuratorHeader 가 이미 편집 전담.)
   // 전역 테마 토글 연동 (useTheme 스토어)
   const { applied } = useTheme()
   const isDark = applied === 'dark'
@@ -166,7 +166,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     // 🛡️ 2026-05-27 (loading P0): SSR inject 즉시 사용 + 중복 fetch 제거 (영구).
     //   기존: SSR setSeller 후에도 sellers API axios fetch 재호출 → 중복 RTT 200-500ms
     //   수정: SSR data 있으면 메인 fetch skip, products/streams/shorts 만 background fetch.
-    //   효과: 링크샵 페이지 첫 paint + 메인 fetch 0 (SSR hit 시).
+    //   효과: 유어샵 페이지 첫 paint + 메인 fetch 0 (SSR hit 시).
     // 🚑 2026-07-10: 소비를 readSellerSeed(정체성 일치 검증)로 — 다른 셀러의 잔존 시드 오소비 차단.
     //   (동기 초기값과 같은 헬퍼 — mount 시엔 이미 시드 반영돼 setLoading(true→false)가 배치로 상쇄됨.)
     // 🚀 2026-07-11: 서버 동봉 시드(prop)도 동급 — 있으면 셀러 /public fetch 자체를 생략(1-RTT 완성).
@@ -177,10 +177,13 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     }
 
     // 🛡️ 셀러 상품 background fetch(비차단). 로딩 속도는 prewarm(products)로 해결(cold D1 제거).
-    //   🧹 2026-07-20 (링크샵 전수조사): 라이브/쇼츠 fetch 제거 — 영구중단(LIVE_COMMERCE_SUSPENDED)이라
+    //   🧹 2026-07-20 (유어샵 전수조사): 라이브/쇼츠 fetch 제거 — 영구중단(LIVE_COMMERCE_SUSPENDED)이라
     //   상품만 필요. streams/shorts 배선·30초 폴링·관련 state/타입 통째 제거(도달불가 코드 청소).
     const fetchSubData = (numericId: number) => {
-      api.get(`/api/products?seller_id=${numericId}&limit=20`)
+      // 🩸 2026-08-26: limit=20 하드코딩이라 **21개째 이용권부터 아무 표시 없이 사라졌다**.
+      //   유어샵은 진열대다 — 진열대에서 물건이 조용히 없어지는 건 빈 화면보다 나쁘다(사장님은
+      //   올렸다고 믿는다). 100 으로 올린다. 그 이상은 '더 보기'가 필요하고, 그건 별도 작업.
+      api.get(`/api/products?seller_id=${numericId}&limit=100`)
         .then(r => setProducts(r.data.data || []))
         .catch(() => { /* graceful */ })
     }
@@ -209,7 +212,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     }).catch(() => { setSeller(null); setLoading(false) })
   }, [sellerId, sellerNumericId])
 
-  // 🧹 2026-07-20 (링크샵 전수조사): 라이브커머스 영구중단으로 '실시간 라이브 감지 30초 폴링' effect 제거
+  // 🧹 2026-07-20 (유어샵 전수조사): 라이브커머스 영구중단으로 '실시간 라이브 감지 30초 폴링' effect 제거
   //   (LIVE_COMMERCE_SUSPENDED 조기반환이라 원래 미실행 — 도달불가 코드 청소).
 
   // 🏁 2026-06-25 (대표 신고 — 로딩 김): 헤더 정체성(curator 우선·seller 폴백) 객체. seller 로드 전에도
@@ -228,7 +231,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     tiktok_url: curatorEdits.tiktok_url ?? curator?.tiktok_url ?? null,
   }
 
-  // 🖼️ 2026-07-01 (대표 지시 — "콜드 로딩은 풀로, 2~3가지 로딩화면 절대 금지"): 링크샵(/u/)·셀러(/profile)
+  // 🖼️ 2026-07-01 (대표 지시 — "콜드 로딩은 풀로, 2~3가지 로딩화면 절대 금지"): 유어샵(/u/)·셀러(/profile)
   //   모두 단일 URDEAL 브랜드 로더로 통일. 기존엔 curator 진입 시 헤더+스켈레톤을 그렸다가 본문 로드 후
   //   또 바뀌어, CuratorPage 쪽 로더와 합쳐 "2~3가지 로딩화면"이 튀었음. BrandLoader 하나로 준비될 때까지 유지.
   if (loading) return <BrandLoader fullScreen />
@@ -243,21 +246,35 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const mealVouchers = products.filter(p => p.category === 'meal_voucher')
   // 🛡️ 2026-05-19: '상품' 탭 — 이용권 외 일반 상품 (deal_only 교환권은 셀러가 등록 안 하므로 자동 제외).
   const shopProducts = products.filter(p => p.category !== 'meal_voucher' && Number(p.deal_only) !== 1)
-  // 🎨 2026-07-07 리디자인(휑함 해소): 대표 상품 1개를 큰 '이번 주 픽' 히어로로. 상품 우선, 없으면 이용권.
+  // 🎨 2026-07-07 리디자인(휑함 해소): 대표 1개를 큰 '이번 주 픽' 히어로로.
   //   featured 는 자기 섹션 그리드에서 제외(중복 방지) → 아이템 적어도 "큐레이션"으로 보이게.
-  const featured = shopProducts[0] || mealVouchers[0] || null
-  const featuredIsProduct = !!shopProducts[0]
+  //
+  // 🔄 2026-08-26 (대표 확정 — "유어샵은 사장님의 이용권들이 올라오는 곳"): 우선순위를 **뒤집었다**.
+  //   종전엔 `shopProducts[0] || mealVouchers[0]` 라 일반 상품이 히어로를 무조건 선점했다. 그러면
+  //   이용권만 파는 매장(대다수)은 자기 주력이 히어로에도 못 오르고 두 번째 섹션으로 밀렸다.
+  //   유어샵의 주인공은 이용권이다 — 없을 때만 일반 상품이 그 자리를 대신한다.
+  // 📊 2026-08-26 (대표 승인): 헤더 실적 한 줄 — 이 매장 상품들의 **실측** 평점/후기/판매.
+  //   당근이 사진으로 만드는 신뢰를 우리는 실적으로 만든다. 값 없으면 헤더가 알아서 안 그린다(0 미표시).
+  const headerStats = (() => {
+    const rated = products.filter(p => Number(p.avg_rating) > 0)
+    const rating = rated.length ? rated.reduce((a, p) => a + Number(p.avg_rating), 0) / rated.length : 0
+    const reviews = products.reduce((a, p) => a + (Number(p.review_count) || 0), 0)
+    const sold = products.reduce((a, p) => a + (Number(p.sold_count) || 0), 0)
+    return { rating, reviews, sold }
+  })()
+  const featured = mealVouchers[0] || shopProducts[0] || null
+  const featuredIsProduct = !mealVouchers[0] && !!shopProducts[0]
   const gridProducts = featuredIsProduct ? shopProducts.slice(1) : shopProducts
   const gridVouchers = (!featuredIsProduct && mealVouchers[0]) ? mealVouchers.slice(1) : mealVouchers
 
   return (
     <div className={`min-h-screen ${T.bg} pb-28`}>
-      {/* 🎨 2026-06-17 링크샵 개선안(시안) 통일: 큐레이터 링크샵과 동일한 네이비 '✎ 편집 모드' 배너. theme-dual: 의도적 네이비 */}
+      {/* 🎨 2026-06-17 유어샵 개선안(시안) 통일: 큐레이터 유어샵과 동일한 네이비 '✎ 편집 모드' 배너. theme-dual: 의도적 네이비 */}
       {ownerView && (
         <div className="sticky top-0 z-30 bg-[#141A2E] text-white px-3.5 py-2.5 text-[12.5px] font-semibold flex items-center justify-between gap-2">
           <span className="flex items-center gap-2 min-w-0"><span className="text-[#6b7280] text-[14px] leading-none shrink-0">✎</span><span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span></span>
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* 🏁 2026-06-18 (사용자 결정): 링크샵에서 바로 등록 (대시보드 안 나감).
+            {/* 🏁 2026-06-18 (사용자 결정): 유어샵에서 바로 등록 (대시보드 안 나감).
                 🏁 2026-06-26 (대표 — "이용권 등록도 추가"): 단일 '+ 등록' → 상품/이용권 선택 시트. */}
             <button
               type="button"
@@ -324,7 +341,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           </div>
         </div>
       )}
-      {/* 🎨 2026-06-17 (#6 통일): 방문자 미리보기 중 — 큐레이터 링크샵과 동일 패턴. theme-dual: 의도적 네이비 */}
+      {/* 🎨 2026-06-17 (#6 통일): 방문자 미리보기 중 — 큐레이터 유어샵과 동일 패턴. theme-dual: 의도적 네이비 */}
       {isOwner && previewAsVisitor && (
         <div className="sticky top-0 z-40 bg-[#141A2E] text-white px-4 py-2 text-[12.5px] font-bold flex items-center justify-between gap-2">
           <span className="truncate">👀 {t('seller.publicPage.previewBanner', { defaultValue: '방문자 미리보기 — 다른 사람에게 보이는 화면이에요' })}</span>
@@ -332,36 +349,37 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         </div>
       )}
       <SEO
-        title={`${seller.name || seller.username || t('product.seller')}의 링크샵`}
-        description={seller.bio || `${seller.name || seller.username || t('product.seller')} 님의 링크샵`}
+        title={`${seller.name || seller.username || t('product.seller')}의 유어샵`}
+        description={seller.bio || `${seller.name || seller.username || t('product.seller')} 님의 유어샵`}
         image={seller.profile_image}
         url={`/profile/${seller.username || seller.slug || seller.id}`}
         /* 🛡️ 2026-04-22: Person/Organization JSON-LD 추가 (Google 셀러 카드 노출) */
         jsonLd={{
           '@context': 'https://schema.org',
           '@type': 'Person',
-          // 🏷️ 2026-07-01: 폐기어 정정 — "라이브 커머스 채널"(영구중단 기능) → "링크샵" (크롤러 노출 구조화 데이터)
-          name: seller.name || seller.username || '유어딜 링크샵',
-          description: seller.bio || `${seller.name || seller.username || ''}의 링크샵 — 상품·이용권 모음`,
+          // 🏷️ 2026-07-01: 폐기어 정정 — "라이브 커머스 채널"(영구중단 기능) → "유어샵" (크롤러 노출 구조화 데이터)
+          name: seller.name || seller.username || '유어딜 유어샵',
+          description: seller.bio || `${seller.name || seller.username || ''}의 유어샵 — 상품·이용권 모음`,
           image: seller.profile_image || undefined,
           url: `https://urdeal.kr/profile/${seller.username || seller.slug || seller.id}`,
           ...((seller as any).follower_count != null && { interactionStatistic: { '@type': 'InteractionCounter', interactionType: 'https://schema.org/FollowAction', userInteractionCount: (seller as any).follower_count } }),
         }}
       />
 
-      {/* 🏁 2026-06-25 (대표 "통일"): 사업자 링크샵도 canonical CuratorHeader (마퀴+배너 히어로+중앙 이름).
+      {/* 🏁 2026-06-25 (대표 "통일"): 사업자 유어샵도 canonical CuratorHeader (마퀴+배너 히어로+중앙 이름).
           정체성은 curator(users) 우선 · seller(sellers) 폴백으로 병합 → 어디 저장됐든 배너/이름 복구.
           소유자 인라인 편집은 CuratorHeader 가 /api/curator/me/profile 로 처리(낙관적 반영=curatorEdits). */}
       <CuratorHeader
         curator={headerCurator}
         isOwner={ownerView}
         accountType="business"
+        stats={headerStats}
         onCopyLink={copyLink}
         onCuratorUpdate={(next) => setCuratorEdits((s) => ({ ...s, ...next }))}
       />
 
-      {/* 🏁 2026-06-26 (대표 "추천템 숨김"): 사업자 링크샵 = 본인 상품 주인공 → 한 스크롤 섹션.
-          순서: 내 상품 → 교환권 → 영상/라이브 → 정보. (추천 핀 섹션 제거 — 일반 유저 링크샵은 유지) */}
+      {/* 🏁 2026-06-26 (대표 "추천템 숨김"): 사업자 유어샵 = 본인 상품 주인공 → 한 스크롤 섹션.
+          순서: 내 상품 → 교환권 → 영상/라이브 → 정보. (추천 핀 섹션 제거 — 일반 유저 유어샵은 유지) */}
       <div className="ur-content-wide px-4 lg:px-8 py-5">
         {/* 🎨 2026-07-07 리디자인 3차: 컬렉션 칩 — 상품·이용권 둘 다 있을 때 섹션 점프(스크롤). */}
         {shopProducts.length > 0 && mealVouchers.length > 0 && (
@@ -391,17 +409,29 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             />
           </div>
         )}
-        {/* ① 내 상품 — featured 로 뽑힌 첫 상품은 그리드에서 제외(gridProducts). 소유자 0개는 컴팩트 제목 행. */}
-        {(gridProducts.length > 0 || (ownerView && shopProducts.length === 0)) && (
+        {/* ① 이용권 — 유어샵의 주인공. featured 로 뽑힌 첫 이용권은 그리드에서 제외(gridVouchers).
+            🔄 2026-08-26 (대표 확정): 종전엔 '내 상품' 다음 세 번째 블록이었다. 이용권만 파는 매장이
+            대다수인데 주력이 아래로 밀렸다 — 순서를 앞으로 올린다. */}
+        {gridVouchers.length > 0 && (
+          <section id="ls-vou" className="scroll-mt-4 pt-7">
+            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '이용권' })} {gridVouchers.length}</h3>
+            <VouchersTab mealVouchers={gridVouchers} />
+          </section>
+        )}
+
+        {/* ② 내 상품 — featured 로 뽑힌 첫 상품은 그리드에서 제외(gridProducts).
+            🔄 2026-08-26: '상품 0' 초대 카드는 **이용권도 0일 때만** 띄운다. 이용권을 이미 올린
+            사장님에게 "첫 상품을 올려 쇼핑몰을 채워보세요"는 사실과 다른 잔소리다. */}
+        {(gridProducts.length > 0 || (ownerView && shopProducts.length === 0 && mealVouchers.length === 0)) && (
           shopProducts.length === 0 ? (
             // 🎨 2026-07-07 리디자인: 밋밋한 "상품 0" 행 → "쇼핑몰을 채워보세요" 초대 카드(소유자 동기부여).
-            //   내 상품이 링크샵의 주인공이라는 메시지 + 정식 등록 풀페이지로.
+            //   내 상품이 유어샵의 주인공이라는 메시지 + 정식 등록 풀페이지로.
             <div className="mt-7 rounded-2xl border border-dashed border-gray-300 dark:border-[#2E2E2E] bg-gray-50 dark:bg-[#101010] px-5 py-7 text-center">
               <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] flex items-center justify-center">
                 <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
               </div>
               <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white">{t('seller.publicPage.emptyShopTitle', { defaultValue: '첫 상품을 올려 쇼핑몰을 채워보세요' })}</h3>
-              <p className="mt-1.5 text-[12.5px] leading-relaxed text-gray-500 dark:text-gray-400">{t('seller.publicPage.emptyShopDesc', { defaultValue: '내 상품이 링크샵의 주인공이에요. 등록하면 방문자에게 바로 판매되고 정산까지 이어집니다.' })}</p>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-gray-500 dark:text-gray-400">{t('seller.publicPage.emptyShopDesc', { defaultValue: '내 상품이 유어샵의 주인공이에요. 등록하면 방문자에게 바로 판매되고 정산까지 이어집니다.' })}</p>
               <button
                 onClick={() => navigate('/seller/products/new')}
                 className="mt-4 inline-flex items-center gap-1 px-5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-[13px] font-bold active:scale-95"
@@ -412,7 +442,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           ) : (
             <>
             <h3 id="ls-shop" className="scroll-mt-4 text-[16px] font-extrabold text-gray-900 dark:text-white mt-7 mb-3">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} {shopProducts.length}</h3>
-            {/* 🔍 2026-06-16 링크샵 시안: 상품 검색 (이름 필터) — 상품 6개 이상일 때만(적으면 노이즈). */}
+            {/* 🔍 2026-06-16 유어샵 시안: 상품 검색 (이름 필터) — 상품 6개 이상일 때만(적으면 노이즈). */}
             {shopProducts.length >= 6 && (
             <div className="flex items-center gap-2 h-11 px-3.5 mb-4 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#1A2334]">
               <Search className="w-4 h-4 text-gray-400 shrink-0" />
@@ -436,21 +466,13 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           )
         )}
 
-        {/* ③ 이용권 — featured 로 뽑힌 첫 이용권은 그리드에서 제외(gridVouchers). */}
-        {gridVouchers.length > 0 && (
-          <section id="ls-vou" className="scroll-mt-4 pt-7">
-            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '이용권' })} {gridVouchers.length}</h3>
-            <VouchersTab mealVouchers={gridVouchers} />
-          </section>
-        )}
-
         {/* 🗑️ 2026-07-07 라이브커머스 제거: 영상(VideosTab)·라이브(StreamCard) 섹션 제거. */}
 
         {/* 🧹 2026-07-20 (대표 — "추천템·신뢰배지 다 필요없음"): 하단 추천(핀) opt-in 섹션 + 정적 신뢰배지
-            (유어딜 안전결제 / 사업자 인증 완료) 제거. 사업자 링크샵 = 본인 상품이 주인공(정체성 명료화) +
+            (유어딜 안전결제 / 사업자 인증 완료) 제거. 사업자 유어샵 = 본인 상품이 주인공(정체성 명료화) +
             사업자 인증은 헤더 U 씰이 이미 전담(중복 제거). 결제 안전성은 결제 단계에서 안내. */}
 
-        {/* ⑥ 판매자 정보 — 🧾 2026-07-02 (대표 시안): "정보" 제목 카드 → 링크샵 **맨 밑** 쇼핑몰식 작은 푸터.
+        {/* ⑥ 판매자 정보 — 🧾 2026-07-02 (대표 시안): "정보" 제목 카드 → 유어샵 **맨 밑** 쇼핑몰식 작은 푸터.
             콘텐츠와 넉넉히 떨어뜨려(mt-12) 진짜 페이지 하단 푸터로 읽히게. 얇은 구분선 + "MORE INFO +" 접이식. */}
         <footer className="mt-10 pt-5 border-t border-gray-100 dark:border-[#2A3446]">
           <InfoTab seller={seller} isOwner={ownerView} T={T} />

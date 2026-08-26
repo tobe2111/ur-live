@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵 API SSOT.
+ * 🛡️ 2026-05-25 (migration 0278): 큐레이터 유어샵 API SSOT.
  *
  * 모든 유저가 본인 공개 페이지(/u/:handle)에서 상품 핀 큐레이션.
  * 핀 클릭 → 상품 페이지 ?ref={user_id} → 기존 affiliate_ref 시스템 재활용.
@@ -53,7 +53,7 @@ async function getPinCount(DB: D1Database, userId: number): Promise<number> {
  * 🛡️ 2026-05-25: 큐레이터 테이블 lazy CREATE — D1 migration 미적용 환경 graceful.
  *   TD-001 (D1 CI 권한 부재) 로 migration 0278 자동 적용 안 될 때 첫 호출 시 보장.
  */
-// 🛡️ 2026-05-31 (링크샵 로딩): 모듈 레벨 1회 메모이제이션 — 매 요청 6개 DDL(CREATE/ALTER) 실행 제거.
+// 🛡️ 2026-05-31 (유어샵 로딩): 모듈 레벨 1회 메모이제이션 — 매 요청 6개 DDL(CREATE/ALTER) 실행 제거.
 //   edge-MISS(cold/SSR self-fetch) 경로가 데이터 쿼리 전에 6 라운드트립으로 느려지던 것 해소.
 //   스키마는 migration 0278 + repair-schema(daily cron) 가 보장 — 워커당 첫 호출만 안전망으로 실행.
 let _curatorTablesReady = false
@@ -71,15 +71,15 @@ async function ensureUserProfileCols(DB: D1Database): Promise<void> {
     'ALTER TABLE users ADD COLUMN banner_url TEXT',
     'ALTER TABLE users ADD COLUMN profile_image TEXT',
     'ALTER TABLE users ADD COLUMN updated_at TEXT',
-    // 🎨 2026-06-16 링크샵 시안: 크리에이터 SNS 링크 (유튜브/인스타/틱톡).
+    // 🎨 2026-06-16 유어샵 시안: 크리에이터 SNS 링크 (유튜브/인스타/틱톡).
     'ALTER TABLE users ADD COLUMN youtube_url TEXT',
     'ALTER TABLE users ADD COLUMN instagram_url TEXT',
     'ALTER TABLE users ADD COLUMN tiktok_url TEXT',
-    // 🎨 2026-06-17 링크샵 랜딩 리디자인: 상단 마퀴(흐르는 헤드라인) 텍스트.
+    // 🎨 2026-06-17 유어샵 랜딩 리디자인: 상단 마퀴(흐르는 헤드라인) 텍스트.
     'ALTER TABLE users ADD COLUMN linkshop_headline TEXT',
     // 🎨 2026-06-19 마퀴 액센트 색(#RRGGBB) — 소유자 조정. 비면 기본 주황.
     'ALTER TABLE users ADD COLUMN linkshop_accent TEXT',
-    // ✨ 2026-07-04 링크샵 1단계(linkshop-role-model §5): 매장(스토어프론트) 링크샵 하단
+    // ✨ 2026-07-04 유어샵 1단계(linkshop-role-model §5): 매장(스토어프론트) 유어샵 하단
     //   "추천(핀)" 섹션 opt-in — 0(기본 off)/1. sellers 는 컬럼 한도(100) 도달이라 users 에.
     'ALTER TABLE users ADD COLUMN linkshop_show_recommend INTEGER DEFAULT 0',
   ]) {
@@ -104,7 +104,7 @@ async function ensureCuratorTables(DB: D1Database): Promise<void> {
     )`).run()
     await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_product_pins_user_pos ON product_pins(user_id, position)`).run().catch(() => null)
     // users.handle / bio 컬럼 (idempotent ALTER — 이미 있으면 throw → swallow)
-    // 🔗 2026-07-01 (대표 결정 — 링크샵 전수조사): linkshop_theme 필드 제거. 링크샵은 방문자 전역 테마
+    // 🔗 2026-07-01 (대표 결정 — 유어샵 전수조사): linkshop_theme 필드 제거. 유어샵은 방문자 전역 테마
     //   (useTheme, /account/settings 토글)를 따르므로 큐레이터별 theme 은 안 쓰이던 죽은 필드였음.
     //   기존 DB 컬럼은 D1 DROP 위험이라 그대로 방치(무해) — 읽기/반환/신규 ALTER 만 제거.
     for (const sql of [
@@ -198,7 +198,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     ])
     const pins = pinsResult.results
 
-    // 🎨 2026-06-17 (링크샵 랜딩 리디자인): 마퀴 헤드라인 — 별도 best-effort 조회(컬럼 없는 env 에서
+    // 🎨 2026-06-17 (유어샵 랜딩 리디자인): 마퀴 헤드라인 — 별도 best-effort 조회(컬럼 없는 env 에서
     //   메인 SELECT 의 banner/sns 가 폴백으로 사라지지 않도록 분리). 컬럼 없으면 null.
     let headline: string | null = null
     let accent: string | null = null
@@ -218,7 +218,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
       } catch { /* 둘 다 없음 — null */ }
     }
 
-    // 🛡️ 2026-05-31 (링크샵 로딩): group-buy-public 과 동일 edge 캐시 — 이전엔 캐시 헤더가 없어
+    // 🛡️ 2026-05-31 (유어샵 로딩): group-buy-public 과 동일 edge 캐시 — 이전엔 캐시 헤더가 없어
     //   (1) 매 요청 D1 3쿼리 cold, (2) worker SSR inject 가 caches.default 에서 못 찾아 매번 self-fetch cold
     //   → /u/:handle 첫 paint 200-500ms+ 지연. 공개 데이터(본인 dashboard 는 /me/* 별도)라 공개 캐시 안전.
     //   브라우저 60s / edge 900s + SWR — 소유자 편집은 CuratorPage 낙관적 업데이트로 즉시 반영.
@@ -235,7 +235,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
       c.header('CDN-Cache-Control', 'public, max-age=900, stale-while-revalidate=120')
     }
 
-    // 🚀 2026-07-11 (로딩 전수조사 후속 — 대표 "남은 개선 여지, 가장 이상적으로"): 사업자 링크샵 1-RTT 화.
+    // 🚀 2026-07-11 (로딩 전수조사 후속 — 대표 "남은 개선 여지, 가장 이상적으로"): 사업자 유어샵 1-RTT 화.
     //   linked seller 가 있으면 셀러 공개 페이로드를 **이 응답에 동봉**(additive) — 기존엔 클라가
     //   [curator fetch → SellerPublicPage 마운트 → seller /public fetch] 직렬 2-RTT 였음.
     //   buildSellerPublicPayload = seller.routes `GET /:id/public` 와 같은 SSOT(쿼리/KV캐시/enrich 공유,
@@ -261,14 +261,14 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         //   CuratorHeader 가 curator.banner_url 을 읽는데 항상 undefined → 저장돼도 절대 표시 안 됐음.
         // 레거시 'r2://key' 저장분(2026-06-05 이전 버그) 읽기측 정규화 — 모든 소비처 동시 치유.
         banner_url: user.banner_url?.startsWith('r2://') ? `/api/media/${user.banner_url.slice(5)}` : (user.banner_url ?? null),
-        // 🎨 2026-06-16 링크샵 시안: 크리에이터 SNS 링크.
+        // 🎨 2026-06-16 유어샵 시안: 크리에이터 SNS 링크.
         youtube_url: user.youtube_url ?? null,
         instagram_url: user.instagram_url ?? null,
         tiktok_url: user.tiktok_url ?? null,
-        // 🎨 2026-06-17 링크샵 랜딩 리디자인: 상단 마퀴 헤드라인 + 액센트 색.
+        // 🎨 2026-06-17 유어샵 랜딩 리디자인: 상단 마퀴 헤드라인 + 액센트 색.
         headline,
         accent,
-        // ✨ 2026-07-04 링크샵 1단계: 매장 링크샵 하단 추천(핀) 섹션 opt-in (기본 0=off).
+        // ✨ 2026-07-04 유어샵 1단계: 매장 유어샵 하단 추천(핀) 섹션 opt-in (기본 0=off).
         linkshop_show_recommend: showRecommend,
       },
       pins: pins ?? [],
@@ -338,7 +338,7 @@ curatorRoutes.get('/:handle/p/:productId/redirect', async (c) => {
       })(),
     )
 
-    // 🧭 2026-06-10 (링크샵×교환권 적립 루프 단절 fix): 교환권/공구 상품 핀은 공구 상세로 —
+    // 🧭 2026-06-10 (유어샵×교환권 적립 루프 단절 fix): 교환권/공구 상품 핀은 공구 상세로 —
     //   기존엔 무조건 /products(물리상품 레일)로 보내 교환권 핀 구매가 적립 0 이었음.
     //   ?aff= 는 GroupBuy/Voucher 상세가 localStorage.affiliate_ref 로 저장(물리 ?ref= 와 동일 키).
     try {
@@ -415,7 +415,7 @@ curatorRoutes.post('/me/pins', requireAuth(), async (c) => {
       .first<{ id: number; is_active: number; is_supply_product: number; supply_source_id: number }>()
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
     if (!product.is_active) return c.json({ success: false, error: '비활성 상품은 핀할 수 없습니다' }, 400)
-    // 🛡️ 2026-06-26 분리 감사: 도매 카탈로그 마스터(공급상품)는 소비자 링크샵에 핀 불가.
+    // 🛡️ 2026-06-26 분리 감사: 도매 카탈로그 마스터(공급상품)는 소비자 유어샵에 핀 불가.
     if (product.is_supply_product === 1 && product.supply_source_id === 0) {
       return c.json({ success: false, error: '도매 전용 상품은 핀할 수 없습니다' }, 400)
     }
@@ -459,7 +459,7 @@ curatorRoutes.post('/me/pins', requireAuth(), async (c) => {
       )
         .bind(userId, productId, nextPos, note)
         .run()
-      // 🛡️ 2026-06-12 (감사 1단계): 본인 공개 링크샵 colo 캐시 purge — 핀이 즉시 반영되도록.
+      // 🛡️ 2026-06-12 (감사 1단계): 본인 공개 유어샵 colo 캐시 purge — 핀이 즉시 반영되도록.
       //   me/profile (:572) 의 기존 purge 블록 패턴 복제 (best-effort, 실패해도 핀 저장 완료).
       try {
         const url = new URL(c.req.url)
@@ -513,7 +513,7 @@ curatorRoutes.delete('/me/pins/:id', requireAuth(), async (c) => {
     const result = batch[1]
 
     if (!result.meta.changes) return c.json({ success: false, error: '핀을 찾을 수 없습니다' }, 404)
-    // 🛡️ 2026-06-12 (감사 1단계): 본인 공개 링크샵 colo 캐시 purge (me/profile :572 패턴 복제, best-effort).
+    // 🛡️ 2026-06-12 (감사 1단계): 본인 공개 유어샵 colo 캐시 purge (me/profile :572 패턴 복제, best-effort).
     try {
       const me = await c.env.DB.prepare('SELECT handle FROM users WHERE id = ? LIMIT 1')
         .bind(userId).first<{ handle: string | null }>()
@@ -691,7 +691,7 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
       updates.push('banner_url = ?')
       binds.push(v)
     }
-    // 🎨 2026-06-16 링크샵 시안: SNS 링크 — 핸들/@핸들/http(s) URL 허용, 빈 문자열=해제. (표시 시 정규화)
+    // 🎨 2026-06-16 유어샵 시안: SNS 링크 — 핸들/@핸들/http(s) URL 허용, 빈 문자열=해제. (표시 시 정규화)
     const isAllowedSns = (v: string) => v === '' || /^https?:\/\//i.test(v) || /^@?[A-Za-z0-9._-]{1,60}$/.test(v)
     for (const key of ['youtube_url', 'instagram_url', 'tiktok_url'] as const) {
       if (typeof body[key] === 'string') {
@@ -701,7 +701,7 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
         binds.push(v)
       }
     }
-    // 🎨 2026-06-17 (링크샵 랜딩 리디자인): 상단 마퀴 헤드라인 (빈 문자열=해제).
+    // 🎨 2026-06-17 (유어샵 랜딩 리디자인): 상단 마퀴 헤드라인 (빈 문자열=해제).
     if (typeof body.headline === 'string') {
       updates.push('linkshop_headline = ?')
       binds.push(body.headline.trim().slice(0, 80))
@@ -713,7 +713,7 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
       updates.push('linkshop_accent = ?')
       binds.push(v)
     }
-    // ✨ 2026-07-04 링크샵 1단계: 하단 추천 섹션 opt-in 토글 (boolean → 0/1).
+    // ✨ 2026-07-04 유어샵 1단계: 하단 추천 섹션 opt-in 토글 (boolean → 0/1).
     if (typeof body.show_recommend === 'boolean') {
       updates.push('linkshop_show_recommend = ?')
       binds.push(body.show_recommend ? 1 : 0)
@@ -731,7 +731,7 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
     // 🛡️ 2026-06-10 (사용자 신고 — 저장 후 새로고침하면 옛 모습): GET /api/curator/:handle 은
     //   edge 900s 캐시(로딩 잠금 — TTL 약화 금지). 대신 저장 성공 시 본인 공개 응답을 현재 colo 에서
     //   purge(best-effort) → 같은 지역 재방문/SSR inject 이 즉시 신선본. 실패해도 저장은 이미 완료.
-    // 🏎️ 2026-06-17 (링크샵 데이터 변경 속도 감사): handle 조회 + colo purge 를 응답 경로에서 분리해
+    // 🏎️ 2026-06-17 (유어샵 데이터 변경 속도 감사): handle 조회 + colo purge 를 응답 경로에서 분리해
     //   waitUntil 로 이동 — 저장 응답이 'SELECT handle' 1 RTT 만큼 빨라짐(purge 는 본래 best-effort).
     try {
       const origin = new URL(c.req.url).origin
@@ -1374,7 +1374,7 @@ curatorRoutes.post('/me/proxy-product', requireAuth(), async (c) => {
 
 // ============================================================
 // GET /api/curator/admin/affiliate-diagnostic  (requireAdmin)
-// 🔬 링크샵/추천 적립 ground-truth — 코드 변경 전 prod 실태 수집 (read-only).
+// 🔬 유어샵/추천 적립 ground-truth — 코드 변경 전 prod 실태 수집 (read-only).
 //   상태 분포 / 멀티상품 귀속 규모 / 환불-후-사용 누수 프록시 / 클릭 부풀림 / top 큐레이터.
 //   CLAUDE.md "진단 페이지 먼저" 룰 — 추측 대신 실데이터로 개선 우선순위 결정.
 // ============================================================

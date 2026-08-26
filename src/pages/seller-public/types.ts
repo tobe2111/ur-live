@@ -25,5 +25,5 @@ export interface Product {
   deal_only?: number
 }
 
-// 🧹 2026-07-20 (링크샵 전수조사): LiveStream·Short·Tab 타입 제거 — 라이브/쇼츠 영구중단 + 탭→
+// 🧹 2026-07-20 (유어샵 전수조사): LiveStream·Short·Tab 타입 제거 — 라이브/쇼츠 영구중단 + 탭→
 //   단일 스크롤 섹션 전환(2026-06-25) 이후 도달불가. Seller/Product 만 사용 중.

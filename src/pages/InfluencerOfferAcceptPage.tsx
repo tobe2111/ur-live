@@ -75,7 +75,7 @@ export default function InfluencerOfferAcceptPage() {
               className="w-full py-3 rounded-xl bg-brand text-white font-semibold"
               onClick={() => { navigator.clipboard?.writeText(trackingUrl).then(() => setCopied(true)).catch(() => {}) }}
             >{copied ? '복사됐어요 ✓' : '링크 복사하기'}</button>
-            <p className="text-xs text-gray-500 dark:text-gray-400">내 링크샵(마이 → 링크샵)에 핀해서 함께 홍보할 수도 있어요.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">내 유어샵(마이 → 유어샵)에 핀해서 함께 홍보할 수도 있어요.</p>
           </div>
         ) : offer ? (
           <div className="space-y-4">

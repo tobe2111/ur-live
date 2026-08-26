@@ -1839,7 +1839,7 @@
     "profileLoading": "Loading profile...",
     "sellerRegister": "Seller Registration",
     "regBenefitsTitle": "Here's how you start",
-    "regBenefit1": "Your own link shop (online store) is created automatically",
+    "regBenefit1": "Your own UrShop (online store) is created automatically",
     "regBenefit2": "List your own products and passes and sell right away",
     "regBenefit3": "Get paid in cash (5% platform fee)",
     "passwordWeak": "Password must be at least 10 characters and include upper/lowercase, a number, and a symbol",
@@ -1855,7 +1855,7 @@
     "kakaoBannerTitle": "Sign in more easily with Kakao",
     "kakaoBannerDesc": "Link your Kakao account to access the seller dashboard with a single Kakao login next time.",
     "kakaoBannerCta": "Link",
-    "sellerRegistration": "Sell your products and passes through your own link shop and get paid in cash",
+    "sellerRegistration": "Sell your products and passes through your own UrShop and get paid in cash",
     "usernameLabel": "Username * (3+ chars, letters & numbers)",
     "youtubeEmailLabel": "Google account email for YouTube Live * (Required)",
     "youtubeEmailDesc": "Enter the Google account (@gmail.com) to connect with YouTube Live.",
@@ -1956,7 +1956,7 @@
       "verifiedBusiness": "Verified business",
       "moreInfo": "MORE INFO",
       "bizInfoCheck": "Business info",
-      "recommendOn": "Bottom \"Picks\" section is now on — pinned items show at the bottom of your link shop",
+      "recommendOn": "Bottom \"Picks\" section is now on — pinned items show at the bottom of your UrShop",
       "recommendOff": "Bottom \"Picks\" section turned off",
       "recommendSaveFail": "Failed to save — please check your consumer account login",
       "recommendToggleHint": "Show pinned items in the bottom \"Picks\" section",
@@ -2483,7 +2483,7 @@
       "products": "🛒 Online Sales",
       "groupbuy": "🏪 Group Buy & Stays",
       "ordersCustomers": "Orders & Customers",
-      "curator": "My Link Shop"
+      "curator": "My UrShop"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}.{{month}} Revenue Calendar",
@@ -2513,7 +2513,7 @@
       "guide": "Guide",
       "promoCodes": "Promo Codes",
       "followers": "Followers",
-      "miniShop": "Linkshop Settings",
+      "miniShop": "UrShop Settings",
       "streamingGuide": "Streaming Guide",
       "notifyFollowers": "Notify Followers",
       "stays": "Stay Vouchers",
@@ -2528,7 +2528,7 @@
       "promoSpend": "Promo Spend",
       "influencerDeals": "Influencer Deals",
       "experienceCampaigns": "Experience Campaigns",
-      "myLinkshop": "My Linkshop",
+      "myLinkshop": "My UrShop",
       "reviewVerifications": "Review Checks",
       "returns": "Refund Requests",
       "operators": "Operators",
@@ -4501,7 +4501,7 @@
     "restaurants": "Restaurants",
     "groupBuy": "Group Buy",
     "my": "My",
-    "linkshop": "Linkshop",
+    "linkshop": "UrShop",
     "vouchers": "Vouchers",
     "dongnedeal": "Local Deals",
     "create": "Create",
@@ -5374,7 +5374,7 @@
     "q8": "[TODO:en] 개인정보를 수정하고 싶어요",
     "a8": "[TODO:en] 마이페이지에서 배송지, 연락처 등을 수정하실 수 있습니다. 카카오 계정 정보는 카카오에서 직접 수정해주세요.",
     "q9": "What is UrDeal?",
-    "a9": "UrDeal (urdeal.kr) is a local commerce platform where you buy neighborhood store vouchers at a discount and redeem them in-store with a QR code. It offers dining, beauty and stay vouchers, gifticon exchange coupons, a nearby deals map, and your own link shop.",
+    "a9": "UrDeal (urdeal.kr) is a local commerce platform where you buy neighborhood store vouchers at a discount and redeem them in-store with a QR code. It offers dining, beauty and stay vouchers, gifticon exchange coupons, a nearby deals map, and your own UrShop.",
     "q10": "How do I use a voucher?",
     "a10": "Purchased vouchers appear in My Page > My Vouchers; show the QR or PIN at the store to redeem. Gifticon exchange coupons are issued right after payment."
   },
@@ -6136,7 +6136,7 @@
   "liveWs": {},
   "curator": {
     "notFound": "Curator not found",
-    "notFoundTitle": "😢 Linkshop not found",
+    "notFoundTitle": "😢 UrShop not found",
     "fetchError": "Failed to load",
     "goHome": "Go home",
     "pinCount": "Recommending {{count}} products",
@@ -6150,7 +6150,7 @@
     "startBrowse": "Browse products",
     "exploreShop": "Explore shop",
     "earnings": {
-      "title": "My Linkshop Earnings",
+      "title": "My UrShop Earnings",
       "monthEarning": "30-day earnings",
       "clicks30d": "30-day clicks",
       "purchases30d": "30-day purchases",
@@ -6197,7 +6197,13 @@
     "stepHandle": "Set address",
     "stepFirstProduct": "Add first product",
     "verifiedBusinessUser": "Verified business seller",
-    "verifiedBusinessDesc": "Business registration has been verified."
+    "verifiedBusinessDesc": "Business registration has been verified.",
+    "registerStore": "Register store",
+    "emptyOwnerSellerTitle": "It starts with your store",
+    "emptyOwnerSellerDesc": "Register your store to add passes. They show up right here.",
+    "stepRegisterStore": "Register store",
+    "statReviews": "{{n}} reviews",
+    "statSold": "{{n}} sold"
   },
   "shipping": {
     "trackingTitle": "Shipping Tracking",
@@ -6223,7 +6229,7 @@
   "dealEarn": {
     "title": "How to earn Deals",
     "subtitle": "Collect and swap for vouchers",
-    "linkshop": "Share Link Shop",
+    "linkshop": "Share UrShop",
     "linkshopDesc": "Pin & share for commission",
     "recruit": "Recruit a store",
     "recruitDesc": "Commission on every sale",
@@ -6660,7 +6666,7 @@
   },
   "my": {
     "earningsGroupTitle": "My earnings & referrals",
-    "earningsGroupSub": "Referral rewards · Linkshop income · Invites",
+    "earningsGroupSub": "Referral rewards · UrShop income · Invites",
     "settingsGroupTitle": "Settings",
     "settingsGroupSub": "Notifications · Theme · Language · App info",
     "affiliateLinkTitle": "Product Referral Links",
@@ -6673,7 +6679,7 @@
     "referralStartTitle": "Recommend & earn",
     "referralCountN": "{{n}} referrals",
     "referralStartSub": "Share on social — earn when friends pay",
-    "curatorTitle": "Linkshop earnings",
+    "curatorTitle": "UrShop earnings",
     "curatorCashSub": "Cash settlement · withdrawable",
     "curatorDealSub": "Accumulated · 1 Deal = ₩1",
     "freeDealNote": "Includes {{free}} free reward deals · {{paid}} deals withdrawable"
@@ -6759,5 +6765,12 @@
     "recent": "Recent invites",
     "waitingPurchase": "Awaiting purchase",
     "friend": "Friend"
+  },
+  "share": {
+    "rewardTitle": "Earn {{pct}}% when it sells via your link",
+    "rewardDesc": "This is your deal with the store. Share the link below to earn.",
+    "copyMyLink": "Copy my link",
+    "copied": "Link copied",
+    "copyFailed": "Copy failed"
   }
 }

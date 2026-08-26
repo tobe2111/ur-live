@@ -15,8 +15,8 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 const GOOGLE_FORM_URL = ''
 
 const STEPS = [
-  { icon: UserPlus, t: '가입', d: '카카오 로그인 1분 — 내 링크샵이 자동으로 생겨요' },
-  { icon: MousePointerClick, t: '딜 선택', d: '동네 맛집·뷰티 딜 중 소개하고 싶은 걸 내 링크샵에 담아요' },
+  { icon: UserPlus, t: '가입', d: '카카오 로그인 1분 — 내 유어샵이 자동으로 생겨요' },
+  { icon: MousePointerClick, t: '딜 선택', d: '동네 맛집·뷰티 딜 중 소개하고 싶은 걸 내 유어샵에 담아요' },
   { icon: Share2, t: '링크 공유', d: '인스타·블로그·카톡에 내 링크 하나만 올리면 끝' },
 ]
 

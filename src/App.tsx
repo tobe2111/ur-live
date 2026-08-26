@@ -100,10 +100,10 @@ const TossDebugPage = lazy(() => import('./pages/TossDebugPage'))
 const PointsChargeSuccessPage = lazy(() => import('./pages/PointsChargeSuccessPage'))
 const CartPage = lazy(() => import('./pages/CartPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
-// 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵
+// 🛡️ 2026-05-25 (migration 0278): 큐레이터 유어샵
 const CuratorPage = lazy(() => import('./pages/CuratorPage'))
 const CuratorEarningsPage = lazy(() => import('./pages/CuratorEarningsPage'))
-// 🏁 2026-06-22 (대표 — 상품/이용권 전용 추가 페이지): 링크샵 핀 picker.
+// 🏁 2026-06-22 (대표 — 상품/이용권 전용 추가 페이지): 유어샵 핀 picker.
 const LinkshopPinPicker = lazy(() => import('./pages/curator-page/LinkshopPinPicker'))
 // 🛡️ 2026-05-25 (migration 0280): 호스팅 (Phase 3)
 const HostingPage = lazy(() => import('./pages/HostingPage'))
@@ -305,9 +305,9 @@ function AppContent() {
   const authInitialized = useRef(false)
 
   // 🔑 2026-07-02 (인증 회복력 P1a — 대표 "상품등록 흰화면"): 역할 토큰 proactive refresh 를 App 전역에.
-  //   기존엔 대시보드 레이아웃(Seller/Admin/Agency)에서만 갱신 → 사업자 유저가 소비자 앱(링크샵) 체류 중엔
+  //   기존엔 대시보드 레이아웃(Seller/Admin/Agency)에서만 갱신 → 사업자 유저가 소비자 앱(유어샵) 체류 중엔
   //   seller_token 이 안 갱신돼, 만료 후 '상품등록' 진입 시 401 폭포 → 흰화면. 훅은 토큰 없으면 no-op(안전),
-  //   refresh inflight 락으로 대시보드 중복마운트도 무해. 링크샵에 있어도 셀러 토큰이 신선하게 유지됨.
+  //   refresh inflight 락으로 대시보드 중복마운트도 무해. 유어샵에 있어도 셀러 토큰이 신선하게 유지됨.
   useTokenAutoRefresh('seller')
   useTokenAutoRefresh('agency')
 
@@ -458,14 +458,14 @@ function AppContent() {
     const preload = () => {
       /* idle prefetch 제거 — 탭 클릭 시 lazy load */
       // 🛡️ 2026-05-27 (영구 fix — /host/new fall through 사용자 보고):
-      //   로그인 사용자가 BottomNav 의 링크샵 클릭 시 cache 없으면 /u/me → dashboard → /host/new.
+      //   로그인 사용자가 BottomNav 의 유어샵 클릭 시 cache 없으면 /u/me → dashboard → /host/new.
       //   idle 시 background 로 dashboard 호출 → linked_seller_username / user_handle localStorage 채움.
-      //   다음 링크샵 클릭 즉시 /profile/{username} 또는 /u/{handle} 직행 (0 RTT).
+      //   다음 유어샵 클릭 즉시 /profile/{username} 또는 /u/{handle} 직행 (0 RTT).
       //   5분 이내 이미 cache 있으면 skip — 불필요한 API 호출 방지.
-      // 🛡️ 2026-06-30 (무한 리다이렉트 루프 근본수정): 링크샵/큐레이터 프리페치는 *소비자(user) 세션* 전용.
+      // 🛡️ 2026-06-30 (무한 리다이렉트 루프 근본수정): 유어샵/큐레이터 프리페치는 *소비자(user) 세션* 전용.
       //   /api/curator/me/dashboard 는 consumer 인증 필요 → admin/seller 토큰만으론 무조건 401.
       //   admin-only 사용자가 이 401 을 유발해 리다이렉트 루프가 났다. 소비자 세션(user_id/session_login)
-      //   있을 때만 프리페치 — 사업자 유저(seller)도 소비자 계정이 있어 user_id 보유하므로 링크샵 워밍 정상.
+      //   있을 때만 프리페치 — 사업자 유저(seller)도 소비자 계정이 있어 user_id 보유하므로 유어샵 워밍 정상.
       //   (api.ts 의 '토큰 있으면 소비자 401 로 대시보드 리다이렉트 안 함' 가드와 이중 방어.)
       const hasConsumerSession = !!(localStorage.getItem('user_id') || localStorage.getItem('session_login'))
       if (hasConsumerSession) {
@@ -550,7 +550,7 @@ function AppContent() {
         const res = await curatorApi.addPin(pid)
         if (res.success) {
           if (res.handle_just_created && res.handle) {
-            toast.success(`🎉 내 링크샵 생성! /u/${res.handle} — 첫 핀이 추가됐어요`)
+            toast.success(`🎉 내 유어샵 생성! /u/${res.handle} — 첫 핀이 추가됐어요`)
           } else {
             toast.success('📌 핀이 추가되었어요')
           }
@@ -572,7 +572,7 @@ function AppContent() {
   //   컴포넌트가 자기-차단에도 사용 → 1차(여기서 마운트 차단) + 2차(컴포넌트 self-guard) 이중 방어.
   // 🏁 2026-06-26 [UNLOCK_LOADING] (대표 결정 — "특정 링크로 들어온 방문자는 네비 숨김"):
   //   /u/{handle}?embed=1 로 진입하면 standalone 매장처럼 상/하단 네비를 숨긴다. 한 번 본 플래그는
-  //   sessionStorage 로 세션 유지(상품 클릭→뒤로 등 인앱 이동에도 깨끗) + 링크샵 표면(/u·/profile·/s)에서만
+  //   sessionStorage 로 세션 유지(상품 클릭→뒤로 등 인앱 이동에도 깨끗) + 유어샵 표면(/u·/profile·/s)에서만
   //   적용 → 방문자가 홈 등으로 나가면 네비 복귀(갇힘 방지). 기존 hideBottomNav 조건은 불변(additive).
   const embedFlag = (() => {
     try {
@@ -749,7 +749,7 @@ function AppContent() {
             <Route path="/product/:id" element={<ProductRedirect />} />
             <Route path="/search" element={<SearchPage />} />
 
-            {/* 🛡️ 2026-05-25 큐레이터 링크샵 (migration 0278) */}
+            {/* 🛡️ 2026-05-25 큐레이터 유어샵 (migration 0278) */}
             {/* 🏁 2026-06-15 (옵션 1): /creator = 크리에이터 콘솔 정식 URL (메인 앱 내, 별도 로그인 X). /u/me/earnings 는 하위호환 alias. */}
             <Route path="/creator" element={
               <ProtectedRoute requireUser>
@@ -761,7 +761,7 @@ function AppContent() {
                 <ErrorBoundary><CuratorEarningsPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
-            {/* 🏁 2026-06-22 (대표 — 상품/이용권 전용 추가 페이지): 링크샵에 상품·이용권 핀 picker. */}
+            {/* 🏁 2026-06-22 (대표 — 상품/이용권 전용 추가 페이지): 유어샵에 상품·이용권 핀 picker. */}
             <Route path="/u/me/add" element={
               <ProtectedRoute requireUser>
                 <ErrorBoundary><LinkshopPinPicker /></ErrorBoundary>

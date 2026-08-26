@@ -213,7 +213,7 @@ function acceptPayload(productId: number | null, userId: string) {
     accepted: true,
     // 전용 홍보 링크 — 기존 ?ref 귀속 레일이 그대로 소비(주문 귀속 → 딜 % 적립 → 환불 회수 → 지급)
     tracking_url: productId ? `https://urdeal.kr/group-buy/${productId}?ref=${userId}` : `https://urdeal.kr/?ref=${userId}`,
-    linkshop_hint: '가입하며 만들어진 내 링크샵(/u/내핸들)에도 이 이용권을 핀해서 함께 홍보할 수 있어요.',
+    linkshop_hint: '가입하며 만들어진 내 유어샵(/u/내핸들)에도 이 이용권을 핀해서 함께 홍보할 수 있어요.',
   }
 }
 

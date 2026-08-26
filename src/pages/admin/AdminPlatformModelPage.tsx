@@ -13,7 +13,7 @@ import { FileText } from 'lucide-react'
 
 const DOCS = [
   { key: 'platform', label: '플랫폼 모델 (전체)', src: platformMd },
-  { key: 'linkshop', label: '링크샵 역할 모델', src: linkshopMd },
+  { key: 'linkshop', label: '유어샵 역할 모델', src: linkshopMd },
   { key: 'business', label: '비즈니스 문서 (사업계획/회사소개/입점제안)', src: businessMd },
 ] as const
 

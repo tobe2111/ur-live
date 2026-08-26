@@ -1,15 +1,6 @@
 /**
- * 🛡️ 2026-05-16: 셀러 마케팅 (인플루언서 차단) + 인플루언서 정산 API.
- *
- * 셀러 (인증 필요):
- *   GET  /api/seller-marketing/me         — 마케팅 ON/OFF + 차단 목록 + 최근 attributions
- *   POST /api/seller-marketing/toggle     — marketing_enabled ON/OFF
- *   POST /api/seller-marketing/block      — 인플루언서 차단 (reason 필수)
- *   POST /api/seller-marketing/unblock    — 차단 해제
- *
- * 인플루언서 (인증 필요 — 일반 user 로그인):
- *   GET  /api/influencer-settlement/me    — 본인 잔액 + 최근 attributions
- *   PUT  /api/influencer-settlement/me    — 사업자번호 / tax_type / 계좌 정보
+ * 🛡️ 2026-05-16: 셀러 마케팅(소개자 차단) + 소개자 정산 API. 라우터 5개는 파일 하단 export 참조.
+ * ⚠️ 2026-08-26: 여기 있던 엔드포인트 목록은 **6개만 적혀 실제(15+)와 어긋나** 지웠다(오도 방지).
  */
 
 import { Hono } from 'hono'
@@ -18,6 +9,7 @@ import type { Env } from '@/worker/types/env'
 import { requireSeller, requireAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { findActiveDealPct } from '@/worker/utils/influencer-deal'
 
 // 🛡️ 2026-05-20: Hono `c.get('user'/'seller')` 가 ContextVariableMap 미선언으로 'never' 가 됨.
 //   각 미들웨어 (requireAuth/requireSeller) 가 ctx 에 박는 형태를 Variables 로 명시.
@@ -383,6 +375,12 @@ influencerApp.get('/deals', async (c) => {
      ORDER BY created_at DESC LIMIT 100`
   ).bind(userId).all().catch(() => ({ results: [] as any[] }))
   return c.json({ success: true, data: results || [] })
+})
+
+/** 🎁 표시 전용 — 이 이용권 상세에 "내 링크로 팔리면 N%" 를 띄울지. 조건은 결제 시점과 같은 SSOT. */
+influencerApp.get('/deal-for-seller/:sellerId', async (c) => {
+  const pct = await findActiveDealPct(c.env.DB, Number(c.req.param('sellerId')), String((c.get('user') as AuthUser).id))
+  return c.json({ success: true, data: pct == null ? { active: false } : { active: true, commission_pct: pct } })
 })
 
 // 🎬 WP-B: 매장이 인플 콘텐츠 인증 검토 → 승인 시 발효(status='active'). CAS(이중승인 방지).

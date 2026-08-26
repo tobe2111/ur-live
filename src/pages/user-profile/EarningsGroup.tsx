@@ -36,7 +36,7 @@ export default function EarningsGroup({ children }: { children: ReactNode }) {
               {t('my.earningsGroupTitle', { defaultValue: '내 수익·추천' })}
             </span>
             <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
-              {t('my.earningsGroupSub', { defaultValue: '추천 적립 · 링크샵 수익 · 친구 초대' })}
+              {t('my.earningsGroupSub', { defaultValue: '추천 적립 · 유어샵 수익 · 친구 초대' })}
             </span>
           </span>
         </span>

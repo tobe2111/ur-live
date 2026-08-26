@@ -48,7 +48,7 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   '/': {
     title: '유어딜 - 돈버는 쇼핑, 이용권·교환권·동네딜',
     description:
-      '할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 무료 체험단 응모, 나만의 링크샵까지. 유어딜에서 돈버는 쇼핑.',
+      '할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 무료 체험단 응모, 나만의 유어샵까지. 유어딜에서 돈버는 쇼핑.',
   },
   '/vouchers': {
     title: '교환권',
@@ -159,7 +159,7 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   },
   '/gb-market': {
     title: '공구 마켓',
-    description: '지금 소개비가 걸린 공구를 찾아 내 링크샵에 담으세요.',
+    description: '지금 소개비가 걸린 공구를 찾아 내 유어샵에 담으세요.',
     noindex: true,
   },
   // 📜 약관 4종 — `/terms` 는 위에 있고 나머지 문서별 약관이 서버 메타 없이 남아 있었다.

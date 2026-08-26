@@ -55,7 +55,7 @@ export default function CreatorStartPage() {
 
   return (
     <div className="force-light-theme min-h-[100dvh] bg-gray-50 py-14 px-4">
-      <SEO title="크리에이터 시작하기 - 유어딜" description="유어딜 제휴 크리에이터로 시작합니다. 카카오 로그인 1분이면 내 링크샵이 만들어집니다." url="/creators/start" />
+      <SEO title="크리에이터 시작하기 - 유어딜" description="유어딜 제휴 크리에이터로 시작합니다. 카카오 로그인 1분이면 내 유어샵이 만들어집니다." url="/creators/start" />
       <div className="mx-auto max-w-md rounded-xl border border-gray-200 bg-white p-8 text-center">
         {phase === 'checking' && (
           <>
@@ -68,7 +68,7 @@ export default function CreatorStartPage() {
           <>
             <div className="text-3xl mb-3">👋</div>
             <h1 className="text-lg font-bold text-gray-900">크리에이터 시작하기</h1>
-            <p className="mt-2 text-sm text-gray-600">카카오 로그인 1분이면 내 링크샵이 자동으로 만들어집니다.<br />로그인하면 신청 내역과 자동으로 연결됩니다.</p>
+            <p className="mt-2 text-sm text-gray-600">카카오 로그인 1분이면 내 유어샵이 자동으로 만들어집니다.<br />로그인하면 신청 내역과 자동으로 연결됩니다.</p>
             {/* 코드는 이미 localStorage 에 있으므로 returnUrl 은 경로만으로 충분(돌아오면 자동 연결). */}
             <a href="/login?returnUrl=%2Fcreators%2Fstart" className={`${btn} mt-5 bg-[#FEE500] text-[#3C1E1E]`}>카카오로 로그인하고 시작하기</a>
             <p className="mt-3 text-xs text-gray-500">이미 유어딜 계정이 있어도 같은 버튼으로 로그인하시면 됩니다.</p>
@@ -79,10 +79,10 @@ export default function CreatorStartPage() {
           <>
             <div className="text-4xl mb-3">🎉</div>
             <h1 className="text-lg font-bold text-gray-900">시작 준비가 끝났습니다</h1>
-            <p className="mt-2 text-sm text-gray-600">내 링크샵이 준비됐어요. 소개하고 싶은 딜을 담고 링크만 공유하면 됩니다.</p>
+            <p className="mt-2 text-sm text-gray-600">내 유어샵이 준비됐어요. 소개하고 싶은 딜을 담고 링크만 공유하면 됩니다.</p>
             <div className="mt-5 flex flex-col gap-2">
               <a href="/group-buy" className={`${btn} bg-gray-900 text-white`}>딜 둘러보고 담기</a>
-              <a href="/u/me" className={`${btn} border border-gray-300 text-gray-900`}>내 링크샵 보기</a>
+              <a href="/u/me" className={`${btn} border border-gray-300 text-gray-900`}>내 유어샵 보기</a>
             </div>
             <p className="mt-3 text-xs text-gray-500">소개비는 딜마다 표시되며, 내 링크로 판매될 때 적립됩니다.</p>
           </>

@@ -112,8 +112,8 @@ export default function BusinessInfoForm({
         </div>
       </div>
 
-      {/* 🖼️ 2026-07-01 (대표 — 링크샵 판매자 정보): 통신판매업신고번호 — 전자상거래법 표시 항목.
-          링크샵(/u/·/profile) 판매자 정보 카드에 공개 표시됨. */}
+      {/* 🖼️ 2026-07-01 (대표 — 유어샵 판매자 정보): 통신판매업신고번호 — 전자상거래법 표시 항목.
+          유어샵(/u/·/profile) 판매자 정보 카드에 공개 표시됨. */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           {t('seller.mailOrderNumber', { defaultValue: '통신판매업신고번호' })}
@@ -127,7 +127,7 @@ export default function BusinessInfoForm({
           disabled={businessInfo?.is_verified && !editMode}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
-        <p className="text-xs text-gray-500 mt-1">{t('seller.mailOrderNumberHint', { defaultValue: '링크샵 판매자 정보에 공개 표시됩니다 (전자상거래법 표시 항목)' })}</p>
+        <p className="text-xs text-gray-500 mt-1">{t('seller.mailOrderNumberHint', { defaultValue: '유어샵 판매자 정보에 공개 표시됩니다 (전자상거래법 표시 항목)' })}</p>
       </div>
 
       {/* 🏪 2026-07-05: 온누리상품권 가맹 여부 — 동네딜 카드/상세·상권관에 뱃지로 공개 표시. */}

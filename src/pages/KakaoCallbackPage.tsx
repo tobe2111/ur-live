@@ -51,9 +51,9 @@ export default function KakaoCallbackPage() {
 
         const { user, seller_token, agency_token, agency_refresh_token, seller, agency } = res.data.data
 
-        // 🏭 2026-06-05 [UNLOCK_LOADING] (사용자 신고 — 마이=정지원 / 링크샵=디스크프리 계정 중첩 영구수정):
-        //   다른 카카오 계정(user.id 변경)으로 로그인하면, 이전 계정의 seller/agency/링크샵 캐시 키가
-        //   localStorage 에 잔존 → BottomNav 링크샵 탭이 옛 계정(디스크프리)을 가리키고, 잔존 seller_token 은
+        // 🏭 2026-06-05 [UNLOCK_LOADING] (사용자 신고 — 마이=정지원 / 유어샵=디스크프리 계정 중첩 영구수정):
+        //   다른 카카오 계정(user.id 변경)으로 로그인하면, 이전 계정의 seller/agency/유어샵 캐시 키가
+        //   localStorage 에 잔존 → BottomNav 유어샵 탭이 옛 계정(디스크프리)을 가리키고, 잔존 seller_token 은
         //   보안상으로도 위험. 계정 전환 시 이 키들을 먼저 제거하고, 아래에서 응답에 있는 것만 재설정 → 신원 1개로 정합.
         //   (잠긴 동작 불변·추가만: seller_username 저장 로직과 admin/agency 'user_type 보존'(아래 51줄)은 그대로.)
         // 🛡️ 2026-06-25 (대표 결정 — 보안 통일): 다른 user.id 로그인(계정 전환) 시 admin_* 토큰도 wipe.

@@ -58,7 +58,7 @@ export default function GbMarketplacePage() {
       <div className="px-4 pt-4">
         <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">
           지금 <strong className="text-gray-700 dark:text-gray-200">소개비가 걸린 공구</strong>를 소개비 높은 순으로 모았어요.
-          담으면 내 링크샵에 추가되고, 내 추천 링크로 팔린 만큼 소개비를 받아요.
+          담으면 내 유어샵에 추가되고, 내 추천 링크로 팔린 만큼 소개비를 받아요.
         </p>
 
         {/* 🎟️ 크리에이터 콘솔: 진행 중 공구별 내 실적(판매·확정/예정 소개비) */}
@@ -108,7 +108,7 @@ export default function GbMarketplacePage() {
                     disabled={isPinning}
                     className="w-full py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13px] font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
-                    <Plus className="w-4 h-4" /> 내 링크샵에 담기
+                    <Plus className="w-4 h-4" /> 내 유어샵에 담기
                   </button>
                 </div>
               </div>

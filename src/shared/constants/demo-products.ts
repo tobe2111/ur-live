@@ -18,7 +18,7 @@
  *
  * 추첨(응모→당첨→구매)은 **매장 방문 이용권**의 흐름이다. 배송 상품에 "응모"를 붙이면
  * 소비자가 무엇을 하는 화면인지 알 수 없다. 그래서 **voucher 카테고리 데모만** 대상으로 한다
- * (`demo-linkshop-*` 중 `food` 6개는 링크샵 배송 예시라 제외 — 동네딜 피드에도 안 뜬다).
+ * (`demo-linkshop-*` 중 `food` 6개는 유어샵 배송 예시라 제외 — 동네딜 피드에도 안 뜬다).
  */
 import { VOUCHER_CATEGORY_SET } from './voucher-categories'
 
@@ -46,7 +46,7 @@ export function isDemoSlug(slug: string | null | undefined): boolean {
 
 /**
  * 이 상품이 **추첨으로 보여야 하는 데모**인가 — 데모 ∧ 매장 이용권 카테고리.
- * 배송 데모(링크샵 food 예시)는 false.
+ * 배송 데모(유어샵 food 예시)는 false.
  */
 export function isRaffleDemo(
   product: { slug?: string | null; category?: string | null } | null | undefined,

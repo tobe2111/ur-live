@@ -37,6 +37,7 @@ import {
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 // 🎟️ 2026-08-12 (소비자 공구 결제 결함 3건): 자기참여 판정·주문번호·가상계좌 가드 → gb-purchase-guards.ts
 import { isSelfOwnedGroupBuy, resolveGbOrderNumber, guardAwaitingDeposit, issuedVoucherLabel } from './gb-purchase-guards'
+import { findActiveDealPct } from '@/worker/utils/influencer-deal'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 
@@ -470,17 +471,13 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         // 🛡️ 2026-05-16: 영입 보너스 + 협업 deal cap 종합 계산
         const isReferredByThis = sellerRow?.referred_by_influencer === referralInfluencerId
         const referralBonusActive = !!sellerRow?.referral_bonus_until && new Date(sellerRow.referral_bonus_until) > new Date()
-        const dealRow = await DB.prepare(
-          `SELECT commission_pct FROM seller_influencer_deals
-           WHERE seller_id = ? AND influencer_id = ? AND status = 'active'
-             AND (ends_at IS NULL OR ends_at > datetime('now'))
-             AND (COALESCE(requires_content_proof, 0) = 0 OR proof_status = 'approved')
-           LIMIT 1`
-        ).bind(product.seller_id, referralInfluencerId).first<{ commission_pct: number }>().catch(() => null)
+        // 🔒 2026-08-26: 조건을 `findActiveDealPct` SSOT 로 — 이용권 상세의 "내 링크로 팔리면 N%"
+        //   배너가 **같은 함수**를 쓴다. 여기와 배너가 갈리면 화면은 "받는다"인데 정산은 0 이 된다.
+        const dealPct = await findActiveDealPct(DB, Number(product.seller_id), referralInfluencerId)
         effectiveInfluencerPct = calcInfluencerCommissionPct(rates, {
           is_referred_by_this_influencer: isReferredByThis,
           referral_bonus_active: referralBonusActive,
-          deal_commission_pct: dealRow?.commission_pct ?? null,
+          deal_commission_pct: dealPct,
         })
       }
     }

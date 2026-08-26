@@ -1,14 +1,14 @@
 /**
  * 🛡️ 2026-05-07: TD-018 분할 — SellerPublicPage 의 정보 탭.
- * 🏁 2026-06-26 (대표): 서포터 랭킹 제거 + 이용권 '이용안내'는 링크샵에서 제거(이용권 상세페이지 전담).
+ * 🏁 2026-06-26 (대표): 서포터 랭킹 제거 + 이용권 '이용안내'는 유어샵에서 제거(이용권 상세페이지 전담).
  * 🖼️ 2026-07-01 (대표 신고): 소개 섹션 제거(헤더와 중복) + 판매자 정보 편집 딥링크 + 통신판매업신고번호.
  * 🧾 2026-07-02 (대표 시안 — 쇼핑몰 푸터처럼): 카드+배지 → **"MORE INFO +" 접이식 푸터**(29cm/무신사식
- *   `LABEL. value` 평문 + [사업자정보확인] 링크). 링크샵 맨 밑에 자연스럽게 얹힘. 카카오 문의는 유지.
+ *   `LABEL. value` 평문 + [사업자정보확인] 링크). 유어샵 맨 밑에 자연스럽게 얹힘. 카카오 문의는 유지.
  */
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { MessageCircle, Phone, Pencil } from 'lucide-react'
+import { MessageCircle, Phone } from 'lucide-react'
 import type { Seller } from './types'
 import type { ThemeTokens } from './theme'
 
@@ -18,7 +18,7 @@ interface Props {
   T: ThemeTokens
 }
 
-// 🧹 2026-07-20 (링크샵 전수조사): 카카오 채팅 링크 인라인 편집 props(canSellerEdit/editingField/editKakao/
+// 🧹 2026-07-20 (유어샵 전수조사): 카카오 채팅 링크 인라인 편집 props(canSellerEdit/editingField/editKakao/
 //   saving/startEdit/saveEdit) 제거 — 연락처 편집은 셀러 대시보드 전담. InfoTab 은 표시 전용.
 export default function InfoTab({ seller, isOwner, T }: Props) {
   const { t } = useTranslation()
@@ -75,15 +75,6 @@ export default function InfoTab({ seller, isOwner, T }: Props) {
           >
             {t('seller.publicPage.moreInfo', { defaultValue: 'MORE INFO' })}
             <span className="text-[11px] leading-none font-normal">{open ? '−' : '+'}</span>
-            {isOwner && (
-              <Link
-                to="/seller/business-info"
-                onClick={e => e.stopPropagation()}
-                className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-gray-400 dark:text-gray-500 normal-case tracking-normal active:opacity-70"
-              >
-                <Pencil className="w-2.5 h-2.5" /> {t('common.edit', { defaultValue: '수정' })}
-              </Link>
-            )}
           </button>
 
           {open && (

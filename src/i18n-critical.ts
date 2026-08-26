@@ -43,7 +43,7 @@ export const CRITICAL_I18N: Record<string, Record<string, any>> = {
       shop: '쇼핑',
       vouchers: '교환권',
       live: '라이브',
-      linkshop: '링크샵',
+      linkshop: '유어샵',
       my: '마이',
       cart: '장바구니',
       myPage: '마이페이지',

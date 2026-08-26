@@ -159,7 +159,7 @@ export default function VoucherDetailPage() {
   const [phoneInput, setPhoneInput] = useState('')
   const [phoneConsent, setPhoneConsent] = useState(false)
 
-  // 🧭 2026-06-10 (링크샵 적립): 핀 리다이렉트 ?aff= → affiliate_ref 저장 (물리 ?ref= 와 동일 키)
+  // 🧭 2026-06-10 (유어샵 적립): 핀 리다이렉트 ?aff= → affiliate_ref 저장 (물리 ?ref= 와 동일 키)
   // 🧭 2026-07-11 (감사 §R2): ?ref=(인플 share_url) fallback — GroupBuyDetailPage 와 정합. aff 우선.
   useEffect(() => {
     try {
@@ -229,7 +229,7 @@ export default function VoucherDetailPage() {
       if (code === 'INSUFFICIENT_POINTS') {
         // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
         if (TOPUP_DISABLED) {
-          toast.error('딜이 부족해요. 딜은 친구 초대·링크샵 추천으로 모을 수 있어요.')
+          toast.error('딜이 부족해요. 딜은 친구 초대·유어샵 추천으로 모을 수 있어요.')
           return
         }
         const charge = await confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')

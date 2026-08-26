@@ -341,9 +341,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           {t('seller.settings')}
         </Link>
         {(() => {
-          // 🔗 2026-07-02 (대표 신고 — 공개 프로필 보기 워터폴): 링크샵은 /u/{handle} 로 통일됨.
+          // 🔗 2026-07-02 (대표 신고 — 공개 프로필 보기 워터폴): 유어샵은 /u/{handle} 로 통일됨.
           //   기존엔 /profile/{seller_username}(SellerPublicPage) 로 가서 /u/{handle}(CuratorPage) 로
-          //   재라우팅 → "다른 페이지 뜬 뒤 링크샵" 워터폴. 소비자 핸들 있으면 /u/{handle} 직행.
+          //   재라우팅 → "다른 페이지 뜬 뒤 유어샵" 워터폴. 소비자 핸들 있으면 /u/{handle} 직행.
           //   (useLinkshopPath / BottomNav 우선순위와 동일 — 셀러-only 만 /profile 폴백.)
           const handle = localStorage.getItem('user_handle')
           const goodHandle = !!handle && handle.length >= 3 && !['user', 'me', 'admin', 'seller', 'api', 'host', 'new'].includes(handle.toLowerCase())
@@ -364,7 +364,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         })()}
         {/* 🔗 2026-07-02 (대표 지시 — 셀러 모드 영구 유지): '유저로 돌아가기' 제거.
             승인된 셀러는 하나의 계정으로 셀러 능력이 상시 켜진 상태 유지(유저→사업자 유저=레이어 추가).
-            소비자 화면으로의 출구는 위 '공개 프로필 보기'(→ /u/{handle} 링크샵)가 담당. */}
+            소비자 화면으로의 출구는 위 '공개 프로필 보기'(→ /u/{handle} 유어샵)가 담당. */}
         <button
           onClick={() => logoutSeller(navigate)}
           className="w-full flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-red-400 hover:text-red-300 transition-colors"

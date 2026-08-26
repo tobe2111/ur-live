@@ -1809,7 +1809,7 @@
       "products": "🛒 Ventas online",
       "groupbuy": "🏪 Compras grupales y estancias",
       "ordersCustomers": "Pedidos y clientes",
-      "curator": "Mi tienda de enlaces"
+      "curator": "Mi UrShop"
     },
     "nav": {
       "products": "Productos",
@@ -1823,7 +1823,7 @@
       "bundles": "Paquetes",
       "promoCodes": "Códigos promo",
       "followers": "Seguidores",
-      "miniShop": "Ajustes de Linkshop",
+      "miniShop": "Ajustes de UrShop",
       "streamingGuide": "Guía de streaming",
       "notifyFollowers": "Notificar seguidores",
       "stays": "Vales de alojamiento",
@@ -1838,7 +1838,7 @@
       "promoSpend": "Gasto promo",
       "influencerDeals": "Colabs influencers",
       "experienceCampaigns": "Campañas de prueba",
-      "myLinkshop": "Mi Linkshop",
+      "myLinkshop": "Mi UrShop",
       "reviewVerifications": "Verificar reseñas",
       "returns": "Solicitudes de reembolso",
       "operators": "Operadores",
@@ -3821,7 +3821,7 @@
     "restaurants": "Restaurantes",
     "groupBuy": "Compra Grupal",
     "my": "Mi",
-    "linkshop": "Linkshop",
+    "linkshop": "UrShop",
     "vouchers": "Cupones",
     "dongnedeal": "Ofertas locales",
     "create": "Crear",
@@ -5374,7 +5374,7 @@
     "q8": "[TODO:es] 개인정보를 수정하고 싶어요",
     "a8": "[TODO:es] 마이페이지에서 배송지, 연락처 등을 수정하실 수 있습니다. 카카오 계정 정보는 카카오에서 직접 수정해주세요.",
     "q9": "¿Qué es UrDeal?",
-    "a9": "UrDeal (urdeal.kr) es una plataforma de comercio local: compra vales de tiendas de tu barrio con descuento y úsalos en la tienda con un código QR. Ofrece vales de comida, belleza y alojamiento, cupones de intercambio (gifticon), un mapa de ofertas cercanas y tu propia tienda de enlaces.",
+    "a9": "UrDeal (urdeal.kr) es una plataforma de comercio local: compra vales de tiendas de tu barrio con descuento y úsalos en la tienda con un código QR. Ofrece vales de comida, belleza y alojamiento, cupones de intercambio (gifticon), un mapa de ofertas cercanas y tu propia UrShop.",
     "q10": "¿Cómo uso un vale?",
     "a10": "Los vales comprados aparecen en Mi página > Mis vales; muestra el QR o el PIN en la tienda para usarlos. Los cupones de intercambio se emiten justo después del pago."
   },
@@ -6150,7 +6150,7 @@
     "startBrowse": "Ver productos",
     "exploreShop": "Explorar tienda",
     "earnings": {
-      "title": "Ganancias de mi Linkshop",
+      "title": "Ganancias de mi UrShop",
       "monthEarning": "Ganancias de 30 días",
       "clicks30d": "Clics de 30 días",
       "purchases30d": "Compras de 30 días",
@@ -6197,7 +6197,13 @@
     "stepHandle": "Configura la dirección",
     "stepFirstProduct": "Añade el primer producto",
     "verifiedBusinessUser": "Vendedor verificado",
-    "verifiedBusinessDesc": "Registro comercial verificado."
+    "verifiedBusinessDesc": "Registro comercial verificado.",
+    "registerStore": "Registrar tienda",
+    "emptyOwnerSellerTitle": "Empieza registrando tu tienda",
+    "emptyOwnerSellerDesc": "Registra tu tienda para añadir pases. Aparecerán aquí.",
+    "stepRegisterStore": "Registrar tienda",
+    "statReviews": "{{n}} reseñas",
+    "statSold": "{{n}} vendidos"
   },
   "shipping": {
     "trackingTitle": "Seguimiento de envío",
@@ -6223,7 +6229,7 @@
   "dealEarn": {
     "title": "Cómo ganar Deals",
     "subtitle": "Júntalos y cámbialos por vales",
-    "linkshop": "Compartir Link Shop",
+    "linkshop": "Compartir UrShop",
     "linkshopDesc": "Comparte y gana comisión",
     "recruit": "Captar tienda",
     "recruitDesc": "Comisión por cada venta",
@@ -6660,7 +6666,7 @@
   },
   "my": {
     "earningsGroupTitle": "Mis ganancias",
-    "earningsGroupSub": "Recompensas · Linkshop · Invitaciones",
+    "earningsGroupSub": "Recompensas · UrShop · Invitaciones",
     "settingsGroupTitle": "Ajustes",
     "settingsGroupSub": "Notificaciones · Tema · Idioma · Info de la app",
     "affiliateLinkTitle": "Enlaces de recomendación",
@@ -6759,5 +6765,12 @@
     "recent": "Invitaciones recientes",
     "waitingPurchase": "Esperando compra",
     "friend": "Amigo"
+  },
+  "share": {
+    "rewardTitle": "Gana {{pct}}% por venta con tu enlace",
+    "rewardDesc": "Es tu acuerdo con la tienda. Comparte el enlace para acumular.",
+    "copyMyLink": "Copiar mi enlace",
+    "copied": "Enlace copiado",
+    "copyFailed": "Error al copiar"
   }
 }

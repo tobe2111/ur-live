@@ -1656,8 +1656,8 @@ adminProductsRoutes.delete('/dongnedeal/seed-demo', cors(), async (c) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 🎬 2026-07-07 (대표 — "데모 데이터 실제로 심어서 테스트"): 링크샵 리디자인 확인용 데모 상품 시드.
-//   특정 셀러(seller_id)의 '내 상품' + '이용권'을 채워 링크샵을 꽉 찬 상태로 만든다.
+// 🎬 2026-07-07 (대표 — "데모 데이터 실제로 심어서 테스트"): 유어샵 리디자인 확인용 데모 상품 시드.
+//   특정 셀러(seller_id)의 '내 상품' + '이용권'을 채워 유어샵을 꽉 찬 상태로 만든다.
 //   slug 'demo-linkshop-N' 로 식별 → DELETE 로 일괄 제거. 멱등(이미 있으면 skip). 이미지는 기존 데모 R2 사진 재사용.
 const LINKSHOP_DEMO_SLUG = 'demo-linkshop-';
 const LINKSHOP_DEMO_IMGS = [

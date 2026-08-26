@@ -200,7 +200,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
                 })
               }
             } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher-used-ledger]', e) }
-            // 🆕 2026-06-17 (대표 결정 "예정→사용 시 확정"): 이 교환권 주문의 holding 추천적립(링크샵/추천)을
+            // 🆕 2026-06-17 (대표 결정 "예정→사용 시 확정"): 이 교환권 주문의 holding 추천적립(유어샵/추천)을
             //   '사용한 바로 이 시점'에 확정(granted)+딜 잔액 적립. 멱등(CAS) — 성숙 cron 안전망과 충돌 없음.
             try {
               if (meta.order_id) {

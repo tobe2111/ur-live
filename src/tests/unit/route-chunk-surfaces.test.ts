@@ -9,7 +9,7 @@
  *      `RestaurantMapPage` 를 가리켜, 홈 첫 화면이 **안 쓰는 지도 청크 23KB(gzip)** 를 미리 받고
  *      정작 쓰는 홈 청크는 병렬화를 못 받았다. 양쪽으로 손해인데 에러가 없다.
  *   ② 캡에 잘린 두 번째 진입점 — `linkshop` 은 큐레이터/셀러 두 페이지인데 `SellerPublicPage`
- *      가 MAX_LINKS 10 에 밀려 빠져 있었다(사업자 링크샵의 본체인데도).
+ *      가 MAX_LINKS 10 에 밀려 빠져 있었다(사업자 유어샵의 본체인데도).
  *
  * 못 막는 것: 생성된 맵의 **내용**(빌드 산출물이라 커밋본은 비어 있다). 여기서는 **선언**
  * (`ROUTES`)이 실제 라우팅과 맞는지, 그리고 캡 처리가 페이지 청크를 우선하는지만 본다.
@@ -74,7 +74,7 @@ describe('진입점이 여러 개인 표면은 페이지 청크가 캡에 안 �
     expect(s).toMatch(/\[\.\.\.new Set\(\[\.\.\.pageJs, \.\.\.sharedJs\]\)\]/)
   })
 
-  it('링크샵 두 페이지가 모두 선언돼 있다 (사업자 링크샵의 본체가 셀러 페이지다)', () => {
+  it('유어샵 두 페이지가 모두 선언돼 있다 (사업자 유어샵의 본체가 셀러 페이지다)', () => {
     const block = routesBlock()
     const line = block.split('\n').find((l) => /^\s*linkshop:/.test(l)) ?? ''
     expect(line).toContain('CuratorPage')

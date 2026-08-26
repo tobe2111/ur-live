@@ -13,6 +13,7 @@ import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import { useWishlist } from '@/hooks/queries/useWishlist'
 import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
 import { isLoggedInSync } from '@/utils/auth'
+import { sellerEntryPath } from '@/utils/seller-entry'
 import { isWholesaleSurface } from '@/utils/domain'
 import { hasOwnHeaderPc, isFullBleedPcPath } from '@/shared/pc-fullbleed'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
@@ -32,7 +33,7 @@ export default function DesktopTopNav() {
   const acctRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const loggedIn = isLoggedInSync()
-  // 🔗 2026-06-17 (대표 신고): 링크샵 탭이 항상 /host/new 로 가던 버그 — 본인 링크샵 경로로 정합(BottomNav 와 동일).
+  // 🔗 2026-06-17 (대표 신고): 유어샵 탭이 항상 /host/new 로 가던 버그 — 본인 유어샵 경로로 정합(BottomNav 와 동일).
   const linkshopPath = useLinkshopPath()
 
   // 🗑️ 2026-07-07 (로딩 낭비 감사): 이 네비는 `hidden md:block`(모바일 display:none)인데 React 는 마운트해
@@ -78,7 +79,7 @@ export default function DesktopTopNav() {
   }, [acctOpen])
 
   // 🛡️ 2026-06-10 [UNLOCK_LOADING] (사용자 결정): 라이브 영구 중단 + 쇼핑 잠정 숨김 — 플래그 가역.
-  //   링크샵 탭 추가(하단바와 정합). 쇼핑 라우트(/browse·/cart)는 보존 — 장바구니 아이콘으로 도달 가능.
+  //   유어샵 탭 추가(하단바와 정합). 쇼핑 라우트(/browse·/cart)는 보존 — 장바구니 아이콘으로 도달 가능.
   const navItems = [
     { icon: Home, key: 'home', label: t('nav.home', { defaultValue: '홈' }), path: '/' },
     // 🗑️ 2026-07-07 라이브커머스 제거: '라이브' 탭 삭제.
@@ -86,7 +87,7 @@ export default function DesktopTopNav() {
     //   실제 다른 목적지인 '교환권'(/vouchers)로 교체(하단바 2번째 탭과 정합).
     { icon: Gift, key: 'vouchers', label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers' },
     ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: ShoppingCart, key: 'shop', label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
-    { icon: Sparkles, key: 'linkshop', label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
+    { icon: Sparkles, key: 'linkshop', label: t('nav.linkshop', { defaultValue: '유어샵' }), path: linkshopPath },
   ]
 
   // 🖥️ 2026-07-19 (대표 요청 — 그루폰식 상단 카테고리 바): 좌측 사이드바 대신 상단 2번째 행에 카테고리/섹션을
@@ -96,7 +97,7 @@ export default function DesktopTopNav() {
     { icon: Gift, label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers' },
     { icon: MapPin, label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/map' },
     ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: ShoppingCart, label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
-    { icon: Sparkles, label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
+    { icon: Sparkles, label: t('nav.linkshop', { defaultValue: '유어샵' }), path: linkshopPath },
     { icon: BookOpen, label: t('nav.blog', { defaultValue: '블로그' }), path: '/blog' },
   ]
 
@@ -122,7 +123,7 @@ export default function DesktopTopNav() {
    *   `/map` 은 **왼쪽 리스트 패널에 같은 카테고리 칩**을 갖는다(MapTopBar panel). 위·아래에 두 벌이면
    *   어느 쪽이 지금 적용된 필터인지 화면상 알 수 없다 — 실제로 둘은 **다른 상태**를 쓴다
    *   (헤더 칩은 홈의 `?category=` 로 **이동**시키고, 패널 칩은 지도 필터를 **그 자리에서** 바꾼다).
-   *   ⇒ 서비스 축(홈·교환권·동네딜·링크샵·블로그)은 남기고 **딜 카테고리만** 숨긴다.
+   *   ⇒ 서비스 축(홈·교환권·동네딜·유어샵·블로그)은 남기고 **딜 카테고리만** 숨긴다.
    *   서비스 축까지 지우면 /map 에서 다른 데로 갈 통로가 없어진다.
    */
   const hideDealCats = location.pathname === '/map'
@@ -257,9 +258,12 @@ export default function DesktopTopNav() {
             {t('nav.app', { defaultValue: '앱' })}
           </button>
 
-          {/* 판매하세요 — 🖥️ 2026-07-19 (대표 요청): '판매자센터' → '유어딜(로고)에서 판매하세요'(그루폰식). */}
+          {/* 판매하세요 — 🖥️ 2026-07-19 (대표 요청): '판매자센터' → '유어딜(로고)에서 판매하세요'(그루폰식).
+              🩸 2026-08-26: 목적지가 `/seller` 고정이라 **아직 셀러가 아닌 사람은 로그인 벽으로 튕겼다**
+              (`requireSeller` → `/seller/login`). 관심 보인 사장님에게 로그인 화면은 안내가 아니다.
+              판정은 `sellerEntryPath()` SSOT 로 — 셀러면 대시보드, 아니면 입점 안내(`/partners`). */}
           <button
-            onClick={() => navigate('/seller')}
+            onClick={() => navigate(sellerEntryPath())}
             aria-label={t('nav.sellOnUrdeal', { defaultValue: '유어딜에서 판매하세요' })}
             className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors whitespace-nowrap"
           >
@@ -362,7 +366,7 @@ export default function DesktopTopNav() {
           홈/풀블리드 상단바에서만. 좌측 사이드바 대신 가로 카테고리 네비. */}
       {/* 🧭 2026-08-19 (대표 확정 — "카테고리를 같은 줄에 합치기"): 그루폰 2행은 '카테고리'인데 우리 2행은
           '서비스 축'이었다. 둘을 **한 줄**에 두되 세로 구분선으로 성격을 나눈다 —
-          [홈·교환권·동네딜·링크샵·블로그] │ [식사·미용·숙소·기타]. 넘치면 그루폰처럼 우측 화살표로 스크롤.
+          [홈·교환권·동네딜·유어샵·블로그] │ [식사·미용·숙소·기타]. 넘치면 그루폰처럼 우측 화살표로 스크롤.
           ⚠️ 딜 카테고리는 **홈의 쿼리**(`/?category=`)로 간다 — PcHomePage 가 쿼리 변화에 제자리 반응하므로
           리마운트 0(2026-08-17 '더보기 플래시' 수리와 같은 경로). 라벨/아이콘 SSOT 는 `DEAL_CATS`. */}
       {isHome && (

@@ -42,17 +42,17 @@ const HIDE_SIDEBAR_PREFIXES = [
   '/blog',
 ]
 
-// 🎨 2026-06-18 (사용자 시안): 링크샵 진입 시 PC 좌측 카테고리 사이드바 숨김 → 깔끔한 액자.
+// 🎨 2026-06-18 (사용자 시안): 유어샵 진입 시 PC 좌측 카테고리 사이드바 숨김 → 깔끔한 액자.
 //   프레임(중앙 정렬)은 유지(HIDE_SIDEBAR_PREFIXES 와 달리 풀너비로 안 만듦) + 우하단 QR 표시.
-//   /u(링크샵), /profile/(레거시 링크샵), /s/(셀러 공개) 모두 링크샵 서피스.
-// 🐛 2026-08-17 (대표 신고 — /user/profile 위에 링크샵 방문자 팝업 2개 겹침): 목록의 bare `'/u'` 가
-//   `startsWith` 로 검사돼 **`/user/*`(마이페이지) 전부가 링크샵 방문자로 오판** → QR·"나도 링크샵"
+//   /u(유어샵), /profile/(레거시 유어샵), /s/(셀러 공개) 모두 유어샵 서피스.
+// 🐛 2026-08-17 (대표 신고 — /user/profile 위에 유어샵 방문자 팝업 2개 겹침): 목록의 bare `'/u'` 가
+//   `startsWith` 로 검사돼 **`/user/*`(마이페이지) 전부가 유어샵 방문자로 오판** → QR·"나도 유어샵"
 //   레일이 마이페이지 콘텐츠 위에 떴다. `/u` 단독은 아래 isLinkshop 의 exact 비교가 이미 처리하므로
 //   접두사는 **세그먼트 경계(`/u/`)** 만 남긴다.
 const LINKSHOP_PREFIXES = ['/u/', '/profile/', '/s/']
 
-// 🛡️ 2026-06-18 (사용자 정정 — "링크샵 주인은 왼쪽 카테고리가 보여야지"): 사이드바 숨김/QR 은
-//   "공유 링크로 들어온 방문자"에게만. 주인이 자기 링크샵을 보면 평소 앱(사이드바) 그대로.
+// 🛡️ 2026-06-18 (사용자 정정 — "유어샵 주인은 왼쪽 카테고리가 보여야지"): 사이드바 숨김/QR 은
+//   "공유 링크로 들어온 방문자"에게만. 주인이 자기 유어샵을 보면 평소 앱(사이드바) 그대로.
 //   주인 판별 = URL 핸들 ↔ localStorage 핸들(useLinkshopPath 우선순위: seller_username →
 //   linked_seller_username → user_handle, /u/me·/u 는 항상 주인). SSR(window 없음)=방문자로 간주
 //   → 익명 액자 우선, 주인 하드로드 시 첫 client 렌더에서 사이드바 자기치유(createRoot 비-hydrate).
@@ -91,8 +91,8 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   const applied = useTheme(s => s.applied)
   const mobileOnly = MOBILE_ONLY_PREFIXES.some(p => location.pathname.startsWith(p))
   const hideSidebar = HIDE_SIDEBAR_PREFIXES.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
-  // 🎨 2026-06-18 링크샵 서피스 — 좌측바 숨김 + 우하단 QR (프레임은 유지).
-  //   단, 주인이 자기 링크샵을 볼 땐 평소 앱(사이드바 표시) — 방문자(공유링크 진입)에게만 액자+QR.
+  // 🎨 2026-06-18 유어샵 서피스 — 좌측바 숨김 + 우하단 QR (프레임은 유지).
+  //   단, 주인이 자기 유어샵을 볼 땐 평소 앱(사이드바 표시) — 방문자(공유링크 진입)에게만 액자+QR.
   const isLinkshop = location.pathname === '/u' || LINKSHOP_PREFIXES.some(p => location.pathname.startsWith(p))
   const linkshopVisitor = isLinkshop && !isOwnLinkshopPath(location.pathname)
   // 🖥️ 2026-06-18 (대표 결정 — PC 전면 반응형): 데스크탑 풀너비 페이지(단계적 롤아웃).
@@ -106,7 +106,7 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   // 🏬 2026-08-12 (대표 — 라이브 화면 신고 "왜 지금 이 형태인거야?"): **운영자 몰은 유어딜 셸을 안 입는다.**
   //   `App.tsx` 는 2026-08-02 에 몰 표면에서 하단바/상단 네비를 이미 껐는데(`hideBottomNav`), **이 파일은
   //   몰을 몰랐다**(`mall` 이라는 단어가 0건이었다) → `framed=true` 로 몰이 430px 유어딜 액자에 갇히고,
-  //   비어 버린 좌우 거터를 `ConsumerFrameRails`(urdeal 로고·"내 손안의 동네 딜"·홈/쇼핑/이용권/링크샵/마이
+  //   비어 버린 좌우 거터를 `ConsumerFrameRails`(urdeal 로고·"내 손안의 동네 딜"·홈/쇼핑/이용권/유어샵/마이
   //   바로가기·"지도로 동네딜 보기")가 채웠다. **몰 화면인데 사방이 유어딜 광고였다.**
   //   ⇒ 판정은 `App.tsx` 와 **같은 SSOT**(`isMallSurfacePath`) 하나로 — 둘이 갈리면 한쪽만 새는 게 이 사고다.
   //   🔴 `framed` 만 끄면 `showSidebar` 가 대신 켜져 유어딜 사이드바가 뜬다 → 아래에서 함께 막는다.
@@ -116,7 +116,7 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   const framed = !mobileOnly && !hideSidebar && !isDesktopResponsive && !isFullBleedHome && !mallSurface
   // 🖥️ 2026-06-20 (대표 시안 — PC 단일 정체성): 액자 컨슈머 페이지는 좌측 사이드바 대신 거터 레일 +
   //   프레임 내부 하단 네비를 쓴다 → framed 면 사이드바 숨김. live/shorts(mobileOnly)·풀너비 반응형
-  //   페이지는 종전처럼 사이드바 유지. 데코 거터 레일은 framed 이고 링크샵 방문자가 아닐 때만.
+  //   페이지는 종전처럼 사이드바 유지. 데코 거터 레일은 framed 이고 유어샵 방문자가 아닐 때만.
   // 🖥️ 풀블리드 홈은 앱 사이드바(DesktopLiveSidebar)도 숨김 — PcHomePage 자체 레일이 좌측을 담당.
   //   🏬 `!mallSurface` — 위 주석의 함정. 액자만 벗기면 그 자리를 유어딜 사이드바가 차지한다.
   const showSidebar = !hideSidebar && !linkshopVisitor && !framed && !isFullBleedHome && !mallSurface
@@ -147,7 +147,7 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
       {/* PC (xl+) 좌측 사이드바 — 일반 페이지 + 라이브/쇼츠 (fixed). */}
       {showSidebar && <DesktopLiveSidebar />}
       {/* 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 렌더 제거 */}
-      {/* 🎨 2026-07-07 (대표 승인) 링크샵 방문자 PC 거터: 좌=창작자 카드 / 우=모바일 QR + "나도 만들기" 성장 훅.
+      {/* 🎨 2026-07-07 (대표 승인) 유어샵 방문자 PC 거터: 좌=창작자 카드 / 우=모바일 QR + "나도 만들기" 성장 훅.
           유어딜 네비는 안 넣음(독립 쇼핑몰 느낌 유지). xl+ 내부 게이트. (기존 우하단 단독 QR 을 흡수·대체.) */}
       {linkshopVisitor && <Suspense fallback={null}><LinkshopVisitorRails /></Suspense>}
       {/* 🖥️ 2026-06-20 컨슈머 PC 액자 거터 레일 (브랜드/QR/바로가기) — xl+ 에서만 보임(컴포넌트 내부 게이트). */}

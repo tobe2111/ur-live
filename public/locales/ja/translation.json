@@ -1838,7 +1838,7 @@
     "profileLoading": "プロフィール読み込み中...",
     "sellerRegister": "販売者登録",
     "regBenefitsTitle": "登録するとこう始められます",
-    "regBenefit1": "自分のリンクショップ（オンラインストア）が自動で作られます",
+    "regBenefit1": "自分のUrShop（オンラインストア）が自動で作られます",
     "regBenefit2": "自分の商品や利用券を登録してすぐに販売できます",
     "regBenefit3": "売上は現金で精算（プラットフォーム手数料5%）",
     "passwordWeak": "パスワードは10文字以上で、大文字・小文字・数字・記号をすべて含む必要があります",
@@ -1854,7 +1854,7 @@
     "kakaoBannerTitle": "カカオログインでもっと簡単に",
     "kakaoBannerDesc": "カカオアカウントを連携すると、次回からカカオログイン一つでセラーダッシュボードに入れます。",
     "kakaoBannerCta": "連携する",
-    "sellerRegistration": "自分のリンクショップで商品・利用券を販売し、現金で精算を受け取りましょう",
+    "sellerRegistration": "自分のUrShopで商品・利用券を販売し、現金で精算を受け取りましょう",
     "usernameLabel": "ユーザーID * (3文字以上、英数字)",
     "youtubeEmailLabel": "YouTubeライブ用Googleアカウントメール * (必須)",
     "youtubeEmailDesc": "YouTubeライブに連携するGoogleアカウント(@gmail.com)を入力してください。",
@@ -1955,7 +1955,7 @@
       "verifiedBusiness": "事業者認証",
       "moreInfo": "MORE INFO",
       "bizInfoCheck": "事業者情報確認",
-      "recommendOn": "下部「おすすめ」セクションがオンになりました — ピンした商品がリンクショップの最下部に表示されます",
+      "recommendOn": "下部「おすすめ」セクションがオンになりました — ピンした商品がUrShopの最下部に表示されます",
       "recommendOff": "下部「おすすめ」セクションをオフにしました",
       "recommendSaveFail": "設定の保存に失敗しました — 一般アカウントのログイン状態をご確認ください",
       "recommendToggleHint": "ピンした商品を下部「おすすめ」に表示",
@@ -2482,7 +2482,7 @@
       "products": "🛒 オンライン販売·仕入",
       "groupbuy": "🏪 オフライン共同購入·宿泊",
       "ordersCustomers": "注文·顧客",
-      "curator": "マイリンクショップ"
+      "curator": "マイUrShop"
     },
     "liveChat": {
       "title": "リアルタイムチャット",
@@ -2519,7 +2519,7 @@
       "bundles": "バンドル商品",
       "promoCodes": "プロモコード",
       "followers": "フォロワー",
-      "miniShop": "リンクショップ設定",
+      "miniShop": "UrShop設定",
       "streamingGuide": "配信ガイド",
       "notifyFollowers": "フォロワー通知",
       "stays": "宿泊共同購入",
@@ -2534,7 +2534,7 @@
       "promoSpend": "プロモ支出",
       "influencerDeals": "インフル協業",
       "experienceCampaigns": "体験キャンペーン",
-      "myLinkshop": "マイリンクショップ",
+      "myLinkshop": "マイUrShop",
       "reviewVerifications": "レビュー確認",
       "returns": "返金リクエスト",
       "operators": "運営者管理",
@@ -2928,10 +2928,10 @@
     "gateway": {
       "title": "事業者ユーザー登録 — マイショップを開く",
       "heroTitle": "マイショップで直接販売",
-      "heroDesc": "事業者認証1回でリンクショップが本物のショップに。商品・利用券の登録＋現金精算（基本手数料5%）。",
-      "kakaoBanner": "このカカオアカウントに販売機能が追加されます。リンクショップ・購入履歴はそのまま。",
+      "heroDesc": "事業者認証1回でUrShopが本物のショップに。商品・利用券の登録＋現金精算（基本手数料5%）。",
+      "kakaoBanner": "このカカオアカウントに販売機能が追加されます。UrShop・購入履歴はそのまま。",
       "escape": "商品のおすすめ・コミッションだけなら登録不要 —",
-      "escapeLink": "マイリンクショップ",
+      "escapeLink": "マイUrShop",
       "escapeSuffix": "ですぐ始められます。",
       "applied": "申請完了！審査状況ページへ移動します。",
       "alreadyActive": "すでに事業者ユーザーです",
@@ -2951,7 +2951,7 @@
     },
     "mailOrderNumber": "通信販売業届出番号",
     "mailOrderNumberPlaceholder": "例: 2026-ソウル江南-01234",
-    "mailOrderNumberHint": "リンクショップの販売者情報に公開表示されます",
+    "mailOrderNumberHint": "UrShopの販売者情報に公開表示されます",
     "primary": {
       "addProductDesc": "利用券・共同購入を登録",
       "voucherManageDesc": "販売・状況",
@@ -4501,7 +4501,7 @@
     "restaurants": "レストラン",
     "groupBuy": "共同購入",
     "my": "マイ",
-    "linkshop": "リンクショップ",
+    "linkshop": "UrShop",
     "vouchers": "クーポン",
     "dongnedeal": "ご近所ディール",
     "create": "作成",
@@ -5374,7 +5374,7 @@
     "q8": "[TODO:ja] 개인정보를 수정하고 싶어요",
     "a8": "[TODO:ja] 마이페이지에서 배송지, 연락처 등을 수정하실 수 있습니다. 카카오 계정 정보는 카카오에서 직접 수정해주세요.",
     "q9": "ユアディール(UrDeal)とはどんなサービスですか？",
-    "a9": "ユアディール(urdeal.kr)は、近所のお店の利用券を割引価格で購入し、店舗でQRコードですぐ使えるローカルコマースプラットフォームです。飲食・美容・宿泊の利用券、ギフト交換券、近くのディールマップ、自分のリンクショップを提供します。",
+    "a9": "ユアディール(urdeal.kr)は、近所のお店の利用券を割引価格で購入し、店舗でQRコードですぐ使えるローカルコマースプラットフォームです。飲食・美容・宿泊の利用券、ギフト交換券、近くのディールマップ、自分のUrShopを提供します。",
     "q10": "利用券はどうやって使いますか？",
     "a10": "購入した利用券はマイページ > 利用券で確認でき、店舗でQRまたはPINを提示するとすぐ使えます。交換券（ギフト券）は決済後すぐ発行されます。"
   },
@@ -6136,7 +6136,7 @@
   "liveWs": {},
   "curator": {
     "notFound": "キュレーターが見つかりません",
-    "notFoundTitle": "😢 リンクショップが見つかりません",
+    "notFoundTitle": "😢 UrShopが見つかりません",
     "fetchError": "読み込みに失敗しました",
     "goHome": "ホームへ",
     "pinCount": "{{count}}個の商品を推薦中",
@@ -6150,7 +6150,7 @@
     "startBrowse": "商品を見る",
     "exploreShop": "ショップへ",
     "earnings": {
-      "title": "マイ リンクショップ収益",
+      "title": "マイ UrShop収益",
       "monthEarning": "30日間の収益",
       "clicks30d": "30日間のクリック",
       "purchases30d": "30日間の購入",
@@ -6159,11 +6159,11 @@
       "noData": "まだデータがありません。友達にピンをシェアしましょう!"
     },
     "dashboardError": "ダッシュボード読み込み失敗",
-    "makeMine": "私もリンクショップを作る — 紹介で獲得",
+    "makeMine": "私もUrShopを作る — 紹介で獲得",
     "console": {
       "title": "クリエイターコンソール"
     },
-    "ownerViewBar": "マイリンクショップ · 訪問者に見える画面",
+    "ownerViewBar": "マイUrShop · 訪問者に見える画面",
     "editButton": "編集",
     "editMode": "編集モード",
     "tapToEdit": "タップで編集",
@@ -6180,7 +6180,7 @@
     "addVoucherPin": "ローカルディールを追加",
     "addShopPin": "商品を追加",
     "addAnyPin": "商品・ディールを追加",
-    "confirmDeletePinMine": "このピンをリンクショップから削除しますか？",
+    "confirmDeletePinMine": "このピンをUrShopから削除しますか？",
     "confirmDeletePin": "このピンを削除しますか？",
     "pinDeleted": "ピンを削除しました",
     "deleteFailed": "削除に失敗しました",
@@ -6197,7 +6197,13 @@
     "stepHandle": "アドレスを設定",
     "stepFirstProduct": "最初の商品を追加",
     "verifiedBusinessUser": "事業者認証済みユーザーです",
-    "verifiedBusinessDesc": "事業者登録情報が確認された販売者です。"
+    "verifiedBusinessDesc": "事業者登録情報が確認された販売者です。",
+    "registerStore": "店舗を登録",
+    "emptyOwnerSellerTitle": "店舗登録から始まります",
+    "emptyOwnerSellerDesc": "店舗を登録するとパスを追加できます。ここに並びます。",
+    "stepRegisterStore": "店舗登録",
+    "statReviews": "レビュー{{n}}",
+    "statSold": "{{n}}件販売"
   },
   "shipping": {
     "trackingTitle": "配送追跡",
@@ -6223,7 +6229,7 @@
   "dealEarn": {
     "title": "ディールの貯め方",
     "subtitle": "貯めて引換券に交換",
-    "linkshop": "リンクショップ共有",
+    "linkshop": "UrShop共有",
     "linkshopDesc": "共有でコミッション",
     "recruit": "店舗を勧誘",
     "recruitDesc": "売上ごとに報酬",
@@ -6660,7 +6666,7 @@
   },
   "my": {
     "earningsGroupTitle": "収益・紹介",
-    "earningsGroupSub": "紹介報酬 · リンクショップ収益 · 招待",
+    "earningsGroupSub": "紹介報酬 · UrShop収益 · 招待",
     "settingsGroupTitle": "設定",
     "settingsGroupSub": "通知 · テーマ · 言語 · アプリ情報",
     "affiliateLinkTitle": "商品紹介リンク",
@@ -6673,7 +6679,7 @@
     "referralStartTitle": "商品を紹介して獲得",
     "referralCountN": "紹介 {{n}}件",
     "referralStartSub": "SNSでシェア → 友達の決済で自動獲得",
-    "curatorTitle": "リンクショップ収益",
+    "curatorTitle": "UrShop収益",
     "curatorCashSub": "現金精算・出金可能",
     "curatorDealSub": "累計獲得・1ディール=1ウォン",
     "freeDealNote": "無償リワード{{free}}ディール含む · 換金可能{{paid}}ディール"
@@ -6736,7 +6742,7 @@
   "roleCta": {
     "myShortcuts": "マイショートカット",
     "startNewRole": "新しい役割を始める",
-    "linkshop": "マイリンクショップ",
+    "linkshop": "マイUrShop",
     "linkshopDesc": "交換券・共同購入を紹介して獲得",
     "sellerDash": "セラーダッシュボード",
     "sellerDashDesc": "商品・共同購入・精算の管理",
@@ -6759,5 +6765,12 @@
     "recent": "最近の招待",
     "waitingPurchase": "購入待ち",
     "friend": "友達"
+  },
+  "share": {
+    "rewardTitle": "あなたのリンク経由の販売で{{pct}}%還元",
+    "rewardDesc": "この店舗との提携です。下のリンクで共有すると還元されます。",
+    "copyMyLink": "マイリンクをコピー",
+    "copied": "リンクをコピーしました",
+    "copyFailed": "コピーに失敗しました"
   }
 }

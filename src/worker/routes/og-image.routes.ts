@@ -142,7 +142,7 @@ interface CuratorForOG {
 function generateCuratorSVG(curator: CuratorForOG, pinThumbs: string[]): string {
   const safeName = escapeXml(curator.name || curator.handle)
   const safeHandle = escapeXml(curator.handle)
-  const safeBio = escapeXml((curator.bio || `${curator.name}의 큐레이션 링크샵`).slice(0, 80))
+  const safeBio = escapeXml((curator.bio || `${curator.name}의 큐레이션 유어샵`).slice(0, 80))
   const profile = curator.profile_image
     ? `<image href="${escapeXml(curator.profile_image)}" x="80" y="80" width="160" height="160" clip-path="url(#cprofile)" preserveAspectRatio="xMidYMid slice"/>`
     : `<circle cx="160" cy="160" r="80" fill="#1A2334"/>
@@ -175,7 +175,7 @@ function generateCuratorSVG(curator: CuratorForOG, pinThumbs: string[]): string 
 
   ${tiles}
 
-  <text x="80" y="540" font-size="20" font-family="-apple-system,system-ui,sans-serif" font-weight="700" fill="#6b7280">유어딜 링크샵</text>
+  <text x="80" y="540" font-size="20" font-family="-apple-system,system-ui,sans-serif" font-weight="700" fill="#6b7280">유어딜 유어샵</text>
   <text x="1120" y="540" font-size="18" font-family="-apple-system,system-ui,sans-serif" fill="#9CA3AF" text-anchor="end">urdeal.kr/u/${safeHandle}</text>
 </svg>`
 }

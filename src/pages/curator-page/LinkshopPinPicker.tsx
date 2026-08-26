@@ -1,6 +1,6 @@
 /**
  * 🏁 2026-06-22 (대표 요청 — "상품/이용권 모두 선택할 수 있는 전용 페이지"):
- *   링크샵 '상품·동네딜 추가하기' 전용 picker. 기존엔 /browse(상품) · /group-buy(동네딜)로
+ *   유어샵 '상품·동네딜 추가하기' 전용 picker. 기존엔 /browse(상품) · /group-buy(동네딜)로
  *   흩어져 나가 핀 추가가 이상적이지 않았음 → 한 화면에서 상품 + 이용권·동네딜을 탭으로 둘러보며
  *   탭 1번으로 추가/제거(토글). 이미 핀된 항목은 '추가됨' 으로 표시.
  *
@@ -149,7 +149,7 @@ export default function LinkshopPinPicker() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab])
 
-  // 링크샵의 핀 분류(deal_only===1 || voucher 카테고리)와 일치 — 같은 항목이 두 탭에 중복 노출되지 않도록.
+  // 유어샵의 핀 분류(deal_only===1 || voucher 카테고리)와 일치 — 같은 항목이 두 탭에 중복 노출되지 않도록.
   const isVoucherItem = (it: PickItem) => it.deal_only === 1 || /voucher/i.test(it.category || '')
   const items = tab === 'shop' ? shopItems.filter((it) => !isVoucherItem(it)) : voucherItems
   const filtered = useMemo(() => {
@@ -169,8 +169,8 @@ export default function LinkshopPinPicker() {
         const res = await curatorApi.removePin(existingPinId)
         if (res?.success) {
           setPinMap((prev) => { const n = new Map(prev); n.delete(item.id); return n })
-          invalidateCurator() // 링크샵 재진입 시 즉시 반영(stale flash 방지)
-          toast.success('링크샵에서 제거됨')
+          invalidateCurator() // 유어샵 재진입 시 즉시 반영(stale flash 방지)
+          toast.success('유어샵에서 제거됨')
         } else {
           toast.error('제거 실패')
         }
@@ -183,7 +183,7 @@ export default function LinkshopPinPicker() {
         if (res?.success && res.pin) {
           const newPinId = res.pin.id
           setPinMap((prev) => { const n = new Map(prev); n.set(item.id, newPinId); return n })
-          invalidateCurator() // 링크샵 재진입 시 즉시 반영
+          invalidateCurator() // 유어샵 재진입 시 즉시 반영
           // 추천 코멘트 입력(선택) — 담은 직후 바로. 닫으면 코멘트 없이 유지.
           setNoteFor({ pinId: newPinId, name: item.name })
         } else if (res?.code === 'ALREADY_PINNED') {
@@ -201,7 +201,7 @@ export default function LinkshopPinPicker() {
 
   return (
     <>
-      <SEO title="링크샵에 추가 - 유어딜" description="상품과 이용권을 내 링크샵에 추가하세요" url="/u/me/add" />
+      <SEO title="유어샵에 추가 - 유어딜" description="상품과 이용권을 내 유어샵에 추가하세요" url="/u/me/add" />
       <div className="min-h-screen bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white pb-28">
         {/* 상단 바 */}
         <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
@@ -214,7 +214,7 @@ export default function LinkshopPinPicker() {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className="text-[15px] font-extrabold leading-tight truncate">내 링크샵에 추가</h1>
+              <h1 className="text-[15px] font-extrabold leading-tight truncate">내 유어샵에 추가</h1>
               <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-tight">
                 {pinnedCount > 0 ? `${pinnedCount}개 추가됨` : '마음에 든 상품·이용권을 담아보세요'}
               </p>
@@ -317,7 +317,7 @@ export default function LinkshopPinPicker() {
   )
 }
 
-// 🏁 2026-06-22 (추천 코멘트 루프): 담은 직후 한 줄 추천 코멘트(선택) 바텀시트. 링크샵의 핵심 차별점
+// 🏁 2026-06-22 (추천 코멘트 루프): 담은 직후 한 줄 추천 코멘트(선택) 바텀시트. 유어샵의 핵심 차별점
 //   ("왜 추천하는지")을 담는 순간 입력받음. 건너뛰면 코멘트 없이 핀 유지(이미 추가됨).
 function NoteModal({ pinId, productName, onClose }: { pinId: number; productName: string; onClose: () => void }) {
   const [note, setNote] = useState('')
@@ -339,7 +339,7 @@ function NoteModal({ pinId, productName, onClose }: { pinId: number; productName
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full sm:max-w-md bg-white dark:bg-[#1A2334] rounded-t-3xl sm:rounded-3xl p-5 pb-7 animate-slideUp">
         <div className="flex items-start gap-2 mb-1">
-          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white flex-1">✓ 링크샵에 추가됨</span>
+          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white flex-1">✓ 유어샵에 추가됨</span>
           <button onClick={onClose} aria-label="닫기" className="shrink-0 w-7 h-7 -mt-0.5 -mr-1 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <X className="w-4 h-4" />
           </button>
@@ -368,7 +368,7 @@ function NoteModal({ pinId, productName, onClose }: { pinId: number; productName
 
 // 🎨 2026-06-22 (대표 — A안): 표준 BrowseProductCard 재사용(디자인 영구 동기화) + 핀 토글 버튼 오버레이.
 //   카드 본문 클릭 = 상품/동네딜 상세 미리보기, 우상단 버튼 = 추가/제거 토글(stopPropagation).
-//   PinCard(링크샵 핀) 의 래핑 패턴과 동일.
+//   PinCard(유어샵 핀) 의 래핑 패턴과 동일.
 function PickCard({ item, pinned, busy, onToggle }: { item: PickItem; pinned: boolean; busy: boolean; onToggle: () => void }) {
   const product: BrowseProduct = {
     id: item.id,
@@ -408,7 +408,7 @@ function PickCard({ item, pinned, busy, onToggle }: { item: PickItem; pinned: bo
         onClick={handleToggle}
         disabled={busy}
         aria-pressed={pinned}
-        aria-label={pinned ? '링크샵에서 제거' : '링크샵에 추가'}
+        aria-label={pinned ? '유어샵에서 제거' : '유어샵에 추가'}
         className={`absolute top-2 right-2 z-10 inline-flex items-center gap-1 h-8 pl-2 pr-2.5 rounded-full text-[12px] font-bold shadow-sm backdrop-blur-md ring-1 transition-colors active:scale-95 disabled:opacity-50 ${
           pinned
             ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] ring-white/30'

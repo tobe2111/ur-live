@@ -124,9 +124,9 @@ export default function BottomNav() {
   const isSeller = activeRole === 'seller'
   const isAgency = activeRole === 'agency'
 
-  // 🛡️ 2026-05-25 (신모델 전환): 라이브 → 링크샵.
-  //   사용자 결정: 링크샵 탭은 본인 공개페이지 (/u/{handle}).
-  //   수익은 마이페이지 (/user/profile) 에 인라인 카드 — 링크샵 페이지에는 노출 X.
+  // 🛡️ 2026-05-25 (신모델 전환): 라이브 → 유어샵.
+  //   사용자 결정: 유어샵 탭은 본인 공개페이지 (/u/{handle}).
+  //   수익은 마이페이지 (/user/profile) 에 인라인 카드 — 유어샵 페이지에는 노출 X.
   // 🛡️ 2026-05-25 (loading P0): localStorage cache 우선 — UMeRedirectPage chunk + getDashboard API 0 round-trip.
   //   - linked_seller_username 캐시 있으면 /profile/{username} 직행 (셀러 공개페이지)
   //   - user_handle 캐시 있으면 /u/{handle} 직행 (큐레이터 공개페이지)
@@ -143,24 +143,24 @@ export default function BottomNav() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     // 🔗 2026-06-17 [UNLOCK_LOADING] (사용자 "가장 이상적으로"): 로그아웃 시 /host/new(만들기) → /u/me.
-    //   /u/me 도 로그인을 요구하지만 로그인 후 본인 핸들을 해석 → 기존 유저는 /u/{handle}(자기 링크샵),
-    //   핸들 없는 신규만 UMeRedirect 가 /host/new 로 폴백. 기존: 이미 링크샵 있는 사람도 만들기 페이지에 떨궈짐.
+    //   /u/me 도 로그인을 요구하지만 로그인 후 본인 핸들을 해석 → 기존 유저는 /u/{handle}(자기 유어샵),
+    //   핸들 없는 신규만 UMeRedirect 가 /host/new 로 폴백. 기존: 이미 유어샵 있는 사람도 만들기 페이지에 떨궈짐.
     if (!isLoggedIn) { setLinkshopPath('/u/me'); return }
     try {
       // 🏭 2026-06-05: stale/예약 핸들 가드 (옛 'user' generic 핸들 등 → /u/user 400 차단).
       const RESERVED = new Set(['user', 'me', 'admin', 'seller', 'api', 'host', 'new'])
       const badHandle = (v: string | null): boolean => !v || v.length < 3 || RESERVED.has(v.toLowerCase())
-      // 🔗 2026-06-17 [UNLOCK_LOADING] (사용자 결정 — 링크샵 /u/ 단일화): 소비자(큐레이터) 계정이 있으면
-      //   통합 링크샵 /u/{handle} 우선. 셀러여도 /u/{handle} 는 CuratorPage 가 linked_seller 면 셀러
+      // 🔗 2026-06-17 [UNLOCK_LOADING] (사용자 결정 — 유어샵 /u/ 단일화): 소비자(큐레이터) 계정이 있으면
+      //   통합 유어샵 /u/{handle} 우선. 셀러여도 /u/{handle} 는 CuratorPage 가 linked_seller 면 셀러
       //   storefront 를 inline 렌더 → 콘텐츠 손실 없이 URL 만 /profile→/u 통일(unification 북극성).
-      //   셀러-only(소비자 계정 없음)만 /profile 유지 — 그들의 유일한 링크샵이라 회귀 방지.
+      //   셀러-only(소비자 계정 없음)만 /profile 유지 — 그들의 유일한 유어샵이라 회귀 방지.
       const cachedHandle = localStorage.getItem('user_handle')
       if (cachedHandle && !badHandle(cachedHandle)) { setLinkshopPath(`/u/${cachedHandle}`); return }
       if (cachedHandle && badHandle(cachedHandle)) { try { localStorage.removeItem('user_handle') } catch { /* */ } }
       const hasConsumer = hasAccessToken || hasSessionLogin
       if (hasConsumer) { setLinkshopPath('/u/me'); return } // 핸들 캐시 없음 → UMeRedirect 가 본인 핸들 해석
 
-      // 셀러-only fallback (소비자 계정 없음) — 셀러 공개페이지가 유일한 링크샵.
+      // 셀러-only fallback (소비자 계정 없음) — 셀러 공개페이지가 유일한 유어샵.
       const sellerUsername = localStorage.getItem('seller_username')
       if (sellerUsername && !badHandle(sellerUsername)) { setLinkshopPath(`/profile/${sellerUsername}`); return }
       if (sellerUsername && badHandle(sellerUsername)) { try { localStorage.removeItem('seller_username') } catch { /* */ } }
@@ -185,7 +185,7 @@ export default function BottomNav() {
     setLinkshopPath('/u/me')
   }, [isLoggedIn, hasSellerToken, hasAccessToken, hasSessionLogin])
   // 🛡️ 2026-06-01 [UNLOCK_LOADING] 하단바 재구성 (사용자 승인): 교환권 탭 제거 → 동네딜(오프라인 공구) 추가.
-  //   순서 = 홈 / 동네딜 / 쇼핑 / 링크샵 / 마이. 교환권 콘텐츠는 홈 상단 + /vouchers 전체보기로 유지.
+  //   순서 = 홈 / 동네딜 / 쇼핑 / 유어샵 / 마이. 교환권 콘텐츠는 홈 상단 + /vouchers 전체보기로 유지.
   //   linkshop localStorage 경로 로직·active-path 패턴은 그대로 보존.
   // 🛡️ 2026-06-04: lazy 라우트 청크를 "누르려는 순간(pointerdown/hover)" 미리 받기 → 클릭 후 청크 대기 제거.
   //   홈(eager)과 달리 동네딜·쇼핑·마이는 lazy 라 클릭 시 청크 다운로드 동안 PageLoader 스피너가 떴음(카드 늦게 뜸).
@@ -207,10 +207,10 @@ export default function BottomNav() {
     // 🎟️ 2026-06-18 (대표 결정): 가운데 → '이용권'. 교환권(기프티콘)은 MMS 발송 카탈로그(탭2)이고,
     //   이용권(동네딜 이용권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 지갑이라 상시 탭 가치가 높음.
     { icon: Ticket,      label: t('nav.myGbVouchers', { defaultValue: '이용권' }), path: '/my-vouchers', prefetch: () => import('@/pages/MyVouchersPage') },
-    // 🧭 2026-06-10: 링크샵도 청크+데이터 동시 워밍 (동네딜과 동일) — 누르는 순간 선요청.
-    { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath, prefetch: () => {
+    // 🧭 2026-06-10: 유어샵도 청크+데이터 동시 워밍 (동네딜과 동일) — 누르는 순간 선요청.
+    { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '유어샵' }), path: linkshopPath, prefetch: () => {
       if (linkshopPath.startsWith('/u/') && !linkshopPath.startsWith('/u/me')) {
-        // 🖼️ 2026-07-01 (로딩 딥다이브, additive): 사업자 링크샵(/u/ + linked_seller)은 CuratorPage 가
+        // 🖼️ 2026-07-01 (로딩 딥다이브, additive): 사업자 유어샵(/u/ + linked_seller)은 CuratorPage 가
         //   SellerPublicPage 를 lazy 렌더 → 그 청크도 함께 워밍(직렬 청크 대기 제거). 소비자-only 는 no-op 수준.
         if (localStorage.getItem('linked_seller_username')) { import('@/pages/SellerPublicPage').catch(() => {}) }
         return import('@/pages/CuratorPage').then((m) => { m.warmCurator?.(linkshopPath.slice(3)) })
@@ -234,9 +234,9 @@ export default function BottomNav() {
     if (path === '/user/profile' && /^\/(my-orders|my-coupons|my-reviews|my-group-buys|wishlist|interest-list|account|mypage|my-returns)(\/|$)/.test(cur)) {
       return true
     }
-    // 🛡️ 2026-05-25: 링크샵 탭 active — /u/, /host/, /g/, /profile/ 모두 포함
+    // 🛡️ 2026-05-25: 유어샵 탭 active — /u/, /host/, /g/, /profile/ 모두 포함
     // 🛡️ 2026-05-27: linkshopPath 가 localStorage cache 따라 /profile/{username} 도 가능 →
-    //   현재 location 이 /profile/ 또는 /s/ (셀러 공개) 면 링크샵 탭 활성화 (사용자가 직접 본인 페이지로 진입한 경우 포함).
+    //   현재 location 이 /profile/ 또는 /s/ (셀러 공개) 면 유어샵 탭 활성화 (사용자가 직접 본인 페이지로 진입한 경우 포함).
     const isLinkshopTab = path.startsWith('/u/') || path.startsWith('/host') || path.startsWith('/profile/')
     if (isLinkshopTab) {
       if (cur.startsWith('/u/') || cur.startsWith('/host') || cur.startsWith('/g/') ||

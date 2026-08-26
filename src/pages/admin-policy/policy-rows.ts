@@ -75,7 +75,7 @@ export const POLICY_SECTIONS: PolicySection[] = [
       { key: 'AGENCY_OWN_RATE', value: pct(COMMISSION_DEFAULTS.AGENCY_OWN_RATE), unit: '%', desc: '에이전시 본인 매출 commission' },
       { key: 'AGENCY_STORE_INTRO_PCT', value: pct(COMMISSION_DEFAULTS.AGENCY_STORE_INTRO_PCT), unit: '%', desc: '에이전시 매장 영입 — 그 매장 매출에서 지급' },
       { key: 'INFLUENCER_STORE_INTRO_PCT', value: pct(COMMISSION_DEFAULTS.INFLUENCER_STORE_INTRO_PCT), unit: '%', desc: '영입자(크리에이터) 매장 영입 — T+7 성숙 후 원천징수 차감 송금' },
-      { key: 'CURATOR_AFFILIATE_PCT', value: pct(COMMISSION_DEFAULTS.CURATOR_AFFILIATE_PCT), unit: '%', desc: '링크샵 큐레이터 어필리에이트' },
+      { key: 'CURATOR_AFFILIATE_PCT', value: pct(COMMISSION_DEFAULTS.CURATOR_AFFILIATE_PCT), unit: '%', desc: '유어샵 큐레이터 어필리에이트' },
       { key: 'AFFILIATE_COMMISSION_PCT', value: pct(COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT), unit: '%', desc: '제휴 마케팅 (쿠팡파트너스형) 추천인 보상' },
       { key: 'REFERRAL_BONUS_BOTHSIDES_PCT', value: pct(COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT), unit: '%', desc: '공구 양쪽 보너스 (추천인 + 피추천인)' },
       { key: 'STAYS_COMMISSION_CAP_PCT', value: pct(COMMISSION_DEFAULTS.STAYS_COMMISSION_CAP_PCT), unit: '%', desc: '숙박 카테고리 commission 상한' },
@@ -120,7 +120,7 @@ export const POLICY_SECTIONS: PolicySection[] = [
   },
   {
     source: 'CURATOR_DEFAULTS',
-    title: '⑥ CURATOR_DEFAULTS — 링크샵(핸들 · 핀)',
+    title: '⑥ CURATOR_DEFAULTS — 유어샵(핸들 · 핀)',
     rows: [
       { key: 'HANDLE_MIN_LEN', value: CURATOR_DEFAULTS.HANDLE_MIN_LEN, unit: '자', desc: '핸들 최소 길이' },
       { key: 'HANDLE_MAX_LEN', value: CURATOR_DEFAULTS.HANDLE_MAX_LEN, unit: '자', desc: '핸들 최대 길이' },

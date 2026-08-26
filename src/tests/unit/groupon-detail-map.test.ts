@@ -134,7 +134,7 @@ describe('/map — 지도 위 컨트롤이 왼쪽 리스트 상단으로 (PC)', 
     const s = code('src/components/main/DesktopTopNav.tsx')
     expect(s).toMatch(/const hideDealCats = location\.pathname === '\/map'/)
     expect(s).toMatch(/\{!hideDealCats && DEAL_CATS\.map/)
-    // ⚠️ 서비스 축(홈·교환권·동네딜·링크샵·블로그)까지 지우면 /map 에서 나갈 통로가 없어진다.
+    // ⚠️ 서비스 축(홈·교환권·동네딜·유어샵·블로그)까지 지우면 /map 에서 나갈 통로가 없어진다.
     expect(s).toMatch(/categoryItems\.map/)
   })
 })

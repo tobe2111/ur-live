@@ -696,7 +696,7 @@ export async function handleScheduled(env: Env) {
     `).run();
   } catch { /* table may not exist */ }
 
-  // ── 16b. pin_click_logs 정리: 180일 경과 (링크샵 클릭 raw 로그) ──
+  // ── 16b. pin_click_logs 정리: 180일 경과 (유어샵 클릭 raw 로그) ──
   // 🔐 2026-06-15: 핀 클릭 분석은 최대 90일 range → 180일 보관이면 충분. 무한 적재 시 테이블 비대.
   //   집계값(product_pins.click_count)은 별도 보존이라 영향 없음. chunk LIMIT 으로 틱당 과부하 방지.
   try {
