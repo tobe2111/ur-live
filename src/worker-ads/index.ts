@@ -326,7 +326,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   🎯 2026-08-03: 알람이 몰면 부모는 손을 뗀다(예산 1칸/4레인 = 4시간에 한 번인데 그마저 CPU 사망 —
   //   실측 6시간 20분 정지, 상세는 `lane-alarm-runners.ts` collect 항목). 리스가 있어도 겹쳐 던지는
   //   것 자체가 부모 CPU 를 먹으므로 게이트로 끊는다.
-  if (!laneAlarmOn && env.ADS_AUTO_COLLECT_ENABLED === 'true') {
+  if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
     kick('/__ads/collect-chain', async () => { const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect'); return runInfluencerAutoCollect(env) }, { beat: 'collect' })
   }
   // 📝 인플루언서 풀 보강 시간당 N라운드 — **수집 게이트와 분리**(2026-07-28).
@@ -569,6 +569,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
 
   // 🔭 이번 실행이 '알고 있는' 레인(게이트 ON)을 남긴다 — 하트비트와 대조해 '한 번도 안 돈 레인'을 판정.
   ctx.waitUntil(recordKnownLanes(env, laneReg.list()))
+  // dispatch-bypass-ok — 검증용
+  ctx.waitUntil((async () => { const { x } = await import('@/features/marketing/api/__probe-lane'); await x() })())
 
   runWeeklyJob(env, hourUTC, dowUTC, adsBeat, (p) => ctx.waitUntil(p), staleGapMinutes(7 * 24 * 60))
 

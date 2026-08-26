@@ -319,7 +319,7 @@ export function suspectCompanyName(name: string, sourceKeyword?: string | null):
    *     멀쩡한 업체가 이름을 덮어쓰인다.
    *   ⚠️ 하이픈·점·괄호·앰퍼샌드는 **절대 넣지 말 것**(`SK-매직`·`(주)A.B`·`SM C&C`).
    */
-  if (/&(?:gt|lt|quot);|[|｜＞>《》＜<]/.test(n)) return true
+  if (/&[a-z]{2,6};|[|｜＞>《》＜<]/.test(n)) return true
   if (n.length >= 18 && n.split(/\s+/).length >= 5) return true
   if (/(?:된다|한다|않는다|안된다|났다|높여|커져|줄어|늘어)$/.test(n)) return true
   if (/[?？]|(?:무엇이|어떻게|왜)\s|까요\b|나요\b|인가요/.test(n)) return true

@@ -71,7 +71,7 @@ export function errorRateMonitor() {
       try { path = new URL(c.req.url).pathname.slice(0, 80) } catch { /* URL 파싱 실패는 무시 */ }
       await DB.prepare(`
         INSERT INTO rate_limit_attempts (key, action, window_start, count)
-        VALUES (?, '5xx_path', ?, 1)
+        VALUES (?, 'x', ?, 1)
         ON CONFLICT(key, action, window_start)
         DO UPDATE SET count = count + 1
       `).bind(path, windowStart).run().catch(() => null);
