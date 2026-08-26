@@ -212,3 +212,24 @@ users.id=3 · handle `jiwon1228`(CLAUDE.md 가 링크샵 예시로 참조) · se
 
 **복구 방법**(AB테스트 끝나면): 어드민 상품 관리에서 25·2688·2689 를 판매 재개
 (또는 `PATCH /api/admin/products/{id} {"is_active":true}`). 게이트는 자동으로 닫힌다.
+
+## 9차 (2026-08-26 — "인터넷 연결이 끊겼습니다" 배너 고착)
+
+대표 신고: "계속 인터넷 연결이 끊겼습니다 문구가 안 없어져. 와이파이 연결했는데도."
+
+**실측**: 라이브 HTML(`/`·`/seller`·`/vouchers`) 어디에도 배너 문구 없음 → 2026-07-07 프리렌더
+사고의 재발이 **아니다**. 런타임에 `navigator.onLine === false` 가 **고착**된 것.
+
+**원인**: `navigator.onLine`/`online` 이벤트는 신뢰 불가. 인터페이스 전환(모바일↔와이파이)이나
+카카오 인앱·WebView 에서 **offline 만 오고 online 이 끝내 안 오는** 경우가 있다. 기존 훅은
+이벤트에만 의존해 한 번 false 가 되면 새로고침 전까지 복구 경로가 없었다.
+
+**수정** — 이벤트는 신호로만 쓰고 판정은 **실제 요청(probe)** 으로:
+- offline 이벤트 = "확인해 봐라" → `HEAD /favicon.ico`(no-store, 3s 타임아웃) 성공하면 배너 안 띄움
+- 오프라인 판정 동안 **5초 워치독** → online 이벤트가 없어도 스스로 복구(고착 구조적 불가)
+- 탭 복귀(visibilitychange)/focus 즉시 재확인
+- **온라인일 땐 probe 0회** — 배경 트래픽 없음(early-return 가드, 테스트 O4 로 고정)
+- SSR-safe 초기값(`=== false` 만 오프라인)은 불변 — loader-continuity 14불변식 통과
+
+테스트 `online-status-stuck.test.ts` 6건 — 워치독 제거·offline 즉시배너 두 주입 모두 red 확인.
+선례: keyboard-viewport stuck 워치독(2026-06-22)과 같은 클래스.
