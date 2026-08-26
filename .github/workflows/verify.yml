@@ -177,7 +177,12 @@ jobs:
       #   '해결됨'으로 표시하므로 git 은 막아 주지 않는다.
       - name: 머지 충돌 마커 (strict)
         run: node scripts/check-conflict-markers.mjs -s
-      - name: 브랜치에 가드 주입본이 섞였는지 (check-guard-mutations 실행 중 커밋)
+        continue-on-error: false
+
+      # 🧭 2026-08-26: 같은 클래스의 사고 — `check-guard-mutations` 가 **의도적으로 심어 둔 결함**이
+      #   워킹트리에 있는 동안 `git add -A` 가 그것을 집어 커밋했다(주입본 6건). 충돌 마커와 마찬가지로
+      #   git 이 막아 주지 않고, 에러도 안 난다 — CI 가 다른 테스트로 넘어져야 알게 된다.
+      - name: 브랜치에 가드 주입본이 섞였는지 (strict)
         run: node scripts/check-branch-scope.mjs
         continue-on-error: false
 
