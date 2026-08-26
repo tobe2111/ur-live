@@ -177,6 +177,8 @@ jobs:
       #   '해결됨'으로 표시하므로 git 은 막아 주지 않는다.
       - name: 머지 충돌 마커 (strict)
         run: node scripts/check-conflict-markers.mjs -s
+      - name: 브랜치에 가드 주입본이 섞였는지 (check-guard-mutations 실행 중 커밋)
+        run: node scripts/check-branch-scope.mjs
         continue-on-error: false
 
       # ⏰ 2026-08-02: `0 20 * * 0` 한 줄이 배열 **전체**를 거부시켜 주간 D1 백업이 몇 달간

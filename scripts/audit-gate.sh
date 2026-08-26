@@ -144,6 +144,7 @@ if domain deploy; then
   # 가드를 지키는 가드 — "만들어만 두고 안 켠 검사" / "경로가 낡아 비어버린 검사" 차단.
   run "가드 레지스트리(안 도는 가드)"     env STRICT_GUARD_REGISTRY=1   node scripts/check-guard-registry.mjs
   run "잠금표 심볼 실재(낡은 지도)"      env STRICT_LOCK_TABLE=1       node scripts/check-lock-table-symbols.mjs
+  run "브랜치 주입본 혼입"              node scripts/check-branch-scope.mjs
   run "sitemap 죽은 URL 제출"            env STRICT_SITEMAP=1          node scripts/check-sitemap-routes.mjs
   run "비공개 라우트 크롤 노출"          env STRICT_ROBOTS=1           node scripts/check-robots-private-routes.mjs
   run "tsconfig 타입체크 무력화 설정"    env STRICT_TSCONFIG=1         node scripts/check-tsconfig-resolution.mjs

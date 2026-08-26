@@ -115,7 +115,7 @@ export function classifyBeat(
   if (raw.includes('?') && freshBaseNames.has(beatBaseName(raw))) return 'superseded'
   // ①-a 개명 — 옛 이름의 일을 새 이름이 **지금** 하고 있다(위 지도). 나이 8배를 기다리지 않는다.
   const successor = BEAT_RENAMED_TO[beatBaseName(raw)]
-  // (개명 판정 제거)
+  if (successor && freshBaseNames.has(successor)) return 'superseded'
   // ①-b 아무도 안 부르는 이름 — 디스패처 목록에 없고 하루 넘게 조용하면 은퇴다(나이 8배를 안 기다린다).
   //   ⚠️ 목록이 비어 있으면(부팅 직후·기록 유실) 판정하지 않는다 — 전 레인을 은퇴로 만들면 사각지대가 생긴다.
   if (knownBaseNames?.size && raw.startsWith('ads:') && !knownBaseNames.has(beatBaseName(raw)) && age > RETIRED_MIN_AGE_MIN) return 'retired'
