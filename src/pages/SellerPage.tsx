@@ -1,15 +1,9 @@
-import { useEffect, useState, useRef, useCallback, useMemo, Suspense } from 'react'
+import { useEffect, useState, useRef, useCallback, Suspense } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
-import {
-  Package, ShoppingBag, DollarSign,
-  TrendingUp,
-  AlertCircle,
-  CreditCard,
-  LayoutDashboard
-} from 'lucide-react'
+import { ShoppingBag, TrendingUp, AlertCircle, CreditCard, LayoutDashboard } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 import RoleGate from '@/components/RoleGate'
@@ -25,6 +19,7 @@ import NewSellerSteps from './seller-page/NewSellerSteps'
 import StoreQuickTrio from './seller-page/StoreQuickTrio'
 import PrimaryActions from './seller-page/PrimaryActions'
 import PublicPagePreview from './seller-page/PublicPagePreview'
+import InsightsCallouts from './seller-page/InsightsCallouts'
 import MyStoresPanel from './seller-page/MyStoresPanel'
 import type { DashboardStats, DailyStats, TopProduct, Order } from './seller-page/types'
 import SellerSupportContact from '@/components/seller/SellerSupportContact'
@@ -305,74 +300,6 @@ export default function SellerPage() {
     return date.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
   }
 
-  // ── Actionable insights ────────────────────────────────────────────────────
-  // 대시보드 데이터로 자동 파생되는 배너. 우선순위/심각도 기준 최대 몇 건 노출.
-  type InsightSeverity = 'high' | 'medium' | 'info'
-  type InsightIcon = typeof Package | typeof TrendingUp | typeof DollarSign
-  interface Insight {
-    severity: InsightSeverity
-    icon: InsightIcon
-    title: string
-    description?: string
-    action?: { label: string; path: string }
-  }
-  const insights: Insight[] = useMemo(() => {
-    const list: Insight[] = []
-
-    // 1) 미처리 주문 ≥ 5
-    if ((stats.pendingOrders || 0) >= 5) {
-      list.push({
-        severity: 'high',
-        icon: Package,
-        title: t('seller.insightPendingOrdersTitle', { count: stats.pendingOrders }),
-        description: t('seller.insightPendingOrdersDesc'),
-        action: { label: t('seller.insightManageOrders'), path: '/seller/orders' },
-      })
-    }
-
-    // 🗑️ 2026-08-23 (대표): 재고 부족 인사이트 제거 — 쇼핑 재고 레일 잔재, 이용권 콘솔에 무의미.
-
-    // 3) 오늘 매출 > 어제 매출 * 1.2  (dailyStats 마지막 2개 비교)
-    if (dailyStats.length >= 2) {
-      const todayRevenue = dailyStats[dailyStats.length - 1]?.sales || 0
-      const yesterdayRevenue = dailyStats[dailyStats.length - 2]?.sales || 0
-      if (yesterdayRevenue > 0 && todayRevenue > yesterdayRevenue * 1.2) {
-        const pct = Math.round(((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100)
-        list.push({
-          severity: 'info',
-          icon: TrendingUp,
-          title: t('seller.insightRevenueUpTitle'),
-          description: t('seller.insightRevenueUpDesc', { pct }),
-        })
-      }
-    }
-
-    // 4) 등록된 상품이 없음 (totalProducts === 0) — 등록 동선은 이용권 위저드로.
-    if ((stats.totalProducts ?? -1) === 0) {
-      list.push({
-        severity: 'high',
-        icon: Package,
-        title: t('seller.insightNoProductsTitle'),
-        description: t('seller.insightNoProductsDesc'),
-        action: { label: t('seller.insightRegisterProduct'), path: '/seller/meal-voucher/new' },
-      })
-    }
-
-    // 5) 정산 신청 가능 > 0
-    const settlementAvailable = stats.pendingSettlement ?? 0
-    if (settlementAvailable > 0) {
-      list.push({
-        severity: 'info',
-        icon: DollarSign,
-        title: t('seller.insightSettlementTitle', { amount: fmtPrice(settlementAvailable) }),
-        description: t('seller.insightSettlementDesc'),
-        action: { label: t('seller.insightSettlement'), path: '/seller/settlements' },
-      })
-    }
-
-    return list
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stats, dailyStats, t, i18n.language])
 
   // ── Render ──────────────────────────────────────────────────────────────────
   const headerRight = (
@@ -510,27 +437,8 @@ export default function SellerPage() {
             <NewSellerSteps isStoreOwner={!isInfluencer} />
           )}
 
-          {/* ── Actionable insights callouts ── */}
-          {insights.length > 0 && (
-            <div className="space-y-2 mb-4">
-              {insights.map((insight, i) => (
-                <div key={i} className={`rounded-xl p-3 flex items-start gap-3 ${insight.severity === 'high' ? 'bg-red-50 border border-red-200' : insight.severity === 'medium' ? 'bg-amber-50 border border-amber-200' : 'bg-blue-50 border border-blue-200'}`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${insight.severity === 'high' ? 'bg-red-100' : insight.severity === 'medium' ? 'bg-amber-100' : 'bg-blue-100'}`}>
-                    <insight.icon className={`w-4 h-4 ${insight.severity === 'high' ? 'text-red-600' : insight.severity === 'medium' ? 'text-amber-600' : 'text-blue-600'}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-extrabold text-gray-900">{insight.title}</p>
-                    {insight.description && <p className="text-[11px] text-gray-600 mt-0.5">{insight.description}</p>}
-                  </div>
-                  {insight.action && (
-                    <button onClick={() => navigate(insight.action!.path)} className="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 shrink-0">
-                      {insight.action.label}
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+          {/* ── Actionable insights callouts ── (2026-08-26 컴포넌트 추출 — 로직 불변) */}
+          <InsightsCallouts stats={stats} dailyStats={dailyStats} fmtPrice={fmtPrice} />
 
           {/* ── 할 일 목록 ── */}
           {/* 🗑️ 2026-08-23 (대표): 재고 부족 칩 제거 — 쇼핑 재고 레일 잔재. */}
