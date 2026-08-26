@@ -87,3 +87,34 @@ describe('R6 채택 배선 (상품 등록 경로)', () => {
     expect(s.slice(at, at + 600)).toMatch(/catch/)
   })
 })
+
+describe('R7~R9 매장 등록 선행 게이트 (2026-08-24 대표 — "무조건 선행")', () => {
+  it('R7 서버가 store_ready 를 판정하고, **운영 중인**(is_active) 좌석은 통과한다', () => {
+    const s = read(ROUTES)
+    // grandfather 가 빠지면 게이트 신설이 기존 실운영 셀러를 잠근다(lock-out 사고 클래스).
+    expect(s).toMatch(/store_ready = !!\(seller\?\.address \|\| meta\.store_channel \|\| meta\.store_lat \|\| Number\(liveStore\?\.n\) > 0\)/)
+    expect(s, '응답에 store_ready 미노출이면 클라 게이트가 판정 근거를 잃는다').toContain('store_ready,')
+  })
+
+  it('R7b grandfather 는 판매중지를 존중한다 — 전부 내리면 온보딩으로 돌아갈 수 있다', () => {
+    const s = read(ROUTES)
+    const q = s.slice(s.indexOf('SELECT COUNT(*) AS n FROM products'))
+    expect(q, 'is_active 를 안 보면 판매중지해도 영원히 매장으로 남는다').toContain('is_active = 1')
+    expect(q).toContain("restaurant_name != ''")
+    // 프리필(lastProduct)은 판매중지분도 계속 쓴다 — 게이트 신호와 분리돼야 한다.
+    expect(s, '프리필까지 is_active 로 좁히면 매장 정보 자동입력이 사라진다')
+      .toMatch(/loadLatestProductCopy\(DB, sellerId\)/)
+  })
+  it('R8 대시보드 게이트는 fail-open — 판정 실패(null)로는 절대 잠그지 않는다', () => {
+    const p = read('src/pages/SellerPage.tsx')
+    expect(p, '느슨한 truthy 게이트는 로딩/실패 중 정상 셀러를 잠근다').toContain('storeGated === true ?')
+    const panel = read('src/pages/seller-page/MyStoresPanel.tsx')
+    expect(panel, '좌석 판정 실패는 게이트 아님(fail-open)').toContain('seatReady === false')
+  })
+  it('R9 위저드도 등록 매장 없이는 다음 단계 차단 + 등록 즉시 좌석 전환', () => {
+    const w = read('src/pages/SellerMealVoucherNewPage.tsx')
+    expect(w, '위저드 게이트가 빠지면 매장 없이 이용권이 만들어진다').toContain("s === 0 && storeReady === false")
+    const step = read('src/pages/seller-meal-voucher/StoreStep.tsx')
+    expect(step, '등록 후 좌석 전환이 없으면 이용권이 옛 좌석으로 귀속된다').toContain('onStoreReady?.()')
+  })
+})

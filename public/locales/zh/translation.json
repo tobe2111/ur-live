@@ -2214,7 +2214,7 @@
     "insightSettlement": "结算",
     "quickActions": "快捷操作",
     "registerVoucher": "注册餐券",
-    "selectOnKakaoMap": "在Kakao地图上选择餐厅",
+    "selectOnKakaoMap": "在 Kakao 地图选择门店",
     "groupBuyManage": "团购管理",
     "activeGroupBuyCount": "{{count}}个进行中",
     "createGroupBuy": "创建团购",
@@ -2426,7 +2426,12 @@
       "storeRegistered": "门店已注册 — 可在门店列表中选择",
       "shareDesc": "在 UrDeal 享受优惠价",
       "copyLink": "复制销售链接",
-      "linkCopied": "链接已复制 — 粘贴到熟客群里吧"
+      "linkCopied": "链接已复制 — 粘贴到熟客群里吧",
+      "storeFirst": "请先注册门店 — 在地图上找到门店并完成[注册门店]",
+      "registerStoreRequired": "⚠️ 必须注册门店 — 完成后才能进入下一步",
+      "registerStoreFirst": "⚠️ 第一步是注册门店 — 请在上方地图找到门店并完成注册",
+      "storeRegisteredSwitched": "门店已注册 — 此使用券将归属该门店",
+      "storePendingNotice": "门店已提交 — 核验通过后即可注册使用券"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -3122,6 +3127,27 @@
       "openReview": "查看认证",
       "footNote": "奖励与评分和内容无关，仅针对到店认证发放。运营团队可能会抽样审核。",
       "loadError": "无法加载列表"
+    },
+    "stores": {
+      "myStores": "我的门店",
+      "addStore": "添加门店",
+      "loading": "正在确认门店…",
+      "operating": "营业中",
+      "pending": "待批准（营业执照核验中）",
+      "delegated": "委托",
+      "info": "信息",
+      "registered": "门店已注册 — 现在可以创建使用券",
+      "pendingHint": "门店正在核验中 — 批准后可注册使用券",
+      "gateTitle": "从注册门店开始",
+      "gateDesc": "UrDeal 的一切从门店开始。在 Kakao 地图找到并注册门店后，即可开启使用券销售、达人合作与结算。",
+      "step1": "注册门店",
+      "step2": "创建使用券",
+      "step3": "销售·合作",
+      "step4": "结算",
+      "registerCta": "通过 Kakao 地图注册门店",
+      "lockedNote": "完成门店注册后即可使用使用券·订单·结算·达人合作",
+      "savedPropagated": "门店信息已保存 — 已应用到 {{count}} 张使用券",
+      "saved": "门店信息已保存"
     }
   },
   "admin": {

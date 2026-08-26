@@ -2214,7 +2214,7 @@
     "insightSettlement": "精算",
     "quickActions": "クイック操作",
     "registerVoucher": "食事券登録",
-    "selectOnKakaoMap": "カカオマップで店舗を選択",
+    "selectOnKakaoMap": "カカオマップで店舗選択",
     "groupBuyManage": "共同購入管理",
     "activeGroupBuyCount": "{{count}}件進行中",
     "createGroupBuy": "共同購入を作成",
@@ -2426,7 +2426,12 @@
       "storeRegistered": "店舗を登録しました — 店舗一覧から選択できます",
       "shareDesc": "ユアディールで割引価格で",
       "copyLink": "販売リンクをコピー",
-      "linkCopied": "リンクをコピーしました — 常連チャットに貼り付けてください"
+      "linkCopied": "リンクをコピーしました — 常連チャットに貼り付けてください",
+      "storeFirst": "まず店舗登録を — 地図で店舗を見つけて[店舗登録]を完了してください",
+      "registerStoreRequired": "⚠️ 店舗登録が必須です — 完了すると次へ進めます",
+      "registerStoreFirst": "⚠️ 最初のステップは店舗登録です — 上の地図で店舗を見つけて登録してください",
+      "storeRegisteredSwitched": "店舗を登録しました — この店舗で利用券を作成します",
+      "storePendingNotice": "店舗を受付けました — 事業者確認後に利用券を登録できます"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -3122,6 +3127,27 @@
       "openReview": "認証を見る",
       "footNote": "ボーナスは評価や内容に関係なく、来店認証に対して支給されます。運営チームが承認内容をサンプリング監査する場合があります。",
       "loadError": "リストを読み込めませんでした"
+    },
+    "stores": {
+      "myStores": "マイ店舗",
+      "addStore": "店舗追加",
+      "loading": "店舗を確認中…",
+      "operating": "営業中",
+      "pending": "承認待ち（事業者確認中）",
+      "delegated": "委任",
+      "info": "情報",
+      "registered": "店舗を登録しました — 利用券を作成できます",
+      "pendingHint": "事業者確認中の店舗です — 承認後に利用券を登録できます",
+      "gateTitle": "まず店舗登録から",
+      "gateDesc": "ユアディールの全機能は店舗から始まります。カカオマップで店舗を見つけて登録すると、利用券販売・コラボ・精算が開きます。",
+      "step1": "店舗登録",
+      "step2": "利用券登録",
+      "step3": "販売・コラボ",
+      "step4": "精算",
+      "registerCta": "カカオマップで店舗登録",
+      "lockedNote": "店舗登録を完了すると利用券・注文・精算・コラボが開きます",
+      "savedPropagated": "店舗情報を保存 — 利用券{{count}}件に反映",
+      "saved": "店舗情報を保存しました"
     }
   },
   "admin": {

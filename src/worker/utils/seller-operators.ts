@@ -40,6 +40,8 @@ export interface OperableStore {
   name: string | null
   status: string | null
   username: string | null
+  /** 🏪 2026-08-24 대시보드 매장 카드용 — 주소 유무가 '등록 매장' 판정에도 쓰인다. */
+  address: string | null
 }
 
 // 🛡️ per-worker 메모이제이션 (per-request DDL 금지 — 머니/정합성 부수 룰)
@@ -87,18 +89,18 @@ export async function listOperableStores(DB: D1Database, userId: number): Promis
   await ensureSellerOperators(DB)
 
   const owned = await DB.prepare(
-    `SELECT id AS seller_id, business_name, name, status, username
+    `SELECT id AS seller_id, business_name, name, status, username, address
        FROM sellers WHERE linked_user_id = ? LIMIT 50`
-  ).bind(userId).all<{ seller_id: number; business_name: string | null; name: string | null; status: string | null; username: string | null }>()
+  ).bind(userId).all<{ seller_id: number; business_name: string | null; name: string | null; status: string | null; username: string | null; address: string | null }>()
     .catch(() => ({ results: [] as never[] }))
 
   const granted = await DB.prepare(
-    `SELECT o.seller_id, o.role, s.business_name, s.name, s.status, s.username
+    `SELECT o.seller_id, o.role, s.business_name, s.name, s.status, s.username, s.address
        FROM seller_operators o
        JOIN sellers s ON s.id = o.seller_id
       WHERE o.user_id = ? AND o.revoked_at IS NULL
       LIMIT 50`
-  ).bind(userId).all<{ seller_id: number; role: string; business_name: string | null; name: string | null; status: string | null; username: string | null }>()
+  ).bind(userId).all<{ seller_id: number; role: string; business_name: string | null; name: string | null; status: string | null; username: string | null; address: string | null }>()
     .catch(() => ({ results: [] as never[] }))
 
   const out = new Map<number, OperableStore>()
@@ -107,14 +109,14 @@ export async function listOperableStores(DB: D1Database, userId: number): Promis
       seller_id: r.seller_id,
       role: isOperatorRole(r.role) ? r.role : 'operator',
       source: 'grant',
-      business_name: r.business_name, name: r.name, status: r.status, username: r.username,
+      business_name: r.business_name, name: r.name, status: r.status, username: r.username, address: r.address,
     })
   }
   // ① 이 뒤 — 소유가 위임을 덮어쓴다.
   for (const r of owned.results || []) {
     out.set(r.seller_id, {
       seller_id: r.seller_id, role: 'owner', source: 'link',
-      business_name: r.business_name, name: r.name, status: r.status, username: r.username,
+      business_name: r.business_name, name: r.name, status: r.status, username: r.username, address: r.address,
     })
   }
   return [...out.values()]

@@ -1534,7 +1534,7 @@
     "insightSettlement": "Liquidación",
     "quickActions": "Acciones rápidas",
     "registerVoucher": "Registrar vale",
-    "selectOnKakaoMap": "Seleccionar restaurante en Kakao Map",
+    "selectOnKakaoMap": "Elige tu tienda en Kakao Map",
     "groupBuyManage": "Gestión de compras grupales",
     "activeGroupBuyCount": "{{count}} activas",
     "createGroupBuy": "Crear compra grupal",
@@ -1746,7 +1746,12 @@
       "storeRegistered": "Tienda registrada — puedes elegirla en tu lista",
       "shareDesc": "Consíguelo con descuento en UrDeal",
       "copyLink": "Copiar enlace de venta",
-      "linkCopied": "Enlace copiado — pégalo en el chat de tus clientes"
+      "linkCopied": "Enlace copiado — pégalo en el chat de tus clientes",
+      "storeFirst": "Registra tu tienda primero — encuéntrala en el mapa y completa [Registrar tienda]",
+      "registerStoreRequired": "⚠️ El registro de la tienda es obligatorio — complétalo para continuar",
+      "registerStoreFirst": "⚠️ El primer paso es registrar la tienda — encuéntrala en el mapa y regístrala",
+      "storeRegisteredSwitched": "Tienda registrada — este cupón pertenecerá a ella",
+      "storePendingNotice": "Tienda enviada — los cupones se abren tras la verificación"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -2442,6 +2447,27 @@
       "openReview": "Ver comprobante",
       "footNote": "Los bonos se pagan por la verificación de visita, sin importar la calificación o el contenido. El equipo de operaciones puede auditar por muestreo.",
       "loadError": "No se pudo cargar la lista"
+    },
+    "stores": {
+      "myStores": "Mis tiendas",
+      "addStore": "Añadir tienda",
+      "loading": "Comprobando tus tiendas…",
+      "operating": "Abierta",
+      "pending": "Pendiente (verificación)",
+      "delegated": "Delegada",
+      "info": "Info",
+      "registered": "Tienda registrada — ya puedes crear cupones",
+      "pendingHint": "Tienda en verificación — los cupones se abren al aprobarse",
+      "gateTitle": "Empieza registrando tu tienda",
+      "gateDesc": "Todo en UrDeal parte de una tienda. Encuéntrala en Kakao Map y regístrala para desbloquear ventas, colaboraciones y liquidaciones.",
+      "step1": "Registrar tienda",
+      "step2": "Crear cupón",
+      "step3": "Vender y colaborar",
+      "step4": "Liquidar",
+      "registerCta": "Registrar tienda con Kakao Map",
+      "lockedNote": "Registra tu tienda para desbloquear cupones · pedidos · liquidación · colaboraciones",
+      "savedPropagated": "Información guardada — aplicada a {{count}} cupones",
+      "saved": "Información de la tienda guardada"
     }
   },
   "admin": {
