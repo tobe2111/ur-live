@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DetailGallery from './group-buy/DetailGallery'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
@@ -35,6 +35,7 @@ import DealPurchaseBox from './group-buy/DealPurchaseBox'
 import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
 import OtherDealsRow from './group-buy/OtherDealsRow'
 import ShareRewardBanner from './group-buy/ShareRewardBanner'
+import DeferUntilVisible from './group-buy/DeferUntilVisible'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -45,23 +46,6 @@ const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
 const ProductReviews = lazy(() => import('./product-detail/ProductReviews'))
 // 🎟️ 2026-07-06 (§2-B B1): 인플루언서 공구 제안 모달 (게이트 OFF, lazy)
 const GbProposeModal = lazy(() => import('./group-buy/GbProposeModal'))
-
-// 🎯 2026-06-23 (대표 신고 — '불필요한 로딩들'): below-fold 섹션(지도/후기)의 lazy 청크가 첫 paint 에
-//   즉시 로드돼 회색 Suspense 블록이 화면 밖에서 깜빡였음. 뷰포트 근처(300px)에 올 때만 mount → 그전엔
-//   공간만 예약(중립, 로딩 표시 X). 스크롤해 도달하면 그때 로드(정상). RestaurantMiniMap 내부 SDK 게이트와 별개의 chunk 게이트.
-function DeferUntilVisible({ minHeight, children }: { minHeight: number; children: ReactNode }) {
-  const [visible, setVisible] = useState(false)
-  const ref = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    if (visible) return
-    const el = ref.current
-    if (!el || typeof IntersectionObserver === 'undefined') { setVisible(true); return }
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect() } }, { rootMargin: '300px' })
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [visible])
-  return <div ref={ref} style={{ minHeight: visible ? undefined : minHeight }}>{visible ? children : null}</div>
-}
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
