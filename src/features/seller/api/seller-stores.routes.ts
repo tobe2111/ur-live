@@ -162,9 +162,16 @@ async function loadMergedProfile(DB: D1Database, sellerId: number) {
     getSellerMeta(DB, [sellerId]).catch(() => new Map<number, Record<string, string>>()),
     loadLatestProductCopy(DB, sellerId),
   ])
+  const meta = metaMap.get(sellerId) || {}
+  // 🚪 2026-08-24 대표 "대시보드 첫 단계는 매장 등록 — 선행 없이는 다음 단계 이용 불가":
+  //   이 좌석이 '등록된 매장'인가의 서버 판정. 주소/등록 채널/좌표 중 하나라도 있으면 매장이고,
+  //   **이미 이용권을 운영해 본 좌석(lastProduct)은 무조건 통과** — 게이트 신설이 기존
+  //   실운영 셀러를 잠그는 사고(lock-out 클래스)를 구조적으로 차단한다.
+  const store_ready = !!(seller?.address || meta.store_channel || meta.store_lat || lastProduct)
   return {
-    store: mergeStoreProfile({ product: lastProduct, meta: metaMap.get(sellerId), seller }),
+    store: mergeStoreProfile({ product: lastProduct, meta, seller }),
     has_product_history: !!lastProduct,
+    store_ready,
   }
 }
 

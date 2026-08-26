@@ -47,9 +47,13 @@ interface Props {
   onPlaceSelect: (p: KakaoPlace) => void
   placeSelected: boolean
   kakaoJsKey: string
+  /** 🚪 2026-08-24 대표: 등록 매장이 없는 계정 — 매장 등록을 완료해야 다음 단계로 갈 수 있다. */
+  storeRequired?: boolean
+  /** 매장 등록+좌석 전환 완료 — 부모가 게이트를 연다. */
+  onStoreReady?: () => void
 }
 
-export default function StoreStep({ form, update, onApplyContext, onPlaceSelect, placeSelected, kakaoJsKey }: Props) {
+export default function StoreStep({ form, update, onApplyContext, onPlaceSelect, placeSelected, kakaoJsKey, storeRequired, onStoreReady }: Props) {
   const { t } = useTranslation()
   const [stores, setStores] = useState<OperableStore[]>([])
   const [switching, setSwitching] = useState<number | null>(null)
@@ -216,16 +220,24 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
             </div>
           )}
 
-          {/* 🏪 지도에서 방금 찾은 매장 → 매장 관리에 바로 등록(다음부터 자동 상속 + 다매장 목록) */}
-          {placeSelected && (
-            <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5">
-              <p className="text-[11px] text-gray-600 leading-snug">
-                {t('seller.mealVoucher.registerStoreHint', { defaultValue: '이 매장을 매장 관리에 등록하면 다음부터 자동으로 불러와요' })}
+          {/* 🏪 지도에서 방금 찾은 매장 → 매장 관리에 바로 등록(다음부터 자동 상속 + 다매장 목록).
+              🚪 storeRequired(등록 매장 0)면 이 등록이 **필수** — 완료 전엔 다음 단계가 잠긴다. */}
+          {(placeSelected || storeRequired) && (
+            <div className={`flex items-center justify-between rounded-lg px-3 py-2.5 border ${
+              storeRequired ? 'bg-amber-50 border-amber-300' : 'bg-blue-50 border-blue-100'
+            }`}>
+              <p className="text-[11px] text-gray-700 leading-snug">
+                {storeRequired
+                  ? (placeSelected
+                    ? t('seller.mealVoucher.registerStoreRequired', { defaultValue: '⚠️ 매장 등록이 필수예요 — [매장 등록]을 완료해야 다음 단계로 갈 수 있어요' })
+                    : t('seller.mealVoucher.registerStoreFirst', { defaultValue: '⚠️ 첫 단계는 매장 등록이에요 — 위 지도에서 매장을 찾은 뒤 등록을 완료해주세요' }))
+                  : t('seller.mealVoucher.registerStoreHint', { defaultValue: '이 매장을 매장 관리에 등록하면 다음부터 자동으로 불러와요' })}
               </p>
               <button
                 type="button"
                 onClick={() => setRegistering(true)}
-                className="shrink-0 ml-2 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[11px] font-bold"
+                disabled={!form.restaurant_name}
+                className="shrink-0 ml-2 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[11px] font-bold disabled:opacity-40"
               >
                 {t('seller.mealVoucher.registerStore', { defaultValue: '매장 등록' })}
               </button>
@@ -301,9 +313,30 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
         <StoreRegisterModal
           initialPlace={formToRegisterPlace(form)}
           onClose={() => setRegistering(false)}
-          onDone={() => {
+          onDone={async (newSellerId) => {
             setRegistering(false)
             loadStores()
+            // 🚪 2026-08-24: 등록 즉시 그 매장 좌석으로 전환 — 이 이용권이 그 매장으로 귀속되고,
+            //   매장 선행 게이트가 열린다. 승인 대기(pending)면 서버가 전환을 거부한다(의도된 잠금).
+            if (newSellerId) {
+              try {
+                const r = await api.post(`/api/seller/stores/${newSellerId}/token`)
+                const d = r.data?.data
+                if (r.data?.success && d?.seller_token) {
+                  localStorage.setItem('seller_token', d.seller_token)
+                  localStorage.setItem('seller_id', String(d.seller.id))
+                  if (d.seller.username) localStorage.setItem('seller_username', d.seller.username)
+                  if (d.seller.business_name) localStorage.setItem('seller_name', d.seller.business_name)
+                  localStorage.setItem('is_distributor', String(d.seller.is_distributor ?? 0))
+                  setCurrentId(d.seller.id)
+                  onStoreReady?.()
+                  toast.success(t('seller.mealVoucher.storeRegisteredSwitched', { defaultValue: '매장이 등록됐어요 — 이 매장으로 이용권을 만들어요' }))
+                  return
+                }
+              } catch { /* 승인 대기 등 — 아래 안내로 */ }
+              toast.info(t('seller.mealVoucher.storePendingNotice', { defaultValue: '매장이 등록 접수됐어요 — 사업자 확인(승인) 후 이용권을 등록할 수 있어요' }))
+              return
+            }
             toast.success(t('seller.mealVoucher.storeRegistered', { defaultValue: '매장이 등록됐어요 — 매장 목록에서 선택할 수 있어요' }))
           }}
         />

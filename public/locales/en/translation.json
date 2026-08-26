@@ -2215,7 +2215,7 @@
     "insightSettlement": "Settlement",
     "quickActions": "Quick Actions",
     "registerVoucher": "Register Voucher",
-    "selectOnKakaoMap": "Select restaurant on Kakao Map",
+    "selectOnKakaoMap": "Pick your store on Kakao Map",
     "groupBuyManage": "Group Buy Management",
     "activeGroupBuyCount": "{{count}} active",
     "createGroupBuy": "Create Group Buy",
@@ -2427,7 +2427,12 @@
       "storeRegistered": "Store registered — you can pick it from your store list",
       "shareDesc": "Get it at a discount on UrDeal",
       "copyLink": "Copy sale link",
-      "linkCopied": "Link copied — paste it into your regulars' chat"
+      "linkCopied": "Link copied — paste it into your regulars' chat",
+      "storeFirst": "Register your store first — find it on the map and complete [Register store]",
+      "registerStoreRequired": "⚠️ Store registration is required — complete it to continue",
+      "registerStoreFirst": "⚠️ Step one is store registration — find your store on the map above and register it",
+      "storeRegisteredSwitched": "Store registered — this voucher will belong to it",
+      "storePendingNotice": "Store submitted — vouchers open after business verification"
     },
     "analyticsTitle": "Sales Analytics",
     "revenueChart": "Revenue Chart",
@@ -3122,6 +3127,27 @@
       "openReview": "View proof",
       "footNote": "Bonuses are paid for visit verification regardless of rating or content. The operations team may audit approvals by sampling.",
       "loadError": "Failed to load the list"
+    },
+    "stores": {
+      "myStores": "My stores",
+      "addStore": "Add store",
+      "loading": "Checking your stores…",
+      "operating": "Open",
+      "pending": "Pending (business verification)",
+      "delegated": "Delegated",
+      "info": "Info",
+      "registered": "Store registered — you can now create vouchers",
+      "pendingHint": "This store is under business verification — vouchers open once approved",
+      "gateTitle": "Start by registering your store",
+      "gateDesc": "Everything on UrDeal starts from a store. Find yours on Kakao Map and register it to unlock voucher sales, influencer collabs and settlements.",
+      "step1": "Register store",
+      "step2": "Create voucher",
+      "step3": "Sell & collab",
+      "step4": "Settle",
+      "registerCta": "Register store via Kakao Map",
+      "lockedNote": "Register your store to unlock vouchers · orders · settlement · influencer collabs",
+      "savedPropagated": "Store info saved — applied to {{count}} vouchers",
+      "saved": "Store info saved"
     }
   },
   "admin": {

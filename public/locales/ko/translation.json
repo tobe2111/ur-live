@@ -2245,7 +2245,7 @@
     "insightSettlement": "정산",
     "quickActions": "빠른 액션",
     "registerVoucher": "이용권 등록",
-    "selectOnKakaoMap": "카카오맵으로 맛집 선택",
+    "selectOnKakaoMap": "카카오맵으로 매장 선택",
     "groupBuyManage": "공동구매 관리",
     "activeGroupBuyCount": "{{count}}개 진행중",
     "createGroupBuy": "공동구매 만들기",
@@ -2457,7 +2457,12 @@
       "storeRegistered": "매장이 등록됐어요 — 매장 목록에서 선택할 수 있어요",
       "shareDesc": "유어딜에서 할인가로 만나요",
       "copyLink": "판매 링크 복사",
-      "linkCopied": "링크가 복사됐어요 — 단골 채팅방에 붙여넣어 보세요"
+      "linkCopied": "링크가 복사됐어요 — 단골 채팅방에 붙여넣어 보세요",
+      "storeFirst": "매장 등록이 먼저예요 — 지도에서 매장을 찾아 [매장 등록]을 완료해주세요",
+      "registerStoreRequired": "⚠️ 매장 등록이 필수예요 — [매장 등록]을 완료해야 다음 단계로 갈 수 있어요",
+      "registerStoreFirst": "⚠️ 첫 단계는 매장 등록이에요 — 위 지도에서 매장을 찾은 뒤 등록을 완료해주세요",
+      "storeRegisteredSwitched": "매장이 등록됐어요 — 이 매장으로 이용권을 만들어요",
+      "storePendingNotice": "매장이 등록 접수됐어요 — 사업자 확인(승인) 후 이용권을 등록할 수 있어요"
     },
     "analyticsTitle": "매출 분석",
     "revenueChart": "매출 차트",
@@ -3122,6 +3127,27 @@
       "openReview": "인증 보기",
       "footNote": "보너스는 후기 별점·내용과 무관하게 방문 인증에 대해 지급됩니다. 운영팀이 승인 내역을 샘플링 감사할 수 있어요.",
       "loadError": "목록을 불러오지 못했어요"
+    },
+    "stores": {
+      "myStores": "내 매장",
+      "addStore": "매장 추가",
+      "loading": "내 매장 확인 중…",
+      "operating": "운영 중",
+      "pending": "승인 대기 (사업자 확인 중)",
+      "delegated": "위임",
+      "info": "정보",
+      "registered": "매장이 등록됐어요 — 이제 이용권을 만들 수 있어요",
+      "pendingHint": "사업자 확인 중인 매장이에요 — 승인되면 이용권을 등록할 수 있어요",
+      "gateTitle": "매장 등록부터 시작해요",
+      "gateDesc": "유어딜의 모든 기능은 매장에서 출발합니다. 카카오맵에서 내 매장을 찾아 등록하면 이용권 판매·인플루언서 협업·정산이 열려요.",
+      "step1": "매장 등록",
+      "step2": "이용권 등록",
+      "step3": "판매·협업",
+      "step4": "정산",
+      "registerCta": "카카오맵으로 매장 등록하기",
+      "lockedNote": "매장 등록을 마치면 이용권 등록 · 주문 · 정산 · 인플루언서 협업이 열려요",
+      "savedPropagated": "매장 정보 저장 — 이용권 {{count}}개에 반영됐어요",
+      "saved": "매장 정보가 저장됐어요"
     }
   },
   "admin": {

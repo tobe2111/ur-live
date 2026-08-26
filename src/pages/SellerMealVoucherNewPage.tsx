@@ -49,6 +49,9 @@ export default function SellerMealVoucherNewPage() {
   // 임시저장 복원 배너 — 결정 전에는 자동저장을 멈춰 기존 드래프트를 덮어쓰지 않는다.
   const [pendingDraft, setPendingDraft] = useState<VoucherDraft | null>(null)
   const skipContextPrefill = useRef(false)
+  // 🚪 2026-08-24 (대표): 매장 등록이 무조건 선행 — 서버 판정(store_ready). false 면 1단계에서
+  //   등록을 완료해야 다음 단계로 넘어갈 수 있다. null(판정 중/실패)은 막지 않는다(fail-open).
+  const [storeReady, setStoreReady] = useState<boolean | null>(null)
 
   // 🧭 재발행 복사: ?copyFrom=<productId> 면 본인 소유 공구를 불러와 프리필(날짜는 리셋).
   useEffect(() => {
@@ -101,14 +104,16 @@ export default function SellerMealVoucherNewPage() {
   }, [])
 
   // 🏪 등록 매장 자동 상속 — 매장 필드가 비어 있을 때만(드래프트/복사를 덮지 않는다).
+  //   + store_ready(매장 등록 선행 게이트 판정)도 같은 응답에서 읽는다.
   useEffect(() => {
-    if (skipContextPrefill.current) return
     let alive = true
     api.get('/api/seller/stores/context')
       .then(r => {
-        if (!alive || !r.data?.success || !r.data.data?.store) return
-        const s = r.data.data.store as StoreContext
-        if (!s.name) return
+        if (!alive || !r.data?.success || !r.data.data) return
+        if (typeof r.data.data.store_ready === 'boolean') setStoreReady(r.data.data.store_ready)
+        if (skipContextPrefill.current) return
+        const s = r.data.data.store as StoreContext | undefined
+        if (!s?.name) return
         setForm(f => (f.restaurant_name ? f : applyStoreContext(f, s)))
       })
       .catch(() => { /* 프리필 실패는 조용히 — 지도 검색이 언제나 대안 */ })
@@ -174,6 +179,11 @@ export default function SellerMealVoucherNewPage() {
   }
 
   function validateStep(s: number): boolean {
+    // 🚪 매장 등록 선행 — 등록 매장이 없으면(서버 판정) 지도에서 찾아 [매장 등록]을 완료해야 진행.
+    if (s === 0 && storeReady === false) {
+      toast.error(t('seller.mealVoucher.storeFirst', { defaultValue: '매장 등록이 먼저예요 — 지도에서 매장을 찾아 [매장 등록]을 완료해주세요' }))
+      return false
+    }
     if (s === 0 && !form.restaurant_name.trim()) {
       toast.error(t('seller.mealVoucher.needStore', { defaultValue: '매장을 먼저 선택하거나 입력해주세요' }))
       return false
@@ -368,6 +378,8 @@ export default function SellerMealVoucherNewPage() {
               onPlaceSelect={selectPlace}
               placeSelected={placeSelected}
               kakaoJsKey={KAKAO_JS_KEY}
+              storeRequired={storeReady === false}
+              onStoreReady={() => setStoreReady(true)}
             />
           )}
           {step === 1 && (

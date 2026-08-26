@@ -1534,7 +1534,7 @@
     "insightSettlement": "Règlement",
     "quickActions": "Actions rapides",
     "registerVoucher": "Enregistrer un bon",
-    "selectOnKakaoMap": "Sélectionner le restaurant sur Kakao Map",
+    "selectOnKakaoMap": "Choisissez votre boutique sur Kakao Map",
     "groupBuyManage": "Gestion des achats groupés",
     "activeGroupBuyCount": "{{count}} en cours",
     "createGroupBuy": "Créer un achat groupé",
@@ -1746,7 +1746,12 @@
       "storeRegistered": "Boutique enregistrée — sélectionnable dans votre liste",
       "shareDesc": "Profitez-en à prix réduit sur UrDeal",
       "copyLink": "Copier le lien de vente",
-      "linkCopied": "Lien copié — collez-le dans le chat de vos habitués"
+      "linkCopied": "Lien copié — collez-le dans le chat de vos habitués",
+      "storeFirst": "Enregistrez d'abord votre boutique — trouvez-la sur la carte et terminez [Enregistrer]",
+      "registerStoreRequired": "⚠️ L'enregistrement de la boutique est obligatoire — terminez-le pour continuer",
+      "registerStoreFirst": "⚠️ La première étape est l'enregistrement — trouvez votre boutique sur la carte ci-dessus",
+      "storeRegisteredSwitched": "Boutique enregistrée — ce coupon lui appartiendra",
+      "storePendingNotice": "Boutique soumise — les coupons s'ouvrent après vérification"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -2442,6 +2447,27 @@
       "openReview": "Voir la preuve",
       "footNote": "Les bonus sont versés pour la vérification de visite, quel que soit la note ou le contenu. L’équipe opérations peut auditer par échantillonnage.",
       "loadError": "Impossible de charger la liste"
+    },
+    "stores": {
+      "myStores": "Mes boutiques",
+      "addStore": "Ajouter",
+      "loading": "Vérification de vos boutiques…",
+      "operating": "Ouverte",
+      "pending": "En attente (vérification)",
+      "delegated": "Déléguée",
+      "info": "Infos",
+      "registered": "Boutique enregistrée — vous pouvez créer des coupons",
+      "pendingHint": "Boutique en vérification — les coupons s'ouvrent après approbation",
+      "gateTitle": "Commencez par enregistrer votre boutique",
+      "gateDesc": "Tout sur UrDeal part d'une boutique. Trouvez-la sur Kakao Map et enregistrez-la pour débloquer ventes, collaborations et règlements.",
+      "step1": "Enregistrer la boutique",
+      "step2": "Créer un coupon",
+      "step3": "Vendre et collaborer",
+      "step4": "Règlement",
+      "registerCta": "Enregistrer via Kakao Map",
+      "lockedNote": "Enregistrez votre boutique pour débloquer coupons · commandes · règlement · collaborations",
+      "savedPropagated": "Infos enregistrées — appliquées à {{count}} coupons",
+      "saved": "Infos de la boutique enregistrées"
     }
   },
   "admin": {

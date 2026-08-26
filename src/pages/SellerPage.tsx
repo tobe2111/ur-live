@@ -25,6 +25,7 @@ import NewSellerSteps from './seller-page/NewSellerSteps'
 import StoreQuickTrio from './seller-page/StoreQuickTrio'
 import PrimaryActions from './seller-page/PrimaryActions'
 import PublicPagePreview from './seller-page/PublicPagePreview'
+import MyStoresPanel from './seller-page/MyStoresPanel'
 import type { DashboardStats, DailyStats, TopProduct, Order } from './seller-page/types'
 import SellerSupportContact from '@/components/seller/SellerSupportContact'
 
@@ -160,6 +161,12 @@ export default function SellerPage() {
   //   'store' 하나였다(modesForSellerType 이 LIVE_COMMERCE_SUSPENDED 에서 ['store'] 고정).
 
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('7d')
+
+  // 🚪 2026-08-24 (대표): "첫 단계는 매장 등록 — 무조건 선행. 없으면 다음 단계 이용 불가."
+  //   MyStoresPanel 이 서버 판정(store_ready + 매장 목록)으로 게이트 여부를 알려준다.
+  //   null(판정 중)엔 잠그지 않는다 — 오탐으로 정상 셀러를 막으면 안 된다(fail-open).
+  const [storeGated, setStoreGated] = useState<boolean | null>(null)
+  const onGateChange = useCallback((g: boolean | null) => setStoreGated(g), [])
 
   // 🛡️ 2026-06-03 Tier2(대시보드): 6-endpoint Promise.allSettled 대시보드 → useQuery.
   //   sessionStorage 5분 캐시 = initialData (즉시렌더) + refetchOnMount:'always' 백그라운드 fresh.
@@ -401,6 +408,16 @@ export default function SellerPage() {
         {/* 🗑️ 2026-06-26 (대표 — '의미 없음'): 셀러 트래킹 링크(/browse?seller=) 제거.
             대상 /browse(쇼핑)는 SHOPPING_TAB_HIDDEN 으로 숨김 + 정식 공유 경로는 링크샵(/u/{handle}) 이라 obsolete. */}
 
+        {/* 🏪 2026-08-24 (대표): 1번 섹션 = 내 매장 — 등록 매장 카드(여러 개면 여러 개, 카드마다
+            이용권 등록). 등록 매장이 없으면 이 자리가 STEP 1 게이트가 되고 아래 전부가 잠긴다. */}
+        <MyStoresPanel onGateChange={onGateChange} />
+
+        {storeGated === true ? (
+          <p className="text-center text-[12px] text-gray-400 py-8">
+            🔒 {t('seller.stores.lockedNote', { defaultValue: '매장 등록을 마치면 이용권 등록 · 주문 · 정산 · 인플루언서 협업이 열려요' })}
+          </p>
+        ) : (
+        <>
         {/* 🧱 2026-08-23 (대표 AB테스트 — "중요한 작업들이 모여있어야"): 핵심 작업 5버튼을
             헤더 바로 아래로 — 이용권 등록(주역)·주문·이용권 관리·정산·인플루언서 찾기. */}
         <PrimaryActions
@@ -584,7 +601,11 @@ export default function SellerPage() {
             </div>
           )}
 
-        {/* ☎️ 2026-08-01 O9 — 운영자 문의 경로(X8 확정 ⓒ). 미설정이면 자기가 안 그린다. */}
+        </>
+        )}
+
+        {/* ☎️ 2026-08-01 O9 — 운영자 문의 경로(X8 확정 ⓒ). 미설정이면 자기가 안 그린다.
+            게이트 밖 — 문의 경로는 매장 등록 전에도 열려 있어야 한다. */}
         <SellerSupportContact />
 
       </div>
