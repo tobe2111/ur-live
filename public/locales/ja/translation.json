@@ -6201,7 +6201,9 @@
     "registerStore": "店舗を登録",
     "emptyOwnerSellerTitle": "店舗登録から始まります",
     "emptyOwnerSellerDesc": "店舗を登録するとパスを追加できます。ここに並びます。",
-    "stepRegisterStore": "店舗登録"
+    "stepRegisterStore": "店舗登録",
+    "statReviews": "レビュー{{n}}",
+    "statSold": "{{n}}件販売"
   },
   "shipping": {
     "trackingTitle": "配送追跡",

@@ -253,6 +253,15 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   //   종전엔 `shopProducts[0] || mealVouchers[0]` 라 일반 상품이 히어로를 무조건 선점했다. 그러면
   //   이용권만 파는 매장(대다수)은 자기 주력이 히어로에도 못 오르고 두 번째 섹션으로 밀렸다.
   //   유어샵의 주인공은 이용권이다 — 없을 때만 일반 상품이 그 자리를 대신한다.
+  // 📊 2026-08-26 (대표 승인): 헤더 실적 한 줄 — 이 매장 상품들의 **실측** 평점/후기/판매.
+  //   당근이 사진으로 만드는 신뢰를 우리는 실적으로 만든다. 값 없으면 헤더가 알아서 안 그린다(0 미표시).
+  const headerStats = (() => {
+    const rated = products.filter(p => Number(p.avg_rating) > 0)
+    const rating = rated.length ? rated.reduce((a, p) => a + Number(p.avg_rating), 0) / rated.length : 0
+    const reviews = products.reduce((a, p) => a + (Number(p.review_count) || 0), 0)
+    const sold = products.reduce((a, p) => a + (Number(p.sold_count) || 0), 0)
+    return { rating, reviews, sold }
+  })()
   const featured = mealVouchers[0] || shopProducts[0] || null
   const featuredIsProduct = !mealVouchers[0] && !!shopProducts[0]
   const gridProducts = featuredIsProduct ? shopProducts.slice(1) : shopProducts
@@ -364,6 +373,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         curator={headerCurator}
         isOwner={ownerView}
         accountType="business"
+        stats={headerStats}
         onCopyLink={copyLink}
         onCuratorUpdate={(next) => setCuratorEdits((s) => ({ ...s, ...next }))}
       />

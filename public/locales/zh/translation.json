@@ -6201,7 +6201,9 @@
     "registerStore": "注册门店",
     "emptyOwnerSellerTitle": "从注册门店开始",
     "emptyOwnerSellerDesc": "注册门店后即可上架优惠券，它们会显示在这里。",
-    "stepRegisterStore": "注册门店"
+    "stepRegisterStore": "注册门店",
+    "statReviews": "{{n}}条评价",
+    "statSold": "已售{{n}}"
   },
   "shipping": {
     "trackingTitle": "配送追踪",

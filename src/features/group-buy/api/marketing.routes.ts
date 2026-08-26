@@ -1,15 +1,6 @@
 /**
- * 🛡️ 2026-05-16: 셀러 마케팅 (인플루언서 차단) + 인플루언서 정산 API.
- *
- * 셀러 (인증 필요):
- *   GET  /api/seller-marketing/me         — 마케팅 ON/OFF + 차단 목록 + 최근 attributions
- *   POST /api/seller-marketing/toggle     — marketing_enabled ON/OFF
- *   POST /api/seller-marketing/block      — 인플루언서 차단 (reason 필수)
- *   POST /api/seller-marketing/unblock    — 차단 해제
- *
- * 인플루언서 (인증 필요 — 일반 user 로그인):
- *   GET  /api/influencer-settlement/me    — 본인 잔액 + 최근 attributions
- *   PUT  /api/influencer-settlement/me    — 사업자번호 / tax_type / 계좌 정보
+ * 🛡️ 2026-05-16: 셀러 마케팅(소개자 차단) + 소개자 정산 API. 라우터 5개는 파일 하단 export 참조.
+ * ⚠️ 2026-08-26: 여기 있던 엔드포인트 목록은 **6개만 적혀 실제(15+)와 어긋나** 지웠다(오도 방지).
  */
 
 import { Hono } from 'hono'
@@ -18,6 +9,7 @@ import type { Env } from '@/worker/types/env'
 import { requireSeller, requireAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { findActiveDealPct } from '@/worker/utils/influencer-deal'
 
 // 🛡️ 2026-05-20: Hono `c.get('user'/'seller')` 가 ContextVariableMap 미선언으로 'never' 가 됨.
 //   각 미들웨어 (requireAuth/requireSeller) 가 ctx 에 박는 형태를 Variables 로 명시.
@@ -385,31 +377,10 @@ influencerApp.get('/deals', async (c) => {
   return c.json({ success: true, data: results || [] })
 })
 
-/**
- * 🎁 2026-08-26 (대표 — "이 링크를 공유하면 x% 딜이 쌓여요! 이런 식으로도 보여야겠네"):
- *   이용권 상세에서 **내가 그 매장과 맺은 활성 딜이 있는지**만 묻는다(표시 전용, 돈은 안 움직인다).
- *
- * ⚠️ 아무에게나 "공유하면 N% 드려요"를 띄우면 **2026-08-22 대표 결정으로 종료한 어필리에이트**를
- *   되살리는 셈이 된다("어필리에이트 전략은 빼려고 해. 심플하게"). 커미션은 **매장이 제안하고
- *   내가 수락한 딜에만** 붙으므로, 배지도 그 딜을 가진 사람에게만 보여야 한다.
- *
- * 🔒 WHERE 절은 결제 시점 판정(group-buy.routes 의 deal 조회)과 **같은 조건**이다 —
- *   status='active' + 기간 내 + (인증 요구 시)승인됨. 여기서 조건이 갈리면 화면은 "N% 받는다"인데
- *   정산은 0 이 되고, 그건 되돌리기 어려운 종류의 신뢰 손상이다.
- */
+/** 🎁 표시 전용 — 이 이용권 상세에 "내 링크로 팔리면 N%" 를 띄울지. 조건은 결제 시점과 같은 SSOT. */
 influencerApp.get('/deal-for-seller/:sellerId', async (c) => {
-  const userId = String((c.get('user') as AuthUser).id)
-  const sellerId = Number(c.req.param('sellerId'))
-  if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: true, data: { active: false } })
-  const row = await c.env.DB.prepare(
-    `SELECT commission_pct FROM seller_influencer_deals
-      WHERE seller_id = ? AND influencer_id = ? AND status = 'active'
-        AND (ends_at IS NULL OR ends_at > datetime('now'))
-        AND (COALESCE(requires_content_proof, 0) = 0 OR proof_status = 'approved')
-      LIMIT 1`
-  ).bind(sellerId, userId).first<{ commission_pct: number }>().catch(() => null)
-  const pct = Number(row?.commission_pct)
-  return c.json({ success: true, data: Number.isFinite(pct) && pct > 0 ? { active: true, commission_pct: pct } : { active: false } })
+  const pct = await findActiveDealPct(c.env.DB, Number(c.req.param('sellerId')), String((c.get('user') as AuthUser).id))
+  return c.json({ success: true, data: pct == null ? { active: false } : { active: true, commission_pct: pct } })
 })
 
 // 🎬 WP-B: 매장이 인플 콘텐츠 인증 검토 → 승인 시 발효(status='active'). CAS(이중승인 방지).

@@ -8,7 +8,7 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { MessageCircle, Phone, Pencil } from 'lucide-react'
+import { MessageCircle, Phone } from 'lucide-react'
 import type { Seller } from './types'
 import type { ThemeTokens } from './theme'
 
@@ -75,15 +75,6 @@ export default function InfoTab({ seller, isOwner, T }: Props) {
           >
             {t('seller.publicPage.moreInfo', { defaultValue: 'MORE INFO' })}
             <span className="text-[11px] leading-none font-normal">{open ? '−' : '+'}</span>
-            {isOwner && (
-              <Link
-                to="/seller/business-info"
-                onClick={e => e.stopPropagation()}
-                className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-gray-400 dark:text-gray-500 normal-case tracking-normal active:opacity-70"
-              >
-                <Pencil className="w-2.5 h-2.5" /> {t('common.edit', { defaultValue: '수정' })}
-              </Link>
-            )}
           </button>
 
           {open && (

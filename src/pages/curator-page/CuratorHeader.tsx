@@ -43,6 +43,14 @@ interface CuratorHeaderProps {
   isOwner: boolean
   // 🏁 2026-06-25 (대표 — 일반/사업자 구분 표시): 이름 옆 작은 배지. 'business'=사업자 유저(인증/판매), 'user'=일반.
   accountType?: 'user' | 'business'
+  /**
+   * 📊 2026-08-26 (대표 승인 — "성과가 쌓이면 딜이 쌓인다"): 헤더 실적 한 줄.
+   *   당근은 **사진**으로 신뢰를 만들지만 우리는 **실적**으로 만들 수 있다. 그리고 그게 매장에게
+   *   "이 유어샵에 넣고 싶다"는 근거가 된다. 값이 없으면 그 항목은 그리지 않는다(0을 자랑하지 않는다).
+   *   ⚠️ 2026-07-20 대표 "신뢰배지 필요없음"으로 **정적 배지**(안전결제/사업자인증)는 폐지됐다 —
+   *   이건 배지 부활이 아니라 **실측값** 노출이다.
+   */
+  stats?: { rating?: number | null; reviews?: number | null; sold?: number | null }
   onCopyLink: () => void
   onCuratorUpdate?: (next: Partial<CuratorHeaderProps['curator']>) => void
 }
@@ -51,6 +59,7 @@ export default function CuratorHeader({
   curator,
   isOwner,
   accountType,
+  stats,
   onCopyLink,
   onCuratorUpdate,
 }: CuratorHeaderProps) {
@@ -319,7 +328,9 @@ export default function CuratorHeader({
       {/* ② 풀블리드 배너 히어로 — 화면 가득(좌우 여백 0) + 하단 그라데이션으로 페이지에 녹아듦 */}
       <div className="max-w-3xl mx-auto">
         <div
-          className={`relative w-full aspect-[4/3] overflow-hidden ${isOwner ? 'cursor-pointer' : ''}`}
+          // 📐 2026-08-26 (대표 승인): 4:3(430폭에서 322px) → 16:9(242px). 배너+이름+소개+SNS 가
+          //   첫 화면을 다 먹어 **팔 물건이 하나도 안 보였다**(첫 카드 y≈500px). 유어샵은 진열대다.
+          className={`relative w-full aspect-[16/9] overflow-hidden ${isOwner ? 'cursor-pointer' : ''}`}
           style={showBanner ? undefined : { background: bannerGradient }}
           onClick={() => isOwner && bannerInputRef.current?.click()}
         >
@@ -462,6 +473,21 @@ export default function CuratorHeader({
             >
               {curator.bio || (isOwner ? '한 줄 소개를 입력해주세요 ✎' : '')}
             </p>
+          )}
+
+          {/* 📊 실적 한 줄 — 값이 있는 항목만. 0 은 자랑거리가 아니라 숨기는 게 맞다. */}
+          {!!(stats && ((stats.rating ?? 0) > 0 || (stats.sold ?? 0) > 0 || (stats.reviews ?? 0) > 0)) && (
+            <div className="flex items-center justify-center gap-2.5 mt-2 text-[12.5px] text-gray-600 dark:text-gray-300">
+              {(stats!.rating ?? 0) > 0 && (
+                <span className="font-bold">★ {Number(stats!.rating).toFixed(1)}</span>
+              )}
+              {(stats!.reviews ?? 0) > 0 && (
+                <span className="text-gray-400 dark:text-gray-500">{t('curator.statReviews', { defaultValue: '후기 {{n}}', n: stats!.reviews })}</span>
+              )}
+              {(stats!.sold ?? 0) > 0 && (
+                <span className="text-gray-400 dark:text-gray-500">{t('curator.statSold', { defaultValue: '판매 {{n}}', n: stats!.sold })}</span>
+              )}
+            </div>
           )}
 
           {/* SNS 버튼 (유튜브/인스타/틱톡) + 소유자 편집 토글 — 중앙 */}

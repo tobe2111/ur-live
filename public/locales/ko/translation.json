@@ -6189,7 +6189,9 @@
     "registerStore": "매장 등록하기",
     "emptyOwnerSellerTitle": "매장을 등록하면 시작돼요",
     "emptyOwnerSellerDesc": "매장을 등록하면 이용권을 올릴 수 있어요. 올린 이용권이 여기 진열됩니다.",
-    "stepRegisterStore": "매장 등록"
+    "stepRegisterStore": "매장 등록",
+    "statReviews": "후기 {{n}}",
+    "statSold": "판매 {{n}}"
   },
   "shipping": {
     "trackingTitle": "배송 추적",
