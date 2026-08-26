@@ -1961,7 +1961,8 @@
       "recommendToggleHint": "ピンした商品を下部「おすすめ」に表示",
       "recommendToggleOn": "✨ おすすめ ON",
       "recommendToggleOff": "おすすめ OFF",
-      "recommendPreviewNote": "訪問者には非表示です — 上部の「おすすめ OFF」ボタンでオンにできます"
+      "recommendPreviewNote": "訪問者には非表示です — 上部の「おすすめ OFF」ボタンでオンにできます",
+      "emptyShopTitle": "最初の利用券を登録して UrShop を埋めよう"
     },
     "storeIntro": "ストア紹介",
     "shippingInfo": "配送情報",
@@ -2928,7 +2929,7 @@
     "gateway": {
       "title": "事業者認証",
       "heroTitle": "マイショップで直接販売",
-      "heroDesc": "事業者認証1回でUrShopが本物のショップに。商品・利用券の登録＋現金精算（基本手数料5%）。",
+      "heroDesc": "店舗を登録すると、UrShop で利用券・商品を販売し現金で精算できます（基本手数料5%）。",
       "kakaoBanner": "このカカオアカウントに販売機能が追加されます。UrShop・購入履歴はそのまま。",
       "escape": "商品のおすすめ・コミッションだけなら登録不要 —",
       "escapeLink": "マイUrShop",
@@ -4654,7 +4655,7 @@
     "sellerNoTokenSub": "別途の登録・ログイン不要",
     "startAsSeller": "セラーとして始める",
     "registerAsAgency": "エージェンシーとして登録する →",
-    "loginDesc": "セラーアカウントでログインしてください。",
+    "loginDesc": "カカオアカウントでログインしてください。",
     "sellerLogin": "セラーログイン",
     "sellerSignup": "セラー会員登録",
     "sheetTitleCreate": "作成",
@@ -6743,7 +6744,7 @@
     "myShortcuts": "マイショートカット",
     "startNewRole": "新しい役割を始める",
     "linkshop": "マイUrShop",
-    "linkshopDesc": "交換券・共同購入を紹介して獲得",
+    "linkshopDesc": "利用券を UrShop に並べて紹介しよう",
     "sellerDash": "セラーダッシュボード",
     "sellerDashDesc": "商品・共同購入・精算の管理",
     "agencyDash": "エージェンシーダッシュボード",
@@ -6751,7 +6752,7 @@
     "proposeGb": "ご近所共同購入の提案",
     "proposeGbDesc": "希望のお店を提案するとまとめて開催します",
     "openShop": "店舗を登録",
-    "openShopDesc": "地図で店舗を探してパスを販売",
+    "openShopDesc": "カカオマップで自分の店を探して利用券を販売",
     "agencyBiz": "エージェンシー事業",
     "agencyBizDesc": "店舗開拓 → 2%の永続収益"
   },
@@ -6772,5 +6773,9 @@
     "copyMyLink": "マイリンクをコピー",
     "copied": "リンクをコピーしました",
     "copyFailed": "コピーに失敗しました"
+  },
+  "frameRails": {
+    "valShop": "自分の利用券棚、UrShop",
+    "valShopDesc": "登録すればもう開いています"
   }
 }

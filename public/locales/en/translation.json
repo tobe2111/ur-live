@@ -1962,7 +1962,8 @@
       "recommendToggleHint": "Show pinned items in the bottom \"Picks\" section",
       "recommendToggleOn": "✨ Picks ON",
       "recommendToggleOff": "Picks OFF",
-      "recommendPreviewNote": "Hidden from visitors — turn it on with the \"Picks OFF\" button above"
+      "recommendPreviewNote": "Hidden from visitors — turn it on with the \"Picks OFF\" button above",
+      "emptyShopTitle": "Add your first pass to fill your UrShop"
     },
     "storeIntro": "Store Introduction",
     "shippingInfo": "Shipping Info",
@@ -2928,10 +2929,10 @@
     "gateway": {
       "title": "Business verification",
       "heroTitle": "Sell directly from my shop",
-      "heroDesc": "One business verification turns your linkshop into a real store. List products & vouchers and get cash settlements (5% base platform fee).",
-      "kakaoBanner": "Selling features will be added to this Kakao account. Your linkshop and purchase history stay intact.",
+      "heroDesc": "Register your store and sell passes and products from your UrShop, settled in cash (5% platform fee by default).",
+      "kakaoBanner": "Selling features will be added to this Kakao account. Your UrShop and purchase history stay intact.",
       "escape": "Only want to recommend products for commission? No sign-up needed —",
-      "escapeLink": "go to my linkshop",
+      "escapeLink": "go to my UrShop",
       "escapeSuffix": " and start right away.",
       "applied": "Application submitted! Moving to the review status page.",
       "alreadyActive": "You are already a business user",
@@ -2951,7 +2952,7 @@
     },
     "mailOrderNumber": "Mail-order business no.",
     "mailOrderNumberPlaceholder": "e.g. 2026-Seoul-01234",
-    "mailOrderNumberHint": "Shown publicly in your linkshop seller info (e-commerce law disclosure)",
+    "mailOrderNumberHint": "Shown publicly in your UrShop seller info (e-commerce law disclosure)",
     "primary": {
       "addProductDesc": "List vouchers & group buys",
       "voucherManageDesc": "Sales & status",
@@ -4654,7 +4655,7 @@
     "sellerNoTokenSub": "No separate signup needed",
     "startAsSeller": "Start as Seller",
     "registerAsAgency": "Register as Agency →",
-    "loginDesc": "Log in with a seller account.",
+    "loginDesc": "Log in with your Kakao account.",
     "sellerLogin": "Seller Login",
     "sellerSignup": "Seller Sign Up",
     "sheetTitleCreate": "Create",
@@ -6159,11 +6160,11 @@
       "noData": "No data yet. Share your pins with friends!"
     },
     "dashboardError": "Failed to load dashboard",
-    "makeMine": "Make my own linkshop — earn by recommending",
+    "makeMine": "Make my own UrShop — earn by recommending",
     "console": {
       "title": "Creator Console"
     },
-    "ownerViewBar": "My linkshop · what visitors see",
+    "ownerViewBar": "My UrShop · what visitors see",
     "editButton": "Edit",
     "editMode": "Edit mode",
     "tapToEdit": "Tap to edit",
@@ -6180,7 +6181,7 @@
     "addVoucherPin": "Add local deal",
     "addShopPin": "Add product",
     "addAnyPin": "Add product or deal",
-    "confirmDeletePinMine": "Remove this pin from your linkshop?",
+    "confirmDeletePinMine": "Remove this pin from your UrShop?",
     "confirmDeletePin": "Delete this pin?",
     "pinDeleted": "Pin deleted",
     "deleteFailed": "Delete failed",
@@ -6192,7 +6193,7 @@
     "viewsCount": "{{n}} views",
     "earnPerSaleAmt": " · Earn ₩{{amt}}/sale",
     "noCommentNudge": "No comment yet · add one to boost sales",
-    "stepsLeft": "{{n}} steps to finish your linkshop",
+    "stepsLeft": "{{n}} steps to finish your UrShop",
     "stepName": "Set name",
     "stepHandle": "Set address",
     "stepFirstProduct": "Add first product",
@@ -6742,8 +6743,8 @@
   "roleCta": {
     "myShortcuts": "My shortcuts",
     "startNewRole": "Start a new role",
-    "linkshop": "My linkshop",
-    "linkshopDesc": "Recommend vouchers & deals, earn rewards",
+    "linkshop": "My UrShop",
+    "linkshopDesc": "Add passes to your UrShop and share them",
     "sellerDash": "Seller dashboard",
     "sellerDashDesc": "Manage my products, deals & settlements",
     "agencyDash": "Agency dashboard",
@@ -6751,7 +6752,7 @@
     "proposeGb": "Propose a local deal",
     "proposeGbDesc": "Suggest a store and we will open a deal",
     "openShop": "Register my store",
-    "openShopDesc": "Find your store on the map and sell passes",
+    "openShopDesc": "Find your store on Kakao Map and start selling passes",
     "agencyBiz": "Agency business",
     "agencyBizDesc": "Recruit stores → 2% lifetime revenue"
   },
@@ -6772,5 +6773,9 @@
     "copyMyLink": "Copy my link",
     "copied": "Link copied",
     "copyFailed": "Copy failed"
+  },
+  "frameRails": {
+    "valShop": "Your pass showcase, UrShop",
+    "valShopDesc": "It's already open when you sign up"
   }
 }

@@ -1281,7 +1281,8 @@
       "recommendToggleHint": "Afficher les épingles dans la section \"Sélection\"",
       "recommendToggleOn": "✨ Sélection ON",
       "recommendToggleOff": "Sélection OFF",
-      "recommendPreviewNote": "Masqué pour les visiteurs — activez-le via le bouton \"Sélection OFF\" ci-dessus"
+      "recommendPreviewNote": "Masqué pour les visiteurs — activez-le via le bouton \"Sélection OFF\" ci-dessus",
+      "emptyShopTitle": "Ajoutez votre premier pass pour remplir votre UrShop"
     },
     "storeIntro": "Presentation de la boutique",
     "shippingInfo": "Info livraison",
@@ -2248,10 +2249,10 @@
     "gateway": {
       "title": "Vérification pro",
       "heroTitle": "Vendre directement depuis ma boutique",
-      "heroDesc": "Une vérification pro transforme votre linkshop en vraie boutique. Publiez produits et bons, recevez vos règlements (commission de base 5%).",
+      "heroDesc": "Enregistrez votre boutique et vendez pass et produits depuis votre UrShop, réglés en espèces (5% de commission par défaut).",
       "kakaoBanner": "Les fonctions de vente seront ajoutées à ce compte Kakao. UrShop et historique conservés.",
       "escape": "Vous voulez seulement recommander des produits ? Sans inscription —",
-      "escapeLink": "aller à mon linkshop",
+      "escapeLink": "aller à mon UrShop",
       "escapeSuffix": " et commencez tout de suite.",
       "applied": "Demande envoyée ! Redirection vers la page de statut.",
       "alreadyActive": "Vous êtes déjà utilisateur pro",
@@ -2271,7 +2272,7 @@
     },
     "mailOrderNumber": "N° de vente à distance",
     "mailOrderNumberPlaceholder": "ex. 2026-Seoul-01234",
-    "mailOrderNumberHint": "Affiché publiquement dans les infos vendeur de votre linkshop",
+    "mailOrderNumberHint": "Affiché publiquement dans les infos vendeur de votre UrShop",
     "primary": {
       "addProductDesc": "Publier bons et achats groupés",
       "voucherManageDesc": "Ventes et statut",
@@ -3974,7 +3975,7 @@
     "sellerNoTokenSub": "Aucune inscription séparée requise",
     "startAsSeller": "Devenir vendeur",
     "registerAsAgency": "S'inscrire comme agence →",
-    "loginDesc": "Connectez-vous avec un compte vendeur.",
+    "loginDesc": "Connectez-vous avec votre compte Kakao.",
     "sellerLogin": "Connexion vendeur",
     "sellerSignup": "Inscription vendeur",
     "sheetTitleCreate": "Créer",
@@ -6159,11 +6160,11 @@
       "noData": "Pas encore de données. Partagez vos épingles avec des amis !"
     },
     "dashboardError": "Échec du chargement du tableau de bord",
-    "makeMine": "Créer mon linkshop — gagnez en recommandant",
+    "makeMine": "Créer mon UrShop — gagnez en recommandant",
     "console": {
       "title": "Console créateur"
     },
-    "ownerViewBar": "Mon linkshop · vue visiteur",
+    "ownerViewBar": "Mon UrShop · vue visiteur",
     "editButton": "Modifier",
     "editMode": "Mode édition",
     "tapToEdit": "Touchez pour modifier",
@@ -6180,7 +6181,7 @@
     "addVoucherPin": "Ajouter une offre locale",
     "addShopPin": "Ajouter un produit",
     "addAnyPin": "Ajouter produit ou offre",
-    "confirmDeletePinMine": "Supprimer cette épingle de votre linkshop ?",
+    "confirmDeletePinMine": "Supprimer cette épingle de votre UrShop ?",
     "confirmDeletePin": "Supprimer cette épingle ?",
     "pinDeleted": "Épingle supprimée",
     "deleteFailed": "Échec de la suppression",
@@ -6192,7 +6193,7 @@
     "viewsCount": "{{n}} vues",
     "earnPerSaleAmt": " · Gain ₩{{amt}}/vente",
     "noCommentNudge": "Pas de commentaire · ajoutez-en pour convertir",
-    "stepsLeft": "{{n}} étapes avant de finir votre linkshop",
+    "stepsLeft": "{{n}} étapes avant de finir votre UrShop",
     "stepName": "Définir le nom",
     "stepHandle": "Définir l'adresse",
     "stepFirstProduct": "Ajouter le premier produit",
@@ -6679,7 +6680,7 @@
     "referralStartTitle": "Recommandez et gagnez",
     "referralCountN": "{{n}} parrainages",
     "referralStartSub": "Partagez sur les réseaux — gagnez quand vos amis paient",
-    "curatorTitle": "Revenus de mon linkshop",
+    "curatorTitle": "Revenus de mon UrShop",
     "curatorCashSub": "Règlement en espèces · retirable",
     "curatorDealSub": "Cumulé · 1 Deal = ₩1",
     "freeDealNote": "Inclut {{free}} deals de récompense gratuits · {{paid}} deals retirables"
@@ -6742,8 +6743,8 @@
   "roleCta": {
     "myShortcuts": "Mes raccourcis",
     "startNewRole": "Commencer un nouveau rôle",
-    "linkshop": "Mon linkshop",
-    "linkshopDesc": "Recommandez bons et offres, gagnez des récompenses",
+    "linkshop": "Mon UrShop",
+    "linkshopDesc": "Ajoutez des pass à votre UrShop et partagez-les",
     "sellerDash": "Tableau de bord vendeur",
     "sellerDashDesc": "Gérez produits, offres et règlements",
     "agencyDash": "Tableau de bord agence",
@@ -6751,7 +6752,7 @@
     "proposeGb": "Proposer un achat groupé local",
     "proposeGbDesc": "Suggérez une boutique, nous ouvrons l’offre",
     "openShop": "Enregistrer ma boutique",
-    "openShopDesc": "Trouvez votre boutique et vendez des pass",
+    "openShopDesc": "Trouvez votre boutique sur Kakao Map et vendez des pass",
     "agencyBiz": "Activité d’agence",
     "agencyBizDesc": "Recrutez des boutiques → 2% de revenus à vie"
   },
@@ -6772,5 +6773,9 @@
     "copyMyLink": "Copier mon lien",
     "copied": "Lien copié",
     "copyFailed": "Échec de la copie"
+  },
+  "frameRails": {
+    "valShop": "Votre vitrine de pass, UrShop",
+    "valShopDesc": "Déjà ouverte dès votre inscription"
   }
 }

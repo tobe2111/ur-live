@@ -55,6 +55,17 @@ describe('N1 옛 이름 "링크샵" 은 사용자에게 보이지 않는다', ()
     const hits = LOCALES.filter(l => localeValues(l).includes('링크샵'))
     expect(hits, `옛 이름이 남은 로케일: ${hits.join(', ')}`).toEqual([])
   })
+
+  /**
+   * 🩸 2026-08-26: 위 검사가 **한글 '링크샵' 만** 봐서, 라틴문자 'linkshop' 이 en/es/fr 값
+   *   **25건** 살아남아 있었다("Make my own linkshop", "Mi linkshop · lo que ven…").
+   *   치환은 ko 만 하고 나머지는 번역돼 있으니 됐다고 넘긴 것이다 — 옛 이름은 언어를 바꿔서 돌아온다.
+   * ⚠️ **값만** 본다. 키(`nav.linkshop`·`roleCta.linkshop`)는 코드 식별자라 바꾸지 않는 것이 계약(N2).
+   */
+  it('라틴문자 linkshop 도 값에서 0건 — 옛 이름은 언어를 바꿔 돌아온다', () => {
+    const hits = LOCALES.filter(l => /linkshop/i.test(localeValues(l)))
+    expect(hits, `라틴문자 옛 이름이 남은 로케일: ${hits.join(', ')}`).toEqual([])
+  })
 })
 
 describe('N2 코드 식별자는 그대로 — 치환이 로직을 건드리지 않았다', () => {

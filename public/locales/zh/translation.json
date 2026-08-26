@@ -1961,7 +1961,8 @@
       "recommendToggleHint": "在底部\"推荐\"区域显示收藏商品",
       "recommendToggleOn": "✨ 推荐 ON",
       "recommendToggleOff": "推荐 OFF",
-      "recommendPreviewNote": "对访客隐藏 — 可通过上方\"推荐 OFF\"按钮开启"
+      "recommendPreviewNote": "对访客隐藏 — 可通过上方\"推荐 OFF\"按钮开启",
+      "emptyShopTitle": "上架第一张使用券，填满我的 UrShop"
     },
     "storeIntro": "店铺介绍",
     "shippingInfo": "配送信息",
@@ -2928,7 +2929,7 @@
     "gateway": {
       "title": "商家认证",
       "heroTitle": "在我的商店直接销售",
-      "heroDesc": "一次企业认证，您的UrShop即成为真正的商店。上架商品和使用券并获得现金结算（基础手续费5%）。",
+      "heroDesc": "注册门店后即可在 UrShop 销售使用券和商品，并以现金结算（基础手续费5%）。",
       "kakaoBanner": "销售功能将添加到此Kakao账户。UrShop和购买记录保持不变。",
       "escape": "只想推荐商品赚佣金？无需注册 —",
       "escapeLink": "前往我的UrShop",
@@ -4654,7 +4655,7 @@
     "sellerNoTokenSub": "无需单独注册",
     "startAsSeller": "成为卖家",
     "registerAsAgency": "注册为代理 →",
-    "loginDesc": "请使用卖家账号登录。",
+    "loginDesc": "请使用 Kakao 账号登录。",
     "sellerLogin": "卖家登录",
     "sellerSignup": "卖家注册",
     "sheetTitleCreate": "创建",
@@ -6743,7 +6744,7 @@
     "myShortcuts": "我的快捷方式",
     "startNewRole": "开启新角色",
     "linkshop": "我的UrShop",
-    "linkshopDesc": "推荐兑换券·团购赚积分",
+    "linkshopDesc": "把使用券放进我的 UrShop 并分享",
     "sellerDash": "卖家后台",
     "sellerDashDesc": "管理我的商品·团购·结算",
     "agencyDash": "代理后台",
@@ -6751,7 +6752,7 @@
     "proposeGb": "社区团购提案",
     "proposeGbDesc": "提议想要的店铺，我们来开团",
     "openShop": "注册我的门店",
-    "openShopDesc": "在地图上找到门店并销售优惠券",
+    "openShopDesc": "在 Kakao 地图找到自己的门店并销售使用券",
     "agencyBiz": "代理业务",
     "agencyBizDesc": "开拓店铺 → 2%永久收益"
   },
@@ -6772,5 +6773,9 @@
     "copyMyLink": "复制我的链接",
     "copied": "已复制链接",
     "copyFailed": "复制失败"
+  },
+  "frameRails": {
+    "valShop": "我的使用券展台，UrShop",
+    "valShopDesc": "注册后就已经开好了"
   }
 }

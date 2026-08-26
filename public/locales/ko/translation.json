@@ -1992,7 +1992,8 @@
       "recommendToggleHint": "담은 핀을 유어샵 하단 \"추천\" 섹션에 표시",
       "recommendToggleOn": "✨ 추천 ON",
       "recommendToggleOff": "추천 OFF",
-      "recommendPreviewNote": "방문자에게는 숨겨져 있어요 — 상단 \"추천 OFF\" 버튼으로 켤 수 있습니다"
+      "recommendPreviewNote": "방문자에게는 숨겨져 있어요 — 상단 \"추천 OFF\" 버튼으로 켤 수 있습니다",
+      "emptyShopTitle": "첫 이용권을 올려 유어샵을 채워보세요"
     },
     "storeIntro": "스토어 소개",
     "shippingInfo": "배송 정보",
@@ -6768,5 +6769,9 @@
     "copyMyLink": "내 링크 복사하기",
     "copied": "링크를 복사했어요",
     "copyFailed": "복사에 실패했어요"
+  },
+  "frameRails": {
+    "valShop": "내 이용권 진열대, 유어샵",
+    "valShopDesc": "가입하면 이미 열려 있어요"
   }
 }
