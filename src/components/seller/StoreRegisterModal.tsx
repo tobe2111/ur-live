@@ -17,6 +17,7 @@
 import { useState } from 'react'
 import api from '@/lib/api'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
+import { formatPhone, isValidMobilePhone, digitsOnly } from '@/utils/format-phone'
 import { Loader2, MapPin, CheckCircle2, XCircle, BadgeCheck } from 'lucide-react'
 
 export interface RegisterPlace {
@@ -54,6 +55,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
   const [picked, setPicked] = useState<RegisterPlace | null>(initialPlace ?? null)
   const [showMap, setShowMap] = useState(!initialPlace)
   const [channel, setChannel] = useState<'direct' | 'brokered' | null>(null)
+  const [managerPhone, setManagerPhone] = useState('')
   const [bno, setBno] = useState('')
   const [rep, setRep] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -77,8 +79,10 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
     } finally { setVerifying(false) }
   }
 
+  const managerOk = isValidMobilePhone(managerPhone)
+
   async function submit() {
-    if (!picked || !channel || submitting) return
+    if (!picked || !channel || !managerOk || submitting) return
     setSubmitting(true)
     try {
       const r = await api.post('/api/seller/stores', {
@@ -90,6 +94,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
         kakao_place_url: picked.place_url,
         lat: picked.lat, lng: picked.lng,
         channel,
+        manager_phone: digitsOnly(managerPhone),
         business_number: bno.replace(/-/g, '') || undefined,
         representative: rep || undefined,
         business_start_date: startDate || undefined,
@@ -137,9 +142,29 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
             )}
           </div>
 
-          {/* ② 운영 방식 */}
+          {/* ② 담당자 연락처 — 매장 대표번호(위에서 자동입력)와 별개인 '사람' 연락처 */}
           <div>
-            <p className="text-xs font-bold text-gray-700 mb-1.5">② 누가 운영하나요?</p>
+            <p className="text-xs font-bold text-gray-700 mb-1.5">② 담당자 전화번호</p>
+            <input
+              value={formatPhone(managerPhone)}
+              onChange={e => setManagerPhone(e.target.value)}
+              placeholder="010-0000-0000"
+              inputMode="tel"
+              autoComplete="tel"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400"
+            />
+            <p className="text-[11px] text-gray-500 mt-1">
+              이 매장을 관리하는 분의 휴대폰 번호예요. 승인·사용 문의·정산 확인 때 연락드립니다.
+              {picked?.phone && <span className="text-gray-400"> (매장 대표번호 {picked.phone} 와는 별개)</span>}
+            </p>
+            {managerPhone && !managerOk && (
+              <p className="text-[11px] text-red-600 mt-1">휴대폰 번호(01x)로 입력해주세요</p>
+            )}
+          </div>
+
+          {/* ③ 운영 방식 */}
+          <div>
+            <p className="text-xs font-bold text-gray-700 mb-1.5">③ 누가 운영하나요?</p>
             <div className="grid grid-cols-2 gap-2">
               <button onClick={() => setChannel('direct')}
                 className={`p-3 rounded-xl border text-left transition ${channel === 'direct' ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
@@ -154,9 +179,9 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
             </div>
           </div>
 
-          {/* ③ 사업자 확인 */}
+          {/* ④ 사업자 확인 */}
           <div>
-            <p className="text-xs font-bold text-gray-700 mb-1.5">③ 사업자번호 확인 <span className="font-normal text-gray-400">(국세청 조회 — 통과 시 바로 활성화)</span></p>
+            <p className="text-xs font-bold text-gray-700 mb-1.5">④ 사업자번호 확인 <span className="font-normal text-gray-400">(국세청 조회 — 통과 시 바로 활성화)</span></p>
             <div className="space-y-2">
               <input value={bno} onChange={e => setBno(e.target.value)} placeholder="사업자번호 10자리" inputMode="numeric" maxLength={12}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400" />
@@ -180,7 +205,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
           </div>
         </div>
         <div className="p-4 border-t border-gray-100 shrink-0">
-          <button onClick={submit} disabled={!picked || !channel || submitting}
+          <button onClick={submit} disabled={!picked || !channel || !managerOk || submitting}
             className="w-full py-3 rounded-xl bg-brand hover:bg-brand-dark text-white text-sm font-bold disabled:opacity-40 transition">
             {submitting ? '등록 중…' : '매장 등록'}
           </button>
