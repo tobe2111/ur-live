@@ -6197,7 +6197,11 @@
     "stepHandle": "Configura la dirección",
     "stepFirstProduct": "Añade el primer producto",
     "verifiedBusinessUser": "Vendedor verificado",
-    "verifiedBusinessDesc": "Registro comercial verificado."
+    "verifiedBusinessDesc": "Registro comercial verificado.",
+    "registerStore": "Registrar tienda",
+    "emptyOwnerSellerTitle": "Empieza registrando tu tienda",
+    "emptyOwnerSellerDesc": "Registra tu tienda para añadir pases. Aparecerán aquí.",
+    "stepRegisterStore": "Registrar tienda"
   },
   "shipping": {
     "trackingTitle": "Seguimiento de envío",
@@ -6759,5 +6763,12 @@
     "recent": "Invitaciones recientes",
     "waitingPurchase": "Esperando compra",
     "friend": "Amigo"
+  },
+  "share": {
+    "rewardTitle": "Gana {{pct}}% por venta con tu enlace",
+    "rewardDesc": "Es tu acuerdo con la tienda. Comparte el enlace para acumular.",
+    "copyMyLink": "Copiar mi enlace",
+    "copied": "Enlace copiado",
+    "copyFailed": "Error al copiar"
   }
 }

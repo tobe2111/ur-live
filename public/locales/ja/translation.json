@@ -6197,7 +6197,11 @@
     "stepHandle": "アドレスを設定",
     "stepFirstProduct": "最初の商品を追加",
     "verifiedBusinessUser": "事業者認証済みユーザーです",
-    "verifiedBusinessDesc": "事業者登録情報が確認された販売者です。"
+    "verifiedBusinessDesc": "事業者登録情報が確認された販売者です。",
+    "registerStore": "店舗を登録",
+    "emptyOwnerSellerTitle": "店舗登録から始まります",
+    "emptyOwnerSellerDesc": "店舗を登録するとパスを追加できます。ここに並びます。",
+    "stepRegisterStore": "店舗登録"
   },
   "shipping": {
     "trackingTitle": "配送追跡",
@@ -6759,5 +6763,12 @@
     "recent": "最近の招待",
     "waitingPurchase": "購入待ち",
     "friend": "友達"
+  },
+  "share": {
+    "rewardTitle": "あなたのリンク経由の販売で{{pct}}%還元",
+    "rewardDesc": "この店舗との提携です。下のリンクで共有すると還元されます。",
+    "copyMyLink": "マイリンクをコピー",
+    "copied": "リンクをコピーしました",
+    "copyFailed": "コピーに失敗しました"
   }
 }

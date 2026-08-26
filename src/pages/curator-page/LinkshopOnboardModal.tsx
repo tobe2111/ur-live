@@ -7,13 +7,20 @@
  *
  * 닫기/완료/스킵 시 localStorage 로 다시 안 뜨게(스킵은 다음에 또 권유하지 않되, '나중에' 는 세션 한정).
  * 화이트/다크 토글 페이지라 dark: variant 필수.
+ *
+ * 🧭 2026-08-26 (대표 — "가입 시 유어샵 들어가면 사장님인지 선택하고, 그에 맞는 UI"):
+ *   **한 화면 한 질문**(당근 비즈프로필 원칙)으로 2스텝. ①어떻게 쓰실 건가요 → ②이름·주소.
+ *   ①의 답은 **신분이 아니라 첫 화면 힌트**다(`urshop-intent.ts` 주석 참조) — 권한을 주지 않고,
+ *   나중에 반대쪽을 해도 막지 않는다. 그래서 모달에도 "둘 다 해도 돼요"를 적는다.
+ *   🩸 그리고 이 모달은 2026-08-26 이전까지 **한 번도 뜬 적이 없었다**(CuratorPage 게이트 버그).
  */
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { curatorApi } from '@/features/curator/api/curator-api'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { X } from 'lucide-react'
+import { setUrShopIntent, type UrShopIntent } from '@/utils/urshop-intent'
+import { X, Store, Sparkles } from 'lucide-react'
 
 interface Props {
   curatorId: number
@@ -21,9 +28,14 @@ interface Props {
   currentName: string
   onDone: (next: { name?: string; handle?: string }) => void
   onClose: () => void
+  /** 사장님을 택했을 때 데려갈 곳 — 부모가 navigate 를 쥐고 있다. */
+  onPickSeller?: () => void
 }
 
-export default function LinkshopOnboardModal({ curatorId, currentHandle, currentName, onDone, onClose }: Props) {
+export default function LinkshopOnboardModal({ curatorId, currentHandle, currentName, onDone, onClose, onPickSeller }: Props) {
+  // ① 의도 → ② 이름·주소. 의도를 고르기 전엔 ②를 묻지 않는다(한 화면 한 질문).
+  const [step, setStep] = useState<1 | 2>(1)
+  const [intent, setIntent] = useState<UrShopIntent | null>(null)
   const [name, setName] = useState(currentName && !/^user\d+$/i.test(currentName) ? currentName : '')
   const [handle, setHandle] = useState('')
   const [checking, setChecking] = useState(false)
@@ -87,6 +99,8 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
       try { localStorage.setItem(`linkshop_nickname_set_${curatorId}`, '1') } catch { /* */ }
       toast.success('유어샵 프로필이 설정됐어요')
       onDone(next)
+      // 사장님을 택했으면 여기서 끊지 않고 매장 등록까지 이어 준다 — "설정 끝"이 아니라 "이제 시작".
+      if (intent === 'seller') onPickSeller?.()
     } catch {
       toast.error('저장 중 오류가 발생했어요')
     } finally {
@@ -108,11 +122,57 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
         className="w-full sm:max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-[#1A2334] rounded-t-3xl sm:rounded-3xl border border-gray-200 dark:border-[#2A3446] p-5 animate-sheet-rise"
       >
         <div className="flex items-start justify-between mb-1">
-          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">내 유어샵 꾸미기</h2>
+          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">
+            {step === 1 ? '유어샵을 어떻게 쓰실 건가요?' : '내 유어샵 꾸미기'}
+          </h2>
           <button onClick={dismissPermanently} aria-label="닫기" className="p-1 -m-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <X className="w-5 h-5" />
           </button>
         </div>
+        {/* 진행바 — 당근 비즈프로필처럼 "몇 개 남았는지"가 보이면 이탈이 준다. */}
+        <div className="flex gap-1 mb-3" aria-hidden>
+          {[1, 2].map(n => (
+            <div key={n} className={`h-1 flex-1 rounded-full ${step >= n ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-[#2A3446]'}`} />
+          ))}
+        </div>
+
+        {step === 1 ? (
+          <>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-4 leading-snug">
+              고른 쪽에 맞춰 첫 화면을 준비해 드려요.
+            </p>
+            <div className="space-y-2">
+              <button
+                onClick={() => { setIntent('seller'); setUrShopIntent(curatorId, 'seller'); setStep(2) }}
+                className="w-full flex items-start gap-3 p-4 rounded-2xl border border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-white/[0.04] text-left transition"
+              >
+                <span className="w-9 h-9 shrink-0 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] flex items-center justify-center"><Store className="w-[18px] h-[18px]" /></span>
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-bold text-gray-900 dark:text-white">내 가게를 팔아요</span>
+                  <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">매장을 등록하고 이용권을 팔아요</span>
+                </span>
+              </button>
+              <button
+                onClick={() => { setIntent('curator'); setUrShopIntent(curatorId, 'curator'); setStep(2) }}
+                className="w-full flex items-start gap-3 p-4 rounded-2xl border border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-white/[0.04] text-left transition"
+              >
+                <span className="w-9 h-9 shrink-0 rounded-xl bg-gray-100 dark:bg-[#2A3446] text-gray-700 dark:text-white flex items-center justify-center"><Sparkles className="w-[18px] h-[18px]" /></span>
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-bold text-gray-900 dark:text-white">좋은 딜을 소개해요</span>
+                  <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">마음에 든 이용권을 담아 친구에게 소개해요</span>
+                </span>
+              </button>
+            </div>
+            {/* ⚠️ 신분이 아니라는 걸 이 자리에서 말한다 — 안 적으면 "잘못 고르면 어쩌지"에서 멈춘다. */}
+            <p className="text-[11.5px] text-gray-400 dark:text-gray-500 mt-3 text-center leading-snug">
+              나중에 바꿀 수 있고, 둘 다 하셔도 돼요.
+            </p>
+            <button onClick={dismissPermanently} className="w-full mt-3 py-2.5 rounded-xl text-[13px] font-semibold text-gray-500 dark:text-gray-400">
+              나중에
+            </button>
+          </>
+        ) : (
+        <>
         <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-4 leading-snug">
           지금 주소가 <span className="font-mono text-gray-700 dark:text-gray-300">@{currentHandle}</span> 예요.
           나만의 이름과 주소로 바꿔보세요.
@@ -154,9 +214,11 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
             disabled={saving || !handleValid || (!name.trim() && !handle.trim())}
             className="flex-1 px-4 py-2.5 rounded-xl text-[13px] font-bold bg-gray-900 dark:bg-white text-white dark:text-gray-900 disabled:opacity-40"
           >
-            {saving ? '저장 중…' : '저장하기'}
+            {saving ? '저장 중…' : intent === 'seller' ? '저장하고 매장 등록하기' : '저장하기'}
           </button>
         </div>
+        </>
+        )}
         {/* 🛠️ 2026-06-17: 모바일 하단 네비바(h-14 + safe-area) 클리어런스 — 위 버튼이 네비바에 가리지 않도록
             아래에 같은 높이의 빈 공간을 둔다. 인라인 calc(유효 CSS 보장) + sm:hidden(PC 는 네비바 없음). */}
         <div aria-hidden className="sm:hidden" style={{ height: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))' }} />

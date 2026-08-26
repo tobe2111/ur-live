@@ -6197,7 +6197,11 @@
     "stepHandle": "设置地址",
     "stepFirstProduct": "添加首个商品",
     "verifiedBusinessUser": "已通过商家认证的用户",
-    "verifiedBusinessDesc": "已核实营业执照信息的卖家。"
+    "verifiedBusinessDesc": "已核实营业执照信息的卖家。",
+    "registerStore": "注册门店",
+    "emptyOwnerSellerTitle": "从注册门店开始",
+    "emptyOwnerSellerDesc": "注册门店后即可上架优惠券，它们会显示在这里。",
+    "stepRegisterStore": "注册门店"
   },
   "shipping": {
     "trackingTitle": "配送追踪",
@@ -6759,5 +6763,12 @@
     "recent": "最近邀请",
     "waitingPurchase": "等待购买",
     "friend": "好友"
+  },
+  "share": {
+    "rewardTitle": "通过你的链接售出可获{{pct}}%",
+    "rewardDesc": "这是你与门店的合作。用下方链接分享即可累积。",
+    "copyMyLink": "复制我的链接",
+    "copied": "已复制链接",
+    "copyFailed": "复制失败"
   }
 }

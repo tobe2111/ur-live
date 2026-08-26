@@ -6197,7 +6197,11 @@
     "stepHandle": "Set address",
     "stepFirstProduct": "Add first product",
     "verifiedBusinessUser": "Verified business seller",
-    "verifiedBusinessDesc": "Business registration has been verified."
+    "verifiedBusinessDesc": "Business registration has been verified.",
+    "registerStore": "Register store",
+    "emptyOwnerSellerTitle": "It starts with your store",
+    "emptyOwnerSellerDesc": "Register your store to add passes. They show up right here.",
+    "stepRegisterStore": "Register store"
   },
   "shipping": {
     "trackingTitle": "Shipping Tracking",
@@ -6759,5 +6763,12 @@
     "recent": "Recent invites",
     "waitingPurchase": "Awaiting purchase",
     "friend": "Friend"
+  },
+  "share": {
+    "rewardTitle": "Earn {{pct}}% when it sells via your link",
+    "rewardDesc": "This is your deal with the store. Share the link below to earn.",
+    "copyMyLink": "Copy my link",
+    "copied": "Link copied",
+    "copyFailed": "Copy failed"
   }
 }

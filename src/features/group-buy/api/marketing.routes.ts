@@ -385,6 +385,33 @@ influencerApp.get('/deals', async (c) => {
   return c.json({ success: true, data: results || [] })
 })
 
+/**
+ * 🎁 2026-08-26 (대표 — "이 링크를 공유하면 x% 딜이 쌓여요! 이런 식으로도 보여야겠네"):
+ *   이용권 상세에서 **내가 그 매장과 맺은 활성 딜이 있는지**만 묻는다(표시 전용, 돈은 안 움직인다).
+ *
+ * ⚠️ 아무에게나 "공유하면 N% 드려요"를 띄우면 **2026-08-22 대표 결정으로 종료한 어필리에이트**를
+ *   되살리는 셈이 된다("어필리에이트 전략은 빼려고 해. 심플하게"). 커미션은 **매장이 제안하고
+ *   내가 수락한 딜에만** 붙으므로, 배지도 그 딜을 가진 사람에게만 보여야 한다.
+ *
+ * 🔒 WHERE 절은 결제 시점 판정(group-buy.routes 의 deal 조회)과 **같은 조건**이다 —
+ *   status='active' + 기간 내 + (인증 요구 시)승인됨. 여기서 조건이 갈리면 화면은 "N% 받는다"인데
+ *   정산은 0 이 되고, 그건 되돌리기 어려운 종류의 신뢰 손상이다.
+ */
+influencerApp.get('/deal-for-seller/:sellerId', async (c) => {
+  const userId = String((c.get('user') as AuthUser).id)
+  const sellerId = Number(c.req.param('sellerId'))
+  if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: true, data: { active: false } })
+  const row = await c.env.DB.prepare(
+    `SELECT commission_pct FROM seller_influencer_deals
+      WHERE seller_id = ? AND influencer_id = ? AND status = 'active'
+        AND (ends_at IS NULL OR ends_at > datetime('now'))
+        AND (COALESCE(requires_content_proof, 0) = 0 OR proof_status = 'approved')
+      LIMIT 1`
+  ).bind(sellerId, userId).first<{ commission_pct: number }>().catch(() => null)
+  const pct = Number(row?.commission_pct)
+  return c.json({ success: true, data: Number.isFinite(pct) && pct > 0 ? { active: true, commission_pct: pct } : { active: false } })
+})
+
 // 🎬 WP-B: 매장이 인플 콘텐츠 인증 검토 → 승인 시 발효(status='active'). CAS(이중승인 방지).
 //   이 UPDATE 가 우대율 발효 트리거 — 이후 판매분만 우대율(판매쿼리 status='active' 게이트), 소급 없음.
 sellerApp.post('/deals/:id/approve-proof', async (c) => {

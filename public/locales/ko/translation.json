@@ -6185,7 +6185,11 @@
     "stepHandle": "주소 설정",
     "stepFirstProduct": "첫 상품 추가",
     "verifiedBusinessUser": "사업자 인증이 된 유저예요",
-    "verifiedBusinessDesc": "사업자등록 정보가 확인되었어요."
+    "verifiedBusinessDesc": "사업자등록 정보가 확인되었어요.",
+    "registerStore": "매장 등록하기",
+    "emptyOwnerSellerTitle": "매장을 등록하면 시작돼요",
+    "emptyOwnerSellerDesc": "매장을 등록하면 이용권을 올릴 수 있어요. 올린 이용권이 여기 진열됩니다.",
+    "stepRegisterStore": "매장 등록"
   },
   "shipping": {
     "trackingTitle": "배송 추적",
@@ -6755,5 +6759,12 @@
     "recent": "최근 초대",
     "waitingPurchase": "구매 대기",
     "friend": "친구"
+  },
+  "share": {
+    "rewardTitle": "내 링크로 팔리면 {{pct}}% 적립돼요",
+    "rewardDesc": "이 매장과 맺은 딜이에요. 아래 링크로 공유하면 내 몫으로 쌓입니다.",
+    "copyMyLink": "내 링크 복사하기",
+    "copied": "링크를 복사했어요",
+    "copyFailed": "복사에 실패했어요"
   }
 }

@@ -6197,7 +6197,11 @@
     "stepHandle": "Définir l'adresse",
     "stepFirstProduct": "Ajouter le premier produit",
     "verifiedBusinessUser": "Vendeur vérifié",
-    "verifiedBusinessDesc": "Immatriculation vérifiée."
+    "verifiedBusinessDesc": "Immatriculation vérifiée.",
+    "registerStore": "Enregistrer la boutique",
+    "emptyOwnerSellerTitle": "Commencez par votre boutique",
+    "emptyOwnerSellerDesc": "Enregistrez votre boutique pour ajouter des pass. Ils apparaîtront ici.",
+    "stepRegisterStore": "Enregistrer la boutique"
   },
   "shipping": {
     "trackingTitle": "Suivi de livraison",
@@ -6759,5 +6763,12 @@
     "recent": "Invitations récentes",
     "waitingPurchase": "Achat en attente",
     "friend": "Ami"
+  },
+  "share": {
+    "rewardTitle": "Gagnez {{pct}}% via votre lien",
+    "rewardDesc": "C’est votre accord avec la boutique. Partagez le lien pour cumuler.",
+    "copyMyLink": "Copier mon lien",
+    "copied": "Lien copié",
+    "copyFailed": "Échec de la copie"
   }
 }

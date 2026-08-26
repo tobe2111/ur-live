@@ -34,6 +34,7 @@ import { isDemoSlug } from '@/shared/constants/demo-products'
 import DealPurchaseBox from './group-buy/DealPurchaseBox'
 import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
 import OtherDealsRow from './group-buy/OtherDealsRow'
+import ShareRewardBanner from './group-buy/ShareRewardBanner'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -693,6 +694,8 @@ export default function GroupBuyDetailPage() {
           </div>
         )}
 
+        {/* 🎁 2026-08-26: 활성 딜 보유자에게만 뜬다(딜 없으면 null) — 근거는 ShareRewardBanner 헤더 주석. */}
+        <div className="px-[18px]"><ShareRewardBanner sellerId={detail.seller_id as number | null} productId={detail.id} /></div>
         {/* 타이틀 — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번 나온다). */}
         <div className="lg:hidden" style={{ padding: '20px 18px 0' }}>
           {detail.restaurant_name && (
