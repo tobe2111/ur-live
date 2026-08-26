@@ -118,3 +118,31 @@ describe('R7~R9 매장 등록 선행 게이트 (2026-08-24 대표 — "무조건
     expect(step, '등록 후 좌석 전환이 없으면 이용권이 옛 좌석으로 귀속된다').toContain('onStoreReady?.()')
   })
 })
+
+describe('R10 담당자 전화번호 (2026-08-26 대표 — "매장 등록 과정에서 담당자 전화번호도")', () => {
+  it('R10a 등록에 필수 — 없거나 휴대폰 형식이 아니면 400', () => {
+    const s = read(ROUTES)
+    expect(s, '필수 검사가 빠지면 아무도 안 넣고, 정작 필요할 때 대표번호밖에 안 남는다')
+      .toMatch(/if \(!isManagerPhone\(managerPhone\)\) \{\n\s*return c\.json\(\{ success: false, error: '담당자 전화번호를/)
+    // 휴대폰(01x)만 — 대표번호(지역번호)를 담당자 자리에 넣으면 사람에게 못 닿는다.
+    expect(s).toMatch(/const isManagerPhone = \(digits: string\) => \/\^01\\d\{8,9\}\$\/\.test\(digits\)/)
+    expect(s, '검증 통과분이 실제로 저장돼야 한다').toContain('manager_phone: managerPhone,')
+  })
+
+  it('R10b 개인 연락처는 상품(소비자 복사본)으로 전파되지 않는다', () => {
+    // SSOT 전파 모듈이 manager_phone 을 아예 모른다 = products UPDATE 에 실릴 경로가 없다.
+    expect(read(SSOT), '전파 모듈이 담당자 번호를 알면 소비자 화면에 개인 연락처가 실린다')
+      .not.toContain('manager_phone')
+    const s = read(ROUTES)
+    const patch = s.slice(s.indexOf("app.patch('/stores/:id/profile'"))
+    const block = patch.slice(patch.indexOf('b.manager_phone'), patch.indexOf('saveStoreProfileAndPropagate'))
+    expect(block, '전파 함수가 아니라 seller_meta 로만 저장해야 한다').toContain('setSellerMeta(c.env.DB, sellerId, { manager_phone: mp })')
+  })
+
+  it('R10c 저장한 값을 다시 보여준다 — 프로필 응답에 실려 편집 가능', () => {
+    const s = read(ROUTES)
+    expect(s).toContain("manager_phone: meta.manager_phone || ''")
+    const modal = read('src/components/seller/StoreProfileModal.tsx')
+    expect(modal, '읽기만 되고 못 고치면 번호가 바뀌었을 때 손댈 곳이 없다').toContain('manager_phone: digitsOnly(managerPhone)')
+  })
+})

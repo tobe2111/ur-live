@@ -5289,6 +5289,26 @@ canvas {
       'fail-soft 방향이 뒤집힌다. 모르면 낮은 쪽(5%)으로 떨어져야 한다 — 잘못 10% 를 물리면 ' +
       '매장에서 더 뗀 것이고 되돌리기가 훨씬 비싸다(환급 + 신뢰).',
   },
+  {
+    name: '☎️ 담당자 전화번호 없이 매장 등록이 통과된다',
+    file: 'src/features/seller/api/seller-stores.routes.ts',
+    find: '    if (!isManagerPhone(managerPhone)) {',
+    replace: '    if (false && !isManagerPhone(managerPhone)) {',
+    test: 'src/tests/unit/store-profile.test.ts',
+    why:
+      '선택 필드가 되면 아무도 안 넣는다. 그러면 승인 검토·사용 문의·정산 확인 때 남는 연락처가 ' +
+      '카카오맵에서 긁어 온 매장 대표번호뿐이라, 매장 계정 뒤의 사람에게 닿을 방법이 사라진다.',
+  },
+  {
+    name: '☎️ 담당자 개인 연락처가 소비자 상품 복사본으로 전파된다',
+    file: 'src/worker/utils/store-profile.ts',
+    find: '  if (phone) metaPatch.store_phone = phone',
+    replace: '  if (phone) metaPatch.manager_phone = phone',
+    test: 'src/tests/unit/store-profile.test.ts',
+    why:
+      '전파 모듈은 **소비자에게 보이는** 매장 복사본을 맞추는 장치다. 담당자 번호가 여기에 끼면 ' +
+      '개인 휴대폰이 이용권 상세·지도·알림톡에 실린다 — 한 번 퍼지면 회수가 안 된다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

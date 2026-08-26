@@ -186,6 +186,50 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
             placeholder={t('seller.mealVoucher.imageUrlPlaceholder')}
             className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
           />
+          {/* 🗺️ 2026-08-26 (대표 "네이버지도·카카오맵에서도 사진 가져올 수 있게"): 매장 기준 사진 프리셋.
+              네이버 이미지 검색(지도·플레이스·블로그 사진이 이 인덱스에 들어온다)을 매장명+동으로 좁혀 가져온다.
+              ⚠️ 카카오맵은 공개 API 가 장소 사진을 주지 않는다 → 자동으로 못 끌어온다. 대신 그 매장의
+              카카오맵 페이지를 열어 주고, 거기서 고른 사진 주소를 위 칸에 붙여넣게 한다(정직한 한계 표기). */}
+          {form.restaurant_name && (
+            <div className="rounded-lg bg-gray-50 border border-gray-200 p-2.5">
+              <p className="text-[11px] font-bold text-gray-700 mb-1.5">
+                🗺️ {t('seller.mealVoucher.fromMap', { defaultValue: '지도에서 매장 사진 가져오기' })}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { key: 'place', label: t('seller.mealVoucher.mapPhotoPlace', { defaultValue: '매장 사진' }), suffix: '' },
+                  { key: 'food', label: t('seller.mealVoucher.mapPhotoFood', { defaultValue: '음식·메뉴' }), suffix: '메뉴' },
+                  { key: 'interior', label: t('seller.mealVoucher.mapPhotoInterior', { defaultValue: '매장 내부' }), suffix: '내부' },
+                ].map(preset => (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    onClick={() => {
+                      const addr = form.restaurant_address || ''
+                      const dong = addr.match(/[가-힣]+(동|읍|면|로|길)\s*\d*/)?.[0]?.replace(/\s*\d+/, '') || ''
+                      onSearchImages([form.restaurant_name, dong, preset.suffix].filter(Boolean).join(' '))
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:border-gray-400"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+                {form.kakao_place_url && (
+                  <a
+                    href={form.kakao_place_url}
+                    target="_blank" rel="noopener noreferrer"
+                    className="px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:border-gray-400"
+                  >
+                    {t('seller.mealVoucher.openKakaoPlace', { defaultValue: '카카오맵에서 보기 ↗' })}
+                  </a>
+                )}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+                {t('seller.mealVoucher.mapPhotoHint', { defaultValue: '네이버 지도·블로그 사진을 매장 이름으로 찾아 아래에 보여드려요. 카카오맵 사진은 자동으로 가져올 수 없어 페이지를 열어드립니다 — 마음에 드는 사진의 주소를 복사해 위 칸에 붙여넣으세요.' })}
+              </p>
+            </div>
+          )}
+
 
           <div className="flex gap-2 flex-wrap">
             <label className="cursor-pointer flex items-center gap-1.5 px-3 py-2 bg-pink-50 border border-pink-200 text-pink-600 text-xs font-semibold rounded-lg hover:bg-pink-100">

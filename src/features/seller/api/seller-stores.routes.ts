@@ -36,6 +36,23 @@ type Ctx = Context<{ Bindings: Env }>
 export type StoreChannel = 'direct' | 'brokered'
 const isChannel = (v: unknown): v is StoreChannel => v === 'direct' || v === 'brokered'
 
+/**
+ * ☎️ 담당자 전화번호 (2026-08-26 대표 "매장 등록 과정에서 담당자 전화번호도 등록되게끔")
+ *
+ * 매장 대표번호(`store_phone`, 카카오맵에서 자동입력 · 소비자에게 노출)와 **다른 값**이다:
+ * 이건 그 매장을 실제로 운영·관리하는 **사람**의 연락처 — 사용 문의·정산 확인·승인 검토처럼
+ * 매장 계정 뒤의 사람에게 닿아야 할 때 쓴다.
+ *
+ * ⚠️ **상품(products)에 전파하지 않는다.** store-profile 전파는 소비자에게 보이는 매장 복사본을
+ * 맞추는 장치인데, 담당자 번호는 개인 연락처라 소비자 화면에 실려선 안 된다 → `seller_meta` 에만 둔다.
+ * 그래서 saveStoreProfileAndPropagate 가 아니라 setSellerMeta 로 따로 저장한다.
+ */
+function normalizeManagerPhone(raw: unknown): string {
+  return String(raw ?? '').replace(/\D/g, '').slice(0, 11)
+}
+/** 휴대폰(01x, 10~11자리) — 담당자는 실제로 연락이 닿아야 하므로 대표번호(지역번호)는 받지 않는다. */
+const isManagerPhone = (digits: string) => /^01\d{8,9}$/.test(digits)
+
 /** 주체(users.id) — seller-operators.routes 와 동일 규칙: 세션 쿠키 또는 seller_token 만. */
 async function resolveActorUserId(c: Ctx): Promise<number | null> {
   const sess = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['user']).catch(() => null)
@@ -181,6 +198,8 @@ async function loadMergedProfile(DB: D1Database, sellerId: number) {
   const store_ready = !!(seller?.address || meta.store_channel || meta.store_lat || Number(liveStore?.n) > 0)
   return {
     store: mergeStoreProfile({ product: lastProduct, meta, seller }),
+    // 담당자 연락처는 store(전파 대상) 밖에 둔다 — 소비자 복사본에 실리면 안 되는 개인 연락처다.
+    manager_phone: meta.manager_phone || '',
     has_product_history: !!lastProduct,
     store_ready,
   }
@@ -229,10 +248,18 @@ app.patch('/stores/:id/profile', rateLimit({ action: 'store_profile_save', max: 
     if (!access.ok) return c.json({ success: false, error: '이 매장에 대한 권한이 없습니다' }, 403)
     const b = await c.req.json<{
       name?: string; address?: string; phone?: string; lat?: string | number; lng?: string | number
-      verify_pin?: string; kakao_place_url?: string
+      verify_pin?: string; kakao_place_url?: string; manager_phone?: string
     }>().catch(() => ({} as Record<string, never>))
     if (b.kakao_place_url && !/^https:\/\/place\.map\.kakao\.com\//.test(String(b.kakao_place_url))) {
       return c.json({ success: false, error: '카카오 플레이스 링크 형식이 아닙니다' }, 400)
+    }
+    // 담당자 전화번호 — seller_meta 전용(전파 금지, 위 normalizeManagerPhone 주석 참조).
+    if (b.manager_phone != null) {
+      const mp = normalizeManagerPhone(b.manager_phone)
+      if (mp && !isManagerPhone(mp)) {
+        return c.json({ success: false, error: '담당자 전화번호는 휴대폰 번호(01x)로 입력해주세요' }, 400)
+      }
+      if (mp) await setSellerMeta(c.env.DB, sellerId, { manager_phone: mp })
     }
     const { propagated } = await saveStoreProfileAndPropagate(c.env.DB, sellerId, {
       name: b.name != null ? String(b.name) : undefined,
@@ -284,7 +311,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
     const b = await c.req.json<{
       name?: string; address?: string; phone?: string; category?: string
       kakao_place_id?: string; kakao_place_url?: string; lat?: number; lng?: number
-      channel?: string
+      channel?: string; manager_phone?: string
       business_number?: string; representative?: string; business_start_date?: string
     }>().catch(() => ({} as any))
 
@@ -292,6 +319,12 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
     if (!name || name.length > 100) return c.json({ success: false, error: '매장명을 입력해주세요 (100자 이내)' }, 400)
     if (!isChannel(b.channel)) {
       return c.json({ success: false, error: '등록 유형을 선택해주세요 — 직접(내 가게) 또는 중개(관리 대행)' }, 400)
+    }
+    // 담당자 전화번호는 **필수** — 매장 뒤의 사람에게 닿는 유일한 경로다(승인 검토·사용 문의·정산 확인).
+    // 선택으로 두면 아무도 안 넣고, 정작 필요한 순간엔 카카오맵에서 긁어 온 대표번호밖에 안 남는다.
+    const managerPhone = normalizeManagerPhone(b.manager_phone)
+    if (!isManagerPhone(managerPhone)) {
+      return c.json({ success: false, error: '담당자 전화번호를 휴대폰 번호(01x)로 입력해주세요' }, 400)
     }
     const address = String(b.address || '').trim().slice(0, 200)
     const phone = String(b.phone || '').trim().slice(0, 20)
@@ -340,6 +373,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
     // 채널·플레이스·검증 스탬프 (sellers 100컬럼 한도 — 전부 seller_meta)
     await setSellerMeta(c.env.DB, newSellerId, {
       store_channel: b.channel,
+      manager_phone: managerPhone,
       ...(b.kakao_place_id ? { kakao_place_id: String(b.kakao_place_id) } : {}),
       ...(b.kakao_place_url ? { kakao_place_url: String(b.kakao_place_url) } : {}),
       ...(b.category ? { kakao_category: String(b.category).slice(0, 100) } : {}),

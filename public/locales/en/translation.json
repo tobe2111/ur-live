@@ -2432,7 +2432,13 @@
       "registerStoreRequired": "⚠️ Store registration is required — complete it to continue",
       "registerStoreFirst": "⚠️ Step one is store registration — find your store on the map above and register it",
       "storeRegisteredSwitched": "Store registered — this voucher will belong to it",
-      "storePendingNotice": "Store submitted — vouchers open after business verification"
+      "storePendingNotice": "Store submitted — vouchers open after business verification",
+      "fromMap": "Get store photos from maps",
+      "mapPhotoPlace": "Store",
+      "mapPhotoFood": "Food & menu",
+      "mapPhotoInterior": "Interior",
+      "openKakaoPlace": "Open in Kakao Map ↗",
+      "mapPhotoHint": "We search Naver map/blog photos by your store name. Kakao Map photos cannot be fetched automatically — we open the page so you can copy a photo URL into the field above."
     },
     "analyticsTitle": "Sales Analytics",
     "revenueChart": "Revenue Chart",

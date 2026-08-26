@@ -2431,7 +2431,13 @@
       "registerStoreRequired": "⚠️ 必须注册门店 — 完成后才能进入下一步",
       "registerStoreFirst": "⚠️ 第一步是注册门店 — 请在上方地图找到门店并完成注册",
       "storeRegisteredSwitched": "门店已注册 — 此使用券将归属该门店",
-      "storePendingNotice": "门店已提交 — 核验通过后即可注册使用券"
+      "storePendingNotice": "门店已提交 — 核验通过后即可注册使用券",
+      "fromMap": "从地图获取门店照片",
+      "mapPhotoPlace": "门店照片",
+      "mapPhotoFood": "菜品·菜单",
+      "mapPhotoInterior": "店内",
+      "openKakaoPlace": "在 Kakao 地图查看 ↗",
+      "mapPhotoHint": "按门店名称搜索 Naver 地图·博客照片并显示。Kakao 地图照片无法自动获取，我们会打开页面 — 请复制照片地址粘贴到上方。"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

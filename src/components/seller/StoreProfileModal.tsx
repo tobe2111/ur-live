@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
+import { formatPhone, isValidMobilePhone, digitsOnly } from '@/utils/format-phone'
 import { Loader2, MapPin } from 'lucide-react'
 
 interface Props {
@@ -25,6 +26,7 @@ export default function StoreProfileModal({ sellerId, storeName, onClose, onDone
   const [lat, setLat] = useState('')
   const [lng, setLng] = useState('')
   const [placeUrl, setPlaceUrl] = useState('')
+  const [managerPhone, setManagerPhone] = useState('')
   const [productCount, setProductCount] = useState(0)
   const [showMap, setShowMap] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -39,6 +41,8 @@ export default function StoreProfileModal({ sellerId, storeName, onClose, onDone
         setName(s.name || ''); setAddress(s.address || ''); setPhone(s.phone || '')
         setPin(s.verify_pin || ''); setLat(s.lat || ''); setLng(s.lng || '')
         setPlaceUrl(s.kakao_place_url || '')
+        // 담당자 번호는 store(전파 대상) 밖 — 소비자 복사본에 안 실리는 개인 연락처다.
+        setManagerPhone(r.data.data?.manager_phone || '')
         setProductCount(Number(r.data.data?.product_count) || 0)
       })
       .catch(() => { /* 로드 실패 — 빈 폼으로 편집 가능 */ })
@@ -58,10 +62,14 @@ export default function StoreProfileModal({ sellerId, storeName, onClose, onDone
   async function save() {
     if (saving) return
     if (!name.trim()) { alert('매장 이름을 입력해주세요'); return }
+    if (managerPhone && !isValidMobilePhone(managerPhone)) {
+      alert('담당자 전화번호는 휴대폰 번호(01x)로 입력해주세요'); return
+    }
     setSaving(true)
     try {
       const r = await api.patch(`/api/seller/stores/${sellerId}/profile`, {
         name: name.trim(), address: address.trim(), phone: phone.trim(),
+        ...(managerPhone ? { manager_phone: digitsOnly(managerPhone) } : {}),
         ...(pin.trim() ? { verify_pin: pin.trim() } : {}),
         ...(lat && lng ? { lat, lng } : {}),
         ...(placeUrl ? { kakao_place_url: placeUrl } : {}),
@@ -117,6 +125,14 @@ export default function StoreProfileModal({ sellerId, storeName, onClose, onDone
                   <input value={pin} onChange={e => setPin(e.target.value)} placeholder="비우면 기존 유지"
                     className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  담당자 전화번호 <span className="font-normal text-gray-400">(매장 대표번호와 별개 — 소비자에게 노출되지 않아요)</span>
+                </label>
+                <input value={formatPhone(managerPhone)} onChange={e => setManagerPhone(e.target.value)}
+                  placeholder="010-0000-0000" inputMode="tel" autoComplete="tel"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400" />
               </div>
               <button type="button" onClick={() => setShowMap(v => !v)}
                 className="w-full py-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50">
