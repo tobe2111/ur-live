@@ -3,8 +3,15 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 /**
  * 🖥️ 2026-07-15 (대표 시안 — 당근 스타일 PC 홈): 홈(`/`) 뷰포트 분기.
- *   - lg+(≥1024) = PC 홈(히어로 + 편성 섹션 + 딜 그리드)
- *   - 그 외(모바일/태블릿) = 딜 피드 홈(2026-08-19 대표 확정 — 그루폰 모바일 시안).
+ *   - md+(≥768) = PC 홈(히어로 + 편성 섹션 + 딜 그리드) — **태블릿 포함**
+ *   - 그 외(모바일) = 딜 피드 홈(2026-08-19 대표 확정 — 그루폰 모바일 시안).
+ *
+ * 🩸 2026-08-24 (대표 신고 — "태블릿으로 볼 때 아직 메인 이용권 UI가 예전 디자인"):
+ *   이 분기가 **lg(1024)** 였는데 상단 헤더(`DesktopTopNav`)는 **`hidden md:block`** 이라
+ *   md(768) 부터 PC 헤더가 떴다. 그래서 **768~1023 구간만 헤더는 새 디자인, 본문은 옛 디자인**
+ *   으로 갈렸다 — 태블릿 세로(810)에서 차콜 색면도 히어로도 없이 흰 배경이 나오던 이유다.
+ *   ⚠️ 이 값은 **헤더의 기준과 같아야 한다.** 한쪽만 바꾸면 그 구간이 다시 어긋난다
+ *      (가드: `home-tablet-breakpoint.test.ts`).
  *     ⚠️ 2026-07-15 의 "홈=지도" 결정을 **대체**한다. 지도는 피드 상단 배너 + `/map` 으로 남는다.
  *   createRoot(비-hydrate)라 첫 렌더부터 정확한 뷰포트로 분기(플래시 0). SSR 시드(__SSR_INITIAL_MAIN__)는
  *   PcHomePage(GroupBuyFeed)·RestaurantMapPage(useMapProducts) 양쪽 다 소비 → 0-RTT 유지.
@@ -19,7 +26,8 @@ const PcHomePage = lazy(() => import('./PcHomePage'))
 const MobileHomePage = lazy(() => import('@/pages/mobile-home/MobileHomePage'))
 
 export default function HomeRoute() {
-  const isDesktop = useMediaQuery('(min-width: 1024px)')
+  // ⚠️ 768 = Tailwind `md` = DesktopTopNav 의 `hidden md:block` 과 같은 경계(위 주석 참조).
+  const isDesktop = useMediaQuery('(min-width: 768px)')
   return (
     <>
       {/* 🔎 2026-07-29 (소비자 SEO 실측): 홈에 h1 이 **하나도 없었다** — 렌더된 DOM 의 유일한 h1 은

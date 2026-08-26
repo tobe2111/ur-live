@@ -105,7 +105,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
         <section className="ur-home-panel" aria-hidden="true">
           <div className="h-[22px] w-40 rounded bg-gray-100 dark:bg-white/[0.06] mb-1" />
           <div className="h-[15px] w-56 rounded bg-gray-100 dark:bg-white/[0.06] mb-3" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4">
             {[0, 1, 2, 3].map((i) => (
               <div key={i}>
                 <div className="aspect-[4/3] rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
@@ -162,7 +162,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
                 </Link>
               )}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4">
               {sec.products.map((p, i) => (
                 <GroupBuyFeedCard key={p.id} p={p} pc aboveFold={i < 4 && sIdx === 0} />
               ))}

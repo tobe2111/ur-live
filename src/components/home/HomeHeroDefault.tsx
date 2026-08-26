@@ -115,7 +115,9 @@ export default function HomeHeroDefault({
           `mask-image` 로 픽셀을 투명하게 깎아 색면이 그대로 비치게 한다 — 위에 반투명 막을
           덧대는 방식은 사진이 뿌옇게 죽는다. 세로 끝도 눌러 위아래 경계선을 없앤다. */}
       {hasMedia && (
-        <div className="hidden lg:block absolute inset-y-0 right-0 w-[54%]" aria-hidden="true"
+        <div className="hidden md:block absolute inset-y-0 right-0 w-[46%] lg:w-[54%]" aria-hidden="true"
+          /* 📐 2026-08-24: `lg:block`(1024+) 이라 **태블릿엔 사진이 아예 없었다** — 색면만 남아
+             허전했다. md(768)부터 보이되 폭은 46% 로 좁혀 카피가 눌리지 않게 한다. */
           style={{
             WebkitMaskImage:
               'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 12%, #000 84%, transparent 100%)',
@@ -167,7 +169,7 @@ export default function HomeHeroDefault({
       </div>{/* ← 배경 래퍼 끝. 아래 콘텐츠는 잘리지 않는다(드롭다운이 히어로 밖으로 펼쳐진다). */}
 
       <div className="relative z-10 w-full max-w-[1440px] mx-auto px-6 lg:px-8 py-6 flex flex-col justify-center">
-        <h2 className="text-[26px] lg:text-[32px] font-black tracking-tight text-white leading-[1.16] [text-wrap:balance]">
+        <h2 className="text-[26px] md:text-[29px] lg:text-[32px] font-black tracking-tight text-white leading-[1.16] [text-wrap:balance]">
           {content?.title || (
             <>{DEFAULT_TITLE_HEAD}<span className="text-brand">{DEFAULT_TITLE_ACCENT}</span>{DEFAULT_TITLE_TAIL}</>
           )}
