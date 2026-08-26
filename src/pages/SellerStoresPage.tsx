@@ -15,6 +15,7 @@ import api from '@/lib/api'
 import { Store, Plus, Loader2, Trash2, Users } from 'lucide-react'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
 import StoreProfileModal from '@/components/seller/StoreProfileModal'
+import SellerWithdrawSection from '@/components/seller/SellerWithdrawSection'
 
 interface OperableStore {
   seller_id: number; role: 'owner' | 'operator'; source: 'link' | 'grant'
@@ -120,6 +121,9 @@ export default function SellerStoresPage() {
           수수료 안내 — 내 가게 직접 운영 <b className="text-gray-600">10%</b> · 중개(관리 대행) <b className="text-gray-600">5%</b>.
           매장을 전환하려면 상단의 매장 이름을 누르세요.
         </p>
+
+        {/* 🚪 2026-08-26 (대표 "셀러도 탈퇴를 할 수 있어야"): 소비자 탈퇴의 셀러판 — 조용한 자리에. */}
+        <SellerWithdrawSection />
       </div>
 
       {adding && <StoreRegisterModal onClose={() => setAdding(false)} onDone={() => { setAdding(false); load() }} />}

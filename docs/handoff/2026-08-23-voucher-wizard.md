@@ -162,3 +162,33 @@ canonical + 쓰기 시 전파):
 - 테스트 R7~R9(grandfather 되돌려-검증 완료). i18n seller.stores.* 18키 + mealVoucher 5키 6언어.
 - ⚠️ 컨테이너 재시작으로 로컬이 옛 스냅샷(c79e52d)이었음 — origin/main 재체크아웃으로 복구.
   main 에 타 세션 머지(#1214 어드민 설정 저장 수리, #1215) 선반영돼 있음.
+
+## 7차 (2026-08-26 — 셀러 탈퇴 신설)
+
+대표: "셀러도 탈퇴를 할 수 있어야 하잖아."
+
+- 신규 `seller-withdraw.routes.ts` — `GET/POST /api/seller/account/withdraw-check|withdraw`.
+  탈퇴 = **soft-close**(상품 is_active=0 + sellers.status='suspended' + seller_meta withdrawn_at
+  + 위임 회수 + 세션 무효화). 행 삭제 안 함 — 지우면 소비자 이용권·주문 이력이 고아가 된다.
+- **차단(3종, 서버가 최종 방어선 409)**: 미사용 이용권(결제한 소비자 보호) · 미처리 주문 ·
+  미정산 잔액(>0). 활성 상품은 차단 사유 아님(탈퇴가 내려 준다).
+- UI `SellerWithdrawSection` — 매장 관리 하단. 차단 사유를 그대로 보여 주고, 통과 시
+  "탈퇴합니다" 타이핑 확인 후 실행 → 서버 세션 무효화 + 로컬 로그아웃.
+- 테스트 `seller-withdraw.test.ts` 8건.
+
+### ⚠️ 이번에 낸 사고 2건 (다음 세션 반드시 읽을 것)
+1. **기존 파일을 Write 로 덮어썼다.** `seller-account.routes.ts` 가 이미 존재(개인정보·비번변경·
+   이미지업로드 4엔드포인트)했는데 같은 경로에 새 내용을 썼다. Write 응답의 "created" vs
+   **"updated"** 차이로 발견 → `git checkout HEAD --` 즉시 복원, 새 파일명(`seller-withdraw`)로 분리.
+   ⇒ **새 라우트 파일을 만들 땐 `ls`/`git ls-files` 로 이름 충돌을 먼저 확인할 것.**
+2. **가드가 헛돌았다.** W2 판정을 `toContain('isWithdrawBlocked(blockers)')` 로 썼더니
+   `if (false && isWithdrawBlocked(blockers))` 주입에도 **초록**이었다(문자열은 남으니까).
+   조건문 전체를 정규식으로 고정해 red 확인. ⇒ 무력화는 삭제가 아니라 **조건 약화**로 온다.
+
+### 🚫 하지 않은 것 — `tobe2111@kakao.com` 삭제 요청
+대표가 삭제를 지시했으나 **조회 결과가 설명과 달라 중단하고 보고**했다(실측):
+users.id=3 · handle `jiwon1228`(CLAUDE.md 가 링크샵 예시로 참조) · sellers.id=5 "UR Team" 연결 ·
+**활성 상품 9개(라이브 유일 실상품 `김밥천국 할인권` id 25 포함)** · 주문 0.
+버리는 테스트 계정이 아니라 플랫폼 대표 계정 + 라이브 카탈로그. 게다가 소비자 탈퇴는 셀러를
+안 지우므로 "매장 0 리셋"이 되지도 않고, **30일 재가입 제한**만 걸려 AB테스트가 더 막힌다.
+⇒ 권고: 새 카카오 계정으로 테스트. 정말 지워야 하면 대상·순서를 확정한 뒤 별도로.
