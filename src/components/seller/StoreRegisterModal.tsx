@@ -6,7 +6,12 @@
  *     (이용권 등록 위저드 1단계와 같은 경험).
  *   - `initialPlace` 를 주면 그 매장이 미리 선택된 채 열린다 — 이용권 위저드에서 지도로 찾은
  *     매장을 그대로 매장 관리에 등록하는 다리.
- *   - ②채널(직접 10% / 중개 5%) ③국세청 사업자 확인 → POST /api/seller/stores 는 종전 계약 그대로.
+ *   - ②채널(직접/중개) ③국세청 사업자 확인 → POST /api/seller/stores 는 종전 계약 그대로.
+ *
+ *   ⚠️ 2026-08-26 (대표): **선택지에 수수료율을 표시하지 않는다.** 가격표를 나란히 붙이면
+ *   사장님이 '싼 쪽'(중개 5%)을 고르게 되고 — 채널은 사실(누가 운영하는가)이지 고르는 요금제가
+ *   아니다. 잘못 고르면 유어딜 수입이 깎이고 소유권 판정(owner/operator)까지 틀어진다.
+ *   실제 수수료는 이용권 등록의 '실수령가' 카드가 건별로 보여 준다(고를 수 없는 자리에서).
  *     같은 카카오 플레이스 중복 등록은 서버가 409 로 막는다(어디서 열어도 안전).
  */
 import { useState } from 'react'
@@ -138,13 +143,13 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
             <div className="grid grid-cols-2 gap-2">
               <button onClick={() => setChannel('direct')}
                 className={`p-3 rounded-xl border text-left transition ${channel === 'direct' ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                <p className="text-sm font-bold text-gray-900">내 가게예요</p>
-                <p className="text-[11px] text-gray-500 mt-0.5">사장님 직접 운영 · 수수료 10%</p>
+                <p className="text-sm font-bold text-gray-900">내 가게에요</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">제가 사장이고, 직접 운영해요</p>
               </button>
               <button onClick={() => setChannel('brokered')}
                 className={`p-3 rounded-xl border text-left transition ${channel === 'brokered' ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                <p className="text-sm font-bold text-gray-900">관리를 맡았어요</p>
-                <p className="text-[11px] text-gray-500 mt-0.5">중개·대행 운영 · 수수료 5%</p>
+                <p className="text-sm font-bold text-gray-900">중개·대행사에요</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">사장님을 대신해 등록·관리해요</p>
               </button>
             </div>
           </div>

@@ -118,7 +118,8 @@ export default function SellerStoresPage() {
         </div>
 
         <p className="text-[11px] text-gray-400 leading-relaxed">
-          수수료 안내 — 내 가게 직접 운영 <b className="text-gray-600">10%</b> · 중개(관리 대행) <b className="text-gray-600">5%</b>.
+          {/* 🚫 2026-08-26 (대표): 채널별 수수료율 표기 제거 — 선택지 옆의 가격표는 '싼 쪽 고르기'를
+              유도한다(채널은 사실이지 요금제가 아니다). 실제 수수료는 이용권 등록의 실수령가 카드가 건별로 보여 준다. */}
           매장을 전환하려면 상단의 매장 이름을 누르세요.
         </p>
 

@@ -1751,7 +1751,13 @@
       "registerStoreRequired": "⚠️ L'enregistrement de la boutique est obligatoire — terminez-le pour continuer",
       "registerStoreFirst": "⚠️ La première étape est l'enregistrement — trouvez votre boutique sur la carte ci-dessus",
       "storeRegisteredSwitched": "Boutique enregistrée — ce coupon lui appartiendra",
-      "storePendingNotice": "Boutique soumise — les coupons s'ouvrent après vérification"
+      "storePendingNotice": "Boutique soumise — les coupons s'ouvrent après vérification",
+      "fromMap": "Récupérer des photos depuis les cartes",
+      "mapPhotoPlace": "Boutique",
+      "mapPhotoFood": "Plats et menu",
+      "mapPhotoInterior": "Intérieur",
+      "openKakaoPlace": "Ouvrir dans Kakao Map ↗",
+      "mapPhotoHint": "Nous cherchons les photos Naver Map/blogs par nom de boutique. Les photos Kakao Map ne peuvent pas être récupérées automatiquement — nous ouvrons la page pour copier une URL ci-dessus."
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

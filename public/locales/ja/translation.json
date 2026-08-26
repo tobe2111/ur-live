@@ -2431,7 +2431,13 @@
       "registerStoreRequired": "⚠️ 店舗登録が必須です — 完了すると次へ進めます",
       "registerStoreFirst": "⚠️ 最初のステップは店舗登録です — 上の地図で店舗を見つけて登録してください",
       "storeRegisteredSwitched": "店舗を登録しました — この店舗で利用券を作成します",
-      "storePendingNotice": "店舗を受付けました — 事業者確認後に利用券を登録できます"
+      "storePendingNotice": "店舗を受付けました — 事業者確認後に利用券を登録できます",
+      "fromMap": "地図から店舗写真を取得",
+      "mapPhotoPlace": "店舗写真",
+      "mapPhotoFood": "料理・メニュー",
+      "mapPhotoInterior": "店内",
+      "openKakaoPlace": "カカオマップで見る ↗",
+      "mapPhotoHint": "ネイバー地図・ブログの写真を店舗名で検索して表示します。カカオマップの写真は自動取得できないためページを開きます — 気に入った写真のURLを上の欄に貼り付けてください。"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
