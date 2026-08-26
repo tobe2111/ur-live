@@ -108,6 +108,8 @@ const LinkshopPinPicker = lazy(() => import('./pages/curator-page/LinkshopPinPic
 // 🛡️ 2026-05-25 (migration 0280): 호스팅 (Phase 3)
 const HostingPage = lazy(() => import('./pages/HostingPage'))
 const HostingNewPage = lazy(() => import('./pages/HostingNewPage'))
+// 🏪 2026-08-26: 매장 등록의 **단일 목적지** — 소비자 표면의 여러 진입점이 전부 여기로 온다.
+const StoreClaimPage = lazy(() => import('./pages/StoreClaimPage'))
 const HostInvitePage = lazy(() => import('./pages/HostInvitePage'))
 // 🛡️ 2026-05-25 (Phase 2 잔여): 반품 회수 송장 추적 UI
 const MyReturnsPage = lazy(() => import('./pages/MyReturnsPage'))
@@ -786,6 +788,13 @@ function AppContent() {
             <Route path="/host/new" element={
               <ProtectedRoute requireUser>
                 <ErrorBoundary><HostingNewPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            {/* 🏪 매장 등록 — 소비자가 셀러 가입을 먼저 거치지 않고 바로 자기 가게를 등록한다.
+                (POST /api/seller/stores 가 매장 행 + 운영 권한을 함께 만든다 — 대표 확정 "매장 등록이 선행") */}
+            <Route path="/store/new" element={
+              <ProtectedRoute requireUser>
+                <ErrorBoundary><StoreClaimPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/g/:invite_code" element={<ErrorBoundary><HostInvitePage /></ErrorBoundary>} />
