@@ -61,26 +61,28 @@ git 이 안 막아 주고, 에러도 안 나고, CI 가 엉뚱한 데서 넘어�
 
 ## 다음 세션의 첫 액션
 
-배포 후 **라이브 curl 로만 판정되는 것**이 셋 있다(HTMLRewriter·시드는 단위테스트 밖):
+배포 후 **라이브 curl 로만 판정되는 것**이 있다(HTMLRewriter·시드는 단위테스트 밖).
+명령을 다시 조립하지 말고 **스크립트 하나만 돌리면 된다**:
 
 ```bash
-# ① 새로 사이트맵에 넣은 8개 표면이 실제로 200 인가
-for p in /stays /experience /new-openings /business /influencer /introduce /faq /area-report; do
-  printf "%-16s %s\n" "$p" "$(curl -s -o /dev/null -w '%{http_code}' "https://urdeal.kr$p")"
-done
-# 전부 200 이어야 한다. 3xx/404 가 하나라도 있으면 그 줄을 sitemap 에서 빼라 —
-# 죽은 URL 제출은 색인 신뢰도를 깎고, 그 손해는 되돌아오지 않는다.
-
-# ② 블로그 시드 v12 가 라이브에 반영됐나 ('쇼핑몰' 이 사라졌는지)
-curl -s "https://urdeal.kr/api/blog/public/urshop-my-own-shop" | grep -c 쇼핑몰   # 0 이어야 함
-# 슬러그가 바뀌었으면: curl -s https://urdeal.kr/api/blog/public | head
-
-# ③ 가이드 시드 v18 — 셀러 가이드에서 폐기 기능 안내가 사라졌나
-#    /seller/guide 에 로그인해서 "지금의 유어딜 — 무엇이 살아 있고 무엇이 끝났나" 섹션이 보이면 OK
+bash scripts/verify-seo-deploy.sh            # 기본 https://urdeal.kr
 ```
 
+6가지를 본다: ① 새로 사이트맵에 넣은 8개 표면이 200 인가 ② 서버 메타가 표면별로 실제 다른가
+③ canonical ④ 사라진 상품이 404 인가 ⑤ 블로그 시드 v12 반영 ⑥ robots 가 레포 규칙을 서빙하는가.
+
+**배포 직전 실측(2026-08-26)**: ①②③④⑥ 초록, **⑤만 빨강**(내 시드 변경이 아직 라이브에 없어서 —
+정확한 신호다). 배포 후 ⑤도 초록이 되면 끝. ①이 빨강이면 **그 줄을 sitemap 에서 빼는 것이 옳다** —
+죽은 URL 제출은 크롤 예산을 먹고 그 손해는 배포로 되돌아오지 않는다.
+
 ⚠️ 시드는 **버전이 올라야만** 반영된다(`BLOG_SEED_VERSION` 11→12, `GUIDE_SEED_VERSION` 17→18).
-배포했는데 안 바뀌었으면 다른 브랜치가 같은 번호를 선점했는지 확인할 것(`check-seed-version-monotonic`).
+배포했는데 ⑤가 계속 빨강이면 다른 브랜치가 같은 번호를 선점했는지 볼 것(`check-seed-version-monotonic`).
+
+📌 **덤으로 확인된 것**: CLAUDE.md 의 방어선 표는 2026-07-29 실측을 근거로
+*"Cloudflare Managed robots.txt 가 레포 규칙을 **통째로 대체**한다"* 고 적고 있는데,
+**지금은 아니다** — 재실측하니 Content-Signal 머리말을 **앞에 덧붙이고**(prepend) 우리 규칙
+185줄이 그대로 나간다. 그 서술을 믿고 "robots 가 안 나가니 손댈 필요 없다" 로 판단하지 말 것.
+(그래서 ⑥ 검사는 남겼다 — 정책은 또 바뀔 수 있다.)
 
 ---
 
