@@ -42,7 +42,7 @@ export default function BusinessLandingPage() {
               이 페이지는 sitemap 에 올라가는 **공개 소비자 랜딩**이라 여기 링크가 남아 있으면
               도매몰을 접는 동안에도 신규 유입이 계속 들어온다. 라우트(`/supplier/login`)는 그대로 —
               기존 제조사·판매사는 직접 주소·utongstart.com 으로 들어온다(잔액 회수 경로 보존). */}
-          <button onClick={() => navigate('/seller/register')} className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-sm font-bold">
+          <button onClick={() => navigate('/store/new')} className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-sm font-bold">
             무료 시작하기
           </button>
         </div>
@@ -64,14 +64,14 @@ export default function BusinessLandingPage() {
             </p>
             <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => navigate('/seller/register')}
+                onClick={() => navigate('/store/new')}
                 className="px-6 py-3.5 bg-pink-500 hover:bg-pink-600 text-white rounded-full font-bold flex items-center gap-2 shadow-lg shadow-pink-200"
               >
                 무료로 시작 <ArrowRight className="w-4 h-4" />
               </button>
               {/* 🛡️ 2026-05-20: 공급자 (가게 사장님) 셀프 가입 CTA — 카카오 로그인 후 진입. */}
               <button
-                onClick={() => navigate('/seller/register/supplier')}
+                onClick={() => navigate('/store/new')}
                 className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-bold flex items-center gap-2 shadow-lg shadow-emerald-200"
               >
                 공급자 가입 <ArrowRight className="w-4 h-4" />
@@ -198,7 +198,7 @@ export default function BusinessLandingPage() {
         <h2 className="text-3xl lg:text-5xl font-extrabold mb-5">지금 시작하면<br />이번 주 안에 첫 매출.</h2>
         <p className="text-lg opacity-90 mb-8">월 5만원도, 월 5천만원도 — 사장님이 결정합니다.</p>
         <button
-          onClick={() => navigate('/seller/register')}
+          onClick={() => navigate('/store/new')}
           className="px-8 py-4 bg-white dark:bg-[#0F151D] text-pink-600 rounded-full font-extrabold text-lg shadow-xl hover:scale-105 transition-transform"
         >
           무료로 시작하기 →

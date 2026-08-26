@@ -10,7 +10,7 @@ export function ProductNoticeSection() {
     },
     {
       title: t('product.noticeShippingTitle', { defaultValue: '배송 기간 5-7 영업일' }),
-      description: t('product.noticeShippingDesc', { defaultValue: '판매자 발송 및 검수 완료 후 배송됩니다' }),
+      description: t('product.noticeShippingDesc', { defaultValue: '매장 발송 및 검수 완료 후 배송됩니다' }),
     },
     {
       title: t('product.noticeReturnTitle', { defaultValue: '교환/반품 안내' }),

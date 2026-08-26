@@ -1,5 +1,5 @@
 /**
- * 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 유어샵 오너 화면 + 크리에이터 콘솔
+ * 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 유어샵 오너 화면 + 소개 콘솔
  *   공용 사업자(판매) 진입 CTA. 기존 CuratorEarningsPage 내부 정의를 공유 컴포넌트로 추출(코드 동일).
  *   - 셀러 아님 → '사업자 인증하고 내 상품 팔기' (혜택 시트 → /seller/register/supplier?from=curator)
  *   - 승인됨 → '상품 등록'(/seller/products/new) · '이용권 등록'(/seller/meal-voucher/new) · '셀러 대시보드'
@@ -65,9 +65,9 @@ export default function SellOwnProductsCTA() {
     }
     return (
       <section className="mb-6 bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-xl p-4">
-        <p className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">🛍️ 내 쇼핑몰 운영 중 <VerifiedSeal size={15} /> <span className="font-medium text-gray-500 dark:text-gray-400">· 판매·현금 정산 활성</span></p>
+        <p className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">🏪 판매 활성 · 내 유어샵 <VerifiedSeal size={15} /> <span className="font-medium text-gray-500 dark:text-gray-400">· 판매·현금 정산 활성</span></p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
-          상품·이용권을 정식 등록(이미지·상세·옵션)하거나, 셀러 대시보드에서 주문·정산을 관리하세요. 등록한 상품은 내 쇼핑몰에 표시됩니다.
+          이용권·상품을 정식 등록(이미지·상세·옵션)하거나, 셀러 대시보드에서 주문·정산을 관리하세요. 등록한 것은 내 유어샵에 바로 진열됩니다.
         </p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -100,9 +100,9 @@ export default function SellOwnProductsCTA() {
   if (hasSeller && st === 'pending') {
     return (
       <section className="mb-6 bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-xl p-4">
-        <p className="text-sm font-bold text-gray-900 dark:text-white">🛍️ 내 쇼핑몰 개설 신청 접수됨</p>
+        <p className="text-sm font-bold text-gray-900 dark:text-white">🏪 매장 등록 심사 중</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          관리자 승인 후 판매·현금 정산이 활성화됩니다.
+          등록증을 확인하는 중이에요. 승인되면 내 유어샵에서 판매·현금 정산이 열립니다.
         </p>
       </section>
     )
@@ -127,15 +127,15 @@ export default function SellOwnProductsCTA() {
       >
         <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0"><VerifiedSeal size={22} /></span>
         <span className="flex-1 min-w-0">
-          <span className="block text-[14.5px] font-extrabold">사업자 인증하고 내 상품 팔기</span>
-          <span className="block text-[11.5px] text-gray-300 mt-0.5">내 상품 판매 · 현금 정산 · 파란 인증 씰</span>
+          <span className="block text-[14.5px] font-extrabold">내 가게 등록하고 이용권 팔기</span>
+          <span className="block text-[11.5px] text-gray-300 mt-0.5">이용권 판매 · 현금 정산 · 파란 인증 씰</span>
         </span>
         <span className="text-gray-400 text-lg leading-none">›</span>
       </button>
       {showBenefits && (
         <BenefitsSheet
           onClose={() => setShowBenefits(false)}
-          onStart={() => navigate('/seller/register/supplier?from=curator')}
+          onStart={() => navigate('/store/new?from=curator')}
         />
       )}
     </>
@@ -145,17 +145,17 @@ export default function SellOwnProductsCTA() {
 // 🏁 2026-06-26 (대표 — 일반→인증 유저 전환 혜택 안내): 혜택 바텀시트.
 function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () => void }) {
   const benefits: { icon?: string; seal?: boolean; t: string; d: string }[] = [
-    { icon: '🛍️', t: '내 상품 직접 판매', d: '유어샵이 곧 내 쇼핑몰 — 내가 파는 상품이 주인공' },
+    { icon: '🎟️', t: '내 이용권 직접 판매', d: '내 이용권이 내 유어샵 맨 앞에 진열돼요' },
     { icon: '💰', t: '현금 정산', d: '판매 대금과 추천 수익을 현금으로 받아요' },
     { seal: true, t: '이름 옆 파란 인증 씰', d: '방문자에게 신뢰를, 다른 유어샵과 차별을' },
-    { icon: '🎟️', t: '이용권 판매 채널', d: '동네 공구·교환권도 함께 판매' },
+    { icon: '🛍️', t: '상품도 함께', d: '이용권 외에 배송 상품·교환권도 같은 자리에서' },
   ]
   return (
     <div className="fixed inset-0 z-[10600] flex items-end justify-center" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/55" onClick={onClose} />
       <div className="relative w-full sm:max-w-md bg-white dark:bg-[#1A2334] rounded-t-3xl px-5 pt-2 pb-7 animate-slideUp">
         <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-[#2A3446] mx-auto mt-1.5 mb-4" />
-        <h2 className="text-[21px] font-extrabold text-gray-900 dark:text-white tracking-tight">내 쇼핑몰을 열어보세요</h2>
+        <h2 className="text-[21px] font-extrabold text-gray-900 dark:text-white tracking-tight">내 유어샵에서 직접 팔아보세요</h2>
         <div className="flex items-center gap-1.5 mt-2 text-[13px] text-gray-500 dark:text-gray-400 flex-wrap">
           <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A2334] text-[11px] font-bold">유저</span>
           <span className="font-extrabold text-gray-400">→</span>

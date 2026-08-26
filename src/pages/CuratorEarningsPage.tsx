@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-25 (migration 0278): 큐레이터 수익 대시보드 (/u/me/earnings).
+ * 🛡️ 2026-05-25 (migration 0278): 소개 수익 대시보드 (/u/me/earnings).
  *
  * Phase 1-C 핵심 UX — 수익 가시화.
  * 30일 적립 / 클릭 / 구매 / 인기 핀 top 3 / 일별 차트.
@@ -80,11 +80,11 @@ export default function CuratorEarningsPage() {
 
   return (
     <>
-      <SEO title={t('curator.console.title', { defaultValue: '크리에이터 콘솔' })} noindex />
+      <SEO title={t('curator.console.title', { defaultValue: '소개 콘솔' })} noindex />
       <div className="min-h-screen bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white pb-24">
         <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446] px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <h1 className="text-lg font-bold">🎤 {t('curator.console.title', { defaultValue: '크리에이터 콘솔' })}</h1>
+            <h1 className="text-lg font-bold">🎤 {t('curator.console.title', { defaultValue: '소개 콘솔' })}</h1>
             {handle && (
               <Link to={`/u/${handle}`} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                 @{handle}
@@ -320,7 +320,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
             누적 적립이 {formatWon(info.seller_upgrade.threshold)} 를 넘었어요! 셀러로 승급하시면 직접 상품 판매·라이브 송출이 가능해져요.
           </p>
           <div className="flex gap-2">
-            <Link to="/seller/register" className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg text-center">
+            <Link to="/store/new" className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg text-center">
               셀러 가입하기
             </Link>
             <button onClick={onAckUpgrade} className="px-3 py-2 text-amber-700 dark:text-amber-300 text-xs font-bold">

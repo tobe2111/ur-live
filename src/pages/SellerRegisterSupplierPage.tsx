@@ -3,7 +3,7 @@
  *
  * 이전엔 진입점 5곳이 서로 다른 3개 가입 화면(레거시 별도계정 /seller/register ·
  * 막다른 /seller/register/business · 본 페이지)으로 흩어져 유저가 헷갈렸음 → 전부 여기로 통일.
- * 명칭 SSOT: "사업자 유저"(유저 + 사업자등록·판매승인) / 타겟 언어 "내 쇼핑몰".
+ * 명칭 SSOT: "사업자 유저"(유저 + 사업자등록·판매승인) / 타겟 언어 "내 유어샵".
  * 크리에이터(추천·커미션만)는 가입 불필요 — 상단 탈출구로 유어샵 안내(JoinChoice 모델).
  *
  * 흐름:
@@ -101,7 +101,7 @@ export default function SellerRegisterSupplierPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 🏁 2026-06-17 (#1 이중입력 제거): 크리에이터 콘솔에서 진입(?from=curator) 시 큐레이터 사업자
+  // 🏁 2026-06-17 (#1 이중입력 제거): 소개 콘솔에서 진입(?from=curator) 시 큐레이터 사업자
   //   정보(이미 입력한 상호/사업자번호)로 매장 등록 폼 자동채움 — 같은 정보 두 번 입력 방지.
   //   curator /me/business 는 representative/start_date 미저장 → 겹치는 2필드만. 빈 필드에만 채워
   //   사용자 입력 보존. 무인증/사업자정보 없으면 조용히 skip(매장 폼 그대로).
@@ -284,9 +284,9 @@ export default function SellerRegisterSupplierPage() {
           <div className="w-14 h-14 mx-auto mb-3 bg-white rounded-full flex items-center justify-center">
             <Store className="w-7 h-7 text-emerald-600" />
           </div>
-          <h2 className="text-base font-bold text-gray-900">{t('seller.gateway.heroTitle', { defaultValue: '내 쇼핑몰에서 직접 판매하기' })}</h2>
+          <h2 className="text-base font-bold text-gray-900">{t('seller.gateway.heroTitle', { defaultValue: '내 유어샵에서 직접 판매하기' })}</h2>
           <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-            {t('seller.gateway.heroDesc', { defaultValue: '사업자 인증 한 번이면 내 유어샵이 진짜 쇼핑몰이 됩니다. 상품·이용권 등록 + 현금 정산 (플랫폼 수수료 기본 5%).' })}
+            {t('seller.gateway.heroDesc', { defaultValue: '내 가게를 등록하면 내 유어샵에서 이용권·상품을 팔고 현금으로 정산받아요 (플랫폼 수수료 기본 5%).' })}
           </p>
         </div>
 

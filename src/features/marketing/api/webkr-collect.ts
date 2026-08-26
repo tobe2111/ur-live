@@ -213,8 +213,8 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
       return { kw, got, skip: false, answered: !!outcome.responded }
     }))
     for (const r of results) {
-      usedKw.push(r.kw) // 건너뛴 자리도 회전에서는 소비된 것 — 위 주석 참조
       if (r.skip) { skipped.push(r.kw.keyword); continue }
+      usedKw.push(r.kw)
       /**
        * 📮 **응답을 못 받은 키워드는 부기하지 않는다** (2026-08-24 — 라이브에서 429 16건 실측 후).
        *   429·타임아웃·게이트 거부는 빈 배열로 돌아온다. 그걸 `found_total = 0` 으로 적으면

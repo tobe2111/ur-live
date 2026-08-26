@@ -5494,8 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 176건 · 최신순 · 이 목록은 자동 생성된다._
+_총 177건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-08-26**
+- [2026-08-26 — 유어샵 정합 전수 수리 + SEO 최적화](handoff/2026-08-26-urshop-alignment-seo.md)
 **2026-08-24**
 - [2026-08-24 — 429 를 "결과 0건"으로 적던 것 (유어애즈 webkr 레인)](handoff/2026-08-24-unanswered-bookkeeping.md)
 - [2026-08-24 — 은퇴가 레인 하나에만 걸려 있던 것 (유어애즈)](handoff/2026-08-24-two-lane-retirement.md)

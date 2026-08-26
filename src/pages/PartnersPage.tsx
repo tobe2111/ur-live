@@ -164,7 +164,7 @@ export default function PartnersPage() {
             className="flex-1 h-12 rounded-2xl border border-[#1A2C42]/15 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] flex items-center justify-center gap-1.5 text-[14px] font-extrabold text-[#1A2C42] dark:text-[#F5F3F1]">
             <MessageCircle className="w-4 h-4" /> 카카오 문의
           </a>
-          <Link to="/seller/register/supplier"
+          <Link to="/store/new"
             className="flex-[1.4] h-12 rounded-2xl bg-brand text-white flex items-center justify-center gap-1.5 text-[14px] font-extrabold active:scale-[0.98] transition-transform">
             셀러 가입하기 <ArrowRight className="w-4 h-4" />
           </Link>

@@ -899,7 +899,7 @@ CURATOR_DEFAULTS.HANDLE_PATTERN            // 핸들 정규식
 
 ### 관련 페이지
 - \`/u/:handle\` — 공개 큐레이터 페이지 (다크 테마)
-- \`/u/me/earnings\` — 큐레이터 수익 대시보드`,
+- \`/u/me/earnings\` — 소개 수익 대시보드`,
   },
   // 🛡️ 2026-05-25 (migration 0279): 배송 재설계
   {

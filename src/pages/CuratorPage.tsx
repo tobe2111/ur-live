@@ -251,7 +251,7 @@ export default function CuratorPage() {
         {/* 🩸 2026-08-26: `ownerView` 게이트라 **한 번도 뜬 적 없었다**(previewAsVisitor 초기값 true) → isOwner. */}
         {isOwner && showOnboard && (
           <LinkshopOnboardModal
-            onPickSeller={() => navigate('/seller/register/supplier?from=urshop')}
+            onPickSeller={() => navigate('/store/new?from=urshop')}
             curatorId={curator.id}
             currentHandle={curator.handle}
             currentName={curator.name}

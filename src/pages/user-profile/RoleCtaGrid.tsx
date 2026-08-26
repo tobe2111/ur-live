@@ -35,7 +35,7 @@ export default function RoleCtaGrid() {
     const hasAgencyToken = typeof window !== 'undefined' && !!localStorage.getItem('agency_token')
     // 내 바로가기 (모든 유저가 가진 유어샵 + 보유 role 의 대시보드 단축)
     const dash: Cta[] = [
-      { icon: '🔗', title: t('roleCta.linkshop', { defaultValue: '내 유어샵' }), desc: t('roleCta.linkshopDesc', { defaultValue: '교환권·공구 추천하고 적립 받기' }), to: '/u/me', show: () => true, accent: true },
+      { icon: '🔗', title: t('roleCta.linkshop', { defaultValue: '내 유어샵' }), desc: t('roleCta.linkshopDesc', { defaultValue: '이용권을 담아 진열하고 소개해요' }), to: '/u/me', show: () => true, accent: true },
       { icon: '📊', title: t('roleCta.sellerDash', { defaultValue: '셀러 대시보드' }), desc: t('roleCta.sellerDashDesc', { defaultValue: '내 상품·공구·정산 관리' }), to: '/seller', show: () => hasSellerToken, accent: true },
       { icon: '📊', title: t('roleCta.agencyDash', { defaultValue: '에이전시 대시보드' }), desc: t('roleCta.agencyDashDesc', { defaultValue: '소속 사업자·소개 가게 수익' }), to: '/agency', show: () => hasAgencyToken, accent: true },
     ]

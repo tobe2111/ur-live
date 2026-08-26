@@ -111,7 +111,7 @@ export default function MyStoresPanel({ onGateChange }: Props) {
             {t('seller.stores.gateTitle', { defaultValue: '매장 등록부터 시작해요' })}
           </h2>
           <p className="text-[12px] text-white/70 mt-1.5 leading-relaxed">
-            {t('seller.stores.gateDesc', { defaultValue: '유어딜의 모든 기능은 매장에서 출발합니다. 카카오맵에서 내 매장을 찾아 등록하면 이용권 판매·인플루언서 협업·정산이 열려요.' })}
+            {t('seller.stores.gateDesc', { defaultValue: '유어딜의 모든 기능은 매장에서 출발합니다. 카카오맵에서 내 매장을 찾아 등록하면 이용권 판매·소개 협업·정산이 열려요.' })}
           </p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-[11px] text-white/50 font-semibold">
             <span className="text-white">① {t('seller.stores.step1', { defaultValue: '매장 등록' })}</span>

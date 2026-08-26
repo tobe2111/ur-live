@@ -12,7 +12,7 @@ interface Props {
  * 🛡️ 2026-05-20: 셀러 대시보드 상단 큰 CTA 카드 (사용자 요청).
  * 🧱 2026-08-23 (대표 AB테스트 — "중요한 작업들이 어느정도 모여있어야 해. 컴팩트하게"):
  *   흩어져 있던 핵심 작업(빠른 액션의 '이용권 등록' + 큰 카드 3개)을 **한 줄 5버튼**으로 통합.
- *   [이용권 등록(주역, 다크) · 주문 확인 · 이용권 관리 · 정산 · 인플루언서 찾기]
+ *   [이용권 등록(주역, 다크) · 주문 확인 · 이용권 관리 · 정산 · 소개 파트너 찾기]
  *   가로형 컴팩트 버튼(아이콘+텍스트 한 줄) — 종전 세로형 큰 카드 대비 높이 절반.
  *   ('상품 등록'/'라이브'는 제거 — 상품은 유어샵 일원화, 라이브는 영구 중단.)
  */
@@ -80,7 +80,7 @@ export default function PrimaryActions({ pendingOrders, activeGroupBuys, settlem
     },
     {
       to: '/seller/influencers',
-      title: t('seller.nav.findInfluencers', { defaultValue: '인플루언서 찾기' }),
+      title: t('seller.nav.findInfluencers', { defaultValue: '소개 파트너 찾기' }),
       subtitle: t('seller.primary.findInfluencersDesc', { defaultValue: '협업 제안 보내기' }),
       icon: Megaphone,
       bg: 'bg-white border border-gray-200 hover:bg-gray-50',

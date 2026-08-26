@@ -478,7 +478,7 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
         const { notifyUser } = await import('../../../lib/notifications');
         notifyUser(DB, String(linkedUserId), 'seller_approved',
           isReactivation ? '🏪 셀러 계정 재활성화' : '🎉 사업자 유저 승인 완료',
-          isReactivation ? '판매를 이어가실 수 있어요' : '내 쇼핑몰이 열렸어요! 지금 상품·이용권을 등록해보세요',
+          isReactivation ? '판매를 이어가실 수 있어요' : '판매가 활성화됐어요! 내 유어샵에 이용권을 올려보세요',
           '/seller/waiting').catch(swallow('admin-sellers:approve-user-notify'));
       }
     } catch { /* best-effort */ }

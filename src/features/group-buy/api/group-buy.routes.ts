@@ -101,7 +101,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       }
     } catch { /* idempotency 검사 실패 — 일반 흐름 진행 */ }
   }
-  // 🛡️ 2026-05-16: ref = 인플루언서 ID (?ref= 진입 또는 본문). 형식 검증.
+  // 🛡️ 2026-05-16: ref = 소개 파트너 ID (?ref= 진입 또는 본문). 형식 검증.
   // 🛡️ 2026-05-21 Phase D-3: 자기 자신 attribution 차단 (셀러가 본인 링크로 매출 인플레이션).
   const refRaw = ref ? String(ref).trim() : ''
   let referralInfluencerId = refRaw && /^[a-zA-Z0-9_\-:]{1,64}$/.test(refRaw) ? refRaw : ''

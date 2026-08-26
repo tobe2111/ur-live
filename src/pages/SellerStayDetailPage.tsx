@@ -630,7 +630,7 @@ function ShareLinkButton({ productId }: { productId: number }) {
       const url = r.data?.data?.url
       if (!url) { toast.error('링크 생성 실패'); return }
       await navigator.clipboard.writeText(url)
-      toast.success('🔗 referral 링크 복사 완료 — 인플루언서에게 공유')
+      toast.success('🔗 소개 링크 복사 완료 — 소개해 줄 분에게 공유')
     } catch {
       toast.error('링크 복사 실패')
     }
@@ -640,7 +640,7 @@ function ShareLinkButton({ productId }: { productId: number }) {
       type="button"
       onClick={copyLink}
       className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-pink-50 text-pink-700 text-xs font-semibold rounded-lg hover:bg-pink-100"
-      title="이 숙소의 인플루언서 추천 링크 복사"
+      title="이 숙소의 소개 링크 복사"
     >
       🔗 referral 링크
     </button>

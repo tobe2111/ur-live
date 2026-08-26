@@ -637,7 +637,7 @@ export default function SellerProfileEditPage() {
             </div>
           </div>
 
-          {/* 🚚 2026-06-18 배송 설정 — 내 쇼핑몰 배송비 (주문 시 서버가 이 값으로 재계산) */}
+          {/* 🚚 2026-06-18 배송 설정 — 내 유어샵 배송비 (주문 시 서버가 이 값으로 재계산) */}
           <div className="apple-card p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-[#9ca3af]/10 rounded-full flex items-center justify-center">
@@ -645,7 +645,7 @@ export default function SellerProfileEditPage() {
               </div>
               <div>
                 <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{t('seller.shippingSettings', { defaultValue: '배송 설정' })}</h2>
-                <p className="text-[13px] text-[#6e6e73]">{t('seller.shippingSettingsDesc', { defaultValue: '내 쇼핑몰 상품의 기본 배송비와 무료배송 기준을 설정하세요' })}</p>
+                <p className="text-[13px] text-[#6e6e73]">{t('seller.shippingSettingsDesc', { defaultValue: '내 유어샵 상품의 기본 배송비와 무료배송 기준을 설정하세요' })}</p>
               </div>
             </div>
 

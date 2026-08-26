@@ -150,7 +150,8 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
             at: new Date().toISOString(), lane: this.lane, ms: Date.now() - t0, runs_this_hour: ran, cap,
             interval_ms: interval, next_at: new Date(at).toISOString(), fail_streak: nextFail,
             ...(error ? { error: error.slice(0, 200) } : {}),
-          }, stats ? JSON.parse(JSON.stringify(stats)) : null)),
+            stats: stats ? JSON.parse(JSON.stringify(stats)) : null,
+          }).slice(0, 2000)),
           put.bind(hb.key, hb.value),
           // 🎞️ 같은 batch = 서브리퀘스트 1개 그대로(낱개로 쓰면 가장 빠듯한 지점에 하나를 더 얹는다).
           put.bind(`${LANE_RUNS_KEY}:${this.lane}`, serializeRunHistory(runHistory)),
