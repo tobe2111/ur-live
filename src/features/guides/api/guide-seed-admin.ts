@@ -147,12 +147,12 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
   {
     key: 'settlement', icon: '💰', title: '정산 처리', order: 60,
     content: `### 🏦 지급 센터 (\`/admin/payout-center\`) — 2026-06-12 신설, 권장 진입점
-셀러 정산 · 큐레이터 환급 · 에이전시 영입 커미션의 **모든 지급 요청이 한 화면**에 모입니다.
+셀러 정산 · 소개 환급 · 에이전시 영입 커미션의 **모든 지급 요청이 한 화면**에 모입니다.
 1. 매주 금요일 지급 센터 열기 (정산 센터 탭 맨 앞)
 2. 줄 서 있는 신청의 계좌로 폰뱅킹 이체
 3. **입금 완료** 클릭 → 상태 기록 + 신청자에게 자동 알림
 - 에이전시는 환불 보호를 위해 **7일 경과분만** 일괄 지급 버튼이 활성화됩니다
-- 큐레이터 반려 시 차감됐던 딜이 자동 복원됩니다
+- 소개 환급 반려 시 차감됐던 딜이 자동 복원됩니다
 - 제조사(공급사) 출금은 기존 전용 화면(\`/admin/wholesale-withdrawals\`) 그대로
 
 ### 정산 프로세스 (\`/admin/settlement\`)
@@ -876,7 +876,9 @@ WHERE account LIKE 'user:%' GROUP BY account HAVING SUM(net) < 0;
 | 핀 상한 | 200개 (\`PIN_MAX_PER_USER\`) | DB 비대 방지 |
 
 ### 정산 검수
-- 큐레이터 정산액 = \`SUM(affiliate_earnings.commission_amount) WHERE referrer_id = userId\`
+- 소개 정산액 = \`SUM(affiliate_earnings.commission_amount) WHERE referrer_id = userId\`
+  (⚠️ 신규 적립은 **매장이 맺은 딜**에서만 생긴다 — 어필리에이트는 2026-08-22 종료. 이 합계에
+   남아 있는 것은 종료 이전 적립분과 딜 적립분이다)
 - 출금 시스템: 기존 \`user_withdrawals\` 재활용 (mig 0274)
 
 ### 핸들 정책
@@ -956,26 +958,36 @@ SHIPPING_DEFAULTS.ISLAND_EXTRA_FEE            // 5000원
 - \`POST /api/shipping/admin/sync\` (requireAdmin)
 - \`GET /api/shipping/couriers\` (public, 드롭다운)`,
   },
-  // 🛡️ 2026-05-25 (migration 0280): 호스팅 + 정산
+  // 🛡️ 2026-05-25 (migration 0280) · 🏷️ 2026-08-26 사실 갱신:
+  //   이 섹션도 셀러 가이드와 같은 문제를 갖고 있었다 — **폐기된 것을 현행처럼** 안내.
+  //   공구 호스팅은 진입 숨김(HOSTING_HIDDEN), 어필리에이트는 2026-08-22 종료,
+  //   '셀러 자동 승급'은 신분 계층 모델이라 확정 모델과 충돌한다.
   {
-    key: 'hosting-and-curator-payout', icon: '🎉', title: '호스팅 + 큐레이터 정산 (migration 0280)', order: 820,
-    content: `### 신모델 — Phase 3 (호스팅) + Phase 4 (정산)
+    key: 'hosting-and-curator-payout', icon: '🎉', title: '소개 정산 — 지금의 규칙', order: 820,
+    content: `### 지금 소개 커미션은 어디서 생기나
 
-**Phase 3 — 누구나 voucher 공구 호스팅**:
-- 어드민 등록 voucher 상품 → 일반 user 가 본인 명의로 모집 시작
-- \`group_buy_hosts\` 테이블: invite_code UNIQUE + UNIQUE(host_user_id, product_id)
-- 호스트 인센티브: HOSTING_DEFAULTS.HOST_INCENTIVE_PCT (1%)
-- 동시 active 상한 10개 / 모집 기간 기본 7일
+**매장이 맺은 딜 하나뿐이다**(\`seller_influencer_deals\`). 매장이 비율을 정해 제안하고 상대가
+수락하면, 그 사람의 유어샵 링크로 팔린 건에 그 비율이 붙는다. 판정 SSOT 는
+\`worker/utils/influencer-deal.ts\` \`findActiveDealPct\` — **결제 적립과 화면 표시가 같은 함수**를
+쓰므로 "화면엔 N% 인데 정산은 0" 이 구조적으로 안 난다.
 
-**Phase 4 — 큐레이터 정산 + 출금**:
-- 정산 = \`affiliate_earnings.commission_amount\` SUM (referrer_id 기준)
-- 출금 = \`user_withdrawals\` 재활용 (mig 0274)
-  * 최소 10,000원 / 원천징수 3.3% (TAX_POLICY.BUSINESS_INCOME_RATE)
-- 셀러 자동 승급 안내: 누적 평생 50만원+ (\`WITHDRAWAL_DEFAULTS.SELLER_UPGRADE_THRESHOLD\`)
+### 끝난 것 (문의가 오면 이렇게 답한다)
+
+| 기능 | 상태 |
+|---|---|
+| 어필리에이트(누구나 링크 공유 1~2%) | **2026-08-22 종료** |
+| 공구 호스팅(\`/host/new\`) | **진입 숨김** — 이용권 등록으로 대체 |
+| 라이브 송출 / 쇼츠 | **영구 중단** |
+| 큐레이터 → 셀러 "자동 승급" | **폐기** — 매장을 등록하면 판매가 열리는 구조 |
+
+### 출금 (변경 없음)
+- 대상 = \`affiliate_earnings.commission_amount\` SUM (referrer_id 기준)
+- \`user_withdrawals\` 재활용 (mig 0274)
+- 최소 10,000원 / 원천징수 3.3% (TAX_POLICY.BUSINESS_INCOME_RATE)
 
 ### 어드민 모니터링
 
-#### 호스팅 사기 탐지
+#### 호스팅 사기 탐지 (레거시 — 진입이 숨겨져 신규 유입은 없다. 옛 행 점검용)
 \`\`\`sql
 -- 같은 host_user_id 가 짧은 시간에 다수 invite_code 생성
 SELECT host_user_id, COUNT(*) AS cnt
@@ -994,13 +1006,16 @@ GROUP BY user_id HAVING hosts > 10;
 - \`/admin/user-withdrawals\` (기존 페이지)
 - 신규: \`user_withdrawals.user_id\` 가 string ('123') 일 수 있음 — 호환성
 
-#### 셀러 승급 모니터링
+#### 누적 소개 수익 상위 (참고)
 \`\`\`sql
-SELECT id, name, handle, curator_total_lifetime_earnings, seller_upgrade_offered_at
+SELECT id, name, handle, curator_total_lifetime_earnings
 FROM users
 WHERE curator_total_lifetime_earnings >= 500000
 ORDER BY curator_total_lifetime_earnings DESC LIMIT 50;
 \`\`\`
+> ⚠️ 옛 '셀러 자동 승급 안내'(누적 50만원+ → 셀러 가입 권유)는 **폐기**됐다. 신분 계층이 아니라
+> **매장을 등록하면 판매가 열리는** 구조이고, 그 진입은 \`/store/new\` 하나다.
+> \`seller_upgrade_offered_at\` 은 그 시절 남은 컬럼이라 판정에 쓰지 말 것.
 
 ### 정책 변경 (\`policy.ts\` SSOT)
 \`\`\`ts
@@ -1013,8 +1028,8 @@ WITHDRAWAL_DEFAULTS.UPGRADE_REOFFER_DAYS  // 30
 \`\`\`
 
 ### 관련 페이지
-- \`/host\` — 본인 호스팅 (라이트 테마)
-- \`/host/new\` — 카탈로그 + 1탭 모집 시작
+- ~~\`/host\`~~ — 본인 호스팅 (진입 숨김)
+- ~~\`/host/new\`~~ — 공구 호스팅은 **진입 숨김**(HOSTING_HIDDEN). 이용권 등록으로 대체됨
 - \`/g/:invite_code\` — 친구 초대 (다크 테마, public)
 - \`/u/me/earnings\` — 출금 UI + 승급 안내
 

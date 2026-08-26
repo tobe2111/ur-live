@@ -13,7 +13,7 @@ interface ConsentedLead { id: number; name: string; email: string | null }
 export default function ConsentedSendPanel() {
   const [open, setOpen] = useState(false)
   const [targets, setTargets] = useState<ConsentedLead[] | null>(null)
-  const [subject, setSubject] = useState('[유어딜] 제휴 크리에이터 온보딩 안내')
+  const [subject, setSubject] = useState('[유어딜] 소개 파트너 온보딩 안내')
   const [body, setBody] = useState('안녕하세요 {name}님, 유어딜 제휴 담당자입니다.\n\n신청해주셔서 감사합니다. 다음 단계 안내드립니다:\n\n1. \n2. \n\n궁금한 점은 이 메일에 회신해주세요. 감사합니다.')
   const [busy, setBusy] = useState(false)
 
