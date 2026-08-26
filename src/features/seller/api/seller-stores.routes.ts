@@ -155,19 +155,30 @@ app.delete('/voucher-draft', async (c) => {
 
 // ── 매장 프로필 병합(공유) — SSOT: worker/utils/store-profile.ts (2026-08-23 단일화) ────────
 async function loadMergedProfile(DB: D1Database, sellerId: number) {
-  const [seller, metaMap, lastProduct] = await Promise.all([
+  const [seller, metaMap, lastProduct, liveStore] = await Promise.all([
     DB.prepare('SELECT name, business_name, phone, address FROM sellers WHERE id = ? LIMIT 1')
       .bind(sellerId).first<{ name: string | null; business_name: string | null; phone: string | null; address: string | null }>()
       .catch(() => null),
     getSellerMeta(DB, [sellerId]).catch(() => new Map<number, Record<string, string>>()),
     loadLatestProductCopy(DB, sellerId),
+    // 🔎 게이트 전용 신호 — **판매 중인** 매장 상품이 있는가. 프리필용 lastProduct 와 분리한 이유는
+    //   아래 주석 참조(판매중지한 상품의 매장 정보는 프리필에는 여전히 쓸모가 있다).
+    DB.prepare(
+      `SELECT COUNT(*) AS n FROM products
+        WHERE seller_id = ? AND is_active = 1 AND restaurant_name IS NOT NULL AND restaurant_name != ''`
+    ).bind(sellerId).first<{ n: number }>().catch(() => null),
   ])
   const meta = metaMap.get(sellerId) || {}
   // 🚪 2026-08-24 대표 "대시보드 첫 단계는 매장 등록 — 선행 없이는 다음 단계 이용 불가":
   //   이 좌석이 '등록된 매장'인가의 서버 판정. 주소/등록 채널/좌표 중 하나라도 있으면 매장이고,
-  //   **이미 이용권을 운영해 본 좌석(lastProduct)은 무조건 통과** — 게이트 신설이 기존
-  //   실운영 셀러를 잠그는 사고(lock-out 클래스)를 구조적으로 차단한다.
-  const store_ready = !!(seller?.address || meta.store_channel || meta.store_lat || lastProduct)
+  //   **실제로 매장을 운영 중인 좌석은 무조건 통과** — 게이트 신설이 기존 실운영 셀러를 잠그는
+  //   사고(lock-out 클래스)를 구조적으로 차단한다.
+  //
+  //   ⚠️ 2026-08-26 정정: 이 grandfather 를 '매장명 붙은 상품이 하나라도 있었나'(lastProduct)로 봤는데,
+  //   그러면 **상품을 전부 판매중지해도 영원히 매장으로 남아** 온보딩으로 돌아갈 길이 없다.
+  //   판정은 '지금 판매 중인가'(is_active=1)로 본다 — 판매중지는 되돌릴 수 있으므로 이 판정도 되돌아온다.
+  //   주소·등록 채널·좌표(= 정식 매장 등록의 산물)를 가진 매장은 상품 0 이어도 통과라 영향 없다.
+  const store_ready = !!(seller?.address || meta.store_channel || meta.store_lat || Number(liveStore?.n) > 0)
   return {
     store: mergeStoreProfile({ product: lastProduct, meta, seller }),
     has_product_history: !!lastProduct,
