@@ -58,7 +58,7 @@ const OP_KEY = 'ads_franchise_op'
  *   내가 그때 *"다음 후보를 추측하지 말고 화면을 받자"* 로 멈춘 판단은 옳았다.
  * ⚠️ 포털 샘플값이 **2017** 이다 — 최신 연도에 데이터가 없을 수 있으므로 연도 순회는 그대로 둔다.
  */
-export const FRANCHISE_YR_PARAM = 'yr'
+export const FRANCHISE_YR_PARAM = 'jngBizCrtraYr'
 const YR_KEY = 'ads_franchise_yr'
 /** 시도할 연도 — 최신부터. 등록이 갱신되는 시차 때문에 '올해'가 아직 비어 있을 수 있다. */
 const yearCandidates = (nowMs: number): string[] => {

@@ -33,9 +33,7 @@ export interface ColumnRepair {
   requiresTable?: string
 }
 
-const mk = (t) => ({ desc: t, sql: `ALTER TABLE ${t} ADD x TEXT` })
 export const COLUMN_REPAIRS: ColumnRepair[] = [
-    mk("zz"),
     // ── sellers ────────────────────────────────────
     { desc: 'sellers.commission_rate', sql: "ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 5.00" },
     { desc: 'sellers.seller_type', sql: "ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'" },
