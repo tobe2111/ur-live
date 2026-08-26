@@ -72,6 +72,28 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '태블릿 홈이 다시 옛 디자인이 된다(헤더는 md, 본문은 lg 로 갈림)',
+    file: 'src/pages/pc-home/HomeRoute.tsx',
+    find: "useMediaQuery('(min-width: 768px)')",
+    replace: "useMediaQuery('(min-width: 1024px)')",
+    test: 'src/tests/unit/home-tablet-breakpoint.test.ts',
+    why:
+      '상단 헤더는 `hidden md:block`(768) 인데 이 분기가 lg(1024) 면 **768~1023 구간만 헤더는 새 ' +
+      '디자인, 본문은 옛 디자인**이 된다. 아이패드 세로(810)에서 차콜 색면도 히어로도 없이 흰 배경이 ' +
+      '나오던 실제 신고(2026-08-24). 두 값은 한 화면의 위아래를 나누는 같은 선이다.',
+  },
+  {
+    name: '태블릿 홈에서 전역 헤더가 통째로 사라진다',
+    file: 'src/components/main/DesktopTopNav.tsx',
+    find: "const LEGACY_OWN_HEADER = ['/vouchers', '/stays', '/group-buy', '/map']",
+    replace: "const LEGACY_OWN_HEADER = ['/', '/vouchers', '/stays', '/group-buy', '/map']",
+    test: 'src/tests/unit/home-tablet-breakpoint.test.ts',
+    why:
+      '홈이 이 목록에 있으면 <lg 에서 `return null` 한다 — 예전엔 홈이 자체 헤더를 가져 맞는 규칙 ' +
+      '이었지만, md~lg 홈이 `PcHomePage`(자체 헤더 없음)로 바뀐 뒤로는 **태블릿에 헤더가 하나도 안 ' +
+      '남는다.** 분기 변경 직후 실제로 그 회귀를 냈고 이 가드로 잡았다.',
+  },
+  {
     name: '홈 색면이 다시 리터럴 hex 로 흩어진다(페이지와 히어로가 갈림)',
     file: 'src/pages/pc-home/PcHomePage.tsx',
     find: '<div className="bg-[var(--home-field)] min-h-[100dvh]">',

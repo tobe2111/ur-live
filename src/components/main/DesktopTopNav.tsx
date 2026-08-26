@@ -158,7 +158,14 @@ export default function DesktopTopNav() {
   //   `hidden md:block` 이라 **md~lg 구간**(태블릿·큰 폰 가로)에서 함께 떠 두 헤더가 겹쳤다
   //   — 로고·검색·카테고리 2행 위에 지도 검색바와 칩이 포개져 글자가 서로 겹쳐 보였다.
   //   헤더가 68px 2행으로 커지면서 눈에 띄게 됐을 뿐, 구멍 자체는 그 전부터 있었다.
-  const LEGACY_OWN_HEADER = ['/', '/vouchers', '/stays', '/group-buy', '/map']
+  // 🩸 2026-08-24 (대표 신고 — "태블릿 메인이 예전 디자인"): 여기서 **홈(`/`)을 뺐다.**
+  //   위 2026-08-19 메모가 홈을 넣은 이유는 *"홈은 <lg 에서 지도/피드 홈이라 자체 헤더를 갖는다"*
+  //   였는데, 같은 날 홈 분기가 **md(768)** 로 내려가면서 그 전제가 깨졌다 — md~lg 홈은 이제
+  //   `PcHomePage`(자체 헤더 없음)라, 여기서 null 을 내면 **태블릿에 헤더가 통째로 사라진다.**
+  //   <md 는 `hidden md:block` 이 CSS 로 이미 숨기므로 모바일 이중 헤더도 생기지 않는다.
+  //   ⚠️ `HomeRoute` 의 경계와 **짝이다.** 한쪽만 되돌리면 이 구간이 다시 깨진다
+  //      (가드: `home-tablet-breakpoint.test.ts`).
+  const LEGACY_OWN_HEADER = ['/vouchers', '/stays', '/group-buy', '/map']
   if (!isLg && LEGACY_OWN_HEADER.some((p) => location.pathname === p || (p !== '/' && location.pathname.startsWith(p + '/')))) return null
 
   // 🖥️ 2026-07-15~16 (당근 스타일 PC): 풀너비 페이지(홈·마이 등, 앱 사이드바 없음)는 상단바가 로고+탭을
