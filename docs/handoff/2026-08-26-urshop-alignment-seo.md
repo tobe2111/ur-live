@@ -30,7 +30,23 @@ CLAUDE.md 가 2026-08-25 에 이미 적어 둔 것을 내가 안 읽고 시작�
 | `error-rate-monitor.ts` | 5xx 집계 action `'5xx_path'`→`'x'` | 에러율 관측 무력화 |
 | `column-repairs.ts` | `ALTER TABLE zz ADD x TEXT` 가짜 항목 | repair-schema 오염 |
 
-되돌림: `1ba82ae`. 훅 설치 직후 **그 커밋을 실제로 한 번 막았다**(죽은 프로세스의 자물쇠 잔존 감지).
+되돌림: `1ba82ae`(5건) + `fa12a85`(**여섯 번째** — `cron-beat-retirement.ts` 의 개명 판정).
+훅 설치 직후 그 커밋을 실제로 한 번 막았다(죽은 프로세스의 자물쇠 잔존 감지).
+
+### 🩸 여섯 번째는 CI 가 나 대신 잡았다 — 내 수습이 틀린 방법이었다
+
+첫 수습에서 `git diff origin/main...HEAD -- <경로 목록>` 으로 봤는데 **그 경로 목록을 손으로 골랐다.**
+고른 순간 못 고른 것은 안 보인다. 그리고 CI 가 빨간불을 줬을 때 **또** "내 문구 변경 탓"부터 의심했다.
+
+⇒ 사람이 경로를 고르지 않게 **`scripts/check-branch-scope.mjs`** 를 만들었다.
+origin/main 대비 **바뀐 파일 전부**에서 주입 지문 6종을 찾는다
+(`if (false)` · `=> p` 항등 대체 · `// (… 제거)` · `__probe-*` import · 가짜 `mk(` · `VALUES (?, 'x',`).
+audit-gate + verify.yml(strict) 등록. 충돌 마커 검사 바로 옆에 뒀다 — **같은 클래스**다:
+git 이 안 막아 주고, 에러도 안 나고, CI 가 엉뚱한 데서 넘어져야 알게 되는 종류.
+
+⚠️ **이 가드는 커밋된 상태만 본다(워킹트리 X).** pre-commit 짝
+(`check-no-injection-in-progress.sh`)과 **둘이 한 쌍**이고 한쪽만으론 반쪽이다.
+검증할 때도 워킹트리에 심으면 초록이 뜬다 — 실제로 한 번 헛검증했고, **커밋해서** 다시 확인했다.
 
 ### 여기서 배운 것 셋
 
