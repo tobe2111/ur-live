@@ -2926,7 +2926,7 @@
       "approveFailed": "승인에 실패했습니다"
     },
     "gateway": {
-      "title": "사업자 유저 가입 — 내 쇼핑몰 열기",
+      "title": "사업자 인증 — 내 상품 팔기",
       "heroTitle": "내 쇼핑몰에서 직접 판매하기",
       "heroDesc": "사업자 인증 한 번이면 내 유어샵이 진짜 쇼핑몰이 됩니다. 상품·이용권 등록 + 현금 정산 (플랫폼 수수료 기본 5%).",
       "kakaoBanner": "카카오 계정에 판매 기능이 추가됩니다. 유어샵·구매내역은 그대로 유지돼요.",
@@ -4660,7 +4660,7 @@
     "sheetTitleCreate": "만들기",
     "proposeDeal": "우리 동네 공구 제안하기",
     "proposeDealDesc": "원하는 가게를 제안하면 모아서 열어드려요",
-    "openMyShop": "내 쇼핑몰 열기 (사업자)"
+    "openMyShop": "내 가게 등록 (사업자)"
   },
   "broadcastNotify": {
     "loginRequired": "로그인이 필요합니다",
@@ -5979,11 +5979,11 @@
     "dashboardAria": "셀러 대시보드로 전환",
     "switching": "전환 중...",
     "sellerMode": "사업자 모드",
-    "applyAria": "셀러로 활동하기",
+    "applyAria": "내 가게 등록하기",
     "applyLabel": "셀러로 활동하기",
     "successMsg": "셀러 대시보드로 이동합니다!",
     "errorMsg": "셀러 전환에 실패했습니다",
-    "openMyShop": "내 쇼핑몰 열기",
+    "openMyShop": "내 가게 등록",
     "pendingAria": "셀러 심사 상태 보기",
     "statusAria": "셀러 상태 보기"
   },
@@ -6746,8 +6746,8 @@
     "agencyDashDesc": "소속 사업자·소개 가게 수익",
     "proposeGb": "동네 공구 제안",
     "proposeGbDesc": "원하는 가게 제안하면 모아서 열어드려요",
-    "openShop": "내 쇼핑몰 열기",
-    "openShopDesc": "사업자 등록 → 내 상품·이용권 판매",
+    "openShop": "내 가게 등록",
+    "openShopDesc": "카카오맵에서 내 가게를 찾아 이용권을 팔아요",
     "agencyBiz": "에이전시 사업",
     "agencyBizDesc": "가게 영업 → 2% 영구 수익"
   },

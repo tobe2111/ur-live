@@ -2926,7 +2926,7 @@
       "approveFailed": "Approval failed"
     },
     "gateway": {
-      "title": "Business account — open my shop",
+      "title": "Business verification",
       "heroTitle": "Sell directly from my shop",
       "heroDesc": "One business verification turns your linkshop into a real store. List products & vouchers and get cash settlements (5% base platform fee).",
       "kakaoBanner": "Selling features will be added to this Kakao account. Your linkshop and purchase history stay intact.",
@@ -4660,7 +4660,7 @@
     "sheetTitleCreate": "Create",
     "proposeDeal": "Propose a local group buy",
     "proposeDealDesc": "Suggest a shop and we’ll gather people to open it",
-    "openMyShop": "Open my shop (business)"
+    "openMyShop": "Register my store"
   },
   "broadcastNotify": {
     "loginRequired": "Login required",
@@ -5786,11 +5786,11 @@
     "dashboardAria": "Switch to seller dashboard",
     "switching": "Switching...",
     "sellerMode": "Business mode",
-    "applyAria": "Become a seller",
+    "applyAria": "Register my store",
     "applyLabel": "Become a seller",
     "successMsg": "Redirecting to seller dashboard!",
     "errorMsg": "Failed to switch to seller",
-    "openMyShop": "Open my shop",
+    "openMyShop": "Register my store",
     "pendingAria": "View seller review status",
     "statusAria": "View seller status"
   },
@@ -6750,8 +6750,8 @@
     "agencyDashDesc": "Earnings from partner stores",
     "proposeGb": "Propose a local deal",
     "proposeGbDesc": "Suggest a store and we will open a deal",
-    "openShop": "Open my shop",
-    "openShopDesc": "Register a business → sell products & vouchers",
+    "openShop": "Register my store",
+    "openShopDesc": "Find your store on the map and sell passes",
     "agencyBiz": "Agency business",
     "agencyBizDesc": "Recruit stores → 2% lifetime revenue"
   },

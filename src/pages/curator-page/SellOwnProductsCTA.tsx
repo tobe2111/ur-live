@@ -1,7 +1,7 @@
 /**
  * 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 유어샵 오너 화면 + 크리에이터 콘솔
  *   공용 사업자(판매) 진입 CTA. 기존 CuratorEarningsPage 내부 정의를 공유 컴포넌트로 추출(코드 동일).
- *   - 셀러 아님 → '인증받고 내 쇼핑몰 열기' (혜택 시트 → /seller/register/supplier?from=curator)
+ *   - 셀러 아님 → '사업자 인증하고 내 상품 팔기' (혜택 시트 → /seller/register/supplier?from=curator)
  *   - 승인됨 → '상품 등록'(/seller/products/new) · '이용권 등록'(/seller/meal-voucher/new) · '셀러 대시보드'
  *   - 심사중/반려/정지 → 상태 안내
  *   🏁 2026-06-26 (대표 — "상품·이용권 모두 전체 등록 페이지로"): 얄팍한 빠른등록 모달 제거 →
@@ -127,7 +127,7 @@ export default function SellOwnProductsCTA() {
       >
         <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0"><VerifiedSeal size={22} /></span>
         <span className="flex-1 min-w-0">
-          <span className="block text-[14.5px] font-extrabold">인증받고 내 쇼핑몰 열기</span>
+          <span className="block text-[14.5px] font-extrabold">사업자 인증하고 내 상품 팔기</span>
           <span className="block text-[11.5px] text-gray-300 mt-0.5">내 상품 판매 · 현금 정산 · 파란 인증 씰</span>
         </span>
         <span className="text-gray-400 text-lg leading-none">›</span>

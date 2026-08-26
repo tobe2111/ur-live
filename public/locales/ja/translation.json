@@ -2926,7 +2926,7 @@
       "approveFailed": "承認に失敗しました"
     },
     "gateway": {
-      "title": "事業者ユーザー登録 — マイショップを開く",
+      "title": "事業者認証",
       "heroTitle": "マイショップで直接販売",
       "heroDesc": "事業者認証1回でUrShopが本物のショップに。商品・利用券の登録＋現金精算（基本手数料5%）。",
       "kakaoBanner": "このカカオアカウントに販売機能が追加されます。UrShop・購入履歴はそのまま。",
@@ -4660,7 +4660,7 @@
     "sheetTitleCreate": "作成",
     "proposeDeal": "近所の共同購入を提案",
     "proposeDealDesc": "お店を提案すると人を集めて開催します",
-    "openMyShop": "マイショップを開く（事業者）"
+    "openMyShop": "店舗を登録"
   },
   "broadcastNotify": {
     "loginRequired": "ログインが必要です",
@@ -5733,11 +5733,11 @@
     "dashboardAria": "セラーダッシュボードへ切替",
     "switching": "切替中...",
     "sellerMode": "事業者モード",
-    "applyAria": "セラーとして活動する",
+    "applyAria": "店舗を登録する",
     "applyLabel": "セラーとして活動する",
     "successMsg": "セラーダッシュボードへ移動します!",
     "errorMsg": "セラー切替に失敗しました",
-    "openMyShop": "マイショップを開く",
+    "openMyShop": "店舗を登録",
     "pendingAria": "審査状況を見る",
     "statusAria": "セラー状態を見る"
   },
@@ -6750,8 +6750,8 @@
     "agencyDashDesc": "紹介した店舗の収益",
     "proposeGb": "ご近所共同購入の提案",
     "proposeGbDesc": "希望のお店を提案するとまとめて開催します",
-    "openShop": "マイショップを開く",
-    "openShopDesc": "事業者登録 → 商品・利用券を販売",
+    "openShop": "店舗を登録",
+    "openShopDesc": "地図で店舗を探してパスを販売",
     "agencyBiz": "エージェンシー事業",
     "agencyBizDesc": "店舗開拓 → 2%の永続収益"
   },

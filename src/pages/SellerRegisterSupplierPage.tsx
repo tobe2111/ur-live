@@ -221,7 +221,7 @@ export default function SellerRegisterSupplierPage() {
   if (existingStatus === 'pending' || existingStatus === 'active') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <SEO title="사업자 유저 가입 - 유어딜" description="내 쇼핑몰 열기 — 사업자 인증" url="/seller/register/supplier" noindex />
+        <SEO title="사업자 유저 가입 - 유어딜" description="사업자 인증 — 내 상품·이용권 판매" url="/seller/register/supplier" noindex />
         <div className="bg-white rounded-2xl ur-content-narrow w-full p-6 text-center space-y-4 shadow-sm">
           <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${
             existingStatus === 'active' ? 'bg-emerald-100' : 'bg-amber-100'
@@ -256,14 +256,14 @@ export default function SellerRegisterSupplierPage() {
 
   return (
     <div className="force-light-theme min-h-screen bg-gray-50 pb-20">
-      <SEO title="사업자 유저 가입 - 유어딜" description="내 쇼핑몰 열기 — 사업자 인증 후 상품·이용권 판매" url="/seller/register/supplier" noindex />
+      <SEO title="사업자 유저 가입 - 유어딜" description="사업자 인증 후 내 상품·이용권 판매" url="/seller/register/supplier" noindex />
 
       <div className="sticky top-0 z-20 bg-white border-b border-gray-100">
         <div className="flex items-center gap-3 px-4 py-3 max-w-2xl mx-auto">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1 -ml-1">
             <ChevronLeft className="w-5 h-5 text-gray-700" />
           </button>
-          <h1 className="text-base font-bold text-gray-900 flex-1">{t('seller.gateway.title', { defaultValue: '사업자 유저 가입 — 내 쇼핑몰 열기' })}</h1>
+          <h1 className="text-base font-bold text-gray-900 flex-1">{t('seller.gateway.title', { defaultValue: '사업자 인증 — 내 상품 팔기' })}</h1>
         </div>
       </div>
 

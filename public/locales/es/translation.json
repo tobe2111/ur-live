@@ -2246,7 +2246,7 @@
       "approveFailed": "Aprobación fallida"
     },
     "gateway": {
-      "title": "Cuenta de negocio — abrir mi tienda",
+      "title": "Verificación de negocio",
       "heroTitle": "Vende directamente desde mi tienda",
       "heroDesc": "Una verificación de negocio convierte tu linkshop en una tienda real. Publica productos y vales, y recibe liquidaciones (comisión base 5%).",
       "kakaoBanner": "Se añadirán funciones de venta a esta cuenta de Kakao. Tu linkshop e historial se mantienen.",
@@ -3980,7 +3980,7 @@
     "sheetTitleCreate": "Crear",
     "proposeDeal": "Proponer compra grupal local",
     "proposeDealDesc": "Sugiere una tienda y reuniremos gente para abrirla",
-    "openMyShop": "Abrir mi tienda (negocio)"
+    "openMyShop": "Registrar mi tienda"
   },
   "broadcastNotify": {
     "loginRequired": "Inicio de sesión requerido",
@@ -5733,11 +5733,11 @@
     "dashboardAria": "Cambiar al panel de vendedor",
     "switching": "Cambiando...",
     "sellerMode": "Modo empresa",
-    "applyAria": "Convertirse en vendedor",
+    "applyAria": "Registrar mi tienda",
     "applyLabel": "Convertirse en vendedor",
     "successMsg": "¡Redirigiendo al panel de vendedor!",
     "errorMsg": "Error al cambiar a vendedor",
-    "openMyShop": "Abrir mi tienda",
+    "openMyShop": "Registrar mi tienda",
     "pendingAria": "Ver estado de revisión",
     "statusAria": "Ver estado de vendedor"
   },
@@ -6750,8 +6750,8 @@
     "agencyDashDesc": "Ingresos de tiendas asociadas",
     "proposeGb": "Proponer compra local",
     "proposeGbDesc": "Sugiere una tienda y abrimos la oferta",
-    "openShop": "Abrir mi tienda",
-    "openShopDesc": "Registro de negocio → vende productos y cupones",
+    "openShop": "Registrar mi tienda",
+    "openShopDesc": "Encuentra tu tienda y vende pases",
     "agencyBiz": "Negocio de agencia",
     "agencyBizDesc": "Capta tiendas → 2% de ingresos permanentes"
   },

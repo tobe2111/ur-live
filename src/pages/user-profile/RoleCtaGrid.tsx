@@ -44,7 +44,9 @@ export default function RoleCtaGrid() {
       // 🧭 2026-06-10 (전략 정합 — 라이브 영구 중단·동네딜 집중): 라이브 셀러 CTA 제거,
       //   동네 공구 제안 + 역할 전환(사업자/에이전시) 중심으로 재구성.
       { icon: '🤝', title: t('roleCta.proposeGb', { defaultValue: '동네 공구 제안' }), desc: t('roleCta.proposeGbDesc', { defaultValue: '원하는 가게 제안하면 모아서 열어드려요' }), to: '/community-group-buy/new', show: () => !COMMUNITY_PROPOSAL_HIDDEN },
-      { icon: '🏪', title: t('roleCta.openShop', { defaultValue: '내 쇼핑몰 열기' }), desc: t('roleCta.openShopDesc', { defaultValue: '사업자 등록 → 내 상품·이용권 판매' }), to: '/seller/register/supplier', show: () => !hasSellerToken },
+      // 🏷️ 2026-08-26: '내 쇼핑몰 열기' → '내 가게 등록'. 유어샵은 가입하면 **이미 있다** — 여기서
+      //   새로 만드는 건 매장이다. 목적지도 매장 등록(/store/new)으로(대표 확정 '매장 등록이 선행').
+      { icon: '🏪', title: t('roleCta.openShop', { defaultValue: '내 가게 등록' }), desc: t('roleCta.openShopDesc', { defaultValue: '카카오맵에서 내 가게를 찾아 이용권을 팔아요' }), to: '/store/new', show: () => !hasSellerToken },
       { icon: '🤵', title: t('roleCta.agencyBiz', { defaultValue: '에이전시 사업' }), desc: t('roleCta.agencyBizDesc', { defaultValue: '가게 영업 → 2% 영구 수익' }), to: '/agency/register/business', show: () => !hasAgencyToken },
     ]
     return {

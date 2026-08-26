@@ -128,10 +128,10 @@ export default function LinkshopVisitorRails() {
           ) : (
             <Link to="/host/new" className="pointer-events-auto block rounded-2xl p-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-sm active:opacity-90">
               <span className="flex items-center gap-1.5 text-[13.5px] font-extrabold tracking-tight">
-                <Store className="w-4 h-4" aria-hidden="true" /> 나도 이런 유어샵, 5분이면
+                <Store className="w-4 h-4" aria-hidden="true" /> 나도 유어딜에서 팔아볼까?
               </span>
-              <span className="block mt-1 text-[11.5px] leading-snug text-white/70 dark:text-gray-500">유어딜에서 무료로 내 쇼핑몰을 열고 상품·이용권을 팔아보세요.</span>
-              <span className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-bold text-white dark:text-gray-900">내 유어샵 만들기 →</span>
+              <span className="block mt-1 text-[11.5px] leading-snug text-white/70 dark:text-gray-500">유어딜에 내 가게를 등록하고 이용권을 팔아보세요.</span>
+              <span className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-bold text-white dark:text-gray-900">내 가게 등록하기 →</span>
             </Link>
           )}
         </div>

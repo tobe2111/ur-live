@@ -2246,7 +2246,7 @@
       "approveFailed": "Échec de l’approbation"
     },
     "gateway": {
-      "title": "Compte professionnel — ouvrir ma boutique",
+      "title": "Vérification pro",
       "heroTitle": "Vendre directement depuis ma boutique",
       "heroDesc": "Une vérification pro transforme votre linkshop en vraie boutique. Publiez produits et bons, recevez vos règlements (commission de base 5%).",
       "kakaoBanner": "Les fonctions de vente seront ajoutées à ce compte Kakao. UrShop et historique conservés.",
@@ -3980,7 +3980,7 @@
     "sheetTitleCreate": "Créer",
     "proposeDeal": "Proposer un achat groupé local",
     "proposeDealDesc": "Suggérez un commerce, on réunit du monde pour l’ouvrir",
-    "openMyShop": "Ouvrir ma boutique (pro)"
+    "openMyShop": "Enregistrer ma boutique"
   },
   "broadcastNotify": {
     "loginRequired": "Connexion requise",
@@ -5733,11 +5733,11 @@
     "dashboardAria": "Basculer vers tableau de bord vendeur",
     "switching": "Basculement...",
     "sellerMode": "Mode entreprise",
-    "applyAria": "Devenir vendeur",
+    "applyAria": "Enregistrer ma boutique",
     "applyLabel": "Devenir vendeur",
     "successMsg": "Redirection vers le tableau de bord vendeur!",
     "errorMsg": "Échec du passage en mode vendeur",
-    "openMyShop": "Ouvrir ma boutique",
+    "openMyShop": "Enregistrer ma boutique",
     "pendingAria": "Voir l'état de la revue",
     "statusAria": "Voir l'état vendeur"
   },
@@ -6750,8 +6750,8 @@
     "agencyDashDesc": "Revenus des boutiques partenaires",
     "proposeGb": "Proposer un achat groupé local",
     "proposeGbDesc": "Suggérez une boutique, nous ouvrons l’offre",
-    "openShop": "Ouvrir ma boutique",
-    "openShopDesc": "Enregistrement pro → vendez produits et bons",
+    "openShop": "Enregistrer ma boutique",
+    "openShopDesc": "Trouvez votre boutique et vendez des pass",
     "agencyBiz": "Activité d’agence",
     "agencyBizDesc": "Recrutez des boutiques → 2% de revenus à vie"
   },

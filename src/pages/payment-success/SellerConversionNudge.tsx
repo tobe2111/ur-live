@@ -58,7 +58,7 @@ export default function SellerConversionNudge() {
           onClick={() => navigate('/seller/register/supplier?from=payment')}
           className="flex-1 py-2.5 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white text-sm font-bold rounded-lg transition-colors"
         >
-          내 쇼핑몰 열기 →
+          내 가게 등록하기 →
         </button>
         <button
           onClick={() => {

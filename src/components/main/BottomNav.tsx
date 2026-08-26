@@ -68,7 +68,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
           <UserPlus className="w-6 h-6 text-white" />
         </div>
         <div className="text-left flex-1">
-          <p className="text-[15px] font-bold text-white">{t('bottomNav.openMyShop', { defaultValue: '내 쇼핑몰 열기 (사업자)' })}</p>
+          <p className="text-[15px] font-bold text-white">{t('bottomNav.openMyShop', { defaultValue: '내 가게 등록 (사업자)' })}</p>
           <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.sellerNoTokenSub', { defaultValue: '카카오 계정으로 가입·로그인 없이 한 번에' })}</p>
         </div>
       </button>
@@ -503,7 +503,7 @@ export default function BottomNav() {
                         className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-100 dark:bg-[#1A2334] text-gray-900 dark:text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <UserPlus className="w-5 h-5" />
-                        {t('bottomNav.openMyShop', { defaultValue: '내 쇼핑몰 열기 (사업자)' })}
+                        {t('bottomNav.openMyShop', { defaultValue: '내 가게 등록 (사업자)' })}
                       </button>
                     </div>
                   )}

@@ -2926,7 +2926,7 @@
       "approveFailed": "批准失败"
     },
     "gateway": {
-      "title": "企业用户注册 — 开设我的商店",
+      "title": "商家认证",
       "heroTitle": "在我的商店直接销售",
       "heroDesc": "一次企业认证，您的UrShop即成为真正的商店。上架商品和使用券并获得现金结算（基础手续费5%）。",
       "kakaoBanner": "销售功能将添加到此Kakao账户。UrShop和购买记录保持不变。",
@@ -4660,7 +4660,7 @@
     "sheetTitleCreate": "创建",
     "proposeDeal": "提议社区团购",
     "proposeDealDesc": "推荐店铺，我们召集人一起开团",
-    "openMyShop": "开设我的商店（企业）"
+    "openMyShop": "注册我的门店"
   },
   "broadcastNotify": {
     "loginRequired": "需要登录",
@@ -5733,11 +5733,11 @@
     "dashboardAria": "切换到卖家后台",
     "switching": "切换中...",
     "sellerMode": "商家模式",
-    "applyAria": "成为卖家",
+    "applyAria": "注册我的门店",
     "applyLabel": "成为卖家",
     "successMsg": "正在前往卖家后台!",
     "errorMsg": "切换到卖家失败",
-    "openMyShop": "开设我的商店",
+    "openMyShop": "注册我的门店",
     "pendingAria": "查看审核状态",
     "statusAria": "查看卖家状态"
   },
@@ -6750,8 +6750,8 @@
     "agencyDashDesc": "合作店铺收益",
     "proposeGb": "社区团购提案",
     "proposeGbDesc": "提议想要的店铺，我们来开团",
-    "openShop": "开设我的商店",
-    "openShopDesc": "商家注册 → 销售商品·使用券",
+    "openShop": "注册我的门店",
+    "openShopDesc": "在地图上找到门店并销售优惠券",
     "agencyBiz": "代理业务",
     "agencyBizDesc": "开拓店铺 → 2%永久收益"
   },
