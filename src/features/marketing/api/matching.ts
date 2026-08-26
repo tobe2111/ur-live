@@ -42,7 +42,7 @@ export interface RegionStat {
 }
 export interface InfluencerMetrics {
   influencerId: string
-  handle: string | null       // 공개 링크샵 핸들(공개 식별자 — PII 아님)
+  handle: string | null       // 공개 유어샵 핸들(공개 식별자 — PII 아님)
   displayName: string | null  // 공개 프로필 표시명
   inflowClicks: number        // 유입(distinct anon_id)
   signups: number             // 가입/귀속(distinct user_id)

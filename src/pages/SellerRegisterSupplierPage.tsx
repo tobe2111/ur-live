@@ -4,7 +4,7 @@
  * 이전엔 진입점 5곳이 서로 다른 3개 가입 화면(레거시 별도계정 /seller/register ·
  * 막다른 /seller/register/business · 본 페이지)으로 흩어져 유저가 헷갈렸음 → 전부 여기로 통일.
  * 명칭 SSOT: "사업자 유저"(유저 + 사업자등록·판매승인) / 타겟 언어 "내 쇼핑몰".
- * 크리에이터(추천·커미션만)는 가입 불필요 — 상단 탈출구로 링크샵 안내(JoinChoice 모델).
+ * 크리에이터(추천·커미션만)는 가입 불필요 — 상단 탈출구로 유어샵 안내(JoinChoice 모델).
  *
  * 흐름:
  *   1. 카카오 로그인 필수 — 미로그인 시 마운트에서 즉시 /login?returnUrl (제출 401 발견 X)
@@ -270,7 +270,7 @@ export default function SellerRegisterSupplierPage() {
       <div className="ur-content-narrow px-4 lg:px-8 py-4 lg:py-6 space-y-4">
         {userName && (
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900">
-            <strong>{userName}</strong> {t('seller.gateway.kakaoBanner', { defaultValue: '카카오 계정에 판매 기능이 추가됩니다. 링크샵·구매내역은 그대로 유지돼요.' })}
+            <strong>{userName}</strong> {t('seller.gateway.kakaoBanner', { defaultValue: '카카오 계정에 판매 기능이 추가됩니다. 유어샵·구매내역은 그대로 유지돼요.' })}
           </div>
         )}
 
@@ -286,7 +286,7 @@ export default function SellerRegisterSupplierPage() {
           </div>
           <h2 className="text-base font-bold text-gray-900">{t('seller.gateway.heroTitle', { defaultValue: '내 쇼핑몰에서 직접 판매하기' })}</h2>
           <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-            {t('seller.gateway.heroDesc', { defaultValue: '사업자 인증 한 번이면 내 링크샵이 진짜 쇼핑몰이 됩니다. 상품·이용권 등록 + 현금 정산 (플랫폼 수수료 기본 5%).' })}
+            {t('seller.gateway.heroDesc', { defaultValue: '사업자 인증 한 번이면 내 유어샵이 진짜 쇼핑몰이 됩니다. 상품·이용권 등록 + 현금 정산 (플랫폼 수수료 기본 5%).' })}
           </p>
         </div>
 
@@ -294,7 +294,7 @@ export default function SellerRegisterSupplierPage() {
         <p className="text-[11px] text-gray-500 text-center">
           {t('seller.gateway.escape', { defaultValue: '상품 추천·커미션만 원하시나요? 가입 없이' })}{' '}
           <button onClick={() => navigate('/u/me')} className="font-bold text-emerald-700 underline underline-offset-2">
-            {t('seller.gateway.escapeLink', { defaultValue: '내 링크샵' })}
+            {t('seller.gateway.escapeLink', { defaultValue: '내 유어샵' })}
           </button>
           {t('seller.gateway.escapeSuffix', { defaultValue: '에서 바로 시작할 수 있어요.' })}
         </p>

@@ -17,7 +17,7 @@ import { authMiddleware, createJwt, type AuthVariables } from '../middleware/aut
 //   기존 authMiddleware (Bearer JWT only) 는 403. requireAuth() 는 Bearer + 쿠키 둘 다 지원.
 import { requireAuth, getCurrentUser } from '../middleware/auth';
 import { generateId } from '../../shared/utils';
-// 🔗 2026-07-03 이메일 가입도 링크샵 핸들 즉시 발급(카카오 경로와 대칭) — SSOT 재사용
+// 🔗 2026-07-03 이메일 가입도 유어샵 핸들 즉시 발급(카카오 경로와 대칭) — SSOT 재사용
 import { generateUniqueHandle } from '../utils/handle-generator';
 import { JWT_ACCESS_TOKEN_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '../../shared/constants';
 // PBKDF2 password hashing — Cloudflare Workers compatible (100k iterations, SHA-256)
@@ -79,7 +79,7 @@ authRouter.post('/register', rateLimit({ action: 'register', max: 5, windowSec: 
       [userId, email, passwordHash, name, phone ?? null]
     );
 
-    // 🔗 2026-07-03 (대표 승인 "모두 이상적으로" — 웨지 깔때기): 가입 즉시 링크샵 핸들 발급(카카오 경로와 대칭).
+    // 🔗 2026-07-03 (대표 승인 "모두 이상적으로" — 웨지 깔때기): 가입 즉시 유어샵 핸들 발급(카카오 경로와 대칭).
     //   신규 유저라 handle 확정 NULL → 조회 왕복 없이 UPDATE 1회. best-effort(실패 시 lazy backfill 커버).
     try {
       const handle = await generateUniqueHandle(c.env.DB, name, undefined, undefined);

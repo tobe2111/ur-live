@@ -1,5 +1,5 @@
 /**
- * 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 링크샵 오너 화면 + 크리에이터 콘솔
+ * 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 유어샵 오너 화면 + 크리에이터 콘솔
  *   공용 사업자(판매) 진입 CTA. 기존 CuratorEarningsPage 내부 정의를 공유 컴포넌트로 추출(코드 동일).
  *   - 셀러 아님 → '인증받고 내 쇼핑몰 열기' (혜택 시트 → /seller/register/supplier?from=curator)
  *   - 승인됨 → '상품 등록'(/seller/products/new) · '이용권 등록'(/seller/meal-voucher/new) · '셀러 대시보드'
@@ -145,9 +145,9 @@ export default function SellOwnProductsCTA() {
 // 🏁 2026-06-26 (대표 — 일반→인증 유저 전환 혜택 안내): 혜택 바텀시트.
 function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () => void }) {
   const benefits: { icon?: string; seal?: boolean; t: string; d: string }[] = [
-    { icon: '🛍️', t: '내 상품 직접 판매', d: '링크샵이 곧 내 쇼핑몰 — 내가 파는 상품이 주인공' },
+    { icon: '🛍️', t: '내 상품 직접 판매', d: '유어샵이 곧 내 쇼핑몰 — 내가 파는 상품이 주인공' },
     { icon: '💰', t: '현금 정산', d: '판매 대금과 추천 수익을 현금으로 받아요' },
-    { seal: true, t: '이름 옆 파란 인증 씰', d: '방문자에게 신뢰를, 다른 링크샵과 차별을' },
+    { seal: true, t: '이름 옆 파란 인증 씰', d: '방문자에게 신뢰를, 다른 유어샵과 차별을' },
     { icon: '🎟️', t: '이용권 판매 채널', d: '동네 공구·교환권도 함께 판매' },
   ]
   return (

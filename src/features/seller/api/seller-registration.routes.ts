@@ -399,7 +399,7 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     const user = await db.prepare('SELECT name, email FROM users WHERE id = ?').bind(userId).first<Record<string, any>>();
     const userName = user?.name || sessionUser.name || '셀러';
     const userEmail = user?.email || sessionUser.email || '';
-    // 🏁 2026-06-17 (#2 정체성 연속성): 유저가 사업자 유저가 돼도 /u/{handle} 링크샵 정체성(배너/소개/
+    // 🏁 2026-06-17 (#2 정체성 연속성): 유저가 사업자 유저가 돼도 /u/{handle} 유어샵 정체성(배너/소개/
     //   사진/SNS)이 유지되도록, 큐레이터 프로필을 신규 셀러로 1회 복사할 준비. 컬럼 없는 env 대비 별도 try.
     let curatorProfile: Record<string, any> | null = null;
     try {

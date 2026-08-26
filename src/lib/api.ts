@@ -677,7 +677,7 @@ api.interceptors.response.use(
       }
       // 🛡️ 2026-06-30 (대표 신고 — /admin ↔ /admin/login 무한 리다이렉트 루프 근본수정):
       //   이 블록은 *소비자(user) 세션* 401 경로다. 대시보드(admin/seller/agency)에 이미 로그인(토큰 존재)한
-      //   사용자가 페이지에서 소비자 엔드포인트(예: 링크샵 프리페치 /api/curator/me/dashboard)를 호출해 401 나면,
+      //   사용자가 페이지에서 소비자 엔드포인트(예: 유어샵 프리페치 /api/curator/me/dashboard)를 호출해 401 나면,
       //   기존엔 currentPath 만 보고 무조건 대시보드 로그인으로 보냈다 → 대시보드 토큰은 안 지우니 PublicRoute 가
       //   즉시 다시 /admin 으로 튕겨 **무한 루프**(대표 화면: /admin↔/admin/login + curator 401 반복).
       //   수정: 해당 역할 토큰이 *없을 때만*(진짜 미인증) 로그인으로 보낸다. 토큰이 있으면 그 대시보드는

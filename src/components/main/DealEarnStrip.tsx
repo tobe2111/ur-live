@@ -2,7 +2,7 @@
  * 🛡️ 2026-06-01: 홈(교환권) 상단 "딜 모으는 법" 띠.
  *   교환권을 보다가 "딜이 부족한데?" → 크리에이터 활동으로 유도하는 바이럴 루프.
  *   정적(=fetch 0) 이라 즉시 렌더 — 홈 first-paint 영향 없음.
- *   각 카드는 실제 적립 경로(링크샵/매장영입/추천/충전)로 연결.
+ *   각 카드는 실제 적립 경로(유어샵/매장영입/추천/충전)로 연결.
  */
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -18,7 +18,7 @@ export default function DealEarnStrip() {
   const items = [
     {
       icon: Link2,
-      label: t('dealEarn.linkshop', { defaultValue: '링크샵 공유' }),
+      label: t('dealEarn.linkshop', { defaultValue: '유어샵 공유' }),
       desc: t('dealEarn.linkshopDesc', { defaultValue: '담고 공유하면 커미션 딜' }),
       to: '/user/profile',
       tint: 'bg-gray-100 text-gray-700 dark:bg-white/[0.08] dark:text-gray-200',

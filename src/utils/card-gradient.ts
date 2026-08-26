@@ -56,7 +56,7 @@ export function cardGradient(dominant?: string | null): CardGradient {
   return build(rgb[0], rgb[1], rgb[2])
 }
 
-// 🎨 2026-06-18 (사용자 신고 — 방문자 모바일 링크샵 핀 카드 그라데이션 없음): 서버 dominant_color 가
+// 🎨 2026-06-18 (사용자 신고 — 방문자 모바일 유어샵 핀 카드 그라데이션 없음): 서버 dominant_color 가
 //   null 이고 외부호스트 이미지는 canvas 추출이 CORS taint 로 실패 → cardGradient(null) 단색 회색으로 보임.
 //   시드(카테고리/상품id) 기반 결정적 hex 를 폴백색으로 줘 항상 "컬러 그라데이션" 보장(추출 성공 시 실색이 덮어씀).
 function hslToHex(h: number, s: number, l: number): string {

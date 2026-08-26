@@ -25,7 +25,7 @@ const BrowseProductCard = memo(function BrowseProductCard({
   isMealVoucher?: boolean
   interested?: boolean
   onToggleInterest?: (e: React.MouseEvent, productId: number, productName: string | undefined, currentlyInterested: boolean) => void
-  // 🔗 2026-06-17 [LOADING_ADDITIVE] (링크샵 카드 통일): 네비 목적지 override(링크샵 핀 redirect URL 등).
+  // 🔗 2026-06-17 [LOADING_ADDITIVE] (유어샵 카드 통일): 네비 목적지 override(유어샵 핀 redirect URL 등).
   //   미지정 시 기존과 동일하게 /products/:id. memo/이미지 속성/prefetch 동작 불변(추가만).
   to?: string
   // 🎨 2026-06-18 (방문자 핀 카드 그라데이션 누락): dominant_color 없고 추출 실패(외부호스트 CORS) 시
@@ -90,7 +90,7 @@ const BrowseProductCard = memo(function BrowseProductCard({
         )}
         {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
         <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
-        {/* 🎨 2026-07-07 (링크샵 이용권 폴리시): 매장/위치 배지 — restaurant_name 있을 때만(주로 이용권). */}
+        {/* 🎨 2026-07-07 (유어샵 이용권 폴리시): 매장/위치 배지 — restaurant_name 있을 때만(주로 이용권). */}
         {product.restaurant_name && (
           <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-0.5 max-w-[85%] rounded-full bg-black/55 backdrop-blur-sm px-1.5 py-[3px] text-[10px] font-semibold text-white">
             <MapPin className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />

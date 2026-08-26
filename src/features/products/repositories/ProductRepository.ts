@@ -55,7 +55,7 @@ function expandSynonyms(token: string): string[] {
  *   null = 미탐지(컬럼 포함 시도), false = 없음(영구 제외), true = 있음.
  */
 let _dominantColorCol: boolean | null = null
-// 🏁 2026-06-22 (대표 — 링크샵 picker 적립률 표시): referral_commission_rate(migration 0271) 를 목록
+// 🏁 2026-06-22 (대표 — 유어샵 picker 적립률 표시): referral_commission_rate(migration 0271) 를 목록
 //   응답에 포함(추가만). dominant_color 와 동일한 optional-column 가드 — 미적용 DB 면 영구 제외(재시도 0).
 let _referralCommissionCol: boolean | null = null
 
@@ -98,7 +98,7 @@ export class ProductRepository {
     ];
     // dominant_color: 미적용 DB 면 제외(영구 캐시) → 매 요청 실패-재시도 제거.
     if (_dominantColorCol !== false) baseCols.push('dominant_color');
-    // referral_commission_rate: 동일 가드(미적용 DB 영구 제외). 링크샵 picker 적립률 배지용.
+    // referral_commission_rate: 동일 가드(미적용 DB 영구 제외). 유어샵 picker 적립률 배지용.
     if (_referralCommissionCol !== false) baseCols.push('referral_commission_rate');
     const LIST_COLUMNS = baseCols.join(', ');
     let query = `SELECT ${LIST_COLUMNS} FROM products WHERE is_active = 1

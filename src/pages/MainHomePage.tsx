@@ -37,7 +37,7 @@ export default function MainHomePage() {
     <>
       <SEO
         title={t('seo.home.title', { defaultValue: '유어딜 — 교환권·공동구매로 돈버는 쇼핑' })}
-        description={t('seo.home.description', { defaultValue: '딜로 스타벅스·편의점 교환권 즉시 교환. 링크샵·매장영입으로 딜 적립하고 동네 공동구매까지.' })}
+        description={t('seo.home.description', { defaultValue: '딜로 스타벅스·편의점 교환권 즉시 교환. 유어샵·매장영입으로 딜 적립하고 동네 공동구매까지.' })}
         url="/"
         jsonLd={[organizationJsonLd, webSiteJsonLd]}
       />

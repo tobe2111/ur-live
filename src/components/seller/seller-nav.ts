@@ -44,13 +44,13 @@ export const NAV_GROUPS: {
       // 🎟️ 2026-08-23 (대표 AB테스트 — "왼쪽 카테고리에도 이용권 등록 버튼이 있어야지"):
       //   셀러의 1번 작업이라 대시보드 바로 아래 상시 노출.
       { path: '/seller/meal-voucher/new', labelKey: 'seller.registerVoucher', icon: Ticket, mode: 'common' as SellerMode },
-      // 🏪 2026-07-19 (대표 확정 — "상품은 링크샵에서만"): 상품(물건) 판매 표면 = 링크샵. nav 최상단 진입.
+      // 🏪 2026-07-19 (대표 확정 — "상품은 유어샵에서만"): 상품(물건) 판매 표면 = 유어샵. nav 최상단 진입.
       ...(SELLER_STORE_ONLY_MODE ? [{ path: '/u/me', labelKey: 'seller.nav.myLinkshop', icon: Sparkles, mode: 'common' as SellerMode }] : []),
     ],
   },
   // 🏭 2026-06-04 (사용자 요청): 방송 그룹(라이브 방송/송출 키/쇼츠/라이브 분석) 숨김 — 셀러 대시보드 간소화.
   // 🏪 2026-07-19 (대표 확정 — SELLER_STORE_ONLY_MODE): 상품·소싱 그룹(온라인 상품 관리/도매 소싱) 숨김 —
-  //   셀러 대시보드 = 순수 매장(이용권) 콘솔. 상품 판매는 링크샵으로 일원화. 라우트/코드 보존(가역).
+  //   셀러 대시보드 = 순수 매장(이용권) 콘솔. 상품 판매는 유어샵으로 일원화. 라우트/코드 보존(가역).
   ...(SELLER_STORE_ONLY_MODE ? [] : [{
     // 🛡️ 2026-06-01: '판매'(12) → 상품·소싱 / 공구·숙소 / 주문·고객 3그룹 분할 (탐색성). mode/hideFor 보존.
     labelKey: 'seller.layout.products',
@@ -117,8 +117,8 @@ export const NAV_GROUPS: {
       { path: '/seller/promote-boosts', labelKey: 'seller.nav.promoteBoosts', icon: Rocket, mode: 'live' },
     ],
   },
-  // 🛡️ 2026-05-25 (migration 0278/0280): 큐레이터 링크샵 통합 — 셀러도 본인 user 계정 큐레이터 가능
-  // 🏭 2026-06-04 역할 큐레이션 — 링크샵/큐레이터/영입은 크리에이터 전용. 매장사장님에겐 숨김.
+  // 🛡️ 2026-05-25 (migration 0278/0280): 큐레이터 유어샵 통합 — 셀러도 본인 user 계정 큐레이터 가능
+  // 🏭 2026-06-04 역할 큐레이션 — 유어샵/큐레이터/영입은 크리에이터 전용. 매장사장님에겐 숨김.
   {
     labelKey: 'seller.layout.curator',
     hideFor: ['store_owner'],

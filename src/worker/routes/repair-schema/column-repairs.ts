@@ -86,13 +86,13 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     // 🛡️ 2026-06-12 (감사 1단계): 알림 설정 토글 실동작화 — push/email 발송 게이트 (system-push/system-email).
     { desc: 'users.push_enabled', sql: "ALTER TABLE users ADD COLUMN push_enabled INTEGER DEFAULT 1" },
     { desc: 'users.email_enabled', sql: "ALTER TABLE users ADD COLUMN email_enabled INTEGER DEFAULT 1" },
-    // 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵 — handle / bio / theme
+    // 🛡️ 2026-05-25 (migration 0278): 큐레이터 유어샵 — handle / bio / theme
     { desc: 'users.handle', sql: "ALTER TABLE users ADD COLUMN handle TEXT" },
     { desc: 'users.bio', sql: "ALTER TABLE users ADD COLUMN bio TEXT" },
-    // 🖼️ 2026-07-01 (대표 — 링크샵 판매자 정보 편집): 통신판매업신고번호. sellers 는 100컬럼 한도(예산제)라
+    // 🖼️ 2026-07-01 (대표 — 유어샵 판매자 정보 편집): 통신판매업신고번호. sellers 는 100컬럼 한도(예산제)라
     //   side table(seller_business_info)에 저장 — 공개 응답은 seller.routes 가 additive enrich.
     { desc: 'seller_business_info.mail_order_number', sql: "ALTER TABLE seller_business_info ADD COLUMN mail_order_number TEXT" },
-    // 🔗 2026-07-01 (대표 결정): users.linkshop_theme 필드 제거 — 링크샵은 방문자 전역 테마를 따름(죽은 필드).
+    // 🔗 2026-07-01 (대표 결정): users.linkshop_theme 필드 제거 — 유어샵은 방문자 전역 테마를 따름(죽은 필드).
     //   기존 DB 컬럼은 D1 DROP 위험이라 방치(무해). 신규 복구 대상에서 제외.
     // 🛡️ 2026-05-25 (migration 0279): 배송 재설계 — 지역 / 추적
     { desc: 'orders.region_code', sql: "ALTER TABLE orders ADD COLUMN region_code TEXT" },
@@ -759,7 +759,7 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     { desc: 'sellers.sns_tiktok', sql: "ALTER TABLE sellers ADD COLUMN sns_tiktok TEXT" },
     // 🛡️ 2026-05-27 (큐레이터 banner 편집): users.banner_url — 큐레이터 공개 페이지 배경.
     { desc: 'users.banner_url', sql: "ALTER TABLE users ADD COLUMN banner_url TEXT" },
-    // 🎨 2026-06-16 (링크샵 시안): 크리에이터 SNS 링크 (유튜브/인스타/틱톡).
+    // 🎨 2026-06-16 (유어샵 시안): 크리에이터 SNS 링크 (유튜브/인스타/틱톡).
     { desc: 'users.youtube_url', sql: "ALTER TABLE users ADD COLUMN youtube_url TEXT" },
     { desc: 'users.instagram_url', sql: "ALTER TABLE users ADD COLUMN instagram_url TEXT" },
     { desc: 'users.tiktok_url', sql: "ALTER TABLE users ADD COLUMN tiktok_url TEXT" },
@@ -890,7 +890,7 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     //   KakaoAuthService.upsertUser 도 동적으로 매핑 → 다음 로그인 시 자동, 이건 일괄 backfill.
     // 🏭 2026-06-05 [UNLOCK] (사용자 승인 — 정지원/디스크프리 계정 중첩 근본수정): 결정적 + 1:1 매칭만.
     //   기존 LIMIT 1(ORDER BY 없음)은 같은 email 의 user 가 둘 이상이면 어느 user 에 붙을지 비결정적 →
-    //   셀러를 엉뚱한 user 에 연결(링크샵이 옛 계정으로). 이제 email 이 정확히 1명일 때만(COUNT=1) 연결.
+    //   셀러를 엉뚱한 user 에 연결(유어샵이 옛 계정으로). 이제 email 이 정확히 1명일 때만(COUNT=1) 연결.
     { desc: 'backfill: sellers.linked_user_id (same-email, 1:1 only)', sql: `UPDATE sellers SET linked_user_id = (SELECT id FROM users u WHERE u.email = sellers.email ORDER BY u.id LIMIT 1), updated_at = datetime('now') WHERE (linked_user_id IS NULL OR linked_user_id = 0) AND email IS NOT NULL AND email != '' AND (SELECT COUNT(*) FROM users u2 WHERE u2.email = sellers.email) = 1` },
     // 🏭 2026-06-05 [UNLOCK]: users.email partial UNIQUE — 두 카카오 계정이 같은 email 로 분리 생성되는 것 차단.
     //   best-effort: 기존 중복 email 이 있으면 생성 실패(아래 catch) → 중복 정리 후 재실행 시 적용.

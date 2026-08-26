@@ -858,9 +858,9 @@ WHERE account LIKE 'user:%' GROUP BY account HAVING SUM(net) < 0;
 - 연결된 셀러 / 에이전시 계정 표시 (linked_user_id)
 - 상태 변경 (active/suspended/banned) — \`PATCH /api/admin/users/:id/status\``,
   },
-  // 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵 관리
+  // 🛡️ 2026-05-25 (migration 0278): 큐레이터 유어샵 관리
   {
-    key: 'curator-linkshop-admin', icon: '📌', title: '큐레이터 링크샵 관리', order: 800,
+    key: 'curator-linkshop-admin', icon: '📌', title: '큐레이터 유어샵 관리', order: 800,
     content: `### 큐레이터 시스템 개요 (migration 0278, 2026-05-25)
 
 모든 유저가 본인 공개 페이지 \`/u/:handle\` 보유. 상품 핀 → 어필리에이트 적립.

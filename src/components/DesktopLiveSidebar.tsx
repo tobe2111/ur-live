@@ -37,9 +37,9 @@ const MENU_ITEMS: NavItem[] = [
 
 // 🧭 2026-06-18 (대표 피드백 — "좌측 카테고리바 복잡"): CATEGORY 섹션 제거.
 //   맛집/미용/숙소/기타/일반은 동네딜(/group-buy) 페이지의 탭으로 이미 접근 가능 → 사이드바 중복 제거(단순화).
-//   사이드바는 '주요 목적지'만(홈/동네딜/공구제안/링크샵/마이) — 모바일 하단바와 정합.
+//   사이드바는 '주요 목적지'만(홈/동네딜/공구제안/유어샵/마이) — 모바일 하단바와 정합.
 
-// 🎟️ 2026-06-18 (대표 결정 — 5탭 통일: 홈/동네딜/이용권/링크샵/마이): 주문/찜/이용권은 마이페이지 안 탭으로
+// 🎟️ 2026-06-18 (대표 결정 — 5탭 통일: 홈/동네딜/이용권/유어샵/마이): 주문/찜/이용권은 마이페이지 안 탭으로
 //   접근 → 사이드바는 핵심만. '내 이용권' → '이용권'(QR 매장사용)으로 명칭/아이콘 통일(모바일 하단바와 동일).
 const MY_ITEMS: NavItem[] = [
   { labelKey: 'nav.myGbVouchers', labelDefault: '이용권', icon: Ticket, path: '/my-vouchers', active: (p) => p.startsWith('/my-vouchers') },
@@ -73,10 +73,10 @@ export default function DesktopLiveSidebar() {
   const location = useLocation()
   const pathname = location.pathname
   const search = location.search
-  // 🔗 2026-06-17 (대표 신고): PC 에 링크샵 진입 버튼 없음 → MY 섹션 최상단에 추가(모바일 BottomNav 와 동일 경로).
+  // 🔗 2026-06-17 (대표 신고): PC 에 유어샵 진입 버튼 없음 → MY 섹션 최상단에 추가(모바일 BottomNav 와 동일 경로).
   const linkshopPath = useLinkshopPath()
   const linkshopItem: NavItem = {
-    labelKey: 'nav.linkshop', labelDefault: '링크샵', icon: Store, path: linkshopPath,
+    labelKey: 'nav.linkshop', labelDefault: '유어샵', icon: Store, path: linkshopPath,
     active: (p) => p.startsWith('/u/') || p.startsWith('/profile/') || p.startsWith('/s/'),
   }
 
@@ -117,13 +117,13 @@ export default function DesktopLiveSidebar() {
           <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
             {t('nav.sectionMy', { defaultValue: 'My' })}
           </p>
-          {/* 순서 통일(모바일 하단바와 동일): 이용권 → 링크샵 → 마이 */}
+          {/* 순서 통일(모바일 하단바와 동일): 이용권 → 유어샵 → 마이 */}
           <NavBtn
             item={MY_ITEMS[0]}
             isActive={MY_ITEMS[0].active?.(pathname, search) ?? false}
             onClick={() => navigate(MY_ITEMS[0].path)}
           />
-          {/* 🔗 링크샵 — 본인 공개페이지(모바일 BottomNav 와 동일 경로) */}
+          {/* 🔗 유어샵 — 본인 공개페이지(모바일 BottomNav 와 동일 경로) */}
           <NavBtn
             item={linkshopItem}
             isActive={linkshopItem.active?.(pathname, search) ?? false}

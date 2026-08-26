@@ -98,7 +98,7 @@ app.get('/blog/rss', async (c) => {
   <channel>
     <title>유어딜 블로그</title>
     <link>${origin}/blog</link>
-    <description>이용권·교환권·동네딜·링크샵 가이드와 서비스 소식</description>
+    <description>이용권·교환권·동네딜·유어샵 가이드와 서비스 소식</description>
     <language>ko</language>
 ${items}
   </channel>

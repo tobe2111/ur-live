@@ -83,7 +83,7 @@ export function runDailyLane(group: DailyGroup, d: DailyLaneDeps): void {
       const { matureSupplierSettlements } = await import('../../features/supply/api/supply-settlement')
       await matureSupplierSettlements(env.DB)
     }))
-    // ⏳ 2026-06-15 링크샵: 추천 적립 성숙 — holding 상태 T+7(환불창) 경과 + 미환불 주문분을
+    // ⏳ 2026-06-15 유어샵: 추천 적립 성숙 — holding 상태 T+7(환불창) 경과 + 미환불 주문분을
     //   granted 로 확정 + 그때 딜 잔액 적립. 즉시적립 후 환불 시 회수불가(MAX0 clamp) 누수 차단.
     ctx.waitUntil(run('affiliate-mature', async () => {
       const { matureAffiliateEarnings } = await import('../utils/affiliate-credit')

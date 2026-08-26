@@ -46,7 +46,7 @@ type Bindings = {
 export const productsRoutes = new Hono<{ Bindings: Bindings }>();
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 🎬 2026-07-07 (대표 — "데모 상품 심어줘"): 링크샵 리디자인 확인용 데모 상품 시드 (키 게이트 공개).
+// 🎬 2026-07-07 (대표 — "데모 상품 심어줘"): 유어샵 리디자인 확인용 데모 상품 시드 (키 게이트 공개).
 //   admin 토큰 없이 호출하려고 key 로 게이트. ⚠️ 데모 도구 — 오픈 전 제거/보안 권장. 데모 상품(slug
 //   'demo-linkshop-N')만 생성/삭제하며 seller_id 는 요청값. POST 시드(멱등) / DELETE 제거.
 const DEMO_SEED_KEY = 'urdeal-demo-seed-2026';

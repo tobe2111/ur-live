@@ -59,7 +59,7 @@ describe('데모 판정 SSOT', () => {
   it('추첨은 매장 이용권 데모만 — 배송 데모는 제외', () => {
     expect(isRaffleDemo({ slug: 'demo-stay-1', category: 'stay_voucher' })).toBe(true)
     expect(isRaffleDemo({ slug: 'demo-deal-1', category: 'meal_voucher' })).toBe(true)
-    // 링크샵 배송 예시 — "응모" 화면이 성립하지 않는다
+    // 유어샵 배송 예시 — "응모" 화면이 성립하지 않는다
     expect(isRaffleDemo({ slug: 'demo-linkshop-1', category: 'food' })).toBe(false)
     // 데모가 아니면 카테고리와 무관하게 false
     expect(isRaffleDemo({ slug: null, category: 'stay_voucher' })).toBe(false)

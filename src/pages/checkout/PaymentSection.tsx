@@ -95,7 +95,7 @@ export default function PaymentSection({
         TOPUP_DISABLED ? (
           <div className="w-full py-3.5 px-4 rounded-2xl bg-gray-100 dark:bg-white/[0.06] text-center mb-3">
             <p className="text-sm font-bold text-gray-900 dark:text-white">딜이 {(totalBeforeDeal - dealBalance).toLocaleString()}딜 부족해요</p>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">딜은 친구 초대·링크샵 추천으로 모을 수 있어요</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">딜은 친구 초대·유어샵 추천으로 모을 수 있어요</p>
           </div>
         ) : (
         <a

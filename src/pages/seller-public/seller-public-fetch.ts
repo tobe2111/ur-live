@@ -1,5 +1,5 @@
 /**
- * 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사 — 사업자 링크샵 워터폴 완화):
+ * 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사 — 사업자 유어샵 워터폴 완화):
  *   `/u/:handle`(사업자)는 [curator fetch → SellerPublicPage lazy 청크 → seller /public fetch]가
  *   완전 직렬이라 로더가 2-RTT+청크만큼 길었다. 이 모듈은 셀러 `/public` 페치를 in-flight 공유로 —
  *   CuratorPage(부모)가 linked_seller 를 확인한 순간 warm 을 시작하고, SellerPublicPage(lazy 자식)가

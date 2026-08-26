@@ -15,7 +15,7 @@ export default function TrackLinkButton({ leadId }: { leadId: number }) {
 
   async function run() {
     const remembered = (() => { try { return localStorage.getItem(LAST_TARGET_KEY) || '' } catch { return '' } })()
-    const target = window.prompt('추적링크가 보낼 목적지 URL을 입력하세요.\n(매장 링크샵·딜 상세 등 — 인플루언서가 소개할 페이지)', remembered)
+    const target = window.prompt('추적링크가 보낼 목적지 URL을 입력하세요.\n(매장 유어샵·딜 상세 등 — 인플루언서가 소개할 페이지)', remembered)
     if (target === null) return
     const url = target.trim()
     if (!url) { toast.error('목적지 URL을 입력해주세요'); return }

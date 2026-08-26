@@ -84,7 +84,7 @@ export const COMMISSION_DEFAULTS = {
 
   /** 큐레이터 핀 어필리에이트 % — 큐레이터에게만 적립 (피구매자 X).
    *  BOTHSIDES 0.5 와 별도. products.referral_commission_rate 가 있으면 그쪽 우선.
-   *  2026-05-25 도입: 사용자 결정 — 링크샵 핀 단독 비율. */
+   *  2026-05-25 도입: 사용자 결정 — 유어샵 핀 단독 비율. */
   CURATOR_AFFILIATE_PCT: 1.0,
 
   /** 숙박 등 외부 카테고리 commission 상한 — exploding rate 방지 */
@@ -148,7 +148,7 @@ export const SHIPPING_DEFAULTS = {
   ENABLE_BUNDLING: true,
 } as const
 
-// ── ⑨ 큐레이터 링크샵 (migration 0278, 2026-05-25) ──────────────
+// ── ⑨ 큐레이터 유어샵 (migration 0278, 2026-05-25) ──────────────
 //   handle 정책 / 핀 상한 / 충돌 suffix 정책 SSOT.
 //   변경 시 본 상수만 수정 → 백엔드 + 클라이언트 자동 반영.
 export const CURATOR_DEFAULTS = {

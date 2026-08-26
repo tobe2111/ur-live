@@ -84,7 +84,7 @@ export default function MyDealHistoryPage() {
         </div>
       </div>
 
-      {/* Hero — 현재 잔액. 🎨 2026-06-10: 핑크 → 모노크롬 차콜 (B&W 디자인 정합, 링크샵과 동일 톤) */}
+      {/* Hero — 현재 잔액. 🎨 2026-06-10: 핑크 → 모노크롬 차콜 (B&W 디자인 정합, 유어샵과 동일 톤) */}
       <div className="ur-content-medium px-4 lg:px-8 pt-5">
         <div className="rounded-2xl p-5 text-white" style={{ background: 'linear-gradient(135deg, #2b2b2e 0%, #161618 60%, #0a0a0b 100%)' }}>
           <p className="text-[11px] font-medium opacity-80">현재 딜 잔액</p>

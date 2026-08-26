@@ -100,7 +100,7 @@ interface GroupBuyDetail {
   seller_id?: number
   seller_name?: string
   seller_username?: string
-  // 🔗 2026-06-21 (대표 제안): 셀러의 유저 링크샵 handle. 있으면 /u/{handle}(통합 링크샵)로, 없으면 /profile 폴백.
+  // 🔗 2026-06-21 (대표 제안): 셀러의 유저 유어샵 handle. 있으면 /u/{handle}(통합 유어샵)로, 없으면 /profile 폴백.
   seller_handle?: string
   seller_avatar?: string
   // 🛡️ 2026-05-27: 셀러 SNS 버튼 — 채팅/매너온도 X, SNS 만.
@@ -132,7 +132,7 @@ export default function GroupBuyDetailPage() {
   }, [])
   // 🛡️ 2026-05-15: 인플루언서 link 진입 (?ref=) — 단독 랜딩 모드
   const refUserId = searchParams.get('ref')
-  // 🧭 2026-06-10 (링크샵 적립): 핀 리다이렉트 ?aff=(유저 큐레이터) — 인플 ?ref= 와 별도 레일
+  // 🧭 2026-06-10 (유어샵 적립): 핀 리다이렉트 ?aff=(유저 큐레이터) — 인플 ?ref= 와 별도 레일
   // 🧭 2026-07-11 (감사 §R2): ?ref=(인플 share_url) 도 커미션 레일에 저장 — 기존엔 랜딩 배너
   //   플래그(refUserId)로만 쓰고 미저장 → share_url 진입 구매가 무적립. aff 우선(명시적 공구 파라미터).
   useEffect(() => { storeAffiliateRef(searchParams.get('aff') || searchParams.get('ref')) }, [searchParams])
@@ -404,7 +404,7 @@ export default function GroupBuyDetailPage() {
         if (code === 'INSUFFICIENT_POINTS') {
           // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
           if (TOPUP_DISABLED) {
-            toast.error('딜이 부족해요. 딜은 친구 초대·링크샵 추천으로 모을 수 있어요.')
+            toast.error('딜이 부족해요. 딜은 친구 초대·유어샵 추천으로 모을 수 있어요.')
             return
           }
           const charge = await confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')
@@ -586,7 +586,7 @@ export default function GroupBuyDetailPage() {
           >
             {detail.name}
           </h2>
-          {/* 🛡️ 2026-06-12: 내 링크샵 핀 — 공유 옆 1탭 (ProductCard 의 PinButton 재사용) */}
+          {/* 🛡️ 2026-06-12: 내 유어샵 핀 — 공유 옆 1탭 (ProductCard 의 PinButton 재사용) */}
           <PinButton
             productId={detail.id}
             price={detail.price}

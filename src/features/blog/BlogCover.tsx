@@ -17,7 +17,7 @@ const COVER_EMOJI: Array<[RegExp, string]> = [
   [/exchange|교환권|기프티콘/, '🎁'],
   [/voucher|이용권/, '🎟️'],
   [/dongne|동네딜/, '📍'],
-  [/linkshop|링크샵|쇼핑몰/, '🛍️'],
+  [/linkshop|유어샵|쇼핑몰/, '🛍️'],
   [/business|사업자|판매/, '🏪'],
   [/deal-points|포인트|딜/, '💰'],
   [/payment|결제/, '💳'],

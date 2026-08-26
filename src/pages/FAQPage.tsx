@@ -30,7 +30,7 @@ export default function FAQPage() {
     { id: 8, category: t('faq.catMember', { defaultValue: '회원' }), question: t('faq.q8', { defaultValue: '개인정보를 수정하고 싶어요' }), answer: t('faq.a8', { defaultValue: '마이페이지에서 배송지, 연락처 등을 수정하실 수 있습니다. 카카오 계정 정보는 카카오에서 직접 수정해주세요.' }) },
     // 🧠 2026-07-27 GEO (대표 — "구글 AI 개요에 우리 서비스가"): 영구중단된 라이브 FAQ 2건 → 서비스
     //   정의 Q&A 로 교체. "유어딜 = 무엇" 을 사이트가 스스로 답해야 검색 AI 가 엔티티로 인용 가능.
-    { id: 9, category: t('faq.catService', { defaultValue: '서비스' }), question: t('faq.q9', { defaultValue: '유어딜은 어떤 서비스인가요?' }), answer: t('faq.a9', { defaultValue: '유어딜(urdeal.kr)은 우리 동네 매장 이용권을 할인가로 구매해 매장에서 QR로 바로 사용하는 로컬 커머스 플랫폼입니다. 식사·뷰티·숙소 이용권과 기프티콘 교환권, 내 주변 동네딜 지도, 나만의 링크샵을 제공합니다.' }) },
+    { id: 9, category: t('faq.catService', { defaultValue: '서비스' }), question: t('faq.q9', { defaultValue: '유어딜은 어떤 서비스인가요?' }), answer: t('faq.a9', { defaultValue: '유어딜(urdeal.kr)은 우리 동네 매장 이용권을 할인가로 구매해 매장에서 QR로 바로 사용하는 로컬 커머스 플랫폼입니다. 식사·뷰티·숙소 이용권과 기프티콘 교환권, 내 주변 동네딜 지도, 나만의 유어샵을 제공합니다.' }) },
     { id: 10, category: t('faq.catService', { defaultValue: '서비스' }), question: t('faq.q10', { defaultValue: '이용권은 어떻게 사용하나요?' }), answer: t('faq.a10', { defaultValue: '구매한 이용권은 마이페이지 > 내 이용권에서 확인할 수 있고, 매장에서 QR 또는 PIN을 제시하면 바로 사용됩니다. 교환권(기프티콘)은 결제 즉시 발급됩니다.' }) },
   ]
 

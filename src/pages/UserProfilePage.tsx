@@ -206,7 +206,7 @@ export default function UserProfilePage() {
       <div className="mt-1 rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04] divide-y divide-black/[0.05] dark:divide-white/[0.05]">
         {/* referral 적립 현황 → /influencer (entry point) */}
         <ReferralEarnedCard />
-        {/* 링크샵(큐레이터) 수익 → /creator. 누적 0 이면 null. 사업자=현금 / user=딜 */}
+        {/* 유어샵(큐레이터) 수익 → /creator. 누적 0 이면 null. 사업자=현금 / user=딜 */}
         <CuratorEarningsCard />
         {/* /user/affiliate 고아 라우트 진입점 — 추천 링크 실적 */}
         <button

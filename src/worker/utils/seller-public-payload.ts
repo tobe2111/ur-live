@@ -2,7 +2,7 @@
 // 🚀 2026-07-11 (로딩 전수조사 후속 — 대표 "남은 개선 여지 진행, 가장 이상적으로"):
 //   셀러 공개 프로필 페이로드 조립 SSOT — seller.routes `GET /:id/public` 의 본문을 그대로 추출.
 //
-//   목적: 사업자 링크샵(`/u/:handle`)의 [curator fetch → seller /public fetch] 2-RTT 직렬을
+//   목적: 사업자 유어샵(`/u/:handle`)의 [curator fetch → seller /public fetch] 2-RTT 직렬을
 //   1-RTT 로 — curator.routes 가 linked seller 의 public 페이로드를 응답에 동봉(additive)할 수
 //   있게 라우트 핸들러와 **같은 함수**를 공유한다(쿼리/캐시키/enrich 로직 중복 0, 드리프트 0).
 //
@@ -106,7 +106,7 @@ export async function buildSellerPublicPayload(
     }
   } catch { /* additive — 생략 가능 */ }
 
-  // 🖼️ 2026-07-01 (대표 — 링크샵 판매자 정보 "항상 미등록" 수정): side table 에서 additive enrich.
+  // 🖼️ 2026-07-01 (대표 — 유어샵 판매자 정보 "항상 미등록" 수정): side table 에서 additive enrich.
   try {
     const sid2 = (seller as { id?: number }).id
     if (sid2) {

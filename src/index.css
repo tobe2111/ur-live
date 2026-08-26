@@ -380,7 +380,7 @@
 
 /* 🛠️ 2026-06-16: flex(justify-center) 로 가운데 정렬된 시트용 — translateX 없이 위로만 슬라이드.
    ⚠️ animate-sheet-up 은 `left-1/2 -translate-x-1/2` 시트 전용(translateX(-50%) 포함). flex 중앙정렬
-   시트(예: 링크샵 온보딩 모달, w-full 자식)에 쓰면 fill-mode 로 -50% 가 영구 유지돼 화면 왼쪽으로 잘림. */
+   시트(예: 유어샵 온보딩 모달, w-full 자식)에 쓰면 fill-mode 로 -50% 가 영구 유지돼 화면 왼쪽으로 잘림. */
 @keyframes sheet-rise {
   from { opacity: 0; transform: translateY(24px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -1019,7 +1019,7 @@ html.dark .gbd {
   100% { transform: translateX(-100%); }
 }
 
-/* 🎨 2026-06-18 링크샵 랜딩 마퀴(흐르는 헤드라인) — 끊김 없는 무한 루프.
+/* 🎨 2026-06-18 유어샵 랜딩 마퀴(흐르는 헤드라인) — 끊김 없는 무한 루프.
    콘텐츠를 2벌 나란히 두고 -50% 까지 이동 → seamless. prefers-reduced-motion 존중. */
 @keyframes marquee {
   0%   { transform: translateX(0); }

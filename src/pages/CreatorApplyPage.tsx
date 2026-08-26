@@ -60,7 +60,7 @@ export default function CreatorApplyPage() {
               className="mt-5 inline-block rounded-lg bg-gray-900 px-5 py-3 text-sm font-semibold text-white">
               지금 바로 시작하기 (카카오 1분)
             </a>
-            <p className="mt-2 text-xs text-gray-500">가입하면 내 링크샵이 자동으로 생기고, 딜을 담아 링크만 공유하면 됩니다.</p>
+            <p className="mt-2 text-xs text-gray-500">가입하면 내 유어샵이 자동으로 생기고, 딜을 담아 링크만 공유하면 됩니다.</p>
           </div>
         ) : (
           <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">

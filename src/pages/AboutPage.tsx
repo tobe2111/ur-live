@@ -124,8 +124,8 @@ export default function AboutPage() {
             <ValueCard
               icon={<Sparkles className="w-6 h-6" />}
               tag="크리에이터"
-              title="링크샵으로 공구 홍보"
-              desc="내 링크샵에 공구·교환권을 핀하고 공유. 친구가 사면 보너스, 매장 영입 수익까지."
+              title="유어샵으로 공구 홍보"
+              desc="내 유어샵에 공구·교환권을 핀하고 공유. 친구가 사면 보너스, 매장 영입 수익까지."
               color="purple"
             />
             <ValueCard
@@ -158,7 +158,7 @@ export default function AboutPage() {
             />
             <FeatureCard
               icon={<Sparkles className="w-5 h-5" />}
-              title="크리에이터 링크샵"
+              title="크리에이터 유어샵"
               desc="크리에이터가 동네 공구를 큐레이션·홍보하고, 매장은 새 손님을 얻는 선순환. 친구 초대 보너스까지."
             />
           </div>
@@ -325,7 +325,7 @@ export default function AboutPage() {
               { icon: <MapPin className="w-5 h-5" />, title: '교환권 · 매장 사용', desc: '디지털 교환권. 매장 지도. 미사용 환불. QR 없이 앱 화면만.' },
               { icon: <ShoppingBag className="w-5 h-5" />, title: '상품 / 주문', desc: '토스/가상계좌/카카오페이/딜 포인트. 배송 추적. 자동 D+5 정산.' },
               { icon: <Wallet className="w-5 h-5" />, title: '딜 포인트', desc: '1원 = 1딜 (수수료 ZERO 충전). 결제·딜 모으기에 사용.' },
-              { icon: <Sparkles className="w-5 h-5" />, title: '크리에이터 링크샵', desc: '공구·교환권을 핀해 공유. 친구 초대 보너스 + 매장 영입 수익.' },
+              { icon: <Sparkles className="w-5 h-5" />, title: '크리에이터 유어샵', desc: '공구·교환권을 핀해 공유. 친구 초대 보너스 + 매장 영입 수익.' },
               { icon: <Trophy className="w-5 h-5" />, title: '셀러 등급 / 수수료', desc: '신규→브론즈→실버→골드→플래티넘. 진급 시 수수료 차감 + 노출 가중.' },
               { icon: <Users className="w-5 h-5" />, title: '에이전시 통합 관리', desc: '담당 셀러·매장의 공구/주문/정산 한 화면. 정산 자동 일괄.' },
               { icon: <ShoppingBag className="w-5 h-5" />, title: '도매몰 (B2B)', desc: '제조사·판매사 도매 거래. 상품 일괄 등록·내보내기.' },
@@ -373,7 +373,7 @@ export default function AboutPage() {
               items={[
                 '이용권·교환권 사용 매장 1000개 확장',
                 '지역 공구 카테고리 확대 (뷰티·숙소·헬스)',
-                '크리에이터 링크샵 고도화',
+                '크리에이터 유어샵 고도화',
               ]}
             />
             <RoadmapCard

@@ -69,7 +69,7 @@ export default function AdminFunnelPage() {
 
       <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900">
         <p className="font-bold text-sm mb-1">📖 이 화면은?</p>
-        <p>사용자가 <strong>어디서 이탈하는지</strong>를 실제 이벤트로 측정합니다. 계측을 방금 심었으니 <strong>데이터가 쌓이는 데 며칠</strong> 걸려요. 숫자가 충분해지면 "동네딜 vs 링크샵" 정체성 결정을 감이 아니라 근거로 하실 수 있습니다.</p>
+        <p>사용자가 <strong>어디서 이탈하는지</strong>를 실제 이벤트로 측정합니다. 계측을 방금 심었으니 <strong>데이터가 쌓이는 데 며칠</strong> 걸려요. 숫자가 충분해지면 "동네딜 vs 유어샵" 정체성 결정을 감이 아니라 근거로 하실 수 있습니다.</p>
       </div>
 
       {isError && (

@@ -1,7 +1,7 @@
 /**
  * 🛡️ 2026-05-25: `/u/me` → 본인 큐레이터 공개페이지 redirect.
  *
- * 사용자 결정: 링크샵 탭은 본인 공개페이지 (`/u/:handle`) 로.
+ * 사용자 결정: 유어샵 탭은 본인 공개페이지 (`/u/:handle`) 로.
  * 핸들이 없으면 `/creator`(콘솔). (2026-06-17 HOSTING_HIDDEN — /host/new 숨김; 핀은 상품에서 추가)
  * 비로그인이면 `/login?returnUrl=/u/me`.
  */
@@ -69,7 +69,7 @@ export default function UMeRedirectPage() {
     return () => { alive = false }
   }, [navigate])
 
-  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): 비브랜드 "⏳ 링크샵 로딩 중..." 텍스트 → BrandLoader.
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): 비브랜드 "⏳ 유어샵 로딩 중..." 텍스트 → BrandLoader.
   //   목적지(/u/{handle} = CuratorPage)도 BrandLoader 라 위상동기로 한 로더처럼 이어짐.
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">

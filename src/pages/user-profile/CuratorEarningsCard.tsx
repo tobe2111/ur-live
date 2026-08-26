@@ -6,7 +6,7 @@
  *   - 일반 user (payout_mode='deal') → 딜 누적 표시 (TeamPointsCard 와 별개 — 큐레이션 한정)
  *
  * 본 카드는 큐레이터 페이지의 "수익" 부분을 마이페이지로 이전 (사용자 결정 2026-05-25):
- *   "링크샵 페이지에서는 수익이 보이면 안돼. 마이페이지에서 보여야지."
+ *   "유어샵 페이지에서는 수익이 보이면 안돼. 마이페이지에서 보여야지."
  */
 
 import { useEffect, useState } from 'react'
@@ -61,7 +61,7 @@ export default function CuratorEarningsCard() {
     >
       <span className="text-lg" aria-hidden="true">🛍️</span>
       <span className="flex-1 min-w-0">
-        <span className="block text-[13px] font-medium text-gray-900 dark:text-white">{t('my.curatorTitle', { defaultValue: '링크샵 수익' })}</span>
+        <span className="block text-[13px] font-medium text-gray-900 dark:text-white">{t('my.curatorTitle', { defaultValue: '유어샵 수익' })}</span>
         <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
           {isCash ? t('my.curatorCashSub', { defaultValue: '현금 정산 · 출금 가능' }) : t('my.curatorDealSub', { defaultValue: '누적 적립 · 1딜=1원' })}
         </span>

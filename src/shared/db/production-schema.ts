@@ -555,7 +555,7 @@ export interface UsersCuratorColumns {
   handle: string | null            // TEXT UNIQUE (partial idx: WHERE NOT NULL)
                                    //   regex: /^[a-z0-9_]{3,30}$/ — slugify + suffix
   bio: string | null               // TEXT — 큐레이터 한 줄 소개
-  // ⚰️ DEPRECATED (2026-07-01, 대표 결정): linkshop_theme 은 코드에서 미사용(죽은 필드) — 링크샵은
+  // ⚰️ DEPRECATED (2026-07-01, 대표 결정): linkshop_theme 은 코드에서 미사용(죽은 필드) — 유어샵은
   //   방문자 전역 테마(useTheme, /account/settings)를 따름. 기존 prod 컬럼은 D1 DROP 위험이라 방치(무해).
   //   신규 코드는 이 컬럼을 읽거나 쓰지 말 것. repair-schema/curator.routes 에서 참조 제거됨.
   linkshop_theme?: string          // (deprecated) TEXT DEFAULT 'dark' — 잔존 컬럼, 미사용
@@ -563,7 +563,7 @@ export interface UsersCuratorColumns {
 
 // ============================================================
 // product_pins 테이블 (migration 0278) — 큐레이터 핀
-// 모든 유저가 본인 링크샵에 상품 핀 가능. ref 어필리에이트 정산 단위.
+// 모든 유저가 본인 유어샵에 상품 핀 가능. ref 어필리에이트 정산 단위.
 // ⚠️ UNIQUE(user_id, product_id) — 중복 핀 불가 (toggle 동작).
 // ============================================================
 export interface ProductPinsTable {

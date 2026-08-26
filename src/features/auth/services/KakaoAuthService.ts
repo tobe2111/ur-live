@@ -26,7 +26,7 @@ import type {
   KakaoUser,
   User
 } from '../types';
-// 🔗 2026-07-03 [UNLOCK_LOADING] 링크샵 핸들 즉시 발급 SSOT — worker util 상대경로 import.
+// 🔗 2026-07-03 [UNLOCK_LOADING] 유어샵 핸들 즉시 발급 SSOT — worker util 상대경로 import.
 //   (worker 컨텍스트 실행이라 @/ alias 금지 — CLAUDE.md '배포 관련 절대 하지 말 것')
 import { generateUniqueHandle } from '../../../worker/utils/handle-generator';
 
@@ -323,7 +323,7 @@ export class KakaoAuthService {
         //   COALESCE(?, phone) 패턴 — kakao phone NULL 이면 기존 phone 유지.
         const validPhone = normalizeKakaoPhone(kakaoUser.phoneNumber)
         try {
-          // 🛡️ 2026-06-11 (사용자 신고 — 링크샵 프로필 이미지가 "영구적이지 않음"): 매 로그인마다
+          // 🛡️ 2026-06-11 (사용자 신고 — 유어샵 프로필 이미지가 "영구적이지 않음"): 매 로그인마다
           //   카카오 프로필로 무조건 덮어써서 큐레이터 인라인 편집(/me/profile)으로 올린 커스텀
           //   이미지(r2 업로드 '/api/media/...' 등)가 다음 로그인 때 증발했음.
           //   → 현재 값이 비었거나 카카오 CDN 출처일 때만 갱신(카카오 아바타 변경은 계속 동기화),
@@ -470,7 +470,7 @@ export class KakaoAuthService {
         } catch { /* 컬럼 미존재 — 비치명적, repair-schema 가 컬럼 추가 */ }
 
         // 🔗 2026-07-03 [UNLOCK_LOADING] (대표 승인 "1~4번 전부, 가장 이상적으로" — 웨지 전환 깔때기 P0):
-        //   가입 즉시 링크샵 핸들(/u/{handle}) 발급. 기존엔 첫 핀/큐레이터 접속 때 lazy 생성이라
+        //   가입 즉시 유어샵 핸들(/u/{handle}) 발급. 기존엔 첫 핀/큐레이터 접속 때 lazy 생성이라
         //   (curator.routes.ts:409·793) 대다수 신규 유저가 handle-less 상태 → "당신은 이미 쇼핑몰이
         //   있어요" 자산이 구매 넛지 시점에 준비 안 됨. 신규 유저는 handle 이 확정적으로 NULL 이므로
         //   조회 왕복 없이 UPDATE 1회로 즉시 배선(generateUniqueHandle 내부 UNIQUE 검사는 발급당 1회).
@@ -517,7 +517,7 @@ export class KakaoAuthService {
       if (user.email && kakaoUser.emailVerified === true) {
         // 🏭 2026-06-05 [UNLOCK] (사용자 승인 — 정지원/디스크프리 계정 중첩 근본수정):
         //   users.email 에 UNIQUE 제약이 없어, 두 카카오 계정이 같은 email 을 공유하면(또는 시드 중복)
-        //   이 자동연결이 '다른 사람의 미연결 셀러'를 이 유저에 붙여 링크샵이 옛 계정으로 뜰 수 있음.
+        //   이 자동연결이 '다른 사람의 미연결 셀러'를 이 유저에 붙여 유어샵이 옛 계정으로 뜰 수 있음.
         //   → email 이 정확히 이 유저 1명에게만 속할 때(모호하지 않을 때)만 연결. 모호하면 연결 보류(안전).
         // 🛡️ 2026-06-24 (속도 최적화): dupe COUNT 를 별도 SELECT → UPDATE 의 WHERE 서브쿼리로
         //   합침. 로그인당 D1 왕복 -1. 의미 동일(이 email 이 정확히 1명에게만 속할 때만 연결) +

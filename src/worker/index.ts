@@ -274,7 +274,7 @@ import { gbProposalsRoutes } from '../features/group-buy/api/gb-proposals.routes
 import { voucherDisputeRoutes, voucherDisputeAdminRoutes } from '../features/group-buy/api/voucher-dispute.routes';
 // 🛡️ 2026-05-20: requireAdmin 은 위 (line 127) 에서 이미 import — 중복 제거.
 import { ogRoutes } from './routes/og-image.routes';
-import { curatorRoutes } from './routes/curator.routes'; // 2026-05-25 큐레이터 링크샵
+import { curatorRoutes } from './routes/curator.routes'; // 2026-05-25 큐레이터 유어샵
 import { shippingRoutes } from './routes/shipping.routes'; // 2026-05-25 배송 재설계 (migration 0279)
 import { hostingRoutes } from './routes/hosting.routes'; // 2026-05-25 호스팅 (migration 0280)
 import { analyticsRoutes } from './routes/analytics.routes';
@@ -868,8 +868,8 @@ app.use('*', async (c, next) => {
           } });
       }
     } else if (url.pathname === '/blog') {
-      const bt = '유어딜 블로그 — 이용권·교환권·동네딜·링크샵 가이드';
-      const bd = '할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 나만의 링크샵까지. 유어딜 활용법과 서비스 소식을 전합니다.';
+      const bt = '유어딜 블로그 — 이용권·교환권·동네딜·유어샵 가이드';
+      const bd = '할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 나만의 유어샵까지. 유어딜 활용법과 서비스 소식을 전합니다.';
       const canon = `${origin2}/blog`;
       // 📝 목록 Blog+ItemList JSON-LD — payload 기반(콜드 timeout 시 '') 계산은 blog-ssr-meta.ts.
       const listJsonLd = buildBlogListJsonLd(ssrPayload, origin2, canon, bt, bd);
@@ -887,9 +887,9 @@ app.use('*', async (c, next) => {
           if (listJsonLd) el.append(`<script type="application/ld+json">${listJsonLd}</script>`, { html: true });
         } });
     }
-    // 🔗 2026-07-01 [UNLOCK_LOADING] (대표 승인 — 링크샵 전수조사): /u/:handle 링크샵 서버측 OG/canonical 주입.
+    // 🔗 2026-07-01 [UNLOCK_LOADING] (대표 승인 — 유어샵 전수조사): /u/:handle 유어샵 서버측 OG/canonical 주입.
     //   그간 CURATOR 슬롯은 __SSR_INITIAL_CURATOR__ 데이터만 주입하고 메타는 index.html 소비자 기본값(제네릭 홈)을
-    //   그대로 서빙 → 카톡/소셜 공유·비-JS 크롤러가 "정지원 링크샵"이 아니라 "유어딜 홈" 카드를 봄. 개인화 OG 코드는
+    //   그대로 서빙 → 카톡/소셜 공유·비-JS 크롤러가 "정지원 유어샵"이 아니라 "유어딜 홈" 카드를 봄. 개인화 OG 코드는
     //   실제 안 타는 app.get('*') fallback 에만 있었음(무효). WHOLESALE/BLOGPOST 와 동일하게 서빙 경로(HTMLRewriter)
     //   에서 rewrite. **SSR inject(__SSR_INITIAL_CURATOR__)·0-RTT·#root 비움·edgeCache 전부 불변 — 메타 rewrite만 additive.**
     // 🏬 2026-08-01 세션 ③-a 〔대표 UX 기준 ② — "OG 메타가 곧 매대다"〕
@@ -937,7 +937,7 @@ app.use('*', async (c, next) => {
         const cur = (JSON.parse(ssrPayload) as { curator?: { name?: string; bio?: string; handle?: string; profile_image?: string | null } })?.curator;
         if (cur && (cur.name || cur.handle)) {
           const cName = String(cur.name || '@' + (cur.handle || ''));
-          const cTitle = `${cName} 링크샵 - 유어딜`;
+          const cTitle = `${cName} 유어샵 - 유어딜`;
           const cDesc = String(cur.bio || '').slice(0, 200) || `${cName}님의 추천 — 교환권·이용권 모음`;
           const canon = `${origin2}/u/${cur.handle || ''}`;
           // 🖼️ 2026-07-01 (전수조사 후속 A): og:image 는 전용 OG 카드(1200×630 SVG, 이름·핸들·프로필 합성)를
@@ -1009,7 +1009,7 @@ app.use('*', async (c, next) => {
       }
     }
     // 🔎 2026-07-29 [UNLOCK_LOADING] (대표 "소비자 쪽 성능·SEO·UX 점검" — 라이브 실측 수리):
-    //   **정적 소비자 표면(`/`·`/vouchers`·`/browse`·`/map`)** + **셀러 링크샵(SELLER slot)** 서버 메타/canonical.
+    //   **정적 소비자 표면(`/`·`/vouchers`·`/browse`·`/map`)** + **셀러 유어샵(SELLER slot)** 서버 메타/canonical.
     //   실측: 앞 셋은 홈 메타를 그대로 서빙(title/description 동일, `og:url` 전부 `https://urdeal.kr`,
     //   canonical 없음)인데 sitemap 은 priority 0.9 로 제출 → 비-JS 크롤러엔 홈의 중복. `/s/*` 도 같은 상태
     //   (`/u/:handle` 만 2026-07-01 에 개인화됨). DETAIL/PRODUCT/CURATOR 와 **동일한 additive 패턴**.
@@ -1056,7 +1056,7 @@ app.use('*', async (c, next) => {
     } else {
       // 🖼️ 2026-07-07 [UNLOCK_LOADING] (대표 신고 "로딩 중간에 이상한 페이지들" — 전수조사 + "홈도 이상적으로"):
       //   **catch-all 디폴트 = URDEAL 정적 로더**. prerender 된 `#root` 에는 홈(=RestaurantMapPage list) shell 이
-      //   구워지는데, 기존 분기는 도매/대시보드/블로그/링크샵/상세만 특례 처리하고 **그 외(ELSE)를 안 막아**
+      //   구워지는데, 기존 분기는 도매/대시보드/블로그/유어샵/상세만 특례 처리하고 **그 외(ELSE)를 안 막아**
       //   `/vouchers`·`/browse`·`/products/:id`·`/live`·`/search` 등 소비자 라우트가 하드로드 첫 페인트에
       //   그 홈 shell 을 노출(콘텐츠 점프 + raw i18n 키 + "0곳"). **홈(`/`) 자신도** 그 shell(스켈레톤/0곳)을
       //   먼저 보였다가 lazy RestaurantMapPage 로더로 교체 → [shell → 로더 → 콘텐츠] 3단 점프였음.
@@ -1510,7 +1510,7 @@ app.use('/api/group-buy/products/*', publicCache(30), cacheControl(30));
 app.use('/api/group-buy/products/*/participants', publicCache(60), cacheControl(60));
 app.use('/api/group-buy/live-ticker', publicCache(30), cacheControl(30));
 app.use('/api/og/group-buy/*', publicCache(3600), cacheControl(3600)); // OG image 1h
-app.use('/api/og/curator/*', publicCache(3600), cacheControl(3600)); // 🖼️ 2026-07-01 링크샵 공유카드 — 공유마다 스크래퍼가 fetch → 1h 캐시(group-buy 와 동일)
+app.use('/api/og/curator/*', publicCache(3600), cacheControl(3600)); // 🖼️ 2026-07-01 유어샵 공유카드 — 공유마다 스크래퍼가 fetch → 1h 캐시(group-buy 와 동일)
 app.use('/api/currency/rates', publicCache(3600), cacheControl(3600)); // 환율 1h (전역 데이터)
 app.use('/api/banners', publicCache(300), cacheControl(300));    // 5 min (공개 배너)
 // 🛡️ 2026-04-22: 추가 공개 read-only 엔드포인트 캐싱 (성능 감사 결과)
@@ -1525,7 +1525,7 @@ app.use('/api/home/bundle', publicCache(60), cacheControl(60));
 app.use('/api/home/categories', publicCache(300), cacheControl(300));
 // 🛡️ 2026-04-30 perf audit: 추가 공개 read-only 엔드포인트 캐싱
 app.use('/api/sellers/*/public', publicCache(60), cacheControl(60));        // 셀러 공개 프로필 1min
-// 🏭 2026-06-04 (링크샵 로딩 근본수정): /api/curator/:handle 는 manual 헤더만 있어 caches.default 에
+// 🏭 2026-06-04 (유어샵 로딩 근본수정): /api/curator/:handle 는 manual 헤더만 있어 caches.default 에
 //   write 안 됨 → worker SSR inject 가 항상 edge-MISS → 매 요청 cold self-fetch(최대 1.5s). publicCache
 //   미들웨어가 cache.put 하여 SSR edge-HIT 0-RTT 보장. 공개 데이터(본인 편집은 /me/* + 클라 낙관).
 //   exact 1세그먼트 매칭 → /:handle/p/* redirect·/me/* 미영향.
@@ -1534,7 +1534,7 @@ app.use('/api/sellers/*/public', publicCache(60), cacheControl(60));        // �
 //   → curator.routes 의 owner-fresh 분기(line 178)가 사실상 dead → layout 결정 필드 linked_seller 가 stale캐시↔fresh 로 튐.
 //   edgeCache(bypassIfAuthed:true): 인증(소유자/세션) 요청은 캐시 우회 → 핸들러의 owner-aware 헤더(owner=no-store, 익명=max-age60+CDN900)가 그대로 적용.
 //   익명 방문자 + SSR self-fetch(무인증) + cron prewarm 은 그대로 caches.default 캐싱 → SSR 0-RTT/CDN 분리/KV-false 전부 불변(익명 경로 byte-동일).
-app.use('/api/curator/:handle', edgeCache(300));    // 링크샵 — 소유자/인증 bypass→fresh, 익명/SSR/cron 만 edge 캐싱
+app.use('/api/curator/:handle', edgeCache(300));    // 유어샵 — 소유자/인증 bypass→fresh, 익명/SSR/cron 만 edge 캐싱
 app.use('/api/sections', publicCache(120), cacheControl(120));              // 홈 섹션 2min (변동 적음)
 app.use('/api/seller-tiers', publicCache(300), cacheControl(300));          // 셀러 등급 5min (거의 안 변함)
 app.use('/api/blog/public', publicCache(180), cacheControl(180));           // 📝 2026-07-01 블로그 목록(exact) — 목록 SSR 0-RTT edge-hit + prewarm 대상. `/*`(아래)는 상세만 매칭
@@ -1986,7 +1986,7 @@ app.route('/api/admin/voucher-dispute', voucherDisputeAdminRoutes);
 // 🛡️ 2026-05-15: 동적 OG 이미지 (KakaoLink / Twitter / Meta 공유용)
 app.route('/api/og', ogRoutes);
 
-// 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵 (모든 유저가 /u/:handle 공개 페이지)
+// 🛡️ 2026-05-25 (migration 0278): 큐레이터 유어샵 (모든 유저가 /u/:handle 공개 페이지)
 app.route('/api/curator', curatorRoutes);
 
 // 🛡️ 2026-05-25 (migration 0279): 배송 추적 (tracker.delivery 무료 GraphQL + 외부 URL fallback)
@@ -2351,7 +2351,7 @@ const BASE_URL = 'https://urdeal.kr';
 //   서버 side rendering 의 OG meta tag 와 크롤러용 fallback HTML (search bot).
 const DEFAULT_OG = {
   title: '유어딜 - 돈버는 쇼핑, 이용권·교환권·동네딜',
-  desc: '할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 나만의 링크샵까지. 유어딜에서 돈버는 쇼핑.',
+  desc: '할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 나만의 유어샵까지. 유어딜에서 돈버는 쇼핑.',
   image: `${BASE_URL}/og-image.png`,
 };
 
@@ -2412,14 +2412,14 @@ app.get('*', async (c) => {
       }
     }
 
-    // 🏁 2026-06-12 (전 플로우 감사 🟡): /u/:handle 링크샵 + /group-buy/:id 공구 상세 —
+    // 🏁 2026-06-12 (전 플로우 감사 🟡): /u/:handle 유어샵 + /group-buy/:id 공구 상세 —
     //   카카오 공유의 핵심 표면 2곳이 generic OG 였음(스크래퍼는 JS 미실행이라 클라 SEO 무용).
     const curatorMatch = path.match(/^\/u\/([A-Za-z0-9_-]{1,40})(?:[/?#]|$)/);
     if (curatorMatch && curatorMatch[1] !== 'me') {
       const u = await DB.prepare('SELECT name, bio, profile_image, handle FROM users WHERE handle = ?')
         .bind(curatorMatch[1]).first<any>().catch(() => null);
       if (u) {
-        og.title = `${u.name || '@' + u.handle} 링크샵 - 유어딜`;
+        og.title = `${u.name || '@' + u.handle} 유어샵 - 유어딜`;
         og.desc = (u.bio || '').slice(0, 200) || `${u.name || '@' + u.handle}님의 추천 — 교환권·공구 모음`;
         const pi = u.profile_image as string | null;
         if (pi) og.image = pi.startsWith('r2://') ? `${BASE_URL}/api/media/${pi.slice(5)}` : (pi.startsWith('/') ? `${BASE_URL}${pi}` : pi);
@@ -2643,7 +2643,7 @@ export default {
         // 🏭 몰-first: 도매몰 도메인 비-도매몰 경로 → 카탈로그(/wholesale)로 302. (utongstart + 등록 몰 호스트)
         return Response.redirect(`${url.origin}/wholesale`, 302);
       }
-      // 🔗 2026-06-17 [UNLOCK_LOADING] 링크샵 URL 통일 (사용자 승인 "전체 통일 + 301"):
+      // 🔗 2026-06-17 [UNLOCK_LOADING] 유어샵 URL 통일 (사용자 승인 "전체 통일 + 301"):
       //   셀러 공개 URL /profile/:username · /s/:slug → 연결 유저 handle 있으면 /u/{handle} 로 301(영구).
       //   handle 없으면 통과(기존 SellerPublicPage 그대로). 검색 노출/외부링크를 /u/ 로 통일.
       //   /u/{seller-handle} 은 CuratorPage 가 linked_seller 감지해 SellerPublicPage 를 inline 렌더(기존 동작).

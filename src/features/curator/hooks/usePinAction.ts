@@ -64,13 +64,13 @@ export function usePinAction(): UsePinActionResult {
       if (result.handle_just_created && result.handle) {
         const shown = localStorage.getItem(HANDLE_TOAST_SHOWN_KEY)
         if (!shown) {
-          toast.success(`🎉 내 링크샵 생성! /u/${result.handle}`)
+          toast.success(`🎉 내 유어샵 생성! /u/${result.handle}`)
           try { localStorage.setItem(HANDLE_TOAST_SHOWN_KEY, '1') } catch { /* ignore */ }
         }
       }
 
       // 🛡️ 2026-05-28: 원클릭 추천 = 핀 추가 + 추천 링크 클립보드 복사 동시 (사용자 결정).
-      //   링크샵에 담김(핀) + 단톡방/스토리에 바로 붙여넣을 추천 링크 복사 → 행동 1단계.
+      //   유어샵에 담김(핀) + 단톡방/스토리에 바로 붙여넣을 추천 링크 복사 → 행동 1단계.
       let linkCopied = false
       try {
         const handle = result.handle || (user as { handle?: string })?.handle
@@ -84,16 +84,16 @@ export function usePinAction(): UsePinActionResult {
 
       // 수익 simulator — 5명 공유 시 예상 적립
       const copySuffix = linkCopied ? ' · 추천링크 복사됨' : ''
-      // ✨ 2026-07-04 링크샵 1단계 1b(linkshop-role-model §2 원칙3): 매장 업주(스토어프론트 모드)가
+      // ✨ 2026-07-04 유어샵 1단계 1b(linkshop-role-model §2 원칙3): 매장 업주(스토어프론트 모드)가
       //   담으면 "어디 갔는지 모름" 혼란 방지 — 하단 추천 섹션 위치 + opt-in 안내를 명시.
       const isStoreOwner = typeof localStorage !== 'undefined' && !!localStorage.getItem('seller_id')
       if (isStoreOwner) {
-        toast.success(`📌 내 링크샵 하단 '추천'에 담김${copySuffix} — 링크샵 편집 모드에서 '추천 ON' 하면 방문자에게 표시`)
+        toast.success(`📌 내 유어샵 하단 '추천'에 담김${copySuffix} — 유어샵 편집 모드에서 '추천 ON' 하면 방문자에게 표시`)
       } else if (price && Number.isFinite(price) && price > 0) {
         const expected = Math.round(price * 5 * (CURATOR_DEFAULTS.STATS_DEFAULT_RANGE_DAYS / 7) * 0.01)
-        toast.success(`📌 링크샵에 담김${copySuffix} · 5명 공유 시 예상 ${expected.toLocaleString()}원 적립`)
+        toast.success(`📌 유어샵에 담김${copySuffix} · 5명 공유 시 예상 ${expected.toLocaleString()}원 적립`)
       } else {
-        toast.success(`📌 링크샵에 담김${copySuffix} — 단톡방/스토리에 붙여넣기`)
+        toast.success(`📌 유어샵에 담김${copySuffix} — 단톡방/스토리에 붙여넣기`)
       }
     } catch (err) {
       toast.error('핀 추가 중 오류가 발생했습니다')
@@ -118,7 +118,7 @@ export function usePinAction(): UsePinActionResult {
       const result = await curatorApi.addPin(pid)
       if (result.success) {
         if (result.handle_just_created && result.handle) {
-          toast.success(`🎉 내 링크샵 생성! /u/${result.handle} · 첫 핀이 추가됐어요`)
+          toast.success(`🎉 내 유어샵 생성! /u/${result.handle} · 첫 핀이 추가됐어요`)
         } else {
           toast.success('📌 핀이 추가되었어요')
         }

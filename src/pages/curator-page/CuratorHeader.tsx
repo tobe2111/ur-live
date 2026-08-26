@@ -4,7 +4,7 @@
  *   ① 최상단 흐르는 마퀴(linkshop_headline) — 공지/헤드라인 옆으로 스크롤.
  *   ② 풀블리드 배너 히어로(banner_url) — 동그라미 아바타 대신 배너가 정체성. 없으면 그라데이션 폴백.
  *   ③ 이름/태그라인/SNS 중앙 정렬.
- *   유지: 이름/bio 인라인 편집, SNS 편집, 링크샵 주소(핸들) 변경 카드, 방문자 공유.
+ *   유지: 이름/bio 인라인 편집, SNS 편집, 유어샵 주소(핸들) 변경 카드, 방문자 공유.
  *   배너는 카카오 프로필과 별개의 전용 업로드(banner_url). 프로필 사진(profile_image)은
  *   OG/핀 썸네일 등에서 계속 쓰여 데이터는 유지하되 헤더 동그라미 렌더는 제거.
  *
@@ -24,7 +24,7 @@ import { curatorApi } from '@/features/curator/api/curator-api'
 import { toast } from '@/hooks/useToast'
 import { compressForUpload } from '@/lib/image-compress'
 
-// 🔗 2026-06-17 (#6 링크샵 통일): snsUrl → @/utils/sns-url 공유 (셀러 ProfileHeader 와 dedup)
+// 🔗 2026-06-17 (#6 유어샵 통일): snsUrl → @/utils/sns-url 공유 (셀러 ProfileHeader 와 dedup)
 
 interface CuratorHeaderProps {
   curator: {
@@ -60,7 +60,7 @@ export default function CuratorHeader({
   // 🏅 2026-07-02 (대표 — "처음 보는 유저는 저 문양이 뭔지 모름"): 이름 옆 파란 U 인증씰을 클릭하면
   //   "사업자 인증이 된 유저" 설명 팝오버. hover title 은 모바일 미노출이라 tap 기반으로 전환.
   const [showVerified, setShowVerified] = useState(false)
-  // 🔗 2026-06-17 (사용자 요청 — 공유 우선 + 주소변경 통합): 헤더 '내 링크샵 주소' 카드의 주소 변경 인라인.
+  // 🔗 2026-06-17 (사용자 요청 — 공유 우선 + 주소변경 통합): 헤더 '내 유어샵 주소' 카드의 주소 변경 인라인.
   const shareHost = typeof window !== 'undefined' ? window.location.host : 'urdeal.kr'
   const [editingHandle, setEditingHandle] = useState(false)
   const [handleVal, setHandleVal] = useState(curator.handle)
@@ -92,7 +92,7 @@ export default function CuratorHeader({
         onCuratorUpdate?.({ handle: r.handle })
         setEditingHandle(false)
         navigate(`/u/${r.handle}`, { replace: true })
-        toast.success('링크샵 주소가 변경됐어요')
+        toast.success('유어샵 주소가 변경됐어요')
       } else { setHandleStatus('bad'); setHandleMsg(r.error || '변경에 실패했어요') }
     } catch { setHandleStatus('bad'); setHandleMsg('변경에 실패했어요') }
   }
@@ -124,7 +124,7 @@ export default function CuratorHeader({
       if (!res.data?.success) { onCuratorUpdate?.({ accent: prev }); toast.error(res.data?.error || '저장 실패') }
     } catch { onCuratorUpdate?.({ accent: prev }); toast.error('저장 실패') }
   }
-  // 🎨 2026-06-16 링크샵 시안: SNS 링크 편집(소유자).
+  // 🎨 2026-06-16 유어샵 시안: SNS 링크 편집(소유자).
   const [editingSns, setEditingSns] = useState(false)
   const [snsForm, setSnsForm] = useState({
     youtube_url: curator.youtube_url || '',
@@ -133,7 +133,7 @@ export default function CuratorHeader({
   })
   async function saveSns() {
     if (saving) return
-    // 🏎️ 2026-06-17 (링크샵 데이터 변경 속도 감사): 낙관적 저장 — 즉시 반영 + 패널 닫기, 실패 시 되돌림.
+    // 🏎️ 2026-06-17 (유어샵 데이터 변경 속도 감사): 낙관적 저장 — 즉시 반영 + 패널 닫기, 실패 시 되돌림.
     const payload = {
       youtube_url: snsForm.youtube_url.trim(),
       instagram_url: snsForm.instagram_url.trim(),
@@ -172,7 +172,7 @@ export default function CuratorHeader({
     } catch { onCuratorUpdate?.({ headline: prev }); toast.error('저장 실패') }
   }
 
-  // 🏎️ 2026-06-17 (링크샵 데이터 변경 속도 감사): 낙관적 저장 — 값 즉시 반영 + 편집 닫기,
+  // 🏎️ 2026-06-17 (유어샵 데이터 변경 속도 감사): 낙관적 저장 — 값 즉시 반영 + 편집 닫기,
   //   PATCH 는 백그라운드. 실패 시 이전 값으로 되돌림.
   async function saveField(field: 'name' | 'bio', value: string) {
     if (saving) return
@@ -240,7 +240,7 @@ export default function CuratorHeader({
   useEffect(() => { setBannerBroken(false) }, [normalizedBanner])
   const showBanner = (bannerPreview || normalizedBanner) && !bannerBroken
   // 폴백 그라데이션 — 배너 없을 때도 완성된 히어로. 🎨 2026-07-20 (accent 잔재 정합): 옛 주황(#FF8A3D)
-  //   중간 스톱 → 브랜드 로즈(#E0526B) — 회색→로즈→잉크 온-브랜드 히어로(배너 없는 링크샵만 노출).
+  //   중간 스톱 → 브랜드 로즈(#E0526B) — 회색→로즈→잉크 온-브랜드 히어로(배너 없는 유어샵만 노출).
   const bannerGradient = 'linear-gradient(135deg, #6b7280 0%, #E0526B 42%, #1A2334 130%)'
 
   const hasSns = !!(curator.youtube_url || curator.instagram_url || curator.tiktok_url)
@@ -512,13 +512,13 @@ export default function CuratorHeader({
           </div>
         )}
 
-        {/* CTA — 본인: [내 링크샵 주소 카드: 공유+주소변경] / 방문자: 카카오 공유 + 복사 */}
+        {/* CTA — 본인: [내 유어샵 주소 카드: 공유+주소변경] / 방문자: 카카오 공유 + 복사 */}
         {isOwner ? (
           <div className="mt-4 max-w-md mx-auto">
             {/* 🔗 2026-06-17 (사용자 요청 — "링크 공유가 우선, 주소 변경과 묶어서"): 주소 표시 + 복사/카카오 공유 + 주소 변경 한 카드. */}
             <div className="rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#0F151D] p-3.5">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400">내 링크샵 주소</span>
+                <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400">내 유어샵 주소</span>
                 {!editingHandle && (
                   <button
                     onClick={() => { setEditingHandle(true); setHandleVal(curator.handle); setHandleStatus('idle'); setHandleMsg('') }}

@@ -333,7 +333,7 @@ export default function SellerPage() {
         />
 
         {/* 🗑️ 2026-06-26 (대표 — '의미 없음'): 셀러 트래킹 링크(/browse?seller=) 제거.
-            대상 /browse(쇼핑)는 SHOPPING_TAB_HIDDEN 으로 숨김 + 정식 공유 경로는 링크샵(/u/{handle}) 이라 obsolete. */}
+            대상 /browse(쇼핑)는 SHOPPING_TAB_HIDDEN 으로 숨김 + 정식 공유 경로는 유어샵(/u/{handle}) 이라 obsolete. */}
 
         {/* 🏪 2026-08-24 (대표): 1번 섹션 = 내 매장 — 등록 매장 카드(여러 개면 여러 개, 카드마다
             이용권 등록). 등록 매장이 없으면 이 자리가 STEP 1 게이트가 되고 아래 전부가 잠긴다. */}

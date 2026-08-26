@@ -84,7 +84,7 @@ export default function LoginPage() {
     returnUrlRef.current = safeInternalPath(raw, '/')
   }
   const returnUrl = returnUrlRef.current
-  // 🆕 2026-06-29 퍼널 계측: returnUrl 이 있으면 보호 라우트(결제/보관함/링크샵)에서 튕겨 온 것 = 로그인 벽 노출.
+  // 🆕 2026-06-29 퍼널 계측: returnUrl 이 있으면 보호 라우트(결제/보관함/유어샵)에서 튕겨 온 것 = 로그인 벽 노출.
   useEffect(() => { if (returnUrl && returnUrl !== '/') trackFunnel('login_wall_shown', { from: returnUrl }) }, [returnUrl])
   const isLoggedIn = !!user || hasConsumerSession()
   // 🛡️ 2026-05-01: ?switch=1 query — 명시적 계정 전환 의도 (다른 사람 디바이스 등).

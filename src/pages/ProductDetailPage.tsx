@@ -289,7 +289,7 @@ export default function ProductDetailPage() {
         setDealConfirm(null)
         // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
         if (TOPUP_DISABLED) {
-          showToast(t('groupBuy.insufficientDealEarn', { defaultValue: '딜이 부족해요. 딜은 친구 초대·링크샵 추천으로 모을 수 있어요.' }), 'error')
+          showToast(t('groupBuy.insufficientDealEarn', { defaultValue: '딜이 부족해요. 딜은 친구 초대·유어샵 추천으로 모을 수 있어요.' }), 'error')
           return
         }
         showToast(t('groupBuy.insufficientDeal', { defaultValue: '딜이 부족해요. 충전 페이지로 이동합니다.' }), 'error')
@@ -706,7 +706,7 @@ export default function ProductDetailPage() {
               비로그인: 회원가입 유도 (적립액 미리 표시 — 가입 동기 ↑)
             🏬 2026-08-02 — **몰 상품엔 안 그린다**(대표 UX 기준 ⑤ 본진 입구 금지).
               반찬가게 단톡방에서 온 손님에게 이 자리가 보여 주던 것은
-              *"🎁 회원가입하고 1판매당 N원 적립받기 / 내 링크샵에 담아 친구에게 추천만 해도 수익"* 였다.
+              *"🎁 회원가입하고 1판매당 N원 적립받기 / 내 유어샵에 담아 친구에게 추천만 해도 수익"* 였다.
               몰 홈은 `powered by 유어딜` 조차 클릭 못 하게 막아 뒀는데 카드 한 번 누르면 여기였다.
               공유(KakaoShareButton)는 **남긴다** — 단톡방 확산은 운영자에게 이득이고 유어딜 영입이 아니다. */}
         <div className="px-5 py-3 space-y-2">
@@ -735,14 +735,14 @@ export default function ProductDetailPage() {
                     } catch { /* silent */ }
                     showToast(
                       pinAdded
-                        ? '🔗 링크 복사 + 내 링크샵에 추가됨'
+                        ? '🔗 링크 복사 + 내 유어샵에 추가됨'
                         : t('productDetailPage.shareLinkCopied'),
                       'success'
                     )
                   }}
                   className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
                 >
-                  <span className="text-[15px] font-bold">📌 내 링크샵에 담기 + 추천 링크 복사</span>
+                  <span className="text-[15px] font-bold">📌 내 유어샵에 담기 + 추천 링크 복사</span>
                   <span className="text-[11px] opacity-90">1판매당 {amountStr} 적립 — 친구 공유 가능</span>
                 </button>
               )
@@ -754,7 +754,7 @@ export default function ProductDetailPage() {
                 className="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
               >
                 <span className="text-[15px] font-bold">🎁 회원가입하고 1판매당 {amountStr} 적립받기</span>
-                <span className="text-[11px] opacity-90">내 링크샵에 담아 친구에게 추천만 해도 수익</span>
+                <span className="text-[11px] opacity-90">내 유어샵에 담아 친구에게 추천만 해도 수익</span>
               </button>
             )
           })()}
@@ -850,7 +850,7 @@ export default function ProductDetailPage() {
         style={{ bottom: 'calc(env(safe-area-inset-bottom) + 96px)' }}
       >
         <div className="ur-content-wide mx-auto flex flex-col items-end gap-2.5">
-          {/* 🧭 2026-06-22: 중복 '담기' floating pill 제거 — 본문의 '📌 내 링크샵에 담기 + 추천 링크 복사'
+          {/* 🧭 2026-06-22: 중복 '담기' floating pill 제거 — 본문의 '📌 내 유어샵에 담기 + 추천 링크 복사'
                CTA(적립액 표시 + 링크 복사 포함)가 정규 담기 진입점. floating 은 보조 액션(선물)만 유지. */}
           <button
             onClick={() => setGiftModalOpen(true)}

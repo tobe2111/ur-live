@@ -1,5 +1,5 @@
 /**
- * 🧭 2026-06-22: 큐레이터 링크샵 페이지 데이터 모듈 캐시 (CuratorPage.tsx 에서 추출).
+ * 🧭 2026-06-22: 큐레이터 유어샵 페이지 데이터 모듈 캐시 (CuratorPage.tsx 에서 추출).
  *   추출 이유: picker(/u/me/add) 등 다른 작은 청크가 무거운 CuratorPage 청크를 끌어오지 않고
  *   캐시 무효화(invalidateCurator)만 가볍게 import 할 수 있도록.
  *
@@ -40,7 +40,7 @@ export function warmCurator(handle: string): void {
 }
 
 // 🏁 2026-06-22 (대표 — picker 에서 담은 게 즉시 반영): 핀 추가/삭제 후 모듈 캐시 무효화 →
-//   링크샵 재진입 시 stale(옛 핀) flash 없이 fresh 페인트. handle 미지정 시 전체 클리어
+//   유어샵 재진입 시 stale(옛 핀) flash 없이 fresh 페인트. handle 미지정 시 전체 클리어
 //   (picker 는 오너 본인 데이터만 바꾸므로 전체 클리어해도 무해 — 다음 진입에서 서버 fresh).
 export function invalidateCurator(handle?: string): void {
   if (handle) _curatorCache.delete(handle)

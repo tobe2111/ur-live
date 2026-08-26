@@ -59,7 +59,7 @@ describe('applySurfaceMeta — 배선', () => {
     expect(f.selectors).not.toContain('meta[name="twitter:image"]')
   })
 
-  it('og:image 를 주면 og/twitter 양쪽을 교체한다 (링크샵·상세)', () => {
+  it('og:image 를 주면 og/twitter 양쪽을 교체한다 (유어샵·상세)', () => {
     const f = fakeRewriter()
     applySurfaceMeta(f.rb, { ...META, ogImage: 'https://urdeal.kr/api/og/curator/x' })
     const imgs = f.attrs.filter(a => a.name === 'content' && a.value.includes('/api/og/curator/x'))
@@ -92,12 +92,12 @@ describe('applySurfaceMeta — 배선', () => {
   })
 })
 
-describe('buildSellerSurfaceMeta — 셀러 링크샵', () => {
+describe('buildSellerSurfaceMeta — 셀러 유어샵', () => {
   const payload = (d: unknown) => JSON.stringify({ success: true, data: d })
 
   it('표시 이름으로 제목을 만든다 (라이브 버그: /s/* 가 전부 "유어딜 홈" 메타였다)', () => {
     const m = buildSellerSurfaceMeta(payload({ name: '제아스컴퍼니', username: 'jea1612' }), 'https://urdeal.kr', '/s/jea1612')!
-    expect(m.pageTitle).toBe('제아스컴퍼니 링크샵 - 유어딜')
+    expect(m.pageTitle).toBe('제아스컴퍼니 유어샵 - 유어딜')
     expect(m.canonical).toBe('https://urdeal.kr/s/jea1612')
     expect(m.ogType).toBe('profile')
   })

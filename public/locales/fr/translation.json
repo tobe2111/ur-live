@@ -1809,7 +1809,7 @@
       "products": "🛒 Ventes en ligne",
       "groupbuy": "🏪 Achats groupés & séjours",
       "ordersCustomers": "Commandes & clients",
-      "curator": "Ma boutique de liens"
+      "curator": "Ma UrShop"
     },
     "nav": {
       "products": "Produits",
@@ -1823,7 +1823,7 @@
       "bundles": "Lots",
       "promoCodes": "Codes promo",
       "followers": "Abonnés",
-      "miniShop": "Paramètres Linkshop",
+      "miniShop": "Paramètres UrShop",
       "streamingGuide": "Guide de diffusion",
       "notifyFollowers": "Notifier les abonnés",
       "stays": "Bons d hébergement",
@@ -1838,7 +1838,7 @@
       "promoSpend": "Dépenses promo",
       "influencerDeals": "Collabs influenceurs",
       "experienceCampaigns": "Campagnes d'essai",
-      "myLinkshop": "Ma boutique",
+      "myLinkshop": "Ma UrShop",
       "reviewVerifications": "Vérifier les avis",
       "returns": "Demandes de remboursement",
       "operators": "Opérateurs",
@@ -2249,7 +2249,7 @@
       "title": "Compte professionnel — ouvrir ma boutique",
       "heroTitle": "Vendre directement depuis ma boutique",
       "heroDesc": "Une vérification pro transforme votre linkshop en vraie boutique. Publiez produits et bons, recevez vos règlements (commission de base 5%).",
-      "kakaoBanner": "Les fonctions de vente seront ajoutées à ce compte Kakao. Linkshop et historique conservés.",
+      "kakaoBanner": "Les fonctions de vente seront ajoutées à ce compte Kakao. UrShop et historique conservés.",
       "escape": "Vous voulez seulement recommander des produits ? Sans inscription —",
       "escapeLink": "aller à mon linkshop",
       "escapeSuffix": " et commencez tout de suite.",
@@ -3821,7 +3821,7 @@
     "restaurants": "Restaurants",
     "groupBuy": "Achat groupé",
     "my": "Mon",
-    "linkshop": "Linkshop",
+    "linkshop": "UrShop",
     "vouchers": "Bons",
     "dongnedeal": "Offres locales",
     "create": "Créer",
@@ -5374,7 +5374,7 @@
     "q8": "[TODO:fr] 개인정보를 수정하고 싶어요",
     "a8": "[TODO:fr] 마이페이지에서 배송지, 연락처 등을 수정하실 수 있습니다. 카카오 계정 정보는 카카오에서 직접 수정해주세요.",
     "q9": "Qu'est-ce que UrDeal ?",
-    "a9": "UrDeal (urdeal.kr) est une plateforme de commerce local : achetez des bons de commerces de quartier à prix réduit et utilisez-les en magasin avec un QR code. Bons repas, beauté et hébergement, coupons d'échange (gifticon), carte des offres à proximité et boutique de liens personnelle.",
+    "a9": "UrDeal (urdeal.kr) est une plateforme de commerce local : achetez des bons de commerces de quartier à prix réduit et utilisez-les en magasin avec un QR code. Bons repas, beauté et hébergement, coupons d'échange (gifticon), carte des offres à proximité et votre propre UrShop.",
     "q10": "Comment utiliser un bon ?",
     "a10": "Les bons achetés apparaissent dans Ma page > Mes bons ; présentez le QR ou le PIN en magasin. Les coupons d'échange sont émis immédiatement après le paiement."
   },
@@ -6136,7 +6136,7 @@
   "liveWs": {},
   "curator": {
     "notFound": "Curateur introuvable",
-    "notFoundTitle": "😢 Linkshop introuvable",
+    "notFoundTitle": "😢 UrShop introuvable",
     "fetchError": "Échec du chargement",
     "goHome": "Accueil",
     "pinCount": "Recommande {{count}} produits",
@@ -6150,7 +6150,7 @@
     "startBrowse": "Voir produits",
     "exploreShop": "Explorer",
     "earnings": {
-      "title": "Gains de mon Linkshop",
+      "title": "Gains de mon UrShop",
       "monthEarning": "Gains 30 jours",
       "clicks30d": "Clics 30 jours",
       "purchases30d": "Achats 30 jours",
@@ -6223,7 +6223,7 @@
   "dealEarn": {
     "title": "Gagner des Deals",
     "subtitle": "Cumulez et échangez contre des bons",
-    "linkshop": "Partager Link Shop",
+    "linkshop": "Partager UrShop",
     "linkshopDesc": "Partagez pour une commission",
     "recruit": "Recruter un magasin",
     "recruitDesc": "Commission sur chaque vente",
@@ -6660,7 +6660,7 @@
   },
   "my": {
     "earningsGroupTitle": "Mes gains",
-    "earningsGroupSub": "Parrainage · Linkshop · Invitations",
+    "earningsGroupSub": "Parrainage · UrShop · Invitations",
     "settingsGroupTitle": "Paramètres",
     "settingsGroupSub": "Notifications · Thème · Langue · Infos appli",
     "affiliateLinkTitle": "Liens de recommandation",

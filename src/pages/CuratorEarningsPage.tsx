@@ -38,7 +38,7 @@ export default function CuratorEarningsPage() {
   const { t } = useTranslation()
   const user = useAuthStore((s: any) => s.user)
   // 🎨 2026-06-17 (콘솔 @handle 표시 fix): dashboard select 가 handle 을 버려 user.handle(주로 null)에만
-  //   의존 → 헤더 @handle 미표시 + '내 링크샵' 이 /u/me 리다이렉트 홉. localStorage.user_handle
+  //   의존 → 헤더 @handle 미표시 + '내 유어샵' 이 /u/me 리다이렉트 홉. localStorage.user_handle
   //   (App/UMeRedirect/Kakao 가 기록, BottomNav 와 동일 소스)로 seed → 직접 /u/{handle} 진입.
   const [handle, setHandle] = useState<string | null>(() => {
     const fromUser = (user as any)?.handle
@@ -94,11 +94,11 @@ export default function CuratorEarningsPage() {
         </header>
 
         <div className="max-w-3xl mx-auto px-4 py-6">
-          {/* 🏁 2026-06-15 (옵션 1 콘솔): 크리에이터 핵심 동선 빠른 진입 — 링크샵. 🏁 2026-06-17: 공구 호스팅 숨김(HOSTING_HIDDEN) */}
+          {/* 🏁 2026-06-15 (옵션 1 콘솔): 크리에이터 핵심 동선 빠른 진입 — 유어샵. 🏁 2026-06-17: 공구 호스팅 숨김(HOSTING_HIDDEN) */}
           <div className={`grid ${HOSTING_HIDDEN ? 'grid-cols-1' : 'grid-cols-2'} gap-2 mb-5`}>
             <Link to={handle ? `/u/${handle}` : '/u/me'}
               className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.08] p-4 transition-colors">
-              <p className="text-[13px] font-bold text-gray-900 dark:text-white">🔗 내 링크샵</p>
+              <p className="text-[13px] font-bold text-gray-900 dark:text-white">🔗 내 유어샵</p>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">상품 핀 추가·정렬·공유</p>
             </Link>
             {!HOSTING_HIDDEN && (

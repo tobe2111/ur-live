@@ -25,7 +25,7 @@ interface CuratorPin {
   product_name?: string | null
   image_url?: string | null
   price?: number | null
-  // 🏁 2026-06-26 (대표 — 링크샵 카드를 쇼핑 카드와 동일하게): 할인/평점/구매수/대표색.
+  // 🏁 2026-06-26 (대표 — 유어샵 카드를 쇼핑 카드와 동일하게): 할인/평점/구매수/대표색.
   original_price?: number | null
   discount_rate?: number | null
   dominant_color?: string | null
@@ -69,7 +69,7 @@ export default function CuratorPinsSection({ handle, initialPins }: { handle?: s
   if (!handle || !pins || pins.length === 0) return null
 
   // 🏁 2026-06-17 (#4): 이미 /u/{handle} 위라면 '전체보기'는 같은 페이지로의 순환 링크 → 숨김.
-  //   /profile/{username}·/s/{username}(직접 셀러 페이지)에서만 큐레이터 링크샵으로 안내.
+  //   /profile/{username}·/s/{username}(직접 셀러 페이지)에서만 큐레이터 유어샵으로 안내.
   const onOwnLinkshop = typeof window !== 'undefined'
     && window.location.pathname.toLowerCase().startsWith(`/u/${handle.toLowerCase()}`)
 
@@ -81,11 +81,11 @@ export default function CuratorPinsSection({ handle, initialPins }: { handle?: s
         </h2>
         {!onOwnLinkshop && (
           <a href={`/u/${handle}`} className="text-[12px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-            링크샵 전체보기 →
+            유어샵 전체보기 →
           </a>
         )}
       </div>
-      {/* 🏁 2026-06-25 (대표 신고 — 카드 가로폭 좁음): 링크샵은 PC 에서도 430 액자라 viewport 기반
+      {/* 🏁 2026-06-25 (대표 신고 — 카드 가로폭 좁음): 유어샵은 PC 에서도 430 액자라 viewport 기반
           `sm:grid-cols-4` 가 액자 안에서 4열→카드 협소 + 우측 공백. PinGrid 와 동일하게 항상 2열. */}
       <div className="grid grid-cols-2 gap-3">
         {pins.map(pin => {

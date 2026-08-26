@@ -92,7 +92,7 @@ sellersRouter.get('/:id', async (c) => {
 });
 
 // 🚀 2026-07-11: 셀러 공개 페이로드 조립(자가치유 SELECT + enrich)은 utils/seller-public-payload.ts 로
-//   추출(SSOT) — curator.routes 가 linked_seller_public 동봉에 같은 함수를 공유(사업자 링크샵 1-RTT 화). 로직 불변.
+//   추출(SSOT) — curator.routes 가 linked_seller_public 동봉에 같은 함수를 공유(사업자 유어샵 1-RTT 화). 로직 불변.
 
 // GET /api/sellers/:id/public — 셀러 공개 프로필 (비인증, ID/username/slug 지원)
 sellersRouter.get('/:id/public', async (c) => {

@@ -49,7 +49,7 @@ export function slugifyHandle(seed: string | null | undefined): string {
  */
 // 🏭 2026-06-05 (사용자 신고 — /api/curator/user 400): 형식 검증과 예약어를 분리.
 //   format 검증(조회 route 가 사용)은 정규식만 — 예약어라도 이미 발급된 핸들은 조회 가능해야 함
-//   (안 그러면 'user'를 예약하자마자 기존 @user 링크샵이 400). 예약어는 신규 발급(isHandleAvailable)에서만 차단.
+//   (안 그러면 'user'를 예약하자마자 기존 @user 유어샵이 400). 예약어는 신규 발급(isHandleAvailable)에서만 차단.
 export function isValidHandleFormat(handle: string): boolean {
   return CURATOR_DEFAULTS.HANDLE_PATTERN.test(handle)
 }

@@ -1,5 +1,5 @@
 /**
- * 🔎 2026-07-29 (대표 "소비자 쪽 성능·SEO·UX 점검"): 정적 표면 · 셀러 링크샵의 서버 메타 빌더 + 배선.
+ * 🔎 2026-07-29 (대표 "소비자 쪽 성능·SEO·UX 점검"): 정적 표면 · 셀러 유어샵의 서버 메타 빌더 + 배선.
  *
  * `detail-ssr-meta.ts` 와 같은 이유로 분리한다 — `worker/index.ts` 의 HTMLRewriter 배선은 **결과값만**
  * 소비하고, 계산과 반복되는 `.on()` 체인은 여기 둔다(god 파일 래칫 준수).
@@ -9,7 +9,7 @@
  * 그래서:
  *   - `/`·`/vouchers`·`/browse` → title/description 3개가 동일한 홈 메타, `og:url` 전부 `https://urdeal.kr`,
  *     canonical 없음. 그런데 sitemap 은 뒤 둘을 priority 0.9 로 제출한다 → 크롤러엔 홈의 중복 3장.
- *   - `/s/:username` → 같은 링크샵인데 `/u/:handle`(CURATOR)만 개인화되고 이쪽은 "유어딜 홈" 메타.
+ *   - `/s/:username` → 같은 유어샵인데 `/u/:handle`(CURATOR)만 개인화되고 이쪽은 "유어딜 홈" 메타.
  * 클라 `<SEO>`(react-helmet)는 JS 렌더 후라 네이버 Yeti 가 못 본다 — `SEO.tsx` 의 2026-07-28 주석이
  * 같은 사실을 실측으로 기록해 뒀다(정적 토큰만 실효였다).
  */
@@ -27,7 +27,7 @@ export interface SurfaceRewriteMeta {
   title: string
   description: string
   canonical: string
-  /** 지정 시 og:type 도 교체(링크샵 = 'profile'). 없으면 기존 값 유지. */
+  /** 지정 시 og:type 도 교체(유어샵 = 'profile'). 없으면 기존 값 유지. */
   ogType?: string
   /** 지정 시 og:image / twitter:image 교체. 없으면 사이트 기본 OG 카드 유지. */
   ogImage?: string
@@ -96,7 +96,7 @@ interface SellerPublicPayload {
 }
 
 /**
- * 셀러 링크샵(`/s/:username`·`/profile/:username` — SELLER slot) 메타.
+ * 셀러 유어샵(`/s/:username`·`/profile/:username` — SELLER slot) 메타.
  * 페이로드(`/api/sellers/:id/public`)의 표시 이름·소개만 사용 — CURATOR 블록과 같은 최소 의존.
  * 이름을 못 구하면 `null`(기본 메타 유지) — 빈 제목으로 덮어써 더 나쁘게 만들지 않는다.
  */
@@ -113,10 +113,10 @@ export function buildSellerSurfaceMeta(
   }
   const shopName = String(sp?.name || sp?.business_name || '').trim()
   if (!shopName) return null
-  const title = `${shopName} 링크샵 - 유어딜`
+  const title = `${shopName} 유어샵 - 유어딜`
   const description =
     String(sp?.bio || '').trim().slice(0, 200) ||
-    `${shopName}의 이용권·상품을 유어딜 링크샵에서 만나보세요.`
+    `${shopName}의 이용권·상품을 유어딜 유어샵에서 만나보세요.`
   return {
     pageTitle: title,
     title,

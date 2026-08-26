@@ -275,7 +275,7 @@ export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
       const dynamicPaths: string[] = []
       for (const s of sellersResult.results ?? []) {
         if (s.username) dynamicPaths.push(`/api/sellers/${s.username}/public`)
-        // 🛡️ 2026-06-04 [LOADING_ADDITIVE]: 링크샵 기본탭(상품) sub-data warm — SellerPublicPage 첫 진입 cold D1 제거.
+        // 🛡️ 2026-06-04 [LOADING_ADDITIVE]: 유어샵 기본탭(상품) sub-data warm — SellerPublicPage 첫 진입 cold D1 제거.
         if (Number.isFinite(s.id)) dynamicPaths.push(`/api/products?seller_id=${s.id}&limit=20`)
       }
       for (const p of productsResult.results ?? []) {

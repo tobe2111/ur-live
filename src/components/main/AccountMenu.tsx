@@ -5,6 +5,7 @@ import {
   Bell, HelpCircle, Store, LogOut, Smartphone, LogIn, UserPlus,
 } from 'lucide-react'
 import { getUserNameSync, getUserEmail } from '@/utils/auth'
+import { sellerEntryPath } from '@/utils/seller-entry'
 
 /**
  * 👤 계정 드롭다운 패널 (2026-08-19 — 대표가 공유한 그루폰 계정 패널 시안).
@@ -148,7 +149,7 @@ export default function AccountMenu({
       <div className="mx-5 h-px bg-gray-100 dark:bg-[#2A3446]" />
       <button
         role="menuitem"
-        onClick={() => go('/seller')}
+        onClick={() => go(sellerEntryPath())}
         className="w-full flex items-center gap-3 px-5 py-2.5 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
       >
         <Store className="shrink-0 w-[17px] h-[17px]" strokeWidth={1.9} />

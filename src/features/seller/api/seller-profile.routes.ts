@@ -348,7 +348,7 @@ sellerProfileRoutes.get('/business-info', async (c) => {
       return c.json({ success: false, error: 'Not found' }, 404);
     }
 
-    // 🖼️ 2026-07-01 (대표 — 링크샵 판매자 정보): 통신판매업신고번호 additive 동봉 (컬럼 없으면 조용히 생략 —
+    // 🖼️ 2026-07-01 (대표 — 유어샵 판매자 정보): 통신판매업신고번호 additive 동봉 (컬럼 없으면 조용히 생략 —
     //   repair-schema 가 seller_business_info.mail_order_number 보장).
     try {
       const mo = await db.prepare('SELECT mail_order_number FROM seller_business_info WHERE seller_id = ?')
@@ -523,7 +523,7 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
       }
     }
 
-    // 🖼️ 2026-07-01 (대표 — 링크샵 판매자 정보): 통신판매업신고번호 additive 저장 (컬럼 없으면 조용히 생략).
+    // 🖼️ 2026-07-01 (대표 — 유어샵 판매자 정보): 통신판매업신고번호 additive 저장 (컬럼 없으면 조용히 생략).
     //   메인 UPSERT 와 분리 — 기존 필드/검증/재승인(is_verified=0) 로직 byte-불변.
     if (body.mail_order_number !== undefined) {
       try {

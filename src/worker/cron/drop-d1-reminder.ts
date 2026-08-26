@@ -7,7 +7,7 @@
  *   앱 내 알림 + 카카오 알림톡(Aligo 설정 시) "내일 마감·추첨" 예고 발송.
  *
  * 🔒 게이트: env `OPS_SEQUENCES_ENABLED === 'true'` 일 때만 동작 — 기본 OFF(머지 = 라이브 무접촉).
- * 데모 상품(slug 'demo-%' — 2026-08-03 숙박/링크샵 데모 포함하도록 확장)·비활성 상품 제외. 멱등: notifications type `drop_d1_{productId}`
+ * 데모 상품(slug 'demo-%' — 2026-08-03 숙박/유어샵 데모 포함하도록 확장)·비활성 상품 제외. 멱등: notifications type `drop_d1_{productId}`
  * per-user 2일 dedup. 알림톡 실패는 alimtalk_failures 적재 → retry-alimtalk cron 재시도.
  * 머니/정산 경로 무접촉 — notifications INSERT + 알림톡 발송만.
  */
