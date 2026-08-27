@@ -1961,7 +1961,8 @@
       "recommendToggleHint": "ピンした商品を下部「おすすめ」に表示",
       "recommendToggleOn": "✨ おすすめ ON",
       "recommendToggleOff": "おすすめ OFF",
-      "recommendPreviewNote": "訪問者には非表示です — 上部の「おすすめ OFF」ボタンでオンにできます"
+      "recommendPreviewNote": "訪問者には非表示です — 上部の「おすすめ OFF」ボタンでオンにできます",
+      "emptyShopTitle": "最初の利用券を登録して UrShop を埋めよう"
     },
     "storeIntro": "ストア紹介",
     "shippingInfo": "配送情報",
@@ -2926,9 +2927,9 @@
       "approveFailed": "承認に失敗しました"
     },
     "gateway": {
-      "title": "事業者ユーザー登録 — マイショップを開く",
+      "title": "事業者認証",
       "heroTitle": "マイショップで直接販売",
-      "heroDesc": "事業者認証1回でUrShopが本物のショップに。商品・利用券の登録＋現金精算（基本手数料5%）。",
+      "heroDesc": "店舗を登録すると、UrShop で利用券・商品を販売し現金で精算できます（基本手数料5%）。",
       "kakaoBanner": "このカカオアカウントに販売機能が追加されます。UrShop・購入履歴はそのまま。",
       "escape": "商品のおすすめ・コミッションだけなら登録不要 —",
       "escapeLink": "マイUrShop",
@@ -4654,13 +4655,13 @@
     "sellerNoTokenSub": "別途の登録・ログイン不要",
     "startAsSeller": "セラーとして始める",
     "registerAsAgency": "エージェンシーとして登録する →",
-    "loginDesc": "セラーアカウントでログインしてください。",
+    "loginDesc": "カカオアカウントでログインしてください。",
     "sellerLogin": "セラーログイン",
     "sellerSignup": "セラー会員登録",
     "sheetTitleCreate": "作成",
     "proposeDeal": "近所の共同購入を提案",
     "proposeDealDesc": "お店を提案すると人を集めて開催します",
-    "openMyShop": "マイショップを開く（事業者）"
+    "openMyShop": "店舗を登録"
   },
   "broadcastNotify": {
     "loginRequired": "ログインが必要です",
@@ -5358,11 +5359,11 @@
     "catLive": "[TODO:ja] 라이브",
     "catService": "サービス",
     "q1": "[TODO:ja] 주문을 취소하고 싶어요",
-    "a1": "[TODO:ja] 배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 판매자와 협의가 필요합니다.",
+    "a1": "[TODO:ja] 배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 매장과 협의가 필요합니다.",
     "q2": "[TODO:ja] 결제가 완료되지 않았어요",
     "a2": "[TODO:ja] 결제 오류 시 카드사 또는 결제사로 문의해주세요. 토스페이먼츠 고객센터: 1544-7772",
     "q3": "[TODO:ja] 배송 기간은 얼마나 걸리나요?",
-    "a3": "[TODO:ja] 일반적으로 결제 완료 후 2-3일 이내 배송됩니다. 판매자별로 차이가 있을 수 있으며, 상품 페이지에서 확인 가능합니다.",
+    "a3": "[TODO:ja] 일반적으로 결제 완료 후 2-3일 이내 배송됩니다. 매장별로 차이가 있을 수 있으며, 상품 페이지에서 확인 가능합니다.",
     "q4": "[TODO:ja] 배송 조회는 어떻게 하나요?",
     "a4": "[TODO:ja] 마이페이지 > 주문내역에서 송장번호를 확인하시고 \"배송 조회\" 버튼을 클릭하시면 택배사 사이트로 이동합니다.",
     "q5": "[TODO:ja] 교환/반품은 어떻게 하나요?",
@@ -5733,11 +5734,11 @@
     "dashboardAria": "セラーダッシュボードへ切替",
     "switching": "切替中...",
     "sellerMode": "事業者モード",
-    "applyAria": "セラーとして活動する",
+    "applyAria": "店舗を登録する",
     "applyLabel": "セラーとして活動する",
     "successMsg": "セラーダッシュボードへ移動します!",
     "errorMsg": "セラー切替に失敗しました",
-    "openMyShop": "マイショップを開く",
+    "openMyShop": "店舗を登録",
     "pendingAria": "審査状況を見る",
     "statusAria": "セラー状態を見る"
   },
@@ -5931,9 +5932,9 @@
     "totalAmount": "[TODO:ja] 총 결제금액",
     "paymentMethod": "[TODO:ja] 결제수단",
     "mockPayment": "[TODO:ja] Mock 결제",
-    "sellerInquiry": "[TODO:ja] 판매자 문의",
-    "sellerPhoneInfo": "[TODO:ja] 판매자 연락처: {{phone}}",
-    "sellerNoContact": "[TODO:ja] 판매자 연락처가 등록되지 않았습니다",
+    "sellerInquiry": "[TODO:ja] 매장 문의",
+    "sellerPhoneInfo": "[TODO:ja] 매장 연락처: {{phone}}",
+    "sellerNoContact": "[TODO:ja] 매장 연락처가 등록되지 않았습니다",
     "writeReview": "[TODO:ja] ★ 리뷰 작성하기",
     "cancelOrder": "[TODO:ja] 주문 취소"
   },
@@ -6743,15 +6744,15 @@
     "myShortcuts": "マイショートカット",
     "startNewRole": "新しい役割を始める",
     "linkshop": "マイUrShop",
-    "linkshopDesc": "交換券・共同購入を紹介して獲得",
+    "linkshopDesc": "利用券を UrShop に並べて紹介しよう",
     "sellerDash": "セラーダッシュボード",
     "sellerDashDesc": "商品・共同購入・精算の管理",
     "agencyDash": "エージェンシーダッシュボード",
     "agencyDashDesc": "紹介した店舗の収益",
     "proposeGb": "ご近所共同購入の提案",
     "proposeGbDesc": "希望のお店を提案するとまとめて開催します",
-    "openShop": "マイショップを開く",
-    "openShopDesc": "事業者登録 → 商品・利用券を販売",
+    "openShop": "店舗を登録",
+    "openShopDesc": "カカオマップで自分の店を探して利用券を販売",
     "agencyBiz": "エージェンシー事業",
     "agencyBizDesc": "店舗開拓 → 2%の永続収益"
   },
@@ -6772,5 +6773,9 @@
     "copyMyLink": "マイリンクをコピー",
     "copied": "リンクをコピーしました",
     "copyFailed": "コピーに失敗しました"
+  },
+  "frameRails": {
+    "valShop": "自分の利用券棚、UrShop",
+    "valShopDesc": "登録すればもう開いています"
   }
 }

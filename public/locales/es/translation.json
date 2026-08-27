@@ -1256,7 +1256,7 @@
       "refund": "환불",
       "refundDesc": "미사용 바우처에 한해 공동구매 마감 전 환불 가능",
       "contact": "문의",
-      "contactDesc": "인플루언서에게 직접 문의",
+      "contactDesc": "매장에 직접 문의",
       "following": "✓ 팔로잉",
       "follow": "+ 팔로우",
       "shop": "Tienda",
@@ -1281,7 +1281,8 @@
       "recommendToggleHint": "Mostrar pines en la sección \"Recomendados\"",
       "recommendToggleOn": "✨ Recom. ON",
       "recommendToggleOff": "Recom. OFF",
-      "recommendPreviewNote": "Oculto para visitantes — actívalo con el botón \"Recom. OFF\" arriba"
+      "recommendPreviewNote": "Oculto para visitantes — actívalo con el botón \"Recom. OFF\" arriba",
+      "emptyShopTitle": "Añade tu primer pase para llenar tu UrShop"
     },
     "storeIntro": "Introduccion de la tienda",
     "shippingInfo": "Info de envio",
@@ -2246,12 +2247,12 @@
       "approveFailed": "Aprobación fallida"
     },
     "gateway": {
-      "title": "Cuenta de negocio — abrir mi tienda",
+      "title": "Verificación de negocio",
       "heroTitle": "Vende directamente desde mi tienda",
-      "heroDesc": "Una verificación de negocio convierte tu linkshop en una tienda real. Publica productos y vales, y recibe liquidaciones (comisión base 5%).",
-      "kakaoBanner": "Se añadirán funciones de venta a esta cuenta de Kakao. Tu linkshop e historial se mantienen.",
+      "heroDesc": "Registra tu tienda y vende pases y productos desde tu UrShop, con liquidación en efectivo (5% de comisión por defecto).",
+      "kakaoBanner": "Se añadirán funciones de venta a esta cuenta de Kakao. Tu UrShop e historial se mantienen.",
       "escape": "¿Solo quieres recomendar productos por comisión? Sin registro —",
-      "escapeLink": "ir a mi linkshop",
+      "escapeLink": "ir a mi UrShop",
       "escapeSuffix": " y empieza ya.",
       "applied": "¡Solicitud enviada! Yendo a la página de estado.",
       "alreadyActive": "Ya eres usuario de negocio",
@@ -2271,7 +2272,7 @@
     },
     "mailOrderNumber": "N.º de venta a distancia",
     "mailOrderNumberPlaceholder": "ej. 2026-Seul-01234",
-    "mailOrderNumberHint": "Se muestra públicamente en la información del vendedor de tu linkshop",
+    "mailOrderNumberHint": "Se muestra públicamente en la información del vendedor de tu UrShop",
     "primary": {
       "addProductDesc": "Publicar vales y compras grupales",
       "voucherManageDesc": "Ventas y estado",
@@ -3974,13 +3975,13 @@
     "sellerNoTokenSub": "Sin registro adicional",
     "startAsSeller": "Comenzar como vendedor",
     "registerAsAgency": "Registrarse como agencia →",
-    "loginDesc": "Inicia sesión con una cuenta de vendedor.",
+    "loginDesc": "Inicia sesión con tu cuenta de Kakao.",
     "sellerLogin": "Inicio de sesión vendedor",
     "sellerSignup": "Registro de vendedor",
     "sheetTitleCreate": "Crear",
     "proposeDeal": "Proponer compra grupal local",
     "proposeDealDesc": "Sugiere una tienda y reuniremos gente para abrirla",
-    "openMyShop": "Abrir mi tienda (negocio)"
+    "openMyShop": "Registrar mi tienda"
   },
   "broadcastNotify": {
     "loginRequired": "Inicio de sesión requerido",
@@ -5358,11 +5359,11 @@
     "catLive": "[TODO:es] 라이브",
     "catService": "Servicio",
     "q1": "[TODO:es] 주문을 취소하고 싶어요",
-    "a1": "[TODO:es] 배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 판매자와 협의가 필요합니다.",
+    "a1": "[TODO:es] 배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 매장과 협의가 필요합니다.",
     "q2": "[TODO:es] 결제가 완료되지 않았어요",
     "a2": "[TODO:es] 결제 오류 시 카드사 또는 결제사로 문의해주세요. 토스페이먼츠 고객센터: 1544-7772",
     "q3": "[TODO:es] 배송 기간은 얼마나 걸리나요?",
-    "a3": "[TODO:es] 일반적으로 결제 완료 후 2-3일 이내 배송됩니다. 판매자별로 차이가 있을 수 있으며, 상품 페이지에서 확인 가능합니다.",
+    "a3": "[TODO:es] 일반적으로 결제 완료 후 2-3일 이내 배송됩니다. 매장별로 차이가 있을 수 있으며, 상품 페이지에서 확인 가능합니다.",
     "q4": "[TODO:es] 배송 조회는 어떻게 하나요?",
     "a4": "[TODO:es] 마이페이지 > 주문내역에서 송장번호를 확인하시고 \"배송 조회\" 버튼을 클릭하시면 택배사 사이트로 이동합니다.",
     "q5": "[TODO:es] 교환/반품은 어떻게 하나요?",
@@ -5733,11 +5734,11 @@
     "dashboardAria": "Cambiar al panel de vendedor",
     "switching": "Cambiando...",
     "sellerMode": "Modo empresa",
-    "applyAria": "Convertirse en vendedor",
+    "applyAria": "Registrar mi tienda",
     "applyLabel": "Convertirse en vendedor",
     "successMsg": "¡Redirigiendo al panel de vendedor!",
     "errorMsg": "Error al cambiar a vendedor",
-    "openMyShop": "Abrir mi tienda",
+    "openMyShop": "Registrar mi tienda",
     "pendingAria": "Ver estado de revisión",
     "statusAria": "Ver estado de vendedor"
   },
@@ -5931,9 +5932,9 @@
     "totalAmount": "[TODO:es] 총 결제금액",
     "paymentMethod": "[TODO:es] 결제수단",
     "mockPayment": "[TODO:es] Mock 결제",
-    "sellerInquiry": "[TODO:es] 판매자 문의",
-    "sellerPhoneInfo": "[TODO:es] 판매자 연락처: {{phone}}",
-    "sellerNoContact": "[TODO:es] 판매자 연락처가 등록되지 않았습니다",
+    "sellerInquiry": "[TODO:es] 매장 문의",
+    "sellerPhoneInfo": "[TODO:es] 매장 연락처: {{phone}}",
+    "sellerNoContact": "[TODO:es] 매장 연락처가 등록되지 않았습니다",
     "writeReview": "[TODO:es] ★ 리뷰 작성하기",
     "cancelOrder": "[TODO:es] 주문 취소"
   },
@@ -6159,11 +6160,11 @@
       "noData": "Aún no hay datos. ¡Comparte tus pines con amigos!"
     },
     "dashboardError": "Error al cargar panel",
-    "makeMine": "Crear mi linkshop — gana recomendando",
+    "makeMine": "Crear mi UrShop — gana recomendando",
     "console": {
       "title": "Consola de creador"
     },
-    "ownerViewBar": "Mi linkshop · lo que ven los visitantes",
+    "ownerViewBar": "Mi UrShop · lo que ven los visitantes",
     "editButton": "Editar",
     "editMode": "Modo edición",
     "tapToEdit": "Toca para editar",
@@ -6180,7 +6181,7 @@
     "addVoucherPin": "Añadir oferta local",
     "addShopPin": "Añadir producto",
     "addAnyPin": "Añadir producto u oferta",
-    "confirmDeletePinMine": "¿Eliminar este pin de tu linkshop?",
+    "confirmDeletePinMine": "¿Eliminar este pin de tu UrShop?",
     "confirmDeletePin": "¿Eliminar este pin?",
     "pinDeleted": "Pin eliminado",
     "deleteFailed": "Error al eliminar",
@@ -6192,7 +6193,7 @@
     "viewsCount": "{{n}} vistas",
     "earnPerSaleAmt": " · Gana ₩{{amt}}/venta",
     "noCommentNudge": "Sin comentario · añádelo para vender más",
-    "stepsLeft": "{{n}} pasos para completar tu linkshop",
+    "stepsLeft": "{{n}} pasos para completar tu UrShop",
     "stepName": "Configura el nombre",
     "stepHandle": "Configura la dirección",
     "stepFirstProduct": "Añade el primer producto",
@@ -6679,7 +6680,7 @@
     "referralStartTitle": "Recomienda y gana",
     "referralCountN": "{{n}} recomendaciones",
     "referralStartSub": "Comparte en redes — gana cuando tus amigos paguen",
-    "curatorTitle": "Ingresos de mi linkshop",
+    "curatorTitle": "Ingresos de mi UrShop",
     "curatorCashSub": "Liquidación en efectivo · retirable",
     "curatorDealSub": "Acumulado · 1 Deal = ₩1",
     "freeDealNote": "Incluye {{free}} deals de recompensa gratis · {{paid}} deals retirables"
@@ -6742,16 +6743,16 @@
   "roleCta": {
     "myShortcuts": "Mis accesos directos",
     "startNewRole": "Comenzar un nuevo rol",
-    "linkshop": "Mi linkshop",
-    "linkshopDesc": "Recomienda cupones y ofertas, gana recompensas",
+    "linkshop": "Mi UrShop",
+    "linkshopDesc": "Añade pases a tu UrShop y compártelos",
     "sellerDash": "Panel de vendedor",
     "sellerDashDesc": "Gestiona productos, ofertas y liquidaciones",
     "agencyDash": "Panel de agencia",
     "agencyDashDesc": "Ingresos de tiendas asociadas",
     "proposeGb": "Proponer compra local",
     "proposeGbDesc": "Sugiere una tienda y abrimos la oferta",
-    "openShop": "Abrir mi tienda",
-    "openShopDesc": "Registro de negocio → vende productos y cupones",
+    "openShop": "Registrar mi tienda",
+    "openShopDesc": "Encuentra tu tienda en Kakao Map y vende pases",
     "agencyBiz": "Negocio de agencia",
     "agencyBizDesc": "Capta tiendas → 2% de ingresos permanentes"
   },
@@ -6772,5 +6773,9 @@
     "copyMyLink": "Copiar mi enlace",
     "copied": "Enlace copiado",
     "copyFailed": "Error al copiar"
+  },
+  "frameRails": {
+    "valShop": "Tu escaparate de pases, UrShop",
+    "valShopDesc": "Ya está abierto al registrarte"
   }
 }

@@ -18,7 +18,7 @@ import { useState } from 'react'
 import api from '@/lib/api'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import { formatPhone, isValidMobilePhone, digitsOnly } from '@/utils/format-phone'
-import { Loader2, MapPin, CheckCircle2, XCircle, BadgeCheck } from 'lucide-react'
+import { Loader2, MapPin, CheckCircle2, XCircle, BadgeCheck, FileImage } from 'lucide-react'
 
 export interface RegisterPlace {
   id?: string
@@ -57,8 +57,11 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
   const [channel, setChannel] = useState<'direct' | 'brokered' | null>(null)
   const [managerPhone, setManagerPhone] = useState('')
   const [bno, setBno] = useState('')
-  const [rep, setRep] = useState('')
-  const [startDate, setStartDate] = useState('')
+  // 📄 2026-08-26 (대표 "당근마켓 플로우 정도로 하자"): 대표자명·개업일 **타이핑을 없앴다**.
+  //   사장님이 외워서 적을 값이 아니고(개업일은 검색으로도 나온다) 위조도 쉽다. 당근처럼
+  //   **등록증 사진**을 받고 사람이 심사한다(시안 05). 그 사진이 심사의 근거다.
+  const [certUrl, setCertUrl] = useState('')
+  const [uploading, setUploading] = useState(false)
   const [nts, setNts] = useState<{ valid: boolean | null; message?: string } | null>(null)
   const [verifying, setVerifying] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -69,10 +72,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
     if (!/^\d{10}$/.test(clean)) { alert('사업자번호는 숫자 10자리입니다'); return }
     setVerifying(true); setNts(null)
     try {
-      const r = await api.post('/api/seller/stores/verify-business', {
-        business_number: clean,
-        ...(rep && startDate ? { representative: rep, start_date: startDate } : {}),
-      })
+      const r = await api.post('/api/seller/stores/verify-business', { business_number: clean })
       setNts(r.data?.data || null)
     } catch (e: any) {
       setNts({ valid: null, message: e?.response?.data?.error || '확인 실패' })
@@ -80,9 +80,24 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
   }
 
   const managerOk = isValidMobilePhone(managerPhone)
+  const certOk = !!certUrl
+
+  async function uploadCert(file: File) {
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const r = await api.post('/api/upload/business-cert', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const url = r.data?.data?.url
+      if (!r.data?.success || !url) throw new Error(r.data?.error || '업로드 실패')
+      setCertUrl(url)
+    } catch (e: any) {
+      alert(e?.response?.data?.error || e?.message || '사업자등록증 업로드에 실패했습니다')
+    } finally { setUploading(false) }
+  }
 
   async function submit() {
-    if (!picked || !channel || !managerOk || submitting) return
+    if (!picked || !channel || !managerOk || !certOk || submitting) return
     setSubmitting(true)
     try {
       const r = await api.post('/api/seller/stores', {
@@ -96,8 +111,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
         channel,
         manager_phone: digitsOnly(managerPhone),
         business_number: bno.replace(/-/g, '') || undefined,
-        representative: rep || undefined,
-        business_start_date: startDate || undefined,
+        business_cert_url: certUrl,
       })
       if (!r.data?.success) throw new Error(r.data?.error)
       alert(r.data.data?.message || '매장이 등록되었습니다')
@@ -181,16 +195,28 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
 
           {/* ④ 사업자 확인 */}
           <div>
-            <p className="text-xs font-bold text-gray-700 mb-1.5">④ 사업자번호 확인 <span className="font-normal text-gray-400">(국세청 조회 — 통과 시 바로 활성화)</span></p>
+            <p className="text-xs font-bold text-gray-700 mb-1.5">④ 사업자 확인 <span className="font-normal text-gray-400">(등록증 확인 후 활성화)</span></p>
             <div className="space-y-2">
               <input value={bno} onChange={e => setBno(e.target.value)} placeholder="사업자번호 10자리" inputMode="numeric" maxLength={12}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400" />
-              <div className="grid grid-cols-2 gap-2">
-                <input value={rep} onChange={e => setRep(e.target.value)} placeholder="대표자명 (진위확인용·선택)"
-                  className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400" />
-                <input value={startDate} onChange={e => setStartDate(e.target.value)} placeholder="개업일 YYYYMMDD (선택)" inputMode="numeric" maxLength={8}
-                  className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400" />
-              </div>
+              {/* 📄 사업자등록증 사본 — 개업일·대표자명을 외워 적는 대신 사진 1장. 이게 심사의 근거다. */}
+              <label className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-dashed cursor-pointer ${certUrl ? 'border-emerald-300 bg-emerald-50' : 'border-gray-300 bg-gray-50'}`}>
+                <input
+                  type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) void uploadCert(f); e.target.value = '' }}
+                />
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" />
+                  : certUrl ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  : <FileImage className="w-4 h-4 text-gray-400 shrink-0" />}
+                <span className="min-w-0">
+                  <span className="block text-[12.5px] font-bold text-gray-900">
+                    {uploading ? '올리는 중…' : certUrl ? '사업자등록증 첨부됨' : '사업자등록증 사진 첨부'}
+                  </span>
+                  <span className="block text-[11px] text-gray-500 mt-0.5">
+                    {certUrl ? '다시 누르면 교체할 수 있어요' : '내용이 잘 보이는 사진으로 · 10MB 이하 jpg·png'}
+                  </span>
+                </span>
+              </label>
               <button onClick={verify} disabled={verifying || !bno}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                 {verifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BadgeCheck className="w-3.5 h-3.5" />} 국세청 확인
@@ -198,14 +224,14 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
               {nts && (
                 <p className={`text-[11px] flex items-center gap-1 ${nts.valid === true ? 'text-emerald-600' : nts.valid === false ? 'text-red-600' : 'text-gray-500'}`}>
                   {nts.valid === true ? <CheckCircle2 className="w-3.5 h-3.5" /> : nts.valid === false ? <XCircle className="w-3.5 h-3.5" /> : null}
-                  {nts.valid === true ? `확인되었습니다${nts.message ? ` (${nts.message})` : ''}` : nts.valid === false ? '일치하지 않습니다 — 입력을 확인해주세요' : (nts.message || '확인 불가 — 등록 후 검토됩니다')}
+                  {nts.valid === true ? `국세청에 등록된 번호예요${nts.message ? ` (${nts.message})` : ''}` : nts.valid === false ? '조회되지 않는 번호예요 — 입력을 확인해주세요' : (nts.message || '확인 불가 — 등록 후 검토됩니다')}
                 </p>
               )}
             </div>
           </div>
         </div>
         <div className="p-4 border-t border-gray-100 shrink-0">
-          <button onClick={submit} disabled={!picked || !channel || !managerOk || submitting}
+          <button onClick={submit} disabled={!picked || !channel || !managerOk || !certOk || submitting}
             className="w-full py-3 rounded-xl bg-brand hover:bg-brand-dark text-white text-sm font-bold disabled:opacity-40 transition">
             {submitting ? '등록 중…' : '매장 등록'}
           </button>

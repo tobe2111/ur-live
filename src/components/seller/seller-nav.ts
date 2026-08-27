@@ -90,7 +90,7 @@ export const NAV_GROUPS: {
       { path: '/seller/reviews', labelKey: 'seller.nav.reviews', icon: Star, mode: 'common' },
       { path: '/seller/coupons', labelKey: 'seller.nav.coupons', icon: Ticket, mode: 'common' },
       { path: '/seller/promo-codes', labelKey: 'seller.nav.promoCodes', icon: Tag, mode: 'common' },
-      // 🤝 2026-07-10: 인플루언서 우대 커미션 협업 deal (marketing.routes sellerApp — 기존 API)
+      // 🤝 2026-07-10: 소개 파트너 우대 커미션 협업 deal (marketing.routes sellerApp — 기존 API)
       { path: '/seller/influencer-deals', labelKey: 'seller.nav.influencerDeals', icon: Handshake, mode: 'common' },
       // 📣 2026-08-20 — 유어애즈 DB 탐색 + 협업 제안(발송은 유어딜 대행)
       { path: '/seller/influencers', labelKey: 'seller.nav.findInfluencers', icon: Megaphone, mode: 'common' },

@@ -106,7 +106,8 @@ export default function LinkshopVisitorRails() {
           {/* 🏪 2026-08-26 (대표 승인 — UI 감사 #14): **매장 유어샵에서는 성장 훅을 띄우지 않는다.**
               여기 온 사람은 그 가게에서 뭔가 사려는 손님인데, "나도 이런 유어샵 만들기"는 그 손님을
               사장님 모집으로 데려간다 — 이 파일 헤더가 말하는 "유어딜로 새지 않게" 원칙과 자기모순이었다.
-              (덤: 문구는 "내 쇼핑몰"인데 목적지는 `/host/new`(호스팅 카탈로그)라 말과 목적지도 어긋났다.)
+              (덤: 문구는 "내 쇼핑몰"인데 목적지는 `/host/new`(HOSTING_HIDDEN 으로 숨긴 카탈로그)라 말과
+              목적지가 어긋나 있었다 — 2026-08-26 에 `/store/new` 로 교정.)
               매장이면 **그 가게 정보**를 준다. 개인 추천 유어샵이면 종전 성장 훅 유지 — 거기선 손님을
               가로채는 게 아니라 "나도 이런 걸 만들고 싶다"가 자연스러운 다음 생각이다. */}
           {isBiz ? (
@@ -126,12 +127,12 @@ export default function LinkshopVisitorRails() {
               </div>
             ) : null
           ) : (
-            <Link to="/host/new" className="pointer-events-auto block rounded-2xl p-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-sm active:opacity-90">
+            <Link to="/store/new" className="pointer-events-auto block rounded-2xl p-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-sm active:opacity-90">
               <span className="flex items-center gap-1.5 text-[13.5px] font-extrabold tracking-tight">
-                <Store className="w-4 h-4" aria-hidden="true" /> 나도 이런 유어샵, 5분이면
+                <Store className="w-4 h-4" aria-hidden="true" /> 나도 유어딜에서 팔아볼까?
               </span>
-              <span className="block mt-1 text-[11.5px] leading-snug text-white/70 dark:text-gray-500">유어딜에서 무료로 내 쇼핑몰을 열고 상품·이용권을 팔아보세요.</span>
-              <span className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-bold text-white dark:text-gray-900">내 유어샵 만들기 →</span>
+              <span className="block mt-1 text-[11.5px] leading-snug text-white/70 dark:text-gray-500">유어딜에 내 가게를 등록하고 이용권을 팔아보세요.</span>
+              <span className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-bold text-white dark:text-gray-900">내 가게 등록하기 →</span>
             </Link>
           )}
         </div>

@@ -68,7 +68,7 @@ export default function ConsumerFrameRails() {
             {[
               { icon: ShieldCheck, title: t('frameRails.valTrust', { defaultValue: '유어딜 안전결제' }), desc: t('frameRails.valTrustDesc', { defaultValue: '결제·정산을 보증해요' }) },
               { icon: Percent, title: t('frameRails.valDeal', { defaultValue: '매일 새로운 동네 딜' }), desc: t('frameRails.valDealDesc', { defaultValue: '할인가로 발견·구매' }) },
-              { icon: Store, title: t('frameRails.valShop', { defaultValue: '내 쇼핑몰, 유어샵' }), desc: t('frameRails.valShopDesc', { defaultValue: '누구나 5분이면 오픈' }) },
+              { icon: Store, title: t('frameRails.valShop', { defaultValue: '내 이용권 진열대, 유어샵' }), desc: t('frameRails.valShopDesc', { defaultValue: '가입하면 이미 열려 있어요' }) },
             ].map((v) => (
               <div key={v.title} className="flex items-start gap-2.5">
                 <span className="mt-0.5 w-7 h-7 shrink-0 rounded-lg bg-gray-900 dark:bg-white/10 text-white dark:text-white flex items-center justify-center">

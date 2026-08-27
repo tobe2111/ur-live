@@ -144,7 +144,7 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
                 </div>
                 <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
-                  {t('seller.mealVoucher.promoHint', { defaultValue: '인플루언서가 추천 링크로 팔면 이 비율만큼 소개비를 지급해요. 할인과 함께 하나의 마케팅 예산으로 설계하세요. 추천 판매가 없으면 발생하지 않아요.' })}
+                  {t('seller.mealVoucher.promoHint', { defaultValue: '누군가 내 이용권을 소개해 팔아 주면 이 비율만큼 소개비를 지급해요. 할인과 함께 하나의 마케팅 예산으로 설계하세요. 소개 판매가 없으면 발생하지 않아요.' })}
                 </p>
               </div>
               <PromoMarginCalculator

@@ -20,9 +20,9 @@ export default function FAQPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
   const faqs: FAQ[] = [
-    { id: 1, category: t('faq.catOrder', { defaultValue: '주문/결제' }), question: t('faq.q1', { defaultValue: '주문을 취소하고 싶어요' }), answer: t('faq.a1', { defaultValue: '배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 판매자와 협의가 필요합니다.' }) },
+    { id: 1, category: t('faq.catOrder', { defaultValue: '주문/결제' }), question: t('faq.q1', { defaultValue: '주문을 취소하고 싶어요' }), answer: t('faq.a1', { defaultValue: '배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 매장과 협의가 필요합니다.' }) },
     { id: 2, category: t('faq.catOrder', { defaultValue: '주문/결제' }), question: t('faq.q2', { defaultValue: '결제가 완료되지 않았어요' }), answer: t('faq.a2', { defaultValue: '결제 오류 시 카드사 또는 결제사로 문의해주세요. 토스페이먼츠 고객센터: 1544-7772' }) },
-    { id: 3, category: t('faq.catShipping', { defaultValue: '배송' }), question: t('faq.q3', { defaultValue: '배송 기간은 얼마나 걸리나요?' }), answer: t('faq.a3', { defaultValue: '일반적으로 결제 완료 후 2-3일 이내 배송됩니다. 판매자별로 차이가 있을 수 있으며, 상품 페이지에서 확인 가능합니다.' }) },
+    { id: 3, category: t('faq.catShipping', { defaultValue: '배송' }), question: t('faq.q3', { defaultValue: '배송 기간은 얼마나 걸리나요?' }), answer: t('faq.a3', { defaultValue: '일반적으로 결제 완료 후 2-3일 이내 배송됩니다. 매장별로 차이가 있을 수 있으며, 상품 페이지에서 확인 가능합니다.' }) },
     { id: 4, category: t('faq.catShipping', { defaultValue: '배송' }), question: t('faq.q4', { defaultValue: '배송 조회는 어떻게 하나요?' }), answer: t('faq.a4', { defaultValue: '마이페이지 > 주문내역에서 송장번호를 확인하시고 "배송 조회" 버튼을 클릭하시면 택배사 사이트로 이동합니다.' }) },
     { id: 5, category: t('faq.catExchange', { defaultValue: '교환/환불' }), question: t('faq.q5', { defaultValue: '교환/반품은 어떻게 하나요?' }), answer: t('faq.a5', { defaultValue: '상품 수령 후 7일 이내 마이페이지 > 주문내역에서 신청하실 수 있습니다. 단순 변심의 경우 왕복 배송비가 발생합니다.' }) },
     { id: 6, category: t('faq.catExchange', { defaultValue: '교환/환불' }), question: t('faq.q6', { defaultValue: '환불은 언제 되나요?' }), answer: t('faq.a6', { defaultValue: '상품 회수 확인 후 3-7 영업일 이내 결제 수단으로 환불됩니다. 신용카드는 카드사 정산일에 따라 다를 수 있습니다.' }) },

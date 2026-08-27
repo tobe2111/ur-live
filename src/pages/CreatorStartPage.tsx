@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 
 /**
- * 🔗 2026-07-27 크리에이터 시작 페이지 (`/creators/start?ic=CODE`) — 신청 ↔ 가입을 잇는 다리.
+ * 🔗 2026-07-27 소개 시작 페이지 (`/creators/start?ic=CODE`) — 신청 ↔ 가입을 잇는 다리.
  *
  *   온보딩 메일·신청완료 화면·어드민 모집 안내가 전부 이 URL 로 보낸다. 여기서 초대 코드를
  *   내 계정에 연결(`POST /api/creator-claim`)해야 "신청한 사람이 실제로 가입했는가 / 첫 판매를 했는가"가
@@ -55,7 +55,7 @@ export default function CreatorStartPage() {
 
   return (
     <div className="force-light-theme min-h-[100dvh] bg-gray-50 py-14 px-4">
-      <SEO title="크리에이터 시작하기 - 유어딜" description="유어딜 제휴 크리에이터로 시작합니다. 카카오 로그인 1분이면 내 유어샵이 만들어집니다." url="/creators/start" />
+      <SEO title="딜 소개 시작하기 - 유어딜" description="유어딜 소개 파트너로 시작합니다. 카카오 로그인만 하면 내 유어샵이 바로 준비돼요." url="/creators/start" />
       <div className="mx-auto max-w-md rounded-xl border border-gray-200 bg-white p-8 text-center">
         {phase === 'checking' && (
           <>
@@ -67,7 +67,7 @@ export default function CreatorStartPage() {
         {phase === 'need_login' && (
           <>
             <div className="text-3xl mb-3">👋</div>
-            <h1 className="text-lg font-bold text-gray-900">크리에이터 시작하기</h1>
+            <h1 className="text-lg font-bold text-gray-900">딜 소개 시작하기</h1>
             <p className="mt-2 text-sm text-gray-600">카카오 로그인 1분이면 내 유어샵이 자동으로 만들어집니다.<br />로그인하면 신청 내역과 자동으로 연결됩니다.</p>
             {/* 코드는 이미 localStorage 에 있으므로 returnUrl 은 경로만으로 충분(돌아오면 자동 연결). */}
             <a href="/login?returnUrl=%2Fcreators%2Fstart" className={`${btn} mt-5 bg-[#FEE500] text-[#3C1E1E]`}>카카오로 로그인하고 시작하기</a>

@@ -158,7 +158,7 @@ export default function BlogDetailPage() {
             <Link to="/" className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1A2334]">
               <Home className="w-4 h-4" />유어딜 홈
             </Link>
-            <Link to="/seller/register" className="px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold hover:opacity-90">판매 시작하기</Link>
+            <Link to="/store/new" className="px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold hover:opacity-90">내 가게 등록</Link>
           </div>
         </div>
       </header>
@@ -224,7 +224,7 @@ export default function BlogDetailPage() {
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">이용권·교환권·동네딜을 한곳에, 나만의 유어샵까지</p>
             <div className="flex gap-3 justify-center">
               <Link to="/" className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-bold hover:opacity-90">둘러보기</Link>
-              <Link to="/u/me" className="px-5 py-2.5 bg-pink-500 text-white rounded-xl text-sm font-bold hover:bg-pink-600">내 유어샵 만들기</Link>
+              <Link to="/u/me" className="px-5 py-2.5 bg-pink-500 text-white rounded-xl text-sm font-bold hover:bg-pink-600">내 유어샵 보기</Link>
             </div>
             <div className="mt-3">
               <KakaoShareButton title={stripBold(post.title)} description={stripBold(post.summary)} link={`/blog/${post.slug}`} buttonText={t('blog.readBtn', { defaultValue: '글 읽기' })} />

@@ -52,6 +52,9 @@ export default function SiteFooter() {
           <nav aria-label="파트너">
             <h3 className={colTitle}>파트너</h3>
             <a href="/partners" className={colLink}>사장님 가게 입점</a>
+            {/* 🏪 2026-08-26: 안내가 필요 없는 사장님을 위한 **바로 등록** — 모바일 상시 진입점이
+                사실상 이 푸터 하나뿐이었다(감사 실측). 목적지는 단일(/store/new). */}
+            <a href="/store/new" className={colLink}>내 가게 등록하기</a>
             <a href="/area-report" className={colLink}>우리 동네 상권 리포트</a>
             <a href="/creators" className={colLink}>크리에이터 모집</a>
             <a href="/agency/register/business" className={colLink}>에이전시 시작</a>

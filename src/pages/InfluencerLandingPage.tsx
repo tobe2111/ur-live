@@ -1,21 +1,36 @@
 /**
- * 🛡️ 2026-05-15: 인플루언서 대상 랜딩 — 공구 영업으로 수익화.
+ * 📣 소개로 수익 만들기 — 공개 랜딩 `/influencer`
  *
- * 핵심 메시지:
- * - 매장 섭외 X (셀러는 매장이 직접)
- * - 본인 팔로워에게 share 만 → 수수료 receive
- * - 친구 추천 0.5% × 양쪽 + 셀러 추천 시 commission 분할
+ * 🩸 2026-08-26 전면 재작성. 이전 판은 **지금은 없는 것을 세 가지나 광고**하고 있었다:
+ *   ① "친구 추천 양쪽 0.5% 보너스 딜" — `invite_reward_enabled` 가 기본 OFF(행 부재 = 꺼짐)
+ *   ② "누구나 share 하면 커미션" — 어필리에이트는 **2026-08-22 대표 결정으로 종료**
+ *   ③ "실제 인플루언서 수익 사례 — 월 1,500만원+ / 베타 참여 평균" — 출처가 코드 어디에도 없는
+ *      하드코딩 숫자였다. 공개 페이지에서 **수익을 숫자로 약속하는 것**은 표시광고 문제가 되고,
+ *      무엇보다 사실이 아니면 처음 온 사람과의 관계가 거기서 끝난다.
+ *
+ * ⇒ 지금 실제로 도는 것 하나만 말한다: **매장과 맺은 딜**(`seller_influencer_deals`)이 있어야
+ *   소개 커미션이 붙고, 비율은 매장이 정한다. 딜이 없으면 담아 소개할 수는 있어도 커미션은 0 이다.
+ *   이용권 상세의 소개 배너(`ShareRewardBanner`)와 결제 시점 적립이 **같은 함수**(`findActiveDealPct`)를
+ *   쓰므로, 여기 적은 말과 실제 정산이 갈릴 수 없다.
+ *
+ * 🏷️ 명칭: 사람을 신분('인플루언서/크리에이터')으로 부르지 않고 **행위**(담기=소개)로 말한다.
  */
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, Sparkles, Megaphone, Wallet, BarChart3, Phone } from 'lucide-react'
+import { ArrowRight, Store, Handshake, Link2, Wallet } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+
+const STEPS = [
+  { icon: Link2, title: '내 유어샵에 담기', desc: '가입하면 내 유어샵(urdeal.kr/u/내핸들)이 이미 있어요. 마음에 든 동네 이용권을 카드의 + 버튼으로 담습니다.' },
+  { icon: Handshake, title: '매장과 딜 맺기', desc: '소개 몫이 걸린 이용권은 소개 마켓에서 찾을 수 있어요. 매장이 제안하거나 내가 신청하면, 수락된 순간부터 그 비율이 적용됩니다.' },
+  { icon: Wallet, title: '팔리면 쌓이기', desc: '내 링크로 팔린 건에 대해 매장이 정한 비율만큼 쌓입니다. 최소 10,000원부터 출금(원천징수 3.3% 자동).' },
+] as const
 
 export default function InfluencerLandingPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white">
       <SEO
         title={CONSUMER_SURFACE_SEO['/influencer'].title} description={CONSUMER_SURFACE_SEO['/influencer'].description}
         url="/influencer"
@@ -27,83 +42,81 @@ export default function InfluencerLandingPage() {
         <div className="flex items-center gap-3">
           <Link to="/business" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">사장님</Link>
           <Link to="/agency-partner" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">에이전시</Link>
-          <button onClick={() => navigate('/register')} className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-sm font-bold">
-            지금 가입
+          <button onClick={() => navigate('/login?returnUrl=%2Fu%2Fme')} className="px-4 py-2 bg-brand hover:bg-brand-dark text-white rounded-full text-sm font-bold">
+            시작하기
           </button>
         </div>
       </nav>
 
       <section className="px-6 lg:px-12 py-12 lg:py-24 max-w-6xl mx-auto">
         <div className="text-center mb-12">
-          <span className="inline-block px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold mb-5">✨ 인플루언서 / 크리에이터 전용</span>
+          <span className="inline-block px-3 py-1 bg-brand/10 text-brand rounded-full text-xs font-bold mb-5">✨ 팔로워 수 제한 없음</span>
           <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight tracking-tight mb-6">
-            팔로워가<br />
-            <span className="bg-gradient-to-r from-gray-800 to-gray-800 bg-clip-text text-transparent">곧 매출</span> 이 됩니다.
+            아는 가게를<br />
+            <span className="text-brand">소개하면</span> 몫이 남습니다.
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed max-w-2xl mx-auto mb-8">
-            매장 섭외 없이 — 우리가 검증한 공구를 인스타 / 카톡 / 틱톡으로 share 만 하세요.<br />
-            친구가 참여하면 <span className="font-bold text-pink-600">양쪽 0.5% 보너스 딜</span>.
+            매장을 직접 섭외하지 않아도 됩니다. 마음에 든 동네 이용권을 내 유어샵에 담아<br className="hidden sm:inline" />
+            링크로 소개하면, 그 링크로 팔릴 때마다 매장이 정한 비율만큼 쌓여요.
           </p>
           <button
-            onClick={() => navigate('/register')}
-            className="px-8 py-4 bg-gradient-to-r from-gray-800 to-gray-800 text-white rounded-full font-extrabold text-lg shadow-xl"
+            onClick={() => navigate('/login?returnUrl=%2Fu%2Fme')}
+            className="px-8 py-4 bg-brand hover:bg-brand-dark text-white rounded-full font-extrabold text-lg shadow-xl inline-flex items-center gap-2"
           >
-            지금 가입하고 share 시작 →
+            내 유어샵 열어보기 <ArrowRight className="w-5 h-5" />
           </button>
+          <p className="text-xs text-gray-400 mt-4">카카오 로그인만 하면 됩니다 · 별도 가입·심사 없음</p>
         </div>
       </section>
 
-      {/* 수익 사례 카드 */}
+      {/* 어떻게 되는지 — 숫자를 약속하지 않고 구조를 설명한다 */}
       <section className="bg-gray-50 dark:bg-[#1A2334] px-6 lg:px-12 py-16">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-extrabold text-center mb-10">실제 인플루언서 수익 사례</h2>
-          <div className="grid sm:grid-cols-3 gap-5">
-            {[
-              { tier: '마이크로 (팔로워 1만)', monthly: '40-80만원', desc: '주 1-2회 share + 본인 단골 매장' },
-              { tier: '미디엄 (팔로워 10만)', monthly: '300-600만원', desc: '주 3-5회 share + 카테고리 specialty' },
-              { tier: '메가 (팔로워 50만+)', monthly: '1,500만원+', desc: '본인 브랜드 공구 + 셀러 영입 추가' },
-            ].map((c, i) => (
-              <div key={i} className="bg-white dark:bg-[#0F151D] rounded-2xl p-6 border border-gray-100 dark:border-[#2A3446]">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{c.tier}</p>
-                <p className="text-3xl font-extrabold text-pink-600 mb-2">{c.monthly}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-300">{c.desc}</p>
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-2xl lg:text-3xl font-extrabold text-center mb-10">어떻게 되나요?</h2>
+          <div className="space-y-4">
+            {STEPS.map((s, i) => (
+              <div key={i} className="bg-white dark:bg-[#0F151D] rounded-2xl p-6 border border-gray-200 dark:border-[#2A3446] flex gap-4">
+                <span className="w-11 h-11 shrink-0 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                  <s.icon className="w-5 h-5" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold mb-1">{i + 1}. {s.title}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{s.desc}</p>
+                </div>
               </div>
             ))}
           </div>
-          <p className="text-xs text-gray-400 text-center mt-6">* 베타 참여 인플루언서 평균 (2026 4월 기준)</p>
+
+          {/* ⚠️ 이 문단이 이 페이지에서 가장 중요하다 — 없으면 "담기만 하면 돈이 된다"로 읽힌다 */}
+          <div className="mt-6 rounded-2xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/10 px-5 py-4">
+            <p className="text-[13.5px] font-extrabold text-amber-900 dark:text-amber-200">먼저 알아두세요</p>
+            <p className="text-[12.5px] text-amber-800 dark:text-amber-300/90 mt-1 leading-relaxed">
+              모든 이용권에 소개 몫이 붙는 건 아니에요. <strong>매장과 맺은 딜이 있을 때만</strong> 커미션이 발생하고,
+              비율도 매장이 정합니다. 딜이 없는 이용권도 담아서 소개할 수는 있지만 그때는 적립이 없습니다.
+              내가 지금 몇 %를 받는지는 이용권 상세 화면에 그대로 표시됩니다.
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* 수익 구조 */}
+      {/* 매장을 갖고 있다면 */}
       <section className="px-6 lg:px-12 py-16 max-w-4xl mx-auto">
-        <h2 className="text-3xl font-extrabold text-center mb-10">3가지 수익원</h2>
-        <div className="space-y-4">
-          {[
-            { icon: Wallet, title: '친구 추천 보상', desc: '내 share 링크로 친구가 공구 참여 시 양쪽 0.5% 보너스 딜 (첫 1회).', amt: '예: 친구 5만원 공구 → 250딜 × 양쪽' },
-            { icon: Megaphone, title: '본인 공구 진행', desc: '본인이 검증한 매장과 직접 공구 캠페인. 5% 수수료 후 90% 인플루언서 수령 옵션.', amt: '예: 100만 GMV → 90만 수령' },
-            { icon: BarChart3, title: '셀러 영입 commission', desc: '본인이 영입한 셀러의 평생 GMV 의 일정 비율 분배 (에이전시 모델).', amt: '예: 영입 셀러 월 GMV 1천만 → 인플루언서 50만/월' },
-          ].map((s, i) => (
-            <div key={i} className="bg-white dark:bg-[#0F151D] rounded-2xl p-6 border border-gray-200 dark:border-[#2A3446] flex gap-4">
-              <s.icon className="w-10 h-10 text-pink-500 shrink-0" />
-              <div className="flex-1">
-                <h3 className="font-bold mb-1">{s.title}</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{s.desc}</p>
-                <p className="text-xs text-pink-600 font-semibold">{s.amt}</p>
-              </div>
-            </div>
-          ))}
+        <div className="rounded-3xl border border-gray-200 dark:border-[#2A3446] p-7 lg:p-10 text-center">
+          <span className="w-12 h-12 mx-auto rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] flex items-center justify-center mb-4">
+            <Store className="w-6 h-6" />
+          </span>
+          <h2 className="text-xl lg:text-2xl font-extrabold mb-2">내 가게가 있다면 직접 팔 수도 있어요</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed max-w-xl mx-auto mb-6">
+            카카오맵에서 우리 가게를 찾아 등록하면 같은 유어샵에서 내 이용권을 직접 팝니다.
+            수수료는 팔린 만큼만 5% — 광고비를 미리 낼 필요가 없어요.
+          </p>
+          <button
+            onClick={() => navigate('/store/new')}
+            className="px-6 py-3 rounded-full bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] font-extrabold text-[15px] inline-flex items-center gap-2"
+          >
+            내 가게 등록하기 <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
-      </section>
-
-      <section className="bg-gradient-to-br from-gray-800 to-gray-800 px-6 lg:px-12 py-16 text-white text-center">
-        <h2 className="text-3xl lg:text-5xl font-extrabold mb-5">지금 share 한 번이<br />다음 달 월급이 됩니다.</h2>
-        <button
-          onClick={() => navigate('/register')}
-          className="px-8 py-4 bg-white dark:bg-[#0F151D] text-pink-600 rounded-full font-extrabold text-lg shadow-xl hover:scale-105 transition-transform"
-        >
-          무료로 가입 →
-        </button>
-        <p className="text-xs opacity-70 mt-6">팔로워 수 제한 없음 · 신용카드 불필요</p>
       </section>
 
       <footer className="px-6 lg:px-12 py-8 text-center text-xs text-gray-400 border-t border-gray-100 dark:border-[#2A3446]">

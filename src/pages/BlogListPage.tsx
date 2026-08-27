@@ -112,8 +112,8 @@ export default function BlogListPage() {
             <Link to="/" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1A2334]">
               <Home className="w-4 h-4" /><span className="hidden sm:inline">유어딜 홈</span>
             </Link>
-            <Link to="/seller/register" className="px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold hover:opacity-90">
-              판매 시작하기
+            <Link to="/store/new" className="px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold hover:opacity-90">
+              내 가게 등록
             </Link>
           </div>
         </div>
