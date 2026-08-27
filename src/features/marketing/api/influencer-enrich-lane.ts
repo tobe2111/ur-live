@@ -361,10 +361,18 @@ async function readPerfUnitsUsed(DB: D1Database, day: string): Promise<number> {
  */
 export async function enrichPoolFromLinkInBio(DB: D1Database, budget: FetchBudget, max: number): Promise<number> {
   if (max <= 0 || budget.left <= 0) return 0
+  /**
+   * ⚡ **정렬을 뺐다** (2026-08-27). `ORDER BY subscriber_count DESC` 는 인덱스가 못 받쳐 줘서
+   *   조건에 걸린 행 전부를 임시 B-트리로 정렬했다 — 실측 `rows_read=153,223 · 168ms · 결과 0건`.
+   *   후보 모수가 **평생 74명**이라 구독자순 우선이 만드는 차이는 없고(몇 회차면 전부 소진된다),
+   *   비용만 전수 정렬이었다. `id DESC` 는 부분 인덱스 `(account_id, id)` 를 역순으로 그대로 탄다.
+   *   ⚠️ WHERE 절은 부분 인덱스 조건(`links IS NOT NULL AND bio_checked_at IS NULL`)을 **함의해야**
+   *     그 인덱스가 쓰인다 — 두 조건 중 하나라도 빼면 다시 전수 스캔으로 돌아간다.
+   */
   const rows = (await DB.prepare(`SELECT id, links, email, instagram, tiktok FROM ad_influencer_leads
     WHERE account_id = ? AND bio_checked_at IS NULL AND (email IS NULL OR instagram IS NULL)
       AND links IS NOT NULL AND (links LIKE '%linktr.ee%' OR links LIKE '%litt.ly%' OR links LIKE '%inpock.co.kr%' OR links LIKE '%litelink.at%' OR links LIKE '%link.bio%' OR links LIKE '%taplink.cc%')
-    ORDER BY subscriber_count DESC, id DESC LIMIT ?`).bind(POOL_ACCOUNT_ID, max)
+    ORDER BY id DESC LIMIT ?`).bind(POOL_ACCOUNT_ID, max)
     .all<{ id: number; links: string | null; email: string | null; instagram: string | null; tiktok: string | null }>().catch(() => null))?.results || []
   if (!rows.length) return 0
   let enriched = 0

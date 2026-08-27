@@ -824,6 +824,38 @@ canvas {
       '"신규 0" 이 되어 수집이 죽은 것으로 읽힌다. 모를 때는 시도 수로 폴백하는 쪽이 덜 위험하다.',
   },
   {
+    name: '🔗 링크인바이오 부분 인덱스가 사라진다(15.3만 행을 읽고 0건을 낸다)',
+    file: 'src/features/marketing/api/influencer-schema.ts',
+    find: "  'CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_bio_links ON ad_influencer_leads(account_id, id) WHERE links IS NOT NULL AND bio_checked_at IS NULL',",
+    replace: '',
+    test: 'src/tests/unit/influencer-bio-scan.test.ts',
+    why:
+      '실측 — 이 인덱스가 없으면 대상 선택 1회가 rows_read 153,223 · 168ms · 결과 0건이다. ' +
+      '`bio_checked_at IS NULL` 이 99.9%를 통과시켜 기존 인덱스는 거르는 일을 못 한다. ' +
+      '결과가 0건이라 상태줄에 흔적이 없어 **조용히** 하루 수억 행을 태운다.',
+  },
+  {
+    name: '🔗 인덱스 못 타는 정렬이 되살아난다(전수 임시정렬)',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: '    ORDER BY id DESC LIMIT ?`).bind(POOL_ACCOUNT_ID, max)',
+    replace: '    ORDER BY subscriber_count DESC, id DESC LIMIT ?`).bind(POOL_ACCOUNT_ID, max)',
+    test: 'src/tests/unit/influencer-bio-scan.test.ts',
+    why:
+      'subscriber_count 는 인덱스에 없어 조건에 걸린 행 전부를 임시 B-트리로 정렬한다 — 부분 인덱스를 ' +
+      '넣어도 이 한 줄이 다시 붙으면 비용이 원래대로 돌아간다. 후보가 평생 74명이라 우선순위 이득도 없다.',
+  },
+  {
+    name: '🔗 부분 인덱스 조건 하나가 WHERE 에서 빠진다(인덱스가 안 쓰인다)',
+    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    find: "      AND links IS NOT NULL AND (links LIKE '%linktr.ee%'",
+    replace: "      AND (links LIKE '%linktr.ee%'",
+    test: 'src/tests/unit/influencer-bio-scan.test.ts',
+    why:
+      '부분 인덱스는 쿼리 WHERE 가 인덱스의 WHERE 를 함의할 때만 쓰인다. `links IS NOT NULL` 이 빠지면 ' +
+      'LIKE 만으로는 함의가 성립하지 않아 옵티마이저가 인덱스를 버리고 전수 스캔으로 돌아간다 — ' +
+      '결과는 같아서 테스트로만 잡힌다.',
+  },
+  {
     name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
     file: 'src/features/agency/api/agency-sunset.ts',
     find: "    code: 'AGENCY_SIGNUP_CLOSED',",

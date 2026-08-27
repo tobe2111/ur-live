@@ -40,6 +40,15 @@ export const AD_INFLUENCER_DDL: string[] = [
   //   ORDER BY 가 인덱스 순서와 같아야 정렬이 사라지므로, 호출부의 ORDER BY 도 함께 맞춰 두었다.
   'CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_perf ON ad_influencer_leads(account_id, platform, perf_checked_at)',
   'CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_bio ON ad_influencer_leads(account_id, bio_checked_at)',
+  // 🔗 **링크인바이오 후보 부분 인덱스** (2026-08-27 — 라이브 실측으로 추가).
+  //   바로 위 인덱스는 같은 날(07-29) 같은 의도로 만들어졌는데 **거르는 일을 못 한다**:
+  //   `bio_checked_at IS NULL` 이 153,312행 중 153,221행(99.9%)을 통과시켜 필터가 사실상 없다.
+  //   실측: 대상 선택 쿼리 1회가 `rows_read=153,223 · 168ms · 결과 0건`.
+  //   진짜 대상은 **74명(0.05%)** 이다 — 0.05%를 찾으려고 100%를 읽고 있었다.
+  //   ⚠️ `links LIKE '%linktr.ee%'` 는 앞에 `%` 라 **어떤 인덱스도 못 돕는다.** 그래서 인덱스로 노리는 것은
+  //     LIKE 가 아니라 그 앞 단계다 — `links` 보유자는 2,410명(1.6%)뿐이라 여기서 63배가 줄고,
+  //     LIKE 는 그 2,410행에만 돈다. 부분 인덱스라 스탬프가 찍힌 행은 스스로 빠져나간다.
+  'CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_bio_links ON ad_influencer_leads(account_id, id) WHERE links IS NOT NULL AND bio_checked_at IS NULL',
   // 구버전 테이블 대비 컬럼 보강(이미 있으면 catch 로 무시): 출처 분류 · 아웃리치 후속(컨택시점/팔로업/채널) ·
   //   ✍ 개인화 초안(생성만·발송 없음, 정보통신망법) · 🔗 링크인바이오 시도 스탬프 · 📥 유입출처+사전동의 시각.
   'ALTER TABLE ad_influencer_leads ADD COLUMN category TEXT',
