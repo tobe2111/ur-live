@@ -31,6 +31,31 @@ describe('카드 hover 캐러셀 (DealCardMedia)', () => {
     expect(go).toMatch(/e\.stopPropagation\(\)/)
   })
 
+  /**
+   * 👆 손가락 스와이프 (2026-08-27 대표 지시 — "이용권 이미지 썸네일 좌우로 스와이프 되어져야 해").
+   *
+   * ①과 **같은 사고**의 터치판이다: 터치를 떼면 브라우저가 클릭을 합성하는데, 카드가 `<Link>` 안이라
+   * 그 클릭이 그대로 상세로 간다 → **사진을 넘길 때마다 페이지가 이동**한다. 그래서 넘겼다는 사실을
+   * 기억해 두고 capture 단계에서 클릭을 취소한다. 그 배선이 이 테스트가 지키는 값이다.
+   *
+   * ## 못 막는 것
+   * 실제 제스처(JSDOM 터치 시뮬레이션이 아니다)와 임계값이 손에 맞는지. 그건 실기기 몫.
+   */
+  it('🔴 스와이프로 넘긴 뒤의 클릭이 상세로 튀지 않는다', () => {
+    const cancel = media.slice(media.indexOf('const onClickCaptureMedia ='), media.indexOf('return ('))
+    expect(cancel).toMatch(/if\s*\(!didSwipe\.current\)\s*return/)
+    expect(cancel).toMatch(/e\.preventDefault\(\)/)
+    expect(cancel).toMatch(/e\.stopPropagation\(\)/)
+    // 취소는 capture 단계여야 한다 — bubble 로 달면 <Link> 가 먼저 받는다.
+    expect(media).toMatch(/onClickCapture=\{onClickCaptureMedia\}/)
+  })
+
+  it('세로 스크롤을 스와이프로 오인하지 않는다 (사진 위에서 페이지가 안 내려가면 더 불편하다)', () => {
+    // 가로 이동이 임계 이상 + 세로보다 우세할 때만 "넘겼다"로 친다.
+    expect(media).toMatch(/SWIPE_MIN_PX\s*=\s*\d+/)
+    expect(media).toMatch(/Math\.abs\(dx\) >= SWIPE_MIN_PX && Math\.abs\(dx\) > Math\.abs\(dy\)/)
+  })
+
   it('🔴 안 본 장면은 네트워크를 태우지 않는다 (첫 화면 트래픽 보호)', () => {
     // `seen` 집합에 없는 인덱스는 <img> 자체를 만들지 않는다.
     expect(media).toMatch(/if\s*\(!seen\.has\(i\)\)\s*return null/)

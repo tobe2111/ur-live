@@ -1,9 +1,9 @@
 import { Fragment, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { safeInternalPath } from '@/utils/safe-internal-path'
-import { resolveConsumerAlias } from '@/shared/seo/consumer-redirects'
+import { resolveSectionMoreHref, isDeadEndHref } from './section-more-href'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 /**
  * 🏠 ① 카테고리 섹션 + 더보기 (2026-08-04 대표 시안 승인).
@@ -56,6 +56,14 @@ interface HomeSection {
  *   남는다 — 배너 컴포넌트 자신이 "없으면 null" 이라 결국 아무것도 안 그려진다.
  */
 export default function HomeSections({ midBanner }: { midBanner?: React.ReactNode }) {
+  /**
+   * 🖼️ 카드 사진 해상도 — 열 수를 아는 쪽이 정한다(2026-08-27).
+   *   이 섹션은 룩을 위해 `pc` 를 **항상** 넘기는데, 예전엔 그 플래그가 이미지 폭까지 정해서
+   *   **모바일·태블릿도 PC용 큰 사진**을 받았다(실측 필요폭의 2.3배). 룩과 해상도를 분리한다.
+   */
+  const isLgViewport = useMediaQuery('(min-width: 1024px)')
+  const cardImgWidth = isLgViewport ? 400 : 200
+
   /**
    * 🏠 2026-08-22 (대표 "인기 이용권이 먼저 안 뜨고 가까운 동네딜이 먼저 보여"): 워커가 홈 HTML 에
    * `__SSR_INITIAL_SECTIONS__` 를 함께 실어 보낸다(`worker/index.ts` SECTIONS 보조 슬롯).
@@ -125,20 +133,12 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
   return (
     <>
       {visible.map((sec, sIdx) => {
-        // 🐛 2026-08-17 (대표 신고 — 더보기 클릭 시 옛 프레임 플래시): 저장된 href 가 `/group-buy` 같은
-        // **별칭**(App.tsx `<Navigate>` 경로)이면 홈이 리마운트되며 플래시가 난다 — SSOT 로 정본 치환.
-        // (데이터는 section-seed v2 heal 이 고치지만, 어드민이 다시 별칭을 넣어도 여기서 막는다.)
-        // 🐛 2026-08-19 (대표 신고 — "더보기 버튼 클릭 시 아무런 반응이 없고"):
-        //   위 별칭 치환이 **쿼리를 통째로 버리고 있었다.** 서버가 주는 `/?sort=popular` 에서
-        //   경로 부분 `/` 만 정규화하고 그 결과로 링크를 만들었기 때문에 최종 href 가 `/` 가 됐다
-        //   — 홈에서 홈으로 가는 링크라 눌러도 화면이 그대로다(에러도 없어 고장으로 안 보인다).
-        //   ⇒ 정규화는 **경로에만** 적용하고 쿼리·해시는 그대로 다시 붙인다.
-        const raw = sec.more_href ? safeInternalPath(sec.more_href, '') : ''
-        const qIdx = raw.indexOf('?')
-        const rawPath = qIdx === -1 ? raw : raw.slice(0, qIdx)
-        const rawQuery = qIdx === -1 ? '' : raw.slice(qIdx)
-        const canonPath = raw ? resolveConsumerAlias(rawPath) : null
-        const more = raw ? `${canonPath ?? rawPath}${rawQuery}` : ''
+        // 🔗 링크 해석은 SSOT(`section-more-href`)가 한다 — 차단·별칭정본화·쿼리보존을 **한 번에**.
+        //   여기 인라인으로 두는 동안 같은 신고가 세 번 났다(08-17 플래시 · 08-19 쿼리유실 ·
+        //   08-27 버튼실종). 특히 `safeInternalPath` 가 쿼리를 버린다는 사실을 두 번 놓쳤다 —
+        //   그래서 순수 함수로 빼서 **실제 입력으로** 테스트한다. 경위는 그 파일 주석에.
+        const more = resolveSectionMoreHref(sec.more_href)
+        const moreIsDeadEnd = isDeadEndHref(more)
         return (
           <Fragment key={sec.id}>
           {/* 📐 가로 여백은 홈 컨테이너가 준다 — 여기서 또 주면 좌우가 어긋난다. */}
@@ -153,7 +153,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
                   <p className="mt-0.5 text-[12.5px] text-gray-500 dark:text-gray-400">{sec.subtitle}</p>
                 )}
               </div>
-              {more && (
+              {more && !moreIsDeadEnd && (
                 <Link
                   to={more}
                   className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 dark:border-[#2A3446] text-[12.5px] font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors whitespace-nowrap"
@@ -164,7 +164,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4">
               {sec.products.map((p, i) => (
-                <GroupBuyFeedCard key={p.id} p={p} pc aboveFold={i < 4 && sIdx === 0} />
+                <GroupBuyFeedCard key={p.id} p={p} imgWidth={cardImgWidth} aboveFold={i < 4 && sIdx === 0} />
               ))}
             </div>
           </section>

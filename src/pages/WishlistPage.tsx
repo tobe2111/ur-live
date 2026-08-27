@@ -12,11 +12,16 @@ import { useTheme } from '@/shared/stores/useTheme'
 import { useWishlist, type WishlistItem } from '@/hooks/queries/useWishlist'
 import BrandLoader from '@/components/brand/BrandLoader'
 import GroupBuyFeedCard from './main-home/GroupBuyFeedCard'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 // 💗 2026-08-19: 자체 그라데이션 카드(WishlistCard)를 제거했다 — 찜 목록도 홈과 **같은 카드**를 쓴다
 //   (대표 "기존 이용권 UI로 해줘야지"). 카드가 한 벌이어야 화면마다 같은 상품이 다르게 안 보인다.
 
 const WishlistPage: React.FC = () => {
+  // 🖼️ 사진 해상도 — 홈과 같은 규칙(열 수를 아는 쪽이 정한다). 가드: `home-card-image-width`.
+  const isLgViewport = useMediaQuery('(min-width: 1024px)')
+  const cardImgWidth = isLgViewport ? 400 : 200
+
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [userId, setUserId] = useState<number | null>(null)
@@ -112,11 +117,11 @@ const WishlistPage: React.FC = () => {
              자체 그라데이션 카드를 버리고 **홈과 같은 카드**(`GroupBuyFeedCard`)를 쓴다.
              찜 목록만 다른 모양이면 같은 상품이 화면마다 달라 보인다(그루폰 wishlist 도 같은 카드다).
              하트는 카드가 내장하고 있어 여기서 따로 그리지 않는다 — 누르면 목록에서 빠진다. */
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4">
             {wishlists.map((item, i) => (
               <GroupBuyFeedCard
                 key={item.id}
-                pc
+                imgWidth={cardImgWidth}
                 aboveFold={i < 4}
                 p={{
                   id: item.product_id,
