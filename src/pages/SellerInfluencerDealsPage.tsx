@@ -10,6 +10,7 @@
  * ⚠️ 재원 카피 중립 유지 — 이 페이지엔 funding 정보 endpoint 가 없으므로 재원 주장 문구 금지.
  */
 import { useState } from 'react'
+import InfluencerPicker from './seller-influencer-deals/InfluencerPicker'
 import { useTranslation } from 'react-i18next'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
@@ -196,17 +197,18 @@ export default function SellerInfluencerDealsPage() {
           </div>
           {showForm && (
             <div className="mt-4 space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">
-                  {t('seller.influencerDeals.influencerId', { defaultValue: '소개 파트너 ID' })}
-                </label>
-                <input
-                  value={form.influencer_id}
-                  onChange={(e) => setForm((f) => ({ ...f, influencer_id: e.target.value }))}
-                  placeholder={t('seller.influencerDeals.influencerIdPlaceholder', { defaultValue: 'user_12345' })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm text-gray-900"
-                />
-              </div>
+              {/* 🔎 2026-08-27: `user_12345` 를 손으로 치던 입력을 검색으로 대체.
+                  사장님이 남의 계정 ID 를 알 방법이 없어 이 화면은 쓸 수 없었다. */}
+              <InfluencerPicker
+                selectedId={form.influencer_id}
+                headers={headers}
+                onPick={(row) => setForm((f) => ({ ...f, influencer_id: row.user_id }))}
+              />
+              {form.influencer_id && (
+                <p className="rounded-lg bg-gray-50 px-3 py-2 text-[11px] text-gray-600">
+                  선택됨 · <span className="font-mono">{form.influencer_id}</span>
+                </p>
+              )}
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-700">
                   {t('seller.influencerDeals.commissionPct', { defaultValue: '우대 커미션 (%)' })}

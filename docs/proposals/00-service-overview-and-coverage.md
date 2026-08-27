@@ -287,8 +287,8 @@
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
 | 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 70 | 278 |
 | 링크샵 / 큐레이터 | `linkshop-brief.md` | 13 | 60 |
-| 에이전시 | `agency-brief.md` | 29 | 168 |
-| **합계** | — | **184** | **605** |
+| 에이전시 | `agency-brief.md` | 29 | 169 |
+| **합계** | — | **184** | **606** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -297,8 +297,8 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 380 | 1238 |
-| 도메인 버킷 (5개 소개서) | 184 | 605 |
+| 전체 | 380 | 1239 |
+| 도메인 버킷 (5개 소개서) | 184 | 606 |
 | 공통/인프라 (의도적 제외) | 163 | 461 |
 | **미커버 (점검 필요)** | **33** | **172** |
 
@@ -1693,7 +1693,7 @@
 - `/influencer/settlement`
 - `/seller/prospects`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (168개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (169개)
 
 
 **/api/admin-payouts/disputes**
@@ -1988,6 +1988,9 @@
 - `POST /api/seller-marketing/deals/:id/respond`
 - `POST /api/seller-marketing/deals/propose`
 
+**/api/seller-marketing/influencers**
+- `GET /api/seller-marketing/influencers`
+
 **/api/seller-marketing/me**
 - `GET /api/seller-marketing/me`
 
@@ -2010,7 +2013,7 @@
 
 
 
-> 마지막 생성: 2026-08-26T14:36:36.400Z
+> 마지막 생성: 2026-08-27T08:07:02.892Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

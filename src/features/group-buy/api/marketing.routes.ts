@@ -10,6 +10,8 @@ import { requireSeller, requireAuth, optionalAuth } from '@/worker/middleware/au
 import type { AuthUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { findActiveDealPct } from '@/worker/utils/influencer-deal'
+import { ensureInfluencerProfileTable, parseChannels, maxFollowers, parseJsonList } from '@/worker/utils/influencer-profile'
+import { intParam } from '@/shared/pagination'
 
 // 🛡️ 2026-05-20: Hono `c.get('user'/'seller')` 가 ContextVariableMap 미선언으로 'never' 가 됨.
 //   각 미들웨어 (requireAuth/requireSeller) 가 ctx 에 박는 형태를 Variables 로 명시.
@@ -768,6 +770,75 @@ adminApp.post('/payouts/process', async (c) => {
      WHERE influencer_id = ? AND status = 'available' AND paid_at IS NULL`
   ).bind(influencerId).run()
   return c.json({ success: true, amount })
+})
+
+// ───────── 소개자 찾기 (매장이 제안할 상대를 검색) ─────────
+
+/**
+ * 🙋 2026-08-27 — 매장이 **손으로 유저 ID 를 타이핑**하던 것을 대체한다.
+ *
+ * 제안 화면의 인플루언서 입력은 `placeholder: 'user_12345'` 였다. 사장님이 남의 계정 ID 를
+ * 알 방법이 없으니 그 화면은 현실에서 쓸 수 없었고, 그게 딜이 0건인 이유 중 하나다.
+ *
+ * ⚠️ 검색 모수는 **공개(opt-in)한 사람만**이다(`influencer_profiles.is_open = 1`).
+ *   `users` 전체를 열면 가입자 전원을 사업자에게 노출하는 것이 된다. 실적 랭킹도 답이 아니다 —
+ *   실적이 있어야 뜨는데 딜이 0건이라 모수가 0 이다.
+ *
+ * ⚠️ **연락처는 응답에 넣지 않는다**(이메일·전화·실명). 연락은 딜 제안으로만 — 노출하는 순간
+ *   플랫폼 밖 거래와 콜드 연락의 통로가 된다.
+ */
+sellerApp.get('/influencers', async (c) => {
+  const DB = c.env.DB
+  await ensureInfluencerProfileTable(DB)
+  const q = (c.req.query('q') || '').trim().slice(0, 40)
+  const category = (c.req.query('category') || '').trim()
+  const region = (c.req.query('region') || '').trim()
+  const limit = Math.min(50, Math.max(1, intParam(c.req.query('limit'), 20)))
+
+  // 카테고리·지역은 JSON 배열 컬럼이라 LIKE 로 본다. 값이 화이트리스트(고정 문자열)라
+  // 부분일치 오탐이 없다 — 임의 문자열이면 이 방식을 쓰면 안 된다.
+  const where: string[] = ['p.is_open = 1']
+  const binds: unknown[] = []
+  if (category) { where.push('p.categories LIKE ?'); binds.push(`%"${category}"%`) }
+  if (region) { where.push('(p.regions LIKE ? OR p.regions LIKE ?)'); binds.push(`%"${region}"%`, '%"전국"%') }
+  if (q) { where.push('(u.handle LIKE ? OR u.name LIKE ? OR p.intro LIKE ?)'); binds.push(`%${q}%`, `%${q}%`, `%${q}%`) }
+
+  const { results } = await DB.prepare(
+    `SELECT p.user_id, p.intro, p.channels, p.categories, p.regions,
+            u.handle, u.name, u.profile_image
+       FROM influencer_profiles p
+       LEFT JOIN users u ON u.id = p.user_id
+      WHERE ${where.join(' AND ')}
+      ORDER BY p.updated_at DESC
+      LIMIT ?`
+  ).bind(...binds, limit).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+
+  // 이 매장과 이미 딜이 있는 사람은 표시해 준다 — 중복 제안을 막고, 매장이 현황을 본다.
+  const sellerId = getSellerId(c)
+  const existing = new Set<string>()
+  if (sellerId) {
+    const { results: ds } = await DB.prepare(
+      `SELECT influencer_id FROM seller_influencer_deals WHERE seller_id = ? AND status IN ('proposed','active')`
+    ).bind(sellerId).all<{ influencer_id: string }>().catch(() => ({ results: [] as { influencer_id: string }[] }))
+    for (const d of ds || []) existing.add(String(d.influencer_id))
+  }
+
+  const data = (results || []).map((r) => {
+    const channels = parseChannels(r.channels)
+    return {
+      user_id: String(r.user_id),
+      handle: (r.handle as string) ?? null,
+      name: (r.name as string) ?? null,
+      profile_image: (r.profile_image as string) ?? null,
+      intro: (r.intro as string) ?? null,
+      channels,                                  // 연락처 아님 — 공개 채널 링크
+      followers: maxFollowers(channels),         // 본인 신고값(미검증) — 규모 감으로만
+      categories: parseJsonList(r.categories),
+      regions: parseJsonList(r.regions),
+      has_deal: existing.has(String(r.user_id)),
+    }
+  })
+  return c.json({ success: true, data })
 })
 
 // ───────── 카탈로그 (인플이 ?ref= 링크 생성) ─────────
