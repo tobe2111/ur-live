@@ -36,6 +36,8 @@ export default function SellerInfluencersPage() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [configured, setConfigured] = useState(true)
+  // 🔒 유어애즈 DB 열람 차단 상태 — 실패 토스트로 뭉개면 사장님이 무엇을 해야 하는지 모른다.
+  const [blocked, setBlocked] = useState<{ code: string; error: string } | null>(null)
   const [contactFee, setContactFee] = useState(0)
   const [cats, setCats] = useState<{ category: string; n: number }[]>([])
   const [cat, setCat] = useState('')
@@ -55,7 +57,13 @@ export default function SellerInfluencersPage() {
       if (r.data?.success) {
         setRows(r.data.data || []); setTotal(r.data.total || 0); setPage(p)
         setConfigured(r.data.configured !== false); setContactFee(r.data.contact_fee_krw || 0)
+        setBlocked(null)
       }
+    } catch (e) {
+      // 403(대행사 계정) · 429(일일 열람 상한) 는 "오류"가 아니라 **상태**다 — 그대로 보여 준다.
+      const res = (e as { response?: { status?: number; data?: { code?: string; error?: string; blocked?: boolean } } })?.response
+      if (res?.data?.blocked) setBlocked({ code: res.data.code || '', error: res.data.error || '' })
+      setRows([]); setTotal(0)
     } finally { setLoading(false) }
   }, [cat, band, sort])
   useEffect(() => { load(1) }, [load])
@@ -102,7 +110,20 @@ export default function SellerInfluencersPage() {
           <div className="hidden sm:grid grid-cols-[1fr_90px_80px_100px_90px] px-4 py-2 bg-gray-50 text-[10px] font-bold text-gray-400 border-b border-gray-100">
             <span>프로필</span><span className="text-right">팔로워</span><span className="text-right">게시물</span><span className="text-right">평균 조회</span><span className="text-right">평균 댓글</span>
           </div>
-          {!configured ? (
+          {blocked ? (
+            <div className="p-8 text-center">
+              <p className="text-sm font-bold text-gray-900">{blocked.error}</p>
+              {blocked.code === 'ADS_DB_AGENCY_BLOCKED' && (
+                <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+                  등록 유형이 <b>중개(관리 대행)</b>로 되어 있습니다.<br />
+                  매장 사장님 본인 계정이라면 <b>매장 관리</b>에서 등록 유형을 <b>직접</b>으로 바꿔주세요.
+                </p>
+              )}
+              {blocked.code === 'ADS_DB_QUOTA_EXCEEDED' && (
+                <p className="mt-2 text-xs text-gray-500">이미 담아 둔 후보로 제안은 계속 보내실 수 있어요.</p>
+              )}
+            </div>
+          ) : !configured ? (
             <p className="p-6 text-sm text-gray-500 text-center">인플루언서 DB 연결 준비 중입니다.</p>
           ) : loading ? (
             <div className="p-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>

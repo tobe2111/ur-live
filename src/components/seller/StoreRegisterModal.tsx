@@ -18,6 +18,7 @@ import { useState } from 'react'
 import api from '@/lib/api'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import { formatPhone, isValidMobilePhone, digitsOnly } from '@/utils/format-phone'
+import { readStoreReferrer, clearStoreReferrer } from '@/utils/store-referrer'
 import { Loader2, MapPin, CheckCircle2, XCircle, BadgeCheck, FileImage } from 'lucide-react'
 
 export interface RegisterPlace {
@@ -112,8 +113,13 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
         manager_phone: digitsOnly(managerPhone),
         business_number: bno.replace(/-/g, '') || undefined,
         business_cert_url: certUrl,
+        // 🤝 2026-08-27: 소개자 초대 링크(`/store/new?ref=`)로 들어왔으면 그 사람에게 귀속된다.
+        //   ⚠️ sessionStorage 를 거치는 이유 — 로그인이 필요한 페이지라 카카오를 다녀오면
+        //   쿼리스트링이 날아간다. 그 사이 ref 를 잃으면 소개자가 보상을 못 받는다.
+        referrer_user_id: readStoreReferrer() || undefined,
       })
       if (!r.data?.success) throw new Error(r.data?.error)
+      clearStoreReferrer()
       alert(r.data.data?.message || '매장이 등록되었습니다')
       onDone(Number(r.data.data?.seller_id) || undefined)
     } catch (e: any) {

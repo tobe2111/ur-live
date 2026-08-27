@@ -19,6 +19,8 @@ import { require2FA } from '../../../worker/middleware/require-2fa'
 // 🛡️ 2026-05-21 정합성: 모든 sensitive action 에 audit log 강제.
 import { auditLog } from '../../../worker/middleware/audit-log'
 import type { Env } from '../../../worker/types/env'
+import { markPayoutSent, isTransferable, type PayoutRow } from '../../../worker/utils/payout-sent'
+import { csvEscape } from '../../../worker/utils/csv-safe'
 
 export const adminPayoutsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -237,30 +239,15 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/sent', requireAdminRole('finance'),
   const txId = (body.transaction_id || '').trim()
   if (!txId) return c.json({ success: false, error: 'transaction_id 필수 (은행/토스 송금 ID)' }, 400)
   const { DB } = c.env
-  const row = await DB.prepare('SELECT * FROM payouts WHERE id = ?').bind(id).first<{ id: number; status: string; payee_type: string; payee_id: string; amount: number; bank_name: string | null; account_number: string | null; period_start: string | null; period_end: string | null }>()
-  if (!row) return c.json({ success: false, error: 'Not found' }, 404)
-  if (!['pending', 'approved'].includes(row.status)) return c.json({ success: false, error: '이미 처리됨' }, 409)
-
-  // 💸 2026-07-08 (머니 감사 ③ — payout 이중확인 가드): 실수로 잘못/이중 송금 마킹 방어.
-  //   (1) 계좌 누락 → 실제 이체 불가능한 상태이므로 'sent' 마킹 차단(수령자 계좌 등록 유도).
-  if (!row.account_number) {
-    return c.json({ success: false, error: '수령자 계좌번호가 없어 송금 완료로 처리할 수 없습니다. 수령자 계좌 등록을 확인하세요.', code: 'PAYOUT_NO_ACCOUNT' }, 409)
+  // 💸 2026-08-27: 가드(계좌 누락 / 기간 중복 / CAS)를 `markPayoutSent` SSOT 로 위임.
+  //   일괄 송금완료(`/bulk-sent`)가 같은 함수를 부른다 — 따로 구현하면 가드가 갈리고,
+  //   갈린 쪽이 조용히 이중지급을 만든다. 판정 내용·순서·에러코드는 이전과 동일.
+  const sent = await markPayoutSent(DB, id, txId, body.admin_memo || null)
+  if (!sent.ok) {
+    const status = sent.code === 'NOT_FOUND' ? 404 : 409
+    return c.json({ success: false, error: sent.error, code: sent.code }, status)
   }
-  //   (2) 동일 수령자·기간이 이미 송금됨 → 이중지급 방어(생성 UNIQUE 를 우회한 재생성 등 대비).
-  if (row.period_start && row.period_end) {
-    const dupSent = await DB.prepare(
-      `SELECT id FROM payouts WHERE payee_type = ? AND payee_id = ? AND period_start = ? AND period_end = ? AND status = 'sent' AND id != ? LIMIT 1`,
-    ).bind(row.payee_type, row.payee_id, row.period_start, row.period_end, id).first<{ id: number }>().catch(() => null)
-    if (dupSent) {
-      return c.json({ success: false, error: '이 수령자·기간의 정산이 이미 송금 완료되었습니다. 중복 송금이 아닌지 확인하세요.', code: 'PAYOUT_ALREADY_SENT_PERIOD' }, 409)
-    }
-  }
-
-  // 💸 CAS 선점 — 동시 /sent 이중 실행(이중 알림톡·transaction_id 덮어쓰기) 방지(머니 룰 #1).
-  const sentRes = await DB.prepare(
-    `UPDATE payouts SET status = 'sent', sent_at = datetime('now'), transaction_id = ?, admin_memo = ? WHERE id = ? AND status IN ('pending','approved')`,
-  ).bind(txId, body.admin_memo || null, id).run()
-  if ((sentRes.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '이미 처리됨' }, 409)
+  const row = sent.row!
 
   // 🛡️ 2026-05-21 Phase D-3: 송금 완료 자동 알림톡 (waitUntil 비동기).
   //   수령자 type 별 phone 조회 → template 'payout_completed' 발송.
@@ -288,6 +275,113 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/sent', requireAdminRole('finance'),
   })())
 
   return c.json({ success: true })
+})
+
+/**
+ * 🏦 2026-08-27 (대표 "어드민에서 정산을 최대한 간편하게") — **은행 일괄이체 파일**.
+ *
+ * 지금까지 정산은 [건별 승인 → 은행에서 **건별 이체** → 돌아와 건별 송금완료 마킹] 이었다.
+ * 수취인이 30명이면 매주 이체 30번이다. 은행 인터넷뱅킹에는 대량이체(파일 업로드) 기능이 있으니
+ * **그 형식으로 뽑아 주면 이체가 1번**이 된다.
+ *
+ * ⚠️ 어드민 가이드는 예전부터 "CSV 다운로드 → 은행 일괄이체 → 완료 후 업로드" 를 안내하고 있었는데,
+ *   실제 CSV(`/settlement/export-csv`)는 **주문 단위 회계 내역서**라 은행·계좌·예금주가 아예 없었다.
+ *   문서가 없는 기능을 안내하고 있었던 것 — 이 라우트가 그 문서를 사실로 만든다.
+ *
+ * ⚠️ 계좌 3종(은행·번호·예금주)이 다 있는 건만 싣는다. 하나라도 비면 은행이 그 행을 거부하고,
+ *   **파일 전체를 반려하는 은행도 있다.** 빠진 건수는 헤더(`X-Skipped-Count`)로 알려 준다.
+ */
+adminPayoutsRoutes.get('/admin/payouts/transfer-csv', requireAdminRole('finance'), async (c) => {
+  const { DB } = c.env
+  const status = c.req.query('status') === 'pending' ? 'pending' : 'approved'
+  const { results } = await DB.prepare(
+    `SELECT id, payee_type, payee_id, amount, bank_name, account_number, account_holder,
+            period_start, period_end
+       FROM payouts WHERE status = ? ORDER BY id ASC LIMIT 1000`,
+  ).bind(status).all<PayoutRow>().catch(() => ({ results: [] as PayoutRow[] }))
+
+  const all = results || []
+  const rows = all.filter(isTransferable)
+  const skipped = all.length - rows.length
+
+  // 은행 대량이체 서식 — 은행마다 열 순서가 다르므로 **사람이 읽고 매핑**할 수 있게 한글 헤더로.
+  // `적요` 에 payout id 를 넣어 두면 이체 결과와 우리 장부를 나중에 맞춰 볼 수 있다.
+  const headers = ['정산ID', '은행', '계좌번호', '예금주', '금액', '적요']
+  const body = rows.map((r) => [
+    r.id, r.bank_name, r.account_number, r.account_holder, r.amount,
+    `유어딜정산-${r.id}`,
+  ])
+  const csv = [headers, ...body].map((line) => line.map(csvEscape).join(',')).join('\r\n')
+
+  return new Response('\uFEFF' + csv, {   // BOM — 엑셀에서 한글이 깨지지 않게
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="urdeal_transfer_${status}.csv"`,
+      'X-Total-Count': String(all.length),
+      'X-Skipped-Count': String(skipped),
+      'Cache-Control': 'no-store',
+    },
+  })
+})
+
+/**
+ * 🏦 일괄 송금 완료 — 은행에서 대량이체를 끝낸 뒤 한 번에 적는다.
+ *
+ * ⚠️ **가드는 단건과 같은 함수(`markPayoutSent`)를 건별로 부른다.** 일괄이라고 검사를 건너뛰면
+ *   계좌 없는 건이 '송금됨'이 되거나 같은 기간이 두 번 나간다.
+ * ⚠️ 실패해도 **전체를 되돌리지 않는다** — 이미 은행에서 나간 돈을 장부에서 지우면 더 위험하다.
+ *   대신 건별 결과를 돌려주고 화면이 실패분만 다시 처리하게 한다.
+ */
+adminPayoutsRoutes.patch('/admin/payouts/bulk-sent', requireAdminRole('finance'), require2FA(), auditLog('payouts.bulk_sent'), async (c) => {
+  type BulkSentBody = { ids?: unknown; transaction_id?: string; admin_memo?: string }
+  const body: BulkSentBody = await c.req.json<BulkSentBody>().catch(() => ({} as BulkSentBody))
+  const txId = (body.transaction_id || '').trim()
+  if (!txId) return c.json({ success: false, error: 'transaction_id 필수 (은행 이체 파일/거래 번호)' }, 400)
+
+  const ids = Array.isArray(body.ids)
+    ? [...new Set((body.ids as unknown[]).map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0))]
+    : []
+  if (ids.length === 0) return c.json({ success: false, error: '처리할 정산 건을 선택하세요' }, 400)
+  // 한 번에 너무 많으면 워커 시간 안에 못 끝낸다 — 화면이 나눠 보내게 한다.
+  if (ids.length > 200) return c.json({ success: false, error: '한 번에 200건까지 처리할 수 있습니다' }, 400)
+
+  const { DB } = c.env
+  const results = []
+  for (const id of ids) results.push(await markPayoutSent(DB, id, txId, body.admin_memo || null))
+
+  const ok = results.filter((r) => r.ok)
+  const failed = results.filter((r) => !r.ok).map(({ id, code, error }) => ({ id, code, error }))
+  return c.json({
+    success: true,
+    data: {
+      sent: ok.length,
+      failed_count: failed.length,
+      total_amount: ok.reduce((sum, r) => sum + Number(r.row?.amount ?? 0), 0),
+      failed,
+    },
+  })
+})
+
+/** 🏦 일괄 승인 — pending → approved. 돈이 나가지 않는 전이라 검사는 상태 CAS 하나로 충분하다. */
+adminPayoutsRoutes.patch('/admin/payouts/bulk-approve', requireAdminRole('finance'), require2FA(), auditLog('payouts.bulk_approve'), async (c) => {
+  type BulkIdsBody = { ids?: unknown }
+  const body: BulkIdsBody = await c.req.json<BulkIdsBody>().catch(() => ({} as BulkIdsBody))
+  const ids = Array.isArray(body.ids)
+    ? [...new Set((body.ids as unknown[]).map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0))]
+    : []
+  if (ids.length === 0) return c.json({ success: false, error: '승인할 정산 건을 선택하세요' }, 400)
+  if (ids.length > 200) return c.json({ success: false, error: '한 번에 200건까지 처리할 수 있습니다' }, 400)
+
+  const { DB } = c.env
+  let approved = 0
+  for (const id of ids) {
+    const r = await DB.prepare(
+      `UPDATE payouts SET status = 'approved', approved_at = datetime('now')
+        WHERE id = ? AND status = 'pending'`,
+    ).bind(id).run().catch(() => null)
+    if ((r?.meta?.changes ?? 0) > 0) approved += 1
+  }
+  return c.json({ success: true, data: { approved, skipped: ids.length - approved } })
 })
 
 // 💸 2026-07-08 (머니 감사 ③): 지급후 환불 미회수 clawback 목록 — 운영자 회수/상계 액션용.

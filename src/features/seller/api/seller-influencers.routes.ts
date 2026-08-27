@@ -28,6 +28,9 @@ import { intParam } from '@/shared/pagination'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { ensureOfferInvitesTable, generateOfferToken } from '@/features/marketing/api/influencer-offer-invites.routes'
 import { enqueueOutreachEmails } from '@/features/marketing/api/outreach-email'
+import {
+  resolveAdsDbAccess, checkAdsDbQuota, recordAdsDbRows, type AdsDbAccess,
+} from '@/worker/utils/ads-db-access'
 
 const app = new Hono<{ Bindings: Env }>()
 type Ctx = Context<{ Bindings: Env }>
@@ -40,6 +43,31 @@ app.use('*', async (c, next) => {
   await next()
 })
 const sid = (c: Ctx): number => (c as any).get('sellerId') as number
+
+/**
+ * 🔒 유어애즈 DB 열람 게이트 (2026-08-27 대표 지시 — "대행사로 가입하면 유어애즈 DB 를 볼 수 없게").
+ *
+ * 판정은 `ads-db-access.ts` 가 SSOT 다. 여기서는 **거절을 응답으로 바꾸는 일만** 한다 —
+ * 판정을 라우트마다 다시 쓰면 반드시 갈라지고, 갈라진 쪽이 조용히 열린다.
+ *
+ * ⚠️ DB 핸들은 여기서도 `adsLeadsDb(c.env)` 로 얻는다 — 게이트가 읽는 것은 리드 테이블이 아니라
+ *    `seller_meta`·`seller_operators`·`platform_settings`(메인 DB)지만, 라우터가 문장 단위로
+ *    알아서 고른다. bare `adsLeadsDb(c.env)` 를 쓰면 `ads-leads-db.test.ts` R1 이 빨간불을 낸다 —
+ *    "이 파일은 리드 테이블을 만지므로 핸들 선택을 사람이 하지 마라" 가 그 가드의 취지다.
+ *
+ * ⚠️ 403 본문에 `code` 를 실어 보낸다 — 프런트가 "왜 막혔는지"를 구분해서 보여줘야
+ *    막힌 사장님이 무엇을 하면 되는지 알 수 있다(그냥 실패 토스트면 문의만 늘어난다).
+ */
+async function gateAdsDb(c: Ctx, opts?: { quota?: boolean }): Promise<Response | null> {
+  const sellerId = sid(c)
+  const acc: AdsDbAccess = await resolveAdsDbAccess(adsLeadsDb(c.env), sellerId)
+  if (!acc.allowed) return c.json({ success: false, error: acc.error, code: acc.code, blocked: true }, 403)
+  if (opts?.quota) {
+    const q = await checkAdsDbQuota(adsLeadsDb(c.env), sellerId)
+    if (!q.allowed) return c.json({ success: false, error: q.error, code: q.code, blocked: true }, 429)
+  }
+  return null
+}
 
 const OUTREACH_CHANNELS = ['instagram', 'youtube', 'tiktok', 'blog', 'naver_clip'] as const
 type OutreachChannel = (typeof OUTREACH_CHANNELS)[number]
@@ -75,6 +103,8 @@ async function ensureOutreachTable(DB: D1Database) {
 // ── GET /list — 인플루언서 탐색 (연락처 무반환) ─────────────────────────────────────
 app.get('/list', async (c) => {
   try {
+    const denied = await gateAdsDb(c as Ctx, { quota: true })
+    if (denied) return denied
     const db = adsLeadsDb(c.env)
 
     const q = c.req.query()
@@ -119,6 +149,10 @@ app.get('/list', async (c) => {
     const fee = await db.prepare(`SELECT value FROM platform_settings WHERE key = 'influencer_contact_fee_krw'`)
       .first<{ value: string }>().catch(() => null)
 
+    // 열람량 적립 — **실제로 내보낸 행 수**만 센다(요청 수가 아니라). 상한의 근거이자 감사 기록.
+    const served = (rows.results || []).length
+    await recordAdsDbRows(adsLeadsDb(c.env), sid(c as Ctx), served)
+
     return c.json({
       success: true, configured: true,
       data: rows.results || [], total: cnt?.n ?? 0, page, limit,
@@ -132,6 +166,9 @@ app.get('/list', async (c) => {
 // ── GET /categories — 필터용 카테고리 분포 ─────────────────────────────────────────
 app.get('/categories', async (c) => {
   try {
+    // 카테고리 분포도 자산이다 — 어느 분야에 깊이가 있는지가 그대로 드러난다.
+    const denied = await gateAdsDb(c as Ctx)
+    if (denied) return denied
     const db = adsLeadsDb(c.env)
     const rows = await db.prepare(`
       SELECT category, COUNT(*) AS n FROM ad_influencer_leads
@@ -147,6 +184,8 @@ app.get('/categories', async (c) => {
 // ── POST /outreach — 제안 저장(발송은 유어딜 대행 — 어드민 큐 통지) ──────────────────
 app.post('/outreach', rateLimit({ action: 'influencer_outreach', max: 10, windowSec: 3600 }), async (c) => {
   try {
+    const denied = await gateAdsDb(c as Ctx)
+    if (denied) return denied
     const sellerId = sid(c as Ctx)
     const db = adsLeadsDb(c.env)
     await ensureOutreachTable(db)

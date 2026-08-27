@@ -14,6 +14,8 @@ import { safeError } from '@/worker/utils/safe-error'
 import { adsLeadsDb } from '@/shared/ads/leads-db'
 import { ensureOfferInvitesTable, generateOfferToken } from '@/features/marketing/api/influencer-offer-invites.routes'
 import { enqueueOutreachEmails } from '@/features/marketing/api/outreach-email'
+import { resolveAdsDbAccess, ADS_DB_ACCESS_META_KEY, ADS_DB_DEFAULT_DAILY_ROW_CAP } from '@/worker/utils/ads-db-access'
+import { setSellerMeta } from '@/worker/utils/seller-meta'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -37,6 +39,64 @@ app.get('/', async (c) => {
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {
     return safeError(c, err, '제안 목록을 불러오지 못했습니다', '[admin-outreach]')
+  }
+})
+
+// ── 🔒 유어애즈 DB 열람 권한 (2026-08-27 대표 지시) ─────────────────────────────────
+//   ⚠️ DB 핸들은 `adsLeadsDb(c.env)` — 여기서 읽는 sellers·seller_meta 는 메인 DB 지만 라우터가
+//      문장 단위로 고른다. bare `adsLeadsDb(c.env)` 는 R1 가드(ads-leads-db.test.ts)가 막는다.
+//   ⚠️ 이 두 라우트는 **`/:id` 보다 먼저** 등록돼야 한다 — Hono 는 등록 순서로 매칭하므로
+//      아래로 내려가면 `/:id` 가 'ads-db-access' 를 id 로 삼켜 조용히 404/오동작한다.
+
+// GET /ads-db-access — 누가 열려 있고 누가 막혀 있는지 + 오늘 얼마나 가져갔는지
+app.get('/ads-db-access', async (c) => {
+  try {
+    const day = new Date().toISOString().slice(0, 10)
+    const sellers = await adsLeadsDb(c.env).prepare(
+      `SELECT s.id, s.business_name, s.status,
+              (SELECT value FROM seller_meta m WHERE m.seller_id = s.id AND m.key = 'store_channel') AS channel,
+              (SELECT value FROM seller_meta m WHERE m.seller_id = s.id AND m.key = ?) AS override,
+              COALESCE((SELECT rows_served FROM seller_ads_db_usage u WHERE u.seller_id = s.id AND u.day = ?), 0) AS rows_today
+         FROM sellers s ORDER BY s.id DESC LIMIT 200`,
+    ).bind(ADS_DB_ACCESS_META_KEY, day).all<{
+      id: number; business_name: string | null; status: string | null
+      channel: string | null; override: string | null; rows_today: number
+    }>().catch(() => ({ results: [] as never[] }))
+
+    // 판정은 SSOT 를 그대로 부른다 — 화면용으로 규칙을 다시 쓰면 화면과 실제가 갈린다.
+    const rows = []
+    for (const r of sellers.results || []) {
+      const acc = await resolveAdsDbAccess(adsLeadsDb(c.env), r.id)
+      rows.push({ ...r, allowed: acc.allowed, code: acc.allowed ? null : acc.code })
+    }
+    const cap = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_db_daily_row_cap'")
+      .first<{ value: string }>().catch(() => null)
+    return c.json({
+      success: true, data: rows,
+      daily_row_cap: Number(cap?.value) || ADS_DB_DEFAULT_DAILY_ROW_CAP,
+    })
+  } catch (err) {
+    return safeError(c, err, '열람 권한 목록을 불러오지 못했습니다', '[admin-ads-db-access]')
+  }
+})
+
+// POST /ads-db-access/:sellerId {mode: 'allow'|'deny'|'auto'} — 자동 판정을 뒤집는 수동 스위치
+app.post('/ads-db-access/:sellerId', async (c) => {
+  try {
+    const sellerId = Number(c.req.param('sellerId'))
+    if (!Number.isFinite(sellerId) || sellerId <= 0) {
+      return c.json({ success: false, error: '셀러 ID 가 올바르지 않습니다' }, 400)
+    }
+    const b = await c.req.json<{ mode?: string }>().catch(() => ({} as { mode?: string }))
+    if (!['allow', 'deny', 'auto'].includes(String(b.mode))) {
+      return c.json({ success: false, error: "mode 는 allow / deny / auto 입니다" }, 400)
+    }
+    // 'auto' = 수동 지정 해제 → 등록 유형에 따른 자동 판정으로 돌아간다(빈 문자열 = 미지정).
+    await setSellerMeta(adsLeadsDb(c.env), sellerId, { [ADS_DB_ACCESS_META_KEY]: b.mode === 'auto' ? '' : String(b.mode) })
+    const acc = await resolveAdsDbAccess(adsLeadsDb(c.env), sellerId)
+    return c.json({ success: true, data: { seller_id: sellerId, mode: b.mode, allowed: acc.allowed } })
+  } catch (err) {
+    return safeError(c, err, '열람 권한을 변경하지 못했습니다', '[admin-ads-db-access]')
   }
 })
 
