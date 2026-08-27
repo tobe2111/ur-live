@@ -6,7 +6,7 @@
 import { Hono } from 'hono'
 import { swallow } from '../../../worker/utils/swallow'
 import type { Env } from '@/worker/types/env'
-import { requireSeller, requireAuth } from '@/worker/middleware/auth'
+import { requireSeller, requireAuth, optionalAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { findActiveDealPct } from '@/worker/utils/influencer-deal'
@@ -772,7 +772,23 @@ adminApp.post('/payouts/process', async (c) => {
 
 // ───────── 카탈로그 (인플이 ?ref= 링크 생성) ─────────
 
-discoverApp.get('/products', async (c) => {
+/**
+ * 🚨 2026-08-27 — **딜 없는 상품에 링크를 주지 않는다.**
+ *
+ * 이 카탈로그는 어필리에이트(누구나 공유 2%) 시절에 만들어졌다. 그때는 아무 상품이나
+ * 링크를 뽑아도 팔리면 적립이 됐다. 그런데 어필리에이트는 **2026-08-22 종료**됐고
+ * (대표 "심플하게"), 지금 보상이 붙는 건 **매장이 그 사람에게 제안한 딜**뿐이다
+ * (`findActiveDealPct` — 결제 적립과 같은 SSOT).
+ *
+ * 그대로 두면 인플루언서가 링크를 뿌리고 **첫 정산에서 0원을 본다.** 그건 버그가 아니라
+ * 약속 위반이고, 그 사람과의 관계는 거기서 끝난다. 그래서 응답에 **내 딜 %를 실어** 보내
+ * 화면이 "링크를 줄 수 있는 상품"과 "먼저 딜을 맺어야 하는 상품"을 구분하게 한다.
+ *
+ * ⚠️ `optionalAuth` 인 이유: 이 라우트는 원래 무인증이었다. `requireAuth` 로 바꾸면
+ *   비로그인 방문자의 카탈로그가 통째로 401 이 된다(둘러보기 자체는 막을 이유가 없다).
+ *   로그인했을 때만 `my_deal_pct` 가 채워지고, 아니면 `null` — 화면이 로그인을 유도한다.
+ */
+discoverApp.get('/products', optionalAuth(), async (c) => {
   const DB = c.env.DB
   const cat = c.req.query('category') || 'all'
   const validCats = ['meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher']
@@ -781,7 +797,7 @@ discoverApp.get('/products', async (c) => {
   const { results } = await DB.prepare(
     `SELECT p.id, p.name, p.price, p.original_price, p.image_url, p.category,
             p.group_buy_target, p.group_buy_current, p.group_buy_deadline, p.group_buy_status,
-            p.restaurant_name, COALESCE(p.referral_disabled, 0) AS referral_disabled,
+            p.restaurant_name, p.seller_id, COALESCE(p.referral_disabled, 0) AS referral_disabled,
             s.name AS seller_name, COALESCE(s.marketing_enabled, 1) AS marketing_enabled
      FROM products p
      LEFT JOIN sellers s ON s.id = p.seller_id
@@ -793,7 +809,32 @@ discoverApp.get('/products', async (c) => {
   const eligible = (results || []).filter((r: { marketing_enabled?: number; referral_disabled?: number }) =>
     Number(r.marketing_enabled ?? 1) === 1 && Number(r.referral_disabled ?? 0) === 0
   )
-  return c.json({ success: true, data: eligible })
+
+  // 🤝 내 활성 딜을 매장별로 한 번에 조회 — 상품마다 findActiveDealPct 를 부르면 100 왕복이다.
+  //   조건은 findActiveDealPct 와 **같아야 한다**(활성 · 기간 내 · 인증 요구 시 승인됨).
+  //   갈리면 여기선 "N% 받는다"인데 결제에선 0 이 된다 — 이 파일이 막으려는 바로 그 사고다.
+  const me = c.get('user') as AuthUser | undefined
+  const dealBySeller = new Map<number, number>()
+  if (me?.id) {
+    const { results: deals } = await DB.prepare(
+      `SELECT seller_id, commission_pct FROM seller_influencer_deals
+        WHERE influencer_id = ? AND status = 'active'
+          AND (ends_at IS NULL OR ends_at > datetime('now'))
+          AND (COALESCE(requires_content_proof, 0) = 0 OR proof_status = 'approved')`
+    ).bind(String(me.id)).all<{ seller_id: number; commission_pct: number }>()
+      .catch(() => ({ results: [] as { seller_id: number; commission_pct: number }[] }))
+    for (const d of deals || []) {
+      const pct = Number(d.commission_pct)
+      if (Number.isFinite(pct) && pct > 0) dealBySeller.set(Number(d.seller_id), pct)
+    }
+  }
+
+  const withDeal = eligible.map((r: Record<string, unknown>) => ({
+    ...r,
+    // null = 보상 없음(딜 미체결). 비로그인도 null — 화면이 로그인을 유도한다.
+    my_deal_pct: me?.id ? (dealBySeller.get(Number(r.seller_id)) ?? null) : null,
+  }))
+  return c.json({ success: true, data: withDeal, authed: !!me?.id })
 })
 
 export { sellerApp as sellerMarketingRoutes, influencerApp as influencerSettlementRoutes, adminApp as adminPayoutRoutes, discoverApp as influencerDiscoverRoutes, rankingApp as influencerRankingsRoutes }

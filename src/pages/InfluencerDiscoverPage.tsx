@@ -1,8 +1,20 @@
 /**
  * 🛡️ 2026-05-16: 인플루언서 카탈로그 페이지 — 활성 공구 둘러보고 ?ref= 링크 생성.
  *
- * 매장과 직접 협상 X — 카탈로그 모델 (마찰 0). 매장은 referral_disabled 또는
- * marketing_enabled=0 으로 referral 거부 가능.
+ * 🚨 2026-08-27 정정 — **"카탈로그 모델(마찰 0)"은 폐기됐다.**
+ *   이 페이지는 어필리에이트(누구나 공유 2%) 시절에 만들어져 *아무 상품이나* 링크를 뽑아 줬고,
+ *   화면은 "자동 commission 적립 · 거부당한 경우 (드물게) 0" 이라고 안내했다. 그런데
+ *   어필리에이트는 **2026-08-22 종료**(대표 "심플하게")됐고, 지금 보상이 붙는 건
+ *   **매장이 그 사람에게 제안한 딜**뿐이다. 즉 안내가 정반대였다 — "드물게 0"이 아니라
+ *   **딜이 없으면 항상 0**이다.
+ *
+ *   그대로 두면 인플루언서가 링크를 뿌리고 첫 정산에서 0원을 본다. 버그가 아니라 **약속 위반**이라
+ *   되돌리는 비용(환급 + 신뢰)이 훨씬 크다. 그래서:
+ *     - 서버가 상품마다 `my_deal_pct` 를 실어 준다(결제 적립과 같은 조건 — marketing.routes)
+ *     - 딜이 있는 상품만 링크 버튼을 준다. 없으면 "먼저 딜을 맺어야 합니다"로 안내
+ *     - 링크를 만들 때 **몇 %인지 함께 보여 준다** — 무엇을 받는지 모르고 뿌리게 두지 않는다
+ *
+ * 매장은 referral_disabled 또는 marketing_enabled=0 으로 노출 거부 가능(기존).
  */
 
 import { useState } from 'react'
@@ -25,6 +37,8 @@ interface Product {
   group_buy_target: number
   group_buy_current: number
   group_buy_deadline: string | null
+  /** 🤝 2026-08-27: 내가 이 매장과 맺은 활성 딜의 %. null = 보상 없음(딜 미체결 또는 비로그인). */
+  my_deal_pct: number | null
 }
 
 const CAT_LABELS: Record<string, string> = {
@@ -54,11 +68,22 @@ export default function InfluencerDiscoverPage() {
   const myId = getUserId() || 'me'
 
   // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). category(cat) 변경 시 재조회.
-  const { data: products = [], isLoading: loading } = useApiQuery<Product[]>(
+  // 🤝 2026-08-27: 응답에서 `authed` 도 함께 받는다 — 딜이 없을 때 "딜을 맺으세요"(로그인됨)와
+  //   "로그인하세요"(비로그인)를 구분해야 한다. 둘을 같은 문구로 두면 로그인 안 한 사람이
+  //   자기에게 딜이 없다고 오해한다.
+  const { data: resp, isLoading: loading } = useApiQuery<{ items: Product[]; authed: boolean }>(
     ['influencer-discover', 'products', cat],
     '/api/influencer-discover/products',
-    { params: { category: cat }, select: (raw) => ((raw as { success?: boolean; data?: Product[] })?.success ? ((raw as { data: Product[] }).data || []) : []) },
+    {
+      params: { category: cat },
+      select: (raw) => {
+        const r = raw as { success?: boolean; data?: Product[]; authed?: boolean }
+        return { items: r?.success ? (r.data || []) : [], authed: !!r?.authed }
+      },
+    },
   )
+  const products = resp?.items ?? []
+  const authed = resp?.authed ?? false
 
   function genRefLink(productId: number): string {
     return `https://urdeal.kr/group-buy/${productId}?ref=${encodeURIComponent(myId)}`
@@ -102,7 +127,7 @@ export default function InfluencerDiscoverPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#1A2334] pb-20">
-      <SEO title="추천 공구 카탈로그 - 유어딜" description="원하는 공구를 골라 본인 SNS 에 추천 링크 공유. commission 자동 정산." url="/influencer/discover" />
+      <SEO title="추천 공구 카탈로그 - 유어딜" description="매장과 딜을 맺은 이용권을 골라 내 링크로 소개하세요. 소개비는 매장이 정한 비율로 정산됩니다." url="/influencer/discover" />
       <header className="sticky top-0 z-30 bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446] px-4 py-3 flex items-center gap-2">
         <Link2 className="w-5 h-5 text-pink-500" />
         <h1 className="text-base font-bold text-gray-900 dark:text-white flex-1">추천 공구 카탈로그</h1>
@@ -164,32 +189,50 @@ export default function InfluencerDiscoverPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{p.restaurant_name || p.seller_name || '-'}</p>
                       <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{p.name}</p>
-                      <p className="text-sm font-extrabold text-pink-600 mt-0.5">{p.price.toLocaleString()}원</p>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <p className="text-sm font-extrabold text-pink-600">{p.price.toLocaleString()}원</p>
+                        {p.my_deal_pct != null && (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                            내 소개비 {p.my_deal_pct}%
+                          </span>
+                        )}
+                      </div>
                       <div className="w-full bg-gray-100 dark:bg-[#1A2334] rounded-full h-1.5 mt-1.5 overflow-hidden">
                         <div className="h-full bg-pink-500 rounded-full" style={{ width: `${progress}%` }} />
                       </div>
                       <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{p.group_buy_current}/{p.group_buy_target}명</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5 px-3 pb-3">
-                    <button onClick={() => copyLink(p.id)}
-                      className="py-2 rounded-lg border border-gray-200 dark:border-[#2A3446] text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1">
-                      <Copy className="w-3 h-3" /> 링크 복사
-                    </button>
-                    <button onClick={() => shareLink(p)}
-                      className="py-2 rounded-lg bg-gradient-to-r from-gray-800 to-gray-800 text-white text-xs font-bold flex items-center justify-center gap-1">
-                      <Share2 className="w-3 h-3" /> SNS 공유
-                    </button>
-                  </div>
+                  {p.my_deal_pct != null ? (
+                    <div className="grid grid-cols-2 gap-1.5 px-3 pb-3">
+                      <button onClick={() => copyLink(p.id)}
+                        className="py-2 rounded-lg border border-gray-200 dark:border-[#2A3446] text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1">
+                        <Copy className="w-3 h-3" /> 링크 복사
+                      </button>
+                      <button onClick={() => shareLink(p)}
+                        className="py-2 rounded-lg bg-gradient-to-r from-gray-800 to-gray-800 text-white text-xs font-bold flex items-center justify-center gap-1">
+                        <Share2 className="w-3 h-3" /> SNS 공유
+                      </button>
+                    </div>
+                  ) : (
+                    /* 🚨 딜이 없으면 링크를 주지 않는다 — 주면 0원을 약속하는 것이다. */
+                    <div className="px-3 pb-3">
+                      <p className="py-2 rounded-lg bg-gray-50 dark:bg-[#1A2334] text-[11px] text-gray-600 dark:text-gray-300 text-center leading-relaxed">
+                        {authed
+                          ? '이 매장과 딜을 맺어야 소개비가 붙습니다'
+                          : '로그인하면 내 딜을 확인할 수 있어요'}
+                      </p>
+                    </div>
+                  )}
                 </li>
               )
             })}
           </ul>
         )}
 
-        <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center pt-2">
-          내 링크를 본 누군가가 공구 참여하면 자동 commission 적립 → 어드민이 매월 송금.<br />
-          매장이 인플 거부한 경우 (드물게) commission 0, 사용자 보너스는 유어딜이 보장.
+        <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center pt-2 leading-relaxed">
+          소개비는 <b className="text-gray-700 dark:text-gray-200">매장과 딜을 맺은 상품</b>에만 붙습니다. 비율은 매장이 정합니다.<br />
+          구매 7일 뒤 확정되고(환불 시 회수), 세금을 뗀 뒤 정산됩니다.
         </p>
       </main>
     </div>
