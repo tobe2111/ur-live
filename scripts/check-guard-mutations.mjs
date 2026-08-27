@@ -955,6 +955,28 @@ canvas {
       '2026-08-19 그루폰 카드 도입과 함께 들어온 안전장치라, 나중에 리팩토링하다 지워질 위험이 크다.',
   },
   {
+    name: '섹션 더보기가 쿼리를 잃는다(버튼이 통째로 사라진다)',
+    file: 'src/components/home/section-more-href.ts',
+    find: "const rawQuery = cut === -1 ? '' : moreHref.slice(cut)",
+    replace: "const rawQuery = ''",
+    test: 'src/tests/unit/section-more-href.test.ts',
+    why:
+      '이 한 줄에서 같은 신고가 **세 번** 났다(08-17 플래시 · 08-19 쿼리유실 · 08-27 버튼실종). ' +
+      '`safeInternalPath` 는 경로 검증기이자 **쿼리 제거기**라, 그 결과에서 쿼리를 찾으면 이미 없다 — ' +
+      '08-19 의 수정이 정확히 그래서 **한 번도 동작하지 않았고 소스만 고쳐진 것처럼 보였다.** ' +
+      '쿼리가 죽으면 `/?sort=popular` 가 `/` 로 납작해지고, 죽은 링크 규칙에 걸려 버튼이 사라진다.',
+  },
+  {
+    name: '쿼리가 붙은 더보기까지 죽은 링크로 친다(멀쩡한 버튼을 숨긴다)',
+    file: 'src/components/home/section-more-href.ts',
+    find: "return href === '' || href === '/'",
+    replace: "return href === '' || href.startsWith('/')",
+    test: 'src/tests/unit/section-more-href.test.ts',
+    why:
+      '"죽은 버튼은 없느니만 못하다"가 반대로 작동하면 **멀쩡한 버튼이 사라진다** — 2026-08-27 에 ' +
+      '실제로 그렇게 됐다. 숨김 규칙은 맨 `/` 에만 걸려야 하고, 쿼리가 있으면 목적지가 있는 링크다.',
+  },
+  {
     name: '스와이프 후 클릭 취소가 사라진다(사진을 넘겼는데 상세로 튄다)',
     file: 'src/components/deal/DealCardMedia.tsx',
     find: 'if (!didSwipe.current) return',
