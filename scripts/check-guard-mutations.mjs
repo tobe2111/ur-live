@@ -63,6 +63,17 @@ const ONLY = (() => {
  *   (주입 한 줄은 정상 코드와 구분이 안 간다).
  */
 const VERIFY_CLEAN = process.argv.includes('--verify-clean')
+/**
+ * 🗺️ `--map-only` — **아무것도 주입하지 않고**, 각 주입의 `find` 가 코드에 유일하게 있는지만 본다(수초).
+ *
+ * 왜 필요한가: 전수는 500건 넘는 vitest 라 20분+ 걸려 로컬에서 돌리기 어렵다. 그래서 코드를 고친 뒤
+ * **그 파일의 기존 주입이 낡았는지**를 로컬에서 못 보고 CI 에 가서야 알게 된다 — 2026-08-27 에
+ * `aboveFold={i < 4 …}` 를 상수로 바꾸면서 정확히 그렇게 한 사이클을 태웠다.
+ * 지도가 낡았는지(`find` 부재·주석에만 존재·2곳 이상)는 **테스트 없이 문자열 검사만으로** 판정되므로,
+ * 그 부분만 떼어 즉시 돌린다. ⚠️ 이 모드는 "가드가 실제로 실패할 수 있는가"는 **검사하지 않는다** —
+ * 그건 전수(또는 `--only`)의 몫이다. 커밋 전 지도 점검용이지 되돌려-검증의 대체가 아니다.
+ */
+const MAP_ONLY = process.argv.includes('--map-only')
 
 /**
  * @typedef {{name:string, file:string, find:string, replace:string, test:string, why:string}} Mutation
@@ -259,7 +270,9 @@ const MUTATIONS = [
   {
     name: '편성 섹션의 aboveFold 까지 꺼 버린다(과잉 수정)',
     file: 'src/components/home/HomeSections.tsx',
-    find: 'aboveFold={i < 4 && sIdx === 0}',
+    // 🔁 2026-08-27: 개수가 리터럴 4 → `HOME_CARD_ABOVE_FOLD` 상수가 됐다(워커의 카드 preload 가
+    //   **같은 수**만 당겨야 해서 SSOT 로 뺐다). 가드가 "낡은 지도" 로 잡아 줘서 함께 옮긴다.
+    find: 'aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0}',
     replace: 'aboveFold={false}',
     test: 'src/tests/unit/home-image-priority.test.ts',
     why:
@@ -5694,6 +5707,7 @@ function maskComments(src, file) {
 }
 
 const problems = []
+let mapOk = 0  // --map-only: 지도가 성한 주입 수
 
 // 🧹 잔재 확인 전용 모드 — 주입은 건드리지 않고 "지금 트리에 남아 있나"만 본다(위 VERIFY_CLEAN 주석).
 if (VERIFY_CLEAN) {
@@ -5746,6 +5760,8 @@ for (const m of MUTATIONS) {
   // 주석에도 같은 문자열이 있을 수 있으므로 **코드 쪽 인덱스로** 바꾼다
   // (`String.replace` 는 첫 등장을 바꾸는데, 그게 주석일 수 있다).
   const at = live[0]
+  // 🗺️ 지도만 보는 모드 — 여기까지 왔으면 `find` 가 코드에 유일하게 있다는 뜻이다. 주입은 하지 않는다.
+  if (MAP_ONLY) { mapOk += 1; continue }
 
   pending.set(abs, src)
   let stillGreen
@@ -5781,5 +5797,11 @@ if (problems.length) {
    조치: 그 테스트의 픽스처가 정말 그 경우를 담고 있는지 보라(오늘 세 번 다 픽스처 문제였다).
 `)
   process.exit(STRICT ? 1 : 0)
+}
+if (MAP_ONLY) {
+  console.log(`\n✅ guard-mutations(--map-only): 주입 지도 ${mapOk}건 성함 — find 가 코드에 유일하게 존재.`)
+  console.log('   ⚠️ 이 모드는 **되돌려-검증을 하지 않는다**(가드가 실제로 실패하는지는 안 봄).')
+  console.log('      커밋 전 지도 점검용 — 전수는 CI 가, 바꾼 항목은 `--only` 로 돌릴 것.')
+  process.exit(0)
 }
 console.log(`\n✅ guard-mutations: ${MUTATIONS.length}개 주입 전부 빨간불 확인 — 가드가 실제로 실패할 수 있다.`)
