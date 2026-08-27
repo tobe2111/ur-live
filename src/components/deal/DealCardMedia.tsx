@@ -1,6 +1,9 @@
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useState, useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
+
+/** 스와이프로 칠 최소 가로 이동(px). 이보다 작으면 그냥 탭으로 본다. */
+const SWIPE_MIN_PX = 36
 
 /**
  * 🖼️ 2026-08-19 (대표 시안 — 그루폰 카드): 딜 카드의 **이미지 영역 SSOT**.
@@ -130,10 +133,8 @@ function DealCardMedia({
     })
   }, [slides, dead, idx])
 
-  const go = useCallback((e: React.MouseEvent, delta: number) => {
-    // <Link> 안이라 이걸 빼면 사진 넘기기가 페이지 이동이 된다.
-    e.preventDefault()
-    e.stopPropagation()
+  /** 장면 이동 — 화살표와 스와이프가 **같은 로직**을 쓴다(둘이 갈리면 한쪽만 고쳐진다). */
+  const step = useCallback((delta: number) => {
     setIdx((cur) => {
       const list = slides.map((_, i) => i).filter((i) => !dead.has(i))
       if (list.length === 0) return cur
@@ -149,13 +150,64 @@ function DealCardMedia({
     })
   }, [slides, dead])
 
+  const go = useCallback((e: React.MouseEvent, delta: number) => {
+    // <Link> 안이라 이걸 빼면 사진 넘기기가 페이지 이동이 된다.
+    e.preventDefault()
+    e.stopPropagation()
+    step(delta)
+  }, [step])
+
   const multi = alive.length > 1
+
+  /**
+   * 👆 손가락으로 넘기기 (2026-08-27 대표 지시 — "이용권 이미지 썸네일 좌우로 스와이프 되어져야 해").
+   *   예전엔 좌우 화살표뿐이라 폰에서는 **작은 버튼을 정확히 눌러야** 넘어갔다.
+   *
+   *   ⚠️ 카드는 `<Link>` 안이다 — 스와이프를 그냥 두면 손을 떼는 순간 **상세 페이지로 이동**한다.
+   *      그래서 넘겼다는 사실을 기억해 두고 이어지는 클릭을 capture 단계에서 취소한다.
+   *   ⚠️ `preventDefault` 로 세로 스크롤을 막지 않는다 — **가로 이동이 세로보다 우세할 때만**
+   *      스와이프로 친다. 사진 위에서 페이지가 안 내려가면 그게 더 큰 불편이다.
+   */
+  const touchStart = useRef<{ x: number; y: number } | null>(null)
+  const didSwipe = useRef(false)
+  const onTouchStartMedia = useCallback((e: React.TouchEvent) => {
+    prefetchNext()
+    const t = e.touches[0]
+    touchStart.current = t ? { x: t.clientX, y: t.clientY } : null
+    didSwipe.current = false
+  }, [prefetchNext])
+  const onTouchMoveMedia = useCallback((e: React.TouchEvent) => {
+    const s0 = touchStart.current
+    if (!s0 || !multi) return
+    const t = e.touches[0]
+    if (!t) return
+    const dx = t.clientX - s0.x
+    const dy = t.clientY - s0.y
+    if (Math.abs(dx) >= SWIPE_MIN_PX && Math.abs(dx) > Math.abs(dy) * 1.2) didSwipe.current = true
+  }, [multi])
+  const onTouchEndMedia = useCallback((e: React.TouchEvent) => {
+    const s0 = touchStart.current
+    touchStart.current = null
+    if (!s0 || !multi || !didSwipe.current) return
+    const t = e.changedTouches[0]
+    if (!t) return
+    step(t.clientX - s0.x < 0 ? 1 : -1)   // 왼쪽으로 밀면 다음 장
+  }, [multi, step])
+  const onClickCaptureMedia = useCallback((e: React.MouseEvent) => {
+    if (!didSwipe.current) return
+    e.preventDefault()
+    e.stopPropagation()
+    didSwipe.current = false
+  }, [])
 
   return (
     <div
       className={`relative ${aspectClass} w-full overflow-hidden group/media ${className}`}
       onMouseEnter={prefetchNext}
-      onTouchStart={prefetchNext}
+      onTouchStart={onTouchStartMedia}
+      onTouchMove={onTouchMoveMedia}
+      onTouchEnd={onTouchEndMedia}
+      onClickCapture={onClickCaptureMedia}
     >
       {slides.length === 0 || alive.length === 0 ? (
         <div className="w-full h-full flex items-center justify-center">{fallback}</div>

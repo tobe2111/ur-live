@@ -148,6 +148,14 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
         const rawQuery = qIdx === -1 ? '' : raw.slice(qIdx)
         const canonPath = raw ? resolveConsumerAlias(rawPath) : null
         const more = raw ? `${canonPath ?? rawPath}${rawQuery}` : ''
+        // 🐛 2026-08-27 (대표 신고 — "지금 인기 이용권의 더보기 클릭도 안되고"): 어드민이 넣은
+        //   `more_href` 가 **홈 자신**(`/?sort=popular`)일 수 있다. 홈에서 홈으로 가는 링크는
+        //   `useHomeQuerySync` 가 정렬을 반영하고 그리드로 스크롤해 주므로 **의도대로 동작한다** —
+        //   단, 그건 두 홈이 그 훅을 부를 때 얘기다(예전엔 PC 홈에만 있어 모바일이 죽어 있었다).
+        //   여기서는 링크가 **아무 데도 못 가는 경우**만 걸러 낸다: 경로가 비었거나 쿼리도 없는
+        //   맨 `/` 이면 눌러도 정말 아무 일이 없으므로 버튼을 그리지 않는다
+        //   (대표 확정 "안 올리면 아예 안 보이게"와 같은 철학 — 죽은 버튼은 없느니만 못하다).
+        const moreIsDeadEnd = more === '/' || more === ''
         return (
           <Fragment key={sec.id}>
           {/* 📐 가로 여백은 홈 컨테이너가 준다 — 여기서 또 주면 좌우가 어긋난다. */}
@@ -162,7 +170,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
                   <p className="mt-0.5 text-[12.5px] text-gray-500 dark:text-gray-400">{sec.subtitle}</p>
                 )}
               </div>
-              {more && (
+              {more && !moreIsDeadEnd && (
                 <Link
                   to={more}
                   className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 dark:border-[#2A3446] text-[12.5px] font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors whitespace-nowrap"
@@ -173,7 +181,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4">
               {sec.products.map((p, i) => (
-                <GroupBuyFeedCard key={p.id} p={p} pc imgWidth={cardImgWidth} aboveFold={i < 4 && sIdx === 0} />
+                <GroupBuyFeedCard key={p.id} p={p} imgWidth={cardImgWidth} aboveFold={i < 4 && sIdx === 0} />
               ))}
             </div>
           </section>

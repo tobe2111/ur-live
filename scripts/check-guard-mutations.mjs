@@ -72,6 +72,38 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '홈 카드가 다시 두 벌로 갈린다(피드만 대표색 카드)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '      className="block group active:scale-[0.98] flex flex-col"',
+    replace: '      className="block group active:scale-[0.98] flex flex-col" style={{ backgroundColor: grad.base }}',
+    test: 'src/tests/unit/home-card-unify.test.ts',
+    why:
+      '섹션은 흰 카드, 피드는 모바일에서 대표색 그라데이션 카드였다 — 같은 화면 위아래에 다른 ' +
+      '카드가 놓여 한 서비스로 안 보였다(2026-08-27 대표 "첫번째 형태로 통일"). 각각은 멀쩡해 ' +
+      '보여서 나란히 놓고 봐야만 드러난다.',
+  },
+  {
+    name: '모바일 홈에서 섹션 더보기가 다시 죽는다',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: '  useHomeQuerySync({ setCategory, setSort, gridHeaderRef })',
+    replace: '',
+    test: 'src/tests/unit/home-card-unify.test.ts',
+    why:
+      "섹션 '더보기'는 `/?sort=popular` 같은 쿼리 전용 이동이라, 홈이 쿼리를 읽지 않으면 눌러도 " +
+      '**아무 일도 안 일어난다**(에러도 없어 고장으로 안 보인다). 이 동기화가 PC 홈에만 있어 ' +
+      '폰에서만 죽어 있었다 — 대표가 실제로 신고했다.',
+  },
+  {
+    name: '카드 사진 스와이프가 상세 페이지 이동으로 샌다',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: '      onClickCapture={onClickCaptureMedia}',
+    replace: '',
+    test: 'src/tests/unit/home-card-unify.test.ts',
+    why:
+      '카드는 `<Link>` 안이다. 스와이프 뒤 이어지는 클릭을 취소하지 않으면 사진을 넘기려던 손짓이 ' +
+      '**상세 페이지 이동**이 된다 — 사진은 한 장 넘어가고 화면도 바뀌어 버린다.',
+  },
+  {
     name: '홈 카드가 다시 표시폭의 2~3배 사진을 받는다(모바일 첫 화면이 느려짐)',
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
     find: '        width={imgWidth}',
