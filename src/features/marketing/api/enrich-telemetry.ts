@@ -194,6 +194,44 @@ export async function foldEnrichRollup(DB: Env['DB'], rollupKey: string, snapRaw
 }
 
 /** 스냅샷 1회 기록. 부분(`partial:true`)/최종(`false`) 모두 이 경로. */
+/**
+ * ⏳ **잔여 백로그 카운트를 이번 회차에 다시 세야 하나** (2026-08-27 읽기 증폭 수리).
+ *
+ * ## 왜 아끼는가 (실측)
+ * `SELECT COUNT(*) … WHERE active = 0 AND merged_into IS NULL` 은 **회당 321,945행**을 읽는다.
+ * 보강 레인은 하루 105회차를 도니 **3,380만 행/일** — 그리고 그 대가로 얻는 것은 상태줄에 찍히는
+ * *숫자 하나*다. 그 숫자는 하루에 수십~수백씩 움직이는 백로그 게이지라 **14분마다 정확할 이유가 없다.**
+ *
+ * ⇒ 마지막 계산으로부터 {@link REMAINING_TTL_MS} 가 지났을 때만 다시 센다(하루 105회 → 24회).
+ *
+ * ⚠️ **끄는 게 아니라 늦추는 것**이다 — 0 으로 만들면 백로그가 언제 마르는지 볼 수 없다.
+ * ⚠️ 이전 값이 없거나(첫 실행·스냅샷 파손) 시각이 이상하면 **다시 센다**(모르면 재는 쪽이 안전).
+ */
+export const REMAINING_TTL_MS = 60 * 60_000
+
+export function shouldRecountRemaining(prevSnapshot: string | null, nowMs: number): boolean {
+  if (!prevSnapshot) return true
+  type Snap = { remaining?: unknown; remaining_at?: unknown }
+  let prev: Snap | null = null
+  try { prev = JSON.parse(prevSnapshot) as Snap } catch { return true }
+  if (!prev || typeof prev.remaining !== 'number') return true
+  const at = Number(prev.remaining_at)
+  if (!Number.isFinite(at) || at <= 0) return true
+  if (at > nowMs) return true // 미래 시각 = 신뢰 불가(시계 이상·수기 편집) → 다시 센다
+  return nowMs - at >= REMAINING_TTL_MS
+}
+
+/** 직전 스냅샷의 잔여값(다시 세지 않는 회차가 이어 쓸 값). 없으면 `null`. */
+export function prevRemaining(prevSnapshot: string | null): { remaining: number; at: number } | null {
+  if (!prevSnapshot) return null
+  try {
+    const p = JSON.parse(prevSnapshot) as { remaining?: unknown; remaining_at?: unknown }
+    const n = Number(p?.remaining); const at = Number(p?.remaining_at)
+    if (!Number.isFinite(n) || !Number.isFinite(at) || at <= 0) return null
+    return { remaining: n, at }
+  } catch { return null }
+}
+
 export async function writeEnrichSnapshot(DB: Env['DB'], payload: Record<string, unknown>): Promise<void> {
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(ENRICH_SNAPSHOT_KEY, JSON.stringify({ last_run: nowStamp(), ...payload })).run().catch(() => null)

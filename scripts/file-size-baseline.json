@@ -68,7 +68,7 @@
   "src/worker/routes/internal-admin-tools.routes.ts": 1327,
   "src/worker/routes/order.routes.ts": 1347,
   "src/worker/routes/payment.routes.ts": 976,
-  "src/worker/routes/repair-schema.routes.ts": 1440,
+  "src/worker/routes/repair-schema.routes.ts": 1442,
   "src/worker/routes/repair-schema/column-repairs.ts": 1061,
   "src/worker/routes/webhook.routes.ts": 1022,
   "src/worker/utils/giftishow-api.ts": 678,

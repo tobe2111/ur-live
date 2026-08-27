@@ -13,7 +13,7 @@ import { type FetchBudget } from './influencer-discovery'
 import { runPooled, resolveConcurrency } from './lane-pool'
 import { applyQuantum, quantumFromRaw, CPU_QUANTA_KEY } from './cpu-quantum'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs, envLaneBudget } from './collect-budget'
-import { writeEnrichSnapshot, recordEnrichCrash, foldEnrichRollup, ENRICH_SNAPSHOT_KEY, ENRICH_ROLLUP_KEY } from './enrich-telemetry'
+import { writeEnrichSnapshot, recordEnrichCrash, foldEnrichRollup, shouldRecountRemaining, prevRemaining, ENRICH_SNAPSHOT_KEY, ENRICH_ROLLUP_KEY } from './enrich-telemetry'
 import { healSuspectNames } from './enrich-name-heal'
 import { ensureCompanySchema } from './company-discovery'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
@@ -195,7 +195,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   let phase = 'start'; let at = ''; const t0 = Date.now() // at=마지막으로 손댄 지점 · t0=경과(무증거 종료가 시간 한도인지 판별)
   const p2: Record<string, number> = {} // examined/skip_email/no_site/naver_try/crawl_try/stamped
   const bump = (k: string) => { p2[k] = (p2[k] || 0) + 1 }
-  const snapshot = async (partial: boolean, remaining?: number) => {
+  const snapshot = async (partial: boolean, remaining?: number, remainingAt?: number) => {
     const crawls = Object.values(crawlReason).reduce((a, n) => a + n, 0)
     // 적중률 분모는 **실제로 fetch 를 시도한 크롤**만 — blocked_host/bad_url 은 네트워크에 안 나간다.
     const attempted = crawls - (crawlReason.blocked_host || 0) - (crawlReason.bad_url || 0)
@@ -203,6 +203,9 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
     await writeEnrichSnapshot(DB, {
       processed, enriched, crawls, hit_rate: attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0,
       ...(typeof remaining === 'number' ? { remaining } : {}),
+      // 🕒 이 잔여값을 **언제** 셌는지 — 다음 회차가 "다시 셀 때가 됐나"를 판정하는 유일한 근거.
+      //   빠뜨리면 판정이 늘 "모른다"가 되어 매 회차 다시 세게 된다(= 수리가 무효화된다).
+      ...(typeof remainingAt === 'number' ? { remaining_at: remainingAt } : {}),
       crawl_reason: crawlReason, fail_samples: failSamples, name_loose: nameLoose,
       // fetches=순수 외부 fetch · d1=DB 쿼리 · spent=둘의 합(학습 상한이 보는 진짜 소비량)
       fetches: budgetStart - budget.left - d1, d1, budget_total: budgetTotal, spent: budgetTotal - budget.left,
@@ -347,8 +350,18 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   }
 
   phase = 'p3_done'
-  spendD1()
-  const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0 AND merged_into IS NULL").first<{ n: number }>().catch(() => null)
+  // 📉 **잔여 백로그 카운트는 시간당 1회만** (2026-08-27 읽기 증폭 수리). 이 COUNT 는 회당 321,945행을
+  //   읽는데(active=0 인 행 전부를 짚어 merged_into 를 확인해야 한다) 얻는 것은 상태줄 숫자 하나다.
+  //   회차마다 세면 3,380만 행/일 — 판정 규칙과 근거는 `shouldRecountRemaining` 주석.
+  //   ⚠️ 다시 세지 않는 회차는 **직전 값을 그대로 이어 쓴다**(0 이나 undefined 로 두면 상태줄이
+  //     "백로그가 사라졌다"로 읽힌다 — 이 레포가 반복해 만난 *조용한 오독*).
+  const recount = shouldRecountRemaining(bootVal(ENRICH_SNAPSHOT_KEY), Date.now())
+  const carried = recount ? null : prevRemaining(bootVal(ENRICH_SNAPSHOT_KEY))
+  if (recount) spendD1()
+  const rem = recount
+    ? await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0 AND merged_into IS NULL").first<{ n: number }>().catch(() => null)
+    : { n: carried?.remaining ?? 0 }
+  const remainingAt = recount ? Date.now() : (carried?.at ?? Date.now())
   const crawls = Object.values(crawlReason).reduce((s, n) => s + n, 0)
   const attempted = crawls - (crawlReason.blocked_host || 0) - (crawlReason.bad_url || 0)
   const result = { processed, enriched, remaining: Number(rem?.n) || 0, crawls, hit_rate: attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0 }
@@ -359,7 +372,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(subreqCapKey('company_enrich'), String(nextCap)).run().catch(() => null)
     capForStamp = nextCap // 상태줄이 '다음 실행 상한'을 새 값으로 보여주도록
   }
-  await snapshot(false, Number(rem?.n) || 0) // 정상 종료 — 부분 스냅샷을 최종본으로 덮는다(partial:false)
+  await snapshot(false, Number(rem?.n) || 0, remainingAt) // 정상 종료 — 부분 스냅샷을 최종본으로 덮는다(partial:false)
   return result
 }
 
