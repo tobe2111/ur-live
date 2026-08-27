@@ -177,7 +177,10 @@ describe('회차', () => {
     // BOOKKEEPING_RESERVE 가 8을 남겼다고 믿는 동안 플랫폼 한도(D1 포함 50)는 이미 말라 있었다.
     expect(runCode).toMatch(/const spendD1 = \(n = 1\) => \{ budget\.left -= n \}/)
     expect(runCode).toMatch(/spendD1\(UPFRONT_D1 - 1\)/)          // 루프 전 소급 계상
-    expect(runCode).toMatch(/spendD1\(leads\.length \? 3 \+ Math\.ceil/) // 저장 실비
+    // ⚠️ 상수까지 앵커하지 않는다 — 2026-08-27 저장 관문이 [전후 COUNT 2 + batch] 에서
+    //   [청크당 사전확인 1 + batch 1] 로 바뀌자 이 줄이 깨졌다(낡은 지도). 지켜야 할 것은
+    //   "리드 수에 비례하는 D1 실비를 예산에서 뺀다"이지 계수가 몇이냐가 아니다.
+    expect(runCode).toMatch(/spendD1\(leads\.length \?[^)]*Math\.ceil\(leads\.length \/ 50\)/) // 저장 실비
     // 하한이 [예약 + 선불 + 한 조] 를 못 덮으면 콜드 회차에서 한 키워드도 안 돈다.
     expect(runCode).toMatch(/const budgetFloor = BOOKKEEPING_RESERVE \+ UPFRONT_D1 \+ WEBKR_CONCURRENCY \* 2/)
   })
