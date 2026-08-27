@@ -4,6 +4,7 @@ import { safeInternalPath } from '@/utils/safe-internal-path'
 import { resolveConsumerAlias } from '@/shared/seo/consumer-redirects'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 /**
  * 🏠 ① 카테고리 섹션 + 더보기 (2026-08-04 대표 시안 승인).
@@ -56,6 +57,14 @@ interface HomeSection {
  *   남는다 — 배너 컴포넌트 자신이 "없으면 null" 이라 결국 아무것도 안 그려진다.
  */
 export default function HomeSections({ midBanner }: { midBanner?: React.ReactNode }) {
+  /**
+   * 🖼️ 카드 사진 해상도 — 열 수를 아는 쪽이 정한다(2026-08-27).
+   *   이 섹션은 룩을 위해 `pc` 를 **항상** 넘기는데, 예전엔 그 플래그가 이미지 폭까지 정해서
+   *   **모바일·태블릿도 PC용 큰 사진**을 받았다(실측 필요폭의 2.3배). 룩과 해상도를 분리한다.
+   */
+  const isLgViewport = useMediaQuery('(min-width: 1024px)')
+  const cardImgWidth = isLgViewport ? 400 : 200
+
   /**
    * 🏠 2026-08-22 (대표 "인기 이용권이 먼저 안 뜨고 가까운 동네딜이 먼저 보여"): 워커가 홈 HTML 에
    * `__SSR_INITIAL_SECTIONS__` 를 함께 실어 보낸다(`worker/index.ts` SECTIONS 보조 슬롯).
@@ -164,7 +173,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4">
               {sec.products.map((p, i) => (
-                <GroupBuyFeedCard key={p.id} p={p} pc aboveFold={i < 4 && sIdx === 0} />
+                <GroupBuyFeedCard key={p.id} p={p} pc imgWidth={cardImgWidth} aboveFold={i < 4 && sIdx === 0} />
               ))}
             </div>
           </section>

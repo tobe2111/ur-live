@@ -72,6 +72,17 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '홈 카드가 다시 표시폭의 2~3배 사진을 받는다(모바일 첫 화면이 느려짐)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '        width={imgWidth}',
+    replace: '        width={pc ? 400 : 300}',
+    test: 'src/tests/unit/home-card-image-width.test.ts',
+    why:
+      '`pc` 는 카드 **룩** 플래그인데 이미지 해상도까지 겸하고 있었고, HomeSections 가 룩을 위해 ' +
+      '`pc` 를 하드코딩으로 넘겨 모바일·태블릿도 PC용 큰 사진을 받았다(실측 필요폭의 2.3배, ' +
+      '모바일 카드 하나가 259KB). 화면은 멀쩡해 보여서 **느리다는 체감으로만** 드러난다.',
+  },
+  {
     name: '태블릿 홈이 다시 옛 디자인이 된다(헤더는 md, 본문은 lg 로 갈림)',
     file: 'src/pages/pc-home/HomeRoute.tsx',
     find: "useMediaQuery('(min-width: 768px)')",

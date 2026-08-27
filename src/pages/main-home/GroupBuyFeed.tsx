@@ -5,6 +5,7 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -120,6 +121,15 @@ export default function GroupBuyFeed({
   // 📐 2026-08-17 (대표 — "카드가 커, 컴팩트하게" → 재지시 "1줄에 이용권 5개"): 2026-07-15 의
   //   "4열 카드 크게"를 **대체** — PC 는 **5열 고정**(xl+), lg(좁은 노트북)만 4열, gap 축소.
   //   컨테이너 1440(PcHomePage)과 짝 → 카드 ~260px. 2xl 6열은 대표 재지시로 제거(5개가 기준).
+/**
+   * 🖼️ 카드 사진 해상도 — **열 수를 아는 쪽**이 정한다(2026-08-27).
+   *   lg+ 는 4열이라 카드가 322px, 그 미만은 모바일 2열·태블릿 4열 모두 175~190px 다.
+   *   `cfSrcSet` 이 x-디스크립터라 base 가 곧 1x CSS 폭 — 크게 잡으면 3x 에서 그대로 증폭된다.
+   *   ⚠️ 카드마다 `useMediaQuery` 를 부르면 리스너가 카드 수만큼(50+) 붙는다. 여기서 한 번만.
+   */
+  const isLgViewport = useMediaQuery('(min-width: 1024px)')
+  const cardImgWidth = isLgViewport ? 400 : 200
+
   const gridCls = pc
     // 📐 2026-08-19 (대표 — "한 줄에 이용권 5개에서 4개로"): xl 5열을 뺀다. 카드가 커져 사진·가격이
     //   읽히고, 위 섹션 그리드(lg:grid-cols-4)와도 열 수가 같아진다(같은 화면에서 열이 갈리지 않는다).
@@ -374,7 +384,7 @@ export default function GroupBuyFeed({
           {sorted.map((p, idx) => {
             const emb = (p as { fcfs?: { enabled?: boolean; prelaunch?: boolean; spots?: number; appliedDisplay?: number; deadline?: string | null } }).fcfs
             const seed = emb?.enabled ? { spots: emb.spots || 0, appliedDisplay: emb.appliedDisplay || 0, deadline: emb.deadline ?? null, prelaunch: !!emb.prelaunch } : undefined
-            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={firstScreen && idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} pc={pc} userLoc={userLoc} />
+            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={firstScreen && idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} pc={pc} imgWidth={cardImgWidth} userLoc={userLoc} />
           })}
         </div>
         </>

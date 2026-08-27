@@ -100,7 +100,7 @@ function prefetchDetailChunk() {
   import('@/pages/GroupBuyDetailPage').catch(() => { _detailChunkPrefetched = false })
 }
 
-function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; pc?: boolean; userLoc?: { lat: number; lng: number } | null }) {
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, imgWidth = 200, userLoc }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; pc?: boolean; imgWidth?: number; userLoc?: { lat: number; lng: number } | null }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
 
@@ -205,7 +205,20 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
         images={p.images}
         alt={p.name || cat.label}
         eager={aboveFold}
-        width={pc ? 400 : 300}
+        /* 🐘 2026-08-27 (대표 신고 — "메인 로딩 너무 느려, 가까운 동네 딜 특히"): 여기가 `pc ? 400 : 300`
+           이었다. `pc` 는 **카드 룩**(그라데이션·글자색) 플래그인데 이미지 해상도까지 겸하고 있었고,
+           `HomeSections` 가 룩을 위해 `pc` 를 **하드코딩 true** 로 넘기는 바람에 모바일·태블릿도
+           PC용 큰 사진을 받았다. 라이브 실측(표시폭 대비):
+
+             모바일 390  표시 175 × dpr3 = 필요 525  →  받음 800~1200  (1.5~2.3배)
+             태블릿 810  표시 175 × dpr2 = 필요 350  →  받음 800       (2.3배)
+             PC   1440  표시 322 × dpr1 = 필요 322  →  받음 400       (1.2배, 적정)
+
+           `cfSrcSet` 은 x-디스크립터(1x/2x/3x)라 **base 가 곧 1x CSS 폭**이어야 한다 — base 가
+           표시폭보다 크면 그 배수가 3x 에서 그대로 증폭된다(400 → 3x 1200).
+           ⇒ 해상도는 **레이아웃 열수**를 아는 부모가 정한다(`imgWidth`). lg+ 4열=322 → 400,
+             그 미만(모바일 2열 · 태블릿 4열)=175~190 → 200. 둘 다 필요폭의 1.1~1.2배. */
+        width={imgWidth}
         aspectClass={pc ? 'aspect-[4/3]' : 'aspect-square'}
         /* 🧹 2026-08-19: 카드 박스가 사라졌으니 **사진 자신이** 모서리를 갖는다(그루폰과 동일). */
         className={pc ? 'rounded-xl bg-gray-100 dark:bg-[#222225]' : ''}
