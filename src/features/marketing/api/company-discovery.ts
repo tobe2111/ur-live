@@ -19,6 +19,7 @@ import { sweepSuppressedEmails } from './company-lead-hygiene'
 import { normalizeCompanyName } from './registry-email-match'
 import { runDdlOnce } from './ads-schema-guard'
 import { pickPriorityBatch, pickCrawlBatch, writePrioState, type ReclassifyRow } from './reclassify-priority'
+import { COMPANY_INDEX_DDL } from './company-ddl-indexes'
 
 /* ── 접점 분류 (수집 카테고리 SSOT — 2026-07-27 대표 확정 v3: **실무 업종명이 최상위**) ── */
 //   "카테고리를 대행사, 전문서비스(법률·세무·기장 등), 간판, 인테리어 이렇게 해야지" — 우산어
@@ -160,10 +161,7 @@ export const COMPANY_DDL: string[] = [
     reason TEXT,
     created_at DATETIME DEFAULT (datetime('now'))
   )`,
-  'CREATE INDEX IF NOT EXISTS idx_company_leads_tier ON ad_company_leads(tier, id)',
-  'CREATE INDEX IF NOT EXISTS idx_company_leads_region ON ad_company_leads(region, id)',
-  'CREATE INDEX IF NOT EXISTS idx_company_leads_cat ON ad_company_leads(category, id)',
-  'CREATE INDEX IF NOT EXISTS idx_company_leads_active ON ad_company_leads(active, tier, id)',
+  ...COMPANY_INDEX_DDL, // 🗂️ 인덱스는 별 모듈 — 왜 각각이 필요한지가 길어서(읽기 증폭 근거) 여기서 밀려났다
 ]
 
 export async function ensureCompanySchema(DB: D1Database): Promise<number> {
