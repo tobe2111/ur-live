@@ -750,6 +750,13 @@ jobs:
       - name: Critical path chunk composition (strict)
         run: node scripts/check-critical-chunks.mjs
 
+      # 🛡️ 2026-08-27: 위 가드는 **index.html** 만 본다. 그런데 2026-07-12 부터 워커가 표면별로
+      #   modulepreload 를 **추가 주입**한다(route-chunk-map) — 홈의 실제 첫 페인트는 둘의 합이고,
+      #   후자는 어느 가드도 안 보고 있었다. 그 사각지대로 홈에 셀러 대시보드 65KB, /browse 에 또 65KB 가
+      #   조용히 나가고 있었다(에러 없음·화면 정상·바이트만 샘). 이름으로 잡는다.
+      - name: Consumer surface role-chunk leak (strict)
+        run: node scripts/check-surface-role-leak.mjs
+
       # ── 6. 결과 요약 (artifact) — build 가 성공한 경우만 ──
       - name: Bundle size report
         if: success()
