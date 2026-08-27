@@ -108,6 +108,7 @@ const LinkshopPinPicker = lazy(() => import('./pages/curator-page/LinkshopPinPic
 // 🛡️ 2026-05-25 (migration 0280): 호스팅 (Phase 3)
 const HostingPage = lazy(() => import('./pages/HostingPage'))
 const HostingNewPage = lazy(() => import('./pages/HostingNewPage'))
+const StoreClaimPage = lazy(() => import('./pages/StoreClaimPage')) // 🏪 매장 등록 단일 목적지(/store/new)
 const HostInvitePage = lazy(() => import('./pages/HostInvitePage'))
 // 🛡️ 2026-05-25 (Phase 2 잔여): 반품 회수 송장 추적 UI
 const MyReturnsPage = lazy(() => import('./pages/MyReturnsPage'))
@@ -750,7 +751,7 @@ function AppContent() {
             <Route path="/search" element={<SearchPage />} />
 
             {/* 🛡️ 2026-05-25 큐레이터 유어샵 (migration 0278) */}
-            {/* 🏁 2026-06-15 (옵션 1): /creator = 크리에이터 콘솔 정식 URL (메인 앱 내, 별도 로그인 X). /u/me/earnings 는 하위호환 alias. */}
+            {/* 🏁 2026-06-15 (옵션 1): /creator = 소개 콘솔 정식 URL (메인 앱 내, 별도 로그인 X). /u/me/earnings 는 하위호환 alias. */}
             <Route path="/creator" element={
               <ProtectedRoute requireUser>
                 <ErrorBoundary><CuratorEarningsPage /></ErrorBoundary>
@@ -891,12 +892,10 @@ function AppContent() {
                 <MyStorePage />
               </ProtectedRoute>
             } />
-            {/* 🎟️ 2026-07-06 독립 계산대 스캔 POS — 마이 탭에서 1탭, 셀러 대시보드 안 거침. seller_token 자체가드. */}
-            <Route path="/store/scan" element={
-              <ProtectedRoute requireUser>
-                <StoreScanPage />
-              </ProtectedRoute>
-            } />
+            {/* 🎟️ 계산대 스캔 POS(2026-07-06, seller_token 자체가드) · 🏪 매장 등록 단일 목적지(2026-08-26).
+                한 줄 표기는 file-size 래칫 때문 — 동작은 블록 표기와 동일하다. */}
+            <Route path="/store/scan" element={<ProtectedRoute requireUser><StoreScanPage /></ProtectedRoute>} />
+            <Route path="/store/new" element={<ProtectedRoute requireUser><ErrorBoundary><StoreClaimPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/influencer/settlement" element={
               <ProtectedRoute requireUser>
                 <InfluencerSettlementPage />

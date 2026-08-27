@@ -18,6 +18,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
 import StoreProfileModal from '@/components/seller/StoreProfileModal'
+import { enterStoreSeat } from '@/utils/enter-store'
 
 interface OperableStore {
   seller_id: number
@@ -78,19 +79,14 @@ export default function MyStoresPanel({ onGateChange }: Props) {
     if (s.seller_id === currentId) { navigate('/seller/meal-voucher/new'); return }
     if (switching != null) return
     setSwitching(s.seller_id)
-    try {
-      const r = await api.post(`/api/seller/stores/${s.seller_id}/token`)
-      const d = r.data?.data
-      if (!r.data?.success || !d?.seller_token) throw new Error(r.data?.error || 'switch failed')
-      localStorage.setItem('seller_token', d.seller_token)
-      localStorage.setItem('seller_id', String(d.seller.id))
-      if (d.seller.username) localStorage.setItem('seller_username', d.seller.username)
-      localStorage.setItem('seller_name', storeLabel(s))
-      localStorage.setItem('is_distributor', String(d.seller.is_distributor ?? 0))
+    // 🔁 2026-08-26: 좌석 전환 절차는 `enterStoreSeat` SSOT — 지도 클레임·매장 등록 페이지가 같은
+    //   함수를 쓴다. 손으로 세 번 쓰면 갈리고, 갈리면 한 경로에서만 좌석이 안 잡힌다.
+    const ok = await enterStoreSeat(s.seller_id)
+    if (ok) {
+      localStorage.setItem('seller_name', storeLabel(s))  // 목록 라벨은 이 화면이 아는 값
       navigate('/seller/meal-voucher/new')
-    } catch (e) {
-      const ax = e as { response?: { data?: { error?: string } } }
-      toast.error(ax?.response?.data?.error || t('seller.mealVoucher.storeSwitchFailed', { defaultValue: '매장 전환에 실패했습니다' }))
+    } else {
+      toast.error(t('seller.mealVoucher.storeSwitchFailed', { defaultValue: '매장 전환에 실패했습니다' }))
       setSwitching(null)
     }
   }
@@ -115,7 +111,7 @@ export default function MyStoresPanel({ onGateChange }: Props) {
             {t('seller.stores.gateTitle', { defaultValue: '매장 등록부터 시작해요' })}
           </h2>
           <p className="text-[12px] text-white/70 mt-1.5 leading-relaxed">
-            {t('seller.stores.gateDesc', { defaultValue: '유어딜의 모든 기능은 매장에서 출발합니다. 카카오맵에서 내 매장을 찾아 등록하면 이용권 판매·인플루언서 협업·정산이 열려요.' })}
+            {t('seller.stores.gateDesc', { defaultValue: '유어딜의 모든 기능은 매장에서 출발합니다. 카카오맵에서 내 매장을 찾아 등록하면 이용권 판매·소개 협업·정산이 열려요.' })}
           </p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-[11px] text-white/50 font-semibold">
             <span className="text-white">① {t('seller.stores.step1', { defaultValue: '매장 등록' })}</span>

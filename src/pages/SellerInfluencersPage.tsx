@@ -1,5 +1,5 @@
 /**
- * 📣 인플루언서 찾기 — 유어애즈 DB 탐색 + 협업 제안 (2026-08-20 대표 확정)
+ * 📣 소개 파트너 찾기 — 유어애즈 DB 탐색 + 협업 제안 (2026-08-20 대표 확정)
  *   설계 SSOT: docs/design/seller-dashboard-v2.md · 참고 UI: 크리에이터 탐색(리뷰노트류) 리스트
  *
  * 🔒 연락처는 이 화면 어디에도 없다 — 발송은 유어딜이 대행한다(서버가 아예 안 내려줌).
@@ -66,8 +66,8 @@ export default function SellerInfluencersPage() {
   })
 
   return (
-    <SellerLayout title="인플루언서 찾기">
-      <SEO title="인플루언서 찾기 - 유어딜 셀러" description="협업 인플루언서 탐색·제안" noindex />
+    <SellerLayout title="소개 파트너 찾기">
+      <SEO title="소개 파트너 찾기 - 유어딜 셀러" description="협업 인플루언서 탐색·제안" noindex />
       <div className="mx-auto max-w-5xl space-y-3 p-3 sm:p-4">
         <div className="rounded-xl bg-gradient-to-r from-rose-50 to-amber-50 border border-rose-100 px-4 py-3">
           <p className="text-[11px] font-bold text-brand">인플루언서 협업</p>

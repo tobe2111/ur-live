@@ -89,7 +89,7 @@ app.get('/', async (c) => {
   }
 })
 
-// GET /my-performance — 크리에이터 콘솔: 내가 담은(핀) 진행 중 공구별 실적(판매·확정/예정 소개비)
+// GET /my-performance — 소개 콘솔: 내가 담은(핀) 진행 중 공구별 실적(판매·확정/예정 소개비)
 app.get('/my-performance', requireAuth(), async (c) => {
   try {
     const db = c.env.DB

@@ -1962,7 +1962,8 @@
       "recommendToggleHint": "Show pinned items in the bottom \"Picks\" section",
       "recommendToggleOn": "✨ Picks ON",
       "recommendToggleOff": "Picks OFF",
-      "recommendPreviewNote": "Hidden from visitors — turn it on with the \"Picks OFF\" button above"
+      "recommendPreviewNote": "Hidden from visitors — turn it on with the \"Picks OFF\" button above",
+      "emptyShopTitle": "Add your first pass to fill your UrShop"
     },
     "storeIntro": "Store Introduction",
     "shippingInfo": "Shipping Info",
@@ -2926,12 +2927,12 @@
       "approveFailed": "Approval failed"
     },
     "gateway": {
-      "title": "Business account — open my shop",
+      "title": "Business verification",
       "heroTitle": "Sell directly from my shop",
-      "heroDesc": "One business verification turns your linkshop into a real store. List products & vouchers and get cash settlements (5% base platform fee).",
-      "kakaoBanner": "Selling features will be added to this Kakao account. Your linkshop and purchase history stay intact.",
+      "heroDesc": "Register your store and sell passes and products from your UrShop, settled in cash (5% platform fee by default).",
+      "kakaoBanner": "Selling features will be added to this Kakao account. Your UrShop and purchase history stay intact.",
       "escape": "Only want to recommend products for commission? No sign-up needed —",
-      "escapeLink": "go to my linkshop",
+      "escapeLink": "go to my UrShop",
       "escapeSuffix": " and start right away.",
       "applied": "Application submitted! Moving to the review status page.",
       "alreadyActive": "You are already a business user",
@@ -2951,7 +2952,7 @@
     },
     "mailOrderNumber": "Mail-order business no.",
     "mailOrderNumberPlaceholder": "e.g. 2026-Seoul-01234",
-    "mailOrderNumberHint": "Shown publicly in your linkshop seller info (e-commerce law disclosure)",
+    "mailOrderNumberHint": "Shown publicly in your UrShop seller info (e-commerce law disclosure)",
     "primary": {
       "addProductDesc": "List vouchers & group buys",
       "voucherManageDesc": "Sales & status",
@@ -4654,13 +4655,13 @@
     "sellerNoTokenSub": "No separate signup needed",
     "startAsSeller": "Start as Seller",
     "registerAsAgency": "Register as Agency →",
-    "loginDesc": "Log in with a seller account.",
+    "loginDesc": "Log in with your Kakao account.",
     "sellerLogin": "Seller Login",
     "sellerSignup": "Seller Sign Up",
     "sheetTitleCreate": "Create",
     "proposeDeal": "Propose a local group buy",
     "proposeDealDesc": "Suggest a shop and we’ll gather people to open it",
-    "openMyShop": "Open my shop (business)"
+    "openMyShop": "Register my store"
   },
   "broadcastNotify": {
     "loginRequired": "Login required",
@@ -5358,11 +5359,11 @@
     "catLive": "[TODO:en] 라이브",
     "catService": "Service",
     "q1": "[TODO:en] 주문을 취소하고 싶어요",
-    "a1": "[TODO:en] 배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 판매자와 협의가 필요합니다.",
+    "a1": "[TODO:en] 배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 매장과 협의가 필요합니다.",
     "q2": "[TODO:en] 결제가 완료되지 않았어요",
     "a2": "[TODO:en] 결제 오류 시 카드사 또는 결제사로 문의해주세요. 토스페이먼츠 고객센터: 1544-7772",
     "q3": "[TODO:en] 배송 기간은 얼마나 걸리나요?",
-    "a3": "[TODO:en] 일반적으로 결제 완료 후 2-3일 이내 배송됩니다. 판매자별로 차이가 있을 수 있으며, 상품 페이지에서 확인 가능합니다.",
+    "a3": "[TODO:en] 일반적으로 결제 완료 후 2-3일 이내 배송됩니다. 매장별로 차이가 있을 수 있으며, 상품 페이지에서 확인 가능합니다.",
     "q4": "[TODO:en] 배송 조회는 어떻게 하나요?",
     "a4": "[TODO:en] 마이페이지 > 주문내역에서 송장번호를 확인하시고 \"배송 조회\" 버튼을 클릭하시면 택배사 사이트로 이동합니다.",
     "q5": "[TODO:en] 교환/반품은 어떻게 하나요?",
@@ -5786,11 +5787,11 @@
     "dashboardAria": "Switch to seller dashboard",
     "switching": "Switching...",
     "sellerMode": "Business mode",
-    "applyAria": "Become a seller",
+    "applyAria": "Register my store",
     "applyLabel": "Become a seller",
     "successMsg": "Redirecting to seller dashboard!",
     "errorMsg": "Failed to switch to seller",
-    "openMyShop": "Open my shop",
+    "openMyShop": "Register my store",
     "pendingAria": "View seller review status",
     "statusAria": "View seller status"
   },
@@ -5984,9 +5985,9 @@
     "totalAmount": "[TODO:en] 총 결제금액",
     "paymentMethod": "[TODO:en] 결제수단",
     "mockPayment": "[TODO:en] Mock 결제",
-    "sellerInquiry": "[TODO:en] 판매자 문의",
-    "sellerPhoneInfo": "[TODO:en] 판매자 연락처: {{phone}}",
-    "sellerNoContact": "[TODO:en] 판매자 연락처가 등록되지 않았습니다",
+    "sellerInquiry": "[TODO:en] 매장 문의",
+    "sellerPhoneInfo": "[TODO:en] 매장 연락처: {{phone}}",
+    "sellerNoContact": "[TODO:en] 매장 연락처가 등록되지 않았습니다",
     "writeReview": "[TODO:en] ★ 리뷰 작성하기",
     "cancelOrder": "[TODO:en] 주문 취소"
   },
@@ -6159,11 +6160,11 @@
       "noData": "No data yet. Share your pins with friends!"
     },
     "dashboardError": "Failed to load dashboard",
-    "makeMine": "Make my own linkshop — earn by recommending",
+    "makeMine": "Make my own UrShop — earn by recommending",
     "console": {
       "title": "Creator Console"
     },
-    "ownerViewBar": "My linkshop · what visitors see",
+    "ownerViewBar": "My UrShop · what visitors see",
     "editButton": "Edit",
     "editMode": "Edit mode",
     "tapToEdit": "Tap to edit",
@@ -6180,7 +6181,7 @@
     "addVoucherPin": "Add local deal",
     "addShopPin": "Add product",
     "addAnyPin": "Add product or deal",
-    "confirmDeletePinMine": "Remove this pin from your linkshop?",
+    "confirmDeletePinMine": "Remove this pin from your UrShop?",
     "confirmDeletePin": "Delete this pin?",
     "pinDeleted": "Pin deleted",
     "deleteFailed": "Delete failed",
@@ -6192,7 +6193,7 @@
     "viewsCount": "{{n}} views",
     "earnPerSaleAmt": " · Earn ₩{{amt}}/sale",
     "noCommentNudge": "No comment yet · add one to boost sales",
-    "stepsLeft": "{{n}} steps to finish your linkshop",
+    "stepsLeft": "{{n}} steps to finish your UrShop",
     "stepName": "Set name",
     "stepHandle": "Set address",
     "stepFirstProduct": "Add first product",
@@ -6742,16 +6743,16 @@
   "roleCta": {
     "myShortcuts": "My shortcuts",
     "startNewRole": "Start a new role",
-    "linkshop": "My linkshop",
-    "linkshopDesc": "Recommend vouchers & deals, earn rewards",
+    "linkshop": "My UrShop",
+    "linkshopDesc": "Add passes to your UrShop and share them",
     "sellerDash": "Seller dashboard",
     "sellerDashDesc": "Manage my products, deals & settlements",
     "agencyDash": "Agency dashboard",
     "agencyDashDesc": "Earnings from partner stores",
     "proposeGb": "Propose a local deal",
     "proposeGbDesc": "Suggest a store and we will open a deal",
-    "openShop": "Open my shop",
-    "openShopDesc": "Register a business → sell products & vouchers",
+    "openShop": "Register my store",
+    "openShopDesc": "Find your store on Kakao Map and start selling passes",
     "agencyBiz": "Agency business",
     "agencyBizDesc": "Recruit stores → 2% lifetime revenue"
   },
@@ -6772,5 +6773,9 @@
     "copyMyLink": "Copy my link",
     "copied": "Link copied",
     "copyFailed": "Copy failed"
+  },
+  "frameRails": {
+    "valShop": "Your pass showcase, UrShop",
+    "valShopDesc": "It's already open when you sign up"
   }
 }

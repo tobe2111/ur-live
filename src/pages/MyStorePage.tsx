@@ -116,7 +116,7 @@ export default function MyStorePage() {
         <Store className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
         <p className="text-gray-900 dark:text-white font-bold">사업자 유저 전용</p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">사업자 등록·판매 승인 후 이용할 수 있어요.</p>
-        <button onClick={() => navigate('/seller/register/business')} className="mt-5 px-5 py-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold">사업자로 시작하기</button>
+        <button onClick={() => navigate('/store/new')} className="mt-5 px-5 py-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold">내 가게 등록하기</button>
       </div>
     )
   }

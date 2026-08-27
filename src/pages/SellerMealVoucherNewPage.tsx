@@ -271,7 +271,7 @@ export default function SellerMealVoucherNewPage() {
             <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
             <h2 className="text-lg font-bold text-gray-900">{t('seller.mealVoucher.doneTitle', { defaultValue: '이용권이 등록됐어요!' })}</h2>
             <p className="text-sm text-gray-500 mt-2">
-              {t('seller.mealVoucher.doneDesc', { defaultValue: '인플루언서에게 제안을 보내면 추천 판매가 시작돼요. 커미션은 판매됐을 때만 발생합니다.' })}
+              {t('seller.mealVoucher.doneDesc', { defaultValue: '소개해 줄 사람에게 제안을 보내면 소개 판매가 시작돼요. 커미션은 팔렸을 때만 발생합니다.' })}
             </p>
             {/* 📣 2026-08-23: 첫 판로는 단골 카톡방 — 등록 즉시 공유(커머스 카드: 정가취소선+할인가). */}
             {createdId && (
@@ -307,7 +307,7 @@ export default function SellerMealVoucherNewPage() {
                 onClick={() => navigate('/seller/influencers')}
                 className="flex-[2] py-3 bg-pink-500 text-white rounded-xl font-bold text-sm"
               >
-                {t('seller.mealVoucher.findInfluencers', { defaultValue: '인플루언서 찾기 →' })}
+                {t('seller.mealVoucher.findInfluencers', { defaultValue: '소개 파트너 찾기 →' })}
               </button>
             </div>
           </div>

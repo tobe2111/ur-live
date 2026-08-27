@@ -1,6 +1,6 @@
 /**
  * 🛡️ 2026-05-02: TD-018 분할 — MyOrdersPage 주문 상세 모달 (사용자 시점).
- *   배송 타임라인 + 결제 정보 + 판매자 문의 + 리뷰/취소 액션 포함.
+ *   배송 타임라인 + 결제 정보 + 매장 문의 + 리뷰/취소 액션 포함.
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -272,7 +272,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
             </div>
           </div>
 
-          {/* 판매자 문의 */}
+          {/* 매장 문의 */}
           <button
             onClick={() => {
               const kakao = order.seller_kakao_chat_url as string | undefined
@@ -280,14 +280,14 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
               if (kakao) {
                 window.open(kakao, '_blank', 'noopener,noreferrer')
               } else if (phone) {
-                toast.info(t('orderDetail.sellerPhoneInfo', { phone, defaultValue: '판매자 연락처: {{phone}}' }))
+                toast.info(t('orderDetail.sellerPhoneInfo', { phone, defaultValue: '매장 연락처: {{phone}}' }))
               } else {
-                toast.info(t('orderDetail.sellerNoContact', { defaultValue: '판매자 연락처가 등록되지 않았습니다' }))
+                toast.info(t('orderDetail.sellerNoContact', { defaultValue: '매장 연락처가 등록되지 않았습니다' }))
               }
             }}
             className="w-full py-3 text-[15px] font-medium text-blue-600 border border-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition-colors"
           >
-            {t('orderDetail.sellerInquiry', { defaultValue: '판매자 문의' })}
+            {t('orderDetail.sellerInquiry', { defaultValue: '매장 문의' })}
           </button>
 
           {/* 리뷰 작성 (배송완료 상태) */}

@@ -399,7 +399,7 @@ export default function IntroducePage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => navigate('/seller/register')}
+                onClick={() => navigate('/store/new')}
                 className="px-6 py-3.5 rounded-2xl text-white text-[14px] font-extrabold bg-gradient-to-r from-gray-800 to-gray-800 hover:opacity-90 transition-opacity"
               >
                 입점 신청하기 →

@@ -4,8 +4,8 @@ import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 /**
- * 📥 유어딜 제휴 크리에이터 모집 (공개 신청 페이지, /creators).
- *   인플루언서가 스스로 신청 → 공용 풀에 인바운드로 저장. 신청 = 사전 수신동의(자유 연락 가능).
+ * 📥 유어딜 소개 파트너 모집 (공개 신청 페이지, /creators).
+ *   소개해 줄 사람이 스스로 신청 → 공용 풀에 인바운드로 저장. 신청 = 사전 수신동의(자유 연락 가능).
  *   라이트 고정 standalone → 루트 div 에 force-light-theme (다크 전역규칙 무력화).
  */
 const PLATFORMS = [
@@ -46,8 +46,8 @@ export default function CreatorApplyPage() {
       <SEO title={CONSUMER_SURFACE_SEO['/creators/apply'].title} description={CONSUMER_SURFACE_SEO['/creators/apply'].description} url="/creators/apply" />
       <div className="mx-auto max-w-lg">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">유어딜 제휴 크리에이터 모집</h1>
-          <p className="mt-2 text-sm text-gray-600">동네 맛집·카페·뷰티·네일·숙소 딜을 소개할 크리에이터를 찾습니다.<br />신청해주시면 제휴 담당자가 검토 후 연락드립니다.</p>
+          <h1 className="text-2xl font-bold text-gray-900">유어딜 소개 파트너 신청</h1>
+          <p className="mt-2 text-sm text-gray-600">동네 맛집·카페·뷰티·네일·숙소 이용권을 소개해 주실 분을 찾습니다.<br />신청해주시면 제휴 담당자가 검토 후 연락드립니다.</p>
         </div>
 
         {done ? (
@@ -60,7 +60,7 @@ export default function CreatorApplyPage() {
               className="mt-5 inline-block rounded-lg bg-gray-900 px-5 py-3 text-sm font-semibold text-white">
               지금 바로 시작하기 (카카오 1분)
             </a>
-            <p className="mt-2 text-xs text-gray-500">가입하면 내 유어샵이 자동으로 생기고, 딜을 담아 링크만 공유하면 됩니다.</p>
+            <p className="mt-2 text-xs text-gray-500">가입하면 내 유어샵이 자동으로 생기고, 마음에 든 이용권을 담아 진열하고 소개하면 됩니다.</p>
           </div>
         ) : (
           <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">

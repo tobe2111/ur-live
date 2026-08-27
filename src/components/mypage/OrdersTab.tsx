@@ -125,7 +125,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
     } else if (phone) {
       toast.info(t('ordersTab.sellerContact', { phone, defaultValue: `판매자 연락처: ${phone}` }))
     } else {
-      toast.info(t('ordersTab.sellerNoContact', { defaultValue: '판매자 연락처가 등록되지 않았습니다' }))
+      toast.info(t('ordersTab.sellerNoContact', { defaultValue: '매장 연락처가 등록되지 않았습니다' }))
     }
   }
 
@@ -376,7 +376,7 @@ function OrderCard({
           <button
             onClick={() => onSellerContact(order)}
             className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] rounded-full hover:bg-gray-50 dark:hover:bg-[#1A2334] transition-colors"
-            aria-label={t('ordersTab.inquiry', { defaultValue: '판매자 문의' })}
+            aria-label={t('ordersTab.inquiry', { defaultValue: '매장 문의' })}
           >
             <MessageCircle className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
             {t('ordersTab.inquiry', { defaultValue: '문의' })}

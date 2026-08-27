@@ -2,6 +2,12 @@
  * 🛡️ 2026-05-01: TD-018 1387줄 분할 — RestaurantMapPage 의 SuggestionModal 분리.
  *
  * 일반 맛집 (이용권 미출시) 클릭 시 표시. 출시 알림 받기 + 영입 신청 + 카카오맵 길찾기.
+ *
+ * 🚫 2026-08-26: 여기 있던 "사장님이신가요? 매장 등록하기" 버튼을 **뺐다**(대표 재차 지적).
+ *   회색 핀이든 컬러 핀이든 어차피 카카오맵 데이터라, 사장님이 자기 가게를 찾으려고 이 지도를
+ *   뒤질 이유가 없다 — 우연히 자기 핀을 눌러야만 발견된다. 그리고 이 모달을 여는 사람은 사실상
+ *   전부 **손님**이라, 사장님 CTA 는 그들에겐 노이즈다. 매장 등록의 상시 문은 `/store/new` 다
+ *   (마이페이지·푸터에서 진입). 거기 카카오맵 검색이 이미 있으므로 프리필의 이득도 작다.
  */
 import { useState } from 'react'
 import { MapPin, Navigation } from 'lucide-react'
@@ -98,6 +104,7 @@ export default function SuggestionModal({ place, onClose }: Props) {
             >
               🤝 이 매장 셀러 영입 신청
             </button>
+
           </>
         )}
 
@@ -112,6 +119,7 @@ export default function SuggestionModal({ place, onClose }: Props) {
           <button onClick={onClose} className="px-5 py-2.5 bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200 rounded-xl text-sm font-medium">닫기</button>
         </div>
       </div>
+
     </div>
   )
 }

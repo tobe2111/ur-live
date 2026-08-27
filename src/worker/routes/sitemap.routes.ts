@@ -86,6 +86,27 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
     { loc: `/vouchers?category=${encodeURIComponent('커피/음료')}`, priority: 0.7, changefreq: 'weekly' },
     { loc: `/vouchers?category=${encodeURIComponent('베이커리/도넛')}`, priority: 0.65, changefreq: 'weekly' },
     { loc: '/map', priority: 0.7, changefreq: 'daily' },
+    // 🔎 2026-08-26 (대표 "SEO 도 우리 서비스에 맞게") — **메타는 있는데 사이트맵에 없던 8개 표면.**
+    //   `CONSUMER_SURFACE_SEO` 에 title/description 을 갖추고, 인증 게이트도 없고, robots 도 안 막는데
+    //   **사이트맵이 제출하지 않아 검색엔진이 존재 자체를 몰랐다** — 내부 링크(푸터/네비)만으로는
+    //   네이버 Yeti 가 사실상 도달하지 못한다. 크롤 예산을 새로 쓰는 게 아니라, 이미 만들어 둔
+    //   페이지를 발견 가능하게 만드는 것이다.
+    //   ⚠️ 추가 전 확인한 것(다음에 늘릴 때도 이 3개를 볼 것):
+    //     ① App.tsx 에 라우트가 실제로 있는가(`check-sitemap-routes` 가 강제)
+    //     ② `ProtectedRoute` 가 아닌가 — 로그인 벽은 크롤러에게 soft-404 다
+    //     ③ robots.txt 가 그 prefix 를 막고 있지 않은가(`/influencer` 는 `/influencer/` 만 차단이라 통과)
+    { loc: '/stays', priority: 0.85, changefreq: 'daily' },        // 숙소 이용권 — 실재고 있는 카테고리
+    { loc: '/experience', priority: 0.7, changefreq: 'daily' },    // 무료 체험단 응모 — 검색 유입 강한 키워드
+    { loc: '/new-openings', priority: 0.7, changefreq: 'daily' },  // 우리 동네 새로 생긴 가게(공공 데이터)
+    { loc: '/area-report', priority: 0.6, changefreq: 'weekly' },  // 상권 리포트 허브(지역별은 아래 동적 블록)
+    { loc: '/business', priority: 0.75, changefreq: 'weekly' },    // 사장님 입점 랜딩 — /partners 와 짝
+    { loc: '/influencer', priority: 0.7, changefreq: 'weekly' },   // 소개로 수익 랜딩
+    { loc: '/introduce', priority: 0.6, changefreq: 'monthly' },   // 서비스 소개
+    { loc: '/faq', priority: 0.6, changefreq: 'weekly' },          // FAQPage JSON-LD 보유 → 리치 결과 후보
+    // 📜 약관·정책 — 유입은 적지만 **신뢰 신호**다(전자상거래 사업자 확인, 검색엔진 품질 평가).
+    { loc: '/terms', priority: 0.3, changefreq: 'yearly' },
+    { loc: '/privacy', priority: 0.3, changefreq: 'yearly' },
+    { loc: '/refund', priority: 0.3, changefreq: 'yearly' },
     // 🏭 2026-06-26 분리 감사: 도매몰(유통스타트) 페이지는 소비자(urdeal.kr) sitemap 에서 제거.
     //   utongstart.com sitemap 브랜치가 도매 도메인 canonical 로 별도 발행 → 호스트 분리 일관.
   ];
