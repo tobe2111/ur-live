@@ -15,10 +15,58 @@
  * Fail-soft: 실패해도 결제 흐름 막지 않음.
  */
 import { COMMISSION_DEFAULTS } from '../../shared/constants/policy'
+import { parseUTCDate } from '../../utils/date'
 
 // 🔒 2026-06-27 (감사 #7): 매장영입 기본율 SSOT(policy.ts) — 흩어진 매직넘버 통일. 2026-08-27 대표 확정으로 값 1.5 → 2.0.
 const DEFAULT_STORE_INTRO_PCT = COMMISSION_DEFAULTS.INFLUENCER_STORE_INTRO_PCT
 const REFUND_WINDOW_DAYS = 7
+// ⏳ 2026-08-27 대표: 영입 커미션 유효기간 1년. 어드민 조정은 platform_settings.influencer_store_intro_months.
+const DEFAULT_STORE_INTRO_MONTHS = COMMISSION_DEFAULTS.INFLUENCER_STORE_INTRO_MONTHS
+
+/**
+ * ⏳ 2026-08-27 대표 확정 — **매장 영입 2% 의 유효기간은 1년**("2%의 유효기간 1년으로 하자").
+ *
+ * 그 전까지 이 축엔 **만료 검사가 아예 없어 무기한**이었다. 에이전시 영입(1%)은
+ * `ledger.ts:243` 에서 `referral_bonus_until` 을 검사하는데 인플루언서 쪽만 빠져 있었다 —
+ * 비대칭이 의도된 게 아니라는 증거가 스키마에 있다: `repair-schema` 의 백필이
+ * **에이전시와 인플루언서 매장을 똑같이 `introduced_at + 12개월`로** 채운다
+ * (`column-repairs.ts:900`). 즉 데이터는 1년을 전제하고 있었고 적립 코드만 그걸 안 봤다.
+ *
+ * 판정 순서 — **컬럼이 채워져 있는지에 의존하지 않는다**:
+ *   1. `referral_bonus_until` 이 있으면 그 값(어드민이 매장별로 조정한 값 = 명시적 override)
+ *   2. 없으면 `introduced_at + N개월` 로 **계산**
+ *   3. `introduced_at` 도 없으면(레거시 행) `created_at` — 백필의 COALESCE 와 같은 순서
+ *   4. 셋 다 없으면 **만료로 보지 않는다**(기준 시각을 모르는데 끊으면 미지급 사고)
+ *
+ * ⚠️ 기준 시각 문자열은 D1 이 `Z` 없는 UTC(`2026-08-27 03:00:00`)로 준다 —
+ * `new Date()` 에 그대로 넣으면 로컬(KST)로 오해석돼 9시간 어긋난다. `parseUTCDate` SSOT 경유.
+ */
+export function isStoreIntroExpired(
+  row: { referral_bonus_until?: string | null; introduced_at?: string | null; created_at?: string | null } | null | undefined,
+  months: number,
+  now: Date = new Date(),
+): boolean {
+  if (!row) return false
+  const explicit = row.referral_bonus_until
+  if (explicit) {
+    const d = parseUTCDate(explicit)
+    return Number.isFinite(d.getTime()) && d < now
+  }
+  const anchorStr = row.introduced_at || row.created_at
+  if (!anchorStr) return false // 기준 시각 불명 → 끊지 않는다(미지급보다 안전)
+  const anchor = parseUTCDate(anchorStr)
+  if (!Number.isFinite(anchor.getTime())) return false
+  const until = new Date(anchor.getTime())
+  until.setUTCMonth(until.getUTCMonth() + months)
+  return until < now
+}
+
+async function getStoreIntroMonths(DB: D1Database): Promise<number> {
+  const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'influencer_store_intro_months'")
+    .first<{ value: string }>().catch(() => null)
+  const m = Number(row?.value ?? DEFAULT_STORE_INTRO_MONTHS)
+  return Number.isFinite(m) && m > 0 ? m : DEFAULT_STORE_INTRO_MONTHS
+}
 
 async function getStoreIntroPct(DB: D1Database): Promise<number> {
   const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'influencer_store_intro_pct'")
@@ -41,11 +89,13 @@ export async function computeInfluencerStoreIntroRequest(
   try {
     if (!order.id || !order.seller_id || !order.total_amount || order.total_amount <= 0) return 0
     const sellerRow = await DB.prepare(
-      `SELECT introduced_by_influencer_id FROM sellers WHERE id = ?`
-    ).bind(order.seller_id).first<{ introduced_by_influencer_id: number | string | null }>().catch(() => null)
+      `SELECT introduced_by_influencer_id, referral_bonus_until, introduced_at, created_at FROM sellers WHERE id = ?`
+    ).bind(order.seller_id).first<{ introduced_by_influencer_id: number | string | null; referral_bonus_until: string | null; introduced_at: string | null; created_at: string | null }>().catch(() => null)
     const influencerId = sellerRow?.introduced_by_influencer_id
     if (influencerId === null || influencerId === undefined || String(influencerId).trim() === '') return 0
     const influencerIdStr = String(influencerId)
+    // ⏳ 유효기간(기본 1년) 경과 → 적립 종료. compute/credit 동일 판정(isStoreIntroExpired).
+    if (isStoreIntroExpired(sellerRow, await getStoreIntroMonths(DB))) return 0
     const blocked = await DB.prepare(
       "SELECT 1 FROM seller_blocked_influencers WHERE seller_id = ? AND influencer_id = ? AND unblocked_at IS NULL LIMIT 1"
     ).bind(order.seller_id, influencerIdStr).first().catch(() => null)
@@ -76,11 +126,13 @@ export async function creditInfluencerStoreIntroCommission(
 
     // 1. 매장의 영입 인플루언서 (introduced_by_influencer_id = 영입자 user.id).
     const sellerRow = await DB.prepare(
-      `SELECT introduced_by_influencer_id FROM sellers WHERE id = ?`
-    ).bind(order.seller_id).first<{ introduced_by_influencer_id: number | string | null }>().catch(() => null)
+      `SELECT introduced_by_influencer_id, referral_bonus_until, introduced_at, created_at FROM sellers WHERE id = ?`
+    ).bind(order.seller_id).first<{ introduced_by_influencer_id: number | string | null; referral_bonus_until: string | null; introduced_at: string | null; created_at: string | null }>().catch(() => null)
     const influencerId = sellerRow?.introduced_by_influencer_id
     if (influencerId === null || influencerId === undefined || String(influencerId).trim() === '') return
     const influencerIdStr = String(influencerId)
+    // ⏳ 유효기간(기본 1년) 경과 → 적립 종료. compute/credit 동일 판정(isStoreIntroExpired).
+    if (isStoreIntroExpired(sellerRow, await getStoreIntroMonths(DB))) return
 
     // 2. 영입자가 블록되었거나(seller_blocked_influencers) self-매장이면 skip.
     const blocked = await DB.prepare(

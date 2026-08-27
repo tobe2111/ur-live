@@ -5449,6 +5449,27 @@ canvas {
       '전파 모듈은 **소비자에게 보이는** 매장 복사본을 맞추는 장치다. 담당자 번호가 여기에 끼면 ' +
       '개인 휴대폰이 이용권 상세·지도·알림톡에 실린다 — 한 번 퍼지면 회수가 안 된다.',
   },
+  {
+    name: '⏳ 영입 커미션 유효기간이 사라져 무기한으로 돌아간다',
+    file: 'src/worker/utils/influencer-store-intro-commission.ts',
+    find: '    if (isStoreIntroExpired(sellerRow, await getStoreIntroMonths(DB))) return\n',
+    replace: '    if (false) return\n',
+    test: 'src/tests/unit/store-intro-commission.test.ts',
+    why:
+      '영입 커미션 2% 의 유효기간(1년, 2026-08-27 대표)은 **적립을 멈추는 쪽**이라, 검사가 죽으면 ' +
+      '아무 에러 없이 무기한 지급으로 돌아간다 — 이 축은 원래 만료 검사가 없어 무기한이었고 ' +
+      '(에이전시 1% 만 검사했다) 그 상태로 몇 달을 지났다. 실패가 아니라 침묵으로 되돌아가는 종류다.',
+  },
+  {
+    name: '⏳ 만료 기산점이 백필의 COALESCE 순서와 갈린다',
+    file: 'src/worker/utils/influencer-store-intro-commission.ts',
+    find: '  const anchorStr = row.introduced_at || row.created_at',
+    replace: '  const anchorStr = row.created_at',
+    test: 'src/tests/unit/store-intro-commission.test.ts',
+    why:
+      '기준 시각 우선순위(introduced_at → created_at)는 repair-schema 백필의 COALESCE 와 짝이다. ' +
+      '한쪽만 바뀌면 같은 매장의 만료일이 코드와 데이터에서 갈린다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
