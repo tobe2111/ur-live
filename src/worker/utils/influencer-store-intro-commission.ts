@@ -3,7 +3,7 @@
  *
  * 에이전시 입점 commission(agency-store-intro-commission.ts)의 인플루언서 버전.
  * 크리에이터가 매장을 영입(seller_prospects → sellers.introduced_by_influencer_id)하면,
- * 그 매장의 매 결제마다 영입자에게 매출의 N%(platform_settings.influencer_store_intro_pct, default 1.5%)를 적립.
+ * 그 매장의 매 결제마다 영입자에게 매출의 N%(platform_settings.influencer_store_intro_pct, default 2%)를 적립.
  *
  * 적립 경로 = 기존 인플루언서 정산 파이프라인 재사용 (새 시스템 X):
  *   influencer_attributions(source='store_intro', status='pending', available_at=+환불창) 1행
@@ -16,7 +16,7 @@
  */
 import { COMMISSION_DEFAULTS } from '../../shared/constants/policy'
 
-// 🔒 2026-06-27 (감사 #7): 매장영입 기본율 SSOT(policy.ts) — 흩어진 매직넘버 통일(값 1.5 불변).
+// 🔒 2026-06-27 (감사 #7): 매장영입 기본율 SSOT(policy.ts) — 흩어진 매직넘버 통일. 2026-08-27 대표 확정으로 값 1.5 → 2.0.
 const DEFAULT_STORE_INTRO_PCT = COMMISSION_DEFAULTS.INFLUENCER_STORE_INTRO_PCT
 const REFUND_WINDOW_DAYS = 7
 
@@ -90,7 +90,7 @@ export async function creditInfluencerStoreIntroCommission(
 
     // 2.5 🛡️ 2026-07-12 (§0-2 본인구매 가드 — 대표 [UNLOCK], pre-flip-risk-audit §③-3):
     //   위 주석의 "self-매장 skip" 약속과 달리 **구매자==영입 인플 체크가 코드에 없어**, 영입자가
-    //   자기 영입 매장에서 본인 구매하면 매출 1.5% 를 스스로에게 적립할 수 있었음(자가 커미션 루프 —
+    //   자기 영입 매장에서 본인 구매하면 매출 2% 를 스스로에게 적립할 수 있었음(자가 커미션 루프 —
     //   promo flip 후 %가 커지면 기대수익 양수). 구매자 user_id 가 영입자면 skip + 어뷰즈 기록.
     const buyer = await DB.prepare('SELECT user_id FROM orders WHERE id = ?')
       .bind(order.id).first<{ user_id: string | number | null }>().catch(() => null)

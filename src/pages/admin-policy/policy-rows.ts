@@ -74,7 +74,7 @@ export const POLICY_SECTIONS: PolicySection[] = [
       { key: 'INFLUENCER_INTRO_SHARE_PCT', value: pct(COMMISSION_DEFAULTS.INFLUENCER_INTRO_SHARE_PCT), unit: '%', desc: '인플 입점 분배 (platform_fee 중)', dynamicKey: 'influencer_intro_share_pct' },
       { key: 'AGENCY_OWN_RATE', value: pct(COMMISSION_DEFAULTS.AGENCY_OWN_RATE), unit: '%', desc: '에이전시 본인 매출 commission' },
       { key: 'AGENCY_STORE_INTRO_PCT', value: pct(COMMISSION_DEFAULTS.AGENCY_STORE_INTRO_PCT), unit: '%', desc: '에이전시 매장 영입 — 그 매장 매출에서 지급' },
-      { key: 'INFLUENCER_STORE_INTRO_PCT', value: pct(COMMISSION_DEFAULTS.INFLUENCER_STORE_INTRO_PCT), unit: '%', desc: '영입자(크리에이터) 매장 영입 — T+7 성숙 후 원천징수 차감 송금' },
+      { key: 'INFLUENCER_STORE_INTRO_PCT', value: pct(COMMISSION_DEFAULTS.INFLUENCER_STORE_INTRO_PCT), unit: '%', desc: '매장 영입(소개) — 매 결제마다, 기간 제한 없음. T+7 성숙 후 원천징수 차감 송금' },
       { key: 'CURATOR_AFFILIATE_PCT', value: pct(COMMISSION_DEFAULTS.CURATOR_AFFILIATE_PCT), unit: '%', desc: '유어샵 큐레이터 어필리에이트' },
       { key: 'AFFILIATE_COMMISSION_PCT', value: pct(COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT), unit: '%', desc: '제휴 마케팅 (쿠팡파트너스형) 추천인 보상' },
       { key: 'REFERRAL_BONUS_BOTHSIDES_PCT', value: pct(COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT), unit: '%', desc: '공구 양쪽 보너스 (추천인 + 피추천인)' },
