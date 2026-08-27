@@ -36,9 +36,64 @@ import { resolve } from 'path'
  *   아무도 안 밟는 지뢰를 제거하려다 잘 도는 것을 깨는 거래라 **경고만 남긴다.**
  */
 export function stripComments(text: string): string {
-  return text
-    .replace(/\/\*[\s\S]*?\*\//g, '')   // 블록 — 파일 헤더 JSDoc 포함
-    .replace(/\/\/[^\n]*/g, '')          // 라인
+  // 🩸 2026-08-27: 정규식 판을 **스캐너로 교체**했다. 위 경고가 말한 지뢰를 그날 실제로 밟았다 —
+  //   `ProductRepository.ts` 의 라인 주석 한 줄에 `(/api/wholesale/*)` 가 있어 그 `/*` 가 블록주석
+  //   시작으로 읽혔고 **5,911자(파일 절반)가 사라졌다.** 그 안의 코드는 검사에서 증발했으므로
+  //   `not.toContain(...)` 류 단언이 **무조건 통과**하는 상태였다(실측으로 4곳 확인).
+  //
+  //   순서만 바꾸는(라인 먼저) 처방은 **더 나쁘다** — 블록 주석 안의 `//` 줄이 `*/` 를 물고 사라져
+  //   블록이 안 닫힌다. 그래서 문자열·템플릿·정규식 리터럴을 함께 추적하는 스캐너로 간다.
+  //
+  //   ⚠️ 정규식 리터럴 판정은 **휴리스틱**이다(앞 토큰이 연산자면 정규식). 나눗셈을 정규식으로
+  //     오인할 여지가 남지만, 주석 제거 목적에는 실패 시에도 "덜 지우는" 쪽으로 기운다.
+  let out = ''
+  let i = 0
+  let prev = ''            // 직전의 의미 있는 문자(정규식 판정용)
+  const n = text.length
+  while (i < n) {
+    const c = text[i]
+    const c2 = text[i + 1]
+    if (c === '/' && c2 === '/') {                       // 라인 주석
+      while (i < n && text[i] !== '\n') i++
+      continue
+    }
+    if (c === '/' && c2 === '*') {                       // 블록 주석
+      i += 2
+      while (i < n && !(text[i] === '*' && text[i + 1] === '/')) i++
+      i += 2
+      continue
+    }
+    if (c === '"' || c === "'" || c === '`') {           // 문자열 · 템플릿
+      const q = c
+      out += c; i++
+      while (i < n) {
+        if (text[i] === '\\') { out += text[i] + (text[i + 1] ?? ''); i += 2; continue }
+        out += text[i]
+        if (text[i] === q) { i++; break }
+        i++
+      }
+      prev = q
+      continue
+    }
+    if (c === '/' && /[(,=:[!&|?{};+\-*%^~<>]/.test(prev)) {   // 정규식 리터럴
+      out += c; i++
+      let inClass = false
+      while (i < n) {
+        if (text[i] === '\\') { out += text[i] + (text[i + 1] ?? ''); i += 2; continue }
+        if (text[i] === '[') inClass = true
+        else if (text[i] === ']') inClass = false
+        out += text[i]
+        if (text[i] === '/' && !inClass) { i++; break }
+        i++
+      }
+      prev = '/'
+      continue
+    }
+    out += c
+    if (!/\s/.test(c)) prev = c
+    i++
+  }
+  return out
 }
 
 /** 레포 상대경로 → **주석 제거된 코드**. 텍스트 가드의 기본 입력. */

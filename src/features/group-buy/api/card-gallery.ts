@@ -30,3 +30,22 @@ export function sliceCardGallery(raw: unknown, cover: unknown): string[] {
     return []
   }
 }
+
+/**
+ * 목록 응답의 각 행에서 `images` 를 카드용으로 잘라 새 행을 돌려준다.
+ *
+ * 🩸 2026-08-27: 원래 이 함수는 `ProductRepository` 안의 **비-export 지역 함수**였다. 그래서 배선
+ *   가드(호출이 4곳인가)는 있는데 **몸통을 통째로 무력화해도 초록**이었다 — 주입 검증에서 드러났다
+ *   (`if (row.images == null) return r` 를 `return r` 로 바꿔도 통과). 이 레포가 반복해 만난
+ *   "가드가 실패할 수 없음" 클래스라, 자르는 쪽 SSOT 로 끌어올려 **동작 자체를 테스트**하게 한다.
+ *
+ * `images` 가 없는 행은 **손대지 않고 그대로** 돌려준다(빈 배열을 새로 만들지 않는다 — 그러면
+ * 갤러리를 안 쓰는 소비자에게 없던 필드가 생긴다).
+ */
+export function capRowGalleries<T>(rows: T[]): T[] {
+  return rows.map((r) => {
+    const row = r as unknown as { images?: unknown; image_url?: unknown }
+    if (row.images == null) return r
+    return { ...(r as object), images: sliceCardGallery(row.images, row.image_url) } as T
+  })
+}

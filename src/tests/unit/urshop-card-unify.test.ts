@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+// 🩸 2026-08-27: 자체 codeOnly 가 **라인 주석 속 `/*`** 에 걸려 파일 절반을 삼켰다(실측 4곳).
+//   공용 스캐너로 통일 — 경위는 `helpers/source-text.ts`.
+import { stripComments as codeOnly } from '../helpers/source-text'
 
 /**
  * 🏪 2026-08-27 — **유어샵 카드 통일 + 소개비 귀속 보존** (대표 신고 2건).
@@ -26,14 +29,6 @@ const PINS = 'src/pages/seller-public/CuratorPinsSection.tsx'
 const CURATOR = 'src/pages/CuratorPage.tsx'
 const read = (f: string) => readFileSync(f, 'utf-8')
 
-/**
- * ⚠️ **부정 단언은 반드시 주석을 걷어내고 한다.**
- * 이 파일을 처음 쓸 때 "`to` 를 넘기지 않는다" 가 빨간불이었는데, 원인은 코드가 아니라
- * 내가 쓴 주석이 옛 코드(`to={/products/:id}`)를 **인용**한 것이었다. 이 레포가 여러 번
- * 만난 "주석에만 남아도 매치" 클래스라, 판정 대상에서 주석을 뺀다.
- */
-const codeOnly = (src: string) =>
-  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('① 유어샵이 홈과 같은 카드를 쓴다', () => {
   for (const [label, f] of [['이용권 그리드', VOUCHERS], ['담은 핀(사업자)', PINS], ['담은 핀(일반유저)', CURATOR]] as const) {

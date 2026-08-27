@@ -23,6 +23,7 @@ export default function VouchersTab({ mealVouchers }: Props) {
   return (
     <div className="grid grid-cols-2 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
       {mealVouchers.map(p => (
+        // `p` 를 통째로 넘긴다 — 서버가 3장으로 자른 `images` 가 그대로 실려 캐러셀이 산다.
         <GroupBuyFeedCard key={p.id} p={p} aboveFold={false} />
       ))}
     </div>

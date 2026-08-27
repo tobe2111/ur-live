@@ -30,6 +30,10 @@ interface Settings {
   seller_referral_bonus_pct: string
   seller_referral_bonus_months: string
   max_influencer_commission_pct: string
+  // 🏪 2026-08-27 (대표 확정 2% · 1년): 서버는 저장을 받는데 **화면에 칸이 없어**
+  //   대표가 직접 못 바꾸고 있었다(지금 라이브 값은 API 로 직접 넣은 것).
+  influencer_store_intro_pct: string
+  influencer_store_intro_months: string
 }
 
 const DEFAULTS: Settings = {
@@ -45,6 +49,8 @@ const DEFAULTS: Settings = {
   seller_referral_bonus_pct: '1',
   seller_referral_bonus_months: '6',
   max_influencer_commission_pct: '2',
+  influencer_store_intro_pct: '2',
+  influencer_store_intro_months: '12',
 }
 
 export default function AdminCommissionSettingsPage() {
@@ -279,18 +285,54 @@ export default function AdminCommissionSettingsPage() {
               />
               <p className="text-[11px] text-gray-500 mt-1">매장 가입 후 이 기간 동안 영입 보너스 적용 (기본 6개월)</p>
             </div>
+            {/* 🏪 2026-08-27 (대표 확정): 매장 영입 커미션 — 위 '영입 보너스'(내 링크 판매분 가산)와 **다르다**.
+                이건 그 매장의 **모든** 매출에서 나가는 패시브 수익이고, 별개 레일(source='store_intro')이라
+                딜 커미션과 겹쳐 지급된다. */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">매장 영입 커미션 (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="20"
+                value={form.influencer_store_intro_pct}
+                onChange={(e) => setForm((f) => ({ ...f, influencer_store_intro_pct: e.target.value }))}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
+              />
+              <p className="text-[11px] text-gray-500 mt-1">
+                소개자가 데려온 매장의 <b>모든</b> 매출에서 지급 (누가 사든). 위 &lsquo;영입 보너스&rsquo;와 별개 레일.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">매장 영입 커미션 유효기간 (개월)</label>
+              <input
+                type="number"
+                step="1"
+                min="1"
+                max="120"
+                value={form.influencer_store_intro_months}
+                onChange={(e) => setForm((f) => ({ ...f, influencer_store_intro_months: e.target.value }))}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
+              />
+              <p className="text-[11px] text-gray-500 mt-1">
+                매장 등록일(<code>introduced_at</code>) 기산. 매장별 <code>referral_bonus_until</code> 이 있으면 그 값이 우선.
+              </p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">인플 commission 최대 cap (%)</label>
               <input
                 type="number"
                 step="0.5"
                 min="0.5"
-                max="10"
+                max="90"
                 value={form.max_influencer_commission_pct}
                 onChange={(e) => setForm((f) => ({ ...f, max_influencer_commission_pct: e.target.value }))}
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
               />
-              <p className="text-[11px] text-gray-500 mt-1">기본 + 영입 + 협업 deal 모두 합산 후 이 % 까지만 (셀러 보호)</p>
+              <p className="text-[11px] text-gray-500 mt-1">
+                매장이 소개자에게 제안할 수 있는 상한. ⚠️ 소개비는 <b>매장 지갑</b>에서 나가므로(유어딜 몫 불변)
+                이 상한은 유어딜을 보호하는 값이 아니다 — 입력 상한을 결제 엔진과 같은 90 으로 맞췄다(값은 그대로).
+              </p>
             </div>
           </div>
         </div>

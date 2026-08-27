@@ -125,6 +125,8 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   tier2_commission_rate: pct,
   max_influencer_commission_pct: pct,  // marketing.routes.ts:325/375
   influencer_store_intro_pct: pct,     // influencer-store-intro-commission.ts:24
+  // 🏪 2026-08-27: 유효기간(개월). 미등록이면 무검증 통과라 '열두달' 같은 값도 저장됐다.
+  influencer_store_intro_months: intRange(1, 120), // influencer-store-intro-commission.ts isStoreIntroExpired
   influencer_deal_bonus_pct: pct,      // marketing.routes.ts:679
   curator_affiliate_pct: pct,
   host_incentive_pct: pct,

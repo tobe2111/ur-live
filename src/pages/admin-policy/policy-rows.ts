@@ -43,6 +43,11 @@ export interface PolicySection {
   source: string
   title: string
   rows: PolicyRow[]
+  /**
+   * 이 표의 값들이 **오늘 실제로 그렇게 동작하는가**에 대한 경고. 표 위에 그대로 뜬다.
+   * 상수는 policy.ts 에만 있어야 하므로(유령 키 가드), "표에 없는 사실"은 행이 아니라 여기에 적는다.
+   */
+  note?: string
 }
 
 const pct = (n: number) => n
@@ -66,6 +71,10 @@ export const POLICY_SECTIONS: PolicySection[] = [
   },
   {
     source: 'COMMISSION_DEFAULTS',
+    note:
+      '🩸 채널 요율(직접 등록 10% / 중개 5%)은 코드에 있지만 **지금 청구되지 않는다** — 결제 분배는 ' +
+      '`getSellerCommissionRate`(채널을 안 본다: 매장별 수동 → GMV 티어 → 기본 5%)를 쓰고, 채널 요율 경로는 ' +
+      '게이트 `fee_channel_rates_enabled` 뒤인데 미설정(꺼짐)이다. 켜는 것은 머니 경로라 staging 실결제가 필요하다.',
     title: '② COMMISSION_DEFAULTS — 수수료율 (% 단위)',
     rows: [
       { key: 'PLATFORM_FEE_PCT', value: pct(COMMISSION_DEFAULTS.PLATFORM_FEE_PCT), unit: '%', desc: '플랫폼 fee (어드민 조정 가능)', dynamicKey: 'platform_fee_pct' },
