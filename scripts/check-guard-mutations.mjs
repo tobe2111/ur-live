@@ -83,6 +83,59 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '유어샵 담은 핀에서 소개비 귀속이 조용히 사라진다',
+    file: 'src/pages/seller-public/CuratorPinsSection.tsx',
+    find: '              to={`/u/${handle}/p/${pin.product_id}`}\n',
+    replace: '',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '담은 핀은 `/u/{handle}/p/{id}` 로 가야 클릭이 기록되고 `?aff=` 귀속이 붙는다. 카드가 목적지를 ' +
+      '스스로 정하므로 이 prop 을 빠뜨리면 **화면은 똑같은데 소개비 귀속만 사라진다** — 에러가 없어 ' +
+      '아무도 모르고, 소개자는 팔고도 0원을 받는다(2026-08-27 카드 통일 중 실제로 날 뻔했다).',
+  },
+  {
+    name: '유어샵 카드가 다시 옛 세대로 갈린다',
+    file: 'src/pages/seller-public/VouchersTab.tsx',
+    find: '<GroupBuyFeedCard key={p.id}',
+    replace: '<BrowseProductCard key={p.id}',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '2026-08-19 에 카드를 한 벌로 합칠 때 홈만 갈아 끼우고 유어샵이 빠져 두 세대가 공존했다. ' +
+      '각각은 멀쩡해 보여 나란히 놓고 봐야만 드러난다 — 대표가 화면을 보고 신고했다.',
+  },
+  {
+    name: '대행사 계정에 유어애즈 인플루언서 DB 가 다시 열린다',
+    file: 'src/worker/utils/ads-db-access.ts',
+    find: "  if (ch?.value === 'brokered') return { allowed: false, code: 'ADS_DB_AGENCY_BLOCKED', error: AGENCY_MSG }",
+    replace: '',
+    test: 'src/tests/unit/ads-db-access.test.ts',
+    why:
+      '`ad_influencer_leads` 는 몇 달을 들여 모은 자산이고 값은 명단이 아니라 큐레이션에 있다. ' +
+      '중개(관리 대행)로 등록한 계정에 열리면 우리 상품을 그대로 내주는 것이고, 한 번 복사되면 ' +
+      '되돌릴 방법이 없다(2026-08-27 대표 지시). 연락처를 가려도 handle 하나로 다 찾는다.',
+  },
+  {
+    name: '등록 유형이 없는 레거시 매장까지 통째로 막힌다',
+    file: 'src/worker/utils/ads-db-access.ts',
+    find: "  return { allowed: true, reason: ch?.value === 'direct' ? 'direct' : 'unclassified' }",
+    replace: "  return ch?.value === 'direct' ? { allowed: true, reason: 'direct' } : { allowed: false, code: 'ADS_DB_AGENCY_BLOCKED', error: AGENCY_MSG }",
+    test: 'src/tests/unit/ads-db-access.test.ts',
+    why:
+      '수수료 계산은 미지정을 brokered 로 폴백하는데, 그 폴백을 열람 판정까지 끌고 오면 등록 유형이 ' +
+      '생기기 전에 만들어진 매장 10곳이 전부 막힌다. 대표 지시는 "대행사로 가입하면"이지 ' +
+      '"분류가 없으면"이 아니다 — 반대 방향의 오작동이라 조용히 지나가기 쉽다.',
+  },
+  {
+    name: '탐색 엔드포인트가 게이트를 부르지 않는다(판정만 맞고 문은 열림)',
+    file: 'src/features/seller/api/seller-influencers.routes.ts',
+    find: '    const denied = await gateAdsDb(c as Ctx, { quota: true })\n    if (denied) return denied\n',
+    replace: '',
+    test: 'src/tests/unit/ads-db-access.test.ts',
+    why:
+      '순수함수가 아무리 맞아도 라우트가 안 부르면 DB 는 그대로 열려 있다. 이 레포에서 반복된 ' +
+      '"가드는 있는데 안 돎" 클래스라 판정이 아니라 **호출**을 검사한다.',
+  },
+  {
     name: '홈 카드가 다시 두 벌로 갈린다(피드만 대표색 카드)',
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
     find: '      className="block group active:scale-[0.98] flex flex-col"',

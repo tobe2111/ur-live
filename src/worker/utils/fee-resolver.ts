@@ -35,6 +35,12 @@ export interface FeeRates {
   agencyPct: number;
   /** 에이전시 지속배분 시한(개월). 기본 24. (리졸버는 withinTerm boolean 만 받음 — 참고용 상수) */
   agencyTermMonths: number;
+  /**
+   * 💸 2026-08-27 게이트 — 대행사 몫을 **2차 재원(매장이 판 돈)** 에서 뺄 것인가.
+   *   `false`(기본) = 종전대로 유어딜 수수료 안에서. `true` = 대표 확정 구조.
+   *   ⚠️ 켜면 정산 금액이 달라진다. staging 실결제 + 환불 역전 확인 뒤에만 켤 것.
+   */
+  agencyFromOwner?: boolean;
 }
 
 /** 대표 확정 기본값 — platform_settings 미설정 시 폴백 + 정책 SSOT. */
@@ -43,6 +49,7 @@ export const DEFAULT_FEE_RATES: Readonly<FeeRates> = Object.freeze({
   platformPctDirect: 10,
   agencyPct: 1,
   agencyTermMonths: 24,
+  agencyFromOwner: false,   // 기본 꺼짐 — 켜기 전까지 현행과 동일
 });
 
 /** 에이전시 적립 조건 — 호출자가 DB 사실로 판정해 전달. */
@@ -103,6 +110,12 @@ export interface FeeBreakdown {
   supply: number;
   /** 주인 순수익 = 나머지 전부 (반올림 잔차 흡수 → 합 항등식 정확). */
   ownerNet: number;
+  /**
+   * 💸 2026-08-27: 대행사 몫이 **어디서 나갔는지**. `true` = 2차 재원(매장이 판 돈),
+   *   `false` = 유어딜 수수료 안(종전). 불변식이 합계를 어떻게 세야 하는지가 여기서 갈리고,
+   *   기록(`order_fee_breakdown`)에도 남아 나중에 "이 주문은 어느 규칙이었나"를 알 수 있다.
+   */
+  agencyFromOwner: boolean;
 }
 
 function isNonNegInt(n: unknown): n is number {
@@ -130,20 +143,37 @@ export function resolveOrderFees(ctx: FeeContext, rates: FeeRates = DEFAULT_FEE_
     : clampPct(rates.platformPct, DEFAULT_FEE_RATES.platformPct);
   const platform = ownership === '1P' ? 0 : Math.round((amount * platformPct) / 100);
 
-  // 규칙 3: 에이전시 — 실판매 + 시한 내 + 영입 에이전시 있을 때만. platform 안에서 분배(≤ platform 가드).
+  // 규칙 3: 대행사(에이전시) 몫 — 실판매 + 시한 내 + 영입 대행사 있을 때만.
+  //
+  // 💸 2026-08-27 대표 확정 — **재원이 바뀐다.** "유어딜은 대행사에게 돈을 주지 않는다.
+  //   대행사는 자신들이 직접 중개수수료를 버는 구조" (그리고 대행사가 낀 매장은 유어딜이
+  //   10%가 아니라 5%만 받아 **벌 자리를 비워 준다**). 그런데 코드는 대행사 몫을
+  //   **유어딜 수수료 안에서** 떼고 있었다 — 확정과 정반대다.
+  //
+  //   `agencyFromOwner` 가 켜지면 대행사 몫이 **2차 재원**(결제액 − 유어딜 몫)에서 나간다.
+  //   ⚠️ 기본은 꺼짐 — 켜기 전까지 계산은 현행과 **byte 단위로 동일**하다.
+  //   ⚠️ 켠 뒤에도 불변식은 그대로다: 슬라이스 합 = 결제액, 모든 슬라이스 ≥ 0,
+  //      그리고 **유어딜 몫은 어떤 경우에도 줄지 않는다**(아래 platformNet 이 그 증거다).
+  const agencyFromOwner = rates.agencyFromOwner === true;
   let agency = 0;
   if (ownership === '3P' && ctx.agency && ctx.agency.agencyId != null && ctx.agency.active && ctx.agency.withinTerm) {
     const agencyPct = clampPct(ctx.agency.pctOverride, clampPct(rates.agencyPct, DEFAULT_FEE_RATES.agencyPct));
-    agency = Math.min(Math.round((amount * agencyPct) / 100), platform);
+    const raw = Math.round((amount * agencyPct) / 100);
+    // 켜짐: 2차 재원(결제액 − 유어딜 몫) 안에서. 꺼짐: 종전대로 유어딜 몫 안에서.
+    agency = agencyFromOwner ? Math.min(raw, Math.max(0, amount - platform)) : Math.min(raw, platform);
   }
-  const platformNet = platform - agency;
+  // 유어딜 순수취액 — 켜지면 대행사 몫이 여기서 안 빠진다(= 5%/10% 가 온전히 남는다).
+  const platformNet = agencyFromOwner ? platform : platform - agency;
 
   // 규칙 4: 제조가(공급가) — 0 ~ (amount - platform) 범위로 clamp(주인 몫을 음수로 만들지 않음).
   const rawSupply = isNonNegInt(ctx.supplyCost) ? Math.floor(ctx.supplyCost as number) : 0;
   const supply = Math.max(0, Math.min(rawSupply, amount - platform));
 
-  // 주인 gross(소개비 낼 수 있는 한도) = amount - platform - supply.
-  const ownerGross = Math.max(0, amount - platform - supply);
+  // 주인 gross(소개비 낼 수 있는 한도) = amount - platform - supply (− 대행사 몫, 켜졌을 때).
+  //   대행사 몫이 2차 재원에서 나가면 **매장이 소개비로 쓸 수 있는 한도도 그만큼 준다** —
+  //   안 빼면 합이 결제액을 넘고 주인 몫이 음수가 된다.
+  const agencyFromOwnerSlice = agencyFromOwner ? agency : 0;
+  const ownerGross = Math.max(0, amount - platform - supply - agencyFromOwnerSlice);
 
   // 규칙 2: 홍보 소개비 — 주인 자율. 음수 가드: ownerGross 초과 불가.
   let promo = 0;
@@ -157,9 +187,9 @@ export function resolveOrderFees(ctx: FeeContext, rates: FeeRates = DEFAULT_FEE_
   }
 
   // 주인 순수익 = 나머지 전부 → 합 항등식이 정확히(±0) 성립.
-  const ownerNet = amount - platform - supply - promo;
+  const ownerNet = amount - platform - supply - promo - agencyFromOwnerSlice;
 
-  return { amount, ownership, productKind, platform, agency, platformNet, promo, supply, ownerNet };
+  return { amount, ownership, productKind, platform, agency, platformNet, promo, supply, ownerNet, agencyFromOwner };
 }
 
 /**
@@ -174,14 +204,22 @@ export function assertFeeInvariants(b: FeeBreakdown): void {
   const fail = (msg: string) => {
     throw new Error(`[fee-resolver] invariant violated: ${msg} — ${JSON.stringify(b)}`);
   };
-  // ① 합 = 결제액 (platform 이 agency 를 포함하므로 platform+supply+promo+ownerNet = amount)
-  if (b.platform + b.supply + b.promo + b.ownerNet !== b.amount) fail('sum != amount');
-  // (동치) platformNet + agency + supply + promo + ownerNet = amount
-  if (b.platformNet + b.agency + b.supply + b.promo + b.ownerNet !== b.amount) fail('net-sum != amount');
+  // ① 합 = 결제액. **대행사 몫이 어디서 나갔느냐로 세는 법이 갈린다** —
+  //   유어딜 몫 안(종전)이면 platform 이 이미 포함하고, 2차 재원이면 별도 항이다.
+  if (b.agencyFromOwner) {
+    if (b.platform + b.agency + b.supply + b.promo + b.ownerNet !== b.amount) fail('sum != amount');
+    // 이 모드에선 유어딜이 온전히 가져간다 — 줄어들면 재원이 새고 있다는 뜻이다.
+    if (b.platformNet !== b.platform) fail('platformNet != platform (agencyFromOwner)');
+    // 대행사 몫은 2차 재원을 넘을 수 없다.
+    if (b.agency > b.amount - b.platform) fail('agency > 2차 재원');
+  } else {
+    if (b.platform + b.supply + b.promo + b.ownerNet !== b.amount) fail('sum != amount');
+    if (b.platformNet + b.agency + b.supply + b.promo + b.ownerNet !== b.amount) fail('net-sum != amount');
+    // 종전 모드에선 대행사 몫이 유어딜 수수료 안에서 나간다.
+    if (b.agency > b.platform) fail('agency > platform');
+  }
   // ② 주인 순수익 ≥ 0
   if (b.ownerNet < 0) fail('ownerNet < 0');
-  // ③ 에이전시 ≤ 플랫폼
-  if (b.agency > b.platform) fail('agency > platform');
   // ④ 1P → 플랫폼 0
   if (b.ownership === '1P' && b.platform !== 0) fail('1P platform != 0');
   if (b.ownership === '1P' && b.agency !== 0) fail('1P agency != 0');

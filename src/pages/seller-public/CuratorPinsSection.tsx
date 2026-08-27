@@ -14,7 +14,8 @@ import api from '@/lib/api'
 import { Pin } from 'lucide-react'
 // 🏁 2026-06-25 (대표 신고 — "상품쪽이 깨졌다"): 다크 전용 하드코딩 카드(bg-[#1A2334]/text-white)가
 //   라이트 페이지에서 까맣게 깨져 보임 → 큐레이터 페이지·picker 와 동일한 표준 BrowseProductCard(테마 자동) 로 통일.
-import BrowseProductCard from '@/pages/browse/BrowseProductCard'
+// 🏁 2026-08-27: 유어샵 카드를 홈과 한 벌로(`GroupBuyFeedCard`). 8/19 통일에서 유어샵이 빠져 있었다.
+import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import { seededColor } from '@/utils/card-gradient'
 import type { Product as BrowseProduct } from '@/pages/browse/types'
 
@@ -104,15 +105,15 @@ export default function CuratorPinsSection({ handle, initialPins }: { handle?: s
             avg_rating: pin.avg_rating ?? undefined,
             review_count: pin.review_count ?? undefined,
             sold_count: pin.sold_count ?? undefined,
-          } as BrowseProduct
-          // 클릭은 반드시 /u/:handle/p/:productId (서버 attribution redirect — 큐레이터 적립 작동 경로) 유지.
+          }
+          // 🔗 클릭은 반드시 /u/:handle/p/:productId 로 — 그 경로가 **클릭을 기록하고 `?aff=` 귀속을 붙인다.**
+          //   상세로 직행시키면 화면은 똑같은데 소개비 귀속이 조용히 사라진다(돈이 새는 쪽으로 깨진다).
           return (
-            <BrowseProductCard
+            <GroupBuyFeedCard
               key={pin.id}
-              product={product}
+              p={product}
               aboveFold={false}
               to={`/u/${handle}/p/${pin.product_id}`}
-              fallbackColor={seededColor(pin.product_id)}
             />
           )
         })}

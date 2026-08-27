@@ -385,6 +385,16 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     )` },
     { desc: 'idx_seller_operators_pair', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_seller_operators_pair ON seller_operators(seller_id, user_id)" },
     { desc: 'idx_seller_operators_user', sql: "CREATE INDEX IF NOT EXISTS idx_seller_operators_user ON seller_operators(user_id, revoked_at)" },
+    // 🔒 2026-08-27 유어애즈 DB 열람량 — 대행사 차단(ads-db-access.ts)의 짝. 등록 유형은 자기신고라
+    //   우회되지만 "하루에 몇 행 가져갔나"는 우회할 수 없다. 상한의 근거이자 감사 기록.
+    { desc: 'seller_ads_db_usage', sql: `CREATE TABLE IF NOT EXISTS seller_ads_db_usage (
+      seller_id INTEGER NOT NULL,
+      day TEXT NOT NULL,
+      rows_served INTEGER NOT NULL DEFAULT 0,
+      calls INTEGER NOT NULL DEFAULT 0,
+      last_at DATETIME DEFAULT (datetime('now')),
+      UNIQUE(seller_id, day)
+    )` },
     // 📣 2026-08-20 인플루언서 협업 제안(아웃리치) — 셀러가 작성·저장, 발송은 유어딜 대행(seller-dashboard-v2).
     { desc: 'influencer_outreach_requests', sql: `CREATE TABLE IF NOT EXISTS influencer_outreach_requests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -712,6 +722,10 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     // 🛡️ 2026-05-16: 매장 영입 referral + 협업 제안 (migration 0249)
     { desc: 'sellers.referred_by_influencer', sql: "ALTER TABLE sellers ADD COLUMN referred_by_influencer TEXT" },
     { desc: 'sellers.referral_bonus_until', sql: "ALTER TABLE sellers ADD COLUMN referral_bonus_until DATETIME" },
+    // 🙋 2026-08-27 소개자 공개 프로필 — 매장이 검색할 **모수**. 없으면 딜 제안 상대를 못 찾는다
+    //   (그 전엔 유저 ID 를 손으로 타이핑해야 했다). 공개는 본인이 켜는 opt-in.
+    { desc: 'table influencer_profiles', sql: "CREATE TABLE IF NOT EXISTS influencer_profiles (user_id TEXT PRIMARY KEY, is_open INTEGER NOT NULL DEFAULT 0, intro TEXT, channels TEXT, categories TEXT, regions TEXT, created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now')))" },
+    { desc: 'idx_influencer_profiles_open', sql: "CREATE INDEX IF NOT EXISTS idx_influencer_profiles_open ON influencer_profiles(is_open) WHERE is_open = 1" },
     { desc: 'table seller_influencer_deals', sql: "CREATE TABLE IF NOT EXISTS seller_influencer_deals (id INTEGER PRIMARY KEY AUTOINCREMENT, seller_id INTEGER NOT NULL, influencer_id TEXT NOT NULL, commission_pct REAL NOT NULL, starts_at DATETIME DEFAULT (datetime('now')), ends_at DATETIME, status TEXT DEFAULT 'proposed', proposed_by TEXT NOT NULL, message TEXT, created_at DATETIME DEFAULT (datetime('now')), responded_at DATETIME, UNIQUE(seller_id, influencer_id))" },
     { desc: 'idx_seller_inf_deals_seller', sql: "CREATE INDEX IF NOT EXISTS idx_seller_inf_deals_seller ON seller_influencer_deals(seller_id, status)" },
     { desc: 'idx_seller_inf_deals_inf', sql: "CREATE INDEX IF NOT EXISTS idx_seller_inf_deals_inf ON seller_influencer_deals(influencer_id, status)" },
