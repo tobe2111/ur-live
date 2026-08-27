@@ -1161,6 +1161,19 @@ canvas {
       '아래 IntersectionObserver 가지의 같은 호출이 들어와서다. `run` 정의로 앵커해 교정했다.',
   },
   {
+    name: '지역 선택 패널이 버튼에 붙어 화면 밖으로 나간다',
+    file: 'src/pages/pc-home/PcHomeLocationBar.tsx',
+    find: "isWide ? 'absolute left-0 top-[calc(100%+8px)] w-[520px]' : 'fixed left-2 right-2'",
+    replace: "'absolute left-0 top-[calc(100%+8px)] w-[520px] max-w-[90vw]'",
+    test: 'src/tests/unit/region-picker-viewport.test.ts',
+    why:
+      '2026-08-27 대표가 폰 스크린샷으로 신고한 실제 버그다. 패널이 버튼(모바일 헤더 오른쪽)에 붙어 ' +
+      '오른쪽으로 삐져나가 **문서를 화면보다 넓게** 만들었다(실측 360→420 · 390→477 · 430→553). ' +
+      '⚠️ 이 replace 는 `max-w-[90vw]` 를 되살리는데 **그게 정확히 안 통하던 방어책**이다 — 문서가 ' +
+      '넓어지면 vw 도 같이 커져 자기를 못 잡는다. 그래서 이 회귀는 "화면밖 0px" 로 측정되고 ' +
+      '**패널만 보면 멀쩡해 보인다** — 페이지가 밀리는 걸 봐야 안다. 눈으로 놓치기 쉬운 종류다.',
+  },
+  {
     name: '카테고리 스크롤 화살표가 렌더마다 강제 리플로를 돈다',
     file: 'src/components/main/DesktopTopNav.tsx',
     find: '  }, [syncCatArrow, catLabelSig])',
