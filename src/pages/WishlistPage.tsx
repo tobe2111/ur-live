@@ -13,14 +13,16 @@ import { useWishlist, type WishlistItem } from '@/hooks/queries/useWishlist'
 import BrandLoader from '@/components/brand/BrandLoader'
 import GroupBuyFeedCard from './main-home/GroupBuyFeedCard'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+// 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
+import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
 
 // 💗 2026-08-19: 자체 그라데이션 카드(WishlistCard)를 제거했다 — 찜 목록도 홈과 **같은 카드**를 쓴다
 //   (대표 "기존 이용권 UI로 해줘야지"). 카드가 한 벌이어야 화면마다 같은 상품이 다르게 안 보인다.
 
 const WishlistPage: React.FC = () => {
   // 🖼️ 사진 해상도 — 홈과 같은 규칙(열 수를 아는 쪽이 정한다). 가드: `home-card-image-width`.
-  const isLgViewport = useMediaQuery('(min-width: 1024px)')
-  const cardImgWidth = isLgViewport ? 400 : 200
+  const isLgViewport = useMediaQuery(HOME_CARD_LG_QUERY)
+  const cardImgWidth = isLgViewport ? HOME_CARD_IMG_WIDTH_LG : HOME_CARD_IMG_WIDTH_BASE
 
   const { t } = useTranslation()
   const navigate = useNavigate()

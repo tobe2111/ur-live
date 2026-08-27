@@ -63,6 +63,17 @@ const ONLY = (() => {
  *   (주입 한 줄은 정상 코드와 구분이 안 간다).
  */
 const VERIFY_CLEAN = process.argv.includes('--verify-clean')
+/**
+ * 🗺️ `--map-only` — **아무것도 주입하지 않고**, 각 주입의 `find` 가 코드에 유일하게 있는지만 본다(수초).
+ *
+ * 왜 필요한가: 전수는 500건 넘는 vitest 라 20분+ 걸려 로컬에서 돌리기 어렵다. 그래서 코드를 고친 뒤
+ * **그 파일의 기존 주입이 낡았는지**를 로컬에서 못 보고 CI 에 가서야 알게 된다 — 2026-08-27 에
+ * `aboveFold={i < 4 …}` 를 상수로 바꾸면서 정확히 그렇게 한 사이클을 태웠다.
+ * 지도가 낡았는지(`find` 부재·주석에만 존재·2곳 이상)는 **테스트 없이 문자열 검사만으로** 판정되므로,
+ * 그 부분만 떼어 즉시 돌린다. ⚠️ 이 모드는 "가드가 실제로 실패할 수 있는가"는 **검사하지 않는다** —
+ * 그건 전수(또는 `--only`)의 몫이다. 커밋 전 지도 점검용이지 되돌려-검증의 대체가 아니다.
+ */
+const MAP_ONLY = process.argv.includes('--map-only')
 
 /**
  * @typedef {{name:string, file:string, find:string, replace:string, test:string, why:string}} Mutation
@@ -312,7 +323,9 @@ const MUTATIONS = [
   {
     name: '편성 섹션의 aboveFold 까지 꺼 버린다(과잉 수정)',
     file: 'src/components/home/HomeSections.tsx',
-    find: 'aboveFold={i < 4 && sIdx === 0}',
+    // 🔁 2026-08-27: 개수가 리터럴 4 → `HOME_CARD_ABOVE_FOLD` 상수가 됐다(워커의 카드 preload 가
+    //   **같은 수**만 당겨야 해서 SSOT 로 뺐다). 가드가 "낡은 지도" 로 잡아 줘서 함께 옮긴다.
+    find: 'aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0}',
     replace: 'aboveFold={false}',
     test: 'src/tests/unit/home-image-priority.test.ts',
     why:
@@ -1070,14 +1083,57 @@ canvas {
       '느려진 것만 남는다(대표 신고 "사진 불러오는게 많이 느리네?" 가 정확히 그 증상이었다).',
   },
   {
-    name: '히어로가 데모 상품 사진을 홈 얼굴로 쓴다',
+    name: '홈 편성 섹션 시드가 전역 KV 워밍에서 빠진다(콜드 콜로에서 그 섹션만 스켈레톤)',
+    file: 'src/worker/cron/cache-prewarm.ts',
+    find: "  '/api/sections',                                                 // SECTIONS(홈 편성 섹션)",
+    replace: '',
+    test: 'src/tests/unit/home-seed-layers.test.ts',
+    why:
+      '홈 한 화면이 시드 **두 개**로 그려진다(피드 MAIN · 편성 섹션 SECTIONS). 그런데 SECTIONS 만 ' +
+      '전역 KV 계층이 없어, 콜로 엣지가 cold 면 곧장 self-fetch 로 떨어지고 콜드 D1 이 타임아웃되면 ' +
+      '**시드 없이** 내려갔다 → 그 섹션만 스켈레톤 + 클라 왕복(2026-08-27 대표 신고 "인기 이용권·숙소가 ' +
+      '안 보인다"). 피드는 세 계층이 다 있어 멀쩡했고, **fail-soft 라 에러 로그도 안 남는다** — ' +
+      '그래서 몇 주를 아무도 몰랐다.',
+  },
+  {
+    name: '홈 편성 섹션 self-fetch 가 1500ms 로 되돌아간다(콜드에서 자주 끊긴다)',
+    file: 'src/worker/utils/ssr-payload.ts',
+    find: "    slot === 'SECTIONS'\n  ) return 2000;",
+    replace: '  ) return 2000;',
+    test: 'src/tests/unit/home-seed-layers.test.ts',
+    why:
+      '2000ms 는 2026-06-30 에 상세/셀러/큐레이터가 **정확히 같은 증상**(콜드 timeout → 스켈레톤 노출)으로 ' +
+      '받은 처방인데 SECTIONS 만 그 목록에서 빠져 있었다. 되돌리면 홈 섹션이 다시 콜드 콜로에서 깜빡인다.',
+  },
+  {
+    name: '홈 카드 preload 가 렌더와 다른 URL 을 만든다(같은 사진을 두 번 받는다)',
+    file: 'src/components/home/HomeSections.tsx',
+    find: 'const cardImgWidth = isLgViewport ? HOME_CARD_IMG_WIDTH_LG : HOME_CARD_IMG_WIDTH_BASE',
+    replace: 'const cardImgWidth = isLgViewport ? 480 : 240',
+    test: 'src/tests/unit/home-card-preload.test.ts',
+    why:
+      '워커가 홈 첫 화면 카드 사진을 `<link rel=preload as=image>` 로 미리 당긴다(2026-08-27 — ' +
+      '사진 URL 은 이미 HTML 안에 있는데 React 가 <img> 를 만들 때까지 다운로드가 안 시작되던 병목). ' +
+      '그런데 preload 는 **URL 이 byte-일치할 때만** 쓰인다 — 한 글자만 달라도 브라우저는 그걸 버리고 ' +
+      '같은 사진을 다시 받는다. **에러도 없고 화면도 멀쩡한데 더 느려지고 트래픽만 두 배**가 된다. ' +
+      '폭이 뷰포트로 갈리므로(2·3열 200 ↔ 4열 400) 특히 어긋나기 쉬워, 양쪽이 SSOT 상수를 읽게 했다.',
+  },
+  {
+    name: '히어로가 남의 사진(외부 호스트 데모)을 홈 얼굴로 쓴다',
     file: 'src/components/home/HomeHeroDefault.tsx',
-    find: "slug.startsWith('demo-deal-')",
-    replace: 'false',
+    // 🔁 2026-08-27: 예전엔 `slug.startsWith('demo-deal-')` 를 지웠다(=데모 전면 허용). 그런데
+    //   그 금지가 라이브 카탈로그 100% 데모 상황에서 히어로를 영구 빈 색면으로 만들어, 규칙의 축을
+    //   "데모냐" → "출처가 우리냐"로 옮겼다. 그래서 지켜야 할 선도 **출처 검사**로 옮긴다.
+    find: 'if (!ownDemo && isOwnMedia(img)) ownDemo = hit',
+    replace: 'if (!ownDemo) ownDemo = hit',
     test: 'src/tests/unit/home-showcase.test.ts',
     why:
-      '홈 최상단 사진은 서비스의 얼굴이다. 데모 시드가 그 자리에 올라와도 **에러가 없고 그림도 멀쩡**해서 ' +
-      '아무도 모른다. 2026-08-04 에는 여기 계열의 데모 사진에 타사 워터마크 보도사진이 섞여 있었다.',
+      '홈 최상단 사진은 서비스의 얼굴이다. 남의 사진이 그 자리에 올라와도 **에러가 없고 그림도 멀쩡**해서 ' +
+      '아무도 모른다 — 2026-08-04 에 데모 사진에 타사 워터마크 보도사진(YONHAP)이 섞여 있었다. ' +
+      '그때 처방은 "데모 전면 금지"였는데, 라이브 카탈로그가 100% 데모가 되자 그 규칙이 히어로를 ' +
+      '**영구 빈 색면**으로 만들었다(2026-08-27 대표 신고). 사고의 원인은 데모라는 사실이 아니라 ' +
+      '**남의 사진**이었으므로, 금지의 축을 출처(우리 R2 인가)로 옮겼다. 이 검사가 사라지면 외부 호스트 ' +
+      '사진이 다시 홈 얼굴이 된다 — 되돌아가는 곳이 정확히 원래 사고다.',
   },
   {
     name: '카드 캐러셀 화살표에서 preventDefault 를 없앤다(사진 넘기려던 클릭이 상세로 튄다)',
@@ -1091,6 +1147,53 @@ canvas {
       '카드 캐러셀은 `<Link>` **안**에 있다 — 화살표가 기본동작을 막지 않으면 사진을 넘기려는 클릭이 ' +
       '매번 상세 페이지로 튄다. 에러가 없고 화면도 멀쩡해서 **직접 눌러 보기 전엔 아무도 모르는** 종류다. ' +
       '2026-08-19 그루폰 카드 도입과 함께 들어온 안전장치라, 나중에 리팩토링하다 지워질 위험이 크다.',
+  },
+  {
+    name: '맨 위 카드 prefetch 가 첫 화면 요청과 동시에 발사된다',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '      const run = () => { prefetch(p.id); prefetchDetailChunk() }',
+    replace: '      const run = () => {}',
+    test: 'src/tests/unit/home-boot-cost.test.ts',
+    why:
+      '이 주입은 **prefetch 를 통째로 없앤다** — 그러면 카드 클릭이 fetch 워터폴이 되는데(잠금표가 ' +
+      '지키는 성질) 화면은 멀쩡해서 아무 신호가 없다. 미루기(2026-08-27 대표 승인)와 제거는 다르고, ' +
+      '가드는 **둘 다** 잡아야 한다. ⚠️ 실제로 처음 짠 테스트는 이걸 통과시켰다 — 슬라이스 안에 ' +
+      '아래 IntersectionObserver 가지의 같은 호출이 들어와서다. `run` 정의로 앵커해 교정했다.',
+  },
+  {
+    name: '카테고리 스크롤 화살표가 렌더마다 강제 리플로를 돈다',
+    file: 'src/components/main/DesktopTopNav.tsx',
+    find: '  }, [syncCatArrow, catLabelSig])',
+    replace: '  })',
+    test: 'src/tests/unit/home-boot-cost.test.ts',
+    why:
+      '2026-08-27 라이브 CPU 프로파일에서 **홈에서 가장 비싼 JS**(self 1,108ms)로 잡힌 실제 결함이다. ' +
+      '의존성 배열이 없으면 렌더마다 `scrollWidth`/`clientWidth`/`scrollLeft` 를 읽어 강제 동기 레이아웃을 ' +
+      '돌고 resize 리스너를 해제+재등록한다. **에러도 없고 화면도 멀쩡해서** 프로파일을 떠 보기 전엔 ' +
+      '아무도 모른다 — dep 배열은 리팩토링 중 "어차피 매번 갱신해야 하니까"로 되돌아가기 쉽다.',
+  },
+  {
+    name: '대표색 추출이 첫 페인트 한복판에서 동기로 돈다',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: "if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 2000 })",
+    replace: 'run()',
+    test: 'src/tests/unit/home-boot-cost.test.ts',
+    why:
+      '`getImageData` 는 GPU→CPU 리드백을 강제한다. 사진 `onLoad` 안에서 동기로 돌면 첫 화면을 그리는 ' +
+      '중에 카드 수만큼 그 비용을 낸다(2026-08-27 프로파일 self 166ms). 미루기는 한 줄이라 ' +
+      '"간단하게" 되돌리기 쉬운데, 되돌아가도 **기능은 멀쩡히 동작해서** 아무 신호가 없다.',
+  },
+  {
+    name: 'materialized 피드 캐시가 라이브 쿼리와 컬럼이 갈린다',
+    file: 'src/worker/cron/group-buy-feed-cache.ts',
+    find: "const dominantColorFrag = (withDominant: boolean) => withDominant ? 'p.dominant_color,' : ''",
+    replace: 'const dominantColorFrag = (_withDominant: boolean) => \'\'',
+    test: 'src/tests/unit/home-boot-cost.test.ts',
+    why:
+      '이 짝은 **이미 두 번 갈렸다** — `images`(2026-08-19 수습) · `dominant_color`(2026-05-28 에 라이브 ' +
+      '쿼리에만 들어가고 캐시엔 3개월간 없었다). 홈 기본 피드는 이 캐시가 서빙하므로 캐시에 빠진 컬럼은 ' +
+      '**소비자에게 영원히 안 간다**. 응답에 키가 아예 없을 뿐 에러가 없어서, 카드가 대표색을 매번 다시 ' +
+      '뽑고 있어도 아무도 몰랐다.',
   },
   {
     name: '섹션 더보기가 쿼리를 잃는다(버튼이 통째로 사라진다)',
@@ -5768,6 +5871,7 @@ function maskComments(src, file) {
 }
 
 const problems = []
+let mapOk = 0  // --map-only: 지도가 성한 주입 수
 
 // 🧹 잔재 확인 전용 모드 — 주입은 건드리지 않고 "지금 트리에 남아 있나"만 본다(위 VERIFY_CLEAN 주석).
 if (VERIFY_CLEAN) {
@@ -5791,8 +5895,10 @@ if (VERIFY_CLEAN) {
 
 console.log(`🧬 guard-mutations: ${MUTATIONS.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
 
+let onlyMatched = 0
 for (const m of MUTATIONS) {
   if (ONLY && !m.name.includes(ONLY)) continue
+  if (ONLY) onlyMatched += 1
   const abs = path.join(ROOT, m.file)
   if (!fs.existsSync(abs)) { problems.push(`${m.name}: 파일 없음 — ${m.file} (코드가 옮겨갔다)`); continue }
   const src = fs.readFileSync(abs, 'utf8')
@@ -5820,6 +5926,8 @@ for (const m of MUTATIONS) {
   // 주석에도 같은 문자열이 있을 수 있으므로 **코드 쪽 인덱스로** 바꾼다
   // (`String.replace` 는 첫 등장을 바꾸는데, 그게 주석일 수 있다).
   const at = live[0]
+  // 🗺️ 지도만 보는 모드 — 여기까지 왔으면 `find` 가 코드에 유일하게 있다는 뜻이다. 주입은 하지 않는다.
+  if (MAP_ONLY) { mapOk += 1; continue }
 
   pending.set(abs, src)
   let stillGreen
@@ -5856,4 +5964,22 @@ if (problems.length) {
 `)
   process.exit(STRICT ? 1 : 0)
 }
-console.log(`\n✅ guard-mutations: ${MUTATIONS.length}개 주입 전부 빨간불 확인 — 가드가 실제로 실패할 수 있다.`)
+if (MAP_ONLY) {
+  console.log(`\n✅ guard-mutations(--map-only): 주입 지도 ${mapOk}건 성함 — find 가 코드에 유일하게 존재.`)
+  console.log('   ⚠️ 이 모드는 **되돌려-검증을 하지 않는다**(가드가 실제로 실패하는지는 안 봄).')
+  console.log('      커밋 전 지도 점검용 — 전수는 CI 가, 바꾼 항목은 `--only` 로 돌릴 것.')
+  process.exit(0)
+}
+/**
+ * 🚨 `--only` 가 아무것도 못 고르면 **실패**다.
+ *   전에는 0건을 돌고도 "전부 빨간불 확인" 을 찍었다 — 2026-08-27 에 `--only "a|b|c"` 로 부르고
+ *   (이 필터는 정규식이 아니라 **단순 부분일치**다) 초록불을 받았는데 실제로 돈 주입은 0건이었다.
+ *   "검사가 실패할 수 없음" 이 이 레포가 반복해 당한 자리고, 하필 그 검사기 자신이 그랬다.
+ */
+if (ONLY && onlyMatched === 0) {
+  console.error(`\n❌ guard-mutations: --only "${ONLY}" 에 걸린 주입이 0건이다.`)
+  console.error('   이 필터는 정규식이 아니라 이름 **부분일치**다 — "a|b" 같은 건 안 먹는다.')
+  console.error('   여러 건을 돌리려면 각각 따로 부르거나 인자 없이 전수로 돌려라.')
+  process.exit(1)
+}
+console.log(`\n✅ guard-mutations: ${ONLY ? `${onlyMatched}개(--only "${ONLY}")` : `${MUTATIONS.length}개`} 주입 전부 빨간불 확인 — 가드가 실제로 실패할 수 있다.`)

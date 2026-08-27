@@ -304,6 +304,8 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 // 🖼️ 2026-07-02 (대표 "사진이 빠르게 안 나타남"): 상세 히어로 preload URL 생성 — 클라와 동일 함수 재사용
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
+// 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink } from './utils/home-card-preload';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -769,33 +771,17 @@ app.use('*', async (c, next) => {
                 { html: true },
               );
             }
-            // 🖼️ 2026-07-02 [UNLOCK_LOADING] (대표 "사진이 빠르게 안 나타남"): 공구/교환권 상세 히어로가
-            //   프리로드 스캐너를 못 타(공구=CSS background-image, 교환권=React 렌더 후 <img>)
-            //   [엔트리→페이지 청크→렌더] 뒤에야 다운로드 시작 → 사진이 늦게 뜸. seed 의 image_url 로
-            //   클라와 **동일 함수**(cfImage/cfSrcSet 공유 import)로 URL 을 만들어 <link rel=preload as=image>
-            //   주입 → HTML 파싱 즉시 병렬 다운로드, 렌더 시점엔 캐시 적중(byte-일치 보장).
-            //   표면별 정합: /group-buy/:id 히어로=cfImage(900) 단일 URL ↔ /vouchers/:id 히어로=
-            //   cfImage(800)+cfSrcSet(800) 밀도 srcSet → preload 도 각각 동일 형태로(불일치 시 이중 다운로드).
-            //   (Save-Data 사용자만 quality 65 로 URL 이 달라 미적중 — 히어로 1장 한정 허용 트레이드오프.)
+            // 🖼️ 2026-07-02 [UNLOCK_LOADING]: 상세 히어로는 프리로드 스캐너를 못 타 렌더 뒤에야
+            //   다운로드가 시작됐다. 표면별 URL 형태·함정은 헬퍼 주석에(불일치 시 이중 다운로드).
             if (ssrSlot === 'DETAIL') {
-              try {
-                const seed = JSON.parse(ssrPayload) as { data?: { image_url?: string } };
-                const heroSrc = seed?.data?.image_url;
-                if (heroSrc) {
-                  const esc = (s: string) => s.replace(/"/g, '&quot;');
-                  const isVoucherSurface = url.pathname.startsWith('/vouchers/');
-                  const heroUrl = isVoucherSurface
-                    ? cfImage(heroSrc, { width: 800, format: 'auto' })
-                    : cfImage(heroSrc, { width: 900, format: 'auto' });
-                  const heroSrcSet = isVoucherSurface ? cfSrcSet(heroSrc, 800) : '';
-                  if (heroUrl && !heroUrl.startsWith('data:')) {
-                    el.append(
-                      `<link rel="preload" as="image" fetchpriority="high" href="${esc(heroUrl)}"${heroSrcSet ? ` imagesrcset="${esc(heroSrcSet)}"` : ''}>`,
-                      { html: true },
-                    );
-                  }
-                }
-              } catch { /* seed 파싱 실패 — preload 생략(치명 아님) */ }
+              const heroLink = buildDetailHeroPreloadLink(ssrPayload, url.pathname.startsWith('/vouchers/'));
+              if (heroLink) el.append(heroLink, { html: true });
+            }
+            // 🖼️ 2026-08-27 [UNLOCK_LOADING]: 홈 첫 화면 카드도 상세 히어로와 같은 병목이었다
+            //   (URL 은 이미 이 HTML 안에 있는데 React 가 <img> 를 만들 때까지 다운로드가 안 시작).
+            //   ⚠️ preload 는 URL 이 byte-일치할 때만 쓰인다 — 경위·함정은 헬퍼 주석에.
+            if (ssrSlot === 'MAIN' && ssrExtraPayload) {
+              for (const link of buildHomeCardPreloadLinks(ssrExtraPayload)) el.append(link, { html: true });
             }
           }
         },

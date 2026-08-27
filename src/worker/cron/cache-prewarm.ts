@@ -123,6 +123,12 @@ const SSR_KV_PATHS: readonly string[] = [
   // 🚫 2026-07-29: LIVE(/api/streams) · WHOLESALE(/api/wholesale/catalog) 제거 — 소비자 오리진에서
   //   둘 다 404 라 `if (res.ok)` 를 통과한 적이 없다(KV 기록 0). 남은 4키가 실제로 쓰이는 슬롯이다.
   '/api/blog/public?limit=100',                                    // BLOG
+  // 🏠 2026-08-27 (대표 신고 "지금 인기 이용권·숙소 섹션이 안 보인다"): 홈은 시드가 **둘**인데
+  //   (MAIN·SECTIONS) 섹션만 전역 KV 계층이 없었다. 그래서 콜로 엣지가 cold 면 곧바로 self-fetch 로
+  //   떨어지고, 콜드 D1 이 타임아웃되면 시드 없이 내려가 **그 섹션만 스켈레톤 + 클라 왕복**이 됐다.
+  //   (피드는 세 계층이 다 있어 멀쩡했다 — 같은 화면에서 한쪽만 늦는 이유가 정확히 이것.)
+  //   ⚠️ 경로는 워커의 `ssrExtra.path`(`/api/sections`)와 **byte-일치**해야 한다 — 캐시 키가 곧 경로다.
+  '/api/sections',                                                 // SECTIONS(홈 편성 섹션)
 ];
 const SSR_KV_TTL_S = 1800; // 15분 표본화 × TTL 30분 — 항상 커버(최대 stale ~30분, edge 900s 와 동급)
 

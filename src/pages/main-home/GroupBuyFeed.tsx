@@ -6,6 +6,8 @@
  */
 
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+// 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
+import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -127,8 +129,8 @@ export default function GroupBuyFeed({
    *   `cfSrcSet` 이 x-디스크립터라 base 가 곧 1x CSS 폭 — 크게 잡으면 3x 에서 그대로 증폭된다.
    *   ⚠️ 카드마다 `useMediaQuery` 를 부르면 리스너가 카드 수만큼(50+) 붙는다. 여기서 한 번만.
    */
-  const isLgViewport = useMediaQuery('(min-width: 1024px)')
-  const cardImgWidth = isLgViewport ? 400 : 200
+  const isLgViewport = useMediaQuery(HOME_CARD_LG_QUERY)
+  const cardImgWidth = isLgViewport ? HOME_CARD_IMG_WIDTH_LG : HOME_CARD_IMG_WIDTH_BASE
 
   const gridCls = pc
     // 📐 2026-08-19 (대표 — "한 줄에 이용권 5개에서 4개로"): xl 5열을 뺀다. 카드가 커져 사진·가격이

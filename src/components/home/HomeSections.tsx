@@ -4,6 +4,9 @@ import { resolveSectionMoreHref, isDeadEndHref } from './section-more-href'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import {
+  HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY, HOME_CARD_ABOVE_FOLD,
+} from '@/shared/home-card-image'
 
 /**
  * 🏠 ① 카테고리 섹션 + 더보기 (2026-08-04 대표 시안 승인).
@@ -61,8 +64,10 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
    *   이 섹션은 룩을 위해 `pc` 를 **항상** 넘기는데, 예전엔 그 플래그가 이미지 폭까지 정해서
    *   **모바일·태블릿도 PC용 큰 사진**을 받았다(실측 필요폭의 2.3배). 룩과 해상도를 분리한다.
    */
-  const isLgViewport = useMediaQuery('(min-width: 1024px)')
-  const cardImgWidth = isLgViewport ? 400 : 200
+  //   ⚠️ 폭·중단점·eager 개수는 **워커의 preload 와 같은 값이어야 한다**(`shared/home-card-image`).
+  //     한 글자만 달라도 브라우저가 preload 를 안 쓰고 같은 사진을 두 번 받는다.
+  const isLgViewport = useMediaQuery(HOME_CARD_LG_QUERY)
+  const cardImgWidth = isLgViewport ? HOME_CARD_IMG_WIDTH_LG : HOME_CARD_IMG_WIDTH_BASE
 
   /**
    * 🏠 2026-08-22 (대표 "인기 이용권이 먼저 안 뜨고 가까운 동네딜이 먼저 보여"): 워커가 홈 HTML 에
@@ -164,7 +169,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4">
               {sec.products.map((p, i) => (
-                <GroupBuyFeedCard key={p.id} p={p} imgWidth={cardImgWidth} aboveFold={i < 4 && sIdx === 0} />
+                <GroupBuyFeedCard key={p.id} p={p} imgWidth={cardImgWidth} aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0} />
               ))}
             </div>
           </section>

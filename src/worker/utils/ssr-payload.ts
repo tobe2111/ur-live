@@ -32,11 +32,16 @@ export interface SsrPayloadResult {
  * ⚠️ 값의 근거(전부 실측 사고에서 나왔다 — 임의로 줄이지 말 것):
  *   · 상세/셀러/큐레이터 2000ms — 1500ms 로는 콜드에서 자주 timeout → 스켈레톤 노출(2026-06-30).
  *   · 도매 3000ms — 저트래픽이라 콜로 캐시가 대부분 cold, 1500ms 로는 카탈로그가 고착(2026-06-19).
+ *   · 섹션 2000ms — **위 2026-06-30 사고와 같은 것인데 이 슬롯만 빠져 있었다**(2026-08-27 대표
+ *     신고 "지금 인기 이용권·숙소 섹션이 안 보인다"). 홈은 시드가 둘인데(MAIN·SECTIONS) 섹션만
+ *     기본값 1500ms 로 떨어져, 콜드 콜로에서 self-fetch 가 자주 끊겼다 → 시드 없음 → 스켈레톤 +
+ *     클라 왕복. 피드는 멀쩡한데 섹션만 늦는 그 화면의 정체다.
  */
 export function timeoutFor(slot: string): number {
   if (
     slot === 'DETAIL' || slot === 'SELLER' || slot === 'PRODUCT' ||
-    slot === 'CURATOR' || slot === 'BLOGPOST' || slot === 'BLOG' || slot === 'STAYDETAIL'
+    slot === 'CURATOR' || slot === 'BLOGPOST' || slot === 'BLOG' || slot === 'STAYDETAIL' ||
+    slot === 'SECTIONS'
   ) return 2000;
   if (slot === 'WHOLESALE') return 3000;
   return 1500;

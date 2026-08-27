@@ -6,7 +6,7 @@
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap, Sparkles, Smartphone, Store, MapPin, BookOpen, Heart, ChevronRight, ChevronDown } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import AppDownloadModal from './AppDownloadModal'
 import AccountMenu from './AccountMenu'
 import { useUnreadCount, useCartCount } from '@/hooks/queries'
@@ -104,17 +104,40 @@ export default function DesktopTopNav() {
   // 🧭 2026-08-19: 2행 가로 스크롤 — 넘칠 때만 우측 화살표(그루폰). 끝에 닿으면 숨긴다.
   const catScrollRef = useRef<HTMLElement>(null)
   const [catOverflow, setCatOverflow] = useState(false)
-  const syncCatArrow = () => {
+  /**
+   * ⚠️ 2026-08-27 (홈 부팅 프로파일 — 이 함수 하나가 self 1,108ms 로 **홈에서 가장 비싼 JS** 였다):
+   *   `scrollWidth`/`clientWidth`/`scrollLeft` 는 읽는 순간 브라우저가 **강제 동기 레이아웃**을 돈다.
+   *   원래 이 effect 에 **의존성 배열이 없어서**(`useEffect(() => {...})`) 렌더마다 ①리플로 ②setState
+   *   ③resize 리스너 해제+재등록 이 전부 다시 일어났다. 부팅 중엔 i18n·인증·쿼리가 차례로 도착하며
+   *   렌더가 수십 번 나므로 그만큼 리플로가 쌓였다.
+   *   ⇒ 리스너는 **한 번만** 달고, 폭이 실제로 변할 때만 `ResizeObserver` 가 다시 재게 한다
+   *     (i18n 라벨이 늦게 도착해 칩이 넓어지는 경우까지 이게 덮는다 — 그게 dep 없는 effect 의 원래 목적이었다).
+   */
+  const syncCatArrow = useCallback(() => {
     const el = catScrollRef.current
     if (!el) return
     setCatOverflow(el.scrollWidth - el.clientWidth - el.scrollLeft > 8)
-  }
+  }, [])
+  /**
+   * 폭이 변하는 원인은 **둘**이고 신호도 둘이어야 한다:
+   *   ① 컨테이너 폭(창 크기) → `resize` + `ResizeObserver`(nav 자신)
+   *   ② 콘텐츠 폭(i18n 라벨이 늦게 도착해 칩이 넓어짐) → 라벨 문자열이 바뀌면 다시 잰다
+   * ⚠️ nav 는 `overflow-x-auto` 라 **콘텐츠가 늘어도 자기 박스는 안 변한다** — ①만으론 ②를 못 잡는다.
+   *   (`firstElementChild` 하나만 관측하는 건 칩 하나의 변화만 보는 것이라 틀렸다.)
+   */
+  const catLabelSig = categoryItems.map(i => i.label).join('|')
   useEffect(() => {
-    syncCatArrow()
     if (typeof window === 'undefined') return
+    syncCatArrow()
     window.addEventListener('resize', syncCatArrow)
-    return () => window.removeEventListener('resize', syncCatArrow)
-  })
+    const el = catScrollRef.current
+    const ro = typeof ResizeObserver !== 'undefined' && el ? new ResizeObserver(syncCatArrow) : null
+    ro?.observe(el!)
+    return () => {
+      window.removeEventListener('resize', syncCatArrow)
+      ro?.disconnect()
+    }
+  }, [syncCatArrow, catLabelSig])
 
   // 🏷️ 딜 카테고리 활성 표시 — 홈에서 `?category=` 를 그대로 읽는다(상태 미러링 금지: 갈리면 어긋난다).
   const onHomeSurface = location.pathname === '/'

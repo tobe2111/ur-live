@@ -118,7 +118,24 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
   //   aboveFold 카드는 즉시 prefetch (observer 없이) — 메인 페이지 진입 시 즉시.
   const linkRef = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
-    if (aboveFold) { prefetch(p.id); prefetchDetailChunk(); return }
+    if (aboveFold) {
+      /**
+       * ⏳ 2026-08-27 (대표 승인 — 홈 첫 화면 요청 경합): **미루기이지 제거가 아니다.**
+       *   맨 위 카드들은 observer 없이 마운트 즉시 prefetch 했는데, 실측상 그게
+       *   `/api/sections`·`/api/banners`(=지금 화면에 필요한 것)와 **같은 순간**에 나가
+       *   대역을 다퉜다(PC 1440 에서 카드 6장 → XHR 6개 + 상세 청크 4개가 2,488ms 에 동시 발사).
+       *   사용자가 카드를 읽고 누르기까지는 최소 1~2초가 걸리므로, 첫 화면을 다 그린 뒤로
+       *   미뤄도 **"클릭 시 0ms"** 라는 이 prefetch 의 목적은 그대로 달성된다.
+       *   ⚠️ 지우면 안 된다 — 지우는 순간 카드 클릭이 fetch 워터폴이 된다(잠금표가 지키는 성질).
+       */
+      const run = () => { prefetch(p.id); prefetchDetailChunk() }
+      if (typeof requestIdleCallback === 'function') {
+        const h = requestIdleCallback(run, { timeout: 2500 })
+        return () => cancelIdleCallback?.(h)
+      }
+      const t = setTimeout(run, 300)
+      return () => clearTimeout(t)
+    }
     const el = linkRef.current
     if (!el || typeof IntersectionObserver === 'undefined') return
     const obs = new IntersectionObserver(
@@ -232,12 +249,24 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
         /* 🧹 2026-08-19: 카드 박스가 사라졌으니 **사진 자신이** 모서리를 갖는다(그루폰과 동일). */
         className="rounded-xl bg-gray-100 dark:bg-[#222225]"
         fallback={<span className="text-3xl opacity-40">{cat.emoji}</span>}
+        /**
+         * 🎨 대표색 백필 — **결과가 달라질 때만** 돌린다(2026-08-27 부팅 프로파일).
+         *   `extractDominantColor` 는 `drawImage`+`getImageData` 라 GPU→CPU 리드백을 강제한다.
+         *   예전엔 서버가 이미 색을 줬어도(=아래 두 분기가 전부 no-op) **일단 뽑고 나서** 버렸다.
+         *   그리고 그 리드백이 사진 `onLoad` 안, 즉 **첫 화면 그리는 한복판**에서 동기로 돌았다.
+         *   ⇒ ① 쓸 데가 없으면 아예 안 뽑고 ② 뽑아야 할 때도 한가할 때로 미룬다.
+         *      기능은 그대로다 — 색은 여전히 뽑히고 서버에도 보고된다(느려질 뿐 안 사라진다).
+         */
         onCoverLoad={(el) => {
-          const color = extractDominantColor(el)
-          if (color) {
+          if (cardColor && p.dominant_color) return // 둘 다 이미 있음 → 뽑아도 버릴 값
+          const run = () => {
+            const color = extractDominantColor(el)
+            if (!color) return
             if (!cardColor) setCardColor(color)
             if (!p.dominant_color) reportDominantColor(p.id, color)
           }
+          if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 2000 })
+          else setTimeout(run, 0)
         }}
         overlay={
           <>

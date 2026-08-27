@@ -22,7 +22,15 @@ import { sliceCardGallery } from '../../features/group-buy/api/card-gallery'
 
 const STATUSES = ['active', 'achieved', 'expired', 'all'] as const
 
-const COLS = `
+/**
+ * ⚠️ 이 목록은 라이브 쿼리(`group-buy-public.routes` `buildCols`)와 **같아야 한다.**
+ *   두 벌이면 갈린다 — 실제로 갈렸다: `dominant_color` 가 2026-05-28 에 라이브 쿼리에만 들어가고
+ *   이 캐시엔 안 들어가서, **홈 기본 피드(=이 캐시가 서빙)에는 그 값이 한 번도 실린 적이 없다.**
+ *   그 결과 카드는 매번 canvas 로 대표색을 다시 뽑고(메인스레드 비용) 서버에 다시 보고했다 —
+ *   비용은 100% 내고 효과는 0% 였다(라이브 실측: 응답 50건 중 dominant_color 키 자체가 부재).
+ */
+const dominantColorFrag = (withDominant: boolean) => withDominant ? 'p.dominant_color,' : ''
+const buildCols = (withDominant: boolean) => `
   p.id, p.name, p.price, p.original_price, p.image_url, p.category,
   p.group_buy_current, p.group_buy_target, p.group_buy_status,
   p.group_buy_deadline AS expires_at, p.group_buy_tiers,
@@ -30,8 +38,11 @@ const COLS = `
   p.brand_name, p.brand_icon_url, p.created_at, p.seller_id,
   p.restaurant_name, p.restaurant_address, p.slug,
   p.restaurant_lat, p.restaurant_lng, p.images,
+  ${dominantColorFrag(withDominant)}
   s.name AS seller_name, s.profile_image AS seller_avatar
 `
+/** 컬럼 부재 환경(migration 0282 미적용) graceful — 라우트와 동일하게 1회만 판정하고 기억한다. */
+let _dominantColorCol: boolean | null = null
 
 export async function handleGroupBuyFeedCache(env: Env): Promise<{
   refreshed: number
@@ -61,8 +72,8 @@ export async function handleGroupBuyFeedCache(env: Env): Promise<{
           : [categoryParam]
         const placeholders = categories.map(() => '?').join(',')
 
-        const r = await DB.prepare(`
-          SELECT ${COLS}
+        const runFeed = () => DB.prepare(`
+          SELECT ${buildCols(_dominantColorCol !== false)}
           FROM products p
           LEFT JOIN sellers s ON p.seller_id = s.id
           WHERE p.category IN (${placeholders}) AND p.is_active = 1
@@ -71,6 +82,18 @@ export async function handleGroupBuyFeedCache(env: Env): Promise<{
           ORDER BY (CASE WHEN COALESCE(p.slug,'') LIKE 'demo-%' THEN 1 ELSE 0 END), p.created_at DESC
           LIMIT 50
         `).bind(...categories, status, status).all()
+
+        let r
+        try {
+          r = await runFeed()
+          if (_dominantColorCol === null) _dominantColorCol = true
+        } catch (e) {
+          // `no such column: dominant_color` 면 한 번만 내리고 재시도 — 그 뒤로는 기억해서 안 부딪힌다.
+          if (_dominantColorCol !== false && /dominant_color/i.test(String((e as { message?: string })?.message ?? e))) {
+            _dominantColorCol = false
+            r = await runFeed()
+          } else throw e
+        }
 
         // 🖼️ 2026-08-19: 저장 시점에 자른다 — 라이브 쿼리와 **같은 SSOT**(`card-gallery`).
         //   안 자르면 캐시 row 가 원본 전량을 안고, 그 크기를 캐시 hit 마다 파싱한다.
