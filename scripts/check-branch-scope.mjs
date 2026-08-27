@@ -62,10 +62,29 @@ for (const chunk of diff.split(/^diff --git /m).slice(1)) {
   }
 }
 
-const changed = sh(`git diff --name-only ${base}...HEAD`).trim().split('\n').filter(Boolean).length
+const changedFiles = sh(`git diff --name-only ${base}...HEAD`).trim().split('\n').filter(Boolean).length
+
+// 🔍 **측정 0 = 통과 아님.** 이 가드는 diff 를 훑으므로, diff 가 비면 위반도 0이라 초록이 뜬다.
+//   그런데 그 초록은 두 가지를 구분하지 못한다:
+//     ① 브랜치가 정말 main 과 같다 — 검사할 게 없는 게 맞다
+//     ② base ref 가 낡거나 fetch 가 덜 돼서 diff 가 비어 보인다 — **눈먼 초록**
+//   ②는 실제로 겪었다: 컨테이너 재시작 후 `origin/main` 이 옛 커밋을 가리켜 같은 브랜치가
+//   608파일로 잡혔다(방향은 반대지만 원인은 같다 — base 를 못 믿는다).
+//   ⇒ HEAD 와 base 의 커밋이 **실제로 다른데** diff 가 비면 실패시킨다.
+if (changedFiles === 0) {
+  const headSha = sh('git rev-parse HEAD').trim()
+  const baseSha = sh(`git rev-parse ${base}`).trim()
+  if (headSha !== baseSha) {
+    console.error(`❌ branch-scope: 검사 대상이 0개인데 HEAD(${headSha.slice(0, 8)}) != ${base}(${baseSha.slice(0, 8)}) 다.`)
+    console.error('   base ref 가 낡았을 가능성이 크다(통과 아님). → git fetch origin main 후 다시 실행할 것.')
+    process.exit(1)
+  }
+  console.log(`✅ branch-scope: ${base} 와 동일한 커밋 — 검사할 변경이 없다.`)
+  process.exit(0)
+}
 
 if (hits.length) {
-  console.error(`❌ branch-scope: 주입 시그니처 ${hits.length}건 (변경 ${changed}개 파일)`)
+  console.error(`❌ branch-scope: 주입 시그니처 ${hits.length}건 (변경 ${changedFiles}개 파일)`)
   for (const h of hits) console.error(`   · ${h}`)
   console.error('')
   console.error('   `check-guard-mutations` 실행 중에 커밋했을 가능성이 큽니다.')
@@ -73,4 +92,4 @@ if (hits.length) {
   console.error('   → 그리고 훅이 설치돼 있는지 확인:  ls .git/hooks/pre-commit || bash scripts/install-git-hooks.sh')
   process.exit(1)
 }
-console.log(`✅ branch-scope: 주입 시그니처 없음 (${base} 대비 ${changed}개 파일 변경).`)
+console.log(`✅ branch-scope: 주입 시그니처 없음 (${base} 대비 ${changedFiles}개 파일 변경).`)
