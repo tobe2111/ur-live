@@ -12,6 +12,7 @@ import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { Wallet, TrendingUp, Clock, CheckCircle, Save, AlertTriangle } from 'lucide-react'
 import ConditionalDealsSection from './influencer-settlement/ConditionalDealsSection'
+import PublicProfileSection from './influencer-settlement/PublicProfileSection'
 import { formatKSTDate } from '@/utils/date'
 
 interface Balance {
@@ -258,6 +259,7 @@ export default function InfluencerSettlementPage() {
         <MyRankCard />
 
         {/* 🎬 WP-B: 조건부 우대 커미션 — 콘텐츠 링크 제출(대상 제안 있을 때만 렌더) */}
+        <PublicProfileSection />
         <ConditionalDealsSection />
 
         {/* 💡 flip D1 (게이트드 선반영): owner-펀딩 확인 시에만 재원 출처 배너 —

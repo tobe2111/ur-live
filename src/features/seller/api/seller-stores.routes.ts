@@ -314,6 +314,8 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       channel?: string; manager_phone?: string
       business_number?: string; representative?: string; business_start_date?: string
       business_cert_url?: string
+      /** 🤝 2026-08-27: 소개자 초대 링크(`/store/new?ref=`)로 들어온 경우의 소개자 user id. */
+      referrer_user_id?: string
     }>().catch(() => ({} as any))
 
     const name = String(b.name || '').trim()
@@ -383,6 +385,28 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       ) VALUES (?, '', '', ?, ?, ?, ?, ?, 'store_owner', ?, datetime('now'), datetime('now'))
     `).bind(username, name, name, bno || null, phone || null, address || null, status).run()
     const newSellerId = Number(ins.meta?.last_row_id)
+
+    // 🤝 2026-08-27 (대표 "매장 영입을 어떻게 확인하나") — **초대 링크 귀속**.
+    //   그 전엔 `introduced_by_influencer_id` 를 세팅하는 길이 **어드민 수동 지정 하나뿐**이라,
+    //   2% 영입 보상을 약속해 놓고 대표가 매번 손으로 넣어야 했고 분쟁 시 근거도 없었다.
+    //   소개자가 뿌린 링크로 들어온 매장은 여기서 자동 귀속된다 — 근거가 등록 순간에 남는다.
+    //
+    //   ⚠️ 검증 셋을 다 통과해야 적는다:
+    //     (1) 실재하는 유저여야 한다 — 임의 문자열이 들어오면 지급 대상이 유령이 된다
+    //     (2) 본인이 자기 매장을 영입할 수는 없다(자가 커미션 루프)
+    //     (3) 실패는 조용히 넘긴다 — 귀속이 안 됐다고 매장 등록을 막을 이유는 없다
+    //   기산점(`introduced_at`)이 곧 **1년 유효기간의 시작**이라 등록 시각으로 함께 박는다.
+    const refRaw = String(b.referrer_user_id || '').trim().slice(0, 64)
+    if (newSellerId && refRaw && refRaw !== String(userId)) {
+      const refUser = await c.env.DB.prepare('SELECT id FROM users WHERE id = ? LIMIT 1')
+        .bind(refRaw).first<{ id: string }>().catch(() => null)
+      if (refUser?.id) {
+        await c.env.DB.prepare(
+          `UPDATE sellers SET introduced_by_influencer_id = ?, introduced_at = datetime('now')
+            WHERE id = ? AND introduced_by_influencer_id IS NULL`,
+        ).bind(String(refUser.id), newSellerId).run().catch(() => { /* 귀속 실패가 등록을 막지 않는다 */ })
+      }
+    }
     if (!Number.isFinite(newSellerId) || newSellerId <= 0) {
       return c.json({ success: false, error: '매장 생성에 실패했습니다' }, 500)
     }

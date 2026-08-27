@@ -152,6 +152,7 @@ if domain deploy; then
   # 빌드 산출물이 있을 때만 실측(없으면 스크립트가 명시적 SKIP 출력 후 exit 0).
   #   상주 실행 지점은 verify.yml 의 build 직후 — 거기선 항상 실측된다.
   run "크리티컬 청크 구성 동결"          node scripts/check-critical-chunks.mjs
+  run "소비자 표면 역할청크 누수"        node scripts/check-surface-role-leak.mjs
   run "감사 레지스트리 동기화"          env STRICT_AUDIT_REGISTRY=1   node scripts/check-audit-registry-sync.mjs
   run "가드 자기검증(측정0=실패)"       env STRICT_GUARD_SELFCHECK=1  node scripts/check-guard-selfcheck.mjs
   # 🧪 2026-08-04 신설 — **이 게이트에 가드 주입 검증이 통째로 빠져 있었다.**

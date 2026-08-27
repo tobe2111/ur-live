@@ -6,10 +6,13 @@
 import { Hono } from 'hono'
 import { swallow } from '../../../worker/utils/swallow'
 import type { Env } from '@/worker/types/env'
-import { requireSeller, requireAuth } from '@/worker/middleware/auth'
+import { requireSeller, requireAuth, optionalAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { findActiveDealPct } from '@/worker/utils/influencer-deal'
+import { ensureInfluencerProfileTable, parseChannels, maxFollowers, parseJsonList } from '@/worker/utils/influencer-profile'
+import { intParam } from '@/shared/pagination'
+import { registerDiscoveryRoutes } from './marketing/discovery'
 
 // 🛡️ 2026-05-20: Hono `c.get('user'/'seller')` 가 ContextVariableMap 미선언으로 'never' 가 됨.
 //   각 미들웨어 (requireAuth/requireSeller) 가 ctx 에 박는 형태를 Variables 로 명시.
@@ -770,30 +773,8 @@ adminApp.post('/payouts/process', async (c) => {
   return c.json({ success: true, amount })
 })
 
-// ───────── 카탈로그 (인플이 ?ref= 링크 생성) ─────────
-
-discoverApp.get('/products', async (c) => {
-  const DB = c.env.DB
-  const cat = c.req.query('category') || 'all'
-  const validCats = ['meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher']
-  const placeholders = cat === 'all' ? validCats.map(() => '?').join(',') : '?'
-  const params = cat === 'all' ? validCats : [cat]
-  const { results } = await DB.prepare(
-    `SELECT p.id, p.name, p.price, p.original_price, p.image_url, p.category,
-            p.group_buy_target, p.group_buy_current, p.group_buy_deadline, p.group_buy_status,
-            p.restaurant_name, COALESCE(p.referral_disabled, 0) AS referral_disabled,
-            s.name AS seller_name, COALESCE(s.marketing_enabled, 1) AS marketing_enabled
-     FROM products p
-     LEFT JOIN sellers s ON s.id = p.seller_id
-     WHERE p.category IN (${placeholders}) AND p.is_active = 1
-       AND p.group_buy_status = 'active'
-     ORDER BY p.created_at DESC LIMIT 100`
-  ).bind(...params).all().catch(() => ({ results: [] as any[] }))
-  // 인플 referral 가능한 것만 (marketing_enabled = 1, referral_disabled = 0)
-  const eligible = (results || []).filter((r: { marketing_enabled?: number; referral_disabled?: number }) =>
-    Number(r.marketing_enabled ?? 1) === 1 && Number(r.referral_disabled ?? 0) === 0
-  )
-  return c.json({ success: true, data: eligible })
-})
+// ───────── 소개자 찾기 + 카탈로그 — `marketing/discovery.ts` 로 분리 (2026-08-27 파일크기 래칫) ─────────
+//   ⚠️ 라우트를 **이 인스턴스에** 얹는다 — 저쪽에서 새 Hono 를 만들면 requireSeller 가 안 붙는다.
+registerDiscoveryRoutes(sellerApp, discoverApp)
 
 export { sellerApp as sellerMarketingRoutes, influencerApp as influencerSettlementRoutes, adminApp as adminPayoutRoutes, discoverApp as influencerDiscoverRoutes, rankingApp as influencerRankingsRoutes }
