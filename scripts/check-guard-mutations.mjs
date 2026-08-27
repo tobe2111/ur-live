@@ -985,6 +985,29 @@ canvas {
       '느려진 것만 남는다(대표 신고 "사진 불러오는게 많이 느리네?" 가 정확히 그 증상이었다).',
   },
   {
+    name: '홈 편성 섹션 시드가 전역 KV 워밍에서 빠진다(콜드 콜로에서 그 섹션만 스켈레톤)',
+    file: 'src/worker/cron/cache-prewarm.ts',
+    find: "  '/api/sections',                                                 // SECTIONS(홈 편성 섹션)",
+    replace: '',
+    test: 'src/tests/unit/home-seed-layers.test.ts',
+    why:
+      '홈 한 화면이 시드 **두 개**로 그려진다(피드 MAIN · 편성 섹션 SECTIONS). 그런데 SECTIONS 만 ' +
+      '전역 KV 계층이 없어, 콜로 엣지가 cold 면 곧장 self-fetch 로 떨어지고 콜드 D1 이 타임아웃되면 ' +
+      '**시드 없이** 내려갔다 → 그 섹션만 스켈레톤 + 클라 왕복(2026-08-27 대표 신고 "인기 이용권·숙소가 ' +
+      '안 보인다"). 피드는 세 계층이 다 있어 멀쩡했고, **fail-soft 라 에러 로그도 안 남는다** — ' +
+      '그래서 몇 주를 아무도 몰랐다.',
+  },
+  {
+    name: '홈 편성 섹션 self-fetch 가 1500ms 로 되돌아간다(콜드에서 자주 끊긴다)',
+    file: 'src/worker/utils/ssr-payload.ts',
+    find: "    slot === 'SECTIONS'\n  ) return 2000;",
+    replace: '  ) return 2000;',
+    test: 'src/tests/unit/home-seed-layers.test.ts',
+    why:
+      '2000ms 는 2026-06-30 에 상세/셀러/큐레이터가 **정확히 같은 증상**(콜드 timeout → 스켈레톤 노출)으로 ' +
+      '받은 처방인데 SECTIONS 만 그 목록에서 빠져 있었다. 되돌리면 홈 섹션이 다시 콜드 콜로에서 깜빡인다.',
+  },
+  {
     name: '홈 카드 preload 가 렌더와 다른 URL 을 만든다(같은 사진을 두 번 받는다)',
     file: 'src/components/home/HomeSections.tsx',
     find: 'const cardImgWidth = isLgViewport ? HOME_CARD_IMG_WIDTH_LG : HOME_CARD_IMG_WIDTH_BASE',
