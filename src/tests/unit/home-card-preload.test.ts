@@ -6,6 +6,7 @@ import {
   HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE,
   HOME_CARD_LG_QUERY, HOME_CARD_BASE_QUERY, HOME_CARD_ABOVE_FOLD,
 } from '@/shared/home-card-image'
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink } from '@/worker/utils/home-card-preload'
 
 /**
  * 🖼️ 홈 첫 화면 카드 사진 preload (2026-08-27 대표 신고 — "메인페이지 로딩 자체도 느려").
@@ -36,9 +37,14 @@ describe('홈 카드 사진 preload — 클라와 워커가 같은 URL 을 만�
   const sections = code('src/components/home/HomeSections.tsx')
 
   it('🔴 폭·중단점·개수를 양쪽이 SSOT 에서 읽는다 (손으로 적으면 반드시 갈린다)', () => {
-    for (const [label, src] of [['worker', worker], ['HomeSections', sections]] as const) {
+    // 🔁 2026-08-27: 워커는 이제 헬퍼에 위임한다 — SSOT 를 읽는 쪽이 헬퍼다.
+    const helper = code('src/worker/utils/home-card-preload.ts')
+    for (const [label, src] of [['helper', helper], ['HomeSections', sections]] as const) {
       expect(src, label).toMatch(/home-card-image/)
     }
+    // 워커가 헬퍼를 거치지 않고 직접 조립하면(문자열 리터럴 복붙) SSOT 가 무의미해진다.
+    expect(worker).toMatch(/buildHomeCardPreloadLinks/)
+    expect(worker).not.toMatch(/rel="preload" as="image" fetchpriority="high" media=/)
     // 클라: 렌더 폭과 eager 개수가 상수여야 한다(리터럴 200/400/4 로 되돌아가면 워커와 갈린다).
     expect(sections).toMatch(/useMediaQuery\(HOME_CARD_LG_QUERY\)/)
     expect(sections).toMatch(/HOME_CARD_IMG_WIDTH_LG\s*:\s*HOME_CARD_IMG_WIDTH_BASE/)
@@ -46,20 +52,45 @@ describe('홈 카드 사진 preload — 클라와 워커가 같은 URL 을 만�
     expect(sections).not.toMatch(/useMediaQuery\('\(min-width: 1024px\)'\)/)
   })
 
-  it('🔴 워커가 MAIN 슬롯에서 카드 사진을 preload 한다', () => {
-    const block = worker.slice(worker.indexOf("ssrSlot === 'MAIN' && ssrExtraPayload"))
-    expect(block.length).toBeGreaterThan(0)
-    expect(block).toMatch(/rel="preload" as="image"/)
-    expect(block).toMatch(/fetchpriority="high"/)
-    // 뷰포트별로 갈라 붙인다 — 하나로 합치면 한쪽이 반드시 어긋난다.
-    expect(block).toMatch(/media="\$\{q\}"/)
-    expect(block).toMatch(/HOME_CARD_BASE_QUERY, HOME_CARD_IMG_WIDTH_BASE/)
-    expect(block).toMatch(/HOME_CARD_LG_QUERY, HOME_CARD_IMG_WIDTH_LG/)
-    // 클라와 **같은 함수**로 URL 을 만든다(직접 문자열 조립 금지).
-    expect(block).toMatch(/cfImage\(src, \{ width: w, format: 'auto' \}\)/)
-    expect(block).toMatch(/cfSrcSet\(src, w\)/)
-    // eager 개수와 같은 수만 당긴다.
-    expect(block).toMatch(/slice\(0, HOME_CARD_ABOVE_FOLD\)/)
+  it('🔴 워커가 MAIN 슬롯에서 헬퍼로 카드 사진을 preload 한다', () => {
+    expect(worker).toMatch(/ssrSlot === 'MAIN' && ssrExtraPayload/)
+    expect(worker).toMatch(/buildHomeCardPreloadLinks\(ssrExtraPayload\)/)
+  })
+
+  it('🔴 실제 시드로 링크를 만든다 — 사진 4장 × 뷰포트 2 = 8개', () => {
+    const seed = JSON.stringify({
+      success: true,
+      data: [{ products: [1, 2, 3, 4, 5, 6].map((n) => ({ image_url: `/api/media/uploads/demo/p${n}.jpg` })) }],
+    })
+    const links = buildHomeCardPreloadLinks(seed)
+    expect(links).toHaveLength(HOME_CARD_ABOVE_FOLD * 2)   // 5·6번째는 안 당긴다(eager 개수와 동일)
+    for (const l of links) {
+      expect(l).toMatch(/^<link rel="preload" as="image" fetchpriority="high" media="/)
+    }
+    // 뷰포트별로 갈라 붙는다 — 하나로 합치면 한쪽이 반드시 어긋난다.
+    expect(links.filter((l) => l.includes(HOME_CARD_BASE_QUERY))).toHaveLength(HOME_CARD_ABOVE_FOLD)
+    expect(links.filter((l) => l.includes(HOME_CARD_LG_QUERY))).toHaveLength(HOME_CARD_ABOVE_FOLD)
+  })
+
+  it('시드가 깨져도 홈이 죽지 않는다 (fail-soft)', () => {
+    expect(buildHomeCardPreloadLinks('not json')).toEqual([])
+    expect(buildHomeCardPreloadLinks('{}')).toEqual([])
+    expect(buildHomeCardPreloadLinks(JSON.stringify({ data: [{ products: [{}] }] }))).toEqual([])
+  })
+
+  /**
+   * 🔁 상세 히어로 preload 를 같은 헬퍼로 옮겼다(2026-08-27, 출력 불변). 표면별 형태가 갈리므로
+   *   여기서 **그 차이 자체**를 고정한다 — 형태가 어긋나면 이중 다운로드다.
+   */
+  it('🔴 상세 히어로: 공구는 단일 URL, 교환권은 srcSet 까지', () => {
+    const seed = JSON.stringify({ data: { image_url: '/api/media/uploads/demo/hero.jpg' } })
+    const gb = buildDetailHeroPreloadLink(seed, false)
+    const vc = buildDetailHeroPreloadLink(seed, true)
+    expect(gb).toMatch(/rel="preload" as="image" fetchpriority="high"/)
+    expect(gb).not.toMatch(/imagesrcset=/)      // 공구 상세는 단일 URL
+    expect(vc).toMatch(/imagesrcset=/)          // 교환권 상세는 밀도 srcSet
+    expect(buildDetailHeroPreloadLink('not json', false)).toBeNull()
+    expect(buildDetailHeroPreloadLink('{}', false)).toBeNull()
   })
 
   it('🔴 preload URL 이 카드가 실제로 요청할 URL 과 같다 (이중 다운로드 0)', () => {
