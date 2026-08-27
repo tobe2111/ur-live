@@ -17,15 +17,21 @@
  *   대표 확정("대시보드 첫 단계는 매장 등록, 무조건 선행")과 같은 순서다.
  */
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
 import { enterStoreSeat } from '@/utils/enter-store'
 import { isLoggedInSync } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
+import { captureStoreReferrer } from '@/utils/store-referrer'
 
 export default function StoreClaimPage() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+
+  // 🤝 소개자 초대 링크(`?ref=`)는 **로그인으로 보내기 전에** 담아야 한다.
+  //   로그인 왕복에서 쿼리스트링이 사라지므로, 여기서 놓치면 소개자가 데려오고도 보상을 못 받는다.
+  useEffect(() => { captureStoreReferrer(params.get('ref')) }, [params])
 
   // 등록은 로그인이 필요하다. 401 을 만나게 두지 말고 로그인으로 보내되 돌아올 곳을 지정한다.
   useEffect(() => {

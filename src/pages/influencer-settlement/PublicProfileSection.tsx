@@ -16,7 +16,7 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Megaphone, Plus, X } from 'lucide-react'
+import { Megaphone, Plus, X, Store, Copy } from 'lucide-react'
 
 type ChannelKind = 'instagram' | 'youtube' | 'blog' | 'tiktok' | 'other'
 interface Channel { kind: ChannelKind; url: string; followers?: number | null }
@@ -170,6 +170,52 @@ export default function PublicProfileSection() {
         className="w-full py-2.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-sm font-bold disabled:opacity-50">
         {saving ? '저장 중...' : '저장'}
       </button>
+
+      <StoreInviteLink />
     </section>
+  )
+}
+
+/**
+ * 🏪 매장 초대 링크 — "내가 데려온 매장"을 증거 있게 만드는 유일한 자동 경로.
+ *
+ * 이 링크로 등록한 매장은 **등록 순간에 나에게 귀속**된다(`introduced_by_influencer_id`).
+ * 그 전엔 대표가 어드민에서 손으로 지정하는 길밖에 없었고, 분쟁 시 근거가 없었다.
+ * 귀속 시각이 곧 **2% 유효기간 1년의 기산점**이다.
+ */
+function StoreInviteLink() {
+  const myId = (() => {
+    try { return localStorage.getItem('user_id') || localStorage.getItem('userId') || '' } catch { return '' }
+  })()
+  if (!myId) return null
+  const url = `https://urdeal.kr/store/new?ref=${encodeURIComponent(myId)}`
+
+  return (
+    <div className="mt-4 rounded-lg border border-dashed border-gray-300 dark:border-[#2A3446] p-3">
+      <div className="flex items-start gap-2">
+        <Store className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold text-gray-900 dark:text-white">매장 초대 링크</p>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+            이 링크로 등록한 매장은 내가 데려온 것으로 기록되고,
+            그 매장 매출의 <b>2%</b>를 <b>1년간</b> 받습니다.
+          </p>
+          <div className="mt-2 flex items-center gap-1.5">
+            <code className="flex-1 min-w-0 truncate rounded bg-gray-50 dark:bg-[#1A2334] px-2 py-1.5 text-[10px] text-gray-600 dark:text-gray-300">
+              {url}
+            </code>
+            <button
+              type="button"
+              onClick={async () => {
+                try { await navigator.clipboard.writeText(url); toast.success('초대 링크 복사됨') }
+                catch { toast.error('복사하지 못했습니다') }
+              }}
+              className="shrink-0 rounded-lg border border-gray-200 dark:border-[#2A3446] p-1.5 text-gray-600 dark:text-gray-300"
+              aria-label="초대 링크 복사"
+            ><Copy className="w-3.5 h-3.5" /></button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
