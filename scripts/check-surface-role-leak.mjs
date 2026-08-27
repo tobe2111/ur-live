@@ -36,7 +36,6 @@ import { fileURLToPath } from 'url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const MAP = path.join(root, 'src/worker/generated/route-chunk-map.ts')
-const BUILT = path.join(root, 'dist/client/index.html')
 
 /** 소비자가 보는 표면 — `generate-route-chunk-map.mjs` 의 ROUTES 키와 같은 이름. */
 const CONSUMER_SURFACES = ['home', 'gbDetail', 'voucherDetail', 'product', 'linkshop', 'vouchers', 'browse']
@@ -67,12 +66,21 @@ try {
 
 const surfaces = Object.keys(map)
 if (surfaces.length === 0) {
-  // 커밋본은 **빈 맵**이다(빌드 시 생성). 빌드 산출물이 있는데도 비었으면 그건 고장이다.
-  if (fs.existsSync(BUILT)) {
-    console.error('❌ surface-role-leak: 빌드 산출물은 있는데 맵이 비었다 — 생성기가 안 돌았거나 실패했다.')
+  /**
+   * 커밋본은 **빈 맵**이다(빌드 시 생성). 그러면 "비었다"를 언제 고장으로 볼 것인가.
+   *
+   * ⚠️ `dist/` 존재 여부로 판단하면 **헛경보가 난다** — 예전 빌드 산출물이 남아 있는 채로
+   *    audit-gate 를 단독 실행하면 맵은 커밋본(빈 것)이라 매번 빨간불이다(실제로 그랬다).
+   * ⇒ 판정 기준은 **이 가드가 계약상 언제 도는가**다: CI 는 `build:worker`(생성기 포함) 직후에
+   *    돌리므로 그때 비어 있으면 진짜 고장. 로컬은 빌드 전일 수 있으니 눈에 보이게 SKIP 한다.
+   */
+  if (process.env.CI) {
+    console.error('❌ surface-role-leak: CI 인데 맵이 비었다 — build:worker 의 생성기가 안 돌았거나 실패했다.')
+    console.error('   (이 가드는 verify.yml 의 build 직후에 돈다 — 그 시점에 비어 있을 수는 없다.)')
     process.exit(1)
   }
-  console.log('⏭️  surface-role-leak: SKIP — 빌드 전(맵이 비어 있음). 상주 지점은 verify.yml 의 build 직후.')
+  console.log('⏭️  surface-role-leak: SKIP — 맵이 비어 있다(커밋본 기본값). `npm run build` 후 다시 실행할 것.')
+  console.log('   상주 실행 지점은 verify.yml 의 build 직후 — 거기선 항상 실측된다.')
   process.exit(0)
 }
 
