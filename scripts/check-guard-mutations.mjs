@@ -1149,6 +1149,41 @@ canvas {
       '2026-08-19 그루폰 카드 도입과 함께 들어온 안전장치라, 나중에 리팩토링하다 지워질 위험이 크다.',
   },
   {
+    name: '카테고리 스크롤 화살표가 렌더마다 강제 리플로를 돈다',
+    file: 'src/components/main/DesktopTopNav.tsx',
+    find: '  }, [syncCatArrow])',
+    replace: '  })',
+    test: 'src/tests/unit/home-boot-cost.test.ts',
+    why:
+      '2026-08-27 라이브 CPU 프로파일에서 **홈에서 가장 비싼 JS**(self 1,108ms)로 잡힌 실제 결함이다. ' +
+      '의존성 배열이 없으면 렌더마다 `scrollWidth`/`clientWidth`/`scrollLeft` 를 읽어 강제 동기 레이아웃을 ' +
+      '돌고 resize 리스너를 해제+재등록한다. **에러도 없고 화면도 멀쩡해서** 프로파일을 떠 보기 전엔 ' +
+      '아무도 모른다 — dep 배열은 리팩토링 중 "어차피 매번 갱신해야 하니까"로 되돌아가기 쉽다.',
+  },
+  {
+    name: '대표색 추출이 첫 페인트 한복판에서 동기로 돈다',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: "if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 2000 })",
+    replace: 'run()',
+    test: 'src/tests/unit/home-boot-cost.test.ts',
+    why:
+      '`getImageData` 는 GPU→CPU 리드백을 강제한다. 사진 `onLoad` 안에서 동기로 돌면 첫 화면을 그리는 ' +
+      '중에 카드 수만큼 그 비용을 낸다(2026-08-27 프로파일 self 166ms). 미루기는 한 줄이라 ' +
+      '"간단하게" 되돌리기 쉬운데, 되돌아가도 **기능은 멀쩡히 동작해서** 아무 신호가 없다.',
+  },
+  {
+    name: 'materialized 피드 캐시가 라이브 쿼리와 컬럼이 갈린다',
+    file: 'src/worker/cron/group-buy-feed-cache.ts',
+    find: "const dominantColorFrag = (withDominant: boolean) => withDominant ? 'p.dominant_color,' : ''",
+    replace: 'const dominantColorFrag = (_withDominant: boolean) => \'\'',
+    test: 'src/tests/unit/home-boot-cost.test.ts',
+    why:
+      '이 짝은 **이미 두 번 갈렸다** — `images`(2026-08-19 수습) · `dominant_color`(2026-05-28 에 라이브 ' +
+      '쿼리에만 들어가고 캐시엔 3개월간 없었다). 홈 기본 피드는 이 캐시가 서빙하므로 캐시에 빠진 컬럼은 ' +
+      '**소비자에게 영원히 안 간다**. 응답에 키가 아예 없을 뿐 에러가 없어서, 카드가 대표색을 매번 다시 ' +
+      '뽑고 있어도 아무도 몰랐다.',
+  },
+  {
     name: '섹션 더보기가 쿼리를 잃는다(버튼이 통째로 사라진다)',
     file: 'src/components/home/section-more-href.ts',
     find: "const rawQuery = cut === -1 ? '' : moreHref.slice(cut)",
@@ -5848,8 +5883,10 @@ if (VERIFY_CLEAN) {
 
 console.log(`🧬 guard-mutations: ${MUTATIONS.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
 
+let onlyMatched = 0
 for (const m of MUTATIONS) {
   if (ONLY && !m.name.includes(ONLY)) continue
+  if (ONLY) onlyMatched += 1
   const abs = path.join(ROOT, m.file)
   if (!fs.existsSync(abs)) { problems.push(`${m.name}: 파일 없음 — ${m.file} (코드가 옮겨갔다)`); continue }
   const src = fs.readFileSync(abs, 'utf8')
@@ -5921,4 +5958,16 @@ if (MAP_ONLY) {
   console.log('      커밋 전 지도 점검용 — 전수는 CI 가, 바꾼 항목은 `--only` 로 돌릴 것.')
   process.exit(0)
 }
-console.log(`\n✅ guard-mutations: ${MUTATIONS.length}개 주입 전부 빨간불 확인 — 가드가 실제로 실패할 수 있다.`)
+/**
+ * 🚨 `--only` 가 아무것도 못 고르면 **실패**다.
+ *   전에는 0건을 돌고도 "전부 빨간불 확인" 을 찍었다 — 2026-08-27 에 `--only "a|b|c"` 로 부르고
+ *   (이 필터는 정규식이 아니라 **단순 부분일치**다) 초록불을 받았는데 실제로 돈 주입은 0건이었다.
+ *   "검사가 실패할 수 없음" 이 이 레포가 반복해 당한 자리고, 하필 그 검사기 자신이 그랬다.
+ */
+if (ONLY && onlyMatched === 0) {
+  console.error(`\n❌ guard-mutations: --only "${ONLY}" 에 걸린 주입이 0건이다.`)
+  console.error('   이 필터는 정규식이 아니라 이름 **부분일치**다 — "a|b" 같은 건 안 먹는다.')
+  console.error('   여러 건을 돌리려면 각각 따로 부르거나 인자 없이 전수로 돌려라.')
+  process.exit(1)
+}
+console.log(`\n✅ guard-mutations: ${ONLY ? `${onlyMatched}개(--only "${ONLY}")` : `${MUTATIONS.length}개`} 주입 전부 빨간불 확인 — 가드가 실제로 실패할 수 있다.`)
