@@ -232,12 +232,24 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
         /* 🧹 2026-08-19: 카드 박스가 사라졌으니 **사진 자신이** 모서리를 갖는다(그루폰과 동일). */
         className="rounded-xl bg-gray-100 dark:bg-[#222225]"
         fallback={<span className="text-3xl opacity-40">{cat.emoji}</span>}
+        /**
+         * 🎨 대표색 백필 — **결과가 달라질 때만** 돌린다(2026-08-27 부팅 프로파일).
+         *   `extractDominantColor` 는 `drawImage`+`getImageData` 라 GPU→CPU 리드백을 강제한다.
+         *   예전엔 서버가 이미 색을 줬어도(=아래 두 분기가 전부 no-op) **일단 뽑고 나서** 버렸다.
+         *   그리고 그 리드백이 사진 `onLoad` 안, 즉 **첫 화면 그리는 한복판**에서 동기로 돌았다.
+         *   ⇒ ① 쓸 데가 없으면 아예 안 뽑고 ② 뽑아야 할 때도 한가할 때로 미룬다.
+         *      기능은 그대로다 — 색은 여전히 뽑히고 서버에도 보고된다(느려질 뿐 안 사라진다).
+         */
         onCoverLoad={(el) => {
-          const color = extractDominantColor(el)
-          if (color) {
+          if (cardColor && p.dominant_color) return // 둘 다 이미 있음 → 뽑아도 버릴 값
+          const run = () => {
+            const color = extractDominantColor(el)
+            if (!color) return
             if (!cardColor) setCardColor(color)
             if (!p.dominant_color) reportDominantColor(p.id, color)
           }
+          if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 2000 })
+          else setTimeout(run, 0)
         }}
         overlay={
           <>
