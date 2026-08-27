@@ -985,14 +985,34 @@ canvas {
       '느려진 것만 남는다(대표 신고 "사진 불러오는게 많이 느리네?" 가 정확히 그 증상이었다).',
   },
   {
-    name: '히어로가 데모 상품 사진을 홈 얼굴로 쓴다',
+    name: '홈 카드 preload 가 렌더와 다른 URL 을 만든다(같은 사진을 두 번 받는다)',
+    file: 'src/components/home/HomeSections.tsx',
+    find: 'const cardImgWidth = isLgViewport ? HOME_CARD_IMG_WIDTH_LG : HOME_CARD_IMG_WIDTH_BASE',
+    replace: 'const cardImgWidth = isLgViewport ? 480 : 240',
+    test: 'src/tests/unit/home-card-preload.test.ts',
+    why:
+      '워커가 홈 첫 화면 카드 사진을 `<link rel=preload as=image>` 로 미리 당긴다(2026-08-27 — ' +
+      '사진 URL 은 이미 HTML 안에 있는데 React 가 <img> 를 만들 때까지 다운로드가 안 시작되던 병목). ' +
+      '그런데 preload 는 **URL 이 byte-일치할 때만** 쓰인다 — 한 글자만 달라도 브라우저는 그걸 버리고 ' +
+      '같은 사진을 다시 받는다. **에러도 없고 화면도 멀쩡한데 더 느려지고 트래픽만 두 배**가 된다. ' +
+      '폭이 뷰포트로 갈리므로(2·3열 200 ↔ 4열 400) 특히 어긋나기 쉬워, 양쪽이 SSOT 상수를 읽게 했다.',
+  },
+  {
+    name: '히어로가 남의 사진(외부 호스트 데모)을 홈 얼굴로 쓴다',
     file: 'src/components/home/HomeHeroDefault.tsx',
-    find: "slug.startsWith('demo-deal-')",
-    replace: 'false',
+    // 🔁 2026-08-27: 예전엔 `slug.startsWith('demo-deal-')` 를 지웠다(=데모 전면 허용). 그런데
+    //   그 금지가 라이브 카탈로그 100% 데모 상황에서 히어로를 영구 빈 색면으로 만들어, 규칙의 축을
+    //   "데모냐" → "출처가 우리냐"로 옮겼다. 그래서 지켜야 할 선도 **출처 검사**로 옮긴다.
+    find: 'if (!ownDemo && isOwnMedia(img)) ownDemo = hit',
+    replace: 'if (!ownDemo) ownDemo = hit',
     test: 'src/tests/unit/home-showcase.test.ts',
     why:
-      '홈 최상단 사진은 서비스의 얼굴이다. 데모 시드가 그 자리에 올라와도 **에러가 없고 그림도 멀쩡**해서 ' +
-      '아무도 모른다. 2026-08-04 에는 여기 계열의 데모 사진에 타사 워터마크 보도사진이 섞여 있었다.',
+      '홈 최상단 사진은 서비스의 얼굴이다. 남의 사진이 그 자리에 올라와도 **에러가 없고 그림도 멀쩡**해서 ' +
+      '아무도 모른다 — 2026-08-04 에 데모 사진에 타사 워터마크 보도사진(YONHAP)이 섞여 있었다. ' +
+      '그때 처방은 "데모 전면 금지"였는데, 라이브 카탈로그가 100% 데모가 되자 그 규칙이 히어로를 ' +
+      '**영구 빈 색면**으로 만들었다(2026-08-27 대표 신고). 사고의 원인은 데모라는 사실이 아니라 ' +
+      '**남의 사진**이었으므로, 금지의 축을 출처(우리 R2 인가)로 옮겼다. 이 검사가 사라지면 외부 호스트 ' +
+      '사진이 다시 홈 얼굴이 된다 — 되돌아가는 곳이 정확히 원래 사고다.',
   },
   {
     name: '카드 캐러셀 화살표에서 preventDefault 를 없앤다(사진 넘기려던 클릭이 상세로 튄다)',

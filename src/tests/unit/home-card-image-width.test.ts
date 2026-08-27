@@ -24,6 +24,9 @@
  *   같이 낡는다 — 열 수를 바꿨으면 브라우저로 `표시폭 × dpr` 대비 요청 폭을 다시 재야 한다.
  */
 import { describe, it, expect } from 'vitest'
+import {
+  HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE,
+} from '@/shared/home-card-image'
 import { readFileSync } from 'node:fs'
 
 const read = (p: string) => readFileSync(p, 'utf-8')
@@ -62,8 +65,10 @@ describe('사진 해상도가 카드 룩 플래그와 분리돼 있다', () => {
   it('두 부모가 모두 뷰포트로 폭을 정해 넘긴다', () => {
     for (const f of [FEED, SECTIONS]) {
       const s = code(read(f))
+      // 🔁 2026-08-27: 중단점이 리터럴 → `HOME_CARD_LG_QUERY` 상수가 됐다(워커의 카드 preload 가
+      //   **같은 중단점**으로 media= 를 갈라야 해서 SSOT 로 뺐다). 지키는 값은 그대로.
       expect(s, `${f}: lg 미디어쿼리로 폭을 정하지 않는다`).toMatch(
-        /useMediaQuery\('\(min-width: 1024px\)'\)/,
+        /useMediaQuery\(HOME_CARD_LG_QUERY\)/,
       )
       expect(s, `${f}: imgWidth 를 카드에 안 넘긴다`).toMatch(/imgWidth=\{cardImgWidth\}/)
     }
@@ -71,11 +76,18 @@ describe('사진 해상도가 카드 룩 플래그와 분리돼 있다', () => {
 })
 
 describe('요청 폭이 필요 폭을 넘지 않는다', () => {
-  /** 소스에서 `cardImgWidth = isLgViewport ? A : B` 의 A·B 를 읽는다. */
+  /**
+   * 소스에서 폭을 읽는다.
+   * 🔁 2026-08-27: 세 부모가 각자 리터럴을 적던 것을 SSOT 상수로 모았다 — 그래서 여기서 확인할 것은
+   *   "리터럴이 무엇인가"가 아니라 **"그 부모가 정말 SSOT 를 쓰는가"** 다. 값 자체는 모듈에서 읽는다.
+   *   (리터럴로 되돌아가면 아래 `toMatch` 가 빨간불 — 워커 preload 와 갈리는 그 순간을 잡는다.)
+   */
   function widths(file: string): { lg: number; belowLg: number } {
-    const m = code(read(file)).match(/cardImgWidth\s*=\s*isLgViewport \? (\d+) : (\d+)/)
-    if (!m) throw new Error(`${file}: cardImgWidth 를 못 읽었다`)
-    return { lg: Number(m[1]), belowLg: Number(m[2]) }
+    const s = code(read(file))
+    expect(s, `${file}: cardImgWidth 가 SSOT 상수를 안 쓴다(리터럴로 되돌아갔다)`).toMatch(
+      /cardImgWidth\s*=\s*isLgViewport \? HOME_CARD_IMG_WIDTH_LG : HOME_CARD_IMG_WIDTH_BASE/,
+    )
+    return { lg: HOME_CARD_IMG_WIDTH_LG, belowLg: HOME_CARD_IMG_WIDTH_BASE }
   }
 
   it('두 부모가 같은 값을 쓴다 (갈리면 같은 화면에서 해상도가 달라진다)', () => {

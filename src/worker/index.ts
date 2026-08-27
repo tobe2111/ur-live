@@ -304,6 +304,11 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 // 🖼️ 2026-07-02 (대표 "사진이 빠르게 안 나타남"): 상세 히어로 preload URL 생성 — 클라와 동일 함수 재사용
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
+// 🖼️ 홈 카드 preload 는 클라 렌더와 **같은 폭/중단점/개수**를 써야 URL 이 일치한다(SSOT).
+import {
+  HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE,
+  HOME_CARD_LG_QUERY, HOME_CARD_BASE_QUERY, HOME_CARD_ABOVE_FOLD,
+} from '../shared/home-card-image';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -796,6 +801,43 @@ app.use('*', async (c, next) => {
                   }
                 }
               } catch { /* seed 파싱 실패 — preload 생략(치명 아님) */ }
+            }
+            // 🖼️ 2026-08-27 [UNLOCK_LOADING] (대표 "메인페이지 로딩 자체도 느려"): 홈 첫 화면 카드도
+            //   상세 히어로와 **정확히 같은 병목**이었다 — 사진 URL 은 이미 이 HTML 안(SECTIONS 시드)에
+            //   있는데, `<img>` 를 React 가 만들기 때문에 **JS 마운트 뒤에야** 다운로드가 시작된다.
+            //   실측(모바일): TTFB 919ms → FCP 1356ms → 마운트 1341ms → **첫 사진 표시 2221ms**.
+            //   ⇒ HTML 파싱 즉시 병렬로 당긴다. JS 로딩과 겹치므로 마운트 시점엔 이미 캐시에 있다.
+            //
+            //   ⚠️ **URL 이 byte-일치해야 한다** — 한 글자만 달라도 preload 를 안 쓰고 같은 사진을 두 번
+            //     받는다(느려지고 비싸진다). 그래서 폭·중단점·개수를 `shared/home-card-image` SSOT 에서
+            //     읽어 클라(`HomeSections`)와 같은 값을 쓰고, 뷰포트별로 갈리는 폭은 `media=` 로 나눈다
+            //     (2열/3열=200 ↔ 4열=400. 하나로 합치면 한쪽이 반드시 어긋난다).
+            //   ⚠️ 개수는 클라가 `aboveFold` 로 eager 표시하는 것과 **같은 수**여야 한다 — 더 당기면
+            //     안 쓰는 사진을 받고, 덜 당기면 효과가 반쪽이다.
+            if (ssrSlot === 'MAIN' && ssrExtraPayload) {
+              try {
+                const secs = JSON.parse(ssrExtraPayload) as {
+                  data?: Array<{ products?: Array<{ image_url?: string }> }>
+                };
+                const first = secs?.data?.[0]?.products ?? [];
+                const esc = (s: string) => s.replace(/"/g, '&quot;');
+                for (const p of first.slice(0, HOME_CARD_ABOVE_FOLD)) {
+                  const src = p?.image_url;
+                  if (!src) continue;
+                  for (const [q, w] of [
+                    [HOME_CARD_BASE_QUERY, HOME_CARD_IMG_WIDTH_BASE],
+                    [HOME_CARD_LG_QUERY, HOME_CARD_IMG_WIDTH_LG],
+                  ] as const) {
+                    const href = cfImage(src, { width: w, format: 'auto' });
+                    if (!href || href.startsWith('data:')) continue;
+                    const set = cfSrcSet(src, w);
+                    el.append(
+                      `<link rel="preload" as="image" fetchpriority="high" media="${q}" href="${esc(href)}"${set ? ` imagesrcset="${esc(set)}"` : ''}>`,
+                      { html: true },
+                    );
+                  }
+                }
+              } catch { /* 시드 파싱 실패 — preload 생략(치명 아님) */ }
             }
           }
         },

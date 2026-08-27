@@ -20,6 +20,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { HOME_CARD_ABOVE_FOLD } from '@/shared/home-card-image'
 
 const read = (p: string) => readFileSync(p, 'utf-8')
 const FEED = 'src/pages/main-home/GroupBuyFeed.tsx'
@@ -53,6 +54,9 @@ describe('피드의 eager 4장은 피드가 첫 화면일 때만', () => {
   it('편성 섹션의 aboveFold 는 그대로 — 실측상 첫 섹션은 화면 안이다', () => {
     // ⚠️ 이쪽을 "같이 끄는" 과잉 수정을 막는다. 259·516px 로 실제 화면 안이고,
     //    끄면 진짜 LCP 이미지가 우선순위를 잃는다.
-    expect(code(read(SECTIONS))).toContain('aboveFold={i < 4 && sIdx === 0}')
+    // 🔁 2026-08-27: 개수가 리터럴 4 → `HOME_CARD_ABOVE_FOLD` 상수가 됐다(워커의 카드 preload 가
+    //   **같은 수**만 당겨야 해서 SSOT 로 뺐다). 지키는 값은 그대로 — 첫 섹션 4장은 eager 다.
+    expect(code(read(SECTIONS))).toContain('aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0}')
+    expect(HOME_CARD_ABOVE_FOLD).toBe(4)
   })
 })
