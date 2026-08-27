@@ -66,3 +66,57 @@
 
 - **JS 번들 마운트 3.3초**(느린 회선 + 4× CPU 스로틀 기준). 이번 작업 범위 밖이고,
   배포해도 "첫 화면이 뜨기까지의 렉"은 그대로다. 번들 자체를 줄이는 별도 작업.
+
+---
+
+## 📦 번들 다이어트 — 소비자 임계 경로에서 역할 전용 청크 제거 (2026-08-27, 대표 "계속 작업")
+
+**배경**: 사진은 −59% 됐는데 "첫 화면이 뜨기까지의 렉"은 그대로였다. 라이브 실측:
+```
+홈 첫 화면 JS  압축 384KB / 해제 1,396KB   (FCP 이전)
+그 안에: app-seller-components 65KB · app-wholesale-hooks 9KB · admin/wholesale/marketing 컴포넌트
+```
+어느 것도 소비자 화면에서 렌더되지 않는다.
+
+**원인은 큰 코드가 아니라 "작은 공용 모듈이 역할 전용 봉투 안에 있었던 것"** — 두 건:
+
+| 모듈 | 실제 성격 | 어디 있었나 | 대가 |
+|---|---|---|---|
+| `shared/seller-roles.ts` (116줄) | 역할 판별 **SSOT** — CLAUDE.md 가 모든 UI 에 강제 | 규칙 없어 Rollup 이 셀러 컴포넌트와 한 청크 | 공용 `RoleGate.tsx` 하나가 import → 홈에 **65KB** |
+| `lib/seller-tracking.ts` (70줄) | **이름만 셀러** — URL 추천코드 캡처, 소비자 4개 페이지가 씀 | 2026-05-28 주석의 전제("셀러만 사용")가 틀린 채 셀러 청크 | `/browse` 에 **65KB** |
+
+**수정(규칙 추가만, 제거 0)**: 둘을 `app-shared` 로 · `components/admin/`→`app-admin-components` ·
+`components/wholesale/`+도매 로고/테마→`app-wholesale-components`(신규) · Marketing 2개→`app-marketing`(신규).
+
+**실측 결과**
+```
+홈 폐쇄   26청크 972KB → 22청크 840KB raw   (−132KB)
+app-components  211KB → 166KB
+app-seller-components / app-wholesale-hooks / app-misc  → 홈에서 완전 소멸
+/browse 의 65KB    → 제거
+```
+
+### 🛡️ 가드가 이 자리를 안 보고 있었다 (90번째 불변식 신설)
+
+`check-critical-chunks` 는 **`index.html` 만** 본다. 그런데 2026-07-12 부터 워커가 표면별로
+modulepreload 를 **추가 주입**한다(`route-chunk-map`). **홈의 실제 첫 페인트 = index.html ＋ 그 맵**인데
+후자는 **어느 가드도 안 봤다** — 그 사각지대가 이 누수가 살던 자리다.
+
+신설 `scripts/check-surface-role-leak.mjs`: 소비자 7표면 preload 에 역할 전용 청크 이름이 뜨면 실패.
+검사 대상 0건·맵 파싱 실패·빌드했는데 맵이 빈 것도 전부 실패로 본다(측정 실패는 통과가 아니다).
+**되돌려-검증 2건**(seller-roles·seller-tracking 각각 원복 → 빨간불) 확인.
+
+### ⚠️ 이번에 틀렸던 판단
+
+`app-components` 를 더 쪼개려고 정적 import 추적기를 짜서 "소비자가 안 쓰는 모듈 35개" 목록을 뽑았는데,
+거기에 `ui/button`·`ui/card`·`ConsumerFrameRails` 처럼 **실제로 쓰이는 것**이 들어 있었다.
+추적기가 `export … from` 재수출과 **앱 셸(MobileAppLayout) 경유**를 못 따라갔기 때문이다.
+그 목록으로 청크를 쪼갰으면 홈이 쓰는 컴포넌트를 lazy 쪽으로 보내 오히려 느려졌을 것이다.
+⇒ **청크 판정은 번들러의 실제 모듈→청크 그래프(소스맵·매니페스트)로만 한다.** 손으로 짠 추적기는 근사치다.
+
+## 다음 세션의 첫 액션
+
+1. 배포 후 라이브에서 재확인:
+   `curl -s https://urdeal.kr/ -H 'User-Agent: Mozilla/5.0 (iPhone…)' | grep -o 'app-seller-components' | wc -l` → **0** 이어야 한다.
+2. `app-components` 는 아직 **166KB / 58모듈**이다. 더 쪼갤 여지가 있지만
+   **소스맵으로 모듈 목록을 뽑고 매니페스트로 청크 간선을 확인한 뒤**에만 손댈 것(위 오판 참조).
