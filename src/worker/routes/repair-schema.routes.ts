@@ -21,6 +21,7 @@ import { ensureAdminsRoleUnconstrained } from '@/worker/utils/ensure-admins-role
 // 컬럼 ALTER 목록은 데이터라 분리했다 — 이 파일은 *실행 로직*만 갖는다(2026-08-01).
 import { COLUMN_REPAIRS, type ColumnRepair } from './repair-schema/column-repairs';
 import { ADMIN_REPAIRS } from './repair-schema/admin-tables';
+import { INDEX_REPAIRS } from './repair-schema/index-repairs';
 
 const repairSchemaRoutes = new Hono<{ Bindings: Env }>();
 
@@ -708,6 +709,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
 
     // 🗂️ 어드민 전용 테이블·인덱스(감사로그·로그인이력·개인설정) — `repair-schema/admin-tables.ts`.
     ...ADMIN_REPAIRS,
+    ...INDEX_REPAIRS, // 📉 읽기 증폭 인덱스 — 근거(실측 행 수)는 그 모듈에
 
     // 🏭 2026-06-01 유통스타트: B2B 선결제 도매 주문 (판매사→유통스타트).
     { name: 'wholesale_orders', sql: `CREATE TABLE IF NOT EXISTS wholesale_orders (

@@ -952,6 +952,38 @@ canvas {
       '결과는 같아서 테스트로만 잡힌다.',
   },
   {
+    name: '⭐ 리뷰 조회 인덱스가 사라진다(조회마다 11.9만 행 전수 스캔)',
+    file: 'src/worker/routes/repair-schema/index-repairs.ts',
+    find: "  { name: 'idx_product_reviews_product', sql: `CREATE INDEX IF NOT EXISTS idx_product_reviews_product ON product_reviews(product_id, is_visible, created_at DESC)` },",
+    replace: '',
+    test: 'src/tests/unit/product-reviews-index.test.ts',
+    why:
+      '실측 — 인덱스가 없으면 `EXPLAIN` 이 `SCAN product_reviews` 이고 리뷰 8건을 얻는 데 ' +
+      'rows_read 119,292 · 17.6ms 다. product_reviews 는 본진 최대 테이블(다음이 3,790)이라 ' +
+      '상품 상세를 열 때마다 이 비용이 든다.',
+  },
+  {
+    name: '⭐ 리뷰 인덱스 컬럼 순서가 어긋난다(있어도 안 쓰인다)',
+    file: 'src/worker/routes/repair-schema/index-repairs.ts',
+    find: 'ON product_reviews(product_id, is_visible, created_at DESC)',
+    replace: 'ON product_reviews(created_at, is_visible, product_id)',
+    test: 'src/tests/unit/product-reviews-index.test.ts',
+    why:
+      '지배적 쿼리가 `WHERE product_id = ? AND is_visible = 1 ORDER BY created_at DESC` 다. ' +
+      '선두 컬럼이 product_id 가 아니면 탐색에 못 쓰이고, created_at 이 끝에 없으면 정렬이 ' +
+      '임시 B-트리로 떨어진다 — 인덱스는 존재하는데 비용은 그대로다.',
+  },
+  {
+    name: '⭐ 리뷰 인덱스가 선언만 되고 복구 목록에 안 펼쳐진다',
+    file: 'src/worker/routes/repair-schema.routes.ts',
+    find: '    ...INDEX_REPAIRS,',
+    replace: '',
+    test: 'src/tests/unit/product-reviews-index.test.ts',
+    why:
+      '선언(모듈)과 배선(spread)은 다른 일이다. 배선이 빠지면 목록은 멀쩡해 보이고 인덱스는 ' +
+      '**영원히 생성되지 않는다** — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
+  },
+  {
     name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
     file: 'src/features/agency/api/agency-sunset.ts',
     find: "    code: 'AGENCY_SIGNUP_CLOSED',",
@@ -5554,6 +5586,38 @@ canvas {
     why:
       '전파 모듈은 **소비자에게 보이는** 매장 복사본을 맞추는 장치다. 담당자 번호가 여기에 끼면 ' +
       '개인 휴대폰이 이용권 상세·지도·알림톡에 실린다 — 한 번 퍼지면 회수가 안 된다.',
+  },
+  // ── 📉 업체 DB 읽기 증폭 (2026-08-27) — 셋 다 되돌려도 **에러가 안 난다**. 한도만 조용히 다시 찬다.
+  {
+    name: '📉 보강 대상 인덱스의 정렬 키 순서가 어긋난다(플래너가 조용히 무시)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: 'active, id DESC) WHERE merged_into IS NULL`',
+    replace: 'id DESC, active) WHERE merged_into IS NULL`',
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '보강 대상 인덱스는 **정렬 키 순서가 쿼리의 ORDER BY 와 한 글자도 다르면** 플래너가 그냥 ' +
+      '무시한다. 무시해도 결과는 똑같이 나오므로 아무도 모르고, 회당 70만 행 정렬이 돌아온다 ' +
+      '(하루 7,400만 행). 그래서 가드가 문자열이 아니라 **EXPLAIN QUERY PLAN** 을 본다.',
+  },
+  {
+    name: '📉 재분류 선검사를 부르기만 하고 조기 반환을 뺀다',
+    file: 'src/features/marketing/api/reclassify-priority.ts',
+    find: '  if (!await hasReclassifyWork(DB, rulesVersion)) return { rows: [], cursor }',
+    replace: '  await hasReclassifyWork(DB, rulesVersion)',
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '선검사를 부르기만 하고 **조기 반환을 빼면** 아무것도 안 아낀다 — 전수 스캔이 그대로 돈다. ' +
+      '이 레포에서 이미 네 번 당한 모양(호출은 있는데 continue/return 이 없다)이라 분기 문장째로 잡는다.',
+  },
+  {
+    name: '📉 잔여 COUNT 의 시각(remaining_at)이 스냅샷에서 빠진다',
+    file: 'src/features/marketing/api/enrich-lane.ts',
+    find: "      ...(typeof remainingAt === 'number' ? { remaining_at: remainingAt } : {}),",
+    replace: '',
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '잔여 COUNT 를 시간당 1회로 줄이는 장치의 **유일한 근거가 스냅샷의 `remaining_at`** 이다. ' +
+      '이 줄이 빠지면 판정이 늘 "모른다"가 되어 매 회차 다시 세게 된다 — 수리가 조용히 무효화된다.',
   },
   {
     name: '⏳ 영입 커미션 유효기간이 사라져 무기한으로 돌아간다',
