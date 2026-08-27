@@ -1,7 +1,6 @@
 import { Fragment, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { safeInternalPath } from '@/utils/safe-internal-path'
-import { resolveConsumerAlias } from '@/shared/seo/consumer-redirects'
+import { resolveSectionMoreHref, isDeadEndHref } from './section-more-href'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -134,28 +133,12 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
   return (
     <>
       {visible.map((sec, sIdx) => {
-        // 🐛 2026-08-17 (대표 신고 — 더보기 클릭 시 옛 프레임 플래시): 저장된 href 가 `/group-buy` 같은
-        // **별칭**(App.tsx `<Navigate>` 경로)이면 홈이 리마운트되며 플래시가 난다 — SSOT 로 정본 치환.
-        // (데이터는 section-seed v2 heal 이 고치지만, 어드민이 다시 별칭을 넣어도 여기서 막는다.)
-        // 🐛 2026-08-19 (대표 신고 — "더보기 버튼 클릭 시 아무런 반응이 없고"):
-        //   위 별칭 치환이 **쿼리를 통째로 버리고 있었다.** 서버가 주는 `/?sort=popular` 에서
-        //   경로 부분 `/` 만 정규화하고 그 결과로 링크를 만들었기 때문에 최종 href 가 `/` 가 됐다
-        //   — 홈에서 홈으로 가는 링크라 눌러도 화면이 그대로다(에러도 없어 고장으로 안 보인다).
-        //   ⇒ 정규화는 **경로에만** 적용하고 쿼리·해시는 그대로 다시 붙인다.
-        const raw = sec.more_href ? safeInternalPath(sec.more_href, '') : ''
-        const qIdx = raw.indexOf('?')
-        const rawPath = qIdx === -1 ? raw : raw.slice(0, qIdx)
-        const rawQuery = qIdx === -1 ? '' : raw.slice(qIdx)
-        const canonPath = raw ? resolveConsumerAlias(rawPath) : null
-        const more = raw ? `${canonPath ?? rawPath}${rawQuery}` : ''
-        // 🐛 2026-08-27 (대표 신고 — "지금 인기 이용권의 더보기 클릭도 안되고"): 어드민이 넣은
-        //   `more_href` 가 **홈 자신**(`/?sort=popular`)일 수 있다. 홈에서 홈으로 가는 링크는
-        //   `useHomeQuerySync` 가 정렬을 반영하고 그리드로 스크롤해 주므로 **의도대로 동작한다** —
-        //   단, 그건 두 홈이 그 훅을 부를 때 얘기다(예전엔 PC 홈에만 있어 모바일이 죽어 있었다).
-        //   여기서는 링크가 **아무 데도 못 가는 경우**만 걸러 낸다: 경로가 비었거나 쿼리도 없는
-        //   맨 `/` 이면 눌러도 정말 아무 일이 없으므로 버튼을 그리지 않는다
-        //   (대표 확정 "안 올리면 아예 안 보이게"와 같은 철학 — 죽은 버튼은 없느니만 못하다).
-        const moreIsDeadEnd = more === '/' || more === ''
+        // 🔗 링크 해석은 SSOT(`section-more-href`)가 한다 — 차단·별칭정본화·쿼리보존을 **한 번에**.
+        //   여기 인라인으로 두는 동안 같은 신고가 세 번 났다(08-17 플래시 · 08-19 쿼리유실 ·
+        //   08-27 버튼실종). 특히 `safeInternalPath` 가 쿼리를 버린다는 사실을 두 번 놓쳤다 —
+        //   그래서 순수 함수로 빼서 **실제 입력으로** 테스트한다. 경위는 그 파일 주석에.
+        const more = resolveSectionMoreHref(sec.more_href)
+        const moreIsDeadEnd = isDeadEndHref(more)
         return (
           <Fragment key={sec.id}>
           {/* 📐 가로 여백은 홈 컨테이너가 준다 — 여기서 또 주면 좌우가 어긋난다. */}
