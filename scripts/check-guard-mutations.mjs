@@ -944,13 +944,26 @@ canvas {
   {
     name: '카드 캐러셀 화살표에서 preventDefault 를 없앤다(사진 넘기려던 클릭이 상세로 튄다)',
     file: 'src/components/deal/DealCardMedia.tsx',
-    find: 'e.preventDefault()',
-    replace: 'void 0',
+    // ⚠️ 2026-08-27: 맨 `e.preventDefault()` 였는데 스와이프 배선이 들어오며 **같은 파일에 두 곳**이 됐다
+    //   (화살표 · 스와이프 후 클릭 취소). 유일성 검사가 그걸 잡아 줬다 — 화살표 쪽으로 앵커한다.
+    find: 'e.preventDefault()\n    e.stopPropagation()\n    step(delta)',
+    replace: 'step(delta)',
     test: 'src/tests/unit/deal-card-gallery.test.ts',
     why:
       '카드 캐러셀은 `<Link>` **안**에 있다 — 화살표가 기본동작을 막지 않으면 사진을 넘기려는 클릭이 ' +
       '매번 상세 페이지로 튄다. 에러가 없고 화면도 멀쩡해서 **직접 눌러 보기 전엔 아무도 모르는** 종류다. ' +
       '2026-08-19 그루폰 카드 도입과 함께 들어온 안전장치라, 나중에 리팩토링하다 지워질 위험이 크다.',
+  },
+  {
+    name: '스와이프 후 클릭 취소가 사라진다(사진을 넘겼는데 상세로 튄다)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'if (!didSwipe.current) return',
+    replace: 'if (true) return',
+    test: 'src/tests/unit/deal-card-gallery.test.ts',
+    why:
+      '화살표와 **정확히 같은 사고**인데 손가락 쪽이다(2026-08-27 대표 지시로 스와이프 추가). ' +
+      '터치를 떼면 브라우저가 클릭을 합성하는데, 카드가 `<Link>` 안이라 그 클릭이 그대로 상세로 간다 — ' +
+      '즉 **사진을 넘길 때마다 페이지가 이동**한다. 이 가드가 없으면 폰에서 직접 문질러 보기 전엔 모른다.',
   },
   {
     name: '카드가 갤러리를 전부 미리 로드한다(첫 화면 트래픽 몇 배)',
