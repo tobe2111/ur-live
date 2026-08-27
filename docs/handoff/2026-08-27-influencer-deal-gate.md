@@ -147,3 +147,64 @@
   안 나간 돈이 나간 것으로 박히고 수령자는 영영 못 받는다.
 - CSV 응답의 `X-Skipped-Count` 가 0 이 아니면 **경고를 띄운다** — 계좌 없어 빠진 건을 조용히
   넘기면 그 수령자만 계속 못 받는다.
+
+---
+
+## 🔒 추가 — 대행사 계정에 유어애즈 인플루언서 DB 차단 (대표 지시 2026-08-27)
+
+대표: *"매장으로 가입한 게 아닌, 대행사로 가입하면 유어애즈의 DB를 볼 수 없게끔 해줘."*
+
+### 무엇이 문제였나
+`GET /api/seller/influencers/list` 는 **셀러 토큰만 있으면 누구나** `ad_influencer_leads` 를 열었다.
+등록 유형이 '중개(관리 대행)' 인 계정도 똑같이 열렸다 — 대행사에게 이 목록은 **우리 상품 그 자체**이고,
+한 번 복사되면 되돌릴 방법이 없다.
+
+### 판정 신호는 이미 데이터에 있었다 (새 필드 0개)
+`POST /api/seller/stores` 가 등록 시 받는 값이 그대로 답이다:
+| | 직접(내 가게) | 중개(관리 대행) |
+|---|---|---|
+| `seller_meta.store_channel` | `direct` | `brokered` |
+| `seller_operators.role` | `owner` | `operator` |
+
+### 구현
+- **SSOT `src/worker/utils/ads-db-access.ts`** — `resolveAdsDbAccess()` / `checkAdsDbQuota()`.
+  판정 순서: ① 대표 수동 지정(`seller_meta.ads_db_access`) → ② `store_channel='brokered'` →
+  ③ owner 없이 operator 만 → ④ 허용.
+- 게이트 적용: `/list`(+일일 상한) · `/categories` · `POST /outreach`.
+  `GET /outreach`(자기 제안 이력)는 자기 데이터라 열어 둔다.
+- **일일 열람 상한** `seller_ads_db_usage`(기본 500행/일, `platform_settings.ads_db_daily_row_cap`).
+- 어드민 레버: `GET/POST /api/admin/influencer-outreach/ads-db-access[/:sellerId]` (allow/deny/auto).
+  ⚠️ **`/:id` 보다 먼저 등록**해야 한다(Hono 등록 순서 매칭) — 테스트가 이 순서를 고정한다.
+- 프런트: 차단 사유별 안내(대행사 / 상한 초과).
+
+### ⚠️ 라이브 영향 — 지금 막히는 계정은 **홍대돈까스(id 14) 하나**
+실측(11개 셀러): `brokered` 1건(id 14) · 나머지 10건 미분류(레거시). 아웃리치 사용 이력 **0건**.
+미분류를 막지 않는 이유는 `ads-db-access.ts` 상단 주석과 테스트 ③ 에 적혀 있다 —
+수수료 계산은 미지정을 brokered 로 폴백하지만 **그 폴백을 여기로 끌고 오면 레거시 10곳이 통째로 막힌다.**
+
+### ⚠️ 이 게이트가 못 막는 것 (대표에게 보고함)
+1. 대행사가 등록 때 **'직접'을 고르면 통과**한다(자기신고). 다만 수수료가 5%→**10%** 로 오른다.
+2. **연락처를 가려도 유출은 안 막힌다** — `handle` 하나로 인스타·유튜브에서 바로 찾는다.
+   ⇒ 실효 방어는 게이트가 아니라 **열람 총량 상한 + 감사 로그**다.
+
+### 곁다리로 고친 것 — PR #1226 의 Verify 실패
+파일크기 래칫이 빨간불이었다(`marketing.routes.ts` 911 > 801 · `worker/index.ts` 2691 > 2689).
+**리베이스라인이 아니라 분리**로 고쳤다(CLAUDE.md 처방):
+- 내가 키운 만큼을 떼어 `src/features/group-buy/api/marketing/discovery.ts` (이동만 — 로직 불변).
+  ⚠️ 저기서 새 Hono 를 만들면 `requireSeller()` 가 안 붙어 **인증 없이 열린다** → 인스턴스를 받아 얹는다.
+- `discover-deal-gate.test.ts` · `influencer-picker.test.ts` 의 `ROUTES` 경로를 새 파일로 갱신
+  (안 하면 가드가 "낡은 지도"가 된다).
+- `worker/index.ts` 는 import·mount 2줄을 인접 밀집 줄에 접었다(이 파일의 기존 관행).
+
+### 🩸 이번에 내가 틀린 것 — 다음 세션이 반복하지 말 것
+1. **`node -e "import('./scripts/check-guard-mutations.mjs')"` 로 "문법만 확인"하려다 499건 주입을
+   실제로 돌렸다.** `import()` 는 검사가 아니라 **실행**이다. 문법만 볼 거면 `node --check`.
+   - 그 상태로 돌린 `tsc` 가 `AdminBannersPage.tsx` 에서 `type 'never'` 에러 6건을 뱉었는데
+     **전부 주입 잔재**였다(깨끗한 트리에서 재실행 → 0). 하마터면 없는 버그를 쫓을 뻔했다.
+   - 죽이는 과정에서 `pkill -f "check-guard-mutations"` 가 **자기 자신의 셸을 죽였다**(argv 에 그 문자열이 있다).
+     PID 를 뽑아 `kill -9` 할 것.
+   - **강제 종료가 주입본 1개(`company-save.ts` 의 `[...new Set(...)]` 제거)를 파일에 남겼다.**
+     `git checkout --` 로 되돌렸다. ⇒ 커밋 전 `git status` 로 **내가 만지지 않은 파일이 섞였는지** 반드시 볼 것.
+2. **기존 가드 R1(`ads-leads-db.test.ts`)이 내 코드를 잡았다** — 리드 테이블을 만지는 파일에서
+   bare `c.env.DB` 금지. 내 쿼리는 메인 DB 대상이라 "맞는" 코드였지만, 가드의 취지는
+   *"이 파일에선 핸들 선택을 사람이 하지 마라"* 다 → 예외를 뚫지 않고 `adsLeadsDb(c.env)` 로 통일했다.

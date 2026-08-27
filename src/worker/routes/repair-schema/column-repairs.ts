@@ -385,6 +385,16 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     )` },
     { desc: 'idx_seller_operators_pair', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_seller_operators_pair ON seller_operators(seller_id, user_id)" },
     { desc: 'idx_seller_operators_user', sql: "CREATE INDEX IF NOT EXISTS idx_seller_operators_user ON seller_operators(user_id, revoked_at)" },
+    // 🔒 2026-08-27 유어애즈 DB 열람량 — 대행사 차단(ads-db-access.ts)의 짝. 등록 유형은 자기신고라
+    //   우회되지만 "하루에 몇 행 가져갔나"는 우회할 수 없다. 상한의 근거이자 감사 기록.
+    { desc: 'seller_ads_db_usage', sql: `CREATE TABLE IF NOT EXISTS seller_ads_db_usage (
+      seller_id INTEGER NOT NULL,
+      day TEXT NOT NULL,
+      rows_served INTEGER NOT NULL DEFAULT 0,
+      calls INTEGER NOT NULL DEFAULT 0,
+      last_at DATETIME DEFAULT (datetime('now')),
+      UNIQUE(seller_id, day)
+    )` },
     // 📣 2026-08-20 인플루언서 협업 제안(아웃리치) — 셀러가 작성·저장, 발송은 유어딜 대행(seller-dashboard-v2).
     { desc: 'influencer_outreach_requests', sql: `CREATE TABLE IF NOT EXISTS influencer_outreach_requests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

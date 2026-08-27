@@ -19,7 +19,8 @@ import { sanitizeChannels, sanitizeList, maxFollowers, parseChannels } from '@/w
  *   - 실제 쿼리 실행 결과(D1 없이 문자열/순수함수만 본다)
  *   - 렌더 동작
  */
-const ROUTES = 'src/features/group-buy/api/marketing.routes.ts'
+// 2026-08-27: 파일크기 래칫으로 marketing.routes.ts 에서 분리됐다(이동만 — 로직 불변).
+const ROUTES = 'src/features/group-buy/api/marketing/discovery.ts'
 const read = (p: string) => readFileSync(p, 'utf-8')
 
 function pickerHandler(src: string): string {

@@ -653,7 +653,7 @@
 - `/influencer/settlement`
 - `/seller/prospects`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (169개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (167개)
 
 
 **/api/admin-payouts/disputes**
@@ -909,9 +909,6 @@
 **/api/agency/verify-pin**
 - `POST /api/agency/verify-pin`
 
-**/api/influencer-discover/products**
-- `GET /api/influencer-discover/products`
-
 **/api/influencer-rankings**
 - `GET /api/influencer-rankings/`
 
@@ -948,9 +945,6 @@
 - `POST /api/seller-marketing/deals/:id/respond`
 - `POST /api/seller-marketing/deals/propose`
 
-**/api/seller-marketing/influencers**
-- `GET /api/seller-marketing/influencers`
-
 **/api/seller-marketing/me**
 - `GET /api/seller-marketing/me`
 
@@ -972,7 +966,7 @@
 - `POST /api/seller/promote-boosts/:id/activate`
 
 
-> 마지막 생성: 2026-08-27T08:07:02.889Z
+> 마지막 생성: 2026-08-27T09:43:40.547Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

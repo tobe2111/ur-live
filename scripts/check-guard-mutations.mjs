@@ -72,6 +72,38 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '대행사 계정에 유어애즈 인플루언서 DB 가 다시 열린다',
+    file: 'src/worker/utils/ads-db-access.ts',
+    find: "  if (ch?.value === 'brokered') return { allowed: false, code: 'ADS_DB_AGENCY_BLOCKED', error: AGENCY_MSG }",
+    replace: '',
+    test: 'src/tests/unit/ads-db-access.test.ts',
+    why:
+      '`ad_influencer_leads` 는 몇 달을 들여 모은 자산이고 값은 명단이 아니라 큐레이션에 있다. ' +
+      '중개(관리 대행)로 등록한 계정에 열리면 우리 상품을 그대로 내주는 것이고, 한 번 복사되면 ' +
+      '되돌릴 방법이 없다(2026-08-27 대표 지시). 연락처를 가려도 handle 하나로 다 찾는다.',
+  },
+  {
+    name: '등록 유형이 없는 레거시 매장까지 통째로 막힌다',
+    file: 'src/worker/utils/ads-db-access.ts',
+    find: "  return { allowed: true, reason: ch?.value === 'direct' ? 'direct' : 'unclassified' }",
+    replace: "  return ch?.value === 'direct' ? { allowed: true, reason: 'direct' } : { allowed: false, code: 'ADS_DB_AGENCY_BLOCKED', error: AGENCY_MSG }",
+    test: 'src/tests/unit/ads-db-access.test.ts',
+    why:
+      '수수료 계산은 미지정을 brokered 로 폴백하는데, 그 폴백을 열람 판정까지 끌고 오면 등록 유형이 ' +
+      '생기기 전에 만들어진 매장 10곳이 전부 막힌다. 대표 지시는 "대행사로 가입하면"이지 ' +
+      '"분류가 없으면"이 아니다 — 반대 방향의 오작동이라 조용히 지나가기 쉽다.',
+  },
+  {
+    name: '탐색 엔드포인트가 게이트를 부르지 않는다(판정만 맞고 문은 열림)',
+    file: 'src/features/seller/api/seller-influencers.routes.ts',
+    find: '    const denied = await gateAdsDb(c as Ctx, { quota: true })\n    if (denied) return denied\n',
+    replace: '',
+    test: 'src/tests/unit/ads-db-access.test.ts',
+    why:
+      '순수함수가 아무리 맞아도 라우트가 안 부르면 DB 는 그대로 열려 있다. 이 레포에서 반복된 ' +
+      '"가드는 있는데 안 돎" 클래스라 판정이 아니라 **호출**을 검사한다.',
+  },
+  {
     name: '홈 카드가 다시 두 벌로 갈린다(피드만 대표색 카드)',
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
     find: '      className="block group active:scale-[0.98] flex flex-col"',

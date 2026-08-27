@@ -23,7 +23,8 @@ import { readFileSync } from 'node:fs'
  *   - 런타임 동작(실제로 링크가 눌리는지). 문자열/구조 검사이지 렌더 테스트가 아니다.
  *   - 서버 쿼리가 문법적으로 맞는지. 조건 문자열이 같은지만 본다.
  */
-const ROUTES = 'src/features/group-buy/api/marketing.routes.ts'
+// 2026-08-27: 파일크기 래칫으로 marketing.routes.ts 에서 분리됐다(이동만 — 로직 불변).
+const ROUTES = 'src/features/group-buy/api/marketing/discovery.ts'
 const PAGE = 'src/pages/InfluencerDiscoverPage.tsx'
 const SSOT = 'src/worker/utils/influencer-deal.ts'
 const read = (p: string) => readFileSync(p, 'utf-8')
