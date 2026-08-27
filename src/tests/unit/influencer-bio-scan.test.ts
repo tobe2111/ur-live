@@ -23,7 +23,8 @@ import { readFileSync } from 'node:fs'
  * - 다른 레인의 스캔. 이 파일은 이 쿼리 하나만 지킨다.
  */
 const schema = readFileSync('src/features/marketing/api/influencer-schema.ts', 'utf8')
-const lane = readFileSync('src/features/marketing/api/influencer-enrich-lane.ts', 'utf8')
+// 2026-08-27: 600줄 래칫으로 `influencer-bio-enrich.ts` 로 분리됐다(로직 이동뿐).
+const lane = readFileSync('src/features/marketing/api/influencer-bio-enrich.ts', 'utf8')
 const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
 
 /** 대상 선택 쿼리 본문만 잘라낸다 — 파일 어딘가가 아니라 **이 쿼리**를 봐야 한다. */

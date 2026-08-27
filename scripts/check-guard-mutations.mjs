@@ -836,7 +836,7 @@ canvas {
   },
   {
     name: '🔗 인덱스 못 타는 정렬이 되살아난다(전수 임시정렬)',
-    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    file: 'src/features/marketing/api/influencer-bio-enrich.ts',
     find: '    ORDER BY id DESC LIMIT ?`).bind(POOL_ACCOUNT_ID, max)',
     replace: '    ORDER BY subscriber_count DESC, id DESC LIMIT ?`).bind(POOL_ACCOUNT_ID, max)',
     test: 'src/tests/unit/influencer-bio-scan.test.ts',
@@ -846,7 +846,7 @@ canvas {
   },
   {
     name: '🔗 부분 인덱스 조건 하나가 WHERE 에서 빠진다(인덱스가 안 쓰인다)',
-    file: 'src/features/marketing/api/influencer-enrich-lane.ts',
+    file: 'src/features/marketing/api/influencer-bio-enrich.ts',
     find: "      AND links IS NOT NULL AND (links LIKE '%linktr.ee%'",
     replace: "      AND (links LIKE '%linktr.ee%'",
     test: 'src/tests/unit/influencer-bio-scan.test.ts',

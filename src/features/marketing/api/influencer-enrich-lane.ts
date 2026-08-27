@@ -40,9 +40,10 @@ import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitErro
 // 스냅샷 키는 leaf 모듈(enrich-telemetry)에 둔다 — 어드민 통계가 수집 엔진을 import 하지 않고 읽게.
 import { INFLUENCER_ENRICH_SNAPSHOT_KEY } from './enrich-telemetry'
 import { shouldFallbackToFront } from './enrich-capacity'
+// 🔗 링크인바이오 보강은 파일 크기 래칫(600줄)로 분리 — 로직은 이동뿐, 호출부 계약 유지를 위해 재수출한다.
+import { enrichPoolFromLinkInBio } from './influencer-bio-enrich'
+export { enrichPoolFromLinkInBio }
 
-/** 링크인바이오 플랫폼 자체 메일(안내/noreply) — 인플루언서 연락처가 아니라 저장 금지. */
-const PLATFORM_EMAIL_RE = /@(linktr\.ee|litt\.ly|inpock\.co\.kr|litelink\.at|taplink\.cc|link\.bio)$/i
 
 /** 🔗 한 체인(정각 1회 = 라운드 N개)의 합계. 라운드 하나가 아니라 **그 시간에 실제로 일어난 일**. */
 export interface EnrichChainRollup {
@@ -354,49 +355,6 @@ async function readPerfUnitsUsed(DB: D1Database, day: string): Promise<number> {
   return i > 0 && raw.slice(0, i) === day ? Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) : 0
 }
 
-/**
- * 🔗 링크인바이오 체인 보강 — 프로필 링크가 linktr.ee 류인 리드의 그 페이지를 열어 이메일/인스타를 추출.
- *   (2026-07-28 `influencer-auto-collect` 에서 이 레인으로 이동 — 수집이 아니라 보강이므로.)
- *   `bio_checked_at` 스탬프로 1인 1회(재선택 없음). 못 찾아도 스탬프(허위 재시도 방지).
- */
-export async function enrichPoolFromLinkInBio(DB: D1Database, budget: FetchBudget, max: number): Promise<number> {
-  if (max <= 0 || budget.left <= 0) return 0
-  /**
-   * ⚡ **정렬을 뺐다** (2026-08-27). `ORDER BY subscriber_count DESC` 는 인덱스가 못 받쳐 줘서
-   *   조건에 걸린 행 전부를 임시 B-트리로 정렬했다 — 실측 `rows_read=153,223 · 168ms · 결과 0건`.
-   *   후보 모수가 **평생 74명**이라 구독자순 우선이 만드는 차이는 없고(몇 회차면 전부 소진된다),
-   *   비용만 전수 정렬이었다. `id DESC` 는 부분 인덱스 `(account_id, id)` 를 역순으로 그대로 탄다.
-   *   ⚠️ WHERE 절은 부분 인덱스 조건(`links IS NOT NULL AND bio_checked_at IS NULL`)을 **함의해야**
-   *     그 인덱스가 쓰인다 — 두 조건 중 하나라도 빼면 다시 전수 스캔으로 돌아간다.
-   */
-  const rows = (await DB.prepare(`SELECT id, links, email, instagram, tiktok FROM ad_influencer_leads
-    WHERE account_id = ? AND bio_checked_at IS NULL AND (email IS NULL OR instagram IS NULL)
-      AND links IS NOT NULL AND (links LIKE '%linktr.ee%' OR links LIKE '%litt.ly%' OR links LIKE '%inpock.co.kr%' OR links LIKE '%litelink.at%' OR links LIKE '%link.bio%' OR links LIKE '%taplink.cc%')
-    ORDER BY id DESC LIMIT ?`).bind(POOL_ACCOUNT_ID, max)
-    .all<{ id: number; links: string | null; email: string | null; instagram: string | null; tiktok: string | null }>().catch(() => null))?.results || []
-  if (!rows.length) return 0
-  let enriched = 0
-  const stmts: ReturnType<D1Database['prepare']>[] = []
-  for (const r of rows) {
-    if (budget.left <= 0 || (budget.deadline && Date.now() >= budget.deadline)) break // 예산/시간 소진 — 스탬프 없이 중단(다음 라운드가 이어받음)
-    budget.left -= 1
-    const link = (r.links || '').split(/\s+/).find(l => /^(?:https?:\/\/)?(?:linktr\.ee|litt\.ly|inpock\.co\.kr|litelink\.at|link\.bio|taplink\.cc)\//i.test(l)) || ''
-    const html = link ? await fetchLinkInBioText(link) : ''
-    const c = html ? extractContacts(html) : { emails: [], instagram: [], tiktok: [], links: [] }
-    let email = r.email
-    if (!email && html) {
-      const picked = pickBusinessEmail(html)
-      email = (picked && !PLATFORM_EMAIL_RE.test(picked) ? picked : null) || c.emails.find(e => !PLATFORM_EMAIL_RE.test(e)) || null
-    }
-    const insta = r.instagram || c.instagram[0] || null
-    const tt = r.tiktok || c.tiktok[0] || null
-    if ((email && !r.email) || (insta && !r.instagram) || (tt && !r.tiktok)) enriched++
-    stmts.push(DB.prepare("UPDATE ad_influencer_leads SET email = ?, instagram = ?, tiktok = ?, bio_checked_at = datetime('now') WHERE id = ? AND account_id = ?")
-      .bind(email, insta, tt, r.id, POOL_ACCOUNT_ID))
-  }
-  if (stmts.length) await DB.batch(stmts).catch(() => null)
-  return enriched
-}
 
 const nowStamp = () => new Date().toISOString().slice(0, 19).replace('T', ' ')
 
