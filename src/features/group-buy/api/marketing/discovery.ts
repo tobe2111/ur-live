@@ -11,7 +11,6 @@
  */
 import type { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
-import { optionalAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
 import { ensureInfluencerProfileTable, parseChannels, maxFollowers, parseJsonList } from '@/worker/utils/influencer-profile'
 import { intParam } from '@/shared/pagination'
@@ -110,11 +109,13 @@ export function registerDiscoveryRoutes(sellerApp: MarketingApp, discoverApp: Ma
    * 약속 위반이고, 그 사람과의 관계는 거기서 끝난다. 그래서 응답에 **내 딜 %를 실어** 보내
    * 화면이 "링크를 줄 수 있는 상품"과 "먼저 딜을 맺어야 하는 상품"을 구분하게 한다.
    *
-   * ⚠️ `optionalAuth` 인 이유: 이 라우트는 원래 무인증이었다. `requireAuth` 로 바꾸면
-   *   비로그인 방문자의 카탈로그가 통째로 401 이 된다(둘러보기 자체는 막을 이유가 없다).
+   * ⚠️ 인증은 **라우터 레벨**(`marketing.routes.ts` 의 `discoverApp.use('*', optionalAuth())`)에 있다.
+   *   여기서 다시 달면 두 번 돈다. 🩸 2026-08-27 정정: 어제 이 자리에 `optionalAuth()` 를 달고
+   *   "비로그인도 열었다"고 적었는데 상위가 `requireAuth()` 라 **실제로는 안 열려 있었다** —
+   *   미들웨어를 라우트에 덧붙이는 것으로는 상위 게이트를 못 푼다.
    *   로그인했을 때만 `my_deal_pct` 가 채워지고, 아니면 `null` — 화면이 로그인을 유도한다.
    */
-  discoverApp.get('/products', optionalAuth(), async (c) => {
+  discoverApp.get('/products', async (c) => {
     const DB = c.env.DB
     const cat = c.req.query('category') || 'all'
     const validCats = ['meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher']

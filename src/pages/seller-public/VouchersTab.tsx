@@ -1,45 +1,29 @@
-// 🏁 2026-07-07 (대표 — "이용권 UI 저러면 안되지"): 유어샵 카드 단일화. 이용권도 표준 BrowseProductCard
-//   2열 그리드로 — 내 상품·추천템과 동일한 그라데이션 카드(★평점·할인·구매수 내장). "카드 1종"(2026-06-25 대표).
-// 🧹 2026-07-20 (유어샵 전수조사): 도달불가 빈-상태 분기 제거(호출부가 gridVouchers.length>0 일 때만 렌더) +
-//   @deprecated textClass·미사용 isOwner prop 제거.
-import BrowseProductCard from '@/pages/browse/BrowseProductCard'
-import type { Product as BrowseProduct } from '@/pages/browse/types'
-import { seededColor } from '@/utils/card-gradient'
+// 🏁 2026-08-27 (대표 신고 — "유어샵 이용권 UI 가 예전 디자인으로 되어 있다"):
+//   유어샵 이용권 카드를 **홈과 같은 카드**(`GroupBuyFeedCard`)로. 2026-08-19 에 카드를 한 벌로
+//   합칠 때 홈·섹션만 갈아 끼우고 **유어샵이 빠져** 두 세대가 공존하고 있었다 —
+//   홈은 그루폰식(머천트→제목→주소·거리→★평점→정가취소선·판매가·할인 pill, 사진 좌우 넘기기),
+//   유어샵은 7월에 통일했던 그라데이션 카드.
+//
+// 🧭 목적지도 함께 고쳤다: 종전 `to={/products/:id}` 는 **쇼핑 상세**라 이용권이 거기 도착한 뒤
+//   `canonicalDetailPath` 가 `/group-buy/:id` 로 되돌린다. 결과는 맞지만 **페이지 한 장을 헛로드**한다.
+//   이제 카드가 SSOT 로 바로 간다(`to` 를 안 넘기면 `canonicalDetailPath` 가 목적지를 정한다).
+//   ⚠️ 여기서는 `to` 를 **주면 안 된다** — 이 그리드는 매장 자기 이용권이라 귀속이 없다.
+//      담은 핀(`CuratorPinsSection`·`CuratorPage`)만 `/u/{handle}/p/{id}` 를 넘긴다.
+//
+// 🧹 2026-07-20 (유어샵 전수조사): 도달불가 빈-상태 분기 제거(호출부가 gridVouchers.length>0 일 때만 렌더).
+import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import type { Product } from './types'
 
 interface Props {
   mealVouchers: Product[]
 }
 
-/**
- * 셀러 공개페이지 이용권 섹션 — 표준 상품 카드 그리드.
- * 🛡️ TD-006 추출 (2026-05-06). 🏁 2026-07-07 카드 통일(BrowseProductCard).
- */
+/** 셀러 공개페이지 이용권 섹션 — 홈과 동일한 표준 카드 그리드. */
 export default function VouchersTab({ mealVouchers }: Props) {
   return (
     <div className="grid grid-cols-2 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
       {mealVouchers.map(p => (
-        <BrowseProductCard
-          key={p.id}
-          product={{
-            id: p.id,
-            name: p.name,
-            price: p.price,
-            current_price: p.price,
-            original_price: p.original_price ?? undefined,
-            discount_rate: p.discount_rate ?? 0,
-            image_url: p.image_url || '',
-            stock: 0,
-            dominant_color: p.dominant_color,
-            avg_rating: p.avg_rating,
-            review_count: p.review_count,
-            sold_count: p.sold_count,
-            restaurant_name: p.restaurant_name,
-          } as BrowseProduct}
-          aboveFold={false}
-          to={`/products/${p.id}`}
-          fallbackColor={seededColor(p.id)}
-        />
+        <GroupBuyFeedCard key={p.id} p={p} aboveFold={false} />
       ))}
     </div>
   )

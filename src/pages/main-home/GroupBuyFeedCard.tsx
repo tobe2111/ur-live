@@ -100,7 +100,15 @@ function prefetchDetailChunk() {
   import('@/pages/GroupBuyDetailPage').catch(() => { _detailChunkPrefetched = false })
 }
 
-function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null }) {
+/**
+ * 🔗 `to` 는 **유어샵 핀 전용 탈출구**다 (2026-08-27).
+ *   기본값은 `canonicalDetailPath`(라우팅 SSOT). 그런데 유어샵의 담은 핀은 반드시
+ *   `/u/{handle}/p/{id}` 로 가야 한다 — 그 경로가 **클릭을 기록하고 `?aff=` 귀속을 붙인다.**
+ *   상세로 직행시키면 화면은 똑같은데 **소개비 귀속이 조용히 사라진다.**
+ *   ⚠️ 그래서 이 prop 을 지우거나 호출부에서 빠뜨리면 돈이 새는 쪽으로 조용히 깨진다
+ *      (`urshop-card-unify.test.ts` 가 이 배선을 고정한다).
+ */
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
 
@@ -188,7 +196,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc 
       ref={linkRef}
       // 🏨 2026-07-20 (숙소 상세 SSOT): 숙소 카드는 객실·날짜 예약이 있는 /stays/:id 로 —
       //   목적지는 canonicalDetailPath(라우팅 SSOT) 위임(그 외 카테고리는 기존 /group-buy/:id 동일).
-      to={canonicalDetailPath(p) ?? `/group-buy/${p.id}`}
+      to={to ?? canonicalDetailPath(p) ?? `/group-buy/${p.id}`}
       onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
       onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
       onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}

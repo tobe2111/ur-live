@@ -72,6 +72,27 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '유어샵 담은 핀에서 소개비 귀속이 조용히 사라진다',
+    file: 'src/pages/seller-public/CuratorPinsSection.tsx',
+    find: '              to={`/u/${handle}/p/${pin.product_id}`}\n',
+    replace: '',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '담은 핀은 `/u/{handle}/p/{id}` 로 가야 클릭이 기록되고 `?aff=` 귀속이 붙는다. 카드가 목적지를 ' +
+      '스스로 정하므로 이 prop 을 빠뜨리면 **화면은 똑같은데 소개비 귀속만 사라진다** — 에러가 없어 ' +
+      '아무도 모르고, 소개자는 팔고도 0원을 받는다(2026-08-27 카드 통일 중 실제로 날 뻔했다).',
+  },
+  {
+    name: '유어샵 카드가 다시 옛 세대로 갈린다',
+    file: 'src/pages/seller-public/VouchersTab.tsx',
+    find: '<GroupBuyFeedCard key={p.id}',
+    replace: '<BrowseProductCard key={p.id}',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '2026-08-19 에 카드를 한 벌로 합칠 때 홈만 갈아 끼우고 유어샵이 빠져 두 세대가 공존했다. ' +
+      '각각은 멀쩡해 보여 나란히 놓고 봐야만 드러난다 — 대표가 화면을 보고 신고했다.',
+  },
+  {
     name: '대행사 계정에 유어애즈 인플루언서 DB 가 다시 열린다',
     file: 'src/worker/utils/ads-db-access.ts',
     find: "  if (ch?.value === 'brokered') return { allowed: false, code: 'ADS_DB_AGENCY_BLOCKED', error: AGENCY_MSG }",

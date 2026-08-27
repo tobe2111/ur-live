@@ -21,7 +21,8 @@ import { useAuthStore } from '@/client/stores/auth.store'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatWon, formatNumber } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
-import BrowseProductCard from './browse/BrowseProductCard'
+// 🏁 2026-08-27 (대표 신고 — 유어샵 이용권 UI 가 예전 디자인): 홈과 한 벌인 카드로.
+import GroupBuyFeedCard from './main-home/GroupBuyFeedCard'
 import { seededColor } from '@/utils/card-gradient'
 import type { Product as BrowseProduct } from './browse/types'
 import { Search, X, Trash2 } from 'lucide-react'
@@ -492,6 +493,8 @@ function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: C
   }
 
   // 🏁 2026-06-26 (대표 — 유어샵 카드를 쇼핑 카드와 동일하게): 할인/평점/구매수까지 전달.
+  //   2026-08-27: 카드가 `GroupBuyFeedCard`(홈과 동일)로 바뀌면서 `category` 도 넘긴다 —
+  //   카드가 카테고리 배지와 `canonicalDetailPath` 판정에 쓴다.
   const product = {
     id: pin.product_id,
     name: pin.product_name,
@@ -506,16 +509,14 @@ function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: C
     avg_rating: pin.avg_rating ?? undefined,
     review_count: pin.review_count ?? undefined,
     sold_count: pin.sold_count ?? undefined,
-  } as BrowseProduct
-
-  // 🎨 2026-06-18 (사용자 신고 — 방문자 모바일 핀 카드 그라데이션 없음): 핀 상품은 외부호스트(교환권 등)
-  //   이미지가 많아 dominant_color null + canvas 추출이 CORS taint 로 실패 → 회색 단색으로 보이던 것.
-  //   카테고리/상품 시드 폴백색을 줘 항상 컬러 그라데이션 (추출 성공 시 실제 대표색이 덮어씀).
-  const fallbackColor = seededColor(pin.category || pin.product_id)
+    category: pin.category ?? undefined,
+  }
 
   return (
     <div className="relative group">
-      <BrowseProductCard product={product} aboveFold={aboveFold} to={`/u/${handle}/p/${pin.product_id}`} fallbackColor={fallbackColor} />
+      {/* 🔗 목적지는 반드시 /u/:handle/p/:productId — 그 경로가 **클릭을 기록하고 `?aff=` 귀속을 붙인다.**
+          상세로 직행시키면 화면은 똑같은데 소개비 귀속이 조용히 사라진다(돈이 새는 쪽으로 깨진다). */}
+      <GroupBuyFeedCard p={product} aboveFold={aboveFold} to={`/u/${handle}/p/${pin.product_id}`} />
       {/* 🔢 2026-06-18 (사용자 요청 — 유어샵에서만 카드 번호): 핀 순서 번호 배지. 다른 곳(홈/쇼핑) 미적용
           — PinCard(유어샵 전용)에만 오버레이라 BrowseProductCard 공용 동작 불변.
           🎨 2026-06-19 (세련화): 프로스트 글래스 원형 배지. */}
