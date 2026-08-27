@@ -969,7 +969,7 @@
 - `POST /api/seller/promote-boosts/:id/activate`
 
 
-> 마지막 생성: 2026-08-27T05:09:56.635Z
+> 마지막 생성: 2026-08-26T14:36:36.394Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

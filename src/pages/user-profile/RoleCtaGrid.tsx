@@ -35,7 +35,7 @@ export default function RoleCtaGrid() {
     const hasAgencyToken = typeof window !== 'undefined' && !!localStorage.getItem('agency_token')
     // 내 바로가기 (모든 유저가 가진 유어샵 + 보유 role 의 대시보드 단축)
     const dash: Cta[] = [
-      { icon: '🔗', title: t('roleCta.linkshop', { defaultValue: '내 유어샵' }), desc: t('roleCta.linkshopDesc', { defaultValue: '교환권·공구 추천하고 적립 받기' }), to: '/u/me', show: () => true, accent: true },
+      { icon: '🔗', title: t('roleCta.linkshop', { defaultValue: '내 유어샵' }), desc: t('roleCta.linkshopDesc', { defaultValue: '이용권을 담아 진열하고 소개해요' }), to: '/u/me', show: () => true, accent: true },
       { icon: '📊', title: t('roleCta.sellerDash', { defaultValue: '셀러 대시보드' }), desc: t('roleCta.sellerDashDesc', { defaultValue: '내 상품·공구·정산 관리' }), to: '/seller', show: () => hasSellerToken, accent: true },
       { icon: '📊', title: t('roleCta.agencyDash', { defaultValue: '에이전시 대시보드' }), desc: t('roleCta.agencyDashDesc', { defaultValue: '소속 사업자·소개 가게 수익' }), to: '/agency', show: () => hasAgencyToken, accent: true },
     ]
@@ -44,7 +44,9 @@ export default function RoleCtaGrid() {
       // 🧭 2026-06-10 (전략 정합 — 라이브 영구 중단·동네딜 집중): 라이브 셀러 CTA 제거,
       //   동네 공구 제안 + 역할 전환(사업자/에이전시) 중심으로 재구성.
       { icon: '🤝', title: t('roleCta.proposeGb', { defaultValue: '동네 공구 제안' }), desc: t('roleCta.proposeGbDesc', { defaultValue: '원하는 가게 제안하면 모아서 열어드려요' }), to: '/community-group-buy/new', show: () => !COMMUNITY_PROPOSAL_HIDDEN },
-      { icon: '🏪', title: t('roleCta.openShop', { defaultValue: '내 쇼핑몰 열기' }), desc: t('roleCta.openShopDesc', { defaultValue: '사업자 등록 → 내 상품·이용권 판매' }), to: '/seller/register/supplier', show: () => !hasSellerToken },
+      // 🏷️ 2026-08-26: '내 쇼핑몰 열기' → '내 가게 등록'. 유어샵은 가입하면 **이미 있다** — 여기서
+      //   새로 만드는 건 매장이다. 목적지도 매장 등록(/store/new)으로(대표 확정 '매장 등록이 선행').
+      { icon: '🏪', title: t('roleCta.openShop', { defaultValue: '내 가게 등록' }), desc: t('roleCta.openShopDesc', { defaultValue: '카카오맵에서 내 가게를 찾아 이용권을 팔아요' }), to: '/store/new', show: () => !hasSellerToken },
       { icon: '🤵', title: t('roleCta.agencyBiz', { defaultValue: '에이전시 사업' }), desc: t('roleCta.agencyBizDesc', { defaultValue: '가게 영업 → 2% 영구 수익' }), to: '/agency/register/business', show: () => !hasAgencyToken },
     ]
     return {

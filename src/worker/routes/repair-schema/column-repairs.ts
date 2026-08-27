@@ -1003,7 +1003,7 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     // 🛡️ 2026-06-01 영입자(크리에이터) 매장영입 commission — affiliate 와 구분용 source.
     //   'affiliate'(기존 referral/promotion, NULL 포함) vs 'store_intro'(매장 영입자 영구 commission).
     { desc: 'influencer_attributions.source', sql: "ALTER TABLE influencer_attributions ADD COLUMN source TEXT" },
-    { desc: 'seed: influencer_store_intro_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_store_intro_pct', '1.5', '크리에이터 매장 영입 commission (%, 영입자에게 매장 매출의 %)', datetime('now'))" },
+    { desc: 'seed: influencer_store_intro_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_store_intro_pct', '2', '매장 영입(소개) commission (%, 영입자에게 매장 매출의 %)', datetime('now'))" },
 
     // 🏭 2026-06-07 (사용자 요청): 커뮤니티 공구 제안자(공구를 유치하는 사람)가 작성하는 소개글/안내문구.
     { desc: 'community_group_buys.description', sql: "ALTER TABLE community_group_buys ADD COLUMN description TEXT" },

@@ -15,7 +15,7 @@ describe('ProductNoticeSection', () => {
     render(<ProductNoticeSection />)
 
     expect(screen.getByText('모든 상품은 철저한 검수 과정을 거칩니다')).toBeDefined()
-    expect(screen.getByText('판매자 발송 및 검수 완료 후 배송됩니다')).toBeDefined()
+    expect(screen.getByText('매장 발송 및 검수 완료 후 배송됩니다')).toBeDefined()
     expect(screen.getByText('상품 수령 후 7일 이내 교환/반품 가능합니다')).toBeDefined()
   })
 
@@ -110,7 +110,7 @@ describe('ProductNoticeSection', () => {
     render(<ProductNoticeSection />)
 
     const title = screen.getByText('배송 기간 5-7 영업일')
-    const description = screen.getByText('판매자 발송 및 검수 완료 후 배송됩니다')
+    const description = screen.getByText('매장 발송 및 검수 완료 후 배송됩니다')
     
     expect(title).toBeDefined()
     expect(description).toBeDefined()

@@ -1,5 +1,5 @@
 /**
- * 🤝 셀러(매장) — 인플루언서 우대 커미션 협업 deal (2026-07-10)
+ * 🤝 셀러(매장) — 소개 파트너 우대 커미션 협업 deal (2026-07-10)
  *   백엔드(기존 — src/features/group-buy/api/marketing.routes.ts sellerApp, 마운트 /api/seller-marketing):
  *     GET  /api/seller-marketing/deals              — 내 deal 목록
  *     POST /api/seller-marketing/deals/propose      — {influencer_id, commission_pct, ends_at?, message?}
@@ -69,7 +69,7 @@ export default function SellerInfluencerDealsPage() {
     const influencerId = form.influencer_id.trim()
     const pct = Number(form.commission_pct)
     if (!influencerId || !/^[a-zA-Z0-9_\-:]{1,64}$/.test(influencerId)) {
-      toast.error(t('seller.influencerDeals.invalidId', { defaultValue: '인플루언서 ID 형식이 올바르지 않습니다' }))
+      toast.error(t('seller.influencerDeals.invalidId', { defaultValue: '소개 파트너 ID 형식이 올바르지 않습니다' }))
       return
     }
     if (!Number.isFinite(pct) || pct <= 0) {
@@ -87,8 +87,8 @@ export default function SellerInfluencerDealsPage() {
       }, { headers })
       if (r.data?.success) {
         toast.success(form.requires_content_proof
-          ? t('seller.influencerDeals.proposeSuccessConditional', { defaultValue: '조건부 제안을 보냈습니다 — 인플루언서가 콘텐츠를 게시하고 링크를 제출하면 검토 후 발효됩니다' })
-          : t('seller.influencerDeals.proposeSuccess', { defaultValue: '제안을 보냈습니다 — 인플루언서가 수락하면 활성화됩니다' }))
+          ? t('seller.influencerDeals.proposeSuccessConditional', { defaultValue: '조건부 제안을 보냈습니다 — 상대가 콘텐츠를 게시하고 링크를 제출하면 검토 후 발효됩니다' })
+          : t('seller.influencerDeals.proposeSuccess', { defaultValue: '제안을 보냈습니다 — 상대가 수락하면 활성화됩니다' }))
         setShowForm(false)
         setForm({ influencer_id: '', commission_pct: '1.5', ends_at: '', message: '', requires_content_proof: false })
         dealsQ.refetch()
@@ -138,7 +138,7 @@ export default function SellerInfluencerDealsPage() {
       title: `${deal.influencer_id} · ${deal.commission_pct}%`,
       message: action === 'approve'
         ? t('seller.influencerDeals.confirmApproveProof', { defaultValue: '콘텐츠 게시를 확인했나요? 승인하면 우대 커미션이 발효됩니다 (이후 판매분부터 적용, 소급 없음).' })
-        : t('seller.influencerDeals.confirmRejectProof', { defaultValue: '이 콘텐츠 인증을 반려할까요? 인플루언서가 다시 제출할 수 있습니다.' }),
+        : t('seller.influencerDeals.confirmRejectProof', { defaultValue: '이 콘텐츠 인증을 반려할까요? 상대가 다시 제출할 수 있습니다.' }),
       danger: action === 'reject',
     })
     if (!ok) return
@@ -165,7 +165,7 @@ export default function SellerInfluencerDealsPage() {
       <div className="mx-auto max-w-4xl space-y-4 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('seller.influencerDeals.title', { defaultValue: '인플 협업' })}
-          subtitle={t('seller.influencerDeals.subtitle', { defaultValue: '인플루언서 우대 커미션 협업을 제안하고, 받은 신청에 응답합니다' })}
+          subtitle={t('seller.influencerDeals.subtitle', { defaultValue: '소개해 줄 사람에게 우대 커미션을 제안하고, 받은 신청에 응답합니다' })}
           icon={<Handshake className="h-5 w-5" />}
         />
 
@@ -173,7 +173,7 @@ export default function SellerInfluencerDealsPage() {
         <div className="flex items-start gap-2.5 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
           <p className="text-[11px] leading-relaxed text-blue-700">
-            {t('seller.influencerDeals.pinNote', { defaultValue: '우대 커미션은 인플루언서 추천(핀) 판매에 적용됩니다.' })}
+            {t('seller.influencerDeals.pinNote', { defaultValue: '우대 커미션은 소개(핀)로 팔린 건에만 적용됩니다.' })}
           </p>
         </div>
 
@@ -198,7 +198,7 @@ export default function SellerInfluencerDealsPage() {
             <div className="mt-4 space-y-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-700">
-                  {t('seller.influencerDeals.influencerId', { defaultValue: '인플루언서 ID' })}
+                  {t('seller.influencerDeals.influencerId', { defaultValue: '소개 파트너 ID' })}
                 </label>
                 <input
                   value={form.influencer_id}
@@ -257,7 +257,7 @@ export default function SellerInfluencerDealsPage() {
                 <span className="text-[11px] leading-relaxed text-amber-800">
                   <b className="font-bold">{t('seller.influencerDeals.proofGateLabel', { defaultValue: '콘텐츠 게시 인증 시 발효' })}</b>
                   {' — '}
-                  {t('seller.influencerDeals.proofGateDesc', { defaultValue: '인플루언서가 콘텐츠(블로그/SNS)를 게시하고 링크를 제출한 뒤, 내가 확인·승인해야 우대 커미션이 발효됩니다. 승인 전 판매분은 기본 커미션이 적용됩니다.' })}
+                  {t('seller.influencerDeals.proofGateDesc', { defaultValue: '상대가 콘텐츠(블로그/SNS)를 게시하고 링크를 제출한 뒤, 내가 확인·승인해야 우대 커미션이 발효됩니다. 승인 전 판매분은 기본 커미션이 적용됩니다.' })}
                 </span>
               </label>
               <div className="flex gap-2 pt-1">
@@ -322,7 +322,7 @@ export default function SellerInfluencerDealsPage() {
               <DashboardEmptyState
                 icon={<Handshake className="h-7 w-7" />}
                 title={t('seller.influencerDeals.empty', { defaultValue: '협업 deal 이 없습니다' })}
-                description={t('seller.influencerDeals.emptyDesc', { defaultValue: '인플루언서에게 우대 커미션을 제안하거나, 받은 신청에 응답해보세요.' })}
+                description={t('seller.influencerDeals.emptyDesc', { defaultValue: '소개해 줄 사람에게 우대 커미션을 제안하거나, 받은 신청에 응답해보세요.' })}
               />
             ) : (
               <div className="divide-y divide-gray-100">

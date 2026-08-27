@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-16: 인플루언서 지역 ranking 공개 페이지.
+ * 🛡️ 2026-05-16: 지역별 소개 성과 ranking 공개 페이지.
  *
  * 누구나 조회 가능. 인플이 본인 ranking 캡쳐 → SNS 공유 = 자연 마케팅.
  * 익명화: 인플이 본인 settlement 페이지에서 ranking_public OFF 가능.
@@ -54,7 +54,7 @@ export default function InfluencerRankingsPage() {
       <header className="sticky top-0 z-30 bg-gradient-to-r from-gray-700 to-gray-800 text-white px-4 py-4">
         <div className="flex items-center gap-2">
           <Trophy className="w-6 h-6" />
-          <h1 className="text-lg font-extrabold">인플루언서 랭킹</h1>
+          <h1 className="text-lg font-extrabold">이 달의 소개 랭킹</h1>
         </div>
         <p className="text-[11px] opacity-90 mt-1">지역별 매출 Top — 매월 1일 리셋</p>
       </header>

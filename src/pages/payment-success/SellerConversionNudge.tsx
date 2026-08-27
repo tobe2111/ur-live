@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom'
  * 규칙:
  *   - 이미 셀러(seller_token)면 미노출 — 전환 대상만.
  *   - user_handle 이 있으면 "이미 내 유어샵이 있어요" 자산을 개인화(가입 시 즉시 핸들 발급과 짝).
- *   - CTA → /seller/register/supplier?from=payment (기존 ?from=curator 패턴과 동일 게이트).
+ *   - CTA → /store/new?from=payment (매장 등록 선행 — 사업자 인증은 대시보드가 안내).
  *   - '다음에' 닫으면 localStorage 로 재노출 안 함(반복 구매자 피로 방지).
  *   자기완결 컴포넌트 — PaymentSuccessPage 의 결제 로직과 완전 분리(additive).
  */
@@ -45,20 +45,20 @@ export default function SellerConversionNudge() {
             이제 나도 팔아볼까요?
           </p>
           <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">
-            방금 산 것 같은 상품·이용권, <strong className="text-gray-900 dark:text-white">내 쇼핑몰</strong>에서 직접 팔 수 있어요.
+            방금 산 것 같은 상품·이용권, <strong className="text-gray-900 dark:text-white">내 유어샵</strong>에서 직접 팔 수 있어요.
             {handle
               ? <> 이미 <span className="font-mono text-gray-900 dark:text-white">urdeal.kr/u/{handle}</span> 유어샵이 준비돼 있어요.</>
-              : <> 사업자 등록만 하면 내 유어샵이 열립니다.</>}
+              : <> 내 가게를 등록하면 내 유어샵에서 이용권을 팔 수 있어요.</>}
             <span className="block text-[11px] text-gray-500 dark:text-gray-400 mt-1">플랫폼 수수료 5% · 판매 대금은 QR 사용 확인 후 정산</span>
           </p>
         </div>
       </div>
       <div className="mt-3 flex items-center gap-2">
         <button
-          onClick={() => navigate('/seller/register/supplier?from=payment')}
+          onClick={() => navigate('/store/new?from=payment')}
           className="flex-1 py-2.5 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white text-sm font-bold rounded-lg transition-colors"
         >
-          내 쇼핑몰 열기 →
+          내 가게 등록하기 →
         </button>
         <button
           onClick={() => {

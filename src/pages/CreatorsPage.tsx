@@ -1,5 +1,5 @@
 /**
- * ✨ 인플루언서 모집 랜딩 — /creators (2026-07-19 대표 "웹페이지 3종" ③ — flip 시점 맞춰 공개)
+ * ✨ 소개 파트너 모집 랜딩 — /creators (2026-07-19 대표 "웹페이지 3종" ③ — flip 시점 맞춰 공개)
  *   히어로 → 수익 구조(판매당 promo%) → 시작 3단계 → 성과 화면 프리뷰(스크린샷 placeholder —
  *   잔존 장치 2종 완성 후 실캡처 교체) → 시드 모집 폼(구글폼 임베드 — URL 전달 시 GOOGLE_FORM_URL 교체).
  *   카피는 대표 별도 전달분으로 교체 예정. 브랜드 토큰: brand/#1A2C42/#FAF7F5.
@@ -33,7 +33,7 @@ export default function CreatorsPage() {
       <main className="px-5 pb-32 max-w-xl mx-auto">
         {/* 히어로 */}
         <section className="pt-8 pb-10">
-          <p className="text-[12px] font-extrabold tracking-widest text-brand mb-3">유어딜 크리에이터</p>
+          <p className="text-[12px] font-extrabold tracking-widest text-brand mb-3">유어딜에서 소개하기</p>
           <h1 className="text-[26px] leading-[1.3] font-extrabold text-[#1A2C42] dark:text-[#F5F3F1]">
             <span className="text-brand">링크 하나</span>로 동네 맛집을 팔고<br />커미션을 받으세요
           </h1>
@@ -96,14 +96,14 @@ export default function CreatorsPage() {
 
         {/* 시드 모집 폼 */}
         <section id="apply" className="pb-6">
-          <h2 className="text-[19px] font-extrabold text-[#1A2C42] dark:text-[#F5F3F1] mb-4">시드 크리에이터 모집</h2>
+          <h2 className="text-[19px] font-extrabold text-[#1A2C42] dark:text-[#F5F3F1] mb-4">1기 소개 파트너 모집</h2>
           {GOOGLE_FORM_URL ? (
             <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1A2334]">
-              <iframe src={GOOGLE_FORM_URL} title="시드 크리에이터 지원 폼" className="w-full h-[640px] border-0" loading="lazy" />
+              <iframe src={GOOGLE_FORM_URL} title="1기 소개 파트너 지원 폼" className="w-full h-[640px] border-0" loading="lazy" />
             </div>
           ) : (
             <Link to="/creators/apply" className="block rounded-2xl bg-[#1A2C42] dark:bg-[#1A2334] p-6 text-center active:scale-[0.99] transition-transform">
-              <p className="text-[15px] font-extrabold text-[#FAF7F5]">1기 시드 크리에이터를 모집하고 있어요</p>
+              <p className="text-[15px] font-extrabold text-[#FAF7F5]">1기 소개 파트너를 모집하고 있어요</p>
               <p className="text-[12.5px] text-[#9AA5B5] mt-1.5">지금 지원하시면 온보딩 안내를 보내드립니다</p>
             </Link>
           )}
@@ -116,12 +116,12 @@ export default function CreatorsPage() {
           {GOOGLE_FORM_URL ? (
             <a href={GOOGLE_FORM_URL} target="_blank" rel="noopener noreferrer"
               className="flex-1 h-12 rounded-2xl bg-brand text-white flex items-center justify-center gap-1.5 text-[14px] font-extrabold active:scale-[0.98] transition-transform">
-              시드 크리에이터 지원 <ArrowRight className="w-4 h-4" />
+              소개 파트너 지원 <ArrowRight className="w-4 h-4" />
             </a>
           ) : (
             <Link to="/creators/apply"
               className="flex-1 h-12 rounded-2xl bg-brand text-white flex items-center justify-center gap-1.5 text-[14px] font-extrabold active:scale-[0.98] transition-transform">
-              시드 크리에이터 지원 <ArrowRight className="w-4 h-4" />
+              소개 파트너 지원 <ArrowRight className="w-4 h-4" />
             </Link>
           )}
         </div>

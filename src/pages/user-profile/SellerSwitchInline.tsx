@@ -104,14 +104,20 @@ export default function SellerSwitchInline() {
     )
   }
 
-  // 비셀러 (카카오 포함 전원) → 단일 가입 관문
+  // 비셀러 (카카오 포함 전원) → **매장 등록**(카카오맵에서 내 가게 찾기).
+  // 🏷️ 2026-08-26 (대표 "내 쇼핑몰 열기는 하면 안될 것 같아"): 문구를 '내 가게 등록'으로.
+  //   유어샵은 **가입하면 이미 있다**(모든 유저에게 `/u/{handle}` 자동 생성) — "쇼핑몰을 연다"는
+  //   말은 사실과 다르고, 이미 가진 걸 또 만들라는 소리로 들린다. 여기서 새로 만드는 건 **매장**이다.
+  // 🔁 2026-08-26: 종전 목적지는 셀러 가입 폼(`/seller/register/supplier`)이었다. 그런데 대표 확정
+  //   순서는 "대시보드 첫 단계는 매장 등록, 무조건 선행"이고, `POST /api/seller/stores` 가 매장 행 +
+  //   운영 권한을 함께 만든다 — 사장님에게 사업자 폼부터 들이밀 이유가 없다. 내 가게부터 찾게 한다.
   return (
     <button
-      onClick={() => navigate('/seller/register/supplier')}
-      aria-label={t('sellerSwitch.applyAria', { defaultValue: '내 쇼핑몰 열기 (사업자 가입)' })}
+      onClick={() => navigate('/store/new')}
+      aria-label={t('sellerSwitch.applyAria', { defaultValue: '내 가게 등록하기' })}
       className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-gray-100 dark:bg-white/[0.08] border border-white/[0.12] text-[10px] text-gray-900 dark:text-white/85 font-semibold active:scale-95 transition-all"
     >
-      <Store className="w-2.5 h-2.5" aria-hidden="true" /> {t('sellerSwitch.openMyShop', { defaultValue: '내 쇼핑몰 열기' })}
+      <Store className="w-2.5 h-2.5" aria-hidden="true" /> {t('sellerSwitch.openMyShop', { defaultValue: '내 가게 등록' })}
     </button>
   )
 }

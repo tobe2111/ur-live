@@ -26,7 +26,7 @@ export const guideRoutes = new Hono<{ Bindings: Env }>()
 //   v1 = 암묵적 레거시(버전 미저장, ensureSeeded '0행일 때만' 시대) / v2 = 버전 메커니즘 도입.
 //   v4 = 2026-07-12 체험 캠페인(어드민 대행생성·추첨·비정산) + 조건부 우대 커미션(셀러) 섹션.
 //   v5 = 2026-07-13 상권 쿠폰(영수증 페이백) 운영 섹션 — 양 트랙 머지 통합 bump.
-const GUIDE_SEED_VERSION = 17 // 2026-08-26 명칭 옛이름 → '유어샵' 통일(대표 확정) — 셀러 가이드 문구 갱신
+const GUIDE_SEED_VERSION = 18 // 2026-08-26 셀러·어드민 가이드 사실 갱신 — 폐기 기능(라이브·호스팅·어필리에이트·승급) 현행화 + 신분어 → 행위
 
 // 🏭 2026-06-07: 'wholesale' 추가 — 도매몰 전용 가이드. 어드민 전용(읽기+편집).
 type GuideType = 'admin' | 'seller' | 'agency' | 'wholesale'

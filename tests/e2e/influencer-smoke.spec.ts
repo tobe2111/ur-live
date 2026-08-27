@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-16: 인플루언서/정산 신규 endpoint smoke 테스트.
+ * 🛡️ 2026-05-16: 소개 랭킹/정산 신규 endpoint smoke 테스트.
  * 베타 직전 회귀 방지용 기본 검증만.
  */
 import { test, expect } from '@playwright/test'
@@ -9,7 +9,7 @@ const BASE = process.env['BASE_URL'] || 'http://localhost:5173'
 test.describe('Influencer endpoints smoke', () => {
   test('public rankings page loads + filters work', async ({ page }) => {
     await page.goto(`${BASE}/influencer/rankings`)
-    await expect(page.getByText('인플루언서 랭킹')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('이 달의 소개 랭킹')).toBeVisible({ timeout: 10000 })
     // 지역 탭
     await page.getByRole('button', { name: '서울' }).first().click()
     await page.waitForTimeout(300)

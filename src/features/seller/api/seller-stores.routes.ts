@@ -313,6 +313,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       kakao_place_id?: string; kakao_place_url?: string; lat?: number; lng?: number
       channel?: string; manager_phone?: string
       business_number?: string; representative?: string; business_start_date?: string
+      business_cert_url?: string
     }>().catch(() => ({} as any))
 
     const name = String(b.name || '').trim()
@@ -340,7 +341,23 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       if (dup) return c.json({ success: false, error: '이미 유어딜에 등록된 매장입니다', code: 'STORE_EXISTS', seller_id: dup.seller_id }, 409)
     }
 
-    // 국세청 검증 — 통과하면 즉시 승인("그냥 매장 등록하면 돼"), 아니면 pending(어드민 검토)
+    /**
+     * 📄 사업자등록증 사본 — **필수** (2026-08-26 대표 "당근마켓 플로우 정도로 하자").
+     *
+     * 🩸 종전엔 **사업자번호만으로 자동 승인**됐다(번호가 '계속사업자'이기만 하면 approved).
+     *   인터넷에 공개된 아무 사업자번호나 통과했고, 실제로 그렇게 승인된 매장이 라이브에 있었다
+     *   (id=14, nts_checked=1). 번호와 그 매장 사이의 연결은 아무도 확인하지 않았다.
+     *
+     * 당근도 개업일·대표자명을 타이핑시키지 않고 **등록증 사진을 받아 사람이 심사**한다(시안 05).
+     * 그래서 여기도 같은 모양으로: 사진을 받고 **항상 pending** → 어드민 승인(AdminPage.approveSeller).
+     * 국세청 번호 조회는 그대로 돌리되 **승인 근거가 아니라 심사 재료**로만 쓴다(meta 스탬프).
+     */
+    const certUrl = String(b.business_cert_url || '').trim()
+    if (!/^\/api\/media\/uploads\/biz-cert\//.test(certUrl)) {
+      return c.json({ success: false, error: '사업자등록증 사본을 첨부해주세요' }, 400)
+    }
+
+    // 국세청 조회 — 심사 재료(어드민이 볼 신호). 이 결과로 자동 승인하지 않는다.
     let ntsResult: { ok: boolean; valid: boolean | null } = { ok: false, valid: null }
     const key = c.env.PUBLIC_DATA_SERVICE_KEY || (c.env as unknown as Record<string, string | undefined>).NTS_API_KEY
     if (bno && b.representative && b.business_start_date) {
@@ -354,8 +371,8 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       // 상태조회는 '등록된 번호인가 + 계속사업자인가' 까지만 본다(대표자 대조는 validate 전용).
       if (key) ntsResult = { ok: true, valid: row?.b_stt ? row.b_stt === '계속사업자' : false }
     }
-    const autoApprove = ntsResult.ok && ntsResult.valid === true
-    const status = autoApprove ? 'approved' : 'pending'
+    // ⚠️ 자동 승인 없음 — 등록증을 사람이 보고 승인한다.
+    const status = 'pending'
 
     // sellers 행 생성 — linked_user_id 는 비움(UNIQUE 1인1행): 접근은 seller_operators 관계로.
     const username = `store_${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`
@@ -379,6 +396,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       ...(b.category ? { kakao_category: String(b.category).slice(0, 100) } : {}),
       ...(Number.isFinite(b.lat) && Number.isFinite(b.lng) ? { store_lat: String(b.lat), store_lng: String(b.lng) } : {}),
       nts_checked: ntsResult.valid === true ? '1' : ntsResult.valid === false ? '0' : '',
+      business_cert_url: certUrl,
       registered_by_user_id: String(userId),
     })
 
@@ -390,10 +408,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       data: {
         seller_id: newSellerId, status, channel: b.channel,
         nts: { checked: ntsResult.ok, valid: ntsResult.valid },
-        // 승인 전이면 이용권 등록은 가능하되 노출은 승인 후 — 기존 셀러 승인 플로우와 동일 문구
-        message: autoApprove
-          ? '매장이 등록되었습니다. 바로 이용권을 등록할 수 있어요.'
-          : '매장이 등록 접수되었습니다. 사업자 확인 후 활성화됩니다.',
+        message: '매장이 등록 접수되었습니다. 사업자등록증 확인 후 활성화됩니다.',
       },
     })
   } catch (err) {

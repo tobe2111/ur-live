@@ -194,7 +194,7 @@ export default function SellerPromoSpendPage() {
             <DashboardEmptyState
               icon={<Receipt className="h-7 w-7" />}
               title={t('seller.promoSpend.empty', { defaultValue: '기간 내 promo 지출이 없습니다' })}
-              description={t('seller.promoSpend.emptyDesc', { defaultValue: '인플루언서 추천(핀) 판매가 발생하면 여기에 표시됩니다.' })}
+              description={t('seller.promoSpend.emptyDesc', { defaultValue: '소개(핀)로 팔린 건이 생기면 여기에 표시됩니다.' })}
             />
           </div>
         ) : (
