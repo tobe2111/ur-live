@@ -61,12 +61,41 @@ export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead
     })
     .filter((l): l is NonNullable<typeof l> => l !== null)
   if (!rows.length) return { inserted: 0, upserted: 0 }
-  // 신규 판정용 스냅샷(위 주석) — 청크 루프 **바깥**이라 호출당 1회.
-  const before = Number((await DB.prepare('SELECT COUNT(*) AS n FROM ad_company_leads').first<{ n: number }>().catch(() => null))?.n)
+  /**
+   * 🔢 **신규 판정 — 전수를 세지 않고 넣을 것만 확인한다** (2026-08-27, 라이브 실측으로 교체).
+   *
+   * ## 왜 바꿨나
+   * 예전엔 저장 **전후로 `SELECT COUNT(*)`** 를 한 번씩 돌려 그 차이를 신규 수로 썼다. 의도는 옳았지만
+   * (`ON CONFLICT DO UPDATE` 라 `changes()` 로는 신규/재확인을 못 가른다) 비용이 이랬다:
+   * ```
+   *   저장 1회 = 372,730행 전수 스캔 × 2   ·   하루 219회 저장 = 1.63억 행/일
+   *   ⇒ 업체 DB 읽기의 거의 전부가 이 카운트였다(D1 무료 한도 500만행/일의 33배)
+   * ```
+   * **모든 수집 소스가 이 관문 하나를 지나므로**(네이버/webkr/상가정보/통신판매/공정위/나라장터/고용24)
+   * 여기 한 줄이 전체 읽기량을 지배한다.
+   *
+   * ## 대신 하는 것
+   * 넣으려는 `company_key` 가 **이미 있는지만** 묻는다 — `UNIQUE(company_key)` 인덱스 탐색이라
+   * 청크당 최대 50행만 읽는다. 계산 결과는 같다: `신규 = 넣으려는 고유키 − 이미 있는 키`.
+   *
+   * ⚠️ **청크 안에서 같은 키가 두 번 나올 수 있다**(같은 업체가 두 소스로 잡힌 경우). 그래서 고유키로
+   *   세어야 한다 — 안 그러면 한 업체를 신규 2건으로 센다. 문장 자체는 중복을 그대로 실행한다
+   *   (뒤 문장의 `COALESCE` 병합이 이메일·전화를 채워 주므로 **합치면 정보가 준다**).
+   * ⚠️ 청크 경계를 넘는 중복은 저절로 맞는다 — 2번 청크의 사전확인은 1번 청크가 이미 들어간 **뒤**에 돈다.
+   * ⚠️ `IN (...)` 바인딩은 D1 상한(100개)을 넘으면 안 된다 — 청크가 50 이라 안전하다.
+   */
   const CHUNK = 50
   let saved = 0
+  let fresh = 0
+  let countOk = true
   for (let i = 0; i < rows.length; i += CHUNK) {
     const slice = rows.slice(i, i + CHUNK)
+    const uniqKeys = [...new Set(slice.map(l => companyKey(l)))]
+    const existing = await DB.prepare(
+      `SELECT COUNT(*) AS n FROM ad_company_leads WHERE company_key IN (${uniqKeys.map(() => '?').join(',')})`,
+    ).bind(...uniqKeys).first<{ n: number }>().catch(() => null)
+    if (existing && Number.isFinite(Number(existing.n))) fresh += Math.max(0, uniqKeys.length - Number(existing.n))
+    else countOk = false
     const stmts = slice.map(l => {
       const active = opts.requireContact ? (hasContact(l) ? 1 : 0) : 1
       return DB.prepare(
@@ -115,9 +144,7 @@ export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead
     const res = await DB.batch(stmts).catch(() => null)
     if (res) saved += slice.length
   }
-  const after = Number((await DB.prepare('SELECT COUNT(*) AS n FROM ad_company_leads').first<{ n: number }>().catch(() => null))?.n)
-  // 카운트 조회가 실패하면 신규 수를 알 수 없다 — 그때는 **모른다고 0** 을 주는 대신 시도 수로 폴백한다
-  //   (0 을 주면 "수집 죽음"으로 오독된다. 여기선 과대 보고가 과소 보고보다 덜 위험하다).
-  const inserted = Number.isFinite(before) && Number.isFinite(after) ? Math.max(0, after - before) : saved
-  return { inserted, upserted: saved }
+  // 사전확인이 한 번이라도 실패하면 신규 수를 알 수 없다 — 그때는 **모른다고 0** 을 주는 대신 시도 수로
+  //   폴백한다(0 을 주면 "수집 죽음"으로 오독된다. 여기선 과대 보고가 과소 보고보다 덜 위험하다).
+  return { inserted: countOk ? fresh : saved, upserted: saved }
 }

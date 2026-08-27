@@ -803,6 +803,27 @@ canvas {
       '판정 근거가 없는 수집까지 죽고, 그 손실은 웹문서 절약분보다 크다.',
   },
   {
+    name: '🔢 저장 관문이 고유키가 아니라 행 수로 신규를 센다(중복이 신규 2건이 된다)',
+    file: 'src/features/marketing/api/company-save.ts',
+    find: '    const uniqKeys = [...new Set(slice.map(l => companyKey(l)))]',
+    replace: '    const uniqKeys = slice.map(l => companyKey(l))',
+    test: 'src/tests/unit/company-save-count.test.ts',
+    why:
+      '같은 업체가 두 소스로 잡히면 한 청크에 같은 키가 두 번 들어온다. 행 수로 세면 한 업체를 ' +
+      '신규 2건으로 보고해 "수집 잘 된다" 착시를 만든다 — 대표가 실제로 지적했던 오독(저장 2.4만이 ' +
+      '대부분 재확인이었던 건)과 같은 클래스다.',
+  },
+  {
+    name: '🔢 사전확인 실패를 신규 0 으로 보고한다("수집 죽음"으로 오독된다)',
+    file: 'src/features/marketing/api/company-save.ts',
+    find: '  return { inserted: countOk ? fresh : saved, upserted: saved }',
+    replace: '  return { inserted: fresh, upserted: saved }',
+    test: 'src/tests/unit/company-save-count.test.ts',
+    why:
+      'D1 이 흔들려 사전확인이 실패하면 fresh 가 0 인 채로 남는다. 그걸 그대로 보고하면 상태줄이 ' +
+      '"신규 0" 이 되어 수집이 죽은 것으로 읽힌다. 모를 때는 시도 수로 폴백하는 쪽이 덜 위험하다.',
+  },
+  {
     name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
     file: 'src/features/agency/api/agency-sunset.ts',
     find: "    code: 'AGENCY_SIGNUP_CLOSED',",
