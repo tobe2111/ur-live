@@ -1149,6 +1149,18 @@ canvas {
       '2026-08-19 그루폰 카드 도입과 함께 들어온 안전장치라, 나중에 리팩토링하다 지워질 위험이 크다.',
   },
   {
+    name: '맨 위 카드 prefetch 가 첫 화면 요청과 동시에 발사된다',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '      const run = () => { prefetch(p.id); prefetchDetailChunk() }',
+    replace: '      const run = () => {}',
+    test: 'src/tests/unit/home-boot-cost.test.ts',
+    why:
+      '이 주입은 **prefetch 를 통째로 없앤다** — 그러면 카드 클릭이 fetch 워터폴이 되는데(잠금표가 ' +
+      '지키는 성질) 화면은 멀쩡해서 아무 신호가 없다. 미루기(2026-08-27 대표 승인)와 제거는 다르고, ' +
+      '가드는 **둘 다** 잡아야 한다. ⚠️ 실제로 처음 짠 테스트는 이걸 통과시켰다 — 슬라이스 안에 ' +
+      '아래 IntersectionObserver 가지의 같은 호출이 들어와서다. `run` 정의로 앵커해 교정했다.',
+  },
+  {
     name: '카테고리 스크롤 화살표가 렌더마다 강제 리플로를 돈다',
     file: 'src/components/main/DesktopTopNav.tsx',
     find: '  }, [syncCatArrow, catLabelSig])',

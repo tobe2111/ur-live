@@ -79,6 +79,37 @@ describe('홈 부팅 비용', () => {
    * ③ 대표색 추출은 `getImageData` 라 GPU→CPU 리드백을 강제한다 — 첫 화면 그리는 중에
    *    동기로 돌면 그만큼 늦어진다. 쓸 데가 없으면 아예 돌지 않아야 하고, 돌더라도 미뤄야 한다.
    */
+  /**
+   * ④ 맨 위 카드 prefetch — **미루기이지 제거가 아니다**(2026-08-27 대표 승인).
+   *    잠금표가 지키는 성질은 "클릭 시 fetch 워터폴이 안 난다" 이고, idle 로 미뤄도 그건 유지된다.
+   *    ⚠️ 이 테스트는 **두 방향 모두** 본다 — 즉시 실행으로 되돌아가는 것도, prefetch 자체가
+   *      사라지는 것도 빨간불이어야 한다. 한쪽만 보면 "최적화"라며 통째로 지워도 초록이 뜬다.
+   */
+  it('GroupBuyFeedCard: 맨 위 카드 prefetch 를 첫 화면 밖으로 미룬다 — 없애지는 않는다', () => {
+    const s = read(CARD)
+    const i = s.indexOf('if (aboveFold) {')
+    expect(i).toBeGreaterThan(-1)
+    const block = s.slice(i, i + 1400)
+    expect(block).toContain('requestIdleCallback')          // 미룬다
+    /**
+     * ⚠️ **`run` 정의 자체**를 봐야 한다. 처음엔 이 1,400자 안에서 `prefetch(p.id)` 를 찾았는데,
+     *   바로 아래 IntersectionObserver 가지에도 같은 호출이 있어서 **`run` 을 빈 함수로 비워도
+     *   초록이 떴다**(되돌려-검증 B 가 그걸 잡았다). 슬라이스 검색은 이렇게 옆 코드에 기댄다.
+     */
+    const runDef = block.match(/const run = \(\) => \{[^}]*\}/)
+    expect(runDef, '`const run = () => {...}` 를 못 찾았다 — 형태가 바뀌었으면 이 테스트도 같이 고쳐라').toBeTruthy()
+    expect(runDef![0]).toContain('prefetch(p.id)')          // 그러나 여전히 한다
+    expect(runDef![0]).toContain('prefetchDetailChunk()')
+    // 즉시 발사로의 회귀(한 줄에 몰아 쓰는 옛 형태) 차단
+    expect(block).not.toMatch(/if \(aboveFold\) \{ prefetch/)
+  })
+
+  it('GroupBuyFeedCard: 화면 밖 카드는 여전히 IntersectionObserver 로 받는다', () => {
+    const s = read(CARD)
+    expect(s).toContain('IntersectionObserver')
+    expect(s).toContain("rootMargin: '100px'")   // 트래픽 절감 계약(200px 금지)
+  })
+
   it('GroupBuyFeedCard: 대표색이 이미 있으면 추출 자체를 건너뛴다', () => {
     const s = read(CARD)
     const i = s.indexOf('onCoverLoad={')

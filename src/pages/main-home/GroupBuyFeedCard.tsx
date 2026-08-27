@@ -118,7 +118,24 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
   //   aboveFold 카드는 즉시 prefetch (observer 없이) — 메인 페이지 진입 시 즉시.
   const linkRef = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
-    if (aboveFold) { prefetch(p.id); prefetchDetailChunk(); return }
+    if (aboveFold) {
+      /**
+       * ⏳ 2026-08-27 (대표 승인 — 홈 첫 화면 요청 경합): **미루기이지 제거가 아니다.**
+       *   맨 위 카드들은 observer 없이 마운트 즉시 prefetch 했는데, 실측상 그게
+       *   `/api/sections`·`/api/banners`(=지금 화면에 필요한 것)와 **같은 순간**에 나가
+       *   대역을 다퉜다(PC 1440 에서 카드 6장 → XHR 6개 + 상세 청크 4개가 2,488ms 에 동시 발사).
+       *   사용자가 카드를 읽고 누르기까지는 최소 1~2초가 걸리므로, 첫 화면을 다 그린 뒤로
+       *   미뤄도 **"클릭 시 0ms"** 라는 이 prefetch 의 목적은 그대로 달성된다.
+       *   ⚠️ 지우면 안 된다 — 지우는 순간 카드 클릭이 fetch 워터폴이 된다(잠금표가 지키는 성질).
+       */
+      const run = () => { prefetch(p.id); prefetchDetailChunk() }
+      if (typeof requestIdleCallback === 'function') {
+        const h = requestIdleCallback(run, { timeout: 2500 })
+        return () => cancelIdleCallback?.(h)
+      }
+      const t = setTimeout(run, 300)
+      return () => clearTimeout(t)
+    }
     const el = linkRef.current
     if (!el || typeof IntersectionObserver === 'undefined') return
     const obs = new IntersectionObserver(

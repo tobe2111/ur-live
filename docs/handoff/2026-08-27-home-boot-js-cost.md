@@ -103,15 +103,6 @@ dep 없는 layout-reading effect 를 찾는 스캐너를 짜서 "0건, 깨끗함
 
 ## 남은 것 (착수 안 함)
 
-### A. 홈에서 **XHR 14개가 마운트 즉시** 동시에 나간다
-
-실측(PC 1440): `/api/banners` ×3 · `/api/group-buy/products/{id}` **×6**(카드 viewport prefetch)
-· `/api/sections` · `/api/fcfs/active` · `/api/promo-bar` — 전부 2,488~2,491ms 에 몰린다.
-prefetch 6개가 **화면에 필요한 4개와 대역을 다툰다.**
-
-⚠️ viewport prefetch 는 **로딩 잠금표 항목**이다(`GroupBuyFeedCard` — `rootMargin:'100px'`).
-제거는 금지고, 손댄다면 "제거"가 아니라 **idle 로 미루기**여야 한다. 대표 판단 권장.
-
 ### B. `app-components` 166KB / 58모듈
 
 더 쪼개려면 **번들러의 실제 module→chunk 그래프**(sourcemap + manifest)가 필요하다.
@@ -124,6 +115,21 @@ prefetch 6개가 **화면에 필요한 4개와 대역을 다툰다.**
 ### D. `locale-ko` 86KB 가 1,193ms 에 크리티컬 패스로 들어온다
 
 첫 화면에 실제로 쓰는 키만 남기는 것을 검토할 만하다(현재 `i18n-critical.ts` 가 일부만 커버).
+
+## ✅ 처리됨 — 맨 위 카드 prefetch idle 미루기 (대표 승인 "한가할 때로 미루기")
+
+실측(PC 1440): `/api/banners` ×3 · `/api/group-buy/products/{id}` **×6**(맨 위 카드 prefetch)
+· `/api/sections` · `/api/fcfs/active` · `/api/promo-bar` — 전부 2,488~2,491ms 에 몰렸다.
+prefetch 6개가 **화면에 필요한 4개와 대역을 다퉜다.** → `requestIdleCallback` 으로 미룸.
+
+⚠️ **제거가 아니다.** 잠금표가 지키는 성질은 "카드 클릭 시 fetch 워터폴이 안 난다" 이고,
+사용자가 카드를 읽고 누르기까지 최소 1~2초라 미뤄도 그건 유지된다. 화면 밖 카드의
+IntersectionObserver(`rootMargin:'100px'`)는 손대지 않았다.
+
+🧪 이 가드를 처음 짰을 때 **prefetch 를 통째로 비워도 초록**이 떴다 — 1,400자 슬라이스 안에
+아래 observer 가지의 같은 호출이 들어와서다. `const run = () => {...}` 정의로 앵커해 교정했고,
+되돌려-검증 4방향(즉시발사 회귀 / prefetch 제거 / chunk prefetch 만 제거 / rootMargin 200px)
+전부 빨강을 확인했다.
 
 ## 대표 판단 대기
 
