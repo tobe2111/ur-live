@@ -223,6 +223,13 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       is_active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now'))
     )` },
+    // ⭐ **리뷰 조회 인덱스** (2026-08-27 — 라이브 실측으로 추가). `product_reviews` 는 본진에서 가장 큰
+    //   테이블(119,292행, 다음이 3,790)인데 **인덱스가 하나도 없었다** — `EXPLAIN` 이 `SCAN product_reviews`.
+    //   실측: 상품 하나의 리뷰 8건을 얻는 데 `rows_read=119,292 · 17.6ms`. 평점 집계도 같다.
+    //   본진 D1 읽기 7,790만 행/일 ÷ 119,292 = **하루 653회 전수 스캔**에 해당한다.
+    //   지배적 형태가 `WHERE product_id = ? AND is_visible = 1 ORDER BY created_at DESC` 라 그대로 담는다
+    //   (정렬까지 인덱스가 받아 임시 B-트리도 사라진다).
+    { name: 'idx_product_reviews_product', sql: `CREATE INDEX IF NOT EXISTS idx_product_reviews_product ON product_reviews(product_id, is_visible, created_at DESC)` },
     { name: 'idx_booking_slots_product', sql: `CREATE INDEX IF NOT EXISTS idx_booking_slots_product ON product_booking_slots(product_id, day_of_week, is_active)` },
     { name: 'appointment_bookings', sql: `CREATE TABLE IF NOT EXISTS appointment_bookings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

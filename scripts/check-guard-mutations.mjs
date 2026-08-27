@@ -899,6 +899,28 @@ canvas {
       '결과는 같아서 테스트로만 잡힌다.',
   },
   {
+    name: '⭐ 리뷰 조회 인덱스가 사라진다(조회마다 11.9만 행 전수 스캔)',
+    file: 'src/worker/routes/repair-schema.routes.ts',
+    find: "    { name: 'idx_product_reviews_product', sql: `CREATE INDEX IF NOT EXISTS idx_product_reviews_product ON product_reviews(product_id, is_visible, created_at DESC)` },",
+    replace: '',
+    test: 'src/tests/unit/product-reviews-index.test.ts',
+    why:
+      '실측 — 인덱스가 없으면 `EXPLAIN` 이 `SCAN product_reviews` 이고 리뷰 8건을 얻는 데 ' +
+      'rows_read 119,292 · 17.6ms 다. product_reviews 는 본진 최대 테이블(다음이 3,790)이라 ' +
+      '상품 상세를 열 때마다 이 비용이 든다.',
+  },
+  {
+    name: '⭐ 리뷰 인덱스 컬럼 순서가 어긋난다(있어도 안 쓰인다)',
+    file: 'src/worker/routes/repair-schema.routes.ts',
+    find: 'ON product_reviews(product_id, is_visible, created_at DESC)',
+    replace: 'ON product_reviews(created_at, is_visible, product_id)',
+    test: 'src/tests/unit/product-reviews-index.test.ts',
+    why:
+      '지배적 쿼리가 `WHERE product_id = ? AND is_visible = 1 ORDER BY created_at DESC` 다. ' +
+      '선두 컬럼이 product_id 가 아니면 탐색에 못 쓰이고, created_at 이 끝에 없으면 정렬이 ' +
+      '임시 B-트리로 떨어진다 — 인덱스는 존재하는데 비용은 그대로다.',
+  },
+  {
     name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
     file: 'src/features/agency/api/agency-sunset.ts',
     find: "    code: 'AGENCY_SIGNUP_CLOSED',",
