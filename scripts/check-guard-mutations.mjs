@@ -1151,7 +1151,7 @@ canvas {
   {
     name: '카테고리 스크롤 화살표가 렌더마다 강제 리플로를 돈다',
     file: 'src/components/main/DesktopTopNav.tsx',
-    find: '  }, [syncCatArrow])',
+    find: '  }, [syncCatArrow, catLabelSig])',
     replace: '  })',
     test: 'src/tests/unit/home-boot-cost.test.ts',
     why:

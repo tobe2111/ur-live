@@ -118,19 +118,26 @@ export default function DesktopTopNav() {
     if (!el) return
     setCatOverflow(el.scrollWidth - el.clientWidth - el.scrollLeft > 8)
   }, [])
+  /**
+   * 폭이 변하는 원인은 **둘**이고 신호도 둘이어야 한다:
+   *   ① 컨테이너 폭(창 크기) → `resize` + `ResizeObserver`(nav 자신)
+   *   ② 콘텐츠 폭(i18n 라벨이 늦게 도착해 칩이 넓어짐) → 라벨 문자열이 바뀌면 다시 잰다
+   * ⚠️ nav 는 `overflow-x-auto` 라 **콘텐츠가 늘어도 자기 박스는 안 변한다** — ①만으론 ②를 못 잡는다.
+   *   (`firstElementChild` 하나만 관측하는 건 칩 하나의 변화만 보는 것이라 틀렸다.)
+   */
+  const catLabelSig = categoryItems.map(i => i.label).join('|')
   useEffect(() => {
     if (typeof window === 'undefined') return
     syncCatArrow()
     window.addEventListener('resize', syncCatArrow)
     const el = catScrollRef.current
-    // 콘텐츠 폭 변화(i18n 라벨 도착·칩 추가)를 관측 — 없는 브라우저면 resize 만으로 동작(회귀 0).
     const ro = typeof ResizeObserver !== 'undefined' && el ? new ResizeObserver(syncCatArrow) : null
-    if (ro && el) { ro.observe(el); if (el.firstElementChild) ro.observe(el.firstElementChild) }
+    ro?.observe(el!)
     return () => {
       window.removeEventListener('resize', syncCatArrow)
       ro?.disconnect()
     }
-  }, [syncCatArrow])
+  }, [syncCatArrow, catLabelSig])
 
   // 🏷️ 딜 카테고리 활성 표시 — 홈에서 `?category=` 를 그대로 읽는다(상태 미러링 금지: 갈리면 어긋난다).
   const onHomeSurface = location.pathname === '/'
