@@ -50,14 +50,20 @@ describe('/influencer/discover — 딜 없는 링크 차단', () => {
       .toContain('p.seller_id')
   })
 
-  it('② 딜 판정 조건이 결제 적립(findActiveDealPct)과 같다', () => {
+  it('② 딜 판정을 베끼지 않고 결제와 같은 SSOT 를 부른다', () => {
+    // 🩸 2026-08-27 재조준: 이 검사는 원래 "핸들러가 세 조건을 **정확히 베꼈나**" 였다.
+    //   그런데 지키려던 가치는 "화면과 정산이 갈리지 않는다" 이고, 복사본은 결국 갈린다 —
+    //   베끼기를 잘 하는지 보는 대신 **안 베끼는지**를 본다(호출부는 SSOT 를 부른다).
     const h = discoverHandler(read(ROUTES))
     const ssot = read(SSOT)
-    // 세 조건 — 하나라도 빠지면 화면과 정산이 갈린다.
     for (const cond of ["status = 'active'", 'ends_at IS NULL OR ends_at', 'requires_content_proof']) {
       expect(ssot, `SSOT 전제 붕괴: ${cond}`).toContain(cond)
-      expect(h, `카탈로그 조건이 결제와 갈렸다: ${cond}`).toContain(cond)
     }
+    expect(h, 'SSOT 위임이 사라졌다 — 조건이 갈릴 길이 다시 열린다')
+      .toContain('findActiveDealPctsBySeller(')
+    // 주석 제외 후 검사 — 주석 속 인용에 걸려 헛도는 사고가 이 레포에서 반복됐다.
+    const code = h.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    expect(code, '딜 WHERE 절이 핸들러에 다시 복사됐다').not.toContain('requires_content_proof')
   })
 
   it('③ 화면이 딜 있을 때만 링크 버튼을 준다', () => {

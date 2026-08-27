@@ -14,6 +14,7 @@
  */
 
 import { Hono } from 'hono'
+import { findActiveDealPctsBySeller } from '@/worker/utils/influencer-deal'
 import type { Env } from '../types/env'
 import { requireAuth, optionalAuth, requireAdmin } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
@@ -188,6 +189,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         `SELECT pp.id, pp.product_id, pp.position, pp.note, pp.click_count,
                 p.name AS product_name, p.image_url, p.thumbnail, p.price, p.original_price, p.discount_rate,
                 p.category, p.is_active, p.dominant_color, p.avg_rating, p.review_count, p.sold_count,
+                p.seller_id,
                 COALESCE(p.referral_commission_rate, 0) AS commission_rate
          FROM product_pins pp
          JOIN products p ON p.id = pp.product_id
@@ -196,7 +198,19 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
          LIMIT ?`,
       ).bind(userId, CURATOR_DEFAULTS.PIN_MAX_PER_USER).all().catch(() => ({ results: [] as Record<string, unknown>[] })),
     ])
-    const pins = pinsResult.results
+    // 🤝 2026-08-27 (대표 "직접 매장과 매칭이 되어진 이용권이 위에 노출"):
+    //   핀마다 **이 유어샵 주인이 그 매장과 맺은 활성 딜의 %** 를 실어 보낸다.
+    //   조건은 SSOT(`findActiveDealPctsBySeller`)가 갖는다 — 여기서 WHERE 를 베끼면 결제와 갈린다.
+    //
+    //   ⚠️ 딜은 **유어샵 주인** 기준이지 보는 사람 기준이 아니다. 그래서 익명 엣지 캐시(300s)에
+    //     실려도 정확하다 — 누가 보든 같은 값이다.
+    //   💸 왕복 1회. 핀마다 부르면 핀 수만큼 왕복한다.
+    const dealBySeller = await findActiveDealPctsBySeller(DB, String(userId))
+    const pins = (pinsResult.results as Record<string, unknown>[]).map((r) => ({
+      ...r,
+      // null = 이 매장과 딜이 없음 → 팔려도 소개비 0. 화면이 두 덩어리로 가르는 근거.
+      deal_pct: dealBySeller.get(Number(r.seller_id)) ?? null,
+    }))
 
     // 🎨 2026-06-17 (유어샵 랜딩 리디자인): 마퀴 헤드라인 — 별도 best-effort 조회(컬럼 없는 env 에서
     //   메인 SELECT 의 banner/sns 가 폴백으로 사라지지 않도록 분리). 컬럼 없으면 null.

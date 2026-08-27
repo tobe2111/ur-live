@@ -72,6 +72,26 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '유어샵 핀 딜 매칭이 무음으로 항상 실패한다',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: '                p.seller_id,\n',
+    replace: '',
+    test: 'src/tests/unit/urshop-earn-ladder.test.ts',
+    why:
+      '핀↔딜 매칭 키가 SELECT 목록에서 빠지면 `deal_pct` 가 전부 null 이 되어 "내 계약 매장" ' +
+      '섹션이 영원히 비고, 소개자는 계약이 있는데도 없는 화면을 본다. 에러가 없어 안 보인다.',
+  },
+  {
+    name: '소개자 검색 모수가 가입자 전원으로 넓어진다',
+    file: 'src/features/group-buy/api/marketing/discovery.ts',
+    find: "      '(pin.n > 0 OR COALESCE(p.is_open, 0) = 1)',\n",
+    replace: '',
+    test: 'src/tests/unit/urshop-earn-ladder.test.ts',
+    why:
+      '핸들은 가입 시 자동 발급된다 — 활동 조건이 빠지면 **가입자 전원이 사업자에게 노출**된다. ' +
+      '모수가 커져 보이므로 개선처럼 보이는 것이 이 회귀의 위험한 점이다.',
+  },
+  {
     name: '유어샵 담은 핀에서 소개비 귀속이 조용히 사라진다',
     file: 'src/pages/seller-public/CuratorPinsSection.tsx',
     find: '              to={`/u/${handle}/p/${pin.product_id}`}\n',

@@ -24,6 +24,10 @@ export interface CuratorPin {
   deal_only?: number
   is_active: number
   commission_rate: number
+  // 🤝 2026-08-27: 이 유어샵 주인이 그 매장과 맺은 **활성 딜의 %**. null = 딜 없음 → 팔려도 소개비 0.
+  //   서버가 SSOT(`findActiveDealPctsBySeller`)로 계산해 실어 보낸다 — 화면이 다시 판정하지 않는다.
+  deal_pct?: number | null
+  seller_id?: number | null
   dominant_color?: string | null
   // 🏁 2026-06-26 (대표 — 유어샵 카드를 쇼핑 카드와 동일하게): 할인/평점/구매수.
   discount_rate?: number | null

@@ -36,3 +36,38 @@ export async function findActiveDealPct(
   const pct = Number(row?.commission_pct)
   return Number.isFinite(pct) && pct > 0 ? pct : null
 }
+
+/**
+ * 🤝 같은 SSOT 의 **배치판** — "이 사람이 지금 활성 딜을 맺고 있는 매장들과 그 %" (2026-08-27)
+ *
+ * ## 왜 필요한가
+ * 목록 화면(소개자 카탈로그 100개 상품 · 유어샵 핀 N개)에서 상품마다 `findActiveDealPct` 를
+ * 부르면 **왕복이 N번**이다. 그래서 호출부들이 각자 WHERE 절을 **복사**하기 시작했고,
+ * 그게 이 파일이 막으려던 바로 그 드리프트다(화면은 "N% 받는다"인데 정산은 0).
+ *
+ * ⇒ 조건을 한 번 더 쓰지 말고 **여기서 한 번에 가져간다.** 한 사람의 활성 딜은 많아야 수십 건이라
+ *   매장 필터 없이 전부 읽어도 싸다.
+ *
+ * ⚠️ WHERE 절은 위 `findActiveDealPct` 와 **글자 그대로 같아야 한다** — 이 파일 안에서만
+ *    같으면 되므로, 밖에서 복사할 이유가 사라진다.
+ */
+export async function findActiveDealPctsBySeller(
+  DB: D1Database,
+  influencerId: string,
+): Promise<Map<number, number>> {
+  const out = new Map<number, number>()
+  if (!influencerId) return out
+  const { results } = await DB.prepare(
+    `SELECT seller_id, commission_pct FROM seller_influencer_deals
+      WHERE influencer_id = ? AND status = 'active'
+        AND (ends_at IS NULL OR ends_at > datetime('now'))
+        AND (COALESCE(requires_content_proof, 0) = 0 OR proof_status = 'approved')`
+  ).bind(influencerId).all<{ seller_id: number; commission_pct: number }>()
+    .catch(() => ({ results: [] as { seller_id: number; commission_pct: number }[] }))
+  for (const r of results || []) {
+    const pct = Number(r.commission_pct)
+    // 0% 딜은 보상이 없는 것과 같다 — 단건 함수(`pct > 0`)와 같은 기준으로 버린다.
+    if (Number.isFinite(pct) && pct > 0) out.set(Number(r.seller_id), pct)
+  }
+  return out
+}

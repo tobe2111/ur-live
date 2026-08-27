@@ -5494,9 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 183건 · 최신순 · 이 목록은 자동 생성된다._
+_총 184건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-27**
+- [유어샵 수익 사다리 + 딜 우선 정렬 (2026-08-27)](handoff/2026-08-27-urshop-earn-ladder.md)
 - [2026-08-27 — 저장 관문이 리드 하나 넣을 때마다 37만 행을 두 번 세던 것](handoff/2026-08-27-save-gate-full-scan.md)
 - [2026-08-27 — 본진 최대 테이블에 인덱스가 없었다 (`product_reviews`)](handoff/2026-08-27-product-reviews-index.md)
 - [인플루언서 소개 플로우 수리 (2026-08-27)](handoff/2026-08-27-influencer-deal-gate.md)
