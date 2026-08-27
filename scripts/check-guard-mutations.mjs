@@ -72,6 +72,49 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '홈 카드가 다시 두 벌로 갈린다(피드만 대표색 카드)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '      className="block group active:scale-[0.98] flex flex-col"',
+    replace: '      className="block group active:scale-[0.98] flex flex-col" style={{ backgroundColor: grad.base }}',
+    test: 'src/tests/unit/home-card-unify.test.ts',
+    why:
+      '섹션은 흰 카드, 피드는 모바일에서 대표색 그라데이션 카드였다 — 같은 화면 위아래에 다른 ' +
+      '카드가 놓여 한 서비스로 안 보였다(2026-08-27 대표 "첫번째 형태로 통일"). 각각은 멀쩡해 ' +
+      '보여서 나란히 놓고 봐야만 드러난다.',
+  },
+  {
+    name: '모바일 홈에서 섹션 더보기가 다시 죽는다',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: '  useHomeQuerySync({ setCategory, setSort, gridHeaderRef })',
+    replace: '',
+    test: 'src/tests/unit/home-card-unify.test.ts',
+    why:
+      "섹션 '더보기'는 `/?sort=popular` 같은 쿼리 전용 이동이라, 홈이 쿼리를 읽지 않으면 눌러도 " +
+      '**아무 일도 안 일어난다**(에러도 없어 고장으로 안 보인다). 이 동기화가 PC 홈에만 있어 ' +
+      '폰에서만 죽어 있었다 — 대표가 실제로 신고했다.',
+  },
+  {
+    name: '카드 사진 스와이프가 상세 페이지 이동으로 샌다',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: '      onClickCapture={onClickCaptureMedia}',
+    replace: '',
+    test: 'src/tests/unit/home-card-unify.test.ts',
+    why:
+      '카드는 `<Link>` 안이다. 스와이프 뒤 이어지는 클릭을 취소하지 않으면 사진을 넘기려던 손짓이 ' +
+      '**상세 페이지 이동**이 된다 — 사진은 한 장 넘어가고 화면도 바뀌어 버린다.',
+  },
+  {
+    name: '홈 카드가 다시 표시폭의 2~3배 사진을 받는다(모바일 첫 화면이 느려짐)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '        width={imgWidth}',
+    replace: '        width={pc ? 400 : 300}',
+    test: 'src/tests/unit/home-card-image-width.test.ts',
+    why:
+      '`pc` 는 카드 **룩** 플래그인데 이미지 해상도까지 겸하고 있었고, HomeSections 가 룩을 위해 ' +
+      '`pc` 를 하드코딩으로 넘겨 모바일·태블릿도 PC용 큰 사진을 받았다(실측 필요폭의 2.3배, ' +
+      '모바일 카드 하나가 259KB). 화면은 멀쩡해 보여서 **느리다는 체감으로만** 드러난다.',
+  },
+  {
     name: '태블릿 홈이 다시 옛 디자인이 된다(헤더는 md, 본문은 lg 로 갈림)',
     file: 'src/pages/pc-home/HomeRoute.tsx',
     find: "useMediaQuery('(min-width: 768px)')",
@@ -901,13 +944,26 @@ canvas {
   {
     name: '카드 캐러셀 화살표에서 preventDefault 를 없앤다(사진 넘기려던 클릭이 상세로 튄다)',
     file: 'src/components/deal/DealCardMedia.tsx',
-    find: 'e.preventDefault()',
-    replace: 'void 0',
+    // ⚠️ 2026-08-27: 맨 `e.preventDefault()` 였는데 스와이프 배선이 들어오며 **같은 파일에 두 곳**이 됐다
+    //   (화살표 · 스와이프 후 클릭 취소). 유일성 검사가 그걸 잡아 줬다 — 화살표 쪽으로 앵커한다.
+    find: 'e.preventDefault()\n    e.stopPropagation()\n    step(delta)',
+    replace: 'step(delta)',
     test: 'src/tests/unit/deal-card-gallery.test.ts',
     why:
       '카드 캐러셀은 `<Link>` **안**에 있다 — 화살표가 기본동작을 막지 않으면 사진을 넘기려는 클릭이 ' +
       '매번 상세 페이지로 튄다. 에러가 없고 화면도 멀쩡해서 **직접 눌러 보기 전엔 아무도 모르는** 종류다. ' +
       '2026-08-19 그루폰 카드 도입과 함께 들어온 안전장치라, 나중에 리팩토링하다 지워질 위험이 크다.',
+  },
+  {
+    name: '스와이프 후 클릭 취소가 사라진다(사진을 넘겼는데 상세로 튄다)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'if (!didSwipe.current) return',
+    replace: 'if (true) return',
+    test: 'src/tests/unit/deal-card-gallery.test.ts',
+    why:
+      '화살표와 **정확히 같은 사고**인데 손가락 쪽이다(2026-08-27 대표 지시로 스와이프 추가). ' +
+      '터치를 떼면 브라우저가 클릭을 합성하는데, 카드가 `<Link>` 안이라 그 클릭이 그대로 상세로 간다 — ' +
+      '즉 **사진을 넘길 때마다 페이지가 이동**한다. 이 가드가 없으면 폰에서 직접 문질러 보기 전엔 모른다.',
   },
   {
     name: '카드가 갤러리를 전부 미리 로드한다(첫 화면 트래픽 몇 배)',
