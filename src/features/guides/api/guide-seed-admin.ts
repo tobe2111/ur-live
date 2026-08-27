@@ -965,14 +965,11 @@ SHIPPING_DEFAULTS.ISLAND_EXTRA_FEE            // 5000원
   {
     key: 'hosting-and-curator-payout', icon: '🎉', title: '소개 정산 — 지금의 규칙', order: 820,
     content: `### 지금 소개 커미션은 어디서 생기나
-
-**매장이 맺은 딜 하나뿐이다**(\`seller_influencer_deals\`). 매장이 비율을 정해 제안하고 상대가
-수락하면, 그 사람의 유어샵 링크로 팔린 건에 그 비율이 붙는다. 판정 SSOT 는
-\`worker/utils/influencer-deal.ts\` \`findActiveDealPct\` — **결제 적립과 화면 표시가 같은 함수**를
-쓰므로 "화면엔 N% 인데 정산은 0" 이 구조적으로 안 난다.
+**매장이 맺은 딜 하나뿐이다**(\`seller_influencer_deals\`). 매장이 비율을 정해 제안하고 상대가 수락하면,
+그 사람의 유어샵 링크로 팔린 건에 그 비율이 붙는다. 판정 SSOT = \`findActiveDealPct\`
+(\`worker/utils/influencer-deal.ts\`) — **결제 적립과 화면 표시가 같은 함수**라 "화면엔 N% 인데 정산은 0" 이 안 난다.
 
 ### 끝난 것 (문의가 오면 이렇게 답한다)
-
 | 기능 | 상태 |
 |---|---|
 | 어필리에이트(누구나 링크 공유 1~2%) | **2026-08-22 종료** |
@@ -986,20 +983,11 @@ SHIPPING_DEFAULTS.ISLAND_EXTRA_FEE            // 5000원
 - 최소 10,000원 / 원천징수 3.3% (TAX_POLICY.BUSINESS_INCOME_RATE)
 
 ### 어드민 모니터링
-
-#### 호스팅 사기 탐지 (레거시 — 진입이 숨겨져 신규 유입은 없다. 옛 행 점검용)
+#### 호스팅 사기 탐지 — **레거시**
+진입이 숨겨져 신규 유입이 없다(옛 행 일회 점검용. 상시 모니터링 대상 아님).
 \`\`\`sql
--- 같은 host_user_id 가 짧은 시간에 다수 invite_code 생성
-SELECT host_user_id, COUNT(*) AS cnt
-FROM group_buy_hosts
-WHERE created_at > datetime('now', '-1 day')
-GROUP BY host_user_id HAVING cnt > 5;
-
--- 같은 user_id 가 다수 호스트의 참여자로 등록
-SELECT user_id, COUNT(DISTINCT host_id) AS hosts
-FROM group_buy_host_participants
-WHERE joined_at > datetime('now', '-7 days')
-GROUP BY user_id HAVING hosts > 10;
+SELECT host_user_id, COUNT(*) AS cnt FROM group_buy_hosts
+WHERE created_at > datetime('now', '-1 day') GROUP BY host_user_id HAVING cnt > 5;
 \`\`\`
 
 #### 출금 검수
@@ -1008,14 +996,11 @@ GROUP BY user_id HAVING hosts > 10;
 
 #### 누적 소개 수익 상위 (참고)
 \`\`\`sql
-SELECT id, name, handle, curator_total_lifetime_earnings
-FROM users
-WHERE curator_total_lifetime_earnings >= 500000
-ORDER BY curator_total_lifetime_earnings DESC LIMIT 50;
+SELECT id, name, handle, curator_total_lifetime_earnings FROM users
+WHERE curator_total_lifetime_earnings >= 500000 ORDER BY 4 DESC LIMIT 50;
 \`\`\`
-> ⚠️ 옛 '셀러 자동 승급 안내'(누적 50만원+ → 셀러 가입 권유)는 **폐기**됐다. 신분 계층이 아니라
-> **매장을 등록하면 판매가 열리는** 구조이고, 그 진입은 \`/store/new\` 하나다.
-> \`seller_upgrade_offered_at\` 은 그 시절 남은 컬럼이라 판정에 쓰지 말 것.
+> ⚠️ 옛 '셀러 자동 승급 안내'(누적 50만원+ → 가입 권유)는 **폐기**. 신분 계층이 아니라 **매장을 등록하면
+> 판매가 열리는** 구조이고 진입은 \`/store/new\` 하나다. \`seller_upgrade_offered_at\` 은 판정에 쓰지 말 것.
 
 ### 정책 변경 (\`policy.ts\` SSOT)
 \`\`\`ts
