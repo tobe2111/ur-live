@@ -23,6 +23,9 @@ export interface Product {
   group_buy_target?: number; group_buy_current?: number; group_buy_deadline?: string
   // 🛡️ 2026-05-19: 교환권 (KT Alpha) 구분.
   deal_only?: number
+  // 🖼️ 2026-08-27: 카드 hover 캐러셀용 갤러리. **서버가 이미 3장으로 잘라** 보낸다
+  //   (`ProductRepository.capGalleries` → `CARD_GALLERY_MAX`). 화면에서 다시 자르지 말 것.
+  images?: string[] | string | null
 }
 
 // 🧹 2026-07-20 (유어샵 전수조사): LiveStream·Short·Tab 타입 제거 — 라이브/쇼츠 영구중단 + 탭→

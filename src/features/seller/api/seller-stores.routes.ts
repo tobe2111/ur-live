@@ -28,7 +28,8 @@ import { ntsValidateBusiness, ntsCheckStatus } from '@/worker/utils/nts-business
 import { canOperateStore, grantOperator, revokeOperator, isStoreOwner } from '../../../worker/utils/seller-operators'
 import { mergeStoreProfile, loadLatestProductCopy, saveStoreProfileAndPropagate } from '@/worker/utils/store-profile'
 import { parseSessionCookie } from '@/worker/utils/session'
-import { loadFeeRates } from '@/worker/utils/fee-resolver'
+import { DEFAULT_FEE_RATES } from '@/worker/utils/fee-resolver'
+import { getEffectivePlatformFee } from '@/worker/utils/effective-platform-fee'
 
 const app = new Hono<{ Bindings: Env }>()
 type Ctx = Context<{ Bindings: Env }>
@@ -75,19 +76,23 @@ app.get('/fee-context', async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
     if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
-    const [meta, rates] = await Promise.all([
-      getSellerMeta(c.env.DB, [sellerId]),
-      loadFeeRates(c.env.DB),
-    ])
+    const meta = await getSellerMeta(c.env.DB, [sellerId])
     const channel: StoreChannel = meta.get(sellerId)?.store_channel === 'direct' ? 'direct' : 'brokered'
+    // 🩸 2026-08-27 정정: 여기 있던 주석은 *"loadFeeRates SSOT 라 표시·정산이 갈릴 수 없다"* 였는데
+    //   **틀렸다.** 같은 값을 읽는 건 맞지만 **그 값이 결제 분배에 안 쓰인다** —
+    //   결제는 `getSellerCommissionRate`(채널 무시)를 쓰고, 채널 요율은 게이트 뒤에 있으며 꺼져 있다.
+    //   그래서 직접(10%)을 고른 매장이 실수령 카드에서 10% 를 빼고 봤지만 실제로는 5% 만 떼였다.
+    //   ⇒ 이제 **결제가 부르는 그 함수**를 불러 사실대로 돌려준다.
+    const fee = await getEffectivePlatformFee(c.env.DB, sellerId, channel)
     return c.json({
       success: true,
       data: {
         channel,
-        // 채널별 플랫폼 수수료 — fee-resolver 와 같은 값(loadFeeRates SSOT)이라 표시·정산이 갈릴 수 없다.
-        platform_fee_pct: channel === 'direct' ? rates.platformPctDirect : rates.platformPct,
-        direct_pct: rates.platformPctDirect,
-        brokered_pct: rates.platformPct,
+        platform_fee_pct: fee.pct,                       // 지금 실제로 떼이는 %
+        channel_rates_active: fee.channelRatesActive,    // false 면 아래 설계값은 아직 미적용
+        channel_pct: fee.channelPct,                     // 채널 요율이 켜졌을 때의 설계값
+        direct_pct: DEFAULT_FEE_RATES.platformPctDirect,
+        brokered_pct: DEFAULT_FEE_RATES.platformPct,
       },
     })
   } catch (err) {

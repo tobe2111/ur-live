@@ -6,6 +6,18 @@
 import { productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns';
 import type { Product, ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories';
+import { capRowGalleries } from '@/features/group-buy/api/card-gallery'
+
+/**
+ * 🖼️ 목록 응답의 갤러리를 **커버 제외 3장**으로 자른다 (2026-08-27).
+ *
+ * `findAll` 은 반환 지점이 셋(본 쿼리 + 폴백 2개)이다. 한 곳만 자르면 폴백을 탄 요청에서
+ * **원본 전량이 나간다** — 그리고 그건 조용하다(에러가 없다). 그래서 세 곳이 같은 함수를 지난다.
+ *
+ * ⚠️ 자르는 규칙은 홈 카드와 **같은 SSOT**(`CARD_GALLERY_MAX`)다. 여기서 숫자를 따로 쓰면
+ *   같은 카드가 화면마다 다른 장수를 받는다.
+ */
+const capGalleries = capRowGalleries
 
 /**
  * 🛡️ 2026-05-19: 한국어 검색 동의어 사전 — 사용자가 다양한 표현으로 검색해도 매칭.
@@ -95,6 +107,10 @@ export class ProductRepository {
       'is_active', 'status', 'product_type', 'deal_only', 'created_at',
       'group_buy_target', 'group_buy_current', 'group_buy_deadline', 'group_buy_status',
       'restaurant_name', 'voucher_expiry',
+      // 🖼️ 2026-08-27 (대표 — 유어샵 카드도 홈처럼 사진 넘기기): 카드 캐러셀용 갤러리.
+      //   ⚠️ **원본 그대로 내보내지 않는다** — 아래 `capGalleries` 가 SSOT(`CARD_GALLERY_MAX`=3)로 자른다.
+      //   실측(2026-08-27): 활성 상품 중 images 보유 356개 · 평균 282B · 최대 1,252B → 목록 영향 미미.
+      'images',
     ];
     // dominant_color: 미적용 DB 면 제외(영구 캐시) → 매 요청 실패-재시도 제거.
     if (_dominantColorCol !== false) baseCols.push('dominant_color');
@@ -202,7 +218,7 @@ export class ProductRepository {
       const result = await this.db.prepare(query).bind(...params).all<Product>();
       if (_dominantColorCol === null) _dominantColorCol = true; // 1차 성공 → 컬럼 존재 확정(이후 항상 포함)
       if (_referralCommissionCol === null) _referralCommissionCol = true;
-      return result.results || [];
+      return capGalleries(result.results || []);
     } catch (err) {
       // 🏭 2026-06-05 (근본수정 — 정렬 무시 + 느린 로딩):
       //   1) dominant_color 미적용 DB → 모듈 캐시(_dominantColorCol=false) 후 1회 재귀.
@@ -225,11 +241,11 @@ export class ProductRepository {
         const buildFallback = () => query.replace(/SELECT[\s\S]*?FROM products/, `SELECT ${productDetailColsHealed('products')} FROM products`);
         try {
           const r = await withColumnPruning(() => this.db.prepare(buildFallback()).bind(...params).all<Product>());
-          return r.results || [];
+          return capGalleries(r.results || []);
         } catch {
           const safeQuery = buildFallback().replace(/ORDER BY[\s\S]*?LIMIT/, 'ORDER BY created_at DESC, id DESC LIMIT');
           const fallback = await this.db.prepare(safeQuery).bind(...params).all<Product>();
-          return fallback.results || [];
+          return capGalleries(fallback.results || []);
         }
       }
       throw err;
@@ -480,7 +496,9 @@ export class ProductRepository {
     
     try {
       const result = await this.db.prepare(ftsQuery).bind(...params).all<Product>();
-      return result.results || [];
+      // 🖼️ 2026-08-27: FTS 는 **상세 컬럼 목록**(productDetailColsHealed)을 쓰므로 이미 원본 갤러리를
+      //   통째로 싣고 있었다. 검색 결과도 카드로 그려지니 같은 규칙으로 자른다(페이로드 축소).
+      return capGalleries(result.results || []);
     } catch (error) {
       // FTS 테이블이 없으면 기존 LIKE 검색으로 폴백
       console.warn('[ProductRepository] FTS search failed, falling back to LIKE search:', error);

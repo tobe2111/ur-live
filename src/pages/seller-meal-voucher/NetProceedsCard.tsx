@@ -3,16 +3,23 @@
  *
  * "하나 판매 당 얼마인지 결과도 나와야겠지? 플랫폼 수수료와 인플루언서 수수료를 제한 금액으로."
  *
- * 수수료율은 서버 `/api/seller/fee-context`(fee-resolver loadFeeRates SSOT)에서 받는다 —
- * 화면의 % 와 정산의 % 가 **같은 값**을 읽으므로 갈릴 수 없다.
- * 채널(최종): 직접 매장 10% · 중개 매장 5%.
+ * 수수료율은 서버 `/api/seller/fee-context` 에서 받는다. 그 값은 **결제가 부르는 그 함수**
+ * (`getSellerCommissionRate`)를 거쳐 나온 **지금 실제로 떼이는 %** 다.
+ *
+ * 🩸 2026-08-27 정정: 여기 있던 주석은 *"같은 값을 읽으므로 갈릴 수 없다"* 였는데 **틀렸다.**
+ *   `loadFeeRates` 와 같은 값이었을 뿐, **그 값이 결제 분배에 안 쓰였다** — 직접(10%)을 고른 매장이
+ *   이 카드에서 10% 를 빼고 봤지만 실제로는 5% 만 떼였다. 매장 입장에선 더 받는 쪽이라 신고가
+ *   안 들어왔고, 그래서 **아무도 몰랐다.**
+ *
+ * ⚠️ 그러니 이 카드는 **서버가 준 값만** 쓴다. 채널(직접/중개)로 화면에서 다시 계산하지 말 것 —
+ *   그 순간 다시 갈린다.
  */
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
 
 export default function NetProceedsCard({ price, promoPct }: { price: number; promoPct?: number }) {
-  const [fee, setFee] = useState<{ channel: string; platform_fee_pct: number } | null>(null)
+  const [fee, setFee] = useState<{ channel: string; platform_fee_pct: number; channel_rates_active?: boolean } | null>(null)
   useEffect(() => {
     api.get('/api/seller/fee-context')
       .then(r => { if (r.data?.success) setFee(r.data.data) })

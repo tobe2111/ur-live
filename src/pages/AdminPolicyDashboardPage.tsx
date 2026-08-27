@@ -24,15 +24,21 @@ interface DynamicSetting {
   value: string
 }
 
-function PolicyTable({ title, rows }: {
+function PolicyTable({ title, rows, note }: {
   title: string
   rows: Array<{ key: string; value: string | number; unit?: string; desc?: string; dynamic?: string }>
+  note?: string
 }) {
   return (
     <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       <h2 className="px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm font-bold text-gray-800">
         {title}
       </h2>
+      {note && (
+        <p className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-900 leading-relaxed">
+          {note}
+        </p>
+      )}
       <table className="w-full text-sm">
         <thead className="bg-gray-50 text-gray-600 text-xs">
           <tr>
@@ -132,6 +138,7 @@ export default function AdminPolicyDashboardPage() {
           <PolicyTable
             key={sec.source}
             title={sec.title}
+            note={sec.note}
             rows={sec.rows.map((r: PolicyRow) => ({
               ...r,
               // 어드민이 platform_settings 로 덮어쓴 값이 있으면 "현재 적용값"으로 겹쳐 보여 준다.

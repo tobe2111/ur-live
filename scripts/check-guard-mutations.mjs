@@ -5640,6 +5640,50 @@ canvas {
       '기준 시각 우선순위(introduced_at → created_at)는 repair-schema 백필의 COALESCE 와 짝이다. ' +
       '한쪽만 바뀌면 같은 매장의 만료일이 코드와 데이터에서 갈린다.',
   },
+  {
+    name: '💸 매장에 보여 주는 수수료가 결제 함수를 안 거친다',
+    file: 'src/worker/utils/effective-platform-fee.ts',
+    find: '    getSellerCommissionRate(DB, sellerId).catch(() => NaN),',
+    replace: '    Promise.resolve(NaN),',
+    test: 'src/tests/unit/fee-display-truth.test.ts',
+    why:
+      '표시 요율과 청구 요율이 갈리면 **매장이 실수령을 잘못 계산한다.** 실제로 갈려 있었다 — 등록에서 ' +
+      '직접(10%)을 고른 매장에 10% 를 뗀 실수령을 보여 줬는데 결제는 5% 만 뗐다(더 받는 쪽이라 신고가 ' +
+      '안 들어와 아무도 몰랐다). 두 파일이 "SSOT 라 갈릴 수 없다"고 주석으로 단언한 채였다.',
+  },
+  {
+    name: '💸 게이트가 꺼져 있어도 채널 요율을 청구율로 쓴다',
+    file: 'src/worker/utils/effective-platform-fee.ts',
+    find: '  const chargedPct = active\n',
+    replace: '  const chargedPct = true\n',
+    test: 'src/tests/unit/fee-display-truth.test.ts',
+    why:
+      '`fee_channel_rates_enabled` 는 지금 꺼져 있다. 이 게이트를 무시하면 화면이 다시 설계값(10%)을 ' +
+      '오늘의 청구액인 양 보여 준다 — 원래 사고와 정확히 같은 그림으로 되돌아간다.',
+  },
+  {
+    name: '🖼️ 유어샵 카드 갤러리가 서버에서 안 잘려 원본 전량이 나간다',
+    file: 'src/features/group-buy/api/card-gallery.ts',
+    find: '    return { ...(r as object), images: sliceCardGallery(row.images, row.image_url) } as T',
+    replace: '    return r',
+    test: 'src/tests/unit/urshop-gallery-cap.test.ts',
+    why:
+      '카드 50장 × 갤러리 전량이면 첫 화면 응답이 몇 배가 된다(2026-08-19 잠금 항목의 트래픽 보호). ' +
+      '자르기를 빼도 화면은 똑같이 보이고 **응답 크기만 조용히 커진다** — 대표에겐 "좀 느리다"로만 보인다. ' +
+      '⚠️ 이 주입이 처음엔 **초록이었다**: 자르는 함수가 Repository 안의 비-export 지역 함수라 ' +
+      '가드가 배선(호출 4곳)만 볼 수 있었다. 그래서 함수를 SSOT 로 끌어올려 동작을 테스트하게 고쳤다.',
+  },
+  {
+    name: '🧹 주석 제거가 옛 정규식판으로 되돌아간다(라인 주석 속 `/*` 지뢰)',
+    file: 'src/tests/helpers/source-text.ts',
+    find: 'export function stripComments(text: string): string {',
+    replace: 'export function stripComments(text: string): string {\n  return text.replace(/\\/\\*[\\s\\S]*?\\*\\//g, \' \').replace(/^\\s*\\/\\/.*$/gm, \'\')\n  // eslint-disable-next-line no-unreachable',
+    test: 'src/tests/unit/strip-comments-scanner.test.ts',
+    why:
+      '정규식판은 **라인 주석 안의 `/*`** 를 블록 주석 시작으로 읽어 그 뒤 수천 자를 통째로 삼킨다. ' +
+      '이 레포에서 실측 4곳(코드 문자열이 사라져 부정 단언이 늘 통과)이 있었고, 이 파일 주석이 ' +
+      '"아무도 안 밟는 지뢰"라고 적어 둔 그 지뢰를 실제로 밟았다. 삼켜도 예외가 없어 **가드가 조용히 헛돈다.**',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
