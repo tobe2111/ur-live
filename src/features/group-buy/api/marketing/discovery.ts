@@ -14,6 +14,7 @@ import type { Env } from '@/worker/types/env'
 import type { AuthUser } from '@/worker/middleware/auth'
 import { ensureInfluencerProfileTable, parseChannels, maxFollowers, parseJsonList } from '@/worker/utils/influencer-profile'
 import { intParam } from '@/shared/pagination'
+import { findActiveDealPctsBySeller } from '@/worker/utils/influencer-deal'
 
 type MarketingVars = {
   user?: { id: string | number; email?: string }
@@ -34,9 +35,16 @@ export function registerDiscoveryRoutes(sellerApp: MarketingApp, discoverApp: Ma
    * 제안 화면의 인플루언서 입력은 `placeholder: 'user_12345'` 였다. 사장님이 남의 계정 ID 를
    * 알 방법이 없으니 그 화면은 현실에서 쓸 수 없었고, 그게 딜이 0건인 이유 중 하나다.
    *
-   * ⚠️ 검색 모수는 **공개(opt-in)한 사람만**이다(`influencer_profiles.is_open = 1`).
-   *   `users` 전체를 열면 가입자 전원을 사업자에게 노출하는 것이 된다. 실적 랭킹도 답이 아니다 —
-   *   실적이 있어야 뜨는데 딜이 0건이라 모수가 0 이다.
+   * 🔎 **모수 = 유어샵을 실제로 쓴 사람**(2026-08-27 대표 — "어차피 공개가 되어있잖아").
+   *   그 전엔 별도의 '공개' 토글을 켜야 검색에 떴다. 그런데 유어샵(`/u/{handle}`)은 **이미 공개
+   *   페이지**다 — 자기 가게를 차려 놓고 "찾아도 됩니다" 버튼을 한 번 더 누르라는 건 군더더기다.
+   *
+   *   ⚠️ 그래도 **가입자 전원은 아니다.** 핸들은 가입 시 자동 발급되므로(실측 17명 중 9명 보유)
+   *     "핸들 있음"을 기준으로 삼으면 결국 전원 노출이 된다. 기준은 **행동**이다 — 이용권을
+   *     하나라도 담은 사람(`product_pins`, 실측 3명). 담았다 = 소개할 의사를 보인 것이다.
+   *
+   *   ⚠️ **옵트아웃은 남긴다**: 프로필을 저장하며 공개를 끈 사람(`is_open = 0` 행 존재)은 뺀다.
+   *     행은 저장할 때만 생기므로, 행이 없다 = 한 번도 의사를 밝힌 적 없다 = 활동으로 판단한다.
    *
    * ⚠️ **연락처는 응답에 넣지 않는다**(이메일·전화·실명). 연락은 딜 제안으로만 — 노출하는 순간
    *   플랫폼 밖 거래와 콜드 연락의 통로가 된다.
@@ -51,19 +59,28 @@ export function registerDiscoveryRoutes(sellerApp: MarketingApp, discoverApp: Ma
 
     // 카테고리·지역은 JSON 배열 컬럼이라 LIKE 로 본다. 값이 화이트리스트(고정 문자열)라
     // 부분일치 오탐이 없다 — 임의 문자열이면 이 방식을 쓰면 안 된다.
-    const where: string[] = ['p.is_open = 1']
+    // 포함: 핀을 담았거나(활동) 스스로 공개를 켠 사람. 제외: 공개를 끈 사람(명시 옵트아웃).
+    const where: string[] = [
+      '(pin.n > 0 OR COALESCE(p.is_open, 0) = 1)',
+      "COALESCE(p.is_open, 1) = 1",   // 행이 있고 0 이면 옵트아웃 → 제외 (행 없으면 1 로 봄)
+      "u.handle IS NOT NULL AND u.handle != ''",  // 유어샵 주소가 없으면 매장이 찾아갈 곳이 없다
+    ]
     const binds: unknown[] = []
     if (category) { where.push('p.categories LIKE ?'); binds.push(`%"${category}"%`) }
     if (region) { where.push('(p.regions LIKE ? OR p.regions LIKE ?)'); binds.push(`%"${region}"%`, '%"전국"%') }
     if (q) { where.push('(u.handle LIKE ? OR u.name LIKE ? OR p.intro LIKE ?)'); binds.push(`%${q}%`, `%${q}%`, `%${q}%`) }
 
+    // 기준이 `users` 로 바뀌었다 — 프로필은 이제 **꾸밈**(소개·채널·분야)이지 입장권이 아니다.
+    // 정렬: 담은 게 많은 사람 먼저(활동 신호), 같으면 최근 프로필 갱신 순.
     const { results } = await DB.prepare(
-      `SELECT p.user_id, p.intro, p.channels, p.categories, p.regions,
-              u.handle, u.name, u.profile_image
-         FROM influencer_profiles p
-         LEFT JOIN users u ON u.id = p.user_id
+      `SELECT u.id AS user_id, p.intro, p.channels, p.categories, p.regions,
+              u.handle, u.name, u.profile_image, pin.n AS pin_count
+         FROM users u
+         LEFT JOIN influencer_profiles p ON p.user_id = u.id
+         LEFT JOIN (SELECT user_id, COUNT(*) AS n FROM product_pins GROUP BY user_id) pin
+                ON pin.user_id = u.id
         WHERE ${where.join(' AND ')}
-        ORDER BY p.updated_at DESC
+        ORDER BY pin.n DESC, p.updated_at DESC
         LIMIT ?`
     ).bind(...binds, limit).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
 
@@ -89,6 +106,9 @@ export function registerDiscoveryRoutes(sellerApp: MarketingApp, discoverApp: Ma
         followers: maxFollowers(channels),         // 본인 신고값(미검증) — 규모 감으로만
         categories: parseJsonList(r.categories),
         regions: parseJsonList(r.regions),
+        // 유어샵에 몇 개 담았나 — 매장이 "이 사람이 실제로 활동하나"를 보는 유일한 검증된 신호다
+        // (팔로워는 본인 신고값이라 검증이 없다).
+        pin_count: Number(r.pin_count) || 0,
         has_deal: existing.has(String(r.user_id)),
       }
     })
@@ -137,24 +157,13 @@ export function registerDiscoveryRoutes(sellerApp: MarketingApp, discoverApp: Ma
       Number(r.marketing_enabled ?? 1) === 1 && Number(r.referral_disabled ?? 0) === 0
     )
 
-    // 🤝 내 활성 딜을 매장별로 한 번에 조회 — 상품마다 findActiveDealPct 를 부르면 100 왕복이다.
-    //   조건은 findActiveDealPct 와 **같아야 한다**(활성 · 기간 내 · 인증 요구 시 승인됨).
-    //   갈리면 여기선 "N% 받는다"인데 결제에선 0 이 된다 — 이 파일이 막으려는 바로 그 사고다.
+    // 🤝 내 활성 딜 — 조건은 SSOT(`findActiveDealPctsBySeller`)가 갖는다.
+    //   🩸 2026-08-27: 여기 WHERE 절을 **복사**해 두고 "SSOT 와 같아야 한다"는 주석을 달아 뒀었다.
+    //     복사본은 결국 갈린다 — 그게 그 SSOT 가 존재하는 이유다. 이제 베끼지 않고 부른다.
     const me = c.get('user') as AuthUser | undefined
-    const dealBySeller = new Map<number, number>()
-    if (me?.id) {
-      const { results: deals } = await DB.prepare(
-        `SELECT seller_id, commission_pct FROM seller_influencer_deals
-          WHERE influencer_id = ? AND status = 'active'
-            AND (ends_at IS NULL OR ends_at > datetime('now'))
-            AND (COALESCE(requires_content_proof, 0) = 0 OR proof_status = 'approved')`
-      ).bind(String(me.id)).all<{ seller_id: number; commission_pct: number }>()
-        .catch(() => ({ results: [] as { seller_id: number; commission_pct: number }[] }))
-      for (const d of deals || []) {
-        const pct = Number(d.commission_pct)
-        if (Number.isFinite(pct) && pct > 0) dealBySeller.set(Number(d.seller_id), pct)
-      }
-    }
+    const dealBySeller = me?.id
+      ? await findActiveDealPctsBySeller(DB, String(me.id))
+      : new Map<number, number>()
 
     const withDeal = eligible.map((r: Record<string, unknown>) => ({
       ...r,

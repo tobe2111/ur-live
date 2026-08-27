@@ -32,14 +32,25 @@ function pickerHandler(src: string): string {
 }
 
 describe('소개자 검색 — 프라이버시', () => {
-  it('① 공개(opt-in)한 사람만 검색된다', () => {
+  it('① 가입자 전원이 아니라 **활동한 사람**만 검색된다', () => {
+    // 🩸 2026-08-27 재조준(대표 "어차피 공개가 되어있잖아"): 모수 기준이 별도 공개 토글에서
+    //   **행동**(유어샵에 담았는가)으로 바뀌었다. 지키는 가치는 그대로다 —
+    //   핸들은 가입 시 자동 발급이라, 활동 조건이 빠지면 결국 가입자 전원 노출이 된다.
     const h = pickerHandler(read(ROUTES))
-    expect(h, 'is_open 게이트가 사라지면 가입자 전원이 사업자에게 노출된다').toContain('p.is_open = 1')
+    expect(h, '활동(핀) 조건이 사라지면 가입자 전원이 사업자에게 노출된다')
+      .toContain('pin.n > 0 OR COALESCE(p.is_open, 0) = 1')
+    expect(h, '옵트아웃이 사라지면 "빼 달라"는 사람을 뺄 수 없다')
+      .toContain('COALESCE(p.is_open, 1) = 1')
   })
 
   it('② 연락처를 SELECT 하지 않는다', () => {
     const h = pickerHandler(read(ROUTES))
-    const cols = h.slice(h.indexOf('SELECT'), h.indexOf('FROM influencer_profiles'))
+    // ⚠️ 앵커는 **실제 FROM 절**이어야 한다. 예전엔 `FROM influencer_profiles` 로 잘랐는데
+    //   쿼리가 `FROM users` 로 바뀌자 indexOf 가 -1 이 되어 slice 가 파일 끝까지를 집었고,
+    //   그래도 통과해서 **헛돌고 있었다**(초록인데 아무것도 안 지킴).
+    const from = h.indexOf('FROM users')
+    expect(from, '검색 쿼리의 FROM 절을 찾지 못했다 — 이 검사는 헛돈다').toBeGreaterThan(-1)
+    const cols = h.slice(h.indexOf('SELECT'), from)
     for (const banned of ['email', 'phone']) {
       expect(cols, `연락처(${banned})가 검색 응답에 실리면 플랫폼 밖 콜드 연락의 통로가 된다`)
         .not.toContain(banned)
