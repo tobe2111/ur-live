@@ -27,7 +27,15 @@ const discoverApp = new Hono<{ Bindings: Env; Variables: MarketingVars }>()
 
 sellerApp.use('*', requireSeller())
 influencerApp.use('*', requireAuth())
-discoverApp.use('*', requireAuth())  // 일반 user 누구나 인플 = 카탈로그 접근
+// 🔓 2026-08-27 (대표 — "비로그인도 둘러는 볼 수 있게 해야지, 결제 단계에서 로그인을 하게하거나"):
+//   `requireAuth()` → `optionalAuth()`. 이 카탈로그는 **소개할 매장을 둘러보는 화면**이지 돈이 오가는
+//   자리가 아니다. 로그인 벽을 세우면 "어떤 매장이 있고 딜을 맺으면 소개비를 받는다"를 보여 줄 기회가
+//   사라진다 — 그게 가입 유인인데.
+//   ⚠️ 로그인해야만 `my_deal_pct` 가 채워진다(비로그인은 전부 null → 화면이 로그인을 유도).
+//      응답의 `authed` 플래그가 그 구분을 실어 보내므로 비로그인자가 "나에게 딜이 없다"로 오해하지 않는다.
+//   🩸 2026-08-27 정정: 어제 라우트에 `optionalAuth()` 를 달아 놓고 "열었다"고 적었는데, **여기 상위
+//      미들웨어가 먼저 401 을 내서** 실제로는 안 열려 있었다. 라우터 레벨을 고치는 것이 진짜 수정이다.
+discoverApp.use('*', optionalAuth())
 // adminApp 은 라우터에서 requireAdmin 적용 (worker/index.ts 마운트 시)
 
 function getSellerId(c: { get: (k: string) => unknown }): number {
