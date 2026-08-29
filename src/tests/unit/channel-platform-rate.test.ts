@@ -73,9 +73,15 @@ describe('채널별 플랫폼 요율 (직접 10% / 중개 5%)', () => {
     expect(r.platform_amount, '게이트가 꺼졌는데 요율이 바뀌었다').toBe(500)
   })
 
-  it('🩸 채널 미지정은 낮은 쪽(5%)으로 — 모르면 더 떼지 않는다', async () => {
-    const r = await call(fakeDb({ fee_channel_rates_enabled: 'true' }, {}))
-    expect(r.platform_amount).toBe(500)
+  it('🩸 채널 미지정은 **종전 경로**로 — 모르면 바꾸지 않는다', async () => {
+    // 🩸 이 픽스처는 주입 검증이 고쳐 놓은 것이다. 원래는 종전 요율도 5%, 대행사 요율도 5% 라
+    //   **둘을 구분할 수 없었다** — 미지정을 대행사로 간주하는 결함을 심어도 금액이 같아 초록이었다.
+    //   ⇒ 종전(platform_fee_pct=7)과 대행사(5)를 **다른 값**으로 두어야 어느 길로 갔는지 드러난다.
+    const r = await call(fakeDb(
+      { fee_channel_rates_enabled: 'true', platform_fee_pct: '7', platform_fee_pct_brokered: '5' },
+      {},
+    ))
+    expect(r.platform_amount, '미지정인데 채널 요율(대행사)로 갔다 — 모르면 종전 경로여야 한다').toBe(700)
   })
 
   it('🔑 대행사 요율은 이제 **자기 키**에서 온다 (폴백에 기대지 않는다)', async () => {

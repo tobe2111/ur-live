@@ -5646,12 +5646,14 @@ canvas {
   {
     name: '💸 채널 미지정을 직접 입점으로 간주(모르는데 더 뗀다)',
     file: 'src/worker/utils/ledger-commission-policy.ts',
-    find: "    if (meta?.store_channel !== 'direct') return undefined   // 중개/미지정 → 종전 경로(5%)",
-    replace: "    if (meta?.store_channel === 'nope') return undefined",
+    find: "    if (channel !== 'direct' && channel !== 'brokered') return undefined  // 미지정 → 종전 경로",
+    replace: "    if (channel === 'nope') return undefined",
     test: 'src/tests/unit/channel-platform-rate.test.ts',
     why:
-      'fail-soft 방향이 뒤집힌다. 모르면 낮은 쪽(5%)으로 떨어져야 한다 — 잘못 10% 를 물리면 ' +
-      '매장에서 더 뗀 것이고 되돌리기가 훨씬 비싸다(환급 + 신뢰).',
+      'fail-soft 방향이 뒤집힌다. **모르면** 종전 경로로 떨어져야 한다 — 잘못 10% 를 물리면 ' +
+      '매장에서 더 뗀 것이고 되돌리기가 훨씬 비싸다(환급 + 신뢰). ' +
+      '⚠️ 2026-08-27 재조준: 원래 앵커(`store_channel !== \'direct\'`)는 대행사도 undefined 로 보내던 ' +
+      '옛 코드다. 그 줄이 사라지자 이 항목이 **낡은 지도**가 돼 CI 가 잡았다 — 검사기가 제 일을 했다.',
   },
   {
     name: '🏷️ 옛 이름 "링크샵" 이 사용자 화면으로 돌아온다',
