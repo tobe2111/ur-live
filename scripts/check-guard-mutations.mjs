@@ -1194,6 +1194,18 @@ canvas {
       '**패널만 보면 멀쩡해 보인다** — 페이지가 밀리는 걸 봐야 안다. 눈으로 놓치기 쉬운 종류다.',
   },
   {
+    name: 'PC 전용 헤더가 모바일에서도 렌더된다(CSS 로만 숨김)',
+    file: 'src/components/main/DesktopTopNav.tsx',
+    find: '  if (!isDesktop) return null',
+    replace: '',
+    test: 'src/tests/unit/pc-only-render-gate.test.ts',
+    why:
+      '2026-08-27 대표 폰 신고("로딩이 심각한 문제")의 실제 원인이다. 루트가 `hidden md:block` 이라 ' +
+      '**CSS 는 숨기지만 React 는 다 만든다** — 라이브 프로파일에서 self 548ms 로 홈 최대였고 ' +
+      'DOM 노드가 539→308(43%) 줄었다. ⚠️ 이 게이트를 지워도 **화면은 완전히 똑같다**(어차피 안 보인다) ' +
+      '— 그래서 "불필요한 조건 같은데" 하고 지워지기 딱 좋고, 지워져도 아무 신호가 없다.',
+  },
+  {
     name: '카테고리 스크롤 화살표가 렌더마다 강제 리플로를 돈다',
     file: 'src/components/main/DesktopTopNav.tsx',
     find: '  }, [syncCatArrow, catLabelSig])',
