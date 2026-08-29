@@ -5646,12 +5646,14 @@ canvas {
   {
     name: '💸 채널 미지정을 직접 입점으로 간주(모르는데 더 뗀다)',
     file: 'src/worker/utils/ledger-commission-policy.ts',
-    find: "    if (meta?.store_channel !== 'direct') return undefined   // 중개/미지정 → 종전 경로(5%)",
-    replace: "    if (meta?.store_channel === 'nope') return undefined",
+    find: "    if (channel !== 'direct' && channel !== 'brokered') return undefined  // 미지정 → 종전 경로",
+    replace: "    if (channel === 'nope') return undefined",
     test: 'src/tests/unit/channel-platform-rate.test.ts',
     why:
-      'fail-soft 방향이 뒤집힌다. 모르면 낮은 쪽(5%)으로 떨어져야 한다 — 잘못 10% 를 물리면 ' +
-      '매장에서 더 뗀 것이고 되돌리기가 훨씬 비싸다(환급 + 신뢰).',
+      'fail-soft 방향이 뒤집힌다. **모르면** 종전 경로로 떨어져야 한다 — 잘못 10% 를 물리면 ' +
+      '매장에서 더 뗀 것이고 되돌리기가 훨씬 비싸다(환급 + 신뢰). ' +
+      '⚠️ 2026-08-27 재조준: 원래 앵커(`store_channel !== \'direct\'`)는 대행사도 undefined 로 보내던 ' +
+      '옛 코드다. 그 줄이 사라지자 이 항목이 **낡은 지도**가 돼 CI 가 잡았다 — 검사기가 제 일을 했다.',
   },
   {
     name: '🏷️ 옛 이름 "링크샵" 이 사용자 화면으로 돌아온다',
@@ -5831,6 +5833,39 @@ canvas {
       '정규식판은 **라인 주석 안의 `/*`** 를 블록 주석 시작으로 읽어 그 뒤 수천 자를 통째로 삼킨다. ' +
       '이 레포에서 실측 4곳(코드 문자열이 사라져 부정 단언이 늘 통과)이 있었고, 이 파일 주석이 ' +
       '"아무도 안 밟는 지뢰"라고 적어 둔 그 지뢰를 실제로 밟았다. 삼켜도 예외가 없어 **가드가 조용히 헛돈다.**',
+  },
+  {
+    name: '💸 대행사 매장이 다시 종전 요율(10%)을 낸다',
+    file: 'src/worker/utils/ledger-commission-policy.ts',
+    find: "    if (channel !== 'direct' && channel !== 'brokered') return undefined  // 미지정 → 종전 경로",
+    replace: "    if (channel !== 'direct') return undefined  // 미지정 → 종전 경로",
+    test: 'src/tests/unit/channel-fee-precedence.test.ts',
+    why:
+      '대행사를 undefined 로 돌리면 "종전 경로가 마침 5% 다" 라는 전제에 다시 기대게 된다. ' +
+      '그 전제는 라이브에서 이미 깨져 있었다 — 활성 매장 7곳 전부 sellers.commission_rate = 10 이라 ' +
+      '대행사 매장이 두 배를 내고 있었다(대표 확정 모델은 5%). 매장이 손해 보는 방향이라 더 나쁘다.',
+  },
+  {
+    name: '💸 채널이 매장별 요율보다 아래로 내려간다 (cron 이 덮어쓰는 자리)',
+    // 2026-08-27: helpers.ts 에서 seller-commission-rate.ts 로 분리(파일 크기 래칫). `--map-only` 가 잡았다.
+    file: 'src/features/group-buy/api/seller-commission-rate.ts',
+    find: '    const byChannel = await channelPlatformRate(DB, sellerId)\n    if (byChannel !== undefined) return byChannel',
+    replace: '    await channelPlatformRate(DB, sellerId)',
+    test: 'src/tests/unit/channel-fee-precedence.test.ts',
+    why:
+      '`sellers.commission_rate` 는 쓰는 주체가 셋이다(어드민·tier cron·과거 잔재). 채널을 그 아래에 두면 ' +
+      '**cron 이 돌 때마다 채널 요율이 조용히 지워진다** — 에러도 로그도 없다. 호출만 남기고 반환을 빼는 ' +
+      '모양(이 레포가 네 번 당한 "부르기는 하는데 안 쓴다")까지 같이 잡는다.',
+  },
+  {
+    name: '🏪 어드민 채널 지정이 어드민 라우터에서 빠진다',
+    file: 'src/worker/index.ts',
+    find: "adminApp.route('/', adminStoreChannelRoutes);",
+    replace: '',
+    test: 'src/tests/unit/admin-store-channel.test.ts',
+    why:
+      '파일만 있고 마운트가 없으면 **조용히 없는 기능**이다(빌드는 통과한다). 채널을 넣을 길이 없으면 ' +
+      '요율 모델이 적용될 수 없다 — 실제로 활성 매장 7곳 중 6곳이 그래서 미기록이었다.',
   },
 ]
 /**

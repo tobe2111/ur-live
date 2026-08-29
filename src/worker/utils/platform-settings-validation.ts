@@ -110,6 +110,10 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   // ── enum ──
   promo_funding_source: enumOf(['platform', 'owner']),           // ledger.ts:482 등 === 'owner'
   platform_fee_pct_direct: optionalPct,                          // 직접 입점 요율(기본 10) — ledger.ts
+  // 💸 2026-08-27 신설: 대행사 경유 요율(기본 5). 그전엔 중개 매장이 `platform_fee_pct` 로 **떨어져서**
+  //   맞았는데, 그건 "종전 경로가 마침 5% 다" 라는 전제였고 라이브에서 그 전제가 깨져 있었다
+  //   (매장 7곳 전부 `sellers.commission_rate = 10`). 이제 채널별로 각자 값을 갖는다.
+  platform_fee_pct_brokered: optionalPct,                        // 대행사 경유 요율(기본 5) — ledger-commission-policy.ts
   commission_priority_axes: priorityAxes,                        // order-commissions.ts:257 CSV parse
   flip_pilot_seller_ids: csvPosInts,                             // flip-pilot.ts (전역 스위치 OFF 여도 지정 매장만 flip 검증)
   influencer_payout_frequency: enumOf(['weekly', 'biweekly', 'monthly']), // AdminCommissionSettingsPage select

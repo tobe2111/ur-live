@@ -9,51 +9,9 @@ import type { D1Database } from '@cloudflare/workers-types'
 import { swallow } from '../../../worker/utils/swallow'
 import { recordLedger } from '../../../worker/utils/ledger'
 import { calcInfluencerCommissionPct, type CommissionRates } from './commission-rates'
-const DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.05 // 이용권 기본 수수료 5%
-
-// 🛡️ 2026-05-15: 차등 수수료 — 셀러 GMV 기반 자동 산정 (셀러 lock-in)
-//   기본 5%, 월 GMV 1,000만+ 셀러 4%, 월 GMV 1억+ 셀러 3%
-//   sellers.commission_rate 컬럼이 있으면 어드민 수동 override 우선.
-const TIER_COMMISSION = [
-  { min_monthly_gmv: 100_000_000, rate: 0.03 },  // 1억+ → 3%
-  { min_monthly_gmv: 10_000_000,  rate: 0.04 },  // 1천만+ → 4%
-] as const
-
-/** DB에서 이용권 기본 수수료율 조회 (어드민 설정 우선, 없으면 5%) */
-export async function getMealVoucherCommissionRate(DB: D1Database): Promise<number> {
-  try {
-    const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'commission_rate_meal_voucher'").first<{ value: string }>()
-    if (row) return Number(row.value) / 100
-  } catch { /* table may not exist */ }
-  return DEFAULT_MEAL_VOUCHER_COMMISSION_RATE
-}
-
-/** 셀러별 commission rate (override > tier > default). */
-export async function getSellerCommissionRate(DB: D1Database, sellerId: number): Promise<number> {
-  // 1. 어드민 수동 설정 (sellers.commission_rate)
-  try {
-    const seller = await DB.prepare("SELECT commission_rate FROM sellers WHERE id = ?").bind(sellerId).first<{ commission_rate: number | null }>()
-    if (seller && seller.commission_rate != null && seller.commission_rate > 0 && seller.commission_rate < 100) {
-      return Number(seller.commission_rate) / 100
-    }
-  } catch { /* column may not exist */ }
-  // 2. 자동 tier — 최근 30일 GMV 기준
-  try {
-    const gmvRow = await DB.prepare(`
-      SELECT COALESCE(SUM(p.price * p.group_buy_current), 0) AS gmv
-      FROM products p
-      WHERE p.seller_id = ?
-        AND p.updated_at >= datetime('now', '-30 days')
-        AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
-    `).bind(sellerId).first<{ gmv: number }>()
-    const gmv = Number(gmvRow?.gmv ?? 0)
-    for (const tier of TIER_COMMISSION) {
-      if (gmv >= tier.min_monthly_gmv) return tier.rate
-    }
-  } catch { /* fallback to default */ }
-  // 3. 기본값 (platform_settings)
-  return await getMealVoucherCommissionRate(DB)
-}
+// 💸 매장 수수료율(채널 > override > tier > default)은 `seller-commission-rate.ts` 로 분리했다
+//   (2026-08-27 — 채널 요율이 들어오며 설명이 필요한 개념이 됐다). 호출부 호환을 위해 재수출한다.
+export { getMealVoucherCommissionRate, getSellerCommissionRate } from './seller-commission-rate'
 
 /**
  * 테이블 + 컬럼 자동 생성 (마이그레이션 미적용 시 fallback).

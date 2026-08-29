@@ -62,6 +62,7 @@ import { adminSettlementsRoutes } from '../features/admin/api/admin-settlements.
 import { adminWholesaleMallRoutes } from '../features/supply/api/wholesale-malls-admin.routes';
 import { adminStatsRoutes } from '../features/admin/api/admin-stats.routes';
 import { adminSellersRoutes } from '../features/admin/api/admin-sellers.routes';
+import { adminStoreChannelRoutes } from '../features/admin/api/admin-store-channel.routes';
 import { adminProductsRoutes } from '../features/admin/api/admin-products.routes';
 // 🏭 [wholesale-split 2026-07-16] adminSuppliersRoutes → src/worker/mount-wholesale.ts (도매 분리)
 // 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 어드민 — PR 1 Foundation.
@@ -1775,6 +1776,8 @@ adminApp.route('/', adminSettlementsRoutes);
 adminApp.route('/', adminStatsRoutes);
 // 🛡️ 2026-04-22 배치 146 (TD-006 부분): admin-sellers 분리 (272줄)
 adminApp.route('/', adminSellersRoutes);
+// 🏪 매장 등록 채널(직접/대행사) 지정 — 요율을 정하는 값이라 어드민이 확정할 수 있어야 한다(2026-08-27).
+adminApp.route('/', adminStoreChannelRoutes);
 // 🛡️ 2026-04-22 배치 148 (TD-006 부분): admin-products + sample-requests 분리
 adminApp.route('/', adminProductsRoutes);
 // 🏭 [wholesale-split] 도매 admin 마운트(suppliers/withdrawal) → mount-wholesale.ts

@@ -28,13 +28,20 @@ export async function ownerFundedFor(DB: D1Database, ownerAccount: string): Prom
 }
 
 /**
- * 💸 채널별 플랫폼 요율 — **직접 입점 10% / 중개 5%**(대표 최종 2026-08-20).
+ * 💸 채널별 플랫폼 요율 — **직접 입점 10% / 대행사 경유 5%**(대표 최종 2026-08-20, 08-27 재확인:
+ *   *"10%는 매장이 직접 입점해 이용권을 팔 때. 대행사로 가입하면 5%"*).
  *
- * @returns 비율(0~1). 게이트 OFF·채널 미상·조회 실패면 `undefined`(= 호출부가 종전 단일 요율 사용).
+ * @returns 비율(0~1). 게이트 OFF·채널 **미상**·조회 실패면 `undefined`(= 호출부가 종전 단일 요율 사용).
  *
- * 🩸 **fail-soft 방향이 중요하다**: 모르면 `undefined` 를 돌려 **낮은 쪽(5%)** 으로 떨어진다.
- *   반대로 잘못 10% 를 물리면 매장에서 더 떼는 것이고, 그건 되돌리기 훨씬 비싸다.
- *   (채널 미지정 기존 매장을 brokered 로 폴백하는 `fee-resolver` 의 판단과 같은 방향.)
+ * 🩸 **fail-soft 방향이 중요하다**: 채널을 **모르면** `undefined` 를 돌려 종전 경로로 떨어진다.
+ *   잘못 10% 를 물리면 매장에서 더 떼는 것이고, 그건 되돌리기 훨씬 비싸다.
+ *
+ * 🩸 **2026-08-27: 중개(brokered)를 명시적으로 돌려주도록 고쳤다.** 그전엔 direct 가 아니면 전부
+ *   `undefined` 였는데, 그건 *"종전 경로가 마침 5% 다"* 라는 전제에 기대고 있었고 **그 전제가 실제로
+ *   깨져 있었다** — 라이브 실측에서 활성 매장 7곳 전부 `sellers.commission_rate = 10` 이 박혀 있어,
+ *   종전 경로를 타는 대행사 매장이 **10% 를 내고 있었다**(5% 여야 하는데). 폴백은 "아무 값"이 아니라
+ *   *특정 값*을 전제하므로, 그 전제를 코드가 아니라 데이터가 정하게 두면 조용히 어긋난다.
+ *   ⇒ 채널이 **확정된** 매장은 두 방향 모두 이 함수가 값을 정한다. 미지정만 종전 경로.
  */
 export async function channelPlatformRate(
   DB: D1Database, merchantId: number | string | null | undefined,
@@ -47,12 +54,15 @@ export async function channelPlatformRate(
     if (gate?.value !== 'true') return undefined
     const { getSellerMeta } = await import('./seller-meta')
     const meta = (await getSellerMeta(DB, [id])).get(id)
-    if (meta?.store_channel !== 'direct') return undefined   // 중개/미지정 → 종전 경로(5%)
-    const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'platform_fee_pct_direct'")
-      .first<{ value: string }>().catch(() => null)
+    const channel = meta?.store_channel
+    if (channel !== 'direct' && channel !== 'brokered') return undefined  // 미지정 → 종전 경로
+    const key = channel === 'direct' ? 'platform_fee_pct_direct' : 'platform_fee_pct_brokered'
+    const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+      .bind(key).first<{ value: string }>().catch(() => null)
     const { DEFAULT_FEE_RATES } = await import('./fee-resolver')
+    const fallback = channel === 'direct' ? DEFAULT_FEE_RATES.platformPctDirect : DEFAULT_FEE_RATES.platformPct
     const pct = Number.parseFloat(row?.value ?? '')
-    const use = Number.isFinite(pct) && pct >= 0 && pct <= 100 ? pct : DEFAULT_FEE_RATES.platformPctDirect
+    const use = Number.isFinite(pct) && pct >= 0 && pct <= 100 ? pct : fallback
     return use / 100
   } catch { return undefined }
 }
