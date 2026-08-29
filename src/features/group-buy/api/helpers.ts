@@ -28,8 +28,31 @@ export async function getMealVoucherCommissionRate(DB: D1Database): Promise<numb
   return DEFAULT_MEAL_VOUCHER_COMMISSION_RATE
 }
 
-/** 셀러별 commission rate (override > tier > default). */
+/**
+ * 셀러별 commission rate — **채널 > override > tier > default**.
+ *
+ * 💸 **2026-08-27: 채널(직접 10% / 대행사 5%)이 맨 앞에 왔다.** 대표 확정 모델은
+ *   *"10%는 매장이 직접 입점해 이용권을 팔 때. 대행사로 가입하면 5%"* 인데, 이 함수는 채널을
+ *   **아예 안 봤다** — 그래서 대행사 매장도 이 함수가 돌려주는 값을 그대로 냈다.
+ *
+ * 🩸 **왜 override 보다 위인가** (이 순서가 이 수정의 핵심이다):
+ *   `sellers.commission_rate` 는 **쓰는 주체가 셋**이다 — 어드민 수동 설정, `seller-tier-eval` cron
+ *   (GMV 등급으로 3~5% 를 덮어쓴다), 그리고 과거에 박힌 값. 채널을 이 컬럼 **아래**에 두면
+ *   **cron 이 돌 때마다 채널 요율이 조용히 지워진다**(에러도 로그도 없다). 라이브 실측이 그 상태였다:
+ *   활성 매장 7곳 전부 `commission_rate = 10` — 컬럼 기본값은 5 이고 tier cron 표에도 10 은 없으니
+ *   **아무도 의도하지 않은 잔재**이고, 그 잔재가 대행사 매장에 10% 를 물리고 있었다.
+ *   ⇒ 게이트를 켠다는 것은 *"이제 채널이 요율을 정한다"* 는 어드민의 선언이므로 채널이 이긴다.
+ *   매장별 예외가 필요하면 캠페인 override 경로(`params.platform_rate`)를 쓴다.
+ *
+ * ⚠️ 게이트(`fee_channel_rates_enabled`) OFF 또는 채널 미지정이면 **종전과 byte-동일**하다.
+ */
 export async function getSellerCommissionRate(DB: D1Database, sellerId: number): Promise<number> {
+  // 0. 채널별 요율 — 게이트 ON + 채널이 확정된 매장만. 미지정이면 undefined 로 아래 경로에 위임.
+  try {
+    const { channelPlatformRate } = await import('../../../worker/utils/ledger-commission-policy')
+    const byChannel = await channelPlatformRate(DB, sellerId)
+    if (byChannel !== undefined) return byChannel
+  } catch { /* 채널 조회 실패가 정산을 막지 않는다 — 아래 종전 경로로 */ }
   // 1. 어드민 수동 설정 (sellers.commission_rate)
   try {
     const seller = await DB.prepare("SELECT commission_rate FROM sellers WHERE id = ?").bind(sellerId).first<{ commission_rate: number | null }>()

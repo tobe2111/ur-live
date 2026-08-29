@@ -20,7 +20,7 @@ import { creditSellerOrderToLedger } from '../../worker/utils/order-ledger-credi
 type Row = Record<string, unknown>
 
 /** 최소 D1 흉내 — SQL 문자열로 분기한다(실제 엔진이 아니라 '어느 값을 읽는가'를 본다). */
-function fakeDb(opts: { channel?: string; gate?: string; directPct?: string; commissionRate?: number }) {
+function fakeDb(opts: { channel?: string; gate?: string; directPct?: string; brokeredPct?: string; commissionRate?: number }) {
   const written: Row[] = []
   const db = {
     prepare(sql: string) {
@@ -34,7 +34,16 @@ function fakeDb(opts: { channel?: string; gate?: string; directPct?: string; com
               total_amount: 100_000, commission_rate: opts.commissionRate ?? 5 } as T
           }
           if (s.includes("key = 'fee_channel_rates_enabled'")) return (opts.gate ? { value: opts.gate } : null) as T
+          // 🩸 2026-08-27: 채널 요율 조회가 리터럴에서 **바인드(`key = ?`)** 로 바뀌었다(채널마다 키가
+          //   다르므로). 리터럴만 보던 이 fake 는 그때 null 을 돌려주고 기본값 폴백을 태워
+          //   "어드민 설정을 쓴다" 검사를 깨뜨렸다 — 바인드도 읽는다.
           if (s.includes("key = 'platform_fee_pct_direct'")) return (opts.directPct ? { value: opts.directPct } : null) as T
+          if (/key = \?/.test(s)) {
+            const k = String(binds[0] ?? '')
+            if (k === 'platform_fee_pct_direct') return (opts.directPct ? { value: opts.directPct } : null) as T
+            if (k === 'platform_fee_pct_brokered') return (opts.brokeredPct ? { value: opts.brokeredPct } : null) as T
+            return null as T
+          }
           if (s.includes("key = 'promo_funding_source'")) return null as T
           if (s.includes('COUNT(*) AS n FROM order_items')) return { n: 0 } as T
           if (s.includes('FROM ledger_entries')) return null as T

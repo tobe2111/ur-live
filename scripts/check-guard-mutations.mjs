@@ -5832,6 +5832,38 @@ canvas {
       '이 레포에서 실측 4곳(코드 문자열이 사라져 부정 단언이 늘 통과)이 있었고, 이 파일 주석이 ' +
       '"아무도 안 밟는 지뢰"라고 적어 둔 그 지뢰를 실제로 밟았다. 삼켜도 예외가 없어 **가드가 조용히 헛돈다.**',
   },
+  {
+    name: '💸 대행사 매장이 다시 종전 요율(10%)을 낸다',
+    file: 'src/worker/utils/ledger-commission-policy.ts',
+    find: "    if (channel !== 'direct' && channel !== 'brokered') return undefined  // 미지정 → 종전 경로",
+    replace: "    if (channel !== 'direct') return undefined  // 미지정 → 종전 경로",
+    test: 'src/tests/unit/channel-fee-precedence.test.ts',
+    why:
+      '대행사를 undefined 로 돌리면 "종전 경로가 마침 5% 다" 라는 전제에 다시 기대게 된다. ' +
+      '그 전제는 라이브에서 이미 깨져 있었다 — 활성 매장 7곳 전부 sellers.commission_rate = 10 이라 ' +
+      '대행사 매장이 두 배를 내고 있었다(대표 확정 모델은 5%). 매장이 손해 보는 방향이라 더 나쁘다.',
+  },
+  {
+    name: '💸 채널이 매장별 요율보다 아래로 내려간다 (cron 이 덮어쓰는 자리)',
+    file: 'src/features/group-buy/api/helpers.ts',
+    find: '    const byChannel = await channelPlatformRate(DB, sellerId)\n    if (byChannel !== undefined) return byChannel',
+    replace: '    await channelPlatformRate(DB, sellerId)',
+    test: 'src/tests/unit/channel-fee-precedence.test.ts',
+    why:
+      '`sellers.commission_rate` 는 쓰는 주체가 셋이다(어드민·tier cron·과거 잔재). 채널을 그 아래에 두면 ' +
+      '**cron 이 돌 때마다 채널 요율이 조용히 지워진다** — 에러도 로그도 없다. 호출만 남기고 반환을 빼는 ' +
+      '모양(이 레포가 네 번 당한 "부르기는 하는데 안 쓴다")까지 같이 잡는다.',
+  },
+  {
+    name: '🏪 어드민 채널 지정이 어드민 라우터에서 빠진다',
+    file: 'src/worker/index.ts',
+    find: "adminApp.route('/', adminStoreChannelRoutes);",
+    replace: '',
+    test: 'src/tests/unit/admin-store-channel.test.ts',
+    why:
+      '파일만 있고 마운트가 없으면 **조용히 없는 기능**이다(빌드는 통과한다). 채널을 넣을 길이 없으면 ' +
+      '요율 모델이 적용될 수 없다 — 실제로 활성 매장 7곳 중 6곳이 그래서 미기록이었다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
