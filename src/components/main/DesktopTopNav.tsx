@@ -168,6 +168,18 @@ export default function DesktopTopNav() {
     if (q) navigate(`/search?q=${encodeURIComponent(q)}`)
   }
 
+  /**
+   * 📱 2026-08-27 (대표 폰 — "로딩이 심각한 문제"): 이 헤더는 **PC 전용**인데(`hidden md:block`)
+   *   그 숨김이 **CSS 뿐**이라, 폰에서도 React 가 트리 전체를 렌더한 뒤 화면에서만 감췄다.
+   *   라이브 CPU 프로파일(390px 모바일)에서 이 컴포넌트가 **self 548ms 로 홈에서 가장 비쌌다**
+   *   — 보이지도 않는 헤더가 첫 화면을 그 시간만큼 늦추고 있었다.
+   *   ⇒ 같은 중단점(`isDesktop` = `min-width: 768px`, 이미 계산돼 있었다)에서 **렌더 자체를 접는다**.
+   *   ⚠️ 훅 호출 뒤의 early-return 이라 rules-of-hooks 안전하고, `isDesktop` 은 matchMedia 리스너로
+   *     갱신되므로 창을 키우면 그대로 다시 나타난다. `createRoot`(hydrate 아님)라 미스매치도 없다.
+   *   ⚠️ `index.css` 의 `.desktop-topnav` 규칙은 프레임 모드(lg+) 전용이라 영향 없다.
+   */
+  if (!isDesktop) return null
+
   // 🏭 이중 방어선: 도매몰(B2B) surface 에서는 소비자 DesktopTopNav(검색바) 절대 미표시.
   //   1차 가드는 App.tsx hideBottomNav(마운트 차단). allowlist 회귀해도 자기-차단.
   //   (모든 hook 호출 이후의 early-return — rules-of-hooks 안전.)
