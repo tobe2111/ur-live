@@ -5847,7 +5847,8 @@ canvas {
   },
   {
     name: '💸 채널이 매장별 요율보다 아래로 내려간다 (cron 이 덮어쓰는 자리)',
-    file: 'src/features/group-buy/api/helpers.ts',
+    // 2026-08-27: helpers.ts 에서 seller-commission-rate.ts 로 분리(파일 크기 래칫). `--map-only` 가 잡았다.
+    file: 'src/features/group-buy/api/seller-commission-rate.ts',
     find: '    const byChannel = await channelPlatformRate(DB, sellerId)\n    if (byChannel !== undefined) return byChannel',
     replace: '    await channelPlatformRate(DB, sellerId)',
     test: 'src/tests/unit/channel-fee-precedence.test.ts',
