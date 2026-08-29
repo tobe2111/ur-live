@@ -5787,6 +5787,39 @@ canvas {
       '이 레포에서 실측 4곳(코드 문자열이 사라져 부정 단언이 늘 통과)이 있었고, 이 파일 주석이 ' +
       '"아무도 안 밟는 지뢰"라고 적어 둔 그 지뢰를 실제로 밟았다. 삼켜도 예외가 없어 **가드가 조용히 헛돈다.**',
   },
+  // ── 🧱 유어애즈↔유어딜 경계 (2026-08-27 대표 지시). 셋 다 되돌려도 **에러가 안 난다** —
+  //    유어딜이 인질이 되는 구조가 조용히 돌아올 뿐이다.
+  {
+    name: '🧱 유어애즈가 유어딜 업무 테이블에 쓰는 것을 허용한다',
+    file: 'scripts/check-ads-urdeal-isolation.mjs',
+    find: "  'orders', 'order_items', 'products', 'sellers', 'users', 'payments', 'carts', 'cart_items',",
+    replace: "  'carts', 'cart_items',",
+    test: 'src/tests/unit/ads-urdeal-isolation.test.ts',
+    why:
+      '이 목록이 곧 R1 이다. 여기서 orders·products·sellers·users·payments 를 빼면 유어애즈가 ' +
+      '유어딜의 주문·상품·회원을 고쳐도 가드가 초록불이다 — quota 가 아니라 **데이터 사고**가 되는 축이다.',
+  },
+  {
+    name: '🧱 유어딜 DB 에 유어애즈 테이블이 느는 것을 허용한다',
+    file: 'scripts/check-ads-urdeal-isolation.mjs',
+    find: "    if (m[1] === 'platform_settings' || allowed.has(m[1]) || exempt(src, m.index)) continue",
+    replace: '    continue',
+    test: 'src/tests/unit/ads-urdeal-isolation.test.ts',
+    why:
+      'R2 는 래칫이다 — 조건을 무조건 continue 로 만들면 새 유어애즈 테이블이 유어딜 DB 로 ' +
+      '들어와도 아무 말이 없다. 494MB/99% 사고가 정확히 그렇게 자랐다.',
+  },
+  {
+    name: '🧱 유어애즈 작업이 유어딜 워커 cron 에 붙는 것을 허용한다',
+    file: 'scripts/check-ads-urdeal-isolation.mjs',
+    find: '  if (knownLanes.has(lane)) continue',
+    replace: '  continue',
+    test: 'src/tests/unit/ads-urdeal-isolation.test.ts',
+    why:
+      'R3 이 죽으면 유어애즈 작업이 유어딜 워커의 CPU·서브리퀘스트를 먹어도 신호가 없다. ' +
+      '이 레포는 CPU 한도로 레인이 죽은 적이 여러 번 있고, 그때 죽는 것은 무거운 쪽이 아니라 **뒤에 선 쪽**이다.',
+  },
+
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
