@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { MapPin, ChevronDown, LocateFixed, Loader2, X } from 'lucide-react'
 import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
 import { toast } from '@/hooks/useToast'
@@ -97,6 +98,27 @@ export default function PcHomeLocationBar({
   }
 
   const sido = KOREA_REGIONS.find(r => r.key === activeSido) || KOREA_REGIONS[0]
+  /**
+   * 📱 2026-08-27 (대표 폰 스크린샷 — "화면에서 나가고 있어"):
+   *   패널이 `absolute left-0` 로 **버튼**에 붙어 있었는데, 모바일 헤더에서 그 버튼은 오른쪽에 있다.
+   *   그래서 폭 520px(또는 90vw) 패널이 화면 오른쪽으로 삐져나가 **문서를 화면보다 넓게** 만들었다
+   *   (실측 360px 기기: 문서폭 360 → **420**. 그래서 로고가 왼쪽으로 잘려 보였다).
+   *   ⚠️ `max-w-[90vw]` 는 이걸 못 막는다 — 문서가 넓어지면 vw 도 같이 커져 자기 자신을 못 잡는다.
+   *   ⇒ 좁은 화면에서는 버튼 좌표계를 벗어나 **뷰포트에 고정**한다(좌우 8px 여백). 넓은 화면은 종전 그대로.
+   */
+  const isWide = useMediaQuery('(min-width: 640px)')
+  const [panelTop, setPanelTop] = useState(0)
+  useEffect(() => {
+    if (!open || isWide) return
+    const measure = () => {
+      const el = boxRef.current
+      if (el) setPanelTop(el.getBoundingClientRect().bottom + 8)
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [open, isWide])
+
   const hero = tone === 'hero'
   // 히어로(잉크 색면) 위에서는 흰 테두리 칩, 흰 패널 위에서는 기존 라이트 버튼.
   const chip = hero
@@ -129,7 +151,12 @@ export default function PcHomeLocationBar({
       </div>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+8px)] z-[10500] w-[520px] max-w-[90vw] rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] shadow-[0_12px_40px_rgba(0,0,0,0.18)] overflow-hidden">
+        <div
+          className={`z-[10500] rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] shadow-[0_12px_40px_rgba(0,0,0,0.18)] overflow-hidden ${
+            isWide ? 'absolute left-0 top-[calc(100%+8px)] w-[520px]' : 'fixed left-2 right-2'
+          }`}
+          style={isWide ? undefined : { top: panelTop }}
+        >
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#2A3446]">
             <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">지역 선택</span>
             <div className="flex items-center gap-2">
@@ -137,7 +164,8 @@ export default function PcHomeLocationBar({
               <button onClick={() => setOpen(false)} aria-label="닫기" className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><X className="w-4 h-4" /></button>
             </div>
           </div>
-          <div className="flex h-[320px]">
+          {/* 좁은 화면에서는 화면 높이를 넘지 않게 — 넘으면 아래 항목을 영영 못 고른다. */}
+          <div className="flex h-[320px] max-h-[calc(100dvh-160px)]">
             {/* 시/도 */}
             <div className="w-[42%] overflow-y-auto border-r border-gray-100 dark:border-[#2A3446] py-1">
               {KOREA_REGIONS.map(r => (
