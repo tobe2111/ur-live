@@ -1,0 +1,101 @@
+# 버튼 체계 + 모서리 위계 (2026-08-30, PR #1240 머지 · #1244 진행)
+
+대표 지적 두 줄에서 출발했다 —
+*"나는 버튼들이 AI 스럽다고 생각했어"* → *"버튼의 테두리가 정말 AI스럽다고 생각이 들고
+아이콘들이 AI가 만든 티가 많이 나"*.
+
+## 다음 세션의 첫 액션
+
+```bash
+# 1) #1244 가 아직 열려 있으면 CI 초록 확인 후 머지 (대표에게 "묻지 않고 머지" 약속함)
+#    gh 없음 → mcp__github__pull_request_read(method:'get_check_runs', pullNumber:1244)
+
+# 2) 배포 후 라이브에서 모서리 위계가 실제로 실렸는지 판정 (이게 유일한 최종 확인)
+curl -s https://urdeal.kr/ | grep -o '/assets/index-[A-Za-z0-9_-]*\.css' | head -1
+#    → 그 CSS 를 받아서:
+#      .rounded-lg{border-radius:var(--radius)}  +  --radius: .625rem   (=10px)
+#      .rounded-xl{border-radius:.875rem}                                (=14px)
+#      두 값이 **다르면** 성공. 같으면 배포가 안 실린 것이다.
+```
+
+## 무엇을 왜 바꿨나
+
+### 1. 버튼 — **느낌**(#1240) 과 **모양**(#1244) 은 별개다
+대표가 "변경된 게 없는데?" 라고 한 것이 정확했다. #1240 에서 내가 실제로 바꾼 것은
+누름 반응·그림자 색조·포커스 링이었고, **보이는 절반(모양)은 미뤄 뒀다.**
+지금은 둘 다 있다.
+
+- `index.css` `@layer base`: 모든 `button:not(:disabled)` 에 160ms 전환 + `active:scale(.978)`
+  (`prefers-reduced-motion` 존중). ⚠️ `duration-160` 은 **Tailwind 눈금에 없어 조용히 버려진다** —
+  임의값 `duration-[160ms]` 라야 한다(이 세션에서 실제로 당했다).
+- `index.css` `@layer components`: `.ur-btn` + `-lg/-md/-sm/-block`.
+  ⚠️ **Tailwind 는 안 쓰이는 컴포넌트 클래스를 통째로 지운다** — 실사용처 없이 커밋하면
+  번들에 0바이트로 남는다. 반드시 사용처와 같은 커밋에.
+- 적용: `confirm-dialog`(**108곳** — 최대 전파) · `CartCtaButton` · 교환권 더보기 · `ui/button`.
+  같이 고친 것: 확인 버튼 배경이 `linear-gradient(135deg,#6b7280,#6b7280)` —
+  **같은 색 두 개짜리 가짜 그라디언트**였고 그 회색은 흑백 시절(2026-06-19) 잔재였다.
+  → 잉크 `#1A2C42`. 대비 4.8:1 → 14.2:1.
+
+### 2. 모서리 — 3,716곳이 **같은 곡률**이었다 (이번 세션 최대 발견)
+`--radius: 0.75rem` 이 `rounded-lg` 를 12px 로 올렸는데 Tailwind 기본 `rounded-xl` 도 12px 다.
+즉 lg(2,217곳)와 xl(1,499곳)이 **완전히 같은 값**. 칩도 버튼도 카드도 시트도 한 곡률.
+사람이 만든 화면에는 위계가 있다(작은 것은 조이고 큰 것은 푼다). 그게 대표가 본 "AI 티"의 뿌리다.
+
+→ `sm 6 · md 8 · lg 10 · xl 14 · 2xl 18 · 3xl 24`. **클래스명은 하나도 안 바꿨다**
+(2026-07-19 브랜드 롤아웃과 같은 단일지점 리매핑 → 가드·레이아웃 영향 0).
+
+### 3. 테두리 — 뿌리는 색이 아니라 **표면 토큰**이었다
+`seller-public/theme.ts` 라이트가 `bg: 'bg-white', card: 'bg-white'` — 바탕과 카드가 같은 흰색이라
+카드를 구분할 방법이 **1px 실선뿐**이었다. 다크는 이미 `#0F151D ↔ #1A2334` 로 분리돼 있었다.
+**라이트만 깨진 채 아무도 몰랐다.** → `bg-warm`(#FAF7F5) ↔ `bg-white`.
+
+### 4. 아이콘 — 유어샵의 `Sparkles`(반짝임)
+"AI 마법"의 관용 기호이고 *내 가게* 라는 뜻이 전혀 없다. 동네딜의 `MapPin` 도 **한 지점**을
+가리키는데 개념은 **동네**다. 대표 결정(3번 2안)대로 세트 교체 없이 **이 둘만** 직접 그렸다
+(`components/icons/urdeal-icons.tsx`). ⚠️ `forwardRef` 필수 — lucide 는 `ForwardRefExoticComponent`
+라 평범한 함수 컴포넌트는 `icon: LucideIcon` 자리에서 TS2741 로 막힌다.
+
+## 이번에 틀렸던 판단 (제일 값진 부분)
+
+1. **"포커스 링이 15곳뿐이라 접근성 구멍"** — 틀렸다. `index.css:7` 에 전역
+   `*:focus-visible` 이 이미 있었다. 개별 선언만 세고 전역 규칙을 안 봤다.
+2. **시안을 믿고 보고했다** — 실제 스크린샷을 찍으니 내 목업과 달랐다(그라디언트는 회색이
+   아니라 로즈였고, 숫자 배지가 있었고, 이모지 자리표시자가 있었다). 더 중요하게,
+   **내가 "고치자"고 한 것 중 둘은 대표가 이미 내린 결정**이었다(숫자 배지·배너 그라디언트).
+   ⇒ 렌더된 화면을 보기 전에 디자인을 판정하지 말 것.
+3. **PR 을 열어 두고 질문한 채 기다렸다** — 대표가 "라이브 적용도 했어? 아직 그대로인데?"
+   라고 할 때까지 #1240 이 draft 로 남아 있었다. 확인 질문을 하려면 **머지한 뒤에** 할 것.
+4. **`duration-160` 이 조용히 사라졌다** — CLAUDE.md 가 반복 경고하는 "실패하지 않는 실패".
+
+## 눈으로 보는 방법 (이 환경에서 실제로 되는 유일한 길)
+
+`*.pages.dev` 는 프록시가 막고(CONNECT 403), Chromium 은 `urdeal.kr` 에 못 닿는다
+(`ERR_CONNECTION_RESET` — 프록시가 TLS 터널을 끊는다. ECH/QUIC 플래그로도 안 된다).
+→ `node scripts/visual-preview.mjs` 가 `dist/client` 를 로컬로 띄우고 `__SSR_INITIAL_CURATOR__`
+를 주입해 실제 화면을 찍는다. ⚠️ 폰트가 차단되므로 **자간·행간은 판정하지 말 것**.
+
+## 가드 (전부 되돌려-검증 red 확인)
+
+| 가드 | 막는 것 |
+|---|---|
+| `src/tests/unit/radius-scale.test.ts` (4) | lg≡xl 붕괴 · 단조증가 · 6단계 상이 · 버튼 곡률 ≤ 카드 |
+| `src/tests/unit/surface-token-separation.test.ts` (5) | 라이트 `bg === card` 복귀(테두리 의존 부활) |
+| `check-guard-mutations` 매니페스트 +2 | 위 둘이 **실제로 실패할 수 있는지** |
+
+두 회귀 모두 **에러를 안 낸다** — 되돌려도 빌드는 초록불이고 화면만 조용히 평평해진다.
+그래서 문서가 아니라 테스트로 박았다.
+
+## 남은 것 / 대표 판단 대기
+
+- **버튼 전파는 아직 일부다.** 인라인 버튼 2,600여 개가 남아 있고 **단일지점 레버가 없다**
+  (최빈 패턴이 6곳밖에 안 맞는다 — 전부 제각각인 여러 줄 JSX). 공용 컴포넌트를 먼저
+  훑는 것이 전파 배수가 크다: `OptionSelectModal`, `VoucherRedeemModal`, `ProductCard`.
+- **이모지 자리표시자**(🍽️💇🎯🏨 — `voucher-categories.ts` 등): 대표 결정이 없어 손대지 않았다.
+  카테고리 칩·티어·채널 등 여러 메타 표에 흩어져 있어 범위 확정이 먼저다.
+- **`GroupBuyDetailPage` 구매 CTA 는 일부러 제외**했다 — 자체 `--gbd-*` 토큰 체계를 가진
+  의도된 디자인이고 결제 화면이다.
+- 스킬 설치의 사용자 몫: PC 에서 `npx skills add -g …` · claude.ai → **Settings > Features**
+  에 zip 23개 업로드 · `API_KEY_21ST`. (계정 전체 동기화는 **공식적으로 불가** —
+  "Custom Skills do not sync across surfaces".)
+- ListingProject 조직 레포(Diagrams/Listing_App/Listing_FE)는 이 세션에서 붙일 수 없다
+  (cross-tier add 거부) — 그 레포에서 시작한 새 세션이 필요하다.
