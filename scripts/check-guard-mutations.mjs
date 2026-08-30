@@ -83,6 +83,28 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '모서리 위계가 무너져 lg 와 xl 이 같은 값이 된다',
+    file: 'tailwind.config.js',
+    find: "        xl: '0.875rem',",
+    replace: "        xl: '0.625rem',",
+    test: 'src/tests/unit/radius-scale.test.ts',
+    why:
+      'xl 이 lg 와 같은 값으로 드리프트하면 `rounded-lg`(2,217곳)와 `rounded-xl`(1,499곳)이 ' +
+      '완전히 겹친다 — 칩도 버튼도 카드도 같은 곡률이 되어 화면이 평평해진다(실제로 그랬다). ' +
+      '**에러가 나지 않고 빌드도 초록불**이라, 가드가 없으면 다음 세션이 조용히 되돌린다.',
+  },
+  {
+    name: '유어샵 라이트에서 바탕과 카드가 다시 같은 흰색이 된다',
+    file: 'src/pages/seller-public/theme.ts',
+    find: "bg: 'bg-warm', card: 'bg-white'",
+    replace: "bg: 'bg-white', card: 'bg-white'",
+    test: 'src/tests/unit/surface-token-separation.test.ts',
+    why:
+      '바탕과 카드가 같은 색이면 카드를 구분할 방법이 1px 실선뿐이라 화면 전체가 테두리에 ' +
+      '의존하게 된다. 대표가 "테두리가 정말 AI스럽다"고 지적한 것의 근본 원인이고, ' +
+      '다크는 멀쩡했기 때문에 **라이트만 깨진 채 아무도 몰랐다.**',
+  },
+  {
     name: '유어샵 핀 딜 매칭이 무음으로 항상 실패한다',
     file: 'src/worker/routes/curator.routes.ts',
     find: '                p.seller_id,\n',
