@@ -20,8 +20,15 @@ function fakeDb(settings: Record<string, string>, meta: Record<string, string>) 
       const self = {
         bind: (...a: unknown[]) => { args.push(...a); return self },
         async first<T>() {
-          const m = /key = '([a-z_]+)'/.exec(sql)
-          if (m) return (settings[m[1]] !== undefined ? { value: settings[m[1]] } : null) as T | null
+          // 🩸 2026-08-27: 채널 요율 조회가 리터럴(`key = 'x'`)에서 **바인드(`key = ?`)** 로 바뀌었다
+          //   (채널마다 키가 달라졌으므로). 리터럴만 보던 이 fake 는 그때 조용히 null 을 돌려주고
+          //   기본값 폴백을 태워 **"어드민 설정을 쓴다" 검사를 통과시켜 버렸다** — 바인드도 읽는다.
+          const lit = /key = '([a-z_]+)'/.exec(sql)
+          if (lit) return (settings[lit[1]] !== undefined ? { value: settings[lit[1]] } : null) as T | null
+          if (/key = \?/.test(sql)) {
+            const k = String(args[0] ?? '')
+            return (settings[k] !== undefined ? { value: settings[k] } : null) as T | null
+          }
           return null as T | null
         },
         async all<T>() {
@@ -66,9 +73,25 @@ describe('채널별 플랫폼 요율 (직접 10% / 중개 5%)', () => {
     expect(r.platform_amount, '게이트가 꺼졌는데 요율이 바뀌었다').toBe(500)
   })
 
-  it('🩸 채널 미지정은 낮은 쪽(5%)으로 — 모르면 더 떼지 않는다', async () => {
-    const r = await call(fakeDb({ fee_channel_rates_enabled: 'true' }, {}))
-    expect(r.platform_amount).toBe(500)
+  it('🩸 채널 미지정은 **종전 경로**로 — 모르면 바꾸지 않는다', async () => {
+    // 🩸 이 픽스처는 주입 검증이 고쳐 놓은 것이다. 원래는 종전 요율도 5%, 대행사 요율도 5% 라
+    //   **둘을 구분할 수 없었다** — 미지정을 대행사로 간주하는 결함을 심어도 금액이 같아 초록이었다.
+    //   ⇒ 종전(platform_fee_pct=7)과 대행사(5)를 **다른 값**으로 두어야 어느 길로 갔는지 드러난다.
+    const r = await call(fakeDb(
+      { fee_channel_rates_enabled: 'true', platform_fee_pct: '7', platform_fee_pct_brokered: '5' },
+      {},
+    ))
+    expect(r.platform_amount, '미지정인데 채널 요율(대행사)로 갔다 — 모르면 종전 경로여야 한다').toBe(700)
+  })
+
+  it('🔑 대행사 요율은 이제 **자기 키**에서 온다 (폴백에 기대지 않는다)', async () => {
+    // 🩸 그전엔 중개 매장이 undefined → `platform_fee_pct` 로 떨어져서 5% 가 나왔다. 맞는 값이었지만
+    //   "종전 경로가 마침 5% 다" 라는 전제에 기댄 것이었고, 라이브에서 그 전제가 깨져 있었다.
+    const r = await call(fakeDb(
+      { fee_channel_rates_enabled: 'true', platform_fee_pct_brokered: '5', platform_fee_pct: '10' },
+      { store_channel: 'brokered' },
+    ))
+    expect(r.platform_amount, '대행사 요율이 platform_fee_pct 폴백에 끌려갔다').toBe(500)
   })
 
   it('어드민이 직접 요율을 바꾸면 그 값을 쓴다', async () => {

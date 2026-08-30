@@ -83,6 +83,26 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '유어샵 핀 딜 매칭이 무음으로 항상 실패한다',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: '                p.seller_id,\n',
+    replace: '',
+    test: 'src/tests/unit/urshop-earn-ladder.test.ts',
+    why:
+      '핀↔딜 매칭 키가 SELECT 목록에서 빠지면 `deal_pct` 가 전부 null 이 되어 "내 계약 매장" ' +
+      '섹션이 영원히 비고, 소개자는 계약이 있는데도 없는 화면을 본다. 에러가 없어 안 보인다.',
+  },
+  {
+    name: '소개자 검색 모수가 가입자 전원으로 넓어진다',
+    file: 'src/features/group-buy/api/marketing/discovery.ts',
+    find: "      '(pin.n > 0 OR COALESCE(p.is_open, 0) = 1)',\n",
+    replace: '',
+    test: 'src/tests/unit/urshop-earn-ladder.test.ts',
+    why:
+      '핸들은 가입 시 자동 발급된다 — 활동 조건이 빠지면 **가입자 전원이 사업자에게 노출**된다. ' +
+      '모수가 커져 보이므로 개선처럼 보이는 것이 이 회귀의 위험한 점이다.',
+  },
+  {
     name: '유어샵 담은 핀에서 소개비 귀속이 조용히 사라진다',
     file: 'src/pages/seller-public/CuratorPinsSection.tsx',
     find: '              to={`/u/${handle}/p/${pin.product_id}`}\n',
@@ -1159,6 +1179,31 @@ canvas {
       '지키는 성질) 화면은 멀쩡해서 아무 신호가 없다. 미루기(2026-08-27 대표 승인)와 제거는 다르고, ' +
       '가드는 **둘 다** 잡아야 한다. ⚠️ 실제로 처음 짠 테스트는 이걸 통과시켰다 — 슬라이스 안에 ' +
       '아래 IntersectionObserver 가지의 같은 호출이 들어와서다. `run` 정의로 앵커해 교정했다.',
+  },
+  {
+    name: '지역 선택 패널이 버튼에 붙어 화면 밖으로 나간다',
+    file: 'src/pages/pc-home/PcHomeLocationBar.tsx',
+    find: "isWide ? 'absolute left-0 top-[calc(100%+8px)] w-[520px]' : 'fixed left-2 right-2'",
+    replace: "'absolute left-0 top-[calc(100%+8px)] w-[520px] max-w-[90vw]'",
+    test: 'src/tests/unit/region-picker-viewport.test.ts',
+    why:
+      '2026-08-27 대표가 폰 스크린샷으로 신고한 실제 버그다. 패널이 버튼(모바일 헤더 오른쪽)에 붙어 ' +
+      '오른쪽으로 삐져나가 **문서를 화면보다 넓게** 만들었다(실측 360→420 · 390→477 · 430→553). ' +
+      '⚠️ 이 replace 는 `max-w-[90vw]` 를 되살리는데 **그게 정확히 안 통하던 방어책**이다 — 문서가 ' +
+      '넓어지면 vw 도 같이 커져 자기를 못 잡는다. 그래서 이 회귀는 "화면밖 0px" 로 측정되고 ' +
+      '**패널만 보면 멀쩡해 보인다** — 페이지가 밀리는 걸 봐야 안다. 눈으로 놓치기 쉬운 종류다.',
+  },
+  {
+    name: 'PC 전용 헤더가 모바일에서도 렌더된다(CSS 로만 숨김)',
+    file: 'src/components/main/DesktopTopNav.tsx',
+    find: '  if (!isDesktop) return null',
+    replace: '',
+    test: 'src/tests/unit/pc-only-render-gate.test.ts',
+    why:
+      '2026-08-27 대표 폰 신고("로딩이 심각한 문제")의 실제 원인이다. 루트가 `hidden md:block` 이라 ' +
+      '**CSS 는 숨기지만 React 는 다 만든다** — 라이브 프로파일에서 self 548ms 로 홈 최대였고 ' +
+      'DOM 노드가 539→308(43%) 줄었다. ⚠️ 이 게이트를 지워도 **화면은 완전히 똑같다**(어차피 안 보인다) ' +
+      '— 그래서 "불필요한 조건 같은데" 하고 지워지기 딱 좋고, 지워져도 아무 신호가 없다.',
   },
   {
     name: '카테고리 스크롤 화살표가 렌더마다 강제 리플로를 돈다',
@@ -5601,12 +5646,14 @@ canvas {
   {
     name: '💸 채널 미지정을 직접 입점으로 간주(모르는데 더 뗀다)',
     file: 'src/worker/utils/ledger-commission-policy.ts',
-    find: "    if (meta?.store_channel !== 'direct') return undefined   // 중개/미지정 → 종전 경로(5%)",
-    replace: "    if (meta?.store_channel === 'nope') return undefined",
+    find: "    if (channel !== 'direct' && channel !== 'brokered') return undefined  // 미지정 → 종전 경로",
+    replace: "    if (channel === 'nope') return undefined",
     test: 'src/tests/unit/channel-platform-rate.test.ts',
     why:
-      'fail-soft 방향이 뒤집힌다. 모르면 낮은 쪽(5%)으로 떨어져야 한다 — 잘못 10% 를 물리면 ' +
-      '매장에서 더 뗀 것이고 되돌리기가 훨씬 비싸다(환급 + 신뢰).',
+      'fail-soft 방향이 뒤집힌다. **모르면** 종전 경로로 떨어져야 한다 — 잘못 10% 를 물리면 ' +
+      '매장에서 더 뗀 것이고 되돌리기가 훨씬 비싸다(환급 + 신뢰). ' +
+      '⚠️ 2026-08-27 재조준: 원래 앵커(`store_channel !== \'direct\'`)는 대행사도 undefined 로 보내던 ' +
+      '옛 코드다. 그 줄이 사라지자 이 항목이 **낡은 지도**가 돼 CI 가 잡았다 — 검사기가 제 일을 했다.',
   },
   {
     name: '🏷️ 옛 이름 "링크샵" 이 사용자 화면으로 돌아온다',
@@ -5819,7 +5866,39 @@ canvas {
       'R3 이 죽으면 유어애즈 작업이 유어딜 워커의 CPU·서브리퀘스트를 먹어도 신호가 없다. ' +
       '이 레포는 CPU 한도로 레인이 죽은 적이 여러 번 있고, 그때 죽는 것은 무거운 쪽이 아니라 **뒤에 선 쪽**이다.',
   },
-
+  {
+    name: '💸 대행사 매장이 다시 종전 요율(10%)을 낸다',
+    file: 'src/worker/utils/ledger-commission-policy.ts',
+    find: "    if (channel !== 'direct' && channel !== 'brokered') return undefined  // 미지정 → 종전 경로",
+    replace: "    if (channel !== 'direct') return undefined  // 미지정 → 종전 경로",
+    test: 'src/tests/unit/channel-fee-precedence.test.ts',
+    why:
+      '대행사를 undefined 로 돌리면 "종전 경로가 마침 5% 다" 라는 전제에 다시 기대게 된다. ' +
+      '그 전제는 라이브에서 이미 깨져 있었다 — 활성 매장 7곳 전부 sellers.commission_rate = 10 이라 ' +
+      '대행사 매장이 두 배를 내고 있었다(대표 확정 모델은 5%). 매장이 손해 보는 방향이라 더 나쁘다.',
+  },
+  {
+    name: '💸 채널이 매장별 요율보다 아래로 내려간다 (cron 이 덮어쓰는 자리)',
+    // 2026-08-27: helpers.ts 에서 seller-commission-rate.ts 로 분리(파일 크기 래칫). `--map-only` 가 잡았다.
+    file: 'src/features/group-buy/api/seller-commission-rate.ts',
+    find: '    const byChannel = await channelPlatformRate(DB, sellerId)\n    if (byChannel !== undefined) return byChannel',
+    replace: '    await channelPlatformRate(DB, sellerId)',
+    test: 'src/tests/unit/channel-fee-precedence.test.ts',
+    why:
+      '`sellers.commission_rate` 는 쓰는 주체가 셋이다(어드민·tier cron·과거 잔재). 채널을 그 아래에 두면 ' +
+      '**cron 이 돌 때마다 채널 요율이 조용히 지워진다** — 에러도 로그도 없다. 호출만 남기고 반환을 빼는 ' +
+      '모양(이 레포가 네 번 당한 "부르기는 하는데 안 쓴다")까지 같이 잡는다.',
+  },
+  {
+    name: '🏪 어드민 채널 지정이 어드민 라우터에서 빠진다',
+    file: 'src/worker/index.ts',
+    find: "adminApp.route('/', adminStoreChannelRoutes);",
+    replace: '',
+    test: 'src/tests/unit/admin-store-channel.test.ts',
+    why:
+      '파일만 있고 마운트가 없으면 **조용히 없는 기능**이다(빌드는 통과한다). 채널을 넣을 길이 없으면 ' +
+      '요율 모델이 적용될 수 없다 — 실제로 활성 매장 7곳 중 6곳이 그래서 미기록이었다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
