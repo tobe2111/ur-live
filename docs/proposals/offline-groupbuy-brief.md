@@ -804,9 +804,8 @@
 
 | 항목 | 값 | 출처 (파일:심볼) |
 |---|---|---|
-| 식사권 기본 수수료 | 5% | `src/features/group-buy/api/helpers.ts:DEFAULT_MEAL_VOUCHER_COMMISSION_RATE` |
-| 차등 수수료 — 월 GMV 100,000,000원 이상 | 3% | `src/features/group-buy/api/helpers.ts:TIER_COMMISSION` |
-| 차등 수수료 — 월 GMV 10,000,000원 이상 | 4% | `src/features/group-buy/api/helpers.ts:TIER_COMMISSION` |
+| 식사권 기본 수수료 | [추출실패—수동확인] | `src/features/group-buy/api/helpers.ts:DEFAULT_MEAL_VOUCHER_COMMISSION_RATE` |
+| 차등 수수료 (GMV 기반) | [추출실패—수동확인] | `src/features/group-buy/api/helpers.ts:TIER_COMMISSION` |
 | 커뮤니티 공구 — 기본 보증금/인 | 5,000원 | `src/features/community-group-buy/api/community-group-buy.routes.ts:deposit_per_person` |
 | 커뮤니티 공구 — 기본 목표 인원 | 10명 | `src/features/community-group-buy/api/community-group-buy.routes.ts:target_count` |
 | 커뮤니티 공구 — 인기 그룹 임계 | 50명 | `src/features/community-group-buy/api/community-group-buy.routes.ts:popular` |
@@ -1032,7 +1031,7 @@
 - `PATCH /api/seller/stays/bookings/:bookingId/use-voucher`
 
 
-> 마지막 생성: 2026-08-02T15:37:42.352Z
+> 마지막 생성: 2026-08-30T10:13:41.203Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
