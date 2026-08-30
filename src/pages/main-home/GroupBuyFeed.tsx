@@ -5,7 +5,8 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
-import { Utensils, BedDouble, Scissors, Ticket, SearchX, Flame, Timer, Tag, Clock } from 'lucide-react'
+import { SearchX, Flame, Timer, Tag, Clock } from 'lucide-react'
+import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
 import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
@@ -54,18 +55,17 @@ function discountOf(p: FeedProduct): number {
 }
 
 /**
- * 🏷️ 2026-08-30: 칩 라벨의 이모지(`🍽️ 🏨 💇 🎯`) → 선 아이콘.
- *   같은 화면 **위쪽 카테고리 탭은 이미 선 아이콘**인데 이 칩만 이모지라, 한 화면에
- *   두 스타일이 나란히 있었다(그게 어느 한쪽보다 나쁘다). 아이콘 자체도 OS 마다
- *   다른 그림이 나온다. `all` 은 아이콘 없이 글자만 — 형태를 굳이 붙일 개념이 아니다.
+ * 🏷️ 카테고리는 **`DEAL_CATS` 한 표만 읽는다** (2026-08-30).
+ *
+ *   ⚠️ 이 화면이 자기 표를 따로 갖고 있어서 **같은 분류가 한 화면에 두 번, 다르게** 떴다 —
+ *      상단 탭은 `전체·식사·미용·숙소·기타`, 바로 아래 칩은 `전체·식사·숙소·뷰티·기타`.
+ *      **같은 것을 두 이름(미용/뷰티)으로 부르고 순서도 달랐다.** 사용자에겐 두 분류
+ *      체계가 있는 것처럼 보이고, 그게 "조립한 화면" 인상의 큰 몫이다.
+ *   🩸 더 뼈아픈 건 `PcHomeRail` 이 자기 주석에 *"카테고리 라벨 SSOT — 문구가 갈리면
+ *      반드시 어긋난다"* 고 **미리 적어 뒀는데도** 두 번째 표가 생겨 그대로 어긋난 것이다.
+ *      SSOT 는 선언이 아니라 **다른 표가 없을 때** 성립한다.
  */
-const CATEGORIES = [
-  { key: 'all',             label: '전체', Icon: null },
-  { key: 'meal_voucher',    label: '식사', Icon: Utensils },
-  { key: 'stay_voucher',    label: '숙소', Icon: BedDouble },
-  { key: 'beauty_voucher',  label: '뷰티', Icon: Scissors },
-  { key: 'etc_voucher',     label: '기타', Icon: Ticket },
-] as const
+const CATEGORIES = DEAL_CATS
 
 /**
  * 🖊️ 2026-08-30: 이모지 라벨 → 선 아이콘 + **공용 `SortMenu` 로 통일**.
@@ -318,7 +318,15 @@ export default function GroupBuyFeed({
 
       {/* 카테고리 칩 — sticky 한 단계 아래 (헤더는 페이지에서 sticky 처리).
           🖥️ PC 홈에선 좌측 레일이 카테고리를 담당 → 내부 칩 숨김. */}
-      {!pc && (
+      {/* 🧹 2026-08-30 (대표 — "카테고리 UI 디자인이 문제"): 칩 행은 **부모가 카테고리를
+          안 가질 때만** 그린다.
+          🩸 이전엔 `!pc` 만 보고 그려서, 모바일 홈에서 카테고리가 **두 번** 떴다 —
+             위에 `MobileHomePage` 의 아이콘 탭(전체·식사·미용·숙소·기타)이 있고
+             바로 아래 같은 것이 pill 칩으로 또 있었다. 부모는 `category` +
+             `onCategoryChange` 로 이미 그 컨트롤을 **소유**하고 있었으므로,
+             이 안의 칩은 처음부터 그 화면에선 군더더기였다.
+          ⇒ 라벨을 맞추는 걸로는 부족했다. 중복은 **컨트롤 자체**였다. */}
+      {!pc && !onCategoryChange && (
       <div className="bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446] sticky top-12 z-10">
         <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto no-scrollbar">
           {CATEGORIES.map(c => {
@@ -333,7 +341,7 @@ export default function GroupBuyFeed({
                     : 'bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2A3446]'
                 }`}
               >
-                {c.Icon && <c.Icon className="w-3.5 h-3.5" aria-hidden="true" />}
+                {c.key !== 'all' && <c.icon className="w-3.5 h-3.5" aria-hidden="true" />}
                 {c.label}
               </button>
             )

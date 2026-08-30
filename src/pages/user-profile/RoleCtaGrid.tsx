@@ -88,7 +88,7 @@ export default function RoleCtaGrid() {
           <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2 px-1">
             {t('roleCta.myShortcuts', { defaultValue: '내 바로가기' })}
           </p>
-          <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-[#2A3446] overflow-hidden">
+          <div className="rounded-2xl bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] overflow-hidden">
             {dashboardItems.map((c, i) => Row(c, i))}
           </div>
         </div>

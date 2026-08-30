@@ -66,6 +66,8 @@ export interface HeroControls {
   onRegionChange: (r: HomeRegion) => void
   onLocate: (loc: { lat: number; lng: number }) => void
   located: boolean
+  /** 🧭 2026-08-30: GPS 로 잡은 동네 이름(없으면 위치바가 '내 주변' 으로 폴백). */
+  locatedLabel?: string
 }
 
 export default function HomeHeroDefault({
@@ -187,6 +189,7 @@ export default function HomeHeroDefault({
               onChange={controls.onRegionChange}
               onLocate={controls.onLocate}
               located={controls.located}
+              locatedLabel={controls.locatedLabel}
             />
           )}
           <Link

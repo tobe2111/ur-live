@@ -41,6 +41,7 @@ export default function PcHomeLocationBar({
   onChange,
   onLocate,
   located = false,
+  locatedLabel,
   tone = 'panel',
 }: {
   value: HomeRegion
@@ -49,6 +50,9 @@ export default function PcHomeLocationBar({
   onLocate?: (loc: { lat: number; lng: number }) => void
   // 거리순(near) 모드 활성 여부 — 라벨을 '내 주변'으로 표시.
   located?: boolean
+  /** 🧭 2026-08-30 (대표 "홈에선 현재 위치가 어딘지도 나와야지"): GPS 로 잡은 **동네 이름**.
+   *  없으면 기존처럼 '내 주변' — 위치 이름을 못 얻었다고 화면이 깨지면 안 된다. */
+  locatedLabel?: string
   /**
    * 🎨 2026-08-19 (대표 확정 — 통합형 히어로): 이 바가 **잉크 히어로 안**으로 들어갔다.
    *   `panel` = 예전처럼 흰 패널 위(라이트 테두리) · `hero` = 잉크 색면 위(반투명 흰 칩).
@@ -142,7 +146,7 @@ export default function PcHomeLocationBar({
           aria-expanded={open}
         >
           <MapPin className={`${hero ? 'w-4 h-4' : 'w-[18px] h-[18px]'} shrink-0 ${hero ? 'text-white' : 'text-gray-900 dark:text-white'}`} />
-          <span className={`${hero ? 'text-[13px] font-bold text-white' : 'text-[15px] font-extrabold text-gray-900 dark:text-white'} max-w-[220px] truncate`}>{located ? '내 주변' : labelFor(value)}</span>
+          <span className={`${hero ? 'text-[13px] font-bold text-white' : 'text-[15px] font-extrabold text-gray-900 dark:text-white'} max-w-[220px] truncate`}>{located ? (locatedLabel || '내 주변') : labelFor(value)}</span>
           <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${hero ? 'text-white/70' : 'text-gray-400'} ${open ? 'rotate-180' : ''}`} />
         </button>
         <button

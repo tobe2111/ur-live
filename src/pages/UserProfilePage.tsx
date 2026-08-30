@@ -8,7 +8,7 @@ import { cfImage } from '@/utils/cf-image'
 import { logoutAll } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
-import { ChevronRight, Receipt, ScanLine, Store } from 'lucide-react'
+import { ChevronRight, LogOut, Receipt, ScanLine, Store } from 'lucide-react'
 import TeamPointsCard from './user-profile/TeamPointsCard'
 import EarningsGroup from './user-profile/EarningsGroup'
 import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
@@ -96,7 +96,7 @@ export default function UserProfilePage() {
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (!isAuthReady && !isKorea()) {
     return (
-      <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
+      <div className="min-h-[100dvh] bg-warm dark:bg-[#0F151D]">
         <BrandLoader fullScreen />
       </div>
     )
@@ -130,13 +130,23 @@ export default function UserProfilePage() {
 
   // 🛡️ 2026-04-30 v4 Wallet 디자인 시안 매칭 — InsetGroup 형태로 정돈, 모든 기능 보존
   return (
-    <div className="bg-white dark:bg-[#0F151D] flex flex-col min-h-screen pb-7">
+    /* 🎨 2026-08-30 (대표 — "마이는 UX/UI 전반이 문제"): 표면을 뒤집었다.
+       이전엔 **흰 배경 위에 회색 카드 8개**였다 — 딜 잔액도, 주문 현황도, 리뷰어 레벨도,
+       이용 내역도, 수익도, 설정도 전부 `bg-gray-100 rounded-2xl` 로 같은 무게였다.
+       화면이 "이 중 무엇이 중요한지" 를 한 마디도 안 하고 기능을 나열만 한다 — 그게
+       대표가 본 "AI 티" 다. 사람이 만든 마이페이지에는 강조가 **하나**뿐이다.
+       ⇒ 바탕을 웜 화이트(#FAF7F5)로 내리고 그룹을 **흰 카드**로 띄운다. 유어샵에서 같은
+          문제를 같은 방법으로 이미 고쳤고(surface-token 테스트가 지킨다) — 두 화면의
+          표면 언어가 이제 같다.
+       ⚠️ `min-h-screen`(=100vh)은 모바일에서 주소창을 포함해 실제 보이는 영역보다 크다
+          (CLAUDE.md 모바일 뷰포트 룰) → `min-h-[100dvh]`. */
+    <div className="bg-warm dark:bg-[#0F151D] flex flex-col min-h-[100dvh] pb-7">
       <SEO title={t('userProfile.docTitle')} description={t('userProfile.seoDesc')} url="/user/profile" noindex />
       <h1 className="sr-only">{t('nav.mypage', { defaultValue: '마이페이지' })}</h1>
 
       {/* v4 Hero Profile — 프로필 + 알림/설정 버튼 (상단 Large Title 바 제거) */}
       {/* 🏭 2026-06-05 (사용자 요청): 헤더 배경 은은한 그라데이션(라이트/다크 모두 자연스럽게). */}
-      <div className="bg-gradient-to-b from-gray-50 via-white to-white dark:from-[#171026] dark:via-[#0a0712] dark:to-[#0F151D]">
+      <div className="bg-gradient-to-b from-white via-warm to-warm dark:from-[#171026] dark:via-[#0a0712] dark:to-[#0F151D]">
       <div className="ur-content-medium px-4 lg:px-8 pt-5 pb-5">
         <div className="flex items-center gap-3">
           <img
@@ -320,12 +330,16 @@ export default function UserProfilePage() {
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gray-100 dark:bg-white/[0.04] text-[13px] font-semibold text-gray-900 dark:text-white/75 active:bg-white/[0.08] transition-colors"
+          className="ur-btn ur-btn-lg ur-btn-block bg-white dark:bg-[#1A2334] text-gray-900 dark:text-white/75"
         >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          <LogOut className="w-4 h-4" aria-hidden="true" />
           {t('userProfile.logout')}
         </button>
-        {/* 🛡️ 회원 탈퇴 — 파괴적 동작이라 로그아웃 바로 아래, 빨강 아웃라인으로 구분(동일 간격) */}
+        {/* 🛡️ 회원 탈퇴 — 파괴적 동작이다.
+            🩸 2026-08-30: 그런데 **빨강 아웃라인 박스**라서 바로 위 로그아웃(회색)보다
+               시각적으로 **더 강했다.** 화면이 "탈퇴를 누르라" 고 말하고 있던 셈이다 —
+               파괴적 동작은 눈에 띄면 안 되고, 찾을 수는 있어야 한다.
+            ⇒ 조용한 텍스트 링크로 격하. 라우트·경고 화면(/account/delete-warning)은 그대로다. */}
         <DeleteAccountLink />
       </div>
 

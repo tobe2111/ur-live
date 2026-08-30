@@ -12,7 +12,8 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
  *   으로 갈렸다 — 태블릿 세로(810)에서 차콜 색면도 히어로도 없이 흰 배경이 나오던 이유다.
  *   ⚠️ 이 값은 **헤더의 기준과 같아야 한다.** 한쪽만 바꾸면 그 구간이 다시 어긋난다
  *      (가드: `home-tablet-breakpoint.test.ts`).
- *     ⚠️ 2026-07-15 의 "홈=지도" 결정을 **대체**한다. 지도는 피드 상단 배너 + `/map` 으로 남는다.
+ *     ⚠️ 2026-07-15 의 "홈=지도" 결정을 **대체**한다. 지도는 `/map` 으로 남는다.
+ *        (2026-08-30: '상단 배너'는 **제목 옆 목록/지도 전환**으로 바뀌었다 — 배너는 없다.)
  *   createRoot(비-hydrate)라 첫 렌더부터 정확한 뷰포트로 분기(플래시 0). SSR 시드(__SSR_INITIAL_MAIN__)는
  *   PcHomePage(GroupBuyFeed)·RestaurantMapPage(useMapProducts) 양쪽 다 소비 → 0-RTT 유지.
  *   두 페이지 모두 lazy — 뷰포트에 필요한 청크만 로드.
@@ -21,7 +22,8 @@ const PcHomePage = lazy(() => import('./PcHomePage'))
 /**
  * 📱 2026-08-19 (대표 확정 — 그루폰 모바일 홈 시안): 모바일 메인이 **지도 → 딜 피드**로 바뀌었다.
  *   *"지금은 맵 링크잖아. 대신 변경되는 페이지에서 맵으로 이동하기 버튼이 있어야겠지?"*
- *   ⇒ 지도는 `MobileHomePage` 상단 배너로 남고, `/map` 라우트 자체는 그대로다(하단 탭은 5개 유지).
+ *   ⇒ 2026-08-30: 그 '상단 배너'는 **목록/지도 전환 컨트롤**(피드 제목 옆)로 대체됐다 —
+ *      배너 한 블록이 사라지고 진입은 콘텐츠에 붙었다. `/map` 라우트·하단 탭 5개는 그대로.
  */
 const MobileHomePage = lazy(() => import('@/pages/mobile-home/MobileHomePage'))
 

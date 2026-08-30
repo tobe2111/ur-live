@@ -73,3 +73,41 @@ describe('아이콘 획 굵기', () => {
     expect(css).not.toMatch(/svg\.lucide\s*\{/)
   })
 })
+
+describe('카테고리 분류는 한 표만 있어야 한다', () => {
+  it('홈 피드가 자기 카테고리 표를 따로 갖지 않는다 (DEAL_CATS 만)', () => {
+    // 🩸 실제로 났던 일: 상단 탭(`전체·식사·미용·숙소·기타`)과 바로 아래 칩
+    //   (`전체·식사·숙소·뷰티·기타`)이 **같은 분류를 다른 이름·다른 순서**로 보여 줬다.
+    //   `PcHomeRail` 이 자기 주석에 "라벨 SSOT — 갈리면 어긋난다" 고 적어 뒀는데도
+    //   두 번째 표가 생겨 그대로 어긋났다. SSOT 는 **다른 표가 없을 때만** 성립한다.
+    const feed = readFileSync(resolve(root, 'src/pages/main-home/GroupBuyFeed.tsx'), 'utf-8')
+    expect(feed).toMatch(/const CATEGORIES = DEAL_CATS/)
+    // 자체 배열 리터럴(키+라벨 쌍)이 다시 생기면 실패
+    expect(feed).not.toMatch(/const CATEGORIES\s*=\s*\[/)
+  })
+})
+
+describe('현재 위치 표시 — 만들어 놓고 안 부르는 일이 없게', () => {
+  it('coord2region 서버 엔드포인트에 클라이언트 소비처가 있어야 한다', () => {
+    // 🩸 실제로 났던 일: 서버 `/api/proxy/kakao/coord2region` 이 2026-07-07 부터 있었고
+    //   주석에 "대표 — 홈 '내 주변' 기준" 이라고까지 적혀 있었는데, **클라이언트에서
+    //   한 번도 호출한 적이 없었다.** 그래서 위치를 잡아도 화면은 일반명사 "내 주변" 만
+    //   말했고, 대표가 "홈에선 현재 위치가 어딘지도 나와야지" 라고 지적할 때까지 몰랐다.
+    //   ⇒ 에러가 안 나는 부재다. 배포는 초록불이고 기능만 조용히 없다.
+    const server = readFileSync(resolve(root, 'src/worker/routes/proxy.routes.ts'), 'utf-8')
+    expect(server, '서버 엔드포인트가 사라졌다면 이 검사도 갱신할 것').toContain('/kakao/coord2region')
+
+    const hook = readFileSync(resolve(root, 'src/hooks/useCurrentDong.ts'), 'utf-8')
+    expect(hook).toContain('/api/proxy/kakao/coord2region')
+
+    // 홈 두 표면이 실제로 그 훅을 쓰는지 — 훅만 있고 아무도 안 쓰면 같은 상태로 돌아간다.
+    for (const f of ['src/pages/mobile-home/MobileHomePage.tsx', 'src/pages/pc-home/PcHomePage.tsx']) {
+      expect(readFileSync(resolve(root, f), 'utf-8'), `${f} 가 useCurrentDong 을 안 쓴다`).toMatch(/useCurrentDong\(/)
+    }
+  })
+
+  it('위치 이름을 못 얻어도 화면이 깨지지 않는다 (폴백 유지)', () => {
+    const bar = readFileSync(resolve(root, 'src/pages/pc-home/PcHomeLocationBar.tsx'), 'utf-8')
+    expect(bar).toMatch(/locatedLabel \|\| '내 주변'/)
+  })
+})

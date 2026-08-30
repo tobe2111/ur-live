@@ -193,6 +193,21 @@ const probe = await page.evaluate(() => {
 })
 console.log('🔬 렌더 실측:', JSON.stringify(probe))
 
+if (args.dom) {
+  // 🔎 화면에서 이상해 보이는 것을 **추측하지 않고** 확인한다.
+  const dump = await page.evaluate(() => {
+    const out = []
+    for (const el of document.querySelectorAll('nav, [class*="fixed"], header')) {
+      const r = el.getBoundingClientRect()
+      if (r.height < 8) continue
+      out.push({ tag: el.tagName.toLowerCase(), top: Math.round(r.top), h: Math.round(r.height),
+                 pos: getComputedStyle(el).position, cls: (el.className || '').toString().slice(0, 70) })
+    }
+    return out
+  })
+  console.log('🔎 DOM:', JSON.stringify(dump, null, 1))
+}
+
 await page.screenshot({ path: out })
 const text = (await page.innerText('body').catch(() => '')).slice(0, 60).replace(/\s+/g, ' ')
 console.log(`✅ ${out}`)

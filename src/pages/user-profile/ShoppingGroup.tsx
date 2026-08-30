@@ -56,7 +56,7 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
       <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('shopping.sectionTitle', { defaultValue: '나의 이용 내역' })}</p>
-      <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
+      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1A2334]">
         {groups.map((g, gi) => (
           <div key={g.key}>
             {/* 🛡️ 2026-07-02: 인라인 검정 고정 borderTop → 테마 대응 클래스(다크에서 구분선 소실 수정) */}
@@ -70,7 +70,7 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
                 key={item.path}
                 type="button"
                 onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06] ${i ? 'border-t border-black/[0.04] dark:border-white/[0.05]' : ''}`}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-50 dark:active:bg-white/[0.06] ${i ? 'border-t border-black/[0.04] dark:border-white/[0.05]' : ''}`}
               >
                 <item.Icon className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
                 <div className="flex-1 min-w-0">

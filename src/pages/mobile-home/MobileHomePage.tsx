@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
+import { useCurrentDong } from '@/hooks/useCurrentDong'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, Bell, ShoppingCart, Map as MapIcon, ChevronRight } from 'lucide-react'
+import { Search, Bell, ShoppingCart, Map as MapIcon, List } from 'lucide-react'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
@@ -32,6 +33,9 @@ export default function MobileHomePage() {
   const navigate = useNavigate()
   const [region, setRegion] = useState<HomeRegion>(() => readHomeRegion())
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
+  // 🧭 2026-08-30 (대표 "홈에선 현재 위치가 어딘지도 나와야지"): 좌표 → 동네 이름.
+  //   서버 엔드포인트는 2026-07-07 부터 있었는데 **아무도 안 부르고 있었다**(useCurrentDong 주석).
+  const dong = useCurrentDong(userLoc)
   const [category, setCategory] = useState<DealCategory>('all')
   const [sort, setSort] = useState<'popular' | 'newest' | 'deadline' | 'discount' | 'near'>('popular')
 
@@ -61,7 +65,7 @@ export default function MobileHomePage() {
         <div className="px-4 h-12 flex items-center justify-between gap-2">
           <Link to="/" aria-label="홈" className="shrink-0 flex items-center"><UrDealLogo size={18} /></Link>
           <div className="flex items-center gap-1 text-gray-700 dark:text-gray-200 min-w-0">
-            <PcHomeLocationBar value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} />
+            <PcHomeLocationBar value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} locatedLabel={dong?.dong} />
             <button onClick={() => navigate('/search')} aria-label="검색" className="p-1.5 shrink-0"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
             <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-1.5 shrink-0"><Bell className="h-5 w-5" strokeWidth={1.5} /></button>
             <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-1.5 shrink-0"><ShoppingCart className="h-5 w-5" strokeWidth={1.5} /></button>
@@ -89,21 +93,6 @@ export default function MobileHomePage() {
         </nav>
       </div>
 
-      {/* 🗺️ 지도 진입 — 홈이 지도였으므로 **이 배너가 유일한 통로**다(하단 탭에 지도가 없다). */}
-      <Link
-        to="/map"
-        className="mx-4 mt-3 flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-white/[0.04] px-4 py-3 active:scale-[0.99] transition-transform"
-      >
-        <span className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0">
-          <MapIcon className="w-[18px] h-[18px]" strokeWidth={2} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[14px] font-extrabold text-gray-900 dark:text-white">내 주변 지도로 보기</span>
-          <span className="block text-[12px] text-gray-500 dark:text-gray-400">가까운 순으로 딜을 지도에서 찾아보세요</span>
-        </span>
-        <ChevronRight className="w-5 h-5 text-gray-400 shrink-0" aria-hidden="true" />
-      </Link>
-
       {/* 어드민 편성(섹션·배너) — 카테고리를 고르면 숨긴다(PC 홈과 같은 규칙: 화면 맨 위가 그 카테고리여야 한다). */}
       {HOME_SHOWCASE_ENABLED && category === 'all' && (
         <div className="mt-3">
@@ -113,11 +102,43 @@ export default function MobileHomePage() {
       )}
 
       <section className="mt-4">
-        <header ref={gridHeaderRef} className="px-4 mb-2 scroll-mt-24">
-          <h2 className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">
-            {userLoc ? '내 주변 가까운 딜' : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
-          </h2>
-          <p className="mt-0.5 text-[12.5px] text-gray-500 dark:text-gray-400">이용권 · 공동구매 · 교환권을 할인가로</p>
+        {/* 🗺️ 2026-08-30 (대표 — "'내 주변 지도로 보기' 버튼 디자인이 문제"):
+            배너를 없애고 **목록/지도 전환**으로 바꿨다.
+            이전: 카드 한 장을 통째로 써서 [연한 원형 아이콘 + 제목 + 부제 + ›] 을 담았다.
+            그 조합은 어떤 서비스에 붙여도 말이 되는 형태라 **우리 화면이라는 표시가 없다** —
+            대표가 본 "AI 티" 가 정확히 그것이다. 게다가 지도는 *다른 화면*이 아니라
+            **같은 목록의 다른 보기**인데, 배너는 그걸 남의 기능처럼 밀어냈다.
+            ⇒ 목록/지도는 어느 앱에서나 제목 옆 전환 컨트롤이다(당근·직방·야놀자).
+               블록 하나가 사라지고, 진입은 오히려 콘텐츠에 붙어 더 잘 보인다.
+            ⚠️ 하단 탭에 지도가 없으므로 **이 컨트롤이 유일한 통로**다 — 지우지 말 것. */}
+        <header ref={gridHeaderRef} className="px-4 mb-2 scroll-mt-24 flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">
+              {userLoc ? (dong?.dong ? `${dong.dong} 주변 딜` : '내 주변 가까운 딜') : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
+            </h2>
+            <p className="mt-0.5 text-[12.5px] text-gray-500 dark:text-gray-400">이용권 · 공동구매 · 교환권을 할인가로</p>
+          </div>
+          <div
+            role="tablist"
+            aria-label="보기 방식"
+            className="shrink-0 flex items-center gap-0.5 rounded-lg bg-gray-100 dark:bg-white/[0.06] p-0.5"
+          >
+            <span
+              role="tab"
+              aria-selected="true"
+              className="inline-flex items-center gap-1 rounded-[6px] bg-white dark:bg-[#1A2334] px-2.5 py-1.5 text-[12px] font-bold text-gray-900 dark:text-white shadow-sm"
+            >
+              <List className="w-3.5 h-3.5" aria-hidden="true" />목록
+            </span>
+            <Link
+              to="/map"
+              role="tab"
+              aria-selected="false"
+              className="inline-flex items-center gap-1 rounded-[6px] px-2.5 py-1.5 text-[12px] font-bold text-gray-500 dark:text-gray-400"
+            >
+              <MapIcon className="w-3.5 h-3.5" aria-hidden="true" />지도
+            </Link>
+          </div>
         </header>
         {/* 실측: 이 피드는 히어로·편성섹션 아래라 첫 행이 접힘 밖(모바일 1,605px / PC 1,385px) */}
         <GroupBuyFeed
