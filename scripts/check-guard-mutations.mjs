@@ -2534,9 +2534,11 @@ canvas {
   {
     name: '카카오 스윕이 다시 tier 순만 보고 뒷줄을 굶긴다',
     // ⚠️ 2026-08-05: SQL 이 `kakao-sweep-query.ts` 로 이사했다(자주 틀리는 자리라 분리).
+    // ⚠️ 2026-08-30: 창 함수가 사라지고 안쪽 정렬이 `KAKAO_SWEEP_INNER_ORDER` 상수 한 줄이 됐다.
+    //   지키는 불변식은 그대로 — 미조회·연락처없음 키를 빼면 tier 가 다시 줄을 세워 뒷줄이 굶는다.
     file: 'src/features/marketing/api/kakao-sweep-query.ts',
-    find: "              (kakao_checked_at IS NOT NULL) ASC,\n              (email IS NOT NULL AND email <> '') ASC,\n",
-    replace: '',
+    find: "  `(kakao_checked_at IS NOT NULL) ASC, (email IS NOT NULL AND email <> '') ASC, (tier IS NULL) ASC, tier ASC, id ASC`",
+    replace: '  `(tier IS NULL) ASC, tier ASC, id ASC`',
     test: 'src/tests/unit/kakao-sweep-order.test.ts',
     why:
       '라이브 실측: 적격 148,297 중 tier4 가 129,049 라, 그 뒤의 storeinfo 15,518건은 하루 360조회로 ' +
@@ -2547,8 +2549,11 @@ canvas {
   {
     name: '소스별 인터리브가 사라져 큰 소스가 작은 소스를 굶긴다',
     file: 'src/features/marketing/api/kakao-sweep-query.ts',
-    find: 'ROW_NUMBER() OVER (PARTITION BY source ORDER BY',
-    replace: 'ROW_NUMBER() OVER (ORDER BY',
+    // 🗺️ 2026-08-30 앵커 이사 — 인터리브가 SQL 창 함수에서 **코드**로 나갔다(창은 60건 뽑으려고
+    //   전 대상의 등수를 다 매겨야 해서 회당 165만 행을 읽었다). 지키는 불변식은 그대로:
+    //   "소스를 번갈아 뽑는가". 등수별로 묶지 않고 이어 붙이면 큰 소스가 앞을 통째로 가져간다.
+    find: '    const tie = perSource.map(a => a[rank]).filter(Boolean) as KakaoSweepRow[]',
+    replace: '    const tie = (perSource[rank] ?? []) as KakaoSweepRow[]',
     test: 'src/tests/unit/kakao-sweep-order.test.ts',
     why:
       '미조회 우선(위 항목)만으로는 안 닿았다 — 미조회끼리는 tier 가 줄을 세워 대기열이 ' +
@@ -2571,8 +2576,10 @@ canvas {
     name: 'CPU 상한 — 카카오 스윕이 예산 밖 행까지 다시 읽는다',
     file: 'src/features/marketing/api/company-collect.ts',
     // ⚠️ 2026-08-05: SQL 이 `kakao-sweep-query.ts` 로 나가면서 인라인 타입이 `KakaoSweepRow` 가 됐다.
-    find: '    .bind(rowCap).all<KakaoSweepRow>',
-    replace: '    .bind(cap).all<KakaoSweepRow>',
+    // ⚠️ 2026-08-30: 소스별 조회가 되면서 바인딩이 `(src, rowCap)` 이 됐다. 지키는 것은 이름이 아니라
+    //   **cap 이 아니라 rowCap 을 바인딩하는가** — 예산이 못 쓸 행은 읽지도 않는다는 계약.
+    find: '      .bind(src, rowCap).all<KakaoSweepRow>',
+    replace: '      .bind(src, cap).all<KakaoSweepRow>',
     test: 'src/tests/unit/ads-cpu-work-cap-callsites.test.ts',
     why:
       '예산 천장이 무료 캡(기본 60)이라 시도 가능한 행은 ~50개인데 `LIMIT 600` 으로 읽고 있었다. ' +
