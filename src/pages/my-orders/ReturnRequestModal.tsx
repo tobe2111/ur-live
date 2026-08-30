@@ -51,7 +51,7 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
       <div
-        className="bg-white dark:bg-[#0F151D] rounded-3xl shadow-2xl max-w-md w-full p-6 animate-slideUp"
+        className="bg-white dark:bg-[#0D0F12] rounded-3xl shadow-2xl max-w-md w-full p-6 animate-slideUp"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -67,7 +67,7 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
           </button>
         </div>
 
-        <div className="mb-4 p-4 bg-gray-50 dark:bg-[#1A2334] rounded-xl">
+        <div className="mb-4 p-4 bg-gray-50 dark:bg-[#1A1C21] rounded-xl">
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t('cancelOrder.orderNumber', { defaultValue: '주문번호' })}</p>
           <p className="font-semibold text-gray-900 dark:text-white">{orderNumber}</p>
         </div>
@@ -119,7 +119,7 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 py-3 px-4 bg-gray-50 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300 font-medium rounded-full hover:bg-gray-100 dark:hover:bg-[#1A2334] transition-colors"
+            className="flex-1 py-3 px-4 bg-gray-50 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300 font-medium rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1C21] transition-colors"
             disabled={processing}
           >
             {t('common.close', { defaultValue: '닫기' })}

@@ -95,7 +95,7 @@ export default function HomeProductsRail() {
               className={`shrink-0 px-4 py-1.5 rounded-full text-[13px] font-bold transition-colors ${
                 active
                   ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'bg-white text-gray-700 border border-gray-200 dark:bg-[#1A2334] dark:text-gray-300 dark:border-[#2A3446]'
+                  : 'bg-white text-gray-700 border border-gray-200 dark:bg-[#1A1C21] dark:text-gray-300 dark:border-[#2C2F35]'
               }`}
             >
               {c.label}
@@ -107,7 +107,7 @@ export default function HomeProductsRail() {
       {items === null ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
           {[...Array(2)].map((_, i) => (
-            <div key={i} className="aspect-square rounded-2xl bg-gray-100 dark:bg-[#1A2334] animate-pulse" />
+            <div key={i} className="aspect-square rounded-2xl bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />
           ))}
         </div>
       ) : items.length === 0 ? (

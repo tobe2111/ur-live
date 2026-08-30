@@ -39,7 +39,7 @@ export default function StoreClaimPage() {
   }, [navigate])
 
   return (
-    <div className="min-h-[100dvh] bg-gray-50 dark:bg-[#0F151D]">
+    <div className="min-h-[100dvh] bg-gray-50 dark:bg-[#0D0F12]">
       <SEO title="매장 등록 - 유어딜" description="카카오맵에서 내 가게를 찾아 유어딜에 등록하세요" noindex />
       <StoreRegisterModal
         onClose={() => navigate(-1)}

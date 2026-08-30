@@ -43,8 +43,8 @@ export default function DemoPreview() {
   const go = () => document.getElementById('sec-searchad')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   return (
-    <div className="mt-3 rounded-2xl border border-blue-200 dark:border-blue-500/30 bg-white dark:bg-[#1A2334] overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-100 dark:border-[#2A3446] bg-blue-50/60 dark:bg-blue-500/5 px-4 py-3">
+    <div className="mt-3 rounded-2xl border border-blue-200 dark:border-blue-500/30 bg-white dark:bg-[#1A1C21] overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-100 dark:border-[#2C2F35] bg-blue-50/60 dark:bg-blue-500/5 px-4 py-3">
         <div>
           <div className="text-[14px] font-bold text-gray-900 dark:text-white">🎬 연동하면 이렇게 보입니다</div>
           <p className="mt-0.5 text-[11.5px] text-gray-500 dark:text-gray-400">아래는 <b>예시 화면</b>입니다. 검색광고 계정을 연결하면 이 자리에 내 실제 데이터가 들어옵니다.</p>
@@ -60,7 +60,7 @@ export default function DemoPreview() {
 
         <div className="relative grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
           {KPI.map(m => (
-            <div key={m.l} className="rounded-xl border border-gray-200 dark:border-[#2A3446] p-3">
+            <div key={m.l} className="rounded-xl border border-gray-200 dark:border-[#2C2F35] p-3">
               <div className="text-[10.5px] text-gray-400 dark:text-gray-500">{m.l}</div>
               <div className="mt-0.5 text-[15px] font-bold text-gray-900 dark:text-white tabular-nums">{m.v}</div>
             </div>
@@ -68,7 +68,7 @@ export default function DemoPreview() {
         </div>
 
         <div className="relative mt-3 grid gap-3 lg:grid-cols-[1fr_1.3fr]">
-          <div className="rounded-xl border border-gray-200 dark:border-[#2A3446] p-3">
+          <div className="rounded-xl border border-gray-200 dark:border-[#2C2F35] p-3">
             <div className="flex items-baseline justify-between">
               <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">30일 추세</span>
               <span className="text-[11px] font-bold text-emerald-600">▲ 18.4%</span>
@@ -78,8 +78,8 @@ export default function DemoPreview() {
             </svg>
           </div>
 
-          <div className="rounded-xl border border-gray-200 dark:border-[#2A3446] overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 dark:border-[#2A3446]">
+          <div className="rounded-xl border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 dark:border-[#2C2F35]">
               <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">자동입찰 키워드</span>
               <span className="rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[10.5px] font-bold text-emerald-700 dark:text-emerald-400">자동입찰 ON</span>
             </div>
@@ -93,7 +93,7 @@ export default function DemoPreview() {
                 </tr></thead>
                 <tbody>
                   {ROWS.map(r => (
-                    <tr key={r.k} className="border-t border-gray-100 dark:border-[#2A3446] text-gray-700 dark:text-gray-300">
+                    <tr key={r.k} className="border-t border-gray-100 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300">
                       <td className="py-2 px-3 font-medium text-gray-900 dark:text-white whitespace-nowrap">{r.k}</td>
                       <td className="py-2 px-2 text-right tabular-nums whitespace-nowrap">
                         <span className="text-gray-400 dark:text-gray-500">{r.goal}</span>/<span className={`font-bold ${r.ok ? 'text-emerald-600' : 'text-amber-600'}`}>{r.now}</span>

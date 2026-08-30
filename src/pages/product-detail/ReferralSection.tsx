@@ -128,7 +128,7 @@ export default function ReferralSection({
   if (REFERRAL_GROUP_DISCOUNT_DISABLED) return null
 
   return (
-    <div className="mx-4 mb-3 bg-white dark:bg-[#0F151D] rounded-xl border border-gray-200 dark:border-[#2A3446] p-4">
+    <div className="mx-4 mb-3 bg-white dark:bg-[#0D0F12] rounded-xl border border-gray-200 dark:border-[#2C2F35] p-4">
       {/* 헤더 */}
       <div className="flex items-center gap-2 mb-1.5">
         <Gift className="w-4 h-4 text-gray-900 dark:text-white" />
@@ -139,7 +139,7 @@ export default function ReferralSection({
       </p>
 
       {/* 티어 미리보기 */}
-      <div className="mb-3 rounded-lg bg-gray-50 dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446] px-3 py-2.5">
+      <div className="mb-3 rounded-lg bg-gray-50 dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35] px-3 py-2.5">
         <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">할인 단계</p>
         <p className="text-xs font-semibold text-gray-900 dark:text-white leading-snug break-keep">
           {tierPreview}
@@ -159,7 +159,7 @@ export default function ReferralSection({
       {/* 진행 중인 그룹 */}
       {loadingGroups ? (
         <div className="mt-3 space-y-2">
-          <div className="h-14 rounded-lg bg-gray-50 dark:bg-[#1A2334] animate-pulse" />
+          <div className="h-14 rounded-lg bg-gray-50 dark:bg-[#1A1C21] animate-pulse" />
         </div>
       ) : groups.length > 0 && (
         <div className="mt-4">
@@ -173,7 +173,7 @@ export default function ReferralSection({
                 <button
                   key={g.invite_code}
                   onClick={() => navigate(`/referral/${g.invite_code}`)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] text-left hover:bg-gray-50 dark:hover:bg-[#1A2334] active:scale-[0.99] transition"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] text-left hover:bg-gray-50 dark:hover:bg-[#1A1C21] active:scale-[0.99] transition"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-1">
@@ -181,7 +181,7 @@ export default function ReferralSection({
                         {g.creator_name}님의 공동구매
                       </p>
                       {unlockedDiscount > 0 && (
-                        <span className="text-[10px] font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-[#1A2334] px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-[#1A1C21] px-1.5 py-0.5 rounded">
                           {unlockedDiscount}% 할인 중
                         </span>
                       )}
@@ -197,7 +197,7 @@ export default function ReferralSection({
                         </>
                       )}
                     </div>
-                    <div className="h-1.5 w-full bg-gray-100 dark:bg-[#1A2334] rounded-full overflow-hidden">
+                    <div className="h-1.5 w-full bg-gray-100 dark:bg-[#1A1C21] rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gray-900 rounded-full transition-all"
                         style={{ width: `${Math.min(100, progress)}%` }}

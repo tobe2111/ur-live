@@ -37,7 +37,7 @@ export default function AppDownloadModal({ onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[380px] rounded-3xl bg-white dark:bg-[#1A2334] overflow-hidden shadow-2xl"
+        className="w-full max-w-[380px] rounded-3xl bg-white dark:bg-[#1A1C21] overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
@@ -59,7 +59,7 @@ export default function AppDownloadModal({ onClose }: Props) {
         <div className="px-6 pt-3 pb-1 flex flex-col items-center">
           <div className="p-3 rounded-2xl bg-white dark:bg-white border border-gray-100 dark:border-gray-200 shadow-sm">{/* QR 는 스캔 위해 항상 흰 배경 */}
             <Suspense fallback={<div className="w-[188px] h-[188px] bg-gray-100 dark:bg-gray-100 rounded-lg animate-pulse" />}>{/* 흰 QR박스 안 — 항상 라이트 */}
-              <QRCodeSVG value={APP_URL} size={188} fgColor="#0F151D" bgColor="#ffffff" level="M" />
+              <QRCodeSVG value={APP_URL} size={188} fgColor="#0D0F12" bgColor="#ffffff" level="M" />
             </Suspense>
           </div>
 

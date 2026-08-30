@@ -540,7 +540,7 @@ export default function GroupBuyListPage() {
   //   → 청크 로더와 끊김 없이 이어져 '한 번'으로 보임(헤더가 중간에 안 뜸).
   if (loading) return <BrandLoader fullScreen />
   return (
-    <div className="bg-white dark:bg-[#0F151D] min-h-screen">
+    <div className="bg-white dark:bg-[#0D0F12] min-h-screen">
       <SEO
         title={t('groupBuy.seoTitle', { defaultValue: '공동구매 — 이용권 / 뷰티 / 헬스 / 펫 / 숙박 / 액티비티' })}
         description={t('groupBuy.seoDesc', { defaultValue: '맛집 이용권, 뷰티 시술, 헬스 PT, 펜션, 액티비티까지 — 함께 모이면 더 싸게! 진행 중인 공동구매를 한 눈에 확인하세요.' })}
@@ -744,7 +744,7 @@ export default function GroupBuyListPage() {
                     {regionKey && (
                       <button
                         onClick={() => applyRegion(null, null)}
-                        className="px-5 py-2.5 bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-300 text-[13px] font-semibold rounded-full"
+                        className="px-5 py-2.5 bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-300 text-[13px] font-semibold rounded-full"
                       >
                         {t('groupBuy.clearRegion', { defaultValue: '지역 해제' })}
                       </button>
@@ -781,10 +781,10 @@ export default function GroupBuyListPage() {
             {communityLoading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="border border-gray-100 dark:border-[#2A3446] rounded-2xl p-4 animate-pulse">
-                    <div className="h-4 bg-gray-100 dark:bg-[#1A2334] rounded w-3/4" />
-                    <div className="h-3 bg-gray-100 dark:bg-[#1A2334] rounded w-1/2 mt-2" />
-                    <div className="h-8 bg-gray-100 dark:bg-[#1A2334] rounded mt-3" />
+                  <div key={i} className="border border-gray-100 dark:border-[#2C2F35] rounded-2xl p-4 animate-pulse">
+                    <div className="h-4 bg-gray-100 dark:bg-[#1A1C21] rounded w-3/4" />
+                    <div className="h-3 bg-gray-100 dark:bg-[#1A1C21] rounded w-1/2 mt-2" />
+                    <div className="h-8 bg-gray-100 dark:bg-[#1A1C21] rounded mt-3" />
                   </div>
                 ))}
               </div>

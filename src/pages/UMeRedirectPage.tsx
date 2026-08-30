@@ -72,7 +72,7 @@ export default function UMeRedirectPage() {
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): 비브랜드 "⏳ 유어샵 로딩 중..." 텍스트 → BrandLoader.
   //   목적지(/u/{handle} = CuratorPage)도 BrandLoader 라 위상동기로 한 로더처럼 이어짐.
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12]">
       <BrandLoader fullScreen />
     </div>
   )

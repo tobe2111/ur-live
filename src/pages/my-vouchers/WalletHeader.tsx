@@ -25,7 +25,7 @@ export default function WalletHeader({ title, totalLabel, tabs, activeTab, onTab
       </div>
 
       {showTabs ? (
-        <div className="mt-4 flex gap-6 border-b border-gray-200 dark:border-[#2A3446]">
+        <div className="mt-4 flex gap-6 border-b border-gray-200 dark:border-[#2C2F35]">
           {tabs!.map((tab) => {
             const active = tab.key === activeTab
             return (

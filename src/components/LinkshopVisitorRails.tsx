@@ -95,7 +95,7 @@ export default function LinkshopVisitorRails() {
             </div>
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-white dark:bg-white p-1.5 shrink-0">
-                <Suspense fallback={<div className="w-[84px] h-[84px] rounded bg-gray-100 dark:bg-[#1A2334] animate-pulse" />}>
+                <Suspense fallback={<div className="w-[84px] h-[84px] rounded bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />}>
                   {url ? <QRCodeSVG value={url} size={84} level="M" /> : <div className="w-[84px] h-[84px]" />}
                 </Suspense>
               </div>
@@ -112,7 +112,7 @@ export default function LinkshopVisitorRails() {
               가로채는 게 아니라 "나도 이런 걸 만들고 싶다"가 자연스러운 다음 생각이다. */}
           {isBiz ? (
             (store?.address || store?.phone) ? (
-              <div className="pointer-events-auto rounded-2xl p-4 bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] shadow-sm">
+              <div className="pointer-events-auto rounded-2xl p-4 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] shadow-sm">
                 <span className="flex items-center gap-1.5 text-[13px] font-extrabold text-gray-900 dark:text-white">
                   <Store className="w-4 h-4" aria-hidden="true" /> 매장 정보
                 </span>

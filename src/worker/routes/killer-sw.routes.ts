@@ -83,7 +83,7 @@ const RECOVER_HTML = `<!doctype html>
   :root { color-scheme: light dark; }
   body { margin:0; padding:24px 16px 48px; font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
          background:#fff; color:#111827; max-width:640px; margin-inline:auto; }
-  @media (prefers-color-scheme: dark) { body { background:#0F151D; color:#f5f5f5; } }
+  @media (prefers-color-scheme: dark) { body { background:#0D0F12; color:#f5f5f5; } }
   h1 { font-size:20px; font-weight:800; margin:0 0 4px; }
   .sub { font-size:13px; color:#6b7280; margin-bottom:20px; }
   #log { font-size:13px; line-height:1.9; white-space:pre-wrap; word-break:break-all;

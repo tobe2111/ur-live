@@ -88,7 +88,7 @@ export default function RegionPage() {
   ]
 
   return (
-    <div className="bg-white dark:bg-[#0F151D] min-h-[100dvh]">
+    <div className="bg-white dark:bg-[#0D0F12] min-h-[100dvh]">
       <SEO
         title={title}
         description={description}
@@ -133,7 +133,7 @@ export default function RegionPage() {
                 className={`shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-bold border transition-colors ${
                   on
                     ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
-                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                 }`}
               >
                 {ch.label}
@@ -142,7 +142,7 @@ export default function RegionPage() {
           })}
           <Link
             to={`/map?q=${encodeURIComponent(label)}`}
-            className="shrink-0 ml-auto inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[13px] font-bold border border-gray-200 dark:border-[#2A3446] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
+            className="shrink-0 ml-auto inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[13px] font-bold border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
           >
             <MapPin className="w-3.5 h-3.5" aria-hidden />
             지도에서 보기

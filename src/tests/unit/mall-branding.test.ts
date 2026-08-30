@@ -39,7 +39,7 @@ describe('대비는 취향이 아니라 규격 — WCAG AA', () => {
 
   it('다크 대표색 위의 잉크 글씨가 AA(4.5:1) 이상', () => {
     // 다크 모드에선 밝은 대표색 위에 어두운 글씨가 얹힌다 — 라이트값을 그대로 쓰면 여기서 깨진다.
-    expect(contrast(MALL_COLOR_DARK, '#0F151D')).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(MALL_COLOR_DARK, '#0D0F12')).toBeGreaterThanOrEqual(4.5)
   })
 
   it('다크 짝은 라이트값보다 밝다 — 어두운 배경에서 읽히려면 방향이 반대여야 한다', () => {

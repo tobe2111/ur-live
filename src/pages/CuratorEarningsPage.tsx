@@ -81,8 +81,8 @@ export default function CuratorEarningsPage() {
   return (
     <>
       <SEO title={t('curator.console.title', { defaultValue: '소개 콘솔' })} noindex />
-      <div className="min-h-screen bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white pb-24">
-        <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446] px-4 py-3">
+      <div className="min-h-screen bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white pb-24">
+        <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
             <h1 className="text-lg font-bold">🎤 {t('curator.console.title', { defaultValue: '소개 콘솔' })}</h1>
             {handle && (
@@ -159,7 +159,7 @@ function IntroducedStoresSection() {
   if (!data || data.stores.length === 0) return null
 
   return (
-    <section className="mb-6 bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-xl p-4">
+    <section className="mb-6 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-bold text-gray-900 dark:text-white">🏪 내가 영입한 매장</p>
         <span className="text-xs text-gray-500 dark:text-gray-400">누적 커미션 {formatWon(data.total_commission)}</span>
@@ -168,14 +168,14 @@ function IntroducedStoresSection() {
         {data.stores.map((s) => {
           const expired = s.referral_bonus_until && new Date(s.referral_bonus_until) < new Date()
           return (
-            <div key={s.id} className="flex items-center justify-between text-xs border-b border-gray-100 dark:border-[#2A3446] pb-2 last:border-0">
+            <div key={s.id} className="flex items-center justify-between text-xs border-b border-gray-100 dark:border-[#2C2F35] pb-2 last:border-0">
               <div>
                 <span className="font-bold text-gray-900 dark:text-white">{s.business_name || `매장 #${s.id}`}</span>
                 <span className="ml-2 text-gray-400 dark:text-gray-500">{s.total_orders}건 · {formatWon(s.total_sales)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                  expired ? 'bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-500'
+                  expired ? 'bg-gray-100 dark:bg-[#1A1C21] text-gray-500 dark:text-gray-500'
                   : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                 }`}>
                   {expired ? '커미션 만료' : (s.referral_bonus_until ? `~${s.referral_bonus_until.slice(0, 10)}` : '무기한')}
@@ -225,7 +225,7 @@ function ProxyProductModal({ merchant, onClose }: { merchant: { id: number; name
 
   return (
     <div className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
-      <div className="w-full max-w-md bg-white dark:bg-[#1A2334] rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md bg-white dark:bg-[#1A1C21] rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
         <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">공구 대행 등록</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{merchant.name} — 등록 후 매장 승인 시 공개됩니다.</p>
         <div className="space-y-2">
@@ -241,7 +241,7 @@ function ProxyProductModal({ merchant, onClose }: { merchant: { id: number; name
               value={(form as any)[k]}
               onChange={(e) => setForm({ ...form, [k]: e.target.value })}
               placeholder={label}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] text-gray-900 dark:text-white"
             />
           ))}
           <textarea
@@ -249,7 +249,7 @@ function ProxyProductModal({ merchant, onClose }: { merchant: { id: number; name
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             placeholder="설명 (선택)"
             rows={2}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] text-gray-900 dark:text-white"
+            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] text-gray-900 dark:text-white"
           />
           <div className="flex gap-2 pt-1">
             <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-pink-500 text-white text-sm font-bold rounded-lg disabled:opacity-50">
@@ -289,7 +289,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
           <button
             onClick={onWithdraw}
             disabled={info.available < info.min_withdrawal}
-            className="w-full py-2.5 bg-white dark:bg-[#0F151D] text-pink-600 font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2.5 bg-white dark:bg-[#0D0F12] text-pink-600 font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {info.available < info.min_withdrawal
               ? `최소 ${formatWon(info.min_withdrawal)} 부터 출금 가능`
@@ -305,7 +305,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
           </p>
           <Link
             to="/browse"
-            className="block w-full py-2.5 bg-white dark:bg-[#0F151D] text-orange-600 font-bold rounded-lg text-center"
+            className="block w-full py-2.5 bg-white dark:bg-[#0D0F12] text-orange-600 font-bold rounded-lg text-center"
           >
             🛍️ 쇼핑 둘러보기
           </Link>
@@ -332,7 +332,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
 
       {/* 출금 이력 */}
       {info.history.length > 0 && (
-        <div className="mt-3 bg-gray-50 dark:bg-[#1A2334] rounded-xl p-4">
+        <div className="mt-3 bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-4">
           <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">최근 출금 이력</p>
           <div className="space-y-2">
             {info.history.slice(0, 5).map((h) => (
@@ -344,7 +344,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                   h.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
                   h.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                  'bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300'
+                  'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300'
                 }`}>{h.status}</span>
               </div>
             ))}
@@ -392,7 +392,7 @@ function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onC
 
   return (
     <div className="fixed inset-0 z-[10001] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="w-full sm:max-w-md bg-white dark:bg-[#1A2334] rounded-t-2xl sm:rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full sm:max-w-md bg-white dark:bg-[#1A1C21] rounded-t-2xl sm:rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-base font-bold text-gray-900 dark:text-white mb-4">💰 출금 신청</h2>
 
         <div className="space-y-3">
@@ -404,7 +404,7 @@ function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onC
               max={info.available}
               value={amount}
               onChange={(e) => setAmount(Math.max(0, Math.min(info.available, Number(e.target.value) || 0)))}
-              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white rounded-lg"
             />
           </div>
           <div>
@@ -414,7 +414,7 @@ function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onC
               value={bankName}
               onChange={(e) => setBankName(e.target.value)}
               placeholder="예: 카카오뱅크"
-              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white rounded-lg"
             />
           </div>
           <div>
@@ -424,7 +424,7 @@ function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onC
               value={bankAccount}
               onChange={(e) => setBankAccount(e.target.value.replace(/[^0-9-]/g, ''))}
               placeholder="3333-01-1234567"
-              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white rounded-lg"
             />
           </div>
           <div>
@@ -433,19 +433,19 @@ function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onC
               type="text"
               value={accountHolder}
               onChange={(e) => setAccountHolder(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white rounded-lg"
             />
           </div>
         </div>
 
-        <div className="mt-4 bg-gray-50 dark:bg-[#0F151D] rounded-lg p-3 text-xs space-y-1">
+        <div className="mt-4 bg-gray-50 dark:bg-[#0D0F12] rounded-lg p-3 text-xs space-y-1">
           <div className="flex justify-between text-gray-600 dark:text-gray-400"><span>신청 금액</span><span>{formatWon(amount)}</span></div>
           <div className="flex justify-between text-gray-600 dark:text-gray-400"><span>원천징수 ({(info.withholding_rate * 100).toFixed(1)}%)</span><span>-{formatWon(withholding)}</span></div>
-          <div className="flex justify-between font-bold text-gray-900 dark:text-white pt-1 border-t border-gray-200 dark:border-[#2A3446]"><span>실 입금</span><span>{formatWon(netAmount)}</span></div>
+          <div className="flex justify-between font-bold text-gray-900 dark:text-white pt-1 border-t border-gray-200 dark:border-[#2C2F35]"><span>실 입금</span><span>{formatWon(netAmount)}</span></div>
         </div>
 
         <div className="mt-4 flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-300 font-bold rounded-lg">취소</button>
+          <button onClick={onClose} className="flex-1 py-2.5 bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-300 font-bold rounded-lg">취소</button>
           <button onClick={submit} disabled={submitting} className="flex-1 py-2.5 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white font-bold rounded-lg">
             {submitting ? '신청 중...' : '신청'}
           </button>
@@ -484,7 +484,7 @@ function SummaryCards({ stats }: { stats: DashboardStats }) {
   return (
     <div className="grid grid-cols-3 gap-3 mb-6">
       {cards.map((card) => (
-        <div key={card.label} className="bg-gray-50 dark:bg-[#1A2334] rounded-xl p-3 border border-gray-100 dark:border-[#2A3446]">
+        <div key={card.label} className="bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35]">
           <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">{card.label}</p>
           <p className={`text-lg font-bold ${card.accent}`}>{card.value}</p>
           {card.sub && <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{card.sub}</p>}
@@ -505,7 +505,7 @@ function TopPinsSection({ stats }: { stats: DashboardStats }) {
           <Link
             key={pin.id}
             to={`/products/${pin.product_id}`}
-            className="flex items-center gap-3 bg-gray-50 dark:bg-[#1A2334] rounded-xl p-3 border border-gray-100 dark:border-[#2A3446] hover:border-pink-500/50 transition-colors"
+            className="flex items-center gap-3 bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35] hover:border-pink-500/50 transition-colors"
           >
             <div className="text-lg font-bold text-gray-400 dark:text-gray-500 w-6">{idx + 1}</div>
             {(pin.thumbnail || pin.image_url) && (
@@ -540,7 +540,7 @@ function RecentEarningsSection({ stats }: { stats: DashboardStats }) {
           <Link
             key={e.id}
             to={`/products/${e.product_id}`}
-            className="flex items-center justify-between gap-3 bg-gray-50 dark:bg-[#1A2334] rounded-xl p-3 border border-gray-100 dark:border-[#2A3446] hover:border-pink-500/50 transition-colors"
+            className="flex items-center justify-between gap-3 bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35] hover:border-pink-500/50 transition-colors"
           >
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">
@@ -568,7 +568,7 @@ function DailyChart({ stats }: { stats: DashboardStats }) {
   const { t } = useTranslation()
   const daily = stats.earnings_daily_30d || []
   if (!daily.length) return (
-    <section className="bg-gray-50 dark:bg-[#1A2334] rounded-xl p-6 text-center text-sm text-gray-500 dark:text-gray-400">
+    <section className="bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-6 text-center text-sm text-gray-500 dark:text-gray-400">
       {t('curator.earnings.noData', { defaultValue: '아직 데이터가 없어요. 친구에게 핀을 공유해보세요!' })}
     </section>
   )
@@ -577,7 +577,7 @@ function DailyChart({ stats }: { stats: DashboardStats }) {
   return (
     <section>
       <h2 className="text-sm font-bold mb-3">📈 {t('curator.earnings.dailyChart', { defaultValue: '일별 적립 (30일)' })}</h2>
-      <div className="bg-gray-50 dark:bg-[#1A2334] rounded-xl p-4 border border-gray-100 dark:border-[#2A3446]">
+      <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-4 border border-gray-100 dark:border-[#2C2F35]">
         <div className="flex items-end gap-1 h-32">
           {daily.map((d) => {
             const pct = (safeNum(d.amount) / max) * 100

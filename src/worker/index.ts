@@ -954,7 +954,7 @@ app.use('*', async (c, next) => {
     //   (Poppins 800 · 자간 −3.5% · 점 6.12px/좌 2.72px = 34px 기준). 구조·위상동기·ur-loader-* 클래스 불변.
     const urdealLoaderHtml =
       '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">' +
-        '<div class="ur-loader-breathe text-[#1A2C42] dark:text-[#FAF7F5]" style="display:inline-flex;align-items:baseline;font-family:\'Poppins\',\'Pretendard Variable\',system-ui,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.035em;line-height:1">' +
+        '<div class="ur-loader-breathe text-[#16181C] dark:text-[#FAF7F5]" style="display:inline-flex;align-items:baseline;font-family:\'Poppins\',\'Pretendard Variable\',system-ui,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.035em;line-height:1">' +
           'urdeal' +
           '<span class="bg-brand" style="display:inline-block;width:6.12px;height:6.12px;border-radius:50%;margin-left:2.72px"></span>' +
         '</div>' +

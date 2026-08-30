@@ -14,12 +14,12 @@ export interface ThemeTokens {
 
 export function getThemeTokens(isDark: boolean): ThemeTokens {
   return isDark ? {
-    bg: 'bg-[#0F151D]', card: 'bg-[#1A2334]', cardAlt: 'bg-[#1A2334]',
+    bg: 'bg-[#0D0F12]', card: 'bg-[#1A1C21]', cardAlt: 'bg-[#1A1C21]',
     text: 'text-white', textSub: 'text-gray-400', textMuted: 'text-gray-500',
-    border: 'border-[#2A3446]', borderAlt: 'border-[#2A3446]',
+    border: 'border-[#2C2F35]', borderAlt: 'border-[#2C2F35]',
     cover: 'from-gray-900/50 via-gray-900/40 to-gray-900/30',
-    avatarBorder: 'border-[#0F151D]', input: 'bg-[#1A2334] text-white',
-    btnOutline: 'border-[#2A3446] text-gray-300',
+    avatarBorder: 'border-[#0D0F12]', input: 'bg-[#1A1C21] text-white',
+    btnOutline: 'border-[#2C2F35] text-gray-300',
   } : {
     // 🎨 2026-08-30: bg 를 흰색 → 웜 그라운드(#FAF7F5, 브랜드 --bg 토큰).
     // 그전까지 bg 와 card 가 **둘 다 흰색**이라 카드를 구분할 방법이 실선뿐이었고,

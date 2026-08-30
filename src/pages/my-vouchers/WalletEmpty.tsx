@@ -84,19 +84,19 @@ export function WalletSkeleton() {
   return (
     <div className="animate-pulse" aria-hidden>
       {/* 히어로 */}
-      <div className="rounded-[20px] bg-gray-200 dark:bg-[#1A2334] h-[120px] mb-4" />
+      <div className="rounded-[20px] bg-gray-200 dark:bg-[#1A1C21] h-[120px] mb-4" />
       {/* 패스 카드 2장 */}
       {[0, 1].map(i => (
-        <div key={i} className="rounded-[18px] bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2A3446] p-4 mb-4">
+        <div key={i} className="rounded-[18px] bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2C2F35] p-4 mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-[10px] bg-gray-200 dark:bg-[#2A3446]" />
-            <div className="h-3 w-28 rounded bg-gray-200 dark:bg-[#2A3446]" />
-            <div className="ml-auto h-5 w-12 rounded-full bg-gray-200 dark:bg-[#2A3446]" />
+            <div className="w-9 h-9 rounded-[10px] bg-gray-200 dark:bg-[#2C2F35]" />
+            <div className="h-3 w-28 rounded bg-gray-200 dark:bg-[#2C2F35]" />
+            <div className="ml-auto h-5 w-12 rounded-full bg-gray-200 dark:bg-[#2C2F35]" />
           </div>
-          <div className="mt-3 h-5 w-3/5 rounded bg-gray-200 dark:bg-[#2A3446]" />
+          <div className="mt-3 h-5 w-3/5 rounded bg-gray-200 dark:bg-[#2C2F35]" />
           <div className="mt-3 flex items-center justify-between">
-            <div className="h-6 w-24 rounded bg-gray-200 dark:bg-[#2A3446]" />
-            <div className="h-9 w-24 rounded-[13px] bg-gray-200 dark:bg-[#2A3446]" />
+            <div className="h-6 w-24 rounded bg-gray-200 dark:bg-[#2C2F35]" />
+            <div className="h-9 w-24 rounded-[13px] bg-gray-200 dark:bg-[#2C2F35]" />
           </div>
         </div>
       ))}
@@ -155,12 +155,12 @@ export function EmptyVouchers({ mode, onExplore, t }: {
         {steps.map(({ icon: Icon, label }, i) => (
           <Fragment key={i}>
             {i > 0 && (
-              <div className="flex-1 mt-[22px] h-px mx-1 rounded-full bg-gray-200 dark:bg-[#2A3446]" aria-hidden />
+              <div className="flex-1 mt-[22px] h-px mx-1 rounded-full bg-gray-200 dark:bg-[#2C2F35]" aria-hidden />
             )}
             <div className="flex flex-col items-center gap-2 w-[66px] shrink-0">
               <div className="relative w-11 h-11 rounded-2xl flex items-center justify-center bg-brand-tint text-brand-text">
                 <Icon className="w-[19px] h-[19px]" strokeWidth={2} />
-                <span className="absolute -top-1 -right-1 w-[15px] h-[15px] rounded-full bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] text-[9px] font-extrabold text-gray-500 dark:text-gray-400 flex items-center justify-center tabular-nums">{i + 1}</span>
+                <span className="absolute -top-1 -right-1 w-[15px] h-[15px] rounded-full bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] text-[9px] font-extrabold text-gray-500 dark:text-gray-400 flex items-center justify-center tabular-nums">{i + 1}</span>
               </div>
               <span className="text-[11px] font-medium leading-tight text-gray-600 dark:text-gray-300 whitespace-pre-line">{label}</span>
             </div>

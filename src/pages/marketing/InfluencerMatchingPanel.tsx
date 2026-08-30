@@ -77,11 +77,11 @@ const MOCK_DETAIL: Record<string, Metrics> = {
 
 const REGION_LABEL: Record<string, string> = Object.fromEntries(REGIONS.map((r) => [r.code, r.label]))
 const won = (n: number) => formatNumber(n)
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
 const BADGE: Record<Candidate['badge'], { label: string; cls: string }> = {
   measured: { label: '🏆 실측 성과', cls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400' },
   repeat: { label: '⭐ 재방문 강세', cls: 'bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400' },
-  cold: { label: '🌱 데이터 축적중', cls: 'bg-gray-100 text-gray-500 dark:bg-[#1A2334] dark:text-gray-400' },
+  cold: { label: '🌱 데이터 축적중', cls: 'bg-gray-100 text-gray-500 dark:bg-[#1A1C21] dark:text-gray-400' },
 }
 const nameOf = (c: { displayName: string | null; handle: string | null; influencerId: string }) =>
   c.displayName || (c.handle ? `@${c.handle}` : `인플루언서 #${c.influencerId}`)
@@ -148,7 +148,7 @@ export default function InfluencerMatchingPanel() {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[14px] font-bold text-gray-900 dark:text-white">체험단 매칭</span>
-            <span className="shrink-0 rounded-full bg-gray-900 text-white dark:bg-white dark:text-[#0F151D] px-2 py-0.5 text-[9.5px] font-bold tracking-wide">ADMIN</span>
+            <span className="shrink-0 rounded-full bg-gray-900 text-white dark:bg-white dark:text-[#0D0F12] px-2 py-0.5 text-[9.5px] font-bold tracking-wide">ADMIN</span>
           </div>
           <p className="mt-0.5 text-[11.5px] text-gray-400 dark:text-gray-500">
             운영자(직영 에이전시)가 <b className="text-gray-600 dark:text-gray-300">실제 전환(매장방문·재방문)</b>으로 어느 인플루언서를 붙일지 판단하는 내부 도구입니다.
@@ -186,20 +186,20 @@ export default function InfluencerMatchingPanel() {
         <span className="text-[11px] text-gray-400 dark:text-gray-500">우리 매장 기준</span>
         {CATEGORIES.map((c) => (
           <button key={c.code} onClick={() => setCat(c.code)}
-            className={`rounded-full px-3 py-1 text-[11.5px] font-semibold border ${cat === c.code ? 'bg-gray-900 text-white dark:bg-white dark:text-[#0F151D] border-transparent' : 'border-gray-200 dark:border-[#2A3446] text-gray-500 dark:text-gray-400'}`}>{c.label}</button>
+            className={`rounded-full px-3 py-1 text-[11.5px] font-semibold border ${cat === c.code ? 'bg-gray-900 text-white dark:bg-white dark:text-[#0D0F12] border-transparent' : 'border-gray-200 dark:border-[#2C2F35] text-gray-500 dark:text-gray-400'}`}>{c.label}</button>
         ))}
-        <span className="mx-1 h-4 w-px bg-gray-200 dark:bg-[#2A3446]" />
+        <span className="mx-1 h-4 w-px bg-gray-200 dark:bg-[#2C2F35]" />
         {REGIONS.map((r) => (
           <button key={r.code} onClick={() => setRegion(r.code)}
-            className={`rounded-full px-3 py-1 text-[11.5px] font-semibold border ${region === r.code ? 'bg-gray-900 text-white dark:bg-white dark:text-[#0F151D] border-transparent' : 'border-gray-200 dark:border-[#2A3446] text-gray-500 dark:text-gray-400'}`}>{r.label}</button>
+            className={`rounded-full px-3 py-1 text-[11.5px] font-semibold border ${region === r.code ? 'bg-gray-900 text-white dark:bg-white dark:text-[#0D0F12] border-transparent' : 'border-gray-200 dark:border-[#2C2F35] text-gray-500 dark:text-gray-400'}`}>{r.label}</button>
         ))}
         {loading && <span className="text-[11px] text-gray-400 dark:text-gray-500">불러오는 중…</span>}
-        <button onClick={runAi} disabled={aiBusy} className="ml-auto rounded-lg border border-gray-200 dark:border-[#2A3446] px-3 py-1 text-[11.5px] font-semibold text-gray-700 dark:text-gray-200 disabled:opacity-50">{aiBusy ? 'AI 분석 중…' : '🤝 AI 매칭 근거'}</button>
+        <button onClick={runAi} disabled={aiBusy} className="ml-auto rounded-lg border border-gray-200 dark:border-[#2C2F35] px-3 py-1 text-[11.5px] font-semibold text-gray-700 dark:text-gray-200 disabled:opacity-50">{aiBusy ? 'AI 분석 중…' : '🤝 AI 매칭 근거'}</button>
       </div>
 
       {/* AI 매칭 근거(집계·가명만 전송) */}
       {(aiText || aiNote) && (
-        <div className="mt-2 rounded-lg bg-gray-50 dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446] p-3">
+        <div className="mt-2 rounded-lg bg-gray-50 dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35] p-3">
           {aiNote && <p className="text-[11.5px] text-amber-700 dark:text-amber-400">{aiNote}</p>}
           {aiText && (
             <div className="space-y-1 text-[12px] leading-relaxed text-gray-700 dark:text-gray-200">
@@ -221,9 +221,9 @@ export default function InfluencerMatchingPanel() {
           const open = openId === c.influencerId
           const d = detail[c.influencerId]
           return (
-            <div key={c.influencerId} className="rounded-xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D]">
+            <div key={c.influencerId} className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12]">
               <div className="flex items-center gap-3 p-3">
-                <div className="shrink-0 grid h-8 w-8 place-items-center rounded-full bg-gray-100 dark:bg-[#1A2334] text-[12px] font-bold text-gray-400">{i + 1}</div>
+                <div className="shrink-0 grid h-8 w-8 place-items-center rounded-full bg-gray-100 dark:bg-[#1A1C21] text-[12px] font-bold text-gray-400">{i + 1}</div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-[13px] font-bold text-gray-900 dark:text-white">{nameOf(c)}</span>
@@ -238,7 +238,7 @@ export default function InfluencerMatchingPanel() {
               </div>
 
               {/* 실측 지표 3종(차별점) */}
-              <div className="grid grid-cols-3 gap-px bg-gray-100 dark:bg-[#1A2334] text-center">
+              <div className="grid grid-cols-3 gap-px bg-gray-100 dark:bg-[#1A1C21] text-center">
                 <Metric label="매장방문 유도" value={c.badge === 'cold' ? '—' : `${won(c.visits)}건`} />
                 <Metric label="재방문율" value={c.badge === 'cold' ? '—' : `${c.repeatRate}%`} highlight={c.badge === 'repeat'} />
                 <Metric label="업종 전환" value={c.suppressed || c.badge === 'cold' ? '—' : `${c.categoryCvr}%`} />
@@ -247,12 +247,12 @@ export default function InfluencerMatchingPanel() {
               <div className="flex items-center justify-between gap-2 p-3">
                 <p className="min-w-0 flex-1 truncate text-[11.5px] text-gray-500 dark:text-gray-400">💡 {c.fitReason}</p>
                 <div className="flex shrink-0 gap-1.5">
-                  <button onClick={() => toggleDetail(c)} className="rounded-lg border border-gray-200 dark:border-[#2A3446] px-3 py-1.5 text-[11.5px] font-semibold text-gray-600 dark:text-gray-300">{open ? '접기' : '성과 보기'}</button>
+                  <button onClick={() => toggleDetail(c)} className="rounded-lg border border-gray-200 dark:border-[#2C2F35] px-3 py-1.5 text-[11.5px] font-semibold text-gray-600 dark:text-gray-300">{open ? '접기' : '성과 보기'}</button>
                 </div>
               </div>
 
               {open && (
-                <div className="border-t border-gray-100 dark:border-[#2A3446] p-3 space-y-3">
+                <div className="border-t border-gray-100 dark:border-[#2C2F35] p-3 space-y-3">
                   {c.badge === 'cold' ? (
                     <p className="text-[12px] text-gray-500 dark:text-gray-400">아직 실측 전환 이력이 없어요. 유입이 쌓이면 업종·상권별 실전환과 재방문 곡선이 여기에 표시됩니다.</p>
                   ) : d === undefined ? (
@@ -275,7 +275,7 @@ export default function InfluencerMatchingPanel() {
                           ))}
                         </div>
                       )}
-                      <div className="rounded-lg bg-gray-50 dark:bg-[#1A2334] px-3 py-2 text-[11.5px] text-gray-600 dark:text-gray-300">
+                      <div className="rounded-lg bg-gray-50 dark:bg-[#1A1C21] px-3 py-2 text-[11.5px] text-gray-600 dark:text-gray-300">
                         발생 매출 <b className="text-gray-900 dark:text-white">₩{won(d.gmv)}</b> · 객단가 ₩{won(d.aov)} · 유입 {won(d.inflowClicks)} → 가입 {won(d.signups)} → 방문 {won(d.visitors)}
                       </div>
                     </>
@@ -298,7 +298,7 @@ export default function InfluencerMatchingPanel() {
 
 function Cov({ label, v, accent }: { label: string; v: string; accent?: boolean }) {
   return (
-    <div className="rounded-lg border border-gray-100 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-2 py-1.5 text-center">
+    <div className="rounded-lg border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-2 py-1.5 text-center">
       <div className={`text-[14px] font-extrabold tabular-nums ${accent ? 'text-violet-600 dark:text-violet-400' : 'text-gray-900 dark:text-white'}`}>{v}</div>
       <div className="text-[9.5px] text-gray-400 dark:text-gray-500">{label}</div>
     </div>
@@ -307,7 +307,7 @@ function Cov({ label, v, accent }: { label: string; v: string; accent?: boolean 
 
 function Metric({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="bg-white dark:bg-[#0F151D] py-2">
+    <div className="bg-white dark:bg-[#0D0F12] py-2">
       <div className={`text-[14px] font-extrabold ${highlight ? 'text-violet-600 dark:text-violet-400' : 'text-gray-900 dark:text-white'}`}>{value}</div>
       <div className="text-[10px] text-gray-400 dark:text-gray-500">{label}</div>
     </div>
@@ -319,7 +319,7 @@ function Bar({ label, pct, max, suffix, active }: { label: string; pct: number; 
   return (
     <div className="flex items-center gap-2 py-0.5">
       <span className={`w-12 shrink-0 text-[11px] ${active ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>{label}</span>
-      <div className="h-2 flex-1 rounded-full bg-gray-100 dark:bg-[#1A2334] overflow-hidden">
+      <div className="h-2 flex-1 rounded-full bg-gray-100 dark:bg-[#1A1C21] overflow-hidden">
         <div className={`h-full rounded-full ${active ? 'bg-gray-900 dark:bg-white' : 'bg-gray-300 dark:bg-[#3A3A3A]'}`} style={{ width: `${w}%` }} />
       </div>
       <span className="w-14 shrink-0 text-right text-[11px] tabular-nums text-gray-500 dark:text-gray-400">{pct}{suffix || ''}</span>

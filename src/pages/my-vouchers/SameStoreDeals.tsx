@@ -41,7 +41,7 @@ export default function SameStoreDeals({ productId }: { productId?: number }) {
         {deals.map((d) => (
           <button
             key={d.id}
-            className="w-full flex items-center gap-3 bg-gray-50 dark:bg-[#1A2334] rounded-xl p-2.5 text-left"
+            className="w-full flex items-center gap-3 bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-2.5 text-left"
             onClick={() => navigate(`/group-buy/${d.id}`)}
           >
             {d.image_url ? (

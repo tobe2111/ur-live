@@ -37,9 +37,9 @@ export default function StoreScanPage() {
   if (!allowed) return null
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
-      <header className="sticky top-0 z-10 flex items-center gap-2 px-3 py-3 border-b border-gray-100 dark:border-[#2A3446] bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur">
-        <button onClick={() => navigate(-1)} aria-label="뒤로" className="p-1.5 rounded-full active:bg-gray-100 dark:active:bg-[#1A2334]">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12]">
+      <header className="sticky top-0 z-10 flex items-center gap-2 px-3 py-3 border-b border-gray-100 dark:border-[#2C2F35] bg-white/90 dark:bg-[#0D0F12]/90 backdrop-blur">
+        <button onClick={() => navigate(-1)} aria-label="뒤로" className="p-1.5 rounded-full active:bg-gray-100 dark:active:bg-[#1A1C21]">
           <ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
         </button>
         <div className="flex items-center gap-1.5">

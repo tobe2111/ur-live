@@ -61,7 +61,7 @@ export default function AddToHomeHint({ context = 'wallet' }: { context?: 'walle
     : '홈 화면 앱으로 추가하면 이용권을 매장에서 더 빨리, 오프라인에서도 열 수 있어요.'
 
   return (
-    <div className="mb-3 flex items-start gap-3 rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#141414] px-4 py-3">
+    <div className="mb-3 flex items-start gap-3 rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#141414] px-4 py-3">
       <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-900 dark:bg-white">
         <Home className="h-4 w-4 text-white dark:text-gray-900" />
       </div>
@@ -82,7 +82,7 @@ export default function AddToHomeHint({ context = 'wallet' }: { context?: 'walle
           </button>
         )}
       </div>
-      <button onClick={dismiss} aria-label="닫기" className="-m-1 shrink-0 rounded-full p-1 hover:bg-gray-100 dark:hover:bg-[#1A2334]">
+      <button onClick={dismiss} aria-label="닫기" className="-m-1 shrink-0 rounded-full p-1 hover:bg-gray-100 dark:hover:bg-[#1A1C21]">
         <X className="h-4 w-4 text-gray-400 dark:text-gray-500" />
       </button>
     </div>

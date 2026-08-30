@@ -48,7 +48,7 @@ export default function MobileHomePage() {
   const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
 
   return (
-    <div className="bg-white dark:bg-[#0F151D] min-h-[100dvh]">
+    <div className="bg-white dark:bg-[#0D0F12] min-h-[100dvh]">
       <SEO
         title="유어딜 — 동네 이용권·공동구매·교환권을 할인가로"
         description="우리 동네 이용권·동네딜·교환권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요."
@@ -57,7 +57,7 @@ export default function MobileHomePage() {
       />
 
       {/* 상단 — 로고 · 위치 · 아이콘. 지도 홈이 갖고 있던 진입점(검색·알림·장바구니)을 그대로 승계한다. */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2A3446]">
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="px-4 h-12 flex items-center justify-between gap-2">
           <Link to="/" aria-label="홈" className="shrink-0 flex items-center"><UrDealLogo size={18} /></Link>
           <div className="flex items-center gap-1 text-gray-700 dark:text-gray-200 min-w-0">
@@ -92,7 +92,7 @@ export default function MobileHomePage() {
       {/* 🗺️ 지도 진입 — 홈이 지도였으므로 **이 배너가 유일한 통로**다(하단 탭에 지도가 없다). */}
       <Link
         to="/map"
-        className="mx-4 mt-3 flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-white/[0.04] px-4 py-3 active:scale-[0.99] transition-transform"
+        className="mx-4 mt-3 flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-white/[0.04] px-4 py-3 active:scale-[0.99] transition-transform"
       >
         <span className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0">
           <MapIcon className="w-[18px] h-[18px]" strokeWidth={2} />

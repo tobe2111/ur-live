@@ -26,6 +26,34 @@ describe('숙소 상세 갤러리 — 다른 상세와 같은 풀블리드', () 
     expect(read(GB)).toMatch(/<DetailGallery\b/)
   })
 
+  it('사진 바로 아래 제목 블록에 위 여백이 있다', () => {
+    // 🩸 2026-08-30 대표 "사진이랑 밑에 몇성급 글자 사이의 여백이 부족해".
+    //    풀블리드로 만들면서 갤러리가 화면 끝까지 붙었는데, 바로 뒤 제목 블록에는 위 여백이
+    //    **원래 없었다**(카드 안에 있을 땐 갤러리 자신의 여백이 대신해 줘 안 보이던 문제다).
+    //    실측(390px): 사진 아래 2px → `mt-5` 적용 후 22px.
+    //
+    // 🩸🩸 이 검사는 처음 짰을 때 **헛돌았다**(되돌려-검증에서 잡음). 두 가지가 겹쳤다:
+    //    ① 앵커를 `indexOf('lg:hidden">')` 로 잡았는데 그건 **뒤로가기 버튼**에 먼저 걸린다.
+    //    ② 정규식 `\bmt-5\b` 가 갤러리의 **음수** 마진 `-mt-5` 에도 매치된다(`-` 앞이 단어경계).
+    //    ⇒ 배지 라벨(`propertyTypeLabel`)로 그 블록을 직접 앵커하고, 음수는 명시적으로 배제한다.
+    //    ⚠️ 이 검사는 클래스만 본다 — 실제 픽셀은 브라우저로 재야 한다.
+    const s = read(STAY)
+    const badge = s.indexOf('propertyTypeLabel(stay.property_type)')
+    expect(badge, '유형 배지를 못 찾았다 — 앵커가 낡았다').toBeGreaterThan(0)
+    // 배지 바로 앞 div 는 **안쪽 flex 줄**이다 — 제목 블록은 한 단계 위다. 그래서 위로 올라가며
+    // `lg:hidden` 을 가진 첫 div 를 찾는다(모바일 전용 제목 블록의 표식).
+    let cls = ''
+    for (let at = badge; at > 0; ) {
+      at = s.lastIndexOf('<div className=', at - 1)
+      if (at < 0) break
+      const c = s.slice(at, s.indexOf('>', at))
+      if (c.includes('lg:hidden')) { cls = c; break }
+    }
+    expect(cls, '모바일 제목 블록을 못 찾았다 — 앵커가 낡았다').not.toBe('')
+    expect(cls, '사진 바로 아래 제목 블록에 위 여백이 없다 — 사진과 배지가 붙는다')
+      .toMatch(/(^|[\s"])mt-5\b/)
+  })
+
   it('갤러리가 본문 여백 래퍼를 모바일에서 빠져나간다', () => {
     const s = read(STAY)
     const i = s.indexOf('<DetailGallery')
