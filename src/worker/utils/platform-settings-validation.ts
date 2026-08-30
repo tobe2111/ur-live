@@ -101,6 +101,9 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   // 💸 채널별 요율(직접10%/중개5%) 승격 게이트 — read-site: ledger.ts channelPlatformRate.
   //   env 가 아니라 여기 둔 이유: 어드민에서 **재배포 없이** 끌 수 있어야 롤백이 빠르다.
   fee_channel_rates_enabled: boolStr,
+  // 💎 2026-08-30 대표 "매장 영입도 딜로 쌓아줘" — 영입 보상을 현금 송금 대신 딜 적립으로.
+  //   read-site: cron/influencer-payout.ts (성숙 시점). 기본 OFF = 종전 현금 경로.
+  store_intro_payout_in_deal: boolStr,
   gb_pricing_enabled: boolStr,                 // 🔌 공구가 청구 킬스위치(기본 ON — 'false' 만 끔). gb-order-pricing
   gb_engine_enabled: boolStr,                // gb-marketplace:26 / gb-proposals:27 / seller-orders:1285
   seller_promo_field_enabled: boolStr,         // seller-orders.routes.ts:814
