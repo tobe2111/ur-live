@@ -57,11 +57,37 @@ export const COMPANY_INDEX_DDL: readonly string[] = [
    * 컬럼 순서는 `kakao-sweep-query.ts` 의 `KAKAO_SWEEP_INNER_ORDER` 와 **정확히 같아야** 한다.
    * 로컬 동일 분포 재현: **800ms → 0.6ms, 뽑히는 60행이 순서까지 동일**.
    *
-   * 선두가 `source` 인 덕에 대상 소스 목록(`SELECT DISTINCT source`)도 인덱스만으로 답한다(0.0ms) —
-   * 그래서 소스 목록을 코드에 박지 않아도 된다(박으면 새 수집기의 소스가 영원히 굶는다).
+   * 🩸 **여기 있던 "소스 목록도 인덱스만으로 답한다(0.0ms)" 는 틀렸다**(2026-08-30 라이브 재측정).
+   *   `DISTINCT source` 는 라이브에서 355,231행을 읽는다 — 30일 쿨다운이 이 부분조건에 없어서
+   *   선두 컬럼으로 건너뛰지 못하고, 쿨다운을 빼도 SQLite 가 skip-scan 을 안 한다. 그래서 그 조회는
+   *   **결과를 TTL 캐시**한다(`kakao-sweep-query.ts` `SWEEP_SOURCES_TTL_MS`). 목록을 코드에 박지
+   *   않는다는 원칙은 그대로다(박으면 새 수집기의 소스가 영원히 굶는다).
    */
   `CREATE INDEX IF NOT EXISTS idx_company_leads_kakao_queue ON ad_company_leads(
      source, (kakao_checked_at IS NOT NULL), (email IS NOT NULL AND email <> ''),
      (tier IS NULL), tier, id)
      WHERE merged_into IS NULL AND address IS NOT NULL AND address != '' AND (phone IS NULL OR phone = '')`,
+  /**
+   * ④ **수집 레인이 15건 뽑으려고 40만 행을 훑던 것** (2026-08-30, ③ 과 같은 클래스).
+   *
+   * ```
+   *   company-collect 이메일 크롤 대상 :  라이브 rows_read 402,363  →  돌려주는 행 15
+   *   결정적 조건만으로 좁히면            :  7,046행 (전체 396,208 의 1.8%)
+   * ```
+   * 대상이 이렇게 작은데 40만을 읽던 이유는 `ORDER BY (tier=1 우선), id DESC` 를 받는 인덱스가
+   * 없어 **전수 정렬**했기 때문이다(`SCAN … USE TEMP B-TREE FOR ORDER BY`).
+   *
+   * 🔑 `source IN ('local','webkr')` 를 **인덱스 키가 아니라 부분조건에 둔다** — 리터럴이라 결정적이고,
+   *   그래야 정렬 키가 `(tier1 우선, id DESC)` 하나로 남아 **정렬 자체가 사라진다**(소스별로 나눠
+   *   뽑아 코드에서 합칠 필요도 없다). 로컬 실측: `SCAN + TEMP B-TREE` → `SCAN USING INDEX`, 결과 동일.
+   *
+   * ⚠️ 쿨다운(`enrich_checked_at`/`enrich_v`)은 **부분조건에 넣을 수 없다**(`datetime('now')` 는
+   *   비결정적). 인덱스를 걸으며 거르는데, 결정적 집합 7,046 중 절반이 통과하므로 걷는 거리는 짧다.
+   * ⚠️ 이 부분조건·정렬은 `company-collect.ts` 의 크롤 대상 쿼리와 **정확히 같아야** 한다.
+   *   한 글자만 어긋나도 플래너가 조용히 무시하고 40만 행 정렬로 돌아간다.
+   */
+  `CREATE INDEX IF NOT EXISTS idx_company_leads_crawl_queue ON ad_company_leads(
+     (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC)
+     WHERE merged_into IS NULL AND source IN ('local','webkr')
+       AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '')`,
 ]
