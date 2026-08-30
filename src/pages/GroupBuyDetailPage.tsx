@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DetailGallery from './group-buy/DetailGallery'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
+import DetailBreadcrumb, { voucherCrumbs } from '@/components/deal/DetailBreadcrumb'
 import { derivePricing } from './group-buy/pricing'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -601,6 +602,8 @@ export default function GroupBuyDetailPage() {
           이전 2단(좌 sticky 갤러리 | 우 본문)에서 그루폰 딜 상세 구조로 전환. 모바일(<lg)은 세로 1열 +
           하단 고정 구매바 그대로(불변). */}
       {/* 🏷️ 2026-08-19 (대표 확정 — 상세 1안 "그루폰 정석"): PC 는 제목·별점·주소가 사진 **위**. 모바일은 그대로. */}
+      {/* 🧭 2026-08-30 (대표 — 그루폰식 카테고리바): 사진 **위** 한 줄. 이 페이지는 헤더가 뜬다 → overlayHeader */}
+      <DetailBreadcrumb items={voucherCrumbs(detail.category)} overlayHeader />
       <DetailTitleHeader name={detail.name} storeName={detail.restaurant_name} address={detail.restaurant_address}
         phone={detail.restaurant_phone} rating={detail.avg_rating} reviewCount={detail.review_count}
         onnuri={(detail as { onnuri_merchant?: boolean }).onnuri_merchant} />
@@ -624,9 +627,9 @@ export default function GroupBuyDetailPage() {
                 {displayDiscountPct > 0 && (
                   <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>{displayDiscountPct}% 할인</span>
                 )}
-                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 10px', borderRadius: 6, background: 'rgba(18,20,23,.5)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                  {({ meal_voucher: '식사', beauty_voucher: '뷰티', health_voucher: '건강', pet_voucher: '반려', stay_voucher: '숙박', activity_voucher: '액티비티' } as Record<string, string>)[detail.category] || '교환권'}
-                </span>
+                {/* 🧭 2026-08-30: 사진 위 카테고리 칩을 뺐다. 바로 위 빵부스러기가 같은 말을 하고 있어
+                    중복이었고, 게다가 이 칩은 **자체 라벨 맵**을 들고 있어 명칭 SSOT 와 어긋났다
+                    ('뷰티'/'숙박'/'액티비티' — SSOT 는 미용/숙소/기타). 사진 위엔 할인율만 남긴다. */}
                 {detail.group_buy_status === 'expired' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'rgba(55,55,55,.78)', color: '#fff', fontSize: 12, fontWeight: 700 }}>마감</span>}
                 {detail.group_buy_status === 'cancelled' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 700 }}>취소</span>}
               </div>
