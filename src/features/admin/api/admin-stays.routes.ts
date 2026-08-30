@@ -297,12 +297,18 @@ const STAY_SPOTS = [
   { label: '통영', sido: '경남', sigungu: '통영시', addr: '경남 통영시 도남로', lat: 34.8368, lng: 128.4207 },
   { label: '서울 성수', sido: '서울', sigungu: '성동구', addr: '서울 성동구 연무장길', lat: 37.5446, lng: 127.0561 },
 ]
+// 🧾 2026-08-30 (대표 "AI 티 안나는 디자인으로"): desc 를 다시 썼다.
+//   이전 문구는 `${지역}의 ${유형} — ${desc}` 로 조립됐는데 desc 안에 유형 이름이 또 들어 있어
+//   화면엔 "강릉의 호텔 — 접근성 좋은 호텔 — 깔끔한 룸 컨디션과 24시간 프런트." 로 떴다.
+//   한 문장에 '호텔' 두 번 + 줄표(—) 두 번 = 사람이 쓴 문장에서는 잘 안 나오는 형태다.
+//   ⇒ desc 는 **그 자체로 완결된 한두 문장**으로 두고, 조립부(아래 `const desc =`)에서
+//      지역·유형 접두사를 빼 중복을 없앴다(지역·유형은 배지와 주소 줄이 이미 말해 준다).
 const STAY_TYPES = [
-  { type: 'pension', label: '펜션', kakao: '펜션', mods: ['숲속 풀빌라', '계곡 앞', '프라이빗 스파', '노을뷰'], desc: '독채형 펜션 — 바비큐 테라스와 프라이빗한 휴식.' },
-  { type: 'hotel', label: '호텔', kakao: '호텔', mods: ['오션뷰', '시티', '부티크', '스카이라운지'], desc: '접근성 좋은 호텔 — 깔끔한 룸 컨디션과 24시간 프런트.' },
-  { type: 'guesthouse', label: '스테이', kakao: '게스트하우스', mods: ['감성', '한옥', '북스테이', '골목 안'], desc: '감성 숙소 — 조용한 골목에서 즐기는 로컬 감성.' },
-  { type: 'resort', label: '리조트', kakao: '리조트', mods: ['패밀리', '온수풀', '마운틴뷰'], desc: '가족 단위 리조트 — 온수풀·사우나 등 부대시설 완비.' },
-  { type: 'glamping', label: '글램핑', kakao: '글램핑', mods: ['별빛', '리버뷰', '불멍'], desc: '장비 없이 즐기는 글램핑 — 개별 화로와 냉난방 텐트.' },
+  { type: 'pension', label: '펜션', kakao: '펜션', mods: ['숲속 풀빌라', '계곡 앞', '프라이빗 스파', '노을뷰'], desc: '테라스에서 바비큐를 할 수 있는 독채형 펜션입니다. 옆 동과 떨어져 있어 조용히 쉬기 좋아요.' },
+  { type: 'hotel', label: '호텔', kakao: '호텔', mods: ['오션뷰', '시티', '부티크', '스카이라운지'], desc: '역과 시내에서 가까워 이동이 편합니다. 룸 컨디션이 깔끔하고 프런트는 24시간 운영해요.' },
+  { type: 'guesthouse', label: '스테이', kakao: '게스트하우스', mods: ['감성', '한옥', '북스테이', '골목 안'], desc: '조용한 골목 안에 있는 작은 스테이입니다. 동네를 천천히 걸어 보기 좋은 자리예요.' },
+  { type: 'resort', label: '리조트', kakao: '리조트', mods: ['패밀리', '온수풀', '마운틴뷰'], desc: '온수풀과 사우나를 갖춰 아이와 함께 가기 좋습니다. 부대시설만으로 하루가 채워져요.' },
+  { type: 'glamping', label: '글램핑', kakao: '글램핑', mods: ['별빛', '리버뷰', '불멍'], desc: '장비를 챙길 필요가 없는 글램핑입니다. 개별 화로가 있고 텐트에 냉난방이 들어와요.' },
 ]
 // 🏨 2026-07-21 (대표 "시설 설정 안 됨" — 이상적): 업종별 대표 시설 세트(5~6개). 상세 시설 아이콘 매핑
 //   (StayDetailPage amenityMeta)이 한글 키워드로 인식. 공통 + 유형 특색.
@@ -477,7 +483,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       //   없으면 null → 원본 폴백(현행과 동일). 커버 1장만(서브리퀘스트 예산 — 갤러리는 cron 이관).
       const coverHosted = imgs[0] ? await rehostImageToR2(extEnv as unknown as { MEDIA_BUCKET?: R2Bucket }, imgs[0], 'demo-stay-seed').catch(() => null) : null
       const img = coverHosted || imgs[0]  // imgs 비면 위에서 continue — picsum 더미 폴백 폐기(2026-08-08)
-      const desc = `${spot.label}의 ${ty.kakao} — ${ty.desc}`
+      const desc = ty.desc  // 지역·유형 접두사 제거 — 배지와 주소 줄이 이미 말해 준다(위 주석 참조)
       // 객실 2종 — 인원 2~6 자동 분산(인원 필터 검색이 항상 유효하게) + 주중/주말가.
       //   products INSERT 보다 먼저 계산: 대표가(price)=최저 객실 주중가, 오퍼명이 객실명을 참조.
       const mod = ty.mods[n % ty.mods.length]

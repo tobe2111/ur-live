@@ -782,15 +782,15 @@ export default function GroupBuyDetailPage() {
 
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
 
-        {/* 상품 안내 — 🖥️ 2026-07-19 그루폰식 헤더('무엇을 기대하세요?') + 탭 앵커 */}
+        {/* 상품 안내 — 🧾 2026-08-30 (대표 "AI 티 안나는 디자인으로"):
+            제목이 '무엇을 기대하세요?' 였다. What to expect 를 그대로 옮긴 번역투라
+            한국 커머스에선 아무도 그렇게 안 쓴다 — 아래 '이용 안내'와 짝이 되게 '딜 안내'로.
+            그 아래 칩도 로즈 점을 박은 라운드 필 3개였다. 세 낱말에 테두리 세 개를 쓰던 꼴이라,
+            점·테두리를 걷고 가운뎃점으로 흘려보낸다(정보량은 같고 소음만 줄었다). */}
         <div id="gb-sec-info" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>무엇을 기대하세요?</div>
-          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 13 }}>
-            {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''}까지` : '결제 즉시 사용'].map((chip) => (
-              <span key={chip} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 99, border: '1px solid var(--gbd-line2)', fontSize: 12.5, fontWeight: 600, color: 'var(--gbd-ink2)', whiteSpace: 'nowrap' }}>
-                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gbd-accent)' }} />{chip}
-              </span>
-            ))}
+          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>딜 안내</div>
+          <div style={{ marginTop: 11, fontSize: 13.5, color: 'var(--gbd-sub)', lineHeight: 1.6 }}>
+            {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''}까지 사용` : '결제 즉시 사용'].join(' · ')}
           </div>
           {detail.description && <p style={{ margin: '14px 0 0', fontSize: 14.5, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{detail.description}</p>}
         </div>
@@ -812,9 +812,10 @@ export default function GroupBuyDetailPage() {
                 </DeferUntilVisible>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '13px 14px', border: '1px solid var(--gbd-line2)', borderTop: 'none', borderRadius: '0 0 14px 14px' }}>
+                {/* 🧾 매장명은 제목 위(머천트 줄)와 지도 핀에 이미 두 번 나온다 — 여기까지 세 번은
+                    "채워 넣은" 티다. 주소만 남긴다(길찾기 버튼이 바로 옆이라 주소가 실제로 쓰인다). */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  {detail.restaurant_name && <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>{detail.restaurant_name}</div>}
-                  {detail.restaurant_address && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail.restaurant_address}</div>}
+                  {detail.restaurant_address && <div style={{ fontSize: 13, color: 'var(--gbd-sub)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail.restaurant_address}</div>}
                 </div>
                 <a
                   href={`https://map.kakao.com/link/${detail.restaurant_lat && detail.restaurant_lng ? `to/${encodeURIComponent(detail.restaurant_name || '매장')},${detail.restaurant_lat},${detail.restaurant_lng}` : `search/${encodeURIComponent(detail.restaurant_address || detail.restaurant_name || '')}`}`}

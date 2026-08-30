@@ -221,6 +221,26 @@ const MUTATIONS = [
       '남는다.** 분기 변경 직후 실제로 그 회귀를 냈고 이 가드로 잡았다.',
   },
   {
+    name: '상세 제목이 다시 번역투가 된다(무엇을 기대하세요?)',
+    file: 'src/pages/GroupBuyDetailPage.tsx',
+    find: ">딜 안내</div>",
+    replace: ">무엇을 기대하세요?</div>",
+    test: 'src/tests/unit/detail-page-plainness.test.ts',
+    why:
+      'What to expect 를 그대로 옮긴 제목이었다. 한국 커머스에선 아무도 그렇게 안 쓰고, ' +
+      '대표가 "AI 티 안나는 디자인으로" 라고 지적한 그 티의 대표 사례다(2026-08-30).',
+  },
+  {
+    name: '숙소 시설이 다시 3분할 카드가 된다',
+    file: 'src/pages/StayDetailPage.tsx',
+    find: '<AmenityFlow items=',
+    replace: '<div className="grid grid-cols-3 sm:grid-cols-4" /><AmenityFlow items=',
+    test: 'src/tests/unit/detail-page-plainness.test.ts',
+    why:
+      '"무료 주차" 세 글자마다 테두리 하나를 두르던 3분할 카드. 모든 블록이 같은 무게의 ' +
+      '흰 카드가 되면 위계가 사라지고 화면이 자동 생성된 것처럼 읽힌다.',
+  },
+  {
     name: '홈 색면이 다시 리터럴 hex 로 흩어진다(페이지와 히어로가 갈림)',
     file: 'src/pages/pc-home/PcHomePage.tsx',
     find: '<div className="bg-[var(--home-field)] min-h-[100dvh]">',
