@@ -27,6 +27,8 @@ interface InfluencerToPayout {
   bank_name: string | null
   bank_account: string | null
   account_holder: string | null
+  /** 'cash'(기본) | 'deal' — 소개자가 `/influencer/settlement` 에서 고른 수령 방식. */
+  payout_method: string | null
 }
 
 const DEFAULT_PAYOUT_MIN = 100_000  // 10만원
@@ -36,71 +38,6 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
   if (!DB) return
 
   try {
-    // 1-a) 💎 **매장 영입 보상을 딜로 지급** (2026-08-30 대표 *"매장 영입도 딜로 쌓아줘"*).
-    //
-    //   ## 왜 여기인가 — 적립 시점이 아니라 **성숙 시점**
-    //   적립 즉시 딜을 주면 T+7 환불 유예가 사라진다. 환불이 나면 이미 쓴 딜을 회수해야 하고
-    //   그건 잔액을 음수로 만든다. 그래서 `influencer_attributions` 의 hold 를 **그대로 쓰고**,
-    //   성숙(available_at 도달) 순간에 현금 대신 딜을 준다. 유예·멱등·환불 역전이 전부 보존된다.
-    //
-    //   ## 멱등 — claim-before-credit (머니 룰 #1)
-    //   `status='pending' AND available_at<=now` 인 행을 **먼저 `paid` 로 선점**하고, 선점에
-    //   성공한 행만 딜을 준다. 동시 실행·재시도에도 이중 지급이 구조적으로 불가능하다.
-    //   `paid` 로 끝내므로 현금 잔액(`influencer_balances`)에는 아예 들어가지 않는다.
-    //
-    //   ## 게이트
-    //   `store_intro_payout_in_deal`(platform_settings, 기본 OFF). 꺼져 있으면 이 블록을
-    //   통째로 건너뛰어 **종전 현금 경로와 byte-동일**하다.
-    //
-    //   ⚠️ **세무는 대표 판단 사항이다.** 현금 송금은 사업자 3.3% / 비사업자 8.8% 를 원천징수하는데,
-    //   딜 적립에는 원천징수가 없다(담아서 팔기 = `affiliate-credit` 도 같은 방식이라 일관은 된다).
-    //   딜은 교환권으로 실물 교환이 가능하므로 소득으로 볼 여지가 있다 — 켜기 전 확인이 필요하다.
-    const dealGate = await DB.prepare(
-      "SELECT value FROM platform_settings WHERE key = 'store_intro_payout_in_deal'",
-    ).first<{ value: string }>().catch(() => null)
-    if (dealGate?.value === 'true') {
-      const ripe = await DB.prepare(`
-        SELECT id, influencer_id, commission_amount, order_id
-          FROM influencer_attributions
-         WHERE status = 'pending' AND source = 'store_intro'
-           AND available_at IS NOT NULL AND available_at <= datetime('now')
-         LIMIT 200
-      `).all<{ id: number; influencer_id: string; commission_amount: number; order_id: number | null }>()
-        .catch(() => ({ results: [] as Array<{ id: number; influencer_id: string; commission_amount: number; order_id: number | null }> }))
-
-      const { adjustUserPoints } = await import('../utils/point-ledger')
-      for (const row of ripe.results || []) {
-        const amt = Math.floor(Number(row.commission_amount) || 0)
-        if (amt <= 0) continue
-        // 선점: 이 행을 가져간 실행만 딜을 준다.
-        const claim = await DB.prepare(
-          "UPDATE influencer_attributions SET status = 'paid', paid_at = datetime('now') WHERE id = ? AND status = 'pending'",
-        ).bind(row.id).run().catch(() => null)
-        if ((claim?.meta?.changes ?? 0) !== 1) continue
-        const res = await adjustUserPoints(DB, {
-          userId: String(row.influencer_id),
-          delta: amt,
-          type: 'store_intro_commission',
-          description: '매장 영입 보상',
-          orderId: row.order_id ?? undefined,
-        }).catch(() => ({ ok: false as const, reason: 'error' }))
-        if (!res.ok) {
-          // 적립 실패 → 선점을 되돌린다. 안 그러면 그 행은 영영 미지급으로 남는다.
-          await DB.prepare(
-            "UPDATE influencer_attributions SET status = 'pending', paid_at = NULL WHERE id = ? AND status = 'paid'",
-          ).bind(row.id).run().catch(swallow('cron:influencer-payout:deal-unclaim'))
-          continue
-        }
-        await DB.prepare(`
-          INSERT INTO user_notifications (user_id, type, title, message, link, created_at)
-          VALUES (?, 'store_intro_earning', ?, ?, '/u/me/earnings', datetime('now'))
-        `).bind(
-          String(row.influencer_id), '🏪 매장 영입 보상',
-          `${amt.toLocaleString('ko-KR')}딜이 적립되었습니다`,
-        ).run().catch(() => { /* 알림 실패가 적립을 되돌리지 않는다 */ })
-      }
-    }
-
     // 1) Pending → Available 전환 (T+7 이상)
     const pendingToAvail = await DB.prepare(`
       UPDATE influencer_attributions
@@ -142,7 +79,7 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
 
     const toPayout = await DB.prepare(`
       SELECT influencer_id, available_amount, tax_type, business_number,
-             bank_name, bank_account, account_holder
+             bank_name, bank_account, account_holder, payout_method
       FROM influencer_balances
       WHERE available_amount >= ?
       ORDER BY available_amount DESC
@@ -151,12 +88,44 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
 
     let payoutCount = 0
     let payoutTotal = 0
+    let dealCount = 0
     const missingBank: string[] = []
 
     for (const inf of toPayout.results || []) {
-      // 계좌 정보 누락 → 송금 보류 + alert
-      if (!inf.bank_name || !inf.bank_account || !inf.account_holder) {
+      // 💎 딜 수령자 — 계좌를 요구하지 않는다.
+      //
+      //   `influencer_balances.payout_method` 는 소개자가 `/influencer/settlement` 에서 직접 고르고
+      //   어드민이 `/admin/influencer-payouts` 에서 그 방식대로 처리한다(딜은 `creditFreePoints`
+      //   +보너스%, 현금은 원천징수 후 송금 — `marketing.routes` `/payouts/process`).
+      //
+      //   ⚠️ 그런데 이 cron 은 그 선택을 **한 번도 읽지 않았다.** 계좌 정보가 없다는 이유로
+      //   딜 수령자를 `missingBank` 로 보내 버려서, 어드민 송금대기 알림에 **영영 안 뜬다**
+      //   (어드민이 그 페이지를 직접 열어야만 보인다). 딜을 고른 사람일수록 계좌를 안 넣으므로
+      //   "딜로 받겠다"를 고르는 순간 알림에서 사라지는 구조였다.
+      //
+      //   여기서는 계좌 검사를 건너뛰고 **딜 전용 알림**을 넣는다. 실제 적립은 종전대로
+      //   어드민의 [송금 처리]가 한다 — 이 cron 은 돈을 옮기지 않는다(현금 경로와 동일한 역할).
+      const wantsDeal = inf.payout_method === 'deal'
+      if (!wantsDeal && (!inf.bank_name || !inf.bank_account || !inf.account_holder)) {
+        // 계좌 정보 누락 → 송금 보류 + alert
         missingBank.push(inf.influencer_id)
+        continue
+      }
+      if (wantsDeal) {
+        const dupDeal = await DB.prepare(
+          `SELECT 1 FROM dashboard_notifications
+            WHERE type = 'influencer_payout_pending' AND title = ?
+              AND created_at >= datetime('now', 'start of month') LIMIT 1`
+        ).bind(`💎 인플 딜 지급 대기: ${inf.influencer_id}`).first().catch(() => null)
+        if (dupDeal) continue
+        await DB.prepare(
+          `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+           VALUES ('admin', 'all', 'influencer_payout_pending', ?, ?, '/admin/influencer-payouts', datetime('now'))`
+        ).bind(
+          `💎 인플 딜 지급 대기: ${inf.influencer_id}`,
+          `${inf.available_amount.toLocaleString()}원 상당 — 딜 수령 선택(계좌 불필요). 보너스는 지급 시점에 적용됩니다.`,
+        ).run().catch(swallow('cron:influencer-payout:deal-notify'))
+        dealCount++
         continue
       }
       // 원천징수 계산 (SSOT WITHHOLDING_RATES — fraction → % 환산)
@@ -207,7 +176,7 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
       }
     }
 
-    logInfo(`[cron:influencer-payout] transitioned=${transitioned} payouts_queued=${payoutCount} total_net=${payoutTotal} missing_bank=${missingBank.length}`)
+    logInfo(`[cron:influencer-payout] transitioned=${transitioned} payouts_queued=${payoutCount} deal_queued=${dealCount} total_net=${payoutTotal} missing_bank=${missingBank.length}`)
   } catch (e) {
     // 🔔 2026-07-08 (무인운영 감사): 이전엔 삼켜 safeCron 실패 알림에 안 닿았음(성숙 전환/송금대기
     //   집계가 조용히 실패해도 경보 0). 재throw → safeCron → notifyCronFailure(Discord + cron_failures + 벨).
