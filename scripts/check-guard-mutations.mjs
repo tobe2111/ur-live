@@ -5997,6 +5997,36 @@ canvas {
       '에러 없이, 통계에도 안 잡히고. 이 파일이 두 번 고친 사고가 정확히 그 모양이었다.',
   },
   {
+    name: '📉 파트너 풀 통계가 캐시를 건너뛴다(화면 한 번에 331만 행 복귀)',
+    file: 'src/features/marketing/api/partner-pool.routes.ts',
+    find: "getCompanyStatsCached(statsDb, c.req.query('fresh') === '1', () => companyStats(statsDb))",
+    replace: '{ stats: await companyStats(statsDb), at: Date.now() }',
+    test: 'src/tests/unit/company-stats-cache.test.ts',
+    why:
+      '화면은 똑같이 동작하고 숫자도 맞다 — 다만 조회 1회가 331만 행이고, 레인 실행 뒤 5초마다 ' +
+      '36번 폴링하므로 버튼 한 번이 1.19억 행이 된다(D1 무료 한도의 24배). 에러가 안 난다.',
+  },
+  {
+    name: '📉 통계 캐시가 안 늙는다(화면 숫자가 조용히 굳는다)',
+    file: 'src/features/marketing/api/company-stats-cache.ts',
+    find: '  const age = nowMs - cached.at\n  return age < 0 || age >= COMPANY_STATS_TTL_MS',
+    replace: '  return false',
+    test: 'src/tests/unit/company-stats-cache.test.ts',
+    why:
+      '캐시가 영원히 신선하면 수집이 계속 돌아도 화면 숫자가 안 변한다. "수집이 멈췄나"로 오독하게 ' +
+      '되는데 실제로는 표시만 굳은 것이라, 대표가 잘못된 판단을 하게 만드는 종류의 조용한 오보다.',
+  },
+  {
+    name: '📉 쓰기 뒤 통계 캐시를 안 버린다(추가·삭제가 화면에 안 뜬다)',
+    file: 'src/features/marketing/api/partner-pool.routes.ts',
+    find: "app.use('*', invalidateStatsOnWrite(adsLeadsDb as never) as never)",
+    replace: '',
+    test: 'src/tests/unit/company-stats-cache.test.ts',
+    why:
+      '리드를 추가·삭제한 직후 화면이 그대로면 관리자는 "저장이 안 됐다"로 읽고 같은 작업을 반복한다. ' +
+      'TTL 이 결국 덮지만 그 5분 동안의 오해가 실제 중복 작업을 만든다.',
+  },
+  {
     name: '🐌 수집 크롤 인덱스에 source 를 키로 넣는다(정렬이 되살아난다)',
     file: 'src/features/marketing/api/company-ddl-indexes.ts',
     find: "     (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC)\n     WHERE merged_into IS NULL AND source IN ('local','webkr')",

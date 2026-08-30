@@ -16,6 +16,7 @@ import {
   parsePartnerPaste, COMPANY_CATEGORIES, COMPANY_STATUSES, COMPANY_CONTACT_CHANNELS, COMPANY_TIER_MIN, COMPANY_TIER_MAX,
   type CompanyLead, type CompanyLeadFilter,
 } from './company-discovery'
+import { getCompanyStatsCached, invalidateStatsOnWrite } from './company-stats-cache'
 import { LEAD_TYPES, LEAD_TYPE_LABEL } from './company-classify'
 import tradeRoutes from './partner-pool-trades.routes'
 import { partnerPoolDedupeRoutes } from './partner-pool-dedupe.routes'
@@ -26,6 +27,8 @@ import { adsLeadsDb } from '../../../shared/ads/leads-db'
 const app = new Hono<{ Bindings: Env }>()
 
 app.use('*', requireAdmin())
+// 🧹 데이터를 바꿨으면 통계 캐시를 버린다(근거·이유는 `company-stats-cache.ts`).
+app.use('*', invalidateStatsOnWrite(adsLeadsDb as never) as never)
 // 🧬 중복 병합 라우트(별도 모듈 — 600줄 래칫 우회 대신 추출).
 //   ⚠️ **반드시 requireAdmin() 뒤에 마운트**한다 — 앞에 두면 이 라우트만 인증을 안 거친다(라이브 데이터 수정 경로).
 app.route('/', partnerPoolDedupeRoutes)
@@ -224,7 +227,9 @@ app.get('/timeline', async (c) => {
 
 // GET /api/admin/partner-pool/stats
 app.get('/stats', async (c) => {
-  const s = await companyStats(adsLeadsDb(c.env))
+  // 🧮 집계만 TTL 캐시(331만 행/호출 × 5초 폴링 36회 = 버튼 한 번 1.19억 행). 레인 상태는 매번 신선 — 폴러가 보는 건 그쪽이다.
+  const statsDb = adsLeadsDb(c.env)
+  const { stats: s, at: statsAt } = await getCompanyStatsCached(statsDb, c.req.query('fresh') === '1', () => companyStats(statsDb))
   // 🤝 레인 A 수집 상태 — 게이트 + 마지막 실행(ads_company_stats). ur-ads 서비스바인딩 존재여부.
   const runRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_stats'").first<{ value: string }>().catch(() => null)
   let run: unknown = null; try { run = runRow?.value ? JSON.parse(runRow.value) : null } catch { run = null }
@@ -287,7 +292,7 @@ app.get('/stats', async (c) => {
   }
   const gate = (k: string, fallback: boolean): boolean => (g && typeof g[k] === 'boolean') ? g[k] : fallback
   return c.json({
-    success: true, ...s,
+    success: true, ...s, stats_at: statsAt, // 이 숫자가 언제 기준인지 — 캐시된 값을 최신으로 오해하지 않게
     collect: { gate: gate('company_collect', c.env.ADS_COMPANY_COLLECT_ENABLED === 'true'), adsBinding: !!c.env.ADS?.fetch, run },
     storeinfo: { gate: gate('storeinfo', c.env.ADS_STOREINFO_ENABLED === 'true'), run: storeinfoRun },
     commerce: { gate: gate('commerce', (c.env as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED === 'true'), run: commerceRun, probe: commerceProbe },
