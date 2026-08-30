@@ -5500,6 +5500,11 @@ _총 195건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-08-30 — 매장 영입 보상을 딜로 (게이트 OFF 배선)](handoff/2026-08-30-store-intro-deal.md)
 - [2026-08-30 — 디자인 "AI 스러움" 진단 + 1층 수리 (버튼·그림자·포커스)](handoff/2026-08-30-design-ai-slop-audit.md)
 - [2026-08-30 — 자동분 제거 + 딜/현금 선택 존중 (오전 작업 되돌림 포함)](handoff/2026-08-30-deal-only-commission.md)
+_총 194건 · 최신순 · 이 목록은 자동 생성된다._
+
+**2026-08-30**
+- [2026-08-30 — 매장 영입 보상을 딜로 (게이트 OFF 배선)](handoff/2026-08-30-store-intro-deal.md)
+- [2026-08-30 — 숙소 상세 사진만 여백이 있던 것](handoff/2026-08-30-stay-detail-gallery-bleed.md)
 **2026-08-29**
 - [2026-08-29 — 히어로 preload + 내가 만든 중단점 구멍(640~767px)](handoff/2026-08-29-hero-preload-and-breakpoint-gap.md)
 - [2026-08-29 — 채널 요율을 **라이브에서 켰다** + QA 매장 정리](handoff/2026-08-29-channel-fee-live.md)
