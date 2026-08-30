@@ -3,6 +3,9 @@ import {
   HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE,
   HOME_CARD_LG_QUERY, HOME_CARD_BASE_QUERY, HOME_CARD_ABOVE_FOLD,
 } from '../../shared/home-card-image'
+import { pickHeroPhotoFromSeedJson } from '../../shared/home-hero-photo'
+import { BANNER_SLOT_SPECS } from '../../shared/constants/home-showcase'
+import { HOME_HERO_MEDIA_QUERY, HOME_HERO_REQUEST_WIDTH, HOME_HERO_QUALITY } from '../../shared/home-hero-image'
 
 /**
  * 🖼️ 홈 첫 화면 카드 사진 preload 링크 생성 (2026-08-27 대표 "메인페이지 로딩 자체도 느려").
@@ -100,4 +103,38 @@ export function buildDetailHeroPreloadLink(ssrPayload: string, isVoucherSurface:
   } catch {
     return null // seed 파싱 실패 — preload 생략(치명 아님)
   }
+}
+
+/**
+ * 🏔️ 홈 **히어로** 사진 preload (2026-08-29 대표 — "히어로에 나올 사진이 가장 늦긴 해").
+ *
+ * ## 실측한 문제
+ * 카드 4장은 위(`buildHomeCardPreloadLinks`)에서 preload 를 받는데 **정작 그 위에 있는 히어로는
+ * 못 받고 있었다.** 라이브 PC 3회 측정에서 히어로 다운로드가 카드보다 **일관되게 ~630ms 늦게
+ * 시작**했다(631/648/632ms). 화면 맨 위 사진이 가장 늦게 시작하는 셈이다.
+ *   히어로는 이미 `loading="eager" fetchPriority="high"` 다 — 그건 **발견된 뒤**의 우선순위이고,
+ *   발견 자체가 React 렌더 뒤라서 늦었다. preload 만이 그 앞을 당긴다.
+ *
+ * ## ⚠️ byte-일치
+ * 클라이언트(`HomeHeroDefault`)가 만드는 `src`/`srcSet` 과 **같은 함수·같은 인자**로 만든다.
+ * 한 글자만 달라도 preload 가 버려지고 96KB 를 두 번 받는다(에러 없이 더 느려진다).
+ * 사진 고르기도 같은 SSOT(`shared/home-hero-photo`)를 쓴다.
+ *
+ * ## ⚠️ 중단점
+ * 히어로 사진은 `hidden md:block` 이라 **768px 미만에서는 보이지 않는다.** `media=` 로 막지 않으면
+ * 폰이 96KB 를 헛되이 받는다 — 고치려던 것보다 더 나쁜 회귀다.
+ *
+ * ## 어드민 배너가 있으면?
+ * 그때는 클라이언트가 배너 사진을 쓴다. 다만 배너는 마운트 후 fetch 라, **첫 화면에 먼저 뜨는 건
+ * 어느 경우에나 이 시드 사진**이다 — 그래서 이 preload 는 배너 유무와 무관하게 유효하다.
+ *
+ * @returns `<link …>` 문자열, 없으면 null(fail-soft).
+ */
+export function buildHomeHeroPreloadLink(mainSeedPayload: string): string | null {
+  const pick = pickHeroPhotoFromSeedJson(mainSeedPayload)
+  if (!pick?.src) return null
+  const href = cfImage(pick.src, { width: HOME_HERO_REQUEST_WIDTH, quality: HOME_HERO_QUALITY })
+  if (!href || href.startsWith('data:')) return null
+  const set = cfSrcSet(pick.src, BANNER_SLOT_SPECS.hero.srcSetBase!)
+  return `<link rel="preload" as="image" fetchpriority="high" media="${HOME_HERO_MEDIA_QUERY}" href="${escAttr(href)}"${set ? ` imagesrcset="${escAttr(set)}"` : ''}>`
 }

@@ -1194,6 +1194,39 @@ canvas {
       '**패널만 보면 멀쩡해 보인다** — 페이지가 밀리는 걸 봐야 안다. 눈으로 놓치기 쉬운 종류다.',
   },
   {
+    name: '히어로 preload 가 보이지 않는 폭에서도 받는다',
+    file: 'src/worker/utils/home-card-preload.ts',
+    find: 'return `<link rel="preload" as="image" fetchpriority="high" media="${HOME_HERO_MEDIA_QUERY}"',
+    replace: 'return `<link rel="preload" as="image" fetchpriority="high"',
+    test: 'src/tests/unit/home-hero-preload.test.ts',
+    why:
+      '히어로 사진은 `hidden md:block` 이라 768px 미만에서 **보이지 않는다**. media 게이트를 빼면 ' +
+      '폰이 96KB 를 헛되이 받는다 — 고치려던 것(늦게 뜬다)보다 나쁜 회귀인데 **PC 에서는 아무 차이가 ' +
+      '없어 눈으로 못 잡는다.** ⚠️ 이 파일엔 카드 preload 도 있어 문자열이 겹친다 — 앵커는 히어로 쪽으로.',
+  },
+  {
+    name: '히어로 preload URL 이 클라이언트 렌더와 어긋난다',
+    file: 'src/worker/utils/home-card-preload.ts',
+    find: 'const href = cfImage(pick.src, { width: HOME_HERO_REQUEST_WIDTH, quality: HOME_HERO_QUALITY })',
+    replace: 'const href = cfImage(pick.src, { width: 900, quality: HOME_HERO_QUALITY })',
+    test: 'src/tests/unit/home-hero-preload.test.ts',
+    why:
+      'preload 는 URL 이 **byte-일치할 때만** 쓰인다. 폭이 한쪽에서만 바뀌면 브라우저가 preload 를 ' +
+      '버리고 96KB 를 **두 번** 받는다 — 에러도 없고 화면도 멀쩡한데 더 느려지고 트래픽만 두 배다. ' +
+      '눈으로는 절대 안 보이는 종류라 가드가 유일한 방어다(2026-08-22 에 실제로 900→1280 으로 바뀐 값이다).',
+  },
+  {
+    name: '히어로가 남의 호스트 데모 사진을 쓴다',
+    file: 'src/shared/home-hero-photo.ts',
+    find: 'if (!ownDemo && isOwnMedia(img)) ownDemo = hit',
+    replace: 'if (!ownDemo) ownDemo = hit',
+    test: 'src/tests/unit/home-hero-preload.test.ts',
+    why:
+      '2026-08-04 에 **타사 워터마크 보도사진(YONHAP)이 홈 최상단에 오를 뻔했다.** 데모 카탈로그에 ' +
+      '외부 호스트 사진이 섞여 있어서다. 이 가드가 빠지면 같은 사고가 재현되는데, 화면엔 그냥 ' +
+      '"사진이 떴다" 로 보여서 **누가 알아보기 전엔 아무 신호가 없다.**',
+  },
+  {
     name: 'PC 전용 헤더가 모바일에서도 렌더된다(CSS 로만 숨김)',
     file: 'src/components/main/DesktopTopNav.tsx',
     find: '  if (!isDesktop) return null',

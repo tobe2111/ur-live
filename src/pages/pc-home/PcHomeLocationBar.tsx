@@ -106,7 +106,15 @@ export default function PcHomeLocationBar({
    *   ⚠️ `max-w-[90vw]` 는 이걸 못 막는다 — 문서가 넓어지면 vw 도 같이 커져 자기 자신을 못 잡는다.
    *   ⇒ 좁은 화면에서는 버튼 좌표계를 벗어나 **뷰포트에 고정**한다(좌우 8px 여백). 넓은 화면은 종전 그대로.
    */
-  const isWide = useMediaQuery('(min-width: 640px)')
+  /**
+   * ⚠️ 640 이 아니라 **768** 이다 (2026-08-29 대표 스크린샷 — 640~767 구간에서 또 밀렸다).
+   *   이 바가 **오른쪽에 놓이는 모바일 헤더**(`MobileHomePage`)는 768px 까지 쓰이고, 그 위에서야
+   *   PC 헤더(`DesktopTopNav`, `hidden md:block`)로 바뀌며 바가 왼쪽으로 간다.
+   *   게이트를 640 으로 두면 **640~767 구간만** 옛 `absolute left-0` 로 돌아가 문서가 다시 넓어진다
+   *   (실측: 700px 뷰포트에서 문서폭 +179). 폰을 가로로 눕히면 바로 이 구간이다.
+   *   ⇒ 중단점은 **레이아웃이 실제로 바뀌는 곳**과 같아야 한다. 임의로 고르면 반드시 틈이 생긴다.
+   */
+  const isWide = useMediaQuery('(min-width: 768px)')
   const [panelTop, setPanelTop] = useState(0)
   useEffect(() => {
     if (!open || isWide) return

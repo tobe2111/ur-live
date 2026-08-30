@@ -306,7 +306,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink } from './utils/home-card-preload';
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -783,6 +783,13 @@ app.use('*', async (c, next) => {
             //   ⚠️ preload 는 URL 이 byte-일치할 때만 쓰인다 — 경위·함정은 헬퍼 주석에.
             if (ssrSlot === 'MAIN' && ssrExtraPayload) {
               for (const link of buildHomeCardPreloadLinks(ssrExtraPayload)) el.append(link, { html: true });
+            }
+            // 🏔️ 2026-08-29 (대표 — "히어로에 나올 사진이 가장 늦긴 해"): 카드는 위에서 preload 를 받는데
+            //   **그 위의 히어로만 못 받고 있었다.** 라이브 PC 3회 실측에서 카드보다 일관되게 ~630ms 늦게
+            //   시작했다. 히어로 사진은 MAIN 시드에서 고르므로(카드는 SECTIONS 시드) 여기서 따로 만든다.
+            if (ssrSlot === 'MAIN' && ssrPayload) {
+              const heroLink = buildHomeHeroPreloadLink(ssrPayload);
+              if (heroLink) el.append(heroLink, { html: true });
             }
           }
         },
