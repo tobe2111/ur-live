@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Search, Bell, ShoppingCart, Map as MapIcon, ChevronRight } from 'lucide-react'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
+import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
 import HomeSections from '@/components/home/HomeSections'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
@@ -33,6 +34,15 @@ export default function MobileHomePage() {
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
   const [category, setCategory] = useState<DealCategory>('all')
   const [sort, setSort] = useState<'popular' | 'newest' | 'deadline' | 'discount' | 'near'>('popular')
+
+  /**
+   * 🔗 2026-08-27 (대표 신고 — "지금 인기 이용권의 더보기 클릭도 안되고"): 섹션 '더보기'는
+   *   `/?sort=popular` 같은 **쿼리 전용 이동**인데, 그 반영이 PC 홈에만 있었다. 모바일은 같은
+   *   링크를 받고도 쿼리를 안 읽어서 **폰에서 누르면 정말 아무 일도 안 일어났다.**
+   *   두 홈이 같은 섹션·같은 링크를 쓰므로 로직도 한 곳(`useHomeQuerySync`)에서 공유한다.
+   */
+  const gridHeaderRef = useRef<HTMLElement | null>(null)
+  useHomeQuerySync({ setCategory, setSort, gridHeaderRef })
 
   const handleLocate = (loc: { lat: number; lng: number }) => { setUserLoc(loc); setRegion({}); setSort('near') }
   const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
@@ -103,7 +113,7 @@ export default function MobileHomePage() {
       )}
 
       <section className="mt-4">
-        <header className="px-4 mb-2">
+        <header ref={gridHeaderRef} className="px-4 mb-2 scroll-mt-24">
           <h2 className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">
             {userLoc ? '내 주변 가까운 딜' : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
           </h2>

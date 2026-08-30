@@ -1,6 +1,6 @@
 /**
  * 🧭 서비스 소개 랜딩 — /about (2026-07-19 대표 "웹페이지 3종" ② — 소비자·제휴처(재단·지자체·에이전시) 겸용 1페이지)
- *   한 줄 정의 → 소비자 혜택 → 3자 구조도(매장·인플루언서·소비자) → 실적/보도 placeholder(10월 방배 실측 교체)
+ *   한 줄 정의 → 소비자 혜택 → 3자 구조도(매장·소개·구매) → 실적/보도 placeholder(10월 방배 실측 교체)
  *   → 앱 진입 CTA. 기존 상세 소개서(구 AboutPage, 인쇄/PDF 지원)는 /about/print 로 보존 — 하단 링크.
  *   카피는 대표 별도 전달분으로 교체 예정. 브랜드 토큰: brand/#1A2C42/#FAF7F5.
  */
@@ -17,7 +17,7 @@ const BENEFITS = [
 
 const TRIANGLE = [
   { icon: Store, t: '매장', d: '선불 광고비 없이 새 손님 — 팔린 만큼만 내는 판매 수수료' },
-  { icon: Megaphone, t: '인플루언서', d: '링크 하나로 동네 딜을 소개하고 판매 커미션' },
+  { icon: Megaphone, t: '소개하는 사람', d: '내 유어샵에 담아 링크 하나로 소개하면 팔릴 때마다 몫이 쌓여요' },
   { icon: Users, t: '소비자', d: '검증된 동네 가게를 할인가로, QR 로 간편하게' },
 ]
 
@@ -29,7 +29,7 @@ export default function AboutServicePage() {
         <Link to="/" aria-label="유어딜 홈"><UrDealLogo size={18} /></Link>
         <div className="flex items-center gap-3">
           <Link to="/partners" className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">입점 안내</Link>
-          <Link to="/creators" className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">크리에이터</Link>
+          <Link to="/creators" className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">소개하기</Link>
         </div>
       </header>
 
@@ -63,7 +63,7 @@ export default function AboutServicePage() {
         {/* 3자 구조도 */}
         <section className="pb-10">
           <h2 className="text-[19px] font-extrabold text-[#1A2C42] dark:text-[#F5F3F1] mb-1">셋이 함께 커지는 구조</h2>
-          <p className="text-[12.5px] text-gray-500 dark:text-gray-400 mb-4">매장 · 인플루언서 · 소비자 — 누구도 먼저 돈을 내지 않습니다</p>
+          <p className="text-[12.5px] text-gray-500 dark:text-gray-400 mb-4">매장 · 소개 · 구매 — 누구도 먼저 돈을 내지 않습니다</p>
           <div className="grid grid-cols-3 gap-2">
             {TRIANGLE.map(({ icon: Icon, t, d }) => (
               <div key={t} className="rounded-2xl bg-white dark:bg-[#1A2334] p-3 text-center">
@@ -77,7 +77,7 @@ export default function AboutServicePage() {
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <Link to="/partners" className="h-11 rounded-xl border border-[#1A2C42]/15 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] flex items-center justify-center text-[13px] font-bold text-[#1A2C42] dark:text-[#F5F3F1]">매장 입점 안내 →</Link>
-            <Link to="/creators" className="h-11 rounded-xl border border-[#1A2C42]/15 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] flex items-center justify-center text-[13px] font-bold text-[#1A2C42] dark:text-[#F5F3F1]">크리에이터 모집 →</Link>
+            <Link to="/creators" className="h-11 rounded-xl border border-[#1A2C42]/15 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] flex items-center justify-center text-[13px] font-bold text-[#1A2C42] dark:text-[#F5F3F1]">소개 파트너 모집 →</Link>
           </div>
         </section>
 
@@ -89,7 +89,7 @@ export default function AboutServicePage() {
             {[
               ['01', '매장 등록', '카카오맵에서 내 가게를 검색해 등록 — 사업자번호 확인으로 바로 활성화'],
               ['02', '이용권 등록', '메뉴·가격·할인 설정. 판매 1건당 실수령가를 그 자리에서 확인'],
-              ['03', '인플루언서 제안', '유어딜 인플루언서 목록에서 골라 커미션 조건으로 협업 제안 — 발송은 유어딜이 대행'],
+              ['03', '소개 제안', '유어딜 소개 파트너 목록에서 골라 커미션 조건으로 협업 제안 — 발송은 유어딜이 대행'],
               ['04', '판매 · 정산', '고객이 앱에서 결제, 매장에서 QR 사용. 사용 확정분이 자동 정산'],
             ].map(([n, t, d]) => (
               <div key={n} className="rounded-2xl bg-white dark:bg-[#1A2334] p-3.5 flex items-start gap-3">

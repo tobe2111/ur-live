@@ -234,7 +234,10 @@ export async function runWebkrCollect(env: Env): Promise<WebkrCollectStats> {
   //   `requireContact`(기본 ON)는 collect-company 와 동일 — webkr 리드는 연락처가 없어 보류(active=0)로
   //   들어가고, `enrich-company` 크롤이 이메일을 붙이면 그때 승격된다(그게 이 파이프라인의 설계다).
   const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false'
-  spendD1(leads.length ? 3 + Math.ceil(leads.length / 50) : 0) // 전후 COUNT 2 + 스키마 보장 1 + 청크 batch
+  // 🧾 2026-08-27: 저장 관문이 [전후 COUNT 2 + 청크 batch] → [청크당 (사전확인 1 + batch 1)] 로 바뀌었다.
+  //   전수 스캔이 사라져 읽는 행은 99.99% 줄지만 **쿼리 수는 청크마다 1개 늘어난다** — 예산 계산을
+  //   같이 안 고치면 회차가 자기 몫을 과소 계상해 부기가 예산 밖으로 밀린다(이 레포가 겪은 클래스).
+  spendD1(leads.length ? 1 + 2 * Math.ceil(leads.length / 50) : 0) // 스키마 보장 1 + 청크당 (사전확인 + batch)
   const counted = leads.length
     ? await saveCompanyLeadsCounted(DB, leads, { requireContact }).catch(() => ({ inserted: 0, upserted: 0 }))
     : { inserted: 0, upserted: 0 }

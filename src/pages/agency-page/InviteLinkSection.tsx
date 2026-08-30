@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-02: TD-018 분할 — AgencyPage 인플루언서 초대 링크 섹션.
+ * 🛡️ 2026-05-02: TD-018 분할 — AgencyPage 소개 파트너 초대 링크 섹션.
  */
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'

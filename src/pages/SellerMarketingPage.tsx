@@ -95,7 +95,7 @@ function DealsSection() {
             <h3 className="text-base font-bold text-gray-900 mb-4">우대 commission 제안</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">인플루언서 ID</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">소개 파트너 ID</label>
                 <input value={proposeForm.influencer_id} onChange={(e) => setProposeForm(f => ({ ...f, influencer_id: e.target.value }))}
                   placeholder="user_12345" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono text-gray-900" />
               </div>

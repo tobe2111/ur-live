@@ -5494,10 +5494,27 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 177건 · 최신순 · 이 목록은 자동 생성된다._
+_총 191건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-30**
 - [2026-08-30 — 인플루언서 제휴 제안서 + 어드민 열람/PDF + taste-skill 도입](handoff/2026-08-30-influencer-proposal-admin.md)
+**2026-08-29**
+- [2026-08-29 — 채널 요율을 **라이브에서 켰다** + QA 매장 정리](handoff/2026-08-29-channel-fee-live.md)
+**2026-08-27**
+- [유어샵 수익 사다리 + 딜 우선 정렬 (2026-08-27)](handoff/2026-08-27-urshop-earn-ladder.md)
+- [2026-08-27 — 저장 관문이 리드 하나 넣을 때마다 37만 행을 두 번 세던 것](handoff/2026-08-27-save-gate-full-scan.md)
+- [2026-08-27 — 모바일 지역 선택 패널이 화면 밖으로 나가던 것](handoff/2026-08-27-region-picker-viewport.md)
+- [2026-08-27 — 본진 최대 테이블에 인덱스가 없었다 (`product_reviews`)](handoff/2026-08-27-product-reviews-index.md)
+- [2026-08-27 — "로딩이 심각한 문제" 의 진짜 원인: PC 헤더가 폰에서도 렌더됐다](handoff/2026-08-27-pc-header-mobile-render.md)
+- [인플루언서 소개 플로우 수리 (2026-08-27)](handoff/2026-08-27-influencer-deal-gate.md)
+- [2026-08-27 — 홈 카드 룩 통일 · 폰에서 죽어 있던 더보기 · 사진 스와이프](handoff/2026-08-27-home-card-unify.md)
+- [2026-08-27 — 홈 "섹션이 안 보인다 / 로딩이 매우 느려" 규명과 수리](handoff/2026-08-27-home-boot-js-cost.md)
+- [2026-08-27 — 매장에 보여 준 수수료가 실제 청구와 갈려 있었다 (+ 유어샵 카드 갤러리)](handoff/2026-08-27-fee-truth.md)
+- [2026-08-27 — D1 읽기 낭비 규명 (하루 6.19억 행)](handoff/2026-08-27-d1-read-amplification.md)
+- [2026-08-27 — 업체 DB(유어애즈 B2B) 읽기 증폭: 세 원인 제거](handoff/2026-08-27-company-db-read-amplification.md)
+- [2026-08-27 — 대행사 매장이 5%가 아니라 10%를 내고 있었다](handoff/2026-08-27-channel-fee.md)
+**2026-08-26**
+- [2026-08-26 — 유어샵 정합 전수 수리 + SEO 최적화](handoff/2026-08-26-urshop-alignment-seo.md)
 **2026-08-24**
 - [2026-08-24 — 429 를 "결과 0건"으로 적던 것 (유어애즈 webkr 레인)](handoff/2026-08-24-unanswered-bookkeeping.md)
 - [2026-08-24 — 은퇴가 레인 하나에만 걸려 있던 것 (유어애즈)](handoff/2026-08-24-two-lane-retirement.md)

@@ -62,6 +62,7 @@ import { adminSettlementsRoutes } from '../features/admin/api/admin-settlements.
 import { adminWholesaleMallRoutes } from '../features/supply/api/wholesale-malls-admin.routes';
 import { adminStatsRoutes } from '../features/admin/api/admin-stats.routes';
 import { adminSellersRoutes } from '../features/admin/api/admin-sellers.routes';
+import { adminStoreChannelRoutes } from '../features/admin/api/admin-store-channel.routes';
 import { adminProductsRoutes } from '../features/admin/api/admin-products.routes';
 // 🏭 [wholesale-split 2026-07-16] adminSuppliersRoutes → src/worker/mount-wholesale.ts (도매 분리)
 // 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 어드민 — PR 1 Foundation.
@@ -83,7 +84,7 @@ import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.route
 import { kakaoRoutes } from '../features/auth/api/kakao.routes';
 import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
 import { sellerOperatorsRoutes } from '../features/seller/api/seller-operators.routes'; // 🏪 매장 운영 주체(store-operator-model.md 2단계)
-import { sellerStoresRoutes } from '../features/seller/api/seller-stores.routes'; import { sellerWithdrawRoutes } from '../features/seller/api/seller-withdraw.routes'; import { sellerInfluencersRoutes } from '../features/seller/api/seller-influencers.routes'; import { influencerOfferInvitesRoutes } from '../features/marketing/api/influencer-offer-invites.routes'; import { adminInfluencerOutreachRoutes } from '../features/admin/api/admin-influencer-outreach.routes'; // 🏪📣 seller-dashboard-v2 (+제안 수락 다리·어드민 발송 큐)
+import { influencerProfileRoutes } from '../features/marketing/api/influencer-profile.routes'; import { sellerStoresRoutes } from '../features/seller/api/seller-stores.routes'; import { sellerWithdrawRoutes } from '../features/seller/api/seller-withdraw.routes'; import { sellerInfluencersRoutes } from '../features/seller/api/seller-influencers.routes'; import { influencerOfferInvitesRoutes } from '../features/marketing/api/influencer-offer-invites.routes'; import { adminInfluencerOutreachRoutes } from '../features/admin/api/admin-influencer-outreach.routes'; // 🏪📣 seller-dashboard-v2 (+제안 수락 다리·어드민 발송 큐)
 // import { googleRoutes } from '../features/auth/api/google.routes';  // 🔒 2026-07-28 마운트 해제(#806)
 import { bannerRoutes } from '../features/banners/api/banners.routes';
 import { cartRoutes } from '../features/cart/api/cart.routes';
@@ -304,6 +305,8 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 // 🖼️ 2026-07-02 (대표 "사진이 빠르게 안 나타남"): 상세 히어로 preload URL 생성 — 클라와 동일 함수 재사용
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
+// 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink } from './utils/home-card-preload';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -769,33 +772,17 @@ app.use('*', async (c, next) => {
                 { html: true },
               );
             }
-            // 🖼️ 2026-07-02 [UNLOCK_LOADING] (대표 "사진이 빠르게 안 나타남"): 공구/교환권 상세 히어로가
-            //   프리로드 스캐너를 못 타(공구=CSS background-image, 교환권=React 렌더 후 <img>)
-            //   [엔트리→페이지 청크→렌더] 뒤에야 다운로드 시작 → 사진이 늦게 뜸. seed 의 image_url 로
-            //   클라와 **동일 함수**(cfImage/cfSrcSet 공유 import)로 URL 을 만들어 <link rel=preload as=image>
-            //   주입 → HTML 파싱 즉시 병렬 다운로드, 렌더 시점엔 캐시 적중(byte-일치 보장).
-            //   표면별 정합: /group-buy/:id 히어로=cfImage(900) 단일 URL ↔ /vouchers/:id 히어로=
-            //   cfImage(800)+cfSrcSet(800) 밀도 srcSet → preload 도 각각 동일 형태로(불일치 시 이중 다운로드).
-            //   (Save-Data 사용자만 quality 65 로 URL 이 달라 미적중 — 히어로 1장 한정 허용 트레이드오프.)
+            // 🖼️ 2026-07-02 [UNLOCK_LOADING]: 상세 히어로는 프리로드 스캐너를 못 타 렌더 뒤에야
+            //   다운로드가 시작됐다. 표면별 URL 형태·함정은 헬퍼 주석에(불일치 시 이중 다운로드).
             if (ssrSlot === 'DETAIL') {
-              try {
-                const seed = JSON.parse(ssrPayload) as { data?: { image_url?: string } };
-                const heroSrc = seed?.data?.image_url;
-                if (heroSrc) {
-                  const esc = (s: string) => s.replace(/"/g, '&quot;');
-                  const isVoucherSurface = url.pathname.startsWith('/vouchers/');
-                  const heroUrl = isVoucherSurface
-                    ? cfImage(heroSrc, { width: 800, format: 'auto' })
-                    : cfImage(heroSrc, { width: 900, format: 'auto' });
-                  const heroSrcSet = isVoucherSurface ? cfSrcSet(heroSrc, 800) : '';
-                  if (heroUrl && !heroUrl.startsWith('data:')) {
-                    el.append(
-                      `<link rel="preload" as="image" fetchpriority="high" href="${esc(heroUrl)}"${heroSrcSet ? ` imagesrcset="${esc(heroSrcSet)}"` : ''}>`,
-                      { html: true },
-                    );
-                  }
-                }
-              } catch { /* seed 파싱 실패 — preload 생략(치명 아님) */ }
+              const heroLink = buildDetailHeroPreloadLink(ssrPayload, url.pathname.startsWith('/vouchers/'));
+              if (heroLink) el.append(heroLink, { html: true });
+            }
+            // 🖼️ 2026-08-27 [UNLOCK_LOADING]: 홈 첫 화면 카드도 상세 히어로와 같은 병목이었다
+            //   (URL 은 이미 이 HTML 안에 있는데 React 가 <img> 를 만들 때까지 다운로드가 안 시작).
+            //   ⚠️ preload 는 URL 이 byte-일치할 때만 쓰인다 — 경위·함정은 헬퍼 주석에.
+            if (ssrSlot === 'MAIN' && ssrExtraPayload) {
+              for (const link of buildHomeCardPreloadLinks(ssrExtraPayload)) el.append(link, { html: true });
             }
           }
         },
@@ -1462,7 +1449,7 @@ app.route('/api/admin', adminAuthRoutes);
 app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, windowSec: 300 }));
 app.route('/api/seller', sellerAuthRoutes);
 app.route('/api/seller', sellerOperatorsRoutes); // 🏪 my-stores · 매장 전환 · 운영자 관리
-app.route('/api/seller', sellerStoresRoutes); app.route('/api/seller', sellerWithdrawRoutes); app.route('/api/seller/influencers', sellerInfluencersRoutes); app.route('/api/influencer-offers', influencerOfferInvitesRoutes); app.route('/api/admin/influencer-outreach', adminInfluencerOutreachRoutes); // 매장관리/인플탐색·제안/수락다리/어드민 발송큐
+app.route('/api/influencer-profile', influencerProfileRoutes); app.route('/api/seller', sellerStoresRoutes); app.route('/api/seller', sellerWithdrawRoutes); app.route('/api/seller/influencers', sellerInfluencersRoutes); app.route('/api/influencer-offers', influencerOfferInvitesRoutes); app.route('/api/admin/influencer-outreach', adminInfluencerOutreachRoutes); // 매장관리/인플탐색·제안/수락다리/어드민 발송큐
 
 // 🔒 2026-07-28: Google/Firebase 로그인 마운트 해제 — 사유·복원법은 auth.ts 주석 / AUDIT_INVARIANTS.md
 // app.route('/api/auth/google', googleRoutes);
@@ -1789,6 +1776,8 @@ adminApp.route('/', adminSettlementsRoutes);
 adminApp.route('/', adminStatsRoutes);
 // 🛡️ 2026-04-22 배치 146 (TD-006 부분): admin-sellers 분리 (272줄)
 adminApp.route('/', adminSellersRoutes);
+// 🏪 매장 등록 채널(직접/대행사) 지정 — 요율을 정하는 값이라 어드민이 확정할 수 있어야 한다(2026-08-27).
+adminApp.route('/', adminStoreChannelRoutes);
 // 🛡️ 2026-04-22 배치 148 (TD-006 부분): admin-products + sample-requests 분리
 adminApp.route('/', adminProductsRoutes);
 // 🏭 [wholesale-split] 도매 admin 마운트(suppliers/withdrawal) → mount-wholesale.ts

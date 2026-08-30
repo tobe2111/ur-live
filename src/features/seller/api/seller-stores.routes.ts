@@ -28,7 +28,8 @@ import { ntsValidateBusiness, ntsCheckStatus } from '@/worker/utils/nts-business
 import { canOperateStore, grantOperator, revokeOperator, isStoreOwner } from '../../../worker/utils/seller-operators'
 import { mergeStoreProfile, loadLatestProductCopy, saveStoreProfileAndPropagate } from '@/worker/utils/store-profile'
 import { parseSessionCookie } from '@/worker/utils/session'
-import { loadFeeRates } from '@/worker/utils/fee-resolver'
+import { DEFAULT_FEE_RATES } from '@/worker/utils/fee-resolver'
+import { getEffectivePlatformFee } from '@/worker/utils/effective-platform-fee'
 
 const app = new Hono<{ Bindings: Env }>()
 type Ctx = Context<{ Bindings: Env }>
@@ -75,19 +76,23 @@ app.get('/fee-context', async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
     if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
-    const [meta, rates] = await Promise.all([
-      getSellerMeta(c.env.DB, [sellerId]),
-      loadFeeRates(c.env.DB),
-    ])
+    const meta = await getSellerMeta(c.env.DB, [sellerId])
     const channel: StoreChannel = meta.get(sellerId)?.store_channel === 'direct' ? 'direct' : 'brokered'
+    // 🩸 2026-08-27 정정: 여기 있던 주석은 *"loadFeeRates SSOT 라 표시·정산이 갈릴 수 없다"* 였는데
+    //   **틀렸다.** 같은 값을 읽는 건 맞지만 **그 값이 결제 분배에 안 쓰인다** —
+    //   결제는 `getSellerCommissionRate`(채널 무시)를 쓰고, 채널 요율은 게이트 뒤에 있으며 꺼져 있다.
+    //   그래서 직접(10%)을 고른 매장이 실수령 카드에서 10% 를 빼고 봤지만 실제로는 5% 만 떼였다.
+    //   ⇒ 이제 **결제가 부르는 그 함수**를 불러 사실대로 돌려준다.
+    const fee = await getEffectivePlatformFee(c.env.DB, sellerId, channel)
     return c.json({
       success: true,
       data: {
         channel,
-        // 채널별 플랫폼 수수료 — fee-resolver 와 같은 값(loadFeeRates SSOT)이라 표시·정산이 갈릴 수 없다.
-        platform_fee_pct: channel === 'direct' ? rates.platformPctDirect : rates.platformPct,
-        direct_pct: rates.platformPctDirect,
-        brokered_pct: rates.platformPct,
+        platform_fee_pct: fee.pct,                       // 지금 실제로 떼이는 %
+        channel_rates_active: fee.channelRatesActive,    // false 면 아래 설계값은 아직 미적용
+        channel_pct: fee.channelPct,                     // 채널 요율이 켜졌을 때의 설계값
+        direct_pct: DEFAULT_FEE_RATES.platformPctDirect,
+        brokered_pct: DEFAULT_FEE_RATES.platformPct,
       },
     })
   } catch (err) {
@@ -313,6 +318,9 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       kakao_place_id?: string; kakao_place_url?: string; lat?: number; lng?: number
       channel?: string; manager_phone?: string
       business_number?: string; representative?: string; business_start_date?: string
+      business_cert_url?: string
+      /** 🤝 2026-08-27: 소개자 초대 링크(`/store/new?ref=`)로 들어온 경우의 소개자 user id. */
+      referrer_user_id?: string
     }>().catch(() => ({} as any))
 
     const name = String(b.name || '').trim()
@@ -340,7 +348,23 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       if (dup) return c.json({ success: false, error: '이미 유어딜에 등록된 매장입니다', code: 'STORE_EXISTS', seller_id: dup.seller_id }, 409)
     }
 
-    // 국세청 검증 — 통과하면 즉시 승인("그냥 매장 등록하면 돼"), 아니면 pending(어드민 검토)
+    /**
+     * 📄 사업자등록증 사본 — **필수** (2026-08-26 대표 "당근마켓 플로우 정도로 하자").
+     *
+     * 🩸 종전엔 **사업자번호만으로 자동 승인**됐다(번호가 '계속사업자'이기만 하면 approved).
+     *   인터넷에 공개된 아무 사업자번호나 통과했고, 실제로 그렇게 승인된 매장이 라이브에 있었다
+     *   (id=14, nts_checked=1). 번호와 그 매장 사이의 연결은 아무도 확인하지 않았다.
+     *
+     * 당근도 개업일·대표자명을 타이핑시키지 않고 **등록증 사진을 받아 사람이 심사**한다(시안 05).
+     * 그래서 여기도 같은 모양으로: 사진을 받고 **항상 pending** → 어드민 승인(AdminPage.approveSeller).
+     * 국세청 번호 조회는 그대로 돌리되 **승인 근거가 아니라 심사 재료**로만 쓴다(meta 스탬프).
+     */
+    const certUrl = String(b.business_cert_url || '').trim()
+    if (!/^\/api\/media\/uploads\/biz-cert\//.test(certUrl)) {
+      return c.json({ success: false, error: '사업자등록증 사본을 첨부해주세요' }, 400)
+    }
+
+    // 국세청 조회 — 심사 재료(어드민이 볼 신호). 이 결과로 자동 승인하지 않는다.
     let ntsResult: { ok: boolean; valid: boolean | null } = { ok: false, valid: null }
     const key = c.env.PUBLIC_DATA_SERVICE_KEY || (c.env as unknown as Record<string, string | undefined>).NTS_API_KEY
     if (bno && b.representative && b.business_start_date) {
@@ -354,8 +378,8 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       // 상태조회는 '등록된 번호인가 + 계속사업자인가' 까지만 본다(대표자 대조는 validate 전용).
       if (key) ntsResult = { ok: true, valid: row?.b_stt ? row.b_stt === '계속사업자' : false }
     }
-    const autoApprove = ntsResult.ok && ntsResult.valid === true
-    const status = autoApprove ? 'approved' : 'pending'
+    // ⚠️ 자동 승인 없음 — 등록증을 사람이 보고 승인한다.
+    const status = 'pending'
 
     // sellers 행 생성 — linked_user_id 는 비움(UNIQUE 1인1행): 접근은 seller_operators 관계로.
     const username = `store_${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`
@@ -366,6 +390,28 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       ) VALUES (?, '', '', ?, ?, ?, ?, ?, 'store_owner', ?, datetime('now'), datetime('now'))
     `).bind(username, name, name, bno || null, phone || null, address || null, status).run()
     const newSellerId = Number(ins.meta?.last_row_id)
+
+    // 🤝 2026-08-27 (대표 "매장 영입을 어떻게 확인하나") — **초대 링크 귀속**.
+    //   그 전엔 `introduced_by_influencer_id` 를 세팅하는 길이 **어드민 수동 지정 하나뿐**이라,
+    //   2% 영입 보상을 약속해 놓고 대표가 매번 손으로 넣어야 했고 분쟁 시 근거도 없었다.
+    //   소개자가 뿌린 링크로 들어온 매장은 여기서 자동 귀속된다 — 근거가 등록 순간에 남는다.
+    //
+    //   ⚠️ 검증 셋을 다 통과해야 적는다:
+    //     (1) 실재하는 유저여야 한다 — 임의 문자열이 들어오면 지급 대상이 유령이 된다
+    //     (2) 본인이 자기 매장을 영입할 수는 없다(자가 커미션 루프)
+    //     (3) 실패는 조용히 넘긴다 — 귀속이 안 됐다고 매장 등록을 막을 이유는 없다
+    //   기산점(`introduced_at`)이 곧 **1년 유효기간의 시작**이라 등록 시각으로 함께 박는다.
+    const refRaw = String(b.referrer_user_id || '').trim().slice(0, 64)
+    if (newSellerId && refRaw && refRaw !== String(userId)) {
+      const refUser = await c.env.DB.prepare('SELECT id FROM users WHERE id = ? LIMIT 1')
+        .bind(refRaw).first<{ id: string }>().catch(() => null)
+      if (refUser?.id) {
+        await c.env.DB.prepare(
+          `UPDATE sellers SET introduced_by_influencer_id = ?, introduced_at = datetime('now')
+            WHERE id = ? AND introduced_by_influencer_id IS NULL`,
+        ).bind(String(refUser.id), newSellerId).run().catch(() => { /* 귀속 실패가 등록을 막지 않는다 */ })
+      }
+    }
     if (!Number.isFinite(newSellerId) || newSellerId <= 0) {
       return c.json({ success: false, error: '매장 생성에 실패했습니다' }, 500)
     }
@@ -379,6 +425,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       ...(b.category ? { kakao_category: String(b.category).slice(0, 100) } : {}),
       ...(Number.isFinite(b.lat) && Number.isFinite(b.lng) ? { store_lat: String(b.lat), store_lng: String(b.lng) } : {}),
       nts_checked: ntsResult.valid === true ? '1' : ntsResult.valid === false ? '0' : '',
+      business_cert_url: certUrl,
       registered_by_user_id: String(userId),
     })
 
@@ -390,10 +437,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       data: {
         seller_id: newSellerId, status, channel: b.channel,
         nts: { checked: ntsResult.ok, valid: ntsResult.valid },
-        // 승인 전이면 이용권 등록은 가능하되 노출은 승인 후 — 기존 셀러 승인 플로우와 동일 문구
-        message: autoApprove
-          ? '매장이 등록되었습니다. 바로 이용권을 등록할 수 있어요.'
-          : '매장이 등록 접수되었습니다. 사업자 확인 후 활성화됩니다.',
+        message: '매장이 등록 접수되었습니다. 사업자등록증 확인 후 활성화됩니다.',
       },
     })
   } catch (err) {

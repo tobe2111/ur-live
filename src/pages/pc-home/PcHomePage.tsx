@@ -4,6 +4,7 @@ import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import SiteFooter from '@/components/main/SiteFooter'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import { DEAL_CATS, type DealCategory } from './PcHomeRail'
+import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
 import PcHomeAppBand from './PcHomeAppBand'
 import { readHomeRegion, type HomeRegion } from './PcHomeLocationBar'
 import RegionLinkGrid from '@/components/region/RegionLinkGrid'
@@ -50,26 +51,11 @@ export default function PcHomePage() {
     } catch { return 'popular' }
   })
 
-  // 🔗 2026-08-17 (대표 신고 — 섹션 '더보기' 플래시): 더보기가 `/?sort=popular` 같은 **쿼리 전용 이동**을
-  //   쓴다(App.tsx key=pathname 이라 리마운트 0 = 플래시 0). 그런데 이 페이지는 카테고리/정렬을 마운트
-  //   시점에만 읽어서, 쿼리만 바뀌면 아무 일도 안 일어난다 → 내비게이션마다 쿼리를 state 에 반영하고
-  //   그리드 제목으로 스크롤해 "더보기 = 전체 목록으로 이동"이 눈에 보이게 한다. 첫 마운트는 스킵
-  //   (일반 홈 진입에서 점프 금지) — 칩 클릭(쿼리 무변경)에는 영향 없다.
-  const location = useLocation()
+  // 🔗 섹션 '더보기'는 `/?sort=popular` 같은 **쿼리 전용 이동**이다. 그 반영 로직은
+  //   `useHomeQuerySync` 한 곳에 있다 — 2026-08-27 이전엔 이 파일에만 있어서
+  //   **모바일 홈에서는 더보기를 눌러도 아무 일도 안 일어났다**(대표 신고).
   const gridHeaderRef = useRef<HTMLElement | null>(null)
-  const firstQuerySync = useRef(true)
-  useEffect(() => {
-    const q = new URLSearchParams(location.search)
-    const qCat = q.get('category') as DealCategory | null
-    const qSort = q.get('sort') as SortKey | null
-    // 🧭 2026-08-19: 카테고리 칩이 상단 2행으로 올라가면서 **URL 이 유일한 근거**가 됐다.
-    //   파라미터가 없으면 'all' 로 되돌린다 — 안 그러면 '전체'(= `/`)를 눌러도 이전 필터가 남는다.
-    setCategory(qCat && DEAL_CATEGORY_KEYS.includes(qCat) ? qCat : 'all')
-    if (qSort && SORT_KEYS.includes(qSort)) setSort(qSort)
-    if (firstQuerySync.current) { firstQuerySync.current = false; return }
-    if (qSort || qCat) gridHeaderRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    // location.key = 내비게이션마다 갱신 — 같은 더보기를 두 번 눌러도 다시 스크롤된다.
-  }, [location.key, location.search])
+  useHomeQuerySync({ setCategory, setSort, gridHeaderRef })
   // 🗺️ 2026-07-16 (대표 — PC 홈 위치 필터): 선택 지역(초기값 = 지난 방문 저장분). GroupBuyFeed 로 주입.
   const [region, setRegion] = useState<HomeRegion>(() => readHomeRegion())
   // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): GPS 좌표. 세팅되면 sort='near'(거리순, 숨기지 않고 재배열).

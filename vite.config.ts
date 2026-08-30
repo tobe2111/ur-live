@@ -150,12 +150,26 @@ export default defineConfig({
           // 🛡️ 2026-05-27 (loading P1 phase 4): utils/hooks/lib 중 페이지 전용 파일 별도 chunk.
           //   라이브 페이지만 사용하는 hook 은 app-live-components 로 묶음.
           if (id.includes('/src/hooks/useLiveStream')) return 'app-live-components'
+          // 🎭 2026-08-27 [UNLOCK_LOADING] 역할 판별 SSOT 는 **공유**다 — 셀러 봉투에 두면 안 된다.
+          //   `seller-roles.ts`(116줄, 순수 헬퍼)는 CLAUDE.md 가 "모든 UI 가 반드시 쓰라"고 못박은
+          //   SSOT 인데, 규칙이 없어 Rollup 이 셀러 컴포넌트들과 한 청크(app-seller-components)에
+          //   묶었다. 그래서 공용 `RoleGate.tsx` 하나가 그걸 import 하는 것만으로 **소비자 홈이
+          //   SellerLayout·BulkUploadModal·SellerKpiDashboard 까지 65KB 를 통째로 받았다**
+          //   (실측: 홈 modulepreload 에 app-seller-components 가 올라 있었다).
+          //   ⚠️ 이 줄을 지우면 그 65KB 가 곧바로 돌아온다. 가드: check-critical-chunks.
+          if (id.includes('/src/shared/seller-roles')) return 'app-shared'
           // 셀러/어드민 페이지만 사용하는 utils.
           if (id.includes('/src/utils/product-template')) return 'app-seller-components'
           // 🛡️ 2026-05-28 (SSR phase 5): 메인 페이지 미사용 lib 별도 chunk.
           //   이전: app-utils chunk 에 같이 묶여 메인 진입 시도 다운로드.
           //   변경: 셀러 페이지 / Kakao 사용 시점만 fetch.
-          if (id.includes('/src/lib/seller-tracking')) return 'app-seller-components'
+          // 🔁 2026-08-27 [UNLOCK_LOADING] 위 전제가 틀렸다 — `seller-tracking` 은 **이름만 셀러**다.
+          //   실제 소비자가 URL 로 들고 온 추천코드를 캡처하는 70줄짜리 유틸이고,
+          //   쇼핑(`BrowsePage`)·상품상세·공구상세·이용권상세 **4개 소비자 페이지**가 import 한다.
+          //   그래서 그 2KB 때문에 셀러 대시보드 65KB(SellerLayout·BulkUploadModal…)가 딸려왔다
+          //   (실측: `/browse` 표면 preload 에 app-seller-components 가 올라 있었다).
+          //   ⇒ 소비자 공용 청크로. 셀러 페이지는 app-shared 를 어차피 받는다.
+          if (id.includes('/src/lib/seller-tracking')) return 'app-shared'
           if (id.includes('/src/lib/kakao-sdk')) return 'app-kakao-sdk'
           // 🖼️ 2026-07-01 [UNLOCK_LOADING] (링크샵 로딩 딥다이브): toss-preload 는 모듈 평가 즉시
           //   Toss SDK CDN 다운로드 + client-key fetch 를 시작하는 사이드이펙트 모듈인데, /src/lib/
@@ -213,6 +227,18 @@ export default defineConfig({
           if (id.includes('/src/components/ProductOptionForm')) return 'app-seller-components'
           // 어드민 전용
           if (id.includes('/src/components/AdminLayout')) return 'app-admin-components'
+          // 🧹 2026-08-27 [UNLOCK_LOADING] 소비자 첫 화면이 절대 안 쓰는 것들을 app-components 에서 뺀다.
+          //   2026-07-29 주석이 이미 지적한 그대로다 — *"기본값이 '크리티컬'인 구조라 새 컴포넌트가
+          //   생길 때마다 예산이 다시 차오른다"*. 실제로 다시 찼다: 실측 app-components 72모듈 안에
+          //   admin/* 6개 · wholesale/* 4개 · marketing 2개 · 도매 로고/테마가 들어 있었고, 그 전부가
+          //   홈 modulepreload 로 나갔다. 어느 것도 소비자 화면에서 렌더되지 않는다.
+          //   ⚠️ 서비스 분리 관점에서도 도매(유통스타트) 코드가 소비자 임계 경로에 있을 이유가 없다.
+          if (id.includes('/src/components/admin/')) return 'app-admin-components'
+          if (id.includes('/src/components/wholesale/')) return 'app-wholesale-components'
+          if (id.includes('/src/pages/wholesale-catalog/WholesaleLogo')) return 'app-wholesale-components'
+          if (id.includes('/src/pages/wholesale/wholesale-theme')) return 'app-wholesale-components'
+          if (id.includes('/src/components/MarketingDashboardShell')) return 'app-marketing'
+          if (id.includes('/src/pages/marketing/dashboard-tabs')) return 'app-marketing'
           // 에이전시 전용
           if (id.includes('/src/components/AgencyLayout')) return 'app-agency-components'
           if (id.includes('/src/components/agency/')) return 'app-agency-components'

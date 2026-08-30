@@ -33,7 +33,27 @@ const DEFAULT_TITLE_ACCENT = '바로 쓰는'
 const DEFAULT_TITLE_TAIL = ' 동네 이용권'
 const DEFAULT_DESC = '예약도 대기도 없이. 식사 · 미용 · 숙소 · 교환권.'
 
-/** 홈 SSR 시드에서 히어로에 쓸 사진 1장. 없으면 null(= 사진 없는 색면). */
+/**
+ * 🖼️ 우리가 직접 올린 사진인가 — R2(`/api/media/…` · `media.ur-team.com`).
+ *
+ * 왜 호스트로 가르나: 2026-08-04 에 **데모 사진에 타사 워터마크 보도사진(YONHAP)이 섞여** 홈
+ * 최상단에 오를 뻔했다. 그때의 처방은 "데모를 전부 금지"였는데, 그 규칙은 **라이브 카탈로그가
+ * 100% 데모가 되자 히어로를 영구히 빈 색면으로** 만들었다(2026-08-27 실측: 시드 50/50 데모,
+ * 어드민 배너 0건 → 사진 소스가 아예 없음).
+ *
+ * ⇒ 금지의 축을 "데모냐"에서 **"사진의 출처가 우리냐"** 로 옮긴다. 사고의 원인은 데모라는 사실이
+ *   아니라 **남의 사진**이었다. 우리 버킷에 우리가 올린 것은 그 위험이 구조적으로 없다.
+ */
+function isOwnMedia(url: string): boolean {
+  return url.startsWith('/api/media/') || /^https?:\/\/media\.ur-team\.com\//.test(url)
+}
+
+/**
+ * 홈 SSR 시드에서 히어로에 쓸 사진 1장. 없으면 null(= 사진 없는 색면).
+ *
+ * 우선순위: ① 실상품(비데모) → ② 실상품이 하나도 없으면 **우리 호스트 데모**.
+ * ⚠️ 외부 호스트 사진을 가진 데모는 어느 단계에서도 안 쓴다(위 `isOwnMedia` 주석의 사고).
+ */
 export function pickHeroPhoto(): { src: string; href: string } | null {
   if (typeof document === 'undefined') return null
   try {
@@ -41,13 +61,21 @@ export function pickHeroPhoto(): { src: string; href: string } | null {
     if (!el?.textContent) return null
     const parsed = JSON.parse(el.textContent) as { success?: boolean; data?: unknown }
     if (!parsed?.success || !Array.isArray(parsed.data)) return null
+    let ownDemo: { src: string; href: string } | null = null
     for (const raw of parsed.data as Array<Record<string, unknown>>) {
       const img = typeof raw?.image_url === 'string' ? raw.image_url : ''
       const slug = typeof raw?.slug === 'string' ? raw.slug : ''
       const id = raw?.id
-      if (!img || slug.startsWith('demo-deal-')) continue
-      return { src: img, href: id != null ? `/group-buy/${id}` : '/' }
+      if (!img) continue
+      const hit = { src: img, href: id != null ? `/group-buy/${id}` : '/' }
+      if (slug.startsWith('demo-deal-')) {
+        // 데모는 **마지막 수단**이고, 그중에서도 우리가 올린 사진만. 실상품을 계속 찾는다.
+        if (!ownDemo && isOwnMedia(img)) ownDemo = hit
+        continue
+      }
+      return hit
     }
+    return ownDemo
   } catch { /* 손상된 inject — 사진 없이 간다 */ }
   return null
 }

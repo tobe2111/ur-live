@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 // 🏁 2026-06-26 (대표 결정 — "추천템은 사업자 유어샵에선 숨김"): 사업자 = 본인 상품이 주인공.
-//   추천 핀(CuratorPinsSection) 섹션 제거 → 추천 적립 동선은 크리에이터 콘솔(/creator)에서 유지.
+//   추천 핀(CuratorPinsSection) 섹션 제거 → 추천 적립 동선은 소개 콘솔(/creator)에서 유지.
 //   (일반 유저 유어샵(CuratorPage)은 추천템이 메인이라 그대로.)
 // 🏁 2026-06-26 (대표 — "상품·이용권 모두 전체 등록 페이지로"): 얄팍한 빠른등록 모달(QuickProductModal) 제거 →
 //   등록은 정식 풀페이지(/seller/products/new · /seller/meal-voucher/new)로. (lazy/Suspense 도 미사용→제거)
@@ -115,7 +115,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   // 🏁 2026-06-25 (대표 "통일"): canonical CuratorHeader 의 인라인 편집 반영(낙관적). curator 우선·seller 폴백.
   const [curatorEdits, setCuratorEdits] = useState<Partial<CuratorProfile>>({})
   // 🧹 2026-07-20 (대표 — "추천템 필요없음"): 사업자 유어샵 = 본인 상품이 주인공(2026-06-18 타겟 포지셔닝).
-  //   하단 추천(핀) opt-in 섹션 + 토글 제거. (추천 적립 동선은 크리에이터 콘솔/CuratorEarningsPage 에서 유지.)
+  //   하단 추천(핀) opt-in 섹션 + 토글 제거. (추천 적립 동선은 소개 콘솔/CuratorEarningsPage 에서 유지.)
   const copyLink = async () => {
     try { await navigator.clipboard.writeText(window.location.href); toast.success(t('seller.linkCopiedToast', { defaultValue: '링크가 복사되었어요' })) } catch { /* ignore */ }
   }
@@ -430,8 +430,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
               <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] flex items-center justify-center">
                 <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
               </div>
-              <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white">{t('seller.publicPage.emptyShopTitle', { defaultValue: '첫 상품을 올려 쇼핑몰을 채워보세요' })}</h3>
-              <p className="mt-1.5 text-[12.5px] leading-relaxed text-gray-500 dark:text-gray-400">{t('seller.publicPage.emptyShopDesc', { defaultValue: '내 상품이 유어샵의 주인공이에요. 등록하면 방문자에게 바로 판매되고 정산까지 이어집니다.' })}</p>
+              <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white">{t('seller.publicPage.emptyShopTitle', { defaultValue: '첫 이용권을 올려 유어샵을 채워보세요' })}</h3>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-gray-500 dark:text-gray-400">{t('seller.publicPage.emptyShopDesc', { defaultValue: '내 이용권이 유어샵의 주인공이에요. 등록하면 방문자에게 바로 판매되고 정산까지 이어집니다.' })}</p>
               <button
                 onClick={() => navigate('/seller/products/new')}
                 className="mt-4 inline-flex items-center gap-1 px-5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-[13px] font-bold active:scale-95"

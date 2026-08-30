@@ -1,6 +1,6 @@
 /**
  * 🏦 지급 센터 (2026-06-12 — 사용자 결정 "1번 그렇게 진행"):
- *   셀러 정산(settlements) · 큐레이터 환급(user_withdrawals) · 에이전시 영입 커미션
+ *   셀러 정산(settlements) · 소개 환급(user_withdrawals) · 에이전시 영입 커미션
  *   (agency_store_intro_commissions, P3 결정으로 정본 레일) 의 "신청 → 입금완료" 를
  *   어드민 한 화면에서 처리. 운영 = 수동 이체 + 기록 + 주 1회(금요일) 루틴.
  *
@@ -154,7 +154,7 @@ payoutCenterRoutes.patch('/seller/:id/paid', require2FA(), async (c) => {
   }
 })
 
-// ── 큐레이터 환급 입금완료 / 반려 ──
+// ── 소개 환급 입금완료 / 반려 ──
 payoutCenterRoutes.patch('/curator/:id/paid', require2FA(), async (c) => {
   try {
     const DB = c.env.DB

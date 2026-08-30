@@ -15,7 +15,10 @@ describe('COMPANY_DDL', () => {
   it('문장 수가 유지된다(이관 시 흘림 0)', () => {
     // 2026-08-14: `name_verified` 추가로 21 → 22. **의도적 증가만 여기서 올린다** —
     //   이 래칫의 목적은 리팩토링 중 문장이 **조용히 사라지는 것**을 잡는 것이다.
-    expect(COMPANY_DDL).toHaveLength(22)
+    // 2026-08-27: 읽기 증폭 인덱스 2개(`classify_todo`·`enrich_order`) 추가로 22 → 24.
+    //   같은 커밋에서 인덱스 4개가 `company-ddl-indexes.ts` 로 옮겨졌지만 **`...` 로 펼쳐지므로
+    //   COMPANY_DDL 의 문장 수는 그대로**다 — 이 래칫이 그 이관에 흘림이 없었음도 함께 증언한다.
+    expect(COMPANY_DDL).toHaveLength(24)
   })
 
   it('두 테이블을 만든다 — 리드 본체 + 반송 억제', () => {

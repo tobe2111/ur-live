@@ -72,12 +72,43 @@ export const writePrioState = (DB: D1Database, tier: number, cursor: number, rul
     .bind(RECLASSIFY_PRIO_STATE, JSON.stringify({ tier, cursor, v: rulesVersion })).run().catch(() => null)
 
 /**
+ * 🪶 **재분류할 행이 하나라도 있는가** — 1행짜리 선검사 (2026-08-27 읽기 증폭 수리).
+ *
+ * ## 왜 이게 필요한가 (실측)
+ * 아래 두 배치 쿼리는 `ORDER BY id ASC LIMIT n` 이라 플래너가 **PK 를 걷는다**. 대상이 있을 땐
+ * 앞쪽에서 금방 멈추니 싸다. 문제는 **대상이 0건일 때**다 — 끝까지 걸어가고 빈손으로 돌아온다:
+ * ```
+ *   회당 373,336행  ×  시간당 5패스 × 24시간  =  4,480만 행/일
+ *   그리고 그 대가로 얻는 것은 "할 일이 없다" 한 마디다.
+ * ```
+ * 라이브가 정확히 그 상태였다: `classified_v < 9` 인 1,854행이 **전부 접힌 행**(`merged_into`)이라
+ * 배치는 언제나 0건인데, 매 패스가 테이블을 통째로 훑었다.
+ *
+ * ⇒ `idx_company_leads_classify_todo`(부분·식 인덱스, `company-discovery.ts` DDL)를 짚어
+ *   **1행**으로 판정한다. 로컬 동일 데이터 재현: 57ms → 0.07ms.
+ *
+ * ⚠️ **커서(`id > ?`)는 일부러 안 본다.** 이건 "테이블 전체에 일이 있나"만 답한다 — 있다고 하면
+ *   기존 경로가 그대로 돌고(커서 뒤엔 없을 수도 있다 = 예전과 같은 비용), 없다고 할 때만 건너뛴다.
+ *   즉 **거짓 양성은 무해하고 거짓 음성은 불가능**하다. 반대로 만들면 조용히 재분류가 멎는다.
+ * ⚠️ 조회 실패(`catch`)는 **`true`(일이 있다)** 로 답한다 — 못 물어봤다는 이유로 재분류를 멈추면
+ *   그거야말로 이 레포가 반복해 만난 *"실패가 아니라 조용한 부재"* 다.
+ */
+export async function hasReclassifyWork(DB: D1Database, rulesVersion: number): Promise<boolean> {
+  const row = await DB.prepare(
+    'SELECT 1 AS x FROM ad_company_leads WHERE merged_into IS NULL AND COALESCE(classified_v, -1) < ? LIMIT 1',
+  ).bind(rulesVersion).first<{ x: number }>().catch(() => 'err' as const)
+  if (row === 'err') return true
+  return !!row
+}
+
+/**
  * 우선순위 티어에서 다음 배치를 고른다. 비어 있으면 다음 티어로 넘어가고, 전부 비면 `null`
  * (= 호출부가 전체 크롤로 폴백). 반환된 `tier` 는 커서를 저장할 때 그대로 쓴다.
  */
 export async function pickPriorityBatch(
   DB: D1Database, limit: number, rulesVersion: number,
 ): Promise<{ rows: ReclassifyRow[]; phase: string; tier: number } | null> {
+  if (!await hasReclassifyWork(DB, rulesVersion)) return null // 🪶 위 선검사 — 전수 스캔 회피
   let { tier, cursor } = await readPrioState(DB, rulesVersion)
   while (tier < RECLASSIFY_PRIORITY_TIERS.length) {
     const srcs = RECLASSIFY_PRIORITY_TIERS[tier]
@@ -99,6 +130,9 @@ export async function pickCrawlBatch(
   const raw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(cursorKey).first<{ value: string }>().catch(() => null)
   let cursor = parseInt(raw?.value || '0', 10)
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
+  // 🪶 위 선검사 — 대상이 0건이면 전수 스캔 대신 빈 배치. **커서는 그대로 돌려준다**(전진시키면
+  //   나중에 일이 생겼을 때 그 앞줄을 건너뛴다).
+  if (!await hasReclassifyWork(DB, rulesVersion)) return { rows: [], cursor }
   const rows = (await DB.prepare(
     `SELECT ${RECLASSIFY_COLS} FROM ad_company_leads
       WHERE id > ? AND merged_into IS NULL AND (classified_v IS NULL OR classified_v < ?) ORDER BY id ASC LIMIT ?`)

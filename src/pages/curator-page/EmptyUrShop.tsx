@@ -20,7 +20,7 @@ export default function EmptyUrShop({ handle, isOwner, emptyType, curatorName, c
   const intent = curatorId != null ? getUrShopIntent(curatorId) : null
   // 🏁 2026-06-22 (대표 — 전용 추가 페이지): 빈 상태 CTA 도 전용 picker(/u/me/add)로 (browse/group-buy 흩어짐 통합).
   const sellerFirst = intent === 'seller'
-  const browseLink = sellerFirst ? '/seller/register/supplier' : (emptyType === 'voucher' ? '/u/me/add?tab=voucher' : '/u/me/add?tab=shop')
+  const browseLink = sellerFirst ? '/store/new' : (emptyType === 'voucher' ? '/u/me/add?tab=voucher' : '/u/me/add?tab=shop')
   const browseLabel = sellerFirst
     ? t('curator.registerStore', { defaultValue: '매장 등록하기' })
     : emptyType === 'voucher'

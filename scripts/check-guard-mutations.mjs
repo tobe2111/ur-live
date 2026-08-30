@@ -63,6 +63,17 @@ const ONLY = (() => {
  *   (주입 한 줄은 정상 코드와 구분이 안 간다).
  */
 const VERIFY_CLEAN = process.argv.includes('--verify-clean')
+/**
+ * 🗺️ `--map-only` — **아무것도 주입하지 않고**, 각 주입의 `find` 가 코드에 유일하게 있는지만 본다(수초).
+ *
+ * 왜 필요한가: 전수는 500건 넘는 vitest 라 20분+ 걸려 로컬에서 돌리기 어렵다. 그래서 코드를 고친 뒤
+ * **그 파일의 기존 주입이 낡았는지**를 로컬에서 못 보고 CI 에 가서야 알게 된다 — 2026-08-27 에
+ * `aboveFold={i < 4 …}` 를 상수로 바꾸면서 정확히 그렇게 한 사이클을 태웠다.
+ * 지도가 낡았는지(`find` 부재·주석에만 존재·2곳 이상)는 **테스트 없이 문자열 검사만으로** 판정되므로,
+ * 그 부분만 떼어 즉시 돌린다. ⚠️ 이 모드는 "가드가 실제로 실패할 수 있는가"는 **검사하지 않는다** —
+ * 그건 전수(또는 `--only`)의 몫이다. 커밋 전 지도 점검용이지 되돌려-검증의 대체가 아니다.
+ */
+const MAP_ONLY = process.argv.includes('--map-only')
 
 /**
  * @typedef {{name:string, file:string, find:string, replace:string, test:string, why:string}} Mutation
@@ -71,6 +82,122 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
  */
 /** @type {Mutation[]} */
 const MUTATIONS = [
+  {
+    name: '유어샵 핀 딜 매칭이 무음으로 항상 실패한다',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: '                p.seller_id,\n',
+    replace: '',
+    test: 'src/tests/unit/urshop-earn-ladder.test.ts',
+    why:
+      '핀↔딜 매칭 키가 SELECT 목록에서 빠지면 `deal_pct` 가 전부 null 이 되어 "내 계약 매장" ' +
+      '섹션이 영원히 비고, 소개자는 계약이 있는데도 없는 화면을 본다. 에러가 없어 안 보인다.',
+  },
+  {
+    name: '소개자 검색 모수가 가입자 전원으로 넓어진다',
+    file: 'src/features/group-buy/api/marketing/discovery.ts',
+    find: "      '(pin.n > 0 OR COALESCE(p.is_open, 0) = 1)',\n",
+    replace: '',
+    test: 'src/tests/unit/urshop-earn-ladder.test.ts',
+    why:
+      '핸들은 가입 시 자동 발급된다 — 활동 조건이 빠지면 **가입자 전원이 사업자에게 노출**된다. ' +
+      '모수가 커져 보이므로 개선처럼 보이는 것이 이 회귀의 위험한 점이다.',
+  },
+  {
+    name: '유어샵 담은 핀에서 소개비 귀속이 조용히 사라진다',
+    file: 'src/pages/seller-public/CuratorPinsSection.tsx',
+    find: '              to={`/u/${handle}/p/${pin.product_id}`}\n',
+    replace: '',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '담은 핀은 `/u/{handle}/p/{id}` 로 가야 클릭이 기록되고 `?aff=` 귀속이 붙는다. 카드가 목적지를 ' +
+      '스스로 정하므로 이 prop 을 빠뜨리면 **화면은 똑같은데 소개비 귀속만 사라진다** — 에러가 없어 ' +
+      '아무도 모르고, 소개자는 팔고도 0원을 받는다(2026-08-27 카드 통일 중 실제로 날 뻔했다).',
+  },
+  {
+    name: '유어샵 카드가 다시 옛 세대로 갈린다',
+    file: 'src/pages/seller-public/VouchersTab.tsx',
+    find: '<GroupBuyFeedCard key={p.id}',
+    replace: '<BrowseProductCard key={p.id}',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '2026-08-19 에 카드를 한 벌로 합칠 때 홈만 갈아 끼우고 유어샵이 빠져 두 세대가 공존했다. ' +
+      '각각은 멀쩡해 보여 나란히 놓고 봐야만 드러난다 — 대표가 화면을 보고 신고했다.',
+  },
+  {
+    name: '대행사 계정에 유어애즈 인플루언서 DB 가 다시 열린다',
+    file: 'src/worker/utils/ads-db-access.ts',
+    find: "  if (ch?.value === 'brokered') return { allowed: false, code: 'ADS_DB_AGENCY_BLOCKED', error: AGENCY_MSG }",
+    replace: '',
+    test: 'src/tests/unit/ads-db-access.test.ts',
+    why:
+      '`ad_influencer_leads` 는 몇 달을 들여 모은 자산이고 값은 명단이 아니라 큐레이션에 있다. ' +
+      '중개(관리 대행)로 등록한 계정에 열리면 우리 상품을 그대로 내주는 것이고, 한 번 복사되면 ' +
+      '되돌릴 방법이 없다(2026-08-27 대표 지시). 연락처를 가려도 handle 하나로 다 찾는다.',
+  },
+  {
+    name: '등록 유형이 없는 레거시 매장까지 통째로 막힌다',
+    file: 'src/worker/utils/ads-db-access.ts',
+    find: "  return { allowed: true, reason: ch?.value === 'direct' ? 'direct' : 'unclassified' }",
+    replace: "  return ch?.value === 'direct' ? { allowed: true, reason: 'direct' } : { allowed: false, code: 'ADS_DB_AGENCY_BLOCKED', error: AGENCY_MSG }",
+    test: 'src/tests/unit/ads-db-access.test.ts',
+    why:
+      '수수료 계산은 미지정을 brokered 로 폴백하는데, 그 폴백을 열람 판정까지 끌고 오면 등록 유형이 ' +
+      '생기기 전에 만들어진 매장 10곳이 전부 막힌다. 대표 지시는 "대행사로 가입하면"이지 ' +
+      '"분류가 없으면"이 아니다 — 반대 방향의 오작동이라 조용히 지나가기 쉽다.',
+  },
+  {
+    name: '탐색 엔드포인트가 게이트를 부르지 않는다(판정만 맞고 문은 열림)',
+    file: 'src/features/seller/api/seller-influencers.routes.ts',
+    find: '    const denied = await gateAdsDb(c as Ctx, { quota: true })\n    if (denied) return denied\n',
+    replace: '',
+    test: 'src/tests/unit/ads-db-access.test.ts',
+    why:
+      '순수함수가 아무리 맞아도 라우트가 안 부르면 DB 는 그대로 열려 있다. 이 레포에서 반복된 ' +
+      '"가드는 있는데 안 돎" 클래스라 판정이 아니라 **호출**을 검사한다.',
+  },
+  {
+    name: '홈 카드가 다시 두 벌로 갈린다(피드만 대표색 카드)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '      className="block group active:scale-[0.98] flex flex-col"',
+    replace: '      className="block group active:scale-[0.98] flex flex-col" style={{ backgroundColor: grad.base }}',
+    test: 'src/tests/unit/home-card-unify.test.ts',
+    why:
+      '섹션은 흰 카드, 피드는 모바일에서 대표색 그라데이션 카드였다 — 같은 화면 위아래에 다른 ' +
+      '카드가 놓여 한 서비스로 안 보였다(2026-08-27 대표 "첫번째 형태로 통일"). 각각은 멀쩡해 ' +
+      '보여서 나란히 놓고 봐야만 드러난다.',
+  },
+  {
+    name: '모바일 홈에서 섹션 더보기가 다시 죽는다',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: '  useHomeQuerySync({ setCategory, setSort, gridHeaderRef })',
+    replace: '',
+    test: 'src/tests/unit/home-card-unify.test.ts',
+    why:
+      "섹션 '더보기'는 `/?sort=popular` 같은 쿼리 전용 이동이라, 홈이 쿼리를 읽지 않으면 눌러도 " +
+      '**아무 일도 안 일어난다**(에러도 없어 고장으로 안 보인다). 이 동기화가 PC 홈에만 있어 ' +
+      '폰에서만 죽어 있었다 — 대표가 실제로 신고했다.',
+  },
+  {
+    name: '카드 사진 스와이프가 상세 페이지 이동으로 샌다',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: '      onClickCapture={onClickCaptureMedia}',
+    replace: '',
+    test: 'src/tests/unit/home-card-unify.test.ts',
+    why:
+      '카드는 `<Link>` 안이다. 스와이프 뒤 이어지는 클릭을 취소하지 않으면 사진을 넘기려던 손짓이 ' +
+      '**상세 페이지 이동**이 된다 — 사진은 한 장 넘어가고 화면도 바뀌어 버린다.',
+  },
+  {
+    name: '홈 카드가 다시 표시폭의 2~3배 사진을 받는다(모바일 첫 화면이 느려짐)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '        width={imgWidth}',
+    replace: '        width={pc ? 400 : 300}',
+    test: 'src/tests/unit/home-card-image-width.test.ts',
+    why:
+      '`pc` 는 카드 **룩** 플래그인데 이미지 해상도까지 겸하고 있었고, HomeSections 가 룩을 위해 ' +
+      '`pc` 를 하드코딩으로 넘겨 모바일·태블릿도 PC용 큰 사진을 받았다(실측 필요폭의 2.3배, ' +
+      '모바일 카드 하나가 259KB). 화면은 멀쩡해 보여서 **느리다는 체감으로만** 드러난다.',
+  },
   {
     name: '태블릿 홈이 다시 옛 디자인이 된다(헤더는 md, 본문은 lg 로 갈림)',
     file: 'src/pages/pc-home/HomeRoute.tsx',
@@ -216,7 +343,9 @@ const MUTATIONS = [
   {
     name: '편성 섹션의 aboveFold 까지 꺼 버린다(과잉 수정)',
     file: 'src/components/home/HomeSections.tsx',
-    find: 'aboveFold={i < 4 && sIdx === 0}',
+    // 🔁 2026-08-27: 개수가 리터럴 4 → `HOME_CARD_ABOVE_FOLD` 상수가 됐다(워커의 카드 preload 가
+    //   **같은 수**만 당겨야 해서 SSOT 로 뺐다). 가드가 "낡은 지도" 로 잡아 줘서 함께 옮긴다.
+    find: 'aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0}',
     replace: 'aboveFold={false}',
     test: 'src/tests/unit/home-image-priority.test.ts',
     why:
@@ -803,6 +932,91 @@ canvas {
       '판정 근거가 없는 수집까지 죽고, 그 손실은 웹문서 절약분보다 크다.',
   },
   {
+    name: '🔢 저장 관문이 고유키가 아니라 행 수로 신규를 센다(중복이 신규 2건이 된다)',
+    file: 'src/features/marketing/api/company-save.ts',
+    find: '    const uniqKeys = [...new Set(slice.map(l => companyKey(l)))]',
+    replace: '    const uniqKeys = slice.map(l => companyKey(l))',
+    test: 'src/tests/unit/company-save-count.test.ts',
+    why:
+      '같은 업체가 두 소스로 잡히면 한 청크에 같은 키가 두 번 들어온다. 행 수로 세면 한 업체를 ' +
+      '신규 2건으로 보고해 "수집 잘 된다" 착시를 만든다 — 대표가 실제로 지적했던 오독(저장 2.4만이 ' +
+      '대부분 재확인이었던 건)과 같은 클래스다.',
+  },
+  {
+    name: '🔢 사전확인 실패를 신규 0 으로 보고한다("수집 죽음"으로 오독된다)',
+    file: 'src/features/marketing/api/company-save.ts',
+    find: '  return { inserted: countOk ? fresh : saved, upserted: saved }',
+    replace: '  return { inserted: fresh, upserted: saved }',
+    test: 'src/tests/unit/company-save-count.test.ts',
+    why:
+      'D1 이 흔들려 사전확인이 실패하면 fresh 가 0 인 채로 남는다. 그걸 그대로 보고하면 상태줄이 ' +
+      '"신규 0" 이 되어 수집이 죽은 것으로 읽힌다. 모를 때는 시도 수로 폴백하는 쪽이 덜 위험하다.',
+  },
+  {
+    name: '🔗 링크인바이오 부분 인덱스가 사라진다(15.3만 행을 읽고 0건을 낸다)',
+    file: 'src/features/marketing/api/influencer-schema.ts',
+    find: "  'CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_bio_links ON ad_influencer_leads(account_id, id) WHERE links IS NOT NULL AND bio_checked_at IS NULL',",
+    replace: '',
+    test: 'src/tests/unit/influencer-bio-scan.test.ts',
+    why:
+      '실측 — 이 인덱스가 없으면 대상 선택 1회가 rows_read 153,223 · 168ms · 결과 0건이다. ' +
+      '`bio_checked_at IS NULL` 이 99.9%를 통과시켜 기존 인덱스는 거르는 일을 못 한다. ' +
+      '결과가 0건이라 상태줄에 흔적이 없어 **조용히** 하루 수억 행을 태운다.',
+  },
+  {
+    name: '🔗 인덱스 못 타는 정렬이 되살아난다(전수 임시정렬)',
+    file: 'src/features/marketing/api/influencer-bio-enrich.ts',
+    find: '    ORDER BY id DESC LIMIT ?`).bind(POOL_ACCOUNT_ID, max)',
+    replace: '    ORDER BY subscriber_count DESC, id DESC LIMIT ?`).bind(POOL_ACCOUNT_ID, max)',
+    test: 'src/tests/unit/influencer-bio-scan.test.ts',
+    why:
+      'subscriber_count 는 인덱스에 없어 조건에 걸린 행 전부를 임시 B-트리로 정렬한다 — 부분 인덱스를 ' +
+      '넣어도 이 한 줄이 다시 붙으면 비용이 원래대로 돌아간다. 후보가 평생 74명이라 우선순위 이득도 없다.',
+  },
+  {
+    name: '🔗 부분 인덱스 조건 하나가 WHERE 에서 빠진다(인덱스가 안 쓰인다)',
+    file: 'src/features/marketing/api/influencer-bio-enrich.ts',
+    find: "      AND links IS NOT NULL AND (links LIKE '%linktr.ee%'",
+    replace: "      AND (links LIKE '%linktr.ee%'",
+    test: 'src/tests/unit/influencer-bio-scan.test.ts',
+    why:
+      '부분 인덱스는 쿼리 WHERE 가 인덱스의 WHERE 를 함의할 때만 쓰인다. `links IS NOT NULL` 이 빠지면 ' +
+      'LIKE 만으로는 함의가 성립하지 않아 옵티마이저가 인덱스를 버리고 전수 스캔으로 돌아간다 — ' +
+      '결과는 같아서 테스트로만 잡힌다.',
+  },
+  {
+    name: '⭐ 리뷰 조회 인덱스가 사라진다(조회마다 11.9만 행 전수 스캔)',
+    file: 'src/worker/routes/repair-schema/index-repairs.ts',
+    find: "  { name: 'idx_product_reviews_product', sql: `CREATE INDEX IF NOT EXISTS idx_product_reviews_product ON product_reviews(product_id, is_visible, created_at DESC)` },",
+    replace: '',
+    test: 'src/tests/unit/product-reviews-index.test.ts',
+    why:
+      '실측 — 인덱스가 없으면 `EXPLAIN` 이 `SCAN product_reviews` 이고 리뷰 8건을 얻는 데 ' +
+      'rows_read 119,292 · 17.6ms 다. product_reviews 는 본진 최대 테이블(다음이 3,790)이라 ' +
+      '상품 상세를 열 때마다 이 비용이 든다.',
+  },
+  {
+    name: '⭐ 리뷰 인덱스 컬럼 순서가 어긋난다(있어도 안 쓰인다)',
+    file: 'src/worker/routes/repair-schema/index-repairs.ts',
+    find: 'ON product_reviews(product_id, is_visible, created_at DESC)',
+    replace: 'ON product_reviews(created_at, is_visible, product_id)',
+    test: 'src/tests/unit/product-reviews-index.test.ts',
+    why:
+      '지배적 쿼리가 `WHERE product_id = ? AND is_visible = 1 ORDER BY created_at DESC` 다. ' +
+      '선두 컬럼이 product_id 가 아니면 탐색에 못 쓰이고, created_at 이 끝에 없으면 정렬이 ' +
+      '임시 B-트리로 떨어진다 — 인덱스는 존재하는데 비용은 그대로다.',
+  },
+  {
+    name: '⭐ 리뷰 인덱스가 선언만 되고 복구 목록에 안 펼쳐진다',
+    file: 'src/worker/routes/repair-schema.routes.ts',
+    find: '    ...INDEX_REPAIRS,',
+    replace: '',
+    test: 'src/tests/unit/product-reviews-index.test.ts',
+    why:
+      '선언(모듈)과 배선(spread)은 다른 일이다. 배선이 빠지면 목록은 멀쩡해 보이고 인덱스는 ' +
+      '**영원히 생성되지 않는다** — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
+  },
+  {
     name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
     file: 'src/features/agency/api/agency-sunset.ts',
     find: "    code: 'AGENCY_SIGNUP_CLOSED',",
@@ -889,25 +1103,175 @@ canvas {
       '느려진 것만 남는다(대표 신고 "사진 불러오는게 많이 느리네?" 가 정확히 그 증상이었다).',
   },
   {
-    name: '히어로가 데모 상품 사진을 홈 얼굴로 쓴다',
+    name: '홈 편성 섹션 시드가 전역 KV 워밍에서 빠진다(콜드 콜로에서 그 섹션만 스켈레톤)',
+    file: 'src/worker/cron/cache-prewarm.ts',
+    find: "  '/api/sections',                                                 // SECTIONS(홈 편성 섹션)",
+    replace: '',
+    test: 'src/tests/unit/home-seed-layers.test.ts',
+    why:
+      '홈 한 화면이 시드 **두 개**로 그려진다(피드 MAIN · 편성 섹션 SECTIONS). 그런데 SECTIONS 만 ' +
+      '전역 KV 계층이 없어, 콜로 엣지가 cold 면 곧장 self-fetch 로 떨어지고 콜드 D1 이 타임아웃되면 ' +
+      '**시드 없이** 내려갔다 → 그 섹션만 스켈레톤 + 클라 왕복(2026-08-27 대표 신고 "인기 이용권·숙소가 ' +
+      '안 보인다"). 피드는 세 계층이 다 있어 멀쩡했고, **fail-soft 라 에러 로그도 안 남는다** — ' +
+      '그래서 몇 주를 아무도 몰랐다.',
+  },
+  {
+    name: '홈 편성 섹션 self-fetch 가 1500ms 로 되돌아간다(콜드에서 자주 끊긴다)',
+    file: 'src/worker/utils/ssr-payload.ts',
+    find: "    slot === 'SECTIONS'\n  ) return 2000;",
+    replace: '  ) return 2000;',
+    test: 'src/tests/unit/home-seed-layers.test.ts',
+    why:
+      '2000ms 는 2026-06-30 에 상세/셀러/큐레이터가 **정확히 같은 증상**(콜드 timeout → 스켈레톤 노출)으로 ' +
+      '받은 처방인데 SECTIONS 만 그 목록에서 빠져 있었다. 되돌리면 홈 섹션이 다시 콜드 콜로에서 깜빡인다.',
+  },
+  {
+    name: '홈 카드 preload 가 렌더와 다른 URL 을 만든다(같은 사진을 두 번 받는다)',
+    file: 'src/components/home/HomeSections.tsx',
+    find: 'const cardImgWidth = isLgViewport ? HOME_CARD_IMG_WIDTH_LG : HOME_CARD_IMG_WIDTH_BASE',
+    replace: 'const cardImgWidth = isLgViewport ? 480 : 240',
+    test: 'src/tests/unit/home-card-preload.test.ts',
+    why:
+      '워커가 홈 첫 화면 카드 사진을 `<link rel=preload as=image>` 로 미리 당긴다(2026-08-27 — ' +
+      '사진 URL 은 이미 HTML 안에 있는데 React 가 <img> 를 만들 때까지 다운로드가 안 시작되던 병목). ' +
+      '그런데 preload 는 **URL 이 byte-일치할 때만** 쓰인다 — 한 글자만 달라도 브라우저는 그걸 버리고 ' +
+      '같은 사진을 다시 받는다. **에러도 없고 화면도 멀쩡한데 더 느려지고 트래픽만 두 배**가 된다. ' +
+      '폭이 뷰포트로 갈리므로(2·3열 200 ↔ 4열 400) 특히 어긋나기 쉬워, 양쪽이 SSOT 상수를 읽게 했다.',
+  },
+  {
+    name: '히어로가 남의 사진(외부 호스트 데모)을 홈 얼굴로 쓴다',
     file: 'src/components/home/HomeHeroDefault.tsx',
-    find: "slug.startsWith('demo-deal-')",
-    replace: 'false',
+    // 🔁 2026-08-27: 예전엔 `slug.startsWith('demo-deal-')` 를 지웠다(=데모 전면 허용). 그런데
+    //   그 금지가 라이브 카탈로그 100% 데모 상황에서 히어로를 영구 빈 색면으로 만들어, 규칙의 축을
+    //   "데모냐" → "출처가 우리냐"로 옮겼다. 그래서 지켜야 할 선도 **출처 검사**로 옮긴다.
+    find: 'if (!ownDemo && isOwnMedia(img)) ownDemo = hit',
+    replace: 'if (!ownDemo) ownDemo = hit',
     test: 'src/tests/unit/home-showcase.test.ts',
     why:
-      '홈 최상단 사진은 서비스의 얼굴이다. 데모 시드가 그 자리에 올라와도 **에러가 없고 그림도 멀쩡**해서 ' +
-      '아무도 모른다. 2026-08-04 에는 여기 계열의 데모 사진에 타사 워터마크 보도사진이 섞여 있었다.',
+      '홈 최상단 사진은 서비스의 얼굴이다. 남의 사진이 그 자리에 올라와도 **에러가 없고 그림도 멀쩡**해서 ' +
+      '아무도 모른다 — 2026-08-04 에 데모 사진에 타사 워터마크 보도사진(YONHAP)이 섞여 있었다. ' +
+      '그때 처방은 "데모 전면 금지"였는데, 라이브 카탈로그가 100% 데모가 되자 그 규칙이 히어로를 ' +
+      '**영구 빈 색면**으로 만들었다(2026-08-27 대표 신고). 사고의 원인은 데모라는 사실이 아니라 ' +
+      '**남의 사진**이었으므로, 금지의 축을 출처(우리 R2 인가)로 옮겼다. 이 검사가 사라지면 외부 호스트 ' +
+      '사진이 다시 홈 얼굴이 된다 — 되돌아가는 곳이 정확히 원래 사고다.',
   },
   {
     name: '카드 캐러셀 화살표에서 preventDefault 를 없앤다(사진 넘기려던 클릭이 상세로 튄다)',
     file: 'src/components/deal/DealCardMedia.tsx',
-    find: 'e.preventDefault()',
-    replace: 'void 0',
+    // ⚠️ 2026-08-27: 맨 `e.preventDefault()` 였는데 스와이프 배선이 들어오며 **같은 파일에 두 곳**이 됐다
+    //   (화살표 · 스와이프 후 클릭 취소). 유일성 검사가 그걸 잡아 줬다 — 화살표 쪽으로 앵커한다.
+    find: 'e.preventDefault()\n    e.stopPropagation()\n    step(delta)',
+    replace: 'step(delta)',
     test: 'src/tests/unit/deal-card-gallery.test.ts',
     why:
       '카드 캐러셀은 `<Link>` **안**에 있다 — 화살표가 기본동작을 막지 않으면 사진을 넘기려는 클릭이 ' +
       '매번 상세 페이지로 튄다. 에러가 없고 화면도 멀쩡해서 **직접 눌러 보기 전엔 아무도 모르는** 종류다. ' +
       '2026-08-19 그루폰 카드 도입과 함께 들어온 안전장치라, 나중에 리팩토링하다 지워질 위험이 크다.',
+  },
+  {
+    name: '맨 위 카드 prefetch 가 첫 화면 요청과 동시에 발사된다',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '      const run = () => { prefetch(p.id); prefetchDetailChunk() }',
+    replace: '      const run = () => {}',
+    test: 'src/tests/unit/home-boot-cost.test.ts',
+    why:
+      '이 주입은 **prefetch 를 통째로 없앤다** — 그러면 카드 클릭이 fetch 워터폴이 되는데(잠금표가 ' +
+      '지키는 성질) 화면은 멀쩡해서 아무 신호가 없다. 미루기(2026-08-27 대표 승인)와 제거는 다르고, ' +
+      '가드는 **둘 다** 잡아야 한다. ⚠️ 실제로 처음 짠 테스트는 이걸 통과시켰다 — 슬라이스 안에 ' +
+      '아래 IntersectionObserver 가지의 같은 호출이 들어와서다. `run` 정의로 앵커해 교정했다.',
+  },
+  {
+    name: '지역 선택 패널이 버튼에 붙어 화면 밖으로 나간다',
+    file: 'src/pages/pc-home/PcHomeLocationBar.tsx',
+    find: "isWide ? 'absolute left-0 top-[calc(100%+8px)] w-[520px]' : 'fixed left-2 right-2'",
+    replace: "'absolute left-0 top-[calc(100%+8px)] w-[520px] max-w-[90vw]'",
+    test: 'src/tests/unit/region-picker-viewport.test.ts',
+    why:
+      '2026-08-27 대표가 폰 스크린샷으로 신고한 실제 버그다. 패널이 버튼(모바일 헤더 오른쪽)에 붙어 ' +
+      '오른쪽으로 삐져나가 **문서를 화면보다 넓게** 만들었다(실측 360→420 · 390→477 · 430→553). ' +
+      '⚠️ 이 replace 는 `max-w-[90vw]` 를 되살리는데 **그게 정확히 안 통하던 방어책**이다 — 문서가 ' +
+      '넓어지면 vw 도 같이 커져 자기를 못 잡는다. 그래서 이 회귀는 "화면밖 0px" 로 측정되고 ' +
+      '**패널만 보면 멀쩡해 보인다** — 페이지가 밀리는 걸 봐야 안다. 눈으로 놓치기 쉬운 종류다.',
+  },
+  {
+    name: 'PC 전용 헤더가 모바일에서도 렌더된다(CSS 로만 숨김)',
+    file: 'src/components/main/DesktopTopNav.tsx',
+    find: '  if (!isDesktop) return null',
+    replace: '',
+    test: 'src/tests/unit/pc-only-render-gate.test.ts',
+    why:
+      '2026-08-27 대표 폰 신고("로딩이 심각한 문제")의 실제 원인이다. 루트가 `hidden md:block` 이라 ' +
+      '**CSS 는 숨기지만 React 는 다 만든다** — 라이브 프로파일에서 self 548ms 로 홈 최대였고 ' +
+      'DOM 노드가 539→308(43%) 줄었다. ⚠️ 이 게이트를 지워도 **화면은 완전히 똑같다**(어차피 안 보인다) ' +
+      '— 그래서 "불필요한 조건 같은데" 하고 지워지기 딱 좋고, 지워져도 아무 신호가 없다.',
+  },
+  {
+    name: '카테고리 스크롤 화살표가 렌더마다 강제 리플로를 돈다',
+    file: 'src/components/main/DesktopTopNav.tsx',
+    find: '  }, [syncCatArrow, catLabelSig])',
+    replace: '  })',
+    test: 'src/tests/unit/home-boot-cost.test.ts',
+    why:
+      '2026-08-27 라이브 CPU 프로파일에서 **홈에서 가장 비싼 JS**(self 1,108ms)로 잡힌 실제 결함이다. ' +
+      '의존성 배열이 없으면 렌더마다 `scrollWidth`/`clientWidth`/`scrollLeft` 를 읽어 강제 동기 레이아웃을 ' +
+      '돌고 resize 리스너를 해제+재등록한다. **에러도 없고 화면도 멀쩡해서** 프로파일을 떠 보기 전엔 ' +
+      '아무도 모른다 — dep 배열은 리팩토링 중 "어차피 매번 갱신해야 하니까"로 되돌아가기 쉽다.',
+  },
+  {
+    name: '대표색 추출이 첫 페인트 한복판에서 동기로 돈다',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: "if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 2000 })",
+    replace: 'run()',
+    test: 'src/tests/unit/home-boot-cost.test.ts',
+    why:
+      '`getImageData` 는 GPU→CPU 리드백을 강제한다. 사진 `onLoad` 안에서 동기로 돌면 첫 화면을 그리는 ' +
+      '중에 카드 수만큼 그 비용을 낸다(2026-08-27 프로파일 self 166ms). 미루기는 한 줄이라 ' +
+      '"간단하게" 되돌리기 쉬운데, 되돌아가도 **기능은 멀쩡히 동작해서** 아무 신호가 없다.',
+  },
+  {
+    name: 'materialized 피드 캐시가 라이브 쿼리와 컬럼이 갈린다',
+    file: 'src/worker/cron/group-buy-feed-cache.ts',
+    find: "const dominantColorFrag = (withDominant: boolean) => withDominant ? 'p.dominant_color,' : ''",
+    replace: 'const dominantColorFrag = (_withDominant: boolean) => \'\'',
+    test: 'src/tests/unit/home-boot-cost.test.ts',
+    why:
+      '이 짝은 **이미 두 번 갈렸다** — `images`(2026-08-19 수습) · `dominant_color`(2026-05-28 에 라이브 ' +
+      '쿼리에만 들어가고 캐시엔 3개월간 없었다). 홈 기본 피드는 이 캐시가 서빙하므로 캐시에 빠진 컬럼은 ' +
+      '**소비자에게 영원히 안 간다**. 응답에 키가 아예 없을 뿐 에러가 없어서, 카드가 대표색을 매번 다시 ' +
+      '뽑고 있어도 아무도 몰랐다.',
+  },
+  {
+    name: '섹션 더보기가 쿼리를 잃는다(버튼이 통째로 사라진다)',
+    file: 'src/components/home/section-more-href.ts',
+    find: "const rawQuery = cut === -1 ? '' : moreHref.slice(cut)",
+    replace: "const rawQuery = ''",
+    test: 'src/tests/unit/section-more-href.test.ts',
+    why:
+      '이 한 줄에서 같은 신고가 **세 번** 났다(08-17 플래시 · 08-19 쿼리유실 · 08-27 버튼실종). ' +
+      '`safeInternalPath` 는 경로 검증기이자 **쿼리 제거기**라, 그 결과에서 쿼리를 찾으면 이미 없다 — ' +
+      '08-19 의 수정이 정확히 그래서 **한 번도 동작하지 않았고 소스만 고쳐진 것처럼 보였다.** ' +
+      '쿼리가 죽으면 `/?sort=popular` 가 `/` 로 납작해지고, 죽은 링크 규칙에 걸려 버튼이 사라진다.',
+  },
+  {
+    name: '쿼리가 붙은 더보기까지 죽은 링크로 친다(멀쩡한 버튼을 숨긴다)',
+    file: 'src/components/home/section-more-href.ts',
+    find: "return href === '' || href === '/'",
+    replace: "return href === '' || href.startsWith('/')",
+    test: 'src/tests/unit/section-more-href.test.ts',
+    why:
+      '"죽은 버튼은 없느니만 못하다"가 반대로 작동하면 **멀쩡한 버튼이 사라진다** — 2026-08-27 에 ' +
+      '실제로 그렇게 됐다. 숨김 규칙은 맨 `/` 에만 걸려야 하고, 쿼리가 있으면 목적지가 있는 링크다.',
+  },
+  {
+    name: '스와이프 후 클릭 취소가 사라진다(사진을 넘겼는데 상세로 튄다)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'if (!didSwipe.current) return',
+    replace: 'if (true) return',
+    test: 'src/tests/unit/deal-card-gallery.test.ts',
+    why:
+      '화살표와 **정확히 같은 사고**인데 손가락 쪽이다(2026-08-27 대표 지시로 스와이프 추가). ' +
+      '터치를 떼면 브라우저가 클릭을 합성하는데, 카드가 `<Link>` 안이라 그 클릭이 그대로 상세로 간다 — ' +
+      '즉 **사진을 넘길 때마다 페이지가 이동**한다. 이 가드가 없으면 폰에서 직접 문질러 보기 전엔 모른다.',
   },
   {
     name: '카드가 갤러리를 전부 미리 로드한다(첫 화면 트래픽 몇 배)',
@@ -5282,12 +5646,14 @@ canvas {
   {
     name: '💸 채널 미지정을 직접 입점으로 간주(모르는데 더 뗀다)',
     file: 'src/worker/utils/ledger-commission-policy.ts',
-    find: "    if (meta?.store_channel !== 'direct') return undefined   // 중개/미지정 → 종전 경로(5%)",
-    replace: "    if (meta?.store_channel === 'nope') return undefined",
+    find: "    if (channel !== 'direct' && channel !== 'brokered') return undefined  // 미지정 → 종전 경로",
+    replace: "    if (channel === 'nope') return undefined",
     test: 'src/tests/unit/channel-platform-rate.test.ts',
     why:
-      'fail-soft 방향이 뒤집힌다. 모르면 낮은 쪽(5%)으로 떨어져야 한다 — 잘못 10% 를 물리면 ' +
-      '매장에서 더 뗀 것이고 되돌리기가 훨씬 비싸다(환급 + 신뢰).',
+      'fail-soft 방향이 뒤집힌다. **모르면** 종전 경로로 떨어져야 한다 — 잘못 10% 를 물리면 ' +
+      '매장에서 더 뗀 것이고 되돌리기가 훨씬 비싸다(환급 + 신뢰). ' +
+      '⚠️ 2026-08-27 재조준: 원래 앵커(`store_channel !== \'direct\'`)는 대행사도 undefined 로 보내던 ' +
+      '옛 코드다. 그 줄이 사라지자 이 항목이 **낡은 지도**가 돼 CI 가 잡았다 — 검사기가 제 일을 했다.',
   },
   {
     name: '🏷️ 옛 이름 "링크샵" 이 사용자 화면으로 돌아온다',
@@ -5298,6 +5664,48 @@ canvas {
     why:
       '이 레포는 같은 일괄 치환을 세 번 했고(식사권→공구권→이용권, 유통사→판매사, 링크샵→유어샵) ' +
       '매번 치환 직후엔 깨끗했다가 옛 이름이 슬금슬금 돌아왔다 — 새 문구를 쓰는 사람이 낡은 문서를 보고 쓴다.',
+  },
+  {
+    name: '🏪 "내 가게 등록" 버튼이 다시 사업자 가입 폼으로 보낸다',
+    file: 'src/pages/JoinChoicePage.tsx',
+    find: "    to: '/store/new',",
+    replace: "    to: '/seller/register/supplier',",
+    test: 'src/tests/unit/urshop-naming.test.ts',
+    why:
+      '확정 순서는 **매장 등록이 선행**인데(StoreClaimPage 헤더), 문구는 "내 가게 등록"이면서 ' +
+      '목적지가 사업자 가입 폼이면 등록하러 온 사장님이 사업자등록번호 화면에서 멈춘다. ' +
+      '2026-08-26 실측으로 그런 진입점이 **14곳** 있었다 — 버튼은 눌리고 화면은 떠서 아무도 몰랐다.',
+  },
+  {
+    name: '🏷️ 유어샵을 "새로 여는 것"처럼 다시 말한다',
+    file: 'src/pages/user-profile/RoleCtaGrid.tsx',
+    find: "t('roleCta.openShop', { defaultValue: '내 가게 등록' })",
+    replace: "t('roleCta.openShop', { defaultValue: '내 쇼핑몰 열기' })",
+    test: 'src/tests/unit/urshop-naming.test.ts',
+    why:
+      '유어샵은 **가입 시점에 자동 생성**된다(KakaoAuthService.upsertUser). 새로 만드는 것은 매장이다. ' +
+      '섞으면 이미 샵이 있는 사람에게 "만들기" 화면을 다시 들이밀게 된다 — 대표가 실제로 지적한 사고.',
+  },
+  {
+    name: '🔎 검색결과 문구가 사람을 다시 신분으로 부른다',
+    file: 'src/shared/seo/consumer-surfaces.ts',
+    find: "    title: '동네 딜 소개하고 수익 받기',",
+    replace: "    title: '크리에이터 모집',",
+    test: 'src/tests/unit/urshop-naming.test.ts',
+    why:
+      '대표 확정 모델은 "사람을 인플루언서/대행사로 나누지 않고 행위 2개(담기·운영)로 말한다" 이고, ' +
+      'SEO 표는 **검색결과에 그대로 노출**되는 자리다. 여기서 새면 우리가 안 쓰기로 한 말로 사람들이 우리를 찾는다.',
+  },
+  {
+    name: '🌏 옛 이름이 라틴문자로 다시 돌아온다 (en/es/fr)',
+    file: 'public/locales/en/translation.json',
+    find: '"makeMine": "Make my own UrShop — earn by recommending"',
+    replace: '"makeMine": "Make my own linkshop — earn by recommending"',
+    test: 'src/tests/unit/urshop-naming.test.ts',
+    why:
+      '2026-08-26 실측: 한글 \'링크샵\' 만 지우고 "나머지는 번역돼 있으니 됐다" 로 넘긴 결과 ' +
+      'en/es/fr 값에 linkshop 이 **25건** 살아 있었다. 옛 이름은 **언어를 바꿔서 돌아온다** — ' +
+      'N1 이 한글만 보던 사각지대였다.',
   },
   {
     name: '🏪 "판매하세요" 가 비셀러를 다시 로그인 벽으로 보낸다',
@@ -5328,6 +5736,136 @@ canvas {
     why:
       '전파 모듈은 **소비자에게 보이는** 매장 복사본을 맞추는 장치다. 담당자 번호가 여기에 끼면 ' +
       '개인 휴대폰이 이용권 상세·지도·알림톡에 실린다 — 한 번 퍼지면 회수가 안 된다.',
+  },
+  // ── 📉 업체 DB 읽기 증폭 (2026-08-27) — 셋 다 되돌려도 **에러가 안 난다**. 한도만 조용히 다시 찬다.
+  {
+    name: '📉 보강 대상 인덱스의 정렬 키 순서가 어긋난다(플래너가 조용히 무시)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: 'active, id DESC) WHERE merged_into IS NULL`',
+    replace: 'id DESC, active) WHERE merged_into IS NULL`',
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '보강 대상 인덱스는 **정렬 키 순서가 쿼리의 ORDER BY 와 한 글자도 다르면** 플래너가 그냥 ' +
+      '무시한다. 무시해도 결과는 똑같이 나오므로 아무도 모르고, 회당 70만 행 정렬이 돌아온다 ' +
+      '(하루 7,400만 행). 그래서 가드가 문자열이 아니라 **EXPLAIN QUERY PLAN** 을 본다.',
+  },
+  {
+    name: '📉 재분류 선검사를 부르기만 하고 조기 반환을 뺀다',
+    file: 'src/features/marketing/api/reclassify-priority.ts',
+    find: '  if (!await hasReclassifyWork(DB, rulesVersion)) return { rows: [], cursor }',
+    replace: '  await hasReclassifyWork(DB, rulesVersion)',
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '선검사를 부르기만 하고 **조기 반환을 빼면** 아무것도 안 아낀다 — 전수 스캔이 그대로 돈다. ' +
+      '이 레포에서 이미 네 번 당한 모양(호출은 있는데 continue/return 이 없다)이라 분기 문장째로 잡는다.',
+  },
+  {
+    name: '📉 잔여 COUNT 의 시각(remaining_at)이 스냅샷에서 빠진다',
+    file: 'src/features/marketing/api/enrich-lane.ts',
+    find: "      ...(typeof remainingAt === 'number' ? { remaining_at: remainingAt } : {}),",
+    replace: '',
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '잔여 COUNT 를 시간당 1회로 줄이는 장치의 **유일한 근거가 스냅샷의 `remaining_at`** 이다. ' +
+      '이 줄이 빠지면 판정이 늘 "모른다"가 되어 매 회차 다시 세게 된다 — 수리가 조용히 무효화된다.',
+  },
+  {
+    name: '⏳ 영입 커미션 유효기간이 사라져 무기한으로 돌아간다',
+    file: 'src/worker/utils/influencer-store-intro-commission.ts',
+    find: '    if (isStoreIntroExpired(sellerRow, await getStoreIntroMonths(DB))) return\n',
+    replace: '    if (false) return\n',
+    test: 'src/tests/unit/store-intro-commission.test.ts',
+    why:
+      '영입 커미션 2% 의 유효기간(1년, 2026-08-27 대표)은 **적립을 멈추는 쪽**이라, 검사가 죽으면 ' +
+      '아무 에러 없이 무기한 지급으로 돌아간다 — 이 축은 원래 만료 검사가 없어 무기한이었고 ' +
+      '(에이전시 1% 만 검사했다) 그 상태로 몇 달을 지났다. 실패가 아니라 침묵으로 되돌아가는 종류다.',
+  },
+  {
+    name: '⏳ 만료 기산점이 백필의 COALESCE 순서와 갈린다',
+    file: 'src/worker/utils/influencer-store-intro-commission.ts',
+    find: '  const anchorStr = row.introduced_at || row.created_at',
+    replace: '  const anchorStr = row.created_at',
+    test: 'src/tests/unit/store-intro-commission.test.ts',
+    why:
+      '기준 시각 우선순위(introduced_at → created_at)는 repair-schema 백필의 COALESCE 와 짝이다. ' +
+      '한쪽만 바뀌면 같은 매장의 만료일이 코드와 데이터에서 갈린다.',
+  },
+  {
+    name: '💸 매장에 보여 주는 수수료가 결제 함수를 안 거친다',
+    file: 'src/worker/utils/effective-platform-fee.ts',
+    find: '    getSellerCommissionRate(DB, sellerId).catch(() => NaN),',
+    replace: '    Promise.resolve(NaN),',
+    test: 'src/tests/unit/fee-display-truth.test.ts',
+    why:
+      '표시 요율과 청구 요율이 갈리면 **매장이 실수령을 잘못 계산한다.** 실제로 갈려 있었다 — 등록에서 ' +
+      '직접(10%)을 고른 매장에 10% 를 뗀 실수령을 보여 줬는데 결제는 5% 만 뗐다(더 받는 쪽이라 신고가 ' +
+      '안 들어와 아무도 몰랐다). 두 파일이 "SSOT 라 갈릴 수 없다"고 주석으로 단언한 채였다.',
+  },
+  {
+    name: '💸 게이트가 꺼져 있어도 채널 요율을 청구율로 쓴다',
+    file: 'src/worker/utils/effective-platform-fee.ts',
+    find: '  const chargedPct = active\n',
+    replace: '  const chargedPct = true\n',
+    test: 'src/tests/unit/fee-display-truth.test.ts',
+    why:
+      '`fee_channel_rates_enabled` 는 지금 꺼져 있다. 이 게이트를 무시하면 화면이 다시 설계값(10%)을 ' +
+      '오늘의 청구액인 양 보여 준다 — 원래 사고와 정확히 같은 그림으로 되돌아간다.',
+  },
+  {
+    name: '🖼️ 유어샵 카드 갤러리가 서버에서 안 잘려 원본 전량이 나간다',
+    file: 'src/features/group-buy/api/card-gallery.ts',
+    find: '    return { ...(r as object), images: sliceCardGallery(row.images, row.image_url) } as T',
+    replace: '    return r',
+    test: 'src/tests/unit/urshop-gallery-cap.test.ts',
+    why:
+      '카드 50장 × 갤러리 전량이면 첫 화면 응답이 몇 배가 된다(2026-08-19 잠금 항목의 트래픽 보호). ' +
+      '자르기를 빼도 화면은 똑같이 보이고 **응답 크기만 조용히 커진다** — 대표에겐 "좀 느리다"로만 보인다. ' +
+      '⚠️ 이 주입이 처음엔 **초록이었다**: 자르는 함수가 Repository 안의 비-export 지역 함수라 ' +
+      '가드가 배선(호출 4곳)만 볼 수 있었다. 그래서 함수를 SSOT 로 끌어올려 동작을 테스트하게 고쳤다.',
+  },
+  {
+    name: '🧹 주석 제거가 옛 정규식판으로 되돌아간다(라인 주석 속 `/*` 지뢰)',
+    file: 'src/tests/helpers/source-text.ts',
+    find: 'export function stripComments(text: string): string {',
+    replace: 'export function stripComments(text: string): string {\n  return text.replace(/\\/\\*[\\s\\S]*?\\*\\//g, \' \').replace(/^\\s*\\/\\/.*$/gm, \'\')\n  // eslint-disable-next-line no-unreachable',
+    test: 'src/tests/unit/strip-comments-scanner.test.ts',
+    why:
+      '정규식판은 **라인 주석 안의 `/*`** 를 블록 주석 시작으로 읽어 그 뒤 수천 자를 통째로 삼킨다. ' +
+      '이 레포에서 실측 4곳(코드 문자열이 사라져 부정 단언이 늘 통과)이 있었고, 이 파일 주석이 ' +
+      '"아무도 안 밟는 지뢰"라고 적어 둔 그 지뢰를 실제로 밟았다. 삼켜도 예외가 없어 **가드가 조용히 헛돈다.**',
+  },
+  {
+    name: '💸 대행사 매장이 다시 종전 요율(10%)을 낸다',
+    file: 'src/worker/utils/ledger-commission-policy.ts',
+    find: "    if (channel !== 'direct' && channel !== 'brokered') return undefined  // 미지정 → 종전 경로",
+    replace: "    if (channel !== 'direct') return undefined  // 미지정 → 종전 경로",
+    test: 'src/tests/unit/channel-fee-precedence.test.ts',
+    why:
+      '대행사를 undefined 로 돌리면 "종전 경로가 마침 5% 다" 라는 전제에 다시 기대게 된다. ' +
+      '그 전제는 라이브에서 이미 깨져 있었다 — 활성 매장 7곳 전부 sellers.commission_rate = 10 이라 ' +
+      '대행사 매장이 두 배를 내고 있었다(대표 확정 모델은 5%). 매장이 손해 보는 방향이라 더 나쁘다.',
+  },
+  {
+    name: '💸 채널이 매장별 요율보다 아래로 내려간다 (cron 이 덮어쓰는 자리)',
+    // 2026-08-27: helpers.ts 에서 seller-commission-rate.ts 로 분리(파일 크기 래칫). `--map-only` 가 잡았다.
+    file: 'src/features/group-buy/api/seller-commission-rate.ts',
+    find: '    const byChannel = await channelPlatformRate(DB, sellerId)\n    if (byChannel !== undefined) return byChannel',
+    replace: '    await channelPlatformRate(DB, sellerId)',
+    test: 'src/tests/unit/channel-fee-precedence.test.ts',
+    why:
+      '`sellers.commission_rate` 는 쓰는 주체가 셋이다(어드민·tier cron·과거 잔재). 채널을 그 아래에 두면 ' +
+      '**cron 이 돌 때마다 채널 요율이 조용히 지워진다** — 에러도 로그도 없다. 호출만 남기고 반환을 빼는 ' +
+      '모양(이 레포가 네 번 당한 "부르기는 하는데 안 쓴다")까지 같이 잡는다.',
+  },
+  {
+    name: '🏪 어드민 채널 지정이 어드민 라우터에서 빠진다',
+    file: 'src/worker/index.ts',
+    find: "adminApp.route('/', adminStoreChannelRoutes);",
+    replace: '',
+    test: 'src/tests/unit/admin-store-channel.test.ts',
+    why:
+      '파일만 있고 마운트가 없으면 **조용히 없는 기능**이다(빌드는 통과한다). 채널을 넣을 길이 없으면 ' +
+      '요율 모델이 적용될 수 없다 — 실제로 활성 매장 7곳 중 6곳이 그래서 미기록이었다.',
   },
 ]
 /**
@@ -5457,6 +5995,7 @@ function maskComments(src, file) {
 }
 
 const problems = []
+let mapOk = 0  // --map-only: 지도가 성한 주입 수
 
 // 🧹 잔재 확인 전용 모드 — 주입은 건드리지 않고 "지금 트리에 남아 있나"만 본다(위 VERIFY_CLEAN 주석).
 if (VERIFY_CLEAN) {
@@ -5480,8 +6019,10 @@ if (VERIFY_CLEAN) {
 
 console.log(`🧬 guard-mutations: ${MUTATIONS.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
 
+let onlyMatched = 0
 for (const m of MUTATIONS) {
   if (ONLY && !m.name.includes(ONLY)) continue
+  if (ONLY) onlyMatched += 1
   const abs = path.join(ROOT, m.file)
   if (!fs.existsSync(abs)) { problems.push(`${m.name}: 파일 없음 — ${m.file} (코드가 옮겨갔다)`); continue }
   const src = fs.readFileSync(abs, 'utf8')
@@ -5509,6 +6050,8 @@ for (const m of MUTATIONS) {
   // 주석에도 같은 문자열이 있을 수 있으므로 **코드 쪽 인덱스로** 바꾼다
   // (`String.replace` 는 첫 등장을 바꾸는데, 그게 주석일 수 있다).
   const at = live[0]
+  // 🗺️ 지도만 보는 모드 — 여기까지 왔으면 `find` 가 코드에 유일하게 있다는 뜻이다. 주입은 하지 않는다.
+  if (MAP_ONLY) { mapOk += 1; continue }
 
   pending.set(abs, src)
   let stillGreen
@@ -5545,4 +6088,22 @@ if (problems.length) {
 `)
   process.exit(STRICT ? 1 : 0)
 }
-console.log(`\n✅ guard-mutations: ${MUTATIONS.length}개 주입 전부 빨간불 확인 — 가드가 실제로 실패할 수 있다.`)
+if (MAP_ONLY) {
+  console.log(`\n✅ guard-mutations(--map-only): 주입 지도 ${mapOk}건 성함 — find 가 코드에 유일하게 존재.`)
+  console.log('   ⚠️ 이 모드는 **되돌려-검증을 하지 않는다**(가드가 실제로 실패하는지는 안 봄).')
+  console.log('      커밋 전 지도 점검용 — 전수는 CI 가, 바꾼 항목은 `--only` 로 돌릴 것.')
+  process.exit(0)
+}
+/**
+ * 🚨 `--only` 가 아무것도 못 고르면 **실패**다.
+ *   전에는 0건을 돌고도 "전부 빨간불 확인" 을 찍었다 — 2026-08-27 에 `--only "a|b|c"` 로 부르고
+ *   (이 필터는 정규식이 아니라 **단순 부분일치**다) 초록불을 받았는데 실제로 돈 주입은 0건이었다.
+ *   "검사가 실패할 수 없음" 이 이 레포가 반복해 당한 자리고, 하필 그 검사기 자신이 그랬다.
+ */
+if (ONLY && onlyMatched === 0) {
+  console.error(`\n❌ guard-mutations: --only "${ONLY}" 에 걸린 주입이 0건이다.`)
+  console.error('   이 필터는 정규식이 아니라 이름 **부분일치**다 — "a|b" 같은 건 안 먹는다.')
+  console.error('   여러 건을 돌리려면 각각 따로 부르거나 인자 없이 전수로 돌려라.')
+  process.exit(1)
+}
+console.log(`\n✅ guard-mutations: ${ONLY ? `${onlyMatched}개(--only "${ONLY}")` : `${MUTATIONS.length}개`} 주입 전부 빨간불 확인 — 가드가 실제로 실패할 수 있다.`)

@@ -96,14 +96,14 @@ export default function UserGroupBuyCreatePage() {
         <span className="text-5xl mb-3">🔒</span>
         <h1 className="text-lg font-extrabold text-gray-900 dark:text-white mb-2">공구 등록 권한이 필요해요</h1>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 max-w-sm leading-relaxed">
-          공구는 <strong>점주(셀러)</strong> 또는 <strong>인플루언서</strong> 만 등록 가능합니다.
+          공구는 <strong>매장을 등록한 사업자 유저</strong>만 올릴 수 있어요. 내 가게를 먼저 등록해 주세요.
         </p>
         <div className="flex flex-col gap-2 w-full max-w-xs">
           <button
-            onClick={() => navigate('/seller/register')}
+            onClick={() => navigate('/store/new')}
             className="w-full py-3 bg-pink-500 text-white rounded-xl font-bold text-sm"
           >
-            🏪 점주로 가입하기
+            🏪 내 가게 등록하기
           </button>
           <button
             onClick={() => navigate('/influencer/discover')}

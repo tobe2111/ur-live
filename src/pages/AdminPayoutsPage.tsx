@@ -11,6 +11,7 @@ import { formatKSTDate } from '@/utils/date'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import BulkPayoutBar from './admin-payouts/BulkPayoutBar'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
@@ -60,6 +61,9 @@ export default function AdminPayoutsPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'pending_ledger' | 'payouts' | 'rates' | 'annual'>('pending_ledger')
   const [filter, setFilter] = useState<'pending' | 'approved' | 'sent' | 'all'>('pending')
+  // 🏦 2026-08-27: 일괄 처리 선택. 필터를 바꾸면 비운다 — 안 보이는 행이 선택된 채로 남으면
+  //   화면엔 3건인데 실제로는 30건이 처리되는 사고가 난다.
+  const [picked, setPicked] = useState<Set<number>>(new Set())
   // 🛡️ 2026-05-21 Phase D: commission rates + 연말 리포트.
   const [rates, setRates] = useState({ platform_fee_pct: '5', seller_commission_pct: '10', agency_share_pct: '30', influencer_intro_share_pct: '20' })
   const [savingRates, setSavingRates] = useState(false)
@@ -76,6 +80,7 @@ export default function AdminPayoutsPage() {
   const ratesQ = useApiQuery<typeof rates | null>(['admin', 'payouts-rates'], '/api/admin/payouts/commission-rates', { enabled: tab === 'rates', select: (r: any) => (r?.success ? r.data : null) })
   const pending = pendingQ.data ?? []
   const payouts = payoutsQ.data ?? []
+  useEffect(() => { setPicked(new Set()) }, [filter])
   const loading = tab === 'pending_ledger' ? pendingQ.isLoading : tab === 'payouts' ? payoutsQ.isLoading : false
   // rates 탭은 편집형 폼 → 쿼리 데이터 도착 시 로컬 state 시드.
   useEffect(() => { if (ratesQ.data) setRates(ratesQ.data) }, [ratesQ.data])
@@ -226,6 +231,13 @@ export default function AdminPayoutsPage() {
               </button>
             ))}
           </div>
+          {/* 🏦 2026-08-27: 일괄 처리 — 승인 → 이체 파일 → 은행 1회 업로드 → 일괄 송금완료.
+              그 전엔 수취인 30명이면 매주 90번을 클릭·이체해야 했다. */}
+          <BulkPayoutBar
+            selected={payouts.filter(p => picked.has(p.id)).map(p => ({ id: p.id, amount: p.amount, status: p.status }))}
+            onDone={load}
+            onClear={() => setPicked(new Set())}
+          />
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {loading ? (
               <p className="p-12 text-center text-sm text-gray-400">불러오는 중...</p>
@@ -235,6 +247,15 @@ export default function AdminPayoutsPage() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr className="text-xs text-gray-500">
+                    <th className="px-3 py-3 text-center w-10">
+                      <input
+                        type="checkbox"
+                        aria-label="전체 선택"
+                        checked={payouts.length > 0 && picked.size === payouts.length}
+                        onChange={(e) => setPicked(e.target.checked ? new Set(payouts.map(p => p.id)) : new Set())}
+                        className="h-3.5 w-3.5 accent-gray-900"
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left">생성일</th>
                     <th className="px-4 py-3 text-left">수령자</th>
                     <th className="px-4 py-3 text-right">금액</th>
@@ -248,6 +269,19 @@ export default function AdminPayoutsPage() {
                     const meta = STATUS_LABEL[p.status]
                     return (
                       <tr key={p.id} className="border-t border-gray-100 text-xs">
+                        <td className="px-3 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            aria-label={`정산 ${p.id} 선택`}
+                            checked={picked.has(p.id)}
+                            onChange={(e) => setPicked(prev => {
+                              const next = new Set(prev)
+                              if (e.target.checked) next.add(p.id); else next.delete(p.id)
+                              return next
+                            })}
+                            className="h-3.5 w-3.5 accent-gray-900"
+                          />
+                        </td>
                         <td className="px-4 py-3 text-gray-700">{formatKSTDate(p.created_at)}</td>
                         <td className="px-4 py-3">
                           <div className="font-mono">{p.payee_type}:{p.payee_id}</div>

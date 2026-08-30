@@ -31,16 +31,18 @@ interface RoleMeta {
 
 export const SELLER_ROLES: Record<SellerRole, RoleMeta> = {
   // 🛡️ 2026-05-28: seller_type 값은 'influencer' 유지 (DB 마이그레이션 회피).
-  //   사용자 대면 라벨만 '크리에이터'로 — 큐레이터(추천 유저)와 구분, 방송/영입/홍보 주체.
+  // 🏷️ 2026-08-26 (대표 확정 — "사람을 인플루언서/대행사로 나누지 않는다. 행위 2개로 말한다"):
+  //   사용자 대면 라벨을 신분('크리에이터')에서 **행위**('소개')로 바꾼다. 키는 그대로 —
+  //   바꾸는 건 화면에 뜨는 말뿐이고, 그 말이 사람을 부류로 가르지 않게 하는 것이 목적이다.
   influencer: {
-    label: '🎤 크리에이터',
+    label: '🎤 소개',
     emoji: '🎤',
-    shortLabel: '크리에이터',
+    shortLabel: '소개',
     defaultPayout: 'deal',
     canBroadcast: true,
     canRegisterStore: false,
     canPromote: true,
-    description: '인스타·카톡·유어샵으로 매장 공구 홍보·영입 → 커미션 적립',
+    description: '인스타·카톡·유어샵으로 매장 이용권 소개 → 커미션 적립',
   },
   store_owner: {
     label: '🏪 매장 사장님',
@@ -50,17 +52,17 @@ export const SELLER_ROLES: Record<SellerRole, RoleMeta> = {
     canBroadcast: false,
     canRegisterStore: true,
     canPromote: false,
-    description: '본인 매장 voucher 등록 + QR 스캔으로 사용 확인 → 현금 정산',
+    description: '내 매장 이용권 등록 + QR 스캔으로 사용 확인 → 현금 정산',
   },
   both: {
-    label: '🎤🏪 크리에이터 + 매장',
+    label: '🎤🏪 소개 + 매장',
     emoji: '🎤🏪',
-    shortLabel: '겸업',
+    shortLabel: '소개+매장',
     defaultPayout: 'deal+cash',
     canBroadcast: true,
     canRegisterStore: true,
     canPromote: true,
-    description: '본인 매장 운영 + 다른 매장 홍보 둘 다 (가장 강력)',
+    description: '내 매장 운영 + 다른 매장 소개 둘 다 (가장 강력)',
   },
 }
 

@@ -21,7 +21,8 @@ import { useAuthStore } from '@/client/stores/auth.store'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatWon, formatNumber } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
-import BrowseProductCard from './browse/BrowseProductCard'
+// 🏁 2026-08-27 (대표 신고 — 유어샵 이용권 UI 가 예전 디자인): 홈과 한 벌인 카드로.
+import GroupBuyFeedCard from './main-home/GroupBuyFeedCard'
 import { seededColor } from '@/utils/card-gradient'
 import type { Product as BrowseProduct } from './browse/types'
 import { Search, X, Trash2 } from 'lucide-react'
@@ -41,6 +42,8 @@ const SellerPublicPage = lazy(() => import('./SellerPublicPage'))
 // 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 유어샵 오너뷰에 판매 진입 CTA.
 //   owner-only 렌더라 lazy — 방문자/익명 첫 paint 청크 불변.
 const SellOwnProductsCTA = lazy(() => import('./curator-page/SellOwnProductsCTA'))
+// 🪜 2026-08-27: 유어샵 수익 사다리(오너 전용) — 방문자 번들에 안 실리게 lazy.
+const EarnLadder = lazy(() => import('./curator-page/EarnLadder'))
 
 // 🧭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 유어샵 로딩 김): 모듈 메모리 캐시 + 진입 전 워밍.
 //   SPA 탭 진입은 SSR 미주입 → 매 마운트 cold fetch. 재진입 0ms 페인트(+60s 초과는 백그라운드 갱신).
@@ -138,21 +141,32 @@ export default function CuratorPage() {
   }, [data?.linked_seller?.username, data?.linked_seller_public])
 
   // 🛡️ 2026-05-27 (셀러 페이지 통일): 핀을 상품/이용권 분류 (deal_only / voucher 카테고리).
-  const { shopPins, voucherPins } = useMemo(() => {
-    if (!data?.pins) return { shopPins: [] as CuratorPin[], voucherPins: [] as CuratorPin[] }
+  // 🤝 2026-08-27 (대표 — "직접 매장과 매칭이 되어진 이용권이 위에 노출, 그냥 담아온거면 밑에"):
+  //   딜이 있는 핀을 **맨 위 별도 섹션**으로 올린다. 딜 있음 = 팔리면 소개비가 붙는 곳이고,
+  //   없으면 0원이다(어필리에이트 종료 2026-08-22) — 돈이 되는 것을 위에 두는 게 맞다.
+  //
+  //   ⚠️ **순서는 주인 것이다.** 자동 정렬로 `position` 을 덮지 않는다 — 드래그로 맞춰 놓은 순서가
+  //     사라지면 재정렬 기능이 무의미해진다. 덩어리만 가르고 **각 덩어리 안은 원래 순서 그대로**
+  //     (filter 는 순서를 보존한다).
+  const { dealPins, shopPins, voucherPins } = useMemo(() => {
+    const empty = { dealPins: [] as CuratorPin[], shopPins: [] as CuratorPin[], voucherPins: [] as CuratorPin[] }
+    if (!data?.pins) return empty
     const isVoucher = (p: CuratorPin) => {
       const cat = (p as { category?: string }).category || ''
       const dealOnly = (p as { deal_only?: number }).deal_only === 1
       return dealOnly || /voucher/i.test(cat)
     }
+    const hasDeal = (p: CuratorPin) => Number(p.deal_pct) > 0
+    const rest = data.pins.filter(p => !hasDeal(p))
     return {
-      shopPins: data.pins.filter(p => !isVoucher(p)),
-      voucherPins: data.pins.filter(p => isVoucher(p)),
+      dealPins: data.pins.filter(hasDeal),
+      shopPins: rest.filter(p => !isVoucher(p)),
+      voucherPins: rest.filter(p => isVoucher(p)),
     }
   }, [data])
 
   // 🧭 2026-06-10 (동네딜 집중 재정향): 홈 탭 = 교환권/공구 핀 우선 노출 (그룹 내 기존 순서 유지).
-  const homePins = useMemo(() => [...voucherPins, ...shopPins], [voucherPins, shopPins])
+  const homePins = useMemo(() => [...dealPins, ...voucherPins, ...shopPins], [dealPins, voucherPins, shopPins])
 
   // 🏁 2026-06-14 (사용자 요청): 신규 가입자 유어샵 첫 진입 닉네임 설정 권유.
   //   owner + handle 이 자동생성형(user{숫자}) + 아직 설정 안 함 → 1회 모달.
@@ -251,7 +265,7 @@ export default function CuratorPage() {
         {/* 🩸 2026-08-26: `ownerView` 게이트라 **한 번도 뜬 적 없었다**(previewAsVisitor 초기값 true) → isOwner. */}
         {isOwner && showOnboard && (
           <LinkshopOnboardModal
-            onPickSeller={() => navigate('/seller/register/supplier?from=urshop')}
+            onPickSeller={() => navigate('/store/new?from=urshop')}
             curatorId={curator.id}
             currentHandle={curator.handle}
             currentName={curator.name}
@@ -307,6 +321,13 @@ export default function CuratorPage() {
         {/* 🛠️ 2026-06-16: 핀이 있을 때만 적립 — 갓 가입(온보딩)·빈 유어샵엔 0/0/0 노이즈 숨김.
             2026-06-17 (C): 큰 네이비 카드 → 한 줄 compact (상세는 콘솔). */}
         {ownerView && pins.length > 0 && !reorderMode && <OwnerEarningsStrip />}
+        {/* 🪜 2026-08-27 (대표 확정): 돈 버는 길 3개를 순서대로. `pins.length` 로 막지 않는다 —
+            **빈 유어샵일수록** 뭘 해야 하는지가 필요하고, 그때 보이는 건 "적립 ₩0" 뿐이었다. */}
+        {ownerView && !reorderMode && (
+          <Suspense fallback={null}>
+            <EarnLadder curatorId={curator.id} dealCount={dealPins.length} pinCount={pins.length} />
+          </Suspense>
+        )}
         {/* 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 오너 화면에 판매 진입 CTA
             (미등록=사업자 등록 / 승인=빠른 상품등록+셀러 대시보드 / 심사·반려=상태). reorder 중엔 숨김. */}
         {ownerView && !reorderMode && (
@@ -357,13 +378,26 @@ export default function CuratorPage() {
             {pins.length === 0 ? (
               // 🩸 2026-08-26: `ownerView` 기준이라 **주인이 자기 빈 샵에서 방문자 문구**를 봤다(할 일 0개) → isOwner.
               <EmptyUrShop handle={curator.handle} isOwner={isOwner} curatorName={curator.name} curatorId={curator.id} />
-            ) : (applyQ(shopPins).length === 0 && applyQ(voucherPins).length === 0) ? (
+            ) : (applyQ(dealPins).length === 0 && applyQ(shopPins).length === 0 && applyQ(voucherPins).length === 0) ? (
               <div className="max-w-3xl mx-auto px-4 py-16 text-center">
                 <p className="text-sm font-bold text-gray-900 dark:text-white">{t('curator.noSearchResults', { defaultValue: '검색 결과가 없어요' })}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('curator.tryOtherKeyword', { defaultValue: '다른 키워드로 찾아보세요.' })}</p>
               </div>
             ) : (
               <>
+                {applyQ(dealPins).length > 0 && (
+                  <>
+                    <div className="max-w-3xl mx-auto px-4 pt-4 pb-1">
+                      <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white">
+                        {t('curator.dealPinsTitle', { defaultValue: '내 계약 매장' })} {dealPins.length}
+                      </h3>
+                      <p className="mt-0.5 text-[11.5px] text-gray-500 dark:text-gray-400">
+                        {t('curator.dealPinsSub', { defaultValue: '팔리면 소개비가 붙는 곳이에요.' })}
+                      </p>
+                    </div>
+                    <PinGrid pins={applyQ(dealPins)} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} kind="voucher" />
+                  </>
+                )}
                 {applyQ(shopPins).length > 0 && (
                   <>
                     <div className="max-w-3xl mx-auto px-4 pt-4 pb-1"><h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white">{t('curator.shopPinsTitle', { defaultValue: '추천템' })} {shopPins.length}</h3></div>
@@ -492,6 +526,8 @@ function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: C
   }
 
   // 🏁 2026-06-26 (대표 — 유어샵 카드를 쇼핑 카드와 동일하게): 할인/평점/구매수까지 전달.
+  //   2026-08-27: 카드가 `GroupBuyFeedCard`(홈과 동일)로 바뀌면서 `category` 도 넘긴다 —
+  //   카드가 카테고리 배지와 `canonicalDetailPath` 판정에 쓴다.
   const product = {
     id: pin.product_id,
     name: pin.product_name,
@@ -506,16 +542,14 @@ function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: C
     avg_rating: pin.avg_rating ?? undefined,
     review_count: pin.review_count ?? undefined,
     sold_count: pin.sold_count ?? undefined,
-  } as BrowseProduct
-
-  // 🎨 2026-06-18 (사용자 신고 — 방문자 모바일 핀 카드 그라데이션 없음): 핀 상품은 외부호스트(교환권 등)
-  //   이미지가 많아 dominant_color null + canvas 추출이 CORS taint 로 실패 → 회색 단색으로 보이던 것.
-  //   카테고리/상품 시드 폴백색을 줘 항상 컬러 그라데이션 (추출 성공 시 실제 대표색이 덮어씀).
-  const fallbackColor = seededColor(pin.category || pin.product_id)
+    category: pin.category ?? undefined,
+  }
 
   return (
     <div className="relative group">
-      <BrowseProductCard product={product} aboveFold={aboveFold} to={`/u/${handle}/p/${pin.product_id}`} fallbackColor={fallbackColor} />
+      {/* 🔗 목적지는 반드시 /u/:handle/p/:productId — 그 경로가 **클릭을 기록하고 `?aff=` 귀속을 붙인다.**
+          상세로 직행시키면 화면은 똑같은데 소개비 귀속이 조용히 사라진다(돈이 새는 쪽으로 깨진다). */}
+      <GroupBuyFeedCard p={product} aboveFold={aboveFold} to={`/u/${handle}/p/${pin.product_id}`} />
       {/* 🔢 2026-06-18 (사용자 요청 — 유어샵에서만 카드 번호): 핀 순서 번호 배지. 다른 곳(홈/쇼핑) 미적용
           — PinCard(유어샵 전용)에만 오버레이라 BrowseProductCard 공용 동작 불변.
           🎨 2026-06-19 (세련화): 프로스트 글래스 원형 배지. */}

@@ -43,6 +43,11 @@ export interface PolicySection {
   source: string
   title: string
   rows: PolicyRow[]
+  /**
+   * 이 표의 값들이 **오늘 실제로 그렇게 동작하는가**에 대한 경고. 표 위에 그대로 뜬다.
+   * 상수는 policy.ts 에만 있어야 하므로(유령 키 가드), "표에 없는 사실"은 행이 아니라 여기에 적는다.
+   */
+  note?: string
 }
 
 const pct = (n: number) => n
@@ -66,6 +71,10 @@ export const POLICY_SECTIONS: PolicySection[] = [
   },
   {
     source: 'COMMISSION_DEFAULTS',
+    note:
+      '🩸 채널 요율(직접 등록 10% / 중개 5%)은 코드에 있지만 **지금 청구되지 않는다** — 결제 분배는 ' +
+      '`getSellerCommissionRate`(채널을 안 본다: 매장별 수동 → GMV 티어 → 기본 5%)를 쓰고, 채널 요율 경로는 ' +
+      '게이트 `fee_channel_rates_enabled` 뒤인데 미설정(꺼짐)이다. 켜는 것은 머니 경로라 staging 실결제가 필요하다.',
     title: '② COMMISSION_DEFAULTS — 수수료율 (% 단위)',
     rows: [
       { key: 'PLATFORM_FEE_PCT', value: pct(COMMISSION_DEFAULTS.PLATFORM_FEE_PCT), unit: '%', desc: '플랫폼 fee (어드민 조정 가능)', dynamicKey: 'platform_fee_pct' },
@@ -74,7 +83,11 @@ export const POLICY_SECTIONS: PolicySection[] = [
       { key: 'INFLUENCER_INTRO_SHARE_PCT', value: pct(COMMISSION_DEFAULTS.INFLUENCER_INTRO_SHARE_PCT), unit: '%', desc: '인플 입점 분배 (platform_fee 중)', dynamicKey: 'influencer_intro_share_pct' },
       { key: 'AGENCY_OWN_RATE', value: pct(COMMISSION_DEFAULTS.AGENCY_OWN_RATE), unit: '%', desc: '에이전시 본인 매출 commission' },
       { key: 'AGENCY_STORE_INTRO_PCT', value: pct(COMMISSION_DEFAULTS.AGENCY_STORE_INTRO_PCT), unit: '%', desc: '에이전시 매장 영입 — 그 매장 매출에서 지급' },
-      { key: 'INFLUENCER_STORE_INTRO_PCT', value: pct(COMMISSION_DEFAULTS.INFLUENCER_STORE_INTRO_PCT), unit: '%', desc: '영입자(크리에이터) 매장 영입 — T+7 성숙 후 원천징수 차감 송금' },
+      // ⚠️ 아래 둘은 `platform_settings`(influencer_store_intro_pct / _months) 행이 있으면 **그 값이 우선**한다.
+      //   이 표는 코드 기본값이라 라이브와 다를 수 있다 — dynamicKey 를 못 붙이는 건 겹쳐 보여 줄 소스인
+      //   `/api/admin/payouts/commission-rates` 가 4개 키만 돌려주기 때문이다(넓히려면 서버부터).
+      { key: 'INFLUENCER_STORE_INTRO_PCT', value: pct(COMMISSION_DEFAULTS.INFLUENCER_STORE_INTRO_PCT), unit: '%', desc: '매장 영입(소개) — 그 매장 매 결제마다. T+7 성숙 후 원천징수 차감 송금 · 라이브 값은 어드민 설정 우선' },
+      { key: 'INFLUENCER_STORE_INTRO_MONTHS', value: String(COMMISSION_DEFAULTS.INFLUENCER_STORE_INTRO_MONTHS), unit: '개월', desc: '위 영입 커미션 유효기간 — 영입일(introduced_at) 기산. 매장별 referral_bonus_until 이 있으면 그 값 우선' },
       { key: 'CURATOR_AFFILIATE_PCT', value: pct(COMMISSION_DEFAULTS.CURATOR_AFFILIATE_PCT), unit: '%', desc: '유어샵 큐레이터 어필리에이트' },
       { key: 'AFFILIATE_COMMISSION_PCT', value: pct(COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT), unit: '%', desc: '제휴 마케팅 (쿠팡파트너스형) 추천인 보상' },
       { key: 'REFERRAL_BONUS_BOTHSIDES_PCT', value: pct(COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT), unit: '%', desc: '공구 양쪽 보너스 (추천인 + 피추천인)' },

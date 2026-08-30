@@ -1,5 +1,5 @@
 /**
- * 🏦 지급 센터 (2026-06-12 — 사용자 결정): 셀러 정산 · 큐레이터 환급 · 에이전시 영입 커미션의
+ * 🏦 지급 센터 (2026-06-12 — 사용자 결정): 셀러 정산 · 소개 환급 · 에이전시 영입 커미션의
  * "신청 → (수동 이체) → 입금완료 기록"을 한 화면에서. 운영 루틴 = 매주 금요일 일괄.
  * 어드민 라이트 테마 고정 (dark: 금지 룰).
  */
@@ -21,7 +21,7 @@ interface PaidRow { rail: string; id: number; who: string | null; amount: number
 
 type Data = { sellers: SellerRow[]; curators: CuratorRow[]; agencies: AgencyRow[]; recent_paid: PaidRow[] }
 
-const RAIL_LABEL: Record<string, string> = { seller: '셀러 정산', curator: '큐레이터 환급', agency: '에이전시 커미션' }
+const RAIL_LABEL: Record<string, string> = { seller: '셀러 정산', curator: '소개 환급', agency: '에이전시 커미션' }
 
 export default function AdminPayoutCenterPage() {
   const [tab, setTab] = useState<'seller' | 'curator' | 'agency'>('seller')
@@ -78,7 +78,7 @@ export default function AdminPayoutCenterPage() {
 
       {/* 레일 탭 */}
       <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
-        {([['seller', '셀러 정산', Banknote], ['curator', '큐레이터 환급', Users], ['agency', '에이전시 커미션', Building2]] as const).map(([k, label, Icon]) => (
+        {([['seller', '셀러 정산', Banknote], ['curator', '소개 환급', Users], ['agency', '에이전시 커미션', Building2]] as const).map(([k, label, Icon]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${tab === k ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}>
             <Icon className="w-3.5 h-3.5" /> {label}
@@ -112,8 +112,8 @@ export default function AdminPayoutCenterPage() {
           )}
 
           {tab === 'curator' && (
-            <Table empty={!data?.curators.length} emptyText="대기 중인 큐레이터 환급 신청이 없습니다"
-              head={['신청일', '큐레이터', '신청액', '원천징수', '실입금액', '입금 계좌', '처리']}>
+            <Table empty={!data?.curators.length} emptyText="대기 중인 소개 환급 신청이 없습니다"
+              head={['신청일', '소개 유저', '신청액', '원천징수', '실입금액', '입금 계좌', '처리']}>
               {data?.curators.map(r => (
                 <tr key={r.id} className="border-t border-gray-50">
                   <td className="px-4 py-3 text-[12px] text-gray-500 whitespace-nowrap">{(r.requested_at || '').slice(0, 10)}</td>

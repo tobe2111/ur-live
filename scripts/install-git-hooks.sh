@@ -117,6 +117,13 @@ bash scripts/check-money-patterns.sh || true
 echo "==> Pre-commit: 카카오 OAuth iOS 쿠키 패턴 검사 (warn-only)..."
 bash scripts/check-auth-cookie-pattern.sh || true
 
+# 🗺️ 2026-08-27: 주입 "지도" 만 빠르게 본다(0.5초 — 전수는 20분+ 라 로컬에서 못 돈다).
+#   가드가 붙은 코드를 고치면 그 주입의 `find` 가 낡는데, 그걸 CI 에 가서야 알면 한 사이클을 태운다
+#   (실제로 `aboveFold={i < 4 …}` 를 상수로 바꾸며 그렇게 했다). ⚠️ 되돌려-검증은 **안 한다** —
+#   그건 CI 전수와 `--only` 의 몫이고, 여기서는 지도가 낡았는지만 본다.
+echo "==> Pre-commit: 주입 지도 검사 (find 유일성, warn-only)..."
+node scripts/check-guard-mutations.mjs --map-only || true
+
 # 🛡️ 2026-05-17: CHECK 제약 위반 자동 탐지 (warn-only).
 #   admin live-monitor delete 사고 재발 방지 — 'status=\"deleted\"' 가 CHECK IN (...) 위반 → 500.
 echo "==> Pre-commit: CHECK 제약 위반 검사 (warn-only)..."

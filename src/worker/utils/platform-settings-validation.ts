@@ -110,6 +110,10 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   // ── enum ──
   promo_funding_source: enumOf(['platform', 'owner']),           // ledger.ts:482 등 === 'owner'
   platform_fee_pct_direct: optionalPct,                          // 직접 입점 요율(기본 10) — ledger.ts
+  // 💸 2026-08-27 신설: 대행사 경유 요율(기본 5). 그전엔 중개 매장이 `platform_fee_pct` 로 **떨어져서**
+  //   맞았는데, 그건 "종전 경로가 마침 5% 다" 라는 전제였고 라이브에서 그 전제가 깨져 있었다
+  //   (매장 7곳 전부 `sellers.commission_rate = 10`). 이제 채널별로 각자 값을 갖는다.
+  platform_fee_pct_brokered: optionalPct,                        // 대행사 경유 요율(기본 5) — ledger-commission-policy.ts
   commission_priority_axes: priorityAxes,                        // order-commissions.ts:257 CSV parse
   flip_pilot_seller_ids: csvPosInts,                             // flip-pilot.ts (전역 스위치 OFF 여도 지정 매장만 flip 검증)
   influencer_payout_frequency: enumOf(['weekly', 'biweekly', 'monthly']), // AdminCommissionSettingsPage select
@@ -125,6 +129,8 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   tier2_commission_rate: pct,
   max_influencer_commission_pct: pct,  // marketing.routes.ts:325/375
   influencer_store_intro_pct: pct,     // influencer-store-intro-commission.ts:24
+  // 🏪 2026-08-27: 유효기간(개월). 미등록이면 무검증 통과라 '열두달' 같은 값도 저장됐다.
+  influencer_store_intro_months: intRange(1, 120), // influencer-store-intro-commission.ts isStoreIntroExpired
   influencer_deal_bonus_pct: pct,      // marketing.routes.ts:679
   curator_affiliate_pct: pct,
   host_incentive_pct: pct,

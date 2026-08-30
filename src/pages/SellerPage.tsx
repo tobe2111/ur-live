@@ -341,12 +341,12 @@ export default function SellerPage() {
 
         {storeGated === true ? (
           <p className="text-center text-[12px] text-gray-400 py-8">
-            🔒 {t('seller.stores.lockedNote', { defaultValue: '매장 등록을 마치면 이용권 등록 · 주문 · 정산 · 인플루언서 협업이 열려요' })}
+            🔒 {t('seller.stores.lockedNote', { defaultValue: '매장 등록을 마치면 이용권 등록 · 주문 · 정산 · 소개 협업이 열려요' })}
           </p>
         ) : (
         <>
         {/* 🧱 2026-08-23 (대표 AB테스트 — "중요한 작업들이 모여있어야"): 핵심 작업 5버튼을
-            헤더 바로 아래로 — 이용권 등록(주역)·주문·이용권 관리·정산·인플루언서 찾기. */}
+            헤더 바로 아래로 — 이용권 등록(주역)·주문·이용권 관리·정산·소개 파트너 찾기. */}
         <PrimaryActions
           pendingOrders={stats.pendingOrders || 0}
           activeGroupBuys={activeGroupBuys}

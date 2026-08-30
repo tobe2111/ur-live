@@ -179,6 +179,13 @@ jobs:
         run: node scripts/check-conflict-markers.mjs -s
         continue-on-error: false
 
+      # 🧭 2026-08-26: 같은 클래스의 사고 — `check-guard-mutations` 가 **의도적으로 심어 둔 결함**이
+      #   워킹트리에 있는 동안 `git add -A` 가 그것을 집어 커밋했다(주입본 6건). 충돌 마커와 마찬가지로
+      #   git 이 막아 주지 않고, 에러도 안 난다 — CI 가 다른 테스트로 넘어져야 알게 된다.
+      - name: 브랜치에 가드 주입본이 섞였는지 (strict)
+        run: node scripts/check-branch-scope.mjs
+        continue-on-error: false
+
       # ⏰ 2026-08-02: `0 20 * * 0` 한 줄이 배열 **전체**를 거부시켜 주간 D1 백업이 몇 달간
       #   등록조차 안 됐다(재해복구 0). CF 의 day-of-week 는 1-7 또는 MON-SUN — 0 이 없다.
       - name: cron 표현식 문법 (strict)
@@ -742,6 +749,13 @@ jobs:
       #   반드시 build 뒤에 둘 것(산출물 필요).
       - name: Critical path chunk composition (strict)
         run: node scripts/check-critical-chunks.mjs
+
+      # 🛡️ 2026-08-27: 위 가드는 **index.html** 만 본다. 그런데 2026-07-12 부터 워커가 표면별로
+      #   modulepreload 를 **추가 주입**한다(route-chunk-map) — 홈의 실제 첫 페인트는 둘의 합이고,
+      #   후자는 어느 가드도 안 보고 있었다. 그 사각지대로 홈에 셀러 대시보드 65KB, /browse 에 또 65KB 가
+      #   조용히 나가고 있었다(에러 없음·화면 정상·바이트만 샘). 이름으로 잡는다.
+      - name: Consumer surface role-chunk leak (strict)
+        run: node scripts/check-surface-role-leak.mjs
 
       # ── 6. 결과 요약 (artifact) — build 가 성공한 경우만 ──
       - name: Bundle size report

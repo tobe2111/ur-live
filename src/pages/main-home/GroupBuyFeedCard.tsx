@@ -100,7 +100,15 @@ function prefetchDetailChunk() {
   import('@/pages/GroupBuyDetailPage').catch(() => { _detailChunkPrefetched = false })
 }
 
-function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; pc?: boolean; userLoc?: { lat: number; lng: number } | null }) {
+/**
+ * 🔗 `to` 는 **유어샵 핀 전용 탈출구**다 (2026-08-27).
+ *   기본값은 `canonicalDetailPath`(라우팅 SSOT). 그런데 유어샵의 담은 핀은 반드시
+ *   `/u/{handle}/p/{id}` 로 가야 한다 — 그 경로가 **클릭을 기록하고 `?aff=` 귀속을 붙인다.**
+ *   상세로 직행시키면 화면은 똑같은데 **소개비 귀속이 조용히 사라진다.**
+ *   ⚠️ 그래서 이 prop 을 지우거나 호출부에서 빠뜨리면 돈이 새는 쪽으로 조용히 깨진다
+ *      (`urshop-card-unify.test.ts` 가 이 배선을 고정한다).
+ */
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
 
@@ -110,7 +118,24 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
   //   aboveFold 카드는 즉시 prefetch (observer 없이) — 메인 페이지 진입 시 즉시.
   const linkRef = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
-    if (aboveFold) { prefetch(p.id); prefetchDetailChunk(); return }
+    if (aboveFold) {
+      /**
+       * ⏳ 2026-08-27 (대표 승인 — 홈 첫 화면 요청 경합): **미루기이지 제거가 아니다.**
+       *   맨 위 카드들은 observer 없이 마운트 즉시 prefetch 했는데, 실측상 그게
+       *   `/api/sections`·`/api/banners`(=지금 화면에 필요한 것)와 **같은 순간**에 나가
+       *   대역을 다퉜다(PC 1440 에서 카드 6장 → XHR 6개 + 상세 청크 4개가 2,488ms 에 동시 발사).
+       *   사용자가 카드를 읽고 누르기까지는 최소 1~2초가 걸리므로, 첫 화면을 다 그린 뒤로
+       *   미뤄도 **"클릭 시 0ms"** 라는 이 prefetch 의 목적은 그대로 달성된다.
+       *   ⚠️ 지우면 안 된다 — 지우는 순간 카드 클릭이 fetch 워터폴이 된다(잠금표가 지키는 성질).
+       */
+      const run = () => { prefetch(p.id); prefetchDetailChunk() }
+      if (typeof requestIdleCallback === 'function') {
+        const h = requestIdleCallback(run, { timeout: 2500 })
+        return () => cancelIdleCallback?.(h)
+      }
+      const t = setTimeout(run, 300)
+      return () => clearTimeout(t)
+    }
     const el = linkRef.current
     if (!el || typeof IntersectionObserver === 'undefined') return
     const obs = new IntersectionObserver(
@@ -170,34 +195,35 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
   //   대표색 단색 카드 + 사진 하단 같은색 번짐 + 대비 글자색. (GroupBuyGridCard 와 정합)
   const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
   const grad = cardGradient(cardColor)
-  // 🖥️ 2026-07-16 (대표 — PC 카드 가시성): pc 면 대표색 그라데이션(카드 틴트 + 사진 하단 번짐 + 흐린 글자색)
-  //   제거 → 깔끔한 흰/다크 카드 + 표준 텍스트색(선명). 모바일(!pc)은 기존 그라데이션 룩 그대로.
-  const tSub = pc ? undefined : { color: grad.sub }
-  const tText = pc ? undefined : { color: grad.text }
-  const tAccent = pc ? undefined : { color: grad.accent }
-  const cSub = pc ? 'text-gray-500 dark:text-gray-400' : ''
-  const cText = pc ? 'text-gray-900 dark:text-white' : ''
-  const cAccent = pc ? 'text-brand-text' : ''
+  /**
+   * 🎨 2026-08-27 (대표 지시 — "첫번째 형태의 이용권 ui로 통일돼야 해"): 카드 룩이 **두 벌**이었다.
+   *   편성 섹션(`HomeSections`)은 흰 카드(사진 아래 검은 글자), 동네 딜 피드는 모바일에서
+   *   **대표색 그라데이션 카드**(사진 위에 글자가 얹히고 카드 배경이 상품 색으로 물듦).
+   *   같은 화면 위아래에 다른 카드가 놓이니 한 서비스로 안 보였다.
+   *   ⇒ 흰 카드 하나로 고정한다. 이전엔 `pc` 플래그가 이 둘을 갈랐다(그래서 `HomeSections` 가
+   *     룩을 얻으려고 `pc` 를 하드코딩으로 넘기고 있었다 — 그 부작용이 이미지 폭 2~3배 과다였다).
+   *   ⚠️ 대표색(`grad`)은 **사진 자리 placeholder** 로만 남는다(로딩 중 회색 대신 상품색).
+   */
+  const cSub = 'text-gray-500 dark:text-gray-400'
+  const cText = 'text-gray-900 dark:text-white'
+  const cAccent = 'text-brand-text'
 
   return (
     <Link
       ref={linkRef}
       // 🏨 2026-07-20 (숙소 상세 SSOT): 숙소 카드는 객실·날짜 예약이 있는 /stays/:id 로 —
       //   목적지는 canonicalDetailPath(라우팅 SSOT) 위임(그 외 카테고리는 기존 /group-buy/:id 동일).
-      to={canonicalDetailPath(p) ?? `/group-buy/${p.id}`}
+      to={to ?? canonicalDetailPath(p) ?? `/group-buy/${p.id}`}
       onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
       onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
       onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}
       // 🧹 2026-08-19 (대표 신고 — "그루폰처럼 테두리를 없애줘. AI가 만든 티가 나"):
-      //   PC 카드에서 **테두리·카드 배경·박스 그림자**를 걷어낸다. 그루폰 카드는 컨테이너가 아니라
+      //   **테두리·카드 배경·박스 그림자**를 걷어낸다. 그루폰 카드는 컨테이너가 아니라
       //   [둥근 사진] + 그 아래 맨 텍스트다 — 흰 패널이 이미 배경을 맡고 있어 박스가 한 겹 더 필요 없다.
-      //   ⚠️ 모바일(!pc)은 대표색 카드가 정체성이라 **그대로 유지**한다.
-      className={`block group active:scale-[0.98] flex flex-col ${pc ? '' : 'rounded-2xl overflow-hidden transition-transform'}`}
-      style={pc ? undefined : { backgroundColor: grad.base }}
+      //   (2026-08-27: 모바일만 남아 있던 대표색 카드도 여기로 통일 — 대표 "첫번째 형태로 통일".)
+      className="block group active:scale-[0.98] flex flex-col"
     >
-      {/* 🎨 대표색 카드 + 사진 하단 같은색 번짐(그라데이션) — /group-buy GroupBuyGridCard 와 동일 룩.
-          🖥️ PC(pc)는 그라데이션 없이 깔끔한 이미지 + 흰/다크 카드(가시성).
-          🖼️ 2026-08-19 (대표 시안 — 그루폰): 이미지 영역을 `DealCardMedia`(SSOT)로 교체 —
+      {/* 🖼️ 2026-08-19 (대표 시안 — 그루폰): 이미지 영역을 `DealCardMedia`(SSOT)로 교체 —
           hover 좌우 화살표 캐러셀 + 도트. 홈 섹션 카드도 **같은 컴포넌트**를 써서 두 카드가
           갈리지 않는다. 잠금 계약(aboveFold eager/fetchPriority·fade-in·대표색 추출)은 그대로 승계. */}
       <DealCardMedia
@@ -205,22 +231,45 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
         images={p.images}
         alt={p.name || cat.label}
         eager={aboveFold}
-        width={pc ? 400 : 300}
-        aspectClass={pc ? 'aspect-[4/3]' : 'aspect-square'}
+        /* 🐘 2026-08-27 (대표 신고 — "메인 로딩 너무 느려, 가까운 동네 딜 특히"): 여기가 `pc ? 400 : 300`
+           이었다. `pc` 는 **카드 룩**(그라데이션·글자색) 플래그인데 이미지 해상도까지 겸하고 있었고,
+           `HomeSections` 가 룩을 위해 `pc` 를 **하드코딩 true** 로 넘기는 바람에 모바일·태블릿도
+           PC용 큰 사진을 받았다. 라이브 실측(표시폭 대비):
+
+             모바일 390  표시 175 × dpr3 = 필요 525  →  받음 800~1200  (1.5~2.3배)
+             태블릿 810  표시 175 × dpr2 = 필요 350  →  받음 800       (2.3배)
+             PC   1440  표시 322 × dpr1 = 필요 322  →  받음 400       (1.2배, 적정)
+
+           `cfSrcSet` 은 x-디스크립터(1x/2x/3x)라 **base 가 곧 1x CSS 폭**이어야 한다 — base 가
+           표시폭보다 크면 그 배수가 3x 에서 그대로 증폭된다(400 → 3x 1200).
+           ⇒ 해상도는 **레이아웃 열수**를 아는 부모가 정한다(`imgWidth`). lg+ 4열=322 → 400,
+             그 미만(모바일 2열 · 태블릿 4열)=175~190 → 200. 둘 다 필요폭의 1.1~1.2배. */
+        width={imgWidth}
+        aspectClass="aspect-[4/3]"
         /* 🧹 2026-08-19: 카드 박스가 사라졌으니 **사진 자신이** 모서리를 갖는다(그루폰과 동일). */
-        className={pc ? 'rounded-xl bg-gray-100 dark:bg-[#222225]' : ''}
+        className="rounded-xl bg-gray-100 dark:bg-[#222225]"
         fallback={<span className="text-3xl opacity-40">{cat.emoji}</span>}
+        /**
+         * 🎨 대표색 백필 — **결과가 달라질 때만** 돌린다(2026-08-27 부팅 프로파일).
+         *   `extractDominantColor` 는 `drawImage`+`getImageData` 라 GPU→CPU 리드백을 강제한다.
+         *   예전엔 서버가 이미 색을 줬어도(=아래 두 분기가 전부 no-op) **일단 뽑고 나서** 버렸다.
+         *   그리고 그 리드백이 사진 `onLoad` 안, 즉 **첫 화면 그리는 한복판**에서 동기로 돌았다.
+         *   ⇒ ① 쓸 데가 없으면 아예 안 뽑고 ② 뽑아야 할 때도 한가할 때로 미룬다.
+         *      기능은 그대로다 — 색은 여전히 뽑히고 서버에도 보고된다(느려질 뿐 안 사라진다).
+         */
         onCoverLoad={(el) => {
-          const color = extractDominantColor(el)
-          if (color) {
+          if (cardColor && p.dominant_color) return // 둘 다 이미 있음 → 뽑아도 버릴 값
+          const run = () => {
+            const color = extractDominantColor(el)
+            if (!color) return
             if (!cardColor) setCardColor(color)
             if (!p.dominant_color) reportDominantColor(p.id, color)
           }
+          if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 2000 })
+          else setTimeout(run, 0)
         }}
         overlay={
           <>
-            {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거). 🖥️ PC 는 깔끔한 이미지(번짐 제거). */}
-            {!pc && <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none z-[1]" style={{ background: grad.imageFade }} />}
             {/* 마감 임박 배지 (시간/분 단위면 좌상단 빨강) */}
             {isUrgent && (
               <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-brand text-[10px] font-extrabold text-white shadow-sm z-[2]">
@@ -240,10 +289,10 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
           [머천트(작은 회색)] → [제목 2줄] → [주소 · 거리] → [★평점 (구매수)] → [정가취소선 · 판매가 · 할인 pill]
           이전엔 정가가 제목 **위**에 떠 있고 가격이 중간에 있어, 카드마다 눈이 가는 자리가 달랐다. */}
       {/* 🧹 PC 는 카드 박스가 없으므로 좌우 패딩도 0 — 사진 왼쪽 끝과 글자가 딱 맞아야 그루폰처럼 보인다. */}
-      <div className={pc ? 'pt-2.5' : 'px-2.5 pb-2.5 pt-2'}>
+      <div className="pt-2.5">
         {/* 머천트 — 매장명 우선, 없으면 브랜드(gift_catalog). 🏪 온누리 가맹 뱃지는 그 옆. */}
         {(p.restaurant_name || brandName || p.onnuri_merchant) && (
-          <p className={`flex items-center gap-1 text-[11px] leading-none mb-1 ${cSub}`} style={tSub}>
+          <p className={`flex items-center gap-1 text-[11px] leading-none mb-1 ${cSub}`}>
             {brandIcon && !p.restaurant_name && <img src={brandIcon} alt="" className="w-3 h-3 rounded-full object-contain shrink-0" loading="lazy" />}
             <span className="truncate">{p.restaurant_name || brandName}</span>
             {p.onnuri_merchant && (
@@ -253,13 +302,13 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
         )}
 
         {/* 제목 — 2줄 max */}
-        <p className={`${pc ? 'text-[13.5px]' : 'text-[13px]'} font-bold line-clamp-2 leading-snug ${cText}`} style={tText}>
+        <p className={`text-[13.5px] font-bold line-clamp-2 leading-snug ${cText}`}>
           {stripStorePrefix(p.name, p.restaurant_name)}
         </p>
 
         {/* 📍 주소(좌) · 거리(우) — 그루폰처럼 양끝 정렬(거리가 항상 같은 자리에 온다) */}
         {(addrShort || distKm != null) && (
-          <p className={`flex items-center justify-between gap-2 mt-1 text-[11px] min-w-0 ${cSub}`} style={tSub}>
+          <p className={`flex items-center justify-between gap-2 mt-1 text-[11px] min-w-0 ${cSub}`}>
             <span className="truncate">{addrShort}</span>
             {distKm != null && <span className="shrink-0 whitespace-nowrap">{distKm}km</span>}
           </p>
@@ -268,11 +317,11 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
         {/* ⭐ 평점 — 🌟 2026-08-19 (대표 "별 5개 형태로"): 별 하나 + 숫자 → **별 5개(부분 채움)** +
             숫자 + 리뷰수. 그루폰 카드의 그 줄이다. 리뷰가 없으면 구매수라도 보여 줘 줄이 비지 않게. */}
         {(rating > 0 || soldCount > 0) && (
-          <p className={`flex items-center gap-1.5 mt-1 text-[11px] ${cSub}`} style={tSub}>
+          <p className={`flex items-center gap-1.5 mt-1 text-[11px] ${cSub}`}>
             {rating > 0 ? (
               <>
                 <StarRating value={rating} />
-                <span className={`font-bold ${cText}`} style={tText}>{rating.toFixed(1)}</span>
+                <span className={`font-bold ${cText}`}>{rating.toFixed(1)}</span>
                 {reviewCount > 0 && <span>({formatNumber(reviewCount)})</span>}
               </>
             ) : null}
@@ -283,14 +332,14 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
         {/* 💰 가격 — 한 줄에 [정가 취소선] [판매가] [할인 pill]. 그루폰의 마지막 줄과 같은 순서. */}
         <p className="flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5 mt-1.5">
           {originalPrice > price && originalPrice > 0 && (
-            <span className={`text-[11.5px] line-through ${cSub}`} style={tSub}>{formatNumber(originalPrice)}원</span>
+            <span className={`text-[11.5px] line-through ${cSub}`}>{formatNumber(originalPrice)}원</span>
           )}
-          <span className={`${pc ? 'text-[16px]' : 'text-[15px]'} font-extrabold tracking-tight ${cText}`} style={tText}>
+          <span className={`text-[16px] font-extrabold tracking-tight ${cText}`}>
             {formatNumber(price)}원
           </span>
           {/* 🏨 2026-07-20: 숙소 가격 = 최저 객실 주중가 → 단위 명시(야놀자/아고다식 "1박~") */}
           {p.category === 'stay_voucher' && price > 0 && (
-            <span className={`text-[11px] font-semibold ${cSub}`} style={tSub}>/1박~</span>
+            <span className={`text-[11px] font-semibold ${cSub}`}>/1박~</span>
           )}
           {discount > 0 && (
             <span className="shrink-0 px-1.5 py-[1px] rounded text-[11px] font-extrabold bg-brand/10 text-brand-text dark:bg-brand/20 dark:text-brand">

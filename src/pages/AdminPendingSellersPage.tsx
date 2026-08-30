@@ -252,7 +252,7 @@ export default function AdminPendingSellersPage() {
               const introducer = s.introduced_by_agency_id
                 ? `🏢 에이전시 #${s.introduced_by_agency_id}`
                 : s.introduced_by_influencer_id
-                  ? `🎤 인플루언서 #${s.introduced_by_influencer_id}`
+                  ? `🎤 소개 유저 #${s.introduced_by_influencer_id}`
                   : null
 
               return (

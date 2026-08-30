@@ -70,8 +70,16 @@ export const COMMISSION_DEFAULTS = {
    *  💰 2026-07-05 대표 확정 (자문 (b)안): 2.0 → 1.0 — 약관3 제4조·파트너 안내·회사소개서 전부 "기본 1%"
    *  라 문서-시스템 정합. 개별 상향은 어드민 에이전시 관리의 store_intro_commission_pct(성과 보상 레버). */
   AGENCY_STORE_INTRO_PCT: 1.0,
-  /** 영입자(크리에이터) 매장영입(platform_settings.influencer_store_intro_pct 미설정 시 fallback). */
-  INFLUENCER_STORE_INTRO_PCT: 1.5,
+  /** 매장 영입(소개) — platform_settings.influencer_store_intro_pct 미설정 시 fallback.
+   *  💰 2026-08-27 대표 확정: 1.5 → 2.0 ("인플루언서가 영업해와서 가게가 입점하면 2%").
+   *  ⚠️ 라이브는 platform_settings 행이 우선이므로 이 상수만 바꿔선 안 바뀐다 — 어드민에서 값 갱신 필요. */
+  INFLUENCER_STORE_INTRO_PCT: 2.0,
+  /** 그 2% 를 **언제까지** 받는가 — 개월 수(platform_settings.influencer_store_intro_months 미설정 시 fallback).
+   *  ⏳ 2026-08-27 대표 확정: **1년**("2%의 유효기간 1년으로 하자"). 그 전까지는 만료 검사 자체가 없어
+   *  무기한이었다 — 에이전시 1% 만 `referral_bonus_until` 을 검사했다(ledger.ts:243).
+   *  기준 시각은 `sellers.introduced_at`(없으면 created_at)이고, 어드민이 `referral_bonus_until` 을
+   *  직접 넣은 매장은 그 값이 우선한다. 판정 SSOT = `isStoreIntroExpired`. */
+  INFLUENCER_STORE_INTRO_MONTHS: 12,
 
   /** 셀러 등급별 보너스 (% 가산) */
   TIER_COMMISSION_BONUS: { bronze: 0, silver: 1, gold: 2, platinum: 3 } as Record<string, number>,
