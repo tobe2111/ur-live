@@ -5,10 +5,49 @@
 /* 접근성: 키보드 포커스 스타일 */
 @layer utilities {
   *:focus-visible {
-    outline: 2px solid #6b7280;
+    /* 브랜드 로즈. 이전 #6b7280 는 MONO 흑백 시절(2026-06-19)의 잔재로,
+       브랜드 컬러 롤아웃(2026-07-19)에서 갱신되지 않고 남아 있었다. */
+    outline: 2px solid var(--brand, #E0526B);
     outline-offset: 2px;
     border-radius: 4px;
   }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   버튼 촉감 — 전역 1규칙 (마크업 무접촉)
+   실측(2026-08-30): <button> 2,606개 중 transition 보유 9개(0.3%) ·
+   눌림 반응 194개(7%) · 그림자 0개. 즉 버튼 대부분이 손가락에 반응하지
+   않는다. 이것이 "AI 스럽다"의 실체였다 — 색이 아니라 무반응.
+   버튼마다 클래스를 붙이면 2,606곳을 만져야 하고 새 버튼은 또 빠진다.
+   브랜드 컬러 롤아웃이 쓴 방식(단일 지점 · 클래스명 불변)을 그대로 따른다.
+   ⚠️ 시각/촉감만 — 레이아웃·색·기능 무변경. 개별 컴포넌트가 붙인
+   transition/active 클래스는 유틸리티 우선순위로 그대로 이긴다. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+    transition-duration: 160ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
+  }
+  /* 눌림 — 물리적 반응. 손끝이 닿았다는 유일한 신호다. */
+  button:not(:disabled):active,
+  [role='button']:not([aria-disabled='true']):active {
+    transform: scale(0.978);
+  }
+  /* 접근성: 모션 최소화를 요청한 사용자에겐 변형을 주지 않는다. */
+  @media (prefers-reduced-motion: reduce) {
+    button:not(:disabled),
+    [role='button']:not([aria-disabled='true']) {
+      transition-duration: 1ms;
+    }
+    button:not(:disabled):active,
+    [role='button']:not([aria-disabled='true']):active {
+      transform: none;
+    }
+  }
+}
+
+@layer utilities {
   .sr-only {
     position: absolute; width: 1px; height: 1px; padding: 0;
     margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0);
