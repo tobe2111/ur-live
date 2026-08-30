@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+// 🩸 2026-08-27: 자체 codeOnly(정규식판)는 **라인 주석 안의 `/*`** 를 블록 주석 시작으로 읽어
+//   그 뒤 수천 자를 삼킨다(실측 5,911자). 삼켜도 예외가 없어 부정 단언이 조용히 늘 통과한다.
+//   공용 스캐너로 통일 — 경위는 `helpers/source-text.ts`.
+import { stripComments as codeOnly } from '../helpers/source-text'
 
 /**
  * 🪜 2026-08-27 — 유어샵 수익 사다리 + 딜 우선 정렬 (대표 확정 "일단 그렇게 하자").
@@ -22,7 +26,7 @@ const PAGE = 'src/pages/CuratorPage.tsx'
 const LADDER = 'src/pages/curator-page/EarnLadder.tsx'
 const read = (f: string) => readFileSync(f, 'utf-8')
 /** 부정 단언은 주석을 걷어내고 — 주석 속 옛 코드 인용에 걸리는 사고가 이 레포에서 반복됐다. */
-const codeOnly = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+
 
 describe('① 딜 조건은 SSOT 한 곳에만 있다', () => {
   it('SSOT 가 배치 조회를 제공한다', () => {
