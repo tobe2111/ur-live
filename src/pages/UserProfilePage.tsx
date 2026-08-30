@@ -8,7 +8,7 @@ import { cfImage } from '@/utils/cf-image'
 import { logoutAll } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
-import { ChevronRight, Store, ScanLine } from 'lucide-react'
+import { ChevronRight, Receipt, ScanLine, Store } from 'lucide-react'
 import TeamPointsCard from './user-profile/TeamPointsCard'
 import EarningsGroup from './user-profile/EarningsGroup'
 import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
@@ -214,7 +214,7 @@ export default function UserProfilePage() {
           onClick={() => navigate('/user/affiliate')}
           className="w-full flex items-center gap-3 px-3.5 py-3 active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
         >
-          <span className="text-lg" aria-hidden="true">🔗</span>
+          <Store className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
           <span className="flex-1 min-w-0">
             <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
               {t('my.affiliateLinkTitle', { defaultValue: '상품 추천 링크' })}
@@ -231,7 +231,7 @@ export default function UserProfilePage() {
           onClick={() => navigate('/influencer/settlement')}
           className="w-full flex items-center gap-3 px-3.5 py-3 active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
         >
-          <span className="text-lg" aria-hidden="true">🧾</span>
+          <Receipt className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
           <span className="flex-1 min-w-0">
             <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
               {t('my.settlementTitle', { defaultValue: '추천 수익 정산' })}

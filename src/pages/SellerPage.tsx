@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
-import { ShoppingBag, TrendingUp, AlertCircle, CreditCard, LayoutDashboard } from 'lucide-react'
+import { AlertCircle, CreditCard, LayoutDashboard, Lock, ShoppingBag, TrendingUp } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 import RoleGate from '@/components/RoleGate'
@@ -341,7 +341,7 @@ export default function SellerPage() {
 
         {storeGated === true ? (
           <p className="text-center text-[12px] text-gray-400 py-8">
-            🔒 {t('seller.stores.lockedNote', { defaultValue: '매장 등록을 마치면 이용권 등록 · 주문 · 정산 · 소개 협업이 열려요' })}
+            <Lock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1 text-gray-400" aria-hidden="true" />{t('seller.stores.lockedNote', { defaultValue: '매장 등록을 마치면 이용권 등록 · 주문 · 정산 · 소개 협업이 열려요' })}
           </p>
         ) : (
         <>

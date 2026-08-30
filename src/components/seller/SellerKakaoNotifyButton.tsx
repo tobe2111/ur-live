@@ -43,7 +43,7 @@ export default function SellerKakaoNotifyButton({ streamId, streamTitle, customM
       }, { headers: { Authorization: `Bearer ${getSellerToken()}` } })
 
       if (res.data?.success) {
-        toast.success(t('seller.kakaoNotify.sentSuccess', { defaultValue: '✅ 카카오톡에 메시지가 전송됐어요' }))
+        toast.success(t('seller.kakaoNotify.sentSuccess', { defaultValue: '카카오톡에 메시지가 전송됐어요' }))
         setSent(true)
       } else {
         toast.error(res.data?.error || t('seller.kakaoNotify.sendFailed', { defaultValue: '발송 실패' }))
@@ -80,7 +80,7 @@ export default function SellerKakaoNotifyButton({ streamId, streamTitle, customM
       {sending
         ? t('seller.kakaoNotify.sending', { defaultValue: '발송 중…' })
         : sent
-          ? t('seller.kakaoNotify.sentLabel', { defaultValue: '✓ 발송됨' })
+          ? t('seller.kakaoNotify.sentLabel', { defaultValue: '발송됨' })
           : t('seller.kakaoNotify.buttonLabel', { defaultValue: '카카오 친구 알림' })}
     </button>
   )

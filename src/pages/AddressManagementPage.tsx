@@ -221,7 +221,7 @@ export default function AddressManagementPage() {
           </div>
           <button
             onClick={openAddForm}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-gradient-to-r from-gray-800 to-gray-800 text-white text-[13px] font-bold shadow-sm active:scale-[0.97] transition-transform"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-gray-800 text-white text-[13px] font-bold shadow-sm active:scale-[0.97] transition-transform"
           >
             <Plus className="w-4 h-4" />
             <span>{t('address.addNew')}</span>
@@ -238,7 +238,7 @@ export default function AddressManagementPage() {
             <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5">{t('address.emptySub')}</p>
             <button
               onClick={openAddForm}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-gray-800 to-gray-800 text-white text-[13px] font-bold"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gray-800 text-white text-[13px] font-bold"
             >
               <Plus className="w-4 h-4" />
               {t('address.addNew')}
@@ -256,13 +256,13 @@ export default function AddressManagementPage() {
                   key={address.id}
                   className={`relative overflow-hidden rounded-2xl transition-all ${
                     isDefault
-                      ? 'bg-gradient-to-br from-gray-50 to-gray-50 dark:from-gray-900/15 dark:to-gray-900/15 border border-pink-200 dark:border-pink-900/40 shadow-sm'
+                      ? 'bg-gray-50 dark:bg-gray-900/15 border border-pink-200 dark:border-pink-900/40 shadow-sm'
                       : 'bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446]'
                   }`}
                 >
                   {/* 기본 배송지 좌측 그라데이션 액센트 bar */}
                   {isDefault && (
-                    <div aria-hidden className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-gray-800 to-gray-800" />
+                    <div aria-hidden className="absolute top-0 bottom-0 left-0 w-1 bg-gray-800" />
                   )}
                   <div className="p-4 pl-5">
                     <div className="flex items-start justify-between gap-3">
@@ -276,7 +276,7 @@ export default function AddressManagementPage() {
                           )}
                           <p className="text-[16px] font-bold text-gray-900 dark:text-white">{address.recipient_name}</p>
                           {isDefault && (
-                            <span className="rounded-full bg-gradient-to-r from-gray-800 to-gray-800 text-white px-2.5 py-0.5 text-[10px] font-extrabold tracking-wide">
+                            <span className="rounded-full bg-gray-800 text-white px-2.5 py-0.5 text-[10px] font-extrabold tracking-wide">
                               기본 배송지
                             </span>
                           )}

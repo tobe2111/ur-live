@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Store, AlertCircle, CheckCircle2, Zap } from 'lucide-react'
+import { AlertCircle, CheckCircle2, LayoutDashboard, Package, Plus, Store, Tag, Ticket, Zap } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
@@ -141,12 +141,12 @@ export default function MyStorePage() {
             고빈도 셀러 작업 빠른 진입. 세밀 설정(정산계좌·세금·커미션·알림톡)만 셀러 대시보드로. */}
         <div className="grid grid-cols-3 gap-2 pb-4">
           {[
-            { label: '주문 확인', emoji: '📦', to: '/seller/orders' },
-            { label: '상품 관리', emoji: '🏷️', to: '/seller/products' },
-            { label: '상품 등록', emoji: '➕', to: '/seller/products/new' },
-            { label: '이용권 등록', emoji: '🎟️', to: '/seller/meal-voucher/new' },
-            { label: '내 유어샵', emoji: '🔗', to: '/u/me' },
-            { label: '셀러 대시보드', emoji: '⚙️', to: '/seller' },
+            { label: '주문 확인', Icon: Package, to: '/seller/orders' },
+            { label: '상품 관리', Icon: Tag, to: '/seller/products' },
+            { label: '상품 등록', Icon: Plus, to: '/seller/products/new' },
+            { label: '이용권 등록', Icon: Ticket, to: '/seller/meal-voucher/new' },
+            { label: '내 유어샵', Icon: Store, to: '/u/me' },
+            { label: '셀러 대시보드', Icon: LayoutDashboard, to: '/seller' },
           ].map(a => (
             <button
               key={a.to}
@@ -154,7 +154,7 @@ export default function MyStorePage() {
               onClick={() => navigate(a.to)}
               className="flex flex-col items-center gap-1 rounded-2xl border border-gray-100 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] py-3 active:opacity-80 transition-opacity"
             >
-              <span className="text-[18px]" aria-hidden="true">{a.emoji}</span>
+              <a.Icon className="w-[18px] h-[18px] text-gray-500" aria-hidden="true" />
               <span className="text-[11px] font-bold text-gray-900 dark:text-white">{a.label}</span>
             </button>
           ))}

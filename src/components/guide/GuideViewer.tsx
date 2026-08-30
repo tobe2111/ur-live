@@ -214,7 +214,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
     setEditingKey(key)
     setEditForm({
       section_title: '새 섹션',
-      section_icon: '📄',
+      section_icon: '',
       section_order: 999,
       content_md: '### 제목\n\n내용을 여기에 작성하세요.',
     })

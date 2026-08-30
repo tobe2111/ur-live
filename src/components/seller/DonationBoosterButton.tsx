@@ -90,7 +90,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
     const mm = Math.floor(remainingSec / 60)
     const ss = remainingSec % 60
     return (
-      <div className="bg-gradient-to-r from-gray-800 to-gray-800 text-white rounded-xl p-3 shadow-lg">
+      <div className="bg-gray-800 text-white rounded-xl p-3 shadow-lg">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5 text-sm font-bold">
             <Zap className="w-4 h-4 fill-white" />
@@ -122,7 +122,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
     return (
       <div className="bg-white border border-purple-200 rounded-xl p-3 shadow">
         <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-bold text-gray-900">{t('seller.boosterOptions', { defaultValue: '⚡ 후원 부스터 옵션' })}</h4>
+          <h4 className="text-sm font-bold text-gray-900">{t('seller.boosterOptions', { defaultValue: '후원 부스터 옵션' })}</h4>
           <button onClick={() => setShowOptions(false)} className="text-gray-400 hover:text-gray-600">
             <X className="w-4 h-4" />
           </button>
@@ -136,7 +136,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
             <button
               key={opt.mul}
               onClick={() => startBooster(opt.mul, opt.dur)}
-              className="p-3 bg-gradient-to-br from-gray-800 to-gray-800 hover:from-gray-900 hover:to-gray-900 text-white rounded-lg text-center"
+              className="p-3 bg-gray-800 hover:from-gray-900 hover:to-gray-900 text-white rounded-lg text-center"
             >
               <div className="text-lg font-bold">{opt.label}</div>
               <div className="text-[10px] opacity-90">{opt.sub}</div>
@@ -144,7 +144,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
           ))}
         </div>
         <p className="text-[10px] text-gray-500 mt-2 italic">
-          {t('seller.boosterNotice', { defaultValue: '⚠️ 라이브 1회당 1번만 사용 가능. 매칭 금액은 시청자 결제와 별개로 시스템이 즉시 가산 처리합니다.' })}
+          {t('seller.boosterNotice', { defaultValue: '라이브 1회당 1번만 사용 가능. 매칭 금액은 시청자 결제와 별개로 시스템이 즉시 가산 처리합니다.' })}
         </p>
       </div>
     )
@@ -153,7 +153,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
   return (
     <button
       onClick={() => setShowOptions(true)}
-      className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-gray-800 to-gray-800 hover:from-gray-900 hover:to-gray-900 text-white text-xs font-bold rounded-lg shadow"
+      className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 hover:from-gray-900 hover:to-gray-900 text-white text-xs font-bold rounded-lg shadow"
     >
       <Zap className="w-4 h-4" />
       {t('seller.boosterActivate', { defaultValue: '후원 부스터 발동' })}

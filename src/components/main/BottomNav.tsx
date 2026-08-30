@@ -25,7 +25,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
     return (
       <div className="space-y-4">
         <div className="text-center py-2">
-          <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-gray-100 to-gray-100 flex items-center justify-center">
+          <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
             <Radio className="w-7 h-7 text-gray-700 dark:text-gray-300" />
           </div>
           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
@@ -65,7 +65,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
           그 다음 단계로 대시보드가 안내한다. */}
       <button
         onClick={() => { onDone(); navigate('/store/new') }}
-        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
+        className="w-full flex items-center gap-4 p-4 bg-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
       >
         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
           <UserPlus className="w-6 h-6 text-white" />
@@ -383,7 +383,7 @@ export default function BottomNav() {
                   {!COMMUNITY_PROPOSAL_HIDDEN ? (
                   <button
                     onClick={() => { setSheetOpen(false); navigate('/community-group-buy/new') }}
-                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
+                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                   >
                     <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                       <MapPin className="w-6 h-6 text-white" />
@@ -396,7 +396,7 @@ export default function BottomNav() {
                   ) : (!isSeller && !hasSellerToken) ? (
                   <button
                     onClick={() => { setSheetOpen(false); navigate('/group-buy') }}
-                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
+                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                   >
                     <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                       <MapPin className="w-6 h-6 text-white" />
@@ -418,7 +418,7 @@ export default function BottomNav() {
                       {/* 🗑️ 2026-07-07 라이브커머스 제거: '라이브 방송 시작하기' 진입 삭제. */}
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/meal-voucher/new') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center gap-4 p-4 bg-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                           <Utensils className="w-6 h-6 text-white" />
@@ -465,7 +465,7 @@ export default function BottomNav() {
                     <div className="space-y-3">
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/agency') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center gap-4 p-4 bg-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                           <span className="text-xl">💼</span>

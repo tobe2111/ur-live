@@ -15,9 +15,9 @@ import ReviewBonusButton from './ReviewBonusButton'
 //   이 카드만 보고도 사용법을 파악. redemption-info(사장님 설정)를 코드별 1회 조회(모듈 캐시로 재조회 방지).
 type RedeemMode = 'scan_only' | 'store_code' | 'self_free'
 const MODE_CHIP: Record<RedeemMode, string> = {
-  scan_only: '🔳 직원 스캔',
-  store_code: '🔢 코드 입력',
-  self_free: '⚡ 바로 사용',
+  scan_only: '직원 스캔',
+  store_code: '코드 입력',
+  self_free: '바로 사용',
 }
 const _modeCache = new Map<string, RedeemMode | null>()
 

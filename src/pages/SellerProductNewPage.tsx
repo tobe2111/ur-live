@@ -300,7 +300,7 @@ export default function SellerProductNewPage() {
                     </div>
                   ) : (
                     <div className="flex items-center rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
-                      <span className="text-xs text-blue-700">{t('seller.products.digitalUnlimitedStock', { defaultValue: '📦 디지털 상품 — 무한 재고 (자동 999,999)' })}</span>
+                      <span className="text-xs text-blue-700">{t('seller.products.digitalUnlimitedStock', { defaultValue: '디지털 상품 — 무한 재고 (자동 999,999)' })}</span>
                     </div>
                   )}
                 </div>

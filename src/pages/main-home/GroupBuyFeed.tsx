@@ -5,7 +5,8 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
-import { Utensils, BedDouble, Scissors, Ticket, SearchX } from 'lucide-react'
+import { Utensils, BedDouble, Scissors, Ticket, SearchX, Flame, Timer, Tag, Clock } from 'lucide-react'
+import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
 import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
@@ -66,12 +67,19 @@ const CATEGORIES = [
   { key: 'etc_voucher',     label: '기타', Icon: Ticket },
 ] as const
 
-const SORTS = [
-  { key: 'popular',  label: '🔥 인기순' },
-  { key: 'deadline', label: '⏰ 마감임박' },
-  { key: 'discount', label: '🏷️ 할인율' },
-  { key: 'newest',   label: '🆕 최신순' },
-] as const
+/**
+ * 🖊️ 2026-08-30: 이모지 라벨 → 선 아이콘 + **공용 `SortMenu` 로 통일**.
+ *   이 화면만 네이티브 `<select>` 를 쓰고 있었다 — 그래서 라벨에 SVG 를 못 넣어 이모지가
+ *   박혀 있었고, 동시에 같은 일을 하는 컨트롤이 앱에 두 종류가 되었다(교환권·쇼핑·공구는
+ *   전부 `SortMenu`). `sort-menu.tsx` 의 주석이 스스로 밝히듯 그 컴포넌트의 존재 이유가
+ *   "네이티브 select 대체" 인데, 정작 홈이 예외로 남아 있었다.
+ */
+const SORTS: Array<SortOptionItem<'popular' | 'deadline' | 'discount' | 'newest'>> = [
+  { key: 'popular',  label: '인기순',   Icon: Flame },
+  { key: 'deadline', label: '마감임박', Icon: Timer },
+  { key: 'discount', label: '할인율',   Icon: Tag },
+  { key: 'newest',   label: '최신순',   Icon: Clock },
+]
 
 // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): 'near' = userLoc 기준 거리순(내부 SORTS 칩엔 없음 — PcHomePage 가 구동).
 type SortKey = typeof SORTS[number]['key'] | 'near'
@@ -338,16 +346,7 @@ export default function GroupBuyFeed({
       {!pc && (
       <div className="flex items-center justify-between px-4 py-2.5 text-[12px] text-gray-600 dark:text-gray-400">
         <span>{loading ? '불러오는 중…' : `${sorted.length}개 공구`}</span>
-        <select
-          value={sort}
-          onChange={e => setSort(e.target.value as SortKey)}
-          aria-label="공구 정렬 기준"
-          className="bg-transparent border-0 text-[12px] font-bold text-gray-900 dark:text-white focus:outline-none cursor-pointer"
-        >
-          {SORTS.map(s => (
-            <option key={s.key} value={s.key}>{s.label}</option>
-          ))}
-        </select>
+        <SortMenu value={sort as typeof SORTS[number]['key']} options={SORTS} onChange={(v) => setSort(v)} />
       </div>
       )}
 

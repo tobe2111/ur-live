@@ -51,6 +51,14 @@ const NAME = typeof args.name === 'string' ? args.name : ROUTE.replace(/[^a-z0-9
 const EXTRA_CSS = typeof args.css === 'string' ? args.css : ''
 const DARK = !!args.dark
 const HEIGHT = Number(args.height) || 1200
+/**
+ * 🔐 `--auth=seller|user` — 로그인 뒤 화면을 보기 위한 시딩.
+ *   대시보드 가드(`RouteGuards.isDashboardTokenUsable`)는 **점 3개짜리 JWT 가 아니면
+ *   관대 통과**시킨다(비표준 토큰 허용). 그래서 평범한 문자열이면 충분하다 —
+ *   서버 인증을 우회하는 게 아니라, 이 프리뷰의 가짜 서버가 어차피 전부 200 을 준다.
+ *   ⚠️ 이건 **디자인을 보기 위한 도구**다. 권한·보안 동작 검증에 쓰지 말 것.
+ */
+const AUTH = typeof args.auth === 'string' ? args.auth : ''
 
 /** 유어샵(`/u/:handle`) 시드 — 실제 CuratorPageResponse 모양. */
 const pin = (id, name, price, was, category) => ({
@@ -146,6 +154,15 @@ const ctx = await browser.newContext({
 })
 // 외부 호스트 차단 — 이 환경의 프록시가 막아 타임아웃/오류 상태를 유발한다.
 await ctx.route('**/*', (r) => (r.request().url().startsWith(`http://127.0.0.1:${PORT}`) ? r.continue() : r.abort()))
+
+if (AUTH) {
+  const seed = AUTH === 'seller'
+    ? { seller_token: 'preview', seller_id: '1', seller_username: 'preview', user_type: 'seller' }
+    : { user_id: '1', user_type: 'user', user_handle: 'preview', user_name: '정지원' }
+  await ctx.addInitScript((kv) => {
+    try { for (const [k, v] of Object.entries(kv)) localStorage.setItem(k, v) } catch { /* private mode */ }
+  }, seed)
+}
 
 const page = await ctx.newPage()
 await page.goto(`http://127.0.0.1:${PORT}${ROUTE}`, { waitUntil: 'domcontentloaded', timeout: 40000 }).catch(() => {})

@@ -42,7 +42,7 @@ export default function AffiliatePage() {
         <div className="ur-content-narrow px-4 lg:px-8 py-5 space-y-4">
 
           {/* 히어로 카드 */}
-          <div className="bg-gradient-to-br from-gray-900 to-gray-900 rounded-2xl p-5 text-white">
+          <div className="bg-gray-900 rounded-2xl p-5 text-white">
             <div className="flex items-center gap-2 mb-4">
               <Gift className="w-5 h-5" />
               <span className="text-sm font-bold opacity-90">{t('affiliate.earnHero')}</span>

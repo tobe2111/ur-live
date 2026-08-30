@@ -12,18 +12,18 @@ import { REFERRAL_GROUP_DISCOUNT_DISABLED, TOPUP_DISABLED } from '@/shared/featu
 import { useBalance } from '@/hooks/queries'
 import { useDealHistory, type Transaction } from '@/hooks/queries/useDealHistory'
 import { formatNumber } from '@/utils/format'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Clapperboard, CreditCard, List, RotateCcw, ShoppingCart, Users, type LucideIcon } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { parseUTCDate } from '@/utils/date'
 type FilterType = '' | 'charge' | 'donate' | 'refund' | 'referral_bonus' | 'ad_reward'
 
-const FILTER_OPTIONS: { value: FilterType; label: string; emoji: string }[] = [
-  { value: '',                label: '전체',    emoji: '📋' },
-  { value: 'charge',          label: '충전',    emoji: '💳' },
-  { value: 'donate',          label: '사용',    emoji: '🛒' },
-  { value: 'refund',          label: '환불',    emoji: '🔄' },
-  { value: 'referral_bonus',  label: '추천',    emoji: '👥' },
-  { value: 'ad_reward',       label: '광고',    emoji: '🎬' },
+const FILTER_OPTIONS: { value: FilterType; label: string; Icon: LucideIcon }[] = [
+  { value: '',                label: '전체',    Icon: List },
+  { value: 'charge',          label: '충전',    Icon: CreditCard },
+  { value: 'donate',          label: '사용',    Icon: ShoppingCart },
+  { value: 'refund',          label: '환불',    Icon: RotateCcw },
+  { value: 'referral_bonus',  label: '추천',    Icon: Users },
+  { value: 'ad_reward',       label: '광고',    Icon: Clapperboard },
 ]
 
 const TYPE_EMOJI: Record<string, string> = {
@@ -118,13 +118,13 @@ export default function MyDealHistoryPage() {
             <button
               key={opt.value}
               onClick={() => { setPage(0); setFilter(opt.value) }}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
+              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
                 filter === opt.value
                   ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
                   : 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/[0.12]'
               }`}
             >
-              {opt.emoji} {opt.label}
+              <opt.Icon className="w-3.5 h-3.5" aria-hidden="true" />{opt.label}
             </button>
           ))}
         </div>

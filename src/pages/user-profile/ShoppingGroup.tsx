@@ -9,10 +9,13 @@
  */
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Ticket, TicketPercent, BedDouble, BookOpen, Heart, Star, Bell, Package, MapPin, PenLine, type LucideIcon } from 'lucide-react'
 import type { MyCounts } from './types'
 
-type Item = { icon: string; label: string; sub?: string; count?: number | null; path: string }
+/** 🖊️ 2026-08-30: `icon` 이모지 문자열 → lucide 컴포넌트.
+ *  이 목록은 마이페이지의 주 메뉴다 — 11칸이 전부 이모지라 같은 행 오른쪽의
+ *  `ChevronRight`(선 아이콘)와 언어가 갈렸고, OS 마다 다른 그림이 나왔다. */
+type Item = { Icon: LucideIcon; label: string; sub?: string; count?: number | null; path: string }
 
 export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
   const { t } = useTranslation()
@@ -24,28 +27,28 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
       label: t('shopping.groupAssets', { defaultValue: '이용권·자산' }),
       items: [
         // 🛡️ 2026-07-02: sub '이용권·이용권'(치환 중복 카피 버그) → 지갑 실제 구성(이용권+교환권) 반영
-        { icon: '🎟️', label: t('shopping.voucher', { defaultValue: '내 이용권' }), sub: t('shopping.voucherSub', { defaultValue: '매장 이용권 · 교환권' }), count: counts.voucher, path: '/my-vouchers' },
-        { icon: '🎫', label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },
-        { icon: '🏨', label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), sub: t('shopping.myStaysSub', { defaultValue: '체크인 코드 / 유효기간' }), path: '/my-stays' },
-        { icon: '📚', label: t('shopping.digitalLibrary', { defaultValue: '디지털 보관함' }), sub: t('shopping.digitalLibrarySub', { defaultValue: '전자책·강의·가이드' }), path: '/my/digital' },
+        { Icon: Ticket, label: t('shopping.voucher', { defaultValue: '내 이용권' }), sub: t('shopping.voucherSub', { defaultValue: '매장 이용권 · 교환권' }), count: counts.voucher, path: '/my-vouchers' },
+        { Icon: TicketPercent, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },
+        { Icon: BedDouble, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), sub: t('shopping.myStaysSub', { defaultValue: '체크인 코드 / 유효기간' }), path: '/my-stays' },
+        { Icon: BookOpen, label: t('shopping.digitalLibrary', { defaultValue: '디지털 보관함' }), sub: t('shopping.digitalLibrarySub', { defaultValue: '전자책·강의·가이드' }), path: '/my/digital' },
       ],
     },
     {
       key: 'interest',
       label: t('shopping.groupInterest', { defaultValue: '관심' }),
       items: [
-        { icon: '❤️', label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), count: counts.wish, path: '/wishlist' },
-        { icon: '⭐', label: t('shopping.myFollows', { defaultValue: '내 단골 가게' }), sub: t('shopping.myFollowsSub', { defaultValue: '가게별 알림 설정' }), path: '/my/follows' },
-        { icon: '🔔', label: t('shopping.interestList', { defaultValue: '관심 맛집' }), sub: t('shopping.interestListSub', { defaultValue: '공구 오픈 알림 신청 목록' }), path: '/interest-list' },
+        { Icon: Heart, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), count: counts.wish, path: '/wishlist' },
+        { Icon: Star, label: t('shopping.myFollows', { defaultValue: '내 단골 가게' }), sub: t('shopping.myFollowsSub', { defaultValue: '가게별 알림 설정' }), path: '/my/follows' },
+        { Icon: Bell, label: t('shopping.interestList', { defaultValue: '관심 맛집' }), sub: t('shopping.interestListSub', { defaultValue: '공구 오픈 알림 신청 목록' }), path: '/interest-list' },
       ],
     },
     {
       key: 'orders',
       label: t('shopping.groupOrders', { defaultValue: '주문·배송' }),
       items: [
-        { icon: '📦', label: t('shopping.orders', { defaultValue: '주문 내역' }), sub: t('shopping.ordersSub', { defaultValue: '최근 3개월' }), path: '/my-orders' },
-        { icon: '📍', label: t('userProfile.addressManage', { defaultValue: '배송지 관리' }), path: '/mypage/addresses' },
-        { icon: '📝', label: t('userProfile.myReviews', { defaultValue: '내 리뷰' }), path: '/my-reviews' },
+        { Icon: Package, label: t('shopping.orders', { defaultValue: '주문 내역' }), sub: t('shopping.ordersSub', { defaultValue: '최근 3개월' }), path: '/my-orders' },
+        { Icon: MapPin, label: t('userProfile.addressManage', { defaultValue: '배송지 관리' }), path: '/mypage/addresses' },
+        { Icon: PenLine, label: t('userProfile.myReviews', { defaultValue: '내 리뷰' }), path: '/my-reviews' },
       ],
     },
   ]
@@ -69,7 +72,7 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
                 onClick={() => navigate(item.path)}
                 className={`w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06] ${i ? 'border-t border-black/[0.04] dark:border-white/[0.05]' : ''}`}
               >
-                <span className="text-lg" aria-hidden="true">{item.icon}</span>
+                <item.Icon className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] text-gray-900 dark:text-white font-medium">{item.label}</p>
                   {item.sub && <p className="text-[10px] text-gray-900 dark:text-white/45 mt-0.5">{item.sub}</p>}

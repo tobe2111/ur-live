@@ -155,7 +155,7 @@ export default function CouponClaimPage() {
 
         {status === 'success' && coupon && (
           <div className={`transition-all duration-700 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <div className="w-24 h-24 mx-auto bg-gradient-to-br from-gray-700 to-gray-700 rounded-full flex items-center justify-center mb-5 shadow-lg shadow-pink-200 animate-bounce">
+            <div className="w-24 h-24 mx-auto bg-gray-700 rounded-full flex items-center justify-center mb-5 shadow-lg shadow-pink-200 animate-bounce">
               <Gift className="w-12 h-12 text-white" />
             </div>
 

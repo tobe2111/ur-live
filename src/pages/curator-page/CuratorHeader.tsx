@@ -55,6 +55,8 @@ interface CuratorHeaderProps {
   onCuratorUpdate?: (next: Partial<CuratorHeaderProps['curator']>) => void
 }
 
+import HeaderMarquee from './HeaderMarquee'
+
 export default function CuratorHeader({
   curator,
   isOwner,
@@ -116,7 +118,6 @@ export default function CuratorHeader({
   // 🎨 2026-06-19 마퀴 액센트 색 (소유자 조정). 비면 기본 중립 회색(마퀴 바는 면적이 커 로즈=면 강조
   //   '10% 이하' 룰 위배라 중립 유지 — 브랜드 로즈는 폴백 배너 그라데이션·행동 요소에만).
   const ACCENT_DEFAULT = '#6b7280'
-  const ACCENT_PRESETS = ['#6b7280', '#4b5563', '#374151', '#1f2937', '#0E9F6E', '#111827']
   const accentColor = (curator.accent && /^#[0-9A-Fa-f]{6}$/.test(curator.accent)) ? curator.accent : ACCENT_DEFAULT
   // 액센트 밝기로 글자색 자동 대비 (밝으면 잉크, 어두우면 흰색).
   const accentText = (() => {
@@ -263,74 +264,18 @@ export default function CuratorHeader({
 
   return (
     <header className="bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446]">
-      {/* ① 흐르는 마퀴(헤드라인) — 최상단, 풀블리드 */}
-      <div className="max-w-3xl mx-auto">
-        {editingHeadline ? (
-          <div className="px-3 py-2 space-y-2" style={{ background: accentColor }}>
-            <div className="flex items-center gap-2">
-              <input
-                autoFocus
-                value={headlineVal}
-                onChange={(e) => setHeadlineVal(e.target.value.slice(0, 80))}
-                onKeyDown={(e) => e.key === 'Enter' && saveHeadline()}
-                placeholder="흐르는 한 줄 공지 (예: 신상 입고 · 무료배송 이벤트)"
-                maxLength={80}
-                className="flex-1 min-w-0 bg-white/20 text-white placeholder:text-white/70 text-[12.5px] font-bold px-2.5 py-1.5 rounded-lg outline-none"
-              />
-              <button onClick={saveHeadline} aria-label="저장" className="shrink-0 p-1.5 bg-white rounded-lg active:scale-95" style={{ color: accentColor }}><Check className="w-4 h-4" /></button>
-              <button onClick={() => { setEditingHeadline(false); setHeadlineVal(curator.headline || '') }} aria-label="취소" className="shrink-0 p-1.5 bg-white/20 rounded-lg text-white active:scale-95"><X className="w-4 h-4" /></button>
-            </div>
-            {/* 색상 조정 — 프리셋 스와치 + 커스텀 컬러 */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10.5px] font-bold text-white/80 mr-0.5">색상</span>
-              {ACCENT_PRESETS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => saveAccent(c)}
-                  aria-label={`색상 ${c}`}
-                  className={`w-5 h-5 rounded-full border-2 ${accentColor.toLowerCase() === c.toLowerCase() ? 'border-white' : 'border-white/40'} active:scale-90`}
-                  style={{ background: c }}
-                />
-              ))}
-              <label className="w-5 h-5 rounded-full border-2 border-white/40 overflow-hidden cursor-pointer relative ml-0.5" title="직접 선택" style={{ background: 'conic-gradient(red,orange,yellow,green,blue,violet,red)' }}>
-                <input type="color" value={accentColor} onChange={(e) => saveAccent(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" />
-              </label>
-            </div>
-          </div>
-        ) : curator.headline ? (
-          <div className="relative overflow-hidden" style={{ background: accentColor, color: accentText }}>
-            <div className="animate-marquee py-1.5">
-              {[0, 1].map((copy) => (
-                <div key={copy} className="flex shrink-0" aria-hidden={copy === 1}>
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <span key={i} className="px-7 text-[12px] font-bold tracking-wide whitespace-nowrap">
-                      {curator.headline}
-                    </span>
-                  ))}
-                </div>
-              ))}
-            </div>
-            {isOwner && (
-              <button
-                onClick={() => { setEditingHeadline(true); setHeadlineVal(curator.headline || '') }}
-                aria-label="헤드라인 편집"
-                className="absolute top-1/2 right-2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-black/25 backdrop-blur flex items-center justify-center active:scale-90"
-              >
-                <Pencil className="w-3 h-3 text-white" />
-              </button>
-            )}
-          </div>
-        ) : isOwner ? (
-          <button
-            onClick={() => { setEditingHeadline(true); setHeadlineVal('') }}
-            className="w-full text-[11px] font-bold py-1.5 active:opacity-80"
-            style={{ background: `${accentColor}1A`, color: accentColor }}
-          >
-            + 흐르는 헤드라인 추가
-          </button>
-        ) : null}
-      </div>
+      <HeaderMarquee
+        curator={curator}
+        isOwner={isOwner}
+        accentColor={accentColor}
+        accentText={accentText}
+        editingHeadline={editingHeadline}
+        setEditingHeadline={setEditingHeadline}
+        headlineVal={headlineVal}
+        setHeadlineVal={setHeadlineVal}
+        saveHeadline={saveHeadline}
+        saveAccent={saveAccent}
+      />
 
       {/* ② 풀블리드 배너 히어로 — 화면 가득(좌우 여백 0) + 하단 그라데이션으로 페이지에 녹아듦 */}
       <div className="max-w-3xl mx-auto">
@@ -481,7 +426,7 @@ export default function CuratorHeader({
               className={`text-[13.5px] text-gray-600 dark:text-gray-300 mt-2 leading-relaxed whitespace-pre-line max-w-md mx-auto ${isOwner ? 'cursor-pointer' : ''}`}
               onClick={() => isOwner && setEditingField('bio')}
             >
-              {curator.bio || (isOwner ? '한 줄 소개를 입력해주세요 ✎' : '')}
+              {curator.bio || (isOwner ? '한 줄 소개를 입력해주세요' : '')}
             </p>
           )}
 

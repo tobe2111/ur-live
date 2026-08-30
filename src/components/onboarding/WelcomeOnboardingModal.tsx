@@ -15,7 +15,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { X, Gift, Heart, Bell, Check, ChevronRight, Sparkles } from 'lucide-react'
+import { Baby, Bell, Cake, Check, ChevronRight, Dumbbell, Gift, Heart, Home, PawPrint, Scissors, Shirt, Sparkle, Sparkles, Utensils, X } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
@@ -34,15 +34,15 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
   const { t } = useTranslation()
 
   const CATEGORIES = [
-    { key: 'meal_voucher', label: t('welcomeOnboarding.catMealVoucher', { defaultValue: '맛집 이용권' }), emoji: '🍽️' },
-    { key: 'beauty_voucher', label: t('welcomeOnboarding.catBeautyVoucher', { defaultValue: '뷰티' }), emoji: '💇' },
-    { key: 'health_voucher', label: t('welcomeOnboarding.catHealthVoucher', { defaultValue: '헬스·웰니스' }), emoji: '💪' },
-    { key: 'fashion', label: t('welcomeOnboarding.catFashion', { defaultValue: '패션' }), emoji: '👗' },
-    { key: 'beauty_product', label: t('welcomeOnboarding.catBeautyProduct', { defaultValue: '화장품' }), emoji: '💄' },
-    { key: 'food_product', label: t('welcomeOnboarding.catFoodProduct', { defaultValue: '식품·간식' }), emoji: '🍰' },
-    { key: 'home', label: t('welcomeOnboarding.catHome', { defaultValue: '리빙' }), emoji: '🏠' },
-    { key: 'pet', label: t('welcomeOnboarding.catPet', { defaultValue: '반려동물' }), emoji: '🐶' },
-    { key: 'kids', label: t('welcomeOnboarding.catKids', { defaultValue: '유아·아동' }), emoji: '👶' },
+    { key: 'meal_voucher', label: t('welcomeOnboarding.catMealVoucher', { defaultValue: '맛집 이용권' }), Icon: Utensils },
+    { key: 'beauty_voucher', label: t('welcomeOnboarding.catBeautyVoucher', { defaultValue: '뷰티' }), Icon: Scissors },
+    { key: 'health_voucher', label: t('welcomeOnboarding.catHealthVoucher', { defaultValue: '헬스·웰니스' }), Icon: Dumbbell },
+    { key: 'fashion', label: t('welcomeOnboarding.catFashion', { defaultValue: '패션' }), Icon: Shirt },
+    { key: 'beauty_product', label: t('welcomeOnboarding.catBeautyProduct', { defaultValue: '화장품' }), Icon: Sparkle },
+    { key: 'food_product', label: t('welcomeOnboarding.catFoodProduct', { defaultValue: '식품·간식' }), Icon: Cake },
+    { key: 'home', label: t('welcomeOnboarding.catHome', { defaultValue: '리빙' }), Icon: Home },
+    { key: 'pet', label: t('welcomeOnboarding.catPet', { defaultValue: '반려동물' }), Icon: PawPrint },
+    { key: 'kids', label: t('welcomeOnboarding.catKids', { defaultValue: '유아·아동' }), Icon: Baby },
   ]
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [selectedCats, setSelectedCats] = useState<string[]>([])
@@ -172,7 +172,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
 
               {/* 🛡️ 2026-05-20: 신규 가입 보너스 3000딜 — 자동 적립 완료 카드 (bonusAmount > 0 일 때만). */}
               {bonusAmount > 0 && (
-                <div className="bg-gradient-to-br from-gray-50 to-gray-50 border border-amber-200 rounded-2xl p-5 mt-6 text-left">
+                <div className="bg-gray-50 border border-amber-200 rounded-2xl p-5 mt-6 text-left">
                   <div className="flex items-start gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center shrink-0 shadow-md">
                       <Sparkles className="w-6 h-6 text-white" />
@@ -190,7 +190,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                 </div>
               )}
 
-              <div className="bg-gradient-to-br from-gray-50 to-gray-50 border border-pink-200 rounded-2xl p-5 mt-6 text-left">
+              <div className="bg-gray-50 border border-pink-200 rounded-2xl p-5 mt-6 text-left">
                 <div className="flex items-start gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-pink-500 flex items-center justify-center shrink-0 shadow-md">
                     <Gift className="w-6 h-6 text-white" />
@@ -241,7 +241,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                           : 'bg-white dark:bg-[#0F151D] border-gray-200 dark:border-[#2A3446]'
                       }`}
                     >
-                      <span className="text-2xl">{c.emoji}</span>
+                      <c.Icon className="w-6 h-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
                       <span className={`text-[11px] font-bold ${selected ? 'text-pink-600' : 'text-gray-700 dark:text-gray-200'}`}>
                         {c.label}
                       </span>

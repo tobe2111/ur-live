@@ -11,21 +11,7 @@ import SellerLayout from '@/components/SellerLayout'
 import SellerProductTabs from '@/components/seller/SellerProductTabs'
 import { DashboardPageHeader, DashboardEmptyState, DashboardLoading } from '@/components/dashboard'
 import { getSellerId } from '@/lib/seller-auth'
-import {
-  Package,
-  Plus,
-  Zap,
-  Edit,
-  Trash2,
-  Eye,
-  EyeOff,
-  Loader2,
-  Image as ImageIcon,
-  DollarSign,
-  Box,
-  Download,
-  Upload
-} from 'lucide-react'
+import { Box, DollarSign, Download, Edit, Eye, EyeOff, Image as ImageIcon, Loader2, Package, Plus, ShoppingBag, Ticket, Trash2, Upload, Zap } from 'lucide-react'
 import { downloadSellerTemplate } from '@/utils/product-template'
 import BulkUploadModal from '@/components/BulkUploadModal'
 import { formatNumber } from '@/utils/format'
@@ -239,7 +225,7 @@ export default function SellerProductsPage() {
                 myKind === 'product' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-900'
               }`}
             >
-              🛍️ {t('seller.onlineProductsTab', { defaultValue: '온라인 상품' })} <span className="ml-1 opacity-70">{myOnline.length}</span>
+              <ShoppingBag className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />{t('seller.onlineProductsTab', { defaultValue: '온라인 상품' })} <span className="ml-1 opacity-70">{myOnline.length}</span>
             </button>
             <button
               onClick={() => setMyKind('voucher')}
@@ -247,7 +233,7 @@ export default function SellerProductsPage() {
                 myKind === 'voucher' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-900'
               }`}
             >
-              🎟️ {t('seller.vouchersTab', { defaultValue: '이용권' })} <span className="ml-1 opacity-70">{myVouchers.length}</span>
+              <Ticket className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />{t('seller.vouchersTab', { defaultValue: '이용권' })} <span className="ml-1 opacity-70">{myVouchers.length}</span>
             </button>
           </div>
         )}

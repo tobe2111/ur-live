@@ -6,20 +6,21 @@
  */
 
 import { Link } from 'react-router-dom'
+import { Megaphone, Store } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 const CHOICES = [
   {
     to: '/store/new',
-    emoji: '🏪',
+    Icon: Store,
     title: '내 가게 팔기',
     desc: '카카오맵에서 우리 가게를 찾아 등록하면, 이용권을 올리고 손님을 모을 수 있어요. 매출은 현금으로 정산받습니다.',
     cta: '내 가게 등록하기',
   },
   {
     to: '/login',
-    emoji: '🎤',
+    Icon: Megaphone,
     title: '딜 사고 소개하기',
     desc: '별도 가입 없이 로그인만 하면 시작! 동네 딜을 사고, 마음에 든 딜은 내 유어샵에 담아 소개하면 됩니다.',
     cta: '로그인하고 시작',
@@ -44,7 +45,7 @@ export default function JoinChoicePage() {
               >
                 <div className="flex items-center gap-4">
                   <div className="shrink-0 w-12 h-12 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-2xl">
-                    {ch.emoji}
+                    {<ch.Icon className="w-7 h-7 text-gray-500 dark:text-gray-400" aria-hidden="true" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-white">{ch.title}</p>

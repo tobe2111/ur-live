@@ -2,13 +2,7 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  ChevronDown,
-  Sparkles,
-  Plus,
-  MapPin,
-  ChevronRight,
-} from 'lucide-react'
+import { BedDouble, ChevronDown, ChevronRight, Dumbbell, MapPin, PartyPopper, Plus, Scissors, Sparkles, Utensils } from 'lucide-react'
 import api from '@/lib/api'
 import { safeTime } from '@/utils/safe-date'
 import SEO from '@/components/SEO'
@@ -18,6 +12,7 @@ import GroupBuyGridCard from './group-buy-list/GroupBuyGridCard'
 import CurationStrip from './group-buy-list/CurationStrip'
 import CommunityGroupBuyCard from './group-buy-list/CommunityGroupBuyCard'
 import EmptyShowcase from './group-buy-list/EmptyShowcase'
+import type { ShowcaseCard } from './group-buy-list/EmptyShowcase'
 import SortBar from './group-buy-list/SortBar'
 import CategoryTabs from './group-buy-list/CategoryTabs'
 import SearchBar from './group-buy-list/SearchBar'
@@ -89,20 +84,20 @@ function readSsrGroupBuy(): GroupBuyProduct[] | null {
 
 // 🧭 2026-06-17 (사용자 요청 A): 빈 화면을 선택 카테고리에 맞춰 — 부제목 + "곧 오픈" 쇼케이스 카드.
 //   특정 카테고리 선택 시 해당 카드 1개만(+카테고리 부제목), 전체/일반은 4종 전부 노출.
-const CAT_EMPTY_META: Partial<Record<CategoryFilter, { noun: string; card: { emoji: string; label: string; desc: string } }>> = {
-  meal_voucher:     { noun: '맛집', card: { emoji: '🍽️', label: '이용권 공구', desc: '맛집 단체 할인' } },
-  beauty_voucher:   { noun: '미용', card: { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' } },
-  health_voucher:   { noun: '미용', card: { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' } },
-  stay_voucher:     { noun: '숙소', card: { emoji: '🏨', label: '숙박 공구', desc: '펜션·호텔 단체' } },
-  etc_voucher:      { noun: '기타', card: { emoji: '🎯', label: '기타 공구', desc: '헬스·펫·액티비티' } },
-  pet_voucher:      { noun: '기타', card: { emoji: '🎯', label: '기타 공구', desc: '헬스·펫·액티비티' } },
-  activity_voucher: { noun: '기타', card: { emoji: '🎯', label: '기타 공구', desc: '헬스·펫·액티비티' } },
+const CAT_EMPTY_META: Partial<Record<CategoryFilter, { noun: string; card: ShowcaseCard }>> = {
+  meal_voucher:     { noun: '맛집', card: { Icon: Utensils, label: '이용권 공구', desc: '맛집 단체 할인' } },
+  beauty_voucher:   { noun: '미용', card: { Icon: Scissors, label: '뷰티 공구', desc: '시술 공동 예약' } },
+  health_voucher:   { noun: '미용', card: { Icon: Scissors, label: '뷰티 공구', desc: '시술 공동 예약' } },
+  stay_voucher:     { noun: '숙소', card: { Icon: BedDouble, label: '숙박 공구', desc: '펜션·호텔 단체' } },
+  etc_voucher:      { noun: '기타', card: { Icon: PartyPopper, label: '기타 공구', desc: '헬스·펫·액티비티' } },
+  pet_voucher:      { noun: '기타', card: { Icon: PartyPopper, label: '기타 공구', desc: '헬스·펫·액티비티' } },
+  activity_voucher: { noun: '기타', card: { Icon: PartyPopper, label: '기타 공구', desc: '헬스·펫·액티비티' } },
 }
 const DEFAULT_SHOWCASE = [
-  { emoji: '🍽️', label: '이용권 공구', desc: '맛집 단체 할인' },
-  { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' },
-  { emoji: '💪', label: '헬스 PT 공구', desc: '월 회원권 공동' },
-  { emoji: '🏨', label: '숙박 공구', desc: '펜션·호텔 단체' },
+  { Icon: Utensils, label: '이용권 공구', desc: '맛집 단체 할인' },
+  { Icon: Scissors, label: '뷰티 공구', desc: '시술 공동 예약' },
+  { Icon: Dumbbell, label: '헬스 PT 공구', desc: '월 회원권 공동' },
+  { Icon: BedDouble, label: '숙박 공구', desc: '펜션·호텔 단체' },
 ]
 
 export default function GroupBuyListPage() {

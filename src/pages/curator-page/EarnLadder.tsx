@@ -96,7 +96,7 @@ export default function EarnLadder({ curatorId, dealCount, pinCount }: Props) {
                 {dealCount === 0 && (
                   <>
                     <br />
-                    <span className="font-bold text-amber-700 dark:text-amber-400">⚠️ 계약이 없으면 아래 3단은 팔려도 0원입니다.</span>
+                    <span className="font-bold text-amber-700 dark:text-amber-400">계약이 없으면 아래 3단은 팔려도 0원입니다.</span>
                   </>
                 )}
               </p>

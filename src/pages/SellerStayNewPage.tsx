@@ -17,19 +17,19 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { Building2, MapPin, Clock, Shield, Sparkles, ArrowLeft } from 'lucide-react'
+import { ArrowLeft, BedDouble, BedSingle, Building2, Clock, Home, MapPin, Palmtree, Shield, Sparkles, Tent } from 'lucide-react'
 import ImageUpload from '@/components/upload/ImageUpload'
 
 interface Amenity { code: string; label_ko: string; icon_emoji: string; category: string }
 
 const PROPERTY_TYPES = [
-  { value: 'pension',    label: '펜션', emoji: '🏡' },
-  { value: 'hotel',      label: '호텔', emoji: '🏨' },
-  { value: 'motel',      label: '모텔', emoji: '🛏️' },
-  { value: 'guesthouse', label: '게스트하우스', emoji: '🏠' },
-  { value: 'resort',     label: '리조트', emoji: '🌴' },
-  { value: 'glamping',   label: '글램핑', emoji: '⛺' },
-  { value: 'house',      label: '주택/별장', emoji: '🏘️' },
+  { value: 'pension',    label: '펜션', Icon: Home },
+  { value: 'hotel',      label: '호텔', Icon: BedDouble },
+  { value: 'motel',      label: '모텔', Icon: BedSingle },
+  { value: 'guesthouse', label: '게스트하우스', Icon: Home },
+  { value: 'resort',     label: '리조트', Icon: Palmtree },
+  { value: 'glamping',   label: '글램핑', Icon: Tent },
+  { value: 'house',      label: '주택/별장', Icon: Building2 },
 ] as const
 
 const CANCELLATION_POLICIES = [
@@ -232,7 +232,7 @@ export default function SellerStayNewPage() {
                         : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                   >
-                    <div className="text-xl">{p.emoji}</div>
+                    <p.Icon className="w-5 h-5 mx-auto text-gray-500" aria-hidden="true" />
                     <div className={`text-xs font-bold mt-1 ${form.property_type === p.value ? 'text-blue-700' : 'text-gray-900'}`}>
                       {p.label}
                     </div>

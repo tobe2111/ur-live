@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { BedDouble } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import SiteFooter from '@/components/main/SiteFooter'
@@ -166,7 +167,7 @@ export default function PcHomePage() {
               to="/stays"
               className="flex items-center justify-between mb-4 px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-[#2A3446] hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors"
             >
-              <span className="text-[13px] font-bold text-gray-900 dark:text-white">🏨 날짜·인원으로 숙소 검색하기</span>
+              <span className="text-[13px] font-bold text-gray-900 dark:text-white"><BedDouble className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />날짜·인원으로 숙소 검색하기</span>
               <span className="text-[13px] text-gray-500 dark:text-gray-400">체크인/체크아웃 지정 →</span>
             </Link>
           )}

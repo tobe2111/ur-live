@@ -119,7 +119,7 @@ function PhoneDetail() {
           <p className="text-[13px] font-extrabold text-gray-900 mt-2.5 leading-snug">프라이빗 네일 아트 2시간 이용권</p>
           <p className="text-[10px] text-gray-500 mt-1.5 leading-relaxed">매장에서 QR로 바로 사용하는 이용권이에요. 온라인 할인가로 미리 준비하세요~</p>
           <div className="mt-2.5 rounded-xl overflow-hidden border border-gray-100">
-            <div className="h-16 w-full grid place-items-center bg-gradient-to-br from-emerald-50 to-sky-50">
+            <div className="h-16 w-full grid place-items-center bg-emerald-50">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0ea5a0" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="2.6"/></svg>
             </div>
           </div>

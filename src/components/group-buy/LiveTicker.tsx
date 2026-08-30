@@ -10,6 +10,7 @@
  *   - 페이지 hidden 시 polling/rotation 일시정지 (배터리)
  */
 import { useEffect, useState } from 'react'
+import { BedDouble, Dumbbell, PartyPopper, PawPrint, Scissors, ShoppingBag, Ticket, Utensils, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { parseUTCDate } from '@/utils/date'
@@ -26,10 +27,11 @@ interface TickerEntry {
   created_at: string
 }
 
-const CATEGORY_EMOJI: Record<string, string> = {
-  meal_voucher: '🍽️', beauty_voucher: '💇', health_voucher: '💪',
-  pet_voucher: '🐶', stay_voucher: '🏨', activity_voucher: '🎯',
-  etc_voucher: '🎯', general: '🛍️',
+// 🖊️ 2026-08-30: 이모지 → 선 아이콘.
+const CATEGORY_ICON: Record<string, LucideIcon> = {
+  meal_voucher: Utensils, beauty_voucher: Scissors, health_voucher: Dumbbell,
+  pet_voucher: PawPrint, stay_voucher: BedDouble, activity_voucher: PartyPopper,
+  etc_voucher: Ticket, general: ShoppingBag,
 }
 
 function timeAgo(iso: string): string {
@@ -91,7 +93,7 @@ export default function LiveTicker({ className = '' }: { className?: string }) {
         <img src={e.avatar} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" loading="lazy" />
       ) : (
         <div className="w-6 h-6 rounded-full bg-gradient-to-br from-gray-300 to-gray-700 shrink-0 flex items-center justify-center text-[10px]">
-          {CATEGORY_EMOJI[e.category] || '🎫'}
+          {(() => { const I = CATEGORY_ICON[e.category] || Ticket; return <I className="w-3.5 h-3.5" aria-hidden="true" /> })()}
         </div>
       )}
 

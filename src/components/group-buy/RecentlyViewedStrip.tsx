@@ -8,6 +8,7 @@
  * 최대 12개 유지.
  */
 import { useEffect, useState } from 'react'
+import { History } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
@@ -49,7 +50,7 @@ export default function RecentlyViewedStrip() {
   return (
     <section className="mb-6">
       <div className="flex items-baseline justify-between mb-2 px-1">
-        <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white tracking-tight">📍 최근 본 공구</h3>
+        <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white tracking-tight"><History className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />최근 본 공구</h3>
         <span className="text-[10px] text-gray-400">{items.length}개</span>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 lg:-mx-8 px-4 lg:px-8 scrollbar-hide snap-x snap-mandatory">

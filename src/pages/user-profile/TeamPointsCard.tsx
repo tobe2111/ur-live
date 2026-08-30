@@ -2,6 +2,7 @@
  * 🛡️ 2026-05-01: TD-018 분할 — UserProfilePage 의 딜 잔액 카드.
  */
 import { useEffect, useState } from 'react'
+import { ScrollText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
@@ -85,7 +86,7 @@ export default function TeamPointsCard() {
             onClick={() => navigate('/my-deal-history')}
             className="py-2 text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-white/[0.06] hover:bg-gray-100 dark:hover:bg-white/[0.12] rounded-lg border border-gray-200 dark:border-[#2A3446] active:scale-[0.98] transition-all"
           >
-            📋 {t('my.dealHistory', { defaultValue: '사용 내역' })}
+            <ScrollText className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{t('my.dealHistory', { defaultValue: '사용 내역' })}
           </button>
         </div>
       </div>

@@ -32,9 +32,9 @@ import type { LiveStream, Product } from './seller-product-edit/types'
  * 조용히 바뀐다. 정규화 SSOT 는 `shared/constants/voucher-categories.ts`.
  */
 const LEGACY_VOUCHER_OPTIONS = [
-  { value: 'health_voucher', label: '💪 헬스 이용권 (구)' },
-  { value: 'pet_voucher', label: '🐶 반려 이용권 (구)' },
-  { value: 'activity_voucher', label: '🎯 액티비티 이용권 (구)' },
+  { value: 'health_voucher', label: '헬스 이용권 (구)' },
+  { value: 'pet_voucher', label: '반려 이용권 (구)' },
+  { value: 'activity_voucher', label: '액티비티 이용권 (구)' },
 ] as const
 
 export default function SellerProductEditPage() {
@@ -398,10 +398,10 @@ export default function SellerProductEditPage() {
               {/* 🐛 2026-08-22: 이용권이 `meal_voucher` 하나뿐이라, 뷰티/숙박/기타 이용권을 열면
                   select 에 **일치하는 option 이 없어** 빈칸으로 보였다. 그 상태에서 다른 값을
                   한 번만 건드리면 카테고리가 조용히 바뀐다(= 소비자 피드에서 사라진다). */}
-              <option value="meal_voucher">🍽️ 식사 이용권</option>
-              <option value="beauty_voucher">💇 뷰티 이용권</option>
-              <option value="stay_voucher">🏨 숙박 이용권</option>
-              <option value="etc_voucher">🎯 기타 이용권</option>
+              <option value="meal_voucher">식사 이용권</option>
+              <option value="beauty_voucher">뷰티 이용권</option>
+              <option value="stay_voucher">숙박 이용권</option>
+              <option value="etc_voucher">기타 이용권</option>
               {/* 레거시 카테고리 — 기존 상품이 갖고 있으면 그대로 보이게(정규화는 서버 SSOT 담당). */}
               {LEGACY_VOUCHER_OPTIONS.filter((o) => o.value === formData.category).map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>

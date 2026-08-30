@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Search, X, Check, Plus, Loader2 } from 'lucide-react'
+import { ArrowLeft, Check, Loader2, Plus, Search, X } from 'lucide-react'
 import api from '@/lib/api'
 import { curatorApi } from '@/features/curator/api/curator-api'
 import { seededColor } from '@/utils/card-gradient'
@@ -339,7 +339,7 @@ function NoteModal({ pinId, productName, onClose }: { pinId: number; productName
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full sm:max-w-md bg-white dark:bg-[#1A2334] rounded-t-3xl sm:rounded-3xl p-5 pb-7 animate-slideUp">
         <div className="flex items-start gap-2 mb-1">
-          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white flex-1">✓ 유어샵에 추가됨</span>
+          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white flex-1"><Check className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />유어샵에 추가됨</span>
           <button onClick={onClose} aria-label="닫기" className="shrink-0 w-7 h-7 -mt-0.5 -mr-1 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <X className="w-4 h-4" />
           </button>

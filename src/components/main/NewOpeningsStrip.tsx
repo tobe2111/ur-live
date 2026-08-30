@@ -5,6 +5,7 @@
  *   SSR/로딩 잠금 무접촉: 홈 슬롯·피드와 독립된 additive 섹션(기프티콘 entry 와 동일 카드 톤).
  */
 import { useEffect, useState } from 'react'
+import { BedDouble, Coffee, Droplets, Dumbbell, GraduationCap, Mic, PawPrint, Pill, Scissors, Sparkle, Stethoscope, Store, Utensils, type LucideIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
@@ -17,9 +18,11 @@ const dDay = (ymd: string | null): string => {
   const n = Math.max(0, Math.floor((Date.now() - t) / 86400_000))
   return n <= 1 ? 'NEW' : `D+${n}`
 }
-const CAT_EMOJI: Record<string, string> = {
-  '일반음식점': '🍽️', '휴게음식점': '☕', '미용업': '💇', '숙박업': '🏨', '병원': '🏥', '학원': '🎓',
-  '약국': '💊', '동물병원': '🐾', '이용업': '💈', '목욕장업': '🧖', '체력단련장': '💪', '노래연습장': '🎤',
+// 🖊️ 2026-08-30: 업종 이모지 → 선 아이콘(키는 인허가 업종명 그대로 — 정확일치라 다듬지 말 것).
+const CAT_ICON: Record<string, LucideIcon> = {
+  '일반음식점': Utensils, '휴게음식점': Coffee, '미용업': Scissors, '숙박업': BedDouble,
+  '병원': Stethoscope, '학원': GraduationCap, '약국': Pill, '동물병원': PawPrint,
+  '이용업': Scissors, '목욕장업': Droplets, '체력단련장': Dumbbell, '노래연습장': Mic,
 }
 
 export default function NewOpeningsStrip() {
@@ -40,7 +43,7 @@ export default function NewOpeningsStrip() {
   return (
     <section className="ur-content-wide px-4 lg:px-8 mt-5">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">🎉 {t('home.newOpenings', { defaultValue: '우리 동네 새 가게' })}</h2>
+        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white"><Sparkle className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />{t('home.newOpenings', { defaultValue: '우리 동네 새 가게' })}</h2>
         <button onClick={() => navigate('/new-openings')} className="text-[12px] text-gray-500 dark:text-gray-400">
           {t('common.viewAll', { defaultValue: '전체 보기' })} ›
         </button>
@@ -50,7 +53,7 @@ export default function NewOpeningsStrip() {
           <button key={i} onClick={() => navigate('/new-openings')}
             className="shrink-0 w-[150px] text-left rounded-xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-3 active:scale-[0.98] transition-transform">
             <div className="flex items-center justify-between gap-1">
-              <span className="text-[16px]">{CAT_EMOJI[o.category || ''] || '🏪'}</span>
+              {(() => { const I = CAT_ICON[o.category || ''] || Store; return <I className="w-4 h-4 text-gray-400" aria-hidden="true" /> })()}
               <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${dDay(o.apv_perm_ymd) === 'NEW' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300' : 'bg-gray-100 text-gray-500 dark:bg-[#243049] dark:text-gray-400'}`}>{dDay(o.apv_perm_ymd) || '개업'}</span>
             </div>
             <div className="mt-1.5 text-[12px] font-semibold text-gray-900 dark:text-white truncate">{o.biz_name}</div>

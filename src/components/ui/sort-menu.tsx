@@ -4,11 +4,15 @@
  *   onChange 로 상위가 URL/state 갱신 → 재fetch 트리거 (배선은 상위 책임, 여기는 순수 UI).
  */
 import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, type LucideIcon } from 'lucide-react'
 
 export interface SortOptionItem<T extends string> {
   key: T
   label: string
+  /** 🖊️ 2026-08-30: 선택적 선 아이콘. 이전엔 라벨 문자열에 이모지를 붙여 썼는데
+   *  (`'🔥 인기순'`), OS 마다 다른 그림이 나오고 같은 버튼의 `ChevronDown` 과 언어가
+   *  갈렸다. 이 컴포넌트는 커스텀 드롭다운이라 SVG 를 넣을 수 있다 — 넣는다. */
+  Icon?: LucideIcon
 }
 
 export function SortMenu<T extends string>({
@@ -34,6 +38,7 @@ export function SortMenu<T extends string>({
         aria-expanded={open}
         className="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] px-3 py-1.5 text-[12px] font-bold text-gray-900 dark:text-white active:scale-[0.98] transition-transform"
       >
+        {current?.Icon && <current.Icon className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />}
         {current?.label}
         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -51,12 +56,13 @@ export function SortMenu<T extends string>({
                   key={o.key}
                   type="button"
                   onClick={() => { onChange(o.key); setOpen(false) }}
-                  className={`w-full text-left px-3.5 py-2.5 text-[13px] transition-colors ${
+                  className={`w-full text-left px-3.5 py-2.5 text-[13px] inline-flex items-center gap-2 transition-colors ${
                     selected
                       ? 'font-extrabold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-500/10'
                       : 'font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.06]'
                   }`}
                 >
+                  {o.Icon && <o.Icon className="w-3.5 h-3.5 shrink-0 opacity-70" aria-hidden="true" />}
                   {o.label}
                 </button>
               )

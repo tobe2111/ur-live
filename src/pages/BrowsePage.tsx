@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, ShoppingCart, Truck, ChevronLeft, SlidersHorizontal, ChevronDown, X, Map, List } from 'lucide-react'
+import { ChevronDown, ChevronLeft, Gift, List, Map, Package, Search, Shirt, ShoppingBag, ShoppingCart, SlidersHorizontal, Smartphone, Sofa, Soup, Sparkle, Truck, X } from 'lucide-react'
 import { captureTrackingFromUrl } from '@/lib/seller-tracking'
 import api from '@/lib/api'
 import SEO, { itemListJsonLd } from '@/components/SEO'
@@ -400,15 +400,15 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       <div className="border-b border-gray-100 dark:border-[#2A3446] overflow-x-auto scrollbar-hide">
         <div className="ur-content-wide flex px-4 lg:px-8 gap-3 py-3">
           {[
-            { key: 'all',          label: t('browse.categoryAll', { defaultValue: '전체' }),       emoji: '🛍️' },
+            { key: 'all',          label: t('browse.categoryAll', { defaultValue: '전체' }),       Icon: ShoppingBag },
             // 🏭 2026-06-04 (사용자 지적): 이용권/교환권은 쇼핑(/browse=실물상품)이 아닌 동네딜·교환권 영역 → 칩 제거.
-            { key: 'food',         label: t('browse.categoryFood', { defaultValue: '식품' }),      emoji: '🍱' },
-            { key: 'fashion',      label: t('browse.categoryFashion', { defaultValue: '패션' }),   emoji: '👗' },
-            { key: 'beauty',       label: t('browse.categoryBeauty', { defaultValue: '뷰티' }),    emoji: '💄' },
+            { key: 'food',         label: t('browse.categoryFood', { defaultValue: '식품' }),      Icon: Soup },
+            { key: 'fashion',      label: t('browse.categoryFashion', { defaultValue: '패션' }),   Icon: Shirt },
+            { key: 'beauty',       label: t('browse.categoryBeauty', { defaultValue: '뷰티' }),    Icon: Sparkle },
             // 🛒 2026-06-23 (대표 '카테고리별로 잘 나뉘어졌어?'): key 는 products.category 실제 저장값.
             //   '리빙'='lifestyle' / '디지털'='electronics' (이전 'living'/'digital' 은 저장값과 불일치 → 0개였음).
-            { key: 'lifestyle',    label: t('browse.categoryLiving', { defaultValue: '리빙' }),    emoji: '🛋️' },
-            { key: 'electronics',  label: t('browse.categoryDigital', { defaultValue: '디지털' }), emoji: '📱' },
+            { key: 'lifestyle',    label: t('browse.categoryLiving', { defaultValue: '리빙' }),    Icon: Sofa },
+            { key: 'electronics',  label: t('browse.categoryDigital', { defaultValue: '디지털' }), Icon: Smartphone },
           ].map(c => {
             const active = category === c.key || (c.key === 'all' && category === 'all')
             return (
@@ -421,7 +421,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md'
                     : 'bg-gray-100 dark:bg-[#1A2334]'
                 }`}>
-                  {c.emoji}
+                  {c.Icon && <c.Icon className="w-3.5 h-3.5" aria-hidden="true" />}
                 </div>
                 <span className={`text-[11px] font-bold ${
                   active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
