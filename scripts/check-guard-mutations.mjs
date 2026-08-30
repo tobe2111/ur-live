@@ -3402,9 +3402,10 @@ canvas {
   },
   {
     name: '두 사업 명단이 보류(연락처 없음)까지 셈',
-    file: 'src/features/marketing/api/company-breakdown.ts',
-    find: 'WHERE merged_into IS NULL AND active = 1',
-    replace: 'WHERE merged_into IS NULL',
+    // 📌 2026-08-31: 세그먼트 집계가 큐브 한 번 스캔에 흡수됐다 — 앵커만 옮긴다(계약 불변).
+    file: 'src/features/marketing/api/company-stats-cube.ts',
+    find: "merged_into IS NULL AND active = 1 AND category = '온라인판매'",
+    replace: "merged_into IS NULL AND category = '온라인판매'",
     test: 'src/tests/unit/ads-export-filter-parity.test.ts',
     why:
       '화면 맨 위의 두 숫자는 **"지금 제안을 보낼 수 있는 수"** 다. 보류(active=0 = 연락처 없어 제외된 행)를 ' +
@@ -3412,9 +3413,9 @@ canvas {
   },
   {
     name: '페이백 명단을 전화로도 셈(이메일 발송인데)',
-    file: 'src/features/marketing/api/company-breakdown.ts',
-    find: "SUM(CASE WHEN category = '온라인판매' AND email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS payback_ready",
-    replace: "SUM(CASE WHEN category = '온라인판매' AND phone IS NOT NULL THEN 1 ELSE 0 END) AS payback_ready",
+    file: 'src/features/marketing/api/company-stats-cube.ts',
+    find: "AND category = '온라인판매' AND email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS seg_payback",
+    replace: "AND category = '온라인판매' AND phone IS NOT NULL THEN 1 ELSE 0 END) AS seg_payback",
     test: 'src/tests/unit/ads-export-filter-parity.test.ts',
     why:
       '두 사업은 **도달 채널이 다르다** — 페이백은 이메일 발송이라 전화만 있는 행은 명단이 아니고, ' +
@@ -6068,6 +6069,96 @@ canvas {
     why:
       '소스 목록을 고정하면 새 수집기가 소스를 하나 더 만들었을 때 그 소스는 **한 번도 안 뽑힌다** — ' +
       '에러 없이, 통계에도 안 잡히고. 이 파일이 두 번 고친 사고가 정확히 그 모양이었다.',
+  },
+  {
+    name: '🔔 완료 감지 폴링이 다시 무거운 /stats 로 간다(버튼 한 번 1.19억 행)',
+    file: 'src/pages/admin/AdminPartnerPoolPage.tsx',
+    find: '        const d = await fetchRunStatus(u => api.get(u))',
+    replace: '        const d = await loadStats()',
+    test: 'src/tests/unit/partner-pool-run-status.test.ts',
+    why:
+      '화면 동작은 완전히 같다 — 완료 토스트도 똑같이 뜬다. 다만 5초마다 전수 집계 8번을 돌아 ' +
+      '버튼 한 번에 1.19억 행(D1 무료 한도의 24배)을 읽는다. 어디에도 에러가 안 난다.',
+  },
+  {
+    name: '🔔 폴링 응답에서 레인 하나가 빠진다(그 버튼만 조용히 감지 실패)',
+    file: 'src/features/marketing/api/partner-pool-run-status.ts',
+    find: "  { key: 'ads_mxsweep_stats', field: 'mx', wrap: true },",
+    replace: '',
+    test: 'src/tests/unit/partner-pool-run-status.test.ts',
+    why:
+      '한 레인의 상태가 응답에서 빠지면 그 버튼만 완료를 못 알아채고 "아직 진행 중"으로 끝난다. ' +
+      '작업은 실제로 성공했는데 화면만 모르는 상태라, 관리자가 같은 작업을 다시 누르게 된다.',
+  },
+  {
+    name: '🔔 폴링 서버가 키마다 왕복한다(분리한 이득이 사라진다)',
+    file: 'src/features/marketing/api/partner-pool-run-status.ts',
+    find: "    `SELECT key, value FROM platform_settings WHERE key IN (${keys.map(() => '?').join(',')})`,",
+    replace: "    'SELECT key, value FROM platform_settings',",
+    test: 'src/tests/unit/partner-pool-run-status.test.ts',
+    why:
+      '같은 값을 돌려주지만 platform_settings 를 통째로 읽는다. 폴링이 5초마다 도는 경로라 ' +
+      '"조금 더 읽는" 정도가 아니라 다시 곱셈이 된다 — 그리고 결과가 맞아서 아무도 모른다.',
+  },
+  {
+    name: '🧊 큐브가 needs_review 를 차원에서 유도한다(빈 문자열까지 세어 숫자가 틀어진다)',
+    file: 'src/features/marketing/api/company-stats-cube.ts',
+    find: "    SUM(CASE WHEN lead_type IS NULL OR lead_type = 'unknown' THEN 1 ELSE 0 END) AS needs_review,",
+    replace: '',
+    test: 'src/tests/unit/company-stats-cube.test.ts',
+    why:
+      '축 `lt` 는 빈 문자열도 unknown 으로 접지만 예전 needs_review 는 그걸 안 셌다. 유도로 바꾸면 ' +
+      '화면의 "분류 확인" 숫자가 조용히 커진다 — 실제로 이 구현에서 그렇게 틀렸고 유닛이 잡았다.',
+  },
+  {
+    name: '🧊 큐브 소스 집계가 병합행을 센다(보유율이 부풀어 잘못된 결론)',
+    file: 'src/features/marketing/api/company-stats-cube.ts',
+    find: '    if (num(r.live)) {\n      const cur = src.get(r.src)',
+    replace: '    if (true) {\n      const cur = src.get(r.src)',
+    test: 'src/tests/unit/company-source-contact-rate.test.ts',
+    why:
+      '예전 SQL 의 `WHERE merged_into IS NULL` 이 접기로 옮겨졌다. 빠지면 중복(병합된) 행이 다시 ' +
+      '세어져 수집원별 연락처 보유율이 부풀고, 그 표로 수집 전략을 정한다.',
+  },
+  {
+    name: '🧊 큐브 상한 20 이 사라진다(화면 표가 무한정 길어진다)',
+    file: 'src/features/marketing/api/company-stats-cube.ts',
+    find: '  const bySource = [...src.values()].sort((a, b) => b.n - a.n).slice(0, 20)',
+    replace: '  const bySource = [...src.values()].sort((a, b) => b.n - a.n)',
+    test: 'src/tests/unit/company-source-contact-rate.test.ts',
+    why:
+      '예전 SQL 의 LIMIT 20 이 접기로 옮겨졌다. 빠져도 숫자는 맞아서 아무도 모르지만 응답이 커지고 ' +
+      '화면 표가 예전과 달라진다(같은 클래스의 조용한 회귀).',
+  },
+  {
+    name: '📉 파트너 풀 통계가 캐시를 건너뛴다(화면 한 번에 331만 행 복귀)',
+    file: 'src/features/marketing/api/partner-pool.routes.ts',
+    find: 'getCompanyStatsCached(statsDb, fresh1, () => companyStats(statsDb))',
+    replace: '{ stats: await companyStats(statsDb), at: Date.now() }',
+    test: 'src/tests/unit/company-stats-cache.test.ts',
+    why:
+      '화면은 똑같이 동작하고 숫자도 맞다 — 다만 조회 1회가 331만 행이고, 레인 실행 뒤 5초마다 ' +
+      '36번 폴링하므로 버튼 한 번이 1.19억 행이 된다(D1 무료 한도의 24배). 에러가 안 난다.',
+  },
+  {
+    name: '📉 통계 캐시가 안 늙는다(화면 숫자가 조용히 굳는다)',
+    file: 'src/features/marketing/api/company-stats-cache.ts',
+    find: '  const age = nowMs - cached.at\n  return age < 0 || age >= COMPANY_STATS_TTL_MS',
+    replace: '  return false',
+    test: 'src/tests/unit/company-stats-cache.test.ts',
+    why:
+      '캐시가 영원히 신선하면 수집이 계속 돌아도 화면 숫자가 안 변한다. "수집이 멈췄나"로 오독하게 ' +
+      '되는데 실제로는 표시만 굳은 것이라, 대표가 잘못된 판단을 하게 만드는 종류의 조용한 오보다.',
+  },
+  {
+    name: '📉 쓰기 뒤 통계 캐시를 안 버린다(추가·삭제가 화면에 안 뜬다)',
+    file: 'src/features/marketing/api/partner-pool.routes.ts',
+    find: "app.use('*', invalidateStatsOnWrite(adsLeadsDb as never) as never)",
+    replace: '',
+    test: 'src/tests/unit/company-stats-cache.test.ts',
+    why:
+      '리드를 추가·삭제한 직후 화면이 그대로면 관리자는 "저장이 안 됐다"로 읽고 같은 작업을 반복한다. ' +
+      'TTL 이 결국 덮지만 그 5분 동안의 오해가 실제 중복 작업을 만든다.',
   },
   {
     name: '🐌 수집 크롤 인덱스에 source 를 키로 넣는다(정렬이 되살아난다)',

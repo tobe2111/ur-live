@@ -9,7 +9,8 @@
  *
  *   ⚠️ 수집 ≠ 발송 — 공개된 *비즈니스* 연락처만. 자동 발송 경로 부존재(✉는 mailto 초안만).
  */
-import { companyBreakdown, type CompanyDayInflow, type CompanySegments } from './company-breakdown'
+import { companyInflowByDay, type CompanyDayInflow, type CompanySegments } from './company-breakdown'
+import { COMPANY_CUBE_SQL, foldCube, type CubeRow } from './company-stats-cube'
 import type { Env } from '@/worker/types/env'
 import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
 import { hygieneStatements } from './company-lead-hygiene'
@@ -541,53 +542,22 @@ export interface SourceContactRate {
 
 export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStats; byCategory: Array<{ k: string; n: number }>; byDay: CompanyDayInflow[]; todayKst: string; segments: CompanySegments; byTier: Array<{ k: number | null; n: number }>; byLeadType: Array<{ k: string; n: number }>; agencyEmailFunnel: AgencyEmailFunnel; bySource: SourceContactRate[] }> {
   await ensureCompanySchema(DB)
-  const t = await DB.prepare(`SELECT
-      COUNT(*) AS total,
-      SUM(CASE WHEN (email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != '') THEN 1 ELSE 0 END) AS with_contact,
-      SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS with_email,
-      SUM(CASE WHEN active = 0 AND merged_into IS NULL THEN 1 ELSE 0 END) AS held_no_contact,
-      SUM(CASE WHEN merged_into IS NOT NULL THEN 1 ELSE 0 END) AS merged_away,
-      SUM(CASE WHEN status NOT IN ('new','rejected') THEN 1 ELSE 0 END) AS active_pipeline,
-      SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7,
-      SUM(CASE WHEN lead_type IS NULL OR lead_type = 'unknown' THEN 1 ELSE 0 END) AS needs_review
-    FROM ad_company_leads`).first<Record<string, number>>().catch(() => null)
-  const byCategory = (await DB.prepare("SELECT COALESCE(category,'?') AS k, COUNT(*) AS n FROM ad_company_leads GROUP BY category ORDER BY n DESC LIMIT 20").all<{ k: string; n: number }>().catch(() => null))?.results || []
-  const { seg, byDay, todayKst } = await companyBreakdown(DB)
-  const byTier = (await DB.prepare('SELECT tier AS k, COUNT(*) AS n FROM ad_company_leads GROUP BY tier ORDER BY (tier IS NULL) ASC, tier ASC').all<{ k: number | null; n: number }>().catch(() => null))?.results || []
-  const byLeadType = (await DB.prepare("SELECT COALESCE(NULLIF(lead_type,''),'unknown') AS k, COUNT(*) AS n FROM ad_company_leads GROUP BY 1 ORDER BY n DESC").all<{ k: string; n: number }>().catch(() => null))?.results || []
-  // 📧 대행사 이메일 퍼널(2026-07-27 대표 "대행사인데도 이메일 수집 안 되는 경우 있는지") — 미보유를 원인별로 분해:
-  //   site_no_email = 사이트는 있는데 이메일 미게시/크롤 대기(보강이 채울 수 있는 몫 + 폼·카톡만 쓰는 구조적 몫)
-  //   no_site      = 자체 사이트 미발견(지도·웹 어디에도 없음 — 공개된 이메일 자체가 없어 허위 0 원칙상 공란이 정답)
-  //   🔎 2026-07-28: '사이트만'을 **크롤 시도 여부**로 한 번 더 쪼갠다 — 이메일이 안 느는 원인이
-  //   "아직 시도 못 함(대기열)"인지 "시도했는데 이메일이 없음(구조적 한계)"인지 화면에서 즉시 구분.
-  // 📊 수집원별 연락처 보유율 — 위 SourceContactRate 주석 참조. 병합된 행은 제외(중복 계산 방지).
-  const bySource = (await DB.prepare(`SELECT COALESCE(NULLIF(source,''),'?') AS source, COUNT(*) AS n,
-      SUM(CASE WHEN phone IS NOT NULL AND phone != '' THEN 1 ELSE 0 END) AS with_phone,
-      SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS with_email,
-      SUM(CASE WHEN (phone IS NOT NULL AND phone != '') OR (email IS NOT NULL AND email != '') THEN 1 ELSE 0 END) AS with_any
-    FROM ad_company_leads WHERE merged_into IS NULL GROUP BY 1 ORDER BY n DESC LIMIT 20`)
-    .all<SourceContactRate>().catch(() => null))?.results || []
-
-  const af = await DB.prepare(`SELECT COUNT(*) AS total,
-      SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS with_email,
-      SUM(CASE WHEN (email IS NULL OR email = '') AND website IS NOT NULL AND website != '' THEN 1 ELSE 0 END) AS site_no_email,
-      SUM(CASE WHEN (email IS NULL OR email = '') AND website IS NOT NULL AND website != '' AND enrich_checked_at IS NOT NULL THEN 1 ELSE 0 END) AS site_tried,
-      SUM(CASE WHEN (email IS NULL OR email = '') AND (website IS NULL OR website = '') THEN 1 ELSE 0 END) AS no_site
-    FROM ad_company_leads WHERE category = '대행사' AND merged_into IS NULL`).first<Record<string, number>>().catch(() => null)
+  /**
+   * 🧊 **한 번의 스캔으로 전부** (2026-08-31). 예전엔 같은 39만 행 테이블을 **8번 훑었다** —
+   *   통제 실험으로 잰 값이 호출 1회 **3,317,537행**(D1 무료 한도의 66%). 여덟 쿼리가 전부 같은
+   *   행을 보고 다른 축으로 접을 뿐이라, 한 번 훑으며 묶고 코드에서 접는다.
+   *   설계·주의점은 `company-stats-cube.ts`, 예전 8쿼리와의 동치는 유닛이 SQLite 로 직접 대조한다.
+   */
+  const cubeRows = (await DB.prepare(COMPANY_CUBE_SQL).all<CubeRow>().catch(() => null))?.results || []
+  const cube = foldCube(cubeRows)
+  // 📅 일자별 유입만 별도 — 최근 14일 **범위 조회**라 성격이 다르다(큐브에 넣으면 축이 날짜만큼 늘어난다).
+  const { byDay, todayKst } = await companyInflowByDay(DB)
   return {
-    stats: {
-      total: Number(t?.total) || 0, with_contact: Number(t?.with_contact) || 0, with_email: Number(t?.with_email) || 0,
-      held_no_contact: Number(t?.held_no_contact) || 0,
-      merged_away: Number(t?.merged_away) || 0, // 중복 병합으로 접힌 행(삭제 아님 — 복원 가능)
-      active_pipeline: Number(t?.active_pipeline) || 0, recent7: Number(t?.recent7) || 0,
-      needs_review: Number(t?.needs_review) || 0,
-    },
-    byCategory, byDay, todayKst, byTier, byLeadType, bySource,
-    segments: seg,
-    agencyEmailFunnel: {
-      total: Number(af?.total) || 0, with_email: Number(af?.with_email) || 0,
-      site_no_email: Number(af?.site_no_email) || 0, site_tried: Number(af?.site_tried) || 0, no_site: Number(af?.no_site) || 0,
-    },
+    stats: cube.stats,
+    byCategory: cube.byCategory, byDay, todayKst, byTier: cube.byTier, byLeadType: cube.byLeadType,
+    bySource: cube.bySource as SourceContactRate[],
+    segments: cube.seg,
+    agencyEmailFunnel: cube.agencyEmailFunnel,
   }
 }
 

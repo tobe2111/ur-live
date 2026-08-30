@@ -23,7 +23,7 @@ import ReferralPanel from './partner-pool/ReferralPanel'
 import TradePanel from './partner-pool/TradePanel'
 import TierBreakdown from './partner-pool/TierBreakdown'
 import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo, type LocalDataInfo, type EnrichInfo, type EnrichRollupInfo, type KakaoSweepInfo, type RegistryMatchInfo } from './partner-pool/StatusLines'
-import { STAT_PICK, fmtRun, runStamp, parseStamp } from './partner-pool/job-completion'
+import { STAT_PICK, fmtRun, runStamp, parseStamp, fetchRunStatus } from './partner-pool/job-completion'
 import { FilterChip, ActionMenu } from './partner-pool/Controls'
 import CompanyKeywordManager, { type CompanyKeyword } from './partner-pool/CompanyKeywordManager'
 
@@ -231,14 +231,14 @@ export default function AdminPartnerPoolPage() {
       toast.success(`${label} 시작 — 완료되면 결과를 알려드립니다`, { duration: 3000 })
       for (let i = 0; i < maxPolls; i++) {
         await new Promise(res => setTimeout(res, 5000))
-        const d = await loadStats()
+        const d = await fetchRunStatus(u => api.get(u)) // 🔔 집계를 안 도는 경량 문(근거: job-completion.ts)
         const run = d ? STAT_PICK[path]?.(d) : null
         if (run && parseStamp(runStamp(run)) >= clickedAt - 20_000) {
           const summary = fmtRun(run)
           const err = (run as { diag?: { error?: string } }).diag?.error
           if (err) toast.error(`${label} 완료 — ⚠️ ${err}`, { duration: 12000 })
           else toast.success(`✅ ${label} 완료${summary ? ` — ${summary}` : ''}`, { duration: 10000 })
-          await loadLeads()
+          await Promise.all([loadStats(), loadLeads()]) // 완료 시점에만 무거운 집계를 새로 받는다
           return
         }
       }

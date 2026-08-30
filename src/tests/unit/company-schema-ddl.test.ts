@@ -22,7 +22,9 @@ describe('COMPANY_DDL', () => {
     // 2026-08-30(후속): 수집 크롤 대상 인덱스(`crawl_queue`) 추가로 25 → 26.
     //   스윕을 고친 뒤 라이브에서 회차마다 도는 쿼리를 전부 재 봤더니 같은 모양이 하나 더 있었다
     //   (15건 뽑으려고 402,363행). 근거·설계는 `company-ddl-indexes.ts` ④.
-    expect(COMPANY_DDL).toHaveLength(26)
+    // 2026-08-31: 일자별 유입 인덱스(`collected_at`) 추가로 26 → 27.
+    //   그 쿼리가 전수 스캔 + 정렬이었다(실측 461,191행 — 테이블보다 크다). 근거: company-ddl-indexes ⑤.
+    expect(COMPANY_DDL).toHaveLength(27)
   })
 
   it('두 테이블을 만든다 — 리드 본체 + 반송 억제', () => {

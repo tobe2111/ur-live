@@ -90,4 +90,14 @@ export const COMPANY_INDEX_DDL: readonly string[] = [
      (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC)
      WHERE merged_into IS NULL AND source IN ('local','webkr')
        AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '')`,
+  /**
+   * ⑤ **일자별 유입이 39만 행을 훑던 것** (2026-08-31).
+   *
+   * 화면 맨 위의 "요즘 얼마나 들어오나" 막대는 최근 14일만 보는데, `collected_at` 에 인덱스가 없어
+   * **전수 스캔 + 정렬**이었다(라이브 실측 461,191행 — 테이블보다 크다). 범위 조회이므로 인덱스가
+   * 그대로 먹는다.
+   * ⚠️ `merged_into IS NULL` 은 쿼리의 조건과 **같아야** 부분 인덱스가 쓰인다.
+   */
+  `CREATE INDEX IF NOT EXISTS idx_company_leads_collected_at ON ad_company_leads(collected_at)
+     WHERE merged_into IS NULL`,
 ]
