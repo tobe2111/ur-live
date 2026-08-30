@@ -8,8 +8,13 @@
  * 적립 경로 = 기존 인플루언서 정산 파이프라인 재사용 (새 시스템 X):
  *   influencer_attributions(source='store_intro', status='pending', available_at=+환불창) 1행
  *   → influencer-payout cron 이 T+7 성숙(pending→available) + influencer_balances 재집계
- *   → 사업자번호 有 3.3% / 無 8.8% 원천징수 후 현금 송금 (또는 딜).
- * 즉 "사업자면 현금, 아니면 딜" 분기는 기존 payout cron 이 처리 — 여기선 적립만.
+ *   → 사업자번호 有 3.3% / 無 8.8% 원천징수 후 현금 송금.
+ *
+ * 🩸 **2026-08-30 정정**: 이 자리에 오래 *"'사업자면 현금, 아니면 딜' 분기는 기존 payout cron 이
+ *   처리"* 라고 적혀 있었는데 **그런 분기는 없었다** — cron 은 현금 송금만 했다. 주석이 코드보다
+ *   앞서간 전형이고, 그 문장을 믿으면 "딜은 이미 되는구나" 로 오판한다.
+ *   실제 딜 지급은 2026-08-30 에 만들었다(대표 *"매장 영입도 딜로 쌓아줘"*):
+ *   `cron/influencer-payout.ts` 의 성숙 시점 블록, 게이트 `store_intro_payout_in_deal`(기본 OFF).
  *
  * 멱등: (influencer_id, order_id, source='store_intro') 이미 있으면 skip.
  * Fail-soft: 실패해도 결제 흐름 막지 않음.
