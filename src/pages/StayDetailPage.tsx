@@ -373,8 +373,14 @@ export default function StayDetailPage() {
           </button>
         </div>
 
-        {/* Title + meta — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번). */}
-        <div className="mb-5 lg:hidden">
+        {/* Title + meta — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번).
+            📏 2026-08-30 (대표 "사진이랑 밑에 몇성급 글자 사이의 여백이 부족해"): `mt-5`.
+            갤러리가 풀블리드가 되면서 `-mt-5` 로 부모의 위 패딩을 상쇄하는데, 그 상쇄가
+            **아래쪽 간격까지 없애 버린 게 아니라** 애초에 이 블록에 위 여백이 없었다 —
+            카드 안에 있을 땐 갤러리 자신의 여백이 대신해 줘서 안 보이던 문제다.
+            `lg:mt-0` 은 PC 에선 위에 DetailTitleHeader 가 따로 있어 이 블록이 아예 안 그려지지만,
+            의도를 남겨 둔다(모바일 전용 간격이라는 뜻). */}
+        <div className="mt-5 mb-5 lg:mt-0 lg:hidden">
           <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 mb-1">
             <span className="px-2 py-0.5 bg-gray-100 dark:bg-white/[0.06] rounded font-semibold">{propertyTypeLabel(stay.property_type)}</span>
             {/* ⭐ 등급을 별 아이콘 N개로 그렸었다. 브랜드 팔레트에서 amber 는 무채색으로
