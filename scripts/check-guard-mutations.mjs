@@ -85,8 +85,8 @@ const MUTATIONS = [
   {
     name: '평면 그라디언트가 다시 들어온다(단색인데 그라디언트인 척)',
     file: 'src/pages/user-profile/TeamPointsCard.tsx',
-    find: '      <div className="bg-ink dark:bg-[#1A2334] rounded-2xl px-5 py-4">',
-    replace: '      <div className="bg-gradient-to-r from-gray-800 to-gray-800 dark:bg-[#1A2334] rounded-2xl px-5 py-4">',
+    find: '      <div className="bg-ink dark:bg-[#1A1C21] rounded-2xl px-5 py-4">',
+    replace: '      <div className="bg-gradient-to-r from-gray-800 to-gray-800 dark:bg-[#1A1C21] rounded-2xl px-5 py-4">',
     test: 'src/tests/unit/button-system.test.ts',
     why:
       'from/to 가 같은 색이면 브라우저는 그라디언트를 계산하는데 화면엔 단색이 나온다. ' +
