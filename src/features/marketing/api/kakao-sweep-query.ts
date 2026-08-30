@@ -77,10 +77,55 @@ export const KAKAO_SWEEP_INNER_ORDER =
 /**
  * 🔎 지금 대상이 있는 소스들. **코드에 목록을 박지 않는다** — 박으면 새 수집기가 소스를 하나 더
  *   만들었을 때 그 소스가 **영원히 굶는다**(이 파일이 두 번 고친 사고가 정확히 그 모양이었다).
- *   `idx_company_leads_kakao_queue` 의 선두 컬럼이 `source` 라 이 조회는 인덱스만 훑는다(실측 0.0ms).
+ *
+ * 🩸 **여기 있던 "실측 0.0ms" 는 틀렸다**(2026-08-30 배포 후 라이브 재측정 — 정정).
+ *   로컬 소규모 데이터에서 나온 값을 그대로 옮겨 적은 것이고, 라이브에서는 **355,231행**을 읽는다.
+ *   이유: 30일 쿨다운(`kakao_checked_at < now-30d`)이 부분 인덱스의 조건에 **없어서** 인덱스를
+ *   선두 컬럼으로 건너뛰지 못하고 전 엔트리를 훑는다. 쿨다운을 인덱스 조건에 넣을 수도 없다
+ *   (`datetime('now')` 는 비결정적이라 부분 인덱스에 못 쓴다).
+ *   ⚠️ 쿨다운을 빼고 재 봐도 **같은 355,230행**이었다 — SQLite 가 DISTINCT 를 선두 컬럼 skip-scan
+ *   으로 최적화해 주지 않는다. 즉 쿼리를 다듬어서 줄일 수 있는 종류가 아니다.
+ *
+ * ⇒ 그래서 **결과를 캐시한다**(아래 `shouldRefreshSources`). 소스 집합은 회차마다 달라지는 값이
+ *   아니다 — 새 수집기가 생길 때만 바뀐다.
  */
 export const KAKAO_SWEEP_SOURCES_SQL =
   `SELECT DISTINCT source FROM ad_company_leads WHERE ${KAKAO_SWEEP_WHERE}`
+
+/**
+ * ⏳ **소스 목록 캐시의 수명.** 짧게 잡을 이유가 없고(집합은 거의 안 바뀐다), 길게 잡으면
+ *   새 수집기의 소스가 그만큼 늦게 발견된다 — 그게 이 값이 정하는 유일한 트레이드오프다.
+ *   6시간이면 하루 24회 → 4회. 회당 35.5만 행이므로 하루 **852만 → 142만 행**.
+ *
+ * ⚠️ **0 이나 무한대로 만들지 말 것**: 0 이면 캐시가 없는 것과 같고(=원래 비용으로 복귀),
+ *   무한대면 새 소스가 **영원히 굶는다** — 이 파일이 두 번 고친 바로 그 사고다.
+ */
+export const SWEEP_SOURCES_TTL_MS = 6 * 3_600_000
+
+/** 캐시된 소스 목록의 모양. 스윕 통계 블롭(`ads_kakao_sweep_stats`)에 얹혀 다닌다 — 추가 쿼리 0. */
+export interface CachedSweepSources { sources: string[]; at: number }
+
+/**
+ * 캐시가 쓸 만한가. **모양이 조금이라도 이상하면 새로 조회한다**(빈 배열·숫자 아닌 시각·미래 시각).
+ * 조용히 빈 목록으로 진행하면 "대상이 없다"로 기록되고 레인이 아무 일도 안 한 채 성공으로 보인다.
+ */
+export function parseSweepSources(blob: Record<string, unknown> | null | undefined): CachedSweepSources | null {
+  if (!blob) return null
+  const raw = blob.sources
+  const at = Number(blob.sources_at)
+  if (!Array.isArray(raw) || raw.length === 0) return null
+  if (!Number.isFinite(at) || at <= 0) return null
+  const sources = raw.filter((x): x is string => typeof x === 'string' && x.length > 0)
+  if (sources.length !== raw.length) return null
+  return { sources, at }
+}
+
+/** 지금 다시 조회해야 하는가 — 캐시가 없거나, 깨졌거나, TTL 을 넘겼거나, 시각이 미래면. */
+export function shouldRefreshSources(cached: CachedSweepSources | null, nowMs: number): boolean {
+  if (!cached) return true
+  const age = nowMs - cached.at
+  return age < 0 || age >= SWEEP_SOURCES_TTL_MS
+}
 
 /** 한 소스의 상위 N. `?`=source, `?`=N. 인덱스가 이 정렬을 그대로 담아 앞에서 N개만 걷고 멈춘다. */
 export const KAKAO_SWEEP_PER_SOURCE_SQL =
