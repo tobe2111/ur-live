@@ -52,9 +52,9 @@ export default function AboutPage() {
       {/* 🔎 2026-07-29: 문구 SSOT = shared/seo/consumer-surfaces (워커 메타와 같은 값). */}
       <SEO title={CONSUMER_SURFACE_SEO['/about'].title} description={CONSUMER_SURFACE_SEO['/about'].description} url="/about" />
 
-      <div className="bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white min-h-screen">
+      <div className="bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white min-h-screen">
         {/* ========== Hero ========== */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-[#1A0A14] dark:via-[#0F151D] dark:to-[#0F0A1A] border-b border-gray-100 dark:border-[#2A3446]">
+        <section className="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-[#1A0A14] dark:via-[#0D0F12] dark:to-[#0F0A1A] border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="ur-content-wide px-4 lg:px-8 py-16 lg:py-24">
             <div className="text-center max-w-4xl mx-auto">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-300 text-xs font-semibold mb-6">
@@ -88,13 +88,13 @@ export default function AboutPage() {
                 </Link>
                 <Link
                   to="/agency/login"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#1A2334] font-bold text-sm lg:text-base transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#1A1C21] font-bold text-sm lg:text-base transition-colors"
                 >
                   에이전시 가입
                 </Link>
                 <button
                   onClick={handleDownloadPdf}
-                  className="no-print inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#1A2334] font-bold text-sm lg:text-base transition-colors"
+                  className="no-print inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#1A1C21] font-bold text-sm lg:text-base transition-colors"
                 >
                   <Download className="w-4 h-4" />
                   PDF 다운로드
@@ -196,7 +196,7 @@ export default function AboutPage() {
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 {['신규', '브론즈', '실버', '골드', '플래티넘'].map((tier, i) => (
                   <div key={tier} className="flex items-center gap-2">
-                    <span className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-[#1A2334] text-gray-900 dark:text-white text-xs lg:text-sm font-semibold">
+                    <span className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-[#1A1C21] text-gray-900 dark:text-white text-xs lg:text-sm font-semibold">
                       {tier}
                     </span>
                     {i < 4 && <ArrowRight className="w-3.5 h-3.5 text-gray-400" />}
@@ -334,7 +334,7 @@ export default function AboutPage() {
             ].map((f, i) => (
               <div
                 key={i}
-                className="p-4 rounded-2xl bg-white dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446] hover:border-pink-200 dark:hover:border-pink-900 transition-colors"
+                className="p-4 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35] hover:border-pink-200 dark:hover:border-pink-900 transition-colors"
               >
                 <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-900/20 text-pink-500 flex items-center justify-center mb-3">
                   {f.icon}
@@ -452,7 +452,7 @@ export default function AboutPage() {
 
             <button
               onClick={handleDownloadPdf}
-              className="no-print inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#1A2334] font-bold text-base transition-colors shadow-xl"
+              className="no-print inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#1A1C21] font-bold text-base transition-colors shadow-xl"
             >
               <Printer className="w-5 h-5" />
               PDF 로 다운로드 (인쇄 → PDF 저장)
@@ -485,14 +485,14 @@ function Section({
   tone?: 'gray' | 'pink' | 'purple' | 'amber' | 'emerald'
 }) {
   const toneBg: Record<string, string> = {
-    gray: 'bg-white dark:bg-[#0F151D]',
+    gray: 'bg-white dark:bg-[#0D0F12]',
     pink: 'bg-pink-50/40 dark:bg-[#150A10]',
     purple: 'bg-purple-50/40 dark:bg-[#100A18]',
     amber: 'bg-amber-50/40 dark:bg-[#181208]',
     emerald: 'bg-emerald-50/30 dark:bg-[#0A1410]',
   }
   return (
-    <section id={id} className={`${toneBg[tone]} border-b border-gray-100 dark:border-[#2A3446]`}>
+    <section id={id} className={`${toneBg[tone]} border-b border-gray-100 dark:border-[#2C2F35]`}>
       <div className="ur-content-wide px-4 lg:px-8 py-12 lg:py-20">
         <div className="mb-8 lg:mb-12 text-center">
           <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-extrabold text-gray-900 dark:text-white mb-3">{title}</h2>
@@ -524,7 +524,7 @@ function ValueCard({
     emerald: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300',
   }
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]">
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${map[color]}`}>{icon}</div>
       <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{tag}</div>
       <h3 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white mb-2">{title}</h3>
@@ -547,10 +547,10 @@ function ComparisonTable({
   return (
     <div>
       <h3 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white mb-4">{title}</h3>
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-[#2A3446]">
+      <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-[#2C2F35]">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 dark:bg-[#1A2334]">
+            <tr className="bg-gray-50 dark:bg-[#1A1C21]">
               {headers.map((h, i) => (
                 <th
                   key={i}
@@ -565,7 +565,7 @@ function ComparisonTable({
           </thead>
           <tbody>
             {rows.map((row, ri) => (
-              <tr key={ri} className="border-t border-gray-100 dark:border-[#2A3446]">
+              <tr key={ri} className="border-t border-gray-100 dark:border-[#2C2F35]">
                 {row.map((cell, ci) => (
                   <td
                     key={ci}
@@ -594,10 +594,10 @@ function ComparisonTable({
 
 function SimpleTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-[#2A3446]">
+    <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-[#2C2F35]">
       <table className="w-full text-sm">
         <thead>
-          <tr className="bg-gray-50 dark:bg-[#1A2334]">
+          <tr className="bg-gray-50 dark:bg-[#1A1C21]">
             {headers.map((h, i) => (
               <th key={i} className="px-4 py-3 text-left font-bold text-gray-900 dark:text-white">
                 {h}
@@ -607,7 +607,7 @@ function SimpleTable({ headers, rows }: { headers: string[]; rows: string[][] })
         </thead>
         <tbody>
           {rows.map((row, ri) => (
-            <tr key={ri} className="border-t border-gray-100 dark:border-[#2A3446]">
+            <tr key={ri} className="border-t border-gray-100 dark:border-[#2C2F35]">
               {row.map((cell, ci) => (
                 <td
                   key={ci}
@@ -638,7 +638,7 @@ function SubBlock({
   children: React.ReactNode
 }) {
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-9 h-9 rounded-lg bg-pink-50 dark:bg-pink-900/20 text-pink-500 flex items-center justify-center">
           {icon}
@@ -660,7 +660,7 @@ function FeatureCard({
   desc: string
 }) {
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]">
       <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 flex items-center justify-center mb-3">
         {icon}
       </div>
@@ -684,7 +684,7 @@ function WowMoment({
   tagline?: string
 }) {
   return (
-    <div className="p-5 lg:p-8 rounded-2xl bg-white dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446]">
+    <div className="p-5 lg:p-8 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-300 flex items-center justify-center">
           {icon}
@@ -721,7 +721,7 @@ function RoadmapCard({
   items: string[]
 }) {
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300 flex items-center justify-center">
           {icon}
@@ -750,7 +750,7 @@ function FitCard({
   items: string[]
 }) {
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-900/20 text-pink-500 flex items-center justify-center">
           {icon}

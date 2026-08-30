@@ -12,11 +12,11 @@ const authHeader = () => {
   const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
-const input = 'w-full h-9 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400'
-const ta = 'w-full rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400'
-const btnPrimary = 'shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 h-9 text-[12.5px] font-bold text-white dark:text-[#0F151D] disabled:opacity-40'
-const chip = (on: boolean) => `rounded-full px-3 py-1 text-[12px] font-semibold ${on ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0F151D]' : 'border border-gray-200 dark:border-[#2A3446] text-gray-600 dark:text-gray-300'}`
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
+const input = 'w-full h-9 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400'
+const ta = 'w-full rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] p-2.5 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400'
+const btnPrimary = 'shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 h-9 text-[12.5px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-40'
+const chip = (on: boolean) => `rounded-full px-3 py-1 text-[12px] font-semibold ${on ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12]' : 'border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300'}`
 
 type Mode = 'repurpose' | 'generate' | 'reply' | 'analyze' | 'media' | 'library'
 const MODES: Array<{ k: Mode; l: string }> = [
@@ -39,7 +39,7 @@ const errMsg = (e: unknown, fb: string) => {
 const AdCopyList = ({ variants }: { variants: AdVariant[] }) => (
   <div className="space-y-1.5">
     {variants.map((v, i) => (
-      <div key={i} className="rounded-lg border border-gray-100 dark:border-[#2A3446] p-2 text-[12px]">
+      <div key={i} className="rounded-lg border border-gray-100 dark:border-[#2C2F35] p-2 text-[12px]">
         <div className="flex items-center justify-between gap-2">
           <span className="font-bold text-gray-900 dark:text-white">{v.title}</span>
           <span className={`shrink-0 text-[10px] ${v.titleOk ? 'text-gray-400' : 'text-red-500 font-bold'}`}>제목 {v.titleLen}/15</span>
@@ -54,8 +54,8 @@ const AdCopyList = ({ variants }: { variants: AdVariant[] }) => (
 )
 const Actions = ({ onCopy, onSave }: { onCopy: () => void; onSave?: () => void }) => (
   <div className="mt-2 flex gap-1.5">
-    <button onClick={onCopy} className="rounded-lg border border-gray-200 dark:border-[#2A3446] px-2.5 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">복사</button>
-    {onSave && <button onClick={onSave} className="rounded-lg border border-gray-200 dark:border-[#2A3446] px-2.5 py-1 text-[11px] font-bold text-blue-600 dark:text-blue-400">보관함 저장</button>}
+    <button onClick={onCopy} className="rounded-lg border border-gray-200 dark:border-[#2C2F35] px-2.5 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">복사</button>
+    {onSave && <button onClick={onSave} className="rounded-lg border border-gray-200 dark:border-[#2C2F35] px-2.5 py-1 text-[11px] font-bold text-blue-600 dark:text-blue-400">보관함 저장</button>}
   </div>
 )
 
@@ -172,13 +172,13 @@ export default function ContentStudioPanel() {
           <button onClick={doRepurpose} disabled={busy} className={`mt-2 ${btnPrimary}`}>{busy ? '변환 중…' : '멀티플랫폼으로 변환'}</button>
           {pack && (
             <div className="mt-3 space-y-2.5">
-              {pack.summary && <div className="rounded-xl border border-gray-100 dark:border-[#2A3446] p-3"><div className="text-[12px] font-bold text-gray-900 dark:text-white">요약</div><p className="mt-1 text-[12.5px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{pack.summary}</p></div>}
-              {pack.blog && <div className="rounded-xl border border-gray-100 dark:border-[#2A3446] p-3"><div className="text-[12px] font-bold text-gray-900 dark:text-white">블로그 · {pack.blog.title}</div><pre className="mt-1 text-[12px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap font-sans">{pack.blog.body}</pre><Actions onCopy={() => copy(`${pack.blog!.title}\n\n${pack.blog!.body}`)} onSave={() => save('blog', pack.blog!.body, pack.blog!.title)} /></div>}
-              {pack.instagram && <div className="rounded-xl border border-gray-100 dark:border-[#2A3446] p-3"><div className="text-[12px] font-bold text-gray-900 dark:text-white">인스타그램</div><p className="mt-1 text-[12.5px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{pack.instagram.caption}</p><p className="mt-1 text-[11.5px] text-blue-600 dark:text-blue-400">{pack.instagram.hashtags.join(' ')}</p><Actions onCopy={() => copy(`${pack.instagram!.caption}\n\n${pack.instagram!.hashtags.join(' ')}`)} onSave={() => save('instagram', pack.instagram!.caption, null, { hashtags: pack.instagram!.hashtags })} /></div>}
-              {pack.tiktok && <div className="rounded-xl border border-gray-100 dark:border-[#2A3446] p-3"><div className="text-[12px] font-bold text-gray-900 dark:text-white">틱톡 · {pack.tiktok.hook}</div><pre className="mt-1 text-[12px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap font-sans">{pack.tiktok.script}</pre><p className="mt-1 text-[11.5px] text-blue-600 dark:text-blue-400">{pack.tiktok.hashtags.join(' ')}</p><Actions onCopy={() => copy(`${pack.tiktok!.hook}\n${pack.tiktok!.script}\n${pack.tiktok!.hashtags.join(' ')}`)} onSave={() => save('tiktok', `${pack.tiktok!.hook}\n${pack.tiktok!.script}`, null, { hashtags: pack.tiktok!.hashtags })} /></div>}
-              {pack.ad_copy.length > 0 && <div className="rounded-xl border border-gray-100 dark:border-[#2A3446] p-3"><div className="text-[12px] font-bold text-gray-900 dark:text-white mb-1.5">광고 문구</div><AdCopyList variants={pack.ad_copy} /><Actions onCopy={() => copy(pack.ad_copy.map(v => `[${v.title}] ${v.desc}`).join('\n'))} onSave={() => save('ad_copy', pack.ad_copy.map(v => `[${v.title}] ${v.desc}`).join('\n'), null, { variants: pack.ad_copy })} /></div>}
-              {pack.seo && <div className="rounded-xl border border-gray-100 dark:border-[#2A3446] p-3"><div className="text-[12px] font-bold text-gray-900 dark:text-white">SEO</div><p className="mt-1 text-[12px] text-gray-600 dark:text-gray-300">제목: {pack.seo.metaTitle}</p><p className="text-[12px] text-gray-600 dark:text-gray-300">설명: {pack.seo.metaDescription}</p><p className="mt-1 text-[11.5px] text-gray-500 dark:text-gray-400">키워드: {pack.seo.keywords.join(', ')}</p></div>}
-              <button onClick={() => copy(packText(pack))} className="rounded-lg border border-gray-200 dark:border-[#2A3446] px-3 py-1.5 text-[11.5px] font-bold text-gray-700 dark:text-gray-200">전체 복사</button>
+              {pack.summary && <div className="rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3"><div className="text-[12px] font-bold text-gray-900 dark:text-white">요약</div><p className="mt-1 text-[12.5px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{pack.summary}</p></div>}
+              {pack.blog && <div className="rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3"><div className="text-[12px] font-bold text-gray-900 dark:text-white">블로그 · {pack.blog.title}</div><pre className="mt-1 text-[12px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap font-sans">{pack.blog.body}</pre><Actions onCopy={() => copy(`${pack.blog!.title}\n\n${pack.blog!.body}`)} onSave={() => save('blog', pack.blog!.body, pack.blog!.title)} /></div>}
+              {pack.instagram && <div className="rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3"><div className="text-[12px] font-bold text-gray-900 dark:text-white">인스타그램</div><p className="mt-1 text-[12.5px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{pack.instagram.caption}</p><p className="mt-1 text-[11.5px] text-blue-600 dark:text-blue-400">{pack.instagram.hashtags.join(' ')}</p><Actions onCopy={() => copy(`${pack.instagram!.caption}\n\n${pack.instagram!.hashtags.join(' ')}`)} onSave={() => save('instagram', pack.instagram!.caption, null, { hashtags: pack.instagram!.hashtags })} /></div>}
+              {pack.tiktok && <div className="rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3"><div className="text-[12px] font-bold text-gray-900 dark:text-white">틱톡 · {pack.tiktok.hook}</div><pre className="mt-1 text-[12px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap font-sans">{pack.tiktok.script}</pre><p className="mt-1 text-[11.5px] text-blue-600 dark:text-blue-400">{pack.tiktok.hashtags.join(' ')}</p><Actions onCopy={() => copy(`${pack.tiktok!.hook}\n${pack.tiktok!.script}\n${pack.tiktok!.hashtags.join(' ')}`)} onSave={() => save('tiktok', `${pack.tiktok!.hook}\n${pack.tiktok!.script}`, null, { hashtags: pack.tiktok!.hashtags })} /></div>}
+              {pack.ad_copy.length > 0 && <div className="rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3"><div className="text-[12px] font-bold text-gray-900 dark:text-white mb-1.5">광고 문구</div><AdCopyList variants={pack.ad_copy} /><Actions onCopy={() => copy(pack.ad_copy.map(v => `[${v.title}] ${v.desc}`).join('\n'))} onSave={() => save('ad_copy', pack.ad_copy.map(v => `[${v.title}] ${v.desc}`).join('\n'), null, { variants: pack.ad_copy })} /></div>}
+              {pack.seo && <div className="rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3"><div className="text-[12px] font-bold text-gray-900 dark:text-white">SEO</div><p className="mt-1 text-[12px] text-gray-600 dark:text-gray-300">제목: {pack.seo.metaTitle}</p><p className="text-[12px] text-gray-600 dark:text-gray-300">설명: {pack.seo.metaDescription}</p><p className="mt-1 text-[11.5px] text-gray-500 dark:text-gray-400">키워드: {pack.seo.keywords.join(', ')}</p></div>}
+              <button onClick={() => copy(packText(pack))} className="rounded-lg border border-gray-200 dark:border-[#2C2F35] px-3 py-1.5 text-[11.5px] font-bold text-gray-700 dark:text-gray-200">전체 복사</button>
             </div>
           )}
         </div>
@@ -194,7 +194,7 @@ export default function ContentStudioPanel() {
           </div>
           <button onClick={doGenerate} disabled={busy || !topic.trim()} className={`mt-2 ${btnPrimary}`}>{busy ? '생성 중…' : '생성'}</button>
           {gen && (
-            <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2A3446] p-3">
+            <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3">
               {gen.title && <div className="text-[13px] font-bold text-gray-900 dark:text-white">{gen.title}</div>}
               {gen.variants.length > 0 ? <AdCopyList variants={gen.variants} /> : <pre className="text-[12.5px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap font-sans">{gen.body}</pre>}
               {gen.hashtags.length > 0 && <p className="mt-1.5 text-[11.5px] text-blue-600 dark:text-blue-400">{gen.hashtags.join(' ')}</p>}
@@ -213,7 +213,7 @@ export default function ContentStudioPanel() {
             {TONES.map(t => <button key={t.k} onClick={() => setTone(t.k)} className={chip(tone === t.k)}>{t.l}</button>)}
             <button onClick={doReply} disabled={busy || !comment.trim()} className={`ml-auto ${btnPrimary}`}>{busy ? '작성 중…' : '답변 초안'}</button>
           </div>
-          {reply && <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2A3446] p-3"><p className="text-[12.5px] text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{reply}</p><Actions onCopy={() => copy(reply)} onSave={() => save('reply', reply)} /></div>}
+          {reply && <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3"><p className="text-[12.5px] text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{reply}</p><Actions onCopy={() => copy(reply)} onSave={() => save('reply', reply)} /></div>}
         </div>
       )}
 
@@ -222,7 +222,7 @@ export default function ContentStudioPanel() {
         <div className="mt-2.5">
           <p className="text-[12px] text-gray-500 dark:text-gray-400">광고 실적을 근거로 <b className="text-gray-700 dark:text-gray-200">어떤 메시지가 잘 통하는지</b> 분석하고 콘텐츠 방향을 제안합니다. (광고계정 연동 필요)</p>
           <button onClick={doAnalyze} disabled={busy} className={`mt-2 ${btnPrimary}`}>{busy ? '분석 중…' : '성과 분석 받기'}</button>
-          {analysis && <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2A3446] p-3"><pre className="text-[12.5px] text-gray-700 dark:text-gray-200 whitespace-pre-wrap font-sans leading-relaxed">{analysis}</pre><Actions onCopy={() => copy(analysis)} /></div>}
+          {analysis && <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3"><pre className="text-[12.5px] text-gray-700 dark:text-gray-200 whitespace-pre-wrap font-sans leading-relaxed">{analysis}</pre><Actions onCopy={() => copy(analysis)} /></div>}
         </div>
       )}
 
@@ -246,12 +246,12 @@ export default function ContentStudioPanel() {
                     <textarea className={`${ta} mt-2`} rows={3} placeholder={mKind === 'voice' ? '읽어줄 텍스트 (800자 이내)' : mKind === 'image' ? '이미지 설명 (예: 미니멀한 무선이어폰 제품컷, 밝은 배경)' : '숏폼 영상 설명/컨셉'} value={mPrompt} onChange={e => setMPrompt(e.target.value)} />
                     <button onClick={doMedia} disabled={busy || !mPrompt.trim()} className={`mt-2 ${btnPrimary}`}>{busy ? '생성 중…' : mKind === 'video' ? '영상 작업 제출' : '생성'}</button>
                     {mResult && (
-                      <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2A3446] p-3">
+                      <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3">
                         {mResult.kind === 'image' && mResult.url && <img src={mResult.url} alt="생성 이미지" className="max-w-full rounded-lg" />}
                         {mResult.kind === 'voice' && mResult.url && <audio controls src={mResult.url} className="w-full" />}
                         {mResult.kind === 'video' && (
                           mResult.url ? <video controls src={mResult.url} className="max-w-full rounded-lg" />
-                          : <div className="flex items-center justify-between gap-2"><span className="text-[12px] text-gray-500 dark:text-gray-400">상태: {mResult.status === 'processing' ? '생성 중…' : mResult.status}</span><button onClick={pollVideoJob} className="rounded-lg border border-gray-200 dark:border-[#2A3446] px-2.5 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">상태 확인</button></div>
+                          : <div className="flex items-center justify-between gap-2"><span className="text-[12px] text-gray-500 dark:text-gray-400">상태: {mResult.status === 'processing' ? '생성 중…' : mResult.status}</span><button onClick={pollVideoJob} className="rounded-lg border border-gray-200 dark:border-[#2C2F35] px-2.5 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">상태 확인</button></div>
                         )}
                       </div>
                     )}
@@ -269,7 +269,7 @@ export default function ContentStudioPanel() {
           {!libLoaded && busy ? <p className="text-[12px] text-gray-400 dark:text-gray-500">불러오는 중…</p>
             : lib.length === 0 ? <p className="text-[12px] text-gray-400 dark:text-gray-500">저장한 콘텐츠가 없습니다. 생성 결과의 '보관함 저장'을 눌러 담아보세요.</p>
             : <div className="space-y-1.5">{lib.map(it => (
-                <div key={it.id} className="rounded-lg border border-gray-100 dark:border-[#2A3446] p-2.5">
+                <div key={it.id} className="rounded-lg border border-gray-100 dark:border-[#2C2F35] p-2.5">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase">{it.type}{it.title ? ` · ${it.title}` : ''}</span>
                     <div className="flex gap-2 shrink-0">

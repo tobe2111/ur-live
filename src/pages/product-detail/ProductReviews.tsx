@@ -29,14 +29,14 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="w-full py-2.5 mt-3 border border-gray-200 dark:border-[#2A3446] rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A2334]">
+      <button onClick={() => setOpen(true)} className="w-full py-2.5 mt-3 border border-gray-200 dark:border-[#2C2F35] rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A1C21]">
         {t('reviews.writeBtn', { defaultValue: '리뷰 작성하기' })}
       </button>
     )
   }
 
   return (
-    <div className="mt-3 border border-gray-200 dark:border-[#2A3446] rounded-xl p-4">
+    <div className="mt-3 border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4">
       <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">{t('reviews.title', { defaultValue: '리뷰 작성' })}</h3>
       <div className="rounded-xl px-3 py-2.5 mb-3 flex items-center gap-2 bg-pink-50">
         <span className="text-sm">🎁</span>
@@ -54,7 +54,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         rows={3}
         maxLength={2000}
         aria-label={t('reviews.contentLabel', { defaultValue: '리뷰 내용' })}
-        className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white resize-none focus:outline-none focus:border-blue-400"
+        className="w-full px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white resize-none focus:outline-none focus:border-blue-400"
       />
 
       {/* 🛡️ 2026-05-21: 사진 업로드 — 최대 5장, 5MB/장. 리워드 100딜 (사진 첨부 시). */}
@@ -72,7 +72,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
             </div>
           ))}
           {images.length < 5 && (
-            <label className="w-16 h-16 border-2 border-dashed border-gray-300 dark:border-[#2A3446] rounded-md flex flex-col items-center justify-center cursor-pointer text-gray-400 hover:border-gray-500 active:scale-95 transition">
+            <label className="w-16 h-16 border-2 border-dashed border-gray-300 dark:border-[#2C2F35] rounded-md flex flex-col items-center justify-center cursor-pointer text-gray-400 hover:border-gray-500 active:scale-95 transition">
               {uploading ? (
                 <span className="text-[10px]">업로드 중</span>
               ) : (
@@ -115,7 +115,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         </div>
       </div>
       <div className="flex gap-2 mt-3">
-        <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300 text-sm rounded-lg font-medium">{t('common.cancel', { defaultValue: '취소' })}</button>
+        <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300 text-sm rounded-lg font-medium">{t('common.cancel', { defaultValue: '취소' })}</button>
         <button
           disabled={content.length < 10 || submitting}
           onClick={async () => {
@@ -244,7 +244,7 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
               return (
                 <div key={s} className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500 dark:text-gray-400 w-3">{s}</span>
-                  <div className="flex-1 h-1.5 bg-gray-100 dark:bg-[#1A2334] rounded-full overflow-hidden">
+                  <div className="flex-1 h-1.5 bg-gray-100 dark:bg-[#1A1C21] rounded-full overflow-hidden">
                     <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
@@ -265,9 +265,9 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
           한 줄에 하나씩 쌓으면 리뷰 5개가 화면을 다 먹는다(그루폰도 2열이다).
           구분선은 카드 사이에만 — 테두리 상자를 씌우면 "AI가 만든 티"가 난다(대표 지적). */}
       {reviews.length > 0 && (
-        <div className="mt-2 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-10 divide-y divide-gray-100 dark:divide-[#2A3446] lg:divide-y-0">
+        <div className="mt-2 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-10 divide-y divide-gray-100 dark:divide-[#2C2F35] lg:divide-y-0">
           {reviews.map((r) => (
-            <div key={r.id} className="lg:border-t lg:border-gray-100 dark:lg:border-[#2A3446]">
+            <div key={r.id} className="lg:border-t lg:border-gray-100 dark:lg:border-[#2C2F35]">
               <ReviewCard r={r} />
             </div>
           ))}

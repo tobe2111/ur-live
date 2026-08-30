@@ -30,14 +30,14 @@ export default function InfluencerLandingPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white">
       <SEO
         title={CONSUMER_SURFACE_SEO['/influencer'].title} description={CONSUMER_SURFACE_SEO['/influencer'].description}
         url="/influencer"
         type="website"
       />
 
-      <nav className="sticky top-0 z-30 bg-white/90 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446] px-4 lg:px-12 py-4 flex items-center justify-between">
+      <nav className="sticky top-0 z-30 bg-white/90 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 lg:px-12 py-4 flex items-center justify-between">
         <Link to="/" className="text-lg font-extrabold tracking-tight">유어딜</Link>
         <div className="flex items-center gap-3">
           <Link to="/business" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">사장님</Link>
@@ -70,12 +70,12 @@ export default function InfluencerLandingPage() {
       </section>
 
       {/* 어떻게 되는지 — 숫자를 약속하지 않고 구조를 설명한다 */}
-      <section className="bg-gray-50 dark:bg-[#1A2334] px-6 lg:px-12 py-16">
+      <section className="bg-gray-50 dark:bg-[#1A1C21] px-6 lg:px-12 py-16">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-2xl lg:text-3xl font-extrabold text-center mb-10">어떻게 되나요?</h2>
           <div className="space-y-4">
             {STEPS.map((s, i) => (
-              <div key={i} className="bg-white dark:bg-[#0F151D] rounded-2xl p-6 border border-gray-200 dark:border-[#2A3446] flex gap-4">
+              <div key={i} className="bg-white dark:bg-[#0D0F12] rounded-2xl p-6 border border-gray-200 dark:border-[#2C2F35] flex gap-4">
                 <span className="w-11 h-11 shrink-0 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                   <s.icon className="w-5 h-5" />
                 </span>
@@ -101,8 +101,8 @@ export default function InfluencerLandingPage() {
 
       {/* 매장을 갖고 있다면 */}
       <section className="px-6 lg:px-12 py-16 max-w-4xl mx-auto">
-        <div className="rounded-3xl border border-gray-200 dark:border-[#2A3446] p-7 lg:p-10 text-center">
-          <span className="w-12 h-12 mx-auto rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] flex items-center justify-center mb-4">
+        <div className="rounded-3xl border border-gray-200 dark:border-[#2C2F35] p-7 lg:p-10 text-center">
+          <span className="w-12 h-12 mx-auto rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] flex items-center justify-center mb-4">
             <Store className="w-6 h-6" />
           </span>
           <h2 className="text-xl lg:text-2xl font-extrabold mb-2">내 가게가 있다면 직접 팔 수도 있어요</h2>
@@ -112,14 +112,14 @@ export default function InfluencerLandingPage() {
           </p>
           <button
             onClick={() => navigate('/store/new')}
-            className="px-6 py-3 rounded-full bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] font-extrabold text-[15px] inline-flex items-center gap-2"
+            className="px-6 py-3 rounded-full bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] font-extrabold text-[15px] inline-flex items-center gap-2"
           >
             내 가게 등록하기 <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </section>
 
-      <footer className="px-6 lg:px-12 py-8 text-center text-xs text-gray-400 border-t border-gray-100 dark:border-[#2A3446]">
+      <footer className="px-6 lg:px-12 py-8 text-center text-xs text-gray-400 border-t border-gray-100 dark:border-[#2C2F35]">
         © 2026 리스터코퍼레이션 · <a href="mailto:jiwon@ur-team.com" className="underline">jiwon@ur-team.com</a>
       </footer>
     </div>

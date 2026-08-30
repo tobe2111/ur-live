@@ -79,7 +79,7 @@ export default function SearchHeader({
   }
 
   return (
-    <div className="sticky top-0 z-50 bg-white dark:bg-[#0F151D]">
+    <div className="sticky top-0 z-50 bg-white dark:bg-[#0D0F12]">
       <div className="flex items-center gap-2 px-3 py-2.5">
         <button onClick={() => navigate(-1)} className="shrink-0 p-1">
           <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
@@ -94,8 +94,8 @@ export default function SearchHeader({
               onFocus={() => { setIsFocused(true); if (suggestions.length > 0) setShowSuggestions(true) }}
               onBlur={() => setIsFocused(false)}
               placeholder={t('search.inputPlaceholder', { defaultValue: '상품명, 브랜드, 셀러 검색' })}
-              className={`w-full pl-10 pr-9 py-2.5 bg-gray-50 dark:bg-[#1A2334] rounded-full text-[14px] text-gray-900 dark:text-white font-medium transition-all focus:outline-none ${
-                isFocused ? 'border-2 border-gray-900 bg-white dark:bg-[#0F151D]' : 'border-2 border-transparent'
+              className={`w-full pl-10 pr-9 py-2.5 bg-gray-50 dark:bg-[#1A1C21] rounded-full text-[14px] text-gray-900 dark:text-white font-medium transition-all focus:outline-none ${
+                isFocused ? 'border-2 border-gray-900 bg-white dark:bg-[#0D0F12]' : 'border-2 border-transparent'
               }`}
             />
             {inputValue && (
@@ -105,12 +105,12 @@ export default function SearchHeader({
             )}
           </form>
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#0F151D] rounded-xl shadow-lg border border-gray-200 dark:border-[#2A3446] overflow-hidden z-50">
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#0D0F12] rounded-xl shadow-lg border border-gray-200 dark:border-[#2C2F35] overflow-hidden z-50">
               {suggestions.map((suggestion, index) => (
                 <button
                   key={`${suggestion.type}-${suggestion.text}-${index}`}
                   onClick={() => handleSuggestionClick(suggestion.text)}
-                  className="w-full px-4 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-[#1A2334] flex items-center gap-3 border-b border-gray-50 dark:border-[#2A3446] last:border-b-0"
+                  className="w-full px-4 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-[#1A1C21] flex items-center gap-3 border-b border-gray-50 dark:border-[#2C2F35] last:border-b-0"
                 >
                   <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                   <span className="text-[14px] text-gray-900 dark:text-white flex-1">{suggestion.text}</span>

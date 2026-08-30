@@ -16,8 +16,8 @@ const authHeader = () => {
 interface RankTarget { id: number; keyword: string; mall_match: string; last_rank: number | null; last_total: number | null; last_title: string | null; last_checked_at: string | null; prev_rank: number | null }
 interface Competitor { mall: string; bestRank: number; count: number; minPrice: number; sampleTitle: string; aboveMe: boolean }
 interface CompetitorAnalysis { keyword: string; myMall: string; myRank: number | null; total: number; competitors: Competitor[] }
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
-const input = 'h-10 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
+const input = 'h-10 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
 function RankDelta({ cur, prev }: { cur: number | null; prev: number | null }) {
   if (cur == null || prev == null) return <span className="text-gray-300 dark:text-gray-600">-</span>
@@ -95,7 +95,7 @@ export default function RankPanel() {
       <div className="mt-2 flex flex-wrap gap-2">
         <input className={`${input} flex-1 min-w-[150px]`} placeholder="키워드 (예: 무선이어폰)" value={keyword} onChange={e => setKeyword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add() }} />
         <input className={`${input} flex-1 min-w-[140px]`} placeholder="내 몰 이름 또는 도메인" value={mall} onChange={e => setMall(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add() }} />
-        <button onClick={add} disabled={busy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0F151D] disabled:opacity-50">{busy ? '조회 중…' : '추적 추가'}</button>
+        <button onClick={add} disabled={busy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-50">{busy ? '조회 중…' : '추적 추가'}</button>
       </div>
 
       {err && <PanelError onRetry={load} />}
@@ -109,7 +109,7 @@ export default function RankPanel() {
             <tbody>
               {targets.map(t => (
                 <Fragment key={t.id}>
-                <tr className="border-t border-gray-100 dark:border-[#2A3446] text-gray-700 dark:text-gray-300">
+                <tr className="border-t border-gray-100 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300">
                   <td className="py-1.5 pr-2">
                     <span className="font-medium text-gray-900 dark:text-white">{t.keyword}</span>
                     <span className="block text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[160px]">{t.mall_match}{t.last_title ? ` · ${t.last_title}` : ''}</span>

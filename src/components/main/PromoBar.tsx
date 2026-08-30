@@ -48,7 +48,7 @@ export default function PromoBar() {
   if (!data?.enabled || !data.text || dismissed) return null
 
   const href = data.href ? safeInternalPath(data.href, '') : ''
-  const bg = data.bg || '#1A2C42'
+  const bg = data.bg || '#16181C'
 
   function close() {
     setDismissed(true)

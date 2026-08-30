@@ -472,7 +472,7 @@ export default function GroupBuyDetailPage() {
   }
   if (!detail) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white">
         <p className="font-bold mb-3">상품을 찾을 수 없습니다</p>
         <button onClick={() => navigate('/map')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">공구 목록으로</button>
       </div>
@@ -546,7 +546,7 @@ export default function GroupBuyDetailPage() {
       <header
         className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:hidden ${
           headerSolid
-            ? 'bg-white/90 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]'
+            ? 'bg-white/90 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]'
             : 'bg-transparent border-b border-transparent'
         }`}
         style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))', paddingBottom: '0.625rem' }}
@@ -556,7 +556,7 @@ export default function GroupBuyDetailPage() {
           <button
             onClick={() => navigate(-1)}
             className={`w-9 h-9 flex items-center justify-center rounded-full shrink-0 transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white focus-visible:outline-none ${
-              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A2334]' : 'bg-black/25 backdrop-blur-sm'
+              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A1C21]' : 'bg-black/25 backdrop-blur-sm'
             }`}
             aria-label="뒤로가기"
           >
@@ -591,7 +591,7 @@ export default function GroupBuyDetailPage() {
             })}
             compact
             className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 active:scale-95 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white ${
-              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A2334]' : 'bg-black/25 backdrop-blur-sm'
+              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A1C21]' : 'bg-black/25 backdrop-blur-sm'
             }`}
           />
         </div>
@@ -611,7 +611,7 @@ export default function GroupBuyDetailPage() {
           🖼️ 2026-08-19 (대표 시안 — 그루폰 상세): 사진이 여러 장이면 PC 에서 [좌 대형 + 우 썸네일]로
           펴고, 마지막 썸네일의 `+N` 으로 전체 사진 모달을 연다. 모바일은 스와이프 그대로.
           레이아웃/상태는 `DetailGallery`(SSOT)로 추출 — 이 파일은 배지만 넘긴다. */}
-      <div ref={heroRef} className="relative lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#2A3446]" style={{ background: 'var(--gbd-card)' }}>
+      <div ref={heroRef} className="relative lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#2C2F35]" style={{ background: 'var(--gbd-card)' }}>
         <DetailGallery
           images={galleryImages}
           alt={detail.name}
@@ -663,7 +663,7 @@ export default function GroupBuyDetailPage() {
                 secondaryButtonText: '자세히 보기',
               })}
               compact
-              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 hover:bg-gray-100 dark:hover:bg-[#1A2334]"
+              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 hover:bg-gray-100 dark:hover:bg-[#1A1C21]"
             />
           </span>
         </nav>

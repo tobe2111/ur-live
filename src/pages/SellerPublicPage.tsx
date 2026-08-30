@@ -271,7 +271,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     <div className={`min-h-screen ${T.bg} pb-28`}>
       {/* 🎨 2026-06-17 유어샵 개선안(시안) 통일: 큐레이터 유어샵과 동일한 네이비 '✎ 편집 모드' 배너. theme-dual: 의도적 네이비 */}
       {ownerView && (
-        <div className="sticky top-0 z-30 bg-[#141A2E] text-white px-3.5 py-2.5 text-[12.5px] font-semibold flex items-center justify-between gap-2">
+        <div className="sticky top-0 z-30 bg-[#1A1C21] text-white px-3.5 py-2.5 text-[12.5px] font-semibold flex items-center justify-between gap-2">
           <span className="flex items-center gap-2 min-w-0"><span className="text-[#6b7280] text-[14px] leading-none shrink-0">✎</span><span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span></span>
           <div className="flex items-center gap-1.5 shrink-0">
             {/* 🏁 2026-06-18 (사용자 결정): 유어샵에서 바로 등록 (대시보드 안 나감).
@@ -308,7 +308,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
       {ownerView && showAddSheet && (
         <div className="fixed inset-0 z-[10600] flex items-end justify-center bg-black/60" onClick={() => setShowAddSheet(false)} role="presentation">
           <div
-            className="w-full max-w-[430px] bg-white dark:bg-[#1A2334] rounded-t-3xl px-5 pt-5 pb-8"
+            className="w-full max-w-[430px] bg-white dark:bg-[#1A1C21] rounded-t-3xl px-5 pt-5 pb-8"
             onClick={(e) => e.stopPropagation()}
             role="dialog" aria-modal="true" aria-label={t('seller.publicPage.addSheetTitle', { defaultValue: '무엇을 등록할까요?' })}
           >
@@ -319,7 +319,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             <div className="space-y-2.5">
               <button
                 onClick={() => { setShowAddSheet(false); navigate('/seller/products/new') }}
-                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#1A2334] active:scale-[0.99] transition-transform text-left"
+                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1A1C21] active:scale-[0.99] transition-transform text-left"
               >
                 <span className="w-11 h-11 rounded-xl bg-white dark:bg-[#222] flex items-center justify-center text-xl shrink-0">🛍️</span>
                 <span className="min-w-0">
@@ -329,7 +329,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
               </button>
               <button
                 onClick={() => { setShowAddSheet(false); navigate('/seller/meal-voucher/new') }}
-                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#1A2334] active:scale-[0.99] transition-transform text-left"
+                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1A1C21] active:scale-[0.99] transition-transform text-left"
               >
                 <span className="w-11 h-11 rounded-xl bg-white dark:bg-[#222] flex items-center justify-center text-xl shrink-0">🎟️</span>
                 <span className="min-w-0">
@@ -343,7 +343,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
       )}
       {/* 🎨 2026-06-17 (#6 통일): 방문자 미리보기 중 — 큐레이터 유어샵과 동일 패턴. theme-dual: 의도적 네이비 */}
       {isOwner && previewAsVisitor && (
-        <div className="sticky top-0 z-40 bg-[#141A2E] text-white px-4 py-2 text-[12.5px] font-bold flex items-center justify-between gap-2">
+        <div className="sticky top-0 z-40 bg-[#1A1C21] text-white px-4 py-2 text-[12.5px] font-bold flex items-center justify-between gap-2">
           <span className="truncate">👀 {t('seller.publicPage.previewBanner', { defaultValue: '방문자 미리보기 — 다른 사람에게 보이는 화면이에요' })}</span>
           <button onClick={() => setPreviewAsVisitor(false)} className="shrink-0 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-[11.5px] whitespace-nowrap">{t('seller.publicPage.backToEdit', { defaultValue: '편집으로 돌아가기' })}</button>
         </div>
@@ -392,7 +392,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
               <button
                 key={chip.label}
                 onClick={() => chip.to ? document.getElementById(chip.to)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) : window.scrollTo({ top: 0, behavior: 'smooth' })}
-                className="shrink-0 h-9 px-4 rounded-full border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-95"
+                className="shrink-0 h-9 px-4 rounded-full border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-95"
               >
                 {chip.label}
               </button>
@@ -427,14 +427,14 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             // 🎨 2026-07-07 리디자인: 밋밋한 "상품 0" 행 → "쇼핑몰을 채워보세요" 초대 카드(소유자 동기부여).
             //   내 상품이 유어샵의 주인공이라는 메시지 + 정식 등록 풀페이지로.
             <div className="mt-7 rounded-2xl border border-dashed border-gray-300 dark:border-[#2E2E2E] bg-gray-50 dark:bg-[#101010] px-5 py-7 text-center">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] flex items-center justify-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] flex items-center justify-center">
                 <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
               </div>
               <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white">{t('seller.publicPage.emptyShopTitle', { defaultValue: '첫 이용권을 올려 유어샵을 채워보세요' })}</h3>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-gray-500 dark:text-gray-400">{t('seller.publicPage.emptyShopDesc', { defaultValue: '내 이용권이 유어샵의 주인공이에요. 등록하면 방문자에게 바로 판매되고 정산까지 이어집니다.' })}</p>
               <button
                 onClick={() => navigate('/seller/products/new')}
-                className="mt-4 inline-flex items-center gap-1 px-5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-[13px] font-bold active:scale-95"
+                className="mt-4 inline-flex items-center gap-1 px-5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] text-[13px] font-bold active:scale-95"
               >
                 + {t('seller.publicPage.addProduct', { defaultValue: '상품 등록' })}
               </button>
@@ -444,7 +444,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             <h3 id="ls-shop" className="scroll-mt-4 text-[16px] font-extrabold text-gray-900 dark:text-white mt-7 mb-3">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} {shopProducts.length}</h3>
             {/* 🔍 2026-06-16 유어샵 시안: 상품 검색 (이름 필터) — 상품 6개 이상일 때만(적으면 노이즈). */}
             {shopProducts.length >= 6 && (
-            <div className="flex items-center gap-2 h-11 px-3.5 mb-4 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#1A2334]">
+            <div className="flex items-center gap-2 h-11 px-3.5 mb-4 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1A1C21]">
               <Search className="w-4 h-4 text-gray-400 shrink-0" />
               <input value={shopQuery} onChange={(e) => setShopQuery(e.target.value)} placeholder="상품 이름으로 검색" className={`flex-1 min-w-0 bg-transparent outline-none text-[14px] ${T.text} placeholder:text-gray-400`} />
               {shopQuery && <button onClick={() => setShopQuery('')} aria-label="지우기" className="shrink-0 w-5 h-5 rounded-full bg-gray-300 dark:bg-[#3A3A3A] text-white flex items-center justify-center"><X className="w-3 h-3" /></button>}
@@ -474,7 +474,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
 
         {/* ⑥ 판매자 정보 — 🧾 2026-07-02 (대표 시안): "정보" 제목 카드 → 유어샵 **맨 밑** 쇼핑몰식 작은 푸터.
             콘텐츠와 넉넉히 떨어뜨려(mt-12) 진짜 페이지 하단 푸터로 읽히게. 얇은 구분선 + "MORE INFO +" 접이식. */}
-        <footer className="mt-10 pt-5 border-t border-gray-100 dark:border-[#2A3446]">
+        <footer className="mt-10 pt-5 border-t border-gray-100 dark:border-[#2C2F35]">
           <InfoTab seller={seller} isOwner={ownerView} T={T} />
         </footer>
       </div>

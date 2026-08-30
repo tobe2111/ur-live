@@ -101,15 +101,15 @@ export default function BlogListPage() {
   })()
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12]">
       <SEO title={t('blog.listSeoTitle', { defaultValue: '블로그' })} description={t('blog.listSeoDesc', { defaultValue: '유어딜 블로그 — 이용권·교환권·동네딜·유어샵 가이드와 서비스 소식' })} url="/blog" />
 
       {/* Header — 뒤로가기 제거, 유어딜 홈 버튼 추가, non-sticky(오버랩 방지) */}
-      <div className="bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446]">
+      <div className="bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-5 lg:px-8 h-14">
           <Link to="/blog" className="text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">유어딜 블로그</Link>
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <Link to="/" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1A2334]">
+            <Link to="/" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1A1C21]">
               <Home className="w-4 h-4" /><span className="hidden sm:inline">유어딜 홈</span>
             </Link>
             <Link to="/store/new" className="px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold hover:opacity-90">
@@ -137,10 +137,10 @@ export default function BlogListPage() {
             </Link>
             {featured.length > 1 && (
               <div className="flex items-center gap-2 mt-6">
-                <button onClick={() => moveHero(-1)} aria-label="이전" className="w-10 h-10 rounded-full border border-gray-200 dark:border-[#2A3446] flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1A2334]">
+                <button onClick={() => moveHero(-1)} aria-label="이전" className="w-10 h-10 rounded-full border border-gray-200 dark:border-[#2C2F35] flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1A1C21]">
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <button onClick={() => moveHero(1)} aria-label="다음" className="w-10 h-10 rounded-full border border-gray-200 dark:border-[#2A3446] flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1A2334]">
+                <button onClick={() => moveHero(1)} aria-label="다음" className="w-10 h-10 rounded-full border border-gray-200 dark:border-[#2C2F35] flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1A1C21]">
                   <ChevronRight className="w-5 h-5" />
                 </button>
                 <span className="ml-2 text-xs text-gray-400 dark:text-gray-500 tabular-nums">{(heroIdx % featured.length) + 1} / {featured.length}</span>
@@ -157,10 +157,10 @@ export default function BlogListPage() {
               value={query}
               onChange={(e) => onSearch(e.target.value)}
               placeholder="블로그 검색 — 이용권, 유어샵, 정산…"
-              className="w-full h-11 pl-10 pr-10 rounded-xl bg-gray-50 dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#2A3446] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-300 dark:focus:border-[#3A3A3A]"
+              className="w-full h-11 pl-10 pr-10 rounded-xl bg-gray-50 dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#2C2F35] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-300 dark:focus:border-[#3A3A3A]"
             />
             {query && (
-              <button onClick={() => onSearch('')} aria-label="검색어 지우기" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-[#2A3446]">
+              <button onClick={() => onSearch('')} aria-label="검색어 지우기" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-[#2C2F35]">
                 <X className="w-4 h-4" />
               </button>
             )}
@@ -170,12 +170,12 @@ export default function BlogListPage() {
         {/* ── 태그 필터 ── */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar py-4">
           <button onClick={() => pickTag('')}
-            className={`px-3.5 py-1.5 rounded-full text-sm font-medium shrink-0 ${!selectedTag ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-50 dark:bg-[#1C1C1E] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A3446]'}`}>
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium shrink-0 ${!selectedTag ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-50 dark:bg-[#1C1C1E] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
             전체
           </button>
           {allTags.map((tag: string) => (
             <button key={tag} onClick={() => pickTag(tag)}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-medium shrink-0 ${selectedTag === tag ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-50 dark:bg-[#1C1C1E] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A3446]'}`}>
+              className={`px-3.5 py-1.5 rounded-full text-sm font-medium shrink-0 ${selectedTag === tag ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-50 dark:bg-[#1C1C1E] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
               {tag}
             </button>
           ))}
@@ -189,15 +189,15 @@ export default function BlogListPage() {
           </h3>
 
           {loading ? (
-            <div className="divide-y divide-gray-100 dark:divide-[#2A3446]">
+            <div className="divide-y divide-gray-100 dark:divide-[#2C2F35]">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="flex items-start justify-between gap-6 py-6">
                   <div className="flex-1 space-y-3">
-                    <div className="h-3 w-24 bg-gray-100 dark:bg-[#1A2334] rounded animate-pulse" />
-                    <div className="h-5 w-3/4 bg-gray-100 dark:bg-[#1A2334] rounded animate-pulse" />
-                    <div className="h-4 w-1/2 bg-gray-100 dark:bg-[#1A2334] rounded animate-pulse" />
+                    <div className="h-3 w-24 bg-gray-100 dark:bg-[#1A1C21] rounded animate-pulse" />
+                    <div className="h-5 w-3/4 bg-gray-100 dark:bg-[#1A1C21] rounded animate-pulse" />
+                    <div className="h-4 w-1/2 bg-gray-100 dark:bg-[#1A1C21] rounded animate-pulse" />
                   </div>
-                  <div className="w-28 h-28 rounded-xl bg-gray-100 dark:bg-[#1A2334] animate-pulse shrink-0" />
+                  <div className="w-28 h-28 rounded-xl bg-gray-100 dark:bg-[#1A1C21] animate-pulse shrink-0" />
                 </div>
               ))}
             </div>
@@ -206,7 +206,7 @@ export default function BlogListPage() {
               {searching ? `‘${query.trim()}’에 대한 검색 결과가 없어요` : selectedTag ? '이 태그의 글이 아직 없어요' : '아직 작성된 글이 없습니다'}
             </div>
           ) : (
-            <div className="divide-y divide-gray-100 dark:divide-[#2A3446]">
+            <div className="divide-y divide-gray-100 dark:divide-[#2C2F35]">
               {pagePosts.map(post => {
                 const tags = parseTags(post.tags)
                 return (
@@ -229,17 +229,17 @@ export default function BlogListPage() {
           {!loading && totalPages > 1 && (
             <div className="flex items-center justify-center gap-1.5 mt-10">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={curPage === 1} aria-label="이전 페이지"
-                className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A2334] disabled:opacity-30 disabled:hover:bg-transparent">
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A1C21] disabled:opacity-30 disabled:hover:bg-transparent">
                 <ChevronLeft className="w-4 h-4" />
               </button>
               {pageNums.map(n => (
                 <button key={n} onClick={() => setPage(n)}
-                  className={`min-w-9 h-9 px-2 rounded-lg text-sm font-semibold tabular-nums ${n === curPage ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1A2334]'}`}>
+                  className={`min-w-9 h-9 px-2 rounded-lg text-sm font-semibold tabular-nums ${n === curPage ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1A1C21]'}`}>
                   {n}
                 </button>
               ))}
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={curPage === totalPages} aria-label="다음 페이지"
-                className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A2334] disabled:opacity-30 disabled:hover:bg-transparent">
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A1C21] disabled:opacity-30 disabled:hover:bg-transparent">
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>

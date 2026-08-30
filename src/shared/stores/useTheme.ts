@@ -53,7 +53,7 @@ function applyToDocument(applied: AppliedTheme) {
   // 🛡️ 2026-05-03 (re-enable): 토글 복원 — 사용자 신고 "테마 변경하는게 없어".
   // 정책 (CLAUDE.md A안):
   //   - 화이트 테마 페이지 (쇼핑/결제/상세) = light 모드 → bg-white, dark 모드 → dark: variants 활성
-  //   - 다크 테마 페이지 (홈/마이/라이브) = bg-[#0F151D] 강제 → 토글 무영향 (의도)
+  //   - 다크 테마 페이지 (홈/마이/라이브) = bg-[#0D0F12] 강제 → 토글 무영향 (의도)
   //   - 셀러/어드민/에이전시 = #F4F5F7 강제 + dark: variants 절대 금지 (pre-commit hook 차단)
   // 즉 토글은 쇼핑/결제 흐름에만 시각 적용. 사고 재발 방지를 위해 글로벌 CSS override 는 사용 안 함.
   try {
@@ -67,7 +67,7 @@ function applyToDocument(applied: AppliedTheme) {
     //   인라인 스타일은 모든 CSS 규칙(html.dark body / body.app-frame-host …)을 이긴다.
     //   그런데 토글 시 이 인라인 값이 **갱신되지 않아** 직전 테마 색(흰/검)이 그대로 남았다.
     //   → 프레임 양옆(gutter)을 현재 테마에 직접 동기: 라이트 #e9ebef(은은한 회색·프레임 강조),
-    //   다크 #0C0D10(2026-06-17 사용자 선택 — 순흑 #000 은 안쪽 페이지 #0F151D 와 똑같아 프레임이 안 떠
+    //   다크 #0C0D10(2026-06-17 사용자 선택 — 순흑 #000 은 안쪽 페이지 #0D0F12 와 똑같아 프레임이 안 떠
     //   보였음. 살짝 밝은 다크그레이로 라이트모드처럼 '액자' 분리감). CSS 규칙(html.dark { })은 FOUC/폴백.
     if (document.body) document.body.style.backgroundColor = applied === 'dark' ? '#0C0D10' : '#e9ebef'
   } catch { /* SSR */ }

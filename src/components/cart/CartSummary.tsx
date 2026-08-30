@@ -39,7 +39,7 @@ export const CartSummary = React.memo(function CartSummary({
       </div>
 
       {/* Dashed border divider */}
-      <div className="my-3 border-t border-dashed border-gray-200 dark:border-[#2A3446]" />
+      <div className="my-3 border-t border-dashed border-gray-200 dark:border-[#2C2F35]" />
 
       {/* v4 결제예정금액 (18px bold) */}
       <div className="flex justify-between items-baseline">

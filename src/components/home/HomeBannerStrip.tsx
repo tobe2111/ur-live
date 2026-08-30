@@ -43,7 +43,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
       <div className="pb-6">
         <Wrap
           href={href}
-          className="relative block overflow-hidden rounded-xl isolate min-h-[104px] flex items-center justify-between gap-5 px-6 py-5 bg-gray-900 dark:bg-[#1A2334] transition-transform hover:scale-[1.004]"
+          className="relative block overflow-hidden rounded-xl isolate min-h-[104px] flex items-center justify-between gap-5 px-6 py-5 bg-gray-900 dark:bg-[#1A1C21] transition-transform hover:scale-[1.004]"
         >
           {bg && <img src={bg} alt="" aria-hidden="true" className="absolute inset-0 -z-10 w-full h-full object-cover" />}
           <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/60 to-black/25" aria-hidden="true" />
@@ -77,7 +77,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
             <Wrap
               key={b.id}
               href={href}
-              className="relative block overflow-hidden rounded-xl isolate min-h-[96px] flex flex-col justify-center px-5 py-4 bg-gray-800 dark:bg-[#1A2334] transition-transform hover:scale-[1.008]"
+              className="relative block overflow-hidden rounded-xl isolate min-h-[96px] flex flex-col justify-center px-5 py-4 bg-gray-800 dark:bg-[#1A1C21] transition-transform hover:scale-[1.008]"
             >
               {bg && <img src={bg} alt="" aria-hidden="true" className="absolute inset-0 -z-10 w-full h-full object-cover" />}
               <div className="absolute inset-0 -z-10 bg-gradient-to-br from-black/62 to-black/38" aria-hidden="true" />

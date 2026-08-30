@@ -74,7 +74,7 @@ const STORAGE_BADGE: Record<'cold' | 'room', string> = {
 export function PickupNotice({ pickup }: { pickup: PickupInfo }) {
   if (!hasPickupInfo(pickup) || !pickup) return null
   return (
-    <div className="mt-3 rounded-2xl overflow-hidden bg-[#F7F5F6] dark:bg-[#1A2334]">
+    <div className="mt-3 rounded-2xl overflow-hidden bg-[#F7F5F6] dark:bg-[#1A1C21]">
       <div className="flex items-center gap-[7px] px-4 py-3 bg-[#1A1719] dark:bg-[#F3EFF1]">
         <svg className="w-[15px] h-[15px] shrink-0 text-white dark:text-[#1A1719]" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinejoin="round" viewBox="0 0 24 24">
           <path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z" /><path d="M3 8.2 12 13l9-4.8M12 13v7.5" />
@@ -100,7 +100,7 @@ export function PickupNotice({ pickup }: { pickup: PickupInfo }) {
         )}
         {/* ⚠️ 보관 고지 문구는 법무 확인 대기(X4c) 임시 표기 — 시안이 ~어요체로 그렸어도 바꾸지 않는다. */}
         {pickup.storage && (
-          <div className="flex items-center gap-[7px] mt-3 pt-3 border-t border-[#EAE5E7] dark:border-[#2A3446]">
+          <div className="flex items-center gap-[7px] mt-3 pt-3 border-t border-[#EAE5E7] dark:border-[#2C2F35]">
             <span className={`shrink-0 px-1.5 py-[3px] rounded-[5px] text-[10.5px] font-bold tracking-[-0.02em] ${STORAGE_BADGE[pickup.storage]}`}>
               {pickup.storage === 'cold' ? '냉장·냉동' : '실온'}
             </span>
@@ -118,7 +118,7 @@ export function DeliveryNotice({ pickup }: { pickup: PickupInfo }) {
   if (hasPickupInfo(pickup)) return null
   return (
     <div className="px-5 py-3">
-      <div className="flex items-center gap-2 py-3 px-3 rounded-xl bg-gray-50 dark:bg-[#1A2334]">
+      <div className="flex items-center gap-2 py-3 px-3 rounded-xl bg-gray-50 dark:bg-[#1A1C21]">
         <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
         <span className="text-[12px] font-semibold text-gray-900 dark:text-white">{t('productDetail.tomorrowDelivery')}</span>
         <span className="text-[11px] text-gray-500 dark:text-gray-400">{t('productDetail.freeShippingNote', { defaultValue: '· 5만원 이상 무료' })}</span>

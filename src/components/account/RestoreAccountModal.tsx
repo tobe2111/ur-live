@@ -106,7 +106,7 @@ export default function RestoreAccountModal() {
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#0F151D] w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
+        className="bg-white dark:bg-[#0D0F12] w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="restore-title"
@@ -116,7 +116,7 @@ export default function RestoreAccountModal() {
           <button
             onClick={handleSkip}
             aria-label={t('common.close', { defaultValue: '닫기' })}
-            className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A2334]"
+            className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1C21]"
           >
             <X className="w-5 h-5 text-gray-400 dark:text-gray-500" />
           </button>

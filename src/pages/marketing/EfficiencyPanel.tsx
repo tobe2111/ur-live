@@ -14,7 +14,7 @@ const authHeader = () => {
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
 interface KeywordEff { id: string; keyword: string; cost: number; clicks: number; conv: number; convAmt: number; cpa: number | null; roas: number | null; waste: boolean }
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
 
 export default function EfficiencyPanel() {
   const [items, setItems] = useState<KeywordEff[] | null>(null)
@@ -47,14 +47,14 @@ export default function EfficiencyPanel() {
             <button onClick={() => downloadCsv(`유어애즈_키워드효율_${days}일.csv`,
               ['키워드', '비용', '클릭', '전환', '전환매출', 'CPA', 'ROAS%', '낭비'],
               items.map(k => [k.keyword, k.cost, k.clicks, k.conv, k.convAmt, k.cpa ?? '', k.roas != null ? Math.round(k.roas * 100) : '', k.waste ? 'Y' : '']))}
-              className="rounded-lg border border-gray-200 dark:border-[#2A3446] px-2 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">CSV</button>
+              className="rounded-lg border border-gray-200 dark:border-[#2C2F35] px-2 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">CSV</button>
           )}
-          <div className="flex rounded-lg border border-gray-200 dark:border-[#2A3446] overflow-hidden">
+          <div className="flex rounded-lg border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
             {([7, 30] as const).map(d => (
-              <button key={d} onClick={() => { setDays(d); run(d) }} className={`px-2.5 py-0.5 text-[11px] font-semibold ${days === d ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0F151D]' : 'text-gray-500 dark:text-gray-400'}`}>{d}일</button>
+              <button key={d} onClick={() => { setDays(d); run(d) }} className={`px-2.5 py-0.5 text-[11px] font-semibold ${days === d ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12]' : 'text-gray-500 dark:text-gray-400'}`}>{d}일</button>
             ))}
           </div>
-          <button onClick={() => run()} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-3 py-1.5 text-[12px] font-bold text-white dark:text-[#0F151D] disabled:opacity-50">{busy ? '분석 중…' : '분석'}</button>
+          <button onClick={() => run()} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-3 py-1.5 text-[12px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-50">{busy ? '분석 중…' : '분석'}</button>
         </div>
       </div>
       <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">키워드별 ROAS(전환매출/비용)·CPA(전환당비용)를 계산해 <b className="text-gray-600 dark:text-gray-300">고비용·전환0 ‘낭비 키워드’</b>를 찾아줍니다. (쿼터 보호: 상위 키워드 기준)</p>
@@ -78,7 +78,7 @@ export default function EfficiencyPanel() {
               </tr></thead>
               <tbody>
                 {items.slice(0, 50).map(k => (
-                  <tr key={k.id} className={`border-t border-gray-100 dark:border-[#2A3446] ${k.waste ? 'bg-red-50/60 dark:bg-red-500/5' : ''} text-gray-700 dark:text-gray-300`}>
+                  <tr key={k.id} className={`border-t border-gray-100 dark:border-[#2C2F35] ${k.waste ? 'bg-red-50/60 dark:bg-red-500/5' : ''} text-gray-700 dark:text-gray-300`}>
                     <td className="py-1.5 pr-2 font-medium text-gray-900 dark:text-white truncate max-w-[140px]">{k.keyword}</td>
                     <td className="py-1.5 pr-2 text-right tabular-nums">₩{formatNumber(k.cost)}</td>
                     <td className="py-1.5 pr-2 text-right tabular-nums">{formatNumber(k.clicks)}</td>

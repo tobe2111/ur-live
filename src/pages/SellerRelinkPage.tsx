@@ -60,7 +60,7 @@ export default function SellerRelinkPage() {
       <div className="w-full max-w-md bg-white rounded-3xl shadow-sm p-7">
         <div className="flex items-center gap-2 mb-1.5">
           <RefreshCw className="w-5 h-5 text-brand" />
-          <h1 className="text-[20px] font-extrabold text-[#1A2C42]">{t('seller.relink.title', { defaultValue: '카카오 계정이 바뀌셨나요?' })}</h1>
+          <h1 className="text-[20px] font-extrabold text-[#16181C]">{t('seller.relink.title', { defaultValue: '카카오 계정이 바뀌셨나요?' })}</h1>
         </div>
         <p className="text-[13px] leading-relaxed text-gray-500 mb-6">
           {t('seller.relink.desc', { defaultValue: '폰이나 카카오 계정이 바뀌어도 셀러 계정은 그대로예요. 새 카카오로 로그인한 뒤, 기존 셀러 이메일과 비밀번호만 확인하면 바로 이어서 쓸 수 있어요.' })}
@@ -71,7 +71,7 @@ export default function SellerRelinkPage() {
           {hasConsumer
             ? <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
             : <span className="w-5 h-5 rounded-full bg-brand text-white text-[11px] font-extrabold flex items-center justify-center shrink-0">1</span>}
-          <p className="text-[14px] font-bold text-[#1A2C42] flex-1">{t('seller.relink.step1', { defaultValue: '새 카카오 계정으로 로그인' })}</p>
+          <p className="text-[14px] font-bold text-[#16181C] flex-1">{t('seller.relink.step1', { defaultValue: '새 카카오 계정으로 로그인' })}</p>
           {!hasConsumer && (
             <button onClick={() => navigate('/login?returnUrl=' + encodeURIComponent('/seller/relink'))}
               className="px-3 py-2 rounded-lg bg-[#FEE500] text-[#191919] text-[12.5px] font-extrabold">
@@ -84,7 +84,7 @@ export default function SellerRelinkPage() {
         <form onSubmit={submit} className={hasConsumer ? '' : 'opacity-40 pointer-events-none'}>
           <div className="flex items-center gap-2.5 mb-3">
             <span className="w-5 h-5 rounded-full bg-brand text-white text-[11px] font-extrabold flex items-center justify-center shrink-0">2</span>
-            <p className="text-[14px] font-bold text-[#1A2C42]">{t('seller.relink.step2', { defaultValue: '기존 셀러 계정 확인' })}</p>
+            <p className="text-[14px] font-bold text-[#16181C]">{t('seller.relink.step2', { defaultValue: '기존 셀러 계정 확인' })}</p>
           </div>
           <div className="space-y-2.5">
             <input type="email" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email"
@@ -105,7 +105,7 @@ export default function SellerRelinkPage() {
             {t('seller.relink.noPw', { defaultValue: '카카오로만 가입해서 비밀번호가 없나요? 본인 확인 후 저희가 직접 연결해 드릴게요.' })}
           </p>
           <a href={KAKAO_CHANNEL} target="_blank" rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-extrabold text-[#1A2C42] underline underline-offset-2">
+            className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-extrabold text-[#16181C] underline underline-offset-2">
             <MessageCircle className="w-3.5 h-3.5" /> {t('seller.relink.channel', { defaultValue: '카카오채널로 문의하기' })}
           </a>
         </div>

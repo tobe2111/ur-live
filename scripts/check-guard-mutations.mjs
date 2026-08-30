@@ -224,7 +224,7 @@ const MUTATIONS = [
     name: '홈 색면이 다시 리터럴 hex 로 흩어진다(페이지와 히어로가 갈림)',
     file: 'src/pages/pc-home/PcHomePage.tsx',
     find: '<div className="bg-[var(--home-field)] min-h-[100dvh]">',
-    replace: '<div className="bg-[#1A2C42] min-h-[100dvh]">',
+    replace: '<div className="bg-[#16181C] min-h-[100dvh]">',
     test: 'src/tests/unit/home-color-field.test.ts',
     why:
       '색면은 페이지 전체와 히어로 두 군데서 그려진다. 두 값이 다르면 **이음매가 그대로 보이는데** ' +

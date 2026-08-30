@@ -93,7 +93,7 @@ export default function ConsumerFrameRails() {
               <div className="rounded-lg bg-white dark:bg-white p-2 flex items-center justify-center shrink-0">
                 {url ? (
                   <Suspense fallback={<div className="w-[84px] h-[84px]" />}>
-                    <QRCodeSVG value={url} size={84} fgColor="#0F151D" bgColor="#ffffff" level="M" />
+                    <QRCodeSVG value={url} size={84} fgColor="#0D0F12" bgColor="#ffffff" level="M" />
                   </Suspense>
                 ) : (
                   <div className="w-[84px] h-[84px]" />

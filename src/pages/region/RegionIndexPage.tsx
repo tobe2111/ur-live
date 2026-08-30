@@ -33,7 +33,7 @@ export default function RegionIndexPage() {
   const total = regions.reduce((sum, r) => sum + r.count, 0)
 
   return (
-    <div className="bg-white dark:bg-[#0F151D] min-h-[100dvh]">
+    <div className="bg-white dark:bg-[#0D0F12] min-h-[100dvh]">
       <SEO
         title="지역별 이용권·동네딜 — 우리 동네 할인 찾기 | 유어딜"
         description="서울·경기·부산부터 제주까지, 지역별 식당·카페·뷰티·숙박 이용권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요."
@@ -70,7 +70,7 @@ export default function RegionIndexPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-7 pb-12">
             {regions.map(r => (
               <section key={r.sido} aria-labelledby={`sido-${r.sido}`}>
-                <h2 id={`sido-${r.sido}`} className="mb-2.5 pb-2 border-b border-gray-100 dark:border-[#2A3446]">
+                <h2 id={`sido-${r.sido}`} className="mb-2.5 pb-2 border-b border-gray-100 dark:border-[#2C2F35]">
                   <Link
                     to={regionPath({ sido: r.sido })}
                     className="inline-flex items-baseline gap-1.5 text-[15px] font-black text-gray-900 dark:text-white hover:underline"

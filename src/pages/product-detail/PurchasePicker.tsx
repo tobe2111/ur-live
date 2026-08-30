@@ -82,7 +82,7 @@ export default function PurchasePicker({
                       ? 'bg-[#F7F5F6] text-[#A9A2A6] dark:bg-[#161D28] dark:text-[#6E666B] cursor-not-allowed'
                       : selected
                         ? 'bg-[#1A1719] text-white dark:bg-[#F3EFF1] dark:text-[#1A1719]'
-                        : 'bg-[#F1EDEF] text-[#3F383C] dark:bg-[#1A2334] dark:text-[#DAD4D7]'
+                        : 'bg-[#F1EDEF] text-[#3F383C] dark:bg-[#1A1C21] dark:text-[#DAD4D7]'
                   }`}
                 >
                   <span className={`text-[14.5px] tracking-[-0.025em] truncate ${selected ? 'font-bold' : 'font-semibold'}`}>
@@ -103,7 +103,7 @@ export default function PurchasePicker({
           // 🔴 옵션이 없을 때 **빈 자리로 두지 않는다.** 시안이 회색 안내줄 하나를 그린 이유가 있다 —
           //   기존 화면은 여기에 '옵션을 선택해주세요' 가 적힌 **누를 수 없는 버튼**을 뒀고,
           //   그건 고를 게 없다는 뜻이 아니라 **고르라는 지시**로 읽힌다.
-          <div className="flex items-center gap-2 h-12 px-[15px] rounded-xl bg-[#F5F2F3] dark:bg-[#1A2334]">
+          <div className="flex items-center gap-2 h-12 px-[15px] rounded-xl bg-[#F5F2F3] dark:bg-[#1A1C21]">
             <Info className="w-3.5 h-3.5 shrink-0 text-[#9A9298]" />
             <span className="text-[13px] font-semibold tracking-[-0.025em] text-[#776F74] dark:text-[#A29A9F]">
               선택할 옵션이 없는 상품이에요
@@ -115,7 +115,7 @@ export default function PurchasePicker({
 
         <div className="flex items-center justify-between pt-[22px]">
           <span className="text-[13px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">수량</span>
-          <div className="flex items-center gap-0.5 p-[3px] rounded-xl bg-[#F1EDEF] dark:bg-[#1A2334]">
+          <div className="flex items-center gap-0.5 p-[3px] rounded-xl bg-[#F1EDEF] dark:bg-[#1A1C21]">
             <button type="button" aria-label="수량 감소" onClick={dec} disabled={quantity <= 1}
               className="w-11 h-11 rounded-[10px] flex items-center justify-center disabled:opacity-40">
               <Minus className="w-4 h-4 text-[#6B6469] dark:text-[#7C7479]" strokeWidth={2.4} />
@@ -155,8 +155,8 @@ export default function PurchasePicker({
             return (
               <button key={opt.id} disabled={soldOut} onClick={() => !soldOut && onSelectOption(Number(opt.id))}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${
-                  soldOut ? 'border-gray-200 dark:border-[#2A3446] opacity-40 cursor-not-allowed'
-                  : selected ? 'border-gray-900 bg-gray-50 dark:bg-[#1A2334]' : 'border-gray-200 dark:border-[#2A3446]'
+                  soldOut ? 'border-gray-200 dark:border-[#2C2F35] opacity-40 cursor-not-allowed'
+                  : selected ? 'border-gray-900 bg-gray-50 dark:bg-[#1A1C21]' : 'border-gray-200 dark:border-[#2C2F35]'
                 }`}>
                 <span className={`text-[12px] ${soldOut ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>{opt.option_value}</span>
                 <span className="flex items-center gap-2">
@@ -172,7 +172,7 @@ export default function PurchasePicker({
           })}
         </div>
       ) : (
-        <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A3446]">
+        <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 dark:border-[#2C2F35]">
           <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('productDetail.optionPlaceholder')}</span>
           <svg className="w-3.5 h-3.5 text-gray-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
         </button>
@@ -182,7 +182,7 @@ export default function PurchasePicker({
       {/* 🚑 2026-07-02 (상세 리뷰): 수량 스텝퍼 부재 — setQuantity 미배선이라 2개 이상 즉시구매 불가하던 것 */}
       <div className="flex items-center justify-between mt-3">
         <span className="text-[12px] font-bold text-gray-900 dark:text-white">{t('productDetail.quantity', { defaultValue: '수량' })}</span>
-        <div className="flex items-center gap-3 border border-gray-200 dark:border-[#2A3446] rounded-xl px-2 py-1">
+        <div className="flex items-center gap-3 border border-gray-200 dark:border-[#2C2F35] rounded-xl px-2 py-1">
           <button type="button" aria-label="수량 감소" onClick={dec}
             className="w-8 h-8 flex items-center justify-center text-gray-900 dark:text-white font-bold disabled:opacity-30" disabled={quantity <= 1}>−</button>
           <span className="min-w-[2ch] text-center text-[14px] font-bold text-gray-900 dark:text-white">{quantity}</span>

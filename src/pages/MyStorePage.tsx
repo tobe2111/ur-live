@@ -111,7 +111,7 @@ export default function MyStorePage() {
 
   if (forbidden) {
     return (
-      <div className="bg-white dark:bg-[#0F151D] min-h-screen flex flex-col items-center justify-center px-8 text-center">
+      <div className="bg-white dark:bg-[#0D0F12] min-h-screen flex flex-col items-center justify-center px-8 text-center">
         <SEO title="내 매장 — 유어딜" description="사업자 유저 매장 관리" url="/my-store" noindex />
         <Store className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
         <p className="text-gray-900 dark:text-white font-bold">사업자 유저 전용</p>
@@ -129,9 +129,9 @@ export default function MyStorePage() {
   ] : []
 
   return (
-    <div className="bg-white dark:bg-[#0F151D] min-h-screen pb-8">
+    <div className="bg-white dark:bg-[#0D0F12] min-h-screen pb-8">
       <SEO title="내 매장 — 유어딜" description="내 매장 이용권 사용·정산 현황" url="/my-store" noindex />
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2A3446] px-4 h-12 flex items-center">
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35] px-4 h-12 flex items-center">
         <Store className="w-5 h-5 text-gray-900 dark:text-white mr-2" />
         <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">내 매장</h1>
       </div>
@@ -152,7 +152,7 @@ export default function MyStorePage() {
               key={a.to}
               type="button"
               onClick={() => navigate(a.to)}
-              className="flex flex-col items-center gap-1 rounded-2xl border border-gray-100 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] py-3 active:opacity-80 transition-opacity"
+              className="flex flex-col items-center gap-1 rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] py-3 active:opacity-80 transition-opacity"
             >
               <span className="text-[18px]" aria-hidden="true">{a.emoji}</span>
               <span className="text-[11px] font-bold text-gray-900 dark:text-white">{a.label}</span>
@@ -174,7 +174,7 @@ export default function MyStorePage() {
             {/* 요약 */}
             <div className="grid grid-cols-2 gap-2.5">
               {stats.map(s => (
-                <div key={s.label} className="rounded-2xl border border-gray-100 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-3.5">
+                <div key={s.label} className="rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-3.5">
                   <p className="text-[11px] text-gray-500 dark:text-gray-400">{s.label}</p>
                   <p className="text-[18px] font-extrabold text-gray-900 dark:text-white mt-0.5">{s.value}</p>
                   {s.sub && <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{s.sub}</p>}
@@ -196,7 +196,7 @@ export default function MyStorePage() {
                     const draft = stockDraft[p.id]
                     const dirty = draft !== undefined && draft !== String(p.stock ?? 0)
                     return (
-                      <div key={p.id} className="flex items-center gap-2 rounded-xl border border-gray-100 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] px-3.5 py-3">
+                      <div key={p.id} className="flex items-center gap-2 rounded-xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] px-3.5 py-3">
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{p.name}</p>
                           <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{formatNumber(p.price)}원 · 재고</p>
@@ -206,7 +206,7 @@ export default function MyStorePage() {
                             type="number" inputMode="numeric" min={0}
                             value={draft ?? String(p.stock ?? 0)}
                             onChange={e => setStockDraft(prev => ({ ...prev, [p.id]: e.target.value }))}
-                            className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white text-[12px] text-right"
+                            className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white text-[12px] text-right"
                             aria-label={`${p.name} 재고`}
                           />
                           {dirty && (
@@ -216,7 +216,7 @@ export default function MyStorePage() {
                         <button
                           onClick={() => toggleActive(p)}
                           disabled={busy === p.id}
-                          className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold disabled:opacity-50 ${active ? 'bg-gray-900/10 dark:bg-white/15 text-gray-900 dark:text-white' : 'bg-gray-100 dark:bg-[#1A2334] text-gray-400 dark:text-gray-500'}`}
+                          className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold disabled:opacity-50 ${active ? 'bg-gray-900/10 dark:bg-white/15 text-gray-900 dark:text-white' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-400 dark:text-gray-500'}`}
                         >
                           {active ? '노출중' : '숨김'}
                         </button>
@@ -237,10 +237,10 @@ export default function MyStorePage() {
                   {fcfs.map(f => {
                     const closed = !!(f.deadline && new Date(f.deadline).getTime() < Date.now())
                     return (
-                      <div key={f.product_id} className="rounded-xl border border-gray-100 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] px-3.5 py-3">
+                      <div key={f.product_id} className="rounded-xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] px-3.5 py-3">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{f.name}</p>
-                          <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${closed ? 'bg-gray-100 dark:bg-[#1A2334] text-gray-400 dark:text-gray-500' : 'bg-gray-900/10 dark:bg-white/15 text-gray-900 dark:text-white'}`}>
+                          <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${closed ? 'bg-gray-100 dark:bg-[#1A1C21] text-gray-400 dark:text-gray-500' : 'bg-gray-900/10 dark:bg-white/15 text-gray-900 dark:text-white'}`}>
                             {closed ? '마감' : '모집중'}
                           </span>
                         </div>
@@ -265,7 +265,7 @@ export default function MyStorePage() {
                   const disputed = disputedIds.has(v.id)
                   const canReport = v.status === 'used' && v.settlement_id == null && !disputed
                   return (
-                    <div key={v.id} className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] px-3.5 py-3">
+                    <div key={v.id} className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] px-3.5 py-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{v.restaurant_name || v.product_name || `이용권 #${v.id}`}</p>
                         <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
@@ -281,7 +281,7 @@ export default function MyStorePage() {
                       ) : v.status === 'used' && v.settlement_id != null ? (
                         <span className="flex items-center gap-1 text-[11px] font-bold text-gray-400 dark:text-gray-500 shrink-0"><CheckCircle2 className="w-3.5 h-3.5" />정산완료</span>
                       ) : canReport ? (
-                        <button onClick={() => report(v)} disabled={busy === v.id} className="shrink-0 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-[#2A3446] text-gray-600 dark:text-gray-300 text-[12px] font-bold disabled:opacity-50">안 왔어요</button>
+                        <button onClick={() => report(v)} disabled={busy === v.id} className="shrink-0 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300 text-[12px] font-bold disabled:opacity-50">안 왔어요</button>
                       ) : null}
                     </div>
                   )

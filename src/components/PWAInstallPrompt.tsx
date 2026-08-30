@@ -159,7 +159,7 @@ export default function PWAInstallPrompt() {
   if (show && deferredPrompt) {
     return (
       <div className="fixed bottom-20 left-3 right-3 z-[60] sm:left-auto sm:right-4 sm:bottom-4 sm:max-w-sm pointer-events-auto">
-        <div className="bg-white dark:bg-[#0F151D] rounded-2xl shadow-2xl border border-gray-100 dark:border-[#2A3446] p-4">
+        <div className="bg-white dark:bg-[#0D0F12] rounded-2xl shadow-2xl border border-gray-100 dark:border-[#2C2F35] p-4">
           <div className="flex items-start gap-3">
             {/* 🛡️ 2026-05-27 사용자 요청: 좌측 분홍 네모 (smartphone icon 컨테이너) 제거. */}
             <div className="flex-1 min-w-0">
@@ -168,7 +168,7 @@ export default function PWAInstallPrompt() {
               </p>
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{t('pwa.install.desc', { defaultValue: '홈 화면에 설치하고 5,000원 쿠폰 받기' })}</p>
             </div>
-            <button onClick={handleDismiss} aria-label={t('pwa.install.closeAria', { defaultValue: '닫기' })} className="p-1 -m-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A2334] shrink-0">
+            <button onClick={handleDismiss} aria-label={t('pwa.install.closeAria', { defaultValue: '닫기' })} className="p-1 -m-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1C21] shrink-0">
               <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
           </div>
@@ -195,14 +195,14 @@ export default function PWAInstallPrompt() {
     const isIOSDevice = isIOS()
     return (
       <div className="fixed bottom-20 left-3 right-3 z-[60] sm:left-auto sm:right-4 sm:bottom-4 sm:max-w-sm pointer-events-auto">
-        <div className="bg-white dark:bg-[#0F151D] rounded-2xl shadow-2xl border-2 border-pink-200 p-4">
+        <div className="bg-white dark:bg-[#0D0F12] rounded-2xl shadow-2xl border-2 border-pink-200 p-4">
           <div className="flex items-start gap-3 mb-2">
             {/* 🛡️ 2026-05-27 사용자 요청: 좌측 분홍 네모 (smartphone icon 컨테이너) 제거. */}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-gray-900 dark:text-white">{t('pwa.install.title', { defaultValue: '🎁 앱 설치하면 환영 쿠폰!' })}</p>
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{t('pwa.install.manualDesc', { defaultValue: '홈 화면에 추가하고 5,000원 받기' })}</p>
             </div>
-            <button onClick={handleDismiss} aria-label={t('pwa.install.closeAria', { defaultValue: '닫기' })} className="p-1 -m-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A2334] shrink-0">
+            <button onClick={handleDismiss} aria-label={t('pwa.install.closeAria', { defaultValue: '닫기' })} className="p-1 -m-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1C21] shrink-0">
               <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
           </div>
