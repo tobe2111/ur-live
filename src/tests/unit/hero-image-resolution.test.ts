@@ -20,6 +20,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
+import { HOME_HERO_REQUEST_WIDTH } from '@/shared/home-hero-image'
 
 const HERO = 'src/components/home/HomeHeroDefault.tsx'
 const read = () => readFileSync(HERO, 'utf-8')
@@ -47,11 +48,12 @@ describe('히어로가 레티나에서 흐리지 않다', () => {
   })
 
   it('기본 src 도 표시 폭 이상이다 (srcSet 미지원 폴백)', () => {
+    // ⚠️ 2026-08-29: 폭·품질이 **리터럴에서 상수로** 빠졌다 — 워커 preload 가 같은 값을 써야
+    //   byte-일치하기 때문이다(`shared/home-hero-image`). 그래서 여기서도 상수를 본다.
     const s = code(read())
-    const m = s.match(/cfImage\(photoSrc,\s*\{\s*width:\s*(\d+)/)
-    expect(m, 'cfImage 호출이 사라졌다').toBeTruthy()
+    expect(s, 'cfImage 호출이 사라졌다').toMatch(/cfImage\(photoSrc,\s*\{\s*width:\s*HOME_HERO_REQUEST_WIDTH/)
     // PC 표시 1,037px — 폴백이라도 그보다 작으면 안 된다.
-    expect(Number(m![1]), 'src 폭이 표시 폭(1,037px)보다 작다').toBeGreaterThanOrEqual(1037)
+    expect(HOME_HERO_REQUEST_WIDTH, 'src 폭이 표시 폭(1,037px)보다 작다').toBeGreaterThanOrEqual(1037)
   })
 
   it('quality 를 화질이 무너질 만큼 낮추지 않는다', () => {

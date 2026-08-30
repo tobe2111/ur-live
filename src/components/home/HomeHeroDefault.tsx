@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Map } from 'lucide-react'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
+import { pickHeroPhotoFromSeedJson, type HeroPhotoPick } from '@/shared/home-hero-photo'
+import { HOME_HERO_REQUEST_WIDTH, HOME_HERO_QUALITY } from '@/shared/home-hero-image'
 import PcHomeLocationBar, { type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
 
 /**
@@ -34,50 +36,18 @@ const DEFAULT_TITLE_TAIL = ' 동네 이용권'
 const DEFAULT_DESC = '예약도 대기도 없이. 식사 · 미용 · 숙소 · 교환권.'
 
 /**
- * 🖼️ 우리가 직접 올린 사진인가 — R2(`/api/media/…` · `media.ur-team.com`).
- *
- * 왜 호스트로 가르나: 2026-08-04 에 **데모 사진에 타사 워터마크 보도사진(YONHAP)이 섞여** 홈
- * 최상단에 오를 뻔했다. 그때의 처방은 "데모를 전부 금지"였는데, 그 규칙은 **라이브 카탈로그가
- * 100% 데모가 되자 히어로를 영구히 빈 색면으로** 만들었다(2026-08-27 실측: 시드 50/50 데모,
- * 어드민 배너 0건 → 사진 소스가 아예 없음).
- *
- * ⇒ 금지의 축을 "데모냐"에서 **"사진의 출처가 우리냐"** 로 옮긴다. 사고의 원인은 데모라는 사실이
- *   아니라 **남의 사진**이었다. 우리 버킷에 우리가 올린 것은 그 위험이 구조적으로 없다.
- */
-function isOwnMedia(url: string): boolean {
-  return url.startsWith('/api/media/') || /^https?:\/\/media\.ur-team\.com\//.test(url)
-}
-
-/**
  * 홈 SSR 시드에서 히어로에 쓸 사진 1장. 없으면 null(= 사진 없는 색면).
  *
- * 우선순위: ① 실상품(비데모) → ② 실상품이 하나도 없으면 **우리 호스트 데모**.
- * ⚠️ 외부 호스트 사진을 가진 데모는 어느 단계에서도 안 쓴다(위 `isOwnMedia` 주석의 사고).
+ * ⚠️ **고르는 규칙 자체는 여기 없다** — `shared/home-hero-photo` 가 SSOT 다.
+ *   워커가 이 사진을 `<link rel="preload">` 로 미리 받게 하려면(2026-08-29) 워커와 클라이언트가
+ *   **똑같은 사진**을 골라야 한다. 규칙이 두 벌이면 반드시 갈리고, 갈리면 preload 가 버려져
+ *   같은 사진을 두 번 받는다(에러 없이 더 느려진다). 이 함수는 DOM 에서 시드를 꺼내 넘기기만 한다.
  */
-export function pickHeroPhoto(): { src: string; href: string } | null {
+export function pickHeroPhoto(): HeroPhotoPick | null {
   if (typeof document === 'undefined') return null
-  try {
-    const el = document.getElementById('__SSR_INITIAL_MAIN__')
-    if (!el?.textContent) return null
-    const parsed = JSON.parse(el.textContent) as { success?: boolean; data?: unknown }
-    if (!parsed?.success || !Array.isArray(parsed.data)) return null
-    let ownDemo: { src: string; href: string } | null = null
-    for (const raw of parsed.data as Array<Record<string, unknown>>) {
-      const img = typeof raw?.image_url === 'string' ? raw.image_url : ''
-      const slug = typeof raw?.slug === 'string' ? raw.slug : ''
-      const id = raw?.id
-      if (!img) continue
-      const hit = { src: img, href: id != null ? `/group-buy/${id}` : '/' }
-      if (slug.startsWith('demo-deal-')) {
-        // 데모는 **마지막 수단**이고, 그중에서도 우리가 올린 사진만. 실상품을 계속 찾는다.
-        if (!ownDemo && isOwnMedia(img)) ownDemo = hit
-        continue
-      }
-      return hit
-    }
-    return ownDemo
-  } catch { /* 손상된 inject — 사진 없이 간다 */ }
-  return null
+  const el = document.getElementById('__SSR_INITIAL_MAIN__')
+  if (!el?.textContent) return null
+  return pickHeroPhotoFromSeedJson(el.textContent)
 }
 
 export interface HeroContent {
@@ -159,7 +129,7 @@ export default function HomeHeroDefault({
             <video className="w-full h-full object-cover" src={content.videoUrl} autoPlay muted loop playsInline />
           ) : (
             <img
-              src={cfImage(photoSrc, { width: 1280, quality: 76 }) || photoSrc}
+              src={cfImage(photoSrc, { width: HOME_HERO_REQUEST_WIDTH, quality: HOME_HERO_QUALITY }) || photoSrc}
               /* 🔍 2026-08-22 (대표 — "이미지 화질이 깨지는 문제"): `width: 900` **한 장**이었다.
                  이 사진은 PC 에서 **1,037px 폭**으로 그려지므로 레티나(DPR 2)면 2,074px 이 필요하다
                  → 실효 0.43배로 눈에 띄게 흐렸다. ⚠️ 리사이저는 정상이다(요청한 폭을 그대로 준다) —

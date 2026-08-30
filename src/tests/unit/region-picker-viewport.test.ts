@@ -31,6 +31,18 @@ describe('지역 선택 패널 — 뷰포트 밖으로 안 나간다', () => {
     expect(cls![0]).toMatch(/left-2[\s\S]*right-2/)   // 좌우 모두 뷰포트에 묶인다
   })
 
+  /**
+   * 🕳️ 2026-08-29 — 첫 수리는 게이트를 **640** 으로 잡아 640~767 구간에 구멍을 남겼다.
+   *   그 구간에선 바가 아직 모바일 헤더(오른쪽)에 있는데 패널만 `absolute left-0` 로 돌아가
+   *   문서가 다시 넓어졌다(실측 700px 에서 +179). 폰을 가로로 눕히면 바로 이 구간이다.
+   *   ⇒ 중단점은 **레이아웃이 실제로 바뀌는 곳**(PC 헤더가 뜨는 `md` = 768px)과 같아야 한다.
+   */
+  it('중단점이 레이아웃 전환점(768px)과 같다 — 사이 구간 구멍 금지', () => {
+    const s = src()
+    expect(s).toContain("useMediaQuery('(min-width: 768px)')")
+    expect(s).not.toContain("useMediaQuery('(min-width: 640px)')")
+  })
+
   it('넓은 화면은 종전대로 버튼에 붙는다 (PC 회귀 방지)', () => {
     const cls = src().match(/className=\{`z-\[10500\][\s\S]{0,400}?`\}/)
     expect(cls![0]).toContain('absolute left-0')

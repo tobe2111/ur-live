@@ -201,6 +201,13 @@ jobs:
         run: node scripts/check-ads-dispatch-bypass.mjs -s
         continue-on-error: false
 
+      # 🧱 2026-08-27 대표 지시 *"유어애즈 때문에 유어딜이 부정적인 영향을 받는 일이 없도록 해"*.
+      #   이 경계는 이미 한 번 무너져 유어딜 DB 를 99% 채웠다(주문·결제가 같이 죽을 뻔했다).
+      #   테이블은 그때 옮겼지만 **경계를 지키는 장치가 없었다** — 여기서 만든다.
+      - name: 🧱 유어애즈↔유어딜 경계 (유어딜 업무테이블 쓰기·공유테이블·유어딜 cron 래칫)
+        run: node scripts/check-ads-urdeal-isolation.mjs -s
+        continue-on-error: false
+
       # 🧬 2026-08-02: **가드가 실제로 실패할 수 있는지** 기계가 확인한다(되돌려-검증 자동화).
       #   이 레포의 반복 사고는 "검사가 실패한다"가 아니라 **"검사가 실패할 수 없다"** 이고,
       #   하루에 세 번 났다(reverse 픽스처 · phase 이름 가설 · 일1회 레인 누락 픽스처).

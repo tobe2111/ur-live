@@ -20,6 +20,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { createRequire } from 'module'
 import { COMPANY_INDEX_DDL } from '@/features/marketing/api/company-ddl-indexes'
+import { interleaveBySource } from '@/features/marketing/api/kakao-sweep-query'
 import { COMPANY_DDL } from '@/features/marketing/api/company-discovery'
 import { shouldRecountRemaining, prevRemaining, REMAINING_TTL_MS } from '@/features/marketing/api/enrich-telemetry'
 
@@ -162,5 +163,54 @@ describe('⑤ 잔여 백로그 COUNT 는 시간당 1회', () => {
     const gate = enrichSrc.match(/const rem = recount[\s\S]{0,400}/)
     expect(gate?.[0]).toMatch(/\?\s*await DB\.prepare\("SELECT COUNT\(\*\) AS n FROM ad_company_leads/)
     expect(gate?.[0]).toMatch(/:\s*\{ n: carried\?\.remaining/) // 안 세는 쪽은 직전 값
+  })
+})
+
+describe('⑥ 카카오 스윕 재작성 — 창 함수와 **같은 답**을 낸다 (node:sqlite 실증)', () => {
+  // 이 파일은 두 번 고쳐졌고 두 번 다 라이브 실측을 보고서야 무엇이 굶는지 알았다. 그래서 세 번째
+  // 수리는 "빨라졌다"가 아니라 **"뽑히는 60행이 예전과 순서까지 같다"**를 기계가 대조한다.
+  const KWHERE = `merged_into IS NULL AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != ''
+     AND (kakao_checked_at IS NULL OR kakao_checked_at < datetime('now', '-30 days'))`
+  const KINNER = `(kakao_checked_at IS NOT NULL) ASC, (email IS NOT NULL AND email <> '') ASC, (tier IS NULL) ASC, tier ASC, id ASC`
+  /** 예전 구현 — 창 함수 한 방. 비교 기준으로만 남긴다(프로덕션에서는 사라졌다). */
+  const OLD = `SELECT id, source FROM (
+       SELECT id, source, tier, ROW_NUMBER() OVER (PARTITION BY source ORDER BY ${KINNER}) AS rn
+         FROM ad_company_leads WHERE ${KWHERE}
+     ) ORDER BY rn ASC, (tier IS NULL) ASC, tier ASC, id ASC LIMIT 60`
+
+  it('🩸 소스별 상위 N + 인터리브 = 예전 창 함수 (id 순서까지 동일)', () => {
+    const db = seed(6000)
+    // 스윕 대상이 되도록 일부 행에 주소를 주고 전화를 비운다(seed 는 보강용 분포라 그대로는 대상이 적다)
+    db.exec("UPDATE ad_company_leads SET address = '서울시', phone = NULL WHERE id % 3 = 0")
+    db.exec("UPDATE ad_company_leads SET source = CASE WHEN id % 7 = 0 THEN 'storeinfo' WHEN id % 11 = 0 THEN 'local' ELSE 'commerce' END")
+    db.exec('ANALYZE')
+    const oldRows = db.prepare(OLD).all().map((r: Record<string, unknown>) => [r.id, r.source])
+    expect(oldRows.length, '대상이 0이면 이 비교는 아무것도 증명하지 않는다').toBeGreaterThan(10)
+
+    const sources = db.prepare(`SELECT DISTINCT source FROM ad_company_leads WHERE ${KWHERE}`)
+      .all().map((r: Record<string, unknown>) => String(r.source))
+    const per = sources.map(sc => db.prepare(
+      `SELECT id, company_name, source, tier FROM ad_company_leads WHERE source = ? AND ${KWHERE} ORDER BY ${KINNER} LIMIT 60`,
+    ).all(sc) as unknown as Parameters<typeof interleaveBySource>[0][number])
+    const newRows = interleaveBySource(per, 60).map(r => [r.id, r.source])
+    expect(newRows).toEqual(oldRows)
+  })
+
+  it('🩸 인덱스를 붙이면 소스별 조회가 앞에서 N개만 걷는다(전량 정렬 소멸)', () => {
+    const db = seed(6000)
+    db.exec("UPDATE ad_company_leads SET address = '서울시', phone = NULL WHERE id % 3 = 0")
+    for (const s2 of COMPANY_INDEX_DDL.filter(x => /kakao_queue/.test(x))) db.exec(s2)
+    db.exec('ANALYZE')
+    const p = plan(db, `SELECT id FROM ad_company_leads WHERE source = 'commerce' AND ${KWHERE} ORDER BY ${KINNER} LIMIT 60`)
+    expect(p).toContain('idx_company_leads_kakao_queue')
+    expect(p, '전량 정렬이 남아 있으면 60건 뽑는 데 31만 행을 읽던 그대로다').not.toContain('TEMP B-TREE FOR ORDER BY')
+  })
+
+  it('🩸 소스 목록 조회도 인덱스로 답한다 — 아니면 매 회차 전수 스캔이 하나 늘 뿐이다', () => {
+    const db = seed(6000)
+    db.exec("UPDATE ad_company_leads SET address = '서울시', phone = NULL WHERE id % 3 = 0")
+    for (const s2 of COMPANY_INDEX_DDL.filter(x => /kakao_queue/.test(x))) db.exec(s2)
+    db.exec('ANALYZE')
+    expect(plan(db, `SELECT DISTINCT source FROM ad_company_leads WHERE ${KWHERE}`)).toContain('idx_company_leads_kakao_queue')
   })
 })

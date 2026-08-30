@@ -85,19 +85,25 @@ describe('reclassifyWorkPlan — 무료는 총량으로 묶는다', () => {
 
 describe('🚧 배선 — 순수함수만 만들고 호출부에 안 걸면 아무 일도 안 일어난다', () => {
   it('카카오 스윕이 예산으로 좁힌 상한으로 SELECT 한다', () => {
-    const src = read('src/features/marketing/api/company-collect.ts')
+    // 📌 2026-08-30: 스윕 본문이 `kakao-sweep-lane.ts` 로 분리됐다(600줄 래칫 — 이동만).
+    const src = read('src/features/marketing/api/kakao-sweep-lane.ts')
     expect(src).toMatch(/const rowCap = rowsWorthReading\(budget\.left - SWEEP_BOOKKEEPING_RESERVE, cap\)/)
     // ⚠️ 예전 형태(`.bind(cap)`)로 되돌아가면 600행을 다시 읽는다. 같은 줄로 좁혀 본다
     //   — `[^;]*` 로 쓰면 세미콜론 없는 이 코드베이스에서 다음 문장까지 넘어간다(오늘까지 4번 밟은 함정).
-    expect(src).toMatch(/\.bind\(rowCap\)[^\n]*\.all</)
+    // 📌 2026-08-30: 스윕이 소스별 조회로 바뀌어 바인딩이 `(source, rowCap)` 이 됐다. 지키는 것은
+    //   **cap 이 아니라 rowCap 을 바인딩하는가** 이므로 소스 인자를 허용하되 rowCap 은 그대로 요구한다.
+    expect(src).toMatch(/\.bind\((?:src, )?rowCap\)[^\n]*\.all</)
   })
 
   it('예산 계산이 SELECT **앞**에 있다 — 뒤에 있으면 좁힐 값이 없다', () => {
-    const src = read('src/features/marketing/api/company-collect.ts')
+    const src = read('src/features/marketing/api/kakao-sweep-lane.ts')
     const budget = src.indexOf('const budget: FetchBudget = { left: budgetTotal - schemaSpent }')
     // ⚠️ 2026-08-05: SQL 자체가 `kakao-sweep-query.ts` 로 이사했다 — 여기선 **호출부**를 집는다
     //   (이 시험이 지키는 건 SQL 문구가 아니라 "예산이 먼저 계산되는가"라는 순서다).
-    const select = src.indexOf('DB.prepare(KAKAO_SWEEP_SQL)')
+    // 📌 2026-08-30: 창 함수 한 방(`KAKAO_SWEEP_SQL`)이 [소스 목록 + 소스별 상위 N] 으로 바뀌었다.
+    //   이 시험이 지키는 건 **"예산이 먼저 계산되는가"라는 순서**이므로, 앵커를 실제로 rowCap 을 쓰는
+    //   그 SELECT(소스별 조회)로 옮긴다. 이름만 바뀌고 계약은 그대로다.
+    const select = src.indexOf('DB.prepare(KAKAO_SWEEP_PER_SOURCE_SQL)')
     expect(budget, '예산 선언을 못 찾았다 — 이름이 바뀌었으면 이 시험을 고쳐라').toBeGreaterThan(0)
     expect(select, '스윕 SELECT 를 못 찾았다').toBeGreaterThan(0)
     expect(budget).toBeLessThan(select)

@@ -16,7 +16,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const SRC = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/company-collect.ts'), 'utf8')
+const SRC = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/kakao-sweep-lane.ts'), 'utf8')
 /** `runKakaoPhoneSweep` 본문만 잘라 센다(파일 전체를 세면 다른 함수의 쓰기까지 섞인다). */
 const sweepBody = (): string => {
   const i = SRC.indexOf('export async function runKakaoPhoneSweep(')

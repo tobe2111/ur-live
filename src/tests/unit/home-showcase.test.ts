@@ -125,13 +125,20 @@ describe('② 대표 확정 — 없으면 아무것도 안 그린다', () => {
     const def = code('src/components/home/HomeHeroDefault.tsx')
     if (!/<img/.test(def)) return  // 사진을 안 쓰는 형태로 되돌아가면 이 항목은 무의미
     expect(def).toMatch(/__SSR_INITIAL_MAIN__/)      // 출처 = 홈 시드(권리 확보된 우리 상품)
-    expect(def).toMatch(/demo-deal-/)                 // 데모를 여전히 분간한다(= 뒤로 미룬다)
+    /**
+     * ⚠️ 2026-08-29: **고르는 규칙 자체는 이 컴포넌트에서 빠졌다** — 워커도 같은 사진을 골라야
+     *   히어로를 preload 할 수 있어서 `shared/home-hero-photo` 가 SSOT 가 됐다.
+     *   그러니 규칙은 그 파일에서 검사한다(여기서만 보면 규칙이 옮겨간 걸 사고로 오인한다).
+     */
+    expect(def).toMatch(/pickHeroPhotoFromSeedJson/)
+    const rule = code('src/shared/home-hero-photo.ts')
+    expect(rule).toMatch(/demo-deal-/)                // 데모를 여전히 분간한다(= 뒤로 미룬다)
     // 데모 분기는 **우리 호스트일 때만** 후보로 잡는다 — 이 조건이 사라지면 워터마크 사고가 돌아온다.
-    expect(def).toMatch(/isOwnMedia\(img\)/)
-    expect(def).toMatch(/\/api\/media\//)
-    expect(def).toMatch(/media\\?\.ur-team\\?\.com/)
+    expect(rule).toMatch(/isOwnMedia\(img\)/)
+    expect(rule).toMatch(/\/api\/media\//)
+    expect(rule).toMatch(/media\\?\.ur-team\\?\.com/)
     // 실상품이 나오면 즉시 반환한다(데모 후보를 들고 계속 도는 게 아니라).
-    expect(def).toMatch(/return hit/)
+    expect(rule).toMatch(/return hit/)
   })
 
   /**

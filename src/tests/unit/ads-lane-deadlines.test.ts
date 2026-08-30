@@ -54,7 +54,7 @@ const MX = read('src/features/marketing/api/email-mx-sweep.ts')
  *   ⇒ 검사 대상 함수의 본문으로 범위를 좁힌다. 불변식은 그대로다.
  */
 const KAKAO = (() => {
-  const src = read('src/features/marketing/api/company-collect.ts')
+  const src = read('src/features/marketing/api/kakao-sweep-lane.ts')
   const i = src.indexOf('export async function runKakaoPhoneSweep(')
   expect(i, 'runKakaoPhoneSweep 를 못 찾았다 — 이름이 바뀌었으면 이 검사도 함께 갱신할 것').toBeGreaterThan(0)
   const j = src.indexOf('\nexport ', i + 10)
