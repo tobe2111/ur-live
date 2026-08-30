@@ -6088,6 +6088,26 @@ canvas {
       '36번 폴링하므로 버튼 한 번이 1.19억 행이 된다(D1 무료 한도의 24배). 에러가 안 난다.',
   },
   {
+    name: '📅 오늘 유입을 캐시에서 꺼내 쓴다(수집이 도는데 멈춘 것처럼 보인다)',
+    file: 'src/features/marketing/api/company-stats-serve.ts',
+    find: '  const today = await todayInflow(DB)',
+    replace: '  const today = null as Awaited<ReturnType<typeof todayInflow>>',
+    test: 'src/tests/unit/company-stats-serve.test.ts',
+    why:
+      '분포 표는 1시간 낡아도 되지만 오늘 유입은 아니다 — 대표가 "수집이 살아 있나"를 보는 숫자다. ' +
+      '낡으면 멀쩡히 도는 레인이 멈춘 것처럼 보이고, 그건 성능 문제가 아니라 오보다.',
+  },
+  {
+    name: '📅 오늘 집계가 범위 조건을 잃는다(다시 전수 스캔)',
+    file: 'src/features/marketing/api/company-breakdown.ts',
+    find: "   WHERE merged_into IS NULL AND collected_at >= datetime('now','-1 days')",
+    replace: '   WHERE merged_into IS NULL',
+    test: 'src/tests/unit/company-stats-serve.test.ts',
+    why:
+      '숫자는 똑같이 나온다(뒤의 DATE 비교가 거른다). 그런데 인덱스 범위를 못 써서 매 요청이 ' +
+      '7,234행에서 46만행이 된다 — 결과가 맞아서 아무도 모르고, 매 요청이라 금방 쌓인다.',
+  },
+  {
     name: '⏳ 낡은 값만 주고 갱신을 안 태운다(캐시가 영영 안 바뀐다)',
     file: 'src/features/marketing/api/company-stats-cache.ts',
     find: '    bg(compute().then(s => store(s, Date.now())).catch(() => null))',

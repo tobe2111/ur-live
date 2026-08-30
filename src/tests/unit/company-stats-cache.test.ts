@@ -26,6 +26,9 @@ import {
 } from '@/features/marketing/api/company-stats-cache'
 
 const ROUTE = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/partner-pool.routes.ts'), 'utf8')
+// 📌 2026-08-31: 캐시 호출부가 라우트에서 `company-stats-serve.ts` 로 내려갔다(오늘 유입만 실시간으로
+//   덮기 위해). 계약은 그대로이고 **누가 부르는지**만 바뀌었다.
+const SERVE = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/company-stats-serve.ts'), 'utf8')
 const NOW = 1_800_000_000_000
 
 /** D1 흉내 — 마지막 SQL 과 바인딩을 기록해 "무엇을 몇 번 물었나"를 볼 수 있게 한다. */
@@ -104,9 +107,10 @@ describe('getCompanyStatsCached — 값이 있으면 집계를 부르지 않는�
 describe('🔌 배선 — 순수함수만 만들고 라우트에 안 걸면 아무 일도 안 일어난다', () => {
   it('/stats 가 캐시 헬퍼를 경유한다(직접 companyStats 를 부르면 캐시가 무의미하다)', () => {
     // 인자 이름이 아니라 **계약**을 본다: 헬퍼 경유 + 우회 플래그 전달 + 계산은 클로저로 넘김.
-    // ⚠️ 인자 **개수**에 묶지 않는다 — 2026-08-31 에 waitUntil 인자가 하나 붙자 이 검사가 깨졌다
-    //   (기능은 멀쩡한데 시험만 빨강 = 낡은 지도). 지키는 것은 "헬퍼 경유 + 계산을 클로저로 넘김" 이다.
-    expect(ROUTE).toMatch(/getCompanyStatsCached\(statsDb, fresh\w*, \(\) => companyStats\(statsDb\)/)
+    // ⚠️ 인자 **개수**에도, **어느 파일이냐**에도 묶지 않는다 — 2026-08-31 에 waitUntil 인자가 붙고
+    //   다시 호출부가 `company-stats-serve.ts` 로 내려가며 두 번 깨졌다(기능은 멀쩡한데 시험만 빨강).
+    //   지키는 것은 "집계를 **캐시 헬퍼 경유로** 얻고, 계산은 클로저로 넘긴다" 하나다.
+    expect(SERVE).toMatch(/getCompanyStatsCached<[^>]*>\(DB, fresh, \(\) => companyStats\(DB\)/)
     expect(ROUTE, '우회 플래그가 요청에서 와야 한다').toMatch(/c\.req\.query\('fresh'\) === '1'/)
   })
 
@@ -198,6 +202,8 @@ describe('⏳ stale-while-revalidate — 기다리게 하지 않는다', () => {
   })
 
   it('🔌 배선 — 라우트가 waitUntil 을 넘긴다(안 넘기면 10초 대기가 그대로다)', () => {
-    expect(ROUTE).toMatch(/getCompanyStatsCached\(statsDb, fresh\w*, \(\) => companyStats\(statsDb\), p => c\.executionCtx\?\.waitUntil\(p\)\)/)
+    // 라우트 → serve → 캐시 로 waitUntil 이 **끝까지 전달**되는지 두 자리를 함께 본다.
+    expect(ROUTE, '라우트가 안 넘기면 10초 대기가 그대로다').toMatch(/serveCompanyStats\(statsDb, fresh\w*, p => c\.executionCtx\?\.waitUntil\(p\)\)/)
+    expect(SERVE, 'serve 가 캐시로 안 넘기면 거기서 끊긴다').toMatch(/companyStats\(DB\), bg\)/)
   })
 })

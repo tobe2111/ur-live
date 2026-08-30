@@ -24,8 +24,19 @@
  * ⚠️ 지금 당장 정확한 값이 필요하면 `?fresh=1` 로 우회할 수 있다.
  */
 export const COMPANY_STATS_CACHE_KEY = 'ads_company_stats_cache'
-/** 5분. 이 화면의 숫자는 몇 분 단위로 바뀌는 값이 아니다(수집 회차가 시간당 1회). */
-export const COMPANY_STATS_TTL_MS = 5 * 60_000
+/**
+ * ⏱️ **수명은 수집 주기에 맞춘다** (2026-08-31 — 5분에서 1시간으로).
+ *
+ * 이 표의 숫자는 **수집 회차가 만든다.** 그 회차는 시간당 1회다 ⇒ 5분마다 다시 세는 것은
+ * *같은 답을 12번 구하는 것*이었다(회당 93만 행). 수명을 데이터가 실제로 바뀌는 주기에
+ * 맞추면 낡음이 **의미를 갖지 않는다** — 5분 된 값과 55분 된 값이 같은 값이다.
+ *
+ * ⚠️ 유일한 예외가 **오늘 유입**이다(회차마다 는다). 그건 캐시에서 꺼내 쓰지 않고
+ *   **매번 실시간으로 덮어쓴다** — 인덱스로 오늘치만 읽어 실측 7,234행(전체 93만의 0.8%).
+ *   그래서 "수집이 살아 있나"는 항상 지금 값이고, 분포 표만 최대 1시간 낡는다.
+ *   근거·배선: `company-stats-serve.ts`.
+ */
+export const COMPANY_STATS_TTL_MS = 60 * 60_000
 
 export interface CachedStats<T> { at: number; data: T }
 
@@ -66,7 +77,7 @@ export async function invalidateCompanyStatsCache(DB: D1Database): Promise<void>
  * ⚠️ 무한대로 두면 안 된다 — 아무도 안 오다가 온 사람이 **몇 시간 전 숫자**를 최신인 줄 보게 된다.
  *   그 한계를 넘으면 기다리더라도 정확한 값을 준다(느린 것보다 틀린 게 나쁘다).
  */
-export const COMPANY_STATS_MAX_STALE_MS = 30 * 60_000
+export const COMPANY_STATS_MAX_STALE_MS = 2 * 60 * 60_000
 
 /** 낡은 값을 먼저 주고 뒤에서 갱신할 수 있는가 — TTL 은 넘겼지만 한계 안일 때. */
 export function canServeStale(cached: CachedStats<unknown> | null, nowMs: number): boolean {

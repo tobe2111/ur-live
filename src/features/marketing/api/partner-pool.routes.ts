@@ -11,12 +11,12 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { csvResponse, parseCompanyExportFilter } from './pool-export'
 import { intParam } from '@/shared/pagination'
 import {
-  ensureCompanySchema, listCompanyLeads, countCompanyLeads, saveCompanyLeads, updateCompanyLead, deleteCompanyLead, deleteCompanyLeads, companyStats,
-  reclassifyCompanyLeads,
+  ensureCompanySchema, listCompanyLeads, countCompanyLeads, saveCompanyLeads, updateCompanyLead, deleteCompanyLead, deleteCompanyLeads, reclassifyCompanyLeads,
   parsePartnerPaste, COMPANY_CATEGORIES, COMPANY_STATUSES, COMPANY_CONTACT_CHANNELS, COMPANY_TIER_MIN, COMPANY_TIER_MAX,
   type CompanyLead, type CompanyLeadFilter,
 } from './company-discovery'
-import { getCompanyStatsCached, invalidateStatsOnWrite } from './company-stats-cache'
+import { invalidateStatsOnWrite } from './company-stats-cache'
+import { serveCompanyStats } from './company-stats-serve'
 import { LEAD_TYPES, LEAD_TYPE_LABEL } from './company-classify'
 import tradeRoutes from './partner-pool-trades.routes'
 import { partnerPoolDedupeRoutes } from './partner-pool-dedupe.routes'
@@ -230,7 +230,7 @@ app.get('/timeline', async (c) => {
 app.get('/stats', async (c) => {
   // 🧮 집계만 TTL 캐시(331만 행/호출). 폴링은 이제 `/run-status` 로 간다 — 근거: company-stats-cache.ts
   const statsDb = adsLeadsDb(c.env), fresh1 = c.req.query('fresh') === '1'
-  const { stats: s, at: statsAt } = await getCompanyStatsCached(statsDb, fresh1, () => companyStats(statsDb), p => c.executionCtx?.waitUntil(p))
+  const { stats: s, at: statsAt } = await serveCompanyStats(statsDb, fresh1, p => c.executionCtx?.waitUntil(p))
   // 🤝 레인 A 수집 상태 — 게이트 + 마지막 실행(ads_company_stats). ur-ads 서비스바인딩 존재여부.
   const runRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_stats'").first<{ value: string }>().catch(() => null)
   let run: unknown = null; try { run = runRow?.value ? JSON.parse(runRow.value) : null } catch { run = null }
