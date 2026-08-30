@@ -103,7 +103,9 @@ describe('getCompanyStatsCached — 값이 있으면 집계를 부르지 않는�
 
 describe('🔌 배선 — 순수함수만 만들고 라우트에 안 걸면 아무 일도 안 일어난다', () => {
   it('/stats 가 캐시 헬퍼를 경유한다(직접 companyStats 를 부르면 캐시가 무의미하다)', () => {
-    expect(ROUTE).toMatch(/getCompanyStatsCached\(statsDb, c\.req\.query\('fresh'\) === '1', \(\) => companyStats\(statsDb\)\)/)
+    // 인자 이름이 아니라 **계약**을 본다: 헬퍼 경유 + 우회 플래그 전달 + 계산은 클로저로 넘김.
+    expect(ROUTE).toMatch(/getCompanyStatsCached\(statsDb, fresh\w*, \(\) => companyStats\(statsDb\)\)/)
+    expect(ROUTE, '우회 플래그가 요청에서 와야 한다').toMatch(/c\.req\.query\('fresh'\) === '1'/)
   })
 
   it('🔒 레인 상태 블롭은 **캐시 밖**에서 매번 읽는다 — 캐시하면 폴러가 완료를 영영 못 본다', () => {

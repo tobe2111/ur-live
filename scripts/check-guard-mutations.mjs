@@ -5997,9 +5997,39 @@ canvas {
       '에러 없이, 통계에도 안 잡히고. 이 파일이 두 번 고친 사고가 정확히 그 모양이었다.',
   },
   {
+    name: '🔔 완료 감지 폴링이 다시 무거운 /stats 로 간다(버튼 한 번 1.19억 행)',
+    file: 'src/pages/admin/AdminPartnerPoolPage.tsx',
+    find: '        const d = await fetchRunStatus(u => api.get(u))',
+    replace: '        const d = await loadStats()',
+    test: 'src/tests/unit/partner-pool-run-status.test.ts',
+    why:
+      '화면 동작은 완전히 같다 — 완료 토스트도 똑같이 뜬다. 다만 5초마다 전수 집계 8번을 돌아 ' +
+      '버튼 한 번에 1.19억 행(D1 무료 한도의 24배)을 읽는다. 어디에도 에러가 안 난다.',
+  },
+  {
+    name: '🔔 폴링 응답에서 레인 하나가 빠진다(그 버튼만 조용히 감지 실패)',
+    file: 'src/features/marketing/api/partner-pool-run-status.ts',
+    find: "  { key: 'ads_mxsweep_stats', field: 'mx', wrap: true },",
+    replace: '',
+    test: 'src/tests/unit/partner-pool-run-status.test.ts',
+    why:
+      '한 레인의 상태가 응답에서 빠지면 그 버튼만 완료를 못 알아채고 "아직 진행 중"으로 끝난다. ' +
+      '작업은 실제로 성공했는데 화면만 모르는 상태라, 관리자가 같은 작업을 다시 누르게 된다.',
+  },
+  {
+    name: '🔔 폴링 서버가 키마다 왕복한다(분리한 이득이 사라진다)',
+    file: 'src/features/marketing/api/partner-pool-run-status.ts',
+    find: "    `SELECT key, value FROM platform_settings WHERE key IN (${keys.map(() => '?').join(',')})`,",
+    replace: "    'SELECT key, value FROM platform_settings',",
+    test: 'src/tests/unit/partner-pool-run-status.test.ts',
+    why:
+      '같은 값을 돌려주지만 platform_settings 를 통째로 읽는다. 폴링이 5초마다 도는 경로라 ' +
+      '"조금 더 읽는" 정도가 아니라 다시 곱셈이 된다 — 그리고 결과가 맞아서 아무도 모른다.',
+  },
+  {
     name: '📉 파트너 풀 통계가 캐시를 건너뛴다(화면 한 번에 331만 행 복귀)',
     file: 'src/features/marketing/api/partner-pool.routes.ts',
-    find: "getCompanyStatsCached(statsDb, c.req.query('fresh') === '1', () => companyStats(statsDb))",
+    find: 'getCompanyStatsCached(statsDb, fresh1, () => companyStats(statsDb))',
     replace: '{ stats: await companyStats(statsDb), at: Date.now() }',
     test: 'src/tests/unit/company-stats-cache.test.ts',
     why:

@@ -31,3 +31,20 @@ export const runStamp = (run: RunObj): string => String(run.last_run || run.at |
 
 /** 서버 스탬프('YYYY-MM-DD HH:MM:SS' UTC 또는 ISO)를 epoch(ms)로 — 파싱 실패는 0(완료 아님). */
 export const parseStamp = (s: string): number => { const t = Date.parse(s.includes('T') ? s : `${s.replace(' ', 'T')}Z`); return Number.isFinite(t) ? t : 0 }
+
+
+/**
+ * 🔔 **완료 감지 폴링 전용 조회** — 집계를 안 도는 경량 문(`/run-status`).
+ *
+ * 예전엔 이 루프가 `/stats` 를 불렀는데 그건 `ad_company_leads` 전수 집계 8번이라
+ * **호출 1회 3,317,537행**(라이브 실측), 5초×36회면 **버튼 한 번에 약 1억 1,900만 행**이었다.
+ * 완료 판정이 보는 것은 레인 상태 블롭뿐이라 집계는 애초에 필요 없다.
+ *
+ * ⚠️ 실패는 `null` — 폴링 한 번 실패가 루프를 죽이면 완료를 영영 못 본다.
+ */
+export const RUN_STATUS_URL = '/api/admin/partner-pool/run-status'
+export async function fetchRunStatus(
+  get: (url: string) => Promise<{ data?: Record<string, unknown> }>,
+): Promise<Record<string, unknown> | null> {
+  try { const r = await get(RUN_STATUS_URL); return r.data?.success ? r.data : null } catch { return null }
+}
