@@ -822,9 +822,8 @@ SELECT value FROM platform_settings WHERE key='ads_naver_crawl_block';   -- bloc
 ⚠️ **`diag.naver.error` 를 반드시 함께 볼 것** — start 가 범위 밖이면 네이버는 400 을 준다. 오류가
    뜨면 시딩 문장을 제거(롤백)하고 규칙만 남긴다.
 
-📔 **Notion 미기록** — 이 세션에 Notion MCP 가 붙어 있지 않다. 다음 세션이 붙어 있으면 개발 업데이트
-   로그에 1행(서비스=유어애즈, "매번 같은 검색 결과 100건만 보던 것을 고쳐 새 사람이 더 걸리게 했습니다",
-   PR #1170 · #1172).
+📔 Notion — **2026-08-27 세션이 기록 완료**(그때 MCP 가 붙었다). 개발 업데이트 로그 1행(서비스=유어애즈,
+   배포일 08-19, PR #1172).
 
 ---
 
@@ -955,7 +954,7 @@ SELECT DATE(collected_at,'+9 hours') d, COUNT(*) FROM ad_influencer_leads
 ✅ 통과 = `yt_calls.videos` 한 자리수 · `spend_by.naver` 증가 · 일별 발굴량 증가 · 유튜브 채널 수 유지
 ❌ 되돌리기 = 상수 4 → 8 + 필터에 `!l.email ||` 복원(둘 다 mutation 으로 고정돼 있다)
 
-📔 **Notion 미기록**(이 세션 MCP 미연결) — 붙어 있는 다음 세션이 1행 남길 것.
+📔 Notion — **2026-08-27 세션이 기록 완료**(그때 MCP 가 붙었다).
 
 ### ✅ 판정 (2026-08-23 11:08 KST, 배포 +13h) — **배선 통과 · 효과는 아직 판정 불가**
 
@@ -991,7 +990,7 @@ SELECT DATE(collected_at,'+9 hours') d, COUNT(*) FROM ad_influencer_leads
    (그때는 `spend_by.cafe 7`·YT search/channels 8요청 등 **남은 고정비**를 다시 볼 차례다)
 ⚠️ 어드민 로그인 **429 주의** — 재시도가 창을 연장한다. 한 번만 시도하고 실패하면 다음으로 미룰 것.
 
-📔 Notion 미기록(이 세션 MCP 미연결).
+📔 Notion — **2026-08-27 세션이 기록 완료**(그때 MCP 가 붙었다). 개발 업데이트 로그 + 유어애즈 페이지 수치.
 
 ### 🏁 최종 판정 (2026-08-24 10:13 KST, 배포 +36h) — **유지. 다만 내 판정선이 또 틀렸다**
 
@@ -1029,7 +1028,7 @@ SELECT DATE(collected_at,'+9 hours') d, COUNT(*) FROM ad_influencer_leads
 - YT `search 4 + channels 4` = 8요청 — 보강과 **별개**인 고정비. 이건 줄이면 **채널 발굴 자체가 준다**
   (보강과 달리 진짜 트레이드오프다 — 위 ③이 유지된 건 이걸 안 건드렸기 때문)
 
-📔 Notion 미기록(이 세션 MCP 미연결).
+📔 Notion — **2026-08-27 세션이 기록 완료**(그때 MCP 가 붙었다). 개발 업데이트 로그 + 유어애즈 페이지 수치.
 
 ---
 
@@ -1226,11 +1225,27 @@ last_run 2026-08-24 09:00 UTC · found 148 · saved 50 · measured 36 · contact
 추가 관측이 필요하면 `general` 축의 정체(6.83 → 6.98)를 볼 것 — 다만 그건 편식이 아니라
 **축 배수 1의 결과**이므로, 고치려면 편식 수리가 아니라 `AXIS_ROTATION_MULTIPLIER` 조정(대표 판단)이다.
 
+### 🗄️ 부수 발견 — **라이브 D1 은 셋이다**(문서엔 하나로 적혀 있었다)
+
+Notion 수치를 갱신하려고 업체 풀을 조회하다 `no such table: ad_company_leads` 를 만났다. 원인은 데이터가
+없어서가 아니라 **DB 를 잘못 짚어서**였고, 짚게 만든 건 `CLAUDE.md` 의 *"라이브는 이 uuid 하나뿐"* 이었다.
+
+```
+d9530ba6…  toss-live-commerce-db  = 메인 · platform_settings(회차 통계·조율기) · 소비자 전반
+d4630482…  urads-leads-db         = ad_influencer_leads · ad_discovery_keywords
+0e9a8f82…  urads-company-db       = ad_company_leads(업체·매장) · ad_company_keywords
+```
+근거는 추측이 아니라 `wrangler.toml`·`wrangler-ads.toml` 의 `database_id` 다(둘 다 뒤 두 개를 바인딩한다).
+
+⚠️ **이 오기가 위험한 이유**: 업체 풀은 `no such table` 로 시끄럽게 실패하지만, **인플루언서 리드를 메인에서
+읽으면 조용히 성공한다** — 거기 있는 건 2026-08-19 에 멈춘 사본이라 숫자가 그럴듯하게 나온다.
+`CLAUDE.md` 의 D1 조회 절을 세 uuid 로 정정했다(2026-08-27).
+
 ### 📌 대표가 명시로 **두라고 한 것**(건드리지 말 것)
 - 카페 트랙 — 리드 5,248 · 이메일 0 · 예산 6요청. 값을 쟀고 대표가 **알고 유지**를 택했다.
 - YT `search 4 + channels 4` = 8요청 — 줄이면 채널 발굴 자체가 준다(진짜 트레이드오프).
 
-📔 Notion 미기록(이 세션 MCP 미연결).
+📔 Notion — **2026-08-27 세션이 기록 완료**(그때 MCP 가 붙었다). 개발 업데이트 로그 + 유어애즈 페이지 수치.
 
 ---
 
@@ -1300,4 +1315,4 @@ PATCH 가 `category?` 를 받아 화이트리스트 검증 후 `category = COALE
 > 그대로 뒀으면 다음 세션이 "앞뒤 공백도 거부된다"고 믿었을 낡은 지도다. 테스트 이름·주석을 실제 계약으로
 > 고치고 `' 마케팅대행사 '` → 통과를 명시적으로 고정했다.
 
-📔 Notion 미기록(이 세션 MCP 미연결).
+📔 Notion — **2026-08-27 세션이 기록 완료**(그때 MCP 가 붙었다). 개발 업데이트 로그 + 유어애즈 페이지 수치.
