@@ -5494,6 +5494,12 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
+_총 195건 · 최신순 · 이 목록은 자동 생성된다._
+
+**2026-08-30**
+- [2026-08-30 — 매장 영입 보상을 딜로 (게이트 OFF 배선)](handoff/2026-08-30-store-intro-deal.md)
+- [2026-08-30 — 디자인 "AI 스러움" 진단 + 1층 수리 (버튼·그림자·포커스)](handoff/2026-08-30-design-ai-slop-audit.md)
+- [2026-08-30 — 자동분 제거 + 딜/현금 선택 존중 (오전 작업 되돌림 포함)](handoff/2026-08-30-deal-only-commission.md)
 _총 194건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-30**
