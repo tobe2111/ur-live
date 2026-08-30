@@ -1140,7 +1140,10 @@ canvas {
   },
   {
     name: '히어로가 남의 사진(외부 호스트 데모)을 홈 얼굴로 쓴다',
-    file: 'src/components/home/HomeHeroDefault.tsx',
+    // 🚚 2026-08-29: 고르는 규칙이 `HomeHeroDefault` → `shared/home-hero-photo` 로 이사했다
+    //   (워커가 히어로를 preload 하려면 **같은 사진**을 골라야 해서 SSOT 로 뽑았다).
+    //   ⚠️ 그때 이 경로를 안 고쳐 CI 가 "낡은 지도" 로 잡아냈다 — 코드를 옮기면 주입 지도도 같이 옮긴다.
+    file: 'src/shared/home-hero-photo.ts',
     // 🔁 2026-08-27: 예전엔 `slug.startsWith('demo-deal-')` 를 지웠다(=데모 전면 허용). 그런데
     //   그 금지가 라이브 카탈로그 100% 데모 상황에서 히어로를 영구 빈 색면으로 만들어, 규칙의 축을
     //   "데모냐" → "출처가 우리냐"로 옮겼다. 그래서 지켜야 할 선도 **출처 검사**로 옮긴다.
@@ -1214,17 +1217,6 @@ canvas {
       'preload 는 URL 이 **byte-일치할 때만** 쓰인다. 폭이 한쪽에서만 바뀌면 브라우저가 preload 를 ' +
       '버리고 96KB 를 **두 번** 받는다 — 에러도 없고 화면도 멀쩡한데 더 느려지고 트래픽만 두 배다. ' +
       '눈으로는 절대 안 보이는 종류라 가드가 유일한 방어다(2026-08-22 에 실제로 900→1280 으로 바뀐 값이다).',
-  },
-  {
-    name: '히어로가 남의 호스트 데모 사진을 쓴다',
-    file: 'src/shared/home-hero-photo.ts',
-    find: 'if (!ownDemo && isOwnMedia(img)) ownDemo = hit',
-    replace: 'if (!ownDemo) ownDemo = hit',
-    test: 'src/tests/unit/home-hero-preload.test.ts',
-    why:
-      '2026-08-04 에 **타사 워터마크 보도사진(YONHAP)이 홈 최상단에 오를 뻔했다.** 데모 카탈로그에 ' +
-      '외부 호스트 사진이 섞여 있어서다. 이 가드가 빠지면 같은 사고가 재현되는데, 화면엔 그냥 ' +
-      '"사진이 떴다" 로 보여서 **누가 알아보기 전엔 아무 신호가 없다.**',
   },
   {
     name: 'PC 전용 헤더가 모바일에서도 렌더된다(CSS 로만 숨김)',
