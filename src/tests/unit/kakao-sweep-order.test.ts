@@ -23,7 +23,8 @@ import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import {
   KAKAO_SWEEP_WHERE, KAKAO_SWEEP_INNER_ORDER, KAKAO_SWEEP_SOURCES_SQL, KAKAO_SWEEP_PER_SOURCE_SQL,
-  interleaveBySource, tallySweep, type KakaoSweepRow, type SweepSourceTally,
+  interleaveBySource, tallySweep, parseSweepSources, shouldRefreshSources, SWEEP_SOURCES_TTL_MS,
+  type KakaoSweepRow, type SweepSourceTally,
 } from '@/features/marketing/api/kakao-sweep-query'
 
 // 📌 2026-08-30(③): 창 함수가 사라지고 [소스별 상위 N] + [코드 인터리브]가 됐다. 그래서 예전처럼
@@ -124,5 +125,74 @@ describe('📊 소스별 계측 — 다음 단계(수율 가중)의 유일한 �
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
     expect(src).toMatch(/tallySweep\(bySource, r\.source, !!k\.phone\)/)
     expect(src, '기록만 하고 저장을 안 하면 회차가 끝나며 증발한다').toMatch(/by_source: bySource/)
+  })
+})
+
+
+/**
+ * 🕐 **소스 목록 캐시** (2026-08-30 — 배포 후 라이브 재측정이 시킨 후속).
+ *
+ * PR #1233 이 "소스 목록 조회는 인덱스만 훑는다(0.0ms)" 라고 적었는데 **라이브에서 355,231행**
+ * 이었다. 로컬 소규모 데이터의 값을 그대로 옮겨 적은 것이다. 30일 쿨다운이 부분 인덱스 조건에
+ * 없어서 선두 컬럼으로 건너뛰지 못하고, 쿨다운을 빼도 같은 값이었다(SQLite 가 DISTINCT 를
+ * skip-scan 으로 최적화하지 않는다) — 쿼리를 다듬어 줄일 수 있는 종류가 아니다.
+ *
+ * ⇒ 결과를 캐시하되 **늙게 만든다.** 이 시험이 지키는 것은 그 둘의 균형이다:
+ *   캐시가 없으면 비용이 돌아오고, 캐시가 안 늙으면 새 수집기의 소스가 영원히 굶는다
+ *   (이 파일이 두 번 고친 바로 그 사고).
+ *
+ * ⚠️ 못 보는 것: 캐시가 실제로 D1 왕복을 줄이는지는 배포 후 rows_read 로만 판정된다.
+ */
+describe('🕐 소스 목록 캐시 — 비용과 신선도의 균형', () => {
+  const NOW = 1_800_000_000_000
+
+  it('🔒 TTL 이 0 도 무한대도 아니다 — 0 이면 캐시가 없는 것이고 무한대면 새 소스가 굶는다', () => {
+    expect(SWEEP_SOURCES_TTL_MS).toBeGreaterThan(60_000)
+    expect(SWEEP_SOURCES_TTL_MS).toBeLessThanOrEqual(24 * 3_600_000)
+  })
+
+  it('신선한 캐시는 다시 조회하지 않는다', () => {
+    const c = parseSweepSources({ sources: ['commerce', 'local'], sources_at: NOW - 60_000 })
+    expect(c).toEqual({ sources: ['commerce', 'local'], at: NOW - 60_000 })
+    expect(shouldRefreshSources(c, NOW)).toBe(false)
+  })
+
+  it('🔒 TTL 을 넘기면 반드시 다시 조회한다 — 이게 새 소스가 발견되는 유일한 경로다', () => {
+    const c = parseSweepSources({ sources: ['commerce'], sources_at: NOW - SWEEP_SOURCES_TTL_MS })
+    expect(shouldRefreshSources(c, NOW)).toBe(true)
+  })
+
+  it('🔒 시각이 미래면 다시 조회한다 — 시계가 튀어 캐시가 영원히 안 늙는 것을 막는다', () => {
+    const c = parseSweepSources({ sources: ['commerce'], sources_at: NOW + 3_600_000 })
+    expect(shouldRefreshSources(c, NOW)).toBe(true)
+  })
+
+  it.each([
+    [null, '블롭 자체가 없음(첫 회차)'],
+    [{}, '캐시 키가 없음'],
+    [{ sources: [], sources_at: NOW }, '빈 목록 — "대상 없음"으로 조용히 넘어가면 안 된다'],
+    [{ sources: ['commerce'] }, '시각 없음 — 늙힐 수가 없다'],
+    [{ sources: ['commerce'], sources_at: 'x' }, '시각이 숫자가 아님'],
+    [{ sources: ['commerce', 42], sources_at: NOW }, '문자열 아닌 원소가 섞임'],
+  ])('깨진 캐시(%#)는 새로 조회한다 — %s', (blob, _why) => {
+    expect(shouldRefreshSources(parseSweepSources(blob as Record<string, unknown> | null), NOW)).toBe(true)
+  })
+
+  it('🔌 배선 — 레인이 캐시를 보고 결정하고, 목록·시각을 **둘 다** 저장한다', () => {
+    const src = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/kakao-sweep-lane.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+    // 판정을 순수함수에 위임하는가(인라인으로 다시 짜면 시험이 지키는 규칙 밖으로 나간다)
+    expect(src).toMatch(/const refreshSources = shouldRefreshSources\(cached, Date\.now\(\)\)/)
+    // 조회는 **갱신이 필요할 때만** 돈다 — 무조건 돌면 캐시가 있으나 마나다
+    expect(src).toMatch(/if \(refreshSources\) \{[\s\S]{0,400}?DB\.prepare\(KAKAO_SWEEP_SOURCES_SQL\)/)
+    // 시각 없이 목록만 저장하면 영원히 안 늙는 캐시가 된다
+    expect(src).toMatch(/sources, sources_at: sourcesAt,/)
+  })
+
+  it('🔒 조회 실패는 캐시로 폴백하지 않는다 — 실패는 "대상이 그대로"의 근거가 못 된다', () => {
+    const src = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/kakao-sweep-lane.ts'), 'utf8')
+    const i = src.indexOf('if (!srcRows)')
+    expect(i, '조회 실패 가드를 못 찾았다').toBeGreaterThan(0)
+    expect(src.slice(i, i + 120)).toMatch(/return \{ scanned: 0/)
   })
 })

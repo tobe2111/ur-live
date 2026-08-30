@@ -11,7 +11,7 @@
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envPlanValue, rowsWorthReading } from './collect-budget'
-import { KAKAO_SWEEP_SOURCES_SQL, KAKAO_SWEEP_PER_SOURCE_SQL, interleaveBySource, tallySweep, type KakaoSweepRow, type SweepSourceTally } from './kakao-sweep-query'
+import { KAKAO_SWEEP_SOURCES_SQL, KAKAO_SWEEP_PER_SOURCE_SQL, interleaveBySource, tallySweep, parseSweepSources, shouldRefreshSources, type KakaoSweepRow, type SweepSourceTally } from './kakao-sweep-query'
 import { ensureCompanySchema } from './company-discovery'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
@@ -40,8 +40,10 @@ import { adsLeadsDb } from '../../../shared/ads/leads-db'
 /**
  * 🧾 **루프가 남겨야 하는 부기(簿記) 몫** — 2026-07-29 라이브 실측 후 정정.
  *
- * 루프 뒤에는 D1 쓰기/읽기가 **5회** 따라온다:
- *   ① 전화 확보분 배치 저장 ② 시도 도장 배치 ③ 학습 상한 갱신 ④ 직전 통계 조회 ⑤ **자기 스탬프**
+ * 루프 뒤에는 D1 쓰기/읽기가 **4회** 따라온다:
+ *   ① 전화 확보분 배치 저장 ② 시도 도장 배치 ③ 학습 상한 갱신 ④ **자기 스탬프**
+ *   (2026-08-30: 예전의 ④ '직전 통계 조회' 는 **회차 앞으로 옮겼다** — 소스 목록 캐시가 같은
+ *    블롭에 얹혀 있어 시작할 때 필요하다. 총 횟수는 그대로이고 이 예약분은 여유 2를 남긴다.)
  * 그런데 루프는 `left <= 2` 에서 멈췄다 — 2만 남기고 5를 쓰려 했으니 뒤쪽 3개가 예산 밖이다.
  * D1 도 서브리퀘스트라 예산을 넘기면 던지고, 전부 `.catch(() => null)` 이라 **조용히 사라진다.**
  * 그리고 하필 마지막이 자기 스탬프다 ⇒ **레인이 돌았는데 "안 돈 것"처럼 보인다.**
@@ -104,11 +106,29 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   //   31만 행을 정렬했다(회당 165만 행 읽기). 같은 답, 다른 계산법. 근거는 kakao-sweep-query 헤더 ③.
   //   ⚠️ 서브리퀘스트가 1 → (1 + 소스수) 로 는다. **먼저 예산에서 빼고** 시작한다 — 안 빼면
   //     크롤 몫을 조용히 잠식한다(이 레인이 예전에 부기로 예산을 먹힌 것과 같은 클래스).
-  const srcRows = (await DB.prepare(KAKAO_SWEEP_SOURCES_SQL).all<{ source: string | null }>().catch(() => null))?.results
+  // 📦 **직전 통계 블롭을 여기서 읽는다**(예전엔 루프 뒤였다). 소스 목록 캐시가 이 블롭에 얹혀
+  //   다니므로 앞으로 옮겨야 쓸 수 있고, 읽는 횟수 자체는 그대로 1회다(부기 몫도 그대로).
+  const prevRaw = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_kakao_sweep_stats'").first<{ value: string }>().catch(() => null)
   budget.left -= 1
-  // 조회 실패는 **빈 목록이 아니라 중단**이다 — 빈 목록으로 진행하면 "대상이 없다"로 조용히 기록된다.
-  if (!srcRows) return { scanned: 0, found: 0, cursor: 0, done: false }
-  const sources = srcRows.map(r => r.source).filter((x): x is string => !!x)
+  let prevBlob: Record<string, unknown> | null = null
+  try { prevBlob = prevRaw?.value ? JSON.parse(prevRaw.value) as Record<string, unknown> : null } catch { /* 초기 */ }
+  // 🕐 소스 목록은 회차마다 달라지는 값이 아니다 — 새 수집기가 생길 때만 바뀐다. 그런데 그 조회가
+  //   라이브에서 **35.5만 행**이라(이유는 kakao-sweep-query 헤더의 정정) 매 회차 다시 세는 건 낭비다.
+  //   ⚠️ 그렇다고 캐시만 믿으면 새 소스가 영원히 안 보인다 — TTL 이 그 위험의 상한이다.
+  const cached = parseSweepSources(prevBlob)
+  const refreshSources = shouldRefreshSources(cached, Date.now())
+  let sources: string[]
+  if (refreshSources) {
+    const srcRows = (await DB.prepare(KAKAO_SWEEP_SOURCES_SQL).all<{ source: string | null }>().catch(() => null))?.results
+    budget.left -= 1
+    // 조회 실패는 **빈 목록이 아니라 중단**이다 — 빈 목록으로 진행하면 "대상이 없다"로 조용히 기록된다.
+    //   ⚠️ 캐시로 폴백하지도 않는다: 실패는 "대상이 그대로일 것"의 근거가 못 된다.
+    if (!srcRows) return { scanned: 0, found: 0, cursor: 0, done: false }
+    sources = srcRows.map(r => r.source).filter((x): x is string => !!x)
+  } else {
+    sources = cached!.sources
+  }
+  const sourcesAt = refreshSources ? Date.now() : cached!.at
   budget.left -= sources.length
   const perSource: KakaoSweepRow[][] = []
   for (const src of sources) {
@@ -150,13 +170,9 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, learnedCap, cap, pcap)
   if (nextCap != null) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(subreqCapKey('kakao_sweep'), String(nextCap)).run().catch(() => null)
-  const prevRaw = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_kakao_sweep_stats'").first<{ value: string }>().catch(() => null)
-  let totalFound = 0; let prevDay = ''; let prevDayLookups = 0
-  try {
-    const pj = prevRaw?.value ? JSON.parse(prevRaw.value) as Record<string, unknown> : {}
-    totalFound = Number(pj.total_found) || 0
-    prevDay = String(pj.day || ''); prevDayLookups = Number(pj.day_lookups) || 0
-  } catch { /* 초기 */ }
+  // (직전 통계는 회차 앞에서 이미 읽었다 — 소스 목록 캐시가 같은 블롭에 있기 때문.)
+  const totalFound = Number(prevBlob?.total_found) || 0
+  const prevDay = String(prevBlob?.day || ''); const prevDayLookups = Number(prevBlob?.day_lookups) || 0
   // 📊 하루 조회량(2026-07-29) — self-chain 으로 처리량을 올리기 전에 **카카오 일일 쿼터 소비를 눈으로 보고**
   //   판단하기 위한 계수기. 같은 stats 블롭에 얹으므로 추가 쿼리 0. KST 기준으로 리셋.
   const kstToday = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10)
@@ -167,6 +183,9 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
     // 📊 이번 회차의 소스별 시도/적중. **아직 아무 판정에도 안 쓴다** — 증거 없이 가중하면
     //   "storeinfo 수율 2.7%니 잘라내자"(실은 한 번도 조회된 적 없었다) 오판을 반복한다.
     by_source: bySource,
+    // 🕐 소스 목록 캐시 — 다음 회차가 이걸 보고 35.5만 행 조회를 건너뛴다. **시각을 같이 저장해야**
+    //   TTL 판정이 된다(시각 없이 목록만 저장하면 영원히 안 늙는 캐시가 되어 새 소스가 굶는다).
+    sources, sources_at: sourcesAt,
     limit_hit: !!budget.limitHit, // 한도로 조기 중단했는가 — true 면 남은 행은 커서 미전진(다음 라운드 재시도)
     // 📟 왜 멈췄는지 — 'deadline' 이면 예산이 아니라 시간이 병목이다(둘의 처방이 다르다).
     stopped_by: stoppedBy,
