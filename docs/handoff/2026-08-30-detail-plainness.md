@@ -67,3 +67,17 @@ guard-mutations 매니페스트 2건 등록(551건 지도 성함, 둘 다 `--onl
 
 **교훈**: 클래스 문자열 가드에서 `\b` 는 하이픈 접두사(`-mt-5`)를 못 막는다. 그리고 마크업 앵커는
 "그 자리에만 있는 형태"여야 한다 — 흔한 유틸리티 클래스(`lg:hidden`)를 단독 앵커로 쓰지 말 것.
+
+## 🩸 CI 빨간불 1회 — 그리고 그걸 놓친 이유
+`check-file-size` 래칫에 걸렸다(`StayDetailPage` 894>888 · `admin-stays.routes` 646>640). **내가 추가한
+설명 주석 6줄씩** 때문이었다. 설명을 테스트 docblock/커밋 메시지로 옮기고 코드 주석을 압축해 baseline
+이하로 되돌렸다(리베이스라인은 *줄였을 때* 쓰는 것이지 성장에 쓰는 게 아니다 — CLAUDE.md).
+
+⚠️ **왜 로컬에서 못 잡았나 — 다음 세션이 반드시 알아야 할 함정**:
+```
+node scripts/check-file-size.mjs            → "✅ file-size: 대상 없음 (skip)."   ← 아무것도 안 봄
+node scripts/check-file-size.mjs --changed-only -s → ❌ 차단                      ← CI 가 쓰는 형태
+```
+인자 없이 돌리면 **검사 대상이 0개인데 초록**을 찍는다. 이 레포가 반복해 당한 *"검사가 실패할 수 없음"*
+클래스를 내가 그대로 밟았다. ⇒ **가드를 로컬에서 돌릴 땐 워크플로가 쓰는 인자를 그대로 복사할 것**
+(`grep -A2 'check-file-size' .github/workflows/verify.yml`).

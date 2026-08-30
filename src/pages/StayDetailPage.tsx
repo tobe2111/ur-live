@@ -88,10 +88,8 @@ interface AvailRoom {
 //   교체(부분일치) — 시드/수기/미래 표현 다 인식. 미매칭도 점 대신 체크 아이콘(설정된 시설로 보이게).
 const AMENITY_ICON_CLS = 'w-4 h-4 text-gray-500 dark:text-gray-400'
 
-/**
- * 🏷️ 숙소 유형 배지 — DB 값은 영문 소문자('hotel')다. 그대로 노출하면 화면에 원본 데이터가
- *   비쳐 보인다(사람이 쓴 화면엔 'hotel' 이 안 적혀 있다). 어휘는 시드의 STAY_TYPES.label 과 맞춘다.
- */
+/** 🏷️ 숙소 유형 배지 — DB 값은 영문('hotel')이라 그대로 두면 화면에 원본 데이터가 비친다.
+ *  어휘는 시드의 STAY_TYPES.label 과 맞춘다. */
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
   hotel: '호텔', pension: '펜션', guesthouse: '스테이', resort: '리조트',
   glamping: '글램핑', motel: '모텔', villa: '풀빌라', camping: '캠핑',
@@ -374,12 +372,7 @@ export default function StayDetailPage() {
         </div>
 
         {/* Title + meta — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번).
-            📏 2026-08-30 (대표 "사진이랑 밑에 몇성급 글자 사이의 여백이 부족해"): `mt-5`.
-            갤러리가 풀블리드가 되면서 `-mt-5` 로 부모의 위 패딩을 상쇄하는데, 그 상쇄가
-            **아래쪽 간격까지 없애 버린 게 아니라** 애초에 이 블록에 위 여백이 없었다 —
-            카드 안에 있을 땐 갤러리 자신의 여백이 대신해 줘서 안 보이던 문제다.
-            `lg:mt-0` 은 PC 에선 위에 DetailTitleHeader 가 따로 있어 이 블록이 아예 안 그려지지만,
-            의도를 남겨 둔다(모바일 전용 간격이라는 뜻). */}
+            📏 `mt-5` = 사진↔배지 간격(경위는 stay-detail-gallery-bleed.test.ts — 없으면 2px 로 붙는다). */}
         <div className="mt-5 mb-5 lg:mt-0 lg:hidden">
           <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 mb-1">
             <span className="px-2 py-0.5 bg-gray-100 dark:bg-white/[0.06] rounded font-semibold">{propertyTypeLabel(stay.property_type)}</span>
