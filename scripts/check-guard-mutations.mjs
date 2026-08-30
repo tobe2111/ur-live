@@ -83,6 +83,16 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '아이콘 굵기 규칙이 전면으로 번져 명시값을 덮어쓴다',
+    file: 'src/index.css',
+    find: "  svg.lucide[stroke-width='2'] { stroke-width: 1.75; }",
+    replace: '  svg.lucide { stroke-width: 1.75; }',
+    test: 'src/tests/unit/button-system.test.ts',
+    why:
+      '속성 필터를 빼면 개발자가 일부러 정한 획 굵기 155곳(강조 3 · 섬세 1.5 등)을 ' +
+      '통째로 덮어써 의도를 지운다. 화면은 그럴듯해 보이고 에러도 안 나서 안 보인다.',
+  },
+  {
     name: '버튼 테두리가 축약형 border:0 으로 조용히 사라진다',
     file: 'src/index.css',
     find: '    border-width: 0;\n    cursor: pointer;',

@@ -153,6 +153,29 @@ await page.waitForTimeout(4000)
 if (EXTRA_CSS) { await page.addStyleTag({ content: EXTRA_CSS }); await page.waitForTimeout(400) }
 
 const out = path.join(OUTDIR, `${NAME}${DARK ? '-dark' : ''}.png`)
+// 🔬 스크린샷만으로는 안 보이는 계약을 **실제 렌더 트리에서** 확인한다.
+//    (스펙상 CSS 가 presentation attribute 를 이긴다는 것을 '알고' 넘어가지 말고 잰다.)
+const probe = await page.evaluate(() => {
+  const pick = (sel) => {
+    const el = document.querySelector(sel)
+    return el ? getComputedStyle(el) : null
+  }
+  const icon = document.querySelector('svg.lucide[stroke-width="2"]')
+  const btn = document.querySelector('button')
+  const byClass = (c) => [...document.querySelectorAll('*')].find((e) => e.classList && e.classList.contains(c))
+  const card = byClass('rounded-xl')
+  const ctrl = byClass('rounded-lg')
+  return {
+    lucideStrokeWidth: icon ? getComputedStyle(icon).strokeWidth : null,
+    lucideCount: document.querySelectorAll('svg.lucide').length,
+    buttonTransitionMs: btn ? getComputedStyle(btn).transitionDuration : null,
+    roundedXl: card ? getComputedStyle(card).borderTopLeftRadius : null,
+    roundedLg: ctrl ? getComputedStyle(ctrl).borderTopLeftRadius : null,
+    void0: pick('body') ? null : null,
+  }
+})
+console.log('🔬 렌더 실측:', JSON.stringify(probe))
+
 await page.screenshot({ path: out })
 const text = (await page.innerText('body').catch(() => '')).slice(0, 60).replace(/\s+/g, ' ')
 console.log(`✅ ${out}`)

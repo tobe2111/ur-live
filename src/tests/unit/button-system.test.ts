@@ -60,3 +60,16 @@ describe('버튼 체계 (.ur-btn)', () => {
     expect(built, '빌드 CSS 에 .ur-btn-lg 가 없다 — 실사용처가 사라져 통째로 지워졌다').toContain('.ur-btn-lg{')
   })
 })
+
+describe('아이콘 획 굵기', () => {
+  it('lucide 기본값(2)만 골라 얇게 해야 한다 — 명시값은 건드리면 안 된다', () => {
+    // `svg.lucide { … }` 처럼 전체에 걸면 개발자가 일부러 정한 155곳(강조 3 · 섬세 1.5 등)을
+    // 통째로 덮어써 의도를 지운다. 속성 선택자로 **기본값만** 잡아야 한다.
+    const rule = css.match(/svg\.lucide\[stroke-width=['"]2['"]\]\s*\{[^}]*\}/)
+    expect(rule, 'svg.lucide[stroke-width="2"] 규칙이 없다').toBeTruthy()
+    expect(rule![0]).toMatch(/stroke-width:\s*1\.\d+/)
+
+    // 속성 필터 없는 전면 규칙이 있으면 안 된다.
+    expect(css).not.toMatch(/svg\.lucide\s*\{/)
+  })
+})
