@@ -3329,9 +3329,10 @@ canvas {
   },
   {
     name: '두 사업 명단이 보류(연락처 없음)까지 셈',
-    file: 'src/features/marketing/api/company-breakdown.ts',
-    find: 'WHERE merged_into IS NULL AND active = 1',
-    replace: 'WHERE merged_into IS NULL',
+    // 📌 2026-08-31: 세그먼트 집계가 큐브 한 번 스캔에 흡수됐다 — 앵커만 옮긴다(계약 불변).
+    file: 'src/features/marketing/api/company-stats-cube.ts',
+    find: "merged_into IS NULL AND active = 1 AND category = '온라인판매'",
+    replace: "merged_into IS NULL AND category = '온라인판매'",
     test: 'src/tests/unit/ads-export-filter-parity.test.ts',
     why:
       '화면 맨 위의 두 숫자는 **"지금 제안을 보낼 수 있는 수"** 다. 보류(active=0 = 연락처 없어 제외된 행)를 ' +
@@ -3339,9 +3340,9 @@ canvas {
   },
   {
     name: '페이백 명단을 전화로도 셈(이메일 발송인데)',
-    file: 'src/features/marketing/api/company-breakdown.ts',
-    find: "SUM(CASE WHEN category = '온라인판매' AND email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS payback_ready",
-    replace: "SUM(CASE WHEN category = '온라인판매' AND phone IS NOT NULL THEN 1 ELSE 0 END) AS payback_ready",
+    file: 'src/features/marketing/api/company-stats-cube.ts',
+    find: "AND category = '온라인판매' AND email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS seg_payback",
+    replace: "AND category = '온라인판매' AND phone IS NOT NULL THEN 1 ELSE 0 END) AS seg_payback",
     test: 'src/tests/unit/ads-export-filter-parity.test.ts',
     why:
       '두 사업은 **도달 채널이 다르다** — 페이백은 이메일 발송이라 전화만 있는 행은 명단이 아니고, ' +
