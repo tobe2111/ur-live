@@ -48,4 +48,20 @@ export const COMPANY_INDEX_DDL: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_company_leads_enrich_order ON ad_company_leads(
      (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END),
      (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active, id DESC) WHERE merged_into IS NULL`,
+  /**
+   * ③ **카카오 전화 스윕이 60건 뽑으려고 31만 행을 정렬하던 것**을 멈추는 인덱스 (2026-08-30).
+   *
+   * 창 함수(`ROW_NUMBER() OVER (PARTITION BY source …)`)는 전 대상의 등수를 다 매겨야 바깥
+   * `LIMIT` 를 걸 수 있어 인덱스로도 안 줄었다(실측 800ms → 453ms). 그래서 쿼리를
+   * **[소스별 상위 N] + [코드 인터리브]** 로 바꿨고, 이 인덱스가 그 "소스별 상위 N" 을 받는다.
+   * 컬럼 순서는 `kakao-sweep-query.ts` 의 `KAKAO_SWEEP_INNER_ORDER` 와 **정확히 같아야** 한다.
+   * 로컬 동일 분포 재현: **800ms → 0.6ms, 뽑히는 60행이 순서까지 동일**.
+   *
+   * 선두가 `source` 인 덕에 대상 소스 목록(`SELECT DISTINCT source`)도 인덱스만으로 답한다(0.0ms) —
+   * 그래서 소스 목록을 코드에 박지 않아도 된다(박으면 새 수집기의 소스가 영원히 굶는다).
+   */
+  `CREATE INDEX IF NOT EXISTS idx_company_leads_kakao_queue ON ad_company_leads(
+     source, (kakao_checked_at IS NOT NULL), (email IS NOT NULL AND email <> ''),
+     (tier IS NULL), tier, id)
+     WHERE merged_into IS NULL AND address IS NOT NULL AND address != '' AND (phone IS NULL OR phone = '')`,
 ]

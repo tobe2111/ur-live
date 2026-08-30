@@ -136,6 +136,7 @@ if domain deploy; then
   run "처리량 노브 요금제 커버리지"    env X=1                       node scripts/check-plan-knob-coverage.mjs -s
   run "cron 표현식 문법(CF)"           env STRICT_CRON_SYNTAX=1      node scripts/check-cron-syntax.mjs
   run "유어애즈 예산 우회(부모 CPU)"    node scripts/check-ads-dispatch-bypass.mjs -s
+  run "유어애즈↔유어딜 경계"        node scripts/check-ads-urdeal-isolation.mjs -s
   run "유어애즈 레인 격리"              node scripts/check-ads-lane-isolation.mjs
   run "예산 루프 부기 몫(자기 기록)"     env STRICT_BUDGET_BOOKKEEPING=1 node scripts/check-budget-bookkeeping.mjs
   run "공공데이터 자리표시자(N/A) 판정"  env STRICT_PUBLIC_DATA_SENTINEL=1 node scripts/check-public-data-sentinel.mjs

@@ -18,7 +18,8 @@ describe('COMPANY_DDL', () => {
     // 2026-08-27: 읽기 증폭 인덱스 2개(`classify_todo`·`enrich_order`) 추가로 22 → 24.
     //   같은 커밋에서 인덱스 4개가 `company-ddl-indexes.ts` 로 옮겨졌지만 **`...` 로 펼쳐지므로
     //   COMPANY_DDL 의 문장 수는 그대로**다 — 이 래칫이 그 이관에 흘림이 없었음도 함께 증언한다.
-    expect(COMPANY_DDL).toHaveLength(24)
+    // 2026-08-30: 카카오 스윕 인덱스(`kakao_queue`) 추가로 24 → 25.
+    expect(COMPANY_DDL).toHaveLength(25)
   })
 
   it('두 테이블을 만든다 — 리드 본체 + 반송 억제', () => {

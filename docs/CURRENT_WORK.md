@@ -5501,6 +5501,7 @@ _총 191건 · 최신순 · 이 목록은 자동 생성된다._
 **2026-08-29**
 - [2026-08-29 — 히어로 preload + 내가 만든 중단점 구멍(640~767px)](handoff/2026-08-29-hero-preload-and-breakpoint-gap.md)
 - [2026-08-29 — 채널 요율을 **라이브에서 켰다** + QA 매장 정리](handoff/2026-08-29-channel-fee-live.md)
+- [2026-08-29 — 유어애즈가 유어딜에 피해를 못 주게 하는 경계(가드) + D1 읽기 수리 판정](handoff/2026-08-29-ads-urdeal-boundary.md)
 **2026-08-27**
 - [유어샵 수익 사다리 + 딜 우선 정렬 (2026-08-27)](handoff/2026-08-27-urshop-earn-ladder.md)
 - [2026-08-27 — 저장 관문이 리드 하나 넣을 때마다 37만 행을 두 번 세던 것](handoff/2026-08-27-save-gate-full-scan.md)

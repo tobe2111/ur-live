@@ -41,25 +41,52 @@
  */
 
 /**
- * 대기열 한 묶음. `?` = 읽을 행 수(`rowsWorthReading` 이 예산에서 유도).
+ * ### ③ 창 함수가 60건 뽑으려고 31만 행을 정렬하고 있었다 (2026-08-30, 대표 "3,4까지 해줘")
+ * ```
+ *   회당 rows_read 1,654,670   ×  시간당 1회  =  하루 3,970만 행
+ *   그렇게 읽어서 실제로 쓰는 건 60행이다.
+ * ```
+ * `ROW_NUMBER() OVER (PARTITION BY source …)` 는 **전 대상의 등수를 다 매겨야** 바깥 `LIMIT` 를
+ * 적용할 수 있다. 그래서 인덱스를 붙여도 안 준다(실측: 800ms → 453ms, 여전히 전량 정렬).
  *
- * - **안쪽 정렬(소스 내부)**: 미조회 → 연락처 없음 → tier → id.
+ * ⇒ **같은 줄 세우기를 SQL 창이 아니라 [소스별 상위 N] + [코드 인터리브]로 만든다.**
+ *   등수(`rn`)는 소스별 결과 배열의 **인덱스 그 자체**이므로 계산할 필요가 없다.
+ *   로컬 동일 분포 재현: **800ms → 0.6ms, 뽑히는 60행이 순서까지 동일**.
+ *
+ * ⚠️ **대상 집합(WHERE)과 안쪽 정렬은 여전히 한 글자도 안 건드렸다** — 세 번의 수리에서 계속 그렇다.
+ *   바뀐 것은 *같은 답을 어떻게 계산하는가* 뿐이고, 그 동치성은 유닛이 실제 SQLite 로 대조한다.
+ * ⚠️ 서브리퀘스트는 1회 → (1 + 소스수)회로 는다. 지금 대상 소스는 3개(commerce·storeinfo·local)라
+ *   4회다. 호출부가 그만큼을 예산에서 먼저 뺀다 — 안 빼면 크롤 몫을 조용히 잠식한다.
+ */
+
+/**
+ * 🎯 **대상 집합** — ①②③ 세 번의 수리에서 **한 번도 안 건드렸다**. 넓히거나 좁힌 적이 없다.
+ */
+export const KAKAO_SWEEP_WHERE =
+  `merged_into IS NULL AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != ''
+     AND (kakao_checked_at IS NULL OR kakao_checked_at < datetime('now', '-30 days'))`
+
+/**
+ * 🪜 **소스 안에서의 줄 세우기**: 미조회 → 연락처 없음 → tier → id.
  *   ②는 이미 이메일이 있어 부를 수 있는 리드에 희소한 조회를 안 쓰기 위한 것 —
  *   목표는 조회 수가 아니라 *부를 수 있는 사람 수*다.
- * - **바깥 정렬(소스 사이)**: `rn` 먼저 = 인터리브. 같은 `rn` 안에서는 tier 가 앞자리를 정한다.
- * - 🔒 `WHERE` 는 ①·② 두 수리에서 **한 번도 안 건드렸다** — 대상 집합을 넓히거나 좁힌 적이 없다.
  */
-export const KAKAO_SWEEP_SQL =
-  `SELECT id, company_name, region, address, source FROM (
-     SELECT id, company_name, region, address, source, tier,
-            ROW_NUMBER() OVER (PARTITION BY source ORDER BY
-              (kakao_checked_at IS NOT NULL) ASC,
-              (email IS NOT NULL AND email <> '') ASC,
-              (tier IS NULL) ASC, tier ASC, id ASC) AS rn
-       FROM ad_company_leads
-      WHERE merged_into IS NULL AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != ''
-        AND (kakao_checked_at IS NULL OR kakao_checked_at < datetime('now', '-30 days'))
-   ) ORDER BY rn ASC, (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`
+export const KAKAO_SWEEP_INNER_ORDER =
+  `(kakao_checked_at IS NOT NULL) ASC, (email IS NOT NULL AND email <> '') ASC, (tier IS NULL) ASC, tier ASC, id ASC`
+
+/**
+ * 🔎 지금 대상이 있는 소스들. **코드에 목록을 박지 않는다** — 박으면 새 수집기가 소스를 하나 더
+ *   만들었을 때 그 소스가 **영원히 굶는다**(이 파일이 두 번 고친 사고가 정확히 그 모양이었다).
+ *   `idx_company_leads_kakao_queue` 의 선두 컬럼이 `source` 라 이 조회는 인덱스만 훑는다(실측 0.0ms).
+ */
+export const KAKAO_SWEEP_SOURCES_SQL =
+  `SELECT DISTINCT source FROM ad_company_leads WHERE ${KAKAO_SWEEP_WHERE}`
+
+/** 한 소스의 상위 N. `?`=source, `?`=N. 인덱스가 이 정렬을 그대로 담아 앞에서 N개만 걷고 멈춘다. */
+export const KAKAO_SWEEP_PER_SOURCE_SQL =
+  `SELECT id, company_name, region, address, source, tier FROM ad_company_leads
+    WHERE source = ? AND ${KAKAO_SWEEP_WHERE}
+    ORDER BY ${KAKAO_SWEEP_INNER_ORDER} LIMIT ?`
 
 /** 스윕이 읽어 오는 행 모양. `source` 는 소스별 적중률 계측용(다음 단계의 가중치 근거). */
 export interface KakaoSweepRow {
@@ -68,6 +95,32 @@ export interface KakaoSweepRow {
   region: string | null
   address: string
   source: string | null
+  /** 인터리브의 동률 판정에 쓴다(같은 등수끼리는 tier → id). 예전 바깥 `ORDER BY` 와 같은 규칙. */
+  tier?: number | null
+}
+
+/**
+ * 🔀 **소스 사이의 줄 세우기** — 각 소스의 1등끼리, 2등끼리 묶어 뽑는다. 큰 소스가 작은 소스를
+ * 구조적으로 굶길 수 없게 하는 장치이고, 예전 SQL 의 `ORDER BY rn ASC, (tier IS NULL), tier, id` 와
+ * **같은 답**을 낸다(등수 = 배열 인덱스).
+ *
+ * ⚠️ 동률(같은 등수) 안의 순서를 tier → id 로 두는 것이 핵심이다. 빼면 소스 삽입 순서가 순위를
+ *   정하게 되어, 대상이 많은 소스가 늘 앞자리를 가져간다(=예전 기아로 되돌아간다).
+ */
+export function interleaveBySource(perSource: KakaoSweepRow[][], limit: number): KakaoSweepRow[] {
+  const out: KakaoSweepRow[] = []
+  const deepest = perSource.reduce((m, a) => Math.max(m, a.length), 0)
+  for (let rank = 0; rank < deepest && out.length < limit; rank++) {
+    const tie = perSource.map(a => a[rank]).filter(Boolean) as KakaoSweepRow[]
+    tie.sort((a, b) => {
+      const an = a.tier == null ? 1 : 0, bn = b.tier == null ? 1 : 0
+      if (an !== bn) return an - bn
+      if (an === 0 && a.tier !== b.tier) return (a.tier as number) - (b.tier as number)
+      return a.id - b.id
+    })
+    for (const r of tie) { if (out.length >= limit) break; out.push(r) }
+  }
+  return out
 }
 
 /**

@@ -2559,9 +2559,11 @@ canvas {
   {
     name: '카카오 스윕이 다시 tier 순만 보고 뒷줄을 굶긴다',
     // ⚠️ 2026-08-05: SQL 이 `kakao-sweep-query.ts` 로 이사했다(자주 틀리는 자리라 분리).
+    // ⚠️ 2026-08-30: 창 함수가 사라지고 안쪽 정렬이 `KAKAO_SWEEP_INNER_ORDER` 상수 한 줄이 됐다.
+    //   지키는 불변식은 그대로 — 미조회·연락처없음 키를 빼면 tier 가 다시 줄을 세워 뒷줄이 굶는다.
     file: 'src/features/marketing/api/kakao-sweep-query.ts',
-    find: "              (kakao_checked_at IS NOT NULL) ASC,\n              (email IS NOT NULL AND email <> '') ASC,\n",
-    replace: '',
+    find: "  `(kakao_checked_at IS NOT NULL) ASC, (email IS NOT NULL AND email <> '') ASC, (tier IS NULL) ASC, tier ASC, id ASC`",
+    replace: '  `(tier IS NULL) ASC, tier ASC, id ASC`',
     test: 'src/tests/unit/kakao-sweep-order.test.ts',
     why:
       '라이브 실측: 적격 148,297 중 tier4 가 129,049 라, 그 뒤의 storeinfo 15,518건은 하루 360조회로 ' +
@@ -2572,8 +2574,11 @@ canvas {
   {
     name: '소스별 인터리브가 사라져 큰 소스가 작은 소스를 굶긴다',
     file: 'src/features/marketing/api/kakao-sweep-query.ts',
-    find: 'ROW_NUMBER() OVER (PARTITION BY source ORDER BY',
-    replace: 'ROW_NUMBER() OVER (ORDER BY',
+    // 🗺️ 2026-08-30 앵커 이사 — 인터리브가 SQL 창 함수에서 **코드**로 나갔다(창은 60건 뽑으려고
+    //   전 대상의 등수를 다 매겨야 해서 회당 165만 행을 읽었다). 지키는 불변식은 그대로:
+    //   "소스를 번갈아 뽑는가". 등수별로 묶지 않고 이어 붙이면 큰 소스가 앞을 통째로 가져간다.
+    find: '    const tie = perSource.map(a => a[rank]).filter(Boolean) as KakaoSweepRow[]',
+    replace: '    const tie = (perSource[rank] ?? []) as KakaoSweepRow[]',
     test: 'src/tests/unit/kakao-sweep-order.test.ts',
     why:
       '미조회 우선(위 항목)만으로는 안 닿았다 — 미조회끼리는 tier 가 줄을 세워 대기열이 ' +
@@ -2594,10 +2599,12 @@ canvas {
   },
   {
     name: 'CPU 상한 — 카카오 스윕이 예산 밖 행까지 다시 읽는다',
-    file: 'src/features/marketing/api/company-collect.ts',
+    file: 'src/features/marketing/api/kakao-sweep-lane.ts',
     // ⚠️ 2026-08-05: SQL 이 `kakao-sweep-query.ts` 로 나가면서 인라인 타입이 `KakaoSweepRow` 가 됐다.
-    find: '    .bind(rowCap).all<KakaoSweepRow>',
-    replace: '    .bind(cap).all<KakaoSweepRow>',
+    // ⚠️ 2026-08-30: 소스별 조회가 되면서 바인딩이 `(src, rowCap)` 이 됐다. 지키는 것은 이름이 아니라
+    //   **cap 이 아니라 rowCap 을 바인딩하는가** — 예산이 못 쓸 행은 읽지도 않는다는 계약.
+    find: '      .bind(src, rowCap).all<KakaoSweepRow>',
+    replace: '      .bind(src, cap).all<KakaoSweepRow>',
     test: 'src/tests/unit/ads-cpu-work-cap-callsites.test.ts',
     why:
       '예산 천장이 무료 캡(기본 60)이라 시도 가능한 행은 ~50개인데 `LIMIT 600` 으로 읽고 있었다. ' +
@@ -3107,7 +3114,7 @@ canvas {
   },
   {
     name: '카카오 전화 스윕이 마감선 없이 회차를 늘림(31초, 침묵 1위)',
-    file: 'src/features/marketing/api/company-collect.ts',
+    file: 'src/features/marketing/api/kakao-sweep-lane.ts',
     find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
     replace: '',
     test: 'src/tests/unit/ads-lane-deadlines.test.ts',
@@ -5859,6 +5866,38 @@ canvas {
       '이 레포에서 실측 4곳(코드 문자열이 사라져 부정 단언이 늘 통과)이 있었고, 이 파일 주석이 ' +
       '"아무도 안 밟는 지뢰"라고 적어 둔 그 지뢰를 실제로 밟았다. 삼켜도 예외가 없어 **가드가 조용히 헛돈다.**',
   },
+  // ── 🧱 유어애즈↔유어딜 경계 (2026-08-27 대표 지시). 셋 다 되돌려도 **에러가 안 난다** —
+  //    유어딜이 인질이 되는 구조가 조용히 돌아올 뿐이다.
+  {
+    name: '🧱 유어애즈가 유어딜 업무 테이블에 쓰는 것을 허용한다',
+    file: 'scripts/check-ads-urdeal-isolation.mjs',
+    find: "  'orders', 'order_items', 'products', 'sellers', 'users', 'payments', 'carts', 'cart_items',",
+    replace: "  'carts', 'cart_items',",
+    test: 'src/tests/unit/ads-urdeal-isolation.test.ts',
+    why:
+      '이 목록이 곧 R1 이다. 여기서 orders·products·sellers·users·payments 를 빼면 유어애즈가 ' +
+      '유어딜의 주문·상품·회원을 고쳐도 가드가 초록불이다 — quota 가 아니라 **데이터 사고**가 되는 축이다.',
+  },
+  {
+    name: '🧱 유어딜 DB 에 유어애즈 테이블이 느는 것을 허용한다',
+    file: 'scripts/check-ads-urdeal-isolation.mjs',
+    find: "    if (m[1] === 'platform_settings' || allowed.has(m[1]) || exempt(src, m.index)) continue",
+    replace: '    continue',
+    test: 'src/tests/unit/ads-urdeal-isolation.test.ts',
+    why:
+      'R2 는 래칫이다 — 조건을 무조건 continue 로 만들면 새 유어애즈 테이블이 유어딜 DB 로 ' +
+      '들어와도 아무 말이 없다. 494MB/99% 사고가 정확히 그렇게 자랐다.',
+  },
+  {
+    name: '🧱 유어애즈 작업이 유어딜 워커 cron 에 붙는 것을 허용한다',
+    file: 'scripts/check-ads-urdeal-isolation.mjs',
+    find: '  if (knownLanes.has(lane)) continue',
+    replace: '  continue',
+    test: 'src/tests/unit/ads-urdeal-isolation.test.ts',
+    why:
+      'R3 이 죽으면 유어애즈 작업이 유어딜 워커의 CPU·서브리퀘스트를 먹어도 신호가 없다. ' +
+      '이 레포는 CPU 한도로 레인이 죽은 적이 여러 번 있고, 그때 죽는 것은 무거운 쪽이 아니라 **뒤에 선 쪽**이다.',
+  },
   {
     name: '💸 대행사 매장이 다시 종전 요율(10%)을 낸다',
     file: 'src/worker/utils/ledger-commission-policy.ts',
@@ -5892,6 +5931,39 @@ canvas {
       '파일만 있고 마운트가 없으면 **조용히 없는 기능**이다(빌드는 통과한다). 채널을 넣을 길이 없으면 ' +
       '요율 모델이 적용될 수 없다 — 실제로 활성 매장 7곳 중 6곳이 그래서 미기록이었다.',
   },
+  // ── ☎️ 카카오 스윕 재작성 (2026-08-30) — 이 파일은 이미 두 번 고쳐졌고 두 번 다 **조용히 굶는**
+  //    모양이었다. 세 번째 수리도 되돌리면 에러가 아니라 굶음으로 돌아간다.
+  {
+    name: '☎️ 인터리브의 동률 판정이 사라져 소스 순서가 순위를 정한다',
+    file: 'src/features/marketing/api/kakao-sweep-query.ts',
+    find: '      const an = a.tier == null ? 1 : 0, bn = b.tier == null ? 1 : 0',
+    replace: '      const an = 0, bn = 0',
+    test: 'src/tests/unit/kakao-sweep-order.test.ts',
+    why:
+      '같은 등수 안의 순서를 tier→id 로 두는 것이 인터리브의 절반이다. 빼면 배열에 먼저 담긴 ' +
+      '소스가 늘 앞자리를 가져가고, 대상이 많은 소스가 다시 앞을 막는다(①②에서 고친 그 기아).',
+  },
+  {
+    name: '☎️ 대상 소스 목록을 코드에 박는다(새 수집기의 소스가 영원히 굶는다)',
+    file: 'src/features/marketing/api/kakao-sweep-query.ts',
+    find: '  `SELECT DISTINCT source FROM ad_company_leads WHERE ${KAKAO_SWEEP_WHERE}`',
+    replace: "  `SELECT 'commerce' AS source`",
+    test: 'src/tests/unit/kakao-sweep-order.test.ts',
+    why:
+      '소스 목록을 고정하면 새 수집기가 소스를 하나 더 만들었을 때 그 소스는 **한 번도 안 뽑힌다** — ' +
+      '에러 없이, 통계에도 안 잡히고. 이 파일이 두 번 고친 사고가 정확히 그 모양이었다.',
+  },
+  {
+    name: '☎️ 스윕 인덱스의 정렬 키가 쿼리와 어긋난다(전량 정렬로 복귀)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: "     source, (kakao_checked_at IS NOT NULL), (email IS NOT NULL AND email <> ''),",
+    replace: "     source, (email IS NOT NULL AND email <> ''), (kakao_checked_at IS NOT NULL),",
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '컬럼 순서가 한 칸만 어긋나도 플래너가 인덱스를 버리고 임시 B-트리로 전량 정렬한다. ' +
+      '결과는 똑같이 나오므로 아무도 모르고, 회당 165만 행 읽기가 그대로 돌아온다.',
+  },
+
   {
     name: '💎 매장 영입 딜 지급이 선점 없이 적립한다(이중지급)',
     file: 'src/worker/cron/influencer-payout.ts',
