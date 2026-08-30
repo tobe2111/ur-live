@@ -664,10 +664,16 @@ curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ur-ads/settings" -
 **🗄️ D1 원본 조회 (2026-08-02 신설 — 어드민이 노출한 통계 말고 테이블 자체를 본다)**
 
 ```bash
-# ⚠️ 계정에 D1 이 6개 있다. **이름으로 고르지 말 것** — 라이브는 이 uuid 하나뿐이고
-#    (wrangler.toml · wrangler-ads.toml 이 같은 값을 쓴다), 이름 매칭은 엉뚱한 DB 를 집어
-#    `no such table` 을 낸다(실제로 그렇게 한 번 헛짚었다).
-DB=d9530ba6-7a26-4c02-9295-3ce5aef112a3
+# ⚠️ 계정에 D1 이 8개 있다. **이름으로 고르지 말 것** — 이름 매칭은 엉뚱한 DB 를 집어
+#    `no such table` 을 낸다(실제로 두 번 헛짚었다). 라이브는 **셋**이고 목적이 다르다
+#    (근거: wrangler.toml · wrangler-ads.toml 의 database_id).
+#    🔴 2026-08-27 정정 — 여기 오래 "라이브는 이 uuid **하나뿐**"이라고 적혀 있었다. 틀렸다.
+#       그 줄을 믿고 ads 데이터를 메인에서 찾다가 `no such table: ad_company_leads` 를 만났고,
+#       ads 리드를 메인에서 읽으면 **2026-08-19 에 멈춘 사본**이라 조용히 오판한다(에러가 안 난다).
+DB_MAIN=d9530ba6-7a26-4c02-9295-3ce5aef112a3   # platform_settings · 회차 통계 · 조율기 · 소비자 전반
+DB_ADS_LEADS=d4630482-b97e-4e96-bb96-abde4ef8cc95  # ad_influencer_leads · ad_discovery_keywords
+DB_ADS_COMPANY=0e9a8f82-32fb-4584-878c-cdaec6c0aff0 # ad_company_leads(업체·매장) · ad_company_keywords
+DB=$DB_ADS_LEADS
 python3 -c "import json,sys;json.dump({'sql':sys.argv[1]},open('/tmp/q.json','w'))" "SELECT COUNT(*) n FROM ad_influencer_leads"
 curl -sS -X POST "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$DB/query" -H "$AUTH" \
   -H 'Content-Type: application/json' --data-binary @/tmp/q.json

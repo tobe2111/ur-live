@@ -5997,6 +5997,16 @@ canvas {
       '에러 없이, 통계에도 안 잡히고. 이 파일이 두 번 고친 사고가 정확히 그 모양이었다.',
   },
   {
+    name: '🐌 수집 크롤 인덱스에 source 를 키로 넣는다(정렬이 되살아난다)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: "     (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC)\n     WHERE merged_into IS NULL AND source IN ('local','webkr')",
+    replace: "     source, (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC)\n     WHERE merged_into IS NULL",
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      'source 가 정렬 키 선두에 오면 두 소스 그룹을 합치느라 정렬이 되살아난다 — 쿼리는 똑같이 ' +
+      '답을 내고 에러도 없지만 회당 40만 행 읽기가 그대로 돌아온다. 화면엔 아무 변화가 없다.',
+  },
+  {
     name: '☎️ 스윕 인덱스의 정렬 키가 쿼리와 어긋난다(전량 정렬로 복귀)',
     file: 'src/features/marketing/api/company-ddl-indexes.ts',
     find: "     source, (kakao_checked_at IS NOT NULL), (email IS NOT NULL AND email <> ''),",

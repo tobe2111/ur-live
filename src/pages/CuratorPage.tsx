@@ -201,7 +201,7 @@ export default function CuratorPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
+      <div className="min-h-[100dvh] bg-warm dark:bg-[#0D0F12] text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
         <h1 className="text-2xl font-bold mb-2">{t('curator.notFoundTitle', { defaultValue: '😢 유어샵을 찾을 수 없어요' })}</h1>
         <p className="text-gray-500 dark:text-gray-400 mb-6">@{handle}</p>
         <Link to="/" className="px-6 py-3 bg-gray-900 dark:bg-white rounded-xl text-white dark:text-[#0D0F12] font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
@@ -248,7 +248,9 @@ export default function CuratorPage() {
         url={`/u/${curator.handle}`}
         image={`https://urdeal.kr/api/og/curator/${curator.handle}`}
       />
-      <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white pb-28">
+      {/* 🎨 2026-08-30: bg-white → bg-warm. 흰 카드가 웜 바탕 위에 떠오르게 해
+          카드마다 붙어 있던 실선 테두리를 불필요하게 만든다(seller-public/theme.ts 와 동일 결정). */}
+      <div className="min-h-[100dvh] bg-warm dark:bg-[#0D0F12] text-gray-900 dark:text-white pb-28">
         {/* 🎨 2026-06-19 (대표 — 기본은 방문자 화면, 편집은 버튼으로): 주인 기본 뷰 상단의 슬림 편집 진입 바.
             방문자에겐 안 보임(isOwner). 편집 chrome(툴바·삭제·CTA)은 '편집하기' 누른 뒤에만 노출. */}
         {isOwner && previewAsVisitor && (
