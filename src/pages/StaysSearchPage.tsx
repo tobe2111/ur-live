@@ -273,7 +273,7 @@ export default function StaysSearchPage() {
                 <div className="grid grid-cols-4 gap-1.5">
                   {Object.entries(PROPERTY_TYPE_LABELS).map(([v, l]) => (
                     <button key={v} onClick={() => setFilters({ ...filters, property_type: filters.property_type === v ? '' : v })}
-                      className={`p-2 rounded-lg text-[11px] font-semibold ${filters.property_type === v ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-300'}`}>
+                      className={`p-2 rounded-lg text-[11px] font-semibold ${filters.property_type === v ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-300'}`}>
                       {l}
                     </button>
                   ))}
@@ -304,7 +304,7 @@ export default function StaysSearchPage() {
                   <option value="rating">평점 높은순</option>
                 </select>
               </div>
-              <button onClick={apply} className="w-full py-3 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700">검색</button>
+              <button onClick={apply} className="w-full py-3 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-gray-900">검색</button>
             </div>
           </div>
         </div>

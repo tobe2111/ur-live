@@ -526,7 +526,7 @@ export default function AgencyPage() {
 
       {/* 3. Quick Actions — 🏪 매장 영입 우선 */}
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => navigate('/agency/introduced-stores')} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">+ {t('agency.inviteStore', { defaultValue: '가게 영입' })}</button>
+        <button onClick={() => navigate('/agency/introduced-stores')} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-bold hover:bg-gray-900">+ {t('agency.inviteStore', { defaultValue: '가게 영입' })}</button>
         {/* 🌇 2026-08-19 일몰: 공구 관리·공지·매출 목표 화면이 제거돼 퀵액션도 함께 내렸다(누를 곳이 없는 버튼을 남기지 않는다). */}
         <button onClick={() => navigate('/agency/delegations')} className="px-4 py-2 bg-amber-500 text-white rounded-lg text-xs font-bold hover:bg-amber-600">{t('agency.nav.delegations', { defaultValue: '매장 위임' })}</button>
         <button onClick={() => navigate('/agency/sellers')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">{t('agency.inviteSeller')}</button>

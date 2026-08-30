@@ -126,7 +126,7 @@ export default function MyDigitalLibraryPage() {
           <div className="text-center py-16">
             <BookOpen className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
             <p className="text-sm text-gray-500 dark:text-gray-400">{t('digitalLibrary.empty', { defaultValue: '아직 구매한 디지털 상품이 없습니다' })}</p>
-            <button onClick={() => navigate('/browse')} className="mt-4 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700">
+            <button onClick={() => navigate('/browse')} className="mt-4 px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-900">
               {t('digitalLibrary.browseCta', { defaultValue: '상품 둘러보기' })}
             </button>
           </div>
@@ -178,7 +178,7 @@ export default function MyDigitalLibraryPage() {
                           <button
                             onClick={() => openItem(it.access_token)}
                             disabled={opening === it.access_token || remainingDownloads === 0}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-lg disabled:opacity-50"
+                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-900 hover:bg-gray-900 text-white text-xs font-bold rounded-lg disabled:opacity-50"
                           >
                             {it.product_kind === 'video_course' ? <Play className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
                             {opening === it.access_token ? t('digitalLibrary.openingLabel', { defaultValue: '여는 중...' }) : it.product_kind === 'video_course' ? t('digitalLibrary.watchLabel', { defaultValue: '시청하기' }) : t('digitalLibrary.downloadLabel', { defaultValue: '다운로드' })}

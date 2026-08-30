@@ -84,7 +84,7 @@ export default function CancelOrderModal({
               type="button"
               onClick={() => onPartialCancelChange(false)}
               className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                !isPartialCancel ? 'bg-blue-500 text-white' : 'bg-gray-50 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A2334]'
+                !isPartialCancel ? 'bg-gray-900 text-white' : 'bg-gray-50 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A2334]'
               }`}
             >
               {t('cancelOrder.fullCancel', { defaultValue: '전액 취소' })}
@@ -93,7 +93,7 @@ export default function CancelOrderModal({
               type="button"
               onClick={() => onPartialCancelChange(true)}
               className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                isPartialCancel ? 'bg-blue-500 text-white' : 'bg-gray-50 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A2334]'
+                isPartialCancel ? 'bg-gray-900 text-white' : 'bg-gray-50 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A2334]'
               }`}
             >
               {t('cancelOrder.partialCancel', { defaultValue: '부분 취소' })}

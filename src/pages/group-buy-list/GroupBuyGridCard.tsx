@@ -88,7 +88,7 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
 
         {/* 달성 뱃지 */}
         {achieved && !fcfs && (
-          <span className="absolute top-2 right-2 flex items-center gap-0.5 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow">
+          <span className="absolute top-2 right-2 flex items-center gap-0.5 bg-gray-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow">
             <CheckCircle2 className="w-3 h-3" />
             {t('groupBuy.achieved', { defaultValue: '달성' })}
           </span>

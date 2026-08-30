@@ -145,7 +145,7 @@ export default function AdminDistrictReportPage() {
               {PERIODS.map(d => <option key={d} value={d}>최근 {d}일</option>)}
             </select>
             <button type="button" onClick={() => void load(code, days)} disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold disabled:opacity-50">
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-bold disabled:opacity-50">
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> 집계
             </button>
             {report && (

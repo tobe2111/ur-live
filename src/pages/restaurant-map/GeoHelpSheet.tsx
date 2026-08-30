@@ -103,7 +103,7 @@ export default function GeoHelpSheet({
           {effReason === 'inapp' ? (
             <button
               onClick={() => { openInExternalBrowser() }}
-              className="w-full flex items-center justify-center gap-1.5 bg-blue-600 text-white rounded-xl py-3 text-[14px] font-bold active:scale-[0.98] transition-transform"
+              className="w-full flex items-center justify-center gap-1.5 bg-gray-900 text-white rounded-xl py-3 text-[14px] font-bold active:scale-[0.98] transition-transform"
             >
               <ExternalLink className="w-4 h-4" /> 외부 브라우저로 열기
             </button>
@@ -111,7 +111,7 @@ export default function GeoHelpSheet({
             onRetry && (
               <button
                 onClick={() => { onClose(); onRetry() }}
-                className="w-full flex items-center justify-center gap-1.5 bg-blue-600 text-white rounded-xl py-3 text-[14px] font-bold active:scale-[0.98] transition-transform"
+                className="w-full flex items-center justify-center gap-1.5 bg-gray-900 text-white rounded-xl py-3 text-[14px] font-bold active:scale-[0.98] transition-transform"
               >
                 <RotateCw className="w-4 h-4" /> {retryLabel}
               </button>

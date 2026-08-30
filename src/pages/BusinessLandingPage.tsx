@@ -72,7 +72,7 @@ export default function BusinessLandingPage() {
               {/* 🛡️ 2026-05-20: 공급자 (가게 사장님) 셀프 가입 CTA — 카카오 로그인 후 진입. */}
               <button
                 onClick={() => navigate('/store/new')}
-                className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-bold flex items-center gap-2 shadow-lg shadow-emerald-200"
+                className="px-6 py-3.5 bg-gray-900 hover:bg-gray-900 text-white rounded-full font-bold flex items-center gap-2 shadow-lg shadow-emerald-200"
               >
                 공급자 가입 <ArrowRight className="w-4 h-4" />
               </button>

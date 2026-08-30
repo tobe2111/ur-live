@@ -187,7 +187,7 @@ export default function SellerNotifyFollowersPage() {
         {/* 결과 */}
         {result && (
           <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center shrink-0">✓</div>
+            <div className="w-10 h-10 rounded-full bg-gray-900 text-white flex items-center justify-center shrink-0">✓</div>
             <div>
               <p className="text-sm font-bold text-green-700">발송 완료</p>
               <p className="text-xs text-green-600 mt-0.5">{result.sent}/{result.total}명에게 push 전송됨</p>

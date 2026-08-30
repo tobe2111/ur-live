@@ -209,7 +209,7 @@ export default function SellerStaysBookingsPage() {
               key={s.v}
               onClick={() => setStatusFilter(s.v)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
-                statusFilter === s.v ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-200'
+                statusFilter === s.v ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200'
               }`}
             >{s.l}</button>
           ))}

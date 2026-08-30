@@ -210,7 +210,7 @@ export default function MyStorePage() {
                             aria-label={`${p.name} 재고`}
                           />
                           {dirty && (
-                            <button onClick={() => saveStock(p)} disabled={busy === p.id} className="px-2 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-bold disabled:opacity-50">저장</button>
+                            <button onClick={() => saveStock(p)} disabled={busy === p.id} className="px-2 py-1 rounded-lg bg-gray-900 text-white text-[11px] font-bold disabled:opacity-50">저장</button>
                           )}
                         </div>
                         <button

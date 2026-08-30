@@ -328,7 +328,7 @@ export default function InfluencerSettlementPage() {
             <button
               type="button"
               onClick={() => setForm(f => ({ ...f, ranking_public: !f.ranking_public }))}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold ${form.ranking_public ? 'bg-emerald-500 text-white' : 'bg-gray-300 text-gray-700 dark:text-gray-200'}`}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold ${form.ranking_public ? 'bg-gray-900 text-white' : 'bg-gray-300 text-gray-700 dark:text-gray-200'}`}
             >
               {form.ranking_public ? '공개' : '비공개'}
             </button>

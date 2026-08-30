@@ -178,7 +178,7 @@ function TransferCard(props: {
       {props.kind === 'incoming' && transfer.status === 'pending' && (
         <div className="mt-3 flex gap-2">
           <button onClick={() => props.onAction?.('accept')}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-lg">
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-900 hover:bg-gray-900 text-white text-xs font-bold rounded-lg">
             <Check className="w-3.5 h-3.5" /> {t('agency.transfers.accept', { defaultValue: '수락' })}
           </button>
           <button onClick={() => props.onAction?.('reject')}

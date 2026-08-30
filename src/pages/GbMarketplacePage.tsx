@@ -84,7 +84,7 @@ export default function GbMarketplacePage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-500 text-white text-[10px] font-bold">소개비 {d.promo_pct}%</span>
+                      <span className="px-1.5 py-0.5 rounded bg-gray-900 text-white text-[10px] font-bold">소개비 {d.promo_pct}%</span>
                       {d.link_only && <span className="px-1.5 py-0.5 rounded bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-300 text-[10px] font-semibold">링크전용</span>}
                     </div>
                     <p className="mt-1 text-[13px] font-bold text-gray-900 dark:text-white truncate">{d.name}</p>

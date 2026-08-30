@@ -149,7 +149,7 @@ export default function AdminErrorsPage() {
                   key={h}
                   onClick={() => setHours(h)}
                   className={`px-3 py-1.5 text-sm rounded ${
-                    hours === h ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
+                    hours === h ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'
                   }`}
                 >
                   {h === 168 ? '7일' : `${h}h`}

@@ -107,7 +107,7 @@ export default function AffiliatePage() {
                 {data.share_url}
               </div>
               <button onClick={() => copyLink(data.share_url)}
-                className="px-5 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 active:scale-95">
+                className="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 active:scale-95">
                 <Copy className="w-3.5 h-3.5" /> {t('affiliate.copy')}
               </button>
             </div>

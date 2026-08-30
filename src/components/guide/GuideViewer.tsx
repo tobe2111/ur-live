@@ -273,7 +273,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
           />
           <div className="flex gap-2">
             <button onClick={() => saveSection(editingKey)} disabled={saving}
-              className="flex-1 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-1.5">
+              className="flex-1 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-1.5">
               <Save className="w-4 h-4" /> {saving ? '저장 중...' : '저장'}
             </button>
             <button onClick={() => { setEditingKey(null); setEditForm({}) }}
@@ -347,7 +347,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
                     />
                     <div className="flex gap-2">
                       <button onClick={() => saveSection(s.section_key)} disabled={saving}
-                        className="flex-1 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-1.5">
+                        className="flex-1 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-1.5">
                         <Save className="w-4 h-4" /> {saving ? '저장 중...' : '저장'}
                       </button>
                       <button onClick={() => { setEditingKey(null); setEditForm({}) }}

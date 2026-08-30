@@ -115,7 +115,7 @@ export default function AdminKakaoReviewsPage() {
                     <button
                       onClick={() => approve(s.id)}
                       disabled={processing === s.id}
-                      className="px-3 py-1.5 text-xs font-bold bg-emerald-500 text-white rounded-lg flex items-center gap-1 disabled:opacity-40"
+                      className="px-3 py-1.5 text-xs font-bold bg-gray-900 text-white rounded-lg flex items-center gap-1 disabled:opacity-40"
                     >
                       <CheckCircle className="w-3 h-3" /> 승인 + 지급
                     </button>

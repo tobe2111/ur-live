@@ -329,7 +329,7 @@ export default function AdminBulkEmailPage() {
               <button
                 onClick={() => handleSend(false)}
                 disabled={sending || (preview?.count ?? 0) === 0}
-                className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2 text-sm font-semibold text-white hover:bg-gray-900 disabled:opacity-50"
               >
                 <Send className="h-4 w-4" />
                 {sending

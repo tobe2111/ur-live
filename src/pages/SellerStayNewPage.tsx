@@ -561,7 +561,7 @@ export default function SellerStayNewPage() {
             <button
               type="submit"
               disabled={submitting || Boolean(quota && !quota.can_create_more)}
-              className="w-full py-3 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? '등록 중...' : '숙소 등록 + 객실 설정으로 →'}
             </button>

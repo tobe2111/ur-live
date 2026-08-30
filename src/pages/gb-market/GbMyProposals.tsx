@@ -56,7 +56,7 @@ export default function GbMyProposals() {
               </div>
               {r.status === 'proposed' ? (
                 <div className="flex gap-1.5 shrink-0">
-                  <button disabled={busy === r.id} onClick={() => respond(r.id, 'approve')} className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-bold disabled:opacity-50">{busy === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '수락'}</button>
+                  <button disabled={busy === r.id} onClick={() => respond(r.id, 'approve')} className="px-2.5 py-1 rounded-lg bg-gray-900 text-white text-[11px] font-bold disabled:opacity-50">{busy === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '수락'}</button>
                   <button disabled={busy === r.id} onClick={() => respond(r.id, 'reject')} className="px-2.5 py-1 rounded-lg border border-gray-300 dark:border-white/20 text-gray-600 dark:text-gray-300 text-[11px] font-semibold disabled:opacity-50">거절</button>
                 </div>
               ) : <span className="text-[11px] text-gray-400 shrink-0">{STATUS_LABEL[r.status] || r.status}</span>}

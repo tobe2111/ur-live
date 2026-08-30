@@ -193,7 +193,7 @@ function ShippingForm({ returnId, onSubmitted }: { returnId: number; onSubmitted
       <button
         onClick={submit}
         disabled={submitting}
-        className="w-full py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg"
+        className="w-full py-1.5 bg-gray-900 hover:bg-gray-900 disabled:opacity-50 text-white text-xs font-bold rounded-lg"
       >
         {submitting ? '등록 중...' : t('returns.submitShipping', { defaultValue: '회수 송장 등록' })}
       </button>

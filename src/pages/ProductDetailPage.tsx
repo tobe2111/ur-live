@@ -357,7 +357,7 @@ export default function ProductDetailPage() {
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0F151D] p-4">
         <div className="text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">{error?.message || t('productDetailPage.notFound')}</p>
-          <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">{t('productDetail.retry')}</button>
+          <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-gray-900 text-white text-sm rounded-lg">{t('productDetail.retry')}</button>
           {/* 🏬 2026-08-02 — 여기선 상품을 못 읽어 `mall_id` 를 모른다. 그래서 **어디서 왔는지**를
               쓴다: 몰 홈이 남긴 흔적이 있으면 그 가게로 돌려보낸다. 흔적이 없으면 기존대로 유어딜 홈
               — 즉 **본진 손님의 동작은 불변**이고, 몰 손님만 자기 가게로 간다.

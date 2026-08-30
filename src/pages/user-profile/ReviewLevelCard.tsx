@@ -19,7 +19,13 @@ export default function ReviewLevelCard() {
 
   useEffect(() => {
     api.get('/api/review-bonus/my-level')
-      .then((res) => { if (res.data?.success && res.data.data) setData(res.data.data as MyLevel) })
+      .then((res) => {
+        // 🛡️ 2026-08-30: `data` 가 truthy 이기만 하면 세팅하던 것 → **모양까지** 본다.
+        //   빈 배열/부분 응답이 오면 `level`·`approved_count` 가 undefined 인 채 렌더돼
+        //   화면에 'Lv.undefined' · '누적 undefined건' 이 나간다(실제로 봤다).
+        const d = res.data?.data as MyLevel | undefined
+        if (res.data?.success && d && typeof d.level === 'number') setData(d)
+      })
       .catch(() => { /* 비로그인/실패 — 카드 숨김 */ })
       .finally(() => setReady(true))
   }, [])
@@ -32,9 +38,13 @@ export default function ReviewLevelCard() {
   //   ⚠️ 프리뷰 목 응답에서 발견했다. 라이브 API 는 정상일 수 있지만, 부분 응답은
   //      언제든 생기고 그때 사용자에게 'undefined' 가 보이는 건 어느 쪽이든 결함이다.
   const approved = safeNum(data.approved_count)
+  // 🩸 2026-08-30: 이전엔 `next_threshold` 가 없으면 **무조건 최고 레벨(100%)** 로 읽었다.
+  //   그래서 후기 0건인 신규 유저에게 "최고 레벨 달성 · 누적 후기 0건" 이 뜨고 진행바가
+  //   꽉 찼다. 데이터가 없는 것과 다 이룬 것은 다르다 — 실제 성취가 있을 때만 최고로 본다.
+  const atMax = data.next_level == null && approved > 0
   const pct = data.next_threshold != null && data.next_threshold > 0
     ? Math.min(100, Math.round((approved / data.next_threshold) * 100))
-    : 100
+    : atMax ? 100 : 0
 
   return (
     // 📐 2026-08-17 (대표 신고 — PC 에서 이 카드만 화면 풀폭으로 벌어짐): 형제 섹션(OrderStatusBar·

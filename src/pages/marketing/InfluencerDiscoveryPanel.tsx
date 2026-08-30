@@ -190,7 +190,7 @@ export default function InfluencerDiscoveryPanel() {
           </div>
           <div className="flex flex-wrap gap-1.5">
             {MIN_SUBS.map(m => (
-              <button key={m.v} onClick={() => setMinSubs(m.v)} className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${minSubs === m.v ? 'bg-blue-600 text-white' : 'border border-gray-200 dark:border-[#2A3446] text-gray-500 dark:text-gray-400'}`}>{m.l}</button>
+              <button key={m.v} onClick={() => setMinSubs(m.v)} className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${minSubs === m.v ? 'bg-gray-900 text-white' : 'border border-gray-200 dark:border-[#2A3446] text-gray-500 dark:text-gray-400'}`}>{m.l}</button>
             ))}
           </div>
         </div>

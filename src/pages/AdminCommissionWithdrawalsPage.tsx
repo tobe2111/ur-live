@@ -177,7 +177,7 @@ export default function AdminCommissionWithdrawalsPage() {
                           <button
                             disabled={actionId === w.id}
                             onClick={() => approve(w)}
-                            className="px-2 py-1 bg-emerald-600 text-white rounded text-[10px] font-medium hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1"
+                            className="px-2 py-1 bg-gray-900 text-white rounded text-[10px] font-medium hover:bg-gray-900 disabled:opacity-50 flex items-center gap-1"
                           >
                             <CheckCircle className="w-3 h-3" /> 송금완료
                           </button>

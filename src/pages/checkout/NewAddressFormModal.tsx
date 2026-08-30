@@ -138,7 +138,7 @@ export default function NewAddressFormModal({
               e.stopPropagation()
               onSave()
             }}
-            className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[16px] font-bold hover:bg-blue-700 hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+            className="flex-1 py-4 bg-gray-900 text-white rounded-2xl text-[16px] font-bold hover:bg-gray-900 hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
           >
             {t('common.save', { defaultValue: '저장' })}
           </button>

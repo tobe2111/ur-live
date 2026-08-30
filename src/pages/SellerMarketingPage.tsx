@@ -62,7 +62,7 @@ function DealsSection() {
         <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
           <Handshake className="w-4 h-4 text-blue-500" /> 인플 협업 deal ({deals.length})
         </h3>
-        <button onClick={() => setShowProposeModal(true)} disabled={proposing} className="text-[11px] px-3 py-1.5 bg-blue-500 text-white rounded-lg font-bold disabled:opacity-40">
+        <button onClick={() => setShowProposeModal(true)} disabled={proposing} className="text-[11px] px-3 py-1.5 bg-gray-900 text-white rounded-lg font-bold disabled:opacity-40">
           + 우대 commission 제안
         </button>
       </div>
@@ -120,7 +120,7 @@ function DealsSection() {
             </div>
             <div className="flex gap-2 mt-5">
               <button onClick={() => setShowProposeModal(false)} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-700">취소</button>
-              <button onClick={submitPropose} disabled={proposing} className="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold disabled:opacity-50">
+              <button onClick={submitPropose} disabled={proposing} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-sm font-bold disabled:opacity-50">
                 {proposing ? '발송중...' : '제안 발송'}
               </button>
             </div>
@@ -210,7 +210,7 @@ export default function SellerMarketingPage() {
           <button
             onClick={toggleMarketing}
             disabled={loading}
-            className={`px-4 py-2 rounded-full text-xs font-bold ${marketingEnabled ? 'bg-emerald-500 text-white' : 'bg-gray-300 text-gray-700'}`}
+            className={`px-4 py-2 rounded-full text-xs font-bold ${marketingEnabled ? 'bg-gray-900 text-white' : 'bg-gray-300 text-gray-700'}`}
           >
             {marketingEnabled ? 'ON' : 'OFF'}
           </button>

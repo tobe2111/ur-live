@@ -325,7 +325,7 @@ export default function AdminVoucherTransactionsPage() {
               <button
                 onClick={() => { if (diagInputValue) setDiagOrderId(Number(diagInputValue)) }}
                 disabled={!diagInputValue}
-                className="px-4 py-1.5 bg-blue-600 text-white text-sm font-bold rounded disabled:opacity-40"
+                className="px-4 py-1.5 bg-gray-900 text-white text-sm font-bold rounded disabled:opacity-40"
               >
                 진단
               </button>

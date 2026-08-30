@@ -274,7 +274,7 @@ export default function SellerInfluencerDealsPage() {
                   type="button"
                   onClick={submitPropose}
                   disabled={proposing}
-                  className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="flex-1 rounded-lg bg-gray-900 py-2 text-sm font-bold text-white hover:bg-gray-900 disabled:opacity-50"
                 >
                   {proposing
                     ? t('seller.influencerDeals.sending', { defaultValue: '발송 중...' })

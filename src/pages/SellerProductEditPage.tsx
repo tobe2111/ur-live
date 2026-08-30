@@ -225,7 +225,7 @@ export default function SellerProductEditPage() {
           <p className="text-gray-600">{t('common.productNotFound')}</p>
           <Button
             onClick={() => navigate('/seller/products')}
-            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
+            className="mt-4 bg-gray-900 hover:bg-gray-900 text-white"
           >
             {t('common.backToList')}
           </Button>
@@ -476,7 +476,7 @@ export default function SellerProductEditPage() {
               <Button
                 type="button"
                 onClick={addDetailImage}
-                className="text-sm py-1 px-3 bg-green-600 hover:bg-green-700 text-white"
+                className="text-sm py-1 px-3 bg-gray-900 hover:bg-gray-900 text-white"
               >
                 {t('seller.addImage')}
               </Button>
@@ -587,7 +587,7 @@ export default function SellerProductEditPage() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white"
+                className="flex-1 py-3 bg-gray-900 hover:bg-gray-900 text-white"
               >
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">

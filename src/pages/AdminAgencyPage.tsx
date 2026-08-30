@@ -217,7 +217,7 @@ export default function AdminAgencyPage() {
           actions={
             <button
               onClick={openCreate}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-900"
             >
               <Plus className="h-3.5 w-3.5" />
               에이전시 추가
@@ -228,7 +228,7 @@ export default function AdminAgencyPage() {
         <p className="text-sm text-gray-500">총 {agencies.length}개 에이전시</p>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-900 text-white text-sm font-medium rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
           에이전시 추가
@@ -264,7 +264,7 @@ export default function AdminAgencyPage() {
                   <div className="flex items-center gap-2 ml-3 flex-shrink-0">
                     <button
                       onClick={() => handleApprove(a)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 hover:bg-gray-900 text-white text-xs font-semibold rounded-lg transition-colors"
                     >
                       <CheckCircle className="w-3.5 h-3.5" /> 승인
                     </button>
@@ -568,7 +568,7 @@ export default function AdminAgencyPage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+                className="flex-1 py-2.5 bg-gray-900 hover:bg-gray-900 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
               >
                 {saving ? t('admin.agency.k052', { defaultValue: '저장 중...' }) : t('admin.agency.k053', { defaultValue: '저장' })}
               </button>

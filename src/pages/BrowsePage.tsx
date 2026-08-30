@@ -500,7 +500,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => { setFreeShipOnly(!freeShipOnly); setShowCount(ITEMS_PER_PAGE) }}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${freeShipOnly ? 'bg-blue-600 text-white' : 'bg-white dark:bg-[#0F151D] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A3446]'}`}>
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${freeShipOnly ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0F151D] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A3446]'}`}>
                 <Truck className="w-3 h-3" /> 무료배송만
               </button>
               {(priceRange !== 'all' || freeShipOnly) && (

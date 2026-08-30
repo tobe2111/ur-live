@@ -334,7 +334,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
               type="button"
               onClick={handleUpload}
               disabled={parsedProducts.length === 0 || uploading}
-              className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
+              className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-900 text-white hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
             >
               {uploading ? (
                 <>

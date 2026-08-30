@@ -193,7 +193,7 @@ export default function MapTopBar({
                   nearMeMode ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05]'}`
               : `flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[12px] font-semibold shrink-0 shadow-sm border transition-all ${
                   nearMeMode
-                    ? 'bg-blue-600 text-white border-blue-600'
+                    ? 'bg-gray-900 text-white border-blue-600'
                     : 'bg-white dark:bg-[#0F151D] text-blue-600 dark:text-blue-400 border-gray-200 dark:border-[#2A3446]'}`}
           >
             <Navigation className={panel ? 'w-[17px] h-[17px]' : 'w-3 h-3'} />
