@@ -156,7 +156,7 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
             {/* 권장 액션 */}
             {data.recommendations.length > 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <p className="font-bold text-amber-900 mb-2">💡 권장 액션</p>
+                <p className="font-bold text-amber-900 mb-2">권장 액션</p>
                 {data.recommendations.map((r, i) => (
                   <p key={i} className="text-amber-800 mb-1">• {r}</p>
                 ))}

@@ -382,7 +382,7 @@ export default function SellerProductNewPage() {
                         <span className="rounded bg-gray-900 px-2 py-0.5 text-xs text-white">{t('seller.sellerOnly')}</span>
                       </div>
                       <p className="mt-1 text-sm text-gray-600">{t('seller.liveOnlyProductNote')}</p>
-                      <p className="mt-2 text-xs text-gray-500">💡 {t('seller.featuredOnlyAdmin')}</p>
+                      <p className="mt-2 text-xs text-gray-500">{t('seller.featuredOnlyAdmin')}</p>
                     </div>
                   </div>
                   <input type="hidden" name="product_type" value="live" />

@@ -245,7 +245,7 @@ export default function InfluencerMatchingPanel() {
               </div>
 
               <div className="flex items-center justify-between gap-2 p-3">
-                <p className="min-w-0 flex-1 truncate text-[11.5px] text-gray-500 dark:text-gray-400">💡 {c.fitReason}</p>
+                <p className="min-w-0 flex-1 truncate text-[11.5px] text-gray-500 dark:text-gray-400">{c.fitReason}</p>
                 <div className="flex shrink-0 gap-1.5">
                   <button onClick={() => toggleDetail(c)} className="rounded-lg border border-gray-200 dark:border-[#2A3446] px-3 py-1.5 text-[11.5px] font-semibold text-gray-600 dark:text-gray-300">{open ? '접기' : '성과 보기'}</button>
                 </div>

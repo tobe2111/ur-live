@@ -50,20 +50,20 @@ export default function SellerVoucherPhotoGuide() {
   return (
     <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-3.5 py-3">
       <p className="text-[12px] font-semibold text-amber-800">
-        {t('seller.mealVoucher.photoGuideTitle', { defaultValue: '💡 음식·시술 결과 사진이 간판·메뉴판 사진보다 판매가 잘 돼요' })}
+        {t('seller.mealVoucher.photoGuideTitle', { defaultValue: '음식·시술 결과 사진이 간판·메뉴판 사진보다 판매가 잘 돼요' })}
       </p>
       {/* 예시 일러스트 — 추천(음식 클로즈업) vs 비추천(간판/외관) */}
       <div className="grid grid-cols-2 gap-2 mt-2 max-w-[360px]">
         <figure className="m-0">
           <div className="rounded-md overflow-hidden ring-1 ring-amber-200"><GoodExampleSvg /></div>
           <figcaption className="text-[11px] text-amber-700 mt-1">
-            {t('seller.mealVoucher.photoGuideGood', { defaultValue: '✅ 추천 예시: 대표 메뉴 클로즈업 · 시술 결과(전/후) · 실제 제공되는 모습' })}
+            {t('seller.mealVoucher.photoGuideGood', { defaultValue: '추천 예시: 대표 메뉴 클로즈업 · 시술 결과(전/후) · 실제 제공되는 모습' })}
           </figcaption>
         </figure>
         <figure className="m-0">
           <div className="rounded-md overflow-hidden ring-1 ring-amber-200 opacity-70"><BadExampleSvg /></div>
           <figcaption className="text-[11px] text-amber-700 mt-1">
-            {t('seller.mealVoucher.photoGuideBad', { defaultValue: '❌ 피해주세요: 간판 · 메뉴판 · 건물 외관 사진' })}
+            {t('seller.mealVoucher.photoGuideBad', { defaultValue: '피해주세요: 간판 · 메뉴판 · 건물 외관 사진' })}
           </figcaption>
         </figure>
       </div>

@@ -185,7 +185,7 @@ export default function AdminReviewsPage() {
 
         {/* 안내 */}
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
-          <p className="font-bold mb-1">💡 사용 가이드</p>
+          <p className="font-bold mb-1">사용 가이드</p>
           <p>• <strong>템플릿:</strong> 무료, 최대 20,000개, 빠름 (36개 패턴 + 별점만 리뷰)</p>
           <p>• <strong>AI:</strong> 유료(건당 ~0.05원), 최대 500개, 상품에 맞는 자연스러운 리뷰</p>
           <p>• 추천: AI로 500개 + 템플릿으로 나머지 채우기</p>

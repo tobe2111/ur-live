@@ -173,7 +173,7 @@ export default function VoucherVerifyPage() {
               )}
               <p className="text-base font-bold text-gray-900 dark:text-white">{voucher.product_name}</p>
               {voucher.restaurant_name && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">📍 {voucher.restaurant_name}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{voucher.restaurant_name}</p>
               )}
               <div className="mt-2 bg-white dark:bg-[#0F151D] rounded-lg px-3 py-2 text-center">
                 <code className="text-lg font-mono font-bold text-gray-900 dark:text-white tracking-[0.08em]">{voucher.code}</code>

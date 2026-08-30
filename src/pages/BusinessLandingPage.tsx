@@ -87,7 +87,7 @@ export default function BusinessLandingPage() {
             <div className="relative w-[300px] aspect-[9/19.5] rounded-[40px] border-[8px] border-gray-900 bg-gray-100 dark:bg-[#1A2334] overflow-hidden shadow-2xl">
               <div className="absolute inset-0 p-4 flex flex-col gap-3">
                 <div className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 shadow-sm">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">📍 매장 검색</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">매장 검색</p>
                   <p className="text-sm font-bold text-gray-900 dark:text-white">동래원 본점</p>
                   <p className="text-[10px] text-gray-400 mt-1">부산 동래구 충렬대로...</p>
                 </div>

@@ -121,7 +121,7 @@ export default function SheetFilterBar({
             ) : (
               <><span className="font-bold text-gray-900 dark:text-white">{filteredCount}</span>{t('map.sheet.count', { defaultValue: '곳' })}</>
             )}
-            {userLoc && sortBy === 'distance' && <span className="ml-1 text-brand dark:text-[#EF6E85]">{t('map.sheet.nearMeLabel', { defaultValue: '📍 내 위치 기준' })}</span>}
+            {userLoc && sortBy === 'distance' && <span className="ml-1 text-brand dark:text-[#EF6E85]">{t('map.sheet.nearMeLabel', { defaultValue: '내 위치 기준' })}</span>}
           </span>
           {favorites.length > 0 && (
             <button

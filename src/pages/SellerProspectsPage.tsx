@@ -161,7 +161,7 @@ export default function SellerProspectsPage() {
         {/* 가이드 */}
         <div className="max-w-3xl mx-auto px-4 py-4">
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 leading-relaxed">
-            <strong>💡 영업 가이드</strong>
+            <strong>영업 가이드</strong>
             <ol className="list-decimal ml-4 mt-1 space-y-0.5">
               <li>매장 방문 / 미팅 후 "+ 매장 사전 등록" 클릭</li>
               <li>사장님 전화 또는 이메일 입력 (자동 매칭용)</li>
@@ -198,7 +198,7 @@ export default function SellerProspectsPage() {
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.color}`}>{meta.label}</span>
                   </div>
                   {p.business_address && (
-                    <p className="text-[11px] text-gray-500 mt-1">📍 {p.business_address}</p>
+                    <p className="text-[11px] text-gray-500 mt-1">{p.business_address}</p>
                   )}
                   {p.status === 'converted' && (
                     <div className="mt-2 pt-2 border-t border-gray-100 text-[11px] text-gray-600">

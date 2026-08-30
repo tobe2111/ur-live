@@ -172,7 +172,7 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
                           {getEventStatus(ev)}
                         </p>
                         {getEventLocation(ev) && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">📍 {getEventLocation(ev)}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{getEventLocation(ev)}</p>
                         )}
                         {getEventTime(ev) && (
                           <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">

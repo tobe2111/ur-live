@@ -119,7 +119,7 @@ export default function HostingNewPage() {
                     <div className="p-3">
                       <p className="text-xs font-medium line-clamp-2 mb-1">{item.name}</p>
                       <p className="text-sm font-bold text-pink-500 dark:text-pink-400">{formatWon(item.price)}</p>
-                      {item.restaurant_name && <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">📍 {item.restaurant_name}</p>}
+                      {item.restaurant_name && <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{item.restaurant_name}</p>}
                       {item.my_host_id && (
                         <p className="text-[10px] text-emerald-500 mt-1">✓ 호스팅 중</p>
                       )}

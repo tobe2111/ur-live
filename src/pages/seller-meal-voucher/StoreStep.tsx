@@ -197,7 +197,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <label className="block text-sm font-bold text-gray-900">🗺️ {t('seller.mealVoucher.findOnMap')}</label>
+                  <label className="block text-sm font-bold text-gray-900">{t('seller.mealVoucher.findOnMap')}</label>
                   <p className="text-[11px] text-gray-500 mt-0.5">{t('seller.mealVoucher.findOnMapDesc')}</p>
                 </div>
                 {placeSelected && (
@@ -301,7 +301,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
               />
               <p className="text-[10px] text-gray-400 mt-1">
-                {t('seller.mealVoucher.pinHint', { defaultValue: '💡 식당 전화번호를 입력하시면 사장님께 통계 페이지 링크가 알림톡으로 자동 발송됩니다 (PIN 불필요).' })}
+                {t('seller.mealVoucher.pinHint', { defaultValue: '식당 전화번호를 입력하시면 사장님께 통계 페이지 링크가 알림톡으로 자동 발송됩니다 (PIN 불필요).' })}
               </p>
             </div>
           </div>
