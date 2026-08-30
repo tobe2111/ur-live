@@ -237,7 +237,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   if (loading) return <BrandLoader fullScreen />
 
   if (!seller) return (
-    <div className={`min-h-screen ${T.bg} flex flex-col items-center justify-center`}>
+    <div className={`min-h-[100dvh] ${T.bg} flex flex-col items-center justify-center`}>
       <p className={T.textMuted}>{t('seller.sellerNotFound')}</p>
       <button onClick={() => navigate('/')} className="mt-3 text-sm text-brand-text font-semibold">{t('seller.goToHome')}</button>
     </div>
@@ -268,7 +268,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const gridVouchers = (!featuredIsProduct && mealVouchers[0]) ? mealVouchers.slice(1) : mealVouchers
 
   return (
-    <div className={`min-h-screen ${T.bg} pb-28`}>
+    <div className={`min-h-[100dvh] ${T.bg} pb-28`}>
       {/* 🎨 2026-06-17 유어샵 개선안(시안) 통일: 큐레이터 유어샵과 동일한 네이비 '✎ 편집 모드' 배너. theme-dual: 의도적 네이비 */}
       {ownerView && (
         <div className="sticky top-0 z-30 bg-[#141A2E] text-white px-3.5 py-2.5 text-[12.5px] font-semibold flex items-center justify-between gap-2">
