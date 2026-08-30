@@ -55,24 +55,58 @@ export async function invalidateCompanyStatsCache(DB: D1Database): Promise<void>
 
 
 /**
+ * ⏳ **낡았어도 이만큼까지는 먼저 보여준다** (2026-08-31 — 배포 후 실측이 시킨 후속).
+ *
+ * TTL 만 두면 만료된 첫 방문자가 계산을 **기다린다** — 라이브 실측 **10.4초**(큐브가 큰 GROUP BY 라
+ * 정렬 비용이 붙는다. 캐시 적중은 0.5초). 화면 카드가 10초 비어 있는 건 고친 게 아니다.
+ *
+ * ⇒ TTL 을 넘겨도 이 한계 안이면 **낡은 값을 즉시 주고 갱신은 응답 뒤에** 돌린다.
+ *   다음 방문자는 새 값을 본다. 그 사이 숫자는 최대 이만큼 낡고, 응답의 `at` 이 그걸 말해 준다.
+ *
+ * ⚠️ 무한대로 두면 안 된다 — 아무도 안 오다가 온 사람이 **몇 시간 전 숫자**를 최신인 줄 보게 된다.
+ *   그 한계를 넘으면 기다리더라도 정확한 값을 준다(느린 것보다 틀린 게 나쁘다).
+ */
+export const COMPANY_STATS_MAX_STALE_MS = 30 * 60_000
+
+/** 낡은 값을 먼저 주고 뒤에서 갱신할 수 있는가 — TTL 은 넘겼지만 한계 안일 때. */
+export function canServeStale(cached: CachedStats<unknown> | null, nowMs: number): boolean {
+  if (!cached) return false
+  const age = nowMs - cached.at
+  return age >= COMPANY_STATS_TTL_MS && age < COMPANY_STATS_MAX_STALE_MS
+}
+
+/**
  * 집계를 캐시 경유로 얻는다. 라우트는 이 함수만 부른다 — 읽기·판정·저장이 한 자리에 있어야
  * 셋 중 하나만 바뀌는 사고가 안 난다(캐시는 그 조합이 어긋날 때 조용히 무의미해진다).
  *
- * @param fresh `?fresh=1` — 지금 당장 정확한 값이 필요할 때의 우회로.
+ * @param fresh `?fresh=1` — 지금 당장 정확한 값이 필요할 때의 우회로(낡은 값도 안 쓴다).
+ * @param bg 응답 뒤 갱신을 태울 곳(`c.executionCtx.waitUntil`). **없으면 동기 계산으로 떨어진다** —
+ *   느려질 뿐 틀리지 않는다(cron·테스트처럼 waitUntil 이 없는 자리를 위한 안전한 기본값).
  * @returns `at` 은 이 숫자가 **언제 기준인지**. 화면이 "N분 전 기준"을 보여줄 수 있어야
  *   캐시된 값을 최신값으로 오해하지 않는다.
  */
 export async function getCompanyStatsCached<T>(
   DB: D1Database, fresh: boolean, compute: () => Promise<T>,
+  bg?: (p: Promise<unknown>) => void,
 ): Promise<{ stats: T; at: number }> {
   const row = fresh ? null : await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
     .bind(COMPANY_STATS_CACHE_KEY).first<{ value: string }>().catch(() => null)
   const cached = parseStatsCache<T>(row?.value)
-  if (!fresh && !shouldRecomputeStats(cached, Date.now())) return { stats: cached!.data, at: cached!.at }
+  const now = Date.now()
+  if (!fresh && !shouldRecomputeStats(cached, now)) return { stats: cached!.data, at: cached!.at }
+  const store = async (stats: T, at: number) => {
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind(COMPANY_STATS_CACHE_KEY, JSON.stringify({ at, data: stats })).run().catch(() => null)
+  }
+  // 🚀 낡았지만 쓸 만하면 **먼저 주고** 갱신은 뒤에서. 실패해도 던지지 않는다 — 갱신 실패가
+  //   화면을 깨면 안 되고, 실패하면 다음 방문자가 다시 시도한다(캐시는 그대로 낡아 있을 뿐).
+  if (!fresh && bg && canServeStale(cached, now)) {
+    bg(compute().then(s => store(s, Date.now())).catch(() => null))
+    return { stats: cached!.data, at: cached!.at }
+  }
   const stats = await compute()
   const at = Date.now()
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind(COMPANY_STATS_CACHE_KEY, JSON.stringify({ at, data: stats })).run().catch(() => null)
+  await store(stats, at)
   return { stats, at }
 }
 

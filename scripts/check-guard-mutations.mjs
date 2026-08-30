@@ -6088,6 +6088,26 @@ canvas {
       '36번 폴링하므로 버튼 한 번이 1.19억 행이 된다(D1 무료 한도의 24배). 에러가 안 난다.',
   },
   {
+    name: '⏳ 낡은 값만 주고 갱신을 안 태운다(캐시가 영영 안 바뀐다)',
+    file: 'src/features/marketing/api/company-stats-cache.ts',
+    find: '    bg(compute().then(s => store(s, Date.now())).catch(() => null))',
+    replace: '',
+    test: 'src/tests/unit/company-stats-cache.test.ts',
+    why:
+      '낡은 값을 즉시 주는 것까지는 같아서 화면은 빨라 보인다. 그런데 갱신이 안 돌아 숫자가 ' +
+      '그 자리에서 굳고, TTL 이 지나도 계속 같은 값이 나온다 — 에러도 로그도 없다.',
+  },
+  {
+    name: '⏳ 낡은 값을 한계 없이 준다(몇 시간 전 숫자를 최신인 줄 본다)',
+    file: 'src/features/marketing/api/company-stats-cache.ts',
+    find: '  return age >= COMPANY_STATS_TTL_MS && age < COMPANY_STATS_MAX_STALE_MS',
+    replace: '  return age >= COMPANY_STATS_TTL_MS',
+    test: 'src/tests/unit/company-stats-cache.test.ts',
+    why:
+      '아무도 안 보다가 온 사람이 몇 시간 전 숫자를 최신으로 읽는다. 화면은 멀쩡해 보이고 ' +
+      '숫자도 그럴듯해서, 대표가 그걸 근거로 판단하기 전까지 아무도 모른다.',
+  },
+  {
     name: '📉 통계 캐시가 안 늙는다(화면 숫자가 조용히 굳는다)',
     file: 'src/features/marketing/api/company-stats-cache.ts',
     find: '  const age = nowMs - cached.at\n  return age < 0 || age >= COMPANY_STATS_TTL_MS',
