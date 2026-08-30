@@ -5,6 +5,7 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
+import { Utensils, BedDouble, Scissors, Ticket, SearchX } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
 import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
@@ -51,12 +52,18 @@ function discountOf(p: FeedProduct): number {
   return orig > price && orig > 0 ? Math.round(((orig - price) / orig) * 100) : 0
 }
 
+/**
+ * 🏷️ 2026-08-30: 칩 라벨의 이모지(`🍽️ 🏨 💇 🎯`) → 선 아이콘.
+ *   같은 화면 **위쪽 카테고리 탭은 이미 선 아이콘**인데 이 칩만 이모지라, 한 화면에
+ *   두 스타일이 나란히 있었다(그게 어느 한쪽보다 나쁘다). 아이콘 자체도 OS 마다
+ *   다른 그림이 나온다. `all` 은 아이콘 없이 글자만 — 형태를 굳이 붙일 개념이 아니다.
+ */
 const CATEGORIES = [
-  { key: 'all',             label: '전체' },
-  { key: 'meal_voucher',    label: '🍽️ 식사' },
-  { key: 'stay_voucher',    label: '🏨 숙소' },
-  { key: 'beauty_voucher',  label: '💇 뷰티' },
-  { key: 'etc_voucher',     label: '🎯 기타' },
+  { key: 'all',             label: '전체', Icon: null },
+  { key: 'meal_voucher',    label: '식사', Icon: Utensils },
+  { key: 'stay_voucher',    label: '숙소', Icon: BedDouble },
+  { key: 'beauty_voucher',  label: '뷰티', Icon: Scissors },
+  { key: 'etc_voucher',     label: '기타', Icon: Ticket },
 ] as const
 
 const SORTS = [
@@ -312,12 +319,13 @@ export default function GroupBuyFeed({
               <button
                 key={c.key}
                 onClick={() => setCategory(c.key)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
                   active
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
                     : 'bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2A3446]'
                 }`}
               >
+                {c.Icon && <c.Icon className="w-3.5 h-3.5" aria-hidden="true" />}
                 {c.label}
               </button>
             )
@@ -459,7 +467,12 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
   return (
     <div className="px-4 pt-2 pb-8">
       <div className="py-10 text-center">
-        <p className="text-4xl mb-3">🤷</p>
+        {/* 🏷️ 2026-08-30: 어깨 으쓱 이모지(🤷) → 선 아이콘.
+            이모지 빈 화면은 "아직 안 만든 자리"처럼 읽힌다 — 실제로는 정상 상태인데도.
+            같은 화면의 '내 주변 지도로 보기' 원형 처리와 같은 언어로 맞춘다. */}
+        <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-gray-100 dark:bg-[#1A2334] flex items-center justify-center">
+          <SearchX className="w-6 h-6 text-gray-400" aria-hidden="true" />
+        </div>
         <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">
           {category === 'all' ? '진행 중인 공구가 없어요' : '이 카테고리에 진행 중인 공구가 없어요'}
         </p>
