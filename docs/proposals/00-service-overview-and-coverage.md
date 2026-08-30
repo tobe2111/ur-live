@@ -2003,7 +2003,7 @@
 
 
 
-> 마지막 생성: 2026-08-30T10:38:45.248Z
+> 마지막 생성: 2026-08-30T10:13:41.211Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

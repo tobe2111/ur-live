@@ -1031,7 +1031,7 @@
 - `PATCH /api/seller/stays/bookings/:bookingId/use-voucher`
 
 
-> 마지막 생성: 2026-08-30T10:38:45.240Z
+> 마지막 생성: 2026-08-30T10:13:41.203Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
