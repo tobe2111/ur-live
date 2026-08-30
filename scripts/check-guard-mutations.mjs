@@ -2574,7 +2574,7 @@ canvas {
   },
   {
     name: 'CPU 상한 — 카카오 스윕이 예산 밖 행까지 다시 읽는다',
-    file: 'src/features/marketing/api/company-collect.ts',
+    file: 'src/features/marketing/api/kakao-sweep-lane.ts',
     // ⚠️ 2026-08-05: SQL 이 `kakao-sweep-query.ts` 로 나가면서 인라인 타입이 `KakaoSweepRow` 가 됐다.
     // ⚠️ 2026-08-30: 소스별 조회가 되면서 바인딩이 `(src, rowCap)` 이 됐다. 지키는 것은 이름이 아니라
     //   **cap 이 아니라 rowCap 을 바인딩하는가** — 예산이 못 쓸 행은 읽지도 않는다는 계약.
@@ -3089,7 +3089,7 @@ canvas {
   },
   {
     name: '카카오 전화 스윕이 마감선 없이 회차를 늘림(31초, 침묵 1위)',
-    file: 'src/features/marketing/api/company-collect.ts',
+    file: 'src/features/marketing/api/kakao-sweep-lane.ts',
     find: "if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }",
     replace: '',
     test: 'src/tests/unit/ads-lane-deadlines.test.ts',

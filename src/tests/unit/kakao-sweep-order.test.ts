@@ -120,7 +120,7 @@ describe('📊 소스별 계측 — 다음 단계(수율 가중)의 유일한 �
   })
 
   it('🔌 스윕이 실제로 이 계측을 부른다 — 안 부르면 다음 단계가 영원히 근거 없이 남는다', () => {
-    const src = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/company-collect.ts'), 'utf8')
+    const src = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/kakao-sweep-lane.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
     expect(src).toMatch(/tallySweep\(bySource, r\.source, !!k\.phone\)/)
     expect(src, '기록만 하고 저장을 안 하면 회차가 끝나며 증발한다').toMatch(/by_source: bySource/)

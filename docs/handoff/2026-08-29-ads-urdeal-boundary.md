@@ -164,3 +164,23 @@ tier2  1,669 중 미실행 1,553   ← 승격 후보 업종이 여기. 이미 11
 매니페스트에서 (file, find) 를 뽑아 각 파일에 그 문자열이 실재하는지만 검사
 → 낡은 지도를 즉시 찾는다. 이번에 3건 중 1건은 이 스캔으로만 발견했다.
 ```
+
+### ⚠️ 그리고 그 재작성이 파일을 600줄 위로 밀어 올렸다 (CI 3차)
+
+소스별 조회로 바꾸면서 `company-collect.ts` 가 **612줄** — 600 래칫에 걸렸다. `[SKIP_SIZE]` 대신
+**스윕 레인을 통째로 분리**했다(`kakao-sweep-lane.ts` 175줄, `company-collect.ts` 458줄).
+
+- **이동만이다 — 로직 byte-불변.** 이 레인은 이미 자기 상수(`SWEEP_*`)와 자기 쿼리 SSOT
+  (`kakao-sweep-query.ts`)를 갖고 있어 경계가 이미 그어져 있었다.
+- **호출부 계약은 재수출로 유지**한다(`export { runKakaoPhoneSweep } from './kakao-sweep-lane'`) —
+  worker-ads 3곳이 `company-collect` 경로로 **동적 import** 하므로 경로를 바꾸면 런타임에 조용히 못 찾는다
+  (타입체크가 안 잡아 주는 자리다).
+- 파일이 옮겨 가면 **그 파일을 읽는 가드가 전부 낡는다.** 이번에 옮긴 앵커: 테스트 4개
+  (`ads-cpu-work-cap-callsites` ×2 · `ads-lane-deadlines` · `ads-sweep-bookkeeping` · `kakao-sweep-order`)
+  + 주입 매니페스트 2건. **`PLATFORM_URL_SQL_EXCLUDE`·`flushNaverCalls`·커서 전진 등은 스윕이 아니라
+  `runCompanyAutoCollect` 것이라 그대로 둔다** — 파일 단위로 일괄 치환하면 이쪽까지 잘못 옮긴다
+  (실제로 매니페스트 한 건을 그렇게 잘못 옮겼다가 되돌렸다).
+- 판정은 위의 전수 앵커 스캔으로 했다(539건 중 company-collect/kakao-sweep 계열 낡음 0).
+
+🔑 **다음 세션 규칙**: `git add` 를 하기 전에 `check-file-size.mjs` 를 돌리면 "대상 없음(skip)" 이라
+초록이 뜬다 — **staged 파일만 본다.** 반드시 `git add -A` 뒤에 돌릴 것.
