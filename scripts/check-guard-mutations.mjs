@@ -83,6 +83,16 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '평면 그라디언트가 다시 들어온다(단색인데 그라디언트인 척)',
+    file: 'src/pages/user-profile/TeamPointsCard.tsx',
+    find: '      <div className="bg-ink dark:bg-[#1A2334] rounded-2xl px-5 py-4">',
+    replace: '      <div className="bg-gradient-to-r from-gray-800 to-gray-800 dark:bg-[#1A2334] rounded-2xl px-5 py-4">',
+    test: 'src/tests/unit/button-system.test.ts',
+    why:
+      'from/to 가 같은 색이면 브라우저는 그라디언트를 계산하는데 화면엔 단색이 나온다. ' +
+      '2026-06-19 흑백 리매핑에서 85곳이 이렇게 붕괴해 있었고 아무도 몰랐다 — 에러가 없다.',
+  },
+  {
     name: '아이콘 굵기 규칙이 전면으로 번져 명시값을 덮어쓴다',
     file: 'src/index.css',
     find: "  svg.lucide[stroke-width='2'] { stroke-width: 1.75; }",

@@ -111,3 +111,40 @@ describe('현재 위치 표시 — 만들어 놓고 안 부르는 일이 없게'
     expect(bar).toMatch(/locatedLabel \|\| '내 주변'/)
   })
 })
+
+describe('평면 그라디언트 — 그라데이션이 안 되는 그라디언트', () => {
+  it('from/to 가 같은 색인 그라디언트가 0곳이어야 한다', () => {
+    // 🩸 실측(2026-08-30): **85곳 / 48파일**이 이랬다. 2026-06-19 흑백 리매핑에서
+    //   모든 장식 색계열이 INK 하나로 접히면서 `from-pink-500 to-purple-500` 류가 통째로
+    //   `from-gray-800 to-gray-800` 이 됐다. 마크업은 "여긴 그라디언트" 라고 선언하는데
+    //   실제로는 **단색이 렌더된다** — 브라우저는 계산을 계속 하고 코드는 거짓말을 한다.
+    //   에러가 없어서 아무도 몰랐다.
+    // ⚠️ 이 테스트는 래칫(check-design-slop.mjs)과 **일부러 따로** 판정한다 —
+    //    베이스라인 파일을 고쳐서 통과시키는 길을 막기 위해서다.
+    const MONO = new Set(['pink','rose','fuchsia','orange','amber','yellow','lime','green','emerald',
+      'teal','cyan','sky','blue','indigo','violet','purple','gray'])
+    const norm = (t: string) => { const i = t.lastIndexOf('-'); return i < 0 ? t : (MONO.has(t.slice(0, i)) ? 'ink' + t.slice(i) : t) }
+    const pat = /bg-gradient-to-[a-z]{1,2}\s+from-(\S+?)(?:\s+via-(\S+?))?\s+to-([^\s"'`]+)/g
+
+    const walk = (d: string, out: string[] = []): string[] => {
+      for (const e of readdirSync(d, { withFileTypes: true })) {
+        const p = resolve(d, e.name)
+        if (e.isDirectory()) { if (!/node_modules|\.git|dist|tests/.test(p)) walk(p, out) }
+        else if (/\.tsx$/.test(e.name)) out.push(p)
+      }
+      return out
+    }
+    const files = walk(resolve(root, 'src'))
+    expect(files.length, '스캔 경로가 낡았다 — 대상 0건은 통과가 아니라 실패다').toBeGreaterThan(300)
+
+    const bad: string[] = []
+    for (const f of files) {
+      const src = readFileSync(f, 'utf-8')
+      for (const m of src.matchAll(pat)) {
+        const parts = [m[1], m[2], m[3]].filter(Boolean).map(norm)
+        if (new Set(parts).size === 1) bad.push(`${f.replace(root + '/', '')}  ${m[0].slice(0, 60)}`)
+      }
+    }
+    expect(bad, `평면 그라디언트:\n${bad.slice(0, 8).join('\n')}`).toEqual([])
+  })
+})
