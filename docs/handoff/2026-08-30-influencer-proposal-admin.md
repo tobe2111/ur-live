@@ -8,7 +8,8 @@
 - **라이브 실제 화면 캡처를 제안서에 넣는다**(대표 "넣어야 해"). → 04번 슬라이드 신설, 총 9장.
 
 ## 완료분
-- `docs/business/proposals/influencer-proposal.html` — 16:9 슬라이드 **9장** 단일 파일(자체 완결, 스크립트 없음).
+- `public/static/proposals/influencer-proposal.html` — 16:9 슬라이드 **9장** 단일 파일(자체 완결, 스크립트 없음).
+  ⚠️ **`docs/` 가 아니다.** 아래 5번 참조. `docs/business/proposals/README.md` 가 위치와 이유를 가리킨다.
   `@page 13.333in x 7.5in` 이라 브라우저 인쇄가 곧 16:9 PDF 9장이다.
 - **04 "여섯 단계는 화면 네 장으로 끝납니다"** — 라이브 `urdeal.kr` 캡처 4장(발견/담기/결제/사용)을
   base64 로 심었다(총 +162KB). 외부 URL 을 안 쓰는 이유는 이 파일이 srcDoc 으로 통째로 읽히고 인쇄까지 되기 때문이다.
@@ -17,7 +18,7 @@
   덱은 `src/index.css` 토큰을 **복사해 쓰는 구조**라 서비스가 색을 바꾸면 여기만 옛 색으로 남는다.
   캡처도 #1248 배포 **이후**로 다시 찍었다(상세 페이지의 이모지 제거·버튼 색이 실제로 달라졌다).
 - `src/pages/admin/AdminProposalsPage.tsx` + `/admin/proposals` 라우트 + 어드민 메뉴 "대외 제안서".
-  `?raw` import 라 **문서를 고쳐 배포하면 화면도 자동 최신**(AdminPlatformModelPage 패턴 그대로).
+  정적 자산을 iframe 으로 띄운다. **파일을 고쳐 배포하면 화면도 자동 최신**이고 번들에는 안 들어간다.
 - `.claude/skills/taste-skill/` — 스킬 벤더링(MIT). 다음 세션부터 자동으로 잡힌다.
 - 캔버스(클로드 디자인) 아티팩트: 같은 슬라이드를 편집 가능한 형태로 유지.
 
@@ -50,7 +51,15 @@
    (05번 "직접 입점" · "1년간" 이 안 보였다). #1248 이 만든 문제가 아니라 **원래 대비가 나빴던 것이
    경계값에 닿아 드러난 것**이다. `.panel-dark`(패널 안에서 잉크를 뒤집는 클래스)로 4곳 일괄 수리.
    ⇒ 토큰 두 개가 같은 값이 되는 변경은 "색만 바뀐다"가 아니다. **같아지면 사라지는 자리가 있는지** 볼 것.
-5. 🔴 **Chromium 이 이 환경에서 네트워크를 못 쓴다는 걸 늦게 알았다.** `--proxy-server` 로 프록시를 물려도
+5. 🔴 **`?raw` 로 문서를 가져오면 그 문자열이 그대로 JS 청크가 된다.** 캡처를 base64 로 심자
+   `AdminProposalsPage` 청크가 **254KB**(gzip 165KB)로 불어 `check-bundle-size --budget`
+   (총 raw JS 8.6MB)이 CI 를 세웠다 — 총량 8.79MB, 초과분이 정확히 이 청크였다.
+   `AdminPlatformModelPage` 의 `?raw` 패턴을 따랐는데 **그건 텍스트 문서였다.** 이미지가 붙는
+   문서에는 안 맞는다. ⇒ `public/static/proposals/` 로 옮기고 `<iframe src>` 로 띄운다(번들 0바이트).
+   경로가 `/static/` 인 이유는 `_routes.json` 이 그 접두사만 워커에서 제외해서다. 다른 경로면
+   워커가 SPA 셸을 돌려줘 미리보기가 빈 화면이 된다. 세 조건 전부 `admin-proposals-asset.test.ts`
+   로 고정했다(되돌려-검증 3건 red 확인). 검증: 총 raw JS 8.79 → **8.54MB**, 예산 통과.
+6. 🔴 **Chromium 이 이 환경에서 네트워크를 못 쓴다는 걸 늦게 알았다.** `--proxy-server` 로 프록시를 물려도
    CONNECT 는 붙었다가 handshake 중간에 끊긴다(`ERR_CONNECTION_RESET` · 프록시 `recentRelayFailures` 에
    `ws_closed_mid_exchange`). curl 은 같은 주소가 200 이라 **"사이트가 막혔다"로 오진하기 쉽다**.
    해법은 `ctx.route('**')` 로 **모든 요청을 Node fetch 가 대신 받아 채워 넣는 것**(Node 는 HTTPS_PROXY +
@@ -81,4 +90,7 @@ NODE_USE_ENV_PROXY=1 node scripts/capture-proposal-shots.mjs /tmp/shots
 ## 다음 세션 첫 액션
 1. 배포 후 `/admin/proposals` 에서 미리보기가 뜨는지, **PDF로 저장**이 16:9 **9장**으로 나오는지 확인
    (인쇄 대화상자: 대상 PDF / 방향 가로 / 여백 없음). 04번 슬라이드의 폰 캡처 4장이 인쇄본에도 실리는지 함께 볼 것.
+   ⚠️ 정적 자산 서빙으로 바꾼 뒤 **첫 배포**다. 빈 iframe 이면 워커가 SPA 셸을 돌려준 것이니
+   `curl -sI https://urdeal.kr/static/proposals/influencer-proposal.html` 의 `content-type` 을 볼 것
+   (`text/html` 이면서 크기가 255KB 근처여야 한다).
 2. 위 "머니 경로 코드 갭 2건" 을 대표가 진행하라고 하면 그때 착수.
