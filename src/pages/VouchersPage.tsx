@@ -642,7 +642,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                           const np = page + 1; setPage(np); loadProducts(np, false)
                         }
                       }}
-                      className="w-full flex items-center justify-center gap-1.5 h-12 rounded-2xl bg-gray-100 dark:bg-[#1A2334] text-[13px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-[#2A3446] transition-colors"
+                      // 🔘 2026-08-30 버튼 체계 적용 (index.css `.ur-btn`).
+                      //   이전: h-12 rounded-2xl text-[13px] font-bold — 이 화면만의 값이었다.
+                      //   높이·모서리·굵기·글자크기를 체계가 정하고, 여기선 **채움색만** 준다.
+                      className="ur-btn ur-btn-lg ur-btn-block bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-[#2A3446]"
                     >
                       {t('home.moreVouchers', { defaultValue: '교환권 더보기' })}
                       <ChevronDown className="w-4 h-4" />
