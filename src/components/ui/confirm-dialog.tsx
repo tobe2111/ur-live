@@ -138,15 +138,22 @@ export function ConfirmHost() {
           {!current.alert && (
             <button
               onClick={() => close(false)}
-              className="flex-1 h-12 rounded-xl text-[14px] font-bold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-[#262626] active:scale-[0.98] transition-transform"
+              className="ur-btn ur-btn-lg flex-1 text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-[#262626]"
             >
               {current.cancelText || '취소'}
             </button>
           )}
           <button
             onClick={() => close(true)}
-            className="flex-1 h-12 rounded-xl text-[14px] font-extrabold text-white active:scale-[0.98] transition-transform"
-            style={{ background: current.danger ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #6b7280, #6b7280)' }}
+            className="ur-btn ur-btn-lg flex-1 text-white"
+            // 🎨 2026-08-30: 기본 확인 버튼이 `linear-gradient(135deg,#6b7280,#6b7280)` —
+            //   **같은 색 두 개짜리 가짜 그라디언트**였고, 그 #6b7280 은 MONO 흑백 시절
+            //   (2026-06-19)의 잔재다. 브랜드 컬러 롤아웃(2026-07-19)에서 갱신되지 않아
+            //   108개 다이얼로그의 주 버튼만 홀로 중간 회색이었다(다른 주요 CTA 는 전부 잉크).
+            //   → 잉크(#1A2C42)로 정렬. 로즈로 가지 않는 이유는 브랜드 60-30-10(로즈 ≤10%)
+            //   결정을 108곳에서 한꺼번에 깨지 않기 위해서다.
+            //   danger 는 기능색이라 불변(지시서 §4 "성공/오류 기능색 유지").
+            style={{ background: current.danger ? 'linear-gradient(135deg, #ef4444, #dc2626)' : '#1A2C42' }}
           >
             {current.confirmText || '확인'}
           </button>
