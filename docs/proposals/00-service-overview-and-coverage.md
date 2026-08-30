@@ -286,9 +286,9 @@
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
 | 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 70 | 278 |
-| 링크샵 / 큐레이터 | `linkshop-brief.md` | 13 | 60 |
+| 링크샵 / 큐레이터 | `linkshop-brief.md` | 13 | 59 |
 | 에이전시 | `agency-brief.md` | 29 | 167 |
-| **합계** | — | **184** | **604** |
+| **합계** | — | **184** | **603** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -297,9 +297,9 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 380 | 1242 |
-| 도메인 버킷 (5개 소개서) | 184 | 604 |
-| 공통/인프라 (의도적 제외) | 163 | 466 |
+| 전체 | 380 | 1243 |
+| 도메인 버킷 (5개 소개서) | 184 | 603 |
+| 공통/인프라 (의도적 제외) | 163 | 468 |
 | **미커버 (점검 필요)** | **33** | **172** |
 
 ⚠️ **미커버 205건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
@@ -540,9 +540,8 @@
 
 | 항목 | 값 | 출처 (파일:심볼) |
 |---|---|---|
-| 식사권 기본 수수료 | 5% | `src/features/group-buy/api/helpers.ts:DEFAULT_MEAL_VOUCHER_COMMISSION_RATE` |
-| 차등 수수료 — 월 GMV 100,000,000원 이상 | 3% | `src/features/group-buy/api/helpers.ts:TIER_COMMISSION` |
-| 차등 수수료 — 월 GMV 10,000,000원 이상 | 4% | `src/features/group-buy/api/helpers.ts:TIER_COMMISSION` |
+| 식사권 기본 수수료 | [추출실패—수동확인] | `src/features/group-buy/api/helpers.ts:DEFAULT_MEAL_VOUCHER_COMMISSION_RATE` |
+| 차등 수수료 (GMV 기반) | [추출실패—수동확인] | `src/features/group-buy/api/helpers.ts:TIER_COMMISSION` |
 | 커뮤니티 공구 — 기본 보증금/인 | 5,000원 | `src/features/community-group-buy/api/community-group-buy.routes.ts:deposit_per_person` |
 | 커뮤니티 공구 — 기본 목표 인원 | 10명 | `src/features/community-group-buy/api/community-group-buy.routes.ts:target_count` |
 | 커뮤니티 공구 — 인기 그룹 임계 | 50명 | `src/features/community-group-buy/api/community-group-buy.routes.ts:popular` |
@@ -1527,7 +1526,7 @@
 - `/u/me/earnings`
 - `/user/affiliate`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (60개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (59개)
 
 
 **/api/affiliate/funnel**
@@ -1548,9 +1547,6 @@
 **/api/curator/:handle**
 - `GET /api/curator/:handle`
 - `GET /api/curator/:handle/p/:productId/redirect`
-
-**/api/curator/admin**
-- `GET /api/curator/admin/affiliate-diagnostic`
 
 **/api/curator/handle**
 - `GET /api/curator/handle/check`
@@ -2007,7 +2003,7 @@
 
 
 
-> 마지막 생성: 2026-08-27T09:43:40.550Z
+> 마지막 생성: 2026-08-30T10:38:45.248Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

@@ -5867,6 +5867,36 @@ canvas {
       '파일만 있고 마운트가 없으면 **조용히 없는 기능**이다(빌드는 통과한다). 채널을 넣을 길이 없으면 ' +
       '요율 모델이 적용될 수 없다 — 실제로 활성 매장 7곳 중 6곳이 그래서 미기록이었다.',
   },
+  {
+    name: '💎 매장 영입 딜 지급이 선점 없이 적립한다(이중지급)',
+    file: 'src/worker/cron/influencer-payout.ts',
+    find: "        if ((claim?.meta?.changes ?? 0) !== 1) continue",
+    replace: '',
+    test: 'src/tests/unit/store-intro-deal-payout.test.ts',
+    why:
+      'claim-before-credit(머니 룰 #1)이 무너진다. cron 재시도·동시 실행에 같은 행이 두 번 적립되고, ' +
+      '딜은 교환권으로 실물 교환이 되므로 되돌리기가 비싸다(이미 쓴 딜은 회수 불가).',
+  },
+  {
+    name: '💎 매장 영입 딜 지급이 게이트 없이 켜진다',
+    file: 'src/worker/cron/influencer-payout.ts',
+    find: "    if (dealGate?.value === 'true') {",
+    replace: '    if (true) {',
+    test: 'src/tests/unit/store-intro-deal-payout.test.ts',
+    why:
+      '머니 경로는 게이트 OFF 로 배선하고 staging 실결제 후 켠다(레포 룰). 게이트가 사라지면 ' +
+      '배포 즉시 현금 경로가 딜로 바뀌고, 원천징수(3.3%/8.8%)가 조용히 사라진다 — 세무 판정 전에는 안 된다.',
+  },
+  {
+    name: '💎 딜 지급이 store_intro 아닌 적립까지 삼킨다',
+    file: 'src/worker/cron/influencer-payout.ts',
+    find: "         WHERE status = 'pending' AND source = 'store_intro'",
+    replace: "         WHERE status = 'pending'",
+    test: 'src/tests/unit/store-intro-deal-payout.test.ts',
+    why:
+      '`influencer_attributions` 에는 매칭 캠페인 등 **현금으로 줘야 할 축**도 들어 있다. ' +
+      '필터가 빠지면 그것들까지 딜로 지급되고 현금 잔액에서 사라진다 — 소개자가 받을 돈의 종류가 바뀐다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
