@@ -57,6 +57,25 @@ curl -s https://urdeal.kr/ | grep -o '/assets/index-[A-Za-z0-9_-]*\.css' | head 
 
 ## 이번에 틀렸던 판단 (제일 값진 부분)
 
+0. **아이콘 파일을 놓은 위치가 홈 첫 페인트에 166KB 를 끌어왔다** (이번 세션 최대 실수).
+   `components/icons/urdeal-icons.tsx` 는 60줄짜리 순수 SVG 리프인데 `/src/components/`
+   catch-all 에 걸려 `app-components`(166KB · 58모듈)로 들어갔고, 그걸 **BottomNav ·
+   DesktopTopNav**(앱 셸)가 import 하는 순간 청크가 통째로 크리티컬 패스로 왔다 —
+   **17 → 23청크**(app-constants · app-features · app-ui-utils · radix-ui ·
+   app-kakao-sdk 까지 딸려왔다). `check-critical-chunks` 가 잡았고, main 으로 되돌려
+   다시 빌드해 원인이 이 브랜치임을 확정했다(main = 17 GREEN).
+   ⇒ 이 레포가 **세 번째** 겪는 클래스다(2026-08-27 `seller-roles` · `seller-tracking`).
+   **작은 공용 모듈이 무거운 봉투 안에 있으면, 그걸 import 하는 가벼운 컴포넌트가
+   봉투째 끌고 온다.** 앱 셸이 쓰는 새 모듈은 **놓는 위치부터** manualChunks 를 볼 것.
+   눈으로도 tsc 로도 안 보인다 — 가드가 없었으면 그대로 배포됐다.
+
+0-b. **`git add -A` 가 주입 중인 파일을 스테이지했다.** audit-gate 의
+   `check-guard-mutations` 가 백그라운드로 550건 주입 스윕을 도는 동안 커밋을 시도해서
+   `src/worker-ads/lane-adaptive-interval.ts` 의 **주입본**이 인덱스에 들어갔다.
+   `check-no-injection-in-progress.sh` 가 커밋을 막아 사고는 안 났다(2026-08-25 에는
+   똑같은 일로 실제 결함이 커밋됐다). ⇒ **가드 스윕과 커밋을 겹치지 마라.**
+   자물쇠: `.git/guard-mutations.lock`(안에 PID). 걸려 있으면 끝날 때까지 기다린다.
+
 1. **"포커스 링이 15곳뿐이라 접근성 구멍"** — 틀렸다. `index.css:7` 에 전역
    `*:focus-visible` 이 이미 있었다. 개별 선언만 세고 전역 규칙을 안 봤다.
 2. **시안을 믿고 보고했다** — 실제 스크린샷을 찍으니 내 목업과 달랐다(그라디언트는 회색이
