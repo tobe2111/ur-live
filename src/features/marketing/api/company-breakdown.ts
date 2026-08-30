@@ -22,11 +22,17 @@ export interface CompanyDayInflow { d: string; n: number; reachable: number }
 /** 두 사업의 즉시 발송 가능 명단 수. 총계가 아니라 이 둘이 화면 맨 위에 온다. */
 export interface CompanySegments { payback_ready: number; agency_ready: number }
 
-export async function companyBreakdown(DB: D1Database): Promise<{ seg: CompanySegments; byDay: CompanyDayInflow[]; todayKst: string }> {
-  const s = await DB.prepare(`SELECT
-      SUM(CASE WHEN category = '온라인판매' AND email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS payback_ready,
-      SUM(CASE WHEN category = '대행사' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != '')) THEN 1 ELSE 0 END) AS agency_ready
-    FROM ad_company_leads WHERE merged_into IS NULL AND active = 1`).first<Record<string, number>>().catch(() => null)
+/**
+ * 📅 **일자별 유입만** 남았다 (2026-08-31 재작성).
+ *
+ * 예전엔 이 함수가 세그먼트 집계(전수 스캔 1회)도 함께 했는데, 그건 `company-stats-cube.ts` 의
+ * 한 번 스캔에 흡수됐다(같은 행을 또 훑을 이유가 없다). 일자별은 **최근 14일 범위 조회**라
+ * 성격이 다르다 — 큐브에 넣으면 축이 날짜 수만큼 늘어난다.
+ *
+ * ⚠️ 이 쿼리는 `collected_at` 인덱스가 있어야 범위만 읽는다(없으면 전수 스캔 + 정렬 —
+ *   라이브 실측 461,191행). 인덱스는 `company-ddl-indexes.ts` ⑤.
+ */
+export async function companyInflowByDay(DB: D1Database): Promise<{ byDay: CompanyDayInflow[]; todayKst: string }> {
   const byDay = (await DB.prepare(`SELECT DATE(collected_at,'+9 hours') AS d, COUNT(*) AS n,
       SUM(CASE WHEN (email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != '') THEN 1 ELSE 0 END) AS reachable
     FROM ad_company_leads WHERE merged_into IS NULL AND collected_at >= datetime('now','-14 days')
@@ -35,9 +41,5 @@ export async function companyBreakdown(DB: D1Database): Promise<{ seg: CompanySe
   //   추세 계산에서 뺀다. 클라가 `new Date()` 로 오늘을 구하면 브라우저 TZ 에 따라 9시간 어긋나
   //   멀쩡한 날이 '폭락'으로 읽힌다(이 파일 위의 KST 경계 주석과 같은 클래스).
   const t = await DB.prepare("SELECT DATE('now','+9 hours') AS d").first<{ d: string }>().catch(() => null)
-  return {
-    seg: { payback_ready: Number(s?.payback_ready) || 0, agency_ready: Number(s?.agency_ready) || 0 },
-    byDay,
-    todayKst: String(t?.d || ''),
-  }
+  return { byDay, todayKst: String(t?.d || '') }
 }

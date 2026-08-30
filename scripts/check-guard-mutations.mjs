@@ -6027,6 +6027,36 @@ canvas {
       '"조금 더 읽는" 정도가 아니라 다시 곱셈이 된다 — 그리고 결과가 맞아서 아무도 모른다.',
   },
   {
+    name: '🧊 큐브가 needs_review 를 차원에서 유도한다(빈 문자열까지 세어 숫자가 틀어진다)',
+    file: 'src/features/marketing/api/company-stats-cube.ts',
+    find: "    SUM(CASE WHEN lead_type IS NULL OR lead_type = 'unknown' THEN 1 ELSE 0 END) AS needs_review,",
+    replace: '',
+    test: 'src/tests/unit/company-stats-cube.test.ts',
+    why:
+      '축 `lt` 는 빈 문자열도 unknown 으로 접지만 예전 needs_review 는 그걸 안 셌다. 유도로 바꾸면 ' +
+      '화면의 "분류 확인" 숫자가 조용히 커진다 — 실제로 이 구현에서 그렇게 틀렸고 유닛이 잡았다.',
+  },
+  {
+    name: '🧊 큐브 소스 집계가 병합행을 센다(보유율이 부풀어 잘못된 결론)',
+    file: 'src/features/marketing/api/company-stats-cube.ts',
+    find: '    if (num(r.live)) {\n      const cur = src.get(r.src)',
+    replace: '    if (true) {\n      const cur = src.get(r.src)',
+    test: 'src/tests/unit/company-source-contact-rate.test.ts',
+    why:
+      '예전 SQL 의 `WHERE merged_into IS NULL` 이 접기로 옮겨졌다. 빠지면 중복(병합된) 행이 다시 ' +
+      '세어져 수집원별 연락처 보유율이 부풀고, 그 표로 수집 전략을 정한다.',
+  },
+  {
+    name: '🧊 큐브 상한 20 이 사라진다(화면 표가 무한정 길어진다)',
+    file: 'src/features/marketing/api/company-stats-cube.ts',
+    find: '  const bySource = [...src.values()].sort((a, b) => b.n - a.n).slice(0, 20)',
+    replace: '  const bySource = [...src.values()].sort((a, b) => b.n - a.n)',
+    test: 'src/tests/unit/company-source-contact-rate.test.ts',
+    why:
+      '예전 SQL 의 LIMIT 20 이 접기로 옮겨졌다. 빠져도 숫자는 맞아서 아무도 모르지만 응답이 커지고 ' +
+      '화면 표가 예전과 달라진다(같은 클래스의 조용한 회귀).',
+  },
+  {
     name: '📉 파트너 풀 통계가 캐시를 건너뛴다(화면 한 번에 331만 행 복귀)',
     file: 'src/features/marketing/api/partner-pool.routes.ts',
     find: 'getCompanyStatsCached(statsDb, fresh1, () => companyStats(statsDb))',
