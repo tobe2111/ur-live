@@ -345,10 +345,10 @@ export default function StayDetailPage() {
 
       <div className="px-4 py-5 lg:px-0 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8 lg:items-start">
         <div className="min-w-0">
-        {/* 🖼️ 갤러리는 **좌측 컬럼 안**에 둔다 — 이용권 상세와 같은 [좌 사진·본문 | 우 예약 패널] 배치.
-            그리드 밖 풀폭으로 두면 같은 16:9 라도 폭이 1140px 이라 사진만 640px 높이로 커진다
-            (제목을 위로 올린 의미가 사라진다). */}
-        <div className="relative bg-gray-100 dark:bg-[#1A2334] lg:rounded-2xl lg:overflow-hidden">
+        {/* 🖼️ 갤러리는 **좌측 컬럼 안** — 그리드 밖 풀폭이면 폭 1140px 이라 사진만 640px 로 커진다. */}
+        {/* 📱 음수 마진 = 부모 `px-4 py-5` 를 모바일에서만 빠져나가기(공구 상세와 같은 풀블리드).
+            `lg:` 되돌림까지가 한 쌍 — 경위는 `stay-detail-gallery-bleed.test.ts`. */}
+        <div className="relative -mx-4 -mt-5 lg:mx-0 lg:mt-0 bg-gray-100 dark:bg-[#1A2334] lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#2A3446]">
           <DetailGallery
             images={galleryImages}
             alt={stay.restaurant_name || stay.name}
