@@ -26,8 +26,8 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
   if (cartItems.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="bg-white dark:bg-[#0F151D] rounded-2xl border border-gray-100 dark:border-[#2A3446] p-12 text-center">
-          <div className="w-20 h-20 bg-gray-50 dark:bg-[#1A2334] rounded-full flex items-center justify-center mx-auto mb-5">
+        <div className="bg-white dark:bg-[#0D0F12] rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-12 text-center">
+          <div className="w-20 h-20 bg-gray-50 dark:bg-[#1A1C21] rounded-full flex items-center justify-center mx-auto mb-5">
             <ShoppingCart className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
           </div>
           <h2 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">
@@ -49,7 +49,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
 
   return (
     <div className="space-y-4 pb-28">
-      <div className="bg-white dark:bg-[#0F151D] rounded-2xl border border-gray-100 dark:border-[#2A3446] overflow-hidden divide-y divide-gray-100">
+      <div className="bg-white dark:bg-[#0D0F12] rounded-2xl border border-gray-100 dark:border-[#2C2F35] overflow-hidden divide-y divide-gray-100">
         {cartItems.map(item => (
           <div key={item.id} className="p-4">
             <div className="mb-3">
@@ -68,12 +68,12 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="inline-flex items-center rounded-full border border-gray-200 dark:border-[#2A3446] overflow-hidden">
+              <div className="inline-flex items-center rounded-full border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
                 <button
                   onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
                   disabled={item.quantity <= 1}
                   aria-label={t('cart.decreaseQty', { defaultValue: '수량 감소' })}
-                  className="w-9 h-9 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A2334] active:bg-gray-100 dark:active:bg-[#1A2334] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="w-9 h-9 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A1C21] active:bg-gray-100 dark:active:bg-[#1A1C21] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   <Minus className="h-3.5 w-3.5" />
                 </button>
@@ -83,7 +83,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
                 <button
                   onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
                   aria-label={t('cart.increaseQty', { defaultValue: '수량 증가' })}
-                  className="w-9 h-9 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A2334] active:bg-gray-100 dark:active:bg-[#1A2334] transition-colors"
+                  className="w-9 h-9 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A1C21] active:bg-gray-100 dark:active:bg-[#1A1C21] transition-colors"
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </button>
@@ -100,8 +100,8 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
         ))}
       </div>
 
-      <div className="bg-white dark:bg-[#0F151D] rounded-2xl border border-gray-100 dark:border-[#2A3446] p-5">
-        <div className="space-y-3 pb-4 border-b border-gray-100 dark:border-[#2A3446]">
+      <div className="bg-white dark:bg-[#0D0F12] rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-5">
+        <div className="space-y-3 pb-4 border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="flex justify-between">
             <span className="text-[13px] text-gray-500 dark:text-gray-400">{t('cart.itemAmount', { defaultValue: '상품 금액' })}</span>
             <span className="text-[14px] font-semibold text-gray-900 dark:text-white">
@@ -126,7 +126,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
       </div>
 
       <div
-        className="app-frame-bar fixed bottom-0 left-0 right-0 xl:left-56 bg-white dark:bg-[#0F151D] border-t border-gray-100 dark:border-[#2A3446] px-4 py-3 z-40 safe-bottom"
+        className="app-frame-bar fixed bottom-0 left-0 right-0 xl:left-56 bg-white dark:bg-[#0D0F12] border-t border-gray-100 dark:border-[#2C2F35] px-4 py-3 z-40 safe-bottom"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         <button

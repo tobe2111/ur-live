@@ -133,7 +133,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#0F151D] w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92dvh]"
+        className="bg-white dark:bg-[#0D0F12] w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92dvh]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="welcome-title"
@@ -145,7 +145,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
               <div
                 key={s}
                 className={`h-1.5 rounded-full transition-all ${
-                  s === step ? 'w-6 bg-pink-500' : s < step ? 'w-3 bg-pink-300' : 'w-3 bg-gray-200 dark:bg-[#2A3446]'
+                  s === step ? 'w-6 bg-pink-500' : s < step ? 'w-3 bg-pink-300' : 'w-3 bg-gray-200 dark:bg-[#2C2F35]'
                 }`}
               />
             ))}
@@ -202,7 +202,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                   </div>
                 </div>
                 {couponClaimed ? (
-                  <div className="mt-3 px-3 py-2 bg-white dark:bg-[#0F151D] rounded-xl text-center text-[13px] font-bold text-pink-600 flex items-center justify-center gap-1">
+                  <div className="mt-3 px-3 py-2 bg-white dark:bg-[#0D0F12] rounded-xl text-center text-[13px] font-bold text-pink-600 flex items-center justify-center gap-1">
                     <Check className="w-4 h-4" /> {t('welcomeOnboarding.couponClaimed', { defaultValue: '발급 완료!' })}
                   </div>
                 ) : (
@@ -238,7 +238,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                       className={`flex flex-col items-center gap-1 px-2 py-3 rounded-2xl border-2 transition-all ${
                         selected
                           ? 'bg-pink-50 border-pink-500 shadow-sm'
-                          : 'bg-white dark:bg-[#0F151D] border-gray-200 dark:border-[#2A3446]'
+                          : 'bg-white dark:bg-[#0D0F12] border-gray-200 dark:border-[#2C2F35]'
                       }`}
                     >
                       <span className="text-2xl">{c.emoji}</span>
@@ -268,12 +268,12 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
               <button
                 onClick={() => setAlimtalkOptIn(!alimtalkOptIn)}
                 className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
-                  alimtalkOptIn ? 'bg-yellow-50 border-yellow-400' : 'bg-white dark:bg-[#0F151D] border-gray-200 dark:border-[#2A3446]'
+                  alimtalkOptIn ? 'bg-yellow-50 border-yellow-400' : 'bg-white dark:bg-[#0D0F12] border-gray-200 dark:border-[#2C2F35]'
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                    alimtalkOptIn ? 'bg-yellow-400' : 'bg-gray-100 dark:bg-[#1A2334]'
+                    alimtalkOptIn ? 'bg-yellow-400' : 'bg-gray-100 dark:bg-[#1A1C21]'
                   }`}>
                     <span className="text-xl">💬</span>
                   </div>
@@ -299,7 +299,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
         </div>
 
         {/* 하단 버튼 */}
-        <div className="px-5 pb-5 pt-2 border-t border-gray-100 dark:border-[#2A3446]">
+        <div className="px-5 pb-5 pt-2 border-t border-gray-100 dark:border-[#2C2F35]">
           {step === 1 && (
             <button
               onClick={() => setStep(2)}

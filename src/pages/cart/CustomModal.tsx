@@ -32,7 +32,7 @@ export default function CustomModal({ isOpen, onClose, onConfirm, title, message
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={onClose} role="presentation">
-      <div className="w-full max-w-sm rounded-lg bg-white dark:bg-[#0F151D] p-6 shadow-xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={title ? 'cart-modal-title' : undefined}>
+      <div className="w-full max-w-sm rounded-lg bg-white dark:bg-[#0D0F12] p-6 shadow-xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={title ? 'cart-modal-title' : undefined}>
         <div className="mb-4 flex justify-center">{getIcon()}</div>
         {title && <h2 className="mb-2 text-center text-lg font-bold text-gray-900 dark:text-white">{title}</h2>}
         <p className="mb-6 text-center text-sm text-gray-400 dark:text-gray-500">{message}</p>
@@ -40,7 +40,7 @@ export default function CustomModal({ isOpen, onClose, onConfirm, title, message
           {type === 'confirm' && (
             <button
               onClick={onClose}
-              className="flex-1 rounded-lg border border-gray-300 dark:border-[#3A3A3A] bg-white dark:bg-[#0F151D] px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 transition-colors hover:bg-gray-50 dark:hover:bg-[#1A2334]"
+              className="flex-1 rounded-lg border border-gray-300 dark:border-[#3A3A3A] bg-white dark:bg-[#0D0F12] px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 transition-colors hover:bg-gray-50 dark:hover:bg-[#1A1C21]"
             >
               취소
             </button>

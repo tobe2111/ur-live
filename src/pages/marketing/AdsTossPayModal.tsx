@@ -82,7 +82,7 @@ export default function AdsTossPayModal({ order, authHeader, onClose }: {
             <div id="ads-toss-agreement" />
             {!ready && <div className="py-8 text-center text-[13px] text-gray-400">결제 수단을 불러오는 중…</div>}
             <button onClick={pay} disabled={!ready || paying}
-              className="mt-3 w-full rounded-lg bg-gray-900 dark:bg-white py-2.5 text-[13px] font-bold text-white dark:text-[#0F151D] disabled:opacity-40">
+              className="mt-3 w-full rounded-lg bg-gray-900 dark:bg-white py-2.5 text-[13px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-40">
               {paying ? '결제창 여는 중…' : `${formatNumber(order.total_amount)}원 결제하기`}
             </button>
           </>

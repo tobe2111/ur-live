@@ -30,8 +30,8 @@ export default function OrderSummary({
 
   return (
     <div>
-      <div className="h-[6px] bg-gray-100 dark:bg-[#1A2334]" />
-      <section className="bg-white dark:bg-[#0F151D] px-5 py-5">
+      <div className="h-[6px] bg-gray-100 dark:bg-[#1A1C21]" />
+      <section className="bg-white dark:bg-[#0D0F12] px-5 py-5">
         <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">{t('checkout.summary.title', { defaultValue: '결제 예정금액' })}</h2>
 
         <div className="mt-5 flex flex-col gap-3.5">
@@ -75,7 +75,7 @@ export default function OrderSummary({
           )}
         </div>
 
-        <div className="flex items-end justify-between pt-3 mt-3 border-t border-gray-100 dark:border-[#2A3446]">
+        <div className="flex items-end justify-between pt-3 mt-3 border-t border-gray-100 dark:border-[#2C2F35]">
           <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">{t('checkout.summary.totalAmount', { defaultValue: '총 결제 금액' })}</span>
           <span className="text-[20px] font-black text-red-500" style={{ letterSpacing: '-0.03em' }}>
             {formatNumber(finalAmount)}{t('checkout.summary.wonSuffix', { defaultValue: '원' })}

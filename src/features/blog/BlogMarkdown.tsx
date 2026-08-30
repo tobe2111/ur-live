@@ -76,11 +76,11 @@ export function BlogMarkdown({ content }: { content: string }) {
           <div key={i} className="overflow-x-auto my-4">
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr>{headers.map((h, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1A2334] border-b border-gray-200 dark:border-[#2A3446] font-semibold text-gray-700 dark:text-gray-200">{renderInline(h, `t${i}h${j}`)}</th>)}</tr>
+                <tr>{headers.map((h, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1A1C21] border-b border-gray-200 dark:border-[#2C2F35] font-semibold text-gray-700 dark:text-gray-200">{renderInline(h, `t${i}h${j}`)}</th>)}</tr>
               </thead>
               <tbody>
                 {rows.map((row, ri) => (
-                  <tr key={ri}>{row.map((cell, ci) => <td key={ci} className="px-3 py-2 border-b border-gray-100 dark:border-[#2A3446] text-gray-600 dark:text-gray-300">{renderInline(cell, `t${i}r${ri}c${ci}`)}</td>)}</tr>
+                  <tr key={ri}>{row.map((cell, ci) => <td key={ci} className="px-3 py-2 border-b border-gray-100 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300">{renderInline(cell, `t${i}r${ri}c${ci}`)}</td>)}</tr>
                 ))}
               </tbody>
             </table>
@@ -130,14 +130,14 @@ export function BlogMarkdown({ content }: { content: string }) {
     if (trimmed.startsWith('> ')) {
       const body = trimmed.split('\n').map(l => l.replace(/^>\s?/, '')).join(' ')
       return (
-        <blockquote key={i} className="my-4 pl-4 border-l-4 border-gray-200 dark:border-[#2A3446] text-gray-600 dark:text-gray-300 italic">
+        <blockquote key={i} className="my-4 pl-4 border-l-4 border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300 italic">
           {renderInline(body, `q${i}`)}
         </blockquote>
       )
     }
 
     // 구분선
-    if (trimmed === '---') return <hr key={i} className="my-8 border-gray-200 dark:border-[#2A3446]" />
+    if (trimmed === '---') return <hr key={i} className="my-8 border-gray-200 dark:border-[#2C2F35]" />
 
     // 일반 단락
     return <p key={i} className="text-[15px] text-gray-700 dark:text-gray-200 leading-[1.8] my-3">{renderInline(trimmed, `p${i}`)}</p>

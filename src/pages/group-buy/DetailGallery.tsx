@@ -70,7 +70,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
   }, [lightbox, step])
 
   const bg = (src: string, w: number) => ({
-    backgroundColor: '#1A2334',
+    backgroundColor: '#1A1C21',
     backgroundImage: src ? `url("${cfImage(src, { width: w, format: 'auto' }) || src}")` : undefined,
     backgroundSize: 'cover' as const,
     backgroundPosition: 'center' as const,

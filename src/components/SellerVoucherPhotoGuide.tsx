@@ -36,7 +36,7 @@ function BadExampleSvg() {
       <rect x="18" y="22" width="60" height="42" fill="#FFFFFF" stroke="#8A8580" strokeWidth="2" />
       {/* 간판 */}
       <rect x="22" y="12" width="52" height="14" rx="2" fill="#D8D2CC" stroke="#8A8580" strokeWidth="2" />
-      <path d="M30 19h20M54 19h12" stroke="#5F6B7A" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M30 19h20M54 19h12" stroke="#6E6B68" strokeWidth="2.5" strokeLinecap="round" />
       {/* 문 · 창(메뉴판) */}
       <rect x="26" y="34" width="18" height="30" fill="#F3EEEA" stroke="#8A8580" strokeWidth="1.5" />
       <rect x="52" y="34" width="18" height="20" fill="#F3EEEA" stroke="#8A8580" strokeWidth="1.5" />

@@ -33,7 +33,7 @@ export default function CouponSection({ couponCode, setCouponCode, couponDiscoun
   }
 
   return (
-    <section className="bg-white dark:bg-[#0F151D] px-5 py-4 border-t border-gray-100 dark:border-[#2A3446]">
+    <section className="bg-white dark:bg-[#0D0F12] px-5 py-4 border-t border-gray-100 dark:border-[#2C2F35]">
       <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2">{t('checkout.coupon.title', { defaultValue: '할인 쿠폰' })}</h2>
       {/* 🛡️ 2026-05-23 영구 fix: flex children min-width:0 (min-w-0) 누락 → input 이 content 크기 유지하며
             shrink-0 버튼을 viewport 밖으로 밀어내던 사고. flex container 에 w-full + min-w-0, input 에 min-w-0. */}
@@ -43,7 +43,7 @@ export default function CouponSection({ couponCode, setCouponCode, couponDiscoun
           onChange={e => setCouponCode(e.target.value.toUpperCase())}
           placeholder={t('checkout.coupon.placeholder', { defaultValue: '쿠폰 코드 입력' })}
           aria-label={t('checkout.coupon.placeholder', { defaultValue: '쿠폰 코드 입력' })}
-          className="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:border-blue-400 focus:outline-none"
+          className="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:border-blue-400 focus:outline-none"
         />
         <button
           onClick={handleApply}

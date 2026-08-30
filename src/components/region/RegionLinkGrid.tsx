@@ -56,7 +56,7 @@ export default function RegionLinkGrid({
   if (!available.some(r => r.sigungu.some(s => s.indexable))) return null
 
   return (
-    <section className={`border-t border-gray-100 dark:border-[#2A3446] ${className}`} aria-labelledby="region-grid-heading">
+    <section className={`border-t border-gray-100 dark:border-[#2C2F35] ${className}`} aria-labelledby="region-grid-heading">
       <div className="max-w-[1600px] mx-auto px-6 lg:px-10 py-8">
         <h2 id="region-grid-heading" className="text-[15px] font-black text-gray-900 dark:text-white mb-4">
           {title}
@@ -74,7 +74,7 @@ export default function RegionLinkGrid({
                 className={`shrink-0 px-3 py-1.5 rounded-full text-[13px] font-bold border transition-colors ${
                   on
                     ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
-                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                 }`}
               >
                 {r.sido}
