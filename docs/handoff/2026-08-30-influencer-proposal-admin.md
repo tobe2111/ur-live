@@ -91,6 +91,10 @@ NODE_USE_ENV_PROXY=1 node scripts/capture-proposal-shots.mjs /tmp/shots
 1. 배포 후 `/admin/proposals` 에서 미리보기가 뜨는지, **PDF로 저장**이 16:9 **9장**으로 나오는지 확인
    (인쇄 대화상자: 대상 PDF / 방향 가로 / 여백 없음). 04번 슬라이드의 폰 캡처 4장이 인쇄본에도 실리는지 함께 볼 것.
    ⚠️ 정적 자산 서빙으로 바꾼 뒤 **첫 배포**다. 빈 iframe 이면 워커가 SPA 셸을 돌려준 것이니
-   `curl -sI https://urdeal.kr/static/proposals/influencer-proposal.html` 의 `content-type` 을 볼 것
-   (`text/html` 이면서 크기가 255KB 근처여야 한다).
+   `curl -sSL -o /dev/null -w '%{http_code} %{content_type} %{size_download}\n' https://urdeal.kr/static/proposals/influencer-proposal.html`
+   (`-L` 필수 — 아래 308 참조. `text/html` 이면서 255KB 근처여야 한다).
+   ✅ **메커니즘은 라이브에서 이미 실증했다**(배포 전 확인): `/static/app.js` → 200 `application/javascript`
+   로 SPA 셸이 아니라 실제 파일이 온다. 즉 `_routes.json` 의 `/static/*` 제외가 프로덕션에서 실제로 동작한다.
+   ℹ️ Pages clean-URL 때문에 `.html` 은 **308** 로 확장자 없는 주소로 넘어간다(`/static/cart.html`
+   → `/static/cart` → 200, 실제 파일 24,960B). 브라우저·iframe 이 따라가므로 정상이다.
 2. 위 "머니 경로 코드 갭 2건" 을 대표가 진행하라고 하면 그때 착수.
