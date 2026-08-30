@@ -5944,6 +5944,36 @@ canvas {
       '소스가 늘 앞자리를 가져가고, 대상이 많은 소스가 다시 앞을 막는다(①②에서 고친 그 기아).',
   },
   {
+    name: '☎️ 소스 목록 캐시가 안 늙는다(새 수집기의 소스가 영원히 안 보인다)',
+    file: 'src/features/marketing/api/kakao-sweep-query.ts',
+    find: '  const age = nowMs - cached.at\n  return age < 0 || age >= SWEEP_SOURCES_TTL_MS',
+    replace: '  return false',
+    test: 'src/tests/unit/kakao-sweep-order.test.ts',
+    why:
+      '캐시가 영원히 신선하면 DISTINCT 가 다시는 안 돌고, 새 수집기가 만든 소스는 목록에 들어올 ' +
+      '길이 없다 — 이 파일이 두 번 고친 기아와 **같은 모양**이고 역시 에러가 안 난다.',
+  },
+  {
+    name: '☎️ 스윕이 캐시를 무시하고 매 회차 35.5만 행을 다시 센다',
+    file: 'src/features/marketing/api/kakao-sweep-lane.ts',
+    find: '  if (refreshSources) {',
+    replace: '  if (true) {',
+    test: 'src/tests/unit/kakao-sweep-order.test.ts',
+    why:
+      '결과가 똑같이 나오므로 아무도 모른다. 회당 35.5만 행(하루 852만)이 조용히 돌아오고, ' +
+      '그만큼 예산이 크롤 몫에서 빠진다 — 화면에는 "정상"으로 보인다.',
+  },
+  {
+    name: '☎️ 캐시 시각을 저장하지 않는다(TTL 판정 자체가 불가능해진다)',
+    file: 'src/features/marketing/api/kakao-sweep-lane.ts',
+    find: '    sources, sources_at: sourcesAt,',
+    replace: '    sources,',
+    test: 'src/tests/unit/kakao-sweep-order.test.ts',
+    why:
+      '목록만 저장하면 다음 회차의 parse 가 매번 실패해 **캐시가 없는 것과 같아지거나**, 반대로 ' +
+      '판정을 느슨히 고치면 안 늙는 캐시가 된다. 시각은 캐시의 절반이다.',
+  },
+  {
     name: '☎️ 대상 소스 목록을 코드에 박는다(새 수집기의 소스가 영원히 굶는다)',
     file: 'src/features/marketing/api/kakao-sweep-query.ts',
     find: '  `SELECT DISTINCT source FROM ad_company_leads WHERE ${KAKAO_SWEEP_WHERE}`',
