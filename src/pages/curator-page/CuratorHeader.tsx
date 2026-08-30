@@ -250,7 +250,14 @@ export default function CuratorHeader({
   const showBanner = (bannerPreview || normalizedBanner) && !bannerBroken
   // 폴백 그라데이션 — 배너 없을 때도 완성된 히어로. 🎨 2026-07-20 (accent 잔재 정합): 옛 주황(#FF8A3D)
   //   중간 스톱 → 브랜드 로즈(#E0526B) — 회색→로즈→잉크 온-브랜드 히어로(배너 없는 유어샵만 노출).
-  const bannerGradient = 'linear-gradient(135deg, #6b7280 0%, #E0526B 42%, #1A2334 130%)'
+  // 🎨 2026-08-30 (대표 결정 "C안"): 사진 없는 유어샵의 얇은 띠.
+  //   이전 값은 `linear-gradient(135deg,#6b7280,#E0526B 42%,#1A2334)` 인라인 스타일 — 로즈가 강한
+  //   대각 블러라 242px 를 채울 땐 존재감이 컸다. 76px 띠에서는 **조용해야** 아래 이름·상품이
+  //   주인공이 된다. 웜 라인 → 페이지 바탕으로 수직 페이드 = 띠가 배경에 스미며 끝난다.
+  //   ⚠️ 인라인 style 이 아니라 **클래스**로 쓴다 — 이 컴포넌트는 `dark:` 로 테마를 처리하고
+  //   (JS 쪽 isDark 가 없다), 라이트 값만 인라인으로 박으면 다크에서 눈이 부신다.
+  const bannerBandClass =
+    'bg-gradient-to-b from-[#F3ECE9] to-[#FAF7F5] dark:from-[#202A36] dark:to-[#0F151D]'
 
   const hasSns = !!(curator.youtube_url || curator.instagram_url || curator.tiktok_url)
 
@@ -330,8 +337,11 @@ export default function CuratorHeader({
         <div
           // 📐 2026-08-26 (대표 승인): 4:3(430폭에서 322px) → 16:9(242px). 배너+이름+소개+SNS 가
           //   첫 화면을 다 먹어 **팔 물건이 하나도 안 보였다**(첫 카드 y≈500px). 유어샵은 진열대다.
-          className={`relative w-full aspect-[16/9] overflow-hidden ${isOwner ? 'cursor-pointer' : ''}`}
-          style={showBanner ? undefined : { background: bannerGradient }}
+          // 📐 2026-08-30 (대표 결정 "C안"): 그 방향의 연장 — **사진이 없을 때만** 16:9(242px) →
+          //   얇은 띠(76px)로. 사진 없는 사람에게 깔리던 로즈 그라디언트는 정보가 0인데 첫 화면의
+          //   4분의 1을 먹었다. 히어로는 남기되 자리를 3분의 1로 줄인다.
+          //   ⚠️ **사진을 올린 사람은 16:9 그대로** — 올린 배너를 우리가 잘라 버리면 안 된다.
+          className={`relative w-full overflow-hidden ${showBanner ? 'aspect-[16/9]' : `h-[76px] ${bannerBandClass}`} ${isOwner ? 'cursor-pointer' : ''}`}
           onClick={() => isOwner && bannerInputRef.current?.click()}
         >
           {showBanner && (

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { isWholesaleSurface } from '@/utils/domain'
 import { Home, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin, Ticket, Gift } from 'lucide-react'
+import { UrShopIcon } from '@/components/icons/urdeal-icons'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
@@ -210,7 +211,7 @@ export default function BottomNav() {
     //   이용권(동네딜 이용권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 지갑이라 상시 탭 가치가 높음.
     { icon: Ticket,      label: t('nav.myGbVouchers', { defaultValue: '이용권' }), path: '/my-vouchers', prefetch: () => import('@/pages/MyVouchersPage') },
     // 🧭 2026-06-10: 유어샵도 청크+데이터 동시 워밍 (동네딜과 동일) — 누르는 순간 선요청.
-    { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '유어샵' }), path: linkshopPath, prefetch: () => {
+    { icon: UrShopIcon,  label: t('nav.linkshop', { defaultValue: '유어샵' }), path: linkshopPath, prefetch: () => {
       if (linkshopPath.startsWith('/u/') && !linkshopPath.startsWith('/u/me')) {
         // 🖼️ 2026-07-01 (로딩 딥다이브, additive): 사업자 유어샵(/u/ + linked_seller)은 CuratorPage 가
         //   SellerPublicPage 를 lazy 렌더 → 그 청크도 함께 워밍(직렬 청크 대기 제거). 소비자-only 는 no-op 수준.
