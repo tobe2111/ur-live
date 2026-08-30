@@ -40,7 +40,7 @@ function build(r: number, g: number, b: number): CardGradient {
     base: `rgb(${r}, ${g}, ${b})`,
     // 같은 색의 투명 → 불투명 → 경계 없는 자연스러운 번짐.
     imageFade: `linear-gradient(to bottom, rgba(${r}, ${g}, ${b}, 0) 0%, rgba(${r}, ${g}, ${b}, 0.6) 55%, rgb(${r}, ${g}, ${b}) 100%)`,
-    text: isLight ? '#1A2334' : '#ffffff',
+    text: isLight ? '#1A1C21' : '#ffffff',
     sub: isLight ? 'rgba(0,0,0,0.58)' : 'rgba(255,255,255,0.70)',
     accent: isLight ? '#4b5563' : '#ff6b6b',
     isLight,

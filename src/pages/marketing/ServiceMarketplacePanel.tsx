@@ -14,19 +14,19 @@ const authHeader = () => {
   const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
-const input = 'w-full h-9 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
+const input = 'w-full h-9 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400'
 
 interface Pricing { unit: string; unitPrice: number; minQty: number; maxQty: number; presets?: Array<{ label: string; qty: number }>; qtyDiscounts?: Array<{ min: number; pct: number }>; options?: Array<{ key: string; label: string; price: number }> }
 interface Service { id: number; category: string; name: string; subtitle: string | null; description: string | null; pricing: Pricing }
 interface Price { unitPrice: number; quantity: number; subtotal: number; discountPct: number; discounted: number; optionsTotal: number; total: number }
 interface Order { id: number; service_name: string; preset_label: string | null; quantity: number; total_amount: number; status: string; payment_status: string; fulfillment_method: string | null; admin_note: string | null; created_at: string }
 const PAY_KO: Record<string, string> = { unpaid: '입금 대기', paid: '입금 확인', refunded: '환불' }
-const PAY_CLS: Record<string, string> = { unpaid: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400', paid: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', refunded: 'bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400' }
+const PAY_CLS: Record<string, string> = { unpaid: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400', paid: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', refunded: 'bg-gray-100 dark:bg-[#1A1C21] text-gray-500 dark:text-gray-400' }
 interface Review { id: number; rating: number; title: string; body: string; author_masked: string; created_at: string }
 const Stars = ({ n }: { n: number }) => <span className="text-amber-400 text-[12px] tracking-tight">{'★'.repeat(Math.round(n))}<span className="text-gray-300 dark:text-gray-600">{'★'.repeat(Math.max(0, 5 - Math.round(n)))}</span></span>
 const STATUS_KO: Record<string, string> = { requested: '접수됨', confirmed: '확인됨', in_progress: '진행 중', done: '완료', cancelled: '취소' }
-const STATUS_CLS: Record<string, string> = { requested: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400', confirmed: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400', in_progress: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400', done: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', cancelled: 'bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400' }
+const STATUS_CLS: Record<string, string> = { requested: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400', confirmed: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400', in_progress: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400', done: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', cancelled: 'bg-gray-100 dark:bg-[#1A1C21] text-gray-500 dark:text-gray-400' }
 
 export default function ServiceMarketplacePanel() {
   // ⚡ 세션 캐시 즉시 페인트(services-warm) — 탭 열자마자 카드 표시, 신선분은 load()가 교체.
@@ -156,7 +156,7 @@ export default function ServiceMarketplacePanel() {
         <>
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {services.map(s => (
-              <button key={s.id} onClick={() => openDetail(s)} className="text-left rounded-xl border border-gray-100 dark:border-[#2A3446] p-3 hover:border-blue-300 dark:hover:border-blue-500/40 transition">
+              <button key={s.id} onClick={() => openDetail(s)} className="text-left rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3 hover:border-blue-300 dark:hover:border-blue-500/40 transition">
                 <span className="text-[10.5px] font-bold text-blue-600 dark:text-blue-400">{s.category}</span>
                 <div className="mt-0.5 text-[13px] font-bold text-gray-900 dark:text-white">{s.name}</div>
                 <div className="mt-0.5 text-[11.5px] text-gray-500 dark:text-gray-400 line-clamp-2">{s.subtitle}</div>
@@ -175,13 +175,13 @@ export default function ServiceMarketplacePanel() {
               )}
               <div className="space-y-1.5">
                 {orders.slice(0, 10).map(o => (
-                  <div key={o.id} className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 dark:border-[#2A3446] p-2.5 text-[12px]">
+                  <div key={o.id} className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 dark:border-[#2C2F35] p-2.5 text-[12px]">
                     <div className="min-w-0"><div className="font-medium text-gray-900 dark:text-white truncate">{o.service_name} {o.preset_label && <span className="text-gray-400">· {o.preset_label}</span>}</div><div className="text-[10.5px] text-gray-400 dark:text-gray-500">{o.quantity}개 · {formatNumber(o.total_amount)}원 · {(o.created_at || '').slice(0, 10)}{o.fulfillment_method ? ` · ${o.fulfillment_method}` : ''}</div>{o.admin_note && <div className="text-[10.5px] text-gray-500 dark:text-gray-400 mt-0.5">메모: {o.admin_note}</div>}</div>
                     <div className="shrink-0 flex flex-col items-end gap-1">
                       <span className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold ${STATUS_CLS[o.status] || STATUS_CLS.requested}`}>{STATUS_KO[o.status] || o.status}</span>
                       <span className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold ${PAY_CLS[o.payment_status] || PAY_CLS.unpaid}`}>{PAY_KO[o.payment_status] || o.payment_status}</span>
                       {tossEnabled && o.payment_status === 'unpaid' && o.status !== 'cancelled' && (
-                        <button onClick={() => setPayOrder(o)} className="px-1.5 py-0.5 rounded bg-gray-900 dark:bg-white text-[10.5px] font-bold text-white dark:text-[#0F151D]">💳 카드 결제</button>
+                        <button onClick={() => setPayOrder(o)} className="px-1.5 py-0.5 rounded bg-gray-900 dark:bg-white text-[10.5px] font-bold text-white dark:text-[#0D0F12]">💳 카드 결제</button>
                       )}
                     </div>
                   </div>
@@ -200,13 +200,13 @@ export default function ServiceMarketplacePanel() {
           {sel.pricing.presets && sel.pricing.presets.length > 0 && (
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {sel.pricing.presets.map(p => (
-                <button key={p.label} onClick={() => { setPreset(p.label); setQty(p.qty) }} className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold ${preset === p.label ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0F151D]' : 'border border-gray-200 dark:border-[#2A3446] text-gray-600 dark:text-gray-300'}`}>{p.label}</button>
+                <button key={p.label} onClick={() => { setPreset(p.label); setQty(p.qty) }} className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold ${preset === p.label ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12]' : 'border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300'}`}>{p.label}</button>
               ))}
             </div>
           )}
           <div className="mt-2 flex items-center gap-2">
             <span className="text-[12px] text-gray-500 dark:text-gray-400">수량({sel.pricing.unit})</span>
-            <input type="number" min={sel.pricing.minQty} max={sel.pricing.maxQty} value={qty} onChange={e => { setQty(Number(e.target.value) || sel.pricing.minQty); setPreset(null) }} className="w-24 h-8 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-2 text-[13px] text-gray-900 dark:text-white" />
+            <input type="number" min={sel.pricing.minQty} max={sel.pricing.maxQty} value={qty} onChange={e => { setQty(Number(e.target.value) || sel.pricing.minQty); setPreset(null) }} className="w-24 h-8 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-2 text-[13px] text-gray-900 dark:text-white" />
           </div>
 
           {/* 옵션 */}
@@ -223,11 +223,11 @@ export default function ServiceMarketplacePanel() {
 
           {/* 가격 */}
           {price && (
-            <div className="mt-2.5 rounded-xl border border-gray-100 dark:border-[#2A3446] p-3 text-[12px]">
+            <div className="mt-2.5 rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3 text-[12px]">
               <div className="flex justify-between text-gray-500 dark:text-gray-400"><span>{formatNumber(price.unitPrice)}원 × {price.quantity}{sel.pricing.unit}</span><span>{formatNumber(price.subtotal)}원</span></div>
               {price.discountPct > 0 && <div className="flex justify-between text-emerald-600 dark:text-emerald-400"><span>수량 할인 {price.discountPct}%</span><span>-{formatNumber(price.subtotal - price.discounted)}원</span></div>}
               {price.optionsTotal > 0 && <div className="flex justify-between text-gray-500 dark:text-gray-400"><span>옵션</span><span>+{formatNumber(price.optionsTotal)}원</span></div>}
-              <div className="flex justify-between mt-1 pt-1 border-t border-gray-100 dark:border-[#2A3446] text-[14px] font-bold text-gray-900 dark:text-white"><span>합계</span><span>{formatNumber(price.total)}원</span></div>
+              <div className="flex justify-between mt-1 pt-1 border-t border-gray-100 dark:border-[#2C2F35] text-[14px] font-bold text-gray-900 dark:text-white"><span>합계</span><span>{formatNumber(price.total)}원</span></div>
             </div>
           )}
 
@@ -240,24 +240,24 @@ export default function ServiceMarketplacePanel() {
           {isTargeted && (
             <>
               <div className="mt-2 flex gap-2">
-                <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="매장/회사명 * (제안서에 '의뢰: ○○' 로 표기)" value={bizStore} onChange={e => setBizStore(e.target.value)} />
+                <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="매장/회사명 * (제안서에 '의뢰: ○○' 로 표기)" value={bizStore} onChange={e => setBizStore(e.target.value)} />
               </div>
               <div className="mt-2 flex gap-2">
-                <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="타겟 지역 * (예: 방배동)" value={bizRegion} onChange={e => setBizRegion(e.target.value)} />
-                <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="업종 * (예: 맛집·뷰티)" value={bizCategory} onChange={e => setBizCategory(e.target.value)} />
+                <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="타겟 지역 * (예: 방배동)" value={bizRegion} onChange={e => setBizRegion(e.target.value)} />
+                <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="업종 * (예: 맛집·뷰티)" value={bizCategory} onChange={e => setBizCategory(e.target.value)} />
               </div>
               {/* ⚖️ 기대 관리(대표 운영수칙 ②) — 과금 기준·비보장·보정을 주문 시점에 명시(환불 분쟁 예방). */}
-              <div className="mt-2 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#0F151D] p-2.5 text-[11.5px] text-gray-500 dark:text-gray-400 leading-relaxed">
+              <div className="mt-2 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#0D0F12] p-2.5 text-[11.5px] text-gray-500 dark:text-gray-400 leading-relaxed">
                 <b className="text-gray-700 dark:text-gray-300">진행 조건</b> · 본 서비스는 <b>제안 발송 대행</b>이며 발송 완료 기준으로 과금됩니다. 회신·성사는 보장되지 않습니다.
                 단, <b>회신이 1건도 없으면 동일 규모로 1회 무상 재발송</b>해 드립니다. 발송은 유어애즈 명의(+의뢰 매장 병기)로 나가며, 수신거부 요청자는 즉시 제외됩니다.
               </div>
             </>
           )}
-          <textarea className={`mt-2 w-full rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white`} rows={2} placeholder="요청사항 (선택)" value={memo} onChange={e => setMemo(e.target.value)} />
-          <button onClick={submit} disabled={busy} className="mt-2 w-full rounded-lg bg-gray-900 dark:bg-white py-2.5 text-[13px] font-bold text-white dark:text-[#0F151D] disabled:opacity-40">{busy ? '접수 중…' : '주문 요청하기 (결제 없음)'}</button>
+          <textarea className={`mt-2 w-full rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] p-2.5 text-[13px] text-gray-900 dark:text-white`} rows={2} placeholder="요청사항 (선택)" value={memo} onChange={e => setMemo(e.target.value)} />
+          <button onClick={submit} disabled={busy} className="mt-2 w-full rounded-lg bg-gray-900 dark:bg-white py-2.5 text-[13px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-40">{busy ? '접수 중…' : '주문 요청하기 (결제 없음)'}</button>
 
           {sel.description && (
-            <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2A3446] p-3">
+            <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3">
               <pre className="text-[12px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">{sel.description}</pre>
             </div>
           )}
@@ -266,19 +266,19 @@ export default function ServiceMarketplacePanel() {
           <div className="mt-4">
             <div className="flex items-center justify-between">
               <div className="text-[13px] font-bold text-gray-900 dark:text-white">고객 리뷰 {rvSummary.count > 0 && <span className="ml-1 font-medium text-gray-400 dark:text-gray-500"><Stars n={rvSummary.avg} /> {rvSummary.avg} ({rvSummary.count})</span>}</div>
-              {canWrite && !rvForm && <button onClick={() => setRvForm({ rating: 5, title: '', body: '' })} className="rounded-lg border border-gray-200 dark:border-[#2A3446] px-2.5 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">후기 쓰기</button>}
+              {canWrite && !rvForm && <button onClick={() => setRvForm({ rating: 5, title: '', body: '' })} className="rounded-lg border border-gray-200 dark:border-[#2C2F35] px-2.5 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">후기 쓰기</button>}
             </div>
 
             {rvForm && (
-              <div className="mt-2 rounded-xl border border-gray-100 dark:border-[#2A3446] p-3">
+              <div className="mt-2 rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3">
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map(n => <button key={n} onClick={() => setRvForm(f => f && { ...f, rating: n })} className={`text-[18px] ${n <= rvForm.rating ? 'text-amber-400' : 'text-gray-300 dark:text-gray-600'}`}>★</button>)}
                 </div>
                 <input className={`${input} mt-2`} placeholder="제목 (2~60자)" maxLength={60} value={rvForm.title} onChange={e => setRvForm(f => f && { ...f, title: e.target.value })} />
-                <textarea className="mt-2 w-full rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white" rows={3} placeholder="이용 후기를 남겨주세요 (5~1000자)" maxLength={1000} value={rvForm.body} onChange={e => setRvForm(f => f && { ...f, body: e.target.value })} />
+                <textarea className="mt-2 w-full rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] p-2.5 text-[13px] text-gray-900 dark:text-white" rows={3} placeholder="이용 후기를 남겨주세요 (5~1000자)" maxLength={1000} value={rvForm.body} onChange={e => setRvForm(f => f && { ...f, body: e.target.value })} />
                 <div className="mt-1.5 flex justify-end gap-1.5">
                   <button onClick={() => setRvForm(null)} className="rounded-lg px-2.5 py-1 text-[11.5px] text-gray-500 dark:text-gray-400">취소</button>
-                  <button onClick={submitReview} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11.5px] font-bold text-white dark:text-[#0F151D] disabled:opacity-40">{busy ? '등록 중…' : '등록'}</button>
+                  <button onClick={submitReview} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11.5px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-40">{busy ? '등록 중…' : '등록'}</button>
                 </div>
               </div>
             )}
@@ -287,7 +287,7 @@ export default function ServiceMarketplacePanel() {
               <p className="mt-2 text-[11.5px] text-gray-400 dark:text-gray-500">아직 후기가 없습니다. {canWrite ? '첫 후기를 남겨보세요.' : '이용 완료 후 후기를 남길 수 있습니다.'}</p>
             ) : (
               <>
-                <div className="mt-2 divide-y divide-gray-100 dark:divide-[#2A3446]">
+                <div className="mt-2 divide-y divide-gray-100 dark:divide-[#2C2F35]">
                   {reviews.map(r => (
                     <div key={r.id} className="py-2.5">
                       <div className="flex items-center justify-between gap-2">

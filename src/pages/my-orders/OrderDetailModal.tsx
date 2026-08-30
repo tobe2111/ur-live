@@ -42,8 +42,8 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose} role="presentation">
-      <div className="bg-white dark:bg-[#0F151D] rounded-2xl w-full max-h-[80dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('orderDetail.title', { defaultValue: '주문 상세' })}>
-        <div className="sticky top-0 bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446] p-4 flex items-center justify-between">
+      <div className="bg-white dark:bg-[#0D0F12] rounded-2xl w-full max-h-[80dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('orderDetail.title', { defaultValue: '주문 상세' })}>
+        <div className="sticky top-0 bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35] p-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('orderDetail.title', { defaultValue: '주문 상세' })}</h3>
           <button
             onClick={onClose}
@@ -110,7 +110,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
               {items.map((item, idx) => {
                 const src = item.product_thumbnail || item.image_url
                 return (
-                  <div key={idx} className="flex gap-3 p-3 bg-gray-50 dark:bg-[#1A2334] rounded-xl">
+                  <div key={idx} className="flex gap-3 p-3 bg-gray-50 dark:bg-[#1A1C21] rounded-xl">
                     {src ? (
                       <img
                         src={cfImage(src, { width: 128, height: 128, fit: 'cover' })}
@@ -118,10 +118,10 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                         width={56}
                         height={56}
                         loading="lazy"
-                        className="w-14 h-14 shrink-0 rounded-lg object-cover bg-gray-100 dark:bg-[#1A2334]"
+                        className="w-14 h-14 shrink-0 rounded-lg object-cover bg-gray-100 dark:bg-[#1A1C21]"
                       />
                     ) : (
-                      <div className="w-14 h-14 shrink-0 rounded-lg bg-gray-100 dark:bg-[#1A2334] flex items-center justify-center">
+                      <div className="w-14 h-14 shrink-0 rounded-lg bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center">
                         <Package className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.5} aria-hidden="true" />
                       </div>
                     )}
@@ -154,7 +154,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
           {isProduct && (
           <div>
             <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-3">{t('orderDetail.sectionShipping', { defaultValue: '배송 정보' })}</h4>
-            <div className="p-4 bg-gray-50 dark:bg-[#1A2334] rounded-xl space-y-2 text-[14px]">
+            <div className="p-4 bg-gray-50 dark:bg-[#1A1C21] rounded-xl space-y-2 text-[14px]">
               <div className="flex gap-2">
                 <span className="text-gray-500 dark:text-gray-400 min-w-[60px]">{t('orderDetail.recipient', { defaultValue: '받는분' })}</span>
                 <span className="font-medium text-gray-900 dark:text-white">{order.shipping_name}</span>
@@ -186,17 +186,17 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                   { label: t('orderDetail.stepDelivered', { defaultValue: '배송완료' }), done: status === 'DELIVERED' },
                 ]
                 return (
-                  <div className="pt-3 border-t border-gray-200 dark:border-[#2A3446]">
+                  <div className="pt-3 border-t border-gray-200 dark:border-[#2C2F35]">
                     <div className="flex items-center justify-between mb-3">
                       {steps.map((step, si) => (
                         <div key={si} className="flex items-center flex-1">
                           <div className="flex flex-col items-center">
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step.done ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-[#2A3446] text-gray-400 dark:text-gray-500'}`}>
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step.done ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-[#2C2F35] text-gray-400 dark:text-gray-500'}`}>
                               {step.done ? '✓' : si + 1}
                             </div>
                             <span className={`text-[10px] mt-1 ${step.done ? 'text-blue-600 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>{step.label}</span>
                           </div>
-                          {si < steps.length - 1 && <div className={`flex-1 h-0.5 mx-1 mt-[-12px] ${steps[si + 1].done ? 'bg-blue-500' : 'bg-gray-200 dark:bg-[#2A3446]'}`} />}
+                          {si < steps.length - 1 && <div className={`flex-1 h-0.5 mx-1 mt-[-12px] ${steps[si + 1].done ? 'bg-blue-500' : 'bg-gray-200 dark:bg-[#2C2F35]'}`} />}
                         </div>
                       ))}
                     </div>
@@ -259,7 +259,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                   </span>
                 </div>
               )}
-              <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-[#2A3446]">
+              <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-[#2C2F35]">
                 <span className="text-gray-900 dark:text-white font-semibold">{t('orderDetail.totalAmount', { defaultValue: '총 결제금액' })}</span>
                 <span className="text-[19px] font-bold text-gray-900 dark:text-white">{formatNumber(totalAmount)}원</span>
               </div>

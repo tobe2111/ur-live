@@ -1,7 +1,7 @@
 // Mobile Footer Component - v2.0
 export default function MobileFooter() {
   return (
-    <footer className="bg-gray-50 dark:bg-[#1A2334] border-t border-gray-200 dark:border-[#2A3446] py-4 px-4 mt-8">
+    <footer className="bg-gray-50 dark:bg-[#1A1C21] border-t border-gray-200 dark:border-[#2C2F35] py-4 px-4 mt-8">
       {/* Contact */}
       <div className="mb-3">
         <p style={{ fontSize: '9px', lineHeight: '1.2' }} className="text-gray-600 dark:text-gray-300 text-center">
@@ -11,9 +11,9 @@ export default function MobileFooter() {
 
       {/* 🧭 2026-07-19 (대표 — "3개 페이지를 서비스 최하단 링크 버튼으로"): 소개 랜딩 3종 pill 버튼 */}
       <div className="flex justify-center gap-1.5 mb-3 flex-wrap">
-        <a href="/about" className="px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#2A3446] text-[10px] font-bold text-gray-700 dark:text-gray-200">서비스 소개</a>
-        <a href="/partners" className="px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#2A3446] text-[10px] font-bold text-gray-700 dark:text-gray-200">🏪 입점 안내</a>
-        <a href="/creators" className="px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#2A3446] text-[10px] font-bold text-gray-700 dark:text-gray-200">✨ 크리에이터 모집</a>
+        <a href="/about" className="px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[10px] font-bold text-gray-700 dark:text-gray-200">서비스 소개</a>
+        <a href="/partners" className="px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[10px] font-bold text-gray-700 dark:text-gray-200">🏪 입점 안내</a>
+        <a href="/creators" className="px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[10px] font-bold text-gray-700 dark:text-gray-200">✨ 크리에이터 모집</a>
       </div>
 
       {/* Links (서비스 소개는 위 pill 버튼으로 승격 — 중복 제거) */}
@@ -35,7 +35,7 @@ export default function MobileFooter() {
       </div>
 
       {/* Copyright */}
-      <div className="mt-3 pt-2 border-t border-gray-200 dark:border-[#2A3446]">
+      <div className="mt-3 pt-2 border-t border-gray-200 dark:border-[#2C2F35]">
         <p style={{ fontSize: '7px', lineHeight: '1.3' }} className="text-gray-500 dark:text-gray-400 text-center">
           © 2026 리스터코퍼레이션. All rights reserved.
         </p>

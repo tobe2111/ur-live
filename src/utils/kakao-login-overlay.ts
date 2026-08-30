@@ -23,9 +23,9 @@ export function showKakaoLoadingOverlay(opts: { forceLight?: boolean; label?: st
     const isDark = !opts.forceLight && document.documentElement.classList.contains('dark')
     const reduce = typeof window !== 'undefined' && window.matchMedia
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    // 🎨 2026-07-19 확정 로고: 워드마크 잉크 = UrDealLogo 와 동일(라이트 네이비 #1A2C42 ↔ 다크 웜화이트 #FAF7F5).
-    const bg = isDark ? '#0F151D' : '#ffffff'
-    const ink = isDark ? '#FAF7F5' : '#1A2C42'
+    // 🎨 2026-07-19 확정 로고: 워드마크 잉크 = UrDealLogo 와 동일(라이트 네이비 #16181C ↔ 다크 웜화이트 #FAF7F5).
+    const bg = isDark ? '#0D0F12' : '#ffffff'
+    const ink = isDark ? '#FAF7F5' : '#16181C'
     const track = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(229,231,235,0.7)' // = dark:bg-white/10 · bg-gray-200/70
     const barInk = opts.forceLight ? '#111827' : '#E0526B'                     // = BrandLoader: forceLight 중립 · 기본/다크 bg-brand
     const sub = isDark ? 'rgba(255,255,255,0.42)' : 'rgba(17,24,39,0.40)'

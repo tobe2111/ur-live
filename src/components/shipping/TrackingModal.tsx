@@ -122,14 +122,14 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
   return (
     <div className="fixed inset-0 z-[10001] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
       <div
-        className="w-full sm:max-w-md max-h-[85vh] bg-white dark:bg-[#1A2334] rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden"
+        className="w-full sm:max-w-md max-h-[85vh] bg-white dark:bg-[#1A1C21] rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#2A3446]">
+        <header className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
           <h2 className="text-base font-bold text-gray-900 dark:text-white">
             📦 {t('shipping.trackingTitle', { defaultValue: '배송 추적' })}
           </h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A2334] flex items-center justify-center text-gray-500" aria-label="close">
+          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1C21] flex items-center justify-center text-gray-500" aria-label="close">
             ✕
           </button>
         </header>
@@ -148,7 +148,7 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
             </div>
           ) : (
             <>
-              <section className="mb-5 p-3 bg-gray-50 dark:bg-[#0F151D] rounded-xl">
+              <section className="mb-5 p-3 bg-gray-50 dark:bg-[#0D0F12] rounded-xl">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                   {data.courier?.name || '택배사'} · {data.tracking_number}
                 </p>
@@ -162,12 +162,12 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
 
               {/* Timeline */}
               {data.events && data.events.length > 0 ? (
-                <ol className="relative border-l-2 border-gray-200 dark:border-[#2A3446] ml-2 space-y-4">
+                <ol className="relative border-l-2 border-gray-200 dark:border-[#2C2F35] ml-2 space-y-4">
                   {[...data.events].reverse().map((ev, i) => {
                     const isLatest = i === 0
                     return (
                       <li key={i} className="ml-4">
-                        <div className={`absolute -left-[7px] w-3 h-3 rounded-full ${isLatest ? 'bg-pink-500 ring-2 ring-pink-500/30' : 'bg-gray-300 dark:bg-[#2A3446]'}`} />
+                        <div className={`absolute -left-[7px] w-3 h-3 rounded-full ${isLatest ? 'bg-pink-500 ring-2 ring-pink-500/30' : 'bg-gray-300 dark:bg-[#2C2F35]'}`} />
                         <p className={`text-sm ${isLatest ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
                           {getEventStatus(ev)}
                         </p>
@@ -195,7 +195,7 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
                   href={data.external_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-6 block w-full text-center py-3 bg-gray-100 dark:bg-[#1A2334] hover:bg-gray-200 dark:hover:bg-[#2A3446] text-gray-700 dark:text-gray-200 text-sm font-bold rounded-xl transition-colors"
+                  className="mt-6 block w-full text-center py-3 bg-gray-100 dark:bg-[#1A1C21] hover:bg-gray-200 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-200 text-sm font-bold rounded-xl transition-colors"
                 >
                   🔗 {t('shipping.externalSite', { defaultValue: '택배사 페이지에서 보기' })}
                 </a>

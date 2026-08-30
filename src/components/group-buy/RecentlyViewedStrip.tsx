@@ -60,7 +60,7 @@ export default function RecentlyViewedStrip() {
             className="snap-start shrink-0 w-[120px] text-left"
             aria-label={`${item.name} 다시 보기`}
           >
-            <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A2334]">
+            <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1C21]">
               {item.image_url ? (
                 <img src={cfImage(item.image_url, { width: 400, quality: 82, format: 'auto' }) || item.image_url} alt={item.name} loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, item.image_url)} />
               ) : (

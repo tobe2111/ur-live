@@ -57,11 +57,11 @@ export default function FAQPage() {
   })
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0F151D]">
+    <div className="min-h-screen bg-white dark:bg-[#0D0F12]">
       <SEO title={t('faq.seoTitle', { defaultValue: CONSUMER_SURFACE_SEO['/faq'].title })} description={t('faq.seoDesc', { defaultValue: CONSUMER_SURFACE_SEO['/faq'].description })} url="/faq" jsonLd={faqJsonLd} />
 
       {/* 상단 헤더 */}
-      <header className="sticky top-0 z-10 bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446]">
+      <header className="sticky top-0 z-10 bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-medium flex items-center px-4 lg:px-8 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1 -ml-1">
             <ChevronLeft size={22} className="text-gray-700 dark:text-gray-200" />
@@ -88,7 +88,7 @@ export default function FAQPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('faq.searchPlaceholder', { defaultValue: '궁금한 내용을 검색해보세요' })}
-            className="w-full pl-9 pr-4 py-3 bg-gray-100 dark:bg-[#1A2334] rounded-xl text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:bg-white dark:focus:bg-[#0F151D] focus:ring-1 focus:ring-gray-900 focus:outline-none transition-all"
+            className="w-full pl-9 pr-4 py-3 bg-gray-100 dark:bg-[#1A1C21] rounded-xl text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:bg-white dark:focus:bg-[#0D0F12] focus:ring-1 focus:ring-gray-900 focus:outline-none transition-all"
           />
         </div>
 
@@ -101,7 +101,7 @@ export default function FAQPage() {
               className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-all ${
                 selectedCategory === category
                   ? 'bg-gray-900 text-white'
-                  : 'bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2A3446]'
+                  : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
               }`}
             >
               {category}
@@ -116,14 +116,14 @@ export default function FAQPage() {
             <p className="text-[14px] text-gray-500 dark:text-gray-400">{t('faq.emptyTitle', { defaultValue: '검색 결과가 없습니다.' })}</p>
           </div>
         ) : (
-          <div className="border-t border-gray-100 dark:border-[#2A3446]">
+          <div className="border-t border-gray-100 dark:border-[#2C2F35]">
             {filteredFAQs.map(faq => {
               const isOpen = expandedId === faq.id
               return (
-                <div key={faq.id} className="border-b border-gray-100 dark:border-[#2A3446]">
+                <div key={faq.id} className="border-b border-gray-100 dark:border-[#2C2F35]">
                   <button
                     onClick={() => setExpandedId(isOpen ? null : faq.id)}
-                    className="w-full py-4 flex items-start gap-3 text-left hover:bg-gray-50 dark:hover:bg-[#1A2334] transition-colors -mx-4 px-4"
+                    className="w-full py-4 flex items-start gap-3 text-left hover:bg-gray-50 dark:hover:bg-[#1A1C21] transition-colors -mx-4 px-4"
                   >
                     <span className="shrink-0 w-6 h-6 rounded-full bg-gray-900 text-white text-[11px] font-bold flex items-center justify-center mt-0.5">
                       Q
@@ -149,7 +149,7 @@ export default function FAQPage() {
         )}
 
         {/* 고객센터 */}
-        <div className="mt-8 bg-gray-50 dark:bg-[#1A2334] rounded-2xl p-5">
+        <div className="mt-8 bg-gray-50 dark:bg-[#1A1C21] rounded-2xl p-5">
           <h2 className="text-[14px] font-bold text-gray-900 dark:text-white mb-1">{t('faq.supportTitle', { defaultValue: '도움이 더 필요하신가요?' })}</h2>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{t('faq.supportDesc', { defaultValue: '궁금한 사항이 해결되지 않았다면 연락주세요.' })}</p>
           <div className="space-y-2.5">

@@ -125,7 +125,7 @@ export function KakaoLinkButton({ role }: Props) {
 
   if (loading) {
     return (
-      <div className="bg-gray-50 dark:bg-[#1A2334] rounded-xl p-4 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+      <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-4 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin" /> {t('kakaoLink.checkingStatus', { defaultValue: '연동 상태 확인 중...' })}
       </div>
     )

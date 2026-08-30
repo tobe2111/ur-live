@@ -25,7 +25,7 @@ export default function BusinessLandingPage() {
   const netRevenue = monthlyGmv - commission
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white">
+    <div className="min-h-screen bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white">
       <SEO
         title={CONSUMER_SURFACE_SEO['/business'].title} description={CONSUMER_SURFACE_SEO['/business'].description}
         url="/business"
@@ -33,7 +33,7 @@ export default function BusinessLandingPage() {
       />
 
       {/* Nav */}
-      <nav className="sticky top-0 z-30 bg-white/90 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446] px-4 lg:px-12 py-4 flex items-center justify-between">
+      <nav className="sticky top-0 z-30 bg-white/90 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 lg:px-12 py-4 flex items-center justify-between">
         <Link to="/" className="text-lg font-extrabold tracking-tight text-gray-900 dark:text-white">유어딜</Link>
         <div className="flex items-center gap-3">
           <Link to="/influencer" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">인플루언서</Link>
@@ -76,7 +76,7 @@ export default function BusinessLandingPage() {
               >
                 공급자 가입 <ArrowRight className="w-4 h-4" />
               </button>
-              <a href="mailto:jiwon@ur-team.com" className="px-6 py-3.5 border-2 border-gray-200 dark:border-[#2A3446] hover:border-gray-300 rounded-full font-bold flex items-center gap-2 text-gray-700 dark:text-gray-200">
+              <a href="mailto:jiwon@ur-team.com" className="px-6 py-3.5 border-2 border-gray-200 dark:border-[#2C2F35] hover:border-gray-300 rounded-full font-bold flex items-center gap-2 text-gray-700 dark:text-gray-200">
                 <Phone className="w-4 h-4" /> 문의하기
               </a>
             </div>
@@ -84,20 +84,20 @@ export default function BusinessLandingPage() {
 
           {/* 모바일 액자 — 셀러 등록 미리보기 */}
           <div className="hidden lg:flex justify-center">
-            <div className="relative w-[300px] aspect-[9/19.5] rounded-[40px] border-[8px] border-gray-900 bg-gray-100 dark:bg-[#1A2334] overflow-hidden shadow-2xl">
+            <div className="relative w-[300px] aspect-[9/19.5] rounded-[40px] border-[8px] border-gray-900 bg-gray-100 dark:bg-[#1A1C21] overflow-hidden shadow-2xl">
               <div className="absolute inset-0 p-4 flex flex-col gap-3">
-                <div className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 shadow-sm">
+                <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 shadow-sm">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">📍 매장 검색</p>
                   <p className="text-sm font-bold text-gray-900 dark:text-white">동래원 본점</p>
                   <p className="text-[10px] text-gray-400 mt-1">부산 동래구 충렬대로...</p>
                 </div>
-                <div className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 shadow-sm">
+                <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 shadow-sm">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">💰 공구 가격</p>
                   <p className="text-2xl font-extrabold text-pink-500">15,000<span className="text-sm font-bold">딜</span></p>
                 </div>
-                <div className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 shadow-sm">
+                <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 shadow-sm">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">🎯 진행 현황</p>
-                  <div className="w-full bg-gray-100 dark:bg-[#1A2334] rounded-full h-2 mb-2">
+                  <div className="w-full bg-gray-100 dark:bg-[#1A1C21] rounded-full h-2 mb-2">
                     <div className="h-full rounded-full bg-gradient-to-r from-gray-800 to-gray-800" style={{ width: '85%' }} />
                   </div>
                   <p className="text-xs text-gray-700 dark:text-gray-200"><span className="font-bold">17명</span> / 20명 · <span className="text-pink-600 font-bold">3명 남음</span></p>
@@ -112,7 +112,7 @@ export default function BusinessLandingPage() {
       </section>
 
       {/* 4 핵심 가치 */}
-      <section className="bg-gray-50 dark:bg-[#1A2334] px-6 lg:px-12 py-16">
+      <section className="bg-gray-50 dark:bg-[#1A1C21] px-6 lg:px-12 py-16">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl lg:text-4xl font-extrabold text-center mb-12">
             왜 사장님들이 유어딜을 선택할까요?
@@ -124,7 +124,7 @@ export default function BusinessLandingPage() {
               { icon: Shield, title: '사용 후 정산', desc: '교환권이 실제 사용된 만큼만 정산. 노쇼·미사용 리스크 없음.' },
               { icon: TrendingUp, title: '실시간 통계', desc: '오늘 매출, 사용 voucher, 정산 예정 — 실시간 알림톡.' },
             ].map((f, i) => (
-              <div key={i} className="bg-white dark:bg-[#0F151D] rounded-2xl p-6 border border-gray-100 dark:border-[#2A3446]">
+              <div key={i} className="bg-white dark:bg-[#0D0F12] rounded-2xl p-6 border border-gray-100 dark:border-[#2C2F35]">
                 <f.icon className="w-8 h-8 text-pink-500 mb-3" />
                 <h3 className="text-base font-bold mb-2">{f.title}</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{f.desc}</p>
@@ -171,11 +171,11 @@ export default function BusinessLandingPage() {
               </div>
 
               <div className="border-t border-pink-200 pt-6 grid grid-cols-2 gap-4">
-                <div className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 text-center">
+                <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 text-center">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">월 GMV</p>
                   <p className="text-xl font-extrabold text-gray-900 dark:text-white">{monthlyGmv.toLocaleString()}원</p>
                 </div>
-                <div className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 text-center">
+                <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 text-center">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">수수료 ({(commissionRate * 100).toFixed(0)}%)</p>
                   <p className="text-xl font-extrabold text-gray-400">-{commission.toLocaleString()}원</p>
                 </div>
@@ -199,7 +199,7 @@ export default function BusinessLandingPage() {
         <p className="text-lg opacity-90 mb-8">월 5만원도, 월 5천만원도 — 사장님이 결정합니다.</p>
         <button
           onClick={() => navigate('/store/new')}
-          className="px-8 py-4 bg-white dark:bg-[#0F151D] text-pink-600 rounded-full font-extrabold text-lg shadow-xl hover:scale-105 transition-transform"
+          className="px-8 py-4 bg-white dark:bg-[#0D0F12] text-pink-600 rounded-full font-extrabold text-lg shadow-xl hover:scale-105 transition-transform"
         >
           무료로 시작하기 →
         </button>
@@ -207,7 +207,7 @@ export default function BusinessLandingPage() {
       </section>
 
       {/* 🛡️ 2026-06-01 도매 공급사(B2B 도매몰) 모집 밴드 — store_owner CTA 와 구분 */}
-      <section className="bg-amber-50 dark:bg-[#161310] border-t border-amber-100 dark:border-[#2A3446] px-6 lg:px-12 py-12 text-center">
+      <section className="bg-amber-50 dark:bg-[#161310] border-t border-amber-100 dark:border-[#2C2F35] px-6 lg:px-12 py-12 text-center">
         <p className="text-xs font-bold tracking-wide text-amber-600 dark:text-amber-400 mb-2">도매 공급사 모집</p>
         <h2 className="text-2xl lg:text-3xl font-extrabold text-gray-900 dark:text-white mb-3">
           제품만 있으면, 셀러가 팔아드립니다
@@ -236,7 +236,7 @@ export default function BusinessLandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="px-6 lg:px-12 py-8 text-center text-xs text-gray-400 border-t border-gray-100 dark:border-[#2A3446]">
+      <footer className="px-6 lg:px-12 py-8 text-center text-xs text-gray-400 border-t border-gray-100 dark:border-[#2C2F35]">
         © 2026 리스터코퍼레이션 · 사업자등록번호: 479-09-02930 ·{' '}
         <a href="mailto:jiwon@ur-team.com" className="underline">jiwon@ur-team.com</a>
       </footer>

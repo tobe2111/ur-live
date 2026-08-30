@@ -49,7 +49,7 @@ export default function KakaoLinkCallbackPage() {
   }, [searchParams])
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0F151D] flex items-center justify-center">
+    <div className="min-h-screen bg-white dark:bg-[#0D0F12] flex items-center justify-center">
       <p className="text-gray-900 dark:text-white text-sm">처리 중... 잠시 기다려주세요.</p>
     </div>
   )

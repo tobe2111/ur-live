@@ -66,7 +66,7 @@ export default function FcfsApplyBlock({ productId }: { productId: number }) {
       <div style={{ borderRadius: 16, border: '1px solid var(--gbd-line)', background: 'var(--gbd-card)', padding: '15px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            🎯 추첨 응모 <span style={{ color: 'var(--gbd-sub)', fontWeight: 700 }}>{formatNumber(info.appliedDisplay)}/{formatNumber(info.spots)}명</span>
+            추첨 응모 <span style={{ color: 'var(--gbd-sub)', fontWeight: 700 }}>{formatNumber(info.appliedDisplay)}/{formatNumber(info.spots)}명</span>
           </p>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--gbd-sub)', lineHeight: 1.5 }}>
             {isPaid ? '🎉 당첨 · 구매 완료' : isWinner ? '🎉 당첨! 아래 구매 버튼으로 결제해주세요 — 미결제 시 예비 당첨자에게 넘어갈 수 있어요' : closed ? '응모가 마감되었어요' : applied ? '응모 완료 · 당첨 시 안내드려요' : '결제 없이 응모하면 추첨으로 선정돼요 · 당첨자만 구매 가능'}

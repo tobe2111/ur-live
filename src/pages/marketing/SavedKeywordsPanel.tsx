@@ -14,7 +14,7 @@ const authHeader = () => {
   const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
 
 export default function SavedKeywordsPanel() {
   const [items, setItems] = useState<SavedKeyword[]>([])
@@ -59,15 +59,15 @@ export default function SavedKeywordsPanel() {
         {items.length > 0 && (
           <button onClick={() => downloadCsv('유어애즈_저장키워드.csv', ['키워드', '월검색량', '경쟁', '태그', '메모'],
             items.map(k => [k.keyword, k.monthly_total ?? '', k.comp_idx ?? '', k.tag ?? '', k.memo ?? '']))}
-            className="shrink-0 rounded-lg border border-gray-200 dark:border-[#2A3446] px-2 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">CSV</button>
+            className="shrink-0 rounded-lg border border-gray-200 dark:border-[#2C2F35] px-2 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">CSV</button>
         )}
       </div>
 
       {tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
-          <button onClick={() => setActiveTag(null)} className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${activeTag === null ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0F151D]' : 'border border-gray-200 dark:border-[#2A3446] text-gray-600 dark:text-gray-300'}`}>전체</button>
+          <button onClick={() => setActiveTag(null)} className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${activeTag === null ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12]' : 'border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300'}`}>전체</button>
           {tags.map(t => (
-            <button key={t} onClick={() => setActiveTag(t)} className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${activeTag === t ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0F151D]' : 'border border-gray-200 dark:border-[#2A3446] text-gray-600 dark:text-gray-300'}`}>{t}</button>
+            <button key={t} onClick={() => setActiveTag(t)} className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${activeTag === t ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12]' : 'border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300'}`}>{t}</button>
           ))}
         </div>
       )}
@@ -86,7 +86,7 @@ export default function SavedKeywordsPanel() {
             </tr></thead>
             <tbody>
               {items.map(k => (
-                <tr key={k.id} className="border-t border-gray-100 dark:border-[#2A3446] text-gray-700 dark:text-gray-300">
+                <tr key={k.id} className="border-t border-gray-100 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300">
                   <td className="py-1.5 pr-2 font-medium text-gray-900 dark:text-white">{k.keyword}</td>
                   <td className="py-1.5 pr-2 text-right tabular-nums">{k.monthly_total != null ? formatNumber(k.monthly_total) : '-'}</td>
                   <td className="py-1.5 pr-2 text-gray-500 dark:text-gray-400">{k.comp_idx || '-'}</td>
@@ -94,7 +94,7 @@ export default function SavedKeywordsPanel() {
                     <div className="flex items-center gap-1">
                       <input value={tagEdit[k.id] ?? k.tag ?? ''} onChange={e => setTagEdit(prev => ({ ...prev, [k.id]: e.target.value }))}
                         onKeyDown={e => { if (e.key === 'Enter') saveTag(k.id) }} placeholder="태그"
-                        className="w-20 h-6 rounded border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-1.5 text-[10.5px] text-gray-900 dark:text-white" />
+                        className="w-20 h-6 rounded border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-1.5 text-[10.5px] text-gray-900 dark:text-white" />
                       {tagEdit[k.id] !== undefined && tagEdit[k.id] !== (k.tag ?? '') && (
                         <button onClick={() => saveTag(k.id)} className="text-[10px] text-blue-600 dark:text-blue-400">저장</button>
                       )}

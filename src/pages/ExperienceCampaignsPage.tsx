@@ -59,15 +59,15 @@ export default function ExperienceCampaignsPage() {
   const entryLabel = (s: string) => s === 'selected' ? '🎉 선정' : s === 'applied' ? '응모 완료' : s === 'not_selected' ? '미선정' : s
 
   return (
-    <div className="min-h-[100dvh] bg-[#0F151D] text-white pb-24">
+    <div className="min-h-[100dvh] bg-[#0D0F12] text-white pb-24">
       <SEO title={CONSUMER_SURFACE_SEO['/experience'].title} description={CONSUMER_SURFACE_SEO['/experience'].description} url="/experience" />
       <div className="ur-content-wide px-4 lg:px-8 pt-5">
         <h1 className="text-[20px] font-black flex items-center gap-2"><Gift className="w-5 h-5 text-pink-400" />체험단</h1>
         <p className="text-[13px] text-gray-400 mt-1">무료 응모 · 공정 추첨 · 선정 시 체험권이 이용권 지갑에 발급돼요.</p>
 
         <div className="flex gap-2 mt-4 mb-4">
-          <button type="button" onClick={() => setTab('open')} className={`px-4 py-2 rounded-full text-[13px] font-semibold ${tab === 'open' ? 'bg-white text-black' : 'bg-[#1A2334] text-gray-300'}`}>모집중</button>
-          <button type="button" onClick={() => setTab('mine')} className={`px-4 py-2 rounded-full text-[13px] font-semibold ${tab === 'mine' ? 'bg-white text-black' : 'bg-[#1A2334] text-gray-300'}`}>내 응모현황</button>
+          <button type="button" onClick={() => setTab('open')} className={`px-4 py-2 rounded-full text-[13px] font-semibold ${tab === 'open' ? 'bg-white text-black' : 'bg-[#1A1C21] text-gray-300'}`}>모집중</button>
+          <button type="button" onClick={() => setTab('mine')} className={`px-4 py-2 rounded-full text-[13px] font-semibold ${tab === 'mine' ? 'bg-white text-black' : 'bg-[#1A1C21] text-gray-300'}`}>내 응모현황</button>
         </div>
 
         {loading ? <div className="py-16 text-center text-gray-500 text-[13px]">불러오는 중…</div>
@@ -77,7 +77,7 @@ export default function ExperienceCampaignsPage() {
             {campaigns.map(c => {
               const applied = appliedIds.has(c.id)
               return (
-                <div key={c.id} className="bg-[#1A2334] rounded-2xl border border-[#2A3446] overflow-hidden">
+                <div key={c.id} className="bg-[#1A1C21] rounded-2xl border border-[#2C2F35] overflow-hidden">
                   {c.image_url && <img src={cfImage(c.image_url, { width: 480 })} alt="" className="w-full aspect-[16/10] object-cover" loading="lazy" />}
                   <div className="p-4">
                     <p className="text-[14px] font-bold text-white line-clamp-1">{c.title}</p>
@@ -90,7 +90,7 @@ export default function ExperienceCampaignsPage() {
                     </div>
                     {c.description && <p className="text-[12px] text-gray-400 mt-2 line-clamp-2">{c.description}</p>}
                     <button type="button" disabled={applied || applying === c.id} onClick={() => void apply(c.id)}
-                      className={`mt-3 w-full py-2.5 rounded-xl text-[13px] font-bold ${applied ? 'bg-[#1A2334] text-gray-500' : 'bg-pink-500 text-white'}`}>
+                      className={`mt-3 w-full py-2.5 rounded-xl text-[13px] font-bold ${applied ? 'bg-[#1A1C21] text-gray-500' : 'bg-pink-500 text-white'}`}>
                       {applied ? <span className="flex items-center justify-center gap-1"><CheckCircle2 className="w-4 h-4" />응모 완료</span> : applying === c.id ? '응모 중…' : '무료 응모하기'}
                     </button>
                   </div>
@@ -103,7 +103,7 @@ export default function ExperienceCampaignsPage() {
           : mine.length === 0 ? <div className="py-16 text-center text-gray-500 text-[13px]">응모한 체험단이 없어요.</div>
           : <div className="space-y-2">
             {mine.map(m => (
-              <div key={m.campaign_id} className="bg-[#1A2334] rounded-2xl border border-[#2A3446] p-4 flex items-center gap-3">
+              <div key={m.campaign_id} className="bg-[#1A1C21] rounded-2xl border border-[#2C2F35] p-4 flex items-center gap-3">
                 {m.image_url && <img src={cfImage(m.image_url, { width: 120 })} alt="" className="w-14 h-14 rounded-xl object-cover" loading="lazy" />}
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold text-white line-clamp-1">{m.title}</p>

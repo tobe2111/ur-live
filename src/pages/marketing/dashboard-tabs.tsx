@@ -34,5 +34,5 @@ export const SEC_TO_TAB: Record<string, string> = {
 }
 
 // 공용 스타일(추출 섹션들과 페이지가 공유 — 카드/입력 톤 일관)
-export const CARD_CLS = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
-export const INPUT_CLS = 'w-full h-10 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
+export const CARD_CLS = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
+export const INPUT_CLS = 'w-full h-10 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'

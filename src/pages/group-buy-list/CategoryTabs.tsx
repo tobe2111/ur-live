@@ -41,7 +41,7 @@ export default function CategoryTabs({ category, setCategory, navigate, searchPa
                 className={`px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
                   category === tab.key
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
-                    : 'bg-white dark:bg-transparent text-gray-700 dark:text-gray-300 border-gray-200 dark:border-[#2A3446]'
+                    : 'bg-white dark:bg-transparent text-gray-700 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35]'
                 }`}
               >
                 {tab.label}

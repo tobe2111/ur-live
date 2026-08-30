@@ -97,12 +97,12 @@ export default function PromoBarSection({
           <span className="min-w-0">
             <span className="block text-sm font-medium text-gray-900">배경색</span>
             <span className="block text-xs text-gray-400 mt-0.5">
-              <code>#1A2C42</code> 형식. 비우면 브랜드 잉크색
+              <code>#16181C</code> 형식. 비우면 브랜드 잉크색
             </span>
           </span>
           <input
             value={settings[PROMO_KEYS.bg] ?? ''}
-            placeholder="#1A2C42"
+            placeholder="#16181C"
             onChange={e => set(PROMO_KEYS.bg, e.target.value)}
             className="w-40 shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium"
           />
@@ -131,13 +131,13 @@ export default function PromoBarSection({
           <p className="text-xs font-semibold text-gray-400 mb-2">미리보기</p>
           <div
             className="rounded-lg px-6 py-2.5 flex items-center justify-center gap-3 text-white"
-            style={{ backgroundColor: /^#[0-9a-fA-F]{6}$/.test(settings[PROMO_KEYS.bg] || '') ? settings[PROMO_KEYS.bg] : '#1A2C42' }}
+            style={{ backgroundColor: /^#[0-9a-fA-F]{6}$/.test(settings[PROMO_KEYS.bg] || '') ? settings[PROMO_KEYS.bg] : '#16181C' }}
           >
             <span className="text-[13px] font-bold">{settings[PROMO_KEYS.text]}</span>
             {(settings[PROMO_KEYS.cta] || '').trim() && (
               <span
                 className="px-3.5 py-1 rounded-full bg-white text-[12px] font-extrabold"
-                style={{ color: /^#[0-9a-fA-F]{6}$/.test(settings[PROMO_KEYS.bg] || '') ? settings[PROMO_KEYS.bg] : '#1A2C42' }}
+                style={{ color: /^#[0-9a-fA-F]{6}$/.test(settings[PROMO_KEYS.bg] || '') ? settings[PROMO_KEYS.bg] : '#16181C' }}
               >
                 {settings[PROMO_KEYS.cta]}
               </span>

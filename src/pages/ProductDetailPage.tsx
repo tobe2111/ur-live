@@ -354,7 +354,7 @@ export default function ProductDetailPage() {
   if (error || !product) {
     const mallOrigin = readMallOrigin()
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0F151D] p-4">
+      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0D0F12] p-4">
         <div className="text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">{error?.message || t('productDetailPage.notFound')}</p>
           <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">{t('productDetail.retry')}</button>
@@ -415,7 +415,7 @@ export default function ProductDetailPage() {
   if (Number(product.deal_only) === 1) {
     const brandName = (product as unknown as { brand_name?: string }).brand_name || product.category || ''
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0F151D] pb-24">
+      <div className="min-h-screen bg-white dark:bg-[#0D0F12] pb-24">
         <SEO
           title={product.name}
           description={`${product.name} - 유어딜 교환권`}
@@ -438,7 +438,7 @@ export default function ProductDetailPage() {
           {product.image_url ? (
             <img src={cfImage(product.image_url, { width: 384, quality: 85, format: 'auto' }) || product.image_url} alt={product.name} className="w-48 h-48 object-contain" loading="lazy" />
           ) : (
-            <div className="w-48 h-48 bg-gray-100 dark:bg-[#1A2334] rounded" />
+            <div className="w-48 h-48 bg-gray-100 dark:bg-[#1A1C21] rounded" />
           )}
         </div>
 
@@ -460,9 +460,9 @@ export default function ProductDetailPage() {
               onClick={() => navigate(`/browse?brand=${encodeURIComponent(brandName)}`)}
               role="button" tabIndex={0}>
               {brandIcon ? (
-                <img src={cfImage(brandIcon, { width: 96, quality: 80, format: 'auto' }) || brandIcon} alt={brandName} className="w-12 h-12 rounded-lg object-cover bg-white dark:bg-[#0F151D] border border-amber-100" loading="lazy" />
+                <img src={cfImage(brandIcon, { width: 96, quality: 80, format: 'auto' }) || brandIcon} alt={brandName} className="w-12 h-12 rounded-lg object-cover bg-white dark:bg-[#0D0F12] border border-amber-100" loading="lazy" />
               ) : (
-                <div className="w-12 h-12 bg-white dark:bg-[#0F151D] rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-amber-100">
+                <div className="w-12 h-12 bg-white dark:bg-[#0D0F12] rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-amber-100">
                   {brandName.slice(0, 4)}
                 </div>
               )}
@@ -475,7 +475,7 @@ export default function ProductDetailPage() {
         })()}
 
         {/* 상세 정보 */}
-        <div className="mx-5 mt-6 divide-y divide-gray-100 dark:divide-[#2A3446] border-t border-gray-100 dark:border-[#2A3446]">
+        <div className="mx-5 mt-6 divide-y divide-gray-100 dark:divide-[#2C2F35] border-t border-gray-100 dark:border-[#2C2F35]">
           <div className="flex justify-between py-4">
             <span className="text-[14px] text-gray-700 dark:text-gray-200">유효기간</span>
             <span className="text-[14px] font-bold text-gray-900 dark:text-white">30일</span>
@@ -507,7 +507,7 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0F151D]">
+    <div className="min-h-screen bg-white dark:bg-[#0D0F12]">
       <SEO
         title={product.name}
         description={product.description?.slice(0, 160) || `${product.name} - 유어딜에서 만나보세요`}
@@ -543,7 +543,7 @@ export default function ProductDetailPage() {
         <div className="lg:grid lg:grid-cols-5 lg:gap-8 lg:pt-6">
           <div className="lg:col-span-3">
             {/* Product Images Carousel */}
-            <Suspense fallback={<div className="w-full h-96 bg-gray-100 dark:bg-[#1A2334] animate-pulse" />}>
+            <Suspense fallback={<div className="w-full h-96 bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />}>
               <ProductImageCarousel images={allImages} />
             </Suspense>
           </div>
@@ -611,7 +611,7 @@ export default function ProductDetailPage() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-xl overflow-hidden mb-3 bg-gray-50 dark:bg-[#1A2334]">
+              <div className="rounded-xl overflow-hidden mb-3 bg-gray-50 dark:bg-[#1A1C21]">
                 <img src={cfImage(detail.images[0], { width: 800, quality: 85, format: 'auto' }) || detail.images[0]} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
               </div>
             )
@@ -622,7 +622,7 @@ export default function ProductDetailPage() {
             </p>
           )}
           {!detailExpanded && detail.canExpand && (
-            <button onClick={() => setDetailExpanded(true)} className="w-full mt-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] text-[12px] font-semibold text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:active:bg-[#1A2334]">
+            <button onClick={() => setDetailExpanded(true)} className="w-full mt-4 py-3 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] text-[12px] font-semibold text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:active:bg-[#1A1C21]">
               {t('productDetail.expandDetails', { defaultValue: '상세정보 펼쳐보기' })}
             </button>
           )}
@@ -646,7 +646,7 @@ export default function ProductDetailPage() {
                 <span>{t('productDetail.groupBuyProgress', { current: product.group_buy_current || 0, target: product.group_buy_target, defaultValue: `${product.group_buy_current || 0}명 참여 · ${product.group_buy_target}명 목표` })}</span>
                 {product.group_buy_deadline && <GroupBuyCountdown deadline={product.group_buy_deadline} />}
               </div>
-              <div className="w-full rounded-full overflow-hidden h-1 bg-white dark:bg-[#0F151D]/15">
+              <div className="w-full rounded-full overflow-hidden h-1 bg-white dark:bg-[#0D0F12]/15">
                 <div className="h-full rounded-full bg-white dark:bg-white transition-all duration-500"
                   style={{ width: `${Math.min(100, ((product.group_buy_current || 0) / product.group_buy_target!) * 100)}%` }} />
               </div>
@@ -682,7 +682,7 @@ export default function ProductDetailPage() {
                 <div className="grid grid-cols-3 gap-2 pt-2">
                   <button type="button"
                     onClick={() => navigate(`/map?q=${encodeURIComponent(product.restaurant_address || '')}`)}
-                    className="py-2 bg-gray-100 dark:bg-[#1A2334] hover:bg-gray-200 dark:hover:bg-[#2A3446] text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
+                    className="py-2 bg-gray-100 dark:bg-[#1A1C21] hover:bg-gray-200 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
                     {t('productDetail.mapLink', { defaultValue: '🗺 지도' })}
                   </button>
                   <a href={`https://map.naver.com/v5/search/${encodeURIComponent(product.restaurant_name || product.restaurant_address)}`}
@@ -805,7 +805,7 @@ export default function ProductDetailPage() {
         </section>
 
         {/* v4 아코디언 — 3개 표준 섹션 */}
-        <div className="border-t border-gray-100 dark:border-[#2A3446]">
+        <div className="border-t border-gray-100 dark:border-[#2C2F35]">
           <AccordionSection title={t('productDetailPage.productInfo')}>
             <ProductInfoGrid items={[
               { label: t('productDetailPage.stock'), value: t('productDetailPage.unitCount', { count: product.stock ?? 0 }) },
@@ -825,7 +825,7 @@ export default function ProductDetailPage() {
       </main>
 
       {/* Floating Cart / Purchase Bar */}
-      <Suspense fallback={<div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] h-16 bg-gray-100 dark:bg-[#1A2334] animate-pulse" />}>
+      <Suspense fallback={<div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] h-16 bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />}>
         <FloatingActionBar
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
@@ -854,7 +854,7 @@ export default function ProductDetailPage() {
                CTA(적립액 표시 + 링크 복사 포함)가 정규 담기 진입점. floating 은 보조 액션(선물)만 유지. */}
           <button
             onClick={() => setGiftModalOpen(true)}
-            className="pointer-events-auto inline-flex items-center gap-1.5 h-10 pl-3 pr-3.5 rounded-full bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] shadow-lg active:scale-95 transition-transform"
+            className="pointer-events-auto inline-flex items-center gap-1.5 h-10 pl-3 pr-3.5 rounded-full bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] shadow-lg active:scale-95 transition-transform"
             aria-label={t('productDetailPage.ariaGift')}
           >
             <Gift className="w-4 h-4 text-gray-900 dark:text-white" />
@@ -879,7 +879,7 @@ export default function ProductDetailPage() {
       {/* 🏭 2026-06-05 (사용자 요청): 딜 교환 확인 — 네이티브 confirm 대체 서비스 내 모달. */}
       {dealConfirm && (
         <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => !dealBuying && setDealConfirm(null)}>
-          <div className="w-full sm:max-w-sm bg-white dark:bg-[#1A2334] rounded-t-2xl sm:rounded-2xl p-5 m-0 sm:mx-4" onClick={e => e.stopPropagation()}>
+          <div className="w-full sm:max-w-sm bg-white dark:bg-[#1A1C21] rounded-t-2xl sm:rounded-2xl p-5 m-0 sm:mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3">
               {product.image_url && (
                 <img src={cfImage(product.image_url, { width: 112, quality: 80, format: 'auto' }) || product.image_url} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-xl object-cover shrink-0" />
@@ -901,7 +901,7 @@ export default function ProductDetailPage() {
             </div>
             <div className="mt-5 flex gap-2">
               <button onClick={() => setDealConfirm(null)} disabled={dealBuying}
-                className="flex-1 h-12 rounded-xl text-[14px] font-bold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-[#2A3446] active:scale-[0.98] transition-transform disabled:opacity-50">
+                className="flex-1 h-12 rounded-xl text-[14px] font-bold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-[#2C2F35] active:scale-[0.98] transition-transform disabled:opacity-50">
                 취소
               </button>
               <button onClick={runVoucherDealPurchase} disabled={dealBuying}

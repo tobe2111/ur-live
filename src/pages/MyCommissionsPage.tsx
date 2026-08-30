@@ -21,7 +21,7 @@ const STATUS_BADGE: Record<string, { label: string; cls: string; icon: typeof Ch
   rejected: { label: '거절', cls: 'bg-red-100 text-red-700', icon: XCircle },
 }
 // 🛡️ 2026-07-02: 정의 밖 status 방어 — meta undefined 렌더 크래시 방지.
-const STATUS_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300', icon: Clock } as const
+const STATUS_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300', icon: Clock } as const
 
 export default function MyCommissionsPage() {
   const navigate = useNavigate()
@@ -66,10 +66,10 @@ export default function MyCommissionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0F151D]">
+    <div className="min-h-screen bg-white dark:bg-[#0D0F12]">
       <SEO title="추천 수익 - 유어딜" description="3단계 추천 수익 잔액 및 출금" url="/my-commissions" />
 
-      <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
+      <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
           <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center" aria-label="뒤로가기">
             <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" />
@@ -94,7 +94,7 @@ export default function MyCommissionsPage() {
         {/* 🤝 2026-08-23: 협업 딜 성과 — 수락한 인플루언서만 렌더(없으면 null) */}
         <CollabPerformance />
         {/* 잔액 카드 */}
-        <div className="rounded-3xl p-6 bg-gray-900 dark:bg-[#1A2334] text-white mb-4">
+        <div className="rounded-3xl p-6 bg-gray-900 dark:bg-[#1A1C21] text-white mb-4">
           <p className="text-[12px] opacity-80">출금 가능 수익</p>
           <p className="text-[36px] font-extrabold leading-tight mt-1">{formatWon(summary.total_granted)}</p>
           <div className="flex items-center gap-4 mt-3 text-[11px] opacity-80">
@@ -115,30 +115,30 @@ export default function MyCommissionsPage() {
 
         {/* 출금 폼 */}
         {showForm && (
-          <div className="rounded-2xl border border-gray-200 dark:border-[#2A3446] p-4 mb-4 bg-gray-50 dark:bg-[#1A2334]">
+          <div className="rounded-2xl border border-gray-200 dark:border-[#2C2F35] p-4 mb-4 bg-gray-50 dark:bg-[#1A1C21]">
             <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">계좌 정보 입력</h3>
             <div className="space-y-2">
               <input
                 value={bankName}
                 onChange={e => setBankName(e.target.value)}
                 placeholder="은행명 (예: 신한은행)"
-                className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white"
+                className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white"
               />
               <input
                 value={accountNumber}
                 onChange={e => setAccountNumber(e.target.value)}
                 placeholder="계좌번호 (- 포함 가능)"
-                className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white"
+                className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white"
               />
               <input
                 value={accountHolder}
                 onChange={e => setAccountHolder(e.target.value)}
                 placeholder="예금주명"
-                className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white"
+                className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white"
               />
             </div>
             <div className="flex gap-2 mt-3">
-              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 bg-gray-100 dark:bg-[#1A2334] rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300">취소</button>
+              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 bg-gray-100 dark:bg-[#1A1C21] rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300">취소</button>
               <button onClick={submit} disabled={submitting} className="flex-[2] py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold disabled:opacity-50">
                 {submitting ? '신청 중...' : `${formatWon(summary.total_granted)} 출금 신청`}
               </button>
@@ -155,7 +155,7 @@ export default function MyCommissionsPage() {
                 const meta = STATUS_BADGE[w.status] ?? STATUS_FALLBACK
                 const Icon = meta.icon
                 return (
-                  <div key={w.id} className="rounded-xl border border-gray-200 dark:border-[#2A3446] p-3">
+                  <div key={w.id} className="rounded-xl border border-gray-200 dark:border-[#2C2F35] p-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-bold text-gray-900 dark:text-white">{formatWon(w.total_amount)}</span>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.cls}`}>
@@ -183,7 +183,7 @@ export default function MyCommissionsPage() {
           ) : commissions.length === 0 ? (
             <p className="text-xs text-gray-400 dark:text-gray-500 py-8 text-center">아직 적립된 수익이 없습니다.</p>
           ) : (
-            <div className="divide-y divide-gray-100 dark:divide-[#2A3446] border border-gray-100 dark:border-[#2A3446] rounded-xl overflow-hidden">
+            <div className="divide-y divide-gray-100 dark:divide-[#2C2F35] border border-gray-100 dark:border-[#2C2F35] rounded-xl overflow-hidden">
               {commissions.map(c => (
                 <div key={c.id} className="flex items-center justify-between px-3 py-2.5 text-[12px]">
                   <div>

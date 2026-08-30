@@ -92,7 +92,7 @@ export default function GiftClaimPage() {
 
   if (!gift) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0F151D] flex items-center justify-center px-6">
+      <div className="min-h-screen bg-white dark:bg-[#0D0F12] flex items-center justify-center px-6">
         <SEO title={t('giftClaim.notFoundSeoTitle')} description={t('giftClaim.notFoundSeoDesc')} url={`/gift/claim/${token}`} />
         <div className="text-center max-w-sm">
           <XCircle className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
@@ -136,12 +136,12 @@ export default function GiftClaimPage() {
         </div>
 
         {/* 상품 카드 */}
-        <div className="bg-white dark:bg-[#0F151D] rounded-2xl border border-gray-100 dark:border-[#2A3446] p-5 shadow-sm mb-4">
+        <div className="bg-white dark:bg-[#0D0F12] rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-5 shadow-sm mb-4">
           <div className="flex gap-3 mb-4">
             {gift.product_thumbnail ? (
               <img src={cfImage(gift.product_thumbnail, { width: 200, quality: 82, format: 'auto' }) || gift.product_thumbnail} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, gift.product_thumbnail)} />
             ) : (
-              <div className="w-20 h-20 rounded-xl bg-gray-100 dark:bg-[#1A2334] flex items-center justify-center flex-shrink-0">
+              <div className="w-20 h-20 rounded-xl bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center flex-shrink-0">
                 <Gift className="w-8 h-8 text-gray-300 dark:text-gray-600" />
               </div>
             )}
@@ -163,7 +163,7 @@ export default function GiftClaimPage() {
 
         {/* 상태별 액션 */}
         {isExpired && (
-          <div className="bg-gray-50 dark:bg-[#1A2334] rounded-2xl p-5 text-center">
+          <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-2xl p-5 text-center">
             <XCircle className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
             <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{t('giftClaim.expiredTitle')}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('giftClaim.expiredHint')}</p>
@@ -190,7 +190,7 @@ export default function GiftClaimPage() {
         )}
 
         {canClaim && (
-          <form onSubmit={handleSubmit} className="bg-white dark:bg-[#0F151D] rounded-2xl border border-gray-100 dark:border-[#2A3446] p-5 shadow-sm">
+          <form onSubmit={handleSubmit} className="bg-white dark:bg-[#0D0F12] rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-5 shadow-sm">
             <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <MapPin className="w-4 h-4 text-pink-500" /> {t('giftClaim.addressTitle')}
             </h3>
@@ -199,20 +199,20 @@ export default function GiftClaimPage() {
                 value={postalCode}
                 onChange={e => setPostalCode(e.target.value)}
                 placeholder={t('giftClaim.postalCode')}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#0F151D]"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#0D0F12]"
               />
               <input
                 value={address}
                 onChange={e => setAddress(e.target.value)}
                 placeholder={t('giftClaim.addressMain')}
                 required
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#0F151D]"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#0D0F12]"
               />
               <input
                 value={addressDetail}
                 onChange={e => setAddressDetail(e.target.value)}
                 placeholder={t('giftClaim.addressDetail')}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#0F151D]"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#0D0F12]"
               />
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -221,7 +221,7 @@ export default function GiftClaimPage() {
                   onChange={e => setPhone(e.target.value)}
                   placeholder={t('giftClaim.phone')}
                   type="tel"
-                  className="w-full pl-9 pr-4 py-3 bg-gray-50 dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#0F151D]"
+                  className="w-full pl-9 pr-4 py-3 bg-gray-50 dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#0D0F12]"
                 />
               </div>
             </div>

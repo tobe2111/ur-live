@@ -178,7 +178,7 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
             onChange={e => setQuery(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); search() } }}
             placeholder={t('map.picker.placeholder', { defaultValue: '매장 이름 또는 주소 (예: 광화문 김밥천국)' })}
-            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
+            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
           />
         </div>
         <button
@@ -192,17 +192,17 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
       </div>
 
       {/* 카카오맵 — 🛡️ 2026-05-19: SDK 실패 시 graceful fallback (페이지 크래시 방지). */}
-      <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A3446]">
-        <div ref={mapContainerRef} className="w-full h-[320px] bg-gray-100 dark:bg-[#1A2334]" />
+      <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-[#2C2F35]">
+        <div ref={mapContainerRef} className="w-full h-[320px] bg-gray-100 dark:bg-[#1A1C21]" />
         {sdkError ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-[#1A2334] p-4 text-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-[#1A1C21] p-4 text-center">
             <MapPin className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">지도를 불러올 수 없습니다</p>
             <p className="text-[10px] text-gray-400 dark:text-gray-500">{sdkError}</p>
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2">아래 검색은 그대로 사용 가능합니다.</p>
           </div>
         ) : !mapReady && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-[#1A2334]">
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-[#1A1C21]">
             <Loader2 className="w-5 h-5 animate-spin text-gray-400 dark:text-gray-500" />
           </div>
         )}
@@ -210,13 +210,13 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
 
       {/* 검색 결과 리스트 (지도 + 리스트 병행) */}
       {results.length > 0 && (
-        <div className="max-h-64 overflow-y-auto border border-gray-100 dark:border-[#2A3446] rounded-lg divide-y divide-gray-100">
+        <div className="max-h-64 overflow-y-auto border border-gray-100 dark:border-[#2C2F35] rounded-lg divide-y divide-gray-100">
           {results.map((p, i) => (
             <button
               key={p.id || i}
               type="button"
               onClick={() => handleSelect(p)}
-              className="w-full flex items-start gap-2 px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-[#1A2334]"
+              className="w-full flex items-start gap-2 px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-[#1A1C21]"
             >
               <MapPin className="w-4 h-4 text-gray-400 dark:text-gray-500 mt-0.5 shrink-0" />
               <div className="flex-1 min-w-0">
