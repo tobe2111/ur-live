@@ -1,3 +1,10 @@
+/**
+ * 🔘 2026-08-30 버튼 체계 적용 (index.css `.ur-btn`).
+ *   이전엔 여섯 버튼이 전부 `rounded-2xl` 이었다 — 시트/모달용 곡률을 버튼에 쓴 것이라
+ *   버튼이 담긴 카드와 같은 둥글기로 보였다(중첩 규칙 위반: 안쪽 ≤ 바깥쪽).
+ *   높이·모서리·글자·굵기는 체계가 정하고, 색/비율(flex-[2] 등)만 여기서 준다.
+ *   `active:scale`/`transition` 은 전역 button 규칙이 이미 준다(중복 제거).
+ */
 import { useState, useEffect, useRef } from 'react'
 import { Check, X, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
@@ -124,7 +131,7 @@ export default function VoucherRedeemModal({
             <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5">
               <b className="text-gray-900 dark:text-white">{store}</b> 은(는) 직원이 QR 을 스캔해 사용 처리하는 매장이에요.
             </p>
-            <button onClick={onClose} className="mt-5 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-extrabold">QR 화면으로 돌아가기</button>
+            <button onClick={onClose} className="ur-btn ur-btn-lg ur-btn-block mt-5 bg-gray-900 dark:bg-white text-white dark:text-gray-900">QR 화면으로 돌아가기</button>
           </>
         )}
 
@@ -149,8 +156,8 @@ export default function VoucherRedeemModal({
               />
             )}
             <div className="flex gap-2 mt-5">
-              <button onClick={onClose} className="flex-1 py-3.5 rounded-2xl border border-gray-200 dark:border-[#2A3446] text-gray-700 dark:text-gray-200 text-sm font-bold">닫기</button>
-              <button onClick={redeem} className="flex-[2] py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-extrabold active:scale-[0.98] transition-transform">사용하기</button>
+              <button onClick={onClose} className="ur-btn ur-btn-lg flex-1 border border-gray-200 dark:border-[#2A3446] text-gray-700 dark:text-gray-200">닫기</button>
+              <button onClick={redeem} className="ur-btn ur-btn-lg flex-[2] bg-gray-900 dark:bg-white text-white dark:text-gray-900">사용하기</button>
             </div>
           </>
         )}
@@ -174,11 +181,11 @@ export default function VoucherRedeemModal({
             <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">직원에게 이 화면을 보여주세요</p>
 
             {cancelLeft > 0 ? (
-              <button onClick={cancel} className="mt-5 w-full py-3 rounded-2xl bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300 text-[13px] font-bold">
+              <button onClick={cancel} className="ur-btn ur-btn-md ur-btn-block mt-5 bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300">
                 잘못 눌렀어요 · 취소 ({cancelLeft}초)
               </button>
             ) : (
-              <button onClick={onClose} className="mt-5 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-extrabold">완료</button>
+              <button onClick={onClose} className="ur-btn ur-btn-lg ur-btn-block mt-5 bg-gray-900 dark:bg-white text-white dark:text-gray-900">완료</button>
             )}
 
             {/* 🗺️ 2026-06-23 카카오맵 후기 유도(아웃링크) — 리뷰는 가져올 수 없으니 작성을 유도(가게 평판↑). */}
@@ -186,7 +193,7 @@ export default function VoucherRedeemModal({
               href={`https://map.kakao.com/?q=${encodeURIComponent(storeAddress ? `${store} ${storeAddress}` : store)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 w-full inline-flex items-center justify-center gap-1.5 py-3 rounded-2xl border border-gray-200 dark:border-[#2A3446] text-gray-600 dark:text-gray-300 text-[13px] font-bold active:scale-[0.98] transition-transform"
+              className="ur-btn ur-btn-md ur-btn-block mt-2 border border-gray-200 dark:border-[#2A3446] text-gray-600 dark:text-gray-300"
             >
               🗺️ 카카오맵에 후기 남기기
             </a>

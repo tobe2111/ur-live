@@ -42,7 +42,12 @@
     font-weight: 600;
     letter-spacing: -0.01em;
     line-height: 1;
-    border: 0;
+    /* ⚠️ `border: 0` 이 아니라 **border-width** 만 0 이다.
+       축약형 `border: 0` 은 border-style 까지 `none` 으로 리셋하는데, Tailwind preflight 가
+       모든 요소에 깔아 둔 `border-style: solid` 를 지워 버린다. 그러면 나중에 `border
+       border-gray-200` 유틸을 붙여도 width 만 1px 이 되고 style 은 none 이라 **선이 안 보인다**
+       (테두리 버튼이 조용히 사라지는 회귀 — 이 파일에서 실제로 잡았다). */
+    border-width: 0;
     cursor: pointer;
   }
   .ur-btn:disabled { opacity: 0.45; cursor: not-allowed; }

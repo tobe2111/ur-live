@@ -83,6 +83,17 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '버튼 테두리가 축약형 border:0 으로 조용히 사라진다',
+    file: 'src/index.css',
+    find: '    border-width: 0;\n    cursor: pointer;',
+    replace: '    border: 0;\n    cursor: pointer;',
+    test: 'src/tests/unit/button-system.test.ts',
+    why:
+      '축약형 `border: 0` 은 border-style 까지 none 으로 리셋해 Tailwind preflight 의 ' +
+      '`border-style: solid` 를 지운다 → `border border-gray-200` 을 붙인 테두리 버튼이 ' +
+      'width 만 1px 이고 style 은 none 이라 **선이 안 보인다**. 에러가 없어 안 보인다.',
+  },
+  {
     name: '모서리 위계가 무너져 lg 와 xl 이 같은 값이 된다',
     file: 'tailwind.config.js',
     find: "        xl: '0.875rem',",
