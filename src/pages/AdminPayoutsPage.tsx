@@ -170,7 +170,7 @@ export default function AdminPayoutsPage() {
         {(tab === 'pending_ledger' || tab === 'payouts') && (
           <button
             onClick={generate}
-            className="ml-auto px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700"
+            className="ml-auto px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-bold hover:bg-gray-900"
           >
             + 지난주 정산 생성
           </button>
@@ -306,7 +306,7 @@ export default function AdminPayoutsPage() {
                         <td className="px-4 py-3 text-center">
                           {p.status === 'pending' && (
                             <div className="flex items-center justify-center gap-1">
-                              <button onClick={() => approve(p)} className="px-2 py-1 bg-blue-600 text-white rounded text-[10px] flex items-center gap-1">
+                              <button onClick={() => approve(p)} className="px-2 py-1 bg-gray-900 text-white rounded text-[10px] flex items-center gap-1">
                                 <CheckCircle className="w-3 h-3" /> 승인
                               </button>
                               <button onClick={() => cancel(p)} className="px-2 py-1 bg-gray-500 text-white rounded text-[10px] flex items-center gap-1">
@@ -315,7 +315,7 @@ export default function AdminPayoutsPage() {
                             </div>
                           )}
                           {p.status === 'approved' && (
-                            <button onClick={() => markSent(p)} className="px-2 py-1 bg-emerald-600 text-white rounded text-[10px] flex items-center gap-1 mx-auto">
+                            <button onClick={() => markSent(p)} className="px-2 py-1 bg-gray-900 text-white rounded text-[10px] flex items-center gap-1 mx-auto">
                               <Send className="w-3 h-3" /> 송금완료
                             </button>
                           )}
@@ -403,7 +403,7 @@ export default function AdminPayoutsPage() {
               } finally { setSavingRates(false) }
             }}
             disabled={savingRates}
-            className="mt-6 w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold disabled:opacity-50"
+            className="mt-6 w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold disabled:opacity-50"
           >
             {savingRates ? '저장 중...' : '저장'}
           </button>
@@ -461,7 +461,7 @@ export default function AdminPayoutsPage() {
                 toast.error('다운로드 실패')
               }
             }}
-            className="mt-6 w-full py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold"
+            className="mt-6 w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold"
           >
             CSV 다운로드
           </button>

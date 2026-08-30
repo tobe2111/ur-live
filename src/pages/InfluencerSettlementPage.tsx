@@ -49,7 +49,7 @@ function MyRankCard() {
   }, [])
   if (!rank) return null
   return (
-    <a href="/influencer/rankings" className="block bg-gradient-to-r from-gray-50 to-gray-50 border border-amber-200 rounded-xl p-4">
+    <a href="/influencer/rankings" className="block bg-gray-50 border border-amber-200 rounded-xl p-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-[11px] text-amber-700 font-medium">🏆 이번 달 나의 순위</p>
@@ -241,11 +241,11 @@ export default function InfluencerSettlementPage() {
       <main className="ur-content-narrow mx-auto px-4 py-4 space-y-5">
         {/* 🛡️ 2026-05-16: 카탈로그 + 성과표 + 랭킹 진입 카드 */}
         <div className="grid grid-cols-3 gap-2">
-          <a href="/influencer/discover" className="bg-gradient-to-br from-gray-800 to-gray-800 text-white rounded-xl p-3 flex flex-col items-center justify-center active:scale-95 transition-transform">
+          <a href="/influencer/discover" className="bg-gray-800 text-white rounded-xl p-3 flex flex-col items-center justify-center active:scale-95 transition-transform">
             <span className="text-xl">🛍️</span>
             <p className="text-[10px] opacity-90 mt-1">카탈로그</p>
           </a>
-          <a href="/influencer/analytics" className="bg-gradient-to-br from-gray-800 to-gray-800 text-white rounded-xl p-3 flex flex-col items-center justify-center active:scale-95 transition-transform">
+          <a href="/influencer/analytics" className="bg-gray-800 text-white rounded-xl p-3 flex flex-col items-center justify-center active:scale-95 transition-transform">
             <span className="text-xl">📊</span>
             <p className="text-[10px] opacity-90 mt-1">성과표</p>
           </a>
@@ -328,7 +328,7 @@ export default function InfluencerSettlementPage() {
             <button
               type="button"
               onClick={() => setForm(f => ({ ...f, ranking_public: !f.ranking_public }))}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold ${form.ranking_public ? 'bg-emerald-500 text-white' : 'bg-gray-300 text-gray-700 dark:text-gray-200'}`}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold ${form.ranking_public ? 'bg-gray-900 text-white' : 'bg-gray-300 text-gray-700 dark:text-gray-200'}`}
             >
               {form.ranking_public ? '공개' : '비공개'}
             </button>

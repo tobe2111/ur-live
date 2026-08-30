@@ -53,7 +53,7 @@ export default function AdminTikTokDiscoveryPage() {
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg ${
                 filter === f
-                  ? 'bg-blue-500 text-white'
+                  ? 'bg-gray-900 text-white'
                   : 'bg-white border border-gray-200 text-gray-700'
               }`}
             >

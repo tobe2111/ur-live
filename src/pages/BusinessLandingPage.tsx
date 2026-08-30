@@ -55,7 +55,7 @@ export default function BusinessLandingPage() {
             <span className="inline-block px-3 py-1 bg-pink-50 text-pink-600 rounded-full text-xs font-bold mb-5">🎯 자영업자 1인 사업자 전용</span>
             <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight tracking-tight mb-6">
               사장님,<br />
-              <span className="bg-gradient-to-r from-gray-800 to-gray-800 bg-clip-text text-transparent">3분 등록</span> 하면<br />
+              <span className="bg-gray-800 bg-clip-text text-transparent">3분 등록</span> 하면<br />
               오늘부터 매출 시작.
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed mb-8">
@@ -72,7 +72,7 @@ export default function BusinessLandingPage() {
               {/* 🛡️ 2026-05-20: 공급자 (가게 사장님) 셀프 가입 CTA — 카카오 로그인 후 진입. */}
               <button
                 onClick={() => navigate('/store/new')}
-                className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-bold flex items-center gap-2 shadow-lg shadow-emerald-200"
+                className="px-6 py-3.5 bg-gray-900 hover:bg-gray-900 text-white rounded-full font-bold flex items-center gap-2 shadow-lg shadow-emerald-200"
               >
                 공급자 가입 <ArrowRight className="w-4 h-4" />
               </button>
@@ -87,7 +87,7 @@ export default function BusinessLandingPage() {
             <div className="relative w-[300px] aspect-[9/19.5] rounded-[40px] border-[8px] border-gray-900 bg-gray-100 dark:bg-[#1A1C21] overflow-hidden shadow-2xl">
               <div className="absolute inset-0 p-4 flex flex-col gap-3">
                 <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 shadow-sm">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">📍 매장 검색</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">매장 검색</p>
                   <p className="text-sm font-bold text-gray-900 dark:text-white">동래원 본점</p>
                   <p className="text-[10px] text-gray-400 mt-1">부산 동래구 충렬대로...</p>
                 </div>
@@ -98,11 +98,11 @@ export default function BusinessLandingPage() {
                 <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 shadow-sm">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">🎯 진행 현황</p>
                   <div className="w-full bg-gray-100 dark:bg-[#1A1C21] rounded-full h-2 mb-2">
-                    <div className="h-full rounded-full bg-gradient-to-r from-gray-800 to-gray-800" style={{ width: '85%' }} />
+                    <div className="h-full rounded-full bg-gray-800" style={{ width: '85%' }} />
                   </div>
                   <p className="text-xs text-gray-700 dark:text-gray-200"><span className="font-bold">17명</span> / 20명 · <span className="text-pink-600 font-bold">3명 남음</span></p>
                 </div>
-                <button className="bg-gradient-to-r from-gray-800 to-gray-800 text-white rounded-xl py-3 text-sm font-bold mt-auto">
+                <button className="bg-gray-800 text-white rounded-xl py-3 text-sm font-bold mt-auto">
                   공구 시작하기
                 </button>
               </div>
@@ -144,7 +144,7 @@ export default function BusinessLandingPage() {
             <p className="text-gray-600 dark:text-gray-300">슬라이더로 직접 계산해보세요</p>
           </div>
 
-          <div className="bg-gradient-to-br from-gray-50 to-gray-50 rounded-3xl p-6 lg:p-10 border border-pink-100">
+          <div className="bg-gray-50 rounded-3xl p-6 lg:p-10 border border-pink-100">
             <div className="space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -181,7 +181,7 @@ export default function BusinessLandingPage() {
                 </div>
               </div>
 
-              <div className="bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl p-6 text-center text-white">
+              <div className="bg-gray-800 rounded-2xl p-6 text-center text-white">
                 <p className="text-sm opacity-90 mb-1">사장님이 받는 금액</p>
                 <p className="text-4xl font-extrabold">{netRevenue.toLocaleString()}<span className="text-xl font-bold">원/월</span></p>
                 {monthlyGmv >= 10_000_000 && (
@@ -194,7 +194,7 @@ export default function BusinessLandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-gradient-to-br from-gray-800 to-gray-800 px-6 lg:px-12 py-16 text-white text-center">
+      <section className="bg-gray-800 px-6 lg:px-12 py-16 text-white text-center">
         <h2 className="text-3xl lg:text-5xl font-extrabold mb-5">지금 시작하면<br />이번 주 안에 첫 매출.</h2>
         <p className="text-lg opacity-90 mb-8">월 5만원도, 월 5천만원도 — 사장님이 결정합니다.</p>
         <button

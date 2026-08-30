@@ -166,7 +166,7 @@ export default function SellerGroupBuyPage() {
         {/* 🛡️ 2026-05-13 (공구 UX #2): 바우처 사용 추적 요약 (최근 7일) */}
         {voucherLogSummary && voucherLogSummary.total > 0 && (
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-sm font-bold text-gray-900 mb-3">🎫 최근 7일 바우처 사용 시도</p>
+            <p className="text-sm font-bold text-gray-900 mb-3">최근 7일 바우처 사용 시도</p>
             <div className="grid grid-cols-4 gap-2 text-center">
               <div>
                 <p className="text-lg font-bold text-green-600">{voucherLogSummary.success_count}</p>
@@ -301,7 +301,7 @@ export default function SellerGroupBuyPage() {
                     <div className="flex items-center gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px] text-gray-500 flex items-center gap-1">
-                          {p.store_owner_token ? '🔗 사장님 전용 링크 (자동 인증)' : t('seller.groupBuy.storeOwnerStatsLink')}
+                          {p.store_owner_token ? '사장님 전용 링크 (자동 인증)' : t('seller.groupBuy.storeOwnerStatsLink')}
                         </p>
                         <p className="text-xs text-gray-700 truncate font-mono">
                           {window.location.origin}/store/stats/{p.id}

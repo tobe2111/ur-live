@@ -12,7 +12,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, ShoppingBag } from 'lucide-react'
 import { curatorApi } from '@/features/curator/api/curator-api'
 import { formatWon, formatNumber } from '@/utils/format'
 
@@ -59,7 +59,7 @@ export default function CuratorEarningsCard() {
       to="/creator"
       className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06]"
     >
-      <span className="text-lg" aria-hidden="true">🛍️</span>
+      <ShoppingBag className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
       <span className="flex-1 min-w-0">
         <span className="block text-[13px] font-medium text-gray-900 dark:text-white">{t('my.curatorTitle', { defaultValue: '유어샵 수익' })}</span>
         <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">

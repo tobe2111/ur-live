@@ -96,8 +96,8 @@ function InviteSellerPanel({ sellerCount }: { sellerCount: number }) {
                 onClick={handleCopy}
                 className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold transition-colors shrink-0 ${
                   copied
-                    ? 'bg-green-600 text-white'
-                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-900 text-white hover:bg-gray-900'
                 }`}
               >
                 {copied ? (
@@ -251,7 +251,7 @@ export default function AgencySellersPage() {
                       onClick={() => changePeriod(p)}
                       className={`flex-1 py-1 text-xs rounded-lg font-medium transition-colors ${
                         period === p
-                          ? 'bg-indigo-600 text-white'
+                          ? 'bg-gray-900 text-white'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >

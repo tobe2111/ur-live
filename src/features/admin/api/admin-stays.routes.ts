@@ -139,7 +139,7 @@ adminStaysRoutes.patch('/stays/bookings/:id/refund', cors(), async (c) => {
         'SELECT payment_key FROM orders WHERE id = ?'
       ).bind(fullBooking.order_id).first<{ payment_key: string | null }>().catch(() => null)
       if (orderRow?.payment_key) {
-        const { tossCancelPayment } = await import('@/worker/utils/toss-refund')
+        const { tossCancelPayment } = await import('../../../worker/utils/toss-refund') // ⚠️ 상대경로 필수 — 워커 런타임엔 `@/` 별칭이 없다(crash, CLAUDE.md 2026-04-22)
         const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string }, orderRow.payment_key, {
           reason: `어드민 환불: ${reason}`.slice(0, 200),
           amount: refundAmount < booking.total_amount ? refundAmount : undefined,
@@ -172,7 +172,7 @@ adminStaysRoutes.patch('/stays/bookings/:id/refund', cors(), async (c) => {
 
     // 🛡️ 2026-05-31: confirmed 였던 예약만 객실 야간 재고 복원 (취소 시 영구 unavailable 방지).
     if (booking.status === 'confirmed') {
-      const { releaseStayInventory } = await import('@/worker/utils/stay-inventory')
+      const { releaseStayInventory } = await import('../../../worker/utils/stay-inventory') // ⚠️ 상대경로 필수 — 워커 런타임엔 `@/` 별칭이 없다(crash, CLAUDE.md 2026-04-22)
       await releaseStayInventory(c.env.DB, booking.room_id, booking.check_in_date, booking.check_out_date)
     }
 

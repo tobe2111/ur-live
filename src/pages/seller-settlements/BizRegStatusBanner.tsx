@@ -43,7 +43,7 @@ export default function BizRegStatusBanner({ status, imageUrl, rejectReason, onO
               className={`text-xs font-semibold px-3 py-1.5 rounded-md ${
                 status === 'rejected'
                   ? 'bg-red-600 text-white hover:bg-red-700'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-900 text-white hover:bg-gray-900'
               }`}
             >
               {imageUrl ? '다시 제출하기' : '사업자등록증 등록하기'}

@@ -256,12 +256,12 @@ export default function SellerInventoryPage() {
           <button
             type="button"
             onClick={startCamera}
-            className="px-3 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-3 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-900 transition-colors"
             title={t('seller.cameraScanBarcode')}
           >
             <Camera className="w-4 h-4" />
           </button>
-          <button onClick={() => handleScan()} className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+          <button onClick={() => handleScan()} className="px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-900">
             {t('seller.lookupButton')}
           </button>
         </div>
@@ -369,7 +369,7 @@ export default function SellerInventoryPage() {
                         }
                         img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
                       }}
-                      className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg"
+                      className="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-lg"
                     >
                       {t('common.save')}
                     </button>
@@ -426,7 +426,7 @@ export default function SellerInventoryPage() {
                       key={type}
                       onClick={() => { setStockAction(type); setQuantity(0) }}
                       className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
-                        stockAction === type ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
+                        stockAction === type ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
                       }`}
                     >
                       {type === 'in' ? t('seller.stockIn') : type === 'out' ? t('seller.stockOut') : t('seller.stockAdjust')}
@@ -453,7 +453,7 @@ export default function SellerInventoryPage() {
                 <button
                   onClick={handleStockAction}
                   disabled={!quantity && stockAction !== 'adjust'}
-                  className="w-full mt-2 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="w-full mt-2 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-900 disabled:opacity-50"
                 >
                   {stockAction === 'in' ? <><Plus className="w-3.5 h-3.5 inline" /> {t('seller.stockInProcess')}</> :
                    stockAction === 'out' ? <><Minus className="w-3.5 h-3.5 inline" /> {t('seller.stockOutProcess')}</> :

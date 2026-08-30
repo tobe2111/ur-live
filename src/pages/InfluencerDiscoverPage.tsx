@@ -210,7 +210,7 @@ export default function InfluencerDiscoverPage() {
                         <Copy className="w-3 h-3" /> 링크 복사
                       </button>
                       <button onClick={() => shareLink(p)}
-                        className="py-2 rounded-lg bg-gradient-to-r from-gray-800 to-gray-800 text-white text-xs font-bold flex items-center justify-center gap-1">
+                        className="py-2 rounded-lg bg-gray-800 text-white text-xs font-bold flex items-center justify-center gap-1">
                         <Share2 className="w-3 h-3" /> SNS 공유
                       </button>
                     </div>

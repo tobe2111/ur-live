@@ -94,7 +94,7 @@ export default function DealBalanceCard() {
             <button
               type="button"
               onClick={() => setWithdrawOpen(true)}
-              className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700"
+              className="px-3 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900"
             >
               💸 환급 신청
             </button>
@@ -192,7 +192,7 @@ export default function DealBalanceCard() {
                 취소
               </button>
               <button type="button" onClick={withdraw} disabled={submitting || Number(withdrawAmount) < 10000}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                className="flex-1 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-900 disabled:opacity-50">
                 {submitting ? '신청 중...' : '환급 신청'}
               </button>
             </div>

@@ -47,7 +47,7 @@ export default function PrimaryActions({ pendingOrders, activeGroupBuys, settlem
         : t('seller.primary.allDone', { defaultValue: '신규/배송 관리' }),
       icon: ShoppingBag,
       bg: pendingOrders > 0
-        ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-md'
+        ? 'bg-gray-900 text-white hover:bg-gray-900 shadow-md'
         : 'bg-white border border-gray-200 hover:bg-gray-50',
       iconBg: pendingOrders > 0 ? 'bg-white/20' : 'bg-blue-50',
       iconColor: pendingOrders > 0 ? 'text-white' : 'text-blue-600',
@@ -73,7 +73,7 @@ export default function PrimaryActions({ pendingOrders, activeGroupBuys, settlem
         : t('seller.primary.settlementsDesc', { defaultValue: '딜/현금 출금' }),
       icon: Wallet,
       bg: settlementAvailable > 0
-        ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-md'
+        ? 'bg-gray-900 text-white hover:bg-gray-900 shadow-md'
         : 'bg-white border border-gray-200 hover:bg-gray-50',
       iconBg: settlementAvailable > 0 ? 'bg-white/20' : 'bg-emerald-50',
       iconColor: settlementAvailable > 0 ? 'text-white' : 'text-emerald-600',

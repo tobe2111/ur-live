@@ -123,7 +123,7 @@ export default function ShortLinksPanel() {
               <div className="flex items-center gap-2.5 shrink-0 text-[12px]">
                 {/* 2026-07-27 대표 "복사하기 버튼만 있으면 되잖아" — 숨은 텍스트 클릭 대신 명시 버튼 */}
                 <button onClick={() => { copy(shortUrl(l.code)); toast.success(`복사됨 — ${shortUrl(l.code)}`) }}
-                  className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-[11.5px] font-bold">📋 복사하기</button>
+                  className="px-2.5 py-1 rounded-lg bg-gray-900 text-white text-[11.5px] font-bold">📋 복사하기</button>
                 <button onClick={() => showStats(l)} className="font-bold text-gray-900 dark:text-white tabular-nums hover:underline" title="일별 통계 보기">{formatNumber(l.click_count)} 클릭</button>
                 <button onClick={() => toggleActive(l)} className="font-semibold text-gray-500 dark:text-gray-400 hover:underline">{l.active ? '끄기' : '켜기'}</button>
                 <button onClick={() => remove(l)} className="font-semibold text-red-500 hover:underline">삭제</button>

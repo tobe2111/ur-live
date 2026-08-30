@@ -296,7 +296,7 @@ export default function AdminPendingSellersPage() {
                   <div className="flex gap-2 mt-3">
                     <button
                       onClick={() => approve(s.id)}
-                      className="flex-1 py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-lg"
+                      className="flex-1 py-2 bg-gray-900 hover:bg-gray-900 text-white text-xs font-bold rounded-lg"
                     >
                       ✓ 승인
                     </button>

@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { TrendingUp, ChevronRight } from 'lucide-react'
+import { Award, ChevronRight, Gem, Medal, Sprout, Star, TrendingUp, type LucideIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
 
@@ -23,10 +23,10 @@ export default function TierBadge() {
   const { t } = useTranslation()
   const [info, setInfo] = useState<TierInfo | null>(null)
 
-  const TIER_META: Record<Tier, { label: string; emoji: string; color: string; bg: string; border: string; nextScore?: number; benefits: string[] }> = {
+  const TIER_META: Record<Tier, { label: string; emoji: string; Icon: LucideIcon; color: string; bg: string; border: string; nextScore?: number; benefits: string[] }> = {
     diamond: {
       label: t('tierBadge.tierDiamond', { defaultValue: '다이아몬드' }),
-      emoji: '💎',
+      emoji: '💎', Icon: Gem,
       color: 'text-blue-700',
       bg: 'bg-gradient-to-br from-gray-100 to-gray-50',
       border: 'border-blue-300',
@@ -34,7 +34,7 @@ export default function TierBadge() {
     },
     gold: {
       label: t('tierBadge.tierGold', { defaultValue: '골드' }),
-      emoji: '⭐',
+      emoji: '⭐', Icon: Star,
       color: 'text-amber-700',
       bg: 'bg-gradient-to-br from-gray-100 to-gray-50',
       border: 'border-amber-300',
@@ -43,7 +43,7 @@ export default function TierBadge() {
     },
     silver: {
       label: t('tierBadge.tierSilver', { defaultValue: '실버' }),
-      emoji: '🥈',
+      emoji: '🥈', Icon: Medal,
       color: 'text-gray-700',
       bg: 'bg-gradient-to-br from-gray-100 to-slate-50',
       border: 'border-gray-300',
@@ -52,18 +52,18 @@ export default function TierBadge() {
     },
     bronze: {
       label: t('tierBadge.tierBronze', { defaultValue: '브론즈' }),
-      emoji: '🥉',
+      emoji: '🥉', Icon: Award,
       color: 'text-orange-700',
-      bg: 'bg-gradient-to-br from-gray-50 to-gray-50',
+      bg: 'bg-gray-50',
       border: 'border-orange-200',
       nextScore: 50,
       benefits: ['수수료 5%', '노출 가중치 1×', 'TimeDeal 주 3회'],
     },
     new: {
       label: t('tierBadge.tierNew', { defaultValue: '신규' }),
-      emoji: '🆕',
+      emoji: '🆕', Icon: Sprout,
       color: 'text-purple-700',
-      bg: 'bg-gradient-to-br from-gray-50 to-gray-50',
+      bg: 'bg-gray-50',
       border: 'border-purple-200',
       nextScore: 25,
       benefits: ['가입 30일 보호', '온보딩 가이드', 'TimeDeal 주 1회'],
@@ -88,7 +88,7 @@ export default function TierBadge() {
     <div className={`rounded-2xl border-2 ${meta.border} ${meta.bg} p-4 shadow-sm`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="text-3xl">{meta.emoji}</div>
+          <meta.Icon className="w-7 h-7" aria-hidden="true" />
           <div>
             <p className={`text-[11px] font-bold ${meta.color} uppercase tracking-wider`}>{t('tierBadge.currentTier', { defaultValue: '현재 등급' })}</p>
             <p className={`text-xl font-extrabold ${meta.color}`}>{meta.label}</p>

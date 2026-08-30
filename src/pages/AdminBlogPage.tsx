@@ -220,7 +220,7 @@ export default function AdminBlogPage() {
                 {aiLoading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
                 AI 홍보 초안
               </Button>
-              <Button onClick={() => openEdit()} className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-3 text-xs">
+              <Button onClick={() => openEdit()} className="bg-gray-900 hover:bg-gray-900 text-white h-9 px-3 text-xs">
                 <Plus className="w-3.5 h-3.5 mr-1.5" /> 새 글 작성
               </Button>
             </div>
@@ -232,7 +232,7 @@ export default function AdminBlogPage() {
         ) : posts.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
             <p className="text-gray-400 mb-4">{t('admin.blog.k017', { defaultValue: '작성된 글이 없습니다' })}</p>
-            <Button onClick={() => openEdit()} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button onClick={() => openEdit()} className="bg-gray-900 hover:bg-gray-900 text-white">
               <Plus className="w-4 h-4 mr-2" /> 첫 글 작성하기
             </Button>
           </div>
@@ -338,7 +338,7 @@ export default function AdminBlogPage() {
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               임시저장
             </Button>
-            <Button onClick={() => save(true)} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button onClick={() => save(true)} disabled={saving} className="bg-gray-900 hover:bg-gray-900 text-white">
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
               발행하기
             </Button>
@@ -471,7 +471,7 @@ export default function AdminBlogPage() {
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
             임시저장
           </Button>
-          <Button onClick={() => save(true)} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white px-6">
+          <Button onClick={() => save(true)} disabled={saving} className="bg-gray-900 hover:bg-gray-900 text-white px-6">
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
             발행하기
           </Button>

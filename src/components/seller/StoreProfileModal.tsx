@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import { formatPhone, isValidMobilePhone, digitsOnly } from '@/utils/format-phone'
-import { Loader2, MapPin } from 'lucide-react'
+import { Loader2, Map, MapPin } from 'lucide-react'
 
 interface Props {
   sellerId: number
@@ -136,7 +136,7 @@ export default function StoreProfileModal({ sellerId, storeName, onClose, onDone
               </div>
               <button type="button" onClick={() => setShowMap(v => !v)}
                 className="w-full py-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50">
-                🗺️ {showMap ? '지도 접기' : '지도에서 위치 다시 선택 (이전했거나 좌표가 틀릴 때)'}
+                <Map className="w-4 h-4" aria-hidden="true" /> {showMap ? '지도 접기' : '지도에서 위치 다시 선택 (이전했거나 좌표가 틀릴 때)'}
               </button>
               {showMap && (
                 <div className="rounded-lg border border-gray-200 p-2">

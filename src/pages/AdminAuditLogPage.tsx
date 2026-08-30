@@ -167,7 +167,7 @@ export default function AdminAuditLogPage() {
             <div className="sm:col-span-2 lg:col-span-5 flex gap-2">
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-900"
               >
                 검색
               </button>

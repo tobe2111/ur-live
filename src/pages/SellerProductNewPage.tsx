@@ -300,7 +300,7 @@ export default function SellerProductNewPage() {
                     </div>
                   ) : (
                     <div className="flex items-center rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
-                      <span className="text-xs text-blue-700">{t('seller.products.digitalUnlimitedStock', { defaultValue: '📦 디지털 상품 — 무한 재고 (자동 999,999)' })}</span>
+                      <span className="text-xs text-blue-700">{t('seller.products.digitalUnlimitedStock', { defaultValue: '디지털 상품 — 무한 재고 (자동 999,999)' })}</span>
                     </div>
                   )}
                 </div>
@@ -379,10 +379,10 @@ export default function SellerProductNewPage() {
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold text-gray-900">{t('seller.liveOnlyProduct')}</span>
-                        <span className="rounded bg-blue-600 px-2 py-0.5 text-xs text-white">{t('seller.sellerOnly')}</span>
+                        <span className="rounded bg-gray-900 px-2 py-0.5 text-xs text-white">{t('seller.sellerOnly')}</span>
                       </div>
                       <p className="mt-1 text-sm text-gray-600">{t('seller.liveOnlyProductNote')}</p>
-                      <p className="mt-2 text-xs text-gray-500">💡 {t('seller.featuredOnlyAdmin')}</p>
+                      <p className="mt-2 text-xs text-gray-500">{t('seller.featuredOnlyAdmin')}</p>
                     </div>
                   </div>
                   <input type="hidden" name="product_type" value="live" />
@@ -438,7 +438,7 @@ export default function SellerProductNewPage() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="bg-blue-600 px-8 py-2.5 text-white hover:bg-blue-700"
+                  className="bg-gray-900 px-8 py-2.5 text-white hover:bg-gray-900"
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
@@ -490,7 +490,7 @@ export default function SellerProductNewPage() {
             type="submit"
             form={FORM_ID}
             disabled={loading}
-            className="flex-[2] bg-blue-600 py-3 text-white hover:bg-blue-700"
+            className="flex-[2] bg-gray-900 py-3 text-white hover:bg-gray-900"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

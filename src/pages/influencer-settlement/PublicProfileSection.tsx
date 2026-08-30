@@ -86,7 +86,7 @@ export default function PublicProfileSection() {
           disabled={saving}
           onClick={() => save({ ...p, is_open: p.is_open ? 0 : 1 })}
           className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold ${
-            p.is_open ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300'
+            p.is_open ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300'
           } disabled:opacity-50`}
         >
           {p.is_open ? '공개 중' : '비공개'}

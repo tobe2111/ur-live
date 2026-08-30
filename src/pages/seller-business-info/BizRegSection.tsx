@@ -88,7 +88,7 @@ export default function BizRegSection({ imageUrl, status, rejectReason, uploadin
             type="button"
             onClick={onSubmit}
             disabled={submitting}
-            className="w-full rounded-lg bg-emerald-600 py-3 font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+            className="w-full rounded-lg bg-gray-900 py-3 font-medium text-white transition-colors hover:bg-gray-900 disabled:opacity-50"
           >
             {submitting ? (
               <span className="flex items-center justify-center gap-2">

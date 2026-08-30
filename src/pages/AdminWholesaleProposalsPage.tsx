@@ -137,12 +137,12 @@ export default function AdminWholesaleProposalsPage() {
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
                     {row.status === 'open' && (
                       <button onClick={() => resolve(row, 'in_progress')} disabled={actingId === row.id}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium disabled:opacity-50">
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-medium disabled:opacity-50">
                         검토 시작
                       </button>
                     )}
                     <button onClick={() => resolve(row, 'resolved')} disabled={actingId === row.id}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-medium disabled:opacity-50">
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-medium disabled:opacity-50">
                       {actingId === row.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} 처리 완료
                     </button>
                     <button onClick={() => resolve(row, 'rejected')} disabled={actingId === row.id}

@@ -66,7 +66,7 @@ export default function SellerFollowersPage() {
         />
 
         {/* 총합 카드 */}
-        <div className="bg-gradient-to-br from-gray-800 to-gray-800 rounded-2xl p-5 text-white">
+        <div className="bg-gray-800 rounded-2xl p-5 text-white">
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="text-xs opacity-80 font-bold">총 단골</p>
@@ -90,9 +90,9 @@ export default function SellerFollowersPage() {
             <div className="space-y-3">
               {([
                 // 🏭 라이브커머스 영구중단: '라이브 시작' 알림 종류 숨김.
-                ...(LIVE_COMMERCE_SUSPENDED ? [] : [{ key: 'live_start', label: '📺 라이브 시작', value: data.notify_on.live_start }]),
-                { key: 'group_buy', label: '🔥 공구 시작', value: data.notify_on.group_buy },
-                { key: 'new_product', label: '🎁 신상품', value: data.notify_on.new_product },
+                ...(LIVE_COMMERCE_SUSPENDED ? [] : [{ key: 'live_start', label: '라이브 시작', value: data.notify_on.live_start }]),
+                { key: 'group_buy', label: '공구 시작', value: data.notify_on.group_buy },
+                { key: 'new_product', label: '신상품', value: data.notify_on.new_product },
               ]).map(item => (
                 <div key={item.key}>
                   <div className="flex items-center justify-between text-xs mb-1">
@@ -100,7 +100,7 @@ export default function SellerFollowersPage() {
                     <span className="font-bold text-gray-900">{item.value}명 ({pct(item.value)}%)</span>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-gray-800 to-gray-800 rounded-full" style={{ width: `${pct(item.value)}%` }} />
+                    <div className="h-full bg-gray-800 rounded-full" style={{ width: `${pct(item.value)}%` }} />
                   </div>
                 </div>
               ))}
@@ -169,7 +169,7 @@ export default function SellerFollowersPage() {
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => navigate('/seller/notify-followers')}
-            className="py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 hover:opacity-95 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+            className="py-3.5 bg-gray-800 hover:opacity-95 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2"
           >
             <Megaphone className="w-4 h-4" /> 단골에게 알림
           </button>

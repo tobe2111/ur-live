@@ -207,7 +207,7 @@ export default function AdminAccountsPage() {
           subtitle={t('admin.accounts.listHeader', { count: admins.length })}
           icon={<UserCog className="h-5 w-5" />}
           actions={
-            <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+            <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-900">
               <Plus className="h-3.5 w-3.5" /> {t('admin.accounts.newAdmin')}
             </button>
           }
@@ -288,7 +288,7 @@ export default function AdminAccountsPage() {
             </div>
             <div className="flex gap-2 mt-5">
               <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg">{t('common.cancel')}</button>
-              <button onClick={createAdmin} disabled={saving} className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg disabled:opacity-50">
+              <button onClick={createAdmin} disabled={saving} className="flex-1 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg disabled:opacity-50">
                 {saving ? t('common.creating') : t('seller.coupons.createBtn')}
               </button>
             </div>
@@ -318,7 +318,7 @@ export default function AdminAccountsPage() {
             </div>
             <div className="flex gap-2 mt-5">
               <button onClick={() => setShowEdit(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg">{t('common.cancel')}</button>
-              <button onClick={updateAdmin} disabled={saving} className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg disabled:opacity-50">
+              <button onClick={updateAdmin} disabled={saving} className="flex-1 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg disabled:opacity-50">
                 {saving ? t('common.saving') : t('common.save')}
               </button>
             </div>
