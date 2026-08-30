@@ -1140,7 +1140,10 @@ canvas {
   },
   {
     name: '히어로가 남의 사진(외부 호스트 데모)을 홈 얼굴로 쓴다',
-    file: 'src/components/home/HomeHeroDefault.tsx',
+    // 🚚 2026-08-29: 고르는 규칙이 `HomeHeroDefault` → `shared/home-hero-photo` 로 이사했다
+    //   (워커가 히어로를 preload 하려면 **같은 사진**을 골라야 해서 SSOT 로 뽑았다).
+    //   ⚠️ 그때 이 경로를 안 고쳐 CI 가 "낡은 지도" 로 잡아냈다 — 코드를 옮기면 주입 지도도 같이 옮긴다.
+    file: 'src/shared/home-hero-photo.ts',
     // 🔁 2026-08-27: 예전엔 `slug.startsWith('demo-deal-')` 를 지웠다(=데모 전면 허용). 그런데
     //   그 금지가 라이브 카탈로그 100% 데모 상황에서 히어로를 영구 빈 색면으로 만들어, 규칙의 축을
     //   "데모냐" → "출처가 우리냐"로 옮겼다. 그래서 지켜야 할 선도 **출처 검사**로 옮긴다.
@@ -1192,6 +1195,28 @@ canvas {
       '⚠️ 이 replace 는 `max-w-[90vw]` 를 되살리는데 **그게 정확히 안 통하던 방어책**이다 — 문서가 ' +
       '넓어지면 vw 도 같이 커져 자기를 못 잡는다. 그래서 이 회귀는 "화면밖 0px" 로 측정되고 ' +
       '**패널만 보면 멀쩡해 보인다** — 페이지가 밀리는 걸 봐야 안다. 눈으로 놓치기 쉬운 종류다.',
+  },
+  {
+    name: '히어로 preload 가 보이지 않는 폭에서도 받는다',
+    file: 'src/worker/utils/home-card-preload.ts',
+    find: 'return `<link rel="preload" as="image" fetchpriority="high" media="${HOME_HERO_MEDIA_QUERY}"',
+    replace: 'return `<link rel="preload" as="image" fetchpriority="high"',
+    test: 'src/tests/unit/home-hero-preload.test.ts',
+    why:
+      '히어로 사진은 `hidden md:block` 이라 768px 미만에서 **보이지 않는다**. media 게이트를 빼면 ' +
+      '폰이 96KB 를 헛되이 받는다 — 고치려던 것(늦게 뜬다)보다 나쁜 회귀인데 **PC 에서는 아무 차이가 ' +
+      '없어 눈으로 못 잡는다.** ⚠️ 이 파일엔 카드 preload 도 있어 문자열이 겹친다 — 앵커는 히어로 쪽으로.',
+  },
+  {
+    name: '히어로 preload URL 이 클라이언트 렌더와 어긋난다',
+    file: 'src/worker/utils/home-card-preload.ts',
+    find: 'const href = cfImage(pick.src, { width: HOME_HERO_REQUEST_WIDTH, quality: HOME_HERO_QUALITY })',
+    replace: 'const href = cfImage(pick.src, { width: 900, quality: HOME_HERO_QUALITY })',
+    test: 'src/tests/unit/home-hero-preload.test.ts',
+    why:
+      'preload 는 URL 이 **byte-일치할 때만** 쓰인다. 폭이 한쪽에서만 바뀌면 브라우저가 preload 를 ' +
+      '버리고 96KB 를 **두 번** 받는다 — 에러도 없고 화면도 멀쩡한데 더 느려지고 트래픽만 두 배다. ' +
+      '눈으로는 절대 안 보이는 종류라 가드가 유일한 방어다(2026-08-22 에 실제로 900→1280 으로 바뀐 값이다).',
   },
   {
     name: 'PC 전용 헤더가 모바일에서도 렌더된다(CSS 로만 숨김)',
@@ -5939,6 +5964,36 @@ canvas {
       '결과는 똑같이 나오므로 아무도 모르고, 회당 165만 행 읽기가 그대로 돌아온다.',
   },
 
+  {
+    name: '💎 매장 영입 딜 지급이 선점 없이 적립한다(이중지급)',
+    file: 'src/worker/cron/influencer-payout.ts',
+    find: "        if ((claim?.meta?.changes ?? 0) !== 1) continue",
+    replace: '',
+    test: 'src/tests/unit/store-intro-deal-payout.test.ts',
+    why:
+      'claim-before-credit(머니 룰 #1)이 무너진다. cron 재시도·동시 실행에 같은 행이 두 번 적립되고, ' +
+      '딜은 교환권으로 실물 교환이 되므로 되돌리기가 비싸다(이미 쓴 딜은 회수 불가).',
+  },
+  {
+    name: '💎 매장 영입 딜 지급이 게이트 없이 켜진다',
+    file: 'src/worker/cron/influencer-payout.ts',
+    find: "    if (dealGate?.value === 'true') {",
+    replace: '    if (true) {',
+    test: 'src/tests/unit/store-intro-deal-payout.test.ts',
+    why:
+      '머니 경로는 게이트 OFF 로 배선하고 staging 실결제 후 켠다(레포 룰). 게이트가 사라지면 ' +
+      '배포 즉시 현금 경로가 딜로 바뀌고, 원천징수(3.3%/8.8%)가 조용히 사라진다 — 세무 판정 전에는 안 된다.',
+  },
+  {
+    name: '💎 딜 지급이 store_intro 아닌 적립까지 삼킨다',
+    file: 'src/worker/cron/influencer-payout.ts',
+    find: "         WHERE status = 'pending' AND source = 'store_intro'",
+    replace: "         WHERE status = 'pending'",
+    test: 'src/tests/unit/store-intro-deal-payout.test.ts',
+    why:
+      '`influencer_attributions` 에는 매칭 캠페인 등 **현금으로 줘야 할 축**도 들어 있다. ' +
+      '필터가 빠지면 그것들까지 딜로 지급되고 현금 잔액에서 사라진다 — 소개자가 받을 돈의 종류가 바뀐다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

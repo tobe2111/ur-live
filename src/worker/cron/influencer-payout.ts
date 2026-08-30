@@ -36,6 +36,71 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
   if (!DB) return
 
   try {
+    // 1-a) 💎 **매장 영입 보상을 딜로 지급** (2026-08-30 대표 *"매장 영입도 딜로 쌓아줘"*).
+    //
+    //   ## 왜 여기인가 — 적립 시점이 아니라 **성숙 시점**
+    //   적립 즉시 딜을 주면 T+7 환불 유예가 사라진다. 환불이 나면 이미 쓴 딜을 회수해야 하고
+    //   그건 잔액을 음수로 만든다. 그래서 `influencer_attributions` 의 hold 를 **그대로 쓰고**,
+    //   성숙(available_at 도달) 순간에 현금 대신 딜을 준다. 유예·멱등·환불 역전이 전부 보존된다.
+    //
+    //   ## 멱등 — claim-before-credit (머니 룰 #1)
+    //   `status='pending' AND available_at<=now` 인 행을 **먼저 `paid` 로 선점**하고, 선점에
+    //   성공한 행만 딜을 준다. 동시 실행·재시도에도 이중 지급이 구조적으로 불가능하다.
+    //   `paid` 로 끝내므로 현금 잔액(`influencer_balances`)에는 아예 들어가지 않는다.
+    //
+    //   ## 게이트
+    //   `store_intro_payout_in_deal`(platform_settings, 기본 OFF). 꺼져 있으면 이 블록을
+    //   통째로 건너뛰어 **종전 현금 경로와 byte-동일**하다.
+    //
+    //   ⚠️ **세무는 대표 판단 사항이다.** 현금 송금은 사업자 3.3% / 비사업자 8.8% 를 원천징수하는데,
+    //   딜 적립에는 원천징수가 없다(담아서 팔기 = `affiliate-credit` 도 같은 방식이라 일관은 된다).
+    //   딜은 교환권으로 실물 교환이 가능하므로 소득으로 볼 여지가 있다 — 켜기 전 확인이 필요하다.
+    const dealGate = await DB.prepare(
+      "SELECT value FROM platform_settings WHERE key = 'store_intro_payout_in_deal'",
+    ).first<{ value: string }>().catch(() => null)
+    if (dealGate?.value === 'true') {
+      const ripe = await DB.prepare(`
+        SELECT id, influencer_id, commission_amount, order_id
+          FROM influencer_attributions
+         WHERE status = 'pending' AND source = 'store_intro'
+           AND available_at IS NOT NULL AND available_at <= datetime('now')
+         LIMIT 200
+      `).all<{ id: number; influencer_id: string; commission_amount: number; order_id: number | null }>()
+        .catch(() => ({ results: [] as Array<{ id: number; influencer_id: string; commission_amount: number; order_id: number | null }> }))
+
+      const { adjustUserPoints } = await import('../utils/point-ledger')
+      for (const row of ripe.results || []) {
+        const amt = Math.floor(Number(row.commission_amount) || 0)
+        if (amt <= 0) continue
+        // 선점: 이 행을 가져간 실행만 딜을 준다.
+        const claim = await DB.prepare(
+          "UPDATE influencer_attributions SET status = 'paid', paid_at = datetime('now') WHERE id = ? AND status = 'pending'",
+        ).bind(row.id).run().catch(() => null)
+        if ((claim?.meta?.changes ?? 0) !== 1) continue
+        const res = await adjustUserPoints(DB, {
+          userId: String(row.influencer_id),
+          delta: amt,
+          type: 'store_intro_commission',
+          description: '매장 영입 보상',
+          orderId: row.order_id ?? undefined,
+        }).catch(() => ({ ok: false as const, reason: 'error' }))
+        if (!res.ok) {
+          // 적립 실패 → 선점을 되돌린다. 안 그러면 그 행은 영영 미지급으로 남는다.
+          await DB.prepare(
+            "UPDATE influencer_attributions SET status = 'pending', paid_at = NULL WHERE id = ? AND status = 'paid'",
+          ).bind(row.id).run().catch(swallow('cron:influencer-payout:deal-unclaim'))
+          continue
+        }
+        await DB.prepare(`
+          INSERT INTO user_notifications (user_id, type, title, message, link, created_at)
+          VALUES (?, 'store_intro_earning', ?, ?, '/u/me/earnings', datetime('now'))
+        `).bind(
+          String(row.influencer_id), '🏪 매장 영입 보상',
+          `${amt.toLocaleString('ko-KR')}딜이 적립되었습니다`,
+        ).run().catch(() => { /* 알림 실패가 적립을 되돌리지 않는다 */ })
+      }
+    }
+
     // 1) Pending → Available 전환 (T+7 이상)
     const pendingToAvail = await DB.prepare(`
       UPDATE influencer_attributions
