@@ -161,7 +161,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
               {more && !moreIsDeadEnd && (
                 <Link
                   to={more}
-                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 dark:border-[#2A3446] text-[12.5px] font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors whitespace-nowrap"
+                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[12.5px] font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors whitespace-nowrap"
                 >
                   더보기 →
                 </Link>

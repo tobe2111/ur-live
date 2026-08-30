@@ -585,7 +585,7 @@ donations 테이블에서 payment_status='approved' 만 집계. 수수료(15%) �
 **위치**: \`/account/settings\` "화면 테마" 섹션 — 시스템/라이트/다크 3-way
 
 **구현**: \`html\` 태그에 \`.dark\` class 토글 + \`src/index.css\` 글로벌 override.
-- 다크 모드: 기존 \`bg-[#0F151D]\` / \`text-white\` 등 그대로
+- 다크 모드: 기존 \`bg-[#0D0F12]\` / \`text-white\` 등 그대로
 - 라이트 모드: \`html:not(.dark)\` selector 가 hardcoded 다크 색상을 light 로 invert
 - 셀러/어드민/에이전시 대시보드는 토글 무영향 (강제 화이트 유지)
 

@@ -106,7 +106,7 @@ export default function VoucherVerifyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0F151D] flex items-center justify-center px-5">
+    <div className="min-h-screen bg-white dark:bg-[#0D0F12] flex items-center justify-center px-5">
       <SEO title={t('voucher.verify.seoTitle')} description={t('voucher.verify.seoDescription')} url={urlCode ? `/v/${urlCode}` : '/v'} noindex />
       {/* 🛡️ 2026-05-20: QR 검증 — PC 에선 약간 넓혀 입력란 가독성 향상 */}
       <div className="w-full max-w-sm lg:max-w-md">
@@ -167,7 +167,7 @@ export default function VoucherVerifyPage() {
           /* Step 2: 바우처 확인 + 비밀번호 입력 */
           <div>
             {/* 바우처 정보 카드 */}
-            <div className="bg-gray-50 dark:bg-[#1A2334] rounded-xl p-4 mb-5">
+            <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-4 mb-5">
               {voucher.product_image && (
                 <img src={cfImage(voucher.product_image, { width: 400, quality: 82, format: 'auto' }) || voucher.product_image} alt="" className="w-full h-32 object-cover rounded-lg mb-3" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, voucher.product_image)} />
               )}
@@ -175,7 +175,7 @@ export default function VoucherVerifyPage() {
               {voucher.restaurant_name && (
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{voucher.restaurant_name}</p>
               )}
-              <div className="mt-2 bg-white dark:bg-[#0F151D] rounded-lg px-3 py-2 text-center">
+              <div className="mt-2 bg-white dark:bg-[#0D0F12] rounded-lg px-3 py-2 text-center">
                 <code className="text-lg font-mono font-bold text-gray-900 dark:text-white tracking-[0.08em]">{voucher.code}</code>
               </div>
               {voucher.expires_at && (

@@ -56,7 +56,7 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
       <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('shopping.sectionTitle', { defaultValue: '나의 이용 내역' })}</p>
-      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1A2334]">
+      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1A1C21]">
         {groups.map((g, gi) => (
           <div key={g.key}>
             {/* 🛡️ 2026-07-02: 인라인 검정 고정 borderTop → 테마 대응 클래스(다크에서 구분선 소실 수정) */}

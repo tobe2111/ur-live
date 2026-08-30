@@ -74,7 +74,7 @@ export default function AccountMenu({
     <div
       role="menu"
       aria-label={t('nav.my', { defaultValue: '마이' })}
-      className="absolute right-0 top-[calc(100%+10px)] w-[300px] max-h-[min(78vh,680px)] overflow-y-auto rounded-2xl bg-white dark:bg-[#141C27] border border-gray-100 dark:border-[#2A3446] shadow-[0_16px_40px_-14px_rgba(10,20,40,.45)] z-50"
+      className="absolute right-0 top-[calc(100%+10px)] w-[300px] max-h-[min(78vh,680px)] overflow-y-auto rounded-2xl bg-white dark:bg-[#141C27] border border-gray-100 dark:border-[#2C2F35] shadow-[0_16px_40px_-14px_rgba(10,20,40,.45)] z-50"
     >
       {/* 인사 + 닫기 */}
       <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-1">
@@ -86,7 +86,7 @@ export default function AccountMenu({
         <button
           onClick={onClose}
           aria-label={t('common.close', { defaultValue: '닫기' })}
-          className="shrink-0 w-7 h-7 -mt-0.5 rounded-full border border-gray-200 dark:border-[#2A3446] flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05]"
+          className="shrink-0 w-7 h-7 -mt-0.5 rounded-full border border-gray-200 dark:border-[#2C2F35] flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05]"
         >
           <X className="w-3.5 h-3.5" strokeWidth={2.4} />
         </button>
@@ -110,7 +110,7 @@ export default function AccountMenu({
         </button>
       )}
 
-      <div className="mx-5 h-px bg-gray-100 dark:bg-[#2A3446]" />
+      <div className="mx-5 h-px bg-gray-100 dark:bg-[#2C2F35]" />
 
       {/* 메뉴 */}
       <div className="py-1.5">
@@ -129,7 +129,7 @@ export default function AccountMenu({
       </div>
 
       {/* 앱 — 그루폰의 QR 블록 자리. 우리는 기존 앱 모달(QR)을 그대로 연다. */}
-      <div className="mx-5 h-px bg-gray-100 dark:bg-[#2A3446]" />
+      <div className="mx-5 h-px bg-gray-100 dark:bg-[#2C2F35]" />
       <button
         role="menuitem"
         onClick={onOpenApp}
@@ -146,7 +146,7 @@ export default function AccountMenu({
         </span>
       </button>
 
-      <div className="mx-5 h-px bg-gray-100 dark:bg-[#2A3446]" />
+      <div className="mx-5 h-px bg-gray-100 dark:bg-[#2C2F35]" />
       <button
         role="menuitem"
         onClick={() => go(sellerEntryPath())}

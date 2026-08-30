@@ -54,7 +54,7 @@ export default function ReviewLevelCard() {
     <button
       type="button"
       onClick={() => navigate('/my-vouchers')}
-      className="w-full mt-3 rounded-2xl bg-white dark:bg-[#1A2334] px-4 py-3.5 text-left active:bg-gray-50 dark:active:bg-white/[0.06] transition-colors"
+      className="w-full mt-3 rounded-2xl bg-white dark:bg-[#1A1C21] px-4 py-3.5 text-left active:bg-gray-50 dark:active:bg-white/[0.06] transition-colors"
     >
       <div className="flex items-center gap-3">
         <Award className="w-6 h-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />

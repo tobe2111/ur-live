@@ -44,7 +44,7 @@ export default function SellersTable({
   ]
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 dark:border-[#2A3446] flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35] flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-900">{t('admin.dashboard.k042', { defaultValue: '판매자 관리' })}</h2>
         <button onClick={onRefresh} aria-label={t('admin.dashboard.k043', { defaultValue: '데이터 새로고침' })} className="p-1.5 rounded-lg hover:bg-gray-100">
           <RefreshCw className="w-3.5 h-3.5 text-gray-400" />

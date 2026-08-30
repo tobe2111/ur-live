@@ -8,13 +8,22 @@
  * 적립 경로 = 기존 인플루언서 정산 파이프라인 재사용 (새 시스템 X):
  *   influencer_attributions(source='store_intro', status='pending', available_at=+환불창) 1행
  *   → influencer-payout cron 이 T+7 성숙(pending→available) + influencer_balances 재집계
- *   → 사업자번호 有 3.3% / 無 8.8% 원천징수 후 현금 송금.
+ *      + 어드민 지급대기 알림(딜/현금 각각)
+ *   → 실제 지급은 어드민 `/admin/influencer-payouts` 의 [처리] — `payout_method` 대로:
+ *      · `'cash'` → 사업자번호 有 3.3% / 無 8.8% 원천징수 후 계좌 송금
+ *      · `'deal'` → `creditFreePoints` 로 딜 적립(+`influencer_deal_bonus_pct` 보너스)
  *
- * 🩸 **2026-08-30 정정**: 이 자리에 오래 *"'사업자면 현금, 아니면 딜' 분기는 기존 payout cron 이
- *   처리"* 라고 적혀 있었는데 **그런 분기는 없었다** — cron 은 현금 송금만 했다. 주석이 코드보다
- *   앞서간 전형이고, 그 문장을 믿으면 "딜은 이미 되는구나" 로 오판한다.
- *   실제 딜 지급은 2026-08-30 에 만들었다(대표 *"매장 영입도 딜로 쌓아줘"*):
- *   `cron/influencer-payout.ts` 의 성숙 시점 블록, 게이트 `store_intro_payout_in_deal`(기본 OFF).
+ * 🩸 **2026-08-30 정정 2회**: 이 자리에 오래 *"'사업자면 현금, 아니면 딜' 분기는 payout cron 이
+ *   처리"* 라고 적혀 있었다. 그 문장은 **주어가 틀렸다** — 딜/현금을 고르는 것은 사업자 여부가
+ *   아니라 **소개자 본인**(`/influencer/settlement` → `influencer_balances.payout_method`)이고,
+ *   지급 주체도 cron 이 아니라 **어드민의 [처리]** 다. cron 은 알림까지만 한다.
+ *
+ *   ⚠️ 그런데 그날 오전, 그 주석을 "딜 지급 자체가 없다"로 읽고 cron 에 딜 지급 블록을 새로
+ *   만들었다(게이트 `store_intro_payout_in_deal`). **이미 있는 기능의 중복이었고 더 나빴다** —
+ *   본인이 고른 `payout_method` 를 무시하고, 보너스도 없고, 유상 버킷(`adjustUserPoints`)으로
+ *   적립해 2026-07-05 에 닫아 둔 [현금→딜→재출금] 세탁 루프를 다시 열었다. 같은 날 되돌렸다.
+ *   ⇒ **교훈: "없다"고 결론내기 전에 반대쪽(화면·어드민)에서도 찾아볼 것.** 이 기능은
+ *   `InfluencerSettlementPage` · `AdminInfluencerPayoutsPage` 에 멀쩡히 있었다.
  *
  * 멱등: (influencer_id, order_id, source='store_intro') 이미 있으면 skip.
  * Fail-soft: 실패해도 결제 흐름 막지 않음.

@@ -90,30 +90,30 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
     >
       <div
         ref={dialogRef}
-        className="bg-white dark:bg-[#0F151D] w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl max-h-[90dvh] overflow-y-auto"
+        className="bg-white dark:bg-[#0D0F12] w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl max-h-[90dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={t('gift.ariaLabel', { productName, defaultValue: '{{productName}} 선물 보내기' })}
       >
         {/* 헤더 */}
-        <div className="sticky top-0 bg-white dark:bg-[#0F151D] px-5 pt-5 pb-3 flex items-center justify-between border-b border-gray-100 dark:border-[#2A3446] z-10">
+        <div className="sticky top-0 bg-white dark:bg-[#0D0F12] px-5 pt-5 pb-3 flex items-center justify-between border-b border-gray-100 dark:border-[#2C2F35] z-10">
           <div className="flex items-center gap-2">
             <Gift className="w-5 h-5 text-pink-500" />
             <h2 className="font-bold text-gray-900 dark:text-white">{t('gift.title', { defaultValue: '선물하기' })}</h2>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-[#1A2334] rounded-full">
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-[#1A1C21] rounded-full">
             <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {/* 상품 미리보기 */}
-          <div className="flex gap-3 p-3 bg-gray-50 dark:bg-[#1A2334] rounded-xl">
+          <div className="flex gap-3 p-3 bg-gray-50 dark:bg-[#1A1C21] rounded-xl">
             {productThumbnail ? (
               <img src={productThumbnail} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" loading="lazy" />
             ) : (
-              <div className="w-14 h-14 rounded-lg bg-white dark:bg-[#0F151D] flex items-center justify-center flex-shrink-0">
+              <div className="w-14 h-14 rounded-lg bg-white dark:bg-[#0D0F12] flex items-center justify-center flex-shrink-0">
                 <Gift className="w-6 h-6 text-gray-300 dark:text-gray-600" />
               </div>
             )}
@@ -132,7 +132,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
               placeholder="010-1234-5678"
               type="tel"
               required
-              className="w-full px-4 py-3 bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300"
+              className="w-full px-4 py-3 bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300"
             />
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{t('gift.recipientPhoneHint', { defaultValue: '카카오톡 알림으로 선물 링크가 발송됩니다' })}</p>
           </div>
@@ -143,7 +143,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
               value={recipientName}
               onChange={e => setRecipientName(e.target.value)}
               placeholder={t('gift.placeholders.recipientName')}
-              className="w-full px-4 py-3 bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300"
+              className="w-full px-4 py-3 bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300"
             />
           </div>
 
@@ -158,7 +158,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
               placeholder={t('gift.placeholders.message')}
               rows={3}
               maxLength={MAX_MESSAGE}
-              className="w-full px-4 py-3 bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300 resize-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300 resize-none"
             />
             <div className="flex justify-end mt-1">
               <span className={`text-[10px] ${message.length > MAX_MESSAGE ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>

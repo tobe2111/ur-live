@@ -68,12 +68,12 @@ export default function StaysSearchPage() {
   const nights = Math.max(1, Math.round((new Date(filters.check_out).getTime() - new Date(filters.check_in).getTime()) / 86400000))
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white pb-safe-nav">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white pb-safe-nav">
       {/* 🏷️ 2026-07-20 (대표 — "숙소 공구 표현 맞나?"): '공구' 프레이밍 폐기(즉시판매 전환·명칭 SSOT) → '숙소'. */}
       <SEO title={CONSUMER_SURFACE_SEO['/stays'].title} description={CONSUMER_SURFACE_SEO['/stays'].description} url="/stays" />
 
       {/* Sticky Top Bar */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2A3446]">
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-wide px-4 lg:px-8 py-3 flex items-center gap-3">
           <Link to="/" className="text-sm font-bold">←</Link>
           <h1 className="text-base font-bold flex-1">🏨 숙소</h1>
@@ -106,7 +106,7 @@ export default function StaysSearchPage() {
                 className={`shrink-0 px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
                   active
                     ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
-                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-900 dark:hover:text-white'
+                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 {cat.label}
@@ -168,9 +168,9 @@ export default function StaysSearchPage() {
                 <Link
                   key={s.id}
                   to={`/stays/${s.id}?check_in=${filters.check_in}&check_out=${filters.check_out}&guests=${filters.guests}`}
-                  className="bg-white dark:bg-[#1A2334] rounded-xl overflow-hidden border border-gray-100 dark:border-[#2A3446] hover:border-gray-200 dark:hover:border-[#2A3446] hover:shadow-lg transition-all"
+                  className="bg-white dark:bg-[#1A1C21] rounded-xl overflow-hidden border border-gray-100 dark:border-[#2C2F35] hover:border-gray-200 dark:hover:border-[#2C2F35] hover:shadow-lg transition-all"
                 >
-                  <div className="relative aspect-[4/3] bg-gray-100 dark:bg-[#1A2334]">
+                  <div className="relative aspect-[4/3] bg-gray-100 dark:bg-[#1A1C21]">
                     {s.image_url ? (
                       // 🖼️ 2026-07-21 (대표 "상세엔 사진 있는데 메인 카드엔 빈 사진"): raw src → cfImage
                       //   (네이버 블로그 CDN 핫링크 우회·리사이즈) + cfImageOnError(깨지면 원본 재시도→숨김).
@@ -213,7 +213,7 @@ export default function StaysSearchPage() {
                         ))}
                       </div>
                     )}
-                    <div className="mt-2 pt-2 border-t border-gray-100 dark:border-[#2A3446]">
+                    <div className="mt-2 pt-2 border-t border-gray-100 dark:border-[#2C2F35]">
                       {s.price_from ? (
                         <p className="text-sm font-extrabold text-brand dark:text-[#EF6E85]">
                           ₩{formatNumber(s.price_from)}
@@ -238,8 +238,8 @@ export default function StaysSearchPage() {
           onClick={() => setShowFilters(false)}
           role="presentation"
         >
-          <div className="bg-white dark:bg-[#0F151D] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#2A3446] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-white dark:bg-[#0F151D] flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#2A3446]">
+          <div className="bg-white dark:bg-[#0D0F12] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#2C2F35] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white dark:bg-[#0D0F12] flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
               <h3 className="text-base font-bold">검색 필터</h3>
               <button onClick={() => setShowFilters(false)} aria-label="닫기" className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-white/[0.06]"><X className="w-4 h-4" /></button>
             </div>
@@ -251,29 +251,29 @@ export default function StaysSearchPage() {
                   value={filters.region}
                   onChange={(e) => setFilters({ ...filters, region: e.target.value })}
                   placeholder="서울 / 제주 / 부산 등"
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">체크인</label>
-                  <input type="date" value={filters.check_in} onChange={(e) => setFilters({ ...filters, check_in: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white" />
+                  <input type="date" value={filters.check_in} onChange={(e) => setFilters({ ...filters, check_in: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">체크아웃</label>
-                  <input type="date" value={filters.check_out} onChange={(e) => setFilters({ ...filters, check_out: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white" />
+                  <input type="date" value={filters.check_out} onChange={(e) => setFilters({ ...filters, check_out: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">인원</label>
-                <input type="number" min={1} max={20} value={filters.guests} onChange={(e) => setFilters({ ...filters, guests: Number(e.target.value) || 1 })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white" />
+                <input type="number" min={1} max={20} value={filters.guests} onChange={(e) => setFilters({ ...filters, guests: Number(e.target.value) || 1 })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">숙소 타입</label>
                 <div className="grid grid-cols-4 gap-1.5">
                   {Object.entries(PROPERTY_TYPE_LABELS).map(([v, l]) => (
                     <button key={v} onClick={() => setFilters({ ...filters, property_type: filters.property_type === v ? '' : v })}
-                      className={`p-2 rounded-lg text-[11px] font-semibold ${filters.property_type === v ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-300'}`}>
+                      className={`p-2 rounded-lg text-[11px] font-semibold ${filters.property_type === v ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-300'}`}>
                       {l}
                     </button>
                   ))}
@@ -289,7 +289,7 @@ export default function StaysSearchPage() {
                   ].map((m) => (
                     <button key={m.v} type="button"
                       onClick={() => setFilters({ ...filters, sale_mode: m.v })}
-                      className={`p-2 rounded-lg text-[11px] font-semibold ${filters.sale_mode === m.v ? 'bg-pink-500 text-white' : 'bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-300'}`}>
+                      className={`p-2 rounded-lg text-[11px] font-semibold ${filters.sale_mode === m.v ? 'bg-pink-500 text-white' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-300'}`}>
                       {m.l}
                     </button>
                   ))}
@@ -297,7 +297,7 @@ export default function StaysSearchPage() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">정렬</label>
-                <select value={filters.sort} onChange={(e) => setFilters({ ...filters, sort: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white">
+                <select value={filters.sort} onChange={(e) => setFilters({ ...filters, sort: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white">
                   <option value="recent">최신 등록</option>
                   <option value="price_asc">가격 낮은순</option>
                   <option value="price_desc">가격 높은순</option>

@@ -171,7 +171,7 @@ export default function MallHomePage() {
 
   return (
     <div
-      className="min-h-[100dvh] bg-white dark:bg-[#0F151D] [--mall:var(--mall-l)] dark:[--mall:var(--mall-d)]"
+      className="min-h-[100dvh] bg-white dark:bg-[#0D0F12] [--mall:var(--mall-l)] dark:[--mall:var(--mall-d)]"
       style={{ ['--mall-l' as string]: mall.colorLight, ['--mall-d' as string]: mall.colorDark }}
     >
       <SEO title={`${mall.name} - 공동구매`} description={mall.intro} url={`/${mall.slug}`} />

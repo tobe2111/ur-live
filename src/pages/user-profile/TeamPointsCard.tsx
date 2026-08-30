@@ -46,7 +46,7 @@ export default function TeamPointsCard() {
           바탕이 웜 화이트로 내려가고 나머지 그룹이 흰 카드가 됐으므로, 자산(딜 잔액)만
           잉크 배경으로 띄운다. 이전엔 여덟 블록이 전부 같은 회색이라 화면이 무엇을
           먼저 보라고 말하지 않았다 — 강조가 없는 게 아니라 **전부 강조**여서 그랬다. */}
-      <div className="bg-ink dark:bg-[#1A2334] rounded-2xl px-5 py-4">
+      <div className="bg-ink dark:bg-[#1A1C21] rounded-2xl px-5 py-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <Coins className="w-6 h-6 text-white/60 dark:text-gray-400" aria-hidden="true" />

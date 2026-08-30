@@ -5494,11 +5494,15 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 195건 · 최신순 · 이 목록은 자동 생성된다._
+_총 199건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-30**
 - [2026-08-30 — 매장 영입 보상을 딜로 (게이트 OFF 배선)](handoff/2026-08-30-store-intro-deal.md)
+- [2026-08-30 — 숙소 상세 사진만 여백이 있던 것](handoff/2026-08-30-stay-detail-gallery-bleed.md)
+- [2026-08-30 — 잉크 딥네이비 → 차콜 블랙 전환 + 숙소 상세 갤러리 풀블리드](handoff/2026-08-30-ink-black.md)
+- [2026-08-30 — 상세 페이지 "AI 티" 제거 (숙소 + 이용권)](handoff/2026-08-30-detail-plainness.md)
 - [2026-08-30 — 디자인 "AI 스러움" 진단 + 1층 수리 (버튼·그림자·포커스)](handoff/2026-08-30-design-ai-slop-audit.md)
+- [2026-08-30 — 자동분 제거 + 딜/현금 선택 존중 (오전 작업 되돌림 포함)](handoff/2026-08-30-deal-only-commission.md)
 - [버튼 체계 + 모서리 위계 (2026-08-30, PR #1240 머지 · #1244 진행)](handoff/2026-08-30-button-radius-system.md)
 **2026-08-29**
 - [2026-08-29 — 히어로 preload + 내가 만든 중단점 구멍(640~767px)](handoff/2026-08-29-hero-preload-and-breakpoint-gap.md)

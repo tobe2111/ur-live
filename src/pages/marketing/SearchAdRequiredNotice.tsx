@@ -38,7 +38,7 @@ export default function SearchAdRequiredNotice({ feature, onGo }: { feature: str
       </p>
       <button
         onClick={go}
-        className="mt-3 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12.5px] font-bold text-white dark:text-[#0F151D]"
+        className="mt-3 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12.5px] font-bold text-white dark:text-[#0D0F12]"
       >
         검색광고 계정 연결하기
       </button>

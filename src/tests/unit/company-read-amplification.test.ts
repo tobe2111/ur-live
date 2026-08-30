@@ -74,6 +74,7 @@ describe('① 인덱스가 DDL 에 등재돼 있다', () => {
     const all = COMPANY_DDL.join('\n')
     expect(all).toContain('idx_company_leads_classify_todo')
     expect(all).toContain('idx_company_leads_enrich_order')
+    expect(all).toContain('idx_company_leads_crawl_queue')
     // 기존 인덱스도 함께 살아 있어야 한다(모듈로 옮기며 잃어버리지 않았는지)
     for (const n of ['idx_company_leads_tier', 'idx_company_leads_region', 'idx_company_leads_cat', 'idx_company_leads_active', 'idx_company_leads_name_norm'])
       expect(all).toContain(n)
@@ -212,5 +213,60 @@ describe('⑥ 카카오 스윕 재작성 — 창 함수와 **같은 답**을 낸
     for (const s2 of COMPANY_INDEX_DDL.filter(x => /kakao_queue/.test(x))) db.exec(s2)
     db.exec('ANALYZE')
     expect(plan(db, `SELECT DISTINCT source FROM ad_company_leads WHERE ${KWHERE}`)).toContain('idx_company_leads_kakao_queue')
+  })
+})
+
+
+/**
+ * ⑦ **수집 레인 크롤 대상 — 15건 뽑으려고 40만 행** (2026-08-30, ⑥ 과 같은 클래스).
+ *
+ * 스윕을 고치고 나서 라이브에서 회차마다 도는 쿼리를 전부 직접 재 봤더니 같은 모양이 하나 더 있었다:
+ * ```
+ *   rows_read 402,363  →  돌려주는 행 15
+ *   결정적 조건만으로 좁히면 7,046행 (전체 396,208 의 1.8%)
+ * ```
+ * 대상이 이렇게 작은데 40만을 읽던 이유는 `ORDER BY (tier=1 우선), id DESC` 를 받는 인덱스가 없어
+ * **전수 정렬**했기 때문이다. `source IN (...)` 을 인덱스 키가 아니라 **부분조건**에 두는 것이 요령 —
+ * 그래야 정렬 키가 하나로 남아 정렬 자체가 사라진다.
+ *
+ * ⚠️ 이 시험이 못 막는 것: 라이브 플래너의 선택(D1 의 SQLite 버전·통계가 다를 수 있다).
+ *   배포 후 `meta.rows_read` 가 유일한 판정이다.
+ */
+describe('⑦ 수집 레인 크롤 대상 — 인덱스가 전수 정렬을 없앤다 (node:sqlite 실증)', () => {
+  /** `company-collect.ts` 의 크롤 대상 쿼리를 그대로 옮긴 것(플랫폼 URL 제외는 1개만 — 형태 동일). */
+  const CRAWL_Q = `SELECT id, website, phone, category FROM ad_company_leads
+        WHERE source IN ('local','webkr') AND merged_into IS NULL AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '')
+          AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < 99)
+          AND website NOT LIKE '%instagram.com%'
+        ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 15`
+
+  it('인덱스 없으면 전수 정렬 → 있으면 인덱스 순회, 그리고 **결과가 순서까지 동일**', () => {
+    const db = seed(20000)
+    // 표본의 source 를 라이브처럼 흩어 놓는다(seed 는 전부 webkr 라 부분조건이 시험되지 않는다).
+    db.exec("UPDATE ad_company_leads SET source = CASE id % 4 WHEN 0 THEN 'local' WHEN 1 THEN 'webkr' WHEN 2 THEN 'storeinfo' ELSE 'commerce' END")
+    db.exec("UPDATE ad_company_leads SET enrich_checked_at = CASE WHEN id % 2 = 0 THEN '2026-08-01 00:00:00' ELSE NULL END")
+
+    const before = plan(db, CRAWL_Q)
+    expect(before).toMatch(/SCAN ad_company_leads(?! USING)/)
+    expect(before, '이게 40만 행을 정렬하던 비용이다').toContain('TEMP B-TREE FOR ORDER BY')
+    const rowsBefore = db.prepare(CRAWL_Q).all()
+
+    for (const sql of COMPANY_INDEX_DDL.filter(x => /crawl_queue/.test(x))) db.exec(sql)
+    db.exec('ANALYZE')
+
+    const after = plan(db, CRAWL_Q)
+    expect(after, '인덱스를 안 쓰면 고친 게 아니다').toContain('idx_company_leads_crawl_queue')
+    expect(after, '정렬이 남아 있으면 대상 전체를 여전히 훑는다').not.toContain('TEMP B-TREE FOR ORDER BY')
+    // 🔒 빠르기만 하고 답이 달라지면 그건 고친 게 아니라 바꾼 것이다.
+    expect(db.prepare(CRAWL_Q).all()).toEqual(rowsBefore)
+    db.close()
+  })
+
+  it('🔒 `source` 는 인덱스 **키가 아니라 부분조건**에 있다 — 키에 넣으면 정렬이 되살아난다', () => {
+    const ddl = COMPANY_INDEX_DDL.find(x => /crawl_queue/.test(x))!
+    const [keyPart, wherePart] = ddl.split(/\bWHERE\b/)
+    expect(keyPart, '정렬 키는 (tier1 우선, id DESC) 하나여야 한다').not.toMatch(/\bsource\b/)
+    expect(wherePart).toMatch(/source IN \('local','webkr'\)/)
+    expect(wherePart, '접힌 행까지 인덱스에 담으면 대상이 커진다').toContain('merged_into IS NULL')
   })
 })

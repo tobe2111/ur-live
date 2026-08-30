@@ -56,12 +56,12 @@ export default function MyFollowsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#1A2334]">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#1A1C21]">
       <SEO title="내 단골 가게" description="단골 등록한 가게와 알림 설정" url="/my/follows" />
 
-      <div className="sticky top-0 z-30 bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446]">
+      <div className="sticky top-0 z-30 bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 flex items-center gap-3 py-3">
-          <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A2334]" aria-label="뒤로">
+          <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1C21]" aria-label="뒤로">
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
           <h1 className="text-base font-extrabold text-gray-900 dark:text-white">내 단골 가게</h1>
@@ -103,11 +103,11 @@ export default function MyFollowsPage() {
 
             <div className="space-y-3">
               {follows.map(f => (
-                <div key={f.seller_id} className="bg-white dark:bg-[#0F151D] rounded-2xl border border-gray-200 dark:border-[#2A3446] overflow-hidden">
+                <div key={f.seller_id} className="bg-white dark:bg-[#0D0F12] rounded-2xl border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
                   {/* 셀러 정보 */}
                   <button
                     onClick={() => navigate(`/profile/${f.seller_username || f.seller_id}`)}
-                    className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-[#1A2334] text-left transition-colors"
+                    className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-[#1A1C21] text-left transition-colors"
                   >
                     {f.seller_avatar ? (
                       <img src={f.seller_avatar} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" loading="lazy" />
@@ -124,7 +124,7 @@ export default function MyFollowsPage() {
                   </button>
 
                   {/* 알림 매트릭스 토글 */}
-                  <div className="border-t border-gray-100 dark:border-[#2A3446] p-3 space-y-2">
+                  <div className="border-t border-gray-100 dark:border-[#2C2F35] p-3 space-y-2">
                     {([
                       { key: 'notify_live_start' as const, label: '📺 라이브 시작', desc: '셀러가 방송 시작 시 push' },
                       { key: 'notify_group_buy' as const, label: '🔥 공구 시작', desc: '새 공구 등록 시 push' },
@@ -150,7 +150,7 @@ export default function MyFollowsPage() {
                           aria-label={`${opt.label} 알림 ${f[opt.key] ? '끄기' : '켜기'}`}
                           aria-pressed={f[opt.key]}
                         >
-                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white dark:bg-[#0F151D] shadow transition-transform ${f[opt.key] ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white dark:bg-[#0D0F12] shadow transition-transform ${f[opt.key] ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                         </button>
                       </label>
                     ))}

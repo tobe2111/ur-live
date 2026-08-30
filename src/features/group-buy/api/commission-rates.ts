@@ -48,6 +48,17 @@ const DEFAULTS: CommissionRates = {
   max_influencer_commission_pct: 2,
 }
 
+/**
+ * 딜 % 입력 검증선 — **정책 상한이 아니라 안전선**이다.
+ *
+ * 매장이 자기 지갑에서 주기로 한 값이라 유어딜이 몇 %인지 정하지 않는다(2026-08-22·08-30 대표).
+ * 다만 100 을 넘으면 매장이 팔수록 손해라 명백한 오입력이므로 막는다.
+ *
+ * 🔒 **제안(marketing.routes 의 `/deals/propose` 양방향)과 정산(`calcInfluencerCommissionPct`)이
+ * 반드시 같은 값을 써야 한다.** 갈리면 "제안은 되는데 정산에서 깎이는" 조용한 손실이 난다.
+ */
+export const DEAL_PCT_MAX = 90
+
 const KEY_MAP: Record<keyof CommissionRates, string> = {
   platform_pct: 'platform_margin_pct',
   influencer_pct: 'influencer_commission_pct',
@@ -150,17 +161,26 @@ export function calcInfluencerCommissionPct(
     deal_commission_pct: number | null              // 협업 deal 활성 시 우대 %
   },
 ): number {
-  const base = rates.influencer_pct
-  const referralPct = (ctx.is_referred_by_this_influencer && ctx.referral_bonus_active)
-    ? rates.seller_referral_bonus_pct
-    : 0
-  const candidateBase = base + referralPct
-  const candidateDeal = ctx.deal_commission_pct ?? 0
-  // 2026-08-22 대표(심플 모델): 매장이 명시 합의한 딜 % 는 플랫폼 캡 미적용 — 매장 부담 재원의
-  //   당사자 합의값이라 그대로 존중한다(상한 90 은 입력 검증선). 캡은 자동분(base+referral)에만.
-  const cappedAuto = Math.min(candidateBase, rates.max_influencer_commission_pct)
-  const deal = Math.max(0, Math.min(candidateDeal, 90))
-  return Math.max(cappedAuto, deal)
+  // 🛑 2026-08-30 대표 *"자동분은 빼줘"* — **소개자 수익 = 매장이 합의한 딜 % 뿐이다.**
+  //
+  //   그전까지는 `max(자동분, 딜)` 이었다. 자동분 = `influencer_pct`(기본 0) +
+  //   `seller_referral_bonus_pct`(1%, 그 소개자가 영입한 매장이고 보너스 기간 안일 때).
+  //
+  //   자동분을 없애는 이유는 재원이다. 정산식은
+  //   `sellerAmount = 총액 − 유어딜 수수료 − 인플 − 유저보너스`(group-buy.routes) 라
+  //   **자동분은 매장 지갑에서 나간다.** 매장은 그 1% 에 동의한 적이 없다 — 소개자가 자기를
+  //   영입했다는 사실만으로 매 주문에서 조용히 빠져나갔다. 딜은 매장이 명시로 약속한 값이라
+  //   같은 재원이어도 성격이 다르다.
+  //
+  //   ⇒ 합의 없는 자동 차감을 없애고, 매장이 스스로 정한 딜 % 만 남긴다.
+  //
+  //   `rates.influencer_pct` / `seller_referral_bonus_pct` / `max_influencer_commission_pct` 는
+  //   설정으로는 남지만 **이 계산에는 더 이상 쓰이지 않는다**(어드민 화면·과거 정산 조회 호환).
+  //   되살리려면 이 함수를 고쳐야 한다 — 설정값만 바꿔서는 안 살아난다.
+  //
+  //   상한 90 은 정책이 아니라 **입력 검증선**이다(100% 를 넘겨 매장이 손해 보는 값 차단).
+  const deal = ctx.deal_commission_pct ?? 0
+  return Math.max(0, Math.min(deal, DEAL_PCT_MAX))
 }
 
 export type { CommissionRates, SplitInput, SplitResult }

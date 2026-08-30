@@ -89,11 +89,11 @@ export default function IntroducePage() {
   ]
 
   return (
-    <div className="bg-[#0F151D] text-white min-h-screen">
+    <div className="bg-[#0D0F12] text-white min-h-screen">
       <SEO title={t('introduce.seoTitle', { defaultValue: CONSUMER_SURFACE_SEO['/introduce'].title })} description={t('introduce.seoDesc', { defaultValue: CONSUMER_SURFACE_SEO['/introduce'].description })} url="/introduce" />
 
       {/* ─── NAV ─── */}
-      <header className="sticky top-0 z-50 bg-[#0F151D]/90 backdrop-blur-md border-b border-[#2A3446]">
+      <header className="sticky top-0 z-50 bg-[#0D0F12]/90 backdrop-blur-md border-b border-[#2C2F35]">
         <div className="max-w-[1280px] mx-auto flex items-center justify-between px-6 h-16">
           <button onClick={() => navigate('/')} className="flex items-center">
             <UrDealLogo size={20} forceDark />
@@ -109,7 +109,7 @@ export default function IntroducePage() {
               href={APP_STORE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-extrabold text-white border border-[#2A3446] hover:border-[#444] transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-extrabold text-white border border-[#2C2F35] hover:border-[#444] transition-colors"
             >
               앱 다운로드
             </a>
@@ -126,7 +126,7 @@ export default function IntroducePage() {
       {/* ─── HERO ─── */}
       <section className="relative overflow-hidden">
         {/* gradient backdrop */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#2D0A14] via-[#0F151D] to-[#0F151D] pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#2D0A14] via-[#0D0F12] to-[#0D0F12] pointer-events-none" />
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] rounded-full bg-red-600/10 blur-[120px] pointer-events-none" />
         <div className="absolute top-20 right-1/4 w-[300px] h-[300px] rounded-full bg-pink-600/10 blur-[100px] pointer-events-none" />
 
@@ -191,7 +191,7 @@ export default function IntroducePage() {
               <div className="absolute inset-0 bg-gray-800/30 blur-[60px] rounded-full scale-110" />
               {/* phone */}
               <div className="relative w-[260px] h-[520px] bg-[#111] rounded-[44px] p-[10px] shadow-2xl border border-white/10">
-                <div className="w-full h-full rounded-[34px] bg-[#0F151D] relative overflow-hidden">
+                <div className="w-full h-full rounded-[34px] bg-[#0D0F12] relative overflow-hidden">
                   {/* notch */}
                   <div className="absolute top-3 left-1/2 -translate-x-1/2 w-[80px] h-[22px] bg-black rounded-2xl z-20" />
                   {/* 공구 badge */}
@@ -221,7 +221,7 @@ export default function IntroducePage() {
       </section>
 
       {/* ─── STATS ─── */}
-      <section className="border-y border-[#2A3446] bg-[#0F151D]">
+      <section className="border-y border-[#2C2F35] bg-[#0D0F12]">
         <div className="max-w-[1280px] mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
           {[
             { n: '240만+', l: '누적 사용자' },
@@ -249,7 +249,7 @@ export default function IntroducePage() {
           {features.map(f => {
             const Icon = f.icon
             return (
-              <div key={f.title} className="p-6 rounded-2xl bg-[#0D0D0D] border border-[#2A3446] hover:border-[#2A3446] transition-colors">
+              <div key={f.title} className="p-6 rounded-2xl bg-[#0D0D0D] border border-[#2C2F35] hover:border-[#2C2F35] transition-colors">
                 <div
                   className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
                   style={{ backgroundColor: f.color + '20' }}
@@ -283,9 +283,9 @@ export default function IntroducePage() {
             <button
               key={`${d.id}-${idx}`}
               onClick={() => d.id ? navigate(`/group-buy/${d.id}`) : navigate('/group-buy')}
-              className="block rounded-2xl overflow-hidden border border-[#2A3446] hover:border-[#2A3446] transition-all hover:scale-[1.02]"
+              className="block rounded-2xl overflow-hidden border border-[#2C2F35] hover:border-[#2C2F35] transition-all hover:scale-[1.02]"
             >
-              <div className="aspect-[3/4] relative bg-gradient-to-br from-[#1A0808] to-[#0F151D]">
+              <div className="aspect-[3/4] relative bg-gradient-to-br from-[#1A0808] to-[#0D0F12]">
                 {d.image_url && (
                   <img
                     src={cfImage(d.image_url, { width: 320, format: 'auto' })}
@@ -314,7 +314,7 @@ export default function IntroducePage() {
         <div className="mt-6 text-center">
           <button
             onClick={() => navigate('/group-buy')}
-            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full border border-[#2A3446] text-[13px] font-bold text-gray-300 hover:border-[#444] hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full border border-[#2C2F35] text-[13px] font-bold text-gray-300 hover:border-[#444] hover:text-white transition-colors"
           >
             전체 동네 공구 보기 <ChevronRight className="w-4 h-4" />
           </button>
@@ -322,7 +322,7 @@ export default function IntroducePage() {
       </section>
 
       {/* ─── HOW IT WORKS ─── */}
-      <section className="bg-[#0F151D] border-y border-[#2A3446]">
+      <section className="bg-[#0D0F12] border-y border-[#2C2F35]">
         <div className="max-w-[1280px] mx-auto px-6 py-20">
           <div className="mb-12 text-center">
             <p className="text-[11px] font-extrabold text-red-400 tracking-[0.15em] mb-3">HOW IT WORKS</p>
@@ -336,7 +336,7 @@ export default function IntroducePage() {
               { n: '02', Icon: ShoppingCart, title: '그룹 특가로 구매', desc: '인원과 무관하게 처음부터 같은 그룹 특가. 결제하면 교환권이 즉시 발급돼요.' },
               { n: '03', Icon: Utensils, title: '매장 방문·사용', desc: '발급된 교환권을 매장에서 제시하고 사용하세요. 숙소·배송 상품은 안내에 따라 이용하시면 돼요.' },
             ].map(s => (
-              <div key={s.n} className="relative p-8 rounded-3xl bg-[#111] border border-[#2A3446] overflow-hidden">
+              <div key={s.n} className="relative p-8 rounded-3xl bg-[#111] border border-[#2C2F35] overflow-hidden">
                 <div className="absolute -top-4 -right-2 text-[100px] font-black opacity-[0.04] text-white select-none">{s.n}</div>
                 <s.Icon className="w-9 h-9 mx-auto mb-5 text-gray-400" aria-hidden="true" />
                 <h3 className="text-[20px] font-extrabold text-white mb-3">{s.title}</h3>
@@ -373,7 +373,7 @@ export default function IntroducePage() {
       </section>
 
       {/* ─── FOR SELLERS ─── */}
-      <section id="for-sellers" className="bg-[#0F151D] border-t border-[#2A3446]">
+      <section id="for-sellers" className="bg-[#0D0F12] border-t border-[#2C2F35]">
         <div className="max-w-[1280px] mx-auto px-6 py-20">
           <div className="max-w-[680px]">
             <p className="text-[11px] font-extrabold text-red-400 tracking-[0.15em] mb-3">FOR SELLERS</p>
@@ -406,7 +406,7 @@ export default function IntroducePage() {
               </button>
               <button
                 onClick={() => navigate('/seller/login')}
-                className="px-6 py-3.5 rounded-2xl text-[14px] font-extrabold text-white bg-[#1A2334] hover:bg-[#222] transition-colors border border-[#2A3446]"
+                className="px-6 py-3.5 rounded-2xl text-[14px] font-extrabold text-white bg-[#1A1C21] hover:bg-[#222] transition-colors border border-[#2C2F35]"
               >
                 셀러 로그인
               </button>
@@ -425,7 +425,7 @@ export default function IntroducePage() {
         </div>
         <div className="space-y-1">
           {faqs.map((f, i) => (
-            <div key={i} className="border border-[#2A3446] rounded-2xl overflow-hidden">
+            <div key={i} className="border border-[#2C2F35] rounded-2xl overflow-hidden">
               <button
                 onClick={() => setFaqOpen(faqOpen === i ? null : i)}
                 className="w-full flex items-center justify-between text-left px-5 py-4.5 hover:bg-[#0D0D0D] transition-colors"
@@ -450,7 +450,7 @@ export default function IntroducePage() {
       </section>
 
       {/* ─── FOOTER ─── */}
-      <footer className="border-t border-[#2A3446] bg-[#0F151D]">
+      <footer className="border-t border-[#2C2F35] bg-[#0D0F12]">
         <div className="max-w-[1280px] mx-auto px-6 py-16">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-10 mb-10">
             <div>
@@ -467,7 +467,7 @@ export default function IntroducePage() {
             </div>
           </div>
 
-          <div className="pt-8 border-t border-[#2A3446] text-[11px] text-gray-600 leading-relaxed">
+          <div className="pt-8 border-t border-[#2C2F35] text-[11px] text-gray-600 leading-relaxed">
             <p className="mb-1.5"><b className="text-gray-400">리스터코퍼레이션</b> · 대표: 정지원 · 사업자등록번호: 479-09-02930</p>
             <p className="mb-5">서울특별시 강남구 남부순환로359길 14, 3층(도곡동) · 고객센터 평일 09:00~18:00</p>
             <div className="flex flex-wrap gap-4">

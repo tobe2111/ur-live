@@ -97,7 +97,7 @@ export default function StayDateGuestPicker({
 
   const trigger = 'flex-1 min-w-0 flex items-center justify-center gap-2 h-12 rounded-xl border text-[14px] font-bold transition-colors'
   const on = 'border-brand text-brand bg-brand/[0.06]'
-  const off = 'border-gray-200 dark:border-[#2A3446] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+  const off = 'border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/[0.04]'
 
   return (
     <div ref={boxRef} className="relative">
@@ -113,7 +113,7 @@ export default function StayDateGuestPicker({
       </div>
 
       {open === 'date' && (
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[10500] rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#141C27] shadow-[0_12px_40px_rgba(0,0,0,0.18)] p-4 lg:w-[680px] lg:left-auto lg:right-0">
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[10500] rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#141C27] shadow-[0_12px_40px_rgba(0,0,0,0.18)] p-4 lg:w-[680px] lg:left-auto lg:right-0">
           <div className="flex items-center justify-between mb-2">
             <button type="button" onClick={() => setMonthOffset(m => Math.max(0, m - 1))} disabled={monthOffset === 0}
               aria-label="이전 달" className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-white/[0.06]">
@@ -171,7 +171,7 @@ export default function StayDateGuestPicker({
             ))}
           </div>
 
-          <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-[#2A3446]">
+          <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-[#2C2F35]">
             <span className="text-[12.5px] text-gray-500 dark:text-gray-400">
               {fmtTrigger(draftIn)} ~ {fmtTrigger(draftOut)} · <b className="text-gray-900 dark:text-white">{nights}박</b>
             </span>
@@ -184,7 +184,7 @@ export default function StayDateGuestPicker({
       )}
 
       {open === 'guest' && (
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[10500] rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#141C27] shadow-[0_12px_40px_rgba(0,0,0,0.18)] p-4 lg:w-[360px] lg:left-auto lg:right-0">
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[10500] rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#141C27] shadow-[0_12px_40px_rgba(0,0,0,0.18)] p-4 lg:w-[360px] lg:left-auto lg:right-0">
           {overBase && (
             <div className="rounded-xl bg-gray-50 dark:bg-white/[0.05] p-3 mb-3">
               <p className="text-[13px] font-bold text-gray-900 dark:text-white">기준인원 초과 시 추가요금이 발생할 수 있어요.</p>

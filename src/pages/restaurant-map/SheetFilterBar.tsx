@@ -59,7 +59,7 @@ export default function SheetFilterBar({
   const showViewport = viewportCount != null && viewportCount < filteredCount
 
   return (
-    <div className="px-3 pb-2 border-b border-gray-100 dark:border-[#2A3446] shrink-0">
+    <div className="px-3 pb-2 border-b border-gray-100 dark:border-[#2C2F35] shrink-0">
       {!hideChips && (
       <div className="flex items-center gap-2">
         <button
@@ -68,12 +68,12 @@ export default function SheetFilterBar({
           className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
             activeFilterCount > 0
               ? 'bg-brand text-white shadow-md shadow-brand/30'
-              : 'bg-white dark:bg-[#0F151D] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2A3446]'
+              : 'bg-white dark:bg-[#0D0F12] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2C2F35]'
           }`}
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
           {activeFilterCount > 0 && (
-            <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-white dark:bg-[#0F151D]/25 text-[10px] font-bold">
+            <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-white dark:bg-[#0D0F12]/25 text-[10px] font-bold">
               {activeFilterCount}
             </span>
           )}
@@ -99,7 +99,7 @@ export default function SheetFilterBar({
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
                 voucherType === v.key
                   ? 'bg-gray-900 text-white'
-                  : 'bg-gray-50 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A3446]'
+                  : 'bg-gray-50 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'
               }`}
             >
               <span>{v.emoji}</span>
@@ -129,7 +129,7 @@ export default function SheetFilterBar({
               className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
                 showFavoritesOnly
                   ? 'bg-brand text-white border-brand'
-                  : 'bg-white dark:bg-[#0F151D] text-brand border-[#F4C2CC]'
+                  : 'bg-white dark:bg-[#0D0F12] text-brand border-[#F4C2CC]'
               }`}
             >
               <Heart className="w-2.5 h-2.5" fill={showFavoritesOnly ? 'currentColor' : 'none'} />
@@ -141,7 +141,7 @@ export default function SheetFilterBar({
         <button
           onClick={() => setSortOpen(true)}
           aria-label={t('map.sheet.sortAria', { defaultValue: '정렬' })}
-          className="flex items-center gap-1 text-[12px] font-semibold text-gray-700 dark:text-gray-200 px-2 py-1 rounded-lg active:bg-gray-100 dark:active:bg-[#1A2334]"
+          className="flex items-center gap-1 text-[12px] font-semibold text-gray-700 dark:text-gray-200 px-2 py-1 rounded-lg active:bg-gray-100 dark:active:bg-[#1A1C21]"
         >
           <ArrowUpDown className="w-3 h-3 text-gray-400 dark:text-gray-500" />
           <span>{t(SORT_LABEL[sortBy].labelKey, { defaultValue: SORT_LABEL[sortBy].def })}</span>

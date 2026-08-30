@@ -274,10 +274,30 @@ const MUTATIONS = [
       '남는다.** 분기 변경 직후 실제로 그 회귀를 냈고 이 가드로 잡았다.',
   },
   {
+    name: '상세 제목이 다시 번역투가 된다(무엇을 기대하세요?)',
+    file: 'src/pages/GroupBuyDetailPage.tsx',
+    find: ">딜 안내</div>",
+    replace: ">무엇을 기대하세요?</div>",
+    test: 'src/tests/unit/detail-page-plainness.test.ts',
+    why:
+      'What to expect 를 그대로 옮긴 제목이었다. 한국 커머스에선 아무도 그렇게 안 쓰고, ' +
+      '대표가 "AI 티 안나는 디자인으로" 라고 지적한 그 티의 대표 사례다(2026-08-30).',
+  },
+  {
+    name: '숙소 시설이 다시 3분할 카드가 된다',
+    file: 'src/pages/StayDetailPage.tsx',
+    find: '<AmenityFlow items=',
+    replace: '<div className="grid grid-cols-3 sm:grid-cols-4" /><AmenityFlow items=',
+    test: 'src/tests/unit/detail-page-plainness.test.ts',
+    why:
+      '"무료 주차" 세 글자마다 테두리 하나를 두르던 3분할 카드. 모든 블록이 같은 무게의 ' +
+      '흰 카드가 되면 위계가 사라지고 화면이 자동 생성된 것처럼 읽힌다.',
+  },
+  {
     name: '홈 색면이 다시 리터럴 hex 로 흩어진다(페이지와 히어로가 갈림)',
     file: 'src/pages/pc-home/PcHomePage.tsx',
     find: '<div className="bg-[var(--home-field)] min-h-[100dvh]">',
-    replace: '<div className="bg-[#1A2C42] min-h-[100dvh]">',
+    replace: '<div className="bg-[#16181C] min-h-[100dvh]">',
     test: 'src/tests/unit/home-color-field.test.ts',
     why:
       '색면은 페이지 전체와 히어로 두 군데서 그려진다. 두 값이 다르면 **이음매가 그대로 보이는데** ' +
@@ -1190,6 +1210,19 @@ canvas {
       '그런데 preload 는 **URL 이 byte-일치할 때만** 쓰인다 — 한 글자만 달라도 브라우저는 그걸 버리고 ' +
       '같은 사진을 다시 받는다. **에러도 없고 화면도 멀쩡한데 더 느려지고 트래픽만 두 배**가 된다. ' +
       '폭이 뷰포트로 갈리므로(2·3열 200 ↔ 4열 400) 특히 어긋나기 쉬워, 양쪽이 SSOT 상수를 읽게 했다.',
+  },
+  {
+    name: '숙소 상세 사진만 여백이 생긴다(다른 상세는 풀블리드)',
+    file: 'src/pages/StayDetailPage.tsx',
+    find: 'relative -mx-4 -mt-5 lg:mx-0 lg:mt-0 bg-gray-100',
+    replace: 'relative bg-gray-100',
+    test: 'src/tests/unit/stay-detail-gallery-bleed.test.ts',
+    why:
+      '2026-08-30 대표 신고. 숙소는 갤러리를 본문과 같은 `px-4 py-5` 래퍼 **안**에 둬서, 같은 ' +
+      '`DetailGallery` 를 쓰는데도 사진만 들여쓰기됐다(실측 390px: 공구 x[0..390] top 0 ↔ 숙소 ' +
+      'x[16..374] top 20). 🔁 **숙소는 상세 개선에서 반복적으로 빠진다** — 2026-08-19 에도 같은 ' +
+      '이유로 고쳤는데 그때는 제목·갤러리만 맞추고 바깥 여백을 놓쳤다. 되돌아가도 에러가 없고 ' +
+      '**PC 에서는 티가 안 나서**(PC 는 원래 카드로 떠 있다) 폰으로 보기 전엔 아무도 모른다.',
   },
   {
     name: '히어로가 남의 사진(외부 호스트 데모)을 홈 얼굴로 쓴다',
@@ -6037,6 +6070,16 @@ canvas {
       '에러 없이, 통계에도 안 잡히고. 이 파일이 두 번 고친 사고가 정확히 그 모양이었다.',
   },
   {
+    name: '🐌 수집 크롤 인덱스에 source 를 키로 넣는다(정렬이 되살아난다)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: "     (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC)\n     WHERE merged_into IS NULL AND source IN ('local','webkr')",
+    replace: "     source, (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC)\n     WHERE merged_into IS NULL",
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      'source 가 정렬 키 선두에 오면 두 소스 그룹을 합치느라 정렬이 되살아난다 — 쿼리는 똑같이 ' +
+      '답을 내고 에러도 없지만 회당 40만 행 읽기가 그대로 돌아온다. 화면엔 아무 변화가 없다.',
+  },
+  {
     name: '☎️ 스윕 인덱스의 정렬 키가 쿼리와 어긋난다(전량 정렬로 복귀)',
     file: 'src/features/marketing/api/company-ddl-indexes.ts',
     find: "     source, (kakao_checked_at IS NOT NULL), (email IS NOT NULL AND email <> ''),",
@@ -6048,34 +6091,50 @@ canvas {
   },
 
   {
-    name: '💎 매장 영입 딜 지급이 선점 없이 적립한다(이중지급)',
-    file: 'src/worker/cron/influencer-payout.ts',
-    find: "        if ((claim?.meta?.changes ?? 0) !== 1) continue",
-    replace: '',
-    test: 'src/tests/unit/store-intro-deal-payout.test.ts',
+    name: '🛑 자동분이 되살아난다(매장이 합의 안 한 몫이 매장 지갑에서 나감)',
+    file: 'src/features/group-buy/api/commission-rates.ts',
+    find: '  const deal = ctx.deal_commission_pct ?? 0\n  return Math.max(0, Math.min(deal, DEAL_PCT_MAX))',
+    replace:
+      '  const cappedAuto = Math.min(rates.influencer_pct + ((ctx.is_referred_by_this_influencer && ctx.referral_bonus_active) ? rates.seller_referral_bonus_pct : 0), rates.max_influencer_commission_pct)\n' +
+      '  const deal = ctx.deal_commission_pct ?? 0\n  return Math.max(cappedAuto, Math.min(deal, DEAL_PCT_MAX))',
+    test: 'src/tests/unit/deal-only-commission.test.ts',
     why:
-      'claim-before-credit(머니 룰 #1)이 무너진다. cron 재시도·동시 실행에 같은 행이 두 번 적립되고, ' +
-      '딜은 교환권으로 실물 교환이 되므로 되돌리기가 비싸다(이미 쓴 딜은 회수 불가).',
+      '2026-08-30 대표 "자동분은 빼줘". 정산식이 `sellerAmount = 총액 − 유어딜 − 인플 − 유저보너스` 라 ' +
+      '자동분은 **매장 지갑에서** 나간다 — 매장이 동의한 적 없는 차감이다. 되살아나도 금액이 작아(1%) ' +
+      '화면상 티가 안 나고, 딜이 있는 주문에서는 max() 에 가려 아예 안 보인다.',
   },
   {
-    name: '💎 매장 영입 딜 지급이 게이트 없이 켜진다',
-    file: 'src/worker/cron/influencer-payout.ts',
-    find: "    if (dealGate?.value === 'true') {",
-    replace: '    if (true) {',
-    test: 'src/tests/unit/store-intro-deal-payout.test.ts',
+    name: '🛑 딜 제안이 다시 2% 에서 막힌다(계약 자체가 성립 불가)',
+    file: 'src/features/group-buy/api/marketing.routes.ts',
+    // ⚠️ `pct > DEAL_PCT_MAX` 만으로는 propose 두 곳에 다 걸려 앵커가 유일하지 않다(소개자측으로 고정).
+    find: 'pct > DEAL_PCT_MAX) return c.json(',
+    replace: 'pct > 2) return c.json(',
+    test: 'src/tests/unit/deal-only-commission.test.ts',
     why:
-      '머니 경로는 게이트 OFF 로 배선하고 staging 실결제 후 켠다(레포 룰). 게이트가 사라지면 ' +
-      '배포 즉시 현금 경로가 딜로 바뀌고, 원천징수(3.3%/8.8%)가 조용히 사라진다 — 세무 판정 전에는 안 된다.',
+      '정산은 딜을 90 까지 인정하는데 제안 문이 2 로 잠겨 있으면 **딜 계약이 한 건도 못 만들어진다** — ' +
+      '라이브에서 실제로 그 상태였고(딜 0건) 아무도 에러로 보지 못했다. 400 이 나는 쪽은 매장이라 ' +
+      '우리 로그엔 남지 않는다.',
   },
   {
-    name: '💎 딜 지급이 store_intro 아닌 적립까지 삼킨다',
+    name: '💎 딜 수령자가 계좌 누락으로 조용히 보류된다',
     file: 'src/worker/cron/influencer-payout.ts',
-    find: "         WHERE status = 'pending' AND source = 'store_intro'",
-    replace: "         WHERE status = 'pending'",
-    test: 'src/tests/unit/store-intro-deal-payout.test.ts',
+    find: 'if (!wantsDeal && (!inf.bank_name',
+    replace: 'if ((!inf.bank_name',
+    test: 'src/tests/unit/deal-only-commission.test.ts',
     why:
-      '`influencer_attributions` 에는 매칭 캠페인 등 **현금으로 줘야 할 축**도 들어 있다. ' +
-      '필터가 빠지면 그것들까지 딜로 지급되고 현금 잔액에서 사라진다 — 소개자가 받을 돈의 종류가 바뀐다.',
+      '딜을 고른 사람일수록 계좌를 안 넣는다. 가드가 빠지면 그들이 `missingBank` 로 빠져 어드민 ' +
+      '지급대기 알림에 **영영 안 뜬다** — 에러가 아니라 부재라 아무도 모른다(라이브가 그 상태였다).',
+  },
+  {
+    name: '💎 cron 이 직접 딜을 적립한다(세탁 루프 재개방)',
+    file: 'src/worker/cron/influencer-payout.ts',
+    find: '    let payoutCount = 0',
+    replace: "    const { adjustUserPoints } = await import('../utils/point-ledger')\n    void adjustUserPoints\n    let payoutCount = 0",
+    test: 'src/tests/unit/deal-only-commission.test.ts',
+    why:
+      'cron 은 알림까지만 하고 지급은 어드민 [처리]가 한다. cron 이 직접, 그것도 유상 버킷으로 적립하면 ' +
+      '① 본인이 고른 payout_method 를 무시하고 ② 2026-07-05 에 닫은 [현금 100 → 딜 120 → 재출금] ' +
+      '차익 세탁 루프가 다시 열린다. 2026-08-30 오전에 실제로 이렇게 만들었다가 같은 날 되돌렸다.',
   },
 ]
 /**

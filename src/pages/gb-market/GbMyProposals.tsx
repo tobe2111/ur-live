@@ -65,7 +65,7 @@ export default function GbMyProposals() {
         </div>
       )}
       {mine.length > 0 && (
-        <div className="rounded-2xl border border-gray-100 dark:border-[#2A3446] p-3">
+        <div className="rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-3">
           <p className="text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-2">📤 내가 낸 제안</p>
           {mine.map(r => (
             <div key={r.id} className="flex items-center justify-between gap-2 py-1.5">

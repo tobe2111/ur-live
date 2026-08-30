@@ -28,10 +28,15 @@ describe('② 딜 % 는 캡에 잘리지 않는다 (제안서 % 그대로)', () 
       is_referred_by_this_influencer: false, referral_bonus_active: false, deal_commission_pct: 15,
     })).toBe(15)
   })
-  it('자동분(base+referral)은 여전히 캡 적용', () => {
+  // 🛑 2026-08-30 대표 *"자동분은 빼줘"* — 이 자리엔 원래 `자동분은 여전히 캡 적용`(→2) 이 있었다.
+  //   자동분 자체가 없어졌으므로 그 단언은 옛 정책을 고정하는 셈이라 **반대 방향으로 뒤집어** 둔다.
+  //   (지우면 "자동분이 슬쩍 되살아나는" 회귀를 아무도 못 잡는다.)
+  //   왜 뺐나: 정산식이 `매장 몫 = 총액 − 유어딜 − 인플 − 유저보너스` 라 자동분은 **매장 지갑**에서
+  //   나갔다 — 매장이 동의한 적 없는 차감이다. 상세는 `deal-only-commission.test.ts`.
+  it('자동분은 아예 없다 — 딜이 없으면 0 (influencer_pct 가 5 여도)', () => {
     expect(calcInfluencerCommissionPct({ ...RATES, influencer_pct: 5 }, {
-      is_referred_by_this_influencer: false, referral_bonus_active: false, deal_commission_pct: null,
-    })).toBe(2)
+      is_referred_by_this_influencer: true, referral_bonus_active: true, deal_commission_pct: null,
+    })).toBe(0)
   })
   it('딜 % 상한 90 (입력검증선과 동일)', () => {
     expect(calcInfluencerCommissionPct(RATES, {

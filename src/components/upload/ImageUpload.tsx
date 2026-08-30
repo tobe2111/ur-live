@@ -164,14 +164,14 @@ export default function ImageUpload({
         disabled={uploading}
       />
       {value ? (
-        <div className={`relative ${aspectClass} border-2 border-gray-200 dark:border-[#2A3446] rounded-lg overflow-hidden group`}>
+        <div className={`relative ${aspectClass} border-2 border-gray-200 dark:border-[#2C2F35] rounded-lg overflow-hidden group`}>
           <img src={value} alt={label || 'uploaded'} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
-              className="px-3 py-1.5 bg-white dark:bg-[#1A2334] text-gray-900 dark:text-white text-xs font-semibold rounded shadow disabled:opacity-50"
+              className="px-3 py-1.5 bg-white dark:bg-[#1A1C21] text-gray-900 dark:text-white text-xs font-semibold rounded shadow disabled:opacity-50"
             >
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : '변경'}
             </button>
@@ -193,7 +193,7 @@ export default function ImageUpload({
           className={`${aspectClass} border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all p-4 ${
             uploading ? 'border-blue-300 bg-blue-50 cursor-wait' :
             dragOver ? 'border-blue-500 bg-blue-50' :
-            'border-gray-300 dark:border-[#2A3446] bg-gray-50 dark:bg-[#1A2334] hover:border-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A2334]'
+            'border-gray-300 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1A1C21] hover:border-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A1C21]'
           }`}
         >
           {uploading ? (
@@ -229,7 +229,7 @@ export function MultiImageUpload({ values, onChange, max = 10, tokenKey, label }
       {label && <label className="block text-xs font-semibold text-gray-700 dark:text-gray-200 mb-1.5">{label}</label>}
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
         {values.map((url, i) => (
-          <div key={i} className="relative aspect-square border border-gray-200 dark:border-[#2A3446] rounded-lg overflow-hidden group">
+          <div key={i} className="relative aspect-square border border-gray-200 dark:border-[#2C2F35] rounded-lg overflow-hidden group">
             <img src={url} alt={`${i + 1}`} className="w-full h-full object-cover" />
             <button
               type="button"

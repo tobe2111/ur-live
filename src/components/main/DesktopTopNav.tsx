@@ -215,7 +215,7 @@ export default function DesktopTopNav() {
   const isMapSurface = location.pathname === '/map'
 
   return (
-    <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2A3446]">
+    <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
       {/* 📐 2026-08-19: 검색바가 46px 로 커져 행 높이도 56→68px(그루폰 헤더 비율). */}
       <div className={isHome
         ? 'flex items-center gap-4 h-[68px] max-w-[1440px] mx-auto w-full px-6 lg:px-8'
@@ -376,7 +376,7 @@ export default function DesktopTopNav() {
               aria-label={t('nav.my', { defaultValue: '마이' })}
               aria-expanded={acctOpen}
               aria-haspopup="menu"
-              className={`flex items-center gap-0.5 pl-1 pr-1.5 h-9 rounded-full border border-gray-200 dark:border-[#2A3446] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors ${
+              className={`flex items-center gap-0.5 pl-1 pr-1.5 h-9 rounded-full border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors ${
                 acctOpen || isActivePath('/user/profile') ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white' : ''
               }`}
             >
@@ -406,7 +406,7 @@ export default function DesktopTopNav() {
           ⚠️ 딜 카테고리는 **홈의 쿼리**(`/?category=`)로 간다 — PcHomePage 가 쿼리 변화에 제자리 반응하므로
           리마운트 0(2026-08-17 '더보기 플래시' 수리와 같은 경로). 라벨/아이콘 SSOT 는 `DEAL_CATS`. */}
       {isHome && (
-        <div className="border-t border-gray-100 dark:border-[#2A3446]">
+        <div className="border-t border-gray-100 dark:border-[#2C2F35]">
           <div className="relative max-w-[1440px] mx-auto w-full px-6 lg:px-8">
             <nav
               ref={catScrollRef}
@@ -435,7 +435,7 @@ export default function DesktopTopNav() {
               })}
 
               {!hideDealCats && (
-                <span aria-hidden="true" className="shrink-0 w-px h-4 mx-2 bg-gray-200 dark:bg-[#2A3446]" />
+                <span aria-hidden="true" className="shrink-0 w-px h-4 mx-2 bg-gray-200 dark:bg-[#2C2F35]" />
               )}
 
               {!hideDealCats && DEAL_CATS.map(({ key, label, icon: Icon }) => {
@@ -463,7 +463,7 @@ export default function DesktopTopNav() {
               <button
                 onClick={() => catScrollRef.current?.scrollBy({ left: 260, behavior: 'smooth' })}
                 aria-label={t('common.more', { defaultValue: '더 보기' })}
-                className="ur-appear absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white dark:bg-[#141C27] border border-gray-200 dark:border-[#2A3446] shadow-sm flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06]"
+                className="ur-appear absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white dark:bg-[#141C27] border border-gray-200 dark:border-[#2C2F35] shadow-sm flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06]"
                 style={{ opacity: 1, transform: 'translateY(-50%) scale(1)' }}
               >
                 <ChevronRight className="w-4 h-4" strokeWidth={2.2} />

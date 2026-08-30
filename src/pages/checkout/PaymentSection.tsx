@@ -69,7 +69,7 @@ export default function PaymentSection({
   // 교환권만 담겼으면 결제 수단 선택 탭 자체 숨김 + 딜 잔액 부족 시 충전 유도.
   const insufficientDeal = dealOnly && dealBalance < totalBeforeDeal
   return (
-    <section className="bg-white dark:bg-[#0F151D] px-5 py-4">
+    <section className="bg-white dark:bg-[#0D0F12] px-5 py-4">
       <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('payment.section.title', { defaultValue: '결제 수단' })}</h2>
 
       {/* 🛡️ 2026-05-23: 사용자 지적 — redundant "카드/간편결제" 탭 제거.

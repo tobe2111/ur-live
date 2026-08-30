@@ -36,7 +36,7 @@
  *   "박스의 나열"로 읽힌다.
  *
  * ⚠️ `text-gray-*` 를 쓰지 않고 hex 를 직접 쓴다 — `tailwind.config.js` 가 `gray-*` 를 **INK
- *   스케일(딥네이비 `#1A2C42`)로 리맵**하는데 시안의 중립색은 웜 계열(`#1A1719`)이라 조용히 틀어진다.
+ *   스케일(딥네이비 `#16181C`)로 리맵**하는데 시안의 중립색은 웜 계열(`#1A1719`)이라 조용히 틀어진다.
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'

@@ -53,13 +53,13 @@ export default function DetailTitleHeader({
         )}
         {address && (
           <span className="inline-flex items-center gap-1.5">
-            {hasRating && <span className="text-gray-200 dark:text-[#2A3446]">|</span>}
+            {hasRating && <span className="text-gray-200 dark:text-[#2C2F35]">|</span>}
             <MapPin className="w-[15px] h-[15px] shrink-0" />
             {address}
           </span>
         )}
         {phone && (
-          <a href={`tel:${phone}`} className="font-semibold no-underline text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-[#2A3446]">{phone}</a>
+          <a href={`tel:${phone}`} className="font-semibold no-underline text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-[#2C2F35]">{phone}</a>
         )}
       </div>
     </header>

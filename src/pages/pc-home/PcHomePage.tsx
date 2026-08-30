@@ -70,7 +70,7 @@ export default function PcHomePage() {
   const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
 
   return (
-    /* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면): PC 메인 배경을 브랜드 잉크(#1A2C42)로 덮고
+    /* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면): PC 메인 배경을 브랜드 잉크(#16181C)로 덮고
        콘텐츠는 흰 패널로 띄운다. 그루폰이 초록으로 하는 것을 우리 딥네이비로.
        ⚠️ PC 메인 한정(대표 지시) — 다른 소비자 페이지는 흰 배경 그대로. */
     <div className="bg-[var(--home-field)] min-h-[100dvh]">
@@ -138,7 +138,7 @@ export default function PcHomePage() {
                 className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-bold border transition-colors inline-flex items-center gap-1 ${
                   sort === 'near'
                     ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
-                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                 }`}
               >
                 📍 가까운 순
@@ -154,7 +154,7 @@ export default function PcHomePage() {
                   className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-bold border transition-colors ${
                     active
                       ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
-                      : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                      : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                   }`}
                 >
                   {s.label}
@@ -168,7 +168,7 @@ export default function PcHomePage() {
           {category === 'stay_voucher' && (
             <Link
               to="/stays"
-              className="flex items-center justify-between mb-4 px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-[#2A3446] hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors"
+              className="flex items-center justify-between mb-4 px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-[#2C2F35] hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors"
             >
               <span className="text-[13px] font-bold text-gray-900 dark:text-white"><BedDouble className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />날짜·인원으로 숙소 검색하기</span>
               <span className="text-[13px] text-gray-500 dark:text-gray-400">체크인/체크아웃 지정 →</span>
@@ -198,7 +198,7 @@ export default function PcHomePage() {
           플래그 OFF 면 아무것도 안 그린다(홈은 2026-07-19 확정 구조로 즉시 복귀). */}
       {/* 🎨 2026-08-19: 색면 위에서는 자체 배경이 없으면 글자가 묻힌다(gray-900 on 잉크).
           지역 링크는 흰 밴드로 깔아 하단을 마무리한다 — 그루폰 하단 링크 영역과 같은 처리. */}
-      {REGION_PAGES_ENABLED && <RegionLinkGrid className="bg-white dark:bg-[#0F151D]" />}
+      {REGION_PAGES_ENABLED && <RegionLinkGrid className="bg-white dark:bg-[#0D0F12]" />}
 
       <PcHomeAppBand />
       <SiteFooter />

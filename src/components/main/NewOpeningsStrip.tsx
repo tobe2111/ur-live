@@ -51,7 +51,7 @@ export default function NewOpeningsStrip() {
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 lg:mx-0 lg:px-0">
         {rows.map((o, i) => (
           <button key={i} onClick={() => navigate('/new-openings')}
-            className="shrink-0 w-[150px] text-left rounded-xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-3 active:scale-[0.98] transition-transform">
+            className="shrink-0 w-[150px] text-left rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-3 active:scale-[0.98] transition-transform">
             <div className="flex items-center justify-between gap-1">
               {(() => { const I = CAT_ICON[o.category || ''] || Store; return <I className="w-4 h-4 text-gray-400" aria-hidden="true" /> })()}
               <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${dDay(o.apv_perm_ymd) === 'NEW' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300' : 'bg-gray-100 text-gray-500 dark:bg-[#243049] dark:text-gray-400'}`}>{dDay(o.apv_perm_ymd) || '개업'}</span>

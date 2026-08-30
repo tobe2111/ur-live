@@ -9,11 +9,11 @@ export default function PrivacyPolicyPage() {
   const isKR = isKorea()
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0F151D] pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#0D0F12] pb-20">
       <SEO title={CONSUMER_SURFACE_SEO['/privacy'].title} description={CONSUMER_SURFACE_SEO['/privacy'].description} url="/privacy" />
 
       {/* Header */}
-      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0D0F12]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
@@ -44,7 +44,7 @@ export default function PrivacyPolicyPage() {
               </ul>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">2. How We Use Your Information</h2>
               <ul className="list-disc ml-5 space-y-1 text-[13px] text-gray-600 dark:text-gray-300">
                 <li>To provide, maintain, and improve the Service</li>
@@ -55,7 +55,7 @@ export default function PrivacyPolicyPage() {
               </ul>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">3. Data Sharing</h2>
               <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">We do not sell your personal information. We may share data with:</p>
               <ul className="list-disc ml-5 mt-2 space-y-1 text-[13px] text-gray-600 dark:text-gray-300">
@@ -66,12 +66,12 @@ export default function PrivacyPolicyPage() {
               </ul>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">4. Data Retention</h2>
               <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">We retain personal data for as long as necessary to provide the Service. Account data is deleted upon request. Transaction records are retained for 5 years as required by law.</p>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">5. Your Rights</h2>
               <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">You have the right to:</p>
               <ul className="list-disc ml-5 mt-2 space-y-1 text-[13px] text-gray-600 dark:text-gray-300">
@@ -83,17 +83,17 @@ export default function PrivacyPolicyPage() {
               </ul>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">6. Cookies</h2>
               <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">We use cookies and similar technologies for authentication, preferences, and analytics. You can disable cookies in your browser settings.</p>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">7. Security</h2>
               <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">We implement industry-standard security measures including HTTPS encryption, secure authentication, and regular security audits.</p>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">8. Contact</h2>
               <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">For privacy inquiries, contact us at: jiwon@ur-team.com</p>
             </section>
@@ -104,7 +104,7 @@ export default function PrivacyPolicyPage() {
           <div className="space-y-0">
             {/* 사업자 정보 */}
             <section>
-              <div className="bg-gray-50 dark:bg-[#1A2334] rounded-lg p-4 space-y-1">
+              <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-lg p-4 space-y-1">
                 <p className="text-[13px] font-semibold text-gray-900 dark:text-white mb-2">사업자 정보</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 상호명: 리스터코퍼레이션</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 대표자: 정지원</p>
@@ -115,7 +115,7 @@ export default function PrivacyPolicyPage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">1. 개인정보의 처리 목적</h2>
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>리스터코퍼레이션(상호명: 리스터코퍼레이션, 대표자: 정지원, 이하 "회사")는 다음의 목적을 위하여 개인정보를 처리합니다.
@@ -144,7 +144,7 @@ export default function PrivacyPolicyPage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">2. 개인정보의 처리 및 보유기간</h2>
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회사는 법령에 따른 개인정보 보유·이용기간 또는 정보주체로부터 개인정보를 수집 시에
@@ -152,7 +152,7 @@ export default function PrivacyPolicyPage() {
 
                 <p className="mt-3">② 각각의 개인정보 처리 및 보유 기간은 다음과 같습니다:</p>
 
-                <div className="bg-gray-50 dark:bg-[#1A2334] rounded-lg p-4 mt-2 space-y-2">
+                <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-lg p-4 mt-2 space-y-2">
                   <p><span className="font-semibold text-gray-900 dark:text-white">회원 가입 및 관리:</span> 회원 탈퇴 시까지</p>
                   <p className="text-[12px] text-gray-500 dark:text-gray-400 ml-3">
                     다만, 다음의 사유에 해당하는 경우에는 해당 사유 종료 시까지
@@ -163,7 +163,7 @@ export default function PrivacyPolicyPage() {
                   </ul>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-[#1A2334] rounded-lg p-4 mt-2 space-y-2">
+                <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-lg p-4 mt-2 space-y-2">
                   <p><span className="font-semibold text-gray-900 dark:text-white">재화 또는 서비스 제공:</span> 재화·서비스 공급완료 및 요금결제·정산 완료 시까지</p>
                   <p className="text-[12px] text-gray-500 dark:text-gray-400 ml-3">
                     다만, 다음의 사유에 해당하는 경우에는 해당 기간 종료 시까지
@@ -181,25 +181,25 @@ export default function PrivacyPolicyPage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">3. 처리하는 개인정보의 항목</h2>
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>회사는 다음의 개인정보 항목을 처리하고 있습니다:</p>
 
                 <div className="space-y-2 mt-3">
-                  <div className="bg-gray-50 dark:bg-[#1A2334] rounded-lg p-4">
+                  <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-lg p-4">
                     <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">① 회원 가입 및 관리</h3>
                     <p>필수항목: 이름, 이메일, 비밀번호, 휴대전화번호</p>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">선택항목: 프로필 사진</p>
                   </div>
 
-                  <div className="bg-gray-50 dark:bg-[#1A2334] rounded-lg p-4">
+                  <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-lg p-4">
                     <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">② 재화 또는 서비스 제공</h3>
                     <p>필수항목: 이름, 휴대전화번호, 배송지 주소, 이메일</p>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">선택항목: 전화번호, 배송 메시지</p>
                   </div>
 
-                  <div className="bg-gray-50 dark:bg-[#1A2334] rounded-lg p-4">
+                  <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-lg p-4">
                     <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">③ 결제 서비스 제공</h3>
                     <p>신용카드 결제시: 카드사명, 카드번호 등</p>
                     <p>계좌이체시: 은행명, 계좌번호 등</p>
@@ -208,7 +208,7 @@ export default function PrivacyPolicyPage() {
                     </p>
                   </div>
 
-                  <div className="bg-gray-50 dark:bg-[#1A2334] rounded-lg p-4">
+                  <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-lg p-4">
                     <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">④ 자동 수집 항목</h3>
                     <p>IP주소, 쿠키, 방문일시, 서비스 이용 기록, 불량 이용 기록</p>
                   </div>
@@ -216,14 +216,14 @@ export default function PrivacyPolicyPage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">4. 개인정보의 제3자 제공</h2>
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회사는 정보주체의 개인정보를 제1조(개인정보의 처리 목적)에서 명시한 범위 내에서만 처리하며,
                   정보주체의 동의, 법률의 특별한 규정 등 「개인정보 보호법」 제17조에 해당하는 경우에만
                   개인정보를 제3자에게 제공합니다.</p>
 
-                <div className="bg-gray-50 dark:bg-[#1A2334] rounded-lg p-4 mt-2 space-y-1">
+                <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-lg p-4 mt-2 space-y-1">
                   <p><span className="font-semibold text-gray-900 dark:text-white">개인정보를 제공받는 자:</span> 판매자(상품 판매 업체)</p>
                   <p>제공받는 자의 이용 목적: 상품 배송, 주문 확인</p>
                   <p>제공하는 항목: 구매자 이름, 휴대전화번호, 배송지 주소</p>
@@ -232,19 +232,19 @@ export default function PrivacyPolicyPage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">5. 개인정보처리의 위탁</h2>
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회사는 원활한 개인정보 업무처리를 위하여 다음과 같이 개인정보 처리업무를 위탁하고 있습니다:</p>
 
                 <div className="space-y-2 mt-2">
-                  <div className="bg-gray-50 dark:bg-[#1A2334] rounded-lg p-4">
+                  <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-lg p-4">
                     <p className="font-semibold text-gray-900 dark:text-white">토스페이먼츠</p>
                     <p>위탁업무: 전자결제 처리</p>
                     <p>위탁기간: 회원 탈퇴 시 또는 위탁계약 종료 시</p>
                   </div>
 
-                  <div className="bg-gray-50 dark:bg-[#1A2334] rounded-lg p-4">
+                  <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-lg p-4">
                     <p className="font-semibold text-gray-900 dark:text-white">Cloudflare</p>
                     <p>위탁업무: 클라우드 인프라 제공</p>
                     <p>위탁기간: 회원 탈퇴 시 또는 위탁계약 종료 시</p>
@@ -258,7 +258,7 @@ export default function PrivacyPolicyPage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">6. 정보주체의 권리·의무 및 행사방법</h2>
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 정보주체는 회사에 대해 언제든지 다음 각 호의 개인정보 보호 관련 권리를 행사할 수 있습니다:</p>
@@ -273,7 +273,7 @@ export default function PrivacyPolicyPage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">7. 개인정보의 파기</h2>
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회사는 개인정보 보유기간의 경과, 처리목적 달성 등 개인정보가 불필요하게 되었을 때에는
@@ -296,7 +296,7 @@ export default function PrivacyPolicyPage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">8. 개인정보의 안전성 확보조치</h2>
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>회사는 개인정보의 안전성 확보를 위해 다음과 같은 조치를 취하고 있습니다:</p>
@@ -309,13 +309,13 @@ export default function PrivacyPolicyPage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">9. 개인정보 보호책임자</h2>
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회사는 개인정보 처리에 관한 업무를 총괄해서 책임지고,
                   개인정보 처리와 관련한 정보주체의 불만처리 및 피해구제 등을 위하여 아래와 같이 개인정보 보호책임자를 지정하고 있습니다:</p>
 
-                <div className="bg-gray-50 dark:bg-[#1A2334] rounded-lg p-4 mt-2 space-y-1">
+                <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-lg p-4 mt-2 space-y-1">
                   <p className="font-semibold text-gray-900 dark:text-white">개인정보 보호책임자</p>
                   <p>담당부서: 운영팀</p>
                   <p>이메일: jiwon@ur-team.com</p>
@@ -327,13 +327,13 @@ export default function PrivacyPolicyPage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">10. 권익침해 구제방법</h2>
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>정보주체는 개인정보침해로 인한 구제를 받기 위하여 개인정보분쟁조정위원회,
                   한국인터넷진흥원 개인정보침해신고센터 등에 분쟁해결이나 상담 등을 신청할 수 있습니다.</p>
 
-                <div className="bg-gray-50 dark:bg-[#1A2334] rounded-lg p-4 mt-2 space-y-1">
+                <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-lg p-4 mt-2 space-y-1">
                   <p><span className="font-semibold text-gray-900 dark:text-white">개인정보분쟁조정위원회:</span> 1833-6972 (www.kopico.go.kr)</p>
                   <p><span className="font-semibold text-gray-900 dark:text-white">개인정보침해신고센터:</span> (국번없이) 118 (privacy.kisa.or.kr)</p>
                   <p><span className="font-semibold text-gray-900 dark:text-white">대검찰청:</span> (국번없이) 1301 (www.spo.go.kr)</p>
@@ -342,7 +342,7 @@ export default function PrivacyPolicyPage() {
               </div>
             </section>
 
-            <section className="border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6">
+            <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">11. 개인정보 처리방침의 변경</h2>
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 이 개인정보 처리방침은 2024년 1월 15일부터 적용됩니다.</p>

@@ -78,7 +78,7 @@ export function NotificationToggleSection() {
         aria-label={value ? `${label} 끄기` : `${label} 켜기`}
         className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-white/[0.15]'}`}
       >
-        <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white dark:bg-[#0F151D] rounded-full shadow-sm transition-transform duration-200 ${value ? 'translate-x-[20px]' : 'translate-x-0'}`} />
+        <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white dark:bg-[#0D0F12] rounded-full shadow-sm transition-transform duration-200 ${value ? 'translate-x-[20px]' : 'translate-x-0'}`} />
       </button>
     </div>
   )
@@ -86,7 +86,7 @@ export function NotificationToggleSection() {
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
       <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('accountSettings.sectionNotification', { defaultValue: '알림 설정' })}</p>
-      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1A2334]">
+      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1A1C21]">
         <Toggle
           icon={<Bell className="w-4 h-4" aria-hidden="true" />}
           label={t('accountSettings.togglePush', { defaultValue: '푸시 알림' })}
@@ -158,7 +158,7 @@ export function AppVersionSection() {
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
       <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('accountSettings.appInfo', { defaultValue: '앱 정보' })}</p>
-      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1A2334]">
+      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1A1C21]">
         <div className="flex items-center justify-between px-4 py-3.5">
           <span className="text-[13px] text-gray-900 dark:text-white/75">{t('accountSettings.currentVersion', { defaultValue: '현재 버전' })}</span>
           <span className="text-[12px] font-medium text-gray-900 dark:text-white">v{APP_VERSION}</span>
@@ -258,7 +258,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-[10100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose} role="presentation">
-      <div className="bg-white dark:bg-[#0F151D] rounded-2xl w-full max-w-md p-6 shadow-2xl mb-16 sm:mb-0" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className="bg-white dark:bg-[#0D0F12] rounded-2xl w-full max-w-md p-6 shadow-2xl mb-16 sm:mb-0" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('accountSettings.editProfile', { defaultValue: '프로필 수정' })}</h3>
           <button onClick={onClose} aria-label="닫기"><X className="w-5 h-5 text-gray-500 dark:text-gray-400" /></button>
@@ -271,7 +271,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
             <input
               id="account-name" required value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full px-4 py-3 bg-white dark:bg-[#1A2334] border border-gray-300 dark:border-[#2A3446] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1A1C21] border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
               placeholder={t('accountSettings.editNamePlaceholder', { defaultValue: '홍길동' })}
             />
           </div>
@@ -283,7 +283,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
               id="account-phone" type="tel" inputMode="numeric" value={form.phone}
               onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))}
               maxLength={13}
-              className="w-full px-4 py-3 bg-white dark:bg-[#1A2334] border border-gray-300 dark:border-[#2A3446] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1A1C21] border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
               placeholder="010-0000-0000"
             />
             <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
@@ -292,7 +292,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
           </div>
         </div>
         <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 py-3 bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-[#2A3446] transition-colors">
+          <button onClick={onClose} className="flex-1 py-3 bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-200 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-[#2C2F35] transition-colors">
             {t('accountSettings.editCancel', { defaultValue: '취소' })}
           </button>
           <button onClick={save} disabled={loading} className="flex-1 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50">

@@ -54,7 +54,7 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
       onMouseEnter={() => prefetchProduct(p.id)}
       onTouchStart={() => prefetchProduct(p.id)}
       onFocus={() => prefetchProduct(p.id)}
-      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446]"
+      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]"
     >
       {/* 🎨 이미지 영역 — 상세와 동톤(은은한 그라데이션). dominant_color 있으면 로딩 플레이스홀더로(잠금). */}
       <div
@@ -148,7 +148,7 @@ export const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: Vouche
       onMouseEnter={() => prefetchProduct(p.id)}
       onTouchStart={() => prefetchProduct(p.id)}
       onFocus={() => prefetchProduct(p.id)}
-      className="w-full flex items-center gap-3 text-left py-2.5 border-b border-gray-100 dark:border-[#2A3446] active:opacity-60 transition-opacity"
+      className="w-full flex items-center gap-3 text-left py-2.5 border-b border-gray-100 dark:border-[#2C2F35] active:opacity-60 transition-opacity"
     >
       {/* 🎨 이미지 — 좌측 정사각 타일(컴팩트 64/72). dominant_color 있으면 로딩 플레이스홀더(잠금).
           ⚠️ img width/height/srcSet/lazy/fetchPriority/dominant_color 속성 불변 — 표시 박스 CSS 크기만 축소. */}

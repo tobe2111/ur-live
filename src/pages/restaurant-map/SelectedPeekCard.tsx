@@ -15,8 +15,8 @@ export default function SelectedPeekCard({ selected, liveSellerIds, onClose }: P
   const { t } = useTranslation()
   return (
     <div className="absolute left-3 right-3 z-30" style={{ bottom: 'calc(18vh + 80px)' }}>
-      <div className="bg-white dark:bg-[#0F151D] rounded-2xl shadow-xl border border-gray-100 dark:border-[#2A3446] p-3.5 relative">
-        <button onClick={onClose} aria-label={t('common.close', { defaultValue: '닫기' })} className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 dark:bg-[#1A2334]">
+      <div className="bg-white dark:bg-[#0D0F12] rounded-2xl shadow-xl border border-gray-100 dark:border-[#2C2F35] p-3.5 relative">
+        <button onClick={onClose} aria-label={t('common.close', { defaultValue: '닫기' })} className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 dark:bg-[#1A1C21]">
           <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
         </button>
         <div className="flex gap-3 pr-6">

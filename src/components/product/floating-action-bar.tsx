@@ -40,7 +40,7 @@ export function FloatingActionBar({
   if (variant === 'pickup') {
     return (
       <div
-        className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[430px] lg:max-w-screen-md app-frame-bar bg-white dark:bg-[#0F151D] border-t border-[#EAE5E7] dark:border-[#2A3446]"
+        className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[430px] lg:max-w-screen-md app-frame-bar bg-white dark:bg-[#0D0F12] border-t border-[#EAE5E7] dark:border-[#2C2F35]"
         style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 12, paddingBottom: 'max(28px, env(safe-area-inset-bottom))' }}
       >
         {/* 🔴 `수량 · 픽업일` 을 여기 한 번 더 적는 이유: 손님이 스크롤을 끝까지 내려온 뒤 결제한다.
@@ -58,12 +58,12 @@ export function FloatingActionBar({
               (기능 제거는 시안의 권한 밖이다) 자리만 좁혀 남겼다 — 호출부가 안 넘기면 안 뜬다. */}
           {onToggleWishlist && (
             <button onClick={onToggleWishlist} aria-label="찜"
-              className="w-14 h-14 shrink-0 rounded-[14px] bg-[#F1EDEF] dark:bg-[#1A2334] flex items-center justify-center active:scale-95 transition-transform">
+              className="w-14 h-14 shrink-0 rounded-[14px] bg-[#F1EDEF] dark:bg-[#1A1C21] flex items-center justify-center active:scale-95 transition-transform">
               <Heart className={`h-[19px] w-[19px] ${isWishlisted ? 'text-red-500 fill-red-500' : 'text-[#8A8288]'}`} />
             </button>
           )}
           <button
-            className="h-14 flex-[1] rounded-[14px] bg-[#F1EDEF] text-[#3F383C] dark:bg-[#1A2334] dark:text-[#DAD4D7] text-[15.5px] font-bold tracking-[-0.03em] active:scale-[0.98] transition-transform disabled:opacity-40"
+            className="h-14 flex-[1] rounded-[14px] bg-[#F1EDEF] text-[#3F383C] dark:bg-[#1A1C21] dark:text-[#DAD4D7] text-[15.5px] font-bold tracking-[-0.03em] active:scale-[0.98] transition-transform disabled:opacity-40"
             onClick={onAddToCart} disabled={disabled}
           >
             {disabled ? '품절' : '장바구니'}
@@ -81,7 +81,7 @@ export function FloatingActionBar({
 
   return (
     <div
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[430px] lg:max-w-screen-md app-frame-bar bg-white dark:bg-[#0F151D] border-t border-gray-100 dark:border-[#2A3446]"
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[430px] lg:max-w-screen-md app-frame-bar bg-white dark:bg-[#0D0F12] border-t border-gray-100 dark:border-[#2C2F35]"
       style={{
         paddingLeft: 14,
         paddingRight: 14,
@@ -94,7 +94,7 @@ export function FloatingActionBar({
         {onToggleWishlist && (
           <button
             onClick={onToggleWishlist}
-            className="flex flex-col items-center justify-center w-12 h-12 rounded-xl border border-gray-200 dark:border-[#2A3446] transition-all active:scale-95"
+            className="flex flex-col items-center justify-center w-12 h-12 rounded-xl border border-gray-200 dark:border-[#2C2F35] transition-all active:scale-95"
           >
             <Heart
               className={`h-[18px] w-[18px] transition-colors ${
@@ -106,7 +106,7 @@ export function FloatingActionBar({
 
         {!dealOnly && (
           <button
-            className="flex items-center justify-center gap-1 h-12 flex-1 rounded-xl bg-gray-100 dark:bg-[#1A2334] transition-all active:scale-[0.98] disabled:opacity-40"
+            className="flex items-center justify-center gap-1 h-12 flex-1 rounded-xl bg-gray-100 dark:bg-[#1A1C21] transition-all active:scale-[0.98] disabled:opacity-40"
             onClick={onAddToCart}
             disabled={disabled}
           >

@@ -289,7 +289,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
         const isExpanded = expanded === s.section_key
 
         return (
-          <section key={s.section_key} className="bg-white rounded-xl border border-gray-200 dark:border-[#2A3446] overflow-hidden">
+          <section key={s.section_key} className="bg-white rounded-xl border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
             <div className="flex items-center">
               <button
                 type="button"
@@ -316,7 +316,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
             </div>
 
             {isExpanded && (
-              <div className="px-5 pb-5 pt-1 border-t border-gray-100 dark:border-[#2A3446]">
+              <div className="px-5 pb-5 pt-1 border-t border-gray-100 dark:border-[#2C2F35]">
                 {isEditing ? (
                   <div className="space-y-3 pt-3">
                     <div className="flex items-center gap-2">
@@ -373,7 +373,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
                   />
                 )}
                 {s.updated_at && (
-                  <p className="text-[10px] text-gray-400 mt-3 pt-2 border-t border-gray-100 dark:border-[#2A3446]">
+                  <p className="text-[10px] text-gray-400 mt-3 pt-2 border-t border-gray-100 dark:border-[#2C2F35]">
                     최종 수정: {formatKST(s.updated_at)}
                   </p>
                 )}

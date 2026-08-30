@@ -135,7 +135,7 @@ export default function PcHomeLocationBar({
   // 히어로(잉크 색면) 위에서는 흰 테두리 칩, 흰 패널 위에서는 기존 라이트 버튼.
   const chip = hero
     ? 'border-white/30 bg-white/[0.13] hover:bg-white/20 text-white'
-    : 'border-gray-200 dark:border-[#2A3446] bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+    : 'border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-white/[0.04]'
 
   return (
     <div ref={boxRef} className="relative inline-block">
@@ -164,12 +164,12 @@ export default function PcHomeLocationBar({
 
       {open && (
         <div
-          className={`z-[10500] rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] shadow-[0_12px_40px_rgba(0,0,0,0.18)] overflow-hidden ${
+          className={`z-[10500] rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] shadow-[0_12px_40px_rgba(0,0,0,0.18)] overflow-hidden ${
             isWide ? 'absolute left-0 top-[calc(100%+8px)] w-[520px]' : 'fixed left-2 right-2'
           }`}
           style={isWide ? undefined : { top: panelTop }}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#2A3446]">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35]">
             <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">지역 선택</span>
             <div className="flex items-center gap-2">
               <button onClick={() => apply({})} className="text-[12px] font-bold text-gray-500 dark:text-gray-400 hover:underline">전국</button>
@@ -179,7 +179,7 @@ export default function PcHomeLocationBar({
           {/* 좁은 화면에서는 화면 높이를 넘지 않게 — 넘으면 아래 항목을 영영 못 고른다. */}
           <div className="flex h-[320px] max-h-[calc(100dvh-160px)]">
             {/* 시/도 */}
-            <div className="w-[42%] overflow-y-auto border-r border-gray-100 dark:border-[#2A3446] py-1">
+            <div className="w-[42%] overflow-y-auto border-r border-gray-100 dark:border-[#2C2F35] py-1">
               {KOREA_REGIONS.map(r => (
                 <button
                   key={r.key}

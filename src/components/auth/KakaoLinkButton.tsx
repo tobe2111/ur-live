@@ -125,7 +125,7 @@ export function KakaoLinkButton({ role }: Props) {
 
   if (loading) {
     return (
-      <div className="bg-gray-50 dark:bg-[#1A2334] rounded-xl p-4 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+      <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-4 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin" /> {t('kakaoLink.checkingStatus', { defaultValue: '연동 상태 확인 중...' })}
       </div>
     )
@@ -155,7 +155,7 @@ export function KakaoLinkButton({ role }: Props) {
 
   // 미연동 상태
   return (
-    <div className="bg-gray-50 dark:bg-[#1A2334] border border-yellow-200 dark:border-yellow-800/40 rounded-xl p-4 space-y-3">
+    <div className="bg-gray-50 dark:bg-[#1A1C21] border border-yellow-200 dark:border-yellow-800/40 rounded-xl p-4 space-y-3">
       <div className="flex items-start gap-2">
         <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-lg shrink-0">💬</div>
         <div className="flex-1 min-w-0">

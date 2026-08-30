@@ -15,7 +15,7 @@ const authHeader = () => {
   const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
 const COMP_BADGE: Record<string, string> = {
   낮음: 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400',
   중간: 'bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400',
@@ -65,9 +65,9 @@ export default function OpportunityPanel({ onGo }: { onGo?: (anchor: string) => 
       <div className="mt-2.5 flex gap-2">
         <input value={seed} onChange={e => setSeed(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') search() }}
           placeholder="기준 키워드 (예: 무선청소기)" maxLength={40}
-          className="flex-1 h-9 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400" />
+          className="flex-1 h-9 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400" />
         <button onClick={search} disabled={loading}
-          className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 text-[12.5px] font-bold text-white dark:text-[#0F151D] disabled:opacity-40">
+          className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 text-[12.5px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-40">
           {loading ? '분석 중…' : '발굴'}
         </button>
       </div>
@@ -85,7 +85,7 @@ export default function OpportunityPanel({ onGo }: { onGo?: (anchor: string) => 
               </tr></thead>
               <tbody>
                 {items.map((k, i) => (
-                  <tr key={k.keyword} className="border-t border-gray-100 dark:border-[#2A3446] text-gray-700 dark:text-gray-300">
+                  <tr key={k.keyword} className="border-t border-gray-100 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300">
                     <td className="py-1.5 pr-2 text-gray-400 dark:text-gray-500 tabular-nums">{i + 1}</td>
                     <td className="py-1.5 pr-2 font-medium text-gray-900 dark:text-white">{k.keyword}</td>
                     <td className="py-1.5 pr-2 text-right tabular-nums">{formatNumber(k.monthlyTotal)}</td>

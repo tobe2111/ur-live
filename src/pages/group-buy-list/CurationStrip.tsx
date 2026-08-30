@@ -37,11 +37,11 @@ export default function CurationStrip({
             <button
               key={p.id}
               onClick={() => navigate(`/group-buy/${p.id}`)}
-              className="snap-start shrink-0 w-[160px] text-left rounded-2xl overflow-hidden border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] hover:shadow-md transition-shadow"
+              className="snap-start shrink-0 w-[160px] text-left rounded-2xl overflow-hidden border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] hover:shadow-md transition-shadow"
             >
               {/* 🏭 2026-06-04 (카드 로딩 체감): 큐레이션 스트립도 cfImage(리사이즈)+srcSet+dominant_color
                   — 기존 원본 풀사이즈 <img> → 첫 화면 이미지 지연. 메인 그리드와 동일 최적화. */}
-              <div className="relative w-full aspect-square bg-gray-100 dark:bg-[#1A2334]" style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}>
+              <div className="relative w-full aspect-square bg-gray-100 dark:bg-[#1A1C21]" style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}>
                 {p.image_url ? (
                   <img
                     src={cfImage(p.image_url, { width: 320, format: 'auto' })}
@@ -53,7 +53,7 @@ export default function CurationStrip({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1A2334] dark:to-[#0F151D]" />
+                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1A1C21] dark:to-[#0D0F12]" />
                 )}
                 <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full ${a.bg} ${a.text} text-[9px] font-extrabold`}>
                   {badge}

@@ -22,7 +22,7 @@ export default function LazyMount({ id, children, minHeight = 160 }: { id?: stri
   }, [shown])
   return (
     <section id={id} ref={ref} style={{ scrollMarginTop: 76, ...(shown ? null : { minHeight }) }}>
-      {shown ? children : <div className="mt-3 rounded-2xl bg-gray-100 dark:bg-[#1A2334] animate-pulse" style={{ height: minHeight }} />}
+      {shown ? children : <div className="mt-3 rounded-2xl bg-gray-100 dark:bg-[#1A1C21] animate-pulse" style={{ height: minHeight }} />}
     </section>
   )
 }

@@ -194,14 +194,15 @@
 
 @layer base {
   :root {
-    /* 🎨 2026-07-19 지시서 §6 — 다크 = 네이비 혈통 근검정(#0F151D 계열) + 웜 화이트 잉크 */
-    --background: 214 32% 9%;     /* #0F151D */
+    /* 🎨 2026-08-30 (대표 확정 "완전 검정이면 좋겠어") — 다크 = 중성 근검정(#0D0F12 계열) + 웜 화이트 잉크.
+       구 네이비 혈통(#0F151D/#1A2334/#2A3446)에서 파랑기를 뺀 값. 명도 순서는 그대로 승계. */
+    --background: 216 16% 6%;     /* #0D0F12 */
     --foreground: 30 17% 95%;     /* #F5F3F1 (순백 아닌 웜 화이트) */
 
-    --card: 219 33% 15%;          /* #1A2334 */
+    --card: 223 12% 12%;          /* #1A1C21 */
     --card-foreground: 30 17% 95%;
 
-    --popover: 219 33% 15%;
+    --popover: 223 12% 12%;
     --popover-foreground: 30 17% 95%;
 
     --primary: 349 70% 60%;       /* 🎨 #E0526B 브랜드 웜로즈 (2026-07-19 지시서, 구 #FF4D6D) */
@@ -219,8 +220,8 @@
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 219 25% 22%;        /* #2A3446 */
-    --input: 219 25% 22%;
+    --border: 220 9% 19%;        /* #2C2F35 */
+    --input: 220 9% 19%;
     --ring: 349 70% 60%;          /* 🎨 #E0526B */
 
     /* 📐 2026-08-30: 0.75rem → 0.625rem. 이 한 값이 `rounded-lg`(2,217곳)를 12px 로 만들어
@@ -233,8 +234,8 @@
     --brand: #E0526B;       /* 웜 로즈 — 주요 행동 버튼·강조·활성 */
     --brand-dark: #C43D55;  /* hover/pressed */
     --brand-tint: #FBEDF0;  /* 옅은 로즈 배경 — 뱃지·선택됨 */
-    --ink: #1A2C42;         /* 딥네이비 — 제목/본문/가격 */
-    --ink-soft: #5F6B7A;    /* 보조 텍스트 */
+    --ink: #16181C;         /* 차콜 블랙 — 제목/본문/가격. 홈 색면(--home-field)과 같은 값 */
+    --ink-soft: #6E6B68;    /* 보조 텍스트 (중성 그레이) */
     --ink-faint: #8A8580;   /* 비활성/플레이스홀더 */
     --bg: #FAF7F5;          /* 페이지 배경(웜 화이트) */
     --surface: #FFFFFF;     /* 카드/시트/입력창 */
@@ -243,9 +244,9 @@
 
     /* 🎨 2026-08-23 (대표 확정 — 시안 6종 비교 후 "차콜 블랙으로 가자"): **홈 색면**.
        그루폰식 홈은 어두운 색면 위에 흰 패널을 얹는데, 그 색면이 여기 하나에서 나온다.
-       ⚠️ 색면은 **잉크(--ink)와 다른 값**이다 — 이전엔 둘 다 #1A2C42 라 같아 보였을 뿐이다.
-          제목·가격 잉크는 딥네이비로 두고 색면만 무채색으로 옮겼다(무채색 배경이 딜 사진의
-          색을 가장 살리고 로즈 강조가 제일 또렷하게 튄다 — 그게 이 색을 고른 이유다).
+       🔗 2026-08-30 (대표 "완전 검정이면 좋겠어") — 잉크(--ink)를 여기로 맞춰 **같은 값**이 됐다.
+          무채색 배경이 딜 사진의 색을 가장 살리고 로즈 강조가 제일 또렷하게 튄다는 이유는 그대로다.
+          ⚠️ 둘이 같아졌다고 한쪽을 지우지 말 것 — 역할이 다르다(색면 vs 글자). 한쪽만 바꾸는 날이 온다.
        ⚠️ 페이지 색면(PcHomePage)과 히어로 색면(HomeHeroDefault)이 **반드시 같아야** 경계가
           안 생긴다. 예전엔 양쪽에 hex 를 따로 적어 둬서 한쪽만 바꾸면 이음매가 드러났다.
        `--home-field-rgb` 는 스크림·페이드가 알파를 얹을 때 쓴다: rgb(var(--home-field-rgb) / .88) */
@@ -256,12 +257,12 @@
   /* 🎨 2026-07-19 지시서 §6 STEP B — 다크 테마 토큰 (html.dark = 기존 토글/시스템 감지, data-theme 별칭 겸용).
      로즈가 '면'(버튼 배경)일 땐 --brand+흰 글자(라이트와 동일), '글자·뱃지'일 땐 --brand-text(밝힌 로즈). */
   .dark, [data-theme="dark"] {
-    --bg: #0F151D;          /* 네이비 혈통 근검정 (#1A2C42 전면 사용 금지) */
-    --surface: #1A2334;     /* 카드/시트 */
-    --line: #2A3446;
+    --bg: #0D0F12;          /* 중성 근검정 — 다크 페이지 배경. 잉크 블랙(#16181C)보다 더 어두워야 위계가 선다 */
+    --surface: #1A1C21;     /* 카드/시트 */
+    --line: #2C2F35;
     --ink: #F5F3F1;         /* 순백 아닌 웜 화이트 */
-    --ink-soft: #9AA5B5;
-    --ink-faint: #6B7686;
+    --ink-soft: #A5A29E;
+    --ink-faint: #757370;
     --brand-text: #EF6E85;  /* 다크 배경 위 로즈 글자·뱃지 (보정값) */
     --brand-tint: #3A2530;  /* 로즈 옅은 배경의 다크 대응 */
   }
@@ -330,9 +331,9 @@
     letter-spacing: -0.022em;
   }
 
-  /* 🛡️ 2026-05-04: 다크 모드일 때만 body 배경 #0F151D. light 모드는 #ffffff (위 body 규칙). */
+  /* 🛡️ 2026-05-04: 다크 모드일 때만 body 배경 #0D0F12. light 모드는 #ffffff (위 body 규칙). */
   html.dark body {
-    background-color: #0F151D;
+    background-color: #0D0F12;
   }
 
   /* 🗑️ 2026-07-20: .footer-tiny(전체 강제 8px !important) 제거 — SiteFooter 재설계로 사용처 0.
@@ -587,7 +588,7 @@
 
 /* Card with subtle shadow */
 .apple-card {
-  background: #1A2334;
+  background: #1A1C21;
   border-radius: 18px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.04);
   transition: all 0.3s cubic-bezier(0.28, 0.11, 0.32, 1);
@@ -896,9 +897,9 @@ html.native-app nav {
      PC viewport 보다 넓은 그리드는 의도적으로 가로 스크롤 (Vite/Tailwind 표준 동작). */
 }
 
-/* 🛡️ 2026-05-04: 다크 모드일 때만 .mobile-app-container 배경 #0F151D. */
+/* 🛡️ 2026-05-04: 다크 모드일 때만 .mobile-app-container 배경 #0D0F12. */
 html.dark .mobile-app-container {
-  background-color: #0F151D;
+  background-color: #0D0F12;
 }
 
 /* 🛡️ 2026-05-14 revert: 라이브/쇼츠 액자 항상 430px 모바일 폰 크기 (확대 X).
@@ -928,10 +929,10 @@ html.dark .mobile-app-container {
 
 /* 🎨 2026-06-16 공구 상세 리디자인 토큰 (docs/design/group-buy-detail.md) — .gbd 스코프 + html.dark 듀얼.
    Claude Design 핸드오프(프리미엄 커머스: 잉크블랙 CTA·헤어라인·정직한 즉시구매)를 var 로 포팅. */
-/* 🎨 2026-07-19 브랜드 적용: 라이트=웜화이트+네이비 잉크+로즈 CTA/액센트(지시서 60-30-10),
+/* 🎨 2026-07-19 브랜드 적용: 라이트=웜화이트+잉크(2026-08-30 차콜 블랙)+로즈 CTA/액센트(지시서 60-30-10),
    다크=서피스 유지+액센트만 로즈(대표 확정). danger(기능색)는 유지. */
 .gbd {
-  --gbd-bg:#FAF7F5; --gbd-card:#ffffff; --gbd-ink:#1A2C42; --gbd-ink2:#3D4C60; --gbd-sub:#5F6B7A; --gbd-sub2:#8A8580;
+  --gbd-bg:#FAF7F5; --gbd-card:#ffffff; --gbd-ink:#16181C; --gbd-ink2:#3D3C3A; --gbd-sub:#6E6B68; --gbd-sub2:#8A8580;
   --gbd-line2:#EAE4E0; --gbd-chip:#F3EEEA; --gbd-danger:#F23E4D; --gbd-danger-soft:#FFF0F1;
   --gbd-cta-bg:#E0526B; --gbd-cta-fg:#ffffff; --gbd-accent:#E0526B;
 }
@@ -954,7 +955,7 @@ html.dark .gbd {
   margin-bottom: 20px;
   box-shadow: 0 1px 2px rgba(10, 11, 14, .06), 0 8px 24px -12px rgba(10, 11, 14, .30);
 }
-.dark .ur-home-panel { background: #0F151D; box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6); }
+.dark .ur-home-panel { background: #0D0F12; box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6); }
 @media (max-width: 1023px) { .ur-home-panel { padding: 14px; border-radius: 14px; margin-bottom: 14px; } }
 
 /* ✨ 카드가 색면 위에서 살짝 떠오르는 인터랙션(대표 — "버튼 나타날 때 효과") */

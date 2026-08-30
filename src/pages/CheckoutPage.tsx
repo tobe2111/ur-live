@@ -475,15 +475,15 @@ function CartCheckout() {
                     selectedAddress={selectedAddress}
                     onAddressSelected={setSelectedAddress}
                   />
-                  <div className="h-[6px] bg-gray-100 dark:bg-[#1A2334]" />
+                  <div className="h-[6px] bg-gray-100 dark:bg-[#1A1C21]" />
                 </>
               )}
 
               {/* 비배송 안내 — 기프티콘 교환권(MMS) vs 동네딜 공구(매장 사용) 구분. */}
               {isAllDealOnly && (
-                <section className="bg-white dark:bg-[#0F151D] px-5 py-4">
+                <section className="bg-white dark:bg-[#0D0F12] px-5 py-4">
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">발송 방법</h2>
-                  <div className="rounded-xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
                     <span className="text-2xl shrink-0">📱</span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">휴대폰 MMS 즉시 발송</p>
@@ -495,9 +495,9 @@ function CartCheckout() {
                 </section>
               )}
               {noShipping && !isAllDealOnly && (
-                <section className="bg-white dark:bg-[#0F151D] px-5 py-4">
+                <section className="bg-white dark:bg-[#0D0F12] px-5 py-4">
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">사용 방법</h2>
-                  <div className="rounded-xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
                     <span className="text-2xl shrink-0">🎟️</span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">매장에서 바로 사용</p>
@@ -523,13 +523,13 @@ function CartCheckout() {
                 />
               )}
 
-              <div className="h-[6px] bg-gray-100 dark:bg-[#1A2334]" />
+              <div className="h-[6px] bg-gray-100 dark:bg-[#1A1C21]" />
 
               {/* 결제 수단 — 교환권만 담겼으면 토스 옵션 숨김 (강제 'deal').
                   🛡️ 2026-05-23 v2: clientKey 로드 끝나기 전엔 스피너만 — TossPaymentWidget 이
                   빈/잘못된 키로 init 시도해 에러 토스트 띄우는 회귀 영구 차단. */}
               {!isAllDealOnly && !clientKeyLoaded ? (
-                <section className="bg-white dark:bg-[#0F151D] px-5 py-8 flex items-center justify-center">
+                <section className="bg-white dark:bg-[#0D0F12] px-5 py-8 flex items-center justify-center">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
                   <span className="ml-3 text-sm text-gray-500">결제 시스템 준비 중...</span>
                 </section>
