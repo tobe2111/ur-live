@@ -163,11 +163,16 @@ describe('수집 루트별 수율 — 총계가 아니라 "연락 가능한 수"
  * ⚠️ 못 보는 것: 화면 렌더·클릭 동작(배선만 본다). 숫자가 0 이어도 고장이 아니다.
  */
 describe('두 사업 명단 — 총계가 아니라 "지금 보낼 수 있는 수"', () => {
-  const BREAKDOWN = SRC('src/features/marketing/api/company-breakdown.ts')
+  // 📌 2026-08-31: 세그먼트 집계가 큐브 한 번 스캔에 흡수됐다(같은 행을 또 훑을 이유가 없다).
+  //   불변식(조건부 집계 · active=1 · 채널 차이)은 그대로이고 앵커만 옮긴다.
+  const BREAKDOWN = SRC('src/features/marketing/api/company-stats-cube.ts')
   const SEG_UI = SRC('src/pages/admin/partner-pool/BusinessSegments.tsx')
 
+  /** 큐브에서의 이름 — 접기 뒤 화면 필드는 여전히 `payback_ready`/`agency_ready` 다. */
+  const SEG_COLS = { payback: 'seg_payback', agency: 'seg_agency' } as const
+
   it('🔒 두 명단을 **각각 조건부로** 센다 — COUNT(*) 면 "몇 건 있나"만 남는다', () => {
-    for (const col of ['payback_ready', 'agency_ready']) {
+    for (const col of Object.values(SEG_COLS)) {
       const at = BREAKDOWN.indexOf(`AS ${col}`)
       expect(at, `${col} 집계가 없다`).toBeGreaterThan(0)
       const own = BREAKDOWN.slice(0, at)
@@ -176,17 +181,27 @@ describe('두 사업 명단 — 총계가 아니라 "지금 보낼 수 있는 �
   })
 
   it('🔒 **보류는 명단이 아니다** — active=1 로 좁히지 않으면 연락처 없는 행까지 센다', () => {
-    const at = BREAKDOWN.indexOf('payback_ready')
-    expect(BREAKDOWN.slice(at, at + 700)).toMatch(/active = 1/)
+    for (const col of Object.values(SEG_COLS)) {
+      const at = BREAKDOWN.indexOf(`AS ${col}`)
+      const own = BREAKDOWN.slice(BREAKDOWN.lastIndexOf('SUM(CASE WHEN', at), at)
+      expect(own, `${col} 이 보류(active=0)까지 센다`).toMatch(/active = 1/)
+      // 큐브는 전체 행을 훑으므로 병합행 제외도 **이 합계 안에** 있어야 한다(예전엔 WHERE 가 했다).
+      expect(own, `${col} 이 병합된 행까지 센다`).toMatch(/merged_into IS NULL/)
+    }
   })
 
   it('🔒 페이백은 **이메일**, 제휴는 **전화 또는 이메일** — 도달 채널이 다르다', () => {
-    const at = BREAKDOWN.indexOf('AS payback_ready')
+    const at = BREAKDOWN.indexOf(`AS ${SEG_COLS.payback}`)
     const payback = BREAKDOWN.slice(BREAKDOWN.lastIndexOf('SUM(CASE WHEN', at), at)
     expect(payback, '페이백은 이메일 발송이라 전화만으로는 명단이 아니다').not.toMatch(/phone/)
-    const at2 = BREAKDOWN.indexOf('AS agency_ready')
+    const at2 = BREAKDOWN.indexOf(`AS ${SEG_COLS.agency}`)
     const agency = BREAKDOWN.slice(BREAKDOWN.lastIndexOf('SUM(CASE WHEN', at2), at2)
     expect(agency, '대행사는 전화도 도달 채널이다').toMatch(/phone/)
+  })
+
+  it('🔗 접기 뒤에도 화면 필드 이름은 그대로다 — 바뀌면 카드가 빈다', () => {
+    expect(SRC('src/features/marketing/api/company-stats-cube.ts'))
+      .toMatch(/seg = \{ payback_ready: 0, agency_ready: 0 \}/)
   })
 
   it('🔒 화면이 두 명단을 읽고, 클릭하면 **그 필터로 좁힌다** — 좁히지 않으면 카드가 장식이다', () => {

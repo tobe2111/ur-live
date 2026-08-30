@@ -16,9 +16,11 @@ import {
   parsePartnerPaste, COMPANY_CATEGORIES, COMPANY_STATUSES, COMPANY_CONTACT_CHANNELS, COMPANY_TIER_MIN, COMPANY_TIER_MAX,
   type CompanyLead, type CompanyLeadFilter,
 } from './company-discovery'
+import { getCompanyStatsCached, invalidateStatsOnWrite } from './company-stats-cache'
 import { LEAD_TYPES, LEAD_TYPE_LABEL } from './company-classify'
 import tradeRoutes from './partner-pool-trades.routes'
 import { partnerPoolDedupeRoutes } from './partner-pool-dedupe.routes'
+import { partnerPoolRunStatusRoutes } from './partner-pool-run-status'
 import { partnerPoolKeywordRoutes } from './partner-pool-keywords.routes'
 import { judgeLanes } from './lane-yield-health'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
@@ -26,6 +28,8 @@ import { adsLeadsDb } from '../../../shared/ads/leads-db'
 const app = new Hono<{ Bindings: Env }>()
 
 app.use('*', requireAdmin())
+app.use('*', invalidateStatsOnWrite(adsLeadsDb as never) as never) // 쓰기 뒤 통계 캐시 폐기(근거: company-stats-cache.ts)
+app.route('/', partnerPoolRunStatusRoutes) // 🔔 완료 감지 폴링 전용 — 집계를 안 돈다(partner-pool-run-status.ts)
 // 🧬 중복 병합 라우트(별도 모듈 — 600줄 래칫 우회 대신 추출).
 //   ⚠️ **반드시 requireAdmin() 뒤에 마운트**한다 — 앞에 두면 이 라우트만 인증을 안 거친다(라이브 데이터 수정 경로).
 app.route('/', partnerPoolDedupeRoutes)
@@ -224,7 +228,9 @@ app.get('/timeline', async (c) => {
 
 // GET /api/admin/partner-pool/stats
 app.get('/stats', async (c) => {
-  const s = await companyStats(adsLeadsDb(c.env))
+  // 🧮 집계만 TTL 캐시(331만 행/호출). 폴링은 이제 `/run-status` 로 간다 — 근거: company-stats-cache.ts
+  const statsDb = adsLeadsDb(c.env), fresh1 = c.req.query('fresh') === '1'
+  const { stats: s, at: statsAt } = await getCompanyStatsCached(statsDb, fresh1, () => companyStats(statsDb))
   // 🤝 레인 A 수집 상태 — 게이트 + 마지막 실행(ads_company_stats). ur-ads 서비스바인딩 존재여부.
   const runRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_stats'").first<{ value: string }>().catch(() => null)
   let run: unknown = null; try { run = runRow?.value ? JSON.parse(runRow.value) : null } catch { run = null }
@@ -257,7 +263,7 @@ app.get('/stats', async (c) => {
   // 🧭 소급 정리(재분류) 진행률(ads_reclassify_stats) — 6만 행 청소가 며칠 걸려 가시화 필수.
   const rcRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>().catch(() => null)
   let rcRun: unknown = null; try { rcRun = rcRow?.value ? JSON.parse(rcRow.value) : null } catch { rcRun = null }
-  // 🔔 버튼 완료 감지용(2026-07-27 대표 "된 건지 안 된 건지 알 수가 없어") — 나라장터/MX/보강/버스트 결과 스탬프.
+  // 🔔 결과 스탬프(나라장터/MX/보강/버스트). 폴링 경로는 `/run-status` 로 분리됐다(집계를 안 돈다).
   const readKey = async (k: string): Promise<unknown> => {
     const row = await adsLeadsDb(c.env).prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
     try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
@@ -265,8 +271,7 @@ app.get('/stats', async (c) => {
   const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll, registryMatch, lkAll, lkEnrich, lkReclassify, localdataRun, enrichRollup, kakaoSweep] = await Promise.all([
     readKey('ads_naracontract_stats'), readKey('ads_mxsweep_stats'), readKey('ads_enrich_last'), readKey('ads_enrich_burst_last'), readKey('ads_reclassify_burst_last'), readKey('ads_runall_last'), readKey('ads_registry_match_stats'),
     readKey('ads_runall_lock'), readKey('ads_enrich_burst_lock'), readKey('ads_reclassify_burst_lock'), readKey('ads_localdata_stats'),
-    // 🧮 누적(2026-07-29) — 스냅샷은 라운드마다 덮이므로 "모든 라운드가 죽는다"와 "마지막만 잘렸다"를
-    //   한 장으로는 **구분할 수 없었다**. 하루치 rounds/partial/phase 분포를 함께 보여 판정 가능하게.
+    // 🧮 누적 — 스냅샷은 라운드마다 덮여 "전부 죽음"과 "마지막만 잘림"을 한 장으로 구분 못 했다.
     readKey('ads_enrich_rollup'),
     // 📞 카카오 전화 스윕(2026-07-29) — 145k 무연락처 리드의 **주 전화 확보 레인인데 화면에 없었다**.
     //   `day_lookups` 는 self-chain 깊이를 올리기 전에 카카오 쿼터 소비를 실측하기 위한 값.
@@ -287,7 +292,7 @@ app.get('/stats', async (c) => {
   }
   const gate = (k: string, fallback: boolean): boolean => (g && typeof g[k] === 'boolean') ? g[k] : fallback
   return c.json({
-    success: true, ...s,
+    success: true, ...s, stats_at: statsAt, // 이 숫자가 언제 기준인지 — 캐시된 값을 최신으로 오해하지 않게
     collect: { gate: gate('company_collect', c.env.ADS_COMPANY_COLLECT_ENABLED === 'true'), adsBinding: !!c.env.ADS?.fetch, run },
     storeinfo: { gate: gate('storeinfo', c.env.ADS_STOREINFO_ENABLED === 'true'), run: storeinfoRun },
     commerce: { gate: gate('commerce', (c.env as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED === 'true'), run: commerceRun, probe: commerceProbe },
