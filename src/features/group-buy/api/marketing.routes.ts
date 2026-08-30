@@ -13,6 +13,7 @@ import { findActiveDealPct } from '@/worker/utils/influencer-deal'
 import { ensureInfluencerProfileTable, parseChannels, maxFollowers, parseJsonList } from '@/worker/utils/influencer-profile'
 import { intParam } from '@/shared/pagination'
 import { registerDiscoveryRoutes } from './marketing/discovery'
+import { DEAL_PCT_MAX } from './commission-rates'
 
 // 🛡️ 2026-05-20: Hono `c.get('user'/'seller')` 가 ContextVariableMap 미선언으로 'never' 가 됨.
 //   각 미들웨어 (requireAuth/requireSeller) 가 ctx 에 박는 형태를 Variables 로 명시.
@@ -332,11 +333,18 @@ sellerApp.post('/deals/propose', async (c) => {
   if (!influencerId || !/^[a-zA-Z0-9_\-:]{1,64}$/.test(influencerId)) {
     return c.json({ success: false, error: 'invalid influencer_id' }, 400)
   }
-  // platform cap 확인
-  const capRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'max_influencer_commission_pct'").first<{ value: string }>().catch(() => null)
-  const cap = Number(capRow?.value ?? 2)
-  if (!Number.isFinite(pct) || pct <= 0 || pct > cap) {
-    return c.json({ success: false, error: `commission % 은 0 ~ ${cap} 범위` }, 400)
+  // 🛑 2026-08-30 대표 *"자동분은 빼줘"* — 딜 % 에 플랫폼 캡을 걸지 않는다.
+  //
+  //   `max_influencer_commission_pct`(라이브 2) 는 원래 **자동분**(플랫폼이 얹어 주던 몫)의
+  //   상한이었다. 그런데 이 제안 화면이 그 값으로 **딜 % 까지** 막고 있었다. 결과: 매장이
+  //   "10% 드릴게요" 를 넣으면 400. 정산 쪽은 2026-08-22 대표 결정으로 이미 딜을 90까지
+  //   인정하는데(`calcInfluencerCommissionPct`), 계약을 맺는 문이 2 에서 잠겨 있어
+  //   **딜 계약이 라이브에 한 건도 없었다.**
+  //
+  //   딜은 매장 지갑에서 나가는 매장의 자기 결정이다. 90 은 정책이 아니라 입력 검증선
+  //   (100% 를 넘겨 매장이 역마진 나는 값 차단) — 정산 쪽 clamp 와 같은 값이다.
+  if (!Number.isFinite(pct) || pct <= 0 || pct > DEAL_PCT_MAX) {
+    return c.json({ success: false, error: `commission % 은 0 ~ ${DEAL_PCT_MAX} 범위` }, 400)
   }
   // 🎬 WP-B: 콘텐츠 인증 조건. 1 이면 인플 링크제출→매장 승인 시 발효(status='active'). proof_status
   //   'pending' 으로 시작해 propose 만으로는 발효 안 됨(기존 무조건부 흐름과 격리).
@@ -448,9 +456,8 @@ influencerApp.post('/deals/propose', async (c) => {
   const sellerId = Number(body.seller_id)
   const pct = Number(body.commission_pct)
   if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: false, error: 'invalid seller_id' }, 400)
-  const capRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'max_influencer_commission_pct'").first<{ value: string }>().catch(() => null)
-  const cap = Number(capRow?.value ?? 2)
-  if (!Number.isFinite(pct) || pct <= 0 || pct > cap) return c.json({ success: false, error: `0 ~ ${cap}` }, 400)
+  // 🛑 2026-08-30: 매장측 propose 와 같은 검증선(위 주석 참조). 캡이 아니라 입력 검증이다.
+  if (!Number.isFinite(pct) || pct <= 0 || pct > DEAL_PCT_MAX) return c.json({ success: false, error: `0 ~ ${DEAL_PCT_MAX}` }, 400)
   // 🛡️ 전수조사 HIGH fix: 매장의 *조건부* 제안(requires_content_proof=1)을 인플 재-propose 가
   //   덮어쓰지 못하게 DO UPDATE 에 WHERE 가드 — 이전엔 proposed_by 만 'influencer' 로 뒤집혀
   //   /respond(무조건부 수락 경로)로 콘텐츠 인증 없이 발효되는 백도어가 있었음.
