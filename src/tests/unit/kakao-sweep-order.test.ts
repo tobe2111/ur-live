@@ -21,12 +21,16 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
-import { KAKAO_SWEEP_SQL, tallySweep, type SweepSourceTally } from '@/features/marketing/api/kakao-sweep-query'
+import {
+  KAKAO_SWEEP_WHERE, KAKAO_SWEEP_INNER_ORDER, KAKAO_SWEEP_SOURCES_SQL, KAKAO_SWEEP_PER_SOURCE_SQL,
+  interleaveBySource, tallySweep, type KakaoSweepRow, type SweepSourceTally,
+} from '@/features/marketing/api/kakao-sweep-query'
 
-/** `ORDER BY` 두 개(안쪽/바깥쪽)를 각각 집는다 — 역할이 다르므로 따로 검사해야 한다. */
-const INNER = KAKAO_SWEEP_SQL.slice(KAKAO_SWEEP_SQL.indexOf('PARTITION BY'), KAKAO_SWEEP_SQL.indexOf(') AS rn'))
-const OUTER = KAKAO_SWEEP_SQL.slice(KAKAO_SWEEP_SQL.lastIndexOf('ORDER BY'))
-const WHERE = KAKAO_SWEEP_SQL.slice(KAKAO_SWEEP_SQL.indexOf('WHERE merged_into'), KAKAO_SWEEP_SQL.indexOf('   ) ORDER BY'))
+// 📌 2026-08-30(③): 창 함수가 사라지고 [소스별 상위 N] + [코드 인터리브]가 됐다. 그래서 예전처럼
+//   한 SQL 문자열을 잘라 보지 않고, **대상 집합·안쪽 정렬은 상수로** · **인터리브는 동작으로** 본다.
+//   문자열이 아니라 동작을 보는 쪽이 강하다 — 문자열은 주석에만 남아도 통과하지만 동작은 못 속인다.
+const INNER = KAKAO_SWEEP_INNER_ORDER
+const WHERE = KAKAO_SWEEP_WHERE
 
 describe('① 기아 — 한 소스 안에서 뒷줄이 굶지 않는다', () => {
   it('**한 번도 안 본 행**이 최우선 — 없으면 앞줄만 30일마다 반복된다', () => {
@@ -53,24 +57,44 @@ describe('① 기아 — 한 소스 안에서 뒷줄이 굶지 않는다', () =>
 })
 
 describe('② 인터리브 — 큰 소스가 작은 소스를 굶길 수 없다', () => {
-  it('🔒 소스별로 순위를 매긴다 — 이게 없으면 commerce 111,256건이 앞을 통째로 막는다', () => {
-    expect(KAKAO_SWEEP_SQL, 'PARTITION BY source 가 사라졌다 — storeinfo 15,518건이 다시 309일 뒤로 간다')
-      .toContain('ROW_NUMBER() OVER (PARTITION BY source')
+  const row = (id: number, source: string, tier: number | null = 3): KakaoSweepRow =>
+    ({ id, company_name: `c${id}`, region: null, address: 'a', source, tier })
+
+  it('🔒 큰 소스가 앞을 통째로 막지 못한다 — 각 소스가 등수별로 번갈아 나온다', () => {
+    const big = Array.from({ length: 50 }, (_, i) => row(1000 + i, 'commerce'))
+    const small = [row(1, 'storeinfo'), row(2, 'storeinfo')]
+    const out = interleaveBySource([big, small], 6)
+    // storeinfo 2건이 앞쪽 4개 안에 들어와야 한다 — 안 들어오면 309일 뒤로 밀리던 옛 동작이다
+    expect(out.slice(0, 4).filter(r => r.source === 'storeinfo')).toHaveLength(2)
   })
 
-  it('🔒 바깥 정렬이 **순위 먼저** — tier 가 먼저 오면 인터리브가 무효가 된다', () => {
-    const rn = OUTER.indexOf('rn ASC')
-    const tier = OUTER.indexOf('tier ASC')
-    expect(rn, '바깥 ORDER BY 에 rn 이 없다').toBeGreaterThan(-1)
-    expect(tier, '같은 순위 안에서는 tier 가 앞자리를 정해야 한다').toBeGreaterThan(rn)
+  it('🔒 같은 등수 안에서는 tier → id 가 앞자리를 정한다 (소스 삽입 순서가 아니라)', () => {
+    const out = interleaveBySource([[row(9, 'a', 5)], [row(8, 'b', 1)], [row(7, 'c', null)]], 3)
+    expect(out.map(r => r.source), 'tier 낮은 순 → NULL 은 맨 뒤').toEqual(['b', 'a', 'c'])
+  })
+
+  it('🔒 limit 을 넘지 않고, 얕은 소스가 먼저 마르면 남은 소스로 계속 채운다', () => {
+    const out = interleaveBySource([[row(1, 'x'), row(3, 'x')], [row(2, 'y')]], 3)
+    expect(out.map(r => r.id)).toEqual([1, 2, 3])
+    expect(interleaveBySource([[row(1, 'x')], [row(2, 'y')]], 1)).toHaveLength(1)
+  })
+
+  it('🔒 소스 목록을 코드에 박지 않는다 — 박으면 새 수집기의 소스가 영원히 굶는다', () => {
+    expect(KAKAO_SWEEP_SOURCES_SQL).toContain('SELECT DISTINCT source')
+    expect(KAKAO_SWEEP_SOURCES_SQL, '소스 목록도 같은 대상 집합에서 뽑아야 한다').toContain(KAKAO_SWEEP_WHERE)
   })
 
   it('🔒 소스를 실제로 실어 온다 — 안 실으면 소스별 계측이 통째로 불가능하다', () => {
-    expect(KAKAO_SWEEP_SQL.slice(0, KAKAO_SWEEP_SQL.indexOf('FROM ('))).toContain('source')
+    expect(KAKAO_SWEEP_PER_SOURCE_SQL.slice(0, KAKAO_SWEEP_PER_SOURCE_SQL.indexOf('FROM'))).toContain('source')
+  })
+
+  it('🔒 소스별 쿼리가 같은 대상 집합·같은 안쪽 정렬을 쓴다', () => {
+    expect(KAKAO_SWEEP_PER_SOURCE_SQL).toContain(KAKAO_SWEEP_WHERE)
+    expect(KAKAO_SWEEP_PER_SOURCE_SQL).toContain(KAKAO_SWEEP_INNER_ORDER)
   })
 })
 
-describe('🔒 대상 집합 불변 — 두 수리 모두 순서만 바꿨다', () => {
+describe('🔒 대상 집합 불변 — 세 수리 모두 순서·계산법만 바꿨다', () => {
   it.each([
     ["(phone IS NULL OR phone = '')", '전화 없는 행만'],
     ["address IS NOT NULL AND address != ''", '주소 있는 행만'],

@@ -5899,6 +5899,39 @@ canvas {
       '파일만 있고 마운트가 없으면 **조용히 없는 기능**이다(빌드는 통과한다). 채널을 넣을 길이 없으면 ' +
       '요율 모델이 적용될 수 없다 — 실제로 활성 매장 7곳 중 6곳이 그래서 미기록이었다.',
   },
+  // ── ☎️ 카카오 스윕 재작성 (2026-08-30) — 이 파일은 이미 두 번 고쳐졌고 두 번 다 **조용히 굶는**
+  //    모양이었다. 세 번째 수리도 되돌리면 에러가 아니라 굶음으로 돌아간다.
+  {
+    name: '☎️ 인터리브의 동률 판정이 사라져 소스 순서가 순위를 정한다',
+    file: 'src/features/marketing/api/kakao-sweep-query.ts',
+    find: '      const an = a.tier == null ? 1 : 0, bn = b.tier == null ? 1 : 0',
+    replace: '      const an = 0, bn = 0',
+    test: 'src/tests/unit/kakao-sweep-order.test.ts',
+    why:
+      '같은 등수 안의 순서를 tier→id 로 두는 것이 인터리브의 절반이다. 빼면 배열에 먼저 담긴 ' +
+      '소스가 늘 앞자리를 가져가고, 대상이 많은 소스가 다시 앞을 막는다(①②에서 고친 그 기아).',
+  },
+  {
+    name: '☎️ 대상 소스 목록을 코드에 박는다(새 수집기의 소스가 영원히 굶는다)',
+    file: 'src/features/marketing/api/kakao-sweep-query.ts',
+    find: '  `SELECT DISTINCT source FROM ad_company_leads WHERE ${KAKAO_SWEEP_WHERE}`',
+    replace: "  `SELECT 'commerce' AS source`",
+    test: 'src/tests/unit/kakao-sweep-order.test.ts',
+    why:
+      '소스 목록을 고정하면 새 수집기가 소스를 하나 더 만들었을 때 그 소스는 **한 번도 안 뽑힌다** — ' +
+      '에러 없이, 통계에도 안 잡히고. 이 파일이 두 번 고친 사고가 정확히 그 모양이었다.',
+  },
+  {
+    name: '☎️ 스윕 인덱스의 정렬 키가 쿼리와 어긋난다(전량 정렬로 복귀)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: "     source, (kakao_checked_at IS NOT NULL), (email IS NOT NULL AND email <> ''),",
+    replace: "     source, (email IS NOT NULL AND email <> ''), (kakao_checked_at IS NOT NULL),",
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '컬럼 순서가 한 칸만 어긋나도 플래너가 인덱스를 버리고 임시 B-트리로 전량 정렬한다. ' +
+      '결과는 똑같이 나오므로 아무도 모르고, 회당 165만 행 읽기가 그대로 돌아온다.',
+  },
+
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

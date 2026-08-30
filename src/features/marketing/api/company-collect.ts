@@ -14,7 +14,7 @@ import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, envSubreqCap, envLaneBudget, envPlanValue, rowsWorthReading, companyRunDeadlineMs } from './collect-budget'
 import { flushNaverCalls, armNaverAndReadSettings } from './naver-api-usage'
-import { KAKAO_SWEEP_SQL, tallySweep, type KakaoSweepRow, type SweepSourceTally } from './kakao-sweep-query'
+import { KAKAO_SWEEP_SOURCES_SQL, KAKAO_SWEEP_PER_SOURCE_SQL, interleaveBySource, tallySweep, type KakaoSweepRow, type SweepSourceTally } from './kakao-sweep-query'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
 import { S1_TRADES, S2_REGIONS, S2_TRADES, S3_TRADES_LOCAL, S4_TRADES_LOCAL, buildKeywordRows, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
@@ -537,8 +537,23 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   //   ⚠️ 대상 불변(잘린 꼬리는 원래 안 쓰던 행, 도장은 시도분에만). 근거·한계: `rowsWorthReading` 헤더.
   const rowCap = rowsWorthReading(budget.left - SWEEP_BOOKKEEPING_RESERVE, cap)
   // 🎯 줄 세우기 SSOT + 두 번의 수리 근거는 `kakao-sweep-query.ts` 헤더(자주 틀리는 자리라 분리했다).
-  const rows = (await DB.prepare(KAKAO_SWEEP_SQL)
-    .bind(rowCap).all<KakaoSweepRow>().catch(() => null))?.results || []
+  // 🔀 소스별 상위 N 을 각각 뽑아 코드에서 인터리브한다 — 예전엔 창 함수 한 방이었는데 60건 뽑으려고
+  //   31만 행을 정렬했다(회당 165만 행 읽기). 같은 답, 다른 계산법. 근거는 kakao-sweep-query 헤더 ③.
+  //   ⚠️ 서브리퀘스트가 1 → (1 + 소스수) 로 는다. **먼저 예산에서 빼고** 시작한다 — 안 빼면
+  //     크롤 몫을 조용히 잠식한다(이 레인이 예전에 부기로 예산을 먹힌 것과 같은 클래스).
+  const srcRows = (await DB.prepare(KAKAO_SWEEP_SOURCES_SQL).all<{ source: string | null }>().catch(() => null))?.results
+  budget.left -= 1
+  // 조회 실패는 **빈 목록이 아니라 중단**이다 — 빈 목록으로 진행하면 "대상이 없다"로 조용히 기록된다.
+  if (!srcRows) return { scanned: 0, found: 0, cursor: 0, done: false }
+  const sources = srcRows.map(r => r.source).filter((x): x is string => !!x)
+  budget.left -= sources.length
+  const perSource: KakaoSweepRow[][] = []
+  for (const src of sources) {
+    const got = (await DB.prepare(KAKAO_SWEEP_PER_SOURCE_SQL)
+      .bind(src, rowCap).all<KakaoSweepRow>().catch(() => null))?.results
+    if (got) perSource.push(got)
+  }
+  const rows = interleaveBySource(perSource, rowCap)
   if (!rows.length) return { scanned: 0, found: 0, cursor: 0, done: true }
   let found = 0
   const startedAt = Date.now()
