@@ -285,10 +285,10 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 69 | 276 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 69 | 278 |
 | 링크샵 / 큐레이터 | `linkshop-brief.md` | 13 | 60 |
-| 에이전시 | `agency-brief.md` | 29 | 167 |
-| **합계** | — | **183** | **602** |
+| 에이전시 | `agency-brief.md` | 29 | 168 |
+| **합계** | — | **183** | **605** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -297,9 +297,9 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 379 | 1235 |
-| 도메인 버킷 (5개 소개서) | 183 | 602 |
-| 공통/인프라 (의도적 제외) | 163 | 461 |
+| 전체 | 380 | 1238 |
+| 도메인 버킷 (5개 소개서) | 183 | 605 |
+| 공통/인프라 (의도적 제외) | 164 | 461 |
 | **미커버 (점검 필요)** | **33** | **172** |
 
 ⚠️ **미커버 205건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
@@ -954,7 +954,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (276개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (278개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1111,6 +1111,10 @@
 
 **/api/seller/:sellerId**
 - `GET /api/seller/:sellerId/products-public`
+
+**/api/seller/account**
+- `POST /api/seller/account/withdraw`
+- `GET /api/seller/account/withdraw-check`
 
 **/api/seller/ad-slots**
 - `GET /api/seller/ad-slots`
@@ -1688,7 +1692,7 @@
 - `/influencer/settlement`
 - `/seller/prospects`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (167개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (168개)
 
 
 **/api/admin-payouts/disputes**
@@ -1953,6 +1957,9 @@
 **/api/influencer-settlement/analytics**
 - `GET /api/influencer-settlement/analytics`
 
+**/api/influencer-settlement/deal-for-seller**
+- `GET /api/influencer-settlement/deal-for-seller/:sellerId`
+
 **/api/influencer-settlement/deals**
 - `GET /api/influencer-settlement/deals`
 - `POST /api/influencer-settlement/deals/:id/submit-proof`
@@ -2002,7 +2009,7 @@
 
 
 
-> 마지막 생성: 2026-08-25T15:58:06.035Z
+> 마지막 생성: 2026-08-30T11:10:39.961Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

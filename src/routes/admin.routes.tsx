@@ -85,6 +85,7 @@ const AdminKakaoTestCallbackPage = lazy(() => import('@/pages/admin/AdminKakaoTe
 const AdminSampleRequestsPage = lazy(() => import('@/pages/admin/AdminSampleRequestsPage'))
 const AdminOperationsGuidePage = lazy(() => import('@/pages/admin/AdminOperationsGuidePage'))
 const AdminPlatformModelPage = lazy(() => import('@/pages/admin/AdminPlatformModelPage'))
+const AdminProposalsPage = lazy(() => import('@/pages/admin/AdminProposalsPage'))
 // 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드.
 const AdminWholesaleGuidePage = lazy(() => import('@/pages/admin/AdminWholesaleGuidePage'))
 const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage'))
@@ -518,6 +519,12 @@ export function AdminRoutes() {
       <Route path="/admin/platform-model" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminPlatformModelPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 📄 2026-08-30 (대표 요청): 대외 제안서 열람 + PDF 저장 (docs/business/proposals/*.html ?raw 자동동기화) */}
+      <Route path="/admin/proposals" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminProposalsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드 */}
