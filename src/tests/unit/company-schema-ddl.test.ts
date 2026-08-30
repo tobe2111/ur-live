@@ -19,7 +19,10 @@ describe('COMPANY_DDL', () => {
     //   같은 커밋에서 인덱스 4개가 `company-ddl-indexes.ts` 로 옮겨졌지만 **`...` 로 펼쳐지므로
     //   COMPANY_DDL 의 문장 수는 그대로**다 — 이 래칫이 그 이관에 흘림이 없었음도 함께 증언한다.
     // 2026-08-30: 카카오 스윕 인덱스(`kakao_queue`) 추가로 24 → 25.
-    expect(COMPANY_DDL).toHaveLength(25)
+    // 2026-08-30(후속): 수집 크롤 대상 인덱스(`crawl_queue`) 추가로 25 → 26.
+    //   스윕을 고친 뒤 라이브에서 회차마다 도는 쿼리를 전부 재 봤더니 같은 모양이 하나 더 있었다
+    //   (15건 뽑으려고 402,363행). 근거·설계는 `company-ddl-indexes.ts` ④.
+    expect(COMPANY_DDL).toHaveLength(26)
   })
 
   it('두 테이블을 만든다 — 리드 본체 + 반송 억제', () => {

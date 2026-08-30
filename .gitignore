@@ -85,3 +85,6 @@ artifacts/
 #   (스크래치패드에 두면 `ERR_MODULE_NOT_FOUND`). 그래서 세션마다 루트가 더러워졌다.
 #   `_` 로 시작하는 .mjs 는 계측용 일회성 파일 — 결론은 인계 문서/PR 본문에 남긴다.
 /_*.mjs
+
+# 🖼️ visual-preview.mjs 산출 스크린샷 (로컬 확인용)
+out/visual/

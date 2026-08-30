@@ -27,7 +27,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        // ⚠️ 'Pretendard Variable' 이 먼저다 — index.html 이 CDN 에서 로드하는 실제 패밀리명이
+        // 그것이고, 여기 'Pretendard' 만 있으면 `font-sans` 를 명시한 자리는 로드된 적 없는
+        // 이름을 찾다 실패해 시스템 폰트로 떨어진다(본문은 index.css body 규칙이 덮어 무사했다).
+        sans: ['Pretendard Variable', 'Pretendard', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -90,6 +93,24 @@ export default {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+      },
+      // 🌑 그림자 = 잉크 네이비 색조 (2026-08-30)
+      // 그간 커스텀 정의가 없어 368곳이 전부 Tailwind 기본 '순수 검정'이었다.
+      // 웜 화이트(#FAF7F5) 바탕에 차가운 순수 검정을 얹으면 회색 때처럼 읽혀
+      // 값싸 보인다 — 브랜드 잉크(#1A2C42 = 26 44 66)로 색조를 맞춘다.
+      // 네이비는 소비자 웜 바탕과 대시보드 쿨 그레이(#F4F5F7) 양쪽에 다 맞는다
+      // (웜 브라운으로 틴트하면 대시보드에서 어긋난다).
+      // ⚠️ 클래스명 불변 — `shadow-sm/md/lg/xl/2xl` 그대로. 값만 리매핑이라
+      // 마크업 0줄 수정이고 테마 가드 영향 0 (브랜드 컬러 롤아웃과 동일 방식).
+      boxShadow: {
+        sm: '0 1px 2px 0 rgb(26 44 66 / 0.06)',
+        DEFAULT: '0 1px 3px 0 rgb(26 44 66 / 0.10), 0 1px 2px -1px rgb(26 44 66 / 0.08)',
+        md: '0 4px 6px -1px rgb(26 44 66 / 0.09), 0 2px 4px -2px rgb(26 44 66 / 0.07)',
+        lg: '0 10px 15px -3px rgb(26 44 66 / 0.09), 0 4px 6px -4px rgb(26 44 66 / 0.06)',
+        xl: '0 20px 25px -5px rgb(26 44 66 / 0.10), 0 8px 10px -6px rgb(26 44 66 / 0.05)',
+        '2xl': '0 25px 50px -12px rgb(26 44 66 / 0.22)',
+        inner: 'inset 0 2px 4px 0 rgb(26 44 66 / 0.05)',
+        none: 'none',
       },
     },
   },

@@ -1139,6 +1139,19 @@ canvas {
       '폭이 뷰포트로 갈리므로(2·3열 200 ↔ 4열 400) 특히 어긋나기 쉬워, 양쪽이 SSOT 상수를 읽게 했다.',
   },
   {
+    name: '숙소 상세 사진만 여백이 생긴다(다른 상세는 풀블리드)',
+    file: 'src/pages/StayDetailPage.tsx',
+    find: 'relative -mx-4 -mt-5 lg:mx-0 lg:mt-0 bg-gray-100',
+    replace: 'relative bg-gray-100',
+    test: 'src/tests/unit/stay-detail-gallery-bleed.test.ts',
+    why:
+      '2026-08-30 대표 신고. 숙소는 갤러리를 본문과 같은 `px-4 py-5` 래퍼 **안**에 둬서, 같은 ' +
+      '`DetailGallery` 를 쓰는데도 사진만 들여쓰기됐다(실측 390px: 공구 x[0..390] top 0 ↔ 숙소 ' +
+      'x[16..374] top 20). 🔁 **숙소는 상세 개선에서 반복적으로 빠진다** — 2026-08-19 에도 같은 ' +
+      '이유로 고쳤는데 그때는 제목·갤러리만 맞추고 바깥 여백을 놓쳤다. 되돌아가도 에러가 없고 ' +
+      '**PC 에서는 티가 안 나서**(PC 는 원래 카드로 떠 있다) 폰으로 보기 전엔 아무도 모른다.',
+  },
+  {
     name: '히어로가 남의 사진(외부 호스트 데모)을 홈 얼굴로 쓴다',
     // 🚚 2026-08-29: 고르는 규칙이 `HomeHeroDefault` → `shared/home-hero-photo` 로 이사했다
     //   (워커가 히어로를 preload 하려면 **같은 사진**을 골라야 해서 SSOT 로 뽑았다).
@@ -5982,6 +5995,16 @@ canvas {
     why:
       '소스 목록을 고정하면 새 수집기가 소스를 하나 더 만들었을 때 그 소스는 **한 번도 안 뽑힌다** — ' +
       '에러 없이, 통계에도 안 잡히고. 이 파일이 두 번 고친 사고가 정확히 그 모양이었다.',
+  },
+  {
+    name: '🐌 수집 크롤 인덱스에 source 를 키로 넣는다(정렬이 되살아난다)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: "     (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC)\n     WHERE merged_into IS NULL AND source IN ('local','webkr')",
+    replace: "     source, (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC)\n     WHERE merged_into IS NULL",
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      'source 가 정렬 키 선두에 오면 두 소스 그룹을 합치느라 정렬이 되살아난다 — 쿼리는 똑같이 ' +
+      '답을 내고 에러도 없지만 회당 40만 행 읽기가 그대로 돌아온다. 화면엔 아무 변화가 없다.',
   },
   {
     name: '☎️ 스윕 인덱스의 정렬 키가 쿼리와 어긋난다(전량 정렬로 복귀)',
