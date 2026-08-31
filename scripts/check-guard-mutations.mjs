@@ -88,6 +88,26 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '돌긴 했는데 못 한 cron 을 아무도 안 본다',
+    file: 'src/worker/cron/cron-stale-watch.ts',
+    find: '  for (const b of blocked) {',
+    replace: '  for (const b of []) {',
+    test: 'src/tests/unit/cron-bindings.test.ts',
+    why:
+      '이 감시는 "안 돌았다"(age)만 보던 탓에 2026-08-31 사고를 넉 달간 못 봤다 — 그 cron 은 ' +
+      '멈춘 적이 없고 5분마다 성실히 돌면서 아무것도 못 했다. 이 루프가 그 나머지 절반이다.',
+  },
+  {
+    name: '대시보드 R2 바인딩 프로브가 종료코드에 안 실린다',
+    file: 'scripts/check-live-contracts.mjs',
+    find: 'process.exit(failures.length || robots || r2 ? 1 : 0)',
+    replace: 'process.exit(failures.length || robots ? 1 : 0)',
+    test: 'src/tests/unit/cron-bindings.test.ts',
+    why:
+      'Pages 바인딩은 대시보드에만 있어 레포 가드가 못 본다. 유일한 창이 이 프로브인데, 결과가 ' +
+      '종료코드에 안 실리면 워크플로가 초록으로 끝나 아무에게도 안 닿는다(만들어 놓고 안 부르는 것과 같다).',
+  },
+  {
     name: 'cron 이 쓰는 R2 바인딩이 wrangler.toml 에서 다시 주석 처리된다',
     file: 'wrangler.toml',
     find: '[[r2_buckets]]\nbinding = "MEDIA_BUCKET"',

@@ -86,3 +86,29 @@ describe('바인딩이 없어 못 돈 것을 "할 일 없었음"과 구분한다
     }
   })
 })
+
+describe('돌긴 했는데 못 한 것을 알려 준다 (멈춤 감시의 나머지 절반)', () => {
+  it('cron-stale-watch 가 skipped 를 실은 비트를 골라 알린다', () => {
+    // 🩸 넉 달을 놓친 진짜 이유: 그 cron 은 **안 멈췄다.** 5분마다 성실히 돌면서 아무것도 못 했다.
+    //   기존 감시는 age(안 돌았다)만 봐서 볼 이유가 없었고, 결과가 전부 0 이라 정상과 구분도 안 됐다.
+    const src = read('src/worker/cron/cron-stale-watch.ts')
+    expect(src, 'skipped 를 실은 비트를 고르지 않는다 — 못 한 cron 이 조용히 지나간다')
+      .toMatch(/const blocked\s*=\s*beats\.filter/)
+    expect(src, '고르기만 하고 알리지 않는다').toMatch(/for \(const b of blocked\)/)
+    // 알림 키가 멈춤과 같으면 한쪽이 다른 쪽의 12시간 억제에 묻힌다.
+    expect(src, '차단 알림이 멈춤 알림과 같은 키를 쓴다 — 한쪽이 묻힌다').toMatch(/`blocked:\$\{b\.name\}`/)
+  })
+})
+
+describe('대시보드 쪽 바인딩도 감시된다 (레포가 못 보는 절반)', () => {
+  it('라이브 계약 점검이 R2 바인딩을 503 으로 판정한다', () => {
+    // 요청 처리(Pages) 바인딩은 대시보드에만 있어 정적 가드가 못 본다. `/api/media/:key` 가
+    //   404(객체 없음)와 503(바인딩 없음)을 구분해 주므로, **없어도 되는 키**를 두드려 확인한다.
+    const src = read('scripts/check-live-contracts.mjs')
+    expect(src, 'R2 바인딩 프로브가 없다').toMatch(/async function checkR2Binding/)
+    expect(src, '503(바인딩 없음)을 판정하지 않는다').toMatch(/status === 503/)
+    // 만들어 놓고 안 부르면 없는 것과 같다 — 호출과 종료코드 반영까지 본다.
+    expect(src, '프로브를 호출하지 않는다').toMatch(/await checkR2Binding\(BASE\)/)
+    expect(src, '실패가 종료코드에 반영되지 않는다').toMatch(/process\.exit\([^)]*\br2\b/)
+  })
+})
