@@ -358,8 +358,11 @@ export default function StayDetailPage() {
             alt={stay.restaurant_name || stay.name}
             fallback={<span className="text-6xl" aria-hidden="true">🏨</span>}
           />
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="absolute top-4 left-4 z-10 w-9 h-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white lg:hidden">
-            <ChevronLeft className="w-5 h-5" />
+          {/* 🔘 2026-08-31: 이용권 상세 상단바 버튼들과 **같은 처리**(흰 원 + 잉크 선 아이콘 + 옅은 그림자).
+              검정 반투명 원이라 저쪽과 톤이 갈려 있었다 — 대표 "일반 이용권, 숙소 이용권 모두를 포함". */}
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기"
+            className="absolute top-4 left-4 z-10 w-9 h-9 rounded-full bg-white/92 dark:bg-[#0D0F12]/85 backdrop-blur shadow-[0_1px_4px_rgba(22,24,28,.18)] hover:bg-white flex items-center justify-center text-gray-900 dark:text-white transition-all active:scale-95 lg:hidden">
+            <ChevronLeft className="w-[18px] h-[18px]" />
           </button>
         </div>
 
