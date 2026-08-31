@@ -6375,6 +6375,27 @@ canvas {
       '대표 지시 — 돈 갈림 계산은 어드민만 본다. PG 준비금과 유어딜 실수령이 매장 쪽으로 새면 ' +
       '우리 마진 구조가 그대로 노출된다.',
   },
+  {
+    name: '🩸 영입자 검증이 sellers 로 되돌아간다(엉뚱한 사람에게 2%)',
+    file: 'src/features/admin/api/admin-sellers.routes.ts',
+    find: "const inf = await DB.prepare('SELECT id FROM users WHERE id = ? LIMIT 1').bind(newInfluencerId).first();",
+    replace: 'const inf = await DB.prepare("SELECT id FROM sellers WHERE id = ? AND seller_type IN (\'influencer\',\'both\')").bind(newInfluencerId).first();',
+    test: 'src/tests/unit/introducer-id-space.test.ts',
+    why:
+      '`sellers.introduced_by_influencer_id` 를 적립·지급·조회·등록귀속 네 곳이 전부 `users.id` 로 읽는데 ' +
+      '이 검증만 `sellers` 를 봤다. 두 id 공간이 라이브에서 겹쳐(셀러 3·5·6 ↔ 유저 3·5·6) ' +
+      '**에러 없이 엉뚱한 사람에게 2% 가 간다** — 가장 조용한 머니 사고다.',
+  },
+  {
+    name: '🤝 영입자를 확인 없이 지정할 수 있게 된다',
+    file: 'src/pages/admin-merchant-commissions/IntroducerAssign.tsx',
+    find: 'disabled={busy || !preview}',
+    replace: 'disabled={busy}',
+    test: 'src/tests/unit/introducer-id-space.test.ts',
+    why:
+      'id 공간이 겹치므로 번호만 보고 저장하면 오지정을 눈으로 잡을 기회가 사라진다. ' +
+      '"이 사람이 맞나요?" 를 통과해야만 저장되는 것이 이 화면의 유일한 안전장치다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

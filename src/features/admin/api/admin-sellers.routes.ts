@@ -822,9 +822,22 @@ adminSellersRoutes.patch('/sellers/:id/reassign-influencer', cors(), async (c) =
     const reason = (body.reason || '').trim();
     if (!reason || reason.length < 5) return c.json({ success: false, error: '재배정 사유를 최소 5자 이상 입력하세요.' }, 400);
 
+    // 🩸 2026-08-31 수리 — **이 검증이 잘못된 테이블을 보고 있었다.**
+    //
+    //   `sellers.introduced_by_influencer_id` 를 나머지 네 곳은 전부 **`users.id`** 로 읽는다:
+    //     · 적립  `influencer-store-intro-commission` — `orders.user_id` 와 직접 비교(본인구매 가드)
+    //     · 지급  `marketing.routes /payouts/process` — `creditFreePoints({ userId })`
+    //     · 조회  매장 카드 GET — `LEFT JOIN users u ON u.id = s.introduced_by_influencer_id`
+    //     · 귀속  `seller-stores.routes` 등록 링크 — `SELECT id FROM users WHERE id = ?`
+    //   그런데 여기만 **`sellers.id`** 로 검증했다(2026-05-21 작성 당시엔 영입자가 셀러였다.
+    //   2026-08-26 "신분이 아니라 행위" 확정으로 유어샵을 연 누구나 영입자가 된 뒤 이 자리만 남았다).
+    //
+    //   ⚠️ 두 id 공간이 **실제로 겹친다**(라이브 셀러 3·5·6 ↔ 유저 3·5·6). 어드민이 이 API 로
+    //   셀러 5 를 지정하면 2% 는 **유저 5** 에게 간다 — 에러 없이 엉뚱한 사람에게 지급된다.
+    //   그래서 검증을 `users` 로 맞춘다. 나머지 넷과 같은 뜻이 되어야 한다.
     if (newInfluencerId != null) {
-      const inf = await DB.prepare("SELECT id FROM sellers WHERE id = ? AND seller_type IN ('influencer','both')").bind(newInfluencerId).first();
-      if (!inf) return c.json({ success: false, error: '대상 인플루언서를 찾을 수 없습니다.' }, 404);
+      const inf = await DB.prepare('SELECT id FROM users WHERE id = ? LIMIT 1').bind(newInfluencerId).first();
+      if (!inf) return c.json({ success: false, error: '대상 유저를 찾을 수 없습니다. (유저 id 를 입력하세요 — 셀러 id 가 아닙니다)' }, 404);
     }
     const current = await DB.prepare('SELECT introduced_by_agency_id, introduced_by_influencer_id, updated_at FROM sellers WHERE id = ?').bind(sellerId).first<{ introduced_by_agency_id: number | null; introduced_by_influencer_id: number | null; updated_at: string | null }>();
     if (!current) return c.json({ success: false, error: '셀러를 찾을 수 없습니다.' }, 404);
