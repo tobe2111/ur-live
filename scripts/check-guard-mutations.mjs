@@ -6566,6 +6566,26 @@ canvas {
       '산출물 부재를 통과로 접으면 가드가 있어도 없는 것과 같다. 이 레포가 반복해 당한 ' +
       '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
   },
+  {
+    name: '🧾 후기 보너스 게이트가 없어져 매장이 모르는 사이 청구된다',
+    file: 'src/features/group-buy/api/review-bonus-funding.ts',
+    find: 'fundedBy: ownerGateOn && storeSet ? \'owner\' : \'platform\',',
+    replace: "fundedBy: storeSet ? 'owner' : 'platform',",
+    test: 'src/tests/unit/review-bonus-funding.test.ts',
+    why:
+      '게이트가 매장 부담의 유일한 경계다. 없어지면 값을 넣어 본 매장이 **모르는 사이에 청구**된다 — ' +
+      '머니 경로는 게이트 OFF 로 들어와 staging 실결제 뒤에 켜는 것이 이 레포의 룰이다.',
+  },
+  {
+    name: '🧾 후기 보너스 금액이 매장 설정을 무시한다',
+    file: 'src/features/group-buy/api/review-bonus-funding.ts',
+    find: '    amount: storeSet ? (storeAmount as number) : fallback,',
+    replace: '    amount: fallback,',
+    test: 'src/tests/unit/review-bonus-funding.test.ts',
+    why:
+      '매장이 셀러 대시보드에서 정한 값이 안 먹으면, 화면엔 3,000원이라고 떠 있는데 실제로는 ' +
+      '플랫폼 기본값이 나간다 — 표시와 지급이 갈리는 이 레포의 단골 사고다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

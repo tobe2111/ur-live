@@ -1,0 +1,53 @@
+# 후기 보너스 — 매장 사장님이 금액을 정한다 (2026-08-31)
+
+## 대표 지시
+
+> "후기 보너스는 그러면 매장 사장님이 설정할 수 있도록 하자. 셀러 대시보드에서 말이야.
+>  유어딜이 주는게 아니라 매장 사장님이 부담하게끔."
+
+## 왜
+
+카카오 지도의 별점·후기 수는 **그 매장의 자산**이다. 유어딜이 매장 마케팅 비용을 대신 낼 이유가 없다.
+그리고 이건 대표가 같은 대화에서 짚은 더 큰 문제의 일부다 — **지금 무상 딜이 나가는 다섯 경로가
+전부 유어딜 부담**인데, 유어딜은 그 딜을 나중에 이용권 결제로 되받아 준다.
+
+## 무엇을 했나
+
+| 층 | 무엇 |
+|---|---|
+| 판정 SSOT | 신규 `src/features/group-buy/api/review-bonus-funding.ts` — `resolveReviewBonus(DB, sellerId)` |
+| 읽는 자리 2곳 | `review-bonus.routes.ts` 의 **제출**(상품의 seller_id)·**승인**(제출행의 seller_id) 둘 다 이 함수를 부른다 |
+| 저장 | `seller_meta.review_bonus_amount` — sellers 는 100컬럼 한도라 K-V 사이드테이블 |
+| API | `GET/PATCH /api/seller/stores/review-bonus` (rateLimit 30/hr) |
+| 화면 | `src/components/seller/ReviewBonusCard.tsx` → `/seller/stores` |
+
+## 💰 머니 경로 — **이번 PR 은 라이브 금액을 안 바꾼다**
+
+- 매장이 값을 **넣기 전**까지 금액은 `platform_settings.kakao_review_bonus_amount`(기본 1,000) 그대로다.
+- 재원 판정은 게이트 **`review_bonus_owner_funded`(platform_settings, 기본 OFF)** 뒤에 있다.
+  꺼져 있으면 `fundedBy` 는 **항상 `platform`** 이다.
+- ⛔ **매장 원장 차감은 아직 안 붙였다.** 그건 정산에 손대는 일이라 CLAUDE.md 룰대로
+  **단독 세션 + staging 실결제** 뒤에 붙인다.
+
+화면도 그 사실대로 쓴다 — 게이트가 꺼져 있으면 카드가 *"지금은 유어딜이 부담합니다"* 라고 말한다.
+매장이 없는 청구를 믿게 두면 안 된다.
+
+## 다음 세션의 첫 액션
+
+1. **차감을 붙일 때** — 승인 시점(`review-bonus.routes.ts` approve)에서 `fundedBy === 'owner'` 인 건만
+   매장 원장에 debit. 적립-역전 대칭(CLAUDE.md 머니 룰 #2)을 같은 커밋에서: 후기 취소·회수 경로.
+2. **게이트 켜기 전 staging**: 매장이 3,000 을 넣고 → 후기 승인 → 그 매장 원장에 3,000 debit 1회
+   (멱등: 같은 제출 재승인 시 이중차감 0) → 취소 시 복원.
+3. `docs/STAGING_CHECKLIST.md` 에 항목 추가 + `OPS_GATES` 에 `review_bonus_owner_funded` 등록.
+
+## 이번에 틀렸던 판단
+
+- 처음엔 금액을 `platform_settings` 하나로 두고 매장별은 나중에 하려 했다. 그러면 **대표 지시의 핵심
+  ("매장 사장님이 설정")이 빠진다** — 매장별 값이 먼저고 플랫폼 값은 폴백이다.
+- 주입을 처음 "게이트 조건 제거"로만 썼는데, 금액 경로가 무방비였다 → **주입 2건**(게이트·금액)으로 나눴다.
+
+## 남은 결정 (대표)
+
+- **기본값을 0 으로 둘지** — 지금은 매장이 아무것도 안 하면 유어딜이 1,000딜을 계속 낸다.
+  게이트를 켜는 날 "매장 미설정 = 후기 보너스 없음"으로 갈지, "유어딜 기본값 유지"로 갈지.
+- **상한 100,000딜** 은 오타 방지용으로 임의로 잡았다.
