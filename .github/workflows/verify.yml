@@ -395,6 +395,10 @@ jobs:
       #   둘 다 **에러를 내지 않는다** — 화면만 조용히 밋밋해지고 배포는 초록불이다.
       - name: AI design slop ratchet (flat gradients / emoji-as-icon)
         run: node scripts/check-design-slop.mjs
+      - name: Dashboard button system ratchet (strict)
+        env:
+          STRICT_DASHBOARD_BUTTON: '1'
+        run: node scripts/check-dashboard-button-system.mjs
         continue-on-error: false
 
       # 🍎 2026-06-20: 카카오 OAuth iOS 쿠키 미영속 안티패턴 (strict). iOS Safari/WebKit 은
@@ -773,6 +777,13 @@ jobs:
       #   조용히 나가고 있었다(에러 없음·화면 정상·바이트만 샘). 이름으로 잡는다.
       - name: Consumer surface role-chunk leak (strict)
         run: node scripts/check-surface-role-leak.mjs
+
+      # 🛡️ 2026-08-31 (대표 지시): 빌드 산출 CSS 에 `.ur-btn*` 이 살아 있는지 — Tailwind 트리셰이킹
+      #   방어. 이 판정은 원래 유닛테스트(button-system.test.ts)에 있었는데 유닛테스트가 build 보다
+      #   **앞**이라 `dist/` 가 없었고, 없으면 조용히 return 해서 **CI 에서 실패할 수 없었다**.
+      #   빌드 뒤로 옮기고 "산출물 없음 = 실패" 로 바꿨다. 반드시 build 뒤에 둘 것.
+      - name: Built CSS survives tree-shaking (strict)
+        run: node scripts/check-built-css.mjs
 
       # ── 6. 결과 요약 (artifact) — build 가 성공한 경우만 ──
       - name: Bundle size report

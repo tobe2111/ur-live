@@ -29,9 +29,24 @@ describe('이용권 상세 — 제목이 사진 위로 (대표 확정 1안)', ()
 
   it('제목·가격이 PC 에서 두 벌로 나오지 않는다 (모바일 블록은 lg:hidden)', () => {
     const s = code(DETAIL)
-    // 모바일 타이틀/가격 블록은 반드시 lg:hidden 을 달고 있어야 한다.
-    expect(s).toMatch(/className="lg:hidden" style=\{\{ padding: '20px 18px 0' \}\}/)
-    expect(s).toMatch(/className="lg:hidden" style=\{\{ padding: '18px 18px 22px' \}\}/)
+    // 🩸 2026-08-31: 예전엔 `padding: '20px 18px 0'` 처럼 **패딩 값**에 앵커해 있었다. 그래서 대표가
+    //    "제목·가격 배치가 컴팩트하지 않다"고 해서 여백을 줄이자 **디자인 변경만으로 빨간불**이 났다.
+    //    지키려는 것은 여백이 아니라 "모바일 블록이 PC 에서 안 그려진다"이므로, 그 불변식만 본다.
+    //    ⇒ 제목(h1)과 가격(unitPrice)을 감싼 블록이 각각 lg:hidden 을 달고 있는지.
+    const anchors = [
+      { name: '제목', at: s.indexOf('>{detail.name}</h1>') },
+      // ⚠️ `</span>` 까지 붙여야 유일하다 — 없이 쓰면 위쪽 **SEO 설명 문자열**의 같은 표현에 먼저 걸려
+      //    엉뚱한 자리를 검사하게 된다(이 레포에서 반복해 밟은 "첫 일치" 함정).
+      { name: '가격', at: s.indexOf('{formatNumber(unitPrice)}원</span>') },
+    ]
+    for (const a of anchors) {
+      expect(a.at, `${a.name} 블록을 못 찾았다 — 앵커가 낡았다`).toBeGreaterThan(0)
+      // ⚠️ "바로 앞 div" 로 보면 안 된다 — h1 은 안쪽 div 에 또 싸여 있어서 그 방법은 정상 코드도 빨갛게 만든다
+      //    (실제로 그렇게 짰다가 걸렸다). 앵커 직전 구간에 lg:hidden 이 있는지로 본다.
+      const win = s.slice(Math.max(0, a.at - 1500), a.at)
+      expect(win.includes('lg:hidden'), `${a.name} 블록이 lg:hidden 이 아니다 — PC 에서 두 벌로 나온다`).toBe(true)
+      expect(win.includes('hidden lg:block'), `${a.name} 앞에 PC 전용 블록이 끼어들었다`).toBe(false)
+    }
   })
 
   it('제목 헤더는 PC 전용이다 (모바일은 사진이 먼저)', () => {

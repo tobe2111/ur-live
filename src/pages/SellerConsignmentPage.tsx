@@ -222,7 +222,7 @@ export default function SellerConsignmentPage() {
                       <button
                         onClick={() => handleApprove(p.id)}
                         disabled={actingId === p.id}
-                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-900 text-white rounded-lg text-xs font-bold hover:bg-gray-900 disabled:opacity-50"
+                        className="ur-btn ur-btn-md ur-btn-primary flex-1 flex items-center justify-center gap-1 disabled:opacity-50"
                       >
                         {actingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                         {t('seller.consignment.approveBtn', { defaultValue: '승인' })}

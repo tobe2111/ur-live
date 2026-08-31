@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useCurrentDong } from '@/hooks/useCurrentDong'
-import { BedDouble } from 'lucide-react'
+import { BedDouble, LocateFixed } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import SiteFooter from '@/components/main/SiteFooter'
@@ -122,11 +122,12 @@ export default function PcHomePage() {
                 ? `${catLabel} 이용권`
                 : userLoc ? (dong?.dong ? `${dong.dong} 주변 딜` : '내 주변 가까운 딜') : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
             </h1>
-            <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
-              {catLabel
-                ? `${catLabel} 이용권만 모아 봤어요.`
-                : '이용권 · 공동구매 · 교환권을 할인가로 바로 만나보세요.'}
-            </p>
+            {/* 🧹 2026-08-31: 기본 부제 "이용권 · 공동구매 · 교환권을 할인가로 바로 만나보세요." 삭제.
+                정보가 0인데 한 줄을 먹는다 — 모바일 홈에서 같은 이유로 지웠고, PC 만 남아 있었다.
+                카테고리를 고른 경우엔 **걸러졌다는 신호**라 유지한다(그건 정보다). */}
+            {catLabel && (
+              <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{`${catLabel} 이용권만 모아 봤어요.`}</p>
+            )}
           </header>
 
           {/* 정렬 칩 — 현위치 설정 시 '가까운 순' 칩 노출(거리순). */}
@@ -141,7 +142,7 @@ export default function PcHomePage() {
                     : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                 }`}
               >
-                📍 가까운 순
+                <LocateFixed className="w-[15px] h-[15px]" aria-hidden="true" />가까운 순
               </button>
             )}
             {SORT_CHIPS.map(s => {

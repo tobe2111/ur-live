@@ -171,7 +171,7 @@ export default function SellerInfluencersPage() {
           <span className="text-sm font-bold text-gray-900 flex items-center gap-1.5"><Users className="w-4 h-4" /> {selected.size}명 선택</span>
           {contactFee > 0 && <span className="text-[11px] text-gray-500">예상 {formatNumber(contactFee * selected.size)}원</span>}
           <button onClick={() => setProposing(true)}
-            className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand hover:bg-brand-dark text-white text-sm font-bold transition">
+            className="ur-btn ur-btn-md ur-btn-primary ml-auto flex items-center gap-1.5 transition">
             <Send className="w-4 h-4" /> 협업 제안하기
           </button>
         </div>

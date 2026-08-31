@@ -27,6 +27,26 @@ interface ResizeOptions {
   quality?: number  // 1-100, default 85
   format?: 'auto' | 'webp' | 'avif' | 'json'
   fit?: 'scale-down' | 'contain' | 'cover' | 'crop' | 'pad'
+  /**
+   * 🎯 2026-08-31 [UNLOCK_LOADING] (대표 승인 — "너가 얘기해준 가장 이상적인 방법들로 할게")
+   *   자를 **위치**. 상세 히어로처럼 고정 프레임에 사진을 채워야 할 때, 우리 사진은 비율이 제각각이라
+   *   (네이버 사진 70장 실측: 세로가 더 긴 것 37%, 중앙값 정확히 1:1) 가운데를 자르면 피사체가
+   *   잘려 나간다. `auto` 는 Cloudflare 가 피사체를 찾아 자른다 — 라이브 실측으로 동작 확인
+   *   (`cf-resized: internal=ram`, center 대비 결과 바이트가 달라짐 = 실제로 다른 곳을 자른다).
+   */
+  gravity?: 'auto' | 'center' | 'left' | 'right' | 'top' | 'bottom'
+}
+
+/**
+ * 크롭 옵션 조각 — **`gravity` 를 명시했을 때만** 나온다.
+ * ⚠️ 이 게이트가 중요하다: 검증 호스트 빠른 경로는 옵션 문자열을 손으로 조립하고 있어서,
+ *    조건 없이 붙이면 **기존 모든 호출의 URL 이 바뀌어** 엣지 캐시가 통째로 미스 난다.
+ *    지금 `gravity` 를 넘기는 곳은 상세 히어로뿐이라, 나머지는 URL 이 바이트 그대로다.
+ */
+function cropFrag(o: ResizeOptions): string {
+  if (!o.gravity) return ''
+  const h = o.height ? `,height=${o.height}` : ''
+  return `${h},fit=${o.fit || 'cover'},gravity=${o.gravity}`
 }
 
 const SUPPORTED_HOSTS = new Set([
@@ -193,7 +213,7 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
     //   onerror=redirect = 리사이즈 실패 시 Cloudflare 가 원본(media.ur-team.com/<key>, 항상 200)으로
     //   302 → 브라우저가 원본 로드(자가치유). 라이브 실측: 유효 이미지 200 유지 + param 수용 확인.
     //   외부 호스트 분기(아래)가 이미 쓰는 패턴을 업로드 이미지에도 확장(제거 아님 — additive).
-    return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect/https://media.ur-team.com/${src.slice('/api/media/'.length)}`
+    return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect${cropFrag(opts)}/https://media.ur-team.com/${src.slice('/api/media/'.length)}`
   }
   if (src.startsWith('/api/upload/')) {
     if (typeof window !== 'undefined') {
@@ -270,7 +290,7 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   최악의 경우 다운사이드 0. 핫링크 차단 호스트는 위 HOTLINK_BLOCKED_HOSTS 가 먼저 걸러 낸다.
       const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com', 'kakaocdn.net', 'daumcdn.net']  // giftishow 2026-07-13 재실측 복원 · kakao/daum 2026-08-19 실측 승격(전부 onerror=redirect 안전판)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
-        return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect/${cdnCgiSafe(src)}`
+        return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect${cropFrag(opts)}/${cdnCgiSafe(src)}`
       }
       return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
     }
@@ -283,6 +303,7 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
   if (opts.quality) params.push(`quality=${opts.quality}`)
   params.push(`format=${opts.format || 'auto'}`)
   if (opts.fit) params.push(`fit=${opts.fit}`)
+  if (opts.gravity) params.push(`gravity=${opts.gravity}`)
 
   const paramsStr = params.join(',')
   const cleanSrc = isAbsolute ? src.replace(/^https?:\/\/[^/]+/, '') : src

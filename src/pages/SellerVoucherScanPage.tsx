@@ -92,7 +92,7 @@ function UsageConditionsCard() {
         placeholder="추가 안내 (선택 · 예: 브레이크타임 15~17시 제외)"
         className="w-full mt-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-gray-400/40"
       />
-      <button onClick={save} disabled={saving} className="w-full mt-1 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold disabled:opacity-50">
+      <button onClick={save} disabled={saving} className="ur-btn ur-btn-md ur-btn-primary w-full mt-1 disabled:opacity-50">
         {saving ? '저장 중…' : '사용 조건 저장'}
       </button>
     </div>

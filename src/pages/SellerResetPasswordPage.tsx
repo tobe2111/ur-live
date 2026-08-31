@@ -143,7 +143,7 @@ export default function SellerResetPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 py-3 mt-2 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-900 active:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="ur-btn ur-btn-lg ur-btn-primary w-full flex items-center justify-center gap-2 mt-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <>
