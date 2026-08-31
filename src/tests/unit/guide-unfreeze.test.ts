@@ -40,7 +40,7 @@ describe('가이드 한정 해동', () => {
 
   it('2차 해동 — 길이로 거르다 놓친 것들을 잡는다', () => {
     // 🩸 1차에서 길이 비교로 걸렀다가 틀렸다. 폐기어 치환은 **같은 글자 수**이고
-    //    (유통사→판매사 · 식사권→이용권), 옛 도메인은 **더 길다**(live.ur-team.com vs urdeal.kr).
+    //    (유통사→판매사 · 식사권→이용권), 옛 도메인은 **더 길다**(16자 vs urdeal.kr 9자).
     //    그래서 "길이가 같다/더 길다"는 드리프트가 없다는 뜻이 아니다.
     expect(routes).toContain('UNFREEZE_ONCE_2')
     expect(routes).toContain('guide_unfreeze_2026_08_31_b')

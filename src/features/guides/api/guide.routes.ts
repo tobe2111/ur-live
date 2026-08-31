@@ -163,7 +163,7 @@ async function syncGuideSeed(DB: D1Database, firstRun: boolean, env?: SeedAssetE
   //        (유통사→판매사 · 식사권→이용권 — 전부 3글자). 도매 가이드 15개 중 12개가
   //        아직 '유통사'라고 말하고 있었다(2026-06-22 대표 확정으로 폐기된 말).
   //     ② "라이브가 더 길면 누가 더한 것" → 아니었다. **옛 도메인이 더 길어서**였다
-  //        (live.ur-team.com 16자 vs urdeal.kr 9자). admin 'deploy' 는 그 위에
+  //        (옛 도메인 16자 vs urdeal.kr 9자). admin 'deploy' 는 그 위에
   //        **클라이언트만 빌드하는 옛 단독 명령**을 가르치고 있었다 — CLAUDE.md 가
   //        2026-05-12 사고의 원인으로 지목하고 금지한 그 명령이다(_worker.js 가 안 갱신된다).
   //        (그 문자열을 여기 그대로 쓰면 check-build-command 가드가 잡는다 — 정당하게.)
