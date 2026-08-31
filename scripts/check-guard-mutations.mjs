@@ -6742,6 +6742,16 @@ canvas {
       '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
   },
   {
+    name: '🔓 가이드 해동이 전체로 번진다 (관리자 문구까지 시드로 덮음)',
+    file: 'src/features/guides/api/guide.routes.ts',
+    find: 'manually_edited = 0 WHERE guide_type = ? AND section_key = ?',
+    replace: 'manually_edited = 0 WHERE 1=1',
+    test: 'src/tests/unit/guide-unfreeze.test.ts',
+    why:
+      '해동은 **실측으로 갈린 섹션 13개**를 되살리려는 것이지 관리자가 쓴 문구를 되돌리려는 것이 아니다. ' +
+      '범위가 풀리면 운영자가 손으로 다듬은 가이드가 배포 한 번에 통째로 시드로 덮인다.',
+  },
+  {
     name: '📖 운영백서가 커미션 딜 수령을 무상으로 뭉갠다',
     file: 'src/features/guides/api/guide-seed-admin/ops-handbook-section.ts',
     find: '🔑 **네 번째는 무상이 아닙니다.**',
