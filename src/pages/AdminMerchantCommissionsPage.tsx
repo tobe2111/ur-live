@@ -17,6 +17,7 @@ import { DashboardLoadError } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import StoreChannelCard from './admin-merchant-commissions/StoreChannelCard'
 
 interface CommissionSettings {
   id: number
@@ -170,6 +171,9 @@ export default function AdminMerchantCommissionsPage() {
                 <span className="text-gray-500">매장</span>
                 <span className="font-bold text-gray-900">{cs.business_name || `#${cs.id}`}</span>
               </div>
+              {/* 💰 2026-08-31 대표 "되게 복잡해졌어" — 채널(요율)과 돈 갈림을 이 카드 안에서 끝낸다.
+                  그전엔 채널을 바꿀 화면이 아예 없었다(API 만 있고 UI 미배선). */}
+              <StoreChannelCard sellerId={cs.id} hasIntroducer={!!cs.introduced_by_influencer_id} />
               <div className="flex justify-between border-b border-gray-100 pb-2">
                 <span className="text-gray-500">영입자</span>
                 <span className="font-bold text-gray-900">{introducer}</span>

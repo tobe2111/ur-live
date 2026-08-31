@@ -6345,6 +6345,36 @@ canvas {
       '두 쿼리가 갈리면 "cron 알림엔 떴는데 어드민 목록엔 없다"가 된다 — 어드민이 지급하려고 ' +
       '들어갔는데 그 사람이 없다. 알림과 목록은 같은 조건이어야 한다.',
   },
+  {
+    name: '💰 매장 카드에서 채널 스위치가 사라진다(import 만 남음)',
+    file: 'src/pages/AdminMerchantCommissionsPage.tsx',
+    find: '<StoreChannelCard sellerId={cs.id} hasIntroducer={!!cs.introduced_by_influencer_id} />',
+    replace: '<div />',
+    test: 'src/tests/unit/store-channel-card.test.ts',
+    why:
+      '이 배선 전에는 채널 API 만 있고 **부르는 화면이 없었다** — 대표가 매장을 direct 로 바꿀 방법이 ' +
+      '어디에도 없었고 아무도 몰랐다(에러가 아니라 부재라서). import 가 남아 있으면 눈으로도 안 보인다.',
+  },
+  {
+    name: '💰 돈 갈림표가 영입자 없는 매장에도 2% 를 뺀다',
+    file: 'src/pages/admin-merchant-commissions/StoreChannelCard.tsx',
+    find: "const introPays = channel === 'direct' && hasIntroducer",
+    replace: "const introPays = channel === 'direct'",
+    test: 'src/tests/unit/store-channel-card.test.ts',
+    why:
+      '영입 2% 는 **직접 입점 + 영입자 지정** 둘 다여야 나간다. 한쪽만 보면 화면은 "나간다"인데 ' +
+      '정산은 0 이라 대표가 실수령을 실제보다 낮게 보고 판단하게 된다.',
+  },
+  {
+    name: '💰 PG 준비금이 셀러 API 로 샌다',
+    file: 'src/features/seller/api/seller-stores.routes.ts',
+    find: '    const certUrl =',
+    replace: "    const _leak = 'pg_reserve_pct'\n    const certUrl =",
+    test: 'src/tests/unit/store-channel-card.test.ts',
+    why:
+      '대표 지시 — 돈 갈림 계산은 어드민만 본다. PG 준비금과 유어딜 실수령이 매장 쪽으로 새면 ' +
+      '우리 마진 구조가 그대로 노출된다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
