@@ -138,6 +138,26 @@ const MUTATIONS = [
       '설명하려던 금액을 두 배로 만든다.',
   },
   {
+    name: '🖱️ 정비 화면의 확인 창이 사라진다 (검사하려다 실행된다)',
+    file: 'src/pages/admin-system-monitoring/PointsRepairTab.tsx',
+    find: "        confirmText: '제거한다', danger: true,",
+    replace: "        confirmText: '제거한다',",
+    test: 'src/tests/unit/points-repair-ui.test.ts',
+    why:
+      '서버가 dry-run 기본이어도 **화면이 곧장 실행을 보내면** 그 방어는 무의미하다. ' +
+      '되돌릴 수 없는 DDL 이라 확인 창이 마지막 관문이다.',
+  },
+  {
+    name: '🖱️ 실행 버튼이 검사 없이도 뜬다 (무엇이 바뀔지 모르고 누른다)',
+    file: 'src/pages/admin-system-monitoring/PointsRepairTab.tsx',
+    find: '{unlock?.had_check && !unlock.applied && <B on={() => runUnlock(true)}',
+    replace: '{<B on={() => runUnlock(true)}',
+    test: 'src/tests/unit/points-repair-ui.test.ts',
+    why:
+      '이 화면의 전제는 "먼저 보고 누른다" 다. 검사 결과 없이 실행 버튼이 열리면 ' +
+      '제약이 없는 DB 에도 DDL 을 돌리게 된다.',
+  },
+  {
     name: '💸 원장 정합 검사가 다시 amount 를 우선한다 (충전=원화·차감=양수 → 숫자가 거짓)',
     file: 'src/worker/utils/ledger-integrity-checks.ts',
     // 2026-08-31: 판별식이 `IS NOT NULL` → `COALESCE(...) != 0` 로 바뀌어 이 find 도 따라 옮겼다
