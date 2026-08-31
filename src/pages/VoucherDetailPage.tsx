@@ -7,7 +7,7 @@ import { queryKeys } from '@/hooks/queries/queryKeys'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import SEO from '@/components/SEO'
-import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
@@ -352,6 +352,7 @@ export default function VoucherDetailPage() {
               fetchPriority="high"
               decoding="async"
               className="w-full h-full object-cover"
+              onError={(e) => cfImageOnError(e.currentTarget, product.image_url)}
             />
           )}
         </div>

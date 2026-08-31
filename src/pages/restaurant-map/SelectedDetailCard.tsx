@@ -1,5 +1,5 @@
 import { Heart, MapPin, Navigation, Phone, Radio, Ticket, X } from 'lucide-react'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
@@ -25,7 +25,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
       </button>
       <div className="flex gap-3 pr-6">
         {selected.image_url ? (
-          <img src={cfImage(selected.image_url, { width: 160, quality: 85, format: 'auto' }) || selected.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" />
+          <img src={cfImage(selected.image_url, { width: 160, quality: 85, format: 'auto' }) || selected.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" onError={(e) => cfImageOnError(e.currentTarget, selected.image_url)} />
         ) : (
           <div className="w-20 h-20 rounded-xl bg-white dark:bg-[#0D0F12] flex items-center justify-center shrink-0">
             <span className="text-2xl">🍽️</span>

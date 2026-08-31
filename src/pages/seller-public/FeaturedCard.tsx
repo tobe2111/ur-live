@@ -6,7 +6,7 @@
 import { useNavigate } from 'react-router-dom'
 import { MapPin } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
-import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { seededColor, cardGradient } from '@/utils/card-gradient'
 import type { Product } from './types'
 
@@ -28,6 +28,7 @@ export default function FeaturedCard({ product, to, eyebrow }: { product: Produc
           sizes="(max-width: 480px) 100vw, 430px"
           alt={product.name} loading="eager" decoding="async"
           className="absolute inset-0 w-full h-full object-cover object-[center_38%]"
+          onError={(e) => cfImageOnError(e.currentTarget, product.image_url)}
         />
       )}
       {/* 하단 어둡게 — 텍스트 가독(2단 그라데이션: 하단 짙게 + 중간 부드럽게 이어짐, 음식 중앙은 밝게 유지)

@@ -290,7 +290,7 @@ function ProposalModal({ count, leadIds, contactFee, onClose, onDone }: {
         </div>
         <div className="p-4 border-t border-gray-100 shrink-0">
           <button onClick={submit} disabled={busy || message.trim().length < 20 || channels.size === 0}
-            className="w-full py-3 rounded-xl bg-brand hover:bg-brand-dark text-white text-sm font-bold disabled:opacity-40 transition">
+            className="ur-btn ur-btn-md ur-btn-block ur-btn-primary">
             {busy ? '접수 중…' : '제안 접수하기'}
           </button>
         </div>

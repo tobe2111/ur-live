@@ -369,7 +369,7 @@ export default function SellerInventoryPage() {
                         }
                         img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
                       }}
-                      className="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-lg"
+                      className="ur-btn ur-btn-sm ur-btn-primary"
                     >
                       {t('common.save')}
                     </button>

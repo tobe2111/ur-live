@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/shared/config/region'
 import SEO from '@/components/SEO'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { logoutAll } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
@@ -156,6 +156,7 @@ export default function UserProfilePage() {
             decoding="async"
             className="w-16 h-16 rounded-full object-cover flex-shrink-0"
             style={{ border: '2px solid rgba(255,255,255,0.15)' }}
+            onError={(e) => cfImageOnError(e.currentTarget, profileImage)}
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">

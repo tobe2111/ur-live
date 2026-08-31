@@ -6647,6 +6647,43 @@ canvas {
       '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
   },
   {
+    name: '🎛️ 셀러 표면에 원시 주 버튼이 다시 들어온다',
+    file: 'src/pages/SellerBundlesPage.tsx',
+    find: 'className="ur-btn ur-btn-md ur-btn-block ur-btn-primary"',
+    replace: 'className="w-full py-3 bg-gray-900 text-white rounded-xl"',
+    test: 'scripts/check-dashboard-button-system.mjs',
+    why:
+      '2026-08-31 실측: 이 주입이 **초록불로 통과했다.** 원인은 감싸는 태그를 찾는 ' +
+      "`lastIndexOf('<')` 이 바로 윗줄 `disabled={… < 2}` 의 **비교 연산자**를 태그 시작으로 " +
+      '오인한 것 — 이름 매칭이 실패하자 "버튼 아님"으로 접혀 래칫이 통째로 헛돌았다. ' +
+      '판정은 scripts/lib/jsx-enclosing-tag.mjs 로 옮겼고, 이 자리(비교 연산자가 바로 위에 있는 버튼)를 ' +
+      '**일부러** 주입 지점으로 고정한다.',
+  },
+  {
+    name: '🎛️ 버튼 래칫의 매칭이 죽는다 (baseline 0 은 죽어도 초록)',
+    file: 'scripts/check-dashboard-button-system.mjs',
+    find: "const PRIMARY_BG = /\\bbg-(?:gray-900|gray-800|black|brand|brand-dark)\\b/",
+    replace: "const PRIMARY_BG = /\\bbg-NEVER-MATCHES-THIS\\b/",
+    test: 'scripts/check-dashboard-button-system.mjs',
+    why:
+      '0 을 기대하는 래칫은 **매칭이 깨져도 0 이라 초록불**이다 — 이 레포가 반복해 당한 ' +
+      '"검사가 실패할 수 없음" 클래스. 유일한 방어가 합성 대조(FIXTURE_BAD/OK)이고, ' +
+      '매칭을 죽였을 때 그 대조가 실제로 빨간불을 내는지 여기서 확인한다.',
+  },
+  {
+    name: '🖼️ cfImage <img> 에서 onError 가 사라진다 (깨진 이미지 아이콘 노출)',
+    file: 'src/components/search/ProductCard.tsx',
+    find: 'onError={(e) => cfImageOnError(e.currentTarget, product.image_url)}',
+    // ⚠️ 빈 문자열로 지우지 않는다 — `replace: ''` 는 --verify-clean 이 잔재를 **구분할 수 없다**
+    //    (지웠는지 코드가 옮겨갔는지 같아 보인다). 눈에 띄는 표식을 남겨 잔재를 잡히게 한다.
+    replace: 'data-mutation-removed-onerror',
+    test: 'scripts/check-image-fallback.mjs',
+    why:
+      '2026-08-31 실측: cfImage 를 쓰는 <img> 92개 중 47개가 onError 없이 있었다. 리사이저나 원본이 ' +
+      '죽으면 그 자리에 **깨진 이미지 아이콘**이 그대로 뜬다. 배선은 눈에 안 보여서 계속 새로 빠지므로 ' +
+      '래칫으로 동결했고, 래칫이 실제로 잡는지 여기서 확인한다.',
+  },
+  {
     name: '📖 운영 가이드가 다시 한 번에 하나만 열린다 (40개를 하나씩)',
     file: 'src/components/guide/GuideViewer.tsx',
     find: 'const [openKeys, setOpenKeys] = useState<Set<string>>(new Set())',
@@ -6803,8 +6840,17 @@ if (VERIFY_CLEAN) {
     const abs = path.join(ROOT, m.file)
     if (!fs.existsSync(abs)) continue // 파일 이동은 전수 모드가 "낡은 지도"로 따로 보고한다
     const s = fs.readFileSync(abs, 'utf8')
-    // `find` 가 사라졌는데 `replace` 가 있으면 주입된 상태다. `find` 만 사라졌으면 코드가 옮겨간 것.
-    if (!s.includes(m.find) && m.replace && s.includes(m.replace)) dirty.push(`${m.file} — ${m.name}`)
+    if (!m.replace) continue
+    // 🩸 2026-08-31: 여기 있던 판정 `!s.includes(find) && s.includes(replace)` 는 **추가형 주입을
+    //   통째로 못 봤다.** `replace` 가 `find` 를 품는 주입(줄을 바꾸는 게 아니라 **덧붙이는** 형태,
+    //   예: `company: […],` → `company: […], influencer: ['collect'],`)은 주입된 뒤에도 `find` 가
+    //   그대로 남아 있어 첫 조건이 거짓이 된다. 실제로 그날 harness 를 중간에 끊었더니
+    //   `lane-boost.ts` 에 주입이 남았는데 `--verify-clean` 이 **"깨끗함"** 이라고 답했고,
+    //   `git add -A` 로 하마터면 그대로 커밋될 뻔했다(대표 확인 사항인 레인 보강 대상을 넓히는 내용).
+    //   ⇒ 추가형은 `replace` 존재만으로 판정한다(정상 코드엔 `replace` 가 있을 수 없다 — 더 긴 문자열).
+    const additive = m.replace.includes(m.find)
+    const injected = s.includes(m.replace) && (additive || !s.includes(m.find))
+    if (injected) dirty.push(`${m.file} — ${m.name}`)
   }
   if (dirty.length) {
     console.error(`\n❌ 주입 잔재 ${dirty.length}건 — **커밋하지 말 것**\n`)
