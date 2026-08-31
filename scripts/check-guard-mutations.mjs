@@ -6084,9 +6084,11 @@ canvas {
   },
   {
     name: '📉 파트너 풀 통계가 캐시를 건너뛴다(화면 한 번에 331만 행 복귀)',
-    file: 'src/features/marketing/api/partner-pool.routes.ts',
-    find: 'getCompanyStatsCached(statsDb, fresh1, () => companyStats(statsDb))',
-    replace: '{ stats: await companyStats(statsDb), at: Date.now() }',
+    // 📍 2026-08-31 앵커 이동: 캐시 호출이 라우트에서 `company-stats-serve.ts` 로 빠지면서
+    //    옛 앵커가 "낡은 지도"가 됐다(CI 가 잡았다). 지키는 것은 같다 — 캐시를 건너뛰면 빨간불.
+    file: 'src/features/marketing/api/company-stats-serve.ts',
+    find: 'await getCompanyStatsCached<Stats>(DB, fresh, () => companyStats(DB), bg)',
+    replace: '{ stats: await companyStats(DB), at: Date.now() }',
     test: 'src/tests/unit/company-stats-cache.test.ts',
     why:
       '화면은 똑같이 동작하고 숫자도 맞다 — 다만 조회 1회가 331만 행이고, 레인 실행 뒤 5초마다 ' +
