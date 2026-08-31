@@ -183,3 +183,41 @@ N원 저렴"). 네 번째는 강조가 아니라 소음이고, 방금 없앤 "�
 "돌았는데 0건"과 "안 돌았음"을 구분할 수 없었다.
 
 **대표가 할 일**: 어드민에서 숙소 데모 시드 1회 실행 → 응답의 `descHealed` 가 고친 건수다.
+
+## 2026-08-31 후속 ② — 이미지 이관 cron 이 넉 달간 죽어 있었다
+
+대표: *"내가 할 것 미루고 다른 것 할 건 없어?"* → 숙소 커버가 **46건 전부 남의 서버**인 걸 재다가
+진짜 원인을 찾았다.
+
+**실측 근거 사슬**
+```
+데모 숙소 46건 커버   R2 0 · 외부 46 (카카오맵 36 · 네이버 블로그 10)   ← 이용권은 100건 중 R2 72
+이관 대기 큐          338건, 전부 img_rehost_tries = 0  ← 한 번도 시도된 적이 없다
+하트비트              ok:true · "reconditioned=3 migrated=0 images=0 done=0"  ← D1 은 되고 R2 만 안 됨
+/api/media 서빙       200 (캐시 우회 ?cb= 로도 200 → Pages 쪽엔 바인딩이 있다)
+wrangler.toml         [[r2_buckets]] MEDIA_BUCKET 이 **주석 처리**돼 있었다
+```
+
+🔑 **배포가 둘이고 바인딩 출처가 다르다.**
+- Pages(요청 처리) ← 대시보드 바인딩 → `/api/media` 정상
+- **Workers(cron) ← `wrangler.toml` 만** → MEDIA_BUCKET 없음 → `if (!MEDIA_BUCKET) return` 으로 매 5분 조기 반환
+
+⚠️ **에러가 안 난다.** cron 은 성공으로 기록되고 큐만 안 줄어든다. `migrated=0` 이 "옮길 게 없었다"와
+"옮길 수 없었다" **양쪽으로 읽혀서** 아무도 못 봤다.
+
+**수리**: ① `wrangler.toml` 주석 해제(이 파일이 worker-deploy 트리거 경로에 있어 머지 시 자동 재배포)
+② 두 cron(`demo-image-rehost`·`r2-orphan-cleanup`)이 못 돈 사유를 `skipped:'NO_MEDIA_BUCKET'` 로 남김
+③ 가드 `cron-bindings.test.ts` — **조기반환 게이트가 걸린** 바인딩은 wrangler.toml 에 있어야 한다
+   (한 홉 별칭 `const bucket = env.MEDIA_BUCKET` 까지 추적) + 못 돈 사유를 남기는지.
+
+⚠️ **가드를 일부러 좁혔다.** 처음엔 cron 이 참조하는 모든 `*_BUCKET`/`*_KV` 를 검사했더니
+`RATE_LIMIT_KV` 3건이 걸렸다. 그건 **폴백이 있고**(`getFeatureFlags(KV, env.DB)`) KV id 가 대시보드에만
+있어 **내가 못 고치는 것으로 CI 를 막는 꼴**이 된다. ⇒ "없으면 통째로 건너뛰는" 것만 대상으로.
+
+**남은 판정(다음 세션 첫 액션)**: 머지·배포 후
+```
+curl -s .../api/admin/cron-heartbeats  → demo-image-rehost 의 result 에 migrated>0 이 찍히는지
+```
+안 찍히고 `skipped=NO_MEDIA_BUCKET` 이 보이면 **버킷 이름이 다른 것**이다(레포 문서 3곳이 모두
+`ur-live-media` 라 그대로 썼지만, 이 세션의 CF 토큰엔 R2 읽기 스코프가 없어 이름을 직접 확인 못 했다).
+그때는 대표에게 대시보드 R2 버킷 실명을 물어 `bucket_name` 만 고치면 된다.

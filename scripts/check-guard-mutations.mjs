@@ -88,6 +88,27 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: 'cron 이 쓰는 R2 바인딩이 wrangler.toml 에서 다시 주석 처리된다',
+    file: 'wrangler.toml',
+    find: '[[r2_buckets]]\nbinding = "MEDIA_BUCKET"',
+    replace: '# [[r2_buckets]]\n# binding = "MEDIA_BUCKET"',
+    test: 'src/tests/unit/cron-bindings.test.ts',
+    why:
+      '2026-08-31 실측: 이 줄이 주석이라 이미지 이관 cron 이 넉 달간 한 건도 못 옮겼다. 큐 338건이 ' +
+      '전부 시도조차 안 된 채였고 하트비트는 ok:true 였다. cron 은 Pages 대시보드가 아니라 이 파일로 ' +
+      '바인딩을 받으므로, 주석으로 되돌아가면 같은 침묵이 그대로 재발한다.',
+  },
+  {
+    name: '바인딩이 없어 못 돈 것을 "할 일 없었음" 과 구분하지 않는다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: "return { ...result, skipped: 'NO_MEDIA_BUCKET' }",
+    replace: 'return result',
+    test: 'src/tests/unit/cron-bindings.test.ts',
+    why:
+      '사고를 넉 달간 못 본 진짜 이유. 전부 0 으로 반환하면 하트비트에서 정상 회차와 글자 하나 ' +
+      '다르지 않다 — 못 한 것과 안 해도 됐던 것이 같은 모양으로 찍힌다.',
+  },
+  {
     name: '이용권 지갑에 교환권 링크가 다시 들어온다',
     file: 'src/pages/MyGifticonsPage.tsx',
     find: "        onBack={() => navigate('/vouchers')}",

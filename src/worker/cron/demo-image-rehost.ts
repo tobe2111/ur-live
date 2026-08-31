@@ -257,13 +257,19 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
   return out
 }
 
-export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: number; migrated: number; images: number; done: number }> {
+export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: number; migrated: number; images: number; done: number; skipped?: string }> {
   const DB = env.DB
   const bucketEnv = env as unknown as { MEDIA_BUCKET?: R2Bucket }
   // ① 재조정 — R2 버킷 유무와 무관(외부 URL 저장도 표시엔 유효, ②가 이후 영구화). fail-soft.
   const rc = await reconditionDemos(env).catch(() => ({ reconditioned: 0, skipped: 0, hiddenNoPhoto: 0, revived: 0 }))
-  const result = { reconditioned: rc.reconditioned, migrated: 0, images: 0, done: 0 }
-  if (!bucketEnv.MEDIA_BUCKET) return result // 바인딩 미등록 — 이관만 no-op(재조정은 이미 수행)
+  const result: { reconditioned: number; migrated: number; images: number; done: number; skipped?: string } =
+    { reconditioned: rc.reconditioned, migrated: 0, images: 0, done: 0 }
+  // 🔴 2026-08-31: 여기서 조용히 반환하던 것이 **넉 달간 이관을 통째로 죽여 놨다.**
+  //   cron 은 Pages 가 아니라 wrangler.toml 의 Workers 배포에서 도는데 거기에 MEDIA_BUCKET 이
+  //   없었다(주석 처리돼 있었다). 그런데 반환값이 `migrated=0 done=0` 이라 하트비트에는
+  //   **"할 일이 없었다"와 똑같이** 찍혔다 — ok:true, 에러 0, 큐만 338건에서 안 줄어듦.
+  //   ⇒ 못 한 것과 안 해도 됐던 것을 **구분해서** 남긴다. 이 한 글자가 없어서 못 봤다.
+  if (!bucketEnv.MEDIA_BUCKET) return { ...result, skipped: 'NO_MEDIA_BUCKET' } // 바인딩 미등록 — 이관 불가
 
   // ② 이관 + 깨진 사진 자가치유 — 외부 CDN URL → R2, 3회 시도해도 못 옮기는 URL 은 깨진 것으로 판정해 제거.
   const { results } = await DB.prepare(
