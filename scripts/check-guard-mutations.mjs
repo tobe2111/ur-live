@@ -6566,6 +6566,26 @@ canvas {
       '산출물 부재를 통과로 접으면 가드가 있어도 없는 것과 같다. 이 레포가 반복해 당한 ' +
       '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
   },
+  {
+    name: '📖 운영 가이드가 다시 한 번에 하나만 열린다 (40개를 하나씩)',
+    file: 'src/components/guide/GuideViewer.tsx',
+    find: 'const [openKeys, setOpenKeys] = useState<Set<string>>(new Set())',
+    replace: 'const [openKeys, setOpenKeys] = useState<string | null>(null) as unknown as [Set<string>, (v: Set<string>) => void]',
+    test: 'src/tests/unit/guide-reader.test.ts',
+    why:
+      '단일 open 으로 되돌아가면 섹션 40개를 하나씩 눌러야 한다 — 그래서 아무도 안 읽었다. ' +
+      '⚠️ 첫 판은 변수만 덧붙이는 주입이라 **가드가 통과했다**(헛도는 주입). 상태 타입 자체를 되돌리게 고쳤다.',
+  },
+  {
+    name: '📖 검색이 제목만 훑는다 (값으로 못 찾음)',
+    file: 'src/components/guide/GuideViewer.tsx',
+    find: "(s.section_title + ' ' + s.content_md).toLowerCase()",
+    replace: 's.section_title.toLowerCase()',
+    test: 'src/tests/unit/guide-reader.test.ts',
+    why:
+      '실제 용례는 "영입 2%" 처럼 **값으로 찾는 것**이다. 제목만 훑으면 요율·절차를 영영 못 찾고, ' +
+      '검색창이 있다는 사실이 오히려 "없는 내용"이라는 오해를 만든다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
