@@ -6647,6 +6647,58 @@ canvas {
       '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
   },
   {
+    name: '📖 운영백서가 커미션 딜 수령을 무상으로 뭉갠다',
+    file: 'src/features/guides/api/guide-seed-admin/ops-handbook-section.ts',
+    find: '🔑 **네 번째는 무상이 아닙니다.**',
+    replace: '네 번째도 무상입니다.',
+    test: 'src/tests/unit/ops-handbook.test.ts',
+    why:
+      '소개자가 현금 대신 딜을 고르면 원금은 **원래 줄 돈**이고 유어딜이 새로 내는 건 보너스 % 뿐이다. ' +
+      '이 구분이 사라지면 무상 딜 지출을 실제보다 크게 보고 정책을 잘못 잡는다 — ' +
+      '대표가 "무상딜을 받을 수 있는 방법이 없는데?" 라고 물어 이 절이 생겼다.',
+  },
+  {
+    name: '🧾 후기 보너스 게이트가 없어져 매장이 모르는 사이 청구된다',
+    file: 'src/features/group-buy/api/review-bonus-funding.ts',
+    find: 'fundedBy: ownerGateOn && storeSet ? \'owner\' : \'platform\',',
+    replace: "fundedBy: storeSet ? 'owner' : 'platform',",
+    test: 'src/tests/unit/review-bonus-funding.test.ts',
+    why:
+      '게이트가 매장 부담의 유일한 경계다. 없어지면 값을 넣어 본 매장이 **모르는 사이에 청구**된다 — ' +
+      '머니 경로는 게이트 OFF 로 들어와 staging 실결제 뒤에 켜는 것이 이 레포의 룰이다.',
+  },
+  {
+    name: '🧾 후기 보너스 금액이 매장 설정을 무시한다',
+    file: 'src/features/group-buy/api/review-bonus-funding.ts',
+    find: '    amount: storeSet ? (storeAmount as number) : fallback,',
+    replace: '    amount: fallback,',
+    test: 'src/tests/unit/review-bonus-funding.test.ts',
+    why:
+      '매장이 셀러 대시보드에서 정한 값이 안 먹으면, 화면엔 3,000원이라고 떠 있는데 실제로는 ' +
+      '플랫폼 기본값이 나간다 — 표시와 지급이 갈리는 이 레포의 단골 사고다.',
+  },
+  {
+    name: '📖 운영백서 숫자표 검사를 CI 에서 뗀다 (다른 세션 변경이 문서에 안 닿음)',
+    file: '.github/workflows/verify.yml',
+    find: '        run: node scripts/generate-ops-handbook.mjs --check',
+    replace: '        run: echo skip',
+    test: 'src/tests/unit/ops-handbook.test.ts',
+    why:
+      'pre-commit 훅은 보장이 못 된다 — 원격 세션은 컨테이너가 새로 떠서 훅이 아예 없다(CLAUDE.md 실사고). ' +
+      'CI 가 유일한 보장이라 여기서 떨어지면 요율을 바꾼 다른 세션의 변경이 문서에 안 닿고, ' +
+      '매장 사장님이 틀린 요율을 읽게 된다 — 2026-08-31 에 실제로 그 상태였다.',
+  },
+  {
+    name: '📖 어드민 가이드가 자동 생성 숫자표를 안 싣는다 (만들고 안 부르기)',
+    file: 'src/features/guides/api/guide-seed-admin/ops-handbook-section.ts',
+    find: '${OPS_HANDBOOK_AUTO}',
+    replace: '(숫자표 생략)',
+    test: 'src/tests/unit/ops-handbook.test.ts',
+    why:
+      '생성만 하고 안 실으면 아무 데도 안 보인다. 이 레포가 반복해 당한 "만들고 안 부르기" 클래스이고, ' +
+      '파일이 존재하니 보호받는 것처럼 보인다는 게 이 사고의 특징이다.',
+  },
+  {
     name: '🎛️ 셀러 표면에 원시 주 버튼이 다시 들어온다',
     file: 'src/pages/SellerBundlesPage.tsx',
     find: 'className="ur-btn ur-btn-md ur-btn-block ur-btn-primary"',
