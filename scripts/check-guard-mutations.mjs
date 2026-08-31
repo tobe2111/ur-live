@@ -88,6 +88,57 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🩹 잔액 수리 도구의 dry-run 이 사라진다 (보기만 하려다 돈이 움직인다)',
+    file: 'src/worker/utils/points-reconcile.ts',
+    find: '  if (!apply) return { found, results, applied: false }',
+    replace: '  if (false) return { found, results, applied: false }',
+    test: 'src/tests/unit/points-reconcile.test.ts',
+    why:
+      '이 도구는 사람이 **무엇을 쓸지 먼저 눈으로 보고** 누르는 것이 전제다. dry-run 이 없어지면 ' +
+      '조회 한 번이 곧 잔액 변경이 된다.',
+  },
+  {
+    name: '🩹 고아 병합의 멱등(원장 dedup)이 사라진다 (재실행 = 이중적립)',
+    file: 'src/worker/utils/points-reconcile.ts',
+    find: 'if (amount > 0 && !dup) {',
+    replace: 'if (amount > 0) {',
+    test: 'src/tests/unit/points-reconcile.test.ts',
+    why:
+      '병합은 재시도·부분실패로 두 번 돌 수 있다. 원장 dedup 이 유일한 이중적립 방어다 ' +
+      '(CLAUDE.md 머니 룰 3 — 멱등은 조회가 아니라 기록으로).',
+  },
+  {
+    name: '🩹 정합 보정이 잔액까지 바꾼다 (감사 기록이어야 하는데 지급이 된다)',
+    file: 'src/worker/utils/points-reconcile.ts',
+    find: "  const { recordPointTransaction } = await import('./point-ledger')",
+    replace: "  const { adjustUserPoints: recordPointTransaction } = await import('./point-ledger')",
+    test: 'src/tests/unit/points-reconcile.test.ts',
+    why:
+      '보정행은 *출처 불명* 을 원장에 적는 **기록**이지 지급이 아니다. 잔액을 함께 움직이면 ' +
+      '설명하려던 금액을 두 배로 만든다.',
+  },
+  {
+    name: '💸 원장 정합 검사가 다시 amount 를 우선한다 (충전=원화·차감=양수 → 숫자가 거짓)',
+    file: 'src/worker/utils/ledger-integrity-checks.ts',
+    find: '  WHEN pt.points_amount IS NOT NULL THEN',
+    replace: '  WHEN COALESCE(pt.amount, 0) != 0 THEN pt.amount\n  WHEN FALSE THEN',
+    test: 'src/tests/unit/ledger-balance-mismatch.test.ts',
+    why:
+      '레거시 행은 `amount` 가 충전이면 **원화**(10,000 vs 딜 8,500)이고 차감도 양수다. ' +
+      '그걸 부호 있는 딜 델타로 읽으면 매일 뜨는 원장 알림의 숫자가 통째로 거짓이 된다 ' +
+      '(2026-08-31 실측: 유저 3 이 −82,480 으로 나왔는데 계산 오류였다).',
+  },
+  {
+    name: '💸 레거시 차감(donate)의 부호가 사라진다 (빼야 할 것을 더한다)',
+    file: 'src/worker/utils/ledger-integrity-checks.ts',
+    find: 'CASE WHEN pt.type IN ${LEGACY_SPEND_TYPES} THEN -pt.points_amount ELSE pt.points_amount END',
+    replace: 'pt.points_amount',
+    test: 'src/tests/unit/ledger-balance-mismatch.test.ts',
+    why:
+      '후원·공구 사용은 잔액을 깎는데 레거시 규약에서는 **양수로 저장**된다. 부호를 안 붙이면 ' +
+      '차감이 적립으로 집계돼 멀쩡한 유저가 불일치로 잡힌다.',
+  },
+  {
     name: '영입 2% 게이트가 credit 쪽에서 빠진다(중개 매장에 지급)',
     file: 'src/worker/utils/influencer-store-intro-commission.ts',
     find: '    if (!(await isDirectChannelStore(DB, Number(order.seller_id)))) return\n',
@@ -6394,6 +6445,38 @@ canvas {
     why:
       '대표 지시 — 돈 갈림 계산은 어드민만 본다. PG 준비금과 유어딜 실수령이 매장 쪽으로 새면 ' +
       '우리 마진 구조가 그대로 노출된다.',
+  },
+  {
+    name: '🩸 영입자 검증이 sellers 로 되돌아간다(엉뚱한 사람에게 2%)',
+    file: 'src/features/admin/api/admin-sellers/reassign-introducer.ts',
+    find: "    existsTable: 'users',",
+    replace: "    existsTable: 'sellers',",
+    test: 'src/tests/unit/introducer-id-space.test.ts',
+    why:
+      '`sellers.introduced_by_influencer_id` 를 적립·지급·조회·등록귀속 네 곳이 전부 `users.id` 로 읽는데 ' +
+      '이 검증만 `sellers` 를 봤다. 두 id 공간이 라이브에서 겹쳐(셀러 3·5·6 ↔ 유저 3·5·6) ' +
+      '**에러 없이 엉뚱한 사람에게 2% 가 간다** — 가장 조용한 머니 사고다.',
+  },
+  {
+    name: '🔀 라우트가 반대편 종류로 위임한다 (사람↔에이전시 뒤바뀜)',
+    file: 'src/features/admin/api/admin-sellers.routes.ts',
+    find: "reassignIntroducer(c, 'influencer', safeAdminError)",
+    replace: "reassignIntroducer(c, 'agency', safeAdminError)",
+    test: 'src/tests/unit/introducer-id-space.test.ts',
+    why:
+      '두 재배정은 이제 한 함수를 종류 인자로 나눠 쓴다. 인자가 뒤바뀌면 `introduced_by_influencer_id` ' +
+      '대신 `introduced_by_agency_id` 에 써서, 어드민이 "영입자 지정" 을 눌렀는데 에이전시가 박힌다 — ' +
+      '화면도 응답도 성공이라 아무도 모른다.',
+  },
+  {
+    name: '🤝 영입자를 확인 없이 지정할 수 있게 된다',
+    file: 'src/pages/admin-merchant-commissions/IntroducerAssign.tsx',
+    find: 'disabled={busy || !preview}',
+    replace: 'disabled={busy}',
+    test: 'src/tests/unit/introducer-id-space.test.ts',
+    why:
+      'id 공간이 겹치므로 번호만 보고 저장하면 오지정을 눈으로 잡을 기회가 사라진다. ' +
+      '"이 사람이 맞나요?" 를 통과해야만 저장되는 것이 이 화면의 유일한 안전장치다.',
   },
   {
     name: '🛑 폐지한 에이전시 영입 1% 축이 타입으로 되살아난다',
