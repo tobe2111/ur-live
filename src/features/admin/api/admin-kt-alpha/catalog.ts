@@ -4,6 +4,7 @@ import type { Env } from '@/worker/types/env'
 import { autoSeedFakeReviews } from '../../../../worker/utils/auto-seed-fake-reviews'
 import { safeError } from '../../../../worker/utils/safe-error'
 import { intParam } from '@/shared/pagination'
+import { resolveConsumerMarkupPct } from '@/shared/kt-alpha-markup'
 
 export function registerCatalog(r: Hono<{ Bindings: Env }>) {
   // 5. GET /catalog — gift_catalog 조회.
@@ -74,7 +75,8 @@ export function registerCatalog(r: Hono<{ Bindings: Env }>) {
       const sMap: Record<string, string> = {}
       for (const r of (settings.results || [])) sMap[r.key] = r.value
 
-      const markupPct = Math.min(100, Math.max(0, Number(sMap.kt_alpha_consumer_markup_pct) || 20))
+      // 🎁 2026-08-31: `Number(x) || 20` 이던 것 — 0% 가 falsy 라 새로 담는 상품에도 20% 가 붙었다.
+      const markupPct = resolveConsumerMarkupPct(sMap.kt_alpha_consumer_markup_pct)
       const adminSellerId = Number(sMap.kt_alpha_admin_seller_id) || null
       // 🛡️ 2026-05-19: 카테고리 = gift_catalog 의 goods_type_detail (편의점/카페/도서 등) 자동.
       //   설정 (kt_alpha_consumer_category) 는 fallback 으로만 사용.

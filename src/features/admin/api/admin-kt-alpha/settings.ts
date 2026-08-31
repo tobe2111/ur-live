@@ -2,6 +2,7 @@ import type { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '../../../../worker/utils/safe-error'
+import { resolveConsumerMarkupPct, consumerPriceMultiplier } from '@/shared/kt-alpha-markup'
 
 export function registerSettings(r: Hono<{ Bindings: Env }>) {
   // 1. GET /settings
@@ -109,8 +110,10 @@ export function registerSettings(r: Hono<{ Bindings: Env }>) {
       const settingsRow = await DB.prepare(
         `SELECT value FROM platform_settings WHERE key = 'kt_alpha_consumer_markup_pct'`
       ).first<{ value: string }>().catch(() => null)
-      const markupPct = Math.min(100, Math.max(0, Number(settingsRow?.value) || 20))
-      const multiplier = 1 + markupPct / 100
+      // 🎁 2026-08-31: `Number(x) || 20` 이던 것 — **0% 가 falsy 라 20% 로 튕겼다**.
+      //   그래서 어드민에서 마진 0 을 저장해도 이 재계산이 20% 로 가격을 되돌렸다(조용한 실패).
+      const markupPct = resolveConsumerMarkupPct(settingsRow?.value)
+      const multiplier = consumerPriceMultiplier(markupPct)
 
       // products.kt_alpha_gift_code = gift_catalog.gift_code 매칭 → real_price × multiplier
       const updateResult = await DB.prepare(`

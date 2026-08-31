@@ -18,6 +18,7 @@ import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { swallow } from '@/worker/utils/swallow'
 import { safeError } from '@/worker/utils/safe-error';
+import { resolveSellerMarkupPct } from '@/shared/kt-alpha-markup'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { listSellerSettlementInvoices, approveSettlementInvoice } from './settlement-tax-invoices'
 import { intParam } from '@/shared/pagination'
@@ -401,7 +402,8 @@ sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
     const settings = await c.env.DB.prepare(
       "SELECT value FROM platform_settings WHERE key = 'kt_alpha_markup_pct'"
     ).first<{ value: string }>().catch(() => null)
-    const markupPct = Number(settings?.value) || 5
+    // 🎁 2026-08-31: `Number(x) || 5` 이던 것 — 0% 가 falsy 라 기본값 5 로 튕겼다(소비자 축과 동일 결함).
+    const markupPct = resolveSellerMarkupPct(settings?.value)
 
     const seller = await c.env.DB.prepare(
       'SELECT phone, business_registration_status FROM sellers WHERE id = ?'
@@ -483,7 +485,8 @@ sellerSettlementsRoutes.post('/voucher-redeem', rateLimit({ action: 'seller_vouc
     const settingsMap: Record<string, string> = {}
     for (const r of (settings.results || [])) settingsMap[r.key] = r.value
 
-    const markupPct = Number(settingsMap.kt_alpha_markup_pct) || 5
+    // 🎁 2026-08-31: 위와 동일 — 0% 를 삼키던 자리.
+    const markupPct = resolveSellerMarkupPct(settingsMap.kt_alpha_markup_pct)
     const ktUserId = settingsMap.kt_alpha_user_id
     const callbackNo = settingsMap.kt_alpha_callback_no
     const templateId = settingsMap.kt_alpha_template_id || undefined
