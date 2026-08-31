@@ -83,6 +83,17 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '지갑이 다크 모드에서 흰 배경 + 흰 글자가 된다',
+    file: 'src/components/wallet/WalletAtoms.tsx',
+    find: 'bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white',
+    replace: 'bg-white text-gray-900',
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '2026-08-31 시안 캡처에서 실측으로 잡은 결함이다 — 래퍼가 배경을 인라인/라이트 고정으로 칠하는데 ' +
+      '내용은 dark: variant 를 갖고 있어 다크 모드에서 제목과 섹션 라벨이 통째로 사라졌다. ' +
+      '인라인·라이트 고정은 클래스 기반 테마 가드의 사각지대라 이 테스트가 유일한 방어선이다.',
+  },
+  {
     name: '이용권 지갑이 교환권을 다시 섞어 보여준다',
     file: 'src/pages/MyVouchersPage.tsx',
     find: 'vouchers.filter(isStoreVoucher)',

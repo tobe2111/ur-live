@@ -88,3 +88,21 @@ describe('③ 배선 — 두 페이지가 서로의 것을 담지 않는다', ()
     expect(read('src/shared/mall/slug.ts')).toContain("'my-gifticons'")
   })
 })
+
+describe('④ 다크 모드 — 지갑 배경을 인라인으로 칠하지 않는다', () => {
+  /**
+   * 2026-08-31 시안 캡처 중 실측으로 잡은 결함: 라이트 지갑 래퍼가 배경/글자색을 **인라인 스타일**로
+   * 칠하는데 내용은 전부 `dark:` variant 를 갖고 있어, 다크 모드에서 **흰 배경 + 흰 글자**가 됐다
+   * (제목 "내 이용권"/"내 교환권" 과 섹션 라벨이 통째로 안 보였다 — 실측 h1 rgb(255,255,255) on rgb(255,255,255)).
+   * 인라인 스타일이라 클래스 기반인 `check-theme-consistency` 의 사각지대였다.
+   */
+  const atoms = read('src/components/wallet/WalletAtoms.tsx')
+  const light = atoms.slice(atoms.indexOf('WalletPageWrapper'))
+
+  it('라이트 지갑 래퍼가 다크 배경 클래스를 갖는다', () => {
+    expect(light).toMatch(/bg-white dark:bg-\[#0D0F12\]/)
+  })
+  it('라이트 지갑 래퍼가 다크 글자색 클래스를 갖는다', () => {
+    expect(light).toMatch(/text-gray-900 dark:text-white/)
+  })
+})
