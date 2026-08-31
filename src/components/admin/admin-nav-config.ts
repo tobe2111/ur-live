@@ -45,6 +45,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/revenue',          label: '매출 분석',     icon: BarChart3 },
       { path: '/admin/operations-guide', label: '운영 가이드',   icon: BookOpen },
       { path: '/admin/platform-model',   label: '플랫폼 모델',   icon: FileText },
+      { path: '/admin/proposals',        label: '대외 제안서',   icon: FileText },
       { path: '/admin/region-density',   label: '동네별 딜 밀도', icon: MapPin },
       { path: '/admin/district-report',  label: '상권 성과 리포트', icon: BarChart3 },
       { path: '/admin/visit-rewards',    label: '상권 방문 리워드', icon: MapPin },
