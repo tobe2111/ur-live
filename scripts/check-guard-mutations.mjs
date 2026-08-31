@@ -6227,6 +6227,27 @@ canvas {
       '① 본인이 고른 payout_method 를 무시하고 ② 2026-07-05 에 닫은 [현금 100 → 딜 120 → 재출금] ' +
       '차익 세탁 루프가 다시 열린다. 2026-08-30 오전에 실제로 이렇게 만들었다가 같은 날 되돌렸다.',
   },
+  {
+    name: '💎 딜 수령자에게 최소 금액 문턱이 되돌아온다',
+    file: 'src/worker/cron/influencer-payout.ts',
+    find: "      WHERE available_amount > 0\n        AND (payout_method = 'deal' OR available_amount >= ?)",
+    replace: '      WHERE available_amount >= ?',
+    test: 'src/tests/unit/deal-payout-no-minimum.test.ts',
+    why:
+      '문턱(10만원)의 근거는 은행 송금 비용인데 딜엔 그 비용이 0 이다. 되돌아오면 소개자는 ' +
+      '자기가 번 딜을 500만원어치 팔릴 때까지 못 만진다 — 화면엔 "잔액 있음"으로 보이는데 ' +
+      '지급 목록에서만 사라지므로 에러가 아니라 **부재**로 나타난다.',
+  },
+  {
+    name: '💎 어드민 지급목록이 cron 과 다른 조건을 쓴다',
+    file: 'src/features/group-buy/api/marketing.routes.ts',
+    find: "     WHERE available_amount > 0\n       AND (payout_method = 'deal' OR available_amount >= ?)",
+    replace: '     WHERE available_amount >= ?',
+    test: 'src/tests/unit/deal-payout-no-minimum.test.ts',
+    why:
+      '두 쿼리가 갈리면 "cron 알림엔 떴는데 어드민 목록엔 없다"가 된다 — 어드민이 지급하려고 ' +
+      '들어갔는데 그 사람이 없다. 알림과 목록은 같은 조건이어야 한다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
