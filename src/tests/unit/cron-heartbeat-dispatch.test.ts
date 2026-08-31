@@ -45,11 +45,13 @@ describe('일간 레인 — 인보케이션 분리', () => {
   })
 
   it('🔴 money 는 전용 트리거(0 18)를 쓴다 — 가장 확실한 자리를 돈에 준다', () => {
-    expect(code).toMatch(/cron === '0 18 \* \* \*'\)\s*\{\s*runDailyLane\('money'/)
+    // 🩹 2026-08-31: 전용 트리거에 **만회 조건이 OR 로 붙었다**(:55 틱이 오늘 안에 이어받는다).
+    //   전용 트리거를 쓴다는 불변식은 그대로 — 사이에 낀 조건만 허용한다.
+    expect(code).toMatch(/cron === '0 18 \* \* \*'[\s\S]{0,160}?runDailyLane\('money'/)
   })
 
   it('🔴 나머지 셋은 서로 다른 분에서 돈다 — 같은 분이면 같은 인보케이션이라 분리가 무의미하다', () => {
-    const mins = [...code.matchAll(/slotDue\(event\.scheduledTime,\s*\{\s*minute:\s*(\d+),\s*hour:\s*18\s*\}\)/g)]
+    const mins = [...code.matchAll(/slotOpen\(\{\s*minute:\s*(\d+),\s*hour:\s*18\s*\}\)/g)]
       .map((m) => Number(m[1]))
     expect(mins.length, '18시 슬롯 게이트를 못 찾았다(구조가 바뀌었나?) — 통과 아님').toBe(3)
     expect(new Set(mins).size, `분이 겹친다: ${mins.join(',')}`).toBe(3)
@@ -57,7 +59,7 @@ describe('일간 레인 — 인보케이션 분리', () => {
   })
 
   it('🔴 슬롯이 신고하는 주기가 실제 게이트와 일치한다 — 갈라지면 오탐/미탐이 된다', () => {
-    const mins = [...code.matchAll(/slotDue\(event\.scheduledTime,\s*\{\s*minute:\s*(\d+),\s*hour:\s*18\s*\}\)[\s\S]{0,260}?slotCron\('(\d+) 18 \* \* \*'\)/g)]
+    const mins = [...code.matchAll(/slotOpen\(\{\s*minute:\s*(\d+),\s*hour:\s*18\s*\}\)[\s\S]{0,260}?slotCron\('(\d+) 18 \* \* \*'\)/g)]
     expect(mins.length, 'slotDue ↔ slotCron 짝을 못 찾았다 — 통과 아님').toBe(3)
     for (const [, gate, declared] of mins) {
       expect(declared, `게이트 :${gate} 인데 :${declared} 로 신고한다`).toBe(gate)

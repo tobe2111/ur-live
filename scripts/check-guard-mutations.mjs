@@ -240,6 +240,56 @@ const MUTATIONS = [
       '설명하려던 금액을 두 배로 만든다.',
   },
   {
+    name: '⏰ 만회가 정시 틱에서도 켜진다 (일간 작업이 5분마다 돈다)',
+    file: 'src/worker/cron-catchup.ts',
+    find: '  if (tick.getUTCMinutes() !== CATCHUP_MINUTE) return null',
+    replace: '  if (false) return null',
+    test: 'src/tests/unit/cron-catchup.test.ts',
+    why:
+      '만회는 :55 틱 전용이다. 이 한 줄이 없으면 정산·원장·교환권 배치가 **5분마다** 돌고, ' +
+      '그게 곧 서브리퀘스트 예산을 말려 원래 고치려던 굶주림을 되살린다.',
+  },
+  {
+    name: '⏰ 하트비트를 못 읽어도 만회한다 (이미 끝난 정산을 다시 돌린다)',
+    file: 'src/worker/cron-catchup.ts',
+    find: '  if (!lastRun) return null // 읽기 실패 = 만회 안 함(fail-closed)',
+    replace: '  if (!lastRun) return { lastRun: new Map(), started: 0 }',
+    test: 'src/tests/unit/cron-catchup.test.ts',
+    why:
+      '빈 맵은 "아무도 안 돌았다"로 읽힌다. D1 조회가 한 번 실패한 것뿐인데 그날 돈 작업 전부를 ' +
+      '재실행하게 된다 — 모르는 상태에서 머니 배치를 다시 돌리느니 쉬는 게 낫다.',
+  },
+  {
+    name: '⏰ 이번 주기에 이미 돈 작업을 또 돌린다 (일간 배치 이중 실행)',
+    file: 'src/worker/cron-catchup.ts',
+    find: '  if (ranThisPeriod(state.lastRun.get(name), start)) return false',
+    replace: '  if (false) return false',
+    test: 'src/tests/unit/cron-catchup.test.ts',
+    why:
+      '만회 틱은 시간당 온다. 이 검사가 없으면 정상인 날에도 일간 정산이 **하루 다섯 번** 돈다 ' +
+      '(그리고 그게 만회의 비용을 0 으로 만드는 유일한 장치다).',
+  },
+  {
+    name: '⏰ 만회 한 틱의 시작 한도가 사라진다 (만회가 예산을 다시 말린다)',
+    file: 'src/worker/cron-catchup.ts',
+    find: '  if (state.started >= CATCHUP_MAX_JOBS) return false',
+    replace: '  if (false) return false',
+    test: 'src/tests/unit/cron-catchup.test.ts',
+    why:
+      '밀린 작업이 20개면 한 인보케이션이 전부 시작하고 서브리퀘스트가 마른다 — 고치려던 병을 ' +
+      '만회가 그대로 재현한다. 시간당 기회가 24번이라 나눠 돌면 된다.',
+  },
+  {
+    name: '⏰ 주기 경계가 사라진다 (어제 것을 오늘 새벽에 끌어와 돌린다)',
+    file: 'src/worker/cron-catchup.ts',
+    find: '  return nowMs >= start ? start : null',
+    replace: '  return start',
+    test: 'src/tests/unit/cron-catchup.test.ts',
+    why:
+      '슬롯 시각 전에도 주기가 열리면 자정~18시 사이 만회 틱이 **오늘 아직 오지도 않은** 18시 ' +
+      '배치를 돌린다. 만회의 범위는 그날 안으로 닫혀 있어야 추론이 된다.',
+  },
+  {
     name: '🖱️ 정비 화면의 확인 창이 사라진다 (검사하려다 실행된다)',
     file: 'src/pages/admin-system-monitoring/PointsRepairTab.tsx',
     find: "        confirmText: '제거한다', danger: true,",
@@ -5457,8 +5507,9 @@ canvas {
   {
     name: '슬롯 cron 이 캐리어 주기로 기록됨(하루 1회 작업이 매일 오탐)',
     file: 'src/worker/scheduled.ts',
-    find: '  const slotCron = (expr: string) => (n: string, t: () => Promise<unknown>) => safeCron(n, t, expectedMaxAgeMinutes(expr) ?? undefined);',
-    replace: '  const slotCron = (_expr: string) => (n: string, t: () => Promise<unknown>) => safeCron(n, t);',
+    // 🩹 2026-08-31: slotCron 이 만회 판정을 품으며 한 줄 → 블록이 됐다. find 를 그 안의 실제 신고 줄로 옮긴다.
+    find: '    return safeCron(n, t, expectedMaxAgeMinutes(expr) ?? undefined);',
+    replace: '    return safeCron(n, t);',
     test: 'src/tests/unit/cron-slot-cadence.test.ts',
     why:
       '소비자 cron 은 5분 캐리어에 얹혀 `slotDue` 로 자기 시각에만 도는데, 하트비트엔 캐리어 식이 기록된다. ' +
@@ -5963,7 +6014,8 @@ canvas {
   {
     name: '🌆 일간 레인 분리가 되돌아감(16개가 한 인보케이션으로)',
     file: 'src/worker/scheduled.ts',
-    find: "  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 10, hour: 18 })) {",
+    // 🩹 2026-08-31: 게이트가 `slotDue(...)` → `slotOpen(spec)`(정시 + 만회)로 바뀌었다.
+    find: "  if (cron === '*/5 * * * *' && slotOpen({ minute: 10, hour: 18 })) {",
     replace: "  if (false) {",
     test: 'src/tests/unit/cron-heartbeat-dispatch.test.ts',
     why:
@@ -5973,7 +6025,9 @@ canvas {
   {
     name: '🌆 분리된 레인에 기록 안 하는 래퍼 주입(그룹 전체가 관측 밖)',
     file: 'src/worker/scheduled.ts',
-    find: "runDailyLane('money', { env, ctx, run: safeCron,",
+    // 🩹 2026-08-31: money 레인이 `slotCron('0 18 * * *')` 를 받는다(만회 틱에서 '이미 돌았나'를
+    //   판단하려면 자기 슬롯을 아는 래퍼여야 한다). 주입은 그대로 '기록 안 하는 래퍼'다.
+    find: "runDailyLane('money', { env, ctx, run: slotCron('0 18 * * *'),",
     replace: "runDailyLane('money', { env, ctx, run: bareRun,",
     test: 'src/tests/unit/cron-heartbeat-dispatch.test.ts',
     why:
