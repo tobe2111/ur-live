@@ -61,7 +61,7 @@ export default function SellerStoresPage() {
         <div className="flex items-center justify-between">
           <p className="text-xs text-gray-600">내 가게든, 관리를 맡은 가게든 — 여기서 추가하고 전환해서 운영해요.</p>
           <button onClick={() => setAdding(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand hover:bg-brand-dark text-white text-xs font-bold transition">
+            className="ur-btn ur-btn-md ur-btn-primary flex items-center gap-1.5 transition">
             <Plus className="w-4 h-4" /> 매장 등록
           </button>
         </div>

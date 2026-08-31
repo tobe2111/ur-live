@@ -403,6 +403,10 @@ jobs:
       #   둘 다 **에러를 내지 않는다** — 화면만 조용히 밋밋해지고 배포는 초록불이다.
       - name: AI design slop ratchet (flat gradients / emoji-as-icon)
         run: node scripts/check-design-slop.mjs
+      - name: Dashboard button system ratchet (strict)
+        env:
+          STRICT_DASHBOARD_BUTTON: '1'
+        run: node scripts/check-dashboard-button-system.mjs
         continue-on-error: false
 
       # 🍎 2026-06-20: 카카오 OAuth iOS 쿠키 미영속 안티패턴 (strict). iOS Safari/WebKit 은

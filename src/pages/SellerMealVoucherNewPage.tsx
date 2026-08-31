@@ -345,7 +345,7 @@ export default function SellerMealVoucherNewPage() {
               <button
                 type="button"
                 onClick={() => { setForm(pendingDraft.form); setPendingDraft(null); toast.success(t('seller.mealVoucher.draftRestored', { defaultValue: '이어서 작성합니다' })) }}
-                className="px-3 py-2 bg-gray-900 text-white rounded-lg text-xs font-bold"
+                className="ur-btn ur-btn-md ur-btn-primary"
               >
                 {t('seller.mealVoucher.draftResume', { defaultValue: '이어서 작성' })}
               </button>
