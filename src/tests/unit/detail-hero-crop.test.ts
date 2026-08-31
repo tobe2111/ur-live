@@ -85,3 +85,38 @@ describe('cf-image 가 크롭 옵션을 실제로 URL 에 싣는다', () => {
       .toMatch(/if \(!o\.gravity\) return ''/)
   })
 })
+
+describe('두 상세가 같은 상단바를 쓴다 (갈리지 않게)', () => {
+  // 🩸 대표: "숙소 이용권도 일반 이용권처럼 윗 형태와 동일해야지. 왜 계속 다르게 하는거지?"
+  //    원인은 취향이 아니라 구조였다 — 숙소는 이 상단바 컴포넌트를 **아예 안 쓰고** 갤러리 위에
+  //    뒤로가기 버튼 하나만 얹고 있었다. 그래서 로고·찜·공유가 통째로 빠졌고, 고칠 때마다 한쪽만
+  //    고쳐졌다(버튼 톤을 맞춰 준 다음 커밋에서도 여전히 헤더 자체가 없었다).
+  //    ⇒ **컴포넌트를 공유하면 갈릴 수가 없다.** 그 배선을 여기서 고정한다.
+  const PAGES = ['src/pages/GroupBuyDetailPage.tsx', 'src/pages/StayDetailPage.tsx']
+
+  it('두 상세 모두 공용 상단바를 렌더한다', () => {
+    for (const f of PAGES) {
+      expect(read(f), `${f}: 공용 상단바를 안 쓴다`).toMatch(/<DetailFloatingHeader\b/)
+    }
+  })
+
+  it('상단바를 자기 페이지에 다시 만들지 않았다 (갤러리 위 외톨이 뒤로가기 금지)', () => {
+    // 숙소가 갖고 있던 형태: 갤러리 안에 `absolute ... aria-label="뒤로 가기"` 버튼.
+    for (const f of PAGES) {
+      const s = code(read(f))
+      expect(s, `${f}: 상단바 밖에 뒤로가기를 또 만들었다`).not.toMatch(/absolute[^"]*"[^>]*aria-label="뒤로/)
+    }
+  })
+
+  it('스크롤 상태를 페이지가 아니라 상단바가 갖는다', () => {
+    // 페이지가 각자 갖고 내려 주면, 새 상세를 만들 때 그 배선을 빠뜨리기 쉽다(실제로 그렇게 갈렸다).
+    const hdr = code(read('src/components/deal/DetailFloatingHeader.tsx'))
+    // ⚠️ `toContain('setHeaderSolid')` 로는 부족하다 — useState **선언부**에도 그 이름이 있어서,
+    //    스크롤 핸들러에서 호출을 통째로 지워도 초록이 뜬다(되돌려-검증에서 잡았다). 호출을 본다.
+    expect(hdr, '상단바가 스크롤에 반응하지 않는다').toMatch(/setHeaderSolid\(/)
+    expect(hdr, '상단바가 스크롤을 구독하지 않는다').toContain("addEventListener('scroll'")
+    for (const f of PAGES) {
+      expect(code(read(f)), `${f}: 페이지가 headerSolid 를 다시 들고 있다`).not.toContain('setHeaderSolid')
+    }
+  })
+})

@@ -10,6 +10,7 @@
  * 💗 같은 날: 찜(하트)도 넣었다. 홈 카드엔 있는데 상세엔 없어서, **상세까지 들어온 사람이
  *    오히려 찜을 못 하고 있었다.**
  */
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Bookmark, BookmarkCheck } from 'lucide-react'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -18,16 +19,45 @@ import PinButton from '@/components/curator/PinButton'
 import KakaoShareButton from '@/components/KakaoShareButton'
 
 type Props = {
-  detail: { id: number; name: string; price: number; restaurant_name?: string; group_buy_current: number; deal_only?: number }
-  productId: string | number
-  headerSolid: boolean
+  /** 찜·핀이 붙을 상품 id */
+  productId: number
+  /** 스크롤 후 가운데에 뜨는 제목 */
+  title: string
+  shareDescription: string
+  shareImageUrl: string
   shareLink: string
   myUserId: string
-  displayDiscountPct: number
+  /** 카카오 commerce 템플릿용 — 없으면 feed 템플릿으로 나간다(딜 결제 상품 등). */
+  price?: number
+  discountPct?: number
+  /** 히어로(사진) 높이를 재서 그만큼 지나면 solid 로 바꾼다. 없으면 스크롤 60px 기준. */
+  heroRef?: React.RefObject<HTMLDivElement | null>
   onBack: () => void
 }
 
-export default function DetailFloatingHeader({ detail, productId, headerSolid, shareLink, myUserId, displayDiscountPct, onBack }: Props) {
+export default function DetailFloatingHeader({
+  productId, title, shareDescription, shareImageUrl, shareLink, myUserId, price, discountPct, heroRef, onBack,
+}: Props) {
+  // 📜 스크롤 상태를 **여기서** 갖는다. 예전엔 페이지가 각자 갖고 prop 으로 내려 줬는데, 그러다 보니
+  //    숙소 상세는 이 컴포넌트를 아예 안 쓰고 뒤로가기 버튼만 따로 두게 됐다(대표 "왜 계속 다르게 하는거지?").
+  //    상태가 컴포넌트 안에 있으면 새 상세 페이지는 **한 줄만 쓰면 같은 상단바를 얻는다.**
+  const [headerSolid, setHeaderSolid] = useState(false)
+  useEffect(() => {
+    const HEADER_H = 56 // overlay 헤더 대략 높이 (px)
+    const onScroll = () => {
+      const h = heroRef?.current?.offsetHeight ?? 0
+      const threshold = h > 0 ? Math.max(0, h - HEADER_H) : 60
+      setHeaderSolid(window.scrollY > threshold)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [heroRef])
+
   // 🔘 네 버튼(뒤로·찜·핀·공유)은 **한 벌**이다. 예전엔 처리가 넷 다 달랐다 —
   //    뒤로/공유는 검정 반투명 원, 찜은 원 없는 맨 하트, 핀은 흰 원 + **이모지 ➕**.
   //    선 아이콘들 사이에 이모지가 하나 섞이면 그 버튼만 혼자 튄다(대표 지적 2026-08-31).
@@ -73,14 +103,14 @@ export default function DetailFloatingHeader({ detail, productId, headerSolid, s
             }`}
             aria-hidden={!headerSolid}
           >
-            {detail.name}
+            {title}
           </h2>
           {/* 🛡️ 2026-06-12: 내 유어샵 핀 — 공유 옆 1탭 (ProductCard 의 PinButton 재사용) */}
           {/* 💗 찜 — 홈 카드엔 있는데 상세엔 없었다(상세까지 들어온 사람이 오히려 찜을 못 했다). */}
-          <WishlistButton productId={detail.id} userId={Number(myUserId) || null} size="sm" className={chip} />
+          <WishlistButton productId={productId} userId={Number(myUserId) || null} size="sm" className={chip} />
           <PinButton
-            productId={detail.id}
-            price={detail.price}
+            productId={productId}
+            price={price ?? 0}
             variant="detail-floating"
             className={chip}
             icon={(pinned) => pinned
@@ -88,16 +118,12 @@ export default function DetailFloatingHeader({ detail, productId, headerSolid, s
               : <Bookmark className="w-[18px] h-[18px] text-gray-900 dark:text-white" />}
           />
           <KakaoShareButton
-            title={`${detail.name} 공구 참여하기`}
-            description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중 · ${displayDiscountPct > 0 ? `${displayDiscountPct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
-            imageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}
+            title={title}
+            description={shareDescription}
+            imageUrl={shareImageUrl}
             link={shareLink}
             buttonText="나도 참여하기"
-            {...(Number((detail as { deal_only?: number }).deal_only) === 1 ? {} : {
-              salePrice: detail.price,
-              discountRate: displayDiscountPct,
-              secondaryButtonText: '자세히 보기',
-            })}
+            {...(price ? { salePrice: price, discountRate: discountPct ?? 0, secondaryButtonText: '자세히 보기' } : {})}
             compact
             className={chip}
           />

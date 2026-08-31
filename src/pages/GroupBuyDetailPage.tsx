@@ -4,7 +4,7 @@ import DetailGallery from './group-buy/DetailGallery'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { voucherCrumbs } from '@/components/deal/DetailBreadcrumb'
 import { readCachedLoc, distanceKm, daysLeft } from './group-buy/detail-derived'
-import DetailFloatingHeader from './group-buy/DetailFloatingHeader'
+import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import { derivePricing } from './group-buy/pricing'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -160,26 +160,11 @@ export default function GroupBuyDetailPage() {
   const [showPropose, setShowPropose] = useState(false)
   // 🎨 2026-06-16 리디자인: 스와이프 갤러리 활성 인덱스 + 이 셀러의 다른 공구
   const [otherDeals, setOtherDeals] = useState<Array<{ id: number; name: string; price: number; original_price?: number | null; image_url?: string | null; discount_pct?: number | null }>>([])
-  // 🏭 2026-06-07 (당근 스타일 hero 재설계): 스크롤-aware 헤더.
-  //   hero 이미지를 지나치면 투명 overlay → solid 테마 바로 전환 + 제목 fade-in.
-  //   passive scroll listener + ref 로 hero 높이 측정 (threshold ≈ heroHeight - headerHeight).
+  // 🏭 2026-06-07 (당근 스타일 hero 재설계): 스크롤-aware 헤더 — hero 를 지나치면 solid 로 전환.
+  //   🔘 2026-08-31: 그 스크롤 상태를 **상단바 컴포넌트 안으로 옮겼다**. 페이지가 각자 들고 있으면
+  //      새 상세를 만들 때 그 배선을 빠뜨리기 쉽고, 실제로 숙소 상세가 그렇게 갈렸다.
+  //      여기선 히어로 높이를 재라고 ref 만 넘긴다.
   const heroRef = useRef<HTMLDivElement | null>(null)
-  const [headerSolid, setHeaderSolid] = useState(false)
-  useEffect(() => {
-    const HEADER_H = 56 // overlay 헤더 대략 높이 (px)
-    const onScroll = () => {
-      const h = heroRef.current?.offsetHeight ?? 0
-      const threshold = Math.max(0, h - HEADER_H)
-      setHeaderSolid(window.scrollY > threshold)
-    }
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onScroll, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onScroll)
-    }
-  }, [detail?.id, detail?.image_url])
 
   const productId = Number(id)
   const isLoggedIn = !!localStorage.getItem('user_id') || !!localStorage.getItem('uid')
@@ -547,12 +532,15 @@ export default function GroupBuyDetailPage() {
       </a>
 
       <DetailFloatingHeader
-        detail={detail}
-        productId={productId}
-        headerSolid={headerSolid}
+        productId={detail.id}
+        title={detail.name}
+        shareDescription={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중 · ${displayDiscountPct > 0 ? `${displayDiscountPct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
+        shareImageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}
         shareLink={shareLink}
         myUserId={myUserId}
-        displayDiscountPct={displayDiscountPct}
+        price={Number((detail as { deal_only?: number }).deal_only) === 1 ? undefined : detail.price}
+        discountPct={displayDiscountPct}
+        heroRef={heroRef}
         onBack={() => navigate(-1)}
       />
 
