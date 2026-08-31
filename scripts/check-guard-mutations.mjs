@@ -108,6 +108,49 @@ const MUTATIONS = [
       '이 가드는 **이용권에만** 걸려야 한다. 교환권(`deal_only=1`)은 원래 딜 전용이라 ' +
       '여기 걸리면 게이트가 꺼진 기본 상태에서 기프티콘 구매가 통째로 400 이 된다. ' +
       '⚠️ `deal_only` 가 SELECT 목록(PRODUCT_DETAIL_FIELDS)에서 빠져도 같은 사고가 난다.',
+  },
+  {
+    name: '돌긴 했는데 못 한 cron 을 아무도 안 본다',
+    file: 'src/worker/cron/cron-stale-watch.ts',
+    find: '  for (const b of blocked) {',
+    replace: '  for (const b of []) {',
+    test: 'src/tests/unit/cron-bindings.test.ts',
+    why:
+      '이 감시는 "안 돌았다"(age)만 보던 탓에 2026-08-31 사고를 넉 달간 못 봤다 — 그 cron 은 ' +
+      '멈춘 적이 없고 5분마다 성실히 돌면서 아무것도 못 했다. 이 루프가 그 나머지 절반이다.',
+  },
+  {
+    name: '대시보드 R2 바인딩 프로브가 종료코드에 안 실린다',
+    file: 'scripts/check-live-contracts.mjs',
+    find: 'process.exit(failures.length || robots || r2 ? 1 : 0)',
+    replace: 'process.exit(failures.length || robots ? 1 : 0)',
+    test: 'src/tests/unit/cron-bindings.test.ts',
+    why:
+      'Pages 바인딩은 대시보드에만 있어 레포 가드가 못 본다. 유일한 창이 이 프로브인데, 결과가 ' +
+      '종료코드에 안 실리면 워크플로가 초록으로 끝나 아무에게도 안 닿는다(만들어 놓고 안 부르는 것과 같다).',
+  },
+  {
+    name: 'cron 이 쓰는 R2 바인딩이 wrangler.toml 에서 다시 주석 처리된다',
+    file: 'wrangler.toml',
+    find: '[[r2_buckets]]\nbinding = "MEDIA_BUCKET"',
+    replace: '# [[r2_buckets]]\n# binding = "MEDIA_BUCKET"',
+    test: 'src/tests/unit/cron-bindings.test.ts',
+    why:
+      '2026-08-31 실측: 이 줄이 주석이라 이미지 이관 cron 이 넉 달간 한 건도 못 옮겼다. 큐 338건이 ' +
+      '전부 시도조차 안 된 채였고 하트비트는 ok:true 였다. cron 은 Pages 대시보드가 아니라 이 파일로 ' +
+      '바인딩을 받으므로, 주석으로 되돌아가면 같은 침묵이 그대로 재발한다.',
+  },
+  {
+    name: '바인딩이 없어 못 돈 것을 "할 일 없었음" 과 구분하지 않는다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: "return { ...result, skipped: 'NO_MEDIA_BUCKET' }",
+    replace: 'return result',
+    test: 'src/tests/unit/cron-bindings.test.ts',
+    why:
+      '사고를 넉 달간 못 본 진짜 이유. 전부 0 으로 반환하면 하트비트에서 정상 회차와 글자 하나 ' +
+      '다르지 않다 — 못 한 것과 안 해도 됐던 것이 같은 모양으로 찍힌다.',
+  },
+  {
     name: '이용권 지갑에 교환권 링크가 다시 들어온다',
     file: 'src/pages/MyGifticonsPage.tsx',
     find: "        onBack={() => navigate('/vouchers')}",
