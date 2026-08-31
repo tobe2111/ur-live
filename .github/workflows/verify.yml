@@ -371,6 +371,7 @@ jobs:
 
       - name: Guide sync check
         run: bash scripts/check-guide-sync.sh
+        continue-on-error: true
 
       # 📖 2026-08-31 (대표 지시): 운영백서의 숫자는 코드에서 생성된다. 여기가 **유일한 보장**이다 —
       #   pre-commit 훅은 원격 세션(컨테이너 신규 생성)에 없을 수 있어 믿을 수 없다.
@@ -379,7 +380,6 @@ jobs:
       - name: 운영백서 숫자표 동기 (strict)
         run: node scripts/generate-ops-handbook.mjs --check
         continue-on-error: false
-        continue-on-error: true
 
       - name: Naming conflicts
         run: bash scripts/check-naming-conflicts.sh
