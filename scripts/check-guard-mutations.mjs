@@ -6647,6 +6647,27 @@ canvas {
       '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
   },
   {
+    name: '📖 운영백서 숫자표 검사를 CI 에서 뗀다 (다른 세션 변경이 문서에 안 닿음)',
+    file: '.github/workflows/verify.yml',
+    find: '        run: node scripts/generate-ops-handbook.mjs --check',
+    replace: '        run: echo skip',
+    test: 'src/tests/unit/ops-handbook.test.ts',
+    why:
+      'pre-commit 훅은 보장이 못 된다 — 원격 세션은 컨테이너가 새로 떠서 훅이 아예 없다(CLAUDE.md 실사고). ' +
+      'CI 가 유일한 보장이라 여기서 떨어지면 요율을 바꾼 다른 세션의 변경이 문서에 안 닿고, ' +
+      '매장 사장님이 틀린 요율을 읽게 된다 — 2026-08-31 에 실제로 그 상태였다.',
+  },
+  {
+    name: '📖 어드민 가이드가 자동 생성 숫자표를 안 싣는다 (만들고 안 부르기)',
+    file: 'src/features/guides/api/guide-seed-admin/ops-handbook-section.ts',
+    find: '${OPS_HANDBOOK_AUTO}',
+    replace: '(숫자표 생략)',
+    test: 'src/tests/unit/ops-handbook.test.ts',
+    why:
+      '생성만 하고 안 실으면 아무 데도 안 보인다. 이 레포가 반복해 당한 "만들고 안 부르기" 클래스이고, ' +
+      '파일이 존재하니 보호받는 것처럼 보인다는 게 이 사고의 특징이다.',
+  },
+  {
     name: '🎛️ 셀러 표면에 원시 주 버튼이 다시 들어온다',
     file: 'src/pages/SellerBundlesPage.tsx',
     find: 'className="ur-btn ur-btn-md ur-btn-block ur-btn-primary"',
