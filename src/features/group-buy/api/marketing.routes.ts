@@ -14,6 +14,7 @@ import { ensureInfluencerProfileTable, parseChannels, maxFollowers, parseJsonLis
 import { intParam } from '@/shared/pagination'
 import { registerDiscoveryRoutes } from './marketing/discovery'
 import { DEAL_PCT_MAX } from './commission-rates'
+import { computeCashPayout, resolveCashFeePct } from '@/shared/influencer-payout-math'
 
 // 🛡️ 2026-05-20: Hono `c.get('user'/'seller')` 가 ContextVariableMap 미선언으로 'never' 가 됨.
 //   각 미들웨어 (requireAuth/requireSeller) 가 ctx 에 박는 형태를 Variables 로 명시.
@@ -743,7 +744,11 @@ adminApp.get('/payouts', async (c) => {
      ORDER BY available_amount DESC
      LIMIT 200`
   ).bind(payoutMin).all().catch(() => ({ results: [] as any[] }))
-  return c.json({ success: true, data: { payout_min: payoutMin, list: results || [] } })
+  // 💰 2026-08-31: 현금 정산 수수료율을 응답에 동봉 — 화면이 자기 상수로 계산하면 서버와 갈린다.
+  //   기본 0 = 안 걷음(설정 전에는 종전과 동일).
+  const feeRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'influencer_payout_cash_fee_pct'").first<{ value: string }>().catch(() => null)
+  const cashFeePct = resolveCashFeePct(feeRow?.value)
+  return c.json({ success: true, data: { payout_min: payoutMin, cash_fee_pct: cashFeePct, list: results || [] } })
 })
 
 adminApp.post('/payouts/process', async (c) => {
@@ -783,12 +788,29 @@ adminApp.post('/payouts/process', async (c) => {
       description: `인플 정산 (딜 +${bonusPct}% 보너스)`,
     }).catch(swallow('marketing:influencer-payout:balance'))
   }
+  // 💰 2026-08-31: 현금 경로 — 실송금액을 SSOT 로 계산해 **응답으로 돌려준다**.
+  //   그전엔 이 엔드포인트가 잔액만 0 으로 밀고 끝이라, 어드민이 얼마를 보내야 하는지는
+  //   화면이 자기 상수로 따로 계산했다(원천징수 3곳 중복). 수수료가 붙으면 그 갈림이 곧 돈 문제다.
+  //   ⚠️ 실제 송금은 여전히 사람이 한다 — 이 값은 "얼마를 보내라"의 단일 출처다.
+  let cashBreakdown: ReturnType<typeof computeCashPayout> | null = null
+  if (body.method !== 'deal') {
+    const meta = await DB.prepare(
+      'SELECT tax_type, business_number FROM influencer_balances WHERE influencer_id = ?'
+    ).bind(influencerId).first<{ tax_type: string | null; business_number: string | null }>().catch(() => null)
+    const feeRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'influencer_payout_cash_fee_pct'").first<{ value: string }>().catch(() => null)
+    cashBreakdown = computeCashPayout({
+      gross: amount,
+      taxType: meta?.tax_type,
+      businessNumber: meta?.business_number,
+      feePct: resolveCashFeePct(feeRow?.value),
+    })
+  }
   // attribution paid 처리 (잔고 claim 은 위에서 완료).
   await c.env.DB.prepare(
     `UPDATE influencer_attributions SET status = 'paid', paid_at = datetime('now')
      WHERE influencer_id = ? AND status = 'available' AND paid_at IS NULL`
   ).bind(influencerId).run()
-  return c.json({ success: true, amount })
+  return c.json({ success: true, amount, cash: cashBreakdown })
 })
 
 // ───────── 소개자 찾기 + 카탈로그 — `marketing/discovery.ts` 로 분리 (2026-08-27 파일크기 래칫) ─────────

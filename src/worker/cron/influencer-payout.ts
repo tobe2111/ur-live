@@ -17,7 +17,7 @@ import type { Env } from '../types/env'
 import { logInfo, logError } from '../utils/logger'
 import { swallow } from '../utils/swallow'
 // 🛡️ 2026-06-26 원천징수율 SSOT — 3.3/8.8 literal 하드코딩 금지(CLAUDE.md). 마스터 상수만 사용.
-import { WITHHOLDING_RATES } from '../utils/tax-withholding'
+import { computeCashPayout, resolveCashFeePct } from '../../shared/influencer-payout-math'
 
 interface InfluencerToPayout {
   influencer_id: string
@@ -76,6 +76,11 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
       "SELECT value FROM platform_settings WHERE key = 'influencer_payout_min'"
     ).first<{ value: string }>().catch(() => null)
     const payoutMin = Number(minRow?.value ?? DEFAULT_PAYOUT_MIN) || DEFAULT_PAYOUT_MIN
+    // 💰 현금 정산 수수료 (기본 0 = 안 걷음). 딜 수령엔 적용하지 않는다.
+    const feeRow = await DB.prepare(
+      "SELECT value FROM platform_settings WHERE key = 'influencer_payout_cash_fee_pct'"
+    ).first<{ value: string }>().catch(() => null)
+    const cashFeePct = resolveCashFeePct(feeRow?.value)
 
     // 💎 2026-08-31 대표 *"정산 최소 10만원은 딜 사용은 상관없이 쓰게 해줘"* —
     //   **최소 금액은 현금 송금에만 적용한다.**
@@ -138,13 +143,18 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
         dealCount++
         continue
       }
-      // 원천징수 계산 (SSOT WITHHOLDING_RATES — fraction → % 환산)
-      let withholdingPct = 0
-      if (inf.business_number) withholdingPct = WITHHOLDING_RATES.business_income * 100
-      else if (inf.tax_type === 'other_income') withholdingPct = WITHHOLDING_RATES.other_income * 100
-      // 무신고: 0 (수동)
-      const withholding = Math.floor(inf.available_amount * withholdingPct / 100)
-      const netAmount = inf.available_amount - withholding
+      // 💰 2026-08-31: 현금 정산 내역을 `computeCashPayout` SSOT 로 (수수료 → 원천징수 순).
+      //   그전엔 이 분기와 `marketing.routes`, `AdminInfluencerPayoutsPage` 가 **각자** 계산해
+      //   알림·화면·실지급이 갈릴 수 있었다. 수수료는 기본 0 이라 설정 전에는 결과가 종전과 동일.
+      const cash = computeCashPayout({
+        gross: inf.available_amount,
+        taxType: inf.tax_type,
+        businessNumber: inf.business_number,
+        feePct: cashFeePct,
+      })
+      const withholdingPct = cash.withholdingPct
+      const withholding = cash.withholding
+      const netAmount = cash.net
 
       // 실제 송금은 PG 연동 필요 — 여기선 어드민 dashboard 에 송금 대기 notification
       // 🛡️ 2026-05-31 H2: 당월 동일 인플 송금대기 알림 중복 방지 — cron 재실행/재트리거 시
@@ -162,7 +172,7 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
            VALUES ('admin', 'all', 'influencer_payout_pending', ?, ?, '/admin/influencer-payouts', datetime('now'))`
         ).bind(
           `💰 인플 송금 대기: ${inf.influencer_id}`,
-          `${inf.available_amount.toLocaleString()}원 (원천징수 ${withholdingPct}% = ${withholding.toLocaleString()}, 실송금 ${netAmount.toLocaleString()})`,
+          `${inf.available_amount.toLocaleString()}원 (${cash.fee > 0 ? `정산수수료 ${cash.feePct}% = ${cash.fee.toLocaleString()}, ` : ''}원천징수 ${withholdingPct}% = ${withholding.toLocaleString()}, 실송금 ${netAmount.toLocaleString()})`,
         ).run().catch(swallow('cron:influencer-payout:admin-notify'))
         payoutCount++
         payoutTotal += netAmount

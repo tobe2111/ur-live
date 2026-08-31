@@ -27,6 +27,7 @@ interface Settings {
   influencer_payout_frequency: string
   influencer_payout_day_of_month: string
   influencer_deal_bonus_pct: string
+  influencer_payout_cash_fee_pct: string
   seller_referral_bonus_pct: string
   seller_referral_bonus_months: string
   max_influencer_commission_pct: string
@@ -46,6 +47,7 @@ const DEFAULTS: Settings = {
   influencer_payout_frequency: 'monthly',
   influencer_payout_day_of_month: '1',
   influencer_deal_bonus_pct: '20',
+  influencer_payout_cash_fee_pct: '0',
   seller_referral_bonus_pct: '1',
   seller_referral_bonus_months: '6',
   max_influencer_commission_pct: '2',
@@ -256,6 +258,26 @@ export default function AdminCommissionSettingsPage() {
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
             />
             <p className="text-[11px] text-gray-500 mt-1">인플이 현금 대신 딜 포인트 선택 시 추가 보너스 (락인 효과 유도)</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">현금 정산 수수료 (%)</label>
+            <input
+              type="number"
+              min="0"
+              max="50"
+              step="1"
+              value={form.influencer_payout_cash_fee_pct}
+              onChange={(e) => setForm((f) => ({ ...f, influencer_payout_cash_fee_pct: e.target.value }))}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
+            />
+            <p className="text-[11px] text-gray-500 mt-1">
+              계좌 송금을 택했을 때만 제합니다. 딜 수령은 수수료가 없습니다. <b>0 = 안 걷음(기본).</b>
+            </p>
+            <p className="text-[11px] text-amber-700 mt-1">
+              ⚠️ 위 &lsquo;딜 선택 시 보너스&rsquo;와 <b>한 쌍</b>입니다. 보너스를 0 으로 내리면서 이 수수료를
+              올리는 것이 2026-08-31 확정 방향이고, 한쪽만 움직이면 정산 경제가 어긋납니다.
+            </p>
           </div>
 
           <div className="pt-4 border-t border-gray-100 space-y-4">

@@ -88,6 +88,39 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '💰 현금 정산 수수료 기본값이 0 이 아니게 된다 (머지만으로 라이브 정산이 움직인다)',
+    file: 'src/shared/influencer-payout-math.ts',
+    find: 'export const CASH_PAYOUT_FEE_DEFAULT_PCT = 0',
+    replace: 'export const CASH_PAYOUT_FEE_DEFAULT_PCT = 10',
+    test: 'src/tests/unit/influencer-cash-fee.test.ts',
+    why:
+      '2026-08-31 확정 방향(상품 마진 0 · 현금 출구에 수수료)의 코드는 **기본 0** 으로 들어간다 — ' +
+      '대표가 어드민에서 율을 넣기 전에는 1원도 안 바뀌어야 한다. 기본값이 0 이 아니게 되면 ' +
+      '머지되는 순간 모든 현금 정산이 줄어들고, 인플루언서는 통보 없이 덜 받는다.',
+  },
+  {
+    name: '💰 원천징수 과세표준에서 수수료를 안 뺀다 (실지급 3,300원 차이)',
+    file: 'src/shared/influencer-payout-math.ts',
+    find: '  const withholding = Math.floor(taxableBase * withholdingRate)',
+    replace: '  const withholding = Math.floor(gross * withholdingRate)',
+    test: 'src/tests/unit/influencer-cash-fee.test.ts',
+    why:
+      '100만원·수수료 10%·사업소득이면 870,300원 vs 867,000원으로 갈린다. ' +
+      '⚠️ "수수료 먼저냐 원천징수 먼저냐"는 갈림이 아니다(둘 다 곱셈이라 순서 무관) — ' +
+      '갈리는 것은 **과세표준에서 수수료를 빼느냐** 이고, 그게 세무 확인 대상이다.',
+  },
+  {
+    name: '💰 어드민 송금 화면이 자체 계산으로 회귀 (화면과 실지급이 갈린다)',
+    file: 'src/pages/AdminInfluencerPayoutsPage.tsx',
+    find: '                  const w = computeCashPayout({ gross: r.available_amount, taxType: r.tax_type, businessNumber: r.business_number, feePct: cashFeePct })',
+    replace: '                  const w = { net: r.available_amount, withholdingPct: 0, withholding: 0, fee: 0, feePct: 0 }',
+    test: 'src/tests/unit/influencer-cash-fee.test.ts',
+    why:
+      '원천징수가 cron · 라우트 · 이 화면 **세 곳**에서 따로 계산되고 있었다. 수수료를 얹으면 ' +
+      '네 번째가 된다. 갈리면 "화면엔 90만원인데 실제로 보내야 할 건 87만원" 이 되고, ' +
+      '송금은 사람이 손으로 하므로 그 숫자가 곧 오지급이다.',
+  },
+  {
     name: '🩹 잔액 수리 도구의 dry-run 이 사라진다 (보기만 하려다 돈이 움직인다)',
     file: 'src/worker/utils/points-reconcile.ts',
     find: '  if (!apply) return { found, results, applied: false }',
