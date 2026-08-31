@@ -6447,6 +6447,38 @@ canvas {
       '우리 마진 구조가 그대로 노출된다.',
   },
   {
+    name: '🩸 영입자 검증이 sellers 로 되돌아간다(엉뚱한 사람에게 2%)',
+    file: 'src/features/admin/api/admin-sellers/reassign-introducer.ts',
+    find: "    existsTable: 'users',",
+    replace: "    existsTable: 'sellers',",
+    test: 'src/tests/unit/introducer-id-space.test.ts',
+    why:
+      '`sellers.introduced_by_influencer_id` 를 적립·지급·조회·등록귀속 네 곳이 전부 `users.id` 로 읽는데 ' +
+      '이 검증만 `sellers` 를 봤다. 두 id 공간이 라이브에서 겹쳐(셀러 3·5·6 ↔ 유저 3·5·6) ' +
+      '**에러 없이 엉뚱한 사람에게 2% 가 간다** — 가장 조용한 머니 사고다.',
+  },
+  {
+    name: '🔀 라우트가 반대편 종류로 위임한다 (사람↔에이전시 뒤바뀜)',
+    file: 'src/features/admin/api/admin-sellers.routes.ts',
+    find: "reassignIntroducer(c, 'influencer', safeAdminError)",
+    replace: "reassignIntroducer(c, 'agency', safeAdminError)",
+    test: 'src/tests/unit/introducer-id-space.test.ts',
+    why:
+      '두 재배정은 이제 한 함수를 종류 인자로 나눠 쓴다. 인자가 뒤바뀌면 `introduced_by_influencer_id` ' +
+      '대신 `introduced_by_agency_id` 에 써서, 어드민이 "영입자 지정" 을 눌렀는데 에이전시가 박힌다 — ' +
+      '화면도 응답도 성공이라 아무도 모른다.',
+  },
+  {
+    name: '🤝 영입자를 확인 없이 지정할 수 있게 된다',
+    file: 'src/pages/admin-merchant-commissions/IntroducerAssign.tsx',
+    find: 'disabled={busy || !preview}',
+    replace: 'disabled={busy}',
+    test: 'src/tests/unit/introducer-id-space.test.ts',
+    why:
+      'id 공간이 겹치므로 번호만 보고 저장하면 오지정을 눈으로 잡을 기회가 사라진다. ' +
+      '"이 사람이 맞나요?" 를 통과해야만 저장되는 것이 이 화면의 유일한 안전장치다.',
+  },
+  {
     name: '🛑 폐지한 에이전시 영입 1% 축이 타입으로 되살아난다',
     file: 'src/worker/utils/order-commissions.ts',
     find: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'supplier'",
