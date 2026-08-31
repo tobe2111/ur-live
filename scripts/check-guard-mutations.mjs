@@ -45,6 +45,11 @@ const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
  * 건너뛰게 된다** — 이 레포가 반복해서 당한 자리다. CI 는 인자 없이 전수로 돈다.
  */
 const ONLY = (() => {
+  // 🩸 `--only=X`(등호형)도 받는다 — 2026-08-31 에 등호형으로 부르니 `indexOf('--only')` 가 -1 이라
+  //    **필터 없이 567건 전수**가 조용히 돌았다(주입이 남의 파일에 들어간 채 12분). 이 레포가 반복해
+  //    당한 "검사가 조용히 다른 걸 한다" 클래스라, 모르고 지나가느니 형태를 둘 다 받는 게 맞다.
+  const eq = process.argv.find(a => a.startsWith('--only='))
+  if (eq) return eq.slice('--only='.length)
   const i = process.argv.indexOf('--only')
   return i !== -1 ? process.argv[i + 1] : null
 })()
@@ -6106,6 +6111,26 @@ canvas {
     why:
       '숫자는 똑같이 나온다(뒤의 DATE 비교가 거른다). 그런데 인덱스 범위를 못 써서 매 요청이 ' +
       '7,234행에서 46만행이 된다 — 결과가 맞아서 아무도 모르고, 매 요청이라 금방 쌓인다.',
+  },
+  {
+    name: '🚧 주입-중 가드가 argv 어디서든 이름만 봐도 막는다(멀쩡한 커밋이 막힘)',
+    file: 'scripts/check-no-injection-in-progress.sh',
+    find: "/^[^ ]*node( |$)/ && ",
+    replace: '',
+    test: 'src/tests/unit/injection-guard.test.ts',
+    why:
+      '2026-08-31 에 실제로 이랬다 — 커밋 명령줄이 그 파일 이름을 *언급만* 해도 셸 래퍼의 argv 에 ' +
+      '걸려 커밋이 막혔다. 가드가 자기 자신을 잡는 클래스이고, 막히면 우회하게 되므로 가드가 죽는다.',
+  },
+  {
+    name: '🚧 주입-중 가드가 절대경로 node 를 놓친다(진짜 주입이 통과)',
+    file: 'scripts/check-no-injection-in-progress.sh',
+    find: '^[^ ]*node( |$)',
+    replace: '^node ',
+    test: 'src/tests/unit/injection-guard.test.ts',
+    why:
+      'ps 는 `/usr/bin/node …` 처럼 절대경로로 찍히는 환경이 흔하다. 그러면 진짜 주입이 도는 중에도 ' +
+      '가드가 통과시켜, 되돌려지지 않은 결함이 그대로 커밋된다 — 이 가드가 막으려던 바로 그 사고다.',
   },
   {
     name: '⏳ 낡은 값만 주고 갱신을 안 태운다(캐시가 영영 안 바뀐다)',
