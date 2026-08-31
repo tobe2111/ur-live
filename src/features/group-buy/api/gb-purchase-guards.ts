@@ -186,3 +186,28 @@ export async function guardAwaitingDeposit(
       : '무통장입금(가상계좌)은 이용권 결제에 사용할 수 없습니다. 발급된 계좌로 입금하지 마시고 고객센터로 문의해주세요.',
   }
 }
+
+/**
+ * 💰 **이용권 딜 결제 게이트** (2026-08-31 대표 방향 · 기본 OFF).
+ *
+ *   join 의 상품 조회가 `voucher 카테고리 OR deal_only=1` 을 함께 매칭하기 때문에, 딜 경로는
+ *   **원래부터 이용권도 받고 있었다** — 화면이 안 내놨을 뿐 직접 POST 하면 통했다.
+ *   그래서 이 가드는 기능을 여는 스위치인 동시에 **그 열린 문을 닫는다.**
+ *
+ * 🔴 켜기 전 선행: `influencer_deal_bonus_pct` 를 0 으로. 보너스 20% 가 살아 있으면
+ *   이용권 마진(5~10%)보다 보너스가 커서 **팔릴수록 유어딜이 건당 8~14원 적자**다.
+ *   교환권(`deal_only=1`)은 소비자 마크업 20% 가 보너스를 상쇄해 괜찮았고, 이용권엔 그 상쇄가 없다.
+ *   클라 `VOUCHER_DEAL_PAYMENT_ENABLED` 와 이중 게이트(`GB_ENGINE_ENABLED` 선례).
+ *
+ * @returns 허용이면 `true`. 교환권은 이 게이트와 무관하게 항상 `true`.
+ */
+export async function isVoucherDealPaymentAllowed(
+  DB: D1Database,
+  product: { deal_only?: number | null },
+): Promise<boolean> {
+  if (product.deal_only === 1) return true
+  const gate = await DB.prepare(
+    "SELECT value FROM platform_settings WHERE key = 'voucher_deal_payment_enabled'"
+  ).first<{ value: string }>().catch(() => null)
+  return gate?.value === 'true'
+}

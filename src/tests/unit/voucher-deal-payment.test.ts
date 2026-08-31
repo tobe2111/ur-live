@@ -17,6 +17,9 @@ import { readFileSync } from 'node:fs'
 import { VOUCHER_DEAL_PAYMENT_ENABLED } from '@/shared/feature-flags'
 import { getProductFlow } from '@/shared/product-flow'
 
+// ⚠️ 2026-08-31: 게이트 판정은 파일크기 래칫 때문에 라우트 → `gb-purchase-guards.ts` 로 **이동**했다.
+//   이 경로를 안 따라가면 테스트가 낡은 지도가 되어, 코드 없는 파일을 검사하며 초록을 낸다.
+const GUARD = 'src/features/group-buy/api/gb-purchase-guards.ts'
 const ROUTE = 'src/features/group-buy/api/group-buy.routes.ts'
 const PAGE = 'src/pages/GroupBuyDetailPage.tsx'
 /** 주석 제거 — 주석에만 남은 이름을 배선으로 오독하지 않는다(2026-08-01 교훈). */
@@ -25,20 +28,23 @@ const codeOnly = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*
 describe('R1 — 기본 OFF (배포만으로 열리지 않는다)', () => {
   it('클라 플래그가 false', () => expect(VOUCHER_DEAL_PAYMENT_ENABLED).toBe(false))
   it('서버는 설정이 정확히 `true` 일 때만 통과시킨다', () => {
-    const code = codeOnly(readFileSync(ROUTE, 'utf8'))
+    const code = codeOnly(readFileSync(GUARD, 'utf8'))
     expect(code).toContain("key = 'voucher_deal_payment_enabled'")
-    // `!== 'true'` 로 거절 — truthy 검사(`if (gate?.value)`)면 'false' 문자열도 통과한다.
-    expect(code).toMatch(/gate\?\.value !== 'true'/)
+    // `=== 'true'` 로만 허용 — truthy 검사(`!!gate?.value`)면 'false' 문자열도 통과한다.
+    expect(code).toMatch(/gate\?\.value === 'true'/)
+  })
+  it('라우트가 그 판정을 실제로 호출한다', () => {
+    expect(codeOnly(readFileSync(ROUTE, 'utf8'))).toContain('isVoucherDealPaymentAllowed(')
   })
 })
 
 describe('R2 — 게이트가 교환권을 막지 않는다 (기존 딜 결제 보존)', () => {
-  it('가드가 `deal_only !== 1` 일 때만 적용된다', () => {
-    const code = codeOnly(readFileSync(ROUTE, 'utf8'))
-    const idx = code.indexOf("key = 'voucher_deal_payment_enabled'")
-    expect(idx).toBeGreaterThan(0)
-    // 게이트 블록 바로 앞에 deal_only 분기가 있어야 한다.
-    expect(code.slice(Math.max(0, idx - 400), idx)).toContain('product.deal_only !== 1')
+  it('교환권은 설정을 보기 전에 통과한다 (조기 반환)', () => {
+    const code = codeOnly(readFileSync(GUARD, 'utf8'))
+    const early = code.indexOf('product.deal_only === 1) return true')
+    const gate = code.indexOf("key = 'voucher_deal_payment_enabled'")
+    expect(early).toBeGreaterThan(0)
+    expect(gate).toBeGreaterThan(early) // 설정 조회는 그 뒤에만
   })
   it('교환권은 여전히 voucher_deal 로 분류된다', () => {
     expect(getProductFlow({ deal_only: 1, category: 'etc_voucher' })).toBe('voucher_deal')

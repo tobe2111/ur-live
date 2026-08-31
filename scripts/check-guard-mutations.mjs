@@ -100,9 +100,9 @@ const MUTATIONS = [
   },
   {
     name: '🎫 이용권 딜 결제 게이트가 교환권까지 막는다 (기프티콘 결제 전면 중단)',
-    file: 'src/features/group-buy/api/group-buy.routes.ts',
-    find: '    if (product.deal_only !== 1) {',
-    replace: '    if (true) {',
+    file: 'src/features/group-buy/api/gb-purchase-guards.ts',
+    find: '  if (product.deal_only === 1) return true',
+    replace: '  if (false) return true',
     test: 'src/tests/unit/voucher-deal-payment.test.ts',
     why:
       '이 가드는 **이용권에만** 걸려야 한다. 교환권(`deal_only=1`)은 원래 딜 전용이라 ' +
