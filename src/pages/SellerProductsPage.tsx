@@ -187,7 +187,7 @@ export default function SellerProductsPage() {
               <Trash2 className="h-5 w-5" />
               <p className="text-sm font-medium">{error}</p>
             </div>
-            <button onClick={() => window.location.reload()} className="mt-3 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white">
+            <button onClick={() => window.location.reload()} className="ur-btn ur-btn-md ur-btn-primary mt-3">
               {t('seller.retryButton')}
             </button>
           </div>
@@ -249,7 +249,7 @@ export default function SellerProductsPage() {
                 action={
                   <Button
                     onClick={() => navigate('/seller/products/new')}
-                    className="bg-gray-900 text-white hover:bg-gray-900"
+                    className="ur-btn ur-btn-md ur-btn-primary"
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     {t('seller.firstProductRegister')}
@@ -425,7 +425,7 @@ export default function SellerProductsPage() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => navigate(`/seller/products/${product.id}/edit`)}
-                              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-900 transition-colors flex items-center justify-center gap-1.5 text-xs sm:text-sm"
+                              className="ur-btn ur-btn-sm ur-btn-primary flex-1 sm:flex-none transition-colors flex items-center justify-center gap-1.5"
                             >
                               <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                               {t('common.edit')}

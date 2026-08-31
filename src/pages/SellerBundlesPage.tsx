@@ -114,7 +114,7 @@ export default function SellerBundlesPage() {
           icon={<Package className="h-5 w-5" />}
           actions={
             <button onClick={() => { resetForm(); setShowForm(true) }}
-              className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-900">
+              className="ur-btn ur-btn-md ur-btn-primary flex items-center gap-1.5">
               <Plus className="w-4 h-4" /> {t('seller.bundleCreate', '번들 만들기')}
             </button>
           }

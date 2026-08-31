@@ -434,7 +434,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-gray-500 dark:text-gray-400">{t('seller.publicPage.emptyShopDesc', { defaultValue: '내 이용권이 유어샵의 주인공이에요. 등록하면 방문자에게 바로 판매되고 정산까지 이어집니다.' })}</p>
               <button
                 onClick={() => navigate('/seller/products/new')}
-                className="mt-4 inline-flex items-center gap-1 px-5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] text-[13px] font-bold active:scale-95"
+                className="ur-btn ur-btn-md ur-btn-primary mt-4 inline-flex items-center gap-1 dark:bg-white dark:text-[#0D0F12] text-[13px] active:scale-95"
               >
                 + {t('seller.publicPage.addProduct', { defaultValue: '상품 등록' })}
               </button>
