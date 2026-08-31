@@ -144,8 +144,16 @@ function serve() {
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
         // 큐레이터 조회는 시드와 같은 페이로드로 — 아니면 백그라운드 갱신이 오류 상태로 빠진다
         if (p.startsWith('/api/curator/') && !p.includes('/me/')) return res.end(JSON.stringify(CURATOR_SEED))
-        if (args.deals && (p.startsWith('/api/group-buy/products') || p === '/api/products'))
-          return res.end(JSON.stringify({ success: true, data: DEALS, products: DEALS }))
+        if (args.deals) {
+          // 상세는 **단건**이다 — 목록과 같은 배열을 주면 화면이 안 그려진다.
+          const m = p.match(/^\/api\/(?:group-buy\/)?products\/(\d+)/)
+          if (m) {
+            const one = DEALS.find((d) => String(d.id) === m[1]) || DEALS[0]
+            return res.end(JSON.stringify({ success: true, data: one, product: one }))
+          }
+          if (p.startsWith('/api/group-buy/products') || p === '/api/products')
+            return res.end(JSON.stringify({ success: true, data: DEALS, products: DEALS }))
+        }
         return res.end(JSON.stringify({ success: true, data: [], products: [], pins: [], stats: {} }))
       }
       const f = path.join(DIST, p)
