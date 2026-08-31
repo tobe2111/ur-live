@@ -5494,9 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 202건 · 최신순 · 이 목록은 자동 생성된다._
+_총 204건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-31**
+- [2026-08-31 — 영입 2% 를 직접 입점 매장에만 (+ 예산 아비터)](handoff/2026-08-31-store-intro-direct-only.md)
 - [2026-08-31 — 대표 QA 준비: 홍대돈까스 접근 구조 (내가 두 번 헛짚은 자리)](handoff/2026-08-31-qa-setup.md)
 - [원장 정합 알림 — 숫자가 거짓이었다, 그리고 진짜 5건의 정체 (2026-08-31)](handoff/2026-08-31-ledger-mismatch.md)
 - [2026-08-31 — 정산 최소 10만원은 현금에만](handoff/2026-08-31-deal-payout-no-minimum.md)
@@ -5504,6 +5505,7 @@ _총 202건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-08-30 — 매장 영입 보상을 딜로 (게이트 OFF 배선)](handoff/2026-08-30-store-intro-deal.md)
 - [2026-08-30 — 숙소 상세 사진만 여백이 있던 것](handoff/2026-08-30-stay-detail-gallery-bleed.md)
 - [2026-08-30 — 잉크 딥네이비 → 차콜 블랙 전환 + 숙소 상세 갤러리 풀블리드](handoff/2026-08-30-ink-black.md)
+- [2026-08-30 — 인플루언서 제휴 제안서 + 어드민 열람/PDF + taste-skill 도입](handoff/2026-08-30-influencer-proposal-admin.md)
 - [2026-08-30 — 상세 페이지 "AI 티" 제거 (숙소 + 이용권)](handoff/2026-08-30-detail-plainness.md)
 - [2026-08-30 — 디자인 "AI 스러움" 진단 + 1층 수리 (버튼·그림자·포커스)](handoff/2026-08-30-design-ai-slop-audit.md)
 - [2026-08-30 — 자동분 제거 + 딜/현금 선택 존중 (오전 작업 되돌림 포함)](handoff/2026-08-30-deal-only-commission.md)

@@ -139,6 +139,36 @@ const MUTATIONS = [
       '차감이 적립으로 집계돼 멀쩡한 유저가 불일치로 잡힌다.',
   },
   {
+    name: '영입 2% 게이트가 credit 쪽에서 빠진다(중개 매장에 지급)',
+    file: 'src/worker/utils/influencer-store-intro-commission.ts',
+    find: '    if (!(await isDirectChannelStore(DB, Number(order.seller_id)))) return\n',
+    replace: '',
+    test: 'src/tests/unit/store-intro-direct-only.test.ts',
+    why:
+      '중개(5%) 매장에 영입 2% 를 얹으면 5% − PG준비금 2.75% − 2% = +0.25% 로 사실상 0 이고, ' +
+      '커미션이 하나만 더 겹치면 적자다. 게이트가 빠져도 에러는 안 나고 돈만 나간다.',
+  },
+  {
+    name: '영입 2% 게이트가 compute 쪽에서만 빠진다(예산이 새는 쪽으로 샌다)',
+    file: 'src/worker/utils/influencer-store-intro-commission.ts',
+    find: '    if (!(await isDirectChannelStore(DB, Number(order.seller_id)))) return 0\n',
+    replace: '',
+    test: 'src/tests/unit/store-intro-direct-only.test.ts',
+    why:
+      'compute 와 credit 이 갈리면 예산 아비터가 요청액을 잡아 두고 적립은 0 이 된다. ' +
+      '한쪽만 고치기 쉬운 자리라 두 방향을 따로 심는다.',
+  },
+  {
+    name: '미지정 매장을 direct 로 간주한다(관대 방향 폴백)',
+    file: 'src/worker/utils/influencer-store-intro-commission.ts',
+    find: "    return meta?.store_channel === 'direct'",
+    replace: "    return meta?.store_channel !== 'brokered'",
+    test: 'src/tests/unit/store-intro-direct-only.test.ts',
+    why:
+      '2026-08-31 대표 확정은 "미지정 = 미지급" 이다. 미지급은 채널을 채우고 소급 판단할 수 있지만 ' +
+      '과지급은 못 되돌린다. 실측상 매장 대부분이 미지정이라 이 폴백 하나로 전부가 지급 대상이 된다.',
+  },
+  {
     name: '평면 그라디언트가 다시 들어온다(단색인데 그라디언트인 척)',
     file: 'src/pages/user-profile/TeamPointsCard.tsx',
     find: '      <div className="bg-ink dark:bg-[#1A1C21] rounded-2xl px-5 py-4">',

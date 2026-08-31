@@ -2,6 +2,8 @@ User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /admin/*
+# 대외 제안서 원본. 어드민이 iframe 으로 띄우고 PDF 로 인쇄하는 파일이라 색인 대상이 아니다.
+Disallow: /static/proposals/
 Disallow: /seller/login
 Disallow: /seller/register
 Disallow: /agency/login
