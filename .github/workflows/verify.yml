@@ -371,6 +371,14 @@ jobs:
 
       - name: Guide sync check
         run: bash scripts/check-guide-sync.sh
+
+      # 📖 2026-08-31 (대표 지시): 운영백서의 숫자는 코드에서 생성된다. 여기가 **유일한 보장**이다 —
+      #   pre-commit 훅은 원격 세션(컨테이너 신규 생성)에 없을 수 있어 믿을 수 없다.
+      #   ① 표가 policy.ts/feature-flags 와 어긋났는가 ② 표가 바뀌었는데 GUIDE_SEED_VERSION 을 안 올렸는가
+      #   ②가 빨간불이면 배포돼도 라이브 문서는 옛 숫자 그대로다(재시드 조건이 거짓이라 조용히 통과).
+      - name: 운영백서 숫자표 동기 (strict)
+        run: node scripts/generate-ops-handbook.mjs --check
+        continue-on-error: false
         continue-on-error: true
 
       - name: Naming conflicts
