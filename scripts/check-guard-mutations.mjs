@@ -6749,14 +6749,15 @@ canvas {
     test: 'src/tests/unit/guide-unfreeze.test.ts',
     why:
       '2차가 빠지면 도매 가이드 15개 중 12개가 계속 **유통사**(2026-06-22 폐기)라고 말하고, ' +
-      "admin 'deploy' 는 `npx vite build` 를 가르친다 — CLAUDE.md 가 2026-05-12 사고의 " +
-      '원인으로 지목해 금지한 명령이다(_worker.js 미갱신).',
+      "admin 'deploy' 는 클라이언트만 빌드하는 옛 단독 명령을 가르친다 — CLAUDE.md 가 " +
+      '2026-05-12 사고의 원인으로 지목해 금지한 그 명령이다(_worker.js 가 안 갱신된다).',
   },
   {
     name: '🔓 가이드 해동이 전체로 번진다 (관리자 문구까지 시드로 덮음)',
     file: 'src/features/guides/api/guide.routes.ts',
-    find: 'manually_edited = 0 WHERE guide_type = ? AND section_key = ?',
-    replace: 'manually_edited = 0 WHERE 1=1',
+    // ⚠️ 같은 SQL 이 1차·2차 두 블록에 있다 → **catch 태그까지 포함해** 1차 블록만 지목한다.
+    find: "AND section_key = ?`\n      ).bind(t, k).run().catch(swallow('guides:seed-sync:unfreeze'))",
+    replace: "`\n      ).bind(t, k).run().catch(swallow('guides:seed-sync:unfreeze'))",
     test: 'src/tests/unit/guide-unfreeze.test.ts',
     why:
       '해동은 **실측으로 갈린 섹션 13개**를 되살리려는 것이지 관리자가 쓴 문구를 되돌리려는 것이 아니다. ' +
