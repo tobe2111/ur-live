@@ -84,8 +84,9 @@ describe('③ 배선 — 두 페이지가 서로의 것을 담지 않는다', ()
     // 진입점은 파일 크기 래칫 때문에 컴포넌트로 분리돼 있다. 목적지와 배선을 함께 본다.
     expect(strip(read('src/pages/vouchers/GifticonBoxEntry.tsx'))).toContain("navigate('/my-gifticons')")
     const page = strip(read('src/pages/VouchersPage.tsx'))
-    expect(page).toMatch(/<VoucherHeaderActions\b/)
-    expect(page).toMatch(/<GifticonBoxRailRow\b/)
+    expect(page).toMatch(/<VouchersTopBar\b/)          // 모바일: 상단 바가 [보관함][검색] 을 싣는다
+    expect(strip(read('src/pages/vouchers/VouchersTopBar.tsx'))).toMatch(/<VoucherHeaderActions\b/)
+    expect(page).toMatch(/<GifticonBoxRailRow\b/)      // PC: 좌 레일 행
   })
   it('라우트가 등록돼 있고 몰 슬러그로 선점되지 않는다', () => {
     expect(strip(read('src/App.tsx'))).toContain('path="/my-gifticons"')

@@ -248,7 +248,9 @@ export default function MyVouchersPage() {
           (26px 타이틀 + 총 보유 칩 + 언더라인 탭). 교환권 보유 시에만 탭 노출. */}
       <WalletHeader
         title={t('voucher.myVouchers')}
-        totalLabel={shownVouchers.length > 0 ? t('voucher.totalCount', { count: shownVouchers.length }) : null}
+        subline={shownVouchers.length > 0
+          ? `${t('voucher.heroUsable', { defaultValue: '사용 가능' })} ${unusedItems.length}${t('voucher.heroCountUnit', { defaultValue: '장' })} · ${t('voucher.totalCount', { count: shownVouchers.length })}`
+          : null}
       />
 
       {/* 🔁 2026-06-23 양방향 분쟁: 매장이 "안 왔어요" 신고한 이용권에 대한 손님 항변 배너(자가완결) */}
@@ -262,7 +264,6 @@ export default function MyVouchersPage() {
           label={t('voucher.heroBalanceLabel', { defaultValue: '보유 이용권 금액' })}
           total={heroTotal}
           unit={heroUnit}
-          usableCount={unusedItems.length}
           nearestExpiry={nearestExpiry}
           saved={heroSaved}
           t={t}

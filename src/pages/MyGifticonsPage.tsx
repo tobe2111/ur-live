@@ -59,7 +59,9 @@ export default function MyGifticonsPage() {
 
       <WalletHeader
         title={t('voucher.myGifticons', { defaultValue: '내 교환권' })}
-        totalLabel={items.length > 0 ? t('voucher.totalCount', { count: items.length }) : null}
+        subline={items.length > 0
+          ? `${t('voucher.heroUsable', { defaultValue: '사용 가능' })} ${usable.length}${t('voucher.heroCountUnit', { defaultValue: '장' })} · ${t('voucher.totalCount', { count: items.length })}`
+          : null}
         onBack={() => navigate('/vouchers')}
         backLabel={t('common.back', { defaultValue: '뒤로가기' })}
       />
@@ -69,7 +71,6 @@ export default function MyGifticonsPage() {
           label={t('voucher.heroBalanceLabelGift', { defaultValue: '보유 교환권 금액' })}
           total={heroTotal}
           unit={t('voucher.deal', { defaultValue: '딜' })}
-          usableCount={usable.length}
           /* 교환권은 만료일·할인율을 안 갖고 온다 → 그 칸은 아예 안 그린다(빈 지표 금지). */
           nearestExpiry={null}
           saved={0}

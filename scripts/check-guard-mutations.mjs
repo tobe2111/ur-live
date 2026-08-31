@@ -84,7 +84,7 @@ const MAP_ONLY = process.argv.includes('--map-only')
 const MUTATIONS = [
   {
     name: '교환권 페이지에서 보관함으로 가는 길이 사라진다',
-    file: 'src/pages/VouchersPage.tsx',
+    file: 'src/pages/vouchers/VouchersTopBar.tsx',
     find: '<VoucherHeaderActions />',
     replace: '',
     test: 'src/tests/unit/voucher-wallet-split.test.ts',
