@@ -15,6 +15,7 @@ import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import KakaoShareButton from '@/components/KakaoShareButton'
+import { dealCategoryMeta } from '@/shared/deal-category-icon'
 // 🛡️ 2026-06-12 (감사 1단계 — 핀 표면): 공유 버튼 옆 핀 버튼 (additive — 잠금 항목 무변경).
 import PinButton from '@/components/curator/PinButton'
 import { toast } from '@/hooks/useToast'
@@ -95,12 +96,18 @@ interface GroupBuyDetail {
   seller_facebook?: string | null
 }
 
-function CategoryEmoji({ cat }: { cat: string }) {
-  const map: Record<string, string> = {
-    meal_voucher: '🍽️', beauty_voucher: '💇', health_voucher: '💪',
-    pet_voucher: '🐶', stay_voucher: '🏨', activity_voucher: '🎯',
-  }
-  return <span>{map[cat] || '🎫'}</span>
+/**
+ * 🖼️ 사진이 없을 때의 히어로 폴백 (2026-08-31 — 이모지 → 선 아이콘)
+ *
+ * 이전엔 `🍽️ 💇 🏨 …` 이모지를 **검정 배경 위에 크게** 그렸다. 세 가지가 문제였다 —
+ *   ⓐ 이모지는 기기마다 다른 그림으로 렌더돼 **우리가 그 화면을 통제하지 못한다**
+ *   ⓑ 화면 최상단을 차지하는데 "아직 안 만든 자리"로 읽힌다(대표: "AI가 만든 티")
+ *   ⓒ 같은 상황에서 **홈 카드는 선 아이콘**을 쓰고 있었다 — 한 상품이 화면마다 다른 그림이었다.
+ * ⇒ 홈 카드와 **같은 표**(`deal-category-icon` SSOT)를 읽는다. 두 벌로 두면 반드시 갈린다.
+ */
+function CategoryFallbackIcon({ cat }: { cat: string }) {
+  const { Icon } = dealCategoryMeta(cat)
+  return <Icon className="w-12 h-12 text-gray-400 opacity-60" aria-hidden="true" />
 }
 
 // 🎨 2026-06-16 리디자인: CountdownRing(공구 마감 연출) 제거 — 정직한 즉시 할인 구매로 전환 (사용자 design 결정).
@@ -615,7 +622,7 @@ export default function GroupBuyDetailPage() {
         <DetailGallery
           images={galleryImages}
           alt={detail.name}
-          fallback={<CategoryEmoji cat={detail.category} />}
+          fallback={<CategoryFallbackIcon cat={detail.category} />}
           badges={
             <>
               <div style={{ position: 'absolute', inset: '0 0 auto 0', height: 110, pointerEvents: 'none', background: 'linear-gradient(180deg, rgba(0,0,0,.4), transparent)' }} />
@@ -683,7 +690,7 @@ export default function GroupBuyDetailPage() {
         {/* 타이틀 — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번 나온다). */}
         <div className="lg:hidden" style={{ padding: '20px 18px 0' }}>
           {detail.restaurant_name && (
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', letterSpacing: '.01em' }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-ink2)', letterSpacing: '.01em' }}>
               {detail.restaurant_name} · 정식 등록 매장
               {/* 🏪 2026-07-05 온누리 가맹 뱃지 (B2G — "온누리 사용 가능 표시" 약속) */}
               {(detail as { onnuri_merchant?: boolean }).onnuri_merchant && (
@@ -713,7 +720,7 @@ export default function GroupBuyDetailPage() {
             {displayDiscountPct > 0 && <span style={{ fontSize: 27, fontWeight: 800, color: 'var(--gbd-danger)', letterSpacing: '-.03em' }}>{displayDiscountPct}%</span>}
             <span style={{ fontSize: 30, fontWeight: 900, color: 'var(--gbd-ink)', letterSpacing: '-.035em' }}>{formatNumber(unitPrice)}원</span>
           </div>
-          <div style={{ marginTop: 9, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>{unitSaving > 0 && <>1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-danger)' }}>{formatNumber(unitSaving)}원</b> 저렴 · </>}결제 즉시 교환권 발급</div>
+          <div style={{ marginTop: 9, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>{unitSaving > 0 && <>1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-ink)' }}>{formatNumber(unitSaving)}원</b> 저렴 · </>}결제 즉시 교환권 발급</div>
         </div>
 
         {/* 🎯 추첨 응모 — 이 상품이 추첨 대상일 때만(결제 없음). 아니면 렌더 0. */}
@@ -944,7 +951,7 @@ export default function GroupBuyDetailPage() {
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-danger)', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-ink2)', whiteSpace: 'nowrap' }}>
               {isJoinable && totalSaving > 0 ? (quantity > 1 ? `총 ${formatNumber(totalSaving)}원 할인 중` : `${formatNumber(unitSaving)}원 할인 중`) : ''}
             </span>
             {detail?.max_per_person && detail.max_per_person > 0 ? (
