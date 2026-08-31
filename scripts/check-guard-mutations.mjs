@@ -149,6 +149,26 @@ const MUTATIONS = [
       '클래스. 결제는 성공했으므로 로그·에러 어디에도 흔적이 없다.',
   },
   {
+    name: '🔓 원장 CHECK 제거가 타입을 뭉갠다 (18행의 종류가 전부 charge 로)',
+    file: 'src/worker/utils/point-ledger-unlock.ts',
+    find: "    await DB.prepare(`UPDATE point_transactions SET type = COALESCE(_type_bak, 'charge')`).run()",
+    replace: '    // 복원 생략',
+    test: 'src/tests/unit/point-ledger-unlock.test.ts',
+    why:
+      '컬럼을 갈아끼우는 절차라 복원 한 줄이 빠지면 **원장의 종류가 통째로 사라진다**. ' +
+      '되돌릴 수 없는 DDL 이고, 그래서 코드가 전후를 스스로 대조하게 만들었다.',
+  },
+  {
+    name: '🔢 판별식이 다시 `IS NOT NULL` 로 (모던 행의 적립이 통째로 사라진다)',
+    file: 'src/worker/utils/ledger-integrity-checks.ts',
+    find: '  WHEN COALESCE(pt.points_amount, 0) != 0 THEN',
+    replace: '  WHEN pt.points_amount IS NOT NULL THEN',
+    test: 'src/tests/unit/point-ledger-unlock.test.ts',
+    why:
+      '라이브 컬럼은 `points_amount INTEGER NOT NULL DEFAULT 0` 이다. 모던 행은 NULL 이 아니라 **0** 이라, ' +
+      '`IS NOT NULL` 로 가르면 전부 레거시로 몰려 0 으로 집계된다 — 원장 쓰기가 되살아나는 순간 전 유저가 불일치가 된다.',
+  },
+  {
     name: '🩹 잔액 수리 도구의 dry-run 이 사라진다 (보기만 하려다 돈이 움직인다)',
     file: 'src/worker/utils/points-reconcile.ts',
     find: '  if (!apply) return { found, results, applied: false }',
@@ -181,7 +201,9 @@ const MUTATIONS = [
   {
     name: '💸 원장 정합 검사가 다시 amount 를 우선한다 (충전=원화·차감=양수 → 숫자가 거짓)',
     file: 'src/worker/utils/ledger-integrity-checks.ts',
-    find: '  WHEN pt.points_amount IS NOT NULL THEN',
+    // 2026-08-31: 판별식이 `IS NOT NULL` → `COALESCE(...) != 0` 로 바뀌어 이 find 도 따라 옮겼다
+    //   (가드가 "낡은 지도"로 잡아 줬다 — 이 검사가 존재하는 이유가 정확히 이것이다).
+    find: '  WHEN COALESCE(pt.points_amount, 0) != 0 THEN',
     replace: '  WHEN COALESCE(pt.amount, 0) != 0 THEN pt.amount\n  WHEN FALSE THEN',
     test: 'src/tests/unit/ledger-balance-mismatch.test.ts',
     why:

@@ -385,6 +385,28 @@ adminToolsRoutes.get('/commission-budget-logs', async (c) => {
   return c.json({ success: true, data: results || [] })
 })
 
+/**
+ * 🔓 원장 테이블의 옛 `type` CHECK 제약 제거 — **기본 dry-run**, `apply:true` 라야 실행.
+ *
+ * 라이브 `point_transactions` 는 `CHECK (type IN ('charge','donate','refund'))` 를 아직 갖고 있어
+ * 그 밖의 모든 원장 기록(`signup_bonus`·`referral_bonus`·`invite_reward`…)이 **거부**된다.
+ * 기록은 fail-soft 라 **잔액만 움직이고 기록은 사라진다** — "잔액만 있고 거래 0" 유저의 진짜 원인.
+ * migration 0253 이 같은 처방을 적어 뒀지만 라이브에 적용된 적이 없다(Migration CI 부채).
+ *
+ * ⚠️ 되돌릴 수 없는 DDL 이므로 전후 행수·타입분포를 대조해 `verified` 로 돌려준다.
+ */
+adminToolsRoutes.post('/point-ledger-unlock', async (c) => {
+  const body = await c.req.json<{ apply?: boolean }>().catch(() => ({} as { apply?: boolean }))
+  try {
+    const { unlockPointLedgerTypes } = await import('../../../worker/utils/point-ledger-unlock')
+    const r = await unlockPointLedgerTypes(c.env.DB, body.apply === true)
+    await writeAuditLog(c, { action: 'point_ledger_unlock', targetType: 'points', after: r }).catch(() => {})
+    return c.json({ success: true, ...r })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error)?.message || String(err) }, 500)
+  }
+})
+
 // ── 🗄️ 분할 백업 수동 실행 ────────────────────────────────────────────────
 /**
  * **왜 수동 실행이 필요한가** (2026-08-22)
