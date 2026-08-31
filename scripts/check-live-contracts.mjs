@@ -211,6 +211,28 @@ async function checkRobots(origin) {
   return { origin, missing: missing.length, total: rules.length, sitemapMissing, managed, sample: missing.slice(0, 5) }
 }
 
+/**
+ * 🗄️ R2 바인딩 생존 확인 — **대시보드 쪽을 레포가 볼 수 있는 유일한 창**
+ *
+ * 2026-08-31 사고: cron 쪽 바인딩이 없어 이미지 이관이 넉 달간 죽어 있었다. 그건 `wrangler.toml`
+ * 을 읽는 정적 가드(`cron-bindings.test.ts`)로 영구 차단했다. 그런데 **요청 처리(Pages) 쪽 바인딩은
+ * 대시보드에만 있어 레포가 볼 수 없다** — 누가 지워도 코드에는 아무 흔적이 없다.
+ *
+ * 그 한 칸을 여기서 메운다. `/api/media/:key` 는 두 실패를 **다른 코드로** 구분해 준다:
+ *   · `404` = 객체 없음 → **정상**(바인딩은 살아 있다)
+ *   · `503` = "R2 미설정" → **바인딩 자체가 없다**
+ * 그래서 **존재하지 않아도 되는 키**를 두드린다 — 특정 상품 사진에 의존하지 않아 영원히 안 낡는다.
+ * 자격증명도 필요 없다(이 워크플로엔 CF 토큰이 없다).
+ *
+ * ⚠️ 못 보는 것: 바인딩이 **엉뚱한 버킷**을 가리키는 경우. 그건 200/404 로는 구분이 안 된다.
+ */
+async function checkR2Binding(origin) {
+  const path = '/api/media/uploads/__binding_probe__'
+  const r = await probe({ origin, path })
+  if (r.status === 503) return { origin, path, status: r.status }
+  return null
+}
+
 const results = []
 const queue = [...targets]
 // 동시성 2 + 요청 간 페이싱 — 라이브를 두드리는 것이고, 실측상 동시요청을 올리면 중계 구간이
@@ -245,9 +267,10 @@ const skipped = results.filter((r) => deadOrigins.has(r.origin))
 
 // robots 는 기본 오리진에서만 본다(도매 오리진은 자체 sitemap/robots 정책이 따로다).
 const robots = deadOrigins.has(BASE) ? null : await checkRobots(BASE)
+const r2 = deadOrigins.has(BASE) ? null : await checkR2Binding(BASE)
 
 if (JSON_OUT) {
-  console.log(JSON.stringify({ base: BASE, checked: results.length, failures, skipped, robots, results }, null, 2))
+  console.log(JSON.stringify({ base: BASE, checked: results.length, failures, skipped, robots, r2, results }, null, 2))
 } else {
   console.log(`🌐 라이브 계약 검증 — 선언 URL ${results.length}건 (오리진 ${origins.length}개)`)
   const redirected = live.filter((r) => r.verdict === 'ok-redirect').length
@@ -271,6 +294,14 @@ if (JSON_OUT) {
     console.log(`\n✅ 검사한 ${live.length}건 전부 살아 있음.`)
   }
 
+  if (r2) {
+    console.error(`\n❌ R2 미디어 바인딩이 없다 (${BASE}${r2.path} → 503):`)
+    console.error(`   업로드 이미지 서빙(/api/media)과 데모 사진 이관이 통째로 죽는다.`)
+    console.error(`   이건 **대시보드 쪽 바인딩**이라 레포 가드가 못 본다 — Pages → ur-live →`)
+    console.error(`   Settings → Bindings → R2 → MEDIA_BUCKET 을 확인하세요.`)
+    console.error(`   (cron 쪽은 wrangler.toml 이 담당하고 cron-bindings.test.ts 가 지킨다.)`)
+  }
+
   if (robots) {
     console.error(`\n❌ robots.txt — 레포의 선언이 실제로 서빙되지 않는다 (${BASE}):`)
     if (robots.reason) console.error(`   ${robots.reason} (status ${robots.status})`)
@@ -288,4 +319,4 @@ if (JSON_OUT) {
   }
 }
 
-process.exit(failures.length || robots ? 1 : 0)
+process.exit(failures.length || robots || r2 ? 1 : 0)

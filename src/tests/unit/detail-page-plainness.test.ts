@@ -37,6 +37,7 @@ const GB = 'src/pages/GroupBuyDetailPage.tsx'
 const SECTIONS = 'src/pages/stay-detail/StayInfoSections.tsx'
 const FCFS = 'src/features/group-buy/FcfsApplyBlock.tsx'
 const STAY_SEED = 'src/features/admin/api/admin-stays.routes.ts'
+const STAY_HEAL = 'src/features/admin/api/admin-stays/heal-stay-descriptions.ts'
 
 describe('번역투·조립 문구가 되돌아오지 않았다', () => {
   it('"무엇을 기대하세요?" 가 없다', () => {
@@ -51,6 +52,29 @@ describe('번역투·조립 문구가 되돌아오지 않았다', () => {
     const descs = [...src.matchAll(/desc:\s*'([^']+)'/g)].map((m) => m[1])
     expect(descs.length, 'STAY_TYPES desc 를 못 읽었다 — 셀렉터가 낡았다').toBeGreaterThanOrEqual(5)
     for (const d of descs) expect(d, `조립 줄표가 남아 있다: ${d}`).not.toContain('—')
+  })
+
+  it('이미 저장된 옛 문장을 고치는 백필이 있다 (신규만 고치면 라이브는 안 바뀐다)', () => {
+    // 🩸 실제로 났던 일(2026-08-31): 조립을 없앤 건 **INSERT 경로뿐**이었다. 배포 후에도 라이브
+    //   숙소 상세엔 "강릉의 호텔 — 접근성 좋은 호텔 — …" 이 그대로 떠 있었고, 그때 대표에게
+    //   "재시드하면 됩니다" 라고 답했는데 **그것도 틀렸다** — 재시드의 치유 블록은 좌표·이름·가격만
+    //   건드리고 문구는 손대지 않는다. 즉 시드 문구를 고쳐도 **이미 있는 줄은 영영 그대로**다.
+    // ⇒ 문구를 바꾸는 일은 시드 수정 + 백필이 한 쌍이어야 한다. 그 쌍을 여기서 고정한다.
+    // ⚠️ 백필 본문은 파일 크기 래칫 때문에 헬퍼로 빠졌다(2026-08-31). 라우트만 읽으면
+    //   이 검사는 코드가 옮겨진 순간 빨강이 된다 — 실제로 그렇게 걸렸다. 두 파일을 함께 본다.
+    const src = code(read(STAY_SEED)) + '\n' + code(read(STAY_HEAL))
+    // 호출부가 살아 있는지도 본다 — 헬퍼만 있고 아무도 안 부르면 백필은 없는 것과 같다.
+    expect(code(read(STAY_SEED)), '시드가 문구 백필을 호출하지 않는다').toMatch(/healStayDescriptions\(/)
+    // 대상 선별: 데모 슬러그 한정 + 줄표 보유(조립문의 지문). 둘 중 하나라도 빠지면 안 된다 —
+    //   슬러그 한정이 빠지면 관리자 수기 문구를 덮고, 줄표 조건이 빠지면 멱등이 깨진다.
+    const sel = src.match(/SELECT[^`]*demo-stay-%'[^`]*description LIKE '%—%'/)
+    expect(sel, '옛 문장(줄표) 백필 대상 쿼리가 없다 — 신규만 고쳐진 상태다').toBeTruthy()
+    // 실제로 쓰는지: description 을 UPDATE 하는 문장이 있어야 한다(조회만 하고 끝나면 무의미).
+    expect(src, 'description 을 갱신하지 않는다 — 조회만 하고 있다')
+      .toMatch(/UPDATE products SET description = \?/)
+    // 관측 가능해야 한다: 카운터를 계산만 하고 응답에서 버리면 "돌았는데 0건" 을 구분할 수 없다
+    //   (같은 파일의 amenityHealed 가 실제로 그 상태였다).
+    expect(src, '백필 건수가 응답에 안 실린다 — 돌았는지 알 수 없다').toMatch(/data:\s*\{[^}]*descHealed/)
   })
 })
 
