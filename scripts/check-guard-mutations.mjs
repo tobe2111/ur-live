@@ -88,6 +88,67 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '이용권 지갑에 교환권 링크가 다시 들어온다',
+    file: 'src/pages/MyGifticonsPage.tsx',
+    find: "        onBack={() => navigate('/vouchers')}",
+    replace: "        onBack={() => navigate('/my-vouchers')}",
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '두 지갑을 나눈 뒤 남는 위험은 "다시 섞이는 것"이다 — 교환권 보관함의 뒤로가기가 이용권 지갑을 ' +
+      '가리키면 두 축이 한 흐름으로 이어져 버린다. 대표가 "교환권은 교환권 페이지에만" 이라고 못 박은 그 경계다.',
+  },
+  {
+    name: '교환권 페이지에서 보관함으로 가는 길이 사라진다',
+    file: 'src/pages/vouchers/VouchersTopBar.tsx',
+    find: '<VoucherHeaderActions />',
+    replace: '',
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '산 자리(교환권 카탈로그)에서 보관함으로 가는 유일한 모바일 진입점이다. 사라져도 화면은 멀쩡하고 ' +
+      '"내가 산 교환권을 못 찾는" 상태만 남는다 — 이 분리 이전의 문제로 그대로 되돌아간다.',
+  },
+  {
+    name: '지갑이 다크 모드에서 흰 배경 + 흰 글자가 된다',
+    file: 'src/components/wallet/WalletAtoms.tsx',
+    find: 'bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white',
+    replace: 'bg-white text-gray-900',
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '2026-08-31 시안 캡처에서 실측으로 잡은 결함이다 — 래퍼가 배경을 인라인/라이트 고정으로 칠하는데 ' +
+      '내용은 dark: variant 를 갖고 있어 다크 모드에서 제목과 섹션 라벨이 통째로 사라졌다. ' +
+      '인라인·라이트 고정은 클래스 기반 테마 가드의 사각지대라 이 테스트가 유일한 방어선이다.',
+  },
+  {
+    name: '이용권 지갑이 교환권을 다시 섞어 보여준다',
+    file: 'src/pages/MyVouchersPage.tsx',
+    find: 'vouchers.filter(isStoreVoucher)',
+    replace: 'vouchers',
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '2026-08-31 에 지갑을 둘로 나눈 이유가 바로 이 섞임이다(교환권을 샀는데 이용권 탭에서 찾아야 했다). ' +
+      '필터가 빠져도 화면은 멀쩡히 그려지고 목록만 다시 섞인다 — 에러가 없어 안 보인다.',
+  },
+  {
+    name: '교환권 보관함이 이용권을 담는다(판정 반전)',
+    file: 'src/pages/MyGifticonsPage.tsx',
+    find: '.filter(isGifticonVoucher)',
+    replace: '.filter(isStoreVoucher)',
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '두 보관함이 같은 배열을 각자 거르므로 판정이 한쪽만 뒤집혀도 "내 교환권"에 매장 이용권이 뜬다. ' +
+      '두 페이지가 서로의 것을 담으면 분리 자체가 무의미해진다.',
+  },
+  {
+    name: '교환권을 사고 나면 옛 이용권 지갑으로 떨어진다',
+    file: 'src/shared/product-flow.ts',
+    find: "    successPath: '/my-gifticons',",
+    replace: "    successPath: '/my-vouchers',",
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '결제 직후 도착지가 옛 지갑이면 방금 산 교환권이 없는 화면을 보게 된다 — "결제됐는데 아무것도 없다" ' +
+      '클래스. 결제는 성공했으므로 로그·에러 어디에도 흔적이 없다.',
+  },
+  {
     name: '🔓 원장 CHECK 제거가 타입을 뭉갠다 (18행의 종류가 전부 charge 로)',
     file: 'src/worker/utils/point-ledger-unlock.ts',
     find: "    await DB.prepare(`UPDATE point_transactions SET type = COALESCE(_type_bak, 'charge')`).run()",
@@ -136,6 +197,26 @@ const MUTATIONS = [
     why:
       '보정행은 *출처 불명* 을 원장에 적는 **기록**이지 지급이 아니다. 잔액을 함께 움직이면 ' +
       '설명하려던 금액을 두 배로 만든다.',
+  },
+  {
+    name: '🖱️ 정비 화면의 확인 창이 사라진다 (검사하려다 실행된다)',
+    file: 'src/pages/admin-system-monitoring/PointsRepairTab.tsx',
+    find: "        confirmText: '제거한다', danger: true,",
+    replace: "        confirmText: '제거한다',",
+    test: 'src/tests/unit/points-repair-ui.test.ts',
+    why:
+      '서버가 dry-run 기본이어도 **화면이 곧장 실행을 보내면** 그 방어는 무의미하다. ' +
+      '되돌릴 수 없는 DDL 이라 확인 창이 마지막 관문이다.',
+  },
+  {
+    name: '🖱️ 실행 버튼이 검사 없이도 뜬다 (무엇이 바뀔지 모르고 누른다)',
+    file: 'src/pages/admin-system-monitoring/PointsRepairTab.tsx',
+    find: '{unlock?.had_check && !unlock.applied && <B on={() => runUnlock(true)}',
+    replace: '{<B on={() => runUnlock(true)}',
+    test: 'src/tests/unit/points-repair-ui.test.ts',
+    why:
+      '이 화면의 전제는 "먼저 보고 누른다" 다. 검사 결과 없이 실행 버튼이 열리면 ' +
+      '제약이 없는 DB 에도 DDL 을 돌리게 된다.',
   },
   {
     name: '💸 원장 정합 검사가 다시 amount 를 우선한다 (충전=원화·차감=양수 → 숫자가 거짓)',
@@ -241,8 +322,7 @@ const MUTATIONS = [
     why:
       '바탕과 카드가 같은 색이면 카드를 구분할 방법이 1px 실선뿐이라 화면 전체가 테두리에 ' +
       '의존하게 된다. 대표가 "테두리가 정말 AI스럽다"고 지적한 것의 근본 원인이고, ' +
-      '다크는 멀쩡했기 때문에 **라이트만 깨진 채 아무도 몰랐다.**',
-  },
+      '다크는 멀쩡했기 때문에 **라이트만 깨진 채 아무도 몰랐다.**',  },
   {
     name: '유어샵 핀 딜 매칭이 무음으로 항상 실패한다',
     file: 'src/worker/routes/curator.routes.ts',
@@ -6602,6 +6682,26 @@ canvas {
       '2026-08-31 실측: cfImage 를 쓰는 <img> 92개 중 47개가 onError 없이 있었다. 리사이저나 원본이 ' +
       '죽으면 그 자리에 **깨진 이미지 아이콘**이 그대로 뜬다. 배선은 눈에 안 보여서 계속 새로 빠지므로 ' +
       '래칫으로 동결했고, 래칫이 실제로 잡는지 여기서 확인한다.',
+  },
+  {
+    name: '📖 운영 가이드가 다시 한 번에 하나만 열린다 (40개를 하나씩)',
+    file: 'src/components/guide/GuideViewer.tsx',
+    find: 'const [openKeys, setOpenKeys] = useState<Set<string>>(new Set())',
+    replace: 'const [openKeys, setOpenKeys] = useState<string | null>(null) as unknown as [Set<string>, (v: Set<string>) => void]',
+    test: 'src/tests/unit/guide-reader.test.ts',
+    why:
+      '단일 open 으로 되돌아가면 섹션 40개를 하나씩 눌러야 한다 — 그래서 아무도 안 읽었다. ' +
+      '⚠️ 첫 판은 변수만 덧붙이는 주입이라 **가드가 통과했다**(헛도는 주입). 상태 타입 자체를 되돌리게 고쳤다.',
+  },
+  {
+    name: '📖 검색이 제목만 훑는다 (값으로 못 찾음)',
+    file: 'src/components/guide/GuideViewer.tsx',
+    find: "(s.section_title + ' ' + s.content_md).toLowerCase()",
+    replace: 's.section_title.toLowerCase()',
+    test: 'src/tests/unit/guide-reader.test.ts',
+    why:
+      '실제 용례는 "영입 2%" 처럼 **값으로 찾는 것**이다. 제목만 훑으면 요율·절차를 영영 못 찾고, ' +
+      '검색창이 있다는 사실이 오히려 "없는 내용"이라는 오해를 만든다.',
   },
 ]
 /**

@@ -201,6 +201,20 @@ export function WalletPageWrapper({ theme = 'dark', children, className = '' }: 
   theme?: WalletTheme; children: ReactNode; className?: string
 }) {
   const t = tokens(theme)
+  // 🌓 2026-08-31 (지갑 시안 캡처 중 실측 발견): 라이트 지갑은 배경/글자색을 **인라인 스타일**로 칠했는데,
+  //   그 안의 내용은 전부 `dark:` variant 를 갖고 있다. 그래서 사용자가 다크 모드를 켜면
+  //   **배경만 흰색으로 남고 글자는 흰색**이 되어 지갑 제목("내 이용권"/"내 교환권")과 섹션 라벨이
+  //   통째로 안 보였다(실측: 페이지 배경 rgb(255,255,255) + h1 색 rgb(255,255,255)).
+  //   인라인 스타일이라 `check-theme-consistency`(클래스 기반)의 사각지대였다.
+  //   수정: 라이트 지갑은 색을 클래스로 칠해 다크 토글을 따라간다(라이트 렌더는 동일). 다크 호출자는 불변.
+  if (theme === 'light') {
+    return (
+      <div className={`bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white ${className}`}
+        style={{ minHeight: '100dvh', paddingBottom: 28 }}>
+        {children}
+      </div>
+    )
+  }
   return (
     <div className={className} style={{ background: t.bg, minHeight: '100dvh', paddingBottom: 28, color: t.label }}>
       {children}

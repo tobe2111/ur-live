@@ -278,7 +278,7 @@ export default function ProductDetailPage() {
         setDealConfirm(null)
         showToast(t('groupBuy.joinSuccess', { defaultValue: '교환 완료! 바우처가 발급됐어요.' }), 'success')
         invalidateVouchers()
-        navigate('/my-vouchers')
+        navigate('/my-gifticons')  // 🎟️ 2026-08-31 지갑 분리 — 딜 교환(교환권)은 교환권 보관함으로
       } else {
         showToast(res.data?.error || t('common.error'), 'error')
       }

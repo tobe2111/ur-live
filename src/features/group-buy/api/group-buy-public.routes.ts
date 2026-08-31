@@ -790,7 +790,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
              v.expires_at, v.used_at, v.created_at, v.refund_status,
              v.gift_from_user_id, v.delivered_gift_name,
              v.applied_price, v.applied_discount_pct,
-             p.name AS product_name, p.image_url AS product_image,
+             p.name AS product_name, p.image_url AS product_image, p.deal_only,
              p.restaurant_name, p.restaurant_address,
              p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
       FROM vouchers v
@@ -888,7 +888,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       }))
     } catch { /* graceful — vouchers 만 반환 */ }
 
-    // 우리 voucher 에 source='internal' 마킹 + 통합
+    // 우리 voucher 에 source='internal' 마킹 + 통합 (클라는 이 배열을 두 보관함으로 나눈다 — shared/voucher-wallet)
     const internalItems = (results ?? []).map((v: any) => ({ ...v, source: 'internal' }))
     const merged = [...internalItems, ...ktAlphaItems].sort((a, b) => {
       const at = a.created_at ? Date.parse(a.created_at) : 0
