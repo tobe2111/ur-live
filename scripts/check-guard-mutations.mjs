@@ -6647,6 +6647,7 @@ canvas {
       '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
   },
   {
+<<<<<<< HEAD
     name: '🔓 가이드 해동이 전체로 번진다 (관리자 문구까지 시드로 덮음)',
     file: 'src/features/guides/api/guide.routes.ts',
     find: 'manually_edited = 0 WHERE guide_type = ? AND section_key = ?',
@@ -6657,6 +6658,8 @@ canvas {
       '범위가 풀리면 운영자가 손으로 다듬은 가이드가 배포 한 번에 통째로 시드로 덮인다.',
   },
   {
+=======
+>>>>>>> origin/main
     name: '📖 운영백서가 커미션 딜 수령을 무상으로 뭉갠다',
     file: 'src/features/guides/api/guide-seed-admin/ops-handbook-section.ts',
     find: '🔑 **네 번째는 무상이 아닙니다.**',
@@ -6744,6 +6747,16 @@ canvas {
       '2026-08-31 실측: cfImage 를 쓰는 <img> 92개 중 47개가 onError 없이 있었다. 리사이저나 원본이 ' +
       '죽으면 그 자리에 **깨진 이미지 아이콘**이 그대로 뜬다. 배선은 눈에 안 보여서 계속 새로 빠지므로 ' +
       '래칫으로 동결했고, 래칫이 실제로 잡는지 여기서 확인한다.',
+  },
+  {
+    name: '🖼️ 이미지 폴백 래칫의 매칭이 죽는다 (baseline 0 은 죽어도 초록)',
+    file: 'scripts/check-image-fallback.mjs',
+    find: "    if (!/cfImage\\(|cfSrcSet\\(/.test(tag)) continue",
+    replace: "    if (!/cfImageNEVERMATCH\\(/.test(tag)) continue",
+    test: 'scripts/check-image-fallback.mjs',
+    why:
+      '2026-08-31 2차로 baseline 이 0 이 됐다. 0 을 기대하는 래칫은 **매칭이 깨져도 0 이라 초록불**이므로 ' +
+      '유일한 방어가 합성 대조(FIXTURE_BAD/OK)다. 매칭을 죽였을 때 그 대조가 실제로 빨간불을 내는지 확인한다.',
   },
   {
     name: '📖 운영 가이드가 다시 한 번에 하나만 열린다 (40개를 하나씩)',
