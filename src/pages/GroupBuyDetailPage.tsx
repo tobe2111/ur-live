@@ -3,10 +3,12 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DetailGallery from './group-buy/DetailGallery'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { voucherCrumbs } from '@/components/deal/DetailBreadcrumb'
+import { readCachedLoc, distanceKm, daysLeft } from './group-buy/detail-derived'
+import DetailFloatingHeader from './group-buy/DetailFloatingHeader'
 import { derivePricing } from './group-buy/pricing'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, ShieldCheck, RefreshCcw } from 'lucide-react'
+import { MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, ShieldCheck, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { resolveProductFlow } from '@/shared/product-flow'
@@ -315,6 +317,10 @@ export default function GroupBuyDetailPage() {
   // 🧭 2026-06-17: 즉시판매 단일가 모델 — 진행률 바/티어 사다리 제거 후 미사용이던 progress 변수 정리.
   // 💰 가격 파생값은 SSOT(`group-buy/pricing.ts`)에서 — 카드와 상세가 다른 할인율을 보이던 것을 막는다.
   const { unitPrice, refPrice, unitSaving, displayDiscountPct } = derivePricing(detail)
+  // 🧮 파생값은 순수 모듈에서 — 셋 다 "데이터 없으면 그 자리를 비운다"는 같은 규칙이다.
+  const userLoc = readCachedLoc()
+  const distKm = distanceKm(userLoc, detail?.restaurant_lat, detail?.restaurant_lng)
+  const dDay = daysLeft(detail?.group_buy_deadline, (x) => safeDate(x))
   const total = unitPrice * quantity
   const totalSaving = unitSaving * quantity
   // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도"): 셀러 설정값으로 스텝퍼 상한. 미설정=기존 10.
@@ -540,63 +546,15 @@ export default function GroupBuyDetailPage() {
         본문으로 건너뛰기
       </a>
 
-      {/* 상단 chrome — 🏭 2026-06-07 (당근 스타일): 투명 overlay → 스크롤 시 solid 바 전환.
-            position fixed 로 이미지 위에 floating, 데스크탑은 footer 와 동일 centering. */}
-      {/* 🖥️ 2026-07-19 (대표 — "상단은 공통"): PC(lg+)는 전역 DesktopTopNav 가 상단 담당 → 이 플로팅 헤더는
-          모바일 전용(lg:hidden). 핀/공유는 lg 섹션 탭 우측에 별도 렌더. */}
-      <header
-        className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:hidden ${
-          headerSolid
-            ? 'bg-white/90 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]'
-            : 'bg-transparent border-b border-transparent'
-        }`}
-        style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))', paddingBottom: '0.625rem' }}
-        role="banner"
-      >
-        <div className="px-3 flex items-center justify-between gap-2">
-          <button
-            onClick={() => navigate(-1)}
-            className={`w-9 h-9 flex items-center justify-center rounded-full shrink-0 transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white focus-visible:outline-none ${
-              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A1C21]' : 'bg-black/25 backdrop-blur-sm'
-            }`}
-            aria-label="뒤로가기"
-          >
-            <ArrowLeft className={`w-5 h-5 transition-colors ${headerSolid ? 'text-gray-700 dark:text-gray-200' : 'text-white'}`} />
-          </button>
-          {/* 스크롤 시 fade-in 되는 가운데 제목 */}
-          <h2
-            className={`flex-1 min-w-0 text-center text-sm font-bold text-gray-900 dark:text-white truncate transition-opacity duration-200 ${
-              headerSolid ? 'opacity-100' : 'opacity-0'
-            }`}
-            aria-hidden={!headerSolid}
-          >
-            {detail.name}
-          </h2>
-          {/* 🛡️ 2026-06-12: 내 유어샵 핀 — 공유 옆 1탭 (ProductCard 의 PinButton 재사용) */}
-          <PinButton
-            productId={detail.id}
-            price={detail.price}
-            variant="detail-floating"
-            className="!w-9 !h-9 shrink-0"
-          />
-          <KakaoShareButton
-            title={`${detail.name} 공구 참여하기`}
-            description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중 · ${displayDiscountPct > 0 ? `${displayDiscountPct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
-            imageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}
-            link={shareLink}
-            buttonText="나도 참여하기"
-            {...(Number((detail as { deal_only?: number }).deal_only) === 1 ? {} : {
-              salePrice: detail.price,
-              discountRate: displayDiscountPct,
-              secondaryButtonText: '자세히 보기',
-            })}
-            compact
-            className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 active:scale-95 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white ${
-              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A1C21]' : 'bg-black/25 backdrop-blur-sm'
-            }`}
-          />
-        </div>
-      </header>
+      <DetailFloatingHeader
+        detail={detail}
+        productId={productId}
+        headerSolid={headerSolid}
+        shareLink={shareLink}
+        myUserId={myUserId}
+        displayDiscountPct={displayDiscountPct}
+        onBack={() => navigate(-1)}
+      />
 
       {/* 🖥️ 2026-07-19 (대표 승인 — 그루폰식 상세): lg+ = [좌 넓은 콘텐츠(갤러리+본문)] + [우 360px sticky 구매박스].
           이전 2단(좌 sticky 갤러리 | 우 본문)에서 그루폰 딜 상세 구조로 전환. 모바일(<lg)은 세로 1열 +
@@ -686,8 +644,8 @@ export default function GroupBuyDetailPage() {
         {/* 타이틀 — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번 나온다). */}
         <div className="lg:hidden" style={{ padding: '20px 18px 0' }}>
           {detail.restaurant_name && (
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', letterSpacing: '.01em' }}>
-              {detail.restaurant_name} · 정식 등록 매장
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gbd-ink2)', letterSpacing: '.01em' }}>
+              {detail.restaurant_name}
               {/* 🏪 2026-07-05 온누리 가맹 뱃지 (B2G — "온누리 사용 가능 표시" 약속) */}
               {(detail as { onnuri_merchant?: boolean }).onnuri_merchant && (
                 <span className="ml-1.5 px-1.5 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold align-middle">온누리 사용 가능</span>
@@ -698,11 +656,17 @@ export default function GroupBuyDetailPage() {
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, padding: '4px 10px', borderRadius: 999, background: 'var(--gbd-ink)', color: 'var(--gbd-card)', fontSize: 11, fontWeight: 800 }}>🔔 오픈 예정 · 사전 응모 받는 중</span>
           )}
           <h1 style={{ margin: '7px 0 0', fontSize: 22, lineHeight: 1.34, fontWeight: 800, letterSpacing: '-.025em', color: 'var(--gbd-ink)' }}>{detail.name}</h1>
+          {detail.group_buy_current > 0 && (
+            <div style={{ marginTop: 8, fontSize: 13.5, fontWeight: 700, color: 'var(--gbd-ink2)' }}>
+              이미 {formatNumber(detail.group_buy_current)}명이 구매했어요
+            </div>
+          )}
           {(detail.restaurant_address || detail.restaurant_phone) && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 12 }}>
               <MapPin style={{ width: 17, height: 17, marginTop: 2, flex: '0 0 auto', color: 'var(--gbd-sub)' }} />
               <div style={{ fontSize: 13.5, color: 'var(--gbd-sub)', lineHeight: 1.5 }}>
                 {detail.restaurant_address || ''}
+                {distKm != null && <> · <b style={{ fontWeight: 700, color: 'var(--gbd-ink2)' }}>{distKm}km</b></>}
                 {detail.restaurant_phone && <> · <a href={`tel:${detail.restaurant_phone}`} style={{ color: 'var(--gbd-ink2)', textDecoration: 'none', fontWeight: 600, borderBottom: '1px solid var(--gbd-line2)' }}>{detail.restaurant_phone}</a></>}
               </div>
             </div>
@@ -718,6 +682,12 @@ export default function GroupBuyDetailPage() {
           </div>
           <div style={{ marginTop: 9, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>{unitSaving > 0 && <>1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-danger)' }}>{formatNumber(unitSaving)}원</b> 저렴 · </>}결제 즉시 교환권 발급</div>
         </div>
+
+        {dDay != null && dDay <= 7 && (
+          <div className="lg:hidden" style={{ margin: '0 18px 18px', padding: '11px 14px', borderRadius: 12, background: 'var(--gbd-danger-soft)', color: 'var(--gbd-danger)', fontSize: 13.5, fontWeight: 800 }}>
+            {dDay === 0 ? '오늘 마감 — 이 가격은 오늘까지예요' : `마감 D-${dDay} — 이 가격은 ${dDay}일 남았어요`}
+          </div>
+        )}
 
         {/* 🎯 추첨 응모 — 이 상품이 추첨 대상일 때만(결제 없음). 아니면 렌더 0. */}
         <div id="fcfs-apply-block"><FcfsApplyBlock productId={Number(id)} /></div>
