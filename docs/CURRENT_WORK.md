@@ -5494,7 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 217건 · 최신순 · 이 목록은 자동 생성된다._
+_총 218건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-31**
 - [2026-08-31 — 유어샵 검색창 임계값 · 이미지 폴백 배선 · 셀러 버튼 잔여 5건](handoff/2026-08-31-urshop-search-image-fallback.md)
@@ -5508,6 +5508,7 @@ _총 217건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-08-31 — 영입자 지정 UI + **id 공간 불일치 수리**](handoff/2026-08-31-introducer-assign.md)
 - [현금 정산 수수료 — 마진을 상품이 아니라 현금 출구에서 걷는다](handoff/2026-08-31-influencer-cash-fee.md)
 - [2026-08-31 (2차) — 이미지 폴백 전 표면 배선 · 검색창 경계 실증](handoff/2026-08-31-image-fallback-all-surfaces.md)
+- [시드에서 고쳤는데 라이브가 안 고쳐졌다 — 가이드 한정 해동 (2026-08-31)](handoff/2026-08-31-guide-unfreeze.md)
 - [2026-08-31 — 교환권은 교환권 페이지에서, 이용권은 이용권 페이지에서 (지갑 분리)](handoff/2026-08-31-gifticon-wallet-split.md)
 - [2026-08-31 — 정산 최소 10만원은 현금에만](handoff/2026-08-31-deal-payout-no-minimum.md)
 - [놓친 하루치를 같은 날 안에 만회한다 (무료 플랜에서 고칠 수 있는 것)](handoff/2026-08-31-cron-catchup.md)

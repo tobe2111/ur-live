@@ -26,7 +26,8 @@ export const guideRoutes = new Hono<{ Bindings: Env }>()
 //   v1 = 암묵적 레거시(버전 미저장, ensureSeeded '0행일 때만' 시대) / v2 = 버전 메커니즘 도입.
 //   v4 = 2026-07-12 체험 캠페인(어드민 대행생성·추첨·비정산) + 조건부 우대 커미션(셀러) 섹션.
 //   v5 = 2026-07-13 상권 쿠폰(영수증 페이백) 운영 섹션 — 양 트랙 머지 통합 bump.
-const GUIDE_SEED_VERSION = 20 // 2026-08-31 운영백서에 '무상 딜은 누가 내나' + 후기 보너스(매장이 금액 설정) 절 추가
+const GUIDE_SEED_VERSION = 21 // 2026-08-31 한정 해동 — 백필에 얼어붙어 시드가 못 닿던 섹션 13개(실측 대조)
+// (이전) 20 // 2026-08-31 운영백서에 '무상 딜은 누가 내나' + 후기 보너스(매장이 금액 설정) 절 추가
 // (이전) 18 // 2026-08-26 셀러·어드민 가이드 사실 갱신 — 폐기 기능(라이브·호스팅·어필리에이트·승급) 현행화 + 신분어 → 행위
 
 // 🏭 2026-06-07: 'wholesale' 추가 — 도매몰 전용 가이드. 어드민 전용(읽기+편집).
@@ -110,6 +111,49 @@ async function syncGuideSeed(DB: D1Database, firstRun: boolean, env?: SeedAssetE
     await DB.prepare(
       `UPDATE operation_guides SET manually_edited = 1 WHERE section_key != 'auto-reference'`
     ).run().catch(swallow('guides:seed-sync:backfill'))
+  }
+
+  // 🔓 **한정 해동** (2026-08-31 — 라이브 실측으로 발견).
+  //   위 보수적 백필은 컬럼이 생기던 날 존재하던 **모든** 섹션을 '수동편집'으로 간주했다.
+  //   아무도 편집하지 않은 섹션까지 그날로 얼어붙었고, 그래서 **영구 중단된 라이브커머스의
+  //   OBS 설정법**이 셀러 가이드에 그대로 살아 있었다 — 시드에서 '종료됨'으로 바꿔도 안 닿는다.
+  //   (2026-08-31 배포 후 확인: 신규·해동 섹션은 갱신됐는데 이 셋만 2026-04-27 상태였다.)
+  //
+  //   ⚠️ **키를 명시한 것만** 되돌린다. 전체 해동은 관리자가 진짜로 편집한 문구까지 날린다.
+  //   ⚠️ 1회만 — 마커가 있으면 건너뛴다. 이후 관리자가 이 섹션을 편집하면 그 편집이 이긴다.
+  const UNFREEZE_MARKER = 'guide_unfreeze_2026_08_31'
+  const unfrozen = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`)
+    .bind(UNFREEZE_MARKER).first<{ value: string }>().catch(() => null)
+  if (!unfrozen) {
+    //   목록은 **추측이 아니라 실측**이다 — 2026-08-31 배포 직후 라이브 본문과 빌드된 시드 자산
+    //   (dist/client/seed/guides.json)을 섹션 단위로 대조해, 본문이 실제로 갈린 것만 골랐다.
+    //   ⚠️ **라이브가 시드보다 긴 것은 뺐다**(admin 'deploy', wholesale 'overview') —
+    //      누군가 내용을 더한 흔적이라 시드로 되돌리면 그 사람의 작업이 사라진다.
+    //   ⚠️ 'auto-reference' 는 기계 생성이라 애초에 백필에서 제외돼 있다(여기에도 넣지 않는다).
+    const UNFREEZE_ONCE: Array<[GuideType, string]> = [
+      ['seller', 'live-broadcast'],   // 종료된 기능의 OBS 설정법 (라이브 2254자 / 시드 232자)
+      ['seller', 'live-mastery'],     // 종료된 기능의 운영 노하우 (2225 / 232)
+      ['seller', 'welcome'],          // (487 / 907)
+      ['seller', 'settlement'],       // (582 / 1122)
+      ['admin', 'daily'],             // 낡은 일일 체크리스트 (484 / 544)
+      ['admin', 'overview'],          // (435 / 465)
+      ['admin', 'seller-ops'],        // (479 / 607)
+      ['admin', 'agency-ops'],        // (951 / 1329)
+      ['admin', 'settlement'],        // 정산 문서가 라이브엔 5분의 1만 있다 (476 / 2195)
+      ['admin', 'moderation'],        // (430 / 880)
+      ['admin', 'promo'],             // (539 / 2140)
+      ['admin', 'legal'],             // (544 / 1064)
+      ['wholesale', 'pricing-grades'],// (1452 / 1981)
+    ]
+    for (const [t, k] of UNFREEZE_ONCE) {
+      await DB.prepare(
+        `UPDATE operation_guides SET manually_edited = 0 WHERE guide_type = ? AND section_key = ?`
+      ).bind(t, k).run().catch(swallow('guides:seed-sync:unfreeze'))
+    }
+    await DB.prepare(
+      `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, 'done', datetime('now'))
+       ON CONFLICT(key) DO NOTHING`
+    ).bind(UNFREEZE_MARKER).run().catch(swallow('guides:seed-sync:unfreeze-marker'))
   }
 
   const GUIDE_SEEDS = await loadSeedAsset(env, SEED_ASSET_PATHS.guides, isGuideSeed)
