@@ -5,7 +5,7 @@ import SEO from '@/components/SEO'
 import { ArrowLeft, Loader2, Check, Lock, BellRing, BellOff, MessageCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { useWholesaleProduct } from '@/hooks/queries/useWholesale'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { StickyActionBar } from '@/components/ui/sticky-action-bar'
 import { WT, won, comma, discountRate, unitMargin, marginVsRetail, GRADE_LABEL, WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
@@ -276,7 +276,7 @@ export default function WholesaleProductPage() {
           return (
             <div className="lg:w-[46%] lg:shrink-0 mb-5 lg:mb-0">
               <div className="aspect-square rounded-2xl overflow-hidden" style={{ border: '1px solid ' + WT.line, background: WT.fill }}>
-                {main && <img src={cfImage(main, { width: 800, format: 'auto' }) || main} alt={item.name} loading="eager" decoding="async" draggable={false} className="w-full h-full object-cover" />}
+                {main && <img src={cfImage(main, { width: 800, format: 'auto' }) || main} alt={item.name} loading="eager" decoding="async" draggable={false} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, main)} />}
               </div>
               {gallery.length > 1 && (
                 <div className="mt-2.5 flex gap-2 overflow-x-auto pb-1">
@@ -284,7 +284,7 @@ export default function WholesaleProductPage() {
                     <button key={u + i} type="button" onClick={() => setGalleryIdx(i)} aria-label={`이미지 ${i + 1}`}
                       className="w-14 h-14 rounded-lg overflow-hidden shrink-0 transition-all"
                       style={{ border: `2px solid ${i === activeIdx ? WT.brand : WT.line}`, opacity: i === activeIdx ? 1 : 0.65 }}>
-                      <img src={cfImage(u, { width: 120, format: 'auto' }) || u} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                      <img src={cfImage(u, { width: 120, format: 'auto' }) || u} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, u)} />
                     </button>
                   ))}
                 </div>
