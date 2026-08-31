@@ -35,7 +35,8 @@ import {
 type OrderLike = { id: number; seller_id?: number | null; total_amount?: number | null }
 
 /** 커미션 축 식별 키 — opts.only 필터용. */
-export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'agency_intro' | 'supplier'
+// 🛑 2026-08-31: 'agency_intro'(에이전시 매장영입 1%) 폐지 — 타입에서 뺐으므로 호출부가 컴파일로 막힌다.
+export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'supplier'
 
 export interface CreditOrderCommissionsOpts {
   /** system-push 등 side-effect 용 env (affiliate 알림). 미전달 시 push 만 생략됨. */
@@ -112,12 +113,18 @@ async function legacyCredit(DB: D1Database, orders: OrderLike[], opts?: CreditOr
       }
     } catch { /* fail-soft */ }
   }
-  if (axisOn(opts, 'agency_intro')) try {
-    const { creditAgencyStoreIntroCommission } = await import('./agency-store-intro-commission')
-    for (const o of orders) {
-      await creditAgencyStoreIntroCommission(DB, { id: Number(o.id), seller_id: o.seller_id ?? null, total_amount: o.total_amount ?? null })
-    }
-  } catch { /* fail-soft */ }
+  // 🛑 2026-08-31 대표 *"1%짜리는 아예 없애줘"* — **에이전시 매장영입 1% 폐지.**
+  //
+  //   같은 행위(매장을 데려온다)에 신분별로 다른 보상이 붙어 있었다:
+  //     사람이 데려오면 2%·1년(`influencer_intro`) / 에이전시가 데려오면 1%·24개월(`agency_intro`)
+  //   그래서 "영입자와 대행사의 경계"가 모호했다(대표 지적). 행위가 하나면 보상도 하나여야 한다.
+  //
+  //   대행사는 **채널 요율로 이미 보상받는다** — 대행 경유 매장은 유어딜이 5%만 떼므로
+  //   그 차액(10%−5%)이 대행사 몫이다. 거기에 1% 를 더 얹을 이유가 없다.
+  //
+  //   ⚠️ **적립만 없앴다.** `reverseAgencyStoreIntroOnRefund`(환불 역전)와 정산/원장 읽기는
+  //   그대로 둔다 — 새 적립이 0 이라 무해하고, 역전만 먼저 지우면 비대칭이 된다.
+  //   폐지 시점 라이브 실측: `agency_store_intro_commissions` **0행**(잃는 데이터 없음).
   if (axisOn(opts, 'influencer_intro')) try {
     const { creditInfluencerStoreIntroCommission } = await import('./influencer-store-intro-commission')
     for (const o of orders) {
@@ -172,7 +179,6 @@ async function budgetedCreditForOrder(
   const { creditAffiliateFromIntent, peekAffiliateIntentRequest } = await import('./affiliate-credit')
   const { calculateMultiTierCommission, computeMultiTierEntries } = await import('../../features/referral/api/referral-tree.routes')
   const { creditInfluencerStoreIntroCommission, computeInfluencerStoreIntroRequest } = await import('./influencer-store-intro-commission')
-  const { creditAgencyStoreIntroCommission, computeAgencyStoreIntroRequest } = await import('./agency-store-intro-commission')
 
   // ── 요청액 산출 (compute-only, read-only) ───────────────────────────────
   const requests: CommissionRequest[] = []
@@ -195,8 +201,8 @@ async function budgetedCreditForOrder(
   }
   const infReq = axisOn(opts, 'influencer_intro') ? await computeInfluencerStoreIntroRequest(DB, order) : 0
   if (infReq > 0 && !promoOwnerFunded) requests.push({ key: 'influencer_intro', amountKrw: infReq })
-  const agReq = axisOn(opts, 'agency_intro') ? await computeAgencyStoreIntroRequest(DB, order) : 0
-  if (agReq > 0 && !promoOwnerFunded) requests.push({ key: 'agency_intro', amountKrw: agReq })
+  // 🛑 2026-08-31 폐지(위 주석) — 예산 요청에서도 제외한다. 남겨 두면 예산을 잡아만 두고
+  //   적립은 0 이라, 다른 축이 받을 수 있었던 몫이 사라진다(가장 조용한 손실).
 
   // ── 예산 배분 ([INV-CB]) ────────────────────────────────────────────────
   const platformFeeKrw = await resolveOrderPlatformFeeKrw(DB, order)
@@ -218,8 +224,8 @@ async function budgetedCreditForOrder(
     assertCommissionBudgetInvariants(grants, budget)
   } catch {
     // fail-closed: 불변식 위반(코드 버그) 시 이 주문의 비례 커미션을 적립하지 않음 —
-    // 초과지급(회수 곤란)보다 미지급(보정 가능)이 안전. signup 보너스(정액·월예산 캡)만 통과.
-    await creditAgencyStoreIntroCommission(DB, order, { amountOverride: 0 }).catch(() => {})
+    // 초과지급(회수 곤란)보다 미지급(보정 가능)이 안전.
+    // 🛑 2026-08-31: 여기서 signup 보너스를 통과시키던 호출도 함께 제거(에이전시 영입 폐지).
     return
   }
   const granted = (key: string) => grants.find(g => g.key === key)?.grantedKrw ?? 0
@@ -237,7 +243,6 @@ async function budgetedCreditForOrder(
   // (월예산 캡, 거래 예산 밖 정액)를 독립 처리해야 하므로 항상 통과시킨다.
   // 💸 owner-펀딩이면 amountOverride 미전달=전액(셀러 promo 부담, C1 과 동일 패턴). 되갚기는 debitOwnerPromoForOrder.
   if (axisOn(opts, 'influencer_intro')) await creditInfluencerStoreIntroCommission(DB, order, promoOwnerFunded ? undefined : { amountOverride: granted('influencer_intro') }).catch(() => {})
-  if (axisOn(opts, 'agency_intro')) await creditAgencyStoreIntroCommission(DB, order, promoOwnerFunded ? undefined : { amountOverride: granted('agency_intro') }).catch(() => {})
 }
 
 export async function creditOrderCommissions(
@@ -250,8 +255,9 @@ export async function creditOrderCommissions(
   let gateOn = false
   let pgReservePct = DEFAULT_PG_RESERVE_PCT
   let promoOwnerFunded = false
-  // 🥇 Q10 기본: agency_intro 최우선("에이전시 1% 보호" 자문) — platform_settings 로 조정 가능.
-  let priorityKeys: string[] = ['agency_intro']
+  // 🥇 Q10 기본: 우선 보전 축. agency_intro(에이전시 1%)가 기본이었으나 2026-08-31 폐지되어 비운다.
+  //   platform_settings 로 조정 가능(빈 배열 = 모든 축 동등 비례 배분).
+  let priorityKeys: string[] = []
   // 💸 2026-07-12 파일럿 매장 스코프 — 전역 스위치 OFF 여도 지정 매장 주문만 flip 검증(프로덕션 실카드).
   let pilotIds = new Set<number>()
   try {
