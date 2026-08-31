@@ -7,7 +7,7 @@ import { queryKeys } from '@/hooks/queries/queryKeys'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import SEO from '@/components/SEO'
-import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
@@ -219,7 +219,7 @@ export default function VoucherDetailPage() {
         toast.success('🎁 교환권 발급 완료')
         fireAffiliateTrack(res.data?.data?.order_id, product.id, product.name) // 큐레이터 적립 (fail-soft)
         invalidateVouchers()
-        navigate('/my-vouchers')
+        navigate('/my-gifticons')  // 🎟️ 2026-08-31 지갑 분리 — 교환권은 교환권 보관함으로
       } else {
         toast.error(res.data?.error || '교환 실패')
       }
@@ -352,6 +352,7 @@ export default function VoucherDetailPage() {
               fetchPriority="high"
               decoding="async"
               className="w-full h-full object-cover"
+              onError={(e) => cfImageOnError(e.currentTarget, product.image_url)}
             />
           )}
         </div>

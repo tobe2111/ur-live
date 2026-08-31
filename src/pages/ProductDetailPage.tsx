@@ -23,7 +23,7 @@ import { ProductInfoGrid } from '@/components/product/ProductInfoGrid'
 import { ProductNoticeSection } from '@/components/product/ProductNoticeSection'
 import { ReturnPolicySection } from '@/components/product/ReturnPolicySection'
 import BrandLoader from '@/components/brand/BrandLoader'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import { resolveDetailDisplay } from './product-detail/detail-display'
@@ -278,7 +278,7 @@ export default function ProductDetailPage() {
         setDealConfirm(null)
         showToast(t('groupBuy.joinSuccess', { defaultValue: '교환 완료! 바우처가 발급됐어요.' }), 'success')
         invalidateVouchers()
-        navigate('/my-vouchers')
+        navigate('/my-gifticons')  // 🎟️ 2026-08-31 지갑 분리 — 딜 교환(교환권)은 교환권 보관함으로
       } else {
         showToast(res.data?.error || t('common.error'), 'error')
       }
@@ -436,7 +436,7 @@ export default function ProductDetailPage() {
         {/* 상품 이미지 */}
         <div className="px-5 pt-10 pb-6 flex justify-center">
           {product.image_url ? (
-            <img src={cfImage(product.image_url, { width: 384, quality: 85, format: 'auto' }) || product.image_url} alt={product.name} className="w-48 h-48 object-contain" loading="lazy" />
+            <img src={cfImage(product.image_url, { width: 384, quality: 85, format: 'auto' }) || product.image_url} alt={product.name} className="w-48 h-48 object-contain" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, product.image_url)} />
           ) : (
             <div className="w-48 h-48 bg-gray-100 dark:bg-[#1A1C21] rounded" />
           )}
@@ -460,7 +460,7 @@ export default function ProductDetailPage() {
               onClick={() => navigate(`/browse?brand=${encodeURIComponent(brandName)}`)}
               role="button" tabIndex={0}>
               {brandIcon ? (
-                <img src={cfImage(brandIcon, { width: 96, quality: 80, format: 'auto' }) || brandIcon} alt={brandName} className="w-12 h-12 rounded-lg object-cover bg-white dark:bg-[#0D0F12] border border-amber-100" loading="lazy" />
+                <img src={cfImage(brandIcon, { width: 96, quality: 80, format: 'auto' }) || brandIcon} alt={brandName} className="w-12 h-12 rounded-lg object-cover bg-white dark:bg-[#0D0F12] border border-amber-100" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, brandIcon)} />
               ) : (
                 <div className="w-12 h-12 bg-white dark:bg-[#0D0F12] rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-amber-100">
                   {brandName.slice(0, 4)}
@@ -607,12 +607,12 @@ export default function ProductDetailPage() {
             detailExpanded ? (
               <div className="space-y-2 mb-3">
                 {detail.images.map((img, i) => (
-                  <img key={i} src={cfImage(img, { width: 800, quality: 85, format: 'auto' }) || img} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority={i === 0 ? 'high' : 'auto'} className="w-full rounded-xl" />
+                  <img key={i} src={cfImage(img, { width: 800, quality: 85, format: 'auto' }) || img} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority={i === 0 ? 'high' : 'auto'} className="w-full rounded-xl" onError={(e) => cfImageOnError(e.currentTarget, img)} />
                 ))}
               </div>
             ) : (
               <div className="rounded-xl overflow-hidden mb-3 bg-gray-50 dark:bg-[#1A1C21]">
-                <img src={cfImage(detail.images[0], { width: 800, quality: 85, format: 'auto' }) || detail.images[0]} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
+                <img src={cfImage(detail.images[0], { width: 800, quality: 85, format: 'auto' }) || detail.images[0]} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} onError={(e) => cfImageOnError(e.currentTarget, detail.images[0])} />
               </div>
             )
           )}
@@ -882,7 +882,7 @@ export default function ProductDetailPage() {
           <div className="w-full sm:max-w-sm bg-white dark:bg-[#1A1C21] rounded-t-2xl sm:rounded-2xl p-5 m-0 sm:mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3">
               {product.image_url && (
-                <img src={cfImage(product.image_url, { width: 112, quality: 80, format: 'auto' }) || product.image_url} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                <img src={cfImage(product.image_url, { width: 112, quality: 80, format: 'auto' }) || product.image_url} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-xl object-cover shrink-0" onError={(e) => cfImageOnError(e.currentTarget, product.image_url)} />
               )}
               <div className="min-w-0">
                 <p className="text-[14px] font-bold text-gray-900 dark:text-white line-clamp-2">{product.name}</p>

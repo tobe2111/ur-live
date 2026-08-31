@@ -10,7 +10,7 @@ import { ChevronLeft, Megaphone, Loader2, Plus } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { usePinAction } from '@/features/curator/hooks/usePinAction'
 import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
@@ -80,7 +80,7 @@ export default function GbMarketplacePage() {
               <div key={d.product_id} className="rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] overflow-hidden">
                 <div className="flex gap-3 p-3">
                   <div className="w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1C21]">
-                    {d.image_url && <img src={cfImage(d.image_url, { width: 160 })} alt={d.name} className="w-full h-full object-cover" loading="lazy" />}
+                    {d.image_url && <img src={cfImage(d.image_url, { width: 160 })} alt={d.name} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, d.image_url)} />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">

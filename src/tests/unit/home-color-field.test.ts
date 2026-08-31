@@ -93,3 +93,25 @@ describe('두 색면이 같은 토큰을 읽는다', () => {
     }
   })
 })
+
+describe('폼 컨트롤 기본 글자색도 잉크를 따른다', () => {
+  it('index.css 의 input/textarea/select 폴백이 옛 네이비 gray-900 이 아니다', () => {
+    // 🩸 실제로 났던 일(2026-08-31 배포 후 라이브 실측): 잉크를 검정(#16181C)으로 옮겼는데
+    //   index.css 의 폼 컨트롤 **전역 폴백**만 옛 Tailwind gray-900(rgb 17 24 39 — 남색기가
+    //   있다)으로 남아 있었다. 마크업 클래스는 `text-gray-900` 이라 리매핑을 따르는 것처럼
+    //   보이는데, 전역 규칙이 그 위에 얹혀 **PC 상단 검색창 글자만 남색**이었다.
+    //   ⇒ 색 토큰을 옮길 때 클래스만 보면 놓친다. 전역 CSS 폴백도 같이 봐야 한다.
+    const css = read(CSS)
+    const ink = css.match(/--ink:\s*(#[0-9A-Fa-f]{6})/)?.[1]
+    expect(ink, '--ink 를 못 읽었다 — 셀렉터가 낡았다').toBeTruthy()
+
+    // 줄머리(라이트 전역) 규칙만 — 들여쓴 미디어쿼리판과 `.dark` 접두는 대상이 아니다.
+    const block = css.match(/^input:not\(\[type='checkbox'\]\)[\s\S]*?\}/m)?.[0]
+    expect(block, '폼 컨트롤 전역 폴백 블록을 못 찾았다 — 셀렉터가 낡았다').toBeTruthy()
+    // ⚠️ 주석을 빼고 본다. 안 그러면 **결함을 설명하려고 쓴 주석의 옛 hex** 가 위반으로 잡힌다
+    //    (작성 중 실제로 걸렸다 — 이 레포가 반복해 겪은 "주석이 판정을 흔든다" 클래스).
+    const decl = code(block!)
+    expect(decl, '폼 폴백이 옛 gray-900(남색기)으로 되돌아갔다').not.toMatch(/17\s+24\s+39|#111827/i)
+    expect(decl.toUpperCase(), `폼 폴백이 --ink(${ink}) 와 다르다`).toContain(ink!.toUpperCase())
+  })
+})

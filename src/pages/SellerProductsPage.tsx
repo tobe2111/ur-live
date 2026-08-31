@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import SellerLayout from '@/components/SellerLayout'
 import SellerProductTabs from '@/components/seller/SellerProductTabs'
-import { DashboardPageHeader, DashboardEmptyState, DashboardLoading } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardActions, DashboardEmptyState, DashboardLoading } from '@/components/dashboard'
 import { getSellerId } from '@/lib/seller-auth'
 import { Box, DollarSign, Download, Edit, Eye, EyeOff, Image as ImageIcon, Loader2, Package, Plus, ShoppingBag, Ticket, Trash2, Upload, Zap } from 'lucide-react'
 import { downloadSellerTemplate } from '@/utils/product-template'
@@ -135,48 +135,46 @@ export default function SellerProductsPage() {
       <SellerProductTabs />
       <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 127: 디자인 시스템 적용 */}
+        {/* 🎛️ 2026-08-31 (대표 — "버튼 배치가 중구난방이고 체계적이지 않다"): 액션 체계 적용.
+            이전: [대량등록 양식 다운로드(에메랄드 아웃라인)] [대량등록(오렌지 아웃라인)]
+                  [빠른 공구(검정 solid)] [상품 등록(검정 solid)] — 넷이 두 줄로 흩어져 있었다.
+              ⓐ 에메랄드·오렌지는 **아무 뜻도 없다**(성공도 경고도 아닌 장식색).
+                 색을 장식으로 쓰면 진짜 신호(빨강=위험)가 안 보인다.
+              ⓑ **검정이 둘**이라 무엇이 주 행동인지 화면이 말하지 못했다.
+            ⇒ 주 1개(상품 등록) · 보조 1개(빠른 공구) · 나머지는 ⋯ 로 접는다.
+               대량등록은 쓰는 사람만 쓴다 — 늘 보일 이유가 없다.
+            🧹 제목도 뺐다: 상단바 "상품 관리" · 탭 "상품 관리" · 제목 "상품 관리" 로 **세 번**이었다. */}
         <DashboardPageHeader
-          title={t('seller.nav.products')}
-          subtitle={t('seller.manageProducts')}
-          icon={<Package className="h-5 w-5" />}
           actions={
-            <>
-              <Button
-                onClick={downloadSellerTemplate}
-                variant="outline"
-                className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 h-9 px-3 text-xs"
-              >
-                <Download className="mr-1.5 h-3.5 w-3.5" />
-                <span>{t('seller.bulkTemplateDownload')}</span>
-              </Button>
-              <Button
-                onClick={() => setShowBulkUpload(true)}
-                variant="outline"
-                className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 h-9 px-3 text-xs"
-              >
-                <Upload className="mr-1.5 h-3.5 w-3.5" />
-                <span>{t('seller.bulkUpload')}</span>
-              </Button>
-              {/* ⚡ 2026-08-01 세션 ③-b — 3분 등록 진입점.
-                  🔴 이 버튼이 없으면 `/seller/products/quick` 은 **아무도 못 찾는 죽은 페이지**다
-                     (라우트만 있고 링크가 0인 상태 — 이 레포가 반복해 만난 "조용한 부재" 클래스).
-                     내부-링크 가드는 링크→라우트 방향만 보므로 **이 방향은 잡아주지 않는다.**
-                  풀 등록(옆 버튼)은 그대로 둔다 — 배송·옵션이 필요한 상품은 그쪽이 맞다. */}
-              <Button
-                onClick={() => navigate('/seller/products/quick')}
-                className="h-9 bg-gray-900 px-3 text-xs text-white hover:bg-gray-800"
-              >
-                <Zap className="mr-1.5 h-3.5 w-3.5" />
-                <span>빠른 공구</span>
-              </Button>
-              <Button
-                onClick={() => navigate('/seller/products/new')}
-                className="h-9 bg-gray-900 px-3 text-xs text-white hover:bg-gray-900"
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                <span>{t('seller.addProduct')}</span>
-              </Button>
-            </>
+            <DashboardActions
+              primary={
+                <Button
+                  onClick={() => navigate('/seller/products/new')}
+                  className="ur-btn ur-btn-md bg-gray-900 px-4 text-white hover:bg-gray-800"
+                >
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  <span>{t('seller.addProduct')}</span>
+                </Button>
+              }
+              secondary={
+                /* ⚡ 2026-08-01 — 3분 등록 진입점.
+                   🔴 이 버튼이 없으면 `/seller/products/quick` 은 **아무도 못 찾는 죽은 페이지**다
+                      (라우트만 있고 링크 0 — 이 레포가 반복해 만난 "조용한 부재" 클래스).
+                      내부-링크 가드는 링크→라우트 방향만 보므로 이 방향은 안 잡아 준다. */
+                <Button
+                  onClick={() => navigate('/seller/products/quick')}
+                  variant="outline"
+                  className="ur-btn ur-btn-md border-gray-200 px-4 text-gray-700 hover:bg-gray-50"
+                >
+                  <Zap className="mr-1.5 h-4 w-4" />
+                  <span>빠른 공구</span>
+                </Button>
+              }
+              overflow={[
+                { label: t('seller.bulkUpload'), onClick: () => setShowBulkUpload(true), icon: <Upload className="h-4 w-4" /> },
+                { label: t('seller.bulkTemplateDownload'), onClick: downloadSellerTemplate, icon: <Download className="h-4 w-4" /> },
+              ]}
+            />
           }
         />
 
@@ -189,7 +187,7 @@ export default function SellerProductsPage() {
               <Trash2 className="h-5 w-5" />
               <p className="text-sm font-medium">{error}</p>
             </div>
-            <button onClick={() => window.location.reload()} className="mt-3 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white">
+            <button onClick={() => window.location.reload()} className="ur-btn ur-btn-md ur-btn-primary mt-3">
               {t('seller.retryButton')}
             </button>
           </div>
@@ -251,7 +249,7 @@ export default function SellerProductsPage() {
                 action={
                   <Button
                     onClick={() => navigate('/seller/products/new')}
-                    className="bg-gray-900 text-white hover:bg-gray-900"
+                    className="ur-btn ur-btn-md ur-btn-primary"
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     {t('seller.firstProductRegister')}
@@ -427,7 +425,7 @@ export default function SellerProductsPage() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => navigate(`/seller/products/${product.id}/edit`)}
-                              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-900 transition-colors flex items-center justify-center gap-1.5 text-xs sm:text-sm"
+                              className="ur-btn ur-btn-sm ur-btn-primary flex-1 sm:flex-none transition-colors flex items-center justify-center gap-1.5"
                             >
                               <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                               {t('common.edit')}

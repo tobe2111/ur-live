@@ -108,6 +108,85 @@ const MUTATIONS = [
       '이 가드는 **이용권에만** 걸려야 한다. 교환권(`deal_only=1`)은 원래 딜 전용이라 ' +
       '여기 걸리면 게이트가 꺼진 기본 상태에서 기프티콘 구매가 통째로 400 이 된다. ' +
       '⚠️ `deal_only` 가 SELECT 목록(PRODUCT_DETAIL_FIELDS)에서 빠져도 같은 사고가 난다.',
+    name: '이용권 지갑에 교환권 링크가 다시 들어온다',
+    file: 'src/pages/MyGifticonsPage.tsx',
+    find: "        onBack={() => navigate('/vouchers')}",
+    replace: "        onBack={() => navigate('/my-vouchers')}",
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '두 지갑을 나눈 뒤 남는 위험은 "다시 섞이는 것"이다 — 교환권 보관함의 뒤로가기가 이용권 지갑을 ' +
+      '가리키면 두 축이 한 흐름으로 이어져 버린다. 대표가 "교환권은 교환권 페이지에만" 이라고 못 박은 그 경계다.',
+  },
+  {
+    name: '교환권 페이지에서 보관함으로 가는 길이 사라진다',
+    file: 'src/pages/vouchers/VouchersTopBar.tsx',
+    find: '<VoucherHeaderActions />',
+    replace: '',
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '산 자리(교환권 카탈로그)에서 보관함으로 가는 유일한 모바일 진입점이다. 사라져도 화면은 멀쩡하고 ' +
+      '"내가 산 교환권을 못 찾는" 상태만 남는다 — 이 분리 이전의 문제로 그대로 되돌아간다.',
+  },
+  {
+    name: '지갑이 다크 모드에서 흰 배경 + 흰 글자가 된다',
+    file: 'src/components/wallet/WalletAtoms.tsx',
+    find: 'bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white',
+    replace: 'bg-white text-gray-900',
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '2026-08-31 시안 캡처에서 실측으로 잡은 결함이다 — 래퍼가 배경을 인라인/라이트 고정으로 칠하는데 ' +
+      '내용은 dark: variant 를 갖고 있어 다크 모드에서 제목과 섹션 라벨이 통째로 사라졌다. ' +
+      '인라인·라이트 고정은 클래스 기반 테마 가드의 사각지대라 이 테스트가 유일한 방어선이다.',
+  },
+  {
+    name: '이용권 지갑이 교환권을 다시 섞어 보여준다',
+    file: 'src/pages/MyVouchersPage.tsx',
+    find: 'vouchers.filter(isStoreVoucher)',
+    replace: 'vouchers',
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '2026-08-31 에 지갑을 둘로 나눈 이유가 바로 이 섞임이다(교환권을 샀는데 이용권 탭에서 찾아야 했다). ' +
+      '필터가 빠져도 화면은 멀쩡히 그려지고 목록만 다시 섞인다 — 에러가 없어 안 보인다.',
+  },
+  {
+    name: '교환권 보관함이 이용권을 담는다(판정 반전)',
+    file: 'src/pages/MyGifticonsPage.tsx',
+    find: '.filter(isGifticonVoucher)',
+    replace: '.filter(isStoreVoucher)',
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '두 보관함이 같은 배열을 각자 거르므로 판정이 한쪽만 뒤집혀도 "내 교환권"에 매장 이용권이 뜬다. ' +
+      '두 페이지가 서로의 것을 담으면 분리 자체가 무의미해진다.',
+  },
+  {
+    name: '교환권을 사고 나면 옛 이용권 지갑으로 떨어진다',
+    file: 'src/shared/product-flow.ts',
+    find: "    successPath: '/my-gifticons',",
+    replace: "    successPath: '/my-vouchers',",
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '결제 직후 도착지가 옛 지갑이면 방금 산 교환권이 없는 화면을 보게 된다 — "결제됐는데 아무것도 없다" ' +
+      '클래스. 결제는 성공했으므로 로그·에러 어디에도 흔적이 없다.',
+  },
+  {
+    name: '🔓 원장 CHECK 제거가 타입을 뭉갠다 (18행의 종류가 전부 charge 로)',
+    file: 'src/worker/utils/point-ledger-unlock.ts',
+    find: "    await DB.prepare(`UPDATE point_transactions SET type = COALESCE(_type_bak, 'charge')`).run()",
+    replace: '    // 복원 생략',
+    test: 'src/tests/unit/point-ledger-unlock.test.ts',
+    why:
+      '컬럼을 갈아끼우는 절차라 복원 한 줄이 빠지면 **원장의 종류가 통째로 사라진다**. ' +
+      '되돌릴 수 없는 DDL 이고, 그래서 코드가 전후를 스스로 대조하게 만들었다.',
+  },
+  {
+    name: '🔢 판별식이 다시 `IS NOT NULL` 로 (모던 행의 적립이 통째로 사라진다)',
+    file: 'src/worker/utils/ledger-integrity-checks.ts',
+    find: '  WHEN COALESCE(pt.points_amount, 0) != 0 THEN',
+    replace: '  WHEN pt.points_amount IS NOT NULL THEN',
+    test: 'src/tests/unit/point-ledger-unlock.test.ts',
+    why:
+      '라이브 컬럼은 `points_amount INTEGER NOT NULL DEFAULT 0` 이다. 모던 행은 NULL 이 아니라 **0** 이라, ' +
+      '`IS NOT NULL` 로 가르면 전부 레거시로 몰려 0 으로 집계된다 — 원장 쓰기가 되살아나는 순간 전 유저가 불일치가 된다.',
   },
   {
     name: '🩹 잔액 수리 도구의 dry-run 이 사라진다 (보기만 하려다 돈이 움직인다)',
@@ -140,9 +219,31 @@ const MUTATIONS = [
       '설명하려던 금액을 두 배로 만든다.',
   },
   {
+    name: '🖱️ 정비 화면의 확인 창이 사라진다 (검사하려다 실행된다)',
+    file: 'src/pages/admin-system-monitoring/PointsRepairTab.tsx',
+    find: "        confirmText: '제거한다', danger: true,",
+    replace: "        confirmText: '제거한다',",
+    test: 'src/tests/unit/points-repair-ui.test.ts',
+    why:
+      '서버가 dry-run 기본이어도 **화면이 곧장 실행을 보내면** 그 방어는 무의미하다. ' +
+      '되돌릴 수 없는 DDL 이라 확인 창이 마지막 관문이다.',
+  },
+  {
+    name: '🖱️ 실행 버튼이 검사 없이도 뜬다 (무엇이 바뀔지 모르고 누른다)',
+    file: 'src/pages/admin-system-monitoring/PointsRepairTab.tsx',
+    find: '{unlock?.had_check && !unlock.applied && <B on={() => runUnlock(true)}',
+    replace: '{<B on={() => runUnlock(true)}',
+    test: 'src/tests/unit/points-repair-ui.test.ts',
+    why:
+      '이 화면의 전제는 "먼저 보고 누른다" 다. 검사 결과 없이 실행 버튼이 열리면 ' +
+      '제약이 없는 DB 에도 DDL 을 돌리게 된다.',
+  },
+  {
     name: '💸 원장 정합 검사가 다시 amount 를 우선한다 (충전=원화·차감=양수 → 숫자가 거짓)',
     file: 'src/worker/utils/ledger-integrity-checks.ts',
-    find: '  WHEN pt.points_amount IS NOT NULL THEN',
+    // 2026-08-31: 판별식이 `IS NOT NULL` → `COALESCE(...) != 0` 로 바뀌어 이 find 도 따라 옮겼다
+    //   (가드가 "낡은 지도"로 잡아 줬다 — 이 검사가 존재하는 이유가 정확히 이것이다).
+    find: '  WHEN COALESCE(pt.points_amount, 0) != 0 THEN',
     replace: '  WHEN COALESCE(pt.amount, 0) != 0 THEN pt.amount\n  WHEN FALSE THEN',
     test: 'src/tests/unit/ledger-balance-mismatch.test.ts',
     why:
@@ -241,8 +342,7 @@ const MUTATIONS = [
     why:
       '바탕과 카드가 같은 색이면 카드를 구분할 방법이 1px 실선뿐이라 화면 전체가 테두리에 ' +
       '의존하게 된다. 대표가 "테두리가 정말 AI스럽다"고 지적한 것의 근본 원인이고, ' +
-      '다크는 멀쩡했기 때문에 **라이트만 깨진 채 아무도 몰랐다.**',
-  },
+      '다크는 멀쩡했기 때문에 **라이트만 깨진 채 아무도 몰랐다.**',  },
   {
     name: '유어샵 핀 딜 매칭이 무음으로 항상 실패한다',
     file: 'src/worker/routes/curator.routes.ts',
@@ -6566,6 +6666,84 @@ canvas {
       '산출물 부재를 통과로 접으면 가드가 있어도 없는 것과 같다. 이 레포가 반복해 당한 ' +
       '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
   },
+  {
+    name: '📖 운영백서 숫자표 검사를 CI 에서 뗀다 (다른 세션 변경이 문서에 안 닿음)',
+    file: '.github/workflows/verify.yml',
+    find: '        run: node scripts/generate-ops-handbook.mjs --check',
+    replace: '        run: echo skip',
+    test: 'src/tests/unit/ops-handbook.test.ts',
+    why:
+      'pre-commit 훅은 보장이 못 된다 — 원격 세션은 컨테이너가 새로 떠서 훅이 아예 없다(CLAUDE.md 실사고). ' +
+      'CI 가 유일한 보장이라 여기서 떨어지면 요율을 바꾼 다른 세션의 변경이 문서에 안 닿고, ' +
+      '매장 사장님이 틀린 요율을 읽게 된다 — 2026-08-31 에 실제로 그 상태였다.',
+  },
+  {
+    name: '📖 어드민 가이드가 자동 생성 숫자표를 안 싣는다 (만들고 안 부르기)',
+    file: 'src/features/guides/api/guide-seed-admin/ops-handbook-section.ts',
+    find: '${OPS_HANDBOOK_AUTO}',
+    replace: '(숫자표 생략)',
+    test: 'src/tests/unit/ops-handbook.test.ts',
+    why:
+      '생성만 하고 안 실으면 아무 데도 안 보인다. 이 레포가 반복해 당한 "만들고 안 부르기" 클래스이고, ' +
+      '파일이 존재하니 보호받는 것처럼 보인다는 게 이 사고의 특징이다.',
+  },
+  {
+    name: '🎛️ 셀러 표면에 원시 주 버튼이 다시 들어온다',
+    file: 'src/pages/SellerBundlesPage.tsx',
+    find: 'className="ur-btn ur-btn-md ur-btn-block ur-btn-primary"',
+    replace: 'className="w-full py-3 bg-gray-900 text-white rounded-xl"',
+    test: 'scripts/check-dashboard-button-system.mjs',
+    why:
+      '2026-08-31 실측: 이 주입이 **초록불로 통과했다.** 원인은 감싸는 태그를 찾는 ' +
+      "`lastIndexOf('<')` 이 바로 윗줄 `disabled={… < 2}` 의 **비교 연산자**를 태그 시작으로 " +
+      '오인한 것 — 이름 매칭이 실패하자 "버튼 아님"으로 접혀 래칫이 통째로 헛돌았다. ' +
+      '판정은 scripts/lib/jsx-enclosing-tag.mjs 로 옮겼고, 이 자리(비교 연산자가 바로 위에 있는 버튼)를 ' +
+      '**일부러** 주입 지점으로 고정한다.',
+  },
+  {
+    name: '🎛️ 버튼 래칫의 매칭이 죽는다 (baseline 0 은 죽어도 초록)',
+    file: 'scripts/check-dashboard-button-system.mjs',
+    find: "const PRIMARY_BG = /\\bbg-(?:gray-900|gray-800|black|brand|brand-dark)\\b/",
+    replace: "const PRIMARY_BG = /\\bbg-NEVER-MATCHES-THIS\\b/",
+    test: 'scripts/check-dashboard-button-system.mjs',
+    why:
+      '0 을 기대하는 래칫은 **매칭이 깨져도 0 이라 초록불**이다 — 이 레포가 반복해 당한 ' +
+      '"검사가 실패할 수 없음" 클래스. 유일한 방어가 합성 대조(FIXTURE_BAD/OK)이고, ' +
+      '매칭을 죽였을 때 그 대조가 실제로 빨간불을 내는지 여기서 확인한다.',
+  },
+  {
+    name: '🖼️ cfImage <img> 에서 onError 가 사라진다 (깨진 이미지 아이콘 노출)',
+    file: 'src/components/search/ProductCard.tsx',
+    find: 'onError={(e) => cfImageOnError(e.currentTarget, product.image_url)}',
+    // ⚠️ 빈 문자열로 지우지 않는다 — `replace: ''` 는 --verify-clean 이 잔재를 **구분할 수 없다**
+    //    (지웠는지 코드가 옮겨갔는지 같아 보인다). 눈에 띄는 표식을 남겨 잔재를 잡히게 한다.
+    replace: 'data-mutation-removed-onerror',
+    test: 'scripts/check-image-fallback.mjs',
+    why:
+      '2026-08-31 실측: cfImage 를 쓰는 <img> 92개 중 47개가 onError 없이 있었다. 리사이저나 원본이 ' +
+      '죽으면 그 자리에 **깨진 이미지 아이콘**이 그대로 뜬다. 배선은 눈에 안 보여서 계속 새로 빠지므로 ' +
+      '래칫으로 동결했고, 래칫이 실제로 잡는지 여기서 확인한다.',
+  },
+  {
+    name: '📖 운영 가이드가 다시 한 번에 하나만 열린다 (40개를 하나씩)',
+    file: 'src/components/guide/GuideViewer.tsx',
+    find: 'const [openKeys, setOpenKeys] = useState<Set<string>>(new Set())',
+    replace: 'const [openKeys, setOpenKeys] = useState<string | null>(null) as unknown as [Set<string>, (v: Set<string>) => void]',
+    test: 'src/tests/unit/guide-reader.test.ts',
+    why:
+      '단일 open 으로 되돌아가면 섹션 40개를 하나씩 눌러야 한다 — 그래서 아무도 안 읽었다. ' +
+      '⚠️ 첫 판은 변수만 덧붙이는 주입이라 **가드가 통과했다**(헛도는 주입). 상태 타입 자체를 되돌리게 고쳤다.',
+  },
+  {
+    name: '📖 검색이 제목만 훑는다 (값으로 못 찾음)',
+    file: 'src/components/guide/GuideViewer.tsx',
+    find: "(s.section_title + ' ' + s.content_md).toLowerCase()",
+    replace: 's.section_title.toLowerCase()',
+    test: 'src/tests/unit/guide-reader.test.ts',
+    why:
+      '실제 용례는 "영입 2%" 처럼 **값으로 찾는 것**이다. 제목만 훑으면 요율·절차를 영영 못 찾고, ' +
+      '검색창이 있다는 사실이 오히려 "없는 내용"이라는 오해를 만든다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
@@ -6703,8 +6881,17 @@ if (VERIFY_CLEAN) {
     const abs = path.join(ROOT, m.file)
     if (!fs.existsSync(abs)) continue // 파일 이동은 전수 모드가 "낡은 지도"로 따로 보고한다
     const s = fs.readFileSync(abs, 'utf8')
-    // `find` 가 사라졌는데 `replace` 가 있으면 주입된 상태다. `find` 만 사라졌으면 코드가 옮겨간 것.
-    if (!s.includes(m.find) && m.replace && s.includes(m.replace)) dirty.push(`${m.file} — ${m.name}`)
+    if (!m.replace) continue
+    // 🩸 2026-08-31: 여기 있던 판정 `!s.includes(find) && s.includes(replace)` 는 **추가형 주입을
+    //   통째로 못 봤다.** `replace` 가 `find` 를 품는 주입(줄을 바꾸는 게 아니라 **덧붙이는** 형태,
+    //   예: `company: […],` → `company: […], influencer: ['collect'],`)은 주입된 뒤에도 `find` 가
+    //   그대로 남아 있어 첫 조건이 거짓이 된다. 실제로 그날 harness 를 중간에 끊었더니
+    //   `lane-boost.ts` 에 주입이 남았는데 `--verify-clean` 이 **"깨끗함"** 이라고 답했고,
+    //   `git add -A` 로 하마터면 그대로 커밋될 뻔했다(대표 확인 사항인 레인 보강 대상을 넓히는 내용).
+    //   ⇒ 추가형은 `replace` 존재만으로 판정한다(정상 코드엔 `replace` 가 있을 수 없다 — 더 긴 문자열).
+    const additive = m.replace.includes(m.find)
+    const injected = s.includes(m.replace) && (additive || !s.includes(m.find))
+    if (injected) dirty.push(`${m.file} — ${m.name}`)
   }
   if (dirty.length) {
     console.error(`\n❌ 주입 잔재 ${dirty.length}건 — **커밋하지 말 것**\n`)

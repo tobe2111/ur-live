@@ -16,7 +16,7 @@ const FULLBLEED_PC_PATHS = new Set<string>([
   //   자체 상단바(MapTopBar 검색/카테고리)를 쓰므로 own-header. 모바일(<lg)은 기존 풀스크린 지도 그대로.
   '/map',
   // 마이/계정(자체 서브헤더 + 전역 상단바 유지 — own-header 아님). ur-content-medium/narrow 중앙정렬.
-  '/user/profile', '/my-vouchers', '/my-orders',
+  '/user/profile', '/my-vouchers', '/my-gifticons', '/my-orders',
   // 검색/찜(브라우징 그리드 — 전역 상단바 유지). ur-content-wide 중앙정렬.
   '/search', '/wishlist',
   /**

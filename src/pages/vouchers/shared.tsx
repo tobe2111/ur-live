@@ -8,7 +8,7 @@ import { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BookOpen, Clapperboard, Coffee, Croissant, Drumstick, Fuel, Gamepad2, Gift, HardDrive, Home, IceCreamCone, Music, Pizza, Plug, RadioTower, Sandwich, Shirt, ShoppingBag, ShoppingCart, Smartphone, Soup, Sparkle, Store, Ticket, Utensils, Wrench, type LucideIcon } from 'lucide-react'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
-import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 
@@ -264,6 +264,7 @@ export const BrandChip = memo(function BrandChip({
             width={32}
             height={32}
             className="w-8 h-8 object-contain"
+            onError={(e) => cfImageOnError(e.currentTarget, brand.brand_icon_url)}
           />
         ) : (
           <span className="text-lg">🎁</span>

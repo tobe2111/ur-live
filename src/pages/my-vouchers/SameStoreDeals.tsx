@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 interface DealLite { id: number; name: string; price: number; image_url?: string | null; discount_rate?: number | null; current_price?: number | null }
 
@@ -45,7 +45,7 @@ export default function SameStoreDeals({ productId }: { productId?: number }) {
             onClick={() => navigate(`/group-buy/${d.id}`)}
           >
             {d.image_url ? (
-              <img src={cfImage(d.image_url, { width: 96 })} alt="" width={40} height={40} loading="lazy" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+              <img src={cfImage(d.image_url, { width: 96 })} alt="" width={40} height={40} loading="lazy" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" onError={(e) => cfImageOnError(e.currentTarget, d.image_url)} />
             ) : (
               <span className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-[#2A3344] flex-shrink-0" aria-hidden />
             )}

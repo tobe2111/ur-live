@@ -94,7 +94,7 @@ export default function SellerRelinkPage() {
           </div>
           {error && <p className="mt-2.5 text-[12.5px] font-bold text-brand">{error}</p>}
           <button type="submit" disabled={busy}
-            className="mt-4 w-full h-12 rounded-xl bg-brand text-white text-[15px] font-extrabold disabled:opacity-50 active:scale-[0.98] transition-transform">
+            className="ur-btn ur-btn-lg ur-btn-primary mt-4 w-full text-[15px] disabled:opacity-50 active:scale-[0.98] transition-transform">
             {busy ? t('seller.relink.busy', { defaultValue: '재연결 중…' }) : t('seller.relink.submit', { defaultValue: '재연결하고 대시보드 열기' })}
           </button>
         </form>

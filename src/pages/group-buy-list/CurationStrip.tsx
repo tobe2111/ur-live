@@ -1,6 +1,6 @@
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 큐레이션 스트립(verbatim 추출). 동작/스타일 불변.
 import { useTranslation } from 'react-i18next'
-import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import type { GroupBuyProduct } from './types'
 
 export default function CurationStrip({
@@ -51,7 +51,8 @@ export default function CurationStrip({
                     loading="lazy"
                     decoding="async"
                     className="w-full h-full object-cover"
-                  />
+              onError={(e) => cfImageOnError(e.currentTarget, p.image_url)}
+            />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1A1C21] dark:to-[#0D0F12]" />
                 )}

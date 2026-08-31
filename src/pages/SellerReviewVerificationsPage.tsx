@@ -166,7 +166,7 @@ export default function SellerReviewVerificationsPage() {
                 ) : (
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button onClick={() => approve(r.id)} disabled={busyId === r.id}
-                      className="inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-black disabled:opacity-50">
+                      className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center justify-center gap-1.5 disabled:opacity-50">
                       {busyId === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                       {t('seller.reviewVerify.approve', { defaultValue: '확인 (보너스 지급)' })}
                     </button>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
-import { ChevronDown, ChevronRight, Loader2, Pencil, Save, X, Trash2, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Loader2, Pencil, Save, X, Trash2, Plus, Search } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import DOMPurify from 'dompurify'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -143,7 +143,15 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
   const { t } = useTranslation()
   const [sections, setSections] = useState<GuideSection[]>([])
   const [loading, setLoading] = useState(true)
-  const [expanded, setExpanded] = useState<string | null>(null)
+  // 📖 2026-08-31 (대표 "보기좋게 운영자료처럼"): 한 번에 하나만 열리는 아코디언이었다.
+  //   섹션이 40개인데 검색도 목차도 없어서, 뭘 찾으려면 접힌 줄을 하나씩 눌러야 했다.
+  //   ⇒ 다중 열기 + 검색 + 목차. 읽는 문서로 쓰이려면 이 셋이 최소다.
+  const [openKeys, setOpenKeys] = useState<Set<string>>(new Set())
+  const [q, setQ] = useState('')
+  const setExpanded = (key: string | null) => setOpenKeys(key ? new Set([key]) : new Set())
+  const toggleKey = (key: string) =>
+    setOpenKeys(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })
+  const openKey = (key: string) => setOpenKeys(prev => new Set(prev).add(key))
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<Partial<GuideSection>>({})
   const [saving, setSaving] = useState(false)
@@ -161,9 +169,8 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
       const res = await api.get(`/api/guides/${guideType}`)
       if (res.data?.success) {
         setSections(res.data.data || [])
-        if (res.data.data?.length > 0 && !expanded) {
-          setExpanded(res.data.data[0].section_key)
-        }
+        // 첫 섹션(운영백서)만 열어 둔다 — 나머지는 목차·검색으로 연다.
+        setOpenKeys(prev => (prev.size > 0 || !res.data.data?.length ? prev : new Set([res.data.data[0].section_key])))
       }
     } catch {
       toast.error('가이드를 불러오지 못했습니다')
@@ -218,7 +225,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
       section_order: 999,
       content_md: '### 제목\n\n내용을 여기에 작성하세요.',
     })
-    setExpanded(key)
+    openKey(key)
   }
 
   if (loading) {
@@ -229,8 +236,74 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
     )
   }
 
+  // 🔎 제목만이 아니라 **본문까지** 검색한다 — "영입 2%" 처럼 값으로 찾는 일이 실제 용례다.
+  const needle = q.trim().toLowerCase()
+  const visible = needle
+    ? sections.filter(s => (s.section_title + ' ' + s.content_md).toLowerCase().includes(needle))
+    : sections
+
+  const jumpTo = (key: string) => {
+    openKey(key)
+    // 열림 상태가 반영된 뒤 스크롤 — 접힌 높이로 계산하면 엉뚱한 데로 간다.
+    requestAnimationFrame(() => {
+      document.getElementById(`guide-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
   return (
     <div className="space-y-3">
+      {/* 🔎 검색 + 전체 펼치기 — 40개 섹션을 읽는 문서로 만드는 최소 장치 */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="search"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder={t('guide.searchPlaceholder', { defaultValue: '검색 — 제목과 본문에서 찾습니다 (예: 영입, 정산, 요율)' })}
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpenKeys(new Set(visible.map(s => s.section_key)))}
+          className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          모두 펼치기
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpenKeys(new Set())}
+          className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          접기
+        </button>
+      </div>
+
+      {/* 📑 목차 — 어디에 무엇이 있는지 한눈에. 누르면 열고 그 자리로 간다. */}
+      {sections.length > 3 && (
+        <nav className="bg-white rounded-xl border border-gray-200 p-3">
+          <p className="text-[11px] font-bold tracking-wide text-gray-500 mb-2">
+            목차 {needle && `· "${q}" 검색 결과 ${visible.length}건`}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {visible.map(s => (
+              <button
+                key={s.section_key}
+                type="button"
+                onClick={() => jumpTo(s.section_key)}
+                className="px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-full hover:bg-gray-100">
+                <span className="mr-1">{s.section_icon}</span>{s.section_title}
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
+
+      {needle && visible.length === 0 && (
+        <p className="text-sm text-gray-500 bg-white border border-gray-200 rounded-xl p-4">
+          "{q}" 에 해당하는 섹션이 없습니다.
+        </p>
+      )}
+
       {editable && (
         <button
           onClick={addSection}
@@ -284,16 +357,16 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
         </div>
       )}
 
-      {sections.map(s => {
+      {visible.map(s => {
         const isEditing = editingKey === s.section_key
-        const isExpanded = expanded === s.section_key
+        const isExpanded = openKeys.has(s.section_key)
 
         return (
-          <section key={s.section_key} className="bg-white rounded-xl border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
+          <section key={s.section_key} id={`guide-${s.section_key}`} className="bg-white rounded-xl border border-gray-200 dark:border-[#2C2F35] overflow-hidden scroll-mt-4">
             <div className="flex items-center">
               <button
                 type="button"
-                onClick={() => setExpanded(isExpanded ? null : s.section_key)}
+                onClick={() => toggleKey(s.section_key)}
                 className="flex-1 flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50"
               >
                 <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">

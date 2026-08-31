@@ -4,11 +4,15 @@
  */
 
 import type { SeedSection } from './guide-seed-types'
+import { OPS_HANDBOOK_SECTION } from './guide-seed-admin/ops-handbook-section'
+import { DAILY_CHECKLIST_SECTION } from './guide-seed-admin/daily-checklist'
 
 export const ADMIN_SEED: SeedSection[] = [
+  OPS_HANDBOOK_SECTION,
+
   {
     key: 'overview', icon: '📘', title: '서비스 개요', order: 10,
-    content: `**유어딜(ur-live)** 은 한국 시장 라이브 커머스 플랫폼입니다. 4개 역할이 상호작용합니다.
+    content: `**유어딜(ur-live)** 은 동네 매장 **이용권**을 파는 소비자 플랫폼입니다. (라이브커머스는 2026-06 영구 중단 — 맨 위 운영백서 참조.)
 
 ### 역할 정의
 - **유저(구매자)** — 홈/쇼츠/라이브 시청, 장바구니·결제, 후원(donation)
@@ -22,23 +26,8 @@ export const ADMIN_SEED: SeedSection[] = [
 ### 수익 모델
 상품 판매 플랫폼 수수료(기본 5%, 셀러별 조정 가능) + 후원/기부 수수료(15%) + 알림톡 발송비 + 에이전시 수수료.`,
   },
-  {
-    key: 'daily', icon: '✅', title: '일일 운영 체크리스트', order: 20,
-    content: `### 매일 아침 (09:00 권장)
-1. **대시보드** → 어제 매출·주문·신규 가입자 확인
-2. **셀러 승인** → 대기중 신청 처리 (영업일 기준 24h 이내)
-3. **정산** → REQUESTED 상태 신청 검토 및 처리 (3~5 영업일 내 입금)
-4. **샘플 신청** → 에이전시에서 셀러에게 보낸 샘플 요청 승인
-5. **리뷰 모더레이션** → 신고된 리뷰 확인·숨김 처리
-6. **감사 로그** → 전날 관리자 행동 리뷰 (이상 행동 탐지)
+  DAILY_CHECKLIST_SECTION,
 
-### 매일 저녁 (18:00 권장)
-1. **라이브 모니터** → 저녁 방송 진행 중 셀러 현황, 신고된 채팅 확인
-2. **KV 모니터링** → 캐시 히트율, 레이트 리밋 카운터 점검
-3. **주문 이상치** → 동일 유저 다중 주문, 비정상 고액 주문 검토
-
-> ⚠️ **주말/공휴일 주의**: 정산 처리는 영업일 기준. 주말 신청은 월요일 처리. 라이브 방송은 주말에 더 활발 → 모니터링 강화.`,
-  },
   {
     key: 'seller-ops', icon: '🏪', title: '셀러 관리', order: 30,
     content: `### 승인 프로세스 (\`/admin/seller-approval\`)
