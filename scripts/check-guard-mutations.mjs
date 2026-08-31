@@ -1092,8 +1092,10 @@ canvas {
   {
     name: '상세가 서버 raw 할인율로 되돌아간다(카드와 숫자가 갈린다)',
     file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: 'discountPct={displayDiscountPct}',
-    replace: 'discountPct={detail.current_discount_pct}',
+    // 🩸 2026-08-31: `discountPct={displayDiscountPct}` 만으로는 더 이상 유일하지 않다 — 같은 날 신설된
+    //    공용 상단바(DetailFloatingHeader)도 같은 prop 이름을 쓴다. 원래 대상인 **구매 박스**로 좁힌다.
+    find: 'name={detail.name}\n          discountPct={displayDiscountPct}',
+    replace: 'name={detail.name}\n          discountPct={detail.current_discount_pct}',
     test: 'src/tests/unit/groupon-detail-map.test.ts',
     why:
       '실측(2026-08-19, id 2846 정가 32,000→23,800): 홈 카드는 -26%, 상세는 할인 표시 없음이었다. ' +
