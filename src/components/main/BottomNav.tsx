@@ -232,6 +232,8 @@ export default function BottomNav() {
     if (path !== '/' && cur.startsWith(path)) return true
     // v37 FIX: 마이페이지 범주에 /my-* 및 관련 계정/주문 경로 포함
     if (path === '/my-vouchers' && cur.startsWith('/my-vouchers')) return true
+    // 🎟️ 2026-08-31 (지갑 분리): 교환권 보관함(/my-gifticons)은 '교환권' 탭 소속 — 이용권 탭과 이중 활성 방지.
+    if (path === '/vouchers' && cur.startsWith('/my-gifticons')) return true
     // 🎟️ 2026-06-18: /my-vouchers 는 '이용권' 탭 전용 활성 → 마이 탭 정규식에서 제외(이중 활성 방지).
     if (path === '/user/profile' && /^\/(my-orders|my-coupons|my-reviews|my-group-buys|wishlist|interest-list|account|mypage|my-returns)(\/|$)/.test(cur)) {
       return true

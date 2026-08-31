@@ -83,6 +83,36 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '이용권 지갑이 교환권을 다시 섞어 보여준다',
+    file: 'src/pages/MyVouchersPage.tsx',
+    find: 'vouchers.filter(isStoreVoucher)',
+    replace: 'vouchers',
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '2026-08-31 에 지갑을 둘로 나눈 이유가 바로 이 섞임이다(교환권을 샀는데 이용권 탭에서 찾아야 했다). ' +
+      '필터가 빠져도 화면은 멀쩡히 그려지고 목록만 다시 섞인다 — 에러가 없어 안 보인다.',
+  },
+  {
+    name: '교환권 보관함이 이용권을 담는다(판정 반전)',
+    file: 'src/pages/MyGifticonsPage.tsx',
+    find: '.filter(isGifticonVoucher)',
+    replace: '.filter(isStoreVoucher)',
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '두 보관함이 같은 배열을 각자 거르므로 판정이 한쪽만 뒤집혀도 "내 교환권"에 매장 이용권이 뜬다. ' +
+      '두 페이지가 서로의 것을 담으면 분리 자체가 무의미해진다.',
+  },
+  {
+    name: '교환권을 사고 나면 옛 이용권 지갑으로 떨어진다',
+    file: 'src/shared/product-flow.ts',
+    find: "    successPath: '/my-gifticons',",
+    replace: "    successPath: '/my-vouchers',",
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '결제 직후 도착지가 옛 지갑이면 방금 산 교환권이 없는 화면을 보게 된다 — "결제됐는데 아무것도 없다" ' +
+      '클래스. 결제는 성공했으므로 로그·에러 어디에도 흔적이 없다.',
+  },
+  {
     name: '유어샵 핀 딜 매칭이 무음으로 항상 실패한다',
     file: 'src/worker/routes/curator.routes.ts',
     find: '                p.seller_id,\n',

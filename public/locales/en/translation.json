@@ -190,7 +190,8 @@
     "currencyWon": "KRW",
     "checkNetworkRetry": "Check your network and try again",
     "goHome": "Go to home",
-    "prev": "Previous"
+    "prev": "Previous",
+    "seeAll": "See all"
   },
   "auth": {
     "email": "Email",
@@ -4507,7 +4508,8 @@
     "dongnedeal": "Local Deals",
     "create": "Create",
     "offlineGroupBuy": "Local Group Buy",
-    "myGbVouchers": "Vouchers"
+    "myGbVouchers": "Vouchers",
+    "myGifticons": "My Gifticons"
   },
   "bulkUpload": {
     "title": "Bulk Product Upload",
@@ -4756,12 +4758,13 @@
     "copy": "Copy",
     "showQrAtStore": "Show this QR code at the store",
     "seoTitle": "My Vouchers - YourDeal",
-    "seoDescription": "View and use your purchased meal vouchers",
+    "seoDescription": "Check the vouchers you bought and use them in store",
     "status": {
       "unused": "Available",
       "used": "Used",
       "expired": "Expired",
-      "refunded": "Refunded"
+      "refunded": "Refunded",
+      "processing": "Sending"
     },
     "verify": {
       "title": "Voucher Verification",
@@ -4811,7 +4814,14 @@
     "deal": "deal",
     "heroBalanceLabelGift": "Gift voucher balance",
     "loadFailed": "Could not load your vouchers",
-    "totalCount": "{{count}} total"
+    "totalCount": "{{count}} total",
+    "myGifticons": "My Gifticons",
+    "myBox": "My box",
+    "gifticonRowSub": "Gifticons sent to your phone",
+    "gifticonSeoTitle": "My Gifticons - YourDeal",
+    "gifticonSeoDescription": "Check the gifticons you bought and use them in store",
+    "loadFailedGift": "Couldn't load your gifticons",
+    "noUnusedGift": "No gifticons available to use"
   },
   "sellerWaiting": {
     "title": "Seller Approval Pending",
@@ -6069,7 +6079,7 @@
     "sectionTitle": "My activity",
     "wishlist": "[TODO:en] 찜한 상품",
     "voucher": "My vouchers",
-    "voucherSub": "Vouchers & gift cards",
+    "voucherSub": "Use in store with QR or code",
     "digitalLibrary": "[TODO:en] 디지털 보관함",
     "digitalLibrarySub": "[TODO:en] 전자책·강의·가이드",
     "coupons": "[TODO:en] 쿠폰함",
@@ -6078,7 +6088,9 @@
     "myStays": "My Stay Bookings",
     "myStaysSub": "Check-in code / voucher expiry",
     "interestList": "Saved Restaurants",
-    "interestListSub": "Group-buy open alerts"
+    "interestListSub": "Group-buy open alerts",
+    "gifticon": "My gifticons",
+    "gifticonSub": "Sent to your phone"
   },
   "orderStatus": {
     "sectionTitle": "[TODO:en] 주문 현황",

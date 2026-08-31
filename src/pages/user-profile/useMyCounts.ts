@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react'
 import type { MyCounts } from './types'
 import { useMyVouchers } from '@/hooks/queries'
+import { isGifticonVoucher, isStoreVoucher } from '@/shared/voucher-wallet'
 
 export function useMyCounts(): MyCounts {
   const [counts, setCounts] = useState<Pick<MyCounts, 'wish' | 'coupon'>>({ wish: null, coupon: null })
@@ -30,5 +31,11 @@ export function useMyCounts(): MyCounts {
     })
   }, [])
 
-  return { ...counts, voucher: vouchers ? vouchers.length : null }
+  // 🎟️ 2026-08-31 (지갑 분리): 한 배열에 섞여 오는 것을 지갑별로 나눠 센다 — 마이의 두 행이
+  //   각자 목적지(/my-vouchers · /my-gifticons)의 실제 개수와 일치해야 한다.
+  return {
+    ...counts,
+    voucher: vouchers ? vouchers.filter(isStoreVoucher).length : null,
+    gifticon: vouchers ? vouchers.filter(isGifticonVoucher).length : null,
+  }
 }

@@ -190,7 +190,8 @@
     "currencyWon": "韩元",
     "checkNetworkRetry": "请检查网络后重试",
     "goHome": "返回首页",
-    "prev": "上一步"
+    "prev": "上一步",
+    "seeAll": "查看全部"
   },
   "auth": {
     "email": "邮箱",
@@ -4507,7 +4508,8 @@
     "dongnedeal": "附近团购",
     "create": "创建",
     "offlineGroupBuy": "本地团购",
-    "myGbVouchers": "使用券"
+    "myGbVouchers": "使用券",
+    "myGifticons": "我的礼品券"
   },
   "bulkUpload": {
     "title": "批量上传商品",
@@ -4745,7 +4747,7 @@
     "storeGuide": "门店说明",
     "cancelRefund": "取消购买·退款",
     "refundWindowNote": "仅限未使用且付款后7天内可退款",
-    "myVouchers": "我的餐券",
+    "myVouchers": "我的使用券",
     "empty": "暂无餐券",
     "emptyHint": "参与美食拼团吧！",
     "exploreRestaurants": "浏览餐厅",
@@ -4755,13 +4757,14 @@
     "scan": "查看二维码",
     "copy": "复制",
     "showQrAtStore": "请向店家出示此二维码",
-    "seoTitle": "我的餐券 - 유어딜",
-    "seoDescription": "查看和使用已购餐券",
+    "seoTitle": "我的使用券 - 유어딜",
+    "seoDescription": "查看已购使用券并在门店使用",
     "status": {
       "unused": "可使用",
       "used": "已使用",
       "expired": "已过期",
-      "refunded": "已退款"
+      "refunded": "已退款",
+      "processing": "发送中"
     },
     "verify": {
       "title": "餐券验证",
@@ -4811,7 +4814,14 @@
     "deal": "积分",
     "heroBalanceLabelGift": "持有礼券金额",
     "loadFailed": "无法加载使用券",
-    "totalCount": "共{{count}}张"
+    "totalCount": "共{{count}}张",
+    "myGifticons": "我的礼品券",
+    "myBox": "我的券包",
+    "gifticonRowSub": "通过短信收到的礼品券",
+    "gifticonSeoTitle": "我的礼品券 - 유어딜",
+    "gifticonSeoDescription": "查看已购礼品券并在门店使用",
+    "loadFailedGift": "未能加载礼品券",
+    "noUnusedGift": "没有可用的礼品券"
   },
   "sellerWaiting": {
     "title": "卖家审核等待",
@@ -6016,7 +6026,7 @@
     "sectionTitle": "我的使用记录",
     "wishlist": "[TODO:zh] 찜한 상품",
     "voucher": "我的兑换券",
-    "voucherSub": "使用券·礼品券",
+    "voucherSub": "在门店用二维码或密码使用",
     "digitalLibrary": "[TODO:zh] 디지털 보관함",
     "digitalLibrarySub": "[TODO:zh] 전자책·강의·가이드",
     "coupons": "[TODO:zh] 쿠폰함",
@@ -6025,7 +6035,9 @@
     "myStays": "我的住宿预订",
     "myStaysSub": "入住码 / 有效期",
     "interestList": "收藏的餐厅",
-    "interestListSub": "团购开团提醒列表"
+    "interestListSub": "团购开团提醒列表",
+    "gifticon": "我的礼品券",
+    "gifticonSub": "通过短信收到"
   },
   "orderStatus": {
     "sectionTitle": "[TODO:zh] 주문 현황",
