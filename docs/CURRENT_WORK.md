@@ -5494,6 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
+_총 206건 · 최신순 · 이 목록은 자동 생성된다._
 _총 199건 · 최신순 · 이 목록은 자동 생성된다._
 _총 203건 · 최신순 · 이 목록은 자동 생성된다._
 _총 207건 · 최신순 · 이 목록은 자동 생성된다._
@@ -5505,6 +5506,7 @@ _총 207건 · 최신순 · 이 목록은 자동 생성된다._
 - [원장 정합 알림 — 숫자가 거짓이었다, 그리고 진짜 5건의 정체 (2026-08-31)](handoff/2026-08-31-ledger-mismatch.md)
 - [2026-08-31 — 영입자 지정 UI + **id 공간 불일치 수리**](handoff/2026-08-31-introducer-assign.md)
 - [2026-08-31 — 정산 최소 10만원은 현금에만](handoff/2026-08-31-deal-payout-no-minimum.md)
+- [2026-08-31 — 빌드 산출 CSS 가드를 실제로 도는 자리로 옮김](handoff/2026-08-31-built-css-guard.md)
 - [2026-08-31 — 에이전시 매장영입 1% 폐지 (영입은 하나의 행위)](handoff/2026-08-31-agency-intro-retired.md)
 **2026-08-30**
 - [2026-08-30 — 매장 영입 보상을 딜로 (게이트 OFF 배선)](handoff/2026-08-30-store-intro-deal.md)

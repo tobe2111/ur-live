@@ -6513,6 +6513,37 @@ canvas {
       '⚠️ 이 주입은 처음에 통과했다 — 가드가 `toContain(이름)` 이라 `_REMOVED` 접미사가 붙어도 ' +
       '앞부분이 일치했기 때문이다. 호출 형태(`이름(`)로 보도록 고쳤다.',
   },
+  {
+    name: '🕳️ 빌드 CSS 가드를 워크플로에서 떼어낸다 (파일만 남고 안 돎)',
+    file: '.github/workflows/verify.yml',
+    find: '        run: node scripts/check-built-css.mjs',
+    replace: '        run: echo skip',
+    test: 'src/tests/unit/built-css-guard.test.ts',
+    why:
+      '이 레포에서 제일 자주 난 사고는 "가드가 실패한다"가 아니라 **"가드가 안 돈다"** 다. ' +
+      '호출이 사라지면 스크립트는 그대로 남아 보호받는 것처럼 보인다. ' +
+      '⚠️ 순서 단언(`Build client` 뒤)도 같은 주입에서 함께 빨개진다 — 호출 위치를 못 찾으므로.',
+  },
+  {
+    name: '🕳️ 판정이 다시 유닛테스트로 돌아간다 (빌드 전이라 또 침묵)',
+    file: 'src/tests/unit/button-system.test.ts',
+    find: "const root = resolve(__dirname, '../../..')",
+    replace: "const root = resolve(__dirname, '../../..')\nconst _dist = 'dist/client/assets'",
+    test: 'src/tests/unit/built-css-guard.test.ts',
+    why:
+      '원래 사고가 정확히 이것이다 — dist 를 읽는 판정이 **빌드보다 먼저 도는** 유닛테스트 안에 있어 ' +
+      '몇 달간 조용히 통과했다. 편해 보여서 다시 옮겨 오기 쉬운 자리라 이름으로 막는다.',
+  },
+  {
+    name: '🕳️ 산출물이 없을 때 조용히 통과한다',
+    file: 'scripts/check-built-css.mjs',
+    find: "  console.error('   (예전엔 여기서 조용히 통과했고, 그래서 CI 에서 몇 달간 아무것도 검사하지 않았다.)')\n  process.exit(1)",
+    replace: "  console.error('   (skip)')\n  process.exit(0)",
+    test: 'src/tests/unit/built-css-guard.test.ts',
+    why:
+      '산출물 부재를 통과로 접으면 가드가 있어도 없는 것과 같다. 이 레포가 반복해 당한 ' +
+      '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
