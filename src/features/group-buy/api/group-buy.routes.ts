@@ -244,6 +244,29 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
+    // 💰 2026-08-31: **이용권 딜 결제 게이트** (기본 OFF).
+    //
+    //   위 상품 조회가 `voucher 카테고리 OR deal_only=1` 을 함께 매칭하기 때문에, 이 딜 경로는
+    //   **원래부터 이용권도 받고 있었다** — 화면이 안 내놨을 뿐 직접 POST 하면 통했다.
+    //   그래서 이 가드는 기능을 여는 스위치인 동시에 **그 열린 문을 닫는다.**
+    //
+    //   🔴 켜기 전 선행: `influencer_deal_bonus_pct` 를 0 으로. 보너스 20% 가 살아 있으면
+    //   이용권 마진(5~10%)보다 보너스가 커서 **팔릴수록 유어딜이 건당 8~14원 적자**다.
+    //   교환권(`deal_only=1`)은 소비자 마크업 20% 가 보너스를 상쇄해 괜찮았고, 이용권엔 그 상쇄가 없다.
+    //   클라 `VOUCHER_DEAL_PAYMENT_ENABLED` 와 이중 게이트(GB_ENGINE_ENABLED 선례).
+    if (product.deal_only !== 1) {
+      const gate = await DB.prepare(
+        "SELECT value FROM platform_settings WHERE key = 'voucher_deal_payment_enabled'"
+      ).first<{ value: string }>().catch(() => null)
+      if (gate?.value !== 'true') {
+        return c.json({
+          success: false,
+          error: '이 상품은 카드로 결제해주세요.',
+          code: 'DEAL_PAYMENT_NOT_ALLOWED',
+        }, 400)
+      }
+    }
+
     // 🛡️ 2026-04-22: 셀러가 본인 공구에 자기 참여 차단 (목표 조작 방지)
     //   🔴 2026-08-12: sellers.id ↔ users.id 를 비교하던 네임스페이스 오류 수리 (gb-purchase-guards.ts).
     if (await isSelfOwnedGroupBuy(DB, product.seller_id, userId)) {

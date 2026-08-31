@@ -39,6 +39,8 @@ import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
 import OtherDealsRow from './group-buy/OtherDealsRow'
 import ShareRewardBanner from './group-buy/ShareRewardBanner'
 import DeferUntilVisible from './group-buy/DeferUntilVisible'
+import { VOUCHER_DEAL_PAYMENT_ENABLED } from '@/shared/feature-flags'
+import { useBalance } from '@/hooks/queries/useBalance'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -333,7 +335,25 @@ export default function GroupBuyDetailPage() {
 
   // 🎨 2026-06-16 리디자인: 할인코드(promo) 입력 UI 제거 — checkPromo/clearPromo 삭제.
 
-  async function handleJoin() {
+  /**
+   * @param payWithDeal 이용권을 **딜로** 결제 (2026-08-31). 기본 false = 종전 동작(카드).
+   *   교환권(`deal_only=1`)은 원래 딜 전용이라 이 인자와 무관하다.
+   *   서버도 `platform_settings.voucher_deal_payment_enabled` 로 이중 게이트한다.
+   */
+  // 💰 2026-08-31: 이용권 딜 결제 — **잔액이 충분할 때만** 보조 버튼을 낸다.
+  //   기본 결제수단은 그대로 카드다. 대다수 소비자는 딜 잔액이 0 이고, 살 수 없는 버튼을
+  //   띄우면 "딜이 부족합니다"를 눌러 보고 알게 된다.
+  //   ⚠️ 플래그가 꺼져 있으면 훅은 돌아도 버튼이 안 뜬다(서버도 이중 게이트).
+  const { data: dealBalance = 0, isError: balanceError } = useBalance()
+  const canPayWithDeal =
+    VOUCHER_DEAL_PAYMENT_ENABLED &&
+    isLoggedIn &&
+    !balanceError &&
+    resolveProductFlow(detail || {}).flow === 'group_buy_toss' &&
+    total > 0 &&
+    dealBalance >= total
+
+  async function handleJoin(payWithDeal = false) {
     if (!detail) return
     if (!isLoggedIn) {
       localStorage.setItem('loginReturnUrl', window.location.pathname)
@@ -353,8 +373,11 @@ export default function GroupBuyDetailPage() {
     //   voucher_deal vs group_buy_toss 단일 helper. legacy 카테고리 graceful + 미래 분류 1곳 수정.
     const { flow } = resolveProductFlow(detail)
 
-    if (flow === 'voucher_deal') {
-      // 딜 결제 흐름 (교환권 전용)
+    // 💰 2026-08-31: 이용권도 딜로 살 수 있다(대표 방향 — 상품 마진 대신 현금 출구에 마진).
+    //   `deal_only=1` 교환권은 원래 딜 전용이고, 이용권은 **사용자가 딜을 고른 경우에만** 이 경로.
+    //   기본은 여전히 카드다 — 대다수 소비자는 딜 잔액이 없다.
+    if (flow === 'voucher_deal' || payWithDeal) {
+      // 딜 결제 흐름 (교환권 전용 → 2026-08-31 이후 이용권도 선택 시)
       setJoining(true)
       reportFunnel('click', productId)
       try {
@@ -368,7 +391,7 @@ export default function GroupBuyDetailPage() {
           quantity, payment_method: 'deal', ref, idempotency_key,
         })
         if (res.data?.success) {
-          toast.success('🎁 교환권 발급 완료')
+          toast.success(flow === 'voucher_deal' ? '🎁 교환권 발급 완료' : '🎫 이용권 발급 완료')
           fireAffiliateTrack(res?.data?.data?.order_id ?? null, Number(id), detail?.name) // 큐레이터 적립 (fail-soft)
           invalidateVouchers()
           navigate('/my-vouchers')
@@ -378,6 +401,11 @@ export default function GroupBuyDetailPage() {
       } catch (err: unknown) {
         const e = err as { response?: { data?: { error?: string; code?: string } } }
         const code = e?.response?.data?.code
+        if (code === 'DEAL_PAYMENT_NOT_ALLOWED') {
+          // 서버 게이트가 꺼져 있음 — 클라 플래그와 갈린 상태. 카드로 유도한다.
+          toast.error('지금은 이 상품을 카드로만 결제할 수 있어요.')
+          return
+        }
         if (code === 'INSUFFICIENT_POINTS') {
           // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
           if (TOPUP_DISABLED) {
@@ -881,7 +909,7 @@ export default function GroupBuyDetailPage() {
           isPrelaunch={isPrelaunch}
           isDemo={isDemoDeal}
           joining={joining}
-          onBuy={handleJoin}
+          onBuy={() => handleJoin()}
           onPrelaunchApply={() => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
         />
       </aside>
@@ -921,13 +949,24 @@ export default function GroupBuyDetailPage() {
           <span style={{ fontSize: 11.5, color: 'var(--gbd-sub)', fontWeight: 500, whiteSpace: 'nowrap' }}>{isPrelaunch ? '오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요' : '토스로 3초 안전결제 · 미사용 시 100% 자동환불'}</span>
         </div>
         <button
-          onClick={isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : handleJoin}
+          onClick={isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : () => handleJoin()}
           disabled={(!isJoinable && !isPrelaunch) || joining}
           aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? `${formatNumber(total)}원 ${isDemoDeal ? '결제하기' : '구매하기'}` : isDemoDeal ? '결제 불가' : '구매 불가'}
           style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
         >
           {joining ? '처리 중…' : isPrelaunch ? '🔔 오픈 예정 — 사전 응모하기' : !isJoinable ? (isDemoDeal ? '결제 불가' : '구매 불가') : <>{formatNumber(total)}원 {isDemoDeal ? '결제하기' : '구매하기'}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
         </button>
+        {/* 💰 2026-08-31: 이용권 딜 결제 — 잔액이 충분할 때만. 기본 결제수단은 위 카드 버튼이다. */}
+        {canPayWithDeal && !isPrelaunch && isJoinable && (
+          <button
+            onClick={() => handleJoin(true)}
+            disabled={joining}
+            aria-label={`보유한 딜 ${formatNumber(dealBalance)}딜로 결제하기`}
+            style={{ width: '100%', height: 42, marginTop: 8, borderRadius: 12, background: 'transparent', border: '1.5px solid var(--gbd-cta-bg)', color: 'var(--gbd-cta-bg)', fontSize: 14, fontWeight: 700, letterSpacing: '-.01em', cursor: joining ? 'default' : 'pointer' }}
+          >
+            {joining ? '처리 중…' : `딜로 결제 (보유 ${formatNumber(dealBalance)}딜)`}
+          </button>
+        )}
       </div>{/* /bar box */}
       </footer>
     </div>
