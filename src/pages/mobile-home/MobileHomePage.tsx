@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useCurrentDong } from '@/hooks/useCurrentDong'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, Bell, ShoppingCart, Map as MapIcon, List } from 'lucide-react'
+import { Search, Bell, ShoppingCart } from 'lucide-react'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
@@ -60,33 +60,57 @@ export default function MobileHomePage() {
         jsonLd={[organizationJsonLd, webSiteJsonLd]}
       />
 
-      {/* 상단 — 로고 · 위치 · 아이콘. 지도 홈이 갖고 있던 진입점(검색·알림·장바구니)을 그대로 승계한다. */}
+      {/* 상단 — 2026-08-31 (대표 "더 대기업 수준의 완성도"): 크롬 4층 → 2층.
+          ■ 무엇이 문제였나 (첫 400px 을 세어 보고 알았다)
+            컨트롤이 9개였고 **그중 다섯이 전부 같은 형태**였다 — 테두리 두른 둥근 알약
+            (지역·현위치·목록/지도·정렬) + 아이콘+라벨 세로 조합(카테고리 5개).
+            형태가 하나뿐이면 화면은 "무엇이 중요한지"를 말하지 못한다. 그게 AI 티의 정체다.
+          ■ 무엇을 없앴나 — 장식이 아니라 **줄**을 없앴다
+            · h2 "가까운 동네 딜" + 부제 "이용권 · 공동구매 · 교환권을 할인가로" → 삭제.
+              위치(동네 이름)가 곧 이 화면의 제목이다(당근·배민이 그렇다). 설명 부제는
+              정보가 0인데 한 줄을 먹는다.
+            · 지역 알약의 테두리·핀 아이콘, 현위치 알약 → 제목 + 옆의 작은 아이콘으로 흡수.
+            · 카테고리 아이콘 5개 → 텍스트만. 선 아이콘 + 11px 라벨 조합이 가장 "만들어진" 티가 난다.
+              활성은 잉크 + 밑줄로 — 색이 아니라 무게로 말한다(로즈는 하단 탭 하나에만 남긴다). */}
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="px-4 h-12 flex items-center justify-between gap-2">
-          <Link to="/" aria-label="홈" className="shrink-0 flex items-center"><UrDealLogo size={18} /></Link>
-          <div className="flex items-center gap-1 text-gray-700 dark:text-gray-200 min-w-0">
-            <PcHomeLocationBar value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} locatedLabel={dong?.dong} />
-            <button onClick={() => navigate('/search')} aria-label="검색" className="p-1.5 shrink-0"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
-            <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-1.5 shrink-0"><Bell className="h-5 w-5" strokeWidth={1.5} /></button>
-            <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-1.5 shrink-0"><ShoppingCart className="h-5 w-5" strokeWidth={1.5} /></button>
+        <div className="px-4 h-11 flex items-center justify-between gap-2">
+          <Link to="/" aria-label="홈" className="shrink-0 flex items-center"><UrDealLogo size={17} /></Link>
+          <div className="flex items-center gap-0.5 text-gray-500 dark:text-gray-400">
+            <button onClick={() => navigate('/search')} aria-label="검색" className="p-2 shrink-0"><Search className="h-[21px] w-[21px]" strokeWidth={1.5} /></button>
+            <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-2 shrink-0"><Bell className="h-[21px] w-[21px]" strokeWidth={1.5} /></button>
+            <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-2 shrink-0"><ShoppingCart className="h-[21px] w-[21px]" strokeWidth={1.5} /></button>
           </div>
         </div>
 
-        {/* 카테고리 — 라벨·아이콘 SSOT 는 PC 헤더와 같은 `DEAL_CATS`(둘이 갈리지 않게). */}
-        <nav aria-label="카테고리" className="flex gap-1 overflow-x-auto no-scrollbar px-3 pb-2">
-          {DEAL_CATS.map(({ key, label, icon: Icon }) => {
+        {/* 위치 = 제목. 오른쪽은 같은 목록의 다른 보기(지도)로 가는 전환. */}
+        <div className="px-4 pt-1 pb-3 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <PcHomeLocationBar tone="title" value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} locatedLabel={dong?.dong} />
+          </div>
+          {/* ⚠️ 하단 탭에 지도가 없으므로 **이 컨트롤이 유일한 통로**다 — 지우지 말 것.
+              아이콘을 뺀 이유: 이 줄에서 아이콘이 하는 일이 없다(라벨이 이미 두 글자다). */}
+          <div role="tablist" aria-label="보기 방식" className="shrink-0 flex items-center gap-0.5 rounded-lg bg-gray-100 dark:bg-white/[0.06] p-0.5">
+            <span role="tab" aria-selected="true" className="rounded-[6px] bg-white dark:bg-[#1A1C21] px-3 py-1.5 text-[12.5px] font-bold text-gray-900 dark:text-white shadow-sm">목록</span>
+            <Link to="/map" role="tab" aria-selected="false" className="rounded-[6px] px-3 py-1.5 text-[12.5px] font-bold text-gray-500 dark:text-gray-400">지도</Link>
+          </div>
+        </div>
+
+        {/* 카테고리 — 라벨 SSOT 는 PC 헤더와 같은 `DEAL_CATS`(둘이 갈리지 않게). */}
+        <nav aria-label="카테고리" className="flex gap-5 overflow-x-auto no-scrollbar px-4">
+          {DEAL_CATS.map(({ key, label }) => {
             const on = category === key
             return (
               <button
                 key={key}
                 onClick={() => setCategory(key)}
                 aria-pressed={on}
-                className={`shrink-0 flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-colors ${
-                  on ? 'text-brand bg-brand/[0.07] font-bold' : 'text-gray-600 dark:text-gray-300'
+                className={`shrink-0 pb-2 text-[14.5px] transition-colors border-b-2 ${
+                  on
+                    ? 'font-black text-gray-900 dark:text-white border-gray-900 dark:border-white'
+                    : 'font-semibold text-gray-400 dark:text-gray-500 border-transparent'
                 }`}
               >
-                <Icon className="w-[18px] h-[18px]" strokeWidth={on ? 2.1 : 1.7} />
-                <span className="text-[11px] leading-none">{label}</span>
+                {label}
               </button>
             )
           })}
@@ -102,44 +126,13 @@ export default function MobileHomePage() {
       )}
 
       <section className="mt-4">
-        {/* 🗺️ 2026-08-30 (대표 — "'내 주변 지도로 보기' 버튼 디자인이 문제"):
-            배너를 없애고 **목록/지도 전환**으로 바꿨다.
-            이전: 카드 한 장을 통째로 써서 [연한 원형 아이콘 + 제목 + 부제 + ›] 을 담았다.
-            그 조합은 어떤 서비스에 붙여도 말이 되는 형태라 **우리 화면이라는 표시가 없다** —
-            대표가 본 "AI 티" 가 정확히 그것이다. 게다가 지도는 *다른 화면*이 아니라
-            **같은 목록의 다른 보기**인데, 배너는 그걸 남의 기능처럼 밀어냈다.
-            ⇒ 목록/지도는 어느 앱에서나 제목 옆 전환 컨트롤이다(당근·직방·야놀자).
-               블록 하나가 사라지고, 진입은 오히려 콘텐츠에 붙어 더 잘 보인다.
-            ⚠️ 하단 탭에 지도가 없으므로 **이 컨트롤이 유일한 통로**다 — 지우지 말 것. */}
-        <header ref={gridHeaderRef} className="px-4 mb-2 scroll-mt-24 flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">
-              {userLoc ? (dong?.dong ? `${dong.dong} 주변 딜` : '내 주변 가까운 딜') : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
-            </h2>
-            <p className="mt-0.5 text-[12.5px] text-gray-500 dark:text-gray-400">이용권 · 공동구매 · 교환권을 할인가로</p>
-          </div>
-          <div
-            role="tablist"
-            aria-label="보기 방식"
-            className="shrink-0 flex items-center gap-0.5 rounded-lg bg-gray-100 dark:bg-white/[0.06] p-0.5"
-          >
-            <span
-              role="tab"
-              aria-selected="true"
-              className="inline-flex items-center gap-1 rounded-[6px] bg-white dark:bg-[#1A1C21] px-2.5 py-1.5 text-[12px] font-bold text-gray-900 dark:text-white shadow-sm"
-            >
-              <List className="w-3.5 h-3.5" aria-hidden="true" />목록
-            </span>
-            <Link
-              to="/map"
-              role="tab"
-              aria-selected="false"
-              className="inline-flex items-center gap-1 rounded-[6px] px-2.5 py-1.5 text-[12px] font-bold text-gray-500 dark:text-gray-400"
-            >
-              <MapIcon className="w-3.5 h-3.5" aria-hidden="true" />지도
-            </Link>
-          </div>
-        </header>
+        {/* 🗺️ 지도로 가는 길은 **상단 [목록|지도] 전환**이 갖는다(위 헤더).
+            2026-08-30 에 "내 주변 지도로 보기" 배너를 그 전환으로 바꿨고,
+            2026-08-31 에 제목·부제를 지우면서 전환도 위치 제목 옆으로 함께 올렸다.
+            ⚠️ 하단 탭에 지도가 없으므로 그 컨트롤이 **유일한 통로**다 — 지우지 말 것.
+            여기 있던 h2("가까운 동네 딜")와 부제는 삭제했다. 위치가 제목을 겸하므로
+            같은 말을 두 번 하게 되고, 부제는 정보가 없는데 한 줄을 먹었다. */}
+        <div ref={gridHeaderRef as React.RefObject<HTMLDivElement>} className="scroll-mt-24" />
         {/* 실측: 이 피드는 히어로·편성섹션 아래라 첫 행이 접힘 밖(모바일 1,605px / PC 1,385px) */}
         <GroupBuyFeed
           firstScreen={false}

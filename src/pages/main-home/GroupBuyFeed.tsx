@@ -5,19 +5,21 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
-import { SearchX, Flame, Timer, Tag, Clock } from 'lucide-react'
+import { SearchX, Flame, Timer, Tag, Clock, Store } from 'lucide-react'
 import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
 import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
 import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from '@/hooks/queries'
 import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
+import UrDealLogo from '@/components/brand/UrDealLogo'
+import { sellerEntryPath } from '@/utils/seller-entry'
 import type { Product } from './types'
 import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-regions'
 import { addressInRegion, type RegionRef } from '@/shared/constants/region-slugs'
@@ -128,6 +130,7 @@ export default function GroupBuyFeed({
   // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): sort='near' 일 때 이 좌표 기준 거리순 정렬(좌표 없는 딜은 뒤로).
   userLoc?: { lat: number; lng: number } | null
 } = {}) {
+  const navigate = useNavigate()
   const [categoryState, setCategoryState] = useState<CategoryKey>('all')
   const [sortState, setSortState] = useState<SortKey>('popular')
   const category = categoryProp ?? categoryState
@@ -350,10 +353,14 @@ export default function GroupBuyFeed({
       </div>
       )}
 
-      {/* 정렬 옵션 + 카운트 — 🖥️ PC 홈에선 정렬칩이 대신 구동 → 숨김. */}
-      {!pc && (
-      <div className="flex items-center justify-between px-4 py-2.5 text-[12px] text-gray-600 dark:text-gray-400">
-        <span>{loading ? '불러오는 중…' : `${sorted.length}개 공구`}</span>
+      {/* 정렬 옵션 + 카운트 — 🖥️ PC 홈에선 정렬칩이 대신 구동 → 숨김.
+          🔢 2026-08-31: 0 일 때 "0개" 를 굳이 보여주지 않는다. 바로 아래 빈 상태가 같은 말을
+          더 잘 하고 있어 **같은 사실을 두 번** 말하던 자리였다(대기업 앱은 0을 세지 않는다). */}
+      {/* 🔇 정렬할 것이 없으면 정렬도 내린다. 카운트를 감추고 나니 이 알약만 오른쪽에
+          홀로 떠서 **빈 줄 하나**처럼 보였다 — 컨트롤은 쓸 데가 있을 때만 자리를 갖는다. */}
+      {!pc && (loading || sorted.length > 0) && (
+      <div className="flex items-center justify-between px-4 py-2.5 text-[12px] text-gray-500 dark:text-gray-400">
+        <span>{loading ? '불러오는 중…' : `딜 ${sorted.length}개`}</span>
         <SortMenu value={sort as typeof SORTS[number]['key']} options={SORTS} onChange={(v) => setSort(v)} />
       </div>
       )}
@@ -431,18 +438,26 @@ export default function GroupBuyFeed({
         </div>
       )}
 
-      {/* 하단 — 전체 동네딜 진입점.
-          🚑 2026-07-19 (대표 신고 — "이 버튼 이상적인가?"): 기존 to="/group-buy" 는 App 라우트가 홈으로
-          리다이렉트(Navigate to="/")라 눌러도 제자리로 돌아오는 죽은 버튼이었음 → 실제 전체 브라우즈
-          표면인 지도(/map — 리스트+지도+지역/카테고리)로 정정 + 라벨 명확화. */}
+      {/* 하단 — 🏪 2026-08-31 (대표 — "모바일로도 '판매하세요' 가 있어야 하지 않을까? PC버전처럼").
+          ■ 왜 여기인가: PC 는 상단 네비에 이 진입점이 있는데(`DesktopTopNav` — 로고+"에서 판매하세요")
+            **모바일엔 어디에도 없었다.** 매장 사장님이 소비자 홈에서 우리를 처음 볼 때 들어올 문이
+            폰에는 없었다는 뜻이다.
+          ■ 왜 새 줄을 안 만들었나: 이 자리에 있던 "지도에서 전체 동네딜 보기"는 2026-08-30 에
+            상단 [목록|지도] 전환이 생기면서 **같은 곳으로 가는 두 번째 버튼**이 됐다. 그 중복을
+            치우고 그 자리를 쓴다 — 줄은 그대로고 없던 문이 생긴다.
+          ■ 목적지는 `sellerEntryPath()` SSOT: 셀러면 대시보드, 아니면 입점 안내(/partners).
+            2026-08-26 에 PC 에서 겪은 그 문제(아직 셀러가 아닌 사람이 로그인 벽으로 튕김)를 반복하지 않는다. */}
       {!loading && sorted.length > 0 && (
         <div className="px-4 pb-8 text-center">
-          <Link
-            to="/map"
-            className="inline-block px-5 py-3 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
+          <button
+            type="button"
+            onClick={() => navigate(sellerEntryPath())}
+            aria-label="유어딜에서 판매하세요"
+            className="inline-flex items-center gap-1.5 px-5 py-3 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
           >
-            지도에서 전체 동네딜 보기 →
-          </Link>
+            <Store className="w-4 h-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+            <span className="flex items-center gap-1"><UrDealLogo size={13} />에서 판매하세요</span>
+          </button>
         </div>
       )}
     </>
@@ -480,23 +495,43 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
         <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center">
           <SearchX className="w-6 h-6 text-gray-400" aria-hidden="true" />
         </div>
-        <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">
-          {category === 'all' ? '진행 중인 공구가 없어요' : '이 카테고리에 진행 중인 공구가 없어요'}
+        <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">
+          {category === 'all' ? '이 지역엔 아직 진행 중인 딜이 없어요' : '이 카테고리엔 진행 중인 딜이 없어요'}
         </p>
-        {category !== 'all' && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-            대신 다른 인기 공구를 추천드려요
-          </p>
-        )}
-        {category !== 'all' && (
-          <button
-            type="button"
-            onClick={onReset}
-            className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-xs font-bold"
-          >
-            전체 공구 보기
-          </button>
-        )}
+        <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5">
+          {category === 'all' ? '교환권은 지역과 상관없이 바로 살 수 있어요' : '대신 다른 인기 딜을 추천드려요'}
+        </p>
+        {/* 🚪 2026-08-31 (대표 "더 대기업 수준의 완성도"): 여기는 **막다른 길**이었다.
+            `category === 'all'` 이면 문구 한 줄만 있고 다음 행동이 아무것도 없었다 —
+            그리고 그게 데이터가 적은 지금 **신규 사용자가 가장 많이 보는 화면**이다.
+            빈 화면의 값어치는 "없다"고 말하는 데 있지 않고 **갈 곳을 주는 데** 있다.
+            교환권은 지역과 무관하게 항상 재고가 있으므로 실제로 살 수 있는 출구다. */}
+        <div className="flex items-center justify-center gap-2">
+          {category === 'all' ? (
+            <>
+              <Link
+                to="/vouchers"
+                className="ur-btn ur-btn-md bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4"
+              >
+                교환권 보러가기
+              </Link>
+              <Link
+                to="/map"
+                className="ur-btn ur-btn-md border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200 px-4"
+              >
+                지도에서 찾기
+              </Link>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={onReset}
+              className="ur-btn ur-btn-md bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4"
+            >
+              전체 딜 보기
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 인접 카테고리 공구 노출 (전체에서 인기 6개) */}
