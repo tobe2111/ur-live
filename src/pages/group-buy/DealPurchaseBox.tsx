@@ -66,7 +66,7 @@ export default function DealPurchaseBox({
       </div>
       {unitSaving > 0 && (
         <div style={{ fontSize: 12.5, color: 'var(--gbd-ink2)', fontWeight: 600, marginBottom: 14 }}>
-          1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-danger)' }}>{formatNumber(unitSaving)}원</b> 저렴 · 결제 즉시 교환권 발급
+          1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-ink)' }}>{formatNumber(unitSaving)}원</b> 저렴 · 결제 즉시 교환권 발급
         </div>
       )}
 
@@ -81,7 +81,7 @@ export default function DealPurchaseBox({
           </span>
         </div>
         {(discountPct > 0 || unitSaving > 0) && (
-          <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--gbd-danger)', marginTop: 4 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--gbd-ink2)', marginTop: 4 }}>
             {discountPct > 0 && <>{discountPct}% 할인</>}
             {unitSaving > 0 && <> · 1매당 {formatNumber(unitSaving)}원 저렴</>}
           </div>

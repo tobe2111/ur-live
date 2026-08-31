@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { MapPin } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { distanceKm, regionShort, stripStorePrefix } from './utils'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import type { Restaurant } from './types'
@@ -124,7 +124,7 @@ const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLoc, onSe
     >
       {r.image_url ? (
         /* 🚑 2026-07-02 (대표 신고 "전체적으로 느림"): raw 원본(네이버 1MB급) → cfImage 리사이즈(88px@2x) */
-        <img src={cfImage(r.image_url, { width: 176, quality: 85, format: 'auto' }) || r.image_url} alt="" className="w-[88px] h-[88px] rounded-lg object-cover shrink-0" loading="lazy" />
+        <img src={cfImage(r.image_url, { width: 176, quality: 85, format: 'auto' }) || r.image_url} alt="" className="w-[88px] h-[88px] rounded-lg object-cover shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, r.image_url)} />
       ) : (
         <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center shrink-0">
           <span className="text-2xl">🍽️</span>

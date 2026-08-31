@@ -174,7 +174,7 @@ export default function SellerPromoCodesPage() {
         {!showCreate ? (
           <button
             onClick={() => setShowCreate(true)}
-            className="w-full py-3.5 bg-gray-800 text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-md"
+            className="ur-btn ur-btn-lg ur-btn-primary w-full flex items-center justify-center gap-2 shadow-md"
           >
             <Plus className="w-4 h-4" /> 새 할인 코드 발급
           </button>

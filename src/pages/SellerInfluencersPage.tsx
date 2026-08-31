@@ -171,7 +171,7 @@ export default function SellerInfluencersPage() {
           <span className="text-sm font-bold text-gray-900 flex items-center gap-1.5"><Users className="w-4 h-4" /> {selected.size}명 선택</span>
           {contactFee > 0 && <span className="text-[11px] text-gray-500">예상 {formatNumber(contactFee * selected.size)}원</span>}
           <button onClick={() => setProposing(true)}
-            className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand hover:bg-brand-dark text-white text-sm font-bold transition">
+            className="ur-btn ur-btn-md ur-btn-primary ml-auto flex items-center gap-1.5 transition">
             <Send className="w-4 h-4" /> 협업 제안하기
           </button>
         </div>
@@ -290,7 +290,7 @@ function ProposalModal({ count, leadIds, contactFee, onClose, onDone }: {
         </div>
         <div className="p-4 border-t border-gray-100 shrink-0">
           <button onClick={submit} disabled={busy || message.trim().length < 20 || channels.size === 0}
-            className="w-full py-3 rounded-xl bg-brand hover:bg-brand-dark text-white text-sm font-bold disabled:opacity-40 transition">
+            className="ur-btn ur-btn-md ur-btn-block ur-btn-primary">
             {busy ? '접수 중…' : '제안 접수하기'}
           </button>
         </div>

@@ -58,6 +58,32 @@
   .ur-btn-md { height: 2.5rem;   padding-inline: 1.125rem; border-radius: 0.625rem; font-size: 0.875rem; }
   /* 작은 것 — 칩·인라인 액션 */
   .ur-btn-sm { height: 2rem;     padding-inline: 0.8125rem; border-radius: 0.5rem;  font-size: 0.8125rem; }
+  /* 🔘 아이콘 하나만 담는 정사각 변형 (⋯ 더보기, 닫기 등).
+     ⚠️ 이게 없어서 실제로 깨졌다: `ur-btn-md w-9` 로 만들었더니 `padding-inline: 1.125rem`
+        (양쪽 36px)과 폭 36px 이 만나 **내용 폭이 0** 이 되어 아이콘이 사라졌다.
+        높이를 따라 정사각이 되게 하고 좌우 패딩을 0 으로 둔다 — 크기 수식어(sm/md/lg)가 그대로 먹는다. */
+  .ur-btn-icon { padding-inline: 0; aspect-ratio: 1 / 1; }
+  /* 🎨 의미 변형 (2026-08-31 — 대표 *"더 체계적으로 구성할 수는 없나?"*)
+     ■ 왜 만들었나 — 세어 본 값
+       셀러 표면의 주 버튼 **92개가 77개 파일에 흩어져 48가지 모양**으로 있었다.
+       최다 패턴도 5번뿐 — **지배적 패턴이 아예 없다.** 즉 페이지마다 색·모서리·높이·굵기를
+       **각자 새로 정하고 있었다.** 규칙을 문서로 적어도 결국 각자 정한다.
+     ■ 그래서 페이지에서 **결정권을 빼앗는다.**
+       페이지는 `ur-btn ur-btn-md ur-btn-primary` 처럼 **뜻만** 고른다.
+       색·모서리·높이·굵기는 여기서만 정해지므로, 바꿀 일이 생기면 이 파일 한 곳만 고친다.
+     ⚠️ 다크 대응: 대시보드(셀러/어드민/에이전시)는 **항상 라이트**가 대표 확정 정책이라
+        여기서 `dark:` 를 쓰지 않는다. 소비자 표면에서 쓸 때는 호출부가 색을 준다. */
+  .ur-btn-primary   { background: #16181C; color: #fff; }
+  .ur-btn-primary:hover:not(:disabled)   { background: #2C2F35; }
+  .ur-btn-secondary { background: #fff; color: #374151; border-width: 1px; border-color: #E5E7EB; }
+  .ur-btn-secondary:hover:not(:disabled) { background: #F9FAFB; }
+  /* 위험 — 삭제·취소. **빨강은 여기서만 쓴다**(장식으로 쓰면 진짜 경고가 안 보인다). */
+  .ur-btn-danger    { background: #DC2626; color: #fff; }
+  .ur-btn-danger:hover:not(:disabled)    { background: #B91C1C; }
+  /* 조용한 것 — 텍스트만. 취소·닫기처럼 되돌리는 행동. */
+  .ur-btn-ghost     { background: transparent; color: #4B5563; }
+  .ur-btn-ghost:hover:not(:disabled)     { background: #F3F4F6; }
+
   /* 폭 꽉 채우는 변형(모바일 하단 CTA) */
   .ur-btn-block { width: 100%; }
 }
@@ -389,9 +415,9 @@
 .agency-light-theme input, .agency-light-theme textarea, .agency-light-theme select,
 .force-light-theme input, .force-light-theme textarea, .force-light-theme select {
   color-scheme: light;
-  color: #16181b !important;
-  -webkit-text-fill-color: #16181b !important;
-  caret-color: #16181b;
+  color: #16181C !important;
+  -webkit-text-fill-color: #16181C !important;
+  caret-color: #16181C;
 }
 .admin-light-theme input::placeholder, .admin-light-theme textarea::placeholder,
 .seller-light-theme input::placeholder, .seller-light-theme textarea::placeholder,
@@ -406,9 +432,9 @@
 .seller-light-theme input:-webkit-autofill,
 .agency-light-theme input:-webkit-autofill,
 .force-light-theme input:-webkit-autofill {
-  -webkit-text-fill-color: #16181b !important;
+  -webkit-text-fill-color: #16181C !important;
   -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
-  caret-color: #16181b;
+  caret-color: #16181C;
 }
 
 .seller-light-theme .apple-card,
@@ -680,7 +706,7 @@
 input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
 textarea,
 select {
-  color: rgb(17 24 39); /* gray-900 — 라이트 테마 기본 */
+  color: #16181C; /* INK 900 — 라이트 테마 기본 (2026-08-31: 옛 gray-900 은 남색기가 있었다) */
 }
 input::placeholder,
 textarea::placeholder {

@@ -18,6 +18,8 @@ export interface Voucher {
   usage_guide?: string    // 매장이 등록한 사용 가이드 (예: "평일 점심만")
   // 🛡️ 2026-05-25 (A 옵션): KT Alpha 통합 표시
   source?: 'internal' | 'kt_alpha'
+  /** 🎟️ 2026-08-31 지갑 분리: 딜 전용 상품(교환권) 여부 — 어느 보관함 소속인지 판정에 쓴다. */
+  deal_only?: number
   kt_alpha_voucher_order_id?: number
   kt_recipient_phone?: string
   kt_status?: string  // 'sent' | 'processing'

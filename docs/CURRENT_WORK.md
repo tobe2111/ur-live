@@ -5494,16 +5494,21 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 208건 · 최신순 · 이 목록은 자동 생성된다._
+_총 214건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-31**
+- [2026-08-31 — 유어샵 검색창 임계값 · 이미지 폴백 배선 · 셀러 버튼 잔여 5건](handoff/2026-08-31-urshop-search-image-fallback.md)
 - [2026-08-31 — 영입 2% 를 직접 입점 매장에만 (+ 예산 아비터)](handoff/2026-08-31-store-intro-direct-only.md)
 - [2026-08-31 — 어드민 매장 카드에 채널 스위치 + 돈 갈림표](handoff/2026-08-31-store-card-channel.md)
 - [2026-08-31 — 대표 QA 준비: 홍대돈까스 접근 구조 (내가 두 번 헛짚은 자리)](handoff/2026-08-31-qa-setup.md)
+- [2026-08-31 — 운영백서: 숫자를 코드에서 뽑는다](handoff/2026-08-31-ops-handbook.md)
+- [2026-08-31 — 운영 가이드를 읽을 수 있는 문서로](handoff/2026-08-31-ops-guide-reader.md)
 - [원장 정합 알림 — 숫자가 거짓이었다, 그리고 진짜 5건의 정체 (2026-08-31)](handoff/2026-08-31-ledger-mismatch.md)
 - [2026-08-31 — 영입자 지정 UI + **id 공간 불일치 수리**](handoff/2026-08-31-introducer-assign.md)
 - [현금 정산 수수료 — 마진을 상품이 아니라 현금 출구에서 걷는다](handoff/2026-08-31-influencer-cash-fee.md)
+- [2026-08-31 — 교환권은 교환권 페이지에서, 이용권은 이용권 페이지에서 (지갑 분리)](handoff/2026-08-31-gifticon-wallet-split.md)
 - [2026-08-31 — 정산 최소 10만원은 현금에만](handoff/2026-08-31-deal-payout-no-minimum.md)
+- [2026-08-31 — 빌드 산출 CSS 가드를 실제로 도는 자리로 옮김](handoff/2026-08-31-built-css-guard.md)
 - [2026-08-31 — 에이전시 매장영입 1% 폐지 (영입은 하나의 행위)](handoff/2026-08-31-agency-intro-retired.md)
 **2026-08-30**
 - [2026-08-30 — 매장 영입 보상을 딜로 (게이트 OFF 배선)](handoff/2026-08-30-store-intro-deal.md)
@@ -5511,6 +5516,7 @@ _총 208건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-08-30 — 잉크 딥네이비 → 차콜 블랙 전환 + 숙소 상세 갤러리 풀블리드](handoff/2026-08-30-ink-black.md)
 - [2026-08-30 — 인플루언서 제휴 제안서 + 어드민 열람/PDF + taste-skill 도입](handoff/2026-08-30-influencer-proposal-admin.md)
 - [2026-08-30 — 상세 페이지 "AI 티" 제거 (숙소 + 이용권)](handoff/2026-08-30-detail-plainness.md)
+- [2026-08-30 — 상세 페이지 그루폰식 카테고리바(빵부스러기)](handoff/2026-08-30-detail-breadcrumb.md)
 - [2026-08-30 — 디자인 "AI 스러움" 진단 + 1층 수리 (버튼·그림자·포커스)](handoff/2026-08-30-design-ai-slop-audit.md)
 - [2026-08-30 — 자동분 제거 + 딜/현금 선택 존중 (오전 작업 되돌림 포함)](handoff/2026-08-30-deal-only-commission.md)
 - [버튼 체계 + 모서리 위계 (2026-08-30, PR #1240 머지 · #1244 진행)](handoff/2026-08-30-button-radius-system.md)

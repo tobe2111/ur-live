@@ -438,7 +438,7 @@ export default function SellerProductNewPage() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="bg-gray-900 px-8 py-2.5 text-white hover:bg-gray-900"
+                  className="ur-btn ur-btn-md ur-btn-primary"
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
@@ -490,7 +490,7 @@ export default function SellerProductNewPage() {
             type="submit"
             form={FORM_ID}
             disabled={loading}
-            className="flex-[2] bg-gray-900 py-3 text-white hover:bg-gray-900"
+            className="ur-btn ur-btn-lg ur-btn-primary flex-[2]"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

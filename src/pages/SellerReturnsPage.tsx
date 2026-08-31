@@ -188,7 +188,7 @@ export default function SellerReturnsPage() {
                         거절
                       </button>
                       <button disabled={busy === r.id} onClick={() => act(r.id, 'approve')}
-                        className="h-[50px] rounded-xl bg-[#1A1719] text-white text-[14.5px] font-extrabold tracking-[-0.02em] active:bg-black disabled:opacity-50">
+                        className="ur-btn ur-btn-md ur-btn-primary h-[50px] bg-[#1A1719] text-[14.5px] tracking-[-0.02em] disabled:opacity-50">
                         승인
                       </button>
                     </div>
