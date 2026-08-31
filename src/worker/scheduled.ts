@@ -24,7 +24,7 @@ import type { Env } from './types/env';
 import { slotDue } from './cron-slot';
 // 🩹 2026-08-31: 놓친 하루치를 같은 날 안에 만회한다(무료 cron 미발화 + 예산 고갈 대응). 상세는 그 파일 상단.
 import type { SlotSpec } from './cron-slot';
-import { beginCatchup, catchupOpens, claimCatchupJob, type CatchupState } from './cron-catchup';
+import { beginCatchup, catchupOpens, claimCatchupJob, summarizeCatchup, type CatchupState } from './cron-catchup';
 
 // 🛡️ 2026-05-18: handleScheduled (49KB) dynamic import — cron 발생 시만 로드.
 import { runReconciliation } from './cron/reconciliation';
@@ -512,5 +512,15 @@ export async function handleCronScheduled(
       // 🎯 [urads-split Phase E 2026-07-18] 유어애즈 AI 주간 리포트 → ur-ads worker cron("0 0 * * 1")으로
       //   이관(src/worker-ads/index.ts, 주당 1회 멱등 유지) — 메인의 마지막 marketing cron 참조 제거. 재도입=원복.
     }));
+  }
+
+  // 🩹 **만회 회차 한 줄 기록** — 이 기능의 유일한 관측 지점이다.
+  //   만회는 정상인 날엔 아무 흔적도 안 남긴다(밀린 게 없으면 전부 건너뛴다). 그러면
+  //   "돌았는데 할 일이 없었다"와 "아예 안 돌았다"가 **구분되지 않는다** — 이 레포가 반복해
+  //   당한 '조용한 부재' 클래스이고, 하필 그걸 고치려고 만든 기능이 같은 병을 앓았다.
+  //   started=0 skipped=27 이면 "돌았고 밀린 게 없었다"가 화면에서 읽힌다.
+  //   ⏰ 주기는 매시 1회(:55)라 5분 캐리어 식이 아니라 시간당 기준을 신고한다.
+  if (catchup) {
+    ctx.waitUntil(recordCronBeat(env, '__catchup', true, 0, cron, summarizeCatchup(catchup), expectedMaxAgeMinutes('55 * * * *') ?? undefined)); // cron-heartbeat-ok: 작업이 아니라 하트비트 **자체**다(__tick 과 동일 이유)
   }
 }
