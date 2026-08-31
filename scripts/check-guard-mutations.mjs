@@ -6345,6 +6345,28 @@ canvas {
       '두 쿼리가 갈리면 "cron 알림엔 떴는데 어드민 목록엔 없다"가 된다 — 어드민이 지급하려고 ' +
       '들어갔는데 그 사람이 없다. 알림과 목록은 같은 조건이어야 한다.',
   },
+  {
+    name: '🛑 폐지한 에이전시 영입 1% 축이 타입으로 되살아난다',
+    file: 'src/worker/utils/order-commissions.ts',
+    find: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'supplier'",
+    replace: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'agency_intro' | 'supplier'",
+    test: 'src/tests/unit/agency-intro-retired.test.ts',
+    why:
+      '타입에서 뺀 것이 이 폐지의 자물쇠다 — 호출부가 컴파일로 막힌다. 되살아나면 같은 행위(매장 영입)에 ' +
+      '신분별 이중 보상이 돌아오고, 대행 5% 매장에서 유어딜이 0.25% 만 남는 적자 구간이 다시 열린다.',
+  },
+  {
+    name: '🛑 환불 역전만 지워 비대칭이 된다',
+    file: 'src/worker/utils/order-refund.ts',
+    // ⚠️ 이름만으로는 import·호출 두 곳에 걸린다 — 호출 줄로 앵커를 좁힌다.
+    find: "await reverseAgencyStoreIntroOnRefund(DB, orderId, 'order_refund')",
+    replace: '/* 역전 제거 */',
+    test: 'src/tests/unit/agency-intro-retired.test.ts',
+    why:
+      '적립만 없애고 역전까지 지우면 과거·수동 행이 환불돼도 안 돌아온다. ' +
+      '⚠️ 이 주입은 처음에 통과했다 — 가드가 `toContain(이름)` 이라 `_REMOVED` 접미사가 붙어도 ' +
+      '앞부분이 일치했기 때문이다. 호출 형태(`이름(`)로 보도록 고쳤다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

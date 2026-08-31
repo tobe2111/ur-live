@@ -519,16 +519,11 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       })
     } catch (e) { if (import.meta.env?.DEV) console.warn('[gb ledger]', e) }
 
-    // 🛡️ 2026-05-31: 에이전시 입점 매장 commission — 공구 딜 결제도 적립 (이전: payment.routes 카드만
-    //   호출 → 공구는 누락). UNIQUE(order_id,type) 멱등 + introduced_by_agency_id 없으면 noop.
-    // 💸 2026-07-04 [INV-CB F7]: 직접 호출 → 오케스트레이터(only:['agency_intro']) 경유 — 게이트 OFF 면
-    //   동일 헬퍼/인자 위임(행동 불변), ON 이면 이 경로도 예산 캡 적용. 다른 축(영입자 등)은 미실행(현행 유지).
+    // 🛑 2026-08-31: 에이전시 매장영입 1% 폐지(대표 "1%짜리는 아예 없애줘") — 이 자리에 있던
+    //   `creditOrderCommissions(..., { only: ['agency_intro'] })` 를 제거했다. 대행사는 채널
+    //   요율(대행 5%)의 차액으로 보상받으므로 별도 % 를 얹지 않는다. 폐지 시점 실적립 0행.
     if (newOrderId) {
       c.executionCtx?.waitUntil((async () => {
-        try {
-          const { creditOrderCommissions } = await import('../../../worker/utils/order-commissions')
-          await creditOrderCommissions(DB, [{ id: newOrderId, seller_id: Number(product.seller_id), total_amount: totalAmount }], { only: ['agency_intro'] })
-        } catch (e) { if (import.meta.env?.DEV) console.warn('[gb agency intro]', e) }
         // 🎯 2026-07-04 FCFS: 당첨자 결제 완료 마킹(selected→paid, 멱등) — 예비 승계 판단 근거.
         try {
           const { markFcfsPaid } = await import('../../../worker/utils/fcfs-gate')
@@ -1297,13 +1292,8 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
       if (!_saleDeferred) await _saleFx()
     }
 
-    // 🛡️ 2026-05-31: 에이전시 입점 매장 commission — 카드 결제도 적립 (딜 경로와 동일). UNIQUE 멱등.
-    // 💸 2026-07-04 [INV-CB F7]: 직접 호출 → 오케스트레이터(only:['agency_intro']) 경유 — 위 딜 경로와 동일.
+    // 🛑 2026-08-31: 에이전시 매장영입 1% 폐지 — 딜 경로와 동일하게 적립 호출을 제거했다(위 주석 참조).
     c.executionCtx?.waitUntil((async () => {
-      try {
-        const { creditOrderCommissions } = await import('../../../worker/utils/order-commissions')
-        await creditOrderCommissions(DB, [{ id: newOrderId, seller_id: Number(product.seller_id), total_amount: expectedAmount }], { only: ['agency_intro'] })
-      } catch (e) { if (import.meta.env?.DEV) console.warn('[confirm-toss agency intro]', e) }
       // 🎯 2026-07-04 FCFS: 당첨자 결제 완료 마킹(selected→paid, 멱등).
       try {
         const { markFcfsPaid } = await import('../../../worker/utils/fcfs-gate')
