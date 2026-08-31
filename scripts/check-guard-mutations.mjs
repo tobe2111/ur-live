@@ -5507,8 +5507,9 @@ canvas {
   {
     name: '슬롯 cron 이 캐리어 주기로 기록됨(하루 1회 작업이 매일 오탐)',
     file: 'src/worker/scheduled.ts',
-    find: '  const slotCron = (expr: string) => (n: string, t: () => Promise<unknown>) => safeCron(n, t, expectedMaxAgeMinutes(expr) ?? undefined);',
-    replace: '  const slotCron = (_expr: string) => (n: string, t: () => Promise<unknown>) => safeCron(n, t);',
+    // 🩹 2026-08-31: slotCron 이 만회 판정을 품으며 한 줄 → 블록이 됐다. find 를 그 안의 실제 신고 줄로 옮긴다.
+    find: '    return safeCron(n, t, expectedMaxAgeMinutes(expr) ?? undefined);',
+    replace: '    return safeCron(n, t);',
     test: 'src/tests/unit/cron-slot-cadence.test.ts',
     why:
       '소비자 cron 은 5분 캐리어에 얹혀 `slotDue` 로 자기 시각에만 도는데, 하트비트엔 캐리어 식이 기록된다. ' +
@@ -6013,7 +6014,8 @@ canvas {
   {
     name: '🌆 일간 레인 분리가 되돌아감(16개가 한 인보케이션으로)',
     file: 'src/worker/scheduled.ts',
-    find: "  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 10, hour: 18 })) {",
+    // 🩹 2026-08-31: 게이트가 `slotDue(...)` → `slotOpen(spec)`(정시 + 만회)로 바뀌었다.
+    find: "  if (cron === '*/5 * * * *' && slotOpen({ minute: 10, hour: 18 })) {",
     replace: "  if (false) {",
     test: 'src/tests/unit/cron-heartbeat-dispatch.test.ts',
     why:
@@ -6023,7 +6025,9 @@ canvas {
   {
     name: '🌆 분리된 레인에 기록 안 하는 래퍼 주입(그룹 전체가 관측 밖)',
     file: 'src/worker/scheduled.ts',
-    find: "runDailyLane('money', { env, ctx, run: safeCron,",
+    // 🩹 2026-08-31: money 레인이 `slotCron('0 18 * * *')` 를 받는다(만회 틱에서 '이미 돌았나'를
+    //   판단하려면 자기 슬롯을 아는 래퍼여야 한다). 주입은 그대로 '기록 안 하는 래퍼'다.
+    find: "runDailyLane('money', { env, ctx, run: slotCron('0 18 * * *'),",
     replace: "runDailyLane('money', { env, ctx, run: bareRun,",
     test: 'src/tests/unit/cron-heartbeat-dispatch.test.ts',
     why:
