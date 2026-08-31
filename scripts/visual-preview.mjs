@@ -47,6 +47,15 @@ const args = Object.fromEntries(
   }),
 )
 const ROUTE = typeof args.route === 'string' ? args.route : '/u/jiwon1228'
+/**
+ * 🔢 `--pins=N` — 진열대 개수를 바꿔 **경계 동작**을 눈으로 본다.
+ *   2026-08-31 에 유어샵 검색창을 `핀 12개 이상일 때만` 으로 바꿨는데, 라이브에는 12개짜리
+ *   진열대가 하나도 없어 실물로 확인할 방법이 없었다(최다 4개). 경계는 눈으로 봐야 한다.
+ */
+const PINS_N = (() => {
+  const a = process.argv.find((x) => x.startsWith('--pins='))
+  return a ? Math.max(0, parseInt(a.slice('--pins='.length), 10) || 0) : 0
+})()
 const NAME = typeof args.name === 'string' ? args.name : ROUTE.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'page'
 const EXTRA_CSS = typeof args.css === 'string' ? args.css : ''
 const DARK = !!args.dark
@@ -96,6 +105,11 @@ const CURATOR_SEED = {
     pin(106, '망원 한강 게스트하우스 1박', 68000, 85000, 'stay_voucher', '한강게스트하우스', '서울 마포구 망원동', 4.5, 61),
   ],
   linked_seller: null,
+}
+// --pins=N 이면 원본 6개를 순환 복제해 정확히 N 개로 맞춘다(내용이 아니라 **개수**가 검사 대상).
+if (PINS_N > 0) {
+  const base = CURATOR_SEED.pins
+  CURATOR_SEED.pins = Array.from({ length: PINS_N }, (_, i) => ({ ...base[i % base.length], id: 900 + i, product_id: 900 + i }))
 }
 
 const MIME = {

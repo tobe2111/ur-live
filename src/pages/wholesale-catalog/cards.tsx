@@ -4,7 +4,7 @@ import {
   WT, won, comma, discountRate, marginVsRetail,
 } from '../wholesale/wholesale-theme'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { cardGradient } from '@/utils/card-gradient'
 import type { CatalogItem, ReorderItem } from './types'
 
@@ -31,7 +31,7 @@ function ProductImg({ p, className = '' }: { p: CatalogItem; className?: string 
   return (
     <div className="w-full h-full" style={{ background: WT.fill }}>
       {p.image_url
-        ? <img src={cfImage(p.image_url, { width: 400, format: 'auto' }) || p.image_url} alt={p.name} draggable={false} loading="lazy" decoding="async" className={'block w-full h-full object-cover ' + className} />
+        ? <img src={cfImage(p.image_url, { width: 400, format: 'auto' }) || p.image_url} alt={p.name} draggable={false} loading="lazy" decoding="async" className={'block w-full h-full object-cover ' + className} onError={(e) => cfImageOnError(e.currentTarget, p.image_url)} />
         : null}
     </div>
   )
@@ -99,6 +99,7 @@ export const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed,
                 }
               }}
               className="block w-full h-full object-cover"
+              onError={(e) => cfImageOnError(e.currentTarget, p.image_url)}
             />
           )}
         </button>
@@ -202,7 +203,7 @@ export const ReorderCard = memo(function ReorderCard({ r, onOpen, onReorder, onP
     <div onMouseEnter={() => onPrefetch?.(r.id)} onTouchStart={() => onPrefetch?.(r.id)} className="shrink-0 w-[230px] flex flex-col rounded-[13px] bg-white p-3 snap-start" style={{ border: '1px solid ' + WT.line }}>
       <div className="flex gap-3">
         <button onClick={() => onOpen(r.id)} className="w-12 h-12 shrink-0 rounded-xl overflow-hidden" style={{ border: '1px solid ' + WT.line, background: WT.fill }}>
-          {r.image_url && <img src={cfImage(r.image_url, { width: 120, format: 'auto' }) || r.image_url} alt={r.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />}
+          {r.image_url && <img src={cfImage(r.image_url, { width: 120, format: 'auto' }) || r.image_url} alt={r.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={(e) => cfImageOnError(e.currentTarget, r.image_url)} />}
         </button>
         <div className="flex-1 min-w-0">
           <button onClick={() => onOpen(r.id)} className="block text-left text-[13px] font-medium line-clamp-1" style={{ color: WT.ink }}>{r.name}</button>

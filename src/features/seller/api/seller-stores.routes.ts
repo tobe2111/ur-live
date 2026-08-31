@@ -23,7 +23,7 @@ import type { Env } from '@/worker/types/env'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta'
+import { ensureSellerMetaTable, getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta'
 import { ntsValidateBusiness, ntsCheckStatus } from '@/worker/utils/nts-business-verify'
 import { canOperateStore, grantOperator, revokeOperator, isStoreOwner } from '../../../worker/utils/seller-operators'
 import { mergeStoreProfile, loadLatestProductCopy, saveStoreProfileAndPropagate } from '@/worker/utils/store-profile'
@@ -70,6 +70,48 @@ async function resolveActorUserId(c: Ctx): Promise<number | null> {
   }
   return null
 }
+
+// ── 후기 보너스 — 매장이 직접 정한다 (2026-08-31 대표 "매장 사장님이 부담하게끔") ──────
+//   카카오 지도의 별점·리뷰는 **그 매장 자산**이다. 유어딜이 매장 마케팅비를 대신 낼 이유가 없다.
+//   ⚠️ 값을 넣기 전까지는 플랫폼 기본값 그대로다 — 안 만지면 오늘과 동일.
+//   ⚠️ **정산 차감은 아직 안 붙었다**(게이트 review_bonus_owner_funded 기본 OFF, 머니 경로라 별도 세션).
+app.get('/review-bonus', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
+    const { resolveReviewBonus } = await import('../../group-buy/api/review-bonus-funding')
+    const p = await resolveReviewBonus(c.env.DB, sellerId)
+    return c.json({ success: true, data: { amount: p.amount, store_set: p.storeSet, funded_by: p.fundedBy } })
+  } catch (err) {
+    return safeError(c, err, '후기 보너스 설정을 불러오지 못했습니다', '[seller-stores]')
+  }
+})
+
+app.patch('/review-bonus', rateLimit({ action: 'review_bonus_set', max: 30, windowSec: 3600 }), async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
+    const body = await c.req.json<{ amount?: unknown }>().catch(() => ({} as { amount?: unknown }))
+    // null = 매장 설정 해제(플랫폼 기본값으로 되돌림). 없는 필드는 400 — 오타로 해제되지 않게.
+    if (!('amount' in body)) return c.json({ success: false, error: 'amount 를 보내세요 (해제하려면 null).' }, 400)
+    const raw = body.amount
+    let value: string | null = null
+    if (raw !== null) {
+      const n = Number(raw)
+      if (!Number.isInteger(n) || n < 0 || n > 100_000) {
+        return c.json({ success: false, error: '0 이상 100,000 이하의 정수를 입력하세요' }, 400)
+      }
+      value = String(n)
+    }
+    const { REVIEW_BONUS_META_KEY, resolveReviewBonus } = await import('../../group-buy/api/review-bonus-funding')
+    await ensureSellerMetaTable(c.env.DB)
+    await setSellerMeta(c.env.DB, sellerId, { [REVIEW_BONUS_META_KEY]: value })
+    const p = await resolveReviewBonus(c.env.DB, sellerId)
+    return c.json({ success: true, data: { amount: p.amount, store_set: p.storeSet, funded_by: p.fundedBy } })
+  } catch (err) {
+    return safeError(c, err, '후기 보너스 설정을 저장하지 못했습니다', '[seller-stores]')
+  }
+})
 
 // ── GET /fee-context — 현재 매장의 채널·수수료율 (이용권 등록 실수령가 계산용) ──────
 app.get('/fee-context', async (c) => {
