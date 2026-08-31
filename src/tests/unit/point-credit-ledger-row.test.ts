@@ -15,7 +15,7 @@
  *    어긋난 3명의 잔액은 **고치지 않는다** — 머니 교정은 사람이 판단할 일이다.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 
 const SRC = readFileSync('src/worker/utils/point-buckets.ts', 'utf8')
 // repair-schema 는 2026-08-01 에 *데이터*(컬럼 ALTER 목록)와 *로직*(라우트)으로 갈렸다.
@@ -123,30 +123,33 @@ describe('원장 불일치 조사 경로 — 데이터가 없으면 아무도 �
   })
 })
 
-describe('신규 가입 보너스 — 대표 지시로 기본 중단 (2026-08-01 "3000딜 너무 세다")', () => {
-  const BONUS = readFileSync('src/worker/utils/signup-bonus.ts', 'utf8')
-
-  it('금액이 코드에 박혀 있지 않다 (어드민 설정값)', () => {
-    // CLAUDE.md: "수치(%·기간·금액)는 어드민(platform_settings) 조정 대상".
-    expect(BONUS, 'platform_settings 를 읽지 않는다').toContain("key = 'signup_bonus_amount'")
-    expect(/const SIGNUP_BONUS_AMOUNT\s*=\s*\d+/.test(BONUS), '금액이 상수로 하드코딩돼 있다').toBe(false)
+describe('신규 가입 보너스 — 지급 경로 제거 (2026-08-31 대표 "3000원 주는거 없어져야 해")', () => {
+  /**
+   * 2026-08-01 에는 금액을 어드민 설정값으로 옮겨 **0(=중단)** 으로 뒀다. 그런데 그건
+   * **꺼둔 것이지 없앤 것이 아니었다** — 어드민 칸에 숫자를 넣으면 배포 없이 되살아난다.
+   * 대표가 두 번 같은 뜻을 밝혀(08-01 "너무 세다" → 08-31 "없어져야 해") 경로 자체를 걷어냈다.
+   *
+   * ⚠️ 못 막는 것: 다른 이름으로 같은 지급을 새로 만드는 경우. 그건 사람이 리뷰에서 본다.
+   */
+  it('🔴 소비자 가입 보너스 지급 모듈이 존재하지 않는다', () => {
+    expect(existsSync('src/worker/utils/signup-bonus.ts'),
+      '지급 모듈이 되살아났다 — 되살리려면 대표 지시가 있어야 한다').toBe(false)
   })
 
-  it('기본값이 0 이다 = 지급 안 함', () => {
-    expect(BONUS).toContain('const SIGNUP_BONUS_DEFAULT = 0')
-  })
-
-  it('0 이하면 잔액도 원장도 건드리지 않고 즉시 종료한다', () => {
-    // 0 인데 잔액 UPSERT 가 먼저 돌면 "0딜 적립" 행이 쌓인다.
-    const guard = BONUS.indexOf("return { granted: false, reason: 'disabled' }")
-    const upsert = BONUS.indexOf('INSERT INTO user_points')
-    expect(guard, 'disabled 조기 반환이 없다').toBeGreaterThan(0)
-    expect(guard, '잔액 UPSERT 보다 뒤에 있다 — 0딜 적립 행이 생긴다').toBeLessThan(upsert)
-  })
-
-  it('지급 안 하면 UI 보너스 카드도 안 뜬다 (granted:false → ?bonus= 미부착)', () => {
+  it('🔴 카카오 가입 경로가 그 지급을 부르지 않는다', () => {
     const routes = readFileSync('src/features/auth/api/kakao.routes.ts', 'utf8')
-    expect(routes, 'granted 여부와 무관하게 bonus 를 붙이면 0딜 카드가 뜬다').toMatch(/if\s*\(\s*r\.granted/)
+    expect(routes.length, '카카오 라우트를 못 읽었다 — 이 시험이 헛돈다').toBeGreaterThan(1000)
+    expect(routes, 'grantSignupBonus 호출이 되살아났다').not.toMatch(/grantSignupBonus\s*\(/)
+    expect(routes, "`?bonus=` 부착이 되살아났다").not.toMatch(/searchParams\.set\(\s*'bonus'/)
+  })
+
+  it('에이전시 매장영입의 signup_bonus(₩30,000)는 **다른 제도**라 그대로 남아 있다', () => {
+    // 이름만 같다. 소비자 딜이 아니라 에이전시 커미션 행이다 — 같이 지우면 안 된다.
+    const agency = readFileSync('src/worker/utils/agency-store-intro-commission.ts', 'utf8')
+    expect(agency).toContain("'signup_bonus'")
+  })
+
+  it('모달의 보너스 카드는 조건부라 지급이 없으면 안 뜬다', () => {
     const modal = readFileSync('src/components/onboarding/WelcomeOnboardingModal.tsx', 'utf8')
     expect(modal, '모달이 bonusAmount > 0 조건부가 아니다').toContain('bonusAmount > 0')
   })

@@ -69,6 +69,25 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
     return () => window.removeEventListener('keydown', onKey)
   }, [lightbox, step])
 
+  /**
+   * 🎯 2026-08-31 (대표 승인 — "너가 얘기해준 가장 이상적인 방법들로"): 모바일 히어로 프레임.
+   *
+   * ## 왜 3:2 인가, 그리고 왜 스마트 크롭인가
+   * 원래 정사각(1:1)이었다. 대표가 "지금 비율이 가장 이상적일까? 그루폰은 세로가 짧잖아" 물어
+   * **네이버 사진 70장을 직접 쟀다**: 세로가 더 긴 것 37% · 정사각 21% · 4:3 23% · 3:2 11% · 16:9 7%.
+   * **중앙값이 정확히 1:1** 이라, 그루폰처럼 16:9 로 가면 열 장 중 여섯이 위아래로 잘려 나간다.
+   * ⇒ 프레임은 3:2 로 (가격이 첫 화면에 들어올 만큼 짧고 16:9 보다 덜 잘라낸다),
+   *   **자를 위치는 `gravity=auto`** 로 Cloudflare 가 피사체를 찾게 한다. 비율이 제각각인 게
+   *   그때부터 문제가 아니게 된다 — 라이브 실측으로 동작 확인(center 대비 다른 곳을 자른다).
+   *
+   * ⚠️ 프레임을 딜마다 바꾸지 않는다. 높이가 딜마다 다르면 목록→상세가 덜컹거리고 CLS 가 생긴다.
+   * ⚠️ PC(대형/썸네일)는 **아직 그대로**다 — 그쪽은 프로브 `<img>` 와 URL 을 공유해 트래픽 0 을
+   *   유지하는 구조라(아래 주석), 옵션을 한쪽만 바꾸면 요청이 두 배가 된다. 별도로 다룬다.
+   */
+  const HERO_RATIO = 3 / 2
+  const heroUrl = (src: string, w: number) =>
+    cfImage(src, { width: w, height: Math.round(w / HERO_RATIO), fit: 'cover', gravity: 'auto', format: 'auto' }) || src
+
   const bg = (src: string, w: number) => ({
     backgroundColor: '#1A1C21',
     backgroundImage: src ? `url("${cfImage(src, { width: w, format: 'auto' }) || src}")` : undefined,
@@ -115,10 +134,13 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
 
       {/* 📱 모바일 — 기존 스와이프 갤러리(불변). */}
       <div className={`relative lg:hidden`}>
-        <div ref={galRef} onScroll={onGalScroll} className="noscroll" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '1/1', scrollSnapType: 'x mandatory' }}>
+        <div ref={galRef} onScroll={onGalScroll} className="noscroll" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '3/2', scrollSnapType: 'x mandatory' }}>
           {(has ? images : ['']).map((src, i) => (
             <div key={i} role="img" aria-label={alt} className="flex items-center justify-center text-6xl"
-              style={{ flex: '0 0 100%', scrollSnapAlign: 'center', ...bg(src, 900) }}>
+              style={{ flex: '0 0 100%', scrollSnapAlign: 'center',
+                backgroundColor: '#1A1C21',
+                backgroundImage: src ? `url("${heroUrl(src, 900)}")` : undefined,
+                backgroundSize: 'cover', backgroundPosition: 'center' }}>
               {!src && fallback}
             </div>
           ))}
