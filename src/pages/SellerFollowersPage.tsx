@@ -169,13 +169,13 @@ export default function SellerFollowersPage() {
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => navigate('/seller/notify-followers')}
-            className="py-3.5 bg-gray-800 hover:opacity-95 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+            className="ur-btn ur-btn-lg ur-btn-primary hover:opacity-95 flex items-center justify-center gap-2"
           >
             <Megaphone className="w-4 h-4" /> 단골에게 알림
           </button>
           <button
             onClick={() => navigate('/seller/promo-codes')}
-            className="py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl text-sm font-bold"
+            className="ur-btn ur-btn-lg ur-btn-primary"
           >
             할인 코드 →
           </button>

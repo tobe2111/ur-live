@@ -336,7 +336,7 @@ export default function SellerOrdersPage() {
           actions={
             <Button
               onClick={exportToCSV}
-              className="h-9 bg-gray-900 px-3 text-xs text-white hover:bg-gray-900"
+              className="ur-btn ur-btn-md ur-btn-primary"
             >
               <Download className="mr-1.5 h-3.5 w-3.5" />
               {t('seller.csvDownload')}

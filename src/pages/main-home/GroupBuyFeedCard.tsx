@@ -18,7 +18,8 @@ import { canonicalDetailPath } from '@/shared/product-flow'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import { stripStorePrefix } from '@/utils/deal-title'
 import StarRating from '@/components/deal/StarRating'
-import { Utensils, Scissors, BedDouble, Ticket, Dumbbell, PawPrint, PartyPopper, Gift, Star, type LucideIcon } from 'lucide-react'
+import { Star } from 'lucide-react'
+import { dealCategoryMeta } from '@/shared/deal-category-icon'
 import type { FcfsInfo } from '@/features/group-buy/useFcfs'
 import type { Product } from './types'
 
@@ -34,15 +35,6 @@ import type { Product } from './types'
  *   OS 와 무관하게 같은 화면이 된다. **개념이 일반적인 것들**(식사·숙소·반려…)이므로
  *   lucide 를 그대로 쓴다 — 직접 그리는 것은 유어샵·동네딜처럼 *유어딜에만 있는 개념*에만.
  */
-const CATEGORY_META: Record<string, { Icon: LucideIcon; label: string }> = {
-  meal_voucher:     { Icon: Utensils,     label: '식사' },
-  beauty_voucher:   { Icon: Scissors,     label: '뷰티' },
-  stay_voucher:     { Icon: BedDouble,    label: '숙소' },
-  etc_voucher:      { Icon: Ticket,       label: '기타' },
-  health_voucher:   { Icon: Dumbbell,     label: '건강' },
-  pet_voucher:      { Icon: PawPrint,     label: '반려' },
-  activity_voucher: { Icon: PartyPopper,  label: '액티비티' },
-}
 
 interface FeedCardProduct extends Product {
   /* 🏷️ 2026-07-19 (대표 UI v2 P2): 제목 매장명 프리픽스 제거용 — 리스트 API 가 이미 내려줌 */
@@ -175,7 +167,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
   const brandIcon = p.brand_icon_url || p.gc_brand_icon_url || null
   // 카테고리도 동일 — voucher 면 gc.goods_type_detail 사용.
   const rawCategory = p.category && p.category !== 'voucher' ? p.category : (p.gc_goods_type_detail || p.category || 'etc_voucher')
-  const cat = CATEGORY_META[rawCategory] || { Icon: Gift, label: rawCategory }
+  const cat = dealCategoryMeta(rawCategory)
   const price = p.current_price ?? p.price ?? 0
   const originalPrice = p.original_price ?? 0
   // 💸 할인율 — 🐛 2026-08-19 (대표 신고 "할인율도 나타나야 할 것 같다"): 이전엔 `p.discount_rate ?? 계산`

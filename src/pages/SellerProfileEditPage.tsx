@@ -392,7 +392,7 @@ export default function SellerProfileEditPage() {
                 <a
                   href={`/s/${profile.id}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors text-[13px] font-medium"
+                  className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-2 transition-colors text-[13px]"
                 >
                   <ExternalLink className="h-4 w-4" />
                   {t('seller.viewPublicPage')}
@@ -706,7 +706,7 @@ export default function SellerProfileEditPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex-1 py-4 px-6 bg-brand text-white rounded-xl hover:bg-brand-dark transition-colors text-[15px] font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="ur-btn ur-btn-lg ur-btn-primary flex-1 transition-colors text-[15px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <>
