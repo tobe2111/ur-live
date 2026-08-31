@@ -118,8 +118,7 @@ const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
 const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
-// 🎟️ 2026-08-31 (대표 — 지갑 분리): 교환권(기프티콘) 보관함. 이용권 지갑(/my-vouchers)과 별도 페이지.
-const MyGifticonsPage = lazy(() => import('./pages/MyGifticonsPage'))
+const MyGifticonsPage = lazy(() => import('./pages/MyGifticonsPage'))  // 🎟️ 2026-08-31 지갑 분리 — 교환권 보관함
 const MyStorePage = lazy(() => import('./pages/MyStorePage'))
 const StoreScanPage = lazy(() => import('./pages/StoreScanPage'))
 const InfluencerSettlementPage = lazy(() => import('./pages/InfluencerSettlementPage'))
@@ -888,11 +887,7 @@ function AppContent() {
                 <MyVouchersPage />
               </ProtectedRoute>
             } />
-            <Route path="/my-gifticons" element={
-              <ProtectedRoute requireUser>
-                <MyGifticonsPage />
-              </ProtectedRoute>
-            } />
+            <Route path="/my-gifticons" element={<ProtectedRoute requireUser><MyGifticonsPage /></ProtectedRoute>} />
             {/* 🏪 2026-06-22 사업자 유저 경량 '내 매장'(원장+분쟁) — 풀 셀러 대시보드 대신 앱 내. */}
             <Route path="/my-store" element={
               <ProtectedRoute requireUser>

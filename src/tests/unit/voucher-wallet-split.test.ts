@@ -80,8 +80,12 @@ describe('③ 배선 — 두 페이지가 서로의 것을 담지 않는다', ()
     expect(wallet).not.toContain('kt_alpha')
     expect(gifts).not.toContain('kt_alpha')
   })
-  it('카탈로그(/vouchers)에서 보관함으로 가는 길이 있다', () => {
-    expect(strip(read('src/pages/VouchersPage.tsx'))).toContain("navigate('/my-gifticons')")
+  it('카탈로그(/vouchers)에서 보관함으로 가는 길이 있다 — 모바일 헤더 + PC 레일', () => {
+    // 진입점은 파일 크기 래칫 때문에 컴포넌트로 분리돼 있다. 목적지와 배선을 함께 본다.
+    expect(strip(read('src/pages/vouchers/GifticonBoxEntry.tsx'))).toContain("navigate('/my-gifticons')")
+    const page = strip(read('src/pages/VouchersPage.tsx'))
+    expect(page).toMatch(/<VoucherHeaderActions\b/)
+    expect(page).toMatch(/<GifticonBoxRailRow\b/)
   })
   it('라우트가 등록돼 있고 몰 슬러그로 선점되지 않는다', () => {
     expect(strip(read('src/App.tsx'))).toContain('path="/my-gifticons"')

@@ -83,6 +83,16 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '교환권 페이지에서 보관함으로 가는 길이 사라진다',
+    file: 'src/pages/VouchersPage.tsx',
+    find: '<VoucherHeaderActions />',
+    replace: '',
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '산 자리(교환권 카탈로그)에서 보관함으로 가는 유일한 모바일 진입점이다. 사라져도 화면은 멀쩡하고 ' +
+      '"내가 산 교환권을 못 찾는" 상태만 남는다 — 이 분리 이전의 문제로 그대로 되돌아간다.',
+  },
+  {
     name: '지갑이 다크 모드에서 흰 배경 + 흰 글자가 된다',
     file: 'src/components/wallet/WalletAtoms.tsx',
     find: 'bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white',

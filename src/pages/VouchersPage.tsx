@@ -16,7 +16,7 @@ import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'rea
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Gift, ArrowRight, ChevronDown, ShoppingBag, Wallet, ChevronRight } from 'lucide-react'
+import { Gift, ArrowRight, ChevronDown, ShoppingBag } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🎟️ 2026-07-10 (대표 결정): 일반상품(쇼핑) 노출은 SHOPPING_TAB_HIDDEN 게이트 — 교환권은 유지.
 import { SHOPPING_TAB_HIDDEN, TOPUP_DISABLED } from '@/shared/feature-flags'
@@ -26,6 +26,7 @@ import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 // 🖥️ 2026-07-18 (교환권 PC 2단 분리): 카드/행 + VoucherProduct 타입은 ./vouchers/shared 로 추출(파일크기 래칫).
 import { VoucherCard, VoucherRow, BrandChip, getCategoryIcon, type VoucherProduct } from './vouchers/shared'
+import { VoucherHeaderActions, GifticonBoxRailRow } from './vouchers/GifticonBoxEntry'
 import { SortMenu } from '@/components/ui/sort-menu'
 import BrowseProductCard from './browse/BrowseProductCard'
 import type { Product } from './browse/types'
@@ -548,16 +549,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               </span>
             </button>
 
-            {/* 🎟️ 2026-08-31 (지갑 분리): 구매한 교환권은 /my-gifticons 에 쌓인다 — 카탈로그에서 바로 진입. */}
-            <button
-              type="button"
-              onClick={() => navigate('/my-gifticons')}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-[#2C2F35] text-left hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
-            >
-              <Wallet className="w-[18px] h-[18px] shrink-0 text-gray-500 dark:text-gray-400" strokeWidth={1.8} />
-              <span className="flex-1 text-[13px] font-bold text-gray-900 dark:text-white">{t('voucher.myGifticons', { defaultValue: '내 교환권' })}</span>
-              <ChevronRight className="w-4 h-4 shrink-0 text-gray-300 dark:text-gray-600" />
-            </button>
+            <GifticonBoxRailRow />
 
             {/* 카테고리 — 세로 리스트 */}
             {sections.length > 0 && (
@@ -712,18 +704,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 )
               })}
             </div>
-            {/* 🎟️ 2026-08-31 (대표 "교환권은 교환권 페이지에서 보게"): 산 곳에서 바로 보관함으로 —
-                구매한 교환권은 이제 이용권 지갑이 아니라 /my-gifticons 에 쌓인다.
-                👆 2026-07-29 (UX 실측): 탭 타깃이 28×28 이었다 — iOS HIG 44pt 미만. 아이콘 크기는 그대로 두고 패딩만. */}
-            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
-              <button onClick={() => navigate('/my-gifticons')}
-                className="px-2.5 min-h-[44px] flex items-center text-[13px] font-bold text-gray-900 dark:text-white active:opacity-60">
-                {t('voucher.myBox', { defaultValue: '보관함' })}
-              </button>
-              <button onClick={() => navigate('/search?scope=exchange')} aria-label="검색" className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center">
-                <Search className="w-5 h-5 text-gray-900 dark:text-white" />
-              </button>
-            </div>
+            <VoucherHeaderActions />
           </div>
         </div>
       )}
