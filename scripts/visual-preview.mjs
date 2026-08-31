@@ -61,10 +61,23 @@ const HEIGHT = Number(args.height) || 1200
 const AUTH = typeof args.auth === 'string' ? args.auth : ''
 
 /** 유어샵(`/u/:handle`) 시드 — 실제 CuratorPageResponse 모양. */
-const pin = (id, name, price, was, category) => ({
+/**
+ * ⚠️ 2026-08-31 — **이 팩토리가 얇아서 오진이 났다.** `avg_rating`·`discount_rate`·
+ *   `restaurant_name` 이 빠져 있어 유어샵 카드가 2줄로 렌더됐고, 나는 그걸 보고
+ *   "유어샵 카드가 홈보다 정보가 적다" 고 대표에게 보고할 뻔했다. 실제로는
+ *   **같은 `GroupBuyFeedCard`** 이고(2026-08-27 통합), 줄이 준 건 데이터가 없어서였다.
+ *   ⇒ 픽스처는 **서버가 실제로 주는 필드 전부**를 담아야 한다. 얇은 픽스처는
+ *      "없는 결함"을 만들어 낸다 — 이 세션에서만 세 번 그럴 뻔했다.
+ */
+const pin = (id, name, price, was, category, merchant, addr, rating, reviews) => ({
   id, product_id: id, position: id, note: null, click_count: 0,
   product_name: name, image_url: null, thumbnail: null,
   price, original_price: was, category, is_active: 1, commission_rate: 5,
+  discount_rate: was ? Math.round((1 - price / was) * 100) : 0,
+  dominant_color: '#E8DED6',
+  avg_rating: rating, review_count: reviews, sold_count: 0,
+  restaurant_name: merchant, restaurant_address: addr,
+  seller_id: 1, deal_only: 0,
 })
 const CURATOR_SEED = {
   success: true,
@@ -75,12 +88,12 @@ const CURATOR_SEED = {
     linkshop_show_recommend: 1,
   },
   pins: [
-    pin(101, '연남 이자카야 2인 코스', 38000, 53000, 'meal_voucher'),
-    pin(102, '망원 베이커리 3종 세트', 12900, 15000, 'meal_voucher'),
-    pin(103, '합정 헤어 커트 이용권', 25000, null, 'beauty_voucher'),
-    pin(104, '성산동 필라테스 5회권', 89000, 114000, 'etc_voucher'),
-    pin(105, '연희동 로스터리 원두 200g', 18000, null, 'meal_voucher'),
-    pin(106, '망원 한강 게스트하우스 1박', 68000, 85000, 'stay_voucher'),
+    pin(101, '연남 이자카야 2인 코스', 38000, 53000, 'meal_voucher', '토리이자카야', '서울 마포구 연남동', 4.8, 132),
+    pin(102, '망원 베이커리 3종 세트', 12900, 15000, 'meal_voucher', '망원제빵소', '서울 마포구 망원동', 4.7, 96),
+    pin(103, '합정 헤어 커트 이용권', 25000, null, 'beauty_voucher', '살롱드합정', '서울 마포구 합정동', 4.9, 211),
+    pin(104, '성산동 필라테스 5회권', 89000, 114000, 'etc_voucher', '코어필라테스', '서울 마포구 성산동', 4.6, 48),
+    pin(105, '연희동 로스터리 원두 200g', 18000, null, 'meal_voucher', '연희로스터리', '서울 서대문구 연희동', 4.8, 73),
+    pin(106, '망원 한강 게스트하우스 1박', 68000, 85000, 'stay_voucher', '한강게스트하우스', '서울 마포구 망원동', 4.5, 61),
   ],
   linked_seller: null,
 }
