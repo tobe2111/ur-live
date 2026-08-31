@@ -42,7 +42,7 @@ export default function AffiliatePage() {
         <div className="ur-content-narrow px-4 lg:px-8 py-5 space-y-4">
 
           {/* 히어로 카드 */}
-          <div className="bg-gradient-to-br from-gray-900 to-gray-900 rounded-2xl p-5 text-white">
+          <div className="bg-gray-900 rounded-2xl p-5 text-white">
             <div className="flex items-center gap-2 mb-4">
               <Gift className="w-5 h-5" />
               <span className="text-sm font-bold opacity-90">{t('affiliate.earnHero')}</span>
@@ -107,7 +107,7 @@ export default function AffiliatePage() {
                 {data.share_url}
               </div>
               <button onClick={() => copyLink(data.share_url)}
-                className="px-5 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 active:scale-95">
+                className="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 active:scale-95">
                 <Copy className="w-3.5 h-3.5" /> {t('affiliate.copy')}
               </button>
             </div>

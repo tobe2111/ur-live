@@ -5,16 +5,21 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
+import { SearchX, Flame, Timer, Tag, Clock, Store } from 'lucide-react'
+import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
+import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
 import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from '@/hooks/queries'
 import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
+import UrDealLogo from '@/components/brand/UrDealLogo'
+import { sellerEntryPath } from '@/utils/seller-entry'
 import type { Product } from './types'
 import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-regions'
 import { addressInRegion, type RegionRef } from '@/shared/constants/region-slugs'
@@ -51,20 +56,32 @@ function discountOf(p: FeedProduct): number {
   return orig > price && orig > 0 ? Math.round(((orig - price) / orig) * 100) : 0
 }
 
-const CATEGORIES = [
-  { key: 'all',             label: '전체' },
-  { key: 'meal_voucher',    label: '🍽️ 식사' },
-  { key: 'stay_voucher',    label: '🏨 숙소' },
-  { key: 'beauty_voucher',  label: '💇 뷰티' },
-  { key: 'etc_voucher',     label: '🎯 기타' },
-] as const
+/**
+ * 🏷️ 카테고리는 **`DEAL_CATS` 한 표만 읽는다** (2026-08-30).
+ *
+ *   ⚠️ 이 화면이 자기 표를 따로 갖고 있어서 **같은 분류가 한 화면에 두 번, 다르게** 떴다 —
+ *      상단 탭은 `전체·식사·미용·숙소·기타`, 바로 아래 칩은 `전체·식사·숙소·뷰티·기타`.
+ *      **같은 것을 두 이름(미용/뷰티)으로 부르고 순서도 달랐다.** 사용자에겐 두 분류
+ *      체계가 있는 것처럼 보이고, 그게 "조립한 화면" 인상의 큰 몫이다.
+ *   🩸 더 뼈아픈 건 `PcHomeRail` 이 자기 주석에 *"카테고리 라벨 SSOT — 문구가 갈리면
+ *      반드시 어긋난다"* 고 **미리 적어 뒀는데도** 두 번째 표가 생겨 그대로 어긋난 것이다.
+ *      SSOT 는 선언이 아니라 **다른 표가 없을 때** 성립한다.
+ */
+const CATEGORIES = DEAL_CATS
 
-const SORTS = [
-  { key: 'popular',  label: '🔥 인기순' },
-  { key: 'deadline', label: '⏰ 마감임박' },
-  { key: 'discount', label: '🏷️ 할인율' },
-  { key: 'newest',   label: '🆕 최신순' },
-] as const
+/**
+ * 🖊️ 2026-08-30: 이모지 라벨 → 선 아이콘 + **공용 `SortMenu` 로 통일**.
+ *   이 화면만 네이티브 `<select>` 를 쓰고 있었다 — 그래서 라벨에 SVG 를 못 넣어 이모지가
+ *   박혀 있었고, 동시에 같은 일을 하는 컨트롤이 앱에 두 종류가 되었다(교환권·쇼핑·공구는
+ *   전부 `SortMenu`). `sort-menu.tsx` 의 주석이 스스로 밝히듯 그 컴포넌트의 존재 이유가
+ *   "네이티브 select 대체" 인데, 정작 홈이 예외로 남아 있었다.
+ */
+const SORTS: Array<SortOptionItem<'popular' | 'deadline' | 'discount' | 'newest'>> = [
+  { key: 'popular',  label: '인기순',   Icon: Flame },
+  { key: 'deadline', label: '마감임박', Icon: Timer },
+  { key: 'discount', label: '할인율',   Icon: Tag },
+  { key: 'newest',   label: '최신순',   Icon: Clock },
+]
 
 // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): 'near' = userLoc 기준 거리순(내부 SORTS 칩엔 없음 — PcHomePage 가 구동).
 type SortKey = typeof SORTS[number]['key'] | 'near'
@@ -113,6 +130,7 @@ export default function GroupBuyFeed({
   // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): sort='near' 일 때 이 좌표 기준 거리순 정렬(좌표 없는 딜은 뒤로).
   userLoc?: { lat: number; lng: number } | null
 } = {}) {
+  const navigate = useNavigate()
   const [categoryState, setCategoryState] = useState<CategoryKey>('all')
   const [sortState, setSortState] = useState<SortKey>('popular')
   const category = categoryProp ?? categoryState
@@ -303,7 +321,15 @@ export default function GroupBuyFeed({
 
       {/* 카테고리 칩 — sticky 한 단계 아래 (헤더는 페이지에서 sticky 처리).
           🖥️ PC 홈에선 좌측 레일이 카테고리를 담당 → 내부 칩 숨김. */}
-      {!pc && (
+      {/* 🧹 2026-08-30 (대표 — "카테고리 UI 디자인이 문제"): 칩 행은 **부모가 카테고리를
+          안 가질 때만** 그린다.
+          🩸 이전엔 `!pc` 만 보고 그려서, 모바일 홈에서 카테고리가 **두 번** 떴다 —
+             위에 `MobileHomePage` 의 아이콘 탭(전체·식사·미용·숙소·기타)이 있고
+             바로 아래 같은 것이 pill 칩으로 또 있었다. 부모는 `category` +
+             `onCategoryChange` 로 이미 그 컨트롤을 **소유**하고 있었으므로,
+             이 안의 칩은 처음부터 그 화면에선 군더더기였다.
+          ⇒ 라벨을 맞추는 걸로는 부족했다. 중복은 **컨트롤 자체**였다. */}
+      {!pc && !onCategoryChange && (
       <div className="bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35] sticky top-12 z-10">
         <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto no-scrollbar">
           {CATEGORIES.map(c => {
@@ -312,12 +338,13 @@ export default function GroupBuyFeed({
               <button
                 key={c.key}
                 onClick={() => setCategory(c.key)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
                   active
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
                     : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
                 }`}
               >
+                {c.key !== 'all' && <c.icon className="w-3.5 h-3.5" aria-hidden="true" />}
                 {c.label}
               </button>
             )
@@ -326,20 +353,15 @@ export default function GroupBuyFeed({
       </div>
       )}
 
-      {/* 정렬 옵션 + 카운트 — 🖥️ PC 홈에선 정렬칩이 대신 구동 → 숨김. */}
-      {!pc && (
-      <div className="flex items-center justify-between px-4 py-2.5 text-[12px] text-gray-600 dark:text-gray-400">
-        <span>{loading ? '불러오는 중…' : `${sorted.length}개 공구`}</span>
-        <select
-          value={sort}
-          onChange={e => setSort(e.target.value as SortKey)}
-          aria-label="공구 정렬 기준"
-          className="bg-transparent border-0 text-[12px] font-bold text-gray-900 dark:text-white focus:outline-none cursor-pointer"
-        >
-          {SORTS.map(s => (
-            <option key={s.key} value={s.key}>{s.label}</option>
-          ))}
-        </select>
+      {/* 정렬 옵션 + 카운트 — 🖥️ PC 홈에선 정렬칩이 대신 구동 → 숨김.
+          🔢 2026-08-31: 0 일 때 "0개" 를 굳이 보여주지 않는다. 바로 아래 빈 상태가 같은 말을
+          더 잘 하고 있어 **같은 사실을 두 번** 말하던 자리였다(대기업 앱은 0을 세지 않는다). */}
+      {/* 🔇 정렬할 것이 없으면 정렬도 내린다. 카운트를 감추고 나니 이 알약만 오른쪽에
+          홀로 떠서 **빈 줄 하나**처럼 보였다 — 컨트롤은 쓸 데가 있을 때만 자리를 갖는다. */}
+      {!pc && (loading || sorted.length > 0) && (
+      <div className="flex items-center justify-between px-4 py-2.5 text-[12px] text-gray-500 dark:text-gray-400">
+        <span>{loading ? '불러오는 중…' : `딜 ${sorted.length}개`}</span>
+        <SortMenu value={sort as typeof SORTS[number]['key']} options={SORTS} onChange={(v) => setSort(v)} />
       </div>
       )}
 
@@ -416,18 +438,26 @@ export default function GroupBuyFeed({
         </div>
       )}
 
-      {/* 하단 — 전체 동네딜 진입점.
-          🚑 2026-07-19 (대표 신고 — "이 버튼 이상적인가?"): 기존 to="/group-buy" 는 App 라우트가 홈으로
-          리다이렉트(Navigate to="/")라 눌러도 제자리로 돌아오는 죽은 버튼이었음 → 실제 전체 브라우즈
-          표면인 지도(/map — 리스트+지도+지역/카테고리)로 정정 + 라벨 명확화. */}
+      {/* 하단 — 🏪 2026-08-31 (대표 — "모바일로도 '판매하세요' 가 있어야 하지 않을까? PC버전처럼").
+          ■ 왜 여기인가: PC 는 상단 네비에 이 진입점이 있는데(`DesktopTopNav` — 로고+"에서 판매하세요")
+            **모바일엔 어디에도 없었다.** 매장 사장님이 소비자 홈에서 우리를 처음 볼 때 들어올 문이
+            폰에는 없었다는 뜻이다.
+          ■ 왜 새 줄을 안 만들었나: 이 자리에 있던 "지도에서 전체 동네딜 보기"는 2026-08-30 에
+            상단 [목록|지도] 전환이 생기면서 **같은 곳으로 가는 두 번째 버튼**이 됐다. 그 중복을
+            치우고 그 자리를 쓴다 — 줄은 그대로고 없던 문이 생긴다.
+          ■ 목적지는 `sellerEntryPath()` SSOT: 셀러면 대시보드, 아니면 입점 안내(/partners).
+            2026-08-26 에 PC 에서 겪은 그 문제(아직 셀러가 아닌 사람이 로그인 벽으로 튕김)를 반복하지 않는다. */}
       {!loading && sorted.length > 0 && (
         <div className="px-4 pb-8 text-center">
-          <Link
-            to="/map"
-            className="inline-block px-5 py-3 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
+          <button
+            type="button"
+            onClick={() => navigate(sellerEntryPath())}
+            aria-label="유어딜에서 판매하세요"
+            className="inline-flex items-center gap-1.5 px-5 py-3 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
           >
-            지도에서 전체 동네딜 보기 →
-          </Link>
+            <Store className="w-4 h-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+            <span className="flex items-center gap-1"><UrDealLogo size={13} />에서 판매하세요</span>
+          </button>
         </div>
       )}
     </>
@@ -459,24 +489,49 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
   return (
     <div className="px-4 pt-2 pb-8">
       <div className="py-10 text-center">
-        <p className="text-4xl mb-3">🤷</p>
-        <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">
-          {category === 'all' ? '진행 중인 공구가 없어요' : '이 카테고리에 진행 중인 공구가 없어요'}
+        {/* 🏷️ 2026-08-30: 어깨 으쓱 이모지(🤷) → 선 아이콘.
+            이모지 빈 화면은 "아직 안 만든 자리"처럼 읽힌다 — 실제로는 정상 상태인데도.
+            같은 화면의 '내 주변 지도로 보기' 원형 처리와 같은 언어로 맞춘다. */}
+        <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center">
+          <SearchX className="w-6 h-6 text-gray-400" aria-hidden="true" />
+        </div>
+        <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">
+          {category === 'all' ? '이 지역엔 아직 진행 중인 딜이 없어요' : '이 카테고리엔 진행 중인 딜이 없어요'}
         </p>
-        {category !== 'all' && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-            대신 다른 인기 공구를 추천드려요
-          </p>
-        )}
-        {category !== 'all' && (
-          <button
-            type="button"
-            onClick={onReset}
-            className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-xs font-bold"
-          >
-            전체 공구 보기
-          </button>
-        )}
+        <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5">
+          {category === 'all' ? '교환권은 지역과 상관없이 바로 살 수 있어요' : '대신 다른 인기 딜을 추천드려요'}
+        </p>
+        {/* 🚪 2026-08-31 (대표 "더 대기업 수준의 완성도"): 여기는 **막다른 길**이었다.
+            `category === 'all'` 이면 문구 한 줄만 있고 다음 행동이 아무것도 없었다 —
+            그리고 그게 데이터가 적은 지금 **신규 사용자가 가장 많이 보는 화면**이다.
+            빈 화면의 값어치는 "없다"고 말하는 데 있지 않고 **갈 곳을 주는 데** 있다.
+            교환권은 지역과 무관하게 항상 재고가 있으므로 실제로 살 수 있는 출구다. */}
+        <div className="flex items-center justify-center gap-2">
+          {category === 'all' ? (
+            <>
+              <Link
+                to="/vouchers"
+                className="ur-btn ur-btn-md bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4"
+              >
+                교환권 보러가기
+              </Link>
+              <Link
+                to="/map"
+                className="ur-btn ur-btn-md border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200 px-4"
+              >
+                지도에서 찾기
+              </Link>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={onReset}
+              className="ur-btn ur-btn-md bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4"
+            >
+              전체 딜 보기
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 인접 카테고리 공구 노출 (전체에서 인기 6개) */}

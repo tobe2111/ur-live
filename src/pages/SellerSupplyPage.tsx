@@ -165,7 +165,7 @@ export default function SellerSupplyPage() {
             <span className="flex items-center gap-1.5">
               <Package className="w-4 h-4" /> {t('seller.myRequestList')}
               {approvedCount > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-green-500 text-white text-xs rounded-full">{approvedCount}</span>
+                <span className="ml-1 px-1.5 py-0.5 bg-gray-900 text-white text-xs rounded-full">{approvedCount}</span>
               )}
             </span>
           </button>
@@ -189,7 +189,7 @@ export default function SellerSupplyPage() {
               </div>
               <button
                 onClick={() => setSearch(searchInput)}
-                className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700"
+                className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-900"
               >
                 {t('common.search')}
               </button>
@@ -299,7 +299,7 @@ export default function SellerSupplyPage() {
                       {product.request_status === null && (
                         <button
                           onClick={() => { setRequestModal(product); setSellerMemo('') }}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-lg hover:bg-purple-700"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-900"
                         >
                           <Plus className="w-3.5 h-3.5" /> {t('seller.sampleRequest')}
                         </button>
@@ -338,7 +338,7 @@ export default function SellerSupplyPage() {
                 <p className="text-sm text-gray-400 mb-4">{t('seller.noSampleRequests')}</p>
                 <button
                   onClick={() => setActiveTab('catalog')}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 mx-auto"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-900 mx-auto"
                 >
                   <Truck className="w-4 h-4" /> {t('seller.browseSupplyProducts')}
                 </button>
@@ -381,7 +381,7 @@ export default function SellerSupplyPage() {
                       <div className="flex-shrink-0">
                         <button
                           onClick={() => { setRegisterModal(req); setSellerPrice(req.retail_price?.toString() || '') }}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-900"
                         >
                           <Plus className="w-3.5 h-3.5" /> {t('seller.storeRegister')}
                         </button>
@@ -430,7 +430,7 @@ export default function SellerSupplyPage() {
               <button
                 onClick={handleSampleRequest}
                 disabled={submitting}
-                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-gray-900 text-white hover:bg-gray-900 disabled:opacity-50"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Truck className="w-4 h-4" />}
                 {t('seller.submitRequest')}
@@ -478,7 +478,7 @@ export default function SellerSupplyPage() {
               <button
                 onClick={handleRegister}
                 disabled={registering || !sellerPrice || Number(sellerPrice) <= 0}
-                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-gray-900 text-white hover:bg-gray-900 disabled:opacity-50"
               >
                 {registering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
                 {t('seller.registerProductBtn')}

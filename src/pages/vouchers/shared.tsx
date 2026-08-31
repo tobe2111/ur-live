@@ -6,7 +6,7 @@
  */
 import { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Gift } from 'lucide-react'
+import { BookOpen, Clapperboard, Coffee, Croissant, Drumstick, Fuel, Gamepad2, Gift, HardDrive, Home, IceCreamCone, Music, Pizza, Plug, RadioTower, Sandwich, Shirt, ShoppingBag, ShoppingCart, Smartphone, Soup, Sparkle, Store, Ticket, Utensils, Wrench, type LucideIcon } from 'lucide-react'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
@@ -280,63 +280,39 @@ export const BrandChip = memo(function BrandChip({
   )
 })
 
-// 📦 2026-08-17 (file-size 래칫): VouchersPage 에서 이동 — 카테고리 이모지 맵(내용 불변 + 라이브 실측 14종).
-// 🛡️ 2026-05-19: KT Alpha 카테고리명 → 사용자 친화 이모지 매핑.
-//   DB의 category 값 (예: '편의점/마트') 을 그대로 키로 사용. 매핑 없으면 🎁 default.
-export const CATEGORY_ICONS: Record<string, string> = {
-  '편의점/마트': '🏪',
-  '편의점': '🏪',
-  '마트/슈퍼': '🏪',
-  '카페/베이커리': '☕',
-  '카페': '☕',
-  '베이커리': '🥐',
-  '외식/배달': '🍔',
-  '외식': '🍔',
-  '패스트푸드': '🍟',
-  '한식': '🍚',
-  '양식': '🍝',
-  '치킨/피자': '🍕',
-  '치킨': '🍗',
-  '피자': '🍕',
-  '백화점/쇼핑': '🛍️',
-  '백화점': '🛍️',
-  '쇼핑': '🛍️',
-  '뷰티/패션': '💄',
-  '뷰티': '💄',
-  '패션': '👗',
-  '화장품': '💅',
-  '도서/문화': '📚',
-  '도서': '📚',
-  '문화': '🎭',
-  '영화': '🎬',
-  '공연': '🎭',
-  '모바일/디지털': '📱',
-  '모바일상품권': '📱',
-  '모바일': '📱',
-  '디지털': '💾',
-  '게임': '🎮',
-  '주유/생활': '⛽',
-  '주유': '⛽',
-  '생활': '🏠',
-  '통신': '📡',
-  // 🎨 2026-08-17 (UX 전수검사 P2 — 사이드바 절반이 🎁 반복): 라이브 실측 카테고리명(/api/vouchers/
-  //   categories 상위 20종) 기준으로 미매핑분 추가 — 스캔 변별력 확보. 값이 바뀌면 🎁 폴백은 그대로.
-  '커피/음료': '☕',
-  '버거': '🍔',
-  '베이커리/도넛': '🍩',
-  '아이스크림': '🍦',
-  '기타상품권': '🎫',
-  '생활/가전/디지털': '🔌',
-  '백화점상품권': '🛍️',
-  '올레': '📡',
-  '마트': '🛒',
-  '마트상품권': '🛒',
-  '주유상품권': '⛽',
-  '용역서비스': '🛠️',
-  '3사 통합데이터 상품': '📶',
-  '음악': '🎵',
+/**
+ * 🖊️ 2026-08-30: 카테고리 이모지 맵 → **선 아이콘 맵**.
+ *   KT Alpha 카테고리 50종을 이모지로 그리고 있었는데, 이 값은 교환권 화면의
+ *   카테고리 칩·사이드바·헤더 **3곳**에 그대로 렌더된다. 이모지는 OS 마다 다른 그림이
+ *   나오고(애플 컬러 / 노토 / Segoe) 우리가 고른 색·형태가 아니라 남의 그림이 뜬다.
+ *   같은 줄의 나머지 UI 는 전부 lucide 선 아이콘이라 **한 화면에 두 언어**가 섞였다.
+ *
+ *   ⚠️ 키는 **DB `category` 실제 저장값** 그대로다(예: '편의점/마트'). 키를 다듬지 말 것 —
+ *      정확일치 매핑이라 어긋나면 조용히 기본 아이콘으로 떨어진다.
+ * 📦 2026-08-17 (file-size 래칫): VouchersPage 에서 이동.
+ */
+const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
+  '편의점/마트': Store, '편의점': Store, '마트/슈퍼': Store,
+  '카페/베이커리': Coffee, '카페': Coffee, '커피/음료': Coffee,
+  '베이커리': Croissant, '베이커리/도넛': Croissant,
+  '외식/배달': Utensils, '외식': Utensils, '한식': Soup, '양식': Utensils,
+  '패스트푸드': Sandwich, '버거': Sandwich,
+  '치킨/피자': Pizza, '피자': Pizza, '치킨': Drumstick,
+  '백화점/쇼핑': ShoppingBag, '백화점': ShoppingBag, '쇼핑': ShoppingBag, '백화점상품권': ShoppingBag,
+  '뷰티/패션': Sparkle, '뷰티': Sparkle, '화장품': Sparkle, '패션': Shirt,
+  '도서/문화': BookOpen, '도서': BookOpen, '문화': Ticket, '공연': Ticket, '영화': Clapperboard,
+  '모바일/디지털': Smartphone, '모바일상품권': Smartphone, '모바일': Smartphone,
+  '디지털': HardDrive, '생활/가전/디지털': Plug, '게임': Gamepad2,
+  '주유/생활': Fuel, '주유': Fuel, '주유상품권': Fuel, '생활': Home,
+  '통신': RadioTower, '올레': RadioTower, '3사 통합데이터 상품': RadioTower,
+  '아이스크림': IceCreamCone, '기타상품권': Ticket,
+  '마트': ShoppingCart, '마트상품권': ShoppingCart,
+  '용역서비스': Wrench, '음악': Music,
 }
 
-export function getCategoryIcon(category: string): string {
-  return CATEGORY_ICONS[category] || '🎁'
+/** 카테고리 아이콘. 매핑 없으면 선물 상자(기본). */
+export function CategoryIcon({ category, className = 'w-3.5 h-3.5' }: { category: string; className?: string }) {
+  const Icon = CATEGORY_ICON_MAP[category] || Gift
+  return <Icon className={className} aria-hidden="true" />
 }
+

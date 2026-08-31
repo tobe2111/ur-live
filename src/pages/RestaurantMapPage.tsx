@@ -121,7 +121,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const applyFcfs = useCallback(async (productId: number) => {
     try {
       const res = await api.post(`/api/fcfs/${productId}/apply`)
-      toast.success(res.data?.data?.already ? '이미 응모했어요' : '🎉 응모 완료! 당첨 시 안내드려요')
+      toast.success(res.data?.data?.already ? '이미 응모했어요' : '응모 완료! 당첨 시 안내드려요')
     } catch {
       toast.error('응모하려면 로그인이 필요해요')
     }
@@ -711,7 +711,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             전역 Map(생성자) 가림 방지 위해 `Map as MapIcon` 별칭. 아이콘 색 = 알약 글자색(currentColor). */}
         <button
           onClick={() => navigate('/map')}
-          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-blue-600 text-white rounded-full pl-3.5 pr-4 py-2.5 shadow-lg active:scale-95 transition-transform"
+          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-gray-900 text-white rounded-full pl-3.5 pr-4 py-2.5 shadow-lg active:scale-95 transition-transform"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom,0px) + 16px)' }}
           aria-label={t('map.viewMap', { defaultValue: '지도로 보기' })}
         >
@@ -790,7 +790,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         aria-label={nearMeMode ? t('restaurantMap.myLocationOff', { defaultValue: '내 위치 해제' }) : t('restaurantMap.myLocation', { defaultValue: '현위치로 이동' })}
         aria-pressed={nearMeMode}
         className={`absolute right-3 z-20 w-10 h-10 flex items-center justify-center rounded-full shadow-lg border active:scale-95 transition-all ${
-          (nearMeMode || locating) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-[#0D0F12] text-blue-600 dark:text-blue-400 border-gray-100 dark:border-[#2C2F35]'
+          (nearMeMode || locating) ? 'bg-gray-900 text-white border-blue-600' : 'bg-white dark:bg-[#0D0F12] text-blue-600 dark:text-blue-400 border-gray-100 dark:border-[#2C2F35]'
         }`}
         style={{ bottom: isLgViewport ? (selected ? '150px' : '24px') : (selected ? 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 150px)' : 'calc(240px + 16px)') }}
       >

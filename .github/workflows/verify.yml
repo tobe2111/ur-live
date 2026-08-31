@@ -387,6 +387,16 @@ jobs:
           STRICT_THEME: '1'
         continue-on-error: false
 
+      # 🎨 2026-08-30 (대표 "AI로 디자인을 한 티가 절대 없어야 해"): 두 기계 흔적을 래칫으로 막는다.
+      #   ① 평면 그라디언트 — from/to 가 같은 색이라 **그라데이션이 안 되는** 그라디언트.
+      #      마크업은 "여긴 그라디언트" 라고 선언하는데 단색이 렌더된다(2026-06-19 흑백 리매핑 잔재,
+      #      발견 당시 85곳). ② UI 자리 이모지 — 아이콘·칩·제목. OS 마다 다른 그림이 나오고
+      #      같은 줄의 lucide 와 언어가 갈린다.
+      #   둘 다 **에러를 내지 않는다** — 화면만 조용히 밋밋해지고 배포는 초록불이다.
+      - name: AI design slop ratchet (flat gradients / emoji-as-icon)
+        run: node scripts/check-design-slop.mjs
+        continue-on-error: false
+
       # 🍎 2026-06-20: 카카오 OAuth iOS 쿠키 미영속 안티패턴 (strict). iOS Safari/WebKit 은
       #   cross-site 콜백 302 Set-Cookie 미영속 → 역할토큰 transfer 쿠키(ur_pending_*)/세션 302 의존 시
       #   iOS 만 조용히 깨짐(Chrome 정상). 역할토큰=fragment(pending-auth.ts), 세션=establish.

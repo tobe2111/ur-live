@@ -129,7 +129,7 @@ export default function AdminBannersPage() {
           subtitle={t('admin.banners.k011', { defaultValue: "메인 배너 등록 · 표시 순서 관리" })}
           icon={<ImageIcon className="h-5 w-5" />}
           actions={
-            <button onClick={handleNew} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+            <button onClick={handleNew} className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-900">
               <Plus className="h-3.5 w-3.5" /> 새 배너 추가
             </button>
           }
@@ -187,7 +187,7 @@ export default function AdminBannersPage() {
                     aria-pressed={formData.banner_slot === bt}
                     className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
                       formData.banner_slot === bt
-                        ? 'bg-blue-600 border-blue-600 text-white'
+                        ? 'bg-gray-900 border-blue-600 text-white'
                         : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                     }`}
                   >
@@ -273,7 +273,7 @@ export default function AdminBannersPage() {
             </div>
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">{t('admin.banners.k036', { defaultValue: '취소' })}</button>
-              <button type="submit" className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700">{editingBanner ? t('admin.banners.k037', { defaultValue: '수정' }) : t('admin.banners.k038', { defaultValue: '생성' })}</button>
+              <button type="submit" className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-900 text-white hover:bg-gray-900">{editingBanner ? t('admin.banners.k037', { defaultValue: '수정' }) : t('admin.banners.k038', { defaultValue: '생성' })}</button>
             </div>
           </form>
         </div>
@@ -285,7 +285,7 @@ export default function AdminBannersPage() {
           <div className="bg-white rounded-xl shadow-sm py-20 text-center">
             <ImageIcon className="w-12 h-12 text-gray-200 mx-auto mb-3" />
             <p className="text-sm text-gray-400 mb-4">{t('admin.banners.k039', { defaultValue: '등록된 배너가 없습니다.' })}</p>
-            <button onClick={handleNew} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 mx-auto">
+            <button onClick={handleNew} className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-900 mx-auto">
               <Plus className="w-4 h-4" /> 첫 배너 추가하기
             </button>
           </div>

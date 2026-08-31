@@ -16,7 +16,7 @@ import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'rea
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Gift, ArrowRight, ChevronDown, ShoppingBag } from 'lucide-react'
+import { Search, Gift, ArrowRight, ChevronDown, ShoppingBag, Flame, Clock, Tag, ArrowDownWideNarrow, ArrowUpWideNarrow, Soup, Shirt, Sparkle, Sofa, Smartphone, type LucideIcon } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🎟️ 2026-07-10 (대표 결정): 일반상품(쇼핑) 노출은 SHOPPING_TAB_HIDDEN 게이트 — 교환권은 유지.
 import { SHOPPING_TAB_HIDDEN, TOPUP_DISABLED } from '@/shared/feature-flags'
@@ -25,21 +25,11 @@ import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 // 🖥️ 2026-07-18 (교환권 PC 2단 분리): 카드/행 + VoucherProduct 타입은 ./vouchers/shared 로 추출(파일크기 래칫).
-import { VoucherCard, VoucherRow, BrandChip, getCategoryIcon, type VoucherProduct } from './vouchers/shared'
+import { VoucherCard, VoucherRow, BrandChip, CategoryIcon, type VoucherProduct } from './vouchers/shared'
 import { SortMenu } from '@/components/ui/sort-menu'
+import { SORT_OPTIONS, SHOP_CATEGORIES, type SortKey } from './vouchers/constants'
 import BrowseProductCard from './browse/BrowseProductCard'
 import type { Product } from './browse/types'
-
-// 🛡️ 2026-05-21: 교환권 정렬 옵션 (사용자 요청).
-type SortKey = 'popular' | 'newest' | 'price_low' | 'price_high' | 'discount' | 'rating'
-const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
-  { key: 'popular',    label: '🔥 인기순' },
-  { key: 'newest',     label: '🆕 최신순' },
-  { key: 'price_low',  label: '💰 낮은 가격순' },
-  { key: 'price_high', label: '💎 높은 가격순' },
-  { key: 'discount',   label: '🏷️ 할인율순' },
-  // 🎫 2026-06-21 (대표 요청): 교환권 별점 미표시 → '평점순' 정렬 옵션 제거(숨은 필드 정렬 방지).
-]
 
 interface BrandSummary {
   brand_name: string
@@ -62,18 +52,6 @@ const PAGE_SIZE = 20
 // 🏭 2026-06-04 (사용자 요청): 홈(embedded) 기본 카테고리 = '커피/음료' (KT Alpha goods_type_detail).
 //   worker/index.ts MAIN 슬롯 + cache-prewarm HOT_PATH 의 category 값과 반드시 동일해야 SSR 0-RTT 정합.
 const EMBEDDED_DEFAULT_CATEGORY = '커피/음료'
-
-// 🛒 2026-06-23 (대표 — '쇼핑도 카테고리 전에 짜뒀잖아' / '카테고리별로 잘 나뉘어졌어?'): /browse 와 동일한 쇼핑 카테고리.
-//   ⚠️ key 는 products.category 의 **실제 저장값**(셀러/어드민/CSV 폼 SSOT) — alias 없는 정확일치 필터라 키가 어긋나면 0개.
-//   실제 저장값: fashion/beauty/food/electronics/lifestyle. (라벨 '리빙'='lifestyle', '디지털'='electronics'.)
-const SHOP_CATEGORIES: Array<{ key: string; label: string; emoji: string }> = [
-  { key: 'all',         label: '전체',   emoji: '🛍️' },
-  { key: 'food',        label: '식품',   emoji: '🍱' },
-  { key: 'fashion',     label: '패션',   emoji: '👗' },
-  { key: 'beauty',      label: '뷰티',   emoji: '💄' },
-  { key: 'lifestyle',   label: '리빙',   emoji: '🛋️' },
-  { key: 'electronics', label: '디지털', emoji: '📱' },
-]
 
 // 🛒 2026-06-20 (사용자 결정 — 교환권/쇼핑 상단 탭 분리) → 2026-06-23 연속 스크롤로 전환: 쇼핑 섹션 =
 //   일반 상품(exclude_deal_only=1) 그리드. /browse 와 동일 데이터·카드(BrowseProductCard)·카테고리.
@@ -181,7 +159,7 @@ function ShoppingGrid() {
                       : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
                   }`}
                 >
-                  <span>{c.emoji}</span>
+                  {c.Icon && <c.Icon className="w-3.5 h-3.5" aria-hidden="true" />}
                   {c.label}
                 </button>
               )
@@ -535,7 +513,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               /* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 종료 — 카드 탭 = 딜 내역으로. */
               onClick={() => navigate(TOPUP_DISABLED ? '/my-deal-history' : '/points/charge')}
               className="w-full text-left rounded-2xl p-4 active:scale-[0.99] transition-transform"
-              style={{ background: 'linear-gradient(135deg, #211d3a 0%, #15131f 45%, #050505 100%)' }}
+              style={{ background: '#16181C' }}
             >
               <p className="text-[11px] text-gray-400 mb-1.5 tracking-wide">내 딜 잔액</p>
               <div className="flex items-baseline gap-1">
@@ -566,7 +544,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                         }`}
                       >
-                        <span>{getCategoryIcon(s.category)}</span>
+                        <CategoryIcon category={s.category} />
                         <span className="flex-1 text-left truncate">{s.category}</span>
                         <span className={`text-[11px] ${active ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{s.count}</span>
                       </button>
@@ -642,7 +620,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                           const np = page + 1; setPage(np); loadProducts(np, false)
                         }
                       }}
-                      className="w-full flex items-center justify-center gap-1.5 h-12 rounded-2xl bg-gray-100 dark:bg-[#1A1C21] text-[13px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-[#2C2F35] transition-colors"
+                      // 🔘 2026-08-30 버튼 체계 적용 (index.css `.ur-btn`).
+                      //   이전: h-12 rounded-2xl text-[13px] font-bold — 이 화면만의 값이었다.
+                      //   높이·모서리·굵기·글자크기를 체계가 정하고, 여기선 **채움색만** 준다.
+                      className="ur-btn ur-btn-lg ur-btn-block bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-[#2C2F35]"
                     >
                       {t('home.moreVouchers', { defaultValue: '교환권 더보기' })}
                       <ChevronDown className="w-4 h-4" />
@@ -732,7 +713,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           onClick={() => navigate(TOPUP_DISABLED ? '/my-deal-history' : '/points/charge')}
           /* 🏭 2026-06-05 (사용자 요청): 토스식 프리미엄 다크 그라데이션(은은한 인디고 틴트). */
           className="w-full text-left rounded-2xl p-5 active:scale-[0.99] transition-transform"
-          style={{ background: 'linear-gradient(135deg, #211d3a 0%, #15131f 45%, #050505 100%)' }}
+          style={{ background: '#16181C' }}
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
@@ -746,7 +727,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               {/* 🎫 2026-06-26 (대표 결정 B): '딜=원' 항상 명확화 — 신규/외부 유입 진입장벽 해소(기존엔 잔액 부족 시만 노출). */}
               <p className="text-[11px] text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
             </div>
-            <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white" style={{ background: 'linear-gradient(135deg, #6b7280, #6b7280)' }}>
+            <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white" style={{ background: 'rgba(255,255,255,0.14)' }}>
               {TOPUP_DISABLED ? '내역' : '충전'} <ArrowRight className="w-3.5 h-3.5" />
             </span>
           </div>
@@ -756,12 +737,12 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             </p>
           )}
         </button>
-        {/* 보조 액션 — 카드 바깥 작은 텍스트 (당근/토스 패턴) */}
-        <div className="mt-2 flex items-center gap-3 text-[11px] px-1">
-          <button type="button" onClick={() => navigate('/map')} className="text-gray-500 dark:text-gray-400 hover:underline">
-            공구로 적립
+        {/* 🧹 2026-08-31: 형제가 하나 지워진 뒤 **링크 한 개가 gap-3 을 안고 홀로** 남아 있었다.
+            카드에서 떨어져 떠 보이던 자리 — 카드 아래 붙여 보조 액션임이 보이게 한다. */}
+        <div className="mt-1.5 px-1">
+          <button type="button" onClick={() => navigate('/map')} className="text-[11.5px] text-gray-500 dark:text-gray-400 hover:underline">
+            딜 모으는 방법 보기
           </button>
-
         </div>
       </div>
 
@@ -789,7 +770,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                         : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
                     }`}
                   >
-                    <span>{getCategoryIcon(s.category)}</span>
+                    <CategoryIcon category={s.category} />
                     {s.category}
                     <span className={`text-[10px] ${active ? 'text-white/80' : 'text-gray-400 dark:text-gray-500'}`}>({s.count})</span>
                   </button>
@@ -820,7 +801,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         <div className="ur-content-wide px-4 lg:px-8 pt-1.5 pb-3">
           <div className="flex items-center justify-between mb-1.5">
             <h2 className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-              <span>{getCategoryIcon(category)}</span>
+              <CategoryIcon category={category} />
               {category} 인기 브랜드
             </h2>
             {/* 🧭 정렬: 홈(embedded)은 여기 / /vouchers 는 아래 '상품' 섹션 헤더로 이동(2026-06-20) */}
@@ -859,10 +840,12 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           구분선(border-t) + '상품' 섹션 헤더(카테고리/브랜드 + 개수) + 정렬을 상품 바로 위로. /vouchers 전용. */}
       {!embedded && (
         <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-2 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-between gap-2">
+          {/* 🧹 2026-08-31: ① 선물 아이콘 제거 — 바로 아래 하단 탭의 '교환권' 아이콘과 **같은 그림**이라
+              같은 화면에서 두 번 같은 말을 했고, 앰버 한 점이 이 화면의 유일한 색이라 시선만 끌었다.
+              ② 0 은 세지 않는다 — 곧바로 아래 빈 상태가 같은 사실을 더 잘 말한다. */}
           <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5 min-w-0">
-            <Gift className="w-[18px] h-[18px] text-amber-500 shrink-0" />
             <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
-            {!loading && (
+            {!loading && products.length > 0 && (
               <span className="text-[13px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
             )}
             {brand && (
@@ -910,8 +893,22 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             </div>
           )
         ) : products.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">
-            {brand ? `${brand} 교환권이 없습니다` : '교환권이 없습니다'}
+          <div className="text-center py-16">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">
+              {brand ? `${brand} 교환권이 없어요` : '조건에 맞는 교환권이 없어요'}
+            </p>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5">
+              {brand ? '다른 브랜드도 둘러보세요' : '카테고리를 바꾸면 더 많이 볼 수 있어요'}
+            </p>
+            {/* 🚪 2026-08-31: 여기도 막다른 길이었다 — 회색 문구 한 줄이 전부였고,
+                브랜드/카테고리 필터로 0건이 된 사용자는 되돌아갈 버튼이 없었다. */}
+            <button
+              type="button"
+              onClick={() => { setBrand(''); setCategory('') }}
+              className="ur-btn ur-btn-md bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4"
+            >
+              전체 교환권 보기
+            </button>
           </div>
         ) : (
           <>

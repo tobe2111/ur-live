@@ -149,7 +149,7 @@ export default function AdminErrorsPage() {
                   key={h}
                   onClick={() => setHours(h)}
                   className={`px-3 py-1.5 text-sm rounded ${
-                    hours === h ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
+                    hours === h ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'
                   }`}
                 >
                   {h === 168 ? '7일' : `${h}h`}
@@ -274,7 +274,7 @@ export default function AdminErrorsPage() {
                               </span>
                             ))}
                           </div>
-                          {note && <p className="mt-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">💡 {note}</p>}
+                          {note && <p className="mt-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">{note}</p>}
                           {f.lastErr && f.lastErr !== '(none)' && (
                             <p className="mt-1.5 text-[11px] font-mono text-gray-700 break-all">마지막 에러: {f.lastErr}</p>
                           )}

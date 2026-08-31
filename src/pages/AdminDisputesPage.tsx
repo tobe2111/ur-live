@@ -191,7 +191,7 @@ export default function AdminDisputesPage() {
                           <button
                             onClick={() => approveRefund(d)}
                             disabled={submitting === d.id}
-                            className="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-lg text-xs font-bold"
+                            className="flex-1 px-3 py-2 bg-gray-900 hover:bg-gray-900 disabled:opacity-50 text-white rounded-lg text-xs font-bold"
                           >
                             ✅ 환불 승인
                           </button>

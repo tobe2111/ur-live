@@ -75,7 +75,7 @@ export default function AdminNotificationSettingsPage() {
 
         {/* 채널 비용 안내 */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 leading-relaxed">
-          <div className="font-bold mb-1">💡 채널별 비용</div>
+          <div className="font-bold mb-1">채널별 비용</div>
           <ul className="space-y-0.5 list-disc list-inside">
             <li><b>대시보드</b>: 무료, 사용자가 대시보드 들어와야 봄</li>
             <li><b>이메일</b>: Resend 무료 3000건/월, 이후 1.5원/건. 즉시 도달 90%</li>

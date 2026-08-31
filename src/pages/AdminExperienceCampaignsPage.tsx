@@ -159,7 +159,7 @@ export default function AdminExperienceCampaignsPage() {
               <div className="px-4 pb-4 bg-gray-50/60">
                 {/* 액션 */}
                 <div className="flex flex-wrap gap-2 py-3">
-                  {c.status === 'open' && <button type="button" onClick={() => void draw(c.id, c.slots)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[12px] font-semibold"><Dice5 className="w-3.5 h-3.5" />공정 추첨 실행</button>}
+                  {c.status === 'open' && <button type="button" onClick={() => void draw(c.id, c.slots)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[12px] font-semibold"><Dice5 className="w-3.5 h-3.5" />공정 추첨 실행</button>}
                   <button type="button" onClick={() => void downloadCsv(c.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-[12px]"><FileDown className="w-3.5 h-3.5" />리포트 CSV</button>
                 </div>
                 {/* 리포트 요약 */}

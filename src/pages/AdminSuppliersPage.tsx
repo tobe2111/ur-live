@@ -196,7 +196,7 @@ export default function AdminSuppliersPage() {
       <div className="flex items-center gap-2 mb-4">
         {filters.map(f => (
           <button key={f.key} onClick={() => setStatusFilter(f.key)}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${statusFilter === f.key ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${statusFilter === f.key ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
             {f.label}
             {f.key === 'pending' && pendingCount > 0 && <span className="ml-1.5 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{pendingCount}</span>}
           </button>
@@ -285,7 +285,7 @@ export default function AdminSuppliersPage() {
                   {s.status === 'pending' && (
                     <>
                       <button onClick={() => setStatus(s.id, 'approved')} disabled={busy}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-900 disabled:opacity-50">
                         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />} {t('admin.suppliers.approve', { defaultValue: '승인' })}
                       </button>
                       <button onClick={() => setStatus(s.id, 'rejected')} disabled={busy}
@@ -297,7 +297,7 @@ export default function AdminSuppliersPage() {
                   {s.status === 'approved' && (
                     <>
                       <button onClick={() => payout(s)} disabled={busy || s.available_amount <= 0}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-900 disabled:opacity-40">
                         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wallet className="w-3 h-3" />} {t('admin.suppliers.payout', { defaultValue: '지급 실행' })} ({formatWon(s.available_amount)})
                       </button>
                       {/* 💸 2026-07-02 IA 통합 — 돈 나가는 액션 2개(지급 실행 vs 출금 승인) 혼동 방지 안내. */}
@@ -310,7 +310,7 @@ export default function AdminSuppliersPage() {
                   )}
                   {s.status === 'suspended' && (
                     <button onClick={() => setStatus(s.id, 'approved')} disabled={busy}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-900 disabled:opacity-50">
                       <CheckCircle className="w-3 h-3" /> {t('admin.suppliers.reactivate', { defaultValue: '재활성화' })}
                     </button>
                   )}

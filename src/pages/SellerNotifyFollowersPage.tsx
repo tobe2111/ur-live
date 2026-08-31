@@ -27,17 +27,17 @@ type Reason = 'new_product' | 'live_start' | 'group_buy' | 'custom'
 
 const PRESETS: Record<Reason, { title: string; message: string; url: string }> = {
   new_product: {
-    title: '🎁 신상품 출시',
+    title: '신상품 출시',
     message: '새로운 상품이 등록되었어요. 단골 할인가로 만나보세요!',
     url: '/',
   },
   live_start: {
-    title: '📺 라이브 시작',
+    title: '라이브 시작',
     message: '지금 라이브가 시작됐어요. 같이 봐요!',
     url: '/',
   },
   group_buy: {
-    title: '🔥 공구 시작',
+    title: '공구 시작',
     message: '새 공동구매가 시작됐어요. 지금 바로 공구 특가로 만나보세요!',
     url: '/group-buy',
   },
@@ -118,10 +118,10 @@ export default function SellerNotifyFollowersPage() {
           <p className="text-sm font-bold text-gray-900 mb-3">발송 종류</p>
           <div className="grid grid-cols-2 gap-2">
             {([
-              { key: 'new_product', label: '🎁 신상품', desc: '신상품 출시 알림' },
-              { key: 'live_start', label: '📺 라이브', desc: '라이브 시작 알림' },
-              { key: 'group_buy', label: '🔥 공구', desc: '공동구매 시작' },
-              { key: 'custom', label: '✍️ 커스텀', desc: '직접 작성' },
+              { key: 'new_product', label: '신상품', desc: '신상품 출시 알림' },
+              { key: 'live_start', label: '라이브', desc: '라이브 시작 알림' },
+              { key: 'group_buy', label: '공구', desc: '공동구매 시작' },
+              { key: 'custom', label: '커스텀', desc: '직접 작성' },
             ] as Array<{ key: Reason; label: string; desc: string }>)
               // 🏭 라이브커머스 영구중단: '라이브 시작' 발송 프리셋 숨김.
               .filter(p => !(LIVE_COMMERCE_SUSPENDED && p.key === 'live_start')).map(p => (
@@ -173,7 +173,7 @@ export default function SellerNotifyFollowersPage() {
         </div>
 
         {/* 미리보기 */}
-        <div className="bg-gradient-to-br from-gray-50 to-gray-50 border border-pink-200 rounded-2xl p-4">
+        <div className="bg-gray-50 border border-pink-200 rounded-2xl p-4">
           <p className="text-[11px] font-bold text-pink-700 mb-2 flex items-center gap-1">
             <Bell className="w-3 h-3" /> Push Notification 미리보기
           </p>
@@ -187,7 +187,7 @@ export default function SellerNotifyFollowersPage() {
         {/* 결과 */}
         {result && (
           <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center shrink-0">✓</div>
+            <div className="w-10 h-10 rounded-full bg-gray-900 text-white flex items-center justify-center shrink-0">✓</div>
             <div>
               <p className="text-sm font-bold text-green-700">발송 완료</p>
               <p className="text-xs text-green-600 mt-0.5">{result.sent}/{result.total}명에게 push 전송됨</p>
@@ -213,7 +213,7 @@ export default function SellerNotifyFollowersPage() {
         <button
           onClick={handleSubmit}
           disabled={submitting || title.length < 2 || message.length < 5}
-          className="w-full py-4 bg-gradient-to-r from-gray-800 to-gray-800 hover:opacity-95 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg"
+          className="w-full py-4 bg-gray-800 hover:opacity-95 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg"
         >
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           {submitting ? '발송 중…' : '단골 전원에게 알림 발송'}

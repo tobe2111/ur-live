@@ -82,7 +82,7 @@ export default function AgencyRegisterPage() {
           </p>
           <Link
             to="/agency/login"
-            className="block w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors"
+            className="block w-full py-3 bg-gray-900 hover:bg-gray-900 text-white font-semibold rounded-lg text-sm transition-colors"
           >
             {t('agency.agencyRegister.goToLogin', { defaultValue: '로그인 페이지로' })}
           </Link>
@@ -251,7 +251,7 @@ export default function AgencyRegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition-colors mt-2"
+                className="w-full py-3 bg-gray-900 hover:bg-gray-900 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition-colors mt-2"
               >
                 {loading ? t('agency.agencyRegister.submitting', { defaultValue: '신청 중...' }) : t('agency.agencyRegister.submitBtn', { defaultValue: '가입 신청하기' })}
               </button>

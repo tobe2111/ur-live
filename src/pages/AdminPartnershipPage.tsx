@@ -120,7 +120,7 @@ export default function AdminPartnershipPage() {
                     <div className="flex gap-2">
                       {(['in_progress', 'done'] as const).map(sv => (
                         <button key={sv} onClick={() => update(r.id, { status: sv, admin_memo: memo })}
-                          className={`px-4 h-10 rounded-xl text-[13px] font-bold ${sv === 'done' ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}`}>
+                          className={`px-4 h-10 rounded-xl text-[13px] font-bold ${sv === 'done' ? 'bg-gray-900 text-white' : 'bg-amber-500 text-white'}`}>
                           {sv === 'done' ? '완료 처리' : '진행 중으로'}
                         </button>
                       ))}

@@ -292,7 +292,7 @@ export default function SellerMealVoucherNewPage() {
                   }}
                   className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-bold"
                 >
-                  🔗 {t('seller.mealVoucher.copyLink', { defaultValue: '판매 링크 복사' })}
+                  {t('seller.mealVoucher.copyLink', { defaultValue: '판매 링크 복사' })}
                 </button>
               </div>
             )}

@@ -86,7 +86,7 @@ export function NotificationToggleSection() {
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
       <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('accountSettings.sectionNotification', { defaultValue: '알림 설정' })}</p>
-      <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
+      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1A1C21]">
         <Toggle
           icon={<Bell className="w-4 h-4" aria-hidden="true" />}
           label={t('accountSettings.togglePush', { defaultValue: '푸시 알림' })}
@@ -158,7 +158,7 @@ export function AppVersionSection() {
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
       <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('accountSettings.appInfo', { defaultValue: '앱 정보' })}</p>
-      <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
+      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1A1C21]">
         <div className="flex items-center justify-between px-4 py-3.5">
           <span className="text-[13px] text-gray-900 dark:text-white/75">{t('accountSettings.currentVersion', { defaultValue: '현재 버전' })}</span>
           <span className="text-[12px] font-medium text-gray-900 dark:text-white">v{APP_VERSION}</span>
@@ -210,7 +210,7 @@ export function DeleteAccountLink() {
   return (
     <Link
       to="/account/delete-warning"
-      className="block w-full py-3 px-4 text-center text-[13px] text-red-400 hover:text-red-500 border border-red-500/20 hover:border-red-500/40 rounded-xl transition-colors"
+      className="block w-full py-3 px-4 text-center text-[12px] text-gray-500 dark:text-white/40 hover:text-red-500 underline underline-offset-4 decoration-gray-300 dark:decoration-white/20 transition-colors"
     >
       {t('accountSettings.deleteAccount', { defaultValue: '회원 탈퇴' })}
     </Link>

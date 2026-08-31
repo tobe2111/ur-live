@@ -161,7 +161,7 @@ export default function AdminCouponsPage() {
           actions={
             <button
               onClick={() => { const opening = !showForm; setShowForm(opening); resetForm(); if (opening) generateCode() }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-900"
             >
               <Plus className="h-3.5 w-3.5" />
               쿠폰 생성
@@ -291,7 +291,7 @@ export default function AdminCouponsPage() {
               <button
                 onClick={handleCreate}
                 disabled={submitting}
-                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                className="px-6 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-900 disabled:opacity-50"
               >
                 {submitting
                   ? (editingId ? t('admin.coupons.k052', { defaultValue: '수정 중...' }) : t('admin.coupons.k026', { defaultValue: '생성 중...' }))

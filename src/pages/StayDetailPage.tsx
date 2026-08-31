@@ -283,7 +283,7 @@ export default function StayDetailPage() {
           <div className="grid grid-cols-2 gap-2 mb-2">
             {!stay.voucher_weekend_only && (
               <button onClick={() => setVoucherType('weekday')}
-                className={`p-3 rounded-lg text-xs font-bold ${voucherType === 'weekday' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300'}`}>
+                className={`p-3 rounded-lg text-xs font-bold ${voucherType === 'weekday' ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300'}`}>
                 🌅 평일권 (월-목)
               </button>
             )}

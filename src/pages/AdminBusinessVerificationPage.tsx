@@ -175,7 +175,7 @@ export default function AdminBusinessVerificationPage() {
                         <XCircle className="w-3.5 h-3.5" /> 반려
                       </button>
                       <button onClick={() => verify(s.id)}
-                        className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700">
+                        className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900">
                         <CheckCircle className="w-3.5 h-3.5" /> 승인
                       </button>
                     </div>

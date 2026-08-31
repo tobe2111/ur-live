@@ -314,7 +314,7 @@ export default function AgencyDelegationsPage() {
                                 type="button"
                                 disabled={requesting != null || s.delegation_mode === 'approval'}
                                 onClick={() => requestMode(s.seller_id, 'approval')}
-                                className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 <Send className="h-3 w-3" /> 승인형 요청
                               </button>
@@ -322,7 +322,7 @@ export default function AgencyDelegationsPage() {
                                 type="button"
                                 disabled={requesting != null || s.delegation_mode === 'full'}
                                 onClick={() => requestMode(s.seller_id, 'full')}
-                                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 <Send className="h-3 w-3" /> 완전위임형 요청
                               </button>

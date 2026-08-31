@@ -75,9 +75,9 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                   className={`
                     border-0 px-3 py-1
                     ${order.status.toLowerCase() === 'delivered'
-                      ? 'bg-emerald-500 text-white'
+                      ? 'bg-gray-900 text-white'
                       : order.status.toLowerCase() === 'shipping'
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-gray-900 text-white'
                       : ['cancelled', 'refunded'].includes(order.status.toLowerCase())
                       ? 'bg-red-500 text-white'
                       : order.status.toLowerCase() === 'preparing'
@@ -191,7 +191,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                       {steps.map((step, si) => (
                         <div key={si} className="flex items-center flex-1">
                           <div className="flex flex-col items-center">
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step.done ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-[#2C2F35] text-gray-400 dark:text-gray-500'}`}>
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step.done ? 'bg-gray-900 text-white' : 'bg-gray-200 dark:bg-[#2C2F35] text-gray-400 dark:text-gray-500'}`}>
                               {step.done ? '✓' : si + 1}
                             </div>
                             <span className={`text-[10px] mt-1 ${step.done ? 'text-blue-600 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>{step.label}</span>
@@ -285,7 +285,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                 toast.info(t('orderDetail.sellerNoContact', { defaultValue: '매장 연락처가 등록되지 않았습니다' }))
               }
             }}
-            className="w-full py-3 text-[15px] font-medium text-blue-600 border border-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition-colors"
+            className="w-full py-3 text-[15px] font-medium text-blue-600 border border-blue-500 rounded-xl hover:bg-gray-900 hover:text-white transition-colors"
           >
             {t('orderDetail.sellerInquiry', { defaultValue: '매장 문의' })}
           </button>

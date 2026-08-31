@@ -61,7 +61,7 @@ export default function SellerOnboardingChecklist() {
       })()
 
       setItems([
-        { id: 'product', title: '첫 공구 상품 등록', desc: '💡 가격은 매장 기본가의 70-80% 추천 · 목표 인원 10명 · 마감 7일', done: hasProduct, cta: '등록하기', href: '/seller/meal-voucher/new' },
+        { id: 'product', title: '첫 공구 상품 등록', desc: '가격은 매장 기본가의 70-80% 추천 · 목표 인원 10명 · 마감 7일', done: hasProduct, cta: '등록하기', href: '/seller/meal-voucher/new' },
         { id: 'bank', title: '정산 계좌 등록', desc: '첫 매출 후 송금 받으려면 필수', done: hasBank, cta: '등록', href: '/seller/profile/edit' },
         // 🛡️ 2026-05-27: 카카오 알림톡 plus친구 등록 (자동 알림 발송 위해 필수)
         { id: 'plusfriend', title: '카카오 알림톡 plus친구 등록', desc: '@유어딜 추가 → 사용자 매장 방문 알림 자동 발송', done: hasPlusFriend, cta: '추가', href: '/seller/plus-friend-guide' },
@@ -83,7 +83,7 @@ export default function SellerOnboardingChecklist() {
   const progress = Math.round((completedRequired / totalRequired) * 100)
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 to-gray-50 border-2 border-pink-200 rounded-2xl p-5 mb-5">
+    <div className="bg-gray-50 border-2 border-pink-200 rounded-2xl p-5 mb-5">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-pink-500" />
@@ -94,10 +94,10 @@ export default function SellerOnboardingChecklist() {
 
       {/* 프로그레스 바 */}
       <div className="w-full bg-white rounded-full h-2 mb-2 overflow-hidden">
-        <div className="h-full bg-gradient-to-r from-gray-800 to-gray-800 rounded-full transition-all" style={{ width: `${progress}%` }} />
+        <div className="h-full bg-gray-800 rounded-full transition-all" style={{ width: `${progress}%` }} />
       </div>
       <p className="text-[11px] text-pink-700 mb-3 font-bold">
-        {progress === 100 ? '🎉 모든 단계 완료!' : `${totalRequired - completedRequired}단계 남음 — 첫 매출까지 가이드 표시`}
+        {progress === 100 ? '모든 단계 완료!' : `${totalRequired - completedRequired}단계 남음 — 첫 매출까지 가이드 표시`}
       </p>
 
       <div className="space-y-2">

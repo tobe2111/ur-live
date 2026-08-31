@@ -249,7 +249,7 @@ export default function AdminSellerApprovalPage() {
             <button
               type="button"
               onClick={handleStoreOwnerQuickAdd}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-lg bg-gray-900 text-white hover:bg-gray-900 transition-colors"
             >
               <span>🏪</span> 공급자 빠른 등록
             </button>
@@ -377,7 +377,7 @@ export default function AdminSellerApprovalPage() {
                   {s.status === 'pending' && (
                     <>
                       <button onClick={() => approve(s.id)} disabled={actingId === s.id}
-                        className="px-3 py-1.5 bg-green-600 text-white rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
+                        className="px-3 py-1.5 bg-gray-900 text-white rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
                         {actingId === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />} 승인
                       </button>
                       <button onClick={() => reject(s.id)} disabled={actingId === s.id}
@@ -516,7 +516,7 @@ export default function AdminSellerApprovalPage() {
                             <button
                               onClick={() => verifyBizReg(s.id)}
                               disabled={bizActingId === s.id}
-                              className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded-md text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-50"
+                              className="flex-1 px-3 py-1.5 bg-gray-900 text-white rounded-md text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-50"
                             >
                               {bizActingId === s.id
                                 ? <Loader2 className="w-3 h-3 animate-spin" />

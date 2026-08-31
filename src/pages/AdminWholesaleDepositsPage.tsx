@@ -195,7 +195,7 @@ export default function AdminWholesaleDepositsPage({ embedded = false }: { embed
                           <button
                             onClick={() => confirm(req)}
                             disabled={actingId === req.id}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-medium disabled:opacity-50"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-medium disabled:opacity-50"
                           >
                             {actingId === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} 입금 확인
                           </button>

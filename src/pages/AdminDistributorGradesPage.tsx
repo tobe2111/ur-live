@@ -823,7 +823,7 @@ export default function AdminDistributorGradesPage() {
                   <input type="number" min={0} value={repayInput} onChange={e => setRepayInput(e.target.value)} placeholder="상환액(원)" className="w-36 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
                 </div>
                 <input type="text" value={repayMemo} onChange={e => setRepayMemo(e.target.value)} placeholder="메모(선택)" maxLength={200} className="flex-1 min-w-[160px] px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
-                <button onClick={recordRepayment} disabled={creditBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                <button onClick={recordRepayment} disabled={creditBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">
                   <BadgeDollarSign className="w-4 h-4" /> 상환 기록
                 </button>
               </div>
@@ -1007,7 +1007,7 @@ export default function AdminDistributorGradesPage() {
             <input type="number" value={accessProductId} onChange={e => setAccessProductId(e.target.value)} placeholder="상품 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
             <button onClick={() => { setEditGrades(null); setAccessProductQuery(accessProductId) }} className="px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium">조회</button>
             <input type="number" value={accessSeller} onChange={e => setAccessSeller(e.target.value)} placeholder="판매사 ID 선정" className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
-            <button onClick={grantAccess} className="inline-flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"><Plus className="w-4 h-4" /> 선정</button>
+            <button onClick={grantAccess} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium"><Plus className="w-4 h-4" /> 선정</button>
           </div>
           {accessQ.data && (
             <div>
@@ -1020,13 +1020,13 @@ export default function AdminDistributorGradesPage() {
                     const on = effGrades.includes(g.grade)
                     return (
                       <button key={g.grade} type="button" onClick={() => toggleGrade(g.grade)}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium border ${on ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border ${on ? 'bg-gray-900 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}>
                         {g.grade}{g.label ? ` ${g.label}` : ''}
                       </button>
                     )
                   })}
                   {editGrades !== null && (
-                    <button type="button" onClick={saveVisibleGrades} className="ml-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-600 text-white">저장</button>
+                    <button type="button" onClick={saveVisibleGrades} className="ml-1 px-3 py-1 rounded-full text-xs font-semibold bg-gray-900 text-white">저장</button>
                   )}
                 </div>
                 <p className="text-[11px] text-gray-400 mt-1.5">현재: {effGrades.length ? effGrades.join(', ') : '전체 노출(제한 없음)'}</p>

@@ -3,7 +3,7 @@
  *   기존 SellerMealVoucherNewPage 의 해당 블록을 그대로 추출 — 로직 불변, 배치만 위저드.
  */
 import { useTranslation } from 'react-i18next'
-import { Utensils } from 'lucide-react'
+import { BedDouble, Dumbbell, PartyPopper, PawPrint, Scissors, Utensils } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
 import { toast } from '@/hooks/useToast'
@@ -38,12 +38,12 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
         </div>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { key: 'meal_voucher' as const, emoji: '🍽️', label: t('seller.voucher.categoryMeal', { defaultValue: '식사 이용권' }), desc: t('seller.voucher.categoryMealDesc', { defaultValue: '맛집·카페' }) },
-            { key: 'beauty_voucher' as const, emoji: '💇', label: t('seller.voucher.categoryBeauty', { defaultValue: '뷰티 이용권' }), desc: t('seller.voucher.categoryBeautyDesc', { defaultValue: '헤어·네일·피부' }) },
-            { key: 'health_voucher' as const, emoji: '💪', label: t('seller.voucher.categoryHealth', { defaultValue: '헬스 이용권' }), desc: t('seller.voucher.categoryHealthDesc', { defaultValue: 'PT·요가·필라테스' }) },
-            { key: 'pet_voucher' as const, emoji: '🐶', label: t('seller.voucher.categoryPet', { defaultValue: '반려 이용권' }), desc: t('seller.voucher.categoryPetDesc', { defaultValue: '미용·호텔·병원' }) },
-            { key: 'stay_voucher' as const, emoji: '🏨', label: t('seller.voucher.categoryStay', { defaultValue: '숙박 이용권' }), desc: t('seller.voucher.categoryStayDesc', { defaultValue: '펜션·호텔·모텔' }) },
-            { key: 'activity_voucher' as const, emoji: '🎯', label: t('seller.voucher.categoryActivity', { defaultValue: '액티비티 이용권' }), desc: t('seller.voucher.categoryActivityDesc', { defaultValue: '방탈출·볼링·클래스' }) },
+            { key: 'meal_voucher' as const, Icon: Utensils, label: t('seller.voucher.categoryMeal', { defaultValue: '식사 이용권' }), desc: t('seller.voucher.categoryMealDesc', { defaultValue: '맛집·카페' }) },
+            { key: 'beauty_voucher' as const, Icon: Scissors, label: t('seller.voucher.categoryBeauty', { defaultValue: '뷰티 이용권' }), desc: t('seller.voucher.categoryBeautyDesc', { defaultValue: '헤어·네일·피부' }) },
+            { key: 'health_voucher' as const, Icon: Dumbbell, label: t('seller.voucher.categoryHealth', { defaultValue: '헬스 이용권' }), desc: t('seller.voucher.categoryHealthDesc', { defaultValue: 'PT·요가·필라테스' }) },
+            { key: 'pet_voucher' as const, Icon: PawPrint, label: t('seller.voucher.categoryPet', { defaultValue: '반려 이용권' }), desc: t('seller.voucher.categoryPetDesc', { defaultValue: '미용·호텔·병원' }) },
+            { key: 'stay_voucher' as const, Icon: BedDouble, label: t('seller.voucher.categoryStay', { defaultValue: '숙박 이용권' }), desc: t('seller.voucher.categoryStayDesc', { defaultValue: '펜션·호텔·모텔' }) },
+            { key: 'activity_voucher' as const, Icon: PartyPopper, label: t('seller.voucher.categoryActivity', { defaultValue: '액티비티 이용권' }), desc: t('seller.voucher.categoryActivityDesc', { defaultValue: '방탈출·볼링·클래스' }) },
           ].map(c => (
             <button
               type="button"
@@ -55,7 +55,7 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
                   : 'border-gray-200 bg-white hover:border-gray-300'
               }`}
             >
-              <div className="text-2xl mb-1">{c.emoji}</div>
+              <c.Icon className="w-6 h-6 mx-auto mb-1 text-gray-500" aria-hidden="true" />
               <div className={`text-xs font-bold ${form.category === c.key ? 'text-pink-700' : 'text-gray-900'}`}>{c.label}</div>
               <div className="text-[10px] text-gray-500 mt-0.5">{c.desc}</div>
             </button>

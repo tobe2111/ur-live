@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
-import { ShoppingBag, TrendingUp, AlertCircle, CreditCard, LayoutDashboard } from 'lucide-react'
+import { AlertCircle, CreditCard, Lock, ShoppingBag, TrendingUp } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 import RoleGate from '@/components/RoleGate'
@@ -326,10 +326,14 @@ export default function SellerPage() {
       {/* 🧱 2026-08-20 (대표): "너무 공백이 많아 — 컴팩트하게" → 세로 간격·패딩 축소. */}
       <div className="mx-auto max-w-7xl space-y-3 p-3 sm:p-4">
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
+        {/* 🧹 2026-08-31: 상단바가 이미 "대시보드"를 말하는데 페이지 제목이 또 "대시보드"였다.
+            같은 화면에서 같은 단어가 두 번 나오면 둘 중 하나는 자리만 차지한다.
+            ⇒ 부제에 묻혀 있던 **역할**을 제목으로 올린다 — 이 화면이 실제로 알려 줄 것은
+               "여기가 어디냐"(상단바가 답함)가 아니라 "당신이 무엇으로 로그인해 있느냐"다.
+            아이콘도 뗐다. 홈 카테고리 '전체' 와 같은 그림이라 뜻을 더하지 않았다. */}
         <DashboardPageHeader
-          title={t('seller.dashboard')}
-          subtitle={`${getRoleLabel(getCurrentSellerRole())} — ${getRoleMeta(getCurrentSellerRole()).description}`}
-          icon={<LayoutDashboard className="h-5 w-5" />}
+          title={getRoleLabel(getCurrentSellerRole())}
+          subtitle={getRoleMeta(getCurrentSellerRole()).description}
         />
 
         {/* 🗑️ 2026-06-26 (대표 — '의미 없음'): 셀러 트래킹 링크(/browse?seller=) 제거.
@@ -341,7 +345,7 @@ export default function SellerPage() {
 
         {storeGated === true ? (
           <p className="text-center text-[12px] text-gray-400 py-8">
-            🔒 {t('seller.stores.lockedNote', { defaultValue: '매장 등록을 마치면 이용권 등록 · 주문 · 정산 · 소개 협업이 열려요' })}
+            <Lock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1 text-gray-400" aria-hidden="true" />{t('seller.stores.lockedNote', { defaultValue: '매장 등록을 마치면 이용권 등록 · 주문 · 정산 · 소개 협업이 열려요' })}
           </p>
         ) : (
         <>
