@@ -19,7 +19,6 @@ import { useMyVouchers } from '@/hooks/queries'
 import { WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import BrandLoader from '@/components/brand/BrandLoader'
 import WalletHeader from './my-vouchers/WalletHeader'
-import WalletHero from './my-vouchers/WalletHero'
 import WalletArchive from './my-vouchers/WalletArchive'
 import VoucherTicket from './my-vouchers/VoucherTicket'
 import { EmptyVouchers } from './my-vouchers/WalletEmpty'
@@ -59,24 +58,16 @@ export default function MyGifticonsPage() {
 
       <WalletHeader
         title={t('voucher.myGifticons', { defaultValue: '내 교환권' })}
-        subline={items.length > 0
-          ? `${t('voucher.heroUsable', { defaultValue: '사용 가능' })} ${usable.length}${t('voucher.heroCountUnit', { defaultValue: '장' })} · ${t('voucher.totalCount', { count: items.length })}`
-          : null}
+        amount={items.length > 0 ? heroTotal : null}
+        unit={t('voucher.deal', { defaultValue: '딜' })}
+        /* 교환권은 만료일·할인율을 안 갖고 온다 → 지표는 '사용 가능' 하나뿐이고, 없으면 줄 자체를 안 그린다. */
+        stats={items.length > 0 ? [
+          { label: t('voucher.heroUsable', { defaultValue: '사용 가능' }), value: `${usable.length}${t('voucher.heroCountUnit', { defaultValue: '장' })}` },
+          { label: t('voucher.totalCountLabel', { defaultValue: '전체' }), value: `${items.length}${t('voucher.heroCountUnit', { defaultValue: '장' })}` },
+        ] : []}
         onBack={() => navigate('/vouchers')}
         backLabel={t('common.back', { defaultValue: '뒤로가기' })}
       />
-
-      {usable.length > 0 && (
-        <WalletHero
-          label={t('voucher.heroBalanceLabelGift', { defaultValue: '보유 교환권 금액' })}
-          total={heroTotal}
-          unit={t('voucher.deal', { defaultValue: '딜' })}
-          /* 교환권은 만료일·할인율을 안 갖고 온다 → 그 칸은 아예 안 그린다(빈 지표 금지). */
-          nearestExpiry={null}
-          saved={0}
-          t={t}
-        />
-      )}
 
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
         {loading ? (

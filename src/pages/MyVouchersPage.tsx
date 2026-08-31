@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom'
 const VoucherMap = lazy(() => import('./my-vouchers/VoucherMap'))
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Ticket, CheckCircle, XCircle, QrCode, X, ChevronRight, Map, Gift } from 'lucide-react'
+import { ArrowLeft, Ticket, CheckCircle, XCircle, QrCode, X, Map } from 'lucide-react'
 import { useMyVouchers } from '@/hooks/queries'
 import { WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import WalletHeader from './my-vouchers/WalletHeader'
@@ -19,10 +19,9 @@ import { EmptyVouchers } from './my-vouchers/WalletEmpty'
 import BrandLoader from '@/components/brand/BrandLoader'
 import PostJoinShareModal from './my-vouchers/PostJoinShareModal'
 import VoucherTicket from './my-vouchers/VoucherTicket'
-import WalletHero from './my-vouchers/WalletHero'
 import WalletArchive from './my-vouchers/WalletArchive'
 import QRModal from './my-vouchers/QRModal'
-import { isStoreVoucher, isGifticonVoucher } from '@/shared/voucher-wallet'
+import { isStoreVoucher } from '@/shared/voucher-wallet'
 import AddToHomeHint from '@/components/AddToHomeHint'
 import type { Voucher, ViewMode } from './my-vouchers/types'
 
@@ -110,7 +109,6 @@ export default function MyVouchersPage() {
   //   이 지갑은 **이용권 전용**이고, 교환권(문자로 오는 기프티콘)은 /my-gifticons 가 담당한다.
   //   어느 지갑 것인지 판정은 shared/voucher-wallet SSOT 한 곳에서만(카테고리로 나누지 말 것).
   const shownVouchers = useMemo(() => vouchers.filter(isStoreVoucher), [vouchers])
-  const gifticonCount = useMemo(() => vouchers.filter(isGifticonVoucher).length, [vouchers])
   // 🎨 2026-06-20 흑백 리디자인 화면1: 사용가능 카드 + (사용완료 / 만료·환불) 헤어라인 박스
   // 🎨 2026-06-21 (개선 #1): 만료 임박순 정렬 — API 는 created_at DESC 만 → 히어로 'D-N'과 목록 최상단 불일치.
   //   곧 사라질 이용권이 위로 오도록 만료 가까운 순(만료일 없는 건 뒤로). filter 가 새 배열이라 원본 불변.
@@ -248,49 +246,15 @@ export default function MyVouchersPage() {
           (26px 타이틀 + 총 보유 칩 + 언더라인 탭). 교환권 보유 시에만 탭 노출. */}
       <WalletHeader
         title={t('voucher.myVouchers')}
-        subline={shownVouchers.length > 0
-          ? `${t('voucher.heroUsable', { defaultValue: '사용 가능' })} ${unusedItems.length}${t('voucher.heroCountUnit', { defaultValue: '장' })} · ${t('voucher.totalCount', { count: shownVouchers.length })}`
-          : null}
+        amount={shownVouchers.length > 0 ? heroTotal : null}
+        unit={heroUnit}
+        stats={shownVouchers.length > 0 ? [
+          { label: t('voucher.heroUsable', { defaultValue: '사용 가능' }), value: `${unusedItems.length}${t('voucher.heroCountUnit', { defaultValue: '장' })}` },
+          ...(nearestExpiry !== null ? [{ label: t('voucher.heroExpiry', { defaultValue: '만료 임박' }), value: nearestExpiry === 0 ? 'D-DAY' : `D-${nearestExpiry}`, mono: true, tone: (nearestExpiry <= 2 ? 'danger' : undefined) as 'danger' | undefined }] : []),
+          ...(heroSaved > 0 ? [{ label: t('voucher.heroSaved', { defaultValue: '아낀 돈' }), value: `${formatNumber(heroSaved)}${heroUnit}`, mono: true, tone: 'success' as const }] : []),
+        ] : []}
       />
 
-      {/* 🔁 2026-06-23 양방향 분쟁: 매장이 "안 왔어요" 신고한 이용권에 대한 손님 항변 배너(자가완결) */}
-      <div className="mt-4" />
-      <VoucherDisputeBanner />
-
-      {/* 🎨 2026-06-21 시안 A '프리미엄 패스': 보유 금액 히어로 (지갑=자산 느낌). 사용 가능분 있을 때만.
-          theme-dual: 잉크 히어로 카드 — 라이트/다크 모두 항상 어두운 카드(신용카드처럼). 내부 text-white/gray 의도적. */}
-      {unusedItems.length > 0 && (
-        <WalletHero
-          label={t('voucher.heroBalanceLabel', { defaultValue: '보유 이용권 금액' })}
-          total={heroTotal}
-          unit={heroUnit}
-          nearestExpiry={nearestExpiry}
-          saved={heroSaved}
-          t={t}
-        />
-      )}
-
-      {/* 🎟️ 2026-08-31 (지갑 분리): 교환권을 갖고 있으면 어디로 갔는지 한 줄로 안내 — "내 교환권 어디 갔지?"가
-          이 분리의 유일한 부작용이라, 그 자리에 다리를 놓는다. 없으면 아예 렌더 안 함(빈 안내 금지). */}
-      {gifticonCount > 0 && (
-        <div className="ur-content-narrow px-4 lg:px-8 mb-4">
-          <button
-            type="button"
-            onClick={() => navigate('/my-gifticons')}
-            className="w-full flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#141414] px-4 py-3 text-left active:bg-gray-50 dark:active:bg-white/[0.04] transition-colors"
-          >
-            <span className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center bg-brand-tint text-brand-text">
-              <Gift className="w-[18px] h-[18px]" strokeWidth={2} />
-            </span>
-            <span className="flex-1 min-w-0">
-              <span className="block text-[14px] font-bold text-gray-900 dark:text-white">{t('nav.myGifticons', { defaultValue: '내 교환권' })}</span>
-              <span className="block text-[12px] text-gray-500 dark:text-gray-400">{t('voucher.gifticonRowSub', { defaultValue: '문자로 받은 기프티콘 보관함' })}</span>
-            </span>
-            <span className="shrink-0 text-[13px] font-bold text-gray-900 dark:text-white tabular-nums">{gifticonCount}{t('voucher.heroCountUnit', { defaultValue: '장' })}</span>
-            <ChevronRight className="w-4 h-4 shrink-0 text-gray-300 dark:text-gray-600" />
-          </button>
-        </div>
-      )}
 
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
         {loading ? (

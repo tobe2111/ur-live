@@ -88,6 +88,16 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '이용권 지갑에 교환권 링크가 다시 들어온다',
+    file: 'src/pages/MyGifticonsPage.tsx',
+    find: "        onBack={() => navigate('/vouchers')}",
+    replace: "        onBack={() => navigate('/my-vouchers')}",
+    test: 'src/tests/unit/voucher-wallet-split.test.ts',
+    why:
+      '두 지갑을 나눈 뒤 남는 위험은 "다시 섞이는 것"이다 — 교환권 보관함의 뒤로가기가 이용권 지갑을 ' +
+      '가리키면 두 축이 한 흐름으로 이어져 버린다. 대표가 "교환권은 교환권 페이지에만" 이라고 못 박은 그 경계다.',
+  },
+  {
     name: '교환권 페이지에서 보관함으로 가는 길이 사라진다',
     file: 'src/pages/vouchers/VouchersTopBar.tsx',
     find: '<VoucherHeaderActions />',

@@ -4821,7 +4821,8 @@
     "gifticonSeoTitle": "マイギフト券 - 유어딜",
     "gifticonSeoDescription": "購入したギフト券を確認して店舗で使えます",
     "loadFailedGift": "ギフト券を読み込めませんでした",
-    "noUnusedGift": "使用できるギフト券がありません"
+    "noUnusedGift": "使用できるギフト券がありません",
+    "totalCountLabel": "全体"
   },
   "sellerWaiting": {
     "title": "セラー承認待機",

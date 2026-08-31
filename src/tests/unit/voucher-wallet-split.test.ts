@@ -76,6 +76,16 @@ describe('③ 배선 — 두 페이지가 서로의 것을 담지 않는다', ()
   it('이용권 지갑에 교환권 세그먼트 탭이 다시 생기지 않는다', () => {
     expect(wallet).not.toMatch(/sourceTab|tabGifticon/)
   })
+  it('이용권 지갑에는 교환권이 링크로도 들어가지 않는다', () => {
+    /**
+     * 대표 2026-08-31: *"이용권 페이지에 교환권이 들어있으면 안 되지 — 교환권은 교환권 페이지에만."*
+     * 처음엔 "내 교환권 N장 ›" 다리를 놓았는데, 그것도 이용권 화면에 교환권이 있는 것으로 읽힌다.
+     * 교환권으로 가는 길은 하단 '교환권' 탭 → 보관함, 그리고 마이페이지 행이 담당한다.
+     */
+    expect(wallet).not.toContain('/my-gifticons')
+    // 반대 방향도 같은 경계다 — 교환권 보관함의 뒤로가기는 교환권 카탈로그로 돌아간다(이용권 지갑이 아니라).
+    expect(gifts).toMatch(/onBack=\{\(\) => navigate\('\/vouchers'\)\}/)
+  })
   it('두 페이지 어디서도 kt_alpha 를 직접 비교하지 않는다(판정 SSOT 우회 금지)', () => {
     expect(wallet).not.toContain('kt_alpha')
     expect(gifts).not.toContain('kt_alpha')

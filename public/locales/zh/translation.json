@@ -4821,7 +4821,8 @@
     "gifticonSeoTitle": "我的礼品券 - 유어딜",
     "gifticonSeoDescription": "查看已购礼品券并在门店使用",
     "loadFailedGift": "未能加载礼品券",
-    "noUnusedGift": "没有可用的礼品券"
+    "noUnusedGift": "没有可用的礼品券",
+    "totalCountLabel": "全部"
   },
   "sellerWaiting": {
     "title": "卖家审核等待",

@@ -4821,7 +4821,8 @@
     "gifticonSeoTitle": "My Gifticons - YourDeal",
     "gifticonSeoDescription": "Check the gifticons you bought and use them in store",
     "loadFailedGift": "Couldn't load your gifticons",
-    "noUnusedGift": "No gifticons available to use"
+    "noUnusedGift": "No gifticons available to use",
+    "totalCountLabel": "Total"
   },
   "sellerWaiting": {
     "title": "Seller Approval Pending",

@@ -4821,7 +4821,8 @@
     "gifticonSeoTitle": "Mes gifticons - 유어딜",
     "gifticonSeoDescription": "Retrouvez les gifticons achetés et utilisez-les en magasin",
     "loadFailedGift": "Impossible de charger les gifticons",
-    "noUnusedGift": "Aucun gifticon disponible"
+    "noUnusedGift": "Aucun gifticon disponible",
+    "totalCountLabel": "Total"
   },
   "sellerWaiting": {
     "title": "Approbation Vendeur en Attente",
