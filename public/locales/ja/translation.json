@@ -190,7 +190,8 @@
     "currencyWon": "ウォン",
     "checkNetworkRetry": "ネットワークを確認して再試行してください",
     "goHome": "ホームへ",
-    "prev": "前へ"
+    "prev": "前へ",
+    "seeAll": "すべて見る"
   },
   "auth": {
     "email": "メールアドレス",
@@ -4507,7 +4508,8 @@
     "dongnedeal": "ご近所ディール",
     "create": "作成",
     "offlineGroupBuy": "オフライン共同購入",
-    "myGbVouchers": "利用券"
+    "myGbVouchers": "利用券",
+    "myGifticons": "マイギフト券"
   },
   "bulkUpload": {
     "title": "商品一括登録",
@@ -4745,7 +4747,7 @@
     "storeGuide": "店舗案内",
     "cancelRefund": "購入取消・返金",
     "refundWindowNote": "未使用・決済後7日以内のみ返金可能です",
-    "myVouchers": "マイクーポン",
+    "myVouchers": "マイ利用券",
     "empty": "クーポンがまだありません",
     "emptyHint": "グルメ共同購入に参加しましょう！",
     "exploreRestaurants": "店舗を探す",
@@ -4755,13 +4757,14 @@
     "scan": "QRを表示",
     "copy": "コピー",
     "showQrAtStore": "店舗でこのQRコードを見せてください",
-    "seoTitle": "マイクーポン - 유어딜",
-    "seoDescription": "購入したクーポンを確認・使用",
+    "seoTitle": "マイ利用券 - 유어딜",
+    "seoDescription": "購入した利用券を確認して店舗で使えます",
     "status": {
       "unused": "利用可能",
       "used": "使用済み",
       "expired": "期限切れ",
-      "refunded": "返金済み"
+      "refunded": "返金済み",
+      "processing": "送信中"
     },
     "verify": {
       "title": "クーポン認証",
@@ -4811,7 +4814,15 @@
     "deal": "ディール",
     "heroBalanceLabelGift": "保有ギフト券の金額",
     "loadFailed": "利用券を読み込めませんでした",
-    "totalCount": "合計{{count}}枚"
+    "totalCount": "合計{{count}}枚",
+    "myGifticons": "マイギフト券",
+    "myBox": "保管箱",
+    "gifticonRowSub": "SMSで届いたギフト券の保管箱",
+    "gifticonSeoTitle": "マイギフト券 - 유어딜",
+    "gifticonSeoDescription": "購入したギフト券を確認して店舗で使えます",
+    "loadFailedGift": "ギフト券を読み込めませんでした",
+    "noUnusedGift": "使用できるギフト券がありません",
+    "totalCountLabel": "全体"
   },
   "sellerWaiting": {
     "title": "セラー承認待機",
@@ -6016,7 +6027,7 @@
     "sectionTitle": "利用履歴",
     "wishlist": "[TODO:ja] 찜한 상품",
     "voucher": "交換券",
-    "voucherSub": "利用券・ギフト券",
+    "voucherSub": "店舗でQR・コードで使用",
     "digitalLibrary": "[TODO:ja] 디지털 보관함",
     "digitalLibrarySub": "[TODO:ja] 전자책·강의·가이드",
     "coupons": "[TODO:ja] 쿠폰함",
@@ -6025,7 +6036,9 @@
     "myStays": "宿泊予約",
     "myStaysSub": "チェックインコード / 有効期限",
     "interestList": "お気に入り店舗",
-    "interestListSub": "共同購入オープン通知リスト"
+    "interestListSub": "共同購入オープン通知リスト",
+    "gifticon": "マイギフト券",
+    "gifticonSub": "SMSで届いたギフト券"
   },
   "orderStatus": {
     "sectionTitle": "[TODO:ja] 주문 현황",

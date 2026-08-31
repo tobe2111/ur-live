@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect, useMemo, useCallback, Fragment } from 'react'
+import { lazy, Suspense, useState, useEffect, useMemo, useCallback } from 'react'
 import { safeTime } from '@/utils/safe-date'
 import { useNavigate } from 'react-router-dom'
 
@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom'
 const VoucherMap = lazy(() => import('./my-vouchers/VoucherMap'))
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Ticket, CheckCircle, XCircle, QrCode, X, ChevronRight, Map } from 'lucide-react'
+import { ArrowLeft, Ticket, CheckCircle, XCircle, QrCode, X, Map } from 'lucide-react'
 import { useMyVouchers } from '@/hooks/queries'
 import { WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import WalletHeader from './my-vouchers/WalletHeader'
@@ -19,7 +19,9 @@ import { EmptyVouchers } from './my-vouchers/WalletEmpty'
 import BrandLoader from '@/components/brand/BrandLoader'
 import PostJoinShareModal from './my-vouchers/PostJoinShareModal'
 import VoucherTicket from './my-vouchers/VoucherTicket'
+import WalletArchive from './my-vouchers/WalletArchive'
 import QRModal from './my-vouchers/QRModal'
+import { isStoreVoucher } from '@/shared/voucher-wallet'
 import AddToHomeHint from '@/components/AddToHomeHint'
 import type { Voucher, ViewMode } from './my-vouchers/types'
 
@@ -101,17 +103,12 @@ export default function MyVouchersPage() {
   const theme = 'light' as const
   const tk = walletTokens[theme]
 
-  // 상태별 그룹핑
-  // 🏁 2026-06-12: 만료/환불 그룹 접기 상태 (기본 접힘)
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
-  // 🎟️ 2026-06-18 (대표 신고 — 이용권 탭에 교환권 섞임): source 분리.
-  //   이용권(internal, 매장 QR/PIN) 기본 / 교환권(kt_alpha, MMS 발송)은 별도 세그먼트. 교환권 보유 시에만 토글 노출.
-  const [sourceTab, setSourceTab] = useState<'gb' | 'gift'>('gb')
-  const gbCount = vouchers.filter(v => v.source !== 'kt_alpha').length
-  const giftCount = vouchers.filter(v => v.source === 'kt_alpha').length
-  const shownVouchers = giftCount > 0
-    ? vouchers.filter(v => (sourceTab === 'gift' ? v.source === 'kt_alpha' : v.source !== 'kt_alpha'))
-    : vouchers
+  // 상태별 그룹핑 (만료/환불 그룹 접기 상태는 WalletArchive 안으로 — 2026-08-31 추출)
+  // 🎟️ 2026-06-18 (대표 신고 — 이용권 탭에 교환권 섞임): source 분리 → 세그먼트 탭.
+  // 🎟️ 2026-08-31 (대표 "교환권은 교환권 페이지에서, 이용권은 이용권 페이지에서"): 탭도 걷어냈다.
+  //   이 지갑은 **이용권 전용**이고, 교환권(문자로 오는 기프티콘)은 /my-gifticons 가 담당한다.
+  //   어느 지갑 것인지 판정은 shared/voucher-wallet SSOT 한 곳에서만(카테고리로 나누지 말 것).
+  const shownVouchers = useMemo(() => vouchers.filter(isStoreVoucher), [vouchers])
   // 🎨 2026-06-20 흑백 리디자인 화면1: 사용가능 카드 + (사용완료 / 만료·환불) 헤어라인 박스
   // 🎨 2026-06-21 (개선 #1): 만료 임박순 정렬 — API 는 created_at DESC 만 → 히어로 'D-N'과 목록 최상단 불일치.
   //   곧 사라질 이용권이 위로 오도록 만료 가까운 순(만료일 없는 건 뒤로). filter 가 새 배열이라 원본 불변.
@@ -124,13 +121,11 @@ export default function MyVouchersPage() {
   const usedItems = shownVouchers.filter(v => v.status === 'used')
   const archivedItems = shownVouchers.filter(v => v.status === 'expired' || v.status === 'refunded')
   // 지도에 표시 가능한 미사용 이용권 (좌표 보유) — 메모이즈(지도 재초기화 방지)
-  // 🐛 2026-06-21: 현재 탭(이용권/교환권) 스코프로 제한 — 교환권 탭에서 이용권 핀/지도버튼 새던 것 차단.
-  const mapVouchers = useMemo(() => {
-    const scoped = giftCount > 0
-      ? vouchers.filter(v => (sourceTab === 'gift' ? v.source === 'kt_alpha' : v.source !== 'kt_alpha'))
-      : vouchers
-    return scoped.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng)
-  }, [vouchers, sourceTab, giftCount])
+  // 🐛 2026-06-21: 지갑 스코프로 제한 — 교환권 핀이 이용권 지도에 새던 것 차단(2026-08-31 이후엔 페이지가 분리돼 구조적으로도 0).
+  const mapVouchers = useMemo(
+    () => shownVouchers.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng),
+    [shownVouchers],
+  )
   const handleMarkerClick = useCallback(
     (mv: { id: number | string }) => setMapSelected(vouchers.find(x => x.id === mv.id) ?? null),
     [vouchers],
@@ -159,11 +154,8 @@ export default function MyVouchersPage() {
     const paid = v.applied_price ?? 0
     return (pct > 0 && pct < 100 && paid > 0) ? s + Math.round((paid * pct) / (100 - pct)) : s
   }, 0)
-  // 🪙 2026-06-23 (대표 신고 "교환권은 1800딜로 떠야"): 교환권(kt_alpha)은 딜로만 결제 → 단위 '딜'
-  //   (이용권 face value 는 '원' 유지 — utils/format.ts formatProductPrice 의 deal_only 규칙과 동일).
-  //   히어로는 탭별(unusedItems=shownVouchers) 동질 집합이라 sourceTab 으로 단위 판정.
-  const heroIsDeal = sourceTab === 'gift'
-  const heroUnit = heroIsDeal ? t('voucher.deal', { defaultValue: '딜' }) : t('voucher.won', { defaultValue: '원' })
+  // 🪙 2026-08-31: 이 지갑은 이용권 전용이라 단위는 항상 '원'(교환권의 '딜' 단위는 /my-gifticons 가 담당).
+  const heroUnit = t('voucher.won', { defaultValue: '원' })
 
   // 🎨 화면2 — 지도에서 보기 (전용 인-페이지 화면)
   if (viewMode === 'map') {
@@ -254,50 +246,14 @@ export default function MyVouchersPage() {
           (26px 타이틀 + 총 보유 칩 + 언더라인 탭). 교환권 보유 시에만 탭 노출. */}
       <WalletHeader
         title={t('voucher.myVouchers')}
-        totalLabel={vouchers.length > 0 ? t('voucher.totalCount', { count: vouchers.length }) : null}
-        tabs={giftCount > 0 ? [
-          { key: 'gb', label: t('voucher.tabGroupBuy', { defaultValue: '이용권' }), count: gbCount },
-          { key: 'gift', label: t('voucher.tabGifticon', { defaultValue: '교환권' }), count: giftCount },
-        ] : undefined}
-        activeTab={sourceTab}
-        onTab={setSourceTab}
+        amount={shownVouchers.length > 0 ? heroTotal : null}
+        unit={heroUnit}
+        stats={shownVouchers.length > 0 ? [
+          { label: t('voucher.heroUsable', { defaultValue: '사용 가능' }), value: `${unusedItems.length}${t('voucher.heroCountUnit', { defaultValue: '장' })}` },
+          ...(nearestExpiry !== null ? [{ label: t('voucher.heroExpiry', { defaultValue: '만료 임박' }), value: nearestExpiry === 0 ? 'D-DAY' : `D-${nearestExpiry}`, mono: true, tone: (nearestExpiry <= 2 ? 'danger' : undefined) as 'danger' | undefined }] : []),
+          ...(heroSaved > 0 ? [{ label: t('voucher.heroSaved', { defaultValue: '아낀 돈' }), value: `${formatNumber(heroSaved)}${heroUnit}`, mono: true, tone: 'success' as const }] : []),
+        ] : []}
       />
-
-      {/* 🔁 2026-06-23 양방향 분쟁: 매장이 "안 왔어요" 신고한 이용권에 대한 손님 항변 배너(자가완결) */}
-      <div className="mt-4" />
-      <VoucherDisputeBanner />
-
-      {/* 🎨 2026-06-21 시안 A '프리미엄 패스': 보유 금액 히어로 (지갑=자산 느낌). 사용 가능분 있을 때만.
-          theme-dual: 잉크 히어로 카드 — 라이트/다크 모두 항상 어두운 카드(신용카드처럼). 내부 text-white/gray 의도적. */}
-      {unusedItems.length > 0 && (
-        <div className="ur-content-narrow px-4 lg:px-8 mb-4">
-          <div className="rounded-[20px] px-[18px] pt-[18px] pb-4 bg-gray-900 dark:bg-[#141414] text-white"
-            style={{ boxShadow: '0 14px 32px -10px rgba(10,10,10,0.45)' }}>
-            <p className="text-[12px] font-semibold text-gray-400">{heroIsDeal ? t('voucher.heroBalanceLabelGift', { defaultValue: '보유 교환권 금액' }) : t('voucher.heroBalanceLabel', { defaultValue: '보유 이용권 금액' })}</p>
-            <p className="mt-1 text-[32px] font-extrabold font-mono tracking-tight leading-none">
-              {formatNumber(heroTotal)}<span className="font-sans text-[16px] font-bold text-gray-300 ml-0.5">{heroUnit}</span>
-            </p>
-            <div className="mt-3.5 pt-3 flex items-center gap-6 border-t border-white/10">
-              <div>
-                <p className="text-[11px] text-gray-400">{t('voucher.heroUsable', { defaultValue: '사용 가능' })}</p>
-                <p className="mt-0.5 text-[15px] font-extrabold">{unusedItems.length}{t('voucher.heroCountUnit', { defaultValue: '장' })}</p>
-              </div>
-              {nearestExpiry !== null && (
-                <div>
-                  <p className="text-[11px] text-gray-400">{t('voucher.heroExpiry', { defaultValue: '만료 임박' })}</p>
-                  <p className={`mt-0.5 text-[15px] font-extrabold font-mono ${nearestExpiry <= 2 ? 'text-[#FF6B6B]' : ''}`}>{nearestExpiry === 0 ? 'D-DAY' : `D-${nearestExpiry}`}</p>
-                </div>
-              )}
-              {heroSaved > 0 && (
-                <div>
-                  <p className="text-[11px] text-gray-400">{t('voucher.heroSaved', { defaultValue: '아낀 돈' })}</p>
-                  <p className="mt-0.5 text-[15px] font-extrabold font-mono text-[#34C759]">{formatNumber(heroSaved)}{heroUnit}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
 
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
@@ -317,9 +273,9 @@ export default function MyVouchersPage() {
           </div>
         ) : shownVouchers.length === 0 ? (
           <EmptyVouchers
-            mode={giftCount > 0 && sourceTab === 'gift' ? 'gift' : 'gb'}
+            mode="gb"
             /* 🧭 2026-07-20: /group-buy 는 홈 리다이렉트(이중 홉) — 이용권 CTA 는 홈(동네딜 피드) 직행 */
-            onExplore={() => navigate(giftCount > 0 && sourceTab === 'gift' ? '/vouchers' : '/')}
+            onExplore={() => navigate('/')}
             t={t}
           />
         ) : (
@@ -349,32 +305,7 @@ export default function MyVouchersPage() {
             )}
 
             {/* 사용 완료 / 만료·환불 — 헤어라인 박스 (탭하면 인라인 펼침) */}
-            {(usedItems.length > 0 || archivedItems.length > 0) && (
-              <div className="mt-4 rounded-2xl border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
-                {([
-                  { key: 'used', label: t('voucher.groupUsed', { defaultValue: '사용 완료' }), items: usedItems },
-                  { key: 'archived', label: t('voucher.groupArchived', { defaultValue: '만료 · 환불' }), items: archivedItems },
-                ] as const).filter(g => g.items.length > 0).map((g, idx) => {
-                  const open = expandedGroups.has(g.key)
-                  return (
-                    <Fragment key={g.key}>
-                      {idx > 0 && <div className="h-px bg-gray-100 dark:bg-[#2C2F35] mx-[15px]" />}
-                      <button type="button"
-                        onClick={() => setExpandedGroups(prev => { const n = new Set(prev); if (n.has(g.key)) n.delete(g.key); else n.add(g.key); return n })}
-                        className="w-full flex items-center justify-between px-[15px] py-3.5 text-left">
-                        <span className="text-[14px] font-semibold text-gray-900 dark:text-white">{g.label} <span className="text-gray-400 dark:text-gray-500 font-medium">{g.items.length}</span></span>
-                        <ChevronRight className={`w-4 h-4 shrink-0 text-gray-300 dark:text-gray-600 transition-transform ${open ? 'rotate-90' : ''}`} />
-                      </button>
-                      {open && (
-                        <div className="px-[13px] pb-3 space-y-3">
-                          {g.items.map(v => <VoucherTicket key={v.id} v={v} muted locale={locale} t={t} onShowQr={() => setQrVoucher(v)} />)}
-                        </div>
-                      )}
-                    </Fragment>
-                  )
-                })}
-              </div>
-            )}
+            <WalletArchive used={usedItems} archived={archivedItems} locale={locale} t={t} onShowQr={setQrVoucher} />
           </>
         )}
       </div>

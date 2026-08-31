@@ -16,7 +16,7 @@ import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'rea
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Gift, ArrowRight, ChevronDown, ShoppingBag, Flame, Clock, Tag, ArrowDownWideNarrow, ArrowUpWideNarrow, Soup, Shirt, Sparkle, Sofa, Smartphone, type LucideIcon } from 'lucide-react'
+import { Gift, ArrowRight, ChevronDown, ShoppingBag, Flame, Clock, Tag, ArrowDownWideNarrow, ArrowUpWideNarrow, Soup, Shirt, Sparkle, Sofa, Smartphone, type LucideIcon } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🎟️ 2026-07-10 (대표 결정): 일반상품(쇼핑) 노출은 SHOPPING_TAB_HIDDEN 게이트 — 교환권은 유지.
 import { SHOPPING_TAB_HIDDEN, TOPUP_DISABLED } from '@/shared/feature-flags'
@@ -26,6 +26,8 @@ import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 // 🖥️ 2026-07-18 (교환권 PC 2단 분리): 카드/행 + VoucherProduct 타입은 ./vouchers/shared 로 추출(파일크기 래칫).
 import { VoucherCard, VoucherRow, BrandChip, CategoryIcon, type VoucherProduct } from './vouchers/shared'
+import { GifticonBoxRailRow } from './vouchers/GifticonBoxEntry'
+import VouchersTopBar from './vouchers/VouchersTopBar'
 import { SortMenu } from '@/components/ui/sort-menu'
 import { SORT_OPTIONS, SHOP_CATEGORIES, type SortKey } from './vouchers/constants'
 import BrowseProductCard from './browse/BrowseProductCard'
@@ -526,6 +528,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               </span>
             </button>
 
+            <GifticonBoxRailRow />
+
             {/* 카테고리 — 세로 리스트 */}
             {sections.length > 0 && (
               <div>
@@ -657,38 +661,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       <h1 className="sr-only">{brand ? `${brand} 교환권` : '교환권'} — 인기 브랜드 기프티콘을 딜로 즉시 구매</h1>
 
 
-      {/* Header — 🛡️ 2026-05-25: 뒤로가기 버튼 제거 (사용자 요청).
-          BottomNav 의 메인 탭이라 의미 없는 navigation. 검색 + 타이틀만 유지.
-          🛡️ 2026-06-01: embedded(홈) 모드면 홈의 sticky 헤더가 담당 → 자체 헤더 skip. */}
-      {/* 🎫 2026-06-23 (대표 결정): 중앙 정렬 스크롤스파이 탭 — 클릭 시 해당 섹션으로 점프, 스크롤 위치 따라 활성.
-          콘텐츠를 교체하지 않고 한 페이지 안에서 교환권↔쇼핑 사이를 이동. 검색 아이콘은 우측에 absolute 고정. */}
-      {!embedded && (
-        <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-          <div className="relative flex items-center justify-center px-2 py-1.5">
-            <div className="flex items-center gap-1">
-              {/* 🎟️ 2026-07-10 (대표 결정): SHOPPING_TAB_HIDDEN 이면 쇼핑 탭 숨김 — 교환권 단일 탭. */}
-              {([['vouchers', '교환권'], ['shopping', '쇼핑']] as const).filter(([key]) => key !== 'shopping' || !SHOPPING_TAB_HIDDEN).map(([key, label]) => {
-                const active = activeTab === key
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => (key === 'shopping' ? goToShopping() : goToVouchers())}
-                    className={`relative px-4 py-2 text-[15px] font-extrabold transition-colors ${active ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}
-                  >
-                    {label}
-                    {active && <span className="absolute left-4 right-4 bottom-0 h-[2.5px] rounded-full bg-gray-900 dark:bg-white" />}
-                  </button>
-                )
-              })}
-            </div>
-            {/* 👆 2026-07-29 (UX 실측): 탭 타깃이 28×28 이었다 — iOS HIG 44pt 미만. 아이콘 크기는 그대로 두고 패딩만. */}
-            <button onClick={() => navigate('/search?scope=exchange')} aria-label="검색" className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center">
-              <Search className="w-5 h-5 text-gray-900 dark:text-white" />
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 상단 바 — 제목(단일 표면) 또는 교환권↔쇼핑 스크롤스파이 탭 + [보관함][검색]. 홈(embedded)은 홈 헤더가 담당. */}
+      {!embedded && <VouchersTopBar activeTab={activeTab} onVouchers={goToVouchers} onShopping={goToShopping} />}
 
       {/* 🎫 2026-06-23: 교환권 본문(잔액/카테고리/브랜드/리스트) — 항상 표시. 아래 쇼핑 섹션과 한 스크롤로 이어짐. */}
       {/* 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 = scroll-up reveal 그룹 (headroom).

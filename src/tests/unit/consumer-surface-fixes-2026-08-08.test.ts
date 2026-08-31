@@ -13,7 +13,7 @@
  * 화면 확인은 배포 후 사람 눈이다.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { isBlockedPhotoUrl } from '../../worker/utils/demo-photo-set'
 import { PRODUCT_DETAIL_FIELDS } from '../../shared/db/product-columns'
 
@@ -25,8 +25,16 @@ const code = (p: string) =>
 
 describe('① 교환권 페이지 검색은 교환권만', () => {
   it('/vouchers 검색 버튼이 scope 를 붙여 보낸다', () => {
-    const v = code('src/pages/VouchersPage.tsx')
-    expect(v, "맨 `/search` 로 보내면 교환권이 전부 빠진다(그 화면 기본이 이용권만)")
+    /**
+     * 🔎 2026-08-31: 검색 버튼이 상단 바 컴포넌트로 분리되면서(파일 크기 래칫) 이 검사가 **낡은 지도**가 돼
+     *   빨간불이 났다 — 동작은 그대로인데 보던 파일에 코드가 없어진 경우다. 그래서 파일 하나가 아니라
+     *   **교환권 표면 전체**(페이지 + 그 컴포넌트 폴더)를 본다. 앞으로 또 옮겨도 불변식은 살아 있고,
+     *   `scope` 를 빼면 여전히 빨간불이 된다(그게 이 검사가 지키는 것이다).
+     */
+    const surface = ['src/pages/VouchersPage.tsx', ...readdirSync('src/pages/vouchers')
+      .filter((f) => f.endsWith('.tsx')).map((f) => `src/pages/vouchers/${f}`)]
+      .map(code).join('\n')
+    expect(surface, "맨 `/search` 로 보내면 교환권이 전부 빠진다(그 화면 기본이 이용권만)")
       .toContain("navigate('/search?scope=exchange')")
   })
 

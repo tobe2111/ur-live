@@ -146,7 +146,7 @@
 - **발견**: `/`(동네딜 지도) · `/vouchers`(이용권+쇼핑) · `/group-buy`(동네딜) · `/browse`(쇼핑,숨김) · `/search` · `/blog` · **`/local/:code`(상권관 — B2G 상권 패키지 지역 랜딩, 2026-07-04)**
 - **상세/구매**: `/vouchers/:id` · `/group-buy/:id` · `/products/:id` · `/stays/:id` · `/checkout` · `/points/charge`
 - **유어샵**: `/u/:handle`(단일화) · `/u/me`(본인) · `/u/me/add`(핀 추가) · `/u/me/earnings` · `/profile/:username`·`/s/:id`(셀러 공개)
-- **마이**: `/user/profile` · `/my-vouchers`(지갑) · `/my-orders` · `/my-deal-history` · `/my-commissions` · `/notifications` · `/account/settings`
+- **마이**: `/user/profile` · `/my-vouchers`(이용권 지갑) · **`/my-gifticons`(교환권 보관함 — 2026-08-31 분리: 교환권은 `/vouchers` 에서 사고 여기서 확인, 이용권은 `/my-vouchers`)** · `/my-orders` · `/my-deal-history` · `/my-commissions` · `/notifications` · `/account/settings`
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴) · **`/experience`(체험 캠페인 응모, 2026-07-12)**
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴)
 - **상권(B2G)**: `/district/:slug`(영수증 페이백 랜딩) · `/district/my`(상권 쿠폰 지갑) — `/local/:code` 상권관과 연계
