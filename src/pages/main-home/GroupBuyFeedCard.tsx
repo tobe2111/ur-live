@@ -10,7 +10,6 @@ import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import DealCardMedia from '@/components/deal/DealCardMedia'
-import StarRating from '@/components/deal/StarRating'
 import WishlistHeart from '@/components/deal/WishlistHeart'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
@@ -18,7 +17,8 @@ import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import { canonicalDetailPath } from '@/shared/product-flow'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import { stripStorePrefix } from '@/utils/deal-title'
-import { Utensils, Scissors, BedDouble, Ticket, Dumbbell, PawPrint, PartyPopper, Gift, type LucideIcon } from 'lucide-react'
+import StarRating from '@/components/deal/StarRating'
+import { Utensils, Scissors, BedDouble, Ticket, Dumbbell, PawPrint, PartyPopper, Gift, Star, type LucideIcon } from 'lucide-react'
 import type { FcfsInfo } from '@/features/group-buy/useFcfs'
 import type { Product } from './types'
 
@@ -294,6 +294,17 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
             {fcfs && <FcfsBadge info={fcfs} variant="overlay" className={`absolute ${isUrgent ? 'top-9' : 'top-2'} left-2 z-[2]`} />}
             {/* 💗 찜 — 그루폰 카드 우상단 하트. hover 시 나타나고(찜된 건 항상 보임) 누르면 통 튄다. */}
             <WishlistHeart productId={p.id} className="absolute top-2 right-2 z-[3]" />
+            {/* 🔻 2026-08-31: 할인율을 **가격 줄에서 사진 위로** 옮긴다. 두 가지를 동시에 고친다 —
+                ① 6자리 가격(숙소 119,000원)이면 배지가 다음 줄로 밀려 카드 높이가 그 칸만 늘어났다.
+                   실측으로 확인한 구조적 깨짐이고, 가격이 길수록 반드시 난다.
+                ② 커머스에서 할인율은 **가장 강한 신호**여야 하는데 연분홍 배경/로즈 글씨라
+                   바로 옆 판매가보다 약했다. 사진 위 solid 로 올리면 스캔할 때 먼저 잡힌다.
+                좌상단은 마감임박·응모 배지가 쓰므로 **좌하단**(그루폰·쿠팡과 같은 자리). */}
+            {discount > 0 && (
+              <span className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-brand text-[11px] font-extrabold text-white shadow-sm z-[2]">
+                {discount}%
+              </span>
+            )}
           </>
         }
       />
@@ -303,42 +314,26 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
           이전엔 정가가 제목 **위**에 떠 있고 가격이 중간에 있어, 카드마다 눈이 가는 자리가 달랐다. */}
       {/* 🧹 PC 는 카드 박스가 없으므로 좌우 패딩도 0 — 사진 왼쪽 끝과 글자가 딱 맞아야 그루폰처럼 보인다. */}
       <div className="pt-2.5">
-        {/* 머천트 — 매장명 우선, 없으면 브랜드(gift_catalog). 🏪 온누리 가맹 뱃지는 그 옆. */}
-        {(p.restaurant_name || brandName || p.onnuri_merchant) && (
+        {/* [시안 B] 08-19 그루폰 5줄 위계 유지 — 배지만 사진 위로 */}
+        {(p.restaurant_name || brandName) && (
           <p className={`flex items-center gap-1 text-[11px] leading-none mb-1 ${cSub}`}>
-            {brandIcon && !p.restaurant_name && <img src={brandIcon} alt="" className="w-3 h-3 rounded-full object-contain shrink-0" loading="lazy" />}
             <span className="truncate">{p.restaurant_name || brandName}</span>
-            {p.onnuri_merchant && (
-              <span className="shrink-0 px-1 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[9px] font-bold">온누리</span>
-            )}
           </p>
         )}
-
-        {/* 제목 — 2줄 max */}
         <p className={`text-[13.5px] font-bold line-clamp-2 leading-snug ${cText}`}>
           {stripStorePrefix(p.name, p.restaurant_name)}
         </p>
-
-        {/* 📍 주소(좌) · 거리(우) — 그루폰처럼 양끝 정렬(거리가 항상 같은 자리에 온다) */}
         {(addrShort || distKm != null) && (
           <p className={`flex items-center justify-between gap-2 mt-1 text-[11px] min-w-0 ${cSub}`}>
             <span className="truncate">{addrShort}</span>
             {distKm != null && <span className="shrink-0 whitespace-nowrap">{distKm}km</span>}
           </p>
         )}
-
-        {/* ⭐ 평점 — 🌟 2026-08-19 (대표 "별 5개 형태로"): 별 하나 + 숫자 → **별 5개(부분 채움)** +
-            숫자 + 리뷰수. 그루폰 카드의 그 줄이다. 리뷰가 없으면 구매수라도 보여 줘 줄이 비지 않게. */}
-        {(rating > 0 || soldCount > 0) && (
+        {rating > 0 && (
           <p className={`flex items-center gap-1.5 mt-1 text-[11px] ${cSub}`}>
-            {rating > 0 ? (
-              <>
-                <StarRating value={rating} />
-                <span className={`font-bold ${cText}`}>{rating.toFixed(1)}</span>
-                {reviewCount > 0 && <span>({formatNumber(reviewCount)})</span>}
-              </>
-            ) : null}
-            {soldCount > 0 && <span>{rating > 0 ? '· ' : ''}구매 {formatSoldCount(soldCount)}</span>}
+            <StarRating value={rating} />
+            <span className={`font-bold ${cText}`}>{rating.toFixed(1)}</span>
+            {reviewCount > 0 && <span>({formatNumber(reviewCount)})</span>}
           </p>
         )}
 
@@ -354,11 +349,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
           {p.category === 'stay_voucher' && price > 0 && (
             <span className={`text-[11px] font-semibold ${cSub}`}>/1박~</span>
           )}
-          {discount > 0 && (
-            <span className="shrink-0 px-1.5 py-[1px] rounded text-[11px] font-extrabold bg-brand/10 text-brand-text dark:bg-brand/20 dark:text-brand">
-              -{discount}%
-            </span>
-          )}
+
         </p>
       </div>
     </Link>
