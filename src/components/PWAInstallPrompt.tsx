@@ -164,7 +164,7 @@ export default function PWAInstallPrompt() {
             {/* 🛡️ 2026-05-27 사용자 요청: 좌측 분홍 네모 (smartphone icon 컨테이너) 제거. */}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-gray-900 dark:text-white">
-                {t('pwa.install.title', { defaultValue: '🎁 앱 설치하면 환영 쿠폰!' })}
+                {t('pwa.install.title', { defaultValue: '앱 설치하면 환영 쿠폰!' })}
               </p>
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{t('pwa.install.desc', { defaultValue: '홈 화면에 설치하고 5,000원 쿠폰 받기' })}</p>
             </div>
@@ -199,14 +199,14 @@ export default function PWAInstallPrompt() {
           <div className="flex items-start gap-3 mb-2">
             {/* 🛡️ 2026-05-27 사용자 요청: 좌측 분홍 네모 (smartphone icon 컨테이너) 제거. */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900 dark:text-white">{t('pwa.install.title', { defaultValue: '🎁 앱 설치하면 환영 쿠폰!' })}</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white">{t('pwa.install.title', { defaultValue: '앱 설치하면 환영 쿠폰!' })}</p>
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{t('pwa.install.manualDesc', { defaultValue: '홈 화면에 추가하고 5,000원 받기' })}</p>
             </div>
             <button onClick={handleDismiss} aria-label={t('pwa.install.closeAria', { defaultValue: '닫기' })} className="p-1 -m-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1C21] shrink-0">
               <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
           </div>
-          <div className="bg-gradient-to-br from-gray-50 to-gray-50 border border-pink-100 rounded-xl p-3 text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">
+          <div className="bg-gray-50 border border-pink-100 rounded-xl p-3 text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">
             {isIOSDevice ? (
               <>
                 <div className="flex items-center gap-1.5 mb-1.5">

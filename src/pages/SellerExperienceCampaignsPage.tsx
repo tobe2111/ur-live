@@ -158,7 +158,7 @@ export default function SellerExperienceCampaignsPage() {
               {expanded === c.id && (
                 <div className="px-4 pb-4 bg-gray-50/60">
                   <div className="flex flex-wrap gap-2 py-3">
-                    {c.status === 'open' && <button type="button" onClick={() => void draw(c.id, c.slots)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[12px] font-semibold"><Dice5 className="w-3.5 h-3.5" />{t('seller.expCampaigns.drawBtn', { defaultValue: '공정 추첨 실행' })}</button>}
+                    {c.status === 'open' && <button type="button" onClick={() => void draw(c.id, c.slots)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[12px] font-semibold"><Dice5 className="w-3.5 h-3.5" />{t('seller.expCampaigns.drawBtn', { defaultValue: '공정 추첨 실행' })}</button>}
                   </div>
                   {report?.metrics && (
                     <div className="grid grid-cols-4 gap-2 mb-3">

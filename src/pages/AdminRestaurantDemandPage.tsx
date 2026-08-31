@@ -165,7 +165,7 @@ export default function AdminRestaurantDemandPage() {
         )}
 
         <div className="text-xs text-gray-400 pt-4 border-t border-gray-100">
-          <p>💡 <strong>활용 팁</strong></p>
+          <p><strong>활용 팁</strong></p>
           <ul className="mt-1 space-y-0.5 list-disc list-inside">
             <li>셀러 영입 신청 (보라색) 이 많은 매장 → 영입 영업 우선</li>
             <li>알림 등록 (분홍) 이 많은 매장 → 출시 시 즉시 알림 발송 가능 (앞으로 자동화)</li>

@@ -198,7 +198,7 @@ export default function AdminSettlementPage() {
           subtitle={t('admin.settlement.subtitle', { defaultValue: '셀러별 정산 현황 · CSV 내보내기' })}
           icon={<DollarSign className="h-5 w-5" />}
           actions={
-            <button onClick={exportCSV} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">
+            <button onClick={exportCSV} className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-900">
               <Download className="h-3.5 w-3.5" /> {t('admin.settlement.csvDownload', { defaultValue: 'CSV 다운로드' })}
             </button>
           }
@@ -226,7 +226,7 @@ export default function AdminSettlementPage() {
       {/* 기간 필터 */}
       <div className="flex items-center gap-2">
         {[['today', t('admin.settlement.today', { defaultValue: '오늘' })], ['week', t('admin.settlement.thisWeek', { defaultValue: '이번 주' })], ['month', t('admin.settlement.thisMonth', { defaultValue: '이번 달' })], ['all', t('admin.settlement.all', { defaultValue: '전체' })]].map(([v, l]) => (
-          <button key={v} onClick={() => setPeriod(v)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${period === v ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 shadow-sm'}`}>{l}</button>
+          <button key={v} onClick={() => setPeriod(v)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${period === v ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 shadow-sm'}`}>{l}</button>
         ))}
       </div>
 
@@ -286,7 +286,7 @@ export default function AdminSettlementPage() {
                     {seller.pending_amount > 0 && (
                       <button
                         onClick={(e) => { e.stopPropagation(); executeSellerSettlement(seller.seller_id, seller.seller_name) }}
-                        className="px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700"
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-900"
                       >
                         {t('admin.settlement.executeSettlement', { defaultValue: '정산 실행' })}
                       </button>
@@ -305,10 +305,10 @@ export default function AdminSettlementPage() {
           <h2 className="text-sm font-semibold text-gray-900">{t('admin.settlement.historyTitle', { defaultValue: '정산 내역' })}</h2>
           <div className="flex items-center gap-2">
             {[['all', t('admin.settlement.statusAll', { defaultValue: '전체' })], ['pending', t('admin.settlement.statusPending', { defaultValue: '대기중' })], ['completed', t('admin.settlement.statusCompleted', { defaultValue: '완료' })]].map(([v, l]) => (
-              <button key={v} onClick={() => setStatusFilter(v)} className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${statusFilter === v ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{l}</button>
+              <button key={v} onClick={() => setStatusFilter(v)} className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${statusFilter === v ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{l}</button>
             ))}
             {pendingOrders.length > 0 && (
-              <button onClick={() => batchComplete(pendingOrders.map(r => r.id))} className="ml-2 px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700">
+              <button onClick={() => batchComplete(pendingOrders.map(r => r.id))} className="ml-2 px-3 py-1 bg-gray-900 text-white rounded-lg text-xs font-medium hover:bg-gray-900">
                 {t('admin.settlement.batchComplete', { defaultValue: '일괄 완료' })} ({pendingOrders.length})
               </button>
             )}
@@ -422,7 +422,7 @@ function TaxWithholdingCard() {
 
           <div className="flex gap-2 mb-3">
             <button onClick={() => downloadCsv(false)}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700">
+              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-900">
               📥 전체 CSV 다운로드
             </button>
             {summary.reportable_count > 0 && (

@@ -37,7 +37,7 @@ export default function SellerPlusFriendGuidePage() {
 
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
           <section className="bg-white rounded-2xl border border-gray-200 p-5">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">📱 왜 등록해야 하나요?</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">왜 등록해야 하나요?</h2>
             <p className="text-sm text-gray-600 leading-relaxed">
               사용자가 매장 방문 / 결제 / 바우처 사용 시 사장님께 카카오 알림톡이 자동 발송됩니다.
               <br/><br/>
@@ -78,7 +78,7 @@ export default function SellerPlusFriendGuidePage() {
 
           <section className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
             <p className="text-xs text-blue-900 leading-relaxed">
-              <strong>💡 안내:</strong> 채널 추가 후 이 페이지로 돌아와서 아래 "추가 완료" 버튼을 눌러주세요.
+              <strong>안내:</strong> 채널 추가 후 이 페이지로 돌아와서 아래 "추가 완료" 버튼을 눌러주세요.
               그래야 onboarding 진행률이 업데이트됩니다.
             </p>
           </section>

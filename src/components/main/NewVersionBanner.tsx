@@ -37,7 +37,7 @@ export default function NewVersionBanner() {
         <button
           onClick={async () => { setReloading(true); await applyVersionUpdate() }}
           disabled={reloading}
-          className="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold disabled:opacity-60"
+          className="shrink-0 px-3 py-1.5 rounded-lg bg-gray-900 hover:bg-emerald-400 text-white text-xs font-bold disabled:opacity-60"
         >
           {reloading ? t('newVersion.reloading', { defaultValue: '적용 중…' }) : t('newVersion.reload', { defaultValue: '새로고침' })}
         </button>

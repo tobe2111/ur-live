@@ -140,7 +140,7 @@ export default function AdminWithholdingPage() {
             <Download className="w-4 h-4" /> 300만 초과 CSV (홈택스용)
           </button>
           <button onClick={markReported} disabled={marking}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white text-sm font-bold rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-gray-900 disabled:opacity-50">
             <CheckCircle2 className="w-4 h-4" /> {marking ? '처리 중...' : '제출 완료 마킹'}
           </button>
         </div>

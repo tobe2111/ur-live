@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Settings, LogOut, Menu, X, MessageCircle, Globe, Home } from 'lucide-react'
+import { Globe, Home, LogOut, Menu, MessageCircle, Radio, Settings, Store, X } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import api from '@/lib/api'
 import { HOSTING_HIDDEN, LIVE_COMMERCE_SUSPENDED, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
@@ -251,7 +251,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
               }`}
               aria-pressed={activeMode === 'live'}
             >
-              📺 라이브 모드
+              <Radio className="w-3 h-3 inline-block align-[-1px] mr-1" aria-hidden="true" />라이브 모드
             </button>
             <button
               type="button"
@@ -263,7 +263,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
               }`}
               aria-pressed={activeMode === 'store'}
             >
-              🏪 매장 모드
+              <Store className="w-3 h-3 inline-block align-[-1px] mr-1" aria-hidden="true" />매장 모드
             </button>
           </div>
           <p className="text-[9px] text-white/40 mt-1.5 px-1">

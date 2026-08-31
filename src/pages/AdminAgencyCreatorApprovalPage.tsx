@@ -189,7 +189,7 @@ export default function AdminAgencyCreatorApprovalPage() {
                       <button
                         onClick={() => approve(item.id)}
                         disabled={acting === item.id}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-green-700 disabled:opacity-50"
+                        className="px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-gray-900 disabled:opacity-50"
                       >
                         <UserCheck className="w-3.5 h-3.5" /> {t('admin.agencyCreatorApproval.approveBtn', { defaultValue: '승인' })}
                       </button>

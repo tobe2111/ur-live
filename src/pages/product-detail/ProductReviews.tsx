@@ -143,7 +143,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
               }
             } finally { setSubmitting(false) }
           }}
-          className="flex-[2] py-2 bg-blue-600 text-white text-sm rounded-lg font-bold disabled:opacity-40"
+          className="flex-[2] py-2 bg-gray-900 text-white text-sm rounded-lg font-bold disabled:opacity-40"
         >
           {submitting ? t('reviews.submitting', { defaultValue: '등록 중...' }) : t('reviews.submit', { defaultValue: '리뷰 등록' })}
         </button>

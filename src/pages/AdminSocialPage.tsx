@@ -213,13 +213,13 @@ export default function AdminSocialPage() {
                       </button>
                     )}
                     {post.status === 'draft' && (
-                      <button onClick={() => approve(post)} className="flex items-center gap-1 rounded-lg bg-blue-500 px-2.5 py-1 text-xs text-white hover:bg-blue-600 disabled:opacity-50" disabled={busy}>
+                      <button onClick={() => approve(post)} className="flex items-center gap-1 rounded-lg bg-gray-900 px-2.5 py-1 text-xs text-white hover:bg-gray-900 disabled:opacity-50" disabled={busy}>
                         <CheckCircle2 className="h-3 w-3" /> 승인
                       </button>
                     )}
                     {post.status === 'approved' && (
                       <button onClick={() => publish(post)} title={pub.ok ? '' : pub.reason}
-                        className="flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1 text-xs text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40" disabled={busy || !pub.ok}>
+                        className="flex items-center gap-1 rounded-lg bg-gray-900 px-2.5 py-1 text-xs text-white hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-40" disabled={busy || !pub.ok}>
                         {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />} 발행
                       </button>
                     )}

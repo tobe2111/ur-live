@@ -51,6 +51,14 @@ const NAME = typeof args.name === 'string' ? args.name : ROUTE.replace(/[^a-z0-9
 const EXTRA_CSS = typeof args.css === 'string' ? args.css : ''
 const DARK = !!args.dark
 const HEIGHT = Number(args.height) || 1200
+/**
+ * 🔐 `--auth=seller|user` — 로그인 뒤 화면을 보기 위한 시딩.
+ *   대시보드 가드(`RouteGuards.isDashboardTokenUsable`)는 **점 3개짜리 JWT 가 아니면
+ *   관대 통과**시킨다(비표준 토큰 허용). 그래서 평범한 문자열이면 충분하다 —
+ *   서버 인증을 우회하는 게 아니라, 이 프리뷰의 가짜 서버가 어차피 전부 200 을 준다.
+ *   ⚠️ 이건 **디자인을 보기 위한 도구**다. 권한·보안 동작 검증에 쓰지 말 것.
+ */
+const AUTH = typeof args.auth === 'string' ? args.auth : ''
 
 /** 유어샵(`/u/:handle`) 시드 — 실제 CuratorPageResponse 모양. */
 const pin = (id, name, price, was, category) => ({
@@ -147,12 +155,59 @@ const ctx = await browser.newContext({
 // 외부 호스트 차단 — 이 환경의 프록시가 막아 타임아웃/오류 상태를 유발한다.
 await ctx.route('**/*', (r) => (r.request().url().startsWith(`http://127.0.0.1:${PORT}`) ? r.continue() : r.abort()))
 
+if (AUTH) {
+  const seed = AUTH === 'seller'
+    ? { seller_token: 'preview', seller_id: '1', seller_username: 'preview', user_type: 'seller' }
+    : { user_id: '1', user_type: 'user', user_handle: 'preview', user_name: '정지원' }
+  await ctx.addInitScript((kv) => {
+    try { for (const [k, v] of Object.entries(kv)) localStorage.setItem(k, v) } catch { /* private mode */ }
+  }, seed)
+}
+
 const page = await ctx.newPage()
 await page.goto(`http://127.0.0.1:${PORT}${ROUTE}`, { waitUntil: 'domcontentloaded', timeout: 40000 }).catch(() => {})
 await page.waitForTimeout(4000)
 if (EXTRA_CSS) { await page.addStyleTag({ content: EXTRA_CSS }); await page.waitForTimeout(400) }
 
 const out = path.join(OUTDIR, `${NAME}${DARK ? '-dark' : ''}.png`)
+// 🔬 스크린샷만으로는 안 보이는 계약을 **실제 렌더 트리에서** 확인한다.
+//    (스펙상 CSS 가 presentation attribute 를 이긴다는 것을 '알고' 넘어가지 말고 잰다.)
+const probe = await page.evaluate(() => {
+  const pick = (sel) => {
+    const el = document.querySelector(sel)
+    return el ? getComputedStyle(el) : null
+  }
+  const icon = document.querySelector('svg.lucide[stroke-width="2"]')
+  const btn = document.querySelector('button')
+  const byClass = (c) => [...document.querySelectorAll('*')].find((e) => e.classList && e.classList.contains(c))
+  const card = byClass('rounded-xl')
+  const ctrl = byClass('rounded-lg')
+  return {
+    lucideStrokeWidth: icon ? getComputedStyle(icon).strokeWidth : null,
+    lucideCount: document.querySelectorAll('svg.lucide').length,
+    buttonTransitionMs: btn ? getComputedStyle(btn).transitionDuration : null,
+    roundedXl: card ? getComputedStyle(card).borderTopLeftRadius : null,
+    roundedLg: ctrl ? getComputedStyle(ctrl).borderTopLeftRadius : null,
+    void0: pick('body') ? null : null,
+  }
+})
+console.log('🔬 렌더 실측:', JSON.stringify(probe))
+
+if (args.dom) {
+  // 🔎 화면에서 이상해 보이는 것을 **추측하지 않고** 확인한다.
+  const dump = await page.evaluate(() => {
+    const out = []
+    for (const el of document.querySelectorAll('nav, [class*="fixed"], header')) {
+      const r = el.getBoundingClientRect()
+      if (r.height < 8) continue
+      out.push({ tag: el.tagName.toLowerCase(), top: Math.round(r.top), h: Math.round(r.height),
+                 pos: getComputedStyle(el).position, cls: (el.className || '').toString().slice(0, 70) })
+    }
+    return out
+  })
+  console.log('🔎 DOM:', JSON.stringify(dump, null, 1))
+}
+
 await page.screenshot({ path: out })
 const text = (await page.innerText('body').catch(() => '')).slice(0, 60).replace(/\s+/g, ' ')
 console.log(`✅ ${out}`)

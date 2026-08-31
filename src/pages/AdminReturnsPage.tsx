@@ -153,7 +153,7 @@ export default function AdminReturnsPage() {
               onClick={() => setStatusFilter(opt.key)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                 statusFilter === opt.key
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-gray-900 text-white'
                   : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
               }`}
             >
@@ -262,7 +262,7 @@ export default function AdminReturnsPage() {
                               <div className="flex flex-wrap gap-2">
                                 {r.status === 'requested' && (
                                   <>
-                                    <button onClick={() => handleApprove(r.id)} className="px-3 py-1.5 text-xs font-bold text-white bg-purple-500 rounded hover:bg-purple-600">
+                                    <button onClick={() => handleApprove(r.id)} className="px-3 py-1.5 text-xs font-bold text-white bg-gray-900 rounded hover:bg-gray-900">
                                       ✓ 승인
                                     </button>
                                     <button onClick={() => handleReject(r.id)} className="px-3 py-1.5 text-xs font-bold text-white bg-red-500 rounded hover:bg-red-600">
@@ -273,7 +273,7 @@ export default function AdminReturnsPage() {
                                 {/* 🏁 2026-06-12: 'received' 전이 endpoint 부재로 영구 공집합이던 탭 — shipped 에도 검수 노출 (서버 inspect 허용 확인) */}
                                 {(r.status === 'received' || r.status === 'shipped') && (
                                   <>
-                                    <button onClick={() => handleInspect(r.id, 'approved')} className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-500 rounded hover:bg-emerald-600">
+                                    <button onClick={() => handleInspect(r.id, 'approved')} className="px-3 py-1.5 text-xs font-bold text-white bg-gray-900 rounded hover:bg-gray-900">
                                       검수 통과
                                     </button>
                                     <button onClick={() => handleInspect(r.id, 'rejected')} className="px-3 py-1.5 text-xs font-bold text-white bg-red-500 rounded hover:bg-red-600">
@@ -291,7 +291,7 @@ export default function AdminReturnsPage() {
                                       onSaved={loadReturns}
                                       config={h}
                                     />
-                                    <button onClick={() => handleRefund(r.id)} className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-500 rounded hover:bg-emerald-600">
+                                    <button onClick={() => handleRefund(r.id)} className="px-3 py-1.5 text-xs font-bold text-white bg-gray-900 rounded hover:bg-gray-900">
                                       💰 환불 처리
                                     </button>
                                   </>

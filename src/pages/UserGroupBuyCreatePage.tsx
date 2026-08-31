@@ -107,7 +107,7 @@ export default function UserGroupBuyCreatePage() {
           </button>
           <button
             onClick={() => navigate('/influencer/discover')}
-            className="w-full py-3 bg-blue-500 text-white rounded-xl font-bold text-sm"
+            className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold text-sm"
           >
             🎤 인플루언서 활동 시작 (카탈로그)
           </button>

@@ -158,6 +158,14 @@ export default defineConfig({
           //   (실측: 홈 modulepreload 에 app-seller-components 가 올라 있었다).
           //   ⚠️ 이 줄을 지우면 그 65KB 가 곧바로 돌아온다. 가드: check-critical-chunks.
           if (id.includes('/src/shared/seller-roles')) return 'app-shared'
+          // 🖊️ 2026-08-30: 유어딜 전용 아이콘(`components/icons/urdeal-icons`)도 **정확히 같은 함정**에
+          //   빠졌다. 60줄짜리 순수 SVG 리프 모듈인데 `/src/components/` catch-all 에 걸려
+          //   `app-components`(166KB · 58모듈)로 들어갔고, 그걸 **BottomNav·DesktopTopNav**
+          //   (앱 셸)가 import 하는 순간 그 청크가 통째로 첫 페인트로 끌려왔다 —
+          //   실측: 크리티컬 패스가 17 → 23청크(app-components 가 app-constants·app-features·
+          //   app-ui-utils·radix-ui·app-kakao-sdk 까지 끌고 왔다). `check-critical-chunks` 가 잡았다.
+          //   ⚠️ 이 줄을 지우면 그 6청크가 곧바로 돌아온다.
+          if (id.includes('/src/components/icons/')) return 'app-shared'
           // 셀러/어드민 페이지만 사용하는 utils.
           if (id.includes('/src/utils/product-template')) return 'app-seller-components'
           // 🛡️ 2026-05-28 (SSR phase 5): 메인 페이지 미사용 lib 별도 chunk.

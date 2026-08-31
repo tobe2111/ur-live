@@ -600,7 +600,7 @@ export default function AdminPage() {
                   <span className="text-sm text-gray-500">%</span>
                   <button
                     onClick={() => updateCommission(setting.key, setting.value)}
-                    className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700"
+                    className="px-3 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900"
                   >
                     적용
                   </button>

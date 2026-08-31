@@ -25,7 +25,7 @@ import { cfImage } from '@/utils/cf-image'
 import GroupBuyFeedCard from './main-home/GroupBuyFeedCard'
 import { seededColor } from '@/utils/card-gradient'
 import type { Product as BrowseProduct } from './browse/types'
-import { Search, X, Trash2 } from 'lucide-react'
+import { Search, X, Trash2, Eye, Pencil, ArrowUpDown, LayoutDashboard, Check } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import LinkshopOnboardModal from './curator-page/LinkshopOnboardModal'
@@ -202,7 +202,7 @@ export default function CuratorPage() {
   if (error || !data) {
     return (
       <div className="min-h-[100dvh] bg-warm dark:bg-[#0D0F12] text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-2xl font-bold mb-2">{t('curator.notFoundTitle', { defaultValue: '😢 유어샵을 찾을 수 없어요' })}</h1>
+        <h1 className="text-2xl font-bold mb-2">{t('curator.notFoundTitle', { defaultValue: '유어샵을 찾을 수 없어요' })}</h1>
         <p className="text-gray-500 dark:text-gray-400 mb-6">@{handle}</p>
         <Link to="/" className="px-6 py-3 bg-gray-900 dark:bg-white rounded-xl text-white dark:text-[#0D0F12] font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
       </div>
@@ -255,12 +255,12 @@ export default function CuratorPage() {
             방문자에겐 안 보임(isOwner). 편집 chrome(툴바·삭제·CTA)은 '편집하기' 누른 뒤에만 노출. */}
         {isOwner && previewAsVisitor && (
           <div className="sticky top-0 z-40 bg-white/85 dark:bg-[#0D0F12]/85 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2 flex items-center justify-between gap-2">
-            <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">👁 {t('curator.ownerViewBar', { defaultValue: '내 유어샵 · 방문자에게 보이는 화면' })}</span>
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 dark:text-gray-400"><Eye className="w-3.5 h-3.5" aria-hidden="true" />{t('curator.ownerViewBar', { defaultValue: '내 유어샵 · 방문자에게 보이는 화면' })}</span>
             <button
               onClick={() => { setPreviewAsVisitor(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
               className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] text-[12px] font-bold active:scale-95 transition-transform"
             >
-              ✎ {t('curator.editButton', { defaultValue: '편집하기' })}
+              <Pencil className="w-3.5 h-3.5" aria-hidden="true" />{t('curator.editButton', { defaultValue: '편집하기' })}
             </button>
           </div>
         )}
@@ -298,7 +298,7 @@ export default function CuratorPage() {
           <div className="max-w-3xl mx-auto px-4 pt-3">
             <div className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#0E0E0E] px-2.5 py-1.5">
               <span className="flex items-center gap-1.5 mr-auto pl-1 text-[12px] font-bold text-gray-500 dark:text-gray-400">
-                <span className="text-[#6b7280] text-[13px] leading-none">✎</span>
+                <Pencil className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
                 {t('curator.editMode', { defaultValue: '편집 모드' })}
                 <span className="hidden sm:inline font-medium text-gray-400 dark:text-gray-500">· {t('curator.tapToEdit', { defaultValue: '눌러서 바로 수정' })}</span>
               </span>
@@ -306,17 +306,17 @@ export default function CuratorPage() {
                 <button
                   onClick={() => setReorderMode(true)}
                   className="inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-transparent bg-white dark:bg-white/[0.06] px-2.5 py-1.5 text-[12px] font-bold text-gray-700 dark:text-gray-200 active:opacity-70"
-                >⇅ {t('curator.reorder', { defaultValue: '순서' })}</button>
+                ><ArrowUpDown className="w-3.5 h-3.5" aria-hidden="true" />{t('curator.reorder', { defaultValue: '순서' })}</button>
               )}
               {/* 🎨 2026-06-17 (사용자 — 버튼 통합): 헤더의 '수익 대시보드' 버튼을 이 툴바로 합침 (헤더 2버튼 그리드 제거) */}
               <button
                 onClick={() => navigate('/u/me/earnings')}
                 className="inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-transparent bg-white dark:bg-white/[0.06] px-2.5 py-1.5 text-[12px] font-bold text-gray-700 dark:text-gray-200 active:opacity-70"
-              >⚙ {t('curator.dashboardBtn', { defaultValue: '대시보드' })}</button>
+              ><LayoutDashboard className="w-3.5 h-3.5" aria-hidden="true" />{t('curator.dashboardBtn', { defaultValue: '대시보드' })}</button>
               <button
                 onClick={() => { setPreviewAsVisitor(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
                 className="inline-flex items-center gap-1 rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1.5 text-[12px] font-bold text-white dark:text-[#0D0F12] active:opacity-80"
-              >✓ {t('curator.done', { defaultValue: '완료' })}</button>
+              ><Check className="w-3.5 h-3.5" aria-hidden="true" />{t('curator.done', { defaultValue: '완료' })}</button>
             </div>
           </div>
         )}

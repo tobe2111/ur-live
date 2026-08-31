@@ -85,7 +85,7 @@ export default function SellerAnalyticsPage() {
             { key: 'products', label: t('seller.productPerformance'), icon: Package },
             { key: 'commission', label: '추천 Commission', icon: Gift },
             { key: 'monthly', label: '월별 입점 추이', icon: Calendar },
-            { key: 'funnel', label: '🔗 트래킹 Funnel', icon: TrendingUp },
+            { key: 'funnel', label: '트래킹 Funnel', icon: TrendingUp },
           ].map(tabItem => (
             <button key={tabItem.key} onClick={() => setTab(tabItem.key as 'revenue' | 'customers' | 'products' | 'commission' | 'monthly' | 'funnel')}
               className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${tab === tabItem.key ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'}`}>
@@ -330,7 +330,7 @@ export default function SellerAnalyticsPage() {
                     </div>
                   </div>
                   <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                    <p className="text-sm font-bold text-purple-900">💰 누적 commission ({k.days}일): {formatWon(k.commission_total)}</p>
+                    <p className="text-sm font-bold text-purple-900">누적 commission ({k.days}일): {formatWon(k.commission_total)}</p>
                     <p className="text-xs text-purple-600 mt-1 leading-relaxed">
                       • 클릭 → 결제 전환율이 1% 미만이면 콘텐츠/상품 매력 점검<br />
                       • 클릭 vs 고유 방문자 비율로 같은 사람 재방문 측정 가능<br />

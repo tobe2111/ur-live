@@ -146,7 +146,7 @@ export default function AgencyProfilePage() {
 
         <div className="flex justify-end">
           <button onClick={handleSave} disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold disabled:opacity-50">
+            className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold disabled:opacity-50">
             <Save className="w-4 h-4" /> {saving ? t('agency.agencyProfile.saving', { defaultValue: '저장 중...' }) : t('agency.agencyProfile.save', { defaultValue: '저장' })}
           </button>
         </div>

@@ -16,11 +16,14 @@
 import { Link } from 'react-router-dom'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Store, LayoutDashboard, Building2, Handshake, ShoppingBag, Briefcase, type LucideIcon } from 'lucide-react'
 import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 
 interface Cta {
-  icon: string
+  /** 🖊️ 2026-08-30: 이모지 문자열 → lucide 컴포넌트.
+   *  이모지는 OS 마다 다른 그림이 나오고(애플 컬러 / 노토 / Segoe) 메뉴 아이콘 자리에서는
+   *  "임시로 채워 둔 것" 으로 읽힌다. 같은 화면의 `ChevronRight` 와도 언어가 갈렸다. */
+  Icon: LucideIcon
   title: string
   desc: string
   to: string
@@ -35,19 +38,19 @@ export default function RoleCtaGrid() {
     const hasAgencyToken = typeof window !== 'undefined' && !!localStorage.getItem('agency_token')
     // 내 바로가기 (모든 유저가 가진 유어샵 + 보유 role 의 대시보드 단축)
     const dash: Cta[] = [
-      { icon: '🔗', title: t('roleCta.linkshop', { defaultValue: '내 유어샵' }), desc: t('roleCta.linkshopDesc', { defaultValue: '이용권을 담아 진열하고 소개해요' }), to: '/u/me', show: () => true, accent: true },
-      { icon: '📊', title: t('roleCta.sellerDash', { defaultValue: '셀러 대시보드' }), desc: t('roleCta.sellerDashDesc', { defaultValue: '내 상품·공구·정산 관리' }), to: '/seller', show: () => hasSellerToken, accent: true },
-      { icon: '📊', title: t('roleCta.agencyDash', { defaultValue: '에이전시 대시보드' }), desc: t('roleCta.agencyDashDesc', { defaultValue: '소속 사업자·소개 가게 수익' }), to: '/agency', show: () => hasAgencyToken, accent: true },
+      { Icon: Store, title: t('roleCta.linkshop', { defaultValue: '내 유어샵' }), desc: t('roleCta.linkshopDesc', { defaultValue: '이용권을 담아 진열하고 소개해요' }), to: '/u/me', show: () => true, accent: true },
+      { Icon: LayoutDashboard, title: t('roleCta.sellerDash', { defaultValue: '셀러 대시보드' }), desc: t('roleCta.sellerDashDesc', { defaultValue: '내 상품·공구·정산 관리' }), to: '/seller', show: () => hasSellerToken, accent: true },
+      { Icon: Building2, title: t('roleCta.agencyDash', { defaultValue: '에이전시 대시보드' }), desc: t('roleCta.agencyDashDesc', { defaultValue: '소속 사업자·소개 가게 수익' }), to: '/agency', show: () => hasAgencyToken, accent: true },
     ]
     // 신규 가입 CTA (보유 안 한 role 만)
     const signup: Cta[] = [
       // 🧭 2026-06-10 (전략 정합 — 라이브 영구 중단·동네딜 집중): 라이브 셀러 CTA 제거,
       //   동네 공구 제안 + 역할 전환(사업자/에이전시) 중심으로 재구성.
-      { icon: '🤝', title: t('roleCta.proposeGb', { defaultValue: '동네 공구 제안' }), desc: t('roleCta.proposeGbDesc', { defaultValue: '원하는 가게 제안하면 모아서 열어드려요' }), to: '/community-group-buy/new', show: () => !COMMUNITY_PROPOSAL_HIDDEN },
+      { Icon: Handshake, title: t('roleCta.proposeGb', { defaultValue: '동네 공구 제안' }), desc: t('roleCta.proposeGbDesc', { defaultValue: '원하는 가게 제안하면 모아서 열어드려요' }), to: '/community-group-buy/new', show: () => !COMMUNITY_PROPOSAL_HIDDEN },
       // 🏷️ 2026-08-26: '내 쇼핑몰 열기' → '내 가게 등록'. 유어샵은 가입하면 **이미 있다** — 여기서
       //   새로 만드는 건 매장이다. 목적지도 매장 등록(/store/new)으로(대표 확정 '매장 등록이 선행').
-      { icon: '🏪', title: t('roleCta.openShop', { defaultValue: '내 가게 등록' }), desc: t('roleCta.openShopDesc', { defaultValue: '카카오맵에서 내 가게를 찾아 이용권을 팔아요' }), to: '/store/new', show: () => !hasSellerToken },
-      { icon: '🤵', title: t('roleCta.agencyBiz', { defaultValue: '에이전시 사업' }), desc: t('roleCta.agencyBizDesc', { defaultValue: '가게 영업 → 2% 영구 수익' }), to: '/agency/register/business', show: () => !hasAgencyToken },
+      { Icon: ShoppingBag, title: t('roleCta.openShop', { defaultValue: '내 가게 등록' }), desc: t('roleCta.openShopDesc', { defaultValue: '카카오맵에서 내 가게를 찾아 이용권을 팔아요' }), to: '/store/new', show: () => !hasSellerToken },
+      { Icon: Briefcase, title: t('roleCta.agencyBiz', { defaultValue: '에이전시 사업' }), desc: t('roleCta.agencyBizDesc', { defaultValue: '가게 영업 → 2% 영구 수익' }), to: '/agency/register/business', show: () => !hasAgencyToken },
     ]
     return {
       dashboardItems: dash.filter(c => c.show()),
@@ -65,7 +68,7 @@ export default function RoleCtaGrid() {
         i > 0 ? 'border-t border-gray-50 dark:border-[#2C2F35]' : ''
       }`}
     >
-      <span className="text-xl shrink-0" aria-hidden="true">{c.icon}</span>
+      <c.Icon className="w-[18px] h-[18px] shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-bold truncate text-gray-900 dark:text-white">
           {c.title}
@@ -85,7 +88,7 @@ export default function RoleCtaGrid() {
           <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2 px-1">
             {t('roleCta.myShortcuts', { defaultValue: '내 바로가기' })}
           </p>
-          <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
+          <div className="rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
             {dashboardItems.map((c, i) => Row(c, i))}
           </div>
         </div>

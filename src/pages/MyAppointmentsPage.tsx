@@ -154,7 +154,7 @@ export default function MyAppointmentsPage() {
                   </div>
                   <button
                     onClick={() => setBookingTarget(b)}
-                    className="shrink-0 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-lg"
+                    className="shrink-0 px-3 py-2 bg-gray-900 hover:bg-gray-900 text-white text-xs font-bold rounded-lg"
                   >
                     {t('myAppointments.bookCta', { defaultValue: '예약 잡기' })}
                   </button>
@@ -354,7 +354,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
                     onClick={() => setSelectedSlot(s)}
                     className={`py-2 rounded-lg text-xs font-bold border transition-colors ${
                       selectedSlot?.start_time === s.start_time
-                        ? 'bg-purple-600 text-white border-purple-600'
+                        ? 'bg-gray-900 text-white border-purple-600'
                         : 'bg-white dark:bg-[#1A1C21] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35] hover:border-purple-400'
                     }`}
                   >
@@ -410,7 +410,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
             <button
               onClick={submit}
               disabled={submitting || !selectedSlot}
-              className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-lg disabled:opacity-50"
+              className="flex-1 py-3 bg-gray-900 hover:bg-gray-900 text-white text-sm font-bold rounded-lg disabled:opacity-50"
             >
               {submitting
                 ? t('myAppointments.submitting', { defaultValue: '예약 중...' })

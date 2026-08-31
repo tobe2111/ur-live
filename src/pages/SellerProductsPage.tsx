@@ -11,21 +11,7 @@ import SellerLayout from '@/components/SellerLayout'
 import SellerProductTabs from '@/components/seller/SellerProductTabs'
 import { DashboardPageHeader, DashboardEmptyState, DashboardLoading } from '@/components/dashboard'
 import { getSellerId } from '@/lib/seller-auth'
-import {
-  Package,
-  Plus,
-  Zap,
-  Edit,
-  Trash2,
-  Eye,
-  EyeOff,
-  Loader2,
-  Image as ImageIcon,
-  DollarSign,
-  Box,
-  Download,
-  Upload
-} from 'lucide-react'
+import { Box, DollarSign, Download, Edit, Eye, EyeOff, Image as ImageIcon, Loader2, Package, Plus, ShoppingBag, Ticket, Trash2, Upload, Zap } from 'lucide-react'
 import { downloadSellerTemplate } from '@/utils/product-template'
 import BulkUploadModal from '@/components/BulkUploadModal'
 import { formatNumber } from '@/utils/format'
@@ -185,7 +171,7 @@ export default function SellerProductsPage() {
               </Button>
               <Button
                 onClick={() => navigate('/seller/products/new')}
-                className="h-9 bg-blue-600 px-3 text-xs text-white hover:bg-blue-700"
+                className="h-9 bg-gray-900 px-3 text-xs text-white hover:bg-gray-900"
               >
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 <span>{t('seller.addProduct')}</span>
@@ -203,7 +189,7 @@ export default function SellerProductsPage() {
               <Trash2 className="h-5 w-5" />
               <p className="text-sm font-medium">{error}</p>
             </div>
-            <button onClick={() => window.location.reload()} className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white">
+            <button onClick={() => window.location.reload()} className="mt-3 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white">
               {t('seller.retryButton')}
             </button>
           </div>
@@ -236,18 +222,18 @@ export default function SellerProductsPage() {
             <button
               onClick={() => setMyKind('product')}
               className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                myKind === 'product' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-900'
+                myKind === 'product' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
               }`}
             >
-              🛍️ {t('seller.onlineProductsTab', { defaultValue: '온라인 상품' })} <span className="ml-1 opacity-70">{myOnline.length}</span>
+              <ShoppingBag className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />{t('seller.onlineProductsTab', { defaultValue: '온라인 상품' })} <span className="ml-1 opacity-70">{myOnline.length}</span>
             </button>
             <button
               onClick={() => setMyKind('voucher')}
               className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                myKind === 'voucher' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-900'
+                myKind === 'voucher' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
               }`}
             >
-              🎟️ {t('seller.vouchersTab', { defaultValue: '이용권' })} <span className="ml-1 opacity-70">{myVouchers.length}</span>
+              <Ticket className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />{t('seller.vouchersTab', { defaultValue: '이용권' })} <span className="ml-1 opacity-70">{myVouchers.length}</span>
             </button>
           </div>
         )}
@@ -265,7 +251,7 @@ export default function SellerProductsPage() {
                 action={
                   <Button
                     onClick={() => navigate('/seller/products/new')}
-                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    className="bg-gray-900 text-white hover:bg-gray-900"
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     {t('seller.firstProductRegister')}
@@ -441,7 +427,7 @@ export default function SellerProductsPage() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => navigate(`/seller/products/${product.id}/edit`)}
-                              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 text-xs sm:text-sm"
+                              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-900 transition-colors flex items-center justify-center gap-1.5 text-xs sm:text-sm"
                             >
                               <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                               {t('common.edit')}

@@ -239,7 +239,7 @@ export function MultiImageUpload({ values, onChange, max = 10, tokenKey, label }
               <X className="w-3 h-3" />
             </button>
             {i === 0 && (
-              <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-blue-500 text-white text-[9px] font-bold rounded">대표</div>
+              <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-gray-900 text-white text-[9px] font-bold rounded">대표</div>
             )}
           </div>
         ))}
