@@ -88,6 +88,27 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '💸 원장 정합 검사가 다시 amount 를 우선한다 (충전=원화·차감=양수 → 숫자가 거짓)',
+    file: 'src/worker/utils/ledger-integrity-checks.ts',
+    find: '  WHEN pt.points_amount IS NOT NULL THEN',
+    replace: '  WHEN COALESCE(pt.amount, 0) != 0 THEN pt.amount\n  WHEN FALSE THEN',
+    test: 'src/tests/unit/ledger-balance-mismatch.test.ts',
+    why:
+      '레거시 행은 `amount` 가 충전이면 **원화**(10,000 vs 딜 8,500)이고 차감도 양수다. ' +
+      '그걸 부호 있는 딜 델타로 읽으면 매일 뜨는 원장 알림의 숫자가 통째로 거짓이 된다 ' +
+      '(2026-08-31 실측: 유저 3 이 −82,480 으로 나왔는데 계산 오류였다).',
+  },
+  {
+    name: '💸 레거시 차감(donate)의 부호가 사라진다 (빼야 할 것을 더한다)',
+    file: 'src/worker/utils/ledger-integrity-checks.ts',
+    find: 'CASE WHEN pt.type IN ${LEGACY_SPEND_TYPES} THEN -pt.points_amount ELSE pt.points_amount END',
+    replace: 'pt.points_amount',
+    test: 'src/tests/unit/ledger-balance-mismatch.test.ts',
+    why:
+      '후원·공구 사용은 잔액을 깎는데 레거시 규약에서는 **양수로 저장**된다. 부호를 안 붙이면 ' +
+      '차감이 적립으로 집계돼 멀쩡한 유저가 불일치로 잡힌다.',
+  },
+  {
     name: '평면 그라디언트가 다시 들어온다(단색인데 그라디언트인 척)',
     file: 'src/pages/user-profile/TeamPointsCard.tsx',
     find: '      <div className="bg-ink dark:bg-[#1A1C21] rounded-2xl px-5 py-4">',

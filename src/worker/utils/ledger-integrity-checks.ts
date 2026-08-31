@@ -13,20 +13,39 @@
  * ⚠️ 읽기 전용이다. 여기서 고치지 않는다 — 잔액 교정은 머니 경로라 사람이 판단해야 한다.
  */
 
+/** 잔액을 **깎는** 레거시 타입 — 그 시절 `amount` 에 부호가 없어 여기서 붙여 준다. */
+const LEGACY_SPEND_TYPES = "('donate','cash_withdraw','use','spend','deduct')"
+
 /**
  * `point_transactions` 의 부호 있는 합.
  *
- * ⚠️ 2026-07-27 에 한 번 크게 틀렸던 자리다(오탐만 내고 있었다):
- *   ① 기록 SSOT 는 `amount` 에 쓰는데 검사는 `points_amount` 를 읽었다 → 잔액 있는 유저 전부 불일치
- *   ② 타입 화이트리스트가 4종뿐이라 나머지를 0 처리
- *   ③ `amount` 는 이미 부호가 있는데 donate 에 −를 또 붙임
- * 지금은 전 타입을 부호 그대로 합산하고, 레거시 행(`amount` 없이 `points_amount` 만 있는 구 코드 산출물)만
- * 구 규약(절대값 + 타입으로 부호 결정)으로 폴백한다.
+ * ## 이 표에는 **규약이 두 개** 섞여 있다 (2026-08-31 라이브 실측으로 확정)
+ *
+ * | | `amount` | `points_amount` | 부호 |
+ * |---|---|---|---|
+ * | **레거시**(~2026-06) | 충전은 **원화 결제액**, 그 외는 크기 | 딜 수량 | 없음(전부 양수) |
+ * | **모던**(`point-ledger.ts`, 2026-06-12~) | **부호 있는 딜 델타** | 안 씀(NULL) | 있음 |
+ *
+ * ⇒ 두 규약의 **판별자는 `points_amount` 의 존재**다. 모던 기록자는 그 컬럼을 아예 안 쓴다
+ *   (`point-ledger.ts` 의 INSERT 컬럼 목록에 없다).
+ *
+ * ## 왜 다시 고치나 (2026-08-31 — 대표 "이거 무슨 에러야?")
+ *
+ * 2026-07-27 판은 *"기록 SSOT 는 `amount`"* 라는 한쪽 사실만 보고 **`amount` 를 우선**했다.
+ * 그런데 그때 라이브에 있던 행은 **전부 레거시**였다(실측: 18행 전부 `points_amount` 보유,
+ * 음수 `amount` 0건). 그래서 실제로는:
+ *   · 충전 8건에서 `amount`(10,000원) ≠ 딜(8,500) → **건당 1,500 부풀림**
+ *   · 후원·공구사용(`donate`)이 **차감인데 양수**라 빼야 할 것을 더함 → 부호가 뒤집힘
+ * 결과가 유저 3 의 `−82,480` 이었다. 숫자를 믿을 수 없으니 **매일 뜨는 알림이 아무 뜻도 없었다.**
+ *
+ * ⚠️ 두 판 모두 *"기록자 코드를 읽고"* 정한 것이다. 갈린 지점은 **데이터를 안 봤다는 것** —
+ *   모던 기록자는 맞게 읽었지만 그 기록자가 만든 행이 라이브에 **아직 한 줄도 없었다.**
+ *   ⇒ 규약을 정할 때는 코드와 데이터를 **둘 다** 본다.
  */
 export const SIGNED_POINT_SUM = `SUM(CASE
-  WHEN COALESCE(pt.amount, 0) != 0 THEN pt.amount
-  WHEN pt.type IN ('donate','cash_withdraw','use','spend','deduct') THEN -COALESCE(pt.points_amount, 0)
-  ELSE COALESCE(pt.points_amount, 0) END)`
+  WHEN pt.points_amount IS NOT NULL THEN
+    CASE WHEN pt.type IN ${LEGACY_SPEND_TYPES} THEN -pt.points_amount ELSE pt.points_amount END
+  ELSE COALESCE(pt.amount, 0) END)`
 
 /** `user_points.balance` ↔ `SUM(point_transactions)` 불일치 유저. */
 export const BALANCE_MISMATCH_SQL = `
