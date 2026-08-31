@@ -115,7 +115,7 @@ export default function AdminRevenueAnalyticsPage() {
             onClick={() => setPeriod(opt.value)}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
               period === opt.value
-                ? 'bg-blue-600 text-white'
+                ? 'bg-gray-900 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100 shadow-sm'
             }`}
           >

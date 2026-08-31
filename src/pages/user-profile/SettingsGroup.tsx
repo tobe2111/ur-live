@@ -26,7 +26,7 @@ export default function SettingsGroup({ children }: { children: ReactNode }) {
         type="button"
         onClick={toggle}
         aria-expanded={open}
-        className="w-full flex items-center justify-between rounded-2xl px-4 py-3.5 bg-gray-100 dark:bg-white/[0.04] active:scale-[0.99] transition-transform"
+        className="w-full flex items-center justify-between rounded-2xl px-4 py-3.5 bg-white dark:bg-[#1A1C21] active:scale-[0.99] transition-transform"
       >
         <span className="flex items-center gap-2 min-w-0">
           <Settings className="w-[18px] h-[18px] text-gray-500 dark:text-white/55" aria-hidden="true" />

@@ -55,6 +55,8 @@ interface CuratorHeaderProps {
   onCuratorUpdate?: (next: Partial<CuratorHeaderProps['curator']>) => void
 }
 
+import HeaderMarquee from './HeaderMarquee'
+
 export default function CuratorHeader({
   curator,
   isOwner,
@@ -116,7 +118,6 @@ export default function CuratorHeader({
   // 🎨 2026-06-19 마퀴 액센트 색 (소유자 조정). 비면 기본 중립 회색(마퀴 바는 면적이 커 로즈=면 강조
   //   '10% 이하' 룰 위배라 중립 유지 — 브랜드 로즈는 폴백 배너 그라데이션·행동 요소에만).
   const ACCENT_DEFAULT = '#6b7280'
-  const ACCENT_PRESETS = ['#6b7280', '#4b5563', '#374151', '#1f2937', '#0E9F6E', '#111827']
   const accentColor = (curator.accent && /^#[0-9A-Fa-f]{6}$/.test(curator.accent)) ? curator.accent : ACCENT_DEFAULT
   // 액센트 밝기로 글자색 자동 대비 (밝으면 잉크, 어두우면 흰색).
   const accentText = (() => {
@@ -250,88 +251,42 @@ export default function CuratorHeader({
   const showBanner = (bannerPreview || normalizedBanner) && !bannerBroken
   // 폴백 그라데이션 — 배너 없을 때도 완성된 히어로. 🎨 2026-07-20 (accent 잔재 정합): 옛 주황(#FF8A3D)
   //   중간 스톱 → 브랜드 로즈(#E0526B) — 회색→로즈→잉크 온-브랜드 히어로(배너 없는 유어샵만 노출).
-  const bannerGradient = 'linear-gradient(135deg, #6b7280 0%, #E0526B 42%, #1A1C21 130%)'
+  // 🎨 2026-08-30 (대표 결정 "C안"): 사진 없는 유어샵의 얇은 띠.
+  //   이전 값은 `linear-gradient(135deg,#6b7280,#E0526B 42%,#1A1C21)` 인라인 스타일 — 로즈가 강한
+  //   대각 블러라 242px 를 채울 땐 존재감이 컸다. 76px 띠에서는 **조용해야** 아래 이름·상품이
+  //   주인공이 된다. 웜 라인 → 페이지 바탕으로 수직 페이드 = 띠가 배경에 스미며 끝난다.
+  //   ⚠️ 인라인 style 이 아니라 **클래스**로 쓴다 — 이 컴포넌트는 `dark:` 로 테마를 처리하고
+  //   (JS 쪽 isDark 가 없다), 라이트 값만 인라인으로 박으면 다크에서 눈이 부신다.
+  const bannerBandClass =
+    'bg-gradient-to-b from-[#F3ECE9] to-[#FAF7F5] dark:from-[#202A36] dark:to-[#0D0F12]'
 
   const hasSns = !!(curator.youtube_url || curator.instagram_url || curator.tiktok_url)
 
   return (
     <header className="bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35]">
-      {/* ① 흐르는 마퀴(헤드라인) — 최상단, 풀블리드 */}
-      <div className="max-w-3xl mx-auto">
-        {editingHeadline ? (
-          <div className="px-3 py-2 space-y-2" style={{ background: accentColor }}>
-            <div className="flex items-center gap-2">
-              <input
-                autoFocus
-                value={headlineVal}
-                onChange={(e) => setHeadlineVal(e.target.value.slice(0, 80))}
-                onKeyDown={(e) => e.key === 'Enter' && saveHeadline()}
-                placeholder="흐르는 한 줄 공지 (예: 신상 입고 · 무료배송 이벤트)"
-                maxLength={80}
-                className="flex-1 min-w-0 bg-white/20 text-white placeholder:text-white/70 text-[12.5px] font-bold px-2.5 py-1.5 rounded-lg outline-none"
-              />
-              <button onClick={saveHeadline} aria-label="저장" className="shrink-0 p-1.5 bg-white rounded-lg active:scale-95" style={{ color: accentColor }}><Check className="w-4 h-4" /></button>
-              <button onClick={() => { setEditingHeadline(false); setHeadlineVal(curator.headline || '') }} aria-label="취소" className="shrink-0 p-1.5 bg-white/20 rounded-lg text-white active:scale-95"><X className="w-4 h-4" /></button>
-            </div>
-            {/* 색상 조정 — 프리셋 스와치 + 커스텀 컬러 */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10.5px] font-bold text-white/80 mr-0.5">색상</span>
-              {ACCENT_PRESETS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => saveAccent(c)}
-                  aria-label={`색상 ${c}`}
-                  className={`w-5 h-5 rounded-full border-2 ${accentColor.toLowerCase() === c.toLowerCase() ? 'border-white' : 'border-white/40'} active:scale-90`}
-                  style={{ background: c }}
-                />
-              ))}
-              <label className="w-5 h-5 rounded-full border-2 border-white/40 overflow-hidden cursor-pointer relative ml-0.5" title="직접 선택" style={{ background: 'conic-gradient(red,orange,yellow,green,blue,violet,red)' }}>
-                <input type="color" value={accentColor} onChange={(e) => saveAccent(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" />
-              </label>
-            </div>
-          </div>
-        ) : curator.headline ? (
-          <div className="relative overflow-hidden" style={{ background: accentColor, color: accentText }}>
-            <div className="animate-marquee py-1.5">
-              {[0, 1].map((copy) => (
-                <div key={copy} className="flex shrink-0" aria-hidden={copy === 1}>
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <span key={i} className="px-7 text-[12px] font-bold tracking-wide whitespace-nowrap">
-                      {curator.headline}
-                    </span>
-                  ))}
-                </div>
-              ))}
-            </div>
-            {isOwner && (
-              <button
-                onClick={() => { setEditingHeadline(true); setHeadlineVal(curator.headline || '') }}
-                aria-label="헤드라인 편집"
-                className="absolute top-1/2 right-2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-black/25 backdrop-blur flex items-center justify-center active:scale-90"
-              >
-                <Pencil className="w-3 h-3 text-white" />
-              </button>
-            )}
-          </div>
-        ) : isOwner ? (
-          <button
-            onClick={() => { setEditingHeadline(true); setHeadlineVal('') }}
-            className="w-full text-[11px] font-bold py-1.5 active:opacity-80"
-            style={{ background: `${accentColor}1A`, color: accentColor }}
-          >
-            + 흐르는 헤드라인 추가
-          </button>
-        ) : null}
-      </div>
+      <HeaderMarquee
+        curator={curator}
+        isOwner={isOwner}
+        accentColor={accentColor}
+        accentText={accentText}
+        editingHeadline={editingHeadline}
+        setEditingHeadline={setEditingHeadline}
+        headlineVal={headlineVal}
+        setHeadlineVal={setHeadlineVal}
+        saveHeadline={saveHeadline}
+        saveAccent={saveAccent}
+      />
 
       {/* ② 풀블리드 배너 히어로 — 화면 가득(좌우 여백 0) + 하단 그라데이션으로 페이지에 녹아듦 */}
       <div className="max-w-3xl mx-auto">
         <div
           // 📐 2026-08-26 (대표 승인): 4:3(430폭에서 322px) → 16:9(242px). 배너+이름+소개+SNS 가
           //   첫 화면을 다 먹어 **팔 물건이 하나도 안 보였다**(첫 카드 y≈500px). 유어샵은 진열대다.
-          className={`relative w-full aspect-[16/9] overflow-hidden ${isOwner ? 'cursor-pointer' : ''}`}
-          style={showBanner ? undefined : { background: bannerGradient }}
+          // 📐 2026-08-30 (대표 결정 "C안"): 그 방향의 연장 — **사진이 없을 때만** 16:9(242px) →
+          //   얇은 띠(76px)로. 사진 없는 사람에게 깔리던 로즈 그라디언트는 정보가 0인데 첫 화면의
+          //   4분의 1을 먹었다. 히어로는 남기되 자리를 3분의 1로 줄인다.
+          //   ⚠️ **사진을 올린 사람은 16:9 그대로** — 올린 배너를 우리가 잘라 버리면 안 된다.
+          className={`relative w-full overflow-hidden ${showBanner ? 'aspect-[16/9]' : `h-[76px] ${bannerBandClass}`} ${isOwner ? 'cursor-pointer' : ''}`}
           onClick={() => isOwner && bannerInputRef.current?.click()}
         >
           {showBanner && (
@@ -471,7 +426,7 @@ export default function CuratorHeader({
               className={`text-[13.5px] text-gray-600 dark:text-gray-300 mt-2 leading-relaxed whitespace-pre-line max-w-md mx-auto ${isOwner ? 'cursor-pointer' : ''}`}
               onClick={() => isOwner && setEditingField('bio')}
             >
-              {curator.bio || (isOwner ? '한 줄 소개를 입력해주세요 ✎' : '')}
+              {curator.bio || (isOwner ? '한 줄 소개를 입력해주세요' : '')}
             </p>
           )}
 
@@ -504,7 +459,7 @@ export default function CuratorHeader({
                 </a>
               )}
               {curator.tiktok_url && (
-                <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-[34px] h-[34px] rounded-[10px] bg-[#141A2E] flex items-center justify-center">
+                <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-[34px] h-[34px] rounded-[10px] bg-[#1A1C21] flex items-center justify-center">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
                 </a>
               )}

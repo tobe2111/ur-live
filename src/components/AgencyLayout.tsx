@@ -8,10 +8,7 @@ import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import { usePersistScroll } from '@/hooks/usePersistScroll'
 import DashboardNotificationBell from './DashboardNotificationBell'
 import UrDealLogo from '@/components/brand/UrDealLogo'
-import {
-  LayoutDashboard, Users, LogOut, Menu, X, Settings, Calendar, Utensils, TrendingUp, UserPlus, BookOpen, ArrowRightLeft, Store, Handshake,
-  type LucideIcon,
-} from 'lucide-react'
+import { ArrowRightLeft, BookOpen, Calendar, Handshake, LayoutDashboard, List, LogOut, Menu, Radio, Settings, Store, TrendingUp, UserPlus, Users, Utensils, X, type LucideIcon } from 'lucide-react'
 
 /**
  * 🛡️ 2026-05-17: Agency mode-based IA — 셀러와 동일 패턴.
@@ -243,9 +240,9 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
       <div className="px-4 py-2 border-y border-white/10 bg-white/[0.02]">
         <div className="flex gap-1 p-1 bg-black/30 rounded-full">
           {([
-            { key: 'all',   label: '전체',     emoji: '📋' },
-            { key: 'live',  label: '라이브',   emoji: '📺' },
-            { key: 'store', label: '매장',     emoji: '🏪' },
+            { key: 'all',   label: '전체',     Icon: List },
+            { key: 'live',  label: '라이브',   Icon: Radio },
+            { key: 'store', label: '매장',     Icon: Store },
           ] as const).map((m) => (
             <button
               key={m.key}
@@ -258,7 +255,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
               }`}
               aria-pressed={activeMode === m.key}
             >
-              {m.emoji} {m.label}
+              <m.Icon className="w-3.5 h-3.5" aria-hidden="true" />{m.label}
             </button>
           ))}
         </div>

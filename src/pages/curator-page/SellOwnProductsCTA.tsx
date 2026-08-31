@@ -8,6 +8,7 @@
  *     switch-to-seller 로 토큰 보장 후 정식 등록 풀페이지(이미지·상세·옵션)로 이동.
  */
 import { useEffect, useState } from 'react'
+import { Receipt, ShoppingBag, Store, Ticket, Wallet, type LucideIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import VerifiedSeal from '@/components/VerifiedSeal'
@@ -65,7 +66,7 @@ export default function SellOwnProductsCTA() {
     }
     return (
       <section className="mb-6 bg-gray-50 dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4">
-        <p className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">🏪 판매 활성 · 내 유어샵 <VerifiedSeal size={15} /> <span className="font-medium text-gray-500 dark:text-gray-400">· 판매·현금 정산 활성</span></p>
+        <p className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5"><Store className="w-4 h-4 text-gray-400" aria-hidden="true" />판매 활성 · 내 유어샵 <VerifiedSeal size={15} /> <span className="font-medium text-gray-500 dark:text-gray-400">· 판매·현금 정산 활성</span></p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
           이용권·상품을 정식 등록(이미지·상세·옵션)하거나, 셀러 대시보드에서 주문·정산을 관리하세요. 등록한 것은 내 유어샵에 바로 진열됩니다.
         </p>
@@ -100,7 +101,7 @@ export default function SellOwnProductsCTA() {
   if (hasSeller && st === 'pending') {
     return (
       <section className="mb-6 bg-gray-50 dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4">
-        <p className="text-sm font-bold text-gray-900 dark:text-white">🏪 매장 등록 심사 중</p>
+        <p className="text-sm font-bold text-gray-900 dark:text-white"><Store className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />매장 등록 심사 중</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           등록증을 확인하는 중이에요. 승인되면 내 유어샵에서 판매·현금 정산이 열립니다.
         </p>
@@ -112,7 +113,7 @@ export default function SellOwnProductsCTA() {
   if (hasSeller && (st === 'rejected' || st === 'suspended')) {
     return (
       <section className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-        <p className="text-sm font-bold text-red-800 dark:text-red-200">🧾 사업자 등록 신청 {st === 'rejected' ? '반려됨' : '정지됨'}</p>
+        <p className="text-sm font-bold text-red-800 dark:text-red-200"><Receipt className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />사업자 등록 신청 {st === 'rejected' ? '반려됨' : '정지됨'}</p>
         <p className="text-xs text-red-700 dark:text-red-300 mt-1">자세한 내용은 고객센터로 문의해주세요.</p>
       </section>
     )
@@ -144,11 +145,11 @@ export default function SellOwnProductsCTA() {
 
 // 🏁 2026-06-26 (대표 — 일반→인증 유저 전환 혜택 안내): 혜택 바텀시트.
 function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () => void }) {
-  const benefits: { icon?: string; seal?: boolean; t: string; d: string }[] = [
-    { icon: '🎟️', t: '내 이용권 직접 판매', d: '내 이용권이 내 유어샵 맨 앞에 진열돼요' },
-    { icon: '💰', t: '현금 정산', d: '판매 대금과 추천 수익을 현금으로 받아요' },
+  const benefits: { Icon?: LucideIcon; seal?: boolean; t: string; d: string }[] = [
+    { Icon: Ticket, t: '내 이용권 직접 판매', d: '내 이용권이 내 유어샵 맨 앞에 진열돼요' },
+    { Icon: Wallet, t: '현금 정산', d: '판매 대금과 추천 수익을 현금으로 받아요' },
     { seal: true, t: '이름 옆 파란 인증 씰', d: '방문자에게 신뢰를, 다른 유어샵과 차별을' },
-    { icon: '🛍️', t: '상품도 함께', d: '이용권 외에 배송 상품·교환권도 같은 자리에서' },
+    { Icon: ShoppingBag, t: '상품도 함께', d: '이용권 외에 배송 상품·교환권도 같은 자리에서' },
   ]
   return (
     <div className="fixed inset-0 z-[10600] flex items-end justify-center" role="dialog" aria-modal="true">
@@ -165,7 +166,7 @@ function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () 
         <div className="mt-5 space-y-4">
           {benefits.map((b, i) => (
             <div key={i} className="flex items-start gap-3">
-              <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[20px] ${b.seal ? 'bg-[#eaf5ff] dark:bg-[#0d2a40]' : 'bg-gray-100 dark:bg-[#1A1C21]'}`}>{b.seal ? <VerifiedSeal size={22} /> : b.icon}</span>
+              <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[20px] ${b.seal ? 'bg-[#eaf5ff] dark:bg-[#0d2a40]' : 'bg-gray-100 dark:bg-[#1A1C21]'}`}>{b.seal ? <VerifiedSeal size={22} /> : b.Icon ? <b.Icon className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" /> : null}</span>
               <div>
                 <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">{b.t}</p>
                 <p className="text-[12.5px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{b.d}</p>

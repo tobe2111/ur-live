@@ -52,7 +52,7 @@ export default function SellerStaysPage() {
       headerRight={
         <Link
           to="/seller/stays/new"
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-900"
         >
           <Plus className="w-3.5 h-3.5" />
           {t('seller.stays.create', { defaultValue: '숙소 등록' })}
@@ -76,7 +76,7 @@ export default function SellerStaysPage() {
             </p>
             <Link
               to="/seller/stays/new"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-900"
             >
               <Plus className="w-4 h-4" />
               {t('seller.stays.createFirst', { defaultValue: '첫 숙소 등록하기' })}

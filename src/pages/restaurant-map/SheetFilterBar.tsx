@@ -85,7 +85,7 @@ export default function SheetFilterBar({
             aria-pressed={nearMeMode}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all border ${
               nearMeMode
-                ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/30'
+                ? 'bg-gray-900 text-white border-blue-600 shadow-md shadow-blue-600/30'
                 : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/40'
             }`}
           >
@@ -121,7 +121,7 @@ export default function SheetFilterBar({
             ) : (
               <><span className="font-bold text-gray-900 dark:text-white">{filteredCount}</span>{t('map.sheet.count', { defaultValue: '곳' })}</>
             )}
-            {userLoc && sortBy === 'distance' && <span className="ml-1 text-brand dark:text-[#EF6E85]">{t('map.sheet.nearMeLabel', { defaultValue: '📍 내 위치 기준' })}</span>}
+            {userLoc && sortBy === 'distance' && <span className="ml-1 text-brand dark:text-[#EF6E85]">{t('map.sheet.nearMeLabel', { defaultValue: '내 위치 기준' })}</span>}
           </span>
           {favorites.length > 0 && (
             <button

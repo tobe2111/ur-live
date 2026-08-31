@@ -141,7 +141,7 @@ export default function SellerMiniShopPage() {
       }
       const res = await api.put('/api/seller/profile', payload, { headers })
       if (res.data?.success !== false) {
-        toast.success('✅ 유어샵 설정 저장 완료')
+        toast.success('유어샵 설정 저장 완료')
       } else {
         toast.error(res.data?.error || '저장 실패')
       }
@@ -271,9 +271,9 @@ export default function SellerMiniShopPage() {
             <br />라이브 진행 중일 때 셀러 페이지에 "여기서도 라이브 중" 배지 표시됩니다.
           </p>
           {[
-            { key: 'external_live_tiktok' as const, label: '🎵 TikTok Live URL', placeholder: 'https://www.tiktok.com/@username/live' },
-            { key: 'external_live_instagram' as const, label: '📷 Instagram Live URL', placeholder: 'https://www.instagram.com/username/live/' },
-            { key: 'external_live_facebook' as const, label: '📘 Facebook Live URL', placeholder: 'https://www.facebook.com/username/live/' },
+            { key: 'external_live_tiktok' as const, label: 'TikTok Live URL', placeholder: 'https://www.tiktok.com/@username/live' },
+            { key: 'external_live_instagram' as const, label: 'Instagram Live URL', placeholder: 'https://www.instagram.com/username/live/' },
+            { key: 'external_live_facebook' as const, label: 'Facebook Live URL', placeholder: 'https://www.facebook.com/username/live/' },
           ].map(field => (
             <div key={field.key}>
               <label className="block text-xs font-medium text-gray-700 mb-1">{field.label}</label>
@@ -292,7 +292,7 @@ export default function SellerMiniShopPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full py-4 bg-gradient-to-r from-gray-800 to-gray-800 hover:opacity-95 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg"
+          className="w-full py-4 bg-gray-800 hover:opacity-95 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {saving ? '저장 중…' : '저장'}

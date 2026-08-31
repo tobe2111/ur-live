@@ -4,7 +4,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
-import { Rocket, Zap, Clock } from 'lucide-react'
+import { Award, Clock, Medal, Rocket, Trophy, Zap, type LucideIcon } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Boost {
@@ -31,10 +31,10 @@ interface ActiveLive {
 export default function SellerPromoteBoostsPage() {
   const { t } = useTranslation()
 
-  const TIER_META: Record<string, { label: string; emoji: string; bg: string; hours: number }> = {
-    bronze: { label: t('seller.boosts.tierBronze', { defaultValue: '브론즈' }), emoji: '🥉', bg: 'bg-amber-50 border-amber-300', hours: 12 },
-    silver: { label: t('seller.boosts.tierSilver', { defaultValue: '실버' }),   emoji: '🥈', bg: 'bg-slate-50 border-slate-300', hours: 24 },
-    gold:   { label: t('seller.boosts.tierGold', { defaultValue: '골드' }),   emoji: '🥇', bg: 'bg-yellow-50 border-yellow-400', hours: 48 },
+  const TIER_META: Record<string, { label: string; emoji: string; Icon: LucideIcon; bg: string; hours: number }> = {
+    bronze: { label: t('seller.boosts.tierBronze', { defaultValue: '브론즈' }), Icon: Award, emoji: '🥉', bg: 'bg-amber-50 border-amber-300', hours: 12 },
+    silver: { label: t('seller.boosts.tierSilver', { defaultValue: '실버' }),   Icon: Medal, emoji: '🥈', bg: 'bg-slate-50 border-slate-300', hours: 24 },
+    gold:   { label: t('seller.boosts.tierGold', { defaultValue: '골드' }),   Icon: Trophy, emoji: '🥇', bg: 'bg-yellow-50 border-yellow-400', hours: 48 },
   }
 
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (/api/seller prefix 토큰 자동 주입).
@@ -96,7 +96,7 @@ export default function SellerPromoteBoostsPage() {
                 return (
                   <div key={b.id} className={`rounded-xl p-4 border-2 ${meta.bg}`}>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-2xl">{meta.emoji}</span>
+                      <meta.Icon className="w-6 h-6" aria-hidden="true" />
                       <span className="text-xs text-gray-500">{b.duration_hours}{t('seller.boosts.hours', { defaultValue: '시간' })}</span>
                     </div>
                     <div className="text-sm font-bold text-gray-900 mb-1">{meta.label} {t('seller.boosts.title', { defaultValue: '노출 부스팅' })}</div>
@@ -107,7 +107,7 @@ export default function SellerPromoteBoostsPage() {
                     <button
                       onClick={() => activate(b)}
                       disabled={!activeLive}
-                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-gray-800 to-gray-800 hover:from-gray-900 hover:to-gray-900 disabled:from-gray-300 disabled:to-gray-400 text-white text-xs font-bold rounded-lg"
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-800 hover:from-gray-900 hover:to-gray-900 disabled:from-gray-300 disabled:to-gray-400 text-white text-xs font-bold rounded-lg"
                     >
                       <Zap className="w-3.5 h-3.5" />
                       {activeLive ? t('seller.boosts.activateNow', { defaultValue: '지금 활성화' }) : t('seller.boosts.liveRequired', { defaultValue: '라이브 필요' })}
@@ -131,7 +131,7 @@ export default function SellerPromoteBoostsPage() {
                 return (
                   <div key={b.id} className="p-3 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <span>{meta.emoji}</span>
+                      <meta.Icon className="w-4 h-4" aria-hidden="true" />
                       <span className="font-medium">{meta.label}</span>
                       <span className="text-gray-500">· {b.duration_hours}h</span>
                     </div>

@@ -35,7 +35,7 @@ export const SELLER_ROLES: Record<SellerRole, RoleMeta> = {
   //   사용자 대면 라벨을 신분('크리에이터')에서 **행위**('소개')로 바꾼다. 키는 그대로 —
   //   바꾸는 건 화면에 뜨는 말뿐이고, 그 말이 사람을 부류로 가르지 않게 하는 것이 목적이다.
   influencer: {
-    label: '🎤 소개',
+    label: '소개',
     emoji: '🎤',
     shortLabel: '소개',
     defaultPayout: 'deal',
@@ -45,7 +45,7 @@ export const SELLER_ROLES: Record<SellerRole, RoleMeta> = {
     description: '인스타·카톡·유어샵으로 매장 이용권 소개 → 커미션 적립',
   },
   store_owner: {
-    label: '🏪 매장 사장님',
+    label: '매장 사장님',
     emoji: '🏪',
     shortLabel: '매장',
     defaultPayout: 'cash',
@@ -55,7 +55,7 @@ export const SELLER_ROLES: Record<SellerRole, RoleMeta> = {
     description: '내 매장 이용권 등록 + QR 스캔으로 사용 확인 → 현금 정산',
   },
   both: {
-    label: '🎤🏪 소개 + 매장',
+    label: '소개 + 매장',
     emoji: '🎤🏪',
     shortLabel: '소개+매장',
     defaultPayout: 'deal+cash',

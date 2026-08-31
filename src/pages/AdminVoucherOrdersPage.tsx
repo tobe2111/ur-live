@@ -217,7 +217,7 @@ export default function AdminVoucherOrdersPage() {
           )}
           <div className="flex gap-2 mb-3">
             {([1, 6, 24, 168] as const).map(h => (
-              <button key={h} onClick={() => setHours(h)} className={`px-3 py-1.5 text-sm rounded ${hours === h ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+              <button key={h} onClick={() => setHours(h)} className={`px-3 py-1.5 text-sm rounded ${hours === h ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
                 {h === 168 ? '7일' : `${h}h`}
               </button>
             ))}
@@ -292,7 +292,7 @@ export default function AdminVoucherOrdersPage() {
                   )}
                 </div>
                 {r.status === 'failed' && (
-                  <button onClick={() => handleResend(r.id)} className="ml-2 px-3 py-1.5 text-xs bg-blue-600 text-white rounded font-bold shrink-0">재발송</button>
+                  <button onClick={() => handleResend(r.id)} className="ml-2 px-3 py-1.5 text-xs bg-gray-900 text-white rounded font-bold shrink-0">재발송</button>
                 )}
               </div>
             </div>

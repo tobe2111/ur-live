@@ -24,10 +24,14 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
+      // 📐 2026-08-30: 크기를 `.ur-btn` 체계(32/40/48px)와 같은 눈금에 맞춘다.
+      //   이전엔 h-9/h-10/h-11(36/40/44)로 이 파일에만 있는 눈금이었고, 더 나쁘게는
+      //   sm 과 lg 가 **둘 다 `rounded-md`** 라 "큰 버튼이 기본 버튼보다 각진" 역전이 있었다.
+      //   이제 sm 8px < default 10px < lg 12px 로 크기와 곡률이 같은 방향으로 간다.
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
+        sm: "h-8 rounded-md px-3",
+        lg: "h-12 rounded-[0.75rem] px-7",
         icon: "h-10 w-10",
       },
     },

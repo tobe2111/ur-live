@@ -6,6 +6,7 @@
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap, Sparkles, Smartphone, Store, MapPin, BookOpen, Heart, ChevronRight, ChevronDown } from 'lucide-react'
+import { UrShopIcon, DongneDealIcon } from '@/components/icons/urdeal-icons'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import AppDownloadModal from './AppDownloadModal'
 import AccountMenu from './AccountMenu'
@@ -87,7 +88,7 @@ export default function DesktopTopNav() {
     //   실제 다른 목적지인 '교환권'(/vouchers)로 교체(하단바 2번째 탭과 정합).
     { icon: Gift, key: 'vouchers', label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers' },
     ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: ShoppingCart, key: 'shop', label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
-    { icon: Sparkles, key: 'linkshop', label: t('nav.linkshop', { defaultValue: '유어샵' }), path: linkshopPath },
+    { icon: UrShopIcon, key: 'linkshop', label: t('nav.linkshop', { defaultValue: '유어샵' }), path: linkshopPath },
   ]
 
   // 🖥️ 2026-07-19 (대표 요청 — 그루폰식 상단 카테고리 바): 좌측 사이드바 대신 상단 2번째 행에 카테고리/섹션을
@@ -95,9 +96,9 @@ export default function DesktopTopNav() {
   const categoryItems = [
     { icon: Home, label: t('nav.home', { defaultValue: '홈' }), path: '/' },
     { icon: Gift, label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers' },
-    { icon: MapPin, label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/map' },
+    { icon: DongneDealIcon, label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/map' },
     ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: ShoppingCart, label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
-    { icon: Sparkles, label: t('nav.linkshop', { defaultValue: '유어샵' }), path: linkshopPath },
+    { icon: UrShopIcon, label: t('nav.linkshop', { defaultValue: '유어샵' }), path: linkshopPath },
     { icon: BookOpen, label: t('nav.blog', { defaultValue: '블로그' }), path: '/blog' },
   ]
 

@@ -7,7 +7,7 @@
  */
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Users } from 'lucide-react'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatWon } from '@/utils/format'
 import { isLoggedInSync } from '@/utils/auth'
@@ -38,7 +38,7 @@ export default function ReferralEarnedCard() {
       to="/influencer/dashboard"
       className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06]"
     >
-      <span className="text-lg" aria-hidden="true">💸</span>
+      <Users className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
       <span className="flex-1 min-w-0">
         <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
           {hasEarned ? t('my.referralEarnedTitle', { defaultValue: '추천 적립 현황' }) : t('my.referralStartTitle', { defaultValue: '상품 추천하고 적립받기' })}

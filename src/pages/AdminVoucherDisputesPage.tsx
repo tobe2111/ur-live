@@ -38,8 +38,8 @@ function distanceM(a: number, b: number, c2: number, d: number): number {
 
 function LocationEvidence({ d }: { d: Dispute }) {
   const hasUsed = d.used_lat != null && d.used_lng != null
-  if (!hasUsed) return <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-400 border border-gray-200">📍 사용 위치 기록 없음</span>
-  if (d.store_lat == null || d.store_lng == null) return <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600 border border-gray-200">📍 사용 위치 기록됨 (가게 좌표 없음)</span>
+  if (!hasUsed) return <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-400 border border-gray-200">사용 위치 기록 없음</span>
+  if (d.store_lat == null || d.store_lng == null) return <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600 border border-gray-200">사용 위치 기록됨 (가게 좌표 없음)</span>
   const dist = distanceM(d.used_lat as number, d.used_lng as number, d.store_lat, d.store_lng)
   const far = dist > 500 // 500m 초과면 의심 신호(소프트)
   const txt = dist >= 1000 ? `${(dist / 1000).toFixed(1)}km` : `${dist}m`

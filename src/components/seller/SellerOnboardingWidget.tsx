@@ -58,7 +58,7 @@ export default function SellerOnboardingWidget() {
   }
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 to-gray-50 border border-blue-200 rounded-xl p-4 mb-4">
+    <div className="bg-gray-50 border border-blue-200 rounded-xl p-4 mb-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {data.bootcamp_completed ? (
@@ -67,7 +67,7 @@ export default function SellerOnboardingWidget() {
             <Sparkles className="w-5 h-5 text-blue-500" />
           )}
           <h3 className="text-sm font-bold text-gray-900">
-            {data.bootcamp_completed ? '🎉 부트캠프 완주!' : '셀러 부트캠프'}
+            {data.bootcamp_completed ? '부트캠프 완주!' : '셀러 부트캠프'}
           </h3>
         </div>
         <button
@@ -88,7 +88,7 @@ export default function SellerOnboardingWidget() {
 
       <div className="w-full bg-white rounded-full h-2 mb-3 overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-gray-800 to-gray-800 transition-all"
+          className="h-full bg-gray-800 transition-all"
           style={{ width: `${data.progress.percent}%` }}
         />
       </div>

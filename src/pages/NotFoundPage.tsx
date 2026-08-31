@@ -58,7 +58,7 @@ export default function NotFoundPage() {
         <div className="relative z-10 max-w-xl w-full text-center px-4 lg:px-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* 404 Large Gradient */}
           <h1
-            className="font-black leading-none tracking-tight text-[140px] md:text-[200px] bg-gradient-to-r from-[#6b7280] to-[#6b7280] bg-clip-text text-transparent select-none"
+            className="font-black leading-none tracking-tight text-[140px] md:text-[200px] bg-[#6b7280] bg-clip-text text-transparent select-none"
             aria-label="404"
           >
             404

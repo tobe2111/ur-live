@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 //   다운로드 코드라 첫 페인트 비필수 → lazy 로 빼 홈 첫 페인트 preload 에서 18KB 제거.
 const QRCodeSVG = lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeSVG })))
 import { Home, Gift, Ticket, Sparkles, User, ChevronRight, Smartphone, MapPin, ShieldCheck, Percent, Store } from 'lucide-react'
+import { UrShopIcon } from '@/components/icons/urdeal-icons'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 /**
@@ -124,7 +125,7 @@ export default function ConsumerFrameRails() {
                 맞는 정본 라벨 "교환권"(하단 네비 탭2와 동일 Gift 아이콘)으로 정정. */}
             <QuickLink icon={Gift} label={t('nav.vouchers', { defaultValue: '교환권' })} onClick={() => navigate('/vouchers')} />
             <QuickLink icon={Ticket} label={t('nav.myGbVouchers', { defaultValue: '이용권' })} onClick={() => navigate('/my-vouchers')} />
-            <QuickLink icon={Sparkles} label={t('nav.linkshop', { defaultValue: '유어샵' })} onClick={() => navigate('/u/me')} />
+            <QuickLink icon={UrShopIcon} label={t('nav.linkshop', { defaultValue: '유어샵' })} onClick={() => navigate('/u/me')} />
             <QuickLink icon={User} label={t('nav.my', { defaultValue: '마이' })} onClick={() => navigate('/user/profile')} />
           </div>
 

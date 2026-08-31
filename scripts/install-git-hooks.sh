@@ -261,6 +261,11 @@ node scripts/check-chunk-recovery-guard.mjs || true
 echo "==> Pre-commit: 모바일 뷰포트 함정 가드 (warn-only)..."
 node scripts/check-mobile-viewport.mjs || true
 
+# 🎨 2026-08-30: AI 디자인 흔적 래칫 — 평면 그라디언트(from/to 같은 색) · UI 자리 이모지.
+#   둘 다 에러를 안 내고 화면만 조용히 밋밋해진다. 커밋 전에 알려 준다. warn-only(차단은 CI).
+echo "==> Pre-commit: AI 디자인 흔적 래칫 (warn-only)..."
+node scripts/check-design-slop.mjs || true
+
 # 🛡️ 2026-06-29: 파일 크기 래칫 — god 파일 재발 방지. 신규 600줄 초과 / baseline 동결 파일 성장 경고.
 #   staged 파일만 검사. 줄인 뒤엔 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신. warn-only.
 echo "==> Pre-commit: 파일 크기 래칫 (god 파일 방지, warn-only)..."

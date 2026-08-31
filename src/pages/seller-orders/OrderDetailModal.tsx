@@ -176,7 +176,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                 <Button
                   onClick={() => onStatusChange(order.order_number, next)}
                   disabled={updating}
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="w-full py-3 bg-gray-900 hover:bg-gray-900 text-white"
                 >
                   {updating ? (
                     <span className="flex items-center justify-center gap-2">
@@ -238,7 +238,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                   <Button
                     type="submit"
                     disabled={updating}
-                    className="w-full py-3 bg-green-600 hover:bg-green-700 text-white"
+                    className="w-full py-3 bg-gray-900 hover:bg-gray-900 text-white"
                   >
                     {updating ? (
                       <span className="flex items-center justify-center gap-2">

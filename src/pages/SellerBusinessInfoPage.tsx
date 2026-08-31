@@ -424,7 +424,7 @@ export default function SellerBusinessInfoPage() {
               onClick={() => switchTab('business')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'business'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-gray-900 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -436,7 +436,7 @@ export default function SellerBusinessInfoPage() {
               onClick={() => switchTab('bank')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'bank'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-gray-900 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -448,7 +448,7 @@ export default function SellerBusinessInfoPage() {
               onClick={() => switchTab('certificate')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'certificate'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-gray-900 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >

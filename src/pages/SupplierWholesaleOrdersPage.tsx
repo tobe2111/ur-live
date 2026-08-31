@@ -266,7 +266,7 @@ export default function SupplierWholesaleOrdersPage() {
                           onChange={e => setOrderDraft(p => ({ ...p, [g.orderId]: { ...od, tracking: e.target.value } }))}
                           className="px-3 py-2 border border-gray-200 rounded-lg text-gray-900 flex-1"
                         />
-                        <button onClick={() => shipAll(g.orderId)} disabled={busyOrder === g.orderId} className="inline-flex items-center justify-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                        <button onClick={() => shipAll(g.orderId)} disabled={busyOrder === g.orderId} className="inline-flex items-center justify-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">
                           {busyOrder === g.orderId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Boxes className="w-4 h-4" />} 전체 일괄발송
                         </button>
                       </div>

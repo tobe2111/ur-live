@@ -14,7 +14,7 @@ import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { Wallet, TrendingUp, Send, Clock } from 'lucide-react'
+import { Briefcase, CheckCircle2, Clock, CreditCard, Handshake, List, RotateCcw, Send, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 
 interface LedgerEntry {
@@ -45,14 +45,14 @@ interface LedgerData {
   recent_payouts: PayoutRow[]
 }
 
-const EVENT_LABEL: Record<string, { label: string; emoji: string }> = {
-  voucher_used: { label: '바우처 사용', emoji: '✅' },
-  voucher_refund: { label: '환불', emoji: '↩️' },
-  agency_commission: { label: '에이전시 수수료', emoji: '🤵' },
-  group_buy_join: { label: '공구 참여', emoji: '🤝' },
-  charge: { label: '충전', emoji: '💳' },
-  refund: { label: '환불', emoji: '↩️' },
-  settlement: { label: '정산', emoji: '💰' },
+const EVENT_LABEL: Record<string, { label: string; Icon: LucideIcon }> = {
+  voucher_used: { label: '바우처 사용', Icon: CheckCircle2 },
+  voucher_refund: { label: '환불', Icon: RotateCcw },
+  agency_commission: { label: '에이전시 수수료', Icon: Briefcase },
+  group_buy_join: { label: '공구 참여', Icon: Handshake },
+  charge: { label: '충전', Icon: CreditCard },
+  refund: { label: '환불', Icon: RotateCcw },
+  settlement: { label: '정산', Icon: Wallet },
 }
 
 const PAYOUT_STATUS: Record<string, { label: string; cls: string }> = {
@@ -171,11 +171,11 @@ export default function MyLedgerPage() {
             ) : (
               <div className="divide-y divide-gray-100">
                 {data.entries.map(e => {
-                  const ev = EVENT_LABEL[e.event_type] || { label: e.event_type, emoji: '📋' }
+                  const ev = EVENT_LABEL[e.event_type] || { label: e.event_type, Icon: List }
                   return (
                     <div key={e.id} className="px-4 py-3 flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="text-base shrink-0">{ev.emoji}</span>
+                        <ev.Icon className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
                         <div className="min-w-0">
                           <p className="font-medium text-gray-900 truncate">{ev.label}</p>
                           <p className="text-[10px] text-gray-400 font-mono truncate">{e.reference_id}</p>

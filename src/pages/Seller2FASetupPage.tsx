@@ -56,7 +56,7 @@ export default function Seller2FASetupPage() {
     try {
       const res = await api.post('/api/2fa/verify', { code }, { headers })
       if (res.data?.success) {
-        toast.success('🎉 2FA 활성화 완료!')
+        toast.success('2FA 활성화 완료!')
         setEnabled(true)
         setSetupData(null)
         setCode('')
@@ -106,7 +106,7 @@ export default function Seller2FASetupPage() {
           )}
           <div className="flex-1">
             <p className={`text-sm font-bold ${enabled ? 'text-green-700' : 'text-amber-700'}`}>
-              {enabled ? '✅ 2FA 활성화됨' : '⚠️ 2FA 비활성화 상태'}
+              {enabled ? '2FA 활성화됨' : '2FA 비활성화 상태'}
             </p>
             <p className="text-xs text-gray-600 mt-0.5">
               {enabled

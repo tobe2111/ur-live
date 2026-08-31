@@ -653,7 +653,7 @@ export default function AdminKtAlphaPage() {
                 💰 잔액 갱신
               </button>
               <button onClick={runSync} disabled={syncing}
-                className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 inline-flex items-center gap-1">
+                className="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-900 disabled:opacity-50 inline-flex items-center gap-1">
                 <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'sync 중...' : '수동 sync'}
               </button>
             </div>
@@ -834,7 +834,7 @@ export default function AdminKtAlphaPage() {
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <button onClick={saveSettings} disabled={savingSettings}
-                  className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                  className="px-4 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900 disabled:opacity-50">
                   {savingSettings ? '저장 중...' : '설정 저장'}
                 </button>
                 {/* 🛡️ 2026-05-27 (사용자 요청): 마진 % 변경 후 기존 상품 가격 즉시 재계산 */}
@@ -890,7 +890,7 @@ export default function AdminKtAlphaPage() {
 
               <div className="flex flex-wrap gap-2">
                 <button onClick={() => runImport(true)} disabled={importing}
-                  className="px-3 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                  className="px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900 disabled:opacity-50">
                   🔍 미리보기 (dry-run)
                 </button>
                 <button onClick={() => runImport(false)} disabled={importing || (catalogStats.active ?? 0) === 0}
@@ -942,7 +942,7 @@ export default function AdminKtAlphaPage() {
                   <div className="flex items-center gap-2 flex-wrap justify-end">
                     {/* 🛡️ 2026-05-21: 메가 버튼 — 카테고리/브랜드/리뷰 이름 한 번에 즉시 실행. */}
                     <button onClick={runAllBackfills}
-                      className="px-3 py-2 bg-gradient-to-r from-gray-900 to-gray-900 text-white text-xs font-extrabold rounded-lg hover:opacity-90 shadow-md"
+                      className="px-3 py-2 bg-gray-900 text-white text-xs font-extrabold rounded-lg hover:opacity-90 shadow-md"
                       title="categorize + brand backfill + review name backfill 한 번에"
                     >
                       ⚡ 전체 즉시 실행
@@ -970,14 +970,14 @@ export default function AdminKtAlphaPage() {
                     </button>
                     {/* 🛡️ 2026-05-19: KT Alpha 카테고리 자동 재분류 (gift_catalog + brand 키워드). */}
                     <button onClick={autoClassifyCategories}
-                      className="px-3 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700"
+                      className="px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900"
                       title="goods_type_detail + brand 키워드로 자동 재분류"
                     >
                       🗂️ 카테고리 자동 재분류
                     </button>
                     {/* 🛡️ 2026-05-19: 허위 리뷰 대량 생성 / 삭제 (사용자 요청). */}
                     <button onClick={generateBulkReviews}
-                      className="px-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700"
+                      className="px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900"
                       title="모든 교환권에 상품당 5-25개 리뷰 자동 생성"
                     >
                       ⭐ 리뷰 대량 생성
@@ -997,7 +997,7 @@ export default function AdminKtAlphaPage() {
                     </button>
                     {/* 🛡️ 2026-05-21: 기존 리뷰 이름 백필 — users.name 마스킹 일괄 적용. */}
                     <button onClick={backfillReviewUserNames}
-                      className="px-3 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700"
+                      className="px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900"
                       title="기존 리뷰의 user_name 컬럼을 users.name 마스킹으로 채움"
                     >
                       🔄 리뷰 이름 백필

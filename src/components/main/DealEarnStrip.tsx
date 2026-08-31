@@ -6,7 +6,7 @@
  */
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Link2, Store, UserPlus, Wallet } from 'lucide-react'
+import { Coins, Link2, Store, UserPlus, Wallet } from 'lucide-react'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED, TOPUP_DISABLED } from '@/shared/feature-flags'
 
 export default function DealEarnStrip() {
@@ -52,7 +52,7 @@ export default function DealEarnStrip() {
     <section className="ur-content-wide px-4 lg:px-8 pt-3 pb-1">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-sm font-bold text-gray-900 dark:text-white">
-          💰 {t('dealEarn.title', { defaultValue: '딜 모으는 법' })}
+          <Coins className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />{t('dealEarn.title', { defaultValue: '딜 모으는 법' })}
         </h2>
         <span className="text-[11px] text-gray-400 dark:text-gray-500">
           {t('dealEarn.subtitle', { defaultValue: '모아서 교환권으로 바꾸세요' })}

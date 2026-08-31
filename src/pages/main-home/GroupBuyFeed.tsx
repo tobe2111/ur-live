@@ -5,6 +5,9 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
+import { SearchX, Flame, Timer, Tag, Clock } from 'lucide-react'
+import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
+import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
 import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
@@ -51,20 +54,32 @@ function discountOf(p: FeedProduct): number {
   return orig > price && orig > 0 ? Math.round(((orig - price) / orig) * 100) : 0
 }
 
-const CATEGORIES = [
-  { key: 'all',             label: '전체' },
-  { key: 'meal_voucher',    label: '🍽️ 식사' },
-  { key: 'stay_voucher',    label: '🏨 숙소' },
-  { key: 'beauty_voucher',  label: '💇 뷰티' },
-  { key: 'etc_voucher',     label: '🎯 기타' },
-] as const
+/**
+ * 🏷️ 카테고리는 **`DEAL_CATS` 한 표만 읽는다** (2026-08-30).
+ *
+ *   ⚠️ 이 화면이 자기 표를 따로 갖고 있어서 **같은 분류가 한 화면에 두 번, 다르게** 떴다 —
+ *      상단 탭은 `전체·식사·미용·숙소·기타`, 바로 아래 칩은 `전체·식사·숙소·뷰티·기타`.
+ *      **같은 것을 두 이름(미용/뷰티)으로 부르고 순서도 달랐다.** 사용자에겐 두 분류
+ *      체계가 있는 것처럼 보이고, 그게 "조립한 화면" 인상의 큰 몫이다.
+ *   🩸 더 뼈아픈 건 `PcHomeRail` 이 자기 주석에 *"카테고리 라벨 SSOT — 문구가 갈리면
+ *      반드시 어긋난다"* 고 **미리 적어 뒀는데도** 두 번째 표가 생겨 그대로 어긋난 것이다.
+ *      SSOT 는 선언이 아니라 **다른 표가 없을 때** 성립한다.
+ */
+const CATEGORIES = DEAL_CATS
 
-const SORTS = [
-  { key: 'popular',  label: '🔥 인기순' },
-  { key: 'deadline', label: '⏰ 마감임박' },
-  { key: 'discount', label: '🏷️ 할인율' },
-  { key: 'newest',   label: '🆕 최신순' },
-] as const
+/**
+ * 🖊️ 2026-08-30: 이모지 라벨 → 선 아이콘 + **공용 `SortMenu` 로 통일**.
+ *   이 화면만 네이티브 `<select>` 를 쓰고 있었다 — 그래서 라벨에 SVG 를 못 넣어 이모지가
+ *   박혀 있었고, 동시에 같은 일을 하는 컨트롤이 앱에 두 종류가 되었다(교환권·쇼핑·공구는
+ *   전부 `SortMenu`). `sort-menu.tsx` 의 주석이 스스로 밝히듯 그 컴포넌트의 존재 이유가
+ *   "네이티브 select 대체" 인데, 정작 홈이 예외로 남아 있었다.
+ */
+const SORTS: Array<SortOptionItem<'popular' | 'deadline' | 'discount' | 'newest'>> = [
+  { key: 'popular',  label: '인기순',   Icon: Flame },
+  { key: 'deadline', label: '마감임박', Icon: Timer },
+  { key: 'discount', label: '할인율',   Icon: Tag },
+  { key: 'newest',   label: '최신순',   Icon: Clock },
+]
 
 // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): 'near' = userLoc 기준 거리순(내부 SORTS 칩엔 없음 — PcHomePage 가 구동).
 type SortKey = typeof SORTS[number]['key'] | 'near'
@@ -303,7 +318,15 @@ export default function GroupBuyFeed({
 
       {/* 카테고리 칩 — sticky 한 단계 아래 (헤더는 페이지에서 sticky 처리).
           🖥️ PC 홈에선 좌측 레일이 카테고리를 담당 → 내부 칩 숨김. */}
-      {!pc && (
+      {/* 🧹 2026-08-30 (대표 — "카테고리 UI 디자인이 문제"): 칩 행은 **부모가 카테고리를
+          안 가질 때만** 그린다.
+          🩸 이전엔 `!pc` 만 보고 그려서, 모바일 홈에서 카테고리가 **두 번** 떴다 —
+             위에 `MobileHomePage` 의 아이콘 탭(전체·식사·미용·숙소·기타)이 있고
+             바로 아래 같은 것이 pill 칩으로 또 있었다. 부모는 `category` +
+             `onCategoryChange` 로 이미 그 컨트롤을 **소유**하고 있었으므로,
+             이 안의 칩은 처음부터 그 화면에선 군더더기였다.
+          ⇒ 라벨을 맞추는 걸로는 부족했다. 중복은 **컨트롤 자체**였다. */}
+      {!pc && !onCategoryChange && (
       <div className="bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35] sticky top-12 z-10">
         <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto no-scrollbar">
           {CATEGORIES.map(c => {
@@ -312,12 +335,13 @@ export default function GroupBuyFeed({
               <button
                 key={c.key}
                 onClick={() => setCategory(c.key)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
                   active
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
                     : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
                 }`}
               >
+                {c.key !== 'all' && <c.icon className="w-3.5 h-3.5" aria-hidden="true" />}
                 {c.label}
               </button>
             )
@@ -330,16 +354,7 @@ export default function GroupBuyFeed({
       {!pc && (
       <div className="flex items-center justify-between px-4 py-2.5 text-[12px] text-gray-600 dark:text-gray-400">
         <span>{loading ? '불러오는 중…' : `${sorted.length}개 공구`}</span>
-        <select
-          value={sort}
-          onChange={e => setSort(e.target.value as SortKey)}
-          aria-label="공구 정렬 기준"
-          className="bg-transparent border-0 text-[12px] font-bold text-gray-900 dark:text-white focus:outline-none cursor-pointer"
-        >
-          {SORTS.map(s => (
-            <option key={s.key} value={s.key}>{s.label}</option>
-          ))}
-        </select>
+        <SortMenu value={sort as typeof SORTS[number]['key']} options={SORTS} onChange={(v) => setSort(v)} />
       </div>
       )}
 
@@ -459,7 +474,12 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
   return (
     <div className="px-4 pt-2 pb-8">
       <div className="py-10 text-center">
-        <p className="text-4xl mb-3">🤷</p>
+        {/* 🏷️ 2026-08-30: 어깨 으쓱 이모지(🤷) → 선 아이콘.
+            이모지 빈 화면은 "아직 안 만든 자리"처럼 읽힌다 — 실제로는 정상 상태인데도.
+            같은 화면의 '내 주변 지도로 보기' 원형 처리와 같은 언어로 맞춘다. */}
+        <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center">
+          <SearchX className="w-6 h-6 text-gray-400" aria-hidden="true" />
+        </div>
         <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">
           {category === 'all' ? '진행 중인 공구가 없어요' : '이 카테고리에 진행 중인 공구가 없어요'}
         </p>

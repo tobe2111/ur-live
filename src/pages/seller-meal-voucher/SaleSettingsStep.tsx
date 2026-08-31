@@ -134,7 +134,7 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
           {/* 즉시판매 단일가 모델 안내 */}
           <div className="border-t border-gray-200 pt-4">
             <div className="bg-pink-50 border border-pink-100 rounded-lg p-3">
-              <p className="text-sm font-bold text-gray-900">💡 {t('seller.mealVoucher.singlePriceTitle', { defaultValue: '공구가는 단일 가격이에요' })}</p>
+              <p className="text-sm font-bold text-gray-900">{t('seller.mealVoucher.singlePriceTitle', { defaultValue: '공구가는 단일 가격이에요' })}</p>
               <p className="text-[11px] text-gray-600 mt-1 leading-relaxed">
                 {t('seller.mealVoucher.singlePriceDesc', { defaultValue: '위에 입력한 판매가가 모든 참여자에게 동일하게 적용되는 공구가예요. 인원수에 따라 가격이 바뀌지 않으며, 결제 즉시 교환권이 발급됩니다. 정가(원가)를 함께 입력하면 할인율이 자동 표시돼요.' })}
               </p>

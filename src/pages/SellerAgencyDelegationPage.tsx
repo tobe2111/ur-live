@@ -139,7 +139,7 @@ export default function SellerAgencyDelegationPage() {
           type="button"
           disabled={acting != null || currentMode === 'approval'}
           onClick={() => grant(agencyId, agencyName, 'approval')}
-          className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Handshake className="h-3 w-3" />
           {delegated
@@ -153,7 +153,7 @@ export default function SellerAgencyDelegationPage() {
           type="button"
           disabled={acting != null || currentMode === 'full'}
           onClick={() => grant(agencyId, agencyName, 'full')}
-          className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Handshake className="h-3 w-3" />
           {delegated
@@ -206,7 +206,7 @@ export default function SellerAgencyDelegationPage() {
               </p>
               <Link
                 to="/seller/promo-spend"
-                className="mt-2 inline-flex items-center gap-1 rounded-full bg-blue-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-blue-700"
+                className="mt-2 inline-flex items-center gap-1 rounded-full bg-gray-900 px-3 py-1 text-[11px] font-bold text-white hover:bg-gray-900"
               >
                 {t('seller.delegation.viewPromoSpend', { defaultValue: '내 promo 지출 보기' })}
                 <ArrowRight className="h-3 w-3" />
