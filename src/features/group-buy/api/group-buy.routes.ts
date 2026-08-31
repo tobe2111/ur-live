@@ -1270,11 +1270,13 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         } catch { /* fail-soft */ }
         // 🔔 2026-06-26 (소비자 감사 C): 카드 결제 buyer 무통보(딜 /join 은 알림톡 발송) 비대칭 보강.
         //   ① 발급 인앱 기록 ② 알림톡. 🏷️ 2026-08-12: '교환권' 고정 문구라 카드로 산 이용권에도 그게 떴다(셀러 알림은 '이용권') → issuedVoucherLabel.
+        // 🎟️ 2026-08-31 (지갑 분리): 라벨과 같은 기준(deal_only)으로 목적지도 가른다 —
+        //   '교환권이 발급됐어요' 를 눌렀는데 이용권 지갑이 열리면 방금 산 게 없는 화면을 본다.
         try {
           await DB.prepare(
             `INSERT INTO user_notifications (user_id, type, title, message, link)
              VALUES (?, 'voucher_issued', ?, ?, ?)`
-          ).bind(String(userId), `🎟️ ${issuedVoucherLabel(product)}이 발급됐어요`, `${product.name} ×${qty} — 보관함에서 확인하세요`, '/my-vouchers').run().catch(() => {})
+          ).bind(String(userId), `🎟️ ${issuedVoucherLabel(product)}이 발급됐어요`, `${product.name} ×${qty} — 보관함에서 확인하세요`, Number(product?.deal_only) === 1 ? '/my-gifticons' : '/my-vouchers').run().catch(() => {})
         } catch { /* ignore */ }
         try {
           const userRow = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(userId).first<{ phone: string | null }>()

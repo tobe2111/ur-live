@@ -190,7 +190,8 @@
     "currencyWon": "KRW",
     "checkNetworkRetry": "Vérifiez votre réseau puis réessayez",
     "goHome": "Aller à l'accueil",
-    "prev": "Précédent"
+    "prev": "Précédent",
+    "seeAll": "Tout voir"
   },
   "seller": {
     "relink": {
@@ -3827,7 +3828,8 @@
     "dongnedeal": "Offres locales",
     "create": "Créer",
     "offlineGroupBuy": "Achat groupé local",
-    "myGbVouchers": "Coupons"
+    "myGbVouchers": "Coupons",
+    "myGifticons": "Mes gifticons"
   },
   "bulkUpload": {
     "title": "Import de produits en masse",
@@ -4756,12 +4758,13 @@
     "copy": "Copier",
     "showQrAtStore": "Présentez ce code QR au restaurant",
     "seoTitle": "Mes coupons - 유어딜",
-    "seoDescription": "Voir et utiliser les coupons achetés",
+    "seoDescription": "Retrouvez les coupons achetés et utilisez-les en magasin",
     "status": {
       "unused": "Disponible",
       "used": "Utilisé",
       "expired": "Expiré",
-      "refunded": "Remboursé"
+      "refunded": "Remboursé",
+      "processing": "Envoi en cours"
     },
     "verify": {
       "title": "Vérifier le coupon",
@@ -4811,7 +4814,15 @@
     "deal": "deal",
     "heroBalanceLabelGift": "Solde des bons cadeaux",
     "loadFailed": "Impossible de charger vos bons",
-    "totalCount": "{{count}} au total"
+    "totalCount": "{{count}} au total",
+    "myGifticons": "Mes gifticons",
+    "myBox": "Ma boîte",
+    "gifticonRowSub": "Gifticons reçus par SMS",
+    "gifticonSeoTitle": "Mes gifticons - 유어딜",
+    "gifticonSeoDescription": "Retrouvez les gifticons achetés et utilisez-les en magasin",
+    "loadFailedGift": "Impossible de charger les gifticons",
+    "noUnusedGift": "Aucun gifticon disponible",
+    "totalCountLabel": "Total"
   },
   "sellerWaiting": {
     "title": "Approbation Vendeur en Attente",
@@ -6016,7 +6027,7 @@
     "sectionTitle": "Mon activité",
     "wishlist": "[TODO:fr] 찜한 상품",
     "voucher": "Mes bons",
-    "voucherSub": "Coupons et cartes cadeaux",
+    "voucherSub": "À utiliser en magasin (QR ou code)",
     "digitalLibrary": "[TODO:fr] 디지털 보관함",
     "digitalLibrarySub": "[TODO:fr] 전자책·강의·가이드",
     "coupons": "[TODO:fr] 쿠폰함",
@@ -6025,7 +6036,9 @@
     "myStays": "Mes Réservations",
     "myStaysSub": "Code check-in / expiration",
     "interestList": "Restaurants favoris",
-    "interestListSub": "Alertes d'ouverture d'achat groupé"
+    "interestListSub": "Alertes d'ouverture d'achat groupé",
+    "gifticon": "Mes gifticons",
+    "gifticonSub": "Reçus par SMS"
   },
   "orderStatus": {
     "sectionTitle": "[TODO:fr] 주문 현황",

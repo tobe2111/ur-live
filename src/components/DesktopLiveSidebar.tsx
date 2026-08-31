@@ -30,7 +30,7 @@ const MENU_ITEMS: NavItem[] = [
   { labelKey: 'nav.live',            labelDefault: '라이브',         icon: Radio,   path: '/live',      active: (p) => p.startsWith('/live') },
   { labelKey: 'nav.browse',          labelDefault: '둘러보기',       icon: Compass, path: '/browse',    active: (p, s) => p === '/browse' && !s.includes('category=') },
   // 🎟️ 2026-06-19 (대표 5탭 확정 — 홈=동네딜이라 동네딜 메뉴는 홈과 중복): 동네딜 → 교환권(기프티콘 카탈로그).
-  { labelKey: 'nav.vouchers',        labelDefault: '교환권',          icon: Gift,    path: '/vouchers',  active: (p) => p.startsWith('/vouchers') },
+  { labelKey: 'nav.vouchers',        labelDefault: '교환권',          icon: Gift,    path: '/vouchers',  active: (p) => p.startsWith('/vouchers') || p.startsWith('/my-gifticons') },
   // 🆕 2026-06-17 (대표 신고 — PC 진입 버튼 누락): 공구 제안/만들기 (모바일 하단바 ➕ 와 동일 목적지).
   { labelKey: 'nav.create',          labelDefault: '공구 제안',       icon: Plus,    path: '/community-group-buy/new', active: (p) => p.startsWith('/community-group-buy/new') },
 ]

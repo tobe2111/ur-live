@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  X, ChevronRight, Heart, Ticket, Package, Settings, Coins,
+  X, ChevronRight, Heart, Ticket, Gift, Package, Settings, Coins,
   Bell, HelpCircle, Store, LogOut, Smartphone, LogIn, UserPlus,
 } from 'lucide-react'
 import { getUserNameSync, getUserEmail } from '@/utils/auth'
@@ -46,6 +46,8 @@ export default function AccountMenu({
     ? [
         { icon: Heart,      label: t('nav.myWishlist', { defaultValue: '찜한 이용권' }), path: '/wishlist', badge: wishCount > 0 ? String(wishCount) : undefined },
         { icon: Ticket,     label: t('nav.myVouchers', { defaultValue: '내 이용권' }), path: '/my-vouchers' },
+        // 🎟️ 2026-08-31 (지갑 분리): 교환권(문자로 받는 기프티콘)은 별도 보관함.
+        { icon: Gift,       label: t('nav.myGifticons', { defaultValue: '내 교환권' }), path: '/my-gifticons' },
         { icon: Package,    label: t('nav.myOrders', { defaultValue: '주문 내역' }), path: '/my-orders' },
         { icon: Coins,      label: t('nav.myDeal', { defaultValue: '딜 내역' }), path: '/my-deal-history' },
         { icon: Bell,       label: t('nav.notifications', { defaultValue: '알림' }), path: '/notifications', badge: unreadCount > 0 ? String(unreadCount) : undefined },

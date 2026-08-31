@@ -373,6 +373,14 @@ jobs:
         run: bash scripts/check-guide-sync.sh
         continue-on-error: true
 
+      # 📖 2026-08-31 (대표 지시): 운영백서의 숫자는 코드에서 생성된다. 여기가 **유일한 보장**이다 —
+      #   pre-commit 훅은 원격 세션(컨테이너 신규 생성)에 없을 수 있어 믿을 수 없다.
+      #   ① 표가 policy.ts/feature-flags 와 어긋났는가 ② 표가 바뀌었는데 GUIDE_SEED_VERSION 을 안 올렸는가
+      #   ②가 빨간불이면 배포돼도 라이브 문서는 옛 숫자 그대로다(재시드 조건이 거짓이라 조용히 통과).
+      - name: 운영백서 숫자표 동기 (strict)
+        run: node scripts/generate-ops-handbook.mjs --check
+        continue-on-error: false
+
       - name: Naming conflicts
         run: bash scripts/check-naming-conflicts.sh
         continue-on-error: true
@@ -395,6 +403,19 @@ jobs:
       #   둘 다 **에러를 내지 않는다** — 화면만 조용히 밋밋해지고 배포는 초록불이다.
       - name: AI design slop ratchet (flat gradients / emoji-as-icon)
         run: node scripts/check-design-slop.mjs
+      - name: Dashboard button system ratchet (strict)
+        env:
+          STRICT_DASHBOARD_BUTTON: '1'
+        run: node scripts/check-dashboard-button-system.mjs
+        continue-on-error: false
+
+      # 🖼️ 2026-08-31: cfImage <img> 에 onError 가 없으면 리사이저/원본이 죽는 순간 **깨진 이미지
+      #   아이콘**이 그대로 보인다. SSOT `cfImageOnError` 는 [원본 1회 재시도 → 숨김] 으로 처리한다.
+      #   배선 전 실측: cfImage <img> 92개 중 47개가 무방비. 배선은 눈에 안 보여 계속 새로 빠진다.
+      - name: Image fallback ratchet (broken-image icon) (strict)
+        env:
+          STRICT_IMAGE_FALLBACK: '1'
+        run: node scripts/check-image-fallback.mjs
         continue-on-error: false
 
       # 🍎 2026-06-20: 카카오 OAuth iOS 쿠키 미영속 안티패턴 (strict). iOS Safari/WebKit 은
@@ -773,6 +794,13 @@ jobs:
       #   조용히 나가고 있었다(에러 없음·화면 정상·바이트만 샘). 이름으로 잡는다.
       - name: Consumer surface role-chunk leak (strict)
         run: node scripts/check-surface-role-leak.mjs
+
+      # 🛡️ 2026-08-31 (대표 지시): 빌드 산출 CSS 에 `.ur-btn*` 이 살아 있는지 — Tailwind 트리셰이킹
+      #   방어. 이 판정은 원래 유닛테스트(button-system.test.ts)에 있었는데 유닛테스트가 build 보다
+      #   **앞**이라 `dist/` 가 없었고, 없으면 조용히 return 해서 **CI 에서 실패할 수 없었다**.
+      #   빌드 뒤로 옮기고 "산출물 없음 = 실패" 로 바꿨다. 반드시 build 뒤에 둘 것.
+      - name: Built CSS survives tree-shaking (strict)
+        run: node scripts/check-built-css.mjs
 
       # ── 6. 결과 요약 (artifact) — build 가 성공한 경우만 ──
       - name: Bundle size report

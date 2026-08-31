@@ -38,7 +38,7 @@ async function notifyUserKtSendFailed(
   try {
     await env.DB.prepare(
       `INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
-       VALUES (?, 'user', 'kt_alpha_send_failed', ?, ?, '/my-vouchers', datetime('now'))`
+       VALUES (?, 'user', 'kt_alpha_send_failed', ?, ?, '/my-gifticons', datetime('now'))`
     ).bind(String(userId), title, message).run()
   } catch { /* notifications 테이블/컬럼 차이 — silent (best-effort) */ }
 }
@@ -254,7 +254,7 @@ export async function autoSendKtAlphaVouchersForOrders(
             const uid = order.user_id || fallbackUserId
             if (uid !== null && uid !== undefined && uid !== '') {
               const { notifyUser } = await import('../../lib/notifications')
-              await notifyUser(env.DB, String(uid), 'kt_alpha_sent', '🎫 교환권 발송 완료', '구매하신 교환권이 발송되었습니다. 문자와 보관함에서 확인하세요.', '/my-vouchers')
+              await notifyUser(env.DB, String(uid), 'kt_alpha_sent', '🎫 교환권 발송 완료', '구매하신 교환권이 발송되었습니다. 문자와 보관함에서 확인하세요.', '/my-gifticons')
             }
           } catch { /* best-effort */ }
         } catch (sendErr) {

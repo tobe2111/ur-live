@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Heart } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
-import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { canonicalDetailPath } from '@/shared/product-flow'
 import PinButton from '@/components/curator/PinButton'
 
@@ -75,6 +75,7 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
             decoding="async"
+            onError={(e) => cfImageOnError(e.currentTarget, product.image_url)}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-[#1A1C21]">
