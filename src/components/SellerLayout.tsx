@@ -169,7 +169,15 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   const [fullMenuOpen, setFullMenuOpen] = useState(() => { try { return localStorage.getItem('ur_seller_full_menu') === '1' } catch { return false } })
   const toggleFullMenu = () => setFullMenuOpen(v => { try { localStorage.setItem('ur_seller_full_menu', v ? '0' : '1') } catch { /* noop */ } return !v })
 
-  const languages = [{ code: 'ko', label: '한국어', flag: '🇰🇷' }, { code: 'en', label: 'English', flag: '🇺🇸' }, { code: 'ja', label: '日本語', flag: '🇯🇵' }, { code: 'zh', label: '中文', flag: '🇨🇳' }, { code: 'es', label: 'Español', flag: '🇪🇸' }, { code: 'fr', label: 'Français', flag: '🇫🇷' }]
+  /**
+   * 🏳️ 2026-08-31: 국기 이모지 제거. 두 가지 이유 —
+   *   ① **국기는 언어가 아니다.** 🇺🇸 로 영어를, 🇨🇳 로 중국어를 가리키면 그 언어를 쓰는
+   *      다른 나라 사용자를 지운다(영어권은 미국만이 아니다).
+   *   ② 이모지는 기기마다 다른 그림으로 렌더돼 **우리가 그 화면을 통제하지 못한다.**
+   *      대시보드에서 유일하게 컬러였던 것도 이 국기였다.
+   *   ⇒ 각 언어를 **그 언어 자신의 이름**으로 적는다(국제 표준 관행).
+   */
+  const languages = [{ code: 'ko', label: '한국어', short: 'KO' }, { code: 'en', label: 'English', short: 'EN' }, { code: 'ja', label: '日本語', short: 'JA' }, { code: 'zh', label: '中文', short: 'ZH' }, { code: 'es', label: 'Español', short: 'ES' }, { code: 'fr', label: 'Français', short: 'FR' }]
 
   const currentLang = languages.find(l => l.code === i18n.language) || languages[0]
 
@@ -438,8 +446,8 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
                 className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
               >
                 <Globe className="w-4 h-4" />
-                <span className="text-xs font-medium hidden sm:inline">{currentLang.flag} {currentLang.label}</span>
-                <span className="text-xs sm:hidden">{currentLang.flag}</span>
+                <span className="text-xs font-medium hidden sm:inline">{currentLang.label}</span>
+                <span className="text-xs font-semibold sm:hidden">{currentLang.short}</span>
               </button>
               {langOpen && (
                 <>
@@ -453,7 +461,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
                           i18n.language === lang.code ? 'font-semibold text-blue-600 bg-blue-50' : 'text-gray-700'
                         }`}
                       >
-                        <span>{lang.flag}</span>
+                        <span className="text-[11px] font-semibold text-gray-400 w-5 shrink-0">{lang.short}</span>
                         {lang.label}
                       </button>
                     ))}

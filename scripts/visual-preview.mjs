@@ -101,6 +101,41 @@ function shell() {
   return html
 }
 
+/**
+ * 🃏 2026-08-31 `--deals` — **채워진 화면**을 본다.
+ *   그전까지 이 하네스는 모든 API 에 빈 배열을 줬다. 그래서 나오는 그림이 늘 빈 화면이었고,
+ *   레이아웃 판단은 되는데 **"카드가 깔렸을 때 어떻게 보이나"** 는 못 봤다 — 커머스 앱의
+ *   완성도는 대부분 거기서 결정되는데도. (합성 데이터다. 실데이터의 긴 이름/빈 필드는 안 보인다.)
+ */
+const DEAL_TITLES = [
+  ['스타벅스 아메리카노 T', '카페 · 역삼동', 4500, 3200],
+  ['교촌치킨 허니콤보', '치킨 · 논현동', 23000, 17900],
+  ['올리브영 3만원권', '뷰티 · 전국', 30000, 25500],
+  ['제주 오션뷰 1박', '숙소 · 서귀포', 180000, 119000],
+  ['본죽 전복죽', '한식 · 삼성동', 12000, 8900],
+  ['CU 모바일상품권 1만원', '편의점 · 전국', 10000, 9300],
+]
+const DEALS = DEAL_TITLES.map(([name, sub, was, now], i) => ({
+  id: 9000 + i,
+  name,
+  restaurant_name: sub.split(' · ')[0],
+  restaurant_address: '서울 강남구 ' + sub.split(' · ')[1],
+  price: now,
+  original_price: was,
+  discount_rate: Math.round((1 - now / was) * 100),
+  image_url: '',
+  images: '[]',
+  dominant_color: ['#E8DED6', '#D9D2CB', '#E3DAD2', '#DCD5CE', '#E6DDD5', '#D7D0C9'][i],
+  category: 'meal_voucher',
+  deal_only: 0,
+  group_buy_status: 'active',
+  group_buy_current: 40 - i * 5,
+  avg_rating: Number((4.9 - i * 0.1).toFixed(1)),
+  review_count: 120 - i * 13,
+  slug: `sample-${i}`,
+  seller_id: 1,
+}))
+
 function serve() {
   return new Promise((resolve) => {
     const s = http.createServer((req, res) => {
@@ -109,6 +144,8 @@ function serve() {
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
         // 큐레이터 조회는 시드와 같은 페이로드로 — 아니면 백그라운드 갱신이 오류 상태로 빠진다
         if (p.startsWith('/api/curator/') && !p.includes('/me/')) return res.end(JSON.stringify(CURATOR_SEED))
+        if (args.deals && (p.startsWith('/api/group-buy/products') || p === '/api/products'))
+          return res.end(JSON.stringify({ success: true, data: DEALS, products: DEALS }))
         return res.end(JSON.stringify({ success: true, data: [], products: [], pins: [], stats: {} }))
       }
       const f = path.join(DIST, p)
