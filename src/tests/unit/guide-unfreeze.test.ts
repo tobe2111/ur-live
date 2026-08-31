@@ -38,13 +38,26 @@ describe('가이드 한정 해동', () => {
     }
   })
 
-  it('라이브가 시드보다 길었던 섹션은 건드리지 않는다 (남의 작업)', () => {
-    // admin 'deploy'(710/690) · wholesale 'overview'(1116/1102) — 누군가 내용을 더한 흔적이다.
-    const start = routes.indexOf('UNFREEZE_ONCE: Array')
-    const arr = routes.slice(start, routes.indexOf(']', start))
-    expect(arr, 'deploy 는 라이브가 더 길다 — 되돌리면 남이 더한 내용이 사라진다').not.toContain("'deploy'")
-    // 근거는 배열 **위** 주석에 있다(배열 안이 아니다) — 파일 전체에서 찾는다.
-    expect(routes, '실측 근거를 주석에 남겨야 다음 세션이 추측으로 넓히지 않는다')
-      .toContain('라이브가 시드보다 긴 것은 뺐다')
+  it('2차 해동 — 길이로 거르다 놓친 것들을 잡는다', () => {
+    // 🩸 1차에서 길이 비교로 걸렀다가 틀렸다. 폐기어 치환은 **같은 글자 수**이고
+    //    (유통사→판매사 · 식사권→이용권), 옛 도메인은 **더 길다**(16자 vs urdeal.kr 9자).
+    //    그래서 "길이가 같다/더 길다"는 드리프트가 없다는 뜻이 아니다.
+    expect(routes).toContain('UNFREEZE_ONCE_2')
+    expect(routes).toContain('guide_unfreeze_2026_08_31_b')
+    // ⚠️ `indexOf(']')` 를 그냥 쓰면 **타입 표기 `Array<[GuideType, string]>` 의 대괄호**에서
+    //    잘려 빈 조각을 검사하게 된다. 그러면 `.not.toContain` 류는 늘 통과한다(헛도는 가드).
+    const start = routes.indexOf('UNFREEZE_ONCE_2: Array')
+    const open = routes.indexOf('= [', start)
+    const arr = routes.slice(open, routes.indexOf('\n    ]', open))
+    for (const key of ['account-kakao', 'deploy', 'onboarding', 'tax']) {
+      expect(arr, `${key} 가 빠지면 그 절이 폐기어/옛 명령을 계속 가르친다`).toContain(`'${key}'`)
+    }
+    expect(routes, '왜 길이 비교가 틀렸는지 남겨야 다음 세션이 같은 오판을 반복하지 않는다')
+      .toContain('드리프트는 길이가 아니라 내용으로 판정해야 한다')
+  })
+
+  it('2차 해동도 키 범위를 지킨다 (전체 해동 금지)', () => {
+    const hits = routes.match(/manually_edited = 0 WHERE guide_type = \? AND section_key = \?/g) || []
+    expect(hits.length, '1차·2차 두 곳 모두 guide_type + section_key 로 좁혀야 한다').toBe(2)
   })
 })

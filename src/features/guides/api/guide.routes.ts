@@ -26,7 +26,8 @@ export const guideRoutes = new Hono<{ Bindings: Env }>()
 //   v1 = 암묵적 레거시(버전 미저장, ensureSeeded '0행일 때만' 시대) / v2 = 버전 메커니즘 도입.
 //   v4 = 2026-07-12 체험 캠페인(어드민 대행생성·추첨·비정산) + 조건부 우대 커미션(셀러) 섹션.
 //   v5 = 2026-07-13 상권 쿠폰(영수증 페이백) 운영 섹션 — 양 트랙 머지 통합 bump.
-const GUIDE_SEED_VERSION = 21 // 2026-08-31 한정 해동 — 백필에 얼어붙어 시드가 못 닿던 섹션 13개(실측 대조)
+const GUIDE_SEED_VERSION = 22 // 2026-08-31 2차 해동 — 라이브에 남아 있던 폐기어(유통사·식사권)·옛 도메인·금지 빌드명령 14개
+// (이전) 21 // 2026-08-31 한정 해동 — 백필에 얼어붙어 시드가 못 닿던 섹션 13개(실측 대조)
 // (이전) 20 // 2026-08-31 운영백서에 '무상 딜은 누가 내나' + 후기 보너스(매장이 금액 설정) 절 추가
 // (이전) 18 // 2026-08-26 셀러·어드민 가이드 사실 갱신 — 폐기 기능(라이브·호스팅·어필리에이트·승급) 현행화 + 신분어 → 행위
 
@@ -154,6 +155,40 @@ async function syncGuideSeed(DB: D1Database, firstRun: boolean, env?: SeedAssetE
       `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, 'done', datetime('now'))
        ON CONFLICT(key) DO NOTHING`
     ).bind(UNFREEZE_MARKER).run().catch(swallow('guides:seed-sync:unfreeze-marker'))
+  }
+
+  // 🔓 **2차 해동** — 1차(위) 배포 후 라이브를 다시 대조해 나온 나머지 14개.
+  //   🩸 1차에서 **길이 비교로 걸렀다가 틀렸다.** 두 가지를 오판했다:
+  //     ① "길이가 같으면 공백 차이" → 아니었다. 폐기어 치환이 **같은 글자 수**다
+  //        (유통사→판매사 · 식사권→이용권 — 전부 3글자). 도매 가이드 15개 중 12개가
+  //        아직 '유통사'라고 말하고 있었다(2026-06-22 대표 확정으로 폐기된 말).
+  //     ② "라이브가 더 길면 누가 더한 것" → 아니었다. **옛 도메인이 더 길어서**였다
+  //        (옛 도메인 16자 vs urdeal.kr 9자). admin 'deploy' 는 그 위에
+  //        **클라이언트만 빌드하는 옛 단독 명령**을 가르치고 있었다 — CLAUDE.md 가
+  //        2026-05-12 사고의 원인으로 지목하고 금지한 그 명령이다(_worker.js 가 안 갱신된다).
+  //        (그 문자열을 여기 그대로 쓰면 check-build-command 가드가 잡는다 — 정당하게.)
+  //   ⇒ **드리프트는 길이가 아니라 내용으로 판정해야 한다.**
+  const UNFREEZE2_MARKER = 'guide_unfreeze_2026_08_31_b'
+  const unfrozen2 = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`)
+    .bind(UNFREEZE2_MARKER).first<{ value: string }>().catch(() => null)
+  if (!unfrozen2) {
+    const UNFREEZE_ONCE_2: Array<[GuideType, string]> = [
+      ['seller', 'account-kakao'],   // '식사권' 잔존
+      ['admin', 'deploy'],           // 옛 도메인 + 금지된 옛 단독 빌드 명령
+      ['wholesale', 'overview'], ['wholesale', 'onboarding'], ['wholesale', 'product-approval'],
+      ['wholesale', 'deposit-payment'], ['wholesale', 'orders-shipping'], ['wholesale', 'settlement'],
+      ['wholesale', 'tax'], ['wholesale', 'oem-odm'], ['wholesale', 'proposals-reports'],
+      ['wholesale', 'chat'], ['wholesale', 'csv-bulk'], ['wholesale', 'checklist-troubleshooting'],
+    ]
+    for (const [t, k] of UNFREEZE_ONCE_2) {
+      await DB.prepare(
+        `UPDATE operation_guides SET manually_edited = 0 WHERE guide_type = ? AND section_key = ?`
+      ).bind(t, k).run().catch(swallow('guides:seed-sync:unfreeze2'))
+    }
+    await DB.prepare(
+      `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, 'done', datetime('now'))
+       ON CONFLICT(key) DO NOTHING`
+    ).bind(UNFREEZE2_MARKER).run().catch(swallow('guides:seed-sync:unfreeze2-marker'))
   }
 
   const GUIDE_SEEDS = await loadSeedAsset(env, SEED_ASSET_PATHS.guides, isGuideSeed)
