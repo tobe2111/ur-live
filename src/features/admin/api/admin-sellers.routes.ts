@@ -26,6 +26,7 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 import { swallow } from '@/worker/utils/swallow';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { intParam } from '@/shared/pagination'
+import { reassignIntroducer } from './admin-sellers/reassign-introducer'
 
 export const adminSellersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -742,134 +743,12 @@ adminSellersRoutes.post('/sellers/:id/notify-magic-link', cors(), async (c) => {
 //   sellers.introduced_by_agency_id 는 가입 시 1회 lock-in. 변경은 이 endpoint 만 허용.
 //   감사 로그 + 강력 경고 (admin_audit_log 자동 기록).
 //   사유: 가게 사장님 분쟁 (영업권 충돌) / 에이전시 무활동 6개월 unlock 등.
-adminSellersRoutes.patch('/sellers/:id/reassign-agency', cors(), async (c) => {
-  try {
-    const { DB } = c.env;
-    const sellerId = c.req.param('id');
-    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
-    const body = await c.req.json<{ new_agency_id: number | null; reason: string }>().catch(() => ({} as { new_agency_id?: number | null; reason?: string }));
-    const newAgencyId = body.new_agency_id;
-    const reason = (body.reason || '').trim();
-    if (!reason || reason.length < 5) {
-      return c.json({ success: false, error: '재배정 사유를 최소 5자 이상 입력하세요.' }, 400);
-    }
-    if (newAgencyId != null) {
-      // 새 agency 존재 확인
-      const agency = await DB.prepare('SELECT id FROM agencies WHERE id = ?').bind(newAgencyId).first();
-      if (!agency) return c.json({ success: false, error: '대상 에이전시를 찾을 수 없습니다.' }, 404);
-    }
-    // 현재 값 조회 (감사 로그용 + race detection 용)
-    const current = await DB.prepare('SELECT introduced_by_agency_id, introduced_by_influencer_id, updated_at FROM sellers WHERE id = ?').bind(sellerId).first<{ introduced_by_agency_id: number | null; introduced_by_influencer_id: number | null; updated_at: string | null }>();
-    if (!current) return c.json({ success: false, error: '셀러를 찾을 수 없습니다.' }, 404);
-    const previousAgencyId = current.introduced_by_agency_id;
-    const previousUpdatedAt = current.updated_at;
+adminSellersRoutes.patch('/sellers/:id/reassign-agency', cors(), (c) => reassignIntroducer(c, 'agency', safeAdminError));
 
-    // 🛡️ 2026-05-22 P0 race condition 방어:
-    //   두 admin 이 같은 셀러를 동시 reassign → second writer wins, audit log 거짓 ("5→10" 인데 실제 "5→20").
-    //   해결: UPDATE WHERE updated_at = previousUpdatedAt (optimistic lock).
-    //         meta.changes === 0 → 409 Conflict 반환 ("다른 어드민이 방금 수정. 새로고침 후 다시 시도.").
-    let casResult
-    if (newAgencyId != null && current.introduced_by_influencer_id != null) {
-      // "한 가게 = 1 lock-in" — agency 재배정 시 influencer lock-in 자동 해제.
-      casResult = await DB.prepare(
-        `UPDATE sellers SET introduced_by_agency_id = ?, introduced_by_influencer_id = NULL, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP
-         WHERE id = ? AND COALESCE(updated_at, '') = COALESCE(?, '')`,
-      ).bind(newAgencyId, sellerId, previousUpdatedAt).run();
-    } else {
-      casResult = await DB.prepare(
-        `UPDATE sellers SET introduced_by_agency_id = ?, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP
-         WHERE id = ? AND COALESCE(updated_at, '') = COALESCE(?, '')`,
-      ).bind(newAgencyId, sellerId, previousUpdatedAt).run();
-    }
-    if (!casResult.meta?.changes) {
-      return c.json({
-        success: false,
-        error: '다른 어드민이 방금 수정했습니다. 새로고침 후 다시 시도하세요.',
-        code: 'CONCURRENT_MODIFICATION',
-      }, 409);
-    }
-
-    // 감사 로그 (admin_audit_log 자동 생성, 없으면 silent skip)
-    const actor = (c as unknown as { get: (k: string) => { id?: string | number; email?: string } }).get('user');
-    try {
-      await DB.prepare(
-        `INSERT INTO admin_audit_log (actor_id, actor_email, action, resource_type, resource_id, old_value, new_value, ip, created_at)
-         VALUES (?, ?, 'agency_reassign', 'seller', ?, ?, ?, ?, datetime('now'))`,
-      ).bind(
-        String(actor?.id || 'unknown'),
-        actor?.email || null,
-        sellerId,
-        JSON.stringify({ introduced_by_agency_id: previousAgencyId }),
-        JSON.stringify({ introduced_by_agency_id: newAgencyId, reason }),
-        c.req.header('CF-Connecting-IP') || null,
-      ).run();
-    } catch { /* audit log 없으면 silent skip */ }
-
-    return c.json({ success: true, data: { seller_id: sellerId, previous_agency_id: previousAgencyId, new_agency_id: newAgencyId, reason } });
-  } catch (err) {
-    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
-  }
-});
-
-// 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 commission lock-in 재배정 (한 가게 = 1 lock-in 영구).
-adminSellersRoutes.patch('/sellers/:id/reassign-influencer', cors(), async (c) => {
-  try {
-    const { DB } = c.env;
-    const sellerId = c.req.param('id');
-    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
-    const body = await c.req.json<{ new_influencer_id: number | null; reason: string }>().catch(() => ({} as { new_influencer_id?: number | null; reason?: string }));
-    const newInfluencerId = body.new_influencer_id;
-    const reason = (body.reason || '').trim();
-    if (!reason || reason.length < 5) return c.json({ success: false, error: '재배정 사유를 최소 5자 이상 입력하세요.' }, 400);
-
-    if (newInfluencerId != null) {
-      const inf = await DB.prepare("SELECT id FROM sellers WHERE id = ? AND seller_type IN ('influencer','both')").bind(newInfluencerId).first();
-      if (!inf) return c.json({ success: false, error: '대상 인플루언서를 찾을 수 없습니다.' }, 404);
-    }
-    const current = await DB.prepare('SELECT introduced_by_agency_id, introduced_by_influencer_id, updated_at FROM sellers WHERE id = ?').bind(sellerId).first<{ introduced_by_agency_id: number | null; introduced_by_influencer_id: number | null; updated_at: string | null }>();
-    if (!current) return c.json({ success: false, error: '셀러를 찾을 수 없습니다.' }, 404);
-    const previousInfluencerId = current.introduced_by_influencer_id;
-    const previousUpdatedAt = current.updated_at;
-
-    // 🛡️ 2026-05-22 P0 race condition 방어 — optimistic lock (updated_at WHERE 조건).
-    let casResult
-    if (newInfluencerId != null && current.introduced_by_agency_id != null) {
-      casResult = await DB.prepare(
-        `UPDATE sellers SET introduced_by_influencer_id = ?, introduced_by_agency_id = NULL, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP
-         WHERE id = ? AND COALESCE(updated_at, '') = COALESCE(?, '')`,
-      ).bind(newInfluencerId, sellerId, previousUpdatedAt).run();
-    } else {
-      casResult = await DB.prepare(
-        `UPDATE sellers SET introduced_by_influencer_id = ?, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP
-         WHERE id = ? AND COALESCE(updated_at, '') = COALESCE(?, '')`,
-      ).bind(newInfluencerId, sellerId, previousUpdatedAt).run();
-    }
-    if (!casResult.meta?.changes) {
-      return c.json({
-        success: false,
-        error: '다른 어드민이 방금 수정했습니다. 새로고침 후 다시 시도하세요.',
-        code: 'CONCURRENT_MODIFICATION',
-      }, 409);
-    }
-
-    const actor = (c as unknown as { get: (k: string) => { id?: string | number; email?: string } | undefined }).get('user');
-    try {
-      await DB.prepare(
-        `INSERT INTO admin_audit_log (actor_id, actor_email, action, resource_type, resource_id, old_value, new_value, ip, created_at)
-         VALUES (?, ?, 'influencer_reassign', 'seller', ?, ?, ?, ?, datetime('now'))`,
-      ).bind(
-        String(actor?.id || 'unknown'), actor?.email || null, sellerId,
-        JSON.stringify({ introduced_by_influencer_id: previousInfluencerId }),
-        JSON.stringify({ introduced_by_influencer_id: newInfluencerId, reason }),
-        c.req.header('CF-Connecting-IP') || null,
-      ).run();
-    } catch { /* audit log 없으면 silent */ }
-
-    return c.json({ success: true, data: { seller_id: sellerId, previous_influencer_id: previousInfluencerId, new_influencer_id: newInfluencerId, reason } });
-  } catch (err) {
-    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
-  }
-});
+// 🛡️ 2026-05-21 Phase D-6: 사람(영입자) 매장영입 2% lock-in 재배정 — 한 가게 = 1 lock-in 영구.
+//   🩸 2026-08-31: 존재 확인이 `sellers` 를 보던 것을 `users` 로 고쳤다(엉뚱한 사람에게 2% 가던 버그).
+//      경위·근거는 reassign-introducer.ts 머리말 참조.
+adminSellersRoutes.patch('/sellers/:id/reassign-influencer', cors(), (c) => reassignIntroducer(c, 'influencer', safeAdminError));
 
 adminSellersRoutes.patch('/sellers/:id/permissions', cors(), async (c) => {
   try {
