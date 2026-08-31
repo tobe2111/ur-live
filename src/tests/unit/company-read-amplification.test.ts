@@ -270,3 +270,57 @@ describe('⑦ 수집 레인 크롤 대상 — 인덱스가 전수 정렬을 없�
     expect(wherePart, '접힌 행까지 인덱스에 담으면 대상이 커진다').toContain('merged_into IS NULL')
   })
 })
+
+/**
+ * ⑧ **원부 전화 매칭** — 업체 DB 최대 소비자였다(2026-08-31 라이브 실측 2,270만 행/일 = 전체의 22%).
+ *
+ * 정규화가 **왼쪽(컬럼)** 에 걸려 어떤 인덱스도 못 타던 것을 **식 인덱스**로 옮긴다.
+ * ⚠️ 이 시험이 못 보는 것: 라이브에서 실제로 줄었는지는 `rowsRead` 로만 판정된다.
+ */
+describe('⑧ 원부 전화 매칭 — 식 인덱스가 전수 스캔을 없앤다 (node:sqlite 실증)', () => {
+  const NORM = "REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'.','')"
+  const PHONE_Q = `SELECT phone, email, website FROM ad_company_leads
+        WHERE source = 'commerce' AND merged_into IS NULL AND phone IS NOT NULL AND phone != ''
+          AND ${NORM} IN ('0210012001','0210022002','0210032003')
+          AND ((email IS NOT NULL AND email != '') OR (website IS NOT NULL AND website != ''))`
+
+  const seedPhones = () => {
+    const db = seed(8000)
+    db.exec("UPDATE ad_company_leads SET source = CASE WHEN id % 10 < 7 THEN 'commerce' ELSE 'webkr' END")
+    db.exec("UPDATE ad_company_leads SET phone = '02-' || (1000 + id) || '-' || (2000 + id)")
+    return db
+  }
+
+  it('인덱스 없으면 전수 스캔 → 있으면 식 탐색, 그리고 **결과가 동일**', () => {
+    const db = seedPhones()
+    const before = plan(db, PHONE_Q)
+    expect(before, '이게 회당 39만 행을 훑던 비용이다').toMatch(/SCAN ad_company_leads(?! USING)/)
+    const rowsBefore = db.prepare(PHONE_Q).all()
+
+    for (const sql of COMPANY_INDEX_DDL.filter(x => /registry_phone/.test(x))) db.exec(sql)
+    db.exec('ANALYZE')
+
+    const after = plan(db, PHONE_Q)
+    expect(after, '인덱스를 안 쓰면 고친 게 아니다').toContain('idx_company_leads_registry_phone')
+    expect(after, '식 자체를 짚어야 IN 이 탐색이 된다').toMatch(/<expr>=\?/)
+    // 🔒 빠르기만 하고 답이 달라지면 그건 고친 게 아니라 바꾼 것이다.
+    expect(db.prepare(PHONE_Q).all()).toEqual(rowsBefore)
+    db.close()
+  })
+
+  it('🔒 인덱스의 식이 쿼리의 식과 **글자까지 같다** — 하나만 달라도 플래너가 못 쓴다', () => {
+    const ddl = COMPANY_INDEX_DDL.find(x => /registry_phone/.test(x))!
+    const src = readFileSync('src/features/marketing/api/registry-email-match.ts', 'utf8')
+    const norm = (t: string) => t.replace(/\s+/g, '')
+    expect(norm(ddl), '인덱스 키가 정규화 식이어야 한다').toContain(norm(NORM))
+    expect(norm(src), '쿼리도 같은 식을 써야 한다').toContain(norm(NORM))
+    // 부분 조건 넷이 쿼리의 WHERE 와 같아야 부분 인덱스가 쓰인다.
+    const where = ddl.split(/\bWHERE\b/)[1]
+    for (const cond of ["source = 'commerce'", 'merged_into IS NULL', 'phone IS NOT NULL', "phone != ''"])
+      expect(norm(where), `부분조건에 ${cond} 가 있어야 한다`).toContain(norm(cond))
+  })
+
+  it('🔗 DDL 에 등재돼 있다 — 여기서 빠지면 라이브에 생성되지 않는다', () => {
+    expect(COMPANY_DDL.join('\n')).toContain('idx_company_leads_registry_phone')
+  })
+})
