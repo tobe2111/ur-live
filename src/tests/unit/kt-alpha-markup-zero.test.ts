@@ -46,10 +46,12 @@ describe('R2 — 미설정·오염만 기본값으로 (과거 동작 보존)', (
 // R3/R4 — 호출부가 헬퍼를 쓰는지. 헬퍼만 고치고 호출부에 `|| 20` 이 남아 있으면
 //   단위 테스트는 전부 초록인데 라이브는 그대로다(이 레포가 반복해 당한 "헛도는 가드").
 // ─────────────────────────────────────────────────────────────────────────────
+// ⚠️ 셀러 축(`seller-settlements.routes.ts`)은 **의도적으로 빠져 있다.** 같은 `Number(x) || 5`
+//   결함이 있지만 그 파일이 파일크기 래칫 baseline 에 걸려 임포트 한 줄도 못 늘린다(CI 가 막았다).
+//   현재 저장값이 5 라 라이브 영향 0. 분리 후 배선하면서 이 목록에 넣을 것.
 const SITES = [
   ['src/features/admin/api/admin-kt-alpha/settings.ts', 'resolveConsumerMarkupPct'],
   ['src/features/admin/api/admin-kt-alpha/catalog.ts', 'resolveConsumerMarkupPct'],
-  ['src/features/seller/api/seller-settlements.routes.ts', 'resolveSellerMarkupPct'],
 ] as const
 
 /** 주석을 지운다 — 주석에만 남은 이름을 배선으로 오독하지 않기 위해(2026-08-01 교훈). */

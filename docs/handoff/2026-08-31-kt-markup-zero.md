@@ -28,7 +28,7 @@
 |---|---|
 | `admin-kt-alpha/settings.ts:112` 재계산 | 0 저장해도 **20% 로 재계산** |
 | `admin-kt-alpha/catalog.ts:77` 상품 담기 | 새로 담는 상품에 20% |
-| `seller-settlements.routes.ts:404,486` 셀러 축 | 0 저장해도 5% (현재 값이 5 라 라이브 영향 0) |
+| `seller-settlements.routes.ts:404,486` 셀러 축 | 0 저장해도 5% — ⚠️ **이 PR 에서 못 고쳤다**(아래) |
 
 ⚠️ **정정**: 처음엔 `AdminKtAlphaPage.tsx:122` 도 깨졌다고 봤는데 **아니다**. D1 은
 `platform_settings.value` 를 TEXT 로 주므로 값이 문자열 `'0'` 이고, JS 에서 `'0'` 은 truthy 라
@@ -46,6 +46,19 @@
   되돌리니 R3·R4 두 건이 빨간불, 복원하니 18/18 초록.
 
 검증: tsc 0 · `npm run build` 0 · 단위 18 pass · 주입 지도 594건 성함.
+
+## ⚠️ 셀러 축은 이 PR 에서 뺐다 (CI 가 막았다)
+
+같은 `Number(x) || 5` 결함이 `seller-settlements.routes.ts` 에도 있어 함께 고쳤는데,
+**파일크기 래칫이 차단했다** — 그 파일이 baseline 1,076줄에 동결돼 있어 임포트 한 줄과
+주석 두 줄(+3)도 못 늘린다. 처방은 리베이스라인이 아니라 **분리**이고, 그건 이 PR 의 범위 밖이다.
+
+**현재 저장값이 5 라 라이브 영향은 0** 이다. 다만 **그 축을 0 으로 내리려는 순간 조용히 5 로
+튕긴다** — 소비자 축에서 방금 겪은 것과 똑같은 사고다. SSOT 에 `resolveSellerMarkupPct` 는
+남겨 뒀고(배선만 안 됨), 함수 주석과 테스트 SITES 주석에 그 사실을 적어 뒀다.
+
+⇒ **별도 작업**: `seller-settlements.routes.ts` 를 분리해 줄이고, 그때 두 자리를
+`resolveSellerMarkupPct` 로 배선 + 테스트 SITES 에 추가.
 
 ## ▶ 다음 세션의 첫 액션 — 배포 후 대표 또는 세션이 할 것
 

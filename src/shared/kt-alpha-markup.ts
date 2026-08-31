@@ -48,7 +48,15 @@ export function resolveConsumerMarkupPct(raw: unknown): number {
   return resolveMarkupPct(raw, KT_CONSUMER_MARKUP_DEFAULT_PCT)
 }
 
-/** 셀러 발송 차감 마진 (`kt_alpha_markup_pct`, 기본 5%). 소비자 축과 별개. */
+/**
+ * 셀러 발송 차감 마진 (`kt_alpha_markup_pct`, 기본 5%). 소비자 축과 **별개 설정**이다.
+ *
+ * ⚠️ **아직 배선 안 됨.** `seller-settlements.routes.ts` 에도 같은 `Number(x) || 5` 결함이
+ *   있지만(0 을 삼킨다), 그 파일이 파일크기 래칫 baseline(1,076줄)에 걸려 있어 임포트 한 줄도
+ *   못 늘린다. 처방은 리베이스라인이 아니라 분리인데, 그건 이 PR 의 범위 밖이다.
+ *   현재 저장값이 5 라 **라이브 영향은 0** 이고, 그 축을 0 으로 내리려는 순간 조용히 5 로 튕긴다.
+ *   → 별도 작업으로 분리 후 배선할 것.
+ */
 export function resolveSellerMarkupPct(raw: unknown): number {
   return resolveMarkupPct(raw, KT_SELLER_MARKUP_DEFAULT_PCT)
 }
