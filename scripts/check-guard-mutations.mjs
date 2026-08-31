@@ -6736,6 +6736,16 @@ canvas {
       '래칫으로 동결했고, 래칫이 실제로 잡는지 여기서 확인한다.',
   },
   {
+    name: '🖼️ 이미지 폴백 래칫의 매칭이 죽는다 (baseline 0 은 죽어도 초록)',
+    file: 'scripts/check-image-fallback.mjs',
+    find: "    if (!/cfImage\\(|cfSrcSet\\(/.test(tag)) continue",
+    replace: "    if (!/cfImageNEVERMATCH\\(/.test(tag)) continue",
+    test: 'scripts/check-image-fallback.mjs',
+    why:
+      '2026-08-31 2차로 baseline 이 0 이 됐다. 0 을 기대하는 래칫은 **매칭이 깨져도 0 이라 초록불**이므로 ' +
+      '유일한 방어가 합성 대조(FIXTURE_BAD/OK)다. 매칭을 죽였을 때 그 대조가 실제로 빨간불을 내는지 확인한다.',
+  },
+  {
     name: '📖 운영 가이드가 다시 한 번에 하나만 열린다 (40개를 하나씩)',
     file: 'src/components/guide/GuideViewer.tsx',
     find: 'const [openKeys, setOpenKeys] = useState<Set<string>>(new Set())',
