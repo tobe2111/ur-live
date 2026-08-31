@@ -1,6 +1,6 @@
 import { Sparkles } from 'lucide-react'
 import { WT, comma } from '../wholesale/wholesale-theme'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { BrandEntry } from './types'
 
 // ── 🏷️ 브랜드 전시관 — 브랜드 칩 그리드 (distinct brand_name + 상품수 + 선택적 로고). ──
@@ -43,6 +43,7 @@ export default function BrandShowcaseGrid({ brands, loading, onPick, t: tr }: {
               className="w-14 h-14 object-contain rounded-xl"
               loading="lazy"
               decoding="async"
+              onError={(e) => cfImageOnError(e.currentTarget, b.logo_url)}
             />
           ) : (
             <span className="text-[16px] font-extrabold tracking-[-0.01em] text-center line-clamp-2" style={{ color: WT.ink }}>{b.name}</span>

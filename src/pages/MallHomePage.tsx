@@ -58,7 +58,7 @@ import NotFoundPage from '@/pages/NotFoundPage'
 import { POWERED_BY, PAYMENT_TRUST_NOTE } from '@/shared/mall/branding'
 import { mallProductPath } from '@/shared/mall/resolve'
 import { rememberMallOrigin } from '@/shared/mall/origin'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { parseUTCDate } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 import { STORAGE_LABEL, STORAGE_NOTICE, type StorageKind } from '@/shared/pickup'
@@ -181,7 +181,9 @@ export default function MallHomePage() {
         <div className="flex items-center gap-[13px]">
           {mall.logoUrl ? (
             <img src={cfImage(mall.logoUrl, { width: 112 })} alt="" width={56} height={56}
-              className="w-[50px] h-[50px] rounded-[15px] object-cover border border-[#EFEBED] dark:border-[#2A2A2A] flex-none" />
+              className="w-[50px] h-[50px] rounded-[15px] object-cover border border-[#EFEBED] dark:border-[#2A2A2A] flex-none"
+              onError={(e) => cfImageOnError(e.currentTarget, mall.logoUrl)}
+            />
           ) : (
             <div className="w-[50px] h-[50px] rounded-[15px] flex items-center justify-center text-white dark:text-[#1A1719] text-[21px] font-extrabold tracking-[-0.02em] flex-none"
               style={{ backgroundColor: 'var(--mall)' }} aria-hidden>{mall.initial}</div>
@@ -254,7 +256,9 @@ export default function MallHomePage() {
                     <div className="relative aspect-square rounded-[14px] overflow-hidden bg-[#F1EDEF] dark:bg-[#221D20]">
                       {it.image_url && (
                         <img src={cfImage(it.image_url, { width: 400 })} alt="" loading="lazy"
-                          className="w-full h-full object-cover" />
+                          className="w-full h-full object-cover"
+                          onError={(e) => cfImageOnError(e.currentTarget, it.image_url)}
+                        />
                       )}
                       {/* 🔴 마감·잔여를 이미지 위에 — 카드에서 **제일 먼저 읽혀야 하는 정보**다(기준 ③).
                           마감이 채움 배지, 잔여가 검정 반투명 — 의뢰서가 먼저 읽히라 한 게 마감이라서다. */}
