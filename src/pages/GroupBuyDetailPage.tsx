@@ -582,9 +582,6 @@ export default function GroupBuyDetailPage() {
               <div style={{ position: 'absolute', inset: '0 0 auto 0', height: 110, pointerEvents: 'none', background: 'linear-gradient(180deg, rgba(0,0,0,.4), transparent)' }} />
               <div style={{ position: 'absolute', inset: 'auto 0 0 0', height: 120, pointerEvents: 'none', background: 'linear-gradient(0deg, rgba(0,0,0,.32), transparent)' }} />
               <div style={{ position: 'absolute', left: 16, bottom: 17, display: 'flex', alignItems: 'center', gap: 6 }}>
-                {displayDiscountPct > 0 && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>{displayDiscountPct}% 할인</span>
-                )}
                 {/* 🧭 2026-08-30: 사진 위 카테고리 칩을 뺐다. 바로 위 빵부스러기가 같은 말을 하고 있어
                     중복이었고, 게다가 이 칩은 **자체 라벨 맵**을 들고 있어 명칭 SSOT 와 어긋났다
                     ('뷰티'/'숙박'/'액티비티' — SSOT 는 미용/숙소/기타). 사진 위엔 할인율만 남긴다. */}
@@ -642,7 +639,7 @@ export default function GroupBuyDetailPage() {
         {/* 🎁 2026-08-26: 활성 딜 보유자에게만 뜬다(딜 없으면 null) — 근거는 ShareRewardBanner 헤더 주석. */}
         <div className="px-[18px]"><ShareRewardBanner sellerId={detail.seller_id as number | null} productId={detail.id} /></div>
         {/* 타이틀 — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번 나온다). */}
-        <div className="lg:hidden" style={{ padding: '20px 18px 0' }}>
+        <div className="lg:hidden" style={{ padding: '14px 18px 0' }}>
           {detail.restaurant_name && (
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gbd-ink2)', letterSpacing: '.01em' }}>
               {detail.restaurant_name}
@@ -655,18 +652,14 @@ export default function GroupBuyDetailPage() {
           {isPrelaunch && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, padding: '4px 10px', borderRadius: 999, background: 'var(--gbd-ink)', color: 'var(--gbd-card)', fontSize: 11, fontWeight: 800 }}>🔔 오픈 예정 · 사전 응모 받는 중</span>
           )}
-          <h1 style={{ margin: '7px 0 0', fontSize: 22, lineHeight: 1.34, fontWeight: 800, letterSpacing: '-.025em', color: 'var(--gbd-ink)' }}>{detail.name}</h1>
-          {detail.group_buy_current > 0 && (
-            <div style={{ marginTop: 8, fontSize: 13.5, fontWeight: 700, color: 'var(--gbd-ink2)' }}>
-              이미 {formatNumber(detail.group_buy_current)}명이 구매했어요
-            </div>
-          )}
+          <h1 style={{ margin: '4px 0 0', fontSize: 21, lineHeight: 1.3, fontWeight: 800, letterSpacing: '-.03em', color: 'var(--gbd-ink)' }}>{detail.name}</h1>
           {(detail.restaurant_address || detail.restaurant_phone) && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 8 }}>
               <MapPin style={{ width: 17, height: 17, marginTop: 2, flex: '0 0 auto', color: 'var(--gbd-sub)' }} />
               <div style={{ fontSize: 13.5, color: 'var(--gbd-sub)', lineHeight: 1.5 }}>
                 {detail.restaurant_address || ''}
                 {distKm != null && <> · <b style={{ fontWeight: 700, color: 'var(--gbd-ink2)' }}>{distKm}km</b></>}
+                {detail.group_buy_current > 0 && <> · <b style={{ fontWeight: 700, color: 'var(--gbd-ink2)' }}>{formatNumber(detail.group_buy_current)}명 구매</b></>}
                 {detail.restaurant_phone && <> · <a href={`tel:${detail.restaurant_phone}`} style={{ color: 'var(--gbd-ink2)', textDecoration: 'none', fontWeight: 600, borderBottom: '1px solid var(--gbd-line2)' }}>{detail.restaurant_phone}</a></>}
               </div>
             </div>
@@ -674,13 +667,14 @@ export default function GroupBuyDetailPage() {
         </div>
 
         {/* 가격 — 📱 모바일 전용. PC 는 우측 구매 패널 헤드라인이 담당(두 곳에 두면 최종가가 흐려진다). */}
-        <div className="lg:hidden" style={{ padding: '18px 18px 22px' }}>
-          {unitSaving > 0 && <div style={{ fontSize: 13.5, color: 'var(--gbd-sub2)', textDecoration: 'line-through', letterSpacing: '-.01em' }}>{formatNumber(refPrice)}원</div>}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginTop: 3 }}>
-            {displayDiscountPct > 0 && <span style={{ fontSize: 27, fontWeight: 800, color: 'var(--gbd-danger)', letterSpacing: '-.03em' }}>{displayDiscountPct}%</span>}
-            <span style={{ fontSize: 30, fontWeight: 900, color: 'var(--gbd-ink)', letterSpacing: '-.035em' }}>{formatNumber(unitPrice)}원</span>
+        <div className="lg:hidden" style={{ padding: '12px 18px 16px' }}>
+          {/* 💰 정가·할인율·판매가를 **한 줄**로. 예전엔 취소선이 자기 줄을 통째로 쓰고 있었다. */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+            {displayDiscountPct > 0 && <span style={{ fontSize: 25, fontWeight: 800, color: 'var(--gbd-danger)', letterSpacing: '-.03em' }}>{displayDiscountPct}%</span>}
+            <span style={{ fontSize: 28, fontWeight: 900, color: 'var(--gbd-ink)', letterSpacing: '-.035em' }}>{formatNumber(unitPrice)}원</span>
+            {unitSaving > 0 && <span style={{ fontSize: 14, color: 'var(--gbd-sub2)', textDecoration: 'line-through', letterSpacing: '-.01em' }}>{formatNumber(refPrice)}원</span>}
           </div>
-          <div style={{ marginTop: 9, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>{unitSaving > 0 && <>1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-danger)' }}>{formatNumber(unitSaving)}원</b> 저렴 · </>}결제 즉시 교환권 발급</div>
+          <div style={{ marginTop: 6, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>{unitSaving > 0 && <>1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-danger)' }}>{formatNumber(unitSaving)}원</b> 저렴 · </>}결제 즉시 교환권 발급</div>
         </div>
 
         {dDay != null && dDay <= 7 && (

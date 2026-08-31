@@ -11,7 +11,7 @@
  *    오히려 찜을 못 하고 있었다.**
  */
 import { Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Bookmark, BookmarkCheck } from 'lucide-react'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import WishlistButton from '@/components/WishlistButton'
 import PinButton from '@/components/curator/PinButton'
@@ -28,6 +28,17 @@ type Props = {
 }
 
 export default function DetailFloatingHeader({ detail, productId, headerSolid, shareLink, myUserId, displayDiscountPct, onBack }: Props) {
+  // 🔘 네 버튼(뒤로·찜·핀·공유)은 **한 벌**이다. 예전엔 처리가 넷 다 달랐다 —
+  //    뒤로/공유는 검정 반투명 원, 찜은 원 없는 맨 하트, 핀은 흰 원 + **이모지 ➕**.
+  //    선 아이콘들 사이에 이모지가 하나 섞이면 그 버튼만 혼자 튄다(대표 지적 2026-08-31).
+  //    ⇒ 흰 원 + 잉크 선 아이콘 + 옅은 그림자로 통일. 사진 위에서도, 스크롤 후 흰 바에서도 읽힌다.
+  const chip =
+    'w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95 ' +
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white text-gray-900 dark:text-white ' +
+    (headerSolid
+      ? 'bg-transparent hover:bg-gray-100 dark:hover:bg-[#1A1C21]'
+      : 'bg-white/92 dark:bg-[#0D0F12]/85 backdrop-blur shadow-[0_1px_4px_rgba(22,24,28,.18)] hover:bg-white')
+
   // 🏭 2026-06-07 (당근 스타일): 투명 overlay → 스크롤 시 solid 바 전환. position fixed 로 이미지 위에 뜬다.
   // 🖥️ 2026-07-19 (대표 "상단은 공통"): PC(lg+)는 전역 DesktopTopNav 가 담당 → 여긴 모바일 전용(lg:hidden).
   //    핀/공유는 lg 섹션 탭 우측에 별도로 렌더된다.
@@ -42,14 +53,8 @@ export default function DetailFloatingHeader({ detail, productId, headerSolid, s
         role="banner"
       >
         <div className="px-3 flex items-center justify-between gap-2">
-          <button
-            onClick={() => onBack()}
-            className={`w-9 h-9 flex items-center justify-center rounded-full shrink-0 transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white focus-visible:outline-none ${
-              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A1C21]' : 'bg-black/25 backdrop-blur-sm'
-            }`}
-            aria-label="뒤로가기"
-          >
-            <ArrowLeft className={`w-5 h-5 transition-colors ${headerSolid ? 'text-gray-700 dark:text-gray-200' : 'text-white'}`} />
+          <button onClick={() => onBack()} className={chip} aria-label="뒤로가기">
+            <ArrowLeft className="w-[18px] h-[18px] text-gray-900 dark:text-white" />
           </button>
           {/* 🅰️ 브랜드 — 모바일 상세엔 로고가 없었다. 공유 링크로 바로 들어온 사람에게
               "여기가 어디인지" 알려 주는 표식이 하나도 없던 셈이다(PC 는 전역 상단바가 담당).
@@ -72,12 +77,15 @@ export default function DetailFloatingHeader({ detail, productId, headerSolid, s
           </h2>
           {/* 🛡️ 2026-06-12: 내 유어샵 핀 — 공유 옆 1탭 (ProductCard 의 PinButton 재사용) */}
           {/* 💗 찜 — 홈 카드엔 있는데 상세엔 없었다(상세까지 들어온 사람이 오히려 찜을 못 했다). */}
-          <WishlistButton productId={detail.id} userId={Number(myUserId) || null} size="sm" className="shrink-0" />
+          <WishlistButton productId={detail.id} userId={Number(myUserId) || null} size="sm" className={chip} />
           <PinButton
             productId={detail.id}
             price={detail.price}
             variant="detail-floating"
-            className="!w-9 !h-9 shrink-0"
+            className={chip}
+            icon={(pinned) => pinned
+              ? <BookmarkCheck className="w-[18px] h-[18px] text-gray-900 dark:text-white" />
+              : <Bookmark className="w-[18px] h-[18px] text-gray-900 dark:text-white" />}
           />
           <KakaoShareButton
             title={`${detail.name} 공구 참여하기`}
@@ -91,9 +99,7 @@ export default function DetailFloatingHeader({ detail, productId, headerSolid, s
               secondaryButtonText: '자세히 보기',
             })}
             compact
-            className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 active:scale-95 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white ${
-              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A1C21]' : 'bg-black/25 backdrop-blur-sm'
-            }`}
+            className={chip}
           />
         </div>
       </header>
