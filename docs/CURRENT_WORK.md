@@ -5494,8 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 199건 · 최신순 · 이 목록은 자동 생성된다._
+_총 200건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-08-31**
+- [2026-08-31 — 정산 최소 10만원은 현금에만](handoff/2026-08-31-deal-payout-no-minimum.md)
 **2026-08-30**
 - [2026-08-30 — 매장 영입 보상을 딜로 (게이트 OFF 배선)](handoff/2026-08-30-store-intro-deal.md)
 - [2026-08-30 — 숙소 상세 사진만 여백이 있던 것](handoff/2026-08-30-stay-detail-gallery-bleed.md)
