@@ -35,18 +35,23 @@ describe('⏰ 슬롯 cron 은 자기 주기를 신고한다', () => {
   })
 
   it('🔌 배선 — slotCron 이 cron 식을 SSOT 로 환산한다(새 상수 금지)', () => {
-    expect(CODE).toMatch(/const slotCron = \(expr: string\)[\s\S]{0,120}expectedMaxAgeMinutes\(expr\)/)
+    expect(CODE).toMatch(/const slotCron = \(expr: string\)[\s\S]{0,400}expectedMaxAgeMinutes\(expr\)/)
   })
 
   /**
    * 🔒 **핵심 불변식** — `slotDue` 블록 안에서 `safeCron` 을 **직접** 부르면 그 작업은 캐리어 주기로
    *   기록돼 다시 매일 오탐을 낸다. 블록 안은 전부 `slotCron(...)` 이어야 한다.
    */
-  it('🔒 slotDue 블록 안에는 생 safeCron 호출이 없다', () => {
+  it('🔒 슬롯 블록 안에는 생 safeCron 호출이 없다', () => {
     const lines = CODE.split('\n')
     const offenders: string[] = []
     for (let i = 0; i < lines.length; i++) {
-      if (!lines[i]!.includes('slotDue(event.scheduledTime')) continue
+      // 🩹 2026-08-31: 게이트가 `slotDue(...)` → `slotOpen(spec)`(정시 + 만회)로 바뀌었다. 둘 다 본다.
+      //   ⚠️ **`if (` 로 시작하는 줄만** — 안 그러면 `slotOpen` **정의** 줄(안에 slotDue 가 있다)이
+      //      블록 시작으로 읽혀 파일 앞부분 전체가 '슬롯 블록'이 된다(실제로 그렇게 오탐이 났다).
+      const isGate = lines[i]!.includes('if (')
+        && (lines[i]!.includes('slotOpen(') || lines[i]!.includes('slotDue(event.scheduledTime'))
+      if (!isGate) continue
       for (let j = i + 1; j < lines.length && lines[j] !== '  }'; j++) {
         if (/(?<!slot)\bsafeCron\(/.test(lines[j]!)) offenders.push(`${j + 1}: ${lines[j]!.trim().slice(0, 70)}`)
       }
@@ -55,7 +60,8 @@ describe('⏰ 슬롯 cron 은 자기 주기를 신고한다', () => {
   })
 
   it('🔒 검사 대상이 0 이면 실패 — 블록이 사라졌거나 이름이 바뀐 것이다', () => {
-    const blocks = (CODE.match(/slotDue\(event\.scheduledTime/g) || []).length
+    const blocks = (CODE.match(/slotOpen\(\{/g) || []).length
+      + (CODE.match(/slotDue\(event\.scheduledTime/g) || []).length
     expect(blocks).toBeGreaterThanOrEqual(4)
     expect((CODE.match(/slotCron\('/g) || []).length).toBeGreaterThanOrEqual(20)
   })
