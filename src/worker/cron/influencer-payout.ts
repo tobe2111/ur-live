@@ -166,13 +166,18 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
             AND created_at >= datetime('now', 'start of month') LIMIT 1`
       ).bind(`💰 인플 송금 대기: ${inf.influencer_id}`).first().catch(() => null)
       if (dupNotif) continue
+      // ⚠️ 수수료 표기를 bind 인자 **안에서** 중첩 템플릿 리터럴로 만들지 말 것.
+      //   그 안의 콤마 때문에 `check-sql-bind-params` 가 인자를 하나 더 세어 CI 가 막는다
+      //   (2026-08-31 실제로 걸렸다). 문자열은 밖에서 만들고 bind 는 단순하게 둔다.
+      const feeNote = cash.fee > 0 ? `정산수수료 ${cash.feePct}% = ${cash.fee.toLocaleString()}원, ` : ''
+      const payoutNote = `${inf.available_amount.toLocaleString()}원 (${feeNote}원천징수 ${withholdingPct}% = ${withholding.toLocaleString()}, 실송금 ${netAmount.toLocaleString()})`
       try {
         await DB.prepare(
           `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
            VALUES ('admin', 'all', 'influencer_payout_pending', ?, ?, '/admin/influencer-payouts', datetime('now'))`
         ).bind(
           `💰 인플 송금 대기: ${inf.influencer_id}`,
-          `${inf.available_amount.toLocaleString()}원 (${cash.fee > 0 ? `정산수수료 ${cash.feePct}% = ${cash.fee.toLocaleString()}, ` : ''}원천징수 ${withholdingPct}% = ${withholding.toLocaleString()}, 실송금 ${netAmount.toLocaleString()})`,
+          payoutNote,
         ).run().catch(swallow('cron:influencer-payout:admin-notify'))
         payoutCount++
         payoutTotal += netAmount
