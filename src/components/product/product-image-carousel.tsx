@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import useEmblaCarousel from 'embla-carousel-react'
-import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 
 interface ProductImageCarouselProps {
   images: string[];
@@ -44,6 +44,7 @@ export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
                 loading={index === 0 ? 'eager' : 'lazy'}
                 decoding="async"
                 fetchPriority={index === 0 ? 'high' : 'auto'}
+                onError={(e) => cfImageOnError(e.currentTarget, src)}
               />
             </div>
           ))}

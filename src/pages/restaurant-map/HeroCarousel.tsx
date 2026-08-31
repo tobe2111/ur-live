@@ -3,7 +3,7 @@
  *   할인율 TOP5 카드. 부모는 heroDeals 배열 + 위치/라이브 정보 + 클릭 핸들러를 props 로 전달.
  */
 import { MapPin, Radio } from 'lucide-react'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { distanceKm, nearKmLabel } from './utils'
 import { stripStorePrefix } from '@/utils/deal-title'
@@ -38,7 +38,9 @@ export default function HeroCarousel({ heroDeals, userLoc, liveSellerIds, onSele
               <div className="relative aspect-square bg-pink-50 dark:bg-pink-900/20">
                 {r.image_url ? (
                   <img src={cfImage(r.image_url, { width: 280, quality: 85, format: 'auto' }) || r.image_url} alt="" loading="lazy" decoding="async"
-                    className="w-full h-full object-cover" />
+                    className="w-full h-full object-cover"
+                    onError={(e) => cfImageOnError(e.currentTarget, r.image_url)}
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center"><span className="text-3xl">🍽️</span></div>
                 )}

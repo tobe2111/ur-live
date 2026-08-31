@@ -208,7 +208,7 @@ export default function SellerBundlesPage() {
             )}
 
             <button onClick={handleSubmit} disabled={submitting || form.items.length < 2}
-              className="w-full py-3 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-900 disabled:opacity-50">
+              className="ur-btn ur-btn-md ur-btn-block ur-btn-primary">
               {submitting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> :
                 editId ? t('common.save', '저장') : t('seller.bundleCreate', '번들 만들기')}
             </button>
