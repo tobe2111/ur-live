@@ -6441,9 +6441,11 @@ canvas {
   },
   {
     name: '💎 어드민 지급목록이 cron 과 다른 조건을 쓴다',
-    file: 'src/features/group-buy/api/marketing.routes.ts',
-    find: "     WHERE available_amount > 0\n       AND (payout_method = 'deal' OR available_amount >= ?)",
-    replace: '     WHERE available_amount >= ?',
+    // ⚠️ 2026-08-31: 지급 엔드포인트가 `marketing.routes.ts` → `marketing/payouts.ts` 로 이동했다
+    //   (파일크기 래칫). 함수 안으로 들어가며 **들여쓰기가 2칸 깊어져** find 문자열도 함께 바뀐다.
+    file: 'src/features/group-buy/api/marketing/payouts.ts',
+    find: "       WHERE available_amount > 0\n         AND (payout_method = 'deal' OR available_amount >= ?)",
+    replace: '       WHERE available_amount >= ?',
     test: 'src/tests/unit/deal-payout-no-minimum.test.ts',
     why:
       '두 쿼리가 갈리면 "cron 알림엔 떴는데 어드민 목록엔 없다"가 된다 — 어드민이 지급하려고 ' +
