@@ -100,4 +100,27 @@ export const COMPANY_INDEX_DDL: readonly string[] = [
    */
   `CREATE INDEX IF NOT EXISTS idx_company_leads_collected_at ON ad_company_leads(collected_at)
      WHERE merged_into IS NULL`,
+
+  /**
+   * ⑥ **업체 DB 최대 소비자였던 "전화번호로 원부 잇기"** (2026-08-31 실측 — 하루 2,270만 행).
+   *
+   * 통신판매 원부(`source='commerce'`)에서 **전화번호로** 이메일을 찾아 붙이는 2차 매칭이다.
+   * 저장 형태가 `02-1234-5678` 이라 양쪽을 같은 방식으로 정규화해 비교하는데, 그 정규화가
+   * **왼쪽(컬럼)에 걸려 있어** 어떤 인덱스도 못 탄다:
+   * ```
+   *   REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'.','') IN (?,?,…)
+   * ```
+   * 라이브 24시간 실측 — 이 한 쿼리 가족이 **업체 DB 전체 읽기의 22%**:
+   * ```
+   *   11,745,960행 × 30회  +  7,849,068 × 20  +  3,140,904 × 8   =  2,270만 행/일
+   *   (회당 약 39만 행 = commerce 행 전량. 90개를 물어보든 31개를 물어보든 같은 값을 낸다.)
+   * ```
+   * ⇒ **식(expression) 인덱스**로 옮긴다. 왼쪽 식을 그대로 인덱스 키로 만들면 `IN` 이 탐색이 된다
+   *   (`node:sqlite` 실증: `SCAN` → `SEARCH … USING INDEX (<expr>=?)`, 결과 동일).
+   * ⚠️ 식이 **한 글자라도 달라지면** 플래너가 못 쓴다 — 인덱스와 `registry-email-match.ts` 의 쿼리는
+   *   같은 문자열이어야 한다. 부분 조건도 쿼리의 `WHERE` 와 같아야 하므로 넷을 그대로 옮겨 적었다.
+   */
+  `CREATE INDEX IF NOT EXISTS idx_company_leads_registry_phone
+     ON ad_company_leads(REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'.',''))
+     WHERE source = 'commerce' AND merged_into IS NULL AND phone IS NOT NULL AND phone != ''`,
 ]
