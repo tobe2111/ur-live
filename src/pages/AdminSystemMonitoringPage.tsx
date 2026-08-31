@@ -7,10 +7,11 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState, DashboardCard } from '@/components/dashboard'
-import { Activity, AlertTriangle, RefreshCw, CheckCircle2, MessageSquare, Loader2, Bell, Gauge } from 'lucide-react'
+import { Activity, AlertTriangle, RefreshCw, CheckCircle2, MessageSquare, Loader2, Bell, Gauge, Wrench } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 // 🚦 2026-07-05: 운영 게이트 플래그 현황판 + cron heartbeat (1인 운영 관측 보강)
 import OpsStatusTab from './admin-system-monitoring/OpsStatusTab'
+import PointsRepairTab from './admin-system-monitoring/PointsRepairTab'
 import HeartbeatCards, { type CronHeartbeat } from './admin-system-monitoring/HeartbeatCards'
 import { formatKST } from '@/utils/date'
 
@@ -67,7 +68,7 @@ const CHANNEL_ROWS: Array<{ label: string; keys: string[] }> = [
 
 export default function AdminSystemMonitoringPage() {
   const navigate = useNavigate()
-  const [tab, setTab] = useState<'cron' | 'alimtalk' | 'delivery' | 'ops'>('cron')
+  const [tab, setTab] = useState<'cron' | 'alimtalk' | 'delivery' | 'ops' | 'points'>('cron')
   const [showResolved, setShowResolved] = useState(false)
   const [acting, setActing] = useState<number | null>(null)
   const [channels, setChannels] = useState<Record<string, boolean> | null>(null)
@@ -249,6 +250,13 @@ export default function AdminSystemMonitoringPage() {
             }`}>
             <Gauge className="w-4 h-4" /> 게이트·하트비트
           </button>
+          {/* 🩹 2026-08-31: 잔액 정비 — 도구를 API 로만 만들어 두면 "사람이 누른다" 가 성립하지 않는다. */}
+          <button onClick={() => setTab('points')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
+              tab === 'points' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'
+            }`}>
+            <Wrench className="w-4 h-4" /> 딜 잔액 정비
+          </button>
           <div className="flex-1" />
           <label className="flex items-center gap-1.5 text-xs text-gray-600">
             <input type="checkbox" checked={showResolved} onChange={e => setShowResolved(e.target.checked)} />
@@ -344,7 +352,7 @@ export default function AdminSystemMonitoringPage() {
         )}
 
         {/* 목록 */}
-        {tab === 'ops' ? <OpsStatusTab /> : loading ? <DashboardLoading /> : tab === 'cron' ? (
+        {tab === 'points' ? <PointsRepairTab /> : tab === 'ops' ? <OpsStatusTab /> : loading ? <DashboardLoading /> : tab === 'cron' ? (
           cronFailures.length === 0 ? (
             <DashboardEmptyState icon={<CheckCircle2 className="h-7 w-7 text-green-500" />} title={showResolved ? '해결된 실패 없음' : '🎉 미해결 cron 실패 없음'} />
           ) : (
