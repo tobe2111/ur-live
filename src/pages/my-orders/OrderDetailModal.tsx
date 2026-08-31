@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/useToast'
 import { formatKST } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { getTrackingUrl } from '@/components/mypage/OrdersTab'
 import TrackingModal from '@/components/shipping/TrackingModal'
 import type { Order, OrderItem } from '@/types/order'
@@ -119,6 +119,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                         height={56}
                         loading="lazy"
                         className="w-14 h-14 shrink-0 rounded-lg object-cover bg-gray-100 dark:bg-[#1A1C21]"
+                        onError={(e) => cfImageOnError(e.currentTarget, src)}
                       />
                     ) : (
                       <div className="w-14 h-14 shrink-0 rounded-lg bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center">

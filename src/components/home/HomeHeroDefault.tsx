@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight, Map } from 'lucide-react'
-import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
 import { pickHeroPhotoFromSeedJson, type HeroPhotoPick } from '@/shared/home-hero-photo'
 import { HOME_HERO_REQUEST_WIDTH, HOME_HERO_QUALITY } from '@/shared/home-hero-image'
@@ -146,6 +146,7 @@ export default function HomeHeroDefault({
               fetchPriority="high"
               decoding="async"
               className="w-full h-full object-cover"
+              onError={(e) => cfImageOnError(e.currentTarget, photoSrc)}
             />
           )}
         </div>

@@ -10,7 +10,7 @@ import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { Gift, Clock, Users, CheckCircle2 } from 'lucide-react'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatKSTDate } from '@/utils/date'
 
 interface Campaign {
@@ -78,7 +78,7 @@ export default function ExperienceCampaignsPage() {
               const applied = appliedIds.has(c.id)
               return (
                 <div key={c.id} className="bg-[#1A1C21] rounded-2xl border border-[#2C2F35] overflow-hidden">
-                  {c.image_url && <img src={cfImage(c.image_url, { width: 480 })} alt="" className="w-full aspect-[16/10] object-cover" loading="lazy" />}
+                  {c.image_url && <img src={cfImage(c.image_url, { width: 480 })} alt="" className="w-full aspect-[16/10] object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, c.image_url)} />}
                   <div className="p-4">
                     <p className="text-[14px] font-bold text-white line-clamp-1">{c.title}</p>
                     <p className="text-[12px] text-gray-400 line-clamp-1 mt-0.5">{c.restaurant_name || c.product_name}</p>
@@ -104,7 +104,7 @@ export default function ExperienceCampaignsPage() {
           : <div className="space-y-2">
             {mine.map(m => (
               <div key={m.campaign_id} className="bg-[#1A1C21] rounded-2xl border border-[#2C2F35] p-4 flex items-center gap-3">
-                {m.image_url && <img src={cfImage(m.image_url, { width: 120 })} alt="" className="w-14 h-14 rounded-xl object-cover" loading="lazy" />}
+                {m.image_url && <img src={cfImage(m.image_url, { width: 120 })} alt="" className="w-14 h-14 rounded-xl object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, m.image_url)} />}
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold text-white line-clamp-1">{m.title}</p>
                   <p className="text-[11px] text-gray-500">{m.restaurant_name || m.product_name} · {formatKSTDate(m.created_at)}</p>

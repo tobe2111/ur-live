@@ -8,7 +8,7 @@ import { toast } from '@/hooks/useToast'
 import type { Order, OrderItem } from '@/types/order'
 import { orderItemLineTotal } from '@/types/order'
 import { formatNumber } from '@/utils/format'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { getOrderKind, type OrderKind } from '@/shared/order-type'
 
 interface OrdersTabProps {
@@ -106,6 +106,7 @@ function ItemThumb({ item }: { item: OrderItem }) {
       height={64}
       loading="lazy"
       className="w-16 h-16 shrink-0 rounded-lg object-cover bg-gray-100 dark:bg-[#1A1C21]"
+      onError={(e) => cfImageOnError(e.currentTarget, src)}
     />
   )
 }

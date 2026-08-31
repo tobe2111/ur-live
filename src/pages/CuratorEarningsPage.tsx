@@ -14,7 +14,7 @@ import SEO from '@/components/SEO'
 import { curatorApi, type DashboardStats } from '@/features/curator/api/curator-api'
 import { useAuthStore } from '@/client/stores/auth.store'
 import { formatWon, formatNumber, safeNum } from '@/utils/format'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { toast } from '@/hooks/useToast'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellOwnProductsCTA from './curator-page/SellOwnProductsCTA'
@@ -515,6 +515,7 @@ function TopPinsSection({ stats }: { stats: DashboardStats }) {
                 className="w-12 h-12 rounded object-cover"
                 loading="lazy"
                 decoding="async"
+                onError={(e) => cfImageOnError(e.currentTarget, pin.thumbnail || pin.image_url || '')}
               />
             )}
             <div className="flex-1 min-w-0">

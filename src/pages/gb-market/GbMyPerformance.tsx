@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { TrendingUp } from 'lucide-react'
 
 interface Row {
@@ -48,7 +48,7 @@ export default function GbMyPerformance() {
       {rows.map(r => (
         <div key={r.product_id} className="flex items-center gap-2.5 py-2 border-t border-gray-50 dark:border-[#151515]">
           <div className="w-9 h-9 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#1A1C21]">
-            {r.image_url && <img src={cfImage(r.image_url, { width: 72 })} alt={r.name} className="w-full h-full object-cover" loading="lazy" />}
+            {r.image_url && <img src={cfImage(r.image_url, { width: 72 })} alt={r.name} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, r.image_url)} />}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[12px] font-semibold text-gray-800 dark:text-gray-100 truncate">{r.name}</p>
