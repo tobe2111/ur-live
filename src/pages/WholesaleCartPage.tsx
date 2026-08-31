@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Trash2, ShoppingCart, ShieldCheck } from 'lucide-react'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { WT, won, comma } from './wholesale/wholesale-theme'
 import { useWholesaleCart, groupBySupplier } from './wholesale/useWholesaleCart'
 import { useWholesaleBack } from '@/hooks/useWholesaleBack'
@@ -105,7 +105,7 @@ export default function WholesaleCartPage() {
                   return (
                     <div key={it.id} className="flex gap-3.5 py-4 items-center" style={{ borderBottom: '1px solid ' + WT.line }}>
                       <button onClick={() => navigate(`/wholesale/product/${it.id}`)} className="w-[72px] h-[72px] lg:w-[78px] lg:h-[78px] shrink-0 rounded-xl overflow-hidden" style={{ background: WT.fill }}>
-                        {it.image_url && <img src={cfImage(it.image_url, { width: 160, format: 'auto' }) || it.image_url} alt={it.name || ''} className="w-full h-full object-cover" loading="lazy" decoding="async" />}
+                        {it.image_url && <img src={cfImage(it.image_url, { width: 160, format: 'auto' }) || it.image_url} alt={it.name || ''} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={(e) => cfImageOnError(e.currentTarget, it.image_url)} />}
                       </button>
                       <div className="flex-1 min-w-0">
                         <button onClick={() => navigate(`/wholesale/product/${it.id}`)} className="text-left text-[14px] font-medium line-clamp-2 leading-[1.4]" style={{ color: WT.ink }}>{it.name || `상품 #${it.id}`}</button>

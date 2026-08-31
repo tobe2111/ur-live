@@ -59,6 +59,19 @@ describe('운영백서 — 자동 갱신 배선', () => {
     expect(auto).toContain('platform_settings')
     expect(auto).toMatch(/코드 기본값/)
   })
+
+  it('무상 딜의 부담 주체를 네 갈래로 말한다', () => {
+    // 대표가 "무상딜을 받을 수 있는 방법이 없는데?" 라고 물어 시작된 절이다.
+    // 특히 **커미션을 딜로 받는 것은 무상이 아니다**(원금은 이미 번 돈) — 이 구분이 빠지면
+    // 무상 딜 지출을 실제보다 크게 보고 정책을 잘못 잡는다.
+    expect(handbookSection).toContain('무상 딜은 누가 내나')
+    expect(handbookSection, '후기 보너스의 부담 주체가 표에 있어야 한다')
+      .toMatch(/후기 보너스 \|[^|]*매장이 금액 설정/)
+    expect(handbookSection, '커미션 딜 수령이 진짜 무상이 아님을 말해야 한다')
+      .toMatch(/네 번째는 무상이 아닙니다/)
+    expect(handbookSection, '게이트가 꺼진 동안은 유어딜 부담임을 밝혀야 한다')
+      .toMatch(/매장 정산 차감은 아직 시작하지 않았습니다/)
+  })
 })
 
 describe('셀러 가이드 — 틀린 돈 얘기가 되살아나지 않는다', () => {

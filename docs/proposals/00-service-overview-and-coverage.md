@@ -285,10 +285,10 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 70 | 278 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 70 | 280 |
 | 링크샵 / 큐레이터 | `linkshop-brief.md` | 13 | 59 |
 | 에이전시 | `agency-brief.md` | 29 | 165 |
-| **합계** | — | **184** | **601** |
+| **합계** | — | **184** | **603** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -297,8 +297,8 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 382 | 1242 |
-| 도메인 버킷 (5개 소개서) | 184 | 601 |
+| 전체 | 382 | 1244 |
+| 도메인 버킷 (5개 소개서) | 184 | 603 |
 | 공통/인프라 (의도적 제외) | 164 | 469 |
 | **미커버 (점검 필요)** | **34** | **172** |
 
@@ -955,7 +955,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (278개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (280개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1299,6 +1299,10 @@
 
 **/api/seller/reset-password**
 - `POST /api/seller/reset-password`
+
+**/api/seller/review-bonus**
+- `GET /api/seller/review-bonus`
+- `PATCH /api/seller/review-bonus`
 
 **/api/seller/review-verifications**
 - `GET /api/seller/review-verifications/`
@@ -2000,7 +2004,7 @@
 
 
 
-> 마지막 생성: 2026-08-31T08:48:47.664Z
+> 마지막 생성: 2026-08-31T09:34:02.291Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
