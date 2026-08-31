@@ -32,9 +32,19 @@ describe('가이드 한정 해동', () => {
       .toMatch(/if \(!unfrozen\)/)
   })
 
-  it('죽은 기능의 사용법 3개를 실제로 지목한다', () => {
-    for (const key of ['live-broadcast', 'live-mastery', 'daily']) {
+  it('실측으로 갈린 섹션들을 실제로 지목한다', () => {
+    for (const key of ['live-broadcast', 'live-mastery', 'daily', 'settlement', 'promo', 'moderation']) {
       expect(routes, `${key} 가 해동 목록에 없으면 라이브가 안 고쳐진다`).toContain(`'${key}'`)
     }
+  })
+
+  it('라이브가 시드보다 길었던 섹션은 건드리지 않는다 (남의 작업)', () => {
+    // admin 'deploy'(710/690) · wholesale 'overview'(1116/1102) — 누군가 내용을 더한 흔적이다.
+    const start = routes.indexOf('UNFREEZE_ONCE: Array')
+    const arr = routes.slice(start, routes.indexOf(']', start))
+    expect(arr, 'deploy 는 라이브가 더 길다 — 되돌리면 남이 더한 내용이 사라진다').not.toContain("'deploy'")
+    // 근거는 배열 **위** 주석에 있다(배열 안이 아니다) — 파일 전체에서 찾는다.
+    expect(routes, '실측 근거를 주석에 남겨야 다음 세션이 추측으로 넓히지 않는다')
+      .toContain('라이브가 시드보다 긴 것은 뺐다')
   })
 })

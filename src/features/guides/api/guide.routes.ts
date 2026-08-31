@@ -124,10 +124,25 @@ async function syncGuideSeed(DB: D1Database, firstRun: boolean, env?: SeedAssetE
   const unfrozen = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`)
     .bind(UNFREEZE_MARKER).first<{ value: string }>().catch(() => null)
   if (!unfrozen) {
+    //   목록은 **추측이 아니라 실측**이다 — 2026-08-31 배포 직후 라이브 본문과 빌드된 시드 자산
+    //   (dist/client/seed/guides.json)을 섹션 단위로 대조해, 본문이 실제로 갈린 것만 골랐다.
+    //   ⚠️ **라이브가 시드보다 긴 것은 뺐다**(admin 'deploy', wholesale 'overview') —
+    //      누군가 내용을 더한 흔적이라 시드로 되돌리면 그 사람의 작업이 사라진다.
+    //   ⚠️ 'auto-reference' 는 기계 생성이라 애초에 백필에서 제외돼 있다(여기에도 넣지 않는다).
     const UNFREEZE_ONCE: Array<[GuideType, string]> = [
-      ['seller', 'live-broadcast'],   // 종료된 기능의 OBS 설정법
-      ['seller', 'live-mastery'],     // 종료된 기능의 운영 노하우
-      ['admin', 'daily'],             // 낡은 일일 체크리스트(라이브 모니터 등)
+      ['seller', 'live-broadcast'],   // 종료된 기능의 OBS 설정법 (라이브 2254자 / 시드 232자)
+      ['seller', 'live-mastery'],     // 종료된 기능의 운영 노하우 (2225 / 232)
+      ['seller', 'welcome'],          // (487 / 907)
+      ['seller', 'settlement'],       // (582 / 1122)
+      ['admin', 'daily'],             // 낡은 일일 체크리스트 (484 / 544)
+      ['admin', 'overview'],          // (435 / 465)
+      ['admin', 'seller-ops'],        // (479 / 607)
+      ['admin', 'agency-ops'],        // (951 / 1329)
+      ['admin', 'settlement'],        // 정산 문서가 라이브엔 5분의 1만 있다 (476 / 2195)
+      ['admin', 'moderation'],        // (430 / 880)
+      ['admin', 'promo'],             // (539 / 2140)
+      ['admin', 'legal'],             // (544 / 1064)
+      ['wholesale', 'pricing-grades'],// (1452 / 1981)
     ]
     for (const [t, k] of UNFREEZE_ONCE) {
       await DB.prepare(
