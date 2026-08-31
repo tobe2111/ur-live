@@ -389,9 +389,9 @@
 .agency-light-theme input, .agency-light-theme textarea, .agency-light-theme select,
 .force-light-theme input, .force-light-theme textarea, .force-light-theme select {
   color-scheme: light;
-  color: #16181b !important;
-  -webkit-text-fill-color: #16181b !important;
-  caret-color: #16181b;
+  color: #16181C !important;
+  -webkit-text-fill-color: #16181C !important;
+  caret-color: #16181C;
 }
 .admin-light-theme input::placeholder, .admin-light-theme textarea::placeholder,
 .seller-light-theme input::placeholder, .seller-light-theme textarea::placeholder,
@@ -406,9 +406,9 @@
 .seller-light-theme input:-webkit-autofill,
 .agency-light-theme input:-webkit-autofill,
 .force-light-theme input:-webkit-autofill {
-  -webkit-text-fill-color: #16181b !important;
+  -webkit-text-fill-color: #16181C !important;
   -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
-  caret-color: #16181b;
+  caret-color: #16181C;
 }
 
 .seller-light-theme .apple-card,
@@ -680,7 +680,7 @@
 input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
 textarea,
 select {
-  color: rgb(17 24 39); /* gray-900 — 라이트 테마 기본 */
+  color: #16181C; /* INK 900 — 라이트 테마 기본 (2026-08-31: 옛 gray-900 은 남색기가 있었다) */
 }
 input::placeholder,
 textarea::placeholder {
