@@ -39,8 +39,8 @@ interface PromoCode {
 }
 
 const AUDIENCE_LABEL: Record<string, string> = {
-  all: '🌐 모두',
-  followers_only: '⭐ 단골만',
+  all: '모두',
+  followers_only: '단골만',
   new_users_only: '🆕 신규만',
 }
 
@@ -174,7 +174,7 @@ export default function SellerPromoCodesPage() {
         {!showCreate ? (
           <button
             onClick={() => setShowCreate(true)}
-            className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-md"
+            className="w-full py-3.5 bg-gray-800 text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-md"
           >
             <Plus className="w-4 h-4" /> 새 할인 코드 발급
           </button>
@@ -207,9 +207,9 @@ export default function SellerPromoCodesPage() {
                   onChange={e => setForm(f => ({ ...f, audience: e.target.value as typeof f.audience }))}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                 >
-                  <option value="followers_only">⭐ 단골만 (권장)</option>
+                  <option value="followers_only">단골만 (권장)</option>
                   <option value="new_users_only">🆕 신규 고객만</option>
-                  <option value="all">🌐 모두</option>
+                  <option value="all">모두</option>
                 </select>
               </div>
             </div>
@@ -316,7 +316,7 @@ export default function SellerPromoCodesPage() {
         )}
 
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-800">
-          <p className="font-bold mb-1">💡 단골 코드 활용 팁</p>
+          <p className="font-bold mb-1">단골 코드 활용 팁</p>
           <ul className="list-disc pl-4 space-y-0.5">
             <li>"단골만 (followers_only)" 옵션 → 단골 등록 사용자만 적용</li>
             <li>"단골에게 알림 발송" 페이지에서 코드 함께 공유 → 단골 보상</li>

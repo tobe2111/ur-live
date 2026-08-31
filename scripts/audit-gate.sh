@@ -103,6 +103,7 @@ if domain ui; then
   run "RQ initialData 신선도"           node scripts/check-query-initialdata.mjs
   run "모바일 뷰포트(하단 잘림)"          node scripts/check-mobile-viewport.mjs
   run "링크샵 소유권 단일화"              node scripts/check-linkshop-ownership.mjs -s
+  run "AI 디자인 흔적(평면 그라디언트·UI 이모지)" node scripts/check-design-slop.mjs
   run "결제수단 판정 SSOT"                node scripts/check-payment-flow-ssot.mjs -s
   run "기능 현황판 동기(꺼진 기능)"        node scripts/generate-feature-status.mjs --check
   run "소비자 이미지 cfImage 경유"        env STRICT_RAW_IMG=1 node scripts/check-consumer-img-cfimage.mjs

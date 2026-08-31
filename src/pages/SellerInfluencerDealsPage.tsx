@@ -274,7 +274,7 @@ export default function SellerInfluencerDealsPage() {
                   type="button"
                   onClick={submitPropose}
                   disabled={proposing}
-                  className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="flex-1 rounded-lg bg-gray-900 py-2 text-sm font-bold text-white hover:bg-gray-900 disabled:opacity-50"
                 >
                   {proposing
                     ? t('seller.influencerDeals.sending', { defaultValue: '발송 중...' })
@@ -359,7 +359,7 @@ export default function SellerInfluencerDealsPage() {
                         {isConditional && d.status !== 'active' && (
                           <p className="mt-1 text-[10px] font-medium text-amber-700">
                             {d.proof_status === 'submitted'
-                              ? t('seller.influencerDeals.proofSubmitted', { defaultValue: '📎 콘텐츠 인증 제출됨 — 검토 필요' })
+                              ? t('seller.influencerDeals.proofSubmitted', { defaultValue: '콘텐츠 인증 제출됨 — 검토 필요' })
                               : d.proof_status === 'rejected'
                                 ? t('seller.influencerDeals.proofRejectedLabel', { defaultValue: '↩︎ 인증 반려됨 — 재제출 대기' })
                                 : t('seller.influencerDeals.proofPending', { defaultValue: '⏳ 콘텐츠 게시·링크 제출 대기 중' })}

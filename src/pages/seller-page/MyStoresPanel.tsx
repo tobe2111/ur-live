@@ -13,7 +13,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Store, Plus, MapPin, CheckCircle2, Loader2, Ticket, Settings2 } from 'lucide-react'
+import { CheckCircle2, Loader2, Map, MapPin, Plus, Settings2, Store, Ticket } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
@@ -123,7 +123,7 @@ export default function MyStoresPanel({ onGateChange }: Props) {
             onClick={() => setAdding(true)}
             className="mt-4 w-full sm:w-auto px-6 py-3 rounded-xl bg-white text-gray-900 text-sm font-extrabold hover:bg-gray-100 active:scale-[0.98] flex items-center justify-center gap-2"
           >
-            🗺️ {t('seller.stores.registerCta', { defaultValue: '카카오맵으로 매장 등록하기' })}
+            <Map className="w-4 h-4" aria-hidden="true" />{t('seller.stores.registerCta', { defaultValue: '카카오맵으로 매장 등록하기' })}
           </button>
         </div>
         {adding && <StoreRegisterModal onClose={() => setAdding(false)} onDone={onRegistered} />}

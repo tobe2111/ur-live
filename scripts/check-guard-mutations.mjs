@@ -45,6 +45,11 @@ const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
  * 건너뛰게 된다** — 이 레포가 반복해서 당한 자리다. CI 는 인자 없이 전수로 돈다.
  */
 const ONLY = (() => {
+  // 🩸 `--only=X`(등호형)도 받는다 — 2026-08-31 에 등호형으로 부르니 `indexOf('--only')` 가 -1 이라
+  //    **필터 없이 567건 전수**가 조용히 돌았다(주입이 남의 파일에 들어간 채 12분). 이 레포가 반복해
+  //    당한 "검사가 조용히 다른 걸 한다" 클래스라, 모르고 지나가느니 형태를 둘 다 받는 게 맞다.
+  const eq = process.argv.find(a => a.startsWith('--only='))
+  if (eq) return eq.slice('--only='.length)
   const i = process.argv.indexOf('--only')
   return i !== -1 ? process.argv[i + 1] : null
 })()
@@ -133,6 +138,58 @@ const MUTATIONS = [
       '결제 직후 도착지가 옛 지갑이면 방금 산 교환권이 없는 화면을 보게 된다 — "결제됐는데 아무것도 없다" ' +
       '클래스. 결제는 성공했으므로 로그·에러 어디에도 흔적이 없다.',
   },
+  {
+    name: '평면 그라디언트가 다시 들어온다(단색인데 그라디언트인 척)',
+    file: 'src/pages/user-profile/TeamPointsCard.tsx',
+    find: '      <div className="bg-ink dark:bg-[#1A1C21] rounded-2xl px-5 py-4">',
+    replace: '      <div className="bg-gradient-to-r from-gray-800 to-gray-800 dark:bg-[#1A1C21] rounded-2xl px-5 py-4">',
+    test: 'src/tests/unit/button-system.test.ts',
+    why:
+      'from/to 가 같은 색이면 브라우저는 그라디언트를 계산하는데 화면엔 단색이 나온다. ' +
+      '2026-06-19 흑백 리매핑에서 85곳이 이렇게 붕괴해 있었고 아무도 몰랐다 — 에러가 없다.',
+  },
+  {
+    name: '아이콘 굵기 규칙이 전면으로 번져 명시값을 덮어쓴다',
+    file: 'src/index.css',
+    find: "  svg.lucide[stroke-width='2'] { stroke-width: 1.75; }",
+    replace: '  svg.lucide { stroke-width: 1.75; }',
+    test: 'src/tests/unit/button-system.test.ts',
+    why:
+      '속성 필터를 빼면 개발자가 일부러 정한 획 굵기 155곳(강조 3 · 섬세 1.5 등)을 ' +
+      '통째로 덮어써 의도를 지운다. 화면은 그럴듯해 보이고 에러도 안 나서 안 보인다.',
+  },
+  {
+    name: '버튼 테두리가 축약형 border:0 으로 조용히 사라진다',
+    file: 'src/index.css',
+    find: '    border-width: 0;\n    cursor: pointer;',
+    replace: '    border: 0;\n    cursor: pointer;',
+    test: 'src/tests/unit/button-system.test.ts',
+    why:
+      '축약형 `border: 0` 은 border-style 까지 none 으로 리셋해 Tailwind preflight 의 ' +
+      '`border-style: solid` 를 지운다 → `border border-gray-200` 을 붙인 테두리 버튼이 ' +
+      'width 만 1px 이고 style 은 none 이라 **선이 안 보인다**. 에러가 없어 안 보인다.',
+  },
+  {
+    name: '모서리 위계가 무너져 lg 와 xl 이 같은 값이 된다',
+    file: 'tailwind.config.js',
+    find: "        xl: '0.875rem',",
+    replace: "        xl: '0.625rem',",
+    test: 'src/tests/unit/radius-scale.test.ts',
+    why:
+      'xl 이 lg 와 같은 값으로 드리프트하면 `rounded-lg`(2,217곳)와 `rounded-xl`(1,499곳)이 ' +
+      '완전히 겹친다 — 칩도 버튼도 카드도 같은 곡률이 되어 화면이 평평해진다(실제로 그랬다). ' +
+      '**에러가 나지 않고 빌드도 초록불**이라, 가드가 없으면 다음 세션이 조용히 되돌린다.',
+  },
+  {
+    name: '유어샵 라이트에서 바탕과 카드가 다시 같은 흰색이 된다',
+    file: 'src/pages/seller-public/theme.ts',
+    find: "bg: 'bg-warm', card: 'bg-white'",
+    replace: "bg: 'bg-white', card: 'bg-white'",
+    test: 'src/tests/unit/surface-token-separation.test.ts',
+    why:
+      '바탕과 카드가 같은 색이면 카드를 구분할 방법이 1px 실선뿐이라 화면 전체가 테두리에 ' +
+      '의존하게 된다. 대표가 "테두리가 정말 AI스럽다"고 지적한 것의 근본 원인이고, ' +
+      '다크는 멀쩡했기 때문에 **라이트만 깨진 채 아무도 몰랐다.**',  },
   {
     name: '유어샵 핀 딜 매칭이 무음으로 항상 실패한다',
     file: 'src/worker/routes/curator.routes.ts',
@@ -6130,13 +6187,75 @@ canvas {
   },
   {
     name: '📉 파트너 풀 통계가 캐시를 건너뛴다(화면 한 번에 331만 행 복귀)',
-    file: 'src/features/marketing/api/partner-pool.routes.ts',
-    find: 'getCompanyStatsCached(statsDb, fresh1, () => companyStats(statsDb))',
-    replace: '{ stats: await companyStats(statsDb), at: Date.now() }',
+    // 📍 2026-08-31 앵커 이동: 캐시 호출이 라우트에서 `company-stats-serve.ts` 로 빠지면서
+    //    옛 앵커가 "낡은 지도"가 됐다(CI 가 잡았다). 지키는 것은 같다 — 캐시를 건너뛰면 빨간불.
+    file: 'src/features/marketing/api/company-stats-serve.ts',
+    find: 'await getCompanyStatsCached<Stats>(DB, fresh, () => companyStats(DB), bg)',
+    replace: '{ stats: await companyStats(DB), at: Date.now() }',
     test: 'src/tests/unit/company-stats-cache.test.ts',
     why:
       '화면은 똑같이 동작하고 숫자도 맞다 — 다만 조회 1회가 331만 행이고, 레인 실행 뒤 5초마다 ' +
       '36번 폴링하므로 버튼 한 번이 1.19억 행이 된다(D1 무료 한도의 24배). 에러가 안 난다.',
+  },
+  {
+    name: '📅 오늘 유입을 캐시에서 꺼내 쓴다(수집이 도는데 멈춘 것처럼 보인다)',
+    file: 'src/features/marketing/api/company-stats-serve.ts',
+    find: '  const today = await todayInflow(DB)',
+    replace: '  const today = null as Awaited<ReturnType<typeof todayInflow>>',
+    test: 'src/tests/unit/company-stats-serve.test.ts',
+    why:
+      '분포 표는 1시간 낡아도 되지만 오늘 유입은 아니다 — 대표가 "수집이 살아 있나"를 보는 숫자다. ' +
+      '낡으면 멀쩡히 도는 레인이 멈춘 것처럼 보이고, 그건 성능 문제가 아니라 오보다.',
+  },
+  {
+    name: '📅 오늘 집계가 범위 조건을 잃는다(다시 전수 스캔)',
+    file: 'src/features/marketing/api/company-breakdown.ts',
+    find: "   WHERE merged_into IS NULL AND collected_at >= datetime('now','-1 days')",
+    replace: '   WHERE merged_into IS NULL',
+    test: 'src/tests/unit/company-stats-serve.test.ts',
+    why:
+      '숫자는 똑같이 나온다(뒤의 DATE 비교가 거른다). 그런데 인덱스 범위를 못 써서 매 요청이 ' +
+      '7,234행에서 46만행이 된다 — 결과가 맞아서 아무도 모르고, 매 요청이라 금방 쌓인다.',
+  },
+  {
+    name: '🚧 주입-중 가드가 argv 어디서든 이름만 봐도 막는다(멀쩡한 커밋이 막힘)',
+    file: 'scripts/check-no-injection-in-progress.sh',
+    find: "/^[^ ]*node( |$)/ && ",
+    replace: '',
+    test: 'src/tests/unit/injection-guard.test.ts',
+    why:
+      '2026-08-31 에 실제로 이랬다 — 커밋 명령줄이 그 파일 이름을 *언급만* 해도 셸 래퍼의 argv 에 ' +
+      '걸려 커밋이 막혔다. 가드가 자기 자신을 잡는 클래스이고, 막히면 우회하게 되므로 가드가 죽는다.',
+  },
+  {
+    name: '🚧 주입-중 가드가 절대경로 node 를 놓친다(진짜 주입이 통과)',
+    file: 'scripts/check-no-injection-in-progress.sh',
+    find: '^[^ ]*node( |$)',
+    replace: '^node ',
+    test: 'src/tests/unit/injection-guard.test.ts',
+    why:
+      'ps 는 `/usr/bin/node …` 처럼 절대경로로 찍히는 환경이 흔하다. 그러면 진짜 주입이 도는 중에도 ' +
+      '가드가 통과시켜, 되돌려지지 않은 결함이 그대로 커밋된다 — 이 가드가 막으려던 바로 그 사고다.',
+  },
+  {
+    name: '⏳ 낡은 값만 주고 갱신을 안 태운다(캐시가 영영 안 바뀐다)',
+    file: 'src/features/marketing/api/company-stats-cache.ts',
+    find: '    bg(compute().then(s => store(s, Date.now())).catch(() => null))',
+    replace: '',
+    test: 'src/tests/unit/company-stats-cache.test.ts',
+    why:
+      '낡은 값을 즉시 주는 것까지는 같아서 화면은 빨라 보인다. 그런데 갱신이 안 돌아 숫자가 ' +
+      '그 자리에서 굳고, TTL 이 지나도 계속 같은 값이 나온다 — 에러도 로그도 없다.',
+  },
+  {
+    name: '⏳ 낡은 값을 한계 없이 준다(몇 시간 전 숫자를 최신인 줄 본다)',
+    file: 'src/features/marketing/api/company-stats-cache.ts',
+    find: '  return age >= COMPANY_STATS_TTL_MS && age < COMPANY_STATS_MAX_STALE_MS',
+    replace: '  return age >= COMPANY_STATS_TTL_MS',
+    test: 'src/tests/unit/company-stats-cache.test.ts',
+    why:
+      '아무도 안 보다가 온 사람이 몇 시간 전 숫자를 최신으로 읽는다. 화면은 멀쩡해 보이고 ' +
+      '숫자도 그럴듯해서, 대표가 그걸 근거로 판단하기 전까지 아무도 모른다.',
   },
   {
     name: '📉 통계 캐시가 안 늙는다(화면 숫자가 조용히 굳는다)',
@@ -6224,6 +6343,27 @@ canvas {
       'cron 은 알림까지만 하고 지급은 어드민 [처리]가 한다. cron 이 직접, 그것도 유상 버킷으로 적립하면 ' +
       '① 본인이 고른 payout_method 를 무시하고 ② 2026-07-05 에 닫은 [현금 100 → 딜 120 → 재출금] ' +
       '차익 세탁 루프가 다시 열린다. 2026-08-30 오전에 실제로 이렇게 만들었다가 같은 날 되돌렸다.',
+  },
+  {
+    name: '💎 딜 수령자에게 최소 금액 문턱이 되돌아온다',
+    file: 'src/worker/cron/influencer-payout.ts',
+    find: "      WHERE available_amount > 0\n        AND (payout_method = 'deal' OR available_amount >= ?)",
+    replace: '      WHERE available_amount >= ?',
+    test: 'src/tests/unit/deal-payout-no-minimum.test.ts',
+    why:
+      '문턱(10만원)의 근거는 은행 송금 비용인데 딜엔 그 비용이 0 이다. 되돌아오면 소개자는 ' +
+      '자기가 번 딜을 500만원어치 팔릴 때까지 못 만진다 — 화면엔 "잔액 있음"으로 보이는데 ' +
+      '지급 목록에서만 사라지므로 에러가 아니라 **부재**로 나타난다.',
+  },
+  {
+    name: '💎 어드민 지급목록이 cron 과 다른 조건을 쓴다',
+    file: 'src/features/group-buy/api/marketing.routes.ts',
+    find: "     WHERE available_amount > 0\n       AND (payout_method = 'deal' OR available_amount >= ?)",
+    replace: '     WHERE available_amount >= ?',
+    test: 'src/tests/unit/deal-payout-no-minimum.test.ts',
+    why:
+      '두 쿼리가 갈리면 "cron 알림엔 떴는데 어드민 목록엔 없다"가 된다 — 어드민이 지급하려고 ' +
+      '들어갔는데 그 사람이 없다. 알림과 목록은 같은 조건이어야 한다.',
   },
 ]
 /**

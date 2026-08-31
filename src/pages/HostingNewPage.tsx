@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { BedDouble, Dumbbell, Gift, LayoutGrid, PartyPopper, PawPrint, Scissors, Utensils, type LucideIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -15,15 +16,15 @@ import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
-const CATEGORIES: Array<{ key: string; label: string; emoji: string }> = [
-  { key: '', label: '전체', emoji: '🛍️' },
-  { key: 'meal_voucher', label: '식사', emoji: '🍽️' },
-  { key: 'beauty_voucher', label: '뷰티', emoji: '💇' },
-  { key: 'stay_voucher', label: '숙박', emoji: '🏨' },
-  { key: 'activity_voucher', label: '액티비티', emoji: '🎯' },
-  { key: 'health_voucher', label: '헬스', emoji: '💪' },
-  { key: 'pet_voucher', label: '펫', emoji: '🐶' },
-  { key: 'etc_voucher', label: '기타', emoji: '🎁' },
+const CATEGORIES: Array<{ key: string; label: string; Icon: LucideIcon }> = [
+  { key: '', label: '전체', Icon: LayoutGrid },
+  { key: 'meal_voucher', label: '식사', Icon: Utensils },
+  { key: 'beauty_voucher', label: '뷰티', Icon: Scissors },
+  { key: 'stay_voucher', label: '숙박', Icon: BedDouble },
+  { key: 'activity_voucher', label: '액티비티', Icon: PartyPopper },
+  { key: 'health_voucher', label: '헬스', Icon: Dumbbell },
+  { key: 'pet_voucher', label: '펫', Icon: PawPrint },
+  { key: 'etc_voucher', label: '기타', Icon: Gift },
 ]
 
 export default function HostingNewPage() {
@@ -89,7 +90,7 @@ export default function HostingNewPage() {
                     : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-300'
                 }`}
               >
-                {cat.emoji} {cat.label}
+                <cat.Icon className="w-3.5 h-3.5" aria-hidden="true" />{cat.label}
               </button>
             ))}
           </div>
@@ -118,7 +119,7 @@ export default function HostingNewPage() {
                     <div className="p-3">
                       <p className="text-xs font-medium line-clamp-2 mb-1">{item.name}</p>
                       <p className="text-sm font-bold text-pink-500 dark:text-pink-400">{formatWon(item.price)}</p>
-                      {item.restaurant_name && <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">📍 {item.restaurant_name}</p>}
+                      {item.restaurant_name && <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{item.restaurant_name}</p>}
                       {item.my_host_id && (
                         <p className="text-[10px] text-emerald-500 mt-1">✓ 호스팅 중</p>
                       )}

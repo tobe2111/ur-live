@@ -353,7 +353,7 @@ export default function AdminOrdersPage() {
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
           {error}
-          <button onClick={() => window.location.reload()} className="mt-3 block px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">{t('admin.orders.k036', { defaultValue: '다시 시도' })}</button>
+          <button onClick={() => window.location.reload()} className="mt-3 block px-4 py-2 bg-gray-900 text-white text-sm rounded-lg">{t('admin.orders.k036', { defaultValue: '다시 시도' })}</button>
         </div>
       )}
 
@@ -546,7 +546,7 @@ export default function AdminOrdersPage() {
                 if (p < 1) p = 1
                 if (p > totalPages) return null
                 return (
-                  <button key={i} onClick={() => setCurrentPage(p)} className={`w-8 h-8 text-xs rounded-lg font-medium ${currentPage === p ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>{p}</button>
+                  <button key={i} onClick={() => setCurrentPage(p)} className={`w-8 h-8 text-xs rounded-lg font-medium ${currentPage === p ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>{p}</button>
                 )
               })}
               <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40">
@@ -629,7 +629,7 @@ export default function AdminOrdersPage() {
                   {NEXT_STATUS[selectedOrder.status] && (
                     <button
                       onClick={() => updateOrderStatus(selectedOrder.order_number, NEXT_STATUS[selectedOrder.status])}
-                      className="px-4 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                      className="px-4 py-2 text-xs font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-900"
                     >
                       {STATUS_STYLES[NEXT_STATUS[selectedOrder.status]]?.label || NEXT_STATUS[selectedOrder.status]}(으)로 변경
                     </button>
@@ -664,7 +664,7 @@ export default function AdminOrdersPage() {
                       {COURIER_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                     </select>
                     <input name="tracking" type="text" defaultValue={selectedOrder.tracking_number || ''} placeholder="운송장 번호" className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 flex-1" />
-                    <button type="submit" className="px-4 py-2 text-xs font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 flex-shrink-0">
+                    <button type="submit" className="px-4 py-2 text-xs font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-900 flex-shrink-0">
                       <Truck className="w-3.5 h-3.5 inline mr-1" />등록
                     </button>
                   </form>

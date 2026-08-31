@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Check, Star, Users, Zap, ShoppingBag, MapPin, Ticket, Gift } from 'lucide-react'
+import { Check, ChevronRight, Gift, MapPin, Search, ShoppingBag, ShoppingCart, Star, Ticket, Users, Utensils, Zap } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -143,7 +143,7 @@ export default function IntroducePage() {
             >
               우리 동네<br />
               맛집·뷰티·숙소,<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-800 to-gray-800 italic">함께 사서 특가.</span>
+              <span className="text-transparent bg-clip-text bg-gray-800 italic">함께 사서 특가.</span>
             </h1>
             <p className="text-[16px] text-gray-400 mt-6 max-w-[480px] leading-relaxed">
               대량 단가를 미리 떼와 처음부터 모두에게 같은 그룹 특가.<br />
@@ -188,7 +188,7 @@ export default function IntroducePage() {
           <div className="hidden md:flex justify-center shrink-0">
             <div className="relative">
               {/* glow */}
-              <div className="absolute inset-0 bg-gradient-to-br from-gray-800/30 to-gray-800/30 blur-[60px] rounded-full scale-110" />
+              <div className="absolute inset-0 bg-gray-800/30 blur-[60px] rounded-full scale-110" />
               {/* phone */}
               <div className="relative w-[260px] h-[520px] bg-[#111] rounded-[44px] p-[10px] shadow-2xl border border-white/10">
                 <div className="w-full h-full rounded-[34px] bg-[#0D0F12] relative overflow-hidden">
@@ -209,7 +209,7 @@ export default function IntroducePage() {
                       <span className="text-[10px] text-gray-500 line-through">26,900원</span>
                     </div>
                     <div className="mt-2 flex gap-2">
-                      <div className="flex-1 py-1.5 rounded-lg bg-gradient-to-r from-gray-800 to-gray-800 text-center text-[10px] font-extrabold text-white">바로 구매</div>
+                      <div className="flex-1 py-1.5 rounded-lg bg-gray-800 text-center text-[10px] font-extrabold text-white">바로 구매</div>
                       <div className="flex-1 py-1.5 rounded-lg bg-white/10 text-center text-[10px] font-bold text-white">교환권 발급</div>
                     </div>
                   </div>
@@ -332,13 +332,13 @@ export default function IntroducePage() {
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { n: '01', emoji: '🔎', title: '동네 공구 고르기', desc: '홈 또는 동네 공구 탭에서 지역·카테고리(맛집·뷰티·숙소 등)별로 진행 중인 공구를 골라보세요.' },
-              { n: '02', emoji: '🛒', title: '그룹 특가로 구매', desc: '인원과 무관하게 처음부터 같은 그룹 특가. 결제하면 교환권이 즉시 발급돼요.' },
-              { n: '03', emoji: '🍽️', title: '매장 방문·사용', desc: '발급된 교환권을 매장에서 제시하고 사용하세요. 숙소·배송 상품은 안내에 따라 이용하시면 돼요.' },
+              { n: '01', Icon: Search, title: '동네 공구 고르기', desc: '홈 또는 동네 공구 탭에서 지역·카테고리(맛집·뷰티·숙소 등)별로 진행 중인 공구를 골라보세요.' },
+              { n: '02', Icon: ShoppingCart, title: '그룹 특가로 구매', desc: '인원과 무관하게 처음부터 같은 그룹 특가. 결제하면 교환권이 즉시 발급돼요.' },
+              { n: '03', Icon: Utensils, title: '매장 방문·사용', desc: '발급된 교환권을 매장에서 제시하고 사용하세요. 숙소·배송 상품은 안내에 따라 이용하시면 돼요.' },
             ].map(s => (
               <div key={s.n} className="relative p-8 rounded-3xl bg-[#111] border border-[#2C2F35] overflow-hidden">
                 <div className="absolute -top-4 -right-2 text-[100px] font-black opacity-[0.04] text-white select-none">{s.n}</div>
-                <p className="text-[36px] mb-5">{s.emoji}</p>
+                <s.Icon className="w-9 h-9 mx-auto mb-5 text-gray-400" aria-hidden="true" />
                 <h3 className="text-[20px] font-extrabold text-white mb-3">{s.title}</h3>
                 <p className="text-[14px] text-gray-500 leading-relaxed">{s.desc}</p>
               </div>
@@ -400,7 +400,7 @@ export default function IntroducePage() {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => navigate('/store/new')}
-                className="px-6 py-3.5 rounded-2xl text-white text-[14px] font-extrabold bg-gradient-to-r from-gray-800 to-gray-800 hover:opacity-90 transition-opacity"
+                className="px-6 py-3.5 rounded-2xl text-white text-[14px] font-extrabold bg-gray-800 hover:opacity-90 transition-opacity"
               >
                 입점 신청하기 →
               </button>

@@ -142,7 +142,7 @@ export default function AdminInfluencerPayoutsPage() {
       <div className="mx-auto max-w-4xl space-y-5 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title="인플루언서 송금"
-          subtitle={`송금 대기 ${list.length}명 · 합계 ${totalPending.toLocaleString()}원 (최소 ${payoutMin.toLocaleString()}원 이상)`}
+          subtitle={`지급 대기 ${list.length}명 · 합계 ${totalPending.toLocaleString()}원 (현금은 ${payoutMin.toLocaleString()}원 이상 · 딜은 금액 제한 없음)`}
           icon={<Wallet className="h-5 w-5" />}
           actions={
             <div className="flex gap-2">
@@ -150,7 +150,7 @@ export default function AdminInfluencerPayoutsPage() {
               <button
                 onClick={bulkProcess}
                 disabled={selectedIds.size === 0 || bulkProcessing}
-                className="px-3 py-1.5 text-xs bg-emerald-500 text-white rounded-lg font-bold disabled:opacity-40"
+                className="px-3 py-1.5 text-xs bg-gray-900 text-white rounded-lg font-bold disabled:opacity-40"
               >
                 선택 일괄 처리 ({selectedIds.size})
               </button>
@@ -236,7 +236,7 @@ export default function AdminInfluencerPayoutsPage() {
                         <button
                           onClick={() => process(r)}
                           disabled={!accountOk || processingId === r.influencer_id}
-                          className="px-3 py-1.5 text-[11px] font-bold bg-emerald-500 text-white rounded-lg disabled:opacity-40"
+                          className="px-3 py-1.5 text-[11px] font-bold bg-gray-900 text-white rounded-lg disabled:opacity-40"
                         >
                           <CheckCircle className="w-3 h-3 inline mr-1" /> {processingId === r.influencer_id ? '처리중' : '완료 처리'}
                         </button>

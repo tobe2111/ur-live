@@ -104,7 +104,7 @@ export default function AdminPayoutCenterPage() {
                   <td className="px-4 py-3">
                     <button disabled={busy === `s${r.id}`}
                       onClick={() => act(`셀러 정산 ${formatWon(r.amount)}`, `s${r.id}`, () => api.patch(`/api/admin/payout-center/seller/${r.id}/paid`, {}))}
-                      className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-[12px] font-bold disabled:opacity-50">입금 완료</button>
+                      className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[12px] font-bold disabled:opacity-50">입금 완료</button>
                   </td>
                 </tr>
               ))}
@@ -125,7 +125,7 @@ export default function AdminPayoutCenterPage() {
                   <td className="px-4 py-3 whitespace-nowrap">
                     <button disabled={busy === `c${r.id}`}
                       onClick={() => act(`환급 ${formatWon(r.net_amount)}`, `c${r.id}`, () => api.patch(`/api/admin/payout-center/curator/${r.id}/paid`, {}))}
-                      className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-[12px] font-bold disabled:opacity-50 mr-1.5">입금 완료</button>
+                      className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[12px] font-bold disabled:opacity-50 mr-1.5">입금 완료</button>
                     <button disabled={busy === `cr${r.id}`}
                       onClick={async () => {
                         const reason = window.prompt('반려 사유 (신청자에게 표시 + 딜 자동 복원)')
@@ -157,7 +157,7 @@ export default function AdminPayoutCenterPage() {
                   <td className="px-4 py-3">
                     <button disabled={busy === `a${r.agency_id}` || r.payable_matured <= 0}
                       onClick={() => act(`에이전시 커미션 ${formatWon(r.payable_matured)}`, `a${r.agency_id}`, () => api.post(`/api/admin/payout-center/agency/${r.agency_id}/paid`, {}))}
-                      className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-[12px] font-bold disabled:opacity-40">일괄 입금 완료</button>
+                      className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[12px] font-bold disabled:opacity-40">일괄 입금 완료</button>
                   </td>
                 </tr>
               ))}
@@ -255,7 +255,7 @@ function SettlementTaxInvoicesPanel() {
                     <td className="px-4 py-3">
                       {r.status !== 'issued' && provider !== 'none' ? (
                         <button disabled={busy === r.id} onClick={() => reissue(r.id)}
-                          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[12px] font-bold disabled:opacity-50">재발행</button>
+                          className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[12px] font-bold disabled:opacity-50">재발행</button>
                       ) : (
                         <span className="text-[12px] text-gray-400">{r.nts_confirm_num ? `#${r.nts_confirm_num}` : '—'}</span>
                       )}

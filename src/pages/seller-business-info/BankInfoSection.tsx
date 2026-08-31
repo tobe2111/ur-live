@@ -68,7 +68,7 @@ export default function BankInfoSection({ bankInfo, setBankInfo, submitting, onS
         <Button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-blue-600 py-3 font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-lg bg-gray-900 py-3 font-medium text-white transition-colors hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? (
             <span className="flex items-center justify-center gap-2">

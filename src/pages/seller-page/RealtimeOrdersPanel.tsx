@@ -92,7 +92,7 @@ export default function RealtimeOrdersPanel({ recentOrders, newOrderIds, ordersR
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         {isNew && (
-                          <span className="text-[10px] font-bold text-white bg-emerald-500 px-1.5 py-0.5 rounded-full leading-none">
+                          <span className="text-[10px] font-bold text-white bg-gray-900 px-1.5 py-0.5 rounded-full leading-none">
                             NEW
                           </span>
                         )}

@@ -77,7 +77,7 @@ export default function SellerInfluencersPage() {
     <SellerLayout title="소개 파트너 찾기">
       <SEO title="소개 파트너 찾기 - 유어딜 셀러" description="협업 인플루언서 탐색·제안" noindex />
       <div className="mx-auto max-w-5xl space-y-3 p-3 sm:p-4">
-        <div className="rounded-xl bg-gradient-to-r from-rose-50 to-amber-50 border border-rose-100 px-4 py-3">
+        <div className="rounded-xl bg-rose-50 border border-rose-100 px-4 py-3">
           <p className="text-[11px] font-bold text-brand">인플루언서 협업</p>
           <p className="text-sm font-extrabold text-gray-900">내 이용권을 팔아 줄 크리에이터를 찾아 제안해 보세요</p>
           <p className="text-[11px] text-gray-600 mt-0.5">제안을 접수하면 유어딜이 검토 후 인플루언서에게 직접 전달해 드려요{contactFee > 0 ? ` · 발송 1명당 ${formatNumber(contactFee)}원` : ''}</p>

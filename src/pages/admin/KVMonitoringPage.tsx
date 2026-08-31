@@ -167,7 +167,7 @@ export default function KVMonitoringPage() {
           </div>
 
           {/* JWT Migration Impact */}
-          <div className="bg-gradient-to-r from-gray-50 to-gray-50 rounded-xl border border-green-200 p-6 mb-6">
+          <div className="bg-gray-50 rounded-xl border border-green-200 p-6 mb-6">
             <div className="flex items-start gap-4">
               <div className="p-3 bg-green-500 text-white rounded-lg">
                 <TrendingDown className="h-6 w-6" />

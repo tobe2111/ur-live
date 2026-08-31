@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { TrendingUp, ChevronLeft, Award, History } from 'lucide-react'
+import { Award, ChevronLeft, Gem, History, Medal, Sprout, Star, TrendingUp, type LucideIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { getSellerToken } from '@/lib/seller-auth'
@@ -53,10 +53,10 @@ export default function SellerTierPage() {
     { select: (r: any) => (r?.success ? r.data : null) },
   )
 
-  const TIER_META: Record<Tier, { label: string; emoji: string; color: string; bg: string; border: string; benefits: string[] }> = {
+  const TIER_META: Record<Tier, { label: string; emoji: string; Icon: LucideIcon; color: string; bg: string; border: string; benefits: string[] }> = {
     diamond: {
       label: t('tierBadge.tierDiamond', { defaultValue: '다이아몬드' }),
-      emoji: '💎',
+      emoji: '💎', Icon: Gem,
       color: 'text-blue-700',
       bg: 'bg-gradient-to-br from-gray-100 to-gray-50',
       border: 'border-blue-300',
@@ -64,7 +64,7 @@ export default function SellerTierPage() {
     },
     gold: {
       label: t('tierBadge.tierGold', { defaultValue: '골드' }),
-      emoji: '⭐',
+      emoji: '⭐', Icon: Star,
       color: 'text-amber-700',
       bg: 'bg-gradient-to-br from-gray-100 to-gray-50',
       border: 'border-amber-300',
@@ -72,7 +72,7 @@ export default function SellerTierPage() {
     },
     silver: {
       label: t('tierBadge.tierSilver', { defaultValue: '실버' }),
-      emoji: '🥈',
+      emoji: '🥈', Icon: Medal,
       color: 'text-gray-700',
       bg: 'bg-gradient-to-br from-gray-100 to-slate-50',
       border: 'border-gray-300',
@@ -80,17 +80,17 @@ export default function SellerTierPage() {
     },
     bronze: {
       label: t('tierBadge.tierBronze', { defaultValue: '브론즈' }),
-      emoji: '🥉',
+      emoji: '🥉', Icon: Award,
       color: 'text-orange-700',
-      bg: 'bg-gradient-to-br from-gray-50 to-gray-50',
+      bg: 'bg-gray-50',
       border: 'border-orange-200',
       benefits: ['수수료 5%', '노출 가중치 1×', 'TimeDeal 주 3회'],
     },
     new: {
       label: t('tierBadge.tierNew', { defaultValue: '신규' }),
-      emoji: '🌱',
+      emoji: '🌱', Icon: Sprout,
       color: 'text-purple-700',
-      bg: 'bg-gradient-to-br from-gray-50 to-gray-50',
+      bg: 'bg-gray-50',
       border: 'border-purple-200',
       benefits: ['가입 30일 보호', '온보딩 가이드', 'TimeDeal 주 1회'],
     },
@@ -134,7 +134,7 @@ export default function SellerTierPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className={`text-2xl font-extrabold ${meta.color}`}>
-                  {meta.emoji} {meta.label}
+                  <meta.Icon className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />{meta.label}
                 </p>
                 <p className="text-sm text-gray-600 mt-1">
                   {t('sellerTier.currentScore', { score, defaultValue: `현재 점수: ${score}점` })}
@@ -157,12 +157,12 @@ export default function SellerTierPage() {
             {nextTier && nextScore && (
               <div className="mt-4">
                 <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                  <span>{TIER_META[nextTier].emoji} {TIER_META[nextTier].label} 까지 {remaining}점</span>
+                  <span>{(() => { const I = TIER_META[nextTier].Icon; return <I className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" /> })()}{TIER_META[nextTier].label} 까지 {remaining}점</span>
                   <span className="font-semibold">{score} / {nextScore}</span>
                 </div>
                 <div className="h-2 bg-white/60 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-gray-700 to-gray-700 rounded-full transition-all"
+                    className="h-full bg-gray-700 rounded-full transition-all"
                     style={{ width: `${progress}%` }}
                   />
                 </div>

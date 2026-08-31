@@ -51,7 +51,7 @@ export default function CancelOrderModal({
 
         {/* 🛡️ 배치 170: 환불 가이드 (셀프서비스 안내) */}
         <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-xl">
-          <p className="text-xs font-bold text-blue-800 mb-1">{t('cancelOrder.refundGuideTitle', { defaultValue: '💡 환불 안내' })}</p>
+          <p className="text-xs font-bold text-blue-800 mb-1">{t('cancelOrder.refundGuideTitle', { defaultValue: '환불 안내' })}</p>
           <ul className="text-[11px] text-blue-700 space-y-0.5">
             <li>• {t('cancelOrder.refundGuide1', { defaultValue: '결제 취소 시 결제 수단으로 자동 환불됩니다' })}</li>
             <li>• {t('cancelOrder.refundGuide2', { defaultValue: '카드 결제: 3~5 영업일 내 환불 | 포인트 결제: 즉시 환불' })}</li>
@@ -84,7 +84,7 @@ export default function CancelOrderModal({
               type="button"
               onClick={() => onPartialCancelChange(false)}
               className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                !isPartialCancel ? 'bg-blue-500 text-white' : 'bg-gray-50 dark:bg-[#1A1C21] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A1C21]'
+                !isPartialCancel ? 'bg-gray-900 text-white' : 'bg-gray-50 dark:bg-[#1A1C21] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A1C21]'
               }`}
             >
               {t('cancelOrder.fullCancel', { defaultValue: '전액 취소' })}
@@ -93,7 +93,7 @@ export default function CancelOrderModal({
               type="button"
               onClick={() => onPartialCancelChange(true)}
               className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                isPartialCancel ? 'bg-blue-500 text-white' : 'bg-gray-50 dark:bg-[#1A1C21] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A1C21]'
+                isPartialCancel ? 'bg-gray-900 text-white' : 'bg-gray-50 dark:bg-[#1A1C21] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A1C21]'
               }`}
             >
               {t('cancelOrder.partialCancel', { defaultValue: '부분 취소' })}

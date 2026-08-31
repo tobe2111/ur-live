@@ -96,7 +96,7 @@ export default function SellerGroupBuyOverview() {
         >
           <p className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${data.at_risk > 0 ? 'text-red-600' : 'text-amber-600'}`}>
             {data.at_risk > 0 ? <AlertTriangle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-            {data.at_risk > 0 ? '⚠️ 미달성 위험' : '마감 임박'}
+            {data.at_risk > 0 ? '미달성 위험' : '마감 임박'}
           </p>
           <p className={`text-2xl font-extrabold mt-0.5 ${data.at_risk > 0 ? 'text-red-700' : 'text-amber-700'}`}>{data.at_risk > 0 ? data.at_risk : data.closing_soon}</p>
           <p className="text-[10px] text-gray-500 mt-1">{data.at_risk > 0 ? '24h+ 진행률 50%-' : '24시간 이내'}</p>

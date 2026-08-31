@@ -227,7 +227,7 @@ export default function AdminDealMonitorPage() {
             <button
               onClick={() => switchTab('charges')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                tab === 'charges' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                tab === 'charges' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
               충전 내역
@@ -235,7 +235,7 @@ export default function AdminDealMonitorPage() {
             <button
               onClick={() => switchTab('users')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                tab === 'users' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                tab === 'users' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
               유저별 요약

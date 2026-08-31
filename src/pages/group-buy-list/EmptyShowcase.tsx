@@ -1,9 +1,9 @@
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 빈 화면 '곧 오픈' showcase(verbatim 추출). 동작 불변.
 import { useTranslation } from 'react-i18next'
-import { Plus } from 'lucide-react'
+import { Plus, type LucideIcon } from 'lucide-react'
 import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 
-interface ShowcaseCard { emoji: string; label: string; desc: string }
+export interface ShowcaseCard { Icon: LucideIcon; label: string; desc: string }
 
 export default function EmptyShowcase({ catEmpty, showcaseCards, createPath, startCtaLabel, navigate }: {
   catEmpty?: { noun: string } | null
@@ -30,7 +30,7 @@ export default function EmptyShowcase({ catEmpty, showcaseCards, createPath, sta
                 <div className={`max-w-md mx-auto ${showcaseCards.length === 1 ? 'flex justify-center' : 'grid grid-cols-2 gap-3'}`}>
                   {showcaseCards.map((c, i) => (
                     <div key={i} className={`bg-white dark:bg-[#0D0F12] border-2 border-dashed border-gray-200 dark:border-[#2C2F35] rounded-2xl p-4 text-center opacity-70 hover:opacity-100 transition-opacity ${showcaseCards.length === 1 ? 'w-44' : ''}`}>
-                      <p className="text-3xl mb-1.5">{c.emoji}</p>
+                      <c.Icon className="w-7 h-7 mx-auto mb-1.5 text-gray-400" aria-hidden="true" />
                       <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{c.label}</p>
                       <p className="text-[10px] text-gray-400 mt-0.5">{c.desc}</p>
                       <span className="inline-block mt-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[9px] font-bold">{t('groupBuy.soonOpen', { defaultValue: '곧 오픈' })}</span>

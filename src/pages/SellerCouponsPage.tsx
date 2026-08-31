@@ -54,7 +54,7 @@ export default function SellerCouponsPage() {
           icon={<Ticket className="h-5 w-5" />}
           actions={
             <button onClick={() => setShowForm(!showForm)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+              className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-900">
               <Plus className="h-3.5 w-3.5" /> {t('seller.coupons.create')}
             </button>
           }
@@ -87,7 +87,7 @@ export default function SellerCouponsPage() {
               <input type="date" value={form.expires_at} onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
             </div>
-            <button onClick={handleCreate} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold">{t('seller.coupons.createBtn')}</button>
+            <button onClick={handleCreate} className="px-6 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold">{t('seller.coupons.createBtn')}</button>
           </div>
         )}
 

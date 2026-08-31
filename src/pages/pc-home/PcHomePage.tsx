@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { useCurrentDong } from '@/hooks/useCurrentDong'
+import { BedDouble } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import SiteFooter from '@/components/main/SiteFooter'
@@ -60,6 +62,8 @@ export default function PcHomePage() {
   const [region, setRegion] = useState<HomeRegion>(() => readHomeRegion())
   // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): GPS 좌표. 세팅되면 sort='near'(거리순, 숨기지 않고 재배열).
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
+  // 🧭 2026-08-30 (대표 "홈에선 현재 위치가 어딘지도 나와야지") — 모바일 홈과 같은 훅.
+  const dong = useCurrentDong(userLoc)
   // '현 위치로 설정' → 거리순 정렬 + 지역필터 해제(가까운 딜을 전부 보여줌).
   const handleLocate = (loc: { lat: number; lng: number }) => { setUserLoc(loc); setRegion({}); setSort('near') }
   // 지역 드롭다운 선택 → 지역 필터 모드(거리순 해제).
@@ -82,7 +86,7 @@ export default function PcHomePage() {
           ⚠️ 예전처럼 `HOME_SHOWCASE_ENABLED &&` 로 감싸면 플래그를 끄는 순간 지역 선택·현 위치·
           지도 진입이 홈에서 통째로 사라진다(칩이 여기 말고는 없다). 플래그가 지배하는 건
           아래 ①섹션·③배너뿐이고, 히어로 **콘텐츠**(어드민 배너)는 없으면 기본값으로 그려진다. */}
-      <HomeHeroBanner controls={{ region, onRegionChange: handleRegion, onLocate: handleLocate, located: !!userLoc }} />
+      <HomeHeroBanner controls={{ region, onRegionChange: handleRegion, onLocate: handleLocate, located: !!userLoc, locatedLabel: dong?.dong }} />
 
       {/* 🖥️ 2026-07-19 (대표 — "왼쪽 카테고리보단 위에"): 좌측 레일 제거 → 풀너비. 카테고리는 상단 가로 바(PcHomeRail).
           📐 2026-08-17 (대표 — "컴팩트하게, 여백이 많은 느낌" · 여기어때/그루폰 참고): 컨테이너 1600→1440
@@ -116,7 +120,7 @@ export default function PcHomePage() {
             <h1 className="text-[20px] font-black tracking-tight text-gray-900 dark:text-white">
               {catLabel
                 ? `${catLabel} 이용권`
-                : userLoc ? '내 주변 가까운 딜' : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
+                : userLoc ? (dong?.dong ? `${dong.dong} 주변 딜` : '내 주변 가까운 딜') : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
             </h1>
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
               {catLabel
@@ -166,7 +170,7 @@ export default function PcHomePage() {
               to="/stays"
               className="flex items-center justify-between mb-4 px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-[#2C2F35] hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors"
             >
-              <span className="text-[13px] font-bold text-gray-900 dark:text-white">🏨 날짜·인원으로 숙소 검색하기</span>
+              <span className="text-[13px] font-bold text-gray-900 dark:text-white"><BedDouble className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />날짜·인원으로 숙소 검색하기</span>
               <span className="text-[13px] text-gray-500 dark:text-gray-400">체크인/체크아웃 지정 →</span>
             </Link>
           )}

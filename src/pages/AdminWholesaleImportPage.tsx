@@ -279,7 +279,7 @@ export default function AdminWholesaleImportPage() {
               <p className="text-sm font-bold text-gray-900">🩺 카탈로그 노출 진단</p>
               <p className="text-[11px] text-gray-400 mt-0.5">상품을 등록했는데 도매몰에 안 보일 때 — 왜 숨겨졌는지 사유별로 진단하고 한 번에 정정합니다.</p>
             </div>
-            <button onClick={runDiagnostic} disabled={diagLoading} className="px-3 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap">{diagLoading ? '진단 중…' : '진단 실행'}</button>
+            <button onClick={runDiagnostic} disabled={diagLoading} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white hover:bg-gray-900 disabled:opacity-50 whitespace-nowrap">{diagLoading ? '진단 중…' : '진단 실행'}</button>
           </div>
           {diag && (() => {
             const s = diag.summary || {}
@@ -366,7 +366,7 @@ export default function AdminWholesaleImportPage() {
 
                 {hidden > 0 && (
                   <div className="flex flex-wrap gap-2 pt-1">
-                    <button onClick={() => runRepair({})} disabled={repairing} className="px-3 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">데이터 정합 정정 (소스·몰)</button>
+                    <button onClick={() => runRepair({})} disabled={repairing} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white hover:bg-gray-900 disabled:opacity-50">데이터 정합 정정 (소스·몰)</button>
                     <button onClick={() => runRepair({ activate: true })} disabled={repairing} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50">+ 비활성 상품 노출</button>
                     <button onClick={() => runRepair({ activate: true, open_visibility: true })} disabled={repairing} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50">+ 공급범위까지 전체 공개</button>
                   </div>
