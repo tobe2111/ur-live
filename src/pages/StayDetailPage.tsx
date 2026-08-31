@@ -10,12 +10,14 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { MapPin, Calendar, Users, Star, Wifi, Coffee, Car, Waves, Sparkles, ChevronLeft, Flame, Utensils, Wind, Bath, Dumbbell, Check, PawPrint, CigaretteOff } from 'lucide-react'
+import { MapPin, Calendar, Users, Star, Wifi, Coffee, Car, Waves, Sparkles, Flame, Utensils, Wind, Bath, Dumbbell, Check, PawPrint, CigaretteOff } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
-import { SectionTitle, AmenityFlow, InfoBlock } from './stay-detail/StayInfoSections'
+import { SectionTitle, AmenityFlow, InfoBlock, propertyTypeLabel } from './stay-detail/StayInfoSections'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import DetailGallery from './group-buy/DetailGallery'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
+import DetailBreadcrumb, { stayCrumbs } from '@/components/deal/DetailBreadcrumb'
+import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import StayDateGuestPicker, { type DayPrice } from './stay-detail/StayDateGuestPicker'
 import BrandLoader from '@/components/brand/BrandLoader'
 
@@ -88,16 +90,6 @@ interface AvailRoom {
 //   교체(부분일치) — 시드/수기/미래 표현 다 인식. 미매칭도 점 대신 체크 아이콘(설정된 시설로 보이게).
 const AMENITY_ICON_CLS = 'w-4 h-4 text-gray-500 dark:text-gray-400'
 
-/** 🏷️ 숙소 유형 배지 — DB 값은 영문('hotel')이라 그대로 두면 화면에 원본 데이터가 비친다.
- *  어휘는 시드의 STAY_TYPES.label 과 맞춘다. */
-const PROPERTY_TYPE_LABELS: Record<string, string> = {
-  hotel: '호텔', pension: '펜션', guesthouse: '스테이', resort: '리조트',
-  glamping: '글램핑', motel: '모텔', villa: '풀빌라', camping: '캠핑',
-}
-function propertyTypeLabel(t?: string | null): string {
-  const key = String(t || '').trim().toLowerCase()
-  return PROPERTY_TYPE_LABELS[key] || (t || '숙소')
-}
 function amenityMeta(a: string): { label: string; icon: React.ReactNode } {
   const s = String(a || '').toLowerCase()
   const has = (...keys: string[]) => keys.some((k) => s.includes(k))
@@ -136,6 +128,7 @@ export default function StayDetailPage() {
   const [params, setParams] = useSearchParams()
   const productId = Number(id)
 
+  const heroRef = useRef<HTMLDivElement | null>(null)
   const [stay, setStay] = useState<StayDetail | null>(() => readStaySeed(productId))
   const [loading, setLoading] = useState(() => !readStaySeed(productId))
   const [rooms, setRooms] = useState<AvailRoom[]>([])
@@ -346,6 +339,14 @@ export default function StayDetailPage() {
           앞으로는 이런 개선은 다른 카테고리와 함께 개선이 되어야 해"):
           제목·별점·주소를 사진 **위**로 올리고(이용권 상세와 동일), 갤러리도 **같은 컴포넌트**를 쓴다.
           그 전까지 숙소는 자체 스와이프 갤러리라, 이용권 상세를 그루폰식으로 고쳐도 여기엔 안 닿았다. */}
+      {/* 🔘 이용권 상세와 **같은 컴포넌트**(대표 "왜 계속 다르게 하는거지?"). 경위는 detail-hero-crop.test.ts */}
+      <DetailFloatingHeader
+        productId={stay.id} title={stay.restaurant_name || stay.name}
+        shareDescription={[stay.region_sido, stay.region_sigungu].filter(Boolean).join(' ') || '숙소 이용권'}
+        shareImageUrl={stay.image_url || ''} shareLink={`https://urdeal.kr/stays/${stay.id}`}
+        myUserId={localStorage.getItem('user_id') || ''} heroRef={heroRef} onBack={() => navigate(-1)}
+      />
+      <DetailBreadcrumb items={stayCrumbs(propertyTypeLabel(stay.property_type))} overlayHeader />
       <DetailTitleHeader
         name={stay.restaurant_name || stay.name}
         storeName={stay.property_type}
@@ -360,22 +361,19 @@ export default function StayDetailPage() {
         {/* 🖼️ 갤러리는 **좌측 컬럼 안** — 그리드 밖 풀폭이면 폭 1140px 이라 사진만 640px 로 커진다. */}
         {/* 📱 음수 마진 = 부모 `px-4 py-5` 를 모바일에서만 빠져나가기(공구 상세와 같은 풀블리드).
             `lg:` 되돌림까지가 한 쌍 — 경위는 `stay-detail-gallery-bleed.test.ts`. */}
-        <div className="relative -mx-4 -mt-5 lg:mx-0 lg:mt-0 bg-gray-100 dark:bg-[#1A1C21] lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#2C2F35]">
+        <div ref={heroRef} className="relative -mx-4 -mt-5 lg:mx-0 lg:mt-0 bg-gray-100 dark:bg-[#1A1C21] lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#2C2F35]">
           <DetailGallery
             images={galleryImages}
             alt={stay.restaurant_name || stay.name}
             fallback={<span className="text-6xl" aria-hidden="true">🏨</span>}
           />
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="absolute top-4 left-4 z-10 w-9 h-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white lg:hidden">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
         </div>
 
         {/* Title + meta — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번).
             📏 `mt-5` = 사진↔배지 간격(경위는 stay-detail-gallery-bleed.test.ts — 없으면 2px 로 붙는다). */}
         <div className="mt-5 mb-5 lg:mt-0 lg:hidden">
           <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 mb-1">
-            <span className="px-2 py-0.5 bg-gray-100 dark:bg-white/[0.06] rounded font-semibold">{propertyTypeLabel(stay.property_type)}</span>
+            {/* 🧭 2026-08-30: 유형 배지('호텔')를 뺐다 — 바로 위 빵부스러기의 마지막 칸이 같은 말이다. */}
             {/* ⭐ 등급을 별 아이콘 N개로 그렸었다. 브랜드 팔레트에서 amber 는 무채색으로
                 리매핑돼 회색 별이 됐고(등급인지 비활성인지 안 읽힌다), 바로 아래 리뷰 평점의
                 별과 두 벌이 돼 눈이 헷갈렸다. 등급은 글자가 정확하다. */}

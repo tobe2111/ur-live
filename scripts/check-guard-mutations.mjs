@@ -360,6 +360,17 @@ const MUTATIONS = [
       '남는다.** 분기 변경 직후 실제로 그 회귀를 냈고 이 가드로 잡았다.',
   },
   {
+    name: '상세 빵부스러기가 죽은 링크를 가리킨다',
+    file: 'src/components/deal/DetailBreadcrumb.tsx',
+    find: "    { label: '숙소', to: '/stays' },",
+    replace: "    { label: '숙소', to: '/meal-vouchers' },",
+    test: 'src/tests/unit/detail-breadcrumb.test.ts',
+    why:
+      '빵부스러기의 값은 **길이라는 것**에 있다. 목적지가 없으면 장식이고, 이 레포는 이미 그걸로 ' +
+      '데였다 — `/stays` 카테고리 칩이 죽은 링크여서 2026-07-20 에 고쳤고 `/meal-vouchers` 는 ' +
+      '구조적으로 영구 0건이라 별칭으로 접었다. 링크는 App.tsx 라우트와 대조해야 한다.',
+  },
+  {
     name: '상세 제목이 다시 번역투가 된다(무엇을 기대하세요?)',
     file: 'src/pages/GroupBuyDetailPage.tsx',
     find: ">딜 안내</div>",
@@ -1220,8 +1231,10 @@ canvas {
   {
     name: '상세가 서버 raw 할인율로 되돌아간다(카드와 숫자가 갈린다)',
     file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: 'discountPct={displayDiscountPct}',
-    replace: 'discountPct={detail.current_discount_pct}',
+    // 🩸 2026-08-31: `discountPct={displayDiscountPct}` 만으로는 더 이상 유일하지 않다 — 같은 날 신설된
+    //    공용 상단바(DetailFloatingHeader)도 같은 prop 이름을 쓴다. 원래 대상인 **구매 박스**로 좁힌다.
+    find: 'name={detail.name}\n          discountPct={displayDiscountPct}',
+    replace: 'name={detail.name}\n          discountPct={detail.current_discount_pct}',
     test: 'src/tests/unit/groupon-detail-map.test.ts',
     why:
       '실측(2026-08-19, id 2846 정가 32,000→23,800): 홈 카드는 -26%, 상세는 할인 표시 없음이었다. ' +

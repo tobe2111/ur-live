@@ -38,8 +38,11 @@ describe('숙소 상세 갤러리 — 다른 상세와 같은 풀블리드', () 
     //    ⇒ 배지 라벨(`propertyTypeLabel`)로 그 블록을 직접 앵커하고, 음수는 명시적으로 배제한다.
     //    ⚠️ 이 검사는 클래스만 본다 — 실제 픽셀은 브라우저로 재야 한다.
     const s = read(STAY)
-    const badge = s.indexOf('propertyTypeLabel(stay.property_type)')
-    expect(badge, '유형 배지를 못 찾았다 — 앵커가 낡았다').toBeGreaterThan(0)
+    // 🩸 앵커를 유형 배지(`propertyTypeLabel`)로 잡았다가, 같은 날 그 배지를 빵부스러기와 중복이라
+    //    제거하면서 이 검사가 "낡은 지도"로 빨간불이 났다(조용히 통과하지 않은 건 다행이다).
+    //    ⇒ 그 블록에서 **가장 안 없어질 것**(제목 h1)로 다시 앵커한다.
+    const badge = s.indexOf('<h1 className="text-xl lg:text-2xl font-extrabold">')
+    expect(badge, '모바일 제목(h1)을 못 찾았다 — 앵커가 낡았다').toBeGreaterThan(0)
     // 배지 바로 앞 div 는 **안쪽 flex 줄**이다 — 제목 블록은 한 단계 위다. 그래서 위로 올라가며
     // `lg:hidden` 을 가진 첫 div 를 찾는다(모바일 전용 제목 블록의 표식).
     let cls = ''
