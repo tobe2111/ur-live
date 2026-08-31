@@ -190,7 +190,8 @@
     "currencyWon": "KRW",
     "checkNetworkRetry": "Comprueba tu red e inténtalo de nuevo",
     "goHome": "Ir al inicio",
-    "prev": "Anterior"
+    "prev": "Anterior",
+    "seeAll": "Ver todo"
   },
   "seller": {
     "relink": {
@@ -3827,7 +3828,8 @@
     "dongnedeal": "Ofertas locales",
     "create": "Crear",
     "offlineGroupBuy": "Compra grupal local",
-    "myGbVouchers": "Vales"
+    "myGbVouchers": "Vales",
+    "myGifticons": "Mis gifticons"
   },
   "bulkUpload": {
     "title": "Carga masiva de productos",
@@ -4745,7 +4747,7 @@
     "storeGuide": "Nota de la tienda",
     "cancelRefund": "Cancelar · Reembolsar",
     "refundWindowNote": "Reembolsable solo si no se usa y dentro de los 7 días del pago",
-    "myVouchers": "Mis cupones",
+    "myVouchers": "Mis vales",
     "empty": "Aún no tienes cupones",
     "emptyHint": "¡Únete a una compra grupal de restaurante!",
     "exploreRestaurants": "Explorar restaurantes",
@@ -4755,13 +4757,14 @@
     "scan": "Ver QR",
     "copy": "Copiar",
     "showQrAtStore": "Muestre este código QR en el establecimiento",
-    "seoTitle": "Mis cupones - 유어딜",
-    "seoDescription": "Ver y usar cupones comprados",
+    "seoTitle": "Mis vales - 유어딜",
+    "seoDescription": "Consulta los vales que compraste y úsalos en tienda",
     "status": {
       "unused": "Disponible",
       "used": "Usado",
       "expired": "Caducado",
-      "refunded": "Reembolsado"
+      "refunded": "Reembolsado",
+      "processing": "Enviando"
     },
     "verify": {
       "title": "Verificar cupón",
@@ -4811,7 +4814,15 @@
     "deal": "deal",
     "heroBalanceLabelGift": "Saldo de vales regalo",
     "loadFailed": "No se pudieron cargar tus cupones",
-    "totalCount": "{{count}} en total"
+    "totalCount": "{{count}} en total",
+    "myGifticons": "Mis gifticons",
+    "myBox": "Mi caja",
+    "gifticonRowSub": "Gifticons recibidos por SMS",
+    "gifticonSeoTitle": "Mis gifticons - 유어딜",
+    "gifticonSeoDescription": "Consulta los gifticons que compraste y úsalos en tienda",
+    "loadFailedGift": "No se pudieron cargar los gifticons",
+    "noUnusedGift": "No hay gifticons disponibles",
+    "totalCountLabel": "Total"
   },
   "sellerWaiting": {
     "title": "Aprobación de Vendedor Pendiente",
@@ -6016,7 +6027,7 @@
     "sectionTitle": "Mi actividad",
     "wishlist": "[TODO:es] 찜한 상품",
     "voucher": "Mis vales",
-    "voucherSub": "Vales y tarjetas de regalo",
+    "voucherSub": "Usar en tienda con QR o código",
     "digitalLibrary": "[TODO:es] 디지털 보관함",
     "digitalLibrarySub": "[TODO:es] 전자책·강의·가이드",
     "coupons": "[TODO:es] 쿠폰함",
@@ -6025,7 +6036,9 @@
     "myStays": "Mis Reservas",
     "myStaysSub": "Código check-in / vencimiento",
     "interestList": "Restaurantes guardados",
-    "interestListSub": "Alertas de apertura de compra grupal"
+    "interestListSub": "Alertas de apertura de compra grupal",
+    "gifticon": "Mis gifticons",
+    "gifticonSub": "Recibidos por SMS"
   },
   "orderStatus": {
     "sectionTitle": "[TODO:es] 주문 현황",

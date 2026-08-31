@@ -190,7 +190,8 @@
     "currencyWon": "원",
     "checkNetworkRetry": "네트워크 상태를 확인한 뒤 다시 시도해주세요",
     "goHome": "메인으로",
-    "prev": "이전"
+    "prev": "이전",
+    "seeAll": "전체 보기"
   },
   "auth": {
     "email": "이메일",
@@ -4507,7 +4508,8 @@
     "dongnedeal": "동네딜",
     "create": "만들기",
     "offlineGroupBuy": "오프라인 공동구매",
-    "myGbVouchers": "이용권"
+    "myGbVouchers": "이용권",
+    "myGifticons": "내 교환권"
   },
   "bulkUpload": {
     "title": "상품 대량등록",
@@ -4747,7 +4749,7 @@
     "storeGuide": "매장 안내",
     "cancelRefund": "구매 취소·환불",
     "refundWindowNote": "미사용 · 결제 후 7일 이내에만 환불할 수 있어요",
-    "myVouchers": "내 지갑",
+    "myVouchers": "내 이용권",
     "empty": "아직 이용권이 없습니다",
     "emptyHint": "맛집 공동구매에 참여해보세요!",
     "exploreRestaurants": "맛집 둘러보기",
@@ -4757,13 +4759,14 @@
     "scan": "QR 보기",
     "copy": "복사",
     "showQrAtStore": "매장에서 이 QR 코드를 보여주세요",
-    "seoTitle": "내 지갑 - 유어딜",
-    "seoDescription": "선결제 이용권과 교환권을 확인하고 사용하세요",
+    "seoTitle": "내 이용권 - 유어딜",
+    "seoDescription": "구매한 이용권을 확인하고 매장에서 사용하세요",
     "status": {
       "unused": "사용 가능",
       "used": "사용 완료",
       "expired": "만료됨",
-      "refunded": "환불됨"
+      "refunded": "환불됨",
+      "processing": "발송 중"
     },
     "verify": {
       "title": "교환권 인증",
@@ -4811,7 +4814,15 @@
     "stepGift2": "MMS\n발송",
     "stepGift3": "매장에서\n제시",
     "loadFailed": "이용권을 불러오지 못했어요",
-    "totalCount": "총 {{count}}장"
+    "totalCount": "총 {{count}}장",
+    "myGifticons": "내 교환권",
+    "myBox": "보관함",
+    "gifticonRowSub": "문자로 받은 기프티콘 보관함",
+    "gifticonSeoTitle": "내 교환권 - 유어딜",
+    "gifticonSeoDescription": "구매한 교환권(기프티콘)을 확인하고 매장에서 사용하세요",
+    "loadFailedGift": "교환권을 불러오지 못했어요",
+    "noUnusedGift": "사용 가능한 교환권이 없어요",
+    "totalCountLabel": "전체"
   },
   "sellerWaiting": {
     "title": "셀러 승인 대기",
@@ -5625,7 +5636,7 @@
     "sectionTitle": "나의 이용 내역",
     "wishlist": "찜한 상품",
     "voucher": "내 이용권",
-    "voucherSub": "매장 이용권 · 교환권",
+    "voucherSub": "매장에서 QR·코드로 사용",
     "digitalLibrary": "디지털 보관함",
     "digitalLibrarySub": "전자책·강의·가이드",
     "coupons": "쿠폰함",
@@ -5634,7 +5645,9 @@
     "myStays": "내 숙소 예약",
     "myStaysSub": "체크인 코드 / voucher 유효기간",
     "interestList": "관심 맛집",
-    "interestListSub": "공구 오픈 알림 신청 목록"
+    "interestListSub": "공구 오픈 알림 신청 목록",
+    "gifticon": "내 교환권",
+    "gifticonSub": "문자로 받은 기프티콘"
   },
   "orderStatus": {
     "sectionTitle": "주문 현황",

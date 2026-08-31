@@ -378,7 +378,7 @@ export default function GroupBuyDetailPage() {
           toast.success('🎁 교환권 발급 완료')
           fireAffiliateTrack(res?.data?.data?.order_id ?? null, Number(id), detail?.name) // 큐레이터 적립 (fail-soft)
           invalidateVouchers()
-          navigate('/my-vouchers')
+          navigate('/my-gifticons')  // 🎟️ 2026-08-31 지갑 분리 — 교환권(voucher_deal)은 교환권 보관함으로
         } else {
           toast.error(res.data?.error || '교환 실패')
         }
