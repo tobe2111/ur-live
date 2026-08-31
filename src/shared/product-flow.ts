@@ -20,7 +20,7 @@ import { isVoucherCategory } from './constants/voucher-categories'
 //   이용권 = 식당·뷰티·숙박 매장권 (`meal_voucher` 등 카테고리) → **카드 결제**(group_buy_toss)
 //   카테고리 이름에 `_voucher` 가 붙는다고 딜 결제가 아니다 — 이 혼동이 실제 오판을 낳았다.
 export type ProductFlow =
-  | 'voucher_deal'         // 교환권(deal_only=1) — 딜 결제, 즉시 발급, /my-vouchers 이동
+  | 'voucher_deal'         // 교환권(deal_only=1) — 딜 결제, 즉시 발급, /my-gifticons 이동
   | 'group_buy_toss'       // 공동구매 (일반 상품) — Toss 결제, 배송, voucher 발급
   | 'standard_checkout'    // 일반 쇼핑 — Toss 결제, 배송, 장바구니 지원
 
@@ -75,7 +75,8 @@ export const FLOW_CONFIG: Record<ProductFlow, {
     detailPath: id => `/vouchers/${id}`,
     apiPath: id => `/api/group-buy/join/${id}`,
     paymentMethod: 'deal',
-    successPath: '/my-vouchers',
+    // 🎟️ 2026-08-31 (대표 — 지갑 분리): 교환권은 교환권 보관함으로. 이용권 지갑(/my-vouchers)이 아니다.
+    successPath: '/my-gifticons',
     buttonLabel: '🎁 딜로 교환하기',
   },
   group_buy_toss: {

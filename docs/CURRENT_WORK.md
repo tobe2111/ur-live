@@ -5494,7 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 209건 · 최신순 · 이 목록은 자동 생성된다._
+_총 210건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-31**
 - [2026-08-31 — 영입 2% 를 직접 입점 매장에만 (+ 예산 아비터)](handoff/2026-08-31-store-intro-direct-only.md)
@@ -5502,6 +5502,7 @@ _총 209건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-08-31 — 대표 QA 준비: 홍대돈까스 접근 구조 (내가 두 번 헛짚은 자리)](handoff/2026-08-31-qa-setup.md)
 - [원장 정합 알림 — 숫자가 거짓이었다, 그리고 진짜 5건의 정체 (2026-08-31)](handoff/2026-08-31-ledger-mismatch.md)
 - [2026-08-31 — 영입자 지정 UI + **id 공간 불일치 수리**](handoff/2026-08-31-introducer-assign.md)
+- [2026-08-31 — 교환권은 교환권 페이지에서, 이용권은 이용권 페이지에서 (지갑 분리)](handoff/2026-08-31-gifticon-wallet-split.md)
 - [2026-08-31 — 정산 최소 10만원은 현금에만](handoff/2026-08-31-deal-payout-no-minimum.md)
 - [2026-08-31 — 빌드 산출 CSS 가드를 실제로 도는 자리로 옮김](handoff/2026-08-31-built-css-guard.md)
 - [2026-08-31 — 에이전시 매장영입 1% 폐지 (영입은 하나의 행위)](handoff/2026-08-31-agency-intro-retired.md)

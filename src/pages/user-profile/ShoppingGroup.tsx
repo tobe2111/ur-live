@@ -9,7 +9,7 @@
  */
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Ticket, TicketPercent, BedDouble, BookOpen, Heart, Star, Bell, Package, MapPin, PenLine, type LucideIcon } from 'lucide-react'
+import { ChevronRight, Ticket, TicketPercent, Gift, BedDouble, BookOpen, Heart, Star, Bell, Package, MapPin, PenLine, type LucideIcon } from 'lucide-react'
 import type { MyCounts } from './types'
 
 /** 🖊️ 2026-08-30: `icon` 이모지 문자열 → lucide 컴포넌트.
@@ -26,12 +26,12 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
       key: 'assets',
       label: t('shopping.groupAssets', { defaultValue: '이용권·자산' }),
       items: [
-        // 🛡️ 2026-07-02: sub '이용권·이용권'(치환 중복 카피 버그) → 지갑 실제 구성(이용권+교환권) 반영
-        { Icon: Ticket, label: t('shopping.voucher', { defaultValue: '내 이용권' }), sub: t('shopping.voucherSub', { defaultValue: '매장 이용권 · 교환권' }), count: counts.voucher, path: '/my-vouchers' },
+        // 🎟️ 2026-08-31 (대표 — 지갑 분리): 이용권/교환권은 서로 다른 보관함이라 행도 둘.
+        { Icon: Ticket, label: t('shopping.voucher', { defaultValue: '내 이용권' }), sub: t('shopping.voucherSub', { defaultValue: '매장에서 QR·코드로 사용' }), count: counts.voucher, path: '/my-vouchers' },
+        { Icon: Gift, label: t('shopping.gifticon', { defaultValue: '내 교환권' }), sub: t('shopping.gifticonSub', { defaultValue: '문자로 받은 기프티콘' }), count: counts.gifticon, path: '/my-gifticons' },
         { Icon: TicketPercent, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },
         { Icon: BedDouble, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), sub: t('shopping.myStaysSub', { defaultValue: '체크인 코드 / 유효기간' }), path: '/my-stays' },
-        { Icon: BookOpen, label: t('shopping.digitalLibrary', { defaultValue: '디지털 보관함' }), sub: t('shopping.digitalLibrarySub', { defaultValue: '전자책·강의·가이드' }), path: '/my/digital' },
-      ],
+        { Icon: BookOpen, label: t('shopping.digitalLibrary', { defaultValue: '디지털 보관함' }), sub: t('shopping.digitalLibrarySub', { defaultValue: '전자책·강의·가이드' }), path: '/my/digital' },      ],
     },
     {
       key: 'interest',
