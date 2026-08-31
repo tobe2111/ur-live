@@ -61,10 +61,23 @@ const HEIGHT = Number(args.height) || 1200
 const AUTH = typeof args.auth === 'string' ? args.auth : ''
 
 /** 유어샵(`/u/:handle`) 시드 — 실제 CuratorPageResponse 모양. */
-const pin = (id, name, price, was, category) => ({
+/**
+ * ⚠️ 2026-08-31 — **이 팩토리가 얇아서 오진이 났다.** `avg_rating`·`discount_rate`·
+ *   `restaurant_name` 이 빠져 있어 유어샵 카드가 2줄로 렌더됐고, 나는 그걸 보고
+ *   "유어샵 카드가 홈보다 정보가 적다" 고 대표에게 보고할 뻔했다. 실제로는
+ *   **같은 `GroupBuyFeedCard`** 이고(2026-08-27 통합), 줄이 준 건 데이터가 없어서였다.
+ *   ⇒ 픽스처는 **서버가 실제로 주는 필드 전부**를 담아야 한다. 얇은 픽스처는
+ *      "없는 결함"을 만들어 낸다 — 이 세션에서만 세 번 그럴 뻔했다.
+ */
+const pin = (id, name, price, was, category, merchant, addr, rating, reviews) => ({
   id, product_id: id, position: id, note: null, click_count: 0,
   product_name: name, image_url: null, thumbnail: null,
   price, original_price: was, category, is_active: 1, commission_rate: 5,
+  discount_rate: was ? Math.round((1 - price / was) * 100) : 0,
+  dominant_color: '#E8DED6',
+  avg_rating: rating, review_count: reviews, sold_count: 0,
+  restaurant_name: merchant, restaurant_address: addr,
+  seller_id: 1, deal_only: 0,
 })
 const CURATOR_SEED = {
   success: true,
@@ -75,12 +88,12 @@ const CURATOR_SEED = {
     linkshop_show_recommend: 1,
   },
   pins: [
-    pin(101, '연남 이자카야 2인 코스', 38000, 53000, 'meal_voucher'),
-    pin(102, '망원 베이커리 3종 세트', 12900, 15000, 'meal_voucher'),
-    pin(103, '합정 헤어 커트 이용권', 25000, null, 'beauty_voucher'),
-    pin(104, '성산동 필라테스 5회권', 89000, 114000, 'etc_voucher'),
-    pin(105, '연희동 로스터리 원두 200g', 18000, null, 'meal_voucher'),
-    pin(106, '망원 한강 게스트하우스 1박', 68000, 85000, 'stay_voucher'),
+    pin(101, '연남 이자카야 2인 코스', 38000, 53000, 'meal_voucher', '토리이자카야', '서울 마포구 연남동', 4.8, 132),
+    pin(102, '망원 베이커리 3종 세트', 12900, 15000, 'meal_voucher', '망원제빵소', '서울 마포구 망원동', 4.7, 96),
+    pin(103, '합정 헤어 커트 이용권', 25000, null, 'beauty_voucher', '살롱드합정', '서울 마포구 합정동', 4.9, 211),
+    pin(104, '성산동 필라테스 5회권', 89000, 114000, 'etc_voucher', '코어필라테스', '서울 마포구 성산동', 4.6, 48),
+    pin(105, '연희동 로스터리 원두 200g', 18000, null, 'meal_voucher', '연희로스터리', '서울 서대문구 연희동', 4.8, 73),
+    pin(106, '망원 한강 게스트하우스 1박', 68000, 85000, 'stay_voucher', '한강게스트하우스', '서울 마포구 망원동', 4.5, 61),
   ],
   linked_seller: null,
 }
@@ -101,6 +114,41 @@ function shell() {
   return html
 }
 
+/**
+ * 🃏 2026-08-31 `--deals` — **채워진 화면**을 본다.
+ *   그전까지 이 하네스는 모든 API 에 빈 배열을 줬다. 그래서 나오는 그림이 늘 빈 화면이었고,
+ *   레이아웃 판단은 되는데 **"카드가 깔렸을 때 어떻게 보이나"** 는 못 봤다 — 커머스 앱의
+ *   완성도는 대부분 거기서 결정되는데도. (합성 데이터다. 실데이터의 긴 이름/빈 필드는 안 보인다.)
+ */
+const DEAL_TITLES = [
+  ['스타벅스 아메리카노 T', '카페 · 역삼동', 4500, 3200],
+  ['교촌치킨 허니콤보', '치킨 · 논현동', 23000, 17900],
+  ['올리브영 3만원권', '뷰티 · 전국', 30000, 25500],
+  ['제주 오션뷰 1박', '숙소 · 서귀포', 180000, 119000],
+  ['본죽 전복죽', '한식 · 삼성동', 12000, 8900],
+  ['CU 모바일상품권 1만원', '편의점 · 전국', 10000, 9300],
+]
+const DEALS = DEAL_TITLES.map(([name, sub, was, now], i) => ({
+  id: 9000 + i,
+  name,
+  restaurant_name: sub.split(' · ')[0],
+  restaurant_address: '서울 강남구 ' + sub.split(' · ')[1],
+  price: now,
+  original_price: was,
+  discount_rate: Math.round((1 - now / was) * 100),
+  image_url: '',
+  images: '[]',
+  dominant_color: ['#E8DED6', '#D9D2CB', '#E3DAD2', '#DCD5CE', '#E6DDD5', '#D7D0C9'][i],
+  category: 'meal_voucher',
+  deal_only: 0,
+  group_buy_status: 'active',
+  group_buy_current: 40 - i * 5,
+  avg_rating: Number((4.9 - i * 0.1).toFixed(1)),
+  review_count: 120 - i * 13,
+  slug: `sample-${i}`,
+  seller_id: 1,
+}))
+
 function serve() {
   return new Promise((resolve) => {
     const s = http.createServer((req, res) => {
@@ -109,6 +157,16 @@ function serve() {
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
         // 큐레이터 조회는 시드와 같은 페이로드로 — 아니면 백그라운드 갱신이 오류 상태로 빠진다
         if (p.startsWith('/api/curator/') && !p.includes('/me/')) return res.end(JSON.stringify(CURATOR_SEED))
+        if (args.deals) {
+          // 상세는 **단건**이다 — 목록과 같은 배열을 주면 화면이 안 그려진다.
+          const m = p.match(/^\/api\/(?:group-buy\/)?products\/(\d+)/)
+          if (m) {
+            const one = DEALS.find((d) => String(d.id) === m[1]) || DEALS[0]
+            return res.end(JSON.stringify({ success: true, data: one, product: one }))
+          }
+          if (p.startsWith('/api/group-buy/products') || p === '/api/products')
+            return res.end(JSON.stringify({ success: true, data: DEALS, products: DEALS }))
+        }
         return res.end(JSON.stringify({ success: true, data: [], products: [], pins: [], stats: {} }))
       }
       const f = path.join(DIST, p)

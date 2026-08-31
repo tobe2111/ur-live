@@ -89,9 +89,26 @@
 이 환경에선 **로그인 상태의 화면을 못 본다**(두 페이지 모두 `ProtectedRoute`). 그래서 배포 후 판정:
 
 1. 교환권을 딜로 1건 사고 → **`/my-gifticons` 로 떨어지는지** + 그 카드가 거기 있는지.
-2. `/my-vouchers` 에 그 교환권이 **없는지**(섞임 0) + 교환권 보유 시 "내 교환권 N장" 다리가 뜨는지.
+2. `/my-vouchers` 에 그 교환권이 **한 줄도 없는지**(섞임 0 — 다리 행도 대표 지시로 제거했다).
 3. 결제 직후 '발송 중' 카드가 보였다가 문자 도착 후 '사용 가능' 으로 바뀌는지(교환권만 있는 상태).
 4. 마이페이지 두 행의 개수가 각 페이지 실제 개수와 같은지.
+
+## origin/main 병합 (2026-08-31 05:0x)
+
+`mergeable_state: dirty` 라 `origin/main`(bd01362)을 병합했다. 충돌 4건 처리 방식 —
+
+- `scripts/check-guard-mutations.mjs` — **양쪽 보존(union)**. 매니페스트는 항목 목록이라 한쪽을
+  고르면 다른 세션이 등록한 가드가 조용히 사라진다. 병합 후 `--map-only` 로 지도 595건 성함 확인.
+  ⚠️ **실행하지 말 것** — 이 파일을 돌리면 소스에 결함을 주입한다(이번 세션이 한 번 당했다).
+- `src/features/guides/api/auto-reference.ts` · `docs/proposals/00-service-overview-and-coverage.md`
+  — **자동 생성물이라 손으로 병합하지 않고 재생성**(`npm run generate:guide-refs` ·
+  `node scripts/generate-proposal-refs.mjs`).
+- `src/pages/VouchersPage.tsx` 딜 잔액 카드 밑 보조 링크 — **main 쪽 채택**. 양쪽이 같은 지적
+  ("공구로 적립"이 뜻도 목적지도 안 보임)을 각자 고쳤는데, main 은 문구뿐 아니라 **형제가 하나
+  지워진 뒤 링크 하나가 `gap-3` 를 안고 떠 있던 레이아웃까지** 고쳤다. 문구만 바꾼 내 쪽을 택하면
+  그 레이아웃 수리가 되돌아간다.
+
+병합 후 검증: tsc 0 · **vitest 6,819 pass (541 파일)** · audit-gate GREEN.
 
 ## 남은 것 (이번 범위 밖 — 대표 판단)
 

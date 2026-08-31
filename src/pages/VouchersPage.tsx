@@ -515,7 +515,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               /* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 종료 — 카드 탭 = 딜 내역으로. */
               onClick={() => navigate(TOPUP_DISABLED ? '/my-deal-history' : '/points/charge')}
               className="w-full text-left rounded-2xl p-4 active:scale-[0.99] transition-transform"
-              style={{ background: 'linear-gradient(135deg, #211d3a 0%, #15131f 45%, #050505 100%)' }}
+              style={{ background: '#16181C' }}
             >
               <p className="text-[11px] text-gray-400 mb-1.5 tracking-wide">내 딜 잔액</p>
               <div className="flex items-baseline gap-1">
@@ -687,7 +687,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           onClick={() => navigate(TOPUP_DISABLED ? '/my-deal-history' : '/points/charge')}
           /* 🏭 2026-06-05 (사용자 요청): 토스식 프리미엄 다크 그라데이션(은은한 인디고 틴트). */
           className="w-full text-left rounded-2xl p-5 active:scale-[0.99] transition-transform"
-          style={{ background: 'linear-gradient(135deg, #211d3a 0%, #15131f 45%, #050505 100%)' }}
+          style={{ background: '#16181C' }}
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
@@ -701,7 +701,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               {/* 🎫 2026-06-26 (대표 결정 B): '딜=원' 항상 명확화 — 신규/외부 유입 진입장벽 해소(기존엔 잔액 부족 시만 노출). */}
               <p className="text-[11px] text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
             </div>
-            <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white" style={{ background: 'linear-gradient(135deg, #6b7280, #6b7280)' }}>
+            <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white" style={{ background: 'rgba(255,255,255,0.14)' }}>
               {TOPUP_DISABLED ? '내역' : '충전'} <ArrowRight className="w-3.5 h-3.5" />
             </span>
           </div>
@@ -711,14 +711,12 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             </p>
           )}
         </button>
-        {/* 보조 액션 — 카드 바깥 작은 텍스트 (당근/토스 패턴) */}
-        <div className="mt-2 flex items-center gap-3 text-[11px] px-1">
-          {/* 🎨 2026-08-31 (대표 "상단이 투박하다"): "공구로 적립" 은 뜻도 목적지도 안 보였다(→ 동네딜 지도).
-              충전이 끝난 뒤 딜을 모으는 실제 방법이라 문장으로 쓴다. */}
-          <button type="button" onClick={() => navigate('/map')} className="text-gray-500 dark:text-gray-400 hover:underline">
-            동네딜 참여하고 딜 받기 ›
+        {/* 🧹 2026-08-31: 형제가 하나 지워진 뒤 **링크 한 개가 gap-3 을 안고 홀로** 남아 있었다.
+            카드에서 떨어져 떠 보이던 자리 — 카드 아래 붙여 보조 액션임이 보이게 한다. */}
+        <div className="mt-1.5 px-1">
+          <button type="button" onClick={() => navigate('/map')} className="text-[11.5px] text-gray-500 dark:text-gray-400 hover:underline">
+            딜 모으는 방법 보기
           </button>
-
         </div>
       </div>
 
@@ -816,10 +814,12 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           구분선(border-t) + '상품' 섹션 헤더(카테고리/브랜드 + 개수) + 정렬을 상품 바로 위로. /vouchers 전용. */}
       {!embedded && (
         <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-2 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-between gap-2">
+          {/* 🧹 2026-08-31: ① 선물 아이콘 제거 — 바로 아래 하단 탭의 '교환권' 아이콘과 **같은 그림**이라
+              같은 화면에서 두 번 같은 말을 했고, 앰버 한 점이 이 화면의 유일한 색이라 시선만 끌었다.
+              ② 0 은 세지 않는다 — 곧바로 아래 빈 상태가 같은 사실을 더 잘 말한다. */}
           <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5 min-w-0">
-            <Gift className="w-[18px] h-[18px] text-amber-500 shrink-0" />
             <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
-            {!loading && (
+            {!loading && products.length > 0 && (
               <span className="text-[13px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
             )}
             {brand && (
@@ -867,8 +867,22 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             </div>
           )
         ) : products.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">
-            {brand ? `${brand} 교환권이 없습니다` : '교환권이 없습니다'}
+          <div className="text-center py-16">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">
+              {brand ? `${brand} 교환권이 없어요` : '조건에 맞는 교환권이 없어요'}
+            </p>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5">
+              {brand ? '다른 브랜드도 둘러보세요' : '카테고리를 바꾸면 더 많이 볼 수 있어요'}
+            </p>
+            {/* 🚪 2026-08-31: 여기도 막다른 길이었다 — 회색 문구 한 줄이 전부였고,
+                브랜드/카테고리 필터로 0건이 된 사용자는 되돌아갈 버튼이 없었다. */}
+            <button
+              type="button"
+              onClick={() => { setBrand(''); setCategory('') }}
+              className="ur-btn ur-btn-md bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4"
+            >
+              전체 교환권 보기
+            </button>
           </div>
         ) : (
           <>

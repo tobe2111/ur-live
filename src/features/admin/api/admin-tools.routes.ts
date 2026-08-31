@@ -343,6 +343,37 @@ adminToolsRoutes.put('/settings', async (c) => {
   return c.json({ success: true })
 })
 
+// ── 🩹 딜 잔액 정합 수리 ────────────────────────────────────────────────────
+/**
+ * 원장 정합 검사는 **감지만** 한다(잔액은 돈이라 자동 교정 금지). 그래서 알림이 매일 뜨는데도
+ * 고칠 손이 없었다. 이 엔드포인트가 그 손이다 — **기본 dry-run**, `apply:true` 라야 쓴다.
+ *
+ *   mode=orphan    같은 사람의 쪼개진 잔액 행을 합친다(적립 → 고아 행 삭제, 원장 dedup 멱등)
+ *   mode=reconcile 설명 안 되는 잔액에 *출처 불명* 보정행을 남긴다(**잔액 불변**)
+ *   mode=both      둘 다 — 병합을 먼저 하고 그 결과 위에서 보정한다(순서가 중요하다)
+ *
+ * ⚠️ `apply` 는 사람이 dry-run 결과를 눈으로 본 뒤에만 준다. 감사 로그에 남는다.
+ */
+adminToolsRoutes.post('/points-reconcile', async (c) => {
+  const body = await c.req.json<{ apply?: boolean; mode?: string }>().catch(() => ({} as { apply?: boolean; mode?: string }))
+  const apply = body.apply === true
+  const mode = body.mode === 'orphan' || body.mode === 'reconcile' ? body.mode : 'both'
+  try {
+    const { mergeOrphanBalances, reconcileLegacyBalances } = await import('../../../worker/utils/points-reconcile')
+    // 병합이 먼저다 — 합치고 나야 남는 불일치가 진짜 '설명 안 되는' 것이다.
+    const orphan = mode === 'reconcile' ? null : await mergeOrphanBalances(c.env.DB, apply)
+    const reconcile = mode === 'orphan' ? null : await reconcileLegacyBalances(c.env.DB, apply)
+    await writeAuditLog(c, {
+      action: 'points_reconcile', targetType: 'points',
+      after: { apply, mode, orphan: orphan?.results ?? null, reconcile: reconcile?.results ?? null },
+    }).catch(() => {})
+    return c.json({ success: true, apply, mode, orphan, reconcile })
+  } catch (err) {
+    // 🩸 여기서 삼키지 않는다 — 돈을 만지는 도구가 조용히 실패하면 안 된다.
+    return c.json({ success: false, error: (err as Error)?.message || String(err) }, 500)
+  }
+})
+
 // 📊 2026-07-05 (운영 감사 Q10 — 캡 관측성): 커미션 예산 캡 발동 이력.
 //   order-commissions.ts 가 Σ요청>예산인 주문만 기록(detail = 축별 요청/배분 JSON).
 //   테이블 미존재(캡 미발동/게이트 OFF)면 빈 배열 — 정상.

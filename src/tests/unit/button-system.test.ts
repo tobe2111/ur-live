@@ -125,6 +125,11 @@ describe('평면 그라디언트 — 그라데이션이 안 되는 그라디언�
       'teal','cyan','sky','blue','indigo','violet','purple','gray'])
     const norm = (t: string) => { const i = t.lastIndexOf('-'); return i < 0 ? t : (MONO.has(t.slice(0, i)) ? 'ink' + t.slice(i) : t) }
     const pat = /bg-gradient-to-[a-z]{1,2}\s+from-(\S+?)(?:\s+via-(\S+?))?\s+to-([^\s"'`]+)/g
+    // 🕳️ 2026-08-31: 이 테스트도 **className 만** 보고 있었다. 그래서 인라인
+    //   `style={{ background: 'linear-gradient(135deg, #6b7280, #6b7280)' }}` 이
+    //   교환권 잔액 카드에 살아 있는데도 래칫과 이 테스트가 **둘 다 초록**이었다.
+    //   같은 결함을 한쪽 표기법으로만 찾으면 다른 표기법으로 그대로 들어온다.
+    const patCss = /linear-gradient\(([^)]*)\)/g
 
     const walk = (d: string, out: string[] = []): string[] => {
       for (const e of readdirSync(d, { withFileTypes: true })) {
@@ -143,6 +148,22 @@ describe('평면 그라디언트 — 그라데이션이 안 되는 그라디언�
       for (const m of src.matchAll(pat)) {
         const parts = [m[1], m[2], m[3]].filter(Boolean).map(norm)
         if (new Set(parts).size === 1) bad.push(`${f.replace(root + '/', '')}  ${m[0].slice(0, 60)}`)
+      }
+      // ⚠️ 주석은 건너뛴다. 이걸 안 했더니 **결함을 설명하려고 쓴 주석 문자열**
+      //    (`confirm-dialog.tsx` 의 "…였고" 설명)이 위반으로 잡혔다 — 되돌려-검증에서 걸렸다.
+      //    래칫(check-design-slop.mjs)은 원래 줄 단위로 주석을 거르고 있었고, 여기만 안 걸렀다.
+      let inBlock = false
+      for (const raw of src.split('\n')) {
+        const t = raw.trim()
+        if (t.startsWith('/*')) { inBlock = !t.includes('*/'); continue }
+        if (inBlock) { if (t.includes('*/')) inBlock = false; continue }
+        if (t.startsWith('*') || t.startsWith('//') || t.startsWith('{/*')) continue
+        for (const m of raw.matchAll(patCss)) {
+          const stops = (m[1].match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|\b[a-z]{3,}\b/g) || [])
+            .filter((x) => !/^(deg|to|top|bottom|left|right|at|circle|ellipse|closest|farthest|side|corner)$/i.test(x))
+            .map((x) => x.toLowerCase())
+          if (stops.length >= 2 && new Set(stops).size === 1) bad.push(`${f.replace(root + '/', '')}  ${m[0].slice(0, 60)}`)
+        }
       }
     }
     expect(bad, `평면 그라디언트:\n${bad.slice(0, 8).join('\n')}`).toEqual([])

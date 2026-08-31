@@ -149,6 +149,87 @@ const MUTATIONS = [
       '클래스. 결제는 성공했으므로 로그·에러 어디에도 흔적이 없다.',
   },
   {
+    name: '🩹 잔액 수리 도구의 dry-run 이 사라진다 (보기만 하려다 돈이 움직인다)',
+    file: 'src/worker/utils/points-reconcile.ts',
+    find: '  if (!apply) return { found, results, applied: false }',
+    replace: '  if (false) return { found, results, applied: false }',
+    test: 'src/tests/unit/points-reconcile.test.ts',
+    why:
+      '이 도구는 사람이 **무엇을 쓸지 먼저 눈으로 보고** 누르는 것이 전제다. dry-run 이 없어지면 ' +
+      '조회 한 번이 곧 잔액 변경이 된다.',
+  },
+  {
+    name: '🩹 고아 병합의 멱등(원장 dedup)이 사라진다 (재실행 = 이중적립)',
+    file: 'src/worker/utils/points-reconcile.ts',
+    find: 'if (amount > 0 && !dup) {',
+    replace: 'if (amount > 0) {',
+    test: 'src/tests/unit/points-reconcile.test.ts',
+    why:
+      '병합은 재시도·부분실패로 두 번 돌 수 있다. 원장 dedup 이 유일한 이중적립 방어다 ' +
+      '(CLAUDE.md 머니 룰 3 — 멱등은 조회가 아니라 기록으로).',
+  },
+  {
+    name: '🩹 정합 보정이 잔액까지 바꾼다 (감사 기록이어야 하는데 지급이 된다)',
+    file: 'src/worker/utils/points-reconcile.ts',
+    find: "  const { recordPointTransaction } = await import('./point-ledger')",
+    replace: "  const { adjustUserPoints: recordPointTransaction } = await import('./point-ledger')",
+    test: 'src/tests/unit/points-reconcile.test.ts',
+    why:
+      '보정행은 *출처 불명* 을 원장에 적는 **기록**이지 지급이 아니다. 잔액을 함께 움직이면 ' +
+      '설명하려던 금액을 두 배로 만든다.',
+  },
+  {
+    name: '💸 원장 정합 검사가 다시 amount 를 우선한다 (충전=원화·차감=양수 → 숫자가 거짓)',
+    file: 'src/worker/utils/ledger-integrity-checks.ts',
+    find: '  WHEN pt.points_amount IS NOT NULL THEN',
+    replace: '  WHEN COALESCE(pt.amount, 0) != 0 THEN pt.amount\n  WHEN FALSE THEN',
+    test: 'src/tests/unit/ledger-balance-mismatch.test.ts',
+    why:
+      '레거시 행은 `amount` 가 충전이면 **원화**(10,000 vs 딜 8,500)이고 차감도 양수다. ' +
+      '그걸 부호 있는 딜 델타로 읽으면 매일 뜨는 원장 알림의 숫자가 통째로 거짓이 된다 ' +
+      '(2026-08-31 실측: 유저 3 이 −82,480 으로 나왔는데 계산 오류였다).',
+  },
+  {
+    name: '💸 레거시 차감(donate)의 부호가 사라진다 (빼야 할 것을 더한다)',
+    file: 'src/worker/utils/ledger-integrity-checks.ts',
+    find: 'CASE WHEN pt.type IN ${LEGACY_SPEND_TYPES} THEN -pt.points_amount ELSE pt.points_amount END',
+    replace: 'pt.points_amount',
+    test: 'src/tests/unit/ledger-balance-mismatch.test.ts',
+    why:
+      '후원·공구 사용은 잔액을 깎는데 레거시 규약에서는 **양수로 저장**된다. 부호를 안 붙이면 ' +
+      '차감이 적립으로 집계돼 멀쩡한 유저가 불일치로 잡힌다.',
+  },
+  {
+    name: '영입 2% 게이트가 credit 쪽에서 빠진다(중개 매장에 지급)',
+    file: 'src/worker/utils/influencer-store-intro-commission.ts',
+    find: '    if (!(await isDirectChannelStore(DB, Number(order.seller_id)))) return\n',
+    replace: '',
+    test: 'src/tests/unit/store-intro-direct-only.test.ts',
+    why:
+      '중개(5%) 매장에 영입 2% 를 얹으면 5% − PG준비금 2.75% − 2% = +0.25% 로 사실상 0 이고, ' +
+      '커미션이 하나만 더 겹치면 적자다. 게이트가 빠져도 에러는 안 나고 돈만 나간다.',
+  },
+  {
+    name: '영입 2% 게이트가 compute 쪽에서만 빠진다(예산이 새는 쪽으로 샌다)',
+    file: 'src/worker/utils/influencer-store-intro-commission.ts',
+    find: '    if (!(await isDirectChannelStore(DB, Number(order.seller_id)))) return 0\n',
+    replace: '',
+    test: 'src/tests/unit/store-intro-direct-only.test.ts',
+    why:
+      'compute 와 credit 이 갈리면 예산 아비터가 요청액을 잡아 두고 적립은 0 이 된다. ' +
+      '한쪽만 고치기 쉬운 자리라 두 방향을 따로 심는다.',
+  },
+  {
+    name: '미지정 매장을 direct 로 간주한다(관대 방향 폴백)',
+    file: 'src/worker/utils/influencer-store-intro-commission.ts',
+    find: "    return meta?.store_channel === 'direct'",
+    replace: "    return meta?.store_channel !== 'brokered'",
+    test: 'src/tests/unit/store-intro-direct-only.test.ts',
+    why:
+      '2026-08-31 대표 확정은 "미지정 = 미지급" 이다. 미지급은 채널을 채우고 소급 판단할 수 있지만 ' +
+      '과지급은 못 되돌린다. 실측상 매장 대부분이 미지정이라 이 폴백 하나로 전부가 지급 대상이 된다.',
+  },
+  {
     name: '평면 그라디언트가 다시 들어온다(단색인데 그라디언트인 척)',
     file: 'src/pages/user-profile/TeamPointsCard.tsx',
     find: '      <div className="bg-ink dark:bg-[#1A1C21] rounded-2xl px-5 py-4">',
@@ -6228,6 +6309,26 @@ canvas {
       '7,234행에서 46만행이 된다 — 결과가 맞아서 아무도 모르고, 매 요청이라 금방 쌓인다.',
   },
   {
+    name: '☎️ 원부 전화 인덱스가 식을 잃는다(다시 하루 2,270만 행 전수 스캔)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: "ON ad_company_leads(REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'.',''))",
+    replace: 'ON ad_company_leads(phone)',
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '결과는 똑같이 나온다 — 다만 정규화가 왼쪽에 걸려 있어 플래너가 인덱스를 못 쓰고 회당 39만 행을 ' +
+      '다시 훑는다. 에러도 로그도 없고, D1 무료 한도만 조용히 다시 찬다(실측 업체 DB 읽기의 22%).',
+  },
+  {
+    name: '☎️ 원부 전화 인덱스의 부분조건이 쿼리와 어긋난다(인덱스가 있는데 안 쓰인다)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: "WHERE source = 'commerce' AND merged_into IS NULL AND phone IS NOT NULL AND phone != ''`",
+    replace: 'WHERE merged_into IS NULL`',
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '부분 인덱스는 조건이 쿼리의 WHERE 와 맞아떨어질 때만 쓰인다. 어긋나면 인덱스는 만들어지고 ' +
+      '저장 공간만 먹은 채 아무도 안 쓴다 — "있으니 됐다"로 읽히는 가장 조용한 실패다.',
+  },
+  {
     name: '🚧 주입-중 가드가 argv 어디서든 이름만 봐도 막는다(멀쩡한 커밋이 막힘)',
     file: 'scripts/check-no-injection-in-progress.sh',
     find: "/^[^ ]*node( |$)/ && ",
@@ -6374,6 +6475,58 @@ canvas {
     why:
       '두 쿼리가 갈리면 "cron 알림엔 떴는데 어드민 목록엔 없다"가 된다 — 어드민이 지급하려고 ' +
       '들어갔는데 그 사람이 없다. 알림과 목록은 같은 조건이어야 한다.',
+  },
+  {
+    name: '💰 매장 카드에서 채널 스위치가 사라진다(import 만 남음)',
+    file: 'src/pages/AdminMerchantCommissionsPage.tsx',
+    find: '<StoreChannelCard sellerId={cs.id} hasIntroducer={!!cs.introduced_by_influencer_id} />',
+    replace: '<div />',
+    test: 'src/tests/unit/store-channel-card.test.ts',
+    why:
+      '이 배선 전에는 채널 API 만 있고 **부르는 화면이 없었다** — 대표가 매장을 direct 로 바꿀 방법이 ' +
+      '어디에도 없었고 아무도 몰랐다(에러가 아니라 부재라서). import 가 남아 있으면 눈으로도 안 보인다.',
+  },
+  {
+    name: '💰 돈 갈림표가 영입자 없는 매장에도 2% 를 뺀다',
+    file: 'src/pages/admin-merchant-commissions/StoreChannelCard.tsx',
+    find: "const introPays = channel === 'direct' && hasIntroducer",
+    replace: "const introPays = channel === 'direct'",
+    test: 'src/tests/unit/store-channel-card.test.ts',
+    why:
+      '영입 2% 는 **직접 입점 + 영입자 지정** 둘 다여야 나간다. 한쪽만 보면 화면은 "나간다"인데 ' +
+      '정산은 0 이라 대표가 실수령을 실제보다 낮게 보고 판단하게 된다.',
+  },
+  {
+    name: '💰 PG 준비금이 셀러 API 로 샌다',
+    file: 'src/features/seller/api/seller-stores.routes.ts',
+    find: '    const certUrl =',
+    replace: "    const _leak = 'pg_reserve_pct'\n    const certUrl =",
+    test: 'src/tests/unit/store-channel-card.test.ts',
+    why:
+      '대표 지시 — 돈 갈림 계산은 어드민만 본다. PG 준비금과 유어딜 실수령이 매장 쪽으로 새면 ' +
+      '우리 마진 구조가 그대로 노출된다.',
+  },
+  {
+    name: '🛑 폐지한 에이전시 영입 1% 축이 타입으로 되살아난다',
+    file: 'src/worker/utils/order-commissions.ts',
+    find: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'supplier'",
+    replace: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'agency_intro' | 'supplier'",
+    test: 'src/tests/unit/agency-intro-retired.test.ts',
+    why:
+      '타입에서 뺀 것이 이 폐지의 자물쇠다 — 호출부가 컴파일로 막힌다. 되살아나면 같은 행위(매장 영입)에 ' +
+      '신분별 이중 보상이 돌아오고, 대행 5% 매장에서 유어딜이 0.25% 만 남는 적자 구간이 다시 열린다.',
+  },
+  {
+    name: '🛑 환불 역전만 지워 비대칭이 된다',
+    file: 'src/worker/utils/order-refund.ts',
+    // ⚠️ 이름만으로는 import·호출 두 곳에 걸린다 — 호출 줄로 앵커를 좁힌다.
+    find: "await reverseAgencyStoreIntroOnRefund(DB, orderId, 'order_refund')",
+    replace: '/* 역전 제거 */',
+    test: 'src/tests/unit/agency-intro-retired.test.ts',
+    why:
+      '적립만 없애고 역전까지 지우면 과거·수동 행이 환불돼도 안 돌아온다. ' +
+      '⚠️ 이 주입은 처음에 통과했다 — 가드가 `toContain(이름)` 이라 `_REMOVED` 접미사가 붙어도 ' +
+      '앞부분이 일치했기 때문이다. 호출 형태(`이름(`)로 보도록 고쳤다.',
   },
 ]
 /**
