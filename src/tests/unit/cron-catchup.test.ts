@@ -11,7 +11,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
   CATCHUP_MINUTE, CATCHUP_MAX_JOBS,
-  parseSlotExpr, periodStartMs, ranThisPeriod, beginCatchup, catchupOpens, claimCatchupJob,
+  parseSlotExpr, periodStartMs, ranThisPeriod, beginCatchup, catchupOpens, claimCatchupJob, summarizeCatchup,
   type CatchupState,
 } from '@/worker/cron-catchup'
 
@@ -107,7 +107,7 @@ describe('beginCatchup — 만회는 :55 틱에서만, 그리고 확신할 때�
 
 describe('claimCatchupJob — 이번 주기에 이미 돈 것은 다시 돌리지 않는다', () => {
   const now = at(`2026-08-31T18:${CATCHUP_MINUTE}:00Z`)
-  const fresh = (rows: [string, string][]): CatchupState => ({ lastRun: new Map(rows.map(([n, iso]) => [n, at(iso)])), started: 0 })
+  const fresh = (rows: [string, string][]): CatchupState => ({ lastRun: new Map(rows.map(([n, iso]) => [n, at(iso)])), started: 0, skipped: 0, deferred: 0 })
 
   it('오늘 슬롯 이후에 돌았으면 건너뛴다', () => {
     const s = fresh([['ledger-integrity-check', '2026-08-31T18:00:05Z']])
@@ -148,7 +148,7 @@ describe('catchupOpens / ranThisPeriod', () => {
   })
 
   it('주기가 시작됐을 때만 연다', () => {
-    const s: CatchupState = { lastRun: new Map(), started: 0 }
+    const s: CatchupState = { lastRun: new Map(), started: 0, skipped: 0, deferred: 0 }
     expect(catchupOpens(s, at('2026-08-31T18:55:00Z'), { minute: 0, hour: 18 })).toBe(true)
     expect(catchupOpens(s, at('2026-08-31T09:55:00Z'), { minute: 0, hour: 18 })).toBe(false)
   })
@@ -157,6 +157,27 @@ describe('catchupOpens / ranThisPeriod', () => {
     expect(ranThisPeriod(100, 100)).toBe(true)
     expect(ranThisPeriod(99, 100)).toBe(false)
     expect(ranThisPeriod(undefined, 100)).toBe(false)
+  })
+})
+
+describe('summarizeCatchup — 만회가 돌았다는 것을 남긴다', () => {
+  const now = at(`2026-08-31T18:${CATCHUP_MINUTE}:00Z`)
+
+  it('밀린 게 없어도 "돌았다"가 남는다 (0건과 미실행의 구분)', () => {
+    // 🔑 이게 이 요약의 존재 이유다. 정상인 날 만회는 전부 건너뛰므로, 이 줄이 없으면
+    //    "돌았는데 할 일이 없었다"와 "아예 안 돌았다"가 화면에서 똑같이 보인다.
+    const s: CatchupState = { lastRun: new Map([['a', at('2026-08-31T18:00:05Z')]]), started: 0, skipped: 0, deferred: 0 }
+    claimCatchupJob(s, 'a', '0 18 * * *', now)
+    expect(summarizeCatchup(s)).toEqual({ started: 0, skipped: 1, deferred: 0, known: 1 })
+  })
+
+  it('시작·미룸을 따로 센다 (한도에 걸린 것이 안 보이면 다음 시간을 기다리는지 알 수 없다)', () => {
+    const s: CatchupState = { lastRun: new Map(), started: 0, skipped: 0, deferred: 0 }
+    for (let i = 0; i < CATCHUP_MAX_JOBS + 2; i++) claimCatchupJob(s, `j${i}`, '0 18 * * *', now)
+    const out = summarizeCatchup(s)
+    expect(out.started).toBe(CATCHUP_MAX_JOBS)
+    expect(out.deferred).toBe(2)
+    expect(out.skipped).toBe(0)
   })
 })
 
@@ -197,6 +218,11 @@ describe('scheduled.ts 배선 — 도구만 있고 안 불리면 없는 것과 �
     const mins = [...code.matchAll(/minute:\s*(\d+)/g)].map((m) => Number(m[1]))
     expect(mins.length, '슬롯 spec 을 하나도 못 읽었다 — 통과 아님').toBeGreaterThan(5)
     expect(mins.includes(CATCHUP_MINUTE), `:${CATCHUP_MINUTE} 에 정시 슬롯이 생겼다 — 만회 틱과 겹친다`).toBe(false)
+  })
+
+  it('만회 회차가 하트비트를 남긴다 (안 남기면 이 기능은 관측 불가)', () => {
+    expect(SRC.includes("recordCronBeat(env, '__catchup'"), '만회 회차 기록이 사라졌다').toBe(true)
+    expect(SRC.includes('summarizeCatchup(catchup)'), '요약 없이 빈 기록만 남긴다').toBe(true)
   })
 
   it('만회는 5분 캐리어에서만 만들어진다', () => {
