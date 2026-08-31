@@ -140,7 +140,9 @@ const MUTATIONS = [
   {
     name: '💸 원장 정합 검사가 다시 amount 를 우선한다 (충전=원화·차감=양수 → 숫자가 거짓)',
     file: 'src/worker/utils/ledger-integrity-checks.ts',
-    find: '  WHEN pt.points_amount IS NOT NULL THEN',
+    // 2026-08-31: 판별식이 `IS NOT NULL` → `COALESCE(...) != 0` 로 바뀌어 이 find 도 따라 옮겼다
+    //   (가드가 "낡은 지도"로 잡아 줬다 — 이 검사가 존재하는 이유가 정확히 이것이다).
+    find: '  WHEN COALESCE(pt.points_amount, 0) != 0 THEN',
     replace: '  WHEN COALESCE(pt.amount, 0) != 0 THEN pt.amount\n  WHEN FALSE THEN',
     test: 'src/tests/unit/ledger-balance-mismatch.test.ts',
     why:
