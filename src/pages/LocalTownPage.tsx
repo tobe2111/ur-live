@@ -15,7 +15,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { ChevronLeft, MapPin, Store, Sparkles } from 'lucide-react'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
@@ -50,6 +50,7 @@ function DealCard({ p, onClick }: { p: TownProduct; onClick: () => void }) {
             alt={p.name}
             loading="lazy"
             className="w-full h-full object-cover group-active:scale-[0.99] transition-transform"
+            onError={(e) => cfImageOnError(e.currentTarget, p.image_url)}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-3xl">🍽️</div>
@@ -178,7 +179,7 @@ export default function LocalTownPage() {
                 >
                   <div className="w-[72px] h-[72px] rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1C21] shrink-0">
                     {p.image_url ? (
-                      <img src={cfImage(p.image_url, { width: 144, quality: 82, format: 'auto' }) || p.image_url} alt="" loading="lazy" className="w-full h-full object-cover" />
+                      <img src={cfImage(p.image_url, { width: 144, quality: 82, format: 'auto' }) || p.image_url} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, p.image_url)} />
                     ) : <div className="w-full h-full flex items-center justify-center text-2xl">🎁</div>}
                   </div>
                   <div className="min-w-0 flex-1">

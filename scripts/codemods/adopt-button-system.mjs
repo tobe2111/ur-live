@@ -29,6 +29,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { globSync } from 'node:fs'
 import { execSync } from 'node:child_process'
+import { enclosingTagName, BUTTONISH } from '../lib/jsx-enclosing-tag.mjs'
 
 const WRITE = process.argv.includes('--write')
 
@@ -57,12 +58,11 @@ for (const f of files) {
     /* 🩸 오탐을 실제로 잡았다: `<span className="… bg-gray-900 text-white … rounded-full">{count}</span>`
        (카운트 배지)까지 버튼으로 바꿔 40px 높이가 될 뻔했다. 잉크 배경 + 흰 글자는
        **버튼만의 특징이 아니다** — 배지·태그·칩도 그렇다.
-       ⇒ 감싸는 여는 태그가 실제로 누를 수 있는 요소일 때만 바꾼다. */
-    const before = src.slice(Math.max(0, offset - 400), offset)
-    const tag = before.lastIndexOf('<')
-    if (tag < 0) return whole
-    const name = before.slice(tag + 1).match(/^([A-Za-z][\w.]*)/)?.[1] || ''
-    if (!/^(button|a|Link|NavLink|Button)$/.test(name)) return whole
+       ⇒ 감싸는 여는 태그가 실제로 누를 수 있는 요소일 때만 바꾼다.
+       ⚠️ 2026-08-31: 여기 있던 `lastIndexOf('<')` 는 `disabled={… < 2}` 의 **비교 연산자**를
+          태그 시작으로 오인해 진짜 버튼을 건너뛰었다(래칫 되돌려-검증에서 발각). 판정을
+          scripts/lib/jsx-enclosing-tag.mjs 로 옮겨 래칫과 한 벌로 쓴다. */
+    if (!BUTTONISH.test(enclosingTagName(src, offset))) return whole
     const tokens = cls.split(/\s+/).filter(Boolean)
     if (tokens.includes('ur-btn')) return whole            // 이미 체계
     if (!tokens.some(isPrimaryBg)) return whole            // 주 버튼 아님

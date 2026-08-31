@@ -426,7 +426,7 @@ export default function SellerSupplyPage() {
             </div>
 
             <div className="flex gap-3">
-              <button onClick={() => setRequestModal(null)} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">{t('common.cancel')}</button>
+              <button onClick={() => setRequestModal(null)} className="flex-1 ur-btn ur-btn-md ur-btn-secondary">{t('common.cancel')}</button>
               <button
                 onClick={handleSampleRequest}
                 disabled={submitting}
@@ -474,11 +474,11 @@ export default function SellerSupplyPage() {
             </div>
 
             <div className="flex gap-3">
-              <button onClick={() => setRegisterModal(null)} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">{t('common.cancel')}</button>
+              <button onClick={() => setRegisterModal(null)} className="flex-1 ur-btn ur-btn-md ur-btn-secondary">{t('common.cancel')}</button>
               <button
                 onClick={handleRegister}
                 disabled={registering || !sellerPrice || Number(sellerPrice) <= 0}
-                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-gray-900 text-white hover:bg-gray-900 disabled:opacity-50"
+                className="flex-1 ur-btn ur-btn-md ur-btn-primary"
               >
                 {registering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
                 {t('seller.registerProductBtn')}

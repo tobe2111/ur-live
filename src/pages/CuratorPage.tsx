@@ -20,7 +20,7 @@ import { fetchCuratorPage, getCuratorCache } from '@/features/curator/curator-pa
 import { useAuthStore } from '@/client/stores/auth.store'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatWon, formatNumber } from '@/utils/format'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 // 🏁 2026-08-27 (대표 신고 — 유어샵 이용권 UI 가 예전 디자인): 홈과 한 벌인 카드로.
 import GroupBuyFeedCard from './main-home/GroupBuyFeedCard'
 import { seededColor } from '@/utils/card-gradient'
@@ -44,6 +44,13 @@ const SellerPublicPage = lazy(() => import('./SellerPublicPage'))
 const SellOwnProductsCTA = lazy(() => import('./curator-page/SellOwnProductsCTA'))
 // 🪜 2026-08-27: 유어샵 수익 사다리(오너 전용) — 방문자 번들에 안 실리게 lazy.
 const EarnLadder = lazy(() => import('./curator-page/EarnLadder'))
+
+// 🔍 2026-08-31 (대표 "유어샵 나머지"): 검색창은 **눈으로 못 훑을 때만** 낸다.
+//   라이브 실측(2026-08-31 product_pins): 진열대 3곳 · 최다 4개 · 8개 이상 0곳.
+//   즉 지금 뜨는 검색창은 전부 2~4개짜리 선반 위에 얹힌 furniture 다(높이 44px + 테두리).
+//   진열대는 훑는 곳이지 질의하는 곳이 아니다 — 2열 그리드로 여섯 줄(=12개)을 넘어
+//   한 화면에 안 들어오기 시작할 때부터 낸다. 늘면 자동으로 다시 뜬다.
+const SEARCH_MIN_PINS = 12
 
 // 🧭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 유어샵 로딩 김): 모듈 메모리 캐시 + 진입 전 워밍.
 //   SPA 탭 진입은 SSR 미주입 → 매 마운트 cold fetch. 재진입 0ms 페인트(+60s 초과는 백그라운드 갱신).
@@ -356,8 +363,8 @@ export default function CuratorPage() {
         ) : (
           <>
             {/* 🎨 2026-06-17 (C): '순서 바꾸기' 진입 버튼은 상단 슬림 툴바로 이동(중복 행 제거). */}
-            {/* 🔍 2026-06-16 유어샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터. */}
-            {pins.length > 0 && (
+            {/* 🔍 2026-06-16 유어샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터(SEARCH_MIN_PINS 이상일 때만). */}
+            {pins.length >= SEARCH_MIN_PINS && (
               <div className="max-w-3xl mx-auto px-4 pt-3 pb-1">
                 <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1A1C21]">
                   <Search className="w-4 h-4 text-gray-400 shrink-0" />
@@ -672,7 +679,7 @@ function PinManageList({ pins, onReorder, onDeleted }: { pins: CuratorPin[]; onR
                 aria-label={t('curator.dragToReorder', { defaultValue: '끌어서 정렬' })}
               >⋮⋮</span>
               {img
-                ? <img src={cfImage(img, { width: 100, format: 'auto' }) || img} alt="" className="w-[52px] h-[52px] rounded-xl object-cover shrink-0" loading="lazy" decoding="async" />
+                ? <img src={cfImage(img, { width: 100, format: 'auto' }) || img} alt="" className="w-[52px] h-[52px] rounded-xl object-cover shrink-0" loading="lazy" decoding="async" onError={(e) => cfImageOnError(e.currentTarget, img)} />
                 : <div className="w-[52px] h-[52px] rounded-xl bg-gray-100 dark:bg-[#1A1C21] shrink-0" />}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
