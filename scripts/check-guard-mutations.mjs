@@ -6647,6 +6647,17 @@ canvas {
       '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
   },
   {
+    name: '📖 운영백서가 커미션 딜 수령을 무상으로 뭉갠다',
+    file: 'src/features/guides/api/guide-seed-admin/ops-handbook-section.ts',
+    find: '🔑 **네 번째는 무상이 아닙니다.**',
+    replace: '네 번째도 무상입니다.',
+    test: 'src/tests/unit/ops-handbook.test.ts',
+    why:
+      '소개자가 현금 대신 딜을 고르면 원금은 **원래 줄 돈**이고 유어딜이 새로 내는 건 보너스 % 뿐이다. ' +
+      '이 구분이 사라지면 무상 딜 지출을 실제보다 크게 보고 정책을 잘못 잡는다 — ' +
+      '대표가 "무상딜을 받을 수 있는 방법이 없는데?" 라고 물어 이 절이 생겼다.',
+  },
+  {
     name: '🧾 후기 보너스 게이트가 없어져 매장이 모르는 사이 청구된다',
     file: 'src/features/group-buy/api/review-bonus-funding.ts',
     find: 'fundedBy: ownerGateOn && storeSet ? \'owner\' : \'platform\',',
