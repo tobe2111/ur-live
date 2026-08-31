@@ -88,6 +88,36 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🩹 잔액 수리 도구의 dry-run 이 사라진다 (보기만 하려다 돈이 움직인다)',
+    file: 'src/worker/utils/points-reconcile.ts',
+    find: '  if (!apply) return { found, results, applied: false }',
+    replace: '  if (false) return { found, results, applied: false }',
+    test: 'src/tests/unit/points-reconcile.test.ts',
+    why:
+      '이 도구는 사람이 **무엇을 쓸지 먼저 눈으로 보고** 누르는 것이 전제다. dry-run 이 없어지면 ' +
+      '조회 한 번이 곧 잔액 변경이 된다.',
+  },
+  {
+    name: '🩹 고아 병합의 멱등(원장 dedup)이 사라진다 (재실행 = 이중적립)',
+    file: 'src/worker/utils/points-reconcile.ts',
+    find: 'if (amount > 0 && !dup) {',
+    replace: 'if (amount > 0) {',
+    test: 'src/tests/unit/points-reconcile.test.ts',
+    why:
+      '병합은 재시도·부분실패로 두 번 돌 수 있다. 원장 dedup 이 유일한 이중적립 방어다 ' +
+      '(CLAUDE.md 머니 룰 3 — 멱등은 조회가 아니라 기록으로).',
+  },
+  {
+    name: '🩹 정합 보정이 잔액까지 바꾼다 (감사 기록이어야 하는데 지급이 된다)',
+    file: 'src/worker/utils/points-reconcile.ts',
+    find: "  const { recordPointTransaction } = await import('./point-ledger')",
+    replace: "  const { adjustUserPoints: recordPointTransaction } = await import('./point-ledger')",
+    test: 'src/tests/unit/points-reconcile.test.ts',
+    why:
+      '보정행은 *출처 불명* 을 원장에 적는 **기록**이지 지급이 아니다. 잔액을 함께 움직이면 ' +
+      '설명하려던 금액을 두 배로 만든다.',
+  },
+  {
     name: '💸 원장 정합 검사가 다시 amount 를 우선한다 (충전=원화·차감=양수 → 숫자가 거짓)',
     file: 'src/worker/utils/ledger-integrity-checks.ts',
     find: '  WHEN pt.points_amount IS NOT NULL THEN',
