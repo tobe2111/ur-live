@@ -6557,7 +6557,7 @@ canvas {
   },
   {
     name: '📖 어드민 가이드가 자동 생성 숫자표를 안 싣는다 (만들고 안 부르기)',
-    file: 'src/features/guides/api/guide-seed-admin.ts',
+    file: 'src/features/guides/api/guide-seed-admin/ops-handbook-section.ts',
     find: '${OPS_HANDBOOK_AUTO}',
     replace: '(숫자표 생략)',
     test: 'src/tests/unit/ops-handbook.test.ts',

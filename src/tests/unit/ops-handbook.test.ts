@@ -25,6 +25,8 @@ const read = (p: string) => readFileSync(resolve(root, p), 'utf-8')
 const wf = read('.github/workflows/verify.yml')
 const auto = read('src/features/guides/api/ops-handbook-auto.ts')
 const adminSeed = read('src/features/guides/api/guide-seed-admin.ts')
+// 🧱 2026-08-31: 파일 크기 래칫 때문에 섹션 본문을 폴더로 뺐다 — 내용은 여기, 배선은 시드에서 본다.
+const handbookSection = read('src/features/guides/api/guide-seed-admin/ops-handbook-section.ts')
 const sellerSeed = read('src/features/guides/api/guide-seed-seller.ts')
 const policy = read('src/shared/constants/policy.ts')
 
@@ -37,8 +39,11 @@ describe('운영백서 — 자동 갱신 배선', () => {
 
   it('어드민 가이드가 자동 생성분을 실제로 싣는다', () => {
     // 생성만 하고 안 실으면 아무 데도 안 보인다 — 이 레포가 반복해 당한 "만들고 안 부르기".
-    expect(adminSeed).toContain("from './ops-handbook-auto'")
-    expect(adminSeed).toMatch(/\$\{OPS_HANDBOOK_AUTO\}/)
+    expect(handbookSection).toContain("from '../ops-handbook-auto'")
+    expect(handbookSection, '자동 생성분을 안 끼워 넣으면 표가 아무 데도 안 보인다')
+      .toMatch(/\$\{OPS_HANDBOOK_AUTO\}/)
+    // 분리한 섹션이 시드 배열에 실제로 들어가는지 — 빠지면 파일만 남고 화면엔 없다.
+    expect(adminSeed).toContain('OPS_HANDBOOK_SECTION')
   })
 
   it('생성된 표가 코드 상수와 실제로 같다', () => {
