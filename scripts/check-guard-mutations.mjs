@@ -6249,6 +6249,26 @@ canvas {
       '7,234행에서 46만행이 된다 — 결과가 맞아서 아무도 모르고, 매 요청이라 금방 쌓인다.',
   },
   {
+    name: '☎️ 원부 전화 인덱스가 식을 잃는다(다시 하루 2,270만 행 전수 스캔)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: "ON ad_company_leads(REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'.',''))",
+    replace: 'ON ad_company_leads(phone)',
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '결과는 똑같이 나온다 — 다만 정규화가 왼쪽에 걸려 있어 플래너가 인덱스를 못 쓰고 회당 39만 행을 ' +
+      '다시 훑는다. 에러도 로그도 없고, D1 무료 한도만 조용히 다시 찬다(실측 업체 DB 읽기의 22%).',
+  },
+  {
+    name: '☎️ 원부 전화 인덱스의 부분조건이 쿼리와 어긋난다(인덱스가 있는데 안 쓰인다)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: "WHERE source = 'commerce' AND merged_into IS NULL AND phone IS NOT NULL AND phone != ''`",
+    replace: 'WHERE merged_into IS NULL`',
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '부분 인덱스는 조건이 쿼리의 WHERE 와 맞아떨어질 때만 쓰인다. 어긋나면 인덱스는 만들어지고 ' +
+      '저장 공간만 먹은 채 아무도 안 쓴다 — "있으니 됐다"로 읽히는 가장 조용한 실패다.',
+  },
+  {
     name: '🚧 주입-중 가드가 argv 어디서든 이름만 봐도 막는다(멀쩡한 커밋이 막힘)',
     file: 'scripts/check-no-injection-in-progress.sh',
     find: "/^[^ ]*node( |$)/ && ",

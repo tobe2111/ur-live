@@ -25,7 +25,16 @@
  */
 import { forwardRef, type SVGProps } from 'react'
 
-type IconProps = SVGProps<SVGSVGElement>
+/**
+ * ⚠️ 2026-08-31 (대표 신고 — "유어샵 아이콘만 너무 커") — **실제 버그였다.**
+ *   호출부(`BottomNav`)는 모든 탭에 `<Icon size={22} />` 를 준다. 그런데 `size` 는
+ *   **lucide 가 자기 안에서 width/height 로 변환해 주는 lucide 전용 prop** 이고,
+ *   표준 SVG 속성이 아니다. 커스텀 아이콘은 그걸 `<svg size="22">` 로 그대로 흘려보냈고
+ *   브라우저는 그 속성을 **무시**한다 → width/height 가 없어 크기가 안 먹었다.
+ *   lucide 아이콘들 사이에 섞여 쓰이는 한, **lucide 의 계약을 그대로 지켜야 한다.**
+ *   ⇒ `size` 를 받아 width/height 로 변환한다(lucide 와 동일한 기본값 24).
+ */
+type IconProps = Omit<SVGProps<SVGSVGElement>, 'size'> & { size?: number | string }
 
 const base = {
   viewBox: '0 0 24 24',
@@ -42,9 +51,9 @@ const base = {
  * 유어샵은 "내 진열대"이므로 진열대를 그린다. 위쪽 사선 지붕 + 물결치는 차양 + 아래 매대.
  * (반짝임은 무엇을 파는 곳인지 한 글자도 말해 주지 않았다.)
  */
-export const UrShopIcon = forwardRef<SVGSVGElement, IconProps>(function UrShopIcon(props, ref) {
+export const UrShopIcon = forwardRef<SVGSVGElement, IconProps>(function UrShopIcon({ size = 24, ...props }, ref) {
   return (
-    <svg ref={ref} {...base} {...props}>
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
       <path d="M4 9.5 5.6 5h12.8L20 9.5" />
       <path d="M4 9.5c0 1.4 1 2.3 2.3 2.3s2.3-.9 2.3-2.3c0 1.4 1 2.3 2.3 2.3s2.4-.9 2.4-2.3c0 1.4 1 2.3 2.3 2.3s2.4-.9 2.4-2.3" />
       <path d="M5.6 12v7.5h12.8V12" />
@@ -56,9 +65,9 @@ export const UrShopIcon = forwardRef<SVGSVGElement, IconProps>(function UrShopIc
  * 동네딜 — **접힌 종이 지도**.
  * 핀은 한 지점을 뜻하지만 동네딜은 *지역*이다. 접힌 면이 셋인 지도로 "동네"를 그린다.
  */
-export const DongneDealIcon = forwardRef<SVGSVGElement, IconProps>(function DongneDealIcon(props, ref) {
+export const DongneDealIcon = forwardRef<SVGSVGElement, IconProps>(function DongneDealIcon({ size = 24, ...props }, ref) {
   return (
-    <svg ref={ref} {...base} {...props}>
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
       <path d="M5 6.5 10 5l4 1.6L19 5v12.5L14 19l-4-1.6L5 19z" />
       <path d="M10 5v12.4M14 6.6V19" />
     </svg>

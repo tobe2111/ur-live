@@ -1,3 +1,4 @@
+import { sellerEntryPath } from '@/utils/seller-entry'
 // Mobile Footer Component - v2.0
 export default function MobileFooter() {
   return (
@@ -12,8 +13,15 @@ export default function MobileFooter() {
       {/* 🧭 2026-07-19 (대표 — "3개 페이지를 서비스 최하단 링크 버튼으로"): 소개 랜딩 3종 pill 버튼 */}
       <div className="flex justify-center gap-1.5 mb-3 flex-wrap">
         <a href="/about" className="px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[10px] font-bold text-gray-700 dark:text-gray-200">서비스 소개</a>
-        <a href="/partners" className="px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[10px] font-bold text-gray-700 dark:text-gray-200">🏪 입점 안내</a>
-        <a href="/creators" className="px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[10px] font-bold text-gray-700 dark:text-gray-200">✨ 크리에이터 모집</a>
+        {/* 🚪 2026-08-31 (대표 — "셀러 대시보드로 가는 버튼을 어디에 두는게 좋을까?"):
+            이건 **행동 버튼**이라 사장님 상태에 따라 갈려야 한다. `/partners` 직행이면
+            이미 입점한 사장님도 "입점하세요" 마케팅 페이지로 보내진다.
+            ⇒ `sellerEntryPath()` — 셀러면 대시보드, 아니면 입점 안내.
+            (바로 아래 SiteFooter 의 "사장님 가게 입점" 은 **페이지 참조**라 `/partners` 유지가 맞다.
+             그건 문서를 읽으러 가는 링크지 행동 버튼이 아니다 — 둘을 같이 바꾸면 판단 없는 일괄이 된다.)
+            🏳️ 이모지(🏪·✨)도 뗐다 — 기기마다 다른 그림으로 렌더되고, 이 줄에서 뜻을 더하지 않는다. */}
+        <a href={sellerEntryPath()} className="px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[10px] font-bold text-gray-700 dark:text-gray-200">입점 안내</a>
+        <a href="/creators" className="px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[10px] font-bold text-gray-700 dark:text-gray-200">크리에이터 모집</a>
       </div>
 
       {/* Links (서비스 소개는 위 pill 버튼으로 승격 — 중복 제거) */}

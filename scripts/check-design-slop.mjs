@@ -31,6 +31,15 @@ const MONO = new Set(['pink','rose','fuchsia','orange','amber','yellow','lime','
 const norm = (t) => { const i = t.lastIndexOf('-'); if (i < 0) return t; const fam = t.slice(0, i); return MONO.has(fam) ? 'ink' + t.slice(i) : t }
 
 const FLAT = /bg-gradient-to-[a-z]{1,2}\s+from-(\S+?)(?:\s+via-(\S+?))?\s+to-([^\s"'`]+)/g
+/**
+ * 🕳️ 2026-08-31 — **이 가드의 구멍이었다.** 위 정규식은 Tailwind `className` 만 본다.
+ *   그런데 인라인 `style={{ background: 'linear-gradient(...)' }}` 로 쓴 것이 라이브에 남아 있었고
+ *   (`VouchersPage` 잔액 카드: `linear-gradient(135deg, #6b7280, #6b7280)` — 같은 색 두 개짜리
+ *   가짜 그라디언트, MONO 흑백 시절 잔재), 이 가드는 **0건이라고 계속 초록불**을 냈다.
+ *   같은 클래스의 결함을 한쪽 표기법으로만 찾고 있었던 셈이다.
+ *   ⇒ CSS 함수 표기도 같이 본다. 색 토큰을 뽑아 전부 같으면 평면.
+ */
+const FLAT_CSS = /linear-gradient\(([^)]*)\)/g
 // 그림 이모지만. 화살표(→ ←)·문장부호는 타이포그래피라 대상 아님.
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{1F000}-\u{1F0FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u
 // UI 껍데기로 판정하는 자리: 아이콘 필드 · 칩/탭 라벨 · JSX 제목 텍스트
@@ -60,6 +69,13 @@ for (const f of walk(path.join(ROOT, 'src'))) {
     for (const m of ln.matchAll(FLAT)) {
       const parts = [m[1], m[2], m[3]].filter(Boolean).map(norm)
       if (new Set(parts).size === 1) found.flat.push(`${rel}:${i + 1}`)
+    }
+    for (const m of ln.matchAll(FLAT_CSS)) {
+      // 각도(135deg)·위치(0%)를 뺀 **색 토큰**만 남긴다. hex·rgb·색이름 모두.
+      const stops = (m[1].match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|\b[a-z]{3,}\b/g) || [])
+        .filter((x) => !/^(deg|to|top|bottom|left|right|at|circle|ellipse|closest|farthest|side|corner)$/i.test(x))
+        .map((x) => x.toLowerCase())
+      if (stops.length >= 2 && new Set(stops).size === 1) found.flat.push(`${rel}:${i + 1}`)
     }
     if (EMOJI.test(ln) && UI_SLOT.test(ln)) found.emoji.push(`${rel}:${i + 1}`)
   })
