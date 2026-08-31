@@ -26,8 +26,15 @@ const LEGACY_SPEND_TYPES = "('donate','cash_withdraw','use','spend','deduct')"
  * | **레거시**(~2026-06) | 충전은 **원화 결제액**, 그 외는 크기 | 딜 수량 | 없음(전부 양수) |
  * | **모던**(`point-ledger.ts`, 2026-06-12~) | **부호 있는 딜 델타** | 안 씀(NULL) | 있음 |
  *
- * ⇒ 두 규약의 **판별자는 `points_amount` 의 존재**다. 모던 기록자는 그 컬럼을 아예 안 쓴다
+ * ⇒ 두 규약의 **판별자는 `points_amount` 가 채워져 있는가**다. 모던 기록자는 그 컬럼을 아예 안 쓴다
  *   (`point-ledger.ts` 의 INSERT 컬럼 목록에 없다).
+ *
+ * ⚠️ **`IS NOT NULL` 로 가르면 안 된다** (2026-08-31 라이브 스키마 실측으로 잡은 함정):
+ *   라이브 컬럼은 `points_amount INTEGER NOT NULL DEFAULT 0` 이다. 즉 모던 행은 NULL 이 아니라
+ *   **0** 으로 저장된다 ⇒ `IS NOT NULL` 은 모던 행까지 레거시로 몰아 `points_amount`(0)로 세고
+ *   **적립·차감이 통째로 사라진다.** 지금은 모던 행이 라이브에 0건이라 안 드러나지만, 원장 쓰기가
+ *   되살아나는 순간(옛 CHECK 제약 제거 — `point-ledger-unlock.ts`) 전 유저가 불일치로 잡힌다.
+ *   그래서 `COALESCE(...) != 0` 으로 가른다.
  *
  * ## 왜 다시 고치나 (2026-08-31 — 대표 "이거 무슨 에러야?")
  *
@@ -43,7 +50,7 @@ const LEGACY_SPEND_TYPES = "('donate','cash_withdraw','use','spend','deduct')"
  *   ⇒ 규약을 정할 때는 코드와 데이터를 **둘 다** 본다.
  */
 export const SIGNED_POINT_SUM = `SUM(CASE
-  WHEN pt.points_amount IS NOT NULL THEN
+  WHEN COALESCE(pt.points_amount, 0) != 0 THEN
     CASE WHEN pt.type IN ${LEGACY_SPEND_TYPES} THEN -pt.points_amount ELSE pt.points_amount END
   ELSE COALESCE(pt.amount, 0) END)`
 
