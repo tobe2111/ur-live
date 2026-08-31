@@ -6397,14 +6397,25 @@ canvas {
   },
   {
     name: '🩸 영입자 검증이 sellers 로 되돌아간다(엉뚱한 사람에게 2%)',
-    file: 'src/features/admin/api/admin-sellers.routes.ts',
-    find: "const inf = await DB.prepare('SELECT id FROM users WHERE id = ? LIMIT 1').bind(newInfluencerId).first();",
-    replace: 'const inf = await DB.prepare("SELECT id FROM sellers WHERE id = ? AND seller_type IN (\'influencer\',\'both\')").bind(newInfluencerId).first();',
+    file: 'src/features/admin/api/admin-sellers/reassign-introducer.ts',
+    find: "    existsTable: 'users',",
+    replace: "    existsTable: 'sellers',",
     test: 'src/tests/unit/introducer-id-space.test.ts',
     why:
       '`sellers.introduced_by_influencer_id` 를 적립·지급·조회·등록귀속 네 곳이 전부 `users.id` 로 읽는데 ' +
       '이 검증만 `sellers` 를 봤다. 두 id 공간이 라이브에서 겹쳐(셀러 3·5·6 ↔ 유저 3·5·6) ' +
       '**에러 없이 엉뚱한 사람에게 2% 가 간다** — 가장 조용한 머니 사고다.',
+  },
+  {
+    name: '🔀 라우트가 반대편 종류로 위임한다 (사람↔에이전시 뒤바뀜)',
+    file: 'src/features/admin/api/admin-sellers.routes.ts',
+    find: "reassignIntroducer(c, 'influencer', safeAdminError)",
+    replace: "reassignIntroducer(c, 'agency', safeAdminError)",
+    test: 'src/tests/unit/introducer-id-space.test.ts',
+    why:
+      '두 재배정은 이제 한 함수를 종류 인자로 나눠 쓴다. 인자가 뒤바뀌면 `introduced_by_influencer_id` ' +
+      '대신 `introduced_by_agency_id` 에 써서, 어드민이 "영입자 지정" 을 눌렀는데 에이전시가 박힌다 — ' +
+      '화면도 응답도 성공이라 아무도 모른다.',
   },
   {
     name: '🤝 영입자를 확인 없이 지정할 수 있게 된다',

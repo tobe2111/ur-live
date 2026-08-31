@@ -18,17 +18,29 @@ import { readFileSync } from 'node:fs'
 import { stripComments as codeOnly } from '../helpers/source-text'
 
 const ADMIN = codeOnly(readFileSync('src/features/admin/api/admin-sellers.routes.ts', 'utf-8'))
+// 🧱 2026-08-31: 두 재배정 핸들러는 글자 단위 복제본이었고 파일크기 래칫에 걸려 이 SSOT 로 합쳤다.
+//   그래서 검증 대상도 여기다 — 라우트는 위임만 한다(아래 세 번째 it 이 그 위임을 고정).
+const REASSIGN = codeOnly(readFileSync('src/features/admin/api/admin-sellers/reassign-introducer.ts', 'utf-8'))
+const INFLUENCER_SPEC = REASSIGN.slice(REASSIGN.indexOf('influencer: {')).slice(0, 900)
 
 describe('영입자 id 공간이 한 가지다 (users.id)', () => {
   it('어드민 재배정이 users 로 검증한다', () => {
-    const block = ADMIN.slice(ADMIN.indexOf("reassign-influencer"))
-    expect(block.slice(0, 2000)).toMatch(/SELECT id FROM users WHERE id = \?/)
+    expect(INFLUENCER_SPEC).toMatch(/existsTable:\s*'users'/)
+    // 선언만 하고 안 쓰면 무의미하므로, 그 값이 실제 존재확인 쿼리에 박히는 것까지 본다.
+    expect(REASSIGN).toMatch(/SELECT id FROM \$\{spec\.existsTable\} WHERE id = \?/)
   })
 
   it('어드민 재배정이 sellers 로 검증하지 않는다', () => {
-    // 회귀 모습: seller_type IN ('influencer','both') 로 되돌아가는 것.
-    const block = ADMIN.slice(ADMIN.indexOf('reassign-influencer'))
-    expect(block.slice(0, 2000)).not.toMatch(/FROM sellers WHERE id = \? AND seller_type/)
+    // 회귀 모습: existsTable 이 sellers 로 돌아가거나, seller_type 필터가 되살아나는 것.
+    expect(INFLUENCER_SPEC).not.toMatch(/existsTable:\s*'sellers'/)
+    expect(REASSIGN).not.toMatch(/FROM sellers WHERE id = \? AND seller_type/)
+  })
+
+  it('라우트 두 개가 이 SSOT 로 위임한다 (복제본 부활 차단)', () => {
+    // 복제본이 둘이면 한쪽만 고쳐지는 사고가 난다 — 이 버그가 정확히 그렇게 났다.
+    expect(ADMIN).toMatch(/reassign-agency'.*reassignIntroducer\(c, 'agency'/)
+    expect(ADMIN).toMatch(/reassign-influencer'.*reassignIntroducer\(c, 'influencer'/)
+    expect(ADMIN).not.toMatch(/SELECT id FROM sellers WHERE id = \? AND seller_type/)
   })
 
   it('나머지 경로도 users 로 읽는 상태가 유지된다', () => {
