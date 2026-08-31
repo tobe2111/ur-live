@@ -163,6 +163,37 @@ const DEALS = DEAL_TITLES.map(([name, sub, was, now], i) => ({
   seller_id: 1,
 }))
 
+/**
+ * 🎫 2026-08-31 `--deals` 에 교환권 **카테고리 칩 + 브랜드 스트립**을 추가한다.
+ *   ⚠️ 이게 없어서 실제로 잘못된 시안을 냈다: `/api/vouchers/categories` 가 빈 배열이라
+ *   칩 행(50px)과 브랜드 스트립(113px)이 **통째로 안 그려졌고**, 그 화면으로
+ *   "상단을 줄이면 상품이 3개→5개" 라고 보고했다. 화면의 절반을 빼놓고 잰 셈이다.
+ *   (대표가 "카테고리 및 브랜드 선택하는건 어딨어?" 로 잡아 줬다.)
+ */
+const VOUCHER_SECTIONS = [
+  { category: '커피/음료', count: 42, brands: [
+    { brand_name: '스타벅스', brand_icon_url: null, cnt: 12 },
+    { brand_name: '메가커피', brand_icon_url: null, cnt: 9 },
+    { brand_name: '투썸플레이스', brand_icon_url: null, cnt: 7 },
+    { brand_name: '컴포즈커피', brand_icon_url: null, cnt: 6 },
+    { brand_name: '할리스', brand_icon_url: null, cnt: 5 },
+    { brand_name: '빽다방', brand_icon_url: null, cnt: 3 },
+  ] },
+  { category: '편의점', count: 28, brands: [
+    { brand_name: 'CU', brand_icon_url: null, cnt: 11 },
+    { brand_name: 'GS25', brand_icon_url: null, cnt: 10 },
+    { brand_name: '세븐일레븐', brand_icon_url: null, cnt: 7 },
+  ] },
+  { category: '치킨/피자', count: 19, brands: [
+    { brand_name: '교촌치킨', brand_icon_url: null, cnt: 8 },
+    { brand_name: 'BBQ', brand_icon_url: null, cnt: 6 },
+    { brand_name: '도미노피자', brand_icon_url: null, cnt: 5 },
+  ] },
+  { category: '뷰티', count: 12, brands: [
+    { brand_name: '올리브영', brand_icon_url: null, cnt: 12 },
+  ] },
+]
+
 function serve() {
   return new Promise((resolve) => {
     const s = http.createServer((req, res) => {
@@ -172,6 +203,7 @@ function serve() {
         // 큐레이터 조회는 시드와 같은 페이로드로 — 아니면 백그라운드 갱신이 오류 상태로 빠진다
         if (p.startsWith('/api/curator/') && !p.includes('/me/')) return res.end(JSON.stringify(CURATOR_SEED))
         if (args.deals) {
+          if (p === '/api/vouchers/categories') return res.end(JSON.stringify({ success: true, data: VOUCHER_SECTIONS }))
           // 상세는 **단건**이다 — 목록과 같은 배열을 주면 화면이 안 그려진다.
           const m = p.match(/^\/api\/(?:group-buy\/)?products\/(\d+)/)
           if (m) {
