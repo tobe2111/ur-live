@@ -95,9 +95,12 @@ describe('R4 — 원천징수율 판정은 SSOT 하나', () => {
   it('기타소득 8.8%', () => expect(resolveWithholdingPct('other_income', null)).toBeCloseTo(8.8, 5))
   it('무신고 0', () => expect(resolveWithholdingPct(null, null)).toBe(0))
 
+  // ⚠️ 2026-08-31: 지급 엔드포인트는 파일크기 래칫 때문에 `marketing.routes.ts` → `marketing/payouts.ts`
+  //   로 **이동**했다(로직 불변). 이 목록을 안 따라가면 테스트가 **낡은 지도**가 되어, 코드가 없는
+  //   파일을 검사하며 초록을 낸다. (실제로 이동 직후 이 테스트가 빨간불로 잡았다.)
   const SITES = [
     'src/worker/cron/influencer-payout.ts',
-    'src/features/group-buy/api/marketing.routes.ts',
+    'src/features/group-buy/api/marketing/payouts.ts',
     'src/pages/AdminInfluencerPayoutsPage.tsx',
   ]
   /** 주석 제거 — 주석에만 남은 이름을 배선으로 오독하지 않는다(2026-08-01 교훈). */
@@ -124,12 +127,19 @@ describe('R4 — 원천징수율 판정은 SSOT 하나', () => {
 
 describe('R5 — 딜 수령에는 수수료가 붙지 않는다', () => {
   it('지급 엔드포인트가 현금 경로에서만 내역을 계산한다', () => {
-    const code = readFileSync('src/features/group-buy/api/marketing.routes.ts', 'utf8')
-    // 딜 분기(`body.method === 'deal'`) 안에서 computeCashPayout 을 부르면 안 된다.
-    const dealBlock = code.slice(code.indexOf("if (body.method === 'deal')"))
-    const dealBody = dealBlock.slice(0, dealBlock.indexOf('\n  }\n'))
-    expect(dealBody).not.toContain('computeCashPayout')
-    expect(code).toContain("if (body.method !== 'deal')")
+    const code = readFileSync('src/features/group-buy/api/marketing/payouts.ts', 'utf8')
+    // ⚠️ 처음엔 `\n  }\n` 으로 딜 블록을 잘랐는데, 파일이 함수 안으로 들어가며 들여쓰기가
+    //   2칸 깊어지자 슬라이스가 블록을 넘어가 오탐이 났다. 위치 비교로 바꿔 들여쓰기와 무관하게.
+    const dealStart = code.indexOf("body.method === 'deal'")
+    const cashStart = code.indexOf("body.method !== 'deal'")
+    expect(dealStart).toBeGreaterThan(0)
+    expect(cashStart).toBeGreaterThan(dealStart) // 현금 분기가 딜 분기보다 뒤
+    // 딜 분기 안에는 현금 **계산 호출**이 없어야 한다.
+    //   ⚠️ 이름만 보면 안 된다 — 현금 분기 바로 앞의 `let cashBreakdown: ReturnType<typeof
+    //   computeCashPayout>` 타입 선언이 걸려 오탐이 났다. 호출은 괄호까지 봐야 한다.
+    expect(code.slice(dealStart, cashStart)).not.toContain('computeCashPayout(')
+    // 그리고 현금 계산은 현금 분기 뒤에만 있다.
+    expect(code.indexOf('computeCashPayout(')).toBeGreaterThan(cashStart)
   })
   it('cron 은 딜 수령자를 현금 계산 전에 continue 한다', () => {
     const code = readFileSync('src/worker/cron/influencer-payout.ts', 'utf8')
