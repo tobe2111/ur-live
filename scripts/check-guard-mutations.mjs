@@ -6742,6 +6742,17 @@ canvas {
       '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
   },
   {
+    name: '🔓 2차 해동이 통째로 빠진다 (도매 가이드가 계속 폐기어를 가르침)',
+    file: 'src/features/guides/api/guide.routes.ts',
+    find: "const UNFREEZE2_MARKER = 'guide_unfreeze_2026_08_31_b'",
+    replace: "const UNFREEZE2_MARKER = 'guide_unfreeze_disabled'",
+    test: 'src/tests/unit/guide-unfreeze.test.ts',
+    why:
+      '2차가 빠지면 도매 가이드 15개 중 12개가 계속 **유통사**(2026-06-22 폐기)라고 말하고, ' +
+      "admin 'deploy' 는 `npx vite build` 를 가르친다 — CLAUDE.md 가 2026-05-12 사고의 " +
+      '원인으로 지목해 금지한 명령이다(_worker.js 미갱신).',
+  },
+  {
     name: '🔓 가이드 해동이 전체로 번진다 (관리자 문구까지 시드로 덮음)',
     file: 'src/features/guides/api/guide.routes.ts',
     find: 'manually_edited = 0 WHERE guide_type = ? AND section_key = ?',
