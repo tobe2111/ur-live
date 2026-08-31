@@ -545,6 +545,9 @@ function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: C
     review_count: pin.review_count ?? undefined,
     sold_count: pin.sold_count ?? undefined,
     category: pin.category ?? undefined,
+    // 🏪 2026-08-31: 홈 카드의 [머천트 · 주소] 줄. 이것만 빠져 있어 유어샵이 한 줄 짧았다.
+    restaurant_name: pin.restaurant_name ?? undefined,
+    restaurant_address: pin.restaurant_address ?? undefined,
   }
 
   return (
@@ -555,7 +558,15 @@ function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: C
       {/* 🔢 2026-06-18 (사용자 요청 — 유어샵에서만 카드 번호): 핀 순서 번호 배지. 다른 곳(홈/쇼핑) 미적용
           — PinCard(유어샵 전용)에만 오버레이라 BrowseProductCard 공용 동작 불변.
           🎨 2026-06-19 (세련화): 프로스트 글래스 원형 배지. */}
-      <span className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full bg-black/45 backdrop-blur-md ring-1 ring-white/25 text-white text-[11px] font-bold flex items-center justify-center shadow-sm pointer-events-none">
+      {/* 🔢 순번 — **없애지 않는다.** 대표 설명(2026-08-31): 인플루언서가 SNS 에서
+          *"N번 이용권 사세요"* 로 안내하기 위한 것이다. 즉 이 숫자는 장식이 아니라 **주소**다.
+          ⇒ 그래서 사진 위에 그대로 둔다. SNS 를 보고 온 사람은 *사진을 훑으며* 3번을 찾지
+             제목을 읽어 찾지 않는다. 바꾼 것은 디자인뿐:
+             반투명 검정 원 + 흰 링(`bg-black/45` + `ring-white/25`) → **솔리드 잉크 사각 칩**.
+             ① 사진이 없을 때 회색 원으로 뭉개져 "무슨 뜻인지 모를 장식"으로 보였다
+             ② 원 + 링 + blur 3겹이라 같은 카드의 할인 배지와 무게가 같아 서로 다퉜다
+             (할인은 2026-08-31 에 좌하단으로 내려가 이제 자리도 안 겹친다). */}
+      <span className="absolute top-2 left-2 z-10 min-w-[22px] h-[22px] px-1.5 rounded-md bg-[#16181C] text-white text-[11px] font-black tabular-nums flex items-center justify-center shadow-sm pointer-events-none">
         {index + 1}
       </span>
       {isOwner && (

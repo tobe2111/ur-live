@@ -40,6 +40,8 @@ export default function TeamPointsCard() {
     return () => window.removeEventListener('pointsBalanceChanged', handler)
   }, [])
 
+  const isEmpty = !loading && !error && balance === 0
+
   return (
     <div className="ur-content-medium px-4 lg:px-8 py-3">
       {/* 🎯 2026-08-30: 마이에서 **강조는 이것 하나**다.
@@ -85,12 +87,21 @@ export default function TeamPointsCard() {
             {t('my.charge', { defaultValue: '충전하기' })}
           </button>
           )}
+          {/* 💤 2026-08-31: 잔액이 0 인데 화면에서 **가장 강한 검정 카드**가 그 0 을 강조하고,
+              버튼은 '사용 내역'(볼 내역이 없다)이었다. 값이 없을 때 자산 카드가 할 일은
+              숫자를 크게 보여 주는 게 아니라 **채우러 가는 길**을 주는 것이다. */}
           <button
             type="button"
-            onClick={() => navigate('/my-deal-history')}
+            onClick={() => navigate(isEmpty ? '/map' : '/my-deal-history')}
             className="ur-btn ur-btn-sm ur-btn-block text-white dark:text-gray-200 bg-white/[0.14] dark:bg-white/[0.06]"
           >
-            <ScrollText className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{t('my.dealHistory', { defaultValue: '사용 내역' })}
+            {isEmpty ? (
+              t('my.earnDeal', { defaultValue: '딜 모으러 가기' })
+            ) : (
+              <>
+                <ScrollText className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{t('my.dealHistory', { defaultValue: '사용 내역' })}
+              </>
+            )}
           </button>
         </div>
       </div>
