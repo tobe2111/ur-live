@@ -143,7 +143,7 @@ export default function SellerGroupBuyPage() {
             <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-5 text-white">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-[11px] uppercase tracking-wider opacity-80">예상 정산</p>
+                  <p className="text-[11px] opacity-80">예상 정산</p>
                   <p className="text-3xl font-extrabold mt-0.5">{formatWon(totalNet)}</p>
                 </div>
                 <DollarSign className="w-8 h-8 opacity-70" />

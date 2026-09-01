@@ -272,7 +272,7 @@ function FunnelStats() {
       {/* 카테고리별 */}
       {data.by_category.length > 0 && (
         <div className="p-4 border-b border-gray-100 dark:border-[#2C2F35]">
-          <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">카테고리별</p>
+          <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-2">카테고리별</p>
           <div className="space-y-1.5">
             {data.by_category.map(c => (
               <div key={c.category} className="flex items-center justify-between text-xs">
@@ -290,7 +290,7 @@ function FunnelStats() {
       {/* 일별 mini chart (간단한 bar) */}
       {data.daily.length > 0 && (
         <div className="p-4">
-          <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">최근 14일</p>
+          <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-2">최근 14일</p>
           <div className="flex items-end gap-0.5 h-20">
             {data.daily.slice(0, 14).reverse().map((d, i) => {
               const h = Math.max(2, (d.count / maxDailyCount) * 80)

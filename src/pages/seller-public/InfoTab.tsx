@@ -71,9 +71,9 @@ export default function InfoTab({ seller, isOwner, T }: Props) {
           <button
             onClick={() => setOpen(o => !o)}
             aria-expanded={open}
-            className="w-full flex items-center gap-1.5 py-1 text-[10px] font-bold tracking-wider text-gray-400 dark:text-gray-500 uppercase active:opacity-70"
+            className="w-full flex items-center gap-1.5 py-1 text-[11px] font-bold text-gray-500 dark:text-gray-400 active:opacity-70"
           >
-            {t('seller.publicPage.moreInfo', { defaultValue: 'MORE INFO' })}
+            {t('seller.publicPage.moreInfo', { defaultValue: '사업자 정보 더보기' })}
             <span className="text-[11px] leading-none font-normal">{open ? '−' : '+'}</span>
           </button>
 

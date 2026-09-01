@@ -85,7 +85,7 @@ export default function SellerGroupBuyOverview() {
           onClick={() => navigate('/seller/group-buy')}
           className="bg-blue-50 rounded-xl p-3 text-left hover:bg-blue-100 transition-colors"
         >
-          <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">진행중</p>
+          <p className="text-[10px] text-blue-600 font-bold ">진행중</p>
           <p className="text-2xl font-extrabold text-blue-700 mt-0.5">{data.active}</p>
           <p className="text-[10px] text-gray-500 mt-1">공구 active</p>
         </button>
@@ -94,7 +94,7 @@ export default function SellerGroupBuyOverview() {
           onClick={() => navigate('/seller/group-buy')}
           className={`rounded-xl p-3 text-left transition-colors ${data.at_risk > 0 ? 'bg-red-50 hover:bg-red-100' : 'bg-amber-50 hover:bg-amber-100'}`}
         >
-          <p className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${data.at_risk > 0 ? 'text-red-600' : 'text-amber-600'}`}>
+          <p className={`text-[10px] font-bold flex items-center gap-1 ${data.at_risk > 0 ? 'text-red-600' : 'text-amber-600'}`}>
             {data.at_risk > 0 ? <AlertTriangle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
             {data.at_risk > 0 ? '미달성 위험' : '마감 임박'}
           </p>

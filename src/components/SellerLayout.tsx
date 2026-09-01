@@ -291,7 +291,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           <div key={gi} className="mt-3 first:mt-1">
             {(group.label || group.labelKey) && (
               <div
-                className="px-4 py-1.5 font-extrabold uppercase text-white/30"
+        className="px-4 py-1.5 font-extrabold text-white/30"
                 style={{ fontSize: '9px', letterSpacing: '0.12em' }}
               >
                 {group.labelKey ? t(group.labelKey) : group.label}
