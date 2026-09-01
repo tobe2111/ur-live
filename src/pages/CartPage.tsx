@@ -9,7 +9,7 @@ import { CartItemComponent } from '@/components/cart/CartItem'
 import { CartSummary } from '@/components/cart/CartSummary'
 import { EmptyCart } from '@/components/cart/EmptyCart'
 import { CartCtaButton } from '@/components/cart/CartCtaButton'
-import { ShoppingCart, ChevronRight, Store, X } from 'lucide-react'
+import { ShoppingCart, ChevronRight, Store, X, PackageCheck } from 'lucide-react'
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
 import { formatNumber } from '@/utils/format'
@@ -520,7 +520,7 @@ function CartPageContent() {
                         const hasBundle = Array.from(bundlingMap.values()).some(v => v >= 2)
                         return hasBundle ? (
                           <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400">
-                            📦 합배송
+                            <PackageCheck className="w-3 h-3" strokeWidth={2} aria-hidden />합배송
                           </span>
                         ) : null
                       })()}
@@ -578,7 +578,7 @@ function CartPageContent() {
                         <span className="text-gray-400 dark:text-gray-500">{allVoucher ? '발송' : t('cart.shippingFee')}</span>
                         <span className="font-medium text-gray-700 dark:text-gray-200">
                           {allVoucher
-                            ? <span className="text-amber-600">🎁 휴대폰 즉시 발송 (무료)</span>
+                            ? <span className="text-gray-600 dark:text-gray-300">휴대폰 즉시 발송 (무료)</span>
                             : freeShipThreshold > 0 && group.subtotal >= freeShipThreshold
                               ? <span className="text-pink-500">{t('cart.free')}</span>
                               : `${formatNumber(group.shipping_fee)}원`}

@@ -12,7 +12,7 @@ import { REFERRAL_GROUP_DISCOUNT_DISABLED, TOPUP_DISABLED } from '@/shared/featu
 import { useBalance } from '@/hooks/queries'
 import { useDealHistory, type Transaction } from '@/hooks/queries/useDealHistory'
 import { formatNumber } from '@/utils/format'
-import { ChevronLeft, Clapperboard, CreditCard, List, RotateCcw, ShoppingCart, Users, type LucideIcon } from 'lucide-react'
+import { ChevronLeft, Clapperboard, CreditCard, List, RotateCcw, ShoppingCart, Users, Settings, Link as LinkIcon, AlertTriangle, Inbox, type LucideIcon } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { parseUTCDate } from '@/utils/date'
 type FilterType = '' | 'charge' | 'donate' | 'refund' | 'referral_bonus' | 'ad_reward'
@@ -26,14 +26,18 @@ const FILTER_OPTIONS: { value: FilterType; label: string; Icon: LucideIcon }[] =
   { value: 'ad_reward',       label: '광고',    Icon: Clapperboard },
 ]
 
-const TYPE_EMOJI: Record<string, string> = {
-  charge: '💳',
-  donate: '🛒',
-  refund: '🔄',
-  referral_bonus: '👥',
-  ad_reward: '🎬',
-  admin_adjust: '⚙️',
-  affiliate: '🔗',
+/**
+ * 🎨 2026-09-01: 이모지 맵 → lucide. 바로 위 `FILTER_OPTIONS` 가 **이미 같은 종류를 아이콘으로**
+ *   갖고 있었는데(충전=CreditCard, 사용=ShoppingCart…) 목록 행만 이모지를 따로 썼다. 같은 화면에서
+ *   위 필터 칩과 아래 행이 서로 다른 그림 언어를 쓰던 셈이라 종류를 맞췄다. */
+const TYPE_ICON: Record<string, LucideIcon> = {
+  charge: CreditCard,
+  donate: ShoppingCart,
+  refund: RotateCcw,
+  referral_bonus: Users,
+  ad_reward: Clapperboard,
+  admin_adjust: Settings,
+  affiliate: LinkIcon,
 }
 
 function relativeTime(iso: string): string {
@@ -137,13 +141,13 @@ export default function MyDealHistoryPage() {
           <BrandLoader />
         ) : error ? (
           <div className="py-16 text-center">
-            <p className="text-4xl mb-3">⚠️</p>
+            <AlertTriangle className="w-9 h-9 mx-auto mb-3 text-gray-300 dark:text-gray-600" strokeWidth={1.5} aria-hidden />
             <p className="text-sm text-gray-500 dark:text-gray-400">거래 내역을 불러오지 못했어요</p>
             <button onClick={() => refetch()} className="mt-3 text-xs font-bold text-gray-900 dark:text-white underline">다시 시도 →</button>
           </div>
         ) : items.length === 0 ? (
           <div className="py-16 text-center">
-            <p className="text-4xl mb-3">📭</p>
+            <Inbox className="w-9 h-9 mx-auto mb-3 text-gray-300 dark:text-gray-600" strokeWidth={1.5} aria-hidden />
             <p className="text-sm text-gray-500 dark:text-gray-400">거래 내역이 없어요</p>
             {filter && (
               <button onClick={() => { setFilter(''); setPage(0) }}
@@ -153,7 +157,7 @@ export default function MyDealHistoryPage() {
         ) : (
           <div className="rounded-2xl bg-gray-50 dark:bg-white/[0.03] overflow-hidden">
             {items.map((tx, i) => {
-              const emoji = TYPE_EMOJI[tx.type] || '📋'
+              const TxIcon = TYPE_ICON[tx.type] || List
               const isPositive = tx.amount > 0 || tx.type === 'charge' || tx.type === 'refund' || tx.type === 'referral_bonus' || tx.type === 'ad_reward'
               const amountColor = isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'
               const sign = isPositive ? '+' : ''
@@ -163,7 +167,7 @@ export default function MyDealHistoryPage() {
                   onClick={() => onItemClick(tx)}
                   className={`w-full flex items-center gap-3 px-4 py-3 text-left active:bg-gray-100 dark:active:bg-white/[0.06] transition-colors ${i ? 'border-t border-gray-100 dark:border-[#2C2F35]' : ''}`}
                 >
-                  <span className="text-xl flex-shrink-0">{emoji}</span>
+                  <TxIcon className="w-[18px] h-[18px] flex-shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.8} aria-hidden />
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate">{tx.description || tx.type}</p>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{relativeTime(tx.created_at)}</p>

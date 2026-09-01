@@ -10,7 +10,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { MapPin, Calendar, Users, Star, Wifi, Coffee, Car, Waves, Sparkles, Flame, Utensils, Wind, Bath, Dumbbell, Check, PawPrint, CigaretteOff } from 'lucide-react'
+import { MapPin, Calendar, Users, Star, Wifi, Coffee, Car, Waves, Sparkles, Flame, Utensils, Wind, Bath, Dumbbell, Check, PawPrint, CigaretteOff, Hotel, TicketPercent } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { SectionTitle, AmenityFlow, InfoBlock, propertyTypeLabel } from './stay-detail/StayInfoSections'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
@@ -257,8 +257,8 @@ export default function StayDetailPage() {
   const modeTabs = stay.sale_mode === 'both' ? (
     <div className="flex gap-1.5">
       {[
-        { v: 'date' as const, label: '📅 날짜 지정 예약' },
-        { v: 'voucher' as const, label: '🎫 숙소 이용권 (날짜 협의)' },
+        { v: 'date' as const, label: '날짜 지정 예약' },
+        { v: 'voucher' as const, label: '숙소 이용권 (날짜 협의)' },
       ].map((m) => (
         <button
           key={m.v}
@@ -284,13 +284,13 @@ export default function StayDetailPage() {
             {!stay.voucher_weekend_only && (
               <button onClick={() => setVoucherType('weekday')}
                 className={`p-3 rounded-lg text-xs font-bold ${voucherType === 'weekday' ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300'}`}>
-                🌅 평일권 (월-목)
+                평일권 (월-목)
               </button>
             )}
             {!stay.voucher_weekday_only && (
               <button onClick={() => setVoucherType('weekend')}
                 className={`p-3 rounded-lg text-xs font-bold ${voucherType === 'weekend' ? 'bg-amber-500 text-white' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300'}`}>
-                🌇 주말권 (금-토)
+                주말권 (금-토)
               </button>
             )}
           </div>
@@ -365,7 +365,7 @@ export default function StayDetailPage() {
           <DetailGallery
             images={galleryImages}
             alt={stay.restaurant_name || stay.name}
-            fallback={<span className="text-6xl" aria-hidden="true">🏨</span>}
+            fallback={<Hotel className="w-14 h-14 text-gray-300 dark:text-gray-600" strokeWidth={1.4} aria-hidden />}
           />
         </div>
 
@@ -396,9 +396,9 @@ export default function StayDetailPage() {
         {/* 🛡️ 2026-05-18: 인플 referral 배너 — ref 진입 시 표시. */}
         {referrerId && stay.referral_enabled === 1 && (stay.influencer_discount_pct || 0) > 0 && (
           <div className="bg-pink-50 dark:bg-gray-800/[0.15] border border-pink-300 dark:border-pink-500/30 rounded-xl p-3 mb-3 flex items-center gap-2.5">
-            <span className="text-xl">💸</span>
+            <TicketPercent className="w-5 h-5 shrink-0 text-pink-500 dark:text-pink-300" strokeWidth={1.8} aria-hidden />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-pink-600 dark:text-pink-300">추천 할인 — {stay.influencer_discount_pct}% 적용</p>
+              <p className="text-xs font-bold text-pink-600 dark:text-pink-300">추천 할인 {stay.influencer_discount_pct}% 적용</p>
               <p className="text-[10px] text-pink-500/80 dark:text-pink-200/70 mt-0.5">결제 시 자동 적용됩니다</p>
             </div>
           </div>
