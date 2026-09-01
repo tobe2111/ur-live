@@ -41,6 +41,7 @@ import OtherDealsRow from './group-buy/OtherDealsRow'
 import ShareRewardBanner from './group-buy/ShareRewardBanner'
 import DeferUntilVisible from './group-buy/DeferUntilVisible'
 import DealPayButton, { useCanPayWithDeal } from './group-buy/DealPayButton'
+import { handleDealJoinError } from './group-buy/deal-join-error'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -390,27 +391,8 @@ export default function GroupBuyDetailPage() {
           toast.error(res.data?.error || '교환 실패')
         }
       } catch (err: unknown) {
-        const e = err as { response?: { data?: { error?: string; code?: string } } }
-        const code = e?.response?.data?.code
-        if (code === 'DEAL_PAYMENT_NOT_ALLOWED') {
-          // 서버 게이트가 꺼져 있음 — 클라 플래그와 갈린 상태. 카드로 유도한다.
-          toast.error('지금은 이 상품을 카드로만 결제할 수 있어요.')
-          return
-        }
-        if (code === 'INSUFFICIENT_POINTS') {
-          // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
-          if (TOPUP_DISABLED) {
-            toast.error('딜이 부족해요. 딜은 친구 초대·유어샵 추천으로 모을 수 있어요.')
-            return
-          }
-          const charge = await confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')
-          if (charge) {
-            localStorage.setItem('loginReturnUrl', window.location.pathname)
-            navigate('/points/charge')
-          }
-          return
-        }
-        toast.error(e?.response?.data?.error || '교환 실패')
+        // 💰 실패 안내 3갈래(게이트 꺼짐 / 딜 부족 / 그 외)는 `./group-buy/deal-join-error`.
+        await handleDealJoinError(err, { confirmDialog, navigate })
       } finally {
         setJoining(false)
       }

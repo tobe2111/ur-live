@@ -25,6 +25,7 @@ const PAGE = 'src/pages/GroupBuyDetailPage.tsx'
 // 🔀 2026-09-01: 노출 조건·버튼을 여기로 추출(파일 크기 래칫). 가드도 따라 옮긴다 —
 //   코드만 옮기고 가드를 두고 오면 그 불변식은 조용히 사라진다.
 const DEALBTN = 'src/pages/group-buy/DealPayButton.tsx'
+const DEALERR = 'src/pages/group-buy/deal-join-error.ts'
 /** 주석 제거 — 주석에만 남은 이름을 배선으로 오독하지 않는다(2026-08-01 교훈). */
 const codeOnly = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
@@ -82,6 +83,11 @@ describe('R3 — 화면: 딜은 선택지일 뿐 기본이 아니다', () => {
     expect(code).not.toContain('VOUCHER_DEAL_PAYMENT_ENABLED')
   })
   it('서버 거절 코드를 안내로 처리한다', () => {
-    expect(code).toContain('DEAL_PAYMENT_NOT_ALLOWED')
+    // 🔀 2026-09-01: 실패 안내를 deal-join-error 로 이관(파일 크기 래칫). 가드도 따라간다.
+    const err = readFileSync(DEALERR, 'utf8')
+    expect(err).toContain('DEAL_PAYMENT_NOT_ALLOWED')
+    expect(err).toContain('카드로만 결제할 수 있어요')
+    // 페이지가 그 매핑을 실제로 부르는지 — 옮겨 놓고 안 부르면 안내가 사라진다.
+    expect(code).toContain('handleDealJoinError(err, { confirmDialog, navigate })')
   })
 })

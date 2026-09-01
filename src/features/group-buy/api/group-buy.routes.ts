@@ -36,7 +36,7 @@ import {
 // 🛡️ 2026-05-21: 모든 voucher 카테고리에서 동작하려면 이용권 hardcode 제거 — getVoucherShortLabel 사용.
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 // 🎟️ 2026-08-12 (소비자 공구 결제 결함 3건): 자기참여 판정·주문번호·가상계좌 가드 → gb-purchase-guards.ts
-import { isVoucherDealPaymentAllowed, isSelfOwnedGroupBuy, resolveGbOrderNumber, guardAwaitingDeposit, issuedVoucherLabel } from './gb-purchase-guards'
+import { isVoucherDealPaymentAllowed, groupBuyJoinBlockReason, isSelfOwnedGroupBuy, resolveGbOrderNumber, guardAwaitingDeposit, issuedVoucherLabel } from './gb-purchase-guards'
 import { findActiveDealPct } from '@/worker/utils/influencer-deal'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
@@ -255,22 +255,9 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       return c.json({ success: false, error: '본인의 공동구매 상품에는 참여할 수 없습니다', code: 'SELF_PARTICIPATION_BLOCKED' }, 403)
     }
 
-    // 공동구매 마감 확인 (마감 시간이 참여보다 먼저 체크되도록)
-    if (product.group_buy_deadline && new Date(product.group_buy_deadline) < new Date()) {
-      return c.json({ success: false, error: '공동구매가 마감되었습니다' }, 400)
-    }
-
-    // 🛡️ 2026-05-15: 이미 종료/취소된 공구 차단 (status 가드)
-    if (product.group_buy_status === 'expired' || product.group_buy_status === 'cancelled') {
-      return c.json({ success: false, error: '종료된 공동구매입니다' }, 400)
-    }
-
-    // 🛡️ 2026-05-15: voucher 만료일 가드 — 공구 마감 전에 voucher 가 먼저 만료되면 무용지물
-    if (product.voucher_expiry && product.group_buy_deadline) {
-      if (new Date(product.voucher_expiry) <= new Date(product.group_buy_deadline)) {
-        return c.json({ success: false, error: '바우처 만료일이 공구 마감 전이라 발급할 수 없습니다. 셀러에게 문의해주세요.' }, 400)
-      }
-    }
+    // 🛡️ 마감 / 종료·취소 / 바우처 만료 — 조건·순서 그대로 `gb-purchase-guards` SSOT 로 이관(2026-09-01).
+    const joinBlocked = groupBuyJoinBlockReason(product)
+    if (joinBlocked) return c.json({ success: false, error: joinBlocked }, 400)
 
     // ✅ BUG #26 FIX: Atomic stock reservation. Previous SELECT-then-UPDATE
     // pattern allowed two concurrent joiners to both pass the stock check and

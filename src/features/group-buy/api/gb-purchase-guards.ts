@@ -211,3 +211,31 @@ export async function isVoucherDealPaymentAllowed(
   ).first<{ value: string }>().catch(() => null)
   return gate?.value === 'true'
 }
+
+/**
+ * 🛡️ 참여 자격 3가지 — 마감 / 종료·취소 / 바우처 만료. 전부 400 + 문구 하나라 한 함수로 모은다.
+ *
+ * 조건은 `group-buy.routes.ts` 에 있던 것을 **그대로** 옮겼다(2026-09-01, 파일 크기 래칫).
+ * 판정 순서도 그대로다 — 마감을 참여보다 먼저 보는 것이 원래 의도였고(주석 명시), 만료일 가드는
+ * 공구 마감 전에 바우처가 먼저 죽는 상품을 막는다.
+ *
+ * @returns 막아야 하면 안내 문구, 통과면 `null`.
+ */
+export function groupBuyJoinBlockReason(product: {
+  group_buy_deadline?: string | null
+  group_buy_status?: string | null
+  voucher_expiry?: string | null
+}): string | null {
+  if (product.group_buy_deadline && new Date(product.group_buy_deadline) < new Date()) {
+    return '공동구매가 마감되었습니다'
+  }
+  if (product.group_buy_status === 'expired' || product.group_buy_status === 'cancelled') {
+    return '종료된 공동구매입니다'
+  }
+  if (product.voucher_expiry && product.group_buy_deadline) {
+    if (new Date(product.voucher_expiry) <= new Date(product.group_buy_deadline)) {
+      return '바우처 만료일이 공구 마감 전이라 발급할 수 없습니다. 셀러에게 문의해주세요.'
+    }
+  }
+  return null
+}
