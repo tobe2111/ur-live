@@ -6503,6 +6503,26 @@ canvas {
       '7,234행에서 46만행이 된다 — 결과가 맞아서 아무도 모르고, 매 요청이라 금방 쌓인다.',
   },
   {
+    name: '🧹 자가-치유 부분 인덱스의 조건이 UPDATE 와 어긋난다(있는데 아무도 안 쓴다)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: "ON ad_company_leads(id) WHERE address IN ('N/A','n/a','N.A.','-','--','없음','미상','null')",
+    replace: "ON ad_company_leads(id) WHERE address IN ('N/A','n/a')",
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '부분 인덱스는 조건이 쿼리의 WHERE 와 맞아떨어질 때만 쓰인다. 목록이 하나만 달라도 인덱스는 ' +
+      '만들어지고 저장 공간만 먹은 채 UPDATE 는 다시 회당 40만 행을 훑는다 — 에러가 없다.',
+  },
+  {
+    name: '🧹 마스킹 이메일 정리가 다시 전수 스캔이 된다(하루 969만 행)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: "  `CREATE INDEX IF NOT EXISTS idx_company_leads_masked_email\n     ON ad_company_leads(id) WHERE email LIKE '%*%'`,\n",
+    replace: '',
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '고칠 게 없어도 매 회차 테이블을 통째로 훑는다. 결과는 똑같아서 아무도 모르고, ' +
+      'D1 한도만 조용히 다시 찬다 — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
+  },
+  {
     name: '☎️ 원부 전화 인덱스가 식을 잃는다(다시 하루 2,270만 행 전수 스캔)',
     file: 'src/features/marketing/api/company-ddl-indexes.ts',
     find: "ON ad_company_leads(REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'.',''))",

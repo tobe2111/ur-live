@@ -123,4 +123,30 @@ export const COMPANY_INDEX_DDL: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_company_leads_registry_phone
      ON ad_company_leads(REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'.',''))
      WHERE source = 'commerce' AND merged_into IS NULL AND phone IS NOT NULL AND phone != ''`,
+
+  /**
+   * ⑦⑧ **매 회차 도는 자가-치유 두 건** (2026-09-01 실측 — 합쳐 하루 1,898만 행).
+   *
+   * `runCommerceCollect` 는 회차 맨 앞에서 이미 저장된 오염을 스스로 고친다(마스킹 이메일 `a**b@x.com`,
+   * 자리표시자 주소 `"N/A"`). 설계는 옳다 — 원부 한 바퀴가 며칠이라 새 수집을 기다리면 그동안 계속
+   * 잘못된 주소로 메일이 나간다. 문제는 **고칠 게 없을 때도 매번 테이블을 통째로 훑는다**는 것이다:
+   * ```
+   *   마스킹 이메일 정리   9,687,616행 / 24회  = 회당 40만 행
+   *   자리표시자 주소 정리  9,286,813행 / 23회  = 회당 40만 행
+   *   그 대가로 보통 얻는 것은 "고칠 것 없음" 이다.
+   * ```
+   * ⇒ **부분 인덱스**로 대상만 담는다. 인덱스에는 오염된 행만 들어가므로(보통 0~수십 건)
+   *   `SCAN 테이블` 이 `SCAN 부분인덱스` 가 되고, 읽는 양이 대상 건수로 줄어든다.
+   *   (`node:sqlite` 실증: 두 UPDATE 모두 `SCAN … USING INDEX`, 20,000행 결과 완전 동일.)
+   * ⚠️ 부분 조건은 각 UPDATE 의 `WHERE` 와 **글자까지 같아야** 쓰인다 — 목록 하나만 달라도 무용지물이다.
+   * ⚠️ 키를 `id` 로 둔 것은 **정렬이 필요 없기 때문**이다(대상 전부를 고치므로). 다른 컬럼을 키로
+   *   넣으면 인덱스만 커지고 얻는 게 없다.
+   * 💡 세 번째 자가-치유(`description LIKE '%폐업%'`)는 이미 `source`·`active` 로 좁혀져 회당 5.5만 행이라
+   *   같은 처방의 이득이 작다 — 넣지 않았다. 넷째(`COUNT(*) WHERE active=0`)는 2026-08-27 에 이미
+   *   시간당 1회로 늦췄고, 세는 대상 자체가 34만 행이라 인덱스로는 안 줄어든다.
+   */
+  `CREATE INDEX IF NOT EXISTS idx_company_leads_masked_email
+     ON ad_company_leads(id) WHERE email LIKE '%*%'`,
+  `CREATE INDEX IF NOT EXISTS idx_company_leads_placeholder_address
+     ON ad_company_leads(id) WHERE address IN ('N/A','n/a','N.A.','-','--','없음','미상','null')`,
 ]
