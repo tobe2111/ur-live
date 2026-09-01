@@ -105,9 +105,11 @@ if domain ui; then
   run "링크샵 소유권 단일화"              node scripts/check-linkshop-ownership.mjs -s
   run "AI 디자인 흔적(평면 그라디언트·UI 이모지)" node scripts/check-design-slop.mjs
   run "AI 디자인 흔적(문구·라벨: em-dash·섹션번호·한글 uppercase)" node scripts/check-anti-slop-copy.mjs
+  run "할인율이 사진 위에 없다(전 카드 구현)" node scripts/check-discount-not-on-photo.mjs
   run "대시보드 버튼 체계(원시 주 버튼 래칫)" node scripts/check-dashboard-button-system.mjs
   run "이미지 폴백(깨진 이미지 아이콘 노출)" node scripts/check-image-fallback.mjs
   run "결제수단 판정 SSOT"                node scripts/check-payment-flow-ssot.mjs -s
+  run "배송비 판정 SSOT(장바구니↔결제)"    node scripts/check-no-shipping-ssot.mjs
   run "기능 현황판 동기(꺼진 기능)"        node scripts/generate-feature-status.mjs --check
   run "소비자 이미지 cfImage 경유"        env STRICT_RAW_IMG=1 node scripts/check-consumer-img-cfimage.mjs
   run "KST 타임스탬프 파싱(9시간 어긋남)"  env STRICT_UTC_DATE=1 node scripts/check-utc-date-parse.mjs

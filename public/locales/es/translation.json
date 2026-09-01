@@ -4165,7 +4165,7 @@
     "agreeToTerms": "I agree to proceed with payment",
     "checkout": "Checkout",
     "freeShipping": "Free Shipping",
-    "initError": "Failed to initialize payment",
+    "initError": "No pudimos iniciar el pago. Vuelve a intentarlo en un momento.",
     "loading": "Loading payment information...",
     "orderDate": "Order Date",
     "orderNumber": "Order Number",
@@ -4200,7 +4200,7 @@
       "authError": "Error de autenticación. Por favor, actualiza la página.",
       "uiNotFound": "Área de UI de pago no encontrada. Por favor, actualiza la página.",
       "orderNumberInvalid": "Formato de número de pedido no válido. Por favor, actualiza la página.",
-      "systemError": "Error del sistema de pago (se requiere actualizar)"
+      "systemError": "El pago no está disponible ahora"
     },
     "section": {
       "title": "Método de pago",
