@@ -6823,6 +6823,26 @@ canvas {
       '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
   },
   {
+    name: '🪦 묘비 철거 DELETE 가 역할 전체로 번진다',
+    file: 'src/features/guides/api/guide.routes.ts',
+    find: "DELETE FROM operation_guides WHERE guide_type = ? AND section_key = ?')\n        .bind(t, k)",
+    replace: "DELETE FROM operation_guides WHERE guide_type = ?')\n        .bind(t)",
+    test: 'src/tests/unit/guide-unfreeze.test.ts',
+    why:
+      'section_key 가 빠지면 그 역할의 **가이드가 통째로 삭제**된다. 삭제는 되돌릴 수 없고, ' +
+      '관리자가 손으로 쓴 절까지 사라진다 — 철거는 명시한 4개만이어야 한다.',
+  },
+  {
+    name: '🪦 지운 절이 시드에 남아 되살아난다',
+    file: 'src/features/guides/api/guide-seed-seller.ts',
+    find: "key: 'seller-voucher-gift-model-2026-05'",
+    replace: "key: 'live-broadcast'",
+    test: 'src/tests/unit/guide-unfreeze.test.ts',
+    why:
+      '철거 블록은 시드 루프 **앞**에서 돈다. 시드에 그 키가 남아 있으면 같은 실행 안에서 ' +
+      '`INSERT OR IGNORE` 가 되살려 삭제가 영원히 무효가 된다.',
+  },
+  {
     name: '🔓 2차 해동이 통째로 빠진다 (도매 가이드가 계속 폐기어를 가르침)',
     file: 'src/features/guides/api/guide.routes.ts',
     find: "const UNFREEZE2_MARKER = 'guide_unfreeze_2026_08_31_b'",

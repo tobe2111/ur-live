@@ -26,7 +26,8 @@ export const guideRoutes = new Hono<{ Bindings: Env }>()
 //   v1 = 암묵적 레거시(버전 미저장, ensureSeeded '0행일 때만' 시대) / v2 = 버전 메커니즘 도입.
 //   v4 = 2026-07-12 체험 캠페인(어드민 대행생성·추첨·비정산) + 조건부 우대 커미션(셀러) 섹션.
 //   v5 = 2026-07-13 상권 쿠폰(영수증 페이백) 운영 섹션 — 양 트랙 머지 통합 bump.
-const GUIDE_SEED_VERSION = 22 // 2026-08-31 2차 해동 — 라이브에 남아 있던 폐기어(유통사·식사권)·옛 도메인·금지 빌드명령 14개
+const GUIDE_SEED_VERSION = 23 // 2026-08-31 중단된 라이브 기능의 '종료됨' 묘비 4개 철거 + 이용권 사용 처리 절 제목 현행화
+// (이전) 22 // 2026-08-31 2차 해동 — 라이브에 남아 있던 폐기어(유통사·식사권)·옛 도메인·금지 빌드명령 14개
 // (이전) 21 // 2026-08-31 한정 해동 — 백필에 얼어붙어 시드가 못 닿던 섹션 13개(실측 대조)
 // (이전) 20 // 2026-08-31 운영백서에 '무상 딜은 누가 내나' + 후기 보너스(매장이 금액 설정) 절 추가
 // (이전) 18 // 2026-08-26 셀러·어드민 가이드 사실 갱신 — 폐기 기능(라이브·호스팅·어필리에이트·승급) 현행화 + 신분어 → 행위
@@ -189,6 +190,34 @@ async function syncGuideSeed(DB: D1Database, firstRun: boolean, env?: SeedAssetE
       `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, 'done', datetime('now'))
        ON CONFLICT(key) DO NOTHING`
     ).bind(UNFREEZE2_MARKER).run().catch(swallow('guides:seed-sync:unfreeze2-marker'))
+  }
+
+  // 🪦 **묘비 철거** (2026-08-31 대표: "셀러 라이브 방송 이런건 왜 있는거지? 라이브커머스 이제 안하는데").
+  //   해동(위)으로 이 절들은 '종료됨' 한 줄짜리가 됐다. 내용은 고쳐졌지만 **목록에는 계속 보인다** —
+  //   중단된 기능의 묘비가 넷이나 서 있으면 "아직 하는 건가?" 를 매번 다시 묻게 된다.
+  //
+  //   ⚠️ **재시드는 삭제를 안 한다**(가이드는 운영자가 큐레이션하는 문서라 그렇게 설계됐다).
+  //     시드에서 빼는 것만으로는 라이브 DB 에서 안 없어진다 — 여기서 명시적으로 지운다.
+  //   ⚠️ **키를 명시한 것만**, 1회만. 삭제는 되돌릴 수 없으므로 범위를 넓히지 말 것.
+  //     (시드에도 이 키들이 남아 있으면 다음 재시드가 다시 INSERT 한다 — 시드에서 함께 뺐다.)
+  const TOMBSTONE_MARKER = 'guide_tombstone_purge_2026_08_31'
+  const purged = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`)
+    .bind(TOMBSTONE_MARKER).first<{ value: string }>().catch(() => null)
+  if (!purged) {
+    const PURGE_ONCE: Array<[GuideType, string]> = [
+      ['seller', 'live-broadcast'],            // 라이브 방송 운영 — 종료됨
+      ['seller', 'live-mastery'],              // 라이브 운영 노하우 — 종료됨
+      ['seller', 'seller-live-tips-2026-05'],  // 라이브 송출 가이드 — 종료됨
+      ['seller', 'gift'],                      // 선물하기(라이브 중 결제) — 종료됨
+    ]
+    for (const [t, k] of PURGE_ONCE) {
+      await DB.prepare('DELETE FROM operation_guides WHERE guide_type = ? AND section_key = ?')
+        .bind(t, k).run().catch(swallow('guides:seed-sync:purge'))
+    }
+    await DB.prepare(
+      `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, 'done', datetime('now'))
+       ON CONFLICT(key) DO NOTHING`
+    ).bind(TOMBSTONE_MARKER).run().catch(swallow('guides:seed-sync:purge-marker'))
   }
 
   const GUIDE_SEEDS = await loadSeedAsset(env, SEED_ASSET_PATHS.guides, isGuideSeed)
