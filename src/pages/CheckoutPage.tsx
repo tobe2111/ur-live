@@ -10,7 +10,7 @@ import { trackFunnel } from '@/lib/funnel'
 import api from '@/lib/api'
 import { handleApiError, getUserFriendlyError } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Smartphone, Ticket } from 'lucide-react'
 import { getUserIdSync, hasConsumerSession } from '@/utils/auth'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/config/region'
@@ -484,7 +484,7 @@ function CartCheckout() {
                 <section className="bg-white dark:bg-[#0D0F12] px-5 py-4">
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">발송 방법</h2>
                   <div className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
-                    <span className="text-2xl shrink-0">📱</span>
+                    <Smartphone className="w-6 h-6 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.6} aria-hidden />
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">휴대폰 MMS 즉시 발송</p>
                       <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
@@ -498,7 +498,7 @@ function CartCheckout() {
                 <section className="bg-white dark:bg-[#0D0F12] px-5 py-4">
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">사용 방법</h2>
                   <div className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
-                    <span className="text-2xl shrink-0">🎟️</span>
+                    <Ticket className="w-6 h-6 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.6} aria-hidden />
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">매장에서 바로 사용</p>
                       <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
