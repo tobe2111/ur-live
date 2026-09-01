@@ -88,6 +88,47 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '돌긴 했는데 못 한 cron 을 아무도 안 본다',
+    file: 'src/worker/cron/cron-stale-watch.ts',
+    find: '  for (const b of blocked) {',
+    replace: '  for (const b of []) {',
+    test: 'src/tests/unit/cron-bindings.test.ts',
+    why:
+      '이 감시는 "안 돌았다"(age)만 보던 탓에 2026-08-31 사고를 넉 달간 못 봤다 — 그 cron 은 ' +
+      '멈춘 적이 없고 5분마다 성실히 돌면서 아무것도 못 했다. 이 루프가 그 나머지 절반이다.',
+  },
+  {
+    name: '대시보드 R2 바인딩 프로브가 종료코드에 안 실린다',
+    file: 'scripts/check-live-contracts.mjs',
+    find: 'process.exit(failures.length || robots || r2 ? 1 : 0)',
+    replace: 'process.exit(failures.length || robots ? 1 : 0)',
+    test: 'src/tests/unit/cron-bindings.test.ts',
+    why:
+      'Pages 바인딩은 대시보드에만 있어 레포 가드가 못 본다. 유일한 창이 이 프로브인데, 결과가 ' +
+      '종료코드에 안 실리면 워크플로가 초록으로 끝나 아무에게도 안 닿는다(만들어 놓고 안 부르는 것과 같다).',
+  },
+  {
+    name: 'cron 이 쓰는 R2 바인딩이 wrangler.toml 에서 다시 주석 처리된다',
+    file: 'wrangler.toml',
+    find: '[[r2_buckets]]\nbinding = "MEDIA_BUCKET"',
+    replace: '# [[r2_buckets]]\n# binding = "MEDIA_BUCKET"',
+    test: 'src/tests/unit/cron-bindings.test.ts',
+    why:
+      '2026-08-31 실측: 이 줄이 주석이라 이미지 이관 cron 이 넉 달간 한 건도 못 옮겼다. 큐 338건이 ' +
+      '전부 시도조차 안 된 채였고 하트비트는 ok:true 였다. cron 은 Pages 대시보드가 아니라 이 파일로 ' +
+      '바인딩을 받으므로, 주석으로 되돌아가면 같은 침묵이 그대로 재발한다.',
+  },
+  {
+    name: '바인딩이 없어 못 돈 것을 "할 일 없었음" 과 구분하지 않는다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: "return { ...result, skipped: 'NO_MEDIA_BUCKET' }",
+    replace: 'return result',
+    test: 'src/tests/unit/cron-bindings.test.ts',
+    why:
+      '사고를 넉 달간 못 본 진짜 이유. 전부 0 으로 반환하면 하트비트에서 정상 회차와 글자 하나 ' +
+      '다르지 않다 — 못 한 것과 안 해도 됐던 것이 같은 모양으로 찍힌다.',
+  },
+  {
     name: '이용권 지갑에 교환권 링크가 다시 들어온다',
     file: 'src/pages/MyGifticonsPage.tsx',
     find: "        onBack={() => navigate('/vouchers')}",
@@ -197,6 +238,78 @@ const MUTATIONS = [
     why:
       '보정행은 *출처 불명* 을 원장에 적는 **기록**이지 지급이 아니다. 잔액을 함께 움직이면 ' +
       '설명하려던 금액을 두 배로 만든다.',
+  },
+  {
+    name: '⏰ 만회가 아무 기록도 안 남긴다 (돌았는지 아무도 모른다)',
+    file: 'src/worker/scheduled.ts',
+    // ⚠️ 주입은 **줄을 통째로 지운다.** 처음엔 호출을 죽은 화살표로 감쌌는데, 소스에 문자열이
+    //   그대로 남아 판정(문자열 검사)이 통과했다 — 주입이 아무것도 안 한 셈이라 초록이 떴다.
+    find: "    ctx.waitUntil(recordCronBeat(env, '__catchup', true, 0, cron, summarizeCatchup(catchup), expectedMaxAgeMinutes('55 * * * *') ?? undefined)); // cron-heartbeat-ok: 작업이 아니라 하트비트 **자체**다(__tick 과 동일 이유)",
+    replace: "    // 기록 생략",
+    test: 'src/tests/unit/cron-catchup.test.ts',
+    why:
+      '만회는 정상인 날 아무 흔적도 안 남긴다. 이 한 줄이 빠지면 "돌았는데 할 일이 없었다"와 ' +
+      '"아예 안 돌았다"가 구분되지 않는다 — 이 기능이 고치려는 병을 이 기능 자신이 앓게 된다.',
+  },
+  {
+    name: '⏰ 건너뛴 수를 안 센다 (요약이 늘 0 이라 관측이 무의미해진다)',
+    file: 'src/worker/cron-catchup.ts',
+    find: '  if (ranThisPeriod(state.lastRun.get(name), start)) { state.skipped += 1; return false }',
+    replace: '  if (ranThisPeriod(state.lastRun.get(name), start)) return false',
+    test: 'src/tests/unit/cron-catchup.test.ts',
+    why:
+      'skipped 가 0 으로 굳으면 만회 회차 기록이 `started=0 skipped=0` 뿐이라 ' +
+      '**정상 회차와 아무 일도 안 한 회차가 같은 모양**이 된다.',
+  },
+  {
+    name: '⏰ 만회가 정시 틱에서도 켜진다 (일간 작업이 5분마다 돈다)',
+    file: 'src/worker/cron-catchup.ts',
+    find: '  if (tick.getUTCMinutes() !== CATCHUP_MINUTE) return null',
+    replace: '  if (false) return null',
+    test: 'src/tests/unit/cron-catchup.test.ts',
+    why:
+      '만회는 :55 틱 전용이다. 이 한 줄이 없으면 정산·원장·교환권 배치가 **5분마다** 돌고, ' +
+      '그게 곧 서브리퀘스트 예산을 말려 원래 고치려던 굶주림을 되살린다.',
+  },
+  {
+    name: '⏰ 하트비트를 못 읽어도 만회한다 (이미 끝난 정산을 다시 돌린다)',
+    file: 'src/worker/cron-catchup.ts',
+    find: '  if (!lastRun) return null // 읽기 실패 = 만회 안 함(fail-closed)',
+    replace: '  if (!lastRun) return { lastRun: new Map(), started: 0 }',
+    test: 'src/tests/unit/cron-catchup.test.ts',
+    why:
+      '빈 맵은 "아무도 안 돌았다"로 읽힌다. D1 조회가 한 번 실패한 것뿐인데 그날 돈 작업 전부를 ' +
+      '재실행하게 된다 — 모르는 상태에서 머니 배치를 다시 돌리느니 쉬는 게 낫다.',
+  },
+  {
+    name: '⏰ 이번 주기에 이미 돈 작업을 또 돌린다 (일간 배치 이중 실행)',
+    file: 'src/worker/cron-catchup.ts',
+    find: '  if (ranThisPeriod(state.lastRun.get(name), start)) { state.skipped += 1; return false }',
+    replace: '  if (false) return false',
+    test: 'src/tests/unit/cron-catchup.test.ts',
+    why:
+      '만회 틱은 시간당 온다. 이 검사가 없으면 정상인 날에도 일간 정산이 **하루 다섯 번** 돈다 ' +
+      '(그리고 그게 만회의 비용을 0 으로 만드는 유일한 장치다).',
+  },
+  {
+    name: '⏰ 만회 한 틱의 시작 한도가 사라진다 (만회가 예산을 다시 말린다)',
+    file: 'src/worker/cron-catchup.ts',
+    find: '  if (state.started >= CATCHUP_MAX_JOBS) { state.deferred += 1; return false }',
+    replace: '  if (false) return false',
+    test: 'src/tests/unit/cron-catchup.test.ts',
+    why:
+      '밀린 작업이 20개면 한 인보케이션이 전부 시작하고 서브리퀘스트가 마른다 — 고치려던 병을 ' +
+      '만회가 그대로 재현한다. 시간당 기회가 24번이라 나눠 돌면 된다.',
+  },
+  {
+    name: '⏰ 주기 경계가 사라진다 (어제 것을 오늘 새벽에 끌어와 돌린다)',
+    file: 'src/worker/cron-catchup.ts',
+    find: '  return nowMs >= start ? start : null',
+    replace: '  return start',
+    test: 'src/tests/unit/cron-catchup.test.ts',
+    why:
+      '슬롯 시각 전에도 주기가 열리면 자정~18시 사이 만회 틱이 **오늘 아직 오지도 않은** 18시 ' +
+      '배치를 돌린다. 만회의 범위는 그날 안으로 닫혀 있어야 추론이 된다.',
   },
   {
     name: '🖱️ 정비 화면의 확인 창이 사라진다 (검사하려다 실행된다)',
@@ -5416,8 +5529,9 @@ canvas {
   {
     name: '슬롯 cron 이 캐리어 주기로 기록됨(하루 1회 작업이 매일 오탐)',
     file: 'src/worker/scheduled.ts',
-    find: '  const slotCron = (expr: string) => (n: string, t: () => Promise<unknown>) => safeCron(n, t, expectedMaxAgeMinutes(expr) ?? undefined);',
-    replace: '  const slotCron = (_expr: string) => (n: string, t: () => Promise<unknown>) => safeCron(n, t);',
+    // 🩹 2026-08-31: slotCron 이 만회 판정을 품으며 한 줄 → 블록이 됐다. find 를 그 안의 실제 신고 줄로 옮긴다.
+    find: '    return safeCron(n, t, expectedMaxAgeMinutes(expr) ?? undefined);',
+    replace: '    return safeCron(n, t);',
     test: 'src/tests/unit/cron-slot-cadence.test.ts',
     why:
       '소비자 cron 은 5분 캐리어에 얹혀 `slotDue` 로 자기 시각에만 도는데, 하트비트엔 캐리어 식이 기록된다. ' +
@@ -5922,7 +6036,8 @@ canvas {
   {
     name: '🌆 일간 레인 분리가 되돌아감(16개가 한 인보케이션으로)',
     file: 'src/worker/scheduled.ts',
-    find: "  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 10, hour: 18 })) {",
+    // 🩹 2026-08-31: 게이트가 `slotDue(...)` → `slotOpen(spec)`(정시 + 만회)로 바뀌었다.
+    find: "  if (cron === '*/5 * * * *' && slotOpen({ minute: 10, hour: 18 })) {",
     replace: "  if (false) {",
     test: 'src/tests/unit/cron-heartbeat-dispatch.test.ts',
     why:
@@ -5932,7 +6047,9 @@ canvas {
   {
     name: '🌆 분리된 레인에 기록 안 하는 래퍼 주입(그룹 전체가 관측 밖)',
     file: 'src/worker/scheduled.ts',
-    find: "runDailyLane('money', { env, ctx, run: safeCron,",
+    // 🩹 2026-08-31: money 레인이 `slotCron('0 18 * * *')` 를 받는다(만회 틱에서 '이미 돌았나'를
+    //   판단하려면 자기 슬롯을 아는 래퍼여야 한다). 주입은 그대로 '기록 안 하는 래퍼'다.
+    find: "runDailyLane('money', { env, ctx, run: slotCron('0 18 * * *'),",
     replace: "runDailyLane('money', { env, ctx, run: bareRun,",
     test: 'src/tests/unit/cron-heartbeat-dispatch.test.ts',
     why:
@@ -6364,6 +6481,26 @@ canvas {
       '7,234행에서 46만행이 된다 — 결과가 맞아서 아무도 모르고, 매 요청이라 금방 쌓인다.',
   },
   {
+    name: '🧹 자가-치유 부분 인덱스의 조건이 UPDATE 와 어긋난다(있는데 아무도 안 쓴다)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: "ON ad_company_leads(id) WHERE address IN ('N/A','n/a','N.A.','-','--','없음','미상','null')",
+    replace: "ON ad_company_leads(id) WHERE address IN ('N/A','n/a')",
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '부분 인덱스는 조건이 쿼리의 WHERE 와 맞아떨어질 때만 쓰인다. 목록이 하나만 달라도 인덱스는 ' +
+      '만들어지고 저장 공간만 먹은 채 UPDATE 는 다시 회당 40만 행을 훑는다 — 에러가 없다.',
+  },
+  {
+    name: '🧹 마스킹 이메일 정리가 다시 전수 스캔이 된다(하루 969만 행)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: "  `CREATE INDEX IF NOT EXISTS idx_company_leads_masked_email\n     ON ad_company_leads(id) WHERE email LIKE '%*%'`,\n",
+    replace: '',
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      '고칠 게 없어도 매 회차 테이블을 통째로 훑는다. 결과는 똑같아서 아무도 모르고, ' +
+      'D1 한도만 조용히 다시 찬다 — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
+  },
+  {
     name: '☎️ 원부 전화 인덱스가 식을 잃는다(다시 하루 2,270만 행 전수 스캔)',
     file: 'src/features/marketing/api/company-ddl-indexes.ts',
     find: "ON ad_company_leads(REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'.',''))",
@@ -6645,6 +6782,28 @@ canvas {
     why:
       '산출물 부재를 통과로 접으면 가드가 있어도 없는 것과 같다. 이 레포가 반복해 당한 ' +
       '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
+  },
+  {
+    name: '🔓 2차 해동이 통째로 빠진다 (도매 가이드가 계속 폐기어를 가르침)',
+    file: 'src/features/guides/api/guide.routes.ts',
+    find: "const UNFREEZE2_MARKER = 'guide_unfreeze_2026_08_31_b'",
+    replace: "const UNFREEZE2_MARKER = 'guide_unfreeze_disabled'",
+    test: 'src/tests/unit/guide-unfreeze.test.ts',
+    why:
+      '2차가 빠지면 도매 가이드 15개 중 12개가 계속 **유통사**(2026-06-22 폐기)라고 말하고, ' +
+      "admin 'deploy' 는 클라이언트만 빌드하는 옛 단독 명령을 가르친다 — CLAUDE.md 가 " +
+      '2026-05-12 사고의 원인으로 지목해 금지한 그 명령이다(_worker.js 가 안 갱신된다).',
+  },
+  {
+    name: '🔓 가이드 해동이 전체로 번진다 (관리자 문구까지 시드로 덮음)',
+    file: 'src/features/guides/api/guide.routes.ts',
+    // ⚠️ 같은 SQL 이 1차·2차 두 블록에 있다 → **catch 태그까지 포함해** 1차 블록만 지목한다.
+    find: "AND section_key = ?`\n      ).bind(t, k).run().catch(swallow('guides:seed-sync:unfreeze'))",
+    replace: "`\n      ).bind(t, k).run().catch(swallow('guides:seed-sync:unfreeze'))",
+    test: 'src/tests/unit/guide-unfreeze.test.ts',
+    why:
+      '해동은 **실측으로 갈린 섹션 13개**를 되살리려는 것이지 관리자가 쓴 문구를 되돌리려는 것이 아니다. ' +
+      '범위가 풀리면 운영자가 손으로 다듬은 가이드가 배포 한 번에 통째로 시드로 덮인다.',
   },
   {
     name: '📖 운영백서가 커미션 딜 수령을 무상으로 뭉갠다',
