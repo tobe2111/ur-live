@@ -24,8 +24,8 @@
 | `src/features/group-buy/api/review-bonus-funding.ts` | `debitStoreForReviewBonus()` 추가 — `funded_by==='owner'` + 금액>0 + sellerId 있을 때만, `reference_id='review:{submissionId}'` 로 **선조회 dedup 후** `recordLedger`(debit `seller:N` / credit `platform:revenue`). 실패는 전부 삼킨다(보너스 지급을 못 되돌리므로). |
 | `src/features/group-buy/api/review-bonus.routes.ts` | `approveSubmission` 에서 **`payBonus` 가 성공한 뒤에** 호출. |
 | `src/tests/unit/review-bonus-debit.test.ts` | 7건 — 동작 4 + 배선 불변식 2 + 멱등 1. |
-| `docs/STAGING_CHECKLIST.md` | **S9** 신설. |
-| `src/features/admin/api/admin-system-monitoring.routes.ts` | `OPS_GATES` 에 `review_bonus_owner_funded` 등재(`staging_ref: 'S9'`, 점등 조건 기재). |
+| `docs/STAGING_CHECKLIST.md` | **S11** 신설. |
+| `src/features/admin/api/admin-system-monitoring.routes.ts` | `OPS_GATES` 에 `review_bonus_owner_funded` 등재(`staging_ref: 'S11'`, 점등 조건 기재). |
 
 ## 🔑 순서가 안전장치다
 
@@ -43,10 +43,10 @@
 
 ## 다음 세션의 첫 액션
 
-1. **S9 를 staging 에서 돌린다** — 게이트 ON → 매장 금액 설정 → 후기 승인 →
+1. **S11 를 staging 에서 돌린다** — 게이트 ON → 매장 금액 설정 → 후기 승인 →
    `SELECT * FROM ledger_entries WHERE reference_id='review:{id}'` 가 **1행**인지,
    같은 건 재승인해도 **추가 0** 인지, 게이트 OFF 로 되돌리면 **차감 0** 인지.
-2. 통과하면 `docs/STAGING_CHECKLIST.md` S9 상태를 ✅ + 날짜로.
+2. 통과하면 `docs/STAGING_CHECKLIST.md` S11 상태를 ✅ + 날짜로.
    프로덕션 게이트 활성은 **대표가 어드민에서** 한다(세션은 플랫폼 쓰기 안 함).
 
 ## 이번에 틀렸던 판단

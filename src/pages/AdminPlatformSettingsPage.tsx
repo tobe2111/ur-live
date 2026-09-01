@@ -131,7 +131,7 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
   {
     key: 'review_bonus_owner_funded', label: '⑦ 후기 보너스 매장 부담', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — 유어딜 부담)' }, { value: 'true', label: 'ON — 매장 정산에서 차감' }],
-    hint: '🔴 머니 경로. 켜면 **매장이 금액을 직접 설정한 건만** 그 매장 정산에서 빠진다(설정 안 한 매장은 그대로 유어딜 부담). 끄면 즉시 현행 복귀. 검증 절차: docs/STAGING_CHECKLIST.md (S9)',
+    hint: '🔴 머니 경로. 켜면 **매장이 금액을 직접 설정한 건만** 그 매장 정산에서 빠진다(설정 안 한 매장은 그대로 유어딜 부담). 끄면 즉시 현행 복귀. 검증 절차: docs/STAGING_CHECKLIST.md (S11)',
   },
   // 🚨 2026-08-12: **킬스위치인데 당길 손잡이가 없었다.**
   //   `gb_pricing_enabled` 는 *"잘못 설정된 공구가로 과소청구가 날 때 false 로 저장해 즉시 상시가로
