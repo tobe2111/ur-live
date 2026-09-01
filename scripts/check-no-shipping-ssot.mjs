@@ -77,6 +77,12 @@ if (selfFail.length) {
   process.exit(1)
 }
 
+/* 🔬 측정 0 = 실패 — 목록이 줄면 위반도 0 이라 초록이 뜨는데 그 초록은 아무것도 보장하지 않는다. */
+if (SCOPE.length < 5) {
+  console.error(`❌ no-shipping-ssot: 검사 대상이 ${SCOPE.length}개다 — 목록이 낡았거나 줄었다(통과 아님).`)
+  process.exit(1)
+}
+
 const hits = scan(SCOPE.map((f) => path.join(ROOT, f)))
 if (hits.length) {
   console.error(`❌ no-shipping-ssot: 배송비 판정이 갈라진다 (${hits.length}건)`)
