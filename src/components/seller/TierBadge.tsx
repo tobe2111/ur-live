@@ -90,7 +90,7 @@ export default function TierBadge() {
         <div className="flex items-center gap-3">
           <meta.Icon className="w-7 h-7" aria-hidden="true" />
           <div>
-            <p className={`text-[11px] font-bold ${meta.color} uppercase tracking-wider`}>{t('tierBadge.currentTier', { defaultValue: '현재 등급' })}</p>
+            <p className={`text-[11px] font-bold ${meta.color} `}>{t('tierBadge.currentTier', { defaultValue: '현재 등급' })}</p>
             <p className={`text-xl font-extrabold ${meta.color}`}>{meta.label}</p>
             <p className="text-xs text-gray-500 mt-0.5">{t('tierBadge.scoreInfo', { score, rate: info.commission_rate, weight: info.exposure_weight, defaultValue: `점수 ${score} · 수수료 ${info.commission_rate}% · 노출 ${info.exposure_weight}×` })}</p>
           </div>

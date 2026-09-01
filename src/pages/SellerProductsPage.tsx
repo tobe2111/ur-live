@@ -263,13 +263,13 @@ export default function SellerProductsPage() {
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.image')}</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('seller.productName')}</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('common.price')}</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('common.stock')}</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('common.status')}</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('seller.liveStreamColumn')}</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('seller.actionColumn')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">{t('common.image')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">{t('seller.productName')}</th>
+            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500">{t('common.price')}</th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">{t('common.stock')}</th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">{t('common.status')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">{t('seller.liveStreamColumn')}</th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">{t('seller.actionColumn')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">

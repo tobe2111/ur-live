@@ -170,8 +170,8 @@ export default function AboutPage() {
             <SubBlock title="2-1. 진입장벽 ZERO" icon={<Zap className="w-5 h-5" />}>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-sm lg:text-base">
                 <li>· 카카오 로그인 → 5분 내 공구 등록</li>
-                <li>· 사업자 등록된 매장이면 누구나 입점 신청 — 입점 수수료 0원</li>
-                <li>· 브라우저만 있으면 시작 (앱 설치 X) — 공구 등록·주문·정산 한 곳에서</li>
+                <li>· 사업자 등록된 매장이면 누구나 입점 신청 (입점 수수료 0원)</li>
+                <li>· 브라우저만 있으면 시작합니다 (앱 설치 없음). 공구 등록과 주문, 정산이 한 곳에서</li>
                 <li>· 자체 쇼핑몰 구축 비용 0원 (Shopify 월 $29 + 도메인 + PG 부담 X)</li>
               </ul>
               <p className="mt-3 p-3 rounded-lg bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-300 text-xs lg:text-sm">
@@ -188,11 +188,11 @@ export default function AboutPage() {
                 ]}
               />
               <p className="mt-3 text-xs lg:text-sm text-gray-600 dark:text-gray-400">
-                공동구매 수수료 5% — 판매되는 만큼만 부담해요. 가입비·월 고정비 없습니다.
+                공동구매 수수료는 5%입니다. 판매되는 만큼만 부담해요. 가입비·월 고정비 없습니다.
               </p>
             </SubBlock>
 
-            <SubBlock title="2-3. 셀러 등급 시스템 — 성장형 보상" icon={<Trophy className="w-5 h-5" />}>
+            <SubBlock title="2-3. 셀러 등급 시스템 (성장형 보상)" icon={<Trophy className="w-5 h-5" />}>
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 {['신규', '브론즈', '실버', '골드', '플래티넘'].map((tier, i) => (
                   <div key={tier} className="flex items-center gap-2">
@@ -205,12 +205,12 @@ export default function AboutPage() {
               </div>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-sm lg:text-base">
                 <li>· 등급 진급 시 <strong>수수료 차감</strong> (플래티넘 최저)</li>
-                <li>· 알고리즘 노출 가중치 상승 — 상위 등급 셀러가 홈/카테고리 상단</li>
-                <li>· 어드민 셀러별 commission_rate 개별 조정 — 협상 여지</li>
+                <li>· 알고리즘 노출 가중치 상승. 상위 등급 셀러가 홈과 카테고리 상단에</li>
+                <li>· 어드민에서 셀러별 commission_rate 개별 조정 (협상 여지)</li>
               </ul>
             </SubBlock>
 
-            <SubBlock title="2-4. 에이전시 매칭 — 영업 없이 협업" icon={<Bot className="w-5 h-5" />}>
+            <SubBlock title="2-4. 에이전시 매칭 (영업 없이 협업)" icon={<Bot className="w-5 h-5" />}>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-sm lg:text-base">
                 <li>· 카테고리/규모/지역 기반 에이전시 매칭 추천</li>
                 <li>· 공구 운영이 어려우면 검증된 에이전시가 등록·관리 대행</li>
@@ -265,7 +265,7 @@ export default function AboutPage() {
             />
             <FeatureCard
               icon={<Bot className="w-5 h-5" />}
-              title="AI 셀러 매칭 — 영입 자동화"
+              title="AI 셀러 매칭 (영입 자동화)"
               desc="유어딜에 가입한 미소속 셀러 중 에이전시 카테고리/규모 적합 셀러 추천. 영업 자동화 → MCN 인력 비용 절감."
             />
             <FeatureCard
@@ -281,11 +281,11 @@ export default function AboutPage() {
           <div className="space-y-8">
             <WowMoment
               icon={<Users className="w-6 h-6" />}
-              title="4-1. 동네 공구 — 함께라서 더 좋은 가격"
+              title="4-1. 동네 공구, 함께라서 더 좋은 가격"
               quote='"강남 한우 정가 5만원 → 공구가 3만 5천원, 지금 바로. 카카오톡으로 친구 초대하면 둘 다 보너스 딜."'
               points={[
                 '인원과 상관없이 처음부터 같은 그룹 특가 (단일가)',
-                '결제 즉시 교환권 발급 — 목표 미달이어도 유효',
+                '결제 즉시 교환권 발급 (목표 미달이어도 유효)',
                 '친구 카카오 공유 → 친구 초대 보너스',
                 '식당 가서 앱 화면 보여주기만 (종이/플라스틱 X), QR 스캔 자동 처리',
               ]}
@@ -293,7 +293,7 @@ export default function AboutPage() {
             />
             <WowMoment
               icon={<MapPin className="w-6 h-6" />}
-              title="4-2. 교환권 디지털 사용 — 종이 쿠폰 시대 종료"
+              title="4-2. 교환권 디지털 사용, 종이 쿠폰 시대 종료"
               quote=""
               points={[
                 '구매 즉시 앱에 디지털 교환권 발급',
@@ -359,7 +359,7 @@ export default function AboutPage() {
               ['Rate Limit', 'KV 기반 IP/계정 limiter'],
               ['다국어', '한/영/일/중/스/프 6개 언어'],
               ['다크모드', '사용자 선택 (시스템/라이트/다크)'],
-              ['PC/모바일', '반응형 — 모바일 우선 + PC 대응'],
+              ['PC/모바일', '반응형 (모바일 우선 + PC 대응)'],
             ]}
           />
         </Section>
@@ -380,8 +380,8 @@ export default function AboutPage() {
               tag="중기 (Q3-Q4 2026)"
               icon={<Globe className="w-5 h-5" />}
               items={[
-                '글로벌 진출 (일본/동남아) — Firebase Auth 베이스',
-                '도매몰 (B2B) 확대 — 제조사·판매사 연동',
+                '글로벌 진출 (일본/동남아), Firebase Auth 베이스',
+                '도매몰 (B2B) 확대, 제조사와 판매사 연동',
                 '공구 추천 알고리즘 고도화',
               ]}
             />
@@ -389,7 +389,7 @@ export default function AboutPage() {
               tag="장기 (2027+)"
               icon={<Rocket className="w-5 h-5" />}
               items={[
-                'B2B 공동구매 SaaS — 화이트라벨',
+                'B2B 공동구매 SaaS (화이트라벨)',
                 '오프라인 매장 연동 확대',
                 'AR 가상 피팅 / 시연',
               ]}
@@ -526,7 +526,7 @@ function ValueCard({
   return (
     <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]">
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${map[color]}`}>{icon}</div>
-      <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{tag}</div>
+      <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">{tag}</div>
       <h3 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white mb-2">{title}</h3>
       <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{desc}</p>
     </div>
@@ -726,7 +726,7 @@ function RoadmapCard({
         <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300 flex items-center justify-center">
           {icon}
         </div>
-        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">{tag}</span>
+        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 ">{tag}</span>
       </div>
       <ul className="space-y-2">
         {items.map((item, i) => (

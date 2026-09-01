@@ -544,7 +544,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             {/* 카테고리 — 세로 리스트 */}
             {sections.length > 0 && (
               <div>
-                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2 px-1">카테고리</h3>
+                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mb-2 px-1">카테고리</h3>
                 <div className="space-y-0.5">
                   {sections.map(s => {
                     const active = s.category === category
@@ -577,7 +577,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             {/* 인기 브랜드 — 상단 가로 스트립(대표 — 좌레일 하단은 불편 → 상품 바로 위로). */}
             {currentBrands.length > 0 && (
               <div className="mb-5 pb-4 border-b border-gray-100 dark:border-[#2C2F35]">
-                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">인기 브랜드</h3>
+                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mb-2">인기 브랜드</h3>
                 <div className="flex gap-3 overflow-x-auto no-scrollbar py-1">
                   {orderedBrands.map(b => (
                     <BrandChip

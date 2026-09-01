@@ -10,7 +10,7 @@
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 
-const colTitle = 'text-[11px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2.5'
+const colTitle = 'text-[11px] font-extrabold text-gray-400 dark:text-gray-500 mb-2.5'
 const colLink = 'block text-[13px] text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white py-[3px] transition-colors'
 
 export default function SiteFooter() {

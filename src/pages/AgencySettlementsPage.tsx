@@ -184,7 +184,7 @@ function SettlementInvoicesSection() {
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
+            <thead className="bg-gray-50 text-xs text-gray-500">
               <tr>
                 <th className="px-3 py-2 text-left">{t('agency.settlements.colMonth', { defaultValue: '월' })}</th>
                 <th className="px-3 py-2 text-left">{t('agency.settlements.colInvoiceNum', { defaultValue: '송장번호' })}</th>
