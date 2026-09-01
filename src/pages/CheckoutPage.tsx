@@ -33,7 +33,7 @@ import { useBeforePayment } from './checkout/useBeforePayment'
 import { getTossClientKey } from '@/lib/toss-preload'
 // 🛡️ 2026-06-12 (전수조사 4차 B-1): 숙소 예약 결제 분기 — /checkout?order_id=N&stay=1.
 import StayCheckout from './checkout/StayCheckout'
-import { isVoucherCategory } from '@/shared/constants/voucher-categories'
+import { isNoShippingProduct } from '@/shared/product-flow'
 
 const clientKey = getTossClientKey()
 
@@ -197,7 +197,8 @@ function CartCheckout() {
         seller_name: item.seller_name || t('checkoutPage.fallbackSeller'),
         items: [],
         subtotal: 0,
-        shipping_fee: item.shipping_fee || 3000,
+        // `||` 는 셀러가 명시한 0(비배송·무료)을 3,000 으로 되돌린다 — `??` 여야 한다.
+        shipping_fee: item.shipping_fee ?? 3000,
         free_shipping_threshold: item.free_shipping_threshold || 0,
       }
     }
@@ -205,6 +206,9 @@ function CartCheckout() {
     groups[sellerId].subtotal += (item.price_snapshot ?? item.price ?? 0) * item.quantity
     return groups
   }, {} as Record<number, SellerGroup>)
+  // 📦 2026-09-01: 그룹 전체가 비배송인지는 **모든 아이템을 담은 뒤에야** 알 수 있다.
+  //   (첫 아이템으로 정하면 배송/비배송이 섞인 셀러에서 틀린다.)
+  for (const g of Object.values(sellerGroups)) g.no_shipping = g.items.length > 0 && g.items.every(isNoShippingProduct)
 
   // 소계 및 배송비 계산
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price_snapshot ?? item.price ?? 0) * item.quantity, 0)
@@ -217,26 +221,20 @@ function CartCheckout() {
     //   KT Alpha 교환권 (deal_only=1) 은 휴대폰 MMS 발송이라 배송비 불요.
     //   그룹의 모든 item 이 deal_only=1 이면 shipping_fee 무시.
     // 🛡️ 2026-06-22: 비배송(교환권 deal_only OR 동네딜 공구 카테고리)이면 배송비 0.
-    const allVoucher = group.items.length > 0 && group.items.every(i => {
-      const it = i as { deal_only?: number; category?: string }
-      return Number(it.deal_only) === 1 || isVoucherCategory(it.category)
-    })
-    if (allVoucher) return total
+    if (group.no_shipping) return total
     if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) return total
     return total + group.shipping_fee
   }, 0)
 
   // 🛡️ 2026-05-21: 교환권만 담긴 주문 — 토스 결제 옵션 자체 숨김 + 'deal' 강제 + dealToUse 자동 채움.
+  // no-shipping-ssot-ok: 이건 **배송** 판정이 아니라 **결제 수단** 판정이다(교환권만이면 토스 숨김).
+  //   이용권은 비배송이지만 카드로 결제하므로 여기 섞으면 안 된다 — 일부러 따로 둔다.
   const isAllDealOnly = cartItems.length > 0
-    && cartItems.every(i => Number((i as { deal_only?: number }).deal_only) === 1)
+    && cartItems.every(i => Number((i as { deal_only?: number }).deal_only) === 1)  // no-shipping-ssot-ok
   // 🛡️ 2026-06-22 (대표 — 공구 상품은 배송 주소 불요): "배송 필요 여부" SSOT (order-type 와 동일 신호).
   //   deal_only=1(기프티콘 교환권) OR isVoucherCategory(동네딜 공구 — 매장 사용) = 비배송. 결제수단(deal/Toss)과
   //   무관 — 주소/배송 UI 에만 영향(동네딜 공구는 Toss 결제이되 주소는 불요). 일반 온라인 상품만 배송지 필요.
-  const noShipping = cartItems.length > 0
-    && cartItems.every(i => {
-      const it = i as { deal_only?: number; category?: string }
-      return Number(it.deal_only) === 1 || isVoucherCategory(it.category)
-    })
+  const noShipping = cartItems.length > 0 && cartItems.every(isNoShippingProduct)
   const needsShipping = !noShipping
 
   // 공동구매 할인 계산
@@ -577,6 +575,7 @@ function CartCheckout() {
             totalGroupBuyDiscount={totalGroupBuyDiscount}
             dealToUse={dealToUse}
             totalAmount={totalAmount}
+            noShipping={noShipping}
           />
         )}
       </main>

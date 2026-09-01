@@ -174,14 +174,19 @@ export function TossPaymentWidget({
         if (cancelled) return
         console.error('[TossPaymentWidget] init/render failed:', err)
         const raw = err instanceof Error ? err.message : String(err)
-        const baseMsg = /TIMEOUT/i.test(raw)
-          ? '결제 위젯 로딩이 지연됩니다. 페이지를 새로고침해주세요.'
+        // 🧾 2026-09-01 [UNLOCK] (대표 승인 "허가 — 문구만 수정"): 소비자에게 보이는 문장만 바꾼다.
+        //   ① SDK 원본 메시지를 화면에 붙이고 있었다 — 결제가 막힌 사람에게 영문 스택 조각은
+        //      도움이 안 되고 불신만 준다. 원인 추적에 필요한 값은 위 console.error 가 이미 남긴다.
+        //   ② "Toss 콘솔 → 결제 → 결제수단 → 활성화" 는 **운영자용 지시**였다. 소비자는 그 콘솔에
+        //      들어갈 수 없다. 소비자가 실제로 할 수 있는 행동(다시 시도·다른 수단·문의)으로 바꾼다.
+        //   ⚠️ 분기 조건(정규식)·onPaymentError 호출·상태 전이는 그대로다 — 문자열만 교체.
+        const msg = /TIMEOUT/i.test(raw)
+          ? '결제창을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.'
           : /not.*found|404|variant/i.test(raw)
-          ? '결제 수단이 Toss 콘솔에 등록되어 있지 않습니다. Toss 콘솔 → 결제 → 결제수단 → "결제수단 활성화" 후 다시 시도해주세요.'
+          ? '지금은 결제를 진행할 수 없습니다. 잠시 후 다시 시도하거나 다른 결제 수단을 이용해주세요.'
           : /widget.*key|클라이언트 키|개별 연동 키/i.test(raw)
-          ? '결제 시스템 키 type 오류 — 관리자에게 문의해주세요.'
-          : t('payment.initError', { defaultValue: '결제 초기화 실패' })
-        const msg = `${baseMsg}\n\n[SDK 원본]: ${raw.slice(0, 200)}`
+          ? '결제 준비 중 문제가 생겼습니다. 잠시 후 다시 시도해주세요.'
+          : t('payment.initError', { defaultValue: '결제를 시작하지 못했습니다. 잠시 후 다시 시도해주세요.' })
         setErrorMessage(msg)
         setLoadingState('error')
         onPaymentError(msg)
@@ -311,10 +316,12 @@ export function TossPaymentWidget({
         {loadingState === 'loading' && (
           <span className="flex items-center justify-center gap-2">
             <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
-            결제 시스템 로딩 중...
+            결제창을 준비하고 있어요
           </span>
         )}
-        {loadingState === 'error' && t('payment.errors.systemError', { defaultValue: '결제 시스템 오류' })}
+        {/* 🧾 2026-09-01: 이 버튼은 error 상태에서 **비활성**이다 — 행동을 약속하는 말을 쓰면 안 된다.
+            ('새로고침 필요' 는 지시였는데 누를 수가 없었다. 실제 재시도는 아래 '페이지 새로고침'.) */}
+        {loadingState === 'error' && t('payment.errors.systemError', { defaultValue: '지금은 결제할 수 없어요' })}
         {loadingState === 'ready' && !isProcessing && '결제하기'}
         {loadingState === 'ready' && isProcessing && (
           <span className="flex items-center justify-center gap-2">

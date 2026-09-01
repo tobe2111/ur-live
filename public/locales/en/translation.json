@@ -278,7 +278,7 @@
     "viewOrder": "View Order Details",
     "pay": "Pay",
     "processing": "Processing...",
-    "initError": "Failed to initialize payment",
+    "initError": "We couldn't start the payment. Please try again in a moment.",
     "renderError": "Failed to render payment UI",
     "widgetNotReady": "Payment widget is not ready",
     "requestError": "Payment request failed",
@@ -300,7 +300,7 @@
       "authError": "Authentication error. Please refresh the page.",
       "uiNotFound": "Payment UI area not found. Please refresh the page.",
       "orderNumberInvalid": "Invalid order number format. Please refresh the page.",
-      "systemError": "Payment system error (refresh required)"
+      "systemError": "Payment isn't available right now"
     },
     "section": {
       "title": "Payment method",

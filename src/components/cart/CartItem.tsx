@@ -1,5 +1,5 @@
 import React from 'react'
-import { Minus, Plus, X } from 'lucide-react'
+import { Minus, Plus, X, ImageOff } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useTranslation } from 'react-i18next'
@@ -84,7 +84,9 @@ export const CartItemComponent = React.memo(function CartItemComponent({
           />
         ) : (
           <div className="w-[72px] h-[72px] rounded-lg bg-gray-100 dark:bg-[#1A1C21] shrink-0 flex items-center justify-center">
-            <span className="text-gray-300 dark:text-gray-600 text-[10px]">No img</span>
+            {/* 🖼️ 2026-09-01: `No img` 영문 축약이 한국어 장바구니에 그대로 노출됐다.
+                개발자 플레이스홀더지 소비자 문구가 아니다 — 조용한 선 아이콘으로. */}
+            <ImageOff className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.6} aria-label="이미지 없음" />
           </div>
         )
       })()}
