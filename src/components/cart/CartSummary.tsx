@@ -7,13 +7,19 @@ interface CartSummaryProps {
   subtotal: number
   shippingFee: number
   total: number
+  /**
+   * 📦 2026-09-01: 배송이라는 개념 자체가 없는 장바구니(이용권·교환권)인가.
+   * 배송비 줄에 '무료'라고 쓰면 원래 있었어야 할 비용을 깎아 준 것처럼 읽힌다 — 그 줄을 아예 뺀다.
+   */
+  noShipping?: boolean
 }
 
 export const CartSummary = React.memo(function CartSummary({
   totalItems,
   subtotal,
   shippingFee,
-  total
+  total,
+  noShipping = false,
 }: CartSummaryProps) {
   const { t } = useTranslation()
   const fmt = (n: number) => formatNumber(n)
@@ -26,6 +32,7 @@ export const CartSummary = React.memo(function CartSummary({
           <span className="text-gray-500 dark:text-gray-400">{t('cart.subtotal', { count: totalItems, defaultValue: '상품금액 ({{count}}개)' })}</span>
           <span className="text-gray-900 dark:text-white font-medium">{fmt(subtotal)}{t('common.won', { defaultValue: '원' })}</span>
         </div>
+        {!noShipping && (
         <div className="flex justify-between text-[13px]">
           <span className="text-gray-500 dark:text-gray-400">{t('cart.shippingFee', { defaultValue: '배송비' })}</span>
           <span className="text-gray-900 dark:text-white font-medium">
@@ -36,6 +43,7 @@ export const CartSummary = React.memo(function CartSummary({
             )}
           </span>
         </div>
+        )}
       </div>
 
       {/* Dashed border divider */}

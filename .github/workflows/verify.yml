@@ -409,6 +409,11 @@ jobs:
 
       - name: 할인율이 사진 위에 없다 (전 카드 구현 · 인라인 스타일 포함)
         run: node scripts/check-discount-not-on-photo.mjs
+
+      # 📦 2026-09-01: 같은 장바구니가 `/cart` 에선 배송비 6,000원, `/checkout` 에선 0원이었다.
+      #   판정이 두 파일에 따로 적혀 갈라진 결과 — 이제 한 SSOT 만 쓴다.
+      - name: 배송비 판정 SSOT (장바구니 ↔ 결제)
+        run: node scripts/check-no-shipping-ssot.mjs
       - name: Dashboard button system ratchet (strict)
         env:
           STRICT_DASHBOARD_BUTTON: '1'
