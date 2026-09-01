@@ -74,8 +74,9 @@ export interface DashboardStats {
 }
 
 export interface Alert {
+  /** 🎨 2026-09-01: 아이콘·색을 **여기서 파생**한다. 예전엔 `emoji` 필드가 따로 있어
+   *   같은 말을 두 번 했고, 둘이 어긋나면(빨간 배경에 🎉) 아무도 못 잡았다. */
   type: 'success' | 'warning' | 'error'
-  emoji: string
   title: string
   message: string
 }

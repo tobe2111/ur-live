@@ -61,3 +61,39 @@ describe('가이드 한정 해동', () => {
     expect(hits.length, '1차·2차 두 곳 모두 guide_type + section_key 로 좁혀야 한다').toBe(2)
   })
 })
+
+describe('묘비 철거 — 중단된 기능의 절을 목록에서 없앤다', () => {
+  const seed = read('src/features/guides/api/guide-seed-seller.ts')
+
+  it('삭제는 키를 명시한 것만 (범위가 넓어지면 못 되돌린다)', () => {
+    expect(routes).toContain('PURGE_ONCE')
+    expect(routes, 'DELETE 는 guide_type + section_key 로 좁혀야 한다')
+      .toContain('DELETE FROM operation_guides WHERE guide_type = ? AND section_key = ?')
+    // ⚠️ 파일 전체를 훑으면 안 된다 — 관리자 **강제 리셋**(`POST /:type/reseed`)은 설계상
+    //    `WHERE guide_type = ?` 로 그 가이드를 통째로 지운다(정당). 철거 블록만 본다.
+    const start = routes.indexOf('TOMBSTONE_MARKER')
+    const block = routes.slice(start, routes.indexOf('purge-marker', start))
+    const deletes = block.match(/DELETE FROM operation_guides[^`']*/g) || []
+    expect(deletes.length, '철거 블록의 DELETE 는 하나여야 한다').toBe(1)
+    expect(deletes[0], '철거 DELETE 가 section_key 로 안 좁혀지면 그 역할의 가이드가 통째로 날아간다')
+      .toContain('WHERE guide_type = ? AND section_key = ?')
+  })
+
+  it('1회만 돈다 (마커)', () => {
+    expect(routes).toContain('guide_tombstone_purge_2026_08_31')
+  })
+
+  it('시드에서도 빠져야 한다 — 안 그러면 지운 직후 다시 INSERT 된다', () => {
+    // 🔑 삭제 블록은 시드 루프 **앞**에서 돈다. 시드에 키가 남아 있으면 같은 실행 안에서
+    //    `INSERT OR IGNORE` 가 되살린다 — 삭제가 영원히 무효가 된다.
+    for (const key of ['live-broadcast', 'live-mastery', 'gift', 'seller-live-tips-2026-05']) {
+      expect(seed, `${key} 가 시드에 남아 있으면 삭제가 무효다`).not.toContain(`key: '${key}'`)
+    }
+  })
+
+  it('살아 있는 기능의 절은 폐기어를 안 쓴다', () => {
+    // '식권'은 은퇴한 말(식사권 → 공구권 → 이용권)이고, '선물하기'는 중단된 기능 이름이라
+    // 살아 있는 절 제목에 쓰면 "아직 하나?" 를 다시 묻게 만든다.
+    expect(seed).not.toContain("title: '식권")
+  })
+})

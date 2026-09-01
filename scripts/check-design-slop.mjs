@@ -30,7 +30,37 @@ const BASELINE = path.join(ROOT, 'scripts/design-slop-baseline.json')
 const MONO = new Set(['pink','rose','fuchsia','orange','amber','yellow','lime','green','emerald','teal','cyan','sky','blue','indigo','violet','purple','gray'])
 const norm = (t) => { const i = t.lastIndexOf('-'); if (i < 0) return t; const fam = t.slice(0, i); return MONO.has(fam) ? 'ink' + t.slice(i) : t }
 
-const FLAT = /bg-gradient-to-[a-z]{1,2}\s+from-(\S+?)(?:\s+via-(\S+?))?\s+to-([^\s"'`]+)/g
+/**
+ * 🕳️ 2026-09-01 — **이 가드의 두 번째 구멍.** 예전 정규식은
+ *   `from-… (via-…) to-…` 가 **연속으로 붙어 있을 때만** 잡았다. 그런데 이 레포는 변형(variant)을
+ *   섞어 쓴다: `from-gray-50 dark:from-[#0D0F12] to-white dark:to-[#0D0F12]`.
+ *   그러면 `from-` 다음 토큰이 `to-` 가 아니라 `dark:from-` 이라 **매치 자체가 실패**하고,
+ *   가드는 조용히 0건을 낸다. 실제로 `CouponClaimPage` 가 다크에서 `#0D0F12 → #0D0F12`
+ *   (완전 평면)를 **세 줄** 갖고 있었는데 몇 달간 초록불이었다.
+ *   ⇒ 이제 한 줄에서 stop 을 **변형별로 묶어** 각 그룹을 따로 판정한다
+ *      (`''`=기본 · `dark:` · `hover:` …). 그래야 "라이트는 멀쩡한데 다크만 평면"이 잡힌다.
+ *
+ * ⚠️ 투명도 접미사(`/20` → `/10`)는 **평면이 아니다** — 같은 색의 진짜 페이드라
+ *   `NotFoundPage` 의 `from-[#6b7280]/20 to-[#6b7280]/10` 은 정상이다. 그래서 stop 을
+ *   비교할 때 `/알파` 를 **떼지 않고 그대로** 비교한다.
+ */
+const GRAD_LINE = /bg-gradient-to-[a-z]{1,2}\b/
+const STOP = /(?:^|[\s"'`])((?:[a-z-]+:)*)(from|via|to)-([^\s"'`]+)/g
+
+/** 한 줄의 stop 들을 변형 접두사별로 묶는다. 같은 그룹 안의 색이 전부 같으면 평면. */
+function flatVariantGroups(ln) {
+  const groups = new Map()
+  for (const m of ln.matchAll(STOP)) {
+    const [, variant, , value] = m
+    if (!groups.has(variant)) groups.set(variant, [])
+    groups.get(variant).push(norm(value))
+  }
+  const hits = []
+  for (const [variant, stops] of groups) {
+    if (stops.length >= 2 && new Set(stops).size === 1) hits.push(variant || 'base')
+  }
+  return hits
+}
 /**
  * 🕳️ 2026-08-31 — **이 가드의 구멍이었다.** 위 정규식은 Tailwind `className` 만 본다.
  *   그런데 인라인 `style={{ background: 'linear-gradient(...)' }}` 로 쓴 것이 라이브에 남아 있었고
@@ -66,9 +96,8 @@ for (const f of walk(path.join(ROOT, 'src'))) {
     if (inBlock) { if (t.includes('*/')) inBlock = false; return }
     if (t.startsWith('*') || t.startsWith('//') || t.startsWith('{/*')) return
 
-    for (const m of ln.matchAll(FLAT)) {
-      const parts = [m[1], m[2], m[3]].filter(Boolean).map(norm)
-      if (new Set(parts).size === 1) found.flat.push(`${rel}:${i + 1}`)
+    if (GRAD_LINE.test(ln)) {
+      for (const v of flatVariantGroups(ln)) found.flat.push(`${rel}:${i + 1} (${v})`)
     }
     for (const m of ln.matchAll(FLAT_CSS)) {
       // 각도(135deg)·위치(0%)를 뺀 **색 토큰**만 남긴다. hex·rgb·색이름 모두.

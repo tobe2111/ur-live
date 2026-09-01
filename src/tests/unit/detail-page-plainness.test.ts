@@ -38,6 +38,8 @@ const SECTIONS = 'src/pages/stay-detail/StayInfoSections.tsx'
 const FCFS = 'src/features/group-buy/FcfsApplyBlock.tsx'
 const STAY_SEED = 'src/features/admin/api/admin-stays.routes.ts'
 const STAY_HEAL = 'src/features/admin/api/admin-stays/heal-stay-descriptions.ts'
+const ADMIN = 'src/pages/AdminDongnedealImportPage.tsx'
+const ADMIN_SEED = 'src/pages/admin-dongnedeal-import/seedStayDemos.ts'
 
 describe('번역투·조립 문구가 되돌아오지 않았다', () => {
   it('"무엇을 기대하세요?" 가 없다', () => {
@@ -139,5 +141,25 @@ describe('위계가 살아 있다', () => {
   it('객실 가격이 로즈로 되돌아가지 않았다 — 로즈는 행동(CTA)에만', () => {
     const src = code(read(STAY))
     expect(src, '가격이 다시 브랜드 로즈다').not.toMatch(/font-extrabold text-brand[^"]*">₩\{formatNumber\(r\.total_price\)/)
+  })
+})
+
+
+describe('백필 결과가 화면까지 닿는다', () => {
+  it('어드민 토스트가 소개 문구 교체 건수를 읽는다', () => {
+    // 🩸 2026-08-31 대표 "재시드 버튼이 어딨어?" — 버튼을 찾은 뒤에도 문제가 하나 더 있었다.
+    //   서버가 `descHealed` 를 보내는데 **화면이 그 값을 안 읽었다.** 누르면 뭔가는 되는데
+    //   무엇이 몇 개 됐는지 알 수 없다 = 판정이 불가능하다. 이 세션 내내 고쳐 온 그 클래스가
+    //   마지막에 UI 쪽에서 한 번 더 나왔다(서버만 고치면 절반이다).
+    // ⚠️ 호출 본문은 파일 크기 래칫 때문에 헬퍼로 빠졌다(2026-08-31). 페이지만 읽으면 코드가
+    //   옮겨진 순간 빨강이 된다 — 실제로 그렇게 걸렸다(이 테스트 파일에서 두 번째다). 함께 본다.
+    const src = code(read(ADMIN)) + '\n' + code(read(ADMIN_SEED))
+    expect(src, '응답의 descHealed 를 안 읽는다 — 서버만 고치고 화면은 그대로다')
+      .toMatch(/d\.descHealed/)
+    expect(src, '읽어만 두고 문구에 안 쓴다 — 값이 화면까지 못 간다')
+      .toMatch(/소개 문구 \$\{[\w.]*descHealed\}/i)
+    // 헬퍼만 있고 페이지가 안 부르면 없는 것과 같다.
+    expect(code(read(ADMIN)), '페이지가 숙소 시드 헬퍼를 안 부른다').toMatch(/seedStayDemos\(/)
+    expect(code(read(ADMIN)), '요약 문구를 토스트에 안 싣는다').toMatch(/staySeedHealNote\(/)
   })
 })

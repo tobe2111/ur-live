@@ -286,17 +286,6 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
             {fcfs && <FcfsBadge info={fcfs} variant="overlay" className={`absolute ${isUrgent ? 'top-9' : 'top-2'} left-2 z-[2]`} />}
             {/* 💗 찜 — 그루폰 카드 우상단 하트. hover 시 나타나고(찜된 건 항상 보임) 누르면 통 튄다. */}
             <WishlistHeart productId={p.id} className="absolute top-2 right-2 z-[3]" />
-            {/* 🔻 2026-08-31: 할인율을 **가격 줄에서 사진 위로** 옮긴다. 두 가지를 동시에 고친다 —
-                ① 6자리 가격(숙소 119,000원)이면 배지가 다음 줄로 밀려 카드 높이가 그 칸만 늘어났다.
-                   실측으로 확인한 구조적 깨짐이고, 가격이 길수록 반드시 난다.
-                ② 커머스에서 할인율은 **가장 강한 신호**여야 하는데 연분홍 배경/로즈 글씨라
-                   바로 옆 판매가보다 약했다. 사진 위 solid 로 올리면 스캔할 때 먼저 잡힌다.
-                좌상단은 마감임박·응모 배지가 쓰므로 **좌하단**(그루폰·쿠팡과 같은 자리). */}
-            {discount > 0 && (
-              <span className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-brand text-[11px] font-extrabold text-white shadow-sm z-[2]">
-                {discount}%
-              </span>
-            )}
           </>
         }
       />
@@ -305,44 +294,50 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
           [머천트(작은 회색)] → [제목 2줄] → [주소 · 거리] → [★평점 (구매수)] → [정가취소선 · 판매가 · 할인 pill]
           이전엔 정가가 제목 **위**에 떠 있고 가격이 중간에 있어, 카드마다 눈이 가는 자리가 달랐다. */}
       {/* 🧹 PC 는 카드 박스가 없으므로 좌우 패딩도 0 — 사진 왼쪽 끝과 글자가 딱 맞아야 그루폰처럼 보인다. */}
-      <div className="pt-2.5">
+      <div className="pt-2">
         {/* [시안 B] 08-19 그루폰 5줄 위계 유지 — 배지만 사진 위로 */}
         {(p.restaurant_name || brandName) && (
-          <p className={`flex items-center gap-1 text-[11px] leading-none mb-1 ${cSub}`}>
+          <p className={`flex items-center gap-1 text-[11px] leading-none mb-0.5 ${cSub}`}>
             <span className="truncate">{p.restaurant_name || brandName}</span>
           </p>
         )}
-        <p className={`text-[13.5px] font-bold line-clamp-2 leading-snug ${cText}`}>
+        <p className={`text-[13.5px] font-bold line-clamp-2 leading-tight ${cText}`}>
           {stripStorePrefix(p.name, p.restaurant_name)}
         </p>
         {(addrShort || distKm != null) && (
-          <p className={`flex items-center justify-between gap-2 mt-1 text-[11px] min-w-0 ${cSub}`}>
+          <p className={`flex items-center justify-between gap-2 mt-0.5 text-[11px] min-w-0 ${cSub}`}>
             <span className="truncate">{addrShort}</span>
             {distKm != null && <span className="shrink-0 whitespace-nowrap">{distKm}km</span>}
           </p>
         )}
         {rating > 0 && (
-          <p className={`flex items-center gap-1.5 mt-1 text-[11px] ${cSub}`}>
+          <p className={`flex items-center gap-1.5 mt-0.5 text-[11px] ${cSub}`}>
             <StarRating value={rating} />
             <span className={`font-bold ${cText}`}>{rating.toFixed(1)}</span>
             {reviewCount > 0 && <span>({formatNumber(reviewCount)})</span>}
           </p>
         )}
 
-        {/* 💰 가격 — 한 줄에 [정가 취소선] [판매가] [할인 pill]. 그루폰의 마지막 줄과 같은 순서. */}
-        <p className="flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5 mt-1.5">
-          {originalPrice > price && originalPrice > 0 && (
-            <span className={`text-[11.5px] line-through ${cSub}`}>{formatNumber(originalPrice)}원</span>
+        {/* 💰 가격 — 쿠팡식 2줄. [할인율(강조) 정가취소선] / [판매가]
+            ① 할인율을 사진 위에 올리지 않는다(사진을 가린다).
+            ② 할인율은 커머스에서 가장 강한 신호이므로 **로즈 굵게**로 세운다.
+            ③ 정가와 판매가를 줄로 나누면 6자리 가격(119,000원)에서도 줄이 안 깨진다. */}
+        <div className="mt-1">
+          {(discount > 0 || (originalPrice > price && originalPrice > 0)) && (
+            <p className="flex items-baseline gap-1 leading-none">
+              {discount > 0 && <span className="text-[12.5px] font-extrabold text-brand">{discount}%</span>}
+              {originalPrice > price && originalPrice > 0 && (
+                <span className={`text-[11.5px] line-through ${cSub}`}>{formatNumber(originalPrice)}원</span>
+              )}
+            </p>
           )}
-          <span className={`text-[16px] font-extrabold tracking-tight ${cText}`}>
-            {formatNumber(price)}원
-          </span>
-          {/* 🏨 2026-07-20: 숙소 가격 = 최저 객실 주중가 → 단위 명시(야놀자/아고다식 "1박~") */}
-          {p.category === 'stay_voucher' && price > 0 && (
-            <span className={`text-[11px] font-semibold ${cSub}`}>/1박~</span>
-          )}
-
-        </p>
+          <p className="flex items-baseline gap-1 mt-0.5 leading-none">
+            <span className={`text-[17px] font-extrabold tracking-tight ${cText}`}>{formatNumber(price)}원</span>
+            {p.category === 'stay_voucher' && price > 0 && (
+              <span className={`text-[11px] font-semibold ${cSub}`}>/1박~</span>
+            )}
+          </p>
+        </div>
       </div>
     </Link>
   )

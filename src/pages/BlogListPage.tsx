@@ -102,7 +102,7 @@ export default function BlogListPage() {
 
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12]">
-      <SEO title={t('blog.listSeoTitle', { defaultValue: '블로그' })} description={t('blog.listSeoDesc', { defaultValue: '유어딜 블로그 — 이용권·교환권·동네딜·유어샵 가이드와 서비스 소식' })} url="/blog" />
+      <SEO title={t('blog.listSeoTitle', { defaultValue: '블로그' })} description={t('blog.listSeoDesc', { defaultValue: '유어딜 블로그. 이용권과 교환권, 동네딜, 유어샵 가이드와 서비스 소식' })} url="/blog" />
 
       {/* Header — 뒤로가기 제거, 유어딜 홈 버튼 추가, non-sticky(오버랩 방지) */}
       <div className="bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35]">
@@ -156,7 +156,7 @@ export default function BlogListPage() {
             <input
               value={query}
               onChange={(e) => onSearch(e.target.value)}
-              placeholder="블로그 검색 — 이용권, 유어샵, 정산…"
+              placeholder="블로그 검색 (이용권, 유어샵, 정산…)"
               className="w-full h-11 pl-10 pr-10 rounded-xl bg-gray-50 dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#2C2F35] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-300 dark:focus:border-[#3A3A3A]"
             />
             {query && (

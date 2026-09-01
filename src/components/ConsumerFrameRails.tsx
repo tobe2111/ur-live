@@ -60,7 +60,7 @@ export default function ConsumerFrameRails() {
           <div className="px-1">
             <UrDealLogo size={22} />
             <p className="mt-2 text-[12px] leading-relaxed text-gray-500 dark:text-gray-400">
-              {t('frameRails.tagline', { defaultValue: '내 손안의 동네 딜 — 교환권 · 동네공구' })}
+              {t('frameRails.tagline', { defaultValue: '내 손안의 동네 딜' })}
             </p>
           </div>
 

@@ -46,7 +46,7 @@ export function InsetGroup({ theme = 'dark', title, footer, children, className 
   return (
     <div className={`px-4 mb-7 ${className}`}>
       {title && (
-        <p className="px-1 mb-1.5 uppercase"
+    <p className="px-1 mb-1.5"
           style={{ fontSize: 12, color: t.secondary, fontWeight: 500, letterSpacing: '-0.01em' }}>
           {title}
         </p>

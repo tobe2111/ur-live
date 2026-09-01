@@ -121,6 +121,16 @@ const MUTATIONS = [
       '송금은 사람이 손으로 하므로 그 숫자가 곧 오지급이다.',
   },
   {
+    name: '백필 건수가 화면까지 못 간다',
+    file: 'src/pages/admin-dongnedeal-import/seedStayDemos.ts',
+    find: "t.descHealed && ` · 소개 문구 ${t.descHealed}개 교체`,",
+    replace: '',
+    test: 'src/tests/unit/detail-page-plainness.test.ts',
+    why:
+      '2026-08-31: 서버가 고친 건수를 보내는데 화면이 안 읽어, 대표가 버튼을 눌러도 무엇이 몇 개 ' +
+      '됐는지 알 수 없었다. 서버만 고치면 절반이다 — 값이 사람 눈까지 닿아야 판정이 된다.',
+  },
+  {
     name: '돌긴 했는데 못 한 cron 을 아무도 안 본다',
     file: 'src/worker/cron/cron-stale-watch.ts',
     find: '  for (const b of blocked) {',
@@ -6534,6 +6544,35 @@ canvas {
       'D1 한도만 조용히 다시 찬다 — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
   },
   {
+    name: '🪦 거르지 못하는 bio 인덱스가 되살아난다(부분 인덱스를 이겨 다시 하루 4,111만 행)',
+    file: 'src/features/marketing/api/influencer-schema.ts',
+    find: "'DROP INDEX IF EXISTS idx_ad_inf_leads_bio',",
+    replace: "'CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_bio ON ad_influencer_leads(account_id, bio_checked_at)',",
+    test: 'src/tests/unit/influencer-bio-scan.test.ts',
+    why:
+      '있어도 아무것도 안 걸러지는데(bio_checked_at IS NULL 이 99.9%) 플래너에겐 동등 조건 두 개로 ' +
+      '보여 부분 인덱스를 이긴다. 2026-08-27 수리가 한 달 내내 안 먹은 이유가 정확히 이것이다.',
+  },
+  {
+    name: '🔎 대소문자 무시 인덱스가 식을 잃는다(하루 4,626만 행 전수 스캔 복귀)',
+    file: 'src/features/marketing/api/influencer-schema.ts',
+    find: 'idx_ad_inf_leads_email_ci ON ad_influencer_leads(account_id, LOWER(email))',
+    replace: 'idx_ad_inf_leads_email_ci ON ad_influencer_leads(account_id, email)',
+    test: 'src/tests/unit/influencer-bio-scan.test.ts',
+    why:
+      '쿼리는 `LOWER(email) = LOWER(?)` 인데 인덱스가 생 컬럼이면 플래너가 못 쓴다. 결과는 같아서 ' +
+      '아무도 모르고 회당 17만 행이 그대로 돌아온다 — 업체 DB 원부 전화와 같은 클래스.',
+  },
+  {
+    name: '🏷️ 핸들 인덱스가 세 번째 키를 잃는다(IN 조회가 다시 훑는다)',
+    file: 'src/features/marketing/api/influencer-schema.ts',
+    find: 'idx_ad_inf_leads_handle ON ad_influencer_leads(account_id, platform, handle)',
+    replace: 'idx_ad_inf_leads_handle ON ad_influencer_leads(account_id, platform)',
+    test: 'src/tests/unit/influencer-bio-scan.test.ts',
+    why:
+      '`(account_id, platform)` 까지만 짚으면 그 아래는 전부 훑는다 — 고치기 전과 같은 상태(회당 14.7만).',
+  },
+  {
     name: '☎️ 원부 전화 인덱스가 식을 잃는다(다시 하루 2,270만 행 전수 스캔)',
     file: 'src/features/marketing/api/company-ddl-indexes.ts',
     find: "ON ad_company_leads(REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'.',''))",
@@ -6819,6 +6858,26 @@ canvas {
       '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
   },
   {
+    name: '🪦 묘비 철거 DELETE 가 역할 전체로 번진다',
+    file: 'src/features/guides/api/guide.routes.ts',
+    find: "DELETE FROM operation_guides WHERE guide_type = ? AND section_key = ?')\n        .bind(t, k)",
+    replace: "DELETE FROM operation_guides WHERE guide_type = ?')\n        .bind(t)",
+    test: 'src/tests/unit/guide-unfreeze.test.ts',
+    why:
+      'section_key 가 빠지면 그 역할의 **가이드가 통째로 삭제**된다. 삭제는 되돌릴 수 없고, ' +
+      '관리자가 손으로 쓴 절까지 사라진다 — 철거는 명시한 4개만이어야 한다.',
+  },
+  {
+    name: '🪦 지운 절이 시드에 남아 되살아난다',
+    file: 'src/features/guides/api/guide-seed-seller.ts',
+    find: "key: 'seller-voucher-gift-model-2026-05'",
+    replace: "key: 'live-broadcast'",
+    test: 'src/tests/unit/guide-unfreeze.test.ts',
+    why:
+      '철거 블록은 시드 루프 **앞**에서 돈다. 시드에 그 키가 남아 있으면 같은 실행 안에서 ' +
+      '`INSERT OR IGNORE` 가 되살려 삭제가 영원히 무효가 된다.',
+  },
+  {
     name: '🔓 2차 해동이 통째로 빠진다 (도매 가이드가 계속 폐기어를 가르침)',
     file: 'src/features/guides/api/guide.routes.ts',
     find: "const UNFREEZE2_MARKER = 'guide_unfreeze_2026_08_31_b'",
@@ -6958,6 +7017,107 @@ canvas {
     why:
       '실제 용례는 "영입 2%" 처럼 **값으로 찾는 것**이다. 제목만 훑으면 요율·절차를 영영 못 찾고, ' +
       '검색창이 있다는 사실이 오히려 "없는 내용"이라는 오해를 만든다.',
+  },
+  {
+    name: '💰 이용권 카드 할인율이 다시 사진 위로 (사진을 가린다)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '          </>',
+    replace: '          {discount > 0 && <span className="absolute bottom-2 left-2">{discount}%</span>}\n          </>',
+    test: 'src/tests/unit/deal-card-price-block.test.ts',
+    why:
+      '이 자리는 2026-08-31 **하루에 두 번 뒤집혔다** — 6자리 가격 줄 깨짐을 고치려고 사진 위로 ' +
+      '올렸다가, 대표가 "사진 안으로 들어가면 안돼" 로 되돌리게 했다. 다시 올라가기 쉬운 자리라 못으로 박는다.',
+  },
+  {
+    name: '💰 정가와 판매가가 다시 한 줄로 (6자리 가격에서 줄 깨짐)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: `            </p>
+          )}
+          <p className="flex items-baseline gap-1 mt-0.5 leading-none">`,
+    replace: '',
+    test: 'src/tests/unit/deal-card-price-block.test.ts',
+    why:
+      '정가와 판매가를 한 줄에 두면 119,000원(숙소)에서 반드시 줄이 깨지고 그 카드만 높이가 늘어 ' +
+      '그리드가 들쭉날쭉해진다. 쿠팡식 2줄이 그 구조적 깨짐의 해법이라, 한 줄로 되돌리는 것을 막는다.',
+  },
+  {
+    name: '🎟️ 지갑 섹션 헤더가 요약 줄의 개수를 다시 말한다',
+    file: 'src/pages/MyVouchersPage.tsx',
+    find: `{t('voucher.groupUnused', { defaultValue: '사용 가능' })}\n`,
+    replace: `{t('voucher.groupUnused', { defaultValue: '사용 가능' })} <span>{unusedItems.length}</span>\n`,
+    test: 'src/tests/unit/wallet-and-slop.test.ts',
+    why:
+      '지갑 상단 요약(대표 승인 시안 4)이 이미 "사용 가능 N장" 을 말하는데 40px 아래 섹션 헤더가 ' +
+      '같은 `unusedItems.length` 를 또 말했다. 섹션 헤더에 개수를 붙이는 건 늘 그럴듯해 보여서 ' +
+      '다시 붙기 쉽다.',
+  },
+  {
+    name: '🎟️ 지갑 카드 가격이 다시 상품명보다 커진다',
+    file: 'src/pages/my-vouchers/VoucherTicket.tsx',
+    find: 'text-[17px] font-extrabold font-mono',
+    replace: 'text-[24px] font-extrabold font-mono',
+    test: 'src/tests/unit/wallet-and-slop.test.ts',
+    why:
+      '지갑의 이용권은 **이미 산 것**이라 카드 안 가격은 영수증 정보다. 24px 이면 상품명(18px)보다 ' +
+      '크고 사용하기 버튼만큼 무거워 위계가 뒤집힌다. 자산 표시는 상단 합계가 맡는다.',
+  },
+  {
+    name: '🎨 design-slop 가드가 변형(dark:) stop 을 다시 못 보게 된다',
+    file: 'scripts/check-design-slop.mjs',
+    find: 'const GRAD_LINE = /bg-gradient-to-[a-z]{1,2}\\b/',
+    replace: 'const GRAD_LINE = /__never__/',
+    test: 'src/tests/unit/wallet-and-slop.test.ts',
+    why:
+      '이 가드는 같은 결함을 **두 번** 놓쳤다 — 인라인 CSS 표기(08-31)와 `dark:` 변형 stop(09-01). ' +
+      '후자 때문에 CouponClaimPage 가 다크에서 #0D0F12 → #0D0F12 를 세 줄 갖고도 몇 달간 초록불이었다. ' +
+      '가드 자신이 헛도는 것이 이 레포에서 가장 비싼 실패라 못으로 박는다.',
+  },
+  {
+    name: '🏷️ 교환권 카드 할인율이 다시 사진 위로 (같은 숫자를 한 화면에 두 번)',
+    file: 'src/pages/vouchers/shared.tsx',
+    find: `      {/* 🎨 본문 — 클린 화이트`,
+    replace: `        {discountRate > 0 && (
+          <span className="absolute top-2 left-2 text-[11px] font-extrabold text-white bg-brand rounded-md px-1.5 py-0.5">{discountRate}%</span>
+        )}
+      {/* 🎨 본문 — 클린 화이트`,
+    test: 'src/tests/unit/voucher-card-discount-once.test.ts',
+    why:
+      'PC /vouchers 를 실제로 렌더해 보니 카드마다 할인율이 사진 배지 + 가격 줄 **두 곳**에 있었다. ' +
+      '값이 언제나 같으니 정보가 아니라 소음이고, 위쪽 배지는 상품 사진을 가린다. ' +
+      '대표 2026-08-31 "할인율이 사진 안으로 들어가면 안돼" 를 형제 컴포넌트에도 적용한 것이라 못으로 박는다.',
+  },
+  {
+    name: '🏷️ 교환권 행(VoucherRow) 할인율이 다시 썸네일 위로',
+    file: 'src/pages/vouchers/shared.tsx',
+    find: `      {/* 🎨 본문 — 우측.`,
+    replace: `        {discountRate > 0 && (
+          <span className="absolute top-1.5 left-1.5 text-[10px] font-extrabold bg-[#d1d5db] rounded px-1 py-0.5">{discountRate}%</span>
+        )}
+      {/* 🎨 본문 — 우측.`,
+    test: 'src/tests/unit/voucher-card-discount-once.test.ts',
+    why:
+      '모바일 목록 행도 같은 클래스였다 — 게다가 회색 배지라 눈에 띄지도 않으면서 썸네일만 가렸다. ' +
+      '카드만 고치고 행을 두면 같은 화면 안에서 규칙이 갈린다.',
+  },
+  {
+    name: '🎫 교환권 브랜드 스트립이 다시 항상 펼쳐진다 (175px 이 상품을 fold 밖으로)',
+    file: 'src/pages/VouchersPage.tsx',
+    find: '          {brandsOpen && (\n',
+    replace: '',
+    test: 'src/tests/unit/vouchers-top-chrome.test.ts',
+    why:
+      '첫 상품 위에 층이 다섯이라 상품이 1.5개밖에 안 보였다(실측 ~700px). 이런 층은 하나씩 다시 ' +
+      '얹히기 쉬워서 다섯이 됐다. 접기 게이트가 사라지면 그 상태로 돌아간다.',
+  },
+  {
+    name: '🎫 딥링크 브랜드인데 스트립이 접힌 채 시작 (왜 걸러졌는지 알 수 없다)',
+    file: 'src/pages/VouchersPage.tsx',
+    find: "useState(() => !!searchParams.get('brand'))",
+    replace: 'useState(false)',
+    test: 'src/tests/unit/vouchers-top-chrome.test.ts',
+    why:
+      '브랜드가 이미 선택된 채 들어오면(공유 링크·재진입) 목록은 걸러져 있는데 그 이유가 화면에 ' +
+      '안 보인다. 접기를 넣으면서 같이 생기는 사각지대라 못으로 박는다.',
   },
 ]
 /**

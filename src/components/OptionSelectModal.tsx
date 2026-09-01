@@ -147,7 +147,7 @@ export default function OptionSelectModal({
             <div className="space-y-6">
               {Object.entries(optionsByType).map(([type, optionsForType]) => (
                 <div key={type}>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white mb-3">
+                  <h4 className="text-xs font-bold text-gray-900 dark:text-white mb-3">
                     {type}
                   </h4>
                   <div className="grid grid-cols-3 gap-2">
