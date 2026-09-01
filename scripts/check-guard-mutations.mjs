@@ -6511,6 +6511,35 @@ canvas {
       'D1 한도만 조용히 다시 찬다 — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
   },
   {
+    name: '🪦 거르지 못하는 bio 인덱스가 되살아난다(부분 인덱스를 이겨 다시 하루 4,111만 행)',
+    file: 'src/features/marketing/api/influencer-schema.ts',
+    find: "'DROP INDEX IF EXISTS idx_ad_inf_leads_bio',",
+    replace: "'CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_bio ON ad_influencer_leads(account_id, bio_checked_at)',",
+    test: 'src/tests/unit/influencer-bio-scan.test.ts',
+    why:
+      '있어도 아무것도 안 걸러지는데(bio_checked_at IS NULL 이 99.9%) 플래너에겐 동등 조건 두 개로 ' +
+      '보여 부분 인덱스를 이긴다. 2026-08-27 수리가 한 달 내내 안 먹은 이유가 정확히 이것이다.',
+  },
+  {
+    name: '🔎 대소문자 무시 인덱스가 식을 잃는다(하루 4,626만 행 전수 스캔 복귀)',
+    file: 'src/features/marketing/api/influencer-schema.ts',
+    find: 'idx_ad_inf_leads_email_ci ON ad_influencer_leads(account_id, LOWER(email))',
+    replace: 'idx_ad_inf_leads_email_ci ON ad_influencer_leads(account_id, email)',
+    test: 'src/tests/unit/influencer-bio-scan.test.ts',
+    why:
+      '쿼리는 `LOWER(email) = LOWER(?)` 인데 인덱스가 생 컬럼이면 플래너가 못 쓴다. 결과는 같아서 ' +
+      '아무도 모르고 회당 17만 행이 그대로 돌아온다 — 업체 DB 원부 전화와 같은 클래스.',
+  },
+  {
+    name: '🏷️ 핸들 인덱스가 세 번째 키를 잃는다(IN 조회가 다시 훑는다)',
+    file: 'src/features/marketing/api/influencer-schema.ts',
+    find: 'idx_ad_inf_leads_handle ON ad_influencer_leads(account_id, platform, handle)',
+    replace: 'idx_ad_inf_leads_handle ON ad_influencer_leads(account_id, platform)',
+    test: 'src/tests/unit/influencer-bio-scan.test.ts',
+    why:
+      '`(account_id, platform)` 까지만 짚으면 그 아래는 전부 훑는다 — 고치기 전과 같은 상태(회당 14.7만).',
+  },
+  {
     name: '☎️ 원부 전화 인덱스가 식을 잃는다(다시 하루 2,270만 행 전수 스캔)',
     file: 'src/features/marketing/api/company-ddl-indexes.ts',
     find: "ON ad_company_leads(REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'.',''))",
