@@ -6,12 +6,14 @@ import OptionSelectModal from '@/components/OptionSelectModal'
 import { useCart, useUpdateCartQuantity, useRemoveFromCart, useUpdateCartOption } from '@/hooks/useCart'
 import { CartHeader } from '@/components/cart/CartHeader'
 import { CartItemComponent } from '@/components/cart/CartItem'
+import { CartGroupShippingRow } from '@/components/cart/CartGroupShippingRow'
 import { CartSummary } from '@/components/cart/CartSummary'
 import { EmptyCart } from '@/components/cart/EmptyCart'
 import { CartCtaButton } from '@/components/cart/CartCtaButton'
-import { ShoppingCart, ChevronRight, Store, X } from 'lucide-react'
+import { ShoppingCart, ChevronRight, Store, X, PackageCheck } from 'lucide-react'
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
+import { getNoShippingKind, isNoShippingProduct } from '@/shared/product-flow'
 import { formatNumber } from '@/utils/format'
 import { hasConsumerSession } from '@/utils/auth'
 import CustomModal from './cart/CustomModal'
@@ -20,6 +22,11 @@ import BrandLoader from '@/components/brand/BrandLoader'
 // 🛡️ 2026-05-02: TD-018 분할 — CustomModal 을 ./cart/CustomModal 로 추출.
 //   CustomModal 내부에서 쓰던 lucide 아이콘 (AlertCircle, CheckCircle, Info) 은
 //   해당 파일로 이동. 본체에서 X 아이콘은 헤더 닫기 버튼에서 계속 사용.
+
+/** 📦 2026-09-01: 배송비 판정은 SSOT 하나로 — 여기와 결제 화면이 갈려 총액이 달랐다(product-flow.ts). */
+function isNoShippingItem(item: CartItem): boolean {
+  return isNoShippingProduct({ deal_only: item.deal_only, category: item.category })
+}
 
 /** 로그인 여부를 localStorage로 동기 확인 — user_type 비의존 (듀얼 로그인 충돌 방지) */
 function isUserLoggedIn(): boolean {
@@ -342,7 +349,7 @@ function CartPageContent() {
           seller_name: item.seller_name || t('cart.fallbackSeller'),
           items: [] as CartItem[],
           subtotal: 0,
-          shipping_fee: item.shipping_fee || 3000,
+          shipping_fee: item.shipping_fee ?? 3000,  // `||` 는 명시한 0 을 3,000 으로 되돌린다
           free_shipping_threshold: item.free_shipping_threshold || 0,
         }
       }
@@ -377,7 +384,7 @@ function CartPageContent() {
         groups[sellerId] = {
           items: [],
           subtotal: 0,
-          shipping_fee: item.shipping_fee || 3000,
+          shipping_fee: item.shipping_fee ?? 3000,  // `||` 는 명시한 0 을 3,000 으로 되돌린다
           free_shipping_threshold: item.free_shipping_threshold || 0,
         }
       }
@@ -399,10 +406,9 @@ function CartPageContent() {
 
     // 셀러별 배송비 계산
     const totalShippingFee = Object.values(selectedSellerGroups).reduce((total, group) => {
-      // 🛡️ 2026-05-19 (사용자 신고): 교환권 (deal_only=1) 은 휴대폰 발송 → 배송비 불요.
-      //   그룹의 모든 item 이 deal_only=1 이면 무료.
-      const allVoucher = group.items.length > 0 && group.items.every(i => Number((i as { deal_only?: number }).deal_only) === 1)
-      if (allVoucher) return total
+      // 🛡️ 교환권은 휴대폰 발송, 이용권은 매장 사용 — 둘 다 배송비 없음.
+      const allNoShip = group.items.length > 0 && group.items.every(isNoShippingItem)
+      if (allNoShip) return total
       // 무료배송 기준액이 설정되어 있고, 해당 셀러의 소계가 기준액 이상이면 배송비 0원
       if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) {
         return total
@@ -470,7 +476,9 @@ function CartPageContent() {
             {/* v4 Seller Group Cards */}
             {Object.values(sellerGroups).map((group) => {
               const groupAllSelected = group.items.every(item => selectedIds.has(item.id))
-              const freeShipThreshold = group.free_shipping_threshold
+              // 비배송 그룹엔 '무료배송까지 N원' 이 말이 안 된다 — 원래 배송이 없다.
+              const groupNoShip = group.items.length > 0 && group.items.every(isNoShippingItem)
+              const freeShipThreshold = groupNoShip ? 0 : group.free_shipping_threshold
               const remaining = freeShipThreshold > 0 ? freeShipThreshold - group.subtotal : 0
               const shippingProgress = freeShipThreshold > 0
                 ? Math.min(100, (group.subtotal / freeShipThreshold) * 100)
@@ -520,7 +528,7 @@ function CartPageContent() {
                         const hasBundle = Array.from(bundlingMap.values()).some(v => v >= 2)
                         return hasBundle ? (
                           <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400">
-                            📦 합배송
+                            <PackageCheck className="w-3 h-3" strokeWidth={2} aria-hidden />합배송
                           </span>
                         ) : null
                       })()}
@@ -570,22 +578,13 @@ function CartPageContent() {
                     ))}
                   </div>
 
-                  {/* Seller group shipping info — 🛡️ 2026-05-19: 교환권 그룹은 배송비 unused. */}
-                  {(() => {
-                    const allVoucher = group.items.length > 0 && group.items.every(i => Number((i as { deal_only?: number }).deal_only) === 1)
-                    return (
-                      <div className="mx-4 mb-3 pt-3 border-t border-gray-100 dark:border-[#2C2F35] flex justify-between text-[12px]">
-                        <span className="text-gray-400 dark:text-gray-500">{allVoucher ? '발송' : t('cart.shippingFee')}</span>
-                        <span className="font-medium text-gray-700 dark:text-gray-200">
-                          {allVoucher
-                            ? <span className="text-amber-600">🎁 휴대폰 즉시 발송 (무료)</span>
-                            : freeShipThreshold > 0 && group.subtotal >= freeShipThreshold
-                              ? <span className="text-pink-500">{t('cart.free')}</span>
-                              : `${formatNumber(group.shipping_fee)}원`}
-                        </span>
-                      </div>
-                    )
-                  })()}
+                  <CartGroupShippingRow
+                    items={group.items}
+                    subtotal={group.subtotal}
+                    shippingFee={group.shipping_fee}
+                    freeShipThreshold={freeShipThreshold}
+                    noShipping={groupNoShip}
+                  />
                 </div>
               )
             })}
@@ -597,6 +596,7 @@ function CartPageContent() {
                 subtotal={subtotal}
                 shippingFee={shippingFee}
                 total={total}
+                noShipping={cartItems.length > 0 && cartItems.every(isNoShippingItem)}
               />
               <CartCtaButton onClick={handleCheckout} disabled={selectedIds.size === 0 || updating} className="hidden lg:block mt-4"
                 label={selectedIds.size === 0 ? t('cart.selectProductsFirst') : t('cart.placeOrder', { amount: formatNumber(total) })} />

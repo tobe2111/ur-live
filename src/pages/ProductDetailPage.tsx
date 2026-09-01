@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Gift, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Gift, ChevronRight, ChevronLeft, Map, Bookmark, AlertTriangle } from 'lucide-react'
 import api from '@/lib/api'
 import { getUserId, getUserIdSync, hasConsumerSession } from '@/utils/auth'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
@@ -499,7 +499,7 @@ export default function ProductDetailPage() {
             className="w-full py-4 text-center text-[16px] font-bold text-gray-900 dark:text-white active:bg-amber-500"
             style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
           >
-            🎁 딜로 교환하기
+            딜로 교환하기
           </button>
         </div>
       </div>
@@ -551,7 +551,7 @@ export default function ProductDetailPage() {
             {/* 🛡️ 2026-05-19: 딜 교환 전용 배지 (KT Alpha 직판 상품). */}
             {Number(product.deal_only) === 1 && (
               <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 border border-amber-300 rounded-full">
-                <span className="text-[11px] font-extrabold text-amber-800">🎁 딜 교환 전용</span>
+                <span className="text-[11px] font-extrabold text-amber-800">딜 교환 전용</span>
                 <span className="text-[10px] text-amber-700">· 30일 유효 · 환불 불가</span>
               </div>
             )}
@@ -683,7 +683,7 @@ export default function ProductDetailPage() {
                   <button type="button"
                     onClick={() => navigate(`/map?q=${encodeURIComponent(product.restaurant_address || '')}`)}
                     className="py-2 bg-gray-100 dark:bg-[#1A1C21] hover:bg-gray-200 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
-                    {t('productDetail.mapLink', { defaultValue: '🗺 지도' })}
+                    {<><Map className="w-3.5 h-3.5" strokeWidth={2} aria-hidden />{t('productDetail.mapLink', { defaultValue: '지도' })}</>}
                   </button>
                   <a href={`https://map.naver.com/v5/search/${encodeURIComponent(product.restaurant_name || product.restaurant_address)}`}
                     target="_blank" rel="noopener noreferrer"
@@ -735,15 +735,15 @@ export default function ProductDetailPage() {
                     } catch { /* silent */ }
                     showToast(
                       pinAdded
-                        ? '🔗 링크 복사 + 내 유어샵에 추가됨'
+                        ? '링크 복사 + 내 유어샵에 추가됨'
                         : t('productDetailPage.shareLinkCopied'),
                       'success'
                     )
                   }}
                   className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
                 >
-                  <span className="text-[15px] font-bold">📌 내 유어샵에 담기 + 추천 링크 복사</span>
-                  <span className="text-[11px] opacity-90">1판매당 {amountStr} 적립 — 친구 공유 가능</span>
+                  <span className="flex items-center gap-1.5 text-[15px] font-bold"><Bookmark className="w-4 h-4 shrink-0" strokeWidth={2} aria-hidden />내 유어샵에 담기 + 추천 링크 복사</span>
+                  <span className="text-[11px] opacity-90">1판매당 {amountStr} 적립, 친구 공유 가능</span>
                 </button>
               )
             }
@@ -753,7 +753,7 @@ export default function ProductDetailPage() {
                 onClick={() => navigate(`/login?returnUrl=${encodeURIComponent(window.location.pathname)}`)}
                 className="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
               >
-                <span className="text-[15px] font-bold">🎁 회원가입하고 1판매당 {amountStr} 적립받기</span>
+                <span className="text-[15px] font-bold">회원가입하고 1판매당 {amountStr} 적립받기</span>
                 <span className="text-[11px] opacity-90">내 유어샵에 담아 친구에게 추천만 해도 수익</span>
               </button>
             )
@@ -896,7 +896,7 @@ export default function ProductDetailPage() {
               <span className="text-[20px] font-extrabold text-gray-900 dark:text-white">{formatNumber(dealConfirm.total)}딜</span>
             </div>
             <div className="mt-3 flex items-start gap-1.5 rounded-xl px-3 py-2.5 bg-amber-50 dark:bg-amber-500/10">
-              <span className="text-amber-500 text-[13px] leading-none mt-0.5">⚠️</span>
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" strokeWidth={2} aria-hidden />
               <p className="text-[12px] text-amber-700 dark:text-amber-300 leading-snug">교환 후에는 환불이 불가합니다. 딜로 즉시 결제됩니다.</p>
             </div>
             <div className="mt-5 flex gap-2">

@@ -8,7 +8,7 @@ import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import { derivePricing } from './group-buy/pricing'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, ShieldCheck, RefreshCcw } from 'lucide-react'
+import { MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, ShieldCheck, RefreshCcw, BadgeCheck, RotateCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { resolveProductFlow } from '@/shared/product-flow'
@@ -626,7 +626,7 @@ export default function GroupBuyDetailPage() {
             <Sparkles style={{ width: 20, height: 20, flex: '0 0 auto' }} />
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: 11.5, fontWeight: 700, opacity: .9, margin: 0 }}>친구 추천 공구</p>
-              <p style={{ fontSize: 13.5, fontWeight: 800, margin: '2px 0 0' }}>참여 시 양쪽 0.5% 보너스 딜 🎁</p>
+              <p style={{ fontSize: 13.5, fontWeight: 800, margin: '2px 0 0' }}>참여 시 양쪽 0.5% 보너스 딜</p>
             </div>
           </div>
         )}
@@ -648,7 +648,7 @@ export default function GroupBuyDetailPage() {
             </div>
           )}
           {isPrelaunch && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, padding: '4px 10px', borderRadius: 999, background: 'var(--gbd-ink)', color: 'var(--gbd-card)', fontSize: 11, fontWeight: 800 }}>🔔 오픈 예정 · 사전 응모 받는 중</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, padding: '4px 10px', borderRadius: 999, background: 'var(--gbd-ink)', color: 'var(--gbd-card)', fontSize: 11, fontWeight: 800 }}>오픈 예정 · 사전 응모 받는 중</span>
           )}
           <h1 style={{ margin: '4px 0 0', fontSize: 21, lineHeight: 1.3, fontWeight: 800, letterSpacing: '-.03em', color: 'var(--gbd-ink)' }}>{detail.name}</h1>
           {(detail.restaurant_address || detail.restaurant_phone) && (
@@ -730,15 +730,15 @@ export default function GroupBuyDetailPage() {
 
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
 
-        {/* 신뢰 인라인 스트립 */}
+        {/* 신뢰 스트립 — 🛡️ 2026-09-01: 셋이 전부 같은 ShieldCheck 였다(아이콘 정보량 0 + "찍어낸" 인상). 항목별로 다른 글리프. */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 18px' }}>
           {[
-            { title: '안전결제', sub: '토스페이먼츠' },
-            { title: '정식판매', sub: '검증 셀러' },
-            { title: '환불보장', sub: '안심거래' },
+            { title: '안전결제', sub: '토스페이먼츠', Icon: ShieldCheck },
+            { title: '정식판매', sub: '검증 셀러', Icon: BadgeCheck },
+            { title: '환불보장', sub: '안심거래', Icon: RotateCcw },
           ].map((tr) => (
             <div key={tr.title} style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-              <ShieldCheck style={{ width: 16, height: 16, flex: '0 0 auto', color: 'var(--gbd-ink)' }} />
+              <tr.Icon style={{ width: 16, height: 16, flex: '0 0 auto', color: 'var(--gbd-ink)' }} />
               <div style={{ lineHeight: 1.25, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>{tr.title}</div>
                 <div style={{ fontSize: 11, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>{tr.sub}</div>
@@ -855,7 +855,7 @@ export default function GroupBuyDetailPage() {
               style={{ marginTop: 14, width: '100%', padding: '11px', borderRadius: 12, fontSize: 13, fontWeight: 700 }}
               className="border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10"
             >
-              📣 이 매장에 공구 제안하기 (인플루언서)
+              이 매장에 공구 제안하기
             </button>
           )}
         </div>
@@ -919,7 +919,7 @@ export default function GroupBuyDetailPage() {
             ) : null}
             {/* 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 레벨 전용 이용권 배지 (서버 게이트의 UX 안내) */}
             {detail?.min_review_level && detail.min_review_level > 1 ? (
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>🏅 동네 리뷰어 Lv.{detail.min_review_level} 전용</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>동네 리뷰어 Lv.{detail.min_review_level} 전용</span>
             ) : null}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--gbd-line2)', borderRadius: 10, overflow: 'hidden' }} role="group" aria-label="수량 조절">
@@ -938,7 +938,7 @@ export default function GroupBuyDetailPage() {
           aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? `${formatNumber(total)}원 ${isDemoDeal ? '결제하기' : '구매하기'}` : isDemoDeal ? '결제 불가' : '구매 불가'}
           style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
         >
-          {joining ? '처리 중…' : isPrelaunch ? '🔔 오픈 예정 — 사전 응모하기' : !isJoinable ? (isDemoDeal ? '결제 불가' : '구매 불가') : <>{formatNumber(total)}원 {isDemoDeal ? '결제하기' : '구매하기'}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
+          {joining ? '처리 중…' : isPrelaunch ? '사전 응모하기' : !isJoinable ? (isDemoDeal ? '결제 불가' : '구매 불가') : <>{formatNumber(total)}원 {isDemoDeal ? '결제하기' : '구매하기'}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
         </button>
       </div>{/* /bar box */}
       </footer>

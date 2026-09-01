@@ -4165,7 +4165,7 @@
     "agreeToTerms": "I agree to proceed with payment",
     "checkout": "Checkout",
     "freeShipping": "Free Shipping",
-    "initError": "Failed to initialize payment",
+    "initError": "Le paiement n'a pas pu démarrer. Réessayez dans un instant.",
     "loading": "Loading payment information...",
     "orderDate": "Order Date",
     "orderNumber": "Order Number",
@@ -4200,7 +4200,7 @@
       "authError": "Erreur d'authentification. Veuillez actualiser la page.",
       "uiNotFound": "Zone d'interface de paiement introuvable. Veuillez actualiser la page.",
       "orderNumberInvalid": "Format de numéro de commande invalide. Veuillez actualiser la page.",
-      "systemError": "Erreur du système de paiement (rafraîchissement requis)"
+      "systemError": "Le paiement n'est pas disponible pour le moment"
     },
     "section": {
       "title": "Moyen de paiement",

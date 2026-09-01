@@ -125,12 +125,18 @@ export default function TossWidgetPayPage() {
         if (cancelled) return
         console.error('[TossWidgetPay] init failed:', err)
         const raw = err instanceof Error ? err.message : String(err)
-        const baseMsg = /TIMEOUT/i.test(raw)
-          ? '결제 위젯 로딩이 지연됩니다. 페이지를 새로고침해주세요.'
-          : /not.*found|404|variant/i.test(raw)
-          ? '결제 수단이 Toss 콘솔에 등록되어 있지 않습니다. Toss 콘솔 → 결제 → 결제수단 → "결제수단 활성화" 후 다시 시도해주세요.'
-          : '결제 초기화 실패'
-        setErrorMsg(`${baseMsg}\n\n[SDK 원본]: ${raw.slice(0, 200)}`)
+        // 🧾 2026-09-01 [UNLOCK] (대표 승인 "허가 — 문구만 수정"): 소비자 문장만 교체.
+        //   이 화면은 **이용권 결제의 유일한 화면**이다(상세 → /pay/widget → confirm-payment).
+        //   여기서 영문 SDK 원본과 운영자용 콘솔 지시를 보여 주면, 결제가 막힌 사람이
+        //   할 수 있는 일이 하나도 없다. 원인 값은 위 console.error 가 남긴다.
+        //   ⚠️ 분기 조건·상태 전이는 그대로 — 문자열만.
+        setErrorMsg(
+          /TIMEOUT/i.test(raw)
+            ? '결제창을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.'
+            : /not.*found|404|variant/i.test(raw)
+            ? '지금은 결제를 진행할 수 없습니다. 잠시 후 다시 시도하거나 다른 결제 수단을 이용해주세요.'
+            : '결제를 시작하지 못했습니다. 잠시 후 다시 시도해주세요.',
+        )
         setState('error')
       }
     })()
@@ -227,7 +233,7 @@ export default function TossWidgetPayPage() {
             {state === 'loading' && (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                결제 시스템 로딩 중...
+                결제창을 준비하고 있어요
               </span>
             )}
             {state === 'processing' && (
@@ -237,7 +243,7 @@ export default function TossWidgetPayPage() {
               </span>
             )}
             {state === 'ready' && `${Number.isFinite(amount) ? amount.toLocaleString('ko-KR') : '0'}원 결제하기`}
-            {state === 'error' && '결제 시스템 오류'}
+            {state === 'error' && '지금은 결제할 수 없어요'}
           </button>
         </div>
       </div>
