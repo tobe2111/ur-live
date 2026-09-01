@@ -133,6 +133,10 @@ export interface CatchupState {
   lastRun: Map<string, number>
   /** 이번 틱에서 새로 시작한 작업 수 — `CATCHUP_MAX_JOBS` 로 막는다. */
   started: number
+  /** 이번 주기에 이미 돌아서 건너뛴 수. **관측용** — 아래 `summarizeCatchup` 참조. */
+  skipped: number
+  /** 시작 한도에 걸려 다음 시간으로 미룬 수. */
+  deferred: number
 }
 
 /**
@@ -149,7 +153,7 @@ export async function beginCatchup(
   if (tick.getUTCMinutes() !== CATCHUP_MINUTE) return null
   const lastRun = await loadLastRunMs(DB)
   if (!lastRun) return null // 읽기 실패 = 만회 안 함(fail-closed)
-  return { lastRun, started: 0 }
+  return { lastRun, started: 0, skipped: 0, deferred: 0 }
 }
 
 /**
@@ -174,8 +178,27 @@ export function claimCatchupJob(state: CatchupState, name: string, expr: string,
   if (!spec) return false
   const start = periodStartMs(nowMs, spec)
   if (start === null) return false
-  if (ranThisPeriod(state.lastRun.get(name), start)) return false
-  if (state.started >= CATCHUP_MAX_JOBS) return false
+  if (ranThisPeriod(state.lastRun.get(name), start)) { state.skipped += 1; return false }
+  if (state.started >= CATCHUP_MAX_JOBS) { state.deferred += 1; return false }
   state.started += 1
   return true
+}
+
+/**
+ * 만회 한 틱의 결과 요약 — **이 기능의 유일한 관측 지점**이다.
+ *
+ * ## 왜 이게 필요한가 (2026-09-01, 배포 첫날 실측으로 알게 됨)
+ *
+ * 만회는 **정상인 날엔 아무 흔적도 안 남긴다.** 밀린 게 없으면 각 작업이 조용히 건너뛰고 끝난다.
+ * 설계 의도대로지만, 그 결과 **"돌았는데 할 일이 없었다"와 "아예 안 돌았다"가 구분되지 않는다.**
+ * 배포 이틀 동안 모든 레인이 정시에 돌아서 만회를 한 번도 못 봤는데, 그때 내가 답할 수 없던
+ * 질문이 정확히 이것이었다 — *"이게 실제로 돌고는 있나?"*
+ *
+ * 이 레포가 반복해 당한 **"실패가 아니라 조용한 부재"** 클래스이고, 하필 그걸 고치려고 만든
+ * 기능이 같은 병을 앓고 있었다. 그래서 회차마다 한 줄을 남긴다.
+ *
+ * 비용: 만회 틱에서만 1 write — 하루 24회. (작업이 아니라 관측이므로 `safeCron` 으로 감싸지 않는다.)
+ */
+export function summarizeCatchup(state: CatchupState): { started: number; skipped: number; deferred: number; known: number } {
+  return { started: state.started, skipped: state.skipped, deferred: state.deferred, known: state.lastRun.size }
 }

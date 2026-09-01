@@ -273,6 +273,28 @@ const MUTATIONS = [
       '설명하려던 금액을 두 배로 만든다.',
   },
   {
+    name: '⏰ 만회가 아무 기록도 안 남긴다 (돌았는지 아무도 모른다)',
+    file: 'src/worker/scheduled.ts',
+    // ⚠️ 주입은 **줄을 통째로 지운다.** 처음엔 호출을 죽은 화살표로 감쌌는데, 소스에 문자열이
+    //   그대로 남아 판정(문자열 검사)이 통과했다 — 주입이 아무것도 안 한 셈이라 초록이 떴다.
+    find: "    ctx.waitUntil(recordCronBeat(env, '__catchup', true, 0, cron, summarizeCatchup(catchup), expectedMaxAgeMinutes('55 * * * *') ?? undefined)); // cron-heartbeat-ok: 작업이 아니라 하트비트 **자체**다(__tick 과 동일 이유)",
+    replace: "    // 기록 생략",
+    test: 'src/tests/unit/cron-catchup.test.ts',
+    why:
+      '만회는 정상인 날 아무 흔적도 안 남긴다. 이 한 줄이 빠지면 "돌았는데 할 일이 없었다"와 ' +
+      '"아예 안 돌았다"가 구분되지 않는다 — 이 기능이 고치려는 병을 이 기능 자신이 앓게 된다.',
+  },
+  {
+    name: '⏰ 건너뛴 수를 안 센다 (요약이 늘 0 이라 관측이 무의미해진다)',
+    file: 'src/worker/cron-catchup.ts',
+    find: '  if (ranThisPeriod(state.lastRun.get(name), start)) { state.skipped += 1; return false }',
+    replace: '  if (ranThisPeriod(state.lastRun.get(name), start)) return false',
+    test: 'src/tests/unit/cron-catchup.test.ts',
+    why:
+      'skipped 가 0 으로 굳으면 만회 회차 기록이 `started=0 skipped=0` 뿐이라 ' +
+      '**정상 회차와 아무 일도 안 한 회차가 같은 모양**이 된다.',
+  },
+  {
     name: '⏰ 만회가 정시 틱에서도 켜진다 (일간 작업이 5분마다 돈다)',
     file: 'src/worker/cron-catchup.ts',
     find: '  if (tick.getUTCMinutes() !== CATCHUP_MINUTE) return null',
@@ -295,7 +317,7 @@ const MUTATIONS = [
   {
     name: '⏰ 이번 주기에 이미 돈 작업을 또 돌린다 (일간 배치 이중 실행)',
     file: 'src/worker/cron-catchup.ts',
-    find: '  if (ranThisPeriod(state.lastRun.get(name), start)) return false',
+    find: '  if (ranThisPeriod(state.lastRun.get(name), start)) { state.skipped += 1; return false }',
     replace: '  if (false) return false',
     test: 'src/tests/unit/cron-catchup.test.ts',
     why:
@@ -305,7 +327,7 @@ const MUTATIONS = [
   {
     name: '⏰ 만회 한 틱의 시작 한도가 사라진다 (만회가 예산을 다시 말린다)',
     file: 'src/worker/cron-catchup.ts',
-    find: '  if (state.started >= CATCHUP_MAX_JOBS) return false',
+    find: '  if (state.started >= CATCHUP_MAX_JOBS) { state.deferred += 1; return false }',
     replace: '  if (false) return false',
     test: 'src/tests/unit/cron-catchup.test.ts',
     why:
@@ -6777,10 +6799,22 @@ canvas {
       '"측정 0 = 통과" 클래스이고, 이 가드는 바로 그 사고를 수습하려고 만들어졌다.',
   },
   {
+    name: '🔓 2차 해동이 통째로 빠진다 (도매 가이드가 계속 폐기어를 가르침)',
+    file: 'src/features/guides/api/guide.routes.ts',
+    find: "const UNFREEZE2_MARKER = 'guide_unfreeze_2026_08_31_b'",
+    replace: "const UNFREEZE2_MARKER = 'guide_unfreeze_disabled'",
+    test: 'src/tests/unit/guide-unfreeze.test.ts',
+    why:
+      '2차가 빠지면 도매 가이드 15개 중 12개가 계속 **유통사**(2026-06-22 폐기)라고 말하고, ' +
+      "admin 'deploy' 는 클라이언트만 빌드하는 옛 단독 명령을 가르친다 — CLAUDE.md 가 " +
+      '2026-05-12 사고의 원인으로 지목해 금지한 그 명령이다(_worker.js 가 안 갱신된다).',
+  },
+  {
     name: '🔓 가이드 해동이 전체로 번진다 (관리자 문구까지 시드로 덮음)',
     file: 'src/features/guides/api/guide.routes.ts',
-    find: 'manually_edited = 0 WHERE guide_type = ? AND section_key = ?',
-    replace: 'manually_edited = 0 WHERE 1=1',
+    // ⚠️ 같은 SQL 이 1차·2차 두 블록에 있다 → **catch 태그까지 포함해** 1차 블록만 지목한다.
+    find: "AND section_key = ?`\n      ).bind(t, k).run().catch(swallow('guides:seed-sync:unfreeze'))",
+    replace: "`\n      ).bind(t, k).run().catch(swallow('guides:seed-sync:unfreeze'))",
     test: 'src/tests/unit/guide-unfreeze.test.ts',
     why:
       '해동은 **실측으로 갈린 섹션 13개**를 되살리려는 것이지 관리자가 쓴 문구를 되돌리려는 것이 아니다. ' +
