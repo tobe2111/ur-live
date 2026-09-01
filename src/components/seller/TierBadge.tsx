@@ -23,10 +23,10 @@ export default function TierBadge() {
   const { t } = useTranslation()
   const [info, setInfo] = useState<TierInfo | null>(null)
 
-  const TIER_META: Record<Tier, { label: string; emoji: string; Icon: LucideIcon; color: string; bg: string; border: string; nextScore?: number; benefits: string[] }> = {
+  const TIER_META: Record<Tier, { label: string; Icon: LucideIcon; color: string; bg: string; border: string; nextScore?: number; benefits: string[] }> = {
     diamond: {
       label: t('tierBadge.tierDiamond', { defaultValue: '다이아몬드' }),
-      emoji: '💎', Icon: Gem,
+      Icon: Gem,
       color: 'text-blue-700',
       bg: 'bg-gradient-to-br from-gray-100 to-gray-50',
       border: 'border-blue-300',
@@ -34,7 +34,7 @@ export default function TierBadge() {
     },
     gold: {
       label: t('tierBadge.tierGold', { defaultValue: '골드' }),
-      emoji: '⭐', Icon: Star,
+      Icon: Star,
       color: 'text-amber-700',
       bg: 'bg-gradient-to-br from-gray-100 to-gray-50',
       border: 'border-amber-300',
@@ -43,7 +43,7 @@ export default function TierBadge() {
     },
     silver: {
       label: t('tierBadge.tierSilver', { defaultValue: '실버' }),
-      emoji: '🥈', Icon: Medal,
+      Icon: Medal,
       color: 'text-gray-700',
       bg: 'bg-gradient-to-br from-gray-100 to-slate-50',
       border: 'border-gray-300',
@@ -52,7 +52,7 @@ export default function TierBadge() {
     },
     bronze: {
       label: t('tierBadge.tierBronze', { defaultValue: '브론즈' }),
-      emoji: '🥉', Icon: Award,
+      Icon: Award,
       color: 'text-orange-700',
       bg: 'bg-gray-50',
       border: 'border-orange-200',
@@ -61,7 +61,7 @@ export default function TierBadge() {
     },
     new: {
       label: t('tierBadge.tierNew', { defaultValue: '신규' }),
-      emoji: '🆕', Icon: Sprout,
+      Icon: Sprout,
       color: 'text-purple-700',
       bg: 'bg-gray-50',
       border: 'border-purple-200',

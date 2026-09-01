@@ -6986,6 +6986,33 @@ canvas {
       '그리드가 들쭉날쭉해진다. 쿠팡식 2줄이 그 구조적 깨짐의 해법이라, 한 줄로 되돌리는 것을 막는다.',
   },
   {
+    name: '🏷️ 교환권 카드 할인율이 다시 사진 위로 (같은 숫자를 한 화면에 두 번)',
+    file: 'src/pages/vouchers/shared.tsx',
+    find: `      {/* 🎨 본문 — 클린 화이트`,
+    replace: `        {discountRate > 0 && (
+          <span className="absolute top-2 left-2 text-[11px] font-extrabold text-white bg-brand rounded-md px-1.5 py-0.5">{discountRate}%</span>
+        )}
+      {/* 🎨 본문 — 클린 화이트`,
+    test: 'src/tests/unit/voucher-card-discount-once.test.ts',
+    why:
+      'PC /vouchers 를 실제로 렌더해 보니 카드마다 할인율이 사진 배지 + 가격 줄 **두 곳**에 있었다. ' +
+      '값이 언제나 같으니 정보가 아니라 소음이고, 위쪽 배지는 상품 사진을 가린다. ' +
+      '대표 2026-08-31 "할인율이 사진 안으로 들어가면 안돼" 를 형제 컴포넌트에도 적용한 것이라 못으로 박는다.',
+  },
+  {
+    name: '🏷️ 교환권 행(VoucherRow) 할인율이 다시 썸네일 위로',
+    file: 'src/pages/vouchers/shared.tsx',
+    find: `      {/* 🎨 본문 — 우측.`,
+    replace: `        {discountRate > 0 && (
+          <span className="absolute top-1.5 left-1.5 text-[10px] font-extrabold bg-[#d1d5db] rounded px-1 py-0.5">{discountRate}%</span>
+        )}
+      {/* 🎨 본문 — 우측.`,
+    test: 'src/tests/unit/voucher-card-discount-once.test.ts',
+    why:
+      '모바일 목록 행도 같은 클래스였다 — 게다가 회색 배지라 눈에 띄지도 않으면서 썸네일만 가렸다. ' +
+      '카드만 고치고 행을 두면 같은 화면 안에서 규칙이 갈린다.',
+  },
+  {
     name: '🎫 교환권 브랜드 스트립이 다시 항상 펼쳐진다 (175px 이 상품을 fold 밖으로)',
     file: 'src/pages/VouchersPage.tsx',
     find: '          {brandsOpen && (\n',

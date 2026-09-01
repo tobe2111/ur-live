@@ -16,7 +16,7 @@ import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'rea
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Gift, ArrowRight, ChevronDown, ShoppingBag, Flame, Clock, Tag, ArrowDownWideNarrow, ArrowUpWideNarrow, Soup, Shirt, Sparkle, Sofa, Smartphone, type LucideIcon } from 'lucide-react'
+import { ArrowRight, ChevronDown, ShoppingBag, Flame, Clock, Tag, ArrowDownWideNarrow, ArrowUpWideNarrow, Soup, Shirt, Sparkle, Sofa, Smartphone, type LucideIcon } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🎟️ 2026-07-10 (대표 결정): 일반상품(쇼핑) 노출은 SHOPPING_TAB_HIDDEN 게이트 — 교환권은 유지.
 import { SHOPPING_TAB_HIDDEN, TOPUP_DISABLED } from '@/shared/feature-flags'
@@ -555,13 +555,13 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                         onClick={() => setCategory(s.category)}
                         className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] transition-colors ${
                           active
-                            ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 font-bold'
+                            ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white font-bold'
                             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                         }`}
                       >
                         <CategoryIcon category={s.category} />
                         <span className="flex-1 text-left truncate">{s.category}</span>
-                        <span className={`text-[11px] ${active ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{s.count}</span>
+                        <span className={`text-[11px] ${active ? 'text-gray-500 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>{s.count}</span>
                       </button>
                     )
                   })}
@@ -592,7 +592,6 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             )}
             <div className="flex items-center justify-between gap-2 mb-4">
               <h2 className="text-[19px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
-                <Gift className="w-5 h-5 text-amber-500 shrink-0" />
                 <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
                 {/* 🐛 2026-08-17 (UX 전수검사 P1): 로드분 개수를 총계 자리에 그대로 쓰면 "커피/음료 775개"
                     카테고리가 "20"으로 읽힌다 — 더 있으면 `20+` 로 표기(정확한 총계 API 없음). */}
@@ -600,7 +599,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 {brand && (
                   <button
                     onClick={() => setBrand('')}
-                    className="shrink-0 ml-1 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[11px] font-medium"
+                    className="shrink-0 ml-1 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 text-[11px] font-medium"
                   >
                     해제 ✕
                   </button>
@@ -756,13 +755,13 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                     onClick={() => setCategory(s.category)}
                     className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
                       active
-                        ? 'bg-amber-500 text-white shadow-sm'
+                        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-sm'
                         : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
                     }`}
                   >
                     <CategoryIcon category={s.category} />
                     {s.category}
-                    <span className={`text-[10px] ${active ? 'text-white/80' : 'text-gray-400 dark:text-gray-500'}`}>({s.count})</span>
+                    <span className={`text-[10px] ${active ? 'text-white/70 dark:text-gray-900/60' : 'text-gray-400 dark:text-gray-500'}`}>({s.count})</span>
                   </button>
                 )
               })}
@@ -826,7 +825,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           <span className="text-[12px] text-gray-500 dark:text-gray-400">필터:</span>
           <button
             onClick={() => setBrand('')}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[12px] font-medium"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 text-[12px] font-medium"
           >
             {brand} ✕
           </button>
@@ -848,7 +847,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             {brand && (
               <button
                 onClick={() => setBrand('')}
-                className="shrink-0 ml-1 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[11px] font-medium"
+                className="shrink-0 ml-1 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 text-[11px] font-medium"
               >
                 해제 ✕
               </button>

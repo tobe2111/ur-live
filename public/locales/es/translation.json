@@ -2056,7 +2056,7 @@
       "loadFailed": "Failed to load",
       "activateSuccess": "Boost activated! Now appearing at top of main feed.",
       "activateFailed": "Activation failed",
-      "activateConfirm": "Activate {{emoji}} {{tier}} coupon for \"{{liveTitle}}\" live for {{hours}} hours?"
+      "activateConfirm": "Activate {{tier}} coupon for \"{{liveTitle}}\" live for {{hours}} hours?"
     },
     "adSlotsTitle": "Ad Slot Bidding",
     "adSlotsDesc": "24h priority placement on main & live top — Winner decided daily at 6 PM",
