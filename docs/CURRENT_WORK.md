@@ -5494,8 +5494,14 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 219건 · 최신순 · 이 목록은 자동 생성된다._
+_총 226건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-01**
+- [이용권 지갑 · 어드민 이모지 · design-slop 가드 구멍 (2026-09-01)](handoff/2026-09-01-wallet-admin-emoji-slop-guard.md)
+- [2026-09-01 — 교환권 탭 상단 두 층 정리 (대표 "나안")](handoff/2026-09-01-vouchers-top-chrome.md)
+- [교환권 화면 — 같은 숫자를 두 번 말하던 할인율 · 앰버 · 이모지 (2026-09-01)](handoff/2026-09-01-vouchers-discount-once.md)
+- [인플루언서 DB 읽기 증폭 — 한 달 전 수리가 왜 안 먹었나 (2026-09-01)](handoff/2026-09-01-influencer-db-read-amplification.md)
+- [대외 랜딩 재작성 · 죽은 템플릿 제거 · anti-slop 가드 신설 (2026-09-01)](handoff/2026-09-01-anti-slop-landing-and-guard.md)
 **2026-08-31**
 - [이용권을 딜로도 살 수 있게 — 그리고 이미 열려 있던 문을 닫는다](handoff/2026-08-31-voucher-deal-payment.md)
 - [2026-08-31 — 유어샵 검색창 임계값 · 이미지 폴백 배선 · 셀러 버튼 잔여 5건](handoff/2026-08-31-urshop-search-image-fallback.md)
@@ -5510,8 +5516,10 @@ _총 219건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-08-31 (2차) — 이미지 폴백 전 표면 배선 · 검색창 경계 실증](handoff/2026-08-31-image-fallback-all-surfaces.md)
 - [시드에서 고쳤는데 라이브가 안 고쳐졌다 — 가이드 한정 해동 (2026-08-31)](handoff/2026-08-31-guide-unfreeze.md)
 - [2차 해동 — 길이로 거르다 놓친 14개 (2026-08-31)](handoff/2026-08-31-guide-unfreeze-2.md)
+- [중단된 라이브 기능의 묘비 철거 (2026-08-31)](handoff/2026-08-31-guide-tombstone-purge.md)
 - [2026-08-31 — 교환권은 교환권 페이지에서, 이용권은 이용권 페이지에서 (지갑 분리)](handoff/2026-08-31-gifticon-wallet-split.md)
 - [2026-08-31 — 정산 최소 10만원은 현금에만](handoff/2026-08-31-deal-payout-no-minimum.md)
+- [2026-08-31 (3차) — 이용권 카드 가격 블록을 쿠팡식 2줄로](handoff/2026-08-31-deal-card-coupang-price.md)
 - [놓친 하루치를 같은 날 안에 만회한다 (무료 플랜에서 고칠 수 있는 것)](handoff/2026-08-31-cron-catchup.md)
 - [2026-08-31 — 빌드 산출 CSS 가드를 실제로 도는 자리로 옮김](handoff/2026-08-31-built-css-guard.md)
 - [2026-08-31 — 에이전시 매장영입 1% 폐지 (영입은 하나의 행위)](handoff/2026-08-31-agency-intro-retired.md)

@@ -481,13 +481,13 @@ export default function SellerOrdersPage() {
                             className="rounded border-gray-300 text-blue-600"
                           />
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('seller.orderNumberHeader')}</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('seller.ordererHeader')}</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('seller.orderAmountHeader')}</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('seller.orderStatusHeader')}</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('seller.paymentStatusHeader')}</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('seller.orderDateHeader')}</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('seller.detailHeader')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">{t('seller.orderNumberHeader')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">{t('seller.ordererHeader')}</th>
+            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500">{t('seller.orderAmountHeader')}</th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">{t('seller.orderStatusHeader')}</th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">{t('seller.paymentStatusHeader')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">{t('seller.orderDateHeader')}</th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">{t('seller.detailHeader')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">

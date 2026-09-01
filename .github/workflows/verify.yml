@@ -403,6 +403,9 @@ jobs:
       #   둘 다 **에러를 내지 않는다** — 화면만 조용히 밋밋해지고 배포는 초록불이다.
       - name: AI design slop ratchet (flat gradients / emoji-as-icon)
         run: node scripts/check-design-slop.mjs
+
+      - name: AI 디자인 흔적 — 문구·라벨 (em-dash · 섹션번호 · 한글 uppercase)
+        run: node scripts/check-anti-slop-copy.mjs
       - name: Dashboard button system ratchet (strict)
         env:
           STRICT_DASHBOARD_BUTTON: '1'

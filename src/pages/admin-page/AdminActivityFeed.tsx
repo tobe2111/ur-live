@@ -20,6 +20,10 @@ import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
 import { formatKSTShort } from '@/utils/date'
 import { maskPhone } from '@/lib/mask'
+import {
+  FileText, Landmark, Banknote, Package, Truck, CheckCircle2, XCircle, Undo2, AlertTriangle,
+  type LucideIcon,
+} from 'lucide-react'
 
 interface OrderRow {
   status: string
@@ -38,20 +42,26 @@ interface OrderRow {
 const PAID_STATUSES = new Set(['PAID', 'DONE', 'PREPARING', 'SHIPPING', 'DELIVERED'])
 
 /** 라벨/색은 AdminOrdersPage STATUS_STYLES 와 동일 규약 유지. */
-const STATUS_META: Record<string, { icon: string; label: string; dot: string; text: string }> = {
-  PENDING:          { icon: '📝', label: '주문 접수',   dot: 'bg-amber-400',   text: 'text-amber-700' },
-  AWAITING_PAYMENT: { icon: '🏦', label: '입금 대기',   dot: 'bg-amber-400',   text: 'text-amber-700' },
-  PAID:             { icon: '💰', label: '결제 완료',   dot: 'bg-blue-500',    text: 'text-blue-700' },
-  DONE:             { icon: '💰', label: '결제 완료',   dot: 'bg-blue-500',    text: 'text-blue-700' },
-  PREPARING:        { icon: '📦', label: '상품 준비',   dot: 'bg-indigo-500',  text: 'text-indigo-700' },
-  SHIPPING:         { icon: '📦', label: '배송 중',     dot: 'bg-purple-500',  text: 'text-purple-700' },
-  DELIVERED:        { icon: '✅', label: '배송 완료',   dot: 'bg-emerald-500', text: 'text-emerald-700' },
-  CANCELLED:        { icon: '❌', label: '취소',        dot: 'bg-gray-300',    text: 'text-gray-500' },
-  REFUNDED:         { icon: '↩️', label: '환불',        dot: 'bg-gray-300',    text: 'text-gray-500' },
-  FAILED:           { icon: '⚠️', label: '결제 실패',   dot: 'bg-red-400',     text: 'text-red-600' },
+/**
+ * 🎨 2026-09-01: 이모지 → lucide 선 아이콘. 이모지는 OS 마다 그림이 달라(윈도우 운영 PC 와
+ *   맥에서 다른 그림) 상태를 색·모양으로 익히지 못하고, 굵기·정렬이 옆 텍스트와 안 맞는다.
+ *   ⚠️ **라벨·색(dot/text)은 byte-불변** — `AdminOrdersPage` STATUS_STYLES 와 같은 규약이라
+ *      한쪽만 바꾸면 두 화면이 갈린다. 바뀐 것은 글리프뿐이다.
+ */
+const STATUS_META: Record<string, { Icon: LucideIcon; label: string; dot: string; text: string }> = {
+  PENDING:          { Icon: FileText,   label: '주문 접수',   dot: 'bg-amber-400',   text: 'text-amber-700' },
+  AWAITING_PAYMENT: { Icon: Landmark,   label: '입금 대기',   dot: 'bg-amber-400',   text: 'text-amber-700' },
+  PAID:             { Icon: Banknote,   label: '결제 완료',   dot: 'bg-blue-500',    text: 'text-blue-700' },
+  DONE:             { Icon: Banknote,   label: '결제 완료',   dot: 'bg-blue-500',    text: 'text-blue-700' },
+  PREPARING:        { Icon: Package,    label: '상품 준비',   dot: 'bg-indigo-500',  text: 'text-indigo-700' },
+  SHIPPING:         { Icon: Truck,      label: '배송 중',     dot: 'bg-purple-500',  text: 'text-purple-700' },
+  DELIVERED:        { Icon: CheckCircle2, label: '배송 완료', dot: 'bg-emerald-500', text: 'text-emerald-700' },
+  CANCELLED:        { Icon: XCircle,    label: '취소',        dot: 'bg-gray-300',    text: 'text-gray-500' },
+  REFUNDED:         { Icon: Undo2,      label: '환불',        dot: 'bg-gray-300',    text: 'text-gray-500' },
+  FAILED:           { Icon: AlertTriangle, label: '결제 실패', dot: 'bg-red-400',    text: 'text-red-600' },
 }
 function statusMeta(status: string) {
-  return STATUS_META[status] || { icon: '📝', label: status || '알 수 없음', dot: 'bg-gray-300', text: 'text-gray-500' }
+  return STATUS_META[status] || { Icon: FileText, label: status || '알 수 없음', dot: 'bg-gray-300', text: 'text-gray-500' }
 }
 
 /**
@@ -153,7 +163,9 @@ export default function AdminActivityFeed() {
                 <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${meta.dot}`} />
                 <span className="flex-1 min-w-0">
                   <span className="flex items-center gap-1.5">
-                    <span className={`font-semibold shrink-0 ${meta.text}`}>{meta.icon} {meta.label}</span>
+                    <span className={`inline-flex items-center gap-1 font-semibold shrink-0 ${meta.text}`}>
+                      <meta.Icon className="w-3.5 h-3.5" strokeWidth={1.9} aria-hidden />{meta.label}
+                    </span>
                     <span className="font-medium text-gray-900 truncate">{buyerLabel(o)}</span>
                     <span className="text-gray-700 shrink-0">{formatNumber(o.total_amount || 0)}원</span>
                   </span>

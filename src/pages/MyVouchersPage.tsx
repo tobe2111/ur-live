@@ -284,8 +284,12 @@ export default function MyVouchersPage() {
             <AddToHomeHint context="wallet" />
             {/* 사용 가능 N + 🗺 지도 토글 (화면1) */}
             <div className="flex items-center justify-between mb-3">
+              {/* 🔢 2026-09-01: 개수를 여기서 다시 말하지 않는다 — 바로 위 요약 줄이 이미
+                  "사용 가능 N장" 을 말한다(같은 `unusedItems.length`, 40px 위). 같은 숫자를 두 번
+                  말하면 정보가 아니라 소음이다. 이 줄은 아래 '사용 완료'·'만료·환불' 과 나누는
+                  **그룹 라벨**로만 남는다. */}
               <span className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">
-                {t('voucher.groupUnused', { defaultValue: '사용 가능' })} <span className="text-gray-400 dark:text-gray-500">{unusedItems.length}</span>
+                {t('voucher.groupUnused', { defaultValue: '사용 가능' })}
               </span>
               {mapVouchers.length > 0 && (
                 <button onClick={() => setViewMode('map')}

@@ -15,7 +15,7 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 const GOOGLE_FORM_URL = ''
 
 const STEPS = [
-  { icon: UserPlus, t: '가입', d: '카카오 로그인 1분 — 내 유어샵이 자동으로 생겨요' },
+  { icon: UserPlus, t: '가입', d: '카카오 로그인 1분이면 내 유어샵이 자동으로 생겨요' },
   { icon: MousePointerClick, t: '딜 선택', d: '동네 맛집·뷰티 딜 중 소개하고 싶은 걸 내 유어샵에 담아요' },
   { icon: Share2, t: '링크 공유', d: '인스타·블로그·카톡에 내 링크 하나만 올리면 끝' },
 ]
@@ -51,8 +51,8 @@ export default function CreatorsPage() {
               내 링크로 판매될 때마다 <span className="text-brand">판매액의 소개비(promo%)</span> 적립
             </div>
             <ul className="mt-3 space-y-1.5 text-[13px] text-gray-600 dark:text-gray-300 list-disc pl-5">
-              <li>소개비율은 딜마다 표시 — 고르기 전에 미리 확인</li>
-              <li>손님이 환불하면 적립도 자동 회수 — 투명한 원장 기준</li>
+              <li>소개비율은 딜마다 표시되니 고르기 전에 미리 확인하세요</li>
+              <li>손님이 환불하면 적립도 자동 회수됩니다 (원장 기준)</li>
               <li>적립금은 정산 계좌로 출금 (사업소득 원천징수 후 지급)</li>
             </ul>
           </div>

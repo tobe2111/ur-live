@@ -1985,7 +1985,7 @@
       "previewBanner": "방문자 미리보기 — 다른 사람에게 보이는 화면이에요",
       "backToEdit": "편집으로 돌아가기",
       "verifiedBusiness": "사업자 인증",
-      "moreInfo": "MORE INFO",
+      "moreInfo": "사업자 정보 더보기",
       "bizInfoCheck": "사업자정보확인",
       "recommendOn": "하단 \"추천\" 섹션이 켜졌어요 — 담은 핀이 유어샵 맨 아래에 노출됩니다",
       "recommendOff": "하단 \"추천\" 섹션을 껐어요",
@@ -2761,7 +2761,7 @@
       "loadFailed": "불러오기 실패",
       "activateSuccess": "부스팅 활성화! 메인 피드 상단 노출 시작.",
       "activateFailed": "활성화 실패",
-      "activateConfirm": "{{emoji}} {{tier}} 쿠폰을 \"{{liveTitle}}\" 라이브에 {{hours}}시간 활성화하시겠습니까?"
+      "activateConfirm": "{{tier}} 쿠폰을 \"{{liveTitle}}\" 라이브에 {{hours}}시간 활성화하시겠습니까?"
     },
     "adSlotsTitle": "광고 슬롯 입찰",
     "adSlotsDesc": "메인·라이브 상단 24시간 우선 노출 — 매일 18시 낙찰",
