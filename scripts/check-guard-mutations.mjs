@@ -6934,6 +6934,28 @@ canvas {
       '실제 용례는 "영입 2%" 처럼 **값으로 찾는 것**이다. 제목만 훑으면 요율·절차를 영영 못 찾고, ' +
       '검색창이 있다는 사실이 오히려 "없는 내용"이라는 오해를 만든다.',
   },
+  {
+    name: '💰 이용권 카드 할인율이 다시 사진 위로 (사진을 가린다)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '          </>',
+    replace: '          {discount > 0 && <span className="absolute bottom-2 left-2">{discount}%</span>}\n          </>',
+    test: 'src/tests/unit/deal-card-price-block.test.ts',
+    why:
+      '이 자리는 2026-08-31 **하루에 두 번 뒤집혔다** — 6자리 가격 줄 깨짐을 고치려고 사진 위로 ' +
+      '올렸다가, 대표가 "사진 안으로 들어가면 안돼" 로 되돌리게 했다. 다시 올라가기 쉬운 자리라 못으로 박는다.',
+  },
+  {
+    name: '💰 정가와 판매가가 다시 한 줄로 (6자리 가격에서 줄 깨짐)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: `            </p>
+          )}
+          <p className="flex items-baseline gap-1 mt-0.5 leading-none">`,
+    replace: '',
+    test: 'src/tests/unit/deal-card-price-block.test.ts',
+    why:
+      '정가와 판매가를 한 줄에 두면 119,000원(숙소)에서 반드시 줄이 깨지고 그 카드만 높이가 늘어 ' +
+      '그리드가 들쭉날쭉해진다. 쿠팡식 2줄이 그 구조적 깨짐의 해법이라, 한 줄로 되돌리는 것을 막는다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
