@@ -6876,6 +6876,26 @@ canvas {
       '대표가 "무상딜을 받을 수 있는 방법이 없는데?" 라고 물어 이 절이 생겼다.',
   },
   {
+    name: '💸 후기 보너스 차감이 지급보다 먼저 돈다 (지급 없이 청구)',
+    file: 'src/features/group-buy/api/review-bonus.routes.ts',
+    find: "  const paid = await payBonus(DB, submission.user_id, bonusAmount, submission.voucher_id)",
+    replace: "  await debitStoreForReviewBonus(DB, { submissionId: id, sellerId: submission.seller_id, amount: bonusAmount, fundedBy: bonusPolicy.fundedBy }).catch(() => {})\n  const paid = await payBonus(DB, submission.user_id, bonusAmount, submission.voucher_id)",
+    test: 'src/tests/unit/review-bonus-debit.test.ts',
+    why:
+      '지급이 실패하면 상태가 원복되는데, 차감이 먼저 돌면 **손님은 딜을 못 받았는데 매장만 청구**된다. ' +
+      '순서 자체가 안전장치라 코드가 아니라 배치가 계약이다.',
+  },
+  {
+    name: '💸 후기 보너스 차감이 유어딜 부담 건까지 매장에 물린다',
+    file: 'src/features/group-buy/api/review-bonus-funding.ts',
+    find: "  if (params.fundedBy !== 'owner') return false",
+    replace: "  if (false) return false",
+    test: 'src/tests/unit/review-bonus-debit.test.ts',
+    why:
+      '게이트가 꺼져 있거나 매장이 금액을 안 정한 건은 **유어딜 부담**이다. 이 조건이 빠지면 ' +
+      '매장이 아무것도 안 했는데 정산에서 빠진다 — 매장 입장에선 설명 없는 차감이다.',
+  },
+  {
     name: '🧾 후기 보너스 게이트가 없어져 매장이 모르는 사이 청구된다',
     file: 'src/features/group-buy/api/review-bonus-funding.ts',
     find: 'fundedBy: ownerGateOn && storeSet ? \'owner\' : \'platform\',',

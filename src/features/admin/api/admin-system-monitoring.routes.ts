@@ -314,6 +314,9 @@ const OPS_GATES: OpsGate[] = [
   // 8월 promo flip 스코프 스위치 — 값이 비어 있지 않으면 그 매장만 flip 경로.
   { key: 'flip_pilot_seller_ids', kind: 'setting', label: '8월 flip 파일럿 매장 스코프', default_value: '', staging_ref: null, turn_on_when: '8월 promo flip 파일럿 매장이 정해지면 그 seller_id 를 넣는다' },
   { key: 'seller_promo_field_enabled', kind: 'setting', label: '셀러 promo% 입력 UI', default_value: 'false', staging_ref: null, turn_on_when: 'flip 파일럿 매장이 스스로 promo% 를 입력할 단계가 되면' },
+  // 🧾 2026-09-01 — 후기 보너스를 **매장 부담**으로 돌리는 스위치(대표 "매장 사장님이 부담하게끔").
+  //   OFF 면 판정이 항상 `platform` 이라 차감 경로에 아무것도 안 들어온다(= 오늘과 동일).
+  { key: 'review_bonus_owner_funded', kind: 'setting', label: '후기 보너스 매장 부담(정산 차감)', default_value: 'false', staging_ref: 'S11', turn_on_when: '매장이 셀러 대시보드에서 금액을 직접 넣기 시작하고, S11 로 원장 debit 1회·재승인 이중차감 0 이 확인되면' },
   { key: 'DISTRICT_AUTO_ISSUE_ENABLED', kind: 'env', label: '상권 쿠폰 온라인 자동발급(경로 B)', default_value: 'false', staging_ref: null, turn_on_when: '상권 캠페인 파일럿 매장이 확정되고 재원(예산 풀)이 배정되면' },
   // 💸 2026-08-01 ④-b: 미수령(픽업 안 찾아감) 환불을 보관구분에 따라 가른다.
   //   🔴 **이미 흐르는 환불의 방향을 바꾼다** — 안 돌던 걸 켜는 게 아니다(cron `0 18` 실행 확인됨).

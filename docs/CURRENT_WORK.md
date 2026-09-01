@@ -5500,6 +5500,7 @@ _총 227건 · 최신순 · 이 목록은 자동 생성된다._
 - [이용권 지갑 · 어드민 이모지 · design-slop 가드 구멍 (2026-09-01)](handoff/2026-09-01-wallet-admin-emoji-slop-guard.md)
 - [2026-09-01 — 교환권 탭 상단 두 층 정리 (대표 "나안")](handoff/2026-09-01-vouchers-top-chrome.md)
 - [교환권 화면 — 같은 숫자를 두 번 말하던 할인율 · 앰버 · 이모지 (2026-09-01)](handoff/2026-09-01-vouchers-discount-once.md)
+- [후기 보너스 — 매장 원장 차감 배선 (게이트 OFF)](handoff/2026-09-01-review-bonus-debit.md)
 - [인플루언서 DB 읽기 증폭 — 한 달 전 수리가 왜 안 먹었나 (2026-09-01)](handoff/2026-09-01-influencer-db-read-amplification.md)
 - [구매 흐름(상세·장바구니·결제) 디자인 정리 · 가드 두 개 확장 (2026-09-01)](handoff/2026-09-01-funnel-detail-design.md)
 - [이용권 장바구니·결제 — 배송비 판정이 두 화면에서 갈려 있었다 (2026-09-01)](handoff/2026-09-01-cart-checkout-shipping-ssot.md)
