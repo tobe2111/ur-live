@@ -8,7 +8,7 @@ import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { toast } from '@/hooks/useToast'
 import {
   Users, Play, Package, TrendingUp, CheckCircle,
-  DollarSign, Eye, X, Ticket, Truck, RotateCcw, Banknote, Boxes, AlertTriangle, PartyPopper, Siren
+  DollarSign, Eye, Ticket, Truck, RotateCcw, Banknote, Boxes, AlertTriangle
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -24,6 +24,7 @@ const RejectionModal = lazy(() => import('./admin-page/RejectionModal'))
 const BizInfoModal = lazy(() => import('./admin-page/BizInfoModal'))
 import SellersTable from './admin-page/SellersTable'
 import type { ApiError, Seller, Stream, Stats, DashboardStats, Alert } from './admin-page/types'
+import AdminAlertBanner from './admin-page/AdminAlertBanner'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / DeferUntilVisible / ChartSkeleton /
 //   AdminRevenueChart / AdminActivityFeed / RejectionModal / BizInfoModal
@@ -398,30 +399,8 @@ export default function AdminPage() {
         </Suspense>
       )}
 
-      {/* ── 실시간 알림 ── */}
-      {alerts.length > 0 && (
-        <div className="space-y-2 mb-4">
-          {alerts.map((alert, i) => (
-            <div key={i} className={`flex items-center gap-3 px-4 py-3 rounded-xl ${
-              alert.type === 'success' ? 'bg-green-50 border border-green-200' :
-              alert.type === 'warning' ? 'bg-amber-50 border border-amber-200' :
-              'bg-red-50 border border-red-200'
-            }`}>
-              {(() => {
-                const I = alert.type === 'success' ? PartyPopper : alert.type === 'warning' ? AlertTriangle : Siren
-                return <I className={`w-[18px] h-[18px] shrink-0 ${
-                  alert.type === 'success' ? 'text-green-600' : alert.type === 'warning' ? 'text-amber-600' : 'text-red-600'
-                }`} strokeWidth={1.9} aria-hidden />
-              })()}
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">{alert.title}</p>
-                <p className="text-xs text-gray-500">{alert.message}</p>
-              </div>
-              <button onClick={() => dismissAlert(i)} aria-label={t('admin.dashboard.k022', { defaultValue: "알림 닫기" })} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* ── 실시간 알림 ── (마크업은 admin-page/AdminAlertBanner 로 추출 — 2026-09-01) */}
+      <AdminAlertBanner alerts={alerts} onDismiss={dismissAlert} closeLabel={t('admin.dashboard.k022', { defaultValue: '알림 닫기' })} />
 
       {/* ── 실시간 통계 카드 ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
