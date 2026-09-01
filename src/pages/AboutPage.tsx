@@ -434,7 +434,7 @@ export default function AboutPage() {
         </Section>
 
         {/* ========== Final CTA ========== */}
-        <section className="bg-gradient-to-br from-gray-800 to-gray-900 dark:from-gray-900 dark:to-gray-900 text-white py-16 lg:py-24">
+        <section className="bg-gradient-to-br from-gray-800 to-gray-900 dark:bg-none dark:bg-gray-900 text-white py-16 lg:py-24">
           <div className="ur-content-wide px-4 lg:px-8 text-center">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold mb-4">시작하기</h2>
             <p className="text-base lg:text-lg text-white/90 mb-10 max-w-2xl mx-auto">

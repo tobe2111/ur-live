@@ -194,6 +194,38 @@ const VOUCHER_SECTIONS = [
   ] },
 ]
 
+/**
+ * 🎟️ `--wallet` — 이용권 지갑(`/my-vouchers`) 시드.
+ *   ⚠️ **서버가 실제로 주는 필드를 전부** 담는다(`/api/vouchers/my` → `my-vouchers/types.ts`).
+ *      2026-08-31 에 얇은 픽스처가 "없는 결함"을 만들어 대표에게 오보할 뻔했다 —
+ *      `avg_rating`·`discount_rate` 가 빠져 카드가 2줄로 그려진 것을 디자인 문제로 읽었다.
+ */
+const WALLET_VOUCHERS = (() => {
+  const day = (n) => new Date(Date.now() + n * 86400000).toISOString()
+  const base = {
+    source: 'internal', deal_only: 0, order_id: 9001, product_id: 501,
+    restaurant_phone: '02-333-1234', usage_guide: '평일 점심(11:00~15:00)만 사용 가능합니다.',
+    restaurant_lat: 37.5563, restaurant_lng: 126.9236,
+  }
+  return [
+    { ...base, id: 1, code: 'URD-4821-9930', status: 'unused', product_name: '연남동 마라탕 2인 세트',
+      restaurant_name: '연남 마라탕', restaurant_address: '서울 마포구 연남로 21',
+      created_at: day(-3), expires_at: day(4), applied_price: 19900, product_price: 28000, applied_discount_pct: 29 },
+    { ...base, id: 2, code: 'URD-7710-2244', status: 'unused', product_name: '망원 브런치 플래터',
+      restaurant_name: '망원 브런치하우스', restaurant_address: '서울 마포구 망원로 8',
+      created_at: day(-9), expires_at: day(21), applied_price: 24000, product_price: 32000, applied_discount_pct: 25 },
+    { ...base, id: 3, code: 'URD-1188-5501', status: 'unused', product_name: '합정 헤어 클리닉 1회',
+      restaurant_name: '합정 살롱드제이', restaurant_address: '서울 마포구 양화로 45',
+      created_at: day(-20), expires_at: day(60), applied_price: 45000, product_price: 70000, applied_discount_pct: 36 },
+    { ...base, id: 4, code: 'URD-9042-3317', status: 'used', product_name: '홍대 수제버거 세트',
+      restaurant_name: '홍대 버거랩', restaurant_address: '서울 마포구 와우산로 62',
+      created_at: day(-40), expires_at: day(-5), used_at: day(-12), applied_price: 12900, product_price: 17000, applied_discount_pct: 24 },
+    { ...base, id: 5, code: 'URD-2255-8890', status: 'expired', product_name: '상수 파스타 2인',
+      restaurant_name: '상수 트라토리아', restaurant_address: '서울 마포구 독막로 7',
+      created_at: day(-90), expires_at: day(-20), applied_price: 29000, product_price: 39000, applied_discount_pct: 26 },
+  ]
+})()
+
 function serve() {
   return new Promise((resolve) => {
     const s = http.createServer((req, res) => {
@@ -202,6 +234,8 @@ function serve() {
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
         // 큐레이터 조회는 시드와 같은 페이로드로 — 아니면 백그라운드 갱신이 오류 상태로 빠진다
         if (p.startsWith('/api/curator/') && !p.includes('/me/')) return res.end(JSON.stringify(CURATOR_SEED))
+        if (args.wallet && p === '/api/vouchers/my')
+          return res.end(JSON.stringify({ success: true, data: WALLET_VOUCHERS }))
         if (args.deals) {
           if (p === '/api/vouchers/categories') return res.end(JSON.stringify({ success: true, data: VOUCHER_SECTIONS }))
           // 상세는 **단건**이다 — 목록과 같은 배열을 주면 화면이 안 그려진다.

@@ -145,11 +145,15 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
         </div>
       )}
 
-      {/* 금액 + 사용하기 */}
+      {/* 금액 + 사용하기
+          💴 2026-09-01: 가격 24px → 17px. 이 이용권은 **이미 산 것**이라 카드 안에서 가격은
+          영수증 정보다 — 매장 앞에서 필요한 것은 상품명(18px)과 '사용하기' 버튼이다. 예전엔
+          가격이 상품명보다 크고 버튼만큼 무거워 위계가 뒤집혀 있었다. '자산' 표시는 상단
+          합계가 계속 맡는다(대표 승인 시안 4). 액면가라 mono 는 유지. */}
       <div className="flex items-end justify-between px-4 pt-1.5 pb-4">
         {price !== null ? (
-          <div className="text-[24px] font-extrabold font-mono tracking-tight text-gray-900 dark:text-white leading-none">
-            {formatNumber(price)}<span className="font-sans text-[14px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{t('voucher.won', { defaultValue: '원' })}</span>
+          <div className="text-[17px] font-extrabold font-mono tracking-tight text-gray-700 dark:text-gray-200 leading-none">
+            {formatNumber(price)}<span className="font-sans text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{t('voucher.won', { defaultValue: '원' })}</span>
           </div>
         ) : <span />}
         {v.status === 'unused' ? (

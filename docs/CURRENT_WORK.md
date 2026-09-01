@@ -5494,9 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 222건 · 최신순 · 이 목록은 자동 생성된다._
+_총 223건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-01**
+- [이용권 지갑 · 어드민 이모지 · design-slop 가드 구멍 (2026-09-01)](handoff/2026-09-01-wallet-admin-emoji-slop-guard.md)
 - [2026-09-01 — 교환권 탭 상단 두 층 정리 (대표 "나안")](handoff/2026-09-01-vouchers-top-chrome.md)
 - [교환권 화면 — 같은 숫자를 두 번 말하던 할인율 · 앰버 · 이모지 (2026-09-01)](handoff/2026-09-01-vouchers-discount-once.md)
 - [인플루언서 DB 읽기 증폭 — 한 달 전 수리가 왜 안 먹었나 (2026-09-01)](handoff/2026-09-01-influencer-db-read-amplification.md)
