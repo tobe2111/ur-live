@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Info } from 'lucide-react'
+import { ArrowLeft, Info, Link as LinkIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
@@ -103,7 +103,7 @@ function VoucherNotice({ text }: { text: string }) {
           return (
             <a key={i} href={url} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-gray-900 dark:text-white underline underline-offset-2 break-all">
-              🔗 안내 링크 열기
+              <LinkIcon className="w-3.5 h-3.5 shrink-0" strokeWidth={2} aria-hidden />안내 링크 열기
             </a>
           )
         }
@@ -368,7 +368,7 @@ export default function VoucherDetailPage() {
           <h1 className="mt-[7px] text-[23px] font-extrabold text-[#171B24] dark:text-white leading-tight tracking-tight">{product.name}</h1>
           {/* 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 레벨 전용 배지 (서버 게이트의 UX 안내) */}
           {product.min_review_level && product.min_review_level > 1 ? (
-            <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1A1A] text-[11px] font-bold text-gray-700 dark:text-gray-200">🏅 동네 리뷰어 Lv.{product.min_review_level} 전용</span>
+            <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1A1A] text-[11px] font-bold text-gray-700 dark:text-gray-200">동네 리뷰어 Lv.{product.min_review_level} 전용</span>
           ) : null}
           {product.restaurant_name && (
             <div className="mt-1 text-[13.5px] text-gray-400 dark:text-gray-500">{product.restaurant_name}{product.restaurant_address ? ` · ${product.restaurant_address}` : ''}</div>
@@ -469,7 +469,7 @@ export default function VoucherDetailPage() {
       {showPhoneModal && (
         <div className="fixed inset-0 z-[10100] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={() => setShowPhoneModal(false)}>
           <div className="bg-white dark:bg-[#0D0F12] rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">📱 휴대폰 번호 등록</h3>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">휴대폰 번호 등록</h3>
             <p className="text-xs text-gray-600 dark:text-gray-300 mb-4">
               기프티쇼 교환권은 휴대폰 MMS 로 발송됩니다.<br/>
               발송 받을 번호를 입력해주세요.
