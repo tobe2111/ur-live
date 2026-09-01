@@ -13,6 +13,9 @@ interface Props {
   totalGroupBuyDiscount: number
   dealToUse: number
   totalAmount: number
+  /** 📦 2026-09-01: 배송 개념이 없는 주문(이용권·교환권)이면 배송비 줄을 아예 뺀다. '무료'라고 쓰면
+   *  원래 있었어야 할 비용을 깎아 준 것처럼 읽힌다 — 이용권은 처음부터 배송이 없다. */
+  noShipping?: boolean
 }
 
 export default function OrderSummary({
@@ -22,6 +25,7 @@ export default function OrderSummary({
   totalGroupBuyDiscount,
   dealToUse,
   totalAmount,
+  noShipping = false,
 }: Props) {
   const { t } = useTranslation()
   const finalAmount = Math.max(0, totalAmount)
@@ -40,6 +44,7 @@ export default function OrderSummary({
             <span className="text-[14px] text-gray-900 dark:text-white">{t('checkout.summary.amountWon', { defaultValue: '{{amount}}원', amount: formatNumber(subtotal) })}</span>
           </div>
 
+          {!noShipping && (
           <div className="flex items-center justify-between">
             <span className="text-[14px] text-gray-400 dark:text-gray-500">{t('checkout.summary.shippingFee', { defaultValue: '배송비' })}</span>
             <span className="text-[14px] text-gray-900 dark:text-white">
@@ -50,6 +55,7 @@ export default function OrderSummary({
               )}
             </span>
           </div>
+          )}
 
           {couponDiscount > 0 && (
             <div className="flex items-center justify-between">
