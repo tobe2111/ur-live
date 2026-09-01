@@ -126,6 +126,13 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
     options: [{ value: 'false', label: 'OFF (현행 — 전액 환불만)' }, { value: 'true', label: 'ON — 반품 화면에서 금액 지정 가능' }],
     hint: '🔴 머니 경로. OFF 면 금액 설정 API 가 403 이다(=현행 전액 환불 그대로). ON 시 결제액 초과는 서버가 클램프하고, 환불 실행 후에는 변경 불가. 검증 절차: docs/VERIFICATION_DAY.md (P11)',
   },
+  // 🧾 2026-09-01: 후기 보너스를 **매장 부담**으로 돌리는 스위치(대표 "매장 사장님이 부담하게끔").
+  //   ⚠️ 게이트를 만들면서 이 손잡이를 안 만들면 `ops-gate-reachable` 가 즉시 잡는다 — 이번에도 잡혔다.
+  {
+    key: 'review_bonus_owner_funded', label: '⑦ 후기 보너스 매장 부담', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 유어딜 부담)' }, { value: 'true', label: 'ON — 매장 정산에서 차감' }],
+    hint: '🔴 머니 경로. 켜면 **매장이 금액을 직접 설정한 건만** 그 매장 정산에서 빠진다(설정 안 한 매장은 그대로 유어딜 부담). 끄면 즉시 현행 복귀. 검증 절차: docs/STAGING_CHECKLIST.md (S9)',
+  },
   // 🚨 2026-08-12: **킬스위치인데 당길 손잡이가 없었다.**
   //   `gb_pricing_enabled` 는 *"잘못 설정된 공구가로 과소청구가 날 때 false 로 저장해 즉시 상시가로
   //   되돌린다"* 는 긴급 안전장치인데(OPS_GATES 의 turn_on_when), 어느 화면에도 없었다 —
