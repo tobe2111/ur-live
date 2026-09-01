@@ -37,6 +37,7 @@ import {
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 // 🎟️ 2026-08-12 (소비자 공구 결제 결함 3건): 자기참여 판정·주문번호·가상계좌 가드 → gb-purchase-guards.ts
 import { isSelfOwnedGroupBuy, resolveGbOrderNumber, guardAwaitingDeposit, issuedVoucherLabel } from './gb-purchase-guards'
+import { resolvePartialDealPlan, derivePartialDeal, spendPartialDeal, recordOrderDealUsed, restorePartialDeal } from './partial-deal'
 import { findActiveDealPct } from '@/worker/utils/influencer-deal'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
@@ -211,11 +212,18 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     const tierDiscountPct = maxTierDiscount(product.group_buy_tiers)
     const totalAmount = Math.round(product.price * (1 - tierDiscountPct / 100)) * qty
     const orderId = generateTossOrderId('GB', userId)
+    // 🪙 2026-09-01 부분결제(게이트 OFF 기본): 가진 딜만큼 카드 청구액을 줄인다.
+    //   게이트가 꺼져 있으면 dealUsed=0 → `amount` 가 총액 그대로 = 종전과 byte-동일.
+    //   딜 **차감은 여기서 하지 않는다** — 아직 아무것도 청구되지 않았다(confirm-toss 가 한다).
+    const dealPlan = await resolvePartialDealPlan(DB, { userId, totalAmount })
     return c.json({
       success: true,
       data: {
         orderId,
-        amount: totalAmount,
+        amount: dealPlan.cardAmount,
+        // 화면이 "딜 3,000 + 카드 7,000" 을 보여줄 수 있게 — 게이트 OFF 면 0 이라 아무것도 안 뜬다.
+        dealUsed: dealPlan.dealUsed,
+        totalAmount: dealPlan.totalAmount,
         orderName: `공구: ${product.name} × ${qty}`,
         clientKey: tossKey,
         flow,
@@ -1151,17 +1159,20 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   const tierDiscountPct = maxTierDiscount(product.group_buy_tiers)
   const unitPrice = Math.round(product.price * (1 - tierDiscountPct / 100))
   const expectedAmount = unitPrice * qty
-  if (Number(amount) !== expectedAmount) {
-    return c.json({ success: false, error: '결제 금액이 일치하지 않습니다', code: 'AMOUNT_MISMATCH' }, 400)
-  }
 
-  // 2. Toss confirm — gateway helper 사용.
+  // 🪙 2026-09-01 부분결제 — 딜 사용액은 **청구액에서 역산**한다(설명은 partial-deal.ts).
+  const chargedAmount = Math.round(Number(amount))
+  const derived = await derivePartialDeal(DB, { userId, expectedAmount, chargedAmount })
+  if (!derived.ok) return c.json({ success: false, error: derived.error, code: derived.code }, 400)
+  const dealUsed = derived.dealUsed
+
+  // 2. Toss confirm — gateway helper 사용. **실제 청구액**(딜 차감 후)으로 승인한다.
   const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
   const tossResult = await confirmTossPayment({
     env: c.env as { TOSS_SECRET_KEY?: string },
     paymentKey,
     orderId,
-    amount: expectedAmount,
+    amount: chargedAmount,
   })
   if (!tossResult.ok) {
     return c.json({ success: false, error: tossResult.message, code: tossResult.code },
@@ -1171,7 +1182,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   const orderNumber = resolveGbOrderNumber(tossResult.data?.orderId, orderId, userId)
   // 🏦 가상계좌(WAITING_FOR_DEPOSIT)는 **입금 전** — 발급 금지 + 자동 취소. 카드/간편결제는 이 분기 무접촉.
   const vaBlock = await guardAwaitingDeposit(c.env, tossResult.data,
-    { paymentKey, orderNumber, userId, productId: Number(productId), sellerId: Number(product.seller_id) || null, amount: expectedAmount })
+    { paymentKey, orderNumber, userId, productId: Number(productId), sellerId: Number(product.seller_id) || null, amount: chargedAmount })
   if (vaBlock) return c.json({ success: false, error: vaBlock.error, code: vaBlock.code }, 400)
 
   // 3. 멱등성 가드 (C3, 2026-05-30): 같은 paymentKey 로 이미 발급된 주문이 있으면 재발급 금지.
@@ -1203,6 +1214,17 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     return c.json({ success: false, error: '재고가 부족하여 결제가 자동 취소되었습니다', code: 'OUT_OF_STOCK' }, 409)
   }
 
+  // 🪙 부분결제 딜 차감(원자 CAS) — 실패하면 재고를 되돌리고 결제를 통째로 취소한다.
+  //   왜 그렇게까지 하는지, 웹훅이 왜 또 안 빼는지는 partial-deal.ts 에 적어 뒀다.
+  if (dealUsed > 0) {
+    const spent = await spendPartialDeal(DB, c.env as unknown as { TOSS_SECRET_KEY?: string }, {
+      userId, dealUsed, orderNumber, paymentKey, productId: Number(productId), qty, productName: product.name,
+    })
+    if (!spent.ok) {
+      return c.json({ success: false, error: '딜 잔액이 부족하여 결제가 자동 취소되었습니다', code: 'INSUFFICIENT_DEAL' }, 400)
+    }
+  }
+
   // 4. orders INSERT + voucher 발급 — 딜 경로(group-buy /join)의 검증된 패턴 복제.
   //    C1: RETURNING id 로 정수 order_id 획득 후 vouchers.order_id 에 바인드 (이전: order_number 문자열
   //        저장 → refund JOIN(v.order_id=o.id) 전부 실패 → 카드 환불 영구 불가).
@@ -1221,6 +1243,9 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     `).bind(orderNumber, userId, product.seller_id, expectedAmount, expectedAmount, paymentKey, paymentKey).first<{ id: number }>()
     const newOrderId = orderInsert?.id ?? null
     if (!newOrderId) throw new Error('order insert returned no id')
+
+    // 🪙 부분결제 딜 분을 주문에 남긴다 — **환불 역전이 이 값 하나에 걸려 있다**(머니 룰 #2).
+    if (dealUsed > 0) await recordOrderDealUsed(DB, newOrderId, dealUsed)
 
     // voucher 발급 (qty) — order_id=정수(C1) + applied_price/expires_at(C2). batch = atomic (부분발급 차단).
     //   order_items 도 같은 batch (딜 경로와 정합 — 주문 상세 표시 + 정산 근거).
@@ -1381,6 +1406,8 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     // 결제는 성공했으나 INSERT 실패 — 🛡️ 2026-06-10 (발급 감사 GAP#1): 수동 개입 대기 대신
     //   자동 환불 시도(SSOT cancelTossPayment, 멱등키). 성공=미회수 0 / 실패=어드민 긴급 벨.
     console.error('[group-buy:confirm-toss] post-payment INSERT failed', err)
+    // 🪙 이미 뺀 딜을 되돌린다 — 주문이 안 생겨 환불 헬퍼가 못 찾는 유일한 구간이다.
+    if (dealUsed > 0) await restorePartialDeal(DB, { userId, dealUsed, orderNumber })
     let autoRefunded = false
     try {
       const { cancelTossPayment } = await import('../../../worker/utils/toss-gateway')

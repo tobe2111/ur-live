@@ -6896,6 +6896,36 @@ canvas {
       '플랫폼 기본값이 나간다 — 표시와 지급이 갈리는 이 레포의 단골 사고다.',
   },
   {
+    name: '🪙 부분결제가 카드에 총액을 청구한다 (딜을 쓰고도 전액 결제)',
+    file: 'src/features/group-buy/api/group-buy.routes.ts',
+    find: '    amount: chargedAmount,\n  })',
+    replace: '    amount: expectedAmount,\n  })',
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '딜을 3,000 쓰기로 해 놓고 카드에서 10,000 을 긁으면 **유저가 13,000 을 낸다**. ' +
+      '이 레포에서 금액을 두 갈래로 나눌 때 가장 먼저 나는 사고이고, 화면엔 아무 표시도 안 난다.',
+  },
+  {
+    name: '🪙 부분결제가 매장 정산을 카드 청구액으로 줄인다',
+    file: 'src/features/group-buy/api/group-buy.routes.ts',
+    find: 'product.seller_id, expectedAmount, expectedAmount, paymentKey, paymentKey',
+    replace: 'product.seller_id, chargedAmount, chargedAmount, paymentKey, paymentKey',
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '딜도 유저가 현금으로 충전한 돈이라 매장 몫은 총액 기준이다(대표: "어차피 원래 정산을 ' +
+      '해줬어야 하는 돈"). 여기가 카드 청구액으로 바뀌면 딜을 쓴 만큼 **매장이 덜 받는다**.',
+  },
+  {
+    name: '🪙 부분결제 딜 차감의 잔액 가드가 사라진다 (마이너스 잔액)',
+    file: 'src/features/group-buy/api/partial-deal.ts',
+    find: "    type: 'usage',\n    guardBalance: true,",
+    replace: "      type: 'usage',\n      orderId: orderNumber,",
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '결제창에 머무는 동안 다른 탭에서 딜을 다 써도 차감이 그냥 통과한다 — 잔액이 음수가 되거나 ' +
+      '실제로는 못 받은 돈으로 이용권이 나간다. 원자 CAS 가 이 레일의 유일한 진실이다.',
+  },
+  {
     name: '📖 운영백서 숫자표 검사를 CI 에서 뗀다 (다른 세션 변경이 문서에 안 닿음)',
     file: '.github/workflows/verify.yml',
     find: '        run: node scripts/generate-ops-handbook.mjs --check',
