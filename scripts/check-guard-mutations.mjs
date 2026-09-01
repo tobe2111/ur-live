@@ -89,8 +89,8 @@ const MAP_ONLY = process.argv.includes('--map-only')
 const MUTATIONS = [
   {
     name: '백필 건수가 화면까지 못 간다',
-    file: 'src/pages/AdminDongnedealImportPage.tsx',
-    find: ' · 소개 문구 ${sDescHealed}개 교체',
+    file: 'src/pages/admin-dongnedeal-import/seedStayDemos.ts',
+    find: "t.descHealed && ` · 소개 문구 ${t.descHealed}개 교체`,",
     replace: '',
     test: 'src/tests/unit/detail-page-plainness.test.ts',
     why:

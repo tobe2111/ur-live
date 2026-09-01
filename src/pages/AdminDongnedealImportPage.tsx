@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { seedStayDemos, staySeedHealNote, staySeedHealedAny } from './admin-dongnedeal-import/seedStayDemos'
 import { formatNumber } from '@/utils/format'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -192,30 +193,13 @@ export default function AdminDongnedealImportPage() {
       //   자동 — /stays 검색 스키마). 지역/개수 옵션 공유. 일정·인원 옵션 불필요: 캘린더 무행 = 전 날짜
       //   가용(검색 NOT EXISTS) + 객실 인원 2~6 자동 분산이라 날짜·인원 필터가 항상 유효.
       if (seedCategory === 'stay_voucher') {
-        // 실숙소 매칭+실사진(카카오/네이버 외부호출) — 요청당 한도 보호 위해 6개씩 청크(동네딜 8개 청크와 동일 이유).
-        let sCreated = 0, sSkipped = 0, sPhotos = 0, sHealed = 0, sPhotoHealed = 0, sVaried = 0, sReviewed = 0
-        // 📝 2026-08-31: 옛 소개 문장·빈약한 시설 백필 건수. 서버는 계속 보내고 있었는데 화면이 안 읽어
-        //   "눌렀는데 뭐가 됐는지 모르는" 상태였다(amenityHealed 는 응답에도 없어 같은 날 함께 노출).
-        let sDescHealed = 0, sAmenityHealed = 0
-        const SCHUNK = 6
-        for (let done = 0; done < seedCount; done += SCHUNK) {
-          const r = await api.post('/api/admin/stays/seed-demo', {
-            region: regionParam || undefined,
-            count: Math.min(SCHUNK, seedCount - done),
-          }, { ...h, timeout: 300000 })
-          const d = r.data?.data || {}
-          sCreated += Number(d.created ?? 0); sSkipped += Number(d.skipped ?? 0); sPhotos += Number(d.realPhotos ?? 0)
-          sHealed += Number(d.healed ?? 0); sPhotoHealed += Number(d.photoHealed ?? 0); sVaried += Number(d.varied ?? 0); sReviewed += Number(d.reviewed ?? 0)
-          sDescHealed += Number(d.descHealed ?? 0); sAmenityHealed += Number(d.amenityHealed ?? 0)
-        }
-        const healNote = `${sHealed ? ` · 기존 ${sHealed}개 보정(좌표·가격·이용권명)` : ''}${sPhotoHealed ? ` · 사진·지도링크 보정 ${sPhotoHealed}개` : ''}${sDescHealed ? ` · 소개 문구 ${sDescHealed}개 교체` : ''}${sAmenityHealed ? ` · 시설 ${sAmenityHealed}개 보강` : ''}${sVaried ? ` · 오퍼 다양화 ${sVaried}개` : ''}${sReviewed ? ` · 리뷰 생성 ${sReviewed}개(응답 후 반영)` : ''}`
-        if (sCreated > 0) {
-          toast.success(`데모 숙소 ${sCreated}개 생성 · 실사진 ${sPhotos}${healNote}${sSkipped ? ` · ${sSkipped}개 건너뜀(실숙소 미매칭/중복)` : ''}`)
-        } else if (sHealed > 0 || sPhotoHealed > 0 || sDescHealed > 0 || sAmenityHealed > 0 || sVaried > 0 || sReviewed > 0) {
-          toast.success(`신규 생성 0 — 기존 데모 정비 완료${healNote}${sSkipped ? ` · ${sSkipped}개 건너뜀` : ''}`)
-        } else {
-          toast.error(sSkipped ? `생성 0 — ${sSkipped}개 모두 실숙소 미매칭/중복. 지역을 바꿔보세요` : '생성된 숙소가 없습니다')
-        }
+        const t = await seedStayDemos(
+          (u, b, c) => api.post(u, b, c as never) as never, seedCount, regionParam, { ...h, timeout: 300000 })
+        const healNote = staySeedHealNote(t)
+        const skipNote = t.skipped ? ` · ${t.skipped}개 건너뜀` : ''
+        if (t.created > 0) toast.success(`데모 숙소 ${t.created}개 생성 · 실사진 ${t.photos}${healNote}${skipNote}`)
+        else if (staySeedHealedAny(t)) toast.success(`신규 생성 0 — 기존 데모 정비 완료${healNote}${skipNote}`)
+        else toast.error(t.skipped ? `생성 0 — ${t.skipped}개 모두 실숙소 미매칭/중복. 지역을 바꿔보세요` : '생성된 숙소가 없습니다')
         loadStats(); setListNonce((nn) => nn + 1)
         setCleaning(false)
         return
@@ -440,12 +424,8 @@ export default function AdminDongnedealImportPage() {
                 <input value={seedApplicantsMin} onChange={(e) => setSeedApplicantsMin(e.target.value.replace(/\D/g, ''))} placeholder="지원자↓" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최소(비우면 기본)" />
                 <input value={seedApplicantsMax} onChange={(e) => setSeedApplicantsMax(e.target.value.replace(/\D/g, ''))} placeholder="지원자↑" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최대" />
                 <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">{cleaning ? '생성 중…' : '데모 채우기'}</button>
-                {/* 🧭 2026-08-31 (대표 "재시드 버튼이 어딨어?"): 이 버튼은 **생성 + 기존 정비**를 겸한다.
-                    이름만 보면 "채우기"라 정비하러 온 사람이 못 찾는다 — 카테고리 '🏨 숙소' 를 고른
-                    상태에서만, 그 사실을 그 자리에서 말해 준다(별도 문서를 찾아가야 하면 못 찾는다). */}
-                {seedCategory === 'stay_voucher' && (
-                  <span className="text-[12px] text-gray-500">← 기존 숙소 소개 문구·사진·시설도 함께 정비돼요</span>
-                )}
+                {/* 🧭 대표 "재시드 버튼이 어딨어?"(2026-08-31) — 이 버튼이 생성+정비를 겸하는데 이름이 "채우기"라 못 찾는다. */}
+                {seedCategory === 'stay_voucher' && <span className="text-[12px] text-gray-500">← 기존 숙소 소개 문구·사진·시설도 함께 정비돼요</span>}
                 {/* 🏨 숙소 생성은 카테고리 '🏨 숙소' 선택 후 '데모 채우기' — 정리 버튼만 별도. */}
                 <button onClick={clearStays} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">숙소 데모 정리</button>
               </div>
