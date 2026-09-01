@@ -8,7 +8,7 @@ import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { toast } from '@/hooks/useToast'
 import {
   Users, Play, Package, TrendingUp, CheckCircle,
-  DollarSign, Eye, X, Ticket, Truck, RotateCcw, Banknote, Boxes, AlertTriangle
+  DollarSign, Eye, X, Ticket, Truck, RotateCcw, Banknote, Boxes, AlertTriangle, PartyPopper, Siren
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -119,7 +119,6 @@ export default function AdminPage() {
     if (dashboardStats.todaySales >= salesTarget && !salesAlertShown.current) {
       setAlerts(prev => [...prev, {
         type: 'success',
-        emoji: '\uD83C\uDF89',
         title: t('admin.dashboard.k001', { defaultValue: '일일 매출 목표 달성!' }),
         message: t('admin.dashboard.todaySalesMsg', { sales: fmtPrice(dashboardStats.todaySales), target: fmtPrice(salesTarget), defaultValue: `오늘 매출 ${fmtPrice(dashboardStats.todaySales)} 달성 (목표: ${fmtPrice(salesTarget)})` })
       }])
@@ -182,7 +181,6 @@ export default function AdminPage() {
           ).join(' | ')
           return [...prev, {
             type: 'warning' as const,
-            emoji: '⚠️',
             title: t('admin.dashboard.highOrderAlert', { count: userEntries.length, defaultValue: `고액 주문 감지 (${userEntries.length}명)` }),
             message: summary + (userEntries.length > 3 ? t('admin.dashboard.andMore', { n: userEntries.length - 3, defaultValue: ` 외 ${userEntries.length - 3}명` }) : '')
           }]
@@ -207,7 +205,6 @@ export default function AdminPage() {
                 if (prev.some(a => a.title.includes(t('admin.dashboard.k003', { defaultValue: '연속 주문' })))) return prev
                 return [...prev, {
                   type: 'error' as const,
-                  emoji: '🚨',
                   title: t('admin.dashboard.k004', { defaultValue: '연속 주문 감지' }),
                   message: `유저 ${order.user_email || uid}: 1분 내 ${recent.length + 1}건`
                 }]
@@ -410,7 +407,12 @@ export default function AdminPage() {
               alert.type === 'warning' ? 'bg-amber-50 border border-amber-200' :
               'bg-red-50 border border-red-200'
             }`}>
-              <span className="text-lg">{alert.emoji}</span>
+              {(() => {
+                const I = alert.type === 'success' ? PartyPopper : alert.type === 'warning' ? AlertTriangle : Siren
+                return <I className={`w-[18px] h-[18px] shrink-0 ${
+                  alert.type === 'success' ? 'text-green-600' : alert.type === 'warning' ? 'text-amber-600' : 'text-red-600'
+                }`} strokeWidth={1.9} aria-hidden />
+              })()}
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-900">{alert.title}</p>
                 <p className="text-xs text-gray-500">{alert.message}</p>

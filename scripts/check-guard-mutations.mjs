@@ -6986,6 +6986,38 @@ canvas {
       '그리드가 들쭉날쭉해진다. 쿠팡식 2줄이 그 구조적 깨짐의 해법이라, 한 줄로 되돌리는 것을 막는다.',
   },
   {
+    name: '🎟️ 지갑 섹션 헤더가 요약 줄의 개수를 다시 말한다',
+    file: 'src/pages/MyVouchersPage.tsx',
+    find: `{t('voucher.groupUnused', { defaultValue: '사용 가능' })}\n`,
+    replace: `{t('voucher.groupUnused', { defaultValue: '사용 가능' })} <span>{unusedItems.length}</span>\n`,
+    test: 'src/tests/unit/wallet-and-slop.test.ts',
+    why:
+      '지갑 상단 요약(대표 승인 시안 4)이 이미 "사용 가능 N장" 을 말하는데 40px 아래 섹션 헤더가 ' +
+      '같은 `unusedItems.length` 를 또 말했다. 섹션 헤더에 개수를 붙이는 건 늘 그럴듯해 보여서 ' +
+      '다시 붙기 쉽다.',
+  },
+  {
+    name: '🎟️ 지갑 카드 가격이 다시 상품명보다 커진다',
+    file: 'src/pages/my-vouchers/VoucherTicket.tsx',
+    find: 'text-[17px] font-extrabold font-mono',
+    replace: 'text-[24px] font-extrabold font-mono',
+    test: 'src/tests/unit/wallet-and-slop.test.ts',
+    why:
+      '지갑의 이용권은 **이미 산 것**이라 카드 안 가격은 영수증 정보다. 24px 이면 상품명(18px)보다 ' +
+      '크고 사용하기 버튼만큼 무거워 위계가 뒤집힌다. 자산 표시는 상단 합계가 맡는다.',
+  },
+  {
+    name: '🎨 design-slop 가드가 변형(dark:) stop 을 다시 못 보게 된다',
+    file: 'scripts/check-design-slop.mjs',
+    find: 'const GRAD_LINE = /bg-gradient-to-[a-z]{1,2}\\b/',
+    replace: 'const GRAD_LINE = /__never__/',
+    test: 'src/tests/unit/wallet-and-slop.test.ts',
+    why:
+      '이 가드는 같은 결함을 **두 번** 놓쳤다 — 인라인 CSS 표기(08-31)와 `dark:` 변형 stop(09-01). ' +
+      '후자 때문에 CouponClaimPage 가 다크에서 #0D0F12 → #0D0F12 를 세 줄 갖고도 몇 달간 초록불이었다. ' +
+      '가드 자신이 헛도는 것이 이 레포에서 가장 비싼 실패라 못으로 박는다.',
+  },
+  {
     name: '🏷️ 교환권 카드 할인율이 다시 사진 위로 (같은 숫자를 한 화면에 두 번)',
     file: 'src/pages/vouchers/shared.tsx',
     find: `      {/* 🎨 본문 — 클린 화이트`,
