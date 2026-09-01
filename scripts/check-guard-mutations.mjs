@@ -6896,6 +6896,16 @@ canvas {
       '플랫폼 기본값이 나간다 — 표시와 지급이 갈리는 이 레포의 단골 사고다.',
   },
   {
+    name: '🔍 S1 판정이 예산 대신 결제액과 비교한다 (늘 통과)',
+    file: 'src/features/admin/api/admin-promo-ledger.routes.ts',
+    find: 'within_budget: grantedTotal <= budgetKrw,',
+    replace: 'within_budget: grantedTotal <= amountKrw,',
+    test: 'src/tests/unit/promo-ledger-order-verdict.test.ts',
+    why:
+      '결제액은 예산의 수십 배라 이렇게 바꾸면 **어떤 주문이든 통과**한다 — 게이트를 켜도 되는 ' +
+      '근거로 쓰이는 화면이 늘 초록불이 되는 것이, 이 레포가 반복해 당한 "검사가 실패할 수 없음" 이다.',
+  },
+  {
     name: '📖 운영백서 숫자표 검사를 CI 에서 뗀다 (다른 세션 변경이 문서에 안 닿음)',
     file: '.github/workflows/verify.yml',
     find: '        run: node scripts/generate-ops-handbook.mjs --check',

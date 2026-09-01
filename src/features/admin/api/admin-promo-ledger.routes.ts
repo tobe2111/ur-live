@@ -200,3 +200,111 @@ adminPromoLedgerRoutes.get('/orders', requireAdminRole('finance'), async (c) => 
     return safeError(c, err, 'promo 원장 주문 목록 조회 중 오류가 발생했습니다', '[admin-promo-ledger]')
   }
 })
+
+// ─── GET /order/:orderNumber — 주문 1건 판정 패널 (S1 점등 절차용, read-only) ──
+/**
+ * 🔍 **주문 하나를 두고 "예산 아비터를 켜도 되는가"를 판정한다.**
+ *
+ * 왜 필요한가: S1(`commission_budget_enabled`)의 통과 기준은 *"Σ적립 ≤ 주문당 예산"* 인데,
+ * 그걸 확인하려면 원장·적립 테이블 대여섯 개를 손으로 조회해 더해야 했다.
+ * **손으로 더해야 하는 검증은 아무도 안 한다** — 그래서 이 게이트가 2026-07-04 부터 미검증으로 남았다.
+ * 여기서 한 화면에 답이 나오면 대표가 실결제 1건으로 판정할 수 있다.
+ *
+ * 돈 이동 0 · 정산 로직 무접촉 — 조회만 한다.
+ */
+adminPromoLedgerRoutes.get('/order/:orderNumber', requireAdminRole('finance'), async (c) => {
+  const { DB } = c.env
+  try {
+    const orderNumber = String(c.req.param('orderNumber') || '').trim()
+    if (!orderNumber || orderNumber.length > 64) {
+      return c.json({ success: false, error: '주문번호가 올바르지 않습니다' }, 400)
+    }
+
+    const orders = await DB.prepare(
+      `SELECT id, order_number, seller_id, status, total_amount, COALESCE(deal_used, 0) AS deal_used, created_at
+         FROM orders WHERE order_number = ?`
+    ).bind(orderNumber).all<{
+      id: number; order_number: string; seller_id: number | null; status: string
+      total_amount: number; deal_used: number; created_at: string
+    }>().catch(() => ({ results: [] as never[] }))
+    const orderRows = orders.results || []
+    if (orderRows.length === 0) {
+      return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+    }
+    const orderIds = orderRows.map((o) => Number(o.id))
+    const idPlaceholders = orderIds.map(() => '?').join(', ')
+    const amountKrw = orderRows.reduce((s, o) => s + (Number(o.total_amount) || 0), 0)
+
+    // ① 예산 = max(0, 플랫폼 수수료 − PG 준비금). 수수료는 이 주문의 원장 fee 를 진실로 삼는다
+    //    (요율 계산을 여기서 다시 하면 실제와 갈릴 수 있다 — 갈리는 것이 바로 이 레포의 단골 사고다).
+    const feeRow = await DB.prepare(
+      `SELECT COALESCE(SUM(fee_amount), 0) AS fee FROM ledger_entries
+        WHERE credit_account = 'platform:revenue' AND reference_id IN (${idPlaceholders})`
+    ).bind(...orderIds.map((id) => `order:${id}`)).first<{ fee: number }>().catch(() => null)
+    const settingRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'pg_reserve_pct'")
+      .first<{ value: string | null }>().catch(() => null)
+    const pgReservePct = Number(settingRow?.value ?? NaN)
+    const { computeCommissionBudget, DEFAULT_PG_RESERVE_PCT } = await import('../../../worker/utils/commission-budget')
+    const platformFeeKrw = Math.max(0, Math.round(Number(feeRow?.fee ?? 0)))
+    const budgetKrw = computeCommissionBudget({
+      amountKrw, platformFeeKrw,
+      pgReservePct: Number.isFinite(pgReservePct) ? pgReservePct : DEFAULT_PG_RESERVE_PCT,
+    })
+
+    // ② 이 주문에 붙은 성장 커미션 적립 — 축마다 사는 테이블이 다르다(설계 문서 §flip 구현 스펙).
+    const grants: Array<{ axis: string; amount: number; rows: number }> = []
+    const collect = async (axis: string, sql: string, binds: unknown[]) => {
+      const r = await DB.prepare(sql).bind(...binds)
+        .first<{ total: number; cnt: number }>().catch(() => null)
+      grants.push({ axis, amount: Math.round(Number(r?.total ?? 0)), rows: Number(r?.cnt ?? 0) })
+    }
+    await collect('affiliate',
+      `SELECT COALESCE(SUM(commission), 0) AS total, COUNT(*) AS cnt FROM affiliate_earnings
+        WHERE order_id IN (${idPlaceholders}) AND COALESCE(status, '') IN ('holding', 'granted')`, orderIds)
+    await collect('multi_tier',
+      `SELECT COALESCE(SUM(commission_amount), 0) AS total, COUNT(*) AS cnt FROM referral_commissions
+        WHERE order_id IN (${idPlaceholders}) AND COALESCE(status, '') != 'withdrawn'`, orderIds)
+    await collect('influencer_store_intro',
+      `SELECT COALESCE(SUM(commission_amount), 0) AS total, COUNT(*) AS cnt FROM influencer_attributions
+        WHERE order_id IN (${idPlaceholders}) AND COALESCE(source, '') = 'store_intro'`, orderIds)
+    await collect('agency_store_intro',
+      `SELECT COALESCE(SUM(commission_amount), 0) AS total, COUNT(*) AS cnt FROM agency_store_intro_commissions
+        WHERE order_id IN (${idPlaceholders})`, orderIds)
+    const grantedTotal = grants.reduce((s, g) => s + g.amount, 0)
+
+    // ③ platform:revenue 원장 — 이 주문에 대한 credit/debit. [INV-#44] 는 debit 0 을 요구한다.
+    const refs = orderIds.map((id) => `order:${id}`)
+    const refPh = refs.map(() => '?').join(', ')
+    const credit = await DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM ledger_entries
+        WHERE credit_account = 'platform:revenue' AND reference_id IN (${refPh})`
+    ).bind(...refs).first<{ total: number }>().catch(() => null)
+    const debits = await DB.prepare(
+      `SELECT event_type, amount, reference_id FROM ledger_entries
+        WHERE debit_account = 'platform:revenue' AND reference_id IN (${refPh})
+        ORDER BY id DESC LIMIT 20`
+    ).bind(...refs).all<{ event_type: string; amount: number; reference_id: string | null }>()
+      .catch(() => ({ results: [] as never[] }))
+    const debitRows = debits.results || []
+    const debitTotal = debitRows.reduce((s, d) => s + (Number(d.amount) || 0), 0)
+
+    return c.json({
+      success: true,
+      data: {
+        order: { order_number: orderNumber, rows: orderRows, amount_krw: amountKrw },
+        budget: { platform_fee_krw: platformFeeKrw, pg_reserve_pct: Number.isFinite(pgReservePct) ? pgReservePct : DEFAULT_PG_RESERVE_PCT, budget_krw: budgetKrw },
+        grants,
+        granted_total_krw: grantedTotal,
+        platform_revenue: { credit_krw: Math.round(Number(credit?.total ?? 0)), debit_krw: debitTotal, debit_rows: debitRows },
+        // 👇 이 두 줄이 S1 판정이다. 손으로 더할 필요가 없게.
+        verdict: {
+          within_budget: grantedTotal <= budgetKrw,
+          over_by_krw: Math.max(0, grantedTotal - budgetKrw),
+          platform_revenue_untouched: debitTotal === 0,
+        },
+      },
+    })
+  } catch (err) {
+    return safeError(c, err, '주문 커미션 판정 조회 중 오류가 발생했습니다', '[admin-promo-ledger]')
+  }
+})
