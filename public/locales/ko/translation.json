@@ -2761,7 +2761,7 @@
       "loadFailed": "불러오기 실패",
       "activateSuccess": "부스팅 활성화! 메인 피드 상단 노출 시작.",
       "activateFailed": "활성화 실패",
-      "activateConfirm": "{{emoji}} {{tier}} 쿠폰을 \"{{liveTitle}}\" 라이브에 {{hours}}시간 활성화하시겠습니까?"
+      "activateConfirm": "{{tier}} 쿠폰을 \"{{liveTitle}}\" 라이브에 {{hours}}시간 활성화하시겠습니까?"
     },
     "adSlotsTitle": "광고 슬롯 입찰",
     "adSlotsDesc": "메인·라이브 상단 24시간 우선 노출 — 매일 18시 낙찰",

@@ -31,10 +31,10 @@ interface ActiveLive {
 export default function SellerPromoteBoostsPage() {
   const { t } = useTranslation()
 
-  const TIER_META: Record<string, { label: string; emoji: string; Icon: LucideIcon; bg: string; hours: number }> = {
-    bronze: { label: t('seller.boosts.tierBronze', { defaultValue: '브론즈' }), Icon: Award, emoji: '🥉', bg: 'bg-amber-50 border-amber-300', hours: 12 },
-    silver: { label: t('seller.boosts.tierSilver', { defaultValue: '실버' }),   Icon: Medal, emoji: '🥈', bg: 'bg-slate-50 border-slate-300', hours: 24 },
-    gold:   { label: t('seller.boosts.tierGold', { defaultValue: '골드' }),   Icon: Trophy, emoji: '🥇', bg: 'bg-yellow-50 border-yellow-400', hours: 48 },
+  const TIER_META: Record<string, { label: string; Icon: LucideIcon; bg: string; hours: number }> = {
+    bronze: { label: t('seller.boosts.tierBronze', { defaultValue: '브론즈' }), Icon: Award, bg: 'bg-amber-50 border-amber-300', hours: 12 },
+    silver: { label: t('seller.boosts.tierSilver', { defaultValue: '실버' }),   Icon: Medal, bg: 'bg-slate-50 border-slate-300', hours: 24 },
+    gold:   { label: t('seller.boosts.tierGold', { defaultValue: '골드' }),   Icon: Trophy, bg: 'bg-yellow-50 border-yellow-400', hours: 48 },
   }
 
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (/api/seller prefix 토큰 자동 주입).
@@ -51,8 +51,8 @@ export default function SellerPromoteBoostsPage() {
     }
     const meta = TIER_META[boost.tier]
     if (!(await confirmDialog(t('seller.boosts.activateConfirm', {
-      defaultValue: `{{emoji}} {{tier}} 쿠폰을 "{{liveTitle}}" 라이브에 {{hours}}시간 활성화하시겠습니까?`,
-      emoji: meta.emoji, tier: meta.label, liveTitle: activeLive.title, hours: boost.duration_hours,
+      defaultValue: `{{tier}} 쿠폰을 "{{liveTitle}}" 라이브에 {{hours}}시간 활성화하시겠습니까?`,
+      tier: meta.label, liveTitle: activeLive.title, hours: boost.duration_hours,
     })))) return
     try {
       const token = localStorage.getItem('seller_token')

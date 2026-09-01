@@ -91,10 +91,6 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
             {p.brand_name && <span className="text-[11px] font-bold">{p.brand_name}</span>}
           </div>
         )}
-        {/* 🎨 할인 배지 — 잘 보이게 딜 코랄레드 (대표 신고 "할인 % 나와야지"). */}
-        {discountRate > 0 && (
-          <span className="absolute top-2 left-2 text-[11px] font-extrabold text-white bg-brand rounded-md px-1.5 py-0.5">{discountRate}%</span>
-        )}
       </div>
       {/* 🎨 본문 — 클린 화이트(다크 토글 대응). 잉크 가격 강조 + 뉴트럴 메타. 컴팩트(별점 제거·여백 축소). */}
       <div className="px-2.5 pt-1.5 pb-2 flex flex-col flex-1">
@@ -186,10 +182,6 @@ export const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: Vouche
             {p.brand_name && <span className="text-[10px] font-bold px-1 text-center line-clamp-1">{p.brand_name}</span>}
           </div>
         )}
-        {/* 🎨 할인 배지 — 브랜드 옐로우(카드와 동일 톤) */}
-        {discountRate > 0 && (
-          <span className="absolute top-1.5 left-1.5 text-[10px] font-extrabold text-[#171B24] bg-[#d1d5db] rounded px-1 py-0.5">{discountRate}%</span>
-        )}
       </div>
       {/* 🎨 본문 — 우측. 브랜드/상품명/가격/구매수 (별점 제거·여백 축소로 행 높이 컴팩트). */}
       <div className="flex-1 min-w-0">
@@ -198,6 +190,9 @@ export const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: Vouche
         )}
         <p className="text-[14px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white">{p.name}</p>
         <div className="flex items-baseline gap-1 mt-1">
+          {discountRate > 0 && (
+            <span className="text-[15px] font-extrabold text-brand dark:text-[#EF6E85] tracking-tight">{discountRate}%</span>
+          )}
           <span className="text-[17px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
           <span className="text-[12px] font-bold text-[#171B24] dark:text-white">딜</span>
           {hasStrike && (
@@ -267,7 +262,7 @@ export const BrandChip = memo(function BrandChip({
             onError={(e) => cfImageOnError(e.currentTarget, brand.brand_icon_url)}
           />
         ) : (
-          <span className="text-lg">🎁</span>
+          <span className="text-[13px] font-extrabold text-gray-500 dark:text-gray-400">{brand.brand_name.slice(0, 2)}</span>
         )}
       </div>
       <span

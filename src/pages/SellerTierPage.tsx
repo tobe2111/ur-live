@@ -53,10 +53,10 @@ export default function SellerTierPage() {
     { select: (r: any) => (r?.success ? r.data : null) },
   )
 
-  const TIER_META: Record<Tier, { label: string; emoji: string; Icon: LucideIcon; color: string; bg: string; border: string; benefits: string[] }> = {
+  const TIER_META: Record<Tier, { label: string; Icon: LucideIcon; color: string; bg: string; border: string; benefits: string[] }> = {
     diamond: {
       label: t('tierBadge.tierDiamond', { defaultValue: '다이아몬드' }),
-      emoji: '💎', Icon: Gem,
+      Icon: Gem,
       color: 'text-blue-700',
       bg: 'bg-gradient-to-br from-gray-100 to-gray-50',
       border: 'border-blue-300',
@@ -64,7 +64,7 @@ export default function SellerTierPage() {
     },
     gold: {
       label: t('tierBadge.tierGold', { defaultValue: '골드' }),
-      emoji: '⭐', Icon: Star,
+      Icon: Star,
       color: 'text-amber-700',
       bg: 'bg-gradient-to-br from-gray-100 to-gray-50',
       border: 'border-amber-300',
@@ -72,7 +72,7 @@ export default function SellerTierPage() {
     },
     silver: {
       label: t('tierBadge.tierSilver', { defaultValue: '실버' }),
-      emoji: '🥈', Icon: Medal,
+      Icon: Medal,
       color: 'text-gray-700',
       bg: 'bg-gradient-to-br from-gray-100 to-slate-50',
       border: 'border-gray-300',
@@ -80,7 +80,7 @@ export default function SellerTierPage() {
     },
     bronze: {
       label: t('tierBadge.tierBronze', { defaultValue: '브론즈' }),
-      emoji: '🥉', Icon: Award,
+      Icon: Award,
       color: 'text-orange-700',
       bg: 'bg-gray-50',
       border: 'border-orange-200',
@@ -88,7 +88,7 @@ export default function SellerTierPage() {
     },
     new: {
       label: t('tierBadge.tierNew', { defaultValue: '신규' }),
-      emoji: '🌱', Icon: Sprout,
+      Icon: Sprout,
       color: 'text-purple-700',
       bg: 'bg-gray-50',
       border: 'border-purple-200',
@@ -196,8 +196,8 @@ export default function SellerTierPage() {
                   className={`rounded-xl border ${m.border} ${m.bg} p-3 ${isCurrent ? 'ring-2 ring-pink-400' : ''}`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <p className={`text-sm font-bold ${m.color}`}>
-                      {m.emoji} {m.label}
+                    <p className={`text-sm font-bold ${m.color} flex items-center gap-1.5`}>
+                      <m.Icon className="w-4 h-4" /> {m.label}
                     </p>
                     <p className="text-[11px] text-gray-500 font-semibold">
                       {threshold}점 이상
@@ -226,9 +226,12 @@ export default function SellerTierPage() {
               {info.history.map((h, i) => (
                 <div key={i} className="flex items-center justify-between border-b border-gray-100 last:border-0 py-2 text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="text-gray-500">{TIER_META[h.prev_tier]?.emoji} {TIER_META[h.prev_tier]?.label || h.prev_tier}</span>
+                    <span className="text-gray-500">{TIER_META[h.prev_tier]?.label || h.prev_tier}</span>
                     <span className="text-gray-400">→</span>
-                    <span className={`font-bold ${TIER_META[h.new_tier]?.color}`}>{TIER_META[h.new_tier]?.emoji} {TIER_META[h.new_tier]?.label || h.new_tier}</span>
+                    <span className={`font-bold ${TIER_META[h.new_tier]?.color} inline-flex items-center gap-1`}>
+                      {(() => { const I = TIER_META[h.new_tier]?.Icon; return I ? <I className="w-3.5 h-3.5" /> : null })()}
+                      {TIER_META[h.new_tier]?.label || h.new_tier}
+                    </span>
                   </div>
                   <div className="text-right">
                     <p className="text-[11px] text-gray-600">{h.prev_score} → {h.new_score}점</p>
