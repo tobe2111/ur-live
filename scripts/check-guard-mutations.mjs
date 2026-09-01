@@ -88,6 +88,16 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '백필 건수가 화면까지 못 간다',
+    file: 'src/pages/AdminDongnedealImportPage.tsx',
+    find: ' · 소개 문구 ${sDescHealed}개 교체',
+    replace: '',
+    test: 'src/tests/unit/detail-page-plainness.test.ts',
+    why:
+      '2026-08-31: 서버가 고친 건수를 보내는데 화면이 안 읽어, 대표가 버튼을 눌러도 무엇이 몇 개 ' +
+      '됐는지 알 수 없었다. 서버만 고치면 절반이다 — 값이 사람 눈까지 닿아야 판정이 된다.',
+  },
+  {
     name: '돌긴 했는데 못 한 cron 을 아무도 안 본다',
     file: 'src/worker/cron/cron-stale-watch.ts',
     find: '  for (const b of blocked) {',
