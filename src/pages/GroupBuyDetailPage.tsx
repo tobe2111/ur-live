@@ -40,8 +40,7 @@ import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
 import OtherDealsRow from './group-buy/OtherDealsRow'
 import ShareRewardBanner from './group-buy/ShareRewardBanner'
 import DeferUntilVisible from './group-buy/DeferUntilVisible'
-import { VOUCHER_DEAL_PAYMENT_ENABLED } from '@/shared/feature-flags'
-import { useBalance } from '@/hooks/queries/useBalance'
+import DealPayButton, { useCanPayWithDeal } from './group-buy/DealPayButton'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -342,23 +341,8 @@ export default function GroupBuyDetailPage() {
 
   // 🎨 2026-06-16 리디자인: 할인코드(promo) 입력 UI 제거 — checkPromo/clearPromo 삭제.
 
-  /**
-   * @param payWithDeal 이용권을 **딜로** 결제 (2026-08-31). 기본 false = 종전 동작(카드).
-   *   교환권(`deal_only=1`)은 원래 딜 전용이라 이 인자와 무관하다.
-   *   서버도 `platform_settings.voucher_deal_payment_enabled` 로 이중 게이트한다.
-   */
-  // 💰 2026-08-31: 이용권 딜 결제 — **잔액이 충분할 때만** 보조 버튼을 낸다.
-  //   기본 결제수단은 그대로 카드다. 대다수 소비자는 딜 잔액이 0 이고, 살 수 없는 버튼을
-  //   띄우면 "딜이 부족합니다"를 눌러 보고 알게 된다.
-  //   ⚠️ 플래그가 꺼져 있으면 훅은 돌아도 버튼이 안 뜬다(서버도 이중 게이트).
-  const { data: dealBalance = 0, isError: balanceError } = useBalance()
-  const canPayWithDeal =
-    VOUCHER_DEAL_PAYMENT_ENABLED &&
-    isLoggedIn &&
-    !balanceError &&
-    resolveProductFlow(detail || {}).flow === 'group_buy_toss' &&
-    total > 0 &&
-    dealBalance >= total
+  // 💰 이용권 딜 결제(2026-08-31) — 노출 조건·버튼·이중 게이트 설명은 `./group-buy/DealPayButton`.
+  const { canPayWithDeal, dealBalance } = useCanPayWithDeal({ isLoggedIn, detail, total })
 
   async function handleJoin(payWithDeal = false) {
     if (!detail) return
@@ -968,17 +952,7 @@ export default function GroupBuyDetailPage() {
         >
           {joining ? '처리 중…' : isPrelaunch ? '사전 응모하기' : !isJoinable ? (isDemoDeal ? '결제 불가' : '구매 불가') : <>{formatNumber(total)}원 {isDemoDeal ? '결제하기' : '구매하기'}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
         </button>
-        {/* 💰 2026-08-31: 이용권 딜 결제 — 잔액이 충분할 때만. 기본 결제수단은 위 카드 버튼이다. */}
-        {canPayWithDeal && !isPrelaunch && isJoinable && (
-          <button
-            onClick={() => handleJoin(true)}
-            disabled={joining}
-            aria-label={`보유한 딜 ${formatNumber(dealBalance)}딜로 결제하기`}
-            style={{ width: '100%', height: 42, marginTop: 8, borderRadius: 12, background: 'transparent', border: '1.5px solid var(--gbd-cta-bg)', color: 'var(--gbd-cta-bg)', fontSize: 14, fontWeight: 700, letterSpacing: '-.01em', cursor: joining ? 'default' : 'pointer' }}
-          >
-            {joining ? '처리 중…' : `딜로 결제 (보유 ${formatNumber(dealBalance)}딜)`}
-          </button>
-        )}
+        <DealPayButton show={canPayWithDeal && !isPrelaunch && isJoinable} joining={joining} dealBalance={dealBalance} onPay={() => handleJoin(true)} />
       </div>{/* /bar box */}
       </footer>
     </div>

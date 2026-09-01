@@ -22,6 +22,9 @@ import { getProductFlow } from '@/shared/product-flow'
 const GUARD = 'src/features/group-buy/api/gb-purchase-guards.ts'
 const ROUTE = 'src/features/group-buy/api/group-buy.routes.ts'
 const PAGE = 'src/pages/GroupBuyDetailPage.tsx'
+// 🔀 2026-09-01: 노출 조건·버튼을 여기로 추출(파일 크기 래칫). 가드도 따라 옮긴다 —
+//   코드만 옮기고 가드를 두고 오면 그 불변식은 조용히 사라진다.
+const DEALBTN = 'src/pages/group-buy/DealPayButton.tsx'
 /** 주석 제거 — 주석에만 남은 이름을 배선으로 오독하지 않는다(2026-08-01 교훈). */
 const codeOnly = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
@@ -67,11 +70,16 @@ describe('R3 — 화면: 딜은 선택지일 뿐 기본이 아니다', () => {
     expect(code).toContain('() => handleJoin()')
   })
   it('딜 버튼은 플래그 + 로그인 + 잔액 충분일 때만', () => {
-    const block = code.slice(code.indexOf('const canPayWithDeal'))
+    const btn = readFileSync(DEALBTN, 'utf8')
+    const block = btn.slice(btn.indexOf('const canPayWithDeal'))
     const decl = block.slice(0, block.indexOf('\n\n'))
     expect(decl).toContain('VOUCHER_DEAL_PAYMENT_ENABLED')
-    expect(decl).toContain('isLoggedIn')
-    expect(decl).toContain('dealBalance >= total')
+    expect(decl).toContain('opts.isLoggedIn')
+    expect(decl).toContain('dealBalance >= opts.total')
+  })
+  it('페이지는 그 판정을 훅으로만 받는다(조건 재구현 금지)', () => {
+    expect(code).toContain('useCanPayWithDeal({ isLoggedIn, detail, total })')
+    expect(code).not.toContain('VOUCHER_DEAL_PAYMENT_ENABLED')
   })
   it('서버 거절 코드를 안내로 처리한다', () => {
     expect(code).toContain('DEAL_PAYMENT_NOT_ALLOWED')
