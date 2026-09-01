@@ -5498,6 +5498,7 @@ _총 220건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-01**
 - [2026-09-01 — 교환권 탭 상단 두 층 정리 (대표 "나안")](handoff/2026-09-01-vouchers-top-chrome.md)
+- [인플루언서 DB 읽기 증폭 — 한 달 전 수리가 왜 안 먹었나 (2026-09-01)](handoff/2026-09-01-influencer-db-read-amplification.md)
 **2026-08-31**
 - [2026-08-31 — 유어샵 검색창 임계값 · 이미지 폴백 배선 · 셀러 버튼 잔여 5건](handoff/2026-08-31-urshop-search-image-fallback.md)
 - [2026-08-31 — 영입 2% 를 직접 입점 매장에만 (+ 예산 아비터)](handoff/2026-08-31-store-intro-direct-only.md)
