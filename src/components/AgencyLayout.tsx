@@ -267,7 +267,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         {filteredGroups.map((group, gi) => (
           <div key={gi} className="mt-3 first:mt-1">
             <div
-              className="px-4 py-1.5 font-extrabold uppercase text-white/30"
+       className="px-4 py-1.5 font-extrabold text-white/30"
               style={{ fontSize: '9px', letterSpacing: '0.12em' }}
             >
               {group.i18nKey ? t(group.i18nKey, group.label) : group.label}

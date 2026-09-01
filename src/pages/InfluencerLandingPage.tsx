@@ -108,7 +108,7 @@ export default function InfluencerLandingPage() {
           <h2 className="text-xl lg:text-2xl font-extrabold mb-2">내 가게가 있다면 직접 팔 수도 있어요</h2>
           <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed max-w-xl mx-auto mb-6">
             카카오맵에서 우리 가게를 찾아 등록하면 같은 유어샵에서 내 이용권을 직접 팝니다.
-            수수료는 팔린 만큼만 5% — 광고비를 미리 낼 필요가 없어요.
+            수수료는 팔린 만큼만 5%입니다. 광고비를 미리 낼 필요가 없어요.
           </p>
           <button
             onClick={() => navigate('/store/new')}

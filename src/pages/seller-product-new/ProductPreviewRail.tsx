@@ -21,7 +21,7 @@ export default function ProductPreviewRail({ formData, categoryLabel }: Props) {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-        <p className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">
+        <p className="mb-3 text-xs font-bold text-gray-400">
           {t('seller.products.previewTitle', { defaultValue: '미리보기' })}
         </p>
 

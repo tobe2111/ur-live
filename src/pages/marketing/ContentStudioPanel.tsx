@@ -271,7 +271,7 @@ export default function ContentStudioPanel() {
             : <div className="space-y-1.5">{lib.map(it => (
                 <div key={it.id} className="rounded-lg border border-gray-100 dark:border-[#2C2F35] p-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase">{it.type}{it.title ? ` · ${it.title}` : ''}</span>
+                    <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">{it.type}{it.title ? ` · ${it.title}` : ''}</span>
                     <div className="flex gap-2 shrink-0">
                       <button onClick={() => copy(it.body)} className="text-[10.5px] font-bold text-gray-500 dark:text-gray-400">복사</button>
                       <button onClick={() => delLib(it.id)} className="text-[10.5px] font-bold text-gray-400 hover:text-red-500">삭제</button>

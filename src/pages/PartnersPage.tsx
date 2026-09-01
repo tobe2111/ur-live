@@ -26,8 +26,8 @@ const TRUST = [
 const STEPS = [
   { icon: PenLine, t: '초안은 저희가', d: '메뉴·가격·사진까지 딜 초안을 유어딜이 만들어 드려요' },
   { icon: FileCheck2, t: '사장님은 승인만', d: '카톡으로 받은 초안을 확인하고 승인 한 번이면 판매 시작' },
-  { icon: QrCode, t: 'QR 스캔만', d: '손님이 보여주는 QR을 매장 폰으로 스캔 — 끝' },
-  { icon: Wallet, t: '정산 자동', d: '사용된 만큼 자동 정산 — 대시보드에서 실시간 확인' },
+  { icon: QrCode, t: 'QR 스캔만', d: '손님이 보여주는 QR을 매장 폰으로 스캔하면 끝' },
+  { icon: Wallet, t: '정산 자동', d: '사용된 만큼 자동 정산. 대시보드에서 실시간 확인' },
 ]
 
 /** FAQ 초안 — 8월 온보딩에서 수집·갱신 예정(대표 전달분으로 교체). */
@@ -114,7 +114,7 @@ export default function PartnersPage() {
         {/* ③ 내 몫 계산기 */}
         <section className="pb-10">
           <h2 className="text-[19px] font-extrabold text-[#16181C] dark:text-[#F5F3F1] mb-1">내 몫 계산기</h2>
-          <p className="text-[12.5px] text-gray-500 dark:text-gray-400 mb-4">정가와 할인율만 넣어보세요 — 입금액이 바로 보입니다</p>
+          <p className="text-[12.5px] text-gray-500 dark:text-gray-400 mb-4">정가와 할인율만 넣어보세요. 입금액이 바로 보입니다</p>
           <div className="rounded-2xl bg-white dark:bg-[#1A1C21] p-5 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
@@ -138,7 +138,7 @@ export default function PartnersPage() {
                 <b className="text-[22px] font-extrabold text-brand">{formatNumber(calc.payout)}원</b>
               </div>
             </div>
-            <p className="text-[10.5px] text-gray-400 dark:text-gray-500">선불 광고비·가입비·월 이용료 0원 — 수수료는 실제 판매가 일어난 금액에만 부과됩니다.</p>
+            <p className="text-[10.5px] text-gray-400 dark:text-gray-500">선불 광고비와 가입비, 월 이용료가 없습니다. 수수료는 실제 판매가 일어난 금액에만 부과됩니다.</p>
           </div>
         </section>
 
