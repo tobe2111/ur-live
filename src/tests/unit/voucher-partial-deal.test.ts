@@ -157,3 +157,37 @@ describe('결제 경로 배선 — 어느 금액이 어디로 가나', () => {
     expect(head).toContain('amount: dealPlan.cardAmount')
   })
 })
+
+describe('점등 선행 조건 — 켜는 사람이 알 수 있어야 한다', () => {
+  // 🩸 이 절은 뒤늦게 생겼다. 부분결제를 배선하면서 "딜 보너스 20% 가 먼저 0 이어야 한다"를
+  //    빠뜨렸고, 같은 레일의 PR #1272 를 읽다가 발견했다. 게이트를 만든 사람이 안 적으면
+  //    켜는 사람(대표)은 알 방법이 없고, 그러면 팔릴수록 적자인 상태로 켜진다.
+  const CHECKLIST = readFileSync('docs/STAGING_CHECKLIST.md', 'utf8')
+  const OPS = readFileSync('src/features/admin/api/admin-system-monitoring.routes.ts', 'utf8')
+  const SETTINGS = readFileSync('src/pages/AdminPlatformSettingsPage.tsx', 'utf8')
+
+  /** 그 게이트의 OPS_GATES 한 줄만 잘라낸다 (파일 전체에서 찾으면 옆 게이트 문구에 걸린다). */
+  const gateLine = (() => {
+    const line = OPS.split('\n').find(l => l.includes("key: 'voucher_partial_deal_enabled'"))
+    if (!line) throw new Error('OPS_GATES 에 부분결제 게이트가 없다 — 등재부터 빠졌다')
+    return line
+  })()
+
+  it('게이트 점등 조건이 딜 보너스 선행을 말한다', () => {
+    expect(gateLine).toMatch(/influencer_deal_bonus_pct/)
+    expect(gateLine).toMatch(/0/)
+  })
+
+  it('어드민 토글 설명에도 같은 선행이 적혀 있다 (거기서 실제로 켜므로)', () => {
+    const idx = SETTINGS.indexOf("key: 'voucher_partial_deal_enabled'")
+    expect(idx).toBeGreaterThan(0)
+    expect(SETTINGS.slice(idx, idx + 900)).toMatch(/influencer_deal_bonus_pct/)
+  })
+
+  it('체크리스트에 선행 절이 있고 S 번호가 형제 PR 과 안 겹친다', () => {
+    expect(CHECKLIST).toMatch(/S12 선행/)
+    // #1272 가 S9·S10 을 먼저 잡았다. 같은 번호를 쓰면 절차서에 같은 ID 가 둘이 된다.
+    expect(CHECKLIST).toMatch(/\*\*S12\*\* \| `voucher_partial_deal_enabled/)
+    expect(CHECKLIST).not.toMatch(/\*\*S10\*\* \| `voucher_partial_deal_enabled/)
+  })
+})

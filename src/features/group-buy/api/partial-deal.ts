@@ -22,9 +22,14 @@
  * 매장에는 **상품 총액 기준**으로 정산한다(`orders.total_amount` = 총액, `deal_used` = 딜 분).
  * 딜은 유저가 이미 현금으로 충전한 돈이라, 대표 말대로 *"원래 정산을 해줬어야 하는 돈"* 이다.
  *
- * ## 게이트
+ * ## 게이트 — 그리고 그 앞에 오는 것
  * `platform_settings.voucher_partial_deal_enabled` (기본 OFF). 꺼져 있으면 딜 사용액은 항상 0 이고,
  * 총액과 다른 청구액은 종전처럼 `AMOUNT_MISMATCH` 로 막힌다.
+ *
+ * 🔴 **켜기 전에 `influencer_deal_bonus_pct` 가 0 이어야 한다.** 그 값의 시드 기본이 **20** 이라
+ * (인플루언서가 딜로 정산받으면 20% 더 붙는다) **딜 1,000원은 유어딜에게 1,200원짜리 부채**다.
+ * 그 딜이 마진 5~10%인 이용권으로 흘러가면 **팔릴수록 적자**다 — 교환권은 소비자 마크업 20%가
+ * 그 보너스를 상쇄해 왔지만 이용권엔 그 상쇄가 없다. 절차: `docs/STAGING_CHECKLIST.md` §S12 선행.
  */
 import type { D1Database } from '@cloudflare/workers-types'
 

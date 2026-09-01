@@ -6896,6 +6896,16 @@ canvas {
       '플랫폼 기본값이 나간다 — 표시와 지급이 갈리는 이 레포의 단골 사고다.',
   },
   {
+    name: '🪙 부분결제 게이트에서 딜 보너스 선행 조건이 사라진다',
+    file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
+    find: "turn_on_when: '🔴 **먼저 influencer_deal_bonus_pct = 0**",
+    replace: "turn_on_when: '딜 잔액이 남아 못 쓰는 유저가 생기면",
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '켜는 사람은 어드민 화면의 이 한 줄로 판단한다. 선행이 지워지면 딜 보너스 20% 가 살아 있는 채 ' +
+      '켜져서 **팔릴수록 적자**가 된다 — 에러도 경보도 없이 마진에서만 샌다.',
+  },
+  {
     name: '🪙 부분결제가 카드에 총액을 청구한다 (딜을 쓰고도 전액 결제)',
     file: 'src/features/group-buy/api/group-buy.routes.ts',
     find: '    amount: chargedAmount,\n  })',

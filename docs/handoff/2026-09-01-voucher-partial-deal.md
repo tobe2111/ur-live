@@ -55,7 +55,7 @@ Toss 웹훅 `handlePaymentConfirmed` 는 맨 앞에서 `isAlreadyProcessed(order
 | `group-buy.routes.ts` `/join`(toss init) | `amount` 를 카드 청구액으로. `dealUsed`/`totalAmount` 동봉(화면 표시용) |
 | `group-buy.routes.ts` `/confirm-toss` | 그 helper 들을 부르기만 한다(`derivePartialDeal` → `spendPartialDeal` → `recordOrderDealUsed`, 실패 시 `restorePartialDeal`) — 라우트 순증 **+27줄** |
 | `src/tests/unit/voucher-partial-deal.test.ts` | 18건 (계산 7 + 배선 11) |
-| `docs/STAGING_CHECKLIST.md` | **S10** 신설 |
+| `docs/STAGING_CHECKLIST.md` | **S12** 신설 |
 | `admin-system-monitoring.routes.ts` | `OPS_GATES` 등재 |
 
 `group-buy.routes.ts` 는 이미 1,413줄이라 로직을 라우트에 쓰면 래칫이 막는다 — 몸통을 모듈로 뺀 건
@@ -64,6 +64,32 @@ Toss 웹훅 `handlePaymentConfirmed` 는 맨 앞에서 `isAlreadyProcessed(order
 **클라이언트 변경 0** — `GroupBuyDetailPage` 는 이미 서버가 준 `amount` 를 그대로 위젯에 넘긴다.
 게이트를 켜면 그 값이 줄어들 뿐이다. 화면에 "딜 3,000 + 카드 7,000" 을 **표시**하려면
 응답의 `dealUsed`/`totalAmount` 를 쓰면 된다 — 이번엔 안 붙였다(표시가 없어도 금액은 맞는다).
+
+## 🔴 뒤늦게 발견한 선행 조건 (2026-09-01 체크인)
+
+**딜 보너스가 0 이 되기 전에는 이 게이트를 켜면 안 된다.** 처음 배선할 때 이걸 빠뜨렸고,
+같은 레일을 건드리는 **PR #1272**(다른 세션, 전부-딜 결제)를 읽다가 발견했다.
+
+`influencer_deal_bonus_pct` 시드 기본값이 **20**(`repair-schema/column-repairs.ts:718` — 코드로 확인).
+인플루언서가 딜로 정산받으면 20%가 더 붙으니 **딜 1,000원 = 유어딜 부채 1,200원**이다.
+교환권은 소비자 마크업 20%가 그걸 상쇄해 왔지만 **이용권(마진 5~10%)엔 그 상쇄가 없다** —
+부분결제는 정확히 그 통로를 연다.
+
+⇒ 체크리스트 §S12 선행 · `OPS_GATES.turn_on_when` · 어드민 토글 hint · 모듈 docblock **네 자리에**
+적었고, 테스트 3건 + 주입 1건으로 고정했다(지워지면 빨간불).
+
+## ⚠️ 형제 PR 과의 관계 — #1272
+
+같은 이용권 결제 레일을 건드리는 PR 이 8월 31일부터 열려 있다:
+
+| | #1272 (다른 세션) | #1296 (이 PR) |
+|---|---|---|
+| 무엇 | 이용권 **전부-딜** 결제를 게이트로 **닫는다**(지금 열려 있는 문) | 이용권 **딜 일부 + 카드** 를 **연다** |
+| 게이트 | `voucher_deal_payment_enabled` | `voucher_partial_deal_enabled` |
+| S 번호 | **S9 · S10** (먼저 잡음) | **S12** (이번에 양보) |
+
+**`group-buy.routes.ts` 와 `STAGING_CHECKLIST.md` 에서 충돌한다.** 각자 main 기준으로는 깨끗하니
+먼저 머지되는 쪽이 그대로 들어가고 뒤쪽이 병합하면 된다 — 둘 다 additive 라 버릴 게 없다.
 
 ## 이번에 틀렸던 판단
 
@@ -74,8 +100,8 @@ INSERT 가 **둘**(전부-딜 `/join` · 카드 `/confirm-toss`)이라 앞의 �
 
 ## 다음 세션의 첫 액션
 
-1. **S10 을 staging 에서** — 게이트 ON → 딜 있는 계정으로 이용권 카드결제 →
+1. **S12 을 staging 에서** — 게이트 ON → 딜 있는 계정으로 이용권 카드결제 →
    `SELECT total_amount, deal_used FROM orders WHERE order_number=?` 가 (총액, 딜분) 인지,
    `point_transactions` 에 그 주문 차감이 **1행**인지(웹훅이 안 뺐는지), 환불 시 복원되는지.
-2. 통과하면 S10 상태 ✅ + 날짜. 프로덕션 게이트 활성은 **대표가 어드민에서**.
+2. 통과하면 S12 상태 ✅ + 날짜. 프로덕션 게이트 활성은 **대표가 어드민에서**.
 3. (선택) 결제 화면에 "딜 N + 카드 M" 표시 — 응답 필드는 이미 나간다.
