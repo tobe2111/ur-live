@@ -6956,6 +6956,26 @@ canvas {
       '정가와 판매가를 한 줄에 두면 119,000원(숙소)에서 반드시 줄이 깨지고 그 카드만 높이가 늘어 ' +
       '그리드가 들쭉날쭉해진다. 쿠팡식 2줄이 그 구조적 깨짐의 해법이라, 한 줄로 되돌리는 것을 막는다.',
   },
+  {
+    name: '🎫 교환권 브랜드 스트립이 다시 항상 펼쳐진다 (175px 이 상품을 fold 밖으로)',
+    file: 'src/pages/VouchersPage.tsx',
+    find: '          {brandsOpen && (\n',
+    replace: '',
+    test: 'src/tests/unit/vouchers-top-chrome.test.ts',
+    why:
+      '첫 상품 위에 층이 다섯이라 상품이 1.5개밖에 안 보였다(실측 ~700px). 이런 층은 하나씩 다시 ' +
+      '얹히기 쉬워서 다섯이 됐다. 접기 게이트가 사라지면 그 상태로 돌아간다.',
+  },
+  {
+    name: '🎫 딥링크 브랜드인데 스트립이 접힌 채 시작 (왜 걸러졌는지 알 수 없다)',
+    file: 'src/pages/VouchersPage.tsx',
+    find: "useState(() => !!searchParams.get('brand'))",
+    replace: 'useState(false)',
+    test: 'src/tests/unit/vouchers-top-chrome.test.ts',
+    why:
+      '브랜드가 이미 선택된 채 들어오면(공유 링크·재진입) 목록은 걸러져 있는데 그 이유가 화면에 ' +
+      '안 보인다. 접기를 넣으면서 같이 생기는 사각지대라 못으로 박는다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
