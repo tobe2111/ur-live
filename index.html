@@ -505,9 +505,9 @@
         if (!v) { try { v = sessionStorage.getItem('ur_theme_mode_v1'); } catch (e) { /* sandbox */ } }
         var sysDark = false;
         try { sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
-        // 🛡️ 2026-05-16: 신규 사용자 (v === null) default = light.
-        //   기존 'system' 사용자만 OS 따라감. 'dark' 명시는 그대로.
-        var dark = v === 'dark' || (v === 'system' && sysDark);
+        // 🌓 2026-09-02 대표 지시 "시스템 테마에 따라가도록": 저장값 없음(v === null) = system 으로 OS 추적.
+        //   (05-16 "신규 = light" 대체.) 직접 고른 'light'/'dark' 는 그대로. useTheme.ts readMode 와 같은 규칙.
+        var dark = v === 'dark' || ((v === 'system' || v === null) && sysDark);
         try {
           if (dark) document.documentElement.classList.add('dark');
           else document.documentElement.classList.remove('dark');

@@ -3,7 +3,7 @@
  *
  * - mode: 'system' | 'light' | 'dark' — 사용자 선호 (localStorage 영속)
  * - applied: 'light' | 'dark' — 실제 화면에 적용된 테마 (mode + 시스템 결합 결과)
- * - 초기값: 'system' (OS prefers-color-scheme 추적)
+ * - 초기값: 'system' (OS prefers-color-scheme 추적) — 2026-09-02 대표 지시로 복원(05-16~09-02 는 'light')
  *
  * Tailwind 의 `dark:` 변형은 <html class="dark"> 일 때만 활성화됨.
  * FOUC 방지를 위해 첫 렌더 전 (index.html inline script) 에 한 번 적용 후,
@@ -31,10 +31,11 @@ function readMode(): ThemeMode {
     const v = sessionStorage.getItem(STORAGE_KEY)
     if (v === 'light' || v === 'dark' || v === 'system') return v
   } catch { /* full sandbox */ }
-  // 🛡️ 2026-05-16: 신규 사용자 default = 'light' (사용자 명시 요구).
-  //   기존 'system' 은 OS 다크 모드 켠 사용자가 우리 사이트도 다크로 보게 만들었음.
-  //   라이트 기본 + 토글로 dark/system 선택 가능 유지.
-  return 'light'
+  // 🌓 2026-09-02 대표 지시 "시스템 테마에 따라가도록 해줘": 저장값 없는 사용자 = 'system'(OS 추적).
+  //   2026-05-16 "신규 사용자 default = light" 를 대체한다 — 다크(#11141C)가 대표 확정 기본 화면이 되면서
+  //   OS 다크 사용자가 라이트를 먼저 보는 쪽이 오히려 어긋난다. 직접 고른 light/dark 는 그대로 존중.
+  //   ⚠️ index.html 부팅 스크립트(FOUC 방지)와 같은 규칙이어야 한다 — 한쪽만 바꾸면 첫 페인트가 튄다.
+  return 'system'
 }
 
 function detectSystemTheme(): AppliedTheme {

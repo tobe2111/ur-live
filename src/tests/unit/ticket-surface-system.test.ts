@@ -125,3 +125,15 @@ describe('⑥ 아이콘 컨셉 — 채색 flat 타일 세트가 존재하고 윤
     expect(strokes).toBeLessThanOrEqual(3)
   })
 })
+
+describe('⑦ 테마 기본값 = 시스템 추적 (2026-09-02 대표 "시스템 테마에 따라가도록")', () => {
+  it('useTheme 의 저장값-없음 기본이 system', () => {
+    const src = code(R('src/shared/stores/useTheme.ts'))
+    const body = src.slice(src.indexOf('function readMode'), src.indexOf('function detectSystemTheme'))
+    expect(body).toMatch(/return 'system'\s*\}\s*$/)
+  })
+  it('index.html 부팅 스크립트도 같은 규칙(null → OS 추적) — 한쪽만 바꾸면 첫 페인트가 튄다', () => {
+    const html = R('index.html')
+    expect(html).toMatch(/\(v === 'system' \|\| v === null\) && sysDark/)
+  })
+})
