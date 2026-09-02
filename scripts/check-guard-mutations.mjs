@@ -7431,6 +7431,36 @@ canvas {
       '안 보인다. 접기를 넣으면서 같이 생기는 사각지대라 못으로 박는다.',
   },
   {
+    name: '🎫 담기 토스트가 409(이미 담김)를 다시 "오류" 로 보고한다',
+    file: 'src/features/curator/hooks/usePinAction.ts',
+    find: "      if (code === 'ALREADY_PINNED') toast.info(MSG.already)\n      else toast.error(error && error.length <= 30 ? error : MSG.failed)",
+    replace: '      toast.error(MSG.failed)',
+    test: 'src/tests/unit/consumer-popups-dark.test.ts',
+    why:
+      '서버 409 + ALREADY_PINNED 는 axios 가 throw 하므로 catch 안에서 읽어야 한다. 이 분기가 사라지면 ' +
+      '이미 담은 상품을 또 누른 사용자에게 "오류" 가 뜬다 — 2026-09-02 대표 신고의 본체.',
+  },
+  {
+    name: '🎫 리뷰 textarea 다크 배경이 다시 빠진다 (흰 바탕에 흰 글자)',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: 'bg-[#F8F7FC] dark:bg-[#11141C] text-sm text-gray-900 dark:text-white',
+    replace: 'text-sm text-gray-900 dark:text-white',
+    test: 'src/tests/unit/consumer-popups-dark.test.ts',
+    why:
+      '전역 `.dark textarea{color:gray-100}` 가 글자를 흰색으로 만들므로 배경이 없으면 브라우저 기본 흰 바탕에 ' +
+      '흰 글자다. 테마 가드는 bg 토큰의 짝만 보고 "bg 가 아예 없음" 은 못 본다.',
+  },
+  {
+    name: '🎫 장바구니 래퍼가 다시 라이트 단독 배경 (다크에서 화면 절반 회색)',
+    file: 'src/pages/CartPage.tsx',
+    find: 'min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C]">',
+    replace: 'min-h-[100dvh] bg-[#F4F4F4]">',
+    test: 'src/tests/unit/consumer-popups-dark.test.ts',
+    why:
+      '장바구니 로그인 래퍼 하나만 dark: 가 없어 빈 장바구니 아래가 회색으로 남았다. 같은 파일의 다른 래퍼는 ' +
+      '전부 짝이 있어서 눈으로는 안 잡힌다.',
+  },
+  {
     name: '🏨 숙소 달력 연박이 다시 막힌다 (체크아웃 단계가 죽음)',
     file: 'src/pages/stay-detail/StayDateGuestPicker.tsx',
     find: "  if (phase === 'out' && day > draftIn) return { draftIn, draftOut: day, phase: 'in' }",

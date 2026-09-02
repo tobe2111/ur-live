@@ -38,13 +38,15 @@ export const CartHeader = React.memo(function CartHeader({
     <>
       {/* v4 sticky white header: X left, title center, spacer right */}
       <div className="sticky top-0 z-10 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="mx-auto max-w-md flex items-center justify-between px-4 py-3">
+        {/* 🖥️ 2026-09-02 (대표 "PC 버전도 확인"): 본문 `<main>` 이 lg 에서 1020px 인데 이 줄만 448px(max-w-md) 이라
+            닫기 버튼·제목이 본문과 다른 축에 섰다. 같은 폭으로. */}
+        <div className="mx-auto max-w-md lg:max-w-[1020px] flex items-center justify-between px-4 py-3">
           <button type="button" onClick={handleBack} aria-label={t('common.back', { defaultValue: '뒤로 가기' })} className="w-9 h-9 flex items-center justify-center">
             <X size={22} className="text-gray-900 dark:text-white" aria-hidden="true" />
           </button>
           <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">
             {t('cart.title', { defaultValue: '장바구니' })}{' '}
-            {itemCount > 0 && <span className="text-pink-500">{itemCount}</span>}
+            {itemCount > 0 && <span className="text-brand-text tabular-nums">{itemCount}</span>}
           </h1>
           <div className="w-9" />
         </div>
@@ -53,7 +55,7 @@ export const CartHeader = React.memo(function CartHeader({
       {/* Select-all row */}
       {itemCount > 0 && (
         <div className="bg-gray-50 dark:bg-[#1D1F29] border-b border-gray-100 dark:border-[#2C2F35]">
-          <div className="mx-auto max-w-md flex items-center justify-between px-4 py-2.5">
+          <div className="mx-auto max-w-md lg:max-w-[1020px] flex items-center justify-between px-4 py-2.5">
             <button
               type="button"
               onClick={onToggleSelectAll}
@@ -63,8 +65,8 @@ export const CartHeader = React.memo(function CartHeader({
               <span
                 className={`w-5 h-5 rounded-full flex items-center justify-center border-2 transition-colors ${
                   allSelected
-                    ? 'bg-pink-500 border-pink-500'
-                    : 'bg-white dark:bg-[#11141C] border-gray-300 dark:border-[#3A3A3A] group-hover:border-gray-400'
+                    ? 'bg-brand border-brand'
+                    : 'bg-white dark:bg-[#1D1F29] border-rule-strong group-hover:border-gray-400'
                 }`}
               >
                 {allSelected && (
@@ -89,7 +91,7 @@ export const CartHeader = React.memo(function CartHeader({
                   title={t('cart.deleteInactiveHint', { defaultValue: '판매가 종료된 상품을 한 번에 삭제합니다' })}
                 >
                   {t('cart.deleteInactive', { defaultValue: '판매종료 삭제' })}
-                  <span className="ml-1 text-orange-400">({inactiveCount})</span>
+                  <span className="ml-1 text-gray-400 tabular-nums">({inactiveCount})</span>
                 </button>
               )}
               <button
