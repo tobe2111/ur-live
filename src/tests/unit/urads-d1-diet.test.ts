@@ -55,8 +55,8 @@ describe('① 키워드 수율 6h 버킷', () => {
 
 describe('② 유입 감시 sendable — 라우터를 실제로 태운다', () => {
   function fakeDb(name: string, tables: string[], log: string[]) {
-    const mk = (sql: string) => ({
-      bind: () => mk(sql),
+    const stmtFor = (sql: string) => ({
+      bind: () => stmtFor(sql),
       first: async () => {
         // 문장에 등장하는 **모든** 리드 테이블을 본다 — 첫 FROM 만 보면 교차 문장(`FROM a, b`)을 못 잡는다(주입 검증이 그걸 잡았다).
         const named = [...new Set([...sql.matchAll(/\bad_\w+_leads\b/g)].map((m) => m[0]))]
@@ -67,7 +67,7 @@ describe('② 유입 감시 sendable — 라우터를 실제로 태운다', () =
       },
       all: async () => ({ results: [] }), run: async () => ({}),
     })
-    return { prepare: mk, batch: async () => [] }
+    return { prepare: stmtFor, batch: async () => [] }
   }
   it('두 COUNT 가 각자 자기 DB 로 간다(교차 문장이면 company DB 에서 죽어 null 이었다)', async () => {
     const log: string[] = []
