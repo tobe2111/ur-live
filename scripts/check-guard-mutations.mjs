@@ -3068,7 +3068,7 @@ canvas {
   {
     name: '키워드 성과 재계산이 빠져 감점이 영원히 0',
     file: 'src/features/marketing/api/influencer-maintenance.ts',
-    find: '; out.kwyield = await recomputeKeywordContactYield(DB).catch(() => null) }',
+    find: '; out.kwyield = await recomputeKeywordContactYieldBucketed(DB).catch(() => null) }',
     replace: ' }',
     test: 'src/tests/unit/influencer-keyword-yield.test.ts',
     why:
