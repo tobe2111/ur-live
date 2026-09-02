@@ -28,12 +28,22 @@ describe('lane-pause — 순수', () => {
     for (const v of ['false', '1', 'yes', '', undefined]) expect(lanesPaused({ ADS_LANES_PAUSED: v })).toBe(false)
     expect(lanesPaused(undefined)).toBe(false)
   })
-  it('② 사람 대면 두 레인만 면제', () => {
+  /**
+   * 🔁 2026-09-02: 면제가 2 → 6 이 됐다. 늘어난 넷은 **관측**(`health`·`alert-test`·
+   *   `probe-public-data`·`silence-digest`)이다 — 진입 초크포인트가 생기면서 이들까지 막혔고,
+   *   그러면 *멈춘 이유를 볼 수 없는 상태로* 멈춘다(`lane-gate.ts` 헤더). 숫자 못은 그대로 박아 둔다:
+   *   수집 레인이 면제로 새어 들어오면 차단기가 통째로 무의미해지므로 **조용히 늘어나면 안 된다.**
+   */
+  it('② 면제는 사람 대면 2 + 관측 4 뿐', () => {
     expect(pauseExempt('/__ads/inbound-onboarding')).toBe(true)
     expect(pauseExempt('/__ads/consented-reminder?x=1')).toBe(true)
+    expect(pauseExempt('/__ads/health')).toBe(true)
+    expect(pauseExempt('/__ads/silence-digest')).toBe(true)
     expect(pauseExempt('/__ads/collect-chain')).toBe(false)
     expect(pauseExempt('/__ads/maintenance?phase=merge')).toBe(false)
-    expect(PAUSE_EXEMPT_PATHS.size).toBe(2)
+    expect(pauseExempt('/__ads/collect')).toBe(false)
+    expect(pauseExempt('/__ads/enrich-influencer')).toBe(false)
+    expect(PAUSE_EXEMPT_PATHS.size, '면제가 조용히 늘면 차단기가 무의미해진다').toBe(6)
   })
 })
 

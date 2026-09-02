@@ -33,18 +33,16 @@
  * 🔻 롤백: `mountLaneMiddleware` 에서 게이트 `app.use` 한 줄 제거(게이트 ①② 는 그대로 남는다).
  */
 import type { Hono } from 'hono'
+import type { Env } from '@/worker/types/env'
 import { selfBeatMiddleware } from './self-beat'
 import { laneEntryBlock } from './lane-pause'
 import { readBudgetState, budgetBlocked } from './read-budget'
 
-/** 최소 표면 — 워커 엔트리의 Hono 제네릭을 이 파일로 끌어오지 않는다. */
-type LaneApp = Pick<Hono<never>, 'use'>
-
-export function mountLaneMiddleware(app: LaneApp): void {
+export function mountLaneMiddleware(app: Hono<{ Bindings: Env }>): void {
   // 🫀 레인이 자기 하트비트를 쓴다 — 미들웨어 본체와 근거는 `self-beat.ts`(그 모듈의 관심사다).
-  ;(app.use as (path: string, ...h: unknown[]) => unknown)('/__ads/*', selfBeatMiddleware())
+  app.use('/__ads/*', selfBeatMiddleware())
   // 🚧 진입 초크포인트 — 판정은 순수 함수(`lane-pause.ts` — 게으름까지 시험이 고정한다). 여기선 배선만.
-  ;(app.use as (path: string, ...h: unknown[]) => unknown)('/__ads/*', async (c: GateCtx, next: () => Promise<void>) => {
+  app.use('/__ads/*', async (c, next) => {
     const blocked = await laneEntryBlock(
       new URL(c.req.url).pathname,
       c.env,
@@ -53,11 +51,4 @@ export function mountLaneMiddleware(app: LaneApp): void {
     if (!blocked) return next()
     return c.json({ ok: true, skipped: blocked })
   })
-}
-
-/** 미들웨어가 실제로 쓰는 것만(Hono Context 전체를 끌어오지 않는다 — `self-beat.ts` 와 같은 이유). */
-interface GateCtx {
-  req: { url: string }
-  env: unknown
-  json(body: unknown): Response
 }

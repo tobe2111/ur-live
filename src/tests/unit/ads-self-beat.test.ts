@@ -72,7 +72,9 @@ describe('worker-ads — self-beat 이 실제로 배선돼 있다', () => {
    *   불변식은 그대로인데 **가드가 옛 파일만 보고 있어서** 빨간불이 났다 — 이 레포가 잠금표에서
    *   겪은 "낡은 지도" 클래스와 같다. 약화하지 말고 **두 파일을 함께** 본다(어디로 옮겨도 계약은 유지).
    */
-  const FILES = ['src/worker-ads/index.ts', 'src/worker-ads/lane-runner.ts']
+  //   🔁 2026-09-02: 같은 일이 또 났다 — 미들웨어 마운트가 `index.ts` → `lane-gate.ts` 로 옮겨갔다
+  //   (진입 초크포인트가 붙으면서 index.ts 가 600줄 캡을 넘었다). 처방도 같다: 목록에 더한다.
+  const FILES = ['src/worker-ads/index.ts', 'src/worker-ads/lane-runner.ts', 'src/worker-ads/lane-gate.ts']
   const SRC = FILES.map(f => readFileSync(resolve(process.cwd(), f), 'utf8')).join('\n')
   it('🔒 검사 대상이 비어 있지 않다 — 파일이 옮겨가면 통과가 아니라 실패여야 한다', () => {
     expect(SRC.length).toBeGreaterThan(2000)
