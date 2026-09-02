@@ -88,6 +88,34 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '📉 청소 GC 티어 게이트가 사라져 5분마다 전수 스캔으로 돌아간다',
+    file: 'src/worker/cron/scheduled-cleanup.ts',
+    find: '  if (tiers.daily) await runDailyCleanup(DB, results)',
+    replace: '  await runDailyCleanup(DB, results)',
+    test: 'src/tests/unit/d1-read-diet.test.ts',
+    why:
+      '2026-09-02: 5분 cron 이 인덱스 없는 GC 문장 ~33개를 288회/일 돌려 본진 읽기의 3대 원인이 됐다. ' +
+      '게이트 하나가 빠지면 그 섹션이 조용히 5분 주기로 되돌아간다 — 에러도 하트비트 변화도 없다.',
+  },
+  {
+    name: '📉 피드 캐시 지문 게이트가 헛돈다(항상 전체 갱신)',
+    file: 'src/worker/cron/group-buy-feed-cache.ts',
+    find: 'if (prevFp === fp && Date.now() - prevAt < FEED_FORCE_REFRESH_MS) {',
+    replace: 'if (false) {',
+    test: 'src/tests/unit/d1-read-diet.test.ts',
+    why:
+      '상품이 안 바뀐 새벽에도 20개 정렬 쿼리를 5분마다 돌리던 것을 지문으로 막는다. 게이트가 죽으면 ' +
+      '종전 비용으로 조용히 돌아간다(결과는 같아서 아무도 모른다).',
+  },
+  {
+    name: '📉 예열 동적 워밍이 다시 5분마다 돈다',
+    file: 'src/worker/cron/cache-prewarm.ts',
+    find: '  if (env.DB && doDynamic) {',
+    replace: '  if (env.DB) {',
+    test: 'src/tests/unit/d1-read-diet.test.ts',
+    why:
+      '셀러/상품/큐레이터 상세 12개를 5분마다 콜드 렌더하던 것을 30분으로. 옵션을 안 읽으면 호출부가 ' +
+      '무엇을 넘기든 종전 주기로 돈다 — "만든 것·넘긴 것·읽는 것" 이 셋 다 다르다.',
     name: '📉 읽기 예산 초과가 cron kick 을 못 막는다(paused 에 안 합쳐짐)',
     file: 'src/worker-ads/index.ts',
     find: '  const paused = lanesPaused(env) || budget.over // ⏸️',
@@ -731,8 +759,9 @@ const MUTATIONS = [
   {
     name: '🗄️ 백업이 다시 시간당 1회로 줄어든다(전체 스냅샷 60시간 → 일 1회 불가)',
     file: 'src/worker/scheduled.ts',
-    find: '[5, 20, 35, 50].some((m) => slotDue(event.scheduledTime, { minute: m }))',
-    replace: 'slotDue(event.scheduledTime, { minute: 50 })',
+    // 📉 2026-09-02: `*/5` 슬롯 배열은 제거됐다(전용 트리거와 중복 — 하루 110만 행). 이제 좌표는 전용 트리거의 분 목록.
+    find: "cron === '2,17,32,47 * * * *' ||",
+    replace: "cron === '2 * * * *' ||",
     test: 'src/tests/unit/backup-cadence.test.ts',
     why:
       '실측: cron 1회차가 약 12,500행이고 유어애즈 DB 는 약 754,000행이다. 시간당 1회면 **60시간** — ' +
@@ -4597,11 +4626,11 @@ canvas {
   {
     name: '백업 슬롯 분이 전용 트리거와 겹침(커서 동시 갱신)',
     file: 'src/worker/scheduled.ts',
-    find: '[5, 20, 35, 50].some',
+    find: "cron === '2,17,32,47 * * * *' ||", // 📉 2026-09-02: */5 슬롯 배열 제거 → 전용 트리거의 분이 */5 격자와 겹치는지로
     // 🩸 2026-08-25: 전용 트리거가 `*/15`(:00/…) → `2,17,32,47` 로 옮겨서 주입값도 :2 로 바꾼다.
     //   옛 `0` 은 이제 아무와도 안 겹쳐 **주입해도 초록**이 된다(= 이 가드가 헛돌게 된다).
-    replace: '[2, 20, 35, 50].some',
-    test: 'src/tests/unit/cron-schedule.test.ts',
+    replace: "cron === '5,17,32,47 * * * *' ||",
+    test: 'src/tests/unit/backup-cadence.test.ts',
     why:
       '`*/5` 폴백 슬롯(:05/:20/:35/:50)과 전용 `*/15`(:00/:15/:30/:45)이 같은 분에 겹치면 ' +
       '두 인보케이션이 **같은 백업 커서를 동시에 민다** — 청크가 어긋나 스냅샷이 조용히 깨진다.',

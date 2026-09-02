@@ -91,7 +91,20 @@ describe('호출부 — 조용히 다시 죽는 두 길', () => {
     // 배열 형태의 `{ minute: m }` 은 위에서 이미 펼쳤다 — 여기선 리터럴 숫자만 남긴다.
     .filter((o) => Number.isFinite(o.minute))
 
-  const specs = [...literalForm, ...arrayForm]
+  // 📉 2026-09-02: 다이어트 PR 이 시간·일 게이트를 `slotOpen({ … })`(= slotDue || catchupOpens 래퍼)로 넘긴다.
+  //   래퍼 호출부도 같은 격자 규칙(5의 배수)을 받아야 한다 — 안 보면 그 슬롯들이 검사 밖으로 나간다(위 배열 형태와 같은 함정).
+  const wrapperForm = [...code.matchAll(/slotOpen\(\s*\{([^}]*)\}/g)]
+    .map((m) => {
+      const o: Record<string, number> = {}
+      for (const kv of m[1].split(',')) {
+        const [k, v] = kv.split(':').map((s) => s.trim())
+        if (k) o[k] = Number(v)
+      }
+      return o
+    })
+    .filter((o) => Number.isFinite(o.minute))
+
+  const specs = [...literalForm, ...arrayForm, ...wrapperForm]
 
   it('호출부가 실제로 존재한다 — 0건이면 통과가 아니라 실패다', () => {
     expect(specs.length, 'slotDue 호출부를 하나도 못 찾았다(파일 구조가 바뀌었나?)').toBeGreaterThanOrEqual(4)

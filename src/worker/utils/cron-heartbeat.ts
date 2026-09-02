@@ -328,14 +328,16 @@ async function bumpCpuDeath(DB: D1Database, name: string): Promise<void> {
 export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[]> {
   try {
     const { results } = await DB.prepare(
-      "SELECT key, value FROM platform_settings WHERE key LIKE 'cron_hb:%'",
+      // 📉 2026-09-02: `LIKE 'cron_hb:%'` 는 BINARY PK 에서도 전수 스캔이다(case_sensitive_like OFF) —
+      //   uptime 프로브가 하루 144번 부른다. 같은 행을 PK 범위로 읽는다(':' 다음 문자가 ';').
+      "SELECT key, value FROM platform_settings WHERE key >= 'cron_hb:' AND key < 'cron_hb;'",
     ).all<{ key: string; value: string }>()
     // 🩸 사망 기록은 별도 키에 산다(하트비트는 매 회차 덮어써진다). 한 번 더 읽는 값어치가 있다 —
     //   이 화면의 '위험' 표시가 여기서 나오고, 없으면 벽시계로 추측하게 된다(그게 반대로 찍혔다).
     const deaths = new Map<string, { n: number; at: string | null }>()
     try {
       const d = await DB.prepare(
-        "SELECT key, value FROM platform_settings WHERE key LIKE 'cron_cpu_death:%'",
+        "SELECT key, value FROM platform_settings WHERE key >= 'cron_cpu_death:' AND key < 'cron_cpu_death;'",
       ).all<{ key: string; value: string }>()
       for (const r of d.results || []) {
         try {
