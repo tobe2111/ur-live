@@ -6676,6 +6676,28 @@ canvas {
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
   },
   {
+    name: '🚧 레인 진입 초크포인트가 사라진다(자기-체인이 차단기를 우회)',
+    file: 'src/worker-ads/index.ts',
+    find: "  const blocked = await laneEntryBlock(",
+    replace: "  const blocked = ''; void laneEntryBlock; if (false) await (async () => (",
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '2026-09-02 라이브 실측: 원장이 over=true 인데도 레인이 계속 돌았다(10:15 collect rr 85,130 · ' +
+      'collect-neis rw 40,004 · 10:24 enrich rr 194,610). 레인을 띄우는 길이 셋인데 게이트가 둘에만 ' +
+      '있었기 때문이다 — 자기-체인 SELF.fetch 는 부모 판단을 한 번도 안 거친다. 같은 구멍이 수동 정지 ' +
+      '스위치에도 있어, 대표가 껐다고 믿는 동안에도 체인이 돈다.',
+  },
+  {
+    name: '🚧 초크포인트가 원장을 늘 묻는다(면제·정지에서도 서브리퀘스트 낭비)',
+    file: 'src/worker-ads/lane-pause.ts',
+    find: '  if (pauseExempt(path)) return \'\'\n  if (lanesPaused(env)) return \'paused\'',
+    replace: '  const forced = await overFn(env)\n  if (pauseExempt(path)) return \'\'\n  if (lanesPaused(env)) return \'paused\'\n  void forced',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '원장 조회는 서브리퀘스트 1 이다. 면제 경로(관측)와 수동 정지에서까지 물으면 정지 중에도 ' +
+      '예산을 계속 태우고, 관측 창이 원장 장애에 함께 죽는다.',
+  },
+  {
     name: '✍️ 쓰기 예산이 게이트에서 빠진다(요금을 터뜨린 축이 다시 무방비)',
     file: 'src/worker-ads/index.ts',
     find: 'const paused = lanesPaused(env) || budgetBlocked(budget)',

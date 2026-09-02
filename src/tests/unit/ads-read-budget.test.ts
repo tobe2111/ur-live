@@ -20,6 +20,7 @@ import {
   resolveWriteBudget, writeBudgetOver, budgetBlocked, DEFAULT_DAILY_WRITE_BUDGET,
 } from '@/worker-ads/read-budget'
 import { ALARM_LANE_NAMES } from '@/worker-ads/lane-alarm-runners'
+import { laneEntryBlock, pauseExempt, PAUSE_EXEMPT_PATHS } from '@/worker-ads/lane-pause'
 
 const INDEX = readFileSync('src/worker-ads/index.ts', 'utf8')
 const ALARM = readFileSync('src/worker-ads/lane-alarm.ts', 'utf8')
@@ -217,5 +218,58 @@ describe('✍️ 쓰기 예산 — 요금을 터뜨린 축', () => {
   it('🔗 하트비트에 쓰기 축이 실린다 — 안 보이면 넘었는지 알 수 없다', () => {
     const f = budgetBeatFields({ day: '2026-09-02', used: 1, written: 2, budget: 3, writeBudget: 4, over: false, writeOver: true })
     expect(f).toMatchObject({ written: 2, wbudget: 4, wover: true })
+  })
+})
+
+/**
+ * 🚧 **레인 진입 초크포인트** (2026-09-02 라이브 실측으로 드러난 구멍).
+ *
+ * 차단기가 `over=true` 를 띄운 뒤에도 레인이 계속 돌았다 — 레인을 띄우는 길이 셋(cron `kick` ·
+ * DO 알람 · **자기-체인 `SELF.fetch`**)인데 게이트가 앞 둘에만 있었기 때문이다. 같은 구멍이
+ * 수동 정지 스위치(`ADS_LANES_PAUSED`)에도 있었다 — 껐다고 믿는 동안 체인은 돈다.
+ *
+ * ⚠️ 이 시험이 **못 막는 것**: 미들웨어가 실제로 Hono 요청에서 도는지(vitest 에서 워커를 못 올린다).
+ *    그건 아래 `🔗 배선` 의 소스 단언이 대신 본다 — 마운트 경로와 순서까지.
+ */
+describe('레인 진입 초크포인트 — 체인까지 막는다', () => {
+  const over = async () => true
+  const never = async () => { throw new Error('원장을 물으면 안 되는 자리에서 물었다(서브리퀘스트 낭비)') }
+
+  it('🚧 예산을 넘으면 레인 경로를 막는다 — 체인이 다시 들어와도', async () => {
+    expect(await laneEntryBlock('/__ads/collect-chain', {}, over)).toBe('budget')
+    expect(await laneEntryBlock('/__ads/enrich-influencer', {}, over)).toBe('budget')
+  })
+
+  it('🚧 수동 정지가 이기고, 그때는 원장을 묻지도 않는다', async () => {
+    expect(await laneEntryBlock('/__ads/collect', { ADS_LANES_PAUSED: 'true' }, never)).toBe('paused')
+  })
+
+  it('🚧 면제 경로는 통과하고 원장을 묻지 않는다 — 약속과 관측', async () => {
+    for (const p of ['/__ads/consented-reminder', '/__ads/inbound-onboarding', '/__ads/health', '/__ads/silence-digest']) {
+      expect(await laneEntryBlock(p, { ADS_LANES_PAUSED: 'true' }, never), p).toBe('')
+    }
+  })
+
+  it('🚧 멈춘 이유를 보는 창은 절대 막히면 안 된다', () => {
+    // 이걸 막으면 "멈춘 이유를 볼 수 없는 상태로 멈춘다" — 이 레포가 반복해 당한 모양이다.
+    for (const p of ['/__ads/health', '/__ads/alert-test', '/__ads/probe-public-data', '/__ads/silence-digest']) {
+      expect(pauseExempt(p), `${p} 가 면제에서 빠지면 정지 중 관측이 통째로 죽는다`).toBe(true)
+    }
+    expect(PAUSE_EXEMPT_PATHS.has('/__ads/collect'), '수집 레인이 면제로 새 들어오면 차단기가 무의미하다').toBe(false)
+  })
+
+  it('🚧 평시엔 통과한다 — 게이트가 늘 막으면 그건 정지지 차단기가 아니다', async () => {
+    expect(await laneEntryBlock('/__ads/collect', {}, async () => false)).toBe('')
+  })
+
+  it('🔗 배선 — `/__ads/*` 에, self-beat **뒤**에 붙어 있고, 200 으로 돌려준다', () => {
+    const beat = INDEX.indexOf("app.use('/__ads/*', selfBeatMiddleware())")
+    const gate = INDEX.indexOf('laneEntryBlock(')
+    expect(beat, 'self-beat 미들웨어 마운트를 못 찾았다(경로가 바뀌었나)').toBeGreaterThan(-1)
+    expect(gate, '초크포인트가 사라졌다 — 체인이 다시 예산을 태운다').toBeGreaterThan(-1)
+    expect(gate, '막힌 회차도 하트비트를 남겨야 침묵 감시가 죽음으로 오인하지 않는다').toBeGreaterThan(beat)
+    expect(INDEX.slice(gate - 400, gate), '초크포인트는 `/__ads/*` 전체에 걸려야 한다').toMatch(/app\.use\('\/__ads\/\*'/)
+    // 5xx 로 막으면 체인 부모가 실패로 읽고 재시도한다 — 그게 또 부하다.
+    expect(INDEX.slice(gate, gate + 400)).toMatch(/c\.json\(\{ ok: true, skipped: blocked \}\)/)
   })
 })
