@@ -83,7 +83,12 @@ export default function MapTopBar({
        지도 상단을 가로로 덮어(96px) 지도의 그 부분을 못 봤다. */
     <div className={panel
       ? 'hidden lg:block px-3 pt-3 pb-2.5 space-y-2 border-b border-gray-100 dark:border-[#2C2F35]'
-      : 'lg:hidden absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none'}>
+      /* 🏝️ 2026-09-03 (대표 신고 "글자가 또 하얘"): 오버레이는 **늘 밝은 표면**이라 `light-island`.
+         `light-fixed` 주석은 테마 가드를 면제할 뿐 **런타임엔 아무 일도 안 한다** — 전역 규칙
+         `.dark input:not(...)`(특이도 0,5,1)이 `text-gray-900`(0,1,0)을 이겨서, 흰 검색창에 친
+         글자가 다크에서 gray-100 이 됐다(실측 대비 1.1:1). 클래스 단위 유틸로는 절대 못 이긴다.
+         `light-island` 는 안쪽의 `dark:` 유틸을 끄고 전역 라이트 입력 규칙(!important)을 켠다. */
+      : 'light-island lg:hidden absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none'}>
       <div className={panel ? 'space-y-2' : 'ur-content-wide pointer-events-auto space-y-2'}>
         {/* ── Row 1: 흰 네모박스 검색바 ── */}
         <div className="flex items-center gap-2">

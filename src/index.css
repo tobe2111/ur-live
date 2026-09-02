@@ -436,7 +436,12 @@
 }
 /* 🏝️ 2026-09-02 `.light-island` — 배경이 테마와 무관하게 정해진 자리(홈 패널·지도 위). 안쪽의 모든 `dark:` 유틸이
    꺼진다(tailwind.config `darkMode: ['variant', '&:is(.dark *):not(.light-island *)']`). 위 force-light-theme 는
-   입력 글자만 지키고 `dark:` 유틸은 못 끄므로 둘은 다른 도구다. 지도 위 `light-fixed` 주석 방식보다 이쪽이 정본. */
+   입력 글자만 지키고 `dark:` 유틸은 못 끄므로 둘은 다른 도구다.
+   ⚠️ 2026-09-03 사고 — `light-fixed` 와 헷갈리지 말 것. `light-fixed` 는 **주석**이고 테마 가드를
+   면제할 뿐 **런타임엔 아무 일도 안 한다.** 지도 검색창이 그 주석만 달고 `light-island` 가 없어서,
+   다크에서 전역 `.dark input` 이 이겨 흰 배경에 흰 글자가 됐다(실측 대비 1.1:1, 대표 신고).
+   ⇒ **늘 밝은 표면에는 반드시 `light-island` 클래스를 붙인다.** 주석은 가드용 부표일 뿐이다.
+   회귀 감시: `scripts/check-dark-contrast.mjs` 가 실제 렌더에서 대비를 잰다. */
 .admin-light-theme input, .admin-light-theme textarea, .admin-light-theme select,
 .seller-light-theme input, .seller-light-theme textarea, .seller-light-theme select,
 .agency-light-theme input, .agency-light-theme textarea, .agency-light-theme select,
@@ -450,7 +455,8 @@
 .admin-light-theme input::placeholder, .admin-light-theme textarea::placeholder,
 .seller-light-theme input::placeholder, .seller-light-theme textarea::placeholder,
 .agency-light-theme input::placeholder, .agency-light-theme textarea::placeholder,
-.force-light-theme input::placeholder, .force-light-theme textarea::placeholder {
+.force-light-theme input::placeholder, .force-light-theme textarea::placeholder,
+.light-island input::placeholder, .light-island textarea::placeholder {
   color: #9aa0a6 !important;
   -webkit-text-fill-color: #9aa0a6 !important;
 }
@@ -459,7 +465,8 @@
 .admin-light-theme input:-webkit-autofill:focus,
 .seller-light-theme input:-webkit-autofill,
 .agency-light-theme input:-webkit-autofill,
-.force-light-theme input:-webkit-autofill {
+.force-light-theme input:-webkit-autofill,
+.light-island input:-webkit-autofill {
   -webkit-text-fill-color: #16181C !important;
   -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
   caret-color: #16181C;

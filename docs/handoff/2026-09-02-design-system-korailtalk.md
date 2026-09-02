@@ -79,3 +79,93 @@
 - `ur-btn-primary` 잉크 → 블루(어드민·에이전시도 함께) · SellerLayout 활성 블루 막대/로그아웃 중립/FAB 블루 · Kakao 배너 · MyStoresPanel STEP 티켓 · DashboardCard/StatCard 들림 · SellerPage amber 상자 제거 · 라이트 래퍼에 `--lift/--rule` 재선언.
 - 가드 `seller-dashboard-b.test.ts` 7건 + 매니페스트 2건. `check-dashboard-theme`/`dashboard-button-system`/`design-slop` GREEN. 하네스 `--route=/seller --pc --auth=seller` 확인.
 - 대표 확정 4건(유어샵·교환권·PC 마이·셀러) 전부 #1305 에 실림. 남은 것: CI → 머지 → 라이브 확인 → Notion.
+
+## PC 홈 히어로 — 사진과 흰 패널 사이 공백 제거 (2026-09-03)
+
+대표: *"히어로 사진과 아래 흰색 공간부분 간의 공백이 있는데 그걸 없애줘"*.
+`PcHomePage` 의 콘텐츠 래퍼가 `pt-4`(16px)를 갖고 있어 히어로 사진 밑단과 흰 패널 사이로 색면이 띠처럼 드러났다.
+히어로 사진은 `absolute inset-0` 이라 섹션 바닥 = 사진 바닥이므로 그 여백이 곧 빈 띠였다. `pt-4` 삭제 → 패널의
+둥근 윗모서리가 사진에 그대로 물린다. 모바일 홈(RestaurantMapPage)은 다른 컴포넌트라 무접촉.
+검증: 홈 계약 테스트 59건 pass · 하네스 PC 렌더로 눈 확인.
+
+### 히어로 컨트롤 시안 → **확정·구현 완료** (2026-09-03)
+대표: *"여기 버튼들도 시안 받아볼 수 있을까? 지금 AI 느낌 나서"* (전국 ⌄ / 현 위치로 설정 / 지도에서 가까운 딜 보기 → / 사진 속 딜 보기 →).
+진단 다섯: ① 같은 무게 알약 셋 연속(위계 0) ② 위치라는 한 가지 일이 두 알약으로 쪼개짐 ③ 아이콘 셋 연달아(전부 "위치" 뜻)
+④ 화살표 두 곳 ⑤ 주 행동에 브랜드 블루 없음(서비스 전체 규칙의 예외).
+시안 3안: **안1(추천)** 세그먼트 위치 알약 + 블루 주 버튼 · **안2** 흰 바 한 줄 + 블루 원형 · **안3** 위치를 부제 문장 안 밑줄 단어로.
+시안 아티팩트: https://claude.ai/code/artifact/7b435a49-6ad5-415e-90cc-04ec0e2090eb
+바꿀 파일: `src/pages/pc-home/PcHomeLocationBar.tsx`(hero tone) · `src/components/home/HomeHeroDefault.tsx`.
+⚠️ 같은 `LocationBar` 를 모바일 홈이 `tone="title"` 로 쓰므로 hero tone 만 건드릴 것.
+
+**대표 확정: "3 · 흰 면 · 한 단계 작게"** — 안1 구조(세그먼트 위치 알약 + 블루 주 버튼) 위에,
+위치 칩만 추가 시안 3안을 다시 받아 **흰 면 · 그림자 없음 · 높이 32(블루 38보다 한 단계 낮게)** 로 확정.
+
+구현(같은 PR #1323):
+- `PcHomeLocationBar.tsx` hero 분기 → 한 알약(`inline-flex items-stretch h-8 rounded-full overflow-hidden bg-white`)
+  안에 [지역 트리거][`w-px` 실선][현 위치 아이콘 버튼]. **`panel`/`title` tone 무접촉**, `현 위치로 설정`
+  문자열은 소스에 보존(`aria-label` + panel tone + `mobile-home.test.ts` 가 함께 본다).
+- `HomeHeroDefault.tsx` → 주 버튼 `h-[38px] bg-brand text-white` "지도에서 딜 찾기"(화살표·아이콘 0),
+  "사진 속 딜 보기 →" 는 사진 위 `absolute bottom-3 right-5` 로 이동, `ArrowRight/Map` import 제거.
+- 가드 `pc-home-hero-controls.test.ts` 6건 + 주입 3건(되돌려-검증 빨간불 확인).
+- 하네스 3종 확인: `--pc --deals`(사진 없음) · `--hero=<사진>`(사진 위 대비) · `--dark`.
+- 설계 SSOT: `docs/design/ticket-completion-reference-2026-09.md` §13.
+
+**다음 세션 첫 액션**: PR #1323 CI 초록 → 머지 → `main.yml` 배포 확인 →
+`curl -s https://urdeal.kr/ | grep -o '지도에서 딜 찾기'` 로 라이브 반영 판정 → Notion 개발 로그 1행.
+
+## 다크에서 안 보이는 글자 — 전수조사 (2026-09-03)
+
+대표: *"글자가 또 하얘. 이런 경우 지금 많은 것 같은데 전수조사 필요해"* (`urdeal.kr/map?q=부산` 검색창).
+
+**원인은 오타가 아니라 구조였다.** 전역 `.dark input:not(...)`(특이도 **0,5,1**)이
+`text-gray-900`(**0,1,0**)을 **언제나** 이긴다. 지도 코드는 맞게 썼는데 CSS 가 조용히 뒤집었다.
+게다가 지도에 달린 `light-fixed` 는 **주석**이라 `check-theme-consistency` 를 면제할 뿐
+**런타임엔 아무 일도 안 한다** — 가드는 초록인데 화면은 안 보이는 "조용한 부재".
+
+그리고 이건 **늘어날 수밖에 없는 구조**였다. 09-02 에 지도 위 UI·홈 패널을 "테마 무관 흰 면"으로
+바꿨는데 전역 다크 규칙은 여전히 "앱이 다크면 표면도 어둡다"를 전제한다. 대표 직관이 정확했다.
+
+### 🩸 이번에 틀렸던 판단 (다음 세션이 같은 길로 가지 말 것)
+
+**처음에 grep 으로 찾으려다 0건이 나왔다.** 같은 className 안에 밝은 분기와 어두운 분기가
+함께 있어서(`panel ? A : B`) 다른 분기의 `dark:text-` 때문에 통과했다. **특이도 싸움의 승자는
+브라우저만 안다** — 이 클래스는 정적 검사로 못 잡는다. 렌더해서 재야 한다.
+
+그리고 `grep dark:text-gray-600` 은 **192건**을 뱉었는데 대부분 정상이었다
+(`dark:bg-white dark:text-gray-900` = 흰 버튼 위 검은 글자). 실제 결함은 렌더 측정이 짚은 1건.
+
+### 한 일
+
+- **신규 가드 `scripts/check-dark-contrast.mjs`** — 17개 소비자 경로를 다크로 렌더해 보이는 모든
+  텍스트의 글자색 vs **실제 뒤 배경색**(투명하면 조상을 타고 올라감) WCAG 대비를 잰다.
+  입력은 값을 채워서, 시트/모달은 열어서 잰다. 양방향(밝은 위 밝음 · 어두운 위 어두움).
+  **측정 텍스트 200개 미만이면 통과가 아니라 실패**(헛도는 가드 방지). verify.yml strict + audit-gate.
+- **수리 2건**: 지도 오버레이 컨테이너에 `light-island`(1.1:1 → 정상) ·
+  `SiteFooter` 저작권 `dark:text-gray-600` → `-500`(2.4:1 → 정상).
+- **`light-island` 완성**: placeholder·autofill 규칙에 빠져 있던 것을 채웠다(색 규칙엔 이미 있었다).
+- 규칙 못박기: **늘 밝은 표면에는 `light-island` 클래스**. 주석은 부표일 뿐.
+- 가드 `light-island-inputs.test.ts` 5건 + 주입 매니페스트 3건(되돌려-검증 빨간불 확인).
+
+### 남은 것
+
+- 가드 경로 목록이 곧 검사 범위다(현재 17개). 새 소비자 화면을 만들면 `ROUTES` 에 추가할 것.
+- 못 보는 것: 사진/그라디언트 위 글자 · 호버/포커스 상태.
+- 장식(빈 별점·구분자·빈 상태 아이콘) `text-gray-300 dark:text-gray-600` 은 ~68곳 남아 있다.
+  **일부러 흐린 것이라 안 건드렸다** — 읽는 글자가 아니다. 도구가 나중에 그걸 신고하면
+  baseline `allow` 에 넣되, **읽는 글자는 절대 넣지 말 것**.
+
+### 🩸 이번에 또 틀린 것 — 브라우저 가드를 PR 게이트에 넣었다
+
+`check-dark-contrast` 를 `verify.yml` strict 로 넣었다가 되돌렸다. 두 가지가 틀렸다:
+
+1. **레포가 이미 정한 규칙을 어겼다.** `render-smoke.yml` 주석이 명시한다 —
+   *"PR 게이트로 승격하지 말 것. 브라우저·dev 서버를 띄우므로 느리고 환경에 민감하다.
+   간헐 실패가 머지를 막으면 가드를 꺼 버리게 된다."* `live-contracts.yml` 도 같은 판단이다.
+2. **어차피 빨간불이 됐을 것이다.** `verify.yml` 은 브라우저를 설치하지 않는다
+   (`npx playwright install` 은 `render-smoke.yml` 에만 있다). 인프라 이유로 머지가 막혔을 것이다.
+
+⇒ 전용 워크플로 `.github/workflows/dark-contrast.yml` 로 옮겼다(브라우저 설치 + build + 경로 필터,
+`workflow_dispatch` 로 손으로도 실행). audit-gate 등록은 유지(dist 없으면 skip).
+그리고 브라우저를 못 띄우면 **크게 소리내고 건너뛴다** — 조용한 통과는 "돌고 있다"는 착각을 만든다.
+
+**교훈**: 새 가드를 어디에 등록할지는 취향이 아니라 **이미 같은 성격의 가드가 어디 있는지**를 보고 정한다.

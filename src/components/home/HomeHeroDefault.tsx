@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Map } from 'lucide-react'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
 import { pickHeroPhotoFromSeedJson, type HeroPhotoPick } from '@/shared/home-hero-photo'
@@ -172,22 +171,31 @@ export default function HomeHeroDefault({
               locatedLabel={controls.locatedLabel}
             />
           )}
+          {/* 🎫 2026-09-03 (대표 확정 — 히어로 컨트롤 안 1): 고스트 아웃라인 → **브랜드 블루 면 하나**.
+              종전엔 위치 칩 둘과 이 버튼이 전부 같은 반투명 테두리 알약이라, 화면이 무엇을 먼저 누르라고
+              말하지 않았다(대표 "AI 느낌"). 서비스 전체가 쓰는 규칙(주 버튼은 블루)을 이 히어로에도 적용한다.
+              아이콘과 화살표를 뺀 이유: 왼쪽 칩에 이미 핀·조준 둘이 있어 아이콘이 셋 연달았고, 색을 채운
+              버튼은 그 자체가 "여기를 눌러라"라서 화살표가 같은 말을 두 번 한다. */}
           <Link
             to="/map"
-            className="inline-flex items-center gap-1.5 shrink-0 px-5 py-2 rounded-full border border-white/45 text-white text-[13px] font-bold tracking-wide hover:bg-white hover:text-[var(--home-field)] transition-colors"
+            className="inline-flex items-center shrink-0 h-[38px] px-5 rounded-full bg-brand text-white text-[13.5px] font-extrabold hover:bg-[#1557C8] transition-colors shadow-[0_6px_18px_-8px_rgba(28,105,239,0.9)]"
           >
-            <Map className="w-4 h-4" strokeWidth={2} aria-hidden="true" />
-            지도에서 가까운 딜 보기
-            <ArrowRight className="w-4 h-4" strokeWidth={2.2} aria-hidden="true" />
+            지도에서 딜 찾기
           </Link>
-          {/* 사진이 실제 딜이면 그 딜로 가는 통로를 남긴다(사진만 있고 갈 곳이 없으면 장식이 된다). */}
-          {hasMedia && photoHref !== '/map' && (
-            <Link to={photoHref} className="text-[12.5px] font-bold text-white/60 hover:text-white transition-colors">
-              사진 속 딜 보기 →
-            </Link>
-          )}
         </div>
       </div>
+
+      {/* 🖼️ 2026-09-03 (안 1): 컨트롤 행에 있던 "사진 속 딜 보기"를 **사진 오른쪽 아래**로 옮겼다.
+          왼쪽 글자 뭉치 옆에 있으면 무엇을 가리키는 말인지 알 수 없고, 주 버튼 옆에서 화살표를 하나 더
+          만들었다. 사진 위에 있으면 설명이 필요 없다. 사진이 실제 딜일 때만 — 갈 곳이 없으면 장식이다. */}
+      {hasMedia && photoHref !== '/map' && (
+        <Link
+          to={photoHref}
+          className="absolute z-20 bottom-3 right-5 text-[12px] font-bold text-white/70 hover:text-white transition-colors drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]"
+        >
+          사진 속 딜 보기 →
+        </Link>
+      )}
     </section>
   )
 }
