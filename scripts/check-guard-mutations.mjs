@@ -88,6 +88,30 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🗺️ 미니맵 관측 여백이 300px 로 돌아가 폰 첫 화면에서 지도 SDK 가 히어로와 동시에 내려온다',
+    file: 'src/components/RestaurantMiniMap.tsx',
+    find: "      { rootMargin: '120px' },",
+    replace: "      { rootMargin: '300px' },",
+    test: 'src/tests/unit/loading-followups-2026-09-02.test.ts',
+    why: '2026-09-02 클릭 프로브: SDK 0.28초 · 타일 1.3초 — 히어로 사진과 같은 순간이었다.',
+  },
+  {
+    name: '🗺️ 미니맵이 교차 즉시 SDK 를 불러 idle 지연이 사라진다',
+    file: 'src/components/RestaurantMiniMap.tsx',
+    find: '          if (e.isIntersecting) {\n            arm()\n',
+    replace: '          if (e.isIntersecting) {\n            setShouldLoadSdk(true)\n',
+    test: 'src/tests/unit/loading-followups-2026-09-02.test.ts',
+    why: '2026-09-02: 교차 판정과 SDK 호출 사이에 idle 을 두어야 히어로가 대역폭을 먼저 쓴다.',
+  },
+  {
+    name: '📈 vitals 표본율이 1% 로 돌아가 실사용자 LCP 가 다시 하루 1건이 된다',
+    file: 'src/worker/routes/analytics.routes.ts',
+    find: 'const VITALS_SAMPLE_RATE = 0.25\n',
+    replace: 'const VITALS_SAMPLE_RATE = 0.01\n',
+    test: 'src/tests/unit/loading-followups-2026-09-02.test.ts',
+    why: '2026-09-02 실측: 4일간 LCP 표본 0 — 표본율 1% 로는 실사용자 판정이 불가능했다.',
+  },
+  {
     name: '🏠 홈 청크 규칙에서 components/home 이 빠져 app-components 281KB 가 홈 preload 로 돌아온다',
     file: 'vite.config.ts',
     find: "            id.includes('/src/components/home/') || id.includes('/src/pages/pc-home/PcHomeLocationBar') ||\n",

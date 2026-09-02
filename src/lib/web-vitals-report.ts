@@ -39,12 +39,19 @@ export function reportWebVitals(): void {
       lcpValue = last.renderTime || last.loadTime || last.startTime
     })
     lcpObs.observe({ type: 'largest-contentful-paint', buffered: true })
-    addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden' && lcpValue > 0) {
-        send('LCP', lcpValue, page)
-        lcpObs.disconnect()
-      }
-    }, { once: true })
+    // 📈 2026-09-02: LCP 를 `visibilitychange→hidden` 에만 보내면 카카오 인앱/사파리처럼 그 이벤트가 안 오는
+    //   환경에서 **영영 안 보낸다**(실측: 4일간 LCP 표본 0, TTFB 만 있었다). `pagehide` 와 로드 후 10초 폴백을 더한다
+    //   — LCP 는 첫 입력/스크롤 뒤 확정되므로 10초면 최종값이다. 한 번만 보낸다(`sent` 가드).
+    let sent = false
+    const flush = () => {
+      if (sent || lcpValue <= 0) return
+      sent = true
+      send('LCP', lcpValue, page)
+      lcpObs.disconnect()
+    }
+    addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush() }, { once: true })
+    addEventListener('pagehide', flush, { once: true })
+    setTimeout(flush, 10000)
   } catch { /* unsupported */ }
 
   // CLS — visibilitychange 시점 누적값

@@ -50,26 +50,46 @@ export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, h
   const [shouldLoadSdk, setShouldLoadSdk] = useState(false)
 
   // IntersectionObserver — viewport 진입 시 shouldLoadSdk=true
+  /**
+   * 🗺️ 2026-09-02 [UNLOCK_LOADING] (대표 "모두 다 진행" — 로딩 후속 ④): **히어로 사진과 같은 순간에 지도를 받지 않는다.**
+   *
+   * 클릭 프로브 실측(iPhone 에뮬, 홈 카드 탭 → 상세): 카카오 지도 SDK 가 **0.28초**, 타일 6장이 **1.3초**에 내려왔다 —
+   * 히어로 사진이 아직 오는 중인 바로 그 시간이다. 이유는 둘: ① 폰에서 지도 칸이 첫 화면 바로 아래(매장 정보 밑)라
+   * `rootMargin: 300px` 면 마운트 즉시 교차 판정 ② 교차하자마자 SDK 를 불렀다.
+   * ⇒ 여백을 120px 로 줄이고, 교차해도 **브라우저가 한가할 때**(`requestIdleCallback`, 최대 2.5초 대기) 부른다.
+   *   지도는 사용자가 내려와야 보는 것이라 이 지연은 체감 0 이고, 히어로가 먼저 대역폭을 다 쓴다.
+   * ⚠️ lazy 자체(스크롤 안 오면 SDK 0 fetch)는 그대로다 — 잠금표의 보호 대상은 이 구조이고 여기선 강화만 했다.
+   */
   useEffect(() => {
     const el = containerRef.current
     if (!el || typeof IntersectionObserver === 'undefined') {
       setShouldLoadSdk(true)  // 미지원 환경 fallback — 즉시 load
       return
     }
+    let idle: number | undefined
+    const arm = () => {
+      const run = () => setShouldLoadSdk(true)
+      if (typeof requestIdleCallback === 'function') idle = requestIdleCallback(run, { timeout: 2500 })
+      else idle = window.setTimeout(run, 600)
+    }
     const obs = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
           if (e.isIntersecting) {
-            setShouldLoadSdk(true)
+            arm()
             obs.disconnect()
             break
           }
         }
       },
-      { rootMargin: '300px' },  // viewport 300px 이전부터 load
+      { rootMargin: '120px' },  // viewport 120px 이전부터(300 은 폰 첫 화면에서 즉시 발화했다)
     )
     obs.observe(el)
-    return () => obs.disconnect()
+    const cleanup = () => {
+      obs.disconnect()
+      if (idle != null) { if (typeof cancelIdleCallback === 'function') cancelIdleCallback(idle); else clearTimeout(idle) }
+    }
+    return cleanup
   }, [])
 
   // SDK 로드 + 좌표 변환 (필요 시) — viewport 진입 후만 동작
