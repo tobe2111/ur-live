@@ -21,6 +21,13 @@ export const INDEX_REPAIRS: Array<{ name: string; sql: string }> = [
   //   지배적 쿼리 형태가 `WHERE product_id = ? AND is_visible = 1 ORDER BY created_at DESC` 라
   //   그대로 담는다 — 정렬까지 인덱스가 받아 임시 B-트리도 사라진다.
   { name: 'idx_product_reviews_product', sql: `CREATE INDEX IF NOT EXISTS idx_product_reviews_product ON product_reviews(product_id, is_visible, created_at DESC)` },
+  // 📉 **요청 경로 2건** (2026-09-02 정적 감사 §2-2 — `docs/handoff/2026-09-02-d1-read-diet.md`).
+  //   · products(price) WHERE deal_only=1 AND is_active=1 — `/vouchers` SSR 시드·5분 예열이 치는 `deal_only=1 ORDER BY price LIMIT 21`.
+  //     부분 인덱스면 가격순으로 걷다 21건에서 멈춘다(전수 정렬 → 수십 행). created_at DESC 는 기본 정렬(newest) 짝.
+  //   ⚠️ 실측 전 추가(D1 이 죽어 있어 rows_read 를 못 쟀다) — products 는 ~3천 행·쓰기 드묾이라 인덱스 비용은 무시할 수준.
+  //     효과 판정은 배포 후 `D1_PROFILE_ENABLED` 로.
+  { name: 'idx_products_deal_price', sql: `CREATE INDEX IF NOT EXISTS idx_products_deal_price ON products(price) WHERE deal_only = 1 AND is_active = 1` },
+  { name: 'idx_products_deal_created', sql: `CREATE INDEX IF NOT EXISTS idx_products_deal_created ON products(created_at DESC) WHERE deal_only = 1 AND is_active = 1` },
   // 📨 **알림톡 재시도 큐** (2026-09-02 정적 감사). `alimtalk_failures` 는 인덱스가 하나도 없는데 5분 cron 이
   //   `resolved=0 AND next_retry_at<=now` 를 288회/일 묻는다. 형제 큐(email/push_failures)는 같은 모양의
   //   `(resolved, next_retry_at)` 를 이미 갖고 있다 — 빠진 쪽만 맞춘다.

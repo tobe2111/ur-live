@@ -1107,6 +1107,7 @@ app.get('/health', (c) => c.json({
 //   재발 방지: 30일 후 (2026-05-27) 이 endpoint 제거 — TECHNICAL_DEBT.md 참조.
 //   (2026-04-27 TD-006 split): 별도 라우터 파일로 분리.
 app.route('/', killerSwRoutes);
+app.use('/sitemap.xml', publicCache(3600)); // 📉 2026-09-02: 크롤러·uptime 프로브 fetch 마다 D1 4쿼리(~1,300행 + 지역 집계 전수) → 1h 엣지(키에 호스트 포함 — 도매/소비자 안 섞임)
 app.route('/', sitemapRoutes);
 // 📝 2026-07-01 블로그 SEO 보조 — /blog/og/:slug(공유 배너 SVG) · /blog/rss(피드). SPA fallback 전에 등록.
 app.route('/', blogSeoRoutes);
@@ -1499,7 +1500,7 @@ app.use('/api/fcfs/active', publicCache(30), cacheControl(30));
 //   → 두 번째 사용자부터는 0ms (edge hit), 첫 사용자만 D1 cold-start (KV cache 도 함께 작동).
 app.use('/api/group-buy/products', publicCache(300), cacheControl(300, 1800)); // 5min fresh + 30min SWR
 // 🛡️ 2026-05-15: 공구 detail (개별) 30초 — group_buy_current 자주 바뀌지만 stale-while-revalidate 가 사용성 보존
-app.use('/api/group-buy/products/*', publicCache(30), cacheControl(30));
+app.use('/api/group-buy/products/*', publicCache(120), cacheControl(120)); // 📉 2026-09-02: 30→120 — 상세 슬롯 TTL 이 가장 짧아 크롤러(sitemap 상세 500건)가 3분 뒤 재방문마다 콜드 D1. 참여자 수는 아래 participants(60s)·클라 폴링이 따로 본다
 // 참여자 마스킹 리스트 — 1분 (자주 바뀌지만 prv 정보 X — 이름은 이미 마스킹됨)
 app.use('/api/group-buy/products/*/participants', publicCache(60), cacheControl(60));
 app.use('/api/group-buy/live-ticker', publicCache(30), cacheControl(30));
@@ -2438,9 +2439,8 @@ app.get('*', async (c) => {
     if (sellerMatch) {
       const param = sellerMatch[2];
       const isNum = /^\d+$/.test(param);
-      const s = isNum
-        ? await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE id = ?').bind(param).first<any>()
-        : await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE slug = ? OR username = ?').bind(param, param).first<any>();
+      // 📉 2026-09-02: 종전 `slug = ? OR username = ?` — sellers 에 `slug` 컬럼이 없어 늘 예외→catch→기본 OG 였다(스키마 가드가 잡음). username 점 조회 하나로.
+      const s = isNum ? await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE id = ?').bind(param).first<any>() : await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE username = ?').bind(param).first<any>();
       if (s) {
         og.title = `${s.name} - 유어딜`;
         og.desc = s.bio?.slice(0, 200) || `${s.name}의 스토어 - 유어딜`;
