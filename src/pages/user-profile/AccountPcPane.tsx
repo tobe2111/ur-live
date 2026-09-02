@@ -69,7 +69,6 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
   ]
   const tiles = [
     { Icon: BedDouble, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), path: '/my-stays' },
-    { Icon: BookOpen, label: t('shopping.digitalLibrary', { defaultValue: '디지털 보관함' }), path: '/my/digital' },
     { Icon: Star, label: t('shopping.myFollows', { defaultValue: '내 단골 가게' }), path: '/my/follows' },
     { Icon: Heart, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), path: '/wishlist', count: counts.wish ?? undefined },
   ]

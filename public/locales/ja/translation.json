@@ -2279,8 +2279,8 @@
       "categoryTitle": "クーポンカテゴリ",
       "categoryMeal": "食事券",
       "categoryMealDesc": "レストラン·カフェ",
-      "categoryBeauty": "ビューティー券",
-      "categoryBeautyDesc": "ヘア·ネイル·スキンケア",
+      "categoryBeauty": "ビューティー・フィットネス券",
+      "categoryBeautyDesc": "ヘア·ネイル·スキンケア·PT·ヨガ",
       "categoryHealth": "ヘルス券",
       "categoryHealthDesc": "PT·ヨガ·ピラティス",
       "categoryPet": "Pet voucher",
@@ -2288,7 +2288,9 @@
       "categoryStay": "Stay voucher",
       "categoryStayDesc": "Pension, hotel, motel",
       "categoryActivity": "Activity voucher",
-      "categoryActivityDesc": "Escape room, bowling, class"
+      "categoryActivityDesc": "Escape room, bowling, class",
+      "categoryEtc": "その他の券",
+      "categoryEtcDesc": "ペット·アクティビティ·クラス"
     },
     "gift": {
       "title": "ギフトを送る",
@@ -4564,7 +4566,11 @@
     "detail": "詳細",
     "itemCount": "{{count}}個",
     "moreItems": "他{{count}}件",
-    "itemQtyPrice": "{{qty}}個 · {{price}}円"
+    "itemQtyPrice": "{{qty}}個 · {{price}}円",
+    "kindGroupbuy": "利用券",
+    "emptyGroupbuyTitle": "利用券の購入履歴がありません",
+    "useInMyVouchers": "「マイ利用券」でご利用ください",
+    "useInMyGifticons": "「マイ交換券」でご利用ください"
   },
   "welcomeOnboarding": {
     "skip": "スキップ",
@@ -5253,7 +5259,9 @@
     "save": "保存",
     "ariaToggleOn": "{{label}}をオン",
     "ariaToggleOff": "{{label}}をオフ",
-    "language": "言語"
+    "language": "言語",
+    "phoneRequired": "電話番号を入力してください — 交換券・通知はこの番号に届きます",
+    "phoneInvalid": "電話番号の形式をご確認ください (010-0000-0000)"
   },
   "productDetail": {
     "retry": "もう一度試す",
@@ -6046,7 +6054,8 @@
     "preparing": "[TODO:ja] 배송준비",
     "shipping": "[TODO:ja] 배송중",
     "delivered": "[TODO:ja] 배송완료",
-    "review": "[TODO:ja] 리뷰"
+    "review": "[TODO:ja] 리뷰",
+    "cancelledRefunded": "キャンセル・返金"
   },
   "groupBuy.title": "Group Buy",
   "groupBuy.bannerHeadline": "Better prices, together",
@@ -6790,5 +6799,12 @@
   "frameRails": {
     "valShop": "自分の利用券棚、UrShop",
     "valShopDesc": "登録すればもう開いています"
+  },
+  "voucherStatus": {
+    "sectionTitle": "利用券の状況",
+    "bought": "購入済み",
+    "usable": "利用可能",
+    "used": "利用済み",
+    "gone": "期限切れ・返金"
   }
 }

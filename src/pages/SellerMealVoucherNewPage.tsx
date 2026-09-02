@@ -17,6 +17,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Utensils, CheckCircle, ChevronLeft, ChevronRight, Save } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { kstInputToUTC } from '@/utils/date'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { SELLER_PROMO_FIELD_ENABLED } from '@/shared/feature-flags'
 import SellerLayout from '@/components/SellerLayout'
@@ -81,6 +82,7 @@ export default function SellerMealVoucherNewPage() {
           voucher_terms: str(src.voucher_terms),
           stock: num(src.stock) || f.stock,
           // 마감(group_buy_deadline)/만료(voucher_expiry)는 기본값 유지 — 새 공구 기준 재계산.
+          //   (그래서 여기서는 utcToKstInput 이 필요 없다 — 값을 물려받지 않는다.)
         }))
         toast.success(t('seller.groupBuy.copyLoaded', { defaultValue: '이전 공구 내용을 불러왔어요 — 날짜만 확인하고 발행하세요!' }))
       })
@@ -222,7 +224,9 @@ export default function SellerMealVoucherNewPage() {
         voucher_terms: form.voucher_terms || null,
         // 🎯 목표 인원 입력 제거(2026-08-23) — 즉시판매 단일가 모델이라 항상 0(=바로 판매).
         group_buy_target: 0,
-        group_buy_deadline: form.group_buy_deadline || null,
+        // 🕐 2026-09-02: 칸은 KST 벽시계, 저장은 UTC — 경계에서 한 번만 바꾼다(SSOT `utils/date`).
+        //   종전엔 datetime-local 값을 그대로 보내 서버가 UTC 로 읽어 **마감이 9시간 늦게** 걸렸다.
+        group_buy_deadline: kstInputToUTC(form.group_buy_deadline) || null,
         store_verify_pin: form.store_verify_pin || null,
         external_booking_url: form.external_booking_url || null,
         // 지역 자동 파싱 — restaurant_address 첫 단어 = region_si.

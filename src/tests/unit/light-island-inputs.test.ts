@@ -49,7 +49,12 @@ describe('늘 밝은 표면 = light-island (2026-09-03)', () => {
 
   it('④ tailwind darkMode variant 의 light-island 예외가 살아 있다', () => {
     // 이게 빠지면 섬 안의 dark: 유틸이 다시 켜져 흰 면이 남색이 된다.
-    expect(TW).toMatch(/darkMode:\s*\['variant',\s*'&:is\(\.dark \*\):not\(\.light-island \*\)'\]/)
+    // ⚠️ 문자열 전체를 고정하지 않는다 — 같은 variant 에 형제 예외(:not(.seller-light-theme *) 등)가
+    //    나중에 붙을 수 있고, 그건 이 섬의 계약을 깨지 않는다. 계약만 본다.
+    const variant = (TW.match(/darkMode:\s*\[[^\]]*\]/) || [''])[0]
+    expect(variant).toContain("'variant'")
+    expect(variant).toContain('&:is(.dark *)')
+    expect(variant).toContain(':not(.light-island *)')
   })
 
   it('⑤ light-fixed 가 런타임 장치가 아니라는 경고가 CSS 에 남아 있다', () => {

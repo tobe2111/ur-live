@@ -100,7 +100,6 @@ const EXTERNAL_PROXY_HOSTS = new Set([
   //   목록에 없으면 `cfImage` 가 원본 URL 을 그대로 돌려줘 **리사이저를 아예 안 거친다**(홈 한 화면에서 5장 실측).
   //   활성 상품 15개(커버 4 · 갤러리 11)가 이 상태였다. 아래 둘은 cf-resized 실측 통과 → CDN_CGI_VERIFIED 승격.
   'cloudfront.net',           // 실측 internal=ok (d2uja84sd90jmv / d12zq4w4guyljn, w200/400/600)
-  'digitaloceanspaces.com',   // thx2.sfo2.cdn.digitaloceanspaces.com
   'gift-img.kt.com',
   'image.kt.com',
   'static.kt.com',
@@ -298,33 +297,25 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   ⚠️ 2026-06-11 에 kakaocdn 이 cdn-cgi 직결로 깨진 적이 있는데, 그때는 `onerror=redirect`
       //   안전판이 없었다(2026-07-02 도입). 지금은 리사이저가 실패하면 원본으로 302 → 현행과 동일 →
       //   최악의 경우 다운사이드 0. 핫링크 차단 호스트는 위 HOTLINK_BLOCKED_HOSTS 가 먼저 걸러 낸다.
-      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com', 'kakaocdn.net', 'daumcdn.net', 'cloudfront.net', 'digitaloceanspaces.com']  // giftishow 2026-07-13 재실측 복원 · kakao/daum 2026-08-19 · cloudfront/DO-spaces 2026-09-02 실측 승격(전부 onerror=redirect 안전판)
+      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com', 'kakaocdn.net', 'daumcdn.net', 'cloudfront.net']  // giftishow 2026-07-13 재실측 복원 · kakao/daum 2026-08-19 · cloudfront 2026-09-02 실측 승격(DO-spaces 는 403 이라 승격 철회)(전부 onerror=redirect 안전판)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
         return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect${cropFrag(opts)}/${cdnCgiSafe(src)}`
       }
       return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
     }
-    // 🕳️ 2026-09-02 [UNLOCK_LOADING] (대표 "QA 도와줘" 실측 → "그것도 다 진행해줘, 가장 이상적으로"):
-    //   **여기가 구멍이었다.** 목록에 없는 외부 호스트는 원본 URL 을 그대로 돌려줘 리사이저를 아예 안 거쳤다
-    //   (라이브 홈 한 화면에서 5장 — cdn-cgi 요청 자체가 0). 데모 사진 출처가 카카오 플레이스라 임의 CDN 이
-    //   섞이므로 **호스트 목록은 원리상 계속 샌다** — 승격은 사후약방문이고, 기본값을 고쳐야 닫힌다.
-    //
-    //   ⚖️ 왜 안전한가(세 경우가 전부 현행과 같거나 낫다):
-    //     ① 리사이저가 원본을 받을 수 있다 → **리사이즈됨**(실측 1MB급 → 수십 KB). 이득.
-    //     ② 리사이저가 못 받는다 → `onerror=redirect` 로 원본 302 → 브라우저가 원본 로드 = **현행과 동일**
-    //        (대가는 리다이렉트 한 홉. 2026-07-02 에 이 안전판을 도입한 이유가 정확히 이 클래스다).
-    //     ③ 원본을 브라우저도 못 받는다(referer 차단 등) → 오늘도 깨져 있다 = 동일. 단 그 클래스는 위
-    //        `HOTLINK_BLOCKED_HOSTS`(이제 모듈 스코프)가 먼저 워커 프록시로 빼돌려 **오히려 개선**된다.
-    //   ⚠️ 2026-06-11 카카오 프로필 깨짐 사고는 `onerror=redirect` **도입 전**이었다 — 그때의 실패 모드는
-    //      지금 ②로 흡수된다. 그래서 이 기본값 전환이 그 사고의 재발이 아니다.
-    if (!isSupported && !isExternalProxyable) {
-      const w = opts.width || 400
-      const q = opts.quality || 85
-      if (HOTLINK_BLOCKED_HOSTS.some(h => host === h || host.endsWith('.' + h))) {
-        return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
-      }
-      return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect${cropFrag(opts)}/${cdnCgiSafe(src)}`
-    }
+    // 🩸 2026-09-02 **되돌림 — 내 안전 논리가 틀렸다(라이브 실측이 반증)**.
+    //   같은 날 이 자리를 `cdn-cgi + onerror=redirect` 로 바꿨다. 근거는 "리사이저가 실패해도 `onerror=redirect`
+    //   가 원본으로 302 → 최악이 현행과 동일" 이었는데, **이 존에서 그 폴백은 일어나지 않는다**:
+    //     `/cdn-cgi/image/…,onerror=redirect/<막는 호스트>` → **HTTP 403 · `cf-resized: err=9408`** (302 아님)
+    //     검증 호스트(cloudfront)의 **없는 경로**로 시험해도 동일하게 403 — 즉 URL 이 아니라 폴백 자체가 안 돈다.
+    //   ⇒ 미지 호스트를 cdn-cgi 로 보내면, CF 를 막는 호스트의 사진이 **원본이면 보였을 자리에서 깨진다**
+    //     (카드는 `cfImageOnError` 가 원본으로 되돌려 살아나지만, 상세 갤러리는 감시 <img> 가 죽은 것으로 표시해
+    //     그 사진을 목록에서 빼 버린다 — 사용자에겐 사진이 사라진 것으로 보인다).
+    //   ⇒ 기본값은 **원본 유지**. 승격은 `cf-resized: internal=ok` 를 실측한 호스트만(그게 이 파일의 원래 규율이고,
+    //     내가 그 규율을 지키지 않아 `digitaloceanspaces.com` 을 미실측 승격했다가 403 을 만들었다).
+    //   ⚠️ 이 파일의 다른 주석에 남아 있는 "onerror=redirect … 최악의 경우 다운사이드 0" 도 **같은 이유로 과장**이다.
+    //     검증 호스트에서는 실패 경로 자체가 안 일어나 지금까지 드러나지 않았을 뿐이다.
+    if (!isSupported && !isExternalProxyable) return src  // 미지원 도메인 → 원본
   }
 
   const params: string[] = []

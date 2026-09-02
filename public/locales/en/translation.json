@@ -2280,8 +2280,8 @@
       "categoryTitle": "Voucher Category",
       "categoryMeal": "Meal Voucher",
       "categoryMealDesc": "Restaurant·Cafe",
-      "categoryBeauty": "Beauty Voucher",
-      "categoryBeautyDesc": "Hair·Nails·Skincare",
+      "categoryBeauty": "Beauty & Fitness Voucher",
+      "categoryBeautyDesc": "Hair·Nails·Skin·PT·Yoga",
       "categoryHealth": "Health Voucher",
       "categoryHealthDesc": "PT·Yoga·Pilates",
       "categoryPet": "Pet voucher",
@@ -2289,7 +2289,9 @@
       "categoryStay": "Stay voucher",
       "categoryStayDesc": "Pension, hotel, motel",
       "categoryActivity": "Activity voucher",
-      "categoryActivityDesc": "Escape room, bowling, class"
+      "categoryActivityDesc": "Escape room, bowling, class",
+      "categoryEtc": "Other Voucher",
+      "categoryEtcDesc": "Pets·Activities·Classes"
     },
     "gift": {
       "title": "Send a Gift",
@@ -4564,7 +4566,11 @@
     "detail": "Details",
     "itemCount": "{{count}} items",
     "moreItems": "and {{count}} more",
-    "itemQtyPrice": "{{qty}} × {{price}} KRW"
+    "itemQtyPrice": "{{qty}} × {{price}} KRW",
+    "kindGroupbuy": "Passes",
+    "emptyGroupbuyTitle": "No pass purchases yet",
+    "useInMyVouchers": "Use it in My Passes",
+    "useInMyGifticons": "Use it in My Gift Vouchers"
   },
   "welcomeOnboarding": {
     "skip": "Skip",
@@ -5253,7 +5259,9 @@
     "save": "Save",
     "ariaToggleOn": "Turn on {{label}}",
     "ariaToggleOff": "Turn off {{label}}",
-    "language": "Language"
+    "language": "Language",
+    "phoneRequired": "Enter your phone number — vouchers and alerts are sent there",
+    "phoneInvalid": "Check the phone number format (010-0000-0000)"
   },
   "productDetail": {
     "retry": "Retry",
@@ -6099,7 +6107,8 @@
     "preparing": "[TODO:en] 배송준비",
     "shipping": "[TODO:en] 배송중",
     "delivered": "[TODO:en] 배송완료",
-    "review": "[TODO:en] 리뷰"
+    "review": "[TODO:en] 리뷰",
+    "cancelledRefunded": "Cancelled/Refunded"
   },
   "stays": {
     "searchTitle": "🏨 Stay Vouchers",
@@ -6790,5 +6799,12 @@
   "frameRails": {
     "valShop": "Your pass showcase, UrShop",
     "valShopDesc": "It's already open when you sign up"
+  },
+  "voucherStatus": {
+    "sectionTitle": "My Passes",
+    "bought": "Purchased",
+    "usable": "Available",
+    "used": "Used",
+    "gone": "Expired/Refunded"
   }
 }

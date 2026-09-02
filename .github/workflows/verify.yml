@@ -271,6 +271,15 @@ jobs:
         run: node scripts/check-duplicate-routes.mjs -s
         continue-on-error: false
 
+      # 🕳️ 2026-09-02: 위 가드는 **같은 경로 문자열**만 본다. Hono 는 등록 순서로 매칭하므로
+      #   `/:id` 가 먼저면 그 뒤의 `/support-contact` 는 id="support-contact" 로 잡혀 **영원히 400**.
+      #   문자열이 달라 중복 가드가 못 잡는다. 라이브 실측으로 3곳이 죽어 있었다 —
+      #   `/api/group-buy/stays/my-bookings`(내 숙소 예약 화면이 통째로 실패) ·
+      #   `/api/curator/recommendations` · `/api/seller/gb/support-contact`. 예외 `route-shadow-ok`.
+      - name: 라우트 그림자 차단 (strict)
+        run: node scripts/check-route-shadowing.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-08-01: 라우트를 달아도 **누를 데가 없으면 없는 것과 같다.** 같은 클래스로
       #   이미 세 번 났다(랜딩 가려짐 / `GET /api/returns/seller` 소비화면 0건 / O9 구현 0).
       #   실측: 정적 라우트 361 중 21개가 소스 어디에도 문자열로 안 나온다 —
