@@ -242,3 +242,30 @@ describe('③-c 승인 대기 매장을 세면 게이트만 열리고 좌석은 
     expect(STEP).toContain('승인 대기')
   })
 })
+
+describe('①-b 행이 만들어진 뒤의 실패는 "등록 실패" 가 아니다 (재시도하면 중복만 생긴다)', () => {
+  const SRC = read('src/features/seller/api/seller-stores.routes.ts')
+  const post = SRC.slice(SRC.indexOf("app.post('/stores'"))
+
+  /**
+   * `setSellerMeta`·`grantOperator` 는 가드가 없어 하나라도 던지면 바깥 catch 가
+   * "매장 등록 중 오류" 를 낸다 — 그런데 `sellers` 행은 **이미 있다.** 사용자는 실패로 알고
+   * 다시 누르고, ①의 UNIQUE 버그를 고치고 나면 그 재시도가 **성공해서 같은 가게가 두 번** 등록된다.
+   */
+  it('메타 저장 실패가 매장 등록을 되돌리지 않는다', () => {
+    expect(post, 'setSellerMeta 는 fail-soft 여야 한다 — 좌표가 없다고 매장을 버릴 이유가 없다')
+      .toMatch(/\}\)\.catch\(\(\) => \{ \/\* 메타 실패/)
+  })
+
+  it('권한 연결은 한 번 더 시도한다 — 실패하면 아무도 그 매장에 못 들어간다', () => {
+    const grants = post.match(/grantOperator\(c\.env\.DB, newSellerId/g) || []
+    expect(grants.length, 'linked_user_id 를 비워 두는 설계라 접근 경로가 seller_operators 하나뿐이다')
+      .toBeGreaterThanOrEqual(2)
+  })
+
+  it('그래도 실패하면 "등록 실패" 라고 말하지 않고 매장 번호를 돌려준다', () => {
+    expect(post).toContain('operator_granted: false')
+    expect(post, '재시도를 부추기면 중복 매장이 생긴다').toContain('다시 등록하지 마시고')
+    expect(post).toMatch(/매장\(#\$\{newSellerId\}\)은 등록됐지만/)
+  })
+})

@@ -509,6 +509,22 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       return c.json({ success: false, error: '매장 생성에 실패했습니다' }, 500)
     }
 
+    /**
+     * 🩸 2026-09-02 (전수조사) — **행이 만들어진 뒤의 실패는 앞의 실패와 성격이 다르다.**
+     *
+     * 여기 아래 두 단계(`setSellerMeta` · `grantOperator`)는 아무 가드가 없어서, 하나라도 던지면
+     * 바깥 catch 가 잡아 **"매장 등록 중 오류가 발생했습니다"** 를 낸다. 그런데 `sellers` 행은
+     * **이미 만들어져 있다.** 사용자는 실패로 알고 다시 누르고 → **같은 가게가 두 번 등록**된다.
+     * (①의 UNIQUE 버그를 고치고 나면 재시도가 실제로 성공해 버리므로, 이 갭이 그때부터 진짜 문제다.)
+     *
+     * 둘의 무게가 다르므로 다르게 다룬다:
+     *   • 메타(채널·좌표·플레이스) — **없어도 매장은 매장이다.** 나중에 프로필 수정으로 채워진다.
+     *     ⇒ fail-soft. 이것 때문에 등록을 통째로 되돌릴 이유가 없다.
+     *   • 권한(`grantOperator`) — **이게 실패하면 방금 만든 매장에 아무도 못 들어간다.**
+     *     `linked_user_id` 는 설계상 비워 두므로 접근 경로가 `seller_operators` 하나뿐이다.
+     *     ⇒ 1회 재시도. 그래도 실패하면 **"실패" 라고 말하지 않는다** — 매장은 존재하니까.
+     *       재시도를 부추기지 않는 별개 문구 + 매장 번호를 돌려줘 운영이 손으로 붙일 수 있게 한다.
+     */
     // 채널·플레이스·검증 스탬프 (sellers 100컬럼 한도 — 전부 seller_meta)
     await setSellerMeta(c.env.DB, newSellerId, {
       store_channel: b.channel,
@@ -520,10 +536,22 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       nts_checked: ntsResult.valid === true ? '1' : ntsResult.valid === false ? '0' : '',
       business_cert_url: certUrl,
       registered_by_user_id: String(userId),
-    })
+    }).catch(() => { /* 메타 실패 — 매장은 유지(프로필 수정으로 채울 수 있다) */ })
 
     // 등록자 권한 — 직접=owner / 중개=operator(사장님 자리는 비워 둔다: owner 승계 3단계)
-    await grantOperator(c.env.DB, newSellerId, userId, userId, b.channel === 'direct' ? 'owner' : 'operator')
+    const role = b.channel === 'direct' ? 'owner' : 'operator'
+    let granted = await grantOperator(c.env.DB, newSellerId, userId, userId, role).then(() => true).catch(() => false)
+    if (!granted) {
+      granted = await grantOperator(c.env.DB, newSellerId, userId, userId, role).then(() => true).catch(() => false)
+    }
+    if (!granted) {
+      return c.json({
+        success: false,
+        // ⚠️ "등록 실패" 가 아니다 — 매장은 만들어졌다. 다시 누르면 중복만 생긴다.
+        error: `매장(#${newSellerId})은 등록됐지만 권한 연결에 실패했어요. 다시 등록하지 마시고 고객센터로 매장 번호를 알려주세요.`,
+        data: { seller_id: newSellerId, status, channel: b.channel, operator_granted: false },
+      }, 500)
+    }
 
     return c.json({
       success: true,

@@ -160,6 +160,22 @@ const MUTATIONS = [
     why: '2026-08-31 부터 /my-vouchers 는 이용권 전용이고 교환권은 /my-gifticons 다.',
   },
   {
+    name: '🎟️ 메타 저장 실패가 다시 매장 등록을 되돌린다 (행은 남고 사용자는 재시도 → 중복)',
+    file: 'src/features/seller/api/seller-stores.routes.ts',
+    find: '    }).catch(() => { /* 메타 실패 — 매장은 유지(프로필 수정으로 채울 수 있다) */ })',
+    replace: '    })',
+    test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
+    why: '행이 만들어진 뒤의 실패를 "등록 실패" 로 보고하면 사용자가 다시 눌러 같은 가게가 두 번 등록된다.',
+  },
+  {
+    name: '🎟️ 권한 연결 재시도가 사라진다 — 방금 만든 매장에 아무도 못 들어간다',
+    file: 'src/features/seller/api/seller-stores.routes.ts',
+    find: '      granted = await grantOperator(c.env.DB, newSellerId, userId, userId, role).then(() => true).catch(() => false)',
+    replace: '      granted = false',
+    test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
+    why: 'linked_user_id 를 비워 두는 설계라 접근 경로가 seller_operators 하나뿐이다.',
+  },
+  {
     name: '🎟️ 매장 등록 email 이 다시 빈 문자열 — 두 번째 매장부터 UNIQUE 로 100% 실패',
     file: 'src/features/seller/api/seller-stores.routes.ts',
     find: "      ) VALUES (?, ?, '', ?, ?, ?, ?, ?, 'store_owner', ?, datetime('now'), datetime('now'))",
