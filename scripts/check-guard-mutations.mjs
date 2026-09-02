@@ -1741,8 +1741,8 @@ canvas {
   {
     name: '/map 지도 위 컨트롤 오버레이가 PC 에서 되살아난다',
     file: 'src/pages/restaurant-map/MapTopBar.tsx',
-    find: "'lg:hidden absolute top-0",
-    replace: "'absolute top-0",
+    find: "'light-island lg:hidden absolute top-0",
+    replace: "'light-island absolute top-0",
     test: 'src/tests/unit/groupon-detail-map.test.ts',
     why:
       '2026-08-19 대표 지시 — 검색·필터 칩을 왼쪽 리스트 상단으로 옮기고 지도는 지도만 보이게. ' +
