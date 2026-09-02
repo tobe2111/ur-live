@@ -15,9 +15,9 @@ const SEO_META = CONSUMER_SURFACE_SEO['/terms/group-buy']
 export default function GroupBuyTermsPage() {
   const navigate = useNavigate()
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0D0F12] pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#11141C] pb-20">
       <SEO title={SEO_META.title} description={SEO_META.description} url="/terms/group-buy" />
-      <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0D0F12]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white"><ChevronLeft className="w-6 h-6" /></button>
           <h1 className="text-[16px] font-bold text-gray-900 dark:text-white">공동구매 약관</h1>

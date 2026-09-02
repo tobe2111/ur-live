@@ -76,7 +76,7 @@ export function BlogMarkdown({ content }: { content: string }) {
           <div key={i} className="overflow-x-auto my-4">
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr>{headers.map((h, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1A1C21] border-b border-gray-200 dark:border-[#2C2F35] font-semibold text-gray-700 dark:text-gray-200">{renderInline(h, `t${i}h${j}`)}</th>)}</tr>
+                <tr>{headers.map((h, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border-b border-gray-200 dark:border-[#2C2F35] font-semibold text-gray-700 dark:text-gray-200">{renderInline(h, `t${i}h${j}`)}</th>)}</tr>
               </thead>
               <tbody>
                 {rows.map((row, ri) => (

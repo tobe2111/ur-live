@@ -39,9 +39,9 @@ const STEPS = [
 
 export default function AboutServicePage() {
   return (
-    <div className="min-h-[100dvh] bg-[#FAF7F5] dark:bg-[#0D0F12]">
+    <div className="min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C]">
       <SEO title="서비스 소개 - 유어딜" description="유어딜은 동네 가게의 할인 이용권을 앱에서 사고 매장에서 QR 로 쓰는 로컬 딜 플랫폼입니다." url="/about" />
-      <header className="sticky top-0 z-20 flex items-center justify-between px-4 h-12 bg-[#FAF7F5]/90 dark:bg-[#0D0F12]/90 backdrop-blur-sm">
+      <header className="sticky top-0 z-20 flex items-center justify-between px-4 h-12 bg-[#F8F7FC]/90 dark:bg-[#11141C]/90 backdrop-blur-sm">
         <Link to="/" aria-label="유어딜 홈"><UrDealLogo size={18} /></Link>
         <div className="flex items-center gap-3">
           <Link to="/partners" className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">입점 안내</Link>
@@ -88,7 +88,7 @@ export default function AboutServicePage() {
             <span aria-hidden className="absolute left-[5px] top-2 bottom-2 w-px bg-[#16181C]/20 dark:bg-[#3A3D44]" />
             {TRIANGLE.map(({ icon: Icon, t, gives, gets }) => (
               <li key={t} className="relative pb-5 last:pb-0">
-                <span aria-hidden className="absolute -left-5 top-1.5 w-[11px] h-[11px] rounded-full bg-[#FAF7F5] dark:bg-[#0D0F12] ring-2 ring-brand" />
+                <span aria-hidden className="absolute -left-5 top-1.5 w-[11px] h-[11px] rounded-full bg-[#F8F7FC] dark:bg-[#11141C] ring-2 ring-brand" />
                 <p className="flex items-center gap-1.5 text-[14.5px] font-extrabold text-[#16181C] dark:text-[#F5F3F1]">
                   <Icon className="w-[15px] h-[15px] text-brand" strokeWidth={1.9} aria-hidden />{t}
                 </p>
@@ -148,7 +148,7 @@ export default function AboutServicePage() {
       </main>
 
       {/* 하단 고정 CTA — 앱 진입 */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur-md border-t border-gray-100 dark:border-[#2C2F35] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-t border-gray-100 dark:border-[#2C2F35] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
         <div className="max-w-xl mx-auto">
           <Link to="/" className="flex h-12 rounded-2xl bg-brand text-white items-center justify-center gap-1.5 text-[14px] font-extrabold active:scale-[0.98] transition-transform">
             내 주변 딜 보러가기 <ArrowRight className="w-4 h-4" />

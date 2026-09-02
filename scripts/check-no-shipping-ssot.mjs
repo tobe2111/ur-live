@@ -35,10 +35,19 @@ const SCOPE = [
   'src/pages/checkout/OrderSummary.tsx',
   'src/components/cart/CartSummary.tsx',
 ]
+/**
+ * 바로구매 진입점 — 여기서 category 를 안 넘기면 결제 화면의 판정이 통째로 죽는다.
+ * ⚠️ 이 파일은 R1 대상이 아니다: 교환권 전용 UI(딜 표기·전용 상세)를 위해 `deal_only===1` 을
+ *    10곳에서 정당하게 쓴다. 그건 **표시** 분기지 배송 판정이 아니다. R2·R3 만 본다.
+ */
+const ENTRY_SCOPE = ['src/pages/ProductDetailPage.tsx', 'src/pages/product-detail/buildDirectPurchaseItem.ts']
 const R1 = /\bdeal_only\s*\)?\s*===?\s*1/
 const R2 = /\bshipping_fee\s*\|\|\s*\d/
+/** 배송비 리터럴 고정 — `shipping_fee: 3000` 처럼 상품 종류를 안 보고 숫자를 박는 것. */
+const R3 = /\bshipping_fee\s*:\s*\d/
 
-export function scan(files) {
+export function scan(files, opts = {}) {
+  const r1 = opts.r1 !== false
   const hits = []
   for (const f of files) {
     if (!fs.existsSync(f)) { hits.push(`${path.relative(ROOT, f)}:0 파일이 없다 — 검사 대상이 이동/삭제됐다`); continue }
@@ -47,8 +56,9 @@ export function scan(files) {
       const t = ln.trim()
       if (t.startsWith('//') || t.startsWith('*') || t.startsWith('{/*') || t.startsWith('/*')) return
       if (ln.includes('no-shipping-ssot-ok')) return
-      if (R1.test(ln)) hits.push(`${rel}:${i + 1} deal_only 를 직접 비교 — isNoShippingProduct 를 쓸 것`)
+      if (r1 && R1.test(ln)) hits.push(`${rel}:${i + 1} deal_only 를 직접 비교 — isNoShippingProduct 를 쓸 것`)
       if (R2.test(ln)) hits.push(`${rel}:${i + 1} shipping_fee || N — 명시한 0 을 삼킨다. ?? 를 쓸 것`)
+      if (R3.test(ln)) hits.push(`${rel}:${i + 1} shipping_fee: N 리터럴 — 종류를 안 본다. isNoShippingProduct 로 분기할 것`)
     })
   }
   return hits
@@ -62,9 +72,13 @@ function selfTest() {
     const fail = []
     const bad1 = w('Bad1.tsx', 'const a = items.every(i => Number(i.deal_only) === 1)\n')
     const bad2 = w('Bad2.tsx', 'const fee = item.shipping_fee || 3000\n')
-    const ok = w('Ok.tsx', 'const a = items.every(isNoShippingProduct)\nconst fee = item.shipping_fee ?? 3000\n')
+    const bad3 = w('Bad3.tsx', 'navigate("/checkout", { state: { shipping_fee: 3000 } })\n')
+    const ok = w('Ok.tsx', 'const a = items.every(isNoShippingProduct)\nconst fee = item.shipping_fee ?? 3000\nconst s = isNoShippingProduct(p) ? 0 : 3000\n')
     if (!scan([bad1]).length) fail.push('deal_only 직접 비교를 못 잡는다')
     if (!scan([bad2]).length) fail.push('shipping_fee || N 을 못 잡는다')
+    if (!scan([bad3]).length) fail.push('shipping_fee: N 리터럴을 못 잡는다')
+    if (!scan([bad3], { r1: false }).length) fail.push('진입점 모드(r1 꺼짐)에서 리터럴을 못 잡는다')
+    if (scan([bad1], { r1: false }).length) fail.push('진입점 모드가 deal_only 표시 분기를 오탐한다')
     if (scan([ok]).length) fail.push('정상 코드를 오탐한다')
     if (!scan([path.join(dir, 'Missing.tsx')]).length) fail.push('사라진 대상 파일을 통과시킨다')
     return fail
@@ -78,16 +92,19 @@ if (selfFail.length) {
 }
 
 /* 🔬 측정 0 = 실패 — 목록이 줄면 위반도 0 이라 초록이 뜨는데 그 초록은 아무것도 보장하지 않는다. */
-if (SCOPE.length < 5) {
+if (SCOPE.length + ENTRY_SCOPE.length < 7) {
   console.error(`❌ no-shipping-ssot: 검사 대상이 ${SCOPE.length}개다 — 목록이 낡았거나 줄었다(통과 아님).`)
   process.exit(1)
 }
 
-const hits = scan(SCOPE.map((f) => path.join(ROOT, f)))
+const hits = [
+  ...scan(SCOPE.map((f) => path.join(ROOT, f))),
+  ...scan(ENTRY_SCOPE.map((f) => path.join(ROOT, f)), { r1: false }),
+]
 if (hits.length) {
   console.error(`❌ no-shipping-ssot: 배송비 판정이 갈라진다 (${hits.length}건)`)
   hits.forEach((h) => console.error('   ' + h))
   console.error('\n   SSOT: src/shared/product-flow.ts `isNoShippingProduct`')
   process.exit(1)
 }
-console.log(`✅ no-shipping-ssot: 구매 흐름 ${SCOPE.length}개 파일이 한 기준을 쓴다`)
+console.log(`✅ no-shipping-ssot: 구매 흐름 ${SCOPE.length + ENTRY_SCOPE.length}개 파일이 한 기준을 쓴다`)

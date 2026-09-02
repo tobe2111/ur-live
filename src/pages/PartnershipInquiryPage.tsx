@@ -18,7 +18,7 @@ const TYPES = [
   { v: 'other', l: '💬 기타' },
 ]
 
-const inputCls = 'w-full h-12 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] px-3.5 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-gray-900 dark:focus:border-white'
+const inputCls = 'w-full h-12 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] px-3.5 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-gray-900 dark:focus:border-white'
 
 export default function PartnershipInquiryPage() {
   const navigate = useNavigate()
@@ -47,7 +47,7 @@ export default function PartnershipInquiryPage() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0D0F12] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-white dark:bg-[#11141C] flex items-center justify-center px-4">
         <SEO title="광고/제휴 문의 - 유어딜" description="광고, 제휴, 입점, 상품 공급 문의" url="/partnership" />
         <div className="text-center max-w-sm">
           <CheckCircle2 className="w-14 h-14 mx-auto text-emerald-500" />
@@ -56,7 +56,7 @@ export default function PartnershipInquiryPage() {
             담당자가 확인 후 남겨주신 연락처/이메일로<br />영업일 기준 2일 내 회신드릴게요.
           </p>
           <button onClick={() => navigate('/')}
-            className="mt-6 px-6 h-12 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] text-sm font-bold">
+            className="mt-6 px-6 h-12 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-sm font-bold">
             홈으로
           </button>
         </div>
@@ -65,9 +65,9 @@ export default function PartnershipInquiryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0D0F12] pb-24">
+    <div className="min-h-screen bg-white dark:bg-[#11141C] pb-24">
       <SEO title="광고/제휴 문의 - 유어딜" description="광고, 제휴, 매장 입점, 상품 공급 문의를 남겨주세요" url="/partnership" />
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center px-4 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로"
             className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06]">
@@ -79,7 +79,7 @@ export default function PartnershipInquiryPage() {
 
       <div className="ur-content-narrow px-4 pt-6">
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center">
+          <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center">
             <Handshake className="w-6 h-6 text-gray-900 dark:text-white" />
           </div>
           <div>
@@ -96,7 +96,7 @@ export default function PartnershipInquiryPage() {
                 className={`px-3.5 h-10 rounded-full text-[13px] font-bold transition-colors ${
                   form.type === tp.v
                     ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                    : 'bg-gray-100 text-gray-600 dark:bg-[#1A1C21] dark:text-gray-300'
+                    : 'bg-gray-100 text-gray-600 dark:bg-[#1D1F29] dark:text-gray-300'
                 }`}>
                 {tp.l}
               </button>
@@ -111,9 +111,9 @@ export default function PartnershipInquiryPage() {
           <p className="text-[11.5px] text-gray-400 dark:text-gray-500 -mt-1">연락처 또는 이메일 중 하나는 꼭 남겨주세요.</p>
           <textarea value={form.message} onChange={set('message')} maxLength={4000} rows={6}
             placeholder="문의 내용 * — 제안 배경, 원하시는 협업 형태, 일정 등을 자유롭게 적어주세요"
-            className="w-full rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] px-3.5 py-3 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:border-gray-900 dark:focus:border-white" />
+            className="w-full rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] px-3.5 py-3 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:border-gray-900 dark:focus:border-white" />
           <button type="submit" disabled={submitting}
-            className="w-full h-13 py-3.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] text-[15px] font-bold disabled:opacity-50">
+            className="w-full h-13 py-3.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[15px] font-bold disabled:opacity-50">
             {submitting ? '접수 중…' : '문의 접수하기'}
           </button>
         </form>

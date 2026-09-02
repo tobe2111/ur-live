@@ -6,7 +6,8 @@ import api from '@/lib/api'
 import { safeDate } from '@/utils/safe-date'
 import { formatNumber } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
-import { Ticket, MapPin, QrCode, Copy, Gift, Smartphone } from 'lucide-react'
+import { QrCode, Copy, Gift, Smartphone } from 'lucide-react'
+import { TicketCard, TicketRow } from '@/components/ticket/TicketCard'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { Voucher } from './types'
 import ReviewBonusButton from './ReviewBonusButton'
@@ -85,103 +86,53 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
   const urgent = v.status === 'unused' && daysLeft !== null && daysLeft <= 2
   const price = v.applied_price ?? v.product_price ?? null
 
-  const notchStyle = { background: '#F2F2F7', border: '1px solid #ECECEF' } as const
-
   // 🎟️ 2026-07-06 (대표 승인): 미사용 카드는 어디를 눌러도 사용 안내(QR/사용법) 모달이 열림 —
   //   버튼 하나만 찾을 필요 없이 카드 전체가 진입점. 내부 인터랙션(코드 복사)은 stopPropagation 으로 보호.
   const tappable = v.status === 'unused'
 
+  // 🎫 2026-09-02 (대표 시안 — 코레일톡 화이트 지갑 "나의 티켓"): 카드 = **색 밴드(기한 · D-N) + 흰 본문** 한 장.
+  //   천공·노치·테두리·그림자 스택을 걷어내고 TicketCard 부품 하나로. 밴드가 티켓 은유를 맡으니 장식이 필요 없다.
+  //   사용 완료·만료·환불은 밴드가 회색이 되고 전체가 흐려진다(muted). 동작(모달·복사·환불요청·재구매·후기)은 불변.
+  const bandLeftText = expiresAt
+    ? `${expiresAt.getFullYear()}.${String(expiresAt.getMonth() + 1).padStart(2, '0')}.${String(expiresAt.getDate()).padStart(2, '0')} (${['일', '월', '화', '수', '목', '금', '토'][expiresAt.getDay()]})까지`
+    : (v.status === 'unused' ? t('voucher.noExpiry', { defaultValue: '사용 기한 없음' }) : t(`voucher.status.${v.status}`))
+  const bandRightText = v.status === 'unused'
+    ? (daysLeft !== null ? (daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`) : t('voucher.status.unused', { defaultValue: '사용 가능' }))
+    : t(`voucher.status.${v.status}`)
+
   return (
-    <div
-      onClick={tappable ? onShowQr : undefined}
-      role={tappable ? 'button' : undefined}
-      tabIndex={tappable ? 0 : undefined}
-      onKeyDown={tappable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onShowQr() } } : undefined}
-      className={`relative rounded-[18px] bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2C2F35] ${tappable ? 'cursor-pointer' : ''}`}
-      style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 2px rgba(10,10,10,0.05), 0 14px 30px -12px rgba(10,10,10,0.16)' }}
-    >
-      {/* 헤더: 썸네일 + 가게 + 상태 배지 */}
-      <div className="flex items-center gap-2.5 px-4 pt-3.5">
-        <div className="w-9 h-9 shrink-0 rounded-[10px] overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1C21] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
-          {v.product_image ? (
-            <img src={cfImage(v.product_image, { width: 200, quality: 82, format: 'auto' }) || v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
-          ) : (
-            <Ticket className="w-4 h-4 text-gray-300 dark:text-gray-600" strokeWidth={1.6} />
+    <TicketCard bandLeft={bandLeftText} bandRight={bandRightText} muted={muted || v.status !== 'unused'} onClick={tappable ? onShowQr : undefined}>
+      {/* 첫 줄: 매장 · 사용 방식 칩 */}
+      <TicketRow
+        left={v.restaurant_name || t('voucher.tabGroupBuy', { defaultValue: '이용권' })}
+        right={tappable && mode ? MODE_CHIP[mode] : (v.status === 'used' && usedAt ? `${usedAt.toLocaleDateString(locale)} ${t('voucher.usedSuffix', { defaultValue: '사용' })}` : undefined)}
+      />
+
+      <div className="px-4 pt-3.5 pb-4">
+        <p className={`text-[18px] font-extrabold tracking-tight truncate ${urgent ? 'text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white'}`}>{v.product_name}</p>
+        <div className="flex items-end justify-between mt-3">
+          {price !== null ? (
+            <div className="text-[17px] font-extrabold tabular-nums tracking-tight text-gray-700 dark:text-gray-200 leading-none">
+              {formatNumber(price)}<span className="text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{t('voucher.won', { defaultValue: '원' })}</span>
+            </div>
+          ) : <span />}
+          {v.status === 'unused' && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onShowQr() }}
+              aria-label={t('voucher.scan', { defaultValue: '사용' })}
+              className="flex items-center gap-1.5 rounded-full px-5 py-2.5 bg-brand text-white text-[13.5px] font-extrabold active:opacity-80"
+            >
+              <QrCode className="w-4 h-4" strokeWidth={1.6} />
+              {t('voucher.useFull', { defaultValue: '사용하기' })}
+            </button>
           )}
         </div>
-        <span className="flex items-center gap-1 min-w-0 text-[12px] font-semibold text-gray-500 dark:text-gray-400">
-          {v.restaurant_name
-            ? (<><MapPin className="w-3 h-3 shrink-0" /><span className="truncate">{v.restaurant_name}</span></>)
-            : (<span className="truncate">{t('voucher.tabGroupBuy', { defaultValue: '이용권' })}</span>)}
-        </span>
-        {v.status === 'unused' ? (
-          daysLeft !== null ? (
-            <span className={`ml-auto shrink-0 text-[11px] font-extrabold font-mono px-2.5 py-1 rounded-full ${urgent ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300'}`}>
-              {daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`}
-            </span>
-          ) : (
-            <span className="ml-auto shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-gray-500 dark:text-gray-400">
-              <span className="w-[6px] h-[6px] rounded-full" style={{ background: '#16A34A', boxShadow: '0 0 0 3px rgba(22,163,74,0.12)' }} aria-hidden />
-              {t('voucher.status.unused', { defaultValue: '사용 가능' })}
-            </span>
-          )
-        ) : (
-          <span className="ml-auto shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full"
-            style={{ background: v.status === 'expired' ? 'rgba(220,38,38,0.10)' : 'rgba(0,0,0,0.06)', color: v.status === 'expired' ? '#DC2626' : '#6B7280' }}>
-            {t(`voucher.status.${v.status}`)}
-          </span>
-        )}
       </div>
 
-      {/* 제목 */}
-      <p className="px-4 pt-2 text-[18px] font-extrabold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</p>
-
-      {/* 🎟️ 2026-07-06 매장 사용방식 칩 — 가기 전에 사용법 파악 (사장님 설정과 동일 연결) */}
-      {tappable && mode && (
-        <div className="px-4 pt-1.5">
-          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-white/10 px-2.5 py-1 text-[11px] font-bold text-gray-600 dark:text-gray-300">
-            {MODE_CHIP[mode]}
-          </span>
-        </div>
-      )}
-
-      {/* 금액 + 사용하기
-          💴 2026-09-01: 가격 24px → 17px. 이 이용권은 **이미 산 것**이라 카드 안에서 가격은
-          영수증 정보다 — 매장 앞에서 필요한 것은 상품명(18px)과 '사용하기' 버튼이다. 예전엔
-          가격이 상품명보다 크고 버튼만큼 무거워 위계가 뒤집혀 있었다. '자산' 표시는 상단
-          합계가 계속 맡는다(대표 승인 시안 4). 액면가라 mono 는 유지. */}
-      <div className="flex items-end justify-between px-4 pt-1.5 pb-4">
-        {price !== null ? (
-          <div className="text-[17px] font-extrabold font-mono tracking-tight text-gray-700 dark:text-gray-200 leading-none">
-            {formatNumber(price)}<span className="font-sans text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{t('voucher.won', { defaultValue: '원' })}</span>
-          </div>
-        ) : <span />}
-        {v.status === 'unused' ? (
-          <button
-            onClick={onShowQr}
-            aria-label={t('voucher.scan', { defaultValue: '사용' })}
-            className="flex items-center gap-1.5 rounded-[13px] px-5 py-2.5 bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-[13.5px] font-extrabold active:scale-95 transition-transform"
-          >
-            <QrCode className="w-4 h-4" strokeWidth={1.9} />
-            {t('voucher.useFull', { defaultValue: '사용하기' })}
-          </button>
-        ) : (v.status === 'used' && usedAt) ? (
-          <span className="text-[12px] font-medium text-gray-400 dark:text-gray-500">{usedAt.toLocaleDateString(locale)} {t('voucher.usedSuffix', { defaultValue: '사용' })}</span>
-        ) : <span />}
-      </div>
-
-      {/* 천공 + 풋 — refunded 는 액션 없음(천공/풋 생략) */}
+      {/* 풋 — refunded 는 액션 없음 */}
       {v.status !== 'refunded' && (
-        <>
-          {/* 천공 — 점선 + 양옆 노치 (실물 티켓 메타포) */}
-          <div className="relative" aria-hidden>
-            <div className="mx-3.5 border-t border-dashed border-gray-200 dark:border-[#2C2F35]" />
-            <span className="absolute top-0 -translate-y-1/2 left-0 -translate-x-1/2 w-3.5 h-3.5 rounded-full" style={notchStyle} />
-            <span className="absolute top-0 -translate-y-1/2 right-0 translate-x-1/2 w-3.5 h-3.5 rounded-full" style={notchStyle} />
-          </div>
-
+        <div className="border-t border-rule">
           {v.status === 'unused' ? (
-            /* 풋: QR 힌트 + 코드 (탭하면 복사) */
             <>
             <button
               type="button"
@@ -198,7 +149,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
               <div className="min-w-0">
                 <span className="flex items-center gap-1.5 font-mono text-[12px] font-bold tracking-wide text-gray-700 dark:text-gray-200">
                   <span className="truncate">{v.code}</span>
-                  <Copy className="w-3 h-3 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={2} aria-hidden />
+                  <Copy className="w-3 h-3 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.6} aria-hidden />
                 </span>
                 <span className="block text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{t('voucher.tapForQr', { defaultValue: '탭하면 코드 복사 · 사용하기로 QR 제시' })}</span>
               </div>
@@ -232,7 +183,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
                 <button
                   type="button"
                   onClick={() => navigate(`/group-buy/${v.product_id}`)}
-                  className="w-full py-2.5 rounded-xl border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white text-[13px] font-bold active:scale-[0.98] transition-transform"
+                  className="w-full h-11 rounded-xl border border-rule-strong text-brand-text text-[13px] font-bold active:opacity-70"
                 >
                   {t('voucher.rebuy', { defaultValue: '다시 구매하기' })}
                 </button>
@@ -240,9 +191,9 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
               {v.status === 'used' && <ReviewBonusButton voucherCode={v.code} restaurantName={v.restaurant_name} restaurantAddress={v.restaurant_address} />}
             </div>
           )}
-        </>
+        </div>
       )}
-    </div>
+    </TicketCard>
   )
 }
 
@@ -289,7 +240,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
     >
       <div className="flex items-stretch gap-3">
         {/* 썸네일 60px */}
-        <div className="w-[60px] h-[60px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1C21] dark:to-[#0F0F0F]">
+        <div className="w-[60px] h-[60px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1D1F29] dark:to-[#0F0F0F]">
           {v.product_image ? (
             <img src={cfImage(v.product_image, { width: 200, quality: 82, format: 'auto' }) || v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
           ) : (
@@ -356,7 +307,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
 
       {/* PIN 모드 인앱 바코드 — 하단 (매장 제시용) */}
       {hasBarcode && (
-        <div className="mt-3 px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#0D0F12] border border-gray-100 dark:border-[#2C2F35] flex flex-col items-center gap-1.5">
+        <div className="mt-3 px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#11141C] border border-gray-100 dark:border-[#2C2F35] flex flex-col items-center gap-1.5">
           <Barcode value={v.kt_pin as string} />
           <span className="text-[12px] font-mono font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
         </div>

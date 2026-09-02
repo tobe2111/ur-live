@@ -126,9 +126,9 @@ export default function InfluencerDiscoverPage() {
     })
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#1A1C21] pb-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#1D1F29] pb-20">
       <SEO title="추천 공구 카탈로그 - 유어딜" description="매장과 딜을 맺은 이용권을 골라 내 링크로 소개하세요. 소개비는 매장이 정한 비율로 정산됩니다." url="/influencer/discover" />
-      <header className="sticky top-0 z-30 bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3 flex items-center gap-2">
+      <header className="sticky top-0 z-30 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3 flex items-center gap-2">
         <Link2 className="w-5 h-5 text-pink-500" />
         <h1 className="text-base font-bold text-gray-900 dark:text-white flex-1">추천 공구 카탈로그</h1>
         <button onClick={() => navigate('/influencer/settlement')} className="text-xs text-pink-600 font-bold">내 정산 →</button>
@@ -141,7 +141,7 @@ export default function InfluencerDiscoverPage() {
             <button
               key={k}
               onClick={() => setCat(k)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border ${cat === k ? 'bg-gray-900 text-white border-gray-900' : 'bg-white dark:bg-[#0D0F12] text-gray-700 dark:text-gray-200 border-gray-200'}`}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border ${cat === k ? 'bg-gray-900 text-white border-gray-900' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200'}`}
             >
               {v}
             </button>
@@ -162,7 +162,7 @@ export default function InfluencerDiscoverPage() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'latest' | 'popular' | 'deadline')}
-            className="px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-full text-xs text-gray-900 dark:text-white font-medium bg-white dark:bg-[#0D0F12]"
+            className="px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-full text-xs text-gray-900 dark:text-white font-medium bg-white dark:bg-[#11141C]"
           >
             <option value="latest">최신순</option>
             <option value="popular">인기순</option>
@@ -179,12 +179,12 @@ export default function InfluencerDiscoverPage() {
             {filtered.map(p => {
               const progress = p.group_buy_target > 0 ? Math.min(100, (p.group_buy_current / p.group_buy_target) * 100) : 0
               return (
-                <li key={p.id} className="bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] rounded-xl overflow-hidden">
+                <li key={p.id} className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl overflow-hidden">
                   <div className="flex gap-3 p-3">
                     {p.image_url ? (
                       <img src={cfImage(p.image_url, { width: 200, quality: 82, format: 'auto' }) || p.image_url} alt={p.name} className="w-20 h-20 object-cover rounded-lg shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, p.image_url)} />
                     ) : (
-                      <div className="w-20 h-20 bg-gray-100 dark:bg-[#1A1C21] rounded-lg shrink-0" />
+                      <div className="w-20 h-20 bg-gray-100 dark:bg-[#1D1F29] rounded-lg shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{p.restaurant_name || p.seller_name || '-'}</p>
@@ -197,7 +197,7 @@ export default function InfluencerDiscoverPage() {
                           </span>
                         )}
                       </div>
-                      <div className="w-full bg-gray-100 dark:bg-[#1A1C21] rounded-full h-1.5 mt-1.5 overflow-hidden">
+                      <div className="w-full bg-gray-100 dark:bg-[#1D1F29] rounded-full h-1.5 mt-1.5 overflow-hidden">
                         <div className="h-full bg-pink-500 rounded-full" style={{ width: `${progress}%` }} />
                       </div>
                       <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{p.group_buy_current}/{p.group_buy_target}명</p>
@@ -217,7 +217,7 @@ export default function InfluencerDiscoverPage() {
                   ) : (
                     /* 🚨 딜이 없으면 링크를 주지 않는다 — 주면 0원을 약속하는 것이다. */
                     <div className="px-3 pb-3">
-                      <p className="py-2 rounded-lg bg-gray-50 dark:bg-[#1A1C21] text-[11px] text-gray-600 dark:text-gray-300 text-center leading-relaxed">
+                      <p className="py-2 rounded-lg bg-gray-50 dark:bg-[#1D1F29] text-[11px] text-gray-600 dark:text-gray-300 text-center leading-relaxed">
                         {authed
                           ? '이 매장과 딜을 맺어야 소개비가 붙습니다'
                           : '로그인하면 내 딜을 확인할 수 있어요'}

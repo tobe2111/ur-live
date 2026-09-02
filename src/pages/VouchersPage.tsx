@@ -145,7 +145,7 @@ function ShoppingGrid() {
       <div ref={gateRef} aria-hidden style={{ height: 1 }} />
       {/* 🛒 2026-06-23 (대표 '가장 이상적으로'): 쇼핑 카테고리 = sticky 바(top-[45px], 탭 바로 아래) —
           쇼핑 섹션에 있는 동안 상단에 따라붙어 어디서든 카테고리 전환 가능. 교환권 reveal 그룹은 이때 숨김(슬롯 공유). */}
-      <div className="sticky top-[45px] z-20 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className="sticky top-[45px] z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-wide px-4 lg:px-8 py-2.5">
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
             {visibleShopCats.map(c => {
@@ -158,7 +158,7 @@ function ShoppingGrid() {
                   className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
                     active
                       ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-sm'
-                      : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
+                      : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
                   }`}
                 >
                   {c.Icon && <c.Icon className="w-3.5 h-3.5" aria-hidden="true" />}
@@ -506,7 +506,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   isPc 는 useMediaQuery 동기 초기화(첫 렌더부터 정확)라 모바일↔PC 브랜치 플래시 없음.
   if (isPc && !embedded) {
     return (
-      <div className="bg-white dark:bg-[#0D0F12] min-h-[100dvh]">
+      <div className="bg-white dark:bg-[#11141C] min-h-[100dvh]">
         <SEO
           title={brand ? `${brand} 교환권 - 유어딜` : '교환권 - 유어딜'}
           description="스타벅스, GS25, 김밥천국 등 인기 브랜드 교환권을 딜로 구매하세요. 즉시 발송."
@@ -637,7 +637,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                       // 🔘 2026-08-30 버튼 체계 적용 (index.css `.ur-btn`).
                       //   이전: h-12 rounded-2xl text-[13px] font-bold — 이 화면만의 값이었다.
                       //   높이·모서리·굵기·글자크기를 체계가 정하고, 여기선 **채움색만** 준다.
-                      className="ur-btn ur-btn-lg ur-btn-block bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-[#2C2F35]"
+                      className="ur-btn ur-btn-lg ur-btn-block bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-[#2C2F35]"
                     >
                       {t('home.moreVouchers', { defaultValue: '교환권 더보기' })}
                       <ChevronDown className="w-4 h-4" />
@@ -657,7 +657,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   100vh 는 주소창 포함 '큰 뷰포트'라 카카오톡 인앱/일부 안드로이드 웹뷰에서 fixed 하단 네비를
   //   화면 밖으로 밀어냄(CLAUDE.md 룰 #8). 정상 동작하는 홈(RestaurantMapPage)도 min-h-[100dvh] 사용.
   return (
-    <div className={embedded ? '' : 'bg-white dark:bg-[#0D0F12] pb-safe-nav md:pb-20 min-h-[100dvh]'}>
+    <div className={embedded ? '' : 'bg-white dark:bg-[#11141C] pb-safe-nav md:pb-20 min-h-[100dvh]'}>
       {!embedded && (
         <SEO
           title={brand ? `${brand} 교환권 - 유어딜` : '교환권 - 유어딜'}
@@ -681,7 +681,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             🎫 2026-06-23 (대표 '가장 이상적으로'): 쇼핑 섹션에 있을 땐(activeTab==='shopping') 강제 숨김 —
             쇼핑의 sticky 카테고리 바(top-[45px] 동일 슬롯)와 겹치지 않게 '한 번에 한 카테고리 바'만 상단에. */}
       <div
-        className="sticky top-[45px] z-20 bg-white dark:bg-[#0D0F12]"
+        className="sticky top-[45px] z-20 bg-white dark:bg-[#11141C]"
         style={{
           transform: (revealTop && activeTab !== 'shopping') ? 'translateY(0)' : 'translateY(-110%)',
           transition: 'transform 0.25s ease',
@@ -723,7 +723,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           <button
             type="button"
             onClick={() => navigate('/map')}
-            className="w-full h-11 px-3.5 flex items-center justify-between gap-2 rounded-xl bg-gray-100 dark:bg-[#1A1C21] active:scale-[0.99] transition-transform"
+            className="w-full h-11 px-3.5 flex items-center justify-between gap-2 rounded-xl bg-gray-100 dark:bg-[#1D1F29] active:scale-[0.99] transition-transform"
           >
             <span className="text-[12.5px] text-gray-600 dark:text-gray-300 truncate">
               <b className="text-gray-900 dark:text-white">딜 0</b> · 1딜 = 1원, 현금처럼 써요
@@ -743,7 +743,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         <div className="h-[50px]" aria-hidden="true" />
       )}
       {sections.length > 0 && (
-        <div className="bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+        <div className="bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="ur-content-wide px-4 lg:px-8 py-2.5">
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
               {sections.map(s => {
@@ -756,7 +756,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                     className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
                       active
                         ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-sm'
-                        : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
+                        : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
                     }`}
                   >
                     <CategoryIcon category={s.category} />
@@ -864,11 +864,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             // 🏠 홈/PC — 2/3/4/5열 그리드 카드 스켈레톤 (main 의 PC 확장 lg:4 xl:5 반영).
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21]">
-                  <div className="aspect-square bg-gray-100 dark:bg-[#1A1C21]" />
+                <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29]">
+                  <div className="aspect-square bg-gray-100 dark:bg-[#1D1F29]" />
                   <div className="px-2.5 pt-2 pb-2.5">
-                    <div className="h-3 bg-gray-100 dark:bg-[#1A1C21] rounded w-3/4" />
-                    <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1A1C21] rounded w-1/2" />
+                    <div className="h-3 bg-gray-100 dark:bg-[#1D1F29] rounded w-3/4" />
+                    <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-1/2" />
                   </div>
                 </div>
               ))}
@@ -878,11 +878,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             <div className="grid grid-cols-1">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="animate-pulse flex items-center gap-3.5 py-3.5 border-b border-gray-100 dark:border-[#2C2F35]">
-                  <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 shrink-0 rounded-2xl bg-gray-100 dark:bg-[#1A1C21]" />
+                  <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 shrink-0 rounded-2xl bg-gray-100 dark:bg-[#1D1F29]" />
                   <div className="flex-1">
-                    <div className="h-3 bg-gray-100 dark:bg-[#1A1C21] rounded w-1/3" />
-                    <div className="h-4 mt-2 bg-gray-100 dark:bg-[#1A1C21] rounded w-3/4" />
-                    <div className="h-4 mt-2 bg-gray-100 dark:bg-[#1A1C21] rounded w-1/4" />
+                    <div className="h-3 bg-gray-100 dark:bg-[#1D1F29] rounded w-1/3" />
+                    <div className="h-4 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-3/4" />
+                    <div className="h-4 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-1/4" />
                   </div>
                 </div>
               ))}
@@ -941,7 +941,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                       const np = page + 1; setPage(np); loadProducts(np, false)
                     }
                   }}
-                  className="w-full flex items-center justify-center gap-1.5 h-12 rounded-2xl bg-gray-100 dark:bg-[#1A1C21] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
+                  className="w-full flex items-center justify-center gap-1.5 h-12 rounded-2xl bg-gray-100 dark:bg-[#1D1F29] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
                 >
                   {t('home.moreVouchers', { defaultValue: '교환권 더보기' })}
                   {embedTotalSteps && embedTotalSteps > 1 && (
@@ -967,7 +967,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           🎟️ 2026-07-10 (대표 결정 — 일반상품 숨김·교환권 유지): SHOPPING_TAB_HIDDEN 게이트 — 숨김 시
           순수 교환권 페이지(인플 딜포인트→교환권 구매 경로 보존). 플래그 false 로 즉시 복원(가역). */}
       {!embedded && !SHOPPING_TAB_HIDDEN && (
-        <section ref={shoppingRef} className="scroll-mt-14 mt-2 border-t-8 border-gray-50 dark:border-[#1A1C21]">
+        <section ref={shoppingRef} className="scroll-mt-14 mt-2 border-t-8 border-gray-50 dark:border-[#1D1F29]">
           <div className="ur-content-wide px-4 lg:px-8 pt-5 pb-1 flex items-center gap-1.5">
             <ShoppingBag className="w-[18px] h-[18px] text-gray-900 dark:text-white" />
             <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white">쇼핑</h2>

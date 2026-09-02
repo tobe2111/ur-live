@@ -287,7 +287,7 @@ export default function PaymentSuccessPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0D0F12] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
           <AlertCircle className="h-20 w-20 text-red-500 mx-auto mb-6" />
           <h1 className="text-2xl font-bold text-[#1d1d1f] dark:text-white mb-4">{t('paymentSuccess.approveFailed')}</h1>
@@ -295,7 +295,7 @@ export default function PaymentSuccessPage() {
           <div className="flex gap-3">
             <Button
               onClick={() => navigate('/checkout')}
-              className="flex-1 bg-[#f5f5f7] dark:bg-[#1A1C21] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] text-[#1d1d1f] dark:text-white"
+              className="flex-1 bg-[#f5f5f7] dark:bg-[#1D1F29] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] text-[#1d1d1f] dark:text-white"
             >
               다시 시도
             </Button>
@@ -312,10 +312,10 @@ export default function PaymentSuccessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0D0F12] flex items-center justify-center px-4 py-6">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center px-4 py-6">
       <SEO title={t('payment.successSeoTitle', { defaultValue: '결제 완료 - 유어딜' })} description={t('payment.successSeoDesc', { defaultValue: '주문이 성공적으로 완료되었습니다' })} url="/payment/success" noindex />
       <div className="max-w-2xl w-full">
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
+        <div className="bg-white dark:bg-[#1D1F29] rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
           {/* 성공 아이콘 */}
           <div className="text-center mb-5 sm:mb-6 lg:mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-full bg-green-100 dark:bg-green-900/30 mb-3 sm:mb-4">
@@ -360,7 +360,7 @@ export default function PaymentSuccessPage() {
           {/* 주문 정보 */}
           {orderInfo && (
             <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-              <div className="bg-[#f5f5f7] dark:bg-[#1A1C21] rounded-lg sm:rounded-xl p-4 sm:p-5 lg:p-6">
+              <div className="bg-[#f5f5f7] dark:bg-[#1D1F29] rounded-lg sm:rounded-xl p-4 sm:p-5 lg:p-6">
                 <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-[#1d1d1f] dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
                   <Package className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900 dark:text-white" />
                   주문 정보
@@ -433,7 +433,7 @@ export default function PaymentSuccessPage() {
                   href={orderInfo.payment.receipt.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block bg-[#f5f5f7] dark:bg-[#1A1C21] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
+                  className="block bg-[#f5f5f7] dark:bg-[#1D1F29] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -451,7 +451,7 @@ export default function PaymentSuccessPage() {
                   href={orderInfo.payment.cashReceipt.receiptUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block bg-[#f5f5f7] dark:bg-[#1A1C21] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
+                  className="block bg-[#f5f5f7] dark:bg-[#1D1F29] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div>

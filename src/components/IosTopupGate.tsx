@@ -20,7 +20,7 @@ const CHARGE_WEB_URL = 'https://urdeal.kr/points/charge'
 function TopupClosedNotice() {
   const navigate = useNavigate()
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12] flex flex-col items-center justify-center px-6 text-center">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-6 text-center">
       <div className="text-4xl mb-4">💎</div>
       <h1 className="text-lg font-bold text-gray-900 dark:text-white">딜 충전이 종료되었어요</h1>
       <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -31,7 +31,7 @@ function TopupClosedNotice() {
       <div className="mt-6 flex gap-2">
         <button
           onClick={() => navigate('/user/profile')}
-          className="rounded-xl bg-gray-900 dark:bg-white px-5 py-3 text-[14px] font-bold text-white dark:text-[#0D0F12]"
+          className="rounded-xl bg-gray-900 dark:bg-white px-5 py-3 text-[14px] font-bold text-white dark:text-[#11141C]"
         >
           딜 모으러 가기
         </button>
@@ -54,7 +54,7 @@ export default function IosTopupGate({ children }: { children: ReactNode }) {
   if (!gated) return <>{children}</>
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12] flex flex-col items-center justify-center px-6 text-center">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-6 text-center">
       <div className="text-4xl mb-4">💳</div>
       <h1 className="text-lg font-bold text-gray-900 dark:text-white">딜 충전은 웹에서 진행돼요</h1>
       <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -63,7 +63,7 @@ export default function IosTopupGate({ children }: { children: ReactNode }) {
       </p>
       <button
         onClick={() => openExternalUrl(CHARGE_WEB_URL)}
-        className="mt-6 rounded-xl bg-gray-900 dark:bg-white px-6 py-3 text-[14px] font-bold text-white dark:text-[#0D0F12]"
+        className="mt-6 rounded-xl bg-gray-900 dark:bg-white px-6 py-3 text-[14px] font-bold text-white dark:text-[#11141C]"
       >
         웹에서 충전하기
       </button>
