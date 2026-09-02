@@ -1599,8 +1599,8 @@
       "categoryTitle": "Categoría de Vale",
       "categoryMeal": "Vale de Comida",
       "categoryMealDesc": "Restaurante·Café",
-      "categoryBeauty": "Vale de Belleza",
-      "categoryBeautyDesc": "Cabello·Uñas·Piel",
+      "categoryBeauty": "Vale de Belleza y Fitness",
+      "categoryBeautyDesc": "Cabello·Uñas·Piel·PT·Yoga",
       "categoryHealth": "Vale de Salud",
       "categoryHealthDesc": "PT·Yoga·Pilates",
       "categoryPet": "Pet voucher",
@@ -1608,7 +1608,9 @@
       "categoryStay": "Stay voucher",
       "categoryStayDesc": "Pension, hotel, motel",
       "categoryActivity": "Activity voucher",
-      "categoryActivityDesc": "Escape room, bowling, class"
+      "categoryActivityDesc": "Escape room, bowling, class",
+      "categoryEtc": "Otro Vale",
+      "categoryEtcDesc": "Mascotas·Actividades·Clases"
     },
     "gift": {
       "title": "Enviar Regalo",

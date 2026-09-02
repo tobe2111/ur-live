@@ -5494,9 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 235건 · 최신순 · 이 목록은 자동 생성된다._
+_총 236건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-02**
+- [🎟️ 이용권 등록 플로우 전수조사 (2026-09-02)](handoff/2026-09-02-voucher-flow-audit.md)
 - [2026-09-02 — 유어딜 요청 경로 D1 읽기 다이어트 (PR-C)](handoff/2026-09-02-urdeal-request-diet.md)
 - [2026-09-02 — 유어딜 D1 읽기 다이어트 (PR-B)](handoff/2026-09-02-urdeal-d1-diet.md)
 - [2026-09-02 — 유어애즈 D1 읽기 다이어트 (PR-D)](handoff/2026-09-02-urads-d1-diet.md)

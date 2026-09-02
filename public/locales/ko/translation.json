@@ -2310,8 +2310,8 @@
       "categoryTitle": "이용권 종류",
       "categoryMeal": "식사 이용권",
       "categoryMealDesc": "맛집·카페",
-      "categoryBeauty": "뷰티 이용권",
-      "categoryBeautyDesc": "헤어·네일·피부",
+      "categoryBeauty": "미용 이용권",
+      "categoryBeautyDesc": "헤어·네일·피부·PT·요가",
       "categoryHealth": "헬스 이용권",
       "categoryHealthDesc": "PT·요가·필라테스",
       "categoryPet": "반려 이용권",
@@ -2319,7 +2319,9 @@
       "categoryStay": "숙박 이용권",
       "categoryStayDesc": "펜션·호텔·모텔",
       "categoryActivity": "액티비티 이용권",
-      "categoryActivityDesc": "방탈출·볼링·클래스"
+      "categoryActivityDesc": "방탈출·볼링·클래스",
+      "categoryEtc": "기타 이용권",
+      "categoryEtcDesc": "반려·액티비티·클래스"
     },
     "gift": {
       "title": "선물하기",

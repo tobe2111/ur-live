@@ -1599,8 +1599,8 @@
       "categoryTitle": "Catégorie de Bon",
       "categoryMeal": "Bon Repas",
       "categoryMealDesc": "Restaurant·Café",
-      "categoryBeauty": "Bon Beauté",
-      "categoryBeautyDesc": "Cheveux·Ongles·Peau",
+      "categoryBeauty": "Bon Beauté & Fitness",
+      "categoryBeautyDesc": "Cheveux·Ongles·Peau·PT·Yoga",
       "categoryHealth": "Bon Santé",
       "categoryHealthDesc": "PT·Yoga·Pilates",
       "categoryPet": "Pet voucher",
@@ -1608,7 +1608,9 @@
       "categoryStay": "Stay voucher",
       "categoryStayDesc": "Pension, hotel, motel",
       "categoryActivity": "Activity voucher",
-      "categoryActivityDesc": "Escape room, bowling, class"
+      "categoryActivityDesc": "Escape room, bowling, class",
+      "categoryEtc": "Autre Bon",
+      "categoryEtcDesc": "Animaux·Activités·Cours"
     },
     "gift": {
       "title": "Envoyer un Cadeau",

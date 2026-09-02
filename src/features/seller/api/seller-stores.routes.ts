@@ -25,7 +25,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { ensureSellerMetaTable, getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta'
 import { ntsValidateBusiness, ntsCheckStatus } from '@/worker/utils/nts-business-verify'
-import { canOperateStore, grantOperator, revokeOperator, isStoreOwner } from '../../../worker/utils/seller-operators'
+import { canOperateStore, grantOperator, revokeOperator, isStoreOwner, listOperableStores } from '../../../worker/utils/seller-operators'
 import { mergeStoreProfile, loadLatestProductCopy, saveStoreProfileAndPropagate } from '@/worker/utils/store-profile'
 import { parseSessionCookie } from '@/worker/utils/session'
 import { DEFAULT_FEE_RATES } from '@/worker/utils/fee-resolver'
@@ -257,7 +257,44 @@ app.get('/stores/context', async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
     if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
-    return c.json({ success: true, data: await loadMergedProfile(c.env.DB, sellerId) })
+    const data = await loadMergedProfile(c.env.DB, sellerId)
+
+    /**
+     * 🚪 2026-09-02 (대표 신고 "이렇게 왜 뜨지? 매장 정보 입력도 다 했는데?" — 위저드가 계속
+     *   *"첫 단계는 매장 등록이에요"* 를 띄웠다).
+     *
+     * `loadMergedProfile` 의 `store_ready` 는 **지금 앉아 있는 좌석**만 본다. 그런데 매장은 별도
+     * `sellers` 행이고, 사람은 `seller_operators`(또는 `linked_user_id`)로 그 좌석에 접근한다.
+     * ⇒ **매장을 이미 운영 중인데 개인 좌석에 앉아 있으면** 게이트가 "매장을 등록하라"고 요구했다.
+     *   라이브 실측(2026-09-02): user 3 은 매장 14(홍대돈까스)의 운영자인데 좌석은 5(개인)라 게이트가 닫혔다.
+     *   그 상태에서 등록을 다시 시도해도 **중복 매장**이 생길 뿐 — 시킨 대로 해도 해결되지 않는 막다른 길이었다.
+     *
+     * ⇒ 판정을 **사람 기준**으로 넓힌다: 운영 가능한 매장이 하나라도 있으면 게이트를 연다.
+     *   `operable_store_count` 를 함께 실어, 화면이 "등록하세요" 대신 **"어느 매장인가요"(좌석 전환)** 로
+     *   말을 바꿀 수 있게 한다 — 게이트를 여는 것과 *무엇을 하라고 말할지*는 다른 문제다.
+     * ⚠️ 게이트만 넓히고 권한은 넓히지 않는다 — 실제 귀속은 좌석 토큰(`/stores/:id/token`)이 정하고
+     *   그 토큰은 `canOperateStore` 를 통과해야만 나온다(이 응답은 판정에 관여하지 않는다).
+     */
+    let operableCount = 0
+    try {
+      const userId = await resolveActorUserId(c)
+      if (userId) {
+        const mine = await listOperableStores(c.env.DB, userId)
+        /**
+         * ⚠️ **앉을 수 있는 매장만 센다.** 신규 등록은 `status='pending'`(사람이 등록증을 보고 승인)
+         *   이고, 좌석 토큰(`/stores/:id/token`)은 `active|approved` 만 내준다. 승인 대기 매장까지 세면
+         *   게이트가 열리는데 좌석 전환은 거부되어 — **이용권이 개인 좌석으로 등록된다.** 막히는 것보다
+         *   나쁘다(잘못된 매장으로 팔린다). 그 상태의 올바른 안내는 "승인 후 가능" 이고, 그건 지금도
+         *   등록 직후 토스트가 말한다.
+         */
+        operableCount = mine.filter(x => x.status === 'active' || x.status === 'approved').length
+      }
+    } catch { /* 판정 실패는 조용히 — 아래에서 좌석 판정만 쓴다(fail-open 아님, 종전 동작) */ }
+
+    return c.json({
+      success: true,
+      data: { ...data, store_ready: data.store_ready || operableCount > 0, operable_store_count: operableCount },
+    })
   } catch (err) {
     return safeError(c, err, '매장 정보를 불러오지 못했습니다', '[seller-stores]')
   }
@@ -425,12 +462,26 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
 
     // sellers 행 생성 — linked_user_id 는 비움(UNIQUE 1인1행): 접근은 seller_operators 관계로.
     const username = `store_${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`
+    /**
+     * 🩸 2026-09-02 (대표 신고 "매장 등록 중 오류가 발생했습니다" — **두 번째 매장부터 100% 실패**했다).
+     *
+     * `sellers` 에는 `CREATE UNIQUE INDEX idx_sellers_email_unique ON sellers(email) WHERE email IS NOT NULL`
+     * 이 걸려 있는데, 여기서 email 을 **빈 문자열** 로 넣고 있었다. `''` 은 NULL 이 **아니라서** 부분 인덱스에
+     * 포함된다 → 첫 매장은 통과하고(그 슬롯을 차지) **그 다음 등록은 전부 UNIQUE 위반 → catch → 알럿**.
+     * 라이브 실측: `email=''` 인 셀러가 정확히 1행(id=14) 있었고, 그 뒤 등록이 아무도 성공하지 못했다.
+     *
+     * NULL 로 두면 인덱스를 피하지만 컬럼이 **NOT NULL** 이라 불가. ⇒ 매장마다 **고유한 합성 주소**를 넣는다.
+     * `.invalid` 는 RFC 6761 이 "절대 해석되지 않는다"고 예약한 TLD 라, 실수로 발송되는 일이 구조적으로 없다.
+     * ⚠️ 카카오 same-email 셀러 자동연결(`LOWER(email)=LOWER(?)`)은 실제 유저 이메일과 대조하므로
+     *   이 합성 주소와는 영원히 안 맞는다 — 매장이 남의 계정에 붙는 사고가 생기지 않는다.
+     */
+    const storeEmail = `${username}@store.invalid`
     const ins = await c.env.DB.prepare(`
       INSERT INTO sellers (
         username, email, password_hash, name, business_name, business_number,
         phone, address, seller_type, status, created_at, updated_at
-      ) VALUES (?, '', '', ?, ?, ?, ?, ?, 'store_owner', ?, datetime('now'), datetime('now'))
-    `).bind(username, name, name, bno || null, phone || null, address || null, status).run()
+      ) VALUES (?, ?, '', ?, ?, ?, ?, ?, 'store_owner', ?, datetime('now'), datetime('now'))
+    `).bind(username, storeEmail, name, name, bno || null, phone || null, address || null, status).run()
     const newSellerId = Number(ins.meta?.last_row_id)
 
     // 🤝 2026-08-27 (대표 "매장 영입을 어떻게 확인하나") — **초대 링크 귀속**.

@@ -2279,8 +2279,8 @@
       "categoryTitle": "使用券类型",
       "categoryMeal": "餐券",
       "categoryMealDesc": "餐厅·咖啡",
-      "categoryBeauty": "美容券",
-      "categoryBeautyDesc": "美发·美甲·护肤",
+      "categoryBeauty": "美容健身券",
+      "categoryBeautyDesc": "美发·美甲·护肤·私教·瑜伽",
       "categoryHealth": "健身券",
       "categoryHealthDesc": "私教·瑜伽·普拉提",
       "categoryPet": "Pet voucher",
@@ -2288,7 +2288,9 @@
       "categoryStay": "Stay voucher",
       "categoryStayDesc": "Pension, hotel, motel",
       "categoryActivity": "Activity voucher",
-      "categoryActivityDesc": "Escape room, bowling, class"
+      "categoryActivityDesc": "Escape room, bowling, class",
+      "categoryEtc": "其他使用券",
+      "categoryEtcDesc": "宠物·活动·课程"
     },
     "gift": {
       "title": "送礼物",

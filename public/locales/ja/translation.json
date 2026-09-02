@@ -2279,8 +2279,8 @@
       "categoryTitle": "クーポンカテゴリ",
       "categoryMeal": "食事券",
       "categoryMealDesc": "レストラン·カフェ",
-      "categoryBeauty": "ビューティー券",
-      "categoryBeautyDesc": "ヘア·ネイル·スキンケア",
+      "categoryBeauty": "ビューティー・フィットネス券",
+      "categoryBeautyDesc": "ヘア·ネイル·スキンケア·PT·ヨガ",
       "categoryHealth": "ヘルス券",
       "categoryHealthDesc": "PT·ヨガ·ピラティス",
       "categoryPet": "Pet voucher",
@@ -2288,7 +2288,9 @@
       "categoryStay": "Stay voucher",
       "categoryStayDesc": "Pension, hotel, motel",
       "categoryActivity": "Activity voucher",
-      "categoryActivityDesc": "Escape room, bowling, class"
+      "categoryActivityDesc": "Escape room, bowling, class",
+      "categoryEtc": "その他の券",
+      "categoryEtcDesc": "ペット·アクティビティ·クラス"
     },
     "gift": {
       "title": "ギフトを送る",
