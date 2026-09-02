@@ -66,3 +66,10 @@
 - VouchersPage/shared.tsx: 잔액 흰 카드(모바일·PC 레일) · 칩 B안 · 브랜드 **기본 펼침**(09-01 접기 결정을 대표가 대체) · 행/카드/브랜드 타일 테두리 → 들림. 잠긴 계약 byte-불변(위 audit log). 파일 979줄.
 - 테스트 `vouchers-top-chrome.test.ts` ①(슬래브 표식)②④ 재정의 + 매니페스트 1건 교체.
 - #1305 는 main(#1308~#1311) 머지 후 유어샵·교환권을 **함께** 실어 보낸다(CI 한 사이클 절약). 충돌 1건: #1309 가 `LinkshopVisitorRails` 에 xl 게이트를 붙였는데 안P1 이 그 파일을 지웠다 → 삭제 유지, `linkshop-products-seed.test.ts` ③ 을 남은 레일만 검사하도록 수정.
+
+## PC 마이 구현 (같은 PR)
+
+- `AccountPcPane.tsx` 신규(lg+ 만 마운트, `useMediaQuery` 동기 분기) · UserProfilePage 그라디언트 헤더 삭제(PC 는 헤더 숨김) · AccountSideNav 블루 선택 + 내 교환권.
+- 가드 `account-pc-pane.test.ts` 6건 + 매니페스트 2건. 하네스 `--route=/user/profile --pc --auth=user --deals --wallet` 라이트/다크 확인.
+- ⚠️ 하네스에선 주문 현황·리뷰어 레벨이 데이터 0 이라 안 그려진다(둘 다 빈값이면 null) — 라이브에서 확인할 것.
+- 남은 것: ④ 셀러 대시보드 B안.

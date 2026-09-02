@@ -1420,3 +1420,9 @@ canvas {
   .ur-ushop-main .grid-cols-2 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ur-ushop-main .col-span-2 { grid-column: span 3 / span 3; }
 }
+
+/* 🖥️ 2026-09-02 (대표 — PC 마이 "왼쪽 메뉴 + 오른쪽은 내용"): 우측 칸 상단의 한 줄 그리드 안에서
+   주문 현황·리뷰어 레벨(기존 컴포넌트)이 갖는 상단 여백·제목을 카드 안으로 맞춘다. */
+@media (min-width: 1024px) {
+  .ur-account-pane .ur-content-medium.pt-3 { padding-top: 0; }
+}

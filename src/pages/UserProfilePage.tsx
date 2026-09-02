@@ -34,6 +34,8 @@ import {
 import api from '@/lib/api'
 import BrandLoader from '@/components/brand/BrandLoader'
 import AccountSideNav from './user-profile/AccountSideNav'
+import AccountPcPane from './user-profile/AccountPcPane'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 /**
  * 🛡️ 2026-05-01: TD-018 분할 — sub-component 들을 ./user-profile/ 디렉토리로 이동.
@@ -46,6 +48,9 @@ export default function UserProfilePage() {
   // 🛡️ 2026-04-30: 카운트 통합 fetch — 자식 컴포넌트 (CouponVoucherStats / ShoppingGroup) 가
   //   각자 호출하던 wishlist / coupon / voucher endpoint 를 1회만 호출.
   const counts = useMyCounts()
+  // 🖥️ 2026-09-02 (대표 — "PC 모드 답지 않은 페이지"): lg+ 는 우측 칸 상단을 `AccountPcPane`(내용)으로,
+  //   모바일은 종전 세로 흐름 그대로. 동기 초기화 훅이라 첫 렌더부터 정확(모바일↔PC 플래시 없음).
+  const isPc = useMediaQuery('(min-width: 1024px)')
 
   // ✅ Zustand 스토어 사용 (지역별)
   const authStore = useAuthKR // 🔥 2026-08-04: GLOBAL 스토어 제거(#804)
@@ -145,8 +150,9 @@ export default function UserProfilePage() {
       <h1 className="sr-only">{t('nav.mypage', { defaultValue: '마이페이지' })}</h1>
 
       {/* v4 Hero Profile — 프로필 + 알림/설정 버튼 (상단 Large Title 바 제거) */}
-      {/* 🏭 2026-06-05 (사용자 요청): 헤더 배경 은은한 그라데이션(라이트/다크 모두 자연스럽게). */}
-      <div className="bg-gradient-to-b from-white via-warm to-warm dark:from-[#171026] dark:via-[#0a0712] dark:to-[#11141C]">
+      {/* 🎫 2026-09-02: 06-05 의 보라 그라디언트 띠 삭제(표면 규칙 ⑥ 그라디언트 0 — 다크에서 남보라 색이
+          체계 밖 색이었다). PC(lg+)에서는 이 헤더 자체를 숨기고 우측 칸의 프로필 카드가 대신한다. */}
+      <div className={isPc ? 'hidden' : ''}>
       <div className="ur-content-medium px-4 lg:px-8 pt-5 pb-5">
         <div className="flex items-center gap-3">
           <img
@@ -176,7 +182,7 @@ export default function UserProfilePage() {
           </div>
         </div>
       </div>
-      </div>{/* /헤더 그라데이션 wrapper */}
+      </div>{/* /모바일 헤더 */}
 
       {/* 🧭 2026-08-19 (대표 시안 — 그루폰 `My Account`): PC 는 [좌 내비 | 우 내용] 2단.
           모바일(<lg)에서는 `ur-account-pc` 가 아무 일도 하지 않아 **지금 흐름 그대로**다. */}
@@ -191,6 +197,12 @@ export default function UserProfilePage() {
         <AccountSideNav />
         <div className="ur-account-pane min-w-0">
 
+      {/* 🖥️ 2026-09-02 PC: 우측 칸 상단 = 내용(프로필 카드 · 숫자 넷 · 주문/리뷰어 · 곧 쓸 이용권 · 타일).
+          모바일: 종전 흐름(딜 잔액 카드 → 주문 현황 → 리뷰어 → 이용 내역 목록) 그대로. */}
+      {isPc ? (
+        <AccountPcPane counts={counts} userName={userName} profileImage={profileImage} onEditProfile={() => setEditOpen(true)} />
+      ) : (
+      <>
       {/* v4 딜 잔액 + 충전 (큰 박스) */}
       <TeamPointsCard />
 
@@ -208,6 +220,8 @@ export default function UserProfilePage() {
 
       {/* v4 쇼핑 InsetGroup — 나의 이용 내역 (이용권·자산 / 관심 / 주문·배송) */}
       <ShoppingGroup counts={counts} />
+      </>
+      )}
 
       {/* 🧭 2026-06-10 (UI 100점 패스): 수익·추천 3카드 도배 → 접이식 그룹(자산 다음으로 1탭 뒤). */}
       <EarningsGroup>

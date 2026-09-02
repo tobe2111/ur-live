@@ -7395,6 +7395,22 @@ canvas {
     why: '/u/me/add·/u/me/earnings 는 폰 폭으로 만든 도구 화면이라 액자에 남아야 한다. startsWith 로 잡으면 같이 벗겨진다.',
   },
   {
+    name: 'PC 마이 — 우측 칸이 다시 모바일 메뉴 목록으로(isPc 분기 제거)',
+    file: 'src/pages/UserProfilePage.tsx',
+    find: "      {isPc ? (\n        <AccountPcPane",
+    replace: "      {false ? (\n        <AccountPcPane",
+    test: 'src/tests/unit/account-pc-pane.test.ts',
+    why: '2026-09-02 대표 "PC 모드 답지 않은 페이지야". 좌우가 같은 메뉴를 두 번 보여 주던 화면으로 돌아간다.',
+  },
+  {
+    name: 'PC 마이 — 보라 그라디언트 헤더 띠가 되살아난다',
+    file: 'src/pages/UserProfilePage.tsx',
+    find: "<div className={isPc ? 'hidden' : ''}>",
+    replace: "<div className={`bg-gradient-to-b from-white via-warm to-warm dark:from-[#171026] ${isPc ? 'hidden' : ''}`}>",
+    test: 'src/tests/unit/account-pc-pane.test.ts',
+    why: '표면 규칙 ⑥ 그라디언트 0. 다크의 #171026 보라는 체계 밖 색이었다.',
+  },
+  {
     name: '홈 패널 라이트 섬 — darkMode variant 에서 예외가 사라진다',
     file: 'tailwind.config.js',
     find: "darkMode: ['variant', '&:is(.dark *):not(.light-island *)'],",
