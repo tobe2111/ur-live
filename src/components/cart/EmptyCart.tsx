@@ -8,8 +8,8 @@ export const EmptyCart = React.memo(function EmptyCart() {
   const { t } = useTranslation()
 
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-4 bg-white dark:bg-[#0D0F12]">
-      <div className="w-20 h-20 bg-gray-50 dark:bg-[#1A1C21] rounded-full flex items-center justify-center mb-5">
+    <div className="flex flex-col items-center justify-center py-20 px-4 bg-white dark:bg-[#11141C]">
+      <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mb-5">
         <ShoppingBag size={36} className="text-gray-300 dark:text-gray-600" />
       </div>
 

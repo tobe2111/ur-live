@@ -41,9 +41,9 @@ export default function CartPage() {
   // 비로그인 상태: v4 clean white design
   if (!loggedIn) {
     return (
-      <div className="flex flex-col min-h-screen bg-white dark:bg-[#0D0F12]">
+      <div className="flex flex-col min-h-screen bg-white dark:bg-[#11141C]">
         <SEO title={t('cart.seoTitle')} description={t('cart.seoDesc')} url="/cart" noindex />
-        <div className="sticky top-0 z-10 bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35]">
+        <div className="sticky top-0 z-10 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="ur-content-narrow flex items-center justify-between px-4 py-3">
             <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="w-9 h-9 flex items-center justify-center">
               <X className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
@@ -53,7 +53,7 @@ export default function CartPage() {
           </div>
         </div>
         <div className="flex flex-1 flex-col items-center justify-center gap-5 p-8 text-center">
-          <div className="w-20 h-20 bg-gray-50 dark:bg-[#1A1C21] rounded-full flex items-center justify-center">
+          <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center">
             <ShoppingCart className="h-10 w-10 text-gray-300 dark:text-gray-600" aria-hidden="true" />
           </div>
           <div>
@@ -444,7 +444,7 @@ function CartPageContent() {
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader (라우트 청크 로더와 위상 연속).
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12]">
+      <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
         <BrandLoader fullScreen label={t('cart.loading')} />
       </div>
     )
@@ -485,7 +485,7 @@ function CartPageContent() {
                 : 0
 
               return (
-                <div key={group.seller_id} className="mt-2 bg-white dark:bg-[#0D0F12]">
+                <div key={group.seller_id} className="mt-2 bg-white dark:bg-[#11141C]">
                   {/* Seller header with checkbox + badge + name + chevron */}
                   <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 dark:border-[#2C2F35]">
                     <span
@@ -504,7 +504,7 @@ function CartPageContent() {
                       className={`w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 cursor-pointer transition-colors ${
                         groupAllSelected
                           ? 'bg-pink-500 border-pink-500'
-                          : 'bg-white dark:bg-[#0D0F12] border-gray-300 dark:border-[#3A3A3A]'
+                          : 'bg-white dark:bg-[#11141C] border-gray-300 dark:border-[#3A3A3A]'
                       }`}
                     >
                       {groupAllSelected && (
@@ -590,7 +590,7 @@ function CartPageContent() {
             })}
 
             </div>{/* /좌측 아이템 컬럼 */}
-            <aside className="mt-2 bg-white dark:bg-[#0D0F12] px-4 py-4 lg:sticky lg:top-[64px] lg:rounded-2xl lg:border lg:border-gray-100 dark:lg:border-[#2C2F35]">
+            <aside className="mt-2 bg-white dark:bg-[#11141C] px-4 py-4 lg:sticky lg:top-[64px] lg:rounded-2xl lg:border lg:border-gray-100 dark:lg:border-[#2C2F35]">
               <CartSummary
                 totalItems={totalItems}
                 subtotal={subtotal}
@@ -605,7 +605,7 @@ function CartPageContent() {
 
           {/* v4 Bottom fixed CTA: "N원 주문하기" (bg-gray-900 text-white rounded-xl) */}
           {/* 🛡️ 2026-05-04: PC xl+ 사이드바 (224px) 우측부터 시작하도록 xl:left-56 추가. */}
-          <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-20 bg-white dark:bg-[#0D0F12] border-t border-gray-100 dark:border-[#2C2F35] safe-bottom lg:hidden">
+          <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-20 bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35] safe-bottom lg:hidden">
             <div className="ur-content-narrow px-4 py-3">
               <CartCtaButton onClick={handleCheckout} disabled={selectedIds.size === 0 || updating}
                 label={selectedIds.size === 0 ? t('cart.selectProductsFirst') : t('cart.placeOrder', { amount: formatNumber(total) })} />

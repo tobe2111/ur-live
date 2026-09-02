@@ -39,7 +39,7 @@ function bubbleHtml(thumbUrl: string, emoji: string, minPrice: number, count: nu
         ${thumbUrl ? `<img class="${photoClass}" src="${escapeHtml(thumbUrl)}" alt="" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" />` : ''}
         <span style="position:absolute;left:0;right:0;bottom:0;background:rgba(17,24,39,0.72);color:#fff;font-size:9.5px;font-weight:700;text-align:center;padding:3px 0;">${formatNumber(minPrice || 0)}원~</span>
       </div>
-      <span style="position:absolute;top:-7px;right:-7px;background:#E0526B;color:#fff;border:2px solid #fff;border-radius:999px;min-width:23px;height:23px;padding:0 5px;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.22);">${count}</span>
+      <span style="position:absolute;top:-7px;right:-7px;background:#1C69EF;color:#fff;border:2px solid #fff;border-radius:999px;min-width:23px;height:23px;padding:0 5px;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.22);">${count}</span>
     </div>
   `
 }
@@ -82,15 +82,15 @@ export function buildPinContent(r: Restaurant, opts: {
   const emoji = categoryEmoji(cat)
   const hasDiscount = r.original_price > r.price
   const cornerBadge = isLive
-    ? `<span style="position:absolute;top:-4px;right:-4px;background:#E0526B;color:#fff;border-radius:50%;width:14px;height:14px;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;animation:live-pulse 1.2s infinite;">●</span>`
+    ? `<span style="position:absolute;top:-4px;right:-4px;background:#1C69EF;color:#fff;border-radius:50%;width:14px;height:14px;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;animation:live-pulse 1.2s infinite;">●</span>`
     : hasDiscount
-    ? `<span style="position:absolute;top:-6px;right:-8px;background:#E0526B;color:#fff;border-radius:8px;padding:1px 4px;font-size:9px;font-weight:800;line-height:1.2;">-${Math.round((1 - r.price / r.original_price) * 100)}%</span>`
+    ? `<span style="position:absolute;top:-6px;right:-8px;background:#1C69EF;color:#fff;border-radius:8px;padding:1px 4px;font-size:9px;font-weight:800;line-height:1.2;">-${Math.round((1 - r.price / r.original_price) * 100)}%</span>`
     : isFav
-    ? `<span style="position:absolute;top:-3px;right:-3px;color:#E0526B;font-size:11px;line-height:1;">❤</span>`
+    ? `<span style="position:absolute;top:-3px;right:-3px;color:#1C69EF;font-size:11px;line-height:1;">❤</span>`
     : groupSize > 1
     ? `<span style="position:absolute;top:-4px;right:-6px;background:#374151;color:#fff;border-radius:9px;padding:0 4px;font-size:9px;font-weight:800;line-height:1.4;">+${groupSize - 1}</span>`
     : ''
-  const ring = isLive ? '#E0526B' : categoryColor(cat)
+  const ring = isLive ? '#1C69EF' : categoryColor(cat)
   const photoSize = isSelected ? 50 : 42
   const thumb = cfImage(r.image_url, { width: 96, height: 96, fit: 'cover', format: 'auto' })
   const el = document.createElement('div')

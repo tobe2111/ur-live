@@ -83,7 +83,7 @@ export default function VoucherMap<T extends VoucherMapItem>({
         // 🎨 핀 위 라벨 — "가게 · D-N" (시안)
         const dN = daysLeft(v.expires_at)
         const safeName = (v.restaurant_name || v.product_name).replace(/</g, '&lt;')
-        const labelHtml = `<div style="transform:translateY(-46px);background:#0D0F12;color:#fff;font:600 11px 'Pretendard',sans-serif;padding:5px 9px;border-radius:9px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2)">${safeName}${dN !== null ? ` · D-${dN}` : ''}</div>`
+        const labelHtml = `<div style="transform:translateY(-46px);background:#11141C;color:#fff;font:600 11px 'Pretendard',sans-serif;padding:5px 9px;border-radius:9px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2)">${safeName}${dN !== null ? ` · D-${dN}` : ''}</div>`
         const overlay = new w.kakao.maps.CustomOverlay({ position: pos, content: labelHtml, yAnchor: 1, zIndex: 3 })
         overlay.setMap(map)
         w.kakao.maps.event.addListener(marker, 'click', () => onMarkerClick(v))
@@ -129,7 +129,7 @@ export default function VoucherMap<T extends VoucherMapItem>({
 
   if (vouchers.length === 0) {
     return (
-      <div className="bg-white dark:bg-[#0D0F12] rounded-xl border border-gray-200 dark:border-[#2C2F35] p-12 text-center">
+      <div className="bg-white dark:bg-[#11141C] rounded-xl border border-gray-200 dark:border-[#2C2F35] p-12 text-center">
         <p className="text-sm text-gray-500 dark:text-gray-400">지도에 표시할 미사용 이용권이 없어요</p>
       </div>
     )
@@ -144,7 +144,7 @@ export default function VoucherMap<T extends VoucherMapItem>({
           type="button"
           onClick={recenter}
           aria-label="내 위치로 이동"
-          className="absolute right-3 top-3 z-[2] w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-[#1A1C21] text-gray-900 dark:text-white shadow-md active:scale-95 transition-transform"
+          className="absolute right-3 top-3 z-[2] w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-[#1D1F29] text-gray-900 dark:text-white shadow-md active:scale-95 transition-transform"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="4.2" /><line x1="12" y1="2" x2="12" y2="5" /><line x1="12" y1="19" x2="12" y2="22" /><line x1="2" y1="12" x2="5" y2="12" /><line x1="19" y1="12" x2="22" y2="12" />
