@@ -27,4 +27,4 @@
 - 시안: https://claude.ai/code/artifact/1a44e272-aba0-4c9d-b44f-fc9a742c228a · 기록 `docs/design/consumer-popups-dark-2026-09.md`.
 
 **다음 세션 첫 액션**: 배포 후 다크모드에서 ① 이미 담은 상품 다시 담기 → "이미 담은 상품이에요" ② 상품 상세 리뷰 작성 textarea 타이핑 글자 보임 ③ `/cart` 빈 상태 아래까지 다크. 셋 다 눈으로.
-**Notion**: 미기록(MCP 연결 세션에서 개발 업데이트 로그 1행 — 유어딜 / UI).
+**Notion**: 기록 완료(개발 업데이트 로그, 2026-09-02 — 유어딜 / 결함 수정).
