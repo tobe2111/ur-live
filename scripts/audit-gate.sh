@@ -46,6 +46,7 @@ if domain auth; then
   run "라이트 입력 가시성"               env STRICT_LIGHT_INPUT=1      node scripts/check-light-input-guard.mjs
   run "내부 링크 dead-link"             env STRICT_LINKS=1            node scripts/check-internal-links.mjs
   run "라우트 경로 중복(조용히 죽는 페이지)" env STRICT_DUP_ROUTES=1       node scripts/check-duplicate-routes.mjs
+  run "라우트 그림자(정적 경로가 /:param 에 가림)"                             node scripts/check-route-shadowing.mjs
   run "도달 불가 라우트(누를 데 없는 페이지)" env STRICT_ORPHAN_ROUTES=1   node scripts/check-orphan-routes.mjs
   run "API 인증 누락"                   bash scripts/check-api-auth.sh
   run "가격기반 로그인 유도 금지"         env STRICT_LOGIN_GATE=1       node scripts/check-login-gate-by-price.mjs

@@ -132,6 +132,32 @@ staysPublicRoutes.get('/stays/search', cors(), async (c) => {
 
 // 상세 — 🖼️ 2026-07-20 (대표 SSR/OG): publicCache(120) 로 edge 캐시 → 워커 SSR self-fetch 0-RTT.
 //   user-agnostic(좌표는 숙소 공개 주소 — 지도 노출용, 비공개 정보 아님). 로그인/등급가 없음.
+/**
+ * ⚠️ **정적 경로는 `/:param` 보다 먼저 등록해야 한다** (2026-09-02 라이브 실측으로 발견).
+ *   Hono 는 등록 순서로 매칭하므로 아래 `/:param` 이 위에 있으면 이 경로가 그쪽으로 잡혀
+ *   **영원히 엉뚱한 에러**를 낸다(파라미터 검증에 걸려 400/404). 경로 문자열이 달라
+ *   `check-duplicate-routes` 는 이 그림자를 못 본다 — 순서로만 지켜진다.
+ */
+staysPublicRoutes.get('/stays/my-bookings', cors(), async (c) => {
+  try {
+    const userId = await resolveStayUserId(c)
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+    // 🛡️ 2026-05-18: voucher 모드는 check_in_date 가 NULL — created_at 으로 fallback.
+    const rows = await c.env.DB.prepare(
+      `SELECT b.*, p.name as product_name, r.name as room_name, p.image_url
+         FROM stay_bookings b
+         LEFT JOIN products p ON p.id = b.product_id
+         LEFT JOIN product_stay_rooms r ON r.id = b.room_id
+        WHERE b.user_id = ?
+        ORDER BY COALESCE(b.check_in_date, b.created_at) DESC LIMIT 100`
+    ).bind(userId).all<Record<string, unknown>>().catch(() => ({ results: [] }))
+    return c.json({ success: true, data: rows.results || [] })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
+  }
+})
+
 staysPublicRoutes.get('/stays/:productId', cors(), publicCache(120), async (c) => {
   try {
     const productId = Number(c.req.param('productId'))
@@ -1336,25 +1362,6 @@ staysPublicRoutes.post('/stays/bookings/:id/review', cors(), async (c) => {
 })
 
 // 사용자 본인 예약 목록 (마이페이지용).
-staysPublicRoutes.get('/stays/my-bookings', cors(), async (c) => {
-  try {
-    const userId = await resolveStayUserId(c)
-    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-
-    // 🛡️ 2026-05-18: voucher 모드는 check_in_date 가 NULL — created_at 으로 fallback.
-    const rows = await c.env.DB.prepare(
-      `SELECT b.*, p.name as product_name, r.name as room_name, p.image_url
-         FROM stay_bookings b
-         LEFT JOIN products p ON p.id = b.product_id
-         LEFT JOIN product_stay_rooms r ON r.id = b.room_id
-        WHERE b.user_id = ?
-        ORDER BY COALESCE(b.check_in_date, b.created_at) DESC LIMIT 100`
-    ).bind(userId).all<Record<string, unknown>>().catch(() => ({ results: [] }))
-    return c.json({ success: true, data: rows.results || [] })
-  } catch (err) {
-    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
-  }
-})
 
 // 리뷰 목록
 staysPublicRoutes.get('/stays/:productId/reviews', cors(), async (c) => {

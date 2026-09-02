@@ -4566,7 +4566,11 @@
     "detail": "상세",
     "itemCount": "{{count}}개",
     "moreItems": "외 {{count}}개",
-    "itemQtyPrice": "{{qty}}개 · {{price}}원"
+    "itemQtyPrice": "{{qty}}개 · {{price}}원",
+    "kindGroupbuy": "이용권",
+    "emptyGroupbuyTitle": "이용권 구매 내역이 없습니다",
+    "useInMyVouchers": "'내 이용권'에서 사용하세요",
+    "useInMyGifticons": "'내 교환권'에서 사용하세요"
   },
   "welcomeOnboarding": {
     "skip": "건너뛰기",

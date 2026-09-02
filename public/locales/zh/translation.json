@@ -4566,7 +4566,11 @@
     "detail": "详情",
     "itemCount": "{{count}}件",
     "moreItems": "另{{count}}件",
-    "itemQtyPrice": "{{qty}}件 · {{price}}元"
+    "itemQtyPrice": "{{qty}}件 · {{price}}元",
+    "kindGroupbuy": "使用券",
+    "emptyGroupbuyTitle": "暂无使用券购买记录",
+    "useInMyVouchers": "请在\"我的使用券\"中使用",
+    "useInMyGifticons": "请在\"我的兑换券\"中使用"
   },
   "welcomeOnboarding": {
     "skip": "跳过",

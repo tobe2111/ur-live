@@ -4566,7 +4566,11 @@
     "detail": "Details",
     "itemCount": "{{count}} items",
     "moreItems": "and {{count}} more",
-    "itemQtyPrice": "{{qty}} × {{price}} KRW"
+    "itemQtyPrice": "{{qty}} × {{price}} KRW",
+    "kindGroupbuy": "Passes",
+    "emptyGroupbuyTitle": "No pass purchases yet",
+    "useInMyVouchers": "Use it in My Passes",
+    "useInMyGifticons": "Use it in My Gift Vouchers"
   },
   "welcomeOnboarding": {
     "skip": "Skip",

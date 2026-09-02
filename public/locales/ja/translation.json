@@ -4566,7 +4566,11 @@
     "detail": "詳細",
     "itemCount": "{{count}}個",
     "moreItems": "他{{count}}件",
-    "itemQtyPrice": "{{qty}}個 · {{price}}円"
+    "itemQtyPrice": "{{qty}}個 · {{price}}円",
+    "kindGroupbuy": "利用券",
+    "emptyGroupbuyTitle": "利用券の購入履歴がありません",
+    "useInMyVouchers": "「マイ利用券」でご利用ください",
+    "useInMyGifticons": "「マイ交換券」でご利用ください"
   },
   "welcomeOnboarding": {
     "skip": "スキップ",

@@ -130,6 +130,49 @@ async function ensureCuratorTables(DB: D1Database): Promise<void> {
 // GET /api/curator/:handle  (public)
 // 큐레이터 공개 페이지 데이터: user + pins (with product 메타)
 // ============================================================
+/**
+ * ⚠️ **정적 경로는 `/:param` 보다 먼저 등록해야 한다** (2026-09-02 라이브 실측으로 발견).
+ *   Hono 는 등록 순서로 매칭하므로 아래 `/:param` 이 위에 있으면 이 경로가 그쪽으로 잡혀
+ *   **영원히 엉뚱한 에러**를 낸다(파라미터 검증에 걸려 400/404). 경로 문자열이 달라
+ *   `check-duplicate-routes` 는 이 그림자를 못 본다 — 순서로만 지켜진다.
+ */
+curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    const DB = c.env.DB
+
+    // 본인이 이미 핀한 상품은 제외
+    const { results: pinned } = userId
+      ? await DB.prepare('SELECT product_id FROM product_pins WHERE user_id = ?')
+          .bind(userId)
+          .all<{ product_id: number }>()
+      : { results: [] as { product_id: number }[] }
+    const excludeIds = (pinned ?? []).map(p => p.product_id)
+
+    const limit = Math.max(5, Math.min(50, intParam(c.req.query('limit'), 20)))
+    const exclusion = excludeIds.length
+      ? ` AND p.id NOT IN (${excludeIds.map(() => '?').join(',')})`
+      : ''
+
+    const { results } = await DB.prepare(
+      `SELECT p.id, p.name, p.price, p.original_price, p.category, p.image_url, p.thumbnail,
+              COALESCE(p.referral_commission_rate, 0) AS commission_rate,
+              COALESCE(p.sold_count, 0) AS sold_count
+       FROM products p
+       WHERE p.is_active = 1
+         AND COALESCE(p.referral_enabled, 0) = 1
+         AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
+         ${exclusion}
+       ORDER BY p.sold_count DESC, p.id DESC
+       LIMIT ?`,
+    ).bind(...excludeIds, limit).all()
+
+    return c.json({ success: true, recommendations: results ?? [] })
+  } catch (err) {
+    return safeError(c, err, '추천 핀 조회 중 오류가 발생했습니다', '[curator:recommend]')
+  }
+})
+
 curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
   try {
     const handle = c.req.param('handle')?.toLowerCase().trim()
@@ -924,42 +967,6 @@ curatorRoutes.get('/me/pins/stats', requireAuth(), async (c) => {
 // GET /api/curator/recommendations  (requireAuth optional)
 // 핀 후보 추천 — 인기 + 카테고리 + 최근본 (단순)
 // ============================================================
-curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
-  try {
-    const userId = getAuthUserId(c)
-    const DB = c.env.DB
-
-    // 본인이 이미 핀한 상품은 제외
-    const { results: pinned } = userId
-      ? await DB.prepare('SELECT product_id FROM product_pins WHERE user_id = ?')
-          .bind(userId)
-          .all<{ product_id: number }>()
-      : { results: [] as { product_id: number }[] }
-    const excludeIds = (pinned ?? []).map(p => p.product_id)
-
-    const limit = Math.max(5, Math.min(50, intParam(c.req.query('limit'), 20)))
-    const exclusion = excludeIds.length
-      ? ` AND p.id NOT IN (${excludeIds.map(() => '?').join(',')})`
-      : ''
-
-    const { results } = await DB.prepare(
-      `SELECT p.id, p.name, p.price, p.original_price, p.category, p.image_url, p.thumbnail,
-              COALESCE(p.referral_commission_rate, 0) AS commission_rate,
-              COALESCE(p.sold_count, 0) AS sold_count
-       FROM products p
-       WHERE p.is_active = 1
-         AND COALESCE(p.referral_enabled, 0) = 1
-         AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
-         ${exclusion}
-       ORDER BY p.sold_count DESC, p.id DESC
-       LIMIT ?`,
-    ).bind(...excludeIds, limit).all()
-
-    return c.json({ success: true, recommendations: results ?? [] })
-  } catch (err) {
-    return safeError(c, err, '추천 핀 조회 중 오류가 발생했습니다', '[curator:recommend]')
-  }
-})
 
 // ============================================================
 // POST /api/curator/me/withdrawal (requireUser) — Phase 4 출금
