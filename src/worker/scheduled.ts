@@ -60,6 +60,9 @@ import { LIVE_COMMERCE_SUSPENDED } from '../shared/feature-flags';
 import { logError } from './utils/logger';
 import { reportCronFailure } from './utils/cron-reporter';
 import { recordCronBeat, expectedMaxAgeMinutes } from './utils/cron-heartbeat';
+// 📏 2026-09-02: 작업별 D1 읽기 행 수 — 9/1 무료 한도(500만/일) 사고. 근거는 utils/d1-read-meter.ts 헤더.
+import { installTaskMeteredEnv, runInMeter } from './utils/d1-read-meter-als';
+import { newMeter } from './utils/d1-read-meter';
 import { ACCEPTED_CRON_EXPRESSIONS } from './utils/cron-expected';
 import { envBeatFor } from './utils/cron-required-env';
 import { runDailyLane } from './cron/daily-lane';
@@ -134,6 +137,9 @@ export async function handleCronScheduled(
   ctx: ExecutionContext,
 ): Promise<void> {
   const cron = event.cron;
+  // 📏 env 의 D1 을 계량 래퍼로 바꾼다 — 아래 모든 작업 클로저가 이 `env` 바인딩을 잡으므로 여기 한 줄이
+  //   곧 전체 커버리지다(하트비트와 같은 이유로 같은 자리). 작업 밖의 쿼리(`__tick` 등)는 세지 않는다.
+  env = installTaskMeteredEnv(env);
 
   // 🔬 2026-08-22 진단 프로브(`__tick`) — 왜 맨 앞인지·무엇을 가르는지는 `utils/cron-heartbeat.ts` 상단 주석.
   // 🔬 2026-08-25: 키를 **트리거별**로 쪼갠다(`__tick:<cron식>`). 전역 키 하나였을 땐 같은 분에
@@ -150,16 +156,18 @@ export async function handleCronScheduled(
     const t0 = Date.now();
     let ok = true;
     let out: unknown;
+    // 📏 이 작업이 읽은 D1 행 수 — 던져도 그때까지 읽은 양은 남긴다(실패한 작업이 제일 많이 읽는다).
+    const meter = newMeter();
     try {
       // 반환값이 있으면 '무엇을 했나'까지 기록한다 — 0건으로 끝난 게 '할 일이 없어서'인지
       // '조용히 실패해서'인지 구분하려면 실행 사실만으로는 부족하다.
-      out = await task();
+      out = await runInMeter(meter, task);
     } catch (err) {
       ok = false;
       await notifyCronFailure(env, name, err);
     } finally {
       // 기록 자체는 절대 throw 하지 않는다(관측이 기능을 막으면 안 된다).
-      await recordCronBeat(env, name, ok, Date.now() - t0, cron, out, gapMin);
+      await recordCronBeat(env, name, ok, Date.now() - t0, cron, out, gapMin, meter);
     }
   };
   // ⏰ 슬롯 작업은 5분 캐리어가 아니라 **자기 주기**를 신고한다(근거: `expectedMaxAgeMinutes` docblock).

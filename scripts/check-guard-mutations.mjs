@@ -88,6 +88,36 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '⏸️ 유어애즈 일시정지 스위치가 레인을 안 막는다',
+    file: 'src/worker-ads/index.ts',
+    find: '    if (paused && !pauseExempt(path)) return\n',
+    replace: '',
+    test: 'src/tests/unit/ads-lanes-pause.test.ts',
+    why:
+      '2026-09-02: D1 읽기 한도(계정 단위 500만/일)에 닿아 유어딜 API 전체가 500. 유어애즈를 멈추는 길이 ' +
+      '15개 env 로 흩어져 있어 하나를 빠뜨리면 조용히 계속 읽는다 — 스위치 하나가 실제로 kick 을 막아야 한다.',
+  },
+  {
+    name: '📏 DO 알람 레인의 D1 읽기량이 스탬프에서 빠진다',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))), this.meter)',
+    replace: 'staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))))',
+    test: 'src/tests/unit/ads-lanes-pause.test.ts',
+    why:
+      '8/27 수리 뒤 아무도 재지 않았고, 잴 수단이 DB 총량뿐이라 "어느 레인이" 를 끝내 못 가렸다. ' +
+      '알람 레인은 인보케이션이 DO 라 엔트리 래핑이 안 미친다 — 스탬프에 직접 실어야 보인다.',
+  },
+  {
+    name: '📏 유어딜 cron 작업이 계량기 밖에서 돈다',
+    file: 'src/worker/scheduled.ts',
+    find: 'out = await runInMeter(meter, task);',
+    replace: 'out = await task();',
+    test: 'src/tests/unit/d1-read-meter.test.ts',
+    why:
+      '계량기를 만들어도 safeCron 이 그 안에서 작업을 안 돌리면 rr 은 영원히 0 이다 — "만든 것·등록된 것·' +
+      '실제로 도는 것" 이 셋 다 다르다는 이 레포의 교훈 그대로.',
+  },
+  {
     name: '백필 건수가 화면까지 못 간다',
     file: 'src/pages/admin-dongnedeal-import/seedStayDemos.ts',
     find: "t.descHealed && ` · 소개 문구 ${t.descHealed}개 교체`,",

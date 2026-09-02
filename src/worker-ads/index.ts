@@ -27,6 +27,9 @@ import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
 import { laneUrl, selfBeatMiddleware } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
 import { laneAlarmDrivesEnrich, bootstrapLaneAlarm } from './lane-alarm-boot'
+// ⏸️ 레인 일시정지 스위치 하나 + 📏 인보케이션(=레인 1회)별 D1 읽기 계량 — 둘 다 2026-09-02 한도 사고.
+import { lanesPaused, pauseExempt, PAUSE_BEAT } from './lane-pause'
+import { withMeteredEnv, newMeter } from '@/worker/utils/d1-read-meter'
 import { scheduleMaintenanceCron } from './maintenance-cron'
 import { healthRoutes } from './health.routes'
 import { batchLaneRoutes } from './batch-lanes.routes'
@@ -259,6 +262,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
 
   //   `beatName` — 경로가 바뀌어도 하트비트 이름을 고정(바꾸면 옛 행이 남아 stale watch 가 영원히 경보).
+  // ⏸️ 스위치 하나로 전부 — 근거·범위는 `lane-pause.ts` 헤더. `kick`(아래 클로저)·부트스트랩·시트 미러가 함께 본다.
+  //   `kick` 선언보다 **앞**에 둔다 — 뒤에 두면 첫 kick 호출 시점에 따라 TDZ 로 터진다(laneAlarmOn 이 겪은 그 함정).
+  const paused = lanesPaused(env)
   const laneReg = createLaneRegistry()
   //   `gap` — 이 레인의 **실제** 기대 간격(분). 안 주면 매시간(= event.cron)으로 본다.
   //     일 1회/N시간 레인은 `gates.dailyAt`/`gates.everyNHours` 가 조건과 함께 자동으로 넣어준다
@@ -271,6 +277,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   const kick = (path: string, fallback: () => Promise<unknown>, opts?: { gap?: number; period?: number; beat?: string }): void => {
     const beat = opts?.beat || path.replace(/^\/__ads\//, '')
     laneReg.note(path, opts?.beat)   // 하트비트 이름과 **같은 이름**으로 등록해야 never_fired/orphan 이 어긋나지 않는다
+    // ⏸️ 정지 중엔 **등록만** 하고 띄우지 않는다(등록을 빼면 known_lanes 가 줄어 orphan 판정이 흔들린다).
+    if (paused && !pauseExempt(path)) return
     /**
      * 🕳️ **`gap` 을 안 주면 그 레인은 침묵 판정에서 통째로 빠진다** (2026-08-03 라이브 실측).
      *
@@ -309,6 +317,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   🔌 **설정했는데 코드가 안 읽는 env 키**도 같이 신고한다(2026-08-03) — 실측에서 4개 나왔고
   //   넷 다 오류를 안 낸다(대시보드엔 값이 보이는데 코드는 기본값으로 돈다). 이상 없으면 키가 아예 안 붙는다.
   ctx.waitUntil(adsBeat('scheduled', true, 0, undefined, undefined, { ...buildAgeInfo(), ...envDriftInfo(env) }))
+  // ⏸️ 정지 표식 — 감시(stale-watch·헬스 게이트)가 이 행으로 '사고'와 '일시정지'를 가른다. 매 정각 1줄(배치).
+  ctx.waitUntil(adsBeat(PAUSE_BEAT, true, 0, undefined, 120, { paused }))
 
   // ── 매시간(정각) — 소셜 유지보수 + 인플루언서 자동수집 ──────────────────────
   //   🚦 2026-08-02: 생 waitUntil(부모 CPU 직격, 실측 2,390ms/회차) → kick(자식 예산). 예산 분산에도 잡힌다.
@@ -345,7 +355,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   인보케이션에서 다음을 잇게 해 부모 비용을 1로 고정한다(수집 레인과 같은 구조).
   //  ⏰ **알람이 몰면 cron 은 손을 뗀다**(2026-08-02 시범) — 게이트·부트스트랩·근거는 `lane-alarm-boot.ts`.
   //   (`laneAlarmOn` 선언은 위 gates 옆으로 올렸다 — 수집 게이트가 이 블록보다 위에 있어서다.)
-  if (laneAlarmOn) ctx.waitUntil(bootstrapLaneAlarm(env, adsBeat))
+  if (laneAlarmOn && !paused) ctx.waitUntil(bootstrapLaneAlarm(env, adsBeat)) // ⏸️ 정지 중엔 체인을 새로 세우지 않는다(알람 자체는 쉬면서 이어 건다)
   if (!laneAlarmOn && (env as unknown as { ADS_INFLUENCER_ENRICH_DISABLED?: string }).ADS_INFLUENCER_ENRICH_DISABLED !== 'true') {
     // 🔁 라운드 루프는 **드라이버 인보케이션**이 돈다(`/__ads/enrich-influencer-driver`).
     //   여기서 for-await 로 돌리면 라운드 수만큼 부모의 서브리퀘스트를 먹는데, 부모는 이미 매시간
@@ -382,7 +392,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   ⏰ 2026-08-04 알람이 몰면 cron 은 손을 뗀다(전 레인 최다 CPU 사망 ×16 — 근거·⚠️행중복 방어는
   //   `lane-alarm-runners.ts` sheets-sync 항목). 시트 미러는 리스가 없어 이 게이트가 유일한 방어다.
   if (!laneAlarmOn && env.ADS_SHEETS_SYNC_ENABLED === 'true') {
-    ctx.waitUntil((async () => {
+    if (!paused) ctx.waitUntil((async () => { // ⏸️ 정지 중엔 시트 미러도 쉰다(읽기가 크다 — OFFSET 페이지네이션)
       const { runSheetsMirrorLane } = await import('./sheets-mirror-lane')
       await runSheetsMirrorLane(env, adsBeat)
     })())
@@ -587,4 +597,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
 //   ⚠️ export 를 빼면 배포는 되는데 **알람이 영원히 안 깨어난다**(클래스를 못 찾아 조용히 실패).
 export { AdsLaneDurableObject } from './lane-alarm'
 
-export default { fetch: app.fetch, scheduled }
+// 📏 인보케이션마다 D1 을 계량 래퍼로 — 레인 1회 = 인보케이션 1회라 `readEnvMeter(c.env)` 가 곧 그 레인의 읽기량이다
+//   (`self-beat.ts` 가 하트비트에 싣는다). 원본 env 는 바꾸지 않는다.
+export default {
+  fetch: (req: Request, env: Env, ctx: ExecutionContext) => app.fetch(req, withMeteredEnv(env, newMeter()), ctx),
+  scheduled: (event: ScheduledEvent, env: Env, ctx: ExecutionContext) => scheduled(event, withMeteredEnv(env, newMeter()), ctx),
+}
