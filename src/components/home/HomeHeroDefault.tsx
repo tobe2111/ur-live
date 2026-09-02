@@ -98,18 +98,16 @@ export default function HomeHeroDefault({
           표면 체계 규칙 ⑥ "그라디언트 0" 이고, 강조색은 블루 하나뿐이다. 바탕은 색면(--home-field) 그대로. */}
       {/* 📸 우측 미디어 — 좌·우 양끝을 색면으로 페이드한다(대표 요청 "양쪽 그라데이션").
           `mask-image` 로 픽셀을 투명하게 깎아 색면이 그대로 비치게 한다 — 위에 반투명 막을
-          덧대는 방식은 사진이 뿌옇게 죽는다. 세로 끝도 눌러 위아래 경계선을 없앤다. */}
+          덧대는 방식은 사진이 뿌옇게 죽는다.
+          🎫 2026-09-02 (대표 "위아래부분까지 그라데이션은 안해도 될 것 같은데"): 세로(180deg) 마스크와
+          하단 h-12 페이드를 뺐다. 사진은 히어로 위아래 끝까지 꽉 차고, 페이드는 **좌우만**. */}
       {hasMedia && (
         <div className="hidden md:block absolute inset-y-0 right-0 w-[46%] lg:w-[54%]" aria-hidden="true"
           /* 📐 2026-08-24: `lg:block`(1024+) 이라 **태블릿엔 사진이 아예 없었다** — 색면만 남아
              허전했다. md(768)부터 보이되 폭은 46% 로 좁혀 카피가 눌리지 않게 한다. */
           style={{
-            WebkitMaskImage:
-              'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 12%, #000 84%, transparent 100%)',
-            maskImage:
-              'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 12%, #000 84%, transparent 100%)',
-            WebkitMaskComposite: 'source-in',
-            maskComposite: 'intersect',
+            WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%)',
+            maskImage: 'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%)',
           }}
         >
           {content?.videoUrl ? (
@@ -147,10 +145,6 @@ export default function HomeHeroDefault({
             : 'linear-gradient(90deg, rgb(var(--home-field-rgb) / 0.88) 0%, rgb(var(--home-field-rgb) / 0.46) 46%, rgb(var(--home-field-rgb) / 0.10) 100%)',
         }}
       />
-
-      {/* 🌗 히어로 → 아래 색면으로 이어지는 페이드. 경계선이 딱 떨어지면 '잘린 배너'로 보인다. */}
-      <div className="absolute inset-x-0 bottom-0 h-12" aria-hidden="true"
-        style={{ background: 'linear-gradient(180deg, transparent, var(--home-field))' }} />
 
       </div>{/* ← 배경 래퍼 끝. 아래 콘텐츠는 잘리지 않는다(드롭다운이 히어로 밖으로 펼쳐진다). */}
 
