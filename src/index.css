@@ -1398,3 +1398,25 @@ canvas {
   -webkit-touch-callout: default;
   -webkit-user-drag: auto;
 }
+
+/* 🛍️ 2026-09-02 (대표 확정 — 유어샵 안P1): PC(lg+) 2단 — 좌 300px 프로필 고정(sticky) + 우 3열 진열대.
+   모바일(<lg)은 같은 DOM 이 세로로 흐른다(헤더 → 진열대) — 안3 그대로. 상단 전역 네비 68px 아래 sticky.
+   ⚠️ 우측 칸 안의 섹션들은 `max-w-3xl mx-auto px-4`(폰 폭 기준 중앙 정렬)라 그대로 두면 좁은 칸 안에서
+      또 가운데로 몰린다 → `.ur-account-pane` 과 같은 방식으로 칸 안에서만 무력화하고, 2열 고정 그리드를
+      3열로 편다(`grid-cols-2` 는 액자 1열 오버라이드를 피하려고 고정했던 값 — 액자를 벗은 여기서만 3열). */
+@media (min-width: 1024px) {
+  .ur-ushop-pc {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 40px;
+    align-items: start;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 2rem 0;
+  }
+  .ur-ushop-side { position: sticky; top: 92px; }
+  .ur-ushop-main .max-w-3xl,
+  .ur-ushop-main .ur-content-wide { max-width: none; margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+  .ur-ushop-main .grid-cols-2 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ur-ushop-main .col-span-2 { grid-column: span 3 / span 3; }
+}

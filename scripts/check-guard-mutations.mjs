@@ -7132,6 +7132,32 @@ canvas {
     why: '칩을 블루 하나로 정리해도 핀이 알록달록하면 정리가 무효다. 강조색은 하나, 자리는 선택뿐.',
   },
   {
+    name: '유어샵 안3 — 헤더가 방문자에게 팔로우 버튼을 준다',
+    file: 'src/pages/curator-page/CuratorHeader.tsx',
+    find: "{canEdit && !isOwner && (",
+    replace: "{!canEdit && <button type=\"button\" className={editBtnCls}>팔로우</button>}\n          {canEdit && !isOwner && (",
+    test: 'src/tests/unit/ushop-a3-p1.test.ts',
+    why:
+      '2026-09-02 대표: "그냥 방문자는 안보이면 되잖아". 시안 목업에 있던 "방문자일 때: 팔로우" 띠는 ' +
+      '설명용이었고 대표가 그 자리를 비우라고 했다. 방문자 화면과 주인 화면의 차이는 버튼 하나의 부재뿐.',
+  },
+  {
+    name: '유어샵 안3 — 주인 상단 안내 띠가 되살아난다',
+    file: 'src/pages/CuratorPage.tsx',
+    find: "        {/* 🩸 2026-08-26: `ownerView` 게이트라",
+    replace: "        {isOwner && previewAsVisitor && <div className=\"sticky top-0\">{t('curator.ownerViewBar', { defaultValue: '내 유어샵' })}</div>}\n        {/* 🩸 2026-08-26: `ownerView` 게이트라",
+    test: 'src/tests/unit/ushop-a3-p1.test.ts',
+    why: '2026-09-02 대표 "편집하기 UI 가 번잡하다" — 편집 진입은 헤더 블루 버튼 하나여야 한다.',
+  },
+  {
+    name: '유어샵 안P1 — 도구 화면(/u/me/add)까지 액자를 벗긴다',
+    file: 'src/shared/pc-fullbleed.ts',
+    find: "const USHOP_PC_RE = /^\\/(?:u|profile|s)\\/[^/]+$/",
+    replace: "const USHOP_PC_RE = /^\\/(?:u|profile|s)\\//",
+    test: 'src/tests/unit/ushop-a3-p1.test.ts',
+    why: '/u/me/add·/u/me/earnings 는 폰 폭으로 만든 도구 화면이라 액자에 남아야 한다. startsWith 로 잡으면 같이 벗겨진다.',
+  },
+  {
     name: '홈 패널 라이트 섬 — darkMode variant 에서 예외가 사라진다',
     file: 'tailwind.config.js',
     find: "darkMode: ['variant', '&:is(.dark *):not(.light-island *)'],",

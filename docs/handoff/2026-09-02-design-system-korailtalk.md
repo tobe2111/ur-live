@@ -50,3 +50,13 @@
 - **PC 홈 안A(라이트 섬)** — 위 §8. `tailwind.config` darkMode variant + `.light-island` + 패널 3곳. 가드 `home-panel-light-island.test.ts` 3건 + 매니페스트 2건. 하네스 다크 렌더 확인(`pchome-island-dark.png`).
 - **셀프 구매 보상 차단** — `isSelfReferral`(gb-purchase-guards) `/join` 배선, STAGING P12. 머니 경로(귀속 차단만).
 - **대표 확정(구현 대기)**: 유어샵 안3(왼정렬 헤더·반반 버튼·칩, 주인 띠 삭제, 방문자는 편집 버튼만 안 보임·팔로우 추가 금지; 07-07 에 뺐던 아바타·스탯이 안3 에 있음 — 보고에 명시) · 교환권 B안(칩+브랜드 펼침·실제 로고) · PC 마이(왼쪽 메뉴+오른쪽 내용, 보라 그라디언트 삭제) · 셀러 B안(잉크 사이드바 유지+콘텐츠 체계화, 화이트 고정).
+
+## 유어샵 안3 + 안P1 구현 (같은 날 후속, #1305 다음 PR)
+
+- **뭘 했나**: 주인 상단 띠 삭제(CuratorPage·SellerPublicPage 둘 다) · `CuratorHeader` 재작성(배너 히어로 렌더 삭제, 왼정렬 아바타+이름, 숫자 한 줄, [유어샵 편집][공유] 반반, `canEdit/onEnterEdit/onExitEdit/counts` prop 신설) · 카테고리 칩 `PinCategoryChips`(지도 SSOT 재사용, 7개 이상) · PC 2단 `.ur-ushop-pc`(index.css) + `pc-fullbleed.ts` 한 세그먼트 정규식 · `LinkshopVisitorRails` 삭제 → `UShopQrCard` · 순번 흰 원.
+- **file-size**: CuratorPage 701 → 559 (`OwnerEarningsStrip`·`PinManageList` 를 curator-page/ 로 그대로 추출). CuratorHeader 549 → 466.
+- **가드**: `ushop-a3-p1.test.ts` 13건 + 주입 매니페스트 3건(되돌려-검증 빨간불 확인). `check-linkshop-ownership` 3불변식 유지.
+- **눈으로 본 것**: `visual-preview --pins=8` 모바일 라이트/다크/주인 · `--pc` 라이트/다크/주인 — 안3·안P1 과 일치.
+- **SellerPublicPage 규약 변경**: 주인이 **방문자 화면으로 시작**(`previewAsVisitor` 기본 `true`, CuratorPage 와 통일). 편집 모드 툴바는 [+ 등록][셀러 대시보드] 만(`ur-btn`).
+- **틀렸던/주의**: 2026-07-07 아바타·스탯 삭제 결정이 안3 으로 뒤집혔다 — 다음 세션이 "07-07 결정 위반"으로 되돌리지 말 것(설계 문서 §9).
+- **남은 것**: ② 교환권 B안 · ③ PC 마이 · ④ 셀러 대시보드 B안 (대표 확정, 미착수).
