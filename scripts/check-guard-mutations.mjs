@@ -110,8 +110,6 @@ const MUTATIONS = [
       '카탈로그가 2,260개라 섞이면 어느 가격이 맞는지 아무도 모르게 된다.',
   },
   {
-  },
-  {
     name: '🏠 홈 청크 규칙에서 components/home 이 빠져 app-components 281KB 가 홈 preload 로 돌아온다',
     file: 'vite.config.ts',
     find: "            id.includes('/src/components/home/') || id.includes('/src/pages/pc-home/PcHomeLocationBar') ||\n",
