@@ -628,7 +628,11 @@ describe('🔎 레인 실패 사유 — 자식이 원문을 남긴다', () => {
     // ⏳ beat 쓰기는 **응답 경로 밖**이어야 한다 — await 로 되돌리면 자식 수명이 늘어 느린 레인이 죽는다.
     expect(mw, 'beat 를 await 해 응답을 붙잡는다').toMatch(/waitUntil\(beat\)/)
     // 그리고 엔트리는 그 미들웨어를 실제로 붙여야 한다(옮기고 배선을 빠뜨리면 관측이 통째로 사라진다).
-    expect(read('src/worker-ads/index.ts')).toMatch(/app\.use\('\/__ads\/\*', selfBeatMiddleware\(\)\)/)
+    //   🔁 2026-09-02: 마운트가 index.ts → `lane-gate.ts` 로 옮겨갔다(진입 초크포인트와 한 쌍이라
+    //   순서 계약이 한 파일에서 읽혀야 하고, index.ts 는 600줄 캡이었다). **둘 다** 본다 —
+    //   엔트리가 부르지 않으면 마운트 코드가 있어도 안 붙는다.
+    expect(read('src/worker-ads/lane-gate.ts')).toMatch(/app\.use\('\/__ads\/\*', selfBeatMiddleware\(\)\)/)
+    expect(read('src/worker-ads/index.ts'), '엔트리가 mountLaneMiddleware 를 안 부르면 배선이 없다').toMatch(/mountLaneMiddleware\(app\)/)
   })
 
   it('beat 기록에 상수가 아니라 **실제 사유**가 들어간다', () => {
