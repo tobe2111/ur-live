@@ -96,6 +96,11 @@ const EXTERNAL_PROXY_HOSTS = new Set([
   //   프록시(same-origin)로 추가 → 추출 성공 → 이미지색 반영(쇼핑 카드와 동일). (ADD only, 제거 금지 룰 준수)
   'bizimg.giftishow.com',
   'giftishow.com',
+  // 🔎 2026-09-02 (대표 "QA 도와줘" — 라이브 홈 실측): 데모 사진 출처가 카카오 플레이스라 **임의 CDN** 이 섞인다.
+  //   목록에 없으면 `cfImage` 가 원본 URL 을 그대로 돌려줘 **리사이저를 아예 안 거친다**(홈 한 화면에서 5장 실측).
+  //   활성 상품 15개(커버 4 · 갤러리 11)가 이 상태였다. 아래 둘은 cf-resized 실측 통과 → CDN_CGI_VERIFIED 승격.
+  'cloudfront.net',           // 실측 internal=ok (d2uja84sd90jmv / d12zq4w4guyljn, w200/400/600)
+  'digitaloceanspaces.com',   // thx2.sfo2.cdn.digitaloceanspaces.com
   'gift-img.kt.com',
   'image.kt.com',
   'static.kt.com',
@@ -288,7 +293,7 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   ⚠️ 2026-06-11 에 kakaocdn 이 cdn-cgi 직결로 깨진 적이 있는데, 그때는 `onerror=redirect`
       //   안전판이 없었다(2026-07-02 도입). 지금은 리사이저가 실패하면 원본으로 302 → 현행과 동일 →
       //   최악의 경우 다운사이드 0. 핫링크 차단 호스트는 위 HOTLINK_BLOCKED_HOSTS 가 먼저 걸러 낸다.
-      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com', 'kakaocdn.net', 'daumcdn.net']  // giftishow 2026-07-13 재실측 복원 · kakao/daum 2026-08-19 실측 승격(전부 onerror=redirect 안전판)
+      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com', 'kakaocdn.net', 'daumcdn.net', 'cloudfront.net', 'digitaloceanspaces.com']  // giftishow 2026-07-13 재실측 복원 · kakao/daum 2026-08-19 · cloudfront/DO-spaces 2026-09-02 실측 승격(전부 onerror=redirect 안전판)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
         return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect${cropFrag(opts)}/${cdnCgiSafe(src)}`
       }

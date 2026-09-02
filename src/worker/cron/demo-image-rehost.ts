@@ -20,7 +20,7 @@ import type { Env } from '../types/env'
 import { rehostImageToR2, isExternalImageUrl, validateImageLoads } from '../utils/rehost-image'
 import { hotlinkBlockedSql, isHotlinkBlockedUrl } from '../../shared/hotlink-blocked-hosts'
 import { getSupplyMeta, setSupplyMeta, ensureSupplyMetaTable } from '../utils/product-supply-meta'
-import { fetchDemoPhotos, isBlockedPhotoUrl } from '../utils/demo-photo-set'
+import { fetchDemoPhotos, isBlockedPhotoUrl, blockedPhotoSql } from '../utils/demo-photo-set'
 
 // 🏷️ 데모 이미지 컨디션 버전 — bump 하면 전 데모가 한 번씩 재적용된다(대표사진 + 3~5장).
 //   v2 = 카카오 og 대표사진 커버 + 3~5장(2026-07-21).
@@ -124,7 +124,7 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
           SELECT 1 FROM product_supply_meta m
            WHERE m.product_id = p.id AND m.key = 'demo_cond_v' AND m.value = ?
         )
-      ORDER BY p.id
+      ORDER BY CASE WHEN ${blockedPhotoSql('p.image_url')} THEN 0 ELSE 1 END, p.id
       LIMIT ?`
   ).bind(DEMO_COND_V, Math.max(1, perRun)).all<{ id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }>()
     .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }[] }))
