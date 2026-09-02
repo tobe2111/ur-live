@@ -88,6 +88,80 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎞️ 카드 넘김이 painted 대신 shown 을 따라 클릭 순간 빈 칸이 다시 보인다',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'opacity: i === painted ? (painted === shown ? 1 : 0.65) : 0',
+    replace: 'opacity: i === shown ? 1 : 0',
+    test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
+    why: '2026-09-02 대표 신고: 화살표를 누르면 이전 사진이 사라지고 새 사진이 올 때까지 회색 칸(콜드 0.3~2초).',
+  },
+  {
+    name: '🎞️ 보이는 카드의 idle 프리페치 게이트가 뒤집혀 커버 로드 전에도 안 도는(=영영 안 도는) 상태',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: '    if (!multi || !coverLoaded || idleDone.current) return\n',
+    replace: '    if (true) return\n',
+    test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
+    why: '2026-09-02: hover 뒤에야 받기 시작하면 클릭 시점엔 늦다 — 화면에 들어온 카드는 idle 에 다음 한 장을 미리.',
+  },
+  {
+    name: '🧵 상세 감시 <img> 의 isDesktop 게이트를 없애 폰이 PC 폭(1200)·썸네일(600×2)을 도로 받는다',
+    file: 'src/pages/group-buy/DetailGallery.tsx',
+    find: "    if (!isDesktop) {\n      list.push({ src: main, url: heroUrl(main, DETAIL_HERO_MOBILE_WIDTH) })\n      return list\n    }\n",
+    replace: '',
+    test: 'src/tests/unit/detail-image-continuity.test.ts',
+    why: '2026-09-02 라이브 워터폴: 폰에서 화면에 없는 1200 폭 179KB 가 첫 사진과 대역폭을 나눴다.',
+  },
+  {
+    name: '🧵 상세 슬라이드 ±1 게이트를 없애 갤러리 5장을 다시 한꺼번에 받는다',
+    file: 'src/pages/group-buy/DetailGallery.tsx',
+    find: "            const hi = src && near ? heroUrl(src, DETAIL_HERO_MOBILE_WIDTH) : ''\n",
+    replace: "            const hi = src ? heroUrl(src, DETAIL_HERO_MOBILE_WIDTH) : ''\n",
+    test: 'src/tests/unit/detail-image-continuity.test.ts',
+    why: '2026-09-02 라이브 워터폴: 슬라이드 넷(각 136~220KB, 콜드 2.3~4.4s)이 첫 사진과 동시에 내려왔다.',
+  },
+  {
+    name: '🧵 워커 preload 가 옛 width:900(크롭 없음)으로 되돌아가 갤러리 URL 과 갈린다',
+    file: 'src/worker/utils/home-card-preload.ts',
+    find: '      : isMobile ? detailHeroMobileUrl(heroSrc) : detailPlainUrl(heroSrc, DETAIL_HERO_DESKTOP_WIDTH)\n',
+    replace: "      : cfImage(heroSrc, { width: 900, format: 'auto' })\n",
+    test: 'src/tests/unit/detail-image-continuity.test.ts',
+    why: '08-31 크롭 도입 뒤 실제로 이 상태였다 — preload 111KB 를 받고 버린 뒤 같은 사진을 다시 받았다.',
+    name: '🗺️ 미니맵 관측 여백이 300px 로 돌아가 폰 첫 화면에서 지도 SDK 가 히어로와 동시에 내려온다',
+    file: 'src/components/RestaurantMiniMap.tsx',
+    find: "      { rootMargin: '120px' },",
+    replace: "      { rootMargin: '300px' },",
+    test: 'src/tests/unit/loading-followups-2026-09-02.test.ts',
+    why: '2026-09-02 클릭 프로브: SDK 0.28초 · 타일 1.3초 — 히어로 사진과 같은 순간이었다.',
+  },
+  {
+    name: '🗺️ 미니맵이 교차 즉시 SDK 를 불러 idle 지연이 사라진다',
+    file: 'src/components/RestaurantMiniMap.tsx',
+    find: '          if (e.isIntersecting) {\n            arm()\n',
+    replace: '          if (e.isIntersecting) {\n            setShouldLoadSdk(true)\n',
+    test: 'src/tests/unit/loading-followups-2026-09-02.test.ts',
+    why: '2026-09-02: 교차 판정과 SDK 호출 사이에 idle 을 두어야 히어로가 대역폭을 먼저 쓴다.',
+  },
+  {
+    name: '📈 vitals 표본율이 1% 로 돌아가 실사용자 LCP 가 다시 하루 1건이 된다',
+    file: 'src/worker/routes/analytics.routes.ts',
+    find: 'const VITALS_SAMPLE_RATE = 0.25\n',
+    replace: 'const VITALS_SAMPLE_RATE = 0.01\n',
+    test: 'src/tests/unit/loading-followups-2026-09-02.test.ts',
+    why: '2026-09-02 실측: 4일간 LCP 표본 0 — 표본율 1% 로는 실사용자 판정이 불가능했다.',
+    name: '🍽️ app-utils-deferred 규칙이 catch-all 뒤로 밀려 영원히 안 걸린다',
+    file: 'vite.config.ts',
+    find: "          // 🍽️ 2026-09-02 [UNLOCK_LOADING] (대표 \"모두 다 진행\" — 로딩 후속 ②): **app-utils 다이어트.**\n",
+    replace: "          if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'\n          // 🍽️ 2026-09-02 [UNLOCK_LOADING] (대표 \"모두 다 진행\" — 로딩 후속 ②): **app-utils 다이어트.**\n",
+    test: 'src/tests/unit/app-utils-diet.test.ts',
+    why: '2026-09-02: 홈 미도달 73.8KB 가 다시 app-utils 로 — 규칙은 있는데 순서 때문에 죽는 클래스.',
+    name: '💰 교환권 마진 SSOT 가 0 을 도로 20 으로 삼킨다 (어드민에서 0% 를 못 만든다)',
+    file: 'src/features/admin/api/admin-kt-alpha/markup.ts',
+    find: '  return Math.min(100, Math.max(0, n))\n',
+    replace: '  return Math.min(100, Math.max(0, n || KT_CONSUMER_MARKUP_DEFAULT_PCT))\n',
+    test: 'src/tests/unit/kt-alpha-markup-zero.test.ts',
+    why: '2026-09-02 라이브: 설정 20 → 교환권 2,260개가 액면가 ×1.19. 0 을 넣어도 `|| 20` 이 삼켰다.',
+  },
+  {
     name: '🚀 유어샵 상품 동봉이 빠져 마지막 왕복이 되살아난다(콘텐츠 완성이 다시 fetch 뒤로)',
     file: 'src/worker/routes/curator.routes.ts',
     find: ', linked_seller_products: linkedSeller?.id ? await loadLinkedSellerProducts(c.env.DB, Number(linkedSeller.id)) : null,',
@@ -1172,7 +1246,7 @@ canvas {
   {
     name: '상세 갤러리가 썸네일의 죽은 사진을 감시하지 않는다',
     file: 'src/pages/group-buy/DetailGallery.tsx',
-    find: 'for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, w: 600 })',
+    find: 'for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, url: detailPlainUrl(t, DETAIL_THUMB_WIDTH) })', // 2026-09-02 SSOT 폭으로
     replace: '/* 감시 제거됨 */',
     test: 'src/tests/unit/groupon-detail-map.test.ts',
     why:
@@ -7371,6 +7445,26 @@ canvas {
     why:
       '장바구니 로그인 래퍼 하나만 dark: 가 없어 빈 장바구니 아래가 회색으로 남았다. 같은 파일의 다른 래퍼는 ' +
       '전부 짝이 있어서 눈으로는 안 잡힌다.',
+  },
+  {
+    name: '🏨 숙소 달력 연박이 다시 막힌다 (체크아웃 단계가 죽음)',
+    file: 'src/pages/stay-detail/StayDateGuestPicker.tsx',
+    find: "  if (phase === 'out' && day > draftIn) return { draftIn, draftOut: day, phase: 'in' }",
+    replace: '',
+    test: 'src/tests/unit/stay-detail-pc-booking-panel.test.ts',
+    why:
+      '초기값이 늘 체크인+1박이라 "범위가 잡혔으면 새 체크인" 규칙으로는 체크아웃을 영영 못 찍었다. ' +
+      '이 한 줄이 없으면 그 상태로 돌아가는데 화면에선 에러가 없다.',
+  },
+  {
+    name: '🏨 숙소 달력이 다시 카카오맵 아래로 깔린다 (아사이드 z 제거)',
+    file: 'src/pages/StayDetailPage.tsx',
+    find: 'lg:sticky lg:top-[116px] lg:z-20">',
+    replace: 'lg:sticky lg:top-[116px]">',
+    test: 'src/tests/unit/stay-detail-pc-booking-panel.test.ts',
+    why:
+      'sticky 는 스택 컨텍스트를 만들고 z 가 없으면 지도 레이어(z≥1) 아래로 깔린다. 클래스 하나라 ' +
+      '정리하다 지우기 쉽다.',
   },
 ]
 /**
