@@ -161,8 +161,8 @@ const MUTATIONS = [
   {
     name: '지갑이 다크 모드에서 흰 배경 + 흰 글자가 된다',
     file: 'src/components/wallet/WalletAtoms.tsx',
-    find: 'bg-white dark:bg-[#11141C] text-gray-900 dark:text-white',
-    replace: 'bg-white text-gray-900',
+    find: 'bg-[#F8F7FC] dark:bg-[#11141C] text-gray-900 dark:text-white',
+    replace: 'bg-[#F8F7FC] text-gray-900',
     test: 'src/tests/unit/voucher-wallet-split.test.ts',
     why:
       '2026-08-31 시안 캡처에서 실측으로 잡은 결함이다 — 래퍼가 배경을 인라인/라이트 고정으로 칠하는데 ' +
@@ -7008,8 +7008,9 @@ canvas {
   {
     name: '🎟️ 지갑 섹션 헤더가 요약 줄의 개수를 다시 말한다',
     file: 'src/pages/MyVouchersPage.tsx',
-    find: `{t('voucher.groupUnused', { defaultValue: '사용 가능' })}\n`,
-    replace: `{t('voucher.groupUnused', { defaultValue: '사용 가능' })} <span>{unusedItems.length}</span>\n`,
+    // 🎫 2026-09-02: 섹션 헤더가 [사용 가능|사용 완료] 탭이 됐다 — 탭 라벨에 개수를 붙이는 주입.
+    find: `t('voucher.groupUnused', { defaultValue: '사용 가능' })]`,
+    replace: `t('voucher.groupUnused', { defaultValue: '사용 가능' }) + ' ' + unusedItems.length]`,
     test: 'src/tests/unit/wallet-and-slop.test.ts',
     why:
       '지갑 상단 요약(대표 승인 시안 4)이 이미 "사용 가능 N장" 을 말하는데 40px 아래 섹션 헤더가 ' +
@@ -7019,8 +7020,8 @@ canvas {
   {
     name: '🎟️ 지갑 카드 가격이 다시 상품명보다 커진다',
     file: 'src/pages/my-vouchers/VoucherTicket.tsx',
-    find: 'text-[17px] font-extrabold font-mono',
-    replace: 'text-[24px] font-extrabold font-mono',
+    find: 'text-[17px] font-extrabold tabular-nums',
+    replace: 'text-[24px] font-extrabold tabular-nums',
     test: 'src/tests/unit/wallet-and-slop.test.ts',
     why:
       '지갑의 이용권은 **이미 산 것**이라 카드 안 가격은 영수증 정보다. 24px 이면 상품명(18px)보다 ' +
