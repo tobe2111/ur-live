@@ -6,6 +6,7 @@ import api from '@/lib/api'
 import { getUserId, getUserIdSync, hasConsumerSession } from '@/utils/auth'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { resolveProductFlow, canonicalDetailPath } from '@/shared/product-flow'
+import { buildDirectPurchaseItem } from './product-detail/buildDirectPurchaseItem'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/config/region'
@@ -243,25 +244,7 @@ export default function ProductDetailPage() {
     // 바로구매: 장바구니 거치지 않고 해당 상품만 결제
     navigate('/checkout', {
       state: {
-        directPurchase: [{
-          id: `direct_${product.id}_${Date.now()}`,
-          product_id: product.id,
-          product_name: product.name,
-          product_description: product.description,
-          product_price: unitPrice,
-          product_image: product.image_url,
-          image_url: product.image_url,
-          quantity,
-          price_snapshot: unitPrice,
-          price: unitPrice,
-          item_total: unitPrice * quantity,
-          seller_id: product.seller_id ?? null,
-          seller_name: product.seller_name ?? null,
-          shipping_fee: 3000,
-          free_shipping_threshold: 0,
-          option_id: selectedOptions.option || null,
-          option_value: optValue,
-        }]
+        directPurchase: [buildDirectPurchaseItem(product, unitPrice, quantity, selectedOptions.option || null, optValue)],
       }
     })
   }
