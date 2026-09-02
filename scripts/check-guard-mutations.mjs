@@ -148,6 +148,12 @@ const MUTATIONS = [
     replace: 'const VITALS_SAMPLE_RATE = 0.01\n',
     test: 'src/tests/unit/loading-followups-2026-09-02.test.ts',
     why: '2026-09-02 실측: 4일간 LCP 표본 0 — 표본율 1% 로는 실사용자 판정이 불가능했다.',
+    name: '🍽️ app-utils-deferred 규칙이 catch-all 뒤로 밀려 영원히 안 걸린다',
+    file: 'vite.config.ts',
+    find: "          // 🍽️ 2026-09-02 [UNLOCK_LOADING] (대표 \"모두 다 진행\" — 로딩 후속 ②): **app-utils 다이어트.**\n",
+    replace: "          if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'\n          // 🍽️ 2026-09-02 [UNLOCK_LOADING] (대표 \"모두 다 진행\" — 로딩 후속 ②): **app-utils 다이어트.**\n",
+    test: 'src/tests/unit/app-utils-diet.test.ts',
+    why: '2026-09-02: 홈 미도달 73.8KB 가 다시 app-utils 로 — 규칙은 있는데 순서 때문에 죽는 클래스.',
   },
   {
     name: '🚀 유어샵 상품 동봉이 빠져 마지막 왕복이 되살아난다(콘텐츠 완성이 다시 fetch 뒤로)',
