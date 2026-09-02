@@ -28,7 +28,7 @@ import {
 import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY, COMMISSION_DEFAULTS } from '../../shared/constants/policy'
 import { isVoucherCategory } from '../../shared/constants/voucher-categories'
 import { getPolicy } from '../utils/dynamic-policy'
-import { intParam } from '@/shared/pagination'
+import { intParam } from '@/shared/pagination'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
@@ -295,7 +295,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         name: linkedSeller.name,
       } : null,
       // 🚀 2026-07-11: 셀러 공개 페이로드 동봉(1-RTT) — 없으면(비사업자/조회실패) null, 클라 폴백 fetch.
-      linked_seller_public: linkedSellerPublic,
+      linked_seller_public: linkedSellerPublic, linked_seller_products: linkedSeller?.id ? await loadLinkedSellerProducts(c.env.DB, Number(linkedSeller.id)) : null, // 🚀 2026-09-02 셀러 상품 100개 동봉(없으면 null → 클라 폴백) · 한 줄: 래칫 1397
     })
   } catch (err) {
     return safeError(c, err, '큐레이터 정보 조회 중 오류가 발생했습니다', '[curator:get]')
