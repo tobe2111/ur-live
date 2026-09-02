@@ -36,7 +36,7 @@ import {
 // 🛡️ 2026-05-21: 모든 voucher 카테고리에서 동작하려면 이용권 hardcode 제거 — getVoucherShortLabel 사용.
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 // 🎟️ 2026-08-12 (소비자 공구 결제 결함 3건): 자기참여 판정·주문번호·가상계좌 가드 → gb-purchase-guards.ts
-import { isSelfOwnedGroupBuy, resolveGbOrderNumber, guardAwaitingDeposit, issuedVoucherLabel } from './gb-purchase-guards'
+import { isSelfOwnedGroupBuy, isSelfReferral, resolveGbOrderNumber, guardAwaitingDeposit, issuedVoucherLabel } from './gb-purchase-guards'
 import { findActiveDealPct } from '@/worker/utils/influencer-deal'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
@@ -105,8 +105,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
   // 🛡️ 2026-05-21 Phase D-3: 자기 자신 attribution 차단 (셀러가 본인 링크로 매출 인플레이션).
   const refRaw = ref ? String(ref).trim() : ''
   let referralInfluencerId = refRaw && /^[a-zA-Z0-9_\-:]{1,64}$/.test(refRaw) ? refRaw : ''
-  if (referralInfluencerId && String(referralInfluencerId) === String(userId)) {
-    referralInfluencerId = ''  // 자기 자신 → silent ignore (에러 안 띄움)
+  if (referralInfluencerId && await isSelfReferral(DB, referralInfluencerId, userId)) {
+    referralInfluencerId = ''  // 본인(users.id 또는 연결 sellers.id, 2026-09-02) → 귀속만 버림. 근거: gb-purchase-guards
   }
   // 존재 검증 — 가짜 ID (?seller=999999) 차단. sellers 또는 users 둘 다 허용.
   if (referralInfluencerId) {

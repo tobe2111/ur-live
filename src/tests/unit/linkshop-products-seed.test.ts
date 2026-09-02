@@ -45,9 +45,10 @@ describe('② 클라 소비', () => {
 })
 
 describe('③ xl 전용 레일은 xl 에서만 마운트', () => {
-  it('두 레일 모두 isXl 게이트', () => {
+  // 🗑️ 2026-09-02 (같은 날 후속 — 유어샵 안P1): `LinkshopVisitorRails` 는 삭제됐다(유어샵이 lg+ 에서 액자를
+  //   벗어 거터 자체가 없다 — `ushop-a3-p1.test.ts`). 남은 레일(ConsumerFrameRails)만 xl 게이트를 검사한다.
+  it('남은 레일은 isXl 게이트', () => {
     expect(LAYOUT).toMatch(/const isXl = useMediaQuery\('\(min-width: 1280px\)'\)/)
-    expect(LAYOUT).toMatch(/\{linkshopVisitor && isXl && <Suspense fallback=\{null\}><LinkshopVisitorRails \/><\/Suspense>\}/)
     expect(LAYOUT).toMatch(/\{showFrameRails && isXl && <Suspense fallback=\{null\}><ConsumerFrameRails \/><\/Suspense>\}/)
   })
 })

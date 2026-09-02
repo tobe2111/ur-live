@@ -789,8 +789,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         disabled={locating}
         aria-label={nearMeMode ? t('restaurantMap.myLocationOff', { defaultValue: '내 위치 해제' }) : t('restaurantMap.myLocation', { defaultValue: '현위치로 이동' })}
         aria-pressed={nearMeMode}
-        className={`absolute right-3 z-20 w-10 h-10 flex items-center justify-center rounded-full shadow-lg border active:scale-95 transition-all ${
-          (nearMeMode || locating) ? 'bg-gray-900 text-white border-blue-600' : 'bg-white dark:bg-[#11141C] text-blue-600 dark:text-blue-400 border-gray-100 dark:border-[#2C2F35]'
+        className={`absolute right-3 z-20 w-10 h-10 flex items-center justify-center rounded-full active:scale-95 transition-all shadow-[0_2px_8px_rgba(22,24,28,0.18)] ${
+          (nearMeMode || locating) ? 'bg-brand text-white' : 'bg-white text-gray-800' // light-fixed: 지도 위(B안 — 켜짐=블루 면, 테마 무관)
         }`}
         style={{ bottom: isLgViewport ? (selected ? '150px' : '24px') : (selected ? 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 150px)' : 'calc(240px + 16px)') }}
       >

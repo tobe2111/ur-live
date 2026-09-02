@@ -62,11 +62,14 @@ describe('색면 토큰이 정의돼 있다', () => {
 })
 
 describe('두 색면이 같은 토큰을 읽는다', () => {
-  it('히어로 색면 · 스크림 · 하단 페이드가 전부 토큰이다', () => {
+  it('히어로 색면 · 스크림이 토큰이고, 세로 페이드는 없다', () => {
     const s = code(read(HERO))
     expect(s, '히어로 배경이 토큰이 아니다').toMatch(/bg-\[var\(--home-field\)\]/)
     expect(s, '좌측 스크림이 리터럴 rgba 로 되돌아갔다').toMatch(/rgb\(var\(--home-field-rgb\)/)
-    expect(s, '하단 페이드가 토큰이 아니다').toMatch(/linear-gradient\(180deg, transparent, var\(--home-field\)\)/)
+    // 🎫 2026-09-02 대표 "위아래부분까지 그라데이션은 안해도 될 것 같은데" — 사진 세로 마스크(180deg)와
+    //    하단 h-12 페이드를 뺐다. 페이드는 좌우(90deg)만. 세로 페이드가 되살아나면 여기서 빨강.
+    expect(s, '세로(위아래) 페이드가 되살아났다').not.toMatch(/linear-gradient\(180deg/)
+    expect(s, '좌우 페이드까지 사라졌다(대표 요청 "양쪽 그라데이션")').toMatch(/linear-gradient\(90deg, transparent 0%/)
   })
 
   it('PC 홈 페이지 색면도 같은 토큰이다', () => {

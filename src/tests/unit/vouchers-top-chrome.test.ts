@@ -23,13 +23,14 @@ describe('교환권 탭 상단', () => {
     // 슬래브는 `dealBalance ?` 삼항의 참 가지 안에만 있어야 한다.
     const i = SRC.indexOf('{dealBalance ? (')
     expect(i).toBeGreaterThan(-1)
-    const slab = SRC.indexOf("style={{ background: '#16181C' }}", i)
+    // 🎫 2026-09-02 B안: 검정 슬래브 → 흰 카드(`p-5 … shadow-lift`, 숫자 36px 이 주인공). 표식만 바꿨다.
+    const slab = SRC.indexOf('rounded-2xl p-5 bg-white dark:bg-[#1D1F29] shadow-lift', i)
     const elseAt = SRC.indexOf(') : (', i)
     expect(slab).toBeGreaterThan(-1)
     expect(slab).toBeLessThan(elseAt)   // 슬래브가 else 가지로 새지 않았다
   })
 
-  it('② 브랜드 스트립은 기본 접힘 — 상태로 게이트된다', () => {
+  it('② 브랜드 스트립은 접기 토글로 게이트된다(기본은 펼침 — 2026-09-02 B안)', () => {
     expect(SRC).toMatch(/\{brandsOpen && \(/)
     expect(SRC).toMatch(/브랜드로 찾기/)
   })
@@ -39,7 +40,7 @@ describe('교환권 탭 상단', () => {
     expect(SRC).toMatch(/setBrandsOpen/)
   })
 
-  it('④ 딥링크로 브랜드가 잡혀 있으면 펴서 시작한다', () => {
-    expect(SRC).toMatch(/useState\(\(\) => !!searchParams\.get\('brand'\)\)/)
+  it('④ 기본 펼침 — 대표 2026-09-02 "브랜드 펼침 · 로고가 보이게"(09-01 기본 접기를 대체)', () => {
+    expect(SRC).toMatch(/const \[brandsOpen, setBrandsOpen\] = useState\(true\)/)
   })
 })

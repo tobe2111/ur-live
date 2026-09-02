@@ -311,7 +311,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
                   //   active gradient 는 index.css 의 .ur-seller-nav-active 유틸. hover 는 hover:text-white.
                   className={`flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors border-l-[2.5px] ${
                     active
-                      ? 'text-white border-[#9ca3af] ur-seller-nav-active'
+                      ? 'text-white border-brand ur-seller-nav-active'
                       : highlight
                       ? 'bg-red-500/20 border-red-500'
                       : 'text-white/55 hover:text-white border-transparent'
@@ -375,7 +375,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             소비자 화면으로의 출구는 위 '공개 프로필 보기'(→ /u/{handle} 유어샵)가 담당. */}
         <button
           onClick={() => logoutSeller(navigate)}
-          className="w-full flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-red-400 hover:text-red-300 transition-colors"
+          className="w-full flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-white/55 hover:text-white transition-colors"
         >
           <LogOut size={13} strokeWidth={2} />
           {t('common.logout')}
@@ -486,7 +486,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       <a
         href="http://pf.kakao.com/_AITdn/chat"
         target="_blank" rel="noopener noreferrer"
-        className="fixed bottom-24 lg:bottom-4 right-4 z-[35] flex items-center justify-center w-10 h-10 rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
+        className="fixed bottom-24 lg:bottom-4 right-4 z-[35] flex items-center justify-center w-10 h-10 rounded-full bg-brand hover:bg-[#1557C8] text-white shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
         title={t('seller.kakaoChat')}
       >
         <MessageCircle className="w-4 h-4" />
