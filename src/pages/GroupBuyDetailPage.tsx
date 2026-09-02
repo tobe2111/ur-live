@@ -471,7 +471,7 @@ export default function GroupBuyDetailPage() {
   }
   if (!detail) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#11141C] text-gray-900 dark:text-white">
         <p className="font-bold mb-3">상품을 찾을 수 없습니다</p>
         <button onClick={() => navigate('/map')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">공구 목록으로</button>
       </div>
@@ -616,7 +616,7 @@ export default function GroupBuyDetailPage() {
                 secondaryButtonText: '자세히 보기',
               })}
               compact
-              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 hover:bg-gray-100 dark:hover:bg-[#1A1C21]"
+              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 hover:bg-gray-100 dark:hover:bg-[#1D1F29]"
             />
           </span>
         </nav>

@@ -29,7 +29,7 @@ export default function PostJoinShareModal({ data, onClose }: { data: { product_
 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60 p-4" onClick={onClose} role="presentation">
-      <div className="bg-white dark:bg-[#0D0F12] rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 animate-slideUp" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className="bg-white dark:bg-[#11141C] rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 animate-slideUp" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="text-center mb-4">
           <PartyPopper className="w-8 h-8 mx-auto mb-2 text-gray-400" aria-hidden="true" />
           <p className="text-base font-extrabold text-gray-900 dark:text-white">참여 완료!</p>

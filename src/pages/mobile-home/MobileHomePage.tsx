@@ -52,7 +52,7 @@ export default function MobileHomePage() {
   const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
 
   return (
-    <div className="bg-white dark:bg-[#0D0F12] min-h-[100dvh]">
+    <div className="bg-white dark:bg-[#11141C] min-h-[100dvh]">
       <SEO
         title="유어딜 — 동네 이용권·공동구매·교환권을 할인가로"
         description="우리 동네 이용권·동네딜·교환권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요."
@@ -72,7 +72,7 @@ export default function MobileHomePage() {
             · 지역 알약의 테두리·핀 아이콘, 현위치 알약 → 제목 + 옆의 작은 아이콘으로 흡수.
             · 카테고리 아이콘 5개 → 텍스트만. 선 아이콘 + 11px 라벨 조합이 가장 "만들어진" 티가 난다.
               활성은 잉크 + 밑줄로 — 색이 아니라 무게로 말한다(로즈는 하단 탭 하나에만 남긴다). */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="px-4 h-11 flex items-center justify-between gap-2">
           <Link to="/" aria-label="홈" className="shrink-0 flex items-center"><UrDealLogo size={17} /></Link>
           <div className="flex items-center gap-0.5 text-gray-500 dark:text-gray-400">
@@ -90,7 +90,7 @@ export default function MobileHomePage() {
           {/* ⚠️ 하단 탭에 지도가 없으므로 **이 컨트롤이 유일한 통로**다 — 지우지 말 것.
               아이콘을 뺀 이유: 이 줄에서 아이콘이 하는 일이 없다(라벨이 이미 두 글자다). */}
           <div role="tablist" aria-label="보기 방식" className="shrink-0 flex items-center gap-0.5 rounded-lg bg-gray-100 dark:bg-white/[0.06] p-0.5">
-            <span role="tab" aria-selected="true" className="rounded-[6px] bg-white dark:bg-[#1A1C21] px-3 py-1.5 text-[12.5px] font-bold text-gray-900 dark:text-white shadow-sm">목록</span>
+            <span role="tab" aria-selected="true" className="rounded-[6px] bg-white dark:bg-[#1D1F29] px-3 py-1.5 text-[12.5px] font-bold text-gray-900 dark:text-white shadow-sm">목록</span>
             <Link to="/map" role="tab" aria-selected="false" className="rounded-[6px] px-3 py-1.5 text-[12.5px] font-bold text-gray-500 dark:text-gray-400">지도</Link>
           </div>
         </div>

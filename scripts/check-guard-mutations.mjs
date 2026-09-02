@@ -161,7 +161,7 @@ const MUTATIONS = [
   {
     name: '지갑이 다크 모드에서 흰 배경 + 흰 글자가 된다',
     file: 'src/components/wallet/WalletAtoms.tsx',
-    find: 'bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white',
+    find: 'bg-white dark:bg-[#11141C] text-gray-900 dark:text-white',
     replace: 'bg-white text-gray-900',
     test: 'src/tests/unit/voucher-wallet-split.test.ts',
     why:
@@ -397,8 +397,8 @@ const MUTATIONS = [
   {
     name: '평면 그라디언트가 다시 들어온다(단색인데 그라디언트인 척)',
     file: 'src/pages/user-profile/TeamPointsCard.tsx',
-    find: '      <div className="bg-ink dark:bg-[#1A1C21] rounded-2xl px-5 py-4">',
-    replace: '      <div className="bg-gradient-to-r from-gray-800 to-gray-800 dark:bg-[#1A1C21] rounded-2xl px-5 py-4">',
+    find: '      <div className="bg-ink dark:bg-[#1D1F29] rounded-2xl px-5 py-4">',
+    replace: '      <div className="bg-gradient-to-r from-gray-800 to-gray-800 dark:bg-[#1D1F29] rounded-2xl px-5 py-4">',
     test: 'src/tests/unit/button-system.test.ts',
     why:
       'from/to 가 같은 색이면 브라우저는 그라디언트를 계산하는데 화면엔 단색이 나온다. ' +
@@ -7034,7 +7034,7 @@ canvas {
     test: 'src/tests/unit/wallet-and-slop.test.ts',
     why:
       '이 가드는 같은 결함을 **두 번** 놓쳤다 — 인라인 CSS 표기(08-31)와 `dark:` 변형 stop(09-01). ' +
-      '후자 때문에 CouponClaimPage 가 다크에서 #0D0F12 → #0D0F12 를 세 줄 갖고도 몇 달간 초록불이었다. ' +
+      '후자 때문에 CouponClaimPage 가 다크에서 #11141C → #11141C 를 세 줄 갖고도 몇 달간 초록불이었다. ' +
       '가드 자신이 헛도는 것이 이 레포에서 가장 비싼 실패라 못으로 박는다.',
   },
   {

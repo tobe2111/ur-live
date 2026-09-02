@@ -29,7 +29,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="w-full py-2.5 mt-3 border border-gray-200 dark:border-[#2C2F35] rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A1C21]">
+      <button onClick={() => setOpen(true)} className="w-full py-2.5 mt-3 border border-gray-200 dark:border-[#2C2F35] rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
         {t('reviews.writeBtn', { defaultValue: '리뷰 작성하기' })}
       </button>
     )
@@ -115,7 +115,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         </div>
       </div>
       <div className="flex gap-2 mt-3">
-        <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300 text-sm rounded-lg font-medium">{t('common.cancel', { defaultValue: '취소' })}</button>
+        <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 text-sm rounded-lg font-medium">{t('common.cancel', { defaultValue: '취소' })}</button>
         <button
           disabled={content.length < 10 || submitting}
           onClick={async () => {
@@ -244,7 +244,7 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
               return (
                 <div key={s} className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500 dark:text-gray-400 w-3">{s}</span>
-                  <div className="flex-1 h-1.5 bg-gray-100 dark:bg-[#1A1C21] rounded-full overflow-hidden">
+                  <div className="flex-1 h-1.5 bg-gray-100 dark:bg-[#1D1F29] rounded-full overflow-hidden">
                     <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%` }} />
                   </div>
                 </div>

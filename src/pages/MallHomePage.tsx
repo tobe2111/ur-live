@@ -16,9 +16,9 @@
  * ## 🎨 2026-08-02 시안 적용 〔`docs/design/operator-mall-pilot.md` 화면 A〕
  *
  * ### 색 역할 — 🔴 의뢰서 §5.1 을 따르지 않는다
- * 의뢰서는 *"주 버튼·강조 = 로즈 `#E0526B`"* 라고 적었지만 **그건 코드를 안 보고 쓴 것이다.**
+ * 의뢰서는 *"주 버튼·강조 = 로즈 `#1C69EF`"* 라고 적었지만 **그건 코드를 안 보고 쓴 것이다.**
  * `shared/mall/branding.ts` 에 2026-07-29 대표 확정이 있다 — 몰 대표 색 `#2E7D5B`(딥그린),
- * *"유어딜 본진(로즈 #E0526B)과 **구분**되되 결제 신뢰를 주는 톤"*.
+ * *"유어딜 본진(로즈 #1C69EF)과 **구분**되되 결제 신뢰를 주는 톤"*.
  * **의뢰서와 코드가 어긋나면 코드에 박힌 대표 확정이 우선**이다. 그래서 세 역할로 나눈다:
  *
  * | 역할 | 색 | 근거 |
@@ -171,7 +171,7 @@ export default function MallHomePage() {
 
   return (
     <div
-      className="min-h-[100dvh] bg-white dark:bg-[#0D0F12] [--mall:var(--mall-l)] dark:[--mall:var(--mall-d)]"
+      className="min-h-[100dvh] bg-white dark:bg-[#11141C] [--mall:var(--mall-l)] dark:[--mall:var(--mall-d)]"
       style={{ ['--mall-l' as string]: mall.colorLight, ['--mall-d' as string]: mall.colorDark }}
     >
       <SEO title={`${mall.name} - 공동구매`} description={mall.intro} url={`/${mall.slug}`} />

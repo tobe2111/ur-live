@@ -145,7 +145,7 @@ function generateCuratorSVG(curator: CuratorForOG, pinThumbs: string[]): string 
   const safeBio = escapeXml((curator.bio || `${curator.name}의 큐레이션 유어샵`).slice(0, 80))
   const profile = curator.profile_image
     ? `<image href="${escapeXml(curator.profile_image)}" x="80" y="80" width="160" height="160" clip-path="url(#cprofile)" preserveAspectRatio="xMidYMid slice"/>`
-    : `<circle cx="160" cy="160" r="80" fill="#1A1C21"/>
+    : `<circle cx="160" cy="160" r="80" fill="#1D1F29"/>
        <text x="160" y="180" font-size="60" font-family="sans-serif" font-weight="800" fill="#6b7280" text-anchor="middle">${escapeXml((curator.name || '?').slice(0, 1))}</text>`
 
   // 핀 thumbnail grid — 우측 4칸 (2x2)
@@ -157,15 +157,15 @@ function generateCuratorSVG(curator: CuratorForOG, pinThumbs: string[]): string 
     const y = 80 + row * 240
     return url
       ? `<image href="${escapeXml(url)}" x="${x}" y="${y}" width="220" height="220" preserveAspectRatio="xMidYMid slice"/>`
-      : `<rect x="${x}" y="${y}" width="220" height="220" fill="#1A1C21" rx="12"/>`
+      : `<rect x="${x}" y="${y}" width="220" height="220" fill="#1D1F29" rx="12"/>`
   }).join('\n  ')
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
     <clipPath id="cprofile"><circle cx="160" cy="160" r="80"/></clipPath>
   </defs>
-  <rect width="1200" height="630" fill="#0D0F12"/>
-  <rect x="40" y="40" width="1120" height="550" fill="#0D0F12" rx="24" stroke="#1A1C21" stroke-width="2"/>
+  <rect width="1200" height="630" fill="#11141C"/>
+  <rect x="40" y="40" width="1120" height="550" fill="#11141C" rx="24" stroke="#1D1F29" stroke-width="2"/>
 
   ${profile}
 
@@ -191,7 +191,7 @@ ogRoutes.get('/curator/:handle', async (c) => {
 
     if (!curator) {
       return new Response(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><rect width="1200" height="630" fill="#0D0F12"/><text x="600" y="315" font-size="48" font-family="sans-serif" fill="#9CA3AF" text-anchor="middle">큐레이터를 찾을 수 없어요</text></svg>',
+        '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><rect width="1200" height="630" fill="#11141C"/><text x="600" y="315" font-size="48" font-family="sans-serif" fill="#9CA3AF" text-anchor="middle">큐레이터를 찾을 수 없어요</text></svg>',
         { status: 404, headers: { 'Content-Type': 'image/svg+xml' } },
       )
     }

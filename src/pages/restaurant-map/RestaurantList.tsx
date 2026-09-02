@@ -30,11 +30,11 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
       <div className="divide-y divide-gray-100 dark:divide-[#2C2F35]" aria-hidden="true">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex gap-3 py-4">
-            <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1A1C21] animate-pulse shrink-0" />
+            <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1D1F29] animate-pulse shrink-0" />
             <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
-              <div className="h-3.5 w-2/3 rounded bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />
-              <div className="h-3 w-4/5 rounded bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />
-              <div className="h-4 w-1/3 rounded bg-gray-100 dark:bg-[#1A1C21] animate-pulse mt-1" />
+              <div className="h-3.5 w-2/3 rounded bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
+              <div className="h-3 w-4/5 rounded bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
+              <div className="h-4 w-1/3 rounded bg-gray-100 dark:bg-[#1D1F29] animate-pulse mt-1" />
             </div>
           </div>
         ))}
@@ -118,7 +118,7 @@ const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLoc, onSe
       onClick={() => onSelect(r)}
       className={`w-full flex gap-3 py-4 text-left transition-colors ${
         isSelected
-          ? 'bg-gray-50 dark:bg-[#1A1C21]'
+          ? 'bg-gray-50 dark:bg-[#1D1F29]'
           : 'hover:bg-gray-50/60 dark:hover:bg-[#0E0E0E] active:bg-gray-100 dark:active:bg-[#161616]'
       }`}
     >
@@ -126,7 +126,7 @@ const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLoc, onSe
         /* 🚑 2026-07-02 (대표 신고 "전체적으로 느림"): raw 원본(네이버 1MB급) → cfImage 리사이즈(88px@2x) */
         <img src={cfImage(r.image_url, { width: 176, quality: 85, format: 'auto' }) || r.image_url} alt="" className="w-[88px] h-[88px] rounded-lg object-cover shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, r.image_url)} />
       ) : (
-        <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center shrink-0">
+        <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center shrink-0">
           <span className="text-2xl">🍽️</span>
         </div>
       )}

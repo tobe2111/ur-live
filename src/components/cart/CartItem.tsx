@@ -59,7 +59,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
         className={`mt-1 w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 cursor-pointer transition-colors ${
           isSelected
             ? 'bg-pink-500 border-pink-500'
-            : 'bg-white dark:bg-[#0D0F12] border-gray-300 dark:border-[#3A3A3A]'
+            : 'bg-white dark:bg-[#11141C] border-gray-300 dark:border-[#3A3A3A]'
         } ${isUnavailable ? 'cursor-not-allowed' : ''}`}
       >
         {isSelected && (
@@ -77,13 +77,13 @@ export const CartItemComponent = React.memo(function CartItemComponent({
           <img
             src={cfImage(thumbnail, { width: 200, quality: 82, format: 'auto' }) || thumbnail}
             alt={item.product_name}
-            className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 dark:bg-[#1A1C21] shrink-0"
+            className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 dark:bg-[#1D1F29] shrink-0"
             loading="lazy"
             decoding="async"
             onError={(e) => cfImageOnError(e.currentTarget, thumbnail)}
           />
         ) : (
-          <div className="w-[72px] h-[72px] rounded-lg bg-gray-100 dark:bg-[#1A1C21] shrink-0 flex items-center justify-center">
+          <div className="w-[72px] h-[72px] rounded-lg bg-gray-100 dark:bg-[#1D1F29] shrink-0 flex items-center justify-center">
             {/* 🖼️ 2026-09-01: `No img` 영문 축약이 한국어 장바구니에 그대로 노출됐다.
                 개발자 플레이스홀더지 소비자 문구가 아니다 — 조용한 선 아이콘으로. */}
             <ImageOff className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.6} aria-label="이미지 없음" />
@@ -113,7 +113,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
           <button
             onClick={() => onOpenOption(item)}
             disabled={isUpdating}
-            className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35] px-2.5 py-1 rounded-full hover:bg-gray-50 dark:hover:bg-[#1A1C21] transition-colors"
+            className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35] px-2.5 py-1 rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
           >
             {item.option_value}
             <svg className="w-3 h-3 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -137,7 +137,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
               onClick={() => onUpdateQuantity(item.id, -1)}
               disabled={item.quantity <= 1 || isUpdating || isUnavailable}
               aria-label={t('cart.decreaseQty', { defaultValue: '수량 줄이기' })}
-              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-[#1A1C21] transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             >
               <Minus size={14} aria-hidden="true" />
             </button>
@@ -149,7 +149,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
               onClick={() => onUpdateQuantity(item.id, 1)}
               disabled={isUpdating || isUnavailable || isAtStockLimit}
               aria-label={t('cart.increaseQty', { defaultValue: '수량 늘리기' })}
-              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-[#1A1C21] transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             >
               <Plus size={14} aria-hidden="true" />
             </button>

@@ -18,11 +18,11 @@ export default function AccountDeletedPage() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0D0F12] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#11141C] flex items-center justify-center px-4">
       <SEO title={t('accountDeleted.seoTitle', { defaultValue: '계정 삭제 완료' })} description={t('accountDeleted.seoDesc', { defaultValue: '계정이 삭제되었습니다' })} url="/account/deleted" noindex />
       {/* 🛡️ 2026-05-20: PC 폭 일관 — max-w-md → max-w-lg + lg padding 확보 */}
       <div className="max-w-md lg:max-w-lg w-full px-4 lg:px-0">
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-lg p-8 text-center">
+        <div className="bg-white dark:bg-[#1D1F29] rounded-2xl shadow-lg p-8 text-center">
           {/* 완료 아이콘 */}
           <div className="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
             <CheckCircle className="w-12 h-12 text-green-600" />
@@ -34,7 +34,7 @@ export default function AccountDeletedPage() {
           </h1>
 
           {/* 안내 메시지 */}
-          <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-6 mb-6 text-left">
+          <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-6 mb-6 text-left">
             <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed mb-3">
               {t('accountDeleted.thanks')}
             </p>

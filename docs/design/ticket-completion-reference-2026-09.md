@@ -63,3 +63,44 @@
 - [ ] B. 지갑 밴드 (대표 승인 후)
 - [ ] C. `PaymentSuccessPage` 시각 정리 (Toss 잠금 승인 후)
 - [ ] 가드: 결제 완료 표면에 `shadow-` · `border-` · 컬러 정보상자 0 (기존 `check-shape-lock` 계열 래칫으로)
+
+## 6. 2026-09-02 후속 확정 (같은 날 — 대표 지시 5건, **이 절이 위 §2·§4 를 대체한다**)
+
+1. *"저 이미지 속의 내용은 상관없어. 디자인 시스템이 중요하다."*
+2. *"내가 보내준 다크모드 이미지, 화이트모드 이미지 다 오차없이 정확하게 디자인 시스템을 적용해서 진행해줘."*
+3. *"우리 색상도 저 로즈 색 말고 내가 보내준 이미지 색으로 브랜드 색상 변경하자."*
+4. *"결제가 완료되었어요 뒷 배경색이 난 가장 마음에 들기도 해."*
+5. *"보내준 이미지 속 아이콘도 있지, 모두 다 이 이미지 속 아이콘 느낌으로 거의 다 맞춰줘."* · *"앞으로 아이콘은 모두 저 컨셉이야 명심해줘."*
+
+두 번째 시안(화이트 지갑 "나의 티켓"): [`assets/korailtalk-wallet-light-ref.jpg`](./assets/korailtalk-wallet-light-ref.jpg)
+
+### 6.1 픽셀 실측 (canvas 평균, 1080px 원본)
+
+| 요소 | 다크 시안 | 화이트 시안 | 채택 토큰 |
+|---|---|---|---|
+| 바탕 | #10131C ~ #11141D | #F8F7FC | `--bg` 다크 **#11141C** / 라이트 **#F8F7FC** |
+| 카드 | #1D2029 ~ #1D1F29 | #FFFFFF | `--surface` 다크 **#1D1F29** / 라이트 #FFFFFF |
+| 밴드(강조색 면) | #0056D1 (다크 위라 JPEG 가 눌림) | **#1C69EF** | `--brand` **#1C69EF** 양쪽 |
+| 강조 글자·칩 테두리 | (btn 글자 블루) | #266EEB / 활성 아이콘 #4D88ED | `--brand-text` 라이트 #1C69EF / 다크 **#4D8DF5** |
+| outline 버튼 테두리 | #6E7178 (회색! 글자만 블루) | 칩 회색 테두리 | `--rule-strong` 다크 흰 32% / 라이트 잉크 28% |
+| 카드 안 구분선 | #383B43 | #E2E2E2 | `--rule` 흰 8% / 잉크 8% |
+| 카드 그림자 | 없음 | 카드 아래 8~10px #EEEDF2→바탕 | `--lift` 라이트 `0 2px 10px 잉크 6%` / 다크 none |
+| 탭 밑줄 | | #181818 검정 2.5px | 잉크 |
+
+⚠️ 라이트 바탕은 **크림(#FAF7F5)이 아니라 쿨 오프화이트(#F8F7FC)** 다. 2026-07-19 크림 결정은 이 실측으로 대체.
+⚠️ 다크 바탕은 **중성 근검정(#0D0F12)이 아니라 남색 기운(#11141C)** 이다. 2026-08-30 "완전 검정" 결정은 대표 4번 지시로 대체.
+
+### 6.2 적용 (PR — 이 문서와 같은 브랜치)
+
+- 토큰: `src/index.css` `--brand/--brand-dark/--brand-tint/--brand-text/--bg/--surface` 교체 + `--rule/--rule-strong/--lift` 신설 · `tailwind.config.js` `brand`·`shadow-lift`·`border-rule`. shadcn `--primary/--accent/--ring` 218 87% 52%.
+- **hex 일괄 이행**: src·public·index.html 에서 `#E0526B→#1C69EF` `#C43D55→#1557CC` `#FBEDF0→#EAF1FE` `#EF6E85→#4D8DF5` `#3A2530→#16243D` `#0D0F12→#11141C` `#1A1C21/#1C1C1E→#1D1F29` `#FAF7F5→#F8F7FC` (291 파일). 2026-07-19 §6 일괄 마이그레이션과 같은 방식.
+- 부품: `src/components/ticket/TicketCard.tsx` (TicketCard · TicketRow · TicketOutlineButton · TicketNotes).
+- **이용권 결제 완료 화면 신설**: `GroupBuyConfirmPaymentPage` 자동 이동 폐기 → `pages/group-buy/PaymentCompleteTicket.tsx`(제목 → 티켓 → 안내 3줄 → 같은 매장 크로스셀 → 서비스 타일 5).
+- **지갑**: `VoucherTicket` 을 TicketCard 로(천공·노치·테두리·그림자 스택 제거) · `MyVouchersPage` 접기 박스 → [사용 가능 | 사용 완료] 밑줄 탭 + outline 칩(전체·만료 임박·지도).
+- **아이콘**: 하단 탭 5개 `urdeal-icons.tsx`(선/면) · 카테고리·서비스 타일 `category-icons.tsx`(채색 flat, 팔레트 SSOT). CLAUDE.md 🎫 절에 영구 규칙.
+- 계약 테스트: `src/tests/unit/ticket-surface-system.test.ts`.
+
+### 6.3 남은 것
+- 홈 카테고리 칩(RestaurantMapPage·VouchersPage — 로딩 잠금)을 `category-icons` 로: 별도 PR(잠금 해제 기록 필요).
+- 쇼핑·딜충전 결제 완료 `PaymentSuccessPage`(Toss 잠금) 시각 정리: 승인 후.
+- `border border-*` 2,569줄 · 색깔 정보상자 1,256줄 은 래칫 가드 + 화면 단위 정리.

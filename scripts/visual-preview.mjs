@@ -211,7 +211,7 @@ const WALLET_VOUCHERS = (() => {
     restaurant_lat: 37.5563, restaurant_lng: 126.9236,
   }
   return [
-    { ...base, id: 1, code: 'URD-4821-9930', status: 'unused', product_name: '연남동 마라탕 2인 세트',
+    { ...base, id: 1, product_id: 9001, code: 'URD-4821-9930', status: 'unused', product_name: '연남동 마라탕 2인 세트',
       restaurant_name: '연남 마라탕', restaurant_address: '서울 마포구 연남로 21',
       created_at: day(-3), expires_at: day(4), applied_price: 19900, product_price: 28000, applied_discount_pct: 29 },
     { ...base, id: 2, code: 'URD-7710-2244', status: 'unused', product_name: '망원 브런치 플래터',
