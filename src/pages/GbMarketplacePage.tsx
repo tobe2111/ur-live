@@ -44,9 +44,9 @@ export default function GbMarketplacePage() {
   }, [])
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12] pb-24">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] pb-24">
       <SEO title={CONSUMER_SURFACE_SEO['/gb-market'].title} description={CONSUMER_SURFACE_SEO['/gb-market'].description} url="/gb-market" noindex />
-      <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#0D0F12]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="flex items-center gap-3 px-4 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로" className="text-gray-900 dark:text-white"><ChevronLeft className="w-5 h-5" /></button>
           <h1 className="text-[16px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
@@ -77,9 +77,9 @@ export default function GbMarketplacePage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {deals.map(d => (
-              <div key={d.product_id} className="rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] overflow-hidden">
+              <div key={d.product_id} className="rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] overflow-hidden">
                 <div className="flex gap-3 p-3">
-                  <div className="w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1C21]">
+                  <div className="w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1D1F29]">
                     {d.image_url && <img src={cfImage(d.image_url, { width: 160 })} alt={d.name} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, d.image_url)} />}
                   </div>
                   <div className="flex-1 min-w-0">

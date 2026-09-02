@@ -290,7 +290,7 @@ export default function VoucherDetailPage() {
 
   if (error || !product) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0D0F12] p-4">
+      <div className="min-h-screen bg-white dark:bg-[#11141C] p-4">
         <button onClick={() => navigate(-1)} aria-label="뒤로" className="mb-4"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
         <div className="text-center mt-12">
           <p className="text-sm text-gray-700 dark:text-gray-200 mb-4">{error || '교환권을 찾을 수 없습니다'}</p>
@@ -319,11 +319,11 @@ export default function VoucherDetailPage() {
     : 0
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12] pb-52 lg:pb-40">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] pb-52 lg:pb-40">
       <SEO title={`${product.name} 교환권 - 유어딜`} description={cleanDescription} url={`/vouchers/${product.id}`} noindex />
 
       {/* 🛡️ 2026-06-16 (사용자 요청): 상단 '바우처' 타이틀 바 제거. 🎨 2026-06-17 리디자인: 헤더 바 + 뒤로가기. */}
-      <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0D0F12]/90 backdrop-blur">
+      <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur">
         <div className="ur-content-narrow lg:max-w-[1000px] h-14 px-2 flex items-center">
           <button
             onClick={() => navigate(-1)}
@@ -387,7 +387,7 @@ export default function VoucherDetailPage() {
             )}
           </div>
 
-          <div className="h-px bg-[#EEF0F3] dark:bg-[#1A1C21] my-4" />
+          <div className="h-px bg-[#EEF0F3] dark:bg-[#1D1F29] my-4" />
 
           <div className="flex flex-col gap-[11px]">
             <div className="flex justify-between items-start text-[13.5px]">
@@ -423,13 +423,13 @@ export default function VoucherDetailPage() {
 
       {/* 🛡️ 2026-05-23: BottomNav (h-14 + safe-area) 위에 표시. z-[10002] = nav (z-9999) 위. */}
       <div
-        className="fixed bottom-14 left-0 right-0 bg-white dark:bg-[#0D0F12] border-t border-gray-100 dark:border-[#2C2F35] z-[10002] lg:bottom-0"
+        className="fixed bottom-14 left-0 right-0 bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35] z-[10002] lg:bottom-0"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         <div className="ur-content-narrow lg:max-w-[1000px] px-4 pt-3">
           {/* 🎨 보유 딜 + 교환 후 잔액 (로그인 시) */}
           {loggedIn && (
-            <div className="flex items-center justify-between bg-[#F6F7F9] dark:bg-[#1A1C21] rounded-xl px-3.5 py-2.5 mb-3">
+            <div className="flex items-center justify-between bg-[#F6F7F9] dark:bg-[#1D1F29] rounded-xl px-3.5 py-2.5 mb-3">
               <span className="text-[12.5px] text-gray-500 dark:text-gray-400">보유 <b className="font-semibold text-gray-700 dark:text-gray-200">{balancePending ? '…' : `${formatNumber(balance)}딜`}</b></span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-[11.5px] font-semibold text-gray-500 dark:text-gray-400">교환 후</span>
@@ -468,7 +468,7 @@ export default function VoucherDetailPage() {
       {/* 🛡️ 2026-05-24: KT Alpha 상품 phone 미등록 시 입력 모달 */}
       {showPhoneModal && (
         <div className="fixed inset-0 z-[10100] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={() => setShowPhoneModal(false)}>
-          <div className="bg-white dark:bg-[#0D0F12] rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-[#11141C] rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">휴대폰 번호 등록</h3>
             <p className="text-xs text-gray-600 dark:text-gray-300 mb-4">
               기프티쇼 교환권은 휴대폰 MMS 로 발송됩니다.<br/>

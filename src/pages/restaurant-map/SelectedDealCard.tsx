@@ -124,7 +124,7 @@ export default function SelectedDealCard({
     >
       <div
         ref={cardRef}
-        className="ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] shadow-[0_8px_28px_rgba(0,0,0,0.18)] select-none lg:cursor-grab lg:active:cursor-grabbing focus:outline-none"
+        className="ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] shadow-[0_8px_28px_rgba(0,0,0,0.18)] select-none lg:cursor-grab lg:active:cursor-grabbing focus:outline-none"
         style={{ touchAction: 'pan-y' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -140,7 +140,7 @@ export default function SelectedDealCard({
           <button
             onClick={onPrev}
             aria-label="이전 딜"
-            className="absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1A1C21]/90 shadow text-gray-700 dark:text-gray-200"
+            className="absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1D1F29]/90 shadow text-gray-700 dark:text-gray-200"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -149,7 +149,7 @@ export default function SelectedDealCard({
           <button
             onClick={onNext}
             aria-label="다음 딜"
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1A1C21]/90 shadow text-gray-700 dark:text-gray-200"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1D1F29]/90 shadow text-gray-700 dark:text-gray-200"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -158,7 +158,7 @@ export default function SelectedDealCard({
         <button
           onClick={onClose}
           aria-label="선택 해제"
-          className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-gray-100/90 dark:bg-[#1A1C21]/90 text-gray-500 dark:text-gray-400"
+          className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-gray-100/90 dark:bg-[#1D1F29]/90 text-gray-500 dark:text-gray-400"
         >
           <X className="w-3.5 h-3.5" />
         </button>
@@ -167,7 +167,7 @@ export default function SelectedDealCard({
           {thumb ? (
             <img src={thumb} alt="" className="w-[92px] h-[92px] rounded-xl object-cover shrink-0" loading="eager" />
           ) : (
-            <div className="w-[92px] h-[92px] rounded-xl bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center shrink-0"><span className="text-2xl">🍽️</span></div>
+            <div className="w-[92px] h-[92px] rounded-xl bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center shrink-0"><span className="text-2xl">🍽️</span></div>
           )}
           <div className="flex-1 min-w-0 pr-6 py-0.5">
             {/* 🎨 2026-07-02 (대표 — UI 우선순위): 이용권명(name)이 제목, 매장명은 위치 줄로 강등. */}
@@ -188,7 +188,7 @@ export default function SelectedDealCard({
               {dist != null && nearKmLabel(dist) && <span className="ml-1 font-semibold text-gray-600 dark:text-gray-300 shrink-0">· {nearKmLabel(dist)}</span>}
             </p>
             <div className="flex items-baseline gap-1.5 mt-2">
-              {discount > 0 && <span className="text-[13px] font-extrabold text-brand dark:text-[#EF6E85] shrink-0">{discount}%</span>}
+              {discount > 0 && <span className="text-[13px] font-extrabold text-brand dark:text-[#4D8DF5] shrink-0">{discount}%</span>}
               {selected.original_price > selected.price && (
                 <span className="text-[11px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
               )}
@@ -202,7 +202,7 @@ export default function SelectedDealCard({
 
         {/* 위치 인디케이터 (n / total) */}
         {total > 1 && (
-          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-gray-400 dark:text-gray-500 bg-white/80 dark:bg-[#0D0F12]/80 px-1.5 rounded-full">
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-gray-400 dark:text-gray-500 bg-white/80 dark:bg-[#11141C]/80 px-1.5 rounded-full">
             {position} / {total}
           </div>
         )}

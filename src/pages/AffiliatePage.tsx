@@ -22,12 +22,12 @@ export default function AffiliatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#1A1C21]">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#1D1F29]">
       <SEO title={t('affiliate.seoTitle')} description={t('affiliate.seoDescription')} url="/user/affiliate" />
       {/* 헤더 */}
-      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0D0F12]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center gap-3 px-4 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1C21]">
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
           <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('affiliate.title')}</h1>
@@ -51,11 +51,11 @@ export default function AffiliatePage() {
             <p className="text-xs opacity-70">{t('affiliate.totalEarned')}</p>
 
             <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="bg-white/15 dark:bg-[#0D0F12]/15 rounded-xl px-3 py-2.5 text-center">
+              <div className="bg-white/15 dark:bg-[#11141C]/15 rounded-xl px-3 py-2.5 text-center">
                 <p className="text-lg font-bold">{data.total_referrals}</p>
                 <p className="text-[10px] opacity-70">{t('affiliate.totalReferrals')}</p>
               </div>
-              <div className="bg-white/15 dark:bg-[#0D0F12]/15 rounded-xl px-3 py-2.5 text-center">
+              <div className="bg-white/15 dark:bg-[#11141C]/15 rounded-xl px-3 py-2.5 text-center">
                 <p className="text-lg font-bold">{formatNumber(data.monthly_earned || 0)}</p>
                 <p className="text-[10px] opacity-70">{t('affiliate.monthlyEarned')}</p>
               </div>
@@ -63,25 +63,25 @@ export default function AffiliatePage() {
           </div>
 
           {/* 🆕 내 성과(잔존 장치 ⓑ) — 클릭·전환율·적립예정·정산예정일 (본인 ref 한정 읽기전용) */}
-          <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 shadow-sm">
+          <div className="bg-white dark:bg-[#11141C] rounded-2xl p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="w-4 h-4 text-violet-600" />
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.perfTitle', { defaultValue: '내 성과' })}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-gray-50 dark:bg-[#1A1C21] px-3 py-2.5">
+              <div className="rounded-xl bg-gray-50 dark:bg-[#1D1F29] px-3 py-2.5">
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('affiliate.perfClicks', { defaultValue: '링크 클릭' })}</p>
                 <p className="text-lg font-bold text-gray-900 dark:text-white">{formatNumber(data.clicks || 0)}</p>
               </div>
-              <div className="rounded-xl bg-gray-50 dark:bg-[#1A1C21] px-3 py-2.5">
+              <div className="rounded-xl bg-gray-50 dark:bg-[#1D1F29] px-3 py-2.5">
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('affiliate.perfCvr', { defaultValue: '전환율' })}</p>
                 <p className="text-lg font-bold text-gray-900 dark:text-white">{data.conversion_rate != null ? `${data.conversion_rate}%` : '—'}</p>
               </div>
-              <div className="rounded-xl bg-gray-50 dark:bg-[#1A1C21] px-3 py-2.5">
+              <div className="rounded-xl bg-gray-50 dark:bg-[#1D1F29] px-3 py-2.5">
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('affiliate.perfPending', { defaultValue: '적립 예정' })}</p>
                 <p className="text-lg font-bold text-amber-600">{formatNumber(data.pending_amount || 0)}<span className="text-xs ml-0.5">딜</span></p>
               </div>
-              <div className="rounded-xl bg-gray-50 dark:bg-[#1A1C21] px-3 py-2.5">
+              <div className="rounded-xl bg-gray-50 dark:bg-[#1D1F29] px-3 py-2.5">
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('affiliate.perfSettle', { defaultValue: '정산 예정일' })}</p>
                 <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">{data.next_settlement_date || (data.pending_count ? '—' : t('affiliate.perfSettleNone', { defaultValue: '대기 없음' }))}</p>
               </div>
@@ -90,7 +90,7 @@ export default function AffiliatePage() {
           </div>
 
           {/* 추천 링크 */}
-          <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 shadow-sm">
+          <div className="bg-white dark:bg-[#11141C] rounded-2xl p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <Share2 className="w-4 h-4 text-violet-600" />
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.myLinkTitle')}</p>
@@ -103,7 +103,7 @@ export default function AffiliatePage() {
               />
             </p>
             <div className="flex gap-2">
-              <div className="flex-1 px-3 py-2.5 bg-gray-50 dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-xl text-xs text-gray-600 dark:text-gray-300 truncate">
+              <div className="flex-1 px-3 py-2.5 bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-xl text-xs text-gray-600 dark:text-gray-300 truncate">
                 {data.share_url}
               </div>
               <button onClick={() => copyLink(data.share_url)}
@@ -114,7 +114,7 @@ export default function AffiliatePage() {
           </div>
 
           {/* 이용 방법 */}
-          <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 shadow-sm">
+          <div className="bg-white dark:bg-[#11141C] rounded-2xl p-4 shadow-sm">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('affiliate.howToTitle')}</p>
             <div className="space-y-3">
               {[
@@ -131,7 +131,7 @@ export default function AffiliatePage() {
           </div>
 
           {/* 수수료 안내 */}
-          <div className="bg-white dark:bg-[#0D0F12] rounded-2xl overflow-hidden shadow-sm">
+          <div className="bg-white dark:bg-[#11141C] rounded-2xl overflow-hidden shadow-sm">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35]">
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.feeTitle')}</p>
             </div>
@@ -157,7 +157,7 @@ export default function AffiliatePage() {
           <TopGroupsToShare />
 
           {/* 최근 내역 */}
-          <div className="bg-white dark:bg-[#0D0F12] rounded-2xl overflow-hidden shadow-sm">
+          <div className="bg-white dark:bg-[#11141C] rounded-2xl overflow-hidden shadow-sm">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35] flex items-center justify-between">
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.historyTitle')}</p>
               <span className="text-xs text-gray-400 dark:text-gray-500">{t('affiliate.historyCount', { count: (data.recent || []).length })}</span>
@@ -207,7 +207,7 @@ function TopGroupsToShare() {
   if (groups.length === 0) return null
 
   return (
-    <div className="bg-white dark:bg-[#0D0F12] rounded-2xl overflow-hidden shadow-sm">
+    <div className="bg-white dark:bg-[#11141C] rounded-2xl overflow-hidden shadow-sm">
       <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35]">
         <p className="text-[15px] font-bold text-gray-900 dark:text-white">🔥 지금 share 하기 좋은 공구</p>
         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">마감임박 + 진행률 높음 = 친구 가입 가능성 높음</p>
@@ -238,7 +238,7 @@ function TopGroupsToShare() {
             </button>
             <button
               onClick={() => navigate(`/group-buy/${g.id}`)}
-              className="px-2.5 py-1.5 bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300 rounded-lg text-[11px] font-bold shrink-0"
+              className="px-2.5 py-1.5 bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 rounded-lg text-[11px] font-bold shrink-0"
               aria-label="상세 보기"
             >
               <ChevronRight className="w-3 h-3" />
@@ -263,7 +263,7 @@ function FunnelStats() {
   const maxDailyCount = Math.max(...data.daily.map(d => d.count), 1)
 
   return (
-    <div className="bg-white dark:bg-[#0D0F12] rounded-2xl overflow-hidden shadow-sm">
+    <div className="bg-white dark:bg-[#11141C] rounded-2xl overflow-hidden shadow-sm">
       <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35]">
         <p className="text-[15px] font-bold text-gray-900 dark:text-white">📊 내 share 성과</p>
         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">친구 가입 → 보상 받은 횟수 + 카테고리별 / 일별 추이</p>

@@ -14,14 +14,14 @@ export default function TermsDocument({ doc, url }: { doc: TermsDoc; url: string
   // 표에 없는 약관(도매 등 향후 추가분)은 기존처럼 문서에서 파생.
   const seo = CONSUMER_SURFACE_SEO[url]
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12] pb-20">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] pb-20">
       <SEO
         title={seo?.title ?? doc.title}
         description={seo?.description ?? `${doc.title} (시행 ${doc.effective} · v${doc.version})`}
         url={url}
       />
 
-      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0D0F12]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
@@ -56,7 +56,7 @@ export default function TermsDocument({ doc, url }: { doc: TermsDoc; url: string
           ))}
         </div>
 
-        <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-lg p-4 mt-8">
+        <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4 mt-8">
           <p className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed">{doc.footer}</p>
         </div>
       </div>

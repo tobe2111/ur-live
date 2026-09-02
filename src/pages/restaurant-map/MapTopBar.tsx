@@ -86,7 +86,7 @@ export default function MapTopBar({
             <button
               onClick={() => navigate(-1)}
               aria-label={t('map.search.back', { defaultValue: '뒤로가기' })}
-              className="w-11 h-11 flex items-center justify-center rounded-2xl bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] shadow-sm shrink-0"
+              className="w-11 h-11 flex items-center justify-center rounded-2xl bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] shadow-sm shrink-0"
             >
               <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
             </button>
@@ -101,7 +101,7 @@ export default function MapTopBar({
               onKeyDown={(e) => { if (e.key === 'Enter') { pushSearchHistory(search); onSubmitSearch?.(search); (e.target as HTMLInputElement).blur() } }}
               placeholder={t('restaurantMap.searchPlaceholder')}
               aria-label={t('map.search.ariaLabel', { defaultValue: '검색' })}
-              className="w-full h-11 pl-11 pr-9 bg-white dark:bg-[#0D0F12] rounded-2xl border border-gray-200 dark:border-[#2C2F35] text-sm text-ellipsis text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand shadow-sm"
+              className="w-full h-11 pl-11 pr-9 bg-white dark:bg-[#11141C] rounded-2xl border border-gray-200 dark:border-[#2C2F35] text-sm text-ellipsis text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand shadow-sm"
             />
             {search && (
               <button onClick={() => setSearch('')} aria-label={t('map.search.clearAria', { defaultValue: '검색어 지우기' })} className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -110,7 +110,7 @@ export default function MapTopBar({
             )}
             {/* 최근 검색어 dropdown */}
             {searchFocused && !search && searchHistory.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#0D0F12] rounded-2xl shadow-xl border border-gray-100 dark:border-[#2C2F35] overflow-hidden z-10">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#11141C] rounded-2xl shadow-xl border border-gray-100 dark:border-[#2C2F35] overflow-hidden z-10">
                 <div className="px-4 py-2 flex items-center justify-between border-b border-gray-100 dark:border-[#2C2F35]">
          <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">{t('restaurantMap.recentSearch')}</span>
                   <button
@@ -125,7 +125,7 @@ export default function MapTopBar({
                     <button
                       key={q}
                       onMouseDown={(e) => { e.preventDefault(); setSearch(q); pushSearchHistory(q); onSubmitSearch?.(q) }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A1C21] flex items-center gap-2"
+                      className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29] flex items-center gap-2"
                     >
                       <Search className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
                       <span className="truncate">{q}</span>
@@ -140,14 +140,14 @@ export default function MapTopBar({
               <button
                 onClick={() => navigate('/notifications')}
                 aria-label={t('mainHome.ariaNotifications', { defaultValue: '알림' })}
-                className="w-11 h-11 flex items-center justify-center rounded-2xl bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] shadow-sm shrink-0"
+                className="w-11 h-11 flex items-center justify-center rounded-2xl bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] shadow-sm shrink-0"
               >
                 <Bell className="w-5 h-5 text-gray-700 dark:text-gray-200" />
               </button>
               <button
                 onClick={() => navigate('/cart')}
                 aria-label={t('mainHome.ariaCart', { defaultValue: '장바구니' })}
-                className="w-11 h-11 flex items-center justify-center rounded-2xl bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] shadow-sm shrink-0"
+                className="w-11 h-11 flex items-center justify-center rounded-2xl bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] shadow-sm shrink-0"
               >
                 <ShoppingCart className="w-5 h-5 text-gray-700 dark:text-gray-200" />
               </button>
@@ -174,7 +174,7 @@ export default function MapTopBar({
               : `flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[12px] font-semibold shrink-0 shadow-sm border transition-all ${
                   activeFilterCount > 0
                     ? 'bg-brand text-white border-brand'
-                    : 'bg-white dark:bg-[#0D0F12] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35]'}`}
+                    : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35]'}`}
           >
             <SlidersHorizontal className={panel ? 'w-[17px] h-[17px]' : 'w-3.5 h-3.5'} />
             {panel && <span className="text-[10.5px] font-semibold leading-none">필터</span>}
@@ -194,7 +194,7 @@ export default function MapTopBar({
               : `flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[12px] font-semibold shrink-0 shadow-sm border transition-all ${
                   nearMeMode
                     ? 'bg-gray-900 text-white border-blue-600'
-                    : 'bg-white dark:bg-[#0D0F12] text-blue-600 dark:text-blue-400 border-gray-200 dark:border-[#2C2F35]'}`}
+                    : 'bg-white dark:bg-[#11141C] text-blue-600 dark:text-blue-400 border-gray-200 dark:border-[#2C2F35]'}`}
           >
             <Navigation className={panel ? 'w-[17px] h-[17px]' : 'w-3 h-3'} />
             <span className={panel ? 'text-[10.5px] font-semibold leading-none' : undefined}>{t('restaurantMap.nearMe')}</span>
@@ -215,7 +215,7 @@ export default function MapTopBar({
                   : `flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[12px] font-semibold shrink-0 shadow-sm border transition-all ${
                       on
                         ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
-                        : 'bg-white dark:bg-[#0D0F12] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35]'}`}
+                        : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35]'}`}
               >
                 <span className={panel ? 'text-[16px] leading-none' : undefined}>{v.emoji}</span>
                 <span className={panel ? 'text-[10.5px] leading-none whitespace-nowrap' : undefined}>{label}</span>

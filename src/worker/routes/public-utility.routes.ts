@@ -81,8 +81,8 @@ publicUtilityRoutes.get('/manifest.webmanifest', async (c) => {
     short_name: '유어딜',
     start_url: '/',
     display: 'standalone',
-    background_color: '#0D0F12',
-    theme_color: '#0D0F12',
+    background_color: '#11141C',
+    theme_color: '#11141C',
     orientation: 'portrait',
     icons: [
       { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' },

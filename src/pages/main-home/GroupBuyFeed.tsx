@@ -330,7 +330,7 @@ export default function GroupBuyFeed({
              이 안의 칩은 처음부터 그 화면에선 군더더기였다.
           ⇒ 라벨을 맞추는 걸로는 부족했다. 중복은 **컨트롤 자체**였다. */}
       {!pc && !onCategoryChange && (
-      <div className="bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35] sticky top-12 z-10">
+      <div className="bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] sticky top-12 z-10">
         <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto no-scrollbar">
           {CATEGORIES.map(c => {
             const active = c.key === category
@@ -341,7 +341,7 @@ export default function GroupBuyFeed({
                 className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
                   active
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                    : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
+                    : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
                 }`}
               >
                 {c.key !== 'all' && <c.icon className="w-3.5 h-3.5" aria-hidden="true" />}
@@ -430,7 +430,7 @@ export default function GroupBuyFeed({
           ) : (
             <button
               onClick={loadMore}
-              className="px-5 py-3 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
+              className="px-5 py-3 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
             >
               더 보기
             </button>
@@ -453,7 +453,7 @@ export default function GroupBuyFeed({
             type="button"
             onClick={() => navigate(sellerEntryPath())}
             aria-label="유어딜에서 판매하세요"
-            className="inline-flex items-center gap-1.5 px-5 py-3 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
+            className="inline-flex items-center gap-1.5 px-5 py-3 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
           >
             <Store className="w-4 h-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
             <span className="flex items-center gap-1"><UrDealLogo size={13} />에서 판매하세요</span>
@@ -492,7 +492,7 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
         {/* 🏷️ 2026-08-30: 어깨 으쓱 이모지(🤷) → 선 아이콘.
             이모지 빈 화면은 "아직 안 만든 자리"처럼 읽힌다 — 실제로는 정상 상태인데도.
             같은 화면의 '내 주변 지도로 보기' 원형 처리와 같은 언어로 맞춘다. */}
-        <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center">
+        <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center">
           <SearchX className="w-6 h-6 text-gray-400" aria-hidden="true" />
         </div>
         <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">
@@ -545,7 +545,7 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
           {fbLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />
+                <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
               ))}
             </div>
           ) : fallback && fallback.length > 0 ? (

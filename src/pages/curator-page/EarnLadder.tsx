@@ -53,7 +53,7 @@ export default function EarnLadder({ curatorId, dealCount, pinCount }: Props) {
 
   return (
     <div className="max-w-3xl mx-auto px-4 pt-3">
-      <div className="rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] overflow-hidden">
+      <div className="rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] overflow-hidden">
         <div className="px-4 pt-3.5 pb-2">
           <p className="text-[14px] font-extrabold text-gray-900 dark:text-white">내 유어샵으로 버는 법</p>
           <p className="mt-0.5 text-[11.5px] text-gray-500 dark:text-gray-400">위에서부터 하면 아래가 쉬워져요.</p>
@@ -85,7 +85,7 @@ export default function EarnLadder({ curatorId, dealCount, pinCount }: Props) {
         {/* 2단 — 조건. 여기가 비면 3단이 0원이라 그 사실을 그대로 적는다. */}
         <div className="mx-3 mb-2 rounded-xl border border-gray-200 dark:border-[#2C2F35] p-3">
           <div className="flex items-start gap-2.5">
-            <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] text-[11px] font-extrabold flex items-center justify-center">2</span>
+            <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[11px] font-extrabold flex items-center justify-center">2</span>
             <div className="min-w-0 flex-1">
               <p className="text-[13.5px] font-extrabold text-gray-900 dark:text-white">
                 그 가게와 소개비를 정하세요
@@ -113,7 +113,7 @@ export default function EarnLadder({ curatorId, dealCount, pinCount }: Props) {
         {/* 3단 — 이미 하고 있는 것. 위 둘을 하면 여기가 돈이 된다는 연결을 적는다. */}
         <div className="mx-3 mb-3 rounded-xl border border-gray-200 dark:border-[#2C2F35] p-3">
           <div className="flex items-start gap-2.5">
-            <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] text-[11px] font-extrabold flex items-center justify-center">3</span>
+            <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[11px] font-extrabold flex items-center justify-center">3</span>
             <div className="min-w-0 flex-1">
               <p className="text-[13.5px] font-extrabold text-gray-900 dark:text-white">
                 담아서 파세요

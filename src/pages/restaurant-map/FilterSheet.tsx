@@ -43,7 +43,7 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
       className={`px-3 py-2 rounded-full text-[13px] font-semibold whitespace-nowrap transition-all ${
         active
           ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-          : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#242424]'
+          : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#242424]'
       }`}
     >
       {children}
@@ -75,7 +75,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
   return (
     <div className="fixed inset-0 z-[10000] bg-black/50 backdrop-blur-[2px] flex items-end justify-center" onClick={onClose} role="presentation">
       <div
-        className="bg-white dark:bg-[#0D0F12] rounded-t-[28px] w-full max-w-[430px] max-h-[88dvh] flex flex-col sm:rounded-[28px] sm:my-auto shadow-2xl"
+        className="bg-white dark:bg-[#11141C] rounded-t-[28px] w-full max-w-[430px] max-h-[88dvh] flex flex-col sm:rounded-[28px] sm:my-auto shadow-2xl"
         onClick={e => e.stopPropagation()}
         role="dialog" aria-modal="true" aria-label={t('map.filter.ariaLabel', { defaultValue: '필터 설정' })}
       >
@@ -99,16 +99,16 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
             <SectionTitle>{t('map.filter.region', { defaultValue: '지역' })}</SectionTitle>
             <div className="flex rounded-2xl border border-gray-100 dark:border-[#2C2F35] overflow-hidden h-[248px]">
               {/* 시/도 좌측 레일 */}
-              <div className="w-[86px] shrink-0 overflow-y-auto no-scrollbar bg-gray-50 dark:bg-[#1A1C21] border-r border-gray-100 dark:border-[#2C2F35]">
+              <div className="w-[86px] shrink-0 overflow-y-auto no-scrollbar bg-gray-50 dark:bg-[#1D1F29] border-r border-gray-100 dark:border-[#2C2F35]">
                 <button
                   onClick={() => { setRegion(''); setDistrict('') }}
-                  className={`w-full text-left px-3 py-2.5 text-[12.5px] transition-colors ${!region ? 'bg-white dark:bg-[#0D0F12] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                  className={`w-full text-left px-3 py-2.5 text-[12.5px] transition-colors ${!region ? 'bg-white dark:bg-[#11141C] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
                 >전국</button>
                 {KOREA_REGIONS.map(r => (
                   <button
                     key={r.key}
                     onClick={() => { setRegion(r.key); setDistrict('') }}
-                    className={`w-full text-left px-3 py-2.5 text-[12.5px] whitespace-pre-line leading-tight transition-colors ${region === r.key ? 'bg-white dark:bg-[#0D0F12] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                    className={`w-full text-left px-3 py-2.5 text-[12.5px] whitespace-pre-line leading-tight transition-colors ${region === r.key ? 'bg-white dark:bg-[#11141C] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
                   >{r.label}</button>
                 ))}
               </div>

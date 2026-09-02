@@ -61,7 +61,7 @@ export default function NotificationDropdown({ onClose }: Props) {
   return (
     <div
       ref={panelRef}
-      className="absolute right-0 top-full mt-2 w-[360px] max-w-[92vw] rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35] shadow-[0_12px_40px_rgba(0,0,0,0.16)] overflow-hidden z-[10001]"
+      className="absolute right-0 top-full mt-2 w-[360px] max-w-[92vw] rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] shadow-[0_12px_40px_rgba(0,0,0,0.16)] overflow-hidden z-[10001]"
       role="dialog"
       aria-label="알림"
     >

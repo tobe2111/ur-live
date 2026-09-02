@@ -215,7 +215,7 @@ export default function DesktopTopNav() {
   const isMapSurface = location.pathname === '/map'
 
   return (
-    <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
+    <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
       {/* 📐 2026-08-19: 검색바가 46px 로 커져 행 높이도 56→68px(그루폰 헤더 비율). */}
       <div className={isHome
         ? 'flex items-center gap-4 h-[68px] max-w-[1440px] mx-auto w-full px-6 lg:px-8'

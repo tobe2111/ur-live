@@ -48,7 +48,7 @@ export default function InfluencerRankingsPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#1A1C21] pb-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#1D1F29] pb-20">
       <SEO title={CONSUMER_SURFACE_SEO['/influencer/rankings'].title} description={CONSUMER_SURFACE_SEO['/influencer/rankings'].description} url="/influencer/rankings" />
 
       <header className="sticky top-0 z-30 bg-gradient-to-r from-gray-700 to-gray-800 text-white px-4 py-4">
@@ -67,7 +67,7 @@ export default function InfluencerRankingsPage() {
               key={r.key}
               onClick={() => setRegion(r.key)}
               className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${
-                region === r.key ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0D0F12] text-gray-700 dark:text-gray-200 border border-gray-200'
+                region === r.key ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border border-gray-200'
               }`}
             >
               {r.label}
@@ -78,19 +78,19 @@ export default function InfluencerRankingsPage() {
         {/* 기간 / 기준 */}
         <div className="flex gap-2">
           <select value={period} onChange={(e) => setPeriod(e.target.value as 'month' | 'all')}
-            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-xs bg-white dark:bg-[#0D0F12]">
+            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-xs bg-white dark:bg-[#11141C]">
             <option value="month">이번 달</option>
             <option value="all">누적</option>
           </select>
           <select value={metric} onChange={(e) => setMetric(e.target.value as 'commission' | 'count')}
-            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-xs bg-white dark:bg-[#0D0F12]">
+            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-xs bg-white dark:bg-[#11141C]">
             <option value="commission">매출 commission</option>
             <option value="count">referral 건수</option>
           </select>
         </div>
 
         {/* 랭킹 리스트 */}
-        <div className="bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] rounded-2xl overflow-hidden">
+        <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-2xl overflow-hidden">
           {loading ? (
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">로딩 중...</p>
           ) : list.length === 0 ? (

@@ -62,7 +62,7 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
 
   return (
     <Link to={detailPath} className="block text-left group">
-      <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1C21]">
+      <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1D1F29]">
         {product.image_url ? (
           /* 🛡️ 2026-05-23 (Task 4): Cloudflare Image Resizing — WebP/AVIF 자동 변환 + DPI별 srcset.
               원본 URL 그대로 → 50-80% 트래픽 절감, LCP ↓.
@@ -78,7 +78,7 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
             onError={(e) => cfImageOnError(e.currentTarget, product.image_url)}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-[#1A1C21]">
+          <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-[#1D1F29]">
             <span className="text-gray-300 dark:text-gray-600 text-2xl">📦</span>
           </div>
         )}

@@ -35,7 +35,7 @@ export default function SortBar({ mainTab, currentCount, sortBy, setSortBy, show
             />
           </button>
           {showSortDropdown && (
-            <div role="menu" className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#2C2F35] rounded-xl shadow-lg z-30 overflow-hidden">
+            <div role="menu" className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-xl shadow-lg z-30 overflow-hidden">
               {(Object.keys(SORT_LABELS) as SortOption[]).map((opt) => (
                 <button
                   key={opt}
@@ -48,7 +48,7 @@ export default function SortBar({ mainTab, currentCount, sortBy, setSortBy, show
                   className={`w-full text-left px-3 py-2.5 text-[13px] ${
                     sortBy === opt
                       ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white font-semibold'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1A1C21]'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
                   }`}
                 >
                   {SORT_LABELS[opt]}

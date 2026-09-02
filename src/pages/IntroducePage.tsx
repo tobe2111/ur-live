@@ -89,11 +89,11 @@ export default function IntroducePage() {
   ]
 
   return (
-    <div className="bg-[#0D0F12] text-white min-h-screen">
+    <div className="bg-[#11141C] text-white min-h-screen">
       <SEO title={t('introduce.seoTitle', { defaultValue: CONSUMER_SURFACE_SEO['/introduce'].title })} description={t('introduce.seoDesc', { defaultValue: CONSUMER_SURFACE_SEO['/introduce'].description })} url="/introduce" />
 
       {/* ─── NAV ─── */}
-      <header className="sticky top-0 z-50 bg-[#0D0F12]/90 backdrop-blur-md border-b border-[#2C2F35]">
+      <header className="sticky top-0 z-50 bg-[#11141C]/90 backdrop-blur-md border-b border-[#2C2F35]">
         <div className="max-w-[1280px] mx-auto flex items-center justify-between px-6 h-16">
           <button onClick={() => navigate('/')} className="flex items-center">
             <UrDealLogo size={20} forceDark />
@@ -126,7 +126,7 @@ export default function IntroducePage() {
       {/* ─── HERO ─── */}
       <section className="relative overflow-hidden">
         {/* gradient backdrop */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#2D0A14] via-[#0D0F12] to-[#0D0F12] pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#2D0A14] via-[#11141C] to-[#11141C] pointer-events-none" />
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] rounded-full bg-red-600/10 blur-[120px] pointer-events-none" />
         <div className="absolute top-20 right-1/4 w-[300px] h-[300px] rounded-full bg-pink-600/10 blur-[100px] pointer-events-none" />
 
@@ -191,7 +191,7 @@ export default function IntroducePage() {
               <div className="absolute inset-0 bg-gray-800/30 blur-[60px] rounded-full scale-110" />
               {/* phone */}
               <div className="relative w-[260px] h-[520px] bg-[#111] rounded-[44px] p-[10px] shadow-2xl border border-white/10">
-                <div className="w-full h-full rounded-[34px] bg-[#0D0F12] relative overflow-hidden">
+                <div className="w-full h-full rounded-[34px] bg-[#11141C] relative overflow-hidden">
                   {/* notch */}
                   <div className="absolute top-3 left-1/2 -translate-x-1/2 w-[80px] h-[22px] bg-black rounded-2xl z-20" />
                   {/* 공구 badge */}
@@ -221,7 +221,7 @@ export default function IntroducePage() {
       </section>
 
       {/* ─── STATS ─── */}
-      <section className="border-y border-[#2C2F35] bg-[#0D0F12]">
+      <section className="border-y border-[#2C2F35] bg-[#11141C]">
         <div className="max-w-[1280px] mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
           {[
             { n: '240만+', l: '누적 사용자' },
@@ -285,7 +285,7 @@ export default function IntroducePage() {
               onClick={() => d.id ? navigate(`/group-buy/${d.id}`) : navigate('/group-buy')}
               className="block rounded-2xl overflow-hidden border border-[#2C2F35] hover:border-[#2C2F35] transition-all hover:scale-[1.02]"
             >
-              <div className="aspect-[3/4] relative bg-gradient-to-br from-[#1A0808] to-[#0D0F12]">
+              <div className="aspect-[3/4] relative bg-gradient-to-br from-[#1A0808] to-[#11141C]">
                 {d.image_url && (
                   <img
                     src={cfImage(d.image_url, { width: 320, format: 'auto' })}
@@ -323,7 +323,7 @@ export default function IntroducePage() {
       </section>
 
       {/* ─── HOW IT WORKS ─── */}
-      <section className="bg-[#0D0F12] border-y border-[#2C2F35]">
+      <section className="bg-[#11141C] border-y border-[#2C2F35]">
         <div className="max-w-[1280px] mx-auto px-6 py-20">
           <div className="mb-12 text-center">
             <p className="text-[11px] font-extrabold text-red-400 tracking-[0.15em] mb-3">HOW IT WORKS</p>
@@ -374,7 +374,7 @@ export default function IntroducePage() {
       </section>
 
       {/* ─── FOR SELLERS ─── */}
-      <section id="for-sellers" className="bg-[#0D0F12] border-t border-[#2C2F35]">
+      <section id="for-sellers" className="bg-[#11141C] border-t border-[#2C2F35]">
         <div className="max-w-[1280px] mx-auto px-6 py-20">
           <div className="max-w-[680px]">
             <p className="text-[11px] font-extrabold text-red-400 tracking-[0.15em] mb-3">FOR SELLERS</p>
@@ -407,7 +407,7 @@ export default function IntroducePage() {
               </button>
               <button
                 onClick={() => navigate('/seller/login')}
-                className="px-6 py-3.5 rounded-2xl text-[14px] font-extrabold text-white bg-[#1A1C21] hover:bg-[#222] transition-colors border border-[#2C2F35]"
+                className="px-6 py-3.5 rounded-2xl text-[14px] font-extrabold text-white bg-[#1D1F29] hover:bg-[#222] transition-colors border border-[#2C2F35]"
               >
                 셀러 로그인
               </button>
@@ -451,7 +451,7 @@ export default function IntroducePage() {
       </section>
 
       {/* ─── FOOTER ─── */}
-      <footer className="border-t border-[#2C2F35] bg-[#0D0F12]">
+      <footer className="border-t border-[#2C2F35] bg-[#11141C]">
         <div className="max-w-[1280px] mx-auto px-6 py-16">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-10 mb-10">
             <div>

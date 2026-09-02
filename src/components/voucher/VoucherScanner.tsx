@@ -208,7 +208,7 @@ export default function VoucherScanner() {
             value={manualCode}
             onChange={(e) => setManualCode(e.target.value)}
             placeholder={t('seller.scan.manualPlaceholder', { defaultValue: '바우처 코드 직접 입력' })}
-            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 dark:border-[#2C2F35] text-sm text-gray-900 dark:text-white bg-white dark:bg-[#1A1C21] focus:outline-none focus:ring-2 focus:ring-gray-400/40"
+            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 dark:border-[#2C2F35] text-sm text-gray-900 dark:text-white bg-white dark:bg-[#1D1F29] focus:outline-none focus:ring-2 focus:ring-gray-400/40"
           />
         </div>
         <button type="submit" disabled={busy || !extractCode(manualCode)}
@@ -234,7 +234,7 @@ export default function VoucherScanner() {
         </div>
       )}
       {results.length > 1 && (
-        <div className="rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] divide-y divide-gray-100 dark:divide-[#2C2F35]">
+        <div className="rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] divide-y divide-gray-100 dark:divide-[#2C2F35]">
           {results.slice(1).map((r, i) => (
             <div key={`${r.code}-${i}`} className="flex items-center gap-2 px-3 py-2 text-xs">
               {r.ok ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />}
