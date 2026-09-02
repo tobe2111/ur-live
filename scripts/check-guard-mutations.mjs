@@ -126,6 +126,8 @@ const MUTATIONS = [
     replace: "      : cfImage(heroSrc, { width: 900, format: 'auto' })\n",
     test: 'src/tests/unit/detail-image-continuity.test.ts',
     why: '08-31 크롭 도입 뒤 실제로 이 상태였다 — preload 111KB 를 받고 버린 뒤 같은 사진을 다시 받았다.',
+  },
+  {
     name: '🗺️ 미니맵 관측 여백이 300px 로 돌아가 폰 첫 화면에서 지도 SDK 가 히어로와 동시에 내려온다',
     file: 'src/components/RestaurantMiniMap.tsx',
     find: "      { rootMargin: '120px' },",
@@ -148,18 +150,24 @@ const MUTATIONS = [
     replace: 'const VITALS_SAMPLE_RATE = 0.01\n',
     test: 'src/tests/unit/loading-followups-2026-09-02.test.ts',
     why: '2026-09-02 실측: 4일간 LCP 표본 0 — 표본율 1% 로는 실사용자 판정이 불가능했다.',
+  },
+  {
     name: '🍽️ app-utils-deferred 규칙이 catch-all 뒤로 밀려 영원히 안 걸린다',
     file: 'vite.config.ts',
     find: "          // 🍽️ 2026-09-02 [UNLOCK_LOADING] (대표 \"모두 다 진행\" — 로딩 후속 ②): **app-utils 다이어트.**\n",
     replace: "          if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'\n          // 🍽️ 2026-09-02 [UNLOCK_LOADING] (대표 \"모두 다 진행\" — 로딩 후속 ②): **app-utils 다이어트.**\n",
     test: 'src/tests/unit/app-utils-diet.test.ts',
     why: '2026-09-02: 홈 미도달 73.8KB 가 다시 app-utils 로 — 규칙은 있는데 순서 때문에 죽는 클래스.',
+  },
+  {
     name: '💰 교환권 마진 SSOT 가 0 을 도로 20 으로 삼킨다 (어드민에서 0% 를 못 만든다)',
     file: 'src/features/admin/api/admin-kt-alpha/markup.ts',
     find: '  return Math.min(100, Math.max(0, n))\n',
     replace: '  return Math.min(100, Math.max(0, n || KT_CONSUMER_MARKUP_DEFAULT_PCT))\n',
     test: 'src/tests/unit/kt-alpha-markup-zero.test.ts',
     why: '2026-09-02 라이브: 설정 20 → 교환권 2,260개가 액면가 ×1.19. 0 을 넣어도 `|| 20` 이 삼켰다.',
+  },
+  {
     name: '🏪 실상품 이관이 정상 CDN(giftishow) 사진까지 옮긴다 (범위 확장 사고)',
     file: 'src/worker/cron/demo-image-rehost.ts',
     find: 'isExternalImageUrl(u) && (isDemo || isHotlinkBlockedUrl(u))',
@@ -196,10 +204,18 @@ const MUTATIONS = [
   {
     name: '📱 xl 전용 레일이 폰에서도 마운트돼 QR 라이브러리 82KB 를 내려받는다',
     file: 'src/components/MobileAppLayout.tsx',
-    find: '{linkshopVisitor && isXl && <Suspense',
-    replace: '{linkshopVisitor && <Suspense',
+    find: '{showFrameRails && isXl && <Suspense',
+    replace: '{showFrameRails && <Suspense',
     test: 'src/tests/unit/linkshop-products-seed.test.ts',
-    why: '레일은 `hidden xl:flex` 라 안 보일 뿐 마운트는 되고, 안의 lazy QR 이 import 를 발사한다(실측: /u 모바일 워터폴 922ms 에 codes 82KB).',
+    why:
+      '레일은 `hidden xl:flex` 라 안 보일 뿐 마운트는 되고, 안의 lazy QR 이 import 를 발사한다' +
+      '(실측: /u 모바일 워터폴 922ms 에 codes 82KB). ' +
+      '🔁 2026-09-02 표적 교체 — 옛 표적 `LinkshopVisitorRails` 는 그날 삭제됐다(유어샵이 lg+ 에서 액자를 벗어 ' +
+      '거터가 없다). 같은 불변식을 남은 레일(`ConsumerFrameRails`)에서 지킨다. ' +
+      '⚠️ 이 주입은 8-17 병합 사고로 위 항목과 한 객체에 융합돼 **한동안 아예 안 돌고 있었다** — ' +
+      '되살리자마자 낡은 지도로 드러났다.',
+  },
+  {
     name: '🏠 홈 청크 규칙에서 components/home 이 빠져 app-components 281KB 가 홈 preload 로 돌아온다',
     file: 'vite.config.ts',
     find: "            id.includes('/src/components/home/') || id.includes('/src/pages/pc-home/PcHomeLocationBar') ||\n",
@@ -216,6 +232,8 @@ const MUTATIONS = [
     replace: "            id.includes('/src/components/deal/') ||\n",
     test: 'src/tests/unit/home-chunk-diet.test.ts',
     why: '2차 실측에서 실제로 밟았다 — 폴더 규칙은 상세 전용 헤더까지 홈 청크로 넣어 간선을 끊지 못했다.',
+  },
+  {
     name: '📏 실리뷰 최근 2,000건 인덱스의 WHERE 가 쿼리와 달라져 플래너가 함의를 못 본다',
     file: 'src/worker/routes/repair-schema/index-repairs.ts',
     find: 'ON product_reviews(created_at DESC) WHERE COALESCE(is_generated,0) = 0`',
@@ -254,6 +272,8 @@ const MUTATIONS = [
     why:
       '두 테이블이 다른 D1 에 살아 라우터가 문장 하나를 한 DB 로만 보낸다 — 교차 문장은 예외→catch→null 로 ' +
       '대표의 유일한 성공 지표(sendable_*)가 조용히 판정에서 빠진다. 실제로 그 상태였다.',
+  },
+  {
     name: '📉 sitemap 엣지 캐시가 빠져 크롤러마다 D1 을 다시 읽는다',
     file: 'src/worker/index.ts',
     find: "app.use('/sitemap.xml', publicCache(3600));",
@@ -272,6 +292,8 @@ const MUTATIONS = [
     why:
       '`slug = ? OR username = ?` 는 OR 라 인덱스를 못 써 크롤러가 /profile/*·/s/* 를 칠 때마다 sellers 전수. ' +
       '두 점 조회로 나눈 것이 되돌아가도 에러가 없다.',
+  },
+  {
     name: '📉 청소 GC 티어 게이트가 사라져 5분마다 전수 스캔으로 돌아간다',
     file: 'src/worker/cron/scheduled-cleanup.ts',
     find: '  if (tiers.daily) await runDailyCleanup(DB, results)',
@@ -300,6 +322,8 @@ const MUTATIONS = [
     why:
       '셀러/상품/큐레이터 상세 12개를 5분마다 콜드 렌더하던 것을 30분으로. 옵션을 안 읽으면 호출부가 ' +
       '무엇을 넘기든 종전 주기로 돈다 — "만든 것·넘긴 것·읽는 것" 이 셋 다 다르다.',
+  },
+  {
     name: '📉 읽기 예산 초과가 cron kick 을 못 막는다(paused 에 안 합쳐짐)',
     file: 'src/worker-ads/index.ts',
     find: '  const paused = lanesPaused(env) || budgetBlocked(budget) // ✍️',
@@ -7529,14 +7553,58 @@ canvas {
     replace: 'className="ur-home-panel"',
     test: 'src/tests/unit/home-panel-light-island.test.ts',
     why: '섬 클래스가 빠진 패널은 다크에서 흰 배경 + 다크 글자색이 섞여 안 보인다.',
+  },
+  {
     name: '🎫 이용권 리뷰가 다시 "구매만 하면" 쓸 수 있게 된다',
-    file: 'src/features/reviews/api/reviews.routes.ts',
+    file: 'src/features/reviews/api/review-eligibility.ts',
     find: "AND user_id = ? AND status = 'used' ORDER BY used_at DESC LIMIT 1",
     replace: "AND user_id = ? AND status IN ('unused','used') ORDER BY used_at DESC LIMIT 1",
     test: 'src/tests/unit/review-requires-voucher-use.test.ts',
     why:
       '이용권은 결제 즉시 주문이 DONE 이라 구매 기준으로는 매장에 가기 전에도 리뷰와 리워드가 났다. ' +
       '분기 하나가 죽으면 소리 없이 그 상태로 돌아간다.',
+  },
+  {
+    name: '🎫 리뷰 이용권 게이트가 카테고리 조건을 잃어 배송 상품 구매자가 리뷰를 영영 못 쓴다',
+    file: 'src/features/reviews/api/review-eligibility.ts',
+    find: "getProductFlow(prod) === 'group_buy_toss' && isVoucherCategory(prod.category)",
+    replace: "getProductFlow(prod) === 'group_buy_toss'",
+    test: 'src/tests/unit/review-requires-voucher-use.test.ts',
+    why:
+      'migration 0146 이 `group_buy_status` 에 **모든 상품 DEFAULT active** 를 박아, 결제수단 판정만으로는 ' +
+      '배송되는 물건까지 이용권으로 분류된다(2026-09-02 라이브 실측 8건 — 한우 등심·참기름·명란젓·밀키트· ' +
+      '쌀조청·갈치·Canvas Tote Bag). 매장에서 쓸 일이 없으니 `used` 가 될 수 없고 ⇒ 리뷰가 **영구 차단**된다. ' +
+      '첫 판이 실제로 그 상태로 배포됐다.',
+  },
+  {
+    name: '🎫 리뷰 이용권 조회가 발급과 다른 user_id 정규화로 돌아간다',
+    file: 'src/features/reviews/api/review-eligibility.ts',
+    find: 'const voucherUserId = await resolveUserIdString(DB, userId, isDbId)',
+    replace: 'const voucherUserId = String(userId)',
+    test: 'src/tests/unit/review-requires-voucher-use.test.ts',
+    why:
+      '발급(`group-buy.routes`)은 `resolveUserIdString` 로 쓴다. 읽기만 raw 로 돌아가면 정규화가 갈리는 ' +
+      '계정에서 **자기 이용권을 못 찾아** 매장에 다녀온 사람이 리뷰를 못 쓴다 — 에러가 아니라 "안 다녀온 것" 으로 보인다.',
+  },
+  {
+    name: '🎫 리뷰 자격 조회 실패가 다시 "자격 없음" 으로 위장한다',
+    file: 'src/features/reviews/api/review-eligibility.ts',
+    find: "        error_code: 'REVIEW_ELIGIBILITY_UNAVAILABLE',",
+    replace: "        error_code: 'VOUCHER_NOT_USED',",
+    test: 'src/tests/unit/review-requires-voucher-use.test.ts',
+    why:
+      '조회 자체가 실패한 것(테이블 부재·일시 오류)을 403 자격 없음으로 말하면, 매장에 다녀온 사용자가 ' +
+      '"다녀오라" 는 문구를 본다. 원인을 알 길이 없는 문구라 문의조차 못 한다 — 503 으로 갈라야 한다.',
+  },
+  {
+    name: '🎫 리뷰 라우트가 자격 판정을 부르고도 판정을 무시한다',
+    file: 'src/features/reviews/api/reviews.routes.ts',
+    find: '    if (!verdict.ok) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/review-requires-voucher-use.test.ts',
+    why:
+      '판정을 모듈로 분리한 대가는 **배선이 눈에 안 보인다**는 것이다. 호출은 남고 판정만 죽으면 ' +
+      '게이트가 통째로 사라지는데 에러도 로그도 없다 — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
   },
   {
     name: '🎫 담기 토스트가 409(이미 담김)를 다시 "오류" 로 보고한다',
@@ -7745,6 +7813,106 @@ if (VERIFY_CLEAN) {
   }
   console.log(`✅ 주입 잔재 0 — 작업트리 깨끗함 (${MUTATIONS.length}건 확인)`)
   process.exit(0)
+}
+
+/**
+ * 🩸 자기 무결성 — **주입이 조용히 사라지는 세 번째 형태**: 병합이 `},\n  {` 경계를 삼켜
+ *   두 항목이 **한 객체로 융합**된다. JS 객체 리터럴은 같은 키가 두 번 나오면 **뒤엣 것이 이기고**
+ *   앞 항목은 통째로 사라진다 — 문법 오류도, 카운트 경고도, 빨간불도 없다.
+ *
+ *   이건 가정이 아니라 실측이다: 2026-08-17 에 한 건이 그렇게 사라진 흔적이 이 파일 주석에 남아 있고,
+ *   2026-09-02 에 다시 세어 보니 **10건이 그 상태로 main 에 있었다**(694개가 도는데 지도에는 704개).
+ *   그 10건 중 하나는 되살리자마자 "낡은 지도" 로 드러났다 — 즉 그동안 아무것도 안 지키고 있었다.
+ *
+ *   ⚠️ `MUTATIONS.length` 로는 절대 못 잡는다. 융합된 항목은 배열에서 애초에 세어지지 않는다.
+ *   그래서 **소스 텍스트를 직접** 읽어 객체마다 중복 키가 있는지 본다.
+ */
+function selfIntegrity() {
+  const self = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8')
+  const start = self.indexOf('const MUTATIONS = [')
+  if (start === -1) return ['자기 검사 실패: `const MUTATIONS = [` 를 못 찾았다']
+  // 문자열·주석을 건너뛰며 깊이 1(배열 바로 아래) 객체를 뜬다.
+  let i = self.indexOf('[', start) + 1
+  let depth = 0
+  let objStart = -1
+  const objects = []
+  const n = self.length
+  while (i < n) {
+    const c = self[i]
+    if (c === "'" || c === '"' || c === '`') {
+      const q = c
+      i += 1
+      while (i < n) {
+        if (self[i] === '\\') { i += 2; continue }
+        if (self[i] === q) break
+        i += 1
+      }
+      i += 1
+      continue
+    }
+    if (c === '/' && self[i + 1] === '/') { while (i < n && self[i] !== '\n') i += 1; continue }
+    if (c === '/' && self[i + 1] === '*') { i = self.indexOf('*/', i) + 2; continue }
+    if (c === '{' || c === '[' || c === '(') { if (c === '{' && depth === 0) objStart = i; depth += 1; i += 1; continue }
+    if (c === '}' || c === ']' || c === ')') {
+      if (c === ']' && depth === 0) break
+      depth -= 1
+      if (depth === 0 && c === '}') objects.push(self.slice(objStart + 1, i))
+      i += 1
+      continue
+    }
+    i += 1
+  }
+  const bad = []
+  for (const body of objects) {
+    // 깊이 0 의 `키:` 만 센다(문자열 안의 콜론은 위 스캐너가 이미 건너뛴다).
+    const seen = new Set()
+    const dup = new Set()
+    let d = 0
+    let j = 0
+    while (j < body.length) {
+      const c = body[j]
+      if (c === "'" || c === '"' || c === '`') {
+        const q = c
+        j += 1
+        while (j < body.length) {
+          if (body[j] === '\\') { j += 2; continue }
+          if (body[j] === q) break
+          j += 1
+        }
+        j += 1
+        continue
+      }
+      if (c === '/' && body[j + 1] === '/') { while (j < body.length && body[j] !== '\n') j += 1; continue }
+      if (c === '/' && body[j + 1] === '*') { j = body.indexOf('*/', j) + 2; continue }
+      if (c === '{' || c === '[' || c === '(') { d += 1; j += 1; continue }
+      if (c === '}' || c === ']' || c === ')') { d -= 1; j += 1; continue }
+      if (d === 0) {
+        const m = /^(name|file|find|replace|test|why)\s*:/.exec(body.slice(j, j + 12))
+        if (m && (j === 0 || ' \n\t'.includes(body[j - 1]))) {
+          if (seen.has(m[1])) dup.add(m[1])
+          seen.add(m[1])
+          j += m[0].length
+          continue
+        }
+      }
+      j += 1
+    }
+    if (dup.size) {
+      const first = /name\s*:\s*'((?:[^'\\]|\\.)*)'/.exec(body)
+      bad.push(`한 객체에 키가 두 벌 [${[...dup].join(', ')}] — 병합이 \`},{\` 경계를 삼켜 주입 둘이 융합됐다 (첫 항목: ${first ? first[1].slice(0, 40) : '?'})`)
+    }
+  }
+  if (objects.length !== MUTATIONS.length) {
+    bad.push(`소스의 객체 ${objects.length}개 ≠ 배열 ${MUTATIONS.length}개 — 세지 못한 항목이 있다`)
+  }
+  return bad
+}
+const integrity = selfIntegrity()
+if (integrity.length) {
+  console.error('\n❌ guard-mutations 자기 무결성 실패 — 주입 지도가 조용히 항목을 잃었다\n')
+  for (const b of integrity) console.error(`   • ${b}`)
+  console.error('\n   조치: 융합된 객체를 `},\\n  {` 로 다시 가른다. JS 는 뒤엣 키가 이기므로 **앞 항목이 통째로 사라진 상태**다.\n')
+  process.exit(1)
 }
 
 console.log(`🧬 guard-mutations: ${MUTATIONS.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)

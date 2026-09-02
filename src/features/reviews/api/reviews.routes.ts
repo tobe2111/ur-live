@@ -26,7 +26,7 @@ import { ensurePointsTables } from '@/worker/utils/ensure-tables';
 
 import { swallow } from '@/worker/utils/swallow';
 import { intParam } from '@/shared/pagination'
-import { getProductFlow, type ProductFlowInput } from '@/shared/product-flow'
+import { checkReviewEligibility } from './review-eligibility'
 const reviewsRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -238,49 +238,17 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     return c.json({ success: false, error: '이미 리뷰를 작성하셨습니다' }, 409);
   }
 
-  // 🛡️ 2026-05-21: 사용자 요청 — 구매자만 리뷰 작성 가능 (교환권/일반 상품 모두).
-  //   완료/배송 주문이 1건이라도 있으면 OK. admin 은 예외 (테스트/생성 목적).
-  // 🎫 2026-09-02 (대표 *"리뷰는 이용권 사용한 사람만 쓸 수 있게끔 되어있지?"* → 아니었다):
-  //   이용권은 결제 즉시 주문이 DONE 이라 '구매' 기준으로는 **매장에 가기 전에도** 리뷰와 리워드가 났다.
-  //   자격은 상품 종류로 갈린다 — 판정은 결제수단과 같은 SSOT(`getProductFlow`):
-  //     이용권(group_buy_toss)      → `vouchers.status='used'` 가 1장 이상 (매장에서 QR/PIN 으로 쓴 기록)
-  //     교환권(voucher_deal)·쇼핑   → 종전 구매 기준 그대로
-  //   사용한 이용권의 order_id 는 아래 리워드 매칭에 그대로 쓴다(사용 = 결제 완료를 함의).
+  // 🎫 리뷰 자격 — 이용권은 "사용한 사람", 그 외는 "구매한 사람". admin 은 예외(테스트/생성 목적).
+  //   판정 본체·근거는 `review-eligibility.ts` 로 분리했다(이 파일 600줄 래칫 + 판정만 따로 읽히게).
   let usedVoucherOrderId: number | null = null
   if (user.type !== 'admin') {
-    const prod = await DB.prepare('SELECT deal_only, group_buy_status, category FROM products WHERE id = ?')
-      .bind(body.product_id).first<ProductFlowInput>().catch(() => null)
-    const flow = prod ? getProductFlow(prod) : 'standard_checkout'
-    if (flow === 'group_buy_toss') {
-      const used = await DB.prepare(
-        "SELECT order_id FROM vouchers WHERE product_id = ? AND user_id = ? AND status = 'used' ORDER BY used_at DESC LIMIT 1"
-      ).bind(body.product_id, String(user.id)).first<{ order_id: number }>().catch(() => null)
-      if (!used) {
-        return c.json({
-          success: false,
-          error: '이용권을 사용한 뒤에 리뷰를 쓸 수 있어요',
-          error_code: 'VOUCHER_NOT_USED',
-        }, 403);
-      }
-      usedVoucherOrderId = used.order_id
-    } else {
-    const purchasedOrder = await DB.prepare(`
-      SELECT o.id FROM orders o
-      INNER JOIN order_items oi ON oi.order_id = o.id
-      WHERE oi.product_id = ?
-        AND o.user_id = ?
-        AND o.status IN ('PAID', 'DONE', 'DELIVERED', 'SHIPPING', 'COMPLETED')
-      LIMIT 1
-    `).bind(body.product_id, user.id).first().catch(() => null);
-
-    if (!purchasedOrder) {
-      return c.json({
-        success: false,
-        error: '리뷰는 해당 상품을 구매한 분만 작성할 수 있습니다.',
-        error_code: 'NOT_PURCHASED',
-      }, 403);
+    const verdict = await checkReviewEligibility(
+      DB, body.product_id, user.id, (user as { isDbId?: boolean }).isDbId,
+    )
+    if (!verdict.ok) {
+      return c.json({ success: false, error: verdict.error, error_code: verdict.error_code }, verdict.status);
     }
-    }
+    usedVoucherOrderId = verdict.rewardOrderId
   }
 
   // 🛡️ 2026-04-22: 셀러 자기 상품 self-review 차단 — 평점 조작 방어
