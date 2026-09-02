@@ -110,6 +110,130 @@ const MUTATIONS = [
       '⚠️ `deal_only` 가 SELECT 목록(PRODUCT_DETAIL_FIELDS)에서 빠져도 같은 사고가 난다.',
   },
   {
+    name: '📉 키워드 수율 재계산 6h 게이트가 헛돈다(회차마다 전수 GROUP BY)',
+    file: 'src/features/marketing/api/influencer-keyword-yield.ts',
+    find: '  if (row?.value === bucket) return { skipped: \'bucket\', bucket }\n',
+    replace: '',
+    test: 'src/tests/unit/urads-d1-diet.test.ts',
+    why:
+      '2026-09-02: 정비 reclassify 슬롯이 회차마다(92회/일) 15.3만 행 GROUP BY 를 돌려 유어애즈 최대 단일 읽기(1,410만/일). ' +
+      '게이트가 빠져도 답은 같아서 아무도 모른다.',
+  },
+  {
+    name: '🩸 유입 감시 sendable 두 축이 다시 한 문장(교차 DB)으로 돌아간다',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: "    DB.prepare(`SELECT COUNT(*) AS n FROM ad_company_leads WHERE merged_into IS NULL AND email IS NOT NULL AND email <> ''`).first<{ n: number }>().catch(() => null),",
+    replace: "    DB.prepare(`SELECT COUNT(*) AS n FROM ad_company_leads, ad_influencer_leads WHERE 1=0`).first<{ n: number }>().catch(() => null),",
+    test: 'src/tests/unit/urads-d1-diet.test.ts',
+    why:
+      '두 테이블이 다른 D1 에 살아 라우터가 문장 하나를 한 DB 로만 보낸다 — 교차 문장은 예외→catch→null 로 ' +
+      '대표의 유일한 성공 지표(sendable_*)가 조용히 판정에서 빠진다. 실제로 그 상태였다.',
+    name: '📉 sitemap 엣지 캐시가 빠져 크롤러마다 D1 을 다시 읽는다',
+    file: 'src/worker/index.ts',
+    find: "app.use('/sitemap.xml', publicCache(3600));",
+    replace: '',
+    test: 'src/tests/unit/d1-request-diet.test.ts',
+    why:
+      '2026-09-02: sitemap 은 캐시 미들웨어가 없어 Yeti/Googlebot/Bingbot·uptime 프로브가 부를 때마다 ' +
+      'products 1,000행 + sellers EXISTS + 지역 집계 전수를 돌렸다. 한 줄이 빠지면 조용히 그대로 돌아간다.',
+  },
+  {
+    name: '📉 봇 OG 의 셀러 조회가 다시 OR 전수 스캔이 된다',
+    file: 'src/worker/index.ts',
+    find: ": await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE username = ?').bind(param).first<any>();",
+    replace: ": await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE slug = ? OR username = ?').bind(param, param).first<any>();",
+    test: 'src/tests/unit/d1-request-diet.test.ts',
+    why:
+      '`slug = ? OR username = ?` 는 OR 라 인덱스를 못 써 크롤러가 /profile/*·/s/* 를 칠 때마다 sellers 전수. ' +
+      '두 점 조회로 나눈 것이 되돌아가도 에러가 없다.',
+    name: '📉 청소 GC 티어 게이트가 사라져 5분마다 전수 스캔으로 돌아간다',
+    file: 'src/worker/cron/scheduled-cleanup.ts',
+    find: '  if (tiers.daily) await runDailyCleanup(DB, results)',
+    replace: '  await runDailyCleanup(DB, results)',
+    test: 'src/tests/unit/d1-read-diet.test.ts',
+    why:
+      '2026-09-02: 5분 cron 이 인덱스 없는 GC 문장 ~33개를 288회/일 돌려 본진 읽기의 3대 원인이 됐다. ' +
+      '게이트 하나가 빠지면 그 섹션이 조용히 5분 주기로 되돌아간다 — 에러도 하트비트 변화도 없다.',
+  },
+  {
+    name: '📉 피드 캐시 지문 게이트가 헛돈다(항상 전체 갱신)',
+    file: 'src/worker/cron/group-buy-feed-cache.ts',
+    find: 'if (prevFp === fp && Date.now() - prevAt < FEED_FORCE_REFRESH_MS) {',
+    replace: 'if (false) {',
+    test: 'src/tests/unit/d1-read-diet.test.ts',
+    why:
+      '상품이 안 바뀐 새벽에도 20개 정렬 쿼리를 5분마다 돌리던 것을 지문으로 막는다. 게이트가 죽으면 ' +
+      '종전 비용으로 조용히 돌아간다(결과는 같아서 아무도 모른다).',
+  },
+  {
+    name: '📉 예열 동적 워밍이 다시 5분마다 돈다',
+    file: 'src/worker/cron/cache-prewarm.ts',
+    find: '  if (env.DB && doDynamic) {',
+    replace: '  if (env.DB) {',
+    test: 'src/tests/unit/d1-read-diet.test.ts',
+    why:
+      '셀러/상품/큐레이터 상세 12개를 5분마다 콜드 렌더하던 것을 30분으로. 옵션을 안 읽으면 호출부가 ' +
+      '무엇을 넘기든 종전 주기로 돈다 — "만든 것·넘긴 것·읽는 것" 이 셋 다 다르다.',
+    name: '📉 읽기 예산 초과가 cron kick 을 못 막는다(paused 에 안 합쳐짐)',
+    file: 'src/worker-ads/index.ts',
+    find: '  const paused = lanesPaused(env) || budget.over // ⏸️',
+    replace: '  const paused = lanesPaused(env) // ⏸️',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '2026-09-02: 유어애즈가 자기 몫(기본 150만 행)을 넘기면 스스로 멈춰야 유어딜이 산다. 이 `||` 하나가 빠지면 ' +
+      '원장은 정확히 세면서 아무것도 안 막는다 — 하트비트엔 over=true 가 찍히는데 레인은 계속 읽는다.',
+  },
+  {
+    name: '📉 DO 알람 레인이 읽기 예산 게이트를 건너뛴다',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: '    if ((await readBudgetState(this.env)).over) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '알람 레인은 cron 을 안 거치므로 cron 진입의 게이트가 안 미친다 — DO 안에 자기 게이트가 있어야 한다. ' +
+      '빠지면 측정·발굴 레인(읽기의 대부분)이 예산과 무관하게 돈다.',
+  },
+  {
+    name: '📉 cron 경로 레인이 읽기량을 원장에 안 보고한다(원장이 절반만 센다)',
+    file: 'src/worker-ads/self-beat.ts',
+    find: '    await reportReadUsage(env, readEnvMeter(env)?.rr)\n',
+    replace: '',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      'cron kick 레인은 self-beat 가 유일한 회차 종료 지점이다. 여기서 안 보고하면 원장은 알람 레인만 세어 ' +
+      '예산이 실제의 절반쯤에서 헛돈다 — 넘겨도 over 가 늦게 뜬다.',
+  },
+  {
+    name: '⏸️ 유어애즈 일시정지 스위치가 레인을 안 막는다',
+    file: 'src/worker-ads/index.ts',
+    find: '    if (paused && !pauseExempt(path)) return // ⏸️ 등록은 하고(known_lanes 보존) 띄우지만 않는다\n',
+    replace: '',
+    test: 'src/tests/unit/ads-lanes-pause.test.ts',
+    why:
+      '2026-09-02: D1 읽기 한도(계정 단위 500만/일)에 닿아 유어딜 API 전체가 500. 유어애즈를 멈추는 길이 ' +
+      '15개 env 로 흩어져 있어 하나를 빠뜨리면 조용히 계속 읽는다 — 스위치 하나가 실제로 kick 을 막아야 한다.',
+  },
+  {
+    name: '📏 DO 알람 레인의 D1 읽기량이 스탬프에서 빠진다',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))), this.meter)',
+    replace: 'staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))))',
+    test: 'src/tests/unit/ads-lanes-pause.test.ts',
+    why:
+      '8/27 수리 뒤 아무도 재지 않았고, 잴 수단이 DB 총량뿐이라 "어느 레인이" 를 끝내 못 가렸다. ' +
+      '알람 레인은 인보케이션이 DO 라 엔트리 래핑이 안 미친다 — 스탬프에 직접 실어야 보인다.',
+  },
+  {
+    name: '📏 유어딜 cron 작업이 계량기 밖에서 돈다',
+    file: 'src/worker/scheduled.ts',
+    find: 'out = await runInMeter(meter, task);',
+    replace: 'out = await task();',
+    test: 'src/tests/unit/d1-read-meter.test.ts',
+    why:
+      '계량기를 만들어도 safeCron 이 그 안에서 작업을 안 돌리면 rr 은 영원히 0 이다 — "만든 것·등록된 것·' +
+      '실제로 도는 것" 이 셋 다 다르다는 이 레포의 교훈 그대로.',
+  },
+  {
     name: '백필 건수가 화면까지 못 간다',
     file: 'src/pages/admin-dongnedeal-import/seedStayDemos.ts',
     find: "t.descHealed && ` · 소개 문구 ${t.descHealed}개 교체`,",
@@ -693,8 +817,9 @@ const MUTATIONS = [
   {
     name: '🗄️ 백업이 다시 시간당 1회로 줄어든다(전체 스냅샷 60시간 → 일 1회 불가)',
     file: 'src/worker/scheduled.ts',
-    find: '[5, 20, 35, 50].some((m) => slotDue(event.scheduledTime, { minute: m }))',
-    replace: 'slotDue(event.scheduledTime, { minute: 50 })',
+    // 📉 2026-09-02: `*/5` 슬롯 배열은 제거됐다(전용 트리거와 중복 — 하루 110만 행). 이제 좌표는 전용 트리거의 분 목록.
+    find: "cron === '2,17,32,47 * * * *' ||",
+    replace: "cron === '2 * * * *' ||",
     test: 'src/tests/unit/backup-cadence.test.ts',
     why:
       '실측: cron 1회차가 약 12,500행이고 유어애즈 DB 는 약 754,000행이다. 시간당 1회면 **60시간** — ' +
@@ -3070,7 +3195,7 @@ canvas {
   {
     name: '키워드 성과 재계산이 빠져 감점이 영원히 0',
     file: 'src/features/marketing/api/influencer-maintenance.ts',
-    find: '; out.kwyield = await recomputeKeywordContactYield(DB).catch(() => null) }',
+    find: '; out.kwyield = await recomputeKeywordContactYieldBucketed(DB).catch(() => null) }',
     replace: ' }',
     test: 'src/tests/unit/influencer-keyword-yield.test.ts',
     why:
@@ -4559,11 +4684,11 @@ canvas {
   {
     name: '백업 슬롯 분이 전용 트리거와 겹침(커서 동시 갱신)',
     file: 'src/worker/scheduled.ts',
-    find: '[5, 20, 35, 50].some',
+    find: "cron === '2,17,32,47 * * * *' ||", // 📉 2026-09-02: */5 슬롯 배열 제거 → 전용 트리거의 분이 */5 격자와 겹치는지로
     // 🩸 2026-08-25: 전용 트리거가 `*/15`(:00/…) → `2,17,32,47` 로 옮겨서 주입값도 :2 로 바꾼다.
     //   옛 `0` 은 이제 아무와도 안 겹쳐 **주입해도 초록**이 된다(= 이 가드가 헛돌게 된다).
-    replace: '[2, 20, 35, 50].some',
-    test: 'src/tests/unit/cron-schedule.test.ts',
+    replace: "cron === '5,17,32,47 * * * *' ||",
+    test: 'src/tests/unit/backup-cadence.test.ts',
     why:
       '`*/5` 폴백 슬롯(:05/:20/:35/:50)과 전용 `*/15`(:00/:15/:30/:45)이 같은 분에 겹치면 ' +
       '두 인보케이션이 **같은 백업 커서를 동시에 민다** — 청크가 어긋나 스냅샷이 조용히 깨진다.',
