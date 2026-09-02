@@ -90,7 +90,7 @@ const MUTATIONS = [
   {
     name: '⏸️ 유어애즈 일시정지 스위치가 레인을 안 막는다',
     file: 'src/worker-ads/index.ts',
-    find: '    if (paused && !pauseExempt(path)) return\n',
+    find: '    if (paused && !pauseExempt(path)) return // ⏸️ 등록은 하고(known_lanes 보존) 띄우지만 않는다\n',
     replace: '',
     test: 'src/tests/unit/ads-lanes-pause.test.ts',
     why:
