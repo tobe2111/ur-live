@@ -565,7 +565,7 @@ export default function AdminKtAlphaPage() {
   async function runImport(dryRun: boolean) {
     if (!dryRun && !(await confirmDialog(
       '⚠️ KT Alpha 상품을 일반 상품으로 자동 등록합니다.\n' +
-      '\n· 마진 20% (kt_alpha_consumer_markup_pct 설정값)\n' +
+      `\n· 마진 ${edit.consumer_markup_pct}% (kt_alpha_consumer_markup_pct 설정값 — 0 이면 액면가 그대로)\n` +
       '· 딜 결제 전용\n· 노출 상태는 별도 토글로 제어\n\n' +
       'KT Alpha 측 사전 승인 받으셨나요? (B2B 정책 리스크)\n계속 진행하시겠습니까?'
     ))) return

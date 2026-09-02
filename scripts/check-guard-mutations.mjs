@@ -154,6 +154,12 @@ const MUTATIONS = [
     replace: "          if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'\n          // 🍽️ 2026-09-02 [UNLOCK_LOADING] (대표 \"모두 다 진행\" — 로딩 후속 ②): **app-utils 다이어트.**\n",
     test: 'src/tests/unit/app-utils-diet.test.ts',
     why: '2026-09-02: 홈 미도달 73.8KB 가 다시 app-utils 로 — 규칙은 있는데 순서 때문에 죽는 클래스.',
+    name: '💰 교환권 마진 SSOT 가 0 을 도로 20 으로 삼킨다 (어드민에서 0% 를 못 만든다)',
+    file: 'src/features/admin/api/admin-kt-alpha/markup.ts',
+    find: '  return Math.min(100, Math.max(0, n))\n',
+    replace: '  return Math.min(100, Math.max(0, n || KT_CONSUMER_MARKUP_DEFAULT_PCT))\n',
+    test: 'src/tests/unit/kt-alpha-markup-zero.test.ts',
+    why: '2026-09-02 라이브: 설정 20 → 교환권 2,260개가 액면가 ×1.19. 0 을 넣어도 `|| 20` 이 삼켰다.',
   },
   {
     name: '🚀 유어샵 상품 동봉이 빠져 마지막 왕복이 되살아난다(콘텐츠 완성이 다시 fetch 뒤로)',
