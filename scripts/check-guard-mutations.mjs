@@ -88,6 +88,22 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🏪 실상품 이관이 정상 CDN(giftishow) 사진까지 옮긴다 (범위 확장 사고)',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: 'isExternalImageUrl(u) && (isDemo || isHotlinkBlockedUrl(u))',
+    replace: 'isExternalImageUrl(u)',
+    test: 'src/tests/unit/hotlink-rehost-scope.test.ts',
+    why: '2026-09-02: 실상품은 리사이즈가 안 되는 차단 호스트만 옮긴다 — 정상 CDN 2,260건을 R2 로 복사하면 안 된다.',
+  },
+  {
+    name: '🏪 실상품에도 lastTry 삭제가 적용돼 사업자 사진이 지워진다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: '    const lastTry = isDemo && tries + 1 >= MAX_TRIES',
+    replace: '    const lastTry = tries + 1 >= MAX_TRIES',
+    test: 'src/tests/unit/hotlink-rehost-scope.test.ts',
+    why: '2026-09-02: 실상품은 비파괴 — 못 옮겨도 사진을 지우지 않는다.',
+  },
+  {
     name: '🚀 유어샵 상품 동봉이 빠져 마지막 왕복이 되살아난다(콘텐츠 완성이 다시 fetch 뒤로)',
     file: 'src/worker/routes/curator.routes.ts',
     find: ', linked_seller_products: linkedSeller?.id ? await loadLinkedSellerProducts(c.env.DB, Number(linkedSeller.id)) : null,',
