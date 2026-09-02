@@ -7,6 +7,7 @@ import {
   HOME_CARD_LG_QUERY, HOME_CARD_BASE_QUERY, HOME_CARD_ABOVE_FOLD,
 } from '@/shared/home-card-image'
 import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink } from '@/worker/utils/home-card-preload'
+import { DETAIL_HERO_DESKTOP_WIDTH, detailHeroMobileUrl, detailPlainUrl } from '@/shared/detail-hero-image'
 
 /**
  * 🖼️ 홈 첫 화면 카드 사진 preload (2026-08-27 대표 신고 — "메인페이지 로딩 자체도 느려").
@@ -88,6 +89,13 @@ describe('홈 카드 사진 preload — 클라와 워커가 같은 URL 을 만�
     const vc = buildDetailHeroPreloadLink(seed, true)
     expect(gb).toMatch(/rel="preload" as="image" fetchpriority="high"/)
     expect(gb).not.toMatch(/imagesrcset=/)      // 공구 상세는 단일 URL
+    // 🧵 2026-09-02: 이용권 상세 preload = 갤러리 슬라이드와 **같은 SSOT 함수**. 옛 `width: 900`(크롭 없음)은
+    //    08-31 뒤 갤러리가 그리는 어떤 URL 과도 안 맞아 111KB 를 받고 버렸다(라이브 실측).
+    expect(gb).toContain(`href="${detailHeroMobileUrl('/api/media/uploads/demo/hero.jpg')}"`)
+    expect(gb).toMatch(/gravity=auto/)
+    const pc = buildDetailHeroPreloadLink(seed, false, false)
+    expect(pc).toContain(`href="${detailPlainUrl('/api/media/uploads/demo/hero.jpg', DETAIL_HERO_DESKTOP_WIDTH)}"`)
+    expect(pc).not.toMatch(/gravity=/)
     expect(vc).toMatch(/imagesrcset=/)          // 교환권 상세는 밀도 srcSet
     expect(buildDetailHeroPreloadLink('not json', false)).toBeNull()
     expect(buildDetailHeroPreloadLink('{}', false)).toBeNull()
