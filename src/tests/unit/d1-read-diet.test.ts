@@ -55,7 +55,7 @@ describe('① 청소 티어', () => {
 /** 지문 쿼리·게이트가 실제로 어느 SQL 을 돌리는지 기록하는 가짜 D1. */
 function fakeFeedDb(opts: { prevFp?: string | null; prevAt?: string; fpRow?: Record<string, unknown> | null }) {
   const calls: string[] = []
-  const mk = (sql: string) => {
+  const stmtFor = (sql: string) => {
     const compact = sql.replace(/\s+/g, ' ').trim()
     const stmt = {
       bind: () => stmt,
@@ -71,7 +71,7 @@ function fakeFeedDb(opts: { prevFp?: string | null; prevAt?: string; fpRow?: Rec
     }
     return stmt
   }
-  return { db: { prepare: mk } as unknown as never, calls }
+  return { db: { prepare: stmtFor } as unknown as never, calls }
 }
 
 describe('② 피드 캐시 지문 게이트', () => {
