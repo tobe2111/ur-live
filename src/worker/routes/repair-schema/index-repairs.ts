@@ -28,4 +28,8 @@ export const INDEX_REPAIRS: Array<{ name: string; sql: string }> = [
   //     효과 판정은 배포 후 `D1_PROFILE_ENABLED` 로.
   { name: 'idx_products_deal_price', sql: `CREATE INDEX IF NOT EXISTS idx_products_deal_price ON products(price) WHERE deal_only = 1 AND is_active = 1` },
   { name: 'idx_products_deal_created', sql: `CREATE INDEX IF NOT EXISTS idx_products_deal_created ON products(created_at DESC) WHERE deal_only = 1 AND is_active = 1` },
+  // 📨 **알림톡 재시도 큐** (2026-09-02 정적 감사). `alimtalk_failures` 는 인덱스가 하나도 없는데 5분 cron 이
+  //   `resolved=0 AND next_retry_at<=now` 를 288회/일 묻는다. 형제 큐(email/push_failures)는 같은 모양의
+  //   `(resolved, next_retry_at)` 를 이미 갖고 있다 — 빠진 쪽만 맞춘다.
+  { name: 'idx_alimtalk_failures_retry', sql: `CREATE INDEX IF NOT EXISTS idx_alimtalk_failures_retry ON alimtalk_failures(resolved, next_retry_at)` },
 ]

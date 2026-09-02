@@ -15,6 +15,9 @@ esbuild.build({
     '@': path.resolve(__dirname, 'src'),
   },
   external: [
+    // 📏 2026-09-02: `node:async_hooks`(AsyncLocalStorage — utils/d1-read-meter-als.ts). build-worker.js 와 같은 규칙 —
+    //   nodejs_compat 이 런타임에 제공하므로 번들에 넣지 않는다. 없으면 이 빌드만 'Could not resolve node:async_hooks' 로 죽는다.
+    'node:*',
     'cloudflare:*',
     '__STATIC_CONTENT_MANIFEST',
     'firebase-admin',
