@@ -5494,8 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 227건 · 최신순 · 이 목록은 자동 생성된다._
+_총 228건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-02**
+- [2026-09-02 — 유어애즈 D1 읽기 다이어트 (PR-D)](handoff/2026-09-02-urads-d1-diet.md)
 **2026-09-01**
 - [이용권 지갑 · 어드민 이모지 · design-slop 가드 구멍 (2026-09-01)](handoff/2026-09-01-wallet-admin-emoji-slop-guard.md)
 - [2026-09-01 — 교환권 탭 상단 두 층 정리 (대표 "나안")](handoff/2026-09-01-vouchers-top-chrome.md)

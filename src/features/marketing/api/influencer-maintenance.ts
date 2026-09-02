@@ -7,7 +7,8 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
 import { ensureInfluencerSchema, extractContacts, stripVideoTitles } from './influencer-discovery'
-import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch, enrichNaverActivity, poolScanShouldStop, recomputeKeywordContactYield } from './influencer-performance'
+import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch, enrichNaverActivity, poolScanShouldStop } from './influencer-performance'
+import { recomputeKeywordContactYieldBucketed } from './influencer-keyword-yield' // 📉 2026-09-02 6h 버킷 게이트
 import { cleanSelfLinks, SELF_BLOG_LIKE } from './influencer-self-link'
 import { runQualityPass, QUALITY_DEADLINE_MS_FREE } from './influencer-quality'
 import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS } from './collect-lease'
@@ -449,7 +450,7 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
       out.reextract = await reextractPoolContacts(bdb, { budget, rawDB: DB })
     }
 
-    else if (phase === 'reclassify') { out.reclassify = await runReclassifyPool(bdb, { budget }); out.kwyield = await recomputeKeywordContactYield(DB).catch(() => null) } // 🎯 목적함수 재계산 — 근거·원본DB(예산 밖)인 이유는 `influencer-keyword-yield.ts` 헤더
+    else if (phase === 'reclassify') { out.reclassify = await runReclassifyPool(bdb, { budget }); out.kwyield = await recomputeKeywordContactYieldBucketed(DB).catch(() => null) } // 🎯 목적함수 재계산 — 근거·원본DB(예산 밖)인 이유는 `influencer-keyword-yield.ts` 헤더. 📉 2026-09-02 6h 버킷(92회/일 → 4회/일 — 하루 1,410만 행)
     else if (phase === 'handle') out.handle = await healNaverHandles(bdb, { budget })
     else if (phase === 'selflink') out.selflink = await cleanSelfLinkNoise(bdb, { budget })
     // ⏱️ 마감선도 요금제를 따른다 — 유료는 CPU 한도가 다른 세계라 같은 값이면 늘어난 한도가 그냥 남는다.
@@ -574,8 +575,9 @@ export async function cleanSelfLinkNoise(DB: D1Database, opts?: { budget?: OpBud
   let scanned = 0, cleared = 0, stripped = 0, done = false
   for (;;) {
     // `SELF_BLOG_LIKE` 로 **넓게** 후보를 뽑고(정규식을 SQL 에서 못 쓴다) 정밀 판정은 순수함수가 한다.
+    // 📉 2026-09-02: `links IS NOT NULL` 을 명시해야 부분 인덱스 `idx_ad_inf_leads_selflink` 가 쓰인다(LIKE 는 유도 안 됨).
     const rows = (await DB.prepare(`SELECT id, links FROM ad_influencer_leads
-        WHERE account_id = ? AND platform = 'naver_blog' AND id > ? AND links LIKE ? ORDER BY id ASC LIMIT ?`)
+        WHERE account_id = ? AND platform = 'naver_blog' AND id > ? AND links IS NOT NULL AND links LIKE ? ORDER BY id ASC LIMIT ?`)
       .bind(POOL, cursor, SELF_BLOG_LIKE, PAGE)
       .all<{ id: number; links: string | null }>().catch(() => null))?.results || []
     if (!rows.length) { if (!opts?.budget?.exhausted) done = true; break }
@@ -592,6 +594,8 @@ export async function cleanSelfLinkNoise(DB: D1Database, opts?: { budget?: OpBud
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind(CURSOR_KEY, String(cursor)).run().catch(() => null)
     if (opts?.budget?.exhausted) break
+    // 📉 2026-09-02: 꼬리(PAGE 미만)면 여기서 끝 — 빈 페이지를 한 번 더 물어보지 않는다.
+    if (rows.length < PAGE) { done = true; break }
   }
   // 한 바퀴 끝나면 커서를 되감는다 — 새로 들어온 행(유입 필터가 놓친 것)도 다음 바퀴에 잡히게.
   if (done) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
