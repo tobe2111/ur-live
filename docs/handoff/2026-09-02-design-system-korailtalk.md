@@ -79,3 +79,20 @@
 - `ur-btn-primary` 잉크 → 블루(어드민·에이전시도 함께) · SellerLayout 활성 블루 막대/로그아웃 중립/FAB 블루 · Kakao 배너 · MyStoresPanel STEP 티켓 · DashboardCard/StatCard 들림 · SellerPage amber 상자 제거 · 라이트 래퍼에 `--lift/--rule` 재선언.
 - 가드 `seller-dashboard-b.test.ts` 7건 + 매니페스트 2건. `check-dashboard-theme`/`dashboard-button-system`/`design-slop` GREEN. 하네스 `--route=/seller --pc --auth=seller` 확인.
 - 대표 확정 4건(유어샵·교환권·PC 마이·셀러) 전부 #1305 에 실림. 남은 것: CI → 머지 → 라이브 확인 → Notion.
+
+## PC 홈 히어로 — 사진과 흰 패널 사이 공백 제거 (2026-09-03)
+
+대표: *"히어로 사진과 아래 흰색 공간부분 간의 공백이 있는데 그걸 없애줘"*.
+`PcHomePage` 의 콘텐츠 래퍼가 `pt-4`(16px)를 갖고 있어 히어로 사진 밑단과 흰 패널 사이로 색면이 띠처럼 드러났다.
+히어로 사진은 `absolute inset-0` 이라 섹션 바닥 = 사진 바닥이므로 그 여백이 곧 빈 띠였다. `pt-4` 삭제 → 패널의
+둥근 윗모서리가 사진에 그대로 물린다. 모바일 홈(RestaurantMapPage)은 다른 컴포넌트라 무접촉.
+검증: 홈 계약 테스트 59건 pass · 하네스 PC 렌더로 눈 확인.
+
+### 대기 중 — 히어로 컨트롤 시안 (대표 판단 필요)
+대표: *"여기 버튼들도 시안 받아볼 수 있을까? 지금 AI 느낌 나서"* (전국 ⌄ / 현 위치로 설정 / 지도에서 가까운 딜 보기 → / 사진 속 딜 보기 →).
+진단 다섯: ① 같은 무게 알약 셋 연속(위계 0) ② 위치라는 한 가지 일이 두 알약으로 쪼개짐 ③ 아이콘 셋 연달아(전부 "위치" 뜻)
+④ 화살표 두 곳 ⑤ 주 행동에 브랜드 블루 없음(서비스 전체 규칙의 예외).
+시안 3안: **안1(추천)** 세그먼트 위치 알약 + 블루 주 버튼 · **안2** 흰 바 한 줄 + 블루 원형 · **안3** 위치를 부제 문장 안 밑줄 단어로.
+시안 아티팩트: https://claude.ai/code/artifact/7b435a49-6ad5-415e-90cc-04ec0e2090eb
+바꿀 파일: `src/pages/pc-home/PcHomeLocationBar.tsx`(hero tone) · `src/components/home/HomeHeroDefault.tsx`.
+⚠️ 같은 `LocationBar` 를 모바일 홈이 `tone="title"` 로 쓰므로 hero tone 만 건드릴 것.
