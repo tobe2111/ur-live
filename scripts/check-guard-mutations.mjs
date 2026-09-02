@@ -6677,9 +6677,9 @@ canvas {
   },
   {
     name: '🚧 레인 진입 초크포인트가 사라진다(자기-체인이 차단기를 우회)',
-    file: 'src/worker-ads/index.ts',
-    find: "  const blocked = await laneEntryBlock(",
-    replace: "  const blocked = ''; void laneEntryBlock; if (false) await (async () => (",
+    file: 'src/worker-ads/lane-gate.ts',
+    find: "    const blocked = await laneEntryBlock(",
+    replace: "    const blocked = ''; void laneEntryBlock; if (false) await (async () => (",
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
       '2026-09-02 라이브 실측: 원장이 over=true 인데도 레인이 계속 돌았다(10:15 collect rr 85,130 · ' +

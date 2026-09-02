@@ -25,6 +25,7 @@ import { laneEntryBlock, pauseExempt, PAUSE_EXEMPT_PATHS } from '@/worker-ads/la
 const INDEX = readFileSync('src/worker-ads/index.ts', 'utf8')
 const ALARM = readFileSync('src/worker-ads/lane-alarm.ts', 'utf8')
 const SELF_BEAT = readFileSync('src/worker-ads/self-beat.ts', 'utf8')
+const GATE = readFileSync('src/worker-ads/lane-gate.ts', 'utf8')
 
 const D1 = Date.UTC(2026, 8, 2, 23, 59, 0)   // 2026-09-02 23:59 UTC
 const D2 = Date.UTC(2026, 8, 3, 0, 1, 0)     // 2026-09-03 00:01 UTC (= 09:01 KST)
@@ -263,13 +264,15 @@ describe('레인 진입 초크포인트 — 체인까지 막는다', () => {
   })
 
   it('🔗 배선 — `/__ads/*` 에, self-beat **뒤**에 붙어 있고, 200 으로 돌려준다', () => {
-    const beat = INDEX.indexOf("app.use('/__ads/*', selfBeatMiddleware())")
-    const gate = INDEX.indexOf('laneEntryBlock(')
-    expect(beat, 'self-beat 미들웨어 마운트를 못 찾았다(경로가 바뀌었나)').toBeGreaterThan(-1)
+    expect(INDEX, '워커 엔트리가 레인 미들웨어를 안 붙이면 하트비트도 게이트도 없다').toMatch(/mountLaneMiddleware\(app\)/)
+    const beat = GATE.indexOf('selfBeatMiddleware()')
+    const gate = GATE.indexOf('laneEntryBlock(')
+    expect(beat, 'self-beat 마운트가 사라졌다').toBeGreaterThan(-1)
     expect(gate, '초크포인트가 사라졌다 — 체인이 다시 예산을 태운다').toBeGreaterThan(-1)
     expect(gate, '막힌 회차도 하트비트를 남겨야 침묵 감시가 죽음으로 오인하지 않는다').toBeGreaterThan(beat)
-    expect(INDEX.slice(gate - 400, gate), '초크포인트는 `/__ads/*` 전체에 걸려야 한다').toMatch(/app\.use\('\/__ads\/\*'/)
+    // 두 미들웨어 다 `/__ads/*` 전체에 걸려야 한다 — 한쪽만 좁히면 그 경로가 조용히 무방비가 된다.
+    expect(GATE.match(/'\/__ads\/\*'/g)?.length, '마운트 경로가 둘 다 `/__ads/*` 여야 한다').toBe(2)
     // 5xx 로 막으면 체인 부모가 실패로 읽고 재시도한다 — 그게 또 부하다.
-    expect(INDEX.slice(gate, gate + 400)).toMatch(/c\.json\(\{ ok: true, skipped: blocked \}\)/)
+    expect(GATE.slice(gate, gate + 400)).toMatch(/c\.json\(\{ ok: true, skipped: blocked \}\)/)
   })
 })
