@@ -11,6 +11,7 @@
  */
 
 import { Hono } from 'hono'
+import { publicCache } from '../middleware/edge-cache'
 import type { Env } from '../types/env'
 
 export const publicUtilityRoutes = new Hono<{ Bindings: Env }>()
@@ -141,20 +142,30 @@ publicUtilityRoutes.get('/api/version', async (c) => {
 
 // ── GET /api/flash-deals ────────────────────────
 // 타임딜(플래시 딜) 상품 조회 — flash_deal_start/end 또는 sale_ends_at fallback
+// 📉 2026-09-02: 이 라우트는 공개 라우트 중 유일하게 **요청마다** `PRAGMA table_info(products)` 를 돌리고 캐시도 없었다.
+//   컬럼 존재는 D1 인스턴스당 한 번만 물으면 된다(WeakMap — `consumer-scope.ts` 와 같은 패턴). 응답은 5분 엣지.
+const _flashCols = new WeakMap<object, Promise<Set<string>>>()
+function productColumns(DB: { prepare: (sql: string) => { all: <T>() => Promise<{ results?: T[] }> } }): Promise<Set<string>> {
+  let p = _flashCols.get(DB)
+  if (!p) {
+    p = DB.prepare('PRAGMA table_info(products)').all<{ name: string }>()
+      .then((r) => new Set((r?.results ?? []).map((x) => x.name)))
+      .catch(() => { _flashCols.delete(DB); return new Set<string>() }) // 실패는 기억하지 않는다(다음 요청이 다시 묻는다)
+    _flashCols.set(DB, p)
+  }
+  return p
+}
+
+publicUtilityRoutes.use('/api/flash-deals', publicCache(300))
 publicUtilityRoutes.get('/api/flash-deals', async (c) => {
   try {
     const DB = c.env.DB
     if (!DB) return c.json({ success: true, data: { deals: [], avg_discount_rate: 0, count: 0 } })
 
-    // 컬럼 존재 여부 확인 (PRAGMA)
-    let hasFlashDeal = false
-    let hasSaleEndsAt = false
-    try {
-      const pragmaResult = await DB.prepare(`PRAGMA table_info(products)`).all<{ name: string }>()
-      const cols = (pragmaResult?.results ?? []).map((r: { name: string }) => r.name)
-      hasFlashDeal = cols.includes('flash_deal_start')
-      hasSaleEndsAt = cols.includes('sale_ends_at')
-    } catch { /* PRAGMA 실패 시 fallback */ }
+    // 컬럼 존재 여부 확인 (PRAGMA — D1 당 1회 메모)
+    const cols = await productColumns(DB)
+    const hasFlashDeal = cols.has('flash_deal_start')
+    const hasSaleEndsAt = cols.has('sale_ends_at')
 
     let deals: Record<string, unknown>[] = []
     let avgDiscountRate = 0
