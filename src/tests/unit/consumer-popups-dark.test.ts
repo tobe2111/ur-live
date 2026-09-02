@@ -85,6 +85,24 @@ describe('③ 장바구니 (CartPage)', () => {
   it('무료배송 안내가 회색 정보상자(#f9fafb)로 돌아오지 않는다', () => {
     expect(src).not.toMatch(/bg-\[#f9fafb\]/i)
   })
+
+  it('PC: 헤더·전체선택 줄이 본문과 같은 1020px 축이다 (대표 "PC 버전도 확인")', () => {
+    // 본문 <main> 의 lg 폭
+    expect(src).toMatch(/lg:max-w-\[1020px\] lg:grid/)
+    const header = R('components/cart/CartHeader.tsx')
+    const rows = [...header.matchAll(/className="mx-auto max-w-md([^"]*)"/g)].map((m) => m[1])
+    expect(rows.length).toBe(2)
+    for (const r of rows) expect(r, r).toMatch(/lg:max-w-\[1020px\]/)
+  })
+
+  it('이용권(매장 사용) 묶음엔 배송·수령 줄을 그리지 않는다 (대표 "배송비 표시 필요없다")', () => {
+    const row = R('components/cart/CartGroupShippingRow.tsx')
+    expect(row).toMatch(/if \(noShipping && !allDeal\) return null/)
+    // 주석은 옛 문구를 기록으로 인용하므로 렌더되는 줄만 본다
+    const rendered = row.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n')
+    expect(rendered).not.toMatch(/배송 없음/)
+    expect(rendered).not.toMatch(/\(무료\)/)
+  })
 })
 
 describe('④ 토스트 표면 (ToastContainer)', () => {

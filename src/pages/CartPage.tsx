@@ -487,7 +487,7 @@ function CartPageContent() {
                 : 0
 
               return (
-                <div key={group.seller_id} className="mt-2 bg-white dark:bg-[#1D1F29]">
+                <div key={group.seller_id} className="mt-2 bg-white dark:bg-[#1D1F29] lg:rounded-2xl lg:shadow-lift lg:overflow-hidden">
                   {/* Seller header with checkbox + badge + name + chevron */}
                   <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 dark:border-[#2C2F35]">
                     <span

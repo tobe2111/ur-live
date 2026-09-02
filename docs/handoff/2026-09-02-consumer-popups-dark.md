@@ -20,5 +20,11 @@
 
 **콘솔에서 같이 보인 것(이번 범위 밖)**: `/api/group-buy/join/2887` 403 — 코드상 403 은 `SELF_PARTICIPATION_BLOCKED`(본인 상품)·`REVIEW_LEVEL_REQUIRED`·선착순 게이트 중 하나. 대표 계정이 본인 상품에 참여를 눌렀을 가능성이 크다. Sentry 429 는 무료 쿼터 초과(무해).
 
+**2차 (대표 *"option A로 하고, 장바구니 PC버전도 확인이 필요하고, 이용권인데 배송비 표시는 필요없는 것 같아"*)**:
+- 토스트 A안(상단) 확정 — 코드 무변경, 시안 캔버스에서 B 제거.
+- 장바구니 PC: `CartHeader` 두 줄 `max-w-md` → `lg:max-w-[1020px]`(본문 축과 정렬) · 셀러 묶음 `lg:rounded-2xl lg:shadow-lift`. ⚠️ 이 환경에선 로그인·장바구니 데이터가 없어 **실제 PC 페이지는 못 렌더**했다 — 코드 점검 + 시안(1440) 뿐. 배포 후 `/cart` 를 1440 에서 눈으로.
+- 이용권 묶음의 "수령 · 매장에서 사용 (배송 없음)" 줄 제거(`CartGroupShippingRow` `return null`). 교환권은 "휴대폰 즉시 발송" 유지.
+- 시안: https://claude.ai/code/artifact/1a44e272-aba0-4c9d-b44f-fc9a742c228a · 기록 `docs/design/consumer-popups-dark-2026-09.md`.
+
 **다음 세션 첫 액션**: 배포 후 다크모드에서 ① 이미 담은 상품 다시 담기 → "이미 담은 상품이에요" ② 상품 상세 리뷰 작성 textarea 타이핑 글자 보임 ③ `/cart` 빈 상태 아래까지 다크. 셋 다 눈으로.
 **Notion**: 미기록(MCP 연결 세션에서 개발 업데이트 로그 1행 — 유어딜 / UI).

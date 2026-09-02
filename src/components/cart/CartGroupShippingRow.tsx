@@ -4,6 +4,10 @@
  * 2026-09-01 CartPage 에서 추출 — 여기가 대표 지적(*"이용권은 배송비도 없는데?"*)의 표시부다.
  * 교환권은 휴대폰으로 오고(발송), 이용권은 아무것도 오지 않는다(매장에서 쓴다).
  * 배송비가 0 이라는 결론은 같지만 **문구가 다르다** — 판정은 SSOT(`getNoShippingKind`)가 한다.
+ *
+ * 2026-09-02 대표: *"이용권인데 배송비 표시는 필요없는 것 같아."* — 매장에서 쓰는 이용권 묶음은
+ * "수령 · 매장에서 사용 (배송 없음)" 줄도 배송 이야기다. **줄을 아예 그리지 않는다.**
+ * 교환권(휴대폰 발송)은 받는 곳이 있으니 남긴다.
  */
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
@@ -22,13 +26,14 @@ interface Props {
 export function CartGroupShippingRow({ items, subtotal, shippingFee, freeShipThreshold, noShipping }: Props) {
   const { t } = useTranslation()
   const allDeal = noShipping && items.every((i) => getNoShippingKind(i) === 'deal')
+  if (noShipping && !allDeal) return null
 
   return (
     <div className="mx-4 mb-3 pt-3 border-t border-gray-100 dark:border-[#2C2F35] flex justify-between text-[12px]">
       <span className="text-gray-400 dark:text-gray-500">{noShipping ? '수령' : t('cart.shippingFee')}</span>
       <span className="font-medium text-gray-700 dark:text-gray-200">
         {noShipping
-          ? <span className="text-gray-600 dark:text-gray-300">{allDeal ? '휴대폰 즉시 발송 (무료)' : '매장에서 사용 (배송 없음)'}</span>
+          ? <span className="text-gray-600 dark:text-gray-300">휴대폰 즉시 발송</span>
           : freeShipThreshold > 0 && subtotal >= freeShipThreshold
             ? <span className="text-brand-text">{t('cart.free')}</span>
             : `${formatNumber(shippingFee)}원`}
