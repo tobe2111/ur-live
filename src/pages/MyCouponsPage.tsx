@@ -42,11 +42,11 @@ export default function MyCouponsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0D0F12]">
+    <div className="min-h-screen bg-white dark:bg-[#11141C]">
       <SEO title={t('myCoupons.seoTitle')} description={t('myCoupons.seoDesc')} url="/my-coupons" noindex />
 
       {/* Header */}
-      <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+      <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between px-4 h-[52px]">
           <button
             onClick={() => navigate(-1)}
@@ -75,8 +75,8 @@ export default function MyCouponsPage() {
             </button>
           </div>
         ) : coupons.length === 0 ? (
-          <div className="bg-white dark:bg-[#0D0F12] rounded-2xl border border-gray-100 dark:border-[#2C2F35] py-16 text-center">
-            <div className="w-20 h-20 bg-gray-50 dark:bg-[#1A1C21] rounded-full flex items-center justify-center mx-auto mb-5">
+          <div className="bg-white dark:bg-[#11141C] rounded-2xl border border-gray-100 dark:border-[#2C2F35] py-16 text-center">
+            <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
               <Ticket className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
             </div>
             <h2 className="text-[16px] font-bold text-gray-900 dark:text-white mb-1.5">{t('myCoupons.empty')}</h2>
@@ -95,7 +95,7 @@ export default function MyCouponsPage() {
               return (
                 <article
                   key={c.id}
-                  className="relative bg-white dark:bg-[#0D0F12] rounded-2xl border border-gray-100 dark:border-[#2C2F35] overflow-hidden"
+                  className="relative bg-white dark:bg-[#11141C] rounded-2xl border border-gray-100 dark:border-[#2C2F35] overflow-hidden"
                 >
                   <div className="flex">
                     {/* 할인 금액 */}
@@ -111,9 +111,9 @@ export default function MyCouponsPage() {
                       )}
                     </div>
                     {/* Notched divider */}
-                    <div className="relative w-[1px] bg-gray-100 dark:bg-[#1A1C21]">
-                      <span className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-gray-50 dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]" aria-hidden="true" />
-                      <span className="absolute -bottom-2 -left-2 w-4 h-4 rounded-full bg-gray-50 dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]" aria-hidden="true" />
+                    <div className="relative w-[1px] bg-gray-100 dark:bg-[#1D1F29]">
+                      <span className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35]" aria-hidden="true" />
+                      <span className="absolute -bottom-2 -left-2 w-4 h-4 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35]" aria-hidden="true" />
                     </div>
                     {/* 내용 */}
                     <div className="flex-1 px-4 py-3.5 min-w-0">
@@ -130,7 +130,7 @@ export default function MyCouponsPage() {
                           {expiry}
                         </p>
                       </div>
-                      <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1C21]">
+                      <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1D1F29]">
                         <span className="text-[10px] font-mono font-semibold text-gray-700 dark:text-gray-200">{c.code}</span>
                       </div>
                     </div>

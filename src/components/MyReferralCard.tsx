@@ -77,15 +77,15 @@ export default function MyReferralCard() {
 
       {/* 통계 */}
       <div className="grid grid-cols-3 gap-2 mb-3">
-        <div className="bg-white dark:bg-[#0D0F12] rounded-xl px-3 py-2 text-center">
+        <div className="bg-white dark:bg-[#11141C] rounded-xl px-3 py-2 text-center">
           <p className="text-[10px] text-gray-500 dark:text-gray-400">{t('inviteCard.statEarned', { defaultValue: '획득 딜' })}</p>
           <p className="text-base font-extrabold text-gray-900 dark:text-white">{formatNumber(total)}</p>
         </div>
-        <div className="bg-white dark:bg-[#0D0F12] rounded-xl px-3 py-2 text-center">
+        <div className="bg-white dark:bg-[#11141C] rounded-xl px-3 py-2 text-center">
           <p className="text-[10px] text-gray-500 dark:text-gray-400">{t('inviteCard.statDone', { defaultValue: '완료' })}</p>
           <p className="text-base font-extrabold text-gray-900 dark:text-white">{grantedCount}</p>
         </div>
-        <div className="bg-white dark:bg-[#0D0F12] rounded-xl px-3 py-2 text-center">
+        <div className="bg-white dark:bg-[#11141C] rounded-xl px-3 py-2 text-center">
           <p className="text-[10px] text-gray-500 dark:text-gray-400">{t('inviteCard.statPending', { defaultValue: '대기' })}</p>
           <p className="text-base font-extrabold text-gray-400">{pendingCount}</p>
         </div>
@@ -93,7 +93,7 @@ export default function MyReferralCard() {
 
       {/* 초대 링크 복사 */}
       <div className="flex gap-2">
-        <div className="flex-1 bg-white dark:bg-[#0D0F12] rounded-xl px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400 truncate flex items-center">
+        <div className="flex-1 bg-white dark:bg-[#11141C] rounded-xl px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400 truncate flex items-center">
           {inviteUrl}
         </div>
         <button

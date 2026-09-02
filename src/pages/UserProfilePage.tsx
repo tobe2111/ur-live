@@ -96,7 +96,7 @@ export default function UserProfilePage() {
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (!isAuthReady && !isKorea()) {
     return (
-      <div className="min-h-[100dvh] bg-warm dark:bg-[#0D0F12]">
+      <div className="min-h-[100dvh] bg-warm dark:bg-[#11141C]">
         <BrandLoader fullScreen />
       </div>
     )
@@ -135,18 +135,18 @@ export default function UserProfilePage() {
        이용 내역도, 수익도, 설정도 전부 `bg-gray-100 rounded-2xl` 로 같은 무게였다.
        화면이 "이 중 무엇이 중요한지" 를 한 마디도 안 하고 기능을 나열만 한다 — 그게
        대표가 본 "AI 티" 다. 사람이 만든 마이페이지에는 강조가 **하나**뿐이다.
-       ⇒ 바탕을 웜 화이트(#FAF7F5)로 내리고 그룹을 **흰 카드**로 띄운다. 유어샵에서 같은
+       ⇒ 바탕을 웜 화이트(#F8F7FC)로 내리고 그룹을 **흰 카드**로 띄운다. 유어샵에서 같은
           문제를 같은 방법으로 이미 고쳤고(surface-token 테스트가 지킨다) — 두 화면의
           표면 언어가 이제 같다.
        ⚠️ `min-h-screen`(=100vh)은 모바일에서 주소창을 포함해 실제 보이는 영역보다 크다
           (CLAUDE.md 모바일 뷰포트 룰) → `min-h-[100dvh]`. */
-    <div className="bg-warm dark:bg-[#0D0F12] flex flex-col min-h-[100dvh] pb-7">
+    <div className="bg-warm dark:bg-[#11141C] flex flex-col min-h-[100dvh] pb-7">
       <SEO title={t('userProfile.docTitle')} description={t('userProfile.seoDesc')} url="/user/profile" noindex />
       <h1 className="sr-only">{t('nav.mypage', { defaultValue: '마이페이지' })}</h1>
 
       {/* v4 Hero Profile — 프로필 + 알림/설정 버튼 (상단 Large Title 바 제거) */}
       {/* 🏭 2026-06-05 (사용자 요청): 헤더 배경 은은한 그라데이션(라이트/다크 모두 자연스럽게). */}
-      <div className="bg-gradient-to-b from-white via-warm to-warm dark:from-[#171026] dark:via-[#0a0712] dark:to-[#0D0F12]">
+      <div className="bg-gradient-to-b from-white via-warm to-warm dark:from-[#171026] dark:via-[#0a0712] dark:to-[#11141C]">
       <div className="ur-content-medium px-4 lg:px-8 pt-5 pb-5">
         <div className="flex items-center gap-3">
           <img
@@ -331,7 +331,7 @@ export default function UserProfilePage() {
         <button
           type="button"
           onClick={handleLogout}
-          className="ur-btn ur-btn-lg ur-btn-block bg-white dark:bg-[#1A1C21] text-gray-900 dark:text-white/75"
+          className="ur-btn ur-btn-lg ur-btn-block bg-white dark:bg-[#1D1F29] text-gray-900 dark:text-white/75"
         >
           <LogOut className="w-4 h-4" aria-hidden="true" />
           {t('userProfile.logout')}

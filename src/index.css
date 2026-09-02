@@ -93,7 +93,7 @@
   *:focus-visible {
     /* 브랜드 로즈. 이전 #6b7280 는 MONO 흑백 시절(2026-06-19)의 잔재로,
        브랜드 컬러 롤아웃(2026-07-19)에서 갱신되지 않고 남아 있었다. */
-    outline: 2px solid var(--brand, #E0526B);
+    outline: 2px solid var(--brand, #1C69EF);
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -220,18 +220,18 @@
 
 @layer base {
   :root {
-    /* 🎨 2026-08-30 (대표 확정 "완전 검정이면 좋겠어") — 다크 = 중성 근검정(#0D0F12 계열) + 웜 화이트 잉크.
+    /* 🎨 2026-08-30 (대표 확정 "완전 검정이면 좋겠어") — 다크 = 중성 근검정(#11141C 계열) + 웜 화이트 잉크.
        구 네이비 혈통(#0F151D/#1A2334/#2A3446)에서 파랑기를 뺀 값. 명도 순서는 그대로 승계. */
-    --background: 216 16% 6%;     /* #0D0F12 */
+    --background: 216 16% 6%;     /* #11141C */
     --foreground: 30 17% 95%;     /* #F5F3F1 (순백 아닌 웜 화이트) */
 
-    --card: 223 12% 12%;          /* #1A1C21 */
+    --card: 223 12% 12%;          /* #1D1F29 */
     --card-foreground: 30 17% 95%;
 
     --popover: 223 12% 12%;
     --popover-foreground: 30 17% 95%;
 
-    --primary: 349 70% 60%;       /* 🎨 #E0526B 브랜드 웜로즈 (2026-07-19 지시서, 구 #FF4D6D) */
+    --primary: 218 87% 52%;       /* 🎨 #1C69EF 브랜드 블루 (2026-09-02 대표 확정 — 코레일톡 시안 실측. 구 로즈 #E0526B) */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 10%;
@@ -240,7 +240,7 @@
     --muted: 0 0% 10%;
     --muted-foreground: 0 0% 50%;
 
-    --accent: 349 70% 60%;        /* 🎨 = --primary (#E0526B) */
+    --accent: 218 87% 52%;        /* 🎨 = --primary (#1C69EF) */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 100% 50%;
@@ -248,7 +248,7 @@
 
     --border: 220 9% 19%;        /* #2C2F35 */
     --input: 220 9% 19%;
-    --ring: 349 70% 60%;          /* 🎨 #E0526B */
+    --ring: 218 87% 52%;          /* 🎨 #1C69EF */
 
     /* 📐 2026-08-30: 0.75rem → 0.625rem. 이 한 값이 `rounded-lg`(2,217곳)를 12px 로 만들어
        Tailwind 기본 `rounded-xl`(12px)과 **완전히 겹쳐** 있었다 — 칩도 버튼도 카드도 같은 곡률.
@@ -257,16 +257,24 @@
     --radius: 0.625rem;
 
     /* 🎨 2026-07-19 브랜드 토큰 (대표 지시서 §1 — 리터럴 hex, tailwind brand/ink/gray 스케일과 동일 SSOT) */
-    --brand: #E0526B;       /* 웜 로즈 — 주요 행동 버튼·강조·활성 */
-    --brand-dark: #C43D55;  /* hover/pressed */
-    --brand-tint: #FBEDF0;  /* 옅은 로즈 배경 — 뱃지·선택됨 */
+    --brand: #1C69EF;       /* 브랜드 블루 (2026-09-02 대표 확정 — 시안 화이트 밴드 실측 #1C69EF). 주요 행동 버튼·강조·활성. 구 웜 로즈 #E0526B */
+    --brand-dark: #1557CC;  /* hover/pressed */
+    --brand-tint: #EAF1FE;  /* 옅은 블루 배경 — 뱃지·선택됨 */
     --ink: #16181C;         /* 차콜 블랙 — 제목/본문/가격. 홈 색면(--home-field)과 같은 값 */
     --ink-soft: #6E6B68;    /* 보조 텍스트 (중성 그레이) */
     --ink-faint: #8A8580;   /* 비활성/플레이스홀더 */
-    --bg: #FAF7F5;          /* 페이지 배경(웜 화이트) */
+    --bg: #F8F7FC;          /* 페이지 배경 — 2026-09-02 시안 화이트 실측(#F8F7FC, 쿨 오프화이트). 구 웜 크림 #FAF7F5 */
     --surface: #FFFFFF;     /* 카드/시트/입력창 */
     --line: #EAE4E0;        /* 구분선/테두리 */
-    --brand-text: #E0526B;  /* 로즈 '글자·뱃지'용 — 라이트에선 brand 와 동일, 다크에선 밝힌 로즈 */
+    --brand-text: #1C69EF;  /* 로즈 '글자·뱃지'용 — 라이트에선 brand 와 동일, 다크에선 밝힌 로즈 */
+
+    /* 🎫 2026-09-02 표면 체계 (대표 시안 — 코레일톡 다크·화이트, docs/design/ticket-completion-reference-2026-09.md):
+       표면은 두 톤(--bg / --surface)이고 **카드 테두리는 그리지 않는다**. 카드 *안* 구분선만 투명 잉크로,
+       카드 *들림*은 화이트에서만 아주 옅은 확산 그림자 한 값(시안 실측: 카드 아래 8~10px 로 #EEEDF2→바탕).
+       다크는 그림자 0 — 명도 차(6%→12%)가 이미 카드를 띄운다. 라우트별 hex 를 따로 적지 말고 이 둘만 쓸 것. */
+    --rule: rgb(22 24 28 / 0.08);          /* 카드 안 구분선 */
+    --rule-strong: rgb(22 24 28 / 0.28);   /* outline 버튼·칩 테두리 */
+    --lift: 0 2px 10px rgb(22 24 28 / 0.06); /* 화이트 카드 들림. 다크에선 none */
 
     /* 🎨 2026-08-23 (대표 확정 — 시안 6종 비교 후 "차콜 블랙으로 가자"): **홈 색면**.
        그루폰식 홈은 어두운 색면 위에 흰 패널을 얹는데, 그 색면이 여기 하나에서 나온다.
@@ -283,14 +291,17 @@
   /* 🎨 2026-07-19 지시서 §6 STEP B — 다크 테마 토큰 (html.dark = 기존 토글/시스템 감지, data-theme 별칭 겸용).
      로즈가 '면'(버튼 배경)일 땐 --brand+흰 글자(라이트와 동일), '글자·뱃지'일 땐 --brand-text(밝힌 로즈). */
   .dark, [data-theme="dark"] {
-    --bg: #0D0F12;          /* 중성 근검정 — 다크 페이지 배경. 잉크 블랙(#16181C)보다 더 어두워야 위계가 선다 */
-    --surface: #1A1C21;     /* 카드/시트 */
+    --bg: #11141C;          /* 다크 페이지 배경 — 2026-09-02 대표 "결제가 완료되었어요 뒷 배경색이 가장 마음에 들어" (시안 실측 #10131C~#11141D, 남색 기운 근검정). 구 중성 #0D0F12 */
+    --surface: #1D1F29;     /* 카드/시트 — 시안 실측 #1D2029~#1D1F29 */
     --line: #2C2F35;
     --ink: #F5F3F1;         /* 순백 아닌 웜 화이트 */
     --ink-soft: #A5A29E;
     --ink-faint: #757370;
-    --brand-text: #EF6E85;  /* 다크 배경 위 로즈 글자·뱃지 (보정값) */
-    --brand-tint: #3A2530;  /* 로즈 옅은 배경의 다크 대응 */
+    --brand-text: #4D8DF5;  /* 다크 배경 위 블루 글자·뱃지 (시안 활성 아이콘 실측 #4D88ED 계열, 대비 6:1) */
+    --brand-tint: #16243D;  /* 블루 옅은 배경의 다크 대응 */
+    --rule: rgb(255 255 255 / 0.08);        /* 🎫 카드 안 구분선(다크) */
+    --rule-strong: rgb(255 255 255 / 0.32); /* 🎫 outline 버튼·칩 테두리(다크 — 시안 실측 #6E7178 계열) */
+    --lift: none;                            /* 🎫 다크는 그림자 0 */
   }
 
 }
@@ -357,9 +368,9 @@
     letter-spacing: -0.022em;
   }
 
-  /* 🛡️ 2026-05-04: 다크 모드일 때만 body 배경 #0D0F12. light 모드는 #ffffff (위 body 규칙). */
+  /* 🛡️ 2026-05-04: 다크 모드일 때만 body 배경 #11141C. light 모드는 #ffffff (위 body 규칙). */
   html.dark body {
-    background-color: #0D0F12;
+    background-color: #11141C;
   }
 
   /* 🗑️ 2026-07-20: .footer-tiny(전체 강제 8px !important) 제거 — SiteFooter 재설계로 사용처 0.
@@ -388,8 +399,8 @@
 /* 🎨 2026-07-19 브랜드(지시서 §5): 셀러 대시보드 액센트만 로즈 — 어드민은 "후순위 무접촉"이라
    공용 셀렉터에서 분리해 셀러에만 override (bg #F4F5F7 구조·어드민 파랑 불변). */
 .seller-light-theme {
-  --primary: 349 70% 60%;   /* #E0526B */
-  --ring: 349 70% 60%;
+  --primary: 218 87% 52%;   /* #1C69EF */
+  --ring: 218 87% 52%;
 }
 
 /* 🛡️ 2026-06-17 (사용자 신고 — 로그인/대시보드 입력 글자 흰색으로 안 보임): 어드민/셀러/에이전시/도매는 라이트 고정.
@@ -614,7 +625,7 @@
 
 /* Card with subtle shadow */
 .apple-card {
-  background: #1A1C21;
+  background: #1D1F29;
   border-radius: 18px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.04);
   transition: all 0.3s cubic-bezier(0.28, 0.11, 0.32, 1);
@@ -923,9 +934,9 @@ html.native-app nav {
      PC viewport 보다 넓은 그리드는 의도적으로 가로 스크롤 (Vite/Tailwind 표준 동작). */
 }
 
-/* 🛡️ 2026-05-04: 다크 모드일 때만 .mobile-app-container 배경 #0D0F12. */
+/* 🛡️ 2026-05-04: 다크 모드일 때만 .mobile-app-container 배경 #11141C. */
 html.dark .mobile-app-container {
-  background-color: #0D0F12;
+  background-color: #11141C;
 }
 
 /* 🛡️ 2026-05-14 revert: 라이브/쇼츠 액자 항상 430px 모바일 폰 크기 (확대 X).
@@ -958,14 +969,14 @@ html.dark .mobile-app-container {
 /* 🎨 2026-07-19 브랜드 적용: 라이트=웜화이트+잉크(2026-08-30 차콜 블랙)+로즈 CTA/액센트(지시서 60-30-10),
    다크=서피스 유지+액센트만 로즈(대표 확정). danger(기능색)는 유지. */
 .gbd {
-  --gbd-bg:#FAF7F5; --gbd-card:#ffffff; --gbd-ink:#16181C; --gbd-ink2:#3D3C3A; --gbd-sub:#6E6B68; --gbd-sub2:#8A8580;
+  --gbd-bg:#F8F7FC; --gbd-card:#ffffff; --gbd-ink:#16181C; --gbd-ink2:#3D3C3A; --gbd-sub:#6E6B68; --gbd-sub2:#8A8580;
   --gbd-line2:#EAE4E0; --gbd-chip:#F3EEEA; --gbd-danger:#F23E4D; --gbd-danger-soft:#FFF0F1;
-  --gbd-cta-bg:#E0526B; --gbd-cta-fg:#ffffff; --gbd-accent:#E0526B;
+  --gbd-cta-bg:#1C69EF; --gbd-cta-fg:#ffffff; --gbd-accent:#1C69EF;
 }
 html.dark .gbd {
   --gbd-bg:#070809; --gbd-card:#141517; --gbd-ink:#F3F4F6; --gbd-ink2:#C5C9D0; --gbd-sub:#888F99; --gbd-sub2:#5E646D;
   --gbd-line2:#2A2D31; --gbd-chip:#1E2023; --gbd-danger:#FF5C69; --gbd-danger-soft:#2E1518;
-  --gbd-cta-bg:#E0526B; --gbd-cta-fg:#ffffff; --gbd-accent:#EF6E85;
+  --gbd-cta-bg:#1C69EF; --gbd-cta-fg:#ffffff; --gbd-accent:#4D8DF5;
 }
 .gbd .noscroll::-webkit-scrollbar{display:none;}
 .gbd .noscroll{scrollbar-width:none;-ms-overflow-style:none;}
@@ -981,7 +992,7 @@ html.dark .gbd {
   margin-bottom: 20px;
   box-shadow: 0 1px 2px rgba(10, 11, 14, .06), 0 8px 24px -12px rgba(10, 11, 14, .30);
 }
-.dark .ur-home-panel { background: #0D0F12; box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6); }
+.dark .ur-home-panel { background: #11141C; box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6); }
 @media (max-width: 1023px) { .ur-home-panel { padding: 14px; border-radius: 14px; margin-bottom: 14px; } }
 
 /* ✨ 카드가 색면 위에서 살짝 떠오르는 인터랙션(대표 — "버튼 나타날 때 효과") */

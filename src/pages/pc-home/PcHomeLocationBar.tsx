@@ -176,7 +176,7 @@ export default function PcHomeLocationBar({
 
       {open && (
         <div
-          className={`z-[10500] rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] shadow-[0_12px_40px_rgba(0,0,0,0.18)] overflow-hidden ${
+          className={`z-[10500] rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] shadow-[0_12px_40px_rgba(0,0,0,0.18)] overflow-hidden ${
             isWide ? 'absolute left-0 top-[calc(100%+8px)] w-[520px]' : 'fixed left-2 right-2'
           }`}
           style={isWide ? undefined : { top: panelTop }}

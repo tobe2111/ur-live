@@ -111,7 +111,7 @@ export default function SEO({
       <meta name="twitter:image:alt" content={isWholesale ? `${siteName} B2B 도매몰` : `${siteName} 동네 공동구매 · 이용권`} />
 
       {/* Theme color (모바일 status bar) */}
-      <meta name="theme-color" content={isWholesale ? '#0A0A0A' : '#0D0F12'} />
+      <meta name="theme-color" content={isWholesale ? '#0A0A0A' : '#11141C'} />
       <meta name="apple-mobile-web-app-capable" content="yes" />
       <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       <meta name="apple-mobile-web-app-title" content={siteName} />

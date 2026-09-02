@@ -119,7 +119,7 @@ export default function VoucherRedeemModal({
   return (
     <div className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center" onClick={phase === 'confirm' ? onClose : undefined} role="presentation">
       <div
-        className="relative bg-white dark:bg-[#0D0F12] rounded-t-3xl sm:rounded-3xl w-full max-w-[430px] p-6"
+        className="relative bg-white dark:bg-[#11141C] rounded-t-3xl sm:rounded-3xl w-full max-w-[430px] p-6"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -151,7 +151,7 @@ export default function VoucherRedeemModal({
                 inputMode="numeric"
                 maxLength={6}
                 placeholder="매장 확인코드"
-                className="mt-4 w-full text-center tracking-[0.5em] text-[22px] font-black py-3 rounded-2xl border-2 border-gray-300 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] text-gray-900 dark:text-white"
+                className="mt-4 w-full text-center tracking-[0.5em] text-[22px] font-black py-3 rounded-2xl border-2 border-gray-300 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] text-gray-900 dark:text-white"
                 autoFocus
               />
             )}
@@ -181,7 +181,7 @@ export default function VoucherRedeemModal({
             <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">직원에게 이 화면을 보여주세요</p>
 
             {cancelLeft > 0 ? (
-              <button onClick={cancel} className="ur-btn ur-btn-md ur-btn-block mt-5 bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300">
+              <button onClick={cancel} className="ur-btn ur-btn-md ur-btn-block mt-5 bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300">
                 잘못 눌렀어요 · 취소 ({cancelLeft}초)
               </button>
             ) : (
@@ -207,7 +207,7 @@ export default function VoucherRedeemModal({
         )}
 
         {phase === 'confirm' && (
-          <button onClick={onClose} aria-label="닫기" className="absolute top-3 right-3 p-1.5 rounded-full bg-gray-100 dark:bg-[#1A1C21]"><X className="w-4 h-4 text-gray-500" /></button>
+          <button onClick={onClose} aria-label="닫기" className="absolute top-3 right-3 p-1.5 rounded-full bg-gray-100 dark:bg-[#1D1F29]"><X className="w-4 h-4 text-gray-500" /></button>
         )}
       </div>
     </div>
