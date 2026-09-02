@@ -451,8 +451,7 @@ function CartPageContent() {
   }
 
   return (
-    // 🩸 2026-09-02 (대표 "장바구니 페이지도 심각하다"): 이 래퍼만 라이트 회색 단독(dark: 없음)이라 다크에서 빈 장바구니 아래가
-    //   회색으로 남았다(화면 절반이 라이트). 페이지 바탕은 --bg 두 톤, 셀러 묶음/요약은 surface.
+    // 🩸 2026-09-02 (대표 "장바구니 페이지도 심각하다"): 이 래퍼만 dark: 없이 라이트 회색이라 다크에서 아래 절반이 회색으로 남았다.
     <div className="flex flex-col min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C]">
       <SEO title={t('cart.seoTitle')} description={t('cart.seoDesc')} url="/cart" noindex />
 
@@ -538,7 +537,6 @@ function CartPageContent() {
                     <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
                   </div>
 
-                  {/* v4 Free shipping progress bar (pink) */}
                   {freeShipThreshold > 0 && remaining > 0 && (
                     <div className="mx-4 mt-3">
                       <p className="text-[12px] text-gray-600 dark:text-gray-300 font-medium mb-1.5">
