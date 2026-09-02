@@ -88,6 +88,28 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎁 교환권 마진 0% 가 다시 20% 로 튕긴다 (원가 판매가 조용히 무효)',
+    file: 'src/features/admin/api/admin-kt-alpha/settings.ts',
+    find: '      const markupPct = resolveConsumerMarkupPct(settingsRow?.value)',
+    replace: '      const markupPct = Number(settingsRow?.value) || 20',
+    test: 'src/tests/unit/kt-alpha-markup-zero.test.ts',
+    why:
+      '2026-08-31 대표가 교환권을 원가(정가)로 되돌리라고 지시했는데, 세 자리가 `Number(x) || 20` 이라 ' +
+      '`0` 이 falsy 로 삼켜져 20% 로 되돌아갔다. 저장(PATCH)은 `Number.isFinite` 라 0 을 통과시켜서 ' +
+      '**저장은 되는데 아무도 안 읽는** 조용한 실패였다 — 에러가 없어 "슬라이더를 0으로 내렸는데 ' +
+      '가격이 그대로"로만 보인다. 실측상 활성 교환권 2,260개 중 2,257개가 정가보다 비쌌다.',
+  },
+  {
+    name: '🎁 새로 담는 교환권에만 마진이 되살아난다 (재계산은 0인데 신규는 20%)',
+    file: 'src/features/admin/api/admin-kt-alpha/catalog.ts',
+    find: '      const markupPct = resolveConsumerMarkupPct(sMap.kt_alpha_consumer_markup_pct)',
+    replace: '      const markupPct = Math.min(100, Math.max(0, Number(sMap.kt_alpha_consumer_markup_pct) || 20))',
+    test: 'src/tests/unit/kt-alpha-markup-zero.test.ts',
+    why:
+      '재계산만 고치고 이 자리를 놓치면 기존 상품은 원가인데 **앞으로 담는 상품만** 20% 비싸진다. ' +
+      '카탈로그가 2,260개라 섞이면 어느 가격이 맞는지 아무도 모르게 된다.',
+  },
+  {
     name: '🚀 유어샵 상품 동봉이 빠져 마지막 왕복이 되살아난다(콘텐츠 완성이 다시 fetch 뒤로)',
     file: 'src/worker/routes/curator.routes.ts',
     find: ', linked_seller_products: linkedSeller?.id ? await loadLinkedSellerProducts(c.env.DB, Number(linkedSeller.id)) : null,',
