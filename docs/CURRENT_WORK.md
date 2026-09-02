@@ -5494,7 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 232건 · 최신순 · 이 목록은 자동 생성된다._
+_총 233건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-02**
 - [2026-09-02 — 유어딜 요청 경로 D1 읽기 다이어트 (PR-C)](handoff/2026-09-02-urdeal-request-diet.md)
@@ -5520,6 +5520,7 @@ _총 232건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-08-31 — 운영 가이드를 읽을 수 있는 문서로](handoff/2026-08-31-ops-guide-reader.md)
 - [원장 정합 알림 — 숫자가 거짓이었다, 그리고 진짜 5건의 정체 (2026-08-31)](handoff/2026-08-31-ledger-mismatch.md)
 - [2026-08-31 — 영입자 지정 UI + **id 공간 불일치 수리**](handoff/2026-08-31-introducer-assign.md)
+- [현금 정산 수수료 — 마진을 상품이 아니라 현금 출구에서 걷는다](handoff/2026-08-31-influencer-cash-fee.md)
 - [2026-08-31 (2차) — 이미지 폴백 전 표면 배선 · 검색창 경계 실증](handoff/2026-08-31-image-fallback-all-surfaces.md)
 - [시드에서 고쳤는데 라이브가 안 고쳐졌다 — 가이드 한정 해동 (2026-08-31)](handoff/2026-08-31-guide-unfreeze.md)
 - [2차 해동 — 길이로 거르다 놓친 14개 (2026-08-31)](handoff/2026-08-31-guide-unfreeze-2.md)

@@ -12,7 +12,10 @@ import { readFileSync } from 'node:fs'
 import { stripComments as codeOnly } from '../helpers/source-text'
 
 const CRON = codeOnly(readFileSync('src/worker/cron/influencer-payout.ts', 'utf-8'))
-const ADMIN = codeOnly(readFileSync('src/features/group-buy/api/marketing.routes.ts', 'utf-8'))
+// ⚠️ 2026-08-31: 어드민 송금 처리(`/payouts`, `/payouts/process`)는 파일크기 래칫 때문에
+//   `marketing.routes.ts` → `marketing/payouts.ts` 로 **이동**했다(로직 불변). 경로를 안 따라가면
+//   이 검사가 코드 없는 파일을 보게 되어 낡은 지도가 된다.
+const ADMIN = codeOnly(readFileSync('src/features/group-buy/api/marketing/payouts.ts', 'utf-8'))
 
 /** 조건절만 뽑는다 — 공백/줄바꿈에 흔들리지 않게 정규화. */
 const norm = (s: string) => s.replace(/\s+/g, ' ')

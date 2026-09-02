@@ -135,6 +135,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   // 🏪 2026-08-27: 유효기간(개월). 미등록이면 무검증 통과라 '열두달' 같은 값도 저장됐다.
   influencer_store_intro_months: intRange(1, 120), // influencer-store-intro-commission.ts isStoreIntroExpired
   influencer_deal_bonus_pct: pct,      // marketing.routes.ts:679
+  influencer_payout_cash_fee_pct: pct, // 💰 현금 정산 수수료 (기본 0 = 안 걷음) — influencer-payout-math.ts SSOT
   curator_affiliate_pct: pct,
   host_incentive_pct: pct,
   curator_withholding_rate: pct,

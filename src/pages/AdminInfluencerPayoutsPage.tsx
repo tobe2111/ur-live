@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
-import { WITHHOLDING_RATES } from '@/shared/constants/policy'
+import { computeCashPayout } from '@/shared/influencer-payout-math'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
@@ -31,25 +31,23 @@ interface PayoutRow {
   updated_at: string
 }
 
-// 🛡️ 2026-06-27: 원천징수율 하드코딩 제거 — WITHHOLDING_RATES SSOT(@/shared/constants/policy,
-//   worker tax-withholding 재내보내기) 사용. 율 변경 시 한 곳만 고치면 서버·프론트 동시 반영.
-function calcWithholding(amount: number, taxType: string | null, businessNumber: string | null): { rate: number; tax: number; net: number } {
-  let rate = 0
-  if (businessNumber || taxType === 'business_income') rate = WITHHOLDING_RATES.business_income * 100
-  else if (taxType === 'other_income') rate = WITHHOLDING_RATES.other_income * 100
-  const tax = Math.floor(amount * rate / 100)
-  const net = amount - tax
-  return { rate, tax, net }
-}
+// 💰 2026-08-31: 이 화면이 갖고 있던 자체 계산을 `computeCashPayout` SSOT 로 위임.
+//   원천징수가 cron · 라우트 · 이 화면 **세 곳**에서 따로 계산되고 있었고, 현금 정산 수수료를
+//   얹으면 네 번째가 된다. 갈리면 "화면엔 90만원인데 실제로는 88만원" 이 되고 그건 돈 문제다.
+//   수수료율은 서버 응답(`cash_fee_pct`)에서 받는다 — 프론트가 자기 기본값을 들고 있으면
+//   대표가 어드민에서 율을 바꿔도 이 화면만 옛 숫자를 보여준다.
 
 export default function AdminInfluencerPayoutsPage() {
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (list + payout_min).
-  const { data: payoutData, isLoading: loading, isError, error, refetch } = useApiQuery<{ list: PayoutRow[]; payout_min: number }>(
+  const { data: payoutData, isLoading: loading, isError, error, refetch } = useApiQuery<{ list: PayoutRow[]; payout_min: number; cash_fee_pct: number }>(
     ['admin', 'influencer-payouts'], '/api/admin-payouts/payouts',
-    { select: (r: any) => (r?.success ? { list: r.data.list || [], payout_min: r.data.payout_min || 100000 } : { list: [], payout_min: 100000 }) },
+    { select: (r: any) => (r?.success ? { list: r.data.list || [], payout_min: r.data.payout_min || 100000, cash_fee_pct: r.data.cash_fee_pct ?? 0 } : { list: [], payout_min: 100000, cash_fee_pct: 0 }) },
   )
   const list = payoutData?.list ?? []
   const payoutMin = payoutData?.payout_min ?? 100000
+  // 💰 수수료율은 **서버가 준 값만** 쓴다(`?? 0`). 자체 기본값을 두면 대표가 율을 바꿔도
+  //   이 화면만 옛 숫자를 보여준다 — 실지급과 갈리는 그 사고를 막는다.
+  const cashFeePct = payoutData?.cash_fee_pct ?? 0
   const load = () => refetch()
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -95,10 +93,10 @@ export default function AdminInfluencerPayoutsPage() {
 
   async function process(row: PayoutRow) {
     const method = row.payout_method || 'cash'
-    const w = calcWithholding(row.available_amount, row.tax_type, row.business_number)
+    const w = computeCashPayout({ gross: row.available_amount, taxType: row.tax_type, businessNumber: row.business_number, feePct: cashFeePct })
     const msg = method === 'deal'
       ? `${row.influencer_id} 에게 딜로 ${row.available_amount.toLocaleString()}원 (+ 보너스) 지급?`
-      : `${row.influencer_id} 에게 현금 ${w.net.toLocaleString()}원 (원천징수 ${w.rate}% = ${w.tax.toLocaleString()}원) 송금 완료 처리?\n\n계좌: ${row.bank_name || '-'} ${row.bank_account || '-'} (${row.account_holder || '-'})`
+      : `${row.influencer_id} 에게 현금 ${w.net.toLocaleString()}원 (${w.fee > 0 ? `정산수수료 ${w.feePct}% = ${w.fee.toLocaleString()}원, ` : ''}원천징수 ${w.withholdingPct}% = ${w.withholding.toLocaleString()}원) 송금 완료 처리?\n\n계좌: ${row.bank_name || '-'} ${row.bank_account || '-'} (${row.account_holder || '-'})`
     if (!(await confirmDialog(msg))) return
     setProcessingId(row.influencer_id)
     try {
@@ -205,7 +203,7 @@ export default function AdminInfluencerPayoutsPage() {
               </thead>
               <tbody>
                 {filteredSorted.map((r) => {
-                  const w = calcWithholding(r.available_amount, r.tax_type, r.business_number)
+                  const w = computeCashPayout({ gross: r.available_amount, taxType: r.tax_type, businessNumber: r.business_number, feePct: cashFeePct })
                   const accountOk = r.payout_method === 'deal' || (r.bank_name && r.bank_account && r.account_holder)
                   return (
                     <tr key={r.influencer_id} className="border-t border-gray-100">
@@ -221,7 +219,9 @@ export default function AdminInfluencerPayoutsPage() {
                         {r.payout_method === 'deal' ? '-' : (
                           <>
                             <p className="font-bold text-gray-900">{w.net.toLocaleString()}원</p>
-                            <p className="text-[10px] text-gray-500">원천 {w.rate}%</p>
+                            <p className="text-[10px] text-gray-500">
+                              {w.fee > 0 && <>수수료 {w.feePct}% · </>}원천 {w.withholdingPct}%
+                            </p>
                           </>
                         )}
                       </td>
