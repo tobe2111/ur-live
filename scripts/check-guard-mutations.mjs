@@ -88,6 +88,22 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎞️ 카드 넘김이 painted 대신 shown 을 따라 클릭 순간 빈 칸이 다시 보인다',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'opacity: i === painted ? (painted === shown ? 1 : 0.65) : 0',
+    replace: 'opacity: i === shown ? 1 : 0',
+    test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
+    why: '2026-09-02 대표 신고: 화살표를 누르면 이전 사진이 사라지고 새 사진이 올 때까지 회색 칸(콜드 0.3~2초).',
+  },
+  {
+    name: '🎞️ 보이는 카드의 idle 프리페치 게이트가 뒤집혀 커버 로드 전에도 안 도는(=영영 안 도는) 상태',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: '    if (!multi || !coverLoaded || idleDone.current) return\n',
+    replace: '    if (true) return\n',
+    test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
+    why: '2026-09-02: hover 뒤에야 받기 시작하면 클릭 시점엔 늦다 — 화면에 들어온 카드는 idle 에 다음 한 장을 미리.',
+  },
+  {
     name: '🧵 상세 감시 <img> 의 isDesktop 게이트를 없애 폰이 PC 폭(1200)·썸네일(600×2)을 도로 받는다',
     file: 'src/pages/group-buy/DetailGallery.tsx',
     find: "    if (!isDesktop) {\n      list.push({ src: main, url: heroUrl(main, DETAIL_HERO_MOBILE_WIDTH) })\n      return list\n    }\n",
