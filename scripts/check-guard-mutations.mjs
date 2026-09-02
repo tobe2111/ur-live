@@ -7333,10 +7333,10 @@ canvas {
       '얹히기 쉬워서 다섯이 됐다. 접기 게이트가 사라지면 그 상태로 돌아간다.',
   },
   {
-    name: '🎫 딥링크 브랜드인데 스트립이 접힌 채 시작 (왜 걸러졌는지 알 수 없다)',
+    name: '🎫 브랜드 스트립이 다시 기본 접힘으로 (대표 09-02 "브랜드 펼침 · 로고가 보이게" 역행)',
     file: 'src/pages/VouchersPage.tsx',
-    find: "useState(() => !!searchParams.get('brand'))",
-    replace: 'useState(false)',
+    find: "const [brandsOpen, setBrandsOpen] = useState(true)",
+    replace: "const [brandsOpen, setBrandsOpen] = useState(false)",
     test: 'src/tests/unit/vouchers-top-chrome.test.ts',
     why:
       '브랜드가 이미 선택된 채 들어오면(공유 링크·재진입) 목록은 걸러져 있는데 그 이유가 화면에 ' +

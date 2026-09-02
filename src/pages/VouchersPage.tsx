@@ -252,7 +252,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
    *   **'브랜드로 찾기' 를 누르면 그대로 나온다.** 딥링크로 브랜드가 이미 잡혀 있으면 펴서 시작한다
    *   (접힌 채 선택 상태면 왜 걸러졌는지 알 수 없다).
    */
-  const [brandsOpen, setBrandsOpen] = useState(() => !!searchParams.get('brand'))
+  // 🎫 2026-09-02 (대표 확정 — 교환권 B안 "칩 + 브랜드 펼침 · 로고가 보이게"): 기본 펼침. 09-01 '기본 접기'를 대체. 접기 토글은 남긴다.
+  const [brandsOpen, setBrandsOpen] = useState(true)
   // 📐 2026-07-29 (CLS 실측 0.188 수리): 카테고리/브랜드 블록이 **상품 목록보다 늦게** 도착해
   //   목록을 아래로 밀어냈다. 상품은 SSR 시드로 즉시 그려지는데(`__SSR_INITIAL_VOUCHERS__`)
   //   그 위 두 블록은 `/api/vouchers/categories` 응답을 기다리기 때문이다. 첫 방문(로컬 캐시 없음)
@@ -525,16 +526,15 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               type="button"
               /* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 종료 — 카드 탭 = 딜 내역으로. */
               onClick={() => navigate(TOPUP_DISABLED ? '/my-deal-history' : '/points/charge')}
-              className="w-full text-left rounded-2xl p-4 active:scale-[0.99] transition-transform"
-              style={{ background: '#16181C' }}
+              className="w-full text-left rounded-2xl p-4 bg-white dark:bg-[#1D1F29] shadow-lift active:scale-[0.99] transition-transform"
             >
-              <p className="text-[11px] text-gray-400 mb-1.5 tracking-wide">내 딜 잔액</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1.5 tracking-wide">내 딜 잔액</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-[26px] font-extrabold text-white leading-none tracking-tight">{dealBalance == null ? '0' : formatNumber(dealBalance)}</span>
-                <span className="text-[15px] font-bold text-gray-500">딜</span>
+                <span className="text-[26px] font-extrabold text-gray-900 dark:text-white leading-none tracking-tight tabular-nums">{dealBalance == null ? '0' : formatNumber(dealBalance)}</span>
+                <span className="text-[15px] font-bold text-gray-400 dark:text-gray-500">딜</span>
               </div>
-              <p className="text-[10px] text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
-              <span className="mt-3 w-full inline-flex items-center justify-center gap-1 text-[12px] font-bold py-2 rounded-lg text-white bg-white/10">
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
+              <span className="mt-3 w-full inline-flex items-center justify-center gap-1 text-[12px] font-bold py-2 rounded-lg text-white bg-brand">
                 {TOPUP_DISABLED ? '딜 내역 보기' : '충전하기'} <ArrowRight className="w-3.5 h-3.5" />
               </span>
             </button>
@@ -555,13 +555,13 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                         onClick={() => setCategory(s.category)}
                         className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] transition-colors ${
                           active
-                            ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white font-bold'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                            ? 'bg-brand text-white font-bold'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-white/[0.04]'
                         }`}
                       >
                         <CategoryIcon category={s.category} />
                         <span className="flex-1 text-left truncate">{s.category}</span>
-                        <span className={`text-[11px] ${active ? 'text-gray-500 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>{s.count}</span>
+                        <span className={`text-[11px] tabular-nums ${active ? 'text-white/80' : 'text-gray-400 dark:text-gray-500'}`}>{s.count}</span>
                       </button>
                     )
                   })}
@@ -696,19 +696,18 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             <button
               type="button"
               onClick={() => navigate(TOPUP_DISABLED ? '/my-deal-history' : '/points/charge')}
-              className="w-full text-left rounded-2xl p-5 active:scale-[0.99] transition-transform"
-              style={{ background: '#16181C' }}
+              className="w-full text-left rounded-2xl p-5 bg-white dark:bg-[#1D1F29] shadow-lift active:scale-[0.99] transition-transform"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12px] text-gray-400 mb-2 tracking-wide">내 딜 잔액</p>
+                  <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-2 tracking-wide">내 딜 잔액</p>
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-[36px] font-extrabold text-white leading-none tracking-tight">{formatNumber(dealBalance)}</span>
-                    <span className="text-[18px] font-bold text-gray-500">딜</span>
+                    <span className="text-[36px] font-extrabold text-gray-900 dark:text-white leading-none tracking-tight tabular-nums">{formatNumber(dealBalance)}</span>
+                    <span className="text-[18px] font-bold text-gray-400 dark:text-gray-500">딜</span>
                   </div>
-                  <p className="text-[11px] text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
                 </div>
-                <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white" style={{ background: 'rgba(255,255,255,0.14)' }}>
+                <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white bg-brand">
                   {TOPUP_DISABLED ? '내역' : '충전'} <ArrowRight className="w-3.5 h-3.5" />
                 </span>
               </div>
@@ -723,12 +722,12 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           <button
             type="button"
             onClick={() => navigate('/map')}
-            className="w-full h-11 px-3.5 flex items-center justify-between gap-2 rounded-xl bg-gray-100 dark:bg-[#1D1F29] active:scale-[0.99] transition-transform"
+            className="w-full h-11 px-3.5 flex items-center justify-between gap-2 rounded-xl bg-white dark:bg-[#1D1F29] shadow-lift active:scale-[0.99] transition-transform"
           >
             <span className="text-[12.5px] text-gray-600 dark:text-gray-300 truncate">
               <b className="text-gray-900 dark:text-white">딜 0</b> · 1딜 = 1원, 현금처럼 써요
             </span>
-            <span className="shrink-0 inline-flex items-center gap-0.5 text-[11.5px] font-bold text-gray-500 dark:text-gray-400">
+            <span className="shrink-0 inline-flex items-center gap-0.5 text-[11.5px] font-bold text-brand-text">
               모으는 방법 <ArrowRight className="w-3 h-3" />
             </span>
           </button>
@@ -743,9 +742,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         <div className="h-[50px]" aria-hidden="true" />
       )}
       {sections.length > 0 && (
-        <div className="bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+        <div className="bg-warm/95 dark:bg-[#11141C]/95 backdrop-blur">
           <div className="ur-content-wide px-4 lg:px-8 py-2.5">
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
               {sections.map(s => {
                 const active = s.category === category
                 return (
@@ -753,15 +752,15 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                     key={s.category}
                     type="button"
                     onClick={() => setCategory(s.category)}
-                    className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
+                    className={`shrink-0 inline-flex items-center gap-1.5 h-9 pl-3 pr-3.5 rounded-full text-[13px] font-bold transition-colors ${
                       active
-                        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-sm'
-                        : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
+                        ? 'bg-brand text-white'
+                        : 'bg-white dark:bg-[#1D1F29] text-gray-800 dark:text-gray-100 shadow-lift'
                     }`}
                   >
-                    <CategoryIcon category={s.category} />
+                    <CategoryIcon category={s.category} className="w-[15px] h-[15px]" />
                     {s.category}
-                    <span className={`text-[10px] ${active ? 'text-white/70 dark:text-gray-900/60' : 'text-gray-400 dark:text-gray-500'}`}>({s.count})</span>
+                    <span className={`text-[11px] tabular-nums ${active ? 'text-white/80' : 'text-gray-400'}`}>{s.count}</span>
                   </button>
                 )
               })}
@@ -920,7 +919,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             ) : (
               // 🎨 2026-06-23 /vouchers — 1줄 리스트, embedVisible(기본 20)개까지만 노출 후 '더보기'(대표 결정).
               //   내용 동일, 배치만 행. 더보기 아래로 쇼핑 섹션이 이어짐.
-              <div className="grid grid-cols-1">
+              <div className="grid grid-cols-1 gap-2">
                 {displayProducts.slice(0, embedVisible).map((p, idx) => (
                   <Fragment key={p.id}>
                     <VoucherRow p={p} aboveFold={idx < 4} />
