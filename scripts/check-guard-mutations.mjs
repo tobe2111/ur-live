@@ -88,6 +88,36 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '📉 읽기 예산 초과가 cron kick 을 못 막는다(paused 에 안 합쳐짐)',
+    file: 'src/worker-ads/index.ts',
+    find: '  const paused = lanesPaused(env) || budget.over // ⏸️',
+    replace: '  const paused = lanesPaused(env) // ⏸️',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '2026-09-02: 유어애즈가 자기 몫(기본 150만 행)을 넘기면 스스로 멈춰야 유어딜이 산다. 이 `||` 하나가 빠지면 ' +
+      '원장은 정확히 세면서 아무것도 안 막는다 — 하트비트엔 over=true 가 찍히는데 레인은 계속 읽는다.',
+  },
+  {
+    name: '📉 DO 알람 레인이 읽기 예산 게이트를 건너뛴다',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: '    if ((await readBudgetState(this.env)).over) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '알람 레인은 cron 을 안 거치므로 cron 진입의 게이트가 안 미친다 — DO 안에 자기 게이트가 있어야 한다. ' +
+      '빠지면 측정·발굴 레인(읽기의 대부분)이 예산과 무관하게 돈다.',
+  },
+  {
+    name: '📉 cron 경로 레인이 읽기량을 원장에 안 보고한다(원장이 절반만 센다)',
+    file: 'src/worker-ads/self-beat.ts',
+    find: '    await reportReadUsage(env, readEnvMeter(env)?.rr)\n',
+    replace: '',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      'cron kick 레인은 self-beat 가 유일한 회차 종료 지점이다. 여기서 안 보고하면 원장은 알람 레인만 세어 ' +
+      '예산이 실제의 절반쯤에서 헛돈다 — 넘겨도 over 가 늦게 뜬다.',
+  },
+  {
     name: '⏸️ 유어애즈 일시정지 스위치가 레인을 안 막는다',
     file: 'src/worker-ads/index.ts',
     find: '    if (paused && !pauseExempt(path)) return // ⏸️ 등록은 하고(known_lanes 보존) 띄우지만 않는다\n',

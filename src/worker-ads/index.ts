@@ -27,7 +27,7 @@ import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
 import { laneUrl, selfBeatMiddleware } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
 import { laneAlarmDrivesEnrich, bootstrapLaneAlarm } from './lane-alarm-boot'
-import { lanesPaused, pauseExempt, PAUSE_BEAT } from './lane-pause' // ⏸️ 2026-09-02 한도 사고 — 스위치 하나(그 파일 헤더)
+import { lanesPaused, pauseExempt, PAUSE_BEAT } from './lane-pause'; import { readBudgetState, budgetBeatFields, READ_BUDGET_BEAT } from './read-budget' // ⏸️📉 2026-09-02 한도 사고 — 정지 스위치 · 읽기 예산 차단기(각 파일 헤더)
 import { withMeteredEnv, newMeter } from '@/worker/utils/d1-read-meter'
 import { scheduleMaintenanceCron } from './maintenance-cron'
 import { healthRoutes } from './health.routes'
@@ -261,7 +261,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
 
   //   `beatName` — 경로가 바뀌어도 하트비트 이름을 고정(바꾸면 옛 행이 남아 stale watch 가 영원히 경보).
-  const paused = lanesPaused(env) // ⏸️ kick·부트스트랩·시트 미러가 함께 본다. kick 선언보다 앞(TDZ — laneAlarmOn 이 겪은 함정)
+  const budget = await readBudgetState(env) // 📉 오늘 읽기 예산(DO 원장 1회 조회) — 넘겼으면 아래 paused 가 참이 된다
+  const paused = lanesPaused(env) || budget.over // ⏸️ kick·부트스트랩·시트 미러가 함께 본다. kick 선언보다 앞(TDZ — laneAlarmOn 이 겪은 함정)
   const laneReg = createLaneRegistry()
   //   `gap` — 이 레인의 **실제** 기대 간격(분). 안 주면 매시간(= event.cron)으로 본다.
   //     일 1회/N시간 레인은 `gates.dailyAt`/`gates.everyNHours` 가 조건과 함께 자동으로 넣어준다
@@ -314,6 +315,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   넷 다 오류를 안 낸다(대시보드엔 값이 보이는데 코드는 기본값으로 돈다). 이상 없으면 키가 아예 안 붙는다.
   ctx.waitUntil(adsBeat('scheduled', true, 0, undefined, undefined, { ...buildAgeInfo(), ...envDriftInfo(env) }))
   ctx.waitUntil(adsBeat(PAUSE_BEAT, true, 0, undefined, 120, { paused })) // ⏸️ 정지 표식 — 감시가 '사고'와 '일시정지'를 가른다
+  ctx.waitUntil(adsBeat(READ_BUDGET_BEAT, true, 0, undefined, 120, budgetBeatFields(budget))) // 📉 오늘 쓴 행/예산/초과 — 어드민 하트비트에서 본다
 
   // ── 매시간(정각) — 소셜 유지보수 + 인플루언서 자동수집 ──────────────────────
   //   🚦 2026-08-02: 생 waitUntil(부모 CPU 직격, 실측 2,390ms/회차) → kick(자식 예산). 예산 분산에도 잡힌다.
