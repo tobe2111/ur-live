@@ -126,16 +126,9 @@ async function ensureCuratorTables(DB: D1Database): Promise<void> {
   } catch { /* graceful */ }
 }
 
-// ============================================================
-// GET /api/curator/:handle  (public)
-// 큐레이터 공개 페이지 데이터: user + pins (with product 메타)
-// ============================================================
-/**
- * ⚠️ **정적 경로는 `/:param` 보다 먼저 등록해야 한다** (2026-09-02 라이브 실측으로 발견).
- *   Hono 는 등록 순서로 매칭하므로 아래 `/:param` 이 위에 있으면 이 경로가 그쪽으로 잡혀
- *   **영원히 엉뚱한 에러**를 낸다(파라미터 검증에 걸려 400/404). 경로 문자열이 달라
- *   `check-duplicate-routes` 는 이 그림자를 못 본다 — 순서로만 지켜진다.
- */
+// GET /api/curator/:handle (public) — 큐레이터 공개 페이지: user + pins (product 메타)
+// ⚠️ 정적 경로(/recommendations)는 아래 /:handle 보다 **먼저** — Hono 는 등록 순서로 매칭한다.
+//   뒤에 두면 handle="recommendations" 로 잡혀 404. 지키는 가드: check-route-shadowing.
 curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
