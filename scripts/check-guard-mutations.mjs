@@ -88,6 +88,32 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🚀 유어샵 상품 동봉이 빠져 마지막 왕복이 되살아난다(콘텐츠 완성이 다시 fetch 뒤로)',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: '      linked_seller_products: linkedSellerProducts,\n',
+    replace: '',
+    test: 'src/tests/unit/linkshop-products-seed.test.ts',
+    why:
+      '2026-09-02 실측: 셀러 시드 뒤에도 /api/products?seller_id 가 JS 실행 후 나가 콘텐츠 완성(0.9~1.6s)을 정했다. ' +
+      '이 한 줄이 빠지면 클라는 조용히 폴백 fetch 로 돌아가고 아무 에러도 없다.',
+  },
+  {
+    name: '🚀 유어샵이 동봉 상품을 받고도 fetch 를 또 한다(왕복이 안 줄고 D1 만 두 번 읽는다)',
+    file: 'src/pages/SellerPublicPage.tsx',
+    find: '      if (seededProducts) return // 동봉분이 곧 /api/products?seller_id 의 data — 같은 서비스, 같은 필터\n',
+    replace: '',
+    test: 'src/tests/unit/linkshop-products-seed.test.ts',
+    why: '동봉 소비의 절반 — 시드를 그리고도 fetch 를 하면 왕복은 그대로고 서버는 같은 100행을 두 번 읽는다.',
+  },
+  {
+    name: '📱 xl 전용 레일이 폰에서도 마운트돼 QR 라이브러리 82KB 를 내려받는다',
+    file: 'src/components/MobileAppLayout.tsx',
+    find: '{linkshopVisitor && isXl && <Suspense',
+    replace: '{linkshopVisitor && <Suspense',
+    test: 'src/tests/unit/linkshop-products-seed.test.ts',
+    why: '레일은 `hidden xl:flex` 라 안 보일 뿐 마운트는 되고, 안의 lazy QR 이 import 를 발사한다(실측: /u 모바일 워터폴 922ms 에 codes 82KB).',
+  },
+  {
     name: '📉 키워드 수율 재계산 6h 게이트가 헛돈다(회차마다 전수 GROUP BY)',
     file: 'src/features/marketing/api/influencer-keyword-yield.ts',
     find: '  if (row?.value === bucket) return { skipped: \'bucket\', bucket }\n',

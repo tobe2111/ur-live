@@ -51,6 +51,9 @@ interface SellerPublicPageProps {
   /** 🚀 2026-07-11 (1-RTT): CuratorPage 가 서버 동봉(linked_seller_public)으로 받은 셀러 공개 페이로드.
    *  일치 검증 후 동기 소비 → 셀러 /public fetch 자체를 생략(구캐시/미동봉이면 기존 fetch 폴백). */
   sellerSeed?: Record<string, unknown> | null
+  /** 🚀 2026-09-02 (대표 "유어샵 이상적 판정"): 서버 동봉 셀러 상품(= /api/products?seller_id&limit=100 data).
+   *  배열이면 동기 소비하고 상품 fetch 를 생략 — 실측에서 이 fetch 가 콘텐츠 완성 시각을 정하고 있었다. null/미동봉이면 기존 fetch. */
+  productsSeed?: unknown[] | null
 }
 
 // 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): SSR 시드(__SSR_INITIAL_SELLER__)를 동기(useState 초기값)
@@ -82,7 +85,7 @@ function matchSellerSeedProp(seed: Record<string, unknown> | null | undefined, s
   return ok ? (seed as unknown as Seller) : null
 }
 
-export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, ownerOverride, sellerSeed }: SellerPublicPageProps = {}) {
+export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, ownerOverride, sellerSeed, productsSeed }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
   const rawParam = sellerIdOverride ?? params.sellerId
@@ -92,7 +95,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   // 🚑 2026-07-10 [UNLOCK_LOADING]: SSR 시드 동기 소비(일치 검증 포함) — 시드 있으면 로더 프레임 0.
   // 🚀 2026-07-11: 서버 동봉 시드(prop, /u/ 사업자 경로)도 동기 소비 — 둘 중 있는 쪽으로 즉시 페인트.
   const [seller, setSeller] = useState<Seller | null>(() => readSellerSeed(sellerId) ?? matchSellerSeedProp(sellerSeed, sellerId))
-  const [products, setProducts] = useState<Product[]>([])
+  // 🚀 2026-09-02: 서버 동봉 상품 시드는 동기 초기값 — 로더 프레임 0(셀러 시드와 같은 등급).
+  const [products, setProducts] = useState<Product[]>(() => (Array.isArray(productsSeed) ? (productsSeed as Product[]) : []))
   const [loading, setLoading] = useState(seller == null)
 
   // 🔗 2026-06-21 (대표 승인): 레거시 셀러 공개 URL(/profile·/s) standalone 진입을 연결된 유저 유어샵
@@ -179,7 +183,12 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     // 🛡️ 셀러 상품 background fetch(비차단). 로딩 속도는 prewarm(products)로 해결(cold D1 제거).
     //   🧹 2026-07-20 (유어샵 전수조사): 라이브/쇼츠 fetch 제거 — 영구중단(LIVE_COMMERCE_SUSPENDED)이라
     //   상품만 필요. streams/shorts 배선·30초 폴링·관련 state/타입 통째 제거(도달불가 코드 청소).
+    // 🚀 2026-09-02: 서버가 상품을 동봉했으면(배열) 그걸 쓰고 fetch 는 생략 — 이 fetch 가 콘텐츠 완성을 정하던
+    //   마지막 왕복이었다(실측 0.9~1.6s → 시드 소비 시각). SPA 로 다른 핸들로 옮겨 시드가 바뀌면 여기서 다시 반영.
+    const seededProducts = Array.isArray(productsSeed) ? (productsSeed as Product[]) : null
+    if (seededProducts) setProducts(seededProducts)
     const fetchSubData = (numericId: number) => {
+      if (seededProducts) return // 동봉분이 곧 /api/products?seller_id 의 data — 같은 서비스, 같은 필터
       // 🩸 2026-08-26: limit=20 하드코딩이라 **21개째 이용권부터 아무 표시 없이 사라졌다**.
       //   유어샵은 진열대다 — 진열대에서 물건이 조용히 없어지는 건 빈 화면보다 나쁘다(사장님은
       //   올렸다고 믿는다). 100 으로 올린다. 그 이상은 '더 보기'가 필요하고, 그건 별도 작업.
@@ -210,7 +219,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
       setLoading(false)
       if (!subFetched) fetchSubData(sellerData.id)
     }).catch(() => { setSeller(null); setLoading(false) })
-  }, [sellerId, sellerNumericId])
+  }, [sellerId, sellerNumericId, productsSeed])
 
   // 🧹 2026-07-20 (유어샵 전수조사): 라이브커머스 영구중단으로 '실시간 라이브 감지 30초 폴링' effect 제거
   //   (LIVE_COMMERCE_SUSPENDED 조기반환이라 원래 미실행 — 도달불가 코드 청소).

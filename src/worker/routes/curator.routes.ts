@@ -265,6 +265,19 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
       } catch { /* additive — 생략 시 클라 폴백 fetch */ }
     }
 
+    // 🚀 2026-09-02 (대표 "유어샵도 이상적인 판정을 받게") — **마지막 클라 fetch 도 동봉**. 라이브 워터폴 실측:
+    //   셀러 페이로드 시드 뒤에도 `/api/products?seller_id=N&limit=100` 이 JS 실행 후(≈750ms)에야 나가
+    //   그게 콘텐츠 완성 시각(0.9~1.6s)을 정했다. 같은 서비스(`ProductService.getProducts` — `/api/products`
+    //   핸들러와 같은 필터·컬럼)라 드리프트 0. 실패 시 null → 클라가 기존 fetch 로 폴백. 소유자는 no-store 라 늘 신선.
+    let linkedSellerProducts: unknown[] | null = null
+    if (linkedSeller?.id) {
+      try {
+        const { ProductService } = await import('../../features/products/services/ProductService')
+        const r = await new ProductService(c.env.DB).getProducts({ sellerId: Number(linkedSeller.id) }, { page: 1, limit: 100 })
+        linkedSellerProducts = r.data ?? []
+      } catch { /* additive — 생략 시 클라 폴백 fetch */ }
+    }
+
     return c.json({
       success: true,
       curator: {
@@ -296,6 +309,8 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
       } : null,
       // 🚀 2026-07-11: 셀러 공개 페이로드 동봉(1-RTT) — 없으면(비사업자/조회실패) null, 클라 폴백 fetch.
       linked_seller_public: linkedSellerPublic,
+      // 🚀 2026-09-02: 셀러 상품 첫 100개 동봉(= /api/products?seller_id&limit=100 의 data) — 없으면 null, 클라 폴백 fetch.
+      linked_seller_products: linkedSellerProducts,
     })
   } catch (err) {
     return safeError(c, err, '큐레이터 정보 조회 중 오류가 발생했습니다', '[curator:get]')
