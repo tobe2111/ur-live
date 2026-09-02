@@ -109,6 +109,7 @@ if domain ui; then
   run "할인율이 사진 위에 없다(전 카드 구현)" node scripts/check-discount-not-on-photo.mjs
   run "대시보드 버튼 체계(원시 주 버튼 래칫)" node scripts/check-dashboard-button-system.mjs
   run "이미지 폴백(깨진 이미지 아이콘 노출)" node scripts/check-image-fallback.mjs
+  run "다크 대비(밝은 표면 위 밝은 글자 — 실제 렌더)" node scripts/check-dark-contrast.mjs
   run "결제수단 판정 SSOT"                node scripts/check-payment-flow-ssot.mjs -s
   run "배송비 판정 SSOT(장바구니↔결제)"    node scripts/check-no-shipping-ssot.mjs
   run "띄어 쓴 가운뎃점 사슬(래칫)"         node scripts/check-middle-dot-chain.mjs

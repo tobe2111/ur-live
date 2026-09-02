@@ -1949,8 +1949,8 @@ canvas {
   {
     name: '/map 지도 위 컨트롤 오버레이가 PC 에서 되살아난다',
     file: 'src/pages/restaurant-map/MapTopBar.tsx',
-    find: "'lg:hidden absolute top-0",
-    replace: "'absolute top-0",
+    find: "'light-island lg:hidden absolute top-0",
+    replace: "'light-island absolute top-0",
     test: 'src/tests/unit/groupon-detail-map.test.ts',
     why:
       '2026-08-19 대표 지시 — 검색·필터 칩을 왼쪽 리스트 상단으로 옮기고 지도는 지도만 보이게. ' +
@@ -5396,12 +5396,13 @@ canvas {
   {
     name: '수집 레인 시간당 상한이 조용히 증설됨',
     file: 'src/worker-ads/lane-alarm-runners.ts',
-    find: '  collect: {\n    runsPerHour: 1,\n',
+    find: '  collect: {\n    runsPerHour: 3,\n',
     replace: '  collect: {\n',
     test: 'src/tests/unit/ads-lane-alarm.test.ts',
     why:
-      '빼면 정책 기본값(12회/시간)을 받는다 = cron 설계 의도(`0 * * * *`)를 12배 넘는 증설이고, ' +
-      '**네이버로 나가는 요청량이 늘어나는 변경**이라 대표 판단 사항이다. 값이 조용히 바뀌는 것을 막는다.',
+      '빼면 정책 기본값(12회/시간)을 받는다 = 대표 승인값(3)의 4배 증설이고, **네이버로 나가는 ' +
+      '요청량이 늘어나는 변경**이라 대표 판단 사항이다. 게다가 12배면 하루 쓴 행이 예산 150만을 ' +
+      '넘겨 차단기가 자정 전에 수집을 멈춘다 — 늘리려다 오히려 줄어든다.',
   },
   {
     name: '3차 이관 match-registry cron 게이트 소실(알람과 이중 디스패치)',
@@ -7012,6 +7013,37 @@ canvas {
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
   },
   {
+    name: '📉 수집 회차 수가 승인값에서 조용히 내려간다(라이브 총량을 정하는 유일한 축)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: '  collect: {\n    runsPerHour: 3,',
+    replace: '  collect: {\n    runsPerHour: 1,',
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '알람이 모는 구성에서 발굴 총량을 실제로 정하는 값은 이것 하나다(체인 회차·폭 cap 은 각각 ' +
+      '게이트와 서브리퀘스트 예산에 막혀 안 먹는 것으로 2026-09-02 실측). 조용히 1 로 돌아가면 ' +
+      '발굴이 3분의 1이 되는데 에러가 없다.',
+  },
+  {
+    name: '📉 회차 기본값이 조용히 되돌아간다(발굴량 3분의 1, 에러 0)',
+    file: 'src/worker-ads/chain.routes.ts',
+    find: "ADS_COLLECT_ROUNDS || '', 10) || 12))",
+    replace: "ADS_COLLECT_ROUNDS || '', 10) || 4))",
+    test: 'src/tests/unit/ads-collect-gates.test.ts',
+    why:
+      '이 값은 env 로도 덮이므로 코드 기본값이 되돌아가도 라이브는 한동안 멀쩡해 보인다. ' +
+      '그러다 env 를 지우는 순간 하루 발굴이 1.2만 → 4천으로 떨어지는데 에러가 없어 아무도 모른다.',
+  },
+  {
+    name: '📉 회차 폭이 승인값에서 조용히 내려간다(같은 클래스, 곱해지는 축)',
+    file: 'src/features/marketing/api/influencer-round-width.ts',
+    find: 'export const COLLECT_KEYWORDS_PER_ROUND = 14',
+    replace: 'export const COLLECT_KEYWORDS_PER_ROUND = 9',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '폭 × 회차 = 하루 발굴량이다. 폭은 네이버 차단 리스크를 지고 대표가 매번 판단한 값이라, ' +
+      '승인 없이 오르내리면 안 된다(내리는 쪽도 마찬가지 — 조용한 후퇴는 안 보인다).',
+  },
+  {
     name: '🚧 레인 진입 초크포인트가 사라진다(자기-체인이 차단기를 우회)',
     file: 'src/worker-ads/lane-gate.ts',
     find: "    const blocked = await laneEntryBlock(",
@@ -7721,6 +7753,63 @@ canvas {
     replace: "rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md",
     test: 'src/tests/unit/seller-dashboard-b.test.ts',
     why: '표면 규칙 ② 강조색 하나. 화면 구석의 노랑 원은 체계 밖 색이었다.',
+  },
+  {
+    name: '지도 오버레이 — light-island 가 빠져 흰 검색창에 흰 글자',
+    file: 'src/pages/restaurant-map/MapTopBar.tsx',
+    find: "'light-island lg:hidden absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none'",
+    replace: "'lg:hidden absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none'",
+    test: 'src/tests/unit/light-island-inputs.test.ts',
+    why:
+      '2026-09-03 대표 신고 "글자가 또 하얘". 전역 .dark input(0,5,1)이 text-gray-900(0,1,0)을 언제나 ' +
+      '이겨서, light-island 가 없으면 흰 검색창 글자가 다크에서 gray-100 이 된다(실측 대비 1.1:1). ' +
+      'light-fixed 주석은 가드 면제일 뿐 런타임 효력이 없다.',
+  },
+  {
+    name: '지도 패널 — 테마 대응이 사라진다(패널까지 light-island)',
+    file: 'src/pages/restaurant-map/MapTopBar.tsx',
+    find: "? 'hidden lg:block px-3 pt-3 pb-2.5 space-y-2 border-b border-gray-100 dark:border-[#2C2F35]'",
+    replace: "? 'light-island hidden lg:block px-3 pt-3 pb-2.5 space-y-2 border-b border-gray-100'",
+    test: 'src/tests/unit/light-island-inputs.test.ts',
+    why: 'PC 리스트 패널은 지도 위가 아니라 앱 안이라 테마를 따라야 한다. 섬을 남발하면 다크에서 흰 덩어리가 된다.',
+  },
+  {
+    name: 'light-island — placeholder/autofill 규칙에서 다시 빠진다',
+    file: 'src/index.css',
+    find: ".light-island input::placeholder, .light-island textarea::placeholder {",
+    replace: ".light-island-DISABLED input::placeholder, .light-island-DISABLED textarea::placeholder {",
+    test: 'src/tests/unit/light-island-inputs.test.ts',
+    why:
+      '색 규칙에만 있고 placeholder/autofill 에 빠져 있던 것이 2026-09-03 실측으로 드러났다. ' +
+      '하나라도 빠지면 그 상태(빈 입력·자동완성)만 다크색으로 남는다.',
+  },
+  {
+    name: 'PC 홈 히어로 — 위치 컨트롤이 다시 칩 둘로 쪼개진다',
+    file: 'src/pages/pc-home/PcHomeLocationBar.tsx',
+    find: "? 'inline-flex items-stretch h-8 rounded-full overflow-hidden bg-white text-[#16181C]'",
+    replace: "? 'flex items-center gap-2'",
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '2026-09-03 대표 "AI 느낌" 의 정체는 위계 부재였다. "어디를 볼까" 하나의 일이 같은 무게 알약 ' +
+      '둘로 쪼개지면 다시 그 화면이 된다.',
+  },
+  {
+    name: 'PC 홈 히어로 — 흰 칩이 블루 버튼과 같은 높이가 된다',
+    file: 'src/pages/pc-home/PcHomeLocationBar.tsx',
+    find: 'inline-flex items-stretch h-8 rounded-full',
+    replace: 'inline-flex items-stretch h-[38px] rounded-full',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '대표 확정 "한 단계 작게". 같은 높이면 화면에서 가장 밝은 흰 덩어리가 주 행동(블루)보다 먼저 ' +
+      '읽혀 위계가 뒤집힌다.',
+  },
+  {
+    name: 'PC 홈 히어로 — 주 행동이 다시 테두리 고스트 알약이 된다',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: 'rounded-full bg-brand text-white text-[13.5px] font-extrabold hover:bg-[#1557C8]',
+    replace: 'rounded-full border border-white/25 text-white text-[13.5px] font-extrabold hover:bg-white/10',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why: '표면 규칙 ② 강조색 하나, 자리 셋 — 히어로에서 그 자리는 주 행동이다. 블루가 빠지면 넷 다 같은 무게로 돌아간다.',
   },
   {
     name: '홈 패널 라이트 섬 — darkMode variant 에서 예외가 사라진다',

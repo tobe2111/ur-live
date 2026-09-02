@@ -1,0 +1,54 @@
+# 🌓 다크 대비 — 다크 모드에서 **안 보이는 글자**를 실제 렌더로 잡는다.
+#
+# ⚠️ **PR 게이트로 승격하지 말 것.** `render-smoke.yml` · `live-contracts.yml` 과 같은 판단이다 —
+#   브라우저를 띄우므로 느리고 환경에 민감해서, 간헐 실패가 머지를 막으면 결국 가드를 꺼 버리게 된다.
+#   대신 손으로 돌릴 수 있게 하고(`workflow_dispatch`), 이 클래스를 건드리는 PR 에서만 자동으로 돈다.
+#
+# 왜 렌더인가 (2026-09-03 대표 신고 "글자가 또 하얘 · 전수조사 필요해"):
+#   지도 검색창 글자가 흰 배경 위 흰색이었다(실측 대비 1.1:1). 원인은 오타가 아니라 구조 —
+#   전역 `.dark input:not(...)`(특이도 0,5,1)이 `text-gray-900`(0,1,0)을 언제나 이긴다.
+#   grep 으로 찾으려다 **0건**이 나왔다: 같은 className 에 밝은/어두운 분기가 함께 있어
+#   (`panel ? A : B`) 다른 분기의 `dark:text-` 때문에 통과한다.
+#   특이도 싸움의 승자는 브라우저만 아니까, 17개 소비자 경로를 다크로 렌더해 직접 잰다.
+name: Dark contrast
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/index.css'
+      - 'tailwind.config.js'
+      - 'src/pages/restaurant-map/**'
+      - 'src/pages/pc-home/**'
+      - 'src/components/home/**'
+      - 'src/components/main/**'
+      - 'src/pages/vouchers/**'
+      - 'scripts/check-dark-contrast.mjs'
+      - 'scripts/dark-contrast-baseline.json'
+
+jobs:
+  contrast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      # 측정기는 빌드 산출물(dist/client)을 띄워 실제 컴포넌트를 렌더한다.
+      - name: Build client
+        env:
+          VITE_FIREBASE_API_KEY: 'pr-verify'
+          VITE_FIREBASE_AUTH_DOMAIN: 'pr.example.com'
+          VITE_FIREBASE_PROJECT_ID: 'pr-verify'
+          VITE_FIREBASE_STORAGE_BUCKET: 'pr.example.com'
+          VITE_FIREBASE_MESSAGING_SENDER_ID: '0'
+          VITE_FIREBASE_APP_ID: '0'
+          VITE_KAKAO_APP_KEY: 'pr-verify'
+          VITE_TOSS_CLIENT_KEY: 'pr-verify'
+        run: npm run build:client
+      - name: Dark-mode contrast (rendered)
+        env:
+          STRICT_DARK_CONTRAST: '1'
+        run: node scripts/check-dark-contrast.mjs
