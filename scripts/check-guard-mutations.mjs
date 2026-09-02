@@ -88,6 +88,26 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '📉 sitemap 엣지 캐시가 빠져 크롤러마다 D1 을 다시 읽는다',
+    file: 'src/worker/index.ts',
+    find: "app.use('/sitemap.xml', publicCache(3600));",
+    replace: '',
+    test: 'src/tests/unit/d1-request-diet.test.ts',
+    why:
+      '2026-09-02: sitemap 은 캐시 미들웨어가 없어 Yeti/Googlebot/Bingbot·uptime 프로브가 부를 때마다 ' +
+      'products 1,000행 + sellers EXISTS + 지역 집계 전수를 돌렸다. 한 줄이 빠지면 조용히 그대로 돌아간다.',
+  },
+  {
+    name: '📉 봇 OG 의 셀러 조회가 다시 OR 전수 스캔이 된다',
+    file: 'src/worker/index.ts',
+    find: "        : await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE username = ?').bind(param).first<any>();",
+    replace: "        : await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE slug = ? OR username = ?').bind(param, param).first<any>();",
+    test: 'src/tests/unit/d1-request-diet.test.ts',
+    why:
+      '`slug = ? OR username = ?` 는 OR 라 인덱스를 못 써 크롤러가 /profile/*·/s/* 를 칠 때마다 sellers 전수. ' +
+      '두 점 조회로 나눈 것이 되돌아가도 에러가 없다.',
+  },
+  {
     name: '백필 건수가 화면까지 못 간다',
     file: 'src/pages/admin-dongnedeal-import/seedStayDemos.ts',
     find: "t.descHealed && ` · 소개 문구 ${t.descHealed}개 교체`,",
