@@ -27,10 +27,10 @@ function fakeD1(log: { batchGotRaw: boolean[] } = { batchGotRaw: [] }) {
     const w = /rw=(\d+)/.exec(sql)
     return { rows_read: m ? Number(m[1]) : 0, rows_written: w ? Number(w[1]) : 0 }
   }
-  const mk = (sql: string): Record<string | symbol, unknown> => ({
+  const stmtFor = (sql: string): Record<string | symbol, unknown> => ({
     [RAWMARK]: true,
     sql,
-    bind: () => mk(sql),
+    bind: () => stmtFor(sql),
     all: async () => ({ results: [{ x: 1 }], success: true, meta: meta(sql) }),
     run: async () => ({ success: true, meta: meta(sql) }),
     first: async () => ({ x: 1 }),
@@ -39,7 +39,7 @@ function fakeD1(log: { batchGotRaw: boolean[] } = { batchGotRaw: [] }) {
   // 타입은 느슨하게 — 가짜 D1 이라 D1Database 전체 표면을 흉내 내지 않는다.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db: any = {
-    prepare: (sql: string) => mk(sql),
+    prepare: (sql: string) => stmtFor(sql),
     batch: async (stmts: Array<Record<string | symbol, unknown>>) => {
       log.batchGotRaw.push(stmts.every((s) => s[RAWMARK] === true))
       return stmts.map((s) => ({ success: true, meta: meta(String(s.sql)) }))
