@@ -94,23 +94,8 @@ export default function HomeHeroDefault({
              아래로 펼쳐지는 요소라 상단 몇 px 만 보이고 잘려 나갔다(`isolate` 는 z-index 를 이 안에
              가둬서, z-10500 을 줘도 밖으로 못 나온다). 배경만 가두면 둘 다 성립한다. */}
       <div className="absolute inset-0 overflow-hidden isolate pointer-events-none" aria-hidden="true">
-      {/* 배경 — 잉크 위에 로즈 블룸 2개 + 빛줄기. 전부 CSS(용량 0 · 요청 0). */}
-      <div
-        className="absolute -inset-[18%] ur-hero-bloom-a"
-        aria-hidden="true"
-        style={{ background: 'radial-gradient(closest-side, rgba(224,82,107,0.55), transparent 72%)' }}
-      />
-      <div
-        className="absolute -inset-[10%] ur-hero-bloom-b"
-        aria-hidden="true"
-        style={{ background: 'radial-gradient(closest-side, rgba(120,90,220,0.34), transparent 70%)' }}
-      />
-      <div
-        className="absolute inset-y-0 w-1/3 ur-hero-sweep"
-        aria-hidden="true"
-        style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent)' }}
-      />
-
+      {/* 🎫 2026-09-02 (대표 "메인페이지에 저 그라데이션 로즈?핑크색? 안맞는 것 같은데"): 로즈 블룸 2개 + 빛줄기 삭제.
+          표면 체계 규칙 ⑥ "그라디언트 0" 이고, 강조색은 블루 하나뿐이다. 바탕은 색면(--home-field) 그대로. */}
       {/* 📸 우측 미디어 — 좌·우 양끝을 색면으로 페이드한다(대표 요청 "양쪽 그라데이션").
           `mask-image` 로 픽셀을 투명하게 깎아 색면이 그대로 비치게 한다 — 위에 반투명 막을
           덧대는 방식은 사진이 뿌옇게 죽는다. 세로 끝도 눌러 위아래 경계선을 없앤다. */}

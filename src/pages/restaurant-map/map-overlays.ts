@@ -103,7 +103,7 @@ export function buildPinContent(r: Restaurant, opts: {
       background: ${ring};
       padding: 3px;
       box-sizing: border-box;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.30)${isSelected ? ', 0 0 0 3px rgba(224,82,107,0.9)' : ''};
+      box-shadow: 0 4px 12px rgba(0,0,0,0.30)${isSelected ? ', 0 0 0 3px rgba(28,105,239,0.9)' : ''};
       cursor: pointer;
       transform: translate(-50%, -50%) scale(${isSelected ? 1.08 : 1});
       transition: transform 0.15s;
