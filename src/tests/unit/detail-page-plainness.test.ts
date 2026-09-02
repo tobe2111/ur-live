@@ -7,6 +7,8 @@
  *   2. 조립된 문구의 반복 — "강릉의 호텔 — 접근성 좋은 호텔 — …" (한 문장에 '호텔' 둘, 줄표 둘)
  *   3. 같은 정보 세 번 — 매장명이 제목 위·지도 핀·지도 아래에
  *   4. 장식 필 칩 — 세 낱말에 로즈 점 + 테두리 세 개
+ *      (2026-09-01 정정: 흔적은 **테두리 pill** 이다. 테두리 없는 로즈 점 하나는 시스템 전체의
+ *       활성·불릿 장치라 허용 — docs/design/anti-slop-direction-2026-09.md ①. 대표 "PR A 부터")
  *   5. 모든 블록이 같은 무게의 흰 라운드 카드 → 위계 소멸(시설 3분할 카드가 대표적)
  *   6. 라벨 앞 장식 이모지 (🎯 📋 🔑 🛡️)
  *
@@ -90,9 +92,13 @@ describe('장식이 정보를 덮지 않는다', () => {
     expect(at, '딜 안내 섹션을 못 찾았다 — 앵커가 낡았다').toBeGreaterThan(0)
     const infoSection = src.slice(at, src.indexOf('DealMenuList', at))
     expect(infoSection, '판정 창이 비었다 — 섹션 끝 앵커가 낡았다').toContain('즉시 교환권 발급')
-    // 점(dot)을 원형으로 찍고 필 테두리를 두르던 그 마크업.
+    // 점(dot)을 원형으로 찍고 필 테두리를 두르던 그 마크업 — 흔적은 **테두리 pill** 이다.
     expect(infoSection, '안내 칩에 필 테두리가 되살아났다').not.toContain('borderRadius: 99')
-    expect(infoSection, '안내 칩에 로즈 점이 되살아났다').not.toContain("background: 'var(--gbd-accent)'")
+    expect(infoSection, '안내 항목에 테두리(칩)가 되살아났다').not.toMatch(/\bborder:\s*['"`]/)
+    // 2026-09-01: 로즈 점은 **불릿으로만** 산다 — 한 줄에 하나(세로 스택). 점을 가로로 늘어놓은 칩 행은 옛 마크업이다.
+    if (infoSection.includes("var(--gbd-accent)")) {
+      expect(infoSection, '로즈 점이 있는데 세로 불릿이 아니다 — 칩 행으로 되돌아갔다').toContain("flexDirection: 'column'")
+    }
   })
 
   it('추첨 응모 라벨 앞에 장식 이모지가 없다', () => {

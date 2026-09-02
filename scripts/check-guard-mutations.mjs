@@ -6533,6 +6533,26 @@ canvas {
       'D1 한도만 조용히 다시 찬다 — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
   },
   {
+    name: '🧱 설정 표 생성이 다시 DDL 뒤로 간다(플래그가 안 남아 전수 마이그레이션 무한 반복)',
+    file: 'src/features/marketing/api/ads-schema-guard.ts',
+    find: "  await DB.prepare(SETTINGS_DDL).run().catch(() => null)\n  const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(key)",
+    replace: "  const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(key)",
+    test: 'src/tests/unit/ads-ddl-gate-persistence.test.ts',
+    why:
+      '표가 없는 DB 에서 그 사이의 플래그 조회가 전부 실패한다. 에러는 안 나고(전부 .catch) ' +
+      '"1회만 도는" 전수 UPDATE/DELETE 가 매 부팅마다 다시 돈다 — 2026-09-02 에 그래서 D1 일일 한도가 탔다.',
+  },
+  {
+    name: '🧱 기록이 안 남아도 비싼 마이그레이션을 강행한다(사고 재현)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: '  if (!gateStuck) return spent',
+    replace: '',
+    test: 'src/tests/unit/ads-ddl-gate-persistence.test.ts',
+    why:
+      '기억할 수 없는 DB 에서 "이미 했다"를 영영 못 적으니 전수 UPDATE/DELETE 가 무한 반복된다. ' +
+      '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
+  },
+  {
     name: '🪦 거르지 못하는 bio 인덱스가 되살아난다(부분 인덱스를 이겨 다시 하루 4,111만 행)',
     file: 'src/features/marketing/api/influencer-schema.ts',
     find: "'DROP INDEX IF EXISTS idx_ad_inf_leads_bio',",
