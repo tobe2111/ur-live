@@ -182,6 +182,22 @@ function cdnCgiSafe(src: string): string {
   return path.replace(/%/g, '%25') + (q === -1 ? '' : src.slice(q))
 }
 
+// 🔀 2026-09-02 [UNLOCK_LOADING] (대표 "그것도 다 진행해줘 · 가장 이상적으로"): 이 목록을 **모듈 스코프로 올린다.**
+//   전에는 `EXTERNAL_PROXY_HOSTS` 안쪽에서만 검사해서, **목록에 없는** 핫링크 차단 호스트(예: 새로 생긴
+//   네이버 블로그 서브도메인)는 아래 미지-호스트 기본 경로(cdn-cgi)로 가 403 → 302 → 또 403 = 깨진 사진이
+//   된다. 값·순서 불변(동일성은 `hotlink-rehost-scope.test.ts` 가 SSOT 와 대조).
+// 🚑 2026-07-21 [UNLOCK_LOADING] (대표 신고 "네이버 사진 안 뜸 403" — 라이브 실측):
+//   네이버 **블로그 CDN**(postfiles/mblogthumb/dthumb/blogfiles.pstatic.net)은 **우리 도메인
+//   referer 요청만 403** 핫링크 차단(실측: no-referer→200, referer=urdeal.kr→403). cdn-cgi
+//   리사이저는 페이지 referer 를 달고 네이버에 요청 → 403 → 사진 안 뜸. `onerror=redirect` 도
+//   브라우저가 원본을 우리 도메인 referer 로 재요청 → 또 403. → 이 호스트들만 **워커 프록시**
+//   (/api/image/resize)로 강제: 워커가 **referer 없이 서버측 fetch → 200**(폴백 경로). 엣지+R2
+//   캐시로 반복 비용 0. 네이버 플레이스 CDN(ldb/shop/naverbooking-phinf)은 차단 안 해 cdn-cgi 유지.
+// 2026-07-21 전수조사 보강: 블로그 CDN(실측 403) + shop/booking-phinf(미실측이나 핫링크 위험 —
+//   워커 프록시는 안전하면 cdn-cgi 통과·막히면 no-referer 폴백이라 어느 쪽이든 안전). place CDN
+//   (ldb-phinf)은 대표사진 출처라 제외(cdn-cgi 유지).
+const HOTLINK_BLOCKED_HOSTS = ['postfiles.pstatic.net', 'mblogthumb-phinf.pstatic.net', 'dthumb-phinf.pstatic.net', 'blogfiles.pstatic.net', 'blogpfthumb-phinf.pstatic.net', 'shop-phinf.pstatic.net', 'naverbooking-phinf.pstatic.net']
+
 export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}): string {
   if (!src) return ''
   if (typeof src !== 'string') return ''
@@ -270,17 +286,6 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   /api/image/resize 프록시는 리사이즈 불가(06-11 실측)라 cdn-cgi 직결이 유일 변환 경로.
       //   `onerror=redirect` 를 함께 부여: 리사이저 원본 fetch 실패 시 원본으로 302 → 항상 표시
       //   (2026-06-11 kakaocdn 깨짐 클래스 구조적 차단 — 실패해도 현행(원본)과 동일).
-      // 🚑 2026-07-21 [UNLOCK_LOADING] (대표 신고 "네이버 사진 안 뜸 403" — 라이브 실측):
-      //   네이버 **블로그 CDN**(postfiles/mblogthumb/dthumb/blogfiles.pstatic.net)은 **우리 도메인
-      //   referer 요청만 403** 핫링크 차단(실측: no-referer→200, referer=urdeal.kr→403). cdn-cgi
-      //   리사이저는 페이지 referer 를 달고 네이버에 요청 → 403 → 사진 안 뜸. `onerror=redirect` 도
-      //   브라우저가 원본을 우리 도메인 referer 로 재요청 → 또 403. → 이 호스트들만 **워커 프록시**
-      //   (/api/image/resize)로 강제: 워커가 **referer 없이 서버측 fetch → 200**(폴백 경로). 엣지+R2
-      //   캐시로 반복 비용 0. 네이버 플레이스 CDN(ldb/shop/naverbooking-phinf)은 차단 안 해 cdn-cgi 유지.
-      // 2026-07-21 전수조사 보강: 블로그 CDN(실측 403) + shop/booking-phinf(미실측이나 핫링크 위험 —
-      //   워커 프록시는 안전하면 cdn-cgi 통과·막히면 no-referer 폴백이라 어느 쪽이든 안전). place CDN
-      //   (ldb-phinf)은 대표사진 출처라 제외(cdn-cgi 유지).
-      const HOTLINK_BLOCKED_HOSTS = ['postfiles.pstatic.net', 'mblogthumb-phinf.pstatic.net', 'dthumb-phinf.pstatic.net', 'blogfiles.pstatic.net', 'blogpfthumb-phinf.pstatic.net', 'shop-phinf.pstatic.net', 'naverbooking-phinf.pstatic.net']
       if (HOTLINK_BLOCKED_HOSTS.some(h => host === h || host.endsWith('.' + h))) {
         return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
       }
@@ -299,7 +304,27 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       }
       return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
     }
-    if (!isSupported && !isExternalProxyable) return src  // 미지원 도메인 → 원본
+    // 🕳️ 2026-09-02 [UNLOCK_LOADING] (대표 "QA 도와줘" 실측 → "그것도 다 진행해줘, 가장 이상적으로"):
+    //   **여기가 구멍이었다.** 목록에 없는 외부 호스트는 원본 URL 을 그대로 돌려줘 리사이저를 아예 안 거쳤다
+    //   (라이브 홈 한 화면에서 5장 — cdn-cgi 요청 자체가 0). 데모 사진 출처가 카카오 플레이스라 임의 CDN 이
+    //   섞이므로 **호스트 목록은 원리상 계속 샌다** — 승격은 사후약방문이고, 기본값을 고쳐야 닫힌다.
+    //
+    //   ⚖️ 왜 안전한가(세 경우가 전부 현행과 같거나 낫다):
+    //     ① 리사이저가 원본을 받을 수 있다 → **리사이즈됨**(실측 1MB급 → 수십 KB). 이득.
+    //     ② 리사이저가 못 받는다 → `onerror=redirect` 로 원본 302 → 브라우저가 원본 로드 = **현행과 동일**
+    //        (대가는 리다이렉트 한 홉. 2026-07-02 에 이 안전판을 도입한 이유가 정확히 이 클래스다).
+    //     ③ 원본을 브라우저도 못 받는다(referer 차단 등) → 오늘도 깨져 있다 = 동일. 단 그 클래스는 위
+    //        `HOTLINK_BLOCKED_HOSTS`(이제 모듈 스코프)가 먼저 워커 프록시로 빼돌려 **오히려 개선**된다.
+    //   ⚠️ 2026-06-11 카카오 프로필 깨짐 사고는 `onerror=redirect` **도입 전**이었다 — 그때의 실패 모드는
+    //      지금 ②로 흡수된다. 그래서 이 기본값 전환이 그 사고의 재발이 아니다.
+    if (!isSupported && !isExternalProxyable) {
+      const w = opts.width || 400
+      const q = opts.quality || 85
+      if (HOTLINK_BLOCKED_HOSTS.some(h => host === h || host.endsWith('.' + h))) {
+        return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
+      }
+      return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect${cropFrag(opts)}/${cdnCgiSafe(src)}`
+    }
   }
 
   const params: string[] = []

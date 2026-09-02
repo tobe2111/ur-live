@@ -20,6 +20,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { blockedPhotoSql } from '../../worker/utils/demo-photo-set'
+import { cfImage } from '@/utils/cf-image'
 
 const CF = readFileSync('src/utils/cf-image.ts', 'utf-8')
 const CRON = readFileSync('src/worker/cron/demo-image-rehost.ts', 'utf-8')
@@ -62,5 +63,64 @@ describe('③ 정비 큐가 차단(언론사·스톡) 사진을 먼저 본다', 
   })
   it('보간되는 호스트 문자열에 따옴표가 없다', () => {
     expect(blockedPhotoSql('c')).not.toMatch(/LIKE '%[^%]*'[^%]*%'/)
+  })
+})
+
+describe('④ 미지 호스트도 리사이저를 탄다 (구멍이 닫혔는가 — 함수를 실제로 부른다)', () => {
+  // 🕳️ 2026-09-02: 목록 승격은 사후약방문이다. 데모 사진 출처가 카카오 플레이스라 임의 CDN 이 계속 생기므로
+  //   **기본값**이 원본 그대로면 같은 결함이 영원히 재발한다. 여기서 지키는 건 그 기본값이다.
+  const UNKNOWN = 'https://cdn.some-brand-new-host.example/photo/abc.jpg'
+
+  it('처음 보는 호스트가 cdn-cgi + onerror=redirect 로 나간다', () => {
+    const out = cfImage(UNKNOWN, { width: 400 })
+    expect(out, '원본 그대로 = 리사이저 우회(구멍이 다시 열렸다)').not.toBe(UNKNOWN)
+    expect(out).toMatch(/^\/cdn-cgi\/image\/width=400,/)
+    expect(out, 'onerror=redirect 가 없으면 리사이저 실패가 곧 깨진 사진이다').toContain('onerror=redirect')
+    expect(out).toContain(UNKNOWN)
+  })
+
+  it('크롭 옵션도 함께 실린다 (상세 히어로와 같은 계약)', () => {
+    const out = cfImage(UNKNOWN, { width: 900, height: 600, fit: 'cover', gravity: 'auto' })
+    expect(out).toContain('height=600')
+    expect(out).toContain('fit=cover')
+    expect(out).toContain('gravity=auto')
+  })
+
+  /**
+   * 🧪 이 배선은 **오늘은 죽은 가지다** — 그리고 그게 정확한 사실이다.
+   *   `EXTERNAL_PROXY_HOSTS` 에 apex `pstatic.net` 이 있어 현재 핫링크 호스트 7개는 **전부** 목록 경로를 탄다.
+   *   즉 미지-호스트 분기의 핫링크 검사를 지금 함수 호출로 발동시킬 방법이 없다(주입 검증이 이걸 잡아냈다 —
+   *   처음엔 `sub.postfiles.pstatic.net` 픽스처로 짰는데 그건 목록 경로라 검사를 지워도 초록이었다).
+   *   ⇒ 함수로 못 재는 것은 **배선을 소스에서** 고정한다. 새 apex 의 핫링크 CDN 이 생기는 날 이 가지가 산다.
+   */
+  it('미지-호스트 분기가 핫링크 검사를 cdn-cgi 앞에 둔다 (배선 고정 — 새 apex 대비)', () => {
+    const CFSRC = readFileSync('src/utils/cf-image.ts', 'utf-8')
+    const at = CFSRC.indexOf('if (!isSupported && !isExternalProxyable) {')
+    expect(at, '미지-호스트 분기를 못 찾았다 — 앵커가 낡았다').toBeGreaterThan(0)
+    const body = CFSRC.slice(at, CFSRC.indexOf('const params: string[] = []', at))
+    const hot = body.indexOf('HOTLINK_BLOCKED_HOSTS')
+    const cdn = body.indexOf('/cdn-cgi/image/width=')
+    expect(hot, '미지-호스트 분기에 핫링크 검사가 없다').toBeGreaterThan(0)
+    expect(hot, '핫링크 검사가 cdn-cgi 반환 뒤에 있으면 도달하지 않는다').toBeLessThan(cdn)
+    expect(CFSRC, 'HOTLINK_BLOCKED_HOSTS 가 다시 블록 안으로 들어가면 미지 분기에서 안 보인다')
+      .toMatch(/^const HOTLINK_BLOCKED_HOSTS = \[/m)
+  })
+
+  it('현재 핫링크 호스트는 (목록 경로로) 워커 프록시로 간다', () => {
+    for (const h of ['postfiles.pstatic.net', 'dthumb-phinf.pstatic.net', 'naverbooking-phinf.pstatic.net']) {
+      expect(cfImage(`https://${h}/x/y.jpg`, { width: 400 }), h).toMatch(/^\/api\/image\/resize\?url=/)
+    }
+  })
+
+  it('검증 호스트·업로드·상대경로는 종전 그대로다', () => {
+    expect(cfImage('https://bizimg.giftishow.com/a.jpg', { width: 400 })).toMatch(/^\/cdn-cgi\/image\/.*giftishow/)
+    expect(cfImage('/api/media/uploads/a.jpg', { width: 400 })).toContain('media.ur-team.com')
+    expect(cfImage('', { width: 400 })).toBe('')
+    expect(cfImage(null)).toBe('')
+  })
+
+  it('data:/blob: 는 건드리지 않는다', () => {
+    const d = 'data:image/png;base64,iVBORw0KGgo='
+    expect(cfImage(d, { width: 400 })).toBe(d)
   })
 })
