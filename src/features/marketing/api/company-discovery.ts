@@ -169,9 +169,16 @@ export async function ensureCompanySchema(DB: D1Database): Promise<number> {
   if (_schemaDone.has(DB)) return 0
   _schemaDone.add(DB)
   // 🧾 DDL 은 체크섬 기반 1회 적용(위 COMPANY_DDL 주석) — 따뜻한 DB 는 SELECT 1회.
-  const { ran } = await runDdlOnce(DB, 'ads_ddl_company', COMPANY_DDL)
+  const { ran, gateStuck } = await runDdlOnce(DB, 'ads_ddl_company', COMPANY_DDL)
+  // 🩸 **기록이 안 남는 DB 에서는 "1회 마이그레이션"을 아예 하지 않는다** (2026-09-02 실사고).
+  //   아래 세 블록(키 v2 · 오수집 정리 · 카테고리 v3)은 전부 `platform_settings` 플래그로 "이미 했다"를
+  //   기억한다. 그 표가 없거나 쓰기가 실패하면 **매 부팅마다 전수 UPDATE/DELETE 가 다시 돈다** —
+  //   실측: 회당 409,697행 × 하루 200여 회. 그날 계정의 D1 일일 읽기 한도가 그대로 소진됐다.
+  //   ⇒ 기억할 수 없으면 **안 하는 쪽이 맞다.** 데이터는 그대로 남고(정리가 늦어질 뿐), 표가 생기는
+  //     순간 다음 부팅에서 정상적으로 1회 실행된다.
   // 실비: 체크섬 SELECT 1 + (적용했다면 문장수 + platform_settings 보장 1 + 체크섬 쓰기 1)
   let spent = 1 + (ran ? COMPANY_DDL.length + 2 : 0)
+  if (!gateStuck) return spent
 
   // 🧹 키 v2 마이그레이션(1회, 플래그) — 사업자번호 보유 행을 b: 키로 통일 + 기존 중복(통신판매 현황/상세 2서비스) 병합.
   spent += 1 // v2 게이트 SELECT
