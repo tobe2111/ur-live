@@ -100,8 +100,8 @@ const MUTATIONS = [
   {
     name: '📉 봇 OG 의 셀러 조회가 다시 OR 전수 스캔이 된다',
     file: 'src/worker/index.ts',
-    find: "        : await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE username = ?').bind(param).first<any>();",
-    replace: "        : await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE slug = ? OR username = ?').bind(param, param).first<any>();",
+    find: ": await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE username = ?').bind(param).first<any>();",
+    replace: ": await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE slug = ? OR username = ?').bind(param, param).first<any>();",
     test: 'src/tests/unit/d1-request-diet.test.ts',
     why:
       '`slug = ? OR username = ?` 는 OR 라 인덱스를 못 써 크롤러가 /profile/*·/s/* 를 칠 때마다 sellers 전수. ' +

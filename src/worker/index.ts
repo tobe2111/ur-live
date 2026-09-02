@@ -2439,12 +2439,8 @@ app.get('*', async (c) => {
     if (sellerMatch) {
       const param = sellerMatch[2];
       const isNum = /^\d+$/.test(param);
-      const s = isNum
-        ? await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE id = ?').bind(param).first<any>()
-        // 📉 2026-09-02: 종전 `WHERE slug = ? OR username = ?` — **sellers 에 `slug` 컬럼이 없다**(pre-commit 스키마 가드가 잡았다).
-        //   즉 이 조회는 늘 예외 → 바깥 catch → 기본 OG 였고, /profile/*·/s/* 크롤은 셀러 카드가 아니라 홈 카드를 받아 왔다.
-        //   `username = ?` 하나면 `idx_sellers_username` 점 조회다(이 블록이 원래 하려던 일).
-        : await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE username = ?').bind(param).first<any>();
+      // 📉 2026-09-02: 종전 `slug = ? OR username = ?` — sellers 에 `slug` 컬럼이 없어 늘 예외→catch→기본 OG 였다(스키마 가드가 잡음). username 점 조회 하나로.
+      const s = isNum ? await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE id = ?').bind(param).first<any>() : await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE username = ?').bind(param).first<any>();
       if (s) {
         og.title = `${s.name} - 유어딜`;
         og.desc = s.bio?.slice(0, 200) || `${s.name}의 스토어 - 유어딜`;
