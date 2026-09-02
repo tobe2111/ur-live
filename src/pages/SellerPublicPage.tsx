@@ -15,6 +15,7 @@ import SEO from '@/components/SEO'
 import VouchersTab from './seller-public/VouchersTab'
 // 🏁 2026-06-25 (대표 "통일"): 사업자 유어샵 헤더를 canonical CuratorHeader 로 — ProfileHeader 폐기(헤더 1개).
 import CuratorHeader from './curator-page/CuratorHeader'
+import UShopQrCard from './curator-page/UShopQrCard'
 import type { CuratorProfile } from '@/features/curator/api/curator-api'
 // 🏁 2026-06-25 (대표 "카드 1종"): 내 상품도 표준 BrowseProductCard(★평점·판매수 내장) — EditorialProductCard 폐기.
 import BrowseProductCard from '@/pages/browse/BrowseProductCard'
@@ -151,7 +152,9 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
 
   // 🎨 2026-06-17 (#6 유어샵 통일): 큐레이터 유어샵과 동일한 '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
   //   previewAsVisitor=false 기본이라 ownerView===isOwner → 기존 동작 불변(편집 어포던스만 ownerView 로 게이트).
-  const [previewAsVisitor, setPreviewAsVisitor] = useState(false)
+  // 🎫 2026-09-02 (대표 확정 — 유어샵 안3): 주인도 **방문자 화면으로 시작**하고 헤더의 [유어샵 편집] 으로 들어간다
+  //   (CuratorPage 와 같은 규약). 종전 `false`(진입 즉시 편집 모드 + 잉크 안내 띠)는 "번잡하다"로 폐기.
+  const [previewAsVisitor, setPreviewAsVisitor] = useState(true)
   const ownerView = isOwner && !previewAsVisitor
 
   // ── 인라인 편집 상태 ──
@@ -278,39 +281,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
 
   return (
     <div className={`min-h-[100dvh] ${T.bg} pb-28`}>
-      {/* 🎨 2026-06-17 유어샵 개선안(시안) 통일: 큐레이터 유어샵과 동일한 네이비 '✎ 편집 모드' 배너. theme-dual: 의도적 네이비 */}
-      {ownerView && (
-        <div className="sticky top-0 z-30 bg-[#1D1F29] text-white px-3.5 py-2.5 text-[12.5px] font-semibold flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2 min-w-0"><span className="text-[#6b7280] text-[14px] leading-none shrink-0">✎</span><span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span></span>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* 🏁 2026-06-18 (사용자 결정): 유어샵에서 바로 등록 (대시보드 안 나감).
-                🏁 2026-06-26 (대표 — "이용권 등록도 추가"): 단일 '+ 등록' → 상품/이용권 선택 시트. */}
-            <button
-              type="button"
-              onClick={() => setShowAddSheet(true)}
-              className="px-2.5 py-1 bg-[#6b7280] hover:bg-[#e84a2b] rounded-lg text-[11px] font-bold whitespace-nowrap"
-            >
-              {t('seller.publicPage.addEntry', { defaultValue: '+ 등록' })}
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreviewAsVisitor(true)}
-              className="px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-[11px] font-bold whitespace-nowrap"
-            >
-              {t('seller.publicPage.previewVisitor', { defaultValue: '👀 미리보기' })}
-            </button>
-            {/* 🏁 2026-06-26 (대표 결정 — '전체 설정'→'셀러 대시보드'): 라벨/목적지 정정.
-                좁은 사업자정보 탭(?tab=business) 대신 대시보드 홈(/seller — 주문·정산·상품·이용권). */}
-            <button
-              type="button"
-              onClick={() => navigate('/seller')}
-              className="px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-[11px] font-bold whitespace-nowrap"
-            >
-              {t('seller.publicPage.sellerDashboard', { defaultValue: '셀러 대시보드' })}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 🗑️ 2026-09-02 (대표 — "편집하기 UI 가 번잡하다"): 잉크 '✎ 편집 모드' 안내 띠 + '방문자 미리보기' 띠 삭제.
+          편집 진입/종료는 헤더의 블루 버튼 하나(안3). 편집 모드에서만 아래 슬림 툴바([+ 등록][셀러 대시보드]). */}
       {/* 🏁 2026-06-26 (대표 — "상품·이용권 각자 전체 등록 페이지로"): 등록 종류 선택 시트.
           둘 다 정식 등록 풀페이지로 — 상품=/seller/products/new(이미지·상세·옵션), 이용권=/seller/meal-voucher/new(위치·목표인원).
           (얄팍한 빠른등록 모달은 제거 — 상세이미지/옵션 없어 실제 상품에 부족.) */}
@@ -350,13 +322,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           </div>
         </div>
       )}
-      {/* 🎨 2026-06-17 (#6 통일): 방문자 미리보기 중 — 큐레이터 유어샵과 동일 패턴. theme-dual: 의도적 네이비 */}
-      {isOwner && previewAsVisitor && (
-        <div className="sticky top-0 z-40 bg-[#1D1F29] text-white px-4 py-2 text-[12.5px] font-bold flex items-center justify-between gap-2">
-          <span className="truncate">👀 {t('seller.publicPage.previewBanner', { defaultValue: '방문자 미리보기 — 다른 사람에게 보이는 화면이에요' })}</span>
-          <button onClick={() => setPreviewAsVisitor(false)} className="shrink-0 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-[11.5px] whitespace-nowrap">{t('seller.publicPage.backToEdit', { defaultValue: '편집으로 돌아가기' })}</button>
-        </div>
-      )}
       <SEO
         title={`${seller.name || seller.username || t('product.seller')}의 유어샵`}
         description={seller.bio || `${seller.name || seller.username || t('product.seller')} 님의 유어샵`}
@@ -378,14 +343,39 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
       {/* 🏁 2026-06-25 (대표 "통일"): 사업자 유어샵도 canonical CuratorHeader (마퀴+배너 히어로+중앙 이름).
           정체성은 curator(users) 우선 · seller(sellers) 폴백으로 병합 → 어디 저장됐든 배너/이름 복구.
           소유자 인라인 편집은 CuratorHeader 가 /api/curator/me/profile 로 처리(낙관적 반영=curatorEdits). */}
+      {/* 🖥️ 2026-09-02 안P1: CuratorPage 와 같은 2단 틀(좌 프로필 열 + 우 진열대). */}
+      <div className="ur-ushop-pc">
+      <div className="ur-ushop-side">
       <CuratorHeader
         curator={headerCurator}
         isOwner={ownerView}
+        canEdit={isOwner}
+        onEnterEdit={() => { setPreviewAsVisitor(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+        onExitEdit={() => { setPreviewAsVisitor(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+        counts={{ pins: mealVouchers.length, products: shopProducts.length }}
         accountType="business"
         stats={headerStats}
         onCopyLink={copyLink}
         onCuratorUpdate={(next) => setCuratorEdits((s) => ({ ...s, ...next }))}
       />
+      <UShopQrCard />
+      </div>
+      <div className="ur-ushop-main">
+      {ownerView && (
+        <div className="max-w-3xl mx-auto px-4 pt-3">
+          <div className="flex items-center gap-2 rounded-xl bg-white dark:bg-[#1D1F29] shadow-lift px-2.5 py-1.5">
+            <span className="flex items-center gap-1.5 mr-auto pl-1 text-[12px] font-bold text-gray-500 dark:text-gray-400">
+              {t('seller.publicPage.ownerModeShort', { defaultValue: '편집 모드 · 눌러서 바로 수정' })}
+            </span>
+            <button type="button" onClick={() => setShowAddSheet(true)} className="ur-btn ur-btn-sm ur-btn-primary whitespace-nowrap">
+              {t('seller.publicPage.addEntry', { defaultValue: '+ 등록' })}
+            </button>
+            <button type="button" onClick={() => navigate('/seller')} className="ur-btn ur-btn-sm ur-btn-secondary whitespace-nowrap">
+              {t('seller.publicPage.sellerDashboard', { defaultValue: '셀러 대시보드' })}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 🏁 2026-06-26 (대표 "추천템 숨김"): 사업자 유어샵 = 본인 상품 주인공 → 한 스크롤 섹션.
           순서: 내 상품 → 교환권 → 영상/라이브 → 정보. (추천 핀 섹션 제거 — 일반 유저 유어샵은 유지) */}
@@ -486,6 +476,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         <footer className="mt-10 pt-5 border-t border-gray-100 dark:border-[#2C2F35]">
           <InfoTab seller={seller} isOwner={ownerView} T={T} />
         </footer>
+      </div>
+      </div>
       </div>
 
       {/* 🏁 2026-06-17 (#3): 추천 핀 섹션은 홈 탭 상단으로 이동(위) — 맨 아래 매몰 제거. */}

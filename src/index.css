@@ -73,9 +73,11 @@
        색·모서리·높이·굵기는 여기서만 정해지므로, 바꿀 일이 생기면 이 파일 한 곳만 고친다.
      ⚠️ 다크 대응: 대시보드(셀러/어드민/에이전시)는 **항상 라이트**가 대표 확정 정책이라
         여기서 `dark:` 를 쓰지 않는다. 소비자 표면에서 쓸 때는 호출부가 색을 준다. */
-  .ur-btn-primary   { background: #16181C; color: #fff; }
-  .ur-btn-primary:hover:not(:disabled)   { background: #2C2F35; }
-  .ur-btn-secondary { background: #fff; color: #374151; border-width: 1px; border-color: #E5E7EB; }
+  /* 🎫 2026-09-02 (대표 확정 — 셀러 대시보드 B안 · 디자인 시스템 "주 버튼 = 브랜드"): 잉크 → 브랜드 블루.
+     대시보드 셋(셀러·어드민·에이전시)이 같은 체계를 쓰므로 한 줄로 셋이 함께 바뀐다. */
+  .ur-btn-primary   { background: #1C69EF; color: #fff; }
+  .ur-btn-primary:hover:not(:disabled)   { background: #1557C8; }
+  .ur-btn-secondary { background: #fff; color: #374151; box-shadow: var(--lift, 0 2px 10px rgb(22 24 28 / 0.06)); }
   .ur-btn-secondary:hover:not(:disabled) { background: #F9FAFB; }
   /* 위험 — 삭제·취소. **빨강은 여기서만 쓴다**(장식으로 쓰면 진짜 경고가 안 보인다). */
   .ur-btn-danger    { background: #DC2626; color: #fff; }
@@ -401,6 +403,16 @@
 .seller-light-theme {
   --primary: 218 87% 52%;   /* #1C69EF */
   --ring: 218 87% 52%;
+  /* 🎫 2026-09-02: 대시보드는 화이트 고정인데 html.dark 가 켜져 있으면 :root 의 다크 토큰(--lift:none)이 새어 들어와
+     흰 카드가 안 뜬다 → 라이트 값을 여기서 다시 박는다(어드민·에이전시도 같은 래퍼 규칙 아래). */
+  --lift: 0 2px 10px rgb(22 24 28 / 0.06);
+  --rule: rgb(22 24 28 / 0.08);
+  --rule-strong: rgb(22 24 28 / 0.28);
+}
+.admin-light-theme, .agency-light-theme {
+  --lift: 0 2px 10px rgb(22 24 28 / 0.06);
+  --rule: rgb(22 24 28 / 0.08);
+  --rule-strong: rgb(22 24 28 / 0.28);
 }
 
 /* 🛡️ 2026-06-17 (사용자 신고 — 로그인/대시보드 입력 글자 흰색으로 안 보임): 어드민/셀러/에이전시/도매는 라이트 고정.
@@ -418,13 +430,18 @@
 .admin-light-theme,
 .seller-light-theme,
 .agency-light-theme,
-.force-light-theme {
+.force-light-theme,
+.light-island {
   color-scheme: light;
 }
+/* 🏝️ 2026-09-02 `.light-island` — 배경이 테마와 무관하게 정해진 자리(홈 패널·지도 위). 안쪽의 모든 `dark:` 유틸이
+   꺼진다(tailwind.config `darkMode: ['variant', '&:is(.dark *):not(.light-island *)']`). 위 force-light-theme 는
+   입력 글자만 지키고 `dark:` 유틸은 못 끄므로 둘은 다른 도구다. 지도 위 `light-fixed` 주석 방식보다 이쪽이 정본. */
 .admin-light-theme input, .admin-light-theme textarea, .admin-light-theme select,
 .seller-light-theme input, .seller-light-theme textarea, .seller-light-theme select,
 .agency-light-theme input, .agency-light-theme textarea, .agency-light-theme select,
-.force-light-theme input, .force-light-theme textarea, .force-light-theme select {
+.force-light-theme input, .force-light-theme textarea, .force-light-theme select,
+.light-island input, .light-island textarea, .light-island select {
   color-scheme: light;
   color: #16181C !important;
   -webkit-text-fill-color: #16181C !important;
@@ -984,7 +1001,9 @@ html.dark .gbd {
 /* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면 홈): 잉크 색면 위에 뜨는 **흰 패널**.
    그루폰 홈이 초록 배경 위에 흰 카드 패널을 얹는 그 구조를 우리 색면(--home-field)으로 한다.
    ⚠️ PC 메인 전용 — 다른 페이지는 흰 배경이라 이 클래스를 쓰지 않는다.
-   다크모드에서도 색면은 그대로(이미 어두운 색)이고 패널만 어두운 서피스로 바꾼다. */
+   🌗 2026-09-02 (대표 확정 "안A · 다크에서도 패널은 흰색"): 다크에서 패널이 색면과 거의 같은 남색이 되어
+   층이 사라지고 사진이 놓일 흰 자리가 없었다(대표 "흰색이 없네?"). 패널은 테마와 무관하게 흰색이다 —
+   마크업의 `light-island` 클래스가 안쪽 `dark:` 유틸을 끈다(tailwind.config darkMode variant). */
 .ur-home-panel {
   background: #fff;
   border-radius: 18px;
@@ -992,7 +1011,6 @@ html.dark .gbd {
   margin-bottom: 20px;
   box-shadow: 0 1px 2px rgba(10, 11, 14, .06), 0 8px 24px -12px rgba(10, 11, 14, .30);
 }
-.dark .ur-home-panel { background: #11141C; box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6); }
 @media (max-width: 1023px) { .ur-home-panel { padding: 14px; border-radius: 14px; margin-bottom: 14px; } }
 
 /* ✨ 카드가 색면 위에서 살짝 떠오르는 인터랙션(대표 — "버튼 나타날 때 효과") */
@@ -1207,7 +1225,7 @@ html.dark .gbd {
 .animate-orderProofIn { animation: orderProofIn 300ms ease-out; }
 
 /* 🛡️ 2026-05-20: 사이드바 active gradient — Seller/Admin/Agency Layout 의 inline style 대체. */
-.ur-seller-nav-active { background: linear-gradient(to right, rgba(255, 255, 255, 0.10), transparent); }
+.ur-seller-nav-active { background: rgba(255, 255, 255, 0.06); } /* 🎫 2026-09-02 B안: 그라디언트 → 평면, 활성 표시는 블루 세로 막대 */
 .ur-admin-nav-active  { background: linear-gradient(to right, rgba(252, 211, 77, 0.12), transparent); }
 .ur-agency-nav-active { background: linear-gradient(to right, rgba(139, 92, 246, 0.18), transparent); }
 
@@ -1344,39 +1362,8 @@ html.dark .gbd {
   .ws-cat-tile:hover .ws-cat-badge { transform: scale(1.04); }
 }
 
-/* ──────────────────────────────────────────────────────────────
-   🏠 2026-08-04 홈 히어로 기본 배경 (대표 "히어로도 브랜드 배경으로 영상처럼").
-
-   영상 파일을 쓰지 않는다 — 저작권이 확인된 소스가 없고, 외부 영상 호스트는 CSP 가 막으며,
-   무엇보다 **홈 최상단에 수 MB 를 얹으면 첫 화면이 느려진다**(이 레포가 로딩에 들인 노력을
-   한 번에 되돌리는 짓이다). 대신 브랜드 로즈 블룸 두 개가 서로 다른 주기로 천천히 흐르고
-   빛줄기가 가로지르는 **코드 배경**으로 같은 인상을 만든다. 용량 0 · 네트워크 0.
-
-   ⚠️ 어드민이 실제 이미지/영상을 올리면 그쪽이 이긴다 — 이건 '아무것도 없을 때'의 기본값이다.
-   ────────────────────────────────────────────────────────────── */
-@keyframes ur-hero-bloom-a {
-  0%, 100% { transform: translate3d(-6%, -4%, 0) scale(1);    opacity: 0.85; }
-  50%      { transform: translate3d(6%, 5%, 0)   scale(1.18); opacity: 1; }
-}
-@keyframes ur-hero-bloom-b {
-  0%, 100% { transform: translate3d(5%, 6%, 0)   scale(1.12); opacity: 0.6; }
-  50%      { transform: translate3d(-7%, -5%, 0) scale(0.94); opacity: 0.9; }
-}
-@keyframes ur-hero-sweep {
-  0%   { transform: translateX(-60%) skewX(-14deg); opacity: 0; }
-  18%  { opacity: 0.5; }
-  60%  { opacity: 0; }
-  100% { transform: translateX(160%) skewX(-14deg); opacity: 0; }
-}
-.ur-hero-bloom-a { animation: ur-hero-bloom-a 15s ease-in-out infinite; }
-.ur-hero-bloom-b { animation: ur-hero-bloom-b 21s ease-in-out infinite; }
-.ur-hero-sweep   { animation: ur-hero-sweep 9s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
-@media (prefers-reduced-motion: reduce) {
-  /* 정지해도 구도가 유지되도록 '가운데' 상태로 멈춘다(빈 화면이 되지 않게). */
-  .ur-hero-bloom-a, .ur-hero-bloom-b, .ur-hero-sweep { animation: none; }
-  .ur-hero-sweep { opacity: 0.18; transform: translateX(40%) skewX(-14deg); }
-}
-
+/* 🎫 2026-09-02: 홈 히어로의 로즈 블룸·빛줄기 keyframes 는 삭제됐다(대표 "그라데이션 안 맞는다" · 표면 체계 ⑥ 그라디언트 0).
+   바탕은 색면(--home-field) 하나로 선다. */
 /* 🧭 2026-08-19 (대표 시안 — 그루폰 `My Account`): 마이페이지 PC 2단.
    좌측 내비 + 우측 내용. 모바일(<lg)은 손대지 않는다 — 지금의 세로 흐름이 이미 맞다.
    ⚠️ 우측 칸 안의 섹션들은 저마다 `ur-content-medium`(max-width 1024 + 가운데 정렬)을 갖고 있다.
@@ -1422,4 +1409,32 @@ canvas {
 .agency-light-theme canvas {
   -webkit-touch-callout: default;
   -webkit-user-drag: auto;
+}
+
+/* 🛍️ 2026-09-02 (대표 확정 — 유어샵 안P1): PC(lg+) 2단 — 좌 300px 프로필 고정(sticky) + 우 3열 진열대.
+   모바일(<lg)은 같은 DOM 이 세로로 흐른다(헤더 → 진열대) — 안3 그대로. 상단 전역 네비 68px 아래 sticky.
+   ⚠️ 우측 칸 안의 섹션들은 `max-w-3xl mx-auto px-4`(폰 폭 기준 중앙 정렬)라 그대로 두면 좁은 칸 안에서
+      또 가운데로 몰린다 → `.ur-account-pane` 과 같은 방식으로 칸 안에서만 무력화하고, 2열 고정 그리드를
+      3열로 편다(`grid-cols-2` 는 액자 1열 오버라이드를 피하려고 고정했던 값 — 액자를 벗은 여기서만 3열). */
+@media (min-width: 1024px) {
+  .ur-ushop-pc {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 40px;
+    align-items: start;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 2rem 0;
+  }
+  .ur-ushop-side { position: sticky; top: 92px; }
+  .ur-ushop-main .max-w-3xl,
+  .ur-ushop-main .ur-content-wide { max-width: none; margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+  .ur-ushop-main .grid-cols-2 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ur-ushop-main .col-span-2 { grid-column: span 3 / span 3; }
+}
+
+/* 🖥️ 2026-09-02 (대표 — PC 마이 "왼쪽 메뉴 + 오른쪽은 내용"): 우측 칸 상단의 한 줄 그리드 안에서
+   주문 현황·리뷰어 레벨(기존 컴포넌트)이 갖는 상단 여백·제목을 카드 안으로 맞춘다. */
+@media (min-width: 1024px) {
+  .ur-account-pane .ur-content-medium.pt-3 { padding-top: 0; }
 }

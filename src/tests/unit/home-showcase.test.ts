@@ -164,10 +164,11 @@ describe('② 대표 확정 — 없으면 아무것도 안 그린다', () => {
     expect(code('src/pages/pc-home/PcHomePage.tsx')).not.toMatch(/<PcHomeLocationBar/)
   })
 
-  it('기본 히어로 배경 애니메이션이 prefers-reduced-motion 을 존중한다', () => {
+  it('기본 히어로 배경에 블룸·빛줄기 그라디언트가 없다', () => {
     const css = read('src/index.css')
-    const block = css.slice(css.indexOf('ur-hero-bloom-a'))
-    expect(block).toMatch(/prefers-reduced-motion[\s\S]{0,400}ur-hero-bloom-a/)
+    // 🎫 2026-09-02: 블룸·빛줄기 자체가 사라졌다(대표 "그라데이션 안 맞는다") — 남아 있으면 위반.
+    expect(css).not.toMatch(/ur-hero-bloom|ur-hero-sweep/)
+    expect(read('src/components/home/HomeHeroDefault.tsx')).not.toMatch(/radial-gradient|ur-hero-bloom|ur-hero-sweep/)
   })
 
   it('서버가 상품 0건 섹션을 목록에서 뺀다 (홈에 제목만 남는 빈 줄 금지)', () => {

@@ -170,7 +170,7 @@ export function EmptyVouchers({ mode, onExplore, t }: {
 
       <button
         onClick={onExplore}
-        className="mt-9 w-full max-w-[300px] py-3.5 rounded-2xl text-[15px] font-extrabold bg-brand hover:bg-brand-dark text-white active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-[0_8px_22px_rgba(224,82,107,0.32)] dark:shadow-[0_8px_22px_rgba(224,82,107,0.2)]"
+        className="mt-9 w-full max-w-[300px] py-3.5 rounded-2xl text-[15px] font-extrabold bg-brand hover:bg-brand-dark text-white active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-[0_8px_22px_rgba(28,105,239,0.32)] dark:shadow-[0_8px_22px_rgba(28,105,239,0.2)]"
       >
         {cta}
         <ArrowRight className="w-[17px] h-[17px]" strokeWidth={2.4} />

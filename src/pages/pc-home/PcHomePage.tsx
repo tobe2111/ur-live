@@ -115,7 +115,7 @@ export default function PcHomePage() {
           {/* 🏷️ 2026-08-08: 카테고리를 고르면 제목·설명이 **그 카테고리를 말한다.** 이전엔 숙소를 눌러도
               제목이 "내 주변 가까운 딜"이라, 화면이 걸러졌다는 신호가 어디에도 없었다. */}
           {/* 🎨 그루폰 구조 — 제목·정렬칩·그리드를 하나의 흰 패널에 담는다(색면 위에 뜬 매대). */}
-          <div className="ur-home-panel">
+          <div className="ur-home-panel light-island">
           <header ref={gridHeaderRef} className="mb-3 scroll-mt-24">
             <h1 className="text-[20px] font-black tracking-tight text-gray-900 dark:text-white">
               {catLabel

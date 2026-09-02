@@ -35,3 +35,47 @@
 ## 남은 결정
 - 라이트 바탕을 시안값 #F8F7FC 로 바꿨다(구 크림 #FAF7F5). 대표가 크림을 원하면 `--bg` 한 줄 + `F8F7FC→FAF7F5` 되돌리기.
 - PC 상단 네비(`DesktopTopNav`)·홈 카테고리 칩은 아직 lucide/텍스트 — 2번 후속.
+
+## 추가 (PR #1305 에 얹음 — 같은 브랜치)
+
+- **히어로**: 로즈·보라 블룸 삭제(`12e864f`) → 대표 *"위아래부분까지 그라데이션은 안해도"* → 세로 페이드·하단 띠 제거(`239a914`). 좌우 페이드만 남음. 하네스 `--hero=<사진>` 옵션 신설(`688b312`) — 히어로 사진은 SSR 시드에서만 오므로 `--deals` 만으론 빈 색면이다(D1 죽었을 때와 같은 그림이라 오진 주의).
+- **지도 위 UI B안** (대표 확정): 위 §7 문서. 파일: `MapTopBar.tsx`(오버레이 흰 고정·선택 블루 면·선 아이콘) · `SheetFilterBar.tsx` · `RestaurantMapPage.tsx`(현위치 FAB) · `map-overlays.ts`(핀 잉크 링·이모지/그라디언트 폴백 삭제) · `HeroCarousel.tsx`(할인율 가격 줄·테두리 0) · `voucher-types.ts`(`emoji`→`icon`) · `urdeal-icons.tsx`(+4 선 아이콘) · `check-theme-consistency.mjs`(`light-fixed` 면제). 가드 `map-chips-b.test.ts` 13건 + 매니페스트 3건.
+- **D1 사고**: 15:12·16:08·16:42 KST 에 DB API 전부 500(계정 일일 읽기 한도, #1302). 17:37 KST 회복. 홈 히어로 사진이 안 보인 것도 이것(시드 부재) — 코드 문제 아님.
+
+## 대표가 지적했는데 아직 안 한 것 (다음 세션 첫 액션)
+
+1. **교환권 페이지(`/vouchers`)** — 대표 *"교환권페이지 아직 수정 안된거지? 브랜드도 접혀있고 말이야"*. 새 체계(칩 흰/블루·선 아이콘·카드 테두리 0)가 아직 안 갔다. 브랜드 스트립 기본 접기는 2026-09-01 대표 승인("나안")인데 오늘 다시 언급했다 — **펼쳐 둘지 먼저 확인**. `VouchersPage.tsx` 는 로딩 잠금(SSR 즉시 소비·기본 정렬·이미지 속성 byte-불변) + 981줄 동결.
+2. **유어샵(`/u/{handle}`)** — 대표 *"유어샵 부분도 수정이 안된 것 같네?"*. `CuratorPage`/`SellerPublicPage` 표면에 새 체계 미적용. 링크샵 소유권 가드(`check-linkshop-ownership`) 건드리지 말 것.
+3. `PaymentSuccessPage`(Toss 잠금 — 허가 필요) · 홈 카테고리 칩(`RestaurantMapPage` list 모드 상단 탭은 밑줄 탭이라 이미 조용함) · DesktopTopNav 아이콘.
+- **PC 홈 안A(라이트 섬)** — 위 §8. `tailwind.config` darkMode variant + `.light-island` + 패널 3곳. 가드 `home-panel-light-island.test.ts` 3건 + 매니페스트 2건. 하네스 다크 렌더 확인(`pchome-island-dark.png`).
+- **셀프 구매 보상 차단** — `isSelfReferral`(gb-purchase-guards) `/join` 배선, STAGING P12. 머니 경로(귀속 차단만).
+- **대표 확정(구현 대기)**: 유어샵 안3(왼정렬 헤더·반반 버튼·칩, 주인 띠 삭제, 방문자는 편집 버튼만 안 보임·팔로우 추가 금지; 07-07 에 뺐던 아바타·스탯이 안3 에 있음 — 보고에 명시) · 교환권 B안(칩+브랜드 펼침·실제 로고) · PC 마이(왼쪽 메뉴+오른쪽 내용, 보라 그라디언트 삭제) · 셀러 B안(잉크 사이드바 유지+콘텐츠 체계화, 화이트 고정).
+
+## 유어샵 안3 + 안P1 구현 (같은 날 후속, #1305 다음 PR)
+
+- **뭘 했나**: 주인 상단 띠 삭제(CuratorPage·SellerPublicPage 둘 다) · `CuratorHeader` 재작성(배너 히어로 렌더 삭제, 왼정렬 아바타+이름, 숫자 한 줄, [유어샵 편집][공유] 반반, `canEdit/onEnterEdit/onExitEdit/counts` prop 신설) · 카테고리 칩 `PinCategoryChips`(지도 SSOT 재사용, 7개 이상) · PC 2단 `.ur-ushop-pc`(index.css) + `pc-fullbleed.ts` 한 세그먼트 정규식 · `LinkshopVisitorRails` 삭제 → `UShopQrCard` · 순번 흰 원.
+- **file-size**: CuratorPage 701 → 559 (`OwnerEarningsStrip`·`PinManageList` 를 curator-page/ 로 그대로 추출). CuratorHeader 549 → 466.
+- **가드**: `ushop-a3-p1.test.ts` 13건 + 주입 매니페스트 3건(되돌려-검증 빨간불 확인). `check-linkshop-ownership` 3불변식 유지.
+- **눈으로 본 것**: `visual-preview --pins=8` 모바일 라이트/다크/주인 · `--pc` 라이트/다크/주인 — 안3·안P1 과 일치.
+- **SellerPublicPage 규약 변경**: 주인이 **방문자 화면으로 시작**(`previewAsVisitor` 기본 `true`, CuratorPage 와 통일). 편집 모드 툴바는 [+ 등록][셀러 대시보드] 만(`ur-btn`).
+- **틀렸던/주의**: 2026-07-07 아바타·스탯 삭제 결정이 안3 으로 뒤집혔다 — 다음 세션이 "07-07 결정 위반"으로 되돌리지 말 것(설계 문서 §9).
+- **남은 것**: ② 교환권 B안 · ③ PC 마이 · ④ 셀러 대시보드 B안 (대표 확정, 미착수).
+
+## 교환권 B안 구현 (같은 PR)
+
+- VouchersPage/shared.tsx: 잔액 흰 카드(모바일·PC 레일) · 칩 B안 · 브랜드 **기본 펼침**(09-01 접기 결정을 대표가 대체) · 행/카드/브랜드 타일 테두리 → 들림. 잠긴 계약 byte-불변(위 audit log). 파일 979줄.
+- 테스트 `vouchers-top-chrome.test.ts` ①(슬래브 표식)②④ 재정의 + 매니페스트 1건 교체.
+- #1305 는 main(#1308~#1311) 머지 후 유어샵·교환권을 **함께** 실어 보낸다(CI 한 사이클 절약). 충돌 1건: #1309 가 `LinkshopVisitorRails` 에 xl 게이트를 붙였는데 안P1 이 그 파일을 지웠다 → 삭제 유지, `linkshop-products-seed.test.ts` ③ 을 남은 레일만 검사하도록 수정.
+
+## PC 마이 구현 (같은 PR)
+
+- `AccountPcPane.tsx` 신규(lg+ 만 마운트, `useMediaQuery` 동기 분기) · UserProfilePage 그라디언트 헤더 삭제(PC 는 헤더 숨김) · AccountSideNav 블루 선택 + 내 교환권.
+- 가드 `account-pc-pane.test.ts` 6건 + 매니페스트 2건. 하네스 `--route=/user/profile --pc --auth=user --deals --wallet` 라이트/다크 확인.
+- ⚠️ 하네스에선 주문 현황·리뷰어 레벨이 데이터 0 이라 안 그려진다(둘 다 빈값이면 null) — 라이브에서 확인할 것.
+- 남은 것: ④ 셀러 대시보드 B안.
+
+## 셀러 대시보드 B안 구현 (같은 PR)
+
+- `ur-btn-primary` 잉크 → 블루(어드민·에이전시도 함께) · SellerLayout 활성 블루 막대/로그아웃 중립/FAB 블루 · Kakao 배너 · MyStoresPanel STEP 티켓 · DashboardCard/StatCard 들림 · SellerPage amber 상자 제거 · 라이트 래퍼에 `--lift/--rule` 재선언.
+- 가드 `seller-dashboard-b.test.ts` 7건 + 매니페스트 2건. `check-dashboard-theme`/`dashboard-button-system`/`design-slop` GREEN. 하네스 `--route=/seller --pc --auth=seller` 확인.
+- 대표 확정 4건(유어샵·교환권·PC 마이·셀러) 전부 #1305 에 실림. 남은 것: CI → 머지 → 라이브 확인 → Notion.
