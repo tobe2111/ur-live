@@ -7515,6 +7515,35 @@ canvas {
     why: '표면 규칙 ② 강조색 하나. 화면 구석의 노랑 원은 체계 밖 색이었다.',
   },
   {
+    name: '지도 오버레이 — light-island 가 빠져 흰 검색창에 흰 글자',
+    file: 'src/pages/restaurant-map/MapTopBar.tsx',
+    find: "'light-island lg:hidden absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none'",
+    replace: "'lg:hidden absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none'",
+    test: 'src/tests/unit/light-island-inputs.test.ts',
+    why:
+      '2026-09-03 대표 신고 "글자가 또 하얘". 전역 .dark input(0,5,1)이 text-gray-900(0,1,0)을 언제나 ' +
+      '이겨서, light-island 가 없으면 흰 검색창 글자가 다크에서 gray-100 이 된다(실측 대비 1.1:1). ' +
+      'light-fixed 주석은 가드 면제일 뿐 런타임 효력이 없다.',
+  },
+  {
+    name: '지도 패널 — 테마 대응이 사라진다(패널까지 light-island)',
+    file: 'src/pages/restaurant-map/MapTopBar.tsx',
+    find: "? 'hidden lg:block px-3 pt-3 pb-2.5 space-y-2 border-b border-gray-100 dark:border-[#2C2F35]'",
+    replace: "? 'light-island hidden lg:block px-3 pt-3 pb-2.5 space-y-2 border-b border-gray-100'",
+    test: 'src/tests/unit/light-island-inputs.test.ts',
+    why: 'PC 리스트 패널은 지도 위가 아니라 앱 안이라 테마를 따라야 한다. 섬을 남발하면 다크에서 흰 덩어리가 된다.',
+  },
+  {
+    name: 'light-island — placeholder/autofill 규칙에서 다시 빠진다',
+    file: 'src/index.css',
+    find: ".light-island input::placeholder, .light-island textarea::placeholder {",
+    replace: ".light-island-DISABLED input::placeholder, .light-island-DISABLED textarea::placeholder {",
+    test: 'src/tests/unit/light-island-inputs.test.ts',
+    why:
+      '색 규칙에만 있고 placeholder/autofill 에 빠져 있던 것이 2026-09-03 실측으로 드러났다. ' +
+      '하나라도 빠지면 그 상태(빈 입력·자동완성)만 다크색으로 남는다.',
+  },
+  {
     name: 'PC 홈 히어로 — 위치 컨트롤이 다시 칩 둘로 쪼개진다',
     file: 'src/pages/pc-home/PcHomeLocationBar.tsx',
     find: "? 'inline-flex items-stretch h-8 rounded-full overflow-hidden bg-white text-[#16181C]'",
