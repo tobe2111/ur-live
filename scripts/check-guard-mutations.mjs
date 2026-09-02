@@ -88,6 +88,24 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '📉 키워드 수율 재계산 6h 게이트가 헛돈다(회차마다 전수 GROUP BY)',
+    file: 'src/features/marketing/api/influencer-keyword-yield.ts',
+    find: '  if (row?.value === bucket) return { skipped: \'bucket\', bucket }\n',
+    replace: '',
+    test: 'src/tests/unit/urads-d1-diet.test.ts',
+    why:
+      '2026-09-02: 정비 reclassify 슬롯이 회차마다(92회/일) 15.3만 행 GROUP BY 를 돌려 유어애즈 최대 단일 읽기(1,410만/일). ' +
+      '게이트가 빠져도 답은 같아서 아무도 모른다.',
+  },
+  {
+    name: '🩸 유입 감시 sendable 두 축이 다시 한 문장(교차 DB)으로 돌아간다',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: "    DB.prepare(`SELECT COUNT(*) AS n FROM ad_company_leads WHERE merged_into IS NULL AND email IS NOT NULL AND email <> ''`).first<{ n: number }>().catch(() => null),",
+    replace: "    DB.prepare(`SELECT COUNT(*) AS n FROM ad_company_leads, ad_influencer_leads WHERE 1=0`).first<{ n: number }>().catch(() => null),",
+    test: 'src/tests/unit/urads-d1-diet.test.ts',
+    why:
+      '두 테이블이 다른 D1 에 살아 라우터가 문장 하나를 한 DB 로만 보낸다 — 교차 문장은 예외→catch→null 로 ' +
+      '대표의 유일한 성공 지표(sendable_*)가 조용히 판정에서 빠진다. 실제로 그 상태였다.',
     name: '📉 sitemap 엣지 캐시가 빠져 크롤러마다 D1 을 다시 읽는다',
     file: 'src/worker/index.ts',
     find: "app.use('/sitemap.xml', publicCache(3600));",
@@ -3155,7 +3173,7 @@ canvas {
   {
     name: '키워드 성과 재계산이 빠져 감점이 영원히 0',
     file: 'src/features/marketing/api/influencer-maintenance.ts',
-    find: '; out.kwyield = await recomputeKeywordContactYield(DB).catch(() => null) }',
+    find: '; out.kwyield = await recomputeKeywordContactYieldBucketed(DB).catch(() => null) }',
     replace: ' }',
     test: 'src/tests/unit/influencer-keyword-yield.test.ts',
     why:
