@@ -30,7 +30,7 @@ export function CartGroupShippingRow({ items, subtotal, shippingFee, freeShipThr
         {noShipping
           ? <span className="text-gray-600 dark:text-gray-300">{allDeal ? '휴대폰 즉시 발송 (무료)' : '매장에서 사용 (배송 없음)'}</span>
           : freeShipThreshold > 0 && subtotal >= freeShipThreshold
-            ? <span className="text-pink-500">{t('cart.free')}</span>
+            ? <span className="text-brand-text">{t('cart.free')}</span>
             : `${formatNumber(shippingFee)}원`}
       </span>
     </div>

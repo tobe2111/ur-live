@@ -44,7 +44,7 @@ export const CartHeader = React.memo(function CartHeader({
           </button>
           <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">
             {t('cart.title', { defaultValue: '장바구니' })}{' '}
-            {itemCount > 0 && <span className="text-pink-500">{itemCount}</span>}
+            {itemCount > 0 && <span className="text-brand-text tabular-nums">{itemCount}</span>}
           </h1>
           <div className="w-9" />
         </div>
@@ -63,8 +63,8 @@ export const CartHeader = React.memo(function CartHeader({
               <span
                 className={`w-5 h-5 rounded-full flex items-center justify-center border-2 transition-colors ${
                   allSelected
-                    ? 'bg-pink-500 border-pink-500'
-                    : 'bg-white dark:bg-[#11141C] border-gray-300 dark:border-[#3A3A3A] group-hover:border-gray-400'
+                    ? 'bg-brand border-brand'
+                    : 'bg-white dark:bg-[#1D1F29] border-rule-strong group-hover:border-gray-400'
                 }`}
               >
                 {allSelected && (
@@ -89,7 +89,7 @@ export const CartHeader = React.memo(function CartHeader({
                   title={t('cart.deleteInactiveHint', { defaultValue: '판매가 종료된 상품을 한 번에 삭제합니다' })}
                 >
                   {t('cart.deleteInactive', { defaultValue: '판매종료 삭제' })}
-                  <span className="ml-1 text-orange-400">({inactiveCount})</span>
+                  <span className="ml-1 text-gray-400 tabular-nums">({inactiveCount})</span>
                 </button>
               )}
               <button
