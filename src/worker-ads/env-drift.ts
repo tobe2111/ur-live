@@ -55,6 +55,7 @@ export const ADS_ENV_KNOWN: readonly string[] = [
   'ADS_INFLUENCER_ENRICH_FANOUT', 'ADS_INFLUENCER_ENRICH_ROUNDS', 'ADS_KAKAO_SWEEP_CAP',
   'ADS_KAKAO_SWEEP_CHAIN', 'ADS_LANE', 'ADS_LANES_PER_TICK',
   'ADS_LANE_ALARM_ENABLED', 'ADS_LANE_ALARM_INTERVAL_MS', 'ADS_LANE_ALARM_RUNS_PER_HOUR',
+  'ADS_LANES_PAUSED', // ⏸️ 레인 일시정지 스위치 하나(2026-09-02 D1 한도 사고) — lane-pause.ts
   // 🧊 수집 폭 동결 해제용(2026-08-04) — 측정 처리량이 올라가면 이 값을 올려 회수한 예산을 폭으로 전환.
   'ADS_COLLECT_KEYWORD_CAP',
   'ADS_COLLECT_KEYWORD_CAP_NAVER_ONLY', // 🌙 YT 쿼터 소진 회차 전용 폭(2026-08-12)
