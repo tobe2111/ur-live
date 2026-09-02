@@ -19,6 +19,7 @@ import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { stayCrumbs } from '@/components/deal/DetailBreadcrumb'
 import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import StayDateGuestPicker, { type DayPrice } from './stay-detail/StayDateGuestPicker'
+import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'
 import BrandLoader from '@/components/brand/BrandLoader'
 
 // 🗺️ 2026-07-21 (대표 "숙소 카카오맵 연결 무조건 되게"): 딜 상세와 동일한 잠금 lazy 패턴 —
@@ -349,7 +350,7 @@ export default function StayDetailPage() {
       <DetailBreadcrumb items={stayCrumbs(propertyTypeLabel(stay.property_type))} overlayHeader />
       <DetailTitleHeader
         name={stay.restaurant_name || stay.name}
-        storeName={stay.property_type}
+        storeName={propertyTypeLabel(stay.property_type)}
         address={[stay.region_sido, stay.region_sigungu, stay.address].filter(Boolean).join(' ')}
         rating={stay.avg_rating ?? undefined}
         reviewCount={stay.review_count ?? undefined}
@@ -429,8 +430,8 @@ export default function StayDetailPage() {
           </div>
         )}
 
-        {/* Rooms */}
-        <div className="mb-5">
+        {/* Rooms — 📱 모바일 카드. 🖥️ PC(lg+)는 우측 `StayBookingPanel` 의 객실 행이 담당(B안) → 여기 숨김. */}
+        <div className="mb-5 lg:hidden">
           <SectionTitle className="mb-3">객실 선택 ({rooms.length})</SectionTitle>
           {roomsLoading ? (
             <p className="text-xs text-gray-500 dark:text-gray-400">가용 객실 조회 중...</p>
@@ -507,7 +508,10 @@ export default function StayDetailPage() {
         {(stay.address || (stay.latitude != null && stay.longitude != null)) && (
           <div className="mb-5">
             <SectionTitle className="mb-3">위치</SectionTitle>
+            {/* 🩸 `isolate`: 카카오맵 내부 레이어(z≥1)가 루트 스택에 참여해 우측 달력 팝오버 위로 올라왔다.
+                지도를 자기 스택 컨텍스트에 가두고, 아사이드엔 z 를 준다(둘이 한 쌍). */}
             <Suspense fallback={<div className="h-[220px] rounded-2xl bg-gray-100 dark:bg-[#1D1F29]" />}>
+              <div className="relative isolate z-0">
               <RestaurantMiniMap
                 name={stay.restaurant_name || stay.name}
                 address={stay.address}
@@ -515,6 +519,7 @@ export default function StayDetailPage() {
                 lng={stay.longitude}
                 placeUrl={stay.kakao_place_url}
               />
+              </div>
             </Suspense>
           </div>
         )}
@@ -526,10 +531,7 @@ export default function StayDetailPage() {
           <SectionTitle>이용 안내</SectionTitle>
           <div className="mt-4">
             <InfoBlock label="취소 정책">
-              {stay.cancellation_policy === 'flexible' ? '체크인 24시간 전까지 무료 취소'
-                : stay.cancellation_policy === 'strict' ? '체크인 72시간 전 50% 환불 · 이후 환불 불가'
-                : stay.cancellation_policy === 'non_refundable' ? '환불 불가 (대신 가격 할인)'
-                : '체크인 48시간 전 100% 환불 · 24시간 전 50% 환불'}
+              {cancellationLabel(stay.cancellation_policy)}
               {stay.custom_cancellation_text && (
                 <span className="block mt-1 text-[13px] text-gray-500 dark:text-gray-400">{stay.custom_cancellation_text}</span>
               )}
@@ -549,35 +551,21 @@ export default function StayDetailPage() {
 
         </div>{/* /좌측 콘텐츠 */}
 
-        {/* 🖥️ PC 우측 sticky 예약 박스 — 딜 상세(DealPurchaseBox)와 동일 패턴. 모바일은 인라인 + 하단바. */}
-        <aside className="hidden lg:block lg:sticky lg:top-[116px] space-y-3">
-          {modeTabs}
-          {selectorBox}
-          {cartItems.length > 0 && (
-            <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4 shadow-sm">
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2">묶음 예약 — {cartItems.length}종 / {cartTotalQty}객실</p>
-              <div className="space-y-1 mb-2">
-                {cartItems.map((r) => (
-                  <div key={r.room_id} className="flex justify-between text-xs">
-                    <span className="text-gray-600 dark:text-gray-300 truncate">{r.name} × {cartQty[r.room_id]}</span>
-                    <span className="font-semibold shrink-0">₩{formatNumber(r.total_price * (cartQty[r.room_id] || 0))}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between items-center border-t border-gray-200 dark:border-white/10 pt-2 mb-3">
-                <span className="text-xs text-gray-500 dark:text-gray-400">총액</span>
-                <span className="text-lg font-extrabold text-brand dark:text-pink-400">₩{formatNumber(cartSubtotal)}</span>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setCartQty({})}
-                  className="px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">비우기</button>
-                <button onClick={() => setMultiBookingOpen(true)}
-                  className="flex-1 py-2.5 bg-brand text-white text-sm font-bold rounded-lg hover:bg-brand-dark">
-                  묶음 예약 →
-                </button>
-              </div>
-            </div>
-          )}
+        {/* 🖥️ PC 우측 sticky 예약 패널 — B안(2026-09-02). `lg:z-20`: sticky 는 스택 컨텍스트를 만드는데
+            z 가 없으면 지도 레이어 아래로 깔린다(달력이 지도에 가려지던 사고). */}
+        <aside className="hidden lg:block lg:sticky lg:top-[116px] lg:z-20">
+          <StayBookingPanel
+            modeTabs={modeTabs}
+            selector={selectorBox}
+            rooms={rooms}
+            roomsLoading={roomsLoading}
+            cartQty={cartQty}
+            setCartQty={setCartQty}
+            guests={guests}
+            nights={isVoucherMode ? voucherNights : nights}
+            cancellation={cancellationLabel(stay.cancellation_policy)}
+            onBook={() => setMultiBookingOpen(true)}
+          />
         </aside>
       </div>
       </div>{/* /lg 컨테이너 */}

@@ -32,6 +32,7 @@ const code = (s: string) =>
 
 const GALLERY = 'src/pages/group-buy/DetailGallery.tsx'
 const CFIMG = 'src/utils/cf-image.ts'
+const HERO_SSOT = 'src/shared/detail-hero-image.ts'
 
 describe('히어로 프레임과 크롭은 한 벌이다', () => {
   it('모바일 프레임이 3:2 로 고정돼 있다', () => {
@@ -43,9 +44,13 @@ describe('히어로 프레임과 크롭은 한 벌이다', () => {
   })
 
   it('히어로 URL 이 채우기(cover) + 자동 크롭(auto)을 함께 요청한다', () => {
-    const s = code(read(GALLERY))
-    const at = s.indexOf('heroUrl')
-    expect(at, 'heroUrl 이 사라졌다').toBeGreaterThan(0)
+    // 🧵 2026-09-02: URL 조립이 `shared/detail-hero-image`(SSOT — 워커 preload 와 공유)로 옮겨졌다.
+    //    갤러리는 그 함수를 `heroUrl` 이름으로 쓴다. 둘 다 본다 — 갤러리가 SSOT 를 안 쓰면 다시 갈린다.
+    const gal = code(read(GALLERY))
+    expect(gal, '갤러리가 SSOT 함수를 안 쓴다 — preload 와 다시 갈린다').toMatch(/const heroUrl = detailHeroMobileUrl/)
+    const s = code(read(HERO_SSOT))
+    const at = s.indexOf('function detailHeroMobileUrl')
+    expect(at, 'detailHeroMobileUrl 이 사라졌다').toBeGreaterThan(0)
     const win = s.slice(at, at + 400)
     expect(win, '높이를 안 보내면 크롭이 일어나지 않는다').toContain('height:')
     expect(win, 'fit=cover 가 빠졌다 — 레터박스가 생긴다').toContain("fit: 'cover'")
@@ -56,7 +61,7 @@ describe('히어로 프레임과 크롭은 한 벌이다', () => {
     const s = code(read(GALLERY))
     const at = s.indexOf("aspectRatio: '3/2'")
     const win = s.slice(at, at + 800)
-    expect(win, '슬라이드가 크롭 없는 경로로 되돌아갔다').toContain('heroUrl(src, 900)')
+    expect(win, '슬라이드가 크롭 없는 경로로 되돌아갔다').toContain('heroUrl(src, DETAIL_HERO_MOBILE_WIDTH)')
   })
 })
 

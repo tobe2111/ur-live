@@ -174,9 +174,9 @@ describe('이용권 상세 — 죽은 사진이 빈 칸으로 남지 않는다',
   it('감시 URL 이 실제 렌더 URL 과 같은 폭을 쓴다 (추가 트래픽 0)', () => {
     // 폭이 다르면 리사이저 URL 이 달라져 요청이 재사용되지 않는다 = 진짜 추가 다운로드.
     const s = code(GAL)
-    expect(s).toMatch(/\{ src: main, w: 1200 \}/)   // 대형 bg 도 1200
-    expect(s).toMatch(/list\.push\(\{ src: t, w: 600 \}\)/) // 썸네일 bg 도 600
-    expect(s).toMatch(/bg\(src, 600\)/)
+    expect(s).toMatch(/\{ src: main, url: detailPlainUrl\(main, DETAIL_HERO_DESKTOP_WIDTH\) \}/)   // PC 대형 bg 와 같은 폭·같은 함수
+    expect(s).toMatch(/list\.push\(\{ src: t, url: detailPlainUrl\(t, DETAIL_THUMB_WIDTH\) \}\)/) // 썸네일 bg 와 같은 폭·같은 함수
+    expect(s).toMatch(/bg\(src, DETAIL_THUMB_WIDTH\)/)
   })
 
   it('실패한 사진은 목록에서 빠진다 (다음 사진이 그 자리로)', () => {

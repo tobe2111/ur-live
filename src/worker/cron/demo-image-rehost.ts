@@ -18,6 +18,7 @@
  */
 import type { Env } from '../types/env'
 import { rehostImageToR2, isExternalImageUrl, validateImageLoads } from '../utils/rehost-image'
+import { hotlinkBlockedSql, isHotlinkBlockedUrl } from '../../shared/hotlink-blocked-hosts'
 import { getSupplyMeta, setSupplyMeta, ensureSupplyMetaTable } from '../utils/product-supply-meta'
 import { fetchDemoPhotos, isBlockedPhotoUrl } from '../utils/demo-photo-set'
 
@@ -275,7 +276,7 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
   const { results } = await DB.prepare(
     `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address
        FROM products p
-      WHERE p.slug LIKE 'demo-%'
+      WHERE (p.slug LIKE 'demo-%' OR ${hotlinkBlockedSql('p.image_url')} OR ${hotlinkBlockedSql('p.images')})
         AND COALESCE(p.is_active, 1) = 1
         AND NOT EXISTS (
           SELECT 1 FROM product_supply_meta m
@@ -292,7 +293,11 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
   let processed = 0
   for (const row of rows) {
     const gallery = parseJsonArr(row.images)
-    const externals = [row.image_url, ...gallery].filter((u): u is string => isExternalImageUrl(u))
+    // 🏪 2026-09-02 (대표 "모두 다 진행" — 로딩 후속 ③): **실상품**은 핫링크 차단 호스트(리사이즈 자체가 안 되는 곳)만
+    //   이관한다 — giftishow 같은 정상 CDN 은 그대로 둔다(그건 cdn-cgi 가 잘 받는다). 데모는 종전대로 외부 전부.
+    //   실상품은 **비파괴**: 못 옮겨도 사진을 지우지 않고(lastTry 삭제·heal 재획득은 데모 전용) MAX_TRIES 뒤 종결 마킹만.
+    const isDemo = row.slug.startsWith('demo-')
+    const externals = [row.image_url, ...gallery].filter((u): u is string => isExternalImageUrl(u) && (isDemo || isHotlinkBlockedUrl(u)))
     // 외부 URL 없음 = 이미 전부 내부/placeholder → 종결 마킹(재스캔 제외, 백로그 수렴).
     if (externals.length === 0) {
       await setSupplyMeta(DB, row.id, { img_rehost_done: '1' }).catch(() => {})
@@ -304,7 +309,8 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
 
     const meta = metaMap.get(row.id) || {}
     const tries = Number(meta.img_rehost_tries || 0)
-    const lastTry = tries + 1 >= MAX_TRIES  // 이번이 마지막 시도 → 못 옮긴 외부 URL 은 깨진 것으로 판정·제거
+    const lastTry = isDemo && tries + 1 >= MAX_TRIES  // 이번이 마지막 시도 → 못 옮긴 외부 URL 은 깨진 것으로 판정·제거(데모만)
+    const giveUp = !isDemo && tries + 1 >= MAX_TRIES   // 실상품: 지우지 않고 종결 마킹만
 
     // 외부 URL → R2 이관 매핑(중복 URL 은 1회만 fetch). rehostImageToR2 는 fetch+검증(image/*·크기)
     //   포함이라 성공=성한 사진, 실패=도달불가/비이미지(=깨진 후보).
@@ -317,7 +323,7 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
       //   "깨진 외부"로 판정돼 갤러리에서 제거된다(의도된 경로).
       if (isBlockedPhotoUrl(u)) continue
       fetches++
-      const hosted = await rehostImageToR2(bucketEnv, u, 'demo-image-rehost')
+      const hosted = await rehostImageToR2(bucketEnv, u, isDemo ? 'demo-image-rehost' : 'real-hotlink-rehost', isDemo ? 'uploads/demo' : 'uploads/rehost')
       if (hosted) mapping.set(u, hosted)
     }
     // URL 해석기: 이관 성공→R2, 내부(/api/media)→그대로, 그 외 외부→(마지막 시도면 깨진 것으로 제거).
@@ -336,7 +342,7 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
     }
 
     let healRefetched = false
-    if (rebuilt.length === 0 && lastTry) {
+    if (isDemo && rebuilt.length === 0 && lastTry) {
       // 🩹 모든 사진이 깨짐(전부 도달불가) → 대표사진을 다시 받아 복구(회당 1회, heal 라운드 캡).
       const rounds = Number(meta.img_heal_rounds || 0)
       if (rounds < 2 && row.restaurant_name) {
@@ -386,11 +392,11 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
     if (mapping.size > 0) { result.migrated++; result.images += mapping.size }
 
     // 종결/재시도 판정: 잔여 외부(미이관·미제거) 없으면 종결. heal 재조회했으면 새 외부 URL 이관 위해 계속.
-    const remainingExternal = rebuilt.some((u) => isExternalImageUrl(u))
+    const remainingExternal = rebuilt.some((u) => isDemo ? isExternalImageUrl(u) : isHotlinkBlockedUrl(u))
     if (!remainingExternal) {
       await setSupplyMeta(DB, row.id, { img_rehost_done: '1' }).catch(() => {})
       result.done++
-    } else if (lastTry && !healRefetched) {
+    } else if ((lastTry && !healRefetched) || giveUp) {
       // 마지막 시도인데 여전히 외부 남음(=깨진 건 이미 제거, 남은 건 이관 실패한 성한 URL) → 종결(다음 순환에서 재시도되게 tries 리셋).
       await setSupplyMeta(DB, row.id, { img_rehost_done: '1' }).catch(() => {})
       result.done++

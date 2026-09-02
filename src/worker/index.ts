@@ -306,7 +306,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload';
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { isMobileUserAgent } from '../shared/detail-hero-image'; // 한 줄: 파일크기 래칫(2685) 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -775,7 +775,7 @@ app.use('*', async (c, next) => {
             // 🖼️ 2026-07-02 [UNLOCK_LOADING]: 상세 히어로는 프리로드 스캐너를 못 타 렌더 뒤에야
             //   다운로드가 시작됐다. 표면별 URL 형태·함정은 헬퍼 주석에(불일치 시 이중 다운로드).
             if (ssrSlot === 'DETAIL') {
-              const heroLink = buildDetailHeroPreloadLink(ssrPayload, url.pathname.startsWith('/vouchers/'));
+              const heroLink = buildDetailHeroPreloadLink(ssrPayload, url.pathname.startsWith('/vouchers/'), isMobileUserAgent(c.req.header('user-agent')));
               if (heroLink) el.append(heroLink, { html: true });
             }
             // 🖼️ 2026-08-27 [UNLOCK_LOADING]: 홈 첫 화면 카드도 상세 히어로와 같은 병목이었다
