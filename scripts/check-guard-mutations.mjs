@@ -7416,6 +7416,26 @@ canvas {
       '브랜드가 이미 선택된 채 들어오면(공유 링크·재진입) 목록은 걸러져 있는데 그 이유가 화면에 ' +
       '안 보인다. 접기를 넣으면서 같이 생기는 사각지대라 못으로 박는다.',
   },
+  {
+    name: '🏨 숙소 달력 연박이 다시 막힌다 (체크아웃 단계가 죽음)',
+    file: 'src/pages/stay-detail/StayDateGuestPicker.tsx',
+    find: "  if (phase === 'out' && day > draftIn) return { draftIn, draftOut: day, phase: 'in' }",
+    replace: '',
+    test: 'src/tests/unit/stay-detail-pc-booking-panel.test.ts',
+    why:
+      '초기값이 늘 체크인+1박이라 "범위가 잡혔으면 새 체크인" 규칙으로는 체크아웃을 영영 못 찍었다. ' +
+      '이 한 줄이 없으면 그 상태로 돌아가는데 화면에선 에러가 없다.',
+  },
+  {
+    name: '🏨 숙소 달력이 다시 카카오맵 아래로 깔린다 (아사이드 z 제거)',
+    file: 'src/pages/StayDetailPage.tsx',
+    find: 'lg:sticky lg:top-[116px] lg:z-20">',
+    replace: 'lg:sticky lg:top-[116px]">',
+    test: 'src/tests/unit/stay-detail-pc-booking-panel.test.ts',
+    why:
+      'sticky 는 스택 컨텍스트를 만들고 z 가 없으면 지도 레이어(z≥1) 아래로 깔린다. 클래스 하나라 ' +
+      '정리하다 지우기 쉽다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
