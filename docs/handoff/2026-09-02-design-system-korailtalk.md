@@ -47,3 +47,6 @@
 1. **교환권 페이지(`/vouchers`)** — 대표 *"교환권페이지 아직 수정 안된거지? 브랜드도 접혀있고 말이야"*. 새 체계(칩 흰/블루·선 아이콘·카드 테두리 0)가 아직 안 갔다. 브랜드 스트립 기본 접기는 2026-09-01 대표 승인("나안")인데 오늘 다시 언급했다 — **펼쳐 둘지 먼저 확인**. `VouchersPage.tsx` 는 로딩 잠금(SSR 즉시 소비·기본 정렬·이미지 속성 byte-불변) + 981줄 동결.
 2. **유어샵(`/u/{handle}`)** — 대표 *"유어샵 부분도 수정이 안된 것 같네?"*. `CuratorPage`/`SellerPublicPage` 표면에 새 체계 미적용. 링크샵 소유권 가드(`check-linkshop-ownership`) 건드리지 말 것.
 3. `PaymentSuccessPage`(Toss 잠금 — 허가 필요) · 홈 카테고리 칩(`RestaurantMapPage` list 모드 상단 탭은 밑줄 탭이라 이미 조용함) · DesktopTopNav 아이콘.
+- **PC 홈 안A(라이트 섬)** — 위 §8. `tailwind.config` darkMode variant + `.light-island` + 패널 3곳. 가드 `home-panel-light-island.test.ts` 3건 + 매니페스트 2건. 하네스 다크 렌더 확인(`pchome-island-dark.png`).
+- **셀프 구매 보상 차단** — `isSelfReferral`(gb-purchase-guards) `/join` 배선, STAGING P12. 머니 경로(귀속 차단만).
+- **대표 확정(구현 대기)**: 유어샵 안3(왼정렬 헤더·반반 버튼·칩, 주인 띠 삭제, 방문자는 편집 버튼만 안 보임·팔로우 추가 금지; 07-07 에 뺐던 아바타·스탯이 안3 에 있음 — 보고에 명시) · 교환권 B안(칩+브랜드 펼침·실제 로고) · PC 마이(왼쪽 메뉴+오른쪽 내용, 보라 그라디언트 삭제) · 셀러 B안(잉크 사이드바 유지+콘텐츠 체계화, 화이트 고정).

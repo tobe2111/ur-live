@@ -115,7 +115,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
   if (isLoading && visible.length === 0) {
     return (
       <>
-        <section className="ur-home-panel" aria-hidden="true">
+        <section className="ur-home-panel light-island" aria-hidden="true">
           <div className="h-[22px] w-40 rounded bg-gray-100 dark:bg-white/[0.06] mb-1" />
           <div className="h-[15px] w-56 rounded bg-gray-100 dark:bg-white/[0.06] mb-3" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4">
@@ -148,7 +148,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
           <Fragment key={sec.id}>
           {/* 📐 가로 여백은 홈 컨테이너가 준다 — 여기서 또 주면 좌우가 어긋난다. */}
           {/* 📐 2026-08-17 (대표 — 컴팩트): 섹션 하단 여백·제목·그리드 gap 축소(피드 그리드와 동일 톤). */}
-          <section className="ur-home-panel">
+          <section className="ur-home-panel light-island">
             <div className="flex items-end justify-between gap-4 mb-3">
               <div className="min-w-0">
                 <h3 className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">

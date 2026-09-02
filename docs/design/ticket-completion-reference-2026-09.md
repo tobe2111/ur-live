@@ -129,3 +129,17 @@ C 글자만) 중 B 확정.
 
 테마 가드(`check-theme-consistency`)는 `light-fixed` 주석 줄을 면제한다 — **지도 위에만** 쓸 것.
 가드: `src/tests/unit/map-chips-b.test.ts` 5묶음 + 주입 매니페스트 3건(되돌려-검증 빨간불 확인).
+
+## 8. PC 홈 다크 모드 — 안A "패널은 흰색" (2026-09-02 대표 확정)
+
+대표가 다크 PC 홈을 보내며 *"색 조합 배치가 가장 이상적인 게 맞을까? 흰색이 없네?"*. 실제 화면에 CSS 만 얹은
+세 안(A 다크에서도 패널 흰색 / B 홈 라이트 고정 / C 잉크 크라운) 중 **A 확정**.
+
+라이트 PC 홈은 8월 19일부터 잉크 색면(`--home-field` #16181C) 위 흰 패널(`.ur-home-panel`)이었다. 다크에선
+`.dark .ur-home-panel{background:#11141C}` 로 패널이 색면과 거의 같아져 층이 사라졌다. 그 규칙을 지우고, 패널 안의
+`dark:` 유틸을 통째로 끄는 **라이트 섬** 장치를 만들었다: `tailwind.config.js`
+`darkMode: ['variant', '&:is(.dark *):not(.light-island *)']` + 패널 3곳에 `light-island`. 섬 밖 출력은
+`:not(...)` 한 조각만 붙고 동작은 byte-동일. 헤더·내비·히어로는 다크 그대로(대표가 좋아한 어두운 바탕 유지).
+
+같은 장치가 지도 위 오버레이(§7)의 정본이 될 수 있다 — 지금은 `light-fixed` 주석으로 가드를 면제하는 방식이라,
+다음에 `MapTopBar` 를 만질 때 `light-island` 로 옮기면 주석 면제가 필요 없어진다.

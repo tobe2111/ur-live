@@ -7131,6 +7131,22 @@ canvas {
     test: 'src/tests/unit/map-chips-b.test.ts',
     why: '칩을 블루 하나로 정리해도 핀이 알록달록하면 정리가 무효다. 강조색은 하나, 자리는 선택뿐.',
   },
+  {
+    name: '홈 패널 라이트 섬 — darkMode variant 에서 예외가 사라진다',
+    file: 'tailwind.config.js',
+    find: "darkMode: ['variant', '&:is(.dark *):not(.light-island *)'],",
+    replace: "darkMode: 'class',",
+    test: 'src/tests/unit/home-panel-light-island.test.ts',
+    why: '2026-09-02 대표 확정 안A. 예외가 사라지면 패널 안 dark: 유틸이 다시 켜져 흰 패널 위에 흰 글자가 뜬다.',
+  },
+  {
+    name: '홈 패널 라이트 섬 — 패널 한 곳에서 light-island 가 빠진다',
+    file: 'src/pages/pc-home/PcHomePage.tsx',
+    find: 'className="ur-home-panel light-island"',
+    replace: 'className="ur-home-panel"',
+    test: 'src/tests/unit/home-panel-light-island.test.ts',
+    why: '섬 클래스가 빠진 패널은 다크에서 흰 배경 + 다크 글자색이 섞여 안 보인다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

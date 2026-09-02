@@ -418,13 +418,18 @@
 .admin-light-theme,
 .seller-light-theme,
 .agency-light-theme,
-.force-light-theme {
+.force-light-theme,
+.light-island {
   color-scheme: light;
 }
+/* 🏝️ 2026-09-02 `.light-island` — 배경이 테마와 무관하게 정해진 자리(홈 패널·지도 위). 안쪽의 모든 `dark:` 유틸이
+   꺼진다(tailwind.config `darkMode: ['variant', '&:is(.dark *):not(.light-island *)']`). 위 force-light-theme 는
+   입력 글자만 지키고 `dark:` 유틸은 못 끄므로 둘은 다른 도구다. 지도 위 `light-fixed` 주석 방식보다 이쪽이 정본. */
 .admin-light-theme input, .admin-light-theme textarea, .admin-light-theme select,
 .seller-light-theme input, .seller-light-theme textarea, .seller-light-theme select,
 .agency-light-theme input, .agency-light-theme textarea, .agency-light-theme select,
-.force-light-theme input, .force-light-theme textarea, .force-light-theme select {
+.force-light-theme input, .force-light-theme textarea, .force-light-theme select,
+.light-island input, .light-island textarea, .light-island select {
   color-scheme: light;
   color: #16181C !important;
   -webkit-text-fill-color: #16181C !important;
@@ -984,7 +989,9 @@ html.dark .gbd {
 /* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면 홈): 잉크 색면 위에 뜨는 **흰 패널**.
    그루폰 홈이 초록 배경 위에 흰 카드 패널을 얹는 그 구조를 우리 색면(--home-field)으로 한다.
    ⚠️ PC 메인 전용 — 다른 페이지는 흰 배경이라 이 클래스를 쓰지 않는다.
-   다크모드에서도 색면은 그대로(이미 어두운 색)이고 패널만 어두운 서피스로 바꾼다. */
+   🌗 2026-09-02 (대표 확정 "안A · 다크에서도 패널은 흰색"): 다크에서 패널이 색면과 거의 같은 남색이 되어
+   층이 사라지고 사진이 놓일 흰 자리가 없었다(대표 "흰색이 없네?"). 패널은 테마와 무관하게 흰색이다 —
+   마크업의 `light-island` 클래스가 안쪽 `dark:` 유틸을 끈다(tailwind.config darkMode variant). */
 .ur-home-panel {
   background: #fff;
   border-radius: 18px;
@@ -992,7 +999,6 @@ html.dark .gbd {
   margin-bottom: 20px;
   box-shadow: 0 1px 2px rgba(10, 11, 14, .06), 0 8px 24px -12px rgba(10, 11, 14, .30);
 }
-.dark .ur-home-panel { background: #11141C; box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6); }
 @media (max-width: 1023px) { .ur-home-panel { padding: 14px; border-radius: 14px; margin-bottom: 14px; } }
 
 /* ✨ 카드가 색면 위에서 살짝 떠오르는 인터랙션(대표 — "버튼 나타날 때 효과") */

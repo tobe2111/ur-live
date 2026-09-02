@@ -857,6 +857,8 @@ WebFetch 도 403(봇 차단)이라 스펙 확인은 대표 화면 확인이 필�
 - **지도 위 칩**(`MapTopBar`·`SheetFilterBar`, 2026-09-02 대표 "B안"): `urdeal-icons.tsx` 의 **선 아이콘**(`GridIcon`·`MealLineIcon`·`BeautyLineIcon`·`StayLineIcon`·`TicketStubIcon`, voucher-types `icon` 필드). 채색 타일은 카드·완료 화면용이고 지도 위엔 단색이다.
 - 유틸리티(화살표·닫기·검색·복사)만 lucide, 획 1.6. **새 화면에 lucide 로 카테고리/서비스/탭 아이콘을 그리지 말 것.**
 
+**🏝️ 라이트 섬 `light-island` (2026-09-02 대표 확정 "안A · 다크에서도 패널은 흰색")** — 배경이 테마와 무관하게 정해진 자리(잉크 색면 위 홈 패널 `ur-home-panel`, 지도 타일 위 오버레이)는 이 클래스 하나로 안쪽 `dark:` 유틸을 전부 끈다(`tailwind.config` `darkMode: ['variant', '&:is(.dark *):not(.light-island *)']`, 섬 밖 출력은 byte-동일). 손으로 `dark:` 를 빼거나 `!important` 로 덮지 말 것. 가드: `home-panel-light-island.test.ts` + 주입 매니페스트 2건.
+
 **🗺️ 지도 위 UI 는 테마를 따르지 않는다 (2026-09-02 대표 신고 "색깔이 눈에 잘 안 들어와" · "눌렀는지 확인도 안 돼")** — 카카오 지도 타일은 다크에서도 밝다. 그 위 오버레이(칩·검색바·현위치 버튼·핀)는 **흰 표면 고정 + 선택/활성 = 브랜드 블루 면**, 핀 링은 잉크 하나(선택·라이브만 블루). `dark:bg-[#11141C]` 를 지도 위에 주지 말 것 — 테마 가드는 그 줄에 `light-fixed` 주석으로 면제한다(지도 위에만 허용). 가드: `map-chips-b.test.ts` + 주입 매니페스트 3건.
 
 ⚠️ 2026-08-30 "완전 검정"·2026-07-19 "웜 로즈·크림" 결정은 **이 절로 대체**됐다. 아래 audit log 의 로즈/크림/#0D0F12 표기는 작성 당시 기록이다(소급 수정 X).

@@ -105,10 +105,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
   // 🛡️ 2026-05-21 Phase D-3: 자기 자신 attribution 차단 (셀러가 본인 링크로 매출 인플레이션).
   const refRaw = ref ? String(ref).trim() : ''
   let referralInfluencerId = refRaw && /^[a-zA-Z0-9_\-:]{1,64}$/.test(refRaw) ? refRaw : ''
-  // 💸 2026-09-02 (대표 "자신의 고유링크로 이용권 구매했을 때 보상이 되면 안돼"): users.id 뿐 아니라
-  //   본인에게 연결된 sellers.id 로 온 ref 도 본인이다 → isSelfReferral(gb-purchase-guards). 구매는 그대로, 귀속만 버린다.
   if (referralInfluencerId && await isSelfReferral(DB, referralInfluencerId, userId)) {
-    referralInfluencerId = ''  // 자기 자신 → silent ignore (에러 안 띄움)
+    referralInfluencerId = ''  // 본인(users.id 또는 연결 sellers.id, 2026-09-02) → 귀속만 버림. 근거: gb-purchase-guards
   }
   // 존재 검증 — 가짜 ID (?seller=999999) 차단. sellers 또는 users 둘 다 허용.
   if (referralInfluencerId) {

@@ -22,7 +22,11 @@ const MONO = INK
 export default {
   // 🛡️ 2026-05-02: 화이트 테마 페이지 사용자 토글 다크 모드 (CLAUDE.md A안).
   //   `dark` 클래스는 useTheme 스토어에서 <html> 에 적용. 시스템 기본값 = system 모드.
-  darkMode: 'class',
+  // 🌗 2026-09-02 (대표 확정 "안A · 다크에서도 패널은 흰색"): `dark:` 유틸은 **.light-island 안에서는 꺼진다**.
+  //   배경이 늘 정해진 자리(잉크 색면 위 홈 패널, 지도 타일 위 오버레이)는 테마를 따르면 안 되는데,
+  //   그동안은 그런 자리마다 `dark:` 를 손으로 빼거나 !important 로 덮었다. 이제 섬(island) 한 클래스로 끝난다.
+  //   기존 동작: `.dark\:x:is(.dark *)` → 이제 `:not(.light-island *)` 만 붙는다(섬 밖은 byte-동일).
+  darkMode: ['variant', '&:is(.dark *):not(.light-island *)'],
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
