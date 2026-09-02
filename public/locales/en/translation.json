@@ -5259,7 +5259,9 @@
     "save": "Save",
     "ariaToggleOn": "Turn on {{label}}",
     "ariaToggleOff": "Turn off {{label}}",
-    "language": "Language"
+    "language": "Language",
+    "phoneRequired": "Enter your phone number — vouchers and alerts are sent there",
+    "phoneInvalid": "Check the phone number format (010-0000-0000)"
   },
   "productDetail": {
     "retry": "Retry",
@@ -6105,7 +6107,8 @@
     "preparing": "[TODO:en] 배송준비",
     "shipping": "[TODO:en] 배송중",
     "delivered": "[TODO:en] 배송완료",
-    "review": "[TODO:en] 리뷰"
+    "review": "[TODO:en] 리뷰",
+    "cancelledRefunded": "Cancelled/Refunded"
   },
   "stays": {
     "searchTitle": "🏨 Stay Vouchers",
@@ -6796,5 +6799,12 @@
   "frameRails": {
     "valShop": "Your pass showcase, UrShop",
     "valShopDesc": "It's already open when you sign up"
+  },
+  "voucherStatus": {
+    "sectionTitle": "My Passes",
+    "bought": "Purchased",
+    "usable": "Available",
+    "used": "Used",
+    "gone": "Expired/Refunded"
   }
 }

@@ -5259,7 +5259,9 @@
     "save": "저장",
     "ariaToggleOn": "{{label}} 켜기",
     "ariaToggleOff": "{{label}} 끄기",
-    "language": "언어"
+    "language": "언어",
+    "phoneRequired": "전화번호를 입력해주세요 — 교환권·알림톡이 이 번호로 갑니다",
+    "phoneInvalid": "전화번호 형식을 확인해주세요 (010-0000-0000)"
   },
   "productDetail": {
     "retry": "다시 시도",
@@ -5661,7 +5663,8 @@
     "preparing": "배송준비",
     "shipping": "배송중",
     "delivered": "배송완료",
-    "review": "리뷰"
+    "review": "리뷰",
+    "cancelledRefunded": "취소·환불"
   },
   "checkout": {
     "header": {
@@ -6792,5 +6795,12 @@
   "frameRails": {
     "valShop": "내 이용권 진열대, 유어샵",
     "valShopDesc": "가입하면 이미 열려 있어요"
+  },
+  "voucherStatus": {
+    "sectionTitle": "이용권 현황",
+    "bought": "구매완료",
+    "usable": "사용가능",
+    "used": "사용완료",
+    "gone": "만료·환불"
   }
 }

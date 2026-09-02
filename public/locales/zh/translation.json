@@ -5259,7 +5259,9 @@
     "save": "保存",
     "ariaToggleOn": "开启 {{label}}",
     "ariaToggleOff": "关闭 {{label}}",
-    "language": "语言"
+    "language": "语言",
+    "phoneRequired": "请输入手机号 — 兑换券和通知将发送到该号码",
+    "phoneInvalid": "请检查手机号格式 (010-0000-0000)"
   },
   "productDetail": {
     "retry": "重试",
@@ -6052,7 +6054,8 @@
     "preparing": "[TODO:zh] 배송준비",
     "shipping": "[TODO:zh] 배송중",
     "delivered": "[TODO:zh] 배송완료",
-    "review": "[TODO:zh] 리뷰"
+    "review": "[TODO:zh] 리뷰",
+    "cancelledRefunded": "取消/退款"
   },
   "groupBuy.title": "Group Buy",
   "groupBuy.bannerHeadline": "Better prices, together",
@@ -6796,5 +6799,12 @@
   "frameRails": {
     "valShop": "我的使用券展台，UrShop",
     "valShopDesc": "注册后就已经开好了"
+  },
+  "voucherStatus": {
+    "sectionTitle": "使用券状态",
+    "bought": "已购买",
+    "usable": "可使用",
+    "used": "已使用",
+    "gone": "过期/退款"
   }
 }

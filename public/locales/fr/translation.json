@@ -5259,7 +5259,9 @@
     "save": "Enregistrer",
     "ariaToggleOn": "Activer {{label}}",
     "ariaToggleOff": "Désactiver {{label}}",
-    "language": "Langue"
+    "language": "Langue",
+    "phoneRequired": "Saisissez votre téléphone — bons et alertes y sont envoyés",
+    "phoneInvalid": "Vérifiez le format du téléphone (010-0000-0000)"
   },
   "productDetail": {
     "retry": "Réessayer",
@@ -6052,7 +6054,8 @@
     "preparing": "[TODO:fr] 배송준비",
     "shipping": "[TODO:fr] 배송중",
     "delivered": "[TODO:fr] 배송완료",
-    "review": "[TODO:fr] 리뷰"
+    "review": "[TODO:fr] 리뷰",
+    "cancelledRefunded": "Annulé/Remboursé"
   },
   "groupBuy.title": "Group Buy",
   "groupBuy.bannerHeadline": "Better prices, together",
@@ -6796,5 +6799,12 @@
   "frameRails": {
     "valShop": "Votre vitrine de pass, UrShop",
     "valShopDesc": "Déjà ouverte dès votre inscription"
+  },
+  "voucherStatus": {
+    "sectionTitle": "Mes Pass",
+    "bought": "Achetés",
+    "usable": "Disponibles",
+    "used": "Utilisés",
+    "gone": "Expirés/Remboursés"
   }
 }

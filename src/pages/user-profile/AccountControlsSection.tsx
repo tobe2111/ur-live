@@ -235,6 +235,22 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
 
   async function save() {
     if (!form.name.trim()) { toast.error(t('accountSettings.nameRequired', { defaultValue: '이름을 입력해주세요' })); return }
+    /**
+     * 📞 2026-09-02 (대표 "프로필 수정에서 전화번호 입력은 필수로 둬줘")
+     *
+     * 이 서비스에서 전화번호는 선택 정보가 아니다 — 교환권은 **MMS 로 그 번호에 발송**되고
+     * 이용권 사용·주문 안내도 알림톡으로 간다. 번호가 없으면 산 물건이 도착할 곳이 없다.
+     * (교환권 결제 경로는 서버가 이미 `PHONE_REQUIRED` 로 막지만, 그건 **결제 순간**이라
+     *  사용자는 계산대 앞에서야 알게 된다. 프로필에서 미리 받아 그 벽을 없앤다.)
+     *
+     * ⚠️ 형식까지 본다 — 빈칸만 막으면 "010" 한 글자로도 통과해 같은 문제가 남는다.
+     *   `formatPhone` 이 하이픈을 넣으므로 하이픈 포함 010-0000-0000 형태를 받는다.
+     */
+    const phone = form.phone.trim()
+    if (!phone) { toast.error(t('accountSettings.phoneRequired', { defaultValue: '전화번호를 입력해주세요 — 교환권·알림톡이 이 번호로 갑니다' })); return }
+    if (!/^01[016789]-?\d{3,4}-?\d{4}$/.test(phone)) {
+      toast.error(t('accountSettings.phoneInvalid', { defaultValue: '전화번호 형식을 확인해주세요 (010-0000-0000)' })); return
+    }
     setLoading(true)
     try {
       const res = await api.patch('/api/auth/profile', { name: form.name.trim(), phone: form.phone.trim() })
@@ -277,10 +293,10 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
           </div>
           <div>
             <label htmlFor="account-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
-              {t('accountSettings.editPhone', { defaultValue: '전화번호' })}
+              {t('accountSettings.editPhone', { defaultValue: '전화번호' })} <span className="text-red-500" aria-hidden="true">*</span>
             </label>
             <input
-              id="account-phone" type="tel" inputMode="numeric" value={form.phone}
+              id="account-phone" type="tel" required inputMode="numeric" value={form.phone}
               onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))}
               maxLength={13}
               className="w-full px-4 py-3 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
