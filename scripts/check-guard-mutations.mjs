@@ -701,8 +701,9 @@ const MUTATIONS = [
   {
     name: '🗄️ 백업이 다시 시간당 1회로 줄어든다(전체 스냅샷 60시간 → 일 1회 불가)',
     file: 'src/worker/scheduled.ts',
-    find: '[5, 20, 35, 50].some((m) => slotDue(event.scheduledTime, { minute: m }))',
-    replace: 'slotDue(event.scheduledTime, { minute: 50 })',
+    // 📉 2026-09-02: `*/5` 슬롯 배열은 제거됐다(전용 트리거와 중복 — 하루 110만 행). 이제 좌표는 전용 트리거의 분 목록.
+    find: "cron === '2,17,32,47 * * * *' ||",
+    replace: "cron === '2 * * * *' ||",
     test: 'src/tests/unit/backup-cadence.test.ts',
     why:
       '실측: cron 1회차가 약 12,500행이고 유어애즈 DB 는 약 754,000행이다. 시간당 1회면 **60시간** — ' +
