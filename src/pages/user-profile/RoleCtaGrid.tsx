@@ -64,7 +64,7 @@ export default function RoleCtaGrid() {
     <Link
       key={c.to}
       to={c.to}
-      className={`flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#1A1C21] transition-colors min-w-0 ${
+      className={`flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#1D1F29] transition-colors min-w-0 ${
         i > 0 ? 'border-t border-gray-50 dark:border-[#2C2F35]' : ''
       }`}
     >
@@ -88,7 +88,7 @@ export default function RoleCtaGrid() {
           <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2 px-1">
             {t('roleCta.myShortcuts', { defaultValue: '내 바로가기' })}
           </p>
-          <div className="rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
+          <div className="rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
             {dashboardItems.map((c, i) => Row(c, i))}
           </div>
         </div>
@@ -98,7 +98,7 @@ export default function RoleCtaGrid() {
           <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2 px-1">
             {t('roleCta.startNewRole', { defaultValue: '추가 역할로 시작하기' })}
           </p>
-          <div className="rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35] overflow-hidden">
+          <div className="rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] overflow-hidden">
             {signupItems.map((c, i) => Row(c, i))}
           </div>
         </div>

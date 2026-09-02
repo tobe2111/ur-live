@@ -54,7 +54,7 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
       onMouseEnter={() => prefetchProduct(p.id)}
       onTouchStart={() => prefetchProduct(p.id)}
       onFocus={() => prefetchProduct(p.id)}
-      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]"
+      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35]"
     >
       {/* 🎨 이미지 영역 — 상세와 동톤(은은한 그라데이션). dominant_color 있으면 로딩 플레이스홀더로(잠금). */}
       <div
@@ -101,7 +101,7 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
         <div className="flex items-baseline gap-1 mt-1">
           {/* 🖥️ 2026-07-16 (대표 — 할인 % 나와야지): 가격 옆에 할인율 코랄레드로 명시. */}
           {discountRate > 0 && (
-            <span className="text-[15px] font-extrabold text-brand dark:text-[#EF6E85] tracking-tight">{discountRate}%</span>
+            <span className="text-[15px] font-extrabold text-brand dark:text-[#4D8DF5] tracking-tight">{discountRate}%</span>
           )}
           <span className="text-[16px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
           <span className="text-[12px] font-bold text-[#171B24] dark:text-white">딜</span>
@@ -191,7 +191,7 @@ export const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: Vouche
         <p className="text-[14px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white">{p.name}</p>
         <div className="flex items-baseline gap-1 mt-1">
           {discountRate > 0 && (
-            <span className="text-[15px] font-extrabold text-brand dark:text-[#EF6E85] tracking-tight">{discountRate}%</span>
+            <span className="text-[15px] font-extrabold text-brand dark:text-[#4D8DF5] tracking-tight">{discountRate}%</span>
           )}
           <span className="text-[17px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
           <span className="text-[12px] font-bold text-[#171B24] dark:text-white">딜</span>

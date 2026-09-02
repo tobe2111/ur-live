@@ -78,7 +78,7 @@ export default function ConditionalDealsSection() {
   if (!loaded || deals.length === 0) return null
 
   return (
-    <div className="bg-white dark:bg-[#0D0F12] border border-amber-200 dark:border-amber-900/40 rounded-xl p-4 space-y-3">
+    <div className="bg-white dark:bg-[#11141C] border border-amber-200 dark:border-amber-900/40 rounded-xl p-4 space-y-3">
       <div className="flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-amber-500" />
         <h3 className="text-sm font-bold text-gray-900 dark:text-white">조건부 우대 커미션 제안</h3>
@@ -128,7 +128,7 @@ export default function ConditionalDealsSection() {
                     value={urlById[d.id] || ''}
                     onChange={(e) => setUrlById((m) => ({ ...m, [d.id]: e.target.value }))}
                     placeholder="https://blog.naver.com/..."
-                    className="flex-1 rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] px-3 py-2 text-sm text-gray-900 dark:text-white"
+                    className="flex-1 rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] px-3 py-2 text-sm text-gray-900 dark:text-white"
                   />
                   <button
                     type="button"

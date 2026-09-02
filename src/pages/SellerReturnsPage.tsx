@@ -45,7 +45,7 @@ interface ReturnRow {
 
 /** 재사용 요소 팔레트〔시안〕. 모르는 상태는 회색으로 떨군다(추측한 색을 칠하지 않는다). */
 const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
-  requested: { label: '대기', cls: 'text-[#B0576A] bg-[#FBEDF0]' },
+  requested: { label: '대기', cls: 'text-[#B0576A] bg-[#EAF1FE]' },
   approved: { label: '승인함', cls: 'text-[#2E7D5B] bg-[#E6F3EC]' },
   rejected: { label: '거절함', cls: 'text-[#8A8288] bg-[#F1EDEF]' },
   refunded: { label: '환불완료', cls: 'text-[#2E7D5B] bg-[#E6F3EC]' },

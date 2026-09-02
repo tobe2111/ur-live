@@ -133,7 +133,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#0D0F12] w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92dvh]"
+        className="bg-white dark:bg-[#11141C] w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92dvh]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="welcome-title"
@@ -202,7 +202,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                   </div>
                 </div>
                 {couponClaimed ? (
-                  <div className="mt-3 px-3 py-2 bg-white dark:bg-[#0D0F12] rounded-xl text-center text-[13px] font-bold text-pink-600 flex items-center justify-center gap-1">
+                  <div className="mt-3 px-3 py-2 bg-white dark:bg-[#11141C] rounded-xl text-center text-[13px] font-bold text-pink-600 flex items-center justify-center gap-1">
                     <Check className="w-4 h-4" /> {t('welcomeOnboarding.couponClaimed', { defaultValue: '발급 완료!' })}
                   </div>
                 ) : (
@@ -238,7 +238,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                       className={`flex flex-col items-center gap-1 px-2 py-3 rounded-2xl border-2 transition-all ${
                         selected
                           ? 'bg-pink-50 border-pink-500 shadow-sm'
-                          : 'bg-white dark:bg-[#0D0F12] border-gray-200 dark:border-[#2C2F35]'
+                          : 'bg-white dark:bg-[#11141C] border-gray-200 dark:border-[#2C2F35]'
                       }`}
                     >
                       <c.Icon className="w-6 h-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
@@ -268,12 +268,12 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
               <button
                 onClick={() => setAlimtalkOptIn(!alimtalkOptIn)}
                 className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
-                  alimtalkOptIn ? 'bg-yellow-50 border-yellow-400' : 'bg-white dark:bg-[#0D0F12] border-gray-200 dark:border-[#2C2F35]'
+                  alimtalkOptIn ? 'bg-yellow-50 border-yellow-400' : 'bg-white dark:bg-[#11141C] border-gray-200 dark:border-[#2C2F35]'
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                    alimtalkOptIn ? 'bg-yellow-400' : 'bg-gray-100 dark:bg-[#1A1C21]'
+                    alimtalkOptIn ? 'bg-yellow-400' : 'bg-gray-100 dark:bg-[#1D1F29]'
                   }`}>
                     <span className="text-xl">💬</span>
                   </div>

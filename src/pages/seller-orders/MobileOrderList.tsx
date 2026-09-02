@@ -97,9 +97,9 @@ export default function MobileOrderList({
     <div className="md:hidden">
       {/* 요약 — 로즈는 "지금 처리해야 하는 것"에만 쓴다〔시안 §3.1〕 */}
       <div className="flex gap-2">
-        <div className="flex-1 rounded-xl bg-[#FBEDF0] px-[13px] py-3">
+        <div className="flex-1 rounded-xl bg-[#EAF1FE] px-[13px] py-3">
           <p className="text-[11.5px] font-bold text-[#B0576A] tracking-[-0.02em]">오늘 픽업</p>
-          <p className="mt-[3px] text-[21px] font-extrabold text-[#C43D55] tracking-[-0.04em]">{todayCount}건</p>
+          <p className="mt-[3px] text-[21px] font-extrabold text-[#1557CC] tracking-[-0.04em]">{todayCount}건</p>
         </div>
         <div className="flex-1 rounded-xl bg-[#F5F2F3] px-[13px] py-3">
           <p className="text-[11.5px] font-bold text-[#776F74] tracking-[-0.02em]">전달 완료</p>
@@ -148,7 +148,7 @@ export default function MobileOrderList({
                         {o.shipping_name || o.user_name || '-'}
                       </span>
                       <span className={`shrink-0 text-[10.5px] font-extrabold px-[7px] py-1 rounded-md tracking-[-0.02em] ${
-                        handed ? 'text-[#6B6469] bg-[#F1EDEF]' : 'text-[#B0576A] bg-[#FBEDF0]'
+                        handed ? 'text-[#6B6469] bg-[#F1EDEF]' : 'text-[#B0576A] bg-[#EAF1FE]'
                       }`}>
                         {handed ? '전달 완료' : '픽업 대기'}
                       </span>

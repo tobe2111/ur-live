@@ -215,7 +215,7 @@ export default function DesktopTopNav() {
   const isMapSurface = location.pathname === '/map'
 
   return (
-    <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
+    <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
       {/* 📐 2026-08-19: 검색바가 46px 로 커져 행 높이도 56→68px(그루폰 헤더 비율). */}
       <div className={isHome
         ? 'flex items-center gap-4 h-[68px] max-w-[1440px] mx-auto w-full px-6 lg:px-8'
@@ -245,7 +245,7 @@ export default function DesktopTopNav() {
                 <Icon className={`w-4 h-4 ${active ? 'text-gray-900 dark:text-white' : ''}`} strokeWidth={active ? 2 : 1.5} />
                 <span>{item.label}</span>
                 {active && (
-                  <span className="absolute -bottom-[14px] left-1/2 -translate-x-1/2 w-6 h-[2px] bg-gray-900 dark:bg-white rounded-full" />
+                  <span aria-hidden="true" className="absolute -bottom-[12px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-brand" />
                 )}
               </button>
             )
@@ -422,14 +422,15 @@ export default function DesktopTopNav() {
                     key={item.path}
                     onClick={() => navigate(item.path)}
                     aria-current={active ? 'page' : undefined}
-                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors ${
+                    className={`relative shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors ${
                       active
-                        ? 'text-brand'
+                        ? 'text-gray-900 dark:text-white'
                         : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
                     }`}
                   >
                     <Icon className="w-4 h-4" strokeWidth={active ? 2 : 1.6} />
                     {item.label}
+                    {active && <span aria-hidden="true" className="absolute -bottom-[3px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-brand" />}
                   </button>
                 )
               })}
@@ -445,14 +446,15 @@ export default function DesktopTopNav() {
                     key={key}
                     onClick={() => navigate(key === 'all' ? '/' : `/?category=${key}`)}
                     aria-current={active ? 'true' : undefined}
-                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors ${
+                    className={`relative shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors ${
                       active
-                        ? 'text-brand'
+                        ? 'text-gray-900 dark:text-white'
                         : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
                     }`}
                   >
                     <Icon className="w-4 h-4" strokeWidth={active ? 2 : 1.6} />
                     {label}
+                    {active && <span aria-hidden="true" className="absolute -bottom-[3px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-brand" />}
                   </button>
                 )
               })}
