@@ -507,7 +507,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   isPc 는 useMediaQuery 동기 초기화(첫 렌더부터 정확)라 모바일↔PC 브랜치 플래시 없음.
   if (isPc && !embedded) {
     return (
-      <div className="bg-white dark:bg-[#11141C] min-h-[100dvh]">
+      <div className="bg-warm dark:bg-[#11141C] min-h-[100dvh]">
         <SEO
           title={brand ? `${brand} 교환권 - 유어딜` : '교환권 - 유어딜'}
           description="스타벅스, GS25, 김밥천국 등 인기 브랜드 교환권을 딜로 구매하세요. 즉시 발송."
@@ -657,7 +657,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   100vh 는 주소창 포함 '큰 뷰포트'라 카카오톡 인앱/일부 안드로이드 웹뷰에서 fixed 하단 네비를
   //   화면 밖으로 밀어냄(CLAUDE.md 룰 #8). 정상 동작하는 홈(RestaurantMapPage)도 min-h-[100dvh] 사용.
   return (
-    <div className={embedded ? '' : 'bg-white dark:bg-[#11141C] pb-safe-nav md:pb-20 min-h-[100dvh]'}>
+    <div className={embedded ? '' : 'bg-warm dark:bg-[#11141C] pb-safe-nav md:pb-20 min-h-[100dvh]'}>
       {!embedded && (
         <SEO
           title={brand ? `${brand} 교환권 - 유어딜` : '교환권 - 유어딜'}
@@ -681,7 +681,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             🎫 2026-06-23 (대표 '가장 이상적으로'): 쇼핑 섹션에 있을 땐(activeTab==='shopping') 강제 숨김 —
             쇼핑의 sticky 카테고리 바(top-[45px] 동일 슬롯)와 겹치지 않게 '한 번에 한 카테고리 바'만 상단에. */}
       <div
-        className="sticky top-[45px] z-20 bg-white dark:bg-[#11141C]"
+        className="sticky top-[45px] z-20 bg-warm dark:bg-[#11141C]"
         style={{
           transform: (revealTop && activeTab !== 'shopping') ? 'translateY(0)' : 'translateY(-110%)',
           transition: 'transform 0.25s ease',
@@ -742,7 +742,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         <div className="h-[50px]" aria-hidden="true" />
       )}
       {sections.length > 0 && (
-        <div className="bg-warm/95 dark:bg-[#11141C]/95 backdrop-blur">
+        <div className="bg-warm dark:bg-[#11141C]">
           <div className="ur-content-wide px-4 lg:px-8 py-2.5">
             <div className="flex gap-2 overflow-x-auto no-scrollbar">
               {sections.map(s => {
