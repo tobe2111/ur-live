@@ -90,8 +90,8 @@ const MUTATIONS = [
   {
     name: '🚀 유어샵 상품 동봉이 빠져 마지막 왕복이 되살아난다(콘텐츠 완성이 다시 fetch 뒤로)',
     file: 'src/worker/routes/curator.routes.ts',
-    find: '      linked_seller_products: linkedSellerProducts,\n',
-    replace: '',
+    find: ', linked_seller_products: linkedSeller?.id ? await loadLinkedSellerProducts(c.env.DB, Number(linkedSeller.id)) : null,',
+    replace: ',',
     test: 'src/tests/unit/linkshop-products-seed.test.ts',
     why:
       '2026-09-02 실측: 셀러 시드 뒤에도 /api/products?seller_id 가 JS 실행 후 나가 콘텐츠 완성(0.9~1.6s)을 정했다. ' +

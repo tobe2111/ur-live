@@ -21,8 +21,10 @@ const API = readFileSync('src/features/curator/api/curator-api.ts', 'utf8')
 
 describe('① 서버 동봉', () => {
   it('linkedSeller 있으면 ProductService.getProducts({ sellerId }) 로 상품을 동봉한다', () => {
-    expect(ROUTE).toMatch(/new ProductService\(c\.env\.DB\)\.getProducts\(\{ sellerId: Number\(linkedSeller\.id\) \}, \{ page: 1, limit: 100 \}\)/)
-    expect(ROUTE).toMatch(/linked_seller_products: linkedSellerProducts,/)
+    // 조립은 `worker/utils/linkshop-seller-products`(래칫 때문에 분리) — 라우트는 그 함수를 응답에 배선한다.
+    const UTIL = readFileSync('src/worker/utils/linkshop-seller-products.ts', 'utf8')
+    expect(UTIL).toMatch(/new ProductService\(DB\)\.getProducts\(\{ sellerId \}, \{ page: 1, limit: 100 \}\)/)
+    expect(ROUTE).toMatch(/linked_seller_products: linkedSeller\?\.id \? await loadLinkedSellerProducts\(c\.env\.DB, Number\(linkedSeller\.id\)\) : null,/)
     expect(API).toMatch(/linked_seller_products\?: unknown\[\] \| null/)
   })
   it('limit 이 클라 요청(limit=100)과 같다 — 다르면 진열대에서 상품이 조용히 사라진다', () => {
