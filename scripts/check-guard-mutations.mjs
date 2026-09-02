@@ -7515,6 +7515,34 @@ canvas {
     why: '표면 규칙 ② 강조색 하나. 화면 구석의 노랑 원은 체계 밖 색이었다.',
   },
   {
+    name: 'PC 홈 히어로 — 위치 컨트롤이 다시 칩 둘로 쪼개진다',
+    file: 'src/pages/pc-home/PcHomeLocationBar.tsx',
+    find: "? 'inline-flex items-stretch h-8 rounded-full overflow-hidden bg-white text-[#16181C]'",
+    replace: "? 'flex items-center gap-2'",
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '2026-09-03 대표 "AI 느낌" 의 정체는 위계 부재였다. "어디를 볼까" 하나의 일이 같은 무게 알약 ' +
+      '둘로 쪼개지면 다시 그 화면이 된다.',
+  },
+  {
+    name: 'PC 홈 히어로 — 흰 칩이 블루 버튼과 같은 높이가 된다',
+    file: 'src/pages/pc-home/PcHomeLocationBar.tsx',
+    find: 'inline-flex items-stretch h-8 rounded-full',
+    replace: 'inline-flex items-stretch h-[38px] rounded-full',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '대표 확정 "한 단계 작게". 같은 높이면 화면에서 가장 밝은 흰 덩어리가 주 행동(블루)보다 먼저 ' +
+      '읽혀 위계가 뒤집힌다.',
+  },
+  {
+    name: 'PC 홈 히어로 — 주 행동이 다시 테두리 고스트 알약이 된다',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: 'rounded-full bg-brand text-white text-[13.5px] font-extrabold hover:bg-[#1557C8]',
+    replace: 'rounded-full border border-white/25 text-white text-[13.5px] font-extrabold hover:bg-white/10',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why: '표면 규칙 ② 강조색 하나, 자리 셋 — 히어로에서 그 자리는 주 행동이다. 블루가 빠지면 넷 다 같은 무게로 돌아간다.',
+  },
+  {
     name: '홈 패널 라이트 섬 — darkMode variant 에서 예외가 사라진다',
     file: 'tailwind.config.js',
     find: "darkMode: ['variant', '&:is(.dark *):not(.light-island *)'],",

@@ -88,7 +88,7 @@
 둥근 윗모서리가 사진에 그대로 물린다. 모바일 홈(RestaurantMapPage)은 다른 컴포넌트라 무접촉.
 검증: 홈 계약 테스트 59건 pass · 하네스 PC 렌더로 눈 확인.
 
-### 대기 중 — 히어로 컨트롤 시안 (대표 판단 필요)
+### 히어로 컨트롤 시안 → **확정·구현 완료** (2026-09-03)
 대표: *"여기 버튼들도 시안 받아볼 수 있을까? 지금 AI 느낌 나서"* (전국 ⌄ / 현 위치로 설정 / 지도에서 가까운 딜 보기 → / 사진 속 딜 보기 →).
 진단 다섯: ① 같은 무게 알약 셋 연속(위계 0) ② 위치라는 한 가지 일이 두 알약으로 쪼개짐 ③ 아이콘 셋 연달아(전부 "위치" 뜻)
 ④ 화살표 두 곳 ⑤ 주 행동에 브랜드 블루 없음(서비스 전체 규칙의 예외).
@@ -96,3 +96,19 @@
 시안 아티팩트: https://claude.ai/code/artifact/7b435a49-6ad5-415e-90cc-04ec0e2090eb
 바꿀 파일: `src/pages/pc-home/PcHomeLocationBar.tsx`(hero tone) · `src/components/home/HomeHeroDefault.tsx`.
 ⚠️ 같은 `LocationBar` 를 모바일 홈이 `tone="title"` 로 쓰므로 hero tone 만 건드릴 것.
+
+**대표 확정: "3 · 흰 면 · 한 단계 작게"** — 안1 구조(세그먼트 위치 알약 + 블루 주 버튼) 위에,
+위치 칩만 추가 시안 3안을 다시 받아 **흰 면 · 그림자 없음 · 높이 32(블루 38보다 한 단계 낮게)** 로 확정.
+
+구현(같은 PR #1323):
+- `PcHomeLocationBar.tsx` hero 분기 → 한 알약(`inline-flex items-stretch h-8 rounded-full overflow-hidden bg-white`)
+  안에 [지역 트리거][`w-px` 실선][현 위치 아이콘 버튼]. **`panel`/`title` tone 무접촉**, `현 위치로 설정`
+  문자열은 소스에 보존(`aria-label` + panel tone + `mobile-home.test.ts` 가 함께 본다).
+- `HomeHeroDefault.tsx` → 주 버튼 `h-[38px] bg-brand text-white` "지도에서 딜 찾기"(화살표·아이콘 0),
+  "사진 속 딜 보기 →" 는 사진 위 `absolute bottom-3 right-5` 로 이동, `ArrowRight/Map` import 제거.
+- 가드 `pc-home-hero-controls.test.ts` 6건 + 주입 3건(되돌려-검증 빨간불 확인).
+- 하네스 3종 확인: `--pc --deals`(사진 없음) · `--hero=<사진>`(사진 위 대비) · `--dark`.
+- 설계 SSOT: `docs/design/ticket-completion-reference-2026-09.md` §13.
+
+**다음 세션 첫 액션**: PR #1323 CI 초록 → 머지 → `main.yml` 배포 확인 →
+`curl -s https://urdeal.kr/ | grep -o '지도에서 딜 찾기'` 로 라이브 반영 판정 → Notion 개발 로그 1행.
