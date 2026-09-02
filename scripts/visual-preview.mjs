@@ -368,6 +368,13 @@ const ctx = await browser.newContext({
 // 외부 호스트 차단 — 이 환경의 프록시가 막아 타임아웃/오류 상태를 유발한다.
 await ctx.route('**/*', (r) => (r.request().url().startsWith(`http://127.0.0.1:${PORT}`) ? r.continue() : r.abort()))
 
+// 🌙 2026-09-02 정정: `--dark` 가 colorScheme 만 바꿔서 **한 번도 다크를 켠 적이 없었다** —
+//    index.html 부트 스크립트는 localStorage 가 null 이면 OS 설정을 무시하고 라이트를 고정한다
+//    (2026-05-16 "신규 사용자 default = light"). 그래서 `-dark.png` 가 라이트와 픽셀 동일했다.
+//    앱이 실제로 읽는 키를 심어야 다크가 뜬다.
+if (DARK) {
+  await ctx.addInitScript(() => { try { localStorage.setItem('ur_theme_mode_v1', 'dark') } catch { /* private mode */ } })
+}
 if (AUTH) {
   const seed = AUTH === 'seller'
     ? { seller_token: 'preview', seller_id: '1', seller_username: 'preview', user_type: 'seller' }
