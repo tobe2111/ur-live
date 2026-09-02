@@ -88,6 +88,38 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🕳️ 미지 호스트가 다시 원본 그대로 — 리사이저 우회 구멍이 열린다',
+    file: 'src/utils/cf-image.ts',
+    find: '      }\n      return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect${cropFrag(opts)}/${cdnCgiSafe(src)}`\n    }\n  }',
+    replace: '      }\n      return src\n    }\n  }',
+    test: 'src/tests/unit/qa-image-host-coverage.test.ts',
+    why: '2026-09-02 라이브 홈 실측: 목록에 없는 호스트 5장이 cdn-cgi 를 안 거치고 원본으로 내려왔다.',
+  },
+  {
+    name: '🕳️ 미지 호스트 경로에서 핫링크 검사가 빠진다 (403→302→403 깨진 사진)',
+    file: 'src/utils/cf-image.ts',
+    find: "      if (HOTLINK_BLOCKED_HOSTS.some(h => host === h || host.endsWith('.' + h))) {\n        return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`\n      }\n      return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect${cropFrag(opts)}/${cdnCgiSafe(src)}`",
+    replace: '      return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect${cropFrag(opts)}/${cdnCgiSafe(src)}`',
+    test: 'src/tests/unit/qa-image-host-coverage.test.ts',
+    why: '목록 밖 핫링크 호스트(새 네이버 블로그 서브도메인 등)가 cdn-cgi 로 가면 403→302→403 으로 깨진다.',
+  },
+  {
+    name: '🔎 정비 큐가 다시 id 순서로 — 언론사 사진이 순번을 기다린다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: "      ORDER BY CASE WHEN ${blockedPhotoSql('p.image_url')} THEN 0 ELSE 1 END, p.id\n",
+    replace: '      ORDER BY p.id\n',
+    test: 'src/tests/unit/qa-image-host-coverage.test.ts',
+    why: '2026-09-02 QA: 동아일보 사진이 만화카페 카드에 라이브. 백로그 40건·시간당 3건이라 13시간이 남아 있었다.',
+  },
+  {
+    name: '🔎 실측 승격 호스트가 cdn-cgi 검증 목록에서 빠져 원본 직행으로 되돌아간다',
+    file: 'src/utils/cf-image.ts',
+    find: ", 'cloudfront.net', 'digitaloceanspaces.com']",
+    replace: ']',
+    test: 'src/tests/unit/qa-image-host-coverage.test.ts',
+    why: '2026-09-02 라이브 홈 실측: 목록에 없는 호스트 5장이 리사이저를 안 거치고 원본으로 내려왔다.',
+  },
+  {
     name: '🎞️ 카드 넘김이 painted 대신 shown 을 따라 클릭 순간 빈 칸이 다시 보인다',
     file: 'src/components/deal/DealCardMedia.tsx',
     find: 'opacity: i === painted ? (painted === shown ? 1 : 0.65) : 0',
