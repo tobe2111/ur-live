@@ -15,7 +15,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { meterD1, withMeteredEnv, readEnvMeter, newMeter, meterFields, isMeteredD1 } from '@/worker/utils/d1-read-meter'
-import { installTaskMeteredEnv, runInMeter, currentMeter } from '@/worker/utils/d1-read-meter-als'
+import { installTaskMeteredEnv, runInMeter, currentMeter, initTaskMeter } from '@/worker/utils/d1-read-meter-als'
 import { buildCronBeatRow } from '@/worker/utils/cron-heartbeat'
 import { adsLeadsDb } from '@/shared/ads/leads-db'
 
@@ -103,6 +103,13 @@ describe('d1-read-meter — 래퍼', () => {
 })
 
 describe('d1-read-meter — 작업별 귀속(AsyncLocalStorage)', () => {
+  it('ALS 는 런타임 문자열 import 로 온다(정적 node: import 는 Pages 배포 번들러를 죽인다)', async () => {
+    expect(await initTaskMeter()).toBe(true)
+    const src = readFileSync('src/worker/utils/d1-read-meter-als.ts', 'utf8')
+    expect(src).not.toMatch(/from 'node:async_hooks'/)
+    expect(src).toMatch(/const spec = 'node:async_hooks'/)
+    expect(readFileSync('src/worker/scheduled.ts', 'utf8')).toMatch(/await initTaskMeter\(\);\s*\/\/[^\n]*\n\s*env = installTaskMeteredEnv\(env\);/)
+  })
   it('③ 동시에 도는 작업 두 개가 각자 계량된다', async () => {
     const { db } = fakeD1()
     const env = installTaskMeteredEnv({ DB: db })

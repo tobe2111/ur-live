@@ -61,7 +61,7 @@ import { logError } from './utils/logger';
 import { reportCronFailure } from './utils/cron-reporter';
 import { recordCronBeat, expectedMaxAgeMinutes } from './utils/cron-heartbeat';
 // 📏 2026-09-02: 작업별 D1 읽기 행 수 — 9/1 무료 한도(500만/일) 사고. 근거는 utils/d1-read-meter.ts 헤더.
-import { installTaskMeteredEnv, runInMeter } from './utils/d1-read-meter-als';
+import { installTaskMeteredEnv, runInMeter, initTaskMeter } from './utils/d1-read-meter-als';
 import { newMeter } from './utils/d1-read-meter';
 import { ACCEPTED_CRON_EXPRESSIONS } from './utils/cron-expected';
 import { envBeatFor } from './utils/cron-required-env';
@@ -139,6 +139,7 @@ export async function handleCronScheduled(
   const cron = event.cron;
   // 📏 env 의 D1 을 계량 래퍼로 바꾼다 — 아래 모든 작업 클로저가 이 `env` 바인딩을 잡으므로 여기 한 줄이
   //   곧 전체 커버리지다(하트비트와 같은 이유로 같은 자리). 작업 밖의 쿼리(`__tick` 등)는 세지 않는다.
+  await initTaskMeter(); // ALS 를 런타임에 불러온다(정적 node: import 금지 — 그 파일 헤더). 실패해도 안 던진다.
   env = installTaskMeteredEnv(env);
 
   // 🔬 2026-08-22 진단 프로브(`__tick`) — 왜 맨 앞인지·무엇을 가르는지는 `utils/cron-heartbeat.ts` 상단 주석.
