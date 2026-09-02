@@ -7,12 +7,35 @@ import { broadcastStreamStatus } from '../utils/broadcast-stream-status'
 
 import type { Env } from '../types/env';
 import { swallow } from '../utils/swallow';
-export async function handleScheduled(env: Env) {
+/**
+ * ⏱️ **읽기 다이어트 티어** (2026-09-02, D1 계정 일일 읽기 한도 사고).
+ *
+ * 이 함수는 5분마다 돌면서 ~33개 문장을 실행했다. 대부분이 `created_at/expires_at < now` 같은
+ * **인덱스 없는 전수 스캔**이고(알림 90일·토큰 만료·CSP·채팅·레이트리밋 카운터…), 하루 288회 × 33 =
+ * 약 9,500번의 전수 스캔이었다. 정적 감사(`docs/handoff/2026-09-02-d1-read-diet.md` §2-1 #3)가
+ * 유어딜 본진 읽기의 3대 원인 중 하나로 지목했다.
+ *
+ * 그래서 **주기를 성격대로 셋으로 나눈다** — 코드는 그대로 두고 게이트만 씌운다:
+ *   · 매 틱(5분): 3(공구 마감 만료) · 6(타임딜 만료) · 14(달성 알림) — 구매 가능 여부가 분 단위로 바뀐다
+ *   · hourly: 주문 24h 취소·바우처 만료·자동구매확정·품절 임박·쿠폰 D-1·gift·리마인더·커뮤니티 공구 만료·
+ *     라이브/경매(영구중단이라 사실상 no-op) — 시간 단위 규칙이라 시간당 1회로 의미가 같다
+ *   · daily: 8·9·9b·15~19·22·탈퇴 purge·23 — 전부 **청소(GC)** 다. 하루 한 번이면 충분하고, 그 이상은 낭비다
+ *
+ * 호출부(`scheduled.ts`)가 슬롯으로 티어를 넘긴다. 인자 없이 부르면(테스트·수동 트리거) 전부 돈다.
+ * 🔻 롤백: 호출부에서 `{ hourly: true, daily: true }` 를 넘기면 종전과 byte-동일하게 돈다.
+ */
+export interface CleanupTiers { hourly: boolean; daily: boolean }
+export const ALL_TIERS: CleanupTiers = { hourly: true, daily: true }
+
+export async function handleScheduled(env: Env, tiers: CleanupTiers = ALL_TIERS) {
   const DB = env.DB;
   const results: Record<string, number> = {};
+  results.tier_hourly = tiers.hourly ? 1 : 0;
+  results.tier_daily = tiers.daily ? 1 : 0;
   const startedAt = Date.now();
   logInfo('[Cron] Scheduled cleanup start', {});
 
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 1. 라이브 방송: 안전망 자동 종료 ──
   // 🛡️ 2026-05-13: 기존 30분 → 12시간 으로 완화 + youtube_video_id 가 있고 YouTube 측에서도
   //   confirmed=ended 인 경우만 대상으로 변경.
@@ -46,6 +69,8 @@ export async function handleScheduled(env: Env) {
     results.stale_streams_alerted = stale.results?.length ?? 0;
   } catch (e) { logError('[Cron] stale_streams alert error:', { error: String(e) }) }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 1a-2. 좀비 라이브 자동 종료 (P4 fix, 2026-06-04)
   //   OME(브라우저 송출 중계) 제거 후, youtube_video_id 없는 'live' 스트림은 YouTube actualEndTime cron 으로
   //   감지 불가 → 영영 'live' 로 고착(기존엔 12h 알림만). OME 가 사라져 이런 스트림은 새로 생길 수도 없으므로
@@ -60,6 +85,8 @@ export async function handleScheduled(env: Env) {
     results.zombie_live_ended = (zombie as { meta?: { changes?: number } })?.meta?.changes ?? 0;
   } catch (e) { logError('[Cron] zombie_live auto-end error:', { error: String(e) }) }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 1b. dead 웹캠 방송 — admin alert 만 (자동 cancelled X)
   try {
     const dead = await DB.prepare(`
@@ -84,6 +111,8 @@ export async function handleScheduled(env: Env) {
     results.dead_webcam_streams_alerted = dead.results?.length ?? 0;
   } catch (e) { logError('[Cron] dead_webcam_streams alert error:', { error: String(e) }) }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 1c. zombie scheduled — admin alert 만
   try {
     const zomb = await DB.prepare(`
@@ -106,6 +135,8 @@ export async function handleScheduled(env: Env) {
     results.zombie_scheduled_alerted = zomb.results?.length ?? 0;
   } catch (e) { logError('[Cron] zombie_scheduled error:', { error: String(e) }) }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 1d. zombie OME push 정리 (2026-05-11) ──
   //   셀러가 브라우저를 갑자기 닫는 등 closing event 가 안 오면 OME push 가 영원히 남음.
   //   다음 broadcast 와 충돌하지 않도록 cron 으로 청소.
@@ -145,6 +176,8 @@ export async function handleScheduled(env: Env) {
     } catch (e) { logError('[Cron] zombie_ome_pushes error:', { error: String(e) }) }
   }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 2. 미결제 주문: 24시간 후 자동 취소 + 재고 복구 ──
   // ✅ CONCURRENCY FIX (Cron C2): UPDATE RETURNING은 원자적으로 PENDING → CANCELLED
   // 전환된 행만 반환하므로 웹훅과의 경쟁에서도 재고 복구는 한 번만 실행됨.
@@ -196,6 +229,7 @@ export async function handleScheduled(env: Env) {
     }
   } catch (e) { logError('[Cron] pending_orders error:', { error: String(e) }) }
 
+  }
   // ── 3. 공동구매: 마감 지난 상품 자동 만료 (6종 카테고리 전체) ──
   // 🛡️ 2026-05-04: 이전엔 meal_voucher 만 → API request 시점에서도 UPDATE 했지만
   //   매 요청 100-300ms 추가됐음. cron 으로 통일 + 6종 카테고리 모두 커버.
@@ -213,6 +247,7 @@ export async function handleScheduled(env: Env) {
     results.group_buys_expired = meta.changes ?? 0;
   } catch (e) { logError('[Cron] group_buys error:', { error: String(e) }) }
 
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 4. 바우처: 만료일 지난 바우처 자동 만료 ──
   // 🛡️ 2026-05-23: vouchers 테이블에는 updated_at 컬럼 없음 (created_at 만).
   //   migration 0146 schema 참조. updated_at SET 제거.
@@ -227,6 +262,8 @@ export async function handleScheduled(env: Env) {
     results.vouchers_expired = meta.changes ?? 0;
   } catch (e) { logError('[Cron] vouchers error:', { error: String(e) }) }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 5. 경매: 시간 초과 자동 종료 + hold 해제 + winner 알림 ──
   // 🛡️ 2026-04-28: 단순 status 변경에서 → hold 정리 + 낙찰자 결제 안내까지 통합
   try {
@@ -309,6 +346,7 @@ export async function handleScheduled(env: Env) {
     }
   } catch (e) { logError('[Cron] auctions error:', { error: String(e) }) }
 
+  }
   // ── 6. 타임딜: 만료 자동 종료 ──
   try {
     const { meta: ended } = await DB.prepare(`
@@ -326,6 +364,7 @@ export async function handleScheduled(env: Env) {
     results.timedeals_ended = (ended.changes ?? 0) + (soldout.changes ?? 0);
   } catch (e) { logError('[Cron] timedeals error:', { error: String(e) }) }
 
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 7. 친구 초대 공동구매: 48시간 만료 ──
   try {
     const { meta } = await DB.prepare(`
@@ -337,6 +376,8 @@ export async function handleScheduled(env: Env) {
     results.referrals_expired = meta.changes ?? 0;
   } catch (e) { logError('[Cron] referrals error:', { error: String(e) }) }
 
+  }
+  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 8. 알림 정리: 90일 이상 된 알림 삭제 — LIMIT 10000으로 한 틱에 과부하 방지 ──
   try {
     await DB.prepare(`
@@ -375,6 +416,8 @@ export async function handleScheduled(env: Env) {
     `).run().catch(() => { /* table 없으면 skip */ });
   } catch (e) { logError('[Cron] notifications_cleanup error:', { error: String(e) }) }
 
+  }
+  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 9. 만료된 리프레시 토큰 정리 ──
   try {
     await DB.prepare(`
@@ -383,6 +426,8 @@ export async function handleScheduled(env: Env) {
     `).run();
   } catch (e) { logError('[Cron] token_cleanup error:', { error: String(e) }) }
 
+  }
+  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 9b. 만료된 idempotency 키 정리 (테이블이 존재할 때만) ──
   // idempotentWrite() 유틸리티가 저장하는 결과 캐시를 주기적으로 청소한다.
   // 테이블이 없는 환경(신규 배포)에서는 조용히 건너뛴다.
@@ -392,6 +437,8 @@ export async function handleScheduled(env: Env) {
     ).run();
   } catch { /* table may not exist yet — skip silently */ }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 10. 자동 구매확정: 배송 14일 경과 ──
   // 프로덕션 DB는 대문자 상태값 사용 ('SHIPPING', 'DELIVERED').
   // settlement_status는 'completed' 사용 (정산 자동화 스크립트와 일치).
@@ -434,6 +481,8 @@ export async function handleScheduled(env: Env) {
     ;(results as any).cache_warming = r
   } catch (e) { logError('[Cron] cache-warming error:', { error: String(e) }) }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 11. 예정 방송 30분 전 알림 발송 ──
   // 🛡️ 2026-04-22: LIMIT 100 추가 — 1000+ scheduled streams 시 OOM 방어
   try {
@@ -505,6 +554,8 @@ export async function handleScheduled(env: Env) {
     }
   } catch (e) { logError('[Cron] pre_notifications error:', { error: String(e) }) }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 11b. 예정 방송 5분 전 긴급 알림 ──
   try {
     try { await DB.prepare("ALTER TABLE live_streams ADD COLUMN pre_notified_5min INTEGER DEFAULT 0").run() } catch {}
@@ -548,6 +599,8 @@ export async function handleScheduled(env: Env) {
     }
   } catch (e) { logError('[Cron] 5min_notifications error:', { error: String(e) }) }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 12. 셀러 재고 품절 임박 알림 (5개 이하) ──
   // 24시간 시간 윈도우 기반 dedup: 제품명이 title에 포함되는지로 확인.
   // (dashboard_notifications에 metadata 컬럼 없음 — title LIKE 매칭으로 충분)
@@ -596,6 +649,8 @@ export async function handleScheduled(env: Env) {
     }
   } catch (e) { logError('[Cron] low_stock error:', { error: String(e) }) }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 13. 쿠폰 만료 임박 알림 (D-1, 소비자) ──
   try {
     const { results: expiringCoupons } = await DB.prepare(`
@@ -628,7 +683,7 @@ export async function handleScheduled(env: Env) {
       let candidateUsers: { id: string }[] = [];
       try {
         const { results } = await DB.prepare(
-          `SELECT DISTINCT id FROM users LIMIT 100`
+          `SELECT id FROM users LIMIT 100 /* 📉 DISTINCT 제거(2026-09-02) — PK 인데 DISTINCT 가 전수+임시 B-트리를 만들었다 */`
         ).all<{ id: string }>();
         candidateUsers = results ?? [];
       } catch { /* best-effort */ }
@@ -647,6 +702,7 @@ export async function handleScheduled(env: Env) {
     }
   } catch (e) { logError('[Cron] coupon_expiry error:', { error: String(e) }) }
 
+  }
   // ── 14. 공동구매 달성 알림 (셀러 + 참여자) — LIMIT 50으로 한 틱 과부하 방지 ──
   try {
     const { results: achievedGroups } = await DB.prepare(`
@@ -681,6 +737,7 @@ export async function handleScheduled(env: Env) {
     }
   } catch (e) { logError('[Cron] group_buy_achieved error:', { error: String(e) }) }
 
+  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 15. csp_violations 정리: 30일 경과 (DoS 방어 + DB 부피 관리) ──
   // 🛡️ 2026-04-22: CSP 보고가 너무 많이 쌓이면 DB 비용 + 분석 노이즈
   try {
@@ -689,6 +746,8 @@ export async function handleScheduled(env: Env) {
     `).run();
   } catch { /* table may not exist */ }
 
+  }
+  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 16. account_lockouts 정리: 만료된 잠금 기록 ──
   try {
     await DB.prepare(`
@@ -696,6 +755,8 @@ export async function handleScheduled(env: Env) {
     `).run();
   } catch { /* table may not exist */ }
 
+  }
+  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 16b. pin_click_logs 정리: 180일 경과 (유어샵 클릭 raw 로그) ──
   // 🔐 2026-06-15: 핀 클릭 분석은 최대 90일 range → 180일 보관이면 충분. 무한 적재 시 테이블 비대.
   //   집계값(product_pins.click_count)은 별도 보존이라 영향 없음. chunk LIMIT 으로 틱당 과부하 방지.
@@ -707,6 +768,8 @@ export async function handleScheduled(env: Env) {
     `).run();
   } catch { /* table may not exist */ }
 
+  }
+  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 17. chat_messages 정리: 90일 경과 (live stream 종료 후 보관) ──
   // 라이브 종료 후 대량 채팅 누적 → 검색 부하. 라이브 다시보기에 필요한 90일만 보관.
   // chunked LIMIT 5000 — 한 틱에 과부하 방지.
@@ -724,6 +787,8 @@ export async function handleScheduled(env: Env) {
     `).run();
   } catch { /* table may not exist */ }
 
+  }
+  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 18. rate_limit_attempts 정리: 24시간 이상 된 카운터 ──
   try {
     await DB.prepare(`
@@ -731,6 +796,8 @@ export async function handleScheduled(env: Env) {
     `).run();
   } catch { /* table may not exist */ }
 
+  }
+  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 19. stripe_webhook_events 정리: 90일 경과 (idempotency 키, 더 이상 필요없음) ──
   try {
     await DB.prepare(`
@@ -742,6 +809,8 @@ export async function handleScheduled(env: Env) {
     `).run();
   } catch { /* table may not exist */ }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 20. 🛡️ 2026-04-28: gift 만료 처리 (paid 상태 + expires_at 경과) ──
   //   - 30일 내 recipient 가 claim 안 하면 expired
   //   - 환불은 후속 작업 (별도 cron 이 status='expired' → Toss 부분취소 호출)
@@ -756,6 +825,8 @@ export async function handleScheduled(env: Env) {
     results.gifts_expired = meta.changes ?? 0;
   } catch { /* table may not exist */ }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 20-b. 🛡️ 2026-04-28: expired gift 의 토스 부분취소 자동 호출 ──
   //   #20 에서 status='expired' 된 gift 들을 토스 cancel API 로 환불.
   //   성공 시 status='refunded'. 실패는 best-effort (다음 cron tick 에서 재시도).
@@ -830,6 +901,8 @@ export async function handleScheduled(env: Env) {
     }
   } catch (e) { logError('[Cron] gift refund error:', { error: String(e) }); }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 21. 🛡️ 2026-04-28: pending 상태 gift 자동 정리 (24시간 결제 미완료) ──
   //   토스 결제 confirm 호출 안 된 채 24시간 경과 → refunded (실 결제 안 된 상태)
   try {
@@ -842,6 +915,8 @@ export async function handleScheduled(env: Env) {
     results.gifts_pending_cleaned = meta.changes ?? 0;
   } catch { /* table may not exist */ }
 
+  }
+  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 22. 🛡️ 2026-04-28: consignment_partnerships pending 30일 자동 정리 ──
   //   양측 모두 응답 안 하면 자동 ended (cleanup)
   try {
@@ -854,6 +929,8 @@ export async function handleScheduled(env: Env) {
     results.consignment_pending_expired = meta.changes ?? 0;
   } catch { /* table may not exist */ }
 
+  }
+  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 22b. 🛡️ 2026-05-30: 메인 공구 미달 자동환불 제거 (즉시판매 모델 확정) ──
   //   [모델 결정 — 사용자 명령] 메인 공구(group-buy.routes.ts)는 **즉시판매**다:
   //   참여 즉시 결제 + 교환권 발급되어, 목표 인원(group_buy_target)은 **마케팅 표시용(소셜프루프)**일 뿐
@@ -865,6 +942,8 @@ export async function handleScheduled(env: Env) {
   //   ※ 보증금형(all-or-nothing) 자동환불이 필요한 **커뮤니티 공구**는 아래 22d 블록에서 별도 처리.
   //   ※ '미달성 시 자동환불' 마케팅(BusinessLandingPage)은 커뮤니티 공구 한정.
 
+  }
+  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 🏁 2026-06-12 (전 플로우 감사 🟡): 탈퇴 30일 경과분 hard purge ──
   //   delete-account.service 가 "30일 후 파기" 를 고지하는데 cron 이 없어 deleted_accounts 에
   //   원본 email/kakao_id/이름이 무기한 보존됐음(개인정보 파기 의무). 복원 가능 기간이 지난 행 삭제.
@@ -875,6 +954,8 @@ export async function handleScheduled(env: Env) {
     if ((meta.changes ?? 0) > 0) results.deleted_accounts_purged = meta.changes;
   } catch { /* table 없으면 skip */ }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 22c. 🛡️ 2026-05-12: 바우처 만료 임박 리마인더 (D-7, D-1) ──
   //   reminder_sent_at 컬럼으로 dedup. 컬럼 없으면 ALTER 로 보장.
   try {
@@ -944,6 +1025,8 @@ export async function handleScheduled(env: Env) {
     if ((d1?.length ?? 0) > 0) results.voucher_d1_reminders = d1!.length;
   } catch (e) { logError('[Cron] voucher_expiry_reminder error:', { error: String(e) }) }
 
+  }
+  if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 22d. 🛡️ 2026-05-13: 커뮤니티 공동구매 만료 + 보증금 자동 환불 ──
   //   community_group_buys 가 expires_at 지났는데 status='proposed'/'negotiating' 인 좀비 차단.
   //   1) 상태를 'failed' 로 마킹
@@ -1019,6 +1102,8 @@ export async function handleScheduled(env: Env) {
     if (refunded > 0) results.community_group_buys_refunded = refunded
   } catch (e) { logError('[Cron] community_group_buys_expired error:', { error: String(e) }) }
 
+  }
+  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 23. 🛡️ 2026-04-28: consignment_settlements 자동 기록 (월간 윈도우) ──
   //   당월 1일 ~ 어제까지의 consignment 주문건을 분배 기록 (멱등).
   try {
@@ -1033,6 +1118,7 @@ export async function handleScheduled(env: Env) {
     }
   } catch (e) { logError('[Cron] consignment_settlements record error:', { error: String(e) }); }
 
+  }
   logInfo('[Cron] Scheduled cleanup done', {
     elapsedMs: Date.now() - startedAt,
     details: results,

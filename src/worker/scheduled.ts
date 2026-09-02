@@ -215,7 +215,8 @@ export async function handleCronScheduled(
     }));
     ctx.waitUntil(safeCron('scheduled-cleanup', async () => {
       const { handleScheduled } = await import('./cron/scheduled-cleanup')
-      return handleScheduled(env)
+      // ⏱️ 2026-09-02 읽기 다이어트 — 청소는 티어로 돈다(매 틱 / 매시 :10 / 매일 04:20 KST). 근거는 그 파일 헤더.
+      return handleScheduled(env, { hourly: slotOpen({ minute: 10 }), daily: slotOpen({ minute: 20, hour: 19 }) })
     }));
     // 🛡️ 2026-05-07: 알림톡 발송 실패 자동 재시도 (max 3회, exponential backoff)
     ctx.waitUntil(safeCron('retry-alimtalk', () => handleRetryAlimtalk(env)));
@@ -232,10 +233,14 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('group-buy-feed-cache', () => handleGroupBuyFeedCache(env)));
     // 🛡️ 2026-05-23 (Task 3): 5분마다 hot endpoint pre-warm — 배포 후 / cache expire 후
     //   첫 사용자 cold-start 제거. publicCache 가 edge + KV 양쪽 자동으로 채움.
-    ctx.waitUntil(safeCron('cache-prewarm', () => handleCachePrewarm(env)));
+    // ⏱️ 2026-09-02 읽기 다이어트 — 동적 워밍(셀러/상품/큐레이터 12개)은 30분마다, products 정규화 UPDATE 는 하루 1회.
+    //   HOT_PATHS(SSR 키) 자체는 5분 그대로(잠금표 — 제거·약화 금지).
+    ctx.waitUntil(safeCron('cache-prewarm', () => handleCachePrewarm(env, { dynamic: slotOpen({ minute: 0 }) || slotOpen({ minute: 30 }), normalize: slotOpen({ minute: 35, hour: 19 }) })));
     // 🛡️ 2026-05-27 (영업 검증 Layer 4): prospects 첫 매출 발생 시 commission 활성.
     //   단순 가입 X — 매장이 실제 매출 내야 영업 commission lock-in. 부정 방지.
-    ctx.waitUntil(safeCron('prospects-commission-activate', async () => {
+    // ⏱️ 2026-09-02 읽기 다이어트 — 루프당 최대 200쿼리 + status 무인덱스 스캔 2개를 5분마다 돌렸다. "첫 매출" 은
+    //   시간 단위면 충분하다(커미션 활성화 지연 ≤1h). 매시 :40.
+    if (slotOpen({ minute: 40 })) ctx.waitUntil(slotCron('40 * * * *')('prospects-commission-activate', async () => {
       const { handleProspectsCommissionActivate } = await import('./cron/prospects-commission-activate')
       return handleProspectsCommissionActivate(env)
     }));
@@ -244,14 +249,10 @@ export async function handleCronScheduled(
 
   // ⏰ 2026-08-11: `0 * * * *` 미등록으로 이 블록 7개가 침묵했다(하트비트 0). 트리거 한도(5)를 다 써
   //   `*/5` 틱 위 :25 게이트로 시간당 1회. 왜 이 방식인지는 `cron-slot.ts` 참조.
-  // 🗄️ 2026-08-22: 재개 가능한 분할 백업(커서로 시간당 조금씩). 기존 주간 백업은 DB 가 263 MB 로
-  //   자라 워커 메모리를 넘겨 08-02 이후 조용히 멈춰 있었다 — 근거는 `cron/d1-backup-chunked.ts` 헤더.
-  if (cron === '*/5 * * * *' && [5, 20, 35, 50].some((m) => slotDue(event.scheduledTime, { minute: m }))) {
-    ctx.waitUntil(slotCron('5,20,35,50 * * * *')('d1-backup-chunked', async () => {
-      const { handleChunkedBackup } = await import('./cron/d1-backup-chunked')
-      return handleChunkedBackup(env as never)
-    }));
-  }
+  // 🗄️ 2026-08-22 분할 백업의 `*/5` 슬롯(:05/:20/:35/:50)은 **2026-09-02 에 제거** — 08-25 에 백업 전용
+  //   트리거(:02/:17/:32/:47, 아래)가 생긴 뒤에도 남아 있어 같은 작업이 시간당 8회 돌았다. 백업은 DB 를
+  //   통째로 읽는 작업이라(회차당 ≤1.2만 행) 그 중복만으로 하루 ~110만 행 = 무료 한도(500만)의 22% 였다.
+  //   근거: docs/handoff/2026-09-02-d1-read-diet.md §2-1 #11. 전용 트리거가 예산을 통째로 써서 더 잘 돈다.
 
   if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 25 })) {
     // 🥗 2026-07-15 워커 다이어트(대표 승인): social-maintenance 배선 제거 — CF 1MB 압축한도 회복.

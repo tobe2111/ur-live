@@ -88,6 +88,36 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '📉 청소 GC 티어 게이트가 사라져 5분마다 전수 스캔으로 돌아간다',
+    file: 'src/worker/cron/scheduled-cleanup.ts',
+    find: "  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)\n  // ── 8. 알림 정리",
+    replace: "  if (true) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)\n  // ── 8. 알림 정리",
+    test: 'src/tests/unit/d1-read-diet.test.ts',
+    why:
+      '2026-09-02: 5분 cron 이 인덱스 없는 GC 문장 ~33개를 288회/일 돌려 본진 읽기의 3대 원인이 됐다. ' +
+      '게이트 하나가 빠지면 그 섹션이 조용히 5분 주기로 되돌아간다 — 에러도 하트비트 변화도 없다.',
+  },
+  {
+    name: '📉 피드 캐시 지문 게이트가 헛돈다(항상 전체 갱신)',
+    file: 'src/worker/cron/group-buy-feed-cache.ts',
+    find: 'if (prevFp === fp && Date.now() - prevAt < FEED_FORCE_REFRESH_MS) {',
+    replace: 'if (false) {',
+    test: 'src/tests/unit/d1-read-diet.test.ts',
+    why:
+      '상품이 안 바뀐 새벽에도 20개 정렬 쿼리를 5분마다 돌리던 것을 지문으로 막는다. 게이트가 죽으면 ' +
+      '종전 비용으로 조용히 돌아간다(결과는 같아서 아무도 모른다).',
+  },
+  {
+    name: '📉 예열 동적 워밍이 다시 5분마다 돈다',
+    file: 'src/worker/cron/cache-prewarm.ts',
+    find: '  if (env.DB && doDynamic) {',
+    replace: '  if (env.DB) {',
+    test: 'src/tests/unit/d1-read-diet.test.ts',
+    why:
+      '셀러/상품/큐레이터 상세 12개를 5분마다 콜드 렌더하던 것을 30분으로. 옵션을 안 읽으면 호출부가 ' +
+      '무엇을 넘기든 종전 주기로 돈다 — "만든 것·넘긴 것·읽는 것" 이 셋 다 다르다.',
+  },
+  {
     name: '백필 건수가 화면까지 못 간다',
     file: 'src/pages/admin-dongnedeal-import/seedStayDemos.ts',
     find: "t.descHealed && ` · 소개 문구 ${t.descHealed}개 교체`,",
