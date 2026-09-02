@@ -68,6 +68,8 @@ export interface CuratorPageResponse {
   // 🚀 2026-07-11 (1-RTT): 서버가 동봉한 셀러 공개 페이로드(= /api/sellers/:id/public data) —
   //   SellerPublicPage 가 시드로 동기 소비해 셀러 fetch 를 생략. 구캐시/실패 시 null(클라 폴백 fetch).
   linked_seller_public?: Record<string, unknown> | null
+  // 🚀 2026-09-02: 셀러 상품 첫 100개(= /api/products?seller_id&limit=100 data) — SellerPublicPage 가 시드로 소비해 상품 fetch 생략.
+  linked_seller_products?: unknown[] | null
   error?: string
 }
 
