@@ -121,8 +121,6 @@ const MUTATIONS = [
       '송금은 사람이 손으로 하므로 그 숫자가 곧 오지급이다.',
   },
   {
-  },
-  {
     name: '🏠 홈 청크 규칙에서 components/home 이 빠져 app-components 281KB 가 홈 preload 로 돌아온다',
     file: 'vite.config.ts',
     find: "            id.includes('/src/components/home/') || id.includes('/src/pages/pc-home/PcHomeLocationBar') ||\n",
