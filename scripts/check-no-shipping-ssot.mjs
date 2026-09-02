@@ -40,7 +40,7 @@ const SCOPE = [
  * ⚠️ 이 파일은 R1 대상이 아니다: 교환권 전용 UI(딜 표기·전용 상세)를 위해 `deal_only===1` 을
  *    10곳에서 정당하게 쓴다. 그건 **표시** 분기지 배송 판정이 아니다. R2·R3 만 본다.
  */
-const ENTRY_SCOPE = ['src/pages/ProductDetailPage.tsx']
+const ENTRY_SCOPE = ['src/pages/ProductDetailPage.tsx', 'src/pages/product-detail/buildDirectPurchaseItem.ts']
 const R1 = /\bdeal_only\s*\)?\s*===?\s*1/
 const R2 = /\bshipping_fee\s*\|\|\s*\d/
 /** 배송비 리터럴 고정 — `shipping_fee: 3000` 처럼 상품 종류를 안 보고 숫자를 박는 것. */
@@ -92,7 +92,7 @@ if (selfFail.length) {
 }
 
 /* 🔬 측정 0 = 실패 — 목록이 줄면 위반도 0 이라 초록이 뜨는데 그 초록은 아무것도 보장하지 않는다. */
-if (SCOPE.length + ENTRY_SCOPE.length < 6) {
+if (SCOPE.length + ENTRY_SCOPE.length < 7) {
   console.error(`❌ no-shipping-ssot: 검사 대상이 ${SCOPE.length}개다 — 목록이 낡았거나 줄었다(통과 아님).`)
   process.exit(1)
 }
