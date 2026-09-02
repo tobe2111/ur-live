@@ -58,9 +58,11 @@ describe('② 유입 감시 sendable — 라우터를 실제로 태운다', () =
     const mk = (sql: string) => ({
       bind: () => mk(sql),
       first: async () => {
-        const m = /FROM (\w+)/.exec(sql); const t = m?.[1] ?? '?'
-        log.push(`${name}:${t}`)
-        if (!tables.includes(t)) throw new Error(`no such table: ${t}`)
+        // 문장에 등장하는 **모든** 리드 테이블을 본다 — 첫 FROM 만 보면 교차 문장(`FROM a, b`)을 못 잡는다(주입 검증이 그걸 잡았다).
+        const named = [...new Set([...sql.matchAll(/\bad_\w+_leads\b/g)].map((m) => m[0]))]
+        for (const t of named) log.push(`${name}:${t}`)
+        const missing = named.find((t) => !tables.includes(t))
+        if (missing) throw new Error(`no such table: ${missing}`)
         return { n: name === 'ads' ? 7 : 3 }
       },
       all: async () => ({ results: [] }), run: async () => ({}),
