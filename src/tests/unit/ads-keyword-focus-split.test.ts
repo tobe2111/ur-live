@@ -458,9 +458,10 @@ describe('📉🧊 수집 예산 회수 + 폭 동결', () => {
 
   it('🔒 폭은 승인된 범위 안에서만 — 조용한 상향/하향 둘 다 차단', () => {
     expect(COLLECT_KEYWORDS_PER_ROUND).toBeGreaterThanOrEqual(5)   // 실측 처리량 아래로 내리면 되레 후퇴
-    // 상한 9 = 2026-08-11 대표 승인값("폭 9로 올려" — 측정 8,018 > 유입 5,045·차단 0 실측 후).
-    // 이 위로 올리는 것은 네이버 호출을 또 늘리는 일이라 다시 대표 판단 사항이다.
-    expect(COLLECT_KEYWORDS_PER_ROUND, '9 초과 상향은 대표 재승인 필요(네이버 차단 리스크)').toBeLessThanOrEqual(9)
+    // 상한 14 = 2026-09-02 대표 승인값("응 다 해줘" — 차단 blocked 0/ok 54,383 · 측정 94.7% 완료 실측 후).
+    //   그 전 값은 9(2026-08-11). 올릴 때마다 네이버 호출이 함께 느는 일이라 **매번** 대표 판단 사항이고,
+    //   승인 없이 조용히 올라가는 것을 이 못이 막는다.
+    expect(COLLECT_KEYWORDS_PER_ROUND, '14 초과 상향은 대표 재승인 필요(네이버 차단 리스크)').toBeLessThanOrEqual(14)
   })
 
   it('🔒 env 로 재배포 없이 조정 가능(측정이 올라가면 즉시 푼다)', () => {
@@ -532,9 +533,9 @@ describe('📏 planRoundWidth — 처리 능력에 맞춘 계획', () => {
  *     그건 코드 밖 사실이라 배포 후 관측으로만 판정한다 — 차단이 뜨면 상수를 9 로 되돌린다.
  */
 describe('회차 폭 — YT 쿼터 소진 회차만 예산까지 확장', () => {
-  it('🔒 YT 가 살아 있는 회차의 폭은 9 그대로 — 넓히면 YT 쿼터만 더 빨리 태운다', () => {
-    expect(COLLECT_KEYWORDS_PER_ROUND).toBe(9)
-    expect(keywordsPerRoundCap({})).toBe(9)
+  it('🔒 YT 가 살아 있는 회차의 폭 = 승인값(2026-09-02 부터 14) — 코드와 env 기본값이 갈리면 안 된다', () => {
+    expect(COLLECT_KEYWORDS_PER_ROUND).toBe(14)
+    expect(keywordsPerRoundCap({}), 'env 미설정 시 상수와 같아야 한다(갈리면 라이브가 문서와 다르게 돈다)').toBe(14)
   })
 
   it('🌙 네이버 전용 회차는 더 넓다 — 좁아지는 방향은 구조적으로 불가', () => {
