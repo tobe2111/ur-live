@@ -789,9 +789,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         disabled={locating}
         aria-label={nearMeMode ? t('restaurantMap.myLocationOff', { defaultValue: '내 위치 해제' }) : t('restaurantMap.myLocation', { defaultValue: '현위치로 이동' })}
         aria-pressed={nearMeMode}
-        /* 🎫 2026-09-02 (대표 — "이 버튼도 눌렀는지 안눌렀는지 확인도 안돼"): 다크에서 [남색+파란 테두리] ↔
-           [남색+파란 아이콘] 이라 켜짐/꺼짐이 같은 그림이었다. 지도 타일은 늘 밝으니 테마를 안 따른다(light-fixed):
-           꺼짐 = 흰 원 + 잉크 아이콘, 켜짐·측위 중 = **브랜드 블루 면 + 흰 아이콘**. 상태가 면 전체로 뒤집힌다. */
+        /* 🎫 2026-09-02 B안(대표 "눌렀는지 확인도 안돼"): 지도 위라 테마 무관 — 꺼짐 흰 원, 켜짐·측위 = 블루 면. */
         className={`absolute right-3 z-20 w-10 h-10 flex items-center justify-center rounded-full active:scale-95 transition-all shadow-[0_2px_8px_rgba(22,24,28,0.18)] ${
           (nearMeMode || locating) ? 'bg-brand text-white' : 'bg-white text-gray-800' // light-fixed: 지도 위
         }`}
