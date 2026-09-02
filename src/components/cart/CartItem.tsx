@@ -58,8 +58,8 @@ export const CartItemComponent = React.memo(function CartItemComponent({
         onClick={() => !isUnavailable && onToggleSelect(item.id)}
         className={`mt-1 w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 cursor-pointer transition-colors ${
           isSelected
-            ? 'bg-pink-500 border-pink-500'
-            : 'bg-white dark:bg-[#11141C] border-gray-300 dark:border-[#3A3A3A]'
+            ? 'bg-brand border-brand'
+            : 'bg-white dark:bg-[#1D1F29] border-rule-strong'
         } ${isUnavailable ? 'cursor-not-allowed' : ''}`}
       >
         {isSelected && (

@@ -37,7 +37,7 @@ export const CartSummary = React.memo(function CartSummary({
           <span className="text-gray-500 dark:text-gray-400">{t('cart.shippingFee', { defaultValue: '배송비' })}</span>
           <span className="text-gray-900 dark:text-white font-medium">
             {shippingFee === 0 ? (
-              <span className="text-pink-500 font-semibold">{t('cart.free', { defaultValue: '무료' })}</span>
+              <span className="text-brand-text font-semibold">{t('cart.free', { defaultValue: '무료' })}</span>
             ) : (
               `+${fmt(shippingFee)}${t('common.won', { defaultValue: '원' })}`
             )}

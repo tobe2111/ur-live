@@ -63,7 +63,7 @@ export default function CartPage() {
           <button
             type="button"
             onClick={() => navigate(`/login?returnUrl=${encodeURIComponent('/cart')}`)}
-            className="w-full max-w-xs rounded-xl bg-gray-900 py-3.5 text-[14px] font-bold text-white hover:bg-gray-800 active:scale-[0.98] transition-all"
+            className="w-full max-w-xs rounded-xl bg-brand py-3.5 text-[14px] font-bold text-white hover:bg-brand-dark active:scale-[0.98] transition-all"
           >
             {t('common.loginButton')}
           </button>
@@ -451,7 +451,8 @@ function CartPageContent() {
   }
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-[#F4F4F4]">
+    // 🩸 2026-09-02 (대표 "장바구니 페이지도 심각하다"): 이 래퍼만 dark: 없이 라이트 회색이라 다크에서 아래 절반이 회색으로 남았다.
+    <div className="flex flex-col min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C]">
       <SEO title={t('cart.seoTitle')} description={t('cart.seoDesc')} url="/cart" noindex />
 
       {/* v4 Header + Select All */}
@@ -485,7 +486,7 @@ function CartPageContent() {
                 : 0
 
               return (
-                <div key={group.seller_id} className="mt-2 bg-white dark:bg-[#11141C]">
+                <div key={group.seller_id} className="mt-2 bg-white dark:bg-[#1D1F29] lg:rounded-2xl lg:shadow-lift lg:overflow-hidden">
                   {/* Seller header with checkbox + badge + name + chevron */}
                   <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 dark:border-[#2C2F35]">
                     <span
@@ -503,8 +504,8 @@ function CartPageContent() {
                       }}
                       className={`w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 cursor-pointer transition-colors ${
                         groupAllSelected
-                          ? 'bg-pink-500 border-pink-500'
-                          : 'bg-white dark:bg-[#11141C] border-gray-300 dark:border-[#3A3A3A]'
+                          ? 'bg-brand border-brand'
+                          : 'bg-white dark:bg-[#1D1F29] border-rule-strong'
                       }`}
                     >
                       {groupAllSelected && (
@@ -536,23 +537,22 @@ function CartPageContent() {
                     <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
                   </div>
 
-                  {/* v4 Free shipping progress bar (pink) */}
                   {freeShipThreshold > 0 && remaining > 0 && (
-                    <div className="mx-4 mt-3 px-3 py-2.5 bg-[#f9fafb] rounded-lg">
-                      <p className="text-[12px] text-pink-600 font-medium mb-1.5">
-                        {formatNumber(remaining)}원 더 담으면 무료배송!
+                    <div className="mx-4 mt-3">
+                      <p className="text-[12px] text-gray-600 dark:text-gray-300 font-medium mb-1.5">
+                        <span className="text-brand-text font-bold tabular-nums">{formatNumber(remaining)}원</span> 더 담으면 무료배송
                       </p>
-                      <div className="w-full h-1.5 bg-pink-100 rounded-full overflow-hidden">
+                      <div className="w-full h-1.5 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-pink-500 rounded-full transition-all"
+                          className="h-full bg-brand rounded-full transition-all"
                           style={{ width: `${shippingProgress}%` }}
                         />
                       </div>
                     </div>
                   )}
                   {freeShipThreshold > 0 && remaining <= 0 && (
-                    <div className="mx-4 mt-3 px-3 py-2 bg-[#f9fafb] rounded-lg">
-                      <p className="text-[12px] text-pink-600 font-semibold">{t('cart.freeShipping')}</p>
+                    <div className="mx-4 mt-3">
+                      <p className="text-[12px] text-brand-text font-semibold">{t('cart.freeShipping')}</p>
                     </div>
                   )}
 
@@ -590,7 +590,7 @@ function CartPageContent() {
             })}
 
             </div>{/* /좌측 아이템 컬럼 */}
-            <aside className="mt-2 bg-white dark:bg-[#11141C] px-4 py-4 lg:sticky lg:top-[64px] lg:rounded-2xl lg:border lg:border-gray-100 dark:lg:border-[#2C2F35]">
+            <aside className="mt-2 bg-white dark:bg-[#1D1F29] px-4 py-4 lg:sticky lg:top-[64px] lg:rounded-2xl lg:shadow-lift">
               <CartSummary
                 totalItems={totalItems}
                 subtotal={subtotal}
