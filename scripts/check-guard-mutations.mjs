@@ -7431,6 +7431,16 @@ canvas {
       '안 보인다. 접기를 넣으면서 같이 생기는 사각지대라 못으로 박는다.',
   },
   {
+    name: '🎫 이용권 리뷰가 다시 "구매만 하면" 쓸 수 있게 된다',
+    file: 'src/features/reviews/api/reviews.routes.ts',
+    find: "AND user_id = ? AND status = 'used' ORDER BY used_at DESC LIMIT 1",
+    replace: "AND user_id = ? AND status IN ('unused','used') ORDER BY used_at DESC LIMIT 1",
+    test: 'src/tests/unit/review-requires-voucher-use.test.ts',
+    why:
+      '이용권은 결제 즉시 주문이 DONE 이라 구매 기준으로는 매장에 가기 전에도 리뷰와 리워드가 났다. ' +
+      '분기 하나가 죽으면 소리 없이 그 상태로 돌아간다.',
+  },
+  {
     name: '🎫 담기 토스트가 409(이미 담김)를 다시 "오류" 로 보고한다',
     file: 'src/features/curator/hooks/usePinAction.ts',
     find: "      if (code === 'ALREADY_PINNED') toast.info(MSG.already)\n      else toast.error(error && error.length <= 30 ? error : MSG.failed)",

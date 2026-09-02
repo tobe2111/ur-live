@@ -136,7 +136,8 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
               const status = ax.response?.status
               const code = ax.response?.data?.error_code
               const serverMsg = ax.response?.data?.error
-              if (code === 'NOT_PURCHASED' || status === 403) {
+              // 🎫 2026-09-02: 이용권은 `VOUCHER_NOT_USED`(사용 전) — 서버 문구를 그대로 쓴다.
+              if (code === 'NOT_PURCHASED' || code === 'VOUCHER_NOT_USED' || status === 403) {
                 toast.error(serverMsg || '리뷰는 해당 상품을 구매하신 분만 작성하실 수 있어요', { duration: 5000 })
               } else {
                 const msg = serverMsg || (err instanceof Error ? err.message : t('reviews.writeError', { defaultValue: '리뷰 작성에 실패했습니다' }))
