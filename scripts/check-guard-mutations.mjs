@@ -5220,12 +5220,13 @@ canvas {
   {
     name: '수집 레인 시간당 상한이 조용히 증설됨',
     file: 'src/worker-ads/lane-alarm-runners.ts',
-    find: '  collect: {\n    runsPerHour: 1,\n',
+    find: '  collect: {\n    runsPerHour: 3,\n',
     replace: '  collect: {\n',
     test: 'src/tests/unit/ads-lane-alarm.test.ts',
     why:
-      '빼면 정책 기본값(12회/시간)을 받는다 = cron 설계 의도(`0 * * * *`)를 12배 넘는 증설이고, ' +
-      '**네이버로 나가는 요청량이 늘어나는 변경**이라 대표 판단 사항이다. 값이 조용히 바뀌는 것을 막는다.',
+      '빼면 정책 기본값(12회/시간)을 받는다 = 대표 승인값(3)의 4배 증설이고, **네이버로 나가는 ' +
+      '요청량이 늘어나는 변경**이라 대표 판단 사항이다. 게다가 12배면 하루 쓴 행이 예산 150만을 ' +
+      '넘겨 차단기가 자정 전에 수집을 멈춘다 — 늘리려다 오히려 줄어든다.',
   },
   {
     name: '3차 이관 match-registry cron 게이트 소실(알람과 이중 디스패치)',
