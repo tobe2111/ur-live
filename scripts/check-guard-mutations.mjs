@@ -88,6 +88,190 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🚀 유어샵 상품 동봉이 빠져 마지막 왕복이 되살아난다(콘텐츠 완성이 다시 fetch 뒤로)',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: ', linked_seller_products: linkedSeller?.id ? await loadLinkedSellerProducts(c.env.DB, Number(linkedSeller.id)) : null,',
+    replace: ',',
+    test: 'src/tests/unit/linkshop-products-seed.test.ts',
+    why:
+      '2026-09-02 실측: 셀러 시드 뒤에도 /api/products?seller_id 가 JS 실행 후 나가 콘텐츠 완성(0.9~1.6s)을 정했다. ' +
+      '이 한 줄이 빠지면 클라는 조용히 폴백 fetch 로 돌아가고 아무 에러도 없다.',
+  },
+  {
+    name: '🚀 유어샵이 동봉 상품을 받고도 fetch 를 또 한다(왕복이 안 줄고 D1 만 두 번 읽는다)',
+    file: 'src/pages/SellerPublicPage.tsx',
+    find: '      if (seededProducts) return // 동봉분이 곧 /api/products?seller_id 의 data — 같은 서비스, 같은 필터\n',
+    replace: '',
+    test: 'src/tests/unit/linkshop-products-seed.test.ts',
+    why: '동봉 소비의 절반 — 시드를 그리고도 fetch 를 하면 왕복은 그대로고 서버는 같은 100행을 두 번 읽는다.',
+  },
+  {
+    name: '📱 xl 전용 레일이 폰에서도 마운트돼 QR 라이브러리 82KB 를 내려받는다',
+    file: 'src/components/MobileAppLayout.tsx',
+    find: '{linkshopVisitor && isXl && <Suspense',
+    replace: '{linkshopVisitor && <Suspense',
+    test: 'src/tests/unit/linkshop-products-seed.test.ts',
+    why: '레일은 `hidden xl:flex` 라 안 보일 뿐 마운트는 되고, 안의 lazy QR 이 import 를 발사한다(실측: /u 모바일 워터폴 922ms 에 codes 82KB).',
+    name: '🏠 홈 청크 규칙에서 components/home 이 빠져 app-components 281KB 가 홈 preload 로 돌아온다',
+    file: 'vite.config.ts',
+    find: "            id.includes('/src/components/home/') || id.includes('/src/pages/pc-home/PcHomeLocationBar') ||\n",
+    replace: "            id.includes('/src/pages/pc-home/PcHomeLocationBar') ||\n",
+    test: 'src/tests/unit/home-chunk-diet.test.ts',
+    why:
+      '2026-09-02 번들러 실측: 홈이 닿는 21개 모듈이 app-components(66모듈 281KB)에 섞여 있어 통째로 preload 됐고, ' +
+      '그 봉투의 안 쓰는 모듈들이 tailwind-merge 97KB·radix·kakao-sdk·app-features 까지 끌고 왔다. 규칙 한 줄이 빠지면 조용히 되돌아간다.',
+  },
+  {
+    name: '🏠 deal/ 폴더를 통째로 app-home 에 넣어 DetailFloatingHeader 가 app-components 를 도로 끌고 온다',
+    file: 'vite.config.ts',
+    find: "            id.includes('/src/components/deal/DealCardMedia') || id.includes('/src/components/deal/WishlistHeart') ||\n",
+    replace: "            id.includes('/src/components/deal/') ||\n",
+    test: 'src/tests/unit/home-chunk-diet.test.ts',
+    why: '2차 실측에서 실제로 밟았다 — 폴더 규칙은 상세 전용 헤더까지 홈 청크로 넣어 간선을 끊지 못했다.',
+    name: '📏 실리뷰 최근 2,000건 인덱스의 WHERE 가 쿼리와 달라져 플래너가 함의를 못 본다',
+    file: 'src/worker/routes/repair-schema/index-repairs.ts',
+    find: 'ON product_reviews(created_at DESC) WHERE COALESCE(is_generated,0) = 0`',
+    replace: 'ON product_reviews(created_at DESC) WHERE is_generated = 0`',
+    test: 'src/tests/unit/d1-diet-round2.test.ts',
+    why:
+      '2026-09-02 첫 계량: auto-seed-reviews 가 시간당 12.7만 행(하루 300만) — product_reviews 12만 행을 매시간 정렬했다. ' +
+      '부분 인덱스는 쿼리 WHERE 와 글자까지 같아야 쓰인다 — `is_generated = 0` 으로 "단순화"하면 인덱스는 남고 효과만 사라진다.',
+  },
+  {
+    name: '📏 공구 마감 부분 인덱스가 사라져 5분마다 products 전수 ×3',
+    file: 'src/worker/routes/repair-schema/index-repairs.ts',
+    find: "  { name: 'idx_products_gb_deadline_active', sql: `CREATE INDEX IF NOT EXISTS idx_products_gb_deadline_active ON products(group_buy_deadline) WHERE group_buy_status = 'active' AND group_buy_deadline IS NOT NULL` },\n",
+    replace: '',
+    test: 'src/tests/unit/d1-diet-round2.test.ts',
+    why:
+      'group-buy-deadline-push 가 5분마다 창 3개 × products 전수(5,350행/틱 = 하루 150만). 활성+마감 부분 인덱스가 빠지면 ' +
+      '조용히 전수로 되돌아간다.',
+  },
+  {
+    name: '📉 키워드 수율 재계산 6h 게이트가 헛돈다(회차마다 전수 GROUP BY)',
+    file: 'src/features/marketing/api/influencer-keyword-yield.ts',
+    find: '  if (row?.value === bucket) return { skipped: \'bucket\', bucket }\n',
+    replace: '',
+    test: 'src/tests/unit/urads-d1-diet.test.ts',
+    why:
+      '2026-09-02: 정비 reclassify 슬롯이 회차마다(92회/일) 15.3만 행 GROUP BY 를 돌려 유어애즈 최대 단일 읽기(1,410만/일). ' +
+      '게이트가 빠져도 답은 같아서 아무도 모른다.',
+  },
+  {
+    name: '🩸 유입 감시 sendable 두 축이 다시 한 문장(교차 DB)으로 돌아간다',
+    file: 'src/features/marketing/api/inflow-watchdog.ts',
+    find: "    DB.prepare(`SELECT COUNT(*) AS n FROM ad_company_leads WHERE merged_into IS NULL AND email IS NOT NULL AND email <> ''`).first<{ n: number }>().catch(() => null),",
+    replace: "    DB.prepare(`SELECT COUNT(*) AS n FROM ad_company_leads, ad_influencer_leads WHERE 1=0`).first<{ n: number }>().catch(() => null),",
+    test: 'src/tests/unit/urads-d1-diet.test.ts',
+    why:
+      '두 테이블이 다른 D1 에 살아 라우터가 문장 하나를 한 DB 로만 보낸다 — 교차 문장은 예외→catch→null 로 ' +
+      '대표의 유일한 성공 지표(sendable_*)가 조용히 판정에서 빠진다. 실제로 그 상태였다.',
+    name: '📉 sitemap 엣지 캐시가 빠져 크롤러마다 D1 을 다시 읽는다',
+    file: 'src/worker/index.ts',
+    find: "app.use('/sitemap.xml', publicCache(3600));",
+    replace: '',
+    test: 'src/tests/unit/d1-request-diet.test.ts',
+    why:
+      '2026-09-02: sitemap 은 캐시 미들웨어가 없어 Yeti/Googlebot/Bingbot·uptime 프로브가 부를 때마다 ' +
+      'products 1,000행 + sellers EXISTS + 지역 집계 전수를 돌렸다. 한 줄이 빠지면 조용히 그대로 돌아간다.',
+  },
+  {
+    name: '📉 봇 OG 의 셀러 조회가 다시 OR 전수 스캔이 된다',
+    file: 'src/worker/index.ts',
+    find: ": await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE username = ?').bind(param).first<any>();",
+    replace: ": await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE slug = ? OR username = ?').bind(param, param).first<any>();",
+    test: 'src/tests/unit/d1-request-diet.test.ts',
+    why:
+      '`slug = ? OR username = ?` 는 OR 라 인덱스를 못 써 크롤러가 /profile/*·/s/* 를 칠 때마다 sellers 전수. ' +
+      '두 점 조회로 나눈 것이 되돌아가도 에러가 없다.',
+    name: '📉 청소 GC 티어 게이트가 사라져 5분마다 전수 스캔으로 돌아간다',
+    file: 'src/worker/cron/scheduled-cleanup.ts',
+    find: '  if (tiers.daily) await runDailyCleanup(DB, results)',
+    replace: '  await runDailyCleanup(DB, results)',
+    test: 'src/tests/unit/d1-read-diet.test.ts',
+    why:
+      '2026-09-02: 5분 cron 이 인덱스 없는 GC 문장 ~33개를 288회/일 돌려 본진 읽기의 3대 원인이 됐다. ' +
+      '게이트 하나가 빠지면 그 섹션이 조용히 5분 주기로 되돌아간다 — 에러도 하트비트 변화도 없다.',
+  },
+  {
+    name: '📉 피드 캐시 지문 게이트가 헛돈다(항상 전체 갱신)',
+    file: 'src/worker/cron/group-buy-feed-cache.ts',
+    find: 'if (prevFp === fp && Date.now() - prevAt < FEED_FORCE_REFRESH_MS) {',
+    replace: 'if (false) {',
+    test: 'src/tests/unit/d1-read-diet.test.ts',
+    why:
+      '상품이 안 바뀐 새벽에도 20개 정렬 쿼리를 5분마다 돌리던 것을 지문으로 막는다. 게이트가 죽으면 ' +
+      '종전 비용으로 조용히 돌아간다(결과는 같아서 아무도 모른다).',
+  },
+  {
+    name: '📉 예열 동적 워밍이 다시 5분마다 돈다',
+    file: 'src/worker/cron/cache-prewarm.ts',
+    find: '  if (env.DB && doDynamic) {',
+    replace: '  if (env.DB) {',
+    test: 'src/tests/unit/d1-read-diet.test.ts',
+    why:
+      '셀러/상품/큐레이터 상세 12개를 5분마다 콜드 렌더하던 것을 30분으로. 옵션을 안 읽으면 호출부가 ' +
+      '무엇을 넘기든 종전 주기로 돈다 — "만든 것·넘긴 것·읽는 것" 이 셋 다 다르다.',
+    name: '📉 읽기 예산 초과가 cron kick 을 못 막는다(paused 에 안 합쳐짐)',
+    file: 'src/worker-ads/index.ts',
+    find: '  const paused = lanesPaused(env) || budgetBlocked(budget) // ✍️',
+    replace: '  const paused = lanesPaused(env) // ⏸️',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '2026-09-02: 유어애즈가 자기 몫(기본 150만 행)을 넘기면 스스로 멈춰야 유어딜이 산다. 이 `||` 하나가 빠지면 ' +
+      '원장은 정확히 세면서 아무것도 안 막는다 — 하트비트엔 over=true 가 찍히는데 레인은 계속 읽는다.',
+  },
+  {
+    name: '📉 DO 알람 레인이 읽기 예산 게이트를 건너뛴다',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: '    if (budgetBlocked(await readBudgetState(this.env))) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '알람 레인은 cron 을 안 거치므로 cron 진입의 게이트가 안 미친다 — DO 안에 자기 게이트가 있어야 한다. ' +
+      '빠지면 측정·발굴 레인(읽기의 대부분)이 예산과 무관하게 돈다.',
+  },
+  {
+    name: '📉 cron 경로 레인이 읽기량을 원장에 안 보고한다(원장이 절반만 센다)',
+    file: 'src/worker-ads/self-beat.ts',
+    find: '    await reportReadUsage(env, readEnvMeter(env)?.rr, readEnvMeter(env)?.rw)\n',
+    replace: '',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      'cron kick 레인은 self-beat 가 유일한 회차 종료 지점이다. 여기서 안 보고하면 원장은 알람 레인만 세어 ' +
+      '예산이 실제의 절반쯤에서 헛돈다 — 넘겨도 over 가 늦게 뜬다.',
+  },
+  {
+    name: '⏸️ 유어애즈 일시정지 스위치가 레인을 안 막는다',
+    file: 'src/worker-ads/index.ts',
+    find: '    if (paused && !pauseExempt(path)) return // ⏸️ 등록은 하고(known_lanes 보존) 띄우지만 않는다\n',
+    replace: '',
+    test: 'src/tests/unit/ads-lanes-pause.test.ts',
+    why:
+      '2026-09-02: D1 읽기 한도(계정 단위 500만/일)에 닿아 유어딜 API 전체가 500. 유어애즈를 멈추는 길이 ' +
+      '15개 env 로 흩어져 있어 하나를 빠뜨리면 조용히 계속 읽는다 — 스위치 하나가 실제로 kick 을 막아야 한다.',
+  },
+  {
+    name: '📏 DO 알람 레인의 D1 읽기량이 스탬프에서 빠진다',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))), this.meter)',
+    replace: 'staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))))',
+    test: 'src/tests/unit/ads-lanes-pause.test.ts',
+    why:
+      '8/27 수리 뒤 아무도 재지 않았고, 잴 수단이 DB 총량뿐이라 "어느 레인이" 를 끝내 못 가렸다. ' +
+      '알람 레인은 인보케이션이 DO 라 엔트리 래핑이 안 미친다 — 스탬프에 직접 실어야 보인다.',
+  },
+  {
+    name: '📏 유어딜 cron 작업이 계량기 밖에서 돈다',
+    file: 'src/worker/scheduled.ts',
+    find: 'out = await runInMeter(meter, task);',
+    replace: 'out = await task();',
+    test: 'src/tests/unit/d1-read-meter.test.ts',
+    why:
+      '계량기를 만들어도 safeCron 이 그 안에서 작업을 안 돌리면 rr 은 영원히 0 이다 — "만든 것·등록된 것·' +
+      '실제로 도는 것" 이 셋 다 다르다는 이 레포의 교훈 그대로.',
+  },
+  {
     name: '백필 건수가 화면까지 못 간다',
     file: 'src/pages/admin-dongnedeal-import/seedStayDemos.ts',
     find: "t.descHealed && ` · 소개 문구 ${t.descHealed}개 교체`,",
@@ -671,8 +855,9 @@ const MUTATIONS = [
   {
     name: '🗄️ 백업이 다시 시간당 1회로 줄어든다(전체 스냅샷 60시간 → 일 1회 불가)',
     file: 'src/worker/scheduled.ts',
-    find: '[5, 20, 35, 50].some((m) => slotDue(event.scheduledTime, { minute: m }))',
-    replace: 'slotDue(event.scheduledTime, { minute: 50 })',
+    // 📉 2026-09-02: `*/5` 슬롯 배열은 제거됐다(전용 트리거와 중복 — 하루 110만 행). 이제 좌표는 전용 트리거의 분 목록.
+    find: "cron === '2,17,32,47 * * * *' ||",
+    replace: "cron === '2 * * * *' ||",
     test: 'src/tests/unit/backup-cadence.test.ts',
     why:
       '실측: cron 1회차가 약 12,500행이고 유어애즈 DB 는 약 754,000행이다. 시간당 1회면 **60시간** — ' +
@@ -3048,7 +3233,7 @@ canvas {
   {
     name: '키워드 성과 재계산이 빠져 감점이 영원히 0',
     file: 'src/features/marketing/api/influencer-maintenance.ts',
-    find: '; out.kwyield = await recomputeKeywordContactYield(DB).catch(() => null) }',
+    find: '; out.kwyield = await recomputeKeywordContactYieldBucketed(DB).catch(() => null) }',
     replace: ' }',
     test: 'src/tests/unit/influencer-keyword-yield.test.ts',
     why:
@@ -4537,11 +4722,11 @@ canvas {
   {
     name: '백업 슬롯 분이 전용 트리거와 겹침(커서 동시 갱신)',
     file: 'src/worker/scheduled.ts',
-    find: '[5, 20, 35, 50].some',
+    find: "cron === '2,17,32,47 * * * *' ||", // 📉 2026-09-02: */5 슬롯 배열 제거 → 전용 트리거의 분이 */5 격자와 겹치는지로
     // 🩸 2026-08-25: 전용 트리거가 `*/15`(:00/…) → `2,17,32,47` 로 옮겨서 주입값도 :2 로 바꾼다.
     //   옛 `0` 은 이제 아무와도 안 겹쳐 **주입해도 초록**이 된다(= 이 가드가 헛돌게 된다).
-    replace: '[2, 20, 35, 50].some',
-    test: 'src/tests/unit/cron-schedule.test.ts',
+    replace: "cron === '5,17,32,47 * * * *' ||",
+    test: 'src/tests/unit/backup-cadence.test.ts',
     why:
       '`*/5` 폴백 슬롯(:05/:20/:35/:50)과 전용 `*/15`(:00/:15/:30/:45)이 같은 분에 겹치면 ' +
       '두 인보케이션이 **같은 백업 커서를 동시에 민다** — 청크가 어긋나 스냅샷이 조용히 깨진다.',
@@ -6529,6 +6714,58 @@ canvas {
     why:
       '기억할 수 없는 DB 에서 "이미 했다"를 영영 못 적으니 전수 UPDATE/DELETE 가 무한 반복된다. ' +
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
+  },
+  {
+    name: '🚧 레인 진입 초크포인트가 사라진다(자기-체인이 차단기를 우회)',
+    file: 'src/worker-ads/lane-gate.ts',
+    find: "    const blocked = await laneEntryBlock(",
+    replace: "    const blocked = ''; void laneEntryBlock; if (false) await (async () => (",
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '2026-09-02 라이브 실측: 원장이 over=true 인데도 레인이 계속 돌았다(10:15 collect rr 85,130 · ' +
+      'collect-neis rw 40,004 · 10:24 enrich rr 194,610). 레인을 띄우는 길이 셋인데 게이트가 둘에만 ' +
+      '있었기 때문이다 — 자기-체인 SELF.fetch 는 부모 판단을 한 번도 안 거친다. 같은 구멍이 수동 정지 ' +
+      '스위치에도 있어, 대표가 껐다고 믿는 동안에도 체인이 돈다.',
+  },
+  {
+    name: '🚧 초크포인트가 원장을 늘 묻는다(면제·정지에서도 서브리퀘스트 낭비)',
+    file: 'src/worker-ads/lane-pause.ts',
+    find: '  if (pauseExempt(path)) return \'\'\n  if (lanesPaused(env)) return \'paused\'',
+    replace: '  const forced = await overFn(env)\n  if (pauseExempt(path)) return \'\'\n  if (lanesPaused(env)) return \'paused\'\n  void forced',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '원장 조회는 서브리퀘스트 1 이다. 면제 경로(관측)와 수동 정지에서까지 물으면 정지 중에도 ' +
+      '예산을 계속 태우고, 관측 창이 원장 장애에 함께 죽는다.',
+  },
+  {
+    name: '✍️ 쓰기 예산이 게이트에서 빠진다(요금을 터뜨린 축이 다시 무방비)',
+    file: 'src/worker-ads/index.ts',
+    find: 'const paused = lanesPaused(env) || budgetBlocked(budget)',
+    replace: 'const paused = lanesPaused(env) || budget.over',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '읽기 축만 보면 2026-09-02 와 같은 폭주(시간당 300만 쓰기, 월 $427)를 못 막는다. ' +
+      '포함분 비율이 읽기 250억 : 쓰기 5,000만 = 500배라, 쓰기가 먼저 요금이 된다.',
+  },
+  {
+    name: '✍️ 회차가 쓴 행을 보고하지 않는다(원장이 영원히 0 — 조용한 무방비)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'reportReadUsage(this.env, this.meter.rr, this.meter.rw)',
+    replace: 'reportReadUsage(this.env, this.meter.rr)',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '차단기는 서 있는데 계량기가 0 만 보낸다. 초과가 영원히 안 잡히고, 에러도 로그도 없다 — ' +
+      '이 레포가 반복해 만난 "실패가 아니라 조용한 부재" 그대로다.',
+  },
+  {
+    name: '✍️ 읽기를 끄면 쓰기 감시까지 사라진다(한쪽만 꺼도 무제한)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '  if (budget <= 0 && writeBudget <= 0) return { ...idle, over: false, writeOver: false }',
+    replace: '  if (budget <= 0) return { ...idle, over: false, writeOver: false }',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '읽기 예산을 0 으로 두는 건 흔한 조치인데(유료 전환 뒤 "읽기는 넉넉하니 끄자"), 그때 쓰기 ' +
+      '차단기까지 같이 죽으면 요금 상한이 통째로 사라진다.',
   },
   {
     name: '🪦 거르지 못하는 bio 인덱스가 되살아난다(부분 인덱스를 이겨 다시 하루 4,111만 행)',

@@ -25,11 +25,13 @@ export async function handleRetryAlimtalk(env: Env) {
   try {
     // ✅ PERF: 빈 테이블 fast-path — COUNT 한 번만 (대부분 0)
     try {
-      const cnt = await env.DB.prepare(`
-        SELECT COUNT(*) as c FROM alimtalk_failures
-        WHERE resolved = 0 AND retry_count < max_retries AND next_retry_at <= datetime('now')
+      // 📉 2026-09-02: COUNT(*) 는 답이 0 이어도 테이블을 끝까지 읽는다(5분마다 = 288회/일). 존재 여부만 물으면
+      //   첫 매치에서 멈춘다(+ `idx_alimtalk_failures_retry` 가 그 첫 매치를 인덱스로 찾는다).
+      const any = await env.DB.prepare(`
+        SELECT 1 AS c FROM alimtalk_failures
+        WHERE resolved = 0 AND retry_count < max_retries AND next_retry_at <= datetime('now') LIMIT 1
       `).first<{ c: number }>()
-      if (!cnt || (cnt.c ?? 0) === 0) return
+      if (!any) return
     } catch {
       // 테이블 없거나 COUNT 실패 — 기존 SELECT 로 진행
     }

@@ -26,6 +26,10 @@ async function ensureRemindColumn(DB: D1Database): Promise<void> {
   if (_colDone.has(DB)) return
   _colDone.add(DB)
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN reminded_at TEXT').run().catch(() => null)
+  // 📉 2026-09-02 (정적 감사 §3 #8): 대상 조회가 0건인 날에도 15.3만 행 + 정렬을 6회/일 돌렸다. 처리될수록
+  //   비는 집합(동의 O·리마인드 X)이라 부분 인덱스가 정확히 맞고, 컬럼은 방금 위 ALTER 로 보장된다.
+  await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_remind_todo ON ad_influencer_leads(account_id, contacted_at)
+    WHERE consented_at IS NOT NULL AND reminded_at IS NULL`).run().catch(() => null)
 }
 
 const REMIND_TEMPLATE = `{name}님, 안녕하세요. 유어애즈(UR Team)입니다.
