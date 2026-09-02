@@ -89,7 +89,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
     cfImage(src, { width: w, height: Math.round(w / HERO_RATIO), fit: 'cover', gravity: 'auto', format: 'auto' }) || src
 
   const bg = (src: string, w: number) => ({
-    backgroundColor: '#1A1C21',
+    backgroundColor: '#1D1F29',
     backgroundImage: src ? `url("${cfImage(src, { width: w, format: 'auto' }) || src}")` : undefined,
     backgroundSize: 'cover' as const,
     backgroundPosition: 'center' as const,
@@ -138,7 +138,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
           {(has ? images : ['']).map((src, i) => (
             <div key={i} role="img" aria-label={alt} className="flex items-center justify-center text-6xl"
               style={{ flex: '0 0 100%', scrollSnapAlign: 'center',
-                backgroundColor: '#1A1C21',
+                backgroundColor: '#1D1F29',
                 backgroundImage: src ? `url("${heroUrl(src, 900)}")` : undefined,
                 backgroundSize: 'cover', backgroundPosition: 'center' }}>
               {!src && fallback}

@@ -178,7 +178,7 @@ export default function SearchPage() {
 
   // 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일).
   return (
-    <div className="bg-white dark:bg-[#0D0F12] pb-safe-nav md:pb-20 min-h-[100dvh]">
+    <div className="bg-white dark:bg-[#11141C] pb-safe-nav md:pb-20 min-h-[100dvh]">
       <SEO title={query ? t('search.seoTitleQuery', { query, defaultValue: `${query} 검색결과 - 유어딜` }) : t('search.pageTitle', { defaultValue: '검색 - 유어딜' })} description={t('search.seoDesc', { defaultValue: '유어딜에서 원하는 이용권을 검색하세요. 동네 가게 할인 이용권을 만나보세요.' })} url="/search" noindex />
       {/* Header */}
       <SearchHeader
@@ -244,7 +244,7 @@ export default function SearchPage() {
                   <button
                     key={keyword}
                     onClick={() => handleSearch(keyword)}
-                    className="px-4 py-2 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[13px] text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-[#1A1C21] active:bg-gray-100 dark:bg-[#1A1C21] dark:active:bg-[#1A1C21] transition-colors"
+                    className="px-4 py-2 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[13px] text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-[#1D1F29] active:bg-gray-100 dark:bg-[#1D1F29] dark:active:bg-[#1D1F29] transition-colors"
                   >
                     {keyword}
                   </button>

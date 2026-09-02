@@ -523,7 +523,7 @@ function AppContent() {
         dynamic.setAttribute('data-dynamic', '1')
         document.head.appendChild(dynamic)
       }
-      dynamic.setAttribute('content', isLight ? '#FAF7F5' : '#0D0F12') // 🎨 2026-07-19 지시서 §6 — 라이트 #FAF7F5 / 다크 #0D0F12
+      dynamic.setAttribute('content', isLight ? '#F8F7FC' : '#11141C') // 🎨 2026-07-19 지시서 §6 — 라이트 #F8F7FC / 다크 #11141C
     } catch { /* SSR / 브라우저 미지원 */ }
   }, [location.pathname])
 

@@ -26,12 +26,12 @@ export default function CommunityGroupBuyCard({
   return (
     <button
       onClick={() => navigate(`/community-group-buy/${g.invite_code}`)}
-      className="w-full text-left border border-gray-100 dark:border-[#2C2F35] rounded-2xl p-4 active:scale-[0.98] transition-transform bg-white dark:bg-[#1A1C21] hover:border-gray-200 dark:hover:border-[#3A3A3A]"
+      className="w-full text-left border border-gray-100 dark:border-[#2C2F35] rounded-2xl p-4 active:scale-[0.98] transition-transform bg-white dark:bg-[#1D1F29] hover:border-gray-200 dark:hover:border-[#3A3A3A]"
     >
       {/* 상단: 아이콘 + 식당명 + 상태 배지 */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center flex-shrink-0">
             <span className="text-[18px]">🙋</span>
           </div>
           <div className="min-w-0">
@@ -81,7 +81,7 @@ export default function CommunityGroupBuyCard({
 
       {/* 진행률 바 */}
       <div className="mt-3">
-        <div className="w-full h-2.5 bg-gray-100 dark:bg-[#1A1C21] rounded-full overflow-hidden">
+        <div className="w-full h-2.5 bg-gray-100 dark:bg-[#1D1F29] rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${
               achieved ? 'bg-emerald-500' : 'bg-gray-900 dark:bg-white'

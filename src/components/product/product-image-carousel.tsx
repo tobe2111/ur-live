@@ -23,7 +23,7 @@ export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
 
   if (!images || images.length === 0) {
     return (
-      <div className="relative w-full bg-gray-50 dark:bg-[#1A1C21] aspect-square flex items-center justify-center">
+      <div className="relative w-full bg-gray-50 dark:bg-[#1D1F29] aspect-square flex items-center justify-center">
         <span className="text-gray-400 dark:text-gray-500 text-sm">이미지 없음</span>
       </div>
     )

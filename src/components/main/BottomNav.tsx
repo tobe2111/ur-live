@@ -4,8 +4,9 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { isWholesaleSurface } from '@/utils/domain'
-import { Home, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin, Ticket, Gift } from 'lucide-react'
-import { UrShopIcon } from '@/components/icons/urdeal-icons'
+import { Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin } from 'lucide-react'
+// 🎫 2026-09-02 (대표 시안 — 코레일톡 하단 탭): 다섯 탭 전부 유어딜 아이콘. 비활성 = 선, 활성 = 면(`filled`).
+import { UrShopIcon, HomeIcon, GiftBoxIcon, TicketStubIcon, PersonIcon } from '@/components/icons/urdeal-icons'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
@@ -197,7 +198,7 @@ export default function BottomNav() {
   //   SHOPPING_TAB_HIDDEN=false 로 바꾸면 쇼핑 탭 즉시 복원(가역). /browse 라우트·prefetch 코드는 보존.
   //   ➕ 는 시트를 열어 (유저) 동네 공구 제안 / (셀러) 이용권 등록으로 분기 — 수요 신호 수집기.
   const navItems = [
-    { icon: Home,        label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
+    { icon: HomeIcon,    label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
     // 🎟️ 2026-06-19 [UNLOCK_LOADING] (대표 5탭 확정 — 홈=동네딜이라 동네딜 탭은 홈과 중복): 동네딜 탭 → 교환권(기프티콘).
     //   홈이 이미 동네딜 피드라 별도 동네딜 탭은 중복 → 두 상품축(동네딜=홈 / 교환권=탭2)을 모두 노출.
     //   전체 동네딜(지역/검색)은 홈 '전체 동네딜 보기' 링크로 진입. isActivePath 는 홈(/) 이 /group-buy 에서도 활성.
@@ -206,10 +207,10 @@ export default function BottomNav() {
     // 🎟️ 2026-07-10 [UNLOCK_LOADING] (대표 결정 — 일반상품 SHOPPING_TAB_HIDDEN 게이트로 숨김·교환권 유지):
     //   /vouchers 가 순수 교환권 페이지로 복귀(06-19 형태) → 라벨 쇼핑→교환권, 아이콘 ShoppingBag→Gift.
     //   path/prefetch 불변. SHOPPING_TAB_HIDDEN=false 로 일반상품 복원 시 라벨 재검토.
-    { icon: Gift, label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers', prefetch: () => import('@/pages/VouchersPage') },
+    { icon: GiftBoxIcon, label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers', prefetch: () => import('@/pages/VouchersPage') },
     // 🎟️ 2026-06-18 (대표 결정): 가운데 → '이용권'. 교환권(기프티콘)은 MMS 발송 카탈로그(탭2)이고,
     //   이용권(동네딜 이용권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 지갑이라 상시 탭 가치가 높음.
-    { icon: Ticket,      label: t('nav.myGbVouchers', { defaultValue: '이용권' }), path: '/my-vouchers', prefetch: () => import('@/pages/MyVouchersPage') },
+    { icon: TicketStubIcon, label: t('nav.myGbVouchers', { defaultValue: '이용권' }), path: '/my-vouchers', prefetch: () => import('@/pages/MyVouchersPage') },
     // 🧭 2026-06-10: 유어샵도 청크+데이터 동시 워밍 (동네딜과 동일) — 누르는 순간 선요청.
     { icon: UrShopIcon,  label: t('nav.linkshop', { defaultValue: '유어샵' }), path: linkshopPath, prefetch: () => {
       if (linkshopPath.startsWith('/u/') && !linkshopPath.startsWith('/u/me')) {
@@ -221,7 +222,7 @@ export default function BottomNav() {
       if (linkshopPath.startsWith('/profile/')) return import('@/pages/SellerPublicPage')
       return import('@/pages/UMeRedirectPage')
     } },
-    { icon: User,        label: t('nav.my',    { defaultValue: '마이' }),  path: '/user/profile', prefetch: () => import('@/pages/UserProfilePage') },
+    { icon: PersonIcon,  label: t('nav.my',    { defaultValue: '마이' }),  path: '/user/profile', prefetch: () => import('@/pages/UserProfilePage') },
   ]
 
   const isActivePath = (path: string) => {
@@ -254,6 +255,8 @@ export default function BottomNav() {
     // ➕(만들기) — 경로 이동 대신 생성 시트 오픈 (기존 sheet 재활용).
     const isCreate = path === '__create__'
     const active = !isCreate && isActivePath(path)
+    // 🎫 탭 아이콘 union 에 ➕(lucide Plus)가 섞여 `filled` 를 못 받는다 — ➕ 은 위 isCreate 분기에서 끝나므로 여기선 유어딜 탭 아이콘으로 좁힌다.
+    const TabIcon = Icon as typeof HomeIcon
     const isMyTab = path === '/user/profile'
     // intent(hover/press) 시 lazy 청크 prefetch — dedup 되므로 다중 호출 안전, 실패 무시.
     const warm = prefetch ? () => { try { prefetch().catch(() => {}) } catch { /* noop */ } } : undefined
@@ -291,23 +294,27 @@ export default function BottomNav() {
             src={cfImage(profileImage, { width: 96 })}
             alt="Profile"
             className={`h-6 w-6 rounded-full object-cover transition-all ${
-              active ? 'ring-2 ring-white ring-offset-1 ring-offset-[#0D0F12]' : 'opacity-60'
+              active ? 'ring-2 ring-white ring-offset-1 ring-offset-[#11141C]' : 'opacity-60'
             }`}
             loading="lazy"
             decoding="async"
             onError={() => setProfileImage(null)}
           />
         ) : (
-          <Icon
+          <TabIcon
             size={22}
-            className={active ? 'text-brand-text' : 'text-gray-400'}
-            strokeWidth={active ? 2 : 1.5}
+            filled={active}
+            className={active ? 'text-gray-900 dark:text-white' : 'text-gray-400'}
+            strokeWidth={1.6}
           />
         )}
-        <span className={`text-[9px] mt-0.5 ${
-          active ? 'font-bold text-brand' : 'text-gray-400'
+        {/* 🔴 2026-09-01 로즈 마침표: 활성은 아이콘·라벨을 통째로 물들이지 않고 아래 점 하나로 말한다.
+            로고 `urdeal.` 의 점과 같은 장치 — 로즈가 사는 자리를 셋(할인율·주 버튼·점)으로 잠근다. */}
+        <span className={`relative text-[9px] mt-0.5 ${
+          active ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-400'
         }`}>
           {label}
+          {active && <span aria-hidden="true" className="absolute left-1/2 -bottom-[7px] -translate-x-1/2 w-1 h-1 rounded-full bg-brand" />}
         </span>
       </button>
     )
@@ -334,7 +341,7 @@ export default function BottomNav() {
           로직은 무변경(표시 위치만). */}
       <div data-testid="bottom-nav" className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none hide-on-keyboard app-frame-bar">
         {/* 🛡️ 2026-05-19: 사용자 요청 — 진한 border-t (검정색 선) 제거. 다크 모드는 그대로, 라이트는 미세 회색 (gray-100). */}
-        <div className="pointer-events-auto bg-white dark:bg-[#0D0F12] border-t border-gray-100 dark:border-[#2C2F35]"
+        <div className="pointer-events-auto bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35]"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
           <nav className="max-w-[430px] sm:max-w-[540px] md:max-w-[640px] mx-auto px-2 sm:px-4">
@@ -361,7 +368,7 @@ export default function BottomNav() {
           <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] sm:max-w-[540px] z-[10001] animate-sheet-up max-h-[85dvh] overflow-y-auto">
             <div>
               <div
-                className="bg-gray-50 dark:bg-[#1A1C21] rounded-t-3xl"
+                className="bg-gray-50 dark:bg-[#1D1F29] rounded-t-3xl"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}
               >
                 {/* Handle */}
@@ -433,7 +440,7 @@ export default function BottomNav() {
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gray-100 dark:bg-[#1A1C21] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center gap-4 p-4 bg-gray-100 dark:bg-[#1D1F29] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-[#333] flex items-center justify-center">
                           <LayoutDashboard className="w-6 h-6 text-gray-600" />
@@ -450,7 +457,7 @@ export default function BottomNav() {
                   {(isSeller || hasSellerToken) && (isAgency || hasAgencyToken) && (
                     <button
                       onClick={() => { setSheetOpen(false); navigate('/agency') }}
-                      className="w-full mt-2 flex items-center gap-3 p-3 bg-gray-100 dark:bg-[#1A1C21] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
+                      className="w-full mt-2 flex items-center gap-3 p-3 bg-gray-100 dark:bg-[#1D1F29] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
                     >
                       <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
                         <span className="text-lg">💼</span>
@@ -505,7 +512,7 @@ export default function BottomNav() {
                       {/* 🏁 2026-07-02 단일 퍼널: 레거시 별도계정 가입 → 카카오 로그인 후 단일 관문(같은 계정 업그레이드). */}
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/login?returnUrl=' + encodeURIComponent('/store/new')) }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-100 dark:bg-[#1A1C21] text-gray-900 dark:text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-100 dark:bg-[#1D1F29] text-gray-900 dark:text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <UserPlus className="w-5 h-5" />
                         {t('bottomNav.openMyShop', { defaultValue: '내 가게 등록' })}

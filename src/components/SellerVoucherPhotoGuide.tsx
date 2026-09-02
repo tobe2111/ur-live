@@ -12,17 +12,17 @@ import { useTranslation } from 'react-i18next'
 function GoodExampleSvg() {
   return (
     <svg viewBox="0 0 96 72" className="w-full h-auto" aria-hidden="true">
-      <rect width="96" height="72" rx="6" fill="#FBEDF0" />
+      <rect width="96" height="72" rx="6" fill="#EAF1FE" />
       {/* 김 — 갓 나온 요리 */}
       <path d="M38 12c-2 3 2 5 0 8M48 10c-2 3 2 5 0 8M58 12c-2 3 2 5 0 8" stroke="#C9A5AD" strokeWidth="2" strokeLinecap="round" fill="none" />
       {/* 그릇(클로즈업 — 프레임 하단을 가득) */}
-      <ellipse cx="48" cy="40" rx="34" ry="11" fill="#E0526B" opacity="0.9" />
-      <path d="M14 40h68c0 14-14 24-34 24S14 54 14 40Z" fill="#FFFFFF" stroke="#E0526B" strokeWidth="2.5" />
+      <ellipse cx="48" cy="40" rx="34" ry="11" fill="#1C69EF" opacity="0.9" />
+      <path d="M14 40h68c0 14-14 24-34 24S14 54 14 40Z" fill="#FFFFFF" stroke="#1C69EF" strokeWidth="2.5" />
       {/* 음식 봉긋 */}
-      <path d="M22 39c4-8 12-12 26-12s22 4 26 12" fill="#F3C1CA" stroke="#E0526B" strokeWidth="2" strokeLinejoin="round" />
-      <circle cx="38" cy="34" r="2.2" fill="#E0526B" />
-      <circle cx="52" cy="31" r="2.2" fill="#E0526B" />
-      <circle cx="62" cy="35" r="2.2" fill="#E0526B" />
+      <path d="M22 39c4-8 12-12 26-12s22 4 26 12" fill="#F3C1CA" stroke="#1C69EF" strokeWidth="2" strokeLinejoin="round" />
+      <circle cx="38" cy="34" r="2.2" fill="#1C69EF" />
+      <circle cx="52" cy="31" r="2.2" fill="#1C69EF" />
+      <circle cx="62" cy="35" r="2.2" fill="#1C69EF" />
     </svg>
   )
 }
