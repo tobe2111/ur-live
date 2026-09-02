@@ -73,3 +73,9 @@
 - 가드 `account-pc-pane.test.ts` 6건 + 매니페스트 2건. 하네스 `--route=/user/profile --pc --auth=user --deals --wallet` 라이트/다크 확인.
 - ⚠️ 하네스에선 주문 현황·리뷰어 레벨이 데이터 0 이라 안 그려진다(둘 다 빈값이면 null) — 라이브에서 확인할 것.
 - 남은 것: ④ 셀러 대시보드 B안.
+
+## 셀러 대시보드 B안 구현 (같은 PR)
+
+- `ur-btn-primary` 잉크 → 블루(어드민·에이전시도 함께) · SellerLayout 활성 블루 막대/로그아웃 중립/FAB 블루 · Kakao 배너 · MyStoresPanel STEP 티켓 · DashboardCard/StatCard 들림 · SellerPage amber 상자 제거 · 라이트 래퍼에 `--lift/--rule` 재선언.
+- 가드 `seller-dashboard-b.test.ts` 7건 + 매니페스트 2건. `check-dashboard-theme`/`dashboard-button-system`/`design-slop` GREEN. 하네스 `--route=/seller --pc --auth=seller` 확인.
+- 대표 확정 4건(유어샵·교환권·PC 마이·셀러) 전부 #1305 에 실림. 남은 것: CI → 머지 → 라이브 확인 → Notion.

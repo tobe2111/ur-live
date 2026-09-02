@@ -7411,6 +7411,22 @@ canvas {
     why: '표면 규칙 ⑥ 그라디언트 0. 다크의 #171026 보라는 체계 밖 색이었다.',
   },
   {
+    name: '셀러 B안 — STEP 카드 밴드가 다시 잉크(사이드바·카드·버튼 셋이 검정)',
+    file: 'src/pages/seller-page/MyStoresPanel.tsx',
+    find: "h-11 px-4 text-[14px] text-white bg-brand tabular-nums",
+    replace: "h-11 px-4 text-[14px] text-white bg-gray-900 tabular-nums",
+    test: 'src/tests/unit/seller-dashboard-b.test.ts',
+    why: '2026-09-02 대표 확정 B안. 강조는 밴드 하나(블루)여야 잉크 사이드바와 경쟁하지 않는다.',
+  },
+  {
+    name: '셀러 B안 — 상담 FAB 이 카카오 노랑으로 돌아간다',
+    file: 'src/components/SellerLayout.tsx',
+    find: "rounded-full bg-brand hover:bg-[#1557C8] text-white shadow-md",
+    replace: "rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md",
+    test: 'src/tests/unit/seller-dashboard-b.test.ts',
+    why: '표면 규칙 ② 강조색 하나. 화면 구석의 노랑 원은 체계 밖 색이었다.',
+  },
+  {
     name: '홈 패널 라이트 섬 — darkMode variant 에서 예외가 사라진다',
     file: 'tailwind.config.js',
     find: "darkMode: ['variant', '&:is(.dark *):not(.light-island *)'],",

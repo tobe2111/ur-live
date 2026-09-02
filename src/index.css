@@ -73,9 +73,11 @@
        색·모서리·높이·굵기는 여기서만 정해지므로, 바꿀 일이 생기면 이 파일 한 곳만 고친다.
      ⚠️ 다크 대응: 대시보드(셀러/어드민/에이전시)는 **항상 라이트**가 대표 확정 정책이라
         여기서 `dark:` 를 쓰지 않는다. 소비자 표면에서 쓸 때는 호출부가 색을 준다. */
-  .ur-btn-primary   { background: #16181C; color: #fff; }
-  .ur-btn-primary:hover:not(:disabled)   { background: #2C2F35; }
-  .ur-btn-secondary { background: #fff; color: #374151; border-width: 1px; border-color: #E5E7EB; }
+  /* 🎫 2026-09-02 (대표 확정 — 셀러 대시보드 B안 · 디자인 시스템 "주 버튼 = 브랜드"): 잉크 → 브랜드 블루.
+     대시보드 셋(셀러·어드민·에이전시)이 같은 체계를 쓰므로 한 줄로 셋이 함께 바뀐다. */
+  .ur-btn-primary   { background: #1C69EF; color: #fff; }
+  .ur-btn-primary:hover:not(:disabled)   { background: #1557C8; }
+  .ur-btn-secondary { background: #fff; color: #374151; box-shadow: var(--lift, 0 2px 10px rgb(22 24 28 / 0.06)); }
   .ur-btn-secondary:hover:not(:disabled) { background: #F9FAFB; }
   /* 위험 — 삭제·취소. **빨강은 여기서만 쓴다**(장식으로 쓰면 진짜 경고가 안 보인다). */
   .ur-btn-danger    { background: #DC2626; color: #fff; }
@@ -401,6 +403,16 @@
 .seller-light-theme {
   --primary: 218 87% 52%;   /* #1C69EF */
   --ring: 218 87% 52%;
+  /* 🎫 2026-09-02: 대시보드는 화이트 고정인데 html.dark 가 켜져 있으면 :root 의 다크 토큰(--lift:none)이 새어 들어와
+     흰 카드가 안 뜬다 → 라이트 값을 여기서 다시 박는다(어드민·에이전시도 같은 래퍼 규칙 아래). */
+  --lift: 0 2px 10px rgb(22 24 28 / 0.06);
+  --rule: rgb(22 24 28 / 0.08);
+  --rule-strong: rgb(22 24 28 / 0.28);
+}
+.admin-light-theme, .agency-light-theme {
+  --lift: 0 2px 10px rgb(22 24 28 / 0.06);
+  --rule: rgb(22 24 28 / 0.08);
+  --rule-strong: rgb(22 24 28 / 0.28);
 }
 
 /* 🛡️ 2026-06-17 (사용자 신고 — 로그인/대시보드 입력 글자 흰색으로 안 보임): 어드민/셀러/에이전시/도매는 라이트 고정.
@@ -1213,7 +1225,7 @@ html.dark .gbd {
 .animate-orderProofIn { animation: orderProofIn 300ms ease-out; }
 
 /* 🛡️ 2026-05-20: 사이드바 active gradient — Seller/Admin/Agency Layout 의 inline style 대체. */
-.ur-seller-nav-active { background: linear-gradient(to right, rgba(255, 255, 255, 0.10), transparent); }
+.ur-seller-nav-active { background: rgba(255, 255, 255, 0.06); } /* 🎫 2026-09-02 B안: 그라디언트 → 평면, 활성 표시는 블루 세로 막대 */
 .ur-admin-nav-active  { background: linear-gradient(to right, rgba(252, 211, 77, 0.12), transparent); }
 .ur-agency-nav-active { background: linear-gradient(to right, rgba(139, 92, 246, 0.18), transparent); }
 

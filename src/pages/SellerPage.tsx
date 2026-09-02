@@ -409,7 +409,7 @@ export default function SellerPage() {
                 visible: true, delta: 0, showDelta: false,
               },
             ].filter(card => card.visible).map(card => (
-              <div key={card.label} className="bg-white rounded-xl p-3 sm:p-4 shadow-sm">
+              <div key={card.label} className="bg-white rounded-2xl p-3 sm:p-4 shadow-lift">
                 <div className="flex items-center justify-between mb-2 sm:mb-3">
                   <span className="text-[10px] sm:text-xs font-medium text-gray-500">{card.label}</span>
                   <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${card.bg} ${card.color} flex items-center justify-center`}>
@@ -447,16 +447,16 @@ export default function SellerPage() {
           {/* ── 할 일 목록 ── */}
           {/* 🗑️ 2026-08-23 (대표): 재고 부족 칩 제거 — 쇼핑 재고 레일 잔재. */}
           {(stats.pendingOrders > 0 || (stats.pendingSettlement ?? 0) > 0) && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <h3 className="text-sm font-bold text-amber-800 mb-2">📋 {t('seller.actionItems')}</h3>
+            <div className="bg-white rounded-2xl shadow-lift p-4">
+              <h3 className="text-sm font-bold text-gray-900 mb-2">{t('seller.actionItems')}</h3>
               <div className="flex flex-wrap gap-2">
                 {stats.pendingOrders > 0 && (
-                  <Link to="/seller/orders" className="flex items-center gap-1.5 px-3 py-2 bg-white rounded-lg text-xs font-medium text-amber-700 border border-amber-200 hover:bg-amber-100">
+                  <Link to="/seller/orders" className="flex items-center gap-1.5 px-3 py-2 bg-brand-tint rounded-lg text-xs font-bold text-brand-text">
                     <ShoppingBag className="w-3.5 h-3.5" /> {t('seller.unprocessedOrderCount', { count: stats.pendingOrders })}
                   </Link>
                 )}
                 {(stats.pendingSettlement ?? 0) > 0 && (
-                  <Link to="/seller/settlements" className="flex items-center gap-1.5 px-3 py-2 bg-white rounded-lg text-xs font-medium text-green-700 border border-green-200 hover:bg-green-100">
+                  <Link to="/seller/settlements" className="flex items-center gap-1.5 px-3 py-2 bg-brand-tint rounded-lg text-xs font-bold text-brand-text">
                     <CreditCard className="w-3.5 h-3.5" /> {t('seller.settlementAvailableCount', { count: stats.pendingSettlement })}
                   </Link>
                 )}
@@ -489,7 +489,7 @@ export default function SellerPage() {
 
               {/* Top products */}
               {topProducts.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm p-5">
+                <div className="bg-white rounded-2xl shadow-lift p-5">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-sm font-semibold text-gray-900">{t('seller.topProducts')}</h2>
                     <Link to="/seller/products" className="text-xs text-blue-600 hover:underline">{t('seller.all')}</Link>
