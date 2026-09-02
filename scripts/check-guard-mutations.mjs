@@ -88,6 +88,30 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🧵 상세 감시 <img> 의 isDesktop 게이트를 없애 폰이 PC 폭(1200)·썸네일(600×2)을 도로 받는다',
+    file: 'src/pages/group-buy/DetailGallery.tsx',
+    find: "    if (!isDesktop) {\n      list.push({ src: main, url: heroUrl(main, DETAIL_HERO_MOBILE_WIDTH) })\n      return list\n    }\n",
+    replace: '',
+    test: 'src/tests/unit/detail-image-continuity.test.ts',
+    why: '2026-09-02 라이브 워터폴: 폰에서 화면에 없는 1200 폭 179KB 가 첫 사진과 대역폭을 나눴다.',
+  },
+  {
+    name: '🧵 상세 슬라이드 ±1 게이트를 없애 갤러리 5장을 다시 한꺼번에 받는다',
+    file: 'src/pages/group-buy/DetailGallery.tsx',
+    find: "            const hi = src && near ? heroUrl(src, DETAIL_HERO_MOBILE_WIDTH) : ''\n",
+    replace: "            const hi = src ? heroUrl(src, DETAIL_HERO_MOBILE_WIDTH) : ''\n",
+    test: 'src/tests/unit/detail-image-continuity.test.ts',
+    why: '2026-09-02 라이브 워터폴: 슬라이드 넷(각 136~220KB, 콜드 2.3~4.4s)이 첫 사진과 동시에 내려왔다.',
+  },
+  {
+    name: '🧵 워커 preload 가 옛 width:900(크롭 없음)으로 되돌아가 갤러리 URL 과 갈린다',
+    file: 'src/worker/utils/home-card-preload.ts',
+    find: '      : isMobile ? detailHeroMobileUrl(heroSrc) : detailPlainUrl(heroSrc, DETAIL_HERO_DESKTOP_WIDTH)\n',
+    replace: "      : cfImage(heroSrc, { width: 900, format: 'auto' })\n",
+    test: 'src/tests/unit/detail-image-continuity.test.ts',
+    why: '08-31 크롭 도입 뒤 실제로 이 상태였다 — preload 111KB 를 받고 버린 뒤 같은 사진을 다시 받았다.',
+  },
+  {
     name: '📏 실리뷰 최근 2,000건 인덱스의 WHERE 가 쿼리와 달라져 플래너가 함의를 못 본다',
     file: 'src/worker/routes/repair-schema/index-repairs.ts',
     find: 'ON product_reviews(created_at DESC) WHERE COALESCE(is_generated,0) = 0`',
@@ -1132,7 +1156,7 @@ canvas {
   {
     name: '상세 갤러리가 썸네일의 죽은 사진을 감시하지 않는다',
     file: 'src/pages/group-buy/DetailGallery.tsx',
-    find: 'for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, w: 600 })',
+    find: 'for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, url: detailPlainUrl(t, DETAIL_THUMB_WIDTH) })', // 2026-09-02 SSOT 폭으로
     replace: '/* 감시 제거됨 */',
     test: 'src/tests/unit/groupon-detail-map.test.ts',
     why:

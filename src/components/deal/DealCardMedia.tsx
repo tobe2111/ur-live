@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo, useState, useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
+import { rememberWarmImage } from '@/utils/image-warm'
 
 /** 스와이프로 칠 최소 가로 이동(px). 이보다 작으면 그냥 탭으로 본다. */
 const SWIPE_MIN_PX = 36
@@ -228,7 +229,11 @@ function DealCardMedia({
               onLoad={(e) => {
                 const el = e.currentTarget as HTMLImageElement
                 el.style.opacity = i === shown ? '1' : '0'
-                if (isCover) onCoverLoad?.(el)
+                if (isCover) {
+                  // 🔥 상세가 이 변형을 밑에 깔아 클릭 즉시 사진을 보인다(`utils/image-warm`).
+                  rememberWarmImage(src, el.currentSrc)
+                  onCoverLoad?.(el)
+                }
               }}
               onError={(e) => {
                 const el = e.currentTarget as HTMLImageElement
