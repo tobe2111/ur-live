@@ -166,6 +166,30 @@ export default defineConfig({
           //   app-ui-utils·radix-ui·app-kakao-sdk 까지 끌고 왔다). `check-critical-chunks` 가 잡았다.
           //   ⚠️ 이 줄을 지우면 그 6청크가 곧바로 돌아온다.
           if (id.includes('/src/components/icons/')) return 'app-shared'
+          // 🏠 2026-09-02 [UNLOCK_LOADING] 홈 첫 화면이 **실제로 닿는** 소비자 홈 모듈을 자기 청크(app-home)로.
+          //   근거(번들러 실측 — generateBundle 로 chunk.modules + 모듈 import 그래프를 덤프해 홈 정적 폐쇄를 계산):
+          //   홈 폐쇄 27청크 956KB 중 `app-components` 281KB 는 홈이 21/66 모듈(70KB)만 쓰고, 나머지 45개
+          //   (온보딩 모달·이미지 업로드·교환권 스캐너·선물 모달·PWA 프롬프트…)가 같은 봉투라 통째로 preload 됐다.
+          //   더 나쁜 건 **딸려오는 것** — 그 안 쓰는 모듈들이 `components/ui/button` 등을 import 해
+          //   `app-ui-utils`(tailwind-merge 97KB, 홈 도달 0/3)·`radix-ui`·`app-kakao-sdk` 를 청크 단위로 끌고
+          //   왔고, `app-features`(48KB) 도 홈은 2/25 만 쓴다. ⇒ 홈이 닿는 모듈을 여기 모으면 그 청크 간선이 끊긴다.
+          //   목록은 실측 도달 집합 그대로다(추측 아님). ⚠️ 이 블록을 지우면 홈 preload 에 그 네 청크가 곧바로 돌아온다.
+          //   가드: `home-chunk-diet.test.ts` + check-critical-chunks / check-surface-role-leak.
+          if (
+            // ⚠️ `pages/pc-home/` 폴더째는 안 된다 — 페이지 파일(PcHomePage.tsx)까지 삼켜 lazy 페이지 청크가 사라지고
+            //   route-chunk-map 이 홈 표면을 못 찾는다(3차 실측). 홈 두 페이지가 같이 쓰는 `PcHomeLocationBar` 만.
+            id.includes('/src/components/home/') || id.includes('/src/pages/pc-home/PcHomeLocationBar') ||
+            id.includes('/src/pages/main-home/GroupBuyFeedCard') ||
+            // ⚠️ deal/ 폴더 통째는 안 된다 — DetailFloatingHeader(상세 전용)가 WishlistButton·PinButton·KakaoShareButton 을
+            //   import 해 app-components 를 도로 끌고 온다(2차 실측). 홈이 닿는 셋만 짚는다.
+            id.includes('/src/components/deal/DealCardMedia') || id.includes('/src/components/deal/WishlistHeart') ||
+            id.includes('/src/components/deal/StarRating') ||
+            id.includes('/src/components/region/') || id.includes('/src/components/SEO') ||
+            id.includes('/src/components/ui/sort-menu') || id.includes('/src/shared/seo/') ||
+            id.includes('/src/shared/home-') || id.includes('/src/shared/product-flow') ||
+            id.includes('/src/shared/deal-category-icon') ||
+            id.includes('/src/features/group-buy/FcfsBadge') || id.includes('/src/features/group-buy/useFcfs')
+          ) return 'app-home'
           // 셀러/어드민 페이지만 사용하는 utils.
           if (id.includes('/src/utils/product-template')) return 'app-seller-components'
           // 🛡️ 2026-05-28 (SSR phase 5): 메인 페이지 미사용 lib 별도 chunk.

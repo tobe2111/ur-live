@@ -112,6 +112,22 @@ const MUTATIONS = [
     replace: '{linkshopVisitor && <Suspense',
     test: 'src/tests/unit/linkshop-products-seed.test.ts',
     why: '레일은 `hidden xl:flex` 라 안 보일 뿐 마운트는 되고, 안의 lazy QR 이 import 를 발사한다(실측: /u 모바일 워터폴 922ms 에 codes 82KB).',
+    name: '🏠 홈 청크 규칙에서 components/home 이 빠져 app-components 281KB 가 홈 preload 로 돌아온다',
+    file: 'vite.config.ts',
+    find: "            id.includes('/src/components/home/') || id.includes('/src/pages/pc-home/PcHomeLocationBar') ||\n",
+    replace: "            id.includes('/src/pages/pc-home/PcHomeLocationBar') ||\n",
+    test: 'src/tests/unit/home-chunk-diet.test.ts',
+    why:
+      '2026-09-02 번들러 실측: 홈이 닿는 21개 모듈이 app-components(66모듈 281KB)에 섞여 있어 통째로 preload 됐고, ' +
+      '그 봉투의 안 쓰는 모듈들이 tailwind-merge 97KB·radix·kakao-sdk·app-features 까지 끌고 왔다. 규칙 한 줄이 빠지면 조용히 되돌아간다.',
+  },
+  {
+    name: '🏠 deal/ 폴더를 통째로 app-home 에 넣어 DetailFloatingHeader 가 app-components 를 도로 끌고 온다',
+    file: 'vite.config.ts',
+    find: "            id.includes('/src/components/deal/DealCardMedia') || id.includes('/src/components/deal/WishlistHeart') ||\n",
+    replace: "            id.includes('/src/components/deal/') ||\n",
+    test: 'src/tests/unit/home-chunk-diet.test.ts',
+    why: '2차 실측에서 실제로 밟았다 — 폴더 규칙은 상세 전용 헤더까지 홈 청크로 넣어 간선을 끊지 못했다.',
     name: '📏 실리뷰 최근 2,000건 인덱스의 WHERE 가 쿼리와 달라져 플래너가 함의를 못 본다',
     file: 'src/worker/routes/repair-schema/index-repairs.ts',
     find: 'ON product_reviews(created_at DESC) WHERE COALESCE(is_generated,0) = 0`',
