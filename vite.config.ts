@@ -237,6 +237,17 @@ export default defineConfig({
           //   들어가 **도매몰을 한 번도 안 여는 소비자도 매번 받고 있었다.** 엔트리 폐쇄집합에 없다(=lazy 전용).
           //   도매 페이지는 각자 lazy 청크라 그쪽에서 이 청크를 받으면 된다.
           if (id.includes('/src/hooks/queries/useWholesale')) return 'app-wholesale-hooks'
+          // 🍽️ 2026-09-02 [UNLOCK_LOADING] (대표 "모두 다 진행" — 로딩 후속 ②): **app-utils 다이어트.**
+          //   번들러 실측 그래프(#1310 과 같은 방법)로 app-utils 104.6KB 를 뜯어 보니 홈(엔트리+홈 페이지 정적 폐쇄)이
+          //   닿는 모듈은 47개 103.5KB… 가 아니라 **47개 / 103개**, 크기로는 **73.8KB(56개)가 홈 미도달**이었다 —
+          //   sentry·performance-monitor·web-vitals-report(엔트리가 *동적* import 하는데 결제/로그인 페이지가
+          //   정적으로도 써서 공유 봉투로 끌려옴) · errorHandler(결제) · kakao-login-overlay(로그인 3곳) ·
+          //   read-table-file/supplier-api/courier-tracking/useChatPoll(도매) · useMy*(마이 쿼리 훅) · in-app-warning ….
+          //   그런데 app-utils 는 엔트리가 쓰는 api.ts 와 한 봉투라 **홈이 매번 통째로 받았다.**
+          //   ⇒ 홈 미도달 모듈 중 큰 것들을 `app-utils-deferred` 로. 규칙은 **파일 이름 열거**(폴더 규칙은 #1310 에서
+          //   두 번 밟은 함정 — 필수 모듈을 같이 삼킨다). 새 모듈이 여기 없으면 종전대로 app-utils 로 간다(안전한 기본).
+          //   ⚠️ 이 목록의 모듈이 홈/엔트리 정적 폐쇄에 들어오면 `check-critical-chunks`·`home-chunk-diet` 가 빨강이다.
+          if (/\/src\/(?:lib\/(?:sentry|performance-monitor|web-vitals-report|acquisition|errorHandler|in-app-warning|kakao-touch-shim|read-table-file|supplier-api|seller-auth|biz-favicon|image-compress)|utils\/(?:kakao-login-overlay|courier-tracking|csv-download|currency|format-phone|enter-store|orderIdGenerator)|hooks\/(?:queries\/(?:useMy[A-Za-z]+|useReferral|useAffiliate|useDealHistory|useDigitalLibrary|useAddresses|useBlogPost|useFollowing|useMapProducts)|useChatPoll|useFocusTrap|useProduct|usePersistScroll|useForceLightTheme|usePrefetchProduct))\.tsx?$/.test(id)) return 'app-utils-deferred'
           // 앱 유틸: src/utils/, src/hooks/, src/lib/ — App 전체에 공유되지만 별도 캐싱
           if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'
           // 기능 모듈 API — seller/admin/agency/auth 기능 코드 (대시보드에서만 사용)

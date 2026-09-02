@@ -5494,12 +5494,13 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 233건 · 최신순 · 이 목록은 자동 생성된다._
+_총 234건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-02**
 - [2026-09-02 — 유어딜 요청 경로 D1 읽기 다이어트 (PR-C)](handoff/2026-09-02-urdeal-request-diet.md)
 - [2026-09-02 — 유어딜 D1 읽기 다이어트 (PR-B)](handoff/2026-09-02-urdeal-d1-diet.md)
 - [2026-09-02 — 유어애즈 D1 읽기 다이어트 (PR-D)](handoff/2026-09-02-urads-d1-diet.md)
+- [2026-09-02 — 숙소 이용권 상세 PC: B안 예약 패널 · 연박 · 달력↔지도 겹침](handoff/2026-09-02-stay-detail-pc-layout.md)
 - [2026-09-02 — 리뷰 자격: 이용권은 "사용한 사람만" (별도 브랜치)](handoff/2026-09-02-review-requires-voucher-use.md)
 - [2026-09-02 — 디자인 시스템 확정 (코레일톡 시안) · 브랜드 블루 · 티켓 부품 · 결제 완료 화면](handoff/2026-09-02-design-system-korailtalk.md)
 - [2026-09-02 — D1 읽기 다이어트 (유료 전환 전 "가장 이상적인 최적화")](handoff/2026-09-02-d1-read-diet.md)
