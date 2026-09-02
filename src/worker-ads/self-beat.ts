@@ -36,6 +36,8 @@
  *   인보케이션의 D1 쓰기 1회다.
  */
 import type { Env } from '@/worker/types/env'
+import { readEnvMeter } from '@/worker/utils/d1-read-meter'
+import { reportReadUsage } from './read-budget'
 
 /** 부모가 넘기는 쿼리 파라미터 이름 — 양쪽이 같은 상수를 쓰게(오타가 조용히 관측을 끈다). */
 export const BEAT_PARAM = '_beat'
@@ -67,7 +69,10 @@ export async function writeSelfBeat(env: Env, beat: string, ok: boolean, ms: num
     const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
     // ⚠️ cronExpr 은 넘기지 않는다 — 레인은 자기를 부른 cron 식을 모르고, 넘겨봐야 매시간으로 오인된다.
     //   주기는 부모가 넘긴 `gap`(maxGapMin)만 신뢰한다(그게 이 파라미터가 생긴 이유다).
-    await recordCronBeat(env, `ads:${beat}`, ok, ms, undefined, ok ? undefined : failNote(err), gap)
+    // 📏 이 인보케이션(=이 레인 1회)이 읽은 D1 행 수를 함께 싣는다(엔트리가 env 를 계량 래퍼로 감싼다).
+    await recordCronBeat(env, `ads:${beat}`, ok, ms, undefined, ok ? undefined : failNote(err), gap, readEnvMeter(env))
+    // 📉 cron 경로 레인의 읽기량도 예산 원장에 — 알람 레인은 DO 가 직접 보고한다(`lane-alarm.ts`).
+    await reportReadUsage(env, readEnvMeter(env)?.rr)
   } catch { /* 관측 실패는 삼킨다 */ }
 }
 

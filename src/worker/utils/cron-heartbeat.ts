@@ -23,6 +23,8 @@ import type { Env } from '../types/env'
 // 🔴 기대 목록 대조(트리거 미등록 탐지) — 정적 목록 vs 런타임 기록. 상세: cron-expected.ts
 import { findNeverFired, type NeverFiredEntry } from './cron-expected'
 import { classifyBeat, freshBaseNames, beatBaseName, type BeatVerdict } from './cron-beat-retirement'
+// 📏 2026-09-02: 작업별 D1 읽기 행 수(rr) — 왜 필요한지는 d1-read-meter.ts 헤더(9/1 무료 한도 사고).
+import { meterFields, type ReadMeter } from './d1-read-meter'
 
 /**
  * 실패 사유를 **짧은 분류 코드**로 (순수 — 유닛 잠금).
@@ -151,11 +153,17 @@ export async function recordCronBeat(
    * 값이 있으면 cron 식보다 **우선**한다. 없으면 종전대로 cron 식에서 유도한다.
    */
   maxGapMin?: number,
+  /**
+   * 📏 이 작업이 읽고 쓴 D1 행 수(선택). 하트비트에 `rr/rw/q/qu` 로 실린다 — "돌았다"·"무엇을 했다"
+   * 다음의 세 번째 질문 **"얼마나 읽었나"** 다. 2026-09-01 계정 일일 읽기 한도(500만 행) 초과로
+   * 유어딜 API 전체가 500 이 됐는데, 어느 작업이 먹는지 가릴 수단이 없었다(d1-read-meter.ts 헤더).
+   */
+  meter?: ReadMeter,
 ): Promise<void> {
   try {
     const DB = (env as unknown as { DB?: D1Database }).DB
     if (!DB || !name) return
-    const { key, value } = buildCronBeatRow(name, ok, ms, cronExpr, result, maxGapMin)
+    const { key, value } = buildCronBeatRow(name, ok, ms, cronExpr, result, maxGapMin, meter)
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, value).run()
     // 🩸 CPU 사망만 **따로** 누적한다 — 하트비트 행은 매 회차 덮어써지므로 다음 성공 한 번이면
     //   사망 기록이 사라진다(그래서 지금까지 "누가 실제로 죽는가"를 아무도 몰랐다).
@@ -170,7 +178,7 @@ export async function recordCronBeat(
  *   두 벌로 쓰면 한쪽만 필드가 추가되고, 그 어긋남은 조용하다(이 레포가 반복해 겪은 실패 양식).
  */
 export function buildCronBeatRow(
-  name: string, ok: boolean, ms: number, cronExpr?: string, result?: unknown, maxGapMin?: number,
+  name: string, ok: boolean, ms: number, cronExpr?: string, result?: unknown, maxGapMin?: number, meter?: ReadMeter,
 ): { key: string; value: string } {
   const value = JSON.stringify({
     at: new Date().toISOString(),
@@ -178,6 +186,9 @@ export function buildCronBeatRow(
     ms: Math.max(0, Math.round(ms)),
     ...(cronExpr ? { cron: cronExpr.slice(0, 40) } : {}),
     ...(Number.isFinite(maxGapMin) && (maxGapMin as number) > 0 ? { g: Math.round(maxGapMin as number) } : {}),
+    // 📏 읽기량은 결과 요약(r) **앞**에 둔다 — r 은 길이 상한(MAX_NOTE)이 있고 전체는 MAX_VALUE 로
+    //   잘리는데, 뒤에 두면 긴 요약이 숫자를 밀어내 계량이 조용히 사라진다(24자 드롭과 같은 클래스).
+    ...meterFields(meter),
     ...(summarizeResult(result) ? { r: summarizeResult(result) } : {}),
   }).slice(0, MAX_VALUE)
   return { key: `cron_hb:${name.slice(0, 80)}`, value }
@@ -221,6 +232,14 @@ export interface CronHeartbeat {
   last_cpu_death_at?: string | null
   /** ⏱️ 벽시계가 길다 = **I/O 가 느리다**(외부 API 지연 등). CPU 위험이 아니다. */
   io_slow?: 'warn' | 'danger' | null
+  /** 📏 마지막 실행이 읽은 D1 행 수(`meta.rows_read` 합). 계량 전 기록이면 null. */
+  rows_read?: number | null
+  /** 📏 쓴 행 수. */
+  rows_written?: number | null
+  /** 📏 meta 를 받은 쿼리 수. */
+  queries?: number | null
+  /** 📏 meta 없이 지나간 쿼리 수(`first`/`raw`/`exec`) — 크면 rows_read 는 **하한**이다. */
+  unmetered?: number | null
 }
 
 /**
@@ -331,11 +350,14 @@ export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[
     const rows: CronHeartbeat[] = (results || []).map((r) => {
       let at: string | null = null, ok: boolean | null = null, ms: number | null = null, cron: string | null = null, note: string | null = null
       let gap: number | null = null
+      let rr: number | null = null, rw: number | null = null, q: number | null = null, qu: number | null = null
       try {
-        const v = JSON.parse(r.value) as { at?: string; ok?: boolean; ms?: number; cron?: string; r?: string; g?: number }
+        const v = JSON.parse(r.value) as { at?: string; ok?: boolean; ms?: number; cron?: string; r?: string; g?: number; rr?: number; rw?: number; q?: number; qu?: number }
         at = v.at ?? null; ok = typeof v.ok === 'boolean' ? v.ok : null
         ms = typeof v.ms === 'number' ? v.ms : null; cron = v.cron ?? null; note = v.r ?? null
         gap = typeof v.g === 'number' && v.g > 0 ? v.g : null
+        const num = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? x : null)
+        rr = num(v.rr); rw = num(v.rw); q = num(v.q); qu = num(v.qu)
       } catch { /* 깨진 값은 null 로 */ }
       const t = at ? Date.parse(at) : NaN
       const age = Number.isFinite(t) ? Math.round((now - t) / 60000) : null
@@ -345,6 +367,7 @@ export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[
       return {
         name,
         at, ok, ms, cron, result: note,
+        rows_read: rr, rows_written: rw, queries: q, unmetered: qu,
         age_minutes: age,
         max_gap_min: limit,
         stale: (limit != null && age != null) ? age > limit : null,
@@ -440,6 +463,26 @@ export interface CronHealth {
   never_fired: NeverFiredEntry[]
 }
 
+/** ⏸️ 유어애즈 정지 표식 이름 — `worker-ads/lane-pause.ts` 의 PAUSE_BEAT 와 같아야 한다(유닛이 대조). */
+export const ADS_PAUSE_BEAT_NAME = 'ads:lanes-paused'
+/** 표식이 이보다 오래되면 정지로 안 본다 — ads cron 자체가 죽은 것과 구분해야 한다(그건 진짜 경보다). */
+export const ADS_PAUSE_FRESH_MIN = 180
+
+/**
+ * ⏸️ 유어애즈 레인이 **의도적으로** 멈춰 있는가 — 하트비트 목록만으로 판정(추가 읽기 0).
+ *   `ads:lanes-paused` 행이 신선하고 `paused=true` 면 참. 그때 `ads:*` 침묵은 경보가 아니라 상태다.
+ */
+export function adsLanesPausedFrom(beats: ReadonlyArray<Pick<CronHeartbeat, 'name' | 'age_minutes' | 'result'>>): boolean {
+  const b = beats.find(x => x.name === ADS_PAUSE_BEAT_NAME)
+  if (!b || b.age_minutes == null || b.age_minutes > ADS_PAUSE_FRESH_MIN) return false
+  return /(^|\s)paused=true(\s|$)/.test(b.result || '')
+}
+
+/** 정지 중에 판정에서 뺄 이름인가 — 표식 행 자신은 뺀 `ads:*` 전부. */
+export function isPausedAdsBeat(name: string, adsPaused: boolean): boolean {
+  return adsPaused && name.startsWith('ads:') && name !== ADS_PAUSE_BEAT_NAME
+}
+
 export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
   const beats = await listCronHeartbeats(DB)
 
@@ -494,6 +537,7 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
   //     개명·인수된 이름은 영원히 안 갱신되고 영원히 stale 이다 → 게이트가 꺼질 수 없다(실측 6일).
   //     지우지 않고 `retired` 로 **계속 보여 주되** 판정에서만 뺀다. 근거: `cron-beat-retirement.ts`.
   const fresh = freshBaseNames(beats)
+  const adsPaused = adsLanesPausedFrom(beats) // ⏸️ 유어애즈 일시정지 — `ads:*` 침묵은 상태이지 사고가 아니다
   const stale: CronStaleEntry[] = []
   const retired: CronStaleEntry[] = []
   const missing: string[] = []
@@ -506,7 +550,8 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
         last_finished_at: b.at, age_min: b.age_minutes,
       }
       const verdict = classifyBeat({ name: b.name, age_minutes: b.age_minutes, max_gap_min: limit }, fresh)
-      if (verdict === 'judge') stale.push(entry)
+      if (verdict === 'judge' && isPausedAdsBeat(b.name, adsPaused)) retired.push({ ...entry, label: `${b.name} (유어애즈 일시정지 중)` })
+      else if (verdict === 'judge') stale.push(entry)
       else retired.push({ ...entry, label: `${b.name} (${verdict === 'superseded' ? '같은 일이 새 이름으로 실행 중' : '아무도 안 부르는 이름'})` })
     }
   }

@@ -116,6 +116,64 @@ const MUTATIONS = [
     why:
       '셀러/상품/큐레이터 상세 12개를 5분마다 콜드 렌더하던 것을 30분으로. 옵션을 안 읽으면 호출부가 ' +
       '무엇을 넘기든 종전 주기로 돈다 — "만든 것·넘긴 것·읽는 것" 이 셋 다 다르다.',
+    name: '📉 읽기 예산 초과가 cron kick 을 못 막는다(paused 에 안 합쳐짐)',
+    file: 'src/worker-ads/index.ts',
+    find: '  const paused = lanesPaused(env) || budget.over // ⏸️',
+    replace: '  const paused = lanesPaused(env) // ⏸️',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '2026-09-02: 유어애즈가 자기 몫(기본 150만 행)을 넘기면 스스로 멈춰야 유어딜이 산다. 이 `||` 하나가 빠지면 ' +
+      '원장은 정확히 세면서 아무것도 안 막는다 — 하트비트엔 over=true 가 찍히는데 레인은 계속 읽는다.',
+  },
+  {
+    name: '📉 DO 알람 레인이 읽기 예산 게이트를 건너뛴다',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: '    if ((await readBudgetState(this.env)).over) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '알람 레인은 cron 을 안 거치므로 cron 진입의 게이트가 안 미친다 — DO 안에 자기 게이트가 있어야 한다. ' +
+      '빠지면 측정·발굴 레인(읽기의 대부분)이 예산과 무관하게 돈다.',
+  },
+  {
+    name: '📉 cron 경로 레인이 읽기량을 원장에 안 보고한다(원장이 절반만 센다)',
+    file: 'src/worker-ads/self-beat.ts',
+    find: '    await reportReadUsage(env, readEnvMeter(env)?.rr)\n',
+    replace: '',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      'cron kick 레인은 self-beat 가 유일한 회차 종료 지점이다. 여기서 안 보고하면 원장은 알람 레인만 세어 ' +
+      '예산이 실제의 절반쯤에서 헛돈다 — 넘겨도 over 가 늦게 뜬다.',
+  },
+  {
+    name: '⏸️ 유어애즈 일시정지 스위치가 레인을 안 막는다',
+    file: 'src/worker-ads/index.ts',
+    find: '    if (paused && !pauseExempt(path)) return // ⏸️ 등록은 하고(known_lanes 보존) 띄우지만 않는다\n',
+    replace: '',
+    test: 'src/tests/unit/ads-lanes-pause.test.ts',
+    why:
+      '2026-09-02: D1 읽기 한도(계정 단위 500만/일)에 닿아 유어딜 API 전체가 500. 유어애즈를 멈추는 길이 ' +
+      '15개 env 로 흩어져 있어 하나를 빠뜨리면 조용히 계속 읽는다 — 스위치 하나가 실제로 kick 을 막아야 한다.',
+  },
+  {
+    name: '📏 DO 알람 레인의 D1 읽기량이 스탬프에서 빠진다',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))), this.meter)',
+    replace: 'staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))))',
+    test: 'src/tests/unit/ads-lanes-pause.test.ts',
+    why:
+      '8/27 수리 뒤 아무도 재지 않았고, 잴 수단이 DB 총량뿐이라 "어느 레인이" 를 끝내 못 가렸다. ' +
+      '알람 레인은 인보케이션이 DO 라 엔트리 래핑이 안 미친다 — 스탬프에 직접 실어야 보인다.',
+  },
+  {
+    name: '📏 유어딜 cron 작업이 계량기 밖에서 돈다',
+    file: 'src/worker/scheduled.ts',
+    find: 'out = await runInMeter(meter, task);',
+    replace: 'out = await task();',
+    test: 'src/tests/unit/d1-read-meter.test.ts',
+    why:
+      '계량기를 만들어도 safeCron 이 그 안에서 작업을 안 돌리면 rr 은 영원히 0 이다 — "만든 것·등록된 것·' +
+      '실제로 도는 것" 이 셋 다 다르다는 이 레포의 교훈 그대로.',
   },
   {
     name: '백필 건수가 화면까지 못 간다',
