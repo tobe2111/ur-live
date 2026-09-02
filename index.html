@@ -92,7 +92,7 @@
             var hard = reason === 'chunk' || chunkSeen || shownBefore; // 확증된 청크 or 재발 → 완전복구
             var dark = false;
             try { dark = matchMedia && matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
-            var bg = dark ? '#0D0F12' : '#ffffff', fg = dark ? '#f5f5f5' : '#111827', sub = dark ? '#9ca3af' : '#6b7280';
+            var bg = dark ? '#11141C' : '#ffffff', fg = dark ? '#f5f5f5' : '#111827', sub = dark ? '#9ca3af' : '#6b7280';
             var title = hard ? '화면을 새로 불러올게요' : '불러오는 데 시간이 걸리고 있어요';
             var desc = hard
               ? '앱이 업데이트되는 중이에요. 잠시 뒤 자동으로 다시 시도합니다 — 바로 시도하려면 아래 버튼을 눌러주세요.'
@@ -245,11 +245,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="유어딜" />
-    <!-- 🛡️ 2026-05-01: 상태바 색상 — 앱이 주로 다크 테마라 기본 #0D0F12.
+    <!-- 🛡️ 2026-05-01: 상태바 색상 — 앱이 주로 다크 테마라 기본 #11141C.
          시스템 라이트 모드 사용자는 #FFFFFF (흰 테마 쇼핑 페이지와 매칭).
          App.tsx 의 useStatusBarTheme() 가 페이지 테마에 따라 동적으로 override. -->
-    <meta name="theme-color" content="#0D0F12" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#FAF7F5" media="(prefers-color-scheme: light)" /><!-- 🎨 2026-07-19 지시서 §6 라이트 웜화이트 -->
+    <meta name="theme-color" content="#11141C" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F8F7FC" media="(prefers-color-scheme: light)" /><!-- 🎨 2026-07-19 지시서 §6 라이트 웜화이트 -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <!-- 🎯 파비콘 (브라우저 탭 + 검색결과) — 유어딜 확정 아이콘(로즈+ur, 2026-07 Final 납품본).
          🔴 2026-08-01 (대표: "우리 저 아이콘 디자인이 적용이 안됐네? 지구본모양으로 남아있는 상태야"):
@@ -391,11 +391,11 @@
       /* Critical reset + layout (Tailwind preflight subset) */
       *,::before,::after{box-sizing:border-box;border-width:0;border-style:solid}
       html{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4;font-family:'Pretendard Variable',-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
-      body{margin:0;line-height:inherit;background:#fff;color:#0D0F12}
+      body{margin:0;line-height:inherit;background:#fff;color:#11141C}
       img,svg,video,canvas,iframe{display:block;max-width:100%;height:auto}
       button{background:transparent;background-image:none;padding:0;font-family:inherit;font-feature-settings:inherit;cursor:pointer}
       /* 다크 모드 진입 직전 깜빡임 방지 */
-      html.dark body{background:#0D0F12;color:#fff}
+      html.dark body{background:#11141C;color:#fff}
 
       /* 🛡️ 2026-04-28: 인앱 브라우저 안내 (default 표시).
          JS 차단·CSP 차단·document.write 차단 환경에서도 정상 표시. */
@@ -497,7 +497,7 @@
            - localStorage 'light' → 라이트
            - localStorage 'system' or null (신규 사용자) → OS prefers-color-scheme 추적
          적용 범위: 화이트 테마 페이지 (쇼핑/결제) — dark: variants 활성/비활성.
-         다크 페이지 (홈/마이/라이브) 는 bg-[#0D0F12] 명시 강제라 토글 무영향. -->
+         다크 페이지 (홈/마이/라이브) 는 bg-[#11141C] 명시 강제라 토글 무영향. -->
     <script>
       (function () {
         var v = null;
@@ -505,16 +505,16 @@
         if (!v) { try { v = sessionStorage.getItem('ur_theme_mode_v1'); } catch (e) { /* sandbox */ } }
         var sysDark = false;
         try { sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
-        // 🛡️ 2026-05-16: 신규 사용자 (v === null) default = light.
-        //   기존 'system' 사용자만 OS 따라감. 'dark' 명시는 그대로.
-        var dark = v === 'dark' || (v === 'system' && sysDark);
+        // 🌓 2026-09-02 대표 지시 "시스템 테마에 따라가도록": 저장값 없음(v === null) = system 으로 OS 추적.
+        //   (05-16 "신규 = light" 대체.) 직접 고른 'light'/'dark' 는 그대로. useTheme.ts readMode 와 같은 규칙.
+        var dark = v === 'dark' || ((v === 'system' || v === null) && sysDark);
         try {
           if (dark) document.documentElement.classList.add('dark');
           else document.documentElement.classList.remove('dark');
           document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
         } catch (e) {}
         // 🛡️ 2026-05-04: body / pre-react 배경도 테마에 맞춰 즉시 설정 (FOUC 방지).
-        window.__urInitialBg = dark ? '#0D0F12' : '#ffffff';
+        window.__urInitialBg = dark ? '#11141C' : '#ffffff';
         window.__urInitialFg = dark ? '#ffffff' : '#1d1d1f';
       })();
     </script>

@@ -80,9 +80,9 @@ for (const f of targetFiles) {
   //   (dark: 0 = 순수 다크/강제 화이트로 모호 → 플래그 X, 오탐 방지)
   //   bg-[#020202] = 강제 다크 페이지 → 제외.
   if (!/dark:(bg|text|border)/.test(src)) continue
-  // 🖤 2026-08-30 잉크 검정 전환: 다크 배경이 #0F151D → #0D0F12. 구 값도 남겨 둔다
+  // 🖤 2026-08-30 잉크 검정 전환: 다크 배경이 #0F151D → #11141C. 구 값도 남겨 둔다
   //    (외부 브랜치·미이행 파일이 옛 hex 로 들어와도 순수 다크 판정이 유지되도록).
-  if (/bg-\[#020202\]|bg-\[#0F151D\]|bg-\[#0D0F12\]|data-mobile-only/.test(src)) continue
+  if (/bg-\[#020202\]|bg-\[#0F151D\]|bg-\[#11141C\]|data-mobile-only/.test(src)) continue
   const lines = src.split('\n')
   lines.forEach((line, i) => {
     // 주석 줄(// 또는 * 로 시작)은 className 아님 → 스킵 (오탐 방지)
@@ -107,7 +107,7 @@ for (const f of targetFiles) {
     //       dark: 없이 쓰면 라이트 모드에서 검정 박스. → `bg-<라이트> dark:bg-[#…]` 로 써야 함.
     //       의도적 양모드 다크 요소는 줄에 `theme-dual` 주석으로 면제.
     if (!line.includes('theme-dual')) {
-      const darkHex = /((?:[\w-]+:)*)bg-\[#(0A0A0A|121212|1A1A1A|2A2A2A|0F151D|1A2334|2A3446|0D0F12|1A1C21|2C2F35)\]/g
+      const darkHex = /((?:[\w-]+:)*)bg-\[#(0A0A0A|121212|1A1A1A|2A2A2A|0F151D|1A2334|2A3446|0D0F12|1A1C21|11141C|1D1F29|2C2F35)\]/g
       let dm
       while ((dm = darkHex.exec(line)) !== null) {
         const variant = dm[1] || ''

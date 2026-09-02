@@ -414,6 +414,13 @@ jobs:
       #   판정이 두 파일에 따로 적혀 갈라진 결과 — 이제 한 SSOT 만 쓴다.
       - name: 배송비 판정 SSOT (장바구니 ↔ 결제)
         run: node scripts/check-no-shipping-ssot.mjs
+
+      # 🔴 2026-09-01 디자인 방향 PR A — 흔적 두 가지를 래칫으로 동결.
+      #   붙여 쓴 가운뎃점(맛집·카페)은 한국어 표준이라 놔두고, **띄어 쓴 사슬**(a · b · c)만 잡는다.
+      - name: 띄어 쓴 가운뎃점 사슬 (래칫)
+        run: node scripts/check-middle-dot-chain.mjs
+      - name: 모양 잠금 — 체계 밖 모서리 (래칫)
+        run: node scripts/check-shape-lock.mjs
       - name: Dashboard button system ratchet (strict)
         env:
           STRICT_DASHBOARD_BUTTON: '1'

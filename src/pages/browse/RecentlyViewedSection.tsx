@@ -42,11 +42,11 @@ export default function RecentlyViewedSection() {
             onClick={() => navigate(`/products/${p.id}`)}
             className="shrink-0 w-24 cursor-pointer text-left"
           >
-            <div className="aspect-square bg-gray-100 dark:bg-[#1A1C21] rounded-xl overflow-hidden">
+            <div className="aspect-square bg-gray-100 dark:bg-[#1D1F29] rounded-xl overflow-hidden">
               {p.image ? (
                 <img src={cfImage(p.image, { width: 400, quality: 82, format: 'auto' }) || p.image} alt={p.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, p.image)} />
               ) : (
-                <div className="w-full h-full bg-gray-100 dark:bg-[#1A1C21]" />
+                <div className="w-full h-full bg-gray-100 dark:bg-[#1D1F29]" />
               )}
             </div>
             <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-1.5 truncate">{p.name}</p>

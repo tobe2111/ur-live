@@ -188,7 +188,7 @@ export default function SellerQuickGbPage() {
 
         {/* ── 필수 ─────────────────────────────────────────── */}
         <div className="flex items-center gap-[7px] mx-1 mb-[9px]">
-          <span className="text-[12px] font-extrabold text-[#E0526B] tracking-[-0.02em]">필수</span>
+          <span className="text-[12px] font-extrabold text-[#1C69EF] tracking-[-0.02em]">필수</span>
           <span className="text-[12px] font-bold text-[#3F383C] tracking-[-0.02em]">사진 · 상품명 · 가격 · 마감</span>
         </div>
 
@@ -303,7 +303,7 @@ export default function SellerQuickGbPage() {
                 ⚠️ 문구는 **법무 확인 대기**(체크리스트 X4c) 임시 표기다. 시안이 ~어요체로 그렸지만
                    여기서 바꾸지 않는다 — 법무 회신 전까지 고지 문구는 건드리지 않는 것이 이 레포 방침. */}
             {storage && (
-              <div className="mt-2.5 rounded-[10px] bg-[#FBEDF0] px-3 py-[11px]">
+              <div className="mt-2.5 rounded-[10px] bg-[#EAF1FE] px-3 py-[11px]">
                 <p className="text-[10.5px] font-extrabold text-[#C4657A] tracking-[0.03em] mb-1">손님에게 이렇게 보여요</p>
                 <p className="text-[12px] leading-[1.6] text-[#8E4356] tracking-[-0.02em]">{STORAGE_NOTICE[storage]}</p>
               </div>

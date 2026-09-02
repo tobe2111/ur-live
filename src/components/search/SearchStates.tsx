@@ -120,7 +120,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
               {recent.map(q => (
                 <div
                   key={q}
-                  className="inline-flex items-center gap-1.5 pl-3 pr-1 py-1.5 bg-gray-100 dark:bg-[#1A1C21] rounded-full text-[12px] text-gray-700 dark:text-gray-300"
+                  className="inline-flex items-center gap-1.5 pl-3 pr-1 py-1.5 bg-gray-100 dark:bg-[#1D1F29] rounded-full text-[12px] text-gray-700 dark:text-gray-300"
                 >
                   <button
                     onClick={() => navigate(`/search?q=${encodeURIComponent(q)}`)}

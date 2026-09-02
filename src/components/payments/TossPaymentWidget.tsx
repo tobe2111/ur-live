@@ -296,8 +296,10 @@ export function TossPaymentWidget({
       {/* 🛡️ 2026-05-23: 약관 위젯은 옵션 — Toss redirect 페이지에서 PG 가 알아서 표시.
           업계 표준 (쿠팡/11번가/G마켓 등): 결제 시 별도 약관 영역 X. PG 페이지에서 처리.
           renderAgreement 호출은 background 로 유지 (변수 미사용 시도 — Toss SDK 가 안 부르면 안 그림). */}
-      <div id="toss-payment-method" className="min-h-[180px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
-      <div id="toss-agreement" className="min-h-[40px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
+      {/* 🧾 2026-09-01 [UNLOCK] (대표 승인 "허가 — 상자만 숨김"): SDK 가 못 뜨면 이 두 자리가 빈 테두리 상자로
+          남았다. error 일 때만 숨긴다 — id·순서·loading/ready 렌더 그대로라 SDK 마운트 계약 불변. */}
+      <div id="toss-payment-method" hidden={loadingState === 'error'} className="min-h-[180px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
+      <div id="toss-agreement" hidden={loadingState === 'error'} className="min-h-[40px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
       {showAgreeHint && (
         <p className="text-[13px] text-amber-600 font-medium px-1">필수 약관에 동의해주세요.</p>
       )}
