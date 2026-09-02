@@ -83,10 +83,11 @@ export default function SheetFilterBar({
           <button
             onClick={requestNearMe}
             aria-pressed={nearMeMode}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all border ${
+            /* 🗺️ 2026-09-02 B안: 선택 = 브랜드 블루 면, 비선택 = 흰 알약 + 블루 글자. 색은 블루 하나뿐. */
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
               nearMeMode
-                ? 'bg-gray-900 text-white border-blue-600 shadow-md shadow-blue-600/30'
-                : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/40'
+                ? 'bg-brand text-white'
+                : 'bg-white dark:bg-[#1D1F29] text-brand-text shadow-lift'
             }`}
           >
             <Navigation className="w-3 h-3" />
@@ -96,13 +97,14 @@ export default function SheetFilterBar({
             <button
               key={v.key}
               onClick={() => setVoucherType(v.key)}
+              aria-pressed={voucherType === v.key}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
                 voucherType === v.key
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'
+                  ? 'bg-brand text-white'
+                  : 'bg-white dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 shadow-lift'
               }`}
             >
-              <span>{v.emoji}</span>
+              <v.icon size={14} />
               <span>{t(v.labelKey, { defaultValue: v.defaultLabel })}</span>
             </button>
           ))}

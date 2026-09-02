@@ -7105,6 +7105,32 @@ canvas {
       '브랜드가 이미 선택된 채 들어오면(공유 링크·재진입) 목록은 걸러져 있는데 그 이유가 화면에 ' +
       '안 보인다. 접기를 넣으면서 같이 생기는 사각지대라 못으로 박는다.',
   },
+  {
+    name: '/map B안 — 지도 위 칩이 다시 테마를 따른다(다크에서 남색 알약)',
+    file: 'src/pages/restaurant-map/MapTopBar.tsx',
+    find: "const OVERLAY_SURF = 'bg-white text-gray-800",
+    replace: "const OVERLAY_SURF = 'bg-white dark:bg-[#11141C] text-gray-800",
+    test: 'src/tests/unit/map-chips-b.test.ts',
+    why:
+      '2026-09-02 대표 신고 "색깔이 눈에 잘 안 들어와" — 카카오 지도 타일은 다크에서도 밝다. ' +
+      '테마 가드는 dark: 추가를 오히려 권장하므로 이 회귀는 가드가 아니라 계약 테스트만 막는다.',
+  },
+  {
+    name: '/map B안 — 현위치 버튼 켜짐이 다시 잉크 면(다크에서 꺼짐과 같은 그림)',
+    file: 'src/pages/RestaurantMapPage.tsx',
+    find: "(nearMeMode || locating) ? 'bg-brand text-white' : 'bg-white text-gray-800'",
+    replace: "(nearMeMode || locating) ? 'bg-gray-900 text-white' : 'bg-white text-gray-800'",
+    test: 'src/tests/unit/map-chips-b.test.ts',
+    why: '2026-09-02 대표 신고 "눌렀는지 안눌렀는지 확인도 안돼". 켜짐은 블루 면이어야 다크·라이트 어디서든 갈린다.',
+  },
+  {
+    name: '/map B안 — 핀 링이 카테고리 팔레트로 되돌아간다',
+    file: 'src/pages/restaurant-map/map-overlays.ts',
+    find: "const ring = isLive || isSelected ? PIN_RING_BRAND : PIN_RING_INK",
+    replace: "const ring = isLive ? PIN_RING_BRAND : '#ec4899'",
+    test: 'src/tests/unit/map-chips-b.test.ts',
+    why: '칩을 블루 하나로 정리해도 핀이 알록달록하면 정리가 무효다. 강조색은 하나, 자리는 선택뿐.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

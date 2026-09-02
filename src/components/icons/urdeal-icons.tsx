@@ -146,3 +146,50 @@ export const DongneDealIcon = forwardRef<SVGSVGElement, IconProps>(function Dong
     </svg>
   )
 })
+
+/**
+ * 🗺️ 2026-09-02 지도 위 카테고리 칩 — **B안**(대표 확정: "B안으로 진행해줘").
+ *   시안 셋 중 [흰 알약 · 잉크 선 아이콘 · 선택 = 블루 면]. 하단 탭과 같은 24 그리드·1.6 이라
+ *   탭과 지도 위 칩이 한 물건으로 읽힌다. 이모지(✨🍽️💇🏨🎯)를 대체한다 — 표면 규칙 ⑥ 이모지 0.
+ *   `filled` 는 안 받는다(칩의 선택은 알약 면이 뒤집혀서 표현한다 — 아이콘까지 바뀌면 두 번 말하는 것).
+ */
+
+/** 전체 — 2×2 격자. */
+export const GridIcon = forwardRef<SVGSVGElement, IconProps>(function GridIcon({ size = 24, filled: _f, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
+      <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
+    </svg>
+  )
+})
+
+/** 식사 — 포크와 나이프. */
+export const MealLineIcon = forwardRef<SVGSVGElement, IconProps>(function MealLineIcon({ size = 24, filled: _f, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10" />
+      <path d="M17 3c-2 1-3 3.5-3 6.5V12h3zM17 12v9" />
+    </svg>
+  )
+})
+
+/** 뷰티·헬스 — 가위. */
+export const BeautyLineIcon = forwardRef<SVGSVGElement, IconProps>(function BeautyLineIcon({ size = 24, filled: _f, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <circle cx="7" cy="17" r="3" /><circle cx="17" cy="17" r="3" />
+      <path d="M9 15 19 4M15 15 5 4" />
+    </svg>
+  )
+})
+
+/** 숙소 — 침대. */
+export const StayLineIcon = forwardRef<SVGSVGElement, IconProps>(function StayLineIcon({ size = 24, filled: _f, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M3 19V9a2 2 0 0 1 2-2h2v4h10V9h2a2 2 0 0 1 2 2v8M3 15h18" />
+      <rect x="7" y="7" width="10" height="4" rx="1" />
+    </svg>
+  )
+})

@@ -88,6 +88,10 @@ for (const f of targetFiles) {
     // 주석 줄(// 또는 * 로 시작)은 className 아님 → 스킵 (오탐 방지)
     const trimmed = line.trim()
     if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return
+    // 🗺️ 2026-09-02 `light-fixed` — **배경이 테마와 무관하게 늘 밝은 자리**(카카오 지도 타일 위 오버레이).
+    //    거기서 dark: 로 남색을 주면 파스텔 지도 위에 검은 덩어리가 된다(대표 신고 "색깔이 눈에 잘 안 들어와").
+    //    줄에 `light-fixed` 주석이 있으면 그 줄의 라이트 토큰은 의도된 고정으로 본다. 남용 금지 — 지도 위만.
+    if (line.includes('light-fixed')) return
     for (const tok of LIGHT_TOKENS) {
       tok.re.lastIndex = 0
       let m

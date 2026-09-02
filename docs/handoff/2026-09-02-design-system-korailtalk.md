@@ -35,3 +35,15 @@
 ## 남은 결정
 - 라이트 바탕을 시안값 #F8F7FC 로 바꿨다(구 크림 #FAF7F5). 대표가 크림을 원하면 `--bg` 한 줄 + `F8F7FC→FAF7F5` 되돌리기.
 - PC 상단 네비(`DesktopTopNav`)·홈 카테고리 칩은 아직 lucide/텍스트 — 2번 후속.
+
+## 추가 (PR #1305 에 얹음 — 같은 브랜치)
+
+- **히어로**: 로즈·보라 블룸 삭제(`12e864f`) → 대표 *"위아래부분까지 그라데이션은 안해도"* → 세로 페이드·하단 띠 제거(`239a914`). 좌우 페이드만 남음. 하네스 `--hero=<사진>` 옵션 신설(`688b312`) — 히어로 사진은 SSR 시드에서만 오므로 `--deals` 만으론 빈 색면이다(D1 죽었을 때와 같은 그림이라 오진 주의).
+- **지도 위 UI B안** (대표 확정): 위 §7 문서. 파일: `MapTopBar.tsx`(오버레이 흰 고정·선택 블루 면·선 아이콘) · `SheetFilterBar.tsx` · `RestaurantMapPage.tsx`(현위치 FAB) · `map-overlays.ts`(핀 잉크 링·이모지/그라디언트 폴백 삭제) · `HeroCarousel.tsx`(할인율 가격 줄·테두리 0) · `voucher-types.ts`(`emoji`→`icon`) · `urdeal-icons.tsx`(+4 선 아이콘) · `check-theme-consistency.mjs`(`light-fixed` 면제). 가드 `map-chips-b.test.ts` 13건 + 매니페스트 3건.
+- **D1 사고**: 15:12·16:08·16:42 KST 에 DB API 전부 500(계정 일일 읽기 한도, #1302). 17:37 KST 회복. 홈 히어로 사진이 안 보인 것도 이것(시드 부재) — 코드 문제 아님.
+
+## 대표가 지적했는데 아직 안 한 것 (다음 세션 첫 액션)
+
+1. **교환권 페이지(`/vouchers`)** — 대표 *"교환권페이지 아직 수정 안된거지? 브랜드도 접혀있고 말이야"*. 새 체계(칩 흰/블루·선 아이콘·카드 테두리 0)가 아직 안 갔다. 브랜드 스트립 기본 접기는 2026-09-01 대표 승인("나안")인데 오늘 다시 언급했다 — **펼쳐 둘지 먼저 확인**. `VouchersPage.tsx` 는 로딩 잠금(SSR 즉시 소비·기본 정렬·이미지 속성 byte-불변) + 981줄 동결.
+2. **유어샵(`/u/{handle}`)** — 대표 *"유어샵 부분도 수정이 안된 것 같네?"*. `CuratorPage`/`SellerPublicPage` 표면에 새 체계 미적용. 링크샵 소유권 가드(`check-linkshop-ownership`) 건드리지 말 것.
+3. `PaymentSuccessPage`(Toss 잠금 — 허가 필요) · 홈 카테고리 칩(`RestaurantMapPage` list 모드 상단 탭은 밑줄 탭이라 이미 조용함) · DesktopTopNav 아이콘.
