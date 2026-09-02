@@ -5,7 +5,7 @@ import { Gift, ChevronRight, ChevronLeft, Map, Bookmark, AlertTriangle } from 'l
 import api from '@/lib/api'
 import { getUserId, getUserIdSync, hasConsumerSession } from '@/utils/auth'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
-import { resolveProductFlow, canonicalDetailPath } from '@/shared/product-flow'
+import { resolveProductFlow, canonicalDetailPath, isNoShippingProduct } from '@/shared/product-flow'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/config/region'
@@ -257,7 +257,12 @@ export default function ProductDetailPage() {
           item_total: unitPrice * quantity,
           seller_id: product.seller_id ?? null,
           seller_name: product.seller_name ?? null,
-          shipping_fee: 3000,
+          // 📦 2026-09-01: 결제 화면의 비배송 판정(배송지 생략·배송비 0)은 category/deal_only 를 본다.
+          //   여기서 안 넘기면 이용권을 바로구매해도 배송지를 요구하고 3,000원을 찍는다(장바구니와 같은 사고).
+          //   배송비 숫자는 표시용이다 — 실제 청구는 서버 견적(useShippingQuote)이 이긴다.
+          category: product.category ?? null,
+          deal_only: Number(product.deal_only) === 1 ? 1 : 0,
+          shipping_fee: isNoShippingProduct(product) ? 0 : 3000,
           free_shipping_threshold: 0,
           option_id: selectedOptions.option || null,
           option_value: optValue,

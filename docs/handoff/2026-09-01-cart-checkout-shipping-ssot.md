@@ -100,3 +100,11 @@ grep 으로 확인: `GroupBuyDetailPage`·`VoucherDetailPage` 에 '장바구니 
 
 ⏱️ 참고: 이 워크플로는 정상일 때도 **35분**쯤 걸린다(단위 테스트 5분 + 가드 주입 647건 스윕 25분).
 "완주 안 했다"를 "멈췄다"로 오판하지 말 것.
+
+## 후속 (같은 세션, 머지 뒤)
+
+- **바로구매 진입점 수리** `ProductDetailPage` — `shipping_fee: 3000` 하드코딩 + `category`/`deal_only` 미전달이라
+  이용권을 바로구매하면 결제 화면이 배송지를 요구했다(장바구니와 같은 사고, 다른 입구). SSOT 로 분기 + 두 필드 전달.
+  가드에 R3(`shipping_fee: <숫자>` 리터럴) 추가 · 이 파일은 R1 제외(교환권 **표시** 분기 10곳은 정당) · 되돌려-검증 빨간불 확인.
+- **디자인 방향 제안서** `docs/design/anti-slop-direction-2026-09.md` — 코드 0, 대표 선택 대기. 근거 화면 7장은 `out/visual/`.
+- ⏳ **결제 실패 시 빈 상자 두 개**(`/pay/widget` · `TossPaymentWidget`)는 마크업 변경이라 Toss 잠금 승인 필요 — `AskUserQuestion` 으로 물었다.
