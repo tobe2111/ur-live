@@ -174,7 +174,7 @@ const MUTATIONS = [
       '무엇을 넘기든 종전 주기로 돈다 — "만든 것·넘긴 것·읽는 것" 이 셋 다 다르다.',
     name: '📉 읽기 예산 초과가 cron kick 을 못 막는다(paused 에 안 합쳐짐)',
     file: 'src/worker-ads/index.ts',
-    find: '  const paused = lanesPaused(env) || budget.over // ⏸️',
+    find: '  const paused = lanesPaused(env) || budgetBlocked(budget) // ✍️',
     replace: '  const paused = lanesPaused(env) // ⏸️',
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
@@ -184,7 +184,7 @@ const MUTATIONS = [
   {
     name: '📉 DO 알람 레인이 읽기 예산 게이트를 건너뛴다',
     file: 'src/worker-ads/lane-alarm.ts',
-    find: '    if ((await readBudgetState(this.env)).over) {',
+    find: '    if (budgetBlocked(await readBudgetState(this.env))) {',
     replace: '    if (false) {',
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
@@ -194,7 +194,7 @@ const MUTATIONS = [
   {
     name: '📉 cron 경로 레인이 읽기량을 원장에 안 보고한다(원장이 절반만 센다)',
     file: 'src/worker-ads/self-beat.ts',
-    find: '    await reportReadUsage(env, readEnvMeter(env)?.rr)\n',
+    find: '    await reportReadUsage(env, readEnvMeter(env)?.rr, readEnvMeter(env)?.rw)\n',
     replace: '',
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
@@ -6674,6 +6674,36 @@ canvas {
     why:
       '기억할 수 없는 DB 에서 "이미 했다"를 영영 못 적으니 전수 UPDATE/DELETE 가 무한 반복된다. ' +
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
+  },
+  {
+    name: '✍️ 쓰기 예산이 게이트에서 빠진다(요금을 터뜨린 축이 다시 무방비)',
+    file: 'src/worker-ads/index.ts',
+    find: 'const paused = lanesPaused(env) || budgetBlocked(budget)',
+    replace: 'const paused = lanesPaused(env) || budget.over',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '읽기 축만 보면 2026-09-02 와 같은 폭주(시간당 300만 쓰기, 월 $427)를 못 막는다. ' +
+      '포함분 비율이 읽기 250억 : 쓰기 5,000만 = 500배라, 쓰기가 먼저 요금이 된다.',
+  },
+  {
+    name: '✍️ 회차가 쓴 행을 보고하지 않는다(원장이 영원히 0 — 조용한 무방비)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'reportReadUsage(this.env, this.meter.rr, this.meter.rw)',
+    replace: 'reportReadUsage(this.env, this.meter.rr)',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '차단기는 서 있는데 계량기가 0 만 보낸다. 초과가 영원히 안 잡히고, 에러도 로그도 없다 — ' +
+      '이 레포가 반복해 만난 "실패가 아니라 조용한 부재" 그대로다.',
+  },
+  {
+    name: '✍️ 읽기를 끄면 쓰기 감시까지 사라진다(한쪽만 꺼도 무제한)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '  if (budget <= 0 && writeBudget <= 0) return { ...idle, over: false, writeOver: false }',
+    replace: '  if (budget <= 0) return { ...idle, over: false, writeOver: false }',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '읽기 예산을 0 으로 두는 건 흔한 조치인데(유료 전환 뒤 "읽기는 넉넉하니 끄자"), 그때 쓰기 ' +
+      '차단기까지 같이 죽으면 요금 상한이 통째로 사라진다.',
   },
   {
     name: '🪦 거르지 못하는 bio 인덱스가 되살아난다(부분 인덱스를 이겨 다시 하루 4,111만 행)',

@@ -72,7 +72,7 @@ export async function writeSelfBeat(env: Env, beat: string, ok: boolean, ms: num
     // 📏 이 인보케이션(=이 레인 1회)이 읽은 D1 행 수를 함께 싣는다(엔트리가 env 를 계량 래퍼로 감싼다).
     await recordCronBeat(env, `ads:${beat}`, ok, ms, undefined, ok ? undefined : failNote(err), gap, readEnvMeter(env))
     // 📉 cron 경로 레인의 읽기량도 예산 원장에 — 알람 레인은 DO 가 직접 보고한다(`lane-alarm.ts`).
-    await reportReadUsage(env, readEnvMeter(env)?.rr)
+    await reportReadUsage(env, readEnvMeter(env)?.rr, readEnvMeter(env)?.rw)
   } catch { /* 관측 실패는 삼킨다 */ }
 }
 
