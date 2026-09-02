@@ -90,8 +90,8 @@ const MUTATIONS = [
   {
     name: '🏠 홈 청크 규칙에서 components/home 이 빠져 app-components 281KB 가 홈 preload 로 돌아온다',
     file: 'vite.config.ts',
-    find: "            id.includes('/src/components/home/') || id.includes('/src/pages/pc-home/') ||\n",
-    replace: "            id.includes('/src/pages/pc-home/') ||\n",
+    find: "            id.includes('/src/components/home/') || id.includes('/src/pages/pc-home/PcHomeLocationBar') ||\n",
+    replace: "            id.includes('/src/pages/pc-home/PcHomeLocationBar') ||\n",
     test: 'src/tests/unit/home-chunk-diet.test.ts',
     why:
       '2026-09-02 번들러 실측: 홈이 닿는 21개 모듈이 app-components(66모듈 281KB)에 섞여 있어 통째로 preload 됐고, ' +

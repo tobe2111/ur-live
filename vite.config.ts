@@ -176,7 +176,9 @@ export default defineConfig({
           //   목록은 실측 도달 집합 그대로다(추측 아님). ⚠️ 이 블록을 지우면 홈 preload 에 그 네 청크가 곧바로 돌아온다.
           //   가드: `home-chunk-diet.test.ts` + check-critical-chunks / check-surface-role-leak.
           if (
-            id.includes('/src/components/home/') || id.includes('/src/pages/pc-home/') ||
+            // ⚠️ `pages/pc-home/` 폴더째는 안 된다 — 페이지 파일(PcHomePage.tsx)까지 삼켜 lazy 페이지 청크가 사라지고
+            //   route-chunk-map 이 홈 표면을 못 찾는다(3차 실측). 홈 두 페이지가 같이 쓰는 `PcHomeLocationBar` 만.
+            id.includes('/src/components/home/') || id.includes('/src/pages/pc-home/PcHomeLocationBar') ||
             id.includes('/src/pages/main-home/GroupBuyFeedCard') ||
             // ⚠️ deal/ 폴더 통째는 안 된다 — DetailFloatingHeader(상세 전용)가 WishlistButton·PinButton·KakaoShareButton 을
             //   import 해 app-components 를 도로 끌고 온다(2차 실측). 홈이 닿는 셋만 짚는다.

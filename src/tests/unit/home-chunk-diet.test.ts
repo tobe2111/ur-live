@@ -23,7 +23,7 @@ const HOME_ENTRIES = [
 ]
 /** app-home 규칙에 들어 있어야 하는 경로 조각(실측 도달 집합) */
 const APP_HOME_PARTS = [
-  '/src/components/home/', '/src/pages/pc-home/', '/src/pages/main-home/GroupBuyFeedCard',
+  '/src/components/home/', '/src/pages/pc-home/PcHomeLocationBar', '/src/pages/main-home/GroupBuyFeedCard',
   '/src/components/deal/DealCardMedia', '/src/components/deal/WishlistHeart', '/src/components/deal/StarRating',
   '/src/components/region/', '/src/components/SEO', '/src/components/ui/sort-menu', '/src/shared/seo/',
   '/src/shared/home-', '/src/shared/product-flow', '/src/shared/deal-category-icon',
@@ -54,6 +54,9 @@ describe('① app-home 규칙', () => {
 })
 
 describe('①-b deal/ 폴더 통째 금지', () => {
+  it("app-home 규칙에 '/src/pages/pc-home/' 폴더 전체가 없다(페이지 파일까지 삼켜 lazy 페이지 청크가 사라진다)", () => {
+    expect(ruleBlock).not.toContain("id.includes('/src/pages/pc-home/')")
+  })
   it("app-home 규칙에 '/src/components/deal/' 폴더 전체가 없다(DetailFloatingHeader 가 app-components 를 도로 끌고 온다)", () => {
     expect(ruleBlock).not.toContain("id.includes('/src/components/deal/')")
   })
