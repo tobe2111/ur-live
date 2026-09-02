@@ -6836,6 +6836,17 @@ canvas {
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
   },
   {
+    name: '📉 수집 회차 수가 승인값에서 조용히 내려간다(라이브 총량을 정하는 유일한 축)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: '  collect: {\n    runsPerHour: 3,',
+    replace: '  collect: {\n    runsPerHour: 1,',
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '알람이 모는 구성에서 발굴 총량을 실제로 정하는 값은 이것 하나다(체인 회차·폭 cap 은 각각 ' +
+      '게이트와 서브리퀘스트 예산에 막혀 안 먹는 것으로 2026-09-02 실측). 조용히 1 로 돌아가면 ' +
+      '발굴이 3분의 1이 되는데 에러가 없다.',
+  },
+  {
     name: '📉 회차 기본값이 조용히 되돌아간다(발굴량 3분의 1, 에러 0)',
     file: 'src/worker-ads/chain.routes.ts',
     find: "ADS_COLLECT_ROUNDS || '', 10) || 12))",
