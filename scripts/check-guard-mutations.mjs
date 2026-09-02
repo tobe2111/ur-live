@@ -90,8 +90,8 @@ const MUTATIONS = [
   {
     name: '📉 청소 GC 티어 게이트가 사라져 5분마다 전수 스캔으로 돌아간다',
     file: 'src/worker/cron/scheduled-cleanup.ts',
-    find: "  if (tiers.daily) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)\n  // ── 8. 알림 정리",
-    replace: "  if (true) { // ⏱️ daily 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)\n  // ── 8. 알림 정리",
+    find: '  if (tiers.daily) await runDailyCleanup(DB, results)',
+    replace: '  await runDailyCleanup(DB, results)',
     test: 'src/tests/unit/d1-read-diet.test.ts',
     why:
       '2026-09-02: 5분 cron 이 인덱스 없는 GC 문장 ~33개를 288회/일 돌려 본진 읽기의 3대 원인이 됐다. ' +

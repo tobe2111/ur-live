@@ -20,6 +20,7 @@ import { INDEX_REPAIRS } from '@/worker/routes/repair-schema/index-repairs'
 
 const SCHEDULED = readFileSync('src/worker/scheduled.ts', 'utf8')
 const CLEANUP = readFileSync('src/worker/cron/scheduled-cleanup.ts', 'utf8')
+const CLEANUP_DAILY = readFileSync('src/worker/cron/scheduled-cleanup-daily.ts', 'utf8')
 const PREWARM = readFileSync('src/worker/cron/cache-prewarm.ts', 'utf8')
 const FEED = readFileSync('src/worker/cron/group-buy-feed-cache.ts', 'utf8')
 const HB = readFileSync('src/worker/utils/cron-heartbeat.ts', 'utf8')
@@ -29,19 +30,32 @@ describe('① 청소 티어', () => {
   it('호출부가 슬롯으로 티어를 넘긴다 — 매시 :10 / 매일 19:20 UTC(04:20 KST)', () => {
     expect(SCHEDULED).toMatch(/handleScheduled\(env, \{ hourly: slotOpen\(\{ minute: 10 \}\), daily: slotOpen\(\{ minute: 20, hour: 19 \}\) \}\)/)
   })
-  it('GC 섹션은 daily, 시간 규칙은 hourly, 분 단위(3·6·14)는 게이트 없음', () => {
-    const headers = [...CLEANUP.matchAll(/^  \/\/ ── (\S+)/gm)].map((m) => m[1].replace(/\.$/, ''))
-    expect(headers.length).toBe(35)
+  it('GC 섹션은 daily 모듈로 분리돼 게이트 하나 뒤에 있고, 시간 규칙은 hourly, 분 단위(3·6·14)는 게이트 없음', () => {
+    const headersOf = (src: string) => [...src.matchAll(/^  \/\/ ── (\S+)/gm)].map((m) => m[1].replace(/\.$/, ''))
+    const main = headersOf(CLEANUP), daily = headersOf(CLEANUP_DAILY)
+    expect(main.length + daily.length).toBe(35)
+    // daily 13개 섹션은 전부 분리 모듈에만 있다 — 본진 파일로 돌아오면 게이트 없이 5분마다 돈다.
+    for (const t of ['8', '9', '9b', '15', '16', '16b', '17', '18', '19', '22', '22b', '🏁', '23']) {
+      expect(daily, t).toContain(t)
+      expect(main, t).not.toContain(t)
+    }
+    // 분리 모듈은 게이트를 모른다(호출부가 유일한 게이트) — 안에서 tiers 를 다시 보면 두 겹이 된다.
+    expect(CLEANUP_DAILY).not.toMatch(/^\s+if \(tiers\./m)
+    expect(CLEANUP_DAILY).toMatch(/export async function runDailyCleanup\(DB: D1Database, results: Record<string, number>\)/)
+    // 본진의 유일한 daily 게이트 — 정확히 한 번, `if (tiers.daily)` 뒤에.
+    expect((CLEANUP.match(/runDailyCleanup\(DB, results\)/g) || []).length).toBe(1)
+    expect(CLEANUP).toMatch(/^  if \(tiers\.daily\) await runDailyCleanup\(DB, results\)$/m)
     const guardOf = (tok: string) => {
       const at = CLEANUP.indexOf(`  // ── ${tok}`)
+      expect(at, tok).toBeGreaterThan(0)
       const before = CLEANUP.slice(Math.max(0, at - 120), at)
       const m = /if \(tiers\.(hourly|daily)\) \{[^\n]*\n$/.exec(before)
       return m ? m[1] : null
     }
-    for (const t of ['8.', '9.', '15.', '17.', '18.', '19.', '23.', '🏁']) expect(guardOf(t), t).toBe('daily')
     for (const t of ['2.', '4.', '10.', '12.', '13.', '20.', '22c.', '22d.']) expect(guardOf(t), t).toBe('hourly')
     for (const t of ['3.', '6.', '14.']) expect(guardOf(t), t).toBeNull()
-    expect((CLEANUP.match(/if \(tiers\.(hourly|daily)\) \{/g) || []).length).toBe(32)
+    expect((CLEANUP.match(/if \(tiers\.hourly\) \{/g) || []).length).toBe(19)
+    expect(CLEANUP).not.toMatch(/if \(tiers\.daily\) \{/)
   })
   it('인자 없이 부르면 전부 돈다(수동 트리거·테스트 하위호환)', () => {
     expect(CLEANUP).toMatch(/export const ALL_TIERS: CleanupTiers = \{ hourly: true, daily: true \}/)
