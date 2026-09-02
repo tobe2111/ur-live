@@ -7,9 +7,21 @@
  *   드래프트의 일부다). 제출 성공 시 삭제. 파싱 실패는 조용히 무시(드래프트가 페이지를 깨면 안 된다).
  */
 
-export type VoucherCategory =
-  | 'meal_voucher' | 'beauty_voucher' | 'health_voucher'
-  | 'pet_voucher' | 'stay_voucher' | 'activity_voucher'
+import { utcToKstInput } from '@/utils/date'
+import type { VoucherCategory as PlatformVoucherCategory } from '@/shared/constants/voucher-categories'
+
+/**
+ * 🗂️ 이용권 카테고리 — **플랫폼 SSOT 를 그대로 쓴다**(`shared/constants/voucher-categories`).
+ *
+ * ⚠️ 2026-09-02 정정: 여기서 6종을 따로 선언하고 있었다(health/pet/activity 포함). 그 셋은
+ *   2026-05-17 에 4종으로 통합되며 **레거시**가 됐고, 서버가 저장 직전 `canonicalCategory` 로
+ *   접어 넣는다(health→미용 · pet/activity→기타). 즉 셀러가 "헬스 이용권" 을 고르면 화면은
+ *   헬스라고 해 놓고 **실제로는 미용으로 등록**됐다 — 아무 에러 없이 고른 것과 다른 게 저장된다.
+ *   (서버의 그 정규화 자체는 옳다. 2026-08-22 에 **피드에 아예 안 뜨던 것**을 그렇게 고쳤다.
+ *    남은 문제는 화면이 없는 선택지를 계속 내밀고 있었다는 것이다.)
+ * ⇒ 목록을 따로 갖지 않는다. SSOT 가 늘거나 줄면 여기가 자동으로 따라간다.
+ */
+export type VoucherCategory = PlatformVoucherCategory
 
 export interface VoucherForm {
   name: string
@@ -37,9 +49,15 @@ export interface VoucherForm {
   region_gu: string
 }
 
-/** 판매 마감 기본값: 7일 후 (기존 UX 유지 — 2026-05-21). */
+/**
+ * 판매 마감 기본값: 7일 후 (기존 UX 유지 — 2026-05-21).
+ *
+ * ⚠️ 2026-09-02 정정: `toISOString()` 은 **UTC** 라 `datetime-local` 칸에 그대로 넣으면 셀러에게
+ *   9시간 이른 시각으로 보였다(같은 칸을 사람이 고치면 KST 벽시계가 들어와 **한 칸에 두 규약**이
+ *   섞였다). 화면은 언제나 KST 벽시계 — 저장 직전 `kstInputToUTC` 가 한 번만 UTC 로 바꾼다.
+ */
 export function defaultDeadline(): string {
-  return new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 16)
+  return utcToKstInput(new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString())
 }
 
 export function emptyVoucherForm(): VoucherForm {

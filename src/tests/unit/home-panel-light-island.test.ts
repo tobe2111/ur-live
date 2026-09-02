@@ -13,9 +13,18 @@ const read = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf-8'
 const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('darkMode variant 가 light-island 를 예외로 둔다', () => {
-  it('tailwind.config: &:is(.dark *):not(.light-island *)', () => {
+  /**
+   * ⚠️ 2026-09-02 정정: 원래 이 검사는 variant **문자열 전체**를 정규식으로 못박고 있었다. 그래서
+   *   같은 날 라이트 고정 대시보드(`.seller-light-theme` 등)를 같은 자리에 **추가**하자 — 이 섬의
+   *   계약은 그대로인데 — 빨간불이 났다. 계약("섬 안에서는 dark: 가 꺼진다")만 검사하고
+   *   목록에 형제가 늘어나는 것은 허용한다. 형제들은 각자의 테스트가 지킨다.
+   */
+  it('tailwind.config: .dark 스코프 + light-island 예외', () => {
     const tw = code(read('tailwind.config.js'))
-    expect(tw).toMatch(/darkMode:\s*\['variant',\s*'&:is\(\.dark \*\):not\(\.light-island \*\)'\]/)
+    const variant = (tw.match(/darkMode:\s*\[[^\]]*\]/) || [''])[0]
+    expect(variant).toContain("'variant'")
+    expect(variant).toContain('&:is(.dark *)')
+    expect(variant).toContain(':not(.light-island *)')
   })
   it('index.css 에 .light-island 정의가 있고, 다크 패널 남색 규칙은 없다', () => {
     const css = code(read('src/index.css'))

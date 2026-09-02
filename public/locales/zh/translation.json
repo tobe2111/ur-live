@@ -2279,8 +2279,8 @@
       "categoryTitle": "使用券类型",
       "categoryMeal": "餐券",
       "categoryMealDesc": "餐厅·咖啡",
-      "categoryBeauty": "美容券",
-      "categoryBeautyDesc": "美发·美甲·护肤",
+      "categoryBeauty": "美容健身券",
+      "categoryBeautyDesc": "美发·美甲·护肤·私教·瑜伽",
       "categoryHealth": "健身券",
       "categoryHealthDesc": "私教·瑜伽·普拉提",
       "categoryPet": "Pet voucher",
@@ -2288,7 +2288,9 @@
       "categoryStay": "Stay voucher",
       "categoryStayDesc": "Pension, hotel, motel",
       "categoryActivity": "Activity voucher",
-      "categoryActivityDesc": "Escape room, bowling, class"
+      "categoryActivityDesc": "Escape room, bowling, class",
+      "categoryEtc": "其他使用券",
+      "categoryEtcDesc": "宠物·活动·课程"
     },
     "gift": {
       "title": "送礼物",
@@ -4564,7 +4566,11 @@
     "detail": "详情",
     "itemCount": "{{count}}件",
     "moreItems": "另{{count}}件",
-    "itemQtyPrice": "{{qty}}件 · {{price}}元"
+    "itemQtyPrice": "{{qty}}件 · {{price}}元",
+    "kindGroupbuy": "使用券",
+    "emptyGroupbuyTitle": "暂无使用券购买记录",
+    "useInMyVouchers": "请在\"我的使用券\"中使用",
+    "useInMyGifticons": "请在\"我的兑换券\"中使用"
   },
   "welcomeOnboarding": {
     "skip": "跳过",
@@ -5253,7 +5259,9 @@
     "save": "保存",
     "ariaToggleOn": "开启 {{label}}",
     "ariaToggleOff": "关闭 {{label}}",
-    "language": "语言"
+    "language": "语言",
+    "phoneRequired": "请输入手机号 — 兑换券和通知将发送到该号码",
+    "phoneInvalid": "请检查手机号格式 (010-0000-0000)"
   },
   "productDetail": {
     "retry": "重试",
@@ -6046,7 +6054,8 @@
     "preparing": "[TODO:zh] 배송준비",
     "shipping": "[TODO:zh] 배송중",
     "delivered": "[TODO:zh] 배송완료",
-    "review": "[TODO:zh] 리뷰"
+    "review": "[TODO:zh] 리뷰",
+    "cancelledRefunded": "取消/退款"
   },
   "groupBuy.title": "Group Buy",
   "groupBuy.bannerHeadline": "Better prices, together",
@@ -6790,5 +6799,12 @@
   "frameRails": {
     "valShop": "我的使用券展台，UrShop",
     "valShopDesc": "注册后就已经开好了"
+  },
+  "voucherStatus": {
+    "sectionTitle": "使用券状态",
+    "bought": "已购买",
+    "usable": "可使用",
+    "used": "已使用",
+    "gone": "过期/退款"
   }
 }

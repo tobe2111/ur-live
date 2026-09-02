@@ -1599,8 +1599,8 @@
       "categoryTitle": "Catégorie de Bon",
       "categoryMeal": "Bon Repas",
       "categoryMealDesc": "Restaurant·Café",
-      "categoryBeauty": "Bon Beauté",
-      "categoryBeautyDesc": "Cheveux·Ongles·Peau",
+      "categoryBeauty": "Bon Beauté & Fitness",
+      "categoryBeautyDesc": "Cheveux·Ongles·Peau·PT·Yoga",
       "categoryHealth": "Bon Santé",
       "categoryHealthDesc": "PT·Yoga·Pilates",
       "categoryPet": "Pet voucher",
@@ -1608,7 +1608,9 @@
       "categoryStay": "Stay voucher",
       "categoryStayDesc": "Pension, hotel, motel",
       "categoryActivity": "Activity voucher",
-      "categoryActivityDesc": "Escape room, bowling, class"
+      "categoryActivityDesc": "Escape room, bowling, class",
+      "categoryEtc": "Autre Bon",
+      "categoryEtcDesc": "Animaux·Activités·Cours"
     },
     "gift": {
       "title": "Envoyer un Cadeau",
@@ -3884,7 +3886,11 @@
     "detail": "Détails",
     "itemCount": "{{count}} articles",
     "moreItems": "et {{count}} de plus",
-    "itemQtyPrice": "{{qty}} × {{price}} KRW"
+    "itemQtyPrice": "{{qty}} × {{price}} KRW",
+    "kindGroupbuy": "Pass",
+    "emptyGroupbuyTitle": "Aucun achat de pass",
+    "useInMyVouchers": "Utilisez-le dans Mes Pass",
+    "useInMyGifticons": "Utilisez-le dans Mes Bons"
   },
   "welcomeOnboarding": {
     "skip": "Passer",
@@ -5253,7 +5259,9 @@
     "save": "Enregistrer",
     "ariaToggleOn": "Activer {{label}}",
     "ariaToggleOff": "Désactiver {{label}}",
-    "language": "Langue"
+    "language": "Langue",
+    "phoneRequired": "Saisissez votre téléphone — bons et alertes y sont envoyés",
+    "phoneInvalid": "Vérifiez le format du téléphone (010-0000-0000)"
   },
   "productDetail": {
     "retry": "Réessayer",
@@ -6046,7 +6054,8 @@
     "preparing": "[TODO:fr] 배송준비",
     "shipping": "[TODO:fr] 배송중",
     "delivered": "[TODO:fr] 배송완료",
-    "review": "[TODO:fr] 리뷰"
+    "review": "[TODO:fr] 리뷰",
+    "cancelledRefunded": "Annulé/Remboursé"
   },
   "groupBuy.title": "Group Buy",
   "groupBuy.bannerHeadline": "Better prices, together",
@@ -6790,5 +6799,12 @@
   "frameRails": {
     "valShop": "Votre vitrine de pass, UrShop",
     "valShopDesc": "Déjà ouverte dès votre inscription"
+  },
+  "voucherStatus": {
+    "sectionTitle": "Mes Pass",
+    "bought": "Achetés",
+    "usable": "Disponibles",
+    "used": "Utilisés",
+    "gone": "Expirés/Remboursés"
   }
 }

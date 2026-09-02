@@ -2310,8 +2310,8 @@
       "categoryTitle": "이용권 종류",
       "categoryMeal": "식사 이용권",
       "categoryMealDesc": "맛집·카페",
-      "categoryBeauty": "뷰티 이용권",
-      "categoryBeautyDesc": "헤어·네일·피부",
+      "categoryBeauty": "미용 이용권",
+      "categoryBeautyDesc": "헤어·네일·피부·PT·요가",
       "categoryHealth": "헬스 이용권",
       "categoryHealthDesc": "PT·요가·필라테스",
       "categoryPet": "반려 이용권",
@@ -2319,7 +2319,9 @@
       "categoryStay": "숙박 이용권",
       "categoryStayDesc": "펜션·호텔·모텔",
       "categoryActivity": "액티비티 이용권",
-      "categoryActivityDesc": "방탈출·볼링·클래스"
+      "categoryActivityDesc": "방탈출·볼링·클래스",
+      "categoryEtc": "기타 이용권",
+      "categoryEtcDesc": "반려·액티비티·클래스"
     },
     "gift": {
       "title": "선물하기",
@@ -4564,7 +4566,11 @@
     "detail": "상세",
     "itemCount": "{{count}}개",
     "moreItems": "외 {{count}}개",
-    "itemQtyPrice": "{{qty}}개 · {{price}}원"
+    "itemQtyPrice": "{{qty}}개 · {{price}}원",
+    "kindGroupbuy": "이용권",
+    "emptyGroupbuyTitle": "이용권 구매 내역이 없습니다",
+    "useInMyVouchers": "'내 이용권'에서 사용하세요",
+    "useInMyGifticons": "'내 교환권'에서 사용하세요"
   },
   "welcomeOnboarding": {
     "skip": "건너뛰기",
@@ -5253,7 +5259,9 @@
     "save": "저장",
     "ariaToggleOn": "{{label}} 켜기",
     "ariaToggleOff": "{{label}} 끄기",
-    "language": "언어"
+    "language": "언어",
+    "phoneRequired": "전화번호를 입력해주세요 — 교환권·알림톡이 이 번호로 갑니다",
+    "phoneInvalid": "전화번호 형식을 확인해주세요 (010-0000-0000)"
   },
   "productDetail": {
     "retry": "다시 시도",
@@ -5655,7 +5663,8 @@
     "preparing": "배송준비",
     "shipping": "배송중",
     "delivered": "배송완료",
-    "review": "리뷰"
+    "review": "리뷰",
+    "cancelledRefunded": "취소·환불"
   },
   "checkout": {
     "header": {
@@ -6786,5 +6795,12 @@
   "frameRails": {
     "valShop": "내 이용권 진열대, 유어샵",
     "valShopDesc": "가입하면 이미 열려 있어요"
+  },
+  "voucherStatus": {
+    "sectionTitle": "이용권 현황",
+    "bought": "구매완료",
+    "usable": "사용가능",
+    "used": "사용완료",
+    "gone": "만료·환불"
   }
 }

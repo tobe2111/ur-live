@@ -25,11 +25,12 @@ import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { ensureSellerMetaTable, getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta'
 import { ntsValidateBusiness, ntsCheckStatus } from '@/worker/utils/nts-business-verify'
-import { canOperateStore, grantOperator, revokeOperator, isStoreOwner } from '../../../worker/utils/seller-operators'
+import { canOperateStore, grantOperator, revokeOperator, isStoreOwner, listOperableStores } from '../../../worker/utils/seller-operators'
 import { mergeStoreProfile, loadLatestProductCopy, saveStoreProfileAndPropagate } from '@/worker/utils/store-profile'
 import { parseSessionCookie } from '@/worker/utils/session'
 import { DEFAULT_FEE_RATES } from '@/worker/utils/fee-resolver'
 import { getEffectivePlatformFee } from '@/worker/utils/effective-platform-fee'
+import { registerVoucherDraftRoutes } from './seller-voucher-draft.routes'
 
 const app = new Hono<{ Bindings: Env }>()
 type Ctx = Context<{ Bindings: Env }>
@@ -142,80 +143,9 @@ app.get('/fee-context', async (c) => {
   }
 })
 
-// ── 이용권 임시저장(서버 드래프트) — 2026-08-23 대표 "임시저장도 돼야 해" 후속 승인 ─────────
-//   localStorage 드래프트의 서버 짝 — PC 에서 쓰다 폰에서 이어 쓴다. 셀러(좌석)당 1개.
-//   ⚠️ seller_meta 를 쓰지 않는 이유: getSellerMeta 는 그 셀러의 **모든** 키를 읽는다 —
-//   base64 이미지가 든 수백 KB 드래프트를 넣으면 fee-context 등 모든 meta 조회가 그걸 끌고 다닌다.
-let _draftEnsured = false
-async function ensureVoucherDraftTable(DB: D1Database) {
-  if (_draftEnsured) return
-  _draftEnsured = true
-  try {
-    await DB.prepare(`CREATE TABLE IF NOT EXISTS seller_voucher_drafts (
-      seller_id INTEGER PRIMARY KEY,
-      draft_json TEXT NOT NULL,
-      updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
-    )`).run()
-  } catch { /* 이미 있으면 그만 — repair-schema 가 정식 등록 */ }
-}
-/** 드래프트 크기 상한 — 압축 업로드(≤300KB)의 base64(~400KB)까지 수용, 그 이상은 거절. */
-const DRAFT_MAX_BYTES = 900_000
-
-app.get('/voucher-draft', async (c) => {
-  try {
-    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
-    if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
-    await ensureVoucherDraftTable(c.env.DB)
-    // updated_ms: epoch(ms) 로 내려 클라가 Date 파싱 없이 숫자 비교만 하게 한다(UTC 오해석 클래스 차단).
-    const row = await c.env.DB.prepare(
-      `SELECT draft_json, CAST(strftime('%s', updated_at) AS INTEGER) * 1000 AS updated_ms
-         FROM seller_voucher_drafts WHERE seller_id = ? LIMIT 1`
-    ).bind(sellerId).first<{ draft_json: string; updated_ms: number }>().catch(() => null)
-    if (!row) return c.json({ success: true, data: null })
-    let form: unknown = null
-    try { form = JSON.parse(row.draft_json) } catch { /* 깨진 드래프트는 없는 것 */ }
-    if (!form || typeof form !== 'object') return c.json({ success: true, data: null })
-    return c.json({ success: true, data: { form, updated_ms: Number(row.updated_ms) || 0 } })
-  } catch (err) {
-    return safeError(c, err, '임시저장을 불러오지 못했습니다', '[seller-stores]')
-  }
-})
-
-app.put('/voucher-draft', rateLimit({ action: 'voucher_draft_save', max: 120, windowSec: 3600 }), async (c) => {
-  try {
-    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
-    if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
-    const body = await c.req.json<{ form?: unknown }>().catch(() => ({} as { form?: unknown }))
-    if (!body.form || typeof body.form !== 'object') {
-      return c.json({ success: false, error: '저장할 내용이 없습니다' }, 400)
-    }
-    const json = JSON.stringify(body.form)
-    if (json.length > DRAFT_MAX_BYTES) {
-      return c.json({ success: false, error: '임시저장 용량을 초과했습니다 (이미지를 줄여주세요)' }, 413)
-    }
-    await ensureVoucherDraftTable(c.env.DB)
-    await c.env.DB.prepare(
-      `INSERT INTO seller_voucher_drafts (seller_id, draft_json, updated_at)
-       VALUES (?, ?, datetime('now'))
-       ON CONFLICT(seller_id) DO UPDATE SET draft_json = excluded.draft_json, updated_at = datetime('now')`
-    ).bind(sellerId, json).run()
-    return c.json({ success: true })
-  } catch (err) {
-    return safeError(c, err, '임시저장에 실패했습니다', '[seller-stores]')
-  }
-})
-
-app.delete('/voucher-draft', async (c) => {
-  try {
-    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
-    if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
-    await ensureVoucherDraftTable(c.env.DB)
-    await c.env.DB.prepare('DELETE FROM seller_voucher_drafts WHERE seller_id = ?').bind(sellerId).run()
-    return c.json({ success: true })
-  } catch (err) {
-    return safeError(c, err, '임시저장 삭제에 실패했습니다', '[seller-stores]')
-  }
-})
+// 💾 이용권 임시저장(/voucher-draft) 은 별도 모듈로 — 매장 프로필·등록과 무관한 위저드 자동저장이라
+//   god-파일 래칫(600줄)에 걸렸을 때 가장 자연스러운 이음매였다. **경로·동작 불변**(같은 앱에 등록).
+registerVoucherDraftRoutes(app)
 
 // ── 매장 프로필 병합(공유) — SSOT: worker/utils/store-profile.ts (2026-08-23 단일화) ────────
 async function loadMergedProfile(DB: D1Database, sellerId: number) {
@@ -257,7 +187,44 @@ app.get('/stores/context', async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
     if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
-    return c.json({ success: true, data: await loadMergedProfile(c.env.DB, sellerId) })
+    const data = await loadMergedProfile(c.env.DB, sellerId)
+
+    /**
+     * 🚪 2026-09-02 (대표 신고 "이렇게 왜 뜨지? 매장 정보 입력도 다 했는데?" — 위저드가 계속
+     *   *"첫 단계는 매장 등록이에요"* 를 띄웠다).
+     *
+     * `loadMergedProfile` 의 `store_ready` 는 **지금 앉아 있는 좌석**만 본다. 그런데 매장은 별도
+     * `sellers` 행이고, 사람은 `seller_operators`(또는 `linked_user_id`)로 그 좌석에 접근한다.
+     * ⇒ **매장을 이미 운영 중인데 개인 좌석에 앉아 있으면** 게이트가 "매장을 등록하라"고 요구했다.
+     *   라이브 실측(2026-09-02): user 3 은 매장 14(홍대돈까스)의 운영자인데 좌석은 5(개인)라 게이트가 닫혔다.
+     *   그 상태에서 등록을 다시 시도해도 **중복 매장**이 생길 뿐 — 시킨 대로 해도 해결되지 않는 막다른 길이었다.
+     *
+     * ⇒ 판정을 **사람 기준**으로 넓힌다: 운영 가능한 매장이 하나라도 있으면 게이트를 연다.
+     *   `operable_store_count` 를 함께 실어, 화면이 "등록하세요" 대신 **"어느 매장인가요"(좌석 전환)** 로
+     *   말을 바꿀 수 있게 한다 — 게이트를 여는 것과 *무엇을 하라고 말할지*는 다른 문제다.
+     * ⚠️ 게이트만 넓히고 권한은 넓히지 않는다 — 실제 귀속은 좌석 토큰(`/stores/:id/token`)이 정하고
+     *   그 토큰은 `canOperateStore` 를 통과해야만 나온다(이 응답은 판정에 관여하지 않는다).
+     */
+    let operableCount = 0
+    try {
+      const userId = await resolveActorUserId(c)
+      if (userId) {
+        const mine = await listOperableStores(c.env.DB, userId)
+        /**
+         * ⚠️ **앉을 수 있는 매장만 센다.** 신규 등록은 `status='pending'`(사람이 등록증을 보고 승인)
+         *   이고, 좌석 토큰(`/stores/:id/token`)은 `active|approved` 만 내준다. 승인 대기 매장까지 세면
+         *   게이트가 열리는데 좌석 전환은 거부되어 — **이용권이 개인 좌석으로 등록된다.** 막히는 것보다
+         *   나쁘다(잘못된 매장으로 팔린다). 그 상태의 올바른 안내는 "승인 후 가능" 이고, 그건 지금도
+         *   등록 직후 토스트가 말한다.
+         */
+        operableCount = mine.filter(x => x.status === 'active' || x.status === 'approved').length
+      }
+    } catch { /* 판정 실패는 조용히 — 아래에서 좌석 판정만 쓴다(fail-open 아님, 종전 동작) */ }
+
+    return c.json({
+      success: true,
+      data: { ...data, store_ready: data.store_ready || operableCount > 0, operable_store_count: operableCount },
+    })
   } catch (err) {
     return safeError(c, err, '매장 정보를 불러오지 못했습니다', '[seller-stores]')
   }
@@ -425,12 +392,26 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
 
     // sellers 행 생성 — linked_user_id 는 비움(UNIQUE 1인1행): 접근은 seller_operators 관계로.
     const username = `store_${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`
+    /**
+     * 🩸 2026-09-02 (대표 신고 "매장 등록 중 오류가 발생했습니다" — **두 번째 매장부터 100% 실패**했다).
+     *
+     * `sellers` 에는 `CREATE UNIQUE INDEX idx_sellers_email_unique ON sellers(email) WHERE email IS NOT NULL`
+     * 이 걸려 있는데, 여기서 email 을 **빈 문자열** 로 넣고 있었다. `''` 은 NULL 이 **아니라서** 부분 인덱스에
+     * 포함된다 → 첫 매장은 통과하고(그 슬롯을 차지) **그 다음 등록은 전부 UNIQUE 위반 → catch → 알럿**.
+     * 라이브 실측: `email=''` 인 셀러가 정확히 1행(id=14) 있었고, 그 뒤 등록이 아무도 성공하지 못했다.
+     *
+     * NULL 로 두면 인덱스를 피하지만 컬럼이 **NOT NULL** 이라 불가. ⇒ 매장마다 **고유한 합성 주소**를 넣는다.
+     * `.invalid` 는 RFC 6761 이 "절대 해석되지 않는다"고 예약한 TLD 라, 실수로 발송되는 일이 구조적으로 없다.
+     * ⚠️ 카카오 same-email 셀러 자동연결(`LOWER(email)=LOWER(?)`)은 실제 유저 이메일과 대조하므로
+     *   이 합성 주소와는 영원히 안 맞는다 — 매장이 남의 계정에 붙는 사고가 생기지 않는다.
+     */
+    const storeEmail = `${username}@store.invalid`
     const ins = await c.env.DB.prepare(`
       INSERT INTO sellers (
         username, email, password_hash, name, business_name, business_number,
         phone, address, seller_type, status, created_at, updated_at
-      ) VALUES (?, '', '', ?, ?, ?, ?, ?, 'store_owner', ?, datetime('now'), datetime('now'))
-    `).bind(username, name, name, bno || null, phone || null, address || null, status).run()
+      ) VALUES (?, ?, '', ?, ?, ?, ?, ?, 'store_owner', ?, datetime('now'), datetime('now'))
+    `).bind(username, storeEmail, name, name, bno || null, phone || null, address || null, status).run()
     const newSellerId = Number(ins.meta?.last_row_id)
 
     // 🤝 2026-08-27 (대표 "매장 영입을 어떻게 확인하나") — **초대 링크 귀속**.
@@ -458,6 +439,22 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       return c.json({ success: false, error: '매장 생성에 실패했습니다' }, 500)
     }
 
+    /**
+     * 🩸 2026-09-02 (전수조사) — **행이 만들어진 뒤의 실패는 앞의 실패와 성격이 다르다.**
+     *
+     * 여기 아래 두 단계(`setSellerMeta` · `grantOperator`)는 아무 가드가 없어서, 하나라도 던지면
+     * 바깥 catch 가 잡아 **"매장 등록 중 오류가 발생했습니다"** 를 낸다. 그런데 `sellers` 행은
+     * **이미 만들어져 있다.** 사용자는 실패로 알고 다시 누르고 → **같은 가게가 두 번 등록**된다.
+     * (①의 UNIQUE 버그를 고치고 나면 재시도가 실제로 성공해 버리므로, 이 갭이 그때부터 진짜 문제다.)
+     *
+     * 둘의 무게가 다르므로 다르게 다룬다:
+     *   • 메타(채널·좌표·플레이스) — **없어도 매장은 매장이다.** 나중에 프로필 수정으로 채워진다.
+     *     ⇒ fail-soft. 이것 때문에 등록을 통째로 되돌릴 이유가 없다.
+     *   • 권한(`grantOperator`) — **이게 실패하면 방금 만든 매장에 아무도 못 들어간다.**
+     *     `linked_user_id` 는 설계상 비워 두므로 접근 경로가 `seller_operators` 하나뿐이다.
+     *     ⇒ 1회 재시도. 그래도 실패하면 **"실패" 라고 말하지 않는다** — 매장은 존재하니까.
+     *       재시도를 부추기지 않는 별개 문구 + 매장 번호를 돌려줘 운영이 손으로 붙일 수 있게 한다.
+     */
     // 채널·플레이스·검증 스탬프 (sellers 100컬럼 한도 — 전부 seller_meta)
     await setSellerMeta(c.env.DB, newSellerId, {
       store_channel: b.channel,
@@ -469,10 +466,22 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       nts_checked: ntsResult.valid === true ? '1' : ntsResult.valid === false ? '0' : '',
       business_cert_url: certUrl,
       registered_by_user_id: String(userId),
-    })
+    }).catch(() => { /* 메타 실패 — 매장은 유지(프로필 수정으로 채울 수 있다) */ })
 
     // 등록자 권한 — 직접=owner / 중개=operator(사장님 자리는 비워 둔다: owner 승계 3단계)
-    await grantOperator(c.env.DB, newSellerId, userId, userId, b.channel === 'direct' ? 'owner' : 'operator')
+    const role = b.channel === 'direct' ? 'owner' : 'operator'
+    let granted = await grantOperator(c.env.DB, newSellerId, userId, userId, role).then(() => true).catch(() => false)
+    if (!granted) {
+      granted = await grantOperator(c.env.DB, newSellerId, userId, userId, role).then(() => true).catch(() => false)
+    }
+    if (!granted) {
+      return c.json({
+        success: false,
+        // ⚠️ "등록 실패" 가 아니다 — 매장은 만들어졌다. 다시 누르면 중복만 생긴다.
+        error: `매장(#${newSellerId})은 등록됐지만 권한 연결에 실패했어요. 다시 등록하지 마시고 고객센터로 매장 번호를 알려주세요.`,
+        data: { seller_id: newSellerId, status, channel: b.channel, operator_granted: false },
+      }, 500)
+    }
 
     return c.json({
       success: true,
