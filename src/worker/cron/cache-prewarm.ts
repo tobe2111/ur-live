@@ -162,14 +162,24 @@ export function rotateForBudget<T>(items: readonly T[], minute: number, budget =
   return [...items.slice(start), ...items.slice(0, start)].slice(0, budget);
 }
 
-export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
+/**
+ * ⏱️ 읽기 다이어트 옵션(2026-09-02). 인자 없이 부르면 종전과 같이 전부 돈다(롤백 = 호출부에서 옵션 제거).
+ *   · `dynamic`  — 셀러/상품/큐레이터 동적 워밍(틱당 상세 렌더 12개 = 5분마다 콜드 D1 12건). 30분 주기면 충분
+ *   · `normalize` — products 정규화 UPDATE 2개(products 전수 ×2, 수렴 후에도 매 틱 스캔). 하루 1회
+ *   HOT_PATHS(SSR 슬롯 키)는 이 옵션과 무관하게 매 틱 돈다 — 잠금표 항목이라 제거·약화하지 않는다.
+ */
+export interface PrewarmOpts { dynamic?: boolean; normalize?: boolean }
+
+export async function handleCachePrewarm(env: PrewarmEnv, opts: PrewarmOpts = {}): Promise<void> {
   const baseUrl = env.FRONTEND_URL || 'https://urdeal.kr';
+  const doDynamic = opts.dynamic ?? true;
+  const doNormalize = opts.normalize ?? true;
   // 🌍 2026-07-12: KV 쓰기 표본화 창 — 5분 cron 중 매시 0/15/30/45분대 실행만 기록(576 writes/day < 1K 한도).
   const kvWriteWindow = new Date().getMinutes() % 15 < 5;
 
   // 🏎️ 2026-06-19 (A: 카탈로그 행 근본수정): products 정규화를 읽기 경로에서 빼 cron 으로 이전.
   //   self-fetch(아래 HOT_PATHS) 보다 먼저 실행 → 정규화된 데이터로 캐시/ KV 워밍. 멱등·실패 무시.
-  if (env.DB) {
+  if (env.DB && doNormalize) {
     await normalizeSupplyProductData(env.DB).catch(() => { /* best-effort */ });
   }
 
@@ -256,7 +266,7 @@ export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
   //     HOT 은 22, 동적은 40(셀러 10×2 + 상품 10 + 큐레이터 10)이고 KV·D1 도 서브리퀘스트다.
   //     실제 소비는 76 이상 — 상한 50 을 한참 넘겨 뒤쪽이 매번 조용히 실패하고 있었다.
   //     이제 `rotateForBudget` 이 회차당 12개만 쏘고 회전한다(위 상수 주석 참조).
-  if (env.DB) {
+  if (env.DB && doDynamic) {
     try {
       // Top 10 인기 셀러 (recent 30일 매출 기준 — 없으면 sellers.id 최신순 fallback)
       const sellersResult = await env.DB.prepare(
