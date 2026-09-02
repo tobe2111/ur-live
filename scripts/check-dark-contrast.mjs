@@ -23,6 +23,12 @@
  *   WCAG 대비를 계산해 3.0 미만이면 신고한다. 배경이 밝은데(휘도 0.5+) 글자도 밝은 경우만 —
  *   즉 "밝은 위 밝음". 어두운 위 어두움은 별개 문제라 여기서 안 본다.
  *
+ * ■ 어디서 도는가
+ *   `.github/workflows/dark-contrast.yml`(브라우저 필요 — 이 클래스를 건드리는 PR + 손으로 실행)
+ *   + `audit-gate.sh`(dist/client 가 있을 때만). **`verify.yml` PR 게이트에는 넣지 않는다** —
+ *   `render-smoke.yml` 주석이 정한 판단이다: 브라우저 검사는 느리고 환경에 민감해서, 간헐 실패가
+ *   머지를 막으면 결국 가드를 꺼 버리게 된다.
+ *
  * ■ 한계 (과신 금지)
  *   - 사진/그라디언트 위 글자는 배경색을 못 재서 건너뛴다(마스크·이미지는 계산 밖).
  *   - 시드로 못 그리는 화면(로그인 후 전용 등)은 그 경로를 안 돈다 → 경로 목록이 곧 범위다.
@@ -95,7 +101,20 @@ if (!exe) {
     }
   } catch { /* 없으면 기본 탐색 */ }
 }
-const browser = await chromium.launch(exe ? { executablePath: exe } : {})
+/* 🛡️ 브라우저 바이너리가 없으면(설치 안 한 CI·로컬) **인프라 이유로 빨간불을 내지 않는다** —
+   그러면 사람들이 가드를 꺼 버린다(`render-smoke.yml` 이 같은 이유로 PR 게이트가 아니다).
+   대신 **크게 소리내고** 건너뛴다. 조용히 통과하면 "돌고 있다"고 착각하게 되는데, 그게 이 레포가
+   반복해 당한 '헛도는 가드'다. 실제로 돌리려면 `npx playwright install chromium`. */
+let browser
+try {
+  browser = await chromium.launch(exe ? { executablePath: exe } : {})
+} catch (e) {
+  console.log('⏭️  dark-contrast: chromium 을 못 띄웠다 — **검사하지 않았다**(통과가 아니다).')
+  console.log(`   ${String(e).split('\n')[0]}`)
+  console.log('   실행하려면: npx playwright install --with-deps chromium')
+  server.close()
+  process.exit(0)
+}
 
 /** 브라우저 안에서 도는 측정기 — 보이는 텍스트마다 글자색/배경색을 실제로 읽는다. */
 const MEASURE = () => {

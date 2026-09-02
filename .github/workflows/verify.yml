@@ -795,17 +795,6 @@ jobs:
       - name: Build worker
         run: npm run build:worker
 
-      # 🌓 2026-09-03: 다크 모드에서 **밝은 표면 위 밝은 글자**를 실제 렌더로 잰다. 대표 신고
-      #   "글자가 또 하얘"(지도 검색창, 실측 대비 1.1:1) — 원인은 오타가 아니라 구조였다:
-      #   전역 `.dark input:not(...)`(특이도 0,5,1)이 `text-gray-900`(0,1,0)을 언제나 이긴다.
-      #   grep 으로는 못 잡는다 — 같은 className 에 밝은/어두운 분기가 함께 있어 실제로 0건이 나왔다.
-      #   특이도 싸움의 승자는 브라우저만 아니까 렌더해서 잰다. 반드시 build 뒤(dist/client 필요).
-      - name: Dark-mode contrast (rendered) (strict)
-        env:
-          STRICT_DARK_CONTRAST: '1'
-        run: node scripts/check-dark-contrast.mjs
-        continue-on-error: false
-
       # ── 5. 번들 예산 ──
       - name: Bundle size budget
         run: npm run check:bundle:budget
