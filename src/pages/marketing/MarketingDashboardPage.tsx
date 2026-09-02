@@ -106,10 +106,10 @@ export default function MarketingDashboardPage() {
       {tab !== 'home' && <p className="text-[13px]" style={{ color: 'var(--ink2)' }}>{tabMeta?.desc || ''}</p>}
 
       {!hasToken && (
-        <div className="mt-5 rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4">
+        <div className="mt-5 rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] p-4">
           <p className="text-[13px] text-gray-700 dark:text-gray-300">유어애즈 계정으로 로그인 후 이용할 수 있습니다. 가입은 1분이면 됩니다.</p>
           <div className="mt-3 flex gap-2">
-            <a href="/ads/login" className="inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#0D0F12]">로그인</a>
+            <a href="/ads/login" className="inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#11141C]">로그인</a>
             <a href="/ads/signup" className="inline-block rounded-lg border border-gray-300 dark:border-[#2C2F35] px-4 py-2 text-[13px] font-bold text-gray-700 dark:text-gray-200">회원가입</a>
           </div>
         </div>

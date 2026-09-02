@@ -144,7 +144,7 @@ export default function CouponClaimPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:bg-none dark:bg-[#0D0F12] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:bg-none dark:bg-[#11141C] flex items-center justify-center px-4">
       <SEO title={t('couponClaim.seoTitle')} description={t('couponClaim.seoDesc')} url={`/coupon/${code}`} />
       {status === 'success' && <ConfettiCanvas />}
 
@@ -162,9 +162,9 @@ export default function CouponClaimPage() {
             <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1">{t('couponClaim.celebrate')}</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t('couponClaim.issuedHint')}</p>
 
-            <div className="relative bg-white dark:bg-[#1C1C1E] rounded-3xl p-6 border-2 border-dashed border-pink-300 dark:border-pink-800/50 shadow-xl overflow-hidden">
-              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 to-white dark:bg-none dark:bg-[#0D0F12] rounded-full" />
-              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 to-white dark:bg-none dark:bg-[#0D0F12] rounded-full" />
+            <div className="relative bg-white dark:bg-[#1D1F29] rounded-3xl p-6 border-2 border-dashed border-pink-300 dark:border-pink-800/50 shadow-xl overflow-hidden">
+              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 to-white dark:bg-none dark:bg-[#11141C] rounded-full" />
+              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 to-white dark:bg-none dark:bg-[#11141C] rounded-full" />
 
               <p className="text-xs text-pink-500 font-medium mb-1">{t('couponClaim.couponLabel')}</p>
               <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{coupon.name}</p>

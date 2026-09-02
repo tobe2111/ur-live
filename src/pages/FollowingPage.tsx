@@ -30,7 +30,7 @@ export default function FollowingPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0D0F12] pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#11141C] pb-20">
       <SEO
         title={t('following.seoTitle', { defaultValue: '팔로잉 - 유어딜' })}
         description={t('following.seoDesc', { defaultValue: '내가 팔로우한 셀러 목록' })}
@@ -39,7 +39,7 @@ export default function FollowingPage() {
       />
 
       {/* Sticky Header */}
-      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0D0F12]/90 backdrop-blur border-b border-gray-200 dark:border-[#2C2F35]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-200 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
           <button
             onClick={() => navigate(-1)}
@@ -59,7 +59,7 @@ export default function FollowingPage() {
         {loading ? (
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-gray-100 dark:bg-[#1A1C21] rounded-xl p-4 animate-pulse border border-gray-200 dark:border-[#2C2F35] flex items-center gap-3">
+              <div key={i} className="bg-gray-100 dark:bg-[#1D1F29] rounded-xl p-4 animate-pulse border border-gray-200 dark:border-[#2C2F35] flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700" />
                 <div className="flex-1">
                   <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-2" />
@@ -98,9 +98,9 @@ export default function FollowingPage() {
               <button
                 key={seller.id}
                 onClick={() => navigate(`/profile/${seller.id}`)}
-                className="w-full flex items-center gap-3 bg-gray-50 dark:bg-[#1A1C21] rounded-xl px-4 py-3.5 border border-gray-200 dark:border-[#2C2F35] hover:bg-gray-100 dark:hover:bg-[#1A1C21] transition-colors text-left"
+                className="w-full flex items-center gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl px-4 py-3.5 border border-gray-200 dark:border-[#2C2F35] hover:bg-gray-100 dark:hover:bg-[#1D1F29] transition-colors text-left"
               >
-                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-[#1A1C21] overflow-hidden flex-shrink-0">
+                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-[#1D1F29] overflow-hidden flex-shrink-0">
                   {seller.profile_image ? (
                     <img
                       src={seller.profile_image}

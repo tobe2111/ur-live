@@ -199,7 +199,7 @@ export default function PcHomePage() {
           플래그 OFF 면 아무것도 안 그린다(홈은 2026-07-19 확정 구조로 즉시 복귀). */}
       {/* 🎨 2026-08-19: 색면 위에서는 자체 배경이 없으면 글자가 묻힌다(gray-900 on 잉크).
           지역 링크는 흰 밴드로 깔아 하단을 마무리한다 — 그루폰 하단 링크 영역과 같은 처리. */}
-      {REGION_PAGES_ENABLED && <RegionLinkGrid className="bg-white dark:bg-[#0D0F12]" />}
+      {REGION_PAGES_ENABLED && <RegionLinkGrid className="bg-white dark:bg-[#11141C]" />}
 
       <PcHomeAppBand />
       <SiteFooter />

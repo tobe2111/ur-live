@@ -55,7 +55,7 @@ export default function SellerRelinkPage() {
 
   const inputCls = 'w-full h-12 px-3.5 rounded-xl border border-gray-300 text-[15px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent'
   return (
-    <div className="force-light-theme min-h-[100dvh] bg-[#FAF7F5] flex flex-col items-center px-5 py-10">
+    <div className="force-light-theme min-h-[100dvh] bg-[#F8F7FC] flex flex-col items-center px-5 py-10">
       <Link to="/seller/login" className="self-start mb-8"><UrDealLogo size={20} forceLight /></Link>
       <div className="w-full max-w-md bg-white rounded-3xl shadow-sm p-7">
         <div className="flex items-center gap-2 mb-1.5">

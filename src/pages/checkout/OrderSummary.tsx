@@ -34,8 +34,8 @@ export default function OrderSummary({
 
   return (
     <div>
-      <div className="h-[6px] bg-gray-100 dark:bg-[#1A1C21]" />
-      <section className="bg-white dark:bg-[#0D0F12] px-5 py-5">
+      <div className="h-[6px] bg-gray-100 dark:bg-[#1D1F29]" />
+      <section className="bg-white dark:bg-[#11141C] px-5 py-5">
         <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">{t('checkout.summary.title', { defaultValue: '결제 예정금액' })}</h2>
 
         <div className="mt-5 flex flex-col gap-3.5">

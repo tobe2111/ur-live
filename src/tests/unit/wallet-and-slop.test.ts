@@ -7,7 +7,7 @@
  *      "개수를 보여 준다" 는 이유로 언제든 다시 붙는다. 못으로 박는다.
  *   ② `check-design-slop` 은 이 레포에서 **두 번** 헛돌았다. 2026-08-31 에는 인라인 CSS 표기를
  *      못 봤고, 2026-09-01 에는 `dark:` 변형 stop 을 못 봤다(`CouponClaimPage` 가 다크에서
- *      `#0D0F12 → #0D0F12` 를 세 줄 갖고도 몇 달간 초록불). 가드가 **실패할 수 있는지**를
+ *      `#11141C → #11141C` 를 세 줄 갖고도 몇 달간 초록불). 가드가 **실패할 수 있는지**를
  *      테스트가 직접 확인한다 — 가드 자신을 믿지 않는다.
  *
  * ⚠️ 이 파일이 **못 잡는 것**: 실제 렌더 결과 · CSS 로 크기를 다시 키우는 경우 ·
@@ -41,7 +41,7 @@ describe('이용권 지갑', () => {
     //    (첫 판이 그래서 NaN 을 냈다). 줄을 먼저 찾고 그 줄에서 크기를 읽는다.
     const sizeOf = (l: string) => Number(l.match(/text-\[(\d+)px\]/)![1])
     const name = sizeOf(lines.find((l) => l.includes('{v.product_name}') && /text-\[\d+px\]/.test(l))!)
-    const price = sizeOf(lines.find((l) => /font-mono/.test(l) && /text-\[\d+px\]/.test(l) && /leading-none/.test(l))!)
+    const price = sizeOf(lines.find((l) => /font-mono|tabular-nums/.test(l) && /text-\[\d+px\]/.test(l) && /leading-none/.test(l))!)
     expect(name, '상품명 크기를 못 읽었다').toBeGreaterThan(0)
     expect(price).toBeLessThanOrEqual(name)
   })
@@ -71,7 +71,7 @@ describe('check-design-slop 가드가 실제로 실패할 수 있다', () => {
   }
 
   it('변형(dark:) stop 이 같은 색이면 잡는다 — 2026-09-01 에 뚫려 있던 구멍', () => {
-    const r = runOn('export const A = () => <div className="bg-gradient-to-b from-gray-50 dark:from-[#0D0F12] to-white dark:to-[#0D0F12]" />\n')
+    const r = runOn('export const A = () => <div className="bg-gradient-to-b from-gray-50 dark:from-[#11141C] to-white dark:to-[#11141C]" />\n')
     expect(r.code, r.out).not.toBe(0)
   })
 
@@ -86,7 +86,7 @@ describe('check-design-slop 가드가 실제로 실패할 수 있다', () => {
   })
 
   it('진짜 그라디언트는 통과한다', () => {
-    const r = runOn('export const A = () => <div className="bg-gradient-to-b from-gray-50 to-white dark:bg-none dark:bg-[#0D0F12]" />\n')
+    const r = runOn('export const A = () => <div className="bg-gradient-to-b from-gray-50 to-white dark:bg-none dark:bg-[#11141C]" />\n')
     expect(r.code, r.out).toBe(0)
   })
 })

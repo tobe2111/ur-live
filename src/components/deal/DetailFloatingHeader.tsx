@@ -66,8 +66,8 @@ export default function DetailFloatingHeader({
     'w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95 ' +
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white text-gray-900 dark:text-white ' +
     (headerSolid
-      ? 'bg-transparent hover:bg-gray-100 dark:hover:bg-[#1A1C21]'
-      : 'bg-white/92 dark:bg-[#0D0F12]/85 backdrop-blur shadow-[0_1px_4px_rgba(22,24,28,.18)] hover:bg-white')
+      ? 'bg-transparent hover:bg-gray-100 dark:hover:bg-[#1D1F29]'
+      : 'bg-white/92 dark:bg-[#11141C]/85 backdrop-blur shadow-[0_1px_4px_rgba(22,24,28,.18)] hover:bg-white')
 
   // 🏭 2026-06-07 (당근 스타일): 투명 overlay → 스크롤 시 solid 바 전환. position fixed 로 이미지 위에 뜬다.
   // 🖥️ 2026-07-19 (대표 "상단은 공통"): PC(lg+)는 전역 DesktopTopNav 가 담당 → 여긴 모바일 전용(lg:hidden).
@@ -76,7 +76,7 @@ export default function DetailFloatingHeader({
     <header
         className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:hidden ${
           headerSolid
-            ? 'bg-white/90 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]'
+            ? 'bg-white/90 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]'
             : 'bg-transparent border-b border-transparent'
         }`}
         style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))', paddingBottom: '0.625rem' }}

@@ -115,7 +115,7 @@ describe('④ 다크 모드 — 지갑 배경을 인라인으로 칠하지 않�
   const light = atoms.slice(atoms.indexOf('WalletPageWrapper'))
 
   it('라이트 지갑 래퍼가 다크 배경 클래스를 갖는다', () => {
-    expect(light).toMatch(/bg-white dark:bg-\[#0D0F12\]/)
+    expect(light).toMatch(/bg-\[#F8F7FC\] dark:bg-\[#11141C\]/)
   })
   it('라이트 지갑 래퍼가 다크 글자색 클래스를 갖는다', () => {
     expect(light).toMatch(/text-gray-900 dark:text-white/)

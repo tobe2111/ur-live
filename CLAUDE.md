@@ -177,6 +177,7 @@
 3. 본 CLAUDE.md 의 audit log 에 변경 commit 추가
 
 ### 변경 audit log
+- 2026-09-02 `[UNLOCK_LOADING]` `BottomNav.tsx` **다섯 탭 아이콘 → 유어딜 아이콘(선/면)** (대표 시안 — 코레일톡 하단 탭 · *"앞으로 아이콘은 모두 저 컨셉"*). lucide `Home/Gift/Ticket/User` → `urdeal-icons.tsx` 의 `HomeIcon/GiftBoxIcon/TicketStubIcon/PersonIcon`(+기존 `UrShopIcon`), 활성 = `filled` 면 + 잉크 라벨 + 브랜드 점(PR A 장치 유지). **⚠️ 잠긴 `linkshopPath` localStorage 우선순위·`isActivePath` 는 byte-불변 — `navItems` 의 `icon` 값 5개와 렌더의 `<TabIcon filled>` 만.** 같은 커밋에서 브랜드·바탕 hex 일괄 이행(#E0526B→#1C69EF · #0D0F12→#11141C · #1A1C21→#1D1F29 · #FAF7F5→#F8F7FC, 291파일 — 위 🎫 절)이 이 파일에도 닿았다(활성 프로필 ring-offset 색). 가드: `ticket-surface-system.test.ts` ④. 롤백: `icon:` 5줄 + `TabIcon` 2줄 환원.
 - 2026-09-01 `[UNLOCK_LOADING]` `BottomNav.tsx` + `GroupBuyDetailPage.tsx` **디자인 방향 PR A — 로즈 마침표 장치 · 상세 신뢰 스트립 삭제 · 딜 안내 3줄** (대표 "PR A 부터" + "나머지는 진행"). **배경**: 제안서 `docs/design/anti-slop-direction-2026-09.md` — 일곱 화면을 나란히 놓으면 남은 문제는 개별 흔적이 아니라 **서명 부재**. ① `BottomNav` 활성 탭이 아이콘+라벨을 통째로 로즈로 물들이던 것을 **잉크 + 라벨 아래 로즈 점 하나**로(로고 `urdeal.` 의 점과 같은 장치, `DesktopTopNav` 도 밑줄 바→점·카테고리 `text-brand`→잉크+점). **⚠️ 잠긴 `linkshopPath` localStorage 우선순위·`isActivePath` 는 byte-불변 — className 과 `<span>` 1개 추가만.** ② `GroupBuyDetailPage` 3열 균등 신뢰 스트립(안전결제/정식판매/환불보장) **삭제** — CTA 위 한 줄("토스로 3초 안전결제 · 미사용 시 100% 자동환불")이 같은 말을 이미 한다. ③ 같은 파일 '딜 안내' 의 `join(' · ')` 사슬을 **로즈 점 불릿 3줄**로 — 2026-08 세션이 "테두리 pill 3개"를 걷어낸 자리인데, 테두리 없는 점 하나는 그때의 지적(세 낱말에 테두리 셋)에 걸리지 않는다. **⚠️ `__SSR_INITIAL_DETAIL__` 즉시 소비·CountdownRing·polling·below-fold lazy·`pickSeedDetail` 전부 byte-불변 — 두 블록 마크업만.** 파일 947 → 동결 이내. 가드 신설 2개: `check-middle-dot-chain`(띄어 쓴 ` · ` 사슬 래칫 — **붙여 쓴 가운뎃점은 한국어 표준이라 대상 아님**) · `check-shape-lock`(체계 밖 모서리 래칫). 롤백: 각 항목 독립(탭 className 환원 · 스트립 블록 복원 · 딜 안내 `join` 환원).
 - 2026-09-01 **이용권 지갑 · 어드민 이모지 · design-slop 가드 구멍** (대표 *"이용권 지갑도, 남은 것들 다 해줘"* — 잠금파일 무접촉, 이 항목은 기록용). **① 지갑**: 상단은 **대표 승인 시안 4**(08-31)라 무접촉하고, 그 요약 줄이 이미 말한 "사용 가능 N장" 을 **40px 아래 섹션 헤더가 같은 `unusedItems.length` 로 다시** 말하던 것에서 숫자만 제거(라벨은 아래 '사용 완료'·'만료·환불' 과 나누는 그룹 구분자라 유지). 그리고 카드 안 가격이 **24px 로 상품명(18px)보다 크고 '사용하기' 버튼만큼 무거워** 위계가 뒤집혀 있던 것을 17px 로 — 지갑의 이용권은 **이미 산 것**이라 카드 안 가격은 영수증 정보이고, '자산' 표시는 상단 합계가 계속 맡는다. **② 어드민 이모지 15곳 → lucide**: `AdminPage` 의 `Alert.emoji` 는 색을 정하는 `type`(success/warning/error)과 **같은 말을 두 번** 하고 있었다(둘이 어긋나면 빨간 배경에 🎉 가 떠도 아무도 못 잡는다) → 필드를 지우고 `type` 에서 파생. `AdminActivityFeed` 10곳은 **라벨·색(dot/text)을 byte-불변**으로 두고 글리프만 교체(`AdminOrdersPage` STATUS_STYLES 와 같은 규약이라 한쪽만 바꾸면 두 화면이 갈린다). `AdminProductsPage` 3곳도 동일. ⇒ `check-design-slop` 이모지 래칫 **15 → 0**. **③ 🕳️ 가드가 두 번째로 헛돌고 있었다**: `check-design-slop` 의 평면 그라디언트 검사가 `from-… to-…` 가 **연속으로 붙어 있을 때만** 매치돼, 이 레포가 실제로 쓰는 `from-gray-50 dark:from-[#0D0F12] to-white dark:to-[#0D0F12]` 형태에서 **매치 자체가 실패**하고 조용히 0건을 냈다. 그래서 `CouponClaimPage` 가 다크에서 `#0D0F12 → #0D0F12`(완전 평면)를 **세 줄** 갖고도 몇 달간 초록불이었고, `AboutPage` 도 `dark:from-gray-900 dark:to-gray-900` 로 한 줄. stop 을 **변형 접두사별로 묶어** 각 그룹을 따로 판정하도록 고치고(투명도 접미사 `/20 → /10` 은 진짜 페이드라 평면 아님 — `NotFoundPage` 오탐 방지), 드러난 4곳을 `dark:bg-none dark:bg-<색>` 으로 수정. **⚠️ 이 가드는 08-31 에도 인라인 CSS 표기를 못 봐서 같은 클래스를 놓쳤다 — 두 번째다.** 가드: `wallet-and-slop.test.ts` 6건(지갑 2 + **가드 자신이 실패할 수 있는지** 4 — 변형 stop 잡는가 · 기존 붙은 stop 계속 잡는가 · 투명도 페이드 오탐 안 내는가 · 진짜 그라디언트 통과하는가, 임시 트리에 합성 픽스처를 만들어 실제 실행) + 주입 매니페스트 3건 — **되돌려-검증 3종 빨간불 확인**. 검증: tsc 0 · vitest 6건 pass · theme/design-slop/image-fallback/file-size/mobile-viewport/input-text-color/dashboard-theme GREEN · 지갑 430px 재렌더로 눈 확인. 롤백: 각 항목 독립.
 - 2026-09-01 `[UNLOCK_LOADING]` `VouchersPage.tsx`(+비잠금 `vouchers/shared.tsx`) **같은 숫자를 두 번 말하던 할인율 · 앰버 한 점 · 🎁 자리** (대표 *"모두 진행해"* — 개선 후보 6건 승인). **배경(실측)**: PC `/vouchers` 를 1440px 로 실제 렌더해 보니 **카드마다 할인율이 두 곳**이었다 — 사진 왼쪽 위 로즈 배지 하나, 바로 아래 가격 줄에 로즈 텍스트 하나. 같은 `discountRate` 라 **언제나 같은 값**이니 정보가 아니라 소음이고, 위쪽 배지는 상품 사진을 가린다. 이건 새 문제가 아니라 **8-31 에 정한 규칙이 형제 컴포넌트에 안 미친 것**이다(대표: *"할인율이 사진 안으로 들어가면 안돼"* → 동네딜 카드만 고쳤다). 모바일 목록 행(`VoucherRow`)은 더했다 — 회색 `bg-[#d1d5db]` 배지라 **눈에 띄지도 않으면서 썸네일만 가렸다.** **수정**: ① `VoucherCard`·`VoucherRow` 의 사진 위 배지 제거, 가격 줄 앞에 로즈로 한 번(행은 카드와 같은 자리·같은 색으로 통일) ② 카테고리 칩·사이드바·브랜드 해제 pill 의 **앰버 7곳 → 잉크/중립** — 이 화면에서 앰버는 유일한 색이라 가격보다 먼저 읽혔다(같은 사유로 8-31 에 모바일 헤더의 선물 아이콘을 뺐는데 **PC 헤더만 남아 있었다** → 함께 제거, `Gift` import 도 미사용이 되어 정리) ③ 브랜드 칩 이미지 폴백 `🎁` → **브랜드 앞 두 글자**(이모지는 브랜드를 안 알려 준다). **⚠️ 잠긴 계약 전부 byte-불변**: `__SSR_INITIAL_VOUCHERS__` 즉시 소비 · 기본 정렬 `price_low` · `VoucherCard`/`VoucherRow` 의 `React.memo`·이미지 속성(width/height/srcSet/lazy/fetchPriority/dominant_color)·`onLoad` 대표색 추출 · 카테고리/브랜드 선택 동작 — **바뀐 것은 색 토큰과 할인율의 자리뿐**이고 요소 하나도 새로 안 늘었다. 동반(비잠금): 셀러 이모지 12곳 제거 — `TierBadge.tsx` 의 `emoji` 필드는 **렌더 0인 죽은 필드**라 삭제, `SellerTierPage` 3곳은 같은 `TIER_META` 에 이미 있던 lucide `Icon` 으로, `SellerPromoteBoostsPage` 는 확인창 본문에서 빼고 6개 언어 문구의 `{{emoji}}` 도 함께(문구만 남으면 자리표시자가 그대로 찍힌다). 가드: `voucher-card-discount-once.test.ts` 5건(카드/행 각각 ①사진 밖 ②정확히 1회 + 로즈 강조) + 주입 매니페스트 2건 — **되돌려-검증 3종 빨간불 확인**(카드 배지 복원 · 행 배지 복원 · 로즈→회색). `check-design-slop` 이모지 래칫 27 → **15**(잔여는 전부 어드민 — 이번 범위 밖). 검증: tsc 0 · 관련 계약 13건 pass · theme/design-slop/image-fallback/file-size/modal-zindex GREEN · 1440px 재렌더로 눈 확인. 🩸 **교훈**: 이 작업 중 `audit-gate` 를 타임아웃으로 끊었더니 **자식 `check-guard-mutations -s` 두 개가 살아남아** 파일을 계속 주입/복원했고, 그 사이 `git stash` 가 남의 주입분 3개를 내 작업으로 집어삼킬 뻔했다 — **타임아웃은 자식을 안 죽인다.** 롤백: 각 항목 독립(배지 2곳 복원 · 앰버 7곳 환원 · 폴백 문자열 환원).
@@ -828,6 +829,35 @@ WebFetch 도 403(봇 차단)이라 스펙 확인은 대표 화면 확인이 필�
 
 > 🧪 **staging 검증 백로그 SSOT = `docs/STAGING_CHECKLIST.md`** (2026-07-05 신설). audit log 에 "staging 실결제 검증 필수"를 남길 때는 **같은 커밋에서 이 체크리스트에 항목(S#/P#) 추가** + 게이트 플래그면 `admin-system-monitoring.routes.ts` `OPS_GATES` 등록. 어드민 열람: `/admin/system-monitoring` "게이트·하트비트" 탭. cron 침묵·백업 무결성 관측: `cron-heartbeat.ts` + `/api/_healthcheck/cron` + `docs/BACKUP_RESTORE.md`.
 
+## 🎫 디자인 시스템 확정 — 코레일톡 시안 (2026-09-02 대표 지시, 모든 세션 준수)
+
+대표가 코레일톡 화면 둘(다크 결제 완료 · 화이트 지갑)을 보내며 확정했다:
+*"저 이미지 속의 내용은 상관없어. 디자인 시스템이 중요하다"* · *"내가 보내준 다크모드 이미지, 화이트모드 이미지 다
+오차없이 정확하게 디자인 시스템을 적용해서 진행해줘"* · *"우리 색상도 저 로즈 색 말고 내가 보내준 이미지 색으로
+브랜드 색상 변경하자"* · *"결제가 완료되었어요 뒷 배경색이 난 가장 마음에 들기도 해"* · *"앞으로 아이콘은 모두 저 컨셉이야 명심해줘"*.
+시안 원본: `docs/design/assets/korailtalk-payment-complete-ref.jpg`(다크) · `korailtalk-wallet-light-ref.jpg`(화이트).
+분해·실측·매핑: `docs/design/ticket-completion-reference-2026-09.md`. 부품: `src/components/ticket/TicketCard.tsx`.
+
+**색 (시안 픽셀 실측값 — `src/index.css` SSOT)**
+| 역할 | 화이트 | 다크 |
+|---|---|---|
+| 브랜드(면·밴드·주 버튼) `--brand` | **#1C69EF** (구 로즈 #E0526B 폐기) | #1C69EF |
+| 브랜드 글자 `--brand-text` | #1C69EF | #4D8DF5 |
+| 바탕 `--bg` | **#F8F7FC** (구 크림 #FAF7F5 폐기) | **#11141C** (구 #0D0F12 폐기 — 남색 기운 근검정) |
+| 카드 `--surface` | #FFFFFF | #1D1F29 |
+| 카드 안 구분선 `--rule` / outline `--rule-strong` | 잉크 8% / 28% | 흰 8% / 32% |
+| 카드 들림 `--lift` | `0 2px 10px 잉크 6%` 한 값 | none |
+
+**표면 규칙 6개** — ① 표면 두 톤·**카드 테두리 0**(화이트만 `shadow-lift` 한 값) ② 강조색 하나, 자리 셋(밴드·주 행동 글자·강조 단어) ③ 숫자가 주인공 ④ 티켓 은유(색 밴드 + 본문) ⑤ 나머지는 회색 ⑥ 체크 원·그라디언트·이모지·색깔 정보상자·섹션 라벨 0.
+새 소비자 카드는 `TicketCard`/`shadow-lift`/`border-rule` 로만. `border border-*`·`shadow-sm~2xl`·`bg-amber-50` 류 정보상자 **신규 금지**.
+
+**🎨 아이콘 컨셉 (대표 "앞으로 아이콘은 모두 저 컨셉")** — 두 벌뿐이다:
+- **하단 탭·네비**: `src/components/icons/urdeal-icons.tsx` — 24 그리드, 획 1.6, 둥근 끝, **비활성 = 선 / 활성 = 면(`filled`)**. lucide 탭 아이콘 금지.
+- **카테고리·서비스 타일**: `src/components/icons/category-icons.tsx` — 32 그리드, **윤곽선 없는 flat 채색 일러스트**(물건 그 자체를 색 하나 + 명암 한 단계로), `CategoryTile` 원 위에. 팔레트는 그 파일의 `CATEGORY_PALETTE` 에서만 고른다.
+- 유틸리티(화살표·닫기·검색·복사)만 lucide, 획 1.6. **새 화면에 lucide 로 카테고리/서비스/탭 아이콘을 그리지 말 것.**
+
+⚠️ 2026-08-30 "완전 검정"·2026-07-19 "웜 로즈·크림" 결정은 **이 절로 대체**됐다. 아래 audit log 의 로즈/크림/#0D0F12 표기는 작성 당시 기록이다(소급 수정 X).
+
 ## 🎨 anti-slop 디자인 스킬 (2026-08-30 대표 지시 — "AI 스럽지 않게")
 
 **대외 문서·랜딩·마케팅 표면을 디자인할 때는 `.claude/skills/taste-skill/SKILL.md` 를 먼저 읽는다.**
@@ -840,7 +870,7 @@ WebFetch 도 403(봇 차단)이라 스펙 확인은 대표 화면 확인이 필�
 - **가운뎃점 `·` 은 줄당 1개**까지. 기본 구분자로 쓰지 않는다.
 - **같은 레이아웃 계열 반복 금지** — 3열 균등 카드가 연달아 나오면 실패. 8섹션이면 최소 4계열.
 
-⚠️ **브랜드가 스킬을 이긴다.** 스킬 §4.2 가 웜 크림 배경(`#faf7f1` 계열)을 금지하는데 우리 브랜드 배경이
+⚠️ **브랜드가 스킬을 이긴다.** (2026-09-02 부터 라이트 바탕은 `#F8F7FC` — 위 🎫 절. 아래 문장은 당시 기록.) 스킬 §4.2 가 웜 크림 배경(`#faf7f1` 계열)을 금지하는데 우리 브랜드 배경이
 `#FAF7F5`(`src/index.css` SSOT)다. 스킬 자신의 override 조항에 해당하므로 **브랜드를 따른다** — 스킬을 이유로
 브랜드 토큰을 바꾸지 말 것(그러면 그 문서만 서비스와 달라진다).
 

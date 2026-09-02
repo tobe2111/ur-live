@@ -15,7 +15,7 @@ const colLink = 'block text-[13px] text-gray-600 dark:text-gray-300 hover:text-g
 
 export default function SiteFooter() {
   return (
-    <footer className="bg-white dark:bg-[#0D0F12] border-t border-gray-100 dark:border-[#2C2F35]">
+    <footer className="bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35]">
       <div className="max-w-[1200px] mx-auto px-5 lg:px-8 pt-8 pb-6">
         {/* ── 상단: 브랜드 + 링크 컬럼 ── */}
         <div className="grid grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
