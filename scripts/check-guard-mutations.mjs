@@ -176,6 +176,14 @@ const MUTATIONS = [
     why: 'linked_user_id 를 비워 두는 설계라 접근 경로가 seller_operators 하나뿐이다.',
   },
   {
+    name: '🧹 만료 판정을 다시 손으로 조립 — ISO-Z 값에서 만료가 사용가능으로 센다',
+    file: 'src/pages/user-profile/OrderStatusBar.tsx',
+    find: 'parseUTCDate(v.expires_at).getTime() < now',
+    replace: "Date.parse(String(v.expires_at).replace(' ', 'T') + 'Z') < now",
+    test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
+    why: "이미 'Z' 가 붙어 온 값이 ...ZZ → NaN 이 되고 NaN < now 는 false 라 만료가 '사용가능' 으로 센다(실행 확인).",
+  },
+  {
     name: '🧹 마이페이지에 에이전시 모집 CTA 가 다시 들어온다',
     file: 'src/pages/user-profile/RoleCtaGrid.tsx',
     find: "      { Icon: ShoppingBag, title: t('roleCta.openShop'",
@@ -194,8 +202,8 @@ const MUTATIONS = [
   {
     name: '🧹 이용권 현황이 다시 주문 훅에서 센다 (지갑과 숫자가 갈린다)',
     file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    find: "import { useMyVouchers } from '@/hooks/queries/useMyData'",
-    replace: "import { useMyOrders } from '@/hooks/queries/useMyData'",
+    find: "  const { data: vouchersRaw = [] } = useMyVouchers()",
+    replace: "  const { data: vouchersRaw = [] } = useMyOrders()",
     test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
     why: '\uc0ac\ub78c\uc774 \uc138\ub294 \ub2e8\uc704\ub294 \uc774\uc6a9\uad8c \uc7a5\uc218\ub2e4 \u2014 \uc9c0\uac11\uacfc \uac19\uc740 \ud6c5\uc744 \uc368\uc57c \ub450 \ud654\uba74\uc774 \uc548 \uac08\ub9b0\ub2e4.',
   },

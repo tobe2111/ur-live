@@ -24,6 +24,7 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMyVouchers } from '@/hooks/queries/useMyData'
+import { parseUTCDate } from '@/utils/date'
 
 interface VoucherRow { status?: string | null; expires_at?: string | null }
 
@@ -40,7 +41,10 @@ export default function OrderStatusBar() {
       c.bought++                                    // 산 것 전체 — "내가 지금까지 몇 장 샀나"
       if (st === 'used') c.used++
       else if (st === 'refunded' || st === 'expired') c.gone++
-      else if (v.expires_at && Date.parse(String(v.expires_at).replace(' ', 'T') + 'Z') < now) c.gone++
+      // 🕐 만료 판정은 **SSOT** 로만(`utils/date`). 손으로 `+ 'Z'` 를 붙이면 이미 'Z' 가 붙어 온 값
+      //   (KT-알파 병합 경로 등)에서 `...ZZ` → NaN → `NaN < now` 가 **false** 라 만료된 이용권이
+      //   조용히 '사용가능' 으로 세어진다. `parseUTCDate` 가 두 형태를 모두 받는다.
+      else if (v.expires_at && parseUTCDate(v.expires_at).getTime() < now) c.gone++
       else c.usable++                               // 미사용 + 기간 안 — 지금 쓸 수 있는 것
     }
     return c

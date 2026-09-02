@@ -67,9 +67,23 @@ describe('② 주문 현황 → 이용권 현황 (배송 5단계 폐기)', () =>
     expect(code, '주문(orders)이 아니라 이용권(vouchers)이 사람이 세는 단위다').not.toContain('useMyOrders')
   })
 
-  it('만료 판정이 UTC 규약을 따른다 (레포 SSOT 와 같은 해석)', () => {
-    expect(SRC, "D1 은 'Z' 없는 UTC 문자열을 준다 — 그대로 파싱하면 9시간 어긋난다")
-      .toMatch(/replace\(' ', 'T'\) \+ 'Z'/)
+  /**
+   * 🩸 처음엔 `String(v.expires_at).replace(' ','T') + 'Z'` 를 손으로 붙였다. 그러면 **이미 'Z' 가
+   * 붙어 온 값**(KT-알파 병합 경로 등)이 `...ZZ` → `Date.parse` NaN → `NaN < now` 가 **false** 라
+   * **만료된 이용권이 조용히 '사용가능' 으로** 세어진다. 실행으로 확인했다(naive OK / ISO-Z NaN).
+   * ⇒ 레포 SSOT `parseUTCDate` 만 쓴다 — 두 형태를 모두 받는다(`check-utc-date-parse` 가 요구하는 규약).
+   */
+  it('만료 판정이 날짜 SSOT 를 쓴다 (손수 조립 금지)', () => {
+    const code = codeOnly(SRC, 'export default function OrderStatusBar')
+    expect(code).toContain('parseUTCDate(v.expires_at)')
+    expect(code, "손으로 + 'Z' 를 붙이면 ISO-Z 값에서 NaN 이 나 만료를 못 잡는다")
+      .not.toMatch(/replace\(' ', 'T'\) \+ 'Z'/)
+  })
+
+  it('SSOT 가 두 형태를 실제로 같은 시각으로 읽는다', async () => {
+    const { parseUTCDate } = await import('@/utils/date')
+    expect(parseUTCDate('2026-01-01 00:00:00').toISOString()).toBe('2026-01-01T00:00:00.000Z')
+    expect(parseUTCDate('2026-01-01T00:00:00Z').toISOString()).toBe('2026-01-01T00:00:00.000Z')
   })
 })
 
