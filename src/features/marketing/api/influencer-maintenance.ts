@@ -566,16 +566,13 @@ export async function runNightlyRescan(env: Env): Promise<Record<string, unknown
  *   커서·배치·멱등은 형제 패스(`reextractPoolContacts`)와 동일. 예산 소진 시 다음 회차가 이어받는다.
  */
 export async function cleanSelfLinkNoise(DB: D1Database, opts?: { budget?: OpBudget }): Promise<{ scanned: number; cleared: number; stripped: number; done: boolean }> {
-  const CURSOR_KEY = 'ads_selflink_cursor'
-  const PAGE = 500
+  const CURSOR_KEY = 'ads_selflink_cursor', PAGE = 500
   let cursor = 0
-  const cRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY)
-    .first<{ value: string }>().catch(() => null)
+  const cRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY).first<{ value: string }>().catch(() => null)
   if (cRaw?.value) cursor = Math.max(0, parseInt(cRaw.value, 10) || 0)
   let scanned = 0, cleared = 0, stripped = 0, done = false
   for (;;) {
-    // `SELF_BLOG_LIKE` 로 **넓게** 후보를 뽑고(정규식을 SQL 에서 못 쓴다) 정밀 판정은 순수함수가 한다.
-    // 📉 2026-09-02: `links IS NOT NULL` 을 명시해야 부분 인덱스 `idx_ad_inf_leads_selflink` 가 쓰인다(LIKE 는 유도 안 됨).
+    // `SELF_BLOG_LIKE` 로 **넓게** 후보를 뽑고(정규식을 SQL 에서 못 쓴다) 정밀 판정은 순수함수가 한다. 📉 2026-09-02: `links IS NOT NULL` 을 명시해야 부분 인덱스 `idx_ad_inf_leads_selflink` 가 쓰인다(LIKE 는 유도 안 됨).
     const rows = (await DB.prepare(`SELECT id, links FROM ad_influencer_leads
         WHERE account_id = ? AND platform = 'naver_blog' AND id > ? AND links IS NOT NULL AND links LIKE ? ORDER BY id ASC LIMIT ?`)
       .bind(POOL, cursor, SELF_BLOG_LIKE, PAGE)
@@ -594,8 +591,7 @@ export async function cleanSelfLinkNoise(DB: D1Database, opts?: { budget?: OpBud
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind(CURSOR_KEY, String(cursor)).run().catch(() => null)
     if (opts?.budget?.exhausted) break
-    // 📉 2026-09-02: 꼬리(PAGE 미만)면 여기서 끝 — 빈 페이지를 한 번 더 물어보지 않는다.
-    if (rows.length < PAGE) { done = true; break }
+    if (rows.length < PAGE) { done = true; break } // 📉 2026-09-02: 꼬리(PAGE 미만)면 여기서 끝 — 빈 페이지를 한 번 더 물어보지 않는다.
   }
   // 한 바퀴 끝나면 커서를 되감는다 — 새로 들어온 행(유입 필터가 놓친 것)도 다음 바퀴에 잡히게.
   if (done) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
