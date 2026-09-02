@@ -17,6 +17,7 @@ import { dueByElapsed } from './lane-alarm-policy'
 import { buildCronBeatRow } from '@/worker/utils/cron-heartbeat'
 import { withMeteredEnv, newMeter, type ReadMeter } from '@/worker/utils/d1-read-meter'
 import { lanesPaused } from './lane-pause'
+import { readBudgetState, reportReadUsage, handleBudgetRequest, READ_BUDGET_PATH } from './read-budget'
 import { staleGapMinutes } from './lane-cadence'
 import { summarizeLaneRun, appendRunHistory, serializeRunHistory, serializeLaneStamp, LANE_RUNS_KEY } from './lane-run-history'
 import type { LaneRunEntry } from './lane-run-history'
@@ -54,6 +55,9 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
       await this.ctx.storage.put('boost', accept ? { runs, until: Date.now() + BOOST_TTL_MS } : { runs: 0, until: 0 }).catch(() => undefined)
       return Response.json({ ok: true, lane: this.lane, accepted: accept, runs: accept ? runs : 0 })
     }
+    // 📉 읽기 예산 원장 — `idFromName('read-budget')` 인스턴스가 받는다(레인 인스턴스가 받아도 무해 — 저장 키가 다르다).
+    //   처리는 순수 함수(`read-budget.ts`)에 있다 — 여기선 저장소만 넘긴다.
+    if (url.pathname === READ_BUDGET_PATH) return Response.json(await handleBudgetRequest(url, this.ctx.storage, this.env))
     if (url.pathname !== '/start') return new Response('Not Found', { status: 404 })
     if (!alarmEnabled(this.env)) return Response.json({ ok: true, enabled: false })
     const cur = await this.ctx.storage.getAlarm()
@@ -80,6 +84,11 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     // ⏸️ 일시정지 — 킬스위치와 달리 **체인은 살린다**(다음 알람만 걸고 레인은 안 돌린다). runs/failStreak/
     //   runHistory 를 안 건드리므로 재개 첫 회차가 실패 이력에서 시작하지 않는다. 근거: `lane-pause.ts`.
     if (lanesPaused(this.env)) {
+      await this.ctx.storage.setAlarm(t0 + resolveInterval(undefined, this.env)).catch(() => undefined)
+      return
+    }
+    // 📉 읽기 예산 — 오늘 몫을 넘겼으면 일시정지와 같은 동작(체인은 잇고 레인은 안 돌림). 근거: `read-budget.ts` 헤더.
+    if ((await readBudgetState(this.env)).over) {
       await this.ctx.storage.setAlarm(t0 + resolveInterval(undefined, this.env)).catch(() => undefined)
       return
     }
@@ -120,6 +129,8 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
       stats = { skipped: 'min_interval', last_run_at: lastRunAt }
     }
 
+    // 📉 이 회차가 읽은 만큼 원장에 더한다 — 실제로 돈 회차만(skip 은 0 이라 어차피 안 보낸다).
+    this.ctx.waitUntil(reportReadUsage(this.env, this.meter.rr))
     const ran = runs < cap ? runs + 1 : runs
     const nextFail = error ? failStreak + 1 : 0
     // 🎞️ 회차 이력 — 마지막 1건만 남기면 "안 돌았나 / 돌았는데 실패했나"를 못 가른다(근거는 모듈 docblock).
