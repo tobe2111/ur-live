@@ -6804,6 +6804,26 @@ canvas {
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
   },
   {
+    name: '📉 회차 기본값이 조용히 되돌아간다(발굴량 3분의 1, 에러 0)',
+    file: 'src/worker-ads/chain.routes.ts',
+    find: "ADS_COLLECT_ROUNDS || '', 10) || 12))",
+    replace: "ADS_COLLECT_ROUNDS || '', 10) || 4))",
+    test: 'src/tests/unit/ads-collect-gates.test.ts',
+    why:
+      '이 값은 env 로도 덮이므로 코드 기본값이 되돌아가도 라이브는 한동안 멀쩡해 보인다. ' +
+      '그러다 env 를 지우는 순간 하루 발굴이 1.2만 → 4천으로 떨어지는데 에러가 없어 아무도 모른다.',
+  },
+  {
+    name: '📉 회차 폭이 승인값에서 조용히 내려간다(같은 클래스, 곱해지는 축)',
+    file: 'src/features/marketing/api/influencer-round-width.ts',
+    find: 'export const COLLECT_KEYWORDS_PER_ROUND = 14',
+    replace: 'export const COLLECT_KEYWORDS_PER_ROUND = 9',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '폭 × 회차 = 하루 발굴량이다. 폭은 네이버 차단 리스크를 지고 대표가 매번 판단한 값이라, ' +
+      '승인 없이 오르내리면 안 된다(내리는 쪽도 마찬가지 — 조용한 후퇴는 안 보인다).',
+  },
+  {
     name: '🚧 레인 진입 초크포인트가 사라진다(자기-체인이 차단기를 우회)',
     file: 'src/worker-ads/lane-gate.ts',
     find: "    const blocked = await laneEntryBlock(",
