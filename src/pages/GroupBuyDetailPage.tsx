@@ -8,7 +8,7 @@ import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import { derivePricing } from './group-buy/pricing'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, ShieldCheck, RefreshCcw, BadgeCheck, RotateCcw } from 'lucide-react'
+import { MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { resolveProductFlow } from '@/shared/product-flow'
@@ -724,34 +724,21 @@ export default function GroupBuyDetailPage() {
 
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
 
-        {/* 신뢰 스트립 — 🛡️ 2026-09-01: 셋이 전부 같은 ShieldCheck 였다(아이콘 정보량 0 + "찍어낸" 인상). 항목별로 다른 글리프. */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 18px' }}>
-          {[
-            { title: '안전결제', sub: '토스페이먼츠', Icon: ShieldCheck },
-            { title: '정식판매', sub: '검증 셀러', Icon: BadgeCheck },
-            { title: '환불보장', sub: '안심거래', Icon: RotateCcw },
-          ].map((tr) => (
-            <div key={tr.title} style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-              <tr.Icon style={{ width: 16, height: 16, flex: '0 0 auto', color: 'var(--gbd-ink)' }} />
-              <div style={{ lineHeight: 1.25, minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>{tr.title}</div>
-                <div style={{ fontSize: 11, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>{tr.sub}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
+        {/* 🔴 2026-09-01 (디자인 방향 PR A): 3열 균등 신뢰 스트립(안전결제/정식판매/환불보장) 삭제 —
+            CTA 위 한 줄("토스로 3초 안전결제 · 미사용 시 100% 자동환불")이 같은 말을 이미 한다. */}
 
         {/* 상품 안내 — 🧾 2026-08-30 (대표 "AI 티 안나는 디자인으로"):
             제목이 '무엇을 기대하세요?' 였다. What to expect 를 그대로 옮긴 번역투라
             한국 커머스에선 아무도 그렇게 안 쓴다 — 아래 '이용 안내'와 짝이 되게 '딜 안내'로.
             그 아래 칩도 로즈 점을 박은 라운드 필 3개였다. 세 낱말에 테두리 세 개를 쓰던 꼴이라,
-            점·테두리를 걷고 가운뎃점으로 흘려보낸다(정보량은 같고 소음만 줄었다). */}
+            점·테두리를 걷었다. 2026-09-01: 띄어 쓴 가운뎃점 사슬도 흔적이라 한 줄에 하나 + 로즈 점(테두리 없음)으로. */}
         <div id="gb-sec-info" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>딜 안내</div>
-          <div style={{ marginTop: 11, fontSize: 13.5, color: 'var(--gbd-sub)', lineHeight: 1.6 }}>
-            {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''}까지 사용` : '결제 즉시 사용'].join(' · ')}
+          {/* 🔴 로즈 마침표: 띄어 쓴 가운뎃점 사슬(a · b · c) 대신 한 줄에 하나, 앞에 점. 테두리 pill 이 아니다. */}
+          <div style={{ marginTop: 11, fontSize: 13.5, color: 'var(--gbd-sub)', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''}까지 사용` : '결제 즉시 사용'].map((line) => (
+              <span key={line} style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gbd-accent)', flex: '0 0 auto' }} />{line}</span>
+            ))}
           </div>
           {detail.description && <p style={{ margin: '14px 0 0', fontSize: 14.5, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{detail.description}</p>}
         </div>

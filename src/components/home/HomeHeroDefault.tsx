@@ -33,7 +33,7 @@ import PcHomeLocationBar, { type HomeRegion } from '@/pages/pc-home/PcHomeLocati
 const DEFAULT_TITLE_HEAD = '사서 '
 const DEFAULT_TITLE_ACCENT = '바로 쓰는'
 const DEFAULT_TITLE_TAIL = ' 동네 이용권'
-const DEFAULT_DESC = '예약도 대기도 없이. 식사 · 미용 · 숙소 · 교환권.'
+const DEFAULT_DESC = '예약도 대기도 없이. 식사, 미용, 숙소, 교환권.'
 
 /**
  * 홈 SSR 시드에서 히어로에 쓸 사진 1장. 없으면 null(= 사진 없는 색면).

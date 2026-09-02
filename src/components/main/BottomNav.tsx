@@ -300,14 +300,17 @@ export default function BottomNav() {
         ) : (
           <Icon
             size={22}
-            className={active ? 'text-brand-text' : 'text-gray-400'}
+            className={active ? 'text-gray-900 dark:text-white' : 'text-gray-400'}
             strokeWidth={active ? 2 : 1.5}
           />
         )}
-        <span className={`text-[9px] mt-0.5 ${
-          active ? 'font-bold text-brand' : 'text-gray-400'
+        {/* 🔴 2026-09-01 로즈 마침표: 활성은 아이콘·라벨을 통째로 물들이지 않고 아래 점 하나로 말한다.
+            로고 `urdeal.` 의 점과 같은 장치 — 로즈가 사는 자리를 셋(할인율·주 버튼·점)으로 잠근다. */}
+        <span className={`relative text-[9px] mt-0.5 ${
+          active ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-400'
         }`}>
           {label}
+          {active && <span aria-hidden="true" className="absolute left-1/2 -bottom-[7px] -translate-x-1/2 w-1 h-1 rounded-full bg-brand" />}
         </span>
       </button>
     )

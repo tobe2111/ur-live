@@ -205,9 +205,12 @@ export default function TossWidgetPayPage() {
           </div>
         </section>
 
-        {/* 결제 위젯 mount points */}
-        <div id="toss-widget-pay-method" className="min-h-[180px] bg-white rounded-2xl border border-gray-100 overflow-hidden" />
-        <div id="toss-widget-pay-agreement" className="min-h-[60px] bg-white rounded-2xl border border-gray-100 overflow-hidden" />
+        {/* 결제 위젯 mount points
+            🧾 2026-09-01 [UNLOCK] (대표 승인 "허가 — 상자만 숨김"): SDK 가 못 뜨면 이 두 자리가 **빈 테두리
+            상자**로 남아 비활성 버튼 위에 떠 있었다. error 일 때만 숨긴다 — id·순서·loading/ready 렌더는 그대로라
+            SDK 마운트 계약 불변. */}
+        <div id="toss-widget-pay-method" hidden={state === 'error'} className="min-h-[180px] bg-white rounded-2xl border border-gray-100 overflow-hidden" />
+        <div id="toss-widget-pay-agreement" hidden={state === 'error'} className="min-h-[60px] bg-white rounded-2xl border border-gray-100 overflow-hidden" />
 
         {state === 'error' && errorMsg && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-2xl">
