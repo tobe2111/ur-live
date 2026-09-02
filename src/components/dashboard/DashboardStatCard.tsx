@@ -78,7 +78,7 @@ export default function DashboardStatCard({
     )
   }
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white p-4 shadow-sm transition-shadow hover:shadow">
+    <div className="relative overflow-hidden rounded-2xl bg-white p-4 shadow-lift transition-shadow hover:shadow-md">
       {inner}
     </div>
   )

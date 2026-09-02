@@ -384,19 +384,19 @@ export default function SellerPage() {
               {
                 label: t('seller.totalRevenue'), value: fmtPrice(stats.totalRevenue),
                 sub: stats.avgOrderValue > 0 ? t('seller.avgPerOrder', { amount: fmtPrice(stats.avgOrderValue) }) : undefined,
-                icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50',
+                icon: <TrendingUp className="w-5 h-5" />, color: 'text-gray-600', bg: 'bg-gray-100',
                 visible: true, delta: revenueDelta, showDelta: dailyStats.length >= 2,
               },
               {
                 label: t('seller.totalOrders'), value: `${formatNumber(stats.totalOrders || 0)}`,
                 sub: stats.completedOrders > 0 ? t('seller.completedCount', { count: stats.completedOrders }) : undefined,
-                icon: <ShoppingBag className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50',
+                icon: <ShoppingBag className="w-5 h-5" />, color: 'text-gray-600', bg: 'bg-gray-100',
                 visible: true, delta: ordersDelta, showDelta: dailyStats.length >= 2,
               },
               {
                 label: t('seller.pendingOrders'), value: `${formatNumber(stats.pendingOrders || 0)}`,
                 sub: t('seller.needsAction'),
-                icon: <AlertCircle className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50',
+                icon: <AlertCircle className="w-5 h-5" />, color: 'text-gray-600', bg: 'bg-gray-100',
                 visible: true, delta: pendingDelta, showDelta: pendingDelta !== 0,
               },
               // 💰 2026-08-23 (대표 AB테스트): 4번째 카드 = 정산 예정 — 종전 '진행 현황 👇' 필러 CTA
@@ -405,7 +405,7 @@ export default function SellerPage() {
                 label: t('seller.expectedSettlement', { defaultValue: '정산 예정' }),
                 value: fmtPrice(stats.pendingSettlement ?? 0),
                 sub: t('seller.primary.settlementsDesc', { defaultValue: '딜/현금 출금' }),
-                icon: <CreditCard className="w-5 h-5" />, color: 'text-green-600', bg: 'bg-green-50',
+                icon: <CreditCard className="w-5 h-5" />, color: 'text-gray-600', bg: 'bg-gray-100',
                 visible: true, delta: 0, showDelta: false,
               },
             ].filter(card => card.visible).map(card => (
