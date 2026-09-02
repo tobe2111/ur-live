@@ -8,7 +8,7 @@
 |---|---|---|
 | 2-1 #1 | `cache-prewarm` 동적 워밍(셀러/상품/큐레이터 12) :00/:30 · products 정규화 UPDATE 19:35 UTC 하루 1회. **HOT_PATHS 불변** | 호출부 옵션 제거 |
 | 2-1 #2 | `group-buy-feed-cache` **지문 게이트**(활성 이용권 행만 읽어 카드 값 지문 → 같으면 `computed_at` touch, 다르거나 60분 경과면 전체) + `(status=? OR ?='all')` OR 분리 | `FEED_FP_KEY` 블록 제거 |
-| 2-1 #3 | `scheduled-cleanup` 3티어 — 매 틱: 3·6·14 / 매시 :10 / 매일 04:20 KST: GC(8·9·9b·15~19·22·탈퇴·23) | 호출부 `{hourly:true,daily:true}` |
+| 2-1 #3 | `scheduled-cleanup` 3티어 — 매 틱: 3·6·14 / 매시 :10 / 매일 04:20 KST: GC(8·9·9b·15~19·22·탈퇴·23). GC 13개는 `scheduled-cleanup-daily.ts` 로 분리(래칫 1127>1041 이 막아서 — 본문 byte-동일) | 호출부 `{hourly:true,daily:true}` |
 | 2-1 #4 | `SELECT DISTINCT id FROM users` DISTINCT 제거 | — |
 | 2-1 #10 | `prospects-commission-activate` 매시 :40 | 게이트 제거 |
 | 2-1 #11 | 백업 `*/5` 슬롯 **중복 배선 제거**(08-25 전용 트리거 `2,17,32,47` 만) — 시간당 8→4회 | 블록 복원(+테스트) |
