@@ -31,7 +31,8 @@ import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
 import { useMapProducts } from '@/hooks/queries/useMapProducts'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
-import { panToRegionAccurate, panToSearchResults } from './restaurant-map/pan-to-region'
+import { panToRegionAccurate } from './restaurant-map/pan-to-region'
+import { useSearchPan, useSearchDeals } from './restaurant-map/useSearchPan'
 import GeoHelpSheet, { type GeoHelpReason } from './restaurant-map/GeoHelpSheet'
 import { detectInAppBrowser } from '@/lib/in-app-browser'
 import { checkPermission } from '@/lib/in-app-warning'
@@ -80,7 +81,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 🌍 줌아웃 서버 집계(레이어 3) — non-null 이면 지도는 개별 핀 대신 격자 버블만 렌더.
   const [aggClusters, setAggClusters] = useState<ServerCluster[] | null>(null)
   // 🔎 2026-07-12 (스케일 검색): 검색어 입력 시 서버 q 검색 결과 병합 — 근접 바운드 밖 먼 매장도 검색에 잡힘.
-  const [searchDeals, setSearchDeals] = useState<Restaurant[]>([])
+  // 🔎 서버 q검색 — 먼 매장까지 잡고, `readyFor` 로 "결과 확정" 을 알린다(지도 이동이 이를 기다린다).
+  const searchCategory = voucherType === 'all' ? 'all' : voucherType
+  const { deals: searchDeals, readyFor: searchDealsFor } = useSearchDeals<Restaurant>(search, searchCategory)
+
   const restaurants = useMemo(() => {
     if (viewportDeals.length === 0 && searchDeals.length === 0) return baseRestaurants
     const seen = new Set<number | string>(); const out: Restaurant[] = []
@@ -127,8 +131,6 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     }
   }, [])
   const [sortBy, setSortBy] = useState<SortBy>('discount')
-  // 🔎 2026-09-03: 서버 q검색이 **어느 질의**의 결과인지(질의|카테고리). 지도 이동이 이 값을 기다린다.
-  const [searchDealsFor, setSearchDealsFor] = useState('')
   // 🛍️ 2026-06-20 (필터 팝업 A안): 거리반경(km, 0=전체) + 가격대.
   const [radiusKm, setRadiusKm] = useState<number>(0)
   const [priceRange, setPriceRange] = useState<PriceRange>('all')
@@ -227,21 +229,6 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     return () => clearTimeout(handle)
   }, [userLoc, kr, search])
 
-  // 🔎 2026-07-12 (스케일 검색): 검색어 입력 시 서버 q 검색(이름/매장명 LIKE)도 병행 — 근접 바운드/뷰포트
-  //   로딩에 안 실린 먼 매장까지 지도·리스트 검색에 잡힘. 300ms 디바운스, 실패 무해(로드분 클라 필터는 그대로).
-  useEffect(() => {
-    const q = search.trim()
-    if (!q) { setSearchDeals([]); return }
-    const handle = setTimeout(() => {
-      const cat = voucherType === 'all' ? 'all' : voucherType
-      api.get('/api/group-buy/products', { params: { category: cat, q, limit: 100 } })
-        .then(r => { if (r.data?.success && Array.isArray(r.data.data)) setSearchDeals(r.data.data) })
-        .catch(() => { /* silent — 로드분 클라 필터만으로 동작 */ })
-        // 🔴 성공이든 실패든 "이 질의의 결과가 정해졌다"고 표시한다 — 지도 이동이 이 신호를 기다린다.
-        .finally(() => setSearchDealsFor(`${q}|${cat}`))
-    }, 300)
-    return () => clearTimeout(handle)
-  }, [search, voucherType])
 
   // 🛡️ 2026-05-19: 클라이언트 geocoding loop 제거.
   //   이전: 사용자 1명당 카카오 API ~10 호출 (페이지 진입 시마다).
@@ -494,40 +481,17 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
 
   /**
    * 🗺️ **지도는 검색 결과를 따라간다** (2026-09-03 — 대표 신고 "검색을 했을 때 무관한 지도 위치가 떠").
-   *
-   *   종전엔 Enter 를 누른 **그 순간** 검색어를 지명으로 지오코딩해 옮겼다. 그래서 `커트` 처럼
-   *   지명이 아닌 말이면 카카오가 물어다 준 아무 상호로 날아가, 목록은 동탄인데 지도는 부평이었다.
-   *   ⇒ 제출 시점이 아니라 **결과가 정해진 시점**에, 그 결과 핀에 맞춘다. 결과가 하나도 없을 때만
-   *     지명으로 해석한다(`panToSearchResults` 안의 폴백).
-   *
-   *   ⚠️ 사용자를 밀어내지 않도록 **질의당 한 번만** 움직인다 — 지도를 손으로 옮긴 뒤 정렬을 바꿨다고
-   *     다시 끌려가면 안 된다. 그래서 `pannedForRef` 가 질의+카테고리를 기억한다.
+   *   규칙은 `useSearchPan` 한 곳에 있다(결과 핀 우선 · 결과 0일 때만 지명 · 질의당 1회).
    */
-  const pannedForRef = useRef('')
-  const submitMapSearch = useCallback((q: string) => {
-    // Enter·최근검색 선택은 "다시 그 결과로 데려가 달라"는 뜻 — 같은 질의여도 한 번 더 맞춘다.
-    pannedForRef.current = ''
-    setSearch((q || '').trim())
-  }, [])
-
-  useEffect(() => {
-    if (mode !== 'map' || !sdkLoaded) return
-    const q = search.trim()
-    const cat = voucherType === 'all' ? 'all' : voucherType
-    const key = `${q}|${cat}`
-    if (!q) { pannedForRef.current = ''; return }
-    if (pannedForRef.current === key) return
-    const map = mapInstance.current
-    if (!map || !window.kakao?.maps) return
-    const pins = filtered
-      .filter((r) => Number.isFinite(r.restaurant_lat) && Number.isFinite(r.restaurant_lng))
-      .slice(0, 300)
-      .map((r) => ({ lat: r.restaurant_lat as number, lng: r.restaurant_lng as number }))
-    // 결과가 0인데 서버 검색이 아직 안 끝났으면 기다린다 — 여기서 지명으로 단정하면 또 엉뚱한 곳으로 간다.
-    if (pins.length === 0 && searchDealsFor !== key) return
-    pannedForRef.current = key
-    void panToSearchResults(map, q, pins)
-  }, [search, voucherType, filtered, searchDealsFor, mode, sdkLoaded])
+  const submitMapSearch = useSearchPan({
+    search,
+    setSearch,
+    category: searchCategory,
+    results: filtered,
+    resultsReadyFor: searchDealsFor,
+    mapRef: mapInstance,
+    active: mode === 'map' && sdkLoaded,
+  })
 
   // 🌍 2026-07-08 (대표 "가장 이상적으로" — 레이어 2+3): 줌-인지형 뷰포트 로딩.
   //   · 줌아웃(level ≥ 9, 시/전국): 서버 **집계**(/products/map-clusters)만 받아 격자 버블 렌더 —

@@ -17,6 +17,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 
 const PAGE = readFileSync('src/pages/RestaurantMapPage.tsx', 'utf8')
+/**
+ * 🩸 2026-09-03 — 이 검사는 처음에 **페이지 파일**을 박아 놨다. 그런데 file-size 래칫이 그 god 파일의
+ *   성장을 막아(957줄 동결) 로직을 훅으로 빼자마자 세 항목이 깨졌다. 파일이 아니라 **규칙**을 봐야
+ *   한다 — 규칙이 사는 곳은 `useSearchPan` 이고, 페이지는 그걸 쓰기만 한다.
+ */
+const HOOK = readFileSync('src/pages/restaurant-map/useSearchPan.ts', 'utf8')
 
 // ── 가짜 카카오 지도 ────────────────────────────────────────────────
 const calls = { setBounds: 0, setCenter: 0, setLevel: 0, keyword: 0, address: 0 }
@@ -93,17 +99,20 @@ describe('검색 → 지도 이동 우선순위', () => {
 
 describe('지도 페이지 배선', () => {
   it('③ 검색 경로는 결과-우선 헬퍼만 쓴다 (생 지오코딩 직접 호출 금지)', () => {
-    expect(PAGE).toMatch(/panToSearchResults/)
-    expect(PAGE, 'panToPlaceQuery 직접 호출이 되살아나면 이 버그가 그대로 돌아온다').not.toMatch(/panToPlaceQuery\s*\(/)
+    expect(HOOK).toMatch(/panToSearchResults/)
+    expect(HOOK, 'panToPlaceQuery 직접 호출이 되살아나면 이 버그가 그대로 돌아온다').not.toMatch(/panToPlaceQuery\s*\(/)
+    expect(PAGE, '페이지가 훅을 안 쓰면 규칙이 어디에도 안 걸린다').toMatch(/useSearchPan\(/)
   })
 
   it('④ 결과가 0인데 서버 검색이 안 끝났으면 기다린다 (성급히 지명으로 단정하지 않는다)', () => {
-    expect(PAGE).toMatch(/pins\.length === 0 && searchDealsFor !== key/)
-    expect(PAGE, '성공·실패 무관하게 "결과 확정" 신호가 서야 한다').toMatch(/\.finally\(\(\) => setSearchDealsFor/)
+    expect(HOOK).toMatch(/pins\.length === 0 && resultsReadyFor !== key/)
+    // 실패를 미확정으로 두면 지도가 영영 안 움직인다 → 성공·실패 무관하게 신호가 서야 한다.
+    expect(HOOK).toMatch(/\.finally\(\(\) => setReadyFor/)
+    expect(PAGE, '페이지가 그 신호를 실제로 넘겨야 한다').toMatch(/resultsReadyFor: searchDealsFor/)
   })
 
   it('⑤ 질의당 한 번만 움직인다 — 지도를 손으로 옮긴 뒤 다시 끌려가면 안 된다', () => {
-    expect(PAGE).toMatch(/pannedForRef\.current === key/)
-    expect(PAGE).toMatch(/pannedForRef\.current = key/)
+    expect(HOOK).toMatch(/pannedForRef\.current === key/)
+    expect(HOOK).toMatch(/pannedForRef\.current = key/)
   })
 })

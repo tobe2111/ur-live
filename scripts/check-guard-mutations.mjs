@@ -7841,8 +7841,8 @@ canvas {
   },
   {
     name: '지도 검색 — 서버 검색이 끝나기 전에 지명으로 단정한다',
-    file: 'src/pages/RestaurantMapPage.tsx',
-    find: '    if (pins.length === 0 && searchDealsFor !== key) return',
+    file: 'src/pages/restaurant-map/useSearchPan.ts',
+    find: '    if (pins.length === 0 && resultsReadyFor !== key) return',
     replace: '',
     test: 'src/tests/unit/map-search-follows-results.test.ts',
     why:
