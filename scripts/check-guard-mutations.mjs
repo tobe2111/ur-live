@@ -7925,6 +7925,16 @@ canvas {
       '있는 것과 도달하는 것은 다른 일이다 — 조건이 되살아나면 조용히 그 상태로 돌아간다.',
   },
   {
+    name: '🎟️ 셀프 사용 라우트가 게이트를 부르고도 거절을 무시한다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: '        if (!gate.ok) return c.json({ success: false, code: gate.code, error: gate.error }, gate.status)',
+    replace: '        void gate',
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '게이트를 별도 파일(self-redeem-gate)로 뽑고 나면 **배선이 눈에 안 보인다** — 판정을 부르고도 ' +
+      '반환하지 않으면 라우트는 그대로 통과시킨다. 판정 로직이 아무리 옳아도 결과가 같다.',
+  },
+  {
     name: '🖼️ 커버 이관이 다시 갤러리 첫 칸을 안 고쳐 같은 사진이 두 장이 된다',
     file: 'src/worker/cron/demo-image-rehost.ts',
     find: 'const nextImages = replaceGalleryUrl(row.images, row.image_url, hosted)',

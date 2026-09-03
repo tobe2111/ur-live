@@ -937,34 +937,14 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       ).bind(code, user.id).first<{ id: number; status: string; seller_id: number | null }>().catch(() => null)
       if (!pre) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
       // 🔒 2026-09-03 (대표 — "우리는 QR 아니면 매장 확인코드야"): 셀프 사용은 **매장에 실제로
-      //   있어야만** 된다. 예전엔 구멍이 세 겹이었다 —
-      //     ① 기본값이 self_free(설정 안 한 매장 전부)
-      //     ② `seller_id != null` 조건 탓에 **판매자 없는 상품은 검사 자체를 건너뜀**(데모 100개 전량)
-      //     ③ 조회 실패 시 fail-open
-      //   셋 다 닫는다. 직원 QR 스캔(`/:code/use-by-seller`)은 이 게이트 밖이라 **그대로 열려 있다**.
-      let redemptionMode: 'scan_only' | 'store_code' | 'self_free' = 'store_code'
+      //   있어야만** 된다. 판정은 `worker/utils/self-redeem-gate` SSOT — 매장 없음/설정 조회 실패/
+      //   scan_only/코드 불일치를 전부 403 으로 닫는다(직원 QR 은 이 게이트 밖이라 그대로 열려 있다).
+      //   ⚠️ 조건은 `status === 'unused'` 하나다 — 예전의 `seller_id != null` 은 **판매자 없는 상품이
+      //   게이트를 통째로 건너뛰게** 만들어 데모 100개 전량을 무방비로 뒀다.
       if (pre.status === 'unused') {
-        if (pre.seller_id == null) {
-          // 매장이 없는 상품(데모 등) — 확인코드를 발급해 줄 주체도, 갈 매장도 없다. 셀프 사용 불가.
-          return c.json({ success: false, code: 'NO_STORE', error: '이 이용권은 현장에서 직원 확인으로만 사용할 수 있어요.' }, 403)
-        }
-        let s: { mode: 'scan_only' | 'store_code' | 'self_free'; store_code: string | null }
-        try {
-          const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
-          s = await getRedemptionSettings(DB, Number(pre.seller_id))
-        } catch {
-          // fail-**closed**: 설정을 못 읽었다고 아무나 소각시키지 않는다(직원 QR 은 살아 있다).
-          return c.json({ success: false, code: 'STORE_CODE_REQUIRED', error: '매장에 비치된 확인코드를 입력해주세요.' }, 403)
-        }
-        redemptionMode = s.mode
-        if (redemptionMode === 'scan_only') {
-          return c.json({ success: false, code: 'SCAN_ONLY_MODE', error: '이 매장은 직원 확인 방식이에요. 직원에게 QR 화면을 보여주세요.' }, 403)
-        }
-        const input = String(body.store_code || '').trim()
-        if (!input || !s.store_code || input !== s.store_code) {
-          // 🛡️ 자릿수 하드코딩 제거(신규 6자리·기존 4자리 병존) — 이 403 도 rate limit 카운트에 잡힘(브루트포스 소진).
-          return c.json({ success: false, code: 'STORE_CODE_REQUIRED', error: '매장에 비치된 확인코드를 입력해주세요.' }, 403)
-        }
+        const { checkSelfRedeemGate } = await import('../../../worker/utils/self-redeem-gate')
+        const gate = await checkSelfRedeemGate(DB, pre.seller_id, String(body.store_code || ''))
+        if (!gate.ok) return c.json({ success: false, code: gate.code, error: gate.error }, gate.status)
       }
 
       // 🛡️ 머니룰: claim-before-credit — 미사용+본인 일 때만 원자적 used 선점.
@@ -1023,9 +1003,9 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       }
       // claimed === true (방금 사용) 또는 이미 used(멱등 반환)
       const usedAtMs = row.used_at ? Date.parse(row.used_at.replace(' ', 'T') + 'Z') : Date.now()
-      // 🎟️ 셀프취소(60초)는 self_free 모드에서만 — store_code 모드는 2단계 입력이라 오탭이 거의 불가,
-      //   취소 권한은 매장(사장님 스캔 화면)으로. 취소창 0 = "보여주고 나가서 취소" 악용 차단.
-      const cancelableUntil = redemptionMode === 'self_free' ? usedAtMs + 60_000 : usedAtMs
+      // 🎟️ 셀프취소창 0 — 셀프 사용은 이제 매장 확인코드 2단계 입력이라 오탭이 거의 불가하고,
+      //   취소 권한은 매장(사장님 스캔 화면)에 있다. "보여주고 나가서 취소" 악용도 함께 닫힌다.
+      const cancelableUntil = usedAtMs
       return c.json({
         success: true,
         data: {

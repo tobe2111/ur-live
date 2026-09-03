@@ -30,6 +30,7 @@ const codeOnly = (src: string) => src.split('\n').filter(l => !/^\s*(\/\/|\*|\/\
 describe('① 이용권 사용 방식 — QR 은 항상, 셀프는 매장 확인코드', () => {
   const settings = read('worker/utils/redemption-settings.ts')
   const selfRedeem = codeOnly(read('features/group-buy/api/group-buy-public.routes.ts'))
+  const gate = codeOnly(read('worker/utils/self-redeem-gate.ts'))
 
   it('기본값이 store_code — 설정 안 한 매장도 코드를 요구한다', () => {
     expect(codeOnly(settings)).toMatch(/DEFAULT_REDEMPTION_MODE: RedemptionMode = 'store_code'/)
@@ -54,12 +55,17 @@ describe('① 이용권 사용 방식 — QR 은 항상, 셀프는 매장 확인
     // 옛 조건 `pre.seller_id != null &&` 이 남아 있으면 데모 전량이 다시 무방비가 된다.
     expect(selfRedeem).not.toMatch(/if \(pre\.seller_id != null && pre\.status === 'unused'\)/)
     expect(selfRedeem).toMatch(/if \(pre\.status === 'unused'\)/)
-    expect(selfRedeem).toMatch(/pre\.seller_id == null[\s\S]{0,300}'NO_STORE'/)
+    // 배선 — 판정을 부르고, 거절이면 **실제로 반환**한다(불러 놓고 무시하면 게이트가 없는 것과 같다).
+    expect(selfRedeem).toMatch(/checkSelfRedeemGate\(DB, pre\.seller_id, String\(body\.store_code \|\| ''\)\)/)
+    expect(selfRedeem).toMatch(/if \(!gate\.ok\) return c\.json\(/)
+    // 매장이 없으면 셀프 불가 — 확인코드를 발급해 줄 주체가 없다.
+    expect(gate).toMatch(/sellerId == null[\s\S]{0,300}'NO_STORE'/)
   })
 
   it('셀프 사용은 확인코드 일치가 필수 — 설정 조회 실패도 막는다', () => {
-    expect(selfRedeem).toMatch(/input !== s\.store_code[\s\S]{0,200}STORE_CODE_REQUIRED/)
-    expect(selfRedeem).toMatch(/catch \{[\s\S]{0,300}STORE_CODE_REQUIRED/)
+    expect(gate).toMatch(/input !== s\.store_code[\s\S]{0,200}STORE_CODE_REQUIRED/)
+    expect(gate).toMatch(/catch \{[\s\S]{0,300}STORE_CODE_REQUIRED/)
+    expect(gate).toMatch(/s\.mode === 'scan_only'[\s\S]{0,200}SCAN_ONLY_MODE/)
   })
 
   it('직원 QR 스캔 경로는 모드와 무관하다 — 게이트를 옮겨 심지 않았는지', () => {
