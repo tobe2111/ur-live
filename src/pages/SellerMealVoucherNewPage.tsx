@@ -73,6 +73,13 @@ export default function SellerMealVoucherNewPage() {
           price: num(src.price) || f.price,
           original_price: num(src.original_price),
           image_url: str(src.image_url),
+          images: (() => {
+            // 이전 공구 복사 — 사진도 함께. 문자열(JSON)/배열 둘 다 온다.
+            const raw = src.images
+            const arr = typeof raw === 'string' ? (() => { try { return JSON.parse(raw) } catch { return [] } })() : raw
+            const list = Array.isArray(arr) ? arr.filter((u): u is string => typeof u === 'string' && !!u) : []
+            return list.length ? list : (str(src.image_url) ? [str(src.image_url)] : [])
+          })(),
           category: (str(src.category) || f.category) as VoucherForm['category'],
           restaurant_name: str(src.restaurant_name),
           restaurant_address: str(src.restaurant_address),
@@ -145,7 +152,8 @@ export default function SellerMealVoucherNewPage() {
   const token = getSellerToken()
   const headers = { Authorization: `Bearer ${token}` }
   const KAKAO_JS_KEY = import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || ''
-  const update = (key: string, value: string | number) => setForm(f => ({ ...f, [key]: value }))
+  // 🖼️ 2026-09-03: 사진 목록(`images`)이 배열이라 값 타입을 넓혔다.
+  const update = (key: string, value: string | number | string[]) => setForm(f => ({ ...f, [key]: value }))
 
   function searchImages(query: string) {
     setLoadingImages(true)
@@ -211,6 +219,9 @@ export default function SellerMealVoucherNewPage() {
         price: form.price,
         original_price: form.original_price || form.price,
         image_url: form.image_url,
+        // 🖼️ 2026-09-03: 사진 여러 장. 소비자 카드 캐러셀·상세 갤러리가 `products.images` 를 읽는다.
+        //   첫 장은 `image_url` 과 같은 값(대표) — 서버가 그대로 저장한다.
+        images: form.images.length ? JSON.stringify(form.images) : null,
         category: form.category,
         product_type: 'featured',
         stock: form.stock,

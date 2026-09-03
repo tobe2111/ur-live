@@ -24,6 +24,7 @@ import PinButton from '@/components/curator/PinButton'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { safeDate, safeTime } from '@/utils/safe-date'
+import { publicSellerHandle } from '@/shared/seller-handle'
 import { cfImage } from '@/utils/cf-image'
 import { reportFunnel } from '@/lib/web-vitals-report'
 import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
@@ -712,7 +713,8 @@ export default function GroupBuyDetailPage() {
                     <CheckCircle2 style={{ width: 15, height: 15, color: 'var(--gbd-accent)', flex: '0 0 auto' }} />
                     <span style={{ fontSize: 12, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>검증 셀러</span>
                   </div>
-                  {detail.seller_username && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2 }}>@{detail.seller_username}</div>}
+                  {/* 🏷️ 2026-09-03 대표 — 자동 발급 아이디(@store_xxxx)는 손님에게 의미가 없다(SSOT: shared/seller-handle). */}
+                  {publicSellerHandle(detail.seller_username) && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2 }}>@{publicSellerHandle(detail.seller_username)}</div>}
                 </div>
                 <button onClick={() => { if (detail.seller_handle) { navigate(`/u/${detail.seller_handle}`); return } const t = detail.seller_username || detail.seller_id; if (t) navigate(`/profile/${t}`) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 1, padding: '8px 12px', border: '1px solid var(--gbd-line2)', borderRadius: 10, background: 'var(--gbd-card)', color: 'var(--gbd-ink2)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
                   프로필<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>

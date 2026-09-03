@@ -18,7 +18,7 @@ import {
   VISIBLE_NAV_GROUPS, NAV_SECTIONS, navSectionOf, withoutWholesaleOnConsumer,
   ALWAYS_ALLOWED_ADMIN_PATHS, WHOLESALE_EXTRA_ALLOWED_PATHS,
 } from '@/components/admin/admin-nav-config'
-import AdminCommandPalette, { type CommandItem } from '@/components/admin/AdminCommandPalette'
+import CommandPalette, { type CommandItem } from '@/components/dashboard/CommandPalette'
 
 
 interface AdminLayoutProps {
@@ -469,7 +469,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   return (
     <div className="admin-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900 [color-scheme:light]">
       {/* ⌘K 커맨드 팔레트 — 전 어드민 페이지 공통(레이아웃 마운트). */}
-      <AdminCommandPalette items={commandItems} open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <CommandPalette items={commandItems} open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
