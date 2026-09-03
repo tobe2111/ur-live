@@ -99,3 +99,27 @@ tsc 0 · build 0 · 관련 유닛 186 pass · 주입 3건 되돌려-검증 빨�
    시트 카운트가 전체 수인지, 스크롤로 다음 페이지가 붙는지.
 3. `/map` 이용권 미표시 신고(§3)는 그 뒤 대표가 "지금은 다 뜬다" 고 확인 — 원인 미규명(일시적).
    재발하면 §3 의 질문 3가지부터.
+
+---
+
+## 5. (마무리) 홈 피드 서버 정렬 + Sentry 자기증식 고리 차단 — 대표 "마저 다 해줘"
+
+### ① 홈 피드 정렬
+- **문제**: 홈은 이미 요청형이었지만 정렬을 **로드된 것 안에서만** 했다 → "인기순" = *최근 50개 중 인기순*.
+- 더 나쁜 것: **서버와 화면의 정렬 정의가 달랐다.** 서버 `popular`=`group_buy_current`, 클라 `soldOf`=`sold_count ?? group_buy_current`. 서버가 고른 상위 50이 클라가 원하는 상위 50이 아니었다.
+- **수정**: 서버 정의를 클라 SSOT 로 맞추고(**실제 SQLite 로 6종 ORDER BY 실행 검증** — 문법·순서 둘 다), 피드가 page1·loadMore 모두 `sort`(거리순은 `near`)를 넘기게. 캐시키는 정렬별로 분리, 전환 시 직전 결과 유지.
+- **SSR 0-RTT 는 그대로**: 시드는 여전히 `initialData`, 화면 최종 순서는 종전대로 클라 `sortBand`(밴드별)가 매긴다. 서버는 **후보 집합**만 정한다.
+- 실측(하네스): `/` 진입 요청 1회 `?status=active&category=all&sort=popular`, page2~7 동일 정렬.
+
+### ② Sentry
+- 대표가 캡처한 `429` 는 **Sentry 가 우리 이벤트를 거절**한 것이고, 같이 뜬
+  `TypeError … reading 'startTime' at et.reportAllChanges` 는 **`@sentry/react` 가 자기 번들 안에서** 던진다.
+  uncaught 라 **Sentry 가 그걸 다시 올린다** — 쿼터를 스스로 태우는 고리다.
+- 판정을 `src/lib/sentry-noise.ts` **순수 함수**로 빼서 테스트가 진짜로 돌린다(인라인이면 `Sentry.init` 없이 못 돈다).
+- ⚠️ **좁게 거른다**: [메시지 + 스택이 Sentry 자신의 리포터] 둘 다 맞을 때만. 같은 메시지가 **우리 코드**에서 나면 그대로 올린다(테스트로 고정 — 진짜 버그를 삼키는 것이 429 보다 나쁘다).
+- 덤: 기존 `localStorage`/`NetworkError` 필터는 `event.message` 만 봐서 **예외에는 한 번도 안 걸렸다**(예외 텍스트는 `exception.values[].value` 에 있다). 원 의도대로 동작하게 고쳤다.
+- ⏭️ 그래도 429 가 계속되면 다음 레버는 **에러 `sampleRate`** 다(지금은 100%). 샘플링은 진짜 에러도 버리므로 대표 확인 후에.
+
+### 다음 세션이 볼 것
+배포 후 `/`(홈)에서 정렬 칩을 바꿔 가며 `/api/group-buy/products` 요청에 `sort=` 가 붙는지,
+그리고 콘솔에 `reportAllChanges` TypeError 가 Sentry 로 전송되지 않는지(429 빈도 감소).

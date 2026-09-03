@@ -111,12 +111,12 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //   ⚠️ 기본 요청(파라미터 없음)은 키·쿼리·materialized·LIMIT 50 전부 그대로 → SSR 0-RTT/캐시 불변.
     //   필터/정렬/페이지가 붙은 요청만 새 캐시키 + 라이브쿼리(정렬/LIMIT/OFFSET)로 분기.
     const ALLOWED_GB_SORT: Record<string, string> = {
-      popular: 'p.group_buy_current DESC, p.created_at DESC',
+      // 🚦 2026-09-03: 정의는 **화면과 같아야 한다** — 클라 `soldOf`/`discountOf`(GroupBuyFeed) 미러.
+      popular: 'COALESCE(p.sold_count, p.group_buy_current, 0) DESC, p.created_at DESC',
       newest: 'p.created_at DESC',
       deadline: 'p.group_buy_deadline ASC',
-      discount: 'p.discount_rate DESC, p.created_at DESC',
-      // 🚦 2026-09-03 [UNLOCK_LOADING] (대표 "가장 이상적으로"): 클라 SortBy 4종(거리·할인·가격·평점)
-      //   중 서버에 없던 둘. 없으면 클라가 **로드된 50개 안에서만** 정렬해 "전체 중 싼 순"이 거짓이 된다.
+      discount: 'MAX(COALESCE(p.discount_rate,0), CASE WHEN p.original_price > p.price AND p.original_price > 0 THEN CAST((p.original_price - p.price) * 100 / p.original_price AS INTEGER) ELSE 0 END) DESC, p.created_at DESC',
+      // 🚦 2026-09-03: 서버에 없던 둘 — 없으면 클라가 로드된 50개 안에서만 정렬해 "전체 중" 이 거짓이 된다.
       price: 'p.price ASC, p.created_at DESC',
       rating: 'p.avg_rating DESC, p.review_count DESC, p.created_at DESC',
     }

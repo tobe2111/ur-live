@@ -184,10 +184,23 @@ export default function GroupBuyFeed({
 
   // 🛡️ 2026-05-24 (loading P0): staleTime/gcTime override 제거 → global default (30분/1h) 적용.
   //   refetchOnWindowFocus 는 유지 false (홈 피드는 잦은 변경 안 함 — 카테고리 칩 클릭 시 새 카테고리 fetch).
+  /**
+   * 🚦 2026-09-03 (대표 "마저 다 해줘"): **정렬을 서버로.** 이전엔 서버가 준 최신 50개(+스크롤분) 안에서만
+   *   정렬해 "인기순"이 사실은 "최근 50개 중 인기순"이었다 — 전체가 338건인데. 이제 서버가 전체에서
+   *   정렬해 상위부터 준다(정의는 서버 ALLOWED_GB_SORT 가 클라 soldOf/discountOf 를 미러).
+   *   거리순은 `sort` 가 아니라 `near`(서버 거리 랭킹)가 담당한다.
+   *   ⚠️ 좌표는 **서버 캐시키 단위(0.02°≈2km)로 반올림**해 보낸다 — 몇 m 움직일 때마다 캐시가 갈리면
+   *      엣지 적중이 무너진다. 화면에 보이는 최종 순서는 아래 `sortBand` 가 정확한 좌표로 다시 매긴다.
+   */
+  const nearKey = sort === 'near' && userLoc
+    ? `${(Math.round(userLoc.lat / 0.02) * 0.02).toFixed(2)},${(Math.round(userLoc.lng / 0.02) * 0.02).toFixed(2)}`
+    : ''
+  const serverSort = sort === 'near' ? '' : sort
+  const feedParams = `${serverSort ? `&sort=${serverSort}` : ''}${nearKey ? `&near=${nearKey}` : ''}`
   const { data: items = [], isLoading: loading, isError, refetch } = useQuery<FeedProduct[]>({
-    queryKey: queryKeys.groupBuyList('active', category),
+    queryKey: queryKeys.groupBuyList('active', category, serverSort || (nearKey && `near:${nearKey}`) || ''),
     queryFn: async () => {
-      const res = await api.get(`/api/group-buy/products?status=active&category=${category}`)
+      const res = await api.get(`/api/group-buy/products?status=active&category=${category}${feedParams}`)
       const arr: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
       // hydrate individual detail cache (idempotent).
       for (const p of arr) {
@@ -198,6 +211,9 @@ export default function GroupBuyFeed({
     initialData: ssrInitial,
     initialDataUpdatedAt: ssrInitial ? Date.now() - 60_000 : 0,  // SSR 데이터를 1분 stale 로 표시 → useQuery 가 background refetch
     refetchOnWindowFocus: false,
+    // 🚦 2026-09-03: 정렬을 바꾸면 캐시키가 갈리므로 그대로 두면 **빈 화면 → 스켈레톤**이 된다.
+    //   직전 결과를 유지한 채 새 정렬을 받아 온다(그 사이 sortBand 가 로드된 것만이라도 즉시 재정렬).
+    placeholderData: (prev) => prev,
   })
 
   // 📄 2026-07-08 (대표 "전체 상품이 안 나옴 — 50곳밖에"): 서버 기본 피드는 LIMIT 50(캐시/SSR 고정).
@@ -206,8 +222,9 @@ export default function GroupBuyFeed({
   const [extraPages, setExtraPages] = useState<FeedProduct[][]>([])
   const [loadingMore, setLoadingMore] = useState(false)
   const [reachedEnd, setReachedEnd] = useState(false)
-  // 카테고리 변경 시 누적분 리셋
-  useEffect(() => { setExtraPages([]); setReachedEnd(false) }, [category])
+  // 카테고리·정렬 변경 시 누적분 리셋 (🚦 2026-09-03: 정렬이 서버로 갔으므로 옛 순서로 받은 페이지가
+  //   새 정렬 결과와 섞이면 중복·누락이 생긴다 — 밴드를 통째로 버리고 page2 부터 다시 쌓는다.)
+  useEffect(() => { setExtraPages([]); setReachedEnd(false) }, [category, serverSort, nearKey])
 
   // 🗺️ 2026-07-16 (대표 신고 — 스크롤 로드 시 이용권 배치가 제멋대로 바뀜): '누적 전체 재정렬'이 아니라
   //   페이지(밴드)별로 정렬 → 이미 보인 카드는 위치 고정, 새 페이지만 아래로 append(재정렬 없음).
@@ -264,7 +281,7 @@ export default function GroupBuyFeed({
     setLoadingMore(true)
     try {
       const nextPage = extraPages.length + 2  // page1 = items → 다음은 2부터
-      const res = await api.get(`/api/group-buy/products?status=active&category=${category}&page=${nextPage}&limit=50`)
+      const res = await api.get(`/api/group-buy/products?status=active&category=${category}&page=${nextPage}&limit=50${feedParams}`)
       const arr: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
       for (const p of arr) { if (p?.id != null) qc.setQueryData(queryKeys.groupBuyProduct(p.id), p) }
       setExtraPages(prev => [...prev, arr])

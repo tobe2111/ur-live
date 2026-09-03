@@ -88,6 +88,30 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🚦 홈 피드 다음 페이지가 정렬 없이 나간다 — 스크롤할수록 순서가 섞인다',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: '&page=${nextPage}&limit=50${feedParams}',
+    replace: '&page=${nextPage}&limit=50',
+    test: 'src/tests/unit/feed-sort-and-sentry-noise.test.ts',
+    why: '정렬을 서버로 넘긴 뒤에는 page2 부터도 같은 정렬이어야 한다 — 빠지면 최신순 페이지가 인기순 목록에 붙는다.',
+  },
+  {
+    name: '🔇 Sentry 노이즈 필터가 스택을 안 보고 메시지만 본다 — 우리 코드의 진짜 버그를 삼킨다',
+    file: 'src/lib/sentry-noise.ts',
+    find: '&& isSentryOwnVitalsFrame(event, rawStack)) return true',
+    replace: ') return true',
+    test: 'src/tests/unit/feed-sort-and-sentry-noise.test.ts',
+    why: "같은 'startTime' 메시지는 우리 코드도 낼 수 있다. 좁게 거르지 않으면 조용히 실명한다.",
+  },
+  {
+    name: '🚦 서버 인기순이 다시 group_buy_current 만 본다 — 화면의 정의와 갈린다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: "popular: 'COALESCE(p.sold_count, p.group_buy_current, 0) DESC",
+    replace: "popular: 'p.group_buy_current DESC",
+    test: 'src/tests/unit/feed-sort-and-sentry-noise.test.ts',
+    why: 'sparse 컬럼만 보면 인기순이 사실상 최신순이 된다(2026-07-16 대표 신고 "PC 정렬 무반응"의 원인).',
+  },
+  {
     name: '🚦 목록이 다시 전량을 걷는다 — 진입마다 338건·요청 7회',
     file: 'src/hooks/queries/useMapProducts.ts',
     find: '    let cancelled = false\n    ;(async () => {\n      const res = await fetchPage(category, 1, near, sort)',
