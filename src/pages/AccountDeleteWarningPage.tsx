@@ -217,7 +217,7 @@ export default function AccountDeleteWarningPage() {
                 type="checkbox"
                 checked={agreedSoftDelete}
                 onChange={(e) => setAgreedSoftDelete(e.target.checked)}
-                className="w-[18px] h-[18px] mt-0.5 rounded accent-pink-500 shrink-0"
+                className="w-[18px] h-[18px] mt-0.5 rounded accent-brand shrink-0"
               />
               <span className="text-[12.5px] text-gray-700 dark:text-white/70 leading-relaxed">
                 탈퇴 후 <strong className="text-gray-900 dark:text-white">30일이 지나면 모든 데이터가 영구 삭제</strong>됨을 이해했습니다.
@@ -228,7 +228,7 @@ export default function AccountDeleteWarningPage() {
                 type="checkbox"
                 checked={agreedLoseBenefits}
                 onChange={(e) => setAgreedLoseBenefits(e.target.checked)}
-                className="w-[18px] h-[18px] mt-0.5 rounded accent-pink-500 shrink-0"
+                className="w-[18px] h-[18px] mt-0.5 rounded accent-brand shrink-0"
               />
               <span className="text-[12.5px] text-gray-700 dark:text-white/70 leading-relaxed">
                 30일 이후엔 <strong className="text-gray-900 dark:text-white">포인트, 쿠폰, 등급 등 모든 혜택이 복구되지 않음</strong>을 이해했습니다.
@@ -239,7 +239,7 @@ export default function AccountDeleteWarningPage() {
                 type="checkbox"
                 checked={agreedNoRefund}
                 onChange={(e) => setAgreedNoRefund(e.target.checked)}
-                className="w-[18px] h-[18px] mt-0.5 rounded accent-pink-500 shrink-0"
+                className="w-[18px] h-[18px] mt-0.5 rounded accent-brand shrink-0"
               />
               <span className="text-[12.5px] text-gray-700 dark:text-white/70 leading-relaxed">
                 탈퇴 후엔 <strong className="text-gray-900 dark:text-white">진행 중인 주문의 취소/환불이 어려울 수 있음</strong>을 이해했습니다.
@@ -262,7 +262,7 @@ export default function AccountDeleteWarningPage() {
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder={t('accountDeleteWarning.confirmPlaceholder')}
-            className="w-full px-3.5 py-3 rounded-xl bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/10 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:border-pink-500/50 focus:bg-white dark:focus:bg-white/[0.08]"
+            className="w-full px-3.5 py-3 rounded-xl bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/10 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:border-brand/50 focus:bg-white dark:focus:bg-white/[0.08]"
           />
           {confirmText && confirmText !== t('accountDeleteWarning.confirmText') && (
             <p className="text-[12px] text-red-400 mt-2 flex items-center gap-1">
@@ -281,7 +281,7 @@ export default function AccountDeleteWarningPage() {
         {/* 머무름 안내 */}
         <div className="text-center mb-2">
           <p className="text-[12px] text-gray-500 dark:text-white/40 leading-relaxed flex items-center justify-center gap-1.5">
-            <Heart className="w-3.5 h-3.5 text-pink-500/60" />
+            <Heart className="w-3.5 h-3.5 text-brand-text/60" />
             언제든지 돌아올 수 있어요
           </p>
         </div>

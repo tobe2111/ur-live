@@ -93,7 +93,7 @@ export default function SellerProxyProductsPage() {
                   </div>
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <button onClick={() => act(p.id, 'approve')} disabled={busy === p.id} className="flex-1 py-2 bg-pink-500 text-white text-sm font-bold rounded-lg disabled:opacity-50">
+                  <button onClick={() => act(p.id, 'approve')} disabled={busy === p.id} className="flex-1 py-2 bg-brand text-white text-sm font-bold rounded-lg disabled:opacity-50">
                     승인 (공개)
                   </button>
                   <button onClick={() => act(p.id, 'reject')} disabled={busy === p.id} className="px-4 py-2 border border-gray-300 text-gray-600 text-sm font-bold rounded-lg disabled:opacity-50">

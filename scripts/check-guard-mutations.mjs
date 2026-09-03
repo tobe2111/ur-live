@@ -88,6 +88,14 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎨 브랜드 강조가 다시 회색으로 — 구 로즈(pink) 유틸이 되돌아온다',
+    file: 'src/components/gift/GiftSendModal.tsx',
+    find: 'bg-brand text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-dark',
+    replace: 'bg-pink-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-pink-600',
+    test: 'src/tests/unit/brand-color-migration.test.ts',
+    why: 'tailwind 이 pink 를 MONO 로 중화한다 — 라이브 실측 .bg-pink-500 → rgb(110 107 104). 주 버튼이 조용히 회색이 된다.',
+  },
+  {
     name: '🚦 대시보드가 다시 상태를 회색으로 — 반려와 승인이 픽셀 단위로 같아진다',
     file: 'tailwind.config.js',
     find: "          ok: { DEFAULT: 'var(--tone-ok)', bg: 'var(--tone-ok-bg)' },",

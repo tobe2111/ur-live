@@ -431,7 +431,7 @@ export default function AdminPage() {
         >
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <span className="text-[10px] sm:text-xs font-medium text-gray-500">오늘 교환권 거래</span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-brand-tint text-brand-text flex items-center justify-center">
               <Ticket className="w-5 h-5" />
             </div>
           </div>
@@ -439,7 +439,7 @@ export default function AdminPage() {
             <p className="text-lg sm:text-xl font-bold text-gray-900">{formatNumber(dashboardStats.todayVouchers || 0)}건</p>
             <p className="text-sm text-gray-600">· {fmtPrice(dashboardStats.todayVouchersAmount || 0)}</p>
           </div>
-          <p className="text-[10px] sm:text-xs text-pink-600 mt-0.5">→ 자세히 보기 (사용자/시각/상품)</p>
+          <p className="text-[10px] sm:text-xs text-brand-text mt-0.5">→ 자세히 보기 (사용자/시각/상품)</p>
         </button>
         <button
           onClick={() => navigate('/admin/voucher-orders')}

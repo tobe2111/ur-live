@@ -1,5 +1,4 @@
-/* status-tone-ok: 가이드 3종(어드민/셀러/에이전시) 아이콘 타일 색은 상태가 아니라 분류다. */
-import { useState } from 'react'
+import { useState } from 'react'  /* status-tone-ok: 가이드 3종 아이콘 타일 색은 상태가 아니라 분류다 */
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { BookOpen, Shield, Store, Building2 } from 'lucide-react'

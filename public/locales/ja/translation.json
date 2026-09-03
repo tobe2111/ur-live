@@ -5770,9 +5770,9 @@
       "installBtn": "インストール",
       "later": "後で",
       "manualDesc": "ホーム画面に追加して5,000円をもらう",
-      "iosStep1": "下部の<strong class=\"text-pink-600\">共有ボタン</strong>をタップ",
+      "iosStep1": "下部の<strong class=\"text-brand-text\">共有ボタン</strong>をタップ",
       "iosStep2": "\"ホーム画面に追加\"を選択",
-      "androidStep1": "右上の<strong class=\"text-pink-600\">⋮ メニュー</strong>をタップ",
+      "androidStep1": "右上の<strong class=\"text-brand-text\">⋮ メニュー</strong>をタップ",
       "androidStep2": "\"アプリをインストール\"または\"ホーム画面に追加\""
     }
   },

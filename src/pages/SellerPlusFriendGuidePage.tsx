@@ -41,7 +41,7 @@ export default function SellerPlusFriendGuidePage() {
             <p className="text-sm text-gray-600 leading-relaxed">
               사용자가 매장 방문 / 결제 / 바우처 사용 시 사장님께 카카오 알림톡이 자동 발송됩니다.
               <br/><br/>
-              <strong className="text-pink-600">발송 비용은 유어딜이 부담</strong> — 사장님은 plus친구 추가만 하면 됩니다.
+              <strong className="text-brand-text">발송 비용은 유어딜이 부담</strong> — 사장님은 plus친구 추가만 하면 됩니다.
             </p>
           </section>
 
@@ -54,7 +54,7 @@ export default function SellerPlusFriendGuidePage() {
                 { n: 3, title: '"채널 추가" 버튼', desc: '채널 페이지 진입 후 "채널 추가" 클릭' },
               ].map((s) => (
                 <div key={s.n} className="flex items-start gap-3">
-                  <div className="shrink-0 w-8 h-8 rounded-full bg-pink-500 text-white text-sm font-bold flex items-center justify-center">
+                  <div className="shrink-0 w-8 h-8 rounded-full bg-brand text-white text-sm font-bold flex items-center justify-center">
                     {s.n}
                   </div>
                   <div className="flex-1">
@@ -93,7 +93,7 @@ export default function SellerPlusFriendGuidePage() {
             <button
               onClick={() => { markAsAdded(); window.location.href = '/seller' }}
               disabled={confirmed}
-              className="flex-1 py-3 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-xl font-bold text-sm"
+              className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl font-bold text-sm"
             >
               {confirmed ? '✓ 완료' : '✓ 추가 완료'}
             </button>

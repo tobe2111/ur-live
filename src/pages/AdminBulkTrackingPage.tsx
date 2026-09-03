@@ -207,7 +207,7 @@ ORD-003,롯데,111122223333,`}
               <button
                 onClick={() => runUpload(false)}
                 disabled={loading || !uploadResult?.dry_run}
-                className="flex-1 py-3 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-xl disabled:opacity-50"
+                className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white font-bold rounded-xl disabled:opacity-50"
                 title={!uploadResult?.dry_run ? '먼저 사전 검증을 실행하세요' : ''}
               >
                 ✅ 실제 업로드

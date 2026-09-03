@@ -111,7 +111,7 @@ export default function InfluencerRankingsPage() {
                     </div>
                     <div className="text-right">
                       {metric === 'commission' ? (
-                        <p className="text-sm font-extrabold text-pink-600">{r.total_commission.toLocaleString()}원</p>
+                        <p className="text-sm font-extrabold text-brand-text">{r.total_commission.toLocaleString()}원</p>
                       ) : (
                         <p className="text-sm font-extrabold text-blue-600">{r.attribution_count}건</p>
                       )}

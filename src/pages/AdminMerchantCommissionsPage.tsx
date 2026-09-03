@@ -205,7 +205,7 @@ export default function AdminMerchantCommissionsPage() {
                   <input value={rate} onChange={(e) => setRate(e.target.value)} placeholder="예: 5" className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900" />
                 </label>
               </div>
-              <button onClick={save} className="mt-2 px-4 py-2 bg-pink-500 text-white text-sm font-bold rounded-lg">저장</button>
+              <button onClick={save} className="mt-2 px-4 py-2 bg-brand text-white text-sm font-bold rounded-lg">저장</button>
             </div>
           )}
         </section>
@@ -270,7 +270,7 @@ export default function AdminMerchantCommissionsPage() {
                     <p className="text-gray-500">사업자 {u.business_number || '-'} · {u.tax_type === 'other_income' ? '기타소득 8.8%' : '사업소득 3.3%'} · {u.bank_name} {u.bank_account} ({u.account_holder})</p>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <button onClick={() => actBiz(u.id, 'business-approve')} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">승인</button>
+                    <button onClick={() => actBiz(u.id, 'business-approve')} className="px-3 py-1 bg-brand text-white text-xs font-bold rounded-lg">승인</button>
                     <button onClick={() => actBiz(u.id, 'business-reject')} className="px-3 py-1 border border-gray-300 text-gray-600 text-xs font-bold rounded-lg">거부</button>
                   </div>
                 </div>

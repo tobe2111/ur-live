@@ -309,7 +309,7 @@ export default function SellerMealVoucherNewPage() {
               </button>
               <button
                 onClick={() => navigate('/seller/influencers')}
-                className="flex-[2] py-3 bg-pink-500 text-white rounded-xl font-bold text-sm"
+                className="flex-[2] py-3 bg-brand text-white rounded-xl font-bold text-sm"
               >
                 {t('seller.mealVoucher.findInfluencers', { defaultValue: '소개 파트너 찾기 →' })}
               </button>
@@ -365,7 +365,7 @@ export default function SellerMealVoucherNewPage() {
               type="button"
               onClick={() => { if (i < step || (validateStep(0) && (i < 2 || validateStep(1)))) setStep(i) }}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${
-                i === step ? 'bg-gray-900 text-white' : i < step ? 'bg-pink-100 text-pink-700' : 'bg-gray-100 text-gray-400'
+                i === step ? 'bg-gray-900 text-white' : i < step ? 'bg-brand-tint text-brand-text' : 'bg-gray-100 text-gray-400'
               }`}
             >
               {i + 1}. {label}
@@ -430,7 +430,7 @@ export default function SellerMealVoucherNewPage() {
               <button
                 type="button"
                 onClick={() => { if (validateStep(step)) setStep(s => Math.min(2, s + 1)) }}
-                className="flex-[2] py-3 bg-pink-500 text-white rounded-xl font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-1"
+                className="flex-[2] py-3 bg-brand text-white rounded-xl font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-1"
               >
                 {t('common.next', { defaultValue: '다음' })} <ChevronRight className="w-4 h-4" />
               </button>
@@ -438,7 +438,7 @@ export default function SellerMealVoucherNewPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-[2] py-3 bg-pink-500 text-white rounded-xl font-bold text-sm disabled:opacity-50 active:scale-[0.98]"
+                className="flex-[2] py-3 bg-brand text-white rounded-xl font-bold text-sm disabled:opacity-50 active:scale-[0.98]"
               >
                 {submitting ? t('seller.registering') : t('seller.mealVoucher.registerSubmit')}
               </button>

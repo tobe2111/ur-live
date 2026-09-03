@@ -69,7 +69,7 @@ export default function InfluencerDiscoverPage() {
 
   // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). category(cat) 변경 시 재조회.
   // 🤝 2026-08-27: 응답에서 `authed` 도 함께 받는다 — 딜이 없을 때 "딜을 맺으세요"(로그인됨)와
-  //   "로그인하세요"(비로그인)를 구분해야 한다. 둘을 같은 문구로 두면 로그인 안 한 사람이
+  // "로그인하세요"(비로그인)를 구분해야 한다. 둘을 같은 문구로 두면 로그인 안 한 사람이
   //   자기에게 딜이 없다고 오해한다.
   const { data: resp, isLoading: loading } = useApiQuery<{ items: Product[]; authed: boolean }>(
     ['influencer-discover', 'products', cat],
@@ -129,7 +129,7 @@ export default function InfluencerDiscoverPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-[#1D1F29] pb-20">
       <SEO title="추천 공구 카탈로그 - 유어딜" description="매장과 딜을 맺은 이용권을 골라 내 링크로 소개하세요. 소개비는 매장이 정한 비율로 정산됩니다." url="/influencer/discover" />
       <header className="sticky top-0 z-30 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3 flex items-center gap-2">
-        <Link2 className="w-5 h-5 text-pink-500" />
+        <Link2 className="w-5 h-5 text-brand-text" />
         <h1 className="text-base font-bold text-gray-900 dark:text-white flex-1">추천 공구 카탈로그</h1>
         <button onClick={() => navigate('/influencer/settlement')} className="text-xs text-brand-text font-bold">내 정산 →</button>
       </header>

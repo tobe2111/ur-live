@@ -155,24 +155,24 @@ export default function CouponClaimPage() {
 
         {status === 'success' && coupon && (
           <div className={`transition-all duration-700 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <div className="w-24 h-24 mx-auto bg-gray-700 rounded-full flex items-center justify-center mb-5 shadow-lg shadow-pink-200 animate-bounce">
+            <div className="w-24 h-24 mx-auto bg-gray-700 rounded-full flex items-center justify-center mb-5 shadow-lg animate-bounce">
               <Gift className="w-12 h-12 text-white" />
             </div>
 
             <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1">{t('couponClaim.celebrate')}</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t('couponClaim.issuedHint')}</p>
 
-            <div className="relative bg-white dark:bg-[#1D1F29] rounded-3xl p-6 border-2 border-dashed border-pink-300 dark:border-pink-800/50 shadow-xl overflow-hidden">
+            <div className="relative bg-white dark:bg-[#1D1F29] rounded-3xl p-6 border-2 border-dashed border-rule shadow-xl overflow-hidden">
               <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 to-white dark:bg-none dark:bg-[#11141C] rounded-full" />
               <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 to-white dark:bg-none dark:bg-[#11141C] rounded-full" />
 
-              <p className="text-xs text-pink-500 font-medium mb-1">{t('couponClaim.couponLabel')}</p>
+              <p className="text-xs text-brand-text font-medium mb-1">{t('couponClaim.couponLabel')}</p>
               <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{coupon.name}</p>
-              <p className="text-4xl font-black text-pink-500">
+              <p className="text-4xl font-black text-brand-text">
                 {coupon.type === 'percent' ? `${coupon.value}%` : `${formatNumber(coupon.value)}원`}
               </p>
               <p className="text-lg font-bold text-gray-700 dark:text-gray-300 -mt-1">{t('couponClaim.discount')}</p>
-              <div className="mt-4 pt-4 border-t border-dashed border-pink-200 dark:border-pink-900/40">
+              <div className="mt-4 pt-4 border-t border-dashed border-rule ">
                 <p className="text-[11px] text-gray-400 dark:text-gray-500">{t('couponClaim.footerNote')}</p>
               </div>
             </div>

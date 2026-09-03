@@ -136,8 +136,8 @@ export default function AdminNotificationSettingsPage() {
                                   ) : (
                                     <button
                                       onClick={() => toggle(s.notification_type, col, !isOn)}
-                                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300 ${
-                                        isOn ? 'bg-pink-500' : 'bg-gray-300'
+                                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand/40 ${
+                                        isOn ? 'bg-brand' : 'bg-gray-300'
                                       }`}
                                       aria-label={`${s.notification_type} ${col.replace('_enabled', '')} ${isOn ? '끄기' : '켜기'}`}
                                       aria-pressed={isOn}
@@ -188,7 +188,7 @@ export default function AdminNotificationSettingsPage() {
                                   ) : (
                                     <button
                                       onClick={() => toggle(s.notification_type, col, !isOn)}
-                                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isOn ? 'bg-pink-500' : 'bg-gray-300'}`}
+                                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isOn ? 'bg-brand' : 'bg-gray-300'}`}
                                       aria-label={`${s.notification_type} ${col.replace('_enabled', '')} 토글`}
                                       aria-pressed={isOn}
                                     >

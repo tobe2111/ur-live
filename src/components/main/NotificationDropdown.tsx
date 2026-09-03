@@ -100,7 +100,7 @@ export default function NotificationDropdown({ onClose }: Props) {
               }}
               className={`w-full flex items-start gap-3 px-4 py-3 text-left border-b border-gray-50 dark:border-[#22304A] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors ${n.is_read ? 'opacity-60' : ''}`}
             >
-              <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-pink-500'}`} />
+              <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-brand'}`} />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">{n.title}</p>
                 {n.message && (

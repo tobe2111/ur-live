@@ -118,7 +118,7 @@ export default function AdminWholesaleProposalsPage() {
             {rows.map((row) => (
               <div key={row.id} className="bg-white rounded-xl border border-gray-200 p-4">
                 <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${row.type === 'report' ? 'bg-tone-bad-bg text-tone-bad' : 'bg-pink-50 text-pink-700'}`}>
+                  <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${row.type === 'report' ? 'bg-tone-bad-bg text-tone-bad' : 'bg-brand-tint text-brand-text'}`}>
                     {row.type === 'report' ? <Flag className="w-3 h-3" /> : <Lightbulb className="w-3 h-3" />}
                     {row.type === 'report' ? '신고' : '제안'}
                   </span>

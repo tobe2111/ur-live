@@ -1,7 +1,7 @@
 /**
  * 🛡️ 2026-05-20: 에이전시 — "내가 입점시킨 가게" 대시보드 (Phase 2).
  *
- * 에이전시 = 가게 입점 영업. 요율은 설정값 연동(per-agency, 기본 SSOT 1%) — 하드코딩 금지(2026-07-02 대표 확정).
+ * 에이전시 = 가게 입점 영업.  (status-tone-ok: 보상 종류 배지는 상태가 아니라 분류다) 요율은 설정값 연동(per-agency, 기본 SSOT 1%) — 하드코딩 금지(2026-07-02 대표 확정).
  *   추가 보상: ₩30k 가입 보너스 (가게 첫 결제) + ₩50k 월 성장 보너스 (월 100만 돌파).
  *
  * 페이지 구성:
@@ -156,11 +156,11 @@ export default function AgencyIntroducedStoresPage() {
                 bg="bg-blue-50 border-blue-100"
               />
               <Kpi
-                icon={<Sparkles className="w-5 h-5 text-pink-600" />}
+                icon={<Sparkles className="w-5 h-5 text-brand-text" />}
                 label="이번달 적립"
                 value={`₩${formatNumber(summary?.month_commission ?? 0)}`}
                 sub={`누적 ₩${formatNumber(summary?.total_commission ?? 0)}`}
-                bg="bg-pink-50 border-pink-100"
+                bg="bg-brand-tint border-rule"
               />
               <Kpi
                 icon={<Wallet className="w-5 h-5 text-emerald-600" />}
@@ -282,7 +282,7 @@ export default function AgencyIntroducedStoresPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] text-gray-500">commission</p>
-                        <p className="text-sm font-extrabold text-pink-600">₩{formatNumber(s.total_commission)}</p>
+                        <p className="text-sm font-extrabold text-brand-text">₩{formatNumber(s.total_commission)}</p>
                         {s.pending_commission > 0 && (
                           <p className="text-[10px] text-amber-600">대기 ₩{formatNumber(s.pending_commission)}</p>
                         )}

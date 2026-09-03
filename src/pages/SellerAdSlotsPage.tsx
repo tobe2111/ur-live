@@ -172,7 +172,7 @@ function SlotCard({ slot, labels, onBid }: { slot: AdSlot; labels: SlotLabels; o
             type="button"
             onClick={() => onBid(slot)}
             disabled={slot.is_expired}
-            className="px-3 py-1.5 rounded-xl bg-pink-500 text-white text-[12px] font-semibold disabled:opacity-40 hover:bg-pink-600 transition-colors"
+            className="px-3 py-1.5 rounded-xl bg-brand text-white text-[12px] font-semibold disabled:opacity-40 hover:bg-brand-dark transition-colors"
           >
             {slot.is_expired ? labels.closed : bidding ? labels.changeBid : labels.placeBid}
           </button>
@@ -254,7 +254,7 @@ function BidModal({
           </div>
           <div className="bg-gray-50 rounded-xl p-3">
             <p className="text-[10px] text-gray-500">{labels.minBidLabel}</p>
-            <p className="text-[13px] font-bold text-pink-600">{slot.min_bid.toLocaleString('ko-KR')}{labels.priceUnit}</p>
+            <p className="text-[13px] font-bold text-brand-text">{slot.min_bid.toLocaleString('ko-KR')}{labels.priceUnit}</p>
           </div>
         </div>
 
@@ -265,7 +265,7 @@ function BidModal({
           onChange={e => setAmount(e.target.value)}
           min={slot.min_bid}
           step={1000}
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500/30 focus:border-pink-400"
+          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
           placeholder={`${labels.minBidLabel} ${slot.min_bid.toLocaleString('ko-KR')}${labels.priceUnit}`}
         />
         {error && <p className="text-[11px] text-red-500 mt-1.5">{error}</p>}
@@ -289,7 +289,7 @@ function BidModal({
             type="button"
             onClick={submit}
             disabled={loading}
-            className="flex-1 py-3 rounded-xl bg-pink-500 text-white text-[13px] font-semibold disabled:opacity-50 hover:bg-pink-600 transition-colors"
+            className="flex-1 py-3 rounded-xl bg-brand text-white text-[13px] font-semibold disabled:opacity-50 hover:bg-brand-dark transition-colors"
           >
             {loading ? labels.submitting : labels.submitBtn}
           </button>
@@ -366,15 +366,15 @@ export default function SellerAdSlotsPage() {
 
       <div className="max-w-xl mx-auto px-4 py-5">
         {/* 안내 */}
-        <div className="bg-gray-50 border border-pink-100 rounded-2xl p-4 mb-5">
+        <div className="bg-gray-50 border border-rule rounded-2xl p-4 mb-5">
           <div className="flex items-center gap-2 mb-2">
-            <Gavel className="w-4 h-4 text-pink-600" />
+            <Gavel className="w-4 h-4 text-brand-text" />
             <p className="text-[13px] font-bold text-gray-900">{t('seller.adSlots.whatIsAdSlot', { defaultValue: '광고 슬롯이란?' })}</p>
           </div>
           <ul className="space-y-1">
             {bullets.map(bullet => (
               <li key={bullet} className="flex items-start gap-1.5 text-[11px] text-gray-600">
-                <span className="mt-0.5 text-pink-500">•</span>
+                <span className="mt-0.5 text-brand-text">•</span>
                 {bullet}
               </li>
             ))}

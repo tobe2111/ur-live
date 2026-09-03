@@ -701,7 +701,7 @@ export default function AdminKtAlphaPage() {
               <KpiBox label="활성 상품" value={`${catalogStats.active}/${catalogStats.total}`} color="text-blue-600 bg-blue-50" icon={<Package className="w-4 h-4" />} />
               <KpiBox label="총 발송 시도" value={String(Number(sendStats.total ?? 0))} color="text-violet-600 bg-violet-50" icon={<Gift className="w-4 h-4" />} />
               <KpiBox label="발송 성공" value={String(Number(sendStats.sent ?? 0))} sub={Number(sendStats.failed ?? 0) > 0 ? `실패 ${sendStats.failed}` : undefined} color="text-emerald-600 bg-emerald-50" icon={<TrendingUp className="w-4 h-4" />} warn={Number(sendStats.failed ?? 0) > 0} />
-              <KpiBox label="누적 거래액" value={`₩${Number(sendStats.total_amount ?? 0).toLocaleString()}`} color="text-pink-600 bg-pink-50" icon={<DollarSign className="w-4 h-4" />} />
+              <KpiBox label="누적 거래액" value={`₩${Number(sendStats.total_amount ?? 0).toLocaleString()}`} color="text-brand-text bg-brand-tint" icon={<DollarSign className="w-4 h-4" />} />
             </div>
 
             {/* 설정 — 마진 + API config */}
@@ -724,7 +724,7 @@ export default function AdminKtAlphaPage() {
                       onChange={(e) => setEdit({ ...edit, markup_pct: e.target.value })}
                       className="flex-1"
                     />
-                    <span className="text-lg font-extrabold text-pink-600 w-12 text-right">{edit.markup_pct}%</span>
+                    <span className="text-lg font-extrabold text-brand-text w-12 text-right">{edit.markup_pct}%</span>
                   </div>
                   <p className="text-[10px] text-gray-500 mt-1">
                     셀러 정산: 1만원 공급가 → 셀러 차감 ₩{Math.floor(9400 * (1 + Number(edit.markup_pct) / 100)).toLocaleString()}
@@ -880,7 +880,7 @@ export default function AdminKtAlphaPage() {
                 </div>
                 <div className="bg-white rounded-lg p-2.5">
                   <p className="text-[10px] text-gray-500">누적 판매</p>
-                  <p className="text-lg font-extrabold text-pink-600">{Number(consumerStats.total_sold ?? 0).toLocaleString()}</p>
+                  <p className="text-lg font-extrabold text-brand-text">{Number(consumerStats.total_sold ?? 0).toLocaleString()}</p>
                 </div>
                 <div className="bg-white rounded-lg p-2.5">
                   <p className="text-[10px] text-gray-500">평균 가격</p>
@@ -914,7 +914,7 @@ export default function AdminKtAlphaPage() {
                     {dryRunResult.samples.map((s) => (
                       <div key={s.gift_code} className="flex justify-between text-[11px]">
                         <span className="text-gray-600 truncate">[{s.action}] {s.name}</span>
-                        <span className="font-mono text-pink-600">₩{s.price.toLocaleString()}</span>
+                        <span className="font-mono text-brand-text">₩{s.price.toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
@@ -1029,7 +1029,7 @@ export default function AdminKtAlphaPage() {
                           <td className="px-3 py-2 text-right text-emerald-700 font-semibold">
                             {Number(c.visible ?? 0).toLocaleString()}
                           </td>
-                          <td className="px-3 py-2 text-right text-pink-600">{Number(c.sold ?? 0).toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right text-brand-text">{Number(c.sold ?? 0).toLocaleString()}</td>
                           <td className="px-3 py-2 text-right text-gray-500 text-[10px]">
                             ₩{Number(c.min_price ?? 0).toLocaleString()} ~ ₩{Number(c.max_price ?? 0).toLocaleString()}
                           </td>

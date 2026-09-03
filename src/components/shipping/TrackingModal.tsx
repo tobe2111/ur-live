@@ -167,7 +167,7 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
                     const isLatest = i === 0
                     return (
                       <li key={i} className="ml-4">
-                        <div className={`absolute -left-[7px] w-3 h-3 rounded-full ${isLatest ? 'bg-pink-500 ring-2 ring-pink-500/30' : 'bg-gray-300 dark:bg-[#2C2F35]'}`} />
+                        <div className={`absolute -left-[7px] w-3 h-3 rounded-full ${isLatest ? 'bg-brand ring-2 ring-brand/30' : 'bg-gray-300 dark:bg-[#2C2F35]'}`} />
                         <p className={`text-sm ${isLatest ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
                           {getEventStatus(ev)}
                         </p>

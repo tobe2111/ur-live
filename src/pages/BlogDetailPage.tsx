@@ -224,7 +224,7 @@ export default function BlogDetailPage() {
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">이용권·교환권·동네딜을 한곳에, 나만의 유어샵까지</p>
             <div className="flex gap-3 justify-center">
               <Link to="/" className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-bold hover:opacity-90">둘러보기</Link>
-              <Link to="/u/me" className="px-5 py-2.5 bg-pink-500 text-white rounded-xl text-sm font-bold hover:bg-pink-600">내 유어샵 보기</Link>
+              <Link to="/u/me" className="px-5 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-dark">내 유어샵 보기</Link>
             </div>
             <div className="mt-3">
               <KakaoShareButton title={stripBold(post.title)} description={stripBold(post.summary)} link={`/blog/${post.slug}`} buttonText={t('blog.readBtn', { defaultValue: '글 읽기' })} />

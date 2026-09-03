@@ -235,7 +235,7 @@ export default function AdminReturnsPage() {
                                     <span className="text-sm font-mono">{r.return_shipping_company} · {r.return_tracking_number}</span>
                                     <button
                                       onClick={() => setTrackingTarget({ carrier: r.return_shipping_company!, number: r.return_tracking_number! })}
-                                      className="text-xs text-pink-500 font-bold"
+                                      className="text-xs text-brand-text font-bold"
                                     >
                                       📦 추적 →
                                     </button>

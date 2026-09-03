@@ -228,7 +228,7 @@ export default function AdminVoucherOrdersPage() {
           </div>
           <div className="flex gap-2 mb-3">
             {(['all', 'processing', 'sent', 'failed'] as const).map(s => (
-              <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 text-sm rounded ${statusFilter === s ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+              <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 text-sm rounded ${statusFilter === s ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}>
                 {s === 'all' ? '전체' : STATUS_META[s].label}
               </button>
             ))}

@@ -6019,9 +6019,9 @@
       "installBtn": "설치하기",
       "later": "나중에",
       "manualDesc": "홈 화면에 추가하고 5,000원 받기",
-      "iosStep1": "하단 <strong class=\"text-pink-600\">공유 버튼</strong> 누르기",
+      "iosStep1": "하단 <strong class=\"text-brand-text\">공유 버튼</strong> 누르기",
       "iosStep2": "\"홈 화면에 추가\" 선택",
-      "androidStep1": "우상단 <strong class=\"text-pink-600\">⋮ 메뉴</strong> 누르기",
+      "androidStep1": "우상단 <strong class=\"text-brand-text\">⋮ 메뉴</strong> 누르기",
       "androidStep2": "\"앱 설치\" 또는 \"홈 화면에 추가\""
     }
   },

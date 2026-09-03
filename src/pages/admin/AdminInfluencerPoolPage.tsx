@@ -530,7 +530,7 @@ export default function AdminInfluencerPoolPage() {
                         : <span className="text-gray-300">—</span>}
                     </td>
                     <td className="px-3 py-2 text-xs text-gray-600">
-                      {l.instagram && <a href={`https://instagram.com/${l.instagram}`} target="_blank" rel="noreferrer" className="block text-pink-600 hover:underline">IG @{l.instagram}</a>}
+                      {l.instagram && <a href={`https://instagram.com/${l.instagram}`} target="_blank" rel="noreferrer" className="block text-brand-text hover:underline">IG @{l.instagram}</a>}
                       {l.tiktok && <a href={`https://tiktok.com/@${l.tiktok}`} target="_blank" rel="noreferrer" className="block text-gray-700 hover:underline">TT @{l.tiktok}</a>}
                       {!l.instagram && !l.tiktok && <span className="text-gray-300">—</span>}
                     </td>

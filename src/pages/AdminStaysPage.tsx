@@ -146,7 +146,7 @@ export default function AdminStaysPage() {
             <KpiCard label="활성 숙소" value={`${formatNumber(kpi.active_properties)}/${formatNumber(kpi.total_properties)}`} icon={<Building2 className="w-5 h-5" />} color="text-blue-600 bg-blue-50" />
             <KpiCard label="총 객실" value={formatNumber(kpi.total_rooms)} icon={<Users className="w-5 h-5" />} color="text-emerald-600 bg-emerald-50" />
             <KpiCard label="예약" value={`${formatNumber(kpi.confirmed_bookings)}/${formatNumber(kpi.total_bookings)}`} icon={<TrendingUp className="w-5 h-5" />} color="text-violet-600 bg-violet-50" />
-            <KpiCard label="누적 매출" value={`₩${formatNumber(kpi.total_revenue)}`} icon={<DollarSign className="w-5 h-5" />} color="text-pink-600 bg-pink-50" />
+            <KpiCard label="누적 매출" value={`₩${formatNumber(kpi.total_revenue)}`} icon={<DollarSign className="w-5 h-5" />} color="text-brand-text bg-brand-tint" />
             <KpiCard
               label="평균 평점"
               value={kpi.avg_rating ? kpi.avg_rating.toFixed(1) : '-'}

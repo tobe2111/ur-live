@@ -113,11 +113,11 @@ export default function AgencyPartnerLandingPage() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">에이전시 분배 30%</span>
-                  <span className="font-bold text-pink-600">{(agencyShare / 10000).toFixed(0)}만원</span>
+                  <span className="font-bold text-brand-text">{(agencyShare / 10000).toFixed(0)}만원</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">월 정액 구독료</span>
-                  <span className="font-bold text-pink-600">{(monthlySubscription / 10000).toFixed(0)}만원</span>
+                  <span className="font-bold text-brand-text">{(monthlySubscription / 10000).toFixed(0)}만원</span>
                 </div>
                 <div className="bg-gradient-to-r from-gray-900 to-gray-700 rounded-2xl p-5 text-white text-center mt-4">
                   <p className="text-sm opacity-90 mb-1">에이전시 월 수익</p>

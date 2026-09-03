@@ -151,7 +151,7 @@ export default function SellerProspectsPage() {
             <h1 className="text-lg font-bold text-gray-900">🤝 매장 영입 관리</h1>
             <button
               onClick={() => setShowAdd(true)}
-              className="px-3 py-1.5 bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold rounded-lg"
+              className="px-3 py-1.5 bg-brand hover:bg-brand-dark text-white text-sm font-bold rounded-lg"
             >
               + 매장 사전 등록
             </button>
@@ -301,7 +301,7 @@ export default function SellerProspectsPage() {
                   type="file"
                   accept="image/*"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(f) }}
-                  className="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-pink-100 file:text-pink-700 hover:file:bg-pink-200"
+                  className="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-brand-tint file:text-brand-text hover:file:bg-brand/20"
                 />
                 {form.proof_image_url && (
                   <img src={form.proof_image_url} alt="증빙" className="mt-2 w-full h-32 object-cover rounded-lg" />
@@ -318,7 +318,7 @@ export default function SellerProspectsPage() {
                 </button>
                 <button
                   onClick={submit}
-                  className="flex-1 py-2.5 bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold rounded-lg"
+                  className="flex-1 py-2.5 bg-brand hover:bg-brand-dark text-white text-sm font-bold rounded-lg"
                 >
                   등록
                 </button>

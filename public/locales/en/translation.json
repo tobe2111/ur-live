@@ -5823,9 +5823,9 @@
       "installBtn": "Install",
       "later": "Later",
       "manualDesc": "Add to home screen and get ₩5,000",
-      "iosStep1": "Tap the <strong class=\"text-pink-600\">Share button</strong> at the bottom",
+      "iosStep1": "Tap the <strong class=\"text-brand-text\">Share button</strong> at the bottom",
       "iosStep2": "Select \"Add to Home Screen\"",
-      "androidStep1": "Tap the <strong class=\"text-pink-600\">⋮ menu</strong> top right",
+      "androidStep1": "Tap the <strong class=\"text-brand-text\">⋮ menu</strong> top right",
       "androidStep2": "\"Install app\" or \"Add to Home Screen\""
     }
   },

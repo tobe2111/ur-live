@@ -119,7 +119,7 @@ export default function Seller2FASetupPage() {
         {/* setup flow (비활성화 상태) */}
         {!enabled && !setupData && (
           <div className="bg-white rounded-2xl p-6 border border-gray-200 text-center">
-            <KeyRound className="w-12 h-12 text-pink-500 mx-auto mb-3" />
+            <KeyRound className="w-12 h-12 text-brand-text mx-auto mb-3" />
             <h3 className="text-base font-bold text-gray-900 mb-2">2FA 설정 시작</h3>
             <p className="text-sm text-gray-600 mb-4">
               Google Authenticator, 1Password, Authy 등<br />
@@ -128,7 +128,7 @@ export default function Seller2FASetupPage() {
             <button
               onClick={startSetup}
               disabled={submitting}
-              className="px-6 py-3 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold inline-flex items-center gap-2"
+              className="px-6 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-sm font-bold inline-flex items-center gap-2"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
               설정 시작
@@ -171,13 +171,13 @@ export default function Seller2FASetupPage() {
                 value={code}
                 onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="000000"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-2xl font-mono text-center text-gray-900 focus:border-pink-500 focus:outline-none tracking-widest"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-2xl font-mono text-center text-gray-900 focus:border-brand focus:outline-none tracking-widest"
                 autoComplete="one-time-code"
               />
               <button
                 onClick={verifyCode}
                 disabled={submitting || code.length !== 6}
-                className="w-full mt-3 px-6 py-3 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2"
+                className="w-full mt-3 px-6 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                 활성화

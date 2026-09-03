@@ -256,7 +256,7 @@ export default function StaysSearchPage() {
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">판매 방식</label>
                 <div className="grid grid-cols-3 gap-1.5">
-                  {/* 🎨 2026-09-03: 이모지 → 선 아이콘 · 선택은 **브랜드 블루**(구 로즈 `bg-pink-500` 잔재).
+                  {/* 🎨 2026-09-03: 이모지 → 선 아이콘 · 선택은 **브랜드 블루**(구 로즈 `bg-brand` 잔재).
                       아이콘 컨셉은 유어딜 아이콘 세트(선/면) — 유틸리티만 lucide. */}
                   {([
                     { v: '', l: '전체', Icon: null },

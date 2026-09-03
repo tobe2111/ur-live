@@ -223,7 +223,7 @@ function TopGroupsToShare() {
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{g.name}</p>
               <p className="text-[10px] text-gray-500 truncate">{g.restaurant_name || ''} · {g.progress_pct}% · {g.group_buy_current}/{g.group_buy_target}명</p>
-              <p className="text-[10px] text-pink-600 font-bold mt-0.5">친구 가입 시 +{(g.my_potential_bonus ?? 0).toLocaleString()}딜 보너스</p>
+              <p className="text-[10px] text-brand-text font-bold mt-0.5">친구 가입 시 +{(g.my_potential_bonus ?? 0).toLocaleString()}딜 보너스</p>
             </div>
             <button
               onClick={async () => {
@@ -232,7 +232,7 @@ function TopGroupsToShare() {
                   toast.success('링크 복사됨')
                 } catch { toast.error('복사 실패') }
               }}
-              className="px-3 py-1.5 bg-pink-50 dark:bg-pink-900/30 text-pink-600 rounded-lg text-[11px] font-bold shrink-0 active:scale-95"
+              className="px-3 py-1.5 bg-brand-tint text-brand-text rounded-lg text-[11px] font-bold shrink-0 active:scale-95"
             >
               <Copy className="w-3 h-3 inline mr-0.5" /> 복사
             </button>

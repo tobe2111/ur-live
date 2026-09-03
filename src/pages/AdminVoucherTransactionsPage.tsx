@@ -302,7 +302,7 @@ export default function AdminVoucherTransactionsPage() {
         <div className="bg-white rounded-lg shadow p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-xl font-bold text-gray-900">교환권 거래</h1>
-            <Link to="/admin/voucher-orders" className="text-xs text-pink-600 hover:underline">KT Alpha 발송 추적 →</Link>
+            <Link to="/admin/voucher-orders" className="text-xs text-brand-text hover:underline">KT Alpha 발송 추적 →</Link>
           </div>
           <p className="text-xs text-gray-500 mb-3">사용자 voucher 구매 내역. KT Alpha 자동발송 status 는 별도 추적 페이지에서 확인.</p>
 

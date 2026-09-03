@@ -76,7 +76,7 @@ export default function AdminProspectsPage() {
                 key={s}
                 onClick={() => setStatus(s)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                  status === s ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'
+                  status === s ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'
                 }`}
               >
                 {STATUS_META[s].label}
