@@ -156,10 +156,22 @@ describe('read-budget — 배선', () => {
 })
 
 describe('✍️ 쓰기 예산 — 요금을 터뜨린 축', () => {
-  it('기본값이 유료 포함분 안이다 — 150만/일 × 30 = 4,500만 < 5,000만', () => {
-    expect(DEFAULT_DAILY_WRITE_BUDGET * 30).toBeLessThan(50_000_000)
-    // 그리고 정상 수집(실측 월 3,200만)은 이 예산 안에서 돌아야 한다 — 너무 조이면 수집이 멈춘다.
-    expect(DEFAULT_DAILY_WRITE_BUDGET * 30).toBeGreaterThan(32_000_000)
+  // 📐 포함분은 **계정 단위**다 — 유어애즈 예산만 재면 본진 몫이 통째로 빠진다(2026-09-03 정정).
+  const PAID_INCLUDED_WRITES_PER_MONTH = 50_000_000
+  /** 유어딜 본진 실측 — 2026-09-03 00:00~01:00 UTC 에 4,062 행/시간 → 하루 ~10만. */
+  const MAIN_DB_WRITES_PER_MONTH = 100_000 * 30
+
+  it('기본값 + 본진 몫이 유료 포함분 안이고, 여유가 10% 이상이다', () => {
+    const total = DEFAULT_DAILY_WRITE_BUDGET * 30 + MAIN_DB_WRITES_PER_MONTH
+    expect(total).toBeLessThan(PAID_INCLUDED_WRITES_PER_MONTH)
+    // ⚠️ 단순히 "안쪽"으로는 부족하다 — 150만 시절이 96%(여유 4%)였고 본진 트래픽은 사용자가 늘면
+    //    커진다. 그때 넘는 것은 유어애즈가 아니라 **계정**이라 유어딜이 같이 죽는다.
+    expect(total).toBeLessThan(PAID_INCLUDED_WRITES_PER_MONTH * 0.9)
+  })
+
+  it('그렇다고 수집을 굶기지 않는다 — 하루 100만 행 이상', () => {
+    // 아래로 너무 조이면 레인이 하루의 절반도 못 돌아 발굴이 멈춘다(대표 우선순위: 발굴 최대화).
+    expect(DEFAULT_DAILY_WRITE_BUDGET).toBeGreaterThanOrEqual(1_000_000)
   })
 
   it('env 규약이 읽기와 같다(빈값/이상값=기본, 0 이하=끔)', () => {
@@ -178,11 +190,13 @@ describe('✍️ 쓰기 예산 — 요금을 터뜨린 축', () => {
   })
 
   it('🔒 날이 바뀌면 쓰기도 0 에서 다시 — 읽기와 같은 경계', () => {
-    const day1 = applyRead(null, 10, D1, 1_400_000)
-    expect(writeBudgetOver(day1, DEFAULT_DAILY_WRITE_BUDGET, D1)).toBe(false)
-    const more = applyRead(day1, 0, D1, 200_000)
-    expect(more.written).toBe(1_600_000)
-    expect(writeBudgetOver(more, DEFAULT_DAILY_WRITE_BUDGET, D1)).toBe(true)
+    // ⚠️ 리터럴로 고정하지 않는다 — 기본 예산은 요금/트래픽에 따라 조정되는 값이고(150만→120만),
+    //    이 테스트가 지키는 것은 **하루 경계**이지 그 숫자가 아니다.
+    const day1 = applyRead(null, 10, D1, DEFAULT_DAILY_WRITE_BUDGET - 1)
+    expect(writeBudgetOver(day1, DEFAULT_DAILY_WRITE_BUDGET, D1), '예산 직전은 아직 아니다').toBe(false)
+    const more = applyRead(day1, 0, D1, 1)
+    expect(more.written).toBe(DEFAULT_DAILY_WRITE_BUDGET)
+    expect(writeBudgetOver(more, DEFAULT_DAILY_WRITE_BUDGET, D1), '예산에 닿으면 넘은 것').toBe(true)
     expect(writeBudgetOver(more, DEFAULT_DAILY_WRITE_BUDGET, D2), '자정이 지나면 풀린다').toBe(false)
   })
 
