@@ -104,7 +104,7 @@ sql bind/column/table 0 · theme OK · 주입 잔재 0.
 - 기존에 `self_free` 를 **명시로 고른** 셀러가 있으면 이번 배포로 `store_code` 가 된다(읽기 시점 매핑).
   라이브 `seller_redemption_settings` 행 수는 미확인 — 배포 후 확인 권장.
 
-**Notion**: 머지 후 기록.
+**Notion**: 기록 완료 — 개발 업데이트 로그 행 `3d00adee-652b-81ab-9f09-e62aed56fad4`.
 
 ---
 
