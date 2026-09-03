@@ -38,6 +38,7 @@ import { PickupNotice, DeliveryNotice, hasPickupInfo, pickupSummaryLine } from '
 import { readMallOrigin } from '@/shared/mall/origin'
 import { parseUTCDate } from '@/utils/date'
 import { storeAffiliateRef } from '@/utils/affiliate-track'
+import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 
 // 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection/
 //   GroupBuyCountdown 을 ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage,
@@ -52,6 +53,8 @@ const GiftSendModal = lazy(() => import('@/components/gift/GiftSendModal'))
 export default function ProductDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
+  // 👁️ 홈 인기순의 클릭 신호 — 세션당 1회(훅이 가드).
+  useProductViewBeacon(id)
   const navigate = useNavigate()
   const invalidateVouchers = useInvalidateMyVouchers()
   const [searchParams] = useSearchParams()

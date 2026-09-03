@@ -135,7 +135,7 @@ export type SectionSource = typeof SECTION_SOURCES[number]
 
 export const SECTION_SOURCE_LABELS: Record<SectionSource, string> = {
   manual: '직접 고름 (상품을 하나씩 담기)',
-  popular: '인기순 (많이 팔린 순)',
+  popular: '인기순 (결제·리뷰·클릭 종합)',
   deadline: '마감 임박순',
   newest: '최신 등록순',
   category: '카테고리별 (아래에서 선택)',
