@@ -7100,6 +7100,26 @@ canvas {
       '포함분 비율이 읽기 250억 : 쓰기 5,000만 = 500배라, 쓰기가 먼저 요금이 된다.',
   },
   {
+    name: '🏆 인기 점수가 정규화를 잃는다(결제 하나가 혼자 결정)',
+    file: 'src/features/sections/api/section-rules.ts',
+    find: '* 1.0 / MAX(mx.ms, 1))',
+    replace: ')',
+    test: 'src/tests/unit/popular-score-2026-09-03.test.ts',
+    why:
+      '라이브 실측 결제 최대 259 vs 리뷰 최대 34 — 생값을 더하면 결제가 사실상 혼자 순서를 정해 ' +
+      '종전(sold_count DESC)과 같아진다. 리뷰·클릭을 넣은 의미가 사라진다.',
+  },
+  {
+    name: '👁️ 조회수 비콘이 세션 가드를 잃는다(새로고침이 순위를 흔든다)',
+    file: 'src/hooks/useProductViewBeacon.ts',
+    find: 'if (sessionStorage.getItem(key)) return',
+    replace: 'if (false) return',
+    test: 'src/tests/unit/popular-score-2026-09-03.test.ts',
+    why:
+      '클릭은 홈 인기순의 신호다. 세션당 1회 가드가 없으면 한 사람의 새로고침이 그 상품을 ' +
+      '홈 상단으로 밀어 올린다 — 그리고 조회마다 D1 쓰기가 늘어 쓰기 예산도 먹는다.',
+  },
+  {
     name: '🧱 유어샵 핀 목록이 도매 원본 제외를 잃는다(카드는 뜨는데 클릭하면 404)',
     file: 'src/worker/routes/curator.routes.ts',
     find: "AND ${consumerVisibleProductSql('p')}\n         ORDER BY pp.position ASC",
