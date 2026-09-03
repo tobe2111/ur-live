@@ -37,7 +37,10 @@ export const queryKeys = {
 
   // 공구 상품
   groupBuy: () => ['group-buy'] as const,
-  groupBuyList: (status: string, category: string) => ['group-buy', 'list', status, category] as const,
+  // 🚦 2026-09-03: 정렬이 **서버에서** 적용되므로 캐시도 정렬별로 갈라야 한다(같은 키에 다른 순서를 덮어쓰면
+  //   정렬을 바꿨다 되돌릴 때 옛 순서가 남는다). 미전달이면 종전 키와 byte-동일 → 기존 호출부 무영향.
+  groupBuyList: (status: string, category: string, sort?: string) =>
+    (sort ? (['group-buy', 'list', status, category, sort] as const) : (['group-buy', 'list', status, category] as const)),
   groupBuyProduct: (id: number | string) => ['group-buy', 'detail', String(id)] as const,
 
   // 셀러

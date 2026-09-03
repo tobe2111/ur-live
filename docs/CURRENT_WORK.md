@@ -5494,13 +5494,15 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 239건 · 최신순 · 이 목록은 자동 생성된다._
+_총 243건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-03**
+- [2026-09-03 — 지갑 제목 삭제 + 라이브 신고 2건 분류(429 · /map)](handoff/2026-09-03-wallet-title-and-live-triage.md)
 - [2026-09-03 — 이용권 사용 방식 · 리뷰 버튼 · 갤러리 중복 (대표 신고 3건)](handoff/2026-09-03-voucher-redeem-policy-and-photos.md)
-- [2026-09-03 · 리뷰 버튼 hard-disable 제거 + 자격 사전 안내](handoff/2026-09-03-review-gate-clicktime.md)
-- [2026-09-03 · 검색 전면 개선 (대표 QA)](handoff/2026-09-03-search-engine-rebuild.md)
 - [이용권 관리로 가는 길이 없었다 (2026-09-03)](handoff/2026-09-03-voucher-nav-reachability.md)
+- [2026-09-03 — 이용권 관리 통합 · 사진 UX · 인기 순위 · 뒤로가기 (대표 요청 묶음)](handoff/2026-09-03-voucher-nav-and-back-nav.md)
+- [2026-09-03 · 검색 전면 개선 (대표 QA)](handoff/2026-09-03-search-engine-rebuild.md)
+- [2026-09-03 · 리뷰 버튼 hard-disable 제거 + 자격 사전 안내](handoff/2026-09-03-review-gate-clicktime.md)
 - [2026-09-03 — 다크 대비 사각지대 제거 · 히어로 사진 정렬 · 위시리스트 PC](handoff/2026-09-03-dark-contrast-and-screens.md)
 **2026-09-02**
 - [🎟️ 이용권 등록 플로우 전수조사 (2026-09-02)](handoff/2026-09-02-voucher-flow-audit.md)
