@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Info, Link as LinkIcon } from 'lucide-react'
 import api from '@/lib/api'
@@ -20,6 +20,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 //   동기 소비 — 같은 DETAIL 슬롯을 쓰는 GroupBuyDetailPage(pickSeedDetail)와 동일 패턴으로 정렬.
 //   기존엔 SSR/프리페치 데이터가 있어도 첫 프레임에 풀스크린 로더가 떴음(형제 페이지와 비대칭).
 import { pickSeedDetail } from './group-buy/seed-detail'
+import { getProductFlow, FLOW_CONFIG } from '@/shared/product-flow'
 
 /**
  * 🛡️ 2026-05-23: 교환권 전용 detail 페이지.
@@ -298,6 +299,18 @@ export default function VoucherDetailPage() {
         </div>
       </div>
     )
+  }
+
+  // 🚦 2026-09-03 (QA 1라운드): 이 화면은 **딜 결제 전용**(파일 상단 docblock)인데 `/vouchers/:id` 는
+  //   상품 종류를 안 가리고 아무 id 나 받아 왔다. 그래서 **카드로 사는 숙박 이용권**(2887)이 여기선
+  //   "209,000 딜 · 딜로 교환하기 · 환불 불가" 로 떴다 — 결제 수단과 가격 단위가 통째로 틀린 화면이다.
+  //   반대 방향은 이미 막혀 있다(`ProductDetailPage` 는 deal_only=1 이면 교환권 뷰로 전환).
+  //   판정은 SSOT `getProductFlow` 에 맡긴다 — 여기서 조건을 베끼면 결제와 갈린다.
+  //   ⚠️ 목록·사이트맵엔 이 URL 이 없어 도달은 옛 공유 링크·주소 직접 입력 한정이지만,
+  //     그 사람에게 보이는 값이 틀린 것 자체가 결함이다.
+  const flow = getProductFlow(product)
+  if (flow !== 'voucher_deal') {
+    return <Navigate to={FLOW_CONFIG[flow].detailPath(product.id)} replace />
   }
 
   const total = product.price * quantity
