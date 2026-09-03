@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
@@ -114,8 +115,8 @@ export default function PhotoGalleryEditor({ photos, onChange, max = PHOTO_MAX, 
             type="button"
             onClick={() => remove(0)}
             aria-label={t('common.removeImage', { defaultValue: '이미지 제거' })}
-            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white text-xs hover:bg-black/80"
-          >✕</button>
+            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+          ><X className="w-3.5 h-3.5" /></button>
         </div>
       ) : (
         <div className="w-full max-w-[240px] h-48 rounded-lg border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-xs text-gray-400 text-center px-4">
@@ -135,8 +136,8 @@ export default function PhotoGalleryEditor({ photos, onChange, max = PHOTO_MAX, 
                 <button
                   type="button" onClick={() => remove(i)}
                   aria-label={t('common.removeImage', { defaultValue: '이미지 제거' })}
-                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-[10px] leading-none"
-                >✕</button>
+                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center"
+                ><X className="w-3 h-3" /></button>
                 <div className="absolute bottom-1 left-1 right-1 flex justify-between">
                   <button type="button" onClick={() => move(i, -1)} aria-label={t('seller.photo.moveLeft', { defaultValue: '앞으로' })}
                     className="w-5 h-5 rounded bg-black/55 text-white text-[10px] leading-none">←</button>
