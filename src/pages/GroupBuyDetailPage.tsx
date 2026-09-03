@@ -454,9 +454,7 @@ export default function GroupBuyDetailPage() {
         successUrl: successPath,
         failUrl: failPath,
       })
-      // 🧾 2026-09-03 (대표 확정 "안 2-D"): 결제 화면의 '결제 상품' 칸을 채울 **표시용** 값.
-      //   이 화면은 사진·매장·정가를 이미 갖고 있다 — 새 fetch 0, 서버 변경 0.
-      //   ⚠️ 금액 판단엔 안 쓴다(서버가 /confirm 에서 재검증). 사유: `src/shared/pay-summary.ts`
+      // 🧾 결제 화면 '결제 상품' 칸의 표시용 값(이 화면이 이미 가진 것 — 새 fetch 0). ⚠️ 금액 판단엔 안 쓴다 · /confirm 이 재검증. 사유: `src/shared/pay-summary.ts`
       appendPaySummary(params, {
         image: detail?.image_url || undefined,
         merchant: detail?.restaurant_name || undefined,
