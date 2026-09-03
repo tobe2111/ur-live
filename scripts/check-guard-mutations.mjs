@@ -6102,8 +6102,9 @@ canvas {
     name: '티스토리가 블로거 뒤로 밀림(잔여를 다 뺏겨 영원히 0)',
     file: 'src/features/marketing/api/influencer-enrich-lane.ts',
     // 🗺️ 2026-08-04 앵커 이사: 몫이 상수 → `tistoryRoom(env)` 가 되고 `if (tisRoom > 0)` 으로 감싸졌다.
-    //   지키는 불변식(티스토리가 블로거보다 **먼저**)은 그대로라 항목을 지우지 않고 따라간다.
-    find: '      try { tistory = await enrichTistoryActivity(DB, budget, tisRoom, slice) } catch (err) { note(err) }\n',
+    //   🗺️ 2026-09-03 또 이사: 재측정 주기 필터가 env 를 읽어야 해서 인자가 하나 늘었다.
+    //   지키는 불변식(티스토리가 블로거보다 **먼저**)은 두 번 다 그대로라 항목을 지우지 않고 따라간다.
+    find: '      try { tistory = await enrichTistoryActivity(DB, budget, tisRoom, slice, env) } catch (err) { note(err) }\n',
     replace: '',
     test: 'src/tests/unit/ads-tistory-enrich.test.ts',
     why:
@@ -7037,6 +7038,36 @@ canvas {
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
   },
   {
+    name: '🔁 재측정 필터가 배선에서 빠진다(쓰기 2배 초과로 복귀 · 에러 0)',
+    file: 'src/features/marketing/api/influencer-performance.ts',
+    find: '  rows = dueForRemeasure(rows, env)',
+    replace: '  rows = rows',
+    test: 'src/tests/unit/ads-remeasure-window.test.ts',
+    why:
+      '모듈이 있어도 레인이 안 부르면 아무 일도 안 일어난다. 그러면 전체 18만 건을 1.2일마다 다시 재던 ' +
+      '상태로 돌아가고, D1 쓴 행이 월 9,900만(포함분 5,000만의 198%)이 되어 월 $49 가 붙는다.',
+  },
+  {
+    name: '🔁 재측정 SELECT 가 perf_checked_at 을 안 뽑는다(필터가 전부 통과 = 무효)',
+    file: 'src/features/marketing/api/influencer-performance.ts',
+    find: 'median_long_views, perf_checked_at FROM ad_influencer_leads',
+    replace: 'median_long_views FROM ad_influencer_leads',
+    test: 'src/tests/unit/ads-remeasure-window.test.ts',
+    why:
+      '스탬프를 안 뽑으면 필터가 받는 값이 전부 undefined 이고, fail-open 규약상 **전부 통과**한다. ' +
+      '필터는 그대로 있는데 효과만 0 인 상태 — 이 레포가 반복해 만난 "지키는 척하는 가드" 그 모양이다.',
+  },
+  {
+    name: '🔁 빈 env 를 0(끔)으로 읽는다(기능이 꺼진 채 배포)',
+    file: 'src/features/marketing/api/influencer-remeasure-window.ts',
+    find: "  if (raw0 === '') return REMEASURE_AFTER_DAYS",
+    replace: "  if (false) return REMEASURE_AFTER_DAYS",
+    test: 'src/tests/unit/ads-remeasure-window.test.ts',
+    why:
+      "`Number('')` 은 NaN 이 아니라 0 이고 0 은 이 정책에서 '끔'이다. env 를 안 걸면(정상 상태) " +
+      '기능이 통째로 꺼진 채 배포된다 — 에러도 로그도 없다. 실제로 첫 구현이 이 상태였고 시험이 잡았다.',
+  },
+  {
     name: '📉 수집 회차 수가 승인값에서 조용히 내려간다(라이브 총량을 정하는 유일한 축)',
     file: 'src/worker-ads/lane-alarm-runners.ts',
     find: '  collect: {\n    runsPerHour: 3,',
@@ -7098,6 +7129,28 @@ canvas {
     why:
       '읽기 축만 보면 2026-09-02 와 같은 폭주(시간당 300만 쓰기, 월 $427)를 못 막는다. ' +
       '포함분 비율이 읽기 250억 : 쓰기 5,000만 = 500배라, 쓰기가 먼저 요금이 된다.',
+  },
+  {
+    name: '🧱 유어샵 핀 목록이 도매 원본 제외를 잃는다(카드는 뜨는데 클릭하면 404)',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: "AND ${consumerVisibleProductSql('p')}\n         ORDER BY pp.position ASC",
+    replace: "AND 1=1\n         ORDER BY pp.position ASC",
+    test: 'src/tests/unit/qa-round1-fixes-2026-09-03.test.ts',
+    why:
+      '2026-09-03 QA 실측: /u/jongmun 의 핀이 도매 원본(id 6)이라 소비자 API 어디에도 없는데 ' +
+      '카드는 이름·가격·별점까지 그려졌다(핀 행이 products 를 JOIN 하니까). 클릭하면 404. ' +
+      '같은 파일의 픽커 쿼리엔 이 조건이 있고 표시 쿼리엔 없던 것이 사고의 모양이다.',
+  },
+  {
+    name: '🚦 /vouchers/:id 가 카드 결제 상품을 딜 결제 화면으로 그린다',
+    file: 'src/pages/VoucherDetailPage.tsx',
+    find: "if (flow !== 'voucher_deal') {",
+    replace: 'if (false) {',
+    test: 'src/tests/unit/qa-round1-fixes-2026-09-03.test.ts',
+    why:
+      '2026-09-03 QA 실측: 카드로 사는 숙박 이용권(2887)이 이 URL 에선 "209,000 딜 · 딜로 교환하기 · ' +
+      '환불 불가" 로 떴다 — 결제 수단과 가격 단위가 통째로 틀린 화면이다. 반대 방향(ProductDetailPage)은 ' +
+      '이미 막혀 있었다.',
   },
   {
     name: '✍️ 쓰기 예산이 본진 몫을 안 뺀 값으로 돌아간다(계정 합계가 포함분에 붙는다)',
@@ -8026,6 +8079,76 @@ canvas {
     why:
       '조회 자체가 실패한 것(테이블 부재·일시 오류)을 403 자격 없음으로 말하면, 매장에 다녀온 사용자가 ' +
       '"다녀오라" 는 문구를 본다. 원인을 알 길이 없는 문구라 문의조차 못 한다 — 503 으로 갈라야 한다.',
+  },
+  {
+    name: '🎟️ 이용권 셀프 사용 기본값이 다시 self_free 로 (설정 안 한 매장 전부 무방비)',
+    file: 'src/worker/utils/redemption-settings.ts',
+    find: "export const DEFAULT_REDEMPTION_MODE: RedemptionMode = 'store_code'",
+    replace: "export const DEFAULT_REDEMPTION_MODE: RedemptionMode = 'self_free'",
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '2026-09-03 대표 확정 — "우리는 QR 아니면 매장 확인코드야". 기본이 느슨하면 사장님이 아무것도 ' +
+      '안 한 매장에서 손님이 **집에서도 이용권을 소각**할 수 있다. 실제로 그 상태로 라이브에 있었다.',
+  },
+  {
+    name: '🎟️ 판매자 없는 상품이 다시 셀프 사용 게이트를 통째로 건너뛴다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: "      if (pre.status === 'unused') {",
+    replace: "      if (pre.seller_id != null && pre.status === 'unused') {",
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '`seller_id != null` 조건 하나가 데모 이용권 100개 전량을 무방비로 두고 있었다. 게이트가 ' +
+      '있는 것과 도달하는 것은 다른 일이다 — 조건이 되살아나면 조용히 그 상태로 돌아간다.',
+  },
+  {
+    name: '🎟️ 셀프 사용 라우트가 게이트를 부르고도 거절을 무시한다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: '        if (!gate.ok) return c.json({ success: false, code: gate.code, error: gate.error }, gate.status)',
+    replace: '        void gate',
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '게이트를 별도 파일(self-redeem-gate)로 뽑고 나면 **배선이 눈에 안 보인다** — 판정을 부르고도 ' +
+      '반환하지 않으면 라우트는 그대로 통과시킨다. 판정 로직이 아무리 옳아도 결과가 같다.',
+  },
+  {
+    name: '🖼️ 커버 이관이 다시 갤러리 첫 칸을 안 고쳐 같은 사진이 두 장이 된다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: 'const nextImages = replaceGalleryUrl(row.images, row.image_url, hosted)',
+    replace: 'const nextImages: string | null = null',
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '`images[0]` 은 저장 시점의 커버인데 이관이 `image_url` 만 바꾸면 둘이 갈린다. R2 키가 랜덤 ' +
+      'UUID 라 표시 쪽에선 사본임을 알 길이 없다 — 실측 활성 이용권 100개 중 99개가 그 상태였다.',
+  },
+  {
+    name: '🖼️ 갤러리 정리 패스가 다시 넓게 골라 40건에서 조용히 멈춘다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: "        AND json_extract(images, '$[0]') LIKE 'http%'`",
+    replace: "        AND images LIKE '%http%'`",
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '갤러리는 3~5장이라 첫 칸을 고쳐도 뒤쪽 외부 주소 때문에 행이 후보로 남는다. 그렇게 고쳐진 ' +
+      '행이 ORDER BY 창 앞자리를 채우다 40개를 넘기면 창 전체가 no-op — 에러 없이 멈춘다.',
+  },
+  {
+    name: '🖼️ 갤러리 정리 패스가 R2 바인딩 조기반환 뒤로 밀린다 (영영 안 돎)',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: '  const gal = await repairGalleryCoverDrift(env).catch(() => ({ scanned: 0, fixed: 0, remaining: -1 }))',
+    replace: '  const gal = { scanned: 0, fixed: 0, remaining: -1 }',
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '정리는 주소만 맞추는 DB 작업이라 버킷이 필요 없다. 조기반환 뒤에 두면 바인딩 없는 배포에서 ' +
+      '한 번도 안 돈다 — 같은 자리에서 이관이 넉 달간 죽어 있던 전례가 이 파일 주석에 있다.',
+  },
+  {
+    name: '📝 리뷰 최소 글자 안내가 사라져 버튼이 왜 안 눌리는지 아무도 모른다',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: '      {content.length < MIN_REVIEW_LEN && (',
+    replace: '      {false && (',
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '2026-09-03 대표 신고 — 두 글자 쓰고 "버튼이 아예 안 눌러진다". 규칙은 타당하지만 이유를 ' +
+      '안 쓰면 사용자는 고장으로 읽고 떠나므로, 그 뒤에 붙는 서버 판정 문구를 볼 기회조차 없다.',
   },
   {
     name: '🎫 리뷰 라우트가 자격 판정을 부르고도 판정을 무시한다',
