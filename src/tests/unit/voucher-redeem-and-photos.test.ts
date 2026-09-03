@@ -82,12 +82,19 @@ describe('② 리뷰 등록 — 왜 안 눌리는지 말해 준다', () => {
   const src = read('pages/product-detail/ProductReviews.tsx')
   it('최소 글자 수가 상수 하나로 묶여 있다 (버튼과 안내가 갈리지 않게)', () => {
     expect(codeOnly(src)).toMatch(/const MIN_REVIEW_LEN = 10/)
-    expect(codeOnly(src)).toMatch(/disabled=\{content\.length < MIN_REVIEW_LEN \|\| submitting\}/)
     expect(codeOnly(src)).not.toMatch(/content\.length < 10/)
   })
   it('모자랄 때 남은 글자 수를 화면에 쓴다', () => {
     expect(codeOnly(src)).toMatch(/content\.length < MIN_REVIEW_LEN &&[\s\S]{0,400}reviews\.minLength/)
     expect(codeOnly(src)).toMatch(/n: MIN_REVIEW_LEN - content\.length/)
+  })
+  // 🔁 2026-09-03 후속(대표 "10자 이상인데도 흐릿한 비활성"): 위 항목의 세 번째 단정이던
+  //   `disabled={content.length < MIN_REVIEW_LEN || submitting}` 을 **일부러 뺐다.**
+  //   그 hard-disable 이 바로 신고된 증상의 구조였고, 클릭-시점 검증으로 옮겼다.
+  //   동작 계약은 `review-gate-clicktime.test.tsx` 가 **실제 렌더**로 지킨다(소스 문자열이 아니라).
+  it('버튼은 제출 중에만 잠긴다 — 글자 수로 잠그지 않는다', () => {
+    expect(codeOnly(src)).toMatch(/disabled=\{submitting\}/)
+    expect(codeOnly(src)).not.toMatch(/disabled=\{content\.length/)
   })
 })
 
