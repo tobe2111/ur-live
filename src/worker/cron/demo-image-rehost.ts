@@ -17,6 +17,7 @@
  *   - 규모가 크면 시간당 소량이라 며칠에 걸쳐 수렴(어드민 무개입) — 즉시 전체는 별도 수동 트리거 가능.
  */
 import type { Env } from '../types/env'
+import { replaceGalleryUrl, repairGalleryCover } from '../utils/gallery-cover-sync'
 import { rehostImageToR2, isExternalImageUrl, validateImageLoads } from '../utils/rehost-image'
 import { hotlinkBlockedSql, isHotlinkBlockedUrl } from '../../shared/hotlink-blocked-hosts'
 import { getSupplyMeta, setSupplyMeta, ensureSupplyMetaTable } from '../utils/product-supply-meta'
@@ -89,8 +90,17 @@ export async function rehostDemoImagesBulk(env: Env, perRun = 8): Promise<{ reho
   }))
   for (const { row, hosted } of fetched) {
     if (hosted) {
-      await DB.prepare(`UPDATE products SET image_url = ?, updated_at = datetime('now') WHERE id = ?`)
-        .bind(hosted, row.id).run().catch(() => {})
+      // 🖼️ 2026-09-03 (대표 신고 — "사진 1장인데 여러 장인 것처럼"): 커버만 새 주소로 바꾸면
+      //   `images[0]`(= 저장 시점의 커버)이 옛 외부 주소로 남아 **같은 사진이 두 칸**이 된다.
+      //   R2 키가 랜덤 UUID 라 표시 쪽에선 사본임을 알 길이 없으므로 **여기서 같이 쓴다**.
+      const nextImages = replaceGalleryUrl(row.images, row.image_url, hosted)
+      if (nextImages) {
+        await DB.prepare(`UPDATE products SET image_url = ?, images = ?, updated_at = datetime('now') WHERE id = ?`)
+          .bind(hosted, nextImages, row.id).run().catch(() => {})
+      } else {
+        await DB.prepare(`UPDATE products SET image_url = ?, updated_at = datetime('now') WHERE id = ?`)
+          .bind(hosted, row.id).run().catch(() => {})
+      }
       rehosted++
     } else {
       // 커버 이관 실패(도달불가/삭제/차단) — 원본 URL 은 **유지**(비파괴: 전송 실패일 수도 있는 매장
@@ -101,6 +111,38 @@ export async function rehostDemoImagesBulk(env: Env, perRun = 8): Promise<{ reho
     }
   }
   return { rehosted, images: rehosted, failed, remaining: await countExternal(), bucketBound }
+}
+
+/**
+ * 🩹 이미 어긋난 행 정리 — 커버는 R2 인데 갤러리 첫 칸이 옛 외부 주소인 상품.
+ *
+ * 위 이관이 오래 **커버만** 바꿔 온 탓에 라이브 활성 이용권 100개 중 99개가 이 상태였다
+ * (2026-09-03 실측). 그 행들은 이관 큐에서 이미 빠져 있어(`image_url LIKE 'http%'` 조건)
+ * 위 함수가 다시 훑지 않으므로, 되돌리는 일은 이 패스가 맡는다.
+ *
+ * 네트워크를 쓰지 않는다 — 주소만 맞추므로 라운드당 넉넉히 처리해도 싸다.
+ */
+export async function repairGalleryCoverDrift(env: Env, perRun = 40): Promise<{ scanned: number; fixed: number; remaining: number }> {
+  const DB = env.DB
+  // 커버가 우리 저장소(`/api/media` 또는 media.ur-team.com)이고 갤러리에 외부 주소가 남은 행.
+  const WHERE = `COALESCE(is_active,1)=1
+        AND (image_url LIKE '/api/media/%' OR image_url LIKE '%media.ur-team.com/%')
+        AND images LIKE '%http%'`
+  const { results } = await DB.prepare(
+    `SELECT id, image_url, images FROM products WHERE ${WHERE} ORDER BY id LIMIT ?`
+  ).bind(Math.max(1, Math.min(200, perRun))).all<{ id: number; image_url: string | null; images: string | null }>()
+    .catch(() => ({ results: [] as { id: number; image_url: string | null; images: string | null }[] }))
+  let fixed = 0
+  for (const row of results || []) {
+    const next = repairGalleryCover(row.images, row.image_url)
+    if (!next) continue
+    await DB.prepare(`UPDATE products SET images = ?, updated_at = datetime('now') WHERE id = ?`)
+      .bind(next, row.id).run().catch(() => {})
+    fixed++
+  }
+  const rem = await DB.prepare(`SELECT COUNT(*) AS n FROM products WHERE ${WHERE}`)
+    .first<{ n: number }>().catch(() => ({ n: 0 }))
+  return { scanned: (results || []).length, fixed, remaining: Number(rem?.n ?? 0) }
 }
 
 function isPlaceholderUrl(u: string | null | undefined): boolean {
@@ -258,13 +300,17 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
   return out
 }
 
-export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: number; migrated: number; images: number; done: number; skipped?: string }> {
+export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: number; migrated: number; images: number; done: number; galleryFixed?: number; skipped?: string }> {
   const DB = env.DB
   const bucketEnv = env as unknown as { MEDIA_BUCKET?: R2Bucket }
   // ① 재조정 — R2 버킷 유무와 무관(외부 URL 저장도 표시엔 유효, ②가 이후 영구화). fail-soft.
   const rc = await reconditionDemos(env).catch(() => ({ reconditioned: 0, skipped: 0, hiddenNoPhoto: 0, revived: 0 }))
-  const result: { reconditioned: number; migrated: number; images: number; done: number; skipped?: string } =
+  const result: { reconditioned: number; migrated: number; images: number; done: number; galleryFixed?: number; skipped?: string } =
     { reconditioned: rc.reconditioned, migrated: 0, images: 0, done: 0 }
+  // 🩹 갤러리 첫 칸 정합 — **R2 바인딩과 무관**(주소만 맞추는 DB 작업)이라 아래 조기반환보다 앞에 둔다.
+  //   여기 아래에 뒀다가는 바인딩 없는 배포에서 영영 안 돈다(바로 밑 주석이 기록한 넉 달 사고와 같은 자리).
+  const gal = await repairGalleryCoverDrift(env).catch(() => ({ scanned: 0, fixed: 0, remaining: -1 }))
+  if (gal.fixed) result.galleryFixed = gal.fixed
   // 🔴 2026-08-31: 여기서 조용히 반환하던 것이 **넉 달간 이관을 통째로 죽여 놨다.**
   //   cron 은 Pages 가 아니라 wrangler.toml 의 Workers 배포에서 도는데 거기에 MEDIA_BUCKET 이
   //   없었다(주석 처리돼 있었다). 그런데 반환값이 `migrated=0 done=0` 이라 하트비트에는

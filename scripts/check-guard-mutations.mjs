@@ -7958,6 +7958,66 @@ canvas {
       '"다녀오라" 는 문구를 본다. 원인을 알 길이 없는 문구라 문의조차 못 한다 — 503 으로 갈라야 한다.',
   },
   {
+    name: '🎟️ 이용권 셀프 사용 기본값이 다시 self_free 로 (설정 안 한 매장 전부 무방비)',
+    file: 'src/worker/utils/redemption-settings.ts',
+    find: "export const DEFAULT_REDEMPTION_MODE: RedemptionMode = 'store_code'",
+    replace: "export const DEFAULT_REDEMPTION_MODE: RedemptionMode = 'self_free'",
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '2026-09-03 대표 확정 — "우리는 QR 아니면 매장 확인코드야". 기본이 느슨하면 사장님이 아무것도 ' +
+      '안 한 매장에서 손님이 **집에서도 이용권을 소각**할 수 있다. 실제로 그 상태로 라이브에 있었다.',
+  },
+  {
+    name: '🎟️ 판매자 없는 상품이 다시 셀프 사용 게이트를 통째로 건너뛴다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: "      if (pre.status === 'unused') {",
+    replace: "      if (pre.seller_id != null && pre.status === 'unused') {",
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '`seller_id != null` 조건 하나가 데모 이용권 100개 전량을 무방비로 두고 있었다. 게이트가 ' +
+      '있는 것과 도달하는 것은 다른 일이다 — 조건이 되살아나면 조용히 그 상태로 돌아간다.',
+  },
+  {
+    name: '🎟️ 셀프 사용 라우트가 게이트를 부르고도 거절을 무시한다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: '        if (!gate.ok) return c.json({ success: false, code: gate.code, error: gate.error }, gate.status)',
+    replace: '        void gate',
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '게이트를 별도 파일(self-redeem-gate)로 뽑고 나면 **배선이 눈에 안 보인다** — 판정을 부르고도 ' +
+      '반환하지 않으면 라우트는 그대로 통과시킨다. 판정 로직이 아무리 옳아도 결과가 같다.',
+  },
+  {
+    name: '🖼️ 커버 이관이 다시 갤러리 첫 칸을 안 고쳐 같은 사진이 두 장이 된다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: 'const nextImages = replaceGalleryUrl(row.images, row.image_url, hosted)',
+    replace: 'const nextImages: string | null = null',
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '`images[0]` 은 저장 시점의 커버인데 이관이 `image_url` 만 바꾸면 둘이 갈린다. R2 키가 랜덤 ' +
+      'UUID 라 표시 쪽에선 사본임을 알 길이 없다 — 실측 활성 이용권 100개 중 99개가 그 상태였다.',
+  },
+  {
+    name: '🖼️ 갤러리 정리 패스가 R2 바인딩 조기반환 뒤로 밀린다 (영영 안 돎)',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: '  const gal = await repairGalleryCoverDrift(env).catch(() => ({ scanned: 0, fixed: 0, remaining: -1 }))',
+    replace: '  const gal = { scanned: 0, fixed: 0, remaining: -1 }',
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '정리는 주소만 맞추는 DB 작업이라 버킷이 필요 없다. 조기반환 뒤에 두면 바인딩 없는 배포에서 ' +
+      '한 번도 안 돈다 — 같은 자리에서 이관이 넉 달간 죽어 있던 전례가 이 파일 주석에 있다.',
+  },
+  {
+    name: '📝 리뷰 최소 글자 안내가 사라져 버튼이 왜 안 눌리는지 아무도 모른다',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: '      {content.length < MIN_REVIEW_LEN && (',
+    replace: '      {false && (',
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '2026-09-03 대표 신고 — 두 글자 쓰고 "버튼이 아예 안 눌러진다". 규칙은 타당하지만 이유를 ' +
+      '안 쓰면 사용자는 고장으로 읽고 떠나므로, 그 뒤에 붙는 서버 판정 문구를 볼 기회조차 없다.',
+  },
+  {
     name: '🎫 리뷰 라우트가 자격 판정을 부르고도 판정을 무시한다',
     file: 'src/features/reviews/api/reviews.routes.ts',
     find: '    if (!verdict.ok) {',
