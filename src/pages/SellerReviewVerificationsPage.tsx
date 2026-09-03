@@ -12,6 +12,7 @@ import { Star, ExternalLink, CheckCircle2, XCircle, Loader2, Sparkles } from 'lu
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
+import SellerVoucherTabs from '@/components/seller/SellerVoucherTabs'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatKST } from '@/utils/date'
 
@@ -99,6 +100,8 @@ export default function SellerReviewVerificationsPage() {
 
   return (
     <SellerLayout title={t('seller.reviewVerify.title', { defaultValue: '카카오맵 리뷰 확인' })}>
+      {/* 🎟️ 2026-09-03 대표 — 이용권 일을 한 페이지처럼: nav 는 하나, 여기서 탭 이동. */}
+      <div className="px-4 sm:px-6 lg:px-8 pt-4"><SellerVoucherTabs /></div>
       <DashboardPageHeader
         icon={<Star className="w-5 h-5" />}
         title={t('seller.reviewVerify.title', { defaultValue: '카카오맵 리뷰 확인' })}

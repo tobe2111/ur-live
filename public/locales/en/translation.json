@@ -2487,7 +2487,8 @@
       "products": "🛒 Online Sales",
       "groupbuy": "🏪 Group Buy & Stays",
       "ordersCustomers": "Orders & Customers",
-      "curator": "My UrShop"
+      "curator": "My UrShop",
+      "vouchers": "🎟️ Vouchers"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}.{{month}} Revenue Calendar",
@@ -2537,7 +2538,8 @@
       "returns": "Refund Requests",
       "operators": "Operators",
       "stores": "My Stores",
-      "findInfluencers": "Find Influencers"
+      "findInfluencers": "Find Influencers",
+      "voucherManage": "Manage vouchers"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",
@@ -3158,6 +3160,11 @@
       "lockedNote": "Register your store to unlock vouchers · orders · settlement · influencer collabs",
       "savedPropagated": "Store info saved — applied to {{count}} vouchers",
       "saved": "Store info saved"
+    },
+    "voucherTabs": {
+      "list": "Vouchers",
+      "scan": "Redeem",
+      "reviews": "Review checks"
     }
   },
   "admin": {

@@ -2486,7 +2486,8 @@
       "products": "🛒 オンライン販売·仕入",
       "groupbuy": "🏪 オフライン共同購入·宿泊",
       "ordersCustomers": "注文·顧客",
-      "curator": "マイUrShop"
+      "curator": "マイUrShop",
+      "vouchers": "🎟️ 利用券"
     },
     "liveChat": {
       "title": "リアルタイムチャット",
@@ -2543,7 +2544,8 @@
       "returns": "返金リクエスト",
       "operators": "運営者管理",
       "stores": "店舗管理",
-      "findInfluencers": "インフルエンサー探し"
+      "findInfluencers": "インフルエンサー探し",
+      "voucherManage": "利用券の管理"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",
@@ -3158,6 +3160,11 @@
       "lockedNote": "店舗登録を完了すると利用券・注文・精算・コラボが開きます",
       "savedPropagated": "店舗情報を保存 — 利用券{{count}}件に反映",
       "saved": "店舗情報を保存しました"
+    },
+    "voucherTabs": {
+      "list": "利用券",
+      "scan": "使用処理",
+      "reviews": "レビュー確認"
     }
   },
   "admin": {

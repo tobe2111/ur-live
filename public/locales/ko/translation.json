@@ -2517,7 +2517,8 @@
       "backToUser": "유저로 돌아가기",
       "products": "🛒 온라인 판매·소싱",
       "groupbuy": "🏪 오프라인 공구·숙소",
-      "ordersCustomers": "주문·고객"
+      "ordersCustomers": "주문·고객",
+      "vouchers": "🎟️ 이용권"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2567,7 +2568,8 @@
       "returns": "환불 요청",
       "operators": "운영자 관리",
       "stores": "매장 관리",
-      "findInfluencers": "소개 파트너 찾기"
+      "findInfluencers": "소개 파트너 찾기",
+      "voucherManage": "이용권 관리"
     },
     "guide": {
       "title": "셀러 운영 가이드",
@@ -3158,6 +3160,11 @@
       "lockedNote": "매장 등록을 마치면 이용권 등록 · 주문 · 정산 · 소개 협업이 열려요",
       "savedPropagated": "매장 정보 저장 — 이용권 {{count}}개에 반영됐어요",
       "saved": "매장 정보가 저장됐어요"
+    },
+    "voucherTabs": {
+      "list": "이용권",
+      "scan": "사용처리",
+      "reviews": "후기 인증"
     }
   },
   "admin": {

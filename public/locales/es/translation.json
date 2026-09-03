@@ -1813,7 +1813,8 @@
       "products": "🛒 Ventas online",
       "groupbuy": "🏪 Compras grupales y estancias",
       "ordersCustomers": "Pedidos y clientes",
-      "curator": "Mi UrShop"
+      "curator": "Mi UrShop",
+      "vouchers": "🎟️ Cupones"
     },
     "nav": {
       "products": "Productos",
@@ -1847,7 +1848,8 @@
       "returns": "Solicitudes de reembolso",
       "operators": "Operadores",
       "stores": "Mis tiendas",
-      "findInfluencers": "Buscar influencers"
+      "findInfluencers": "Buscar influencers",
+      "voucherManage": "Gestionar cupones"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2478,6 +2480,11 @@
       "lockedNote": "Registra tu tienda para desbloquear cupones · pedidos · liquidación · colaboraciones",
       "savedPropagated": "Información guardada — aplicada a {{count}} cupones",
       "saved": "Información de la tienda guardada"
+    },
+    "voucherTabs": {
+      "list": "Cupones",
+      "scan": "Canjear",
+      "reviews": "Reseñas"
     }
   },
   "admin": {

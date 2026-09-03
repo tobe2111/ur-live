@@ -158,7 +158,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
 
   // 🏁 2026-06-14: 공구 중심 정렬 — 각 역할의 핵심(크리에이터=큐레이터/호스팅, 매장=공구/숙소)을 홈 바로 다음으로.
   //   두 그룹은 역할 배타적(curator hideFor 매장, groupbuy 는 매장 위주)이라 각 역할이 자기 핵심을 상단에서 봄.
-  const GROUP_ORDER = ['', 'seller.layout.curator', 'seller.layout.groupbuy', 'seller.layout.products', 'seller.layout.ordersCustomers', 'seller.layout.revenue', 'seller.layout.settings']
+  // 🎟️ 2026-09-03: 이용권 그룹을 홈 바로 다음으로 — '이용권 등록'(홈 그룹 끝)과 '이용권 관리'가
+  //   붙어 있어야 한다. 대표가 관리 페이지를 못 찾은 이유의 절반이 이 거리였다.
+  const GROUP_ORDER = ['', 'seller.layout.vouchers', 'seller.layout.curator', 'seller.layout.products', 'seller.layout.ordersCustomers', 'seller.layout.revenue', 'seller.layout.settings']
   const orderRank = (g: { labelKey?: string }) => {
     const i = GROUP_ORDER.indexOf(g.labelKey ?? '')
     return i === -1 ? GROUP_ORDER.length : i

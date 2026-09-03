@@ -1813,7 +1813,8 @@
       "products": "🛒 Ventes en ligne",
       "groupbuy": "🏪 Achats groupés & séjours",
       "ordersCustomers": "Commandes & clients",
-      "curator": "Ma UrShop"
+      "curator": "Ma UrShop",
+      "vouchers": "🎟️ Bons"
     },
     "nav": {
       "products": "Produits",
@@ -1847,7 +1848,8 @@
       "returns": "Demandes de remboursement",
       "operators": "Opérateurs",
       "stores": "Mes boutiques",
-      "findInfluencers": "Trouver des influenceurs"
+      "findInfluencers": "Trouver des influenceurs",
+      "voucherManage": "Gérer les bons"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2478,6 +2480,11 @@
       "lockedNote": "Enregistrez votre boutique pour débloquer coupons · commandes · règlement · collaborations",
       "savedPropagated": "Infos enregistrées — appliquées à {{count}} coupons",
       "saved": "Infos de la boutique enregistrées"
+    },
+    "voucherTabs": {
+      "list": "Bons",
+      "scan": "Utiliser",
+      "reviews": "Avis"
     }
   },
   "admin": {

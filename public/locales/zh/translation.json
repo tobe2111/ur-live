@@ -2486,7 +2486,8 @@
       "products": "🛒 在线销售·采购",
       "groupbuy": "🏪 线下团购·住宿",
       "ordersCustomers": "订单·客户",
-      "curator": "我的UrShop"
+      "curator": "我的UrShop",
+      "vouchers": "🎟️ 使用券"
     },
     "liveChat": {
       "title": "实时聊天",
@@ -2527,7 +2528,8 @@
       "returns": "退款请求",
       "operators": "运营者管理",
       "stores": "门店管理",
-      "findInfluencers": "寻找达人"
+      "findInfluencers": "寻找达人",
+      "voucherManage": "使用券管理"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -3158,6 +3160,11 @@
       "lockedNote": "完成门店注册后即可使用使用券·订单·结算·达人合作",
       "savedPropagated": "门店信息已保存 — 已应用到 {{count}} 张使用券",
       "saved": "门店信息已保存"
+    },
+    "voucherTabs": {
+      "list": "使用券",
+      "scan": "核销",
+      "reviews": "评价确认"
     }
   },
   "admin": {
