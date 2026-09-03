@@ -936,23 +936,35 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         'SELECT v.id, v.status, p.seller_id FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
       ).bind(code, user.id).first<{ id: number; status: string; seller_id: number | null }>().catch(() => null)
       if (!pre) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
-      let redemptionMode: 'scan_only' | 'store_code' | 'self_free' = 'self_free'
-      if (pre.seller_id != null && pre.status === 'unused') {
+      // 🔒 2026-09-03 (대표 — "우리는 QR 아니면 매장 확인코드야"): 셀프 사용은 **매장에 실제로
+      //   있어야만** 된다. 예전엔 구멍이 세 겹이었다 —
+      //     ① 기본값이 self_free(설정 안 한 매장 전부)
+      //     ② `seller_id != null` 조건 탓에 **판매자 없는 상품은 검사 자체를 건너뜀**(데모 100개 전량)
+      //     ③ 조회 실패 시 fail-open
+      //   셋 다 닫는다. 직원 QR 스캔(`/:code/use-by-seller`)은 이 게이트 밖이라 **그대로 열려 있다**.
+      let redemptionMode: 'scan_only' | 'store_code' | 'self_free' = 'store_code'
+      if (pre.status === 'unused') {
+        if (pre.seller_id == null) {
+          // 매장이 없는 상품(데모 등) — 확인코드를 발급해 줄 주체도, 갈 매장도 없다. 셀프 사용 불가.
+          return c.json({ success: false, code: 'NO_STORE', error: '이 이용권은 현장에서 직원 확인으로만 사용할 수 있어요.' }, 403)
+        }
+        let s: { mode: 'scan_only' | 'store_code' | 'self_free'; store_code: string | null }
         try {
           const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
-          const s = await getRedemptionSettings(DB, Number(pre.seller_id))
-          redemptionMode = s.mode
-          if (redemptionMode === 'scan_only') {
-            return c.json({ success: false, code: 'SCAN_ONLY_MODE', error: '이 매장은 직원 확인 방식이에요. 직원에게 QR 화면을 보여주세요.' }, 403)
-          }
-          if (redemptionMode === 'store_code') {
-            const input = String(body.store_code || '').trim()
-            if (!input || !s.store_code || input !== s.store_code) {
-              // 🛡️ 자릿수 하드코딩 제거(신규 6자리·기존 4자리 병존) — 이 403 도 rate limit 카운트에 잡힘(브루트포스 소진).
-              return c.json({ success: false, code: 'STORE_CODE_REQUIRED', error: '매장에 비치된 확인코드를 입력해주세요.' }, 403)
-            }
-          }
-        } catch { /* fail-open — 기존 self_free 동작 */ }
+          s = await getRedemptionSettings(DB, Number(pre.seller_id))
+        } catch {
+          // fail-**closed**: 설정을 못 읽었다고 아무나 소각시키지 않는다(직원 QR 은 살아 있다).
+          return c.json({ success: false, code: 'STORE_CODE_REQUIRED', error: '매장에 비치된 확인코드를 입력해주세요.' }, 403)
+        }
+        redemptionMode = s.mode
+        if (redemptionMode === 'scan_only') {
+          return c.json({ success: false, code: 'SCAN_ONLY_MODE', error: '이 매장은 직원 확인 방식이에요. 직원에게 QR 화면을 보여주세요.' }, 403)
+        }
+        const input = String(body.store_code || '').trim()
+        if (!input || !s.store_code || input !== s.store_code) {
+          // 🛡️ 자릿수 하드코딩 제거(신규 6자리·기존 4자리 병존) — 이 403 도 rate limit 카운트에 잡힘(브루트포스 소진).
+          return c.json({ success: false, code: 'STORE_CODE_REQUIRED', error: '매장에 비치된 확인코드를 입력해주세요.' }, 403)
+        }
       }
 
       // 🛡️ 머니룰: claim-before-credit — 미사용+본인 일 때만 원자적 used 선점.
