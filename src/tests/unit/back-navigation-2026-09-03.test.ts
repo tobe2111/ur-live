@@ -33,15 +33,17 @@ import { join } from 'node:path'
  */
 const DASHBOARD = /(Admin|Seller|Agency|Wholesale|Supplier|Distributor|admin|seller|agency|wholesale|supplier)/
 
-function consumerPagesWritingUrl(dir = 'src/pages', out: string[] = []): string[] {
+function consumerPages(dir = 'src/pages', out: string[] = []): string[] {
   for (const e of readdirSync(dir)) {
     const f = join(dir, e)
-    if (statSync(f).isDirectory()) consumerPagesWritingUrl(f, out)
-    else if (f.endsWith('.tsx') && !DASHBOARD.test(f) && readFileSync(f, 'utf8').includes('setSearchParams('))
-      out.push(f)
+    if (statSync(f).isDirectory()) consumerPages(f, out)
+    else if (f.endsWith('.tsx') && !DASHBOARD.test(f)) out.push(f)
   }
   return out
 }
+
+const consumerPagesWritingUrl = () =>
+  consumerPages().filter(f => readFileSync(f, 'utf8').includes('setSearchParams('))
 
 /** 주석을 뺀 코드만 본다 — 설명 문장 속 `setSearchParams(` 까지 세면 가짜 빨강이 된다. */
 const code = (src: string) =>
@@ -75,24 +77,39 @@ describe('① 소비자 목록의 URL 쓰기는 전부 replace', () => {
 
 describe('② 뒤로 버튼은 브라우저 히스토리를 쓴다 — 목적지를 손으로 정하지 않는다', () => {
   /**
-   * `navigate('/')` 로 고정하면 **어디서 왔든 홈으로** 간다 — 대표가 겪은 증상 그 자체다.
-   * 히스토리가 없을 때만(새 탭·공유 링크) 홈으로 폴백하는 건 정상(`LocalTownPage` 패턴).
+   * `navigate('/어딘가')` 로 고정하면 **어디서 왔든 그리로** 간다 — 대표가 겪은 증상 그 자체다.
+   * 게다가 그건 push 라 뒤로가기가 한 칸 **늘어난다**(줄어야 하는 자리에서).
+   * 히스토리가 없을 때만(새 탭·공유 링크) 폴백하는 건 정상 — `LocalTownPage` 패턴:
+   *   `window.history.length > 1 ? navigate(-1) : navigate('/')`
+   *
+   * 여기도 파일 목록을 손으로 안 적는다 — 새 화면의 뒤로 버튼이 자동으로 검사에 들어온다.
    */
-  const PAGES = [
-    'src/pages/GroupBuyDetailPage.tsx',
-    'src/pages/VoucherDetailPage.tsx',
-    'src/pages/ProductDetailPage.tsx',
-  ] as const
+  const back = /aria-label=\{?[^\n]{0,60}(뒤로|common\.back)[^\n]{0,60}/
 
-  for (const file of PAGES) {
-    it(`${file.split('/').pop()} — 뒤로가 navigate(-1)`, () => {
+  /** 뒤로 버튼 마크업 근처(앞 320자)를 잘라 본다 — onClick 이 aria-label 앞에 오는 게 보통이다. */
+  function backButtonRegions(src: string): string[] {
+    const out: string[] = []
+    for (const m of src.matchAll(new RegExp(back, 'g')))
+      out.push(src.slice(Math.max(0, m.index! - 320), m.index! + 120))
+    return out
+  }
+
+  const files = consumerPages().filter(f => back.test(readFileSync(f, 'utf8')))
+
+  it('뒤로 버튼을 가진 소비자 화면이 실제로 잡힌다', () => {
+    expect(files.length, '뒤로 버튼을 하나도 못 찾았다 — 마크업이 바뀌었는지 확인할 것').toBeGreaterThanOrEqual(8)
+  })
+
+  for (const file of files) {
+    it(`${file.split('/').pop()} — 목적지를 고정하지 않는다`, () => {
       const src = code(readFileSync(file, 'utf8'))
-      const backs = [...src.matchAll(/onBack=\{[^}]*\}|aria-label="뒤로[^"]*"[\s\S]{0,120}?navigate\([^)]*\)/g)]
-        .map(m => m[0])
-      for (const b of backs) {
-        if (!b.includes('navigate(')) continue
-        expect(b, `${file}: 뒤로가 목적지를 고정하고 있다 — navigate(-1) 이어야 한다\n${b}`)
-          .not.toMatch(/navigate\(\s*['"]\/['"]\s*\)/)
+      if (src.includes('back-nav-push-ok')) return
+      for (const region of backButtonRegions(src)) {
+        const hard = region.match(/navigate\(\s*['"]\/[^'"]*['"]\s*\)/)
+        if (!hard) continue
+        // 히스토리 폴백이면 통과 — 그게 올바른 형태다.
+        expect(region, `${file}: 뒤로가 목적지를 고정하고 있다 — history.length 폴백이 필요하다\n${hard[0]}`)
+          .toMatch(/history\.length|navigate\(\s*-1\s*\)/)
       }
     })
   }
