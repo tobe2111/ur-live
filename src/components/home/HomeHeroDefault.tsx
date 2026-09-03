@@ -101,9 +101,16 @@ export default function HomeHeroDefault({
           🎫 2026-09-02 (대표 "위아래부분까지 그라데이션은 안해도 될 것 같은데"): 세로(180deg) 마스크와
           하단 h-12 페이드를 뺐다. 사진은 히어로 위아래 끝까지 꽉 차고, 페이드는 **좌우만**. */}
       {hasMedia && (
-        <div className="hidden md:block absolute inset-y-0 right-0 w-[46%] lg:w-[54%]" aria-hidden="true"
+        <div
+          className="hidden md:block absolute inset-y-0 w-[46%] lg:w-[54%] right-[calc(max(0px,(100vw-1440px)/2)+1.5rem)] lg:right-[calc(max(0px,(100vw-1440px)/2)+2rem)]"
+          aria-hidden="true"
           /* 📐 2026-08-24: `lg:block`(1024+) 이라 **태블릿엔 사진이 아예 없었다** — 색면만 남아
-             허전했다. md(768)부터 보이되 폭은 46% 로 좁혀 카피가 눌리지 않게 한다. */
+             허전했다. md(768)부터 보이되 폭은 46% 로 좁혀 카피가 눌리지 않게 한다.
+             🖼️ 2026-09-03 (대표 — 빨간 상자 시안 "아래의 길이와 맞게끔"): `right-0` 이라 사진이
+             **뷰포트 오른쪽 끝**까지 갔는데, 바로 아래 매대는 `max-w-[1440px] + px-6/8` 안에 있어
+             넓은 화면일수록 두 오른쪽 끝이 어긋났다(1904px 에서 264px 차이). 색면은 전체 폭 그대로
+             두고(그게 이 히어로의 바탕이다) **사진만** 아래 매대와 같은 자로 당긴다. 폭(46/54%)은
+             건드리지 않아 좁은 화면의 균형은 그대로다 — 오른쪽 여백만 생긴다. */
           style={{
             WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%)',
             maskImage: 'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%)',
@@ -191,7 +198,8 @@ export default function HomeHeroDefault({
       {hasMedia && photoHref !== '/map' && (
         <Link
           to={photoHref}
-          className="absolute z-20 bottom-3 right-5 text-[12px] font-bold text-white/70 hover:text-white transition-colors drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]"
+          /* 사진 오른쪽 끝이 매대와 정렬됐으니 이 링크도 같은 자를 쓴다 — 안 그러면 사진 밖에 뜬다. */
+          className="absolute z-20 bottom-3 right-[calc(max(0px,(100vw-1440px)/2)+2.5rem)] lg:right-[calc(max(0px,(100vw-1440px)/2)+3rem)] text-[12px] font-bold text-white/70 hover:text-white transition-colors drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]"
         >
           사진 속 딜 보기 →
         </Link>

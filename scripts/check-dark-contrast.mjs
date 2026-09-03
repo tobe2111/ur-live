@@ -49,23 +49,40 @@ if (!fs.existsSync(DIST)) {
 
 /** 검사할 소비자 경로. 다크가 켜질 수 있는 화면만(대시보드는 라이트 고정이라 제외). */
 const ROUTES = [
+  // 지도 — 이번 사고가 난 자리
   { route: '/map?q=부산', name: '지도', fill: true },
   { route: '/map?q=부산', name: '지도(필터 시트)', fill: true, open: '[data-testid="open-filter"]' },
   { route: '/map', name: '지도(PC 패널)', pc: true, fill: true },
+  // 홈 — 히어로가 사진 위 흰 글자라 픽셀 패스가 꼭 필요한 자리
   { route: '/', name: '홈(모바일)', fill: true },
   { route: '/', name: '홈(PC)', pc: true, fill: true },
+  // 목록·카탈로그
   { route: '/vouchers', name: '교환권', fill: true },
   { route: '/vouchers', name: '교환권(PC)', pc: true, fill: true },
   { route: '/browse', name: '쇼핑', fill: true },
   { route: '/search', name: '검색', fill: true },
+  { route: '/group-buy', name: '동네딜', fill: true },
+  { route: '/stays', name: '숙소', fill: true },
+  { route: '/blog', name: '블로그', fill: true },
+  // 상세
+  { route: '/group-buy/2846', name: '이용권 상세', fill: true },
+  { route: '/group-buy/2846', name: '이용권 상세(PC)', pc: true, fill: true },
+  // 유어샵
   { route: '/u/jiwon1228', name: '유어샵', fill: true },
   { route: '/u/jiwon1228', name: '유어샵(PC)', pc: true, fill: true },
-  { route: '/group-buy/2846', name: '이용권 상세', fill: true },
+  // 로그인 후 내 화면
   { route: '/user/profile', name: '마이', auth: 'user', fill: true },
   { route: '/user/profile', name: '마이(PC)', pc: true, auth: 'user', fill: true },
   { route: '/my-vouchers', name: '지갑', auth: 'user', fill: true },
+  { route: '/my-orders', name: '주문내역', auth: 'user', fill: true },
   { route: '/cart', name: '장바구니', auth: 'user', fill: true },
   { route: '/notifications', name: '알림', auth: 'user', fill: true },
+  { route: '/wishlist', name: '찜', auth: 'user', fill: true },
+  { route: '/my-deal-history', name: '딜 내역', auth: 'user', fill: true },
+  // 대외·정적
+  { route: '/about', name: '소개', fill: true },
+  { route: '/faq', name: 'FAQ', fill: true },
+  { route: '/login', name: '로그인', fill: true },
 ]
 
 const PORT = 8790
@@ -129,21 +146,26 @@ const MEASURE = () => {
     return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
   }
   const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
-  // 뒤 배경: 투명하면 조상을 타고 올라간다(사진/그라디언트를 만나면 포기).
+  /* 뒤 배경: 투명하면 조상을 타고 올라간다.
+     사진/그라디언트를 만나면 **포기하지 않고** 'PIXEL' 을 돌려준다 — 바깥에서 글자를 잠깐 투명하게
+     만들고 그 자리를 스크린샷으로 찍어 진짜 픽셀을 잰다. 2026-09-03 1차판은 여기서 continue 해서
+     **사진 위 흰 글자를 통째로 못 봤다**(우리 히어로가 정확히 그 형태다 — 가장 위험한 자리를
+     검사에서 빼 놓고 "0건" 을 보고하고 있었던 셈). */
   const bgOf = (el) => {
     let n = el
     while (n && n !== document.documentElement) {
       const s = getComputedStyle(n)
-      if (s.backgroundImage && s.backgroundImage !== 'none') return null // 사진/그라디언트 — 계산 밖
+      if (s.backgroundImage && s.backgroundImage !== 'none') return 'PIXEL'
       const c = parse(s.backgroundColor)
       if (c && c.a >= 0.85) return c
       n = n.parentElement
     }
     const c = parse(getComputedStyle(document.body).backgroundColor)
-    return c && c.a >= 0.85 ? c : null
+    return c && c.a >= 0.85 ? c : 'PIXEL'
   }
   const out = []
   const seen = new Set()
+  const pixelQueue = []
   let measured = 0
   for (const el of document.querySelectorAll('body *')) {
     const tag = el.tagName.toLowerCase()
@@ -160,27 +182,125 @@ const MEASURE = () => {
     if (s.visibility === 'hidden' || s.display === 'none' || parseFloat(s.opacity) < 0.15) continue
     const fg = parse(s.webkitTextFillColor && s.webkitTextFillColor !== 'currentcolor' ? s.webkitTextFillColor : s.color)
     if (!fg || fg.a < 0.35) continue
+    const key = `${tag}|${own.slice(0, 40)}|${Math.round(r.top)}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const info = {
+      tag, isField,
+      text: own.slice(0, 46),
+      cls: (typeof el.className === 'string' ? el.className : '').slice(0, 110),
+      fg: `rgb(${Math.round(fg.r)},${Math.round(fg.g)},${Math.round(fg.b)})`,
+      rect: { x: r.left, y: r.top, w: r.width, h: r.height },
+    }
     const bg = bgOf(el)
-    if (!bg) continue
+    if (bg === 'PIXEL') {
+      // 사진/그라디언트 위 — 바깥에서 픽셀로 잰다. 여기서 재는 척하고 넘기면 안 된다.
+      el.setAttribute('data-dc-pixel', String(pixelQueue.length))
+      pixelQueue.push({ ...info, fgRaw: fg })
+      continue
+    }
     measured++
     const cr = ratio(fg, bg)
     // 두 방향 다 본다: 밝은 위 밝음(이번 사고) · 어두운 위 어두움(같은 클래스의 반대 방향).
     if (cr >= 3.0) continue
-    const dir = lum(bg) >= 0.5 ? '밝은 표면 위 밝은 글자' : '어두운 표면 위 어두운 글자'
-    const key = `${tag}|${own.slice(0, 40)}|${Math.round(r.top)}`
-    if (seen.has(key)) continue
-    seen.add(key)
     out.push({
-      tag, isField,
-      text: own.slice(0, 46),
-      cls: (typeof el.className === 'string' ? el.className : '').slice(0, 110),
-      dir,
-      fg: `rgb(${Math.round(fg.r)},${Math.round(fg.g)},${Math.round(fg.b)})`,
+      ...info,
+      dir: lum(bg) >= 0.5 ? '밝은 표면 위 밝은 글자' : '어두운 표면 위 어두운 글자',
       bg: `rgb(${Math.round(bg.r)},${Math.round(bg.g)},${Math.round(bg.b)})`,
       ratio: Math.round(cr * 100) / 100,
     })
   }
-  return { rows: out, measured }
+  return { rows: out, measured, pixelQueue }
+}
+
+/** 사진/그라디언트 위 글자를 **잠깐 투명하게** 만든다 — 그래야 그 자리의 배경 픽셀이 찍힌다. */
+const HIDE_PIXEL_TEXT = () => {
+  for (const el of document.querySelectorAll('[data-dc-pixel]')) {
+    el.style.setProperty('color', 'transparent', 'important')
+    el.style.setProperty('-webkit-text-fill-color', 'transparent', 'important')
+    el.style.setProperty('text-shadow', 'none', 'important')
+  }
+}
+
+/** 한 요소만 **지금 상태 그대로**(호버·포커스가 걸린 채) 잰다. */
+const MEASURE_ONE = (sel) => {
+  const el = document.querySelector(sel)
+  if (!el) return null
+  const parse = (c) => {
+    const m = String(c).match(/rgba?\(([^)]+)\)/)
+    if (!m) return null
+    const p = m[1].split(/[,/]/).map((x) => parseFloat(x))
+    return { r: p[0], g: p[1], b: p[2], a: p[3] === undefined ? 1 : p[3] }
+  }
+  const lum = ({ r, g, b }) => {
+    const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+  }
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
+  const s = getComputedStyle(el)
+  const fg = parse(s.webkitTextFillColor && s.webkitTextFillColor !== 'currentcolor' ? s.webkitTextFillColor : s.color)
+  if (!fg || fg.a < 0.35) return null
+  let n = el, bg = null
+  while (n && n !== document.documentElement) {
+    const cs = getComputedStyle(n)
+    if (cs.backgroundImage && cs.backgroundImage !== 'none') return null // 사진 위는 픽셀 패스가 맡는다
+    const c = parse(cs.backgroundColor)
+    if (c && c.a >= 0.85) { bg = c; break }
+    n = n.parentElement
+  }
+  if (!bg) bg = parse(getComputedStyle(document.body).backgroundColor)
+  if (!bg || bg.a < 0.85) return null
+  const cr = ratio(fg, bg)
+  const own = Array.from(el.childNodes).filter((x) => x.nodeType === 3).map((x) => x.textContent.trim()).join(' ')
+  if (cr >= 3.0) return { bad: null }
+  return {
+    bad: {
+      tag: el.tagName.toLowerCase(),
+      text: (own || el.getAttribute('aria-label') || '').slice(0, 46),
+      cls: (typeof el.className === 'string' ? el.className : '').slice(0, 110),
+      dir: lum(bg) >= 0.5 ? '밝은 표면 위 밝은 글자' : '어두운 표면 위 어두운 글자',
+      fg: `rgb(${Math.round(fg.r)},${Math.round(fg.g)},${Math.round(fg.b)})`,
+      bg: `rgb(${Math.round(bg.r)},${Math.round(bg.g)},${Math.round(bg.b)})`,
+      ratio: Math.round(cr * 100) / 100,
+    },
+  }
+}
+
+/* PNG 픽셀 읽기 — 의존성을 새로 들이지 않으려고 chromium 자신에게 디코딩을 시킨다
+   (sharp/pngjs 를 추가하면 이 가드 하나 때문에 설치가 무거워진다). */
+const SHOTDIR = fs.mkdtempSync(path.join(process.env.TMPDIR || '/tmp', 'dc-'))
+const shotPage = await (await browser.newContext()).newPage()
+const readPng = async (file) => {
+  const b64 = fs.readFileSync(file).toString('base64')
+  return await shotPage.evaluate(async (data) => {
+    const img = new Image()
+    img.src = 'data:image/png;base64,' + data
+    await img.decode()
+    const c = document.createElement('canvas')
+    c.width = img.naturalWidth; c.height = img.naturalHeight
+    c.getContext('2d').drawImage(img, 0, 0)
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height)
+    return { w: c.width, h: c.height, data: Array.from(d.data) }
+  }, b64)
+}
+const relLum = ({ r, g, b }) => {
+  const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+}
+const contrast = (a, b) => { const [x, y] = [relLum(a), relLum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
+/** 스크린샷에서 그 사각형의 평균 색 — 글자를 지운 상태로 찍었으니 이게 뒤 배경이다. */
+const avgRect = (png, rect) => {
+  const sx = Math.max(0, Math.round(rect.x)), sy = Math.max(0, Math.round(rect.y))
+  const ex = Math.min(png.w, Math.round(rect.x + rect.w)), ey = Math.min(png.h, Math.round(rect.y + rect.h))
+  if (ex <= sx || ey <= sy) return null
+  let r = 0, g = 0, b = 0, n = 0
+  for (let y = sy; y < ey; y += 2) {
+    for (let x = sx; x < ex; x += 2) {
+      const i = (y * png.w + x) * 4
+      r += png.data[i]; g += png.data[i + 1]; b += png.data[i + 2]; n++
+    }
+  }
+  return n ? { r: Math.round(r / n), g: Math.round(g / n), b: Math.round(b / n) } : null
 }
 
 const findings = []
@@ -221,13 +341,85 @@ for (const R of ROUTES) {
     }).catch(() => {})
     await page.waitForTimeout(600)
   }
-  const res = await page.evaluate(MEASURE).catch(() => ({ rows: [], measured: 0 }))
+  const res = await page.evaluate(MEASURE).catch(() => ({ rows: [], measured: 0, pixelQueue: [] }))
   measured += res.measured || 0
   for (const r of (res.rows || [])) findings.push({ ...r, where: R.name, route: R.route })
+
+  /* 🖼️ 사진/그라디언트 위 글자 — 계산으로는 배경색을 못 구한다. 글자를 잠깐 투명하게 만들고
+     그 자리를 스크린샷으로 찍어 **진짜 픽셀의 평균 밝기**로 잰다. 우리 히어로가 정확히 이 형태라
+     (사진 위 흰 글자) 여기를 안 보면 가장 위험한 자리를 빼놓고 "0건" 을 보고하게 된다. */
+  const queue = res.pixelQueue || []
+  if (queue.length) {
+    await page.evaluate(HIDE_PIXEL_TEXT).catch(() => {})
+    await page.waitForTimeout(250)
+    const shotPath = path.join(SHOTDIR, `dc-${R.name.replace(/[^\w가-힣]+/g, '_')}.png`)
+    await page.screenshot({ path: shotPath }).catch(() => {})
+    if (fs.existsSync(shotPath)) {
+      const png = await readPng(shotPath)
+      for (const q of queue) {
+        const avg = avgRect(png, q.rect)
+        if (!avg) continue
+        measured++
+        const cr = contrast(q.fgRaw, avg)
+        if (cr >= 3.0) continue
+        findings.push({
+          ...q, fgRaw: undefined,
+          where: R.name, route: R.route,
+          dir: relLum(avg) >= 0.5 ? '사진 위 밝은 글자' : '사진 위 어두운 글자',
+          bg: `rgb(${avg.r},${avg.g},${avg.b}) (사진 평균)`,
+          ratio: Math.round(cr * 100) / 100,
+        })
+      }
+      fs.unlinkSync(shotPath)
+    }
+  }
+
+  /* 🖱️ 호버·포커스 — 기본 상태만 보면 "누르려는 순간 사라지는 글자" 를 못 본다.
+     hover: 로 색이 바뀌는 요소만 골라 실제로 마우스를 올리고 다시 잰다(전부 하면 느리다). */
+  const hoverables = await page.evaluate(() => {
+    const out = []
+    let i = 0
+    for (const el of document.querySelectorAll('a,button,[role="button"]')) {
+      const cls = typeof el.className === 'string' ? el.className : ''
+      if (!/hover:(text-|bg-)/.test(cls)) continue
+      const r = el.getBoundingClientRect()
+      if (r.width < 8 || r.height < 8 || r.top < 0 || r.top > innerHeight) continue
+      if (!Array.from(el.childNodes).some((n) => n.nodeType === 3 && n.textContent.trim())) continue
+      el.setAttribute('data-dc-hover', String(i))
+      out.push(i); i++
+      if (i >= 12) break
+    }
+    return out
+  }).catch(() => [])
+  for (const i of hoverables) {
+    const sel = `[data-dc-hover="${i}"]`
+    await page.hover(sel, { timeout: 1500 }).catch(() => {})
+    const hit = await page.evaluate(MEASURE_ONE, sel).catch(() => null)
+    if (hit) { measured++; if (hit.bad) findings.push({ ...hit.bad, where: `${R.name} (호버)`, route: R.route }) }
+  }
+  const focusables = await page.evaluate(() => {
+    const out = []
+    let i = 0
+    for (const el of document.querySelectorAll('a,button,input,textarea,select,[tabindex]')) {
+      const r = el.getBoundingClientRect()
+      if (r.width < 8 || r.height < 8 || r.top < 0 || r.top > innerHeight) continue
+      el.setAttribute('data-dc-focus', String(i)); out.push(i); i++
+      if (i >= 12) break
+    }
+    return out
+  }).catch(() => [])
+  for (const i of focusables) {
+    const sel = `[data-dc-focus="${i}"]`
+    await page.focus(sel, { timeout: 1500 }).catch(() => {})
+    const hit = await page.evaluate(MEASURE_ONE, sel).catch(() => null)
+    if (hit) { measured++; if (hit.bad) findings.push({ ...hit.bad, where: `${R.name} (포커스)`, route: R.route }) }
+  }
+
   await ctx.close()
 }
 await browser.close()
 server.close()
+try { fs.rmSync(SHOTDIR, { recursive: true, force: true }) } catch { /* 임시 디렉터리 */ }
 
 /* 🛡️ 측정 대상이 0이면 **통과가 아니라 실패**로 본다. 렌더가 깨졌거나(시드 실패·라우트 삭제)
    측정기가 헛돌면 findings 도 0 이라 초록불이 되는데, 그게 이 레포가 반복해 당한 사고다

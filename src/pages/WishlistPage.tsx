@@ -85,8 +85,10 @@ const WishlistPage: React.FC = () => {
     <WalletPageWrapper theme={theme}>
       <SEO title={t('wishlist.seoTitle', { defaultValue: '위시리스트 - 유어딜' })} description={t('wishlist.seoDesc', { defaultValue: '관심 상품을 모아보세요' })} url="/wishlist" noindex />
 
-      {/* 상단 chrome — 뒤로가기 */}
-      <div className="sticky top-0 md:top-14 z-30 px-2 pt-3 pb-2 flex items-center"
+      {/* 상단 chrome — 뒤로가기.
+          🖥️ 2026-09-03 (대표 "위시리스트 PC 도 봐야겠는데"): `lg:hidden`. PC 는 상단 네비가 이미
+          있어서 이 원형 뒤로가기 하나 때문에 줄 하나가 통째로 흰 띠로 낭비됐다(실측 60px). */}
+      <div className="lg:hidden sticky top-0 md:top-14 z-30 px-2 pt-3 pb-2 flex items-center"
         style={{ background: tk.chrome, borderBottom: `0.5px solid ${tk.separator}` }}>
         <button
           onClick={() => navigate(-1)}
@@ -98,18 +100,27 @@ const WishlistPage: React.FC = () => {
         </button>
       </div>
 
-      <LargeTitle theme={theme} title={t('wishlist.title')} subtitle={t('wishlist.subtitleCount', { count: wishlists.length })} />
-
+      {/* 🖥️ 제목을 그리드와 **같은 자** 안으로. 밖에 있어서 PC 에서 제목만 화면 왼쪽 끝에 붙고
+          카드는 컨테이너 안에서 시작해 두 왼쪽 끝이 어긋나 있었다(실측 24px vs 44px). */}
       <div className="ur-content-wide px-4 lg:px-8 pb-2">
+        {/* `LargeTitle` 은 자기 `px-4` 를 갖는다(마이·주문·지갑이 컨테이너 **밖**에서 쓰기 때문).
+            여기선 컨테이너 안이라 여백이 겹쳐 제목만 18px 더 들어갔다 → 그 패딩만 끈다.
+            공유 부품을 고치면 다른 세 페이지가 밀린다. */}
+        <div className="[&>div]:px-0">
+          <LargeTitle theme={theme} title={t('wishlist.title')} subtitle={t('wishlist.subtitleCount', { count: wishlists.length })} />
+        </div>
+
         {wishlists.length === 0 ? (
-          <div className="rounded-2xl p-12 text-center" style={{ background: tk.card, border: `0.5px solid ${tk.separator}` }}>
-            <Heart className="w-16 h-16 mx-auto mb-4" style={{ color: tk.tertiary }} />
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: tk.label, marginBottom: 6 }}>{t('wishlist.emptyTitle')}</h2>
-            <p className="mb-6" style={{ fontSize: 13, color: tk.secondary }}>{t('wishlist.emptyHint')}</p>
+          /* 🎫 2026-09-03: 표면 규칙 ①(카드 테두리 0 · 화이트는 들림 한 값) + ⑥(그라디언트 0).
+             종전엔 테두리 카드 + 그라디언트 버튼이었고, p-12·아이콘 64px 이라 빈 화면이 세로로
+             과하게 컸다. 주 행동은 브랜드 블루 면 하나. */
+          <div className="rounded-2xl px-6 py-10 text-center bg-white dark:bg-[#1D1F29] shadow-lift dark:shadow-none lg:max-w-xl lg:mx-auto lg:mt-4">
+            <Heart className="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-gray-500" strokeWidth={1.5} aria-hidden />
+            <h2 className="text-[17px] font-extrabold text-[#16181C] dark:text-[#F5F3F1]">{t('wishlist.emptyTitle')}</h2>
+            <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('wishlist.emptyHint')}</p>
             <button
               onClick={() => navigate('/')}
-              className="px-6 py-3 rounded-xl active:opacity-90"
-              style={{ background: tk.accentGradient, color: tk.onAccent, fontSize: 14, fontWeight: 700 }}
+              className="mt-5 h-11 px-6 rounded-full bg-brand text-white text-[14px] font-bold active:scale-[0.98] transition-transform"
             >
               {t('wishlist.continueShopping')}
             </button>
