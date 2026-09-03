@@ -1,10 +1,9 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Map } from 'lucide-react'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
-import { pickHeroPhotoFromSeedJson, type HeroPhotoPick } from '@/shared/home-hero-photo'
 import { HOME_HERO_REQUEST_WIDTH, HOME_HERO_QUALITY } from '@/shared/home-hero-image'
 import PcHomeLocationBar, { type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
+import { useHeroPhoto } from './useHeroPhoto'
 
 /**
  * 🏠 히어로 (2026-08-19 대표 확정 — **통합형 190px**, 시안 4개 중 ②안).
@@ -33,7 +32,7 @@ import PcHomeLocationBar, { type HomeRegion } from '@/pages/pc-home/PcHomeLocati
 const DEFAULT_TITLE_HEAD = '사서 '
 const DEFAULT_TITLE_ACCENT = '바로 쓰는'
 const DEFAULT_TITLE_TAIL = ' 동네 이용권'
-const DEFAULT_DESC = '예약도 대기도 없이. 식사 · 미용 · 숙소 · 교환권.'
+const DEFAULT_DESC = '예약도 대기도 없이. 식사, 미용, 숙소, 교환권.'
 
 /**
  * 홈 SSR 시드에서 히어로에 쓸 사진 1장. 없으면 null(= 사진 없는 색면).
@@ -43,12 +42,6 @@ const DEFAULT_DESC = '예약도 대기도 없이. 식사 · 미용 · 숙소 · 
  *   **똑같은 사진**을 골라야 한다. 규칙이 두 벌이면 반드시 갈리고, 갈리면 preload 가 버려져
  *   같은 사진을 두 번 받는다(에러 없이 더 느려진다). 이 함수는 DOM 에서 시드를 꺼내 넘기기만 한다.
  */
-export function pickHeroPhoto(): HeroPhotoPick | null {
-  if (typeof document === 'undefined') return null
-  const el = document.getElementById('__SSR_INITIAL_MAIN__')
-  if (!el?.textContent) return null
-  return pickHeroPhotoFromSeedJson(el.textContent)
-}
 
 export interface HeroContent {
   /** 어드민이 올린 히어로 사진(없으면 시드에서 고른다). */
@@ -77,8 +70,12 @@ export default function HomeHeroDefault({
   content?: HeroContent
   controls?: HeroControls
 }) {
-  // 시드는 하드로드 시점에 이미 문서에 있으므로 **동기 1회**로 읽는다(리렌더/왕복 0).
-  const seed = content?.photo ? null : pickHeroPhoto()
+  /**
+   * 🖼️ 사진 소스. 하드로드면 문서 시드(동기·왕복 0), 앱 안에서 들어왔으면 홈 피드 캐시.
+   *   ⚠️ 2026-09-03 이전에는 **시드만** 봤다 — 그래서 홈 탭을 눌러 들어오면 시드가 없어
+   *      색면만 남았고, 새로고침해야 사진이 나왔다(대표 신고 "심각해").
+   */
+  const seed = useHeroPhoto(!content?.photo)
   const photoSrc = content?.photo || seed?.src || ''
   const photoHref = content?.photoHref || seed?.href || '/map'
   const hasMedia = !!photoSrc || !!content?.videoUrl
@@ -94,37 +91,27 @@ export default function HomeHeroDefault({
              아래로 펼쳐지는 요소라 상단 몇 px 만 보이고 잘려 나갔다(`isolate` 는 z-index 를 이 안에
              가둬서, z-10500 을 줘도 밖으로 못 나온다). 배경만 가두면 둘 다 성립한다. */}
       <div className="absolute inset-0 overflow-hidden isolate pointer-events-none" aria-hidden="true">
-      {/* 배경 — 잉크 위에 로즈 블룸 2개 + 빛줄기. 전부 CSS(용량 0 · 요청 0). */}
-      <div
-        className="absolute -inset-[18%] ur-hero-bloom-a"
-        aria-hidden="true"
-        style={{ background: 'radial-gradient(closest-side, rgba(224,82,107,0.55), transparent 72%)' }}
-      />
-      <div
-        className="absolute -inset-[10%] ur-hero-bloom-b"
-        aria-hidden="true"
-        style={{ background: 'radial-gradient(closest-side, rgba(120,90,220,0.34), transparent 70%)' }}
-      />
-      <div
-        className="absolute inset-y-0 w-1/3 ur-hero-sweep"
-        aria-hidden="true"
-        style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent)' }}
-      />
-
+      {/* 🎫 2026-09-02 (대표 "메인페이지에 저 그라데이션 로즈?핑크색? 안맞는 것 같은데"): 로즈 블룸 2개 + 빛줄기 삭제.
+          표면 체계 규칙 ⑥ "그라디언트 0" 이고, 강조색은 블루 하나뿐이다. 바탕은 색면(--home-field) 그대로. */}
       {/* 📸 우측 미디어 — 좌·우 양끝을 색면으로 페이드한다(대표 요청 "양쪽 그라데이션").
           `mask-image` 로 픽셀을 투명하게 깎아 색면이 그대로 비치게 한다 — 위에 반투명 막을
-          덧대는 방식은 사진이 뿌옇게 죽는다. 세로 끝도 눌러 위아래 경계선을 없앤다. */}
+          덧대는 방식은 사진이 뿌옇게 죽는다.
+          🎫 2026-09-02 (대표 "위아래부분까지 그라데이션은 안해도 될 것 같은데"): 세로(180deg) 마스크와
+          하단 h-12 페이드를 뺐다. 사진은 히어로 위아래 끝까지 꽉 차고, 페이드는 **좌우만**. */}
       {hasMedia && (
-        <div className="hidden md:block absolute inset-y-0 right-0 w-[46%] lg:w-[54%]" aria-hidden="true"
+        <div
+          className="hidden md:block absolute inset-y-0 w-[46%] lg:w-[54%] right-[calc(max(0px,(100vw-1440px)/2)+1.5rem)] lg:right-[calc(max(0px,(100vw-1440px)/2)+2rem)]"
+          aria-hidden="true"
           /* 📐 2026-08-24: `lg:block`(1024+) 이라 **태블릿엔 사진이 아예 없었다** — 색면만 남아
-             허전했다. md(768)부터 보이되 폭은 46% 로 좁혀 카피가 눌리지 않게 한다. */
+             허전했다. md(768)부터 보이되 폭은 46% 로 좁혀 카피가 눌리지 않게 한다.
+             🖼️ 2026-09-03 (대표 — 빨간 상자 시안 "아래의 길이와 맞게끔"): `right-0` 이라 사진이
+             **뷰포트 오른쪽 끝**까지 갔는데, 바로 아래 매대는 `max-w-[1440px] + px-6/8` 안에 있어
+             넓은 화면일수록 두 오른쪽 끝이 어긋났다(1904px 에서 264px 차이). 색면은 전체 폭 그대로
+             두고(그게 이 히어로의 바탕이다) **사진만** 아래 매대와 같은 자로 당긴다. 폭(46/54%)은
+             건드리지 않아 좁은 화면의 균형은 그대로다 — 오른쪽 여백만 생긴다. */
           style={{
-            WebkitMaskImage:
-              'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 12%, #000 84%, transparent 100%)',
-            maskImage:
-              'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%), linear-gradient(180deg, transparent 0%, #000 12%, #000 84%, transparent 100%)',
-            WebkitMaskComposite: 'source-in',
-            maskComposite: 'intersect',
+            WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%)',
+            maskImage: 'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%)',
           }}
         >
           {content?.videoUrl ? (
@@ -163,10 +150,6 @@ export default function HomeHeroDefault({
         }}
       />
 
-      {/* 🌗 히어로 → 아래 색면으로 이어지는 페이드. 경계선이 딱 떨어지면 '잘린 배너'로 보인다. */}
-      <div className="absolute inset-x-0 bottom-0 h-12" aria-hidden="true"
-        style={{ background: 'linear-gradient(180deg, transparent, var(--home-field))' }} />
-
       </div>{/* ← 배경 래퍼 끝. 아래 콘텐츠는 잘리지 않는다(드롭다운이 히어로 밖으로 펼쳐진다). */}
 
       <div className="relative z-10 w-full max-w-[1440px] mx-auto px-6 lg:px-8 py-6 flex flex-col justify-center">
@@ -193,22 +176,32 @@ export default function HomeHeroDefault({
               locatedLabel={controls.locatedLabel}
             />
           )}
+          {/* 🎫 2026-09-03 (대표 확정 — 히어로 컨트롤 안 1): 고스트 아웃라인 → **브랜드 블루 면 하나**.
+              종전엔 위치 칩 둘과 이 버튼이 전부 같은 반투명 테두리 알약이라, 화면이 무엇을 먼저 누르라고
+              말하지 않았다(대표 "AI 느낌"). 서비스 전체가 쓰는 규칙(주 버튼은 블루)을 이 히어로에도 적용한다.
+              아이콘과 화살표를 뺀 이유: 왼쪽 칩에 이미 핀·조준 둘이 있어 아이콘이 셋 연달았고, 색을 채운
+              버튼은 그 자체가 "여기를 눌러라"라서 화살표가 같은 말을 두 번 한다. */}
           <Link
             to="/map"
-            className="inline-flex items-center gap-1.5 shrink-0 px-5 py-2 rounded-full border border-white/45 text-white text-[13px] font-bold tracking-wide hover:bg-white hover:text-[var(--home-field)] transition-colors"
+            className="inline-flex items-center shrink-0 h-[38px] px-5 rounded-full bg-brand text-white text-[13.5px] font-extrabold hover:bg-[#1557C8] transition-colors shadow-[0_6px_18px_-8px_rgba(28,105,239,0.9)]"
           >
-            <Map className="w-4 h-4" strokeWidth={2} aria-hidden="true" />
-            지도에서 가까운 딜 보기
-            <ArrowRight className="w-4 h-4" strokeWidth={2.2} aria-hidden="true" />
+            지도에서 딜 찾기
           </Link>
-          {/* 사진이 실제 딜이면 그 딜로 가는 통로를 남긴다(사진만 있고 갈 곳이 없으면 장식이 된다). */}
-          {hasMedia && photoHref !== '/map' && (
-            <Link to={photoHref} className="text-[12.5px] font-bold text-white/60 hover:text-white transition-colors">
-              사진 속 딜 보기 →
-            </Link>
-          )}
         </div>
       </div>
+
+      {/* 🖼️ 2026-09-03 (안 1): 컨트롤 행에 있던 "사진 속 딜 보기"를 **사진 오른쪽 아래**로 옮겼다.
+          왼쪽 글자 뭉치 옆에 있으면 무엇을 가리키는 말인지 알 수 없고, 주 버튼 옆에서 화살표를 하나 더
+          만들었다. 사진 위에 있으면 설명이 필요 없다. 사진이 실제 딜일 때만 — 갈 곳이 없으면 장식이다. */}
+      {hasMedia && photoHref !== '/map' && (
+        <Link
+          to={photoHref}
+          /* 사진 오른쪽 끝이 매대와 정렬됐으니 이 링크도 같은 자를 쓴다 — 안 그러면 사진 밖에 뜬다. */
+          className="absolute z-20 bottom-3 right-[calc(max(0px,(100vw-1440px)/2)+2.5rem)] lg:right-[calc(max(0px,(100vw-1440px)/2)+3rem)] text-[12px] font-bold text-white/70 hover:text-white transition-colors drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]"
+        >
+          사진 속 딜 보기 →
+        </Link>
+      )}
     </section>
   )
 }

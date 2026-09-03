@@ -54,7 +54,7 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
       onMouseEnter={() => prefetchProduct(p.id)}
       onTouchStart={() => prefetchProduct(p.id)}
       onFocus={() => prefetchProduct(p.id)}
-      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]"
+      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-[#1D1F29] shadow-lift"
     >
       {/* 🎨 이미지 영역 — 상세와 동톤(은은한 그라데이션). dominant_color 있으면 로딩 플레이스홀더로(잠금). */}
       <div
@@ -101,7 +101,7 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
         <div className="flex items-baseline gap-1 mt-1">
           {/* 🖥️ 2026-07-16 (대표 — 할인 % 나와야지): 가격 옆에 할인율 코랄레드로 명시. */}
           {discountRate > 0 && (
-            <span className="text-[15px] font-extrabold text-brand dark:text-[#EF6E85] tracking-tight">{discountRate}%</span>
+            <span className="text-[15px] font-extrabold text-brand dark:text-[#4D8DF5] tracking-tight">{discountRate}%</span>
           )}
           <span className="text-[16px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
           <span className="text-[12px] font-bold text-[#171B24] dark:text-white">딜</span>
@@ -144,7 +144,7 @@ export const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: Vouche
       onMouseEnter={() => prefetchProduct(p.id)}
       onTouchStart={() => prefetchProduct(p.id)}
       onFocus={() => prefetchProduct(p.id)}
-      className="w-full flex items-center gap-3 text-left py-2.5 border-b border-gray-100 dark:border-[#2C2F35] active:opacity-60 transition-opacity"
+      className="w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift active:opacity-60 transition-opacity"
     >
       {/* 🎨 이미지 — 좌측 정사각 타일(컴팩트 64/72). dominant_color 있으면 로딩 플레이스홀더(잠금).
           ⚠️ img width/height/srcSet/lazy/fetchPriority/dominant_color 속성 불변 — 표시 박스 CSS 크기만 축소. */}
@@ -191,7 +191,7 @@ export const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: Vouche
         <p className="text-[14px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white">{p.name}</p>
         <div className="flex items-baseline gap-1 mt-1">
           {discountRate > 0 && (
-            <span className="text-[15px] font-extrabold text-brand dark:text-[#EF6E85] tracking-tight">{discountRate}%</span>
+            <span className="text-[15px] font-extrabold text-brand dark:text-[#4D8DF5] tracking-tight">{discountRate}%</span>
           )}
           <span className="text-[17px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
           <span className="text-[12px] font-bold text-[#171B24] dark:text-white">딜</span>
@@ -244,10 +244,8 @@ export const BrandChip = memo(function BrandChip({
     >
       {/* 🎨 2026-06-10: 화이트 로고 타일 — 선택 시 모노크롬 ring + 살짝 확대(로고 본연 색 발색). */}
       <div
-        className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center bg-white dark:bg-white border transition-all ${
-          selected
-            ? 'border-gray-900 dark:border-white ring-2 ring-gray-900 dark:ring-white scale-105 shadow-md'
-            : 'border-gray-200 dark:border-white/10 opacity-90'
+        className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center bg-white dark:bg-white shadow-lift transition-all ${
+          selected ? 'ring-2 ring-brand scale-105' : ''
         }`}
       >
         {brand.brand_icon_url ? (
@@ -267,7 +265,7 @@ export const BrandChip = memo(function BrandChip({
       </div>
       <span
         className={`text-[10px] line-clamp-1 ${labelWidthClass} text-center ${
-          selected ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-600 dark:text-gray-400'
+          selected ? 'text-brand-text font-bold' : 'text-gray-600 dark:text-gray-400'
         }`}
       >
         {brand.brand_name}

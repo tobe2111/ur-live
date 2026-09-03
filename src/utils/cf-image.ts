@@ -96,6 +96,10 @@ const EXTERNAL_PROXY_HOSTS = new Set([
   //   프록시(same-origin)로 추가 → 추출 성공 → 이미지색 반영(쇼핑 카드와 동일). (ADD only, 제거 금지 룰 준수)
   'bizimg.giftishow.com',
   'giftishow.com',
+  // 🔎 2026-09-02 (대표 "QA 도와줘" — 라이브 홈 실측): 데모 사진 출처가 카카오 플레이스라 **임의 CDN** 이 섞인다.
+  //   목록에 없으면 `cfImage` 가 원본 URL 을 그대로 돌려줘 **리사이저를 아예 안 거친다**(홈 한 화면에서 5장 실측).
+  //   활성 상품 15개(커버 4 · 갤러리 11)가 이 상태였다. 아래 둘은 cf-resized 실측 통과 → CDN_CGI_VERIFIED 승격.
+  'cloudfront.net',           // 실측 internal=ok (d2uja84sd90jmv / d12zq4w4guyljn, w200/400/600)
   'gift-img.kt.com',
   'image.kt.com',
   'static.kt.com',
@@ -176,6 +180,22 @@ function cdnCgiSafe(src: string): string {
   const path = q === -1 ? src : src.slice(0, q)
   return path.replace(/%/g, '%25') + (q === -1 ? '' : src.slice(q))
 }
+
+// 🔀 2026-09-02 [UNLOCK_LOADING] (대표 "그것도 다 진행해줘 · 가장 이상적으로"): 이 목록을 **모듈 스코프로 올린다.**
+//   전에는 `EXTERNAL_PROXY_HOSTS` 안쪽에서만 검사해서, **목록에 없는** 핫링크 차단 호스트(예: 새로 생긴
+//   네이버 블로그 서브도메인)는 아래 미지-호스트 기본 경로(cdn-cgi)로 가 403 → 302 → 또 403 = 깨진 사진이
+//   된다. 값·순서 불변(동일성은 `hotlink-rehost-scope.test.ts` 가 SSOT 와 대조).
+// 🚑 2026-07-21 [UNLOCK_LOADING] (대표 신고 "네이버 사진 안 뜸 403" — 라이브 실측):
+//   네이버 **블로그 CDN**(postfiles/mblogthumb/dthumb/blogfiles.pstatic.net)은 **우리 도메인
+//   referer 요청만 403** 핫링크 차단(실측: no-referer→200, referer=urdeal.kr→403). cdn-cgi
+//   리사이저는 페이지 referer 를 달고 네이버에 요청 → 403 → 사진 안 뜸. `onerror=redirect` 도
+//   브라우저가 원본을 우리 도메인 referer 로 재요청 → 또 403. → 이 호스트들만 **워커 프록시**
+//   (/api/image/resize)로 강제: 워커가 **referer 없이 서버측 fetch → 200**(폴백 경로). 엣지+R2
+//   캐시로 반복 비용 0. 네이버 플레이스 CDN(ldb/shop/naverbooking-phinf)은 차단 안 해 cdn-cgi 유지.
+// 2026-07-21 전수조사 보강: 블로그 CDN(실측 403) + shop/booking-phinf(미실측이나 핫링크 위험 —
+//   워커 프록시는 안전하면 cdn-cgi 통과·막히면 no-referer 폴백이라 어느 쪽이든 안전). place CDN
+//   (ldb-phinf)은 대표사진 출처라 제외(cdn-cgi 유지).
+const HOTLINK_BLOCKED_HOSTS = ['postfiles.pstatic.net', 'mblogthumb-phinf.pstatic.net', 'dthumb-phinf.pstatic.net', 'blogfiles.pstatic.net', 'blogpfthumb-phinf.pstatic.net', 'shop-phinf.pstatic.net', 'naverbooking-phinf.pstatic.net']
 
 export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}): string {
   if (!src) return ''
@@ -265,17 +285,6 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   /api/image/resize 프록시는 리사이즈 불가(06-11 실측)라 cdn-cgi 직결이 유일 변환 경로.
       //   `onerror=redirect` 를 함께 부여: 리사이저 원본 fetch 실패 시 원본으로 302 → 항상 표시
       //   (2026-06-11 kakaocdn 깨짐 클래스 구조적 차단 — 실패해도 현행(원본)과 동일).
-      // 🚑 2026-07-21 [UNLOCK_LOADING] (대표 신고 "네이버 사진 안 뜸 403" — 라이브 실측):
-      //   네이버 **블로그 CDN**(postfiles/mblogthumb/dthumb/blogfiles.pstatic.net)은 **우리 도메인
-      //   referer 요청만 403** 핫링크 차단(실측: no-referer→200, referer=urdeal.kr→403). cdn-cgi
-      //   리사이저는 페이지 referer 를 달고 네이버에 요청 → 403 → 사진 안 뜸. `onerror=redirect` 도
-      //   브라우저가 원본을 우리 도메인 referer 로 재요청 → 또 403. → 이 호스트들만 **워커 프록시**
-      //   (/api/image/resize)로 강제: 워커가 **referer 없이 서버측 fetch → 200**(폴백 경로). 엣지+R2
-      //   캐시로 반복 비용 0. 네이버 플레이스 CDN(ldb/shop/naverbooking-phinf)은 차단 안 해 cdn-cgi 유지.
-      // 2026-07-21 전수조사 보강: 블로그 CDN(실측 403) + shop/booking-phinf(미실측이나 핫링크 위험 —
-      //   워커 프록시는 안전하면 cdn-cgi 통과·막히면 no-referer 폴백이라 어느 쪽이든 안전). place CDN
-      //   (ldb-phinf)은 대표사진 출처라 제외(cdn-cgi 유지).
-      const HOTLINK_BLOCKED_HOSTS = ['postfiles.pstatic.net', 'mblogthumb-phinf.pstatic.net', 'dthumb-phinf.pstatic.net', 'blogfiles.pstatic.net', 'blogpfthumb-phinf.pstatic.net', 'shop-phinf.pstatic.net', 'naverbooking-phinf.pstatic.net']
       if (HOTLINK_BLOCKED_HOSTS.some(h => host === h || host.endsWith('.' + h))) {
         return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
       }
@@ -288,12 +297,24 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   ⚠️ 2026-06-11 에 kakaocdn 이 cdn-cgi 직결로 깨진 적이 있는데, 그때는 `onerror=redirect`
       //   안전판이 없었다(2026-07-02 도입). 지금은 리사이저가 실패하면 원본으로 302 → 현행과 동일 →
       //   최악의 경우 다운사이드 0. 핫링크 차단 호스트는 위 HOTLINK_BLOCKED_HOSTS 가 먼저 걸러 낸다.
-      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com', 'kakaocdn.net', 'daumcdn.net']  // giftishow 2026-07-13 재실측 복원 · kakao/daum 2026-08-19 실측 승격(전부 onerror=redirect 안전판)
+      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com', 'kakaocdn.net', 'daumcdn.net', 'cloudfront.net']  // giftishow 2026-07-13 재실측 복원 · kakao/daum 2026-08-19 · cloudfront 2026-09-02 실측 승격(DO-spaces 는 403 이라 승격 철회)(전부 onerror=redirect 안전판)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
         return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect${cropFrag(opts)}/${cdnCgiSafe(src)}`
       }
       return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
     }
+    // 🩸 2026-09-02 **되돌림 — 내 안전 논리가 틀렸다(라이브 실측이 반증)**.
+    //   같은 날 이 자리를 `cdn-cgi + onerror=redirect` 로 바꿨다. 근거는 "리사이저가 실패해도 `onerror=redirect`
+    //   가 원본으로 302 → 최악이 현행과 동일" 이었는데, **이 존에서 그 폴백은 일어나지 않는다**:
+    //     `/cdn-cgi/image/…,onerror=redirect/<막는 호스트>` → **HTTP 403 · `cf-resized: err=9408`** (302 아님)
+    //     검증 호스트(cloudfront)의 **없는 경로**로 시험해도 동일하게 403 — 즉 URL 이 아니라 폴백 자체가 안 돈다.
+    //   ⇒ 미지 호스트를 cdn-cgi 로 보내면, CF 를 막는 호스트의 사진이 **원본이면 보였을 자리에서 깨진다**
+    //     (카드는 `cfImageOnError` 가 원본으로 되돌려 살아나지만, 상세 갤러리는 감시 <img> 가 죽은 것으로 표시해
+    //     그 사진을 목록에서 빼 버린다 — 사용자에겐 사진이 사라진 것으로 보인다).
+    //   ⇒ 기본값은 **원본 유지**. 승격은 `cf-resized: internal=ok` 를 실측한 호스트만(그게 이 파일의 원래 규율이고,
+    //     내가 그 규율을 지키지 않아 `digitaloceanspaces.com` 을 미실측 승격했다가 403 을 만들었다).
+    //   ⚠️ 이 파일의 다른 주석에 남아 있는 "onerror=redirect … 최악의 경우 다운사이드 0" 도 **같은 이유로 과장**이다.
+    //     검증 호스트에서는 실패 경로 자체가 안 일어나 지금까지 드러나지 않았을 뿐이다.
     if (!isSupported && !isExternalProxyable) return src  // 미지원 도메인 → 원본
   }
 

@@ -78,7 +78,7 @@ export function NotificationToggleSection() {
         aria-label={value ? `${label} 끄기` : `${label} 켜기`}
         className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-white/[0.15]'}`}
       >
-        <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white dark:bg-[#0D0F12] rounded-full shadow-sm transition-transform duration-200 ${value ? 'translate-x-[20px]' : 'translate-x-0'}`} />
+        <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white dark:bg-[#11141C] rounded-full shadow-sm transition-transform duration-200 ${value ? 'translate-x-[20px]' : 'translate-x-0'}`} />
       </button>
     </div>
   )
@@ -86,7 +86,7 @@ export function NotificationToggleSection() {
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
       <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('accountSettings.sectionNotification', { defaultValue: '알림 설정' })}</p>
-      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1A1C21]">
+      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1D1F29]">
         <Toggle
           icon={<Bell className="w-4 h-4" aria-hidden="true" />}
           label={t('accountSettings.togglePush', { defaultValue: '푸시 알림' })}
@@ -158,7 +158,7 @@ export function AppVersionSection() {
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
       <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('accountSettings.appInfo', { defaultValue: '앱 정보' })}</p>
-      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1A1C21]">
+      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1D1F29]">
         <div className="flex items-center justify-between px-4 py-3.5">
           <span className="text-[13px] text-gray-900 dark:text-white/75">{t('accountSettings.currentVersion', { defaultValue: '현재 버전' })}</span>
           <span className="text-[12px] font-medium text-gray-900 dark:text-white">v{APP_VERSION}</span>
@@ -235,6 +235,22 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
 
   async function save() {
     if (!form.name.trim()) { toast.error(t('accountSettings.nameRequired', { defaultValue: '이름을 입력해주세요' })); return }
+    /**
+     * 📞 2026-09-02 (대표 "프로필 수정에서 전화번호 입력은 필수로 둬줘")
+     *
+     * 이 서비스에서 전화번호는 선택 정보가 아니다 — 교환권은 **MMS 로 그 번호에 발송**되고
+     * 이용권 사용·주문 안내도 알림톡으로 간다. 번호가 없으면 산 물건이 도착할 곳이 없다.
+     * (교환권 결제 경로는 서버가 이미 `PHONE_REQUIRED` 로 막지만, 그건 **결제 순간**이라
+     *  사용자는 계산대 앞에서야 알게 된다. 프로필에서 미리 받아 그 벽을 없앤다.)
+     *
+     * ⚠️ 형식까지 본다 — 빈칸만 막으면 "010" 한 글자로도 통과해 같은 문제가 남는다.
+     *   `formatPhone` 이 하이픈을 넣으므로 하이픈 포함 010-0000-0000 형태를 받는다.
+     */
+    const phone = form.phone.trim()
+    if (!phone) { toast.error(t('accountSettings.phoneRequired', { defaultValue: '전화번호를 입력해주세요 — 교환권·알림톡이 이 번호로 갑니다' })); return }
+    if (!/^01[016789]-?\d{3,4}-?\d{4}$/.test(phone)) {
+      toast.error(t('accountSettings.phoneInvalid', { defaultValue: '전화번호 형식을 확인해주세요 (010-0000-0000)' })); return
+    }
     setLoading(true)
     try {
       const res = await api.patch('/api/auth/profile', { name: form.name.trim(), phone: form.phone.trim() })
@@ -258,7 +274,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-[10100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose} role="presentation">
-      <div className="bg-white dark:bg-[#0D0F12] rounded-2xl w-full max-w-md p-6 shadow-2xl mb-16 sm:mb-0" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className="bg-white dark:bg-[#11141C] rounded-2xl w-full max-w-md p-6 shadow-2xl mb-16 sm:mb-0" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('accountSettings.editProfile', { defaultValue: '프로필 수정' })}</h3>
           <button onClick={onClose} aria-label="닫기"><X className="w-5 h-5 text-gray-500 dark:text-gray-400" /></button>
@@ -271,19 +287,19 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
             <input
               id="account-name" required value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full px-4 py-3 bg-white dark:bg-[#1A1C21] border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
               placeholder={t('accountSettings.editNamePlaceholder', { defaultValue: '홍길동' })}
             />
           </div>
           <div>
             <label htmlFor="account-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
-              {t('accountSettings.editPhone', { defaultValue: '전화번호' })}
+              {t('accountSettings.editPhone', { defaultValue: '전화번호' })} <span className="text-red-500" aria-hidden="true">*</span>
             </label>
             <input
-              id="account-phone" type="tel" inputMode="numeric" value={form.phone}
+              id="account-phone" type="tel" required inputMode="numeric" value={form.phone}
               onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))}
               maxLength={13}
-              className="w-full px-4 py-3 bg-white dark:bg-[#1A1C21] border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
               placeholder="010-0000-0000"
             />
             <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
@@ -292,7 +308,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
           </div>
         </div>
         <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 py-3 bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-200 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-[#2C2F35] transition-colors">
+          <button onClick={onClose} className="flex-1 py-3 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-[#2C2F35] transition-colors">
             {t('accountSettings.editCancel', { defaultValue: '취소' })}
           </button>
           <button onClick={save} disabled={loading} className="flex-1 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50">

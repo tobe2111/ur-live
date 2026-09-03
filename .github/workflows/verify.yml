@@ -271,6 +271,15 @@ jobs:
         run: node scripts/check-duplicate-routes.mjs -s
         continue-on-error: false
 
+      # 🕳️ 2026-09-02: 위 가드는 **같은 경로 문자열**만 본다. Hono 는 등록 순서로 매칭하므로
+      #   `/:id` 가 먼저면 그 뒤의 `/support-contact` 는 id="support-contact" 로 잡혀 **영원히 400**.
+      #   문자열이 달라 중복 가드가 못 잡는다. 라이브 실측으로 3곳이 죽어 있었다 —
+      #   `/api/group-buy/stays/my-bookings`(내 숙소 예약 화면이 통째로 실패) ·
+      #   `/api/curator/recommendations` · `/api/seller/gb/support-contact`. 예외 `route-shadow-ok`.
+      - name: 라우트 그림자 차단 (strict)
+        run: node scripts/check-route-shadowing.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-08-01: 라우트를 달아도 **누를 데가 없으면 없는 것과 같다.** 같은 클래스로
       #   이미 세 번 났다(랜딩 가려짐 / `GET /api/returns/seller` 소비화면 0건 / O9 구현 0).
       #   실측: 정적 라우트 361 중 21개가 소스 어디에도 문자열로 안 나온다 —
@@ -409,6 +418,18 @@ jobs:
 
       - name: 할인율이 사진 위에 없다 (전 카드 구현 · 인라인 스타일 포함)
         run: node scripts/check-discount-not-on-photo.mjs
+
+      # 📦 2026-09-01: 같은 장바구니가 `/cart` 에선 배송비 6,000원, `/checkout` 에선 0원이었다.
+      #   판정이 두 파일에 따로 적혀 갈라진 결과 — 이제 한 SSOT 만 쓴다.
+      - name: 배송비 판정 SSOT (장바구니 ↔ 결제)
+        run: node scripts/check-no-shipping-ssot.mjs
+
+      # 🔴 2026-09-01 디자인 방향 PR A — 흔적 두 가지를 래칫으로 동결.
+      #   붙여 쓴 가운뎃점(맛집·카페)은 한국어 표준이라 놔두고, **띄어 쓴 사슬**(a · b · c)만 잡는다.
+      - name: 띄어 쓴 가운뎃점 사슬 (래칫)
+        run: node scripts/check-middle-dot-chain.mjs
+      - name: 모양 잠금 — 체계 밖 모서리 (래칫)
+        run: node scripts/check-shape-lock.mjs
       - name: Dashboard button system ratchet (strict)
         env:
           STRICT_DASHBOARD_BUTTON: '1'
@@ -422,6 +443,15 @@ jobs:
         env:
           STRICT_IMAGE_FALLBACK: '1'
         run: node scripts/check-image-fallback.mjs
+        continue-on-error: false
+
+      # 🃏 2026-09-03 (대표 "이런 이용권들 디자인이 왜 통합적으로 관리가 안되는거지?"): 딜 카드는 한 벌.
+      #   그간 통일을 **화면 단위**로 했고, 그걸 지키는 검사가 "이미 고친 화면 목록"이라 아무도 안 본
+      #   화면은 영원히 안 걸렸다 — 네 번 다 대표가 눈으로 찾았다. 이제 소비자 표면 전체를 훑는다.
+      - name: Deal card unification ratchet (strict)
+        env:
+          STRICT_DEAL_CARD: '1'
+        run: node scripts/check-deal-card-unify.mjs
         continue-on-error: false
 
       # 🍎 2026-06-20: 카카오 OAuth iOS 쿠키 미영속 안티패턴 (strict). iOS Safari/WebKit 은

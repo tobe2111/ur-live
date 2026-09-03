@@ -59,7 +59,7 @@ describe('🔌 배선', () => {
   it('🔒 레인이 티스토리를 부르고, 블로거보다 **먼저** 작은 몫만 쓴다', () => {
     const c = code(LANE)
     // 2026-08-04: 몫이 상수 → `tistoryRoom(env)`(기본 0, env 로 복원) 로 바뀌었다. 호출 형태를 따라간다.
-    expect(c).toMatch(/enrichTistoryActivity\(DB, budget, tisRoom, slice\)/)
+    expect(c).toMatch(/enrichTistoryActivity\(DB, budget, tisRoom, slice(, env)?\)/)   // env 는 2026-09-03 재측정 주기용(선택)
     /**
      * 순서가 뒤집히면 블로거가 잔여를 다 가져가 티스토리는 영원히 0이 된다(`naverRoomFromRemaining` 이 전부를 쓴다).
      * ⚠️ **호출부로 앵커한다** — 처음엔 `indexOf('enrichTistoryActivity')` 로 썼는데 그게 맨 위 **import 문**을

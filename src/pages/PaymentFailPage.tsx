@@ -96,10 +96,10 @@ export default function PaymentFailPage() {
   const heroSub = isUserCancel ? '다시 진행하시려면 아래 버튼을 눌러주세요' : t('paymentFail.subtitle')
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0D0F12] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center p-4">
       <SEO title={isUserCancel ? '결제 취소' : t('paymentFail.title')} description={heroSub} url="/payment/fail" noindex />
       <div className="ur-content-narrow w-full">
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
+        <div className="bg-white dark:bg-[#1D1F29] rounded-2xl p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
           {/* hero 아이콘 + 제목 — code 별로 색/문구 분기 */}
           <div className="text-center mb-8">
             <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${heroIconBg} mb-4`}>
@@ -128,7 +128,7 @@ export default function PaymentFailPage() {
 
             {/* 주문번호 (있는 경우) */}
             {orderId && (
-              <div className="bg-[#f5f5f7] dark:bg-[#1A1C21] rounded-xl p-4">
+              <div className="bg-[#f5f5f7] dark:bg-[#1D1F29] rounded-xl p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-[#6e6e73] dark:text-gray-400">{t('paymentFail.orderNumberLabel')}</span>
                   <span className="text-sm font-semibold text-[#1d1d1f] dark:text-white font-mono">
@@ -172,7 +172,7 @@ export default function PaymentFailPage() {
 
           {/* 디버그 정보 (개발 환경에서만 표시) */}
           {import.meta.env.DEV && code && (
-            <div className="mt-6 p-4 bg-gray-100 dark:bg-[#1A1C21] rounded-lg">
+            <div className="mt-6 p-4 bg-gray-100 dark:bg-[#1D1F29] rounded-lg">
               <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">디버그 정보 (개발 환경)</p>
               <p className="text-xs font-mono text-gray-800 dark:text-gray-300">
                 Code: {code}

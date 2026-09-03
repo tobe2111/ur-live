@@ -43,7 +43,7 @@ export default function DemoPreview() {
   const go = () => document.getElementById('sec-searchad')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   return (
-    <div className="mt-3 rounded-2xl border border-blue-200 dark:border-blue-500/30 bg-white dark:bg-[#1A1C21] overflow-hidden">
+    <div className="mt-3 rounded-2xl border border-blue-200 dark:border-blue-500/30 bg-white dark:bg-[#1D1F29] overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-100 dark:border-[#2C2F35] bg-blue-50/60 dark:bg-blue-500/5 px-4 py-3">
         <div>
           <div className="text-[14px] font-bold text-gray-900 dark:text-white">🎬 연동하면 이렇게 보입니다</div>

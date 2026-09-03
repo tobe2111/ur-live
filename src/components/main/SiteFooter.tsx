@@ -15,7 +15,7 @@ const colLink = 'block text-[13px] text-gray-600 dark:text-gray-300 hover:text-g
 
 export default function SiteFooter() {
   return (
-    <footer className="bg-white dark:bg-[#0D0F12] border-t border-gray-100 dark:border-[#2C2F35]">
+    <footer className="bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35]">
       <div className="max-w-[1200px] mx-auto px-5 lg:px-8 pt-8 pb-6">
         {/* ── 상단: 브랜드 + 링크 컬럼 ── */}
         <div className="grid grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
@@ -86,7 +86,7 @@ export default function SiteFooter() {
             사업장주소: 서울특별시 강남구 남부순환로359길 14, 3층(도곡동) · 대표이메일: jiwon@ur-team.com
           </p>
           <p className="text-[11px] leading-[1.8]">서비스 제공 기간: 상품 구매 후 평균 7일 이내 배송 완료</p>
-          <p className="text-[11px] leading-[1.8] mt-2 text-gray-400 dark:text-gray-600">© 2026 리스터코퍼레이션. All rights reserved.</p>
+          <p className="text-[11px] leading-[1.8] mt-2 text-gray-400 dark:text-gray-500">© 2026 리스터코퍼레이션. All rights reserved.</p>
         </div>
       </div>
     </footer>

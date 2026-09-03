@@ -68,25 +68,26 @@ export default function SheetFilterBar({
           className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
             activeFilterCount > 0
               ? 'bg-brand text-white shadow-md shadow-brand/30'
-              : 'bg-white dark:bg-[#0D0F12] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2C2F35]'
+              : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2C2F35]'
           }`}
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
           {activeFilterCount > 0 && (
-            <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-white dark:bg-[#0D0F12]/25 text-[10px] font-bold">
+            <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-white dark:bg-[#11141C]/25 text-[10px] font-bold">
               {activeFilterCount}
             </span>
           )}
         </button>
-        <div className="flex-1 min-w-0 flex gap-1.5 overflow-x-auto no-scrollbar">
+        <div className="flex-1 min-w-0 flex gap-1.5 overflow-x-auto scrollbar-hide">
           {/* 🛡️ Phase 5: '내 주변' 퀵필터 — GPS prompt + 거리순 자동 */}
           <button
             onClick={requestNearMe}
             aria-pressed={nearMeMode}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all border ${
+            /* 🗺️ 2026-09-02 B안: 선택 = 브랜드 블루 면, 비선택 = 흰 알약 + 블루 글자. 색은 블루 하나뿐. */
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
               nearMeMode
-                ? 'bg-gray-900 text-white border-blue-600 shadow-md shadow-blue-600/30'
-                : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/40'
+                ? 'bg-brand text-white'
+                : 'bg-white dark:bg-[#1D1F29] text-brand-text shadow-lift'
             }`}
           >
             <Navigation className="w-3 h-3" />
@@ -96,13 +97,14 @@ export default function SheetFilterBar({
             <button
               key={v.key}
               onClick={() => setVoucherType(v.key)}
+              aria-pressed={voucherType === v.key}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
                 voucherType === v.key
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-50 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'
+                  ? 'bg-brand text-white'
+                  : 'bg-white dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 shadow-lift'
               }`}
             >
-              <span>{v.emoji}</span>
+              <v.icon size={14} />
               <span>{t(v.labelKey, { defaultValue: v.defaultLabel })}</span>
             </button>
           ))}
@@ -121,7 +123,7 @@ export default function SheetFilterBar({
             ) : (
               <><span className="font-bold text-gray-900 dark:text-white">{filteredCount}</span>{t('map.sheet.count', { defaultValue: '곳' })}</>
             )}
-            {userLoc && sortBy === 'distance' && <span className="ml-1 text-brand dark:text-[#EF6E85]">{t('map.sheet.nearMeLabel', { defaultValue: '내 위치 기준' })}</span>}
+            {userLoc && sortBy === 'distance' && <span className="ml-1 text-brand dark:text-[#4D8DF5]">{t('map.sheet.nearMeLabel', { defaultValue: '내 위치 기준' })}</span>}
           </span>
           {favorites.length > 0 && (
             <button
@@ -129,7 +131,7 @@ export default function SheetFilterBar({
               className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
                 showFavoritesOnly
                   ? 'bg-brand text-white border-brand'
-                  : 'bg-white dark:bg-[#0D0F12] text-brand border-[#F4C2CC]'
+                  : 'bg-white dark:bg-[#11141C] text-brand border-[#F4C2CC]'
               }`}
             >
               <Heart className="w-2.5 h-2.5" fill={showFavoritesOnly ? 'currentColor' : 'none'} />
@@ -141,7 +143,7 @@ export default function SheetFilterBar({
         <button
           onClick={() => setSortOpen(true)}
           aria-label={t('map.sheet.sortAria', { defaultValue: '정렬' })}
-          className="flex items-center gap-1 text-[12px] font-semibold text-gray-700 dark:text-gray-200 px-2 py-1 rounded-lg active:bg-gray-100 dark:active:bg-[#1A1C21]"
+          className="flex items-center gap-1 text-[12px] font-semibold text-gray-700 dark:text-gray-200 px-2 py-1 rounded-lg active:bg-gray-100 dark:active:bg-[#1D1F29]"
         >
           <ArrowUpDown className="w-3 h-3 text-gray-400 dark:text-gray-500" />
           <span>{t(SORT_LABEL[sortBy].labelKey, { defaultValue: SORT_LABEL[sortBy].def })}</span>

@@ -29,9 +29,11 @@ import { useKakaoMap, type ServerCluster } from './restaurant-map/useKakaoMap'
 import { useSheetDrag, SHEET_BASE_TOP, SHEET_SNAP_TRANSLATE, SHEET_SNAP_TRANSITION } from './restaurant-map/useSheetDrag'
 import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
-import { useMapProducts } from '@/hooks/queries/useMapProducts'
+import { useFeedWindow } from './restaurant-map/useFeedWindow'
+import { pickViewportList } from './restaurant-map/viewport-list'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
-import { panToRegionAccurate, panToPlaceQuery } from './restaurant-map/pan-to-region'
+import { panToRegionAccurate } from './restaurant-map/pan-to-region'
+import { useSearchPan, useSearchDeals } from './restaurant-map/useSearchPan'
 import GeoHelpSheet, { type GeoHelpReason } from './restaurant-map/GeoHelpSheet'
 import { detectInAppBrowser } from '@/lib/in-app-browser'
 import { checkPermission } from '@/lib/in-app-warning'
@@ -72,15 +74,35 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       return q && ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'].includes(q) ? (q as MapVoucherType) : 'all'
     } catch { return 'all' }
   })
-  // 🛡️ 2026-06-01 Tier2: products fetch 만 React Query(카테고리별 캐시). live-poller 는 유지.
-  // 🌍 2026-07-08 (대표 "수천개 대비 — 업체 근본 방식"): 내 위치(near) 거리순 + 근접 바운드 로딩.
-  const { data: baseRestaurants = [], isLoading: loading } = useMapProducts(voucherType === 'all' ? 'all' : voucherType, userLoc)
+  // 🩸 2026-09-03 (하네스 실측): 위치가 캐시된 사용자는 마운트 직후 `useNearMeAuto` 가 '가까운 순'으로
+  //   자동 전환하는데, 정렬이 서버 캐시키에 들어간 지금은 그 전환이 **두 번째 요청**을 만든다.
+  //   어차피 갈 자리면 처음부터 거기서 시작한다(칩이 깜빡이던 것도 함께 사라진다).
+  const [sortBy, setSortBy] = useState<SortBy>(() => (userLoc ? 'distance' : 'discount'))
+  // 🛍️ 2026-06-20 (필터 팝업 A안): 거리반경(km, 0=전체) + 가격대.
+  const [radiusKm, setRadiusKm] = useState<number>(0)
+  const [priceRange, setPriceRange] = useState<PriceRange>('all')
+  // 즐겨찾기 (localStorage) + 라이브 셀러 ID 집합
+  const [favorites, setFavorites] = useState<number[]>(() => storage.getJSON<number[]>('restaurant_favorites', []))
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
+  // 🚦 2026-09-03 [UNLOCK_LOADING] (대표 "가장 이상적으로"): 전량 순회 → **화면이 요구하는 만큼만**.
+  //   정렬은 서버(sort)·거리순은 near, 서버가 못 거르는 필터가 켜질 때만 useFeedWindow 가 전체를 받는다.
+  const { data: baseRestaurants = [], isLoading: loading, total: feedTotal, loadMore, reachedEnd, needsAll } = useFeedWindow({
+    category: voucherType === 'all' ? 'all' : voucherType,
+    userLoc, sortBy,
+    // 필터 시트를 여는 순간도 포함 — 시트의 '이 조건이면 N곳' 미리보기가 로드된 50개만 세면 거짓말이 된다.
+    needsAll: !!(region || district || radiusKm > 0 || priceRange !== 'all' || showFavoritesOnly || filterSheetOpen),
+  })
   // 뷰포트(지도 pan)로 추가 로드된 딜 병합(bbox effect ↓). 초기 바운드 밖 영역 커버. 비어있으면 기존과 동일(무회귀).
   const [viewportDeals, setViewportDeals] = useState<Restaurant[]>([])
   // 🌍 줌아웃 서버 집계(레이어 3) — non-null 이면 지도는 개별 핀 대신 격자 버블만 렌더.
   const [aggClusters, setAggClusters] = useState<ServerCluster[] | null>(null)
   // 🔎 2026-07-12 (스케일 검색): 검색어 입력 시 서버 q 검색 결과 병합 — 근접 바운드 밖 먼 매장도 검색에 잡힘.
-  const [searchDeals, setSearchDeals] = useState<Restaurant[]>([])
+  // 🔎 서버 q검색 — 먼 매장까지 잡고, `readyFor` 로 "결과 확정" 을 알린다(지도 이동이 이를 기다린다).
+  const searchCategory = voucherType === 'all' ? 'all' : voucherType
+  const { deals: searchDeals, readyFor: searchDealsFor } = useSearchDeals<Restaurant>(search, searchCategory)
+
   const restaurants = useMemo(() => {
     if (viewportDeals.length === 0 && searchDeals.length === 0) return baseRestaurants
     const seen = new Set<number | string>(); const out: Restaurant[] = []
@@ -126,19 +148,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       toast.error('응모하려면 로그인이 필요해요')
     }
   }, [])
-  const [sortBy, setSortBy] = useState<SortBy>('discount')
-  // 🛍️ 2026-06-20 (필터 팝업 A안): 거리반경(km, 0=전체) + 가격대.
-  const [radiusKm, setRadiusKm] = useState<number>(0)
-  const [priceRange, setPriceRange] = useState<PriceRange>('all')
   // 옵션 B: 카카오 일반 맛집 + 클릭 시 수요 신호 모달
   const [kakaoPlaces, setKakaoPlaces] = useState<KakaoPlace[]>([])
   const [suggestionFor, setSuggestionFor] = useState<KakaoPlace | null>(null)
-  // 즐겨찾기 (localStorage) + 라이브 셀러 ID 집합
-  const [favorites, setFavorites] = useState<number[]>(() => storage.getJSON<number[]>('restaurant_favorites', []))
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [liveSellerIds] = useState<Set<number>>(new Set())  // 라이브커머스 영구중단 → 항상 빈 Set(LIVE 배지 미표시)
-  // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const activeFilterCount = ((region || district) ? 1 : 0) + (radiusKm > 0 ? 1 : 0) + (priceRange !== 'all' ? 1 : 0)
   // 🗺️ 2026-06-20 (대표 — 홈=지도 / "상품 1개일 때 공백 남음"): 기본 snap 을 peek 으로 → 지도 우선 +
   //   콘텐츠 적을 때 큰 흰 공백 제거(컴팩트). 더 보려면 시트를 위로 드래그(mid/full).
@@ -225,19 +238,6 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     return () => clearTimeout(handle)
   }, [userLoc, kr, search])
 
-  // 🔎 2026-07-12 (스케일 검색): 검색어 입력 시 서버 q 검색(이름/매장명 LIKE)도 병행 — 근접 바운드/뷰포트
-  //   로딩에 안 실린 먼 매장까지 지도·리스트 검색에 잡힘. 300ms 디바운스, 실패 무해(로드분 클라 필터는 그대로).
-  useEffect(() => {
-    const q = search.trim()
-    if (!q) { setSearchDeals([]); return }
-    const handle = setTimeout(() => {
-      const cat = voucherType === 'all' ? 'all' : voucherType
-      api.get('/api/group-buy/products', { params: { category: cat, q, limit: 100 } })
-        .then(r => { if (r.data?.success && Array.isArray(r.data.data)) setSearchDeals(r.data.data) })
-        .catch(() => { /* silent — 로드분 필터만으로 동작 */ })
-    }, 300)
-    return () => clearTimeout(handle)
-  }, [search, voucherType])
 
   // 🛡️ 2026-05-19: 클라이언트 geocoding loop 제거.
   //   이전: 사용자 1명당 카카오 API ~10 호출 (페이지 진입 시마다).
@@ -310,24 +310,12 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     return [...filtered].sort((a, b) => boost(b.id) - boost(a.id))
   }, [filtered, fcfsMap])
 
-  // 🗺️ 2026-07-15 (대표 — "지도 보는 위치에 따라 그 지역 이용권이 떠야 해" + 신고 "왜 18곳만?"):
-  //   지도 모드에서 **현재 보이는 지도 영역의 딜을 리스트 위로** 올린다(당근/야놀자식 '이 지역 먼저').
-  //   ⚠️ 숨기지 않음 — 처음엔 뷰포트로 딱 잘라 82곳(전체 100)이 사라져 "왜 18곳만" 혼란 → 보이는 딜을
-  //   앞으로, 나머지는 뒤에 붙여 전체가 다 보이되 현 지역이 먼저 뜨게. (엄격한 '이 지역만'은 지역 필터가 담당.)
-  //   줌아웃 집계 모드(aggClusters)·bounds 미확정(초기)·리스트 모드에선 전체(displayList) 그대로.
-  const { viewportList, viewportInCount } = useMemo(() => {
-    // 🔎 검색 중엔 뷰포트 재정렬 끄기 — 검색 결과(먼 지역 포함)를 지도 밖이라고 뒤로 밀지 않게(관련도 순 유지).
-    if (mode !== 'map' || !mapBounds || search || (aggClusters && aggClusters.length > 0)) return { viewportList: displayList, viewportInCount: null as number | null }
-    const { swLat, swLng, neLat, neLng } = mapBounds
-    const mLat = (neLat - swLat) * 0.1, mLng = (neLng - swLng) * 0.1 // 경계 약간 여유
-    const inView = (r: Restaurant) => !!(r.restaurant_lat && r.restaurant_lng &&
-      r.restaurant_lat >= swLat - mLat && r.restaurant_lat <= neLat + mLat &&
-      r.restaurant_lng >= swLng - mLng && r.restaurant_lng <= neLng + mLng)
-    const inB: Restaurant[] = []; const rest: Restaurant[] = []
-    for (const r of displayList) (inView(r) ? inB : rest).push(r)
-    // 보이는 딜 먼저, 나머지 뒤에(숨김 없음) + 이 지역(뷰포트) 딜 수 = inB.length(카운트 "이 지역 N · 전체 M"용)
-    return { viewportList: inB.length ? [...inB, ...rest] : displayList, viewportInCount: inB.length }
-  }, [mode, mapBounds, aggClusters, displayList, search])
+  // 🗺️ 보이는 지도 영역의 딜을 리스트 위로(숨기지 않음) — 근거·함정은 viewport-list.ts.
+  //   검색 중·줌아웃 집계·리스트 모드·bounds 미확정이면 bounds=null → 전체 순서 그대로.
+  const { viewportList, viewportInCount } = useMemo(
+    () => pickViewportList(displayList, (mode === 'map' && !search && !(aggClusters && aggClusters.length > 0)) ? mapBounds : null),
+    [mode, mapBounds, aggClusters, displayList, search],
+  )
 
   // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
   const heroDeals = useMemo(() => {
@@ -488,13 +476,19 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
 
-  // 🗺️ 2026-07-20 (대표 — "부산 검색하면 지도가 부산으로"): 검색 제출(Enter/최근검색 선택) 시 지역/장소명이면
-  //   지도를 그 위치로 재중심. 매칭 실패면 no-op(딜 이름/매장명 텍스트 필터는 그대로 동작).
-  const submitMapSearch = useCallback((q: string) => {
-    const query = (q || '').trim()
-    if (!query || !mapInstance.current || !window.kakao?.maps) return
-    void panToPlaceQuery(mapInstance.current, query)
-  }, [])
+  /**
+   * 🗺️ **지도는 검색 결과를 따라간다** (2026-09-03 — 대표 신고 "검색을 했을 때 무관한 지도 위치가 떠").
+   *   규칙은 `useSearchPan` 한 곳에 있다(결과 핀 우선 · 결과 0일 때만 지명 · 질의당 1회).
+   */
+  const submitMapSearch = useSearchPan({
+    search,
+    setSearch,
+    category: searchCategory,
+    results: filtered,
+    resultsReadyFor: searchDealsFor,
+    mapRef: mapInstance,
+    active: mode === 'map' && sdkLoaded,
+  })
 
   // 🌍 2026-07-08 (대표 "가장 이상적으로" — 레이어 2+3): 줌-인지형 뷰포트 로딩.
   //   · 줌아웃(level ≥ 9, 시/전국): 서버 **집계**(/products/map-clusters)만 받아 격자 버블 렌더 —
@@ -655,10 +649,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       ? (nearDong || '내 주변')
       : '전국'
     return (
-      <div className="bg-white dark:bg-[#0D0F12] min-h-[100dvh]">
+      <div className="bg-white dark:bg-[#11141C] min-h-[100dvh]">
         <SEO title={t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜' })} description={t('seo.home.description', { defaultValue: '내 주변 동네딜을 한눈에. 식사·뷰티·헬스·숙소·반려·액티비티 이용권.' })} url="/" />
         {/* 상단: 로고 + 지역선택 + 알림/장바구니 */}
-        <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
+        <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="ur-content-wide px-4 lg:px-8 h-12 flex items-center justify-between gap-2">
             {/* 🗺️ 2026-06-22 (대표 — 위치 교체): 로고를 좌측으로, 지역선택(전국)을 우측 그룹으로. */}
             <Link to="/" aria-label="홈" className="shrink-0 flex items-center">
@@ -683,7 +677,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             requestNearMe={requestNearMe}
             voucherType={voucherType}
             setVoucherType={selectVoucherType}
-            filteredCount={filtered.length}
+            filteredCount={!needsAll && !search ? (feedTotal ?? displayList.length) : filtered.length}
             userLoc={userLoc}
             sortBy={sortBy}
             setSortBy={setSortByUser}
@@ -703,6 +697,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             userLoc={userLoc}
             onSelect={(r) => navigate(`/products/${r.id}`)}
             fcfsMap={fcfsMap} onApplyFcfs={applyFcfs} voucherType={voucherType}
+            onLoadMore={loadMore} hasMoreOnServer={!reachedEnd}
           />
           <SiteFooter />{/* 🧭 2026-07-19 대표 — 서비스 최하단 소개 3종 링크(모바일 홈=리스트라 푸터 부재였음) */}
         </div>
@@ -735,7 +730,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   return (
     /* 🖥️ 2026-07-19 (대표 — "/map 도 상단바"): lg+ 는 전역 DesktopTopNav(2행 ~102px)가 위에 오므로
        지도 표면 높이를 그만큼 축소(여기어때식 [네비 위 + 지도 분할 아래]). <lg 는 기존 풀스크린 그대로. */
-    <Screen fixed className="relative w-full bg-gray-100 dark:bg-[#1A1C21] overflow-hidden pb-16 lg:h-[calc(100dvh-102px)]">
+    <Screen fixed className="relative w-full bg-gray-100 dark:bg-[#1D1F29] overflow-hidden pb-16 lg:h-[calc(100dvh-102px)]">
       <SEO
         title={home ? t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜 지도' }) : t('restaurantMap.seoTitle', { defaultValue: '맛집 지도' })}
         description={home ? t('seo.home.description', { defaultValue: '내 주변 동네딜을 지도에서 한눈에. 식사·숙소·뷰티 이용권을 가까운 순으로.' }) : t('restaurantMap.seoDesc', { defaultValue: '유어딜 이용권 사용 가능 맛집을 지도에서 찾아보세요. 내 주변 동네 가게 할인 이용권.' })}
@@ -749,9 +744,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             기존엔 부모(pb-16) 의 scroll touch 가 핀치 제스처 가로채 줌 안 됨. */}
       {/* 🗺️ 2026-07-16 (대표 — PC 지도뷰 분할): lg+ 에서 좌측 400px 리스트 패널 오른쪽으로 지도 오프셋(lg:left-[400px]).
           모바일(<lg)은 inset-0 풀스크린 그대로(lg: no-op). */}
-      <div ref={mapRef} className="absolute inset-0 lg:left-[400px] bg-gray-100 dark:bg-[#1A1C21]" style={{ touchAction: 'none' }} />
+      <div ref={mapRef} className="absolute inset-0 lg:left-[400px] bg-gray-100 dark:bg-[#1D1F29]" style={{ touchAction: 'none' }} />
       {!(sdkLoaded && window.kakao?.maps) && (
-        <div className="absolute inset-0 lg:left-[400px] bg-gray-100 dark:bg-[#1A1C21] flex flex-col items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 lg:left-[400px] bg-gray-100 dark:bg-[#1D1F29] flex flex-col items-center justify-center pointer-events-none">
           <MapPin className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
           {sdkError ? (
             <>
@@ -789,8 +784,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         disabled={locating}
         aria-label={nearMeMode ? t('restaurantMap.myLocationOff', { defaultValue: '내 위치 해제' }) : t('restaurantMap.myLocation', { defaultValue: '현위치로 이동' })}
         aria-pressed={nearMeMode}
-        className={`absolute right-3 z-20 w-10 h-10 flex items-center justify-center rounded-full shadow-lg border active:scale-95 transition-all ${
-          (nearMeMode || locating) ? 'bg-gray-900 text-white border-blue-600' : 'bg-white dark:bg-[#0D0F12] text-blue-600 dark:text-blue-400 border-gray-100 dark:border-[#2C2F35]'
+        className={`absolute right-3 z-20 w-10 h-10 flex items-center justify-center rounded-full active:scale-95 transition-all shadow-[0_2px_8px_rgba(22,24,28,0.18)] ${
+          (nearMeMode || locating) ? 'bg-brand text-white' : 'bg-white text-gray-800' // light-fixed: 지도 위(B안 — 켜짐=블루 면, 테마 무관)
         }`}
         style={{ bottom: isLgViewport ? (selected ? '150px' : '24px') : (selected ? 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 150px)' : 'calc(240px + 16px)') }}
       >
@@ -821,7 +816,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
            도킹(top:0 + bottom-0 = 풀높이, 드래그/transform 무효). 모바일(<lg)은 기존 3-snap 드래그 시트 그대로. */
         <div
           ref={sheetRef}
-          className="absolute left-0 right-0 bottom-0 z-30 bg-white dark:bg-[#0D0F12] rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col lg:top-0 lg:w-[400px] lg:right-auto lg:rounded-none lg:shadow-none lg:border-r lg:border-gray-100 dark:lg:border-[#2C2F35]"
+          className="absolute left-0 right-0 bottom-0 z-30 bg-white dark:bg-[#11141C] rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col lg:top-0 lg:w-[400px] lg:right-auto lg:rounded-none lg:shadow-none lg:border-r lg:border-gray-100 dark:lg:border-[#2C2F35]"
           style={isLgViewport ? { top: 0 } : {
             // H2: top 은 full 위치 고정 — snap 이동/드래그는 전부 transform(컴포지터 전용). 드래그 중엔
             //   useSheetDrag 가 rAF 로 DOM transform 을 직접 갱신(transform 문자열이 안 바뀌어 React 무간섭).
@@ -859,7 +854,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             requestNearMe={requestNearMe}
             voucherType={voucherType}
             setVoucherType={setVoucherType}
-            filteredCount={displayList.length}
+            filteredCount={!needsAll && !search ? (feedTotal ?? displayList.length) : displayList.length}
             viewportCount={viewportInCount}
             userLoc={userLoc}
             sortBy={sortBy}
@@ -896,6 +891,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
               fcfsMap={fcfsMap}
               onApplyFcfs={applyFcfs}
               voucherType={voucherType}
+              onLoadMore={loadMore}
+              hasMoreOnServer={!reachedEnd}
             />
           </ScrollArea>
         </div>

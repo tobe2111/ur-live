@@ -34,7 +34,15 @@ import { forwardRef, type SVGProps } from 'react'
  *   lucide 아이콘들 사이에 섞여 쓰이는 한, **lucide 의 계약을 그대로 지켜야 한다.**
  *   ⇒ `size` 를 받아 width/height 로 변환한다(lucide 와 동일한 기본값 24).
  */
-type IconProps = Omit<SVGProps<SVGSVGElement>, 'size'> & { size?: number | string }
+type IconProps = Omit<SVGProps<SVGSVGElement>, 'size'> & {
+  size?: number | string
+  /**
+   * 🎫 2026-09-02 표면 체계(대표 시안 — 코레일톡): 하단 탭의 활성 아이콘은 **면**, 비활성은 **선**.
+   * 같은 실루엣을 채우기만 바꾼다(모양이 바뀌면 탭이 점프한다). lucide 는 이 상태가 없어서
+   * 다섯 탭을 전부 여기서 그린다.
+   */
+  filled?: boolean
+}
 
 const base = {
   viewBox: '0 0 24 24',
@@ -51,12 +59,77 @@ const base = {
  * 유어샵은 "내 진열대"이므로 진열대를 그린다. 위쪽 사선 지붕 + 물결치는 차양 + 아래 매대.
  * (반짝임은 무엇을 파는 곳인지 한 글자도 말해 주지 않았다.)
  */
-export const UrShopIcon = forwardRef<SVGSVGElement, IconProps>(function UrShopIcon({ size = 24, ...props }, ref) {
+export const UrShopIcon = forwardRef<SVGSVGElement, IconProps>(function UrShopIcon({ size = 24, filled, ...props }, ref) {
+  if (filled) {
+    return (
+      <svg ref={ref} {...base} width={size} height={size} {...props}>
+        <path d="M4 9.5 5.6 5h12.8L20 9.5z" fill="currentColor" />
+        <path d="M4 9.5c0 1.4 1 2.3 2.3 2.3s2.3-.9 2.3-2.3c0 1.4 1 2.3 2.3 2.3s2.4-.9 2.4-2.3c0 1.4 1 2.3 2.3 2.3s2.4-.9 2.4-2.3z" fill="currentColor" />
+        <path d="M5.6 12v7.5h12.8V12z" fill="currentColor" />
+        <path d="M10.2 19.5v-4.6h3.6v4.6" stroke="var(--surface, #fff)" fill="var(--surface, #fff)" />
+      </svg>
+    )
+  }
   return (
     <svg ref={ref} {...base} width={size} height={size} {...props}>
       <path d="M4 9.5 5.6 5h12.8L20 9.5" />
       <path d="M4 9.5c0 1.4 1 2.3 2.3 2.3s2.3-.9 2.3-2.3c0 1.4 1 2.3 2.3 2.3s2.4-.9 2.4-2.3c0 1.4 1 2.3 2.3 2.3s2.4-.9 2.4-2.3" />
       <path d="M5.6 12v7.5h12.8V12" />
+    </svg>
+  )
+})
+
+/**
+ * 🎫 2026-09-02 하단 탭 나머지 넷 — 홈 · 교환권 · 이용권 · 마이.
+ * 대표: *"아이콘 디자인들도 저 정도로 우리도 해줬으면 좋겠어"* (코레일톡 하단 탭: 기차·자동차·캐리어·QR 티켓).
+ * 그쪽은 자기 물건을 그렸다. 우리 물건은 집·선물 상자·절취선 티켓·가게·사람이다.
+ * 계약은 위 UrShopIcon 과 동일(24 그리드 · 1.6 · round). `filled` 는 같은 실루엣의 면 버전.
+ */
+
+/** 홈 — 집. 문이 아치라 '들어가는 곳'으로 읽힌다. */
+export const HomeIcon = forwardRef<SVGSVGElement, IconProps>(function HomeIcon({ size = 24, filled, ...props }, ref) {
+  const d = 'M4 11.2 12 4.8l8 6.4V19a1 1 0 0 1-1 1h-4v-4.6a3 3 0 0 0-6 0V20H5a1 1 0 0 1-1-1z'
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d={d} fill={filled ? 'currentColor' : 'none'} />
+    </svg>
+  )
+})
+
+/** 교환권 — 선물 상자. 기프티콘의 실물. 리본 매듭은 면 버전에서도 선으로 남긴다(상자와 구분). */
+export const GiftBoxIcon = forwardRef<SVGSVGElement, IconProps>(function GiftBoxIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <rect x="3.5" y="10.5" width="17" height="9.5" rx="2" fill={filled ? 'currentColor' : 'none'} />
+      <rect x="2.5" y="7" width="19" height="3.5" rx="1.2" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M12 7c-2.6 0-4-1.6-3.3-3 .7-1.3 3.3.4 3.3 3zm0 0c2.6 0 4-1.6 3.3-3-.7-1.3-3.3.4-3.3 3z" />
+      <path d="M12 7.5V20" stroke={filled ? 'var(--surface, #fff)' : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 이용권 — 양쪽 홈이 파인 티켓 + 절취선. 결제 완료·지갑의 티켓 카드와 같은 모양이라 탭과 화면이 한 물건이다. */
+export const TicketStubIcon = forwardRef<SVGSVGElement, IconProps>(function TicketStubIcon({ size = 24, filled, ...props }, ref) {
+  const d = 'M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z'
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d={d} fill={filled ? 'currentColor' : 'none'} />
+      <path d="M9.5 8.6v6.8" strokeDasharray="1.6 1.8" stroke={filled ? 'var(--surface, #fff)' : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 마이 — 사람. 장식 없이. */
+export const PersonIcon = forwardRef<SVGSVGElement, IconProps>(function PersonIcon({ size = 24, filled, ...props }, ref) {
+  return filled ? (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <circle cx="12" cy="8" r="4.2" fill="currentColor" />
+      <path d="M4.2 20.4a7.8 7.8 0 0 1 15.6 0z" fill="currentColor" />
+    </svg>
+  ) : (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <circle cx="12" cy="8" r="3.6" />
+      <path d="M4.8 20a7.2 7.2 0 0 1 14.4 0" />
     </svg>
   )
 })
@@ -70,6 +143,53 @@ export const DongneDealIcon = forwardRef<SVGSVGElement, IconProps>(function Dong
     <svg ref={ref} {...base} width={size} height={size} {...props}>
       <path d="M5 6.5 10 5l4 1.6L19 5v12.5L14 19l-4-1.6L5 19z" />
       <path d="M10 5v12.4M14 6.6V19" />
+    </svg>
+  )
+})
+
+/**
+ * 🗺️ 2026-09-02 지도 위 카테고리 칩 — **B안**(대표 확정: "B안으로 진행해줘").
+ *   시안 셋 중 [흰 알약 · 잉크 선 아이콘 · 선택 = 블루 면]. 하단 탭과 같은 24 그리드·1.6 이라
+ *   탭과 지도 위 칩이 한 물건으로 읽힌다. 이모지(✨🍽️💇🏨🎯)를 대체한다 — 표면 규칙 ⑥ 이모지 0.
+ *   `filled` 는 안 받는다(칩의 선택은 알약 면이 뒤집혀서 표현한다 — 아이콘까지 바뀌면 두 번 말하는 것).
+ */
+
+/** 전체 — 2×2 격자. */
+export const GridIcon = forwardRef<SVGSVGElement, IconProps>(function GridIcon({ size = 24, filled: _f, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
+      <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
+    </svg>
+  )
+})
+
+/** 식사 — 포크와 나이프. */
+export const MealLineIcon = forwardRef<SVGSVGElement, IconProps>(function MealLineIcon({ size = 24, filled: _f, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10" />
+      <path d="M17 3c-2 1-3 3.5-3 6.5V12h3zM17 12v9" />
+    </svg>
+  )
+})
+
+/** 뷰티·헬스 — 가위. */
+export const BeautyLineIcon = forwardRef<SVGSVGElement, IconProps>(function BeautyLineIcon({ size = 24, filled: _f, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <circle cx="7" cy="17" r="3" /><circle cx="17" cy="17" r="3" />
+      <path d="M9 15 19 4M15 15 5 4" />
+    </svg>
+  )
+})
+
+/** 숙소 — 침대. */
+export const StayLineIcon = forwardRef<SVGSVGElement, IconProps>(function StayLineIcon({ size = 24, filled: _f, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M3 19V9a2 2 0 0 1 2-2h2v4h10V9h2a2 2 0 0 1 2 2v8M3 15h18" />
+      <rect x="7" y="7" width="10" height="4" rx="1" />
     </svg>
   )
 })

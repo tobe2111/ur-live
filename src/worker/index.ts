@@ -306,7 +306,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload';
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { isMobileUserAgent } from '../shared/detail-hero-image'; // 한 줄: 파일크기 래칫(2685) 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -775,7 +775,7 @@ app.use('*', async (c, next) => {
             // 🖼️ 2026-07-02 [UNLOCK_LOADING]: 상세 히어로는 프리로드 스캐너를 못 타 렌더 뒤에야
             //   다운로드가 시작됐다. 표면별 URL 형태·함정은 헬퍼 주석에(불일치 시 이중 다운로드).
             if (ssrSlot === 'DETAIL') {
-              const heroLink = buildDetailHeroPreloadLink(ssrPayload, url.pathname.startsWith('/vouchers/'));
+              const heroLink = buildDetailHeroPreloadLink(ssrPayload, url.pathname.startsWith('/vouchers/'), isMobileUserAgent(c.req.header('user-agent')));
               if (heroLink) el.append(heroLink, { html: true });
             }
             // 🖼️ 2026-08-27 [UNLOCK_LOADING]: 홈 첫 화면 카드도 상세 히어로와 같은 병목이었다
@@ -954,7 +954,7 @@ app.use('*', async (c, next) => {
     //   (Poppins 800 · 자간 −3.5% · 점 6.12px/좌 2.72px = 34px 기준). 구조·위상동기·ur-loader-* 클래스 불변.
     const urdealLoaderHtml =
       '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">' +
-        '<div class="ur-loader-breathe text-[#16181C] dark:text-[#FAF7F5]" style="display:inline-flex;align-items:baseline;font-family:\'Poppins\',\'Pretendard Variable\',system-ui,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.035em;line-height:1">' +
+        '<div class="ur-loader-breathe text-[#16181C] dark:text-[#F8F7FC]" style="display:inline-flex;align-items:baseline;font-family:\'Poppins\',\'Pretendard Variable\',system-ui,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.035em;line-height:1">' +
           'urdeal' +
           '<span class="bg-brand" style="display:inline-block;width:6.12px;height:6.12px;border-radius:50%;margin-left:2.72px"></span>' +
         '</div>' +
@@ -1107,6 +1107,7 @@ app.get('/health', (c) => c.json({
 //   재발 방지: 30일 후 (2026-05-27) 이 endpoint 제거 — TECHNICAL_DEBT.md 참조.
 //   (2026-04-27 TD-006 split): 별도 라우터 파일로 분리.
 app.route('/', killerSwRoutes);
+app.use('/sitemap.xml', publicCache(3600)); // 📉 2026-09-02: 크롤러·uptime 프로브 fetch 마다 D1 4쿼리(~1,300행 + 지역 집계 전수) → 1h 엣지(키에 호스트 포함 — 도매/소비자 안 섞임)
 app.route('/', sitemapRoutes);
 // 📝 2026-07-01 블로그 SEO 보조 — /blog/og/:slug(공유 배너 SVG) · /blog/rss(피드). SPA fallback 전에 등록.
 app.route('/', blogSeoRoutes);
@@ -1499,7 +1500,7 @@ app.use('/api/fcfs/active', publicCache(30), cacheControl(30));
 //   → 두 번째 사용자부터는 0ms (edge hit), 첫 사용자만 D1 cold-start (KV cache 도 함께 작동).
 app.use('/api/group-buy/products', publicCache(300), cacheControl(300, 1800)); // 5min fresh + 30min SWR
 // 🛡️ 2026-05-15: 공구 detail (개별) 30초 — group_buy_current 자주 바뀌지만 stale-while-revalidate 가 사용성 보존
-app.use('/api/group-buy/products/*', publicCache(30), cacheControl(30));
+app.use('/api/group-buy/products/*', publicCache(120), cacheControl(120)); // 📉 2026-09-02: 30→120 — 상세 슬롯 TTL 이 가장 짧아 크롤러(sitemap 상세 500건)가 3분 뒤 재방문마다 콜드 D1. 참여자 수는 아래 participants(60s)·클라 폴링이 따로 본다
 // 참여자 마스킹 리스트 — 1분 (자주 바뀌지만 prv 정보 X — 이름은 이미 마스킹됨)
 app.use('/api/group-buy/products/*/participants', publicCache(60), cacheControl(60));
 app.use('/api/group-buy/live-ticker', publicCache(30), cacheControl(30));
@@ -2438,9 +2439,8 @@ app.get('*', async (c) => {
     if (sellerMatch) {
       const param = sellerMatch[2];
       const isNum = /^\d+$/.test(param);
-      const s = isNum
-        ? await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE id = ?').bind(param).first<any>()
-        : await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE slug = ? OR username = ?').bind(param, param).first<any>();
+      // 📉 2026-09-02: 종전 `slug = ? OR username = ?` — sellers 에 `slug` 컬럼이 없어 늘 예외→catch→기본 OG 였다(스키마 가드가 잡음). username 점 조회 하나로.
+      const s = isNum ? await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE id = ?').bind(param).first<any>() : await DB.prepare('SELECT name, bio, profile_image FROM sellers WHERE username = ?').bind(param).first<any>();
       if (s) {
         og.title = `${s.name} - 유어딜`;
         og.desc = s.bio?.slice(0, 200) || `${s.name}의 스토어 - 유어딜`;

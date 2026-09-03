@@ -122,6 +122,8 @@ const MIME = {
 function shell() {
   let html = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8')
   const seed = `<script type="application/json" id="__SSR_INITIAL_CURATOR__">${JSON.stringify(CURATOR_SEED)}</script>`
+    // MAIN_SEED 는 아래(DEALS 뒤)에서 정의된다 — shell() 은 서버가 뜬 뒤 요청 시점에 불리므로 안전.
+    + (MAIN_SEED ? `<script type="application/json" id="__SSR_INITIAL_MAIN__">${JSON.stringify(MAIN_SEED)}</script>` : '')
   html = html.replace('</head>', `${seed}\n</head>`)
   // prerender 된 #root 껍데기는 비운다 — 워커의 needsRootBlank 와 같은 효과
   html = html.replace(/<div id="root">[\s\S]*?<\/div>\s*(?=<script)/, '<div id="root"></div>\n')
@@ -134,13 +136,16 @@ function shell() {
  *   레이아웃 판단은 되는데 **"카드가 깔렸을 때 어떻게 보이나"** 는 못 봤다 — 커머스 앱의
  *   완성도는 대부분 거기서 결정되는데도. (합성 데이터다. 실데이터의 긴 이름/빈 필드는 안 보인다.)
  */
+// ⚠️ 2026-09-01 정정: 처음엔 둘째 칸이 '카페 · 역삼동' 처럼 **카테고리**였고 그걸 restaurant_name 에
+//    넣었다. 그래서 스크린샷의 매장명 자리에 "카페"가 찍혔고 대표가 "매장명이 안 나오네?" 로 오해했다.
+//    라이브 API 는 50/50 전부 restaurant_name 을 준다. 시드는 실물처럼 **매장명**을 넣는다.
 const DEAL_TITLES = [
-  ['스타벅스 아메리카노 T', '카페 · 역삼동', 4500, 3200],
-  ['교촌치킨 허니콤보', '치킨 · 논현동', 23000, 17900],
-  ['올리브영 3만원권', '뷰티 · 전국', 30000, 25500],
-  ['제주 오션뷰 1박', '숙소 · 서귀포', 180000, 119000],
-  ['본죽 전복죽', '한식 · 삼성동', 12000, 8900],
-  ['CU 모바일상품권 1만원', '편의점 · 전국', 10000, 9300],
+  ['스타벅스 아메리카노 T', '스타벅스 역삼점 · 역삼동', 4500, 3200],
+  ['교촌치킨 허니콤보', '교촌치킨 논현점 · 논현동', 23000, 17900],
+  ['올리브영 3만원권', '올리브영 강남본점 · 전국', 30000, 25500],
+  ['제주 오션뷰 1박', '오션뷰 펜션 애월 · 서귀포', 180000, 119000],
+  ['본죽 전복죽', '본죽 삼성점 · 삼성동', 12000, 8900],
+  ['CU 모바일상품권 1만원', 'CU 강남역점 · 전국', 10000, 9300],
 ]
 const DEALS = DEAL_TITLES.map(([name, sub, was, now], i) => ({
   id: 9000 + i,
@@ -208,7 +213,7 @@ const WALLET_VOUCHERS = (() => {
     restaurant_lat: 37.5563, restaurant_lng: 126.9236,
   }
   return [
-    { ...base, id: 1, code: 'URD-4821-9930', status: 'unused', product_name: '연남동 마라탕 2인 세트',
+    { ...base, id: 1, product_id: 9001, code: 'URD-4821-9930', status: 'unused', product_name: '연남동 마라탕 2인 세트',
       restaurant_name: '연남 마라탕', restaurant_address: '서울 마포구 연남로 21',
       created_at: day(-3), expires_at: day(4), applied_price: 19900, product_price: 28000, applied_discount_pct: 29 },
     { ...base, id: 2, code: 'URD-7710-2244', status: 'unused', product_name: '망원 브런치 플래터',
@@ -226,6 +231,75 @@ const WALLET_VOUCHERS = (() => {
   ]
 })()
 
+/**
+ * 🛒 `--cart` — 장바구니/결제(`/cart`, `/checkout`) 시드.
+ *   대표 *"장바구니 시드 만들어서 결제 화면도 봐줘"* — 그 전까지 `/checkout` 은 빈 상태만 렌더돼
+ *   **결제 화면을 한 번도 눈으로 못 봤다**(2026-09-01 handoff 에 "못 봤다" 로 남겨 뒀던 항목).
+ *
+ * ⚠️ 서버가 실제로 주는 **필드 전부**를 담는다. 얇은 픽스처는 "없는 결함" 을 만든다 —
+ *   이 세션에서만 세 번 그럴 뻔했다(유어샵 카드 2줄 · 교환권 시안의 사라진 절반 등).
+ *   계약 출처: `src/types/cart.ts` CartItem · `cart.routes.ts` 응답(`data.items`) ·
+ *   `checkout/useShippingQuote.ts`(`POST /api/orders/shipping-quote`).
+ */
+/**
+ * 🛒 장바구니·결제 시드 (2026-09-01 — 대표 지적으로 전제를 고쳐 씀)
+ *
+ * ⚠️ **이용권에는 장바구니가 없다.** 처음 이 시드를 배송 상품(배송비 3,000원·합배송·무료배송
+ *    바)으로 만들어 `/checkout` 을 렌더하고 "유어딜 결제 화면"이라고 판단했는데, 대표가
+ *    *"이용권은 배송비도 없는데?"* 로 바로잡아 줘서 경로를 실제로 따라가 보니 그랬다:
+ *      · 이용권(`/group-buy/:id`) → `/pay/widget`(TossWidgetPayPage) → `/group-buy/confirm-payment`
+ *      · 교환권(deal_only=1) → 상세에서 딜로 즉시 교환 (결제 화면 자체가 없다)
+ *    상세 어디에도 '장바구니 담기'가 없다(grep: GroupBuyDetailPage/VoucherDetailPage 0건).
+ *    ⇒ `/cart`·`/checkout` 을 타는 것은 **쇼핑**(현재 `SHOPPING_TAB_HIDDEN`)과
+ *      **공구 서비스의 몰 상품**(`MallProductPage` → directPurchase)뿐이다.
+ *
+ * 그래서 기본값을 **비배송**(몰 픽업 공구)으로 뒀다 — 살아 있는 쪽이 그쪽이고,
+ * 배송 케이스(`--cart=shipping`)는 숨긴 쇼핑 레일이라 참고용이다.
+ */
+const CART_SEED = (() => {
+  const item = (o) => ({
+    id: o.id, product_id: o.id, product_name: o.name, quantity: o.qty ?? 1,
+    price_snapshot: o.price, price: o.price, product_image: null, image_url: null,
+    stock_quantity: 50, product_stock: 50, product_is_active: 1,
+    seller_id: o.seller ?? 11, seller_name: o.sellerName ?? '연남 마라탕',
+    // 비배송이면 0 이다. ⚠️ 이 0 이 CartPage 에서 `|| 3000` 에 삼켜지는지 보려고 일부러 0 을 넣는다.
+    shipping_fee: o.ship ?? 0, free_shipping_threshold: o.freeAt ?? 0,
+    bundling_key: o.bundle ?? null, deal_only: o.dealOnly ?? 0, category: o.cat ?? null,
+    option_id: o.optId ?? null, option_value: o.opt ?? null, selected_options: o.opt ? [o.opt] : [],
+  })
+  // 기본 — 비배송(매장에서 쓰는 이용권/픽업 공구). 배송지도 배송비도 없어야 한다.
+  const pickup = [
+    item({ id: 501, name: '연남동 마라탕 2인 세트', price: 19900, cat: 'meal_voucher', opt: '중간맛' }),
+    item({ id: 611, name: '합정 헤어 클리닉 1회', price: 45000, cat: 'beauty_voucher', seller: 22, sellerName: '합정 살롱드제이' }),
+  ]
+  // `--cart=shipping` — 배송 상품(숨긴 쇼핑 레일). 합배송·무료배송 바를 보려면 이쪽.
+  const shipping = [
+    item({ id: 801, name: '수제 드립백 20개입', price: 19900, ship: 3000, freeAt: 50000, bundle: 'b1' }),
+    item({ id: 802, name: '한라봉 3kg', price: 27000, ship: 3000, freeAt: 50000, bundle: 'b1' }),
+  ]
+  // `--cart=deal` — 교환권만(딜 결제 전용 분기: 토스 옵션 숨김 + 배송지 없음)
+  const dealOnly = [
+    item({ id: 701, name: '스타벅스 아메리카노 T', price: 3200, qty: 2, dealOnly: 1, seller: 33, sellerName: '유어딜' }),
+  ]
+  return { pickup, shipping, dealOnly }
+})()
+
+/**
+ * 🖼️ 2026-09-02 `--hero=<사진 파일>` — **PC 홈 히어로에 사진이 실린 상태**를 본다.
+ *   히어로 사진은 API 가 아니라 `__SSR_INITIAL_MAIN__` 시드에서 **동기 1회** 고른다(`pickHeroPhoto`).
+ *   그래서 `--deals` 로 API 만 채워도 히어로는 빈 색면이다 — 라이브에서 D1 이 죽어 시드가 빠졌을 때와
+ *   똑같은 그림이라, 그걸 보고 "사진이 없어졌다" 고 오진할 수 있다(2026-09-02 실제로 그 질문이 왔다).
+ *   외부 이미지 호스트는 이 하네스가 차단하므로 파일을 data: URL 로 박는다(`cfImage` 는 data: 를 그대로 둔다).
+ */
+const HERO_FILE = typeof args.hero === 'string' ? args.hero : ''
+const MAIN_SEED = (() => {
+  if (!HERO_FILE) return null
+  const buf = fs.readFileSync(HERO_FILE)
+  const mime = MIME[path.extname(HERO_FILE)] || 'image/jpeg'
+  const data = `data:${mime};base64,${buf.toString('base64')}`
+  return { success: true, data: DEALS.map((d, i) => (i === 0 ? { ...d, image_url: data } : d)) }
+})()
+
 function serve() {
   return new Promise((resolve) => {
     const s = http.createServer((req, res) => {
@@ -234,6 +308,22 @@ function serve() {
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
         // 큐레이터 조회는 시드와 같은 페이로드로 — 아니면 백그라운드 갱신이 오류 상태로 빠진다
         if (p.startsWith('/api/curator/') && !p.includes('/me/')) return res.end(JSON.stringify(CURATOR_SEED))
+        if (args.cart) {
+          const items = args.cart === 'deal' ? CART_SEED.dealOnly
+            : args.cart === 'shipping' ? CART_SEED.shipping
+            : CART_SEED.pickup
+          const total = items.reduce((n, i) => n + i.price_snapshot * i.quantity, 0)
+          if (p === '/api/cart') return res.end(JSON.stringify({ success: true, data: { items, summary: { total_price: total, total_quantity: items.length } } }))
+          if (p === '/api/orders/shipping-quote') {
+            // 서버 권위 견적 — 합배송(bundling_key) 묶음당 1회. 클라 자체 계산과 어긋나면 Toss 400 이 난다.
+            const keys = new Set(items.filter((i) => i.shipping_fee > 0).map((i) => i.bundling_key || `s${i.seller_id}`))
+            return res.end(JSON.stringify({ success: true, data: { items: items.map((i) => ({ product_id: i.product_id, current_price: i.price })), shipping_total: keys.size * 3000, total } }))
+          }
+          if (p === '/api/points/balance') return res.end(JSON.stringify({ success: true, data: { balance: 12000 }, balance: 12000 }))
+          if (p === '/api/shipping-addresses') return res.end(JSON.stringify({ success: true, data: [{ id: 1, recipient_name: '정지원', phone: '010-1234-5678', postal_code: '04039', address: '서울 마포구 연남로 21', address_detail: '3층', is_default: 1 }] }))
+          if (p === '/api/coupons/my') return res.end(JSON.stringify({ success: true, data: [] }))
+          if (p === '/api/payments/client-key') return res.end(JSON.stringify({ success: true, data: { clientKey: 'test_ck_preview' }, clientKey: 'test_ck_preview' }))
+        }
         if (args.wallet && p === '/api/vouchers/my')
           return res.end(JSON.stringify({ success: true, data: WALLET_VOUCHERS }))
         if (args.deals) {
@@ -296,6 +386,13 @@ const ctx = await browser.newContext({
 // 외부 호스트 차단 — 이 환경의 프록시가 막아 타임아웃/오류 상태를 유발한다.
 await ctx.route('**/*', (r) => (r.request().url().startsWith(`http://127.0.0.1:${PORT}`) ? r.continue() : r.abort()))
 
+// 🌙 2026-09-02 정정: `--dark` 가 colorScheme 만 바꿔서 **한 번도 다크를 켠 적이 없었다** —
+//    index.html 부트 스크립트는 localStorage 가 null 이면 OS 설정을 무시하고 라이트를 고정한다
+//    (2026-05-16 "신규 사용자 default = light"). 그래서 `-dark.png` 가 라이트와 픽셀 동일했다.
+//    앱이 실제로 읽는 키를 심어야 다크가 뜬다.
+if (DARK) {
+  await ctx.addInitScript(() => { try { localStorage.setItem('ur_theme_mode_v1', 'dark') } catch { /* private mode */ } })
+}
 if (AUTH) {
   const seed = AUTH === 'seller'
     ? { seller_token: 'preview', seller_id: '1', seller_username: 'preview', user_type: 'seller' }

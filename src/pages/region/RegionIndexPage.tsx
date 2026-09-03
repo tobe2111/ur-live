@@ -33,7 +33,7 @@ export default function RegionIndexPage() {
   const total = regions.reduce((sum, r) => sum + r.count, 0)
 
   return (
-    <div className="bg-white dark:bg-[#0D0F12] min-h-[100dvh]">
+    <div className="bg-white dark:bg-[#11141C] min-h-[100dvh]">
       <SEO
         title="지역별 이용권·동네딜 — 우리 동네 할인 찾기 | 유어딜"
         description="서울·경기·부산부터 제주까지, 지역별 식당·카페·뷰티·숙박 이용권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요."

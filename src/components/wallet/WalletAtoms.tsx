@@ -209,7 +209,7 @@ export function WalletPageWrapper({ theme = 'dark', children, className = '' }: 
   //   수정: 라이트 지갑은 색을 클래스로 칠해 다크 토글을 따라간다(라이트 렌더는 동일). 다크 호출자는 불변.
   if (theme === 'light') {
     return (
-      <div className={`bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white ${className}`}
+      <div className={`bg-[#F8F7FC] dark:bg-[#11141C] text-gray-900 dark:text-white ${className}`}
         style={{ minHeight: '100dvh', paddingBottom: 28 }}>
         {children}
       </div>

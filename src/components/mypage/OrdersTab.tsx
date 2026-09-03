@@ -93,7 +93,7 @@ function ItemThumb({ item }: { item: OrderItem }) {
   const src = item.product_thumbnail || item.image_url
   if (!src) {
     return (
-      <div className="w-16 h-16 shrink-0 rounded-lg bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center">
+      <div className="w-16 h-16 shrink-0 rounded-lg bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center">
         <Package className="w-6 h-6 text-gray-300 dark:text-gray-600" strokeWidth={1.5} aria-hidden="true" />
       </div>
     )
@@ -105,7 +105,7 @@ function ItemThumb({ item }: { item: OrderItem }) {
       width={64}
       height={64}
       loading="lazy"
-      className="w-16 h-16 shrink-0 rounded-lg object-cover bg-gray-100 dark:bg-[#1A1C21]"
+      className="w-16 h-16 shrink-0 rounded-lg object-cover bg-gray-100 dark:bg-[#1D1F29]"
       onError={(e) => cfImageOnError(e.currentTarget, src)}
     />
   )
@@ -145,7 +145,10 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
     { key: 'all',      label: t('ordersTab.kindAll', { defaultValue: '전체' }) },
     { key: 'product',  label: t('ordersTab.kindProduct', { defaultValue: '상품' }) },
     { key: 'voucher',  label: t('ordersTab.kindVoucher', { defaultValue: '교환권' }) },
-    { key: 'groupbuy', label: t('ordersTab.kindGroupbuy', { defaultValue: '공구' }) },
+    /* 🏷️ 2026-09-02 (대표 "주문내역에 이용권이 떠야하잖아"): 이 칸은 **voucher 카테고리 상품**
+       (식사·미용·숙박·기타 매장 이용권)이다 — 2026-06-27 명칭 SSOT 가 "공구권 → 이용권" 으로 정한
+       바로 그 종류인데 라벨만 옛 이름으로 남아 있었다. 내부 키(groupbuy)는 코드 식별자라 불변. */
+    { key: 'groupbuy', label: t('ordersTab.kindGroupbuy', { defaultValue: '이용권' }) },
   ]
 
   // 검색 + 종류 필터
@@ -185,12 +188,12 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('ordersTab.searchPlaceholder', { defaultValue: '상품명 / 브랜드명으로 검색하세요.' })}
           aria-label={t('ordersTab.searchAria', { defaultValue: '주문 검색' })}
-          className="w-full h-11 pl-10 pr-4 rounded-xl bg-gray-50 dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
+          className="w-full h-11 pl-10 pr-4 rounded-xl bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
         />
       </div>
 
       {/* 종류 탭 — 텍스트+밑줄 (무신사 스타일) */}
-      <div className="flex gap-5 border-b border-gray-100 dark:border-[#2C2F35] -mx-4 px-4 overflow-x-auto no-scrollbar">
+      <div className="flex gap-5 border-b border-gray-100 dark:border-[#2C2F35] -mx-4 px-4 overflow-x-auto scrollbar-hide">
         {KIND_TABS.map(tab => {
           const active = kindFilter === tab.key
           return (
@@ -277,7 +280,7 @@ function OrderCard({
   const openDetail = () => onSelectOrder(order)
 
   return (
-    <article className="bg-white dark:bg-[#0D0F12] rounded-2xl border border-gray-100 dark:border-[#2C2F35] overflow-hidden">
+    <article className="bg-white dark:bg-[#11141C] rounded-2xl border border-gray-100 dark:border-[#2C2F35] overflow-hidden">
       {/* 클릭 영역: 상태 + 판매처 + 상품 → 상세 */}
       <div
         role="button"
@@ -327,7 +330,7 @@ function OrderCard({
 
       {/* 배송 송장 (상품만) */}
       {hasTracking && (
-        <div className="mx-4 mt-1 mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 dark:bg-[#1A1C21] rounded-xl">
+        <div className="mx-4 mt-1 mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] rounded-xl">
           <div className="flex items-center gap-1.5 min-w-0">
             <Truck className="h-3.5 w-3.5 text-blue-500 shrink-0" strokeWidth={2} aria-hidden="true" />
             <span className="text-[12px] min-w-0 truncate">
@@ -347,18 +350,24 @@ function OrderCard({
         </div>
       )}
 
-      {/* 교환권/공구 — '내 교환권' 사용 안내 */}
+      {/* 🎟️ 2026-09-02 정정 — **지갑이 둘로 갈렸는데 링크는 하나였다.**
+          2026-08-31 대표 지시로 `/my-vouchers` 는 **이용권 전용**이 되고 교환권(문자로 오는
+          기프티콘)은 `/my-gifticons` 로 갔는데, 여기서는 두 종류를 똑같이 `/my-vouchers` 로
+          보내고 있었다 → **교환권을 산 사람이 자기 교환권이 없는 지갑에 도착**했다.
+          문구도 종류에 맞춰 나눈다(교환권/이용권은 다른 물건이다). */}
       {kind !== 'product' && (
         <Link
-          to="/my-vouchers"
+          to={kind === 'voucher' ? '/my-gifticons' : '/my-vouchers'}
           onClick={(e) => e.stopPropagation()}
-          className="mx-4 mt-1 mb-3 flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-[#1A1C21] rounded-xl"
+          className="mx-4 mt-1 mb-3 flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] rounded-xl"
         >
           <span className="text-[12px] text-gray-600 dark:text-gray-300 flex items-center gap-1.5 min-w-0">
             {kind === 'voucher'
               ? <Ticket className="h-3.5 w-3.5 text-emerald-500 shrink-0" strokeWidth={2} aria-hidden="true" />
               : <Users className="h-3.5 w-3.5 text-emerald-500 shrink-0" strokeWidth={2} aria-hidden="true" />}
-            <span className="truncate">{t('ordersTab.useInMyVouchers', { defaultValue: "'내 교환권'에서 사용하세요" })}</span>
+            <span className="truncate">{kind === 'voucher'
+              ? t('ordersTab.useInMyGifticons', { defaultValue: "'내 교환권'에서 사용하세요" })
+              : t('ordersTab.useInMyVouchers', { defaultValue: "'내 이용권'에서 사용하세요" })}</span>
           </span>
           <ChevronRight className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
         </Link>
@@ -376,7 +385,7 @@ function OrderCard({
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
           <button
             onClick={() => onSellerContact(order)}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] rounded-full hover:bg-gray-50 dark:hover:bg-[#1A1C21] transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             aria-label={t('ordersTab.inquiry', { defaultValue: '매장 문의' })}
           >
             <MessageCircle className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
@@ -390,7 +399,7 @@ function OrderCard({
           {canReturn && (
             <button
               onClick={() => onRequestReturn!(order.id, orderNum)}
-              className="px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] rounded-full hover:bg-gray-50 dark:hover:bg-[#1A1C21] transition-colors"
+              className="px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             >
               {t('ordersTab.requestReturn', { defaultValue: '반품' })}
             </button>
@@ -398,7 +407,7 @@ function OrderCard({
           {canCancel && (
             <button
               onClick={() => onCancelOrder(order.id, orderNum)}
-              className="px-2.5 py-1.5 text-[12px] font-semibold text-red-600 bg-white dark:bg-[#0D0F12] border border-red-100 dark:border-red-900/40 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+              className="px-2.5 py-1.5 text-[12px] font-semibold text-red-600 bg-white dark:bg-[#11141C] border border-red-100 dark:border-red-900/40 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
             >
               {t('ordersTab.cancelOrder', { defaultValue: '취소' })}
             </button>
@@ -439,15 +448,15 @@ function EmptyState({ kindFilter, searching, t }: { kindFilter: KindFilter; sear
       case 'voucher':
         title = t('ordersTab.emptyVoucherTitle', { defaultValue: '교환권 구매 내역이 없습니다' }); break
       case 'groupbuy':
-        title = t('ordersTab.emptyGroupbuyTitle', { defaultValue: '공구 참여 내역이 없습니다' }); break
+        title = t('ordersTab.emptyGroupbuyTitle', { defaultValue: '이용권 구매 내역이 없습니다' }); break
       default:
         title = t('ordersTab.emptyTitle', { defaultValue: '주문 내역이 없습니다' })
     }
     desc = t('ordersTab.emptyDesc', { defaultValue: '마음에 드는 상품을 둘러보세요' })
   }
   return (
-    <div className="bg-white dark:bg-[#0D0F12] rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-12 text-center">
-      <div className="w-20 h-20 bg-gray-50 dark:bg-[#1A1C21] rounded-full flex items-center justify-center mx-auto mb-5">
+    <div className="bg-white dark:bg-[#11141C] rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-12 text-center">
+      <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
         <Package className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} aria-hidden="true" />
       </div>
       <h2 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">{title}</h2>

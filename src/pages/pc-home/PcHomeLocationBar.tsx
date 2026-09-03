@@ -139,44 +139,59 @@ export default function PcHomeLocationBar({
 
   const hero = tone === 'hero'
   const title = tone === 'title'
-  // 히어로(잉크 색면) 위에서는 흰 테두리 칩, 흰 패널 위에서는 기존 라이트 버튼.
-  const chip = hero
-    ? 'border-white/30 bg-white/[0.13] hover:bg-white/20 text-white'
-    : 'border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+  // 흰 패널 위에서는 기존 라이트 버튼(테두리 있는 개별 칩).
+  // 🎫 2026-09-03 히어로는 이 칩을 안 쓴다 — 아래 세그먼트 알약 하나로 그린다.
+  const chip = 'border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-white/[0.04]'
 
   return (
     <div ref={boxRef} className="relative inline-block">
-      <div className="flex items-center gap-2">
+      {/* 🎫 2026-09-03 (대표 확정 — 히어로 컨트롤 안 1 + 위치 칩 3안 "흰 면 · 한 단계 작게"):
+          히어로에서는 지역 선택과 현 위치가 **한 알약 안의 두 칸**이다. 둘은 원래 "어디서 볼까"라는
+          하나의 일인데 같은 무게 알약 둘로 쪼개져 있었다(대표 신고 "AI 느낌").
+          흰 면인 이유: 잉크 색면 위에서 반투명 유리 칩은 테두리가 흐려 형태가 안 잡히고, 사진이 밝은
+          쪽으로 오면 더 흐려진다. 흰 면은 어떤 사진 위에서도 또렷하다.
+          높이 32(h-8)인 이유: 옆의 블루 주 버튼(38)보다 **한 단계 낮아야** 흰 칩이 "지금 전국을 보고
+          있다"는 표지판으로, 블루가 "여기를 눌러라"는 행동으로 읽힌다. 같은 높이면 흰 면이 가장 밝은
+          덩어리라 주 행동보다 먼저 읽힌다(시안 2번에서 실측). 그림자도 그래서 없다. */}
+      <div className={hero
+        ? 'inline-flex items-stretch h-8 rounded-full overflow-hidden bg-white text-[#16181C]' // light-fixed: 잉크 히어로 위
+        : 'flex items-center gap-2'}>
         <button
           onClick={() => setOpen(o => !o)}
           className={title
             ? 'inline-flex items-center gap-1 -ml-0.5 max-w-full'
-            : `inline-flex items-center gap-1.5 ${hero ? 'pl-3 pr-2.5 py-2 rounded-full' : 'pl-2.5 pr-2 py-2 rounded-xl'} border transition-colors ${chip}`}
+            : hero
+              ? 'inline-flex items-center gap-1.5 pl-3.5 pr-2.5 hover:bg-gray-50 transition-colors' // light-fixed: 흰 알약 안
+              : `inline-flex items-center gap-1.5 pl-2.5 pr-2 py-2 rounded-xl border transition-colors ${chip}`}
           aria-expanded={open}
         >
-          {!title && <MapPin className={`${hero ? 'w-4 h-4' : 'w-[18px] h-[18px]'} shrink-0 ${hero ? 'text-white' : 'text-gray-900 dark:text-white'}`} />}
-          <span className={`${title ? 'text-[22px] font-black tracking-[-0.02em] text-gray-900 dark:text-white' : hero ? 'text-[13px] font-bold text-white' : 'text-[15px] font-extrabold text-gray-900 dark:text-white'} max-w-[220px] truncate`}>{located ? (locatedLabel || '내 주변') : labelFor(value)}</span>
-          <ChevronDown className={`${title ? 'w-5 h-5 text-gray-400 dark:text-gray-500' : `w-4 h-4 ${hero ? 'text-white/70' : 'text-gray-400'}`} shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+          {!title && <MapPin className={`${hero ? 'w-[14px] h-[14px]' : 'w-[18px] h-[18px]'} shrink-0 ${hero ? 'text-[#16181C]' : 'text-gray-900 dark:text-white'}`} />}
+          <span className={`${title ? 'text-[22px] font-black tracking-[-0.02em] text-gray-900 dark:text-white' : hero ? 'text-[12.5px] font-extrabold text-[#16181C]' : 'text-[15px] font-extrabold text-gray-900 dark:text-white'} max-w-[220px] truncate`}>{located ? (locatedLabel || '내 주변') : labelFor(value)}</span>
+          <ChevronDown className={`${title ? 'w-5 h-5 text-gray-400 dark:text-gray-500' : hero ? 'w-[13px] h-[13px] text-[#4B4F58]' : 'w-4 h-4 text-gray-400'} shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
+        {/* 두 칸을 가르는 실선 — 한 알약 안에서 "지역 고르기"와 "현 위치"가 다른 일임을 말한다. */}
+        {hero && <span className="w-px my-[7px] bg-[rgb(22_24_28/0.13)]" aria-hidden="true" />}
         <button
           onClick={useMyLocation}
           disabled={locating}
           aria-label="현 위치로 설정"
           className={title
             ? 'inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-60'
-            : `inline-flex items-center gap-1.5 ${hero ? 'px-4 py-2 rounded-full' : 'px-3 py-2 rounded-xl'} border text-[13px] font-bold whitespace-nowrap transition-colors disabled:opacity-60 ${chip} ${hero ? '' : 'text-gray-700 dark:text-gray-200'}`}
+            : hero
+              ? 'inline-flex items-center px-2.5 text-[#4B4F58] hover:bg-gray-50 hover:text-[#16181C] transition-colors disabled:opacity-60' // light-fixed: 흰 알약 안
+              : `inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[13px] font-bold whitespace-nowrap transition-colors disabled:opacity-60 ${chip} text-gray-700 dark:text-gray-200`}
         >
           {locating ? <Loader2 className="w-[15px] h-[15px] animate-spin" /> : <LocateFixed className="w-[15px] h-[15px]" />}
           {/* 📱 2026-08-19: 좁은 폭(<640)에서는 **아이콘만**. 360px 기기에서 이 라벨이 세 줄로 터져
               헤더가 무너졌다(모바일 홈이 이 바를 쓰게 되면서 드러났다). PC 히어로는 항상 sm 이상이라
               라벨이 그대로 보인다. `whitespace-nowrap` 으로 어떤 폭에서도 줄바꿈은 금지. */}
-          {!title && <span className="hidden sm:inline whitespace-nowrap">현 위치로 설정</span>}
+          {!title && !hero && <span className="hidden sm:inline whitespace-nowrap">현 위치로 설정</span>}
         </button>
       </div>
 
       {open && (
         <div
-          className={`z-[10500] rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] shadow-[0_12px_40px_rgba(0,0,0,0.18)] overflow-hidden ${
+          className={`z-[10500] rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] shadow-[0_12px_40px_rgba(0,0,0,0.18)] overflow-hidden ${
             isWide ? 'absolute left-0 top-[calc(100%+8px)] w-[520px]' : 'fixed left-2 right-2'
           }`}
           style={isWide ? undefined : { top: panelTop }}

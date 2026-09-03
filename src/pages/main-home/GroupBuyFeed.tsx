@@ -5,6 +5,7 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
+import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import { SearchX, Flame, Timer, Tag, Clock, Store } from 'lucide-react'
 import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
 import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
@@ -155,8 +156,8 @@ export default function GroupBuyFeed({
     //   읽히고, 위 섹션 그리드(lg:grid-cols-4)와도 열 수가 같아진다(같은 화면에서 열이 갈리지 않는다).
     // 📐 2026-08-24: md(768~1023, 태블릿)가 `sm` 규칙에 걸려 **3열**이었다. 편성 섹션은 4개를
     //   뿌리므로 마지막 하나가 줄에 혼자 남아 오른쪽이 텅 비었다 — 태블릿도 4열로 맞춘다.
-    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4 pb-8'
-    : 'grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8'
+    ? `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP} pb-8`
+    : `grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP} px-4 pb-8`
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
   const { fcfsMap } = useFcfsMap()
@@ -184,10 +185,23 @@ export default function GroupBuyFeed({
 
   // 🛡️ 2026-05-24 (loading P0): staleTime/gcTime override 제거 → global default (30분/1h) 적용.
   //   refetchOnWindowFocus 는 유지 false (홈 피드는 잦은 변경 안 함 — 카테고리 칩 클릭 시 새 카테고리 fetch).
+  /**
+   * 🚦 2026-09-03 (대표 "마저 다 해줘"): **정렬을 서버로.** 이전엔 서버가 준 최신 50개(+스크롤분) 안에서만
+   *   정렬해 "인기순"이 사실은 "최근 50개 중 인기순"이었다 — 전체가 338건인데. 이제 서버가 전체에서
+   *   정렬해 상위부터 준다(정의는 서버 ALLOWED_GB_SORT 가 클라 soldOf/discountOf 를 미러).
+   *   거리순은 `sort` 가 아니라 `near`(서버 거리 랭킹)가 담당한다.
+   *   ⚠️ 좌표는 **서버 캐시키 단위(0.02°≈2km)로 반올림**해 보낸다 — 몇 m 움직일 때마다 캐시가 갈리면
+   *      엣지 적중이 무너진다. 화면에 보이는 최종 순서는 아래 `sortBand` 가 정확한 좌표로 다시 매긴다.
+   */
+  const nearKey = sort === 'near' && userLoc
+    ? `${(Math.round(userLoc.lat / 0.02) * 0.02).toFixed(2)},${(Math.round(userLoc.lng / 0.02) * 0.02).toFixed(2)}`
+    : ''
+  const serverSort = sort === 'near' ? '' : sort
+  const feedParams = `${serverSort ? `&sort=${serverSort}` : ''}${nearKey ? `&near=${nearKey}` : ''}`
   const { data: items = [], isLoading: loading, isError, refetch } = useQuery<FeedProduct[]>({
-    queryKey: queryKeys.groupBuyList('active', category),
+    queryKey: queryKeys.groupBuyList('active', category, serverSort || (nearKey && `near:${nearKey}`) || ''),
     queryFn: async () => {
-      const res = await api.get(`/api/group-buy/products?status=active&category=${category}`)
+      const res = await api.get(`/api/group-buy/products?status=active&category=${category}${feedParams}`)
       const arr: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
       // hydrate individual detail cache (idempotent).
       for (const p of arr) {
@@ -198,6 +212,9 @@ export default function GroupBuyFeed({
     initialData: ssrInitial,
     initialDataUpdatedAt: ssrInitial ? Date.now() - 60_000 : 0,  // SSR 데이터를 1분 stale 로 표시 → useQuery 가 background refetch
     refetchOnWindowFocus: false,
+    // 🚦 2026-09-03: 정렬을 바꾸면 캐시키가 갈리므로 그대로 두면 **빈 화면 → 스켈레톤**이 된다.
+    //   직전 결과를 유지한 채 새 정렬을 받아 온다(그 사이 sortBand 가 로드된 것만이라도 즉시 재정렬).
+    placeholderData: (prev) => prev,
   })
 
   // 📄 2026-07-08 (대표 "전체 상품이 안 나옴 — 50곳밖에"): 서버 기본 피드는 LIMIT 50(캐시/SSR 고정).
@@ -206,8 +223,9 @@ export default function GroupBuyFeed({
   const [extraPages, setExtraPages] = useState<FeedProduct[][]>([])
   const [loadingMore, setLoadingMore] = useState(false)
   const [reachedEnd, setReachedEnd] = useState(false)
-  // 카테고리 변경 시 누적분 리셋
-  useEffect(() => { setExtraPages([]); setReachedEnd(false) }, [category])
+  // 카테고리·정렬 변경 시 누적분 리셋 (🚦 2026-09-03: 정렬이 서버로 갔으므로 옛 순서로 받은 페이지가
+  //   새 정렬 결과와 섞이면 중복·누락이 생긴다 — 밴드를 통째로 버리고 page2 부터 다시 쌓는다.)
+  useEffect(() => { setExtraPages([]); setReachedEnd(false) }, [category, serverSort, nearKey])
 
   // 🗺️ 2026-07-16 (대표 신고 — 스크롤 로드 시 이용권 배치가 제멋대로 바뀜): '누적 전체 재정렬'이 아니라
   //   페이지(밴드)별로 정렬 → 이미 보인 카드는 위치 고정, 새 페이지만 아래로 append(재정렬 없음).
@@ -264,7 +282,7 @@ export default function GroupBuyFeed({
     setLoadingMore(true)
     try {
       const nextPage = extraPages.length + 2  // page1 = items → 다음은 2부터
-      const res = await api.get(`/api/group-buy/products?status=active&category=${category}&page=${nextPage}&limit=50`)
+      const res = await api.get(`/api/group-buy/products?status=active&category=${category}&page=${nextPage}&limit=50${feedParams}`)
       const arr: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
       for (const p of arr) { if (p?.id != null) qc.setQueryData(queryKeys.groupBuyProduct(p.id), p) }
       setExtraPages(prev => [...prev, arr])
@@ -330,8 +348,8 @@ export default function GroupBuyFeed({
              이 안의 칩은 처음부터 그 화면에선 군더더기였다.
           ⇒ 라벨을 맞추는 걸로는 부족했다. 중복은 **컨트롤 자체**였다. */}
       {!pc && !onCategoryChange && (
-      <div className="bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35] sticky top-12 z-10">
-        <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto no-scrollbar">
+      <div className="bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] sticky top-12 z-10">
+        <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto scrollbar-hide">
           {CATEGORIES.map(c => {
             const active = c.key === category
             return (
@@ -341,7 +359,7 @@ export default function GroupBuyFeed({
                 className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
                   active
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                    : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
+                    : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
                 }`}
               >
                 {c.key !== 'all' && <c.icon className="w-3.5 h-3.5" aria-hidden="true" />}
@@ -430,7 +448,7 @@ export default function GroupBuyFeed({
           ) : (
             <button
               onClick={loadMore}
-              className="px-5 py-3 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
+              className="px-5 py-3 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
             >
               더 보기
             </button>
@@ -453,7 +471,7 @@ export default function GroupBuyFeed({
             type="button"
             onClick={() => navigate(sellerEntryPath())}
             aria-label="유어딜에서 판매하세요"
-            className="inline-flex items-center gap-1.5 px-5 py-3 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
+            className="inline-flex items-center gap-1.5 px-5 py-3 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
           >
             <Store className="w-4 h-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
             <span className="flex items-center gap-1"><UrDealLogo size={13} />에서 판매하세요</span>
@@ -492,7 +510,7 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
         {/* 🏷️ 2026-08-30: 어깨 으쓱 이모지(🤷) → 선 아이콘.
             이모지 빈 화면은 "아직 안 만든 자리"처럼 읽힌다 — 실제로는 정상 상태인데도.
             같은 화면의 '내 주변 지도로 보기' 원형 처리와 같은 언어로 맞춘다. */}
-        <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center">
+        <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center">
           <SearchX className="w-6 h-6 text-gray-400" aria-hidden="true" />
         </div>
         <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">
@@ -543,13 +561,13 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
             </span>
           </div>
           {fbLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className={`grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP}`}>
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />
+                <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
               ))}
             </div>
           ) : fallback && fallback.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className={`grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP}`}>
               {fallback.map(p => <GroupBuyFeedCard key={p.id} p={p} />)}
             </div>
           ) : null}

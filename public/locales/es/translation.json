@@ -1599,8 +1599,8 @@
       "categoryTitle": "Categoría de Vale",
       "categoryMeal": "Vale de Comida",
       "categoryMealDesc": "Restaurante·Café",
-      "categoryBeauty": "Vale de Belleza",
-      "categoryBeautyDesc": "Cabello·Uñas·Piel",
+      "categoryBeauty": "Vale de Belleza y Fitness",
+      "categoryBeautyDesc": "Cabello·Uñas·Piel·PT·Yoga",
       "categoryHealth": "Vale de Salud",
       "categoryHealthDesc": "PT·Yoga·Pilates",
       "categoryPet": "Pet voucher",
@@ -1608,7 +1608,9 @@
       "categoryStay": "Stay voucher",
       "categoryStayDesc": "Pension, hotel, motel",
       "categoryActivity": "Activity voucher",
-      "categoryActivityDesc": "Escape room, bowling, class"
+      "categoryActivityDesc": "Escape room, bowling, class",
+      "categoryEtc": "Otro Vale",
+      "categoryEtcDesc": "Mascotas·Actividades·Clases"
     },
     "gift": {
       "title": "Enviar Regalo",
@@ -1759,7 +1761,11 @@
       "mapPhotoFood": "Comida y menú",
       "mapPhotoInterior": "Interior",
       "openKakaoPlace": "Abrir en Kakao Map ↗",
-      "mapPhotoHint": "Buscamos fotos de Naver Map/blogs por el nombre de tu tienda. Las fotos de Kakao Map no se pueden obtener automáticamente — abrimos la página para que copies la URL arriba."
+      "mapPhotoHint": "Buscamos fotos de Naver Map/blogs por el nombre de tu tienda. Las fotos de Kakao Map no se pueden obtener automáticamente — abrimos la página para que copies la URL arriba.",
+      "fromMapShort": "Desde el mapa",
+      "photoLead": "Trae fotos del mapa o sube las tuyas. La primera es la portada.",
+      "pasteTitle": "Pega la dirección de la foto de KakaoMap",
+      "pastePlaceholder": "Clic derecho en la foto → Copiar dirección de imagen"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -1811,7 +1817,9 @@
       "products": "🛒 Ventas online",
       "groupbuy": "🏪 Compras grupales y estancias",
       "ordersCustomers": "Pedidos y clientes",
-      "curator": "Mi UrShop"
+      "curator": "Mi UrShop",
+      "vouchers": "🎟️ Cupones",
+      "growth": "Crecimiento"
     },
     "nav": {
       "products": "Productos",
@@ -1845,7 +1853,22 @@
       "returns": "Solicitudes de reembolso",
       "operators": "Operadores",
       "stores": "Mis tiendas",
-      "findInfluencers": "Buscar influencers"
+      "findInfluencers": "Buscar influencers",
+      "voucherManage": "Gestionar cupones",
+      "profile": "Mi información",
+      "tier": "Nivel de vendedor",
+      "twoFactor": "Verificación en dos pasos",
+      "appointments": "Reservas",
+      "ledger": "Libro de la tienda",
+      "storeDashboard": "Resumen de tienda",
+      "realtime": "En tiempo real",
+      "voucherOrders": "Envíos de vales",
+      "transfers": "Transferencia de tienda",
+      "marketing": "Marketing",
+      "adSlots": "Espacios publicitarios",
+      "discounts": "Descuentos",
+      "partners": "Socios",
+      "notifyGuide": "Avisos y guía"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2476,7 +2499,31 @@
       "lockedNote": "Registra tu tienda para desbloquear cupones · pedidos · liquidación · colaboraciones",
       "savedPropagated": "Información guardada — aplicada a {{count}} cupones",
       "saved": "Información de la tienda guardada"
-    }
+    },
+    "voucherTabs": {
+      "list": "Cupones",
+      "scan": "Canjear",
+      "reviews": "Reseñas"
+    },
+    "pageSearch": "Buscar páginas",
+    "bizNoFormat": "El número de empresa debe tener el formato 000-00-00000",
+    "sessionExpired": "Tu sesión expiró. Inicia sesión de nuevo y guarda.",
+    "certHint": "Sube aquí tu certificado de empresa",
+    "photo": {
+      "cover": "Portada",
+      "empty": "Tu foto aparecerá aquí",
+      "pickFile": "📁 Desde mis archivos",
+      "addMore": "+ Añadir foto",
+      "uploading": "Subiendo…",
+      "moveLeft": "Mover antes",
+      "moveRight": "Mover después",
+      "dup": "Esa foto ya está añadida"
+    },
+    "orderTabs": {
+      "orders": "Pedidos"
+    },
+    "bizFromRegistration": "Rellenado desde el registro de tu tienda",
+    "bizFromRegistrationDesc": "Aún no está registrado como datos de empresa: revísalo y pulsa Guardar."
   },
   "admin": {
     "login": {
@@ -3884,7 +3931,11 @@
     "detail": "Detalles",
     "itemCount": "{{count}} artículos",
     "moreItems": "y {{count}} más",
-    "itemQtyPrice": "{{qty}} × {{price}} KRW"
+    "itemQtyPrice": "{{qty}} × {{price}} KRW",
+    "kindGroupbuy": "Pases",
+    "emptyGroupbuyTitle": "Aún no hay compras de pases",
+    "useInMyVouchers": "Úsalo en Mis Pases",
+    "useInMyGifticons": "Úsalo en Mis Vales"
   },
   "welcomeOnboarding": {
     "skip": "Omitir",
@@ -4165,7 +4216,7 @@
     "agreeToTerms": "I agree to proceed with payment",
     "checkout": "Checkout",
     "freeShipping": "Free Shipping",
-    "initError": "Failed to initialize payment",
+    "initError": "No pudimos iniciar el pago. Vuelve a intentarlo en un momento.",
     "loading": "Loading payment information...",
     "orderDate": "Order Date",
     "orderNumber": "Order Number",
@@ -4200,7 +4251,7 @@
       "authError": "Error de autenticación. Por favor, actualiza la página.",
       "uiNotFound": "Área de UI de pago no encontrada. Por favor, actualiza la página.",
       "orderNumberInvalid": "Formato de número de pedido no válido. Por favor, actualiza la página.",
-      "systemError": "Error del sistema de pago (se requiere actualizar)"
+      "systemError": "El pago no está disponible ahora"
     },
     "section": {
       "title": "Método de pago",
@@ -4329,7 +4380,7 @@
     "altDetail": "Imagen detallada del producto",
     "restaurantInfo": "Info del restaurante",
     "productInfo": "Información del producto",
-    "shippingExchange": "Envío · Cambio · Devolución",
+    "shippingExchange": "Envío, Cambio, Devolución",
     "notes": "Notas",
     "viewProductCta": "Ver producto",
     "stock": "Stock",
@@ -4706,6 +4757,7 @@
   "wishlist": {
     "title": "Lista de deseos",
     "subtitleCount": "{{count}} guardados",
+    "dropCount": "{{count}} con bajada de precio",
     "emptyTitle": "No tienes productos guardados",
     "emptyHint": "Guarda los productos que te gusten",
     "continueShopping": "Seguir comprando",
@@ -5253,7 +5305,9 @@
     "save": "Guardar",
     "ariaToggleOn": "Activar {{label}}",
     "ariaToggleOff": "Desactivar {{label}}",
-    "language": "Idioma"
+    "language": "Idioma",
+    "phoneRequired": "Introduce tu teléfono — los vales y avisos se envían ahí",
+    "phoneInvalid": "Revisa el formato del teléfono (010-0000-0000)"
   },
   "productDetail": {
     "retry": "Reintentar",
@@ -5609,7 +5663,7 @@
     "heading": "Reseñas",
     "writeBtn": "Escribir reseña",
     "title": "Escribir reseña",
-    "rewardBanner": "Texto {{text}} deal · Foto {{image}} deal · Video {{video}} deal de recompensa",
+    "rewardBanner": "Texto {{text}} deal, Foto {{image}} deal, Video {{video}} deal de recompensa",
     "placeholder": "¿Qué te pareció el producto? Escribe al menos 10 caracteres.",
     "contentLabel": "Contenido de la reseña",
     "submitting": "Enviando...",
@@ -6005,7 +6059,7 @@
     "seoTitle": "[TODO:es] 디지털 보관함 - 유어딜",
     "seoDesc": "[TODO:es] 구매한 전자책, 강의, 가이드 보관함",
     "title": "[TODO:es] 디지털 보관함",
-    "subtitle": "[TODO:es] 전자책 · 강의 · 가이드 · 영상 — 구매한 콘텐츠 모음",
+    "subtitle": "[TODO:es] 전자책, 강의, 가이드, 영상 — 구매한 콘텐츠 모음",
     "empty": "[TODO:es] 아직 구매한 디지털 상품이 없습니다",
     "browseCta": "[TODO:es] 상품 둘러보기",
     "kindDefault": "[TODO:es] 디지털",
@@ -6046,7 +6100,8 @@
     "preparing": "[TODO:es] 배송준비",
     "shipping": "[TODO:es] 배송중",
     "delivered": "[TODO:es] 배송완료",
-    "review": "[TODO:es] 리뷰"
+    "review": "[TODO:es] 리뷰",
+    "cancelledRefunded": "Cancelado/Reembolsado"
   },
   "groupBuy.title": "Group Buy",
   "groupBuy.bannerHeadline": "Better prices, together",
@@ -6680,9 +6735,9 @@
   },
   "my": {
     "earningsGroupTitle": "Mis ganancias",
-    "earningsGroupSub": "Recompensas · UrShop · Invitaciones",
+    "earningsGroupSub": "Recompensas, UrShop, Invitaciones",
     "settingsGroupTitle": "Ajustes",
-    "settingsGroupSub": "Notificaciones · Tema · Idioma · Info de la app",
+    "settingsGroupSub": "Notificaciones, Tema, Idioma, Info de la app",
     "affiliateLinkTitle": "Enlaces de recomendación",
     "affiliateLinkSub": "Gana deals cuando compran con tu enlace — ver resultados",
     "dealBalance": "Mi saldo Deal",
@@ -6790,5 +6845,12 @@
   "frameRails": {
     "valShop": "Tu escaparate de pases, UrShop",
     "valShopDesc": "Ya está abierto al registrarte"
+  },
+  "voucherStatus": {
+    "sectionTitle": "Mis Pases",
+    "bought": "Comprados",
+    "usable": "Disponibles",
+    "used": "Usados",
+    "gone": "Vencidos/Reembolsados"
   }
 }

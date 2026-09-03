@@ -16,7 +16,7 @@
 import { Link } from 'react-router-dom'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Store, LayoutDashboard, Building2, Handshake, ShoppingBag, Briefcase, type LucideIcon } from 'lucide-react'
+import { ChevronRight, Store, LayoutDashboard, Building2, Handshake, ShoppingBag, type LucideIcon } from 'lucide-react'
 import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 
 interface Cta {
@@ -50,7 +50,10 @@ export default function RoleCtaGrid() {
       // 🏷️ 2026-08-26: '내 쇼핑몰 열기' → '내 가게 등록'. 유어샵은 가입하면 **이미 있다** — 여기서
       //   새로 만드는 건 매장이다. 목적지도 매장 등록(/store/new)으로(대표 확정 '매장 등록이 선행').
       { Icon: ShoppingBag, title: t('roleCta.openShop', { defaultValue: '내 가게 등록' }), desc: t('roleCta.openShopDesc', { defaultValue: '카카오맵에서 내 가게를 찾아 이용권을 팔아요' }), to: '/store/new', show: () => !hasSellerToken },
-      { Icon: Briefcase, title: t('roleCta.agencyBiz', { defaultValue: '에이전시 사업' }), desc: t('roleCta.agencyBizDesc', { defaultValue: '가게 영업 → 2% 영구 수익' }), to: '/agency/register/business', show: () => !hasAgencyToken },
+      // 🧹 2026-09-02 (대표 "마이페이지에 에이전시 사업 탭은 없어야 해"): 소비자 마이페이지에서 제거.
+      //   에이전시는 B2B 조직 모집이라 소비자 동선에 섞을 자리가 아니다(랜딩 /agency-partner 는 그대로).
+      //   ⚠️ **이미 에이전시인 사람의 대시보드 바로가기(위 dash 의 agencyDash)는 유지** — 그건 진입로가 아니라
+      //     이미 가진 역할로 돌아가는 문이다. 지우면 에이전시가 자기 대시보드로 갈 길을 잃는다.
     ]
     return {
       dashboardItems: dash.filter(c => c.show()),
@@ -64,7 +67,7 @@ export default function RoleCtaGrid() {
     <Link
       key={c.to}
       to={c.to}
-      className={`flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#1A1C21] transition-colors min-w-0 ${
+      className={`flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#1D1F29] transition-colors min-w-0 ${
         i > 0 ? 'border-t border-gray-50 dark:border-[#2C2F35]' : ''
       }`}
     >
@@ -88,7 +91,7 @@ export default function RoleCtaGrid() {
           <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2 px-1">
             {t('roleCta.myShortcuts', { defaultValue: '내 바로가기' })}
           </p>
-          <div className="rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
+          <div className="rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
             {dashboardItems.map((c, i) => Row(c, i))}
           </div>
         </div>
@@ -98,7 +101,7 @@ export default function RoleCtaGrid() {
           <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2 px-1">
             {t('roleCta.startNewRole', { defaultValue: '추가 역할로 시작하기' })}
           </p>
-          <div className="rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35] overflow-hidden">
+          <div className="rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] overflow-hidden">
             {signupItems.map((c, i) => Row(c, i))}
           </div>
         </div>

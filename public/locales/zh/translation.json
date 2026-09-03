@@ -268,7 +268,7 @@
     "paymentFailed": "支付失败",
     "agreeToTerms": "I agree to proceed with payment",
     "freeShipping": "Free Shipping",
-    "initError": "Failed to initialize payment",
+    "initError": "无法开始支付，请稍后再试。",
     "loading": "Loading payment information...",
     "orderDate": "Order Date",
     "orderNumber": "Order Number",
@@ -300,7 +300,7 @@
       "authError": "发生身份验证错误。请刷新页面。",
       "uiNotFound": "找不到付款 UI 区域。请刷新页面。",
       "orderNumberInvalid": "订单号格式无效。请刷新页面。",
-      "systemError": "支付系统错误 (需要刷新)"
+      "systemError": "当前无法进行支付"
     },
     "section": {
       "title": "支付方式",
@@ -485,7 +485,7 @@
     "altDetail": "商品详情图片",
     "restaurantInfo": "餐厅信息",
     "productInfo": "商品信息",
-    "shippingExchange": "配送 · 换货 · 退货说明",
+    "shippingExchange": "配送, 换货, 退货说明",
     "notes": "注意事项",
     "viewProductCta": "查看商品",
     "stock": "库存",
@@ -862,6 +862,7 @@
   "wishlist": {
     "title": "心愿单",
     "subtitleCount": "已收藏 {{count}} 件",
+    "dropCount": "{{count}} 件降价",
     "emptyTitle": "心愿单为空",
     "emptyHint": "收藏喜欢的商品",
     "continueShopping": "继续购物",
@@ -2279,8 +2280,8 @@
       "categoryTitle": "使用券类型",
       "categoryMeal": "餐券",
       "categoryMealDesc": "餐厅·咖啡",
-      "categoryBeauty": "美容券",
-      "categoryBeautyDesc": "美发·美甲·护肤",
+      "categoryBeauty": "美容健身券",
+      "categoryBeautyDesc": "美发·美甲·护肤·私教·瑜伽",
       "categoryHealth": "健身券",
       "categoryHealthDesc": "私教·瑜伽·普拉提",
       "categoryPet": "Pet voucher",
@@ -2288,7 +2289,9 @@
       "categoryStay": "Stay voucher",
       "categoryStayDesc": "Pension, hotel, motel",
       "categoryActivity": "Activity voucher",
-      "categoryActivityDesc": "Escape room, bowling, class"
+      "categoryActivityDesc": "Escape room, bowling, class",
+      "categoryEtc": "其他使用券",
+      "categoryEtcDesc": "宠物·活动·课程"
     },
     "gift": {
       "title": "送礼物",
@@ -2439,7 +2442,11 @@
       "mapPhotoFood": "菜品·菜单",
       "mapPhotoInterior": "店内",
       "openKakaoPlace": "在 Kakao 地图查看 ↗",
-      "mapPhotoHint": "按门店名称搜索 Naver 地图·博客照片并显示。Kakao 地图照片无法自动获取，我们会打开页面 — 请复制照片地址粘贴到上方。"
+      "mapPhotoHint": "按门店名称搜索 Naver 地图·博客照片并显示。Kakao 地图照片无法自动获取，我们会打开页面 — 请复制照片地址粘贴到上方。",
+      "fromMapShort": "从地图获取",
+      "photoLead": "从地图获取门店照片，或上传自己拍的照片。第一张为封面。",
+      "pasteTitle": "粘贴 KakaoMap 照片地址",
+      "pastePlaceholder": "在照片上右键 → 复制图片地址"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -2484,7 +2491,9 @@
       "products": "🛒 在线销售·采购",
       "groupbuy": "🏪 线下团购·住宿",
       "ordersCustomers": "订单·客户",
-      "curator": "我的UrShop"
+      "curator": "我的UrShop",
+      "vouchers": "🎟️ 使用券",
+      "growth": "增长"
     },
     "liveChat": {
       "title": "实时聊天",
@@ -2525,7 +2534,22 @@
       "returns": "退款请求",
       "operators": "运营者管理",
       "stores": "门店管理",
-      "findInfluencers": "寻找达人"
+      "findInfluencers": "寻找达人",
+      "voucherManage": "使用券管理",
+      "profile": "我的信息",
+      "tier": "卖家等级",
+      "twoFactor": "两步验证",
+      "appointments": "预约管理",
+      "ledger": "门店账本",
+      "storeDashboard": "门店概览",
+      "realtime": "实时概览",
+      "voucherOrders": "兑换券发送记录",
+      "transfers": "门店转让",
+      "marketing": "营销",
+      "adSlots": "广告位",
+      "discounts": "折扣",
+      "partners": "合作伙伴",
+      "notifyGuide": "通知·指南"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -3156,7 +3180,31 @@
       "lockedNote": "完成门店注册后即可使用使用券·订单·结算·达人合作",
       "savedPropagated": "门店信息已保存 — 已应用到 {{count}} 张使用券",
       "saved": "门店信息已保存"
-    }
+    },
+    "voucherTabs": {
+      "list": "使用券",
+      "scan": "核销",
+      "reviews": "评价确认"
+    },
+    "pageSearch": "页面搜索",
+    "bizNoFormat": "营业执照号请按 000-00-00000 格式填写",
+    "sessionExpired": "登录已过期，请重新登录后保存。",
+    "certHint": "营业执照照片在这里上传",
+    "photo": {
+      "cover": "封面",
+      "empty": "选择的照片会显示在这里",
+      "pickFile": "📁 从我的文件",
+      "addMore": "+ 添加照片",
+      "uploading": "上传中…",
+      "moveLeft": "前移",
+      "moveRight": "后移",
+      "dup": "该照片已添加"
+    },
+    "orderTabs": {
+      "orders": "订单"
+    },
+    "bizFromRegistration": "已填入您门店注册时的内容",
+    "bizFromRegistrationDesc": "尚未登记为营业信息 — 确认后请点击保存。"
   },
   "admin": {
     "login": {
@@ -4564,7 +4612,11 @@
     "detail": "详情",
     "itemCount": "{{count}}件",
     "moreItems": "另{{count}}件",
-    "itemQtyPrice": "{{qty}}件 · {{price}}元"
+    "itemQtyPrice": "{{qty}}件 · {{price}}元",
+    "kindGroupbuy": "使用券",
+    "emptyGroupbuyTitle": "暂无使用券购买记录",
+    "useInMyVouchers": "请在\"我的使用券\"中使用",
+    "useInMyGifticons": "请在\"我的兑换券\"中使用"
   },
   "welcomeOnboarding": {
     "skip": "跳过",
@@ -5253,7 +5305,9 @@
     "save": "保存",
     "ariaToggleOn": "开启 {{label}}",
     "ariaToggleOff": "关闭 {{label}}",
-    "language": "语言"
+    "language": "语言",
+    "phoneRequired": "请输入手机号 — 兑换券和通知将发送到该号码",
+    "phoneInvalid": "请检查手机号格式 (010-0000-0000)"
   },
   "productDetail": {
     "retry": "重试",
@@ -5609,7 +5663,7 @@
     "heading": "评价",
     "writeBtn": "写评价",
     "title": "写评价",
-    "rewardBanner": "文字{{text}}积分 · 图片{{image}}积分 · 视频{{video}}积分奖励",
+    "rewardBanner": "文字{{text}}积分, 图片{{image}}积分, 视频{{video}}积分奖励",
     "placeholder": "商品怎么样？请至少写10个字。",
     "contentLabel": "评价内容",
     "submitting": "提交中...",
@@ -6005,7 +6059,7 @@
     "seoTitle": "[TODO:zh] 디지털 보관함 - 유어딜",
     "seoDesc": "[TODO:zh] 구매한 전자책, 강의, 가이드 보관함",
     "title": "[TODO:zh] 디지털 보관함",
-    "subtitle": "[TODO:zh] 전자책 · 강의 · 가이드 · 영상 — 구매한 콘텐츠 모음",
+    "subtitle": "[TODO:zh] 전자책, 강의, 가이드, 영상 — 구매한 콘텐츠 모음",
     "empty": "[TODO:zh] 아직 구매한 디지털 상품이 없습니다",
     "browseCta": "[TODO:zh] 상품 둘러보기",
     "kindDefault": "[TODO:zh] 디지털",
@@ -6046,7 +6100,8 @@
     "preparing": "[TODO:zh] 배송준비",
     "shipping": "[TODO:zh] 배송중",
     "delivered": "[TODO:zh] 배송완료",
-    "review": "[TODO:zh] 리뷰"
+    "review": "[TODO:zh] 리뷰",
+    "cancelledRefunded": "取消/退款"
   },
   "groupBuy.title": "Group Buy",
   "groupBuy.bannerHeadline": "Better prices, together",
@@ -6680,9 +6735,9 @@
   },
   "my": {
     "earningsGroupTitle": "我的收益·推荐",
-    "earningsGroupSub": "推荐奖励 · 链接小店收益 · 邀请",
+    "earningsGroupSub": "推荐奖励, 链接小店收益, 邀请",
     "settingsGroupTitle": "设置",
-    "settingsGroupSub": "通知 · 主题 · 语言 · 应用信息",
+    "settingsGroupSub": "通知, 主题, 语言, 应用信息",
     "affiliateLinkTitle": "商品推荐链接",
     "affiliateLinkSub": "好友通过链接购买即可获得积分 — 查看业绩",
     "dealBalance": "我的Deal余额",
@@ -6790,5 +6845,12 @@
   "frameRails": {
     "valShop": "我的使用券展台，UrShop",
     "valShopDesc": "注册后就已经开好了"
+  },
+  "voucherStatus": {
+    "sectionTitle": "使用券状态",
+    "bought": "已购买",
+    "usable": "可使用",
+    "used": "已使用",
+    "gone": "过期/退款"
   }
 }

@@ -2,11 +2,11 @@ import { sellerEntryPath } from '@/utils/seller-entry'
 // Mobile Footer Component - v2.0
 export default function MobileFooter() {
   return (
-    <footer className="bg-gray-50 dark:bg-[#1A1C21] border-t border-gray-200 dark:border-[#2C2F35] py-4 px-4 mt-8">
+    <footer className="bg-gray-50 dark:bg-[#1D1F29] border-t border-gray-200 dark:border-[#2C2F35] py-4 px-4 mt-8">
       {/* Contact */}
       <div className="mb-3">
         <p style={{ fontSize: '9px', lineHeight: '1.2' }} className="text-gray-600 dark:text-gray-300 text-center">
-          제휴 | 입점 문의 : <a href="mailto:jiwon@ur-team.com" className="text-purple-600 hover:underline">jiwon@ur-team.com</a>
+          제휴 | 입점 문의 : <a href="mailto:jiwon@ur-team.com" className="text-brand-text hover:underline">jiwon@ur-team.com</a>
         </p>
       </div>
 

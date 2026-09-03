@@ -31,7 +31,10 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
         { Icon: Gift, label: t('shopping.gifticon', { defaultValue: '내 교환권' }), sub: t('shopping.gifticonSub', { defaultValue: '문자로 받은 기프티콘' }), count: counts.gifticon, path: '/my-gifticons' },
         { Icon: TicketPercent, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },
         { Icon: BedDouble, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), sub: t('shopping.myStaysSub', { defaultValue: '체크인 코드 / 유효기간' }), path: '/my-stays' },
-        { Icon: BookOpen, label: t('shopping.digitalLibrary', { defaultValue: '디지털 보관함' }), sub: t('shopping.digitalLibrarySub', { defaultValue: '전자책·강의·가이드' }), path: '/my/digital' },      ],
+        // 🧹 2026-09-02 (대표 "디지털 보관함도 필요없고"): 전자책·강의는 지금 파는 물건이 아니다.
+        //   라우트(/my/digital)와 페이지는 남긴다 — 과거 구매자가 있으면 링크로는 여전히 닿아야 하고,
+        //   되살릴 때 이 줄만 되돌리면 된다(기능 삭제가 아니라 진입로 정리).
+      ],
     },
     {
       key: 'interest',
@@ -56,7 +59,7 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
       <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('shopping.sectionTitle', { defaultValue: '나의 이용 내역' })}</p>
-      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1A1C21]">
+      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1D1F29]">
         {groups.map((g, gi) => (
           <div key={g.key}>
             {/* 🛡️ 2026-07-02: 인라인 검정 고정 borderTop → 테마 대응 클래스(다크에서 구분선 소실 수정) */}

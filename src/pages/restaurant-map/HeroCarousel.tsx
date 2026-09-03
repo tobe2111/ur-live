@@ -22,32 +22,28 @@ export default function HeroCarousel({ heroDeals, userLoc, liveSellerIds, onSele
     <div className="mb-3 -mx-3 px-3">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1">
-          <span className="text-amber-500">⚡</span> 오늘의 핫딜
+          오늘의 핫딜
         </p>
         <span className="text-[10px] text-gray-400 dark:text-gray-500">{heroDeals.length}곳</span>
       </div>
-      <div className="flex gap-2 overflow-x-auto no-scrollbar">
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide">
         {heroDeals.map(r => {
           const discount = Math.round((1 - r.price / r.original_price) * 100)
           return (
             <button
               key={`hero-${r.id}`}
               onClick={() => onSelect(r)}
-              className="shrink-0 w-[140px] rounded-2xl bg-white dark:bg-[#0D0F12] border border-gray-100 dark:border-[#2C2F35] overflow-hidden text-left active:scale-[0.97] transition-transform"
+              /* 🎫 2026-09-02 표면 체계: 카드 테두리 0(화이트만 shadow-lift) · 사진 바탕 중립 · 이모지 0. */
+              className="shrink-0 w-[140px] rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift overflow-hidden text-left active:scale-[0.97] transition-transform"
             >
-              <div className="relative aspect-square bg-pink-50 dark:bg-pink-900/20">
+              <div className="relative aspect-square bg-[#F1F1F6] dark:bg-[#262A36]">
                 {r.image_url ? (
                   <img src={cfImage(r.image_url, { width: 280, quality: 85, format: 'auto' }) || r.image_url} alt="" loading="lazy" decoding="async"
                     className="w-full h-full object-cover"
                     onError={(e) => cfImageOnError(e.currentTarget, r.image_url)}
                   />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center"><span className="text-3xl">🍽️</span></div>
-                )}
-                {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 할인 뱃지 순수 빨강 → 웜 로즈 brand 토큰. */}
-                <span className="absolute top-1.5 left-1.5 bg-brand text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded">
-                  -{discount}%
-                </span>
+                ) : null}
+                {/* 🎫 2026-09-02: 할인율은 사진 위가 아니라 가격 줄에(2026-08-31 동네딜 카드와 같은 처방). */}
                 {r.seller_id && liveSellerIds.has(r.seller_id) && (
                   <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md inline-flex items-center gap-0.5">
                     <Radio className="w-2.5 h-2.5 animate-pulse" /> LIVE
@@ -65,7 +61,9 @@ export default function HeroCarousel({ heroDeals, userLoc, liveSellerIds, onSele
                     return l && <span className="shrink-0">· {l}</span>
                   })()}
                 </p>
-                <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-1">{formatNumber(r.price ?? 0)}원</p>
+                <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-1 tabular-nums">
+                  {discount > 0 && <span className="text-brand-text mr-1">{discount}%</span>}{formatNumber(r.price ?? 0)}원
+                </p>
               </div>
             </button>
           )

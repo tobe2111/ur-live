@@ -24,9 +24,11 @@ import { createBeatBatch, makeBeatWriter } from './beat-batch'
 import { closeTick } from './tail-bound'
 import { runAutobidJob, runFollowupJob, runWeeklyJob } from './side-jobs'
 import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
-import { laneUrl, selfBeatMiddleware } from './self-beat'
+import { laneUrl } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
 import { laneAlarmDrivesEnrich, bootstrapLaneAlarm } from './lane-alarm-boot'
+import { mountLaneMiddleware } from './lane-gate'; import { lanesPaused, pauseExempt, PAUSE_BEAT } from './lane-pause'; import { readBudgetState, budgetBeatFields, budgetBlocked, READ_BUDGET_BEAT } from './read-budget' // ⏸️📉 2026-09-02 한도 사고 — 정지 스위치 · 읽기 예산 차단기(각 파일 헤더)
+import { withMeteredEnv, newMeter } from '@/worker/utils/d1-read-meter'
 import { scheduleMaintenanceCron } from './maintenance-cron'
 import { healthRoutes } from './health.routes'
 import { batchLaneRoutes } from './batch-lanes.routes'
@@ -48,8 +50,8 @@ app.use('*', async (c, next) => {
   try { c.res.headers.set('X-Served-By', 'ur-ads') } catch { /* 불변 응답 등 — 무시 */ }
 })
 
-// 🫀 레인이 자기 하트비트를 쓴다 — 미들웨어 본체와 근거는 `self-beat.ts`(그 모듈의 관심사다).
-app.use('/__ads/*', selfBeatMiddleware())
+// 🫀🚧 레인 진입 미들웨어 — self-beat + 정지·예산 초크포인트. 근거·실측·롤백: `lane-gate.ts`.
+mountLaneMiddleware(app)
 
 // 🎯 인플루언서 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(공개 라우팅 대상 아님:
 //   메인 프록시는 /api/ads/* · /l/* 만 위임 → /__ads/* 는 외부에서 도달 불가). 게이트 무관(수동=의도).
@@ -259,6 +261,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
 
   //   `beatName` — 경로가 바뀌어도 하트비트 이름을 고정(바꾸면 옛 행이 남아 stale watch 가 영원히 경보).
+  const budget = await readBudgetState(env) // 📉 오늘 읽기/쓰기 예산(DO 원장 1회 조회) — 넘겼으면 아래 paused 가 참이 된다
+  const paused = lanesPaused(env) || budgetBlocked(budget) // ✍️ 쓰기 축도 함께 — 요금을 터뜨린 축이 쓰기였다(2026-09-02) // ⏸️ kick·부트스트랩·시트 미러가 함께 본다. kick 선언보다 앞(TDZ — laneAlarmOn 이 겪은 함정)
   const laneReg = createLaneRegistry()
   //   `gap` — 이 레인의 **실제** 기대 간격(분). 안 주면 매시간(= event.cron)으로 본다.
   //     일 1회/N시간 레인은 `gates.dailyAt`/`gates.everyNHours` 가 조건과 함께 자동으로 넣어준다
@@ -271,6 +275,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   const kick = (path: string, fallback: () => Promise<unknown>, opts?: { gap?: number; period?: number; beat?: string }): void => {
     const beat = opts?.beat || path.replace(/^\/__ads\//, '')
     laneReg.note(path, opts?.beat)   // 하트비트 이름과 **같은 이름**으로 등록해야 never_fired/orphan 이 어긋나지 않는다
+    if (paused && !pauseExempt(path)) return // ⏸️ 등록은 하고(known_lanes 보존) 띄우지만 않는다
     /**
      * 🕳️ **`gap` 을 안 주면 그 레인은 침묵 판정에서 통째로 빠진다** (2026-08-03 라이브 실측).
      *
@@ -309,6 +314,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   🔌 **설정했는데 코드가 안 읽는 env 키**도 같이 신고한다(2026-08-03) — 실측에서 4개 나왔고
   //   넷 다 오류를 안 낸다(대시보드엔 값이 보이는데 코드는 기본값으로 돈다). 이상 없으면 키가 아예 안 붙는다.
   ctx.waitUntil(adsBeat('scheduled', true, 0, undefined, undefined, { ...buildAgeInfo(), ...envDriftInfo(env) }))
+  ctx.waitUntil(adsBeat(PAUSE_BEAT, true, 0, undefined, 120, { paused })) // ⏸️ 정지 표식 — 감시가 '사고'와 '일시정지'를 가른다
+  ctx.waitUntil(adsBeat(READ_BUDGET_BEAT, true, 0, undefined, 120, budgetBeatFields(budget))) // 📉 오늘 쓴 행/예산/초과 — 어드민 하트비트에서 본다
 
   // ── 매시간(정각) — 소셜 유지보수 + 인플루언서 자동수집 ──────────────────────
   //   🚦 2026-08-02: 생 waitUntil(부모 CPU 직격, 실측 2,390ms/회차) → kick(자식 예산). 예산 분산에도 잡힌다.
@@ -345,7 +352,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   인보케이션에서 다음을 잇게 해 부모 비용을 1로 고정한다(수집 레인과 같은 구조).
   //  ⏰ **알람이 몰면 cron 은 손을 뗀다**(2026-08-02 시범) — 게이트·부트스트랩·근거는 `lane-alarm-boot.ts`.
   //   (`laneAlarmOn` 선언은 위 gates 옆으로 올렸다 — 수집 게이트가 이 블록보다 위에 있어서다.)
-  if (laneAlarmOn) ctx.waitUntil(bootstrapLaneAlarm(env, adsBeat))
+  if (laneAlarmOn && !paused) ctx.waitUntil(bootstrapLaneAlarm(env, adsBeat)) // ⏸️ 정지 중엔 체인을 새로 세우지 않는다(알람 자체는 쉬면서 이어 건다)
   if (!laneAlarmOn && (env as unknown as { ADS_INFLUENCER_ENRICH_DISABLED?: string }).ADS_INFLUENCER_ENRICH_DISABLED !== 'true') {
     // 🔁 라운드 루프는 **드라이버 인보케이션**이 돈다(`/__ads/enrich-influencer-driver`).
     //   여기서 for-await 로 돌리면 라운드 수만큼 부모의 서브리퀘스트를 먹는데, 부모는 이미 매시간
@@ -382,7 +389,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   ⏰ 2026-08-04 알람이 몰면 cron 은 손을 뗀다(전 레인 최다 CPU 사망 ×16 — 근거·⚠️행중복 방어는
   //   `lane-alarm-runners.ts` sheets-sync 항목). 시트 미러는 리스가 없어 이 게이트가 유일한 방어다.
   if (!laneAlarmOn && env.ADS_SHEETS_SYNC_ENABLED === 'true') {
-    ctx.waitUntil((async () => {
+    if (!paused) ctx.waitUntil((async () => { // ⏸️ 정지 중엔 시트 미러도 쉰다(읽기가 크다 — OFFSET 페이지네이션)
       const { runSheetsMirrorLane } = await import('./sheets-mirror-lane')
       await runSheetsMirrorLane(env, adsBeat)
     })())
@@ -587,4 +594,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
 //   ⚠️ export 를 빼면 배포는 되는데 **알람이 영원히 안 깨어난다**(클래스를 못 찾아 조용히 실패).
 export { AdsLaneDurableObject } from './lane-alarm'
 
-export default { fetch: app.fetch, scheduled }
+export default { // 📏 인보케이션마다 D1 계량 래퍼 — 레인 1회 = 인보케이션 1회라 readEnvMeter(c.env) 가 그 레인의 읽기량(self-beat 가 싣는다)
+  fetch: (req: Request, env: Env, ctx: ExecutionContext) => app.fetch(req, withMeteredEnv(env, newMeter()), ctx),
+  scheduled: (event: ScheduledEvent, env: Env, ctx: ExecutionContext) => scheduled(event, withMeteredEnv(env, newMeter()), ctx),
+}

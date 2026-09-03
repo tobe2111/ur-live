@@ -80,7 +80,7 @@ export default function ShareRewardBanner({ sellerId, productId }: Props) {
       </div>
       <button
         onClick={copy}
-        className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] text-[13px] font-bold active:scale-[0.98] transition"
+        className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[13px] font-bold active:scale-[0.98] transition"
       >
         {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
         {copied ? t('share.copied', { defaultValue: '링크를 복사했어요' }) : t('share.copyMyLink', { defaultValue: '내 링크 복사하기' })}

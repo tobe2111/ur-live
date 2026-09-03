@@ -140,7 +140,11 @@ export default defineConfig({
           //   이전: app-shared (critical path) 에 묶여있어 zod (validation 52KB) 도 같이 preload.
           if (id.includes('/shared/config/env-schema') || id.includes('/shared/config/env-validator')) return 'env-validator'
           // 공유 설정/유틸: region, feature-flags 등 — 변경 빈도 낮음
+          //   🩸 2026-09-03: 이 주석은 오래 "feature-flags 등"이라고 적어 놓았는데, 그 파일은
+          //   `/src/shared/feature-flags.ts` 라 **`config/` 조건에 안 걸리고** catch-all 로 떨어지고 있었다
+          //   (`home-chunk-diet` 의 거울 검사를 새로 넣자마자 드러났다 — 주석과 코드가 어긋난 전형).
           if (id.includes('/src/shared/config/') || id.includes('/src/shared/utils/')) return 'app-shared'
+          if (id.includes('/src/shared/feature-flags')) return 'app-shared'
           // 공유 타입/상수: 런타임 코드 없이 타입 + 상수 → 별도 캐싱
           if (id.includes('/src/shared/constants/') || id.includes('/src/shared/types/')) return 'app-constants'
           // 레이아웃 컴포넌트: BottomNav, DesktopTopNav, DesktopLiveSidebar 등
@@ -158,6 +162,9 @@ export default defineConfig({
           //   (실측: 홈 modulepreload 에 app-seller-components 가 올라 있었다).
           //   ⚠️ 이 줄을 지우면 그 65KB 가 곧바로 돌아온다. 가드: check-critical-chunks.
           if (id.includes('/src/shared/seller-roles')) return 'app-shared'
+          // 📐 2026-09-03: 딜 카드 격자 간격 상수 — 홈·찜·유어샵·편성 섹션이 함께 읽는 한 줄짜리 SSOT.
+          //   catch-all 로 떨어지면 홈 폐쇄가 app-shared 밖 청크를 하나 더 끌고 온다(home-chunk-diet 가 잡는다).
+          if (id.includes('/src/shared/deal-card-grid')) return 'app-shared'
           // 🖊️ 2026-08-30: 유어딜 전용 아이콘(`components/icons/urdeal-icons`)도 **정확히 같은 함정**에
           //   빠졌다. 60줄짜리 순수 SVG 리프 모듈인데 `/src/components/` catch-all 에 걸려
           //   `app-components`(166KB · 58모듈)로 들어갔고, 그걸 **BottomNav·DesktopTopNav**
@@ -166,6 +173,30 @@ export default defineConfig({
           //   app-ui-utils·radix-ui·app-kakao-sdk 까지 끌고 왔다). `check-critical-chunks` 가 잡았다.
           //   ⚠️ 이 줄을 지우면 그 6청크가 곧바로 돌아온다.
           if (id.includes('/src/components/icons/')) return 'app-shared'
+          // 🏠 2026-09-02 [UNLOCK_LOADING] 홈 첫 화면이 **실제로 닿는** 소비자 홈 모듈을 자기 청크(app-home)로.
+          //   근거(번들러 실측 — generateBundle 로 chunk.modules + 모듈 import 그래프를 덤프해 홈 정적 폐쇄를 계산):
+          //   홈 폐쇄 27청크 956KB 중 `app-components` 281KB 는 홈이 21/66 모듈(70KB)만 쓰고, 나머지 45개
+          //   (온보딩 모달·이미지 업로드·교환권 스캐너·선물 모달·PWA 프롬프트…)가 같은 봉투라 통째로 preload 됐다.
+          //   더 나쁜 건 **딸려오는 것** — 그 안 쓰는 모듈들이 `components/ui/button` 등을 import 해
+          //   `app-ui-utils`(tailwind-merge 97KB, 홈 도달 0/3)·`radix-ui`·`app-kakao-sdk` 를 청크 단위로 끌고
+          //   왔고, `app-features`(48KB) 도 홈은 2/25 만 쓴다. ⇒ 홈이 닿는 모듈을 여기 모으면 그 청크 간선이 끊긴다.
+          //   목록은 실측 도달 집합 그대로다(추측 아님). ⚠️ 이 블록을 지우면 홈 preload 에 그 네 청크가 곧바로 돌아온다.
+          //   가드: `home-chunk-diet.test.ts` + check-critical-chunks / check-surface-role-leak.
+          if (
+            // ⚠️ `pages/pc-home/` 폴더째는 안 된다 — 페이지 파일(PcHomePage.tsx)까지 삼켜 lazy 페이지 청크가 사라지고
+            //   route-chunk-map 이 홈 표면을 못 찾는다(3차 실측). 홈 두 페이지가 같이 쓰는 `PcHomeLocationBar` 만.
+            id.includes('/src/components/home/') || id.includes('/src/pages/pc-home/PcHomeLocationBar') ||
+            id.includes('/src/pages/main-home/GroupBuyFeedCard') ||
+            // ⚠️ deal/ 폴더 통째는 안 된다 — DetailFloatingHeader(상세 전용)가 WishlistButton·PinButton·KakaoShareButton 을
+            //   import 해 app-components 를 도로 끌고 온다(2차 실측). 홈이 닿는 셋만 짚는다.
+            id.includes('/src/components/deal/DealCardMedia') || id.includes('/src/components/deal/WishlistHeart') ||
+            id.includes('/src/components/deal/StarRating') ||
+            id.includes('/src/components/region/') || id.includes('/src/components/SEO') ||
+            id.includes('/src/components/ui/sort-menu') || id.includes('/src/shared/seo/') ||
+            id.includes('/src/shared/home-') || id.includes('/src/shared/product-flow') ||
+            id.includes('/src/shared/deal-category-icon') ||
+            id.includes('/src/features/group-buy/FcfsBadge') || id.includes('/src/features/group-buy/useFcfs')
+          ) return 'app-home'
           // 셀러/어드민 페이지만 사용하는 utils.
           if (id.includes('/src/utils/product-template')) return 'app-seller-components'
           // 🛡️ 2026-05-28 (SSR phase 5): 메인 페이지 미사용 lib 별도 chunk.
@@ -213,6 +244,17 @@ export default defineConfig({
           //   들어가 **도매몰을 한 번도 안 여는 소비자도 매번 받고 있었다.** 엔트리 폐쇄집합에 없다(=lazy 전용).
           //   도매 페이지는 각자 lazy 청크라 그쪽에서 이 청크를 받으면 된다.
           if (id.includes('/src/hooks/queries/useWholesale')) return 'app-wholesale-hooks'
+          // 🍽️ 2026-09-02 [UNLOCK_LOADING] (대표 "모두 다 진행" — 로딩 후속 ②): **app-utils 다이어트.**
+          //   번들러 실측 그래프(#1310 과 같은 방법)로 app-utils 104.6KB 를 뜯어 보니 홈(엔트리+홈 페이지 정적 폐쇄)이
+          //   닿는 모듈은 47개 103.5KB… 가 아니라 **47개 / 103개**, 크기로는 **73.8KB(56개)가 홈 미도달**이었다 —
+          //   sentry·performance-monitor·web-vitals-report(엔트리가 *동적* import 하는데 결제/로그인 페이지가
+          //   정적으로도 써서 공유 봉투로 끌려옴) · errorHandler(결제) · kakao-login-overlay(로그인 3곳) ·
+          //   read-table-file/supplier-api/courier-tracking/useChatPoll(도매) · useMy*(마이 쿼리 훅) · in-app-warning ….
+          //   그런데 app-utils 는 엔트리가 쓰는 api.ts 와 한 봉투라 **홈이 매번 통째로 받았다.**
+          //   ⇒ 홈 미도달 모듈 중 큰 것들을 `app-utils-deferred` 로. 규칙은 **파일 이름 열거**(폴더 규칙은 #1310 에서
+          //   두 번 밟은 함정 — 필수 모듈을 같이 삼킨다). 새 모듈이 여기 없으면 종전대로 app-utils 로 간다(안전한 기본).
+          //   ⚠️ 이 목록의 모듈이 홈/엔트리 정적 폐쇄에 들어오면 `check-critical-chunks`·`home-chunk-diet` 가 빨강이다.
+          if (/\/src\/(?:lib\/(?:sentry|performance-monitor|web-vitals-report|acquisition|errorHandler|in-app-warning|kakao-touch-shim|read-table-file|supplier-api|seller-auth|biz-favicon|image-compress)|utils\/(?:kakao-login-overlay|courier-tracking|csv-download|currency|format-phone|enter-store|orderIdGenerator)|hooks\/(?:queries\/(?:useMy[A-Za-z]+|useReferral|useAffiliate|useDealHistory|useDigitalLibrary|useAddresses|useBlogPost|useFollowing|useMapProducts)|useChatPoll|useFocusTrap|useProduct|usePersistScroll|useForceLightTheme|usePrefetchProduct))\.tsx?$/.test(id)) return 'app-utils-deferred'
           // 앱 유틸: src/utils/, src/hooks/, src/lib/ — App 전체에 공유되지만 별도 캐싱
           if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'
           // 기능 모듈 API — seller/admin/agency/auth 기능 코드 (대시보드에서만 사용)

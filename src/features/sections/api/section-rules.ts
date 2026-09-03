@@ -21,6 +21,7 @@ import type { Env } from '@/worker/types/env'
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import { demoSlugSql } from '@/shared/constants/demo-products'
 import { mainScopeFor } from '@/worker/utils/consumer-scope'
+import { consumerVisibleProductSql } from '@/shared/db/consumer-visible-product'
 import {
   clampSectionLimit,
   normalizeSectionSource,
@@ -55,6 +56,62 @@ export const CARD_COLS = `
  * `deadline` 은 마감이 있는 상품만 의미가 있어 WHERE 를 함께 건다. 마감 없는 상품까지 섞으면
  * "오늘 마감 임박" 줄에 마감 없는 딜이 올라와 제목이 거짓말이 된다.
  */
+/**
+ * 🏆 **인기 점수** — 결제·리뷰·클릭 종합 (2026-09-03 대표 "리뷰 수, 클릭수, 결제 수로 총합 판정").
+ *
+ * ## 왜 그냥 더하면 안 되나
+ * 세 신호의 자릿수가 다르다(라이브 실측: 결제 최대 259 · 리뷰 최대 34 · 클릭 최대 0).
+ * 생값을 더하면 **결제 하나가 사실상 혼자 결정**해서 종전(sold_count DESC)과 같아진다.
+ * 그래서 각 신호를 **같은 후보군의 최대값 대비 0~1 로 정규화**한 뒤 가중합한다.
+ *
+ * ## 정규화 분모는 후보군과 **같은 WHERE** 로 구한다
+ * 다른 조건으로 최대값을 구하면 화면에 없는 상품이 분모를 정해 점수가 왜곡된다.
+ * 그래서 아래 쿼리는 조건 문자열을 **한 번 만들어 두 곳(본문·분모 서브쿼리)에 그대로** 쓴다 —
+ * 베끼면 반드시 갈린다(오늘 유어샵 핀에서 정확히 그 사고가 났다).
+ *
+ * ## 조작된 값도 그대로 쓴다 (대표 확정)
+ * 리뷰는 자동 시딩이 돌고 판매량도 시드값이 있다. 대표가 *"조작을 한 리뷰숫자라도 마찬가지"* 로
+ * 확정했으므로 저장된 값을 그대로 신뢰한다 — 진짜/시드를 가르지 않는다.
+ *
+ * ## 가중치는 어드민 조정 대상
+ * `platform_settings` 의 세 키. 구조는 코드가, 값은 어드민이 갖는다(이 레포 방침).
+ * 클릭은 집계가 방금 생겨 한동안 0 이다 — 그동안은 결제·리뷰 둘로만 계산된다(정상).
+ */
+export const POPULAR_WEIGHT_KEYS = {
+  sold: 'popular_weight_sold',
+  review: 'popular_weight_review',
+  view: 'popular_weight_view',
+} as const
+export const POPULAR_WEIGHT_DEFAULTS = { sold: 3, review: 2, view: 1 } as const
+
+/** 가중치 읽기 — 한 왕복. 실패·부재는 기본값(섹션 하나 때문에 홈이 죽으면 안 된다). */
+export async function resolvePopularWeights(DB: D1Database): Promise<{ sold: number; review: number; view: number }> {
+  const out = { ...POPULAR_WEIGHT_DEFAULTS } as { sold: number; review: number; view: number }
+  try {
+    const keys = Object.values(POPULAR_WEIGHT_KEYS)
+    const rows = await DB.prepare(
+      `SELECT key, value FROM platform_settings WHERE key IN (${keys.map(() => '?').join(',')})`,
+    ).bind(...keys).all<{ key: string; value: string }>()
+    for (const r of rows.results ?? []) {
+      const n = Number(r.value)
+      if (!Number.isFinite(n) || n < 0) continue
+      if (r.key === POPULAR_WEIGHT_KEYS.sold) out.sold = n
+      else if (r.key === POPULAR_WEIGHT_KEYS.review) out.review = n
+      else if (r.key === POPULAR_WEIGHT_KEYS.view) out.view = n
+    }
+  } catch { /* 컬럼·테이블 부재 → 기본값 */ }
+  return out
+}
+
+/** 정규화 가중합. 분모 0 은 `MAX(분모,1)` 로 막는다(신호가 전부 0 이어도 나눗셈이 산다). */
+export function popularScoreSql(w: { sold: number; review: number; view: number }): string {
+  return `(
+        ${w.sold} * (COALESCE(p.sold_count,0)   * 1.0 / MAX(mx.ms, 1))
+      + ${w.review} * (COALESCE(p.review_count,0) * 1.0 / MAX(mx.mr, 1))
+      + ${w.view} * (COALESCE(p.view_count,0)   * 1.0 / MAX(mx.mv, 1))
+      )`
+}
+
 const RULES: Record<Exclude<SectionSource, 'manual'>, { order: string; where?: string }> = {
   popular: { order: 'COALESCE(p.sold_count,0) DESC, p.created_at DESC' },
   deadline: {
@@ -96,18 +153,38 @@ export async function resolveSectionProducts(
       : VOUCHER_CATEGORIES
 
   try {
-    const productScope = await mainScopeFor(env.DB, 'products', 'p')
+    // 🧱 후보 조건은 **한 번 만들어** 본문과 정규화 분모에 똑같이 쓴다 — 베끼면 갈린다.
+    const catsIn = cats.map(() => '?').join(',')
+    const conds = async (a: 'p' | 'p2') => `${a}.category IN (${catsIn})
+        AND ${a}.is_active = 1
+        AND ${a}.group_buy_status = 'active'
+        AND ${consumerVisibleProductSql(a)}
+        ${(rule.where ?? '').replaceAll('p.', `${a}.`)}${await mainScopeFor(env.DB, 'products', a)}`
+    const whereMain = await conds('p')
+
+    // 🏆 인기순만 정규화 분모가 필요하다(다른 정렬은 단일 컬럼이라 분모가 무의미).
+    //   분모는 CROSS JOIN 한 번 — 신호마다 서브쿼리를 두면 같은 스캔을 세 번 한다.
+    let joinSql = ''
+    let orderSql = rule.order
+    const binds: string[] = [...cats]
+    if (source === 'popular') {
+      const w = await resolvePopularWeights(env.DB)
+      joinSql = `CROSS JOIN (
+        SELECT MAX(COALESCE(p2.sold_count,0)) ms, MAX(COALESCE(p2.review_count,0)) mr, MAX(COALESCE(p2.view_count,0)) mv
+        FROM products p2 WHERE ${await conds('p2')}
+      ) mx`
+      orderSql = `${popularScoreSql(w)} DESC, p.created_at DESC`
+      binds.push(...cats) // 분모 서브쿼리 몫
+    }
+
     const rows = await env.DB.prepare(`
       SELECT ${CARD_COLS}
       FROM products p
-      WHERE p.category IN (${cats.map(() => '?').join(',')})
-        AND p.is_active = 1
-        AND p.group_buy_status = 'active'
-        AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
-        ${rule.where ?? ''}${productScope}
-      ORDER BY CASE WHEN ${demoSlugSql('p')} THEN 1 ELSE 0 END, ${rule.order}
+      ${joinSql}
+      WHERE ${whereMain}
+      ORDER BY CASE WHEN ${demoSlugSql('p')} THEN 1 ELSE 0 END, ${orderSql}
       LIMIT ${limit}
-    `).bind(...cats).all<Record<string, unknown>>()
+    `).bind(...binds).all<Record<string, unknown>>()
     return rows.results ?? []
   } catch {
     // 컬럼 부재·테이블 부재 등 — 그 줄만 비고 홈은 계속 그려진다.

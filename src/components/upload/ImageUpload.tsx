@@ -171,7 +171,7 @@ export default function ImageUpload({
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
-              className="px-3 py-1.5 bg-white dark:bg-[#1A1C21] text-gray-900 dark:text-white text-xs font-semibold rounded shadow disabled:opacity-50"
+              className="px-3 py-1.5 bg-white dark:bg-[#1D1F29] text-gray-900 dark:text-white text-xs font-semibold rounded shadow disabled:opacity-50"
             >
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : '변경'}
             </button>
@@ -193,7 +193,7 @@ export default function ImageUpload({
           className={`${aspectClass} border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all p-4 ${
             uploading ? 'border-blue-300 bg-blue-50 cursor-wait' :
             dragOver ? 'border-blue-500 bg-blue-50' :
-            'border-gray-300 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1A1C21] hover:border-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A1C21]'
+            'border-gray-300 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1D1F29] hover:border-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29]'
           }`}
         >
           {uploading ? (

@@ -8,7 +8,7 @@ import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import { derivePricing } from './group-buy/pricing'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, ShieldCheck, RefreshCcw, BadgeCheck, RotateCcw } from 'lucide-react'
+import { MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { resolveProductFlow } from '@/shared/product-flow'
@@ -24,6 +24,7 @@ import PinButton from '@/components/curator/PinButton'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { safeDate, safeTime } from '@/utils/safe-date'
+import { publicSellerHandle } from '@/shared/seller-handle'
 import { cfImage } from '@/utils/cf-image'
 import { reportFunnel } from '@/lib/web-vitals-report'
 import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
@@ -40,6 +41,9 @@ import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
 import OtherDealsRow from './group-buy/OtherDealsRow'
 import ShareRewardBanner from './group-buy/ShareRewardBanner'
 import DeferUntilVisible from './group-buy/DeferUntilVisible'
+import DealPayButton, { useCanPayWithDeal } from './group-buy/DealPayButton'
+import { handleDealJoinError } from './group-buy/deal-join-error'
+import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -174,6 +178,8 @@ export default function GroupBuyDetailPage() {
   const heroRef = useRef<HTMLDivElement | null>(null)
 
   const productId = Number(id)
+  // 👁️ 홈 인기순의 클릭 신호 — 세션당 1회(훅이 가드).
+  useProductViewBeacon(productId)
   const isLoggedIn = !!localStorage.getItem('user_id') || !!localStorage.getItem('uid')
   // 🛡️ 2026-05-15: 본인 product 인 경우 "공구 관리" CTA 표시 (셀러 대시보드 진입점)
   const sellerId = localStorage.getItem('seller_id')
@@ -340,7 +346,10 @@ export default function GroupBuyDetailPage() {
 
   // 🎨 2026-06-16 리디자인: 할인코드(promo) 입력 UI 제거 — checkPromo/clearPromo 삭제.
 
-  async function handleJoin() {
+  // 💰 이용권 딜 결제(2026-08-31) — 노출 조건·버튼·이중 게이트 설명은 `./group-buy/DealPayButton`.
+  const { canPayWithDeal, dealBalance } = useCanPayWithDeal({ isLoggedIn, detail, total })
+
+  async function handleJoin(payWithDeal = false) {
     if (!detail) return
     if (!isLoggedIn) {
       localStorage.setItem('loginReturnUrl', window.location.pathname)
@@ -360,8 +369,11 @@ export default function GroupBuyDetailPage() {
     //   voucher_deal vs group_buy_toss 단일 helper. legacy 카테고리 graceful + 미래 분류 1곳 수정.
     const { flow } = resolveProductFlow(detail)
 
-    if (flow === 'voucher_deal') {
-      // 딜 결제 흐름 (교환권 전용)
+    // 💰 2026-08-31: 이용권도 딜로 살 수 있다(대표 방향 — 상품 마진 대신 현금 출구에 마진).
+    //   `deal_only=1` 교환권은 원래 딜 전용이고, 이용권은 **사용자가 딜을 고른 경우에만** 이 경로.
+    //   기본은 여전히 카드다 — 대다수 소비자는 딜 잔액이 없다.
+    if (flow === 'voucher_deal' || payWithDeal) {
+      // 딜 결제 흐름 (교환권 전용 → 2026-08-31 이후 이용권도 선택 시)
       setJoining(true)
       reportFunnel('click', productId)
       try {
@@ -375,7 +387,7 @@ export default function GroupBuyDetailPage() {
           quantity, payment_method: 'deal', ref, idempotency_key,
         })
         if (res.data?.success) {
-          toast.success('🎁 교환권 발급 완료')
+          toast.success(flow === 'voucher_deal' ? '🎁 교환권 발급 완료' : '🎫 이용권 발급 완료')
           fireAffiliateTrack(res?.data?.data?.order_id ?? null, Number(id), detail?.name) // 큐레이터 적립 (fail-soft)
           invalidateVouchers()
           navigate('/my-gifticons')  // 🎟️ 2026-08-31 지갑 분리 — 교환권(voucher_deal)은 교환권 보관함으로
@@ -383,22 +395,8 @@ export default function GroupBuyDetailPage() {
           toast.error(res.data?.error || '교환 실패')
         }
       } catch (err: unknown) {
-        const e = err as { response?: { data?: { error?: string; code?: string } } }
-        const code = e?.response?.data?.code
-        if (code === 'INSUFFICIENT_POINTS') {
-          // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
-          if (TOPUP_DISABLED) {
-            toast.error('딜이 부족해요. 딜은 친구 초대·유어샵 추천으로 모을 수 있어요.')
-            return
-          }
-          const charge = await confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')
-          if (charge) {
-            localStorage.setItem('loginReturnUrl', window.location.pathname)
-            navigate('/points/charge')
-          }
-          return
-        }
-        toast.error(e?.response?.data?.error || '교환 실패')
+        // 💰 실패 안내 3갈래(게이트 꺼짐 / 딜 부족 / 그 외)는 `./group-buy/deal-join-error`.
+        await handleDealJoinError(err, { confirmDialog, navigate })
       } finally {
         setJoining(false)
       }
@@ -471,7 +469,7 @@ export default function GroupBuyDetailPage() {
   }
   if (!detail) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#11141C] text-gray-900 dark:text-white">
         <p className="font-bold mb-3">상품을 찾을 수 없습니다</p>
         <button onClick={() => navigate('/map')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">공구 목록으로</button>
       </div>
@@ -616,7 +614,7 @@ export default function GroupBuyDetailPage() {
                 secondaryButtonText: '자세히 보기',
               })}
               compact
-              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 hover:bg-gray-100 dark:hover:bg-[#1A1C21]"
+              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 hover:bg-gray-100 dark:hover:bg-[#1D1F29]"
             />
           </span>
         </nav>
@@ -709,7 +707,8 @@ export default function GroupBuyDetailPage() {
                     <CheckCircle2 style={{ width: 15, height: 15, color: 'var(--gbd-accent)', flex: '0 0 auto' }} />
                     <span style={{ fontSize: 12, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>검증 셀러</span>
                   </div>
-                  {detail.seller_username && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2 }}>@{detail.seller_username}</div>}
+                  {/* 🏷️ 2026-09-03 대표 — 자동 발급 아이디(@store_xxxx)는 손님에게 의미가 없다(SSOT: shared/seller-handle). */}
+                  {publicSellerHandle(detail.seller_username) && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2 }}>@{publicSellerHandle(detail.seller_username)}</div>}
                 </div>
                 <button onClick={() => { if (detail.seller_handle) { navigate(`/u/${detail.seller_handle}`); return } const t = detail.seller_username || detail.seller_id; if (t) navigate(`/profile/${t}`) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 1, padding: '8px 12px', border: '1px solid var(--gbd-line2)', borderRadius: 10, background: 'var(--gbd-card)', color: 'var(--gbd-ink2)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
                   프로필<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
@@ -730,34 +729,21 @@ export default function GroupBuyDetailPage() {
 
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
 
-        {/* 신뢰 스트립 — 🛡️ 2026-09-01: 셋이 전부 같은 ShieldCheck 였다(아이콘 정보량 0 + "찍어낸" 인상). 항목별로 다른 글리프. */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 18px' }}>
-          {[
-            { title: '안전결제', sub: '토스페이먼츠', Icon: ShieldCheck },
-            { title: '정식판매', sub: '검증 셀러', Icon: BadgeCheck },
-            { title: '환불보장', sub: '안심거래', Icon: RotateCcw },
-          ].map((tr) => (
-            <div key={tr.title} style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-              <tr.Icon style={{ width: 16, height: 16, flex: '0 0 auto', color: 'var(--gbd-ink)' }} />
-              <div style={{ lineHeight: 1.25, minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>{tr.title}</div>
-                <div style={{ fontSize: 11, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>{tr.sub}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
+        {/* 🔴 2026-09-01 (디자인 방향 PR A): 3열 균등 신뢰 스트립(안전결제/정식판매/환불보장) 삭제 —
+            CTA 위 한 줄("토스로 3초 안전결제 · 미사용 시 100% 자동환불")이 같은 말을 이미 한다. */}
 
         {/* 상품 안내 — 🧾 2026-08-30 (대표 "AI 티 안나는 디자인으로"):
             제목이 '무엇을 기대하세요?' 였다. What to expect 를 그대로 옮긴 번역투라
             한국 커머스에선 아무도 그렇게 안 쓴다 — 아래 '이용 안내'와 짝이 되게 '딜 안내'로.
             그 아래 칩도 로즈 점을 박은 라운드 필 3개였다. 세 낱말에 테두리 세 개를 쓰던 꼴이라,
-            점·테두리를 걷고 가운뎃점으로 흘려보낸다(정보량은 같고 소음만 줄었다). */}
+            점·테두리를 걷었다. 2026-09-01: 띄어 쓴 가운뎃점 사슬도 흔적이라 한 줄에 하나 + 로즈 점(테두리 없음)으로. */}
         <div id="gb-sec-info" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>딜 안내</div>
-          <div style={{ marginTop: 11, fontSize: 13.5, color: 'var(--gbd-sub)', lineHeight: 1.6 }}>
-            {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''}까지 사용` : '결제 즉시 사용'].join(' · ')}
+          {/* 🔴 로즈 마침표: 띄어 쓴 가운뎃점 사슬(a · b · c) 대신 한 줄에 하나, 앞에 점. 테두리 pill 이 아니다. */}
+          <div style={{ marginTop: 11, fontSize: 13.5, color: 'var(--gbd-sub)', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''}까지 사용` : '결제 즉시 사용'].map((line) => (
+              <span key={line} style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gbd-accent)', flex: '0 0 auto' }} />{line}</span>
+            ))}
           </div>
           {detail.description && <p style={{ margin: '14px 0 0', fontSize: 14.5, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{detail.description}</p>}
         </div>
@@ -893,7 +879,7 @@ export default function GroupBuyDetailPage() {
           isPrelaunch={isPrelaunch}
           isDemo={isDemoDeal}
           joining={joining}
-          onBuy={handleJoin}
+          onBuy={() => handleJoin()}
           onPrelaunchApply={() => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
         />
       </aside>
@@ -933,13 +919,14 @@ export default function GroupBuyDetailPage() {
           <span style={{ fontSize: 11.5, color: 'var(--gbd-sub)', fontWeight: 500, whiteSpace: 'nowrap' }}>{isPrelaunch ? '오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요' : '토스로 3초 안전결제 · 미사용 시 100% 자동환불'}</span>
         </div>
         <button
-          onClick={isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : handleJoin}
+          onClick={isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : () => handleJoin()}
           disabled={(!isJoinable && !isPrelaunch) || joining}
           aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? `${formatNumber(total)}원 ${isDemoDeal ? '결제하기' : '구매하기'}` : isDemoDeal ? '결제 불가' : '구매 불가'}
           style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
         >
           {joining ? '처리 중…' : isPrelaunch ? '사전 응모하기' : !isJoinable ? (isDemoDeal ? '결제 불가' : '구매 불가') : <>{formatNumber(total)}원 {isDemoDeal ? '결제하기' : '구매하기'}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
         </button>
+        <DealPayButton show={canPayWithDeal && !isPrelaunch && isJoinable} joining={joining} dealBalance={dealBalance} onPay={() => handleJoin(true)} />
       </div>{/* /bar box */}
       </footer>
     </div>

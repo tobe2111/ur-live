@@ -17,9 +17,11 @@
  *   - 규모가 크면 시간당 소량이라 며칠에 걸쳐 수렴(어드민 무개입) — 즉시 전체는 별도 수동 트리거 가능.
  */
 import type { Env } from '../types/env'
+import { replaceGalleryUrl, repairGalleryCover } from '../utils/gallery-cover-sync'
 import { rehostImageToR2, isExternalImageUrl, validateImageLoads } from '../utils/rehost-image'
+import { hotlinkBlockedSql, isHotlinkBlockedUrl } from '../../shared/hotlink-blocked-hosts'
 import { getSupplyMeta, setSupplyMeta, ensureSupplyMetaTable } from '../utils/product-supply-meta'
-import { fetchDemoPhotos, isBlockedPhotoUrl } from '../utils/demo-photo-set'
+import { fetchDemoPhotos, isBlockedPhotoUrl, blockedPhotoSql } from '../utils/demo-photo-set'
 
 // 🏷️ 데모 이미지 컨디션 버전 — bump 하면 전 데모가 한 번씩 재적용된다(대표사진 + 3~5장).
 //   v2 = 카카오 og 대표사진 커버 + 3~5장(2026-07-21).
@@ -88,8 +90,17 @@ export async function rehostDemoImagesBulk(env: Env, perRun = 8): Promise<{ reho
   }))
   for (const { row, hosted } of fetched) {
     if (hosted) {
-      await DB.prepare(`UPDATE products SET image_url = ?, updated_at = datetime('now') WHERE id = ?`)
-        .bind(hosted, row.id).run().catch(() => {})
+      // 🖼️ 2026-09-03 (대표 신고 — "사진 1장인데 여러 장인 것처럼"): 커버만 새 주소로 바꾸면
+      //   `images[0]`(= 저장 시점의 커버)이 옛 외부 주소로 남아 **같은 사진이 두 칸**이 된다.
+      //   R2 키가 랜덤 UUID 라 표시 쪽에선 사본임을 알 길이 없으므로 **여기서 같이 쓴다**.
+      const nextImages = replaceGalleryUrl(row.images, row.image_url, hosted)
+      if (nextImages) {
+        await DB.prepare(`UPDATE products SET image_url = ?, images = ?, updated_at = datetime('now') WHERE id = ?`)
+          .bind(hosted, nextImages, row.id).run().catch(() => {})
+      } else {
+        await DB.prepare(`UPDATE products SET image_url = ?, updated_at = datetime('now') WHERE id = ?`)
+          .bind(hosted, row.id).run().catch(() => {})
+      }
       rehosted++
     } else {
       // 커버 이관 실패(도달불가/삭제/차단) — 원본 URL 은 **유지**(비파괴: 전송 실패일 수도 있는 매장
@@ -100,6 +111,49 @@ export async function rehostDemoImagesBulk(env: Env, perRun = 8): Promise<{ reho
     }
   }
   return { rehosted, images: rehosted, failed, remaining: await countExternal(), bucketBound }
+}
+
+/**
+ * 🩹 이미 어긋난 행 정리 — 커버는 R2 인데 갤러리 첫 칸이 옛 외부 주소인 상품.
+ *
+ * 위 이관이 오래 **커버만** 바꿔 온 탓에 라이브 활성 이용권 100개 중 99개가 이 상태였다
+ * (2026-09-03 실측). 그 행들은 이관 큐에서 이미 빠져 있어(`image_url LIKE 'http%'` 조건)
+ * 위 함수가 다시 훑지 않으므로, 되돌리는 일은 이 패스가 맡는다.
+ *
+ * 네트워크를 쓰지 않는다 — 주소만 맞추므로 라운드당 넉넉히 처리해도 싸다.
+ */
+export async function repairGalleryCoverDrift(env: Env, perRun = 40): Promise<{ scanned: number; fixed: number; remaining: number }> {
+  const DB = env.DB
+  // 커버가 우리 저장소(`/api/media` 또는 media.ur-team.com)인데 **갤러리 첫 칸이 외부 주소**인 행.
+  //
+  // 🩸 2026-09-03 라이브 실측 — 첫 판은 조건이 `images LIKE '%http%'` 였고 **수렴하지 않는다**:
+  //   갤러리는 3~5장이라 첫 칸을 고쳐도 뒤쪽 사진이 외부 주소로 남아 그 행이 **후보 집합에 계속
+  //   머문다**. `ORDER BY id LIMIT 40` 창의 앞자리를 그렇게 고쳐진 행들이 하나씩 채워 가고,
+  //   40개를 넘기는 순간 **창이 통째로 no-op 이 되어 뒤쪽 행은 영영 안 보인다**
+  //   (실측: 후보 219 중 진짜 드리프트 205, 이미 붙박이 14 — 그중 3개가 이미 창 안에 있었다).
+  //   에러도 경고도 없이 `galleryFixed=0` 만 찍히므로 "할 일이 없다"와 구분되지 않는다.
+  //   ⇒ **고칠 행만** 고른다. 그러면 남은 수가 곧 진짜 남은 드리프트이고 0 으로 수렴한다.
+  const WHERE = `COALESCE(is_active,1)=1
+        AND (image_url LIKE '/api/media/%' OR image_url LIKE '%media.ur-team.com/%')
+        AND json_valid(images)
+        AND json_extract(images, '$[0]') LIKE 'http%'`
+  const { results } = await DB.prepare(
+    `SELECT id, image_url, images FROM products WHERE ${WHERE} ORDER BY id LIMIT ?`
+  ).bind(Math.max(1, Math.min(200, perRun))).all<{ id: number; image_url: string | null; images: string | null }>()
+    .catch(() => ({ results: [] as { id: number; image_url: string | null; images: string | null }[] }))
+  let fixed = 0
+  for (const row of results || []) {
+    const next = repairGalleryCover(row.images, row.image_url)
+    if (!next) continue
+    // 🔎 시도가 아니라 **실제로 쓴 것**만 센다 — 첫 판은 시도를 세는 바람에 하트비트가
+    //   `galleryFixed=40` 이라고 말해도 그게 40건 성공을 뜻하는지 알 수 없었다.
+    const res = await DB.prepare(`UPDATE products SET images = ?, updated_at = datetime('now') WHERE id = ?`)
+      .bind(next, row.id).run().catch(() => null)
+    if ((res?.meta?.changes || 0) > 0) fixed++
+  }
+  const rem = await DB.prepare(`SELECT COUNT(*) AS n FROM products WHERE ${WHERE}`)
+    .first<{ n: number }>().catch(() => ({ n: 0 }))
+  return { scanned: (results || []).length, fixed, remaining: Number(rem?.n ?? 0) }
 }
 
 function isPlaceholderUrl(u: string | null | undefined): boolean {
@@ -123,7 +177,7 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
           SELECT 1 FROM product_supply_meta m
            WHERE m.product_id = p.id AND m.key = 'demo_cond_v' AND m.value = ?
         )
-      ORDER BY p.id
+      ORDER BY CASE WHEN ${blockedPhotoSql('p.image_url')} THEN 0 ELSE 1 END, p.id
       LIMIT ?`
   ).bind(DEMO_COND_V, Math.max(1, perRun)).all<{ id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }>()
     .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }[] }))
@@ -257,13 +311,17 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
   return out
 }
 
-export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: number; migrated: number; images: number; done: number; skipped?: string }> {
+export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: number; migrated: number; images: number; done: number; galleryFixed?: number; skipped?: string }> {
   const DB = env.DB
   const bucketEnv = env as unknown as { MEDIA_BUCKET?: R2Bucket }
   // ① 재조정 — R2 버킷 유무와 무관(외부 URL 저장도 표시엔 유효, ②가 이후 영구화). fail-soft.
   const rc = await reconditionDemos(env).catch(() => ({ reconditioned: 0, skipped: 0, hiddenNoPhoto: 0, revived: 0 }))
-  const result: { reconditioned: number; migrated: number; images: number; done: number; skipped?: string } =
+  const result: { reconditioned: number; migrated: number; images: number; done: number; galleryFixed?: number; skipped?: string } =
     { reconditioned: rc.reconditioned, migrated: 0, images: 0, done: 0 }
+  // 🩹 갤러리 첫 칸 정합 — **R2 바인딩과 무관**(주소만 맞추는 DB 작업)이라 아래 조기반환보다 앞에 둔다.
+  //   여기 아래에 뒀다가는 바인딩 없는 배포에서 영영 안 돈다(바로 밑 주석이 기록한 넉 달 사고와 같은 자리).
+  const gal = await repairGalleryCoverDrift(env).catch(() => ({ scanned: 0, fixed: 0, remaining: -1 }))
+  if (gal.fixed) result.galleryFixed = gal.fixed
   // 🔴 2026-08-31: 여기서 조용히 반환하던 것이 **넉 달간 이관을 통째로 죽여 놨다.**
   //   cron 은 Pages 가 아니라 wrangler.toml 의 Workers 배포에서 도는데 거기에 MEDIA_BUCKET 이
   //   없었다(주석 처리돼 있었다). 그런데 반환값이 `migrated=0 done=0` 이라 하트비트에는
@@ -275,7 +333,7 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
   const { results } = await DB.prepare(
     `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address
        FROM products p
-      WHERE p.slug LIKE 'demo-%'
+      WHERE (p.slug LIKE 'demo-%' OR ${hotlinkBlockedSql('p.image_url')} OR ${hotlinkBlockedSql('p.images')})
         AND COALESCE(p.is_active, 1) = 1
         AND NOT EXISTS (
           SELECT 1 FROM product_supply_meta m
@@ -292,7 +350,11 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
   let processed = 0
   for (const row of rows) {
     const gallery = parseJsonArr(row.images)
-    const externals = [row.image_url, ...gallery].filter((u): u is string => isExternalImageUrl(u))
+    // 🏪 2026-09-02 (대표 "모두 다 진행" — 로딩 후속 ③): **실상품**은 핫링크 차단 호스트(리사이즈 자체가 안 되는 곳)만
+    //   이관한다 — giftishow 같은 정상 CDN 은 그대로 둔다(그건 cdn-cgi 가 잘 받는다). 데모는 종전대로 외부 전부.
+    //   실상품은 **비파괴**: 못 옮겨도 사진을 지우지 않고(lastTry 삭제·heal 재획득은 데모 전용) MAX_TRIES 뒤 종결 마킹만.
+    const isDemo = row.slug.startsWith('demo-')
+    const externals = [row.image_url, ...gallery].filter((u): u is string => isExternalImageUrl(u) && (isDemo || isHotlinkBlockedUrl(u)))
     // 외부 URL 없음 = 이미 전부 내부/placeholder → 종결 마킹(재스캔 제외, 백로그 수렴).
     if (externals.length === 0) {
       await setSupplyMeta(DB, row.id, { img_rehost_done: '1' }).catch(() => {})
@@ -304,7 +366,8 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
 
     const meta = metaMap.get(row.id) || {}
     const tries = Number(meta.img_rehost_tries || 0)
-    const lastTry = tries + 1 >= MAX_TRIES  // 이번이 마지막 시도 → 못 옮긴 외부 URL 은 깨진 것으로 판정·제거
+    const lastTry = isDemo && tries + 1 >= MAX_TRIES  // 이번이 마지막 시도 → 못 옮긴 외부 URL 은 깨진 것으로 판정·제거(데모만)
+    const giveUp = !isDemo && tries + 1 >= MAX_TRIES   // 실상품: 지우지 않고 종결 마킹만
 
     // 외부 URL → R2 이관 매핑(중복 URL 은 1회만 fetch). rehostImageToR2 는 fetch+검증(image/*·크기)
     //   포함이라 성공=성한 사진, 실패=도달불가/비이미지(=깨진 후보).
@@ -317,7 +380,7 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
       //   "깨진 외부"로 판정돼 갤러리에서 제거된다(의도된 경로).
       if (isBlockedPhotoUrl(u)) continue
       fetches++
-      const hosted = await rehostImageToR2(bucketEnv, u, 'demo-image-rehost')
+      const hosted = await rehostImageToR2(bucketEnv, u, isDemo ? 'demo-image-rehost' : 'real-hotlink-rehost', isDemo ? 'uploads/demo' : 'uploads/rehost')
       if (hosted) mapping.set(u, hosted)
     }
     // URL 해석기: 이관 성공→R2, 내부(/api/media)→그대로, 그 외 외부→(마지막 시도면 깨진 것으로 제거).
@@ -336,7 +399,7 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
     }
 
     let healRefetched = false
-    if (rebuilt.length === 0 && lastTry) {
+    if (isDemo && rebuilt.length === 0 && lastTry) {
       // 🩹 모든 사진이 깨짐(전부 도달불가) → 대표사진을 다시 받아 복구(회당 1회, heal 라운드 캡).
       const rounds = Number(meta.img_heal_rounds || 0)
       if (rounds < 2 && row.restaurant_name) {
@@ -386,11 +449,11 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
     if (mapping.size > 0) { result.migrated++; result.images += mapping.size }
 
     // 종결/재시도 판정: 잔여 외부(미이관·미제거) 없으면 종결. heal 재조회했으면 새 외부 URL 이관 위해 계속.
-    const remainingExternal = rebuilt.some((u) => isExternalImageUrl(u))
+    const remainingExternal = rebuilt.some((u) => isDemo ? isExternalImageUrl(u) : isHotlinkBlockedUrl(u))
     if (!remainingExternal) {
       await setSupplyMeta(DB, row.id, { img_rehost_done: '1' }).catch(() => {})
       result.done++
-    } else if (lastTry && !healRefetched) {
+    } else if ((lastTry && !healRefetched) || giveUp) {
       // 마지막 시도인데 여전히 외부 남음(=깨진 건 이미 제거, 남은 건 이관 실패한 성한 URL) → 종결(다음 순환에서 재시도되게 tries 리셋).
       await setSupplyMeta(DB, row.id, { img_rehost_done: '1' }).catch(() => {})
       result.done++

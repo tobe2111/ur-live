@@ -122,7 +122,7 @@ export default function WholesaleBoardPage() {
             </button>
           )}
         </div>
-        <div className="ur-content-wide px-5 lg:px-8 flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="ur-content-wide px-5 lg:px-8 flex gap-1 overflow-x-auto scrollbar-hide">
           {TABS.map(ti => (
             <button key={ti.key} onClick={() => setTab(ti.key)}
               className="shrink-0 inline-flex items-center gap-1.5 px-4 h-11 text-[14px] font-bold whitespace-nowrap border-b-2 transition-colors"

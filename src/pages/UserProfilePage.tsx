@@ -34,6 +34,8 @@ import {
 import api from '@/lib/api'
 import BrandLoader from '@/components/brand/BrandLoader'
 import AccountSideNav from './user-profile/AccountSideNav'
+import AccountPcPane from './user-profile/AccountPcPane'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 /**
  * 🛡️ 2026-05-01: TD-018 분할 — sub-component 들을 ./user-profile/ 디렉토리로 이동.
@@ -46,6 +48,9 @@ export default function UserProfilePage() {
   // 🛡️ 2026-04-30: 카운트 통합 fetch — 자식 컴포넌트 (CouponVoucherStats / ShoppingGroup) 가
   //   각자 호출하던 wishlist / coupon / voucher endpoint 를 1회만 호출.
   const counts = useMyCounts()
+  // 🖥️ 2026-09-02 (대표 — "PC 모드 답지 않은 페이지"): lg+ 는 우측 칸 상단을 `AccountPcPane`(내용)으로,
+  //   모바일은 종전 세로 흐름 그대로. 동기 초기화 훅이라 첫 렌더부터 정확(모바일↔PC 플래시 없음).
+  const isPc = useMediaQuery('(min-width: 1024px)')
 
   // ✅ Zustand 스토어 사용 (지역별)
   const authStore = useAuthKR // 🔥 2026-08-04: GLOBAL 스토어 제거(#804)
@@ -96,7 +101,7 @@ export default function UserProfilePage() {
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (!isAuthReady && !isKorea()) {
     return (
-      <div className="min-h-[100dvh] bg-warm dark:bg-[#0D0F12]">
+      <div className="min-h-[100dvh] bg-warm dark:bg-[#11141C]">
         <BrandLoader fullScreen />
       </div>
     )
@@ -135,18 +140,19 @@ export default function UserProfilePage() {
        이용 내역도, 수익도, 설정도 전부 `bg-gray-100 rounded-2xl` 로 같은 무게였다.
        화면이 "이 중 무엇이 중요한지" 를 한 마디도 안 하고 기능을 나열만 한다 — 그게
        대표가 본 "AI 티" 다. 사람이 만든 마이페이지에는 강조가 **하나**뿐이다.
-       ⇒ 바탕을 웜 화이트(#FAF7F5)로 내리고 그룹을 **흰 카드**로 띄운다. 유어샵에서 같은
+       ⇒ 바탕을 웜 화이트(#F8F7FC)로 내리고 그룹을 **흰 카드**로 띄운다. 유어샵에서 같은
           문제를 같은 방법으로 이미 고쳤고(surface-token 테스트가 지킨다) — 두 화면의
           표면 언어가 이제 같다.
        ⚠️ `min-h-screen`(=100vh)은 모바일에서 주소창을 포함해 실제 보이는 영역보다 크다
           (CLAUDE.md 모바일 뷰포트 룰) → `min-h-[100dvh]`. */
-    <div className="bg-warm dark:bg-[#0D0F12] flex flex-col min-h-[100dvh] pb-7">
+    <div className="bg-warm dark:bg-[#11141C] flex flex-col min-h-[100dvh] pb-7">
       <SEO title={t('userProfile.docTitle')} description={t('userProfile.seoDesc')} url="/user/profile" noindex />
       <h1 className="sr-only">{t('nav.mypage', { defaultValue: '마이페이지' })}</h1>
 
       {/* v4 Hero Profile — 프로필 + 알림/설정 버튼 (상단 Large Title 바 제거) */}
-      {/* 🏭 2026-06-05 (사용자 요청): 헤더 배경 은은한 그라데이션(라이트/다크 모두 자연스럽게). */}
-      <div className="bg-gradient-to-b from-white via-warm to-warm dark:from-[#171026] dark:via-[#0a0712] dark:to-[#0D0F12]">
+      {/* 🎫 2026-09-02: 06-05 의 보라 그라디언트 띠 삭제(표면 규칙 ⑥ 그라디언트 0 — 다크에서 남보라 색이
+          체계 밖 색이었다). PC(lg+)에서는 이 헤더 자체를 숨기고 우측 칸의 프로필 카드가 대신한다. */}
+      <div className={isPc ? 'hidden' : ''}>
       <div className="ur-content-medium px-4 lg:px-8 pt-5 pb-5">
         <div className="flex items-center gap-3">
           <img
@@ -176,7 +182,7 @@ export default function UserProfilePage() {
           </div>
         </div>
       </div>
-      </div>{/* /헤더 그라데이션 wrapper */}
+      </div>{/* /모바일 헤더 */}
 
       {/* 🧭 2026-08-19 (대표 시안 — 그루폰 `My Account`): PC 는 [좌 내비 | 우 내용] 2단.
           모바일(<lg)에서는 `ur-account-pc` 가 아무 일도 하지 않아 **지금 흐름 그대로**다. */}
@@ -191,6 +197,12 @@ export default function UserProfilePage() {
         <AccountSideNav />
         <div className="ur-account-pane min-w-0">
 
+      {/* 🖥️ 2026-09-02 PC: 우측 칸 상단 = 내용(프로필 카드 · 숫자 넷 · 주문/리뷰어 · 곧 쓸 이용권 · 타일).
+          모바일: 종전 흐름(딜 잔액 카드 → 주문 현황 → 리뷰어 → 이용 내역 목록) 그대로. */}
+      {isPc ? (
+        <AccountPcPane counts={counts} userName={userName} profileImage={profileImage} onEditProfile={() => setEditOpen(true)} />
+      ) : (
+      <>
       {/* v4 딜 잔액 + 충전 (큰 박스) */}
       <TeamPointsCard />
 
@@ -201,6 +213,29 @@ export default function UserProfilePage() {
           역할 진입/수익 CTA 보다 위로. 순서: 딜 잔액(딜 벌기) → 나의 이용내역 → 수익·추천(접힘) → 역할 진입. */}
 
       {/* v4 주문 현황 */}
+      {/* 🎟️ 2026-09-02 (대표 "매장 계산대는 셀러 계정이라면 위에 있어야하지 않을까"): 최상단으로.
+          손님 앞에서 QR 을 찍는 동작이라 **하루에 가장 많이 누르는 버튼**인데, 그동안 로그아웃·탈퇴
+          바로 위(페이지 최하단)에 있어 매번 끝까지 스크롤해야 했다. 셀러 계정에서만 뜬다. */}
+      <div className="ur-content-medium px-4 lg:px-8 pt-4">
+        {/* 🎟️ 2026-07-06 (대표 — 계산대 스캔을 셀러 대시보드 말고 메인에서): 사업자 유저 '매장 계산대'
+            강조 카드. 손님 이용권 QR 스캔 = 매일 수십 번 쓰는 계산대 동선 → 최상단·큰 카드로 노출. */}
+        {!!localStorage.getItem('seller_token') && (
+          <button
+            type="button"
+            onClick={() => navigate('/store/scan')}
+            className="w-full flex items-center gap-3.5 p-4 rounded-2xl bg-gray-900 dark:bg-white active:scale-[0.99] transition-transform"
+          >
+            <span className="w-11 h-11 rounded-xl bg-white/15 dark:bg-gray-900/10 flex items-center justify-center shrink-0">
+              <ScanLine className="w-6 h-6 text-white dark:text-gray-900" aria-hidden="true" />
+            </span>
+            <span className="text-left min-w-0">
+              <span className="block text-[15px] font-extrabold text-white dark:text-gray-900">{t('userProfile.storeCheckout', { defaultValue: '매장 계산대' })}</span>
+              <span className="block text-[11.5px] text-white/75 dark:text-gray-900/70 mt-0.5">{t('userProfile.storeCheckoutDesc', { defaultValue: '손님 이용권 QR을 스캔해 바로 사용 처리' })}</span>
+            </span>
+          </button>
+        )}
+      </div>
+
       <OrderStatusBar />
 
       {/* 🗺️ 2026-07-02 동네 리뷰어 레벨 (카카오맵 리뷰 게이미피케이션) — 자산 흐름 안에서 동기부여 노출 */}
@@ -208,6 +243,8 @@ export default function UserProfilePage() {
 
       {/* v4 쇼핑 InsetGroup — 나의 이용 내역 (이용권·자산 / 관심 / 주문·배송) */}
       <ShoppingGroup counts={counts} />
+      </>
+      )}
 
       {/* 🧭 2026-06-10 (UI 100점 패스): 수익·추천 3카드 도배 → 접이식 그룹(자산 다음으로 1탭 뒤). */}
       <EarningsGroup>
@@ -255,6 +292,7 @@ export default function UserProfilePage() {
         </button>
       </div>
 
+
       {/* 🛡️ 2026-05-27 (P2 referral): 친구 초대 카드 — 초대링크 복사가 핵심이라 행 압축 대신 카드 유지(B&W) */}
       <MyReferralCard />
       </EarningsGroup>
@@ -275,7 +313,8 @@ export default function UserProfilePage() {
         {/* 🌐 2026-08-11: 번역이 반쯤 빈 상태(언어당 [TODO] 289개)에서 전환을 열어 두면
             어중간한 화면이 된다. 한국 전용 서비스라 문을 닫는다 — 플래그 false 로 즉시 복원. */}
         {!CONSUMER_LANGUAGE_SWITCH_HIDDEN && <LanguageSection className="ur-content-medium px-4 lg:px-8 pt-3" />}
-        <AppVersionSection />
+        {/* 🧹 2026-09-02 (대표 "앱 정보는 맨 밑에 넣어줘"): 버전 표기는 **찾을 수 있으면 되는 정보**라
+            설정 그룹을 열어야 보이는 자리가 아니라 페이지 맨 아래(약관·FAQ 옆)로 내렸다. */}
       </SettingsGroup>
 
       {/* v4 로그아웃 + 계정 전환 + 회원 탈퇴 — 한 묶음, 동일 간격(space-y-2) */}
@@ -283,23 +322,6 @@ export default function UserProfilePage() {
         {/* 🛡️ 2026-05-01: linked seller 가 있으면 셀러 대시보드 전환 버튼 표시.
             이전: BottomNav 가 seller_token 만 보고 자동으로 셀러 UI 표시 → 사용자 혼란.
             이번: 명시 전환만 셀러 모드로. */}
-        {/* 🎟️ 2026-07-06 (대표 — 계산대 스캔을 셀러 대시보드 말고 메인에서): 사업자 유저 '매장 계산대'
-            강조 카드. 손님 이용권 QR 스캔 = 매일 수십 번 쓰는 계산대 동선 → 최상단·큰 카드로 노출. */}
-        {!!localStorage.getItem('seller_token') && (
-          <button
-            type="button"
-            onClick={() => navigate('/store/scan')}
-            className="w-full flex items-center gap-3.5 p-4 rounded-2xl bg-gray-900 dark:bg-white active:scale-[0.99] transition-transform"
-          >
-            <span className="w-11 h-11 rounded-xl bg-white/15 dark:bg-gray-900/10 flex items-center justify-center shrink-0">
-              <ScanLine className="w-6 h-6 text-white dark:text-gray-900" aria-hidden="true" />
-            </span>
-            <span className="text-left min-w-0">
-              <span className="block text-[15px] font-extrabold text-white dark:text-gray-900">{t('userProfile.storeCheckout', { defaultValue: '매장 계산대' })}</span>
-              <span className="block text-[11.5px] text-white/75 dark:text-gray-900/70 mt-0.5">{t('userProfile.storeCheckoutDesc', { defaultValue: '손님 이용권 QR을 스캔해 바로 사용 처리' })}</span>
-            </span>
-          </button>
-        )}
 
         {/* 🏪 2026-06-22 (대표 — 소상공인은 풀 대시보드 대신 앱에서 바로): 사업자 유저 경량 '내 매장'. */}
         {!!localStorage.getItem('seller_token') && (
@@ -331,7 +353,7 @@ export default function UserProfilePage() {
         <button
           type="button"
           onClick={handleLogout}
-          className="ur-btn ur-btn-lg ur-btn-block bg-white dark:bg-[#1A1C21] text-gray-900 dark:text-white/75"
+          className="ur-btn ur-btn-lg ur-btn-block bg-white dark:bg-[#1D1F29] text-gray-900 dark:text-white/75"
         >
           <LogOut className="w-4 h-4" aria-hidden="true" />
           {t('userProfile.logout')}
@@ -369,6 +391,8 @@ export default function UserProfilePage() {
           ))}
         </div>
         <p className="text-[10px] text-gray-400 dark:text-white/30 mt-2">{t('userProfile.kakaoConsultSub', { defaultValue: '평일 10:00~18:00 응대' })}</p>
+        {/* 📱 앱 정보 — 페이지 맨 밑(대표 2026-09-02). 설정 그룹에서 이동, 컴포넌트 자체는 불변. */}
+        <AppVersionSection />
       </div>
 
         </div>{/* /우측 내용 칸 */}

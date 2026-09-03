@@ -58,14 +58,14 @@ export default function SuggestionModal({ place, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[10000] bg-black/50 flex items-end sm:items-center justify-center" onClick={onClose} role="presentation">
-      <div className="bg-white dark:bg-[#0D0F12] rounded-t-2xl sm:rounded-2xl w-full max-w-[430px] p-5 space-y-4" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${place.place_name} 추천 보내기`}>
+      <div className="bg-white dark:bg-[#11141C] rounded-t-2xl sm:rounded-2xl w-full max-w-[430px] p-5 space-y-4" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${place.place_name} 추천 보내기`}>
         <div>
           <p className="text-xs text-gray-500 dark:text-gray-400">{place.category_name?.split('>').slice(-1)[0]?.trim() || '맛집'}</p>
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">{place.place_name}</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
             <MapPin className="w-3 h-3" />
             {place.road_address_name || place.address_name}
-            {place.distance && <span className="ml-1 text-brand dark:text-[#EF6E85]">· {Math.round(Number(place.distance))}m</span>}
+            {place.distance && <span className="ml-1 text-brand dark:text-[#4D8DF5]">· {Math.round(Number(place.distance))}m</span>}
           </p>
         </div>
 
@@ -116,7 +116,7 @@ export default function SuggestionModal({ place, onClose }: Props) {
           >
             <Navigation className="w-4 h-4" /> 카카오맵 길찾기
           </a>
-          <button onClick={onClose} className="px-5 py-2.5 bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-200 rounded-xl text-sm font-medium">닫기</button>
+          <button onClick={onClose} className="px-5 py-2.5 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 rounded-xl text-sm font-medium">닫기</button>
         </div>
       </div>
 

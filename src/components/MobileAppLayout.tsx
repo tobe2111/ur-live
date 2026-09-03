@@ -2,11 +2,11 @@ import { ReactNode, lazy, Suspense, CSSProperties, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import DesktopLiveSidebar from './DesktopLiveSidebar'
 import { useTheme } from '@/shared/stores/useTheme'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { isFullBleedPcPath } from '@/shared/pc-fullbleed'
 import { isMallSurfacePath } from '@/shared/mall/resolve'
 
 // 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 제거.
-const LinkshopVisitorRails = lazy(() => import('./LinkshopVisitorRails'))
 const ConsumerFrameRails = lazy(() => import('./ConsumerFrameRails'))
 
 interface MobileAppLayoutProps {
@@ -121,6 +121,9 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   //   🏬 `!mallSurface` — 위 주석의 함정. 액자만 벗기면 그 자리를 유어딜 사이드바가 차지한다.
   const showSidebar = !hideSidebar && !linkshopVisitor && !framed && !isFullBleedHome && !mallSurface
   const showFrameRails = framed && !linkshopVisitor
+  // 📱 2026-09-02 (유어샵 워터폴 실측): 두 레일은 안에서 `hidden xl:flex` 라 모바일에선 안 보이는데, 마운트는
+  //   되므로 lazy 청크 + 그 안의 QR 라이브러리(codes 82KB)를 **폰에서도** 내려받고 있었다. 뷰포트가 xl 일 때만 마운트.
+  const isXl = useMediaQuery('(min-width: 1280px)')
   // 📐 2026-06-17: 단일 폰 폭(430) — 페이지별 폭 분기 제거(액자가 페이지마다 안 튐).
   const frameWidth = '430px'
 
@@ -147,11 +150,11 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
       {/* PC (xl+) 좌측 사이드바 — 일반 페이지 + 라이브/쇼츠 (fixed). */}
       {showSidebar && <DesktopLiveSidebar />}
       {/* 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 렌더 제거 */}
-      {/* 🎨 2026-07-07 (대표 승인) 유어샵 방문자 PC 거터: 좌=창작자 카드 / 우=모바일 QR + "나도 만들기" 성장 훅.
-          유어딜 네비는 안 넣음(독립 쇼핑몰 느낌 유지). xl+ 내부 게이트. (기존 우하단 단독 QR 을 흡수·대체.) */}
-      {linkshopVisitor && <Suspense fallback={null}><LinkshopVisitorRails /></Suspense>}
+      {/* 🗑️ 2026-09-02 (대표 확정 — 유어샵 안P1): 방문자 PC 거터 레일(`LinkshopVisitorRails`) 삭제.
+          유어샵은 이제 lg+ 에서 액자를 벗어 진짜 PC 페이지(좌 프로필 열 + 우 3열 진열대)라 거터가 없다.
+          QR 은 프로필 열(`UShopQrCard`)로 이동. */}
       {/* 🖥️ 2026-06-20 컨슈머 PC 액자 거터 레일 (브랜드/QR/바로가기) — xl+ 에서만 보임(컴포넌트 내부 게이트). */}
-      {showFrameRails && <Suspense fallback={null}><ConsumerFrameRails /></Suspense>}
+      {showFrameRails && isXl && <Suspense fallback={null}><ConsumerFrameRails /></Suspense>}
       <div
         className={`mobile-app-container ${framed ? 'app-framed' : (showSidebar && !mobileOnly ? 'md:pl-[60px] xl:pl-56' : '')}`}
         data-mobile-only={mobileOnly ? 'true' : 'false'}
