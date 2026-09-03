@@ -19,9 +19,16 @@ interface Props {
   onApplyFcfs?: (productId: number) => void
   /** 빈 상태 문구를 카테고리에 맞게 표시 (기본 all). */
   voucherType?: MapVoucherType
+  /**
+   * 🚦 2026-09-03 (대표 "가장 이상적으로"): 로드된 행을 다 보여 준 뒤 **서버에서 다음 페이지**를 받는다.
+   *   이전엔 페이지가 진입 즉시 전량(338건)을 받아 놨기에 여기서 할 일이 '보여 주기'뿐이었다.
+   */
+  onLoadMore?: () => void
+  /** 서버에 더 남았나(= reachedEnd 의 반대). 없으면 종전대로 로드된 것만 보여 준다. */
+  hasMoreOnServer?: boolean
 }
 
-export default function RestaurantList({ loading, filtered, selected, userLoc, onSelect, fcfsMap, voucherType = 'all' }: Props) {
+export default function RestaurantList({ loading, filtered, selected, userLoc, onSelect, fcfsMap, voucherType = 'all', onLoadMore, hasMoreOnServer }: Props) {
 
   if (loading) {
     return (
@@ -57,7 +64,7 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
      · 썸네일 72→88px, '구매' 버튼 제거 → 줄 전체 탭(onSelect). 리스트모드=상세이동 / 지도모드=포커스+SelectedFocusCard 구매CTA
      · 색상 B&W 통일(분홍→흑백, SelectedFocusCard 정합). 선착순 '지원'은 기능상 유지(탭=네비와 다른 액션). */
   return (
-    <IncrementalRows filtered={filtered} selected={selected} userLoc={userLoc} onSelect={onSelect} fcfsMap={fcfsMap} voucherType={voucherType} />
+    <IncrementalRows filtered={filtered} selected={selected} userLoc={userLoc} onSelect={onSelect} fcfsMap={fcfsMap} voucherType={voucherType} onLoadMore={onLoadMore} hasMoreOnServer={hasMoreOnServer} />
   )
 }
 
@@ -65,28 +72,35 @@ const PAGE = 40
 
 /** ⚡ 2026-07-12 (대표 "더 개선" — 리스트 렉): 전량 DOM 렌더(최대 500행×이미지) → 40행씩 점진 렌더.
  *  홈(`/`)이 리스트 모드라 지도 컬링만으론 부족했던 남은 렉 원인. 센티넬 도달 시 +40(무한 스크롤). */
-function IncrementalRows({ filtered, selected, userLoc, onSelect, fcfsMap, voucherType }: {
+function IncrementalRows({ filtered, selected, userLoc, onSelect, fcfsMap, voucherType, onLoadMore, hasMoreOnServer }: {
   filtered: Restaurant[]
   selected: Restaurant | null
   userLoc: { lat: number; lng: number } | null
   onSelect: (r: Restaurant) => void
   fcfsMap?: Map<number, { spots: number; appliedDisplay: number }>
   voucherType: MapVoucherType
+  onLoadMore?: () => void
+  hasMoreOnServer?: boolean
 }) {
   const [visibleCount, setVisibleCount] = useState(PAGE)
   useEffect(() => { setVisibleCount(PAGE) }, [voucherType])  // 카테고리 전환 시 처음부터
   const sentinelRef = useRef<HTMLDivElement | null>(null)
-  const hasMore = filtered.length > visibleCount
+  const localMore = filtered.length > visibleCount
+  // 🚦 2026-09-03: 센티넬은 이제 두 가지를 한다 — 로드된 행이 남았으면 **보여 주고**,
+  //   다 보여 줬는데 서버에 남았으면 **다음 페이지를 받는다**. 둘 다 없으면 관찰하지 않는다.
+  const hasMore = localMore || !!hasMoreOnServer
   useEffect(() => {
     if (!hasMore) return
     const el = sentinelRef.current
     if (!el || typeof IntersectionObserver === 'undefined') return
     const io = new IntersectionObserver((es) => {
-      if (es[0]?.isIntersecting) setVisibleCount(v => v + PAGE)
+      if (!es[0]?.isIntersecting) return
+      if (localMore) setVisibleCount(v => v + PAGE)
+      else onLoadMore?.()
     }, { rootMargin: '600px' })
     io.observe(el)
     return () => io.disconnect()
-  }, [hasMore, visibleCount])
+  }, [hasMore, localMore, visibleCount, onLoadMore])
 
   return (
     <div className="divide-y divide-gray-100 dark:divide-[#2C2F35]">

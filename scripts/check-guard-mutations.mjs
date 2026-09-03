@@ -88,6 +88,30 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🚦 목록이 다시 전량을 걷는다 — 진입마다 338건·요청 7회',
+    file: 'src/hooks/queries/useMapProducts.ts',
+    find: '    let cancelled = false\n    ;(async () => {\n      const res = await fetchPage(category, 1, near, sort)',
+    replace: '    let cancelled = false\n    ;(async () => {\n      for (let page = 1; page < 99; page++) { await fetchPage(category, page, near, sort) }\n      const res = await fetchPage(category, 1, near, sort)',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '2026-09-03 실측: 활성 338건을 진입할 때마다 7회·66KB 로 전부 받았다. 화면엔 10~20장 뜨는데.',
+  },
+  {
+    name: '🚦 스크롤이 서버 다음 페이지를 안 부른다 — 50개에서 목록이 끝난다',
+    file: 'src/pages/restaurant-map/RestaurantList.tsx',
+    find: '      if (localMore) setVisibleCount(v => v + PAGE)\n      else onLoadMore?.()',
+    replace: '      if (localMore) setVisibleCount(v => v + PAGE)',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '전량 순회를 걷어낸 대가로 이 센티넬이 유일한 다음-페이지 경로다. 빠지면 목록이 조용히 잘린다.',
+  },
+  {
+    name: '🔢 "N곳" 이 다시 로드된 수를 센다 — 338곳을 50곳이라 말한다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: 'data: withOnnuri, ...(total != null ? { total } : {})',
+    replace: 'data: withOnnuri',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '전량을 안 받으므로 개수는 서버만 안다. 응답에서 빠지면 화면이 로드된 수로 폴백해 거짓말을 한다.',
+  },
+  {
     name: '🎟️ 승인 대기 매장까지 세어 게이트만 열린다 — 이용권이 개인 좌석으로 등록된다',
     file: 'src/features/seller/api/seller-stores.routes.ts',
     find: "operableCount = mine.filter(x => x.status === 'active' || x.status === 'approved').length",
