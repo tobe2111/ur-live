@@ -862,6 +862,7 @@
   "wishlist": {
     "title": "心愿单",
     "subtitleCount": "已收藏 {{count}} 件",
+    "dropCount": "{{count}} 件降价",
     "emptyTitle": "心愿单为空",
     "emptyHint": "收藏喜欢的商品",
     "continueShopping": "继续购物",

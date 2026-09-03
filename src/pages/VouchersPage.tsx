@@ -147,7 +147,7 @@ function ShoppingGrid() {
           쇼핑 섹션에 있는 동안 상단에 따라붙어 어디서든 카테고리 전환 가능. 교환권 reveal 그룹은 이때 숨김(슬롯 공유). */}
       <div className="sticky top-[45px] z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-wide px-4 lg:px-8 py-2.5">
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
             {visibleShopCats.map(c => {
               const active = shopCategory === c.key
               return (
@@ -578,7 +578,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             {currentBrands.length > 0 && (
               <div className="mb-5 pb-4 border-b border-gray-100 dark:border-[#2C2F35]">
                 <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mb-2">인기 브랜드</h3>
-                <div className="flex gap-3 overflow-x-auto no-scrollbar py-1">
+                <div className="flex gap-3 overflow-x-auto scrollbar-hide py-1">
                   {orderedBrands.map(b => (
                     <BrandChip
                       key={b.brand_name}
@@ -744,7 +744,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {sections.length > 0 && (
         <div className="bg-warm dark:bg-[#11141C]">
           <div className="ur-content-wide px-4 lg:px-8 py-2.5">
-            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
               {sections.map(s => {
                 const active = s.category === category
                 return (

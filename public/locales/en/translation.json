@@ -862,6 +862,7 @@
   "wishlist": {
     "title": "Wishlist",
     "subtitleCount": "{{count}} saved items",
+    "dropCount": "{{count}} price drop(s)",
     "emptyTitle": "No saved items",
     "emptyHint": "Save products you love",
     "continueShopping": "Continue Shopping",

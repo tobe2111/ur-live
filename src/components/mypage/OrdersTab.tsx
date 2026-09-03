@@ -193,7 +193,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
       </div>
 
       {/* 종류 탭 — 텍스트+밑줄 (무신사 스타일) */}
-      <div className="flex gap-5 border-b border-gray-100 dark:border-[#2C2F35] -mx-4 px-4 overflow-x-auto no-scrollbar">
+      <div className="flex gap-5 border-b border-gray-100 dark:border-[#2C2F35] -mx-4 px-4 overflow-x-auto scrollbar-hide">
         {KIND_TABS.map(tab => {
           const active = kindFilter === tab.key
           return (

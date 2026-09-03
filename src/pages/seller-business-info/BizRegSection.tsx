@@ -95,7 +95,7 @@ export default function BizRegSection({ imageUrl, status, rejectReason, uploadin
                 <Loader2 className="h-4 w-4 animate-spin" /> 제출 중...
               </span>
             ) : (
-              '🚀 어드민 검증 신청'
+              '어드민 검증 신청'
             )}
           </Button>
         )}

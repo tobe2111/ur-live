@@ -1,3 +1,4 @@
+import CatIcon from './CatIcon'
 import { Heart, MapPin, Navigation, Phone, Radio, Ticket, X } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useNavigate } from 'react-router-dom'
@@ -28,7 +29,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
           <img src={cfImage(selected.image_url, { width: 160, quality: 85, format: 'auto' }) || selected.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" onError={(e) => cfImageOnError(e.currentTarget, selected.image_url)} />
         ) : (
           <div className="w-20 h-20 rounded-xl bg-white dark:bg-[#11141C] flex items-center justify-center shrink-0">
-            <span className="text-2xl">🍽️</span>
+            <CatIcon cat={selected.category} className="w-7 h-7 text-gray-400" />
           </div>
         )}
         <div className="flex-1 min-w-0">

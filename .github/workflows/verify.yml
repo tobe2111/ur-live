@@ -445,6 +445,15 @@ jobs:
         run: node scripts/check-image-fallback.mjs
         continue-on-error: false
 
+      # 🃏 2026-09-03 (대표 "이런 이용권들 디자인이 왜 통합적으로 관리가 안되는거지?"): 딜 카드는 한 벌.
+      #   그간 통일을 **화면 단위**로 했고, 그걸 지키는 검사가 "이미 고친 화면 목록"이라 아무도 안 본
+      #   화면은 영원히 안 걸렸다 — 네 번 다 대표가 눈으로 찾았다. 이제 소비자 표면 전체를 훑는다.
+      - name: Deal card unification ratchet (strict)
+        env:
+          STRICT_DEAL_CARD: '1'
+        run: node scripts/check-deal-card-unify.mjs
+        continue-on-error: false
+
       # 🍎 2026-06-20: 카카오 OAuth iOS 쿠키 미영속 안티패턴 (strict). iOS Safari/WebKit 은
       #   cross-site 콜백 302 Set-Cookie 미영속 → 역할토큰 transfer 쿠키(ur_pending_*)/세션 302 의존 시
       #   iOS 만 조용히 깨짐(Chrome 정상). 역할토큰=fragment(pending-auth.ts), 세션=establish.

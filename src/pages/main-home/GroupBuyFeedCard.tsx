@@ -5,7 +5,7 @@
  * 공구 핵심 정보 (현재/목표 인원 + 마감 시간) 한눈에.
  */
 
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
@@ -113,7 +113,13 @@ function prefetchDetailChunk() {
  *   ⚠️ 그래서 이 prop 을 지우거나 호출부에서 빠뜨리면 돈이 새는 쪽으로 조용히 깨진다
  *      (`urshop-card-unify.test.ts` 가 이 배선을 고정한다).
  */
-function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string }) {
+/**
+ * 🚩 `flags` — 이 카드가 **그 화면에서만** 갖는 한 줄(2026-09-03, 위시리스트 안 B).
+ *   찜 목록의 "↓ 4,200원 내림" · "3일 남음" 이 여기로 들어온다. 홈은 안 넘기므로 출력 불변.
+ *   ⚠️ 사진 위가 아니라 **본문 맨 위**다 — 2026-08-31 대표 지시("할인율이 사진 안으로 들어가면
+ *      안돼")와 같은 이유로, 사진은 상품을 보여주는 자리이지 배지를 얹는 자리가 아니다.
+ */
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags, hideWishlist = false }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode; hideWishlist?: boolean }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
 
@@ -285,7 +291,9 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
                 (마감임박 배지가 있으면 그 아래). 겹치면 둘 다 못 읽는다. */}
             {fcfs && <FcfsBadge info={fcfs} variant="overlay" className={`absolute ${isUrgent ? 'top-9' : 'top-2'} left-2 z-[2]`} />}
             {/* 💗 찜 — 그루폰 카드 우상단 하트. hover 시 나타나고(찜된 건 항상 보임) 누르면 통 튄다. */}
-            <WishlistHeart productId={p.id} className="absolute top-2 right-2 z-[3]" />
+            {/* 🧷 `hideWishlist` — 핀 고르기 화면은 이 자리에 '추가' 버튼이 온다(둘이 겹치면 하트가 묻힌다).
+                기본값 false 라 홈·찜·유어샵은 출력 불변. */}
+            {!hideWishlist && <WishlistHeart productId={p.id} className="absolute top-2 right-2 z-[3]" />}
           </>
         }
       />
@@ -295,6 +303,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
           이전엔 정가가 제목 **위**에 떠 있고 가격이 중간에 있어, 카드마다 눈이 가는 자리가 달랐다. */}
       {/* 🧹 PC 는 카드 박스가 없으므로 좌우 패딩도 0 — 사진 왼쪽 끝과 글자가 딱 맞아야 그루폰처럼 보인다. */}
       <div className="pt-2">
+        {flags}
         {/* [시안 B] 08-19 그루폰 5줄 위계 유지 — 배지만 사진 위로 */}
         {(p.restaurant_name || brandName) && (
           <p className={`flex items-center gap-1 text-[11px] leading-none mb-0.5 ${cSub}`}>

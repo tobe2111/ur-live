@@ -140,7 +140,11 @@ export default defineConfig({
           //   이전: app-shared (critical path) 에 묶여있어 zod (validation 52KB) 도 같이 preload.
           if (id.includes('/shared/config/env-schema') || id.includes('/shared/config/env-validator')) return 'env-validator'
           // 공유 설정/유틸: region, feature-flags 등 — 변경 빈도 낮음
+          //   🩸 2026-09-03: 이 주석은 오래 "feature-flags 등"이라고 적어 놓았는데, 그 파일은
+          //   `/src/shared/feature-flags.ts` 라 **`config/` 조건에 안 걸리고** catch-all 로 떨어지고 있었다
+          //   (`home-chunk-diet` 의 거울 검사를 새로 넣자마자 드러났다 — 주석과 코드가 어긋난 전형).
           if (id.includes('/src/shared/config/') || id.includes('/src/shared/utils/')) return 'app-shared'
+          if (id.includes('/src/shared/feature-flags')) return 'app-shared'
           // 공유 타입/상수: 런타임 코드 없이 타입 + 상수 → 별도 캐싱
           if (id.includes('/src/shared/constants/') || id.includes('/src/shared/types/')) return 'app-constants'
           // 레이아웃 컴포넌트: BottomNav, DesktopTopNav, DesktopLiveSidebar 등
@@ -158,6 +162,9 @@ export default defineConfig({
           //   (실측: 홈 modulepreload 에 app-seller-components 가 올라 있었다).
           //   ⚠️ 이 줄을 지우면 그 65KB 가 곧바로 돌아온다. 가드: check-critical-chunks.
           if (id.includes('/src/shared/seller-roles')) return 'app-shared'
+          // 📐 2026-09-03: 딜 카드 격자 간격 상수 — 홈·찜·유어샵·편성 섹션이 함께 읽는 한 줄짜리 SSOT.
+          //   catch-all 로 떨어지면 홈 폐쇄가 app-shared 밖 청크를 하나 더 끌고 온다(home-chunk-diet 가 잡는다).
+          if (id.includes('/src/shared/deal-card-grid')) return 'app-shared'
           // 🖊️ 2026-08-30: 유어딜 전용 아이콘(`components/icons/urdeal-icons`)도 **정확히 같은 함정**에
           //   빠졌다. 60줄짜리 순수 SVG 리프 모듈인데 `/src/components/` catch-all 에 걸려
           //   `app-components`(166KB · 58모듈)로 들어갔고, 그걸 **BottomNav·DesktopTopNav**

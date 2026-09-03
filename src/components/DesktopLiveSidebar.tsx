@@ -82,7 +82,7 @@ export default function DesktopLiveSidebar() {
 
   return (
     <aside
-      className="hidden md:flex fixed left-0 top-0 bottom-0 w-[60px] xl:w-56 z-40 flex-col bg-white dark:bg-[#11141C] border-r border-gray-100 dark:border-white/[0.06] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      className="hidden md:flex fixed left-0 top-0 bottom-0 w-[60px] xl:w-56 z-40 flex-col bg-white dark:bg-[#11141C] border-r border-gray-100 dark:border-white/[0.06] overflow-y-auto scrollbar-hide"
       aria-label={t('nav.mainMenu', { defaultValue: '메인 메뉴' })}
     >
       {/* 로고 — xl: 풀 로고, md~xl: 'U' 아이콘. sticky 로 사이드바 스크롤 시 항상 표시 */}
