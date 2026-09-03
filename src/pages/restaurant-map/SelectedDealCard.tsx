@@ -1,3 +1,4 @@
+import CatIcon from './CatIcon'
 import { useRef } from 'react'
 import { MapPin, X, Star, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -124,7 +125,7 @@ export default function SelectedDealCard({
     >
       <div
         ref={cardRef}
-        className="ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] shadow-[0_8px_28px_rgba(0,0,0,0.18)] select-none lg:cursor-grab lg:active:cursor-grabbing focus:outline-none"
+        className="light-island ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] shadow-[0_8px_28px_rgba(0,0,0,0.18)] select-none lg:cursor-grab lg:active:cursor-grabbing focus:outline-none"
         style={{ touchAction: 'pan-y' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -167,7 +168,7 @@ export default function SelectedDealCard({
           {thumb ? (
             <img src={thumb} alt="" className="w-[92px] h-[92px] rounded-xl object-cover shrink-0" loading="eager" />
           ) : (
-            <div className="w-[92px] h-[92px] rounded-xl bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center shrink-0"><span className="text-2xl">🍽️</span></div>
+            <div className="w-[92px] h-[92px] rounded-xl bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center shrink-0"><CatIcon cat={selected.category} className="w-7 h-7 text-gray-400" /></div>
           )}
           <div className="flex-1 min-w-0 pr-6 py-0.5">
             {/* 🎨 2026-07-02 (대표 — UI 우선순위): 이용권명(name)이 제목, 매장명은 위치 줄로 강등. */}

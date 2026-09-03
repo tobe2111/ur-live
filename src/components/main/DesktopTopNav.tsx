@@ -412,7 +412,7 @@ export default function DesktopTopNav() {
               ref={catScrollRef}
               onScroll={syncCatArrow}
               aria-label={t('nav.categories', { defaultValue: '카테고리' })}
-              className="h-11 flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth"
+              className="h-11 flex items-center gap-1 overflow-x-auto scrollbar-hide scroll-smooth"
             >
               {categoryItems.map((item) => {
                 const active = isActivePath(item.path)

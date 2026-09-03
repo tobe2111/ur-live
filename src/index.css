@@ -880,6 +880,14 @@ html.dark body { background-color: #0C0D10; }
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+/* ▲▼ 화살표 단추 — 우리가 `::-webkit-scrollbar` 를 손대면 플랫폼에 따라 **기본 단추가 남는다**
+   (대표 실측 화면: 계정 메뉴 오른쪽에 위/아래 화살표가 그대로 붙어 있었다).
+   알약 하나만 남기려면 명시적으로 지워야 한다. */
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
 .dark ::-webkit-scrollbar-thumb {
   background: rgb(255 255 255 / .22);
   border: 2px solid transparent;
@@ -890,35 +898,55 @@ html.dark body { background-color: #0C0D10; }
   border: 2px solid transparent;
   background-clip: content-box;
 }
-/* 🏝️ 늘 밝은 표면(지도 위 오버레이·홈 패널)은 다크에서도 라이트 스크롤바를 쓴다 —
-   흰 패널 안에 흰 막대가 뜨면 안 보인다. `light-island` 의 나머지 규칙과 같은 취지. */
-.dark .light-island * {
+/* 🏝️ **늘 밝은 표면은 다크에서도 라이트 스크롤바**를 쓴다 — 흰 패널 안의 흰 막대는 안 보인다.
+   ⚠️ 2026-09-03: 처음엔 `.light-island` 하나만 덮었는데, 그건 지도 위·홈 패널 얘기고
+      **셀러·어드민·에이전시·도매 대시보드는 다크모드에서도 통째로 라이트**다(`*-light-theme` 래퍼).
+      그 안에서 `.dark ::-webkit-scrollbar-thumb`(흰 22%)가 이겨 **흰 배경 위 흰 막대**가 됐다 —
+      어제 지도 검색창에서 잡은 "밝은 면 위 밝은 글자"와 **정확히 같은 실수**를 스크롤바로 반복한 것.
+      늘 밝은 컨테이너 목록은 위 입력 규칙(`.admin-light-theme, …`)과 **같은 다섯 개**로 유지할 것. */
+.dark .light-island *,
+.dark .force-light-theme *,
+.dark .admin-light-theme *,
+.dark .seller-light-theme *,
+.dark .agency-light-theme * {
   scrollbar-color: rgb(22 24 28 / .22) transparent;
 }
-.dark .light-island ::-webkit-scrollbar-thumb {
+.dark .light-island ::-webkit-scrollbar-thumb,
+.dark .force-light-theme ::-webkit-scrollbar-thumb,
+.dark .admin-light-theme ::-webkit-scrollbar-thumb,
+.dark .seller-light-theme ::-webkit-scrollbar-thumb,
+.dark .agency-light-theme ::-webkit-scrollbar-thumb {
   background: rgb(22 24 28 / .22);
   border: 2px solid transparent;
   background-clip: content-box;
 }
+.dark .light-island ::-webkit-scrollbar-thumb:hover,
+.dark .force-light-theme ::-webkit-scrollbar-thumb:hover,
+.dark .admin-light-theme ::-webkit-scrollbar-thumb:hover,
+.dark .seller-light-theme ::-webkit-scrollbar-thumb:hover,
+.dark .agency-light-theme ::-webkit-scrollbar-thumb:hover {
+  background: rgb(22 24 28 / .40);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
 
-/* Hide scrollbar for horizontal scroll */
-.scrollbar-hide {
+/* 가로 스크롤 줄(칩·캐러셀)에서 막대를 숨긴다 — 손가락·화살표로 미는 자리라 막대가 방해다.
+   ⚠️ 이름이 셋(`scrollbar-hide` / `no-scrollbar` / `noscroll`)으로 갈려 각자 정의돼 있었고,
+      소스에는 그 위에 `[&::-webkit-scrollbar]:hidden` 같은 즉석 표기가 또 섞여 있었다.
+      즉석 표기 중 몇은 **웹킷만 껐고 파이어폭스 절반을 빼먹어** 거기서만 막대가 남았다.
+      ⇒ 정의는 여기 한 벌, 소스 표기는 `scrollbar-hide` 하나로 고정한다(`scroll-consistency` 가드).
+      옛 두 이름은 지우지 않고 별칭으로 둔다 — 남의 브랜치가 쓰고 있어도 안 깨지게. */
+.scrollbar-hide,
+.no-scrollbar,
+.noscroll {
   -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  scrollbar-width: none;     /* Firefox */
 }
 
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Chrome, Safari, Opera */
-}
-
-/* Hide scrollbar but keep scroll functionality */
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+.scrollbar-hide::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar,
+.noscroll::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari, Opera */
 }
 
 /* Safe area for notched devices */
@@ -1070,8 +1098,6 @@ html.dark .gbd {
   --gbd-line2:#2A2D31; --gbd-chip:#1E2023; --gbd-danger:#FF5C69; --gbd-danger-soft:#2E1518;
   --gbd-cta-bg:#1C69EF; --gbd-cta-fg:#ffffff; --gbd-accent:#4D8DF5;
 }
-.gbd .noscroll::-webkit-scrollbar{display:none;}
-.gbd .noscroll{scrollbar-width:none;-ms-overflow-style:none;}
 
 /* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면 홈): 잉크 색면 위에 뜨는 **흰 패널**.
    그루폰 홈이 초록 배경 위에 흰 카드 패널을 얹는 그 구조를 우리 색면(--home-field)으로 한다.

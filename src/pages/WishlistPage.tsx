@@ -10,6 +10,8 @@ import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
 import { useTheme } from '@/shared/stores/useTheme'
 import { useWishlist, type WishlistItem } from '@/hooks/queries/useWishlist'
+import { WishlistSortChips, WishlistFlag, WishlistSummaryRail } from './wishlist/WishlistParts'
+import { priceDrop, daysLeft, summarize, sortWishlist, type WishlistSort } from './wishlist/wishlist-signals'
 import BrandLoader from '@/components/brand/BrandLoader'
 import GroupBuyFeedCard from './main-home/GroupBuyFeedCard'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -27,6 +29,8 @@ const WishlistPage: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [userId, setUserId] = useState<number | null>(null)
+  // 💗 2026-09-03 (대표 확정 — 안 B): 찜은 "구경"이 아니라 **결정**하러 오는 곳이라, 정렬 기준이 곧 화면의 일이다.
+  const [sort, setSort] = useState<WishlistSort>('recent')
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (목록 캐싱). userId 는 WishlistButton 에 전달용 유지.
   const { data: wishlists = [], isLoading: loading, isError, refetch } = useWishlist()
   const error = isError ? t('wishlist.loadError') : null
@@ -54,6 +58,9 @@ const WishlistPage: React.FC = () => {
   const { applied } = useTheme()
   const theme = applied === 'dark' ? 'dark' : 'light'
   const tk = walletTokens[theme]
+
+  const summary = summarize(wishlists)
+  const shown = sortWishlist(wishlists, sort)
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader (지갑 테마 표면과 자동 정합).
   if (loading) {
@@ -107,7 +114,16 @@ const WishlistPage: React.FC = () => {
             여기선 컨테이너 안이라 여백이 겹쳐 제목만 18px 더 들어갔다 → 그 패딩만 끈다.
             공유 부품을 고치면 다른 세 페이지가 밀린다. */}
         <div className="[&>div]:px-0">
-          <LargeTitle theme={theme} title={t('wishlist.title')} subtitle={t('wishlist.subtitleCount', { count: wishlists.length })} />
+          <LargeTitle
+            theme={theme}
+            title={t('wishlist.title')}
+            /* 인하가 없으면 그 말을 아예 안 한다 — "가격 내린 것 0개" 는 알려주는 게 아니라 실망시키는 문장이다. */
+            subtitle={
+              summary.drops > 0
+                ? `${t('wishlist.subtitleCount', { count: wishlists.length })} · ${t('wishlist.dropCount', { count: summary.drops, defaultValue: '가격 내린 것 {{count}}개' })}`
+                : t('wishlist.subtitleCount', { count: wishlists.length })
+            }
+          />
         </div>
 
         {wishlists.length === 0 ? (
@@ -130,28 +146,41 @@ const WishlistPage: React.FC = () => {
              자체 그라데이션 카드를 버리고 **홈과 같은 카드**(`GroupBuyFeedCard`)를 쓴다.
              찜 목록만 다른 모양이면 같은 상품이 화면마다 달라 보인다(그루폰 wishlist 도 같은 카드다).
              하트는 카드가 내장하고 있어 여기서 따로 그리지 않는다 — 누르면 목록에서 빠진다. */
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4">
-            {wishlists.map((item, i) => (
-              <GroupBuyFeedCard
-                key={item.id}
-                imgWidth={cardImgWidth}
-                aboveFold={i < 4}
-                p={{
-                  id: item.product_id,
-                  name: item.product_name,
-                  price: item.price,
-                  original_price: item.original_price,
-                  discount_rate: item.discount_rate,
-                  image_url: item.image_url,
-                  category: item.category,
-                  deal_only: item.deal_only,
-                  seller_id: item.seller_id,
-                  seller_name: item.seller_name,
-                  dominant_color: item.dominant_color,
-                } as never}
-              />
-            ))}
-          </div>
+          <>
+            <div className="mb-4">
+              <WishlistSortChips value={sort} onChange={setSort} />
+            </div>
+            {/* 🖥️ PC 만 좌측 요약 레일 — 모바일은 세로가 귀해서 같은 정보를 제목 밑 한 줄이 맡는다. */}
+            <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-6 lg:items-start">
+              <WishlistSummaryRail s={summary} />
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
+                {shown.map((item, i) => (
+                  <GroupBuyFeedCard
+                    key={item.id}
+                    imgWidth={cardImgWidth}
+                    aboveFold={i < 4}
+                    flags={<WishlistFlag drop={priceDrop(item)} days={daysLeft(item)} />}
+                    p={{
+                      id: item.product_id,
+                      name: item.product_name,
+                      price: item.price,
+                      original_price: item.original_price,
+                      discount_rate: item.discount_rate,
+                      image_url: item.image_url,
+                      category: item.category,
+                      deal_only: item.deal_only,
+                      seller_id: item.seller_id,
+                      seller_name: item.seller_name,
+                      restaurant_name: item.restaurant_name,
+                      expires_at: item.expires_at,
+                      group_buy_status: item.group_buy_status,
+                      dominant_color: item.dominant_color,
+                    } as never}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </WalletPageWrapper>

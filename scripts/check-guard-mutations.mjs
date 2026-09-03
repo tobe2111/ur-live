@@ -7808,6 +7808,48 @@ canvas {
     why: '시안 2안이 탈락한 이유. 윈도우 사용자는 지금도 막대를 끈다 — 4px 은 끌어 잡기 어렵다.',
   },
   {
+    name: '스크롤바 — 늘 밝은 대시보드에서 다크 흰 막대가 그대로 이긴다',
+    file: 'src/index.css',
+    find: '.dark .admin-light-theme ::-webkit-scrollbar-thumb,\n',
+    replace: '',
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why:
+      '2026-09-03 — 처음엔 light-island 하나만 덮었다. 셀러·어드민·에이전시·도매 대시보드는 다크모드에서도 ' +
+      '통째로 라이트라, 흰 배경 위에 흰 막대가 떠 스크롤바가 안 보였다. 어제 지도 검색창에서 잡은 ' +
+      '"밝은 면 위 밝은 글자"를 스크롤바로 그대로 반복한 것.',
+  },
+  {
+    name: '스크롤바 — 숨김 표기가 다시 즉석 arbitrary 로 갈린다(파이어폭스만 막대 남음)',
+    file: 'src/pages/SellerPublicPage.tsx',
+    find: 'overflow-x-auto -mx-1 px-1 scrollbar-hide',
+    replace: 'overflow-x-auto -mx-1 px-1 [&::-webkit-scrollbar]:hidden',
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why:
+      '이름이 셋(scrollbar-hide / no-scrollbar / noscroll)에 즉석 표기까지 섞여 있었고, 즉석 표기 몇은 ' +
+      '웹킷만 끄고 scrollbar-width 를 빼먹어 파이어폭스에서만 막대가 남았다. 표기는 하나로 고정한다.',
+  },
+  {
+    name: '지도 검색 — 결과 핀보다 지명 지오코딩을 먼저 한다(목록과 지도가 다른 도시)',
+    file: 'src/pages/restaurant-map/pan-to-region.ts',
+    find: '  if (fitToPins(map, pins)) return true\n  return panToPlaceQuery(map, query)',
+    replace: '  const geo = await panToPlaceQuery(map, query)\n  return geo || fitToPins(map, pins)',
+    test: 'src/tests/unit/map-search-follows-results.test.ts',
+    why:
+      '2026-09-03 대표 신고 "검색을 했을 때 무관한 지도 위치가 떠. 심각한 문제야". `커트` 결과는 동탄 2건인데 ' +
+      '지도는 인천 부평으로 갔다 — 카카오 장소검색이 "커트"에 걸리는 아무 상호를 물어다 주기 때문. ' +
+      '지도는 검색 결과를 따라가야 하고, 지명 해석은 결과가 0일 때만이다.',
+  },
+  {
+    name: '지도 검색 — 서버 검색이 끝나기 전에 지명으로 단정한다',
+    file: 'src/pages/RestaurantMapPage.tsx',
+    find: '    if (pins.length === 0 && searchDealsFor !== key) return',
+    replace: '',
+    test: 'src/tests/unit/map-search-follows-results.test.ts',
+    why:
+      '클라가 들고 있는 딜만으로는 0건이어도 서버 q검색이 곧 결과를 준다. 그 사이에 지명으로 날아가면 ' +
+      '결과가 도착해도 지도는 이미 엉뚱한 도시에 가 있다.',
+  },
+  {
     name: '지도 오버레이 — light-island 가 빠져 흰 검색창에 흰 글자',
     file: 'src/pages/restaurant-map/MapTopBar.tsx',
     find: "'light-island lg:hidden absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none'",

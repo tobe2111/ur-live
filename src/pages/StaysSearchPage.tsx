@@ -90,7 +90,7 @@ export default function StaysSearchPage() {
             칩을 /map?category= 로 보냈는데, 홈 칩과 똑같이 생긴 칩이 동네딜 **지도**로 점프해 "저절로 동네딜"
             체감의 원인이 됨 → 홈 카테고리 필터(`/?category=`) 복귀로 정정(PC PcHomePage·모바일 지도 홈 둘 다
             ?category 초기화 지원). 라벨은 홈 카테고리와 SSOT 정합. 지도는 명시적 '지도에서 보기' 링크만. */}
-        <div className="ur-content-wide px-4 lg:px-8 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+        <div className="ur-content-wide px-4 lg:px-8 pb-2 flex gap-2 overflow-x-auto scrollbar-hide">
           {[
             { key: 'all', to: '/', label: t('groupBuy.categoryAll', { defaultValue: '전체' }) },
             { key: 'meal_voucher', to: '/?category=meal_voucher', label: t('groupBuy.categoryMeal', { defaultValue: '🍽️ 식사' }) },
@@ -116,7 +116,7 @@ export default function StaysSearchPage() {
         </div>
 
         {/* Quick filters bar */}
-        <div className="ur-content-wide px-4 lg:px-8 pb-3 flex gap-2 overflow-x-auto no-scrollbar">
+        <div className="ur-content-wide px-4 lg:px-8 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
           <button onClick={() => setShowFilters(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-white/[0.06] rounded-full text-xs whitespace-nowrap">
             <Calendar className="w-3 h-3" /> {filters.check_in.slice(5)} - {filters.check_out.slice(5)} ({nights}박)
           </button>

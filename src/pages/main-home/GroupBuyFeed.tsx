@@ -331,7 +331,7 @@ export default function GroupBuyFeed({
           ⇒ 라벨을 맞추는 걸로는 부족했다. 중복은 **컨트롤 자체**였다. */}
       {!pc && !onCategoryChange && (
       <div className="bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] sticky top-12 z-10">
-        <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto no-scrollbar">
+        <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto scrollbar-hide">
           {CATEGORIES.map(c => {
             const active = c.key === category
             return (

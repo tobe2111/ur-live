@@ -161,7 +161,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
 
       {/* 📱 모바일 — 기존 스와이프 갤러리(불변). */}
       <div className={`relative lg:hidden`}>
-        <div ref={galRef} onScroll={onGalScroll} className="noscroll" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '3/2', scrollSnapType: 'x mandatory' }}>
+        <div ref={galRef} onScroll={onGalScroll} className="scrollbar-hide" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '3/2', scrollSnapType: 'x mandatory' }}>
           {(has ? images : ['']).map((src, i) => {
             // 💰 보이는 장면 ±1 만 받는다. 이전엔 5장을 한꺼번에 요청해(각 136~220KB, 콜드 2~4s)
             //    첫 사진이 나머지 넷과 대역폭을 나눴다 — 카드(`DealCardMedia` seen 집합)와 같은 원칙.

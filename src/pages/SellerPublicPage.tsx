@@ -382,7 +382,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
       <div className="ur-content-wide px-4 lg:px-8 py-5">
         {/* 🎨 2026-07-07 리디자인 3차: 컬렉션 칩 — 상품·이용권 둘 다 있을 때 섹션 점프(스크롤). */}
         {shopProducts.length > 0 && mealVouchers.length > 0 && (
-          <div className="flex gap-2 mb-4 overflow-x-auto -mx-1 px-1 [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-2 mb-4 overflow-x-auto -mx-1 px-1 scrollbar-hide">
             {([
               { label: t('seller.publicPage.chipAll', { defaultValue: '전체' }), to: null as string | null },
               { label: t('seller.publicPage.shop', { defaultValue: '내 상품' }), to: 'ls-shop' },
