@@ -7037,6 +7037,36 @@ canvas {
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
   },
   {
+    name: '🔁 재측정 필터가 배선에서 빠진다(쓰기 2배 초과로 복귀 · 에러 0)',
+    file: 'src/features/marketing/api/influencer-performance.ts',
+    find: '  rows = dueForRemeasure(rows, env)',
+    replace: '  rows = rows',
+    test: 'src/tests/unit/ads-remeasure-window.test.ts',
+    why:
+      '모듈이 있어도 레인이 안 부르면 아무 일도 안 일어난다. 그러면 전체 18만 건을 1.2일마다 다시 재던 ' +
+      '상태로 돌아가고, D1 쓴 행이 월 9,900만(포함분 5,000만의 198%)이 되어 월 $49 가 붙는다.',
+  },
+  {
+    name: '🔁 재측정 SELECT 가 perf_checked_at 을 안 뽑는다(필터가 전부 통과 = 무효)',
+    file: 'src/features/marketing/api/influencer-performance.ts',
+    find: 'median_long_views, perf_checked_at FROM ad_influencer_leads',
+    replace: 'median_long_views FROM ad_influencer_leads',
+    test: 'src/tests/unit/ads-remeasure-window.test.ts',
+    why:
+      '스탬프를 안 뽑으면 필터가 받는 값이 전부 undefined 이고, fail-open 규약상 **전부 통과**한다. ' +
+      '필터는 그대로 있는데 효과만 0 인 상태 — 이 레포가 반복해 만난 "지키는 척하는 가드" 그 모양이다.',
+  },
+  {
+    name: '🔁 빈 env 를 0(끔)으로 읽는다(기능이 꺼진 채 배포)',
+    file: 'src/features/marketing/api/influencer-remeasure-window.ts',
+    find: "  if (raw0 === '') return REMEASURE_AFTER_DAYS",
+    replace: "  if (false) return REMEASURE_AFTER_DAYS",
+    test: 'src/tests/unit/ads-remeasure-window.test.ts',
+    why:
+      "`Number('')` 은 NaN 이 아니라 0 이고 0 은 이 정책에서 '끔'이다. env 를 안 걸면(정상 상태) " +
+      '기능이 통째로 꺼진 채 배포된다 — 에러도 로그도 없다. 실제로 첫 구현이 이 상태였고 시험이 잡았다.',
+  },
+  {
     name: '📉 수집 회차 수가 승인값에서 조용히 내려간다(라이브 총량을 정하는 유일한 축)',
     file: 'src/worker-ads/lane-alarm-runners.ts',
     find: '  collect: {\n    runsPerHour: 3,',
