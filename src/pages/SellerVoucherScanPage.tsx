@@ -103,10 +103,12 @@ function UsageConditionsCard() {
  * 🎟️ 2026-07-02 (대표 "사장님이 사용 방식 선택"): 매장 현지 사용 방식 카드.
  *  - scan_only  : 직원 확인만(셀프 사용 차단) — 가장 엄격.
  *  - store_code : 손님 셀프 사용 시 매장 확인코드 4자리 입력 필수(카운터 스티커) — 원격/악용 차단.
- *  - self_free  : 자유 셀프 사용(기본, 카운터 느슨한 매장). 셀프 취소 60초 허용.
+ *  - ⛔ self_free(자유 셀프)는 2026-09-03 대표 확정으로 **폐기** — "우리는 QR 아니면 매장 확인코드야".
+ *    ⚠️ 두 방식은 양자택일이 아니다: **직원 QR 스캔은 어느 모드에서든 항상 된다.** 이 설정은
+ *       손님 셀프 사용만 가른다(차단할지, 확인코드를 받을지).
  */
 function RedemptionModeCard() {
-  const [mode, setMode] = useState<'scan_only' | 'store_code' | 'self_free'>('self_free')
+  const [mode, setMode] = useState<'scan_only' | 'store_code'>('store_code')
   const [storeCode, setStoreCode] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -121,7 +123,7 @@ function RedemptionModeCard() {
       .finally(() => setLoaded(true))
   }, [])
 
-  const save = async (next: 'scan_only' | 'store_code' | 'self_free', regenerate = false) => {
+  const save = async (next: 'scan_only' | 'store_code', regenerate = false) => {
     setSaving(true)
     try {
       const token = localStorage.getItem('seller_token')
@@ -134,10 +136,9 @@ function RedemptionModeCard() {
   }
 
   if (!loaded) return null
-  const OPTIONS: { value: 'scan_only' | 'store_code' | 'self_free'; label: string; desc: string }[] = [
+  const OPTIONS: { value: 'scan_only' | 'store_code'; label: string; desc: string }[] = [
     { value: 'scan_only', label: '직원 확인만', desc: '손님 셀프 사용 차단 — 직원이 QR 스캔으로만 처리 (가장 엄격)' },
     { value: 'store_code', label: '매장 확인코드', desc: '손님이 셀프 사용 시 카운터의 확인코드 입력 필수 (추천)' },
-    { value: 'self_free', label: '자유 셀프 사용', desc: '손님이 코드 없이 셀프 사용 (카운터가 바쁜 매장, 60초 취소 허용)' },
   ]
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2">

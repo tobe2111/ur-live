@@ -4,6 +4,8 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SharePrompt from '@/components/SharePrompt'
 import ReviewCard, { type ReviewItem } from './ReviewCard'
+/** 리뷰 최소 글자 수 — 버튼 비활성 조건과 안내 문구가 **같은 값**을 봐야 한다(따로 두면 갈린다). */
+const MIN_REVIEW_LEN = 10
 
 function ReviewForm({ productId, onSubmitted }: { productId: string | number; onSubmitted: () => void }) {
   const { t } = useTranslation()
@@ -57,6 +59,19 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         //   = 흰 바탕에 흰 글자(placeholder 만 보임). 입력창은 카드 안의 한 톤 낮은 면(--bg)이다.
         className="w-full px-3 py-2 rounded-xl bg-[#F8F7FC] dark:bg-[#11141C] text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-brand/40"
       />
+
+      {/* 🩸 2026-09-03 (대표 신고 — "리뷰 등록 버튼이 아예 안 눌러진다"): 10자 미만이면 버튼이
+          비활성인데 **왜인지 화면 어디에도 안 썼다.** 두 글자만 쓴 사람은 버튼이 죽은 줄 알고
+          떠나고, 그 뒤에 붙는 안내(구매/사용 여부 등 서버 판정)를 **볼 기회조차 없다.**
+          규칙은 그대로 두고 남은 글자 수만 말해 준다. */}
+      {content.length < MIN_REVIEW_LEN && (
+        <p className="mt-1.5 text-[12px] text-gray-500 dark:text-gray-400">
+          {t('reviews.minLength', {
+            defaultValue: '{{n}}자 더 쓰면 등록할 수 있어요',
+            n: MIN_REVIEW_LEN - content.length,
+          })}
+        </p>
+      )}
 
       {/* 🛡️ 2026-05-21: 사진 업로드 — 최대 5장, 5MB/장. 리워드 100딜 (사진 첨부 시). */}
       <div className="mt-2">
@@ -118,7 +133,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
       <div className="flex gap-2 mt-3">
         <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#11141C] text-gray-600 dark:text-gray-300 text-sm rounded-xl font-medium">{t('common.cancel', { defaultValue: '취소' })}</button>
         <button
-          disabled={content.length < 10 || submitting}
+          disabled={content.length < MIN_REVIEW_LEN || submitting}
           onClick={async () => {
             setSubmitting(true)
             try {
@@ -178,6 +193,7 @@ interface ReviewSummary {
 
 // 🧩 2026-08-19: 리뷰 모양은 `ReviewCard`(카드 SSOT)의 타입을 그대로 쓴다 — 두 벌이면 갈린다.
 type Review = ReviewItem
+
 
 export default function ProductReviews({ productId, limit = 5 }: { productId: number | string; limit?: number }) {
   const { t } = useTranslation()
