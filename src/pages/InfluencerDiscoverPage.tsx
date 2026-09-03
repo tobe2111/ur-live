@@ -202,6 +202,30 @@ export default function InfluencerDiscoverPage() {
                       </>
                     }
                   />
+                  {/* 🚨 딜이 없으면 링크를 주지 않는다 — 주면 0원을 약속하는 것이다.
+                      ⚠️ 2026-09-03: 카드를 줄 SSOT 로 바꾸면서 이 블록을 **통째로 지웠다가**
+                         `discover-deal-gate.test.ts` 가 CI 에서 잡았다. 이건 디자인이 아니라
+                         약속이다 — 딜 없는 사람이 링크를 뿌리면 첫 정산에서 0원을 본다. */}
+                  {p.my_deal_pct != null ? (
+                    <div className="grid grid-cols-2 gap-1.5 px-3 pb-3">
+                      <button onClick={() => copyLink(p.id)}
+                        className="py-2 rounded-lg border border-rule-strong text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1">
+                        <Copy className="w-3 h-3" /> 링크 복사
+                      </button>
+                      <button onClick={() => shareLink(p)}
+                        className="py-2 rounded-lg bg-brand text-white text-xs font-bold flex items-center justify-center gap-1">
+                        <Share2 className="w-3 h-3" /> SNS 공유
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="px-3 pb-3">
+                      <p className="py-2 rounded-lg bg-gray-50 dark:bg-[#2A2A2B] text-[11px] text-gray-600 dark:text-gray-300 text-center leading-relaxed">
+                        {authed
+                          ? '이 매장과 딜을 맺어야 소개비가 붙습니다'
+                          : '로그인하면 내 딜을 확인할 수 있어요'}
+                      </p>
+                    </div>
+                  )}
                 </li>
               )
             })}

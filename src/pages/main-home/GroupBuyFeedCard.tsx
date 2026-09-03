@@ -8,7 +8,6 @@
 import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
-import { formatPrice } from '@/utils/currency'
 import { safeDate } from '@/utils/safe-date'
 import DealCardMedia from '@/components/deal/DealCardMedia'
 import WishlistHeart from '@/components/deal/WishlistHeart'
@@ -187,6 +186,15 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
   const rating = p.avg_rating ?? 0
   const reviewCount = p.review_count ?? 0
   const soldCount = p.sold_count ?? 0
+  /**
+   * 💰 단위 — 교환권(deal_only=1)은 '딜'. 이전엔 카드가 '원'을 하드코딩해서 같은 교환권이
+   *   유어샵 핀에서는 '원', /vouchers 목록에서는 '딜' 로 보였다.
+   *   ⚠️ `formatPrice`(@/utils/currency)를 쓰지 않는다 — 그 모듈은 홈이 안 쓰는
+   *      `app-utils-deferred` 청크에 있어서, 여기서 정적 import 하면 **홈 첫 화면이
+   *      그 청크를 통째로 받는다**(`app-utils-diet.test.ts` 가 CI 에서 잡았다).
+   *      KRW 출력은 `formatPrice` 와 글자까지 동일하고, 다국어 통화는 이 카드가 원래 안 했다.
+   */
+  const unitLabel = Number(p.deal_only) === 1 ? ' 딜' : '원'
   // 📍 2026-07-16 (대표 — PC 카드도 주소·거리, 모바일처럼): 주소 축약(시/구/동) + 현위치 거리(km, userLoc 있을 때).
   const addrShort = (p.restaurant_address || '').trim().split(/\s+/).slice(0, 3).join(' ')
   const distKm = (() => {
@@ -344,12 +352,12 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
             <p className="flex items-baseline gap-1 leading-none">
               {discount > 0 && <span className="text-[12.5px] font-extrabold text-brand">{discount}%</span>}
               {originalPrice > price && originalPrice > 0 && (
-                <span className={`text-[11.5px] line-through ${cSub}`}>{formatPrice(originalPrice, { dealOnly: p.deal_only })}</span>
+                <span className={`text-[11.5px] line-through ${cSub}`}>{formatNumber(originalPrice)}{unitLabel}</span>
               )}
             </p>
           )}
           <p className="flex items-baseline gap-1 mt-0.5 leading-none">
-            <span className={`text-[17px] font-extrabold tracking-tight ${cText}`}>{formatPrice(price, { dealOnly: p.deal_only })}</span>
+            <span className={`text-[17px] font-extrabold tracking-tight ${cText}`}>{formatNumber(price)}{unitLabel}</span>
             {p.category === 'stay_voucher' && price > 0 && (
               <span className={`text-[11px] font-semibold ${cSub}`}>/1박~</span>
             )}

@@ -88,6 +88,16 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '💸 딜 없는 사람에게도 소개 링크를 준다 — 첫 정산에서 0원을 본다',
+    file: 'src/pages/InfluencerDiscoverPage.tsx',
+    find: 'p.my_deal_pct != null ? (',
+    replace: 'true ? (',
+    test: 'src/tests/unit/discover-deal-gate.test.ts',
+    why:
+      '2026-09-03 에 이 블록을 카드 통일 리팩토링으로 **통째로 지웠고** CI 가 잡았다. ' +
+      '버그가 아니라 약속 위반이라 되돌리는 비용(환급 + 신뢰)이 훨씬 크다 — 주입 지도에 박아 둔다.',
+  },
+  {
     name: '🎫 홈 우리 동네딜이 다시 자체 미니 카드로 — 형태가 넷이 된다',
     file: 'src/components/main/HomeDongneDealSection.tsx',
     find: '<DealMiniCard',
@@ -106,8 +116,8 @@ const MUTATIONS = [
   {
     name: '🎫 교환권 카드가 다시 원 단위를 하드코딩 — 같은 상품이 화면마다 원/딜로 갈린다',
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
-    find: 'formatPrice(price, { dealOnly: p.deal_only })',
-    replace: 'formatNumber(price)}원{/*',
+    find: "const unitLabel = Number(p.deal_only) === 1 ? ' 딜' : '원'",
+    replace: "const unitLabel = '원'",
     test: 'src/tests/unit/deal-card-shapes.test.ts',
     why: '유어샵 핀에 담긴 교환권이 격자에서 원, /vouchers 목록에서 딜 로 보이던 실제 결함이다.',
   },
