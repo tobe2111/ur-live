@@ -546,6 +546,19 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
       updated_at TEXT
     )` },
     { desc: 'idx_wholesale_board_type', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_board_type ON wholesale_board_posts(board_type, is_pinned DESC, id DESC)" },
+    // 💗 2026-09-03: 소비자 찜 baseline — `base_price`(찜한 그 순간의 가격, 갱신 안 함).
+    //   위시리스트가 "찜한 뒤 N원 내렸어요" 를 말하려면 이 열이 있어야 한다(`wishlist-notify.ts` SSOT).
+    //   열이 없으면 목록 API 가 조용히 그 배지를 빼고 돌아간다 — 깨지진 않지만 기능이 사라진다.
+    { desc: 'wishlist_price_notifications', sql: `CREATE TABLE IF NOT EXISTS wishlist_price_notifications (
+      user_id TEXT NOT NULL,
+      product_id INTEGER NOT NULL,
+      last_price INTEGER,
+      base_price INTEGER,
+      notified_at DATETIME,
+      PRIMARY KEY (user_id, product_id)
+    )` },
+    { desc: 'wishlist_price_notifications.base_price', sql: "ALTER TABLE wishlist_price_notifications ADD COLUMN base_price INTEGER" },
+    { desc: 'backfill: wishlist base_price', sql: "UPDATE wishlist_price_notifications SET base_price = last_price WHERE base_price IS NULL" },
     { desc: 'wholesale_wishlists', sql: `CREATE TABLE IF NOT EXISTS wholesale_wishlists (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       seller_id INTEGER NOT NULL,

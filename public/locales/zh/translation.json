@@ -862,6 +862,7 @@
   "wishlist": {
     "title": "心愿单",
     "subtitleCount": "已收藏 {{count}} 件",
+    "dropCount": "{{count}} 件降价",
     "emptyTitle": "心愿单为空",
     "emptyHint": "收藏喜欢的商品",
     "continueShopping": "继续购物",
@@ -2441,7 +2442,11 @@
       "mapPhotoFood": "菜品·菜单",
       "mapPhotoInterior": "店内",
       "openKakaoPlace": "在 Kakao 地图查看 ↗",
-      "mapPhotoHint": "按门店名称搜索 Naver 地图·博客照片并显示。Kakao 地图照片无法自动获取，我们会打开页面 — 请复制照片地址粘贴到上方。"
+      "mapPhotoHint": "按门店名称搜索 Naver 地图·博客照片并显示。Kakao 地图照片无法自动获取，我们会打开页面 — 请复制照片地址粘贴到上方。",
+      "fromMapShort": "从地图获取",
+      "photoLead": "从地图获取门店照片，或上传自己拍的照片。第一张为封面。",
+      "pasteTitle": "粘贴 KakaoMap 照片地址",
+      "pastePlaceholder": "在照片上右键 → 复制图片地址"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -2486,7 +2491,9 @@
       "products": "🛒 在线销售·采购",
       "groupbuy": "🏪 线下团购·住宿",
       "ordersCustomers": "订单·客户",
-      "curator": "我的UrShop"
+      "curator": "我的UrShop",
+      "vouchers": "🎟️ 使用券",
+      "growth": "增长"
     },
     "liveChat": {
       "title": "实时聊天",
@@ -2527,7 +2534,22 @@
       "returns": "退款请求",
       "operators": "运营者管理",
       "stores": "门店管理",
-      "findInfluencers": "寻找达人"
+      "findInfluencers": "寻找达人",
+      "voucherManage": "使用券管理",
+      "profile": "我的信息",
+      "tier": "卖家等级",
+      "twoFactor": "两步验证",
+      "appointments": "预约管理",
+      "ledger": "门店账本",
+      "storeDashboard": "门店概览",
+      "realtime": "实时概览",
+      "voucherOrders": "兑换券发送记录",
+      "transfers": "门店转让",
+      "marketing": "营销",
+      "adSlots": "广告位",
+      "discounts": "折扣",
+      "partners": "合作伙伴",
+      "notifyGuide": "通知·指南"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -3158,7 +3180,31 @@
       "lockedNote": "完成门店注册后即可使用使用券·订单·结算·达人合作",
       "savedPropagated": "门店信息已保存 — 已应用到 {{count}} 张使用券",
       "saved": "门店信息已保存"
-    }
+    },
+    "voucherTabs": {
+      "list": "使用券",
+      "scan": "核销",
+      "reviews": "评价确认"
+    },
+    "pageSearch": "页面搜索",
+    "bizNoFormat": "营业执照号请按 000-00-00000 格式填写",
+    "sessionExpired": "登录已过期，请重新登录后保存。",
+    "certHint": "营业执照照片在这里上传",
+    "photo": {
+      "cover": "封面",
+      "empty": "选择的照片会显示在这里",
+      "pickFile": "📁 从我的文件",
+      "addMore": "+ 添加照片",
+      "uploading": "上传中…",
+      "moveLeft": "前移",
+      "moveRight": "后移",
+      "dup": "该照片已添加"
+    },
+    "orderTabs": {
+      "orders": "订单"
+    },
+    "bizFromRegistration": "已填入您门店注册时的内容",
+    "bizFromRegistrationDesc": "尚未登记为营业信息 — 确认后请点击保存。"
   },
   "admin": {
     "login": {

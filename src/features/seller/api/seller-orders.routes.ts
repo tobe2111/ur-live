@@ -23,7 +23,7 @@ import { rateLimit } from '../../../worker/middleware/rate-limit';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
 import { swallow } from '@/worker/utils/swallow';
 import { VOUCHER_CATEGORY_SET, canonicalCategory, isVoucherCategory } from '@/shared/constants/voucher-categories';
-import { writeDigitalProductFields, writeVoucherProductFields } from './product-field-writers';
+import { writeDigitalProductFields, writeVoucherProductFields, writeProductText } from './product-field-writers';
 
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility';
@@ -772,6 +772,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
       // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 — 이전엔 POST 에서 저장 안 돼 셀러가 쓴 상세가 소실.
       long_description?: string;
       detail_images?: string;
+      images?: string | null;  // 🖼️ 2026-09-03 사진 목록 JSON(첫 장=대표) — 카드 캐러셀이 읽는 컬럼
       price: number;
       original_price?: number;
       stock?: number;
@@ -883,9 +884,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
     if (typeof body.long_description === 'string' && body.long_description.length <= 50000) {
       try { await db.prepare(`UPDATE products SET long_description = ? WHERE id = ?`).bind(body.long_description, productId).run() } catch { /* column may not exist */ }
     }
-    if (typeof body.detail_images === 'string' && body.detail_images.length <= 100000) {
-      try { await db.prepare(`UPDATE products SET detail_images = ? WHERE id = ?`).bind(body.detail_images, productId).run() } catch { /* column may not exist */ }
-    }
+    await writeProductText(db, productId, 'detail_images', body.detail_images)
+    await writeProductText(db, productId, 'images', body.images)  // 🖼️ 2026-09-03 사진 여러 장
 
     // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러 소개비(promo%) → referral_commission_rate override.
     //   ⚠️ 이중 안전 게이트 — platform_settings.seller_promo_field_enabled==='true' 일 때만 저장.
@@ -1049,6 +1049,7 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/상세 이미지 — 이전 PUT 화이트리스트 누락으로 저장 무음 폐기.
       long_description?: string;
       detail_images?: string;
+      images?: string | null;  // 🖼️ 2026-09-03 사진 목록 JSON(첫 장=대표)
       live_only_price?: number | null;
       live_price_enabled?: boolean;
       status?: string;
@@ -1120,12 +1121,11 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       values.push(body.image_url, body.image_url);
     }
     if (body.category !== undefined) { fields.push('category = ?'); values.push(canonicalCategory(body.category)); }
-    // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 저장(길이·형식 방어). detail_images 는 JSON 문자열.
-    if (body.long_description !== undefined && (typeof body.long_description === 'string') && body.long_description.length <= 50000) {
-      fields.push('long_description = ?'); values.push(body.long_description);
-    }
-    if (body.detail_images !== undefined && (typeof body.detail_images === 'string') && body.detail_images.length <= 100000) {
-      fields.push('detail_images = ?'); values.push(body.detail_images);
+    // 🛡️ 2026-07-02 상세 설명/이미지 · 🖼️ 2026-09-03 사진 목록 — 길이·형식 방어(값은 JSON 문자열).
+    //   `images` 를 여기 안 넣으면 수정 한 번에 추가 사진이 조용히 사라진다.
+    for (const [f, cap] of [['long_description', 50000], ['detail_images', 100000], ['images', 100000]] as const) {
+      const v = (body as Record<string, unknown>)[f];
+      if (v !== undefined && typeof v === 'string' && v.length <= cap) { fields.push(`${f} = ?`); values.push(v); }
     }
     if (body.live_only_price !== undefined) { fields.push('live_only_price = ?'); values.push(body.live_only_price); }
     if (body.live_price_enabled !== undefined) { fields.push('live_price_enabled = ?'); values.push(body.live_price_enabled ? 1 : 0); }

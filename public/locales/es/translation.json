@@ -1761,7 +1761,11 @@
       "mapPhotoFood": "Comida y menú",
       "mapPhotoInterior": "Interior",
       "openKakaoPlace": "Abrir en Kakao Map ↗",
-      "mapPhotoHint": "Buscamos fotos de Naver Map/blogs por el nombre de tu tienda. Las fotos de Kakao Map no se pueden obtener automáticamente — abrimos la página para que copies la URL arriba."
+      "mapPhotoHint": "Buscamos fotos de Naver Map/blogs por el nombre de tu tienda. Las fotos de Kakao Map no se pueden obtener automáticamente — abrimos la página para que copies la URL arriba.",
+      "fromMapShort": "Desde el mapa",
+      "photoLead": "Trae fotos del mapa o sube las tuyas. La primera es la portada.",
+      "pasteTitle": "Pega la dirección de la foto de KakaoMap",
+      "pastePlaceholder": "Clic derecho en la foto → Copiar dirección de imagen"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -1813,7 +1817,9 @@
       "products": "🛒 Ventas online",
       "groupbuy": "🏪 Compras grupales y estancias",
       "ordersCustomers": "Pedidos y clientes",
-      "curator": "Mi UrShop"
+      "curator": "Mi UrShop",
+      "vouchers": "🎟️ Cupones",
+      "growth": "Crecimiento"
     },
     "nav": {
       "products": "Productos",
@@ -1847,7 +1853,22 @@
       "returns": "Solicitudes de reembolso",
       "operators": "Operadores",
       "stores": "Mis tiendas",
-      "findInfluencers": "Buscar influencers"
+      "findInfluencers": "Buscar influencers",
+      "voucherManage": "Gestionar cupones",
+      "profile": "Mi información",
+      "tier": "Nivel de vendedor",
+      "twoFactor": "Verificación en dos pasos",
+      "appointments": "Reservas",
+      "ledger": "Libro de la tienda",
+      "storeDashboard": "Resumen de tienda",
+      "realtime": "En tiempo real",
+      "voucherOrders": "Envíos de vales",
+      "transfers": "Transferencia de tienda",
+      "marketing": "Marketing",
+      "adSlots": "Espacios publicitarios",
+      "discounts": "Descuentos",
+      "partners": "Socios",
+      "notifyGuide": "Avisos y guía"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2478,7 +2499,31 @@
       "lockedNote": "Registra tu tienda para desbloquear cupones · pedidos · liquidación · colaboraciones",
       "savedPropagated": "Información guardada — aplicada a {{count}} cupones",
       "saved": "Información de la tienda guardada"
-    }
+    },
+    "voucherTabs": {
+      "list": "Cupones",
+      "scan": "Canjear",
+      "reviews": "Reseñas"
+    },
+    "pageSearch": "Buscar páginas",
+    "bizNoFormat": "El número de empresa debe tener el formato 000-00-00000",
+    "sessionExpired": "Tu sesión expiró. Inicia sesión de nuevo y guarda.",
+    "certHint": "Sube aquí tu certificado de empresa",
+    "photo": {
+      "cover": "Portada",
+      "empty": "Tu foto aparecerá aquí",
+      "pickFile": "📁 Desde mis archivos",
+      "addMore": "+ Añadir foto",
+      "uploading": "Subiendo…",
+      "moveLeft": "Mover antes",
+      "moveRight": "Mover después",
+      "dup": "Esa foto ya está añadida"
+    },
+    "orderTabs": {
+      "orders": "Pedidos"
+    },
+    "bizFromRegistration": "Rellenado desde el registro de tu tienda",
+    "bizFromRegistrationDesc": "Aún no está registrado como datos de empresa: revísalo y pulsa Guardar."
   },
   "admin": {
     "login": {
@@ -4712,6 +4757,7 @@
   "wishlist": {
     "title": "Lista de deseos",
     "subtitleCount": "{{count}} guardados",
+    "dropCount": "{{count}} con bajada de precio",
     "emptyTitle": "No tienes productos guardados",
     "emptyHint": "Guarda los productos que te gusten",
     "continueShopping": "Seguir comprando",

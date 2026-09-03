@@ -24,6 +24,7 @@ import PinButton from '@/components/curator/PinButton'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { safeDate, safeTime } from '@/utils/safe-date'
+import { publicSellerHandle } from '@/shared/seller-handle'
 import { cfImage } from '@/utils/cf-image'
 import { reportFunnel } from '@/lib/web-vitals-report'
 import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
@@ -40,6 +41,7 @@ import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
 import OtherDealsRow from './group-buy/OtherDealsRow'
 import ShareRewardBanner from './group-buy/ShareRewardBanner'
 import DeferUntilVisible from './group-buy/DeferUntilVisible'
+import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -174,6 +176,8 @@ export default function GroupBuyDetailPage() {
   const heroRef = useRef<HTMLDivElement | null>(null)
 
   const productId = Number(id)
+  // 👁️ 홈 인기순의 클릭 신호 — 세션당 1회(훅이 가드).
+  useProductViewBeacon(productId)
   const isLoggedIn = !!localStorage.getItem('user_id') || !!localStorage.getItem('uid')
   // 🛡️ 2026-05-15: 본인 product 인 경우 "공구 관리" CTA 표시 (셀러 대시보드 진입점)
   const sellerId = localStorage.getItem('seller_id')
@@ -709,7 +713,8 @@ export default function GroupBuyDetailPage() {
                     <CheckCircle2 style={{ width: 15, height: 15, color: 'var(--gbd-accent)', flex: '0 0 auto' }} />
                     <span style={{ fontSize: 12, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>검증 셀러</span>
                   </div>
-                  {detail.seller_username && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2 }}>@{detail.seller_username}</div>}
+                  {/* 🏷️ 2026-09-03 대표 — 자동 발급 아이디(@store_xxxx)는 손님에게 의미가 없다(SSOT: shared/seller-handle). */}
+                  {publicSellerHandle(detail.seller_username) && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2 }}>@{publicSellerHandle(detail.seller_username)}</div>}
                 </div>
                 <button onClick={() => { if (detail.seller_handle) { navigate(`/u/${detail.seller_handle}`); return } const t = detail.seller_username || detail.seller_id; if (t) navigate(`/profile/${t}`) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 1, padding: '8px 12px', border: '1px solid var(--gbd-line2)', borderRadius: 10, background: 'var(--gbd-card)', color: 'var(--gbd-ink2)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
                   프로필<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>

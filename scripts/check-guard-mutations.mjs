@@ -7187,6 +7187,26 @@ canvas {
       '포함분 비율이 읽기 250억 : 쓰기 5,000만 = 500배라, 쓰기가 먼저 요금이 된다.',
   },
   {
+    name: '🏆 인기 점수가 정규화를 잃는다(결제 하나가 혼자 결정)',
+    file: 'src/features/sections/api/section-rules.ts',
+    find: '* 1.0 / MAX(mx.ms, 1))',
+    replace: ')',
+    test: 'src/tests/unit/popular-score-2026-09-03.test.ts',
+    why:
+      '라이브 실측 결제 최대 259 vs 리뷰 최대 34 — 생값을 더하면 결제가 사실상 혼자 순서를 정해 ' +
+      '종전(sold_count DESC)과 같아진다. 리뷰·클릭을 넣은 의미가 사라진다.',
+  },
+  {
+    name: '👁️ 조회수 비콘이 세션 가드를 잃는다(새로고침이 순위를 흔든다)',
+    file: 'src/hooks/useProductViewBeacon.ts',
+    find: 'if (sessionStorage.getItem(key)) return',
+    replace: 'if (false) return',
+    test: 'src/tests/unit/popular-score-2026-09-03.test.ts',
+    why:
+      '클릭은 홈 인기순의 신호다. 세션당 1회 가드가 없으면 한 사람의 새로고침이 그 상품을 ' +
+      '홈 상단으로 밀어 올린다 — 그리고 조회마다 D1 쓰기가 늘어 쓰기 예산도 먹는다.',
+  },
+  {
     name: '🧱 유어샵 핀 목록이 도매 원본 제외를 잃는다(카드는 뜨는데 클릭하면 404)',
     file: 'src/worker/routes/curator.routes.ts',
     find: "AND ${consumerVisibleProductSql('p')}\n         ORDER BY pp.position ASC",
@@ -7897,6 +7917,129 @@ canvas {
     replace: "rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md",
     test: 'src/tests/unit/seller-dashboard-b.test.ts',
     why: '표면 규칙 ② 강조색 하나. 화면 구석의 노랑 원은 체계 밖 색이었다.',
+  },
+  {
+    name: '스크롤바 — thumb 이 브랜드 블루가 된다(가구가 강조색 예산을 먹음)',
+    file: 'src/index.css',
+    find: "  background: rgb(22 24 28 / .22);\n  border-radius: 99px;",
+    replace: "  background: rgb(28 105 239 / .55);\n  border-radius: 99px;",
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why:
+      '2026-09-03 대표 확정 "안 1". 스크롤바는 가구지 강조 대상이 아니다 — 이 서비스의 색은 파랑 ' +
+      '하나이고 그 자리는 주 행동이 쓴다. 화면마다 파란 막대가 서면 정작 결제 버튼이 덜 띈다.',
+  },
+  {
+    name: '스크롤바 — 4px 로 얇아져 마우스로 못 잡는다',
+    file: 'src/index.css',
+    find: "::-webkit-scrollbar {\n  width: 8px;",
+    replace: "::-webkit-scrollbar {\n  width: 4px;",
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why: '시안 2안이 탈락한 이유. 윈도우 사용자는 지금도 막대를 끈다 — 4px 은 끌어 잡기 어렵다.',
+  },
+  {
+    name: '스크롤바 — 늘 밝은 대시보드에서 다크 흰 막대가 그대로 이긴다',
+    file: 'src/index.css',
+    find: '.dark .admin-light-theme ::-webkit-scrollbar-thumb,\n',
+    replace: '',
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why:
+      '2026-09-03 — 처음엔 light-island 하나만 덮었다. 셀러·어드민·에이전시·도매 대시보드는 다크모드에서도 ' +
+      '통째로 라이트라, 흰 배경 위에 흰 막대가 떠 스크롤바가 안 보였다. 어제 지도 검색창에서 잡은 ' +
+      '"밝은 면 위 밝은 글자"를 스크롤바로 그대로 반복한 것.',
+  },
+  {
+    name: '스크롤바 — 숨김 표기가 다시 즉석 arbitrary 로 갈린다(파이어폭스만 막대 남음)',
+    file: 'src/pages/SellerPublicPage.tsx',
+    find: 'overflow-x-auto -mx-1 px-1 scrollbar-hide',
+    replace: 'overflow-x-auto -mx-1 px-1 [&::-webkit-scrollbar]:hidden',
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why:
+      '이름이 셋(scrollbar-hide / no-scrollbar / noscroll)에 즉석 표기까지 섞여 있었고, 즉석 표기 몇은 ' +
+      '웹킷만 끄고 scrollbar-width 를 빼먹어 파이어폭스에서만 막대가 남았다. 표기는 하나로 고정한다.',
+  },
+  {
+    name: '지도 검색 — 결과 핀보다 지명 지오코딩을 먼저 한다(목록과 지도가 다른 도시)',
+    file: 'src/pages/restaurant-map/pan-to-region.ts',
+    find: '  if (fitToPins(map, pins)) return true\n  return panToPlaceQuery(map, query)',
+    replace: '  const geo = await panToPlaceQuery(map, query)\n  return geo || fitToPins(map, pins)',
+    test: 'src/tests/unit/map-search-follows-results.test.ts',
+    why:
+      '2026-09-03 대표 신고 "검색을 했을 때 무관한 지도 위치가 떠. 심각한 문제야". `커트` 결과는 동탄 2건인데 ' +
+      '지도는 인천 부평으로 갔다 — 카카오 장소검색이 "커트"에 걸리는 아무 상호를 물어다 주기 때문. ' +
+      '지도는 검색 결과를 따라가야 하고, 지명 해석은 결과가 0일 때만이다.',
+  },
+  {
+    name: '지도 검색 — 서버 검색이 끝나기 전에 지명으로 단정한다',
+    file: 'src/pages/restaurant-map/useSearchPan.ts',
+    find: '    if (pins.length === 0 && resultsReadyFor !== key) return',
+    replace: '',
+    test: 'src/tests/unit/map-search-follows-results.test.ts',
+    why:
+      '클라가 들고 있는 딜만으로는 0건이어도 서버 q검색이 곧 결과를 준다. 그 사이에 지명으로 날아가면 ' +
+      '결과가 도착해도 지도는 이미 엉뚱한 도시에 가 있다.',
+  },
+  {
+    name: '홈 히어로 — 사진 소스가 하드로드 시드 하나로 되돌아간다(새로고침해야 보임)',
+    file: 'src/components/home/useHeroPhoto.ts',
+    find: 'for (const [, data] of qc.getQueriesData({ queryKey: FEED_PREFIX })) {',
+    replace: 'for (const [, data] of [] as [unknown, unknown][]) {',
+    test: 'src/tests/unit/hero-photo-source.test.ts',
+    why:
+      '2026-09-03 대표 신고 "히어로 이미지가 항상 새로고침을 해야 보이네..? 심각해". 사진 출처가 ' +
+      '`__SSR_INITIAL_MAIN__` 시드 하나뿐이었는데 그 시드는 `/` **하드로드에서만** 문서에 들어간다. ' +
+      '앱 안에서 홈 탭으로 들어오면 색면만 남았고 에러가 없어 아무도 몰랐다(어드민 히어로 배너 0건이라 ' +
+      '대안도 없었다 — 라이브 실측).',
+  },
+  {
+    name: '숙소 목록 — 카드가 다시 갈린다(네 번째 세대)',
+    file: 'src/pages/StaysSearchPage.tsx',
+    find: '<GroupBuyFeedCard',
+    replace: '<div',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '2026-09-03 대표 "여기 UI도 통일화 해야지". 숙소 목록은 테두리 카드 + hover 그림자 + 사진 위 배지 2개 ' +
+      '+ 편의시설 pill 로 **네 번째 카드 세대**였다. 각 세대는 따로 보면 멀쩡해서 나란히 놓고 봐야만 드러난다.',
+  },
+  {
+    name: '숙소 카드 — 날짜·인원을 잃는다(상세가 오늘 날짜로 다시 잡아 요금이 달라짐)',
+    file: 'src/pages/StaysSearchPage.tsx',
+    find: '?check_in=${filters.check_in}&check_out=${filters.check_out}&guests=${filters.guests}',
+    replace: '',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '카드 통일에서 조용히 빠지기 쉬운 자리. 화면엔 149,000원인데 상세는 다른 날짜 요금을 보여준다 — ' +
+      '에러가 안 나고 사용자가 결제 직전에야 안다.',
+  },
+  {
+    name: '유어샵 내 상품 — 옛 대표색 카드로 되돌아간다(같은 상품이 홈과 달라 보임)',
+    file: 'src/pages/SellerPublicPage.tsx',
+    find: '<GroupBuyFeedCard',
+    replace: '<BrowseProductCard',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '2026-09-03 대표 "홈 카드로 동일해야지 — 안 A". 8-27 유어샵 통일에서 **내 상품 그리드만 빠져** ' +
+      '같은 상품이 홈에서는 사진+맨 텍스트, 유어샵에서는 사진 대표색 색면 카드(+사진 위 그라디언트, ' +
+      '코랄 할인율)로 나왔다. 카드가 두 벌이면 반드시 갈린다 — 이 레포가 세 번째로 겪은 자리.',
+  },
+  {
+    name: '딜 카드 격자 — 세로 간격이 다시 가로와 같아진다(카드 경계가 안 읽힌다)',
+    file: 'src/shared/deal-card-grid.ts',
+    find: "'gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-7'",
+    replace: "'gap-x-3 gap-y-3 lg:gap-x-4 lg:gap-y-4'",
+    test: 'src/tests/unit/deal-card-grid-gap.test.ts',
+    why:
+      '2026-09-03 대표 "이용권 간의 세로폭이 있어야할 것 같은데" → 안 1 확정. 카드 안 여백이 2~8px 인데 ' +
+      '카드 사이가 12px 이면 안팎 차이가 없어 어디까지가 한 카드인지 안 끊긴다. 세로만 24px 로 벌린다.',
+  },
+  {
+    name: '딜 카드 격자 — 한 화면만 간격을 손으로 적어 갈린다',
+    file: 'src/pages/WishlistPage.tsx',
+    find: 'xl:grid-cols-4 ${DEAL_GRID_GAP}`',
+    replace: 'xl:grid-cols-4 gap-3`',
+    test: 'src/tests/unit/deal-card-grid-gap.test.ts',
+    why:
+      '이 카드는 홈·찜·유어샵·편성 섹션이 같이 쓴다. 격자마다 gap 을 손으로 적으면 같은 상품이 화면마다 ' +
+      '다른 간격으로 놓인다 — 카드 자체로 이미 한 번 겪은 일(홈 섹션 카드 ↔ 피드 카드가 두 벌이었다).',
   },
   {
     name: '지도 오버레이 — light-island 가 빠져 흰 검색창에 흰 글자',

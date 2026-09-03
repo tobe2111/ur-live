@@ -33,6 +33,7 @@ const APP_HOME_PARTS = [
 const OK_PARTS = [
   '/src/components/main/', '/src/components/auth/', '/src/shared/config/', '/src/shared/utils/', '/src/shared/constants/',
   '/src/shared/types/', '/src/shared/stores/', '/src/utils/', '/src/hooks/', '/src/lib/', '/src/shared/seller-roles',
+  '/src/shared/deal-card-grid', // 딜 카드 격자 간격 SSOT → app-shared (2026-09-03)
   '/src/components/icons/', '/src/client/', '/src/i18n', '/src/pages/main-home/GroupBuyFeed', '/src/pages/mobile-home/',
   '/src/routes/', '/src/shared/feature-flags', '/src/components/brand/', // app-shell 규칙(엔트리 셸)에 이미 있는 것
 ]
@@ -59,6 +60,16 @@ describe('①-b deal/ 폴더 통째 금지', () => {
   })
   it("app-home 규칙에 '/src/components/deal/' 폴더 전체가 없다(DetailFloatingHeader 가 app-components 를 도로 끌고 온다)", () => {
     expect(ruleBlock).not.toContain("id.includes('/src/components/deal/')")
+  })
+})
+
+describe('①-b OK_PARTS 는 vite 규칙의 거울이다 (거울이 낡으면 통과가 거짓이 된다)', () => {
+  it('파일 단위로 적은 shared 항목은 vite.config 에 실제 규칙이 있다', () => {
+    // 폴더(`/src/shared/xxx/`)는 광범위 규칙이라 제외하고, **파일 하나를 콕 집은** 항목만 본다.
+    const pinned = OK_PARTS.filter((p) => p.startsWith('/src/shared/') && !p.endsWith('/'))
+    expect(pinned.length, '검사 대상이 0이면 이 검사는 무의미하다').toBeGreaterThan(0)
+    const missing = pinned.filter((p) => !VITE.includes(p))
+    expect(missing, `OK_PARTS 에는 있는데 vite 규칙이 없다(그 모듈은 catch-all 로 떨어진다): ${missing.join(', ')}`).toEqual([])
   })
 })
 

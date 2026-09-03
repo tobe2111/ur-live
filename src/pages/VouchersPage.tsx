@@ -147,7 +147,7 @@ function ShoppingGrid() {
           쇼핑 섹션에 있는 동안 상단에 따라붙어 어디서든 카테고리 전환 가능. 교환권 reveal 그룹은 이때 숨김(슬롯 공유). */}
       <div className="sticky top-[45px] z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-wide px-4 lg:px-8 py-2.5">
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
             {visibleShopCats.map(c => {
               const active = shopCategory === c.key
               return (
@@ -485,7 +485,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   const setBrand = (next: string) => {
     const params = new URLSearchParams(searchParams)
     if (next) params.set('brand', next); else params.delete('brand')
-    setSearchParams(params)
+    setSearchParams(params, { replace: true })  // 🔙 필터는 이동이 아니라 상태 — 히스토리를 안 쌓는다(back-navigation 테스트)
   }
 
   // 🛡️ 2026-05-19: 카테고리 변경 — 브랜드 자동 초기화 (다른 카테고리의 브랜드는 의미 없음).
@@ -493,7 +493,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     const params = new URLSearchParams(searchParams)
     if (next) params.set('category', next); else params.delete('category')
     params.delete('brand')
-    setSearchParams(params)
+    setSearchParams(params, { replace: true })  // 🔙 필터는 상태 — 히스토리를 쌓지 않는다(위 주석)
   }
 
   // 🎨 2026-07-01 (대표 "2번 로딩 근본 해결" — urdeal 로더 유지): standalone(/vouchers) 은 로딩 중
@@ -578,7 +578,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             {currentBrands.length > 0 && (
               <div className="mb-5 pb-4 border-b border-gray-100 dark:border-[#2C2F35]">
                 <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mb-2">인기 브랜드</h3>
-                <div className="flex gap-3 overflow-x-auto no-scrollbar py-1">
+                <div className="flex gap-3 overflow-x-auto scrollbar-hide py-1">
                   {orderedBrands.map(b => (
                     <BrandChip
                       key={b.brand_name}
@@ -744,7 +744,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {sections.length > 0 && (
         <div className="bg-warm dark:bg-[#11141C]">
           <div className="ur-content-wide px-4 lg:px-8 py-2.5">
-            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
               {sections.map(s => {
                 const active = s.category === category
                 return (

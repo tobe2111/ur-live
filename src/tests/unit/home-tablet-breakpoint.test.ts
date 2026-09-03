@@ -97,8 +97,12 @@ describe('태블릿 폭에서 카드가 줄을 채운다', () => {
 describe('히어로가 태블릿에서도 사진을 보여준다', () => {
   it('사진이 md 부터 보이고 폭은 태블릿에서 좁다', () => {
     const s = code(read(HERO))
+    /* 🩸 2026-09-03: 이 검사는 `right-0` 까지 **한 문자열로** 박아 놨다가, 사진을 매대 폭에 맞추면서
+       스스로 깨졌다(CI 빨간불 2회). 이 검사의 의도는 "태블릿에도 사진이 있는가"이지 오른쪽 오프셋이
+       아니다 — 그건 pc-home-hero-controls 가 따로 본다. 의도만 남긴다. */
     expect(s, '히어로 사진이 다시 lg 전용이 됐다 — 태블릿엔 색면만 남아 허전하다').toMatch(
-      /hidden md:block absolute inset-y-0 right-0 w-\[46%\] lg:w-\[54%\]/,
+      /hidden md:block absolute inset-y-0/,
     )
+    expect(s, '태블릿에서 사진 폭이 좁아야 카피가 안 눌린다').toMatch(/w-\[46%\] lg:w-\[54%\]/)
   })
 })

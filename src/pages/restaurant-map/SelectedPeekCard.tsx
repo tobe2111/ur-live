@@ -1,3 +1,4 @@
+import CatIcon from './CatIcon'
 import { Radio, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -24,7 +25,7 @@ export default function SelectedPeekCard({ selected, liveSellerIds, onClose }: P
             <img src={cfImage(selected.image_url, { width: 200, quality: 82, format: 'auto' }) || selected.image_url} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" onError={(e) => cfImageOnError(e.currentTarget, selected.image_url)} />
           ) : (
             <div className="w-16 h-16 rounded-xl bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center shrink-0">
-              <span className="text-xl">🍽️</span>
+              <CatIcon cat={selected.category} className="w-6 h-6 text-gray-400" />
             </div>
           )}
           <div className="flex-1 min-w-0">

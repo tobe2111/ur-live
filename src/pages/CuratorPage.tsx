@@ -10,6 +10,7 @@
  * Phase 1+ 사용자 결정 C 옵션: URL 통합 (셀러 권한 시 자동 redirect).
  */
 
+import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useParams, Link, useNavigate } from 'react-router-dom'
@@ -453,7 +454,7 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted, kind }: { pins: CuratorP
     // 🛍️ 2026-06-21 (대표 — "상품 2개씩"): 유어샵 핀은 항상 2열. `grid-cols-2 sm:grid-cols-3` 는 PC 액자
     //   1열 전역 오버라이드(index.css app-framed)에 걸려 1열이 됐음 → 단순 `grid-cols-2` 로 그 매칭을 피해
     //   모바일·PC 프레임 모두 2열 유지(타 페이지 1열 전역 결정엔 영향 없음).
-    <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 gap-3">
+    <div className={`max-w-3xl mx-auto p-4 grid grid-cols-2 ${DEAL_GRID_GAP}`}>
       {pins.map((pin, idx) => (
         <PinCard key={pin.id} pin={pin} handle={handle} isOwner={isOwner} aboveFold={idx < 4} index={idx} onDeleted={onPinDeleted} />
       ))}

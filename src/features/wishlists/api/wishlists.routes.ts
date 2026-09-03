@@ -21,7 +21,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import type { AuthUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
-import { seedWishlistBaseline, clearWishlistBaseline } from '@/worker/cron/wishlist-notify';
+import { seedWishlistBaseline, clearWishlistBaseline, ensureWishlistBaselineTables } from '@/worker/cron/wishlist-notify';
 import { intParam } from '@/shared/pagination'
 
 // v31 FIX: wishlist mutation rate limit (per-IP, 분당 20회)
@@ -66,6 +66,8 @@ async function ensureTable(DB: D1Database) {
 
 // products.dominant_color 존재 여부 모듈 캐시 (null=미확인 / true=있음 / false=없음 — isolate 수명)
 let _wishlistDominantCol: boolean | null = null;
+// 💗 2026-09-03: 찜 시점 가격(`wishlist_price_notifications.base_price`) 존재 여부 — 위와 같은 규약.
+let _wishlistBaseCol: boolean | null = null;
 
 // ── GET /api/wishlists  (인증 기반 내 위시리스트 - useWishlist hook) ───────────
 wishlistRoutes.get('/', requireAuth(), async (c) => {
@@ -79,32 +81,50 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
     const offset = intParam(c.req.query('offset'), 0);
     // 🎨 2026-06-10: dominant_color 포함(카드 그라데이션). 컬럼 미적용 DB 는 1회 실패 후 제외 재시도
     //   (ProductRepository `_dominantColorCol` 모듈캐시 패턴 — 매 요청 2쿼리 방지).
-    const listSql = (withColor: boolean) => `
+    /**
+     * 💗 2026-09-03 (대표 확정 — 위시리스트 안 B "지금 사야 할 것부터"):
+     *   찜 목록이 **언제 사야 하는지**를 말하려면 세 가지가 더 필요하다.
+     *     · `expires_at`(= `group_buy_deadline`) — 마감 임박 표시·정렬
+     *     · `group_buy_status`     — 마감된 것을 임박으로 세지 않기 위해
+     *     · `base_price`           — 찜한 그 순간의 가격("N원 내렸어요"의 기준)
+     *   덤으로 `restaurant_name`(카드 머천트 줄)·`seller_id`(응답 타입엔 있었는데 이 쿼리만 빠져 있었다)
+     *   ·`is_active`(형제 라우트와 대칭)를 맞춘다.
+     *
+     *   ⚠️ 열·테이블이 없는 DB 도 **깨지지 않고 기능만 빠져야 한다** — 아래 재시도가 그 역할이다.
+     *   기존 dominant_color 폴백과 같은 규약이되, 어느 쪽이 원인이든 ≤3회 안에 수렴한다.
+     */
+    const listSql = (withColor: boolean, withBase: boolean) => `
       SELECT w.id, w.user_id, w.product_id, w.created_at,
              p.name as product_name, p.price, p.original_price,
              p.discount_rate, p.image_url, p.stock, p.category, p.deal_only,
+             p.is_active, p.restaurant_name,
+             p.group_buy_deadline AS expires_at, p.group_buy_status,
              ${withColor ? 'p.dominant_color,' : ''}
-             s.name as seller_name
+             ${withBase ? 'n.base_price,' : ''}
+             s.name as seller_name, s.id as seller_id
       FROM wishlists w
       JOIN products p ON w.product_id = p.id
       LEFT JOIN sellers s ON p.seller_id = s.id
+      ${withBase ? 'LEFT JOIN wishlist_price_notifications n ON n.user_id = w.user_id AND n.product_id = w.product_id' : ''}
       WHERE w.user_id = ? AND p.is_active = 1
       ORDER BY w.created_at DESC
       LIMIT ? OFFSET ?
     `;
-    let results: Record<string, unknown>[];
-    if (_wishlistDominantCol !== false) {
+    if (_wishlistBaseCol !== false) await ensureWishlistBaselineTables(DB).catch(() => {});
+    let results: Record<string, unknown>[] = [];
+    for (;;) {
       try {
-        results = (await DB.prepare(listSql(true)).bind(userId, limit, offset).all()).results as Record<string, unknown>[];
-        _wishlistDominantCol = true;
+        results = (await DB.prepare(listSql(_wishlistDominantCol !== false, _wishlistBaseCol !== false))
+          .bind(userId, limit, offset).all()).results as Record<string, unknown>[];
+        break;
       } catch (e) {
-        if (String(e).includes('no such column')) {
-          _wishlistDominantCol = false;
-          results = (await DB.prepare(listSql(false)).bind(userId, limit, offset).all()).results as Record<string, unknown>[];
-        } else { throw e; }
+        const msg = String(e);
+        if (!msg.includes('no such column') && !msg.includes('no such table')) throw e;
+        // 원인이 둘 중 어느 쪽이든 하나씩 끄면 반드시 수렴한다(최대 3회).
+        if (_wishlistBaseCol !== false) { _wishlistBaseCol = false; continue; }
+        if (_wishlistDominantCol !== false) { _wishlistDominantCol = false; continue; }
+        throw e;
       }
-    } else {
-      results = (await DB.prepare(listSql(false)).bind(userId, limit, offset).all()).results as Record<string, unknown>[];
     }
     const countResult = await DB.prepare('SELECT COUNT(*) as count FROM wishlists WHERE user_id = ?')
       .bind(userId).first<{ count: number }>();
