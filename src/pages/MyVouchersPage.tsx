@@ -249,6 +249,10 @@ export default function MyVouchersPage() {
           (26px 타이틀 + 총 보유 칩 + 언더라인 탭). 교환권 보유 시에만 탭 노출. */}
       <WalletHeader
         title={t('voucher.myVouchers')}
+        /* 🎫 2026-09-03 (대표 "내 이용권 문장 삭제"): 화면에서 제목 줄을 지운다.
+           하단 탭 '이용권'이 이미 어디인지 말하고, 지갑의 주인공은 금액과 카드다.
+           제목은 sr-only 로만 남아 문서 구조·보조기술 접근성은 유지된다. */
+        hideTitle
         amount={shownVouchers.length > 0 ? heroTotal : null}
         unit={heroUnit}
         stats={shownVouchers.length > 0 ? [
