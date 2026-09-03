@@ -26,6 +26,7 @@ import { ensurePointsTables } from '@/worker/utils/ensure-tables';
 
 import { swallow } from '@/worker/utils/swallow';
 import { intParam } from '@/shared/pagination'
+import { checkReviewEligibility } from './review-eligibility'
 const reviewsRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -237,25 +238,17 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     return c.json({ success: false, error: '이미 리뷰를 작성하셨습니다' }, 409);
   }
 
-  // 🛡️ 2026-05-21: 사용자 요청 — 구매자만 리뷰 작성 가능 (교환권/일반 상품 모두).
-  //   완료/배송 주문이 1건이라도 있으면 OK. admin 은 예외 (테스트/생성 목적).
+  // 🎫 리뷰 자격 — 이용권은 "사용한 사람", 그 외는 "구매한 사람". admin 은 예외(테스트/생성 목적).
+  //   판정 본체·근거는 `review-eligibility.ts` 로 분리했다(이 파일 600줄 래칫 + 판정만 따로 읽히게).
+  let usedVoucherOrderId: number | null = null
   if (user.type !== 'admin') {
-    const purchasedOrder = await DB.prepare(`
-      SELECT o.id FROM orders o
-      INNER JOIN order_items oi ON oi.order_id = o.id
-      WHERE oi.product_id = ?
-        AND o.user_id = ?
-        AND o.status IN ('PAID', 'DONE', 'DELIVERED', 'SHIPPING', 'COMPLETED')
-      LIMIT 1
-    `).bind(body.product_id, user.id).first().catch(() => null);
-
-    if (!purchasedOrder) {
-      return c.json({
-        success: false,
-        error: '리뷰는 해당 상품을 구매한 분만 작성할 수 있습니다.',
-        error_code: 'NOT_PURCHASED',
-      }, 403);
+    const verdict = await checkReviewEligibility(
+      DB, body.product_id, user.id, (user as { isDbId?: boolean }).isDbId,
+    )
+    if (!verdict.ok) {
+      return c.json({ success: false, error: verdict.error, error_code: verdict.error_code }, verdict.status);
     }
+    usedVoucherOrderId = verdict.rewardOrderId
   }
 
   // 🛡️ 2026-04-22: 셀러 자기 상품 self-review 차단 — 평점 조작 방어
@@ -282,6 +275,10 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
       // order_id가 제공되었으나 본인 소유/배송완료가 아닐 경우 보상 거부
       canGetReward = false;
     }
+  } else if (usedVoucherOrderId) {
+    // 🎫 2026-09-02: 이용권은 '사용한 그 장'의 주문이 리워드 근거 — 사용 전엔 위 게이트에서 이미 막혔다.
+    canGetReward = true;
+    rewardOrderId = usedVoucherOrderId;
   } else {
     // 🏁 2026-06-12 (전수조사 🔴 G5): 클라이언트(ProductReviews 폼)가 order_id 를 안 보내
     //   canGetReward 가 항상 false → 리뷰 리워드 약속 미지급이던 갭.

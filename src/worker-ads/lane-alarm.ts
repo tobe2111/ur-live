@@ -17,7 +17,7 @@ import { dueByElapsed } from './lane-alarm-policy'
 import { buildCronBeatRow } from '@/worker/utils/cron-heartbeat'
 import { withMeteredEnv, newMeter, type ReadMeter } from '@/worker/utils/d1-read-meter'
 import { lanesPaused } from './lane-pause'
-import { readBudgetState, reportReadUsage, handleBudgetRequest, READ_BUDGET_PATH } from './read-budget'
+import { readBudgetState, reportReadUsage, handleBudgetRequest, budgetBlocked, READ_BUDGET_PATH } from './read-budget'
 import { staleGapMinutes } from './lane-cadence'
 import { summarizeLaneRun, appendRunHistory, serializeRunHistory, serializeLaneStamp, LANE_RUNS_KEY } from './lane-run-history'
 import type { LaneRunEntry } from './lane-run-history'
@@ -88,7 +88,7 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
       return
     }
     // 📉 읽기 예산 — 오늘 몫을 넘겼으면 일시정지와 같은 동작(체인은 잇고 레인은 안 돌림). 근거: `read-budget.ts` 헤더.
-    if ((await readBudgetState(this.env)).over) {
+    if (budgetBlocked(await readBudgetState(this.env))) {
       await this.ctx.storage.setAlarm(t0 + resolveInterval(undefined, this.env)).catch(() => undefined)
       return
     }
@@ -130,7 +130,7 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     }
 
     // 📉 이 회차가 읽은 만큼 원장에 더한다 — 실제로 돈 회차만(skip 은 0 이라 어차피 안 보낸다).
-    this.ctx.waitUntil(reportReadUsage(this.env, this.meter.rr))
+    this.ctx.waitUntil(reportReadUsage(this.env, this.meter.rr, this.meter.rw))
     const ran = runs < cap ? runs + 1 : runs
     const nextFail = error ? failStreak + 1 : 0
     // 🎞️ 회차 이력 — 마지막 1건만 남기면 "안 돌았나 / 돌았는데 실패했나"를 못 가른다(근거는 모듈 docblock).

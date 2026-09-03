@@ -285,10 +285,10 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 70 | 280 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 70 | 277 |
 | 링크샵 / 큐레이터 | `linkshop-brief.md` | 13 | 59 |
 | 에이전시 | `agency-brief.md` | 29 | 167 |
-| **합계** | — | **184** | **605** |
+| **합계** | — | **184** | **602** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -297,12 +297,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 382 | 1247 |
-| 도메인 버킷 (5개 소개서) | 184 | 605 |
+| 전체 | 382 | 1248 |
+| 도메인 버킷 (5개 소개서) | 184 | 602 |
 | 공통/인프라 (의도적 제외) | 164 | 470 |
-| **미커버 (점검 필요)** | **34** | **172** |
+| **미커버 (점검 필요)** | **34** | **176** |
 
-⚠️ **미커버 206건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 210건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -343,6 +343,7 @@
 **미커버 API 엔드포인트**
 - `DELETE /:id` (`src/features/supply/api/wholesale-board.routes.ts`)
 - `PATCH /:id` (`src/features/supply/api/wholesale-board.routes.ts`)
+- `POST /:id{[0-9]+}/view` (`src/features/products/api/product-view.routes.ts`)
 - `PATCH /:id/amount` (`src/features/returns/api/return-amount.routes.ts`)
 - `POST /:id/confirm` (`src/features/supply/api/wholesale-deposit.routes.ts`)
 - `POST /:id/reject` (`src/features/supply/api/wholesale-deposit.routes.ts`)
@@ -506,6 +507,9 @@
 - `POST /threads/by-product` (`src/features/supply/api/wholesale-chat.routes.ts`)
 - `POST /tracking/bulk` (`src/features/supply/api/wholesale-supplier.routes.ts`)
 - `GET /unread` (`src/features/supply/api/wholesale-chat.routes.ts`)
+- `DELETE /voucher-draft` (`src/features/seller/api/seller-voucher-draft.routes.ts`)
+- `GET /voucher-draft` (`src/features/seller/api/seller-voucher-draft.routes.ts`)
+- `PUT /voucher-draft` (`src/features/seller/api/seller-voucher-draft.routes.ts`)
 - `GET /wholesale-tax-invoices` (`src/features/supply/api/wholesale-tax.routes.ts`)
 - `POST /wholesale-tax-invoices/:id/reissue` (`src/features/supply/api/wholesale-tax.routes.ts`)
 - `GET /wholesale-withdrawals` (`src/features/supply/api/supplier-withdrawal.routes.ts`)
@@ -955,7 +959,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (280개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (277개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1396,11 +1400,6 @@
 
 **/api/seller/voucher-catalog**
 - `GET /api/seller/voucher-catalog`
-
-**/api/seller/voucher-draft**
-- `DELETE /api/seller/voucher-draft`
-- `GET /api/seller/voucher-draft`
-- `PUT /api/seller/voucher-draft`
 
 **/api/seller/voucher-orders**
 - `GET /api/seller/voucher-orders`
@@ -2008,7 +2007,7 @@
 
 
 
-> 마지막 생성: 2026-08-31T07:31:06.636Z
+> 마지막 생성: 2026-09-03T06:33:15.783Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

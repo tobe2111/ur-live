@@ -4,6 +4,8 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SharePrompt from '@/components/SharePrompt'
 import ReviewCard, { type ReviewItem } from './ReviewCard'
+/** 리뷰 최소 글자 수 — 버튼 비활성 조건과 안내 문구가 **같은 값**을 봐야 한다(따로 두면 갈린다). */
+const MIN_REVIEW_LEN = 10
 
 function ReviewForm({ productId, onSubmitted }: { productId: string | number; onSubmitted: () => void }) {
   const { t } = useTranslation()
@@ -29,22 +31,21 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="w-full py-2.5 mt-3 border border-gray-200 dark:border-[#2C2F35] rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
+      <button onClick={() => setOpen(true)} className="w-full py-2.5 mt-3 border border-rule-strong rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
         {t('reviews.writeBtn', { defaultValue: '리뷰 작성하기' })}
       </button>
     )
   }
 
+  // 🎫 2026-09-02 (대표 "리뷰 작성란 다크에서 글자 안 보임 · 디자인도 손봐야"): 카드 테두리 0 + surface 두 톤,
+  //   핑크 정보상자·선물 이모지 → 회색 한 줄, 별은 브랜드 글자색 하나. textarea 는 아래 주석 참조.
   return (
-    <div className="mt-3 border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4">
+    <div className="mt-3 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift p-4">
       <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">{t('reviews.title', { defaultValue: '리뷰 작성' })}</h3>
-      <div className="rounded-xl px-3 py-2.5 mb-3 flex items-center gap-2 bg-pink-50">
-        <span className="text-sm">🎁</span>
-        <span className="text-[11px] font-semibold text-pink-700">{t('reviews.rewardBanner', { defaultValue: '텍스트 {{text}}딜 · 사진 {{image}}딜 · 영상 {{video}}딜 리워드', text: rewards.text, image: rewards.image, video: rewards.video })}</span>
-      </div>
-      <div className="flex gap-1 mb-3">
+      <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3">{t('reviews.rewardBanner', { defaultValue: '텍스트 {{text}}딜, 사진 {{image}}딜, 영상 {{video}}딜 리워드', text: rewards.text, image: rewards.image, video: rewards.video })}</p>
+      <div className="flex gap-1 mb-3" role="radiogroup" aria-label={t('reviews.rating', { defaultValue: '별점' })}>
         {[1, 2, 3, 4, 5].map(s => (
-          <button key={s} onClick={() => setRating(s)} className={`text-xl ${s <= rating ? 'text-yellow-400' : 'text-gray-200'}`}>★</button>
+          <button key={s} type="button" role="radio" aria-checked={s === rating} aria-label={`${s}`} onClick={() => setRating(s)} className={`text-xl ${s <= rating ? 'text-brand-text' : 'text-gray-200 dark:text-[#3A3D44]'}`}>★</button>
         ))}
       </div>
       <textarea
@@ -54,8 +55,23 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         rows={3}
         maxLength={2000}
         aria-label={t('reviews.contentLabel', { defaultValue: '리뷰 내용' })}
-        className="w-full px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white resize-none focus:outline-none focus:border-blue-400"
+        // 🩸 2026-09-02: `dark:bg-*` 가 없어 다크에서 브라우저 기본 흰 배경 + 전역 `.dark textarea{color:gray-100}` 글자
+        //   = 흰 바탕에 흰 글자(placeholder 만 보임). 입력창은 카드 안의 한 톤 낮은 면(--bg)이다.
+        className="w-full px-3 py-2 rounded-xl bg-[#F8F7FC] dark:bg-[#11141C] text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-brand/40"
       />
+
+      {/* 🩸 2026-09-03 (대표 신고 — "리뷰 등록 버튼이 아예 안 눌러진다"): 10자 미만이면 버튼이
+          비활성인데 **왜인지 화면 어디에도 안 썼다.** 두 글자만 쓴 사람은 버튼이 죽은 줄 알고
+          떠나고, 그 뒤에 붙는 안내(구매/사용 여부 등 서버 판정)를 **볼 기회조차 없다.**
+          규칙은 그대로 두고 남은 글자 수만 말해 준다. */}
+      {content.length < MIN_REVIEW_LEN && (
+        <p className="mt-1.5 text-[12px] text-gray-500 dark:text-gray-400">
+          {t('reviews.minLength', {
+            defaultValue: '{{n}}자 더 쓰면 등록할 수 있어요',
+            n: MIN_REVIEW_LEN - content.length,
+          })}
+        </p>
+      )}
 
       {/* 🛡️ 2026-05-21: 사진 업로드 — 최대 5장, 5MB/장. 리워드 100딜 (사진 첨부 시). */}
       <div className="mt-2">
@@ -72,7 +88,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
             </div>
           ))}
           {images.length < 5 && (
-            <label className="w-16 h-16 border-2 border-dashed border-gray-300 dark:border-[#2C2F35] rounded-md flex flex-col items-center justify-center cursor-pointer text-gray-400 hover:border-gray-500 active:scale-95 transition">
+            <label className="w-16 h-16 border border-dashed border-rule-strong rounded-xl flex flex-col items-center justify-center cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 active:scale-95 transition">
               {uploading ? (
                 <span className="text-[10px]">업로드 중</span>
               ) : (
@@ -115,9 +131,9 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         </div>
       </div>
       <div className="flex gap-2 mt-3">
-        <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 text-sm rounded-lg font-medium">{t('common.cancel', { defaultValue: '취소' })}</button>
+        <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#11141C] text-gray-600 dark:text-gray-300 text-sm rounded-xl font-medium">{t('common.cancel', { defaultValue: '취소' })}</button>
         <button
-          disabled={content.length < 10 || submitting}
+          disabled={content.length < MIN_REVIEW_LEN || submitting}
           onClick={async () => {
             setSubmitting(true)
             try {
@@ -135,7 +151,8 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
               const status = ax.response?.status
               const code = ax.response?.data?.error_code
               const serverMsg = ax.response?.data?.error
-              if (code === 'NOT_PURCHASED' || status === 403) {
+              // 🎫 2026-09-02: 이용권은 `VOUCHER_NOT_USED`(사용 전) — 서버 문구를 그대로 쓴다.
+              if (code === 'NOT_PURCHASED' || code === 'VOUCHER_NOT_USED' || status === 403) {
                 toast.error(serverMsg || '리뷰는 해당 상품을 구매하신 분만 작성하실 수 있어요', { duration: 5000 })
               } else {
                 const msg = serverMsg || (err instanceof Error ? err.message : t('reviews.writeError', { defaultValue: '리뷰 작성에 실패했습니다' }))
@@ -143,14 +160,14 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
               }
             } finally { setSubmitting(false) }
           }}
-          className="flex-[2] py-2 bg-gray-900 text-white text-sm rounded-lg font-bold disabled:opacity-40"
+          className="flex-[2] py-2 bg-brand hover:bg-brand-dark text-white text-sm rounded-xl font-bold disabled:opacity-40"
         >
           {submitting ? t('reviews.submitting', { defaultValue: '등록 중...' }) : t('reviews.submit', { defaultValue: '리뷰 등록' })}
         </button>
       </div>
       {showSharePrompt && (
         <SharePrompt
-          title={t('reviews.sharedTitle', { defaultValue: '리뷰가 등록되었습니다! 🎁' })}
+          title={t('reviews.sharedTitle', { defaultValue: '리뷰가 등록되었어요' })}
           message={t('reviews.sharedMessage', { defaultValue: '딜 포인트가 지급되었어요. 이 상품을 친구에게 추천해보세요!' })}
           shareTitle={t('reviews.sharedShareTitle', { defaultValue: '이 상품 추천해요!' })}
           shareDescription={t('reviews.sharedShareDesc', { defaultValue: '유어딜에서 좋은 상품을 발견했어요' })}
@@ -176,6 +193,7 @@ interface ReviewSummary {
 
 // 🧩 2026-08-19: 리뷰 모양은 `ReviewCard`(카드 SSOT)의 타입을 그대로 쓴다 — 두 벌이면 갈린다.
 type Review = ReviewItem
+
 
 export default function ProductReviews({ productId, limit = 5 }: { productId: number | string; limit?: number }) {
   const { t } = useTranslation()
@@ -233,7 +251,7 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
             <p className="text-3xl font-bold text-gray-900 dark:text-white">{avgRating}</p>
             <div className="flex gap-0.5 mt-1">
               {[1, 2, 3, 4, 5].map(s => (
-                <span key={s} className={`text-sm ${s <= Math.round(avgRating) ? 'text-yellow-400' : 'text-gray-200'}`}>★</span>
+                <span key={s} className={`text-sm ${s <= Math.round(avgRating) ? 'text-brand-text' : 'text-gray-200 dark:text-[#3A3D44]'}`}>★</span>
               ))}
             </div>
           </div>

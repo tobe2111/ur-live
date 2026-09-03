@@ -73,6 +73,50 @@ export async function isSelfOwnedGroupBuy(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// ①-b 자기 링크로 자기가 사면 보상 없음 — **user id 와 seller id 양쪽 네임스페이스**
+// ──────────────────────────────────────────────────────────────────────────────
+/**
+ * 💸 2026-09-02 대표: *"자신의 고유링크로 이용권 구매했을 때 보상이 되면 안돼."*
+ *
+ *   `/join` 의 `?ref=` 는 **sellers.id 와 users.id 둘 다** 허용한다(존재 검증이 두 테이블 UNION).
+ *   기존 자기-귀속 차단은 `ref === userId` 문자열 비교 하나였다 — 유어샵 핀 링크(`?ref={users.id}`)는
+ *   막히지만, **사업자 유저가 자기 sellers.id 를 ref 로 쓰고 소비자 계정으로 사면** 두 id 가 다른
+ *   숫자라 통과했다. 그러면 인플 커미션(자기에게)과 사용자 보너스(자기에게)가 **둘 다** 나간다.
+ *   ①의 네임스페이스 사고와 같은 뿌리다(`sellers.linked_user_id` 만이 연결고리).
+ *
+ * @returns ref 가 이 구매자 **본인**(같은 users.id, 또는 본인에게 연결된 sellers.id)이면 true.
+ *
+ * ⚠️ **fail-closed** (조회 실패 → true = 귀속을 버린다). ①과 반대 방향인 이유: ①은 fail-closed 면
+ *   **구매 자체**가 막히지만, 여기서 버려지는 것은 **보상 귀속**뿐이다(구매는 그대로 진행).
+ *   돈이 새는 쪽(모르는데 지급)보다 안 주는 쪽이 싸다. 호출부의 존재 검증도 같은 방향이다.
+ */
+export async function isSelfReferral(
+  DB: D1Database,
+  ref: string | number | null | undefined,
+  userId: string | number | null | undefined,
+): Promise<boolean> {
+  const r = String(ref ?? '').trim()
+  const uid = String(userId ?? '').trim()
+  if (!r || !uid) return false
+  if (r === uid) return true
+  const sid = Number(r)
+  if (!Number.isFinite(sid) || sid <= 0) return false
+  try {
+    const row = await DB.prepare(
+      `SELECT 1 AS hit FROM sellers s
+        WHERE s.id = ?
+          AND ( CAST(s.linked_user_id AS TEXT) = CAST(? AS TEXT)
+             OR ( s.linked_user_id IS NULL AND s.email IS NOT NULL AND s.email != ''
+                  AND EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND LOWER(u.email) = LOWER(s.email)) ) )
+        LIMIT 1`,
+    ).bind(sid, uid, uid).first<{ hit: number }>()
+    return !!row
+  } catch {
+    return true
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // ② 주문번호 = **토스가 아는 그 주문번호**
 // ──────────────────────────────────────────────────────────────────────────────
 /**

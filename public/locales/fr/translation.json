@@ -1599,8 +1599,8 @@
       "categoryTitle": "Catégorie de Bon",
       "categoryMeal": "Bon Repas",
       "categoryMealDesc": "Restaurant·Café",
-      "categoryBeauty": "Bon Beauté",
-      "categoryBeautyDesc": "Cheveux·Ongles·Peau",
+      "categoryBeauty": "Bon Beauté & Fitness",
+      "categoryBeautyDesc": "Cheveux·Ongles·Peau·PT·Yoga",
       "categoryHealth": "Bon Santé",
       "categoryHealthDesc": "PT·Yoga·Pilates",
       "categoryPet": "Pet voucher",
@@ -1608,7 +1608,9 @@
       "categoryStay": "Stay voucher",
       "categoryStayDesc": "Pension, hotel, motel",
       "categoryActivity": "Activity voucher",
-      "categoryActivityDesc": "Escape room, bowling, class"
+      "categoryActivityDesc": "Escape room, bowling, class",
+      "categoryEtc": "Autre Bon",
+      "categoryEtcDesc": "Animaux·Activités·Cours"
     },
     "gift": {
       "title": "Envoyer un Cadeau",
@@ -1759,7 +1761,11 @@
       "mapPhotoFood": "Plats et menu",
       "mapPhotoInterior": "Intérieur",
       "openKakaoPlace": "Ouvrir dans Kakao Map ↗",
-      "mapPhotoHint": "Nous cherchons les photos Naver Map/blogs par nom de boutique. Les photos Kakao Map ne peuvent pas être récupérées automatiquement — nous ouvrons la page pour copier une URL ci-dessus."
+      "mapPhotoHint": "Nous cherchons les photos Naver Map/blogs par nom de boutique. Les photos Kakao Map ne peuvent pas être récupérées automatiquement — nous ouvrons la page pour copier une URL ci-dessus.",
+      "fromMapShort": "Depuis la carte",
+      "photoLead": "Récupérez des photos de la carte ou envoyez les vôtres. La première est la couverture.",
+      "pasteTitle": "Collez l’adresse d’une photo KakaoMap",
+      "pastePlaceholder": "Clic droit sur la photo → Copier l’adresse de l’image"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -1811,7 +1817,9 @@
       "products": "🛒 Ventes en ligne",
       "groupbuy": "🏪 Achats groupés & séjours",
       "ordersCustomers": "Commandes & clients",
-      "curator": "Ma UrShop"
+      "curator": "Ma UrShop",
+      "vouchers": "🎟️ Bons",
+      "growth": "Croissance"
     },
     "nav": {
       "products": "Produits",
@@ -1845,7 +1853,22 @@
       "returns": "Demandes de remboursement",
       "operators": "Opérateurs",
       "stores": "Mes boutiques",
-      "findInfluencers": "Trouver des influenceurs"
+      "findInfluencers": "Trouver des influenceurs",
+      "voucherManage": "Gérer les bons",
+      "profile": "Mon profil",
+      "tier": "Niveau vendeur",
+      "twoFactor": "Double authentification",
+      "appointments": "Réservations",
+      "ledger": "Registre boutique",
+      "storeDashboard": "Aperçu boutique",
+      "realtime": "Temps réel",
+      "voucherOrders": "Envois de bons",
+      "transfers": "Transfert boutique",
+      "marketing": "Marketing",
+      "adSlots": "Emplacements pub",
+      "discounts": "Remises",
+      "partners": "Partenaires",
+      "notifyGuide": "Alertes et guide"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2476,7 +2499,31 @@
       "lockedNote": "Enregistrez votre boutique pour débloquer coupons · commandes · règlement · collaborations",
       "savedPropagated": "Infos enregistrées — appliquées à {{count}} coupons",
       "saved": "Infos de la boutique enregistrées"
-    }
+    },
+    "voucherTabs": {
+      "list": "Bons",
+      "scan": "Utiliser",
+      "reviews": "Avis"
+    },
+    "pageSearch": "Rechercher",
+    "bizNoFormat": "Le numéro d’entreprise doit être au format 000-00-00000",
+    "sessionExpired": "Session expirée. Reconnectez-vous puis enregistrez.",
+    "certHint": "Déposez ici votre certificat d’entreprise",
+    "photo": {
+      "cover": "Couverture",
+      "empty": "Votre photo apparaîtra ici",
+      "pickFile": "📁 Depuis mes fichiers",
+      "addMore": "+ Ajouter une photo",
+      "uploading": "Envoi…",
+      "moveLeft": "Avancer",
+      "moveRight": "Reculer",
+      "dup": "Cette photo est déjà ajoutée"
+    },
+    "orderTabs": {
+      "orders": "Commandes"
+    },
+    "bizFromRegistration": "Prérempli depuis l’enregistrement de votre boutique",
+    "bizFromRegistrationDesc": "Pas encore enregistré comme informations d’entreprise — vérifiez puis enregistrez."
   },
   "admin": {
     "login": {
@@ -3884,7 +3931,11 @@
     "detail": "Détails",
     "itemCount": "{{count}} articles",
     "moreItems": "et {{count}} de plus",
-    "itemQtyPrice": "{{qty}} × {{price}} KRW"
+    "itemQtyPrice": "{{qty}} × {{price}} KRW",
+    "kindGroupbuy": "Pass",
+    "emptyGroupbuyTitle": "Aucun achat de pass",
+    "useInMyVouchers": "Utilisez-le dans Mes Pass",
+    "useInMyGifticons": "Utilisez-le dans Mes Bons"
   },
   "welcomeOnboarding": {
     "skip": "Passer",
@@ -4706,6 +4757,7 @@
   "wishlist": {
     "title": "Liste de souhaits",
     "subtitleCount": "{{count}} articles enregistrés",
+    "dropCount": "{{count}} baisse(s) de prix",
     "emptyTitle": "Aucun article enregistré",
     "emptyHint": "Enregistrez les produits qui vous plaisent",
     "continueShopping": "Continuer mes achats",
@@ -5253,7 +5305,9 @@
     "save": "Enregistrer",
     "ariaToggleOn": "Activer {{label}}",
     "ariaToggleOff": "Désactiver {{label}}",
-    "language": "Langue"
+    "language": "Langue",
+    "phoneRequired": "Saisissez votre téléphone — bons et alertes y sont envoyés",
+    "phoneInvalid": "Vérifiez le format du téléphone (010-0000-0000)"
   },
   "productDetail": {
     "retry": "Réessayer",
@@ -6046,7 +6100,8 @@
     "preparing": "[TODO:fr] 배송준비",
     "shipping": "[TODO:fr] 배송중",
     "delivered": "[TODO:fr] 배송완료",
-    "review": "[TODO:fr] 리뷰"
+    "review": "[TODO:fr] 리뷰",
+    "cancelledRefunded": "Annulé/Remboursé"
   },
   "groupBuy.title": "Group Buy",
   "groupBuy.bannerHeadline": "Better prices, together",
@@ -6790,5 +6845,12 @@
   "frameRails": {
     "valShop": "Votre vitrine de pass, UrShop",
     "valShopDesc": "Déjà ouverte dès votre inscription"
+  },
+  "voucherStatus": {
+    "sectionTitle": "Mes Pass",
+    "bought": "Achetés",
+    "usable": "Disponibles",
+    "used": "Utilisés",
+    "gone": "Expirés/Remboursés"
   }
 }

@@ -5494,14 +5494,24 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 233건 · 최신순 · 이 목록은 자동 생성된다._
+_총 242건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-03**
+- [2026-09-03 — 이용권 사용 방식 · 리뷰 버튼 · 갤러리 중복 (대표 신고 3건)](handoff/2026-09-03-voucher-redeem-policy-and-photos.md)
+- [이용권 관리로 가는 길이 없었다 (2026-09-03)](handoff/2026-09-03-voucher-nav-reachability.md)
+- [2026-09-03 — 이용권 관리 통합 · 사진 UX · 인기 순위 · 뒤로가기 (대표 요청 묶음)](handoff/2026-09-03-voucher-nav-and-back-nav.md)
+- [2026-09-03 · 검색 전면 개선 (대표 QA)](handoff/2026-09-03-search-engine-rebuild.md)
+- [2026-09-03 — 다크 대비 사각지대 제거 · 히어로 사진 정렬 · 위시리스트 PC](handoff/2026-09-03-dark-contrast-and-screens.md)
 **2026-09-02**
+- [🎟️ 이용권 등록 플로우 전수조사 (2026-09-02)](handoff/2026-09-02-voucher-flow-audit.md)
 - [2026-09-02 — 유어딜 요청 경로 D1 읽기 다이어트 (PR-C)](handoff/2026-09-02-urdeal-request-diet.md)
 - [2026-09-02 — 유어딜 D1 읽기 다이어트 (PR-B)](handoff/2026-09-02-urdeal-d1-diet.md)
 - [2026-09-02 — 유어애즈 D1 읽기 다이어트 (PR-D)](handoff/2026-09-02-urads-d1-diet.md)
+- [2026-09-02 — 숙소 이용권 상세 PC: B안 예약 패널 · 연박 · 달력↔지도 겹침](handoff/2026-09-02-stay-detail-pc-layout.md)
+- [2026-09-02 — 리뷰 자격: 이용권은 "사용한 사람만" (별도 브랜치)](handoff/2026-09-02-review-requires-voucher-use.md)
 - [2026-09-02 — 디자인 시스템 확정 (코레일톡 시안) · 브랜드 블루 · 티켓 부품 · 결제 완료 화면](handoff/2026-09-02-design-system-korailtalk.md)
 - [2026-09-02 — D1 읽기 다이어트 (유료 전환 전 "가장 이상적인 최적화")](handoff/2026-09-02-d1-read-diet.md)
+- [2026-09-02 — 소비자 팝업·입력창 다크/디자인 시스템 (담기 토스트 · 리뷰 작성란 · 장바구니)](handoff/2026-09-02-consumer-popups-dark.md)
 **2026-09-01**
 - [이용권 지갑 · 어드민 이모지 · design-slop 가드 구멍 (2026-09-01)](handoff/2026-09-01-wallet-admin-emoji-slop-guard.md)
 - [2026-09-01 — 교환권 탭 상단 두 층 정리 (대표 "나안")](handoff/2026-09-01-vouchers-top-chrome.md)

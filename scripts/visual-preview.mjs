@@ -122,6 +122,8 @@ const MIME = {
 function shell() {
   let html = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8')
   const seed = `<script type="application/json" id="__SSR_INITIAL_CURATOR__">${JSON.stringify(CURATOR_SEED)}</script>`
+    // MAIN_SEED 는 아래(DEALS 뒤)에서 정의된다 — shell() 은 서버가 뜬 뒤 요청 시점에 불리므로 안전.
+    + (MAIN_SEED ? `<script type="application/json" id="__SSR_INITIAL_MAIN__">${JSON.stringify(MAIN_SEED)}</script>` : '')
   html = html.replace('</head>', `${seed}\n</head>`)
   // prerender 된 #root 껍데기는 비운다 — 워커의 needsRootBlank 와 같은 효과
   html = html.replace(/<div id="root">[\s\S]*?<\/div>\s*(?=<script)/, '<div id="root"></div>\n')
@@ -280,6 +282,22 @@ const CART_SEED = (() => {
     item({ id: 701, name: '스타벅스 아메리카노 T', price: 3200, qty: 2, dealOnly: 1, seller: 33, sellerName: '유어딜' }),
   ]
   return { pickup, shipping, dealOnly }
+})()
+
+/**
+ * 🖼️ 2026-09-02 `--hero=<사진 파일>` — **PC 홈 히어로에 사진이 실린 상태**를 본다.
+ *   히어로 사진은 API 가 아니라 `__SSR_INITIAL_MAIN__` 시드에서 **동기 1회** 고른다(`pickHeroPhoto`).
+ *   그래서 `--deals` 로 API 만 채워도 히어로는 빈 색면이다 — 라이브에서 D1 이 죽어 시드가 빠졌을 때와
+ *   똑같은 그림이라, 그걸 보고 "사진이 없어졌다" 고 오진할 수 있다(2026-09-02 실제로 그 질문이 왔다).
+ *   외부 이미지 호스트는 이 하네스가 차단하므로 파일을 data: URL 로 박는다(`cfImage` 는 data: 를 그대로 둔다).
+ */
+const HERO_FILE = typeof args.hero === 'string' ? args.hero : ''
+const MAIN_SEED = (() => {
+  if (!HERO_FILE) return null
+  const buf = fs.readFileSync(HERO_FILE)
+  const mime = MIME[path.extname(HERO_FILE)] || 'image/jpeg'
+  const data = `data:${mime};base64,${buf.toString('base64')}`
+  return { success: true, data: DEALS.map((d, i) => (i === 0 ? { ...d, image_url: data } : d)) }
 })()
 
 function serve() {

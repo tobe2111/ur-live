@@ -93,7 +93,7 @@ export default function FAQPage() {
         </div>
 
         {/* 카테고리 탭 */}
-        <div className="flex gap-1.5 mb-5 overflow-x-auto no-scrollbar -mx-1 px-1">
+        <div className="flex gap-1.5 mb-5 overflow-x-auto scrollbar-hide -mx-1 px-1">
           {categories.map(category => (
             <button
               key={category}

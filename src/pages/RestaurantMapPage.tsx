@@ -31,7 +31,8 @@ import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
 import { useMapProducts } from '@/hooks/queries/useMapProducts'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
-import { panToRegionAccurate, panToPlaceQuery } from './restaurant-map/pan-to-region'
+import { panToRegionAccurate } from './restaurant-map/pan-to-region'
+import { useSearchPan, useSearchDeals } from './restaurant-map/useSearchPan'
 import GeoHelpSheet, { type GeoHelpReason } from './restaurant-map/GeoHelpSheet'
 import { detectInAppBrowser } from '@/lib/in-app-browser'
 import { checkPermission } from '@/lib/in-app-warning'
@@ -80,7 +81,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 🌍 줌아웃 서버 집계(레이어 3) — non-null 이면 지도는 개별 핀 대신 격자 버블만 렌더.
   const [aggClusters, setAggClusters] = useState<ServerCluster[] | null>(null)
   // 🔎 2026-07-12 (스케일 검색): 검색어 입력 시 서버 q 검색 결과 병합 — 근접 바운드 밖 먼 매장도 검색에 잡힘.
-  const [searchDeals, setSearchDeals] = useState<Restaurant[]>([])
+  // 🔎 서버 q검색 — 먼 매장까지 잡고, `readyFor` 로 "결과 확정" 을 알린다(지도 이동이 이를 기다린다).
+  const searchCategory = voucherType === 'all' ? 'all' : voucherType
+  const { deals: searchDeals, readyFor: searchDealsFor } = useSearchDeals<Restaurant>(search, searchCategory)
+
   const restaurants = useMemo(() => {
     if (viewportDeals.length === 0 && searchDeals.length === 0) return baseRestaurants
     const seen = new Set<number | string>(); const out: Restaurant[] = []
@@ -225,19 +229,6 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     return () => clearTimeout(handle)
   }, [userLoc, kr, search])
 
-  // 🔎 2026-07-12 (스케일 검색): 검색어 입력 시 서버 q 검색(이름/매장명 LIKE)도 병행 — 근접 바운드/뷰포트
-  //   로딩에 안 실린 먼 매장까지 지도·리스트 검색에 잡힘. 300ms 디바운스, 실패 무해(로드분 클라 필터는 그대로).
-  useEffect(() => {
-    const q = search.trim()
-    if (!q) { setSearchDeals([]); return }
-    const handle = setTimeout(() => {
-      const cat = voucherType === 'all' ? 'all' : voucherType
-      api.get('/api/group-buy/products', { params: { category: cat, q, limit: 100 } })
-        .then(r => { if (r.data?.success && Array.isArray(r.data.data)) setSearchDeals(r.data.data) })
-        .catch(() => { /* silent — 로드분 필터만으로 동작 */ })
-    }, 300)
-    return () => clearTimeout(handle)
-  }, [search, voucherType])
 
   // 🛡️ 2026-05-19: 클라이언트 geocoding loop 제거.
   //   이전: 사용자 1명당 카카오 API ~10 호출 (페이지 진입 시마다).
@@ -488,13 +479,19 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
 
-  // 🗺️ 2026-07-20 (대표 — "부산 검색하면 지도가 부산으로"): 검색 제출(Enter/최근검색 선택) 시 지역/장소명이면
-  //   지도를 그 위치로 재중심. 매칭 실패면 no-op(딜 이름/매장명 텍스트 필터는 그대로 동작).
-  const submitMapSearch = useCallback((q: string) => {
-    const query = (q || '').trim()
-    if (!query || !mapInstance.current || !window.kakao?.maps) return
-    void panToPlaceQuery(mapInstance.current, query)
-  }, [])
+  /**
+   * 🗺️ **지도는 검색 결과를 따라간다** (2026-09-03 — 대표 신고 "검색을 했을 때 무관한 지도 위치가 떠").
+   *   규칙은 `useSearchPan` 한 곳에 있다(결과 핀 우선 · 결과 0일 때만 지명 · 질의당 1회).
+   */
+  const submitMapSearch = useSearchPan({
+    search,
+    setSearch,
+    category: searchCategory,
+    results: filtered,
+    resultsReadyFor: searchDealsFor,
+    mapRef: mapInstance,
+    active: mode === 'map' && sdkLoaded,
+  })
 
   // 🌍 2026-07-08 (대표 "가장 이상적으로" — 레이어 2+3): 줌-인지형 뷰포트 로딩.
   //   · 줌아웃(level ≥ 9, 시/전국): 서버 **집계**(/products/map-clusters)만 받아 격자 버블 렌더 —
@@ -789,8 +786,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         disabled={locating}
         aria-label={nearMeMode ? t('restaurantMap.myLocationOff', { defaultValue: '내 위치 해제' }) : t('restaurantMap.myLocation', { defaultValue: '현위치로 이동' })}
         aria-pressed={nearMeMode}
-        className={`absolute right-3 z-20 w-10 h-10 flex items-center justify-center rounded-full shadow-lg border active:scale-95 transition-all ${
-          (nearMeMode || locating) ? 'bg-gray-900 text-white border-blue-600' : 'bg-white dark:bg-[#11141C] text-blue-600 dark:text-blue-400 border-gray-100 dark:border-[#2C2F35]'
+        className={`absolute right-3 z-20 w-10 h-10 flex items-center justify-center rounded-full active:scale-95 transition-all shadow-[0_2px_8px_rgba(22,24,28,0.18)] ${
+          (nearMeMode || locating) ? 'bg-brand text-white' : 'bg-white text-gray-800' // light-fixed: 지도 위(B안 — 켜짐=블루 면, 테마 무관)
         }`}
         style={{ bottom: isLgViewport ? (selected ? '150px' : '24px') : (selected ? 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 150px)' : 'calc(240px + 16px)') }}
       >

@@ -88,6 +88,13 @@ for (const f of targetFiles) {
     // 주석 줄(// 또는 * 로 시작)은 className 아님 → 스킵 (오탐 방지)
     const trimmed = line.trim()
     if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return
+    // 🗺️ 2026-09-02 `light-fixed` — **배경이 테마와 무관하게 늘 밝은 자리**(카카오 지도 타일 위 오버레이).
+    //    거기서 dark: 로 남색을 주면 파스텔 지도 위에 검은 덩어리가 된다(대표 신고 "색깔이 눈에 잘 안 들어와").
+    //    🎫 2026-09-03 추가: **PC 홈 잉크 히어로 색면**(`--home-field`)도 같은 부류다 — 라이트/다크 어느
+    //    쪽이든 늘 잉크라, 그 위 흰 알약에 `dark:` 를 달면 다크에서 검은 알약이 되어 안 보인다.
+    //    줄에 `light-fixed` 주석이 있으면 그 줄의 라이트 토큰은 의도된 고정으로 본다.
+    //    남용 금지 — **배경이 테마와 무관하게 늘 정해진 자리**(지도 타일 위 · 잉크 히어로 위)만.
+    if (line.includes('light-fixed')) return
     for (const tok of LIGHT_TOKENS) {
       tok.re.lastIndex = 0
       let m

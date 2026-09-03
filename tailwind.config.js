@@ -22,7 +22,21 @@ const MONO = INK
 export default {
   // 🛡️ 2026-05-02: 화이트 테마 페이지 사용자 토글 다크 모드 (CLAUDE.md A안).
   //   `dark` 클래스는 useTheme 스토어에서 <html> 에 적용. 시스템 기본값 = system 모드.
-  darkMode: 'class',
+  // 🌗 2026-09-02 (대표 확정 "안A · 다크에서도 패널은 흰색"): `dark:` 유틸은 **.light-island 안에서는 꺼진다**.
+  //   배경이 늘 정해진 자리(잉크 색면 위 홈 패널, 지도 타일 위 오버레이)는 테마를 따르면 안 되는데,
+  //   그동안은 그런 자리마다 `dark:` 를 손으로 빼거나 !important 로 덮었다. 이제 섬(island) 한 클래스로 끝난다.
+  //   기존 동작: `.dark\:x:is(.dark *)` → 이제 `:not(.light-island *)` 만 붙는다(섬 밖은 byte-동일).
+  //
+  // 🩸 2026-09-02 (대표 신고 "글자도 잘 안보이네 흰색 글자라서" — 이용권 등록 1단계 매장 검색 결과):
+  //   대시보드(셀러/어드민/에이전시)는 **화이트 고정**인데(CLAUDE.md "🚨 절대 규칙"), 그 안에서 렌더되는
+  //   *공용* 컴포넌트는 소비자 화면에서도 쓰이므로 `dark:` 를 정상적으로 달고 있다. html.dark 가 켜지면
+  //   그 `dark:` 가 흰 카드 위에서 그대로 살아나 **흰 글자 on 흰 배경**이 된다(`KakaoMapPicker` 의
+  //   `text-gray-900 dark:text-white` 매장명이 실제 사례 — 그 자체는 올바른 코드다).
+  //   `check-dashboard-theme.sh` 는 `src/pages/Seller*` 만 보고 `.force-light-theme` 는 **입력 글자만** 지켜
+  //   둘 다 이 클래스를 못 막았다. ⇒ 라이트 고정 래퍼를 `.light-island` 와 같은 자리에 넣어
+  //   **그 안의 모든 `dark:` 유틸을 끈다**. 개별 컴포넌트를 손대지 않고 클래스 전체가 닫힌다.
+  //   ⚠️ 도매몰은 자체 다크 팔레트를 쓰므로 넣지 않는다(`wholesale-theme`).
+  darkMode: ['variant', '&:is(.dark *):not(.light-island *):not(.seller-light-theme *):not(.admin-light-theme *):not(.agency-light-theme *):not(.force-light-theme *)'],
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",

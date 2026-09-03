@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Globe, Home, LogOut, Menu, MessageCircle, Radio, Settings, Store, X } from 'lucide-react'
+import { Globe, Home, LogOut, Menu, MessageCircle, Radio, Search, Settings, Store, X } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import api from '@/lib/api'
 import { HOSTING_HIDDEN, LIVE_COMMERCE_SUSPENDED, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
@@ -14,8 +14,11 @@ import DashboardNotificationBell from './DashboardNotificationBell'
 import StoreSwitcher from '@/components/seller/StoreSwitcher'
 import SellerKakaoLinkBanner from './SellerKakaoLinkBanner'
 import SellerSimpleNav from './seller-layout/SellerSimpleNav'
+import SellerGroupTabs from './seller/SellerGroupTabs'
+import { SELLER_TAB_GROUPS } from '@/components/seller/seller-tab-groups'
 
-import { NAV_GROUPS, modesForSellerType, type SellerType, type SellerMode } from '@/components/seller/seller-nav'
+import { NAV_GROUPS, SELLER_SEARCH_ONLY, modesForSellerType, type SellerType, type SellerMode } from '@/components/seller/seller-nav'
+import CommandPalette, { type CommandItem } from '@/components/dashboard/CommandPalette'
 
 
 
@@ -158,12 +161,51 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
 
   // 🏁 2026-06-14: 공구 중심 정렬 — 각 역할의 핵심(크리에이터=큐레이터/호스팅, 매장=공구/숙소)을 홈 바로 다음으로.
   //   두 그룹은 역할 배타적(curator hideFor 매장, groupbuy 는 매장 위주)이라 각 역할이 자기 핵심을 상단에서 봄.
-  const GROUP_ORDER = ['', 'seller.layout.curator', 'seller.layout.groupbuy', 'seller.layout.products', 'seller.layout.ordersCustomers', 'seller.layout.revenue', 'seller.layout.settings']
+  // 🎟️ 2026-09-03: 이용권 그룹을 홈 바로 다음으로 — '이용권 등록'(홈 그룹 끝)과 '이용권 관리'가
+  //   붙어 있어야 한다. 대표가 관리 페이지를 못 찾은 이유의 절반이 이 거리였다.
+  const GROUP_ORDER = ['', 'seller.layout.vouchers', 'seller.layout.curator', 'seller.layout.products', 'seller.layout.ordersCustomers', 'seller.layout.revenue', 'seller.layout.settings']
   const orderRank = (g: { labelKey?: string }) => {
     const i = GROUP_ORDER.indexOf(g.labelKey ?? '')
     return i === -1 ? GROUP_ORDER.length : i
   }
   const orderedNavGroups = [...filteredNavGroups].sort((a, b) => orderRank(a) - orderRank(b))
+
+  /**
+   * 🔎 **페이지 검색** (2026-09-03 대표 *"셀러대시보드도 어드민 대시보드처럼 페이지 검색이 필요해"*).
+   * 사이드바에 보이는 항목 + `SELLER_SEARCH_ONLY`(메뉴엔 없지만 실제로 쓰는 화면)를 함께 담는다 —
+   * 검색이 사이드바의 복사본이면 **못 찾던 페이지는 여전히 못 찾는다.**
+   */
+  const commandItems: CommandItem[] = [
+    ...orderedNavGroups.flatMap((g) => g.items.map((it) => ({
+      path: it.path,
+      label: t(it.labelKey, { defaultValue: it.labelKey }),
+      icon: it.icon,
+      group: g.labelKey ? t(g.labelKey, { defaultValue: '' }) : (g.label || ''),
+    }))),
+    // 🧭 2026-09-03 통폐합: 사이드바에서 **탭 안으로 접힌 형제 화면들**(환불·리뷰·매출 분석·위임·
+    //   운영자·후기 인증 …). 이걸 빼면 위 주석이 경고한 바로 그 일이 벌어진다 — 사이드바에서
+    //   사라진 화면이 검색에서도 사라져, 통폐합이 그대로 "못 찾는 페이지 16개"가 된다.
+    ...SELLER_TAB_GROUPS.flatMap((g) => g.tabs.slice(1).map((tab) => ({
+      path: tab.path,
+      label: `${t(g.labelKey, { defaultValue: g.fallback })} · ${t(tab.labelKey, { defaultValue: tab.fallback })}`,
+      icon: g.icon,
+      group: t(g.labelKey, { defaultValue: g.fallback }),
+    }))),
+    ...SELLER_SEARCH_ONLY.map((it) => ({
+      path: it.path,
+      label: t(it.labelKey, { defaultValue: it.fallback }),
+      icon: it.icon,
+      group: it.group,
+    })),
+  ]
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPaletteOpen((o) => !o) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const simpleMode = isStoreOnly(sellerType) // 🧭 심플 모드(SellerSimpleNav): 매장 단독 기본 3메뉴 + 전체 메뉴 접힘
   const [fullMenuOpen, setFullMenuOpen] = useState(() => { try { return localStorage.getItem('ur_seller_full_menu') === '1' } catch { return false } })
@@ -282,6 +324,18 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         </div>
       )}
 
+      {/* 🔎 페이지 검색 — 메뉴에 없는 화면까지 이름으로 바로 간다(⌘K / Ctrl+K). */}
+      <button
+        type="button"
+        onClick={() => { setPaletteOpen(true); setSidebarOpen(false) }}
+        className="mx-4 mb-1 mt-2 flex items-center gap-2 px-3 py-2 rounded-lg text-left"
+        style={{ background: 'rgba(255,255,255,0.03)' }}
+      >
+        <Search size={12} className="text-white/35 flex-shrink-0" />
+        <span className="flex-1 text-[11px] text-white/40">{t('seller.pageSearch', { defaultValue: '페이지 검색' })}</span>
+        <kbd className="text-[9px] font-bold text-white/40 bg-white/10 rounded px-1 py-0.5">⌘K</kbd>
+      </button>
+
       {/* Grouped navigation — 🧭 심플 모드(매장 단독): 홈+3메뉴 상단 고정, 나머지는 "전체 메뉴" 접힘 */}
       <nav ref={navScrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-2">
         {simpleMode && (
@@ -311,7 +365,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
                   //   active gradient 는 index.css 의 .ur-seller-nav-active 유틸. hover 는 hover:text-white.
                   className={`flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors border-l-[2.5px] ${
                     active
-                      ? 'text-white border-[#9ca3af] ur-seller-nav-active'
+                      ? 'text-white border-brand ur-seller-nav-active'
                       : highlight
                       ? 'bg-red-500/20 border-red-500'
                       : 'text-white/55 hover:text-white border-transparent'
@@ -375,7 +429,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             소비자 화면으로의 출구는 위 '공개 프로필 보기'(→ /u/{handle} 유어샵)가 담당. */}
         <button
           onClick={() => logoutSeller(navigate)}
-          className="w-full flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-red-400 hover:text-red-300 transition-colors"
+          className="w-full flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-white/55 hover:text-white transition-colors"
         >
           <LogOut size={13} strokeWidth={2} />
           {t('common.logout')}
@@ -477,6 +531,11 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         <main className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5">
           {/* 🔗 카카오 미연동 이메일 셀러 → 연동 권유 (dismissible, 1회 status 조회) */}
           <SellerKakaoLinkBanner />
+          {/* 🧭 2026-09-03 (대표 승인 "전부"): 묶음 안의 탭 줄. **여기 한 곳에서** 그린다 —
+              대상 24개 화면 중 6개가 `DashboardPageHeader` 를 안 써서, 헤더에 붙였으면 그 여섯에서
+              탭이 사라진다. 그중 `/seller/stores` 는 묶음의 착지점이라 위임·운영자로 갈 길이
+              통째로 없어졌을 것이다(오늘 고친 "페이지는 있는데 닿을 수 없다"의 재발). */}
+          <SellerGroupTabs />
           {children}
         </main>
       </div>
@@ -486,13 +545,16 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       <a
         href="http://pf.kakao.com/_AITdn/chat"
         target="_blank" rel="noopener noreferrer"
-        className="fixed bottom-24 lg:bottom-4 right-4 z-[35] flex items-center justify-center w-10 h-10 rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
+        className="fixed bottom-24 lg:bottom-4 right-4 z-[35] flex items-center justify-center w-10 h-10 rounded-full bg-brand hover:bg-[#1557C8] text-white shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
         title={t('seller.kakaoChat')}
       >
         <MessageCircle className="w-4 h-4" />
       </a>
 
       {/* 🏭 2026-06-04 (사용자 요청): 모바일 '라이브 시작' FAB 제거 — 셀러 대시보드 간소화. */}
+
+      {/* 🔎 페이지 검색 — 사이드바 항목 + 메뉴에 없는 화면까지(어드민과 같은 컴포넌트). */}
+      <CommandPalette items={commandItems} open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   )
 }

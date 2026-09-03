@@ -2,6 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cfImage } from '@/utils/cf-image'
 import { Z } from '@/constants/z-index'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { getWarmImage } from '@/utils/image-warm'
+import {
+  DETAIL_DESKTOP_QUERY, DETAIL_HERO_DESKTOP_WIDTH, DETAIL_HERO_MOBILE_WIDTH, DETAIL_THUMB_WIDTH,
+  detailHeroMobileUrl, detailPlainUrl,
+} from '@/shared/detail-hero-image'
 
 /**
  * 🖼️ 2026-08-19 (대표 시안 — 그루폰 상세): 이용권 상세 갤러리.
@@ -84,13 +90,26 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
    * ⚠️ PC(대형/썸네일)는 **아직 그대로**다 — 그쪽은 프로브 `<img>` 와 URL 을 공유해 트래픽 0 을
    *   유지하는 구조라(아래 주석), 옵션을 한쪽만 바꾸면 요청이 두 배가 된다. 별도로 다룬다.
    */
-  const HERO_RATIO = 3 / 2
-  const heroUrl = (src: string, w: number) =>
-    cfImage(src, { width: w, height: Math.round(w / HERO_RATIO), fit: 'cover', gravity: 'auto', format: 'auto' }) || src
+  /**
+   * 🧵 2026-09-02 (대표 "사진 로딩이 느리다 · 클릭하면 반응이 늦다"): URL 을 **SSOT 한 곳**에서 만든다.
+   *   라이브 워터폴에서 같은 히어로를 세 변형(preload 900 · 감시 <img> 1200 · 슬라이드 900×600 크롭)으로
+   *   받고 있었다 — 08-31 크롭 도입 때 슬라이드만 바뀌고 나머지 둘은 옛 폭에 남아서다. 함수가 하나면
+   *   갈릴 수 없다(`shared/detail-hero-image` — 워커 preload 도 같은 함수를 쓴다).
+   */
+  const heroUrl = detailHeroMobileUrl
+
+  /**
+   * 🔥 두 겹 배경 — `url(고해상), url(카드에서 이미 받은 것)`. 앞이 위다. 아래 겹은 브라우저 캐시라
+   *   클릭 즉시 그려지고, 위 겹이 도착하면 덮는다(추가 요청 0 — `utils/image-warm`).
+   */
+  const layered = (hi: string, src: string) => {
+    const lo = getWarmImage(src)
+    return lo && lo !== hi ? `url("${hi}"), url("${lo}")` : `url("${hi}")`
+  }
 
   const bg = (src: string, w: number) => ({
     backgroundColor: '#1D1F29',
-    backgroundImage: src ? `url("${cfImage(src, { width: w, format: 'auto' }) || src}")` : undefined,
+    backgroundImage: src ? layered(detailPlainUrl(src, w), src) : undefined,
     backgroundSize: 'cover' as const,
     backgroundPosition: 'center' as const,
   })
@@ -107,23 +126,31 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
    *   alba.kr 415.
    *
    * 폭(`width=`)을 **실제 렌더와 같게** 맞춘다 — 다르면 리사이저 URL 이 달라져 요청이 재사용되지
-   * 않고 진짜 추가 트래픽이 된다(대형 1200 · 썸네일 600).
+   * 않고 진짜 추가 트래픽이 된다(PC 대형 1200 · 썸네일 600 · 모바일은 3:2 크롭 900 한 장).
    */
+  const isDesktop = useMediaQuery(DETAIL_DESKTOP_QUERY)
   const probes = useMemo(() => {
-    const list: Array<{ src: string; w: number }> = []
-    if (main) list.push({ src: main, w: 1200 })
-    for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, w: 600 })
+    const list: Array<{ src: string; url: string }> = []
+    if (!main) return list
+    // 📱 모바일은 **슬라이드가 실제로 그리는 URL**(3:2 크롭) 한 장만 감시한다. 이전엔 PC 폭(1200)과
+    //    썸네일(600×2)을 폰에서도 받아 — 화면에 없는 사진 ~400KB 가 첫 사진과 대역폭을 나눴다.
+    if (!isDesktop) {
+      list.push({ src: main, url: heroUrl(main, DETAIL_HERO_MOBILE_WIDTH) })
+      return list
+    }
+    list.push({ src: main, url: detailPlainUrl(main, DETAIL_HERO_DESKTOP_WIDTH) })
+    for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, url: detailPlainUrl(t, DETAIL_THUMB_WIDTH) })
     return list
-  }, [main, images])
+  }, [main, images, isDesktop])
 
   return (
     <>
       {/* 화면에 보이지 않는다. 위 `bg()` 와 **같은 URL** 이라 브라우저가 요청을 재사용한다(추가 트래픽 0).
           실패하면 그 사진을 목록에서 빼고 다음 사진이 자동으로 그 자리에 올라온다. */}
-      {probes.map(({ src, w }) => (
+      {probes.map(({ src, url }) => (
         <img
-          key={`${src}@${w}`}
-          src={cfImage(src, { width: w, format: 'auto' }) || src}
+          key={url}
+          src={url}
           alt=""
           aria-hidden="true"
           loading="eager"
@@ -134,16 +161,22 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
 
       {/* 📱 모바일 — 기존 스와이프 갤러리(불변). */}
       <div className={`relative lg:hidden`}>
-        <div ref={galRef} onScroll={onGalScroll} className="noscroll" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '3/2', scrollSnapType: 'x mandatory' }}>
-          {(has ? images : ['']).map((src, i) => (
-            <div key={i} role="img" aria-label={alt} className="flex items-center justify-center text-6xl"
-              style={{ flex: '0 0 100%', scrollSnapAlign: 'center',
-                backgroundColor: '#1D1F29',
-                backgroundImage: src ? `url("${heroUrl(src, 900)}")` : undefined,
-                backgroundSize: 'cover', backgroundPosition: 'center' }}>
-              {!src && fallback}
-            </div>
-          ))}
+        <div ref={galRef} onScroll={onGalScroll} className="scrollbar-hide" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '3/2', scrollSnapType: 'x mandatory' }}>
+          {(has ? images : ['']).map((src, i) => {
+            // 💰 보이는 장면 ±1 만 받는다. 이전엔 5장을 한꺼번에 요청해(각 136~220KB, 콜드 2~4s)
+            //    첫 사진이 나머지 넷과 대역폭을 나눴다 — 카드(`DealCardMedia` seen 집합)와 같은 원칙.
+            const near = Math.abs(i - active) <= 1
+            const hi = src && near ? heroUrl(src, DETAIL_HERO_MOBILE_WIDTH) : ''
+            return (
+              <div key={i} role="img" aria-label={alt} className="flex items-center justify-center text-6xl"
+                style={{ flex: '0 0 100%', scrollSnapAlign: 'center',
+                  backgroundColor: '#1D1F29',
+                  backgroundImage: hi ? layered(hi, src) : undefined,
+                  backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                {!src && fallback}
+              </div>
+            )
+          })}
         </div>
         {badges}
         {multi && (
@@ -166,7 +199,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             /* 📐 2026-08-19 (대표 확정 — 상세 1안): 제목·별점이 사진 **위**로 올라갔으므로 사진이
                화면을 통째로 먹으면 안 된다. 1장짜리도 정사각(=800px 높이) 대신 16:9 로 눕힌다.
                모바일 스와이프(위 블록)는 1:1 그대로 — 세로 화면에선 정사각이 맞다. */
-            style={{ aspectRatio: multi ? '4 / 3' : '16 / 9', ...bg(main, 1200) }}
+            style={{ aspectRatio: multi ? '4 / 3' : '16 / 9', ...bg(main, DETAIL_HERO_DESKTOP_WIDTH) }}
           >
             {!has && fallback}
             {/* 배지·그라데이션은 **대형 사진 기준**으로 얹는다(그리드 전체를 덮으면 썸네일까지 어두워진다). */}
@@ -184,7 +217,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
                     onClick={() => (isLast ? setLightbox(true) : setActive(i + 1))}
                     aria-label={isLast ? `전체 사진 ${images.length}장 보기` : `사진 ${i + 2}번째 보기`}
                     className="relative w-full h-full cursor-pointer"
-                    style={bg(src, 600)}
+                    style={bg(src, DETAIL_THUMB_WIDTH)}
                   >
                     {isLast && (
                       <span className="absolute inset-0 flex flex-col items-center justify-center bg-black/55 text-white text-[13px] font-bold">

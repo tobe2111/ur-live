@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { publicSellerHandle } from '@/shared/seller-handle'
 import { Heart } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
@@ -114,8 +115,9 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
             판매자 없는 교환권에 빈 '@' 만 뜨던 것 해소 — 브랜드·판매자 둘 다 없으면 줄 생략. */}
         {Number(product.deal_only) === 1 && product.brand_name ? (
           <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-0.5 truncate">{product.brand_name}</p>
-        ) : (product.seller_name || product.seller_username) ? (
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-0.5 truncate">@{product.seller_name || product.seller_username}</p>
+        ) : (product.seller_name || publicSellerHandle(product.seller_username)) ? (
+          /* 🏷️ 2026-09-03: 이름이 없을 때의 폴백에서 자동 발급 아이디(@store_xxxx)는 쓰지 않는다. */
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-0.5 truncate">@{product.seller_name || publicSellerHandle(product.seller_username)}</p>
         ) : null}
 
         {/* Product name with keyword highlight */}

@@ -46,6 +46,7 @@ if domain auth; then
   run "라이트 입력 가시성"               env STRICT_LIGHT_INPUT=1      node scripts/check-light-input-guard.mjs
   run "내부 링크 dead-link"             env STRICT_LINKS=1            node scripts/check-internal-links.mjs
   run "라우트 경로 중복(조용히 죽는 페이지)" env STRICT_DUP_ROUTES=1       node scripts/check-duplicate-routes.mjs
+  run "라우트 그림자(정적 경로가 /:param 에 가림)"                             node scripts/check-route-shadowing.mjs
   run "도달 불가 라우트(누를 데 없는 페이지)" env STRICT_ORPHAN_ROUTES=1   node scripts/check-orphan-routes.mjs
   run "API 인증 누락"                   bash scripts/check-api-auth.sh
   run "가격기반 로그인 유도 금지"         env STRICT_LOGIN_GATE=1       node scripts/check-login-gate-by-price.mjs
@@ -108,6 +109,8 @@ if domain ui; then
   run "할인율이 사진 위에 없다(전 카드 구현)" node scripts/check-discount-not-on-photo.mjs
   run "대시보드 버튼 체계(원시 주 버튼 래칫)" node scripts/check-dashboard-button-system.mjs
   run "이미지 폴백(깨진 이미지 아이콘 노출)" node scripts/check-image-fallback.mjs
+  run "딜 카드 통일(자체 카드 신설 차단)" node scripts/check-deal-card-unify.mjs
+  run "다크 대비(밝은 표면 위 밝은 글자 — 실제 렌더)" node scripts/check-dark-contrast.mjs
   run "결제수단 판정 SSOT"                node scripts/check-payment-flow-ssot.mjs -s
   run "배송비 판정 SSOT(장바구니↔결제)"    node scripts/check-no-shipping-ssot.mjs
   run "띄어 쓴 가운뎃점 사슬(래칫)"         node scripts/check-middle-dot-chain.mjs

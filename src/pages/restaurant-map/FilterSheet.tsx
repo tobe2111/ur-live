@@ -99,7 +99,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
             <SectionTitle>{t('map.filter.region', { defaultValue: '지역' })}</SectionTitle>
             <div className="flex rounded-2xl border border-gray-100 dark:border-[#2C2F35] overflow-hidden h-[248px]">
               {/* 시/도 좌측 레일 */}
-              <div className="w-[86px] shrink-0 overflow-y-auto no-scrollbar bg-gray-50 dark:bg-[#1D1F29] border-r border-gray-100 dark:border-[#2C2F35]">
+              <div className="w-[86px] shrink-0 overflow-y-auto scrollbar-hide bg-gray-50 dark:bg-[#1D1F29] border-r border-gray-100 dark:border-[#2C2F35]">
                 <button
                   onClick={() => { setRegion(''); setDistrict('') }}
                   className={`w-full text-left px-3 py-2.5 text-[12.5px] transition-colors ${!region ? 'bg-white dark:bg-[#11141C] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
