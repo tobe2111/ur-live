@@ -45,9 +45,9 @@ const PATTERN_LABEL: Record<string, string> = {
 }
 
 const SEVERITY_STYLE: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
-  high:   { label: '높음',  cls: 'bg-red-100 text-red-700',    icon: <AlertOctagon className="w-3 h-3" /> },
-  medium: { label: '중간',  cls: 'bg-amber-100 text-amber-700', icon: <AlertTriangle className="w-3 h-3" /> },
-  low:    { label: '낮음',  cls: 'bg-blue-100 text-blue-700',   icon: <Info className="w-3 h-3" /> },
+  high:   { label: '높음',  cls: 'bg-tone-bad-bg text-tone-bad',    icon: <AlertOctagon className="w-3 h-3" /> },
+  medium: { label: '중간',  cls: 'bg-tone-warn-bg text-tone-warn', icon: <AlertTriangle className="w-3 h-3" /> },
+  low:    { label: '낮음',  cls: 'bg-tone-info-bg text-tone-info',   icon: <Info className="w-3 h-3" /> },
 }
 
 function SeverityBadge({ severity }: { severity: string }) {
@@ -153,8 +153,8 @@ export default function AdminAbusePage() {
       <div className="grid grid-cols-3 gap-3 mt-4 mb-5">
         {[
           { label: '전체', value: detections.length, cls: 'text-gray-900' },
-          { label: 'HIGH 위험', value: highCount, cls: 'text-red-600' },
-          { label: '미검토', value: unreviewedCount, cls: 'text-amber-600' },
+          { label: 'HIGH 위험', value: highCount, cls: 'text-tone-bad' },
+          { label: '미검토', value: unreviewedCount, cls: 'text-tone-warn' },
         ].map(c => (
           <div key={c.label} className="bg-white rounded-2xl border border-gray-200 p-4 text-center">
             <p className={`text-[22px] font-black ${c.cls}`}>{c.value}</p>

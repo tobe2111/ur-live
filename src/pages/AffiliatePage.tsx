@@ -118,9 +118,9 @@ export default function AffiliatePage() {
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('affiliate.howToTitle')}</p>
             <div className="space-y-3">
               {[
-                { step: '1', text: t('affiliate.howToStep1'), color: 'bg-violet-100 text-violet-700' },
-                { step: '2', text: t('affiliate.howToStep2'), color: 'bg-blue-100 text-blue-700' },
-                { step: '3', text: t('affiliate.howToStep3'), color: 'bg-green-100 text-green-700' },
+                { step: '1', text: t('affiliate.howToStep1'), color: 'bg-tone-info-bg text-tone-info' },
+                { step: '2', text: t('affiliate.howToStep2'), color: 'bg-tone-info-bg text-tone-info' },
+                { step: '3', text: t('affiliate.howToStep3'), color: 'bg-tone-ok-bg text-tone-ok' },
               ].map(s => (
                 <div key={s.step} className="flex items-center gap-3">
                   <span className={`w-7 h-7 rounded-full ${s.color} text-xs font-bold flex items-center justify-center shrink-0`}>{s.step}</span>

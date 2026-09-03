@@ -1,3 +1,4 @@
+/* status-tone-ok: KPI 아이콘 타일의 색은 '상태'가 아니라 지표 구분(라이브/셀러/매출)이다 — 흑백 중화가 의도. */
 import { useEffect, useState, useMemo } from 'react'
 import { parseUTCDate } from '@/utils/date'
 import { useTranslation } from 'react-i18next'

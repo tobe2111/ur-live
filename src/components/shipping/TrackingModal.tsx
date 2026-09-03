@@ -34,11 +34,11 @@ interface TrackingData {
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending: { label: '준비 중', color: 'text-gray-500' },
-  in_transit: { label: '배송 중', color: 'text-blue-500' },
-  out_for_delivery: { label: '배송 출발', color: 'text-orange-500' },
-  delivered: { label: '배송 완료', color: 'text-emerald-500' },
-  returned: { label: '반송', color: 'text-red-500' },
-  error: { label: '조회 실패', color: 'text-red-500' },
+  in_transit: { label: '배송 중', color: 'text-tone-info' },
+  out_for_delivery: { label: '배송 출발', color: 'text-tone-warn' },
+  delivered: { label: '배송 완료', color: 'text-tone-ok' },
+  returned: { label: '반송', color: 'text-tone-bad' },
+  error: { label: '조회 실패', color: 'text-tone-bad' },
   unknown: { label: '확인 중', color: 'text-gray-400' },
 }
 

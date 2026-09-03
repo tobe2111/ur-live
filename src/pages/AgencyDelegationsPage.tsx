@@ -45,8 +45,8 @@ interface PromoSummary {
 
 // ─── 위임 모드 배지 — §4.3 3단 (null/'self' = 미위임(셀프)) ───────────────────
 function modeBadge(mode: string | null): { label: string; cls: string } {
-  if (mode === 'approval') return { label: '승인형', cls: 'bg-blue-100 text-blue-700 border-blue-200' }
-  if (mode === 'full') return { label: '완전위임형', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' }
+  if (mode === 'approval') return { label: '승인형', cls: 'bg-tone-info-bg text-tone-info' }
+  if (mode === 'full') return { label: '완전위임형', cls: 'bg-tone-ok-bg text-tone-ok' }
   return { label: '미위임(셀프)', cls: 'bg-gray-100 text-gray-600 border-gray-200' }
 }
 

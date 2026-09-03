@@ -33,9 +33,9 @@ interface SellerStats {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    approved: { label: '승인', cls: 'bg-green-100 text-green-700' },
-    pending:  { label: '대기', cls: 'bg-amber-100 text-amber-700' },
-    rejected: { label: '거부', cls: 'bg-red-100 text-red-700' },
+    approved: { label: '승인', cls: 'bg-tone-ok-bg text-tone-ok' },
+    pending:  { label: '대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+    rejected: { label: '거부', cls: 'bg-tone-bad-bg text-tone-bad' },
     suspended:{ label: '정지', cls: 'bg-gray-100 text-gray-600' },
   }
   const s = map[status] || { label: status, cls: 'bg-gray-100 text-gray-600' }

@@ -28,10 +28,10 @@ type PayoutData = {
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  pending: { label: '집계됨 · 지급대기', cls: 'bg-amber-100 text-amber-800' },
-  approved: { label: '승인 · 송금예정', cls: 'bg-blue-100 text-blue-800' },
-  sent: { label: '지급완료', cls: 'bg-green-100 text-green-800' },
-  failed: { label: '실패', cls: 'bg-red-100 text-red-700' },
+  pending: { label: '집계됨 · 지급대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+  approved: { label: '승인 · 송금예정', cls: 'bg-tone-info-bg text-tone-info' },
+  sent: { label: '지급완료', cls: 'bg-tone-ok-bg text-tone-ok' },
+  failed: { label: '실패', cls: 'bg-tone-bad-bg text-tone-bad' },
   cancelled: { label: '취소', cls: 'bg-gray-100 text-gray-600' },
 }
 

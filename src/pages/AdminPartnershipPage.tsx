@@ -27,9 +27,9 @@ interface InquiryRow {
 
 const TYPE_LABEL: Record<string, string> = { ad: '📣 광고', partnership: '🤝 제휴', store: '🏪 매장 입점', supply: '📦 상품 공급', other: '💬 기타' }
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  new: { label: '신규', cls: 'bg-red-50 text-red-600' },
-  in_progress: { label: '진행 중', cls: 'bg-amber-50 text-amber-600' },
-  done: { label: '완료', cls: 'bg-emerald-50 text-emerald-600' },
+  new: { label: '신규', cls: 'bg-tone-bad-bg text-tone-bad' },
+  in_progress: { label: '진행 중', cls: 'bg-tone-warn-bg text-tone-warn' },
+  done: { label: '완료', cls: 'bg-tone-ok-bg text-tone-ok' },
 }
 
 export default function AdminPartnershipPage() {

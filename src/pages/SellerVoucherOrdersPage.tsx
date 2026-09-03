@@ -30,11 +30,11 @@ interface VoucherOrder {
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   pending: { label: '대기', color: 'bg-gray-100 text-gray-700', icon: <Clock className="w-3 h-3" /> },
-  processing: { label: '발송 중', color: 'bg-blue-100 text-blue-700', icon: <Clock className="w-3 h-3" /> },
-  sent: { label: '발송 완료', color: 'bg-emerald-100 text-emerald-700', icon: <CheckCircle className="w-3 h-3" /> },
-  failed: { label: '실패', color: 'bg-red-100 text-red-700', icon: <XCircle className="w-3 h-3" /> },
+  processing: { label: '발송 중', color: 'bg-tone-info-bg text-tone-info', icon: <Clock className="w-3 h-3" /> },
+  sent: { label: '발송 완료', color: 'bg-tone-ok-bg text-tone-ok', icon: <CheckCircle className="w-3 h-3" /> },
+  failed: { label: '실패', color: 'bg-tone-bad-bg text-tone-bad', icon: <XCircle className="w-3 h-3" /> },
   cancelled: { label: '취소', color: 'bg-gray-100 text-gray-500', icon: <XCircle className="w-3 h-3" /> },
-  used: { label: '사용됨', color: 'bg-purple-100 text-purple-700', icon: <CheckCircle className="w-3 h-3" /> },
+  used: { label: '사용됨', color: 'bg-tone-info-bg text-tone-info', icon: <CheckCircle className="w-3 h-3" /> },
 }
 
 export default function SellerVoucherOrdersPage() {

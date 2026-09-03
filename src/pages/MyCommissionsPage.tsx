@@ -16,9 +16,9 @@ import CollabPerformance from './my-commissions/CollabPerformance'
 import { formatKST, formatKSTDate } from '@/utils/date'
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; icon: typeof CheckCircle }> = {
-  pending: { label: '심사 대기', cls: 'bg-amber-100 text-amber-700', icon: Clock },
-  approved: { label: '송금 완료', cls: 'bg-emerald-100 text-emerald-700', icon: CheckCircle },
-  rejected: { label: '거절', cls: 'bg-red-100 text-red-700', icon: XCircle },
+  pending: { label: '심사 대기', cls: 'bg-tone-warn-bg text-tone-warn', icon: Clock },
+  approved: { label: '송금 완료', cls: 'bg-tone-ok-bg text-tone-ok', icon: CheckCircle },
+  rejected: { label: '거절', cls: 'bg-tone-bad-bg text-tone-bad', icon: XCircle },
 }
 // 🛡️ 2026-07-02: 정의 밖 status 방어 — meta undefined 렌더 크래시 방지.
 const STATUS_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300', icon: Clock } as const

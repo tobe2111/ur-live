@@ -55,10 +55,10 @@ interface SupplierRow {
 }
 
 const STATUS = {
-  pending: { label: '승인 대기', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-  approved: { label: '승인됨', cls: 'bg-green-50 text-green-700 border-green-200' },
+  pending: { label: '승인 대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+  approved: { label: '승인됨', cls: 'bg-tone-ok-bg text-tone-ok' },
   suspended: { label: '정지', cls: 'bg-gray-100 text-gray-500 border-gray-200' },
-  rejected: { label: '거부', cls: 'bg-red-50 text-red-600 border-red-200' },
+  rejected: { label: '거부', cls: 'bg-tone-bad-bg text-tone-bad' },
 }
 
 // 🗂️ 2026-07-02 (대표 — 어드민 도매 IA 통합): 제조사 관리 = 탭 컨테이너(AdminDistributorGradesPage 선례).

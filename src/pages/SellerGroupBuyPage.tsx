@@ -122,9 +122,9 @@ export default function SellerGroupBuyPage() {
         {/* 요약 카드 */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: t('seller.groupBuy.active'), value: products.filter(p => p.group_buy_status === 'active').length, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: t('seller.groupBuy.achieved'), value: products.filter(p => p.group_buy_status === 'achieved').length, color: 'text-green-600', bg: 'bg-green-50' },
-            { label: t('seller.groupBuy.totalParticipants'), value: products.reduce((s, p) => s + safeNum(p.group_buy_current), 0), color: 'text-pink-600', bg: 'bg-pink-50' },
+            { label: t('seller.groupBuy.active'), value: products.filter(p => p.group_buy_status === 'active').length, color: 'text-tone-info', bg: 'bg-tone-info-bg' },
+            { label: t('seller.groupBuy.achieved'), value: products.filter(p => p.group_buy_status === 'achieved').length, color: 'text-tone-ok', bg: 'bg-tone-ok-bg' },
+            { label: t('seller.groupBuy.totalParticipants'), value: products.reduce((s, p) => s + safeNum(p.group_buy_current), 0), color: 'text-tone-info', bg: 'bg-tone-info-bg' },
           ].map(s => (
             <div key={s.label} className="bg-white rounded-xl p-4 border border-gray-200 text-center">
               <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>

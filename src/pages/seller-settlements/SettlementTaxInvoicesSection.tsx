@@ -21,11 +21,11 @@ export interface SettlementTaxInvoice {
 }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  draft: { label: '발행대기', cls: 'bg-amber-50 text-amber-700' },
-  requested: { label: '승인대기', cls: 'bg-blue-50 text-blue-700' },
-  approved: { label: '승인완료', cls: 'bg-indigo-50 text-indigo-700' },
-  issued: { label: '발행완료', cls: 'bg-emerald-50 text-emerald-700' },
-  failed: { label: '발행실패', cls: 'bg-red-50 text-red-700' },
+  draft: { label: '발행대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+  requested: { label: '승인대기', cls: 'bg-tone-info-bg text-tone-info' },
+  approved: { label: '승인완료', cls: 'bg-tone-info-bg text-tone-info' },
+  issued: { label: '발행완료', cls: 'bg-tone-ok-bg text-tone-ok' },
+  failed: { label: '발행실패', cls: 'bg-tone-bad-bg text-tone-bad' },
   cancelled: { label: '취소', cls: 'bg-gray-100 text-gray-500' },
 }
 const APPROVABLE = new Set(['draft', 'requested', 'failed'])

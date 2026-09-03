@@ -11,6 +11,7 @@
  *   4. 최근 commission 적립 내역 (ledger)
  */
 
+/* status-tone-ok: 보상 종류(입점 보너스/매출 커미션) 배지 — 상태가 아니라 분류다. */
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -81,9 +82,9 @@ function termRemainLabel(termMonths: number, startedAt: string | null): { text: 
 }
 
 const TYPE_LABEL: Record<CommissionEntry['type'], { label: string; color: string }> = {
-  signup_bonus: { label: '입점 보너스', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  sales_commission: { label: '매출 commission', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  growth_bonus: { label: '성장 보너스', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  signup_bonus: { label: '입점 보너스', color: 'bg-tone-warn-bg text-tone-warn' },
+  sales_commission: { label: '매출 commission', color: 'bg-tone-info-bg text-tone-info' },
+  growth_bonus: { label: '성장 보너스', color: 'bg-tone-ok-bg text-tone-ok' },
 }
 
 const STATUS_LABEL: Record<CommissionEntry['status'], string> = {
@@ -211,10 +212,10 @@ export default function AgencyIntroducedStoresPage() {
                 <h2 className="text-sm font-bold text-gray-900 mb-3">영입 단계</h2>
                 <div className="grid grid-cols-4 gap-2">
                   {([
-                    { label: '영입', value: funnel.total, color: 'bg-indigo-500', textColor: 'text-indigo-600' },
-                    { label: '활성 입점', value: funnel.active, color: 'bg-blue-500', textColor: 'text-blue-600' },
-                    { label: '공구 운영', value: funnel.running, color: 'bg-amber-500', textColor: 'text-amber-600' },
-                    { label: '매출 발생', value: funnel.selling, color: 'bg-emerald-500', textColor: 'text-emerald-600' },
+                    { label: '영입', value: funnel.total, color: 'bg-indigo-500', textColor: 'text-tone-info' },
+                    { label: '활성 입점', value: funnel.active, color: 'bg-blue-500', textColor: 'text-tone-info' },
+                    { label: '공구 운영', value: funnel.running, color: 'bg-amber-500', textColor: 'text-tone-warn' },
+                    { label: '매출 발생', value: funnel.selling, color: 'bg-emerald-500', textColor: 'text-tone-ok' },
                   ] as const).map((step, i) => {
                     const pct = funnel.total > 0 ? Math.round((step.value / funnel.total) * 100) : 0
                     return (

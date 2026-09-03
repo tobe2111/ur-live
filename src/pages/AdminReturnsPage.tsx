@@ -47,13 +47,13 @@ interface ReturnRecord {
 
 const STATUS_OPTIONS: Array<{ key: string; label: string; color: string }> = [
   { key: '', label: '전체', color: 'bg-gray-100 text-gray-700' },
-  { key: 'requested', label: '요청', color: 'bg-blue-100 text-blue-700' },
-  { key: 'approved', label: '승인', color: 'bg-purple-100 text-purple-700' },
-  { key: 'shipped', label: '회수 발송', color: 'bg-indigo-100 text-indigo-700' },
-  { key: 'received', label: '수령', color: 'bg-pink-100 text-pink-700' },
-  { key: 'inspected', label: '검수 완료', color: 'bg-emerald-100 text-emerald-700' },
-  { key: 'refunded', label: '환불 완료', color: 'bg-emerald-100 text-emerald-700' },
-  { key: 'rejected', label: '반려', color: 'bg-red-100 text-red-700' },
+  { key: 'requested', label: '요청', color: 'bg-tone-info-bg text-tone-info' },
+  { key: 'approved', label: '승인', color: 'bg-tone-info-bg text-tone-info' },
+  { key: 'shipped', label: '회수 발송', color: 'bg-tone-info-bg text-tone-info' },
+  { key: 'received', label: '수령', color: 'bg-tone-info-bg text-tone-info' },
+  { key: 'inspected', label: '검수 완료', color: 'bg-tone-ok-bg text-tone-ok' },
+  { key: 'refunded', label: '환불 완료', color: 'bg-tone-ok-bg text-tone-ok' },
+  { key: 'rejected', label: '반려', color: 'bg-tone-bad-bg text-tone-bad' },
 ]
 
 export default function AdminReturnsPage() {

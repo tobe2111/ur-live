@@ -88,6 +88,22 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🚦 대시보드가 다시 상태를 회색으로 — 반려와 승인이 픽셀 단위로 같아진다',
+    file: 'tailwind.config.js',
+    find: "          ok: { DEFAULT: 'var(--tone-ok)', bg: 'var(--tone-ok-bg)' },",
+    replace: '          ok: MONO,',
+    test: 'src/tests/unit/status-tone-tokens.test.ts',
+    why: '라이브 실측: .bg-rose-50 == .bg-emerald-50 == rgb(248 247 252). 에러가 안 나서 몇 달간 안 드러났다.',
+  },
+  {
+    name: '🚦 always-light 래퍼가 상태 색을 안 되박는다 — 흰 카드 위에 다크용 밝은 초록',
+    file: 'src/index.css',
+    find: `.light-island, .force-light-theme, .admin-light-theme, .agency-light-theme {`,
+    replace: `.zz-removed-always-light {`,
+    test: 'src/tests/unit/status-tone-tokens.test.ts',
+    why: '대시보드는 화이트 고정인데 html.dark 면 :root 의 다크 토큰이 새어 들어온다(--lift 가 09-02 에 같은 사고).',
+  },
+  {
     name: '💸 딜 없는 사람에게도 소개 링크를 준다 — 첫 정산에서 0원을 본다',
     file: 'src/pages/InfluencerDiscoverPage.tsx',
     find: 'p.my_deal_pct != null ? (',

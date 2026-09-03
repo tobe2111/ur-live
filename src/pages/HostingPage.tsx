@@ -18,10 +18,10 @@ import { formatWon, formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  active: { label: '모집 중', color: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300' },
-  achieved: { label: '🎉 달성', color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300' },
+  active: { label: '모집 중', color: 'bg-tone-info-bg text-tone-info' },
+  achieved: { label: '🎉 달성', color: 'bg-tone-ok-bg text-tone-ok' },
   expired: { label: '마감', color: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
-  cancelled: { label: '취소', color: 'bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-300' },
+  cancelled: { label: '취소', color: 'bg-tone-bad-bg text-red-500' },
 }
 
 export default function HostingPage() {

@@ -241,10 +241,10 @@ export default function StoreStatsPage() {
         {/* 요약 카드 */}
         <div className="grid grid-cols-2 gap-3 mb-5">
           {[
-            { label: t('storeStats.labelUsed'), value: stats.used, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-            { label: t('storeStats.labelUnused'), value: stats.unused, icon: Ticket, color: 'text-blue-600', bg: 'bg-blue-50' },
+            { label: t('storeStats.labelUsed'), value: stats.used, icon: CheckCircle, color: 'text-tone-ok', bg: 'bg-tone-ok-bg' },
+            { label: t('storeStats.labelUnused'), value: stats.unused, icon: Ticket, color: 'text-tone-info', bg: 'bg-tone-info-bg' },
             { label: t('storeStats.labelExpired'), value: stats.expired, icon: XCircle, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-[#1D1F29]' },
-            { label: t('storeStats.labelTotal'), value: stats.total_vouchers, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+            { label: t('storeStats.labelTotal'), value: stats.total_vouchers, icon: Clock, color: 'text-tone-warn', bg: 'bg-tone-warn-bg' },
           ].map(s => (
             <div key={s.label} className="bg-white dark:bg-[#11141C] rounded-xl p-4 border border-gray-200 dark:border-[#2C2F35]">
               <div className="flex items-center justify-between mb-2">

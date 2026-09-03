@@ -249,10 +249,10 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  unused:   { label: '미사용', cls: 'bg-emerald-100 text-emerald-700' },
+  unused:   { label: '미사용', cls: 'bg-tone-ok-bg text-tone-ok' },
   used:     { label: '사용됨', cls: 'bg-gray-100 text-gray-600' },
-  expired:  { label: '만료',   cls: 'bg-red-100 text-red-700' },
-  refunded: { label: '환불',   cls: 'bg-yellow-100 text-yellow-700' },
+  expired:  { label: '만료',   cls: 'bg-tone-bad-bg text-tone-bad' },
+  refunded: { label: '환불',   cls: 'bg-tone-warn-bg text-tone-warn' },
 }
 
 const PAGE_SIZE = 50

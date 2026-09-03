@@ -6,6 +6,7 @@
  *
  *   사용자 메인 (다크 테마) 컨텍스트.
  */
+/* status-tone-ok: 퍼널 숫자(클릭·가입·구매)는 상태가 아니라 데이터다 — 단계 색은 흑백으로 충분. */
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
