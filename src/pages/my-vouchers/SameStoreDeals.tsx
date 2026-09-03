@@ -5,14 +5,13 @@
  *   데이터: 상세 페이지 otherDeals 와 동일 패턴 — 활성 목록에서 seller_id 로 클라 필터(캐시 적중).
  */
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
-import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import DealRow from '@/components/deal/DealRow'
 
 interface DealLite { id: number; name: string; price: number; image_url?: string | null; discount_rate?: number | null; current_price?: number | null }
 
 export default function SameStoreDeals({ productId, hideTitle }: { productId?: number; hideTitle?: boolean }) {
-  const navigate = useNavigate()
   const [deals, setDeals] = useState<DealLite[]>([])
 
   useEffect(() => {
@@ -39,25 +38,16 @@ export default function SameStoreDeals({ productId, hideTitle }: { productId?: n
       {!hideTitle && <p className="text-[12px] font-semibold text-gray-600 dark:text-gray-300 mb-2">이 매장의 다른 이용권도 있어요</p>}
       <div className="space-y-2">
         {deals.map((d) => (
-          <button
+          <DealRow
             key={d.id}
-            className="w-full flex items-center gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-2.5 text-left"
-            onClick={() => navigate(`/group-buy/${d.id}`)}
-          >
-            {d.image_url ? (
-              <img src={cfImage(d.image_url, { width: 96 })} alt="" width={40} height={40} loading="lazy" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" onError={(e) => cfImageOnError(e.currentTarget, d.image_url)} />
-            ) : (
-              <span className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-[#2A3344] flex-shrink-0" aria-hidden />
-            )}
-            <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-semibold text-gray-900 dark:text-white truncate">{d.name}</span>
-              <span className="block text-[12px] text-gray-500 dark:text-gray-400">
-                {Number(d.current_price ?? d.price).toLocaleString()}원
-                {d.discount_rate ? <em className="not-italic text-brand-text font-bold ml-1">{d.discount_rate}%</em> : null}
-              </span>
-            </span>
-            <span className="text-[12px] text-gray-400 flex-shrink-0" aria-hidden>›</span>
-          </button>
+            to={`/group-buy/${d.id}`}
+            imageUrl={d.image_url}
+            thumbSize="sm"
+            title={d.name}
+            price={d.current_price ?? d.price}
+            discountPct={Number(d.discount_rate) || 0}
+            trailing={<ChevronRight className="w-4 h-4 text-gray-400 shrink-0" aria-hidden />}
+          />
         ))}
       </div>
     </div>

@@ -20,9 +20,9 @@ import {
 function orderKind(category?: string | null): { label: string; sub: string; color: string; bg: string; icon: 'voucher' | 'product' } {
   if (isVoucherCategory(category)) {
     const m = category ? VOUCHER_CATEGORY_LABEL[category] : undefined
-    return { label: '교환권', sub: m?.short || '', color: 'text-amber-700', bg: 'bg-amber-50', icon: 'voucher' }
+    return { label: '교환권', sub: m?.short || '', color: 'text-tone-warn', bg: 'bg-tone-warn-bg', icon: 'voucher' }
   }
-  return { label: '상품', sub: '', color: 'text-sky-700', bg: 'bg-sky-50', icon: 'product' }
+  return { label: '상품', sub: '', color: 'text-tone-info', bg: 'bg-tone-info-bg', icon: 'product' }
 }
 
 // Module-scope t — uses i18next instance directly (for module-level constants below)
@@ -87,15 +87,15 @@ function paymentMethodLabel(m?: string | null): string {
 }
 
 const STATUS_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING:    { label: t('admin.orders.k001', { defaultValue: '주문 접수' }),  color: 'text-amber-700',   bg: 'bg-amber-50' },
-  PAID:       { label: t('admin.orders.k002', { defaultValue: '결제 완료' }),  color: 'text-blue-700',    bg: 'bg-blue-50' },
-  DONE:       { label: t('admin.orders.k002', { defaultValue: '결제 완료' }),  color: 'text-blue-700',    bg: 'bg-blue-50' },
-  PREPARING:  { label: t('admin.orders.k003', { defaultValue: '상품 준비' }),  color: 'text-indigo-700',  bg: 'bg-indigo-50' },
-  SHIPPING:   { label: t('admin.orders.k004', { defaultValue: '배송 중' }),    color: 'text-purple-700',  bg: 'bg-purple-50' },
-  DELIVERED:  { label: t('admin.orders.k005', { defaultValue: '배송 완료' }),  color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  CANCELLED:  { label: t('admin.orders.k006', { defaultValue: '취소' }),       color: 'text-red-700',     bg: 'bg-red-50' },
+  PENDING:    { label: t('admin.orders.k001', { defaultValue: '주문 접수' }),  color: 'text-tone-warn',   bg: 'bg-tone-warn-bg' },
+  PAID:       { label: t('admin.orders.k002', { defaultValue: '결제 완료' }),  color: 'text-tone-info',    bg: 'bg-tone-info-bg' },
+  DONE:       { label: t('admin.orders.k002', { defaultValue: '결제 완료' }),  color: 'text-tone-info',    bg: 'bg-tone-info-bg' },
+  PREPARING:  { label: t('admin.orders.k003', { defaultValue: '상품 준비' }),  color: 'text-tone-info',  bg: 'bg-tone-info-bg' },
+  SHIPPING:   { label: t('admin.orders.k004', { defaultValue: '배송 중' }),    color: 'text-tone-info',  bg: 'bg-tone-info-bg' },
+  DELIVERED:  { label: t('admin.orders.k005', { defaultValue: '배송 완료' }),  color: 'text-tone-ok', bg: 'bg-tone-ok-bg' },
+  CANCELLED:  { label: t('admin.orders.k006', { defaultValue: '취소' }),       color: 'text-tone-bad',     bg: 'bg-tone-bad-bg' },
   REFUNDED:   { label: t('admin.orders.k007', { defaultValue: '환불' }),       color: 'text-gray-600',    bg: 'bg-gray-100' },
-  FAILED:     { label: t('admin.orders.k008', { defaultValue: '결제 실패' }),  color: 'text-red-700',     bg: 'bg-red-50' },
+  FAILED:     { label: t('admin.orders.k008', { defaultValue: '결제 실패' }),  color: 'text-tone-bad',     bg: 'bg-tone-bad-bg' },
 }
 
 const NEXT_STATUS: Record<string, string> = {
@@ -129,9 +129,9 @@ const COURIER_OPTIONS = [
 ]
 
 const PAYMENT_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  paid:    { label: t('admin.orders.k002', { defaultValue: '결제 완료' }), color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  pending: { label: t('admin.orders.k026', { defaultValue: '결제 대기' }), color: 'text-amber-700',   bg: 'bg-amber-50' },
-  failed:  { label: t('admin.orders.k008', { defaultValue: '결제 실패' }), color: 'text-red-700',     bg: 'bg-red-50' },
+  paid:    { label: t('admin.orders.k002', { defaultValue: '결제 완료' }), color: 'text-tone-ok', bg: 'bg-tone-ok-bg' },
+  pending: { label: t('admin.orders.k026', { defaultValue: '결제 대기' }), color: 'text-tone-warn',   bg: 'bg-tone-warn-bg' },
+  failed:  { label: t('admin.orders.k008', { defaultValue: '결제 실패' }), color: 'text-tone-bad',     bg: 'bg-tone-bad-bg' },
 }
 
 function parseShippingAddress(address: string, zipcode?: string, detail?: string): { postal_code: string; address1: string; address2: string } {

@@ -454,6 +454,16 @@ jobs:
         run: node scripts/check-deal-card-unify.mjs
         continue-on-error: false
 
+      # 🚦 2026-09-03: 대시보드 상태 배지가 **전부 같은 회색**이었다. tailwind.config 가 장식 색조를
+      #   MONO 로 중화하는데(2026-06-19 대표 "아예 흑백, 기능 빨강만 유지") 상태 배지가 하필 그 색조로
+      #   상태를 구분하고 있었다 — 라이브 실측: `bg-rose-50` == `bg-emerald-50` == rgb(248 247 252).
+      #   반려와 승인이 픽셀 단위로 같았고, 에러가 안 나서 몇 달간 안 드러났다.
+      - name: Status tone ratchet (strict)
+        env:
+          STRICT_STATUS_TONE: '1'
+        run: node scripts/check-status-tone.mjs
+        continue-on-error: false
+
       # 🍎 2026-06-20: 카카오 OAuth iOS 쿠키 미영속 안티패턴 (strict). iOS Safari/WebKit 은
       #   cross-site 콜백 302 Set-Cookie 미영속 → 역할토큰 transfer 쿠키(ur_pending_*)/세션 302 의존 시
       #   iOS 만 조용히 깨짐(Chrome 정상). 역할토큰=fragment(pending-auth.ts), 세션=establish.

@@ -110,6 +110,7 @@ if domain ui; then
   run "대시보드 버튼 체계(원시 주 버튼 래칫)" node scripts/check-dashboard-button-system.mjs
   run "이미지 폴백(깨진 이미지 아이콘 노출)" node scripts/check-image-fallback.mjs
   run "딜 카드 통일(자체 카드 신설 차단)" node scripts/check-deal-card-unify.mjs
+  run "상태 색(중화되는 색조로 상태 구분 차단)" node scripts/check-status-tone.mjs
   run "다크 대비(밝은 표면 위 밝은 글자 — 실제 렌더)" node scripts/check-dark-contrast.mjs
   run "결제수단 판정 SSOT"                node scripts/check-payment-flow-ssot.mjs -s
   run "배송비 판정 SSOT(장바구니↔결제)"    node scripts/check-no-shipping-ssot.mjs

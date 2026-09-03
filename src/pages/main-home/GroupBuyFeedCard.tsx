@@ -8,10 +8,10 @@
 import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
+import { formatPrice } from '@/utils/currency'
 import { safeDate } from '@/utils/safe-date'
 import DealCardMedia from '@/components/deal/DealCardMedia'
 import WishlistHeart from '@/components/deal/WishlistHeart'
-import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import { canonicalDetailPath } from '@/shared/product-flow'
@@ -119,7 +119,7 @@ function prefetchDetailChunk() {
  *   ⚠️ 사진 위가 아니라 **본문 맨 위**다 — 2026-08-31 대표 지시("할인율이 사진 안으로 들어가면
  *      안돼")와 같은 이유로, 사진은 상품을 보여주는 자리이지 배지를 얹는 자리가 아니다.
  */
-function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags, hideWishlist = false }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode; hideWishlist?: boolean }) {
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags, hideWishlist = false, titleNode, overlayExtra, className = '' }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode; hideWishlist?: boolean; titleNode?: ReactNode; overlayExtra?: ReactNode; className?: string }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
 
@@ -202,10 +202,10 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
   })()
   const remaining = timeRemaining(p.expires_at)
   const isUrgent = remaining && (remaining.includes('시간') || remaining.includes('분'))
-  // 🎨 2026-06-18 (대표 신고 — 홈 공구 카드 그라데이션 사라짐): /group-buy 와 동일한 cardGradient 룩 복원.
-  //   대표색 단색 카드 + 사진 하단 같은색 번짐 + 대비 글자색. (GroupBuyGridCard 와 정합)
+  // 🎨 대표색은 **사진 자리 플레이스홀더**로만 쓴다(2026-08-27 흰 카드 통일).
+  //   ⚠️ 2026-09-03: 여기 남아 있던 `cardGradient(cardColor)` 는 **참조 0인 죽은 계산**이었다
+  //      — 흰 카드로 바꾸면서 소비처가 다 사라졌는데 호출만 남아 카드마다 매 렌더 돌고 있었다.
   const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
-  const grad = cardGradient(cardColor)
   /**
    * 🎨 2026-08-27 (대표 지시 — "첫번째 형태의 이용권 ui로 통일돼야 해"): 카드 룩이 **두 벌**이었다.
    *   편성 섹션(`HomeSections`)은 흰 카드(사진 아래 검은 글자), 동네 딜 피드는 모바일에서
@@ -232,7 +232,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
       //   **테두리·카드 배경·박스 그림자**를 걷어낸다. 그루폰 카드는 컨테이너가 아니라
       //   [둥근 사진] + 그 아래 맨 텍스트다 — 흰 패널이 이미 배경을 맡고 있어 박스가 한 겹 더 필요 없다.
       //   (2026-08-27: 모바일만 남아 있던 대표색 카드도 여기로 통일 — 대표 "첫번째 형태로 통일".)
-      className="block group active:scale-[0.98] flex flex-col"
+      className={`block group active:scale-[0.98] flex flex-col ${className}`}
     >
       {/* 🖼️ 2026-08-19 (대표 시안 — 그루폰): 이미지 영역을 `DealCardMedia`(SSOT)로 교체 —
           hover 좌우 화살표 캐러셀 + 도트. 홈 섹션 카드도 **같은 컴포넌트**를 써서 두 카드가
@@ -284,7 +284,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
             {/* 마감 임박 배지 (시간/분 단위면 좌상단 빨강) */}
             {isUrgent && (
               <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-brand text-[10px] font-extrabold text-white shadow-sm z-[2]">
-                ⏰ {remaining}
+                {remaining}
               </span>
             )}
             {/* 🎯 추첨 응모 배지 — 💗 2026-08-19 우상단을 찜 하트에 내주고 **좌상단**으로 이동
@@ -294,6 +294,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
             {/* 🧷 `hideWishlist` — 핀 고르기 화면은 이 자리에 '추가' 버튼이 온다(둘이 겹치면 하트가 묻힌다).
                 기본값 false 라 홈·찜·유어샵은 출력 불변. */}
             {!hideWishlist && <WishlistHeart productId={p.id} className="absolute top-2 right-2 z-[3]" />}
+            {overlayExtra}
           </>
         }
       />
@@ -305,13 +306,20 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
       <div className="pt-2">
         {flags}
         {/* [시안 B] 08-19 그루폰 5줄 위계 유지 — 배지만 사진 위로 */}
-        {(p.restaurant_name || brandName) && (
+        {(p.restaurant_name || brandName || p.onnuri_merchant) && (
           <p className={`flex items-center gap-1 text-[11px] leading-none mb-0.5 ${cSub}`}>
             <span className="truncate">{p.restaurant_name || brandName}</span>
+            {/* 🏪 온누리 가맹 — B2G 상권 사업의 약속("온누리 사용 가능 표시").
+                2026-07-05 에 이 필드가 생겼는데 **상권관(`/local/:code`)의 자체 카드에만** 그려졌다.
+                같은 딜이 홈·검색·유어샵에 뜰 땐 표시가 사라졌다 — 카드가 한 벌이 아니어서 생긴 누락.
+                이제 카드 SSOT 가 그리므로 그 딜이 어디에 뜨든 따라간다. */}
+            {p.onnuri_merchant && (
+              <span className="shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[9px] font-bold">온누리</span>
+            )}
           </p>
         )}
         <p className={`text-[13.5px] font-bold line-clamp-2 leading-tight ${cText}`}>
-          {stripStorePrefix(p.name, p.restaurant_name)}
+          {titleNode ?? stripStorePrefix(p.name, p.restaurant_name)}
         </p>
         {(addrShort || distKm != null) && (
           <p className={`flex items-center justify-between gap-2 mt-0.5 text-[11px] min-w-0 ${cSub}`}>
@@ -336,12 +344,12 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
             <p className="flex items-baseline gap-1 leading-none">
               {discount > 0 && <span className="text-[12.5px] font-extrabold text-brand">{discount}%</span>}
               {originalPrice > price && originalPrice > 0 && (
-                <span className={`text-[11.5px] line-through ${cSub}`}>{formatNumber(originalPrice)}원</span>
+                <span className={`text-[11.5px] line-through ${cSub}`}>{formatPrice(originalPrice, { dealOnly: p.deal_only })}</span>
               )}
             </p>
           )}
           <p className="flex items-baseline gap-1 mt-0.5 leading-none">
-            <span className={`text-[17px] font-extrabold tracking-tight ${cText}`}>{formatNumber(price)}원</span>
+            <span className={`text-[17px] font-extrabold tracking-tight ${cText}`}>{formatPrice(price, { dealOnly: p.deal_only })}</span>
             {p.category === 'stay_voucher' && price > 0 && (
               <span className={`text-[11px] font-semibold ${cSub}`}>/1박~</span>
             )}

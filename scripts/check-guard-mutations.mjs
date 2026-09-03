@@ -88,6 +88,30 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎫 홈 우리 동네딜이 다시 자체 미니 카드로 — 형태가 넷이 된다',
+    file: 'src/components/main/HomeDongneDealSection.tsx',
+    find: '<DealMiniCard',
+    replace: '<div data-not-a-card',
+    test: 'src/tests/unit/deal-card-shapes.test.ts',
+    why: '미니 형태를 화면이 직접 그리기 시작하면 09-02 표면 개편이 또 한쪽에만 지나간다(이번에 그래서 대표색 카드가 3개월 남았다).',
+  },
+  {
+    name: '🎫 쇼핑 카드가 다시 대표색 그라데이션 자체 카드로',
+    file: 'src/pages/browse/BrowseProductCard.tsx',
+    find: '<GroupBuyFeedCard',
+    replace: '<div data-own-card',
+    test: 'src/tests/unit/deal-card-shapes.test.ts',
+    why: '이름만 남은 어댑터가 자체 마크업을 되살리면 격자 카드가 두 벌이 된다 — 쇼핑을 재오픈하는 순간 옛 룩이 같이 살아난다.',
+  },
+  {
+    name: '🎫 교환권 카드가 다시 원 단위를 하드코딩 — 같은 상품이 화면마다 원/딜로 갈린다',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: 'formatPrice(price, { dealOnly: p.deal_only })',
+    replace: 'formatNumber(price)}원{/*',
+    test: 'src/tests/unit/deal-card-shapes.test.ts',
+    why: '유어샵 핀에 담긴 교환권이 격자에서 원, /vouchers 목록에서 딜 로 보이던 실제 결함이다.',
+  },
+  {
     name: '🎟️ 승인 대기 매장까지 세어 게이트만 열린다 — 이용권이 개인 좌석으로 등록된다',
     file: 'src/features/seller/api/seller-stores.routes.ts',
     find: "operableCount = mine.filter(x => x.status === 'active' || x.status === 'approved').length",
@@ -1026,8 +1050,10 @@ const MUTATIONS = [
   {
     name: '홈 카드가 다시 두 벌로 갈린다(피드만 대표색 카드)',
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
-    find: '      className="block group active:scale-[0.98] flex flex-col"',
-    replace: '      className="block group active:scale-[0.98] flex flex-col" style={{ backgroundColor: grad.base }}',
+    // 2026-09-03: 루트에 `className` prop 이 붙으면서 리터럴이 템플릿이 됐다.
+    //   대표색 카드로 되돌리는 주입은 이제 **사진 자리 플레이스홀더 색을 카드 배경으로 끌어올리는 것**으로 표현한다.
+    find: '      className={`block group active:scale-[0.98] flex flex-col ${className}`}',
+    replace: '      className={`block group active:scale-[0.98] flex flex-col ${className}`} style={{ backgroundColor: cardColor || undefined }}',
     test: 'src/tests/unit/home-card-unify.test.ts',
     why:
       '섹션은 흰 카드, 피드는 모바일에서 대표색 그라데이션 카드였다 — 같은 화면 위아래에 다른 ' +
@@ -7615,8 +7641,10 @@ canvas {
   },
   {
     name: '🖼️ cfImage <img> 에서 onError 가 사라진다 (깨진 이미지 아이콘 노출)',
-    file: 'src/components/search/ProductCard.tsx',
-    find: 'onError={(e) => cfImageOnError(e.currentTarget, product.image_url)}',
+    // 2026-09-03: 검색 카드가 격자 SSOT 어댑터가 되면서 자체 <img> 가 사라졌다.
+    //   같은 불변식을 **지금 실제로 <img> 를 그리는** 미니 카드에서 지킨다.
+    file: 'src/components/deal/DealMiniCard.tsx',
+    find: 'onError={(e) => cfImageOnError(e.currentTarget, imageUrl)}',
     // ⚠️ 빈 문자열로 지우지 않는다 — `replace: ''` 는 --verify-clean 이 잔재를 **구분할 수 없다**
     //    (지웠는지 코드가 옮겨갔는지 같아 보인다). 눈에 띄는 표식을 남겨 잔재를 잡히게 한다.
     replace: 'data-mutation-removed-onerror',
@@ -7726,13 +7754,12 @@ canvas {
       '대표 2026-08-31 "할인율이 사진 안으로 들어가면 안돼" 를 형제 컴포넌트에도 적용한 것이라 못으로 박는다.',
   },
   {
-    name: '🏷️ 교환권 행(VoucherRow) 할인율이 다시 썸네일 위로',
+    name: '🏷️ 교환권 행(VoucherRow)이 줄 SSOT 에 할인율을 안 넘긴다 — 화면에서 조용히 사라진다',
     file: 'src/pages/vouchers/shared.tsx',
-    find: `      {/* 🎨 본문 — 우측.`,
-    replace: `        {discountRate > 0 && (
-          <span className="absolute top-1.5 left-1.5 text-[10px] font-extrabold bg-[#d1d5db] rounded px-1 py-0.5">{discountRate}%</span>
-        )}
-      {/* 🎨 본문 — 우측.`,
+    // 2026-09-03: 행 마크업이 `DealRow`(SSOT)로 옮겨져 옛 앵커(본문 주석)가 사라졌다.
+    //   이제 위험한 것은 "배지를 사진 위로 되돌리는 것"이 아니라 **위임했는데 값을 안 넘기는 것**이다.
+    find: 'discountPct={discountRate}',
+    replace: 'discountPct={0}',
     test: 'src/tests/unit/voucher-card-discount-once.test.ts',
     why:
       '모바일 목록 행도 같은 클래스였다 — 게다가 회색 배지라 눈에 띄지도 않으면서 썸네일만 가렸다. ' +

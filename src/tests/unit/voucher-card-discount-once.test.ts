@@ -17,6 +17,12 @@
  *   ② `VoucherRow` — 썸네일 위 오버레이가 아니다.
  *   ③ 두 컴포넌트 모두 **본문 가격 줄에 정확히 한 번** 할인율을 렌더한다.
  *
+ * ■ 2026-09-03 — `VoucherRow` 는 줄 SSOT(`DealRow`)에 위임한다
+ *   할인율 마크업이 `shared.tsx` 에서 `DealRow` 로 **옮겨갔다**(그게 통일의 목적이다).
+ *   테스트가 마크업의 *위치*를 고정하고 있었으므로 함께 옮겨 준다 — 규칙(사진 밖 · 정확히 한 번 ·
+ *   브랜드 강조)은 그대로이고, 그것을 **누가 그리는지**만 달라졌다.
+ *   ⚠️ 이 레포가 반복해 밟은 함정이다: 가드는 파일이 아니라 **규칙**을 고정해야 한다.
+ *
  * ⚠️ 이 테스트가 **못 잡는 것**: CSS 로 위치를 다시 옮기는 경우 · 다른 카드 컴포넌트
  *    (동네딜 카드는 `deal-card-price-block.test.ts` 가 본다) · 실제 렌더 결과.
  */
@@ -25,6 +31,20 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const SRC = readFileSync(resolve(__dirname, '../../pages/vouchers/shared.tsx'), 'utf-8')
+const ROW_SSOT = readFileSync(resolve(__dirname, '../../components/deal/DealRow.tsx'), 'utf-8')
+
+/**
+ * 할인율을 **직접 그리는 소스**를 돌려준다.
+ * `VoucherRow` 처럼 SSOT 에 넘기기만 하는 컴포넌트는 그 SSOT 를 대신 본다
+ * (넘기는 값이 있는지는 아래에서 따로 확인한다).
+ */
+function discountSource(name: string): { body: string; token: string } {
+  const body = componentBody(name)
+  if (/discountPct=\{discountRate\}/.test(body)) {
+    return { body: ROW_SSOT, token: '{discountPct}%' }
+  }
+  return { body, token: '{discountRate}%' }
+}
 
 /** `export const <Name> = memo(...)` 블록만 잘라낸다 — 다음 `export const` 직전까지. */
 function componentBody(name: string): string {
@@ -34,34 +54,37 @@ function componentBody(name: string): string {
   return SRC.slice(start, next === -1 ? SRC.length : next)
 }
 
-/** 사진/썸네일 위에 얹힌 할인율 = absolute 로 자리잡은 요소 안의 `{discountRate}%`. */
-function overlayDiscounts(body: string): string[] {
-  return body
-    .split('\n')
-    .filter((l) => l.includes('{discountRate}%') && /\babsolute\b/.test(l))
+/** 사진/썸네일 위에 얹힌 할인율 = absolute 로 자리잡은 요소 안의 할인율. */
+function overlayDiscounts(body: string, token: string): string[] {
+  return body.split('\n').filter((l) => l.includes(token) && /\babsolute\b/.test(l))
 }
 
-function discountRenders(body: string): number {
-  return (body.match(/\{discountRate\}%/g) || []).length
+function discountRenders(body: string, token: string): number {
+  return body.split(token).length - 1
 }
 
 describe('교환권 할인율은 한 화면에 한 번, 사진 밖에', () => {
   for (const name of ['VoucherCard', 'VoucherRow']) {
     it(`${name} — 할인율을 사진 위에 얹지 않는다`, () => {
-      expect(overlayDiscounts(componentBody(name))).toEqual([])
+      const { body, token } = discountSource(name)
+      expect(overlayDiscounts(body, token)).toEqual([])
     })
 
     it(`${name} — 할인율을 정확히 한 번 렌더한다`, () => {
-      expect(discountRenders(componentBody(name))).toBe(1)
+      const { body, token } = discountSource(name)
+      expect(discountRenders(body, token)).toBe(1)
     })
   }
 
-  it('할인율은 브랜드 로즈로 강조된다', () => {
+  it('VoucherRow 는 줄 SSOT 에 할인율을 실제로 넘긴다 — 위임했는데 값이 안 가면 화면에서 사라진다', () => {
+    expect(componentBody('VoucherRow')).toMatch(/discountPct=\{discountRate\}/)
+  })
+
+  it('할인율은 브랜드 색으로 강조된다', () => {
     for (const name of ['VoucherCard', 'VoucherRow']) {
-      const line = componentBody(name)
-        .split('\n')
-        .find((l) => l.includes('{discountRate}%'))!
-      expect(line, `${name} 할인율이 로즈가 아니다`).toMatch(/text-brand/)
+      const { body, token } = discountSource(name)
+      const line = body.split('\n').find((l) => l.includes(token))!
+      expect(line, `${name} 할인율이 브랜드 강조가 아니다`).toMatch(/text-brand/)
     }
   })
 })
