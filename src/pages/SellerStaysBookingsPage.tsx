@@ -270,7 +270,7 @@ export default function SellerStaysBookingsPage() {
                           <div className="flex gap-1 flex-wrap">
                             {/* 🛡️ 2026-05-18: voucher 모드 — 사용 처리 별도 버튼 (확정 상태에서만). */}
                             {b.sale_mode === 'voucher' && b.status === 'confirmed' && !b.voucher_used_at && (
-                              <button onClick={() => useVoucher(b)} className="px-2 py-1 bg-brand text-white text-[10px] font-bold rounded hover:bg-brand-dark" title="voucher 사용 처리 (날짜 협의 후)">
+                              <button onClick={() => useVoucher(b)} className="ur-btn ur-btn-sm ur-btn-primary" title="voucher 사용 처리 (날짜 협의 후)">
                                 🎫 사용 처리
                               </button>
                             )}

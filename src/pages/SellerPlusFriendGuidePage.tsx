@@ -93,7 +93,7 @@ export default function SellerPlusFriendGuidePage() {
             <button
               onClick={() => { markAsAdded(); window.location.href = '/seller' }}
               disabled={confirmed}
-              className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl font-bold text-sm"
+              className="ur-btn ur-btn-lg ur-btn-primary flex-1"
             >
               {confirmed ? '✓ 완료' : '✓ 추가 완료'}
             </button>

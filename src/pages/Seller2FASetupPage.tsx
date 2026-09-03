@@ -128,7 +128,7 @@ export default function Seller2FASetupPage() {
             <button
               onClick={startSetup}
               disabled={submitting}
-              className="px-6 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-sm font-bold inline-flex items-center gap-2"
+              className="ur-btn ur-btn-lg ur-btn-primary"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
               설정 시작
@@ -177,7 +177,7 @@ export default function Seller2FASetupPage() {
               <button
                 onClick={verifyCode}
                 disabled={submitting || code.length !== 6}
-                className="w-full mt-3 px-6 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2"
+                className="ur-btn ur-btn-lg ur-btn-primary w-full mt-3"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                 활성화

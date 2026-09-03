@@ -151,7 +151,7 @@ export default function SellerProspectsPage() {
             <h1 className="text-lg font-bold text-gray-900">🤝 매장 영입 관리</h1>
             <button
               onClick={() => setShowAdd(true)}
-              className="px-3 py-1.5 bg-brand hover:bg-brand-dark text-white text-sm font-bold rounded-lg"
+              className="ur-btn ur-btn-sm ur-btn-primary"
             >
               + 매장 사전 등록
             </button>
@@ -318,7 +318,7 @@ export default function SellerProspectsPage() {
                 </button>
                 <button
                   onClick={submit}
-                  className="flex-1 py-2.5 bg-brand hover:bg-brand-dark text-white text-sm font-bold rounded-lg"
+                  className="ur-btn ur-btn-md ur-btn-primary flex-1"
                 >
                   등록
                 </button>

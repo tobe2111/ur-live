@@ -111,7 +111,7 @@ export default function SellerGroupBuyPage() {
           actions={
             <button
               onClick={() => navigate('/seller/meal-voucher/new')}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-brand-dark active:scale-[0.98] transition"
+              className="ur-btn ur-btn-md ur-btn-primary"
             >
               <Plus className="h-4 w-4" />
               {t('seller.groupBuy.registerVoucher', { defaultValue: '이용권 등록' })}
@@ -204,7 +204,7 @@ export default function SellerGroupBuyPage() {
             <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-900 font-bold mb-1">{t('seller.groupBuy.noVouchers')}</p>
             <p className="text-sm text-gray-500 mb-4">{t('seller.groupBuy.noVouchersDesc')}</p>
-            <button onClick={() => navigate('/seller/meal-voucher/new')} className="px-5 py-2.5 bg-brand text-white rounded-xl text-sm font-bold">{t('seller.groupBuy.registerVoucher')}</button>
+            <button onClick={() => navigate('/seller/meal-voucher/new')} className="ur-btn ur-btn-md ur-btn-primary">{t('seller.groupBuy.registerVoucher')}</button>
           </div>
         ) : (
           <div className="space-y-3">

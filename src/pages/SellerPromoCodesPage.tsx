@@ -253,7 +253,7 @@ export default function SellerPromoCodesPage() {
             </div>
             <div className="flex gap-2">
               <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold">취소</button>
-              <button onClick={createCode} disabled={submitting} className="flex-1 py-2.5 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg text-sm font-bold">
+              <button onClick={createCode} disabled={submitting} className="ur-btn ur-btn-md ur-btn-primary flex-1">
                 {submitting ? '발급 중…' : '발급'}
               </button>
             </div>

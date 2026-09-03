@@ -91,7 +91,7 @@ export default function SellerVoucherOrdersPage() {
             <Gift className="w-12 h-12 text-gray-200 mx-auto mb-3" />
             <p className="text-sm text-gray-500 mb-4">아직 발송한 교환권이 없습니다</p>
             <button onClick={() => navigate('/seller/settlements')}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand text-white text-sm font-bold rounded-lg hover:bg-brand-dark">
+              className="ur-btn ur-btn-md ur-btn-primary">
               🎁 정산 페이지에서 교환권 받기 →
             </button>
           </div>

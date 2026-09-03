@@ -172,7 +172,7 @@ function SlotCard({ slot, labels, onBid }: { slot: AdSlot; labels: SlotLabels; o
             type="button"
             onClick={() => onBid(slot)}
             disabled={slot.is_expired}
-            className="px-3 py-1.5 rounded-xl bg-brand text-white text-[12px] font-semibold disabled:opacity-40 hover:bg-brand-dark transition-colors"
+            className="ur-btn ur-btn-sm ur-btn-primary"
           >
             {slot.is_expired ? labels.closed : bidding ? labels.changeBid : labels.placeBid}
           </button>
@@ -289,7 +289,7 @@ function BidModal({
             type="button"
             onClick={submit}
             disabled={loading}
-            className="flex-1 py-3 rounded-xl bg-brand text-white text-[13px] font-semibold disabled:opacity-50 hover:bg-brand-dark transition-colors"
+            className="ur-btn ur-btn-lg ur-btn-primary flex-1"
           >
             {loading ? labels.submitting : labels.submitBtn}
           </button>

@@ -309,7 +309,7 @@ export default function SellerMealVoucherNewPage() {
               </button>
               <button
                 onClick={() => navigate('/seller/influencers')}
-                className="flex-[2] py-3 bg-brand text-white rounded-xl font-bold text-sm"
+                className="ur-btn ur-btn-lg ur-btn-primary flex-[2]"
               >
                 {t('seller.mealVoucher.findInfluencers', { defaultValue: '소개 파트너 찾기 →' })}
               </button>
@@ -430,7 +430,7 @@ export default function SellerMealVoucherNewPage() {
               <button
                 type="button"
                 onClick={() => { if (validateStep(step)) setStep(s => Math.min(2, s + 1)) }}
-                className="flex-[2] py-3 bg-brand text-white rounded-xl font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-1"
+                className="ur-btn ur-btn-lg ur-btn-primary flex-[2]"
               >
                 {t('common.next', { defaultValue: '다음' })} <ChevronRight className="w-4 h-4" />
               </button>
@@ -438,7 +438,7 @@ export default function SellerMealVoucherNewPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-[2] py-3 bg-brand text-white rounded-xl font-bold text-sm disabled:opacity-50 active:scale-[0.98]"
+                className="ur-btn ur-btn-lg ur-btn-primary flex-[2]"
               >
                 {submitting ? t('seller.registering') : t('seller.mealVoucher.registerSubmit')}
               </button>
