@@ -5499,6 +5499,7 @@ _총 239건 · 최신순 · 이 목록은 자동 생성된다._
 **2026-09-03**
 - [2026-09-03 — 이용권 사용 방식 · 리뷰 버튼 · 갤러리 중복 (대표 신고 3건)](handoff/2026-09-03-voucher-redeem-policy-and-photos.md)
 - [2026-09-03 · 리뷰 버튼 hard-disable 제거 + 자격 사전 안내](handoff/2026-09-03-review-gate-clicktime.md)
+- [2026-09-03 · 검색 전면 개선 (대표 QA)](handoff/2026-09-03-search-engine-rebuild.md)
 - [이용권 관리로 가는 길이 없었다 (2026-09-03)](handoff/2026-09-03-voucher-nav-reachability.md)
 - [2026-09-03 — 다크 대비 사각지대 제거 · 히어로 사진 정렬 · 위시리스트 PC](handoff/2026-09-03-dark-contrast-and-screens.md)
 **2026-09-02**
