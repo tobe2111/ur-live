@@ -32,6 +32,7 @@
  */
 import { canStartBudgetedItem, budgetedTimeoutMs } from './collect-budget'
 import { sliceClause, type EnrichSlice } from './enrich-slice'
+import { dueForRemeasure } from './influencer-remeasure-window'
 import { extractPubDates, countRecentPosts, deriveNaverRssSignals } from './influencer-parse'
 import { extractContacts, pickBusinessEmail, type FetchBudget } from './influencer-discovery'
 import { classifyCategory, classifyCategoryByHits, reconcileCategory, NON_CATEGORIES } from './influencer-classify'
@@ -55,7 +56,7 @@ type TistoryRow = {
   id: number; handle: string | null; url: string | null; name: string | null
   email: string | null; instagram: string | null; links: string | null; description: string | null
   category: string | null; subscriber_count: number | null; is_brand: number | null
-  consented_at: string | null; source: string | null
+  consented_at: string | null; source: string | null; perf_checked_at: string | null
 }
 
 /**
@@ -81,7 +82,7 @@ const HOME_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWeb
 const TISTORY_CONCURRENCY = 3
 
 export async function enrichTistoryActivity(
-  DB: D1Database, budget: FetchBudget, max: number, slice?: EnrichSlice | null,
+  DB: D1Database, budget: FetchBudget, max: number, slice?: EnrichSlice | null, env?: unknown,
 ): Promise<TistoryEnrichDiag> {
   const diag: TistoryEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0 }
   if (max <= 0 || budget.left <= 1) return diag
@@ -89,11 +90,11 @@ export async function enrichTistoryActivity(
   try {
     const sl = sliceClause(slice)
     const res = await DB.prepare(
-      `SELECT id, handle, url, name, email, instagram, links, description, category, subscriber_count, is_brand, consented_at, source
+      `SELECT id, handle, url, name, email, instagram, links, description, category, subscriber_count, is_brand, consented_at, source, perf_checked_at
        FROM ad_influencer_leads WHERE account_id = 0 AND platform = 'tistory'${sl.sql}
        ORDER BY perf_checked_at ASC LIMIT ?`,
     ).bind(...sl.binds, Math.min(max, 30)).all<TistoryRow>()
-    rows = res?.results || []
+    rows = dueForRemeasure(res?.results || [], env)   // 🔁 최근에 잰 것은 건너뛴다(근거: `influencer-remeasure-window.ts`)
   } catch (err) {
     // 삼키면 `selected:0` 이 '큐가 빔'과 구분되지 않는다 — 네이버 레인이 그 무음으로 원인 규명을 막았던 그 자리.
     diag.query_error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}`
