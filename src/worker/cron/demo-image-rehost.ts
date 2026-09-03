@@ -124,10 +124,19 @@ export async function rehostDemoImagesBulk(env: Env, perRun = 8): Promise<{ reho
  */
 export async function repairGalleryCoverDrift(env: Env, perRun = 40): Promise<{ scanned: number; fixed: number; remaining: number }> {
   const DB = env.DB
-  // 커버가 우리 저장소(`/api/media` 또는 media.ur-team.com)이고 갤러리에 외부 주소가 남은 행.
+  // 커버가 우리 저장소(`/api/media` 또는 media.ur-team.com)인데 **갤러리 첫 칸이 외부 주소**인 행.
+  //
+  // 🩸 2026-09-03 라이브 실측 — 첫 판은 조건이 `images LIKE '%http%'` 였고 **수렴하지 않는다**:
+  //   갤러리는 3~5장이라 첫 칸을 고쳐도 뒤쪽 사진이 외부 주소로 남아 그 행이 **후보 집합에 계속
+  //   머문다**. `ORDER BY id LIMIT 40` 창의 앞자리를 그렇게 고쳐진 행들이 하나씩 채워 가고,
+  //   40개를 넘기는 순간 **창이 통째로 no-op 이 되어 뒤쪽 행은 영영 안 보인다**
+  //   (실측: 후보 219 중 진짜 드리프트 205, 이미 붙박이 14 — 그중 3개가 이미 창 안에 있었다).
+  //   에러도 경고도 없이 `galleryFixed=0` 만 찍히므로 "할 일이 없다"와 구분되지 않는다.
+  //   ⇒ **고칠 행만** 고른다. 그러면 남은 수가 곧 진짜 남은 드리프트이고 0 으로 수렴한다.
   const WHERE = `COALESCE(is_active,1)=1
         AND (image_url LIKE '/api/media/%' OR image_url LIKE '%media.ur-team.com/%')
-        AND images LIKE '%http%'`
+        AND json_valid(images)
+        AND json_extract(images, '$[0]') LIKE 'http%'`
   const { results } = await DB.prepare(
     `SELECT id, image_url, images FROM products WHERE ${WHERE} ORDER BY id LIMIT ?`
   ).bind(Math.max(1, Math.min(200, perRun))).all<{ id: number; image_url: string | null; images: string | null }>()
@@ -136,9 +145,11 @@ export async function repairGalleryCoverDrift(env: Env, perRun = 40): Promise<{ 
   for (const row of results || []) {
     const next = repairGalleryCover(row.images, row.image_url)
     if (!next) continue
-    await DB.prepare(`UPDATE products SET images = ?, updated_at = datetime('now') WHERE id = ?`)
-      .bind(next, row.id).run().catch(() => {})
-    fixed++
+    // 🔎 시도가 아니라 **실제로 쓴 것**만 센다 — 첫 판은 시도를 세는 바람에 하트비트가
+    //   `galleryFixed=40` 이라고 말해도 그게 40건 성공을 뜻하는지 알 수 없었다.
+    const res = await DB.prepare(`UPDATE products SET images = ?, updated_at = datetime('now') WHERE id = ?`)
+      .bind(next, row.id).run().catch(() => null)
+    if ((res?.meta?.changes || 0) > 0) fixed++
   }
   const rem = await DB.prepare(`SELECT COUNT(*) AS n FROM products WHERE ${WHERE}`)
     .first<{ n: number }>().catch(() => ({ n: 0 }))
