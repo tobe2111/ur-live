@@ -61,4 +61,4 @@
 
 - 낡은 주석 2건: `group-buy-voucher.routes.ts` "self_free 현행 기본", `SellerVoucherScanPage` "4자리".
 
-**Notion**: 머지 후 기록.
+**Notion**: 개발 업데이트 로그 기록 완료(2026-09-03).
