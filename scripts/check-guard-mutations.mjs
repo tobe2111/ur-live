@@ -8101,6 +8101,37 @@ canvas {
       '"다녀오라" 는 문구를 본다. 원인을 알 길이 없는 문구라 문의조차 못 한다 — 503 으로 갈라야 한다.',
   },
   {
+    name: '📝 리뷰 버튼이 다시 글자 수로 hard-disable (잠기면 아무도 이유를 모른다)',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: '          disabled={submitting}',
+    replace: '          disabled={content.length < MIN_REVIEW_LEN || submitting}',
+    test: 'src/tests/unit/review-gate-clicktime.test.tsx',
+    why:
+      '대표 신고가 정확히 이 상태였다 — 10자 이상인데 흐릿한 비활성. 클라 state 에 버튼을 묶으면 ' +
+      'IME·재렌더·캐시와 desync 되는 순간 버튼이 잠기고, 잠긴 버튼은 이유를 말할 방법이 없다. ' +
+      '2026-06-26 TossPaymentWidget 이 같은 사고를 내고 클릭-시점 검증으로 옮겼다.',
+  },
+  {
+    name: '🎫 리뷰 자격을 미리 알리지 않고 다 쓴 뒤에 거절한다',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: "              const r = await api.get(`/api/reviews/product/${productId}/eligibility`)",
+    replace: '              const r = { data: { data: { ok: true } } }',
+    test: 'src/tests/unit/review-gate-clicktime.test.tsx',
+    why:
+      '대표 지시 — "이용권 사용해야 리뷰 쓸 수 있게 해야지". 미리 안 물으면 사용자는 별점 고르고 ' +
+      '사진 붙이고 열 줄 쓴 다음에야 안 된다는 걸 안다. 그 헛수고가 이 조회 한 번의 값이다.',
+  },
+  {
+    name: '📝 서버 거절 사유가 토스트로만 간다 (화면 맨 위 — 리뷰 폼은 맨 아래)',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: '                setHint(msg)',
+    replace: '                void msg',
+    test: 'src/tests/unit/review-gate-clicktime.test.tsx',
+    why:
+      '토스트는 `fixed top-4` 다. 리뷰 폼은 페이지 맨 아래이고 모바일은 키보드까지 올라와 있어 ' +
+      '사용자에겐 "아무 일도 안 일어났다" 로 보인다 — 대표가 "안 눌러진다" 고 읽은 것이 이것일 수 있다.',
+  },
+  {
     name: '🎟️ 이용권 셀프 사용 기본값이 다시 self_free 로 (설정 안 한 매장 전부 무방비)',
     file: 'src/worker/utils/redemption-settings.ts',
     find: "export const DEFAULT_REDEMPTION_MODE: RedemptionMode = 'store_code'",
