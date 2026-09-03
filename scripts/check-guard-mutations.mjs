@@ -7131,6 +7131,28 @@ canvas {
       '포함분 비율이 읽기 250억 : 쓰기 5,000만 = 500배라, 쓰기가 먼저 요금이 된다.',
   },
   {
+    name: '🧱 유어샵 핀 목록이 도매 원본 제외를 잃는다(카드는 뜨는데 클릭하면 404)',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: "AND ${consumerVisibleProductSql('p')}\n         ORDER BY pp.position ASC",
+    replace: "AND 1=1\n         ORDER BY pp.position ASC",
+    test: 'src/tests/unit/qa-round1-fixes-2026-09-03.test.ts',
+    why:
+      '2026-09-03 QA 실측: /u/jongmun 의 핀이 도매 원본(id 6)이라 소비자 API 어디에도 없는데 ' +
+      '카드는 이름·가격·별점까지 그려졌다(핀 행이 products 를 JOIN 하니까). 클릭하면 404. ' +
+      '같은 파일의 픽커 쿼리엔 이 조건이 있고 표시 쿼리엔 없던 것이 사고의 모양이다.',
+  },
+  {
+    name: '🚦 /vouchers/:id 가 카드 결제 상품을 딜 결제 화면으로 그린다',
+    file: 'src/pages/VoucherDetailPage.tsx',
+    find: "if (flow !== 'voucher_deal') {",
+    replace: 'if (false) {',
+    test: 'src/tests/unit/qa-round1-fixes-2026-09-03.test.ts',
+    why:
+      '2026-09-03 QA 실측: 카드로 사는 숙박 이용권(2887)이 이 URL 에선 "209,000 딜 · 딜로 교환하기 · ' +
+      '환불 불가" 로 떴다 — 결제 수단과 가격 단위가 통째로 틀린 화면이다. 반대 방향(ProductDetailPage)은 ' +
+      '이미 막혀 있었다.',
+  },
+  {
     name: '✍️ 쓰기 예산이 본진 몫을 안 뺀 값으로 돌아간다(계정 합계가 포함분에 붙는다)',
     file: 'src/worker-ads/read-budget.ts',
     find: 'export const DEFAULT_DAILY_WRITE_BUDGET = 1_200_000',
