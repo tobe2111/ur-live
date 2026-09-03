@@ -73,7 +73,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       return q && ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'].includes(q) ? (q as MapVoucherType) : 'all'
     } catch { return 'all' }
   })
-  const [sortBy, setSortBy] = useState<SortBy>('discount')
+  // 🩸 2026-09-03 (하네스 실측): 위치가 캐시된 사용자는 마운트 직후 `useNearMeAuto` 가 '가까운 순'으로
+  //   자동 전환하는데, 정렬이 서버 캐시키에 들어간 지금은 그 전환이 **두 번째 요청**을 만든다.
+  //   어차피 갈 자리면 처음부터 거기서 시작한다(칩이 깜빡이던 것도 함께 사라진다).
+  const [sortBy, setSortBy] = useState<SortBy>(() => (userLoc ? 'distance' : 'discount'))
   // 🛍️ 2026-06-20 (필터 팝업 A안): 거리반경(km, 0=전체) + 가격대.
   const [radiusKm, setRadiusKm] = useState<number>(0)
   const [priceRange, setPriceRange] = useState<PriceRange>('all')

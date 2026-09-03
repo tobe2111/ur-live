@@ -57,6 +57,14 @@ describe('정렬은 서버가 한다', () => {
     expect(win).toMatch(/sortBy === 'distance' \? '' : sortBy/)
   })
 
+  it('🩸 near 와 sort 를 같이 보내지 않는다 — 서버에선 near 가 sort 를 이긴다', () => {
+    // group-buy-public.routes: `baseOrder = hasNear ? 거리 : sort`.
+    // 둘 다 보내면 '할인율순'을 골라도 서버는 가까운 50개를 주고, 화면은 그 안에서만 정렬한다(조용히 틀림).
+    expect(win).toMatch(/const near = sortBy === 'distance' \? userLoc : null/)
+    expect(win).toMatch(/useMapProducts\(category, near, \{ sort \}\)/)
+    expect(route).toMatch(/const baseOrder = hasNear/)   // 그 우선순위가 유지되는 한 이 규칙이 필요하다
+  })
+
   it('클라 SortBy 4종이 서버 화이트리스트와 맞물린다', () => {
     // SortBy = distance(near) | discount | price | rating → 뒤 셋은 서버 키와 이름이 같아야 한다.
     const wl = route.slice(route.indexOf('ALLOWED_GB_SORT'), route.indexOf('const sortParam'))

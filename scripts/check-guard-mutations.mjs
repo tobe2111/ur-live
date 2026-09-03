@@ -88,6 +88,14 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🩸 near 와 sort 를 같이 보낸다 — 서버가 sort 를 무시해 정렬이 조용히 틀린다',
+    file: 'src/pages/restaurant-map/useFeedWindow.ts',
+    find: "const near = sortBy === 'distance' ? userLoc : null",
+    replace: 'const near = userLoc',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '서버는 baseOrder = hasNear ? 거리 : sort — near 가 이긴다. 전량 로딩을 걷어낸 뒤로는 이게 곧 틀린 목록이다.',
+  },
+  {
     name: '🚦 홈 피드 다음 페이지가 정렬 없이 나간다 — 스크롤할수록 순서가 섞인다',
     file: 'src/pages/main-home/GroupBuyFeed.tsx',
     find: '&page=${nextPage}&limit=50${feedParams}',

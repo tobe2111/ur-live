@@ -24,7 +24,16 @@ export function useFeedWindow(params: {
   const { category, userLoc, sortBy, needsAll } = params
   // 거리순 = near 가 담당(서버 거리 랭킹). 나머지는 이름 그대로 서버 sort 화이트리스트와 1:1.
   const sort = sortBy === 'distance' ? '' : sortBy
-  const feed = useMapProducts(category, userLoc, { sort })
+  /**
+   * 🩸 2026-09-03 (자기 diff 재검토에서 발견 — 테스트가 못 잡았다): `near` 와 `sort` 를 **같이 보내면
+   *   안 된다.** 서버는 `baseOrder = hasNear ? 거리 : sort` 라 **near 가 sort 를 이긴다**
+   *   (group-buy-public.routes). 위치를 켠 사용자가 '할인율순'을 골라도 서버는 가까운 50개를 주고,
+   *   화면은 그 50개 안에서만 할인순으로 정렬한다 — 전량을 받던 시절엔 클라가 338개를 다 갖고 있어
+   *   최종 순서가 맞았지만, 수요 로딩으로 바꾼 지금은 **조용히 틀린 목록**이 된다.
+   *   ⇒ 거리순일 때만 near 를 넘긴다(서버의 우선순위와 같은 규칙).
+   */
+  const near = sortBy === 'distance' ? userLoc : null
+  const feed = useMapProducts(category, near, { sort })
   const { loadAll } = feed
 
   useEffect(() => {
