@@ -5494,11 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 243건 · 최신순 · 이 목록은 자동 생성된다._
+_총 245건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-03**
-- [이용권 현황이 교환권까지 세던 것 — 마이페이지가 자기 자신과 모순](handoff/2026-09-03-voucher-status-wallet-split.md)
 - [2026-09-03 — 지갑 제목 삭제 + 라이브 신고 2건 분류(429 · /map)](handoff/2026-09-03-wallet-title-and-live-triage.md)
+- [이용권 현황이 교환권까지 세던 것 — 마이페이지가 자기 자신과 모순](handoff/2026-09-03-voucher-status-wallet-split.md)
 - [2026-09-03 — 이용권 사용 방식 · 리뷰 버튼 · 갤러리 중복 (대표 신고 3건)](handoff/2026-09-03-voucher-redeem-policy-and-photos.md)
 - [이용권 관리로 가는 길이 없었다 (2026-09-03)](handoff/2026-09-03-voucher-nav-reachability.md)
 - [2026-09-03 — 이용권 관리 통합 · 사진 UX · 인기 순위 · 뒤로가기 (대표 요청 묶음)](handoff/2026-09-03-voucher-nav-and-back-nav.md)
@@ -5524,6 +5524,7 @@ _총 243건 · 최신순 · 이 목록은 자동 생성된다._
 - [이용권 장바구니·결제 — 배송비 판정이 두 화면에서 갈려 있었다 (2026-09-01)](handoff/2026-09-01-cart-checkout-shipping-ssot.md)
 - [대외 랜딩 재작성 · 죽은 템플릿 제거 · anti-slop 가드 신설 (2026-09-01)](handoff/2026-09-01-anti-slop-landing-and-guard.md)
 **2026-08-31**
+- [이용권을 딜로도 살 수 있게 — 그리고 이미 열려 있던 문을 닫는다](handoff/2026-08-31-voucher-deal-payment.md)
 - [2026-08-31 — 유어샵 검색창 임계값 · 이미지 폴백 배선 · 셀러 버튼 잔여 5건](handoff/2026-08-31-urshop-search-image-fallback.md)
 - [2026-08-31 — 영입 2% 를 직접 입점 매장에만 (+ 예산 아비터)](handoff/2026-08-31-store-intro-direct-only.md)
 - [2026-08-31 — 어드민 매장 카드에 채널 스위치 + 돈 갈림표](handoff/2026-08-31-store-card-channel.md)

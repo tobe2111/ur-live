@@ -41,6 +41,8 @@ import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
 import OtherDealsRow from './group-buy/OtherDealsRow'
 import ShareRewardBanner from './group-buy/ShareRewardBanner'
 import DeferUntilVisible from './group-buy/DeferUntilVisible'
+import DealPayButton, { useCanPayWithDeal } from './group-buy/DealPayButton'
+import { handleDealJoinError } from './group-buy/deal-join-error'
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
@@ -344,7 +346,10 @@ export default function GroupBuyDetailPage() {
 
   // 🎨 2026-06-16 리디자인: 할인코드(promo) 입력 UI 제거 — checkPromo/clearPromo 삭제.
 
-  async function handleJoin() {
+  // 💰 이용권 딜 결제(2026-08-31) — 노출 조건·버튼·이중 게이트 설명은 `./group-buy/DealPayButton`.
+  const { canPayWithDeal, dealBalance } = useCanPayWithDeal({ isLoggedIn, detail, total })
+
+  async function handleJoin(payWithDeal = false) {
     if (!detail) return
     if (!isLoggedIn) {
       localStorage.setItem('loginReturnUrl', window.location.pathname)
@@ -364,8 +369,11 @@ export default function GroupBuyDetailPage() {
     //   voucher_deal vs group_buy_toss 단일 helper. legacy 카테고리 graceful + 미래 분류 1곳 수정.
     const { flow } = resolveProductFlow(detail)
 
-    if (flow === 'voucher_deal') {
-      // 딜 결제 흐름 (교환권 전용)
+    // 💰 2026-08-31: 이용권도 딜로 살 수 있다(대표 방향 — 상품 마진 대신 현금 출구에 마진).
+    //   `deal_only=1` 교환권은 원래 딜 전용이고, 이용권은 **사용자가 딜을 고른 경우에만** 이 경로.
+    //   기본은 여전히 카드다 — 대다수 소비자는 딜 잔액이 없다.
+    if (flow === 'voucher_deal' || payWithDeal) {
+      // 딜 결제 흐름 (교환권 전용 → 2026-08-31 이후 이용권도 선택 시)
       setJoining(true)
       reportFunnel('click', productId)
       try {
@@ -379,7 +387,7 @@ export default function GroupBuyDetailPage() {
           quantity, payment_method: 'deal', ref, idempotency_key,
         })
         if (res.data?.success) {
-          toast.success('🎁 교환권 발급 완료')
+          toast.success(flow === 'voucher_deal' ? '🎁 교환권 발급 완료' : '🎫 이용권 발급 완료')
           fireAffiliateTrack(res?.data?.data?.order_id ?? null, Number(id), detail?.name) // 큐레이터 적립 (fail-soft)
           invalidateVouchers()
           navigate('/my-gifticons')  // 🎟️ 2026-08-31 지갑 분리 — 교환권(voucher_deal)은 교환권 보관함으로
@@ -387,22 +395,8 @@ export default function GroupBuyDetailPage() {
           toast.error(res.data?.error || '교환 실패')
         }
       } catch (err: unknown) {
-        const e = err as { response?: { data?: { error?: string; code?: string } } }
-        const code = e?.response?.data?.code
-        if (code === 'INSUFFICIENT_POINTS') {
-          // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
-          if (TOPUP_DISABLED) {
-            toast.error('딜이 부족해요. 딜은 친구 초대·유어샵 추천으로 모을 수 있어요.')
-            return
-          }
-          const charge = await confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')
-          if (charge) {
-            localStorage.setItem('loginReturnUrl', window.location.pathname)
-            navigate('/points/charge')
-          }
-          return
-        }
-        toast.error(e?.response?.data?.error || '교환 실패')
+        // 💰 실패 안내 3갈래(게이트 꺼짐 / 딜 부족 / 그 외)는 `./group-buy/deal-join-error`.
+        await handleDealJoinError(err, { confirmDialog, navigate })
       } finally {
         setJoining(false)
       }
@@ -885,7 +879,7 @@ export default function GroupBuyDetailPage() {
           isPrelaunch={isPrelaunch}
           isDemo={isDemoDeal}
           joining={joining}
-          onBuy={handleJoin}
+          onBuy={() => handleJoin()}
           onPrelaunchApply={() => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
         />
       </aside>
@@ -925,13 +919,14 @@ export default function GroupBuyDetailPage() {
           <span style={{ fontSize: 11.5, color: 'var(--gbd-sub)', fontWeight: 500, whiteSpace: 'nowrap' }}>{isPrelaunch ? '오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요' : '토스로 3초 안전결제 · 미사용 시 100% 자동환불'}</span>
         </div>
         <button
-          onClick={isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : handleJoin}
+          onClick={isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : () => handleJoin()}
           disabled={(!isJoinable && !isPrelaunch) || joining}
           aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? `${formatNumber(total)}원 ${isDemoDeal ? '결제하기' : '구매하기'}` : isDemoDeal ? '결제 불가' : '구매 불가'}
           style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
         >
           {joining ? '처리 중…' : isPrelaunch ? '사전 응모하기' : !isJoinable ? (isDemoDeal ? '결제 불가' : '구매 불가') : <>{formatNumber(total)}원 {isDemoDeal ? '결제하기' : '구매하기'}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
         </button>
+        <DealPayButton show={canPayWithDeal && !isPrelaunch && isJoinable} joining={joining} dealBalance={dealBalance} onPay={() => handleJoin(true)} />
       </div>{/* /bar box */}
       </footer>
     </div>

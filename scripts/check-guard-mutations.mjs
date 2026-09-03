@@ -88,6 +88,28 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎫 이용권 딜 결제가 기본 ON 이 된다 (배포만으로 새는 문이 열린다)',
+    file: 'src/shared/feature-flags.ts',
+    find: 'export const VOUCHER_DEAL_PAYMENT_ENABLED = false',
+    replace: 'export const VOUCHER_DEAL_PAYMENT_ENABLED = true',
+    test: 'src/tests/unit/voucher-deal-payment.test.ts',
+    why:
+      '딜 보너스 20% 가 살아 있는 채로 열리면 이용권 마진(5~10%)보다 보너스가 커서 ' +
+      '**팔릴수록 유어딜이 건당 8~14원 적자**다(2026-08-31 실측). 교환권은 소비자 마크업 20% 가 ' +
+      '보너스를 상쇄해 괜찮았고 이용권엔 그 상쇄가 없다. 선행(보너스 0) 없이 열면 안 된다.',
+  },
+  {
+    name: '🎫 이용권 딜 결제 게이트가 교환권까지 막는다 (기프티콘 결제 전면 중단)',
+    file: 'src/features/group-buy/api/gb-purchase-guards.ts',
+    find: '  if (product.deal_only === 1) return true',
+    replace: '  if (false) return true',
+    test: 'src/tests/unit/voucher-deal-payment.test.ts',
+    why:
+      '이 가드는 **이용권에만** 걸려야 한다. 교환권(`deal_only=1`)은 원래 딜 전용이라 ' +
+      '여기 걸리면 게이트가 꺼진 기본 상태에서 기프티콘 구매가 통째로 400 이 된다. ' +
+      '⚠️ `deal_only` 가 SELECT 목록(PRODUCT_DETAIL_FIELDS)에서 빠져도 같은 사고가 난다.',
+  },
+  {
     name: '🩸 near 와 sort 를 같이 보낸다 — 서버가 sort 를 무시해 정렬이 조용히 틀린다',
     file: 'src/pages/restaurant-map/useFeedWindow.ts',
     find: "const near = sortBy === 'distance' ? userLoc : null",
