@@ -485,7 +485,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   const setBrand = (next: string) => {
     const params = new URLSearchParams(searchParams)
     if (next) params.set('brand', next); else params.delete('brand')
-    setSearchParams(params)
+    setSearchParams(params, { replace: true })  // 🔙 필터는 이동이 아니라 상태 — 히스토리를 안 쌓는다(back-navigation 테스트)
   }
 
   // 🛡️ 2026-05-19: 카테고리 변경 — 브랜드 자동 초기화 (다른 카테고리의 브랜드는 의미 없음).
@@ -493,7 +493,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     const params = new URLSearchParams(searchParams)
     if (next) params.set('category', next); else params.delete('category')
     params.delete('brand')
-    setSearchParams(params)
+    setSearchParams(params, { replace: true })  // 🔙 필터는 상태 — 히스토리를 쌓지 않는다(위 주석)
   }
 
   // 🎨 2026-07-01 (대표 "2번 로딩 근본 해결" — urdeal 로더 유지): standalone(/vouchers) 은 로딩 중
