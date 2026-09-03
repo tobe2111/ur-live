@@ -58,8 +58,13 @@ describe('PC 홈 히어로 컨트롤 위계 (2026-09-03 대표 확정)', () => {
   })
 
   it('⑤ "사진 속 딜 보기"는 컨트롤 행이 아니라 사진 위 오른쪽 아래에 있다', () => {
-    const link = HERO.match(/className="absolute z-20 bottom-3 right-5[^"]*"/)?.[0]
+    /* 🩸 2026-09-03: 이 검사는 처음에 `right-5` 를 **문자 그대로** 박아 놨다가, 같은 날 사진을
+       매대 폭에 맞추면서 스스로 깨졌다. 좌표 literal 은 계약이 아니다 — 계약은 "사진 위 우하단"이고,
+       그건 ⓐ 사진 위 절대배치 ⓑ 오른쪽 끝이 **사진과 같은 자**(그래야 사진 밖으로 안 나간다) 둘이다. */
+    const link = HERO.match(/className="absolute z-20 bottom-3 [^"]*"/)?.[0]
     expect(link, '사진 위 절대배치 링크가 있어야 한다').toBeTruthy()
+    // 사진과 같은 컨테이너 정렬을 써야 한다 — 안 그러면 넓은 화면에서 사진 밖에 뜬다.
+    expect(link).toMatch(/right-\[calc\(max\(0px,\(100vw-1440px\)\/2\)/)
     expect(HERO).toContain('사진 속 딜 보기 →')
     // 사진이 없거나 사진 목적지가 지도와 같으면(주 버튼과 중복) 렌더하지 않는다.
     expect(HERO).toMatch(/hasMedia && photoHref !== '\/map'/)

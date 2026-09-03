@@ -1,3 +1,4 @@
+import CatIcon from './CatIcon'
 import { memo, useEffect, useRef, useState } from 'react'
 import { MapPin } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
@@ -127,7 +128,7 @@ const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLoc, onSe
         <img src={cfImage(r.image_url, { width: 176, quality: 85, format: 'auto' }) || r.image_url} alt="" className="w-[88px] h-[88px] rounded-lg object-cover shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, r.image_url)} />
       ) : (
         <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center shrink-0">
-          <span className="text-2xl">🍽️</span>
+          <CatIcon cat={r.category} className="w-7 h-7 text-gray-400" />
         </div>
       )}
       <div className="flex-1 min-w-0">

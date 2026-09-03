@@ -13,7 +13,7 @@ export default function CategoryTabs({ category, setCategory, navigate, searchPa
 }) {
   const { t } = useTranslation()
   return (
-        <div className="ur-content-wide px-4 lg:px-8 mt-4 overflow-x-auto no-scrollbar">
+        <div className="ur-content-wide px-4 lg:px-8 mt-4 overflow-x-auto scrollbar-hide">
           {/* 🛡️ 2026-05-17: 카테고리 4종 통합 + 온라인/오프라인 대분류 라벨 표시.
                 탭 순서: [전체] [🏪 오프라인 4종] [🛍️ 온라인]
                 health/pet/activity 는 마이그레이션 0255 가 자동 변환 — UI 에선 제거. */}

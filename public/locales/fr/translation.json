@@ -4712,6 +4712,7 @@
   "wishlist": {
     "title": "Liste de souhaits",
     "subtitleCount": "{{count}} articles enregistrés",
+    "dropCount": "{{count}} baisse(s) de prix",
     "emptyTitle": "Aucun article enregistré",
     "emptyHint": "Enregistrez les produits qui vous plaisent",
     "continueShopping": "Continuer mes achats",
