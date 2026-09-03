@@ -88,6 +88,30 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🧾 토스 위젯 상자에서 light-island 가 빠진다 — 다크에서 이메일 칸이 흰 글자 on 흰 배경',
+    file: 'src/pages/TossWidgetPayPage.tsx',
+    find: 'className="light-island min-h-[180px] bg-white rounded-2xl shadow-lift overflow-hidden"',
+    replace: 'className="min-h-[180px] bg-white rounded-2xl shadow-lift overflow-hidden"',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why: '위젯은 흰색으로 렌더되는데 전역 `.dark input`(0,5,1)이 그 입력 글자를 덮는다 — 09-03 지도 검색창과 같은 사고.',
+  },
+  {
+    name: '🧾 결제 화면 주 행동이 다시 검정 알약으로',
+    file: 'src/pages/TossWidgetPayPage.tsx',
+    find: 'className="w-full py-3.5 bg-brand hover:bg-brand-dark text-white',
+    replace: 'className="w-full py-3.5 bg-gray-800 text-white',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why: '화면에서 가장 강한 행동이 브랜드가 아닌 색이면 결제 직전에 다른 서비스처럼 보인다.',
+  },
+  {
+    name: '🧾 결제 요약이 사진 없는 주문에서 터진다 (셀러 결제·구 링크)',
+    file: 'src/pages/TossWidgetPayPage.tsx',
+    find: '{summary.image && (',
+    replace: '{true && (',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why: '요약은 전부 선택값이다 — 딜 충전·셀러 결제·예전에 만들어진 링크에는 사진이 없다.',
+  },
+  {
     name: '🎨 브랜드 강조가 다시 회색으로 — 구 로즈(pink) 유틸이 되돌아온다',
     file: 'src/components/gift/GiftSendModal.tsx',
     find: 'bg-brand text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-dark',

@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
+import { appendPaySummary } from '@/shared/pay-summary'
 import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
@@ -448,6 +449,15 @@ export default function GroupBuyDetailPage() {
         clientKey: serverClientKey,
         successUrl: successPath,
         failUrl: failPath,
+      })
+      // 🧾 2026-09-03 (대표 확정 "안 2-D"): 결제 화면의 '결제 상품' 칸을 채울 **표시용** 값.
+      //   이 화면은 사진·매장·정가를 이미 갖고 있다 — 새 fetch 0, 서버 변경 0.
+      //   ⚠️ 금액 판단엔 안 쓴다(서버가 /confirm 에서 재검증). 사유: `src/shared/pay-summary.ts`
+      appendPaySummary(params, {
+        image: detail?.image_url || undefined,
+        merchant: detail?.restaurant_name || undefined,
+        origAmount: Number(detail?.original_price) || undefined,
+        qty: quantity,
       })
       navigate(`/pay/widget?${params.toString()}`)
     } catch (err: unknown) {
