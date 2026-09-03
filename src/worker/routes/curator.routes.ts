@@ -154,8 +154,7 @@ curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
               COALESCE(p.sold_count, 0) AS sold_count
        FROM products p
        WHERE p.is_active = 1
-         AND COALESCE(p.referral_enabled, 0) = 1
-         AND ${consumerVisibleProductSql('p')}
+         AND COALESCE(p.referral_enabled, 0) = 1 AND ${consumerVisibleProductSql('p')}
          ${exclusion}
        ORDER BY p.sold_count DESC, p.id DESC
        LIMIT ?`,
@@ -232,9 +231,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
                 COALESCE(p.referral_commission_rate, 0) AS commission_rate
          FROM product_pins pp
          JOIN products p ON p.id = pp.product_id
-         WHERE pp.user_id = ? AND p.is_active = 1
-           -- 🧱 담겨 있어도 소비자가 못 여는 상품은 안 보인다(사연은 헬퍼 docblock). 카운트도 이 길이다.
-           AND ${consumerVisibleProductSql('p')}
+         WHERE pp.user_id = ? AND p.is_active = 1 AND ${consumerVisibleProductSql('p')}
          ORDER BY pp.position ASC, pp.created_at DESC
          LIMIT ?`,
       ).bind(userId, CURATOR_DEFAULTS.PIN_MAX_PER_USER).all().catch(() => ({ results: [] as Record<string, unknown>[] })),
