@@ -37,7 +37,7 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
         </div>
 
         {reward && (
-          <div className="bg-brand-tint border border-rule  rounded-xl p-3 mb-4 text-center">
+          <div className="bg-brand-tint border border-rule rounded-xl p-3 mb-4 text-center">
             <p className="text-sm font-bold text-brand-text ">{reward}</p>
           </div>
         )}

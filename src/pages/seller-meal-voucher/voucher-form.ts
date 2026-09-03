@@ -29,6 +29,12 @@ export interface VoucherForm {
   price: number
   original_price: number
   image_url: string
+  /**
+   * 🖼️ 2026-09-03 (대표 *"이용권에 사진 여러 장 올릴 수 있어야하는데"*): 사진 전체 목록.
+   * **`images[0]` 이 대표**이고 `image_url` 은 그것의 미러다 — 소비자 카드·검색·OG 가 그 컬럼을
+   * 읽으므로 둘을 함께 쓴다(어긋나면 화면마다 다른 사진이 뜬다). 상한은 `PHOTO_MAX`.
+   */
+  images: string[]
   category: VoucherCategory
   restaurant_name: string
   restaurant_address: string
@@ -62,7 +68,7 @@ export function defaultDeadline(): string {
 
 export function emptyVoucherForm(): VoucherForm {
   return {
-    name: '', description: '', price: 0, original_price: 0, image_url: '',
+    name: '', description: '', price: 0, original_price: 0, image_url: '', images: [],
     category: 'meal_voucher',
     restaurant_name: '', restaurant_address: '', restaurant_phone: '',
     restaurant_lat: '', restaurant_lng: '',
@@ -71,6 +77,18 @@ export function emptyVoucherForm(): VoucherForm {
     store_verify_pin: '', stock: 100, max_per_person: 0, promo_pct: 0,
     kakao_place_url: '', external_booking_url: '', region_si: '', region_gu: '',
   }
+}
+
+/**
+ * 🖼️ **옛 데이터를 새 모델로 접어 넣는다** (2026-09-03 `images` 신설).
+ *
+ * `images` 가 생기기 전의 드래프트·기존 상품은 사진이 `image_url` **한 칸에만** 있다. 그대로 두면
+ * 편집기가 "사진 0장"으로 보이고, 그 상태에서 한 번만 손대면 **원래 있던 대표 사진이 사라진다.**
+ * 그래서 목록이 비어 있고 대표가 있으면 대표를 첫 장으로 세운다(반대 방향은 손대지 않는다).
+ */
+export function withPhotos<T extends { image_url: string; images: string[] }>(form: T): T {
+  if (form.images?.length) return form
+  return { ...form, images: form.image_url ? [form.image_url] : [] }
 }
 
 /** 매장 프리필 서버 응답 (GET /api/seller/stores/context). */
@@ -111,7 +129,7 @@ export function loadVoucherDraft(): VoucherDraft | null {
     const d = JSON.parse(raw) as VoucherDraft
     if (!d || typeof d !== 'object' || !d.form || typeof d.form !== 'object') return null
     // 스키마가 자란 뒤의 옛 드래프트도 안전하게 — 빈 폼 위에 얹는다.
-    return { form: { ...emptyVoucherForm(), ...d.form }, savedAt: Number(d.savedAt) || 0, sellerId: Number(d.sellerId) || 0 }
+    return { form: withPhotos({ ...emptyVoucherForm(), ...d.form }), savedAt: Number(d.savedAt) || 0, sellerId: Number(d.sellerId) || 0 }
   } catch { return null }
 }
 

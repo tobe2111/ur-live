@@ -205,7 +205,9 @@ export default function LinkshopPinPicker() {
         <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="max-w-3xl mx-auto px-3 h-14 flex items-center gap-2">
             <button
-              onClick={() => navigate('/u/me')}
+              // 🔙 히스토리가 있으면 온 곳으로. `/u/me` 로 밀면 (a) 뒤로가기가 한 칸 *늘어나고*
+              //    (b) `/u/me` 는 `/u/{handle}` 로 튕기는 리다이렉트라 브라우저 뒤로가 다시 이 화면으로 온다.
+              onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/u/me'))}
               aria-label="뒤로"
               className="shrink-0 w-9 h-9 -ml-1 rounded-full flex items-center justify-center text-gray-700 dark:text-gray-200 active:bg-gray-100 dark:active:bg-[#1D1F29]"
             >

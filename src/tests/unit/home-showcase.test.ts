@@ -244,16 +244,24 @@ describe('③ 되돌리기 — 플래그 하나로 전부 꺼진다', () => {
 describe('④ 상품 선정 — 홈 피드와 같은 조건 + 몰 격리', () => {
   const rules = code('src/features/sections/api/section-rules.ts')
 
+  // 🧭 2026-09-03: 조건이 **별칭으로 매개변수화**됐다(`conds('p' | 'p2')`) — 인기순의 정규화 분모를
+  //   본문과 **같은 조건**으로 구하려면 같은 빌더를 두 별칭에 써야 하기 때문이다.
+  //   그래서 아래 검사는 리터럴 `p.` 와 템플릿 `${a}.` 를 **둘 다** 받는다. 지키는 것은 표기가 아니라
+  //   "그 조건이 쿼리에 붙어 있는가"다. 한 표기만 고집하면 규칙을 지켰는데 빨간불이 된다(오늘 두 번 겪었다).
+  const AL = String.raw`(?:p|\$\{a\})`
+
   it('규칙 쿼리에 본진 몰 격리(mainScopeFor)가 있다', () => {
     expect(rules).toMatch(/mainScopeFor\(\s*env\.DB\s*,\s*'products'/)
-    expect(rules).toMatch(/\$\{productScope\}/)
+    // 변수명(`${productScope}`)이 아니라 **쿼리 템플릿 안에서 호출·보간되는가**를 본다.
+    expect(rules).toMatch(/\$\{(productScope|await mainScopeFor\()/)
   })
 
   it('규칙 쿼리 WHERE 가 홈 피드 조건을 그대로 쓴다', () => {
-    expect(rules).toMatch(/p\.is_active\s*=\s*1/)
-    expect(rules).toMatch(/p\.group_buy_status\s*=\s*'active'/)
-    expect(rules).toMatch(/is_supply_product/)
-    expect(rules).toMatch(/p\.category IN/)
+    expect(rules).toMatch(new RegExp(`${AL}\\.is_active\\s*=\\s*1`))
+    expect(rules).toMatch(new RegExp(`${AL}\\.group_buy_status\\s*=\\s*'active'`))
+    // 도매 원본 제외는 SSOT 상수로 모였다(2026-09-03) — 인라인 문자열도 상수 호출도 인정한다.
+    expect(rules).toMatch(/is_supply_product|consumerVisibleProductSql\(/)
+    expect(rules).toMatch(new RegExp(`${AL}\\.category IN`))
   })
 
   it('수동 섹션 쿼리에도 몰 격리가 있다', () => {

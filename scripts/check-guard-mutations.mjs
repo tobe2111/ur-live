@@ -7215,6 +7215,26 @@ canvas {
       '포함분 비율이 읽기 250억 : 쓰기 5,000만 = 500배라, 쓰기가 먼저 요금이 된다.',
   },
   {
+    name: '🏆 인기 점수가 정규화를 잃는다(결제 하나가 혼자 결정)',
+    file: 'src/features/sections/api/section-rules.ts',
+    find: '* 1.0 / MAX(mx.ms, 1))',
+    replace: ')',
+    test: 'src/tests/unit/popular-score-2026-09-03.test.ts',
+    why:
+      '라이브 실측 결제 최대 259 vs 리뷰 최대 34 — 생값을 더하면 결제가 사실상 혼자 순서를 정해 ' +
+      '종전(sold_count DESC)과 같아진다. 리뷰·클릭을 넣은 의미가 사라진다.',
+  },
+  {
+    name: '👁️ 조회수 비콘이 세션 가드를 잃는다(새로고침이 순위를 흔든다)',
+    file: 'src/hooks/useProductViewBeacon.ts',
+    find: 'if (sessionStorage.getItem(key)) return',
+    replace: 'if (false) return',
+    test: 'src/tests/unit/popular-score-2026-09-03.test.ts',
+    why:
+      '클릭은 홈 인기순의 신호다. 세션당 1회 가드가 없으면 한 사람의 새로고침이 그 상품을 ' +
+      '홈 상단으로 밀어 올린다 — 그리고 조회마다 D1 쓰기가 늘어 쓰기 예산도 먹는다.',
+  },
+  {
     name: '🧱 유어샵 핀 목록이 도매 원본 제외를 잃는다(카드는 뜨는데 클릭하면 404)',
     file: 'src/worker/routes/curator.routes.ts',
     find: "AND ${consumerVisibleProductSql('p')}\n         ORDER BY pp.position ASC",
@@ -8164,6 +8184,36 @@ canvas {
     why:
       '조회 자체가 실패한 것(테이블 부재·일시 오류)을 403 자격 없음으로 말하면, 매장에 다녀온 사용자가 ' +
       '"다녀오라" 는 문구를 본다. 원인을 알 길이 없는 문구라 문의조차 못 한다 — 503 으로 갈라야 한다.',
+  },
+  {
+    name: '🔎 검색이 다시 접두사 매칭으로 — 단어 안쪽을 못 찾는다',
+    file: 'src/features/products/repositories/search-query.ts',
+    find: '      const like = `%${escapeLike(v)}%`',
+    replace: '      const like = `${escapeLike(v)}%`',
+    test: 'src/tests/unit/search-engine-rebuild.test.ts',
+    why:
+      '라이브가 정확히 이 상태였다(porter FTS 접두사 매칭) — `돈가스` 로 "치즈돈가스 2인 세트" 를 ' +
+      '못 찾아 0건이었다. 한국어 상품명은 낱말이 붙어 있어 접두사만으로는 대부분 못 잡는다.',
+  },
+  {
+    name: '🔎 검색 대상에서 매장명이 빠진다 (이용권은 매장이 본질)',
+    file: 'src/features/products/repositories/search-query.ts',
+    find: "export const SEARCH_COLUMNS = ['name', 'restaurant_name', 'description', 'category'] as const",
+    replace: "export const SEARCH_COLUMNS = ['name', 'description', 'category'] as const",
+    test: 'src/tests/unit/search-engine-rebuild.test.ts',
+    why:
+      '옛 FTS 인덱스가 이 상태였다 — name/description/category 만 담아 **매장명으로는 검색이 안 됐다.** ' +
+      '"홍대돈가스" 처럼 매장으로 찾는 것이 이용권 검색의 절반인데 그 절반이 없었다.',
+  },
+  {
+    name: '🎫 검색 결과가 다시 쇼핑 카드로 (이용권에 장바구니·무료배송 UI)',
+    file: 'src/pages/SearchPage.tsx',
+    find: "import RestaurantRow from '@/pages/restaurant-map/RestaurantRow'",
+    replace: "import ProductCard from '@/components/search/ProductCard'",
+    test: 'src/tests/unit/search-engine-rebuild.test.ts',
+    why:
+      '결과는 이용권만인데 그리는 옷이 배송 상품 것이었다(대표 신고). 홈과 같은 행을 쓰지 않으면 ' +
+      '두 표면이 갈리고, 다음 사람은 어느 쪽이 정본인지 알 수 없다.',
   },
   {
     name: '🎟️ 이용권 셀프 사용 기본값이 다시 self_free 로 (설정 안 한 매장 전부 무방비)',

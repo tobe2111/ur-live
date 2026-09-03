@@ -1,12 +1,19 @@
-import { useState } from 'react'
+/**
+ * 🔎 2026-09-03 (대표 — 검색 QA): **아무것도 안 거르던 칩 5개를 제거**했다.
+ *
+ * `카테고리 · 3만원 이하 · 무료배송 · 브랜드 · 평점 4★↑` 는 눌리면 색만 바뀌고 "필터 2개 적용"
+ * 이라고 **말까지 했지만**, 목록은 한 줄도 안 바뀌었다(로컬 state 토글이 전부 — 상위로 전달 자체가
+ * 없었다). 작동하지 않는 컨트롤은 없느니만 못하다 — 사용자는 "필터가 고장났다"가 아니라
+ * **"이 서비스엔 그 조건에 맞는 게 없다"** 고 읽는다.
+ *
+ * 게다가 절반은 여기 있을 수도 없는 것이었다: `/search` 는 **이용권만** 보여주는데
+ * `무료배송`·`브랜드`·`3만원 이하` 는 배송 상품의 개념이다.
+ *
+ * 실제로 동작하는 정렬(관련도·가격·최신)은 그대로 둔다. 진짜 필터가 필요해지면 그때
+ * **상위 상태로 올려서** 붙일 것 — 다시 로컬 토글로 만들지 말 것.
+ */
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, X } from 'lucide-react'
-
-interface FilterChip {
-  id: string
-  label: string
-  active: boolean
-}
+import { ChevronDown } from 'lucide-react'
 
 interface SortFilterBarProps {
   totalResults: number
@@ -17,53 +24,14 @@ interface SortFilterBarProps {
 export default function SortFilterBar({ totalResults, sortBy, onSortChange }: SortFilterBarProps) {
   const { t } = useTranslation()
 
-  const defaultFilters: FilterChip[] = [
-    { id: 'category', label: t('browse.filterCategory', { defaultValue: '카테고리' }), active: false },
-    { id: 'price_30k', label: t('browse.filterPrice30k', { defaultValue: '3만원 이하' }), active: false },
-    { id: 'free_ship', label: t('browse.filterFreeShip', { defaultValue: '무료배송' }), active: false },
-    { id: 'brand', label: t('browse.filterBrand', { defaultValue: '브랜드' }), active: false },
-    { id: 'rating', label: t('browse.filterRating', { defaultValue: '평점 4★↑' }), active: false },
-  ]
-
-  const [filters, setFilters] = useState<FilterChip[]>(defaultFilters)
-
-  const toggleFilter = (id: string) => {
-    setFilters(prev => prev.map(f =>
-      f.id === id ? { ...f, active: !f.active } : f
-    ))
-  }
-
-  const activeCount = filters.filter(f => f.active).length
-
   return (
     <div className="mb-4">
-      {/* Filter chips - horizontal scroll */}
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-3 -mx-4 px-4">
-        {filters.map(filter => (
-          <button
-            key={filter.id}
-            onClick={() => toggleFilter(filter.id)}
-            className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-medium transition-all border ${
-              filter.active
-                ? 'bg-gray-900 text-white border-gray-900'
-                : 'bg-white text-gray-500 border-gray-200'
-            }`}
-          >
-            <span>{filter.label}</span>
-            {filter.active && <X className="w-3.5 h-3.5" />}
-          </button>
-        ))}
-      </div>
-
       {/* Result count + Sort */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
           <span className="text-[13px] text-gray-600">{t('browse.totalResultsPrefix', { defaultValue: '총' })}</span>
           <span className="text-[13px] font-extrabold text-red-500">{totalResults}</span>
           <span className="text-[13px] text-gray-600">{t('browse.totalResultsSuffix', { defaultValue: '개' })}</span>
-          {activeCount > 0 && (
-            <span className="ml-1.5 text-[11px] text-gray-400">{t('browse.filterApplied', { count: activeCount, defaultValue: '필터 {{count}}개 적용' })}</span>
-          )}
         </div>
         <div className="relative">
           <select

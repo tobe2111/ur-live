@@ -57,7 +57,7 @@ export default function AboutPage() {
         <section className="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-[#1A0A14] dark:via-[#11141C] dark:to-[#0F0A1A] border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="ur-content-wide px-4 lg:px-8 py-16 lg:py-24">
             <div className="text-center max-w-4xl mx-auto">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-tint text-brand-text  text-xs font-semibold mb-6">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-tint text-brand-text text-xs font-semibold mb-6">
                 <Sparkles className="w-3.5 h-3.5" />
                 우리 동네 공동구매
               </div>
@@ -174,7 +174,7 @@ export default function AboutPage() {
                 <li>· 브라우저만 있으면 시작합니다 (앱 설치 없음). 공구 등록과 주문, 정산이 한 곳에서</li>
                 <li>· 자체 쇼핑몰 구축 비용 0원 (Shopify 월 $29 + 도메인 + PG 부담 X)</li>
               </ul>
-              <p className="mt-3 p-3 rounded-lg bg-brand-tint text-brand-text  text-xs lg:text-sm">
+              <p className="mt-3 p-3 rounded-lg bg-brand-tint text-brand-text text-xs lg:text-sm">
                 비교: 자체 쇼핑몰 구축 시 평균 2~3개월 + 200만원. 유어딜은 <strong>0원 / 5분</strong>.
               </p>
             </SubBlock>

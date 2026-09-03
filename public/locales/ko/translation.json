@@ -2473,7 +2473,11 @@
       "mapPhotoFood": "음식·메뉴",
       "mapPhotoInterior": "매장 내부",
       "openKakaoPlace": "카카오맵에서 보기 ↗",
-      "mapPhotoHint": "네이버 지도·블로그 사진을 매장 이름으로 찾아 아래에 보여드려요. 카카오맵 사진은 자동으로 가져올 수 없어 페이지를 열어드립니다 — 마음에 드는 사진의 주소를 복사해 위 칸에 붙여넣으세요."
+      "mapPhotoHint": "네이버 지도·블로그 사진을 매장 이름으로 찾아 아래에 보여드려요. 카카오맵 사진은 자동으로 가져올 수 없어 페이지를 열어드립니다 — 마음에 드는 사진의 주소를 복사해 위 칸에 붙여넣으세요.",
+      "fromMapShort": "지도에서 가져오기",
+      "photoLead": "매장 사진을 가져오거나, 직접 찍은 사진을 올려 주세요. 첫 장이 대표 사진이에요.",
+      "pasteTitle": "카카오맵 사진 주소 붙여넣기",
+      "pastePlaceholder": "사진에서 마우스 오른쪽 → 이미지 주소 복사"
     },
     "analyticsTitle": "매출 분석",
     "revenueChart": "매출 차트",
@@ -2518,7 +2522,9 @@
       "backToUser": "유저로 돌아가기",
       "products": "🛒 온라인 판매·소싱",
       "groupbuy": "🏪 오프라인 공구·숙소",
-      "ordersCustomers": "주문·고객"
+      "ordersCustomers": "주문·고객",
+      "vouchers": "🎟️ 이용권",
+      "growth": "성장"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2568,7 +2574,22 @@
       "returns": "환불 요청",
       "operators": "운영자 관리",
       "stores": "매장 관리",
-      "findInfluencers": "소개 파트너 찾기"
+      "findInfluencers": "소개 파트너 찾기",
+      "voucherManage": "이용권 관리",
+      "profile": "내 정보",
+      "tier": "셀러 등급",
+      "twoFactor": "2단계 인증",
+      "appointments": "예약 관리",
+      "ledger": "매장 원장",
+      "storeDashboard": "매장 현황",
+      "realtime": "실시간 현황",
+      "voucherOrders": "교환권 발송 이력",
+      "transfers": "매장 이관",
+      "marketing": "마케팅",
+      "adSlots": "광고 슬롯",
+      "discounts": "할인",
+      "partners": "파트너",
+      "notifyGuide": "알림·가이드"
     },
     "guide": {
       "title": "셀러 운영 가이드",
@@ -3159,7 +3180,31 @@
       "lockedNote": "매장 등록을 마치면 이용권 등록 · 주문 · 정산 · 소개 협업이 열려요",
       "savedPropagated": "매장 정보 저장 — 이용권 {{count}}개에 반영됐어요",
       "saved": "매장 정보가 저장됐어요"
-    }
+    },
+    "voucherTabs": {
+      "list": "이용권",
+      "scan": "사용처리",
+      "reviews": "후기 인증"
+    },
+    "pageSearch": "페이지 검색",
+    "bizNoFormat": "사업자등록번호는 000-00-00000 형식으로 입력해 주세요",
+    "sessionExpired": "로그인이 풀렸어요. 다시 로그인한 뒤 저장해 주세요.",
+    "certHint": "사업자등록증 사진은 여기서 올려요",
+    "photo": {
+      "cover": "대표",
+      "empty": "사진을 고르면 여기에 보입니다",
+      "pickFile": "📁 내 파일에서",
+      "addMore": "+ 사진 추가",
+      "uploading": "올리는 중…",
+      "moveLeft": "앞으로",
+      "moveRight": "뒤로",
+      "dup": "이미 담긴 사진이에요"
+    },
+    "orderTabs": {
+      "orders": "주문"
+    },
+    "bizFromRegistration": "매장 등록 때 입력하신 내용을 채워 뒀어요",
+    "bizFromRegistrationDesc": "아직 사업자 정보로는 등록되지 않았습니다 — 확인 후 저장을 눌러 주세요."
   },
   "admin": {
     "login": {

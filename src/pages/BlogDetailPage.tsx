@@ -164,7 +164,7 @@ export default function BlogDetailPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8 lg:py-12
-        lg:grid lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_260px] lg:gap-8 xl:gap-10">
+ lg:grid lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_260px] lg:gap-8 xl:gap-10">
 
         {/* ── 좌측: 목차 ── */}
         <aside className="hidden lg:block">

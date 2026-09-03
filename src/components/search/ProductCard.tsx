@@ -12,6 +12,7 @@
  */
 import { type ReactNode } from 'react'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
+import { publicSellerHandle } from '@/shared/seller-handle'
 import PinButton from '@/components/curator/PinButton'
 
 interface Product {
@@ -60,7 +61,18 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
   const lowStock = !soldOut && Number(product.stock) > 0 && Number(product.stock) <= 10
   return (
     <GroupBuyFeedCard
-      p={product as never}
+      p={{
+        ...product,
+        /* 🏷️ 머천트 줄 — 카드 SSOT 는 `restaurant_name || brand_name` 을 쓴다. 둘 다 없는
+           일반 쇼핑 상품은 판매자 이름으로 채운다(그러지 않으면 그 줄이 통째로 빈다).
+           ⚠️ 자동 발급 아이디(`@store_xxxx`)는 폴백에 쓰지 않는다 — main 2026-09-03 수정을
+              `publicSellerHandle` 로 그대로 승계한다. */
+        restaurant_name: (product as { restaurant_name?: string }).restaurant_name
+          || product.brand_name
+          || product.seller_name
+          || publicSellerHandle(product.seller_username)
+          || undefined,
+      } as never}
       aboveFold={false}
       titleNode={highlightQuery ? highlightText(product.name, highlightQuery) : undefined}
       /* 🚩 품절·재고는 **본문 맨 위 한 줄**로 — 사진 위에 얹지 않는다(08-31 규칙). */
