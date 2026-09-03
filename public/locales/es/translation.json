@@ -1818,7 +1818,8 @@
       "groupbuy": "🏪 Compras grupales y estancias",
       "ordersCustomers": "Pedidos y clientes",
       "curator": "Mi UrShop",
-      "vouchers": "🎟️ Cupones"
+      "vouchers": "🎟️ Cupones",
+      "growth": "Crecimiento"
     },
     "nav": {
       "products": "Productos",
@@ -1864,7 +1865,10 @@
       "voucherOrders": "Envíos de vales",
       "transfers": "Transferencia de tienda",
       "marketing": "Marketing",
-      "adSlots": "Espacios publicitarios"
+      "adSlots": "Espacios publicitarios",
+      "discounts": "Descuentos",
+      "partners": "Socios",
+      "notifyGuide": "Avisos y guía"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2514,6 +2518,9 @@
       "moveLeft": "Mover antes",
       "moveRight": "Mover después",
       "dup": "Esa foto ya está añadida"
+    },
+    "orderTabs": {
+      "orders": "Pedidos"
     }
   },
   "admin": {

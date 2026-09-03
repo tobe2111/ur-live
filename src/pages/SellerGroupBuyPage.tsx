@@ -9,7 +9,6 @@ import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
-import SellerVoucherTabs from '@/components/seller/SellerVoucherTabs'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -104,7 +103,6 @@ export default function SellerGroupBuyPage() {
   return (
     <SellerLayout title={t('seller.nav.voucherManage', { defaultValue: '이용권 관리' })}>
       {/* 🎟️ 2026-09-03 대표 — 이용권 일을 한 페이지처럼: nav 는 하나, 여기서 탭 이동. */}
-      <div className="px-4 sm:px-6 lg:px-8 pt-4"><SellerVoucherTabs /></div>
       <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
         <DashboardPageHeader

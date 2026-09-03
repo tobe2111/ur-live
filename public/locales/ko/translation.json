@@ -2522,7 +2522,8 @@
       "products": "🛒 온라인 판매·소싱",
       "groupbuy": "🏪 오프라인 공구·숙소",
       "ordersCustomers": "주문·고객",
-      "vouchers": "🎟️ 이용권"
+      "vouchers": "🎟️ 이용권",
+      "growth": "성장"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2584,7 +2585,10 @@
       "voucherOrders": "교환권 발송 이력",
       "transfers": "매장 이관",
       "marketing": "마케팅",
-      "adSlots": "광고 슬롯"
+      "adSlots": "광고 슬롯",
+      "discounts": "할인",
+      "partners": "파트너",
+      "notifyGuide": "알림·가이드"
     },
     "guide": {
       "title": "셀러 운영 가이드",
@@ -3194,6 +3198,9 @@
       "moveLeft": "앞으로",
       "moveRight": "뒤로",
       "dup": "이미 담긴 사진이에요"
+    },
+    "orderTabs": {
+      "orders": "주문"
     }
   },
   "admin": {

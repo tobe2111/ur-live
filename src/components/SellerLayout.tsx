@@ -14,6 +14,8 @@ import DashboardNotificationBell from './DashboardNotificationBell'
 import StoreSwitcher from '@/components/seller/StoreSwitcher'
 import SellerKakaoLinkBanner from './SellerKakaoLinkBanner'
 import SellerSimpleNav from './seller-layout/SellerSimpleNav'
+import SellerGroupTabs from './seller/SellerGroupTabs'
+import { SELLER_TAB_GROUPS } from '@/components/seller/seller-tab-groups'
 
 import { NAV_GROUPS, SELLER_SEARCH_ONLY, modesForSellerType, type SellerType, type SellerMode } from '@/components/seller/seller-nav'
 import CommandPalette, { type CommandItem } from '@/components/dashboard/CommandPalette'
@@ -179,6 +181,15 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       label: t(it.labelKey, { defaultValue: it.labelKey }),
       icon: it.icon,
       group: g.labelKey ? t(g.labelKey, { defaultValue: '' }) : (g.label || ''),
+    }))),
+    // 🧭 2026-09-03 통폐합: 사이드바에서 **탭 안으로 접힌 형제 화면들**(환불·리뷰·매출 분석·위임·
+    //   운영자·후기 인증 …). 이걸 빼면 위 주석이 경고한 바로 그 일이 벌어진다 — 사이드바에서
+    //   사라진 화면이 검색에서도 사라져, 통폐합이 그대로 "못 찾는 페이지 16개"가 된다.
+    ...SELLER_TAB_GROUPS.flatMap((g) => g.tabs.slice(1).map((tab) => ({
+      path: tab.path,
+      label: `${t(g.labelKey, { defaultValue: g.fallback })} · ${t(tab.labelKey, { defaultValue: tab.fallback })}`,
+      icon: g.icon,
+      group: t(g.labelKey, { defaultValue: g.fallback }),
     }))),
     ...SELLER_SEARCH_ONLY.map((it) => ({
       path: it.path,
@@ -520,6 +531,11 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         <main className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5">
           {/* 🔗 카카오 미연동 이메일 셀러 → 연동 권유 (dismissible, 1회 status 조회) */}
           <SellerKakaoLinkBanner />
+          {/* 🧭 2026-09-03 (대표 승인 "전부"): 묶음 안의 탭 줄. **여기 한 곳에서** 그린다 —
+              대상 24개 화면 중 6개가 `DashboardPageHeader` 를 안 써서, 헤더에 붙였으면 그 여섯에서
+              탭이 사라진다. 그중 `/seller/stores` 는 묶음의 착지점이라 위임·운영자로 갈 길이
+              통째로 없어졌을 것이다(오늘 고친 "페이지는 있는데 닿을 수 없다"의 재발). */}
+          <SellerGroupTabs />
           {children}
         </main>
       </div>

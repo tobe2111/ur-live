@@ -1818,7 +1818,8 @@
       "groupbuy": "🏪 Achats groupés & séjours",
       "ordersCustomers": "Commandes & clients",
       "curator": "Ma UrShop",
-      "vouchers": "🎟️ Bons"
+      "vouchers": "🎟️ Bons",
+      "growth": "Croissance"
     },
     "nav": {
       "products": "Produits",
@@ -1864,7 +1865,10 @@
       "voucherOrders": "Envois de bons",
       "transfers": "Transfert boutique",
       "marketing": "Marketing",
-      "adSlots": "Emplacements pub"
+      "adSlots": "Emplacements pub",
+      "discounts": "Remises",
+      "partners": "Partenaires",
+      "notifyGuide": "Alertes et guide"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2514,6 +2518,9 @@
       "moveLeft": "Avancer",
       "moveRight": "Reculer",
       "dup": "Cette photo est déjà ajoutée"
+    },
+    "orderTabs": {
+      "orders": "Commandes"
     }
   },
   "admin": {

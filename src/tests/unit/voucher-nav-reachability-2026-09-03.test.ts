@@ -17,7 +17,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { NAV_GROUPS } from '@/components/seller/seller-nav'
 import { publicSellerHandle, isAutoSellerUsername } from '@/shared/seller-handle'
-import { VOUCHER_TAB_PATHS } from '@/components/seller/SellerVoucherTabs'
+import { SELLER_TAB_GROUPS, findSellerTabGroup, tabGroupSiblings } from '@/components/seller/seller-tab-groups'
 
 const items = NAV_GROUPS.flatMap(g => g.items)
 const byPath = (p: string) => items.find(i => i.path === p)
@@ -25,7 +25,10 @@ const SIMPLE = readFileSync('src/components/seller-layout/SellerSimpleNav.tsx', 
 /** 주석 제거본 — 옛 이름을 *설명하는 주석*까지 위반으로 세면 가짜 빨강이 된다(오늘 실제로 걸렸다). */
 const SIMPLE_CODE = SIMPLE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 const MANAGE_PAGE = readFileSync('src/pages/SellerGroupBuyPage.tsx', 'utf8')
-const ROUTES = readFileSync('src/routes/seller.routes.tsx', 'utf8')
+// ⚠️ 셀러 라우트는 **두 파일에 흩어져 있다** — 대부분은 `routes/seller.routes.tsx` 인데
+//   `/seller/proxy-products` 같은 일부는 `App.tsx` 에 남아 있다. 한쪽만 보면 '라우트 없음'
+//   오판이 난다(이 테스트를 처음 짤 때 실제로 그렇게 틀렸다).
+const ROUTES = readFileSync('src/routes/seller.routes.tsx', 'utf8') + readFileSync('src/App.tsx', 'utf8')
 const LAYOUT = readFileSync('src/components/SellerLayout.tsx', 'utf8')
 
 describe('① 등록과 관리는 같은 가시성 — 한쪽만 보이면 막다른 길이 된다', () => {
@@ -65,30 +68,47 @@ describe('② 한 페이지처럼 — nav 는 하나, 안에서 탭', () => {
     expect(group.items.map(i => i.path).slice(0, 2)).toEqual(['/seller/meal-voucher/new', '/seller/group-buy'])
   })
 
-  it('🔒 탭 경로는 전부 nav 의 also 에 있다 — 없으면 그 탭에서 사이드바가 꺼져 길을 잃는다', () => {
+  it('🔒 이용권 탭 경로가 그 줄의 also 에 있다 — 없으면 그 탭에서 사이드바가 꺼져 길을 잃는다', () => {
+    // (모든 묶음에 대한 같은 검사는 아래 ⑥ 에 있다 — 여기는 이용권 묶음만 본다.)
     const covered = new Set([manage.path, ...(manage.also ?? [])])
-    for (const p of VOUCHER_TAB_PATHS) expect(covered.has(p)).toBe(true)
+    for (const sib of tabGroupSiblings('/seller/group-buy')) expect(covered.has(sib)).toBe(true)
+    expect(covered.has('/seller/products/')).toBe(true)  // 이용권 수정 화면
   })
 
   it('탭 경로가 실제 라우트다 — 탭만 있고 라우트가 없으면 404 다', () => {
-    for (const p of VOUCHER_TAB_PATHS) expect(ROUTES).toContain(`path="${p}"`)
+    for (const g of SELLER_TAB_GROUPS) for (const t of g.tabs) expect(ROUTES, `라우트 없음: ${t.path}`).toContain(`path="${t.path}"`)
   })
 
-  it('탭이 그 페이지들에 실제로 렌더된다 — 정의만 하고 안 붙이면 한 페이지가 아니다', () => {
-    const file: Record<string, string> = {
-      '/seller/group-buy': 'src/pages/SellerGroupBuyPage.tsx',
-      '/seller/scan': 'src/pages/SellerVoucherScanPage.tsx',
-      '/seller/review-verifications': 'src/pages/SellerReviewVerificationsPage.tsx',
-    }
-    for (const p of VOUCHER_TAB_PATHS) {
-      expect(readFileSync(file[p], 'utf8')).toContain('<SellerVoucherTabs />')
-    }
+  it('🔒 탭은 레이아웃 한 곳에서 그린다 — 페이지마다 붙이면 안 붙인 페이지가 생긴다', () => {
+    // 2026-09-03: 대상 24개 화면 중 6개가 `DashboardPageHeader` 를 안 쓴다. 헤더/페이지에 붙이는
+    // 방식이면 그 여섯에서 탭이 사라지고, 그중 `/seller/stores` 는 착지점이라 위임·운영자로 갈
+    // 길이 통째로 없어진다 — 오늘 고친 "페이지는 있는데 닿을 수 없다"의 재발이다.
+    expect(readFileSync('src/components/SellerLayout.tsx', 'utf8')).toContain('<SellerGroupTabs />')
   })
 
   it('🔒 교환권(KT 기프티콘) 이력은 이용권 탭이 아니다 — 교환권 ≠ 이용권(명칭 SSOT)', () => {
     // 이름이 비슷해 실제로 한 번 잘못 넣었다가 되돌렸다. 다시 들어오면 그 혼동이 화면에 박힌다.
-    expect(VOUCHER_TAB_PATHS as readonly string[]).not.toContain('/seller/voucher-orders')
-    expect(readFileSync('src/pages/SellerVoucherOrdersPage.tsx', 'utf8')).not.toContain('SellerVoucherTabs')
+    expect(findSellerTabGroup('/seller/voucher-orders')).toBeNull()
+  })
+
+  it('🔒 사이드바의 `also` 가 형제 경로에서 파생된다 — 손으로 적으면 반드시 갈린다', () => {
+    // 어긋나면 탭으로 이동한 순간 사이드바 줄이 꺼져 사용자가 자기 위치를 잃는다.
+    for (const g of SELLER_TAB_GROUPS) {
+      const landing = g.tabs[0].path
+      const item = items.find(i => i.path === landing)
+      expect(item, `묶음 착지점이 사이드바에 없다: ${landing}`).toBeTruthy()
+      for (const sib of tabGroupSiblings(landing)) {
+        expect(item!.also ?? [], `${landing} 의 also 에 ${sib} 누락`).toContain(sib)
+      }
+    }
+  })
+
+  it('🔒 묶음에 든 화면은 사이드바에 따로 줄을 갖지 않는다 — 통폐합의 의미가 사라진다', () => {
+    for (const g of SELLER_TAB_GROUPS) {
+      for (const sib of g.tabs.slice(1)) {
+        expect(items.find(i => i.path === sib.path), `${sib.path} 가 사이드바에 남아 있다`).toBeFalsy()
+      }
+    }
   })
 })
 
@@ -140,5 +160,36 @@ describe('⑤ 자동 발급 셀러 아이디는 손님에게 안 보인다', () 
     const detail = readFileSync('src/pages/GroupBuyDetailPage.tsx', 'utf8')
     expect(detail).not.toMatch(/>@\{detail\.seller_username\}/)
     expect(detail).toContain('publicSellerHandle(detail.seller_username)')
+  })
+})
+
+describe('⑥ 통폐합 — 접은 화면이 사라지면 안 된다 (2026-09-03 대표 승인 "전부")', () => {
+  const LAYOUT_SRC = readFileSync('src/components/SellerLayout.tsx', 'utf8')
+
+  it('🔒 탭 안으로 접힌 형제 화면이 검색에 들어간다', () => {
+    // 사이드바에서 사라진 화면을 검색에도 안 넣으면, 통폐합이 그대로 "못 찾는 페이지 16개"가 된다.
+    // (`SellerLayout` 주석이 경고하는 바로 그 실패다 — 검색이 사이드바의 복사본이면 의미가 없다.)
+    expect(LAYOUT_SRC).toContain('SELLER_TAB_GROUPS.flatMap')
+  })
+
+  it('사이드바 줄 수가 실제로 줄었다 — 묶음 수 + 낱개 항목', () => {
+    // 36줄이 문제였다. 묶음이 8개고 각 묶음이 사이드바에서 한 줄이므로, 접힌 형제만큼 줄어든다.
+    const folded = SELLER_TAB_GROUPS.reduce((n, g) => n + g.tabs.length - 1, 0)
+    expect(folded).toBeGreaterThanOrEqual(15)
+  })
+
+  it('🔒 착지점은 반드시 첫 탭이다 — 사이드바가 가리키는 곳과 탭의 첫 칸이 달라지면 혼란', () => {
+    for (const g of SELLER_TAB_GROUPS) {
+      const landing = g.tabs[0].path
+      expect(findSellerTabGroup(landing)).toBe(g)
+    }
+  })
+
+  it('🔒 한 경로가 두 묶음에 속하지 않는다 — 탭 줄이 화면마다 달라진다', () => {
+    const seen = new Set<string>()
+    for (const g of SELLER_TAB_GROUPS) for (const t of g.tabs) {
+      expect(seen.has(t.path), `중복: ${t.path}`).toBe(false)
+      seen.add(t.path)
+    }
   })
 })

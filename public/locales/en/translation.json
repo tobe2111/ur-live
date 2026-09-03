@@ -2492,7 +2492,8 @@
       "groupbuy": "🏪 Group Buy & Stays",
       "ordersCustomers": "Orders & Customers",
       "curator": "My UrShop",
-      "vouchers": "🎟️ Vouchers"
+      "vouchers": "🎟️ Vouchers",
+      "growth": "Growth"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}.{{month}} Revenue Calendar",
@@ -2554,7 +2555,10 @@
       "voucherOrders": "Gift card sends",
       "transfers": "Store transfer",
       "marketing": "Marketing",
-      "adSlots": "Ad slots"
+      "adSlots": "Ad slots",
+      "discounts": "Discounts",
+      "partners": "Partners",
+      "notifyGuide": "Alerts & guide"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",
@@ -3194,6 +3198,9 @@
       "moveLeft": "Move left",
       "moveRight": "Move right",
       "dup": "That photo is already added"
+    },
+    "orderTabs": {
+      "orders": "Orders"
     }
   },
   "admin": {

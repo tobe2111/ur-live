@@ -2491,7 +2491,8 @@
       "groupbuy": "🏪 オフライン共同購入·宿泊",
       "ordersCustomers": "注文·顧客",
       "curator": "マイUrShop",
-      "vouchers": "🎟️ 利用券"
+      "vouchers": "🎟️ 利用券",
+      "growth": "成長"
     },
     "liveChat": {
       "title": "リアルタイムチャット",
@@ -2560,7 +2561,10 @@
       "voucherOrders": "交換券の送信履歴",
       "transfers": "店舗移管",
       "marketing": "マーケティング",
-      "adSlots": "広告枠"
+      "adSlots": "広告枠",
+      "discounts": "割引",
+      "partners": "パートナー",
+      "notifyGuide": "通知・ガイド"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",
@@ -3194,6 +3198,9 @@
       "moveLeft": "前へ",
       "moveRight": "後ろへ",
       "dup": "すでに追加された写真です"
+    },
+    "orderTabs": {
+      "orders": "注文"
     }
   },
   "admin": {
