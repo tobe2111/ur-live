@@ -252,3 +252,28 @@ sort= (없음) / popular / discount / newest / price / rating
 
 또 하나 데이터 사실: **활성 338건 중 337건이 데모**다(비데모는 `2888` 하나). 지금 화면에서 보이는
 정렬 차이는 사실상 전부 데모 카탈로그 안의 순서다 — 실상품이 늘면 `DEMO_LAST` 덕에 자동으로 앞에 온다.
+
+---
+
+## 9. 두 번째 main 재병합 — **검색 재작성(#1341)과 같은 파일을 만졌다**
+
+`be00635` 이후 main 이 또 움직여 `mergeable_state: dirty` 가 됐다. 이번엔 **논리 충돌 위험이 실재**했다:
+#1341(검색 재작성)이 **`RestaurantRow` 를 `RestaurantList.tsx` 밖으로 빼내 자기 파일로 옮겼는데**,
+내가 이 PR 에서 센티넬(`onLoadMore`/`hasMoreOnServer`)을 배선한 파일이 바로 그 파일이다.
+
+git 이 자동 병합했지만 **자동 병합됐다는 것이 옳다는 뜻은 아니라서** 직접 확인했다:
+
+| 확인 | 결과 |
+|---|---|
+| 내 센티넬 배선(`localMore ? setVisibleCount : onLoadMore`) | 살아 있음 (l.100~101) |
+| #1341 의 추출(`import RestaurantRow from './RestaurantRow'`) | 살아 있음 (l.2) |
+| 주입 매니페스트 | **양쪽 다** — 내 7건 + #1341 3건 |
+| 겹친 파일 4개 | `CURRENT_WORK.md`(생성물) · `check-guard-mutations.mjs`(양쪽 보존) · `auto-reference.ts`(생성기 재실행) · `RestaurantList.tsx`(위 표) |
+
+검증: 양쪽 테스트 **56건 pass**(내 것 + `search-engine-rebuild`) · tsc 0 · 충돌마커 0(5,153파일) ·
+file-size ✅ · branch-scope ✅.
+
+⚠️ **다음 세션에 남기는 사실**: 이 PR 이 주입 매니페스트를 **7건** 늘렸고, 그 결과 Verify 의
+`가드 주입 검증` 스텝이 **약 33분**(전체 ~45분)이 됐다. 매니페스트를 더 늘릴 세션은 이 비용을 알고
+결정할 것 — **가드를 줄이라는 뜻이 아니라** 한 커밋에 묶어 푸시 횟수를 줄이라는 뜻이다.
+푸시 한 번이 45분이므로 문서 오타 하나로 재푸시하지 말 것(이번에 실제로 그럴 뻔했다).
