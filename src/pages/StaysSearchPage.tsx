@@ -5,14 +5,16 @@
  * 🖥️ 2026-07-16 (대표 신고 "숙소 테마 안 맞음"): 다크 고정 → 라이트 기본 + dark: 대응(앱 테마 정합).
  *   + PC(lg+) 풀너비(pc-fullbleed) · 카드 그리드 확장(2→4열).
  */
+import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
+import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
+import { CalendarDays } from 'lucide-react'
+import { TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
-import { Search, MapPin, Calendar, Users, Star, SlidersHorizontal, X } from 'lucide-react'
-import { formatNumber } from '@/utils/format'
-import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { Search, MapPin, Calendar, Users, SlidersHorizontal, X } from 'lucide-react'
 import { useStaysSearch } from '@/hooks/queries/useStaysSearch'
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
@@ -158,73 +160,45 @@ export default function StaysSearchPage() {
           </div>
         ) : (
           // 🖥️ 2026-07-16 (풀너비): 모바일 1열 → PC 최대 4열(교환권 그리드와 정합).
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          /* 🏨 2026-09-03 (대표 "여기 UI도 통일화 해야지"): 숙소 목록도 **홈과 같은 카드**로.
+             이 화면은 네 번째 카드 세대였다 — 테두리 카드 + hover 그림자 + 사진 위 배지 2개
+             (숙소타입·앰버 별) + 편의시설 pill + 구분선 가격. 같은 서비스가 화면마다 다른 카드를
+             쓰면 반드시 갈린다(홈 섹션↔피드, 유어샵에 이어 네 번째).
+
+             ⚠️ 옮기면서 **줄인 것**을 밝힌다:
+               · 숙소타입·성급 → 사진 위 배지에서 **본문 맨 위 한 줄**로(사진을 가리지 않는다 —
+                 2026-08-31 "할인율이 사진 안으로 들어가면 안돼" 와 같은 자리 규칙).
+               · 편의시설 pill 3개 → **뺐다**. 카드에서 고르는 기준이 아니고(세 개가 다 '무료 주차·
+                 와이파이·조식' 이라 변별력이 없다) 상세에 전부 있다.
+             `/1박~` 표기는 카드가 `stay_voucher` 카테고리로 이미 처리한다(단위가 빠지면 뜻이 달라진다). */
+          <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 ${DEAL_GRID_GAP}`}>
             {items.map((s) => {
-              const amenitiesArr: string[] = (() => {
-                if (!s.amenities) return []
-                try { return JSON.parse(s.amenities) } catch { return [] }
-              })()
+              const typeLabel = s.property_type ? (PROPERTY_TYPE_LABELS[s.property_type] || s.property_type) : ''
+              const starLabel = s.star_rating ? `${s.star_rating}성급` : ''
               return (
-                <Link
+                <GroupBuyFeedCard
                   key={s.id}
+                  p={{
+                    id: s.id,
+                    name: s.name,
+                    price: s.price_from ?? 0,
+                    image_url: s.image_url || '',
+                    category: 'stay_voucher',
+                    restaurant_address: [s.region_sido, s.region_sigungu].filter(Boolean).join(' '),
+                    avg_rating: s.avg_rating ?? undefined,
+                    review_count: s.review_count ?? undefined,
+                  } as never}
+                  aboveFold={false}
+                  flags={
+                    (typeLabel || starLabel) ? (
+                      <p className="text-[11px] font-bold leading-none mb-1 text-gray-900 dark:text-gray-100">
+                        {[typeLabel, starLabel].filter(Boolean).join(' · ')}
+                      </p>
+                    ) : null
+                  }
+                  /* 🔗 날짜·인원을 반드시 이어 보낸다 — 빠지면 상세가 오늘 날짜로 다시 잡아 요금이 달라진다. */
                   to={`/stays/${s.id}?check_in=${filters.check_in}&check_out=${filters.check_out}&guests=${filters.guests}`}
-                  className="bg-white dark:bg-[#1D1F29] rounded-xl overflow-hidden border border-gray-100 dark:border-[#2C2F35] hover:border-gray-200 dark:hover:border-[#2C2F35] hover:shadow-lg transition-all"
-                >
-                  <div className="relative aspect-[4/3] bg-gray-100 dark:bg-[#1D1F29]">
-                    {s.image_url ? (
-                      // 🖼️ 2026-07-21 (대표 "상세엔 사진 있는데 메인 카드엔 빈 사진"): raw src → cfImage
-                      //   (네이버 블로그 CDN 핫링크 우회·리사이즈) + cfImageOnError(깨지면 원본 재시도→숨김).
-                      // ⏳ 2026-08-17 (UX 전수검사 P1): 로딩 중 빈 회색 블록 → 셔머 언더레이(이미지가 덮으면 사라짐).
-                      <>
-                      <div className="absolute inset-0 skeleton-shimmer" aria-hidden="true" />
-                      <img src={cfImage(s.image_url, { width: 400, quality: 82, format: 'auto' }) || s.image_url} alt={s.name} className="relative w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, s.image_url)} />
-                      </>
-                    ) : null}
-                    {s.property_type && (
-                      <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-sm rounded text-[10px] font-semibold text-white">
-                        {PROPERTY_TYPE_LABELS[s.property_type] || s.property_type}
-                      </div>
-                    )}
-                    {s.star_rating ? (
-                      <div className="absolute top-2 right-2 flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/80 rounded text-[10px] font-bold text-white">
-                        {Array.from({ length: s.star_rating }).map((_, i) => <Star key={i} className="w-2.5 h-2.5 fill-white" />)}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="p-3">
-                    <h3 className="text-sm font-bold line-clamp-1">{s.name}</h3>
-                    <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                      <MapPin className="w-3 h-3" />
-                      <span className="line-clamp-1">{[s.region_sido, s.region_sigungu].filter(Boolean).join(' ')}</span>
-                    </div>
-                    {s.avg_rating ? (
-                      <div className="flex items-center gap-1 mt-1.5">
-                        <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                        <span className="text-xs font-bold">{s.avg_rating.toFixed(1)}</span>
-                        <span className="text-[10px] text-gray-400 dark:text-gray-500">({s.review_count})</span>
-                      </div>
-                    ) : null}
-                    {amenitiesArr.length > 0 && (
-                      <div className="flex gap-1 mt-2 flex-wrap">
-                        {amenitiesArr.slice(0, 3).map((a) => (
-                          <span key={a} className="text-[9px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/[0.04] px-1.5 py-0.5 rounded">
-                            {a === 'wifi' ? '와이파이' : a === 'parking' ? '주차' : a === 'pool' ? '수영장' : a === 'breakfast' ? '조식' : a}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    <div className="mt-2 pt-2 border-t border-gray-100 dark:border-[#2C2F35]">
-                      {s.price_from ? (
-                        <p className="text-sm font-extrabold text-brand dark:text-[#4D8DF5]">
-                          ₩{formatNumber(s.price_from)}
-                          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-normal ml-1">/박~</span>
-                        </p>
-                      ) : (
-                        <p className="text-xs text-gray-400 dark:text-gray-500">가격 미공개</p>
-                      )}
-                    </div>
-                  </div>
-                </Link>
+                />
               )
             })}
           </div>
@@ -282,14 +256,17 @@ export default function StaysSearchPage() {
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">판매 방식</label>
                 <div className="grid grid-cols-3 gap-1.5">
-                  {[
-                    { v: '', l: '전체' },
-                    { v: 'date', l: '📅 날짜 지정' },
-                    { v: 'voucher', l: '🎫 숙소 이용권' },
-                  ].map((m) => (
+                  {/* 🎨 2026-09-03: 이모지 → 선 아이콘 · 선택은 **브랜드 블루**(구 로즈 `bg-pink-500` 잔재).
+                      아이콘 컨셉은 유어딜 아이콘 세트(선/면) — 유틸리티만 lucide. */}
+                  {([
+                    { v: '', l: '전체', Icon: null },
+                    { v: 'date', l: '날짜 지정', Icon: CalendarDays },
+                    { v: 'voucher', l: '숙소 이용권', Icon: TicketStubIcon },
+                  ] as const).map((m) => (
                     <button key={m.v} type="button"
                       onClick={() => setFilters({ ...filters, sale_mode: m.v })}
-                      className={`p-2 rounded-lg text-[11px] font-semibold ${filters.sale_mode === m.v ? 'bg-pink-500 text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'}`}>
+                      className={`inline-flex items-center justify-center gap-1 p-2 rounded-lg text-[11px] font-semibold ${filters.sale_mode === m.v ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'}`}>
+                      {m.Icon && <m.Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
                       {m.l}
                     </button>
                   ))}
