@@ -8,6 +8,7 @@ import { toast } from '@/hooks/useToast'
 import { hasConsumerSession } from '@/utils/auth'
 import { Eye, EyeOff } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 
 export default function RegisterPage() {
   const { t } = useTranslation()
@@ -119,9 +120,9 @@ export default function RegisterPage() {
 
         {/* Logo */}
         <div className="text-center mb-12">
-          <h1 className="text-[32px] font-bold tracking-[0.08em] text-[#111]">
-            UR LIVE
-          </h1>
+          {/* 🏷️ 2026-09-03 (QA 1라운드): 폐기된 브랜드명 "UR LIVE" 가 소비자 화면에 이 한 곳만 남아 있었다.
+              로그인 화면과 같은 워드마크 SSOT(UrDealLogo)로 — 문자열을 다시 박으면 또 갈린다. */}
+          <div className="flex justify-center"><UrDealLogo size={34} forceLight /></div>
           <p className="text-[14px] text-[#999] mt-3 font-light">
             {t('register.title', { defaultValue: '회원가입' })}
           </p>

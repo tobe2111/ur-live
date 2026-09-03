@@ -29,6 +29,7 @@ import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY, COMMISSION_DEFAULTS 
 import { isVoucherCategory } from '../../shared/constants/voucher-categories'
 import { getPolicy } from '../utils/dynamic-policy'
 import { intParam } from '@/shared/pagination'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
+import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product'
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
@@ -153,8 +154,7 @@ curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
               COALESCE(p.sold_count, 0) AS sold_count
        FROM products p
        WHERE p.is_active = 1
-         AND COALESCE(p.referral_enabled, 0) = 1
-         AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
+         AND COALESCE(p.referral_enabled, 0) = 1 AND ${consumerVisibleProductSql('p')}
          ${exclusion}
        ORDER BY p.sold_count DESC, p.id DESC
        LIMIT ?`,
@@ -231,7 +231,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
                 COALESCE(p.referral_commission_rate, 0) AS commission_rate
          FROM product_pins pp
          JOIN products p ON p.id = pp.product_id
-         WHERE pp.user_id = ? AND p.is_active = 1
+         WHERE pp.user_id = ? AND p.is_active = 1 AND ${consumerVisibleProductSql('p')}
          ORDER BY pp.position ASC, pp.created_at DESC
          LIMIT ?`,
       ).bind(userId, CURATOR_DEFAULTS.PIN_MAX_PER_USER).all().catch(() => ({ results: [] as Record<string, unknown>[] })),
