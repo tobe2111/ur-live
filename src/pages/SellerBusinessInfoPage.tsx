@@ -479,6 +479,20 @@ export default function SellerBusinessInfoPage() {
         {/* 📄 2026-09-03 (대표 "사업자등록증 사진 이미지도 올리는게 필요했는데"): 기능은 있는데
             **다른 탭에 있어서** 안 보였다. 오늘 이용권 관리와 같은 종류의 문제라 같은 처방을 한다 —
             찾는 자리에서 그 자리를 알려 준다. */}
+        {/* 🏪 2026-09-03 (대표 "입력했던 정보가 저장이 안되어있나?"): 저장은 돼 있었는데 **다른 테이블**
+            이었다 — 매장 등록 때 낸 값은 `sellers` 에, 이 화면은 `seller_business_info` 를 읽는다.
+            이제 등록 때 값을 채워 보여 주되, **아직 정식 등록이 아니라는 사실을 숨기지 않는다.** */}
+        {activeTab === 'business' && businessInfo?.from_registration && (
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-[13px] font-bold text-amber-900">
+              {t('seller.bizFromRegistration', { defaultValue: '매장 등록 때 입력하신 내용을 채워 뒀어요' })}
+            </p>
+            <p className="mt-0.5 text-[12px] text-amber-800">
+              {t('seller.bizFromRegistrationDesc', { defaultValue: '아직 사업자 정보로는 등록되지 않았습니다 — 확인 후 저장을 눌러 주세요.' })}
+            </p>
+          </div>
+        )}
+
         {activeTab === 'business' && (
           <button
             type="button"

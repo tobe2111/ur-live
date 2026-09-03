@@ -3202,7 +3202,9 @@
     },
     "orderTabs": {
       "orders": "订单"
-    }
+    },
+    "bizFromRegistration": "已填入您门店注册时的内容",
+    "bizFromRegistrationDesc": "尚未登记为营业信息 — 确认后请点击保存。"
   },
   "admin": {
     "login": {

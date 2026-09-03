@@ -2521,7 +2521,9 @@
     },
     "orderTabs": {
       "orders": "Pedidos"
-    }
+    },
+    "bizFromRegistration": "Rellenado desde el registro de tu tienda",
+    "bizFromRegistrationDesc": "Aún no está registrado como datos de empresa: revísalo y pulsa Guardar."
   },
   "admin": {
     "login": {

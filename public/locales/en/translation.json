@@ -3202,7 +3202,9 @@
     },
     "orderTabs": {
       "orders": "Orders"
-    }
+    },
+    "bizFromRegistration": "Filled in from your store registration",
+    "bizFromRegistrationDesc": "Not registered as business info yet — review and press Save."
   },
   "admin": {
     "login": {

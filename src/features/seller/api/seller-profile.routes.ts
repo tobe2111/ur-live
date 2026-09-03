@@ -16,6 +16,7 @@ import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { swallow } from '@/worker/utils/swallow'
 import { isPinVerified } from './seller-pin.routes'
+import { buildBusinessInfoSeed } from './business-info-seed'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 interface SellerProfileUpdate {
@@ -344,8 +345,10 @@ sellerProfileRoutes.get('/business-info', async (c) => {
       `).bind(sellerId).first();
     }
 
+    // 🏪 2026-09-03: 행이 없으면 매장 등록 때 받은 값으로 채워 돌려준다(설명은 business-info-seed).
     if (!businessInfo) {
-      return c.json({ success: false, error: 'Not found' }, 404);
+      const seeded = await buildBusinessInfoSeed(db, sellerId);
+      return seeded ? c.json({ success: true, data: seeded }) : c.json({ success: false, error: 'Not found' }, 404);
     }
 
     // 🖼️ 2026-07-01 (대표 — 유어샵 판매자 정보): 통신판매업신고번호 additive 동봉 (컬럼 없으면 조용히 생략 —

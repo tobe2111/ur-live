@@ -3202,7 +3202,9 @@
     },
     "orderTabs": {
       "orders": "주문"
-    }
+    },
+    "bizFromRegistration": "매장 등록 때 입력하신 내용을 채워 뒀어요",
+    "bizFromRegistrationDesc": "아직 사업자 정보로는 등록되지 않았습니다 — 확인 후 저장을 눌러 주세요."
   },
   "admin": {
     "login": {

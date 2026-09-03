@@ -3202,7 +3202,9 @@
     },
     "orderTabs": {
       "orders": "注文"
-    }
+    },
+    "bizFromRegistration": "店舗登録時の内容を入れておきました",
+    "bizFromRegistrationDesc": "まだ事業者情報として登録されていません — 確認して保存を押してください。"
   },
   "admin": {
     "login": {

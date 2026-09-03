@@ -2521,7 +2521,9 @@
     },
     "orderTabs": {
       "orders": "Commandes"
-    }
+    },
+    "bizFromRegistration": "Prérempli depuis l’enregistrement de votre boutique",
+    "bizFromRegistrationDesc": "Pas encore enregistré comme informations d’entreprise — vérifiez puis enregistrez."
   },
   "admin": {
     "login": {
