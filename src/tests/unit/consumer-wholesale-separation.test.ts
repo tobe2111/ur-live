@@ -28,14 +28,21 @@ const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
 
 // 도매 마스터 제외절 — 공백/별칭(p.) 무관 매칭.
 const EXCL = /NOT\s*\(\s*COALESCE\(\s*[a-z]*\.?is_supply_product\s*,\s*0\s*\)\s*=\s*1\s+AND\s+COALESCE\(\s*[a-z]*\.?supply_source_id\s*,\s*0\s*\)\s*=\s*0\s*\)/gi
-const count = (s: string) => (s.match(EXCL) || []).length
+// 🧱 2026-09-03: 같은 규칙을 **상수로 부르는** 형태도 센다.
+//   이 가드는 술어의 *문자열*을 세는데, 규칙을 SSOT(`shared/db/consumer-visible-product`)로 모으면
+//   문자열이 사라져 **규칙을 지켰는데 빨간불**이 된다(실제로 그렇게 한 번 깨졌다 — PR #1330).
+//   두 형태를 모두 세면 "인라인으로 두든 상수로 모으든, 조건이 그 쿼리에 붙어 있는가"만 남는다.
+//   ⚠️ 상수 자체의 내용은 `qa-round1-fixes-2026-09-03.test.ts` 가 따로 고정한다 —
+//     여기서 호출만 세면 빈 함수여도 통과하므로, 그 짝이 없으면 이 완화는 가드를 약화시킨다.
+const EXCL_HELPER = /consumerVisibleProductSql\s*\(/g
+const count = (s: string) => (s.match(EXCL) || []).length + (s.match(EXCL_HELPER) || []).length
 
 // [파일, 최소 제외절 개수] — 소비자에게 상품을 노출하는 전 경로.
 const CONSUMER_PRODUCT_QUERIES: Array<[string, number]> = [
   ['src/features/products/repositories/ProductRepository.ts', 3], // 리스트 + 카운트 + FTS
   ['src/features/products/api/products.routes.ts', 3],            // /count + 자동완성 ×2
   ['src/worker/routes/sitemap.routes.ts', 2],                     // 공구 + 일반상품
-  ['src/worker/routes/curator.routes.ts', 1],                     // 유어샵 추천 피드
+  ['src/worker/routes/curator.routes.ts', 2],                     // 유어샵 추천 피드 + 담긴 핀 목록(2026-09-03)
   ['src/features/group-buy/api/group-buy-public.routes.ts', 2],   // gift-catalog + fallback
   ['src/worker/cron/group-buy-feed-cache.ts', 1],                 // 홈/공구 피드 cron
 ]
