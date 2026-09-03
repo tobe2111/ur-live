@@ -193,3 +193,19 @@ describe('⑥ 통폐합 — 접은 화면이 사라지면 안 된다 (2026-09-03
     }
   })
 })
+
+describe('⑦ 숨기는 것과 없애는 것은 다르다', () => {
+  it('🔒 라이브 전용 화면이 nav 정의에 남아 있다 — 통폐합 때 실제로 빠뜨려 CI 가 잡았다', () => {
+    /**
+     * `LIVE_COMMERCE_SUSPENDED` 가 렌더에서 거르므로 **화면에는 안 뜬다**(위 ⑥ 의 12~13줄은 그대로).
+     * 그런데 정의에서 지우면 라우트가 **어디에서도 닿을 수 없는 상태**가 되고, 라이브가 돌아오는 날
+     * 조용히 사라진 채로 남는다. `check-orphan-routes` 가 이걸 잡아 준 것이 이 테스트의 이유다.
+     */
+    for (const p of ['/seller/promote-boosts', '/seller/castings', '/seller/donations',
+                     '/seller/streaming-guide', '/seller/notify-followers']) {
+      const it_ = items.find(i => i.path === p)
+      expect(it_, `라이브 전용 항목이 nav 정의에서 사라졌다: ${p}`).toBeTruthy()
+      expect(it_!.mode, `${p} 는 live 모드여야 한다(안 그러면 화면에 뜬다)`).toBe('live')
+    }
+  })
+})

@@ -116,6 +116,15 @@ export const NAV_GROUPS: {
       // 🏭 크리에이터 전용 — 매장 사장님에겐 숨긴다(hideFor 는 항목 단위로 유지).
       { path: '/u/me/earnings', labelKey: 'seller.nav.curatorEarnings', icon: Sparkles, mode: 'common' as SellerMode, hideFor: ['store_owner'] as SellerType[] },
       { path: '/seller/prospects', labelKey: 'seller.nav.prospects', icon: Sparkles, mode: 'common' as SellerMode, hideFor: ['store_owner'] as SellerType[] },
+      /**
+       * 🎥 **라이브 전용 — 지금은 아무에게도 안 보인다**(`LIVE_COMMERCE_SUSPENDED` 가 렌더에서 거른다).
+       * 2026-09-03 통폐합 때 이 줄들을 **빠뜨렸다가 `check-orphan-routes` 가 잡았다.**
+       * 화면엔 어차피 안 뜨지만 정의에서 지우면 **라우트가 어디에서도 닿을 수 없는 상태**가 되고,
+       * 라이브가 돌아오는 날 조용히 사라진 채로 남는다. **숨기는 것과 없애는 것은 다르다.**
+       */
+      { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, mode: 'live' as SellerMode, hideFor: ['store_owner'] as SellerType[] },
+      { path: '/seller/castings', labelKey: 'seller.nav.castings', icon: Megaphone, mode: 'live' as SellerMode },
+      { path: '/seller/promote-boosts', labelKey: 'seller.nav.promoteBoosts', icon: Rocket, mode: 'live' as SellerMode },
     ],
   },
   {
@@ -124,6 +133,9 @@ export const NAV_GROUPS: {
       { path: '/seller/business-info', labelKey: 'seller.businessInfo', icon: Building2, mode: 'common' as SellerMode },
       navFromGroup('/seller/stores'),
       navFromGroup('/seller/alimtalk'),
+      // 🎥 라이브 전용 — 위와 같은 이유로 정의에 남긴다(렌더에서는 게이트가 숨긴다).
+      { path: '/seller/streaming-guide', labelKey: 'seller.nav.streamingGuide', icon: Play, mode: 'live' as SellerMode },
+      { path: '/seller/notify-followers', labelKey: 'seller.nav.notifyFollowers', icon: Megaphone, mode: 'live' as SellerMode },
     ],
   },
 ]
