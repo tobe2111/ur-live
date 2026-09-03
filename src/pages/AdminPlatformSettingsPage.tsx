@@ -109,6 +109,13 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
     options: [{ value: 'false', label: 'OFF (현행 — 표면 미노출)' }, { value: 'true', label: 'ON — 공구 엔진 서버 게이트' }],
     hint: '활성화 순서 ④ — ①예산캡 ②owner펀딩 ③promo필드가 staging 검증 후 켜진 뒤에만. ⚠️ 서버 게이트만 켜짐 — 클라 표면은 GB_ENGINE_ENABLED(코드 배포) 별도. 런북: commission-funding-restructure.md §1',
   },
+  // 💰 2026-08-31: 이용권을 딜로도 살 수 있게 (대표 방향 — 상품 마진 대신 현금 출구에 마진).
+  //   ⚠️ 이 키가 없으면 게이트를 **켤 방법 자체가 없다** — `ops-gate-reachable` 테스트가 그걸 막았다.
+  {
+    key: 'voucher_deal_payment_enabled', label: '이용권 딜 결제', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 이용권은 카드만)' }, { value: 'true', label: 'ON — 이용권도 딜로 결제' }],
+    hint: '🔴 선행 필수: influencer_deal_bonus_pct = 0. 보너스 20% 가 이용권 마진(5~10%)보다 커서 켜면 팔릴수록 건당 8~14원 적자(2026-08-31 실측). 순서: ①교환권 마진 0+재계산 ②딜 보너스 0 + 현금 정산 수수료 ③이 키. ⚠️ 서버 게이트만 — 클라 표면은 VOUCHER_DEAL_PAYMENT_ENABLED(코드 배포) 별도. 검증: STAGING_CHECKLIST S9',
+  },
   // 🥡💳 2026-08-12: **켤 화면이 없어서 영영 못 켜던 게이트 2개** (검증 데이 블로커).
   //   실측: `pickup_unclaimed_policy_enabled` 는 이 화면에 *"시스템 모니터링에서 켜라"* 는 **안내문만**
   //   있었는데 그 화면(`/admin/system-monitoring`)은 **조회 전용**이라 쓰기 API 가 없다.

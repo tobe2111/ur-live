@@ -230,3 +230,56 @@ export async function guardAwaitingDeposit(
       : '무통장입금(가상계좌)은 이용권 결제에 사용할 수 없습니다. 발급된 계좌로 입금하지 마시고 고객센터로 문의해주세요.',
   }
 }
+
+/**
+ * 💰 **이용권 딜 결제 게이트** (2026-08-31 대표 방향 · 기본 OFF).
+ *
+ *   join 의 상품 조회가 `voucher 카테고리 OR deal_only=1` 을 함께 매칭하기 때문에, 딜 경로는
+ *   **원래부터 이용권도 받고 있었다** — 화면이 안 내놨을 뿐 직접 POST 하면 통했다.
+ *   그래서 이 가드는 기능을 여는 스위치인 동시에 **그 열린 문을 닫는다.**
+ *
+ * 🔴 켜기 전 선행: `influencer_deal_bonus_pct` 를 0 으로. 보너스 20% 가 살아 있으면
+ *   이용권 마진(5~10%)보다 보너스가 커서 **팔릴수록 유어딜이 건당 8~14원 적자**다.
+ *   교환권(`deal_only=1`)은 소비자 마크업 20% 가 보너스를 상쇄해 괜찮았고, 이용권엔 그 상쇄가 없다.
+ *   클라 `VOUCHER_DEAL_PAYMENT_ENABLED` 와 이중 게이트(`GB_ENGINE_ENABLED` 선례).
+ *
+ * @returns 허용이면 `true`. 교환권은 이 게이트와 무관하게 항상 `true`.
+ */
+export async function isVoucherDealPaymentAllowed(
+  DB: D1Database,
+  product: { deal_only?: number | null },
+): Promise<boolean> {
+  if (product.deal_only === 1) return true
+  const gate = await DB.prepare(
+    "SELECT value FROM platform_settings WHERE key = 'voucher_deal_payment_enabled'"
+  ).first<{ value: string }>().catch(() => null)
+  return gate?.value === 'true'
+}
+
+/**
+ * 🛡️ 참여 자격 3가지 — 마감 / 종료·취소 / 바우처 만료. 전부 400 + 문구 하나라 한 함수로 모은다.
+ *
+ * 조건은 `group-buy.routes.ts` 에 있던 것을 **그대로** 옮겼다(2026-09-01, 파일 크기 래칫).
+ * 판정 순서도 그대로다 — 마감을 참여보다 먼저 보는 것이 원래 의도였고(주석 명시), 만료일 가드는
+ * 공구 마감 전에 바우처가 먼저 죽는 상품을 막는다.
+ *
+ * @returns 막아야 하면 안내 문구, 통과면 `null`.
+ */
+export function groupBuyJoinBlockReason(product: {
+  group_buy_deadline?: string | null
+  group_buy_status?: string | null
+  voucher_expiry?: string | null
+}): string | null {
+  if (product.group_buy_deadline && new Date(product.group_buy_deadline) < new Date()) {
+    return '공동구매가 마감되었습니다'
+  }
+  if (product.group_buy_status === 'expired' || product.group_buy_status === 'cancelled') {
+    return '종료된 공동구매입니다'
+  }
+  if (product.voucher_expiry && product.group_buy_deadline) {
+    if (new Date(product.voucher_expiry) <= new Date(product.group_buy_deadline)) {
+      return '바우처 만료일이 공구 마감 전이라 발급할 수 없습니다. 셀러에게 문의해주세요.'
+    }
+  }
+  return null
+}
