@@ -140,6 +140,19 @@ describe('③ 갤러리 — 커버와 첫 칸이 갈리지 않는다', () => {
     expect(cron.slice(at, at + 500)).toMatch(/UPDATE products SET image_url = \?, images = \?/)
   })
 
+  it('정리 패스가 전진한다 — 고칠 행만 고르고, 시도가 아니라 쓴 것을 센다', () => {
+    // 🩸 첫 판은 `images LIKE '%http%'` 로 골라 **수렴하지 않았다**: 갤러리가 여러 장이면 첫 칸을
+    //   고쳐도 뒤쪽 외부 주소 때문에 후보로 남아, 고쳐진 행이 ORDER BY 창 앞자리를 채우다가
+    //   40개를 넘기면 창 전체가 no-op 이 된다(뒤쪽 행은 영영 안 보임). 에러 없이 조용히 멈춘다.
+    const cron = codeOnly(read('worker/cron/demo-image-rehost.ts'))
+    const at = cron.indexOf('export async function repairGalleryCoverDrift')
+    expect(at, 'repairGalleryCoverDrift 를 못 찾음').toBeGreaterThan(0)
+    const fn = cron.slice(at, at + 2200)
+    expect(fn).toMatch(/json_extract\(images, '\$\[0\]'\) LIKE 'http%'/)
+    expect(fn).not.toMatch(/AND images LIKE '%http%'/)     // 옛 넓은 조건이 되살아나면 다시 멈춘다
+    expect(fn).toMatch(/meta\?\.changes \|\| 0\) > 0\) fixed\+\+/)  // 시도가 아니라 성공을 센다
+  })
+
   it('정리 패스는 R2 바인딩 없이도 돈다 (조기반환보다 앞)', () => {
     const cron = codeOnly(read('worker/cron/demo-image-rehost.ts'))
     const repair = cron.indexOf('repairGalleryCoverDrift(env)')
