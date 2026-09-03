@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Globe, Home, LogOut, Menu, MessageCircle, Radio, Settings, Store, X } from 'lucide-react'
+import { Globe, Home, LogOut, Menu, MessageCircle, Radio, Search, Settings, Store, X } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import api from '@/lib/api'
 import { HOSTING_HIDDEN, LIVE_COMMERCE_SUSPENDED, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
@@ -15,7 +15,8 @@ import StoreSwitcher from '@/components/seller/StoreSwitcher'
 import SellerKakaoLinkBanner from './SellerKakaoLinkBanner'
 import SellerSimpleNav from './seller-layout/SellerSimpleNav'
 
-import { NAV_GROUPS, modesForSellerType, type SellerType, type SellerMode } from '@/components/seller/seller-nav'
+import { NAV_GROUPS, SELLER_SEARCH_ONLY, modesForSellerType, type SellerType, type SellerMode } from '@/components/seller/seller-nav'
+import CommandPalette, { type CommandItem } from '@/components/dashboard/CommandPalette'
 
 
 
@@ -167,6 +168,34 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   }
   const orderedNavGroups = [...filteredNavGroups].sort((a, b) => orderRank(a) - orderRank(b))
 
+  /**
+   * 🔎 **페이지 검색** (2026-09-03 대표 *"셀러대시보드도 어드민 대시보드처럼 페이지 검색이 필요해"*).
+   * 사이드바에 보이는 항목 + `SELLER_SEARCH_ONLY`(메뉴엔 없지만 실제로 쓰는 화면)를 함께 담는다 —
+   * 검색이 사이드바의 복사본이면 **못 찾던 페이지는 여전히 못 찾는다.**
+   */
+  const commandItems: CommandItem[] = [
+    ...orderedNavGroups.flatMap((g) => g.items.map((it) => ({
+      path: it.path,
+      label: t(it.labelKey, { defaultValue: it.labelKey }),
+      icon: it.icon,
+      group: g.labelKey ? t(g.labelKey, { defaultValue: '' }) : (g.label || ''),
+    }))),
+    ...SELLER_SEARCH_ONLY.map((it) => ({
+      path: it.path,
+      label: t(it.labelKey, { defaultValue: it.fallback }),
+      icon: it.icon,
+      group: it.group,
+    })),
+  ]
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPaletteOpen((o) => !o) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const simpleMode = isStoreOnly(sellerType) // 🧭 심플 모드(SellerSimpleNav): 매장 단독 기본 3메뉴 + 전체 메뉴 접힘
   const [fullMenuOpen, setFullMenuOpen] = useState(() => { try { return localStorage.getItem('ur_seller_full_menu') === '1' } catch { return false } })
   const toggleFullMenu = () => setFullMenuOpen(v => { try { localStorage.setItem('ur_seller_full_menu', v ? '0' : '1') } catch { /* noop */ } return !v })
@@ -283,6 +312,18 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           </p>
         </div>
       )}
+
+      {/* 🔎 페이지 검색 — 메뉴에 없는 화면까지 이름으로 바로 간다(⌘K / Ctrl+K). */}
+      <button
+        type="button"
+        onClick={() => { setPaletteOpen(true); setSidebarOpen(false) }}
+        className="mx-4 mb-1 mt-2 flex items-center gap-2 px-3 py-2 rounded-lg text-left"
+        style={{ background: 'rgba(255,255,255,0.03)' }}
+      >
+        <Search size={12} className="text-white/35 flex-shrink-0" />
+        <span className="flex-1 text-[11px] text-white/40">{t('seller.pageSearch', { defaultValue: '페이지 검색' })}</span>
+        <kbd className="text-[9px] font-bold text-white/40 bg-white/10 rounded px-1 py-0.5">⌘K</kbd>
+      </button>
 
       {/* Grouped navigation — 🧭 심플 모드(매장 단독): 홈+3메뉴 상단 고정, 나머지는 "전체 메뉴" 접힘 */}
       <nav ref={navScrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-2">
@@ -495,6 +536,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       </a>
 
       {/* 🏭 2026-06-04 (사용자 요청): 모바일 '라이브 시작' FAB 제거 — 셀러 대시보드 간소화. */}
+
+      {/* 🔎 페이지 검색 — 사이드바 항목 + 메뉴에 없는 화면까지(어드민과 같은 컴포넌트). */}
+      <CommandPalette items={commandItems} open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   )
 }

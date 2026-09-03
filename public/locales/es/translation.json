@@ -1849,7 +1849,18 @@
       "operators": "Operadores",
       "stores": "Mis tiendas",
       "findInfluencers": "Buscar influencers",
-      "voucherManage": "Gestionar cupones"
+      "voucherManage": "Gestionar cupones",
+      "profile": "Mi información",
+      "tier": "Nivel de vendedor",
+      "twoFactor": "Verificación en dos pasos",
+      "appointments": "Reservas",
+      "ledger": "Libro de la tienda",
+      "storeDashboard": "Resumen de tienda",
+      "realtime": "En tiempo real",
+      "voucherOrders": "Envíos de vales",
+      "transfers": "Transferencia de tienda",
+      "marketing": "Marketing",
+      "adSlots": "Espacios publicitarios"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2485,7 +2496,8 @@
       "list": "Cupones",
       "scan": "Canjear",
       "reviews": "Reseñas"
-    }
+    },
+    "pageSearch": "Buscar páginas"
   },
   "admin": {
     "login": {

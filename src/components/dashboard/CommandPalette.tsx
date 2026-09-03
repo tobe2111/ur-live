@@ -1,8 +1,11 @@
 /**
- * ⌘K 2026-07-20 (대표 "자주 쓰는 페이지 빠르게"의 짝): 어드민 커맨드 팔레트.
- *   ⌘K / Ctrl+K 로 열고, 메뉴 이름을 타이핑하면 60여 개 어드민 페이지로 즉시 점프.
- *   즐겨찾기(고정)가 "자주 쓰는 것 상단"이라면, 팔레트는 "가끔 쓰는 것도 2초 만에".
- *   역할별로 보이는 항목만 대상(AdminLayout 의 roleNavGroups 를 flat 으로 받음).
+ * ⌘K 대시보드 **페이지 검색**(커맨드 팔레트).
+ *
+ * 2026-07-20 어드민용으로 만들었고(대표 "자주 쓰는 페이지 빠르게"), **2026-09-03 셀러 대시보드가
+ * 같은 것을 요구**해서(대표 *"셀러대시보드도 어드민 대시보드처럼 페이지 검색이 필요해"*) 공용으로 옮겼다.
+ * 두 벌로 복사하면 반드시 갈린다 — 한쪽만 키보드 이동이 되거나 한쪽만 그룹명을 검색하게 된다.
+ *
+ * 호출부가 `items` 를 만들어 넘긴다(역할별 가시성·숨은 페이지 포함 여부는 각 레이아웃의 몫).
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -22,7 +25,7 @@ interface Props {
   onClose: () => void
 }
 
-export default function AdminCommandPalette({ items, open, onClose }: Props) {
+export default function CommandPalette({ items, open, onClose }: Props) {
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [sel, setSel] = useState(0)

@@ -167,3 +167,25 @@ function modesForSellerType(st: SellerType): SellerMode[] {
   if (st === 'store_owner') return ['store']
   return ['live', 'store']  // both
 }
+
+/**
+ * 🔎 **검색에만 나오는 페이지** (2026-09-03 대표 *"셀러대시보드도 어드민처럼 페이지 검색이 필요해"*).
+ *
+ * 셀러 라우트 64개 중 사이드바에 있는 건 절반뿐이고, 나머지에는 **실제로 쓰는 화면이 섞여 있다**
+ * (내 정보·등급·예약·매장 원장·교환권 발송 이력…). 사이드바에 다 올리면 지금도 긴 메뉴가 두 배가 되고,
+ * 안 올리면 존재조차 모른다 — 오늘 이용권 관리에서 그 대가를 치렀다.
+ * ⇒ **사이드바는 그대로, 검색은 전부 닿게.** 로그인·콜백 같은 통과 화면은 넣지 않는다(갈 데가 아니다).
+ */
+export const SELLER_SEARCH_ONLY: { path: string; labelKey: string; fallback: string; icon: any; group: string }[] = [
+  { path: '/seller/profile', labelKey: 'seller.nav.profile', fallback: '내 정보', icon: Users, group: '설정' },
+  { path: '/seller/tier', labelKey: 'seller.nav.tier', fallback: '셀러 등급', icon: Star, group: '설정' },
+  { path: '/seller/2fa', labelKey: 'seller.nav.twoFactor', fallback: '2단계 인증', icon: Bell, group: '설정' },
+  { path: '/seller/appointments', labelKey: 'seller.nav.appointments', fallback: '예약 관리', icon: BarChart3, group: '주문·고객' },
+  { path: '/seller/ledger', labelKey: 'seller.nav.ledger', fallback: '매장 원장', icon: Receipt, group: '수익' },
+  { path: '/seller/store-dashboard', labelKey: 'seller.nav.storeDashboard', fallback: '매장 현황', icon: Building2, group: '수익' },
+  { path: '/seller/realtime', labelKey: 'seller.nav.realtime', fallback: '실시간 현황', icon: BarChart2, group: '수익' },
+  { path: '/seller/voucher-orders', labelKey: 'seller.nav.voucherOrders', fallback: '교환권 발송 이력', icon: Gift, group: '수익' },
+  { path: '/seller/transfers', labelKey: 'seller.nav.transfers', fallback: '매장 이관', icon: Handshake, group: '설정' },
+  { path: '/seller/marketing', labelKey: 'seller.nav.marketing', fallback: '마케팅', icon: Megaphone, group: '주문·고객' },
+  { path: '/seller/ad-slots', labelKey: 'seller.nav.adSlots', fallback: '광고 슬롯', icon: Rocket, group: '주문·고객' },
+]

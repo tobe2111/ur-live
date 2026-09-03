@@ -2529,7 +2529,18 @@
       "operators": "运营者管理",
       "stores": "门店管理",
       "findInfluencers": "寻找达人",
-      "voucherManage": "使用券管理"
+      "voucherManage": "使用券管理",
+      "profile": "我的信息",
+      "tier": "卖家等级",
+      "twoFactor": "两步验证",
+      "appointments": "预约管理",
+      "ledger": "门店账本",
+      "storeDashboard": "门店概览",
+      "realtime": "实时概览",
+      "voucherOrders": "兑换券发送记录",
+      "transfers": "门店转让",
+      "marketing": "营销",
+      "adSlots": "广告位"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -3165,7 +3176,8 @@
       "list": "使用券",
       "scan": "核销",
       "reviews": "评价确认"
-    }
+    },
+    "pageSearch": "页面搜索"
   },
   "admin": {
     "login": {

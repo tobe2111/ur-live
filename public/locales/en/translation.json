@@ -2539,7 +2539,18 @@
       "operators": "Operators",
       "stores": "My Stores",
       "findInfluencers": "Find Influencers",
-      "voucherManage": "Manage vouchers"
+      "voucherManage": "Manage vouchers",
+      "profile": "My info",
+      "tier": "Seller tier",
+      "twoFactor": "Two-factor auth",
+      "appointments": "Appointments",
+      "ledger": "Store ledger",
+      "storeDashboard": "Store overview",
+      "realtime": "Live overview",
+      "voucherOrders": "Gift card sends",
+      "transfers": "Store transfer",
+      "marketing": "Marketing",
+      "adSlots": "Ad slots"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",
@@ -3165,7 +3176,8 @@
       "list": "Vouchers",
       "scan": "Redeem",
       "reviews": "Review checks"
-    }
+    },
+    "pageSearch": "Search pages"
   },
   "admin": {
     "login": {

@@ -2545,7 +2545,18 @@
       "operators": "運営者管理",
       "stores": "店舗管理",
       "findInfluencers": "インフルエンサー探し",
-      "voucherManage": "利用券の管理"
+      "voucherManage": "利用券の管理",
+      "profile": "マイ情報",
+      "tier": "セラー等級",
+      "twoFactor": "2段階認証",
+      "appointments": "予約管理",
+      "ledger": "店舗元帳",
+      "storeDashboard": "店舗状況",
+      "realtime": "リアルタイム状況",
+      "voucherOrders": "交換券の送信履歴",
+      "transfers": "店舗移管",
+      "marketing": "マーケティング",
+      "adSlots": "広告枠"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",
@@ -3165,7 +3176,8 @@
       "list": "利用券",
       "scan": "使用処理",
       "reviews": "レビュー確認"
-    }
+    },
+    "pageSearch": "ページ検索"
   },
   "admin": {
     "login": {

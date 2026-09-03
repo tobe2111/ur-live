@@ -2569,7 +2569,18 @@
       "operators": "운영자 관리",
       "stores": "매장 관리",
       "findInfluencers": "소개 파트너 찾기",
-      "voucherManage": "이용권 관리"
+      "voucherManage": "이용권 관리",
+      "profile": "내 정보",
+      "tier": "셀러 등급",
+      "twoFactor": "2단계 인증",
+      "appointments": "예약 관리",
+      "ledger": "매장 원장",
+      "storeDashboard": "매장 현황",
+      "realtime": "실시간 현황",
+      "voucherOrders": "교환권 발송 이력",
+      "transfers": "매장 이관",
+      "marketing": "마케팅",
+      "adSlots": "광고 슬롯"
     },
     "guide": {
       "title": "셀러 운영 가이드",
@@ -3165,7 +3176,8 @@
       "list": "이용권",
       "scan": "사용처리",
       "reviews": "후기 인증"
-    }
+    },
+    "pageSearch": "페이지 검색"
   },
   "admin": {
     "login": {

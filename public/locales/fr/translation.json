@@ -1849,7 +1849,18 @@
       "operators": "Opérateurs",
       "stores": "Mes boutiques",
       "findInfluencers": "Trouver des influenceurs",
-      "voucherManage": "Gérer les bons"
+      "voucherManage": "Gérer les bons",
+      "profile": "Mon profil",
+      "tier": "Niveau vendeur",
+      "twoFactor": "Double authentification",
+      "appointments": "Réservations",
+      "ledger": "Registre boutique",
+      "storeDashboard": "Aperçu boutique",
+      "realtime": "Temps réel",
+      "voucherOrders": "Envois de bons",
+      "transfers": "Transfert boutique",
+      "marketing": "Marketing",
+      "adSlots": "Emplacements pub"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2485,7 +2496,8 @@
       "list": "Bons",
       "scan": "Utiliser",
       "reviews": "Avis"
-    }
+    },
+    "pageSearch": "Rechercher"
   },
   "admin": {
     "login": {
