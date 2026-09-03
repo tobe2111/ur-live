@@ -6102,8 +6102,9 @@ canvas {
     name: '티스토리가 블로거 뒤로 밀림(잔여를 다 뺏겨 영원히 0)',
     file: 'src/features/marketing/api/influencer-enrich-lane.ts',
     // 🗺️ 2026-08-04 앵커 이사: 몫이 상수 → `tistoryRoom(env)` 가 되고 `if (tisRoom > 0)` 으로 감싸졌다.
-    //   지키는 불변식(티스토리가 블로거보다 **먼저**)은 그대로라 항목을 지우지 않고 따라간다.
-    find: '      try { tistory = await enrichTistoryActivity(DB, budget, tisRoom, slice) } catch (err) { note(err) }\n',
+    //   🗺️ 2026-09-03 또 이사: 재측정 주기 필터가 env 를 읽어야 해서 인자가 하나 늘었다.
+    //   지키는 불변식(티스토리가 블로거보다 **먼저**)은 두 번 다 그대로라 항목을 지우지 않고 따라간다.
+    find: '      try { tistory = await enrichTistoryActivity(DB, budget, tisRoom, slice, env) } catch (err) { note(err) }\n',
     replace: '',
     test: 'src/tests/unit/ads-tistory-enrich.test.ts',
     why:
