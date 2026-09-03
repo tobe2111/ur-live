@@ -7850,6 +7850,29 @@ canvas {
       '결과가 도착해도 지도는 이미 엉뚱한 도시에 가 있다.',
   },
   {
+    name: '홈 히어로 — 사진 소스가 하드로드 시드 하나로 되돌아간다(새로고침해야 보임)',
+    file: 'src/components/home/useHeroPhoto.ts',
+    find: 'for (const [, data] of qc.getQueriesData({ queryKey: FEED_PREFIX })) {',
+    replace: 'for (const [, data] of [] as [unknown, unknown][]) {',
+    test: 'src/tests/unit/hero-photo-source.test.ts',
+    why:
+      '2026-09-03 대표 신고 "히어로 이미지가 항상 새로고침을 해야 보이네..? 심각해". 사진 출처가 ' +
+      '`__SSR_INITIAL_MAIN__` 시드 하나뿐이었는데 그 시드는 `/` **하드로드에서만** 문서에 들어간다. ' +
+      '앱 안에서 홈 탭으로 들어오면 색면만 남았고 에러가 없어 아무도 몰랐다(어드민 히어로 배너 0건이라 ' +
+      '대안도 없었다 — 라이브 실측).',
+  },
+  {
+    name: '유어샵 내 상품 — 옛 대표색 카드로 되돌아간다(같은 상품이 홈과 달라 보임)',
+    file: 'src/pages/SellerPublicPage.tsx',
+    find: '<GroupBuyFeedCard',
+    replace: '<BrowseProductCard',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '2026-09-03 대표 "홈 카드로 동일해야지 — 안 A". 8-27 유어샵 통일에서 **내 상품 그리드만 빠져** ' +
+      '같은 상품이 홈에서는 사진+맨 텍스트, 유어샵에서는 사진 대표색 색면 카드(+사진 위 그라디언트, ' +
+      '코랄 할인율)로 나왔다. 카드가 두 벌이면 반드시 갈린다 — 이 레포가 세 번째로 겪은 자리.',
+  },
+  {
     name: '딜 카드 격자 — 세로 간격이 다시 가로와 같아진다(카드 경계가 안 읽힌다)',
     file: 'src/shared/deal-card-grid.ts',
     find: "'gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-7'",

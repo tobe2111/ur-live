@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
-import { pickHeroPhotoFromSeedJson, type HeroPhotoPick } from '@/shared/home-hero-photo'
 import { HOME_HERO_REQUEST_WIDTH, HOME_HERO_QUALITY } from '@/shared/home-hero-image'
 import PcHomeLocationBar, { type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
+import { useHeroPhoto } from './useHeroPhoto'
 
 /**
  * 🏠 히어로 (2026-08-19 대표 확정 — **통합형 190px**, 시안 4개 중 ②안).
@@ -42,12 +42,6 @@ const DEFAULT_DESC = '예약도 대기도 없이. 식사, 미용, 숙소, 교환
  *   **똑같은 사진**을 골라야 한다. 규칙이 두 벌이면 반드시 갈리고, 갈리면 preload 가 버려져
  *   같은 사진을 두 번 받는다(에러 없이 더 느려진다). 이 함수는 DOM 에서 시드를 꺼내 넘기기만 한다.
  */
-export function pickHeroPhoto(): HeroPhotoPick | null {
-  if (typeof document === 'undefined') return null
-  const el = document.getElementById('__SSR_INITIAL_MAIN__')
-  if (!el?.textContent) return null
-  return pickHeroPhotoFromSeedJson(el.textContent)
-}
 
 export interface HeroContent {
   /** 어드민이 올린 히어로 사진(없으면 시드에서 고른다). */
@@ -76,8 +70,12 @@ export default function HomeHeroDefault({
   content?: HeroContent
   controls?: HeroControls
 }) {
-  // 시드는 하드로드 시점에 이미 문서에 있으므로 **동기 1회**로 읽는다(리렌더/왕복 0).
-  const seed = content?.photo ? null : pickHeroPhoto()
+  /**
+   * 🖼️ 사진 소스. 하드로드면 문서 시드(동기·왕복 0), 앱 안에서 들어왔으면 홈 피드 캐시.
+   *   ⚠️ 2026-09-03 이전에는 **시드만** 봤다 — 그래서 홈 탭을 눌러 들어오면 시드가 없어
+   *      색면만 남았고, 새로고침해야 사진이 나왔다(대표 신고 "심각해").
+   */
+  const seed = useHeroPhoto(!content?.photo)
   const photoSrc = content?.photo || seed?.src || ''
   const photoHref = content?.photoHref || seed?.href || '/map'
   const hasMedia = !!photoSrc || !!content?.videoUrl

@@ -17,10 +17,9 @@ import VouchersTab from './seller-public/VouchersTab'
 import CuratorHeader from './curator-page/CuratorHeader'
 import UShopQrCard from './curator-page/UShopQrCard'
 import type { CuratorProfile } from '@/features/curator/api/curator-api'
-// 🏁 2026-06-25 (대표 "카드 1종"): 내 상품도 표준 BrowseProductCard(★평점·판매수 내장) — EditorialProductCard 폐기.
-import BrowseProductCard from '@/pages/browse/BrowseProductCard'
-import type { Product as BrowseProduct } from '@/pages/browse/types'
-import { seededColor } from '@/utils/card-gradient'
+// 🏪 2026-09-03 (대표 "홈 카드로 동일해야지"): 내 상품도 홈과 **같은 카드** — 유어샵 통일의 마지막 한 곳.
+import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
+import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import InfoTab from './seller-public/InfoTab'
 import FeaturedCard from './seller-public/FeaturedCard'
 import { getThemeTokens } from './seller-public/theme'
@@ -449,15 +448,34 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
               {shopQuery && <button onClick={() => setShopQuery('')} aria-label="지우기" className="shrink-0 w-5 h-5 rounded-full bg-gray-300 dark:bg-[#3A3A3A] text-white flex items-center justify-center"><X className="w-3 h-3" /></button>}
             </div>
             )}
-            <div className="grid grid-cols-2 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
+            {/* 🏪 2026-09-03 (대표 "홈 카드로 동일해야지 — 안 A"): **내 상품 그리드도 홈과 같은 카드**로.
+                2026-08-27 에 유어샵을 `GroupBuyFeedCard` 로 합칠 때 **이 그리드만 빠져** 옛
+                `BrowseProductCard`(사진 대표색으로 카드 전체를 칠하고 사진 아래 42%를 같은 색
+                그라디언트로 덮는 카드)로 남아 있었다. 그래서 같은 상품이 홈에서는 사진+맨 텍스트,
+                유어샵에서는 색면 카드로 나왔다 — 카드가 두 벌이면 반드시 갈린다는 것을 이 레포는
+                이미 두 번 겪었다(홈 섹션 ↔ 피드, 그리고 유어샵). 격자 간격도 공용 상수로. */}
+            <div className={`grid grid-cols-2 ${DEAL_GRID_GAP}`}>
               {gridProducts.filter(p => !shopQuery.trim() || p.name.toLowerCase().includes(shopQuery.trim().toLowerCase())).map(p => (
-                // 🏁 2026-06-25 (대표 "카드 1종"): 추천핀과 동일한 표준 BrowseProductCard 로 통일.
-                <BrowseProductCard
+                <GroupBuyFeedCard
                   key={p.id}
-                  product={{ id: p.id, name: p.name, price: p.price, current_price: p.price, original_price: p.original_price ?? undefined, discount_rate: p.discount_rate ?? 0, image_url: p.image_url || '', stock: 0, dominant_color: p.dominant_color, avg_rating: p.avg_rating, review_count: p.review_count, sold_count: p.sold_count, restaurant_name: p.restaurant_name } as BrowseProduct}
+                  p={{
+                    id: p.id,
+                    name: p.name,
+                    price: p.price,
+                    current_price: p.price,
+                    original_price: p.original_price ?? undefined,
+                    discount_rate: p.discount_rate ?? 0,
+                    image_url: p.image_url || '',
+                    stock: 0,
+                    dominant_color: p.dominant_color,
+                    avg_rating: p.avg_rating,
+                    review_count: p.review_count,
+                    sold_count: p.sold_count,
+                    restaurant_name: p.restaurant_name,
+                  } as never}
                   aboveFold={false}
+                  /* 내 상품은 소개비 귀속 경로가 아니다(주인 자신의 상품) → 상세로 직행. */
                   to={`/products/${p.id}`}
-                  fallbackColor={seededColor(p.id)}
                 />
               ))}
             </div>

@@ -119,7 +119,7 @@ function prefetchDetailChunk() {
  *   ⚠️ 사진 위가 아니라 **본문 맨 위**다 — 2026-08-31 대표 지시("할인율이 사진 안으로 들어가면
  *      안돼")와 같은 이유로, 사진은 상품을 보여주는 자리이지 배지를 얹는 자리가 아니다.
  */
-function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode }) {
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags, hideWishlist = false }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode; hideWishlist?: boolean }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
 
@@ -291,7 +291,9 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
                 (마감임박 배지가 있으면 그 아래). 겹치면 둘 다 못 읽는다. */}
             {fcfs && <FcfsBadge info={fcfs} variant="overlay" className={`absolute ${isUrgent ? 'top-9' : 'top-2'} left-2 z-[2]`} />}
             {/* 💗 찜 — 그루폰 카드 우상단 하트. hover 시 나타나고(찜된 건 항상 보임) 누르면 통 튄다. */}
-            <WishlistHeart productId={p.id} className="absolute top-2 right-2 z-[3]" />
+            {/* 🧷 `hideWishlist` — 핀 고르기 화면은 이 자리에 '추가' 버튼이 온다(둘이 겹치면 하트가 묻힌다).
+                기본값 false 라 홈·찜·유어샵은 출력 불변. */}
+            {!hideWishlist && <WishlistHeart productId={p.id} className="absolute top-2 right-2 z-[3]" />}
           </>
         }
       />

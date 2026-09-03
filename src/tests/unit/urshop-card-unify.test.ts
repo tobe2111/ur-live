@@ -27,11 +27,18 @@ const CARD = 'src/pages/main-home/GroupBuyFeedCard.tsx'
 const VOUCHERS = 'src/pages/seller-public/VouchersTab.tsx'
 const PINS = 'src/pages/seller-public/CuratorPinsSection.tsx'
 const CURATOR = 'src/pages/CuratorPage.tsx'
+/**
+ * 🏪 2026-09-03 — **"내 상품" 그리드가 이 통일에서 빠져 있었다** (대표 "홈 카드로 동일해야지 — 안 A").
+ *   8-27 에 이용권 그리드와 담은 핀은 합쳤는데 사업자 유어샵의 *자기 상품* 그리드만 옛
+ *   `BrowseProductCard` 로 남아, 같은 상품이 홈에서는 사진+맨 텍스트 / 유어샵에서는 대표색 색면
+ *   카드로 나왔다. 위 ①의 함정("나란히 놓고 봐야만 드러난다")을 **같은 페이지 안에서** 또 겪은 것.
+ */
+const SHOP = 'src/pages/SellerPublicPage.tsx'
 const read = (f: string) => readFileSync(f, 'utf-8')
 
 
 describe('① 유어샵이 홈과 같은 카드를 쓴다', () => {
-  for (const [label, f] of [['이용권 그리드', VOUCHERS], ['담은 핀(사업자)', PINS], ['담은 핀(일반유저)', CURATOR]] as const) {
+  for (const [label, f] of [['이용권 그리드', VOUCHERS], ['담은 핀(사업자)', PINS], ['담은 핀(일반유저)', CURATOR], ['내 상품 그리드', SHOP]] as const) {
     it(`${label} — GroupBuyFeedCard 를 렌더한다`, () => {
       const src = read(f)
       // ⚠️ import 줄만 보면 `<div>` 로 바꿔도 통과한다(2026-08-19 에 실제로 그렇게 헛돌았다).
@@ -87,3 +94,17 @@ describe('④ 소개자 카탈로그는 비로그인도 둘러볼 수 있다', (
     expect(read('src/features/group-buy/api/marketing/discovery.ts')).toContain('authed: !!me?.id')
   })
 })
+
+describe('③ 유어샵 격자는 딜 카드 간격 SSOT 를 쓴다 (화면마다 간격이 갈리지 않게)', () => {
+  it('내 상품 그리드가 DEAL_GRID_GAP 을 쓴다', () => {
+    const src = read(SHOP)
+    expect(src).toContain('DEAL_GRID_GAP')
+    // 손으로 적은 간격이 남아 있으면 홈과 다시 갈린다.
+    const grid = src.match(/className=\{?[`"'][^`"']*grid-cols-2[^`"']*[`"']/g) || []
+    expect(grid.length, '내 상품 그리드를 못 찾았다 — 마크업이 바뀌었다(검사가 무의미해진다)').toBeGreaterThan(0)
+    for (const g of grid) {
+      if (/\bgap[-xy]*-\d/.test(g)) expect(g, `간격을 손으로 적었다: ${g}`).toContain('DEAL_GRID_GAP')
+    }
+  })
+})
+
