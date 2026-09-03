@@ -8194,7 +8194,7 @@ canvas {
   {
     name: '📝 리뷰 최소 글자 안내가 사라져 버튼이 왜 안 눌리는지 아무도 모른다',
     file: 'src/pages/product-detail/ProductReviews.tsx',
-    find: '      {content.length < MIN_REVIEW_LEN && (',
+    find: '      {content.length < MIN_REVIEW_LEN && !hint && (',
     replace: '      {false && (',
     test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
     why:
