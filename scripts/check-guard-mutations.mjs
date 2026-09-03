@@ -7100,6 +7100,17 @@ canvas {
       '포함분 비율이 읽기 250억 : 쓰기 5,000만 = 500배라, 쓰기가 먼저 요금이 된다.',
   },
   {
+    name: '✍️ 쓰기 예산이 본진 몫을 안 뺀 값으로 돌아간다(계정 합계가 포함분에 붙는다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: 'export const DEFAULT_DAILY_WRITE_BUDGET = 1_200_000',
+    replace: 'export const DEFAULT_DAILY_WRITE_BUDGET = 1_500_000',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '포함분은 계정 단위인데 150만은 유어애즈만 보고 잡은 값이었다 — 본진 월 300만을 더하면 ' +
+      '4,800만/5,000만 = 96%(여유 4%). 본진 트래픽은 사용자가 늘면 커지고, 그때 넘는 것은 ' +
+      '유어애즈가 아니라 계정이라 유어딜이 같이 죽는다.',
+  },
+  {
     name: '✍️ 회차가 쓴 행을 보고하지 않는다(원장이 영원히 0 — 조용한 무방비)',
     file: 'src/worker-ads/lane-alarm.ts',
     find: 'reportReadUsage(this.env, this.meter.rr, this.meter.rw)',
