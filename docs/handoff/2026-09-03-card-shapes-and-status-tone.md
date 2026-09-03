@@ -121,8 +121,8 @@ CLAUDE.md Toss audit log 기재 완료.
 
 | PR | 무엇 | 상태 |
 |---|---|---|
-| [#1272](https://github.com/tobe2111/ur-live/pull/1272) `claude/voucher-deal-payment` | 이용권 **전액 딜** 결제 | draft · open |
-| [#1296](https://github.com/tobe2111/ur-live/pull/1296) `claude/voucher-partial-deal` | 딜 **일부** + 카드 나머지 | draft · open · **충돌(dirty)** |
+| [#1272](https://github.com/tobe2111/ur-live/pull/1272) `claude/voucher-deal-payment` | 이용권 **전액 딜** 결제 | ✅ **머지됨** (2026-09-03 · `785e0bc10`) |
+| [#1296](https://github.com/tobe2111/ur-live/pull/1296) `claude/voucher-partial-deal` | 딜 **일부** + 카드 나머지 | open · **충돌 해소 완료**(`7ae9661de`) · 머지 대기 |
 
 ⚠️ **둘 다 기본 꺼짐이고, 켜기 전 선행 조건이 있다**: `influencer_deal_bonus_pct` 시드 기본값이 **20** 이라
 딜 1,000원 = 유어딜에게 1,200원 부채다. 교환권은 소비자 마크업 20%가 상쇄하는데 **이용권은 마진 5~10%라
@@ -134,6 +134,19 @@ CLAUDE.md Toss audit log 기재 완료.
 **여는 스위치인 동시에 그 문을 닫는다**(기본 OFF → 400).
 
 ⇒ 새 세션이 "딜 결제 안 돼 있네" 로 다시 만들지 말 것. **열린 PR 부터 보라.**
+
+**2026-09-03 후속 (대표 "둘 다 해줘")**: #1272 를 머지했고(`785e0bc10`), #1296 의 충돌을 정리해 올렸다(`7ae9661de`).
+충돌은 **둘뿐**이었다 — `group-buy.routes.ts` import 합집합 · `STAGING_CHECKLIST.md`(S9/S10 과 S12 는
+서로 다른 항목이라 양쪽 보존). 자동 병합된 본문은 **직접 확인했다**: 두 게이트가 다른 경로에 있어
+서로 안 건드린다(카드 경로 = `resolvePartialDealPlan` 이 청구액만 줄임 / 전부-딜 경로 = `isVoucherDealPaymentAllowed`).
+검증 611파일 7,621건 pass. **#1296 머지는 대표 승인 대기**(승인받은 건 #1272 뿐이다).
+
+🩸 **그 병합 중에 실제 사고가 났다 — 다음 세션이 반드시 알아야 한다.** `audit-gate` 를 타임아웃으로
+끊었더니 자식 `check-guard-mutations` 두 개가 **살아남아 소스를 계속 주입/복원**하고 있었고,
+그 사이 `git add` 가 주입본 하나를 **index 에 집어넣었다**(`StoreStep.tsx` 의 `if (false)` — 승인 대기
+매장이 이용권 등록을 통과하게 되는 결함). `git diff` 가 index↔worktree 를 비교하는 덕에 잡혔다.
+⇒ **타임아웃은 자식을 안 죽인다.** 병합·커밋 전에 `ps aux | grep [g]uard-mutations` 와 `git diff` 를
+반드시 볼 것. 자물쇠(`.git/guard-mutations.lock`)만 남았으면 지우면 된다.
 
 | 항목 | 상태 |
 |---|---|
