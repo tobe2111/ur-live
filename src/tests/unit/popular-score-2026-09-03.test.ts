@@ -116,3 +116,24 @@ describe('④ 라벨이 실제 동작과 맞는다', () => {
     expect(LABELS).toContain('결제·리뷰·클릭 종합')
   })
 })
+
+describe('⑤ 🔒 데모가 아닌 실제 이용권이 무조건 위 (2026-09-03 대표 지시)', () => {
+  it('데모-후순위가 **점수보다 먼저** 정렬된다 — 순서가 뒤바뀌면 점수 높은 데모가 실물을 누른다', () => {
+    /**
+     * 대표: *"데모가 아닌 실제 이용권이 무조건 인기 이용권 순위 위로 올라야 해."*
+     * **"무조건"** 이라 이건 가중치 문제가 아니라 **정렬 키 순서** 문제다 — 데모-후순위가 1차 키여야
+     * 점수와 무관하게 실물이 앞선다. 지금 라이브 데이터가 정확히 그 경우다: 실제 상품 2888 은
+     * 결제·리뷰가 0(점수 0)인데도 1위여야 하고, 시드 데모(2712 등)는 점수 4.8 이어도 그 뒤다.
+     * ⚠️ 이 둘의 순서를 바꾸면 **에러 없이** 데모가 홈 상단을 차지한다.
+     */
+    const order = RULES.slice(RULES.indexOf('ORDER BY CASE WHEN'), RULES.indexOf('LIMIT ${limit}'))
+    expect(order).toContain('demoSlugSql')
+    // 데모 판정이 orderSql(점수) 보다 **앞**에 있어야 한다.
+    expect(order.indexOf('demoSlugSql')).toBeLessThan(order.indexOf('${orderSql}'))
+  })
+
+  it('인기순만이 아니라 모든 규칙 정렬에 적용된다 — 한 줄에만 걸면 다른 줄에서 새어 나온다', () => {
+    // ORDER BY 는 source 와 무관하게 한 곳에서 만들어진다(마감/최신/카테고리 전부 같은 문장).
+    expect((RULES.match(/ORDER BY CASE WHEN/g) || []).length).toBe(1)
+  })
+})
