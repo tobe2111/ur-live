@@ -482,10 +482,22 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     return () => observer.disconnect()
   }, [hasMore, loadingMore, loading, page, loadProducts, embeddedCapped])
 
+  /**
+   * 🔙 **필터는 이동이 아니라 상태다 — 히스토리를 쌓지 않는다** (2026-09-03 대표 신고).
+   *
+   * 대표: *"이용권 페이지 들어갔다가 뒤로가기를 하면 무조건 메인페이지로 돌아가는 것 같아."*
+   * 원인은 여기였다. 카테고리·브랜드 칩이 `push` 라 **누를 때마다 뒤로가기 한 칸**이 생겼다.
+   * 칩을 서너 번 누르고 상세에 들어가면 목록으로 나가는 데 네다섯 번을 눌러야 하고, 그 사이
+   * 화면은 계속 **같은 목록**이라 사용자는 계속 누른다 → 결국 히스토리 맨 앞(홈)으로 떨어진다.
+   * "무조건 메인으로 간다" 는 체감은 이 누적의 결과다.
+   *
+   * ⚠️ 같은 파일 안에서 이미 갈려 있었다 — 정렬·검색어는 `replace`(307·348·364), 칩 둘만 `push`.
+   * 한 화면에서 어떤 조작은 뒤로가기를 만들고 어떤 조작은 안 만들면 **뒤로가기가 예측 불가**가 된다.
+   */
   const setBrand = (next: string) => {
     const params = new URLSearchParams(searchParams)
     if (next) params.set('brand', next); else params.delete('brand')
-    setSearchParams(params)
+    setSearchParams(params, { replace: true })
   }
 
   // 🛡️ 2026-05-19: 카테고리 변경 — 브랜드 자동 초기화 (다른 카테고리의 브랜드는 의미 없음).
@@ -493,7 +505,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     const params = new URLSearchParams(searchParams)
     if (next) params.set('category', next); else params.delete('category')
     params.delete('brand')
-    setSearchParams(params)
+    setSearchParams(params, { replace: true })  // 🔙 필터는 상태 — 히스토리를 쌓지 않는다(위 주석)
   }
 
   // 🎨 2026-07-01 (대표 "2번 로딩 근본 해결" — urdeal 로더 유지): standalone(/vouchers) 은 로딩 중
