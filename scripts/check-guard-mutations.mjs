@@ -7790,6 +7790,24 @@ canvas {
     why: '표면 규칙 ② 강조색 하나. 화면 구석의 노랑 원은 체계 밖 색이었다.',
   },
   {
+    name: '스크롤바 — thumb 이 브랜드 블루가 된다(가구가 강조색 예산을 먹음)',
+    file: 'src/index.css',
+    find: "  background: rgb(22 24 28 / .22);\n  border-radius: 99px;",
+    replace: "  background: rgb(28 105 239 / .55);\n  border-radius: 99px;",
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why:
+      '2026-09-03 대표 확정 "안 1". 스크롤바는 가구지 강조 대상이 아니다 — 이 서비스의 색은 파랑 ' +
+      '하나이고 그 자리는 주 행동이 쓴다. 화면마다 파란 막대가 서면 정작 결제 버튼이 덜 띈다.',
+  },
+  {
+    name: '스크롤바 — 4px 로 얇아져 마우스로 못 잡는다',
+    file: 'src/index.css',
+    find: "::-webkit-scrollbar {\n  width: 8px;",
+    replace: "::-webkit-scrollbar {\n  width: 4px;",
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why: '시안 2안이 탈락한 이유. 윈도우 사용자는 지금도 막대를 끈다 — 4px 은 끌어 잡기 어렵다.',
+  },
+  {
     name: '지도 오버레이 — light-island 가 빠져 흰 검색창에 흰 글자',
     file: 'src/pages/restaurant-map/MapTopBar.tsx',
     find: "'light-island lg:hidden absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none'",

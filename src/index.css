@@ -833,6 +833,74 @@ html {
 html.dark { background-color: #0C0D10; }
 html.dark body { background-color: #0C0D10; }
 
+/* 📜 2026-09-03 스크롤바 — 대표 확정 "안 1 (얇은 잉크)"
+   ──────────────────────────────────────────────────────────────────────────────
+   그전까지 유어딜은 스크롤바를 **한 번도 정의한 적이 없었다**(아래 숨김 유틸만 있었다).
+   그래서 지역 선택창의 두꺼운 회색 막대는 우리가 만든 게 아니라 **OS 기본값**이었고,
+   윈도우(17px 각진 막대 + 화살표 버튼)·맥·안드로이드가 서로 다르게 그렸다.
+   각진 17px 막대가 카드·시트의 둥근 모서리와 부딪친다는 게 대표 지적의 실체다.
+
+   왜 잉크인가: 스크롤바는 **가구**지 강조 대상이 아니다. 이 서비스에서 색은 파랑 하나뿐이고
+   그 자리는 주 행동(결제하기 등)이 쓴다 — 스크롤바에 브랜드색을 주면 그 예산을 가구가 먹는다.
+
+   왜 8px 인가: 4px 은 마우스로 **끌어 잡기 어렵다**(윈도우 사용자는 지금도 막대를 끈다).
+   8px 은 얇으면서 잡히는 최소치다. hover 에서 진해져 필요할 때만 존재감을 낸다.
+
+   `border: 2px solid transparent` + `background-clip: content-box` 는 thumb 안쪽에 여백을
+   만드는 관용구다 — thumb 이 트랙 벽에 붙지 않아 알약처럼 보인다.
+
+   ⚠️ 모바일 영향 0 — 터치 기기는 스크롤바를 아예 안 그린다. 이 규칙은 사실상 PC 전용이다.
+   ⚠️ 파이어폭스는 `scrollbar-width` 로 두께를 px 로 못 정한다(thin 근사치만).
+   ⚠️ 아래 `.no-scrollbar` / `.scrollbar-hide` 는 특이도가 더 높아 그대로 이긴다(숨김 유지). */
+* {
+  scrollbar-width: thin;                                  /* Firefox */
+  scrollbar-color: rgb(22 24 28 / .22) transparent;
+}
+.dark * {
+  scrollbar-color: rgb(255 255 255 / .22) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;                                            /* 가로 스크롤도 같은 두께 */
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(22 24 28 / .22);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(22 24 28 / .40);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / .22);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / .38);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+/* 🏝️ 늘 밝은 표면(지도 위 오버레이·홈 패널)은 다크에서도 라이트 스크롤바를 쓴다 —
+   흰 패널 안에 흰 막대가 뜨면 안 보인다. `light-island` 의 나머지 규칙과 같은 취지. */
+.dark .light-island * {
+  scrollbar-color: rgb(22 24 28 / .22) transparent;
+}
+.dark .light-island ::-webkit-scrollbar-thumb {
+  background: rgb(22 24 28 / .22);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
 /* Hide scrollbar for horizontal scroll */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* IE and Edge */
