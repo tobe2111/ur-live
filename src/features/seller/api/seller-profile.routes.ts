@@ -396,14 +396,9 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
       onnuri_merchant?: boolean;  // 🏪 2026-07-05 온누리상품권 가맹 여부 (seller_meta K-V, additive 저장)
     }>();
 
-    // 사업자번호 형식 검증
-    if (body.business_number) {
-      const businessNumberRegex = /^\d{3}-\d{2}-\d{5}$/;
-      if (!businessNumberRegex.test(body.business_number)) {
-        // 🗣️ 2026-09-03: 소비자(셀러)가 읽는 문장이다 — 영문 원문을 그대로 보여 주면 무엇을 고쳐야
-        //   하는지 알 수 없다(대표 "저장이 안되어있나?" 의 후보 중 하나였다).
-        return c.json({ success: false, error: '사업자등록번호는 000-00-00000 형식으로 입력해 주세요' }, 400);
-      }
+    // 사업자번호 형식 검증 — 🗣️ 2026-09-03: 문구를 한국어로(영문 원문이면 무엇을 고칠지 모른다).
+    if (body.business_number && !/^\d{3}-\d{2}-\d{5}$/.test(body.business_number)) {
+      return c.json({ success: false, error: '사업자등록번호는 000-00-00000 형식으로 입력해 주세요' }, 400);
     }
 
     const db = c.env.DB;
