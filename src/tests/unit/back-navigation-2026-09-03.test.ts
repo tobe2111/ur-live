@@ -20,26 +20,47 @@
  *   여기서 고정하는 것은 **URL 상태 쓰기의 규약**이다.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 
-/** 소비자 목록/탐색 화면 — 여기서 URL 을 쓰는 건 전부 '그 화면의 상태'다. */
-const CONSUMER_LIST_PAGES = [
-  'src/pages/VouchersPage.tsx',
-  'src/pages/BrowsePage.tsx',
-  'src/pages/RestaurantMapPage.tsx',
-] as const
+/**
+ * 검사 대상을 **손으로 적지 않는다.** 목록 세 개만 적어 두면 내일 만들 목록 화면이 빠지고,
+ * 그게 이 결함이 처음 생긴 방식이다(VouchersPage 안에서도 정렬은 replace, 칩만 push 로 갈렸다).
+ * ⇒ `src/pages` 의 **소비자 화면 전부**를 훑어 URL 을 쓰는 파일을 스스로 찾는다.
+ *
+ * 대시보드(어드민·셀러·에이전시·도매)는 제외한다 — 거기서 `?tab=` 은 사이드바 이동을 대신하는
+ * **진짜 이동**이라 뒤로가기 한 칸이 생기는 게 맞다(`WholesaleDashboardPage.goTab`).
+ */
+const DASHBOARD = /(Admin|Seller|Agency|Wholesale|Supplier|Distributor|admin|seller|agency|wholesale|supplier)/
+
+function consumerPagesWritingUrl(dir = 'src/pages', out: string[] = []): string[] {
+  for (const e of readdirSync(dir)) {
+    const f = join(dir, e)
+    if (statSync(f).isDirectory()) consumerPagesWritingUrl(f, out)
+    else if (f.endsWith('.tsx') && !DASHBOARD.test(f) && readFileSync(f, 'utf8').includes('setSearchParams('))
+      out.push(f)
+  }
+  return out
+}
 
 /** 주석을 뺀 코드만 본다 — 설명 문장 속 `setSearchParams(` 까지 세면 가짜 빨강이 된다. */
 const code = (src: string) =>
   src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('① 소비자 목록의 URL 쓰기는 전부 replace', () => {
-  for (const file of CONSUMER_LIST_PAGES) {
+  const files = consumerPagesWritingUrl()
+
+  it('검사 대상이 실제로 잡힌다', () => {
+    // 0건이면 통과가 아니라 실패다 — 경로가 바뀌어 검사가 조용히 비는 것을 막는다.
+    expect(files.length, 'src/pages 에서 URL 쓰는 소비자 화면을 하나도 못 찾았다').toBeGreaterThanOrEqual(5)
+  })
+
+  for (const file of files) {
     it(`${file.split('/').pop()} — push 로 쓰는 곳이 없다`, () => {
       const src = code(readFileSync(file, 'utf8'))
+      if (src.includes('back-nav-push-ok')) return // 의도적 예외(이유를 그 줄에 적을 것)
       // `setSearchParams(...)` 호출을 전부 찾아 각각 replace 가 붙었는지 본다.
       const calls = [...src.matchAll(/setSearchParams\(/g)]
-      expect(calls.length, `${file}: setSearchParams 가 0건 — 경로가 바뀌었는지 확인할 것`).toBeGreaterThan(0)
       for (const m of calls) {
         // 호출부터 그 문장 끝까지 잘라 replace 유무를 본다(중첩 괄호가 있어 정규식 하나로는 안 된다).
         const tail = src.slice(m.index!, m.index! + 400)
