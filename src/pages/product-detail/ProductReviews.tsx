@@ -17,6 +17,13 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
   // 🛡️ 2026-05-21: 리뷰 사진 첨부 (max 5). compress 후 upload-image → URL 저장.
   const [images, setImages] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
+  // 🩸 2026-09-03 (대표 신고 — "10자 이상 썼는데도 버튼이 흐릿한 비활성"): 버튼을 클라 state 에
+  //   묶는 패러다임을 걷어냈다(아래 버튼 주석 참조). 대신 **클릭 시점**에 재고, 이유는 여기에 남긴다.
+  //   토스트로만 알리면 안 된다 — 토스트는 화면 **맨 위**(`fixed top-4`)에 뜨는데 리뷰 폼은 페이지
+  //   맨 아래고, 모바일은 키보드까지 올라와 있어 사용자가 그걸 볼 방법이 없다.
+  const [hint, setHint] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
+  const taRef = useRef<HTMLTextAreaElement>(null)
   // 🏁 2026-06-12 (전수조사 🔴 G5): 리워드 안내 금액을 서버 설정값(platform_settings)과 일치 —
   //   기존 하드코딩 50/100/200 은 실지급(default 100/300/500)과 불일치했음.
   const [rewards, setRewards] = useState({ text: 100, image: 300, video: 500 })
@@ -31,9 +38,35 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="w-full py-2.5 mt-3 border border-rule-strong rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
-        {t('reviews.writeBtn', { defaultValue: '리뷰 작성하기' })}
-      </button>
+      <div className="mt-3">
+        {/* 🎫 2026-09-03 (대표 — "이용권 사용해야 리뷰 쓸 수 있게 해야지"): 자격을 **쓰기 전에** 알린다.
+            종전엔 별점 고르고 사진 붙이고 열 줄 쓴 다음 누르고 나서야 "안 된다" 를 들었다.
+            요청은 여기서만 한다(상세 페이지 열 때가 아니라 **쓰려고 누를 때**) — 모든 방문자에게
+            자격 조회를 한 번씩 더 물리지 않으려는 것. */}
+        <button
+          onClick={async () => {
+            setChecking(true)
+            try {
+              const r = await api.get(`/api/reviews/product/${productId}/eligibility`)
+              const d = r.data?.data
+              if (d && d.ok === false) { setHint(d.reason || t('reviews.cannotWrite', { defaultValue: '지금은 리뷰를 쓸 수 없어요' })); return }
+            } catch (err) {
+              const st = (err as { response?: { status?: number } }).response?.status
+              if (st === 401) { setHint(t('reviews.loginFirst', { defaultValue: '로그인 후 리뷰를 쓸 수 있어요' })); return }
+              // ⚠️ 판정 자체가 실패하면 **막지 않는다** — 여긴 안내용이고 최종 권위는 POST 다.
+              //   여기서 막으면 조회 한 번 삐끗에 정당한 사용자가 리뷰를 못 쓴다.
+            } finally { setChecking(false) }
+            setHint(null); setOpen(true)
+          }}
+          disabled={checking}
+          className="w-full py-2.5 border border-rule-strong rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29] disabled:opacity-50"
+        >
+          {checking ? t('reviews.checking', { defaultValue: '확인 중...' }) : t('reviews.writeBtn', { defaultValue: '리뷰 작성하기' })}
+        </button>
+        {hint && (
+          <p className="mt-2 text-[12px] text-gray-600 dark:text-gray-300 text-center">{hint}</p>
+        )}
+      </div>
     )
   }
 
@@ -49,6 +82,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         ))}
       </div>
       <textarea
+        ref={taRef}
         value={content}
         onChange={e => setContent(e.target.value)}
         placeholder={t('reviews.placeholder', { defaultValue: '상품은 어떠셨나요? 최소 10자 이상 작성해주세요.' })}
@@ -60,17 +94,18 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         className="w-full px-3 py-2 rounded-xl bg-[#F8F7FC] dark:bg-[#11141C] text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-brand/40"
       />
 
-      {/* 🩸 2026-09-03 (대표 신고 — "리뷰 등록 버튼이 아예 안 눌러진다"): 10자 미만이면 버튼이
-          비활성인데 **왜인지 화면 어디에도 안 썼다.** 두 글자만 쓴 사람은 버튼이 죽은 줄 알고
-          떠나고, 그 뒤에 붙는 안내(구매/사용 여부 등 서버 판정)를 **볼 기회조차 없다.**
-          규칙은 그대로 두고 남은 글자 수만 말해 준다. */}
-      {content.length < MIN_REVIEW_LEN && (
+      {/* 남은 글자 안내(항상) + 클릭·서버 판정 사유(hint). 둘은 같은 자리에 쓴다 — 사용자가
+          "왜 안 되는지" 를 찾아 헤매지 않게. */}
+      {content.length < MIN_REVIEW_LEN && !hint && (
         <p className="mt-1.5 text-[12px] text-gray-500 dark:text-gray-400">
           {t('reviews.minLength', {
             defaultValue: '{{n}}자 더 쓰면 등록할 수 있어요',
             n: MIN_REVIEW_LEN - content.length,
           })}
         </p>
+      )}
+      {hint && (
+        <p className="mt-1.5 text-[12px] font-medium text-gray-800 dark:text-gray-100">{hint}</p>
       )}
 
       {/* 🛡️ 2026-05-21: 사진 업로드 — 최대 5장, 5MB/장. 리워드 100딜 (사진 첨부 시). */}
@@ -132,9 +167,32 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
       </div>
       <div className="flex gap-2 mt-3">
         <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#11141C] text-gray-600 dark:text-gray-300 text-sm rounded-xl font-medium">{t('common.cancel', { defaultValue: '취소' })}</button>
+        {/* 🩸 2026-09-03 (대표 신고 — "10자 이상 썼는데도 흐릿한 비활성"): 버튼을 클라 state
+            (`content.length`)에 묶는 **hard-disable 패러다임을 걷어냈다.**
+
+            실제 컴포넌트를 렌더해 12자를 넣으면 버튼은 활성된다(단위 테스트로 고정) — 즉 로직은
+            맞는데 대표님 환경에서는 잠겼다. 원인 후보(모바일 한글 IME 조합 중 state 지연, 인앱
+            브라우저, 캐시된 옛 청크)를 하나씩 좁히는 대신 **잠길 수 있는 구조 자체를 없앤다.**
+
+            같은 교훈이 이 레포에 이미 있다 — 2026-06-26 `TossPaymentWidget` 은 약관 동의를 state 로
+            미러링해 버튼에 묶었다가 desync 로 결제 버튼이 잠기는 사고를 냈고, **클릭-시점 검증**으로
+            전환했다(대표 "대형 서비스처럼"). 리뷰 버튼만 그 옛 패러다임에 남아 있었다.
+
+            ⇒ 버튼은 제출 중에만 잠긴다. 길이는 **누를 때** 재고, 모자라면 그 자리에 이유를 쓴다.
+               규칙(10자)은 그대로다 — 바뀐 것은 "언제 재는가" 와 "어디에 말하는가" 뿐. */}
         <button
-          disabled={content.length < MIN_REVIEW_LEN || submitting}
+          disabled={submitting}
           onClick={async () => {
+            const body = content.trim()
+            if (body.length < MIN_REVIEW_LEN) {
+              setHint(t('reviews.minLength', {
+                defaultValue: '{{n}}자 더 쓰면 등록할 수 있어요',
+                n: MIN_REVIEW_LEN - body.length,
+              }))
+              taRef.current?.focus()
+              return
+            }
+            setHint(null)
             setSubmitting(true)
             try {
               const res = await api.post('/api/reviews', { product_id: Number(productId), rating, content, images })
@@ -153,7 +211,10 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
               const serverMsg = ax.response?.data?.error
               // 🎫 2026-09-02: 이용권은 `VOUCHER_NOT_USED`(사용 전) — 서버 문구를 그대로 쓴다.
               if (code === 'NOT_PURCHASED' || code === 'VOUCHER_NOT_USED' || status === 403) {
-                toast.error(serverMsg || '리뷰는 해당 상품을 구매하신 분만 작성하실 수 있어요', { duration: 5000 })
+                const msg = serverMsg || '리뷰는 해당 상품을 구매하신 분만 작성하실 수 있어요'
+                // 🩸 인라인에도 남긴다 — 토스트는 화면 맨 위라 여기(페이지 맨 아래 + 키보드)에서 안 보인다.
+                setHint(msg)
+                toast.error(msg, { duration: 5000 })
               } else {
                 const msg = serverMsg || (err instanceof Error ? err.message : t('reviews.writeError', { defaultValue: '리뷰 작성에 실패했습니다' }))
                 toast.error(msg)
