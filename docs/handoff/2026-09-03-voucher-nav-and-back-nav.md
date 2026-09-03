@@ -90,6 +90,24 @@ SSOT `src/components/seller/seller-tab-groups.ts` 하나에서 사이드바 항�
 
 ## 남은 결정 (대표 판단)
 
-- `/seller/consignment` · `/seller/youtube-growth` — 아직 쓰시는지? 안 쓰면 묶음에서 뺀다.
-- **채널 요율 양방향(직접 10% / 대행사 5%)** 과 **어드민 매장 채널 지정** — 머니 경로라
-  CLAUDE.md 규칙대로 **단독 세션 + staging 실결제**가 붙는다. 이 세션에서 손대지 않았다.
+- ~~`/seller/consignment` · `/seller/youtube-growth`~~ → **대표 확인 완료(2026-09-03): "안 써."**
+  둘 다 **이미 사이드바에 없다**(통폐합 때 빠졌다). 라우트는 살아 있고 URL 로만 도달한다.
+  판정을 `scripts/orphan-routes-baseline.json` 의 triage 에 못 박았다 — **메뉴에 도로 넣지 말 것.**
+  (페이지 삭제는 대표가 따로 지시하지 않는 한 하지 않는다.)
+
+- ✅ **"어드민이 매장 채널을 지정할 수 있게" 는 이미 되어 있다** — 2026-08-31 에 `/admin/merchant-commissions`
+  의 `StoreChannelCard` 로 만들어졌다(라디오 직접 10% / 대행 5% + 돈 갈림표). 라이브 확인:
+  `GET /api/admin/sellers/14/channel` → `{channel:'brokered', channel_rates_active:true,
+  rates:{direct_pct:10, brokered_pct:5, pg_reserve_pct:2.75, store_intro_pct:2}}`.
+  ⚠️ **할 일 목록이 낡아서 이걸 미완으로 대표에게 보고했다** — 다음 세션은 "남았다"고 적힌 것을
+  먼저 라이브로 확인할 것.
+- **채널 요율(직접 10% / 대행 5%)** — 코드도 스위치도 **이미 켜져 있다**
+  (`fee_channel_rates_enabled=true`, `platform_fee_pct_direct=10`). 남은 건 코드가 아니라 **데이터**다:
+  라이브 매장 8곳 중 **7곳이 채널 미지정**이고, 미지정은 안전하게 중개(5%)로 떨어진다
+  → **10% 가 아직 한 번도 안 걷혔다.** 어느 가게가 '직접'인지는 대표만 안다.
+  ⚠️ 채널을 direct 로 바꾸는 건 **그 가게의 정산이 즉시 5%→10% 로 바뀌는 일**이다(머니 경로).
+  대표가 매장을 지목해 주면 그때 `/admin/merchant-commissions` 에서 바꾸고 staging 실결제로 확인한다.
+
+- **영입 2% 를 직접 입점 매장에만**(2026-08-31 대표 확정 #1)은 아직 코드에 안 들어갔다.
+  ⚠️ 순진하게 `channel === 'direct'` 로 막으면 위 실측대로 **아무도 못 받는다**(direct 가 0곳).
+  미지정 매장 처리를 먼저 정하고 들어갈 것. 머니 경로 — 단독 세션 + staging 실결제.

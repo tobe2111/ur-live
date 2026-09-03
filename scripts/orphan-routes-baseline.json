@@ -43,7 +43,7 @@
       "/seller/realtime": "147줄 — 매장 실시간 매출. API `/api/seller-marketing/realtime-stats` **실재 확인**",
       "/seller/store-dashboard": "150줄 — 매장 종합 매출. 🔴 **2026-08-02 실측: 통계 호출이 404 였다**(analytics 마운트 누락, 별건으로 수정). 도달 불가라 아무도 못 밟아 안 고쳐진 채 남아 있었다. 링크는 셀러 nav 간소화(2026-07-19 대표 확정)와 충돌하므로 대표 판단",
       "/seller/voucher-orders": "170줄 — KT 교환권 이력. API 실재 확인",
-      "/seller/consignment": "위탁 — 분류 미확인",
+      "/seller/consignment": "위탁 — 대표 확인 \"안 씀\"(2026-09-03). 메뉴에 넣지 말 것.",
       "/admin/maker-pool": "🔴 **링크 금지** — `features/supply/**` 소속(=도매몰)이고 철거 대기다. consumer nav 에 달면 서비스 분리 위반. import 별칭도 `makerPoolTestRoutes`(테스트 성격)"
     },
     "별칭": {
