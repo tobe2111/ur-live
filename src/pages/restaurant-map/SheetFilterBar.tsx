@@ -78,7 +78,7 @@ export default function SheetFilterBar({
             </span>
           )}
         </button>
-        <div className="flex-1 min-w-0 flex gap-1.5 overflow-x-auto no-scrollbar">
+        <div className="flex-1 min-w-0 flex gap-1.5 overflow-x-auto scrollbar-hide">
           {/* 🛡️ Phase 5: '내 주변' 퀵필터 — GPS prompt + 거리순 자동 */}
           <button
             onClick={requestNearMe}

@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
-import { pickHeroPhotoFromSeedJson, type HeroPhotoPick } from '@/shared/home-hero-photo'
 import { HOME_HERO_REQUEST_WIDTH, HOME_HERO_QUALITY } from '@/shared/home-hero-image'
 import PcHomeLocationBar, { type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
+import { useHeroPhoto } from './useHeroPhoto'
 
 /**
  * 🏠 히어로 (2026-08-19 대표 확정 — **통합형 190px**, 시안 4개 중 ②안).
@@ -42,12 +42,6 @@ const DEFAULT_DESC = '예약도 대기도 없이. 식사, 미용, 숙소, 교환
  *   **똑같은 사진**을 골라야 한다. 규칙이 두 벌이면 반드시 갈리고, 갈리면 preload 가 버려져
  *   같은 사진을 두 번 받는다(에러 없이 더 느려진다). 이 함수는 DOM 에서 시드를 꺼내 넘기기만 한다.
  */
-export function pickHeroPhoto(): HeroPhotoPick | null {
-  if (typeof document === 'undefined') return null
-  const el = document.getElementById('__SSR_INITIAL_MAIN__')
-  if (!el?.textContent) return null
-  return pickHeroPhotoFromSeedJson(el.textContent)
-}
 
 export interface HeroContent {
   /** 어드민이 올린 히어로 사진(없으면 시드에서 고른다). */
@@ -76,8 +70,12 @@ export default function HomeHeroDefault({
   content?: HeroContent
   controls?: HeroControls
 }) {
-  // 시드는 하드로드 시점에 이미 문서에 있으므로 **동기 1회**로 읽는다(리렌더/왕복 0).
-  const seed = content?.photo ? null : pickHeroPhoto()
+  /**
+   * 🖼️ 사진 소스. 하드로드면 문서 시드(동기·왕복 0), 앱 안에서 들어왔으면 홈 피드 캐시.
+   *   ⚠️ 2026-09-03 이전에는 **시드만** 봤다 — 그래서 홈 탭을 눌러 들어오면 시드가 없어
+   *      색면만 남았고, 새로고침해야 사진이 나왔다(대표 신고 "심각해").
+   */
+  const seed = useHeroPhoto(!content?.photo)
   const photoSrc = content?.photo || seed?.src || ''
   const photoHref = content?.photoHref || seed?.href || '/map'
   const hasMedia = !!photoSrc || !!content?.videoUrl
@@ -101,9 +99,16 @@ export default function HomeHeroDefault({
           🎫 2026-09-02 (대표 "위아래부분까지 그라데이션은 안해도 될 것 같은데"): 세로(180deg) 마스크와
           하단 h-12 페이드를 뺐다. 사진은 히어로 위아래 끝까지 꽉 차고, 페이드는 **좌우만**. */}
       {hasMedia && (
-        <div className="hidden md:block absolute inset-y-0 right-0 w-[46%] lg:w-[54%]" aria-hidden="true"
+        <div
+          className="hidden md:block absolute inset-y-0 w-[46%] lg:w-[54%] right-[calc(max(0px,(100vw-1440px)/2)+1.5rem)] lg:right-[calc(max(0px,(100vw-1440px)/2)+2rem)]"
+          aria-hidden="true"
           /* 📐 2026-08-24: `lg:block`(1024+) 이라 **태블릿엔 사진이 아예 없었다** — 색면만 남아
-             허전했다. md(768)부터 보이되 폭은 46% 로 좁혀 카피가 눌리지 않게 한다. */
+             허전했다. md(768)부터 보이되 폭은 46% 로 좁혀 카피가 눌리지 않게 한다.
+             🖼️ 2026-09-03 (대표 — 빨간 상자 시안 "아래의 길이와 맞게끔"): `right-0` 이라 사진이
+             **뷰포트 오른쪽 끝**까지 갔는데, 바로 아래 매대는 `max-w-[1440px] + px-6/8` 안에 있어
+             넓은 화면일수록 두 오른쪽 끝이 어긋났다(1904px 에서 264px 차이). 색면은 전체 폭 그대로
+             두고(그게 이 히어로의 바탕이다) **사진만** 아래 매대와 같은 자로 당긴다. 폭(46/54%)은
+             건드리지 않아 좁은 화면의 균형은 그대로다 — 오른쪽 여백만 생긴다. */
           style={{
             WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%)',
             maskImage: 'linear-gradient(90deg, transparent 0%, #000 26%, #000 82%, transparent 100%)',
@@ -191,7 +196,8 @@ export default function HomeHeroDefault({
       {hasMedia && photoHref !== '/map' && (
         <Link
           to={photoHref}
-          className="absolute z-20 bottom-3 right-5 text-[12px] font-bold text-white/70 hover:text-white transition-colors drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]"
+          /* 사진 오른쪽 끝이 매대와 정렬됐으니 이 링크도 같은 자를 쓴다 — 안 그러면 사진 밖에 뜬다. */
+          className="absolute z-20 bottom-3 right-[calc(max(0px,(100vw-1440px)/2)+2.5rem)] lg:right-[calc(max(0px,(100vw-1440px)/2)+3rem)] text-[12px] font-bold text-white/70 hover:text-white transition-colors drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]"
         >
           사진 속 딜 보기 →
         </Link>

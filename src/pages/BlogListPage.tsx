@@ -168,7 +168,7 @@ export default function BlogListPage() {
         </div>
 
         {/* ── 태그 필터 ── */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar py-4">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide py-4">
           <button onClick={() => pickTag('')}
             className={`px-3.5 py-1.5 rounded-full text-sm font-medium shrink-0 ${!selectedTag ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
             전체

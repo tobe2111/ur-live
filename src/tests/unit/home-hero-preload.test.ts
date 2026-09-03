@@ -88,7 +88,8 @@ describe('홈 히어로 preload', () => {
     expect(link).toContain(`media="${HOME_HERO_MEDIA_QUERY}"`)
     expect(HOME_HERO_MEDIA_QUERY).toBe('(min-width: 768px)')
     // 컨테이너가 md 를 벗어나면 이 상수도 같이 고쳐야 한다.
-    expect(fs.readFileSync(HERO, 'utf8')).toMatch(/hidden md:block absolute inset-y-0 right-0/)
+    // 좌표(right-*)는 이 검사의 관심사가 아니다 — md 중단점만 본다(2026-09-03 정정).
+    expect(fs.readFileSync(HERO, 'utf8')).toMatch(/hidden md:block absolute inset-y-0/)
   })
 
   it('첫 화면 최상단이므로 우선순위를 높인다', () => {

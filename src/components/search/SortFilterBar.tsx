@@ -38,7 +38,7 @@ export default function SortFilterBar({ totalResults, sortBy, onSortChange }: So
   return (
     <div className="mb-4">
       {/* Filter chips - horizontal scroll */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-3 -mx-4 px-4">
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-3 -mx-4 px-4">
         {filters.map(filter => (
           <button
             key={filter.id}

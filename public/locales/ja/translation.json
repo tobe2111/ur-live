@@ -862,6 +862,7 @@
   "wishlist": {
     "title": "ウィッシュリスト",
     "subtitleCount": "お気に入り商品 {{count}}件",
+    "dropCount": "値下がり {{count}}件",
     "emptyTitle": "お気に入り商品がありません",
     "emptyHint": "気になる商品をお気に入りに追加してみよう",
     "continueShopping": "ショッピングを続ける",

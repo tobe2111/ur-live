@@ -96,7 +96,7 @@ export default function MobileHomePage() {
         </div>
 
         {/* 카테고리 — 라벨 SSOT 는 PC 헤더와 같은 `DEAL_CATS`(둘이 갈리지 않게). */}
-        <nav aria-label="카테고리" className="flex gap-5 overflow-x-auto no-scrollbar px-4">
+        <nav aria-label="카테고리" className="flex gap-5 overflow-x-auto scrollbar-hide px-4">
           {DEAL_CATS.map(({ key, label }) => {
             const on = category === key
             return (

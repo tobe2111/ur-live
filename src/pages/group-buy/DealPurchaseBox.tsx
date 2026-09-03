@@ -6,6 +6,7 @@
  *   상태/핸들러는 전부 GroupBuyDetailPage 소유(controlled) — 결제 로직(handleJoin) 무수정 재사용.
  *   색은 .gbd CSS 변수(테마 자동) — 상세 표면과 동톤.
  */
+import { ShieldCheck, Zap, Lock, Bell } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
 interface Props {
@@ -113,17 +114,23 @@ export default function DealPurchaseBox({
         aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? `${formatNumber(total)}원 ${ctaLabel}` : isDemo ? '응모 불가' : '구매 불가'}
         style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
       >
-        {joining ? '처리 중…' : isPrelaunch ? '🔔 오픈 예정 — 사전 응모하기' : !isJoinable ? (isDemo ? '응모 불가' : '구매 불가') : <>{formatNumber(total)}원 {ctaLabel}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
+        {joining ? '처리 중…' : isPrelaunch ? <><Bell size={16} strokeWidth={2} aria-hidden="true" />오픈 예정 — 사전 응모하기</> : !isJoinable ? (isDemo ? '응모 불가' : '구매 불가') : <>{formatNumber(total)}원 {ctaLabel}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
       </button>
 
       {/* 안심 배지 — 그루폰 trust rows */}
       <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--gbd-line2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {[
-          '🛡️ 미사용 시 100% 자동환불',
-          '⚡ 결제 즉시 교환권(QR) 발급',
-          '🔒 토스페이먼츠 3초 안전결제',
-        ].map((tr) => (
-          <div key={tr} style={{ fontSize: 12.5, color: 'var(--gbd-sub)', fontWeight: 600 }}>{tr}</div>
+        {/* 🎨 2026-09-03 (대표 지적 — "이런 부분에서의 아이콘도 문제 아닐까"): 이모지 셋 → 선 아이콘.
+            여기는 **돈을 내기 직전 화면의 안심 문구**인데, 이모지는 OS 마다 다른 그림이 뜨고
+            (애플 컬러 / 노토 / Segoe) 같은 화면의 lucide 선 아이콘과 언어가 갈렸다. */}
+        {([
+          [ShieldCheck, '미사용 시 100% 자동환불'],
+          [Zap, '결제 즉시 교환권(QR) 발급'],
+          [Lock, '토스페이먼츠 3초 안전결제'],
+        ] as const).map(([Icon, tr]) => (
+          <div key={tr} style={{ fontSize: 12.5, color: 'var(--gbd-sub)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 7 }}>
+            <Icon size={14} strokeWidth={1.8} aria-hidden="true" style={{ flexShrink: 0 }} />
+            {tr}
+          </div>
         ))}
         {isPrelaunch && (
           <div style={{ fontSize: 11.5, color: 'var(--gbd-sub)' }}>오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요</div>

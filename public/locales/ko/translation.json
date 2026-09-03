@@ -862,6 +862,7 @@
   "wishlist": {
     "title": "위시리스트",
     "subtitleCount": "찜한 상품 {{count}}개",
+    "dropCount": "가격 내린 것 {{count}}개",
     "emptyTitle": "찜한 상품이 없습니다",
     "emptyHint": "마음에 드는 상품을 찜해보세요",
     "continueShopping": "쇼핑 계속하기",
