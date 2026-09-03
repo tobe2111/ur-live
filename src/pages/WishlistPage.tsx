@@ -1,3 +1,4 @@
+import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -153,7 +154,7 @@ const WishlistPage: React.FC = () => {
             {/* 🖥️ PC 만 좌측 요약 레일 — 모바일은 세로가 귀해서 같은 정보를 제목 밑 한 줄이 맡는다. */}
             <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-6 lg:items-start">
               <WishlistSummaryRail s={summary} />
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
+              <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 ${DEAL_GRID_GAP}`}>
                 {shown.map((item, i) => (
                   <GroupBuyFeedCard
                     key={item.id}

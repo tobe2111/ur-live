@@ -5,6 +5,7 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
+import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import { SearchX, Flame, Timer, Tag, Clock, Store } from 'lucide-react'
 import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
 import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
@@ -155,8 +156,8 @@ export default function GroupBuyFeed({
     //   읽히고, 위 섹션 그리드(lg:grid-cols-4)와도 열 수가 같아진다(같은 화면에서 열이 갈리지 않는다).
     // 📐 2026-08-24: md(768~1023, 태블릿)가 `sm` 규칙에 걸려 **3열**이었다. 편성 섹션은 4개를
     //   뿌리므로 마지막 하나가 줄에 혼자 남아 오른쪽이 텅 비었다 — 태블릿도 4열로 맞춘다.
-    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4 pb-8'
-    : 'grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8'
+    ? `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP} pb-8`
+    : `grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP} px-4 pb-8`
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
   const { fcfsMap } = useFcfsMap()
@@ -543,13 +544,13 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
             </span>
           </div>
           {fbLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className={`grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP}`}>
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
               ))}
             </div>
           ) : fallback && fallback.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className={`grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP}`}>
               {fallback.map(p => <GroupBuyFeedCard key={p.id} p={p} />)}
             </div>
           ) : null}
