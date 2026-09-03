@@ -8018,6 +8018,16 @@ canvas {
       'UUID 라 표시 쪽에선 사본임을 알 길이 없다 — 실측 활성 이용권 100개 중 99개가 그 상태였다.',
   },
   {
+    name: '🖼️ 갤러리 정리 패스가 다시 넓게 골라 40건에서 조용히 멈춘다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: "        AND json_extract(images, '$[0]') LIKE 'http%'`",
+    replace: "        AND images LIKE '%http%'`",
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '갤러리는 3~5장이라 첫 칸을 고쳐도 뒤쪽 외부 주소 때문에 행이 후보로 남는다. 그렇게 고쳐진 ' +
+      '행이 ORDER BY 창 앞자리를 채우다 40개를 넘기면 창 전체가 no-op — 에러 없이 멈춘다.',
+  },
+  {
     name: '🖼️ 갤러리 정리 패스가 R2 바인딩 조기반환 뒤로 밀린다 (영영 안 돎)',
     file: 'src/worker/cron/demo-image-rehost.ts',
     find: '  const gal = await repairGalleryCoverDrift(env).catch(() => ({ scanned: 0, fixed: 0, remaining: -1 }))',
