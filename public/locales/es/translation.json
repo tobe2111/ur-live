@@ -1761,7 +1761,11 @@
       "mapPhotoFood": "Comida y menú",
       "mapPhotoInterior": "Interior",
       "openKakaoPlace": "Abrir en Kakao Map ↗",
-      "mapPhotoHint": "Buscamos fotos de Naver Map/blogs por el nombre de tu tienda. Las fotos de Kakao Map no se pueden obtener automáticamente — abrimos la página para que copies la URL arriba."
+      "mapPhotoHint": "Buscamos fotos de Naver Map/blogs por el nombre de tu tienda. Las fotos de Kakao Map no se pueden obtener automáticamente — abrimos la página para que copies la URL arriba.",
+      "fromMapShort": "Desde el mapa",
+      "photoLead": "Trae fotos del mapa o sube las tuyas. La primera es la portada.",
+      "pasteTitle": "Pega la dirección de la foto de KakaoMap",
+      "pastePlaceholder": "Clic derecho en la foto → Copiar dirección de imagen"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -2497,7 +2501,20 @@
       "scan": "Canjear",
       "reviews": "Reseñas"
     },
-    "pageSearch": "Buscar páginas"
+    "pageSearch": "Buscar páginas",
+    "bizNoFormat": "El número de empresa debe tener el formato 000-00-00000",
+    "sessionExpired": "Tu sesión expiró. Inicia sesión de nuevo y guarda.",
+    "certHint": "Sube aquí tu certificado de empresa",
+    "photo": {
+      "cover": "Portada",
+      "empty": "Tu foto aparecerá aquí",
+      "pickFile": "📁 Desde mis archivos",
+      "addMore": "+ Añadir foto",
+      "uploading": "Subiendo…",
+      "moveLeft": "Mover antes",
+      "moveRight": "Mover después",
+      "dup": "Esa foto ya está añadida"
+    }
   },
   "admin": {
     "login": {

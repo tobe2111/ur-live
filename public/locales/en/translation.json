@@ -2442,7 +2442,11 @@
       "mapPhotoFood": "Food & menu",
       "mapPhotoInterior": "Interior",
       "openKakaoPlace": "Open in Kakao Map ↗",
-      "mapPhotoHint": "We search Naver map/blog photos by your store name. Kakao Map photos cannot be fetched automatically — we open the page so you can copy a photo URL into the field above."
+      "mapPhotoHint": "We search Naver map/blog photos by your store name. Kakao Map photos cannot be fetched automatically — we open the page so you can copy a photo URL into the field above.",
+      "fromMapShort": "From map",
+      "photoLead": "Bring photos from the map, or upload your own. The first one is the cover.",
+      "pasteTitle": "Paste a KakaoMap photo address",
+      "pastePlaceholder": "Right-click the photo → Copy image address"
     },
     "analyticsTitle": "Sales Analytics",
     "revenueChart": "Revenue Chart",
@@ -3177,7 +3181,20 @@
       "scan": "Redeem",
       "reviews": "Review checks"
     },
-    "pageSearch": "Search pages"
+    "pageSearch": "Search pages",
+    "bizNoFormat": "Business number must look like 000-00-00000",
+    "sessionExpired": "Your session expired. Please sign in again and save.",
+    "certHint": "Upload your business certificate here",
+    "photo": {
+      "cover": "Cover",
+      "empty": "Your photo will show here",
+      "pickFile": "📁 From my files",
+      "addMore": "+ Add photo",
+      "uploading": "Uploading…",
+      "moveLeft": "Move left",
+      "moveRight": "Move right",
+      "dup": "That photo is already added"
+    }
   },
   "admin": {
     "login": {

@@ -2441,7 +2441,11 @@
       "mapPhotoFood": "料理・メニュー",
       "mapPhotoInterior": "店内",
       "openKakaoPlace": "カカオマップで見る ↗",
-      "mapPhotoHint": "ネイバー地図・ブログの写真を店舗名で検索して表示します。カカオマップの写真は自動取得できないためページを開きます — 気に入った写真のURLを上の欄に貼り付けてください。"
+      "mapPhotoHint": "ネイバー地図・ブログの写真を店舗名で検索して表示します。カカオマップの写真は自動取得できないためページを開きます — 気に入った写真のURLを上の欄に貼り付けてください。",
+      "fromMapShort": "地図から取得",
+      "photoLead": "地図から店舗写真を取得するか、自分で撮った写真をアップロードしてください。1枚目が代表写真です。",
+      "pasteTitle": "カカオマップ写真のアドレスを貼り付け",
+      "pastePlaceholder": "写真を右クリック →「画像アドレスをコピー」"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -3177,7 +3181,20 @@
       "scan": "使用処理",
       "reviews": "レビュー確認"
     },
-    "pageSearch": "ページ検索"
+    "pageSearch": "ページ検索",
+    "bizNoFormat": "事業者登録番号は 000-00-00000 の形式で入力してください",
+    "sessionExpired": "ログインが切れました。再度ログインして保存してください。",
+    "certHint": "事業者登録証の写真はこちらから",
+    "photo": {
+      "cover": "代表",
+      "empty": "選んだ写真がここに表示されます",
+      "pickFile": "📁 自分のファイルから",
+      "addMore": "+ 写真を追加",
+      "uploading": "アップロード中…",
+      "moveLeft": "前へ",
+      "moveRight": "後ろへ",
+      "dup": "すでに追加された写真です"
+    }
   },
   "admin": {
     "login": {

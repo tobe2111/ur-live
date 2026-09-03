@@ -2441,7 +2441,11 @@
       "mapPhotoFood": "菜品·菜单",
       "mapPhotoInterior": "店内",
       "openKakaoPlace": "在 Kakao 地图查看 ↗",
-      "mapPhotoHint": "按门店名称搜索 Naver 地图·博客照片并显示。Kakao 地图照片无法自动获取，我们会打开页面 — 请复制照片地址粘贴到上方。"
+      "mapPhotoHint": "按门店名称搜索 Naver 地图·博客照片并显示。Kakao 地图照片无法自动获取，我们会打开页面 — 请复制照片地址粘贴到上方。",
+      "fromMapShort": "从地图获取",
+      "photoLead": "从地图获取门店照片，或上传自己拍的照片。第一张为封面。",
+      "pasteTitle": "粘贴 KakaoMap 照片地址",
+      "pastePlaceholder": "在照片上右键 → 复制图片地址"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -3177,7 +3181,20 @@
       "scan": "核销",
       "reviews": "评价确认"
     },
-    "pageSearch": "页面搜索"
+    "pageSearch": "页面搜索",
+    "bizNoFormat": "营业执照号请按 000-00-00000 格式填写",
+    "sessionExpired": "登录已过期，请重新登录后保存。",
+    "certHint": "营业执照照片在这里上传",
+    "photo": {
+      "cover": "封面",
+      "empty": "选择的照片会显示在这里",
+      "pickFile": "📁 从我的文件",
+      "addMore": "+ 添加照片",
+      "uploading": "上传中…",
+      "moveLeft": "前移",
+      "moveRight": "后移",
+      "dup": "该照片已添加"
+    }
   },
   "admin": {
     "login": {

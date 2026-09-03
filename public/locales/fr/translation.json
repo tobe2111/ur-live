@@ -1761,7 +1761,11 @@
       "mapPhotoFood": "Plats et menu",
       "mapPhotoInterior": "Intérieur",
       "openKakaoPlace": "Ouvrir dans Kakao Map ↗",
-      "mapPhotoHint": "Nous cherchons les photos Naver Map/blogs par nom de boutique. Les photos Kakao Map ne peuvent pas être récupérées automatiquement — nous ouvrons la page pour copier une URL ci-dessus."
+      "mapPhotoHint": "Nous cherchons les photos Naver Map/blogs par nom de boutique. Les photos Kakao Map ne peuvent pas être récupérées automatiquement — nous ouvrons la page pour copier une URL ci-dessus.",
+      "fromMapShort": "Depuis la carte",
+      "photoLead": "Récupérez des photos de la carte ou envoyez les vôtres. La première est la couverture.",
+      "pasteTitle": "Collez l’adresse d’une photo KakaoMap",
+      "pastePlaceholder": "Clic droit sur la photo → Copier l’adresse de l’image"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -2497,7 +2501,20 @@
       "scan": "Utiliser",
       "reviews": "Avis"
     },
-    "pageSearch": "Rechercher"
+    "pageSearch": "Rechercher",
+    "bizNoFormat": "Le numéro d’entreprise doit être au format 000-00-00000",
+    "sessionExpired": "Session expirée. Reconnectez-vous puis enregistrez.",
+    "certHint": "Déposez ici votre certificat d’entreprise",
+    "photo": {
+      "cover": "Couverture",
+      "empty": "Votre photo apparaîtra ici",
+      "pickFile": "📁 Depuis mes fichiers",
+      "addMore": "+ Ajouter une photo",
+      "uploading": "Envoi…",
+      "moveLeft": "Avancer",
+      "moveRight": "Reculer",
+      "dup": "Cette photo est déjà ajoutée"
+    }
   },
   "admin": {
     "login": {
