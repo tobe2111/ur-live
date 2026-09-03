@@ -170,6 +170,62 @@ const MUTATIONS = [
     why: '유어샵 핀에 담긴 교환권이 격자에서 원, /vouchers 목록에서 딜 로 보이던 실제 결함이다.',
   },
   {
+    name: '🩸 near 와 sort 를 같이 보낸다 — 서버가 sort 를 무시해 정렬이 조용히 틀린다',
+    file: 'src/pages/restaurant-map/useFeedWindow.ts',
+    find: "const near = sortBy === 'distance' ? userLoc : null",
+    replace: 'const near = userLoc',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '서버는 baseOrder = hasNear ? 거리 : sort — near 가 이긴다. 전량 로딩을 걷어낸 뒤로는 이게 곧 틀린 목록이다.',
+  },
+  {
+    name: '🚦 홈 피드 다음 페이지가 정렬 없이 나간다 — 스크롤할수록 순서가 섞인다',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: '&page=${nextPage}&limit=50${feedParams}',
+    replace: '&page=${nextPage}&limit=50',
+    test: 'src/tests/unit/feed-sort-and-sentry-noise.test.ts',
+    why: '정렬을 서버로 넘긴 뒤에는 page2 부터도 같은 정렬이어야 한다 — 빠지면 최신순 페이지가 인기순 목록에 붙는다.',
+  },
+  {
+    name: '🔇 Sentry 노이즈 필터가 스택을 안 보고 메시지만 본다 — 우리 코드의 진짜 버그를 삼킨다',
+    file: 'src/lib/sentry-noise.ts',
+    find: '&& isSentryOwnVitalsFrame(event, rawStack)) return true',
+    replace: ') return true',
+    test: 'src/tests/unit/feed-sort-and-sentry-noise.test.ts',
+    why: "같은 'startTime' 메시지는 우리 코드도 낼 수 있다. 좁게 거르지 않으면 조용히 실명한다.",
+  },
+  {
+    name: '🚦 서버 인기순이 다시 group_buy_current 만 본다 — 화면의 정의와 갈린다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: "popular: 'COALESCE(p.sold_count, p.group_buy_current, 0) DESC",
+    replace: "popular: 'p.group_buy_current DESC",
+    test: 'src/tests/unit/feed-sort-and-sentry-noise.test.ts',
+    why: 'sparse 컬럼만 보면 인기순이 사실상 최신순이 된다(2026-07-16 대표 신고 "PC 정렬 무반응"의 원인).',
+  },
+  {
+    name: '🚦 목록이 다시 전량을 걷는다 — 진입마다 338건·요청 7회',
+    file: 'src/hooks/queries/useMapProducts.ts',
+    find: '    let cancelled = false\n    ;(async () => {\n      const res = await fetchPage(category, 1, near, sort)',
+    replace: '    let cancelled = false\n    ;(async () => {\n      for (let page = 1; page < 99; page++) { await fetchPage(category, page, near, sort) }\n      const res = await fetchPage(category, 1, near, sort)',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '2026-09-03 실측: 활성 338건을 진입할 때마다 7회·66KB 로 전부 받았다. 화면엔 10~20장 뜨는데.',
+  },
+  {
+    name: '🚦 스크롤이 서버 다음 페이지를 안 부른다 — 50개에서 목록이 끝난다',
+    file: 'src/pages/restaurant-map/RestaurantList.tsx',
+    find: '      if (localMore) setVisibleCount(v => v + PAGE)\n      else onLoadMore?.()',
+    replace: '      if (localMore) setVisibleCount(v => v + PAGE)',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '전량 순회를 걷어낸 대가로 이 센티넬이 유일한 다음-페이지 경로다. 빠지면 목록이 조용히 잘린다.',
+  },
+  {
+    name: '🔢 "N곳" 이 다시 로드된 수를 센다 — 338곳을 50곳이라 말한다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: 'data: withOnnuri, ...(total != null ? { total } : {})',
+    replace: 'data: withOnnuri',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '전량을 안 받으므로 개수는 서버만 안다. 응답에서 빠지면 화면이 로드된 수로 폴백해 거짓말을 한다.',
+  },
+  {
     name: '🎟️ 승인 대기 매장까지 세어 게이트만 열린다 — 이용권이 개인 좌석으로 등록된다',
     file: 'src/features/seller/api/seller-stores.routes.ts',
     find: "operableCount = mine.filter(x => x.status === 'active' || x.status === 'approved').length",
@@ -8186,6 +8242,37 @@ canvas {
       '"다녀오라" 는 문구를 본다. 원인을 알 길이 없는 문구라 문의조차 못 한다 — 503 으로 갈라야 한다.',
   },
   {
+    name: '📝 리뷰 버튼이 다시 글자 수로 hard-disable (잠기면 아무도 이유를 모른다)',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: '          disabled={submitting}',
+    replace: '          disabled={content.length < MIN_REVIEW_LEN || submitting}',
+    test: 'src/tests/unit/review-gate-clicktime.test.tsx',
+    why:
+      '대표 신고가 정확히 이 상태였다 — 10자 이상인데 흐릿한 비활성. 클라 state 에 버튼을 묶으면 ' +
+      'IME·재렌더·캐시와 desync 되는 순간 버튼이 잠기고, 잠긴 버튼은 이유를 말할 방법이 없다. ' +
+      '2026-06-26 TossPaymentWidget 이 같은 사고를 내고 클릭-시점 검증으로 옮겼다.',
+  },
+  {
+    name: '🎫 리뷰 자격을 미리 알리지 않고 다 쓴 뒤에 거절한다',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: "              const r = await api.get(`/api/reviews/product/${productId}/eligibility`)",
+    replace: '              const r = { data: { data: { ok: true } } }',
+    test: 'src/tests/unit/review-gate-clicktime.test.tsx',
+    why:
+      '대표 지시 — "이용권 사용해야 리뷰 쓸 수 있게 해야지". 미리 안 물으면 사용자는 별점 고르고 ' +
+      '사진 붙이고 열 줄 쓴 다음에야 안 된다는 걸 안다. 그 헛수고가 이 조회 한 번의 값이다.',
+  },
+  {
+    name: '📝 서버 거절 사유가 토스트로만 간다 (화면 맨 위 — 리뷰 폼은 맨 아래)',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: '                setHint(msg)',
+    replace: '                void msg',
+    test: 'src/tests/unit/review-gate-clicktime.test.tsx',
+    why:
+      '토스트는 `fixed top-4` 다. 리뷰 폼은 페이지 맨 아래이고 모바일은 키보드까지 올라와 있어 ' +
+      '사용자에겐 "아무 일도 안 일어났다" 로 보인다 — 대표가 "안 눌러진다" 고 읽은 것이 이것일 수 있다.',
+  },
+  {
     name: '🔎 검색이 다시 접두사 매칭으로 — 단어 안쪽을 못 찾는다',
     file: 'src/features/products/repositories/search-query.ts',
     find: '      const like = `%${escapeLike(v)}%`',
@@ -8278,7 +8365,7 @@ canvas {
   {
     name: '📝 리뷰 최소 글자 안내가 사라져 버튼이 왜 안 눌리는지 아무도 모른다',
     file: 'src/pages/product-detail/ProductReviews.tsx',
-    find: '      {content.length < MIN_REVIEW_LEN && (',
+    find: '      {content.length < MIN_REVIEW_LEN && !hint && (',
     replace: '      {false && (',
     test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
     why:
