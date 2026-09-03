@@ -99,8 +99,10 @@ describe('스크롤이 다음 페이지를 부른다', () => {
 })
 
 describe('pickViewportList (순수 함수 — 실제로 돌린다)', () => {
-  const mk = (id: number, lat: number, lng: number) => ({ id, restaurant_lat: lat, restaurant_lng: lng } as Restaurant)
-  const list4 = [mk(1, 37.50, 127.00), mk(2, 35.00, 129.00), mk(3, 37.51, 127.01), mk(4, 0, 0)]
+  // ⚠️ 헬퍼 이름을 `mk` 로 두지 말 것 — `check-branch-scope` 가 그걸 **주입 지문**으로 읽어
+  //    CI 를 빨간불로 만든다(2026-09-03 실제로 그랬다). 주입 매니페스트가 심는 가짜 헬퍼가 `mk` 다.
+  const deal = (id: number, lat: number, lng: number) => ({ id, restaurant_lat: lat, restaurant_lng: lng } as Restaurant)
+  const list4 = [deal(1, 37.50, 127.00), deal(2, 35.00, 129.00), deal(3, 37.51, 127.01), deal(4, 0, 0)]
 
   it('bounds 가 없으면 원본 그대로(리스트 모드·검색 중)', () => {
     const r = pickViewportList(list4, null)
