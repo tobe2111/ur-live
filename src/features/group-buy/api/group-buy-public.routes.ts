@@ -27,6 +27,7 @@ import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import type { GroupBuyProductRow, VoucherRow } from '@/shared/db/group-buy-types'
 import { ensureTables, maxTierDiscount, getMealVoucherCommissionRate, getSellerCommissionRate } from './helpers'
 import { sliceCardGallery } from './card-gallery'
+import { getActiveFeedTotal } from './feed-total'
 // 🍽️ 2026-06-17 (#5 대표 메뉴): products god-table 증식 차단용 K-V 사이드테이블에서 메뉴 읽기.
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
 import { intParam } from '@/shared/pagination'
@@ -110,10 +111,14 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //   ⚠️ 기본 요청(파라미터 없음)은 키·쿼리·materialized·LIMIT 50 전부 그대로 → SSR 0-RTT/캐시 불변.
     //   필터/정렬/페이지가 붙은 요청만 새 캐시키 + 라이브쿼리(정렬/LIMIT/OFFSET)로 분기.
     const ALLOWED_GB_SORT: Record<string, string> = {
-      popular: 'p.group_buy_current DESC, p.created_at DESC',
+      // 🚦 2026-09-03: 정의는 **화면과 같아야 한다** — 클라 `soldOf`/`discountOf`(GroupBuyFeed) 미러.
+      popular: 'COALESCE(p.sold_count, p.group_buy_current, 0) DESC, p.created_at DESC',
       newest: 'p.created_at DESC',
       deadline: 'p.group_buy_deadline ASC',
-      discount: 'p.discount_rate DESC, p.created_at DESC',
+      discount: 'MAX(COALESCE(p.discount_rate,0), CASE WHEN p.original_price > p.price AND p.original_price > 0 THEN CAST((p.original_price - p.price) * 100 / p.original_price AS INTEGER) ELSE 0 END) DESC, p.created_at DESC',
+      // 🚦 2026-09-03: 서버에 없던 둘 — 없으면 클라가 로드된 50개 안에서만 정렬해 "전체 중" 이 거짓이 된다.
+      price: 'p.price ASC, p.created_at DESC',
+      rating: 'p.avg_rating DESC, p.review_count DESC, p.created_at DESC',
     }
     const sortParam = c.req.query('sort') || ''
     // 🎯 2026-07-04 [UNLOCK_LOADING] (대표 "데모 이용권 노출은 항상 후순위"): 어떤 정렬이든 1차 키 =
@@ -396,7 +401,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       }
     } catch { /* fail-soft */ }
 
-    return c.json({ success: true, data: withOnnuri })
+    // 🔢 2026-09-03 [UNLOCK_LOADING]: 전체 개수 — 클라가 전량을 안 받고도 "N곳" 을 정확히 말한다.
+    //   필터 없는 피드에서만(조합 5종·900s 캐시) · fail-soft null · 기존 필드/캐시키/헤더 전부 불변.
+    const total = (!hasRegion && !hasQ && !hasBbox) ? await getActiveFeedTotal(c.env, DB, status, categories) : null
+    return c.json({ success: true, data: withOnnuri, ...(total != null ? { total } : {}) })
   })
 
   // ── GET /products/map-clusters — 🌍 2026-07-08 (대표 "수천개 대비 가장 이상적으로" — 레이어 3) ──

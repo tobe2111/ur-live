@@ -5498,6 +5498,7 @@ _총 243건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-03**
 - [이용권 현황이 교환권까지 세던 것 — 마이페이지가 자기 자신과 모순](handoff/2026-09-03-voucher-status-wallet-split.md)
+- [2026-09-03 — 지갑 제목 삭제 + 라이브 신고 2건 분류(429 · /map)](handoff/2026-09-03-wallet-title-and-live-triage.md)
 - [2026-09-03 — 이용권 사용 방식 · 리뷰 버튼 · 갤러리 중복 (대표 신고 3건)](handoff/2026-09-03-voucher-redeem-policy-and-photos.md)
 - [이용권 관리로 가는 길이 없었다 (2026-09-03)](handoff/2026-09-03-voucher-nav-reachability.md)
 - [2026-09-03 — 이용권 관리 통합 · 사진 UX · 인기 순위 · 뒤로가기 (대표 요청 묶음)](handoff/2026-09-03-voucher-nav-and-back-nav.md)
