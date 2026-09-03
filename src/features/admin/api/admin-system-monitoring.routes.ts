@@ -315,6 +315,9 @@ const OPS_GATES: OpsGate[] = [
   // 8월 promo flip 스코프 스위치 — 값이 비어 있지 않으면 그 매장만 flip 경로.
   { key: 'flip_pilot_seller_ids', kind: 'setting', label: '8월 flip 파일럿 매장 스코프', default_value: '', staging_ref: null, turn_on_when: '8월 promo flip 파일럿 매장이 정해지면 그 seller_id 를 넣는다' },
   { key: 'seller_promo_field_enabled', kind: 'setting', label: '셀러 promo% 입력 UI', default_value: 'false', staging_ref: null, turn_on_when: 'flip 파일럿 매장이 스스로 promo% 를 입력할 단계가 되면' },
+  // 🪙 2026-09-01 — 이용권을 "딜 일부 + 카드 나머지" 로 살 수 있게 하는 스위치(대표 "포인트 차감처럼").
+  //   OFF 면 딜 사용액이 항상 0 이고 총액과 다른 청구액은 종전처럼 AMOUNT_MISMATCH 로 막힌다.
+  { key: 'voucher_partial_deal_enabled', kind: 'setting', label: '이용권 부분결제(딜+카드)', default_value: 'false', staging_ref: 'S12', turn_on_when: '🔴 **먼저 influencer_deal_bonus_pct = 0** — 딜 보너스 20%가 살아 있으면 딜은 액면가보다 비싸고(1,000딜 = 유어딜 부채 1,200원), 마진 5~10%인 이용권에 쓰이면 팔릴수록 적자다(교환권은 소비자 마크업 20%가 상쇄하지만 이용권엔 그 상쇄가 없다). 그다음 S12 실결제로 카드+딜=총액·매장 정산 총액 불변·환불 복원 확인' },
   { key: 'DISTRICT_AUTO_ISSUE_ENABLED', kind: 'env', label: '상권 쿠폰 온라인 자동발급(경로 B)', default_value: 'false', staging_ref: null, turn_on_when: '상권 캠페인 파일럿 매장이 확정되고 재원(예산 풀)이 배정되면' },
   // 💸 2026-08-01 ④-b: 미수령(픽업 안 찾아감) 환불을 보관구분에 따라 가른다.
   //   🔴 **이미 흐르는 환불의 방향을 바꾼다** — 안 돌던 걸 켜는 게 아니다(cron `0 18` 실행 확인됨).
