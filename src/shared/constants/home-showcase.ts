@@ -130,13 +130,14 @@ export function parseBannerSlot(v: unknown): BannerSlot | null {
  *   목록이 아니라 **질의**다. 이걸 수동 큐레이션으로 만들면 어드민이 매일 손봐야 하고,
  *   안 손보는 순간 홈 최상단이 낡은 채로 방치된다(그게 이 회사 규모에서 가장 자주 나는 사고다).
  */
-export const SECTION_SOURCES = ['manual', 'popular', 'deadline', 'newest', 'category'] as const
+// 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 'deadline' 제거. 라이브 섹션 실측(popular·category 2개)
+//   에 쓰이는 곳이 없어 폴백으로 비는 섹션도 생기지 않는다.
+export const SECTION_SOURCES = ['manual', 'popular', 'newest', 'category'] as const
 export type SectionSource = typeof SECTION_SOURCES[number]
 
 export const SECTION_SOURCE_LABELS: Record<SectionSource, string> = {
   manual: '직접 고름 (상품을 하나씩 담기)',
   popular: '인기순 (결제·리뷰·클릭 종합)',
-  deadline: '마감 임박순',
   newest: '최신 등록순',
   category: '카테고리별 (아래에서 선택)',
 }
