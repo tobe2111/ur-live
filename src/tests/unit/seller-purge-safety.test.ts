@@ -33,6 +33,21 @@ describe('매장 완전 삭제 — 서버가 직접 빈 매장을 확인한다',
     }
   })
 
+  it('🔴 돈이 오간 흔적은 cascade 로도 못 지운다', () => {
+    // cascade 는 상품·운영자·유저연결만 덮는다. 주문·이용권·정산·원장은 **분기 밖**에서 검사돼야
+    // 하고, `if (!cascade)` 안으로 들어가면 cascade 한 번에 매출 있는 매장이 사라진다.
+    const gate = PURGE.indexOf('if (!cascade) {')
+    expect(gate, 'cascade 분기를 못 찾았다').toBeGreaterThan(0)
+    for (const money of ['주문 ${ords}건', '이용권 ${vch}건', '정산 ${stl}건', '원장 ${led}건']) {
+      expect(PURGE.indexOf(money), `${money} 검사가 cascade 분기 뒤에 있다`).toBeLessThan(gate)
+    }
+  })
+
+  it('cascade 로 상품을 지우다 남으면 매장 삭제를 중단한다 (고아 상품 방지)', () => {
+    expect(PURGE).toMatch(/products_left/)
+    expect(PURGE.indexOf('products_left')).toBeLessThan(PURGE.indexOf('DELETE FROM sellers'))
+  })
+
   it('잔여물이 있으면 409 로 거부한다 (지우지 않는다)', () => {
     expect(PURGE).toMatch(/blockers\.length > 0/)
     expect(PURGE).toMatch(/\}, 409\)/)
@@ -40,8 +55,9 @@ describe('매장 완전 삭제 — 서버가 직접 빈 매장을 확인한다',
     expect(PURGE.indexOf('409')).toBeLessThan(PURGE.indexOf('DELETE FROM sellers'))
   })
 
-  it('연결된 유저 계정이 있으면 거부한다', () => {
-    expect(PURGE).toMatch(/seller\.linked_user_id/)
+  it('연결된 유저 계정은 기본 거부, cascade 에서만 통과한다', () => {
+    const gate = PURGE.indexOf('if (!cascade) {')
+    expect(PURGE.indexOf('seller.linked_user_id')).toBeGreaterThan(gate)
   })
 
   it('🔴 count 조회 실패를 0 으로 읽지 않는다 (모르면 안 지운다)', () => {

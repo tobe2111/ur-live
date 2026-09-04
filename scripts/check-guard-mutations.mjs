@@ -1995,6 +1995,16 @@ canvas {
       '**영원히 생성되지 않는다** — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
   },
   {
+    name: '🗑️ cascade 가 머니 잔여물 검사까지 건너뛴다 (매출 있는 매장이 사라진다)',
+    file: 'src/features/admin/api/admin-sellers.routes.ts',
+    find: "    const ords = await countOr('주문', 'SELECT COUNT(*) AS n FROM orders WHERE seller_id = ?', [sellerId]);\n    if (ords > 0) blockers.push(`주문 ${ords}건`);",
+    replace: "    const ords = 0;",
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      'cascade 는 상품·운영자·유저연결만 덮어야 한다. 주문 검사가 그 분기 안으로 들어가거나 사라지면 ' +
+      '**매출이 있는 매장이 한 번에 사라진다** — 되돌릴 수 없고, 화면상 "정리됐다"로 보인다.',
+  },
+  {
     name: '🗑️ 매장 완전 삭제가 잔여물 검사를 건너뛴다 (되돌릴 수 없는 파괴)',
     file: 'src/features/admin/api/admin-sellers.routes.ts',
     find: '    if (blockers.length > 0) {',

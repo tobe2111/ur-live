@@ -204,15 +204,35 @@ export default function AdminSellerApprovalPage() {
   //    서버가 상품·주문·운영자·원장·정산 0 을 **직접 확인**하고, 하나라도 있으면 409 로 막는다.
   const purgeSeller = async (s: Seller) => {
     if (!(await confirmDialog(
-      `${s.name || s.email} 매장을 완전히 삭제할까요?\n\n되돌릴 수 없습니다. 상품·주문이 하나라도 있으면 서버가 거부합니다.`,
+      `${s.name || s.email} 매장을 완전히 삭제할까요?\n\n되돌릴 수 없습니다. 주문·이용권·정산 이력이 있으면 서버가 거부합니다.`,
     ))) return
     setActingId(s.id)
+    const call = (cascade: boolean) =>
+      api.delete(`/api/admin/sellers/${s.id}/purge${cascade ? '?cascade=1' : ''}`, h)
     try {
-      await api.delete(`/api/admin/sellers/${s.id}/purge`, h)
+      await call(false)
       toast.success('매장 삭제 완료'); load()
     } catch (e: unknown) {
-      const ax = e as { response?: { data?: { error?: string } } }
-      toast.error(ax.response?.data?.error || '삭제 실패')
+      const ax = e as { response?: { status?: number; data?: { error?: string; data?: { blockers?: string[] } } } }
+      const blockers = ax.response?.data?.data?.blockers || []
+      // 409 + 막은 것이 상품·운영자·유저연결뿐이면 **한 번 더 물어보고** cascade 로 재시도한다.
+      //   돈이 오간 흔적(주문/이용권/정산/원장)은 cascade 로도 못 지우므로 여기 해당 없음.
+      const onlySoft = ax.response?.status === 409 && blockers.length > 0
+        && blockers.every(b => /상품|운영자|연결된 유저 계정/.test(b))
+      if (onlySoft && await confirmDialog(
+        `${blockers.join(' · ')} 이(가) 남아 있습니다.\n\n상품과 그 리뷰·위시리스트까지 **함께 삭제**할까요? 되돌릴 수 없습니다.`,
+      )) {
+        try {
+          const r = await call(true)
+          const n = r.data?.data?.products_deleted ?? 0
+          toast.success(n > 0 ? `매장 삭제 완료 (상품 ${n}건 함께 삭제)` : '매장 삭제 완료'); load()
+        } catch (e2: unknown) {
+          const ax2 = e2 as { response?: { data?: { error?: string } } }
+          toast.error(ax2.response?.data?.error || '삭제 실패')
+        }
+      } else {
+        toast.error(ax.response?.data?.error || '삭제 실패')
+      }
     } finally { setActingId(null) }
   }
 
