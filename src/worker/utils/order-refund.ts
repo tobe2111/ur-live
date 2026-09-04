@@ -195,13 +195,43 @@ export async function refundOrderFully(
   const paymentKey = order.toss_payment_key || order.payment_key
   const isDeal = order.payment_method === 'deal_points'
 
+  /**
+   * 💸 2026-09-04 — **카드로 취소할 수 있는 건 카드로 긁은 만큼뿐이다.**
+   *
+   *   부분결제(딜 일부 + 카드 나머지, 2026-09-01 #1296)가 켜지면서 드러났다:
+   *   `orders.total_amount` 에는 **총액**이 들어가고 카드 승인액은 그보다 `deal_used` 만큼 적다.
+   *   그런데 아래 Toss 취소가 총액을 요청해서 **승인액 초과 → `EXCEED_CANCEL_AMOUNT` 402 →
+   *   여기서 return → 상태 전이도 딜 복원(3b)도 도달 못 함.** 즉 딜을 섞어 산 고객은
+   *   **환불을 아예 못 받는다.**
+   *
+   *   ⚠️ 바로 위 `alreadyRefunded` 주석이 **같은 클래스의 사고**를 이미 기록하고 있다
+   *   (*"Toss 에 전액 재요청 → EXCEED_CANCEL_AMOUNT → 잔여분 취소 영구 불능"*).
+   *   그때는 부분취소 누적만 뺐고 **딜 사용분은 안 뺐다** — 쇼핑탭이 숨겨져 노출이 0이었을 뿐이다.
+   *
+   *   ⇒ 카드에 요청할 금액 = 총액 − 기존 부분취소 − **아직 미복원 딜**.
+   *     딜 몫은 아래 3b 가 `refundDealPoints` 로 되돌린다. 둘을 합치면 정확히 총액이다.
+   *   컬럼 부재/조회 실패는 0 취급 — 그러면 종전과 byte-동일하게 동작한다(모르면 안 바꾼다).
+   */
+  let pendingDealUsed = 0
+  if (!isDeal) {
+    try {
+      const r = await DB.prepare('SELECT deal_used FROM orders WHERE id = ?')
+        .bind(Number(order.id)).first<{ deal_used: number | null }>()
+      pendingDealUsed = Math.max(0, Math.round(Number(r?.deal_used ?? 0)))
+    } catch { /* 컬럼 부재 등 — 0 취급(기존 동작) */ }
+  }
+  //   ⚠️ 잔여 환불액(`amount`)을 넘겨 복원하지 않는다 — 부분반품이 이미 일부를 돌려준 뒤라면
+  //     그만큼 덜 남아 있다. 클램프가 없으면 그 초과분이 **조용한 과다 환불**이 된다.
+  const dealToRestore = Math.min(pendingDealUsed, amount)
+  const cardAmount = Math.max(0, amount - dealToRestore)
+
   // 1. 카드 결제 → Toss 취소 (실패 시 상태 미변경). 잔여 0 이면 상태 전이만(돈 이동 없음).
-  if (!isDeal && amount > 0) {
+  if (!isDeal && cardAmount > 0) {
     if (!paymentKey) {
       return { ok: false, status: 422, error: '결제 키를 찾을 수 없습니다. 고객센터에 문의해주세요.', code: 'PAYMENT_KEY_MISSING' }
     }
     const { tossCancelPayment } = await import('./toss-payments')
-    const res = await tossCancelPayment(paymentKey, env.TOSS_SECRET_KEY as string, opts.reason, amount)
+    const res = await tossCancelPayment(paymentKey, env.TOSS_SECRET_KEY as string, opts.reason, cardAmount)
     if (!res.success) {
       return { ok: false, status: 402, error: res.message || '환불 처리에 실패했습니다', code: res.code }
     }
@@ -233,9 +263,9 @@ export async function refundOrderFully(
   //   CAS 전이 후라 1회만 실행(멱등). deal_used 컬럼 부재 시 best-effort skip.
   if (!isDeal) {
     try {
-      const dealRow = await DB.prepare('SELECT deal_used FROM orders WHERE id = ?')
-        .bind(Number(order.id)).first<{ deal_used: number | null }>().catch(() => null)
-      const dealUsed = Math.max(0, Math.round(Number(dealRow?.deal_used ?? 0)))
+      // 위 카드 취소액 계산에서 읽은 값을 그대로 쓴다 — 다시 읽으면 두 숫자가 갈릴 수 있고
+      // (카드에서 뺀 금액 ≠ 딜로 되돌린 금액), 그 차액은 조용한 미수/과다환불이 된다.
+      const dealUsed = dealToRestore
       if (dealUsed > 0) {
         // 💸 2026-07-05 버킷: 혼합결제 딜 차감(payment.routes adjustUserPoints, order_id=orders.id)의
         //   무상 차감분을 원장 역산으로 무상 복원 (refundDealPoints SSOT).

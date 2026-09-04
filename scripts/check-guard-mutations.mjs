@@ -88,6 +88,27 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '💸 딜 섞인 주문 환불이 카드에 총액을 요청한다 (환불이 통째로 막힌다)',
+    file: 'src/worker/utils/order-refund.ts',
+    find: 'opts.reason, cardAmount)',
+    replace: 'opts.reason, amount)',
+    test: 'src/tests/unit/refund-partial-deal-split.test.ts',
+    why:
+      '부분결제 주문의 `total_amount` 는 **총액**이고 카드 승인액은 그보다 `deal_used` 만큼 적다. ' +
+      '총액을 취소 요청하면 Toss 가 `EXCEED_CANCEL_AMOUNT` 로 거부하고 그 자리에서 return 하므로 ' +
+      '**상태 전이도 딜 복원도 도달하지 못한다** — 고객이 환불을 아예 못 받는다(2026-09-04 실측 결함).',
+  },
+  {
+    name: '💸 환불이 잔여액보다 많은 딜을 되돌린다 (부분반품 뒤 조용한 과다 환불)',
+    file: 'src/worker/utils/order-refund.ts',
+    find: 'const dealToRestore = Math.min(pendingDealUsed, amount)',
+    replace: 'const dealToRestore = pendingDealUsed',
+    test: 'src/tests/unit/refund-partial-deal-split.test.ts',
+    why:
+      '부분반품이 이미 일부를 돌려준 뒤라면 잔여 환불액(`amount`)이 `deal_used` 보다 작을 수 있다. ' +
+      '클램프가 없으면 그 초과분이 **에러 없이** 유저 지갑으로 더 나간다.',
+  },
+  {
     name: '🪙 결제 화면이 딜 사용을 안 보여준다 (10,000원을 눌렀는데 8,000원이 뜬 이유가 사라진다)',
     file: 'src/pages/TossWidgetPayPage.tsx',
     find: '{summary.dealUsed ? (',
