@@ -13,6 +13,7 @@
  * - PATCH  /sellers/:id/approve              — 판매자 승인
  * - PATCH  /sellers/:id/reject               — 판매자 거부
  * - DELETE /sellers/:id                      — 판매자 정지 (soft delete)
+ * - DELETE /sellers/:id/purge                — 매장 **완전 삭제**(빈 매장 한정, 되돌릴 수 없음)
  * - PATCH  /sellers/:id/commission           — 수수료율 변경
  * - PATCH  /sellers/:id/donation-commission  — 후원 수수료율 변경
  * - PATCH  /sellers/:id/permissions          — 특수 권한 변경
@@ -25,6 +26,8 @@ import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { swallow } from '@/worker/utils/swallow';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { requireAdminRole } from '@/worker/middleware/auth';
+import { require2FA } from '@/worker/middleware/require-2fa';
 import { intParam } from '@/shared/pagination'
 import { reassignIntroducer } from './admin-sellers/reassign-introducer'
 
@@ -659,6 +662,83 @@ adminSellersRoutes.delete('/sellers/:id', cors(), async (c) => {
 
     await writeAuditLog(c, { action: 'suspend_seller', targetType: 'seller', targetId: sellerId, before: { status: rows[0].status }, after: { status: 'suspended', is_active: 0 } });
     return c.json({ success: true, message: '판매자가 정지되었습니다', data: { id: sellerId, status: 'suspended' } });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+/**
+ * 🗑️ 2026-09-04 (대표 "매장 홍대돈가스 말고는 다 삭제해") — 매장 **완전 삭제**.
+ *
+ * ## 왜 soft delete 로는 안 되나
+ * 위 `DELETE /sellers/:id` 는 `status='suspended'` 로 바꿀 뿐이고, **이미 정지된 매장은 400** 이다.
+ * 시험용으로 만들어졌다가 정지만 된 껍데기가 목록에 계속 쌓여 "어느 게 진짜 매장인가"를 흐린다.
+ *
+ * ## 🔒 안전 규칙 — 빈 매장만 지운다
+ * 상품·주문·운영자·원장·정산이 **하나라도** 있으면 409 로 거부한다. 되돌릴 수 없는 작업이라
+ * "이 매장은 아무것도 안 남겼다"가 **서버에서** 증명될 때만 통과시킨다(호출자 판단을 믿지 않는다).
+ * 매출 이력이 있는 매장을 지우고 싶다면 그건 이 도구가 아니라 별도 판단이다.
+ *
+ * ⚠️ 함께 지우는 것: `seller_meta`(K-V 사이드테이블) · `seller_operators`(0건 확인 후라 no-op).
+ *    남기는 것: `seller_status_history`(감사 흔적) · `admin_audit_logs`.
+ */
+adminSellersRoutes.delete('/sellers/:id/purge', cors(), requireAdminRole('super'), require2FA(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
+
+    const rows = await executeQuery<{ id: number; status: string; business_name: string | null; linked_user_id: number | null }>(
+      DB, 'SELECT id, status, business_name, linked_user_id FROM sellers WHERE id = ?', [sellerId],
+    );
+    if (rows.length === 0) return c.json({ success: false, error: '매장을 찾을 수 없습니다' }, 404);
+    const seller = rows[0];
+
+    // 🔒 잔여물 검사 — 하나라도 있으면 거부. count 쿼리는 테이블 부재에 관대(0 취급)하되,
+    //    **실패를 0 으로 읽지 않도록** 실패 시엔 거부한다(모르면 지우지 않는다).
+    const probes: Array<[string, string]> = [
+      ['상품', 'SELECT COUNT(*) AS n FROM products WHERE seller_id = ?'],
+      ['주문', 'SELECT COUNT(*) AS n FROM orders WHERE seller_id = ?'],
+      ['운영자', 'SELECT COUNT(*) AS n FROM seller_operators WHERE seller_id = ?'],
+      ['정산', 'SELECT COUNT(*) AS n FROM settlements WHERE seller_id = ?'],
+    ];
+    const blockers: string[] = [];
+    for (const [label, sql] of probes) {
+      try {
+        const r = await DB.prepare(sql).bind(sellerId).first<{ n: number }>();
+        if ((Number(r?.n) || 0) > 0) blockers.push(`${label} ${r!.n}건`);
+      } catch (e) {
+        // 테이블 자체가 없으면 0 이 맞다. 그 외 오류는 "모른다" 이므로 거부한다.
+        if (!String(e).includes('no such table')) blockers.push(`${label} 확인 실패`);
+      }
+    }
+    try {
+      const led = await DB.prepare(
+        "SELECT COUNT(*) AS n FROM ledger_entries WHERE credit_account = 'seller:' || ? OR debit_account = 'seller:' || ?",
+      ).bind(sellerId, sellerId).first<{ n: number }>();
+      if ((Number(led?.n) || 0) > 0) blockers.push(`원장 ${led!.n}건`);
+    } catch (e) {
+      if (!String(e).includes('no such table')) blockers.push('원장 확인 실패');
+    }
+    if (seller.linked_user_id) blockers.push(`연결된 유저 계정(#${seller.linked_user_id})`);
+
+    if (blockers.length > 0) {
+      return c.json({
+        success: false,
+        error: `빈 매장이 아니라 삭제할 수 없습니다 — ${blockers.join(' · ')}. 정지(suspend)만 가능합니다.`,
+        data: { id: Number(sellerId), blockers },
+      }, 409);
+    }
+
+    await writeAuditLog(c, {
+      action: 'purge_seller', targetType: 'seller', targetId: sellerId,
+      before: { status: seller.status, business_name: seller.business_name }, after: null,
+    });
+
+    await DB.prepare('DELETE FROM seller_meta WHERE seller_id = ?').bind(sellerId).run().catch(swallow('admin:purge-seller:meta'));
+    await executeRun(DB, 'DELETE FROM sellers WHERE id = ?', [sellerId]);
+
+    return c.json({ success: true, message: '매장이 완전히 삭제되었습니다', data: { id: Number(sellerId), business_name: seller.business_name } });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }

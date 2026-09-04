@@ -1995,6 +1995,25 @@ canvas {
       '**영원히 생성되지 않는다** — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
   },
   {
+    name: '🗑️ 매장 완전 삭제가 잔여물 검사를 건너뛴다 (되돌릴 수 없는 파괴)',
+    file: 'src/features/admin/api/admin-sellers.routes.ts',
+    find: '    if (blockers.length > 0) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '거부 분기가 죽으면 상품·주문이 있는 매장도 그냥 지워진다. 되돌릴 수 없고, ' +
+      '삭제 직후엔 화면상 "정리됐다"로 보여서 사고를 나중에야 안다.',
+  },
+  {
+    name: '🗑️ 매장 완전 삭제가 super 권한 없이 열린다',
+    file: 'src/features/admin/api/admin-sellers.routes.ts',
+    find: "adminSellersRoutes.delete('/sellers/:id/purge', cors(), requireAdminRole('super'), require2FA(), async (c) => {",
+    replace: "adminSellersRoutes.delete('/sellers/:id/purge', cors(), async (c) => {",
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '파괴적 작업이 일반 어드민 토큰만으로 실행된다. 계정 하나가 새면 매장이 통째로 사라진다.',
+  },
+  {
     name: '🌇 일몰한 에이전시 API 가 워커에 다시 마운트된다',
     file: 'src/worker/index.ts',
     find: "app.route('/api/invite', inviteRewardRoutes);",

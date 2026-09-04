@@ -6,7 +6,7 @@ import { safeHttpHref } from '@/utils/safe-external-url'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
-import { UserCheck, UserX, Loader2, Search, Pause, Play, ChevronDown, ChevronUp, FileCheck, FileX, ExternalLink } from 'lucide-react'
+import { UserCheck, UserX, Loader2, Search, Pause, Play, ChevronDown, ChevronUp, FileCheck, FileX, ExternalLink, Trash2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate } from '@/utils/date'
@@ -197,6 +197,23 @@ export default function AdminSellerApprovalPage() {
       }
       toast.success(`${action} 완료`); load()
     } catch { toast.error(`${action} 실패`) } finally { setActingId(null) }
+  }
+
+  // 🗑️ 2026-09-04 (대표 "매장 홍대돈가스 말고는 다 삭제해"): 빈 매장 **완전 삭제**.
+  //    정지(suspend)는 목록에 계속 남아 "어느 게 진짜 매장인가"를 흐린다. 되돌릴 수 없으므로
+  //    서버가 상품·주문·운영자·원장·정산 0 을 **직접 확인**하고, 하나라도 있으면 409 로 막는다.
+  const purgeSeller = async (s: Seller) => {
+    if (!(await confirmDialog(
+      `${s.name || s.email} 매장을 완전히 삭제할까요?\n\n되돌릴 수 없습니다. 상품·주문이 하나라도 있으면 서버가 거부합니다.`,
+    ))) return
+    setActingId(s.id)
+    try {
+      await api.delete(`/api/admin/sellers/${s.id}/purge`, h)
+      toast.success('매장 삭제 완료'); load()
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '삭제 실패')
+    } finally { setActingId(null) }
   }
 
   // 🛡️ 2026-05-20: 사업자등록증 검증/반려 — migration 0257 PATCH /sellers/:id/business-registration/verify
@@ -398,6 +415,12 @@ export default function AdminSellerApprovalPage() {
                       {s.status === 'suspended' ? <><Play className="w-3 h-3" /> 재활성</> : <><Pause className="w-3 h-3" /> 정지</>}
                     </button>
                   )}
+                  {/* 🗑️ 2026-09-04: 빈 매장 완전 삭제 — 정지된 껍데기가 목록에 쌓이는 것을 끝낸다.
+                      상품·주문이 있으면 서버가 409 로 거부하므로 버튼은 항상 보여도 안전하다. */}
+                  <button onClick={() => purgeSeller(s)} disabled={actingId === s.id}
+                    className="px-3 py-1.5 bg-red-50 text-red-700 rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
+                    <Trash2 className="w-3 h-3" /> 삭제
+                  </button>
                   {/* 🛡️ rejected 셀러도 다시 활성화 가능 — 잘못 거절된 케이스 복구 */}
                   {s.status === 'rejected' && (
                     <button onClick={() => approve(s.id)} disabled={actingId === s.id}
