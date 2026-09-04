@@ -96,6 +96,13 @@ export async function handleSellerChurnDetect(env: Env): Promise<void> {
           )
         }
         // 셀러 본인에게도 격려
+        //
+        // 🗓️ 2026-09-04: 종전 문구가 '마감 임박 push 를 활용해보세요' 였다. 그 push cron 은
+        //   어디에도 등록되지 않은 죽은 파일이고 마감 개념 자체도 없어졌다 — 존재한 적 없는
+        //   기능을 사장님에게 권하고 있었다. 실제로 할 수 있는 행동으로 바꾼다.
+        //
+        // ⚠️ 주석을 `.bind(...)` **인자 목록 안에 넣지 말 것** — 주석 속 쉼표를 인자로 세어
+        //   `check-sql-bind-params` 가 개수 불일치로 막는다(2026-09-04 에 실제로 밟았다).
         if (s.user_id) {
           stmts.push(
             DB.prepare(`
@@ -104,8 +111,6 @@ export async function handleSellerChurnDetect(env: Env): Promise<void> {
             `).bind(
               s.user_id,
               '✨ 새 공구 시작해보세요',
-              // 🗓️ 2026-09-04: '마감 임박 push' 를 권하고 있었다 — 그 cron 은 등록조차 안 된 죽은
-              //   파일이고, 마감 개념 자체가 없어졌다. 셀러가 실제로 할 수 있는 행동으로 바꾼다.
               `요즘 공구 진행률이 낮아요. 공구 특가를 키우거나 유어샵 링크를 공유해 알려보세요.`,
             )
           )
