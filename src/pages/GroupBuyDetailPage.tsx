@@ -3,7 +3,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DetailGallery from './group-buy/DetailGallery'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { voucherCrumbs } from '@/components/deal/DetailBreadcrumb'
-import { readCachedLoc, distanceKm, daysLeft } from './group-buy/detail-derived'
+import { readCachedLoc, distanceKm } from './group-buy/detail-derived'
 import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import { derivePricing } from './group-buy/pricing'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
@@ -319,7 +319,6 @@ export default function GroupBuyDetailPage() {
   // 🧮 파생값은 순수 모듈에서 — 셋 다 "데이터 없으면 그 자리를 비운다"는 같은 규칙이다.
   const userLoc = readCachedLoc()
   const distKm = distanceKm(userLoc, detail?.restaurant_lat, detail?.restaurant_lng)
-  const dDay = daysLeft(detail?.group_buy_deadline, (x) => safeDate(x))
   const total = unitPrice * quantity
   const totalSaving = unitSaving * quantity
   // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도"): 셀러 설정값으로 스텝퍼 상한. 미설정=기존 10.
@@ -514,7 +513,6 @@ export default function GroupBuyDetailPage() {
             availability: detail.group_buy_status === 'active' || detail.group_buy_status === 'achieved'
               ? 'https://schema.org/InStock'
               : 'https://schema.org/OutOfStock',
-            priceValidUntil: detail.group_buy_deadline,
             seller: detail.seller_name ? { '@type': 'Organization', name: detail.seller_name } : undefined,
           },
           ...(detail.restaurant_lat && detail.restaurant_lng ? {
@@ -685,11 +683,8 @@ export default function GroupBuyDetailPage() {
           <div style={{ marginTop: 6, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>{unitSaving > 0 && <>1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-ink)' }}>{formatNumber(unitSaving)}원</b> 저렴 · </>}결제 즉시 교환권 발급</div>
         </div>
 
-        {dDay != null && dDay <= 7 && (
-          <div className="lg:hidden" style={{ margin: '0 18px 18px', padding: '11px 14px', borderRadius: 12, background: 'var(--gbd-danger-soft)', color: 'var(--gbd-danger)', fontSize: 13.5, fontWeight: 800 }}>
-            {dDay === 0 ? '오늘 마감 — 이 가격은 오늘까지예요' : `마감 D-${dDay} — 이 가격은 ${dDay}일 남았어요`}
-          </div>
-        )}
+        {/* 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 'D-N 마감' 배너 제거 — 마감이 아무것도 안 막는데
+            남겨 두면 없는 마감을 소비자에게 알리는 거짓말이 된다. 구매 후 사용 기간은 별개 축이다. */}
 
         {/* 🎯 추첨 응모 — 이 상품이 추첨 대상일 때만(결제 없음). 아니면 렌더 0. */}
         <div id="fcfs-apply-block"><FcfsApplyBlock productId={Number(id)} /></div>

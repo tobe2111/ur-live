@@ -18,10 +18,12 @@
  * ⚠️ 카테고리로 판정하지 말 것 — `meal_voucher` 는 **이용권**(카드 결제)이다.
  *    (`scripts/check-payment-flow-ssot.mjs` 가 지키는 그 혼동.)
  */
-/** 판정에 실제로 쓰는 두 필드. 호출자마다 타입이 달라(느슨한 RQ 훅 타입 / 지갑 페이지 타입) unknown 으로 둔다. */
+/** 판정에 실제로 쓰는 세 필드. 호출자마다 타입이 달라(느슨한 RQ 훅 타입 / 지갑 페이지 타입) unknown 으로 둔다. */
 export interface VoucherWalletItem {
   source?: unknown
   deal_only?: unknown
+  /** KT 원본 상태. 병합이 `status` 를 'unused' 로 눌러 담기 때문에 실패 판정은 이 필드로만 가능하다. */
+  kt_status?: unknown
 }
 
 /** 인덱스 시그니처만 가진 느슨한 레코드(`useMyVouchers` 의 MyVoucher)도 그대로 받기 위한 입력 타입. */
@@ -37,4 +39,20 @@ export function isGifticonVoucher(v: WalletItemLike): boolean {
 /** 반대편 — 이용권 지갑(`/my-vouchers`)에 놓일 것인가. */
 export function isStoreVoucher(v: WalletItemLike): boolean {
   return !isGifticonVoucher(v)
+}
+
+/**
+ * 🩸 2026-09-04 (대표 — *"재발송은 안 해도 돼"* + 발송 실패분을 숫자에서 빼기로 결정):
+ *   **문자조차 못 받은 교환권**인가.
+ *
+ * `/api/vouchers/my` 의 KT 병합은 발송 실패를 `status:'unused'` + `kt_status:'failed'` 로 실어 보낸다
+ * (2026-06-17 — 카드가 실패 UI 를 그려 *"결제됐는데 안 왔다"* 를 알리라고). 그래서 `status` 만 보면
+ * **실패한 것이 '사용 가능' 으로 세어진다** — 실제로 마이의 "이용권 현황"(#1345)과 교환권 지갑의
+ * "사용 가능 N장"·상단 딜 합계가 전부 그렇게 세고 있었다.
+ *
+ * ⇒ **세지는 않되 숨기지도 않는다.** 카드는 '발송 실패' 그룹으로 계속 보이고(그래야 문의할 수 있다),
+ *   개수·금액에서만 빠진다.
+ */
+export function isFailedGifticon(v: WalletItemLike): boolean {
+  return (v as VoucherWalletItem).kt_status === 'failed'
 }

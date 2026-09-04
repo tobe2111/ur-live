@@ -200,9 +200,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     if (await isSelfOwnedGroupBuy(DB, product.seller_id, userId)) {
       return c.json({ success: false, error: '본인의 공동구매 상품에는 참여할 수 없습니다', code: 'SELF_PARTICIPATION_BLOCKED' }, 403)
     }
-    if (product.group_buy_deadline && new Date(product.group_buy_deadline) < new Date()) {
-      return c.json({ success: false, error: '공동구매가 마감되었습니다' }, 400)
-    }
+    // 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 마감 차단 제거 — 딜 경로(gb-purchase-guards)와 동형.
     if (product.group_buy_status === 'expired' || product.group_buy_status === 'cancelled') {
       return c.json({ success: false, error: '종료된 공동구매입니다' }, 400)
     }

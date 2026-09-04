@@ -114,10 +114,6 @@ export function popularScoreSql(w: { sold: number; review: number; view: number 
 
 const RULES: Record<Exclude<SectionSource, 'manual'>, { order: string; where?: string }> = {
   popular: { order: 'COALESCE(p.sold_count,0) DESC, p.created_at DESC' },
-  deadline: {
-    order: 'p.group_buy_deadline ASC',
-    where: `AND p.group_buy_deadline IS NOT NULL AND p.group_buy_deadline > datetime('now')`,
-  },
   newest: { order: 'p.created_at DESC' },
   category: { order: 'COALESCE(p.sold_count,0) DESC, p.created_at DESC' },
 }

@@ -224,8 +224,10 @@ affiliateRoutes.get('/funnel', requireAuth(), async (c) => {
 })
 
 // ── GET /api/affiliate/top-groups — 인플루언서 추천: 지금 share 하면 좋을 공구 ──
-// 🛡️ 2026-05-15: 알고리즘 — (1) 마감임박(72h) + (2) 진행률 높은 순
-//   = 지금 share → 친구 가입 가능성 높음 (양쪽 0.5% 보너스).
+// 🛡️ 2026-05-15: 알고리즘 — 원래는 (1) 마감임박(72h) + (2) 진행률 높은 순이었다.
+// 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): **마감 조건을 걷어냈다.** 그대로 뒀으면 마감이 없는
+//   세상에서 이 쿼리가 **영구히 0건**을 돌려주고(=이 화면이 조용히 빈다), 그건 마감 제거의
+//   부작용으로 인플루언서 기능 하나가 죽는 것이다. 이제 진행률 높은 순 + 최신순으로 고른다.
 affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
@@ -236,7 +238,7 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
       SELECT
         p.id, p.name, p.image_url, p.price, p.category,
         p.restaurant_name, p.group_buy_target, p.group_buy_current,
-        p.group_buy_deadline, p.group_buy_tiers,
+        p.group_buy_tiers,
         s.name AS seller_name,
         ROUND(p.group_buy_current * 100.0 / NULLIF(p.group_buy_target, 0)) AS progress_pct,
         ROUND(p.price * 0.005) AS my_potential_bonus
@@ -246,11 +248,9 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
         AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
         AND p.group_buy_status = 'active'
         AND p.group_buy_target > 0
-        AND p.group_buy_deadline > datetime('now')
-        AND p.group_buy_deadline < datetime('now', '+72 hours')
       ORDER BY
         (p.group_buy_current * 1.0 / p.group_buy_target) DESC,  -- 진행률 높은 순
-        p.group_buy_deadline ASC                                  -- 마감임박 순
+        p.created_at DESC                                         -- 동률이면 최신순
       LIMIT 10
     `).all().catch(() => ({ results: [] }))
 

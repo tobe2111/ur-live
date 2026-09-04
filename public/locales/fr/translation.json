@@ -4816,7 +4816,8 @@
       "used": "Utilisé",
       "expired": "Expiré",
       "refunded": "Remboursé",
-      "processing": "Envoi en cours"
+      "processing": "Envoi en cours",
+      "sendFailed": "Échec de l'envoi"
     },
     "verify": {
       "title": "Vérifier le coupon",
