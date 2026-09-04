@@ -222,8 +222,9 @@ export async function refundOrderFully(
   }
   //   ⚠️ 잔여 환불액(`amount`)을 넘겨 복원하지 않는다 — 부분반품이 이미 일부를 돌려준 뒤라면
   //     그만큼 덜 남아 있다. 클램프가 없으면 그 초과분이 **조용한 과다 환불**이 된다.
-  const dealToRestore = Math.min(pendingDealUsed, amount)
-  const cardAmount = Math.max(0, amount - dealToRestore)
+  //   계산은 `partial-deal.ts` SSOT — 반품(부분) 경로와 **일부러 다르다**(그 이유는 그 파일에).
+  const { splitFullRefund } = await import('../../features/group-buy/api/partial-deal')
+  const { card: cardAmount, deal: dealToRestore } = splitFullRefund({ remainingDeal: pendingDealUsed, refundAmount: amount })
 
   // 1. 카드 결제 → Toss 취소 (실패 시 상태 미변경). 잔여 0 이면 상태 전이만(돈 이동 없음).
   if (!isDeal && cardAmount > 0) {

@@ -110,7 +110,7 @@ const MUTATIONS = [
   {
     name: '💸 반품 환불이 카드에 총액 기준 환불액을 요청한다 (부분결제 주문에서 실패하거나 과다 환불)',
     file: 'src/features/returns/api/returns.routes.ts',
-    find: '      cardRefundAmount,',
+    find: '      refundSplit.card,',
     replace: '      returnRecord.refund_amount || undefined,',
     test: 'src/tests/unit/refund-partial-deal-split.test.ts',
     why:
@@ -131,9 +131,9 @@ const MUTATIONS = [
   },
   {
     name: '💸 환불이 잔여액보다 많은 딜을 되돌린다 (부분반품 뒤 조용한 과다 환불)',
-    file: 'src/worker/utils/order-refund.ts',
-    find: 'const dealToRestore = Math.min(pendingDealUsed, amount)',
-    replace: 'const dealToRestore = pendingDealUsed',
+    file: 'src/features/group-buy/api/partial-deal.ts',
+    find: '  const deal = Math.min(remaining, refund)',
+    replace: '  const deal = remaining',
     test: 'src/tests/unit/refund-partial-deal-split.test.ts',
     why:
       '부분반품이 이미 일부를 돌려준 뒤라면 잔여 환불액(`amount`)이 `deal_used` 보다 작을 수 있다. ' +
