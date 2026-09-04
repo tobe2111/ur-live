@@ -63,7 +63,7 @@ export default function InfluencerDiscoverPage() {
   const navigate = useNavigate()
   const [cat, setCat] = useState('all')
   const [filter, setFilter] = useState('')
-  const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'deadline'>('latest')
+  const [sortBy, setSortBy] = useState<'latest' | 'popular'>('latest')
 
   const myId = getUserId() || 'me'
 
@@ -117,11 +117,6 @@ export default function InfluencerDiscoverPage() {
     )
     .sort((a, b) => {
       if (sortBy === 'popular') return b.group_buy_current - a.group_buy_current
-      if (sortBy === 'deadline') {
-        const ad = a.group_buy_deadline ? new Date(a.group_buy_deadline).getTime() : Infinity
-        const bd = b.group_buy_deadline ? new Date(b.group_buy_deadline).getTime() : Infinity
-        return ad - bd
-      }
       return 0  // latest = 서버 ORDER BY created_at DESC 기본
     })
 
@@ -161,12 +156,11 @@ export default function InfluencerDiscoverPage() {
           </div>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'latest' | 'popular' | 'deadline')}
+            onChange={(e) => setSortBy(e.target.value as 'latest' | 'popular')}
             className="px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-full text-xs text-gray-900 dark:text-white font-medium bg-white dark:bg-[#11141C]"
           >
             <option value="latest">최신순</option>
             <option value="popular">인기순</option>
-            <option value="deadline">마감임박순</option>
           </select>
         </div>
 
