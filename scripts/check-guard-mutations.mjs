@@ -88,6 +88,37 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🔎 인기 검색어가 없을 때 빈 섹션 제목만 남는다',
+    file: 'src/pages/SearchPage.tsx',
+    find: '{relatedKeywords.length > 0 && (',
+    replace: '{true && (',
+    test: 'src/tests/unit/search-popular-keywords.test.ts',
+    why:
+      '서버가 빈 목록을 주면 *"인기 검색어"* 제목과 구분선만 덩그러니 남는다. ' +
+      '보여줄 게 없으면 자리도 차지하지 않는 것이 맞다.',
+  },
+  {
+    name: '🔎 빈 검색 화면이 다시 자체 fetch 를 한다 (두 화면의 인기 검색어가 갈린다)',
+    file: 'src/components/search/SearchStates.tsx',
+    find: '  const popular = usePopularSearches(10)',
+    replace: '  const popular: string[] = []',
+    test: 'src/tests/unit/search-popular-keywords.test.ts',
+    why:
+      '같은 값을 두 화면이 각자 들고 있으면 결국 갈린다 — 실제로 한쪽은 진짜 API 를 부르고 ' +
+      '다른 쪽은 하드코딩 6개를 띄우고 있었다(2026-09-04 수리). 공유 훅이 그 상태로 돌아가지 않게 한다.',
+  },
+  {
+    name: '💸 반품 환불이 카드에 총액 기준 환불액을 요청한다 (부분결제 주문에서 실패하거나 과다 환불)',
+    file: 'src/features/returns/api/returns.routes.ts',
+    find: '      cardRefundAmount,',
+    replace: '      returnRecord.refund_amount || undefined,',
+    test: 'src/tests/unit/refund-partial-deal-split.test.ts',
+    why:
+      '`refund_amount` 는 **총액 기준**인데 부분결제 주문의 카드 승인액은 그보다 `deal_used` 만큼 적다. ' +
+      '총액을 넣으면 `EXCEED_CANCEL_AMOUNT` 로 환불이 실패하고, 카드 몫 이하를 넣으면 아래 딜 복원이 ' +
+      '**따로 더** 나가 총 환불이 의도를 넘는다(10,000·딜2,000 주문에서 5,000 환불 → 실제 6,000).',
+  },
+  {
     name: '💸 딜 섞인 주문 환불이 카드에 총액을 요청한다 (환불이 통째로 막힌다)',
     file: 'src/worker/utils/order-refund.ts',
     find: 'opts.reason, cardAmount)',

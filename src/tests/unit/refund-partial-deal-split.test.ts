@@ -52,3 +52,36 @@ describe('전액 환불 — 카드 몫과 딜 몫이 갈린다', () => {
     expect(code, '전부-딜에서도 deal_used 를 읽는다').toMatch(/if \(!isDeal\) \{[\s\S]{0,200}SELECT deal_used/)
   })
 })
+
+const RET = readFileSync('src/features/returns/api/returns.routes.ts', 'utf8')
+const retCode = RET.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+
+describe('반품 환불 — 환불액을 카드와 딜로 나눈다', () => {
+  it('Toss 취소는 refund_amount 가 아니라 카드 몫을 요청한다', () => {
+    const call = retCode.slice(retCode.indexOf('tossCancelPayment('), retCode.indexOf('tossCancelPayment(') + 320)
+    expect(call, 'tossCancelPayment 호출을 못 찾았다 — 이 검사가 헛돈다').toContain('TOSS_SECRET_KEY')
+    expect(call, '총액 기준 환불액을 카드에 그대로 요청한다').not.toContain('returnRecord.refund_amount ||')
+    expect(call, '카드 몫(cardRefundAmount)을 안 쓴다').toContain('cardRefundAmount')
+  })
+
+  it('카드 몫 = 환불액 − 딜 몫 (합이 곧 환불액이다)', () => {
+    expect(retCode, '카드 몫 계산이 사라졌다')
+      .toMatch(/const cardRefundAmount = Math\.max\(0, \(Number\(returnRecord\.refund_amount\) \|\| 0\) - dealRestoreAmount\)/)
+  })
+
+  it('딜 몫은 비례 + 잔여 딜로 클램프 (이중 복원 차단)', () => {
+    expect(retCode, '비례식이 사라졌다').toMatch(/Math\.min\(remainingDeal, Math\.round\(remainingDeal \* Math\.min\(1, refunded \/ paidCash\)\)\)/)
+  })
+
+  it('복원 블록이 그 값을 재계산하지 않는다', () => {
+    expect(retCode, '복원 블록이 다시 계산한다 — 카드에서 뺀 값과 갈릴 수 있다')
+      .toMatch(/const restore = dealRestoreAmount/)
+    expect((retCode.match(/SELECT deal_used FROM orders/g) || []).length,
+      'deal_used 조회가 2회 이상 — 한 번 읽어 둘 다 쓸 것').toBe(1)
+  })
+
+  it('카드 몫이 0 이면 Toss 를 부르지 않는다 (딜로만 돌려주는 경우)', () => {
+    expect(retCode, '카드 몫 0 에도 Toss 를 부른다 — 0원 취소는 거절된다')
+      .toMatch(/if \(paymentKey && cardRefundAmount > 0\)/)
+  })
+})
