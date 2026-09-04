@@ -502,3 +502,50 @@ Playwright 로 실제 배포된 페이지를 연다.
 
 이 줄기는 닫혔다. 남은 것은 **대표 판단 대기 1건**뿐 — Sentry 에러 `sampleRate`(현재 100%).
 샘플링을 켜면 429 는 줄지만 **진짜 에러도 같은 비율로 버린다.** 손대지 말 것.
+
+---
+
+## §14. 배포 후 적대적 재독에서 하나 더 나왔다 — 에이전시의 '영구히 0' 지표
+
+#1349 를 배포하고 판정까지 마친 뒤, 내 diff 를 다시 읽으며 **같은 클래스가 더 있는지** 훑었다.
+하나 있었다.
+
+```
+disputes.routes.ts  /agency-overview
+  SUM(CASE WHEN p.group_buy_deadline < ?  AND 진행률 < 0.5  THEN 1 ELSE 0 END) AS at_risk_count
+```
+
+마감이 없어졌으므로 `NULL < ?` 는 NULL 이고 CASE 는 늘 ELSE 로 떨어진다 ⇒ **at_risk 는 영구히 0**.
+화면(`AgencyGroupBuyAlert`)은 `> 0` 게이트라 블록이 그냥 안 뜬다. **크래시도 경고도 없다.**
+
+이건 #1349 에서 어필리에이트 `/top-groups`(72h 창 → 영구 0건)와 셀러 '마감 임박/미달성 위험'
+타일을 없앤 것과 **정확히 같은 클래스**이고, 그때 에이전시만 빠져 있었다.
+
+### 고친 것
+
+· 서버 `at_risk_count` 집계 + `cutoff24h` 제거(응답 필드 `at_risk_groups` 도) — `active_count`·
+  `churn_count` 는 마감과 무관하므로 그대로.
+· `AgencyGroupBuyAlert` 의 위험 블록 제거. 그 안내 문구가 **사라진 개념("24h 이내 마감")을 계속
+  설명**하고 있었다 — 다음 세션에게 틀린 지도가 된다.
+· `seller-page/types.ts` 의 `atRiskGroupBuys` — #1349 로 고아가 된 필드(선언만 있고 쓰는 곳 0).
+
+### 기각한 것 (일부러 안 건드림)
+
+· `GroupBuyListPage` 의 마감 정렬과 '오늘 마감' 큐레이션 — **미라우팅 파일**이다
+  (`App.tsx:150` 이 명시: `/group-buy` 는 홈으로 리다이렉트, 이 페이지는 보존만). 죽은 코드를
+  건드리면 범위만 넓어진다.
+· `GroupBuyDetailPage` 의 폴링 jitter — 마감이 없으면 `Infinity` 라 **가장 긴 20초**를 쓴다.
+  결함이 아니라 오히려 서버 부하가 준다.
+· `discovery.ts`·`public-utility.routes.ts` — SELECT 만 하고 필터·정렬에 안 쓴다.
+
+가드: `no-deadline-sort.test.ts` 에 describe 하나 추가(3건) + 주입 매니페스트 2건
+**되돌려-검증 빨간불 확인**. 같은 파일의 머리말이 *"상세 D-day 배너와 구매 차단은 대표 판단 대기"*
+라고 낡아 있어 함께 정정했다(#1349 가 이미 지웠다).
+
+검증: tsc 0 · **전체 614 파일 7,647건 pass** · sql-bind/column·theme·file-size 통과.
+
+### 교훈
+
+**배포하고 판정했다고 끝이 아니다.** 판정은 "내가 의도한 것이 됐는가"만 보고, "내가 만든 빈자리가
+어디에 남았는가"는 안 본다. 그건 diff 를 다시 읽어야 나온다. 이번 건은 에러도 경고도 테스트 실패도
+없이 **조용히 0** 이었다 — 이 레포가 반복해 당한 바로 그 모양이다.

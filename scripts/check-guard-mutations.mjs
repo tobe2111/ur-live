@@ -8452,6 +8452,22 @@ canvas {
       'sticky 는 스택 컨텍스트를 만들고 z 가 없으면 지도 레이어(z≥1) 아래로 깔린다. 클래스 하나라 ' +
       '정리하다 지우기 쉽다.',
   },
+  {
+    name: '🗓️ 에이전시 위험 집계가 마감 기준으로 회귀 — 영구히 0 만 내는 지표',
+    file: 'src/worker/routes/disputes.routes.ts',
+    find: '        SELECT COUNT(*) AS active_count\n        FROM products p',
+    replace: '        SELECT\n          COUNT(*) AS active_count,\n          SUM(CASE WHEN p.group_buy_deadline < ? THEN 1 ELSE 0 END) AS at_risk_count\n        FROM products p',
+    test: 'src/tests/unit/no-deadline-sort.test.ts',
+    why: '마감이 없어졌으므로 NULL 비교라 언제나 0 이다. 크래시가 아니라 조용한 부재 — 화면은 멀쩡해 보인다.',
+  },
+  {
+    name: '🗓️ 에이전시 알림에 사라진 개념(24h 내 마감) 안내가 부활',
+    file: 'src/components/agency/AgencyGroupBuyAlert.tsx',
+    find: "        {data.churn_sellers > 0 && (",
+    replace: "        {false && (<p>미달성 위험 — 24h 이내 마감</p>)}\n        {data.churn_sellers > 0 && (",
+    test: 'src/tests/unit/no-deadline-sort.test.ts',
+    why: '존재하지 않는 개념을 설명하는 문구는 다음 세션에게 틀린 지도가 된다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
