@@ -57,16 +57,8 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.groupBuyDeadline')}</label>
-              <input
-                type="datetime-local"
-                value={form.group_buy_deadline}
-                onChange={e => update('group_buy_deadline', e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
-              />
-              <p className="text-[10px] text-gray-400 mt-1">{t('seller.mealVoucher.deadlineHint', { defaultValue: '이 시각까지 판매돼요' })}</p>
-            </div>
+            {/* 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): '판매 마감' 입력 제거.
+                남겨 두면 "이 시각까지 판매돼요" 가 지켜지지 않는 약속이 된다(마감은 이제 아무것도 안 막는다). */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.voucherExpiry')}</label>
               {/* 🗓️ 기본 = 제한 없음. 켜면 날짜 선택(편의상 90일 후 프리필). */}

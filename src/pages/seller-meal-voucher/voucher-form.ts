@@ -62,8 +62,16 @@ export interface VoucherForm {
  *   9시간 이른 시각으로 보였다(같은 칸을 사람이 고치면 KST 벽시계가 들어와 **한 칸에 두 규약**이
  *   섞였다). 화면은 언제나 KST 벽시계 — 저장 직전 `kstInputToUTC` 가 한 번만 UTC 로 바꾼다.
  */
+/**
+ * 🗓️ 2026-09-04 (대표 "마감 개념은 없어") — **빈 값**을 돌려준다.
+ *
+ * 종전엔 "지금부터 7일 뒤"를 폼에 자동으로 채웠다. 셀러가 의도한 적이 없는데도 값이 들어갔고,
+ * 그 날짜가 지나면 구매가 400 으로 막혔다 ⇒ **그 폼으로 만든 모든 상품이 7일 뒤 조용히 안 팔렸다.**
+ * 라이브에서 실증: 유일한 실제 상품 2888 은 09-03 생성 · 마감 09-10 — 정확히 +7일이다.
+ * 이름은 유지한다(호출부 계약) — 값만 비운다.
+ */
 export function defaultDeadline(): string {
-  return utcToKstInput(new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString())
+  return ''
 }
 
 export function emptyVoucherForm(): VoucherForm {
