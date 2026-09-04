@@ -4816,7 +4816,8 @@
       "used": "Used",
       "expired": "Expired",
       "refunded": "Refunded",
-      "processing": "Sending"
+      "processing": "Sending",
+      "sendFailed": "Delivery failed"
     },
     "verify": {
       "title": "Voucher Verification",

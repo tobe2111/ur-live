@@ -4816,7 +4816,8 @@
       "used": "已使用",
       "expired": "已过期",
       "refunded": "已退款",
-      "processing": "发送中"
+      "processing": "发送中",
+      "sendFailed": "发送失败"
     },
     "verify": {
       "title": "餐券验证",

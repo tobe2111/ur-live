@@ -4816,7 +4816,8 @@
       "used": "使用済み",
       "expired": "期限切れ",
       "refunded": "返金済み",
-      "processing": "送信中"
+      "processing": "送信中",
+      "sendFailed": "送信失敗"
     },
     "verify": {
       "title": "クーポン認証",
