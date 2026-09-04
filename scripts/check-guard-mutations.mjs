@@ -7038,6 +7038,37 @@ canvas {
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
   },
   {
+    name: '🪞 백필이 거른 목록 대신 전체를 다시 쓴다(no-op 재기록 복귀)',
+    file: 'src/features/marketing/api/influencer-save.ts',
+    find: 'DB.batch(changed.map',
+    replace: 'DB.batch(existing.map',
+    test: 'src/tests/unit/ads-backfill-noop.test.ts',
+    why:
+      '거르는 함수를 불러 놓고 결과를 안 쓰면 절약이 정확히 0 이다 — 호출은 남아 있어 코드만 보면 ' +
+      '고쳐진 것처럼 보인다. 그러면 값이 안 바뀐 재조우마다 행+인덱스 13개를 다시 써서 하루 쓰기 예산을 ' +
+      '태우고, 차단기가 8~12시간 만에 걸려 남은 시간의 발굴이 통째로 멈춘다.',
+  },
+  {
+    name: '🪞 백필 조회 실패를 fail-closed 로 바꾼다(갱신이 조용히 멎는다)',
+    file: 'src/features/marketing/api/influencer-save.ts',
+    find: 'if (!res?.results) return existing',
+    replace: 'if (!res?.results) return []',
+    test: 'src/tests/unit/ads-backfill-noop.test.ts',
+    why:
+      '읽기가 실패했을 때 "모르니까 안 쓴다"로 기울면 구독자수·소개글이 영원히 수집 당시 값에 머문다 — ' +
+      '2026-07-23(F-32)이 고쳤던 그 스테일 사고가 에러 없이 돌아온다. 이 자리의 모름은 갱신이어야 한다.',
+  },
+  {
+    name: '🪞 백필 판정에서 소개글 규칙이 사라진다(재분류가 낡은 글로 판정)',
+    file: 'src/features/marketing/api/influencer-backfill-diff.ts',
+    find: "  if (inc.description !== '' && (cur.description ?? null) !== inc.description) return true",
+    replace: '  // (제거)',
+    test: 'src/tests/unit/ads-backfill-noop.test.ts',
+    why:
+      '이 순수함수는 backfillSql 의 SET 절 거울이라, 규칙 하나가 빠지면 그 컬럼만 조용히 갱신이 멎는다. ' +
+      '소개글은 카테고리 재분류의 입력이므로 낡으면 분류 전체가 낡는다 — 화면에는 아무 에러도 안 뜬다.',
+  },
+  {
     name: '🔁 재측정 필터가 배선에서 빠진다(쓰기 2배 초과로 복귀 · 에러 0)',
     file: 'src/features/marketing/api/influencer-performance.ts',
     find: '  rows = dueForRemeasure(rows, env)',
