@@ -8219,6 +8219,28 @@ canvas {
       '"다녀오라" 는 문구를 본다. 원인을 알 길이 없는 문구라 문의조차 못 한다 — 503 으로 갈라야 한다.',
   },
   {
+    name: '🎟️ 이용권 현황이 교환권까지 센다 (마이가 자기 자신과 모순)',
+    file: 'src/pages/user-profile/OrderStatusBar.tsx',
+    find: '      if (!isStoreVoucher(v)) continue',
+    replace: '      if (false && !isStoreVoucher(v)) continue',
+    test: 'src/tests/unit/voucher-status-wallet-split.test.tsx',
+    why:
+      '대표 신고가 정확히 이 상태였다 — 위는 "이용권 현황 구매완료 1 · 사용가능 1", 아래 "내 이용권" 은 0. ' +
+      '한 배열로 오는 두 지갑을 아래 두 행(`useMyCounts`)만 `voucher-wallet` SSOT 로 갈라서, ' +
+      '이 바만 통째로 세면 같은 화면이 서로 다른 답을 말한다.',
+  },
+  {
+    name: "🎟️ '사용가능' 이 다시 else 폴백 (모르는 상태를 전부 쓸 수 있다고 말한다)",
+    file: 'src/pages/user-profile/OrderStatusBar.tsx',
+    find: "      if (st === 'unused' || st === '') c.usable++",
+    replace: '      c.usable++',
+    test: 'src/tests/unit/voucher-status-wallet-split.test.tsx',
+    why:
+      'KT 병합은 **발송 실패**를 `status:\'unused\'` + `kt_status:\'failed\'` 로 실어 보낸다(카드가 실패 UI 를 ' +
+      '그리라고). else 폴백이면 문자조차 못 받은 교환권이 "지금 쓸 수 있음" 으로 집계된다 — 실측된 그 1건이다. ' +
+      '틀린 칸에 넣느니 안 세는 게 낫다.',
+  },
+  {
     name: '📝 리뷰 버튼이 다시 글자 수로 hard-disable (잠기면 아무도 이유를 모른다)',
     file: 'src/pages/product-detail/ProductReviews.tsx',
     find: '          disabled={submitting}',
