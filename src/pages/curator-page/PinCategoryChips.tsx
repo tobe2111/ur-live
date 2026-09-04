@@ -38,7 +38,7 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
   // 카테고리가 하나뿐이면 칩은 정보가 0 — 전체 + 그 하나 = 늘 같은 목록.
   if (defs.length <= 2) return null
   return (
-    <div className="max-w-3xl mx-auto px-4 pt-3 flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden" role="tablist" aria-label={t('curator.chipsLabel', { defaultValue: '카테고리' })}>
+    <div className="max-w-3xl mx-auto px-4 pt-3 flex gap-2 overflow-x-auto scrollbar-hide" role="tablist" aria-label={t('curator.chipsLabel', { defaultValue: '카테고리' })}>
       {defs.map((d) => {
         const on = value === d.key
         const n = d.key === 'all' ? pins.length : counts.get(d.key) || 0

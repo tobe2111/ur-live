@@ -5494,10 +5494,19 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 237건 · 최신순 · 이 목록은 자동 생성된다._
+_총 247건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-04**
+- [발송 실패한 교환권을 숫자에서 뺀다 — 보이되 세지 않는다](handoff/2026-09-04-gifticon-failed-not-counted.md)
 **2026-09-03**
+- [2026-09-03 — 지갑 제목 삭제 + 라이브 신고 2건 분류(429 · /map)](handoff/2026-09-03-wallet-title-and-live-triage.md)
+- [이용권 현황이 교환권까지 세던 것 — 마이페이지가 자기 자신과 모순](handoff/2026-09-03-voucher-status-wallet-split.md)
 - [2026-09-03 — 이용권 사용 방식 · 리뷰 버튼 · 갤러리 중복 (대표 신고 3건)](handoff/2026-09-03-voucher-redeem-policy-and-photos.md)
+- [이용권 관리로 가는 길이 없었다 (2026-09-03)](handoff/2026-09-03-voucher-nav-reachability.md)
+- [2026-09-03 — 이용권 관리 통합 · 사진 UX · 인기 순위 · 뒤로가기 (대표 요청 묶음)](handoff/2026-09-03-voucher-nav-and-back-nav.md)
+- [2026-09-03 · 검색 전면 개선 (대표 QA)](handoff/2026-09-03-search-engine-rebuild.md)
+- [2026-09-03 · 리뷰 버튼 hard-disable 제거 + 자격 사전 안내](handoff/2026-09-03-review-gate-clicktime.md)
+- [2026-09-03 — 다크 대비 사각지대 제거 · 히어로 사진 정렬 · 위시리스트 PC](handoff/2026-09-03-dark-contrast-and-screens.md)
 **2026-09-02**
 - [🎟️ 이용권 등록 플로우 전수조사 (2026-09-02)](handoff/2026-09-02-voucher-flow-audit.md)
 - [2026-09-02 — 유어딜 요청 경로 D1 읽기 다이어트 (PR-C)](handoff/2026-09-02-urdeal-request-diet.md)
@@ -5512,11 +5521,13 @@ _총 237건 · 최신순 · 이 목록은 자동 생성된다._
 - [이용권 지갑 · 어드민 이모지 · design-slop 가드 구멍 (2026-09-01)](handoff/2026-09-01-wallet-admin-emoji-slop-guard.md)
 - [2026-09-01 — 교환권 탭 상단 두 층 정리 (대표 "나안")](handoff/2026-09-01-vouchers-top-chrome.md)
 - [교환권 화면 — 같은 숫자를 두 번 말하던 할인율 · 앰버 · 이모지 (2026-09-01)](handoff/2026-09-01-vouchers-discount-once.md)
+- [이용권 부분결제 — 딜 일부 + 카드 나머지 (게이트 OFF)](handoff/2026-09-01-voucher-partial-deal.md)
 - [인플루언서 DB 읽기 증폭 — 한 달 전 수리가 왜 안 먹었나 (2026-09-01)](handoff/2026-09-01-influencer-db-read-amplification.md)
 - [구매 흐름(상세·장바구니·결제) 디자인 정리 · 가드 두 개 확장 (2026-09-01)](handoff/2026-09-01-funnel-detail-design.md)
 - [이용권 장바구니·결제 — 배송비 판정이 두 화면에서 갈려 있었다 (2026-09-01)](handoff/2026-09-01-cart-checkout-shipping-ssot.md)
 - [대외 랜딩 재작성 · 죽은 템플릿 제거 · anti-slop 가드 신설 (2026-09-01)](handoff/2026-09-01-anti-slop-landing-and-guard.md)
 **2026-08-31**
+- [이용권을 딜로도 살 수 있게 — 그리고 이미 열려 있던 문을 닫는다](handoff/2026-08-31-voucher-deal-payment.md)
 - [2026-08-31 — 유어샵 검색창 임계값 · 이미지 폴백 배선 · 셀러 버튼 잔여 5건](handoff/2026-08-31-urshop-search-image-fallback.md)
 - [2026-08-31 — 영입 2% 를 직접 입점 매장에만 (+ 예산 아비터)](handoff/2026-08-31-store-intro-direct-only.md)
 - [2026-08-31 — 어드민 매장 카드에 채널 스위치 + 돈 갈림표](handoff/2026-08-31-store-card-channel.md)

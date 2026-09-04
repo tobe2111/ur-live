@@ -82,12 +82,19 @@ describe('② 리뷰 등록 — 왜 안 눌리는지 말해 준다', () => {
   const src = read('pages/product-detail/ProductReviews.tsx')
   it('최소 글자 수가 상수 하나로 묶여 있다 (버튼과 안내가 갈리지 않게)', () => {
     expect(codeOnly(src)).toMatch(/const MIN_REVIEW_LEN = 10/)
-    expect(codeOnly(src)).toMatch(/disabled=\{content\.length < MIN_REVIEW_LEN \|\| submitting\}/)
     expect(codeOnly(src)).not.toMatch(/content\.length < 10/)
   })
   it('모자랄 때 남은 글자 수를 화면에 쓴다', () => {
     expect(codeOnly(src)).toMatch(/content\.length < MIN_REVIEW_LEN &&[\s\S]{0,400}reviews\.minLength/)
     expect(codeOnly(src)).toMatch(/n: MIN_REVIEW_LEN - content\.length/)
+  })
+  // 🔁 2026-09-03 후속(대표 "10자 이상인데도 흐릿한 비활성"): 위 항목의 세 번째 단정이던
+  //   `disabled={content.length < MIN_REVIEW_LEN || submitting}` 을 **일부러 뺐다.**
+  //   그 hard-disable 이 바로 신고된 증상의 구조였고, 클릭-시점 검증으로 옮겼다.
+  //   동작 계약은 `review-gate-clicktime.test.tsx` 가 **실제 렌더**로 지킨다(소스 문자열이 아니라).
+  it('버튼은 제출 중에만 잠긴다 — 글자 수로 잠그지 않는다', () => {
+    expect(codeOnly(src)).toMatch(/disabled=\{submitting\}/)
+    expect(codeOnly(src)).not.toMatch(/disabled=\{content\.length/)
   })
 })
 
@@ -138,6 +145,19 @@ describe('③ 갤러리 — 커버와 첫 칸이 갈리지 않는다', () => {
     const at = cron.indexOf('replaceGalleryUrl(row.images, row.image_url, hosted)')
     expect(at, '이관 블록에서 갤러리 동기화 호출을 못 찾음').toBeGreaterThan(0)
     expect(cron.slice(at, at + 500)).toMatch(/UPDATE products SET image_url = \?, images = \?/)
+  })
+
+  it('정리 패스가 전진한다 — 고칠 행만 고르고, 시도가 아니라 쓴 것을 센다', () => {
+    // 🩸 첫 판은 `images LIKE '%http%'` 로 골라 **수렴하지 않았다**: 갤러리가 여러 장이면 첫 칸을
+    //   고쳐도 뒤쪽 외부 주소 때문에 후보로 남아, 고쳐진 행이 ORDER BY 창 앞자리를 채우다가
+    //   40개를 넘기면 창 전체가 no-op 이 된다(뒤쪽 행은 영영 안 보임). 에러 없이 조용히 멈춘다.
+    const cron = codeOnly(read('worker/cron/demo-image-rehost.ts'))
+    const at = cron.indexOf('export async function repairGalleryCoverDrift')
+    expect(at, 'repairGalleryCoverDrift 를 못 찾음').toBeGreaterThan(0)
+    const fn = cron.slice(at, at + 2200)
+    expect(fn).toMatch(/json_extract\(images, '\$\[0\]'\) LIKE 'http%'/)
+    expect(fn).not.toMatch(/AND images LIKE '%http%'/)     // 옛 넓은 조건이 되살아나면 다시 멈춘다
+    expect(fn).toMatch(/meta\?\.changes \|\| 0\) > 0\) fixed\+\+/)  // 시도가 아니라 성공을 센다
   })
 
   it('정리 패스는 R2 바인딩 없이도 돈다 (조기반환보다 앞)', () => {

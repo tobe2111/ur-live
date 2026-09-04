@@ -862,6 +862,7 @@
   "wishlist": {
     "title": "ウィッシュリスト",
     "subtitleCount": "お気に入り商品 {{count}}件",
+    "dropCount": "値下がり {{count}}件",
     "emptyTitle": "お気に入り商品がありません",
     "emptyHint": "気になる商品をお気に入りに追加してみよう",
     "continueShopping": "ショッピングを続ける",
@@ -2441,7 +2442,11 @@
       "mapPhotoFood": "料理・メニュー",
       "mapPhotoInterior": "店内",
       "openKakaoPlace": "カカオマップで見る ↗",
-      "mapPhotoHint": "ネイバー地図・ブログの写真を店舗名で検索して表示します。カカオマップの写真は自動取得できないためページを開きます — 気に入った写真のURLを上の欄に貼り付けてください。"
+      "mapPhotoHint": "ネイバー地図・ブログの写真を店舗名で検索して表示します。カカオマップの写真は自動取得できないためページを開きます — 気に入った写真のURLを上の欄に貼り付けてください。",
+      "fromMapShort": "地図から取得",
+      "photoLead": "地図から店舗写真を取得するか、自分で撮った写真をアップロードしてください。1枚目が代表写真です。",
+      "pasteTitle": "カカオマップ写真のアドレスを貼り付け",
+      "pastePlaceholder": "写真を右クリック →「画像アドレスをコピー」"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -2486,7 +2491,9 @@
       "products": "🛒 オンライン販売·仕入",
       "groupbuy": "🏪 オフライン共同購入·宿泊",
       "ordersCustomers": "注文·顧客",
-      "curator": "マイUrShop"
+      "curator": "マイUrShop",
+      "vouchers": "🎟️ 利用券",
+      "growth": "成長"
     },
     "liveChat": {
       "title": "リアルタイムチャット",
@@ -2543,7 +2550,22 @@
       "returns": "返金リクエスト",
       "operators": "運営者管理",
       "stores": "店舗管理",
-      "findInfluencers": "インフルエンサー探し"
+      "findInfluencers": "インフルエンサー探し",
+      "voucherManage": "利用券の管理",
+      "profile": "マイ情報",
+      "tier": "セラー等級",
+      "twoFactor": "2段階認証",
+      "appointments": "予約管理",
+      "ledger": "店舗元帳",
+      "storeDashboard": "店舗状況",
+      "realtime": "リアルタイム状況",
+      "voucherOrders": "交換券の送信履歴",
+      "transfers": "店舗移管",
+      "marketing": "マーケティング",
+      "adSlots": "広告枠",
+      "discounts": "割引",
+      "partners": "パートナー",
+      "notifyGuide": "通知・ガイド"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",
@@ -3158,7 +3180,31 @@
       "lockedNote": "店舗登録を完了すると利用券・注文・精算・コラボが開きます",
       "savedPropagated": "店舗情報を保存 — 利用券{{count}}件に反映",
       "saved": "店舗情報を保存しました"
-    }
+    },
+    "voucherTabs": {
+      "list": "利用券",
+      "scan": "使用処理",
+      "reviews": "レビュー確認"
+    },
+    "pageSearch": "ページ検索",
+    "bizNoFormat": "事業者登録番号は 000-00-00000 の形式で入力してください",
+    "sessionExpired": "ログインが切れました。再度ログインして保存してください。",
+    "certHint": "事業者登録証の写真はこちらから",
+    "photo": {
+      "cover": "代表",
+      "empty": "選んだ写真がここに表示されます",
+      "pickFile": "📁 自分のファイルから",
+      "addMore": "+ 写真を追加",
+      "uploading": "アップロード中…",
+      "moveLeft": "前へ",
+      "moveRight": "後ろへ",
+      "dup": "すでに追加された写真です"
+    },
+    "orderTabs": {
+      "orders": "注文"
+    },
+    "bizFromRegistration": "店舗登録時の内容を入れておきました",
+    "bizFromRegistrationDesc": "まだ事業者情報として登録されていません — 確認して保存を押してください。"
   },
   "admin": {
     "login": {
@@ -4770,7 +4816,8 @@
       "used": "使用済み",
       "expired": "期限切れ",
       "refunded": "返金済み",
-      "processing": "送信中"
+      "processing": "送信中",
+      "sendFailed": "送信失敗"
     },
     "verify": {
       "title": "クーポン認証",

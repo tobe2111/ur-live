@@ -5,9 +5,9 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
-import ImageUpload from '@/components/ImageUpload'
 import ProductOptionForm, { ProductOption } from '@/components/ProductOptionForm'
 import VoucherFields from '@/pages/seller-product-edit/VoucherFields'
+import ProductPhotoField, { parseProductPhotos } from '@/pages/seller-product-edit/ProductPhotoField'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { 
   ArrowLeft, 
@@ -57,6 +57,7 @@ export default function SellerProductEditPage() {
     live_price_enabled: false,
     is_active: true,
     detail_images: [] as string[],
+    photos: [] as string[],  // 🖼️ 2026-09-03 사진 목록(첫 장 = 대표 = image_url) — 등록 폼과 같은 모델
     product_type: 'featured',
     category: 'lifestyle',
     // 이용권 필드
@@ -92,11 +93,12 @@ export default function SellerProductEditPage() {
     if (productData.detail_images) {
       detailImages = typeof productData.detail_images === 'string' ? JSON.parse(productData.detail_images) : productData.detail_images
     }
+    const photos = parseProductPhotos(productData)  // 🖼️ 2026-09-03 사진 목록(옛 상품은 대표 1장)
     setFormData({
       name: productData.name, description: productData.description || '', price: String(productData.price), stock: String(productData.stock),
       image_url: productData.image_url || '', live_stream_id: productData.live_stream_id ? String(productData.live_stream_id) : '',
       live_only_price: productData.live_only_price ? String(productData.live_only_price) : '', live_price_enabled: !!productData.live_price_enabled,
-      is_active: productData.is_active, detail_images: detailImages, product_type: productData.product_type || 'featured', category: productData.category || 'lifestyle',
+      is_active: productData.is_active, detail_images: detailImages, photos, product_type: productData.product_type || 'featured', category: productData.category || 'lifestyle',
       restaurant_name: productData.restaurant_name || '', restaurant_address: productData.restaurant_address || '', restaurant_phone: productData.restaurant_phone || '',
       voucher_terms: productData.voucher_terms || '', voucher_expiry: productData.voucher_expiry || '',
       group_buy_target: productData.group_buy_target ? String(productData.group_buy_target) : '', group_buy_deadline: productData.group_buy_deadline || '',
@@ -125,7 +127,8 @@ export default function SellerProductEditPage() {
         description: formData.description,
         price: Number(formData.price),
         stock: Number(formData.stock),
-        image_url: formData.image_url,
+        image_url: formData.photos[0] || formData.image_url,
+        images: formData.photos.length ? JSON.stringify(formData.photos) : null,  // 🖼️ 없으면 수정마다 사라진다
         live_stream_id: formData.live_stream_id ? Number(formData.live_stream_id) : null,
         live_only_price: formData.live_only_price ? Number(formData.live_only_price) : null,
         live_price_enabled: formData.live_price_enabled,
@@ -370,12 +373,12 @@ export default function SellerProductEditPage() {
             )}
           </div>
 
-          {/* Image Upload */}
-          <ImageUpload
-            value={formData.image_url}
-            onChange={(url) => setFormData({ ...formData, image_url: url })}
-            label={t('seller.productImage')}
-            maxSizeKB={800}
+          <ProductPhotoField
+            category={formData.category}
+            photos={formData.photos}
+            imageUrl={formData.image_url}
+            onPhotos={(next) => setFormData({ ...formData, photos: next, image_url: next[0] || '' })}
+            onImageUrl={(url) => setFormData({ ...formData, image_url: url })}
           />
 
           {/* Category Selection */}
@@ -465,19 +468,12 @@ export default function SellerProductEditPage() {
             </div>
           </div>
 
-          {/* Image Preview - Removed as ImageUpload component handles it */}
 
           {/* Detail Images */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                {t('seller.productDetailImages')}
-              </label>
-              <Button
-                type="button"
-                onClick={addDetailImage}
-                className="ur-btn ur-btn-sm ur-btn-primary"
-              >
+              <label className="block text-sm font-medium text-gray-700">{t('seller.productDetailImages')}</label>
+              <Button type="button" onClick={addDetailImage} className="ur-btn ur-btn-sm ur-btn-primary">
                 {t('seller.addImage')}
               </Button>
             </div>

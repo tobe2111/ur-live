@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react'
 import type { MyCounts } from './types'
 import { useMyVouchers } from '@/hooks/queries'
-import { isGifticonVoucher, isStoreVoucher } from '@/shared/voucher-wallet'
+import { isFailedGifticon, isGifticonVoucher, isStoreVoucher } from '@/shared/voucher-wallet'
 
 export function useMyCounts(): MyCounts {
   const [counts, setCounts] = useState<Pick<MyCounts, 'wish' | 'coupon'>>({ wish: null, coupon: null })
@@ -33,9 +33,11 @@ export function useMyCounts(): MyCounts {
 
   // 🎟️ 2026-08-31 (지갑 분리): 한 배열에 섞여 오는 것을 지갑별로 나눠 센다 — 마이의 두 행이
   //   각자 목적지(/my-vouchers · /my-gifticons)의 실제 개수와 일치해야 한다.
+  // 🩸 2026-09-04 (대표 결정): 발송 실패분은 **안 센다** — 문자조차 못 받은 것을 "내 교환권 1" 로
+  //   말하면 거짓이다. 카드는 지갑에 '발송 실패' 로 계속 보인다(숨기는 게 아니라 안 세는 것).
   return {
     ...counts,
     voucher: vouchers ? vouchers.filter(isStoreVoucher).length : null,
-    gifticon: vouchers ? vouchers.filter(isGifticonVoucher).length : null,
+    gifticon: vouchers ? vouchers.filter(v => isGifticonVoucher(v) && !isFailedGifticon(v)).length : null,
   }
 }

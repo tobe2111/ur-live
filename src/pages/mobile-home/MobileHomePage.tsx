@@ -37,7 +37,7 @@ export default function MobileHomePage() {
   //   서버 엔드포인트는 2026-07-07 부터 있었는데 **아무도 안 부르고 있었다**(useCurrentDong 주석).
   const dong = useCurrentDong(userLoc)
   const [category, setCategory] = useState<DealCategory>('all')
-  const [sort, setSort] = useState<'popular' | 'newest' | 'deadline' | 'discount' | 'near'>('popular')
+  const [sort, setSort] = useState<'popular' | 'newest' | 'discount' | 'near'>('popular')
 
   /**
    * 🔗 2026-08-27 (대표 신고 — "지금 인기 이용권의 더보기 클릭도 안되고"): 섹션 '더보기'는
@@ -96,7 +96,7 @@ export default function MobileHomePage() {
         </div>
 
         {/* 카테고리 — 라벨 SSOT 는 PC 헤더와 같은 `DEAL_CATS`(둘이 갈리지 않게). */}
-        <nav aria-label="카테고리" className="flex gap-5 overflow-x-auto no-scrollbar px-4">
+        <nav aria-label="카테고리" className="flex gap-5 overflow-x-auto scrollbar-hide px-4">
           {DEAL_CATS.map(({ key, label }) => {
             const on = category === key
             return (

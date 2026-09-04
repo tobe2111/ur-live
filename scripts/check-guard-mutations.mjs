@@ -88,6 +88,84 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎫 이용권 딜 결제가 기본 ON 이 된다 (배포만으로 새는 문이 열린다)',
+    file: 'src/shared/feature-flags.ts',
+    find: 'export const VOUCHER_DEAL_PAYMENT_ENABLED = false',
+    replace: 'export const VOUCHER_DEAL_PAYMENT_ENABLED = true',
+    test: 'src/tests/unit/voucher-deal-payment.test.ts',
+    why:
+      '딜 보너스 20% 가 살아 있는 채로 열리면 이용권 마진(5~10%)보다 보너스가 커서 ' +
+      '**팔릴수록 유어딜이 건당 8~14원 적자**다(2026-08-31 실측). 교환권은 소비자 마크업 20% 가 ' +
+      '보너스를 상쇄해 괜찮았고 이용권엔 그 상쇄가 없다. 선행(보너스 0) 없이 열면 안 된다.',
+  },
+  {
+    name: '🎫 이용권 딜 결제 게이트가 교환권까지 막는다 (기프티콘 결제 전면 중단)',
+    file: 'src/features/group-buy/api/gb-purchase-guards.ts',
+    find: '  if (product.deal_only === 1) return true',
+    replace: '  if (false) return true',
+    test: 'src/tests/unit/voucher-deal-payment.test.ts',
+    why:
+      '이 가드는 **이용권에만** 걸려야 한다. 교환권(`deal_only=1`)은 원래 딜 전용이라 ' +
+      '여기 걸리면 게이트가 꺼진 기본 상태에서 기프티콘 구매가 통째로 400 이 된다. ' +
+      '⚠️ `deal_only` 가 SELECT 목록(PRODUCT_DETAIL_FIELDS)에서 빠져도 같은 사고가 난다.',
+  },
+  {
+    name: '🩸 near 와 sort 를 같이 보낸다 — 서버가 sort 를 무시해 정렬이 조용히 틀린다',
+    file: 'src/pages/restaurant-map/useFeedWindow.ts',
+    find: "const near = sortBy === 'distance' ? userLoc : null",
+    replace: 'const near = userLoc',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '서버는 baseOrder = hasNear ? 거리 : sort — near 가 이긴다. 전량 로딩을 걷어낸 뒤로는 이게 곧 틀린 목록이다.',
+  },
+  {
+    name: '🚦 홈 피드 다음 페이지가 정렬 없이 나간다 — 스크롤할수록 순서가 섞인다',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: '&page=${nextPage}&limit=50${feedParams}',
+    replace: '&page=${nextPage}&limit=50',
+    test: 'src/tests/unit/feed-sort-and-sentry-noise.test.ts',
+    why: '정렬을 서버로 넘긴 뒤에는 page2 부터도 같은 정렬이어야 한다 — 빠지면 최신순 페이지가 인기순 목록에 붙는다.',
+  },
+  {
+    name: '🔇 Sentry 노이즈 필터가 스택을 안 보고 메시지만 본다 — 우리 코드의 진짜 버그를 삼킨다',
+    file: 'src/lib/sentry-noise.ts',
+    find: '&& isSentryOwnVitalsFrame(event, rawStack)) return true',
+    replace: ') return true',
+    test: 'src/tests/unit/feed-sort-and-sentry-noise.test.ts',
+    why: "같은 'startTime' 메시지는 우리 코드도 낼 수 있다. 좁게 거르지 않으면 조용히 실명한다.",
+  },
+  {
+    name: '🚦 서버 인기순이 다시 group_buy_current 만 본다 — 화면의 정의와 갈린다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: "popular: 'COALESCE(p.sold_count, p.group_buy_current, 0) DESC",
+    replace: "popular: 'p.group_buy_current DESC",
+    test: 'src/tests/unit/feed-sort-and-sentry-noise.test.ts',
+    why: 'sparse 컬럼만 보면 인기순이 사실상 최신순이 된다(2026-07-16 대표 신고 "PC 정렬 무반응"의 원인).',
+  },
+  {
+    name: '🚦 목록이 다시 전량을 걷는다 — 진입마다 338건·요청 7회',
+    file: 'src/hooks/queries/useMapProducts.ts',
+    find: '    let cancelled = false\n    ;(async () => {\n      const res = await fetchPage(category, 1, near, sort)',
+    replace: '    let cancelled = false\n    ;(async () => {\n      for (let page = 1; page < 99; page++) { await fetchPage(category, page, near, sort) }\n      const res = await fetchPage(category, 1, near, sort)',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '2026-09-03 실측: 활성 338건을 진입할 때마다 7회·66KB 로 전부 받았다. 화면엔 10~20장 뜨는데.',
+  },
+  {
+    name: '🚦 스크롤이 서버 다음 페이지를 안 부른다 — 50개에서 목록이 끝난다',
+    file: 'src/pages/restaurant-map/RestaurantList.tsx',
+    find: '      if (localMore) setVisibleCount(v => v + PAGE)\n      else onLoadMore?.()',
+    replace: '      if (localMore) setVisibleCount(v => v + PAGE)',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '전량 순회를 걷어낸 대가로 이 센티넬이 유일한 다음-페이지 경로다. 빠지면 목록이 조용히 잘린다.',
+  },
+  {
+    name: '🔢 "N곳" 이 다시 로드된 수를 센다 — 338곳을 50곳이라 말한다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: 'data: withOnnuri, ...(total != null ? { total } : {})',
+    replace: 'data: withOnnuri',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '전량을 안 받으므로 개수는 서버만 안다. 응답에서 빠지면 화면이 로드된 수로 폴백해 거짓말을 한다.',
+  },
+  {
     name: '🎟️ 승인 대기 매장까지 세어 게이트만 열린다 — 이용권이 개인 좌석으로 등록된다',
     file: 'src/features/seller/api/seller-stores.routes.ts',
     find: "operableCount = mine.filter(x => x.status === 'active' || x.status === 'approved').length",
@@ -7162,6 +7240,26 @@ canvas {
       '포함분 비율이 읽기 250억 : 쓰기 5,000만 = 500배라, 쓰기가 먼저 요금이 된다.',
   },
   {
+    name: '🏆 인기 점수가 정규화를 잃는다(결제 하나가 혼자 결정)',
+    file: 'src/features/sections/api/section-rules.ts',
+    find: '* 1.0 / MAX(mx.ms, 1))',
+    replace: ')',
+    test: 'src/tests/unit/popular-score-2026-09-03.test.ts',
+    why:
+      '라이브 실측 결제 최대 259 vs 리뷰 최대 34 — 생값을 더하면 결제가 사실상 혼자 순서를 정해 ' +
+      '종전(sold_count DESC)과 같아진다. 리뷰·클릭을 넣은 의미가 사라진다.',
+  },
+  {
+    name: '👁️ 조회수 비콘이 세션 가드를 잃는다(새로고침이 순위를 흔든다)',
+    file: 'src/hooks/useProductViewBeacon.ts',
+    find: 'if (sessionStorage.getItem(key)) return',
+    replace: 'if (false) return',
+    test: 'src/tests/unit/popular-score-2026-09-03.test.ts',
+    why:
+      '클릭은 홈 인기순의 신호다. 세션당 1회 가드가 없으면 한 사람의 새로고침이 그 상품을 ' +
+      '홈 상단으로 밀어 올린다 — 그리고 조회마다 D1 쓰기가 늘어 쓰기 예산도 먹는다.',
+  },
+  {
     name: '🧱 유어샵 핀 목록이 도매 원본 제외를 잃는다(카드는 뜨는데 클릭하면 404)',
     file: 'src/worker/routes/curator.routes.ts',
     find: "AND ${consumerVisibleProductSql('p')}\n         ORDER BY pp.position ASC",
@@ -7600,6 +7698,46 @@ canvas {
       '플랫폼 기본값이 나간다 — 표시와 지급이 갈리는 이 레포의 단골 사고다.',
   },
   {
+    name: '🪙 부분결제 게이트에서 딜 보너스 선행 조건이 사라진다',
+    file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
+    find: "turn_on_when: '🔴 **먼저 influencer_deal_bonus_pct = 0**",
+    replace: "turn_on_when: '딜 잔액이 남아 못 쓰는 유저가 생기면",
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '켜는 사람은 어드민 화면의 이 한 줄로 판단한다. 선행이 지워지면 딜 보너스 20% 가 살아 있는 채 ' +
+      '켜져서 **팔릴수록 적자**가 된다 — 에러도 경보도 없이 마진에서만 샌다.',
+  },
+  {
+    name: '🪙 부분결제가 카드에 총액을 청구한다 (딜을 쓰고도 전액 결제)',
+    file: 'src/features/group-buy/api/group-buy.routes.ts',
+    find: '    amount: chargedAmount,\n  })',
+    replace: '    amount: expectedAmount,\n  })',
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '딜을 3,000 쓰기로 해 놓고 카드에서 10,000 을 긁으면 **유저가 13,000 을 낸다**. ' +
+      '이 레포에서 금액을 두 갈래로 나눌 때 가장 먼저 나는 사고이고, 화면엔 아무 표시도 안 난다.',
+  },
+  {
+    name: '🪙 부분결제가 매장 정산을 카드 청구액으로 줄인다',
+    file: 'src/features/group-buy/api/group-buy.routes.ts',
+    find: 'product.seller_id, expectedAmount, expectedAmount, paymentKey, paymentKey',
+    replace: 'product.seller_id, chargedAmount, chargedAmount, paymentKey, paymentKey',
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '딜도 유저가 현금으로 충전한 돈이라 매장 몫은 총액 기준이다(대표: "어차피 원래 정산을 ' +
+      '해줬어야 하는 돈"). 여기가 카드 청구액으로 바뀌면 딜을 쓴 만큼 **매장이 덜 받는다**.',
+  },
+  {
+    name: '🪙 부분결제 딜 차감의 잔액 가드가 사라진다 (마이너스 잔액)',
+    file: 'src/features/group-buy/api/partial-deal.ts',
+    find: "    type: 'usage',\n    guardBalance: true,",
+    replace: "      type: 'usage',\n      orderId: orderNumber,",
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '결제창에 머무는 동안 다른 탭에서 딜을 다 써도 차감이 그냥 통과한다 — 잔액이 음수가 되거나 ' +
+      '실제로는 못 받은 돈으로 이용권이 나간다. 원자 CAS 가 이 레일의 유일한 진실이다.',
+  },
+  {
     name: '📖 운영백서 숫자표 검사를 CI 에서 뗀다 (다른 세션 변경이 문서에 안 닿음)',
     file: '.github/workflows/verify.yml',
     find: '        run: node scripts/generate-ops-handbook.mjs --check',
@@ -7874,6 +8012,129 @@ canvas {
     why: '표면 규칙 ② 강조색 하나. 화면 구석의 노랑 원은 체계 밖 색이었다.',
   },
   {
+    name: '스크롤바 — thumb 이 브랜드 블루가 된다(가구가 강조색 예산을 먹음)',
+    file: 'src/index.css',
+    find: "  background: rgb(22 24 28 / .22);\n  border-radius: 99px;",
+    replace: "  background: rgb(28 105 239 / .55);\n  border-radius: 99px;",
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why:
+      '2026-09-03 대표 확정 "안 1". 스크롤바는 가구지 강조 대상이 아니다 — 이 서비스의 색은 파랑 ' +
+      '하나이고 그 자리는 주 행동이 쓴다. 화면마다 파란 막대가 서면 정작 결제 버튼이 덜 띈다.',
+  },
+  {
+    name: '스크롤바 — 4px 로 얇아져 마우스로 못 잡는다',
+    file: 'src/index.css',
+    find: "::-webkit-scrollbar {\n  width: 8px;",
+    replace: "::-webkit-scrollbar {\n  width: 4px;",
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why: '시안 2안이 탈락한 이유. 윈도우 사용자는 지금도 막대를 끈다 — 4px 은 끌어 잡기 어렵다.',
+  },
+  {
+    name: '스크롤바 — 늘 밝은 대시보드에서 다크 흰 막대가 그대로 이긴다',
+    file: 'src/index.css',
+    find: '.dark .admin-light-theme ::-webkit-scrollbar-thumb,\n',
+    replace: '',
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why:
+      '2026-09-03 — 처음엔 light-island 하나만 덮었다. 셀러·어드민·에이전시·도매 대시보드는 다크모드에서도 ' +
+      '통째로 라이트라, 흰 배경 위에 흰 막대가 떠 스크롤바가 안 보였다. 어제 지도 검색창에서 잡은 ' +
+      '"밝은 면 위 밝은 글자"를 스크롤바로 그대로 반복한 것.',
+  },
+  {
+    name: '스크롤바 — 숨김 표기가 다시 즉석 arbitrary 로 갈린다(파이어폭스만 막대 남음)',
+    file: 'src/pages/SellerPublicPage.tsx',
+    find: 'overflow-x-auto -mx-1 px-1 scrollbar-hide',
+    replace: 'overflow-x-auto -mx-1 px-1 [&::-webkit-scrollbar]:hidden',
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why:
+      '이름이 셋(scrollbar-hide / no-scrollbar / noscroll)에 즉석 표기까지 섞여 있었고, 즉석 표기 몇은 ' +
+      '웹킷만 끄고 scrollbar-width 를 빼먹어 파이어폭스에서만 막대가 남았다. 표기는 하나로 고정한다.',
+  },
+  {
+    name: '지도 검색 — 결과 핀보다 지명 지오코딩을 먼저 한다(목록과 지도가 다른 도시)',
+    file: 'src/pages/restaurant-map/pan-to-region.ts',
+    find: '  if (fitToPins(map, pins)) return true\n  return panToPlaceQuery(map, query)',
+    replace: '  const geo = await panToPlaceQuery(map, query)\n  return geo || fitToPins(map, pins)',
+    test: 'src/tests/unit/map-search-follows-results.test.ts',
+    why:
+      '2026-09-03 대표 신고 "검색을 했을 때 무관한 지도 위치가 떠. 심각한 문제야". `커트` 결과는 동탄 2건인데 ' +
+      '지도는 인천 부평으로 갔다 — 카카오 장소검색이 "커트"에 걸리는 아무 상호를 물어다 주기 때문. ' +
+      '지도는 검색 결과를 따라가야 하고, 지명 해석은 결과가 0일 때만이다.',
+  },
+  {
+    name: '지도 검색 — 서버 검색이 끝나기 전에 지명으로 단정한다',
+    file: 'src/pages/restaurant-map/useSearchPan.ts',
+    find: '    if (pins.length === 0 && resultsReadyFor !== key) return',
+    replace: '',
+    test: 'src/tests/unit/map-search-follows-results.test.ts',
+    why:
+      '클라가 들고 있는 딜만으로는 0건이어도 서버 q검색이 곧 결과를 준다. 그 사이에 지명으로 날아가면 ' +
+      '결과가 도착해도 지도는 이미 엉뚱한 도시에 가 있다.',
+  },
+  {
+    name: '홈 히어로 — 사진 소스가 하드로드 시드 하나로 되돌아간다(새로고침해야 보임)',
+    file: 'src/components/home/useHeroPhoto.ts',
+    find: 'for (const [, data] of qc.getQueriesData({ queryKey: FEED_PREFIX })) {',
+    replace: 'for (const [, data] of [] as [unknown, unknown][]) {',
+    test: 'src/tests/unit/hero-photo-source.test.ts',
+    why:
+      '2026-09-03 대표 신고 "히어로 이미지가 항상 새로고침을 해야 보이네..? 심각해". 사진 출처가 ' +
+      '`__SSR_INITIAL_MAIN__` 시드 하나뿐이었는데 그 시드는 `/` **하드로드에서만** 문서에 들어간다. ' +
+      '앱 안에서 홈 탭으로 들어오면 색면만 남았고 에러가 없어 아무도 몰랐다(어드민 히어로 배너 0건이라 ' +
+      '대안도 없었다 — 라이브 실측).',
+  },
+  {
+    name: '숙소 목록 — 카드가 다시 갈린다(네 번째 세대)',
+    file: 'src/pages/StaysSearchPage.tsx',
+    find: '<GroupBuyFeedCard',
+    replace: '<div',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '2026-09-03 대표 "여기 UI도 통일화 해야지". 숙소 목록은 테두리 카드 + hover 그림자 + 사진 위 배지 2개 ' +
+      '+ 편의시설 pill 로 **네 번째 카드 세대**였다. 각 세대는 따로 보면 멀쩡해서 나란히 놓고 봐야만 드러난다.',
+  },
+  {
+    name: '숙소 카드 — 날짜·인원을 잃는다(상세가 오늘 날짜로 다시 잡아 요금이 달라짐)',
+    file: 'src/pages/StaysSearchPage.tsx',
+    find: '?check_in=${filters.check_in}&check_out=${filters.check_out}&guests=${filters.guests}',
+    replace: '',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '카드 통일에서 조용히 빠지기 쉬운 자리. 화면엔 149,000원인데 상세는 다른 날짜 요금을 보여준다 — ' +
+      '에러가 안 나고 사용자가 결제 직전에야 안다.',
+  },
+  {
+    name: '유어샵 내 상품 — 옛 대표색 카드로 되돌아간다(같은 상품이 홈과 달라 보임)',
+    file: 'src/pages/SellerPublicPage.tsx',
+    find: '<GroupBuyFeedCard',
+    replace: '<BrowseProductCard',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '2026-09-03 대표 "홈 카드로 동일해야지 — 안 A". 8-27 유어샵 통일에서 **내 상품 그리드만 빠져** ' +
+      '같은 상품이 홈에서는 사진+맨 텍스트, 유어샵에서는 사진 대표색 색면 카드(+사진 위 그라디언트, ' +
+      '코랄 할인율)로 나왔다. 카드가 두 벌이면 반드시 갈린다 — 이 레포가 세 번째로 겪은 자리.',
+  },
+  {
+    name: '딜 카드 격자 — 세로 간격이 다시 가로와 같아진다(카드 경계가 안 읽힌다)',
+    file: 'src/shared/deal-card-grid.ts',
+    find: "'gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-7'",
+    replace: "'gap-x-3 gap-y-3 lg:gap-x-4 lg:gap-y-4'",
+    test: 'src/tests/unit/deal-card-grid-gap.test.ts',
+    why:
+      '2026-09-03 대표 "이용권 간의 세로폭이 있어야할 것 같은데" → 안 1 확정. 카드 안 여백이 2~8px 인데 ' +
+      '카드 사이가 12px 이면 안팎 차이가 없어 어디까지가 한 카드인지 안 끊긴다. 세로만 24px 로 벌린다.',
+  },
+  {
+    name: '딜 카드 격자 — 한 화면만 간격을 손으로 적어 갈린다',
+    file: 'src/pages/WishlistPage.tsx',
+    find: 'xl:grid-cols-4 ${DEAL_GRID_GAP}`',
+    replace: 'xl:grid-cols-4 gap-3`',
+    test: 'src/tests/unit/deal-card-grid-gap.test.ts',
+    why:
+      '이 카드는 홈·찜·유어샵·편성 섹션이 같이 쓴다. 격자마다 gap 을 손으로 적으면 같은 상품이 화면마다 ' +
+      '다른 간격으로 놓인다 — 카드 자체로 이미 한 번 겪은 일(홈 섹션 카드 ↔ 피드 카드가 두 벌이었다).',
+  },
+  {
     name: '지도 오버레이 — light-island 가 빠져 흰 검색창에 흰 글자',
     file: 'src/pages/restaurant-map/MapTopBar.tsx',
     find: "'light-island lg:hidden absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none'",
@@ -7989,6 +8250,110 @@ canvas {
       '"다녀오라" 는 문구를 본다. 원인을 알 길이 없는 문구라 문의조차 못 한다 — 503 으로 갈라야 한다.',
   },
   {
+    name: '🎟️ 발송 실패한 교환권을 다시 "내 교환권" 으로 센다',
+    file: 'src/pages/user-profile/useMyCounts.ts',
+    find: 'vouchers.filter(v => isGifticonVoucher(v) && !isFailedGifticon(v)).length',
+    replace: 'vouchers.filter(isGifticonVoucher).length',
+    test: 'src/tests/unit/gifticon-failed-not-counted.test.tsx',
+    why:
+      '대표가 지목한 숫자가 정확히 이것이다 — 문자조차 못 받은 교환권을 "내 교환권 1" 로 말하면 거짓이다. ' +
+      'KT 병합이 발송 실패를 status:unused 로 눌러 담기 때문에 kt_status 를 안 보면 되살아난다. ' +
+      '⚠️ 이 항목은 되돌려-검증에서 **처음엔 통과했다** — 지갑 페이지만 테스트하고 이 카운트를 안 봤다.',
+  },
+  {
+    name: '🎟️ 교환권 지갑이 발송 실패분을 다시 사용가능·합계에 넣는다',
+    file: 'src/pages/MyGifticonsPage.tsx',
+    find: '  const owned = items.filter(v => !isFailedGifticon(v))',
+    replace: '  const owned = items.filter(() => true)',
+    test: 'src/tests/unit/gifticon-failed-not-counted.test.tsx',
+    why:
+      "실패분이 '사용 가능 N장' 과 상단 딜 합계에 섞이면 쓸 수 없는 것을 자산으로 표시하는 것이다. " +
+      '카드는 계속 보여야 하지만(문의 경로) 세면 안 된다.',
+  },
+  {
+    name: '🎟️ 이용권 현황이 교환권까지 센다 (마이가 자기 자신과 모순)',
+    file: 'src/pages/user-profile/OrderStatusBar.tsx',
+    find: '      if (!isStoreVoucher(v)) continue',
+    replace: '      if (false && !isStoreVoucher(v)) continue',
+    test: 'src/tests/unit/voucher-status-wallet-split.test.tsx',
+    why:
+      '대표 신고가 정확히 이 상태였다 — 위는 "이용권 현황 구매완료 1 · 사용가능 1", 아래 "내 이용권" 은 0. ' +
+      '한 배열로 오는 두 지갑을 아래 두 행(`useMyCounts`)만 `voucher-wallet` SSOT 로 갈라서, ' +
+      '이 바만 통째로 세면 같은 화면이 서로 다른 답을 말한다.',
+  },
+  {
+    name: "🎟️ '사용가능' 이 다시 else 폴백 (모르는 상태를 전부 쓸 수 있다고 말한다)",
+    file: 'src/pages/user-profile/OrderStatusBar.tsx',
+    find: "      if (st === 'unused' || st === '') c.usable++",
+    replace: '      c.usable++',
+    test: 'src/tests/unit/voucher-status-wallet-split.test.tsx',
+    why:
+      'KT 병합은 **발송 실패**를 `status:\'unused\'` + `kt_status:\'failed\'` 로 실어 보낸다(카드가 실패 UI 를 ' +
+      '그리라고). else 폴백이면 문자조차 못 받은 교환권이 "지금 쓸 수 있음" 으로 집계된다 — 실측된 그 1건이다. ' +
+      '틀린 칸에 넣느니 안 세는 게 낫다.',
+  },
+  {
+    name: '📝 리뷰 버튼이 다시 글자 수로 hard-disable (잠기면 아무도 이유를 모른다)',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: '          disabled={submitting}',
+    replace: '          disabled={content.length < MIN_REVIEW_LEN || submitting}',
+    test: 'src/tests/unit/review-gate-clicktime.test.tsx',
+    why:
+      '대표 신고가 정확히 이 상태였다 — 10자 이상인데 흐릿한 비활성. 클라 state 에 버튼을 묶으면 ' +
+      'IME·재렌더·캐시와 desync 되는 순간 버튼이 잠기고, 잠긴 버튼은 이유를 말할 방법이 없다. ' +
+      '2026-06-26 TossPaymentWidget 이 같은 사고를 내고 클릭-시점 검증으로 옮겼다.',
+  },
+  {
+    name: '🎫 리뷰 자격을 미리 알리지 않고 다 쓴 뒤에 거절한다',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: "              const r = await api.get(`/api/reviews/product/${productId}/eligibility`)",
+    replace: '              const r = { data: { data: { ok: true } } }',
+    test: 'src/tests/unit/review-gate-clicktime.test.tsx',
+    why:
+      '대표 지시 — "이용권 사용해야 리뷰 쓸 수 있게 해야지". 미리 안 물으면 사용자는 별점 고르고 ' +
+      '사진 붙이고 열 줄 쓴 다음에야 안 된다는 걸 안다. 그 헛수고가 이 조회 한 번의 값이다.',
+  },
+  {
+    name: '📝 서버 거절 사유가 토스트로만 간다 (화면 맨 위 — 리뷰 폼은 맨 아래)',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: '                setHint(msg)',
+    replace: '                void msg',
+    test: 'src/tests/unit/review-gate-clicktime.test.tsx',
+    why:
+      '토스트는 `fixed top-4` 다. 리뷰 폼은 페이지 맨 아래이고 모바일은 키보드까지 올라와 있어 ' +
+      '사용자에겐 "아무 일도 안 일어났다" 로 보인다 — 대표가 "안 눌러진다" 고 읽은 것이 이것일 수 있다.',
+  },
+  {
+    name: '🔎 검색이 다시 접두사 매칭으로 — 단어 안쪽을 못 찾는다',
+    file: 'src/features/products/repositories/search-query.ts',
+    find: '      const like = `%${escapeLike(v)}%`',
+    replace: '      const like = `${escapeLike(v)}%`',
+    test: 'src/tests/unit/search-engine-rebuild.test.ts',
+    why:
+      '라이브가 정확히 이 상태였다(porter FTS 접두사 매칭) — `돈가스` 로 "치즈돈가스 2인 세트" 를 ' +
+      '못 찾아 0건이었다. 한국어 상품명은 낱말이 붙어 있어 접두사만으로는 대부분 못 잡는다.',
+  },
+  {
+    name: '🔎 검색 대상에서 매장명이 빠진다 (이용권은 매장이 본질)',
+    file: 'src/features/products/repositories/search-query.ts',
+    find: "export const SEARCH_COLUMNS = ['name', 'restaurant_name', 'description', 'category'] as const",
+    replace: "export const SEARCH_COLUMNS = ['name', 'description', 'category'] as const",
+    test: 'src/tests/unit/search-engine-rebuild.test.ts',
+    why:
+      '옛 FTS 인덱스가 이 상태였다 — name/description/category 만 담아 **매장명으로는 검색이 안 됐다.** ' +
+      '"홍대돈가스" 처럼 매장으로 찾는 것이 이용권 검색의 절반인데 그 절반이 없었다.',
+  },
+  {
+    name: '🎫 검색 결과가 다시 쇼핑 카드로 (이용권에 장바구니·무료배송 UI)',
+    file: 'src/pages/SearchPage.tsx',
+    find: "import RestaurantRow from '@/pages/restaurant-map/RestaurantRow'",
+    replace: "import ProductCard from '@/components/search/ProductCard'",
+    test: 'src/tests/unit/search-engine-rebuild.test.ts',
+    why:
+      '결과는 이용권만인데 그리는 옷이 배송 상품 것이었다(대표 신고). 홈과 같은 행을 쓰지 않으면 ' +
+      '두 표면이 갈리고, 다음 사람은 어느 쪽이 정본인지 알 수 없다.',
+  },
+  {
     name: '🎟️ 이용권 셀프 사용 기본값이 다시 self_free 로 (설정 안 한 매장 전부 무방비)',
     file: 'src/worker/utils/redemption-settings.ts',
     find: "export const DEFAULT_REDEMPTION_MODE: RedemptionMode = 'store_code'",
@@ -8029,6 +8394,16 @@ canvas {
       'UUID 라 표시 쪽에선 사본임을 알 길이 없다 — 실측 활성 이용권 100개 중 99개가 그 상태였다.',
   },
   {
+    name: '🖼️ 갤러리 정리 패스가 다시 넓게 골라 40건에서 조용히 멈춘다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: "        AND json_extract(images, '$[0]') LIKE 'http%'`",
+    replace: "        AND images LIKE '%http%'`",
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '갤러리는 3~5장이라 첫 칸을 고쳐도 뒤쪽 외부 주소 때문에 행이 후보로 남는다. 그렇게 고쳐진 ' +
+      '행이 ORDER BY 창 앞자리를 채우다 40개를 넘기면 창 전체가 no-op — 에러 없이 멈춘다.',
+  },
+  {
     name: '🖼️ 갤러리 정리 패스가 R2 바인딩 조기반환 뒤로 밀린다 (영영 안 돎)',
     file: 'src/worker/cron/demo-image-rehost.ts',
     find: '  const gal = await repairGalleryCoverDrift(env).catch(() => ({ scanned: 0, fixed: 0, remaining: -1 }))',
@@ -8041,7 +8416,7 @@ canvas {
   {
     name: '📝 리뷰 최소 글자 안내가 사라져 버튼이 왜 안 눌리는지 아무도 모른다',
     file: 'src/pages/product-detail/ProductReviews.tsx',
-    find: '      {content.length < MIN_REVIEW_LEN && (',
+    find: '      {content.length < MIN_REVIEW_LEN && !hint && (',
     replace: '      {false && (',
     test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
     why:

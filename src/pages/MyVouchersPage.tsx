@@ -193,7 +193,7 @@ export default function MyVouchersPage() {
           </Suspense>
           {/* 🎨 2026-06-21 (개선 #1): 주변 이용권 캐러셀 (거리순) — 1장 카드 → 가로 스크롤 비교. */}
           {mapVouchers.length > 0 && (
-            <div className="absolute left-0 right-0 bottom-3 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+            <div className="absolute left-0 right-0 bottom-3 overflow-x-auto scrollbar-hide">
               <div className="flex gap-3 px-3 snap-x snap-mandatory">
                 {mapCarousel.map((v) => {
                   const d = (userLoc && v.restaurant_lat && v.restaurant_lng) ? haversineMeters(userLoc, { lat: v.restaurant_lat, lng: v.restaurant_lng }) : null
@@ -249,6 +249,10 @@ export default function MyVouchersPage() {
           (26px 타이틀 + 총 보유 칩 + 언더라인 탭). 교환권 보유 시에만 탭 노출. */}
       <WalletHeader
         title={t('voucher.myVouchers')}
+        /* 🎫 2026-09-03 (대표 "내 이용권 문장 삭제"): 화면에서 제목 줄을 지운다.
+           하단 탭 '이용권'이 이미 어디인지 말하고, 지갑의 주인공은 금액과 카드다.
+           제목은 sr-only 로만 남아 문서 구조·보조기술 접근성은 유지된다. */
+        hideTitle
         amount={shownVouchers.length > 0 ? heroTotal : null}
         unit={heroUnit}
         stats={shownVouchers.length > 0 ? [
@@ -299,7 +303,7 @@ export default function MyVouchersPage() {
 
             {/* 🎫 칩 — outline pill, 선택은 브랜드 테두리 + 브랜드 글자(면 채움 없음). 지도는 칩으로 들어간다. */}
             {tab === 'unused' && unusedItems.length > 0 && (
-              <div className="flex gap-2 mb-4 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+              <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
                 {([['all', `${t('voucher.chipAll', { defaultValue: '전체' })} ${unusedItems.length}`], ['soon', t('voucher.chipSoon', { defaultValue: '만료 임박' })]] as const).map(([key, label]) => (
                   <button key={key} type="button" onClick={() => setChip(key)}
                     className={`shrink-0 h-9 px-4 rounded-full text-[14px] border ${chip === key ? 'border-brand-text text-brand-text font-bold' : 'border-rule-strong text-gray-800 dark:text-gray-200'}`}>

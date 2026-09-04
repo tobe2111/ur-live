@@ -862,6 +862,7 @@
   "wishlist": {
     "title": "Wishlist",
     "subtitleCount": "{{count}} saved items",
+    "dropCount": "{{count}} price drop(s)",
     "emptyTitle": "No saved items",
     "emptyHint": "Save products you love",
     "continueShopping": "Continue Shopping",
@@ -2442,7 +2443,11 @@
       "mapPhotoFood": "Food & menu",
       "mapPhotoInterior": "Interior",
       "openKakaoPlace": "Open in Kakao Map ↗",
-      "mapPhotoHint": "We search Naver map/blog photos by your store name. Kakao Map photos cannot be fetched automatically — we open the page so you can copy a photo URL into the field above."
+      "mapPhotoHint": "We search Naver map/blog photos by your store name. Kakao Map photos cannot be fetched automatically — we open the page so you can copy a photo URL into the field above.",
+      "fromMapShort": "From map",
+      "photoLead": "Bring photos from the map, or upload your own. The first one is the cover.",
+      "pasteTitle": "Paste a KakaoMap photo address",
+      "pastePlaceholder": "Right-click the photo → Copy image address"
     },
     "analyticsTitle": "Sales Analytics",
     "revenueChart": "Revenue Chart",
@@ -2487,7 +2492,9 @@
       "products": "🛒 Online Sales",
       "groupbuy": "🏪 Group Buy & Stays",
       "ordersCustomers": "Orders & Customers",
-      "curator": "My UrShop"
+      "curator": "My UrShop",
+      "vouchers": "🎟️ Vouchers",
+      "growth": "Growth"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}.{{month}} Revenue Calendar",
@@ -2537,7 +2544,22 @@
       "returns": "Refund Requests",
       "operators": "Operators",
       "stores": "My Stores",
-      "findInfluencers": "Find Influencers"
+      "findInfluencers": "Find Influencers",
+      "voucherManage": "Manage vouchers",
+      "profile": "My info",
+      "tier": "Seller tier",
+      "twoFactor": "Two-factor auth",
+      "appointments": "Appointments",
+      "ledger": "Store ledger",
+      "storeDashboard": "Store overview",
+      "realtime": "Live overview",
+      "voucherOrders": "Gift card sends",
+      "transfers": "Store transfer",
+      "marketing": "Marketing",
+      "adSlots": "Ad slots",
+      "discounts": "Discounts",
+      "partners": "Partners",
+      "notifyGuide": "Alerts & guide"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",
@@ -3158,7 +3180,31 @@
       "lockedNote": "Register your store to unlock vouchers · orders · settlement · influencer collabs",
       "savedPropagated": "Store info saved — applied to {{count}} vouchers",
       "saved": "Store info saved"
-    }
+    },
+    "voucherTabs": {
+      "list": "Vouchers",
+      "scan": "Redeem",
+      "reviews": "Review checks"
+    },
+    "pageSearch": "Search pages",
+    "bizNoFormat": "Business number must look like 000-00-00000",
+    "sessionExpired": "Your session expired. Please sign in again and save.",
+    "certHint": "Upload your business certificate here",
+    "photo": {
+      "cover": "Cover",
+      "empty": "Your photo will show here",
+      "pickFile": "📁 From my files",
+      "addMore": "+ Add photo",
+      "uploading": "Uploading…",
+      "moveLeft": "Move left",
+      "moveRight": "Move right",
+      "dup": "That photo is already added"
+    },
+    "orderTabs": {
+      "orders": "Orders"
+    },
+    "bizFromRegistration": "Filled in from your store registration",
+    "bizFromRegistrationDesc": "Not registered as business info yet — review and press Save."
   },
   "admin": {
     "login": {
@@ -4770,7 +4816,8 @@
       "used": "Used",
       "expired": "Expired",
       "refunded": "Refunded",
-      "processing": "Sending"
+      "processing": "Sending",
+      "sendFailed": "Delivery failed"
     },
     "verify": {
       "title": "Voucher Verification",

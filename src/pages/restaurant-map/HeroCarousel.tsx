@@ -26,7 +26,7 @@ export default function HeroCarousel({ heroDeals, userLoc, liveSellerIds, onSele
         </p>
         <span className="text-[10px] text-gray-400 dark:text-gray-500">{heroDeals.length}곳</span>
       </div>
-      <div className="flex gap-2 overflow-x-auto no-scrollbar">
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide">
         {heroDeals.map(r => {
           const discount = Math.round((1 - r.price / r.original_price) * 100)
           return (

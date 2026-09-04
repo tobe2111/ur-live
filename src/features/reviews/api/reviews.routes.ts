@@ -169,6 +169,30 @@ reviewsRoutes.get('/reward-config', async (c) => {
   return c.json({ success: true, data: defaults });
 });
 
+// GET /api/reviews/product/:productId/eligibility — 내가 이 상품에 리뷰를 쓸 수 있나 (로그인 필요)
+// 🎫 2026-09-03 (대표 — "이용권 사용해야 리뷰 쓸 수 있게 해야지"): 종전엔 **다 쓰고 누른 뒤에야**
+//   자격을 알려 줬다. 사용자는 별점 고르고 사진 붙이고 열 줄 써서 누른 다음에 "안 된다" 를 듣는다.
+//   미리 물어볼 수 있게 **POST 와 같은 판정 함수**를 그대로 노출한다 — 두 답이 갈릴 수 없다(SSOT).
+//   ⚠️ 판정 자체는 여기서 하지 않는다. 여기가 판정을 다시 쓰면 POST 와 어긋나는 순간이 온다.
+reviewsRoutes.get('/product/:productId/eligibility', requireAuth(), async (c) => {
+  const { DB } = c.env;
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const productId = intParam(c.req.param('productId'), 0);
+  if (!productId) return c.json({ success: false, error: '잘못된 요청입니다' }, 400);
+  // admin 은 POST 에서도 자격 검사를 건너뛴다(테스트/생성 목적) — 같은 예외를 여기서도.
+  if (user.type === 'admin') return c.json({ success: true, data: { ok: true } });
+  const verdict = await checkReviewEligibility(
+    DB, productId, user.id, (user as { isDbId?: boolean }).isDbId,
+  );
+  return c.json({
+    success: true,
+    data: verdict.ok
+      ? { ok: true }
+      : { ok: false, reason: verdict.error, code: verdict.error_code },
+  });
+});
+
 // POST /api/reviews — 리뷰 작성
 reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 300 }), requireAuth(), async (c) => {
   // Kill switch: disable review submission during traffic spikes

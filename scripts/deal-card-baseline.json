@@ -1,0 +1,12 @@
+{
+  "_": "자체 딜 카드가 남아 있는 자리. 0 이 목표다 — 늘리지 말 것.",
+  "entries": [
+    "src/components/search/ProductCard.tsx",
+    "src/pages/GbMarketplacePage.tsx",
+    "src/pages/InfluencerDiscoverPage.tsx",
+    "src/pages/LocalTownPage.tsx",
+    "src/pages/ReferralPage.tsx",
+    "src/pages/browse/RecentlyViewedSection.tsx",
+    "src/pages/my-vouchers/SameStoreDeals.tsx"
+  ]
+}

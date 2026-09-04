@@ -29,9 +29,11 @@ import { useKakaoMap, type ServerCluster } from './restaurant-map/useKakaoMap'
 import { useSheetDrag, SHEET_BASE_TOP, SHEET_SNAP_TRANSLATE, SHEET_SNAP_TRANSITION } from './restaurant-map/useSheetDrag'
 import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
-import { useMapProducts } from '@/hooks/queries/useMapProducts'
+import { useFeedWindow } from './restaurant-map/useFeedWindow'
+import { pickViewportList } from './restaurant-map/viewport-list'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
-import { panToRegionAccurate, panToPlaceQuery } from './restaurant-map/pan-to-region'
+import { panToRegionAccurate } from './restaurant-map/pan-to-region'
+import { useSearchPan, useSearchDeals } from './restaurant-map/useSearchPan'
 import GeoHelpSheet, { type GeoHelpReason } from './restaurant-map/GeoHelpSheet'
 import { detectInAppBrowser } from '@/lib/in-app-browser'
 import { checkPermission } from '@/lib/in-app-warning'
@@ -72,15 +74,35 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       return q && ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'].includes(q) ? (q as MapVoucherType) : 'all'
     } catch { return 'all' }
   })
-  // 🛡️ 2026-06-01 Tier2: products fetch 만 React Query(카테고리별 캐시). live-poller 는 유지.
-  // 🌍 2026-07-08 (대표 "수천개 대비 — 업체 근본 방식"): 내 위치(near) 거리순 + 근접 바운드 로딩.
-  const { data: baseRestaurants = [], isLoading: loading } = useMapProducts(voucherType === 'all' ? 'all' : voucherType, userLoc)
+  // 🩸 2026-09-03 (하네스 실측): 위치가 캐시된 사용자는 마운트 직후 `useNearMeAuto` 가 '가까운 순'으로
+  //   자동 전환하는데, 정렬이 서버 캐시키에 들어간 지금은 그 전환이 **두 번째 요청**을 만든다.
+  //   어차피 갈 자리면 처음부터 거기서 시작한다(칩이 깜빡이던 것도 함께 사라진다).
+  const [sortBy, setSortBy] = useState<SortBy>(() => (userLoc ? 'distance' : 'discount'))
+  // 🛍️ 2026-06-20 (필터 팝업 A안): 거리반경(km, 0=전체) + 가격대.
+  const [radiusKm, setRadiusKm] = useState<number>(0)
+  const [priceRange, setPriceRange] = useState<PriceRange>('all')
+  // 즐겨찾기 (localStorage) + 라이브 셀러 ID 집합
+  const [favorites, setFavorites] = useState<number[]>(() => storage.getJSON<number[]>('restaurant_favorites', []))
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
+  // 🚦 2026-09-03 [UNLOCK_LOADING] (대표 "가장 이상적으로"): 전량 순회 → **화면이 요구하는 만큼만**.
+  //   정렬은 서버(sort)·거리순은 near, 서버가 못 거르는 필터가 켜질 때만 useFeedWindow 가 전체를 받는다.
+  const { data: baseRestaurants = [], isLoading: loading, total: feedTotal, loadMore, reachedEnd, needsAll } = useFeedWindow({
+    category: voucherType === 'all' ? 'all' : voucherType,
+    userLoc, sortBy,
+    // 필터 시트를 여는 순간도 포함 — 시트의 '이 조건이면 N곳' 미리보기가 로드된 50개만 세면 거짓말이 된다.
+    needsAll: !!(region || district || radiusKm > 0 || priceRange !== 'all' || showFavoritesOnly || filterSheetOpen),
+  })
   // 뷰포트(지도 pan)로 추가 로드된 딜 병합(bbox effect ↓). 초기 바운드 밖 영역 커버. 비어있으면 기존과 동일(무회귀).
   const [viewportDeals, setViewportDeals] = useState<Restaurant[]>([])
   // 🌍 줌아웃 서버 집계(레이어 3) — non-null 이면 지도는 개별 핀 대신 격자 버블만 렌더.
   const [aggClusters, setAggClusters] = useState<ServerCluster[] | null>(null)
   // 🔎 2026-07-12 (스케일 검색): 검색어 입력 시 서버 q 검색 결과 병합 — 근접 바운드 밖 먼 매장도 검색에 잡힘.
-  const [searchDeals, setSearchDeals] = useState<Restaurant[]>([])
+  // 🔎 서버 q검색 — 먼 매장까지 잡고, `readyFor` 로 "결과 확정" 을 알린다(지도 이동이 이를 기다린다).
+  const searchCategory = voucherType === 'all' ? 'all' : voucherType
+  const { deals: searchDeals, readyFor: searchDealsFor } = useSearchDeals<Restaurant>(search, searchCategory)
+
   const restaurants = useMemo(() => {
     if (viewportDeals.length === 0 && searchDeals.length === 0) return baseRestaurants
     const seen = new Set<number | string>(); const out: Restaurant[] = []
@@ -126,19 +148,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       toast.error('응모하려면 로그인이 필요해요')
     }
   }, [])
-  const [sortBy, setSortBy] = useState<SortBy>('discount')
-  // 🛍️ 2026-06-20 (필터 팝업 A안): 거리반경(km, 0=전체) + 가격대.
-  const [radiusKm, setRadiusKm] = useState<number>(0)
-  const [priceRange, setPriceRange] = useState<PriceRange>('all')
   // 옵션 B: 카카오 일반 맛집 + 클릭 시 수요 신호 모달
   const [kakaoPlaces, setKakaoPlaces] = useState<KakaoPlace[]>([])
   const [suggestionFor, setSuggestionFor] = useState<KakaoPlace | null>(null)
-  // 즐겨찾기 (localStorage) + 라이브 셀러 ID 집합
-  const [favorites, setFavorites] = useState<number[]>(() => storage.getJSON<number[]>('restaurant_favorites', []))
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [liveSellerIds] = useState<Set<number>>(new Set())  // 라이브커머스 영구중단 → 항상 빈 Set(LIVE 배지 미표시)
-  // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const activeFilterCount = ((region || district) ? 1 : 0) + (radiusKm > 0 ? 1 : 0) + (priceRange !== 'all' ? 1 : 0)
   // 🗺️ 2026-06-20 (대표 — 홈=지도 / "상품 1개일 때 공백 남음"): 기본 snap 을 peek 으로 → 지도 우선 +
   //   콘텐츠 적을 때 큰 흰 공백 제거(컴팩트). 더 보려면 시트를 위로 드래그(mid/full).
@@ -225,19 +238,6 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     return () => clearTimeout(handle)
   }, [userLoc, kr, search])
 
-  // 🔎 2026-07-12 (스케일 검색): 검색어 입력 시 서버 q 검색(이름/매장명 LIKE)도 병행 — 근접 바운드/뷰포트
-  //   로딩에 안 실린 먼 매장까지 지도·리스트 검색에 잡힘. 300ms 디바운스, 실패 무해(로드분 클라 필터는 그대로).
-  useEffect(() => {
-    const q = search.trim()
-    if (!q) { setSearchDeals([]); return }
-    const handle = setTimeout(() => {
-      const cat = voucherType === 'all' ? 'all' : voucherType
-      api.get('/api/group-buy/products', { params: { category: cat, q, limit: 100 } })
-        .then(r => { if (r.data?.success && Array.isArray(r.data.data)) setSearchDeals(r.data.data) })
-        .catch(() => { /* silent — 로드분 필터만으로 동작 */ })
-    }, 300)
-    return () => clearTimeout(handle)
-  }, [search, voucherType])
 
   // 🛡️ 2026-05-19: 클라이언트 geocoding loop 제거.
   //   이전: 사용자 1명당 카카오 API ~10 호출 (페이지 진입 시마다).
@@ -310,24 +310,12 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     return [...filtered].sort((a, b) => boost(b.id) - boost(a.id))
   }, [filtered, fcfsMap])
 
-  // 🗺️ 2026-07-15 (대표 — "지도 보는 위치에 따라 그 지역 이용권이 떠야 해" + 신고 "왜 18곳만?"):
-  //   지도 모드에서 **현재 보이는 지도 영역의 딜을 리스트 위로** 올린다(당근/야놀자식 '이 지역 먼저').
-  //   ⚠️ 숨기지 않음 — 처음엔 뷰포트로 딱 잘라 82곳(전체 100)이 사라져 "왜 18곳만" 혼란 → 보이는 딜을
-  //   앞으로, 나머지는 뒤에 붙여 전체가 다 보이되 현 지역이 먼저 뜨게. (엄격한 '이 지역만'은 지역 필터가 담당.)
-  //   줌아웃 집계 모드(aggClusters)·bounds 미확정(초기)·리스트 모드에선 전체(displayList) 그대로.
-  const { viewportList, viewportInCount } = useMemo(() => {
-    // 🔎 검색 중엔 뷰포트 재정렬 끄기 — 검색 결과(먼 지역 포함)를 지도 밖이라고 뒤로 밀지 않게(관련도 순 유지).
-    if (mode !== 'map' || !mapBounds || search || (aggClusters && aggClusters.length > 0)) return { viewportList: displayList, viewportInCount: null as number | null }
-    const { swLat, swLng, neLat, neLng } = mapBounds
-    const mLat = (neLat - swLat) * 0.1, mLng = (neLng - swLng) * 0.1 // 경계 약간 여유
-    const inView = (r: Restaurant) => !!(r.restaurant_lat && r.restaurant_lng &&
-      r.restaurant_lat >= swLat - mLat && r.restaurant_lat <= neLat + mLat &&
-      r.restaurant_lng >= swLng - mLng && r.restaurant_lng <= neLng + mLng)
-    const inB: Restaurant[] = []; const rest: Restaurant[] = []
-    for (const r of displayList) (inView(r) ? inB : rest).push(r)
-    // 보이는 딜 먼저, 나머지 뒤에(숨김 없음) + 이 지역(뷰포트) 딜 수 = inB.length(카운트 "이 지역 N · 전체 M"용)
-    return { viewportList: inB.length ? [...inB, ...rest] : displayList, viewportInCount: inB.length }
-  }, [mode, mapBounds, aggClusters, displayList, search])
+  // 🗺️ 보이는 지도 영역의 딜을 리스트 위로(숨기지 않음) — 근거·함정은 viewport-list.ts.
+  //   검색 중·줌아웃 집계·리스트 모드·bounds 미확정이면 bounds=null → 전체 순서 그대로.
+  const { viewportList, viewportInCount } = useMemo(
+    () => pickViewportList(displayList, (mode === 'map' && !search && !(aggClusters && aggClusters.length > 0)) ? mapBounds : null),
+    [mode, mapBounds, aggClusters, displayList, search],
+  )
 
   // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
   const heroDeals = useMemo(() => {
@@ -488,13 +476,19 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
 
-  // 🗺️ 2026-07-20 (대표 — "부산 검색하면 지도가 부산으로"): 검색 제출(Enter/최근검색 선택) 시 지역/장소명이면
-  //   지도를 그 위치로 재중심. 매칭 실패면 no-op(딜 이름/매장명 텍스트 필터는 그대로 동작).
-  const submitMapSearch = useCallback((q: string) => {
-    const query = (q || '').trim()
-    if (!query || !mapInstance.current || !window.kakao?.maps) return
-    void panToPlaceQuery(mapInstance.current, query)
-  }, [])
+  /**
+   * 🗺️ **지도는 검색 결과를 따라간다** (2026-09-03 — 대표 신고 "검색을 했을 때 무관한 지도 위치가 떠").
+   *   규칙은 `useSearchPan` 한 곳에 있다(결과 핀 우선 · 결과 0일 때만 지명 · 질의당 1회).
+   */
+  const submitMapSearch = useSearchPan({
+    search,
+    setSearch,
+    category: searchCategory,
+    results: filtered,
+    resultsReadyFor: searchDealsFor,
+    mapRef: mapInstance,
+    active: mode === 'map' && sdkLoaded,
+  })
 
   // 🌍 2026-07-08 (대표 "가장 이상적으로" — 레이어 2+3): 줌-인지형 뷰포트 로딩.
   //   · 줌아웃(level ≥ 9, 시/전국): 서버 **집계**(/products/map-clusters)만 받아 격자 버블 렌더 —
@@ -683,7 +677,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             requestNearMe={requestNearMe}
             voucherType={voucherType}
             setVoucherType={selectVoucherType}
-            filteredCount={filtered.length}
+            filteredCount={!needsAll && !search ? (feedTotal ?? displayList.length) : filtered.length}
             userLoc={userLoc}
             sortBy={sortBy}
             setSortBy={setSortByUser}
@@ -703,6 +697,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             userLoc={userLoc}
             onSelect={(r) => navigate(`/products/${r.id}`)}
             fcfsMap={fcfsMap} onApplyFcfs={applyFcfs} voucherType={voucherType}
+            onLoadMore={loadMore} hasMoreOnServer={!reachedEnd}
           />
           <SiteFooter />{/* 🧭 2026-07-19 대표 — 서비스 최하단 소개 3종 링크(모바일 홈=리스트라 푸터 부재였음) */}
         </div>
@@ -859,7 +854,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             requestNearMe={requestNearMe}
             voucherType={voucherType}
             setVoucherType={setVoucherType}
-            filteredCount={displayList.length}
+            filteredCount={!needsAll && !search ? (feedTotal ?? displayList.length) : displayList.length}
             viewportCount={viewportInCount}
             userLoc={userLoc}
             sortBy={sortBy}
@@ -896,6 +891,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
               fcfsMap={fcfsMap}
               onApplyFcfs={applyFcfs}
               voucherType={voucherType}
+              onLoadMore={loadMore}
+              hasMoreOnServer={!reachedEnd}
             />
           </ScrollArea>
         </div>

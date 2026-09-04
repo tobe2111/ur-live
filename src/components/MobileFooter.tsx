@@ -6,7 +6,7 @@ export default function MobileFooter() {
       {/* Contact */}
       <div className="mb-3">
         <p style={{ fontSize: '9px', lineHeight: '1.2' }} className="text-gray-600 dark:text-gray-300 text-center">
-          제휴 | 입점 문의 : <a href="mailto:jiwon@ur-team.com" className="text-purple-600 hover:underline">jiwon@ur-team.com</a>
+          제휴 | 입점 문의 : <a href="mailto:jiwon@ur-team.com" className="text-brand-text hover:underline">jiwon@ur-team.com</a>
         </p>
       </div>
 

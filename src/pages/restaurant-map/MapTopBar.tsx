@@ -193,7 +193,7 @@ export default function MapTopBar({
                  400px 에 7개가 안 들어간다 — 그래서 모양 자체를 바꾼다.
                지도 오버레이(모바일)는 폭이 넓어 기존 알약 + 가로 스크롤 그대로.
             🎫 2026-09-02 B안: 이모지 → 유어딜 선 아이콘(voucher-types `icon`), 선택 = 블루 면. */}
-        <div className={panel ? 'grid grid-cols-7 gap-0.5' : 'flex gap-1.5 items-center overflow-x-auto no-scrollbar'}>
+        <div className={panel ? 'grid grid-cols-7 gap-0.5' : 'flex gap-1.5 items-center overflow-x-auto scrollbar-hide'}>
           {/* 필터 */}
           <button
             data-testid="open-filter"
