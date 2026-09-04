@@ -1,6 +1,10 @@
 # 🏪 매장 운영 주체 모델 — 소유(owner) ↔ 운영(operator) 분리
 
-> **상태**: 1·2단계 구현 완료(2026-08-19) · **3단계는 설계 박제(미구현)**
+> **상태**: 1·2단계 구현 완료(2026-08-19) · **에이전시 완전 일몰 완료(2026-09-04)** · **3단계는 설계 박제(미구현)**
+>
+> 🔴 **2026-09-04 갱신 — 아래 §7 을 먼저 읽으세요.** 이 문서의 §1~§6 은 *에이전시가 아직 존재하던 시점*의
+> 기록입니다. 그 뒤 대표 확정으로 에이전시는 **코드에서 통째로 삭제**됐고(라우트·페이지·API·크론·커미션),
+> "API 파일을 지우지 않은 이유" 같은 절은 **더 이상 유효하지 않습니다.**
 > **결정자**: 대표 (2026-08-19 — "에이전시 대시보드를 없애고 셀러 대시보드가 여러 매장을 운영하게" → "모두 하자")
 > **선행 설계**: `vendor-commission-passthrough.md` §4.3(3단 위임) · `urdeal-platform-model.md` §2
 > **서비스 축**: 유어딜(소비자) 레일. 도매몰·공구 서비스(운영자 몰)·유어애즈와 무관.
@@ -231,3 +235,80 @@ SELECT COUNT(*) FROM seller_operators WHERE revoked_at IS NULL;
 `AGENCY_DASHBOARD_SUNSET = false` → 가입 즉시 복원.
 라우트/nav/마운트는 각각 독립: `src/routes/agency.routes.tsx` 복원 · `worker/index.ts` 의 주석 해제 ·
 `scheduled.ts` 의 cron 한 줄 해제. **삭제한 23개 페이지만 git 복원이 필요하다.**
+
+
+---
+
+## 7. 🌇 2026-09-04 — 에이전시 **완전 일몰** (대표 확정)
+
+> "그 에이전시는 없애자. 에이전시 대시보드도 안쓸거야. **더 이상 헷갈리지 말자 다른 세션에서도 그렇고.**"
+>
+> "에이전시 남은 잔재 다 삭제하고, **중개사가 5% 내에서 가져가는게 아니라 나머지 95%에서 매장이랑
+>  거래를 하는거지. 5%는 중개사 일 때 유어딜의 수수료인거고.**"
+
+### 7.1 무엇이 바뀌었나 — 한 문장
+**중개사는 별도 실체가 아니다.** 셀러 대시보드 계정이고, 매장과의 관계는 `seller_operators` 한 줄이다.
+
+| | 무엇 | 관계 | 유어딜 수수료 |
+|---|---|---|---|
+| **직접 입점** | 매장이 스스로 가입 | owner 본인 | **10%** (`store_channel='direct'`) |
+| **중개(대행)** | 중개사가 데려와 대신 운영 | `seller_operators` operator | **5%** (`store_channel='brokered'`) |
+
+### 7.2 🔑 중개사 보상의 위치 (여기서 계속 틀렸다)
+낮은 요율(5%)은 **중개사에게 주는 돈이 아니다.** 5% 는 온전히 유어딜 몫이고, 낮춘 이유는
+**매장에게 여유를 주기 위해서**다. 중개사는 그 여유가 생긴 **95%(매장 몫) 안에서 매장과 직접 거래**해
+공수 비용을 받는다.
+
+⇒ **유어딜 장부·정산 화면에 중개사 지급은 한 줄도 등장하지 않는다.**
+⇒ 그래서 커미션이 겹쳐 유어딜이 적자가 나는 구조가 **존재할 수 없다.**
+
+> 🩸 2026-09-04 이전의 셀러 가이드에는 *"수수료 차액(10%−5%)이 대행사 몫"* 이라고 적혀 있었다.
+> **틀린 문장이었고 이번에 고쳤다.** 차액은 유어딜이 덜 받는 것이지 중개사에게 주는 것이 아니다.
+
+### 7.3 삭제 근거 (라이브 실측 2026-09-04)
+```
+agencies                        4행 (껍데기만 — 유어딜 본사·인디아즈·제아스컴퍼니·KONEX)
+sellers.introduced_by_agency_id 0명     agency_sellers          0행
+store_agency_delegation         0행     agency_creator_approvals 0행
+agency_store_intro_commissions  0행  ← 이 경로로 돈이 나간 적이 한 번도 없다
+agency_invite_usage             0행     promote_boost_coupons   0행
+```
+
+### 7.4 삭제 목록
+| 층 | 지운 것 |
+|---|---|
+| 크론 | 에이전시 작업 11종. 배치 2개 개명: `agency-cron-batch`→`growth-daily-batch` · `agency-weekly-batch`→`weekly-tier-batch` |
+| 머니 | `agency-store-intro-commission.ts`(적립·역전) · `recordAgencyCommissionShare`(원장 30% 분배) · fee-resolver 로의 agency 컨텍스트 공급 · `agency_share_pct` 설정 |
+| API | `/api/agency/**` · `/api/agency-public` · `/api/agency/transfers` + `/api/seller/transfers` · `/api/agency/delegation` · `/api/seller/delegation` · `/api/invite/:code`(에이전시 초대코드) · 어드민 `/agencies`·`/agency-creator-approvals` |
+| 화면 | `/agency/**` 16라우트 · `/a/:slug` · `/agency-partner` · `/terms/agency` · 어드민 2화면 · `/seller/agency-delegation` · `/seller/promote-boosts` |
+| 파일 | `src/features/agency/**` · `src/lib/agency-shared.ts` · `AgencyLayout` · 페이지 21개 · 가이드 시드 `guide-seed-agency.ts` · `docs/AGENCY_POLICY.md` |
+| 플래그 | `AGENCY_DASHBOARD_SUNSET`(게이트로 되살릴 게 없다) · `enable_agency_*` 6개 |
+
+**살린 것 (일몰이 삼키면 안 되는 것)**
+- `/api/invite` **referral**(소비자 친구초대) — 에이전시 초대코드가 *같은 경로*에 얹혀 있었다.
+  이름만 보고 지우면 마이페이지 '내 추천 링크'가 통째로 죽는데 화면엔 빈 카드로 보인다.
+- 로그아웃의 `ur_agency_session` 삭제 — 남은 세션을 실제로 죽이는 코드다.
+- `fee-resolver.ts` 의 agency 필드·불변식·`order_fee_breakdown.agency` 컬럼 — 머니 SSOT 의 합계 검증을
+  고치는 것보다 **공급을 끊어 0** 으로 만드는 쪽이 되돌리기 쉽다.
+- 사람 영입 2%(`influencer_intro`) — 별개 축이고 직접 입점 매장 전용이다.
+
+### 7.5 가드
+`src/tests/unit/agency-sunset-final.test.ts` 12건 + `check-guard-mutations` 주입 4건(되돌려-검증 빨간불 확인).
+**못 막는 것**: 이름만 바꿔 같은 개념을 다시 만드는 것 · DB 에 남은 `agencies` 4행(읽는 코드는 없다).
+
+### 7.6 남은 데이터
+`agencies` 4행 · `agency_*` 테이블들은 **DB 에 그대로 남겼다.** 읽는 코드가 없어 무해하고,
+프로덕션 raw DELETE 는 이 레포의 룰이 금지한다(수리는 코드 경로로). 정리가 필요하면 어드민 기능으로.
+
+### 7.7 ⏭️ 다음 — 3단계(권한 범위)는 **설계 확정 후** 구현
+대표 지시: *"3번 즉 매장과 중개사 간의 셀러대시보드에서 작업을 어떻게 해야할지 **정하고 나서 작업하자**."*
+
+지금 상태: owner/operator 를 **설계는 했는데 강제를 안 한다.** 셀러 토큰이 `seller_id` 하나로 전부를
+열어 주므로 **operator 도 정산계좌·사업자정보를 볼 수 있다.** `isStoreOwner` 를 실제로 부르는 곳은
+두 군데뿐이다 — `seller-operators.routes.ts:156` · `seller-stores.routes.ts:537`.
+
+결정이 필요한 것:
+1. **owner 전용 범위** — 정산계좌·사업자정보·출금·매장 폐업·운영자 추가/회수. (operator 는 읽기도 금지? 아니면 마스킹?)
+2. **중개사가 자기 실적을 보는 화면** — 매장에 청구할 근거(내가 성사시킨 소개 딜·그 매장 매출 기여)를
+   어디서 보나. 지금은 매장 전환으로 *그 매장 전체*를 보는 것 말고는 없다.
+3. **경계 표시** — 대신 운영 중일 때 화면에 그 사실이 보이는가(사장님도, 중개사도).

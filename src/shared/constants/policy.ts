@@ -57,19 +57,15 @@ export const COMMISSION_DEFAULTS = {
   SELLER_COMMISSION_PCT: 10,
 
   /** 에이전시 입점 분배 (platform_fee 중) */
-  AGENCY_SHARE_PCT: 30,
 
   /** 인플루언서 입점 분배 (platform_fee 중) */
   INFLUENCER_INTRO_SHARE_PCT: 20,
 
   /** 에이전시 본인 commission (매출 기준) */
-  AGENCY_OWN_RATE: 2.0,
 
   /** 🔒 2026-06-27 (감사 #7): 매장영입 커미션 기본율 — util 파일에 흩어진 매직넘버를 SSOT 로 통일.
-   *  에이전시 매장영입(agencies.store_intro_commission_pct 미설정 시 fallback). 위 AGENCY_OWN_RATE 와는 별개 개념.
    *  💰 2026-07-05 대표 확정 (자문 (b)안): 2.0 → 1.0 — 약관3 제4조·파트너 안내·회사소개서 전부 "기본 1%"
    *  라 문서-시스템 정합. 개별 상향은 어드민 에이전시 관리의 store_intro_commission_pct(성과 보상 레버). */
-  AGENCY_STORE_INTRO_PCT: 1.0,
   /** 매장 영입(소개) — platform_settings.influencer_store_intro_pct 미설정 시 fallback.
    *  💰 2026-08-27 대표 확정: 1.5 → 2.0 ("인플루언서가 영업해와서 가게가 입점하면 2%").
    *  ⚠️ 라이브는 platform_settings 행이 우선이므로 이 상수만 바꿔선 안 바뀐다 — 어드민에서 값 갱신 필요. */

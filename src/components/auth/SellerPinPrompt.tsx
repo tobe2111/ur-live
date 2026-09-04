@@ -25,14 +25,14 @@ import { Loader2, X, ShieldCheck } from 'lucide-react'
 interface Props {
   onVerified: () => void
   onCancel: () => void
-  role?: 'seller' | 'agency'
+  role?: 'seller'  // 🌇 2026-09-04 에이전시 일몰 — 'agency' 제거
 }
 
 export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props) {
   const { t } = useTranslation()
   const [pin, setPin] = useState('')
   const [loading, setLoading] = useState(false)
-  const basePath = role === 'seller' ? '/api/seller' : '/api/agency'
+  const basePath = '/api/seller'
   useEscapeKey(onCancel)
 
   async function submit() {
@@ -136,9 +136,9 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
 /**
  * SellerPinSetup — 셀러/에이전시 프로필에서 PIN 최초 설정
  */
-export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKakao: boolean; role?: 'seller' | 'agency' }) {
+export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKakao: boolean; role?: 'seller' }) {
   const { t } = useTranslation()
-  const basePath = role === 'seller' ? '/api/seller' : '/api/agency'
+  const basePath = '/api/seller'
   const [pinSet, setPinSet] = useState<boolean | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ current_password: '', pin: '', pin_confirm: '' })

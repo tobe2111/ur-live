@@ -9,12 +9,11 @@
  * 사용:
  *   useTokenAutoRefresh('seller')   // /seller/* 페이지
  *   useTokenAutoRefresh('admin')    // /admin/*
- *   useTokenAutoRefresh('agency')   // /agency/*
  */
 import { useEffect } from 'react'
 import axios from 'axios'
 
-type Role = 'seller' | 'admin' | 'agency'
+type Role = 'seller' | 'admin'  // 🌇 2026-09-04 에이전시 일몰 — 'agency' 제거
 
 const REFRESH_BEFORE_EXPIRY_MS = 5 * 60 * 1000 // 만료 5분 전
 
@@ -33,7 +32,6 @@ async function refreshIfNeeded(role: Role): Promise<void> {
   const tokenKey = `${role}_token`
   const refreshKey = `${role}_refresh_token`
   const refreshUrl = role === 'seller' ? '/api/seller/refresh'
-    : role === 'agency' ? '/api/agency/refresh'
     : '/api/admin/refresh'
 
   const accessToken = localStorage.getItem(tokenKey)
@@ -70,7 +68,7 @@ async function refreshIfNeeded(role: Role): Promise<void> {
  *   **무조건 재귀**했는데, refreshIfNeeded 는 만료 토큰(remainingMs<=0)/refresh 부재 시 네트워크 없이
  *   즉시 resolve 하는 no-op → setTimeout 없는 마이크로태스크 무한재귀 → 이벤트루프가 렌더링에 양보
  *   못 함 → 메인스레드 100% 영구 정지. localStorage 에 만료 토큰이 남은 채 방문하면 무조건 발병
- *   (App.tsx 가 seller/agency 를 전 페이지에서 호출 → 전 사이트 잠재 폭탄이었음. CDP pause 로 콜스택 실증).
+ *   (App.tsx 가 seller 를 전 페이지에서 호출 → 전 사이트 잠재 폭탄이었음. CDP pause 로 콜스택 실증).
  *   수정: 재스케줄은 '갱신으로 미래 목표시각을 얻었을 때만'. 아니면 중단 — 만료 토큰 처리는
  *   401 인터셉터/라우트 게이트 소관이고, visibilitychange 가 탭 복귀 시 재킥(이벤트당 1회로 유계).
  *   회귀 가드: src/hooks/__tests__/token-auto-refresh.test.ts (불변식: 만료 토큰 → 무조건 재귀 금지).

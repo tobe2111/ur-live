@@ -130,7 +130,7 @@ describe('resolveConsumerSurfaceSeo — 표면마다 다른 메타 + canonical',
 })
 
 describe('약관 4종 — 문서 SSOT 와 갈라지지 않는가', () => {
-  const TERMS_PATHS = ['/terms', '/terms/seller', '/terms/agency', '/terms/influencer', '/terms/group-buy']
+  const TERMS_PATHS = ['/terms', '/terms/seller', '/terms/influencer', '/terms/group-buy']
 
   it('모두 서버 메타를 갖는다 (이전엔 제네릭 홈이었다)', () => {
     for (const p of TERMS_PATHS) {
@@ -154,14 +154,12 @@ describe('약관 4종 — 문서 SSOT 와 갈라지지 않는가', () => {
   })
 
   it('`TermsDocument` 를 쓰는 문서는 표 제목이 문서 제목 안에 있다 (문서만 개명하면 빨간불)', async () => {
-    const [{ SELLER_TERMS }, { AGENCY_PARTNER_TERMS }, { CONSUMER_TERMS }] = await Promise.all([
+    const [{ SELLER_TERMS }, { CONSUMER_TERMS }] = await Promise.all([
       import('@/pages/terms/seller-terms-content'),
-      import('@/pages/terms/agency-terms-content'),
       import('@/pages/terms/consumer-terms-content'),
     ])
     const pairs: Array<[string, string]> = [
       ['/terms/seller', SELLER_TERMS.title],
-      ['/terms/agency', AGENCY_PARTNER_TERMS.title],
       ['/terms', CONSUMER_TERMS.title],
     ]
     for (const [path, docTitle] of pairs) {

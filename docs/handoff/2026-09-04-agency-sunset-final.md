@@ -56,15 +56,45 @@ agency_store_intro_commissions  0행    ← 이 경로로 돈이 나간 적이 *
 - 가드: `agency-intro-retired.test.ts` 의 "환불 역전은 남는다" 를 **정반대**로 뒤집고
   (`agency-sunset-final` 방향), 주입 매니페스트 항목도 같이 뒤집어 **되돌려-검증 빨간불 확인**.
 
-### 남은 것 (커밋 2~)
-- 워커 API 언마운트: `/api/agency/*`(7개) · `/api/agency/transfers` · `/api/seller/transfers` ·
-  `/api/agency/delegation` · `/api/agency-public` · 어드민 `/agencies`·`/agency-creator-approvals`.
-  **유지**: `/api/invite`(셀러 가입이 공개 초대코드를 쓴다) · `/api/seller/promote-boosts`.
-- 프론트 `src/routes/agency.routes.tsx` 16라우트 + 페이지 삭제.
-- `src/features/agency/**` 중 에이전시 전용 파일 삭제 (⚠️ 일부 파일이 머니 심볼을 함께 export 한다 —
-  `agency-incentives.routes.ts` 의 `computeCommission` 이 `order-commissions`·`commission-budget` 에
-  쓰인다. **먼저 그 심볼을 중립 위치로 옮기고** 파일을 지울 것).
-- `agencies` 4행: 코드가 사라지면 읽는 곳이 없다. **프로덕션 DELETE 는 하지 않는다**(일회성 SQL 금지 룰).
+### 커밋 2 (전면 삭제) — 완료
+- **워커 언마운트**: `/api/agency/**`(7) · `/api/agency-public` · `/api/agency/transfers` +
+  `/api/seller/transfers` · `/api/agency/delegation` · `/api/seller/delegation` ·
+  `/api/invite/:code`(에이전시 초대코드) · 어드민 `/agencies`·`/agency-creator-approvals` ·
+  `/api/seller/promote-boosts` · 봇 보호 `/api/agency/login|forgot-password`.
+- **화면**: `/agency/**` 16라우트 · `/a/:slug` · `/agency-partner` · `/terms/agency` ·
+  어드민 2화면 · `/seller/agency-delegation` · `/seller/promote-boosts` · `/agency/prospects` 별칭.
+- **파일**: `src/features/agency/**` · 에이전시 크론 10개 · `agency-store-intro-commission.ts` ·
+  `lib/agency-shared.ts` · `shared/utils/{agency-tier,invite-code-logic,seller-transfer-logic,message-template}.ts` ·
+  페이지 21개 + `AgencyLayout` + `components/agency/` · `guide-seed-agency.ts` · `docs/AGENCY_POLICY.md`.
+- **머니 추가 정리**: `recordAgencyCommissionShare`(이용권 사용 시 플랫폼 수수료의 **30%** 를
+  영입 에이전시에 원장 분개) 삭제 — 대표 확정 원칙("5%는 온전히 유어딜")과 **정반대**였다.
+  `agency_share_pct` 설정·어드민 입력·정책표도 함께 제거.
+- **플래그/상수**: `AGENCY_DASHBOARD_SUNSET`(되살릴 대상이 없다) · `enable_agency_*` 6개 ·
+  `AGENCY_SHARE_PCT`/`AGENCY_OWN_RATE`/`AGENCY_STORE_INTRO_PCT`.
+- **문서**: `store-operator-model.md` §7 신설 · `urdeal-platform-model.md` 행위자표·경로 갱신 ·
+  사업계획서 C-2 **전면 개정**(있지도 않은 에이전시 대시보드 도구 9종을 자랑하고 있었다) ·
+  가이드 시드(어드민 `agency-ops` 섹션 교체 + 셀러 문구 정정) + `GUIDE_SEED_VERSION` 24→25.
+
+### 🩸 문서가 코드보다 더 틀려 있었다
+셀러 가이드가 *"수수료 차액(10%−5%)이 대행사 몫"* 이라고 적고 있었다. **대표 정정과 정반대**다 —
+차액은 유어딜이 **덜 받는** 것이지 중개사에게 주는 것이 아니다. 사업계획서 C-2 는 더했다: 이미 삭제된
+에이전시 대시보드의 도구 9종(매칭 제안·인센티브·캠페인·쿠폰·PK배틀·멤버·캘린더…)을 대외 제안서에서
+자랑하고 있었다. **둘 다 이번에 고쳤다.**
+
+### 가드
+- **낡은 지도 4건을 함께 고쳤다** — 가드가 삭제된 파일을 지목하면 그 불변식은 *조용히* 검사되지 않는다:
+  `check-commission-budget`(에이전시 적립 파일 2개 · R3 마커 기대 2→1 · R4b 앵커 이동) ·
+  `check-dashboard-login-session-coexist`(AgencyLoginPage) · `check-internal-links`(agency.routes).
+  🩸 R4b 앵커를 옮기고 **첫 주입이 초록불**이었다 — `const debitAcct = 'platform:revenue'` 로 심었는데
+  가드는 `debit_account: 'platform:revenue'` **리터럴**을 본다. 같은 결함인데 형태가 달라 못 봤다.
+  주입을 가드가 실제로 보는 형태로 고쳐 빨간불 확인.
+- 신규 `src/tests/unit/agency-sunset-final.test.ts` 12건 — 파일 부재 · 마운트 부재 · 라우트 부재 ·
+  역전 부재 · 커미션 축 부재 · fee-resolver 공급 차단 + **일몰이 삼키면 안 되는 것 3건**
+  (referral `/api/invite` · 사람 영입 2% · `seller_operators`).
+- 주입 매니페스트 4건 **되돌려-검증 빨간불 확인**. 그중 하나는 방향이 **뒤집힌** 항목이다
+  (08-31 "역전은 남긴다" → 09-04 "역전도 없앤다").
+- 낡아진 단언 3건을 뒤집었다: `mypage-cleanup`(에이전시 대시보드 바로가기 유지→제거) ·
+  `point-credit-ledger-row`(signup_bonus 모듈 존재→부재) · `voucher-nav-reachability`(promote-boosts 유지→삭제).
 
 ## ② 매장 7곳 삭제 — 대기
 

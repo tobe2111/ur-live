@@ -584,40 +584,32 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
 //   sellers.introduced_by_X_id 가 있으면 영입자 정보 + commission % 반환.
 //   매장 dashboard 의 SellerReferralInfoCard 에서 사용.
 sellerProfileRoutes.get("/referral-info", async (c) => {
+  // 🌇 2026-09-04 에이전시 완전 일몰 — `introduced_by_agency_id` / `agencies` 조회 / `agency_commission_pct`
+  //    를 전부 걷어냈다. 영입자는 이제 **사람(인플루언서)** 하나뿐이다.
   try {
     const sellerId = await getSellerIdFromToken(c.req.header("Authorization"), c.env.JWT_SECRET);
     if (!sellerId) return c.json({ success: false, error: "로그인 필요" }, 401);
 
     const seller = await c.env.DB.prepare(
-      "SELECT introduced_by_agency_id, introduced_by_influencer_id, introduced_at, referral_bonus_until FROM sellers WHERE id = ?"
+      "SELECT introduced_by_influencer_id, introduced_at, referral_bonus_until FROM sellers WHERE id = ?"
     ).bind(sellerId).first<{
-      introduced_by_agency_id: string | null;
       introduced_by_influencer_id: string | null;
       introduced_at: string | null;
       referral_bonus_until: string | null;
     }>().catch(() => null);
 
-    if (!seller || (!seller.introduced_by_agency_id && !seller.introduced_by_influencer_id)) {
+    if (!seller || !seller.introduced_by_influencer_id) {
       return c.json({ success: true, data: null });
     }
 
-    // 영입자 정보 추가 조회
-    let agency_name: string | undefined;
-    let influencer_handle: string | undefined;
-    if (seller.introduced_by_agency_id) {
-      const a = await c.env.DB.prepare("SELECT name FROM agencies WHERE id = ?")
-        .bind(seller.introduced_by_agency_id).first<{ name: string }>().catch(() => null);
-      agency_name = a?.name;
-    } else if (seller.introduced_by_influencer_id) {
-      const i = await c.env.DB.prepare("SELECT handle FROM users WHERE id = ?")
-        .bind(seller.introduced_by_influencer_id).first<{ handle: string | null }>().catch(() => null);
-      influencer_handle = i?.handle || undefined;
-    }
+    const i = await c.env.DB.prepare("SELECT handle FROM users WHERE id = ?")
+      .bind(seller.introduced_by_influencer_id).first<{ handle: string | null }>().catch(() => null);
+    const influencer_handle = i?.handle || undefined;
 
     // platform_settings 에서 commission % 조회 (default)
     const { results: settings } = await c.env.DB.prepare(
-      "SELECT key, value FROM platform_settings WHERE key IN (?, ?, ?)"
-    ).bind("agency_commission_pct", "influencer_commission_pct", "seller_referral_bonus_pct").all<{ key: string; value: string }>()
+      "SELECT key, value FROM platform_settings WHERE key IN (?, ?)"
+    ).bind("influencer_commission_pct", "seller_referral_bonus_pct").all<{ key: string; value: string }>()
       .catch(() => ({ results: [] as { key: string; value: string }[] }));
     const sMap = (settings || []).reduce((acc: Record<string, string>, r) => ({ ...acc, [r.key]: r.value }), {});
 
@@ -625,14 +617,12 @@ sellerProfileRoutes.get("/referral-info", async (c) => {
       success: true,
       data: {
         ...seller,
-        agency_name,
         influencer_handle,
-        agency_commission_pct: Number(sMap.agency_commission_pct) || 2,
         influencer_commission_pct: Number(sMap.influencer_commission_pct) || 0.5,
         bonus_pct: Number(sMap.seller_referral_bonus_pct) || 1,
       },
     });
-  } catch (err) {
+  } catch {
     return c.json({ success: false, error: "referral-info 조회 실패" }, 500);
   }
 });

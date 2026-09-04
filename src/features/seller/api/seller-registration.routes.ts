@@ -258,17 +258,10 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       }
     }
 
-    // 🛡️ 2026-04-27 Phase 1-3: 영입 코드 자동 매핑
-    const inviteCode = body.invite_code;
-    if (inviteCode && result.meta.last_row_id) {
-      try {
-        const { consumeInviteCode } = await import('../../agency/api/agency-invites.routes');
-        const sellerId = Number(result.meta.last_row_id);
-        await consumeInviteCode(db, inviteCode, sellerId);
-      } catch (e) {
-        console.warn('[seller-register] invite_code mapping failed (non-fatal):', e);
-      }
-    }
+    // 🌇 2026-09-04 에이전시 일몰 — `invite_code` 자동 매핑(=에이전시 초대코드) 삭제.
+    //    코드는 `agencies` 를 JOIN 하고 `agency_sellers` 에 썼는데, 라이브 사용 이력이 0행이다
+    //    (agency_invite_usage 0 · agency_sellers 0). 셀러 가입은 이 값 없이 그대로 동작한다.
+    //    docs/design/store-operator-model.md
 
     // 🛡️ 2026-05-16: 인플루언서 매장 영입 referral (body.referred_by_influencer)
     //   인플 ID 가 있으면 sellers.referred_by_influencer + referral_bonus_until 자동 설정.

@@ -86,12 +86,6 @@ export default function AboutPage() {
                 >
                   셀러 입점
                 </Link>
-                <Link
-                  to="/agency/login"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#1D1F29] font-bold text-sm lg:text-base transition-colors"
-                >
-                  에이전시 가입
-                </Link>
                 <button
                   onClick={handleDownloadPdf}
                   className="no-print inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#1D1F29] font-bold text-sm lg:text-base transition-colors"
@@ -443,9 +437,8 @@ export default function AboutPage() {
               5분 만에 시작할 자유, 함께라서 더 좋은 가격.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 max-w-4xl mx-auto mb-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-3xl mx-auto mb-10">
               <CTACard to="/seller/login" title="셀러 / 매장" subtitle="카카오 로그인 → 5분 후 공구 등록" />
-              <CTACard to="/agency/login" title="에이전시" subtitle="사업자 인증 → 멤버 초대" />
               <CTACard to="/login" title="소비자" subtitle="카카오/이메일 → 동네 공구" />
               <CTACard to="/admin/login" title="어드민" subtitle="운영팀 전용" />
             </div>

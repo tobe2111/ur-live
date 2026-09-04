@@ -285,10 +285,10 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 70 | 277 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 68 | 272 |
 | 링크샵 / 큐레이터 | `linkshop-brief.md` | 13 | 59 |
-| 에이전시 | `agency-brief.md` | 29 | 167 |
-| **합계** | — | **184** | **602** |
+| 에이전시 | `agency-brief.md` | 9 | 29 |
+| **합계** | — | **162** | **459** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -297,12 +297,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 382 | 1248 |
-| 도메인 버킷 (5개 소개서) | 184 | 602 |
-| 공통/인프라 (의도적 제외) | 164 | 470 |
-| **미커버 (점검 필요)** | **34** | **176** |
+| 전체 | 359 | 1105 |
+| 도메인 버킷 (5개 소개서) | 162 | 459 |
+| 공통/인프라 (의도적 제외) | 163 | 469 |
+| **미커버 (점검 필요)** | **34** | **177** |
 
-⚠️ **미커버 210건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 211건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -347,6 +347,7 @@
 - `PATCH /:id/amount` (`src/features/returns/api/return-amount.routes.ts`)
 - `POST /:id/confirm` (`src/features/supply/api/wholesale-deposit.routes.ts`)
 - `POST /:id/reject` (`src/features/supply/api/wholesale-deposit.routes.ts`)
+- `POST /:id/respond` (`src/features/seller/api/seller-transfer-respond.routes.ts`)
 - `POST /:productId/toggle` (`src/features/supply/api/wholesale-board.routes.ts`)
 - `POST /adjust` (`src/features/supply/api/wholesale-deposit.routes.ts`)
 - `GET /admin-diag` (`src/worker/routes/killer-sw.routes.ts`)
@@ -601,8 +602,8 @@
 
 | 항목 | 값 | 출처 (파일:심볼) |
 |---|---|---|
-| 에이전시 입점 분배 (platform_fee 중) | 30% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_SHARE_PCT` |
-| 에이전시 본인 commission (매출 기준) | 2% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_OWN_RATE` |
+| 에이전시 입점 분배 (platform_fee 중) | [추출실패—수동확인] | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_SHARE_PCT` |
+| 에이전시 본인 commission (매출 기준) | [추출실패—수동확인] | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_OWN_RATE` |
 | 인플루언서 입점 분배 (platform_fee 중) | 20% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.INFLUENCER_INTRO_SHARE_PCT` |
 | 크리에이터 매장 영입 commission (default) | [추출실패—수동확인] | `src/worker/utils/influencer-store-intro-commission.ts:DEFAULT_STORE_INTRO_PCT` |
 | 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
@@ -886,7 +887,7 @@
 
 #### 온라인 입점 / 라이브커머스
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (70개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (68개)
 
 - `/browse`
 - `/cart`
@@ -900,7 +901,6 @@
 - `/seller`
 - `/seller/2fa`
 - `/seller/ad-slots`
-- `/seller/agency-delegation`
 - `/seller/alimtalk`
 - `/seller/analytics`
 - `/seller/bundles`
@@ -930,7 +930,6 @@
 - `/seller/profile`
 - `/seller/promo-codes`
 - `/seller/promo-spend`
-- `/seller/promote-boosts`
 - `/seller/proxy-products`
 - `/seller/realtime`
 - `/seller/register`
@@ -959,7 +958,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (277개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (272개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1187,11 +1186,6 @@
 **/api/seller/deal-withdraw**
 - `POST /api/seller/deal-withdraw`
 
-**/api/seller/delegation**
-- `GET /api/seller/delegation/`
-- `POST /api/seller/delegation/:agencyId/grant`
-- `POST /api/seller/delegation/:agencyId/revoke`
-
 **/api/seller/fee-context**
 - `GET /api/seller/fee-context`
 
@@ -1383,10 +1377,6 @@
 - `GET /api/seller/tiktok/seller/:id/videos`
 - `POST /api/seller/tiktok/sync-videos`
 - `DELETE /api/seller/tiktok/unlink`
-
-**/api/seller/transfers**
-- `GET /api/seller/transfers/`
-- `POST /api/seller/transfers/:id/respond`
 
 **/api/seller/unlink-kakao**
 - `POST /api/seller/unlink-kakao`
@@ -1661,30 +1651,10 @@
 
 #### 에이전시
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (29개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (9개)
 
-- `/a/:slug`
-- `/admin/agencies`
-- `/admin/agency-creator-approval`
 - `/admin/influencer-disputes`
 - `/admin/influencer-payouts`
-- `/agency`
-- `/agency-partner`
-- `/agency/delegations`
-- `/agency/forgot-password`
-- `/agency/guide`
-- `/agency/introduced-stores`
-- `/agency/ledger`
-- `/agency/login`
-- `/agency/profile`
-- `/agency/prospects`
-- `/agency/register`
-- `/agency/register/business`
-- `/agency/reset-password`
-- `/agency/sellers`
-- `/agency/settlements`
-- `/agency/transfers`
-- `/agency/waiting`
 - `/influencer`
 - `/influencer/analytics`
 - `/influencer/dashboard`
@@ -1693,7 +1663,7 @@
 - `/influencer/settlement`
 - `/seller/prospects`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (167개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (29개)
 
 
 **/api/admin-payouts/disputes**
@@ -1704,250 +1674,10 @@
 - `GET /api/admin-payouts/payouts`
 - `POST /api/admin-payouts/payouts/process`
 
-**/api/admin/agencies**
-- `GET /api/admin/agencies/`
-- `POST /api/admin/agencies/`
-- `DELETE /api/admin/agencies/:id`
-- `PATCH /api/admin/agencies/:id`
-- `POST /api/admin/agencies/:id/reset-password`
-- `GET /api/admin/agencies/:id/sellers`
-- `POST /api/admin/agencies/:id/sellers`
-- `DELETE /api/admin/agencies/:id/sellers/:sellerId`
-- `GET /api/admin/agencies/unassigned-sellers`
-
-**/api/admin/agency-creator-approvals**
-- `GET /api/admin/agency-creator-approvals/`
-- `GET /api/admin/agency-creator-approvals/:id`
-- `POST /api/admin/agency-creator-approvals/:id/approve`
-- `POST /api/admin/agency-creator-approvals/:id/reject`
-
 **/api/admin/castings**
 - `GET /api/admin/castings/`
 - `POST /api/admin/castings/`
 - `PATCH /api/admin/castings/:id/complete`
-
-**/api/agency-public/:slug**
-- `GET /api/agency-public/:slug`
-
-**/api/agency/calendar**
-- `GET /api/agency/calendar/`
-- `DELETE /api/agency/calendar/notes/:id`
-- `PATCH /api/agency/calendar/notes/:id`
-- `POST /api/agency/calendar/notes/:id/mark-read`
-- `GET /api/agency/calendar/streams/:id`
-- `POST /api/agency/calendar/streams/:id/notes`
-
-**/api/agency/campaigns**
-- `GET /api/agency/campaigns/`
-- `POST /api/agency/campaigns/`
-- `GET /api/agency/campaigns/:id`
-- `PATCH /api/agency/campaigns/:id`
-- `POST /api/agency/campaigns/:id/cancel`
-- `POST /api/agency/campaigns/:id/participants`
-- `DELETE /api/agency/campaigns/:id/participants/:sid`
-- `PATCH /api/agency/campaigns/:id/participants/:sid`
-- `POST /api/agency/campaigns/:id/refresh`
-
-**/api/agency/contracts**
-- `GET /api/agency/contracts`
-- `POST /api/agency/contracts`
-- `PUT /api/agency/contracts/:id`
-
-**/api/agency/coupons**
-- `POST /api/agency/coupons/distribute`
-- `GET /api/agency/coupons/distributions`
-- `GET /api/agency/coupons/distributions/:parentId/stats`
-
-**/api/agency/dashboard**
-- `GET /api/agency/dashboard/bundle`
-
-**/api/agency/delegation**
-- `GET /api/agency/delegation/`
-- `GET /api/agency/delegation/stores/:sellerId/promo-summary`
-- `POST /api/agency/delegation/stores/:sellerId/request-mode`
-
-**/api/agency/forgot-password**
-- `POST /api/agency/forgot-password`
-
-**/api/agency/incentives**
-- `GET /api/agency/incentives/payouts`
-- `GET /api/agency/incentives/preview`
-- `GET /api/agency/incentives/rules`
-- `POST /api/agency/incentives/rules`
-- `DELETE /api/agency/incentives/rules/:id`
-- `PATCH /api/agency/incentives/rules/:id`
-
-**/api/agency/intro-code**
-- `GET /api/agency/intro-code`
-
-**/api/agency/introduced-stores**
-- `GET /api/agency/introduced-stores`
-- `GET /api/agency/introduced-stores/commissions`
-- `GET /api/agency/introduced-stores/summary`
-
-**/api/agency/invite-seller**
-- `POST /api/agency/invite-seller`
-
-**/api/agency/invites**
-- `GET /api/agency/invites/`
-- `POST /api/agency/invites/`
-- `DELETE /api/agency/invites/:code`
-
-**/api/agency/kakao-link-status**
-- `GET /api/agency/kakao-link-status`
-
-**/api/agency/kpi**
-- `GET /api/agency/kpi/`
-
-**/api/agency/link-kakao**
-- `POST /api/agency/link-kakao`
-
-**/api/agency/login**
-- `POST /api/agency/login`
-
-**/api/agency/match-suggestions**
-- `GET /api/agency/match-suggestions`
-- `POST /api/agency/match-suggestions/:id/accept`
-- `POST /api/agency/match-suggestions/:id/decline`
-
-**/api/agency/members**
-- `GET /api/agency/members/`
-- `DELETE /api/agency/members/:id`
-- `PATCH /api/agency/members/:id`
-- `POST /api/agency/members/:id/reactivate`
-- `POST /api/agency/members/:id/suspend`
-- `POST /api/agency/members/accept`
-- `POST /api/agency/members/invite`
-
-**/api/agency/messages**
-- `POST /api/agency/messages/preview`
-- `POST /api/agency/messages/send`
-- `GET /api/agency/messages/sends`
-- `GET /api/agency/messages/templates`
-- `POST /api/agency/messages/templates`
-- `DELETE /api/agency/messages/templates/:id`
-- `PATCH /api/agency/messages/templates/:id`
-- `GET /api/agency/messages/variables`
-
-**/api/agency/monthly-tasks**
-- `GET /api/agency/monthly-tasks`
-
-**/api/agency/my-agency-status**
-- `GET /api/agency/my-agency-status`
-
-**/api/agency/notices**
-- `GET /api/agency/notices`
-- `POST /api/agency/notices`
-
-**/api/agency/notifications**
-- `GET /api/agency/notifications`
-- `PUT /api/agency/notifications/read-all`
-
-**/api/agency/orders**
-- `GET /api/agency/orders`
-
-**/api/agency/pin-status**
-- `GET /api/agency/pin-status`
-
-**/api/agency/profile**
-- `GET /api/agency/profile`
-- `PUT /api/agency/profile`
-
-**/api/agency/promote-boosts**
-- `GET /api/agency/promote-boosts/`
-- `POST /api/agency/promote-boosts/`
-
-**/api/agency/public-profile**
-- `GET /api/agency/public-profile/me/public`
-- `PATCH /api/agency/public-profile/me/public`
-
-**/api/agency/ranking**
-- `GET /api/agency/ranking`
-
-**/api/agency/refresh**
-- `POST /api/agency/refresh`
-
-**/api/agency/register**
-- `POST /api/agency/register`
-
-**/api/agency/register-from-user**
-- `POST /api/agency/register-from-user`
-
-**/api/agency/report**
-- `GET /api/agency/report/csv`
-
-**/api/agency/request-kakao-stepup**
-- `POST /api/agency/request-kakao-stepup`
-
-**/api/agency/reset-password**
-- `POST /api/agency/reset-password`
-
-**/api/agency/returns**
-- `GET /api/agency/returns`
-
-**/api/agency/schedule**
-- `GET /api/agency/schedule`
-
-**/api/agency/self-events**
-- `GET /api/agency/self-events/`
-- `POST /api/agency/self-events/`
-- `POST /api/agency/self-events/:id/cancel`
-- `POST /api/agency/self-events/:id/join`
-- `GET /api/agency/self-events/:id/leaderboard`
-
-**/api/agency/sellers**
-- `GET /api/agency/sellers`
-- `GET /api/agency/sellers/:id/inventory`
-- `GET /api/agency/sellers/:id/products`
-- `POST /api/agency/sellers/:id/products`
-- `PUT /api/agency/sellers/:id/products/:productId`
-- `GET /api/agency/sellers/:id/stats`
-- `GET /api/agency/sellers/compare`
-
-**/api/agency/set-pin**
-- `POST /api/agency/set-pin`
-
-**/api/agency/settlement-invoices**
-- `GET /api/agency/settlement-invoices`
-- `GET /api/agency/settlement-invoices/:id`
-
-**/api/agency/settlements**
-- `GET /api/agency/settlements`
-- `GET /api/agency/settlements/csv`
-- `POST /api/agency/settlements/request`
-
-**/api/agency/stats**
-- `GET /api/agency/stats`
-- `GET /api/agency/stats/batch`
-- `GET /api/agency/stats/daily`
-- `GET /api/agency/stats/kpi`
-- `GET /api/agency/stats/kt-alpha`
-- `GET /api/agency/stats/realtime`
-
-**/api/agency/stays**
-- `GET /api/agency/stays`
-- `GET /api/agency/stays/bookings`
-- `GET /api/agency/stays/kpi`
-
-**/api/agency/streams**
-- `GET /api/agency/streams`
-
-**/api/agency/targets**
-- `GET /api/agency/targets`
-- `PUT /api/agency/targets`
-
-**/api/agency/transfers**
-- `GET /api/agency/transfers/`
-- `POST /api/agency/transfers/`
-- `POST /api/agency/transfers/:id/cancel`
-- `POST /api/agency/transfers/:id/respond`
-- `POST /api/agency/transfers/:id/seller-approve`
-
-**/api/agency/unlink-kakao**
-- `POST /api/agency/unlink-kakao`
-
-**/api/agency/verify-pin**
-- `POST /api/agency/verify-pin`
 
 **/api/influencer-rankings**
 - `GET /api/influencer-rankings/`
@@ -2001,13 +1731,9 @@
 - `GET /api/seller/castings/`
 - `POST /api/seller/castings/:id/respond`
 
-**/api/seller/promote-boosts**
-- `GET /api/seller/promote-boosts/`
-- `POST /api/seller/promote-boosts/:id/activate`
 
 
-
-> 마지막 생성: 2026-09-03T06:33:15.783Z
+> 마지막 생성: 2026-09-04T04:25:37.621Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

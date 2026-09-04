@@ -250,31 +250,8 @@ export const CONSUMER_LANGUAGE_SWITCH_HIDDEN = true
 
 
 /**
- * AGENCY_DASHBOARD_SUNSET — 에이전시 대시보드 **일몰**(신규 가입 차단 + 표면 축소)
- *   (2026-08-19 대표 확정 "모두 하자" — 에이전시 대시보드 가치 재검토 후).
- *
- * ## 왜 (라이브 실측이 근거다)
- * 에이전시 대시보드는 페이지 9,349줄 + API 7,025줄 · 라우트 39개인데 **관계가 0건**이었다:
- *   `agencies` 4개(1개는 '유어딜 본사') · `agency_sellers` **0행** · `store_agency_delegation` **0행**
- *   · `introduced_by_agency_id` 매장 **0명**.
- * 게다가 `agency_invites`/`coupons`/`incentives`/`messages`/`notices`/`targets` 는 **테이블조차 없다** —
- * 이 레포는 지연 생성(`CREATE TABLE IF NOT EXISTS`) 패턴이라 **그 코드가 프로덕션에서 한 번도 실행된
- * 적 없다**는 뜻이다. 남은 상당수(`pk`·`schedule`·`calendar`·`ranking`)는 `LIVE_COMMERCE_SUSPENDED`
- * (영구 중단) 의존이라 이미 죽은 기능의 대시보드다.
- *
- * ## 방향 (없애는 건 껍데기, 남기는 건 뼈대)
- * "누가 이 매장을 운영하는가"는 **계정 소유권이 아니라 관계**로 둔다 — 그래야 중개자가 올린 매장을
- * 사장님이 직접 이어받을 때 데이터 수술이 아니라 권한 한 줄 변경이 된다.
- * 설계 SSOT: `docs/design/store-operator-model.md`. 축은 그대로 유지되는 것:
- *   `store_agency_delegation`(위임) · `introduced_by_agency_id`(영입 보상) · seller transfer(승계 동의).
- *
- * ## 무엇을 하나
- * true: ① 에이전시 **신규 가입 차단**(`/agency/register`·`register/business` 안내 화면 + 서버
- *   `POST /api/agency/register`·`/register-from-user` 403 — 클라만 막으면 우회된다)
- *   ② `/agency-partner` 랜딩의 가입 CTA 를 안내로 전환.
- * false: 즉시 복원(가역) — 가입 페이지·API 코드는 **전부 보존**했다.
- *
- * ⚠️ **기존 4개 계정의 로그인·정산·위임은 막지 않는다.** 일몰은 "새로 안 받는다"이지
- *   "쓰던 사람을 끊는다"가 아니다. 정산 채무가 남아 있는 상대의 접근을 끊는 건 별개 판단이다.
+ * 🌇 2026-09-04 — `AGENCY_DASHBOARD_SUNSET` 플래그를 **제거**했다. 일몰 게이트가 아니라
+ * 에이전시 자체가 사라졌기 때문이다(라우트·페이지·API·크론 전부 삭제). 플래그로 되살릴 수 있는
+ * 것이 없으므로 플래그가 남아 있으면 "끄면 돌아온다"는 잘못된 신호가 된다.
+ * 중개는 이제 셀러 대시보드 계정 + `seller_operators` 가 맡는다 — docs/design/store-operator-model.md
  */
-export const AGENCY_DASHBOARD_SUNSET = true

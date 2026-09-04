@@ -16,10 +16,8 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
   // 🛡️ 2026-05-28 [UNLOCK_LOADING] (SSR 마이그레이션 Phase 2): localStorage 직접 호출 → useState + useEffect.
   //   SSR 시 typeof window === 'undefined' → ReferenceError 방어.
   const [hasSellerToken, setHasSellerToken] = useState(false)
-  const [hasAgencyToken, setHasAgencyToken] = useState(false)
   useEffect(() => {
     setHasSellerToken(!!localStorage.getItem('seller_token'))
-    setHasAgencyToken(!!localStorage.getItem('agency_token'))
   }, [])
 
   if (hasSellerToken) {
@@ -45,14 +43,6 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
           <Radio className="w-5 h-5" />
           {t('bottomNav.goToSellerDashboard', { defaultValue: '셀러 대시보드로 전환' })}
         </button>
-        {!hasAgencyToken && (
-          <button
-            onClick={() => { onDone(); navigate('/agency/register/business') }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-700 dark:text-gray-300 font-semibold text-[13px] rounded-xl"
-          >
-            {t('bottomNav.alsoRegisterAgency', { defaultValue: '에이전시로도 등록하기 →' })}
-          </button>
-        )}
       </div>
     )
   }
@@ -77,14 +67,6 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
         </div>
       </button>
 
-      {!hasAgencyToken && (
-        <button
-          onClick={() => { onDone(); navigate('/agency/register/business') }}
-          className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-700 dark:text-gray-300 font-semibold text-[13px] rounded-xl"
-        >
-          {t('bottomNav.registerAsAgency', { defaultValue: '에이전시로 등록하기 →' })}
-        </button>
-      )}
     </div>
   )
 }
@@ -109,7 +91,6 @@ export default function BottomNav() {
     hasSessionLogin: false,
     hasAccessToken: false,
     hasSellerToken: false,
-    hasAgencyToken: false,
   })
   useEffect(() => {
     const userType = localStorage.getItem('user_type') || ''
@@ -119,14 +100,12 @@ export default function BottomNav() {
       hasSessionLogin: !!localStorage.getItem('session_login'),
       hasAccessToken: !!localStorage.getItem('access_token'),
       hasSellerToken: !!localStorage.getItem('seller_token'),
-      hasAgencyToken: !!localStorage.getItem('agency_token'),
     })
   }, [location.pathname])
-  const { activeRole, hasSessionLogin, hasAccessToken, hasSellerToken, hasAgencyToken } = authState
-  const isLoggedIn = hasAccessToken || hasSessionLogin || hasSellerToken || hasAgencyToken
+  const { activeRole, hasSessionLogin, hasAccessToken, hasSellerToken } = authState
+  const isLoggedIn = hasAccessToken || hasSessionLogin || hasSellerToken
   // DISPLAY 는 active_role 로만 판단 — seller_token 자동 발급 이 user UI 를 변형하지 않음
   const isSeller = activeRole === 'seller'
-  const isAgency = activeRole === 'agency'
 
   // 🛡️ 2026-05-25 (신모델 전환): 라이브 → 유어샵.
   //   사용자 결정: 유어샵 탭은 본인 공개페이지 (/u/{handle}).
@@ -417,7 +396,7 @@ export default function BottomNav() {
                   </button>
                   ) : null}
 
-                  {/* Seller: live + 이용권 + dashboard (+ agency 겸직이면 아래 블록도)
+                  {/* Seller: 이용권 등록 + 대시보드
                        🏁 2026-06-11 (사용자 요청 — 겸직 유저 1탭 등록): 유저 모드(active_role='user')여도
                        seller_token 보유(카카오 연결 셀러)면 등록 카드 직접 노출. 등록 페이지 가드
                        (requireSeller)는 토큰 존재만 검사라 전환/리로드 없이 바로 진입 가능.
@@ -453,42 +432,10 @@ export default function BottomNav() {
                     </div>
                   )}
 
-                  {/* 에이전시 권한도 있으면 (셀러 + 에이전시 겸직) 별도 링크 */}
-                  {(isSeller || hasSellerToken) && (isAgency || hasAgencyToken) && (
-                    <button
-                      onClick={() => { setSheetOpen(false); navigate('/agency') }}
-                      className="w-full mt-2 flex items-center gap-3 p-3 bg-gray-100 dark:bg-[#1D1F29] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                        <span className="text-lg">💼</span>
-                      </div>
-                      <div className="text-left flex-1">
-                        <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('bottomNav.agencyDashboard', { defaultValue: '에이전시 대시보드' })}</p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">{t('bottomNav.agencyDashboardDesc', { defaultValue: '소속 셀러 관리' })}</p>
-                      </div>
-                    </button>
-                  )}
-
-                  {/* 에이전시만 있고 셀러 아님 */}
-                  {!(isSeller || hasSellerToken) && (isAgency || hasAgencyToken) && (
-                    <div className="space-y-3">
-                      <button
-                        onClick={() => { setSheetOpen(false); navigate('/agency') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                          <span className="text-xl">💼</span>
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('bottomNav.agencyDashboard', { defaultValue: '에이전시 대시보드' })}</p>
-                          <p className="text-[12px] text-gray-900 dark:text-white/70 mt-0.5">{t('bottomNav.agencyDashboardDesc2', { defaultValue: '소속 셀러 관리, 계약, 정산' })}</p>
-                        </div>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Logged in but no seller/agency role — 권한 추가 유도 */}
-                  {isLoggedIn && !isSeller && !hasSellerToken && !isAgency && !hasAgencyToken && (
+                  {/* 🌇 2026-09-04 에이전시 일몰 — ➕ 시트의 '에이전시 대시보드' 진입 2개를 삭제했다.
+                      중개사는 별도 대시보드가 아니라 **셀러 대시보드**를 그대로 쓴다. */}
+                  {/* Logged in but no seller role — 권한 추가 유도 */}
+                  {isLoggedIn && !isSeller && !hasSellerToken && (
                     <SellerUpgradePanel
                       onDone={() => { setSheetOpen(false) }}
                     />

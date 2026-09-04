@@ -201,7 +201,10 @@ describe('⑦ 숨기는 것과 없애는 것은 다르다', () => {
      * 그런데 정의에서 지우면 라우트가 **어디에서도 닿을 수 없는 상태**가 되고, 라이브가 돌아오는 날
      * 조용히 사라진 채로 남는다. `check-orphan-routes` 가 이걸 잡아 준 것이 이 테스트의 이유다.
      */
-    for (const p of ['/seller/promote-boosts', '/seller/castings', '/seller/donations',
+    // 🌇 2026-09-04: `/seller/promote-boosts` 는 목록에서 뺐다 — **숨긴 게 아니라 삭제**했다.
+    //    그 쿠폰은 에이전시만 발급할 수 있었고(에이전시 일몰) 라이브에서 쓰는 것이었다(영구 중단).
+    //    라이브 실측 `promote_boost_coupons` 0행 — 되살릴 대상이 없다.
+    for (const p of ['/seller/castings', '/seller/donations',
                      '/seller/streaming-guide', '/seller/notify-followers']) {
       const it_ = items.find(i => i.path === p)
       expect(it_, `라이브 전용 항목이 nav 정의에서 사라졌다: ${p}`).toBeTruthy()

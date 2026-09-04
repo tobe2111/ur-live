@@ -96,7 +96,6 @@ export const SELLER_TAB_GROUPS: SellerTabGroup[] = [
     labelKey: 'seller.nav.stores', fallback: '매장', icon: Building2,
     tabs: [
       { path: '/seller/stores', labelKey: 'seller.nav.stores', fallback: '매장' },
-      { path: '/seller/agency-delegation', labelKey: 'seller.nav.agencyDelegation', fallback: '위임' },
       { path: '/seller/operators', labelKey: 'seller.nav.operators', fallback: '운영자' },
     ],
   },

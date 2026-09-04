@@ -3,9 +3,7 @@ import { authTokenRoutes } from '@/worker/routes/auth-token.routes'
 import { twofaRoutes } from '@/worker/routes/twofa.routes'
 import { supplierAuthRoutes } from '@/features/supply/api/supplier-auth.routes'
 import { sellerPinRoutes } from '@/features/seller/api/seller-pin.routes'
-import { agencyPinRoutes } from '@/features/agency/api/agency-pin.routes'
 import { sellerKakaoLinkRoutes } from '@/features/seller/api/seller-kakao-link.routes'
-import { agencyKakaoLinkRoutes } from '@/features/agency/api/agency-kakao-link.routes'
 
 /**
  * 🛡️ 2026-06-01 인증/세션 라우트 안전망 — 돈 다음으로 사고 시 손실 큰 영역(계정 탈취).
@@ -49,7 +47,7 @@ describe('2FA 라우트 — 미인증 거절(2FA 우회 차단)', () => {
 })
 
 describe('PIN step-up 라우트 — 미인증 거절', () => {
-  for (const [name, app] of [['seller', sellerPinRoutes], ['agency', agencyPinRoutes]] as const) {
+  for (const [name, app] of [['seller', sellerPinRoutes]] as const) {
     it(`${name}: set-pin/verify-pin/request-kakao-stepup 미인증 거절`, async () => {
       for (const p of ['/set-pin', '/verify-pin', '/request-kakao-stepup']) {
         expectRejected(await status(app as never, 'POST', p), `${name} POST ${p}`)
@@ -59,7 +57,7 @@ describe('PIN step-up 라우트 — 미인증 거절', () => {
 })
 
 describe('카카오 계정 연결/해제 — 미인증 거절(계정 takeover 차단)', () => {
-  for (const [name, app] of [['seller', sellerKakaoLinkRoutes], ['agency', agencyKakaoLinkRoutes]] as const) {
+  for (const [name, app] of [['seller', sellerKakaoLinkRoutes]] as const) {
     it(`${name}: link-kakao/unlink-kakao 미인증 거절`, async () => {
       expectRejected(await status(app as never, 'POST', '/link-kakao'), `${name} link`)
       expectRejected(await status(app as never, 'POST', '/unlink-kakao'), `${name} unlink`)

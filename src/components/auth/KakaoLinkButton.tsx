@@ -17,8 +17,8 @@ import { Loader2, Unlink, AlertCircle } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Props {
-  /** 'seller' | 'agency' — 어떤 role 의 연동인지 */
-  role: 'seller' | 'agency'
+  /** 🌇 2026-09-04 에이전시 일몰 — 'agency' 제거. 셀러 전용이다. */
+  role: 'seller'
 }
 
 interface LinkStatus {
@@ -31,7 +31,7 @@ export function KakaoLinkButton({ role }: Props) {
   const [status, setStatus] = useState<LinkStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [working, setWorking] = useState(false)
-  const basePath = role === 'seller' ? '/api/seller' : '/api/agency'
+  const basePath = '/api/seller'
 
   const refresh = useCallback(async () => {
     try {

@@ -76,10 +76,8 @@ const SellerNotifyFollowersPage = lazy(() => import('@/pages/SellerNotifyFollowe
 const SellerMiniShopPage = lazy(() => import('@/pages/SellerMiniShopPage'))
 const SellerPromoCodesPage = lazy(() => import('@/pages/SellerPromoCodesPage'))
 const SellerFollowersPage = lazy(() => import('@/pages/SellerFollowersPage'))
-const SellerPromoteBoostsPage = lazy(() => import('@/pages/SellerPromoteBoostsPage'))
 const YouTubeCallbackPage = lazy(() => import('@/pages/YouTubeCallbackPage'))
 // 🤝 2026-07-10: 3단 위임/promo 투명성 모델 (docs/design/vendor-commission-passthrough.md §4.3)
-const SellerAgencyDelegationPage = lazy(() => import('@/pages/SellerAgencyDelegationPage'))
 const SellerPromoSpendPage = lazy(() => import('@/pages/SellerPromoSpendPage'))
 const SellerInfluencerDealsPage = lazy(() => import('@/pages/SellerInfluencerDealsPage'))
 const SellerExperienceCampaignsPage = lazy(() => import('@/pages/SellerExperienceCampaignsPage'))
@@ -123,11 +121,9 @@ export function SellerRoutes() {
           <SellerBusinessInfoPage />
         </ProtectedRoute>
       } />
-      <Route path="/seller/promote-boosts" element={
-        <ProtectedRoute requireSeller>
-          <SellerPromoteBoostsPage />
-        </ProtectedRoute>
-      } />
+      {/* 🌇 2026-09-04 에이전시 일몰 — `/seller/promote-boosts` 삭제. 이 쿠폰은 **에이전시만** 발급할 수
+          있었고(발급 API 가 에이전시 인증), 쓰는 곳은 라이브 방송(영구 중단)이었다. 라이브 실측
+          `promote_boost_coupons` 0행 — 발급도 사용도 된 적이 없다. */}
       <Route path="/seller/orders" element={
         <ProtectedRoute requireSeller>
           <SellerOrdersPage />
@@ -358,12 +354,9 @@ export function SellerRoutes() {
           <SellerSupplyPage />
         </ProtectedRoute>
       } />
-      {/* 🤝 2026-07-10: 에이전시 위임(3단 모델) + promo 지출 투명성 + 인플 협업 deal */}
-      <Route path="/seller/agency-delegation" element={
-        <ProtectedRoute requireSeller>
-          <ErrorBoundary><SellerAgencyDelegationPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
+      {/* 🌇 2026-09-04 에이전시 일몰 — `/seller/agency-delegation` 제거. 매장↔중개사 위임은
+          에이전시가 아니라 `seller_operators`(owner/operator)로 다시 만든다(설계 대기).
+          docs/design/store-operator-model.md */}
       <Route path="/seller/promo-spend" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerPromoSpendPage /></ErrorBoundary>

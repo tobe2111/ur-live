@@ -3,18 +3,16 @@
  *
  * URL:
  *   - 셀러: /seller/ledger (인플루언서 commission + 위탁 판매 매출)
- *   - 에이전시: /agency/ledger (commission 분배)
  *
  * 두 dashboard 컨텍스트 공통 페이지 — token type 으로 자동 분기.
  */
 import { useEffect, useState } from 'react'
 import { formatKSTDate } from '@/utils/date'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
-import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { Briefcase, CheckCircle2, Clock, CreditCard, Handshake, List, RotateCcw, Send, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
+import { CheckCircle2, Clock, CreditCard, Handshake, List, RotateCcw, Send, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 
 interface LedgerEntry {
@@ -48,7 +46,6 @@ interface LedgerData {
 const EVENT_LABEL: Record<string, { label: string; Icon: LucideIcon }> = {
   voucher_used: { label: '바우처 사용', Icon: CheckCircle2 },
   voucher_refund: { label: '환불', Icon: RotateCcw },
-  agency_commission: { label: '에이전시 수수료', Icon: Briefcase },
   group_buy_join: { label: '공구 참여', Icon: Handshake },
   charge: { label: '충전', Icon: CreditCard },
   refund: { label: '환불', Icon: RotateCcw },
@@ -65,19 +62,17 @@ const PAYOUT_STATUS: Record<string, { label: string; cls: string }> = {
 
 export default function MyLedgerPage() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const isAgency = location.pathname.startsWith('/agency')
   const [data, setData] = useState<LedgerData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const tokenKey = isAgency ? 'agency_token' : 'seller_token'
-    if (!localStorage.getItem(tokenKey)) {
-      navigate(isAgency ? '/agency/login' : '/seller/login')
+    // 🌇 2026-09-04 에이전시 일몰 — 경로로 agency/seller 를 가르던 분기 삭제. 셀러 전용이다.
+    if (!localStorage.getItem('seller_token')) {
+      navigate('/seller/login')
       return
     }
     load()
-  }, [isAgency])
+  }, [])
 
   async function load() {
     try {
@@ -196,7 +191,5 @@ export default function MyLedgerPage() {
     </div>
   )
 
-  return isAgency
-    ? <AgencyLayout title="내 ledger">{content}</AgencyLayout>
-    : <SellerLayout title="내 ledger">{content}</SellerLayout>
+  return <SellerLayout title="내 ledger">{content}</SellerLayout>
 }

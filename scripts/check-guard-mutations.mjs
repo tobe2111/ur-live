@@ -1995,35 +1995,34 @@ canvas {
       '**영원히 생성되지 않는다** — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
   },
   {
-    name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
-    file: 'src/features/agency/api/agency-sunset.ts',
-    find: "    code: 'AGENCY_SIGNUP_CLOSED',",
-    replace: "    code: 'OK',",
-    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
-    why:
-      '2026-08-19 에이전시 대시보드 일몰. 가입 차단은 **클라+서버 한 쌍**이다 — 화면만 막으면 ' +
-      '직접 POST 로 우회되고(계정이 조용히 생긴다), 서버만 막으면 사용자가 폼을 다 채운 뒤 403 을 본다. ' +
-      '반쪽 롤백은 화면상 멀쩡해 보여서 리뷰로 안 걸린다.',
-  },
-  {
-    name: '에이전시 nav 가 존재하지 않는 라우트를 가리킨다(죽은 링크 부활)',
-    file: 'src/components/AgencyLayout.tsx',
-    find: "{ path: '/agency/settlements'",
-    replace: "{ path: '/agency/streams', label: 'X', i18nKey: 'x', icon: Settings, mode: 'common' },\n      { path: '/agency/settlements'",
-    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
-    why:
-      '일몰 전 이미 /agency/streams·/agency/pending 이 라우트 없이 nav 에 남아 있었다(누르면 아무 일도 ' +
-      '안 일어난다). 화면을 지우면서 nav 를 안 지우면 그 부채가 즉시 다시 쌓인다.',
-  },
-  {
-    name: '일몰로 내린 에이전시 API 가 다시 마운트된다',
+    name: '🌇 일몰한 에이전시 API 가 워커에 다시 마운트된다',
     file: 'src/worker/index.ts',
-    find: "app.route('/api/agency/delegation', agencyDelegationRoutes);",
-    replace: "app.route('/api/agency/campaigns', agencyCampaignsRoutes);",
-    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    find: "app.route('/api/invite', inviteRewardRoutes);",
+    replace: "app.route('/api/invite', inviteRewardRoutes);\napp.route('/api/agency', agencyRoutes);",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
     why:
-      '화면 없는 인증 API 가 살아 있으면 축소의 의미가 없다(공격 표면만 남는다). 파일은 일부러 ' +
-      '남겼기 때문에(머니 심볼 computeCommission 이 함께 export 된다) 마운트 한 줄이면 되살아난다.',
+      '에이전시는 이 레포에서 **두 번** 일몰됐고(08-19 축소 · 08-31 커미션 폐지) 두 번 다 잔재가 남아 ' +
+      '다음 세션이 "아직 쓰는 모델"로 읽었다. 09-04 완전 삭제 뒤에도 마운트 한 줄이면 되살아난다.',
+  },
+  {
+    name: '🌇 일몰한 /agency 라우트가 앱에 다시 그려진다',
+    file: 'src/App.tsx',
+    find: '            <Route path="/business" element={<BusinessLandingPage />} />',
+    replace: '            <Route path="/agency" element={<BusinessLandingPage />} />\n            <Route path="/business" element={<BusinessLandingPage />} />',
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '중개사는 별도 대시보드가 아니라 셀러 대시보드를 쓴다(대표 확정). /agency 가 다시 생기면 ' +
+      '같은 역할에 문이 둘이 되고, 그게 정확히 대표가 "헷갈리지 말자" 고 한 상태다.',
+  },
+  {
+    name: '🕳️ 일몰이 소비자 친구초대까지 삼킨다',
+    file: 'src/worker/index.ts',
+    find: "app.route('/api/invite', inviteRewardRoutes);",
+    replace: '/* referral 초대 마운트 제거 */',
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '에이전시 초대코드가 **같은 `/api/invite`** 에 얹혀 있었다. 이름만 보고 지우면 마이페이지의 ' +
+      "'내 추천 링크'(GET /api/invite/my)가 통째로 죽는데, 화면엔 빈 카드로 보여 신고가 안 들어온다.",
   },
   {
     name: '이용권 상세 제목이 다시 사진 아래로 내려간다',
@@ -6523,10 +6522,15 @@ canvas {
       '원장을 합산해야 드러난다.',
   },
   {
-    name: '💸 [INV-#44] 에이전시 share 가 platform:revenue 하드코딩으로 되돌아감',
+    name: '💸 사용시점 셰어의 debit 이 platform:revenue 로 하드코딩된다 (#44)',
     file: 'src/worker/utils/ledger.ts',
-    find: "    debit_account: ownerFunded ? `merchant:${params.merchant_id}` : 'platform:revenue',",
-    replace: "    debit_account: 'platform:revenue',",
+    // 🌇 2026-09-04: 앵커를 옮겼다. 이 자리를 지키던 `recordAgencyCommissionShare` 가
+    //    에이전시 일몰로 삭제됐고, 같은 성질의 코드는 `creditUserCommission` 의 flip 분기다.
+    // ⚠️ 주입 형태가 중요하다: 가드는 `debit_account: 'platform:revenue'` **리터럴**을 찾는다.
+    //    `const debitAcct = 'platform:revenue'` 로 바꾸는 주입은 같은 결함인데도 가드가 못 본다
+    //    (실제로 첫 판이 그렇게 초록불이었다). 가드가 실제로 보는 형태로 심는다.
+    find: "      debit_account: debitAcct,\n      credit_account: `user:${params.userId}`,",
+    replace: "      debit_account: 'platform:revenue',\n      credit_account: `user:${params.userId}`,",
     test: 'scripts/check-commission-budget.mjs',
     why:
       'flip 을 켜도 이 축만 조용히 5% 를 계속 잠식한다. 에러도 없고 화면도 멀쩡해서 ' +
@@ -7545,7 +7549,7 @@ canvas {
     file: 'src/worker/utils/order-commissions.ts',
     find: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'supplier'",
     replace: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'agency_intro' | 'supplier'",
-    test: 'src/tests/unit/agency-intro-retired.test.ts',
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
     why:
       '타입에서 뺀 것이 이 폐지의 자물쇠다 — 호출부가 컴파일로 막힌다. 되살아나면 같은 행위(매장 영입)에 ' +
       '신분별 이중 보상이 돌아오고, 대행 5% 매장에서 유어딜이 0.25% 만 남는 적자 구간이 다시 열린다.',
@@ -7555,7 +7559,7 @@ canvas {
     file: 'src/worker/utils/order-refund.ts',
     find: '  // 🌇 2026-09-04 에이전시 일몰 — `reverseAgencyStoreIntroOnRefund` 호출을 삭제했다. 적립은',
     replace: "  await (await import('./agency-store-intro-commission')).reverseAgencyStoreIntroOnRefund(DB, orderId, 'order_refund')\n  //",
-    test: 'src/tests/unit/agency-intro-retired.test.ts',
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
     why:
       '2026-08-31 에는 "역전은 남긴다"가 맞았고 이 자리의 주입은 정반대 방향이었다. ' +
       '2026-09-04 대표 확정으로 에이전시가 통째로 일몰이라 방향이 뒤집혔다 — 라이브 ' +

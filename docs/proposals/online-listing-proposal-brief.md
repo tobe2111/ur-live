@@ -780,7 +780,7 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (70개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (68개)
 
 - `/browse`
 - `/cart`
@@ -794,7 +794,6 @@
 - `/seller`
 - `/seller/2fa`
 - `/seller/ad-slots`
-- `/seller/agency-delegation`
 - `/seller/alimtalk`
 - `/seller/analytics`
 - `/seller/bundles`
@@ -824,7 +823,6 @@
 - `/seller/profile`
 - `/seller/promo-codes`
 - `/seller/promo-spend`
-- `/seller/promote-boosts`
 - `/seller/proxy-products`
 - `/seller/realtime`
 - `/seller/register`
@@ -853,7 +851,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (277개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (272개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1081,11 +1079,6 @@
 **/api/seller/deal-withdraw**
 - `POST /api/seller/deal-withdraw`
 
-**/api/seller/delegation**
-- `GET /api/seller/delegation/`
-- `POST /api/seller/delegation/:agencyId/grant`
-- `POST /api/seller/delegation/:agencyId/revoke`
-
 **/api/seller/fee-context**
 - `GET /api/seller/fee-context`
 
@@ -1278,10 +1271,6 @@
 - `POST /api/seller/tiktok/sync-videos`
 - `DELETE /api/seller/tiktok/unlink`
 
-**/api/seller/transfers**
-- `GET /api/seller/transfers/`
-- `POST /api/seller/transfers/:id/respond`
-
 **/api/seller/unlink-kakao**
 - `POST /api/seller/unlink-kakao`
 
@@ -1406,7 +1395,7 @@
 - `GET /api/youtube/shorts/sync`
 
 
-> 마지막 생성: 2026-09-02T18:11:45.545Z
+> 마지막 생성: 2026-09-04T04:25:37.610Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
