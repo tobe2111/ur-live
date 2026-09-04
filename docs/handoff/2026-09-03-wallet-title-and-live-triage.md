@@ -397,3 +397,59 @@ pageerror 0
 다만 **회귀는 아니다** — 센티넬·`IntersectionObserver`·`rootMargin:'600px'`·40행 점진 렌더는
 내 PR 이전과 **동일**하고(`git show f9bb3ae^` 로 대조), 내가 더한 것은 "로컬 행이 떨어지면 서버
 페이지를 부른다"는 분기 하나뿐이다. 그 분기는 유닛테스트와 머지 전 로컬 하네스에서 실측했다.
+
+---
+
+## 12. 마감 개념을 끝까지 걷어냈다 — 그리고 **근본 원인은 폼의 자동 프리필**이었다
+
+대표 *"가장 이상적으로 해줘"* → §11 에서 정렬 칩만 지우고 남겨 뒀던 한 쌍(표시 + 차단)을 마감했다.
+
+### 🔴 근본 원인 — 셀러가 넣은 게 아니라 폼이 넣었다
+
+```
+voucher-form.ts  defaultDeadline() = 지금부터 +7일   ← 이용권 등록 폼이 자동으로 채웠다
+실증: 상품 2888  생성 09-03  ·  마감 09-10          ← 정확히 +7일
+```
+
+그 값이 지나면 ① 구매 가드가 400 ② cron 이 `group_buy_status='expired'` ⇒ **그 폼으로 만든 모든
+상품이 7일 뒤 안내도 없이 조용히 안 팔린다.** "상품 하나가 9/10 에 죽는다"가 아니라 **구조**였다.
+
+### 지운 것 (앞뒤가 맞는 최소 집합)
+
+| 층 | 파일 | 내용 |
+|---|---|---|
+| 근본 | `voucher-form.ts` | `defaultDeadline()` → `''` (자동 +7일 폐지) |
+| 입력 | `SaleSettingsStep` · `VoucherFields` · `MealVoucherFields` | '판매 마감' 입력 3곳 |
+| 차단 | `gb-purchase-guards.ts` | 마감 차단 + `voucher_expiry ≤ deadline` 차단 |
+| 차단 | `group-buy.routes.ts` | 카드(Toss) 분기의 중복 마감 차단 |
+| 차단 | `scheduled-cleanup.ts` | 마감으로 `group_buy_status='expired'` 만드는 cron 규칙 |
+| 표시 | `GroupBuyDetailPage` | 'D-N 마감' 배너 + `dDay` |
+| 표시 | `ProductDetailPage` | `GroupBuyCountdown` |
+| SEO | `GroupBuyDetailPage` · `detail-ssr-meta` | JSON-LD `priceValidUntil` |
+| 편성 | `home-showcase.ts` · `section-rules.ts` | '마감 임박순' 섹션 소스 |
+| 셀러 | `SellerGroupBuyOverview` | '마감 임박/미달성 위험' 타일 + 위험 액션 |
+
+**⚠️ 차단을 라우트에서만 지우면 안 된다** — cron 이 상태를 뒤집어 *같은 결과를 우회로* 만든다.
+그 둘은 한 쌍이라 함께 없앴다. 테스트가 이 쌍을 못으로 박는다.
+
+### 부작용을 먼저 찾아 같이 고친 것
+
+**어필리에이트 `/top-groups`** 는 `deadline > now AND < now+72h` 로 골랐다. 마감이 없어지면
+**영구히 0건** ⇒ 인플루언서 화면이 조용히 빈다. 진행률·최신순으로 바꿔 살렸다.
+(라이브 섹션은 실측으로 `popular`·`category` 둘뿐이라 섹션 소스 제거로 비는 섹션은 없다.)
+
+### 남긴 것과 이유
+
+· **상태(expired/cancelled) 차단** — 마감이 아니라 **사람이 내린 종료**다.
+· **`voucher_expiry`** — 구매 후 사용 기간. 대표가 지키라고 한 축이고 라이브는 전부 무기한.
+· **DB 컬럼·인덱스·타입·어드민/셀러 목록의 마감 표시** — 데이터가 있으면 보여 주는 건 운영 정보다.
+· `group-buy-deadline-push.ts` cron — **어디에도 등록돼 있지 않다**(죽은 파일). 별건으로 정리.
+· 서버 `ALLOWED_GB_SORT.deadline` — 외부 호출자 계약이라 남김(이제 아무 순서도 안 만든다).
+
+### 데이터 수정이 불필요해졌다
+
+§11 에서 *"어드민에서 2888 의 마감 값을 비워 달라"* 고 했는데 **이제 필요 없다** — 코드가 그 값을
+무해하게 만든다. 남아 있어도 아무것도 막지 않는다.
+
+검증: tsc 0 · **전체 유닛 614 파일 7,644건 pass** · 되돌려-검증 2종(구매 차단 복원 · +7일 프리필
+복원) 각각 빨간불 확인.

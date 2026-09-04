@@ -630,7 +630,6 @@ export default function ProductDetailPage() {
               </div>
               <div className="flex items-center justify-between mb-1 text-[11px] text-white/70">
                 <span>{t('productDetail.groupBuyProgress', { current: product.group_buy_current || 0, target: product.group_buy_target, defaultValue: `${product.group_buy_current || 0}명 참여 · ${product.group_buy_target}명 목표` })}</span>
-                {product.group_buy_deadline && <GroupBuyCountdown deadline={product.group_buy_deadline} />}
               </div>
               <div className="w-full rounded-full overflow-hidden h-1 bg-white dark:bg-[#11141C]/15">
                 <div className="h-full rounded-full bg-white dark:bg-white transition-all duration-500"

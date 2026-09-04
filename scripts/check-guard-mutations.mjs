@@ -7116,6 +7116,37 @@ canvas {
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
   },
   {
+    name: '🪞 재분류가 안 바뀐 판정도 다시 쓴다(업체 DB 쓰기 폭주 복귀)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: '    if (!changed) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/ads-reclassify-noop.test.ts',
+    why:
+      '이 랩은 규칙 버전이 오를 때마다 업체 41만 행을 다시 판정한다. 라이브 실측상 실제로 판정이 ' +
+      '바뀌는 비율은 0.14%(reg_seen 28,777 / reg_changed 40) — 이 분기가 죽으면 99.86% 가 다시 ' +
+      '아무것도 안 바뀐 재기록이 되고, 행마다 판정 5개 컬럼의 인덱스 다발까지 다시 쓴다.',
+  },
+  {
+    name: '🪞 재분류가 재검사 도장을 안 찍는다(그 행이 영영 미검사로 되돌아온다)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: 'if (r.classified_v !== CLASSIFY_RULES_VERSION) stampOnly.push(r.id)',
+    replace: '// (제거)',
+    test: 'src/tests/unit/ads-reclassify-noop.test.ts',
+    why:
+      '쓰기를 아끼려고 판정 컬럼을 건너뛰면서 도장까지 안 찍으면, 그 행은 매 회차 다시 읽히고 ' +
+      '영영 "미검사"로 남는다 — 쓰기를 아끼려다 읽기를 무한히 태우는 반대편 사고다.',
+  },
+  {
+    name: '🪞 재검사 도장이 행당 UPDATE 로 풀린다(묶음 해제 = 절약 소멸)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: 'UPDATE ad_company_leads SET classified_v = ? WHERE id IN',
+    replace: 'UPDATE ad_company_leads SET classified_v = ? WHERE id = ? AND id IN',
+    test: 'src/tests/unit/ads-reclassify-noop.test.ts',
+    why:
+      '도장을 100건씩 한 문장으로 묶어야 절약이 남는다. 행당 UPDATE 로 풀면 아끼려던 쓰기가 ' +
+      '고스란히 돌아온다(행 수는 같고 문장 수만 늘어난다).',
+  },
+  {
     name: '🪞 백필이 거른 목록 대신 전체를 다시 쓴다(no-op 재기록 복귀)',
     file: 'src/features/marketing/api/influencer-save.ts',
     find: 'DB.batch(changed.map',
