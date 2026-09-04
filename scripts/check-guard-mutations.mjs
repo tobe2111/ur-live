@@ -7551,16 +7551,15 @@ canvas {
       '신분별 이중 보상이 돌아오고, 대행 5% 매장에서 유어딜이 0.25% 만 남는 적자 구간이 다시 열린다.',
   },
   {
-    name: '🛑 환불 역전만 지워 비대칭이 된다',
+    name: '🌇 일몰한 에이전시 환불 역전이 되살아난다',
     file: 'src/worker/utils/order-refund.ts',
-    // ⚠️ 이름만으로는 import·호출 두 곳에 걸린다 — 호출 줄로 앵커를 좁힌다.
-    find: "await reverseAgencyStoreIntroOnRefund(DB, orderId, 'order_refund')",
-    replace: '/* 역전 제거 */',
+    find: '  // 🌇 2026-09-04 에이전시 일몰 — `reverseAgencyStoreIntroOnRefund` 호출을 삭제했다. 적립은',
+    replace: "  await (await import('./agency-store-intro-commission')).reverseAgencyStoreIntroOnRefund(DB, orderId, 'order_refund')\n  //",
     test: 'src/tests/unit/agency-intro-retired.test.ts',
     why:
-      '적립만 없애고 역전까지 지우면 과거·수동 행이 환불돼도 안 돌아온다. ' +
-      '⚠️ 이 주입은 처음에 통과했다 — 가드가 `toContain(이름)` 이라 `_REMOVED` 접미사가 붙어도 ' +
-      '앞부분이 일치했기 때문이다. 호출 형태(`이름(`)로 보도록 고쳤다.',
+      '2026-08-31 에는 "역전은 남긴다"가 맞았고 이 자리의 주입은 정반대 방향이었다. ' +
+      '2026-09-04 대표 확정으로 에이전시가 통째로 일몰이라 방향이 뒤집혔다 — 라이브 ' +
+      '`agency_store_intro_commissions` 0행이라 역전할 대상이 없고, 되살아나면 삭제한 파일을 다시 import 한다.',
   },
   {
     name: '🕳️ 빌드 CSS 가드를 워크플로에서 떼어낸다 (파일만 남고 안 돎)',

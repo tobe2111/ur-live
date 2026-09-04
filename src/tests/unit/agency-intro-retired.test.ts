@@ -7,8 +7,10 @@
  * 대행사는 **채널 요율 차액**(직접 10% − 대행 5%)으로 이미 보상받으므로 별도 % 를 얹지 않는다.
  *
  * ## 이 테스트가 못 막는 것
- * 정산·원장·cron 이 `agency_store_intro_commissions` 를 **읽는** 것은 그대로 둔다(과거 행 보호).
- * 그 읽기 경로가 살아 있는지는 각자의 테스트가 본다. 여기서 보는 것은 **새 적립이 0** 이라는 것뿐이다.
+ * 문자열 부재만 본다 — 런타임에 실제로 안 불리는지는 못 본다(다른 이름의 래퍼를 새로 만들면 통과).
+ *
+ * 🌇 2026-09-04 갱신: 에이전시 완전 일몰(대표 확정)로 **환불 역전까지** 없앴다. 아래 두 번째
+ * describe 가 그 반대 방향(역전 잔존)을 빨간불로 만든다. 전체 범위: agency-sunset-final.test.ts
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -44,15 +46,14 @@ describe('에이전시 매장영입 1% — 새 적립 경로가 없다', () => {
   })
 })
 
-describe('환불 역전은 남는다 (비대칭 금지)', () => {
-  it('환불 경로 둘 다 역전을 계속 부른다', () => {
-    // 적립만 없애고 역전까지 지우면, 과거·수동 행이 환불돼도 안 돌아온다.
-    // ⚠️ `toContain('reverseAgencyStoreIntroOnRefund')` 로 쓰면 이름을 `..._REMOVED` 로 바꿔도
-    //   앞부분이 일치해 통과한다(실제로 되돌려-검증에서 이 가드가 헛돌았다). **호출 형태**로 본다.
+describe('🌇 2026-09-04 완전 일몰 — 환불 역전도 없앴다', () => {
+  it('환불 경로 둘 다 에이전시 역전을 부르지 않는다', () => {
+    // 2026-08-31 에는 "적립만 없애고 역전은 남긴다"(비대칭 금지)가 맞았다. 지금은 아니다 —
+    // 대표 확정으로 에이전시 자체가 일몰이고, 라이브 `agency_store_intro_commissions` 는 **0행**이라
+    // 역전할 대상이 존재하지 않는다(구조적 no-op). 되살아나면 삭제한 파일을 다시 import 하게 된다.
     for (const f of ['src/worker/utils/order-refund.ts', 'src/features/returns/api/returns.routes.ts']) {
       const src = codeOnly(readFileSync(f, 'utf-8'))
-      expect(src, `${f}: import`).toMatch(/reverseAgencyStoreIntroOnRefund\s*[},]/)
-      expect(src, `${f}: 호출`).toMatch(/reverseAgencyStoreIntroOnRefund\s*\(/)
+      expect(src, `${f}: 호출이 남아 있다`).not.toMatch(/reverseAgencyStoreIntroOnRefund\s*\(/)
     }
   })
 })
