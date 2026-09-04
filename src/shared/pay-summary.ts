@@ -26,6 +26,14 @@ export interface PaySummary {
   origAmount?: number
   /** 수량. 1 이면 표시 생략. */
   qty?: number
+  /**
+   * 이 결제에서 **딜로 내는 금액**(원). 0 이면 표시 생략.
+   *
+   * ⚠️ 클라이언트가 추정한 값이 아니라 **서버 `/join` 이 계산해 돌려준 값**만 싣는다.
+   *   부분결제 게이트가 꺼져 있으면 서버가 0 을 주므로 화면도 아무 말 안 한다 —
+   *   화면이 잔액만 보고 "8,000원 될 거예요" 를 지어내면 게이트 상태와 갈려 **거짓말**이 된다.
+   */
+  dealUsed?: number
 }
 
 /** 사진 URL 로 받아들일 수 있는 형태인지 — 스킴만 본다(호스트 판정은 `cfImage` SSOT 가 한다). */
@@ -40,11 +48,13 @@ export function readPaySummary(get: (k: string) => string | null): PaySummary {
   const merchant = (get('merchant') || '').trim()
   const orig = Number(get('origAmount'))
   const qty = Number(get('qty'))
+  const dealUsed = Number(get('dealUsed'))
   return {
     image: isDisplayableImageUrl(image) ? image : undefined,
     merchant: merchant ? merchant.slice(0, 60) : undefined,
     origAmount: Number.isFinite(orig) && orig > 0 ? orig : undefined,
     qty: Number.isFinite(qty) && qty > 1 ? Math.floor(qty) : undefined,
+    dealUsed: Number.isFinite(dealUsed) && dealUsed > 0 ? Math.floor(dealUsed) : undefined,
   }
 }
 
@@ -54,6 +64,7 @@ export function appendPaySummary(params: URLSearchParams, s: PaySummary): URLSea
   if (s.merchant) params.set('merchant', s.merchant.slice(0, 60))
   if (s.origAmount && s.origAmount > 0) params.set('origAmount', String(Math.round(s.origAmount)))
   if (s.qty && s.qty > 1) params.set('qty', String(Math.floor(s.qty)))
+  if (s.dealUsed && s.dealUsed > 0) params.set('dealUsed', String(Math.floor(s.dealUsed)))
   return params
 }
 

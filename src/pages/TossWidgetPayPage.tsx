@@ -23,7 +23,7 @@ type TossWidgets = ReturnType<Awaited<ReturnType<typeof getTossPayments>>['widge
  *   - orderName: 결제 상품명
  *   - successUrl / failUrl: Toss 가 redirect 할 URL (internal path 만 허용)
  *   - clientKey: server 가 반환한 토스 client key (env 와 sync 보장)
- *   - image / merchant / origAmount / qty: **표시 전용** 요약 (2026-09-03 대표 확정 "안 2-D").
+ *   - image / merchant / origAmount / qty / dealUsed: **표시 전용** 요약 (2026-09-03 대표 확정 "안 2-D").
  *       금액 판단에 쓰지 않는다 — 실제 청구액은 /confirm 이 서버 값으로 재검증한다.
  *       SSOT·이유: `src/shared/pay-summary.ts`
  *
@@ -49,6 +49,12 @@ export default function TossWidgetPayPage() {
   // 🧾 표시 전용 요약(사진·매장·정가·수량). 없으면 그 항목만 생략되고 화면은 그대로 뜬다.
   const summary = readPaySummary((k) => searchParams.get(k))
   const discountPct = displayDiscountPct(amount, summary.origAmount)
+  /**
+   * 표시 전용 — 딜이 섞였을 때의 **상품 금액**(카드 청구액 + 딜 사용액).
+   * ⚠️ 이름이 `display` 로 시작하는 건 규약이다: 요약에서 파생된 숫자는 화면용이고
+   *   청구액은 끝까지 `amount` 하나다(테스트가 그 이름 규약을 강제한다).
+   */
+  const displayGoodsAmount = summary.dealUsed ? amount + summary.dealUsed : 0
 
   // safeInternalPath: 내부 경로만 허용 — open redirect 차단.
   const successUrl = `${window.location.origin}${safeInternalPath(successUrlRaw, '/')}`
@@ -237,8 +243,23 @@ export default function TossWidgetPayPage() {
               )}
             </div>
           </div>
+          {/* 🪙 부분결제 — 왜 청구액이 상품값보다 적은지 화면이 말한다.
+              값은 서버 `/join` 이 계산해 준 것이고(화면 추정 아님), 없으면 이 블록 자체가 안 뜬다.
+              합이 딱 맞는 게 이 화면의 계약이다: 딜 + 카드 = 상품 금액. */}
+          {summary.dealUsed ? (
+            <div className="mt-3 pt-3 border-t border-rule space-y-1">
+              <div className="flex items-baseline justify-between text-[12.5px]">
+                <span className="text-gray-400 dark:text-gray-500">상품 금액</span>
+                <span className="tabular-nums text-gray-600 dark:text-gray-300">{displayGoodsAmount.toLocaleString('ko-KR')}원</span>
+              </div>
+              <div className="flex items-baseline justify-between text-[12.5px]">
+                <span className="text-gray-400 dark:text-gray-500">딜 사용</span>
+                <span className="tabular-nums font-semibold text-brand-text">−{summary.dealUsed.toLocaleString('ko-KR')}딜</span>
+              </div>
+            </div>
+          ) : null}
           <div className="mt-3 pt-3 border-t border-rule flex items-baseline justify-between">
-            <span className="text-[12.5px] text-gray-400 dark:text-gray-500">결제 금액</span>
+            <span className="text-[12.5px] text-gray-400 dark:text-gray-500">{summary.dealUsed ? '카드 결제' : '결제 금액'}</span>
             <span className="text-[27px] font-extrabold tracking-tight tabular-nums text-gray-900 dark:text-white">
               {Number.isFinite(amount) ? amount.toLocaleString('ko-KR') : '0'}
               <span className="text-[17px] font-bold ml-0.5">원</span>

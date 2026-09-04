@@ -88,6 +88,27 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🪙 결제 화면이 딜 사용을 안 보여준다 (10,000원을 눌렀는데 8,000원이 뜬 이유가 사라진다)',
+    file: 'src/pages/TossWidgetPayPage.tsx',
+    find: '{summary.dealUsed ? (',
+    replace: '{false ? (',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why:
+      '부분결제는 청구액이 상품값보다 **적다**. 그 차액을 화면이 설명하지 않으면 사용자는 ' +
+      '왜 금액이 달라졌는지 모른 채 결제한다 — 에러가 없어 아무도 신고하지 않는 종류의 결함이다.',
+  },
+  {
+    name: '🪙 딜 사용액을 화면이 잔액으로 추정한다 (게이트가 꺼지면 그 안내가 거짓말이 된다)',
+    file: 'src/pages/GroupBuyDetailPage.tsx',
+    find: 'dealUsed: Number(serverDealUsed) || undefined,',
+    replace: 'dealUsed: dealBalance || undefined,',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why:
+      '화면은 서버 게이트(`voucher_partial_deal_enabled`)가 켜졌는지 **모른다**. 잔액만 보고 ' +
+      '"2,000딜 쓰여요" 를 지어내면 게이트가 꺼진 순간 실제로는 전액이 청구되고 안내만 틀린다. ' +
+      '그래서 싣는 값은 반드시 `/join` 이 계산해 돌려준 것이어야 한다.',
+  },
+  {
     name: '🧾 토스 위젯 상자에서 light-island 가 빠진다 — 다크에서 이메일 칸이 흰 글자 on 흰 배경',
     file: 'src/pages/TossWidgetPayPage.tsx',
     find: 'className="light-island min-h-[180px] bg-white rounded-2xl shadow-lift overflow-hidden"',
@@ -168,6 +189,29 @@ const MUTATIONS = [
     replace: "const unitLabel = '원'",
     test: 'src/tests/unit/deal-card-shapes.test.ts',
     why: '유어샵 핀에 담긴 교환권이 격자에서 원, /vouchers 목록에서 딜 로 보이던 실제 결함이다.',
+  },
+  {
+    name: '🎫 이용권 딜 결제를 끌 수 없게 된다 (서버 키가 느슨해져 스위치가 사라진다)',
+    file: 'src/features/group-buy/api/gb-purchase-guards.ts',
+    find: "  return gate?.value === 'true'",
+    replace: '  return true',
+    test: 'src/tests/unit/voucher-deal-payment.test.ts',
+    why:
+      '2026-09-04 클라 플래그를 켜면서(대표 지시, 선행 조건 `influencer_deal_bonus_pct=0` 실측 확인) ' +
+      '**유일한 스위치가 이 서버 키 하나**가 됐다. 여기가 truthy 로 느슨해지면 어드민에서 ' +
+      "`false` 로 내려도 안 꺼진다 — 적자든 사고든 **끌 방법이 없어진다**. " +
+      '(종전 이 자리는 클라 플래그의 기본 OFF 를 지켰는데, 그 플래그가 켜져 위험의 무게가 여기로 옮겨왔다.)',
+  },
+  {
+    name: '🎫 이용권 딜 결제 게이트가 교환권까지 막는다 (기프티콘 결제 전면 중단)',
+    file: 'src/features/group-buy/api/gb-purchase-guards.ts',
+    find: '  if (product.deal_only === 1) return true',
+    replace: '  if (false) return true',
+    test: 'src/tests/unit/voucher-deal-payment.test.ts',
+    why:
+      '이 가드는 **이용권에만** 걸려야 한다. 교환권(`deal_only=1`)은 원래 딜 전용이라 ' +
+      '여기 걸리면 게이트가 꺼진 기본 상태에서 기프티콘 구매가 통째로 400 이 된다. ' +
+      '⚠️ `deal_only` 가 SELECT 목록(PRODUCT_DETAIL_FIELDS)에서 빠져도 같은 사고가 난다.',
   },
   {
     name: '🩸 near 와 sort 를 같이 보낸다 — 서버가 sort 를 무시해 정렬이 조용히 틀린다',
@@ -7729,6 +7773,46 @@ canvas {
       '플랫폼 기본값이 나간다 — 표시와 지급이 갈리는 이 레포의 단골 사고다.',
   },
   {
+    name: '🪙 부분결제 게이트에서 딜 보너스 선행 조건이 사라진다',
+    file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
+    find: "turn_on_when: '🔴 **먼저 influencer_deal_bonus_pct = 0**",
+    replace: "turn_on_when: '딜 잔액이 남아 못 쓰는 유저가 생기면",
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '켜는 사람은 어드민 화면의 이 한 줄로 판단한다. 선행이 지워지면 딜 보너스 20% 가 살아 있는 채 ' +
+      '켜져서 **팔릴수록 적자**가 된다 — 에러도 경보도 없이 마진에서만 샌다.',
+  },
+  {
+    name: '🪙 부분결제가 카드에 총액을 청구한다 (딜을 쓰고도 전액 결제)',
+    file: 'src/features/group-buy/api/group-buy.routes.ts',
+    find: '    amount: chargedAmount,\n  })',
+    replace: '    amount: expectedAmount,\n  })',
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '딜을 3,000 쓰기로 해 놓고 카드에서 10,000 을 긁으면 **유저가 13,000 을 낸다**. ' +
+      '이 레포에서 금액을 두 갈래로 나눌 때 가장 먼저 나는 사고이고, 화면엔 아무 표시도 안 난다.',
+  },
+  {
+    name: '🪙 부분결제가 매장 정산을 카드 청구액으로 줄인다',
+    file: 'src/features/group-buy/api/group-buy.routes.ts',
+    find: 'product.seller_id, expectedAmount, expectedAmount, paymentKey, paymentKey',
+    replace: 'product.seller_id, chargedAmount, chargedAmount, paymentKey, paymentKey',
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '딜도 유저가 현금으로 충전한 돈이라 매장 몫은 총액 기준이다(대표: "어차피 원래 정산을 ' +
+      '해줬어야 하는 돈"). 여기가 카드 청구액으로 바뀌면 딜을 쓴 만큼 **매장이 덜 받는다**.',
+  },
+  {
+    name: '🪙 부분결제 딜 차감의 잔액 가드가 사라진다 (마이너스 잔액)',
+    file: 'src/features/group-buy/api/partial-deal.ts',
+    find: "    type: 'usage',\n    guardBalance: true,",
+    replace: "      type: 'usage',\n      orderId: orderNumber,",
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '결제창에 머무는 동안 다른 탭에서 딜을 다 써도 차감이 그냥 통과한다 — 잔액이 음수가 되거나 ' +
+      '실제로는 못 받은 돈으로 이용권이 나간다. 원자 CAS 가 이 레일의 유일한 진실이다.',
+  },
+  {
     name: '📖 운영백서 숫자표 검사를 CI 에서 뗀다 (다른 세션 변경이 문서에 안 닿음)',
     file: '.github/workflows/verify.yml',
     find: '        run: node scripts/generate-ops-handbook.mjs --check',
@@ -8240,6 +8324,28 @@ canvas {
     why:
       '조회 자체가 실패한 것(테이블 부재·일시 오류)을 403 자격 없음으로 말하면, 매장에 다녀온 사용자가 ' +
       '"다녀오라" 는 문구를 본다. 원인을 알 길이 없는 문구라 문의조차 못 한다 — 503 으로 갈라야 한다.',
+  },
+  {
+    name: '🎟️ 이용권 현황이 교환권까지 센다 (마이가 자기 자신과 모순)',
+    file: 'src/pages/user-profile/OrderStatusBar.tsx',
+    find: '      if (!isStoreVoucher(v)) continue',
+    replace: '      if (false && !isStoreVoucher(v)) continue',
+    test: 'src/tests/unit/voucher-status-wallet-split.test.tsx',
+    why:
+      '대표 신고가 정확히 이 상태였다 — 위는 "이용권 현황 구매완료 1 · 사용가능 1", 아래 "내 이용권" 은 0. ' +
+      '한 배열로 오는 두 지갑을 아래 두 행(`useMyCounts`)만 `voucher-wallet` SSOT 로 갈라서, ' +
+      '이 바만 통째로 세면 같은 화면이 서로 다른 답을 말한다.',
+  },
+  {
+    name: "🎟️ '사용가능' 이 다시 else 폴백 (모르는 상태를 전부 쓸 수 있다고 말한다)",
+    file: 'src/pages/user-profile/OrderStatusBar.tsx',
+    find: "      if (st === 'unused' || st === '') c.usable++",
+    replace: '      c.usable++',
+    test: 'src/tests/unit/voucher-status-wallet-split.test.tsx',
+    why:
+      'KT 병합은 **발송 실패**를 `status:\'unused\'` + `kt_status:\'failed\'` 로 실어 보낸다(카드가 실패 UI 를 ' +
+      '그리라고). else 폴백이면 문자조차 못 받은 교환권이 "지금 쓸 수 있음" 으로 집계된다 — 실측된 그 1건이다. ' +
+      '틀린 칸에 넣느니 안 세는 게 낫다.',
   },
   {
     name: '📝 리뷰 버튼이 다시 글자 수로 hard-disable (잠기면 아무도 이유를 모른다)',
