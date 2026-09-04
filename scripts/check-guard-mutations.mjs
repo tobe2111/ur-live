@@ -8468,6 +8468,22 @@ canvas {
     test: 'src/tests/unit/no-deadline-sort.test.ts',
     why: '존재하지 않는 개념을 설명하는 문구는 다음 세션에게 틀린 지도가 된다.',
   },
+  {
+    name: '🗓️ 찜 목록에 하는 일이 없는 \'마감 임박\' 정렬 칩이 부활',
+    file: 'src/pages/wishlist/WishlistParts.tsx',
+    find: "  { key: 'discount', label: '할인율', pcOnly: true },",
+    replace: "  { key: 'deadline', label: '마감 임박' },\n  { key: 'discount', label: '할인율', pcOnly: true },",
+    test: 'src/tests/unit/wishlist-signals.test.ts',
+    why: '마감이 없으니 남은 일수가 전부 null = 정렬이 전부 동점 → 눌러도 순서가 그대로다. 하는 일이 없는 칩.',
+  },
+  {
+    name: '🗓️ 찜 신호 모듈에 마감 정렬 키가 되살아난다',
+    file: 'src/pages/wishlist/wishlist-signals.ts',
+    find: "export type WishlistSort = 'recent' | 'drop' | 'discount'",
+    replace: "export type WishlistSort = 'recent' | 'drop' | 'deadline' | 'discount'",
+    test: 'src/tests/unit/wishlist-signals.test.ts',
+    why: '타입이 먼저 살아나면 칩과 분기가 따라 들어온다 — 되살아나는 입구다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

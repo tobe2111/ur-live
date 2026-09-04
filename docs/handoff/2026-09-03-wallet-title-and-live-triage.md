@@ -549,3 +549,56 @@ disputes.routes.ts  /agency-overview
 **배포하고 판정했다고 끝이 아니다.** 판정은 "내가 의도한 것이 됐는가"만 보고, "내가 만든 빈자리가
 어디에 남았는가"는 안 본다. 그건 diff 를 다시 읽어야 나온다. 이번 건은 에러도 경고도 테스트 실패도
 없이 **조용히 0** 이었다 — 이 레포가 반복해 당한 바로 그 모양이다.
+
+---
+
+## §15. 전수 재훑기 — 소비자 화면에 하나 더, 셀러에게 가던 거짓 안내 하나
+
+§14 뒤에 '마감' 이라는 말이 남은 자리를 **전부** 훑었다. 두 종류가 나왔다.
+
+### ① 찜 목록의 '마감 임박' 정렬 칩 (소비자 화면 · 살아 있었다)
+
+`/wishlist` 정렬 칩에 '마감 임박' 이 그대로 있었다. 마감이 없어지자 남은 일수는 **모든 항목에서
+null** 이고, 그러면 정렬 키가 전부 동점이라 **칩을 눌러도 순서가 그대로**다. 눌리는데 아무 일도
+안 일어나는 칩이고, #1346 에서 홈 피드의 같은 칩을 지운 것과 정확히 같은 이유다. 그때 이 화면만
+빠졌다.
+
+지운 것: 정렬 칩 · `WishlistSort` 의 `'deadline'` · `daysLeft`/`isSoon`/`SOON_DAYS` ·
+카드의 'N일 남음' 배지 · PC 요약 레일의 '마감 N일 이내' 줄과 그 헤드라인 분기(`summary.soon`).
+
+### ② 셀러에게 나가던 안내가 없는 기능을 권하고 있었다 (cron · 실제 발송 중)
+
+`seller-churn-detect`(daily 레인에 **등록돼 실제로 돈다**)가 진행률 낮은 셀러에게 보내던 문구:
+
+> 요즘 공구 진행률이 낮아요. 공구 특가를 키우거나 **마감 임박 push 를 활용해보세요.**
+
+그 push cron(`group-buy-deadline-push.ts`)은 **어디에도 등록되지 않은 죽은 파일**이고, 이제 마감
+개념 자체가 없다. 즉 **존재한 적 없는 기능을 사장님에게 권하고 있었다.** 실제로 할 수 있는 행동
+(유어샵 링크 공유)으로 바꿨다.
+
+### ③ 낡은 주석 5곳
+
+`SellerMealVoucherNewPage`(위저드 3단계 설명 · 복제 로직) · `SectionProductPicker` ·
+`AdminHomeSectionsPage` · `HomeSections` · `SellerGroupBuyOverview`(머리말이 같은 파일 39행과
+**모순**) · `section-rules`(RULES 에서 사라진 `deadline` 을 설명하던 고아 블록).
+
+### 안 건드린 것 — 서비스가 다르다
+
+`MyStorePage` · `MallHomePage` 의 '마감' 은 **공구 서비스(운영자 몰 · 픽업 공구)** 다.
+거기서는 마감이 실제로 존재하고 의미가 있다. `GbProposeModal` 의 '공구 마감' 도 **커뮤니티 공구**
+(유저가 제안해 모이는 진짜 공동구매)라 별개 축이다. `AdminAdSlots`/`GovNotices`/`Fcfs` 의 '마감' 은
+광고 슬롯·공공 공고·선착순 추첨이라 무관하다.
+
+⇒ CLAUDE.md 의 서비스 분리 규칙대로, **"마감" 이라는 낱말이 아니라 어느 서비스의 개념인지**로 갈랐다.
+
+### 이번에 또 밟은 함정
+
+`daysLeft` 제거를 검증하면서 `assert 'daysLeft' not in s` 를 썼는데 **내가 방금 쓴 설명 주석**에
+그 단어가 있어서 계속 실패했다. 이 레포가 문서로 남긴 바로 그 함정이고(`check-lock-table-symbols`
+경고 · `no-deadline-sort.test.ts` 의 `code()` 헬퍼), 알고 있으면서도 밟았다. 판정은 **코드 줄만**
+보게 고쳤다.
+
+가드: `wishlist-signals.test.ts` 를 새 계약으로 다시 씀(마감 신호가 되살아나지 않는다 3건) +
+`wishlist-baseline-wiring` 의 낡은 배선 단언 갱신 + 주입 매니페스트 2건 **되돌려-검증 빨간불 확인**.
+
+검증: tsc 0 · **전체 614 파일 7,647건 pass** · theme/design-slop/file-size/anti-slop/middle-dot 통과.
