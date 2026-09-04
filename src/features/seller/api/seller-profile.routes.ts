@@ -17,6 +17,9 @@ import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared
 import { swallow } from '@/worker/utils/swallow'
 import { isPinVerified } from './seller-pin.routes'
 import { buildBusinessInfoSeed } from './business-info-seed'
+// 🏪 2026-09-04 (대표 확정 "주인만, 단 마스킹해서 보여줌"): 위임받은 운영자(중개사)에게는
+//   정산계좌·사업자정보를 **가려서 보여주고 수정은 막는다**. 판별 SSOT: worker/utils/store-actor.
+import { resolveStoreActor, maskBusinessNumber, maskName, OWNER_ONLY_MESSAGE } from '../../../worker/utils/store-actor'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 interface SellerProfileUpdate {
@@ -165,6 +168,16 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
     // 이전: 셀러가 이메일/UI 만 뚫리면 은행 계좌 변경 후 정산 받아감.
     const bankChangeKeys = ['bank_account', 'bank_name', 'account_holder'] as const;
     const bankChanged = bankChangeKeys.some(k => body[k] !== undefined);
+
+    // 🏪 2026-09-04 (대표 확정): **정산 목적지는 소유자만 바꾼다.** 위임받은 운영자(중개사)가
+    //   계좌를 갈아끼우면 그 매장의 돈이 통째로 다른 곳으로 간다 — PIN 을 요구해도 그 PIN 은
+    //   *운영자 자신의* 것이라 막지 못한다. 그래서 권한 자체로 끊는다.
+    if (bankChanged) {
+      const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);
+      if (!actor.isOwner) {
+        return c.json({ success: false, error: `정산 계좌는 ${OWNER_ONLY_MESSAGE}` }, 403);
+      }
+    }
 
     // 🛡️ 계좌 변경은 민감 액션 — 최근 15분 내 PIN 인증 필수
     if (bankChanged) {
@@ -348,7 +361,17 @@ sellerProfileRoutes.get('/business-info', async (c) => {
     // 🏪 2026-09-03: 행이 없으면 매장 등록 때 받은 값으로 채워 돌려준다(설명은 business-info-seed).
     if (!businessInfo) {
       const seeded = await buildBusinessInfoSeed(db, sellerId);
-      return seeded ? c.json({ success: true, data: seeded }) : c.json({ success: false, error: 'Not found' }, 404);
+      if (!seeded) return c.json({ success: false, error: 'Not found' }, 404);
+      // ⚠️ 이 분기도 같은 마스킹을 타야 한다 — 안 그러면 "행이 없을 때만" 원본이 샌다.
+      const a0 = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);
+      if (!a0.isOwner) {
+        const b = seeded as unknown as Record<string, unknown>;
+        b.business_number = maskBusinessNumber(b.business_number);
+        b.ceo_name = maskName(b.ceo_name);
+        for (const k of ['postal_code', 'address', 'address_detail', 'phone', 'email']) b[k] = null;
+        b.masked_for_operator = true;
+      }
+      return c.json({ success: true, data: seeded });
     }
 
     // 🖼️ 2026-07-01 (대표 — 유어샵 판매자 정보): 통신판매업신고번호 additive 동봉 (컬럼 없으면 조용히 생략 —
@@ -365,6 +388,17 @@ sellerProfileRoutes.get('/business-info', async (c) => {
       const sm = await getSellerMeta(db, [Number(sellerId)]);
       (businessInfo as Record<string, unknown>).onnuri_merchant = sm.get(Number(sellerId))?.onnuri_merchant === '1';
     } catch { /* additive — fail-soft */ }
+
+    // 🏪 2026-09-04: 운영자(중개사)에게는 가려서 준다 — 등록번호 끝 4자리·대표자명 첫 글자만,
+    //   주소/연락처는 통째로 감춘다. 사장님 본인은 그대로 본다.
+    const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!actor.isOwner) {
+      const b = businessInfo as Record<string, unknown>;
+      b.business_number = maskBusinessNumber(b.business_number);
+      b.ceo_name = maskName(b.ceo_name);
+      for (const k of ['postal_code', 'address', 'address_detail', 'phone', 'email']) b[k] = null;
+      b.masked_for_operator = true;
+    }
 
     return c.json({ success: true, data: businessInfo });
 
@@ -383,6 +417,11 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    // 🏪 2026-09-04 (대표 확정): 사업자 정보는 **소유자만** 등록·수정한다. 이 값이 세금계산서와
+    //   정산 대상자를 정하므로, 대신 운영하는 사람이 바꿀 수 있으면 명의가 조용히 바뀐다.
+    const actorW = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!actorW.isOwner) return c.json({ success: false, error: `사업자 정보는 ${OWNER_ONLY_MESSAGE}` }, 403);
 
     const body = await c.req.json<{
       business_number?: string;

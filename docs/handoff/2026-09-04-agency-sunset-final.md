@@ -140,13 +140,29 @@ for id in 3 6 7 8 9 10 11:
 ```
 또는 대표가 `/admin/seller-approval` 에서 '삭제' 버튼으로. **매장 14(홍대돈까스)는 건드리지 말 것.**
 
-## ③ 매장 ↔ 중개사 권한 모델 — **설계 확정 후 구현** (대표 지시)
+## ③ 매장 ↔ 중개사 권한 — **결정 → 구현 완료**
 
-지금 상태: `seller_operators` 로 owner/operator 를 **설계는 했는데 강제를 안 한다**.
-셀러 토큰이 `seller_id` 하나로 전부를 열어 주므로 **operator 도 정산계좌·사업자정보를 볼 수 있다.**
-`isStoreOwner` 를 실제로 부르는 곳은 두 군데뿐: `seller-operators.routes.ts:156` · `seller-stores.routes.ts:537`.
+대표 결정을 받고(설계 후 구현 순서 준수) 그대로 만들었다. 상세: `store-operator-model.md` §7.7.
 
-⇒ 다음 세션 첫 액션: `docs/design/store-operator-model.md` §3 에 **owner 전용 범위**를 확정해 대표 승인.
+### ②-권한: 정산계좌·사업자정보는 주인만, 운영자에겐 마스킹
+**발견한 실제 구멍**: 셀러 토큰이 `seller_id` 하나로 전부를 열어서 **중개사가 사장님 정산계좌를
+갈아끼울 수 있었다.** PIN 게이트가 있었지만 그 PIN 은 *운영자 자신의* 것이라 못 막는다.
+
+판별 SSOT `worker/utils/store-actor.ts` — 토큰의 **`operator_user_id`** 로만 판정.
+🔴 **`resolveActorUserId`+`isStoreOwner` 를 쓰면 안 된다**: 소비자 세션이 없을 때
+`sellers.linked_user_id`(= *매장 주인* id)로 폴백해 **운영자를 주인으로 오판**한다.
+
+막은 것: 정산계좌 변경 403 · 사업자정보 쓰기 403 · 탈퇴 403 · 사업자정보 읽기 마스킹
+(등록번호 끝 4자리 · 대표자명 첫 글자 · 주소/연락처 null). **시드 폴백 경로도 같은 마스킹**을 탄다.
+
+### ③-화면: `/seller/operating` 운영 매장 요약
+`GET /api/seller/operating-summary` — 스코프는 `listOperableStores`. 매장별 활성 상품·누적 매출/주문 +
+**운영 시작 이후** 구간(위임 매장만). 확정 주문만 센다.
+
+🔴 **정직함이 설계 제약**: 운영자별 귀속을 추적하지 않으므로 숫자는 **매장 총액**이고 화면이 그걸
+문장으로 밝힌다. 방어 가능한 청구 근거는 `revenue_since_grant` 뿐이다.
+
+가드: `store-operator-scope.test.ts` 14건 + 주입 5건 되돌려-검증 빨간불 확인.
 
 ## 다음 세션 첫 액션
 1. **배포 후** 매장 10곳 purge 실행 — 위 §② 절차. 판정: `sellers` 11 → **1**(홍대돈까스만).

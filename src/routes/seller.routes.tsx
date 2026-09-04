@@ -46,6 +46,8 @@ const SellerSettlementsPage = lazy(() => import('@/pages/SellerSettlementsPage')
 const SellerOperatorsPage = lazy(() => import('@/pages/SellerOperatorsPage'))
 // 🏪📣 2026-08-20 seller-dashboard-v2: 매장 관리(카카오맵 등록·삭제·위임) · 인플루언서 탐색/제안
 const SellerStoresPage = lazy(() => import('@/pages/SellerStoresPage'))
+// 🏪 2026-09-04 (대표 확정 '운영 매장 요약 대시보드'): 중개사가 매장에 청구할 근거를 보는 화면.
+const SellerOperatingSummaryPage = lazy(() => import('@/pages/SellerOperatingSummaryPage'))
 const SellerInfluencersPage = lazy(() => import('@/pages/SellerInfluencersPage'))
 const SellerAlimtalkPage = lazy(() => import('@/pages/SellerAlimtalkPage'))
 const SellerYoutubeGrowthPage = lazy(() => import('@/pages/SellerYoutubeGrowthPage'))
@@ -219,6 +221,11 @@ export function SellerRoutes() {
       <Route path="/seller/stores" element={
         <ProtectedRoute requireSeller>
           <SellerStoresPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/operating" element={
+        <ProtectedRoute requireSeller>
+          <SellerOperatingSummaryPage />
         </ProtectedRoute>
       } />
       <Route path="/seller/influencers" element={

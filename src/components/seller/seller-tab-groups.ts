@@ -97,6 +97,7 @@ export const SELLER_TAB_GROUPS: SellerTabGroup[] = [
     tabs: [
       { path: '/seller/stores', labelKey: 'seller.nav.stores', fallback: '매장' },
       { path: '/seller/operators', labelKey: 'seller.nav.operators', fallback: '운영자' },
+      { path: '/seller/operating', labelKey: 'seller.nav.operatingSummary', fallback: '운영 요약' },
     ],
   },
   {

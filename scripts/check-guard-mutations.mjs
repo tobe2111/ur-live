@@ -1995,6 +1995,58 @@ canvas {
       '**영원히 생성되지 않는다** — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
   },
   {
+    name: '🏪 운영 요약이 남의 매장까지 센다 (스코프 소실)',
+    file: 'src/features/seller/api/seller-operators.routes.ts',
+    // ⚠️ `listOperableStores(...)` 호출은 파일에 2곳(/my-stores · /operating-summary)이라
+    //    그 줄만으로는 앵커가 유일하지 않다. 뒤따르는 조기반환까지 붙여 좁힌다.
+    find: '    const stores = await listOperableStores(c.env.DB, userId)\n    if (stores.length === 0) return c.json({ success: true, data: [] })',
+    replace: "    const stores = ((await c.env.DB.prepare('SELECT id AS seller_id FROM sellers').all()).results || [])",
+    test: 'src/tests/unit/store-operator-scope.test.ts',
+    why:
+      '`listOperableStores` 가 이 화면의 유일한 스코프다. 빠지면 아무 셀러나 **모든 매장의 매출**을 본다 — ' +
+      '에러도 없고 화면도 정상이라 목록이 길어진 걸 누가 이상하게 여기기 전엔 모른다.',
+  },
+  {
+    name: '🏪 운영 요약이 미결제 주문까지 매출로 센다',
+    file: 'src/features/seller/api/seller-operators.routes.ts',
+    find: 'const PAID = "status IN (\'PAID\',\'DONE\',\'PREPARING\',\'SHIPPING\',\'DELIVERED\')"',
+    replace: 'const PAID = "status IN (\'PENDING\',\'PAID\',\'DONE\')"',
+    test: 'src/tests/unit/store-operator-scope.test.ts',
+    why:
+      '이 숫자는 중개사가 매장에 청구할 근거다. 결제도 안 된 주문이 섞이면 그 청구가 부풀려지고, ' +
+      '사장님은 정산서와 안 맞는 금액을 요구받는다.',
+  },
+  {
+    name: '🏪 운영자가 매장 정산계좌를 갈아끼울 수 있게 된다',
+    file: 'src/features/seller/api/seller-profile.routes.ts',
+    find: '      if (!actor.isOwner) {\n        return c.json({ success: false, error: `정산 계좌는 ${OWNER_ONLY_MESSAGE}` }, 403);',
+    replace: '      if (false) {\n        return c.json({ success: false, error: `정산 계좌는 ${OWNER_ONLY_MESSAGE}` }, 403);',
+    test: 'src/tests/unit/store-operator-scope.test.ts',
+    why:
+      '위임받은 중개사가 계좌를 바꾸면 그 매장의 돈이 통째로 딴 데로 간다. PIN 은 *운영자 자신의* ' +
+      'PIN 이라 못 막는다 — 권한으로 끊는 이 한 줄이 유일한 방어선이다.',
+  },
+  {
+    name: '🏪 행위자 판별이 linked_user_id 폴백으로 되돌아간다',
+    file: 'src/worker/utils/store-actor.ts',
+    find: '    const opRaw = Number(p.operator_user_id)',
+    replace: '    const opRaw = Number(p.linked_user_id)',
+    test: 'src/tests/unit/store-operator-scope.test.ts',
+    why:
+      '`linked_user_id` 는 *호출자*가 아니라 **매장 주인**의 id 다. 그걸로 판정하면 세션 없는 요청에서 ' +
+      '운영자가 주인으로 오판되고, 위의 모든 게이트가 한 번에 무의미해진다.',
+  },
+  {
+    name: '🏪 사업자정보 시드 폴백만 마스킹을 빠뜨린다',
+    file: 'src/features/seller/api/seller-profile.routes.ts',
+    find: "      const a0 = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);",
+    replace: '      const a0 = { isOwner: true };',
+    test: 'src/tests/unit/store-operator-scope.test.ts',
+    why:
+      '"사업자정보 행이 아직 없는 매장"에서만 원본이 샌다. 신규 매장은 흔한 상태인데 ' +
+      '평소 경로는 멀쩡해 보여서 눈에 안 띈다 — 이 레포가 반복해 만난 "조용한 부재".',
+  },
+  {
     name: '🗑️ cascade 가 머니 잔여물 검사까지 건너뛴다 (매출 있는 매장이 사라진다)',
     file: 'src/features/admin/api/admin-sellers.routes.ts',
     find: "    const ords = await countOr('주문', 'SELECT COUNT(*) AS n FROM orders WHERE seller_id = ?', [sellerId]);\n    if (ords > 0) blockers.push(`주문 ${ords}건`);",

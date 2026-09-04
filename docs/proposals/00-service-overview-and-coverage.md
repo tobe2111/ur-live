@@ -285,10 +285,10 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 68 | 272 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 69 | 273 |
 | 링크샵 / 큐레이터 | `linkshop-brief.md` | 13 | 59 |
 | 에이전시 | `agency-brief.md` | 9 | 29 |
-| **합계** | — | **162** | **459** |
+| **합계** | — | **163** | **460** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -297,8 +297,8 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 359 | 1106 |
-| 도메인 버킷 (5개 소개서) | 162 | 459 |
+| 전체 | 360 | 1107 |
+| 도메인 버킷 (5개 소개서) | 163 | 460 |
 | 공통/인프라 (의도적 제외) | 163 | 470 |
 | **미커버 (점검 필요)** | **34** | **177** |
 
@@ -887,7 +887,7 @@
 
 #### 온라인 입점 / 라이브커머스
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (68개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (69개)
 
 - `/browse`
 - `/cart`
@@ -920,6 +920,7 @@
 - `/seller/login`
 - `/seller/marketing`
 - `/seller/notify-followers`
+- `/seller/operating`
 - `/seller/operators`
 - `/seller/orders`
 - `/seller/plus-friend-guide`
@@ -958,7 +959,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (272개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (273개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1221,6 +1222,9 @@
 **/api/seller/onboarding**
 - `GET /api/seller/onboarding/`
 - `POST /api/seller/onboarding/complete/:step_key`
+
+**/api/seller/operating-summary**
+- `GET /api/seller/operating-summary`
 
 **/api/seller/operators**
 - `GET /api/seller/operators`
@@ -1733,7 +1737,7 @@
 
 
 
-> 마지막 생성: 2026-09-04T04:36:47.760Z
+> 마지막 생성: 2026-09-04T05:24:56.164Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

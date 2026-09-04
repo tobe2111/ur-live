@@ -1868,7 +1868,8 @@
       "adSlots": "Emplacements pub",
       "discounts": "Remises",
       "partners": "Partenaires",
-      "notifyGuide": "Alertes et guide"
+      "notifyGuide": "Alertes et guide",
+      "operatingSummary": "Résumé d'exploitation"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
