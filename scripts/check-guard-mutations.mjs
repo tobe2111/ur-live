@@ -8219,6 +8219,27 @@ canvas {
       '"다녀오라" 는 문구를 본다. 원인을 알 길이 없는 문구라 문의조차 못 한다 — 503 으로 갈라야 한다.',
   },
   {
+    name: '🎟️ 발송 실패한 교환권을 다시 "내 교환권" 으로 센다',
+    file: 'src/pages/user-profile/useMyCounts.ts',
+    find: 'vouchers.filter(v => isGifticonVoucher(v) && !isFailedGifticon(v)).length',
+    replace: 'vouchers.filter(isGifticonVoucher).length',
+    test: 'src/tests/unit/gifticon-failed-not-counted.test.tsx',
+    why:
+      '대표가 지목한 숫자가 정확히 이것이다 — 문자조차 못 받은 교환권을 "내 교환권 1" 로 말하면 거짓이다. ' +
+      'KT 병합이 발송 실패를 status:unused 로 눌러 담기 때문에 kt_status 를 안 보면 되살아난다. ' +
+      '⚠️ 이 항목은 되돌려-검증에서 **처음엔 통과했다** — 지갑 페이지만 테스트하고 이 카운트를 안 봤다.',
+  },
+  {
+    name: '🎟️ 교환권 지갑이 발송 실패분을 다시 사용가능·합계에 넣는다',
+    file: 'src/pages/MyGifticonsPage.tsx',
+    find: '  const owned = items.filter(v => !isFailedGifticon(v))',
+    replace: '  const owned = items.filter(() => true)',
+    test: 'src/tests/unit/gifticon-failed-not-counted.test.tsx',
+    why:
+      "실패분이 '사용 가능 N장' 과 상단 딜 합계에 섞이면 쓸 수 없는 것을 자산으로 표시하는 것이다. " +
+      '카드는 계속 보여야 하지만(문의 경로) 세면 안 된다.',
+  },
+  {
     name: '🎟️ 이용권 현황이 교환권까지 센다 (마이가 자기 자신과 모순)',
     file: 'src/pages/user-profile/OrderStatusBar.tsx',
     find: '      if (!isStoreVoucher(v)) continue',

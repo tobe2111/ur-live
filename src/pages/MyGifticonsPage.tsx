@@ -22,7 +22,7 @@ import WalletHeader from './my-vouchers/WalletHeader'
 import WalletArchive from './my-vouchers/WalletArchive'
 import VoucherTicket from './my-vouchers/VoucherTicket'
 import { EmptyVouchers } from './my-vouchers/WalletEmpty'
-import { isGifticonVoucher } from '@/shared/voucher-wallet'
+import { isFailedGifticon, isGifticonVoucher } from '@/shared/voucher-wallet'
 import type { Voucher } from './my-vouchers/types'
 
 export default function MyGifticonsPage() {
@@ -35,10 +35,16 @@ export default function MyGifticonsPage() {
   const items = useMemo(() => ((raw ?? []) as unknown as Voucher[]).filter(isGifticonVoucher), [raw])
   const locale = i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US'
 
-  const usable = items.filter(v => v.status === 'unused')
-  const sending = items.filter(v => v.status === 'processing')
-  const used = items.filter(v => v.status === 'used')
-  const archived = items.filter(v => v.status === 'expired' || v.status === 'refunded')
+  // 🩸 2026-09-04 (대표 결정 — 발송 실패분을 숫자에서 뺀다): KT 병합이 발송 실패를
+  //   `status:'unused'` + `kt_status:'failed'` 로 실어 보내기 때문에(2026-06-17), `status` 만 보면
+  //   **문자조차 못 받은 것이 '사용 가능' 에 들어가고 상단 딜 합계에도 더해졌다.**
+  //   ⇒ 자기 그룹으로 빼서 **보이되 안 세게** 한다. 판정은 `voucher-wallet` SSOT 하나로.
+  const failed = items.filter(isFailedGifticon)
+  const owned = items.filter(v => !isFailedGifticon(v))   // 개수·금액이 말하는 "내가 가진 것"
+  const usable = owned.filter(v => v.status === 'unused')
+  const sending = owned.filter(v => v.status === 'processing')
+  const used = owned.filter(v => v.status === 'used')
+  const archived = owned.filter(v => v.status === 'expired' || v.status === 'refunded')
 
   // 교환권은 딜로만 결제 → 단위 '딜' (utils/format.ts formatProductPrice 의 deal_only 규칙과 동일).
   const heroTotal = usable.reduce((s, v) => s + (v.applied_price ?? v.product_price ?? 0), 0)
@@ -58,12 +64,12 @@ export default function MyGifticonsPage() {
 
       <WalletHeader
         title={t('voucher.myGifticons', { defaultValue: '내 교환권' })}
-        amount={items.length > 0 ? heroTotal : null}
+        amount={owned.length > 0 ? heroTotal : null}
         unit={t('voucher.deal', { defaultValue: '딜' })}
         /* 교환권은 만료일·할인율을 안 갖고 온다 → 지표는 '사용 가능' 하나뿐이고, 없으면 줄 자체를 안 그린다. */
-        stats={items.length > 0 ? [
+        stats={owned.length > 0 ? [
           { label: t('voucher.heroUsable', { defaultValue: '사용 가능' }), value: `${usable.length}${t('voucher.heroCountUnit', { defaultValue: '장' })}` },
-          { label: t('voucher.totalCountLabel', { defaultValue: '전체' }), value: `${items.length}${t('voucher.heroCountUnit', { defaultValue: '장' })}` },
+          { label: t('voucher.totalCountLabel', { defaultValue: '전체' }), value: `${owned.length}${t('voucher.heroCountUnit', { defaultValue: '장' })}` },
         ] : []}
         onBack={() => navigate('/vouchers')}
         backLabel={t('common.back', { defaultValue: '뒤로가기' })}
@@ -88,6 +94,21 @@ export default function MyGifticonsPage() {
           <EmptyVouchers mode="gift" onExplore={() => navigate('/vouchers')} t={t} />
         ) : (
           <>
+            {/* 발송 실패 — 숫자에선 빠지지만 화면에선 맨 위다. 이걸 숨기면 "결제됐는데 안 왔다"를
+                알 방법이 사라진다(카드가 실패 사유 UI 를 그린다 — VoucherTicket 의 sendFailed). */}
+            {failed.length > 0 && (
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">
+                    {t('voucher.status.sendFailed', { defaultValue: '발송 실패' })} <span className="text-gray-400 dark:text-gray-500">{failed.length}</span>
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {failed.map(v => <VoucherTicket key={v.id} v={v} muted locale={locale} t={t} onShowQr={() => {}} />)}
+                </div>
+              </div>
+            )}
+
             {/* 발송 중 — 결제 직후 문자가 도착하기 전 구간. 여기 없으면 "결제했는데 아무것도 없다"가 된다. */}
             {sending.length > 0 && (
               <div className="mb-5">
