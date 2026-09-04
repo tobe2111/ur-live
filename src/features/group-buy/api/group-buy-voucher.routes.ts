@@ -264,7 +264,10 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
   )
 
   // ── 🎟️ 2026-07-02 (대표): 매장별 "현지 사용 방식" 설정 — 사장님이 3모드 중 선택 ──
-  //   scan_only(직원 확인만) / store_code(매장 확인코드 셀프) / self_free(자유 셀프, 현행 기본).
+  //   scan_only(직원 확인만) / store_code(매장 확인코드 셀프) / self_free.
+  //   ⚠️ 2026-09-03 정정: self_free 는 **더 이상 '현행 기본'이 아니다.** 대표 지시("우리는 QR 아니면
+  //   매장 확인코드야")로 손님 셀프 경로는 `worker/utils/self-redeem-gate` 가 판정하고, 설정이 없거나
+  //   조회에 실패하면 **거절**한다(fail-closed). 직원 QR 스캔은 그 게이트 밖이라 항상 열려 있다.
   router.get('/redemption-settings', requireAuth(), async (c) => {
     const user = getCurrentUser(c)
     if (!user || user.type !== 'seller') return c.json({ success: false, error: '셀러만 가능' }, 403)
