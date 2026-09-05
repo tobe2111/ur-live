@@ -88,6 +88,17 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '떠난 페이지가 스크롤 저장을 0 으로 덮어쓴다',
+    file: 'src/components/ScrollToTop.tsx',
+    find: '      if (currentKeyRef.current !== keyAtAttach) return',
+    replace: '      if (false) return',
+    test: 'src/tests/unit/scroll-restoration.test.ts',
+    why:
+      '2026-09-01 대표 "어떠한 페이지든 무조건 맨 위로 나옴". 복원 코드는 두 달간 있었는데도 ' +
+      '동작하지 않았다 — 떠나는 순간 옛 키로 0 이 저장돼 "저장된 자리 없음" 폴백을 탔다. ' +
+      '귀속 검증에서 이 한 줄만이 되돌리면 깨지는 유일한 변경이었다(실측 3/3 → 0/3).',
+  },
+  {
     name: '🎫 이용권 딜 결제가 기본 ON 이 된다 (배포만으로 새는 문이 열린다)',
     file: 'src/shared/feature-flags.ts',
     find: 'export const VOUCHER_DEAL_PAYMENT_ENABLED = false',
@@ -7119,6 +7130,17 @@ canvas {
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
   },
   {
+    name: '📏 레인 하트비트가 회차별 읽기·쓰기를 다시 버린다(출처를 추측으로 돌아감)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'rr: this.meter.rr || 0, rw: this.meter.rw || 0,',
+    replace: 'rr: 0, rw: 0,',
+    test: 'src/tests/unit/ads-lane-meter-visibility.test.ts',
+    why:
+      '계측기는 원래부터 회차마다 돌았는데 공용 원장에 더하고 레인별 값은 버렸다. 그래서 "하루 ' +
+      '쓰기 37만·읽기 2억이 어느 레인 것인가"에 아무도 답을 못 했고, 그 자리를 추측으로 메우다 ' +
+      '두 번 틀렸다(#1333·#1348 — 둘 다 배포 후 감소 0). 상수를 박으면 그 상태로 되돌아간다.',
+  },
+  {
     name: '🪞 재분류가 안 바뀐 판정도 다시 쓴다(업체 DB 쓰기 폭주 복귀)',
     file: 'src/features/marketing/api/company-discovery.ts',
     find: '    if (!changed) {',
@@ -7608,8 +7630,10 @@ canvas {
   {
     name: '🛑 폐지한 에이전시 영입 1% 축이 타입으로 되살아난다',
     file: 'src/worker/utils/order-commissions.ts',
-    find: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'supplier'",
-    replace: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'agency_intro' | 'supplier'",
+    // 🗺️ 2026-09-05: 크리에이터 영입 2% 폐지로 'influencer_intro' 가 타입에서 빠져 이 지도가 낡았다.
+    //   (pre-commit 의 '낡은 지도' 검사가 잡았다 — 그게 이 검사의 두 번째 역할이다.)
+    find: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'supplier'",
+    replace: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'agency_intro' | 'supplier'",
     test: 'src/tests/unit/agency-intro-retired.test.ts',
     why:
       '타입에서 뺀 것이 이 폐지의 자물쇠다 — 호출부가 컴파일로 막힌다. 되살아나면 같은 행위(매장 영입)에 ' +

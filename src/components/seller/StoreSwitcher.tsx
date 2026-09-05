@@ -79,7 +79,11 @@ export default function StoreSwitcher() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1" role="listbox">
+          {/* 📱 2026-09-04 (대표 스크린샷 — "팝업 같은게 잘려보임"): `absolute right-0 w-64` 는
+                버튼 오른쪽 끝에서 **왼쪽으로 256px** 뻗는다. 좁은 화면에서 버튼이 왼쪽에 있으면
+                그 256px 이 화면 밖으로 나가 목록이 잘린다(스크린샷: "운영"·"홍대" 가 잘림).
+                ⇒ 모바일은 **화면에 고정**해 좌우 여백을 두고, sm 부터 종전 앵커. */}
+          <div className="fixed inset-x-3 top-14 sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto mt-1 sm:w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1 max-h-[70vh] overflow-y-auto" role="listbox">
             <p className="px-3 py-1.5 text-[11px] font-bold text-gray-400">운영 중인 매장 {stores.length}곳</p>
             {stores.map(s => {
               const active = s.seller_id === currentId
