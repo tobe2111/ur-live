@@ -36,8 +36,10 @@ export const INDEX_REPAIRS: Array<{ name: string; sql: string }> = [
   //      `SELECT content FROM product_reviews WHERE COALESCE(is_generated,0)=0 … ORDER BY created_at DESC LIMIT 2000`
   //      이 인덱스가 없어 12만 행을 정렬했다. 부분 인덱스의 WHERE 는 쿼리와 **글자까지 같아야** 플래너가 함의를 인정한다.
   { name: 'idx_product_reviews_real_created', sql: `CREATE INDEX IF NOT EXISTS idx_product_reviews_real_created ON product_reviews(created_at DESC) WHERE COALESCE(is_generated,0) = 0` },
-  //   ② `group-buy-deadline-push` 5,350행/5분 = 하루 150만 — 창 3개 × products 전수. `datetime(group_buy_deadline)` 이
-  //      함수로 감싸져 범위 인덱스는 못 타지만, 활성+마감 있는 행만 담은 부분 인덱스면 전수 대신 그 부분집합만 걷는다.
-  { name: 'idx_products_gb_deadline_active', sql: `CREATE INDEX IF NOT EXISTS idx_products_gb_deadline_active ON products(group_buy_deadline) WHERE group_buy_status = 'active' AND group_buy_deadline IS NOT NULL` },
+  //   ② 였던 `idx_products_gb_deadline_active` 는 **2026-09-05 에 제거했다.** 그 인덱스의 유일한 독자가
+  //      `group-buy-deadline-push` cron 이었는데, 마감 개념이 없어져(대표 "마감 개념은 없어") 그 cron 을
+  //      통째로 걷어냈다. 읽는 사람이 없는 인덱스는 products 쓰기만 무겁게 한다.
+  //      ⚠️ 라이브에 이미 만들어진 인덱스는 이 줄을 지워도 사라지지 않는다 — 실제 DROP 은 마이그레이션이
+  //      필요하고, 남아 있어도 해롭지 않아 별건으로 둔다.
   { name: 'idx_alimtalk_failures_retry', sql: `CREATE INDEX IF NOT EXISTS idx_alimtalk_failures_retry ON alimtalk_failures(resolved, next_retry_at)` },
 ]

@@ -12,7 +12,7 @@ import { walletTokens } from '@/components/wallet/walletTokens'
 import { useTheme } from '@/shared/stores/useTheme'
 import { useWishlist, type WishlistItem } from '@/hooks/queries/useWishlist'
 import { WishlistSortChips, WishlistFlag, WishlistSummaryRail } from './wishlist/WishlistParts'
-import { priceDrop, daysLeft, summarize, sortWishlist, type WishlistSort } from './wishlist/wishlist-signals'
+import { priceDrop, summarize, sortWishlist, type WishlistSort } from './wishlist/wishlist-signals'
 import BrandLoader from '@/components/brand/BrandLoader'
 import GroupBuyFeedCard from './main-home/GroupBuyFeedCard'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -160,7 +160,7 @@ const WishlistPage: React.FC = () => {
                     key={item.id}
                     imgWidth={cardImgWidth}
                     aboveFold={i < 4}
-                    flags={<WishlistFlag drop={priceDrop(item)} days={daysLeft(item)} />}
+                    flags={<WishlistFlag drop={priceDrop(item)} />}
                     p={{
                       id: item.product_id,
                       name: item.product_name,

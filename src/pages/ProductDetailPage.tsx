@@ -29,7 +29,6 @@ import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import { resolveDetailDisplay } from './product-detail/detail-display'
 import AccordionSection from './product-detail/AccordionSection'
-import GroupBuyCountdown from './product-detail/GroupBuyCountdown'
 import ProductReviews from './product-detail/ProductReviews'
 import ReferralSection from './product-detail/ReferralSection'
 import PurchasePicker from './product-detail/PurchasePicker'
@@ -41,9 +40,10 @@ import { storeAffiliateRef, arrivedViaSomeoneElsesRef } from '@/utils/affiliate-
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 import { effectiveAffiliateRate } from '@/shared/affiliate-rate'
 
-// 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection/
-//   GroupBuyCountdown 을 ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage,
-//   SharePrompt, toast, Users, Clock, Product type, lucide 일부) 제거.
+// 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection 을
+//   ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage, SharePrompt, toast,
+//   Users, Clock, Product type, lucide 일부) 제거.
+//   🗓️ 2026-09-04: 함께 추출했던 GroupBuyCountdown 은 마감 개념 제거로 파일째 삭제됐다.
 
 // Lazy load heavy components
 const ProductImageCarousel = lazy(() => import('@/components/product/product-image-carousel').then(m => ({ default: m.ProductImageCarousel })))
