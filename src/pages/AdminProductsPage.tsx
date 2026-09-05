@@ -25,6 +25,7 @@ import SupplySalesTab from './admin-products/SupplySalesTab'
 import SupplierProductsTab from './admin-products/SupplierProductsTab'
 import type { SupplierProductRow } from './admin-products/SupplierProductsTab'
 import type { ProductOption } from '@/components/ProductOptionForm'
+import { DEFAULT_AFFILIATE_RATE } from '@/shared/affiliate-rate'
 
 const EMPTY_TABS = { all_count: 0, active_count: 0, inactive_count: 0, out_of_stock: 0, kt_alpha_count: 0 }
 
@@ -329,7 +330,7 @@ export default function AdminProductsPage() {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       await api.patch(`/api/admin/products/${productId}`, { referral_commission_rate: value }, { headers: { Authorization: `Bearer ${token}` } })
       toast.success(value === null
-        ? t('admin.products.referralRateDefault', { defaultValue: '기본 보상률 (5%) 적용' })
+        ? t('admin.products.referralRateDefault', { defaultValue: `기본 보상률 (${DEFAULT_AFFILIATE_RATE * 100}%) 적용` })
         : t('admin.products.referralRateSet', { rate: ratePercent, defaultValue: `보상률 ${ratePercent}% 적용` }))
     } catch (err) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
@@ -803,21 +804,20 @@ export default function AdminProductsPage() {
                               min={0}
                               max={50}
                               step={0.5}
-                              defaultValue={
-                                product.referral_commission_rate != null
-                                  ? Math.round(Number(product.referral_commission_rate) * 1000) / 10  // 0.05 → 5
-                                  : 5  // platform default
-                              }
+                              // 0.05 → 5. 기본값은 SSOT(2026-09-05: 5 하드코딩이라 라이브 2% 와 갈려 있었다)
+                              defaultValue={product.referral_commission_rate != null
+                                ? Math.round(Number(product.referral_commission_rate) * 1000) / 10
+                                : DEFAULT_AFFILIATE_RATE * 100}
                               className="w-14 px-1.5 py-0.5 text-xs text-right border border-gray-200 rounded text-gray-900 focus:border-emerald-400 focus:outline-none"
                               onBlur={(e) => {
                                 const v = e.target.value.trim()
                                 const n = v === '' ? null : Number(v)
                                 if (n !== null && (!Number.isFinite(n) || n < 0 || n > 50)) return
                                 // 5 (default) 와 같으면 NULL 로 (platform default 사용)
-                                handleSetReferralRate(product.id, n === 5 ? null : n)
+                                handleSetReferralRate(product.id, n === DEFAULT_AFFILIATE_RATE * 100 ? null : n)
                               }}
                               onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-                              title="추천 보상률 (%) — 0~50, 빈 값 또는 5 입력 시 기본값 적용"
+                              title={`추천 보상률 (%) — 0~50, 빈 값 또는 ${DEFAULT_AFFILIATE_RATE * 100} 입력 시 기본값 적용`}
                             />
                           )}
                           {Number(product.referral_enabled) === 1 && <span className="text-[10px] text-gray-400">%</span>}

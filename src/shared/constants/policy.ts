@@ -80,8 +80,16 @@ export const COMMISSION_DEFAULTS = {
   /** 셀러 등급별 보너스 (% 가산) */
   TIER_COMMISSION_BONUS: { bronze: 0, silver: 1, gold: 2, platinum: 3 } as Record<string, number>,
 
-  /** 제휴 마케팅 추천인 보상 — `platform_settings.affiliate_commission_rate` 미설정 시 fallback */
-  AFFILIATE_COMMISSION_PCT: 5,
+  /** 제휴 마케팅 추천인 보상 — `platform_settings.affiliate_commission_rate` 미설정 시 fallback.
+   *  🩸 2026-09-05: **5 였는데 라이브는 2 였다.** 2026-06-17 대표 결정(5%→2%, 1인 치킨게임)이
+   *  실제 적립 경로(`affiliate-credit.ts`)에만 반영되고 이 상수는 안 따라와서, 어드민 정책 표와
+   *  운영 핸드북이 몇 달간 **2.5배 틀린 숫자**를 보여 주고 있었다(적립 자체는 2% 로 맞게 나갔다).
+   *  ⇒ 값을 `shared/affiliate-rate.ts` 에서 가져온다 — 다시 갈라질 수 없게. */
+  //   ⚠️ **리터럴로 둔다 — 표현식으로 바꾸지 말 것.** `generate-ops-handbook.mjs` 는 이 표를
+  //   정적 파싱(`/^([0-9._]+)\s*,/`)해서 운영백서 숫자표를 만든다. `DEFAULT_AFFILIATE_RATE * 100`
+  //   로 썼더니 **행이 통째로 사라졌다**(5% 로 틀리게 나오는 것보다 나쁘다 — 아예 안 보인다).
+  //   드리프트는 표현식이 아니라 테스트가 막는다: affiliate-rate-ssot 이 이 값 == 기본값×100 을 못박는다.
+  AFFILIATE_COMMISSION_PCT: 2,
 
   /** 공구 양쪽 보너스 (추천인 + 피추천인 각각 %) */
   REFERRAL_BONUS_BOTHSIDES_PCT: 0.5,

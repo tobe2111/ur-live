@@ -23,7 +23,10 @@ export interface CuratorPin {
   category: string
   deal_only?: number
   is_active: number
-  commission_rate: number
+  /** **분수**(0.05 = 5%). NULL = 상품별 설정 없음 → 플랫폼 기본(`shared/affiliate-rate`). */
+  commission_rate: number | null
+  /** 0/1 — 적립 꺼진 상품엔 적립 안내를 달지 않는다. */
+  referral_enabled?: number | null
   // 🤝 2026-08-27: 이 유어샵 주인이 그 매장과 맺은 **활성 딜의 %**. null = 딜 없음 → 팔려도 소개비 0.
   //   서버가 SSOT(`findActiveDealPctsBySeller`)로 계산해 실어 보낸다 — 화면이 다시 판정하지 않는다.
   deal_pct?: number | null
@@ -152,7 +155,7 @@ export const curatorApi = {
 
   async getRecommendations(limit = 20): Promise<{
     success: boolean
-    recommendations: Array<{ id: number; name: string; price: number; original_price: number | null; category: string; image_url: string | null; thumbnail: string | null; commission_rate: number; sold_count: number }>
+    recommendations: Array<{ id: number; name: string; price: number; original_price: number | null; category: string; image_url: string | null; thumbnail: string | null; commission_rate: number | null; referral_enabled?: number | null; sold_count: number }>
   }> {
     const res = await api.get(`/api/curator/recommendations?limit=${limit}`)
     return res.data
