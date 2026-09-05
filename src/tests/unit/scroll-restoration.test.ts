@@ -60,3 +60,26 @@ describe('POP 이면 저장된 자리로 돌아간다', () => {
     expect(code, '사용자 스크롤 시 중단이 없다').toMatch(/addEventListener\('(wheel|touchstart)'/)
   })
 })
+
+describe('내부 스크롤 영역도 복원된다 (문서만으로는 부족했다)', () => {
+  it('data-scroll-restore 를 단 컨테이너를 저장·복원한다', () => {
+    // 🩸 2026-09-01 전수 실측: 판정 가능한 표면은 전부 통과했는데 `/map` 만 남았다 —
+    //   그 목록은 **문서가 아니라 컨테이너**가 스크롤돼(`flex-1 min-h-0 overflow-y-auto`)
+    //   문서 스크롤만 다루던 복원이 닿지 않았다. 옵트인 표시로 일반화했다.
+    expect(code, '컨테이너 옵트인 셀렉터가 사라졌다').toMatch(/data-scroll-restore/)
+    expect(code, '컨테이너 위치를 저장하지 않는다').toMatch(/writePos\(paneKey\(/)
+    expect(code, '컨테이너 위치를 복원하지 않는다').toMatch(/el\.scrollTop = Math\.min/)
+  })
+
+  it('capture 로 듣는다 — scroll 은 버블하지 않는다', () => {
+    // window 리스너만으로는 컨테이너 스크롤을 **영원히 못 받는다**. 이 옵션이 빠지면
+    // 저장이 조용히 0건이 되고, 화면은 그대로라 아무도 모른다.
+    expect(code, 'capture 없이 듣고 있다 — 컨테이너 스크롤을 못 받는다')
+      .toMatch(/addEventListener\('scroll',[^)]*capture:\s*true/)
+  })
+
+  it('지도 목록에 실제로 표시가 붙어 있다 (기능이 있는데 아무도 안 쓰면 없는 것)', () => {
+    const map = readFileSync(resolve(__dirname, '../../..', 'src/pages/RestaurantMapPage.tsx'), 'utf-8')
+    expect(map, '지도 목록의 data-scroll-restore 표시가 사라졌다').toMatch(/data-scroll-restore="map-list"/)
+  })
+})

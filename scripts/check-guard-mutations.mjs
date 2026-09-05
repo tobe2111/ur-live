@@ -88,6 +88,16 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '컨테이너 스크롤을 capture 없이 들어 영원히 못 받는다',
+    file: 'src/components/ScrollToTop.tsx',
+    find: "{ passive: true, capture: true }",
+    replace: '{ passive: true }',
+    test: 'src/tests/unit/scroll-restoration.test.ts',
+    why:
+      'scroll 이벤트는 **버블하지 않는다** — window 리스너만으로는 내부 스크롤 영역(지도 목록)의 ' +
+      '위치를 한 번도 못 받는다. 저장이 조용히 0건이 되고 화면은 그대로라 아무도 모른다.',
+  },
+  {
     name: '떠난 페이지가 스크롤 저장을 0 으로 덮어쓴다',
     file: 'src/components/ScrollToTop.tsx',
     find: '      if (currentKeyRef.current !== keyAtAttach) return',
