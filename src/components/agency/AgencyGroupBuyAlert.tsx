@@ -3,7 +3,10 @@
  *
  * 표시:
  *   - churn risk 셀러 (last 14일 등록 X)
- *   - 진행중/위험 공구 · 미해결 분쟁 = **카운트만 표시**(이동 없음)
+ *   - 진행중 공구 · 미해결 분쟁 = **카운트만 표시**(이동 없음)
+ *
+ * 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): '미달성 위험'(24h 내 마감 + 진행률 50% 미만) 블록 제거.
+ *    마감이 없어져 그 값은 영구히 0 이고, 안내 문구가 사라진 개념을 계속 설명하고 있었다.
  *
  * 🌇 2026-08-19 일몰 축소: `/agency/group-buy` 라우트가 제거돼 그 두 블록의 이동을 없앴다.
  *    "24h 내 마감 공구"를 눌렀는데 셀러 로스터가 뜨는 건 죽은 링크보다 나쁘다 — 행선지가
@@ -13,12 +16,11 @@
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, Users, ChevronRight, Ticket } from 'lucide-react'
+import { AlertTriangle, Users, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 
 interface AgencyAlert {
   churn_sellers: number
-  at_risk_groups: number
   active_groups: number
   pending_disputes: number
 }
@@ -32,21 +34,20 @@ export default function AgencyGroupBuyAlert() {
     const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
     // 🛡️ 2026-05-15: 실데이터 연동 — /api/disputes/agency-overview + /agency/pending
     Promise.all([
-      api.get('/api/disputes/agency-overview', { headers }).catch(() => ({ data: { data: { active_groups: 0, at_risk_groups: 0, churn_sellers: 0 } } })),
+      api.get('/api/disputes/agency-overview', { headers }).catch(() => ({ data: { data: { active_groups: 0, churn_sellers: 0 } } })),
       api.get('/api/disputes/agency/pending', { headers }).catch(() => ({ data: { data: { count: 0 } } })),
     ]).then(([overviewRes, disputesRes]) => {
       const ov = overviewRes.data?.data || {}
       const pendingCount = Number(disputesRes.data?.data?.count ?? 0)
       setData({
         active_groups: Number(ov.active_groups ?? 0),
-        at_risk_groups: Number(ov.at_risk_groups ?? 0),
         churn_sellers: Number(ov.churn_sellers ?? 0),
         pending_disputes: pendingCount,
       })
     }).finally(() => setLoading(false))
   }, [])
 
-  if (loading || !data || (data.churn_sellers === 0 && data.at_risk_groups === 0 && data.pending_disputes === 0)) {
+  if (loading || !data || (data.churn_sellers === 0 && data.pending_disputes === 0)) {
     return null
   }
 
@@ -77,16 +78,6 @@ export default function AgencyGroupBuyAlert() {
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400" />
           </button>
-        )}
-
-        {data.at_risk_groups > 0 && (
-          <div className="w-full bg-white rounded-xl p-3 flex items-center gap-3">
-            <Ticket className="w-5 h-5 text-amber-500 shrink-0" />
-            <div className="flex-1 text-left">
-              <p className="text-xs font-bold text-gray-900">{data.at_risk_groups}개 공구 — 미달성 위험</p>
-              <p className="text-[10px] text-gray-500 mt-0.5">24h 이내 마감 + 진행률 50% 미만 — share 부스트 권장</p>
-            </div>
-          </div>
         )}
 
         {data.pending_disputes > 0 && (

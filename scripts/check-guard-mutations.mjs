@@ -550,15 +550,18 @@ const MUTATIONS = [
       '2026-09-02 첫 계량: auto-seed-reviews 가 시간당 12.7만 행(하루 300만) — product_reviews 12만 행을 매시간 정렬했다. ' +
       '부분 인덱스는 쿼리 WHERE 와 글자까지 같아야 쓰인다 — `is_generated = 0` 으로 "단순화"하면 인덱스는 남고 효과만 사라진다.',
   },
+  // 🪦 2026-09-05: '공구 마감 부분 인덱스' 주입은 **대상이 사라져서** 뺐다. 그 인덱스의 유일한
+  //   독자였던 `group-buy-deadline-push` cron 을 통째로 제거했기 때문이다(마감 개념 폐지).
+  //   대신 같은 테스트가 "그 cron 이 되살아나지 않는가" 를 지키고, 그쪽 주입을 아래에 새로 넣었다.
   {
-    name: '📏 공구 마감 부분 인덱스가 사라져 5분마다 products 전수 ×3',
-    file: 'src/worker/routes/repair-schema/index-repairs.ts',
-    find: "  { name: 'idx_products_gb_deadline_active', sql: `CREATE INDEX IF NOT EXISTS idx_products_gb_deadline_active ON products(group_buy_deadline) WHERE group_buy_status = 'active' AND group_buy_deadline IS NOT NULL` },\n",
-    replace: '',
+    name: '🪦 마감 push cron 이 디스패처에 되살아난다 — 0건을 위해 하루 150만 행',
+    file: 'src/worker/scheduled.ts',
+    find: "    // 🪦 2026-09-05: '공구 마감 3시간/1시간 전 push' cron 제거",
+    replace: "    ctx.waitUntil(safeCron('group-buy-deadline-push', () => Promise.resolve()));\n    // 🪦 2026-09-05: '공구 마감 3시간/1시간 전 push' cron 제거",
     test: 'src/tests/unit/d1-diet-round2.test.ts',
     why:
-      'group-buy-deadline-push 가 5분마다 창 3개 × products 전수(5,350행/틱 = 하루 150만). 활성+마감 부분 인덱스가 빠지면 ' +
-      '조용히 전수로 되돌아간다.',
+      '마감 개념이 없어져 그 조회는 영구히 0건인데, 5분마다 products 를 창 3개로 훑고(하루 ~150만 행) ' +
+      '매번 ALTER 를 두 번 시도했다. 09-02 에 이 계정은 D1 일일 읽기 한도로 소비자 API 가 통째로 500 이었다.',
   },
   {
     name: '📉 키워드 수율 재계산 6h 게이트가 헛돈다(회차마다 전수 GROUP BY)',
@@ -7137,6 +7140,17 @@ canvas {
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
   },
   {
+    name: '📏 레인 하트비트가 회차별 읽기·쓰기를 다시 버린다(출처를 추측으로 돌아감)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'rr: this.meter.rr || 0, rw: this.meter.rw || 0,',
+    replace: 'rr: 0, rw: 0,',
+    test: 'src/tests/unit/ads-lane-meter-visibility.test.ts',
+    why:
+      '계측기는 원래부터 회차마다 돌았는데 공용 원장에 더하고 레인별 값은 버렸다. 그래서 "하루 ' +
+      '쓰기 37만·읽기 2억이 어느 레인 것인가"에 아무도 답을 못 했고, 그 자리를 추측으로 메우다 ' +
+      '두 번 틀렸다(#1333·#1348 — 둘 다 배포 후 감소 0). 상수를 박으면 그 상태로 되돌아간다.',
+  },
+  {
     name: '🪞 재분류가 안 바뀐 판정도 다시 쓴다(업체 DB 쓰기 폭주 복귀)',
     file: 'src/features/marketing/api/company-discovery.ts',
     find: '    if (!changed) {',
@@ -7626,8 +7640,10 @@ canvas {
   {
     name: '🛑 폐지한 에이전시 영입 1% 축이 타입으로 되살아난다',
     file: 'src/worker/utils/order-commissions.ts',
-    find: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'supplier'",
-    replace: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'agency_intro' | 'supplier'",
+    // 🗺️ 2026-09-05: 크리에이터 영입 2% 폐지로 'influencer_intro' 가 타입에서 빠져 이 지도가 낡았다.
+    //   (pre-commit 의 '낡은 지도' 검사가 잡았다 — 그게 이 검사의 두 번째 역할이다.)
+    find: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'supplier'",
+    replace: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'agency_intro' | 'supplier'",
     test: 'src/tests/unit/agency-intro-retired.test.ts',
     why:
       '타입에서 뺀 것이 이 폐지의 자물쇠다 — 호출부가 컴파일로 막힌다. 되살아나면 같은 행위(매장 영입)에 ' +
@@ -8534,6 +8550,100 @@ canvas {
     why:
       'sticky 는 스택 컨텍스트를 만들고 z 가 없으면 지도 레이어(z≥1) 아래로 깔린다. 클래스 하나라 ' +
       '정리하다 지우기 쉽다.',
+  },
+  {
+    name: '🗓️ 에이전시 위험 집계가 마감 기준으로 회귀 — 영구히 0 만 내는 지표',
+    file: 'src/worker/routes/disputes.routes.ts',
+    find: '        SELECT COUNT(*) AS active_count\n        FROM products p',
+    replace: '        SELECT\n          COUNT(*) AS active_count,\n          SUM(CASE WHEN p.group_buy_deadline < ? THEN 1 ELSE 0 END) AS at_risk_count\n        FROM products p',
+    test: 'src/tests/unit/no-deadline-sort.test.ts',
+    why: '마감이 없어졌으므로 NULL 비교라 언제나 0 이다. 크래시가 아니라 조용한 부재 — 화면은 멀쩡해 보인다.',
+  },
+  {
+    name: '🗓️ 에이전시 알림에 사라진 개념(24h 내 마감) 안내가 부활',
+    file: 'src/components/agency/AgencyGroupBuyAlert.tsx',
+    find: "        {data.churn_sellers > 0 && (",
+    replace: "        {false && (<p>미달성 위험 — 24h 이내 마감</p>)}\n        {data.churn_sellers > 0 && (",
+    test: 'src/tests/unit/no-deadline-sort.test.ts',
+    why: '존재하지 않는 개념을 설명하는 문구는 다음 세션에게 틀린 지도가 된다.',
+  },
+  {
+    name: '🗓️ 찜 목록에 하는 일이 없는 \'마감 임박\' 정렬 칩이 부활',
+    file: 'src/pages/wishlist/WishlistParts.tsx',
+    find: "  { key: 'discount', label: '할인율', pcOnly: true },",
+    replace: "  { key: 'deadline', label: '마감 임박' },\n  { key: 'discount', label: '할인율', pcOnly: true },",
+    test: 'src/tests/unit/wishlist-signals.test.ts',
+    why: '마감이 없으니 남은 일수가 전부 null = 정렬이 전부 동점 → 눌러도 순서가 그대로다. 하는 일이 없는 칩.',
+  },
+  {
+    name: '🗓️ 찜 신호 모듈에 마감 정렬 키가 되살아난다',
+    file: 'src/pages/wishlist/wishlist-signals.ts',
+    find: "export type WishlistSort = 'recent' | 'drop' | 'discount'",
+    replace: "export type WishlistSort = 'recent' | 'drop' | 'deadline' | 'discount'",
+    test: 'src/tests/unit/wishlist-signals.test.ts',
+    why: '타입이 먼저 살아나면 칩과 분기가 따라 들어온다 — 되살아나는 입구다.',
+  },
+  {
+    name: '🪦 서버 라우트 중복 가드가 2겹 중복을 놓친다 (실제 사고가 딱 2겹이었다)',
+    file: 'scripts/check-duplicate-hono-routes.mjs',
+    find: 'if (at.length > 1) violations.push',
+    replace: 'if (at.length > 2) violations.push',
+    test: 'src/tests/unit/duplicate-hono-routes-2026-09-05.test.ts',
+    why:
+      '오늘 찾은 실제 중복은 정확히 **2겹**이었다(GET /products/:id). 임계를 하나만 올리면 그 사고가 ' +
+      '그대로 통과한다. ⚠️ 오탐 필터(앵커·라우터명·경로 접두)는 서로 겹쳐 있어 하나 빼도 안 무너지므로 ' +
+      '(실측 확인) 주입 지점으로 쓸 수 없다 — 판정 임계가 이 가드의 유일한 단일 실패점이다.',
+  },
+  {
+    name: '💰 소개비 저장이 다시 등록 화면 전용이 된다 (한번 정하면 못 바꿈)',
+    file: 'src/features/seller/api/seller-orders.routes.ts',
+    find: `    // 💰 2026-09-05 (대표 확정 플로우 — 소개비는 매장이 정한다): 수정 화면에서도 변경 가능하게.
+    await applySellerPromoRate(db, productId, sellerId, body)`,
+    replace: '',
+    test: 'src/tests/unit/promo-lever-manage-2026-09-05.test.ts',
+    why:
+      '가격·재고는 다 고칠 수 있는데 마케팅 예산만 못 고치는 상태로 되돌아간다. 화면은 그대로 ' +
+      '입력을 받고 저장 성공처럼 보이므로 매장 입장에선 "바꿨는데 안 바뀐다" 가 된다.',
+  },
+  {
+    name: '🚨 소개비 게이트가 사라진다 (매장이 건 소개비를 유어딜이 문다)',
+    file: 'src/worker/utils/seller-promo-rate.ts',
+    find: "if (gate?.value !== 'true' || !Number.isFinite(rate) || rate < 0 || rate > 0.5) return",
+    replace: 'if (!Number.isFinite(rate) || rate < 0 || rate > 0.5) return',
+    test: 'src/tests/unit/promo-lever-manage-2026-09-05.test.ts',
+    why:
+      '재원이 아직 플랫폼 부담(promo_funding_source≠owner)인데 게이트가 빠지면 매장이 건 소개비를 ' +
+      '유어딜이 대신 문다(재원 설계의 −14% 누수). 화면 플래그만으론 못 막는다 — API 직접 호출이 통한다.',
+  },
+  {
+    name: '💸 핀 관리가 적립 분수를 다시 100 으로 나눈다 (₩5,000 → ₩50)',
+    file: 'src/pages/curator-page/PinManageList.tsx',
+    find: 'const est = estRate != null ? Math.round(pin.price * estRate) : 0',
+    replace: 'const est = estRate != null ? Math.round(pin.price * estRate / 100) : 0',
+    test: 'src/tests/unit/affiliate-rate-ssot-2026-09-05.test.ts',
+    why:
+      'rate 는 분수(0.05)인데 퍼센트로 오해해 또 나누면 실제의 1/100 이 된다. 숫자가 뜨긴 떠서 ' +
+      '화면만 보면 안 틀린 것처럼 보인다 — 사람을 모으는 화면이 수익을 100배 작게 말한다.',
+  },
+  {
+    name: '💸 서버가 적립률 NULL 을 다시 0 으로 뭉갠다 (배지가 영원히 안 뜸)',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: '              p.referral_commission_rate AS commission_rate, COALESCE(p.referral_enabled, 0) AS referral_enabled,',
+    replace: '              COALESCE(p.referral_commission_rate, 0) AS commission_rate,',
+    test: 'src/tests/unit/affiliate-rate-ssot-2026-09-05.test.ts',
+    why:
+      'NULL 은 "설정 없음 → 플랫폼 기본(2%)" 이고 0 은 "정말 0%" 다. 뭉개면 라이브 상품 전부가 ' +
+      '(rate 가 전부 NULL 이라) 적립 없음으로 읽혀 안내가 통째로 사라진다. 에러는 안 난다.',
+  },
+  {
+    name: '💸 적립 기본값이 다시 화면마다 갈린다 (worker 만 2%, 나머지 5%)',
+    file: 'src/shared/affiliate-rate.ts',
+    find: 'export const DEFAULT_AFFILIATE_RATE = 0.02',
+    replace: 'export const DEFAULT_AFFILIATE_RATE = 0.05',
+    test: 'src/tests/unit/affiliate-rate-ssot-2026-09-05.test.ts',
+    why:
+      '2026-06-17 대표 결정(5%→2%)이 적립 경로에만 반영되고 표시 상수는 5 로 남아 몇 달간 ' +
+      '어드민 정책 표가 2.5배 틀린 숫자를 보여 줬다. 상수를 되돌리면 그 상태로 돌아간다.',
   },
 ]
 /**

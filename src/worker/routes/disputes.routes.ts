@@ -423,18 +423,13 @@ disputesRoutes.get('/agency-overview', requireAuth(), async (c) => {
   const { DB } = c.env
   try {
     const now = Date.now()
-    const cutoff24h = new Date(now + 24 * 3600 * 1000).toISOString()
+    // 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): '24h 내 마감 + 진행률 50% 미만 = 위험' 집계를 없앴다.
+    //   마감이 사라지자 그 CASE 는 NULL 비교라 영구히 0 만 냈다 — 0 을 보여 주는 지표는 정보가 아니다.
     const cutoff14d = new Date(now - 14 * 24 * 3600 * 1000).toISOString()
 
     const [groupsRow, churnRow] = await Promise.all([
       DB.prepare(`
-        SELECT
-          COUNT(*) AS active_count,
-          SUM(CASE
-            WHEN p.group_buy_deadline < ?
-              AND (p.group_buy_current * 1.0 / NULLIF(p.group_buy_target, 0)) < 0.5
-            THEN 1 ELSE 0
-          END) AS at_risk_count
+        SELECT COUNT(*) AS active_count
         FROM products p
         JOIN sellers s ON s.id = p.seller_id
         WHERE p.group_buy_status = 'active'
@@ -443,7 +438,7 @@ disputesRoutes.get('/agency-overview', requireAuth(), async (c) => {
             s.introduced_by_agency_id = ?
             OR EXISTS (SELECT 1 FROM agency_sellers ag WHERE ag.seller_id = p.seller_id AND ag.agency_id = ?)
           )
-      `).bind(cutoff24h, userAsAny.id, userAsAny.id).first<{ active_count: number; at_risk_count: number }>().catch(() => null),
+      `).bind(userAsAny.id, userAsAny.id).first<{ active_count: number }>().catch(() => null),
       DB.prepare(`
         SELECT COUNT(*) AS churn_count
         FROM sellers s
@@ -462,13 +457,12 @@ disputesRoutes.get('/agency-overview', requireAuth(), async (c) => {
       success: true,
       data: {
         active_groups: Number(groupsRow?.active_count ?? 0),
-        at_risk_groups: Number(groupsRow?.at_risk_count ?? 0),
         churn_sellers: Number(churnRow?.churn_count ?? 0),
       },
     })
   } catch (err) {
     console.error('[agency-overview]', err)
-    return c.json({ success: true, data: { active_groups: 0, at_risk_groups: 0, churn_sellers: 0 } })
+    return c.json({ success: true, data: { active_groups: 0, churn_sellers: 0 } })
   }
 })
 
