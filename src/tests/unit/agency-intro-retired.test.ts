@@ -57,9 +57,28 @@ describe('환불 역전은 남는다 (비대칭 금지)', () => {
   })
 })
 
-describe('사람 영입 2% 는 그대로 산다', () => {
-  it('influencer_intro 축은 건드리지 않았다', () => {
-    expect(ORDERS).toContain('creditInfluencerStoreIntroCommission')
-    expect(ORDERS).toContain('computeInfluencerStoreIntroRequest')
+/**
+ * 🔄 2026-09-04 — 이 자리에 *"사람 영입 2% 는 그대로 산다"* 가 있었다. **그 전제가 끝났다.**
+ * 대표가 *"2% 주는건 지금은 없는게 낫겠어"* 로 그 축도 폐지했다(재원을 매장 promo 로 통일).
+ *
+ * 불변식을 **지우지 않고 근거를 바꾼다** — 이 테스트가 지키려던 것은 "2%가 산다"가 아니라
+ * **"에이전시 폐지가 그 축을 실수로 건드리지 않았다"**(범위 가드)였다. 이제 두 축 모두
+ * 의도적으로 폐지됐으므로, 지키는 것은 **환불 역전 대칭**으로 옮긴다:
+ * 적립만 없애고 역전까지 지우면 과거·수동 행이 환불돼도 안 돌아온다.
+ *
+ * 새 축 폐지 자체의 불변식은 `store-intro-retired-2026-09-04.test.ts` 가 본다.
+ */
+describe('두 영입 축 모두 폐지 — 역전은 남는다', () => {
+  it('사람 영입(2%)도 환불 역전은 계속 부른다', () => {
+    // 이름 앞부분 일치로 헛돌지 않게 **호출 형태**로 본다(위 에이전시 가드와 동일 교훈).
+    for (const f of ['src/worker/utils/order-refund.ts', 'src/features/returns/api/returns.routes.ts']) {
+      const src = codeOnly(readFileSync(f, 'utf-8'))
+      expect(src, `${f}: 호출`).toMatch(/reverseInfluencerStoreIntroOnRefund\s*\(/)
+    }
+  })
+
+  it('적립 경로는 둘 다 사라졌다', () => {
+    expect(ORDERS).not.toContain('creditAgencyStoreIntroCommission')
+    expect(ORDERS).not.toContain('creditInfluencerStoreIntroCommission')
   })
 })
