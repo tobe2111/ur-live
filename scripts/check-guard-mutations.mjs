@@ -7395,6 +7395,28 @@ canvas {
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
   },
   {
+    name: '⏰ 하루 1회 레인에 시각 고정이 되돌아온다(창 밖이면 영영 안 돈다)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: "    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)\n    run: async (env) => {\n      if ((env as unknown as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED !== 'true') return { skipped: 'gate_off' }",
+    replace: "    run: async (env) => {\n      if ((env as unknown as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED !== 'true') return { skipped: 'gate_off' }\n      if (new Date().getUTCHours() !== 22) return { skipped: 'off_hour' }",
+    test: 'src/tests/unit/ads-lane-hour-pinning.test.ts',
+    why:
+      '2026-09-05 실사고: 읽기 예산 차단기가 하루 창을 00~02시 UTC 로 줄이자, 자기 시각이 그 밖에 ' +
+      '박힌 레인 9개가 영영 안 돌게 됐다(하트비트 skipped: off_hour, 에러도 경보도 없음). ' +
+      'B2B 신규 수집이 하루 4,800~7,200건에서 78건으로 무너졌다. 시각 고정은 표현부터 잘못이다.',
+  },
+  {
+    name: '⏰ 하루 1회 간격이 조여진다(공공 API 일일 한도를 두 배로 태운다)',
+    file: 'src/worker-ads/lane-adaptive-interval.ts',
+    find: '  if (base >= DAILY_INTERVAL_HOURS) return base',
+    replace: '  // (제거)',
+    test: 'src/tests/unit/ads-lane-hour-pinning.test.ts',
+    why:
+      '하루 1회를 쓰는 레인은 공공 API(지방행정 인허가·나라장터·국민연금·공정위 가맹)에 붙어 있고 ' +
+      '그 일일 한도를 우리가 모른다. 조이면 호출이 두 배가 되는데, 한도 초과는 빈 배열로 조용히 ' +
+      '돌아와 화면 어디에도 안 뜬다 — 잘못 조인 것을 알아챌 방법이 없다.',
+  },
+  {
     name: '📏 레인 하트비트가 회차별 읽기·쓰기를 다시 버린다(출처를 추측으로 돌아감)',
     file: 'src/worker-ads/lane-alarm.ts',
     find: 'rr: this.meter.rr || 0, rw: this.meter.rw || 0,',
