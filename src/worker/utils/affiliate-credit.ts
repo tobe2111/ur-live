@@ -11,11 +11,14 @@
  * 리팩토링 — 단일 SSOT.
  */
 import { adjustUserPoints } from './point-ledger'
+import { DEFAULT_AFFILIATE_RATE } from '../../shared/affiliate-rate'
 
 // 🛡️ 2026-06-17 (대표 결정 — 1인 치킨게임): 추천 적립 기본 fallback 5% → 2%.
 //   추천은 CAC(획득비)라 끄지 않고 낮춤. 어드민 platform_settings.affiliate_commission_rate 로 추가 조정/0 가능
 //   (AdminPlatformSettingsPage 기본 표기 '2' 와 일치). 상품별 referral_enabled=0 으로 개별 OFF.
-const DEFAULT_COMMISSION_RATE = 0.02
+// 📌 2026-09-05: 값은 `shared/affiliate-rate.ts` 로 이전(화면과 같은 숫자를 쓰게).
+//   여기 로직은 byte-불변 — 상수만 import 한다.
+const DEFAULT_COMMISSION_RATE = DEFAULT_AFFILIATE_RATE
 
 /** /track 의 resolveCommissionRate 와 1:1 동일 (SSOT 이동 — routes 가 이걸 import). */
 export async function resolveCommissionRate(

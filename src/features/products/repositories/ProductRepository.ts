@@ -115,8 +115,11 @@ export class ProductRepository {
     ];
     // dominant_color: 미적용 DB 면 제외(영구 캐시) → 매 요청 실패-재시도 제거.
     if (_dominantColorCol !== false) baseCols.push('dominant_color');
-    // referral_commission_rate: 동일 가드(미적용 DB 영구 제외). 유어샵 picker 적립률 배지용.
-    if (_referralCommissionCol !== false) baseCols.push('referral_commission_rate');
+    // referral_commission_rate / referral_enabled: 동일 가드(미적용 DB 영구 제외). 유어샵 picker 적립률 배지용.
+    //   ⚠️ 둘은 **같은 마이그레이션(0271)** 이 만든 짝이라 가드 하나로 충분하다 — 하나만 있는 DB 는 없다.
+    //   referral_enabled 를 같이 보내는 이유: 적립이 **꺼진** 상품에 "쓰면 2%" 를 약속하면 안 되기 때문
+    //   (2026-09-05 — 그전엔 rate 만 보내서 화면이 꺼짐 여부를 알 방법이 없었다).
+    if (_referralCommissionCol !== false) baseCols.push('referral_commission_rate', 'referral_enabled');
     const LIST_COLUMNS = baseCols.join(', ');
     let query = `SELECT ${LIST_COLUMNS} FROM products WHERE is_active = 1
       AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)
@@ -232,7 +235,7 @@ export class ProductRepository {
           _dominantColorCol = false;
           return this.findAll(filter, offset, limit);
         }
-        if (/referral_commission_rate/i.test(errMsg) && _referralCommissionCol !== false) {
+        if (/referral_commission_rate|referral_enabled/i.test(errMsg) && _referralCommissionCol !== false) {
           _referralCommissionCol = false;
           return this.findAll(filter, offset, limit);
         }

@@ -147,10 +147,10 @@ curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
     const exclusion = excludeIds.length
       ? ` AND p.id NOT IN (${excludeIds.map(() => '?').join(',')})`
       : ''
-
+    // 🩸 2026-09-05: commission_rate 는 COALESCE 금지(NULL='기본 2%' ≠ 0='적립 없음'). 해석 SSOT = shared/affiliate-rate.ts
     const { results } = await DB.prepare(
       `SELECT p.id, p.name, p.price, p.original_price, p.category, p.image_url, p.thumbnail,
-              COALESCE(p.referral_commission_rate, 0) AS commission_rate,
+              p.referral_commission_rate AS commission_rate, COALESCE(p.referral_enabled, 0) AS referral_enabled,
               COALESCE(p.sold_count, 0) AS sold_count
        FROM products p
        WHERE p.is_active = 1
@@ -228,7 +228,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
                 p.category, p.is_active, p.dominant_color, p.avg_rating, p.review_count, p.sold_count,
                 p.restaurant_name, p.restaurant_address,
                 p.seller_id,
-                COALESCE(p.referral_commission_rate, 0) AS commission_rate
+                p.referral_commission_rate AS commission_rate, COALESCE(p.referral_enabled, 0) AS referral_enabled
          FROM product_pins pp
          JOIN products p ON p.id = pp.product_id
          WHERE pp.user_id = ? AND p.is_active = 1 AND ${consumerVisibleProductSql('p')}
