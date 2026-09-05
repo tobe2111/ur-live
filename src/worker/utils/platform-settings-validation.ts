@@ -52,7 +52,7 @@ function intRange(min: number, max: number): Validator {
 
 /** 캡 우선 보전 축 — order-commissions.ts 의 요청 축 키(CSV). ''=우선 없음(전 축 비례). */
 // 🛑 2026-08-31: 'agency_intro'(에이전시 매장영입 1%) 폐지 — 설정으로도 되살릴 수 없다.
-const COMMISSION_AXES = ['affiliate', 'multi_tier', 'influencer_intro']
+const COMMISSION_AXES = ['affiliate', 'multi_tier']
 function priorityAxes(value: string): string | null {
   if (value === '') return null
   const bad = value.split(',').map((s) => s.trim()).filter(Boolean).filter((k) => !COMMISSION_AXES.includes(k))
