@@ -396,10 +396,13 @@ function PickCard({ item, pinned, busy, onToggle }: { item: PickItem; pinned: bo
     /* 선택 표시는 **브랜드 블루 링** — 표면 규칙 ②(강조색 하나, 자리 셋) 중 '선택' 자리. */
     <div className={`relative group rounded-xl ${pinned ? 'ring-2 ring-brand ring-offset-2 ring-offset-white dark:ring-offset-[#11141C]' : ''}`}>
       <GroupBuyFeedCard p={product as never} aboveFold={false} to={to} hideWishlist />
-      {/* 적립률 신호 — 담으면 얼마 적립되는지(있을 때만). 동네딜(group-buy)은 데이터 없어 미표시. */}
+      {/* 🛡️ 2026-09-04 (대표 "너무 모호하지 않아? 결국 판매 후 사용 당 계산이 될텐데"):
+            적립은 **담을 때도 팔릴 때도 아니라 손님이 실제로 쓸 때** 확정된다
+            (affiliate-credit: holding → 이용권 status='used' → granted. 2026-06-17 대표 결정).
+            "적립 N%" 는 담기만 해도 받는 것처럼 읽혀 과약속이었다. 동네딜은 데이터 없어 미표시. */}
       {commission > 0 && (
         <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-0.5 h-6 px-2 rounded-full bg-black/55 backdrop-blur-md ring-1 ring-white/20 text-white text-[11px] font-bold pointer-events-none">
-          적립 {commission}%
+          쓰면 {commission}%
         </span>
       )}
       {/* 핀 토글 버튼 — 추가됨(잉크 필) / 추가(글래스) */}

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DetailGallery from './group-buy/DetailGallery'
+import RedeemHowTo from './group-buy/RedeemHowTo'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { voucherCrumbs } from '@/components/deal/DetailBreadcrumb'
 import { readCachedLoc, distanceKm } from './group-buy/detail-derived'
@@ -809,7 +810,7 @@ export default function GroupBuyDetailPage() {
             {[
               { k: '사용기한', v: detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''} 까지` : '발급 후 사용 기간 적용' },
               { k: '사용처', v: detail.restaurant_name || '전 지점' },
-              { k: '사용 방법', v: '매장에서 교환권 제시' },
+              { k: '사용 방법', v: 'QR 제시 · 확인코드' },
             ].map((row, i, arr) => (
               <div key={row.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 0', borderTop: '1px solid var(--gbd-line2)', borderBottom: i === arr.length - 1 ? '1px solid var(--gbd-line2)' : 'none' }}>
                 <span style={{ fontSize: 13.5, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>{row.k}</span>
@@ -817,6 +818,7 @@ export default function GroupBuyDetailPage() {
               </div>
             ))}
           </div>
+          <RedeemHowTo />
           <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {(detail.voucher_terms
               ? detail.voucher_terms.split('\n').map(s => s.trim()).filter(Boolean)

@@ -23,6 +23,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
+import { copyCuratorProfileToSeller, stampSignupStoreChannel } from './seller-signup-meta'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 
@@ -523,21 +524,13 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       version: body.terms_agreed_version as string,
       ip: c.req.header('CF-Connecting-IP') || null,
     }).catch(() => null);
-    if (newSellerId && curatorProfile) {
-      const sets: string[] = [];
-      const vals: any[] = [];
-      for (const [col, srcKey] of [
-        ['profile_image', 'profile_image'], ['bio', 'bio'], ['banner_url', 'banner_url'],
-        ['sns_instagram', 'instagram_url'], ['sns_youtube', 'youtube_url'],
-      ] as const) {
-        const v = curatorProfile[srcKey];
-        if (v != null && String(v).trim() !== '') { sets.push(`${col} = ?`); vals.push(v); }
-      }
-      if (sets.length) {
-        await db.prepare(`UPDATE sellers SET ${sets.join(', ')} WHERE id = ?`)
-          .bind(...vals, newSellerId).run().catch(() => { /* 컬럼 없는 env — skip */ });
-      }
-    }
+    await copyCuratorProfileToSeller(db, newSellerId, curatorProfile);
+
+    // 🏪 2026-09-04 (대표 "가입할 때 선택을 하잖아 — 그때 정해지면 되는거 아니야?"):
+    //   매장 채널을 **가입 시점에 확정**한다. 이 폼엔 `/store/new` 의 "누가 운영하나요?" 질문이
+    //   없어 그동안 미지정으로 남았고, 미지정은 중개(5%)로 떨어져 **직접 입점 사장님이 영원히 5%**
+    //   였다. 추측하지 않는다 — 에이전시 초대 코드가 붙었으면 중개, 아니면 직접(seller-signup-meta.ts).
+    await stampSignupStoreChannel(db, newSellerId, introducedAgencyId);
 
     const { createDashboardNotification: notify } = await import('../../notifications/api/dashboard-notifications.routes');
     // 🛡️ 2026-06-12 (감사 1단계): deep-link 교정 — /admin/sellers 는 클라 라우트에 없음 → 승인 페이지로.
