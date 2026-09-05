@@ -73,6 +73,25 @@ describe('에이전시 — 배선이 되살아나지 않는다', () => {
     }
   })
 
+  it('예산 요청에도 그 축을 올리지 않는다', () => {
+    // 🗺️ 2026-09-05: `agency-intro-retired.test.ts` 가 보던 것이다. 그 파일은 "환불 역전은 남는다"가
+    //   일몰과 정반대라 삭제했고(위 '환불 역전도 부르지 않는다' 가 정본), 나머지 불변식은 여기로 옮겼다.
+    //   요청만 올리고 적립을 안 하면 예산을 잡아만 두고 다른 축 몫이 사라진다 — 가장 조용한 손실이다.
+    const orders = codeOnly(readFileSync('src/worker/utils/order-commissions.ts', 'utf-8'))
+    expect(orders).not.toContain('computeAgencyStoreIntroRequest')
+    expect(orders).not.toContain("key: 'agency_intro'")
+  })
+
+  it('공구 결제 두 경로(딜·카드)가 그 축을 부르지 않는다', () => {
+    const gb = codeOnly(readFileSync('src/features/group-buy/api/group-buy.routes.ts', 'utf-8'))
+    expect(gb).not.toContain("only: ['agency_intro']")
+  })
+
+  it('어드민 설정으로도 되살릴 수 없다', () => {
+    const settings = codeOnly(readFileSync('src/worker/utils/platform-settings-validation.ts', 'utf-8'))
+    expect(settings).not.toContain("'agency_intro'")
+  })
+
   it("커미션 축 타입에 'agency_intro' 가 없다", () => {
     const orders = codeOnly(readFileSync('src/worker/utils/order-commissions.ts', 'utf-8'))
     const m = orders.match(/export type CommissionAxis = ([^\n]+)/)
@@ -120,11 +139,6 @@ describe('일몰이 삼키면 안 되는 것들', () => {
     // 에이전시 초대코드가 같은 `/api/invite` 에 얹혀 있었다 — 지울 때 이쪽까지 지우면
     // 마이페이지의 '내 추천 링크'(GET /api/invite/my)가 통째로 죽는다.
     expect(WORKER).toMatch(/app\.route\('\/api\/invite', inviteRewardRoutes\)/)
-  })
-
-  it('사람 영입 2%(influencer_intro)는 그대로 산다', () => {
-    const orders = codeOnly(readFileSync('src/worker/utils/order-commissions.ts', 'utf-8'))
-    expect(orders).toContain('creditInfluencerStoreIntroCommission')
   })
 
   it('중개의 새 실체 — seller_operators 라우트가 살아 있다', () => {

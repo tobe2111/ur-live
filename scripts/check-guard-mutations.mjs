@@ -7772,8 +7772,12 @@ canvas {
   {
     name: '🛑 폐지한 에이전시 영입 1% 축이 타입으로 되살아난다',
     file: 'src/worker/utils/order-commissions.ts',
-    find: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'supplier'",
-    replace: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'agency_intro' | 'supplier'",
+    // 🗺️ 2026-09-05: 크리에이터 영입 2% 폐지로 'influencer_intro' 가 타입에서 빠져 이 지도가 낡았다.
+    //   (pre-commit 의 '낡은 지도' 검사가 잡았다 — 그게 이 검사의 두 번째 역할이다.)
+    // 🌇 같은 날 에이전시 일몰로 `agency-intro-retired.test.ts` 가 `agency-sunset-final.test.ts` 로
+    //   대체됐다(그 파일의 "역전은 남는다"가 일몰과 정반대라 지웠다) — 지키는 불변식은 동일하다.
+    find: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'supplier'",
+    replace: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'agency_intro' | 'supplier'",
     test: 'src/tests/unit/agency-sunset-final.test.ts',
     why:
       '타입에서 뺀 것이 이 폐지의 자물쇠다 — 호출부가 컴파일로 막힌다. 되살아나면 같은 행위(매장 영입)에 ' +
