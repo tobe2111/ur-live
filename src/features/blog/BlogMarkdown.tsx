@@ -100,7 +100,7 @@ export function BlogMarkdown({ content }: { content: string }) {
         <ul key={i} className="my-3 space-y-1.5">
           {items.map((item, j) => (
             <li key={j} className="flex items-start gap-2 text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed">
-              <span className="text-pink-500 mt-1 shrink-0">•</span>
+              <span className="text-brand-text mt-1 shrink-0">•</span>
               <span>{renderInline(item.trim().slice(2), `u${i}i${j}`)}</span>
             </li>
           ))}
@@ -117,7 +117,7 @@ export function BlogMarkdown({ content }: { content: string }) {
             const mm = item.trim().match(/^(\d+)\.\s+(.*)$/)
             return (
               <li key={j} className="flex items-start gap-2 text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed">
-                <span className="text-pink-500 font-semibold mt-0.5 shrink-0 tabular-nums">{mm?.[1] ?? j + 1}.</span>
+                <span className="text-brand-text font-semibold mt-0.5 shrink-0 tabular-nums">{mm?.[1] ?? j + 1}.</span>
                 <span>{renderInline(mm?.[2] ?? item, `o${i}i${j}`)}</span>
               </li>
             )

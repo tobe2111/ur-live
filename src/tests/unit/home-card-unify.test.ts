@@ -46,6 +46,13 @@ describe('① 카드 룩이 한 벌이다', () => {
   it('카드가 `pc` 로 룩을 가르지 않는다', () => {
     const s = code(read(CARD))
     expect(s, '카드 배경을 대표색으로 칠하는 분기가 살아 있다').not.toMatch(/backgroundColor:\s*grad\.base/)
+    // 🩸 2026-09-03: 위 검사는 **`grad` 라는 이름**을 찾는다. `grad` 계산 자체를 지운 뒤
+    //    (죽은 코드였다) 같은 짓을 `cardColor` 로 다시 하면 이 줄만으로는 못 잡는다 —
+    //    되돌려-검증에서 실제로 통과해 버렸다. ⇒ **카드 루트에 인라인 배경 자체를 금지**한다.
+    //    대표색은 사진 자리 플레이스홀더로만 쓴다(카드 배경으로 올라오면 흰 카드가 아니게 된다).
+    const root = s.slice(s.indexOf('className={`block group'))
+    expect(root.slice(0, 200), '카드 루트에 인라인 style 이 붙었다 — 대표색 카드로 되돌아가는 통로다')
+      .not.toMatch(/style=\{\{/)
     expect(s, '사진 하단 대표색 번짐이 살아 있다').not.toMatch(/grad\.imageFade/)
     expect(s, '글자색을 대표색으로 덮는 인라인 style 이 남아 있다').not.toMatch(
       /style=\{t(Sub|Text|Accent)\}/,

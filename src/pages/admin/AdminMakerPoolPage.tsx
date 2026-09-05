@@ -34,15 +34,15 @@ const CRAWL_REASON_LABEL: Record<string, string> = {
 }
 
 const KIND_META: Record<string, { label: string; cls: string }> = {
-  maker: { label: '제조·브랜드', cls: 'bg-emerald-100 text-emerald-700' },
-  reseller: { label: '판매사 후보', cls: 'bg-sky-100 text-sky-700' },
+  maker: { label: '제조·브랜드', cls: 'bg-tone-ok-bg text-tone-ok' },
+  reseller: { label: '판매사 후보', cls: 'bg-tone-info-bg text-tone-info' },
 }
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
-  contacted: { label: '컨택함', cls: 'bg-blue-100 text-blue-700' },
-  interested: { label: '관심', cls: 'bg-amber-100 text-amber-700' },
-  contracted: { label: '계약', cls: 'bg-green-100 text-green-700' },
-  rejected: { label: '거절', cls: 'bg-red-100 text-red-600' },
+  contacted: { label: '컨택함', cls: 'bg-tone-info-bg text-tone-info' },
+  interested: { label: '관심', cls: 'bg-tone-warn-bg text-tone-warn' },
+  contracted: { label: '계약', cls: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { label: '거절', cls: 'bg-tone-bad-bg text-tone-bad' },
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
 const PAGE_SIZE = 100

@@ -2916,7 +2916,7 @@
       "cameraStarting": "카메라 시작 중…",
       "processing": "사용 처리 중…",
       "noDetector": "이 브라우저는 자동 인식을 지원하지 않아요 — 아래에 코드를 직접 입력해주세요.",
-      "manualPlaceholder": "바우처 코드 직접 입력",
+      "manualPlaceholder": "코드 직접 입력 (UR-XXXX-XXXX)",
       "useBtn": "사용 처리",
       "homeCardTitle": "매장 사장님 — 손님 바우처는 여기서 스캔",
       "homeCardDesc": "손님 QR을 비추면 1탭으로 사용 처리돼요 · 매직링크는 카톡 링크 클릭(로그인 불요)",
@@ -6065,9 +6065,9 @@
       "installBtn": "설치하기",
       "later": "나중에",
       "manualDesc": "홈 화면에 추가하고 5,000원 받기",
-      "iosStep1": "하단 <strong class=\"text-pink-600\">공유 버튼</strong> 누르기",
+      "iosStep1": "하단 <strong class=\"text-brand-text\">공유 버튼</strong> 누르기",
       "iosStep2": "\"홈 화면에 추가\" 선택",
-      "androidStep1": "우상단 <strong class=\"text-pink-600\">⋮ 메뉴</strong> 누르기",
+      "androidStep1": "우상단 <strong class=\"text-brand-text\">⋮ 메뉴</strong> 누르기",
       "androidStep2": "\"앱 설치\" 또는 \"홈 화면에 추가\""
     }
   },

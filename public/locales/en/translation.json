@@ -2916,7 +2916,7 @@
       "cameraStarting": "Starting camera…",
       "processing": "Processing…",
       "noDetector": "This browser cannot auto-detect — enter the code below.",
-      "manualPlaceholder": "Enter voucher code",
+      "manualPlaceholder": "Enter code (UR-XXXX-XXXX)",
       "useBtn": "Redeem",
       "homeCardTitle": "Store owners — scan customer vouchers here",
       "homeCardDesc": "Point at the QR to redeem in one tap · Magic link works without login",
@@ -5869,9 +5869,9 @@
       "installBtn": "Install",
       "later": "Later",
       "manualDesc": "Add to home screen and get ₩5,000",
-      "iosStep1": "Tap the <strong class=\"text-pink-600\">Share button</strong> at the bottom",
+      "iosStep1": "Tap the <strong class=\"text-brand-text\">Share button</strong> at the bottom",
       "iosStep2": "Select \"Add to Home Screen\"",
-      "androidStep1": "Tap the <strong class=\"text-pink-600\">⋮ menu</strong> top right",
+      "androidStep1": "Tap the <strong class=\"text-brand-text\">⋮ menu</strong> top right",
       "androidStep2": "\"Install app\" or \"Add to Home Screen\""
     }
   },

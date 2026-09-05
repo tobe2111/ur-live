@@ -58,7 +58,7 @@ export default function SellerRealtimeDashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-pink-500" /> 실시간 매출
+              <TrendingUp className="w-5 h-5 text-brand-text" /> 실시간 매출
             </h2>
             <p className="text-xs text-gray-500 mt-1">60초마다 자동 새로고침</p>
           </div>
@@ -69,10 +69,10 @@ export default function SellerRealtimeDashboardPage() {
 
         {/* 3 카드: 오늘 / 7일 / 30일 */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-pink-50 rounded-xl p-4 text-center">
-            <p className="text-[10px] text-pink-700 font-medium">오늘</p>
-            <p className="text-2xl font-extrabold text-pink-800 mt-1">{formatNumber(data.today?.amt)}원</p>
-            <p className="text-[10px] text-pink-600 mt-1">{safeNum(data.today?.cnt)}건</p>
+          <div className="bg-brand-tint rounded-xl p-4 text-center">
+            <p className="text-[10px] text-brand-text font-medium">오늘</p>
+            <p className="text-2xl font-extrabold text-brand-text mt-1">{formatNumber(data.today?.amt)}원</p>
+            <p className="text-[10px] text-brand-text mt-1">{safeNum(data.today?.cnt)}건</p>
           </div>
           <div className="bg-blue-50 rounded-xl p-4 text-center">
             <p className="text-[10px] text-blue-700 font-medium">최근 7일</p>
@@ -98,7 +98,7 @@ export default function SellerRealtimeDashboardPage() {
             <p className="text-[10px] text-gray-400 mt-2">미사용 {safeNum(data.voucher_stats?.unused)} · 만료 {safeNum(data.voucher_stats?.expired)}</p>
           </div>
           <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-1.5"><Users className="w-4 h-4 text-pink-500" /> 인플 Referral 매출 (30일)</h3>
+            <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-1.5"><Users className="w-4 h-4 text-brand-text" /> 인플 Referral 매출 (30일)</h3>
             <p className="text-3xl font-extrabold text-gray-900">{safeNum(data.referral_stats?.cnt)}건</p>
             <p className="text-[11px] text-gray-500 mt-1">인플에 지급된 commission: {formatNumber(data.referral_stats?.total_commission)}원</p>
           </div>
@@ -115,7 +115,7 @@ export default function SellerRealtimeDashboardPage() {
                 <div key={d.d} className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500 w-16 font-mono">{d.d.slice(5)}</span>
                   <div className="flex-1 bg-gray-100 rounded h-4 relative overflow-hidden">
-                    <div className="bg-pink-400 h-full" style={{ width: `${(safeNum(d.amt) / maxDaily) * 100}%` }} />
+                    <div className="bg-brand h-full" style={{ width: `${(safeNum(d.amt) / maxDaily) * 100}%` }} />
                   </div>
                   <span className="text-[10px] text-gray-700 w-24 text-right font-bold">{formatNumber(d.amt)}원</span>
                 </div>

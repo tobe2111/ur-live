@@ -139,7 +139,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
           {onAlternative && alternativeLabel && (
             <button
               onClick={() => { onAlternative(); onClose() }}
-              className="w-full px-4 py-3 bg-pink-50 text-pink-600 rounded-2xl font-semibold text-[13px] border border-pink-200"
+              className="w-full px-4 py-3 bg-brand-tint text-brand-text rounded-2xl font-semibold text-[13px] border border-rule"
             >
               {alternativeLabel}
             </button>

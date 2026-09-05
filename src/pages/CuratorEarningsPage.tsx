@@ -182,7 +182,7 @@ function IntroducedStoresSection() {
                 </span>
                 <button
                   onClick={() => setProxyFor({ id: s.id, name: s.business_name || `매장 #${s.id}` })}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-500 text-white"
+                  className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand text-white"
                 >
                   공구 대행 등록
                 </button>
@@ -252,7 +252,7 @@ function ProxyProductModal({ merchant, onClose }: { merchant: { id: number; name
             className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] text-gray-900 dark:text-white"
           />
           <div className="flex gap-2 pt-1">
-            <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-pink-500 text-white text-sm font-bold rounded-lg disabled:opacity-50">
+            <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-brand text-white text-sm font-bold rounded-lg disabled:opacity-50">
               {submitting ? '등록 중…' : '대행 등록'}
             </button>
             <button onClick={onClose} className="px-3 py-2 text-gray-500 dark:text-gray-400 text-sm">취소</button>
@@ -289,7 +289,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
           <button
             onClick={onWithdraw}
             disabled={info.available < info.min_withdrawal}
-            className="w-full py-2.5 bg-white dark:bg-[#11141C] text-pink-600 font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2.5 bg-white dark:bg-[#11141C] text-brand-text font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {info.available < info.min_withdrawal
               ? `최소 ${formatWon(info.min_withdrawal)} 부터 출금 가능`
@@ -446,7 +446,7 @@ function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onC
 
         <div className="mt-4 flex gap-2">
           <button onClick={onClose} className="flex-1 py-2.5 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 font-bold rounded-lg">취소</button>
-          <button onClick={submit} disabled={submitting} className="flex-1 py-2.5 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white font-bold rounded-lg">
+          <button onClick={submit} disabled={submitting} className="flex-1 py-2.5 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold rounded-lg">
             {submitting ? '신청 중...' : '신청'}
           </button>
         </div>
@@ -465,7 +465,7 @@ function SummaryCards({ stats }: { stats: DashboardStats }) {
       label: t('curator.earnings.monthEarning', { defaultValue: '30일 적립 (확정)' }),
       value: formatWon(stats.month_earnings),
       sub: pending > 0 ? `+ ${formatNumber(pending)}딜 적립예정` : undefined,
-      accent: 'text-pink-500 dark:text-pink-400',
+      accent: 'text-brand-text ',
     },
     {
       // 순클릭(ip+ua+일자 dedup) — raw 클릭은 새로고침/봇 부풀림 포함.
@@ -505,7 +505,7 @@ function TopPinsSection({ stats }: { stats: DashboardStats }) {
           <Link
             key={pin.id}
             to={`/products/${pin.product_id}`}
-            className="flex items-center gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35] hover:border-pink-500/50 transition-colors"
+            className="flex items-center gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35] hover:border-brand/50 transition-colors"
           >
             <div className="text-lg font-bold text-gray-400 dark:text-gray-500 w-6">{idx + 1}</div>
             {(pin.thumbnail || pin.image_url) && (
@@ -541,7 +541,7 @@ function RecentEarningsSection({ stats }: { stats: DashboardStats }) {
           <Link
             key={e.id}
             to={`/products/${e.product_id}`}
-            className="flex items-center justify-between gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35] hover:border-pink-500/50 transition-colors"
+            className="flex items-center justify-between gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35] hover:border-brand/50 transition-colors"
           >
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">
@@ -557,7 +557,7 @@ function RecentEarningsSection({ stats }: { stats: DashboardStats }) {
                 {e.order_amount ? ` · 주문 ${formatWon(e.order_amount)}` : ''}
               </p>
             </div>
-            <span className={`text-sm font-bold shrink-0 ${e.status === 'holding' ? 'text-amber-500' : 'text-pink-500'}`}>+{formatWon(e.commission)}</span>
+            <span className={`text-sm font-bold shrink-0 ${e.status === 'holding' ? 'text-amber-500' : 'text-brand-text'}`}>+{formatWon(e.commission)}</span>
           </Link>
         ))}
       </div>
@@ -584,7 +584,7 @@ function DailyChart({ stats }: { stats: DashboardStats }) {
             const pct = (safeNum(d.amount) / max) * 100
             return (
               <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group" title={`${d.date}: ${formatWon(d.amount)}`}>
-                <div className="w-full bg-pink-500/30 dark:bg-pink-500/40 rounded-t group-hover:bg-pink-500" style={{ height: `${pct}%` }} />
+                <div className="w-full bg-brand/30 rounded-t group-hover:bg-brand" style={{ height: `${pct}%` }} />
               </div>
             )
           })}

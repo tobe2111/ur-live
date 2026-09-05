@@ -52,10 +52,10 @@ interface EnrichRun {
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
-  contacted: { label: '컨택함', cls: 'bg-blue-100 text-blue-700' },
-  interested: { label: '관심', cls: 'bg-amber-100 text-amber-700' },
-  onboarded: { label: '입점', cls: 'bg-green-100 text-green-700' },
-  rejected: { label: '거절', cls: 'bg-red-100 text-red-600' },
+  contacted: { label: '컨택함', cls: 'bg-tone-info-bg text-tone-info' },
+  interested: { label: '관심', cls: 'bg-tone-warn-bg text-tone-warn' },
+  onboarded: { label: '입점', cls: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { label: '거절', cls: 'bg-tone-bad-bg text-tone-bad' },
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
 const STATUSES = ['new', 'contacted', 'interested', 'onboarded', 'rejected', 'hold']

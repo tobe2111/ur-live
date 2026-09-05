@@ -39,8 +39,8 @@ interface Prospect {
 }
 
 const STATUS_META: Record<ProspectStatus, { label: string; color: string }> = {
-  visiting: { label: '영입 중', color: 'bg-amber-100 text-amber-700' },
-  converted: { label: '가입 완료', color: 'bg-green-100 text-green-700' },
+  visiting: { label: '영입 중', color: 'bg-tone-warn-bg text-tone-warn' },
+  converted: { label: '가입 완료', color: 'bg-tone-ok-bg text-tone-ok' },
   expired: { label: '만료', color: 'bg-gray-100 text-gray-500' },
 }
 
@@ -76,7 +76,7 @@ export default function AdminProspectsPage() {
                 key={s}
                 onClick={() => setStatus(s)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                  status === s ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'
+                  status === s ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'
                 }`}
               >
                 {STATUS_META[s].label}

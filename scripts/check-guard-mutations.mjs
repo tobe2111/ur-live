@@ -98,6 +98,26 @@ const MUTATIONS = [
       '위치를 한 번도 못 받는다. 저장이 조용히 0건이 되고 화면은 그대로라 아무도 모른다.',
   },
   {
+    name: '🎫 상단 띠가 저절로 넘어간다 (자동 재생 — 첫 화면에서 읽기를 방해한다)',
+    file: 'src/components/home/HomeBannerStrip.tsx',
+    find: '  const many = banners.length > 1',
+    replace: '  const many = banners.length > 1\n  setTimeout(() => railRef.current?.scrollBy({ left: 999 }), 4000)',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '캐러셀에 자동 재생을 얹고 싶은 유혹은 늘 생긴다. 그런데 첫 화면에서 저절로 움직이면 ' +
+      '읽던 사람이 방해받고, 무엇을 보고 있었는지 통제할 수 없게 된다.',
+  },
+  {
+    name: '🎫 한 장짜리 상단 띠에 점 하나가 덩그러니 남는다',
+    file: 'src/components/home/HomeBannerStrip.tsx',
+    find: '  const many = banners.length > 1',
+    replace: '  const many = true',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '한 장을 74% 폭으로 두면 오른쪽에 빈 자리가 생기고 점 하나짜리 인디케이터가 남는다. ' +
+      '시안(안 3)에서 바로 이 점을 약점으로 적었고, 그래서 한 장이면 꽉 채우기로 했다.',
+  },
+  {
     name: '떠난 페이지가 스크롤 저장을 0 으로 덮어쓴다',
     file: 'src/components/ScrollToTop.tsx',
     find: '      if (currentKeyRef.current !== keyAtAttach) return',
@@ -109,15 +129,248 @@ const MUTATIONS = [
       '귀속 검증에서 이 한 줄만이 되돌리면 깨지는 유일한 변경이었다(실측 3/3 → 0/3).',
   },
   {
-    name: '🎫 이용권 딜 결제가 기본 ON 이 된다 (배포만으로 새는 문이 열린다)',
-    file: 'src/shared/feature-flags.ts',
-    find: 'export const VOUCHER_DEAL_PAYMENT_ENABLED = false',
-    replace: 'export const VOUCHER_DEAL_PAYMENT_ENABLED = true',
+    name: '🏷️ 교환권 행(VoucherRow) 할인율이 다시 썸네일 위로',
+    // 🔁 2026-09-05 재조준: VoucherRow 가 `DealRow`(줄 SSOT)에 위임하며 옛 앵커
+    //   (`shared.tsx` 의 `{/* 🎨 본문 — 우측.`)가 사라졌다. 지키는 불변식(할인율이 썸네일을
+    //   가리면 안 된다)은 **그대로**이고, 이제 그 할인율을 그리는 자리가 `DealRow` 다
+    //   — 테스트도 위임을 감지하면 그 파일을 본다. 그러니 주입도 거기로 옮긴다.
+    file: 'src/components/deal/DealRow.tsx',
+    find: `        {thumb ?? (imageUrl ? (`,
+    replace: `        {discountPct > 0 && (
+          <span className="absolute top-1.5 left-1.5 text-[10px] font-extrabold bg-[#d1d5db] rounded px-1 py-0.5">{discountPct}%</span>
+        )}
+        {thumb ?? (imageUrl ? (`,
+    test: 'src/tests/unit/voucher-card-discount-once.test.ts',
+    why:
+      '모바일 목록 행도 같은 클래스였다 — 게다가 회색 배지라 눈에 띄지도 않으면서 썸네일만 가렸다. ' +
+      '카드만 고치고 행을 두면 같은 화면 안에서 규칙이 갈린다.',
+  },
+  {
+    name: '🎟️ 손으로 친 바우처 코드가 다시 대소문자를 가린다 (폴백이 반쪽이 된다)',
+    file: 'src/components/voucher/VoucherScanner.tsx',
+    find: "  const v = (raw || '').replace(/\\s+/g, '').toUpperCase()",
+    replace: "  const v = (raw || '').trim()",
+    test: 'src/tests/unit/store-scan-manual-code.test.ts',
+    why:
+      '발급 코드는 전부 대문자인데 서버 조회는 BINARY 대조다(라이브 실측: 소문자 조회 0건). ' +
+      '폰 키보드는 소문자로 시작하므로, 정규화가 빠지면 유효한 바우처에 404 가 뜬다.',
+  },
+  {
+    name: '🎟️ 계산대 입력칸이 다시 소문자 키보드로 시작한다',
+    file: 'src/components/voucher/VoucherScanner.tsx',
+    find: '            autoCapitalize="characters"',
+    replace: '            data-removed-autocapitalize="characters"',
+    test: 'src/tests/unit/store-scan-manual-code.test.ts',
+    why:
+      '정규화가 있어도 이 속성이 빠지면 사장님이 친 글자와 화면 글자가 달라 보인다 — ' +
+      '"내가 맞게 쳤나"를 손님 앞에서 의심하게 만든다.',
+  },
+  {
+    name: '🎫 상단 띠 배너가 첫 섹션 **아래로** 내려간다',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: '          <HomeBannerStrip variant="strip" />\n          <HomeSections',
+    replace: '          <HomeSections',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '대표 지시는 *"인기 이용권 섹션 **위**에"* 다. 배선이 빠지면 에러 없이 그냥 안 뜬다 — ' +
+      '이 레포가 반복해 겪은 "조용한 부재" 클래스라 배선 자체를 고정한다.',
+  },
+  {
+    name: '🎫 배너 자리 규격이 다시 엇갈려 참조된다 (안내 문구만 거짓말)',
+    file: 'src/components/home/HomeBannerStrip.tsx',
+    find: 'const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.wide.requestWidth, quality: 76 }) : \'\'',
+    replace: 'const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.inline.requestWidth, quality: 76 }) : \'\'',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '엇갈려 참조해도 **사진 크기는 맞아서** 증상이 없다. 대신 어드민 안내가 반대로 나가 ' +
+      '가로 전체 배너에 "800px 권장"을 보여 준다 — 그대로 올리면 흐려진다.',
+  },
+  {
+    name: '🧭 홈 기본 정렬이 다시 인기순으로 굳는다 (위치를 알아도 무시)',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: "    () => (readCachedLoc() && !readHomeRegion().regionKey ? 'near' : 'popular'),",
+    replace: "    () => 'popular',",
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '대표 지시 *"기본 디폴트가 현재 위치에서 가까운 순대로"*. 정렬 기본값은 화면 어디에도 ' +
+      '"왜 이 순서인가"를 안 적으므로, 되돌아가도 아무도 눈치채지 못한다.',
+  },
+  {
+    name: '🧭 홈이 진입하자마자 위치 권한 팝업을 띄운다',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: '  const dong = useCurrentDong(userLoc)',
+    replace: '  const dong = useCurrentDong(userLoc); if (typeof navigator !== \'undefined\') navigator.geolocation?.getCurrentPosition(() => {})',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '"가까운 순"을 확실히 하려고 홈에서 측위를 시작하고 싶은 유혹이 생긴다. 홈 진입에 ' +
+      '권한 팝업을 띄우는 건 과하고, 거부당하면 어차피 캐시 경로로 돌아온다.',
+  },
+  {
+    name: '🔎 인기 검색어가 없을 때 빈 섹션 제목만 남는다',
+    file: 'src/pages/SearchPage.tsx',
+    find: '{relatedKeywords.length > 0 && (',
+    replace: '{true && (',
+    test: 'src/tests/unit/search-popular-keywords.test.ts',
+    why:
+      '서버가 빈 목록을 주면 *"인기 검색어"* 제목과 구분선만 덩그러니 남는다. ' +
+      '보여줄 게 없으면 자리도 차지하지 않는 것이 맞다.',
+  },
+  {
+    name: '🔎 빈 검색 화면이 다시 자체 fetch 를 한다 (두 화면의 인기 검색어가 갈린다)',
+    file: 'src/components/search/SearchStates.tsx',
+    find: '  const popular = usePopularSearches(10)',
+    replace: '  const popular: string[] = []',
+    test: 'src/tests/unit/search-popular-keywords.test.ts',
+    why:
+      '같은 값을 두 화면이 각자 들고 있으면 결국 갈린다 — 실제로 한쪽은 진짜 API 를 부르고 ' +
+      '다른 쪽은 하드코딩 6개를 띄우고 있었다(2026-09-04 수리). 공유 훅이 그 상태로 돌아가지 않게 한다.',
+  },
+  {
+    name: '💸 반품 환불이 카드에 총액 기준 환불액을 요청한다 (부분결제 주문에서 실패하거나 과다 환불)',
+    file: 'src/features/returns/api/returns.routes.ts',
+    find: '      refundSplit.card,',
+    replace: '      returnRecord.refund_amount || undefined,',
+    test: 'src/tests/unit/refund-partial-deal-split.test.ts',
+    why:
+      '`refund_amount` 는 **총액 기준**인데 부분결제 주문의 카드 승인액은 그보다 `deal_used` 만큼 적다. ' +
+      '총액을 넣으면 `EXCEED_CANCEL_AMOUNT` 로 환불이 실패하고, 카드 몫 이하를 넣으면 아래 딜 복원이 ' +
+      '**따로 더** 나가 총 환불이 의도를 넘는다(10,000·딜2,000 주문에서 5,000 환불 → 실제 6,000).',
+  },
+  {
+    name: '💸 딜 섞인 주문 환불이 카드에 총액을 요청한다 (환불이 통째로 막힌다)',
+    file: 'src/worker/utils/order-refund.ts',
+    find: 'opts.reason, cardAmount)',
+    replace: 'opts.reason, amount)',
+    test: 'src/tests/unit/refund-partial-deal-split.test.ts',
+    why:
+      '부분결제 주문의 `total_amount` 는 **총액**이고 카드 승인액은 그보다 `deal_used` 만큼 적다. ' +
+      '총액을 취소 요청하면 Toss 가 `EXCEED_CANCEL_AMOUNT` 로 거부하고 그 자리에서 return 하므로 ' +
+      '**상태 전이도 딜 복원도 도달하지 못한다** — 고객이 환불을 아예 못 받는다(2026-09-04 실측 결함).',
+  },
+  {
+    name: '💸 환불이 잔여액보다 많은 딜을 되돌린다 (부분반품 뒤 조용한 과다 환불)',
+    file: 'src/features/group-buy/api/partial-deal.ts',
+    find: '  const deal = Math.min(remaining, refund)',
+    replace: '  const deal = remaining',
+    test: 'src/tests/unit/refund-partial-deal-split.test.ts',
+    why:
+      '부분반품이 이미 일부를 돌려준 뒤라면 잔여 환불액(`amount`)이 `deal_used` 보다 작을 수 있다. ' +
+      '클램프가 없으면 그 초과분이 **에러 없이** 유저 지갑으로 더 나간다.',
+  },
+  {
+    name: '🪙 결제 화면이 딜 사용을 안 보여준다 (10,000원을 눌렀는데 8,000원이 뜬 이유가 사라진다)',
+    file: 'src/pages/TossWidgetPayPage.tsx',
+    find: '{summary.dealUsed ? (',
+    replace: '{false ? (',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why:
+      '부분결제는 청구액이 상품값보다 **적다**. 그 차액을 화면이 설명하지 않으면 사용자는 ' +
+      '왜 금액이 달라졌는지 모른 채 결제한다 — 에러가 없어 아무도 신고하지 않는 종류의 결함이다.',
+  },
+  {
+    name: '🪙 딜 사용액을 화면이 잔액으로 추정한다 (게이트가 꺼지면 그 안내가 거짓말이 된다)',
+    file: 'src/pages/GroupBuyDetailPage.tsx',
+    find: 'dealUsed: Number(serverDealUsed) || undefined,',
+    replace: 'dealUsed: dealBalance || undefined,',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why:
+      '화면은 서버 게이트(`voucher_partial_deal_enabled`)가 켜졌는지 **모른다**. 잔액만 보고 ' +
+      '"2,000딜 쓰여요" 를 지어내면 게이트가 꺼진 순간 실제로는 전액이 청구되고 안내만 틀린다. ' +
+      '그래서 싣는 값은 반드시 `/join` 이 계산해 돌려준 것이어야 한다.',
+  },
+  {
+    name: '🧾 토스 위젯 상자에서 light-island 가 빠진다 — 다크에서 이메일 칸이 흰 글자 on 흰 배경',
+    file: 'src/pages/TossWidgetPayPage.tsx',
+    find: 'className="light-island min-h-[180px] bg-white rounded-2xl shadow-lift overflow-hidden"',
+    replace: 'className="min-h-[180px] bg-white rounded-2xl shadow-lift overflow-hidden"',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why: '위젯은 흰색으로 렌더되는데 전역 `.dark input`(0,5,1)이 그 입력 글자를 덮는다 — 09-03 지도 검색창과 같은 사고.',
+  },
+  {
+    name: '🧾 결제 화면 주 행동이 다시 검정 알약으로',
+    file: 'src/pages/TossWidgetPayPage.tsx',
+    find: 'className="w-full py-3.5 bg-brand hover:bg-brand-dark text-white',
+    replace: 'className="w-full py-3.5 bg-gray-800 text-white',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why: '화면에서 가장 강한 행동이 브랜드가 아닌 색이면 결제 직전에 다른 서비스처럼 보인다.',
+  },
+  {
+    name: '🧾 결제 요약이 사진 없는 주문에서 터진다 (셀러 결제·구 링크)',
+    file: 'src/pages/TossWidgetPayPage.tsx',
+    find: '{summary.image && (',
+    replace: '{true && (',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why: '요약은 전부 선택값이다 — 딜 충전·셀러 결제·예전에 만들어진 링크에는 사진이 없다.',
+  },
+  {
+    name: '🎨 브랜드 강조가 다시 회색으로 — 구 로즈(pink) 유틸이 되돌아온다',
+    file: 'src/components/gift/GiftSendModal.tsx',
+    find: 'bg-brand text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-dark',
+    replace: 'bg-pink-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-pink-600',
+    test: 'src/tests/unit/brand-color-migration.test.ts',
+    why: 'tailwind 이 pink 를 MONO 로 중화한다 — 라이브 실측 .bg-pink-500 → rgb(110 107 104). 주 버튼이 조용히 회색이 된다.',
+  },
+  {
+    name: '🚦 대시보드가 다시 상태를 회색으로 — 반려와 승인이 픽셀 단위로 같아진다',
+    file: 'tailwind.config.js',
+    find: "          ok: { DEFAULT: 'var(--tone-ok)', bg: 'var(--tone-ok-bg)' },",
+    replace: '          ok: MONO,',
+    test: 'src/tests/unit/status-tone-tokens.test.ts',
+    why: '라이브 실측: .bg-rose-50 == .bg-emerald-50 == rgb(248 247 252). 에러가 안 나서 몇 달간 안 드러났다.',
+  },
+  {
+    name: '🚦 always-light 래퍼가 상태 색을 안 되박는다 — 흰 카드 위에 다크용 밝은 초록',
+    file: 'src/index.css',
+    find: `.light-island, .force-light-theme, .admin-light-theme, .agency-light-theme {`,
+    replace: `.zz-removed-always-light {`,
+    test: 'src/tests/unit/status-tone-tokens.test.ts',
+    why: '대시보드는 화이트 고정인데 html.dark 면 :root 의 다크 토큰이 새어 들어온다(--lift 가 09-02 에 같은 사고).',
+  },
+  {
+    name: '💸 딜 없는 사람에게도 소개 링크를 준다 — 첫 정산에서 0원을 본다',
+    file: 'src/pages/InfluencerDiscoverPage.tsx',
+    find: 'p.my_deal_pct != null ? (',
+    replace: 'true ? (',
+    test: 'src/tests/unit/discover-deal-gate.test.ts',
+    why:
+      '2026-09-03 에 이 블록을 카드 통일 리팩토링으로 **통째로 지웠고** CI 가 잡았다. ' +
+      '버그가 아니라 약속 위반이라 되돌리는 비용(환급 + 신뢰)이 훨씬 크다 — 주입 지도에 박아 둔다.',
+  },
+  {
+    name: '🎫 홈 우리 동네딜이 다시 자체 미니 카드로 — 형태가 넷이 된다',
+    file: 'src/components/main/HomeDongneDealSection.tsx',
+    find: '<DealMiniCard',
+    replace: '<div data-not-a-card',
+    test: 'src/tests/unit/deal-card-shapes.test.ts',
+    why: '미니 형태를 화면이 직접 그리기 시작하면 09-02 표면 개편이 또 한쪽에만 지나간다(이번에 그래서 대표색 카드가 3개월 남았다).',
+  },
+  {
+    name: '🎫 쇼핑 카드가 다시 대표색 그라데이션 자체 카드로',
+    file: 'src/pages/browse/BrowseProductCard.tsx',
+    find: '<GroupBuyFeedCard',
+    replace: '<div data-own-card',
+    test: 'src/tests/unit/deal-card-shapes.test.ts',
+    why: '이름만 남은 어댑터가 자체 마크업을 되살리면 격자 카드가 두 벌이 된다 — 쇼핑을 재오픈하는 순간 옛 룩이 같이 살아난다.',
+  },
+  {
+    name: '🎫 교환권 카드가 다시 원 단위를 하드코딩 — 같은 상품이 화면마다 원/딜로 갈린다',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: "const unitLabel = Number(p.deal_only) === 1 ? ' 딜' : '원'",
+    replace: "const unitLabel = '원'",
+    test: 'src/tests/unit/deal-card-shapes.test.ts',
+    why: '유어샵 핀에 담긴 교환권이 격자에서 원, /vouchers 목록에서 딜 로 보이던 실제 결함이다.',
+  },
+  {
+    name: '🎫 이용권 딜 결제를 끌 수 없게 된다 (서버 키가 느슨해져 스위치가 사라진다)',
+    file: 'src/features/group-buy/api/gb-purchase-guards.ts',
+    find: "  return gate?.value === 'true'",
+    replace: '  return true',
     test: 'src/tests/unit/voucher-deal-payment.test.ts',
     why:
-      '딜 보너스 20% 가 살아 있는 채로 열리면 이용권 마진(5~10%)보다 보너스가 커서 ' +
-      '**팔릴수록 유어딜이 건당 8~14원 적자**다(2026-08-31 실측). 교환권은 소비자 마크업 20% 가 ' +
-      '보너스를 상쇄해 괜찮았고 이용권엔 그 상쇄가 없다. 선행(보너스 0) 없이 열면 안 된다.',
+      '2026-09-04 클라 플래그를 켜면서(대표 지시, 선행 조건 `influencer_deal_bonus_pct=0` 실측 확인) ' +
+      '**유일한 스위치가 이 서버 키 하나**가 됐다. 여기가 truthy 로 느슨해지면 어드민에서 ' +
+      "`false` 로 내려도 안 꺼진다 — 적자든 사고든 **끌 방법이 없어진다**. " +
+      '(종전 이 자리는 클라 플래그의 기본 OFF 를 지켰는데, 그 플래그가 켜져 위험의 무게가 여기로 옮겨왔다.)',
   },
   {
     name: '🎫 이용권 딜 결제 게이트가 교환권까지 막는다 (기프티콘 결제 전면 중단)',
@@ -1128,8 +1381,10 @@ const MUTATIONS = [
   {
     name: '홈 카드가 다시 두 벌로 갈린다(피드만 대표색 카드)',
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
-    find: '      className="block group active:scale-[0.98] flex flex-col"',
-    replace: '      className="block group active:scale-[0.98] flex flex-col" style={{ backgroundColor: grad.base }}',
+    // 2026-09-03: 루트에 `className` prop 이 붙으면서 리터럴이 템플릿이 됐다.
+    //   대표색 카드로 되돌리는 주입은 이제 **사진 자리 플레이스홀더 색을 카드 배경으로 끌어올리는 것**으로 표현한다.
+    find: '      className={`block group active:scale-[0.98] flex flex-col ${className}`}',
+    replace: '      className={`block group active:scale-[0.98] flex flex-col ${className}`} style={{ backgroundColor: cardColor || undefined }}',
     test: 'src/tests/unit/home-card-unify.test.ts',
     why:
       '섹션은 흰 카드, 피드는 모바일에서 대표색 그라데이션 카드였다 — 같은 화면 위아래에 다른 ' +
@@ -7874,8 +8129,10 @@ canvas {
   },
   {
     name: '🖼️ cfImage <img> 에서 onError 가 사라진다 (깨진 이미지 아이콘 노출)',
-    file: 'src/components/search/ProductCard.tsx',
-    find: 'onError={(e) => cfImageOnError(e.currentTarget, product.image_url)}',
+    // 2026-09-03: 검색 카드가 격자 SSOT 어댑터가 되면서 자체 <img> 가 사라졌다.
+    //   같은 불변식을 **지금 실제로 <img> 를 그리는** 미니 카드에서 지킨다.
+    file: 'src/components/deal/DealMiniCard.tsx',
+    find: 'onError={(e) => cfImageOnError(e.currentTarget, imageUrl)}',
     // ⚠️ 빈 문자열로 지우지 않는다 — `replace: ''` 는 --verify-clean 이 잔재를 **구분할 수 없다**
     //    (지웠는지 코드가 옮겨갔는지 같아 보인다). 눈에 띄는 표식을 남겨 잔재를 잡히게 한다.
     replace: 'data-mutation-removed-onerror',
@@ -7985,13 +8242,12 @@ canvas {
       '대표 2026-08-31 "할인율이 사진 안으로 들어가면 안돼" 를 형제 컴포넌트에도 적용한 것이라 못으로 박는다.',
   },
   {
-    name: '🏷️ 교환권 행(VoucherRow) 할인율이 다시 썸네일 위로',
+    name: '🏷️ 교환권 행(VoucherRow)이 줄 SSOT 에 할인율을 안 넘긴다 — 화면에서 조용히 사라진다',
     file: 'src/pages/vouchers/shared.tsx',
-    find: `      {/* 🎨 본문 — 우측.`,
-    replace: `        {discountRate > 0 && (
-          <span className="absolute top-1.5 left-1.5 text-[10px] font-extrabold bg-[#d1d5db] rounded px-1 py-0.5">{discountRate}%</span>
-        )}
-      {/* 🎨 본문 — 우측.`,
+    // 2026-09-03: 행 마크업이 `DealRow`(SSOT)로 옮겨져 옛 앵커(본문 주석)가 사라졌다.
+    //   이제 위험한 것은 "배지를 사진 위로 되돌리는 것"이 아니라 **위임했는데 값을 안 넘기는 것**이다.
+    find: 'discountPct={discountRate}',
+    replace: 'discountPct={0}',
     test: 'src/tests/unit/voucher-card-discount-once.test.ts',
     why:
       '모바일 목록 행도 같은 클래스였다 — 게다가 회색 배지라 눈에 띄지도 않으면서 썸네일만 가렸다. ' +

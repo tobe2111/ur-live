@@ -53,9 +53,9 @@ interface AutoInvoiceRow {
   mall_id?: number
 }
 const AUTO_STATUS_BADGE: Record<string, string> = {
-  issued: 'bg-emerald-50 text-emerald-700',
-  draft: 'bg-amber-50 text-amber-700',
-  failed: 'bg-rose-50 text-rose-700',
+  issued: 'bg-tone-ok-bg text-tone-ok',
+  draft: 'bg-tone-warn-bg text-tone-warn',
+  failed: 'bg-tone-bad-bg text-tone-bad',
 }
 const AUTO_STATUS_LABEL: Record<string, string> = { issued: '발행완료', draft: '발행대기', failed: '발행실패' }
 
@@ -324,9 +324,9 @@ export default function AdminWholesaleTaxPage() {
                         <td className="py-2.5 px-4 text-right tabular-nums font-bold text-gray-900">{formatWon(c.total_amount)}</td>
                         <td className="py-2.5 px-4">
                           {c.invoice_status === 'issued' ? (
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">발행완료</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-tone-ok-bg text-tone-ok">발행완료</span>
                           ) : c.invoice_status === 'pending' ? (
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">기록됨(대기)</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-tone-warn-bg text-tone-warn">기록됨(대기)</span>
                           ) : (
                             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">미기록</span>
                           )}
@@ -404,7 +404,7 @@ export default function AdminWholesaleTaxPage() {
                         <td className="py-2.5 px-4 text-gray-900">
                           #{inv.order_id}
                           {inv.mall_id != null && mallNameById[inv.mall_id] && malls.length > 1 && (
-                            <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600">{mallNameById[inv.mall_id]}</span>
+                            <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded bg-tone-info-bg text-tone-info">{mallNameById[inv.mall_id]}</span>
                           )}
                         </td>
                         <td className="py-2.5 px-4 text-gray-600">{inv.type === 'purchase' ? t('admin.wsTax.typePurchaseShort', { defaultValue: '매입(역발행)' }) : t('admin.wsTax.typeSalesShort', { defaultValue: '매출' })}</td>

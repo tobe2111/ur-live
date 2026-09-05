@@ -72,7 +72,7 @@ export default function AdminRestaurantDemandPage() {
             <p className="text-xs text-gray-500 mt-1">셀러 영입 신청</p>
           </div>
           <div className="bg-white rounded-xl p-4 border border-gray-200 text-center">
-            <p className="text-2xl font-bold text-pink-600">{totalNotify}</p>
+            <p className="text-2xl font-bold text-brand-text">{totalNotify}</p>
             <p className="text-xs text-gray-500 mt-1">출시 알림 등록</p>
           </div>
         </div>
@@ -146,7 +146,7 @@ export default function AdminRestaurantDemandPage() {
                     </span>
                   )}
                   {it.notify_count > 0 && (
-                    <span className="flex items-center gap-1 px-2 py-1 bg-pink-50 text-pink-700 rounded-md text-xs font-bold">
+                    <span className="flex items-center gap-1 px-2 py-1 bg-brand-tint text-brand-text rounded-md text-xs font-bold">
                       <Bell className="w-3 h-3" /> {it.notify_count}
                     </span>
                   )}

@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
+import { appendPaySummary } from '@/shared/pay-summary'
 import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
@@ -416,7 +417,7 @@ export default function GroupBuyDetailPage() {
         toast.error(initRes.data?.error || '공구 결제 시작 실패')
         return
       }
-      const { orderId, amount, orderName, clientKey: serverClientKey, flow: serverFlow } = initRes.data.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'redirect' | 'widget' | 'invalid' }
+      const { orderId, amount, orderName, clientKey: serverClientKey, flow: serverFlow, dealUsed: serverDealUsed } = initRes.data.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'redirect' | 'widget' | 'invalid'; dealUsed?: number }
       if (!serverClientKey) {
         toast.error('결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.')
         return
@@ -446,6 +447,15 @@ export default function GroupBuyDetailPage() {
         clientKey: serverClientKey,
         successUrl: successPath,
         failUrl: failPath,
+      })
+      // 🧾 결제 화면 '결제 상품' 칸의 표시용 값(이 화면이 이미 가진 것 — 새 fetch 0). ⚠️ 금액 판단엔 안 쓴다 · /confirm 이 재검증. 사유: `src/shared/pay-summary.ts`
+      appendPaySummary(params, {
+        image: detail?.image_url || undefined,
+        merchant: detail?.restaurant_name || undefined,
+        origAmount: Number(detail?.original_price) || undefined,
+        qty: quantity,
+        // 🪙 부분결제: **서버가 계산한** 딜 사용액만 싣는다(게이트 OFF 면 서버가 0 → 화면도 무언).
+        dealUsed: Number(serverDealUsed) || undefined,
       })
       navigate(`/pay/widget?${params.toString()}`)
     } catch (err: unknown) {

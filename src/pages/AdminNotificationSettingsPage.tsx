@@ -22,10 +22,10 @@ interface Setting {
 }
 
 const CHANNEL_INFO: Record<string, { label: string; icon: typeof Bell; cost: string; color: string }> = {
-  dashboard: { label: '대시보드', icon: Bell, cost: '무료', color: 'text-blue-600' },
-  email: { label: '이메일', icon: Mail, cost: '무료 3000건/월', color: 'text-purple-600' },
-  alimtalk: { label: '카카오 알림톡', icon: MessageSquare, cost: '8원/건', color: 'text-yellow-600' },
-  push: { label: 'Web Push', icon: Smartphone, cost: '무료', color: 'text-green-600' },
+  dashboard: { label: '대시보드', icon: Bell, cost: '무료', color: 'text-tone-info' },
+  email: { label: '이메일', icon: Mail, cost: '무료 3000건/월', color: 'text-tone-info' },
+  alimtalk: { label: '카카오 알림톡', icon: MessageSquare, cost: '8원/건', color: 'text-tone-warn' },
+  push: { label: 'Web Push', icon: Smartphone, cost: '무료', color: 'text-tone-ok' },
 }
 
 // 🛡️ 2026-04-28: 38종 type 카테고리 grouping (UX). 코드 시드 순서와 일치.
@@ -136,8 +136,8 @@ export default function AdminNotificationSettingsPage() {
                                   ) : (
                                     <button
                                       onClick={() => toggle(s.notification_type, col, !isOn)}
-                                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300 ${
-                                        isOn ? 'bg-pink-500' : 'bg-gray-300'
+                                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand/40 ${
+                                        isOn ? 'bg-brand' : 'bg-gray-300'
                                       }`}
                                       aria-label={`${s.notification_type} ${col.replace('_enabled', '')} ${isOn ? '끄기' : '켜기'}`}
                                       aria-pressed={isOn}
@@ -188,7 +188,7 @@ export default function AdminNotificationSettingsPage() {
                                   ) : (
                                     <button
                                       onClick={() => toggle(s.notification_type, col, !isOn)}
-                                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isOn ? 'bg-pink-500' : 'bg-gray-300'}`}
+                                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isOn ? 'bg-brand' : 'bg-gray-300'}`}
                                       aria-label={`${s.notification_type} ${col.replace('_enabled', '')} 토글`}
                                       aria-pressed={isOn}
                                     >

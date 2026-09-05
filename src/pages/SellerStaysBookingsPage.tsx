@@ -62,13 +62,13 @@ interface Booking {
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending: { label: '결제 대기', color: 'bg-gray-100 text-gray-700' },
-  confirmed: { label: '결제 완료', color: 'bg-blue-100 text-blue-700' },
-  checked_in: { label: '체크인 완료', color: 'bg-emerald-100 text-emerald-700' },
-  checked_out: { label: '체크아웃 완료', color: 'bg-purple-100 text-purple-700' },
+  confirmed: { label: '결제 완료', color: 'bg-tone-info-bg text-tone-info' },
+  checked_in: { label: '체크인 완료', color: 'bg-tone-ok-bg text-tone-ok' },
+  checked_out: { label: '체크아웃 완료', color: 'bg-tone-info-bg text-tone-info' },
   cancelled: { label: '취소됨', color: 'bg-gray-100 text-gray-500' },
-  no_show: { label: '노쇼', color: 'bg-red-100 text-red-700' },
-  refunded: { label: '환불됨', color: 'bg-amber-100 text-amber-700' },
-  dispute: { label: '분쟁 중', color: 'bg-orange-100 text-orange-800' },
+  no_show: { label: '노쇼', color: 'bg-tone-bad-bg text-tone-bad' },
+  refunded: { label: '환불됨', color: 'bg-tone-warn-bg text-tone-warn' },
+  dispute: { label: '분쟁 중', color: 'bg-tone-warn-bg text-tone-warn' },
 }
 
 export default function SellerStaysBookingsPage() {
@@ -172,7 +172,7 @@ export default function SellerStaysBookingsPage() {
               label={`매출 (최근 ${kpi.period_days}일)`}
               value={`₩${formatNumber(kpi.revenue)}`}
               sub={`${kpi.bookings}건 예약`}
-              color="text-pink-600 bg-pink-50"
+              color="text-brand-text bg-brand-tint"
               icon={<Calendar className="w-5 h-5" />}
             />
           </div>
@@ -270,7 +270,7 @@ export default function SellerStaysBookingsPage() {
                           <div className="flex gap-1 flex-wrap">
                             {/* 🛡️ 2026-05-18: voucher 모드 — 사용 처리 별도 버튼 (확정 상태에서만). */}
                             {b.sale_mode === 'voucher' && b.status === 'confirmed' && !b.voucher_used_at && (
-                              <button onClick={() => useVoucher(b)} className="px-2 py-1 bg-pink-500 text-white text-[10px] font-bold rounded hover:bg-pink-600" title="voucher 사용 처리 (날짜 협의 후)">
+                              <button onClick={() => useVoucher(b)} className="ur-btn ur-btn-sm ur-btn-primary" title="voucher 사용 처리 (날짜 협의 후)">
                                 🎫 사용 처리
                               </button>
                             )}

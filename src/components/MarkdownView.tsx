@@ -17,7 +17,7 @@ function renderInline(text: string): ReactNode[] {
     if (m[2] !== undefined) {
       nodes.push(<strong key={key++} className="font-semibold text-gray-900 dark:text-white">{m[2]}</strong>)
     } else if (m[3] !== undefined) {
-      nodes.push(<code key={key++} className="px-1 py-0.5 rounded bg-gray-100 dark:bg-[#1D1F29] text-[0.85em] text-pink-600 dark:text-pink-400 font-mono break-all">{m[3]}</code>)
+      nodes.push(<code key={key++} className="px-1 py-0.5 rounded bg-gray-100 dark:bg-[#1D1F29] text-[0.85em] text-brand-text font-mono break-all">{m[3]}</code>)
     } else if (m[4] !== undefined) {
       const href = m[5]
       const external = /^https?:\/\//.test(href)

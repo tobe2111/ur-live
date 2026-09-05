@@ -245,9 +245,9 @@ export default function AdminPendingSellersPage() {
               const ntsBadge = !ntsResult
                 ? { label: '⏳ 검증 대기', color: 'bg-gray-100 text-gray-600' }
                 : ntsValid && ntsActive
-                  ? { label: '✅ NTS 진위 일치', color: 'bg-green-100 text-green-700' }
+                  ? { label: '✅ NTS 진위 일치', color: 'bg-tone-ok-bg text-tone-ok' }
                   : ntsResult.valid === '02'
-                    ? { label: '❌ NTS 불일치', color: 'bg-red-100 text-red-700' }
+                    ? { label: '❌ NTS 불일치', color: 'bg-tone-bad-bg text-tone-bad' }
                     : { label: `⚠️ ${ntsResult?.status || '확인 필요'}`, color: 'bg-amber-100 text-amber-700' }
               const introducer = s.introduced_by_agency_id
                 ? `🏢 에이전시 #${s.introduced_by_agency_id}`

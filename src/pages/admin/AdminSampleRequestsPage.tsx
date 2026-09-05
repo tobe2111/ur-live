@@ -32,9 +32,9 @@ interface SampleRequest {
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  PENDING:  { label: '대기',  color: 'text-yellow-600 bg-yellow-50', icon: Clock },
-  APPROVED: { label: '승인',  color: 'text-emerald-600 bg-emerald-50', icon: CheckCircle2 },
-  REJECTED: { label: '거부',  color: 'text-red-600 bg-red-50', icon: XCircle },
+  PENDING:  { label: '대기',  color: 'text-tone-warn bg-tone-warn-bg', icon: Clock },
+  APPROVED: { label: '승인',  color: 'text-tone-ok bg-tone-ok-bg', icon: CheckCircle2 },
+  REJECTED: { label: '거부',  color: 'text-tone-bad bg-tone-bad-bg', icon: XCircle },
 }
 
 export default function AdminSampleRequestsPage() {

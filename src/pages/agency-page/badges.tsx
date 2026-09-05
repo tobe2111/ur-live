@@ -7,9 +7,9 @@ import { CheckCircle, XCircle, Clock } from 'lucide-react'
 export function StatusBadge({ status }: { status: string }) {
   const { t } = useTranslation()
   const map: Record<string, { label: string; cls: string }> = {
-    approved: { label: t('agency.statusApproved'), cls: 'bg-green-100 text-green-700' },
-    pending:  { label: t('agency.statusPending'), cls: 'bg-amber-100 text-amber-700' },
-    rejected: { label: t('agency.statusRejected'), cls: 'bg-red-100 text-red-700' },
+    approved: { label: t('agency.statusApproved'), cls: 'bg-tone-ok-bg text-tone-ok' },
+    pending:  { label: t('agency.statusPending'), cls: 'bg-tone-warn-bg text-tone-warn' },
+    rejected: { label: t('agency.statusRejected'), cls: 'bg-tone-bad-bg text-tone-bad' },
     suspended:{ label: t('agency.statusSuspended'), cls: 'bg-gray-100 text-gray-600' },
   }
   const s = map[status] || { label: status, cls: 'bg-gray-100 text-gray-600' }

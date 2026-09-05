@@ -9,6 +9,7 @@ import { DEAL_CATS, type DealCategory } from './PcHomeRail'
 import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
 import PcHomeAppBand from './PcHomeAppBand'
 import { readHomeRegion, type HomeRegion } from './PcHomeLocationBar'
+import { readCachedLoc } from '@/shared/utils/cached-loc'
 import RegionLinkGrid from '@/components/region/RegionLinkGrid'
 import HomeHeroBanner from '@/components/home/HomeHeroBanner'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
@@ -46,11 +47,16 @@ export default function PcHomePage() {
   })
   // 🏷️ 선택된 카테고리의 한글 라벨 — 'all' 이면 빈 문자열(= 홈 기본 문구 유지). 라벨 SSOT 는 PcHomeRail.
   const catLabel = category === 'all' ? '' : (DEAL_CATS.find(c => c.key === category)?.label || '')
+  /**
+   * 🧭 2026-09-05 (대표 "기본 디폴트가 현재 위치에서 가까운 순대로"): 모바일 홈과 **같은 규칙**.
+   *   위치는 새로 묻지 않고 마지막 측위 캐시만 읽는다. 지역을 직접 고른 사람은 제외한다.
+   */
   const [sort, setSort] = useState<SortKey>(() => {
     try {
       const q = new URLSearchParams(window.location.search).get('sort') as SortKey | null
-      return q && SORT_KEYS.includes(q) ? q : 'popular'
-    } catch { return 'popular' }
+      if (q && SORT_KEYS.includes(q)) return q
+    } catch { /* 쿼리 파싱 실패는 기본값으로 */ }
+    return readCachedLoc() && !readHomeRegion().regionKey ? 'near' : 'popular'
   })
 
   // 🔗 섹션 '더보기'는 `/?sort=popular` 같은 **쿼리 전용 이동**이다. 그 반영 로직은
@@ -61,7 +67,7 @@ export default function PcHomePage() {
   // 🗺️ 2026-07-16 (대표 — PC 홈 위치 필터): 선택 지역(초기값 = 지난 방문 저장분). GroupBuyFeed 로 주입.
   const [region, setRegion] = useState<HomeRegion>(() => readHomeRegion())
   // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): GPS 좌표. 세팅되면 sort='near'(거리순, 숨기지 않고 재배열).
-  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => readCachedLoc())
   // 🧭 2026-08-30 (대표 "홈에선 현재 위치가 어딘지도 나와야지") — 모바일 홈과 같은 훅.
   const dong = useCurrentDong(userLoc)
   // '현 위치로 설정' → 거리순 정렬 + 지역필터 해제(가까운 딜을 전부 보여줌).
@@ -111,6 +117,10 @@ export default function PcHomePage() {
               ⇒ 카테고리를 고른 순간엔 숨긴다. 'all'(홈 기본)에서만 편성이 보인다. */}
           {HOME_SHOWCASE_ENABLED && category === 'all' && (
             <>
+              {/* 🎫 2026-09-05 (대표 "인기 이용권 섹션 위에 배너가 작게" — 시안 안 2): 첫 섹션 위 가로 카드.
+                  ⚠️ 모바일에만 두지 않는다 — 두 홈이 같은 섹션·같은 배너 자리를 쓰는데 한쪽만 반영하면
+                  이 레포가 이미 여러 번 겪은 "한쪽만 개선되는" 상태가 된다(더보기 링크가 그랬다). */}
+              <HomeBannerStrip variant="strip" />
               <HomeSections midBanner={<HomeBannerStrip variant="inline" />} />
               <HomeBannerStrip variant="wide" />
             </>

@@ -54,12 +54,12 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
               onClick={() => setCategory(c.key)}
               className={`p-3 rounded-lg border-2 text-center transition-all ${
                 form.category === c.key
-                  ? 'border-pink-500 bg-pink-50'
+                  ? 'border-brand bg-brand-tint'
                   : 'border-gray-200 bg-white hover:border-gray-300'
               }`}
             >
               <c.Icon className="w-6 h-6 mx-auto mb-1 text-gray-500" aria-hidden="true" />
-              <div className={`text-xs font-bold ${form.category === c.key ? 'text-pink-700' : 'text-gray-900'}`}>{c.label}</div>
+              <div className={`text-xs font-bold ${form.category === c.key ? 'text-brand-text' : 'text-gray-900'}`}>{c.label}</div>
               <div className="text-[10px] text-gray-500 mt-0.5">{c.desc}</div>
             </button>
           ))}
@@ -69,7 +69,7 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
       {/* 이용권 정보 */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Utensils className="w-5 h-5 text-pink-500" />
+          <Utensils className="w-5 h-5 text-brand-text" />
           <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.voucherInfo')}</h2>
         </div>
 
@@ -80,7 +80,7 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
               value={form.name}
               onChange={e => update('name', e.target.value)}
               placeholder={t('seller.mealVoucher.voucherNamePlaceholder')}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               required
             />
           </div>
@@ -92,7 +92,7 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
               onChange={e => update('description', e.target.value)}
               placeholder={t('seller.mealVoucher.descriptionPlaceholder')}
               rows={3}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none resize-none"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none resize-none"
             />
           </div>
 
@@ -104,7 +104,7 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
                 value={form.price || ''}
                 onChange={e => update('price', Number(e.target.value))}
                 placeholder="25000"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
                 required
               />
             </div>
@@ -115,7 +115,7 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
                 value={form.original_price || ''}
                 onChange={e => update('original_price', Number(e.target.value))}
                 placeholder="50000"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               />
             </div>
           </div>
@@ -142,7 +142,7 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
                     value={form.promo_pct || ''}
                     onChange={e => update('promo_pct', Math.max(0, Math.min(50, Number(e.target.value))))}
                     placeholder="0"
-                    className="w-full px-3 py-2.5 pr-8 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                    className="w-full px-3 py-2.5 pr-8 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
                 </div>

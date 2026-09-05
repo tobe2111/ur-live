@@ -42,7 +42,7 @@ export default function BusinessLandingPage() {
               이 페이지는 sitemap 에 올라가는 **공개 소비자 랜딩**이라 여기 링크가 남아 있으면
               도매몰을 접는 동안에도 신규 유입이 계속 들어온다. 라우트(`/supplier/login`)는 그대로 —
               기존 제조사·판매사는 직접 주소·utongstart.com 으로 들어온다(잔액 회수 경로 보존). */}
-          <button onClick={() => navigate('/store/new')} className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-sm font-bold">
+          <button onClick={() => navigate('/store/new')} className="px-4 py-2 bg-brand hover:bg-brand-dark text-white rounded-full text-sm font-bold">
             무료 시작하기
           </button>
         </div>
@@ -52,7 +52,7 @@ export default function BusinessLandingPage() {
       <section className="px-6 lg:px-12 py-12 lg:py-24 max-w-6xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div>
-            <span className="inline-block px-3 py-1 bg-pink-50 text-pink-600 rounded-full text-xs font-bold mb-5">🎯 자영업자 1인 사업자 전용</span>
+            <span className="inline-block px-3 py-1 bg-brand-tint text-brand-text rounded-full text-xs font-bold mb-5">🎯 자영업자 1인 사업자 전용</span>
             <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight tracking-tight mb-6">
               사장님,<br />
               <span className="bg-gray-800 bg-clip-text text-transparent">3분 등록</span> 하면<br />
@@ -65,7 +65,7 @@ export default function BusinessLandingPage() {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => navigate('/store/new')}
-                className="px-6 py-3.5 bg-pink-500 hover:bg-pink-600 text-white rounded-full font-bold flex items-center gap-2 shadow-lg shadow-pink-200"
+                className="px-6 py-3.5 bg-brand hover:bg-brand-dark text-white rounded-full font-bold flex items-center gap-2 shadow-lg "
               >
                 무료로 시작 <ArrowRight className="w-4 h-4" />
               </button>
@@ -93,14 +93,14 @@ export default function BusinessLandingPage() {
                 </div>
                 <div className="bg-white dark:bg-[#11141C] rounded-2xl p-4 shadow-sm">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">💰 공구 가격</p>
-                  <p className="text-2xl font-extrabold text-pink-500">15,000<span className="text-sm font-bold">딜</span></p>
+                  <p className="text-2xl font-extrabold text-brand-text">15,000<span className="text-sm font-bold">딜</span></p>
                 </div>
                 <div className="bg-white dark:bg-[#11141C] rounded-2xl p-4 shadow-sm">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">🎯 진행 현황</p>
                   <div className="w-full bg-gray-100 dark:bg-[#1D1F29] rounded-full h-2 mb-2">
                     <div className="h-full rounded-full bg-gray-800" style={{ width: '85%' }} />
                   </div>
-                  <p className="text-xs text-gray-700 dark:text-gray-200"><span className="font-bold">17명</span> / 20명 · <span className="text-pink-600 font-bold">3명 남음</span></p>
+                  <p className="text-xs text-gray-700 dark:text-gray-200"><span className="font-bold">17명</span> / 20명 · <span className="text-brand-text font-bold">3명 남음</span></p>
                 </div>
                 <button className="bg-gray-800 text-white rounded-xl py-3 text-sm font-bold mt-auto">
                   공구 시작하기
@@ -125,7 +125,7 @@ export default function BusinessLandingPage() {
               { icon: TrendingUp, title: '실시간 통계', desc: '오늘 매출, 사용 voucher, 정산 예정 — 실시간 알림톡.' },
             ].map((f, i) => (
               <div key={i} className="bg-white dark:bg-[#11141C] rounded-2xl p-6 border border-gray-100 dark:border-[#2C2F35]">
-                <f.icon className="w-8 h-8 text-pink-500 mb-3" />
+                <f.icon className="w-8 h-8 text-brand-text mb-3" />
                 <h3 className="text-base font-bold mb-2">{f.title}</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{f.desc}</p>
               </div>
@@ -144,33 +144,33 @@ export default function BusinessLandingPage() {
             <p className="text-gray-600 dark:text-gray-300">슬라이더로 직접 계산해보세요</p>
           </div>
 
-          <div className="bg-gray-50 rounded-3xl p-6 lg:p-10 border border-pink-100">
+          <div className="bg-gray-50 rounded-3xl p-6 lg:p-10 border border-rule">
             <div className="space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-bold text-gray-700 dark:text-gray-200">공구당 참여자 수</label>
-                  <span className="text-2xl font-extrabold text-pink-600">{participants}명</span>
+                  <span className="text-2xl font-extrabold text-brand-text">{participants}명</span>
                 </div>
-                <input type="range" min="5" max="100" step="1" value={participants} onChange={e => setParticipants(Number(e.target.value))} className="w-full accent-pink-500" />
+                <input type="range" min="5" max="100" step="1" value={participants} onChange={e => setParticipants(Number(e.target.value))} className="w-full accent-brand" />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-bold text-gray-700 dark:text-gray-200">공구 가격 (1인)</label>
-                  <span className="text-2xl font-extrabold text-pink-600">{price.toLocaleString()}원</span>
+                  <span className="text-2xl font-extrabold text-brand-text">{price.toLocaleString()}원</span>
                 </div>
-                <input type="range" min="5000" max="100000" step="1000" value={price} onChange={e => setPrice(Number(e.target.value))} className="w-full accent-pink-500" />
+                <input type="range" min="5000" max="100000" step="1000" value={price} onChange={e => setPrice(Number(e.target.value))} className="w-full accent-brand" />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-bold text-gray-700 dark:text-gray-200">월 공구 횟수</label>
-                  <span className="text-2xl font-extrabold text-pink-600">{campaigns}회</span>
+                  <span className="text-2xl font-extrabold text-brand-text">{campaigns}회</span>
                 </div>
-                <input type="range" min="1" max="20" step="1" value={campaigns} onChange={e => setCampaigns(Number(e.target.value))} className="w-full accent-pink-500" />
+                <input type="range" min="1" max="20" step="1" value={campaigns} onChange={e => setCampaigns(Number(e.target.value))} className="w-full accent-brand" />
               </div>
 
-              <div className="border-t border-pink-200 pt-6 grid grid-cols-2 gap-4">
+              <div className="border-t border-rule pt-6 grid grid-cols-2 gap-4">
                 <div className="bg-white dark:bg-[#11141C] rounded-2xl p-4 text-center">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">월 GMV</p>
                   <p className="text-xl font-extrabold text-gray-900 dark:text-white">{monthlyGmv.toLocaleString()}원</p>
@@ -199,7 +199,7 @@ export default function BusinessLandingPage() {
         <p className="text-lg opacity-90 mb-8">월 5만원도, 월 5천만원도 — 사장님이 결정합니다.</p>
         <button
           onClick={() => navigate('/store/new')}
-          className="px-8 py-4 bg-white dark:bg-[#11141C] text-pink-600 rounded-full font-extrabold text-lg shadow-xl hover:scale-105 transition-transform"
+          className="px-8 py-4 bg-white dark:bg-[#11141C] text-brand-text rounded-full font-extrabold text-lg shadow-xl hover:scale-105 transition-transform"
         >
           무료로 시작하기 →
         </button>

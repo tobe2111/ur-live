@@ -175,7 +175,7 @@ export default function SellerMiniShopPage() {
             rel="noopener noreferrer"
             className="bg-white rounded-2xl p-3 border border-gray-200 flex items-center gap-3 hover:bg-gray-50 transition-colors"
           >
-            <Eye className="w-4 h-4 text-pink-500" />
+            <Eye className="w-4 h-4 text-brand-text" />
             <span className="text-sm font-medium text-gray-700">내 유어샵 미리보기</span>
             <ExternalLink className="w-3.5 h-3.5 text-gray-400 ml-auto" />
           </a>
@@ -184,7 +184,7 @@ export default function SellerMiniShopPage() {
         {/* 1. 배너 이미지 */}
         <div className="bg-white rounded-2xl p-5 border border-gray-200 space-y-3">
           <div className="flex items-center gap-2">
-            <ImageIcon className="w-5 h-5 text-pink-500" />
+            <ImageIcon className="w-5 h-5 text-brand-text" />
             <h3 className="text-base font-bold text-gray-900">헤더 배너 이미지</h3>
           </div>
           <p className="text-[11px] text-gray-500">셀러 페이지 상단에 표시 — 1280×320 권장 (와이드 가로)</p>
@@ -194,10 +194,10 @@ export default function SellerMiniShopPage() {
               value={form.banner_url.startsWith('data:') ? '(업로드된 이미지)' : form.banner_url}
               onChange={e => update('banner_url', e.target.value)}
               placeholder="https://i.ibb.co/.../banner.jpg 또는 직접 업로드"
-              className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+              className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               disabled={form.banner_url.startsWith('data:')}
             />
-            <label className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-xs font-bold cursor-pointer">
+            <label className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-lg text-xs font-bold cursor-pointer">
               {uploadingBanner ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               {uploadingBanner ? '처리 중' : '업로드'}
               <input
@@ -223,7 +223,7 @@ export default function SellerMiniShopPage() {
         {/* 2. 브랜드 컬러 */}
         <div className="bg-white rounded-2xl p-5 border border-gray-200 space-y-3">
           <div className="flex items-center gap-2">
-            <Palette className="w-5 h-5 text-pink-500" />
+            <Palette className="w-5 h-5 text-brand-text" />
             <h3 className="text-base font-bold text-gray-900">브랜드 컬러</h3>
           </div>
           <p className="text-[11px] text-gray-500">셀러 페이지 메인 그라디언트 / 강조 색상 — 배너 이미지 없으면 그라디언트로 fallback</p>
@@ -233,7 +233,7 @@ export default function SellerMiniShopPage() {
                 key={c}
                 type="button"
                 onClick={() => update('brand_color', c)}
-                className={`aspect-square rounded-lg border-2 transition-all ${form.brand_color === c ? 'border-gray-900 ring-2 ring-pink-200 scale-105' : 'border-gray-200 hover:border-gray-300'}`}
+                className={`aspect-square rounded-lg border-2 transition-all ${form.brand_color === c ? 'border-gray-900 ring-2 ring-brand/40 scale-105' : 'border-gray-200 hover:border-gray-300'}`}
                 style={{ background: c }}
                 aria-label={`색상 ${c}`}
               />
@@ -245,7 +245,7 @@ export default function SellerMiniShopPage() {
               value={form.brand_color}
               onChange={e => update('brand_color', e.target.value)}
               placeholder="#6b7280"
-              className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono focus:border-pink-500 focus:outline-none"
+              className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono focus:border-brand focus:outline-none"
             />
             <input
               type="color"
@@ -263,7 +263,7 @@ export default function SellerMiniShopPage() {
         {/* 3. 외부 라이브 URL */}
         <div className="bg-white rounded-2xl p-5 border border-gray-200 space-y-3">
           <div className="flex items-center gap-2">
-            <ExternalLink className="w-5 h-5 text-pink-500" />
+            <ExternalLink className="w-5 h-5 text-brand-text" />
             <h3 className="text-base font-bold text-gray-900">다채널 라이브 URL</h3>
           </div>
           <p className="text-[11px] text-gray-500">
@@ -282,7 +282,7 @@ export default function SellerMiniShopPage() {
                 value={form[field.key]}
                 onChange={e => update(field.key, e.target.value)}
                 placeholder={field.placeholder}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               />
             </div>
           ))}

@@ -30,11 +30,11 @@ interface VoucherOrder {
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   pending: { label: '대기', color: 'bg-gray-100 text-gray-700', icon: <Clock className="w-3 h-3" /> },
-  processing: { label: '발송 중', color: 'bg-blue-100 text-blue-700', icon: <Clock className="w-3 h-3" /> },
-  sent: { label: '발송 완료', color: 'bg-emerald-100 text-emerald-700', icon: <CheckCircle className="w-3 h-3" /> },
-  failed: { label: '실패', color: 'bg-red-100 text-red-700', icon: <XCircle className="w-3 h-3" /> },
+  processing: { label: '발송 중', color: 'bg-tone-info-bg text-tone-info', icon: <Clock className="w-3 h-3" /> },
+  sent: { label: '발송 완료', color: 'bg-tone-ok-bg text-tone-ok', icon: <CheckCircle className="w-3 h-3" /> },
+  failed: { label: '실패', color: 'bg-tone-bad-bg text-tone-bad', icon: <XCircle className="w-3 h-3" /> },
   cancelled: { label: '취소', color: 'bg-gray-100 text-gray-500', icon: <XCircle className="w-3 h-3" /> },
-  used: { label: '사용됨', color: 'bg-purple-100 text-purple-700', icon: <CheckCircle className="w-3 h-3" /> },
+  used: { label: '사용됨', color: 'bg-tone-info-bg text-tone-info', icon: <CheckCircle className="w-3 h-3" /> },
 }
 
 export default function SellerVoucherOrdersPage() {
@@ -71,7 +71,7 @@ export default function SellerVoucherOrdersPage() {
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
             <p className="text-xs text-gray-500 font-medium">누적 차감액</p>
-            <p className="text-2xl font-extrabold text-pink-600 mt-1">₩{totalAmount.toLocaleString()}</p>
+            <p className="text-2xl font-extrabold text-brand-text mt-1">₩{totalAmount.toLocaleString()}</p>
             <p className="text-[10px] text-gray-400">발송 성공 건 기준</p>
           </div>
         </div>
@@ -91,7 +91,7 @@ export default function SellerVoucherOrdersPage() {
             <Gift className="w-12 h-12 text-gray-200 mx-auto mb-3" />
             <p className="text-sm text-gray-500 mb-4">아직 발송한 교환권이 없습니다</p>
             <button onClick={() => navigate('/seller/settlements')}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-pink-500 text-white text-sm font-bold rounded-lg hover:bg-pink-600">
+              className="ur-btn ur-btn-md ur-btn-primary">
               🎁 정산 페이지에서 교환권 받기 →
             </button>
           </div>
@@ -129,7 +129,7 @@ export default function SellerVoucherOrdersPage() {
                             {o.recipient_phone.replace(/(\d{3})(\d{3,4})(\d{4})/, '$1-$2-$3')}
                           </span>
                         </td>
-                        <td className="px-3 py-3 font-bold text-pink-600">
+                        <td className="px-3 py-3 font-bold text-brand-text">
                           ₩{o.total_amount.toLocaleString()}
                         </td>
                         <td className="px-3 py-3">

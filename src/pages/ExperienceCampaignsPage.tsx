@@ -62,7 +62,7 @@ export default function ExperienceCampaignsPage() {
     <div className="min-h-[100dvh] bg-[#11141C] text-white pb-24">
       <SEO title={CONSUMER_SURFACE_SEO['/experience'].title} description={CONSUMER_SURFACE_SEO['/experience'].description} url="/experience" />
       <div className="ur-content-wide px-4 lg:px-8 pt-5">
-        <h1 className="text-[20px] font-black flex items-center gap-2"><Gift className="w-5 h-5 text-pink-400" />체험단</h1>
+        <h1 className="text-[20px] font-black flex items-center gap-2"><Gift className="w-5 h-5 text-brand-text" />체험단</h1>
         <p className="text-[13px] text-gray-400 mt-1">무료 응모 · 공정 추첨 · 선정 시 체험권이 이용권 지갑에 발급돼요.</p>
 
         <div className="flex gap-2 mt-4 mb-4">
@@ -82,7 +82,7 @@ export default function ExperienceCampaignsPage() {
                   <div className="p-4">
                     <p className="text-[14px] font-bold text-white line-clamp-1">{c.title}</p>
                     <p className="text-[12px] text-gray-400 line-clamp-1 mt-0.5">{c.restaurant_name || c.product_name}</p>
-                    {c.mission && <p className="text-[11px] text-pink-300/80 mt-1">미션: {c.mission}</p>}
+                    {c.mission && <p className="text-[11px] text-brand-text/80 mt-1">미션: {c.mission}</p>}
                     <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-2">
                       <span className="flex items-center gap-1"><Users className="w-3 h-3" />모집 {c.slots}명</span>
                       <span className="flex items-center gap-1"><Gift className="w-3 h-3" />응모 {c.entry_count ?? 0}</span>
@@ -90,7 +90,7 @@ export default function ExperienceCampaignsPage() {
                     </div>
                     {c.description && <p className="text-[12px] text-gray-400 mt-2 line-clamp-2">{c.description}</p>}
                     <button type="button" disabled={applied || applying === c.id} onClick={() => void apply(c.id)}
-                      className={`mt-3 w-full py-2.5 rounded-xl text-[13px] font-bold ${applied ? 'bg-[#1D1F29] text-gray-500' : 'bg-pink-500 text-white'}`}>
+                      className={`mt-3 w-full py-2.5 rounded-xl text-[13px] font-bold ${applied ? 'bg-[#1D1F29] text-gray-500' : 'bg-brand text-white'}`}>
                       {applied ? <span className="flex items-center justify-center gap-1"><CheckCircle2 className="w-4 h-4" />응모 완료</span> : applying === c.id ? '응모 중…' : '무료 응모하기'}
                     </button>
                   </div>
@@ -110,8 +110,8 @@ export default function ExperienceCampaignsPage() {
                   <p className="text-[11px] text-gray-500">{m.restaurant_name || m.product_name} · {formatKSTDate(m.created_at)}</p>
                 </div>
                 <div className="text-right">
-                  <span className={`text-[12px] font-bold ${m.status === 'selected' ? 'text-pink-400' : m.status === 'not_selected' ? 'text-gray-500' : 'text-blue-300'}`}>{entryLabel(m.status)}</span>
-                  {m.status === 'selected' && <button type="button" onClick={() => nav('/my-vouchers')} className="block mt-1 text-[11px] text-pink-300 underline">체험권 보기</button>}
+                  <span className={`text-[12px] font-bold ${m.status === 'selected' ? 'text-brand-text' : m.status === 'not_selected' ? 'text-gray-500' : 'text-blue-300'}`}>{entryLabel(m.status)}</span>
+                  {m.status === 'selected' && <button type="button" onClick={() => nav('/my-vouchers')} className="block mt-1 text-[11px] text-brand-text underline">체험권 보기</button>}
                 </div>
               </div>
             ))}

@@ -20,6 +20,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { tossCancelPayment } from '@/worker/utils/toss-payments';
+import { splitPartialRefund } from '@/features/group-buy/api/partial-deal';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 import { swallow } from '@/worker/utils/swallow';
@@ -581,13 +582,24 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     });
   }
 
-  // 2. Toss 결제 취소 (payment_key가 있는 경우만)
-  if (paymentKey) {
+  // 💸 2026-09-04: 환불액을 카드 몫과 딜 몫으로 나눈다(부분결제 주문은 카드 승인액이 총액보다 적다) — `partial-deal.ts` SSOT.
+  const dealRow = paymentKey && order.user_id != null
+    ? await DB.prepare('SELECT deal_used FROM orders WHERE id = ?')
+        .bind(returnRecord.order_id).first<{ deal_used: number | null }>().catch(() => null)
+    : null;
+  const refundSplit = splitPartialRefund({
+    remainingDeal: Number(dealRow?.deal_used ?? 0),
+    refundAmount: Number(returnRecord.refund_amount) || 0,
+    orderTotal: Number(orderAmount) || 0,
+  });
+
+  // 2. Toss 결제 취소 (payment_key가 있는 경우만). 카드 몫이 0 이면 호출하지 않는다(딜로만 돌려준다).
+  if (paymentKey && refundSplit.card > 0) {
     const cancelResult = await tossCancelPayment(
       paymentKey,
       c.env.TOSS_SECRET_KEY,
       `반품 환불: ${returnRecord.reason}`,
-      returnRecord.refund_amount || undefined,
+      refundSplit.card,
     );
 
     if (!cancelResult.success) {
@@ -620,31 +632,19 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
   const reversal: Array<{ step: string; count?: number; amount?: number }> = [];
 
   // 💸 2026-06-17 혼합결제(Toss+딜) 반품 환불 시 '딜 사용분' 비례 복원 (적립-역전 대칭, 머니 룰 #2).
-  //   transition 성공(1회) 후라 멱등. 전액 딜(payment_method='deal_points')은 위에서 처리 → 여기선
-  //   카드/Toss 주문의 부분 딜만. orders.deal_used 를 '아직 미복원 딜' 잔여 원장으로 차감 →
-  //   여러 부분반품 + 이후 전액환불(refundOrderFully)이 합쳐도 원래 deal_used 초과 복원 없음.
-  if (paymentKey && order.user_id != null) {
-    try {
-      const dealRow = await DB.prepare('SELECT deal_used FROM orders WHERE id = ?')
-        .bind(returnRecord.order_id).first<{ deal_used: number | null }>().catch(() => null);
-      const remainingDeal = Math.max(0, Math.round(Number(dealRow?.deal_used ?? 0)));
-      const paidCash = Math.max(1, Number(orderAmount) || 1);
-      const refunded = Math.max(0, Number(returnRecord.refund_amount) || 0);
-      const restore = remainingDeal > 0
-        ? Math.min(remainingDeal, Math.round(remainingDeal * Math.min(1, refunded / paidCash)))
-        : 0;
-      if (restore > 0) {
-        const { adjustUserPoints } = await import('../../../worker/utils/point-ledger');
-        await adjustUserPoints(DB, {
-          userId: order.user_id, delta: restore, type: 'refund',
-          description: `[반품 환불] 딜 사용분 복원 (order:${order.order_number || returnRecord.order_id})`,
-          orderId: returnRecord.order_id,
-        });
-        await DB.prepare('UPDATE orders SET deal_used = MAX(0, deal_used - ?) WHERE id = ?')
-          .bind(restore, returnRecord.order_id).run().catch(() => {});
-        reversal.push({ step: '딜 사용분 복원', amount: restore });
-      }
-    } catch { /* best-effort — deal_used 컬럼 부재 등 */ }
+  //   transition 후라 멱등. 금액은 위 `refundSplit` 이 이미 정했다(다시 계산하면 카드 몫과 갈린다).
+  //   `deal_used` 를 차감해 여러 번 반품해도 원래 딜을 초과 복원하지 않는다.
+  if (refundSplit.deal > 0 && order.user_id != null) {
+    const restore = refundSplit.deal;
+    const { adjustUserPoints } = await import('../../../worker/utils/point-ledger');
+    await adjustUserPoints(DB, {
+      userId: order.user_id, delta: restore, type: 'refund',
+      description: `[반품 환불] 딜 사용분 복원 (order:${order.order_number || returnRecord.order_id})`,
+      orderId: returnRecord.order_id,
+    }).catch(() => {});
+    await DB.prepare('UPDATE orders SET deal_used = MAX(0, deal_used - ?) WHERE id = ?')
+      .bind(restore, returnRecord.order_id).run().catch(() => {});
+    reversal.push({ step: '딜 사용분 복원', amount: restore });
   }
 
   // 3. 재고 복구 — transition이 성공한 경우에만 실행 (이중 복구 방지)

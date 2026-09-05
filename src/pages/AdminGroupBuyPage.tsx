@@ -158,13 +158,13 @@ export default function AdminGroupBuyPage() {
         <div className="flex gap-1 border-b border-gray-200">
           <button
             onClick={() => setTab('monitor')}
-            className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${tab === 'monitor' ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${tab === 'monitor' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             <Ticket className="w-4 h-4 inline mr-1" /> 모니터링
           </button>
           <button
             onClick={() => setTab('analytics')}
-            className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${tab === 'analytics' ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${tab === 'analytics' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             <BarChart3 className="w-4 h-4 inline mr-1" /> 분석
           </button>
@@ -173,7 +173,7 @@ export default function AdminGroupBuyPage() {
         {tab === 'analytics' && (
           analyticsLoading ? (
             <div className="py-20 flex justify-center">
-              <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
             </div>
           ) : analytics ? (
             <div className="space-y-5">
@@ -182,13 +182,13 @@ export default function AdminGroupBuyPage() {
                 <SummaryCard label="총 공구" value={analytics.totals?.total_groups ?? 0} color="text-gray-700" />
                 <SummaryCard label="진행중" value={analytics.totals?.active_groups ?? 0} color="text-blue-600" />
                 <SummaryCard label="달성" value={analytics.totals?.achieved_groups ?? 0} color="text-green-600" />
-                <SummaryCard label="총 참여자" value={analytics.totals?.total_participants ?? 0} color="text-pink-600" />
+                <SummaryCard label="총 참여자" value={analytics.totals?.total_participants ?? 0} color="text-brand-text" />
               </div>
 
               {/* 카테고리별 funnel */}
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <p className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-1">
-                  <BarChart3 className="w-4 h-4 text-pink-500" /> 카테고리별 통계
+                  <BarChart3 className="w-4 h-4 text-brand-text" /> 카테고리별 통계
                 </p>
                 {analytics.by_category.length === 0 ? (
                   <p className="text-xs text-gray-400 py-4 text-center">데이터 없음</p>
@@ -215,7 +215,7 @@ export default function AdminGroupBuyPage() {
                                 </span>
                               </td>
                               <td className="text-right text-gray-700">{formatNumber(c.total_participants)}</td>
-                              <td className="text-right text-pink-600 font-bold">₩{formatNumber(c.total_gmv)}</td>
+                              <td className="text-right text-brand-text font-bold">₩{formatNumber(c.total_gmv)}</td>
                             </tr>
                           )
                         })}
@@ -228,7 +228,7 @@ export default function AdminGroupBuyPage() {
               {/* Top 10 GMV */}
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <p className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-1">
-                  <TrendingUp className="w-4 h-4 text-pink-500" /> 매출 Top 10
+                  <TrendingUp className="w-4 h-4 text-brand-text" /> 매출 Top 10
                 </p>
                 {analytics.top_groups.length === 0 ? (
                   <p className="text-xs text-gray-400 py-4 text-center">데이터 없음</p>
@@ -243,7 +243,7 @@ export default function AdminGroupBuyPage() {
                           <p className="text-xs font-bold text-gray-900 truncate">{g.name}</p>
                           <p className="text-[10px] text-gray-500">{g.seller_name || '-'} · {g.group_buy_current}/{g.group_buy_target}명</p>
                         </div>
-                        <p className="text-sm font-bold text-pink-600 shrink-0">₩{formatNumber(g.gmv)}</p>
+                        <p className="text-sm font-bold text-brand-text shrink-0">₩{formatNumber(g.gmv)}</p>
                       </div>
                     ))}
                   </div>
@@ -263,7 +263,7 @@ export default function AdminGroupBuyPage() {
                             <td className="py-1.5 text-gray-700">{d.day}</td>
                             <td className="text-right">{formatNumber(d.orders)}</td>
                             <td className="text-right">{formatNumber(d.vouchers_issued)}</td>
-                            <td className="text-right text-pink-600">₩{formatNumber(d.gmv)}</td>
+                            <td className="text-right text-brand-text">₩{formatNumber(d.gmv)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -292,7 +292,7 @@ export default function AdminGroupBuyPage() {
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
                 filter === f
-                  ? 'bg-pink-500 text-white border-pink-500'
+                  ? 'bg-brand text-white border-brand'
                   : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
               }`}
             >
@@ -316,7 +316,7 @@ export default function AdminGroupBuyPage() {
         {/* 리스트 */}
         {loading ? (
           <div className="py-20 flex justify-center">
-            <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
@@ -353,12 +353,12 @@ export default function AdminGroupBuyPage() {
                       <div className="mt-2">
                         <div className="flex items-center justify-between text-xs mb-1">
                           <span className="text-gray-500">{p.group_buy_current} / {p.group_buy_target}</span>
-                          <span className="font-bold text-pink-500">{Math.round(progress)}%</span>
+                          <span className="font-bold text-brand-text">{Math.round(progress)}%</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className={`h-full rounded-full transition-all ${
-                              p.group_buy_status === 'achieved' ? 'bg-green-500' : isUnsuccessful ? 'bg-amber-500' : 'bg-pink-500'
+                              p.group_buy_status === 'achieved' ? 'bg-green-500' : isUnsuccessful ? 'bg-amber-500' : 'bg-brand'
                             }`}
                             style={{ width: `${progress}%` }}
                           />

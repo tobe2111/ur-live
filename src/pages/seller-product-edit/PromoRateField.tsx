@@ -56,7 +56,11 @@ export default function PromoRateField({ promoPct, onChange, price, originalPric
             value={promoPct || ''}
             onChange={e => onChange(Math.max(0, Math.min(50, Number(e.target.value))))}
             placeholder="0"
-            className="w-full px-3 py-2.5 pr-8 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+            /* 🎨 2026-09-05: 구 로즈 계열 focus 테두리였다 — 팔레트 중화로 **회색으로 렌더**돼
+               포커스 표시가 사실상 사라진다(가드 `brand-color-migration` 가 잡았다).
+               레포 관례(`focus:ring-2 focus:ring-brand/40`)로 통일.
+               ⚠️ 그 옛 유틸 이름을 여기 적지 말 것 — 가드는 주석까지 본다. */
+            className="w-full px-3 py-2.5 pr-8 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand/40"
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
         </div>

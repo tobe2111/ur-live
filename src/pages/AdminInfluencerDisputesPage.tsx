@@ -96,7 +96,7 @@ export default function AdminInfluencerDisputesPage() {
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] px-2 py-0.5 bg-pink-100 text-pink-700 rounded font-bold">{TYPE_LABEL[d.type] || d.type}</span>
+                      <span className="text-[10px] px-2 py-0.5 bg-brand-tint text-brand-text rounded font-bold">{TYPE_LABEL[d.type] || d.type}</span>
                       <span className="text-[10px] text-gray-500">{formatKST(d.created_at)}</span>
                     </div>
                     <p className="text-sm font-medium text-gray-900">인플: <span className="font-mono">{d.influencer_id}</span></p>

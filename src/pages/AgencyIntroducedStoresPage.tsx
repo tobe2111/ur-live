@@ -1,7 +1,7 @@
 /**
  * 🛡️ 2026-05-20: 에이전시 — "내가 입점시킨 가게" 대시보드 (Phase 2).
  *
- * 에이전시 = 가게 입점 영업. 요율은 설정값 연동(per-agency, 기본 SSOT 1%) — 하드코딩 금지(2026-07-02 대표 확정).
+ * 에이전시 = 가게 입점 영업.  (status-tone-ok: 보상 종류 배지는 상태가 아니라 분류다) 요율은 설정값 연동(per-agency, 기본 SSOT 1%) — 하드코딩 금지(2026-07-02 대표 확정).
  *   추가 보상: ₩30k 가입 보너스 (가게 첫 결제) + ₩50k 월 성장 보너스 (월 100만 돌파).
  *
  * 페이지 구성:
@@ -11,6 +11,7 @@
  *   4. 최근 commission 적립 내역 (ledger)
  */
 
+/* status-tone-ok: 보상 종류(입점 보너스/매출 커미션) 배지 — 상태가 아니라 분류다. */
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -81,9 +82,9 @@ function termRemainLabel(termMonths: number, startedAt: string | null): { text: 
 }
 
 const TYPE_LABEL: Record<CommissionEntry['type'], { label: string; color: string }> = {
-  signup_bonus: { label: '입점 보너스', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  sales_commission: { label: '매출 commission', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  growth_bonus: { label: '성장 보너스', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  signup_bonus: { label: '입점 보너스', color: 'bg-tone-warn-bg text-tone-warn' },
+  sales_commission: { label: '매출 commission', color: 'bg-tone-info-bg text-tone-info' },
+  growth_bonus: { label: '성장 보너스', color: 'bg-tone-ok-bg text-tone-ok' },
 }
 
 const STATUS_LABEL: Record<CommissionEntry['status'], string> = {
@@ -155,11 +156,11 @@ export default function AgencyIntroducedStoresPage() {
                 bg="bg-blue-50 border-blue-100"
               />
               <Kpi
-                icon={<Sparkles className="w-5 h-5 text-pink-600" />}
+                icon={<Sparkles className="w-5 h-5 text-brand-text" />}
                 label="이번달 적립"
                 value={`₩${formatNumber(summary?.month_commission ?? 0)}`}
                 sub={`누적 ₩${formatNumber(summary?.total_commission ?? 0)}`}
-                bg="bg-pink-50 border-pink-100"
+                bg="bg-brand-tint border-rule"
               />
               <Kpi
                 icon={<Wallet className="w-5 h-5 text-emerald-600" />}
@@ -211,10 +212,10 @@ export default function AgencyIntroducedStoresPage() {
                 <h2 className="text-sm font-bold text-gray-900 mb-3">영입 단계</h2>
                 <div className="grid grid-cols-4 gap-2">
                   {([
-                    { label: '영입', value: funnel.total, color: 'bg-indigo-500', textColor: 'text-indigo-600' },
-                    { label: '활성 입점', value: funnel.active, color: 'bg-blue-500', textColor: 'text-blue-600' },
-                    { label: '공구 운영', value: funnel.running, color: 'bg-amber-500', textColor: 'text-amber-600' },
-                    { label: '매출 발생', value: funnel.selling, color: 'bg-emerald-500', textColor: 'text-emerald-600' },
+                    { label: '영입', value: funnel.total, color: 'bg-indigo-500', textColor: 'text-tone-info' },
+                    { label: '활성 입점', value: funnel.active, color: 'bg-blue-500', textColor: 'text-tone-info' },
+                    { label: '공구 운영', value: funnel.running, color: 'bg-amber-500', textColor: 'text-tone-warn' },
+                    { label: '매출 발생', value: funnel.selling, color: 'bg-emerald-500', textColor: 'text-tone-ok' },
                   ] as const).map((step, i) => {
                     const pct = funnel.total > 0 ? Math.round((step.value / funnel.total) * 100) : 0
                     return (
@@ -281,7 +282,7 @@ export default function AgencyIntroducedStoresPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] text-gray-500">commission</p>
-                        <p className="text-sm font-extrabold text-pink-600">₩{formatNumber(s.total_commission)}</p>
+                        <p className="text-sm font-extrabold text-brand-text">₩{formatNumber(s.total_commission)}</p>
                         {s.pending_commission > 0 && (
                           <p className="text-[10px] text-amber-600">대기 ₩{formatNumber(s.pending_commission)}</p>
                         )}

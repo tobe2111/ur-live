@@ -74,7 +74,7 @@ export default function PublicProfileSection() {
   return (
     <section className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] p-4 mb-4">
       <div className="flex items-start gap-2 mb-3">
-        <Megaphone className="w-5 h-5 text-pink-500 shrink-0 mt-0.5" />
+        <Megaphone className="w-5 h-5 text-brand-text shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-bold text-gray-900 dark:text-white">소개자 프로필</h2>
           <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
@@ -136,7 +136,7 @@ export default function PublicProfileSection() {
         ))}
         {p.channels.length < 5 && (
           <button type="button" onClick={() => patch({ channels: [...p.channels, { kind: 'instagram', url: '', followers: null }] })}
-            className="flex items-center gap-1 text-xs font-bold text-pink-600">
+            className="flex items-center gap-1 text-xs font-bold text-brand-text">
             <Plus className="w-3.5 h-3.5" /> 채널 추가
           </button>
         )}

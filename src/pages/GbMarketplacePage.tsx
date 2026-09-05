@@ -10,8 +10,8 @@ import { ChevronLeft, Megaphone, Loader2, Plus } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
-import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
+import DealRow from '@/components/deal/DealRow'
 import { usePinAction } from '@/features/curator/hooks/usePinAction'
 import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
 import GbMyProposals from './gb-market/GbMyProposals'
@@ -77,36 +77,32 @@ export default function GbMarketplacePage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {deals.map(d => (
-              <div key={d.product_id} className="rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] overflow-hidden">
-                <div className="flex gap-3 p-3">
-                  <div className="w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1D1F29]">
-                    {d.image_url && <img src={cfImage(d.image_url, { width: 160 })} alt={d.name} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, d.image_url)} />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="px-1.5 py-0.5 rounded bg-gray-900 text-white text-[10px] font-bold">소개비 {d.promo_pct}%</span>
-                      {d.link_only && <span className="px-1.5 py-0.5 rounded bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-300 text-[10px] font-semibold">링크전용</span>}
-                    </div>
-                    <p className="mt-1 text-[13px] font-bold text-gray-900 dark:text-white truncate">{d.name}</p>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
-                      {d.restaurant_name || ''}{d.region_gu ? ` · ${d.region_gu}` : ''}
-                    </p>
-                    <p className="mt-1 text-[12px]">
-                      <span className="font-bold text-gray-900 dark:text-white">{formatNumber(d.gb_price)}원</span>
-                      {d.discount_pct > 0 && <span className="ml-1 text-rose-500 font-semibold">{d.discount_pct}%↓</span>}
-                    </p>
-                  </div>
-                </div>
+              /* 🎫 2026-09-03: 자체 카드 → 줄 SSOT(`DealRow`) + 그 아래 소개자 전용 액션.
+                 딜 자체를 보여 주는 부분은 다른 화면과 같은 그림이어야 하고, '소개비·담기' 는
+                 이 화면에만 있는 것이라 카드 밖에 둔다. */
+              <div key={d.product_id} className="rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift overflow-hidden">
+                <DealRow
+                  imageUrl={d.image_url}
+                  eyebrow={`${d.restaurant_name || ''}${d.region_gu ? ` · ${d.region_gu}` : ''}` || undefined}
+                  title={d.name}
+                  price={d.gb_price}
+                  discountPct={d.discount_pct > 0 ? d.discount_pct : 0}
+                  className="!shadow-none !rounded-none"
+                  meta={
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="px-1.5 py-0.5 rounded bg-brand text-white text-[10px] font-bold">소개비 {d.promo_pct}%</span>
+                      {d.link_only && <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 text-[10px] font-semibold">링크전용</span>}
+                    </span>
+                  }
+                />
                 <div className="px-3 pb-3">
-                  <div className="rounded-lg bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 mb-2">
-                    <p className="text-[11px] text-emerald-800 dark:text-emerald-300">
-                      건당 내 소개비 <strong>{formatNumber(d.per_unit_commission)}원</strong> · 100건 팔면 약 <strong>{formatNumber(d.per_unit_commission * 100)}원</strong>
-                    </p>
-                  </div>
+                  <p className="text-[11px] text-gray-600 dark:text-gray-300 mb-2 px-0.5">
+                    건당 내 소개비 <strong className="text-gray-900 dark:text-white">{formatNumber(d.per_unit_commission)}원</strong> · 100건 팔면 약 <strong className="text-gray-900 dark:text-white">{formatNumber(d.per_unit_commission * 100)}원</strong>
+                  </p>
                   <button
                     onClick={() => togglePin(d.product_id, d.gb_price)}
                     disabled={isPinning}
-                    className="w-full py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13px] font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="w-full py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-[13px] font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     <Plus className="w-4 h-4" /> 내 유어샵에 담기
                   </button>

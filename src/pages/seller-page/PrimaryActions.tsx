@@ -62,8 +62,8 @@ export default function PrimaryActions({ pendingOrders, activeGroupBuys, settlem
         : t('seller.primary.voucherManageDesc', { defaultValue: '판매·현황' }),
       icon: Ticket,
       bg: 'bg-white border border-gray-200 hover:bg-gray-50',
-      iconBg: 'bg-pink-50',
-      iconColor: 'text-pink-600',
+      iconBg: 'bg-brand-tint',
+      iconColor: 'text-brand-text',
     },
     {
       to: '/seller/settlements',

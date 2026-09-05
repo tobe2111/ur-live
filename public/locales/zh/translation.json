@@ -2916,7 +2916,7 @@
       "cameraStarting": "相机启动中…",
       "processing": "处理中…",
       "noDetector": "此浏览器不支持自动识别 — 请在下方输入代码。",
-      "manualPlaceholder": "直接输入兑换码",
+      "manualPlaceholder": "直接输入兑换码 (UR-XXXX-XXXX)",
       "useBtn": "核销",
       "homeCardTitle": "店主 — 在这里扫描顾客兑换券",
       "homeCardDesc": "对准二维码一键核销 · 魔法链接无需登录",
@@ -5816,9 +5816,9 @@
       "installBtn": "安装",
       "later": "稍后",
       "manualDesc": "添加到主屏幕并获得5,000韩元",
-      "iosStep1": "点击底部的<strong class=\"text-pink-600\">分享按钮</strong>",
+      "iosStep1": "点击底部的<strong class=\"text-brand-text\">分享按钮</strong>",
       "iosStep2": "选择\"添加到主屏幕\"",
-      "androidStep1": "点击右上角的<strong class=\"text-pink-600\">⋮ 菜单</strong>",
+      "androidStep1": "点击右上角的<strong class=\"text-brand-text\">⋮ 菜单</strong>",
       "androidStep2": "\"安装应用\"或\"添加到主屏幕\""
     }
   },

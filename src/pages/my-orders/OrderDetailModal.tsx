@@ -215,7 +215,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                         {/* 🛡️ 2026-05-25 (migration 0279): 인앱 추적 모달 — tracker.delivery 무료 API */}
                         <button
                           onClick={() => setShowTracking(true)}
-                          className="text-[13px] text-pink-600 dark:text-pink-400 font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
+                          className="text-[13px] text-brand-text font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
                         >
                           📦 {t('orderDetail.trackingDetail', { defaultValue: '상세 추적' })}
                         </button>

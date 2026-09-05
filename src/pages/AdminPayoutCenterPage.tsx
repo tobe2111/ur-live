@@ -68,7 +68,7 @@ export default function AdminPayoutCenterPage() {
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Landmark className="w-5 h-5" /> 지급 센터</h1>
           <p className="text-[13px] text-gray-500 mt-1">
             은행 이체(폰뱅킹)를 직접 하신 뒤 <b>입금 완료</b>를 눌러 기록하세요 — 신청자에게 자동 알림.
-            <span className="ml-2 inline-block px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-[11px] font-semibold">권장 루틴: 매주 금요일 일괄 지급</span>
+            <span className="ml-2 inline-block px-2 py-0.5 bg-tone-warn-bg text-tone-warn rounded-full text-[11px] font-semibold">권장 루틴: 매주 금요일 일괄 지급</span>
           </p>
         </div>
         <a href="/admin/wholesale-withdrawals" className="text-[12px] text-blue-600 hover:underline flex items-center gap-1">
@@ -82,7 +82,7 @@ export default function AdminPayoutCenterPage() {
           <button key={k} onClick={() => setTab(k)}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${tab === k ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}>
             <Icon className="w-3.5 h-3.5" /> {label}
-            <span className={`px-1.5 rounded-full text-[10px] ${counts[k] > 0 ? 'bg-red-100 text-red-600' : 'bg-gray-200 text-gray-500'}`}>{counts[k]}</span>
+            <span className={`px-1.5 rounded-full text-[10px] ${counts[k] > 0 ? 'bg-tone-bad-bg text-tone-bad' : 'bg-gray-200 text-gray-500'}`}>{counts[k]}</span>
           </button>
         ))}
       </div>
@@ -194,11 +194,11 @@ export default function AdminPayoutCenterPage() {
 
 interface TaxInvRow { id: number; settlement_id: number; seller_id: number; supply_amount: number; vat_amount: number; total_amount: number; period: string | null; status: string; nts_confirm_num: string | null; seller_name?: string | null; created_at: string }
 const TAXINV_STATUS: Record<string, { label: string; cls: string }> = {
-  draft: { label: '발행대기', cls: 'bg-amber-50 text-amber-700' },
-  requested: { label: '승인대기', cls: 'bg-blue-50 text-blue-700' },
-  approved: { label: '승인완료', cls: 'bg-indigo-50 text-indigo-700' },
-  issued: { label: '발행완료', cls: 'bg-emerald-50 text-emerald-700' },
-  failed: { label: '발행실패', cls: 'bg-red-50 text-red-700' },
+  draft: { label: '발행대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+  requested: { label: '승인대기', cls: 'bg-tone-info-bg text-tone-info' },
+  approved: { label: '승인완료', cls: 'bg-tone-info-bg text-tone-info' },
+  issued: { label: '발행완료', cls: 'bg-tone-ok-bg text-tone-ok' },
+  failed: { label: '발행실패', cls: 'bg-tone-bad-bg text-tone-bad' },
   cancelled: { label: '취소', cls: 'bg-gray-100 text-gray-500' },
 }
 
@@ -229,7 +229,7 @@ function SettlementTaxInvoicesPanel() {
     <div className="bg-white rounded-2xl border border-gray-100 p-5">
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h3 className="text-[14px] font-bold text-gray-900">🧾 정산 세금계산서 역발행 (사업자 유저 셀러)</h3>
-        <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${provider === 'none' ? 'bg-gray-100 text-gray-500' : 'bg-emerald-50 text-emerald-700'}`}>
+        <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${provider === 'none' ? 'bg-gray-100 text-gray-500' : 'bg-tone-ok-bg text-tone-ok'}`}>
           발행 연동: {provider === 'none' ? '미설정 (초안만 저장)' : provider}
         </span>
       </div>

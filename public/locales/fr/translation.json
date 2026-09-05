@@ -2235,7 +2235,7 @@
       "cameraStarting": "Démarrage de la caméra…",
       "processing": "Traitement…",
       "noDetector": "Ce navigateur ne détecte pas automatiquement — saisissez le code.",
-      "manualPlaceholder": "Saisir le code",
+      "manualPlaceholder": "Saisir le code (UR-XXXX-XXXX)",
       "useBtn": "Valider",
       "homeCardTitle": "Commerçants — scannez les bons clients ici",
       "homeCardDesc": "Visez le QR pour valider en un geste · Magic link sans connexion",
@@ -5816,9 +5816,9 @@
       "installBtn": "Installer",
       "later": "Plus tard",
       "manualDesc": "Ajoutez à l'écran et recevez 5 000 ₩",
-      "iosStep1": "Appuyez sur le <strong class=\"text-pink-600\">bouton Partager</strong> en bas",
+      "iosStep1": "Appuyez sur le <strong class=\"text-brand-text\">bouton Partager</strong> en bas",
       "iosStep2": "Sélectionnez \"Ajouter à l'écran d'accueil\"",
-      "androidStep1": "Appuyez sur le <strong class=\"text-pink-600\">menu ⋮</strong> en haut à droite",
+      "androidStep1": "Appuyez sur le <strong class=\"text-brand-text\">menu ⋮</strong> en haut à droite",
       "androidStep2": "\"Installer l'app\" ou \"Ajouter à l'écran d'accueil\""
     }
   },

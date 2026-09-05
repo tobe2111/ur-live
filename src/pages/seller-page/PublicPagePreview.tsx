@@ -22,7 +22,7 @@ export default function PublicPagePreview({ followerCount = 0 }: { followerCount
         <p className="text-[13px] font-bold text-gray-900">{t('seller.myPublicPage')}</p>
         <p className="text-[11px] text-gray-400 truncate">/profile/{username}</p>
       </div>
-      <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-pink-50 text-pink-700 text-[11px] font-bold shrink-0">
+      <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-brand-tint text-brand-text text-[11px] font-bold shrink-0">
         <Users className="w-3 h-3" /> {followerCount}
       </span>
       <div className="flex items-center gap-1.5 shrink-0">
