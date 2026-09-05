@@ -8526,6 +8526,17 @@ canvas {
       '정리하다 지우기 쉽다.',
   },
   {
+    name: '🪦 서버 라우트 중복 가드가 2겹 중복을 놓친다 (실제 사고가 딱 2겹이었다)',
+    file: 'scripts/check-duplicate-hono-routes.mjs',
+    find: 'if (at.length > 1) violations.push',
+    replace: 'if (at.length > 2) violations.push',
+    test: 'src/tests/unit/duplicate-hono-routes-2026-09-05.test.ts',
+    why:
+      '오늘 찾은 실제 중복은 정확히 **2겹**이었다(GET /products/:id). 임계를 하나만 올리면 그 사고가 ' +
+      '그대로 통과한다. ⚠️ 오탐 필터(앵커·라우터명·경로 접두)는 서로 겹쳐 있어 하나 빼도 안 무너지므로 ' +
+      '(실측 확인) 주입 지점으로 쓸 수 없다 — 판정 임계가 이 가드의 유일한 단일 실패점이다.',
+  },
+  {
     name: '💰 소개비 저장이 다시 등록 화면 전용이 된다 (한번 정하면 못 바꿈)',
     file: 'src/features/seller/api/seller-orders.routes.ts',
     find: `    // 💰 2026-09-05 (대표 확정 플로우 — 소개비는 매장이 정한다): 수정 화면에서도 변경 가능하게.
