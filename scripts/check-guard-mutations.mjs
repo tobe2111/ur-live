@@ -8538,8 +8538,7 @@ canvas {
   {
     name: '💸 서버가 적립률 NULL 을 다시 0 으로 뭉갠다 (배지가 영원히 안 뜸)',
     file: 'src/worker/routes/curator.routes.ts',
-    find: `              p.referral_commission_rate AS commission_rate,
-              COALESCE(p.referral_enabled, 0) AS referral_enabled,`,
+    find: '              p.referral_commission_rate AS commission_rate, COALESCE(p.referral_enabled, 0) AS referral_enabled,',
     replace: '              COALESCE(p.referral_commission_rate, 0) AS commission_rate,',
     test: 'src/tests/unit/affiliate-rate-ssot-2026-09-05.test.ts',
     why:
