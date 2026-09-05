@@ -602,3 +602,66 @@ null** 이고, 그러면 정렬 키가 전부 동점이라 **칩을 눌러도 �
 `wishlist-baseline-wiring` 의 낡은 배선 단언 갱신 + 주입 매니페스트 2건 **되돌려-검증 빨간불 확인**.
 
 검증: tsc 0 · **전체 614 파일 7,647건 pass** · theme/design-slop/file-size/anti-slop/middle-dot 통과.
+
+---
+
+## §16. 정정 — "죽은 파일"이라던 cron 은 **5분마다 살아서 돌고 있었다**
+
+🩸 **#1349 의 PR 본문과 §12 에 내가 이렇게 적었다**: *"`group-buy-deadline-push.ts` cron —
+어디에도 등록돼 있지 않다(죽은 파일). 별건."* **틀렸다.**
+
+```
+src/worker/scheduled.ts:236
+  ctx.waitUntil(safeCron('group-buy-deadline-push', () => handleGroupBuyDeadlinePush(env)));
+```
+
+**5분마다** 발화하고 있었다. 근거를 안 대고 단정한 결과이고, 그 한 줄 때문에 하루 동안
+"별건"으로 밀려 있었다. `origin/main` 병합 중 `ProductDetailPage` 의 고아 import 를 쫓다
+우연히 드러났다.
+
+### 그 cron 이 실제로 하던 일
+
+· 매 실행 `ALTER TABLE products ADD COLUMN deadline_pushed_3h/_1h` **두 번**(idempotent 시도)
+· 마감 창 3시간·1시간 두 번 `products` 조회 — `index-repairs` 주석의 실측이
+  **"5,350행/5분 = 하루 150만 행"** 이고, 그 부담 때문에 부분 인덱스를 따로 만들어 뒀다
+· 마감이 사라진 지금 결과는 **영구히 0건**
+
+2026-09-02 에 이 계정이 D1 일일 읽기 한도(500만)에 닿아 소비자 API 가 통째로 500 이던 사고를
+겪었다. 0건을 위해 하루 150만 행을 읽는 자리는 그 맥락에서 특히 나쁘다.
+
+### 걷어낸 것
+
+| 층 | 무엇 |
+|---|---|
+| 등록 | `scheduled.ts` 의 import + `safeCron('group-buy-deadline-push', …)` |
+| 본체 | `src/worker/cron/group-buy-deadline-push.ts` (파일 삭제) |
+| 인덱스 | `idx_products_gb_deadline_active` — **유일한 독자가 이 cron 이었다** |
+| 표시 | `ProductDetailPage` 의 고아 `GroupBuyCountdown` import + 그 컴포넌트 파일 |
+
+### 하트비트를 반드시 은퇴시켜야 한다 (이 레포의 기록된 사고)
+
+cron 을 지우면 `platform_settings` 의 `cron_hb:{name}` 행은 남아 **영원히 빨갛고**,
+`cron-beat-retirement.ts` 가 적어 둔 대로 **영원한 빨간불 하나가 경보 채널 전체를 침묵시킨다**
+(#1056 이 21일). 후임이 없는 제거라 개명 지도에 적을 이름이 없으므로
+`beat-retire-ok group-buy-deadline-push` 면제로 남겼다.
+가드 실측: `beat-name-retirement: 사라진 이름 1개 전부 처리됨`.
+
+⏳ 그 행은 **최대 하루** 빨갛다(5분 임계 × 8배와 하루 하한을 함께 넘겨야 `retired`).
+주간 임계였던 `d1-backup` 의 58일과 달리 하루면 자동으로 걷힌다.
+
+### 라이브에 남는 것 (해롭지 않음)
+
+`products.deadline_pushed_3h`/`_1h` 컬럼과 이미 만들어진 인덱스는 코드에서 지워도 DB 에서
+사라지지 않는다. 실제 DROP 은 마이그레이션이 필요하고 남아 있어도 해롭지 않아 별건으로 둔다.
+(참조는 0 이다 — 그 컬럼을 읽는 코드는 이제 없다.)
+
+### 교훈
+
+**"등록 안 돼 있다"는 확인해야 하는 사실이지 인상이 아니다.** `grep`  한 번이면 됐고,
+실제로 그 grep 이 이번에 답을 줬다. 근거 없이 단정한 문장은 PR 본문·인계·커밋 메시지에
+그대로 퍼져 다음 세션의 지도가 된다.
+
+가드: `d1-diet-round2.test.ts` ②를 "인덱스를 타는가" → **"그 cron 이 되살아나지 않는가"** 로
+재작성(파일 부재 · 디스패처 미참조 · 인덱스 미생성 · 하트비트 은퇴 등록 4건).
+
+검증: tsc 0 · **전체 618 파일 7,685건 pass** · cron 가드 5종 통과 · sql/theme/file-size 통과.

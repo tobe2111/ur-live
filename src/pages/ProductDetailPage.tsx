@@ -29,7 +29,6 @@ import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import { resolveDetailDisplay } from './product-detail/detail-display'
 import AccordionSection from './product-detail/AccordionSection'
-import GroupBuyCountdown from './product-detail/GroupBuyCountdown'
 import ProductReviews from './product-detail/ProductReviews'
 import ReferralSection from './product-detail/ReferralSection'
 import PurchasePicker from './product-detail/PurchasePicker'
@@ -37,12 +36,13 @@ import { isMallProduct, mallRedirectPathFor } from '@/shared/mall/resolve'
 import { PickupNotice, DeliveryNotice, hasPickupInfo, pickupSummaryLine } from '@/pages/product-detail/ReceiveMethodNotice'
 import { readMallOrigin } from '@/shared/mall/origin'
 import { parseUTCDate } from '@/utils/date'
-import { storeAffiliateRef } from '@/utils/affiliate-track'
+import { storeAffiliateRef, arrivedViaSomeoneElsesRef } from '@/utils/affiliate-track'
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 
-// 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection/
-//   GroupBuyCountdown 을 ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage,
-//   SharePrompt, toast, Users, Clock, Product type, lucide 일부) 제거.
+// 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection 을
+//   ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage, SharePrompt, toast,
+//   Users, Clock, Product type, lucide 일부) 제거.
+//   🗓️ 2026-09-04: 함께 추출했던 GroupBuyCountdown 은 마감 개념 제거로 파일째 삭제됐다.
 
 // Lazy load heavy components
 const ProductImageCarousel = lazy(() => import('@/components/product/product-image-carousel').then(m => ({ default: m.ProductImageCarousel })))
@@ -695,7 +695,12 @@ export default function ProductDetailPage() {
               몰 홈은 `powered by 유어딜` 조차 클릭 못 하게 막아 뒀는데 카드 한 번 누르면 여기였다.
               공유(KakaoShareButton)는 **남긴다** — 단톡방 확산은 운영자에게 이득이고 유어딜 영입이 아니다. */}
         <div className="px-5 py-3 space-y-2">
-          {!mallProduct && (() => {
+          {/* 🛡️ 2026-09-04 (대표): **남의 추천 링크로 들어왔으면 이 자리를 안 그린다.**
+                A 가 공유한 링크로 온 B 에게 "내 유어샵에 담기 + 추천 링크 복사" 를 보여 주면
+                B 가 A 의 손님을 그대로 가져간다 — 소개의 결과를 소개받은 사람이 가로챈다.
+                담기는 **유어딜에서 직접 발견했을 때만**. (몰 상품 제외와 같은 성격의 게이트.)
+                ⚠️ 저장된 ref(구매 귀속)는 그대로다 — B 가 사면 매출은 A 에게 간다. */}
+          {!mallProduct && !arrivedViaSomeoneElsesRef() && (() => {
             // 1판매당 큐레이터 적립액 = 가격 × 2% (platform_settings.curator_affiliate_pct default).
             // 🛡️ 추후 dynamic-policy 동기화 가능 (현재 default 2% — referralCopy 기존 라벨과 일관).
             const commissionPct = 2
@@ -728,7 +733,7 @@ export default function ProductDetailPage() {
                   className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
                 >
                   <span className="flex items-center gap-1.5 text-[15px] font-bold"><Bookmark className="w-4 h-4 shrink-0" strokeWidth={2} aria-hidden />내 유어샵에 담기 + 추천 링크 복사</span>
-                  <span className="text-[11px] opacity-90">1판매당 {amountStr} 적립, 친구 공유 가능</span>
+                  <span className="text-[11px] opacity-90">손님이 사서 <b>쓰면</b> {amountStr} 적립 · 친구 공유 가능</span>
                 </button>
               )
             }
@@ -738,7 +743,7 @@ export default function ProductDetailPage() {
                 onClick={() => navigate(`/login?returnUrl=${encodeURIComponent(window.location.pathname)}`)}
                 className="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
               >
-                <span className="text-[15px] font-bold">회원가입하고 1판매당 {amountStr} 적립받기</span>
+                <span className="text-[15px] font-bold">회원가입하고 손님이 쓸 때마다 {amountStr} 받기</span>
                 <span className="text-[11px] opacity-90">내 유어샵에 담아 친구에게 추천만 해도 수익</span>
               </button>
             )

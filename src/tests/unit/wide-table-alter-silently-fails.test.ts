@@ -74,8 +74,6 @@ const KNOWN: Record<string, string> = {
     '🔴 라이브에 없음 — 잠재 500: sellers.plus_until',
   'src/features/supply/api/wholesale.routes.ts':
     '🔴 라이브에 없음 — 잠재 500: sellers.nts_status',
-  'src/worker/cron/group-buy-deadline-push.ts':
-    '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
   'src/worker/cron/seller-daily-report.ts':
     '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
 }
