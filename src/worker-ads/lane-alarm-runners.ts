@@ -20,6 +20,7 @@
  *   얹을 근거는 "cron 회차를 못 받아 굶는다" 또는 "회차가 죽어 진도가 안 나간다" 여야 한다 —
  *   하루 1회면 충분한 배치(주간 리포트 등)는 cron 이 맞다.
  */
+import { DAILY_INTERVAL_HOURS } from './lane-adaptive-interval'
 import type { Env } from '@/worker/types/env'
 
 export interface AlarmLane {
@@ -381,46 +382,44 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
    */
   'maintenance-rescan': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if ((env as unknown as { ADS_AUTO_MAINTENANCE_ENABLED?: string }).ADS_AUTO_MAINTENANCE_ENABLED === 'false') return { skipped: 'gate_off' }
-      const { RESCAN_HOUR_UTC } = await import('./rescan-hour')
-      if (new Date().getUTCHours() !== RESCAN_HOUR_UTC) return { skipped: 'off_hour' }
       const { runNightlyRescan } = await import('@/features/marketing/api/influencer-maintenance')
       return runNightlyRescan(env)
     },
   },
   'collect-localdata-chain': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED !== 'true') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 20) return { skipped: 'off_hour' }
       const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect')
       return runLocalDataCollect(env)
     },
   },
   'collect-nps': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if ((env as unknown as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED !== 'true') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 16) return { skipped: 'off_hour' }
       const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich')
       return runNpsWorkplaceEnrich(env)
     },
   },
   'daily-batch': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
-      // env 게이트 없음(cron 도 무게이트) — 시각만 지킨다.
-      if (new Date().getUTCHours() !== 18) return { skipped: 'off_hour' }
       const { runAdsDailyBatch } = await import('./daily-batch')
       return runAdsDailyBatch(env)
     },
   },
   'sweep-nts': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if (env.ADS_COMPANY_COLLECT_ENABLED !== 'true') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 19) return { skipped: 'off_hour' }
       const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep')
       return sweepBusinessStatus(env)
     },
@@ -428,9 +427,9 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
   // ⚠️ 나라장터는 **opt-out**(기본 ON — 2026-08-04 대표 "자동으로 데이터 나오게끔") — 게이트 방향 주의.
   'collect-nara-contract': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if ((env as unknown as { ADS_NARA_CONTRACT_ENABLED?: string }).ADS_NARA_CONTRACT_ENABLED === 'false') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 23) return { skipped: 'off_hour' }
       const { runNaraContractCollect } = await import('@/features/marketing/api/nara-contract-collect')
       return runNaraContractCollect(env)
     },
@@ -442,9 +441,9 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
    */
   'collect-nara-vendor': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if ((env as unknown as { ADS_NARA_VENDOR_ENABLED?: string }).ADS_NARA_VENDOR_ENABLED === 'false') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 15) return { skipped: 'off_hour' }
       const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect')
       return runNaraVendorCollect(env)
     },
@@ -477,18 +476,18 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
    */
   'sweep-mx': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if (env.ADS_COMPANY_COLLECT_ENABLED !== 'true') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 17) return { skipped: 'off_hour' }
       const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep')
       return sweepEmailMx(env)
     },
   },
   'collect-franchise': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if ((env as unknown as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED !== 'true') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 22) return { skipped: 'off_hour' }
       const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect')
       return runFranchiseCollect(env)
     },
