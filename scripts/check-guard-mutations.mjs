@@ -88,6 +88,34 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '떠난 페이지가 스크롤 저장을 0 으로 덮어쓴다',
+    file: 'src/components/ScrollToTop.tsx',
+    find: '      if (currentKeyRef.current !== keyAtAttach) return',
+    replace: '      if (false) return',
+    test: 'src/tests/unit/scroll-restoration.test.ts',
+    why:
+      '2026-09-01 대표 "어떠한 페이지든 무조건 맨 위로 나옴". 복원 코드는 두 달간 있었는데도 ' +
+      '동작하지 않았다 — 떠나는 순간 옛 키로 0 이 저장돼 "저장된 자리 없음" 폴백을 탔다. ' +
+      '귀속 검증에서 이 한 줄만이 되돌리면 깨지는 유일한 변경이었다(실측 3/3 → 0/3).',
+  },
+  {
+    name: '🏷️ 교환권 행(VoucherRow) 할인율이 다시 썸네일 위로',
+    // 🔁 2026-09-05 재조준: VoucherRow 가 `DealRow`(줄 SSOT)에 위임하며 옛 앵커
+    //   (`shared.tsx` 의 `{/* 🎨 본문 — 우측.`)가 사라졌다. 지키는 불변식(할인율이 썸네일을
+    //   가리면 안 된다)은 **그대로**이고, 이제 그 할인율을 그리는 자리가 `DealRow` 다
+    //   — 테스트도 위임을 감지하면 그 파일을 본다. 그러니 주입도 거기로 옮긴다.
+    file: 'src/components/deal/DealRow.tsx',
+    find: `        {thumb ?? (imageUrl ? (`,
+    replace: `        {discountPct > 0 && (
+          <span className="absolute top-1.5 left-1.5 text-[10px] font-extrabold bg-[#d1d5db] rounded px-1 py-0.5">{discountPct}%</span>
+        )}
+        {thumb ?? (imageUrl ? (`,
+    test: 'src/tests/unit/voucher-card-discount-once.test.ts',
+    why:
+      '모바일 목록 행도 같은 클래스였다 — 게다가 회색 배지라 눈에 띄지도 않으면서 썸네일만 가렸다. ' +
+      '카드만 고치고 행을 두면 같은 화면 안에서 규칙이 갈린다.',
+  },
+  {
     name: '🎟️ 손으로 친 바우처 코드가 다시 대소문자를 가린다 (폴백이 반쪽이 된다)',
     file: 'src/components/voucher/VoucherScanner.tsx',
     find: "  const v = (raw || '').replace(/\\s+/g, '').toUpperCase()",
