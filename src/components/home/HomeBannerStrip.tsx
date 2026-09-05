@@ -1,5 +1,5 @@
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useHomeBanners, type HomeBanner } from './useHomeBanners'
@@ -22,6 +22,9 @@ import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
  * 안 읽히는 사고를 막으려고 어두운 오버레이를 항상 깐다 — 어떤 사진이 올라올지 모른다.
  */
 
+/** 스트립 항목 사이 간격(px). 위 `gap-2` 와 **같은 값이어야** 점 계산이 맞는다. */
+const STRIP_GAP_PX = 8
+
 function bannerHref(b: HomeBanner): string {
   return b.link_url ? safeInternalPath(b.link_url, '') : ''
 }
@@ -37,43 +40,12 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
   if (banners.length === 0) return null
 
   /**
-   * 🎫 2026-09-05 (대표 "인기 이용권 섹션 위에 배너가 작게 있어야 할 것 같음" — 시안 안 2 확정):
-   *   첫 섹션 **위** 가로 카드. 다른 두 자리와 달리 **사진 위에 글자를 얹지 않는다** —
-   *   아래 딜 카드와 같은 흰 표면·같은 들림(`shadow-lift`)이라 화면이 한 벌로 읽힌다.
-   *   잉크 색면 띠(시안 안 1)는 흰 카드가 이어지는 그 자리에서 이물감이 있었다.
-   *
-   * 📐 **아래 여백만** — 이 자리는 카테고리 탭 바로 밑이라 위 여백을 주면 탭과 벌어진다.
-   *   그리고 배너가 없으면 통째로 null 이라 유령 여백이 안 남는다(다른 두 자리와 같은 규칙).
+   * 🎫 2026-09-05 (대표 "인기 이용권 섹션 위에 배너가 작게" → 시안 **안 3 확정**):
+   *   첫 섹션 **위** 옆으로 넘기는 스트립. 렌더는 `StripRail`(아래) 이 맡는다.
+   *   ⚠️ 안 2(가로 카드)로 먼저 만들었다가 대표 확정으로 안 3 으로 바꿨다 — 안 2 를 되살리지 말 것.
    */
   if (variant === 'strip') {
-    const b = banners[0]
-    const href = bannerHref(b)
-    const th = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 78 }) : ''
-    return (
-      <div className="pb-4">
-        <Wrap
-          href={href}
-          className="flex items-center gap-3 rounded-xl bg-white dark:bg-[#1D1F29] shadow-lift px-3.5 py-2.5 min-h-[76px] transition-transform active:scale-[.995]"
-        >
-          <div className="shrink-0 w-14 h-14 rounded-[9px] overflow-hidden bg-brand">
-            {th && (
-              <img
-                src={th} alt="" aria-hidden="true" width={56} height={56} loading="lazy"
-                className="w-full h-full object-cover"
-                onError={(e) => cfImageOnError(e.currentTarget, b.image_url)}
-              />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            {b.description && (
-              <span className="block text-[10.5px] font-extrabold text-brand-text truncate">{b.description}</span>
-            )}
-            <strong className="block text-[14px] font-extrabold tracking-tight text-gray-900 dark:text-white truncate">{b.title}</strong>
-          </div>
-          {href && <ChevronRight className="shrink-0 w-[18px] h-[18px] text-gray-300 dark:text-gray-600" aria-hidden="true" />}
-        </Wrap>
-      </div>
-    )
+    return <StripRail banners={banners.slice(0, 5)} />
   }
 
   if (variant === 'wide') {
@@ -130,6 +102,83 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
           )
         })}
       </div>
+    </div>
+  )
+}
+
+
+/**
+ * 🎫 상단 띠 — 옆으로 넘기는 스트립 (2026-09-05 대표 확정 "안 3").
+ *
+ * ## 왜 JS 캐러셀이 아닌가
+ * 네이티브 가로 스크롤 + CSS `scroll-snap` 이면 **라이브러리 0**으로 손가락 감각이 그대로 나온다.
+ * 관성·고무줄·접근성(키보드 스크롤)까지 브라우저가 이미 갖고 있는 것을 다시 만들 이유가 없다.
+ * 자동 재생은 **하지 않는다** — 첫 화면에서 저절로 움직이는 것은 읽는 사람을 방해하고,
+ * 그 순간 무엇을 보고 있었는지 사용자가 통제할 수 없게 된다.
+ *
+ * ## 한 장일 때는 스트립이 아니다
+ * 한 장을 74% 폭으로 두면 오른쪽에 아무것도 없는 빈 자리가 생기고, 점 하나짜리 인디케이터가
+ * 덩그러니 남는다(시안에서 이 점을 안 3 의 약점으로 적었다). ⇒ **한 장이면 꽉 채우고 점을 안 그린다.**
+ * 두 장부터 74% + 다음 장 살짝 보이기 + 점.
+ */
+function StripRail({ banners }: { banners: HomeBanner[] }) {
+  const railRef = useRef<HTMLDivElement>(null)
+  const [active, setActive] = useState(0)
+  const many = banners.length > 1
+
+  /** 점은 스크롤 위치에서 파생한다 — 상태를 따로 들고 있으면 손가락과 어긋난다. */
+  const onScroll = () => {
+    const el = railRef.current
+    const first = el?.firstElementChild as HTMLElement | null
+    if (!el || !first) return
+    const step = first.offsetWidth + STRIP_GAP_PX
+    const i = Math.round(el.scrollLeft / step)
+    setActive(Math.max(0, Math.min(banners.length - 1, i)))
+  }
+
+  return (
+    <div className="pb-4">
+      <div
+        ref={railRef}
+        onScroll={many ? onScroll : undefined}
+        className={`flex gap-2 ${many ? 'overflow-x-auto snap-x snap-mandatory scrollbar-hide' : ''}`}
+      >
+        {banners.map((b) => {
+          const href = bannerHref(b)
+          const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 76 }) : ''
+          return (
+            <Wrap
+              key={b.id}
+              href={href}
+              className={`relative ${many ? 'snap-start shrink-0 basis-[74%]' : 'flex-1'} overflow-hidden rounded-xl isolate h-24 flex flex-col justify-center px-4 py-3 bg-brand transition-transform active:scale-[.995]`}
+            >
+              {bg && (
+                <img
+                  src={bg} alt="" aria-hidden="true" loading="lazy"
+                  className="absolute inset-0 -z-10 w-full h-full object-cover"
+                  onError={(e) => cfImageOnError(e.currentTarget, b.image_url)}
+                />
+              )}
+              {/* 어떤 사진이 올라올지 모른다 — 글자가 안 읽히는 사고를 막으려고 항상 덮는다. */}
+              <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/62 to-black/28" aria-hidden="true" />
+              {b.description && (
+                <small className="block text-[10.5px] font-bold text-white/80 truncate">{b.description}</small>
+              )}
+              <strong className="block mt-0.5 text-[15px] font-extrabold leading-snug tracking-tight text-white line-clamp-2">{b.title}</strong>
+            </Wrap>
+          )
+        })}
+      </div>
+      {many && (
+        <div className="flex justify-center gap-1 pt-2" aria-hidden="true">
+          {banners.map((b, i) => (
+            <span
+              key={b.id}
+              className={`h-[5px] rounded-full transition-all ${i === active ? 'w-3 bg-gray-900 dark:bg-white' : 'w-[5px] bg-gray-300 dark:bg-white/25'}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

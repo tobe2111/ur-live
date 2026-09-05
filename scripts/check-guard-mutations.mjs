@@ -88,6 +88,26 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎫 상단 띠가 저절로 넘어간다 (자동 재생 — 첫 화면에서 읽기를 방해한다)',
+    file: 'src/components/home/HomeBannerStrip.tsx',
+    find: '  const many = banners.length > 1',
+    replace: '  const many = banners.length > 1\n  setTimeout(() => railRef.current?.scrollBy({ left: 999 }), 4000)',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '캐러셀에 자동 재생을 얹고 싶은 유혹은 늘 생긴다. 그런데 첫 화면에서 저절로 움직이면 ' +
+      '읽던 사람이 방해받고, 무엇을 보고 있었는지 통제할 수 없게 된다.',
+  },
+  {
+    name: '🎫 한 장짜리 상단 띠에 점 하나가 덩그러니 남는다',
+    file: 'src/components/home/HomeBannerStrip.tsx',
+    find: '  const many = banners.length > 1',
+    replace: '  const many = true',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '한 장을 74% 폭으로 두면 오른쪽에 빈 자리가 생기고 점 하나짜리 인디케이터가 남는다. ' +
+      '시안(안 3)에서 바로 이 점을 약점으로 적었고, 그래서 한 장이면 꽉 채우기로 했다.',
+  },
+  {
     name: '떠난 페이지가 스크롤 저장을 0 으로 덮어쓴다',
     file: 'src/components/ScrollToTop.tsx',
     find: '      if (currentKeyRef.current !== keyAtAttach) return',
