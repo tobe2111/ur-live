@@ -5494,9 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 251건 · 최신순 · 이 목록은 자동 생성된다._
+_총 252건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-05**
+- [배포 판정 + 실측에서 나온 것: 직접 10% 가 걷히는 매장이 0곳 (2026-09-05)](handoff/2026-09-05-live-verdict-channel-gap.md)
 - [2026-09-05 — 홈 상단 배너 · 기본 정렬 '가까운 순' · 계산대 코드 입력](handoff/2026-09-05-home-banner-near-default-scan-code.md)
 - [담아 팔면 몇 % — 화면 네 곳이 서로 다른 숫자를 말하고 있었다 (2026-09-05)](handoff/2026-09-05-affiliate-rate-ssot.md)
 **2026-09-04**

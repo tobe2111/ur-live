@@ -793,15 +793,18 @@ const MUTATIONS = [
       '2026-09-02 첫 계량: auto-seed-reviews 가 시간당 12.7만 행(하루 300만) — product_reviews 12만 행을 매시간 정렬했다. ' +
       '부분 인덱스는 쿼리 WHERE 와 글자까지 같아야 쓰인다 — `is_generated = 0` 으로 "단순화"하면 인덱스는 남고 효과만 사라진다.',
   },
+  // 🪦 2026-09-05: '공구 마감 부분 인덱스' 주입은 **대상이 사라져서** 뺐다. 그 인덱스의 유일한
+  //   독자였던 `group-buy-deadline-push` cron 을 통째로 제거했기 때문이다(마감 개념 폐지).
+  //   대신 같은 테스트가 "그 cron 이 되살아나지 않는가" 를 지키고, 그쪽 주입을 아래에 새로 넣었다.
   {
-    name: '📏 공구 마감 부분 인덱스가 사라져 5분마다 products 전수 ×3',
-    file: 'src/worker/routes/repair-schema/index-repairs.ts',
-    find: "  { name: 'idx_products_gb_deadline_active', sql: `CREATE INDEX IF NOT EXISTS idx_products_gb_deadline_active ON products(group_buy_deadline) WHERE group_buy_status = 'active' AND group_buy_deadline IS NOT NULL` },\n",
-    replace: '',
+    name: '🪦 마감 push cron 이 디스패처에 되살아난다 — 0건을 위해 하루 150만 행',
+    file: 'src/worker/scheduled.ts',
+    find: "    // 🪦 2026-09-05: '공구 마감 3시간/1시간 전 push' cron 제거",
+    replace: "    ctx.waitUntil(safeCron('group-buy-deadline-push', () => Promise.resolve()));\n    // 🪦 2026-09-05: '공구 마감 3시간/1시간 전 push' cron 제거",
     test: 'src/tests/unit/d1-diet-round2.test.ts',
     why:
-      'group-buy-deadline-push 가 5분마다 창 3개 × products 전수(5,350행/틱 = 하루 150만). 활성+마감 부분 인덱스가 빠지면 ' +
-      '조용히 전수로 되돌아간다.',
+      '마감 개념이 없어져 그 조회는 영구히 0건인데, 5분마다 products 를 창 3개로 훑고(하루 ~150만 행) ' +
+      '매번 ALTER 를 두 번 시도했다. 09-02 에 이 계정은 D1 일일 읽기 한도로 소비자 API 가 통째로 500 이었다.',
   },
   {
     name: '📉 키워드 수율 재계산 6h 게이트가 헛돈다(회차마다 전수 GROUP BY)',
@@ -8793,6 +8796,38 @@ canvas {
     why:
       'sticky 는 스택 컨텍스트를 만들고 z 가 없으면 지도 레이어(z≥1) 아래로 깔린다. 클래스 하나라 ' +
       '정리하다 지우기 쉽다.',
+  },
+  {
+    name: '🗓️ 에이전시 위험 집계가 마감 기준으로 회귀 — 영구히 0 만 내는 지표',
+    file: 'src/worker/routes/disputes.routes.ts',
+    find: '        SELECT COUNT(*) AS active_count\n        FROM products p',
+    replace: '        SELECT\n          COUNT(*) AS active_count,\n          SUM(CASE WHEN p.group_buy_deadline < ? THEN 1 ELSE 0 END) AS at_risk_count\n        FROM products p',
+    test: 'src/tests/unit/no-deadline-sort.test.ts',
+    why: '마감이 없어졌으므로 NULL 비교라 언제나 0 이다. 크래시가 아니라 조용한 부재 — 화면은 멀쩡해 보인다.',
+  },
+  {
+    name: '🗓️ 에이전시 알림에 사라진 개념(24h 내 마감) 안내가 부활',
+    file: 'src/components/agency/AgencyGroupBuyAlert.tsx',
+    find: "        {data.churn_sellers > 0 && (",
+    replace: "        {false && (<p>미달성 위험 — 24h 이내 마감</p>)}\n        {data.churn_sellers > 0 && (",
+    test: 'src/tests/unit/no-deadline-sort.test.ts',
+    why: '존재하지 않는 개념을 설명하는 문구는 다음 세션에게 틀린 지도가 된다.',
+  },
+  {
+    name: '🗓️ 찜 목록에 하는 일이 없는 \'마감 임박\' 정렬 칩이 부활',
+    file: 'src/pages/wishlist/WishlistParts.tsx',
+    find: "  { key: 'discount', label: '할인율', pcOnly: true },",
+    replace: "  { key: 'deadline', label: '마감 임박' },\n  { key: 'discount', label: '할인율', pcOnly: true },",
+    test: 'src/tests/unit/wishlist-signals.test.ts',
+    why: '마감이 없으니 남은 일수가 전부 null = 정렬이 전부 동점 → 눌러도 순서가 그대로다. 하는 일이 없는 칩.',
+  },
+  {
+    name: '🗓️ 찜 신호 모듈에 마감 정렬 키가 되살아난다',
+    file: 'src/pages/wishlist/wishlist-signals.ts',
+    find: "export type WishlistSort = 'recent' | 'drop' | 'discount'",
+    replace: "export type WishlistSort = 'recent' | 'drop' | 'deadline' | 'discount'",
+    test: 'src/tests/unit/wishlist-signals.test.ts',
+    why: '타입이 먼저 살아나면 칩과 분기가 따라 들어온다 — 되살아나는 입구다.',
   },
   {
     name: '🪦 서버 라우트 중복 가드가 2겹 중복을 놓친다 (실제 사고가 딱 2겹이었다)',

@@ -5,7 +5,8 @@
  *
  *   [1 매장] 등록 매장 자동 상속(GET /stores/context) · 다매장 칩 선택 · 카카오맵 검색
  *   [2 이용권] 종류·이름·가격·사진·실수령가
- *   [3 판매 설정] 재고·한도·마감 · 유효기간 기본 무기한 · 미리보기 → 등록
+ *   [3 판매 설정] 재고·한도 · 유효기간 기본 무기한 · 미리보기 → 등록
+ *   (2026-09-04 대표 "마감 개념은 없어" — '판매 마감' 입력은 이 단계에서 제거됐다.)
  *
  *   임시저장 = localStorage 드래프트(voucher-form.ts) — 자동저장 + 명시 버튼 + 복원 배너.
  *   제출 payload 는 종전과 동일 계약(POST /api/seller/products) — 단 group_buy_target 은
@@ -88,8 +89,8 @@ export default function SellerMealVoucherNewPage() {
           restaurant_lng: src.restaurant_lng != null ? String(src.restaurant_lng) : '',
           voucher_terms: str(src.voucher_terms),
           stock: num(src.stock) || f.stock,
-          // 마감(group_buy_deadline)/만료(voucher_expiry)는 기본값 유지 — 새 공구 기준 재계산.
-          //   (그래서 여기서는 utcToKstInput 이 필요 없다 — 값을 물려받지 않는다.)
+          // 만료(voucher_expiry)는 기본값 유지 — 값을 물려받지 않으므로 utcToKstInput 이 필요 없다.
+          //   (마감은 2026-09-04 에 개념째 없어졌다 — 물려받을 값 자체가 없다.)
         }))
         toast.success(t('seller.groupBuy.copyLoaded', { defaultValue: '이전 공구 내용을 불러왔어요 — 날짜만 확인하고 발행하세요!' }))
       })
