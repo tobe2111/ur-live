@@ -8525,6 +8525,37 @@ canvas {
       'sticky 는 스택 컨텍스트를 만들고 z 가 없으면 지도 레이어(z≥1) 아래로 깔린다. 클래스 하나라 ' +
       '정리하다 지우기 쉽다.',
   },
+  {
+    name: '💸 핀 관리가 적립 분수를 다시 100 으로 나눈다 (₩5,000 → ₩50)',
+    file: 'src/pages/curator-page/PinManageList.tsx',
+    find: 'const est = estRate != null ? Math.round(pin.price * estRate) : 0',
+    replace: 'const est = estRate != null ? Math.round(pin.price * estRate / 100) : 0',
+    test: 'src/tests/unit/affiliate-rate-ssot-2026-09-05.test.ts',
+    why:
+      'rate 는 분수(0.05)인데 퍼센트로 오해해 또 나누면 실제의 1/100 이 된다. 숫자가 뜨긴 떠서 ' +
+      '화면만 보면 안 틀린 것처럼 보인다 — 사람을 모으는 화면이 수익을 100배 작게 말한다.',
+  },
+  {
+    name: '💸 서버가 적립률 NULL 을 다시 0 으로 뭉갠다 (배지가 영원히 안 뜸)',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: `              p.referral_commission_rate AS commission_rate,
+              COALESCE(p.referral_enabled, 0) AS referral_enabled,`,
+    replace: '              COALESCE(p.referral_commission_rate, 0) AS commission_rate,',
+    test: 'src/tests/unit/affiliate-rate-ssot-2026-09-05.test.ts',
+    why:
+      'NULL 은 "설정 없음 → 플랫폼 기본(2%)" 이고 0 은 "정말 0%" 다. 뭉개면 라이브 상품 전부가 ' +
+      '(rate 가 전부 NULL 이라) 적립 없음으로 읽혀 안내가 통째로 사라진다. 에러는 안 난다.',
+  },
+  {
+    name: '💸 적립 기본값이 다시 화면마다 갈린다 (worker 만 2%, 나머지 5%)',
+    file: 'src/shared/affiliate-rate.ts',
+    find: 'export const DEFAULT_AFFILIATE_RATE = 0.02',
+    replace: 'export const DEFAULT_AFFILIATE_RATE = 0.05',
+    test: 'src/tests/unit/affiliate-rate-ssot-2026-09-05.test.ts',
+    why:
+      '2026-06-17 대표 결정(5%→2%)이 적립 경로에만 반영되고 표시 상수는 5 로 남아 몇 달간 ' +
+      '어드민 정책 표가 2.5배 틀린 숫자를 보여 줬다. 상수를 되돌리면 그 상태로 돌아간다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

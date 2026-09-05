@@ -17,6 +17,8 @@
  *  ⑧ 동적 정책 (어드민)    — DB 테이블 `platform_settings` (key/value)
  * ────────────────────────────────────────────────────────────────
  */
+import { DEFAULT_AFFILIATE_RATE } from '../affiliate-rate'
+
 
 // ── ① 환불 / 만료 / 분쟁 / 출금 ────────────────────────────────
 export const REFUND_POLICY = {
@@ -84,8 +86,12 @@ export const COMMISSION_DEFAULTS = {
   /** 셀러 등급별 보너스 (% 가산) */
   TIER_COMMISSION_BONUS: { bronze: 0, silver: 1, gold: 2, platinum: 3 } as Record<string, number>,
 
-  /** 제휴 마케팅 추천인 보상 — `platform_settings.affiliate_commission_rate` 미설정 시 fallback */
-  AFFILIATE_COMMISSION_PCT: 5,
+  /** 제휴 마케팅 추천인 보상 — `platform_settings.affiliate_commission_rate` 미설정 시 fallback.
+   *  🩸 2026-09-05: **5 였는데 라이브는 2 였다.** 2026-06-17 대표 결정(5%→2%, 1인 치킨게임)이
+   *  실제 적립 경로(`affiliate-credit.ts`)에만 반영되고 이 상수는 안 따라와서, 어드민 정책 표와
+   *  운영 핸드북이 몇 달간 **2.5배 틀린 숫자**를 보여 주고 있었다(적립 자체는 2% 로 맞게 나갔다).
+   *  ⇒ 값을 `shared/affiliate-rate.ts` 에서 가져온다 — 다시 갈라질 수 없게. */
+  AFFILIATE_COMMISSION_PCT: DEFAULT_AFFILIATE_RATE * 100,
 
   /** 공구 양쪽 보너스 (추천인 + 피추천인 각각 %) */
   REFERRAL_BONUS_BOTHSIDES_PCT: 0.5,

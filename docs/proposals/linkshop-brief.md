@@ -719,7 +719,7 @@
 
 | 항목 | 값 | 출처 (파일:심볼) |
 |---|---|---|
-| 제휴 마케팅 추천 보상 (default) | 5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT` |
+| 제휴 마케팅 추천 보상 (default) | [추출실패—수동확인] | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT` |
 | 공구 양쪽 추천 보너스 (각각) | 0.5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT` |
 | 큐레이터 핀 어필리에이트 | 1% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.CURATOR_AFFILIATE_PCT` |
 | 후원 수수료 (default) | 15% | `src/features/donations/api/donations.routes.ts:donation_commission_rate fallback` |
@@ -878,7 +878,7 @@
 - `GET /api/seller/donations/summary`
 
 
-> 마지막 생성: 2026-08-30T10:13:41.207Z
+> 마지막 생성: 2026-09-05T15:34:15.864Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
