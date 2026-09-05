@@ -262,3 +262,36 @@ main 머지(`ad4fa7a`) 를 하다가 발견했다. main 의 #1350(`dfb99a7`)이 
 ### 🧭 다음 세션이 가져갈 것
 - **"일몰"은 읽는 쪽만 지우면 절반이다.** 쓰는 쪽이 남으면 아무도 못 켜는 스위치가 요금을 가른다.
   다음에 무언가를 일몰할 땐 `grep -rn "<개념>" src/` 를 **INSERT/UPDATE 기준으로 한 번 더** 훑을 것.
+
+---
+
+## 🔎 2026-09-05 배포 전 라이브 재실측 (읽기 전용)
+
+머지 직전에 D1 을 다시 읽어 **purge 실행 계획의 숫자를 굳혔다.** 하루 전 보고와 동일하다.
+
+```
+매장 11곳 — 삭제 대상 10 · 남길 1(14 홍대돈까스)
+  3 테스트 상점 · 6 테스트상호4 · 7 최종테스트상호 · 8 테스트상호001 · 9 검증상호
+  10 최종확인상호 · 11 제아스컴퍼니 · 12 Lister Corporation · 13 주식회사 셀메이커스   ← 상품 0, 그냥 삭제
+  5 UR Team ← 상품 9(활성 6) + linked_user_id=3  ⇒ **cascade 필요**
+```
+
+**머니 잔여물 0 을 표가 아니라 테이블로 확인했다:**
+- `orders` 에 셀러가 붙은 행 없음(6행이 있지만 `seller_id = ''` — **NULL 이 아니라 빈 문자열**이라 어느 매장에도 안 붙는다)
+- `settlements` 0행 · `vouchers` 1건이지만 그 상품의 `seller_id` 가 NULL(어느 매장 것도 아님)
+- `ledger_entries` 의 seller 계정 행은 **1건뿐이고 `credit_account = 'seller:null'`** — 문자열 그대로다(2026-05-24 데이터 버그). purge 쿼리는 `'seller:' || ?` 에 숫자 id 를 넣으므로 **어떤 매장도 이걸로 막히지 않는다.** 고아 행이라 남겨 둔다.
+- `seller_operators` 는 **14번(남길 매장) 한 줄뿐** — 삭제 대상엔 운영자 위임이 없다.
+
+🔑 **그리고 blocker 가 헛돌지 않는지 확인했다** — purge 가 세는 테이블 7개(`orders`·`order_items`·`vouchers`·`settlements`·`ledger_entries`·`seller_operators`·`seller_meta`)가 **전부 라이브에 실재**한다.
+`countOr` 는 *테이블 부재*만 0 으로 읽으므로, 이름이 하나라도 틀렸으면 그 blocker 는 **영원히 0** 이 되어
+"돈이 걸린 매장도 통과"시킨다. (실제로 이 조사에서 `group_buy_vouchers` 라는 이름은 **없고** `vouchers` 가
+맞다는 것을 확인했다 — 코드가 쓰는 이름이 맞았다.)
+
+✅ **cascade 는 `users` 를 건드리지 않는다**(코드 재확인): 상품 + 그 자식행 → `seller_operators` → `seller_meta` → `sellers` 순이고
+`users` DELETE 가 없다. 5번의 `linked_user_id=3` 은 *"진짜 계정에 붙은 매장인데 확실하냐"* 는 확인용 blocker 일 뿐이고,
+**user 3 은 남길 매장 14번의 운영자**이므로 지워지면 안 된다 — 지워지지 않는다.
+
+### 배포 후 실행 순서 (어드민 화면)
+1. 빈 매장 9곳 삭제 → 확인창 없이 통과해야 정상
+2. **5 UR Team** → 409(상품 9 · 연결된 유저) 뜬 뒤 cascade 재확인 → 삭제
+3. 판정: `SELECT COUNT(*) FROM sellers` **11 → 1**
