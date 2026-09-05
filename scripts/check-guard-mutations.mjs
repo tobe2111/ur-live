@@ -88,6 +88,17 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '떠난 페이지가 스크롤 저장을 0 으로 덮어쓴다',
+    file: 'src/components/ScrollToTop.tsx',
+    find: '      if (currentKeyRef.current !== keyAtAttach) return',
+    replace: '      if (false) return',
+    test: 'src/tests/unit/scroll-restoration.test.ts',
+    why:
+      '2026-09-01 대표 "어떠한 페이지든 무조건 맨 위로 나옴". 복원 코드는 두 달간 있었는데도 ' +
+      '동작하지 않았다 — 떠나는 순간 옛 키로 0 이 저장돼 "저장된 자리 없음" 폴백을 탔다. ' +
+      '귀속 검증에서 이 한 줄만이 되돌리면 깨지는 유일한 변경이었다(실측 3/3 → 0/3).',
+  },
+  {
     name: '🎫 이용권 딜 결제가 기본 ON 이 된다 (배포만으로 새는 문이 열린다)',
     file: 'src/shared/feature-flags.ts',
     find: 'export const VOUCHER_DEAL_PAYMENT_ENABLED = false',
