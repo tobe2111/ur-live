@@ -38,6 +38,7 @@ import { readMallOrigin } from '@/shared/mall/origin'
 import { parseUTCDate } from '@/utils/date'
 import { storeAffiliateRef, arrivedViaSomeoneElsesRef } from '@/utils/affiliate-track'
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
+import { effectiveAffiliateRate } from '@/shared/affiliate-rate'
 
 // 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection 을
 //   ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage, SharePrompt, toast,
@@ -307,9 +308,12 @@ export default function ProductDetailPage() {
     }
 
     // 🛡️ 2026-05-19: 추천 보상률 미리 안내 — 사용자가 "공유하면 얼마 적립" 인지 알 수 있게.
-    const rateRatio = product.referral_commission_rate != null
-      ? Number(product.referral_commission_rate)
-      : 0.05  // platform default 5%
+    // 📌 2026-09-05: 기본값이 `0.05` 하드코딩이었다 — 라이브 기본은 **2%**(2026-06-17 대표 결정)라
+    //   공유 문구가 실제보다 2.5배 많은 적립을 약속하고 있었다. 해석은 SSOT 하나로.
+    const rateRatio = effectiveAffiliateRate({
+      referral_commission_rate: product.referral_commission_rate as number | null | undefined,
+      referral_enabled: (product as { referral_enabled?: number | null }).referral_enabled,
+    }) ?? 0
     const rewardPreview = Math.round(displayPrice * rateRatio)
     const shareText = isReferralEligible
       ? `${product.name} - ${formatNumber(displayPrice)}${Number(product.deal_only) === 1 ? ' 딜' : '원'}\n친구가 이 링크로 구매하면 +${formatNumber(rewardPreview)}딜 적립!`

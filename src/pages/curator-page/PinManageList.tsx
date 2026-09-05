@@ -7,6 +7,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { curatorApi, type CuratorPin } from '@/features/curator/api/curator-api'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { toast } from '@/hooks/useToast'
+import { effectiveAffiliateRate } from '@/shared/affiliate-rate'
 
 // 🎨 2026-06-16 유어샵 시안: 본인 핀 관리 리스트 — 드래그(터치+마우스) 정렬 + 핀별 통계 + 코멘트 넛지 + 삭제.
 //   드래그 라이브러리 없이 pointer 이벤트로 구현 (window 리스너 + ref, 모바일 스크롤 방지 touch-action:none).
@@ -76,7 +77,10 @@ export default function PinManageList({ pins, onReorder, onDeleted }: { pins: Cu
       <div ref={listRef} className="flex flex-col gap-2.5">
         {items.map((pin, idx) => {
           const img = pin.thumbnail || pin.image_url || ''
-          const est = pin.commission_rate > 0 ? Math.round(pin.price * pin.commission_rate / 100) : 0
+          // 🩸 2026-09-05: `pin.price * rate / 100` 이었다 — rate 는 **분수**(0.05)라 100 으로 또 나누면
+          //   실제의 1/100(₩5,000 → ₩50). 게다가 rate 는 라이브에서 전부 NULL 이라 늘 0 이었다.
+          const estRate = effectiveAffiliateRate({ referral_commission_rate: pin.commission_rate, referral_enabled: pin.referral_enabled })
+          const est = estRate != null ? Math.round(pin.price * estRate) : 0
           const dragging = draggingId === pin.id
           return (
             <div
