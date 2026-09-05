@@ -44,7 +44,6 @@ import { handleAppointmentNoshowAlert } from './cron/appointment-noshow-alert';
 import { handlePayoutsGenerate } from './cron/payouts-generate';
 import { handleTossRefundRetry } from './cron/toss-refund-retry';
 import { handleInfluencerPayout } from './cron/influencer-payout';
-import { handleGroupBuyDeadlinePush } from './cron/group-buy-deadline-push';
 import { handleGroupBuyFeedCache } from './cron/group-buy-feed-cache';
 import { handleCachePrewarm } from './cron/cache-prewarm';
 // 🛡️ 2026-06-09: 어드민 단체메일 큐 drainer (요청 안에서 발송 X → CPU/멱등 hardening).
@@ -232,8 +231,8 @@ export async function handleCronScheduled(
     // 🛡️ 2026-05-12: 이메일 / 푸시 dead-letter 재시도 drainer
     ctx.waitUntil(safeCron('retry-email-failures', () => retryEmailFailures(env)));
     ctx.waitUntil(safeCron('retry-push-failures', () => retryPushFailures(env)));
-    // 🛡️ 2026-05-16: 공구 마감 3시간/1시간 전 push 알림 (5분마다 체크)
-    ctx.waitUntil(safeCron('group-buy-deadline-push', () => handleGroupBuyDeadlinePush(env)));
+    // 🪦 2026-09-05: '공구 마감 3시간/1시간 전 push' cron 제거 — 마감 개념이 없어져 영구히 0건이었다.
+    //   5분마다 products 를 창 3개로 훑고(하루 ~150만 행) 매번 ALTER 를 두 번 시도하던 자리다.
     // 🛡️ 2026-05-21 Phase E-3: 예약 시작 +30분 지난 confirmed 노쇼 자동 알림.
     ctx.waitUntil(safeCron('appointment-noshow-alert', () => handleAppointmentNoshowAlert(env)));
     // 🛡️ 2026-05-22: group-buy 피드 materialized cache 갱신 (5분).
