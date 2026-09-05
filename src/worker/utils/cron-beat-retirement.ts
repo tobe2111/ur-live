@@ -86,6 +86,12 @@ export const BEAT_RENAMED_TO: Readonly<Record<string, string>> = {
   //   침묵시킨다(#1056 이 21일). 실제로 이 PR 의 CI 가 그걸 잡았다.
   'agency-cron-batch': 'growth-daily-batch',
   'agency-weekly-batch': 'weekly-tier-batch',
+  // 🪦 2026-09-05: `group-buy-deadline-push` 는 **후임이 없다** — 마감 개념 자체가 없어져
+  //   그 일이 사라졌다(대표 "마감 개념은 없어"). 지도에 적을 이름이 없으므로 면제로 남긴다:
+  //   beat-retire-ok group-buy-deadline-push
+  //   ⚠️ 그 하트비트 행은 삭제 후 최대 하루 빨갛다 — 5분 임계 × 8배(40분)와 하루 하한을 함께
+  //   넘겨야 `retired` 로 분류되기 때문이다(위 규칙 ②). 주간 임계였던 `d1-backup` 의 58일과
+  //   달리 하루면 자동으로 걷힌다.
 }
 
 /**

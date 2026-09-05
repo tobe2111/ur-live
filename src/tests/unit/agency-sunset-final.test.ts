@@ -43,6 +43,7 @@ describe('에이전시 — 파일이 되살아나지 않는다', () => {
     const pages = readdirSync('src/pages').filter(f => /^(Agency|AdminAgency)/.test(f))
     expect(pages, `남은 페이지: ${pages.join(', ')}`).toEqual([])
     expect(existsSync('src/components/AgencyLayout.tsx')).toBe(false)
+    expect(existsSync('src/components/agency')).toBe(false)
     expect(existsSync('src/routes/agency.routes.tsx')).toBe(false)
   })
 

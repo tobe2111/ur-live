@@ -870,6 +870,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
                full 에선 네이티브 스크롤(pan-y) + scrollTop 0 하향 제스처만 시트 축소로 라우팅. ═══ */}
           <ScrollArea
             ref={listScrollRef}
+            /* 📜 문서가 아니라 이 컨테이너가 스크롤된다 — 뒤로가기 복원이 안 닿던 유일한 자리(2026-09-01). */
+            data-scroll-restore="map-list"
             className="px-3 pt-3 pb-24"
             style={{ overscrollBehavior: 'contain', touchAction: !isLgViewport && sheetSnap !== 'full' ? 'none' : undefined }}
           >
