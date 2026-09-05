@@ -21,6 +21,9 @@ import { stripComments as codeOnly } from '../helpers/source-text'
 
 const ACTOR = codeOnly(readFileSync('src/worker/utils/store-actor.ts', 'utf-8'))
 const PROFILE = codeOnly(readFileSync('src/features/seller/api/seller-profile.routes.ts', 'utf-8'))
+// 🧱 2026-09-04: 사업자 정보 3핸들러는 `seller-profile/business-info.ts` 로 분리됐다(file-size 래칫).
+//    ⚠️ 이 상수를 안 나누면 "낡은 지도"가 된다 — 실제로 분리 직후 이 시험 3건이 빨간불이었다.
+const BIZINFO = codeOnly(readFileSync('src/features/seller/api/seller-profile/business-info.ts', 'utf-8'))
 const WITHDRAW = codeOnly(readFileSync('src/features/seller/api/seller-withdraw.routes.ts', 'utf-8'))
 
 describe('행위자 판별 — 토큰이 들고 있는 사실만 본다', () => {
@@ -67,24 +70,24 @@ describe('정산 목적지 — 소유자만 바꾼다', () => {
 
 describe('사업자 정보 — 읽기는 마스킹, 쓰기는 소유자만', () => {
   it('쓰기(POST/PUT/PATCH)가 소유자 게이트를 통과해야 한다', () => {
-    const i = PROFILE.indexOf("sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info'")
+    const i = BIZINFO.indexOf("sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info'")
     expect(i, '쓰기 라우트를 못 찾았다').toBeGreaterThan(0)
-    const head = PROFILE.slice(i, i + 700)
+    const head = BIZINFO.slice(i, i + 700)
     expect(head).toMatch(/resolveStoreActor/)
     expect(head).toMatch(/403/)
   })
 
   it('읽기가 운영자에게 마스킹된다', () => {
-    expect(PROFILE).toMatch(/maskBusinessNumber/)
-    expect(PROFILE).toMatch(/masked_for_operator/)
+    expect(BIZINFO).toMatch(/maskBusinessNumber/)
+    expect(BIZINFO).toMatch(/masked_for_operator/)
   })
 
   it('🔴 시드 폴백 경로도 같은 마스킹을 탄다 (행이 없을 때만 새는 구멍)', () => {
     // 실제로 이 분기를 빠뜨리면 "사업자정보 행이 아직 없는 매장"에서만 원본이 샌다 —
     // 흔한 상태(신규 매장)인데 눈에 안 띈다.
-    const i = PROFILE.indexOf('buildBusinessInfoSeed(db, sellerId)')
+    const i = BIZINFO.indexOf('buildBusinessInfoSeed(db, sellerId)')
     expect(i).toBeGreaterThan(0)
-    const region = PROFILE.slice(i, i + 700)
+    const region = BIZINFO.slice(i, i + 700)
     // ⚠️ `masked_for_operator` 문자열 존재만 보면 **헛돈다** — 판정을 `{ isOwner: true }` 로
     //    하드코딩해도 그 문자열은 남는다(첫 판에 실제로 초록불이었다). 판정 호출까지 본다.
     expect(region, '시드 분기가 행위자를 실제로 판정하지 않는다').toMatch(/resolveStoreActor\s*\(/)

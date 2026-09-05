@@ -13,18 +13,26 @@ import { readFileSync } from 'node:fs'
 import { stripComments as codeOnly } from '../helpers/source-text'
 
 const SRC = codeOnly(readFileSync('src/features/admin/api/admin-sellers.routes.ts', 'utf-8'))
-const PURGE = SRC.slice(SRC.indexOf("adminSellersRoutes.delete('/sellers/:id/purge'"))
+// 🧱 2026-09-04: purge 라우트는 `admin-sellers/purge-seller.ts` 로 분리됐다(file-size 래칫).
+//    ⚠️ 분리하면서 이 상수를 안 나누면 "낡은 지도"가 된다 — 실제로 분리 직후 이 시험이 통째로 빨간불이었다.
+const PURGE = codeOnly(readFileSync('src/features/admin/api/admin-sellers/purge-seller.ts', 'utf-8'))
 
 describe('매장 완전 삭제 — 서버가 직접 빈 매장을 확인한다', () => {
-  it('purge 엔드포인트가 존재한다', () => {
-    expect(SRC).toContain("adminSellersRoutes.delete('/sellers/:id/purge'")
+  it('purge 엔드포인트가 존재하고 라우터에 배선돼 있다', () => {
+    expect(PURGE).toContain("adminSellersRoutes.delete('/sellers/:id/purge'")
+    // 🔴 선언과 배선은 다른 일이다 — 등록 호출이 빠지면 모듈은 멀쩡한데 라우트가 없다.
+    expect(SRC).toMatch(/registerSellerPurgeRoute\(adminSellersRoutes, safeAdminError\)/)
     expect(PURGE.length, 'purge 블록을 못 잘랐다 — 이 시험이 헛돈다').toBeGreaterThan(500)
   })
 
   it('super 권한 + 2FA 뒤에 있다', () => {
     // 되돌릴 수 없는 파괴적 작업이 일반 어드민 토큰만으로 실행되면 안 된다.
-    expect(PURGE.slice(0, 400)).toMatch(/requireAdminRole\('super'\)/)
-    expect(PURGE.slice(0, 400)).toMatch(/require2FA\(\)/)
+    // ⚠️ 파일 앞 400자는 import 다(분리 모듈이라). 라우트 선언에서 앵커를 잡는다.
+    const at = PURGE.indexOf("adminSellersRoutes.delete('/sellers/:id/purge'")
+    expect(at, '라우트 선언을 못 찾았다').toBeGreaterThan(0)
+    const decl = PURGE.slice(at, at + 300)
+    expect(decl).toMatch(/requireAdminRole\('super'\)/)
+    expect(decl).toMatch(/require2FA\(\)/)
   })
 
   it('상품·주문·운영자·정산·원장을 전부 확인한다', () => {

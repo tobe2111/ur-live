@@ -852,7 +852,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (273개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (272개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1053,9 +1053,6 @@
 - `GET /api/seller/analytics/revisit`
 - `GET /api/seller/analytics/store-dashboard/stats`
 - `GET /api/seller/analytics/voucher-usage`
-
-**/api/seller/business-info**
-- `GET /api/seller/business-info`
 
 **/api/seller/business-registration**
 - `POST /api/seller/business-registration/ocr-verify`
@@ -1399,7 +1396,7 @@
 - `GET /api/youtube/shorts/sync`
 
 
-> 마지막 생성: 2026-09-04T05:24:56.156Z
+> 마지막 생성: 2026-09-05T15:04:08.014Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

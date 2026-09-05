@@ -78,6 +78,14 @@ export const BEAT_RENAMED_TO: Readonly<Record<string, string>> = {
   //     바로 아래 `d1-backup` 을 걷어내는 그 작업 중에 내가 같은 클래스를 하나 새로 만든 것이다.
   //   후임은 5분 틱으로 고정한다(항상 신선 — 이 키가 낡으면 그건 진짜로 볼 일이다).
   '__tick': '__tick:*/5 * * * *',
+  // 🌇 2026-09-04 에이전시 완전 일몰(대표 확정) — 두 배치에서 에이전시 작업을 전부 걷어내자
+  //   이름이 내용과 어긋났다(에이전시가 하나도 없는 'agency-*' 배치). 남은 작업으로 개명했다:
+  //     agency-cron-batch   → 틱톡 동기화 · 셀러 일일 리포트 · 광고 슬롯 낙찰
+  //     agency-weekly-batch → 셀러 등급 평가 · 판매사 도매 등급 평가
+  //   후임을 여기 안 적으면 옛 이름의 하트비트 행이 **영원히 빨갛고**, 그 하나가 경보 채널 전체를
+  //   침묵시킨다(#1056 이 21일). 실제로 이 PR 의 CI 가 그걸 잡았다.
+  'agency-cron-batch': 'growth-daily-batch',
+  'agency-weekly-batch': 'weekly-tier-batch',
 }
 
 /**

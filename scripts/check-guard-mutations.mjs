@@ -2038,7 +2038,7 @@ canvas {
   },
   {
     name: '🏪 사업자정보 시드 폴백만 마스킹을 빠뜨린다',
-    file: 'src/features/seller/api/seller-profile.routes.ts',
+    file: 'src/features/seller/api/seller-profile/business-info.ts',
     find: "      const a0 = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);",
     replace: '      const a0 = { isOwner: true };',
     test: 'src/tests/unit/store-operator-scope.test.ts',
@@ -2048,7 +2048,7 @@ canvas {
   },
   {
     name: '🗑️ cascade 가 머니 잔여물 검사까지 건너뛴다 (매출 있는 매장이 사라진다)',
-    file: 'src/features/admin/api/admin-sellers.routes.ts',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
     find: "    const ords = await countOr('주문', 'SELECT COUNT(*) AS n FROM orders WHERE seller_id = ?', [sellerId]);\n    if (ords > 0) blockers.push(`주문 ${ords}건`);",
     replace: "    const ords = 0;",
     test: 'src/tests/unit/seller-purge-safety.test.ts',
@@ -2058,7 +2058,7 @@ canvas {
   },
   {
     name: '🗑️ 매장 완전 삭제가 잔여물 검사를 건너뛴다 (되돌릴 수 없는 파괴)',
-    file: 'src/features/admin/api/admin-sellers.routes.ts',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
     find: '    if (blockers.length > 0) {',
     replace: '    if (false) {',
     test: 'src/tests/unit/seller-purge-safety.test.ts',
@@ -2068,7 +2068,7 @@ canvas {
   },
   {
     name: '🗑️ 매장 완전 삭제가 super 권한 없이 열린다',
-    file: 'src/features/admin/api/admin-sellers.routes.ts',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
     find: "adminSellersRoutes.delete('/sellers/:id/purge', cors(), requireAdminRole('super'), require2FA(), async (c) => {",
     replace: "adminSellersRoutes.delete('/sellers/:id/purge', cors(), async (c) => {",
     test: 'src/tests/unit/seller-purge-safety.test.ts',

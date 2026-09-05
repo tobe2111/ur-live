@@ -7,6 +7,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { UserCheck, UserX, Loader2, Search, Pause, Play, ChevronDown, ChevronUp, FileCheck, FileX, ExternalLink, Trash2 } from 'lucide-react'
+import { makePurgeSeller } from './admin-seller-approval/purge-seller-action'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate } from '@/utils/date'
@@ -199,42 +200,8 @@ export default function AdminSellerApprovalPage() {
     } catch { toast.error(`${action} 실패`) } finally { setActingId(null) }
   }
 
-  // 🗑️ 2026-09-04 (대표 "매장 홍대돈가스 말고는 다 삭제해"): 빈 매장 **완전 삭제**.
-  //    정지(suspend)는 목록에 계속 남아 "어느 게 진짜 매장인가"를 흐린다. 되돌릴 수 없으므로
-  //    서버가 상품·주문·운영자·원장·정산 0 을 **직접 확인**하고, 하나라도 있으면 409 로 막는다.
-  const purgeSeller = async (s: Seller) => {
-    if (!(await confirmDialog(
-      `${s.name || s.email} 매장을 완전히 삭제할까요?\n\n되돌릴 수 없습니다. 주문·이용권·정산 이력이 있으면 서버가 거부합니다.`,
-    ))) return
-    setActingId(s.id)
-    const call = (cascade: boolean) =>
-      api.delete(`/api/admin/sellers/${s.id}/purge${cascade ? '?cascade=1' : ''}`, h)
-    try {
-      await call(false)
-      toast.success('매장 삭제 완료'); load()
-    } catch (e: unknown) {
-      const ax = e as { response?: { status?: number; data?: { error?: string; data?: { blockers?: string[] } } } }
-      const blockers = ax.response?.data?.data?.blockers || []
-      // 409 + 막은 것이 상품·운영자·유저연결뿐이면 **한 번 더 물어보고** cascade 로 재시도한다.
-      //   돈이 오간 흔적(주문/이용권/정산/원장)은 cascade 로도 못 지우므로 여기 해당 없음.
-      const onlySoft = ax.response?.status === 409 && blockers.length > 0
-        && blockers.every(b => /상품|운영자|연결된 유저 계정/.test(b))
-      if (onlySoft && await confirmDialog(
-        `${blockers.join(' · ')} 이(가) 남아 있습니다.\n\n상품과 그 리뷰·위시리스트까지 **함께 삭제**할까요? 되돌릴 수 없습니다.`,
-      )) {
-        try {
-          const r = await call(true)
-          const n = r.data?.data?.products_deleted ?? 0
-          toast.success(n > 0 ? `매장 삭제 완료 (상품 ${n}건 함께 삭제)` : '매장 삭제 완료'); load()
-        } catch (e2: unknown) {
-          const ax2 = e2 as { response?: { data?: { error?: string } } }
-          toast.error(ax2.response?.data?.error || '삭제 실패')
-        }
-      } else {
-        toast.error(ax.response?.data?.error || '삭제 실패')
-      }
-    } finally { setActingId(null) }
-  }
+  // 🗑️ 빈 매장 완전 삭제 — 액션은 `admin-seller-approval/purge-seller-action.ts` (파일 크기 래칫).
+  const purgeSeller = makePurgeSeller({ h, setActingId, load })
 
   // 🛡️ 2026-05-20: 사업자등록증 검증/반려 — migration 0257 PATCH /sellers/:id/business-registration/verify
   const verifyBizReg = async (id: number) => {

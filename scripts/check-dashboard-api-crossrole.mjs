@@ -31,7 +31,9 @@ const EXCLUSIVE = {
 //   wholesale storefront 의 사용자 = type='seller'(판매사) → /api/seller 동일토큰이라 forbid 에서 seller 제외.
 const GROUPS = [
   { name: '제조사(supplier)',  match: (p) => p.startsWith('src/pages/supplier-dashboard/') || p === 'src/pages/SupplierDashboardPage.tsx' || /^src\/pages\/Supplier[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'agency', 'seller', 'ads'] },
-  { name: '에이전시(agency)',  match: (p) => p.startsWith('src/pages/agency-page/') || /^src\/pages\/Agency[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'supplier', 'seller', 'ads'] },
+  // 🌇 2026-09-04 에이전시 완전 일몰 — 그룹 자체를 삭제했다(`src/pages/agency-page/`·`Agency*.tsx` 전부 제거).
+  //    ⚠️ 다른 그룹의 `forbid` 에 남은 'agency' 는 **그대로 둔다** — "에이전시 API 를 부르지 마라"는
+  //       금지이지 그 화면의 존재를 전제하지 않는다. 되살아나면 그때 잡힌다.
   { name: '판매사 storefront', match: (p) => p.startsWith('src/pages/wholesale/') || p.startsWith('src/pages/wholesale-catalog/') || p.startsWith('src/components/wholesale/') || /^src\/pages\/Wholesale[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'supplier', 'agency'] },
   // 어드민: 소비자/도매 어드민 페이지. supplier/agency 전용은 못 부름(admin 토큰). seller 는 일부 공용성 있어 제외(오탐 방지).
   { name: '어드민(admin)',     match: (p) => (/^src\/pages\/Admin[A-Z].*\.tsx$/.test(p) || p.startsWith('src/pages/admin/')) && !p.includes('AdminProductsPage'), forbid: ['supplier', 'agency', 'ads'] },
@@ -93,7 +95,7 @@ for (const f of files) {
   }
 }
 console.log(`🔀 대시보드 교차-역할 API 검사`)
-console.log(`   스캔 ${files.length} 파일 · 그룹 ${GROUPS.length}개(제조사/에이전시/판매사/어드민/유어애즈)`)
+console.log(`   스캔 ${files.length} 파일 · 그룹 ${GROUPS.length}개(제조사/판매사/어드민/유어애즈)`)
 if (violations.length === 0) {
   console.log(`✅ 위반 0 — 어떤 대시보드도 다른 역할 전용 API 를 호출하지 않음(교차역할 403 없음).`)
   process.exit(0)

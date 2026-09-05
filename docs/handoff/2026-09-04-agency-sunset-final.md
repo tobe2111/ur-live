@@ -181,3 +181,39 @@ for id in 3 6 7 8 9 10 11:
 - (앞 세션) *"5% 할인이 중개사의 몫"* → **틀렸다.** 대표 정정: 중개사는 95% 쪽에서 매장과 거래한다.
 - (앞 세션) *"어느 에이전시인지 비어 있다"* → 반만 맞았다. 중개 관계는 `agencies` 가 아니라
   `seller_operators`(seller 14 · user 3 · role='operator') 한 줄에 기록돼 있었다.
+
+---
+
+## 🩸 CI 가 잡은 것 (내가 로컬에서 놓친 것)
+
+PR #1352 의 Verify 가 **두 번** 빨간불이었다. 둘 다 진짜였고, 둘 다 같은 병이다 —
+**"낡은 지도"**: 코드가 옮겨졌는데 그것을 가리키는 것이 안 따라왔다.
+
+### ① `check-beat-name-retirement` — 크론 개명의 잃어버린 후임
+`agency-cron-batch` → `growth-daily-batch`, `agency-weekly-batch` → `weekly-tier-batch` 로 개명하면서
+`src/worker/utils/cron-beat-retirement.ts` 의 `BEAT_RENAMED_TO` 에 후임을 안 적었다.
+그러면 **옛 이름의 하트비트 행이 영원히 빨갛고, 그 하나가 경보 채널 전체를 침묵시킨다**(#1056 이 21일).
+⇒ 크론 레인 이름을 바꾸면 **그 지도도 같은 커밋에서** 갱신할 것.
+
+### ② 파일 분리가 만든 낡은 지도 4개
+file-size 래칫에 걸려 3개를 분리했는데(아래), 그 코드를 가리키던 **테스트 3개 + 주입 4개**가
+옛 파일을 계속 읽고 있었다. 테스트는 "파일이 없다"가 아니라 **조용히 아무것도 못 보게** 된다.
+
+| 분리 | 어디로 |
+|---|---|
+| `/business-info` 3핸들러 (seller-profile.routes 720줄) | `seller-profile/business-info.ts` |
+| 매장 purge 라우트 (admin-sellers.routes 1,079줄) | `admin-sellers/purge-seller.ts` |
+| 매장 삭제 액션 (AdminSellerApprovalPage 605줄) | `admin-seller-approval/purge-seller-action.ts` |
+
+같이 고친 것: `check-dashboard-api-crossrole` 이 삭제된 `src/pages/agency-page/` 를 그룹으로 가리키고 있었다.
+
+### ③ 형태를 본 단언이 행동을 못 따라갔다
+`business-info-from-registration` 이 `seeded ? … : 'Not found'` **삼항 형태**를 단언했는데,
+운영자 마스킹을 붙이며 `if (!seeded) return … 'Not found'` 로 바뀌었다. **행동은 같다.**
+형태가 아니라 규칙("채울 게 없으면 404")을 보도록 고쳤다.
+
+### 🧭 다음 세션이 가져갈 것
+- **파일을 분리하면 그 파일을 읽는 테스트·주입 매니페스트를 같은 커밋에서 따라가게 하라.**
+  `grep -n "<옛 경로>" src/tests scripts/check-guard-mutations.mjs` 한 번이면 끝난다.
+- **커밋 전 전체 유닛을 돌려라.** 나는 관련 테스트만 돌리고 커밋했다가 CI 에서 2건을 받았다
+  (`business-info-from-registration` 은 내가 건드린 파일의 *다른* 테스트였다).
