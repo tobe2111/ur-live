@@ -15,7 +15,9 @@ import { readFileSync } from 'node:fs'
 import { formatBusinessNumber } from '@/features/seller/api/business-info-seed'
 
 const SEED = readFileSync('src/features/seller/api/business-info-seed.ts', 'utf8')
-const ROUTE = readFileSync('src/features/seller/api/seller-profile.routes.ts', 'utf8')
+// 🧱 2026-09-04: `/business-info` 3핸들러가 `seller-profile/business-info.ts` 로 분리됐다(file-size 래칫).
+//    ⚠️ 이 경로를 안 따라가면 "낡은 지도"가 된다 — 파일이 사라진 게 아니라 **조용히 아무것도 안 보게** 된다.
+const ROUTE = readFileSync('src/features/seller/api/seller-profile/business-info.ts', 'utf8')
 const PAGE = readFileSync('src/pages/SellerBusinessInfoPage.tsx', 'utf8')
 
 describe('① 번호 형식 — 등록은 하이픈 없이, 화면·검증은 하이픈으로', () => {
@@ -55,7 +57,9 @@ describe('③ 배선 — 404 자리에서만 채운다', () => {
   })
 
   it('채울 게 없으면 종전대로 404 — 빈 껍데기를 만들지 않는다', () => {
-    expect(ROUTE).toMatch(/seeded \?[\s\S]{0,120}'Not found'/)
+    // 2026-09-04: 운영자 마스킹이 붙으며 삼항 → if 문으로 바뀌었다. **행동은 같다**(seeded 없으면 404).
+    //   형태가 아니라 그 규칙을 본다.
+    expect(ROUTE).toMatch(/if \(!seeded\) return[\s\S]{0,80}'Not found'/)
     expect(SEED).toMatch(/if \(!bno && !bname\) return null/)
   })
 })

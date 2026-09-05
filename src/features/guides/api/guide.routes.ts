@@ -26,9 +26,11 @@ export const guideRoutes = new Hono<{ Bindings: Env }>()
 //   v1 = 암묵적 레거시(버전 미저장, ensureSeeded '0행일 때만' 시대) / v2 = 버전 메커니즘 도입.
 //   v4 = 2026-07-12 체험 캠페인(어드민 대행생성·추첨·비정산) + 조건부 우대 커미션(셀러) 섹션.
 //   v5 = 2026-07-13 상권 쿠폰(영수증 페이백) 운영 섹션 — 양 트랙 머지 통합 bump.
-const GUIDE_SEED_VERSION = 26 // 2026-09-05 25 를 두 브랜치가 동시에 선점 → 나중에 머지하는 쪽이 +1(CLAUDE.md 규칙). 아래 (이전) 두 줄이 그 둘이고, 26 이 **양쪽을 함께** 재시드한다
+const GUIDE_SEED_VERSION = 27 // 2026-09-05 **26 도 두 갈래가 각자 선점**했다(main = 5%→2% 정정 + 운영백서 재생성 / 이 브랜치 = 에이전시 일몰). main 이 26 으로 먼저 배포되면 같은 번호인 이 브랜치의 재시드는 **무음 스킵**된다 → 27 로 올려 양쪽을 함께 재시드한다
+// (이전) 26 // 2026-09-05 25 를 두 브랜치가 동시에 선점 → 나중에 머지하는 쪽이 +1(CLAUDE.md 규칙)
 // (이전) 25 // 2026-09-05 추천 적립 기본값 정정(5% → 2%) — 라이브 운영백서가 2.5배 틀린 숫자를 보여 주고 있었다
 // (이전) 25 // 2026-09-04 운영백서 재생성 — 이용권 딜 결제가 **켜졌다**(꺼진 것 → 켜진 것으로 이동). 안 올리면 라이브 가이드가 '꺼짐' 인 채 남는다
+// (이전) 25 // 2026-09-04 에이전시 완전 일몰 — agency 가이드 삭제 + 어드민/셀러 문구 정정(중개사 보상은 95% 쪽)
 // (이전) 23 // 2026-08-31 중단된 라이브 기능의 '종료됨' 묘비 4개 철거 + 이용권 사용 처리 절 제목 현행화
 // (이전) 22 // 2026-08-31 2차 해동 — 라이브에 남아 있던 폐기어(유통사·식사권)·옛 도메인·금지 빌드명령 14개
 // (이전) 21 // 2026-08-31 한정 해동 — 백필에 얼어붙어 시드가 못 닿던 섹션 13개(실측 대조)
@@ -36,9 +38,9 @@ const GUIDE_SEED_VERSION = 26 // 2026-09-05 25 를 두 브랜치가 동시에 �
 // (이전) 18 // 2026-08-26 셀러·어드민 가이드 사실 갱신 — 폐기 기능(라이브·호스팅·어필리에이트·승급) 현행화 + 신분어 → 행위
 
 // 🏭 2026-06-07: 'wholesale' 추가 — 도매몰 전용 가이드. 어드민 전용(읽기+편집).
-type GuideType = 'admin' | 'seller' | 'agency' | 'wholesale'
+type GuideType = 'admin' | 'seller' | 'wholesale'  // 🌇 2026-09-04 에이전시 일몰
 
-const VALID_GUIDE_TYPES: GuideType[] = ['admin', 'seller', 'agency', 'wholesale']
+const VALID_GUIDE_TYPES: GuideType[] = ['admin', 'seller', 'wholesale']
 
 interface GuideSection {
   id?: number
@@ -282,11 +284,10 @@ guideRoutes.get('/:type', cors(), async (c) => {
     return c.json({ success: false, error: 'Invalid guide type' }, 400)
   }
 
-  // 권한 체크: 어드민은 모두 / 셀러는 seller / 에이전시는 agency / 도매몰은 어드민 전용
+  // 권한 체크: 어드민은 모두 / 셀러는 seller / 도매몰은 어드민 전용
   const allowedRoles: Record<GuideType, string[]> = {
     admin: ['admin'],
     seller: ['admin', 'seller'],
-    agency: ['admin', 'agency'],
     wholesale: ['admin'],
   }
   const user = await requireRole(c, allowedRoles[type])

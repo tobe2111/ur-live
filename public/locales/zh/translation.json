@@ -2549,7 +2549,8 @@
       "adSlots": "广告位",
       "discounts": "折扣",
       "partners": "合作伙伴",
-      "notifyGuide": "通知·指南"
+      "notifyGuide": "通知·指南",
+      "operatingSummary": "运营摘要"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

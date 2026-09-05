@@ -43,8 +43,10 @@ const MISSING = '[추출실패—수동확인]'
 //    NUMBER_GROUPS / route prefix 는 아래 헬퍼들이 채움.
 // ─────────────────────────────────────────────────────────────
 
-// 5개 비즈니스 도메인 버킷.
-const DOMAINS = ['wholesale', 'offline-groupbuy', 'online-listing', 'linkshop', 'agency']
+// 4개 비즈니스 도메인 버킷.
+// 🌇 2026-09-05 에이전시 일몰 — `agency` 도메인과 그 소개서를 삭제했다. 살아 있던 영입(소개)·
+//    크리에이터 정산 경로는 **linkshop** 으로 옮겼다(담기·소개가 그 소개서의 주제다).
+const DOMAINS = ['wholesale', 'offline-groupbuy', 'online-listing', 'linkshop']
 
 // 페이지 라우트 prefix (App.tsx / src/routes/*.tsx) — 도메인별.
 //   더 구체적인 prefix 가 먼저 매칭되도록 classify 에서 순서대로 검사.
@@ -64,8 +66,12 @@ const PAGE_PREFIXES = {
     //   catch-all `/seller` 는 맨 끝 — 더 구체적 도메인(stays/supply/donations 등)이 우선.
     '/seller',
   ],
-  linkshop: ['/profile/', '/s/', '/host', '/referral', '/u/', '/curator', '/user/affiliate', '/seller/donations', '/seller/mini-shop'],
-  agency: ['/agency', '/agency-partner', '/a/', '/influencer', '/seller/castings', '/seller/prospects'],
+  linkshop: [
+    '/profile/', '/s/', '/host', '/referral', '/u/', '/curator', '/user/affiliate',
+    '/seller/donations', '/seller/mini-shop',
+    // 🌇 에이전시 일몰로 옮겨온 영입(소개) 계열 — 그 도메인에서 **살아남은 것만**.
+    '/influencer', '/seller/prospects', '/i/offer', '/seller/castings',
+  ],
 }
 // 페이지 prefix 명시 매칭(set) — admin 페이지 등 prefix 로 안 잡히는 것.
 //   ⚠️ 도메인 전용 admin 페이지만. 범용 admin 콘솔(G5)은 공통/인프라 allowlist 로.
@@ -77,9 +83,10 @@ const PAGE_EXACT = {
     '/admin/stays', '/admin/restaurant-demand', '/admin/voucher-orders', '/admin/voucher-transactions',
     '/admin/group-buy', '/admin/deals',
   ]),
-  agency: new Set([
-    '/admin/agencies', '/admin/agency-creator-approval', '/admin/castings',
-    '/admin/influencer-disputes', '/admin/influencer-payouts',
+  linkshop: new Set([
+    // 🌇 에이전시 일몰 — 남은 영입/크리에이터 정산 어드민만 승계(`/admin/agencies`·
+    //    `/admin/agency-creator-approval` 은 화면 자체가 삭제됐다).
+    '/admin/influencer-disputes', '/admin/influencer-payouts', '/admin/castings',
   ]),
 }
 
@@ -113,14 +120,12 @@ const API_PREFIXES = {
     '/api/curator', '/api/seller-public', '/api/referral', '/api/referral-tree', '/api/affiliate',
     '/api/donations', '/api/donation-boosters', '/api/donation-boosters-public',
     '/api/donation-booster', '/api/seller/donations',
-  ],
-  agency: [
-    '/api/agency', '/api/admin/castings', '/api/seller/castings', '/api/admin/agencies',
-    '/api/admin/agency-creator-approvals', '/api/agency-public', '/api/pk-public', '/api/pk',
-    // 크리에이터 영입/정산/랭킹 (E·F2 — 에이전시/영입 소유).
+    // 🌇 2026-09-05 에이전시 일몰로 승계한 영입(소개)·크리에이터 정산 계열.
+    //    삭제된 것(`/api/agency*`·`/api/pk*`·`/api/admin/agencies`·`/api/seller/promote-boosts`)은
+    //    **목록에서 뺐다** — 없는 경로를 남겨 두면 커버리지 매트릭스가 있지도 않은 기능을 셈한다.
+    '/api/admin/castings', '/api/seller/castings',
     '/api/influencer-discover', '/api/influencer-rankings', '/api/influencer-settlement',
-    '/api/seller-marketing', '/api/admin-payouts', '/api/seller/promote-boosts',
-    '/api/admin/influencer', '/api/admin/agency',
+    '/api/seller-marketing', '/api/admin-payouts', '/api/admin/influencer',
   ],
 }
 
@@ -143,8 +148,7 @@ const DOMAIN_LABEL = {
   wholesale: '도매몰 (유통스타트)',
   'offline-groupbuy': '오프라인 공구 / 동네딜',
   'online-listing': '온라인 입점 / 라이브커머스',
-  linkshop: '링크샵 / 큐레이터',
-  agency: '에이전시',
+  linkshop: '유어샵 / 담기·소개',
 }
 
 // 소개서 파일 → 도메인 매핑. (마스터는 전체.)
@@ -153,7 +157,6 @@ const FILE_DOMAIN = {
   'offline-groupbuy-brief.md': 'offline-groupbuy',
   'online-listing-proposal-brief.md': 'online-listing',
   'linkshop-brief.md': 'linkshop',
-  'agency-brief.md': 'agency',
 }
 const MASTER_FILE = '00-service-overview-and-coverage.md'
 
@@ -457,30 +460,11 @@ function linkshopRows() {
   ]
 }
 
-// ── 에이전시 ──
-function agencyRows() {
-  const agencyShare = num(SRC.policy, /AGENCY_SHARE_PCT:\s*([\d._]+)/)
-  const agencyOwn = num(SRC.policy, /AGENCY_OWN_RATE:\s*([\d._]+)/)
-  const influencerIntro = num(SRC.policy, /INFLUENCER_INTRO_SHARE_PCT:\s*([\d._]+)/)
-  const storeIntro = (() => {
-    const m = SRC.storeIntro && SRC.storeIntro.match(/DEFAULT_STORE_INTRO_PCT\s*=\s*([\d._]+)/)
-    return m ? Number(m[1].replace(/_/g, '')) : null
-  })()
-  return [
-    row('에이전시 입점 분배 (platform_fee 중)', pct(agencyShare), 'src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_SHARE_PCT'),
-    row('에이전시 본인 commission (매출 기준)', pct(agencyOwn), 'src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_OWN_RATE'),
-    row('인플루언서 입점 분배 (platform_fee 중)', pct(influencerIntro), 'src/shared/constants/policy.ts:COMMISSION_DEFAULTS.INFLUENCER_INTRO_SHARE_PCT'),
-    row('크리에이터 매장 영입 commission (default)', pct(storeIntro), 'src/worker/utils/influencer-store-intro-commission.ts:DEFAULT_STORE_INTRO_PCT'),
-    ...taxRows(),
-  ]
-}
-
 const NUMBER_ROWS = {
   wholesale: wholesaleRows,
   'offline-groupbuy': offlineRows,
   'online-listing': onlineRows,
   linkshop: linkshopRows,
-  agency: agencyRows,
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -533,13 +517,12 @@ function classifyRoute(p) {
   return best
 }
 
-// API 라우트 파일 디렉터리 — guide 생성기보다 넓게 (5개 도메인 전부).
+// API 라우트 파일 디렉터리 — guide 생성기보다 넓게 (4개 도메인 전부).
 function findRouteFiles() {
   const dirs = [
     'src/features/auth/api',
     'src/features/seller/api',
     'src/features/admin/api',
-    'src/features/agency/api',
     'src/features/youtube/api',
     'src/features/youtube-growth/api',
     'src/features/donations/api',

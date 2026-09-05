@@ -101,6 +101,13 @@ app.post('/account/withdraw', rateLimit({ action: 'seller_withdraw', max: 5, win
     const seat = await requireSellerSeat(c)
     if (seat instanceof Response) return seat
 
+    // 🏪 2026-09-04 (대표 확정): 탈퇴는 **소유자만**. 위임받은 운영자(중개사)가 남의 매장을
+    //   지울 수 있으면 위임이 곧 파괴 권한이 된다. 회수는 사장님이 언제든 할 수 있지만
+    //   지워진 매장은 되돌릴 수 없다.
+    const { resolveStoreActor, OWNER_ONLY_MESSAGE } = await import('../../../worker/utils/store-actor')
+    const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!actor.isOwner) return c.json({ success: false, error: `탈퇴는 ${OWNER_ONLY_MESSAGE}` }, 403)
+
     const body = await c.req.json<{ confirm?: boolean; reason?: string }>().catch(() => ({} as { confirm?: boolean; reason?: string }))
     // 오폭 방지 — 화면이 명시 확인을 받아야만 실행된다.
     if (body.confirm !== true) {

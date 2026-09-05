@@ -114,7 +114,6 @@ import { sellerAnalyticsRoutes } from '../features/seller/api/seller-analytics.r
 import { sellerOnboardingRoutes } from '../features/seller/api/seller-onboarding.routes';
 import { optimalTimeRoutes } from '../features/seller/api/optimal-time.routes';
 // 🤝 2026-07-10 위임 3단 모델 + promo 투명성 (vendor-commission-passthrough §4.3 — 돈 이동 0)
-import { sellerDelegationRoutes } from '../features/seller/api/seller-delegation.routes';
 import { sellerPromoSpendRoutes } from '../features/seller/api/seller-promo-spend.routes';
 import { faqBotRoutes } from '../features/guides/api/faq-bot.routes';
 import { moderationRoutes } from '../features/moderation/api/moderation.routes';
@@ -122,10 +121,6 @@ import { adminTikTokDiscoveryRoutes } from '../features/admin/api/admin-tiktok-d
 import { adminOpsInsightsRoutes } from '../features/admin/api/admin-ops-insights.routes';
 import { adminNotificationSettingsRoutes } from '../features/admin/api/admin-notification-settings.routes';
 import { adminBusinessMonitoringRoutes } from '../features/admin/api/admin-business-monitoring.routes';
-// 🌇 일몰 언마운트 — 롤백 시 이 import 와 아래 app.route 를 함께 해제: import { agencySelfEventsRoutes } from '../features/agency/api/agency-self-events.routes';
-import { promoteBoostsSellerRoutes } from '../features/agency/api/promote-boosts.routes'; // 🌇 일몰: promoteBoostsAgencyRoutes 언마운트(셀러측은 유지)
-import { sellerTransferRoutes } from '../features/agency/api/seller-transfer.routes';
-import { sellerTransferRespondRoutes } from '../features/seller/api/seller-transfer-respond.routes';
 // 🥗 2026-07-15 워커 다이어트(대표 승인): 라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED) 잔재 라우트 분리 —
 //   casting(캐스팅/광고주, 페이지 없음·nav 숨김) · donation-booster(쓰는 컴포넌트 0). 클라 미호출이라 라이브 영향 0. 재도입=원복.
 // import {
@@ -173,24 +168,8 @@ import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
 import { resolveConsumerAlias } from '../shared/seo/consumer-redirects';
 import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity, resolveRegionSeo } from './utils/surface-ssr-meta';
 import { fetchSsrPayload, applySsrDiagHeaders, type SsrTarget } from './utils/ssr-payload';
-import { agencyRoutes } from '../features/agency/api/agency.routes';
-import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
-import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
 // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2).
-import { agencyIntroducedStoresRoutes } from '../features/agency/api/agency-introduced-stores.routes';
-import { agencySettlementsRoutes } from '../features/agency/api/agency-settlements.routes';
 // 🛡️ 2026-05-18: 숙소 공구 에이전시 모니터링 — PR 1 Foundation.
-// 🌇 일몰 언마운트 — 롤백 시 이 import 와 아래 app.route 를 함께 해제: import { agencyStaysRoutes } from '../features/agency/api/agency-stays.routes';
-// 🌇 일몰 언마운트 — 롤백 시 이 import 와 아래 app.route 를 함께 해제: import { agencyOpsRoutes } from '../features/agency/api/agency-ops.routes';
-import { agencySellersRoutes } from '../features/agency/api/agency-sellers.routes';
-import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
-// 🌇 일몰 언마운트 — 롤백 시 이 import 와 아래 app.route 를 함께 해제: import { agencyCampaignsRoutes } from '../features/agency/api/agency-campaigns.routes';
-// 🌇 일몰 언마운트 — 롤백 시 이 import 와 아래 app.route 를 함께 해제: import { agencyIncentivesRoutes } from '../features/agency/api/agency-incentives.routes';
-// 🌇 일몰 언마운트 — 롤백 시 이 import 와 아래 app.route 를 함께 해제: import { agencyMessagesRoutes } from '../features/agency/api/agency-messages.routes';
-// 🌇 일몰 언마운트 — 롤백 시 이 import 와 아래 app.route 를 함께 해제: import { agencyCouponsRoutes } from '../features/agency/api/agency-coupons.routes';
-// 🌇 일몰 언마운트 — 롤백 시 이 import 와 아래 app.route 를 함께 해제: import { agencyMembersRoutes } from '../features/agency/api/agency-members.routes';
-// 🌇 일몰 언마운트 — 롤백 시 이 import 와 아래 app.route 를 함께 해제: import { agencyCalendarRoutes } from '../features/agency/api/agency-calendar.routes';
-import { inviteCodePublicRoutes } from '../features/agency/api/agency-invites.routes'; // 🌇 일몰: agencyInvitesRoutes 언마운트(공개 초대코드는 셀러 가입이 계속 쓴다)
 // 🛡️ 2026-05-27 (영업 검증 Layer 2): 매장 사전 등록 prospects.
 import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospects.routes';
 // 🎯 [urads-split Phase D 2026-07-16] 유어애즈 로컬 폴백(marketingRoutes·shortLinkRedirectRoutes) 제거 —
@@ -218,13 +197,7 @@ import { adminCampaignApplicationsRoutes } from '../features/admin/api/admin-cam
 import { buyerPoolRoutes as buyerPoolTestRoutes } from '../features/supply/api/buyer-pool.routes';
 import { makerPoolRoutes as makerPoolTestRoutes } from '../features/supply/api/maker-pool.routes';
 import { buyerIngestRoutes } from '../features/supply/api/buyer-ingest.routes';
-// 🌇 일몰 언마운트 — 롤백 시 이 import 와 아래 app.route 를 함께 해제: import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
-import { agencyDelegationRoutes } from '../features/agency/api/agency-delegation.routes'; // 🤝 2026-07-10 에이전시 위임/promo 투명성 (vendor-commission-passthrough §4.3 — read-only + 요청만)
-// 🌇 일몰 언마운트 — 롤백 시 이 import 와 아래 app.route 를 함께 해제: import { agencyMatchSuggestionsRoutes } from '../features/agency/api/agency-match-suggestions.routes';
-import { agencyPublicRoutes, agencyPublicEditRoutes } from '../features/agency/api/agency-public.routes';
-import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
 import { payoutCenterRoutes } from '../features/admin/api/admin-payout-center.routes';
-import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
 import { proxyRoutes } from './routes/proxy.routes';
 import { debugRoutes } from './routes/debug.routes';
 import { publicUtilityRoutes } from './routes/public-utility.routes';
@@ -1430,10 +1403,8 @@ app.use('/api/auth/login', exactPostBot('/api/auth/login'));
 app.use('/api/seller/register', exactPostBot('/api/seller/register'));
 app.use('/api/seller/login', exactPostBot('/api/seller/login'));
 app.use('/api/admin/login', exactPostBot('/api/admin/login'));
-app.use('/api/agency/login', exactPostBot('/api/agency/login'));
 app.use('/api/auth/forgot-password', exactPostBot('/api/auth/forgot-password'));
 app.use('/api/seller/forgot-password', exactPostBot('/api/seller/forgot-password'));
-app.use('/api/agency/forgot-password', exactPostBot('/api/agency/forgot-password'));
 
 // Feature: Admin auth — rate limited: 5 attempts per 5 min per IP
 // 🛡️ 2026-04-29 보안 audit (TD-016 HIGH): admin refresh / 2FA 도 rate limit.
@@ -1639,7 +1610,6 @@ app.route('/api/seller/onboarding', sellerOnboardingRoutes);
 // 🛡️ 2026-04-27 Phase 3-1: 데이터 기반 최적 라이브 시간 추천
 app.route('/api/seller/optimal-time', optimalTimeRoutes);
 // 🤝 2026-07-10 매장 위임 관리 + promo 지출 투명성 (§4.3 — 돈 이동 0, 관계/read-only 만)
-app.route('/api/seller/delegation', sellerDelegationRoutes);
 app.route('/api/seller/promo-spend', sellerPromoSpendRoutes);
 // 🛡️ 2026-04-27 Phase 3-2: FAQ 봇 (가이드 검색)
 app.route('/api/faq-bot', faqBotRoutes);
@@ -1657,15 +1627,9 @@ app.route('/api/admin/notification-settings', adminNotificationSettingsRoutes);
 // 🛡️ 2026-04-28: business-monitoring (gift + consignment 운영 통계)
 app.route('/api/admin/business-monitoring', adminBusinessMonitoringRoutes);
 // 🛡️ 2026-04-27 자사 이벤트 (매출 챌린지)
-// app.route('/api/agency/self-events', agencySelfEventsRoutes);  // 🌇 2026-08-19 일몰 언마운트(파일·심볼 보존 — 머니/셀러 경로가 import). 롤백=주석 해제. docs/design/store-operator-model.md
 // 🛡️ 2026-04-27 노출 부스팅 쿠폰 (Promote to Live)
-// app.route('/api/agency/promote-boosts', promoteBoostsAgencyRoutes);  // 일몰: promote-boosts
-app.route('/api/seller/promote-boosts', promoteBoostsSellerRoutes);
 // 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/seller/live-notify 마운트 제거.
 // 🛡️ 2026-04-27 Phase 3-5: 셀러 이전 (Network 마켓플레이스)
-app.route('/api/agency/transfers', sellerTransferRoutes);
-// 🛡️ 2026-04-30 TD-016 CRITICAL: 셀러 본인이 직접 동의/거부 (agency 대행 금지)
-app.route('/api/seller/transfers', sellerTransferRespondRoutes);
 // 🥗 2026-07-15 워커 다이어트(대표 승인): 캐스팅 마켓플레이스(라이브커머스 잔재, 페이지 없음) 마운트 분리.
 // app.route('/api/admin/advertisers', adminAdvertiserRoutes);
 // app.route('/api/admin/castings', adminCastingRoutes);
@@ -1758,11 +1722,8 @@ app.route('/api/banners', bannerRoutes);
 // Admin routes — all handled by adminApp (separate auth chain)
 // adminApp has: CORS + IP whitelist + requireAdmin() + audit log
 // ============================================================
-adminApp.route('/agencies', adminAgencyRoutes);
 // 🏦 2026-06-12 지급 센터 — 셀러/큐레이터/에이전시 신청→입금완료 통합 (사용자 결정)
 adminApp.route('/payout-center', payoutCenterRoutes);
-// 🛡️ 2026-04-26: 에이전시 셀러 심사 큐 (Agency P0 #1)
-adminApp.route('/agency-creator-approvals', adminAgencyApprovalsRoutes);
 // Admin tools (chart, sellers, banners, notices, settlements, reports, settings)
 adminApp.route('/tools', adminToolsRoutes);
 // Admin real-time health metrics (active streams, orders/min, stuck orders, webhooks)
@@ -2076,6 +2037,14 @@ app.route('/api/referral', referralRoutes);
 
 // ── 초대 보상 ──
 app.route('/api/invite', inviteRewardRoutes);
+// 🌇 2026-09-04 에이전시 완전 일몰(대표 확정 "에이전시 남은 잔재 다 삭제 · 에이전시 대시보드도 안쓸거야").
+//    `/api/agency/**` · `/api/agency-public` · 어드민 `/agencies`·`/agency-creator-approvals` ·
+//    `/api/agency/transfers`(에이전시↔에이전시 셀러 이관) · 그 짝인 `/api/seller/transfers` ·
+//    `/api/invite/:code`(에이전시 초대코드) 를 **전부 언마운트하고 파일도 지웠다.**
+//    ⚠️ 위 `/api/invite` 는 **소비자 친구초대**(referral)라 이름만 같고 무관하다 — 지우지 말 것.
+//       (오히려 에이전시 `/:code` 가 같은 경로에 얹혀 `/api/invite/my` 를 가릴 뻔한 그림자도 함께 사라졌다.)
+//    중개는 이제 에이전시가 아니라 **셀러 대시보드 계정 + `seller_operators`** 가 맡는다.
+//    설계 SSOT: docs/design/store-operator-model.md
 
 // ── 다단계 추천 커미션 ──
 app.route('/api/referral-tree', referralTreeRoutes);
@@ -2115,47 +2084,22 @@ app.route('/', publicUtilityRoutes);
 app.route('/api/blog', blogRoutes); // public 엔드포인트 접근용 (내부에서 /public만 공개)
 
 // ── 에이전시 ──
-app.route('/api/agency', agencyPinRoutes);
-app.route('/api/agency', agencyRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /link-kakao, /unlink-kakao, /kakao-link-status
-app.route('/api/agency', agencyKakaoLinkRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /stats, /stats/kpi, /stats/daily, /stats/realtime, /stats/batch
-app.route('/api/agency', agencyStatsRoutes);
-app.route('/api/agency', agencyIntroducedStoresRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /settlements, /settlement-invoices, /settlement-invoices/:id, /settlements/request
-app.route('/api/agency', agencySettlementsRoutes);
 // 🛡️ 2026-05-18: 숙소 공구 에이전시 (PR 1 Foundation).
-// app.route('/api/agency', agencyStaysRoutes);  // 일몰: stays
 // 🛡️ 2026-04-28 TD-006 (split): /notices, /monthly-tasks, /targets, /sellers/compare, /contracts
-// app.route('/api/agency', agencyOpsRoutes);  // 일몰: ops(contracts·notices·targets·compare)
 // 🛡️ 2026-04-28 TD-006 (split): /sellers*, /orders, /streams, /ranking, /schedule, /returns
-app.route('/api/agency', agencySellersRoutes);
-// 🛡️ 2026-04-26: Agency P0 #4 캠페인 관리
-// app.route('/api/agency/campaigns', agencyCampaignsRoutes);  // 일몰: campaigns
-// 🛡️ 2026-04-26: Agency P0 #5 인센티브 규칙 엔진
-// app.route('/api/agency/incentives', agencyIncentivesRoutes);  // 일몰: incentives
 // 🛡️ 2026-04-26 Q2: 메시지 템플릿 + 일괄 발송
-// app.route('/api/agency/messages', agencyMessagesRoutes);  // 일몰: messages
 // 🛡️ 2026-04-26 Q7: 쿠폰 캐스케이드 (에이전시 → 셀러 → 시청자)
-// app.route('/api/agency/coupons', agencyCouponsRoutes);  // 일몰: coupons
 // 🛡️ 2026-04-26 M4: 에이전시 멀티 권한 (owner/manager/agent/analyst)
-// app.route('/api/agency/members', agencyMembersRoutes);  // 일몰: members
 // 🛡️ 2026-04-26 M5: 라이브 캘린더 + 에이전트 노트
-// app.route('/api/agency/calendar', agencyCalendarRoutes);  // 일몰: calendar
 // 🛡️ 2026-04-27 Phase 1-3: QR/링크 영입 코드
-// app.route('/api/agency/invites', agencyInvitesRoutes);  // 일몰: invites(에이전시측)
-app.route('/api/invite', inviteCodePublicRoutes);
 app.route('/api/prospects', prospectsRoutes);
 // 🛡️ 2026-04-27 Phase 1-4: 6대 KPI 대시보드 API
-// app.route('/api/agency/kpi', agencyKpiRoutes);  // 일몰: kpi
 // 🤝 2026-07-10 에이전시 위임/promo 투명성 (§4.3 — grant 는 매장만, 에이전시는 조회+요청만)
-app.route('/api/agency/delegation', agencyDelegationRoutes);
 // 🛡️ 2026-04-27 Phase 1-7: 에이전시 공개 브랜딩 페이지
-app.route('/api/agency-public', agencyPublicRoutes);          // 공개 (인증 X)
-app.route('/api/agency/public-profile', agencyPublicEditRoutes); // 본인 편집 (인증)
 // 2026-05-05: 신규 셀러 자동 매칭 제안 (수락/거절)
-// app.route('/api/agency', agencyMatchSuggestionsRoutes);  // 일몰: match-suggestions
-// adminAgencyRoutes는 위에서 adminApp에 등록됨
 
 // 🛡️ 2026-04-23 배치 169: 번들(세트) 상품
 app.route('/api/bundles', bundlePublicRoutes);

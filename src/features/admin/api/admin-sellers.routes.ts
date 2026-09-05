@@ -2,11 +2,9 @@
  * Admin Sellers Routes — 판매자 관리
  *
  * 🛡️ 2026-04-22 배치 146 (TD-006 부분): admin-management.routes.ts 에서 분리.
- *
  * 엔드포인트:
  * - GET    /sellers                          — 판매자 목록
- * - GET    /sellers/pending                  — 승인 대기 목록
- * - GET    /sellers/:id                      — 판매자 상세
+ * - GET    /sellers/pending · /sellers/:id   — 승인 대기 목록 · 판매자 상세
  * - PATCH  /sellers/:id/business-info/approve — 사업자 정보 승인
  * - PATCH  /sellers/:id/business-info/reject  — 사업자 정보 반려
  * - POST   /sellers/:id/verify-account        — 계좌 재검증 승인 (sellers.is_verified=1 복원 → 출금 재개)
@@ -27,6 +25,7 @@ import { swallow } from '@/worker/utils/swallow';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { intParam } from '@/shared/pagination'
 import { reassignIntroducer } from './admin-sellers/reassign-introducer'
+import { registerSellerPurgeRoute } from './admin-sellers/purge-seller'  // 🗑️ 매장 완전 삭제
 
 export const adminSellersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -663,6 +662,7 @@ adminSellersRoutes.delete('/sellers/:id', cors(), async (c) => {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
+registerSellerPurgeRoute(adminSellersRoutes, safeAdminError);
 
 adminSellersRoutes.patch('/sellers/:id/commission', cors(), async (c) => {
   try {
@@ -739,11 +739,7 @@ adminSellersRoutes.post('/sellers/:id/notify-magic-link', cors(), async (c) => {
   }
 });
 
-// 🛡️ 2026-05-21: 에이전시 lock-in 재배정 — docs/AGENCY_POLICY.md 룰.
-//   sellers.introduced_by_agency_id 는 가입 시 1회 lock-in. 변경은 이 endpoint 만 허용.
-//   감사 로그 + 강력 경고 (admin_audit_log 자동 기록).
-//   사유: 가게 사장님 분쟁 (영업권 충돌) / 에이전시 무활동 6개월 unlock 등.
-adminSellersRoutes.patch('/sellers/:id/reassign-agency', cors(), (c) => reassignIntroducer(c, 'agency', safeAdminError));
+// 🌇 2026-09-05 에이전시 일몰 — `PATCH /sellers/:id/reassign-agency` 삭제(부르는 화면이 없었다).
 
 // 🛡️ 2026-05-21 Phase D-6: 사람(영입자) 매장영입 2% lock-in 재배정 — 한 가게 = 1 lock-in 영구.
 //   🩸 2026-08-31: 존재 확인이 `sellers` 를 보던 것을 `users` 로 고쳤다(엉뚱한 사람에게 2% 가던 버그).

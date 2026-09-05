@@ -21,7 +21,8 @@ type ProspectStatus = 'visiting' | 'converted' | 'expired'
 
 interface Prospect {
   id: number
-  introducer_type: 'agency' | 'influencer'
+  /** 🌇 2026-09-05 에이전시 일몰 — 신규 행은 언제나 'influencer'. 레거시 행만 'agency' 일 수 있다. */
+  introducer_type: string
   introducer_id: string
   store_name: string | null
   contact_name: string | null
@@ -115,7 +116,7 @@ export default function AdminProspectsPage() {
           ) : (
             prospects.map((p) => {
               const meta = STATUS_META[p.status]
-              const introducerLabel = p.introducer_type === 'agency' ? '🏢 에이전시' : '🎤 인플루언서'
+              const introducerLabel = '🎤 영입자'
               return (
                 <div key={p.id} className="bg-white rounded-xl border border-gray-200 p-4">
                   <div className="flex items-start justify-between gap-3 mb-2">

@@ -2559,7 +2559,8 @@
       "adSlots": "Ad slots",
       "discounts": "Discounts",
       "partners": "Partners",
-      "notifyGuide": "Alerts & guide"
+      "notifyGuide": "Alerts & guide",
+      "operatingSummary": "Operating summary"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",

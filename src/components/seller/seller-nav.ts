@@ -124,7 +124,6 @@ export const NAV_GROUPS: {
        */
       { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, mode: 'live' as SellerMode, hideFor: ['store_owner'] as SellerType[] },
       { path: '/seller/castings', labelKey: 'seller.nav.castings', icon: Megaphone, mode: 'live' as SellerMode },
-      { path: '/seller/promote-boosts', labelKey: 'seller.nav.promoteBoosts', icon: Rocket, mode: 'live' as SellerMode },
     ],
   },
   {

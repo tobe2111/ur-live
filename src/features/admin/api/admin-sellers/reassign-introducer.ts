@@ -23,7 +23,12 @@
 import type { Context } from 'hono'
 import type { Env } from '@/worker/types/env'
 
-export type IntroducerKind = 'agency' | 'influencer'
+/**
+ * 🌇 2026-09-05 에이전시 일몰 — `'agency'` 종류 삭제(대표 "에이전시 남은 잔재 다 삭제").
+ * 어드민 UI 는 원래 `reassign-influencer` 하나만 불렀고, agency 쪽 라우트는 화면 없이 살아 있는
+ * **쓰기 경로**였다 — 일몰된 개념에 매장을 붙일 수 있는 문은 남겨 두지 않는다.
+ */
+export type IntroducerKind = 'influencer'
 
 interface KindSpec {
   /** sellers 의 대상 컬럼 */
@@ -44,16 +49,6 @@ interface KindSpec {
 }
 
 const SPECS: Record<IntroducerKind, KindSpec> = {
-  agency: {
-    column: 'introduced_by_agency_id',
-    otherColumn: 'introduced_by_influencer_id',
-    bodyField: 'new_agency_id',
-    existsTable: 'agencies',
-    notFoundError: '대상 에이전시를 찾을 수 없습니다.',
-    auditAction: 'agency_reassign',
-    prevField: 'previous_agency_id',
-    nextField: 'new_agency_id',
-  },
   influencer: {
     column: 'introduced_by_influencer_id',
     otherColumn: 'introduced_by_agency_id',

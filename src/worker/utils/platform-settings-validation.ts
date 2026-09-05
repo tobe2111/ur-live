@@ -146,7 +146,6 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   seller_referral_bonus_pct: pct,      // seller-registration.routes.ts
   platform_fee_pct: pct,               // ledger.ts:132 (v/100)
   seller_commission_pct: pct,          // ledger.ts:132 (v/100)
-  agency_share_pct: pct,               // ledger.ts:255 (0<v<1 분수 또는 1~100 % — 둘 다 0~100 안)
   influencer_intro_share_pct: pct,     // ledger.ts:402 (동일)
 
   // ── 금액/딜/개수 (0 이상) ──

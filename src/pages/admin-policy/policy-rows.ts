@@ -4,7 +4,7 @@
  * 이 대시보드는 `src/shared/constants/policy.ts` 를 사람이 읽게 옮겨 적는 화면이다. 그런데 옮겨 적는
  * 일은 **반드시 밀린다** — 실측 결과 policy.ts 가 선언한 8개 그룹 중 **4개(HOSTING/WITHDRAWAL/
  * SHIPPING/CURATOR)가 화면에 아예 없었고**, COMMISSION_DEFAULTS 안에서도 3개 키
- * (AGENCY_STORE_INTRO_PCT · INFLUENCER_STORE_INTRO_PCT · CURATOR_AFFILIATE_PCT)가 빠져 있었다.
+ * (INFLUENCER_STORE_INTRO_PCT · CURATOR_AFFILIATE_PCT 등)가 빠져 있었다.
  * 빠져도 에러가 안 나니 아무도 모른다.
  *
  * 그래서 "최신화"를 사람 약속이 아니라 **가드**로 바꾼다:
@@ -33,7 +33,7 @@ export interface PolicyRow {
   unit?: string
   desc?: string
   /** platform_settings 로 어드민이 덮어쓸 수 있는 값 — 페이지가 현재 적용값을 겹쳐 표시 */
-  dynamicKey?: 'platform_fee_pct' | 'seller_commission_pct' | 'agency_share_pct' | 'influencer_intro_share_pct'
+  dynamicKey?: 'platform_fee_pct' | 'seller_commission_pct' | 'influencer_intro_share_pct'
   /** 영구 중단된 기능의 상수 — 값은 남아 있지만 지금 아무 동작도 하지 않음을 화면에 밝힌다 */
   retired?: string
 }
@@ -79,10 +79,7 @@ export const POLICY_SECTIONS: PolicySection[] = [
     rows: [
       { key: 'PLATFORM_FEE_PCT', value: pct(COMMISSION_DEFAULTS.PLATFORM_FEE_PCT), unit: '%', desc: '플랫폼 fee (어드민 조정 가능)', dynamicKey: 'platform_fee_pct' },
       { key: 'SELLER_COMMISSION_PCT', value: pct(COMMISSION_DEFAULTS.SELLER_COMMISSION_PCT), unit: '%', desc: '위탁 셀러 commission', dynamicKey: 'seller_commission_pct' },
-      { key: 'AGENCY_SHARE_PCT', value: pct(COMMISSION_DEFAULTS.AGENCY_SHARE_PCT), unit: '%', desc: '에이전시 입점 분배 (platform_fee 중)', dynamicKey: 'agency_share_pct' },
       { key: 'INFLUENCER_INTRO_SHARE_PCT', value: pct(COMMISSION_DEFAULTS.INFLUENCER_INTRO_SHARE_PCT), unit: '%', desc: '인플 입점 분배 (platform_fee 중)', dynamicKey: 'influencer_intro_share_pct' },
-      { key: 'AGENCY_OWN_RATE', value: pct(COMMISSION_DEFAULTS.AGENCY_OWN_RATE), unit: '%', desc: '에이전시 본인 매출 commission' },
-      { key: 'AGENCY_STORE_INTRO_PCT', value: pct(COMMISSION_DEFAULTS.AGENCY_STORE_INTRO_PCT), unit: '%', desc: '에이전시 매장 영입 — 그 매장 매출에서 지급' },
       // ⚠️ 아래 둘은 `platform_settings`(influencer_store_intro_pct / _months) 행이 있으면 **그 값이 우선**한다.
       //   이 표는 코드 기본값이라 라이브와 다를 수 있다 — dynamicKey 를 못 붙이는 건 겹쳐 보여 줄 소스인
       //   `/api/admin/payouts/commission-rates` 가 4개 키만 돌려주기 때문이다(넓히려면 서버부터).

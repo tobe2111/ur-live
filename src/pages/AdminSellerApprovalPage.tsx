@@ -6,7 +6,8 @@ import { safeHttpHref } from '@/utils/safe-external-url'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
-import { UserCheck, UserX, Loader2, Search, Pause, Play, ChevronDown, ChevronUp, FileCheck, FileX, ExternalLink } from 'lucide-react'
+import { UserCheck, UserX, Loader2, Search, Pause, Play, ChevronDown, ChevronUp, FileCheck, FileX, ExternalLink, Trash2 } from 'lucide-react'
+import { makePurgeSeller } from './admin-seller-approval/purge-seller-action'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate } from '@/utils/date'
@@ -198,6 +199,9 @@ export default function AdminSellerApprovalPage() {
       toast.success(`${action} 완료`); load()
     } catch { toast.error(`${action} 실패`) } finally { setActingId(null) }
   }
+
+  // 🗑️ 빈 매장 완전 삭제 — 액션은 `admin-seller-approval/purge-seller-action.ts` (파일 크기 래칫).
+  const purgeSeller = makePurgeSeller({ h, setActingId, load })
 
   // 🛡️ 2026-05-20: 사업자등록증 검증/반려 — migration 0257 PATCH /sellers/:id/business-registration/verify
   const verifyBizReg = async (id: number) => {
@@ -398,6 +402,12 @@ export default function AdminSellerApprovalPage() {
                       {s.status === 'suspended' ? <><Play className="w-3 h-3" /> 재활성</> : <><Pause className="w-3 h-3" /> 정지</>}
                     </button>
                   )}
+                  {/* 🗑️ 2026-09-04: 빈 매장 완전 삭제 — 정지된 껍데기가 목록에 쌓이는 것을 끝낸다.
+                      상품·주문이 있으면 서버가 409 로 거부하므로 버튼은 항상 보여도 안전하다. */}
+                  <button onClick={() => purgeSeller(s)} disabled={actingId === s.id}
+                    className="px-3 py-1.5 bg-red-50 text-red-700 rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
+                    <Trash2 className="w-3 h-3" /> 삭제
+                  </button>
                   {/* 🛡️ rejected 셀러도 다시 활성화 가능 — 잘못 거절된 케이스 복구 */}
                   {s.status === 'rejected' && (
                     <button onClick={() => approve(s.id)} disabled={actingId === s.id}

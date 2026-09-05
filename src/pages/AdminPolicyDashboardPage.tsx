@@ -83,7 +83,6 @@ export default function AdminPolicyDashboardPage() {
         return {
           platform_fee_pct: String(data.platform_fee_pct ?? ''),
           seller_commission_pct: String(data.seller_commission_pct ?? ''),
-          agency_share_pct: String(data.agency_share_pct ?? ''),
           influencer_intro_share_pct: String(data.influencer_intro_share_pct ?? ''),
         }
       },

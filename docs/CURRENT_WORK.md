@@ -5494,7 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 252건 · 최신순 · 이 목록은 자동 생성된다._
+_총 253건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-05**
 - [배포 판정 + 실측에서 나온 것: 직접 10% 가 걷히는 매장이 0곳 (2026-09-05)](handoff/2026-09-05-live-verdict-channel-gap.md)
@@ -5502,6 +5502,7 @@ _총 252건 · 최신순 · 이 목록은 자동 생성된다._
 - [담아 팔면 몇 % — 화면 네 곳이 서로 다른 숫자를 말하고 있었다 (2026-09-05)](handoff/2026-09-05-affiliate-rate-ssot.md)
 **2026-09-04**
 - [발송 실패한 교환권을 숫자에서 뺀다 — 보이되 세지 않는다](handoff/2026-09-04-gifticon-failed-not-counted.md)
+- [2026-09-04 — 에이전시 완전 일몰 + 매장 정리 + 매장↔중개사 권한 모델](handoff/2026-09-04-agency-sunset-final.md)
 **2026-09-03**
 - [2026-09-03 — 지갑 제목 삭제 + 라이브 신고 2건 분류(429 · /map)](handoff/2026-09-03-wallet-title-and-live-triage.md)
 - [이용권 현황이 교환권까지 세던 것 — 마이페이지가 자기 자신과 모순](handoff/2026-09-03-voucher-status-wallet-split.md)

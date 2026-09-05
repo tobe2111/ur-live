@@ -57,7 +57,6 @@ export default function SiteFooter() {
             <a href="/store/new" className={colLink}>내 가게 등록하기</a>
             <a href="/area-report" className={colLink}>우리 동네 상권 리포트</a>
             <a href="/creators" className={colLink}>크리에이터 모집</a>
-            <a href="/agency/register/business" className={colLink}>에이전시 시작</a>
             {!REFERRAL_GROUP_DISCOUNT_DISABLED && (
               <a href="/referral" className={colLink}>공구 개최하기</a>
             )}
@@ -68,7 +67,6 @@ export default function SiteFooter() {
             <h3 className={colTitle}>약관·정책</h3>
             <a href="/terms" className={colLink}>서비스 이용약관</a>
             <a href="/terms/seller" className={colLink}>판매자 약관</a>
-            <a href="/terms/agency" className={colLink}>에이전시 파트너 약관</a>
             {/* 개인정보처리방침 — 정통망법 관례상 굵게 강조 */}
             <a href="/privacy" className={`${colLink} font-bold`}>개인정보처리방침</a>
             <a href="/refund" className={colLink}>배송 및 환불 정책</a>

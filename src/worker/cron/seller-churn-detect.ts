@@ -21,7 +21,6 @@ import { logInfo, logError } from '../utils/logger'
 interface SellerSignal {
   seller_id: number
   seller_name: string
-  agency_id: number | null
   user_id: string | null
   days_since_last_post: number
   recent_avg_completion: number
@@ -40,7 +39,6 @@ export async function handleSellerChurnDetect(env: Env): Promise<void> {
         s.id AS seller_id,
         s.name AS seller_name,
         s.linked_user_id AS user_id,
-        s.agency_id,
         (julianday('now') - julianday(MAX(p.created_at))) AS days_since_last_post,
         AVG(CASE WHEN p.group_buy_target > 0 THEN p.group_buy_current * 1.0 / p.group_buy_target ELSE NULL END) AS recent_avg_completion
       FROM sellers s
@@ -72,29 +70,8 @@ export async function handleSellerChurnDetect(env: Env): Promise<void> {
 
       if (score === 'high') {
         highRiskCount++
-        // 에이전시 dashboard 알림
-        // 🛡️ 2026-05-17: notifications 테이블은 user_type CHECK('seller','user','admin') — 'agency' 안 허용.
-        //   에이전시 대상은 dashboard_notifications 사용 (recipient_type IN admin/seller/agency, migration 0240).
-        if (s.agency_id) {
-          stmts.push(
-            DB.prepare(`
-              INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
-              VALUES (
-                'agency',
-                CAST(? AS TEXT),
-                'seller_churn_risk',
-                ?,
-                ?,
-                '/agency/sellers',
-                CURRENT_TIMESTAMP
-              )
-            `).bind(
-              s.agency_id,
-              `⚠️ 셀러 이탈 위험: ${s.seller_name}`,
-              `${Math.round(days)}일 등록 없음 + 평균 진행률 ${Math.round(avgComp * 100)}%. 연락 권장.`,
-            )
-          )
-        }
+        // 🌇 2026-09-04 에이전시 일몰 — 여기 있던 '에이전시 dashboard 알림'을 삭제했다.
+        //    `sellers.agency_id` 는 라이브에서 전원 NULL 이라 이 분기는 실행된 적이 없다.
         // 셀러 본인에게도 격려
         //
         // 🗓️ 2026-09-04: 종전 문구가 '마감 임박 push 를 활용해보세요' 였다. 그 push cron 은

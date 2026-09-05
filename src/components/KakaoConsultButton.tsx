@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 const KAKAO_CHAT_URL = 'http://pf.kakao.com/_AITdn/chat'
 
 // 대시보드 경로 — 이 경로에서는 버튼 숨김 (각 대시보드가 자체 상담 버튼 보유)
-const DASHBOARD_PREFIXES = ['/seller', '/admin', '/agency']
+const DASHBOARD_PREFIXES = ['/seller', '/admin']
 
 export default function KakaoConsultButton() {
   const { t } = useTranslation()
