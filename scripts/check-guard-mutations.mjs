@@ -8526,6 +8526,27 @@ canvas {
       '정리하다 지우기 쉽다.',
   },
   {
+    name: '💰 소개비 저장이 다시 등록 화면 전용이 된다 (한번 정하면 못 바꿈)',
+    file: 'src/features/seller/api/seller-orders.routes.ts',
+    find: `    // 💰 2026-09-05 (대표 확정 플로우 — 소개비는 매장이 정한다): 수정 화면에서도 변경 가능하게.
+    await applySellerPromoRate(db, productId, sellerId, body)`,
+    replace: '',
+    test: 'src/tests/unit/promo-lever-manage-2026-09-05.test.ts',
+    why:
+      '가격·재고는 다 고칠 수 있는데 마케팅 예산만 못 고치는 상태로 되돌아간다. 화면은 그대로 ' +
+      '입력을 받고 저장 성공처럼 보이므로 매장 입장에선 "바꿨는데 안 바뀐다" 가 된다.',
+  },
+  {
+    name: '🚨 소개비 게이트가 사라진다 (매장이 건 소개비를 유어딜이 문다)',
+    file: 'src/worker/utils/seller-promo-rate.ts',
+    find: "if (gate?.value !== 'true' || !Number.isFinite(rate) || rate < 0 || rate > 0.5) return",
+    replace: 'if (!Number.isFinite(rate) || rate < 0 || rate > 0.5) return',
+    test: 'src/tests/unit/promo-lever-manage-2026-09-05.test.ts',
+    why:
+      '재원이 아직 플랫폼 부담(promo_funding_source≠owner)인데 게이트가 빠지면 매장이 건 소개비를 ' +
+      '유어딜이 대신 문다(재원 설계의 −14% 누수). 화면 플래그만으론 못 막는다 — API 직접 호출이 통한다.',
+  },
+  {
     name: '💸 핀 관리가 적립 분수를 다시 100 으로 나눈다 (₩5,000 → ₩50)',
     file: 'src/pages/curator-page/PinManageList.tsx',
     find: 'const est = estRate != null ? Math.round(pin.price * estRate) : 0',
