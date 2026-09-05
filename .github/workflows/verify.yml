@@ -269,6 +269,8 @@ jobs:
       #   2026-05-15 에 만든 랜딩이 두 달 넘게 한 번도 렌더된 적이 없었다. 예외 `duplicate-route-ok`.
       - name: 라우트 경로 중복 차단 (strict)
         run: node scripts/check-duplicate-routes.mjs -s
+      - name: 서버 라우트 중복 검사 (한 번도 안 도는 핸들러)
+        run: node scripts/check-duplicate-hono-routes.mjs -s
         continue-on-error: false
 
       # 🕳️ 2026-09-02: 위 가드는 **같은 경로 문자열**만 본다. Hono 는 등록 순서로 매칭하므로

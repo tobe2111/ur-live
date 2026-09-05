@@ -8794,6 +8794,68 @@ canvas {
       'sticky 는 스택 컨텍스트를 만들고 z 가 없으면 지도 레이어(z≥1) 아래로 깔린다. 클래스 하나라 ' +
       '정리하다 지우기 쉽다.',
   },
+  {
+    name: '🪦 서버 라우트 중복 가드가 2겹 중복을 놓친다 (실제 사고가 딱 2겹이었다)',
+    file: 'scripts/check-duplicate-hono-routes.mjs',
+    find: 'if (at.length > 1) violations.push',
+    replace: 'if (at.length > 2) violations.push',
+    test: 'src/tests/unit/duplicate-hono-routes-2026-09-05.test.ts',
+    why:
+      '오늘 찾은 실제 중복은 정확히 **2겹**이었다(GET /products/:id). 임계를 하나만 올리면 그 사고가 ' +
+      '그대로 통과한다. ⚠️ 오탐 필터(앵커·라우터명·경로 접두)는 서로 겹쳐 있어 하나 빼도 안 무너지므로 ' +
+      '(실측 확인) 주입 지점으로 쓸 수 없다 — 판정 임계가 이 가드의 유일한 단일 실패점이다.',
+  },
+  {
+    name: '💰 소개비 저장이 다시 등록 화면 전용이 된다 (한번 정하면 못 바꿈)',
+    file: 'src/features/seller/api/seller-orders.routes.ts',
+    find: `    // 💰 2026-09-05 (대표 확정 플로우 — 소개비는 매장이 정한다): 수정 화면에서도 변경 가능하게.
+    await applySellerPromoRate(db, productId, sellerId, body)`,
+    replace: '',
+    test: 'src/tests/unit/promo-lever-manage-2026-09-05.test.ts',
+    why:
+      '가격·재고는 다 고칠 수 있는데 마케팅 예산만 못 고치는 상태로 되돌아간다. 화면은 그대로 ' +
+      '입력을 받고 저장 성공처럼 보이므로 매장 입장에선 "바꿨는데 안 바뀐다" 가 된다.',
+  },
+  {
+    name: '🚨 소개비 게이트가 사라진다 (매장이 건 소개비를 유어딜이 문다)',
+    file: 'src/worker/utils/seller-promo-rate.ts',
+    find: "if (gate?.value !== 'true' || !Number.isFinite(rate) || rate < 0 || rate > 0.5) return",
+    replace: 'if (!Number.isFinite(rate) || rate < 0 || rate > 0.5) return',
+    test: 'src/tests/unit/promo-lever-manage-2026-09-05.test.ts',
+    why:
+      '재원이 아직 플랫폼 부담(promo_funding_source≠owner)인데 게이트가 빠지면 매장이 건 소개비를 ' +
+      '유어딜이 대신 문다(재원 설계의 −14% 누수). 화면 플래그만으론 못 막는다 — API 직접 호출이 통한다.',
+  },
+  {
+    name: '💸 핀 관리가 적립 분수를 다시 100 으로 나눈다 (₩5,000 → ₩50)',
+    file: 'src/pages/curator-page/PinManageList.tsx',
+    find: 'const est = estRate != null ? Math.round(pin.price * estRate) : 0',
+    replace: 'const est = estRate != null ? Math.round(pin.price * estRate / 100) : 0',
+    test: 'src/tests/unit/affiliate-rate-ssot-2026-09-05.test.ts',
+    why:
+      'rate 는 분수(0.05)인데 퍼센트로 오해해 또 나누면 실제의 1/100 이 된다. 숫자가 뜨긴 떠서 ' +
+      '화면만 보면 안 틀린 것처럼 보인다 — 사람을 모으는 화면이 수익을 100배 작게 말한다.',
+  },
+  {
+    name: '💸 서버가 적립률 NULL 을 다시 0 으로 뭉갠다 (배지가 영원히 안 뜸)',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: '              p.referral_commission_rate AS commission_rate, COALESCE(p.referral_enabled, 0) AS referral_enabled,',
+    replace: '              COALESCE(p.referral_commission_rate, 0) AS commission_rate,',
+    test: 'src/tests/unit/affiliate-rate-ssot-2026-09-05.test.ts',
+    why:
+      'NULL 은 "설정 없음 → 플랫폼 기본(2%)" 이고 0 은 "정말 0%" 다. 뭉개면 라이브 상품 전부가 ' +
+      '(rate 가 전부 NULL 이라) 적립 없음으로 읽혀 안내가 통째로 사라진다. 에러는 안 난다.',
+  },
+  {
+    name: '💸 적립 기본값이 다시 화면마다 갈린다 (worker 만 2%, 나머지 5%)',
+    file: 'src/shared/affiliate-rate.ts',
+    find: 'export const DEFAULT_AFFILIATE_RATE = 0.02',
+    replace: 'export const DEFAULT_AFFILIATE_RATE = 0.05',
+    test: 'src/tests/unit/affiliate-rate-ssot-2026-09-05.test.ts',
+    why:
+      '2026-06-17 대표 결정(5%→2%)이 적립 경로에만 반영되고 표시 상수는 5 로 남아 몇 달간 ' +
+      '어드민 정책 표가 2.5배 틀린 숫자를 보여 줬다. 상수를 되돌리면 그 상태로 돌아간다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

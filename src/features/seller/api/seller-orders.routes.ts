@@ -10,7 +10,6 @@
  * - POST /api/seller/products                 - 셀러 상품 등록
  */
 
-import { productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { cors } from 'hono/cors';
@@ -30,6 +29,7 @@ import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility
 import { intParam } from '@/shared/pagination'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 import { mallIdForSeller } from '../../../shared/mall/resolve';
+import { applySellerPromoRate } from '../../../worker/utils/seller-promo-rate';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -585,6 +585,7 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
          p.voucher_terms, p.voucher_expiry,
          p.group_buy_target, p.group_buy_deadline,
          p.store_verify_pin,
+         p.referral_commission_rate, COALESCE(p.referral_enabled, 0) AS referral_enabled,
          p.created_at, p.updated_at
        FROM products p
        WHERE p.id = ? AND p.seller_id = ?`
@@ -744,22 +745,9 @@ sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
 // ─── POST /api/seller/products ─────────────────────────────────────────────
 // 🧭 2026-06-10 (재발행 복사): 본인 소유 상품 1건 전체 필드 — SellerMealVoucherNewPage 프리필용.
 //   공개 상세(/api/group-buy/products/:id)는 active 만 매칭이라 종료/만료 공구 복사가 안 됨 → 소유자 전용.
-sellerOrdersRoutes.get('/products/:id', async (c) => {
-  try {
-    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
-    const id = Number(c.req.param('id'));
-    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400);
-    const db = (c.env as Bindings).DB;
-    const row = await db.prepare(
-      `SELECT ${productDetailColsHealed('products')} FROM products WHERE id = ? AND seller_id = ? LIMIT 1`
-    ).bind(id, sellerId).first<Record<string, unknown>>();
-    if (!row) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
-    return c.json({ success: true, data: row });
-  } catch (err) {
-    return safeError(c, err, '상품 조회 중 오류가 발생했습니다', '[seller-products]');
-  }
-});
+// 🪦 2026-09-05: 여기 `GET /products/:id` 사본이 하나 더 있었다(위 566줄과 동일 메서드·경로). Hono 는
+//   먼저 등록된 쪽이 이겨서 **한 번도 실행된 적이 없다** — 고쳐도 아무 일이 안 일어나는 코드라 지웠다.
+//   ⚠️ App.tsx 중복은 check-duplicate-routes 가 잡지만 **Hono 라우트 중복은 아직 아무도 안 본다.**
 
 sellerOrdersRoutes.post('/products', async (c) => {
   try {
@@ -887,22 +875,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
     await writeProductText(db, productId, 'detail_images', body.detail_images)
     await writeProductText(db, productId, 'images', body.images)  // 🖼️ 2026-09-03 사진 여러 장
 
-    // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러 소개비(promo%) → referral_commission_rate override.
-    //   ⚠️ 이중 안전 게이트 — platform_settings.seller_promo_field_enabled==='true' 일 때만 저장.
-    //   어필리에이트 재원이 아직 플랫폼 부담이면 매장이 건 소개비를 유어딜이 무는 누수(설계 −14%)가
-    //   되므로, owner-funding(promo_funding_source='owner')이 스테이징 검증돼 켜진 뒤에만 이 게이트 ON.
-    //   범위 0~0.5(=0~50%) clamp. fail-soft(컬럼 부재 대비). 클라 플래그 우회해도 서버가 최종 차단.
-    if (body.referral_commission_rate !== undefined && body.referral_commission_rate !== null) {
-      try {
-        const gate = await db.prepare("SELECT value FROM platform_settings WHERE key = 'seller_promo_field_enabled'")
-          .first<{ value: string }>().catch(() => null)
-        const rate = Number(body.referral_commission_rate)
-        if (gate?.value === 'true' && Number.isFinite(rate) && rate >= 0 && rate <= 0.5) {
-          await db.prepare(`UPDATE products SET referral_enabled = ?, referral_commission_rate = ? WHERE id = ?`)
-            .bind(body.referral_enabled === false || rate === 0 ? 0 : 1, rate, productId).run()
-        }
-      } catch { /* 게이트 OFF / 컬럼 부재 — 저장 생략(현행과 동일) */ }
-    }
+    // 💰 소개비(promo%) → referral_commission_rate override. 게이트·clamp 는 SSOT 헬퍼가 갖는다.
+    await applySellerPromoRate(db, productId, null, body)
 
     // 🍽️ 2026-06-17 (#5 대표 메뉴): 메뉴(OCR/수동)를 product_supply_meta 사이드테이블에 저장 → 공구 상세가 표시.
     if (Array.isArray(body.menu) && body.menu.length > 0) {
@@ -1068,6 +1042,9 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       max_per_person?: number;
       // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): place_url.
       kakao_place_url?: string;
+      // 💰 2026-09-05: 소개비(promo%) — 등록 화면에만 있어 한번 정하면 못 바꿨다. POST 와 동일 게이트.
+      referral_enabled?: boolean;
+      referral_commission_rate?: number;
     }>();
 
     const db = c.env.DB;
@@ -1186,6 +1163,9 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
         } catch { /* fail-soft */ }
       }
     }
+
+    // 💰 2026-09-05 (대표 확정 플로우 — 소개비는 매장이 정한다): 수정 화면에서도 변경 가능하게.
+    await applySellerPromoRate(db, productId, sellerId, body)
 
     const updated = await db.prepare(
       `SELECT id, name, description, price, original_price,

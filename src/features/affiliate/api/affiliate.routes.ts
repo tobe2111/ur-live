@@ -2,7 +2,7 @@
  * 제휴 마케팅 (쿠팡파트너스형)
  * - 유저가 상품/라이브 링크 공유 → 누군가 구매 → 추천인에게 딜 포인트 적립
  * - 추천 링크: /products/123?ref=USER_ID 또는 /live/456?ref=USER_ID
- * - 수수료: 플랫폼 설정 (기본 2%)
+ * - 수수료: 플랫폼 설정 (기본 2% — `shared/affiliate-rate.ts`)
  * - 24시간 쿠키 추적 + 부정 방지
  */
 import { Hono } from 'hono'
@@ -10,10 +10,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { creditAffiliateForOrder, resolveCommissionRate } from '../../../worker/utils/affiliate-credit'
 import type { Env } from '@/worker/types/env'
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
-import { COMMISSION_DEFAULTS } from '../../../shared/constants/policy'
-
-// 🛡️ 2026-05-22 정책 중앙화 — policy.ts (단일 진실원천)
-const DEFAULT_COMMISSION_RATE = COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT / 100
+import { DEFAULT_AFFILIATE_RATE } from '../../../shared/affiliate-rate'
 
 export const affiliateRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -48,7 +45,7 @@ async function ensureTable(DB: D1Database) {
  * 🛡️ 2026-05-19: 상품별 추천 보상률 해석.
  *   1) products.referral_enabled = 1 이어야 추천 적용 (아니면 null 반환 → 차단)
  *   2) products.referral_commission_rate NOT NULL 이면 그 값 사용 (상품별 override)
- *   3) 아니면 platform_settings.affiliate_commission_rate (기본 5%)
+ *   3) 아니면 platform_settings.affiliate_commission_rate (기본 2% — 2026-06-17 대표 결정)
  *   반환값은 ratio (0.05 = 5%).
  */
 // ── POST /api/affiliate/track — 주문 완료 시 추천인 수수료 기록 ──
@@ -106,7 +103,9 @@ affiliateRoutes.get('/stats', requireAuth(), async (c) => {
   await ensureTable(DB)
 
   const userId = String(user.id)
-  const rate = (await resolveCommissionRate(DB, null)) ?? 0.05
+  // 📌 2026-09-05: `?? 0.05` 였다. resolveCommissionRate(DB, null) 은 productId 가 없으면
+  //   절대 null 을 안 돌려주므로 도달조차 안 하는 값인데, 읽는 사람에게는 '기본 5%' 로 보였다.
+  const rate = (await resolveCommissionRate(DB, null)) ?? DEFAULT_AFFILIATE_RATE
   // ⏳ 확정 유예일(T+N) — 정산 예정일 파생용. platform_settings.affiliate_hold_days(기본 7).
   const hdRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'affiliate_hold_days'").first<{ value: string }>().catch(() => null)
   const holdDays = Math.min(90, Math.max(0, parseInt(hdRow?.value || '', 10) || 7))
