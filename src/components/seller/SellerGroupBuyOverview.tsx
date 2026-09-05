@@ -11,15 +11,13 @@
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Ticket, Clock, AlertTriangle, ChevronRight } from 'lucide-react'
+import { Ticket, AlertTriangle, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
 import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories'
 
 interface Overview {
   active: number
-  closing_soon: number
-  at_risk: number
   pending_disputes: number
   next_payout_estimate: number | null
 }
@@ -37,27 +35,17 @@ export default function SellerGroupBuyOverview() {
     ]).then(([prodRes, disputeRes]) => {
       const products = prodRes.data?.data || []
       const vouchers = products.filter((p: { category?: string }) => VOUCHER_CATEGORY_SET.has(p.category || ''))
-      const now = Date.now()
       const active = vouchers.filter((p: { group_buy_status?: string }) => p.group_buy_status === 'active').length
-      const closingSoon = vouchers.filter((p: { group_buy_deadline?: string; group_buy_status?: string }) => {
-        if (p.group_buy_status !== 'active' || !p.group_buy_deadline) return false
-        const ms = new Date(p.group_buy_deadline).getTime() - now
-        return ms > 0 && ms < 24 * 3600 * 1000
-      }).length
-      const atRisk = vouchers.filter((p: { group_buy_deadline?: string; group_buy_status?: string; group_buy_target?: number; group_buy_current?: number }) => {
-        if (p.group_buy_status !== 'active' || !p.group_buy_deadline) return false
-        const ms = new Date(p.group_buy_deadline).getTime() - now
-        if (ms <= 0 || ms > 24 * 3600 * 1000) return false
-        const progress = (p.group_buy_target ?? 0) > 0 ? (p.group_buy_current ?? 0) / (p.group_buy_target ?? 1) : 0
-        return progress < 0.5
-      }).length
+      // 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): '마감 임박'·'미달성 위험' 지표 제거.
+      //   둘 다 `group_buy_deadline` 이 있어야 세지는데 이제 그 값은 아무도 안 넣는다 ⇒ 영구히 0.
+      //   0 만 찍는 타일은 "그 개념이 있는데 지금 0" 이라고 잘못 말한다.
       const ongoing = vouchers.reduce((s: number, p: { price?: number; group_buy_current?: number }) =>
         s + ((p.price ?? 0) * (p.group_buy_current ?? 0)), 0)
       const nextPayoutEstimate = Math.round(ongoing * 0.95)
       const pendingDisputes = Number(disputeRes.data?.data?.summary?.escalated ?? 0)
 
       setData({
-        active, closing_soon: closingSoon, at_risk: atRisk,
+        active,
         pending_disputes: pendingDisputes,
         next_payout_estimate: nextPayoutEstimate,
       })
@@ -90,17 +78,6 @@ export default function SellerGroupBuyOverview() {
           <p className="text-[10px] text-gray-500 mt-1">공구 active</p>
         </button>
 
-        <button
-          onClick={() => navigate('/seller/group-buy')}
-          className={`rounded-xl p-3 text-left transition-colors ${data.at_risk > 0 ? 'bg-red-50 hover:bg-red-100' : 'bg-amber-50 hover:bg-amber-100'}`}
-        >
-          <p className={`text-[10px] font-bold flex items-center gap-1 ${data.at_risk > 0 ? 'text-red-600' : 'text-amber-600'}`}>
-            {data.at_risk > 0 ? <AlertTriangle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-            {data.at_risk > 0 ? '미달성 위험' : '마감 임박'}
-          </p>
-          <p className={`text-2xl font-extrabold mt-0.5 ${data.at_risk > 0 ? 'text-red-700' : 'text-amber-700'}`}>{data.at_risk > 0 ? data.at_risk : data.closing_soon}</p>
-          <p className="text-[10px] text-gray-500 mt-1">{data.at_risk > 0 ? '24h+ 진행률 50%-' : '24시간 이내'}</p>
-        </button>
       </div>
 
       {data.next_payout_estimate !== null && data.next_payout_estimate > 0 && (
@@ -110,17 +87,6 @@ export default function SellerGroupBuyOverview() {
             <span className="font-extrabold text-emerald-600">₩{data.next_payout_estimate.toLocaleString('ko-KR')}</span>
           </div>
         </div>
-      )}
-
-      {/* 위험 액션 — at_risk 1개+ 일 때 push to share */}
-      {data.at_risk > 0 && (
-        <button
-          onClick={() => navigate('/seller/group-buy')}
-          className="w-full mt-3 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"
-        >
-          <AlertTriangle className="w-3.5 h-3.5" />
-          {data.at_risk}개 공구 — 지금 share 하면 살릴 수 있어요
-        </button>
       )}
 
       {/* 분쟁 알림 */}

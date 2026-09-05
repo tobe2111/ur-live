@@ -88,6 +88,17 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '떠난 페이지가 스크롤 저장을 0 으로 덮어쓴다',
+    file: 'src/components/ScrollToTop.tsx',
+    find: '      if (currentKeyRef.current !== keyAtAttach) return',
+    replace: '      if (false) return',
+    test: 'src/tests/unit/scroll-restoration.test.ts',
+    why:
+      '2026-09-01 대표 "어떠한 페이지든 무조건 맨 위로 나옴". 복원 코드는 두 달간 있었는데도 ' +
+      '동작하지 않았다 — 떠나는 순간 옛 키로 0 이 저장돼 "저장된 자리 없음" 폴백을 탔다. ' +
+      '귀속 검증에서 이 한 줄만이 되돌리면 깨지는 유일한 변경이었다(실측 3/3 → 0/3).',
+  },
+  {
     name: '🎫 이용권 딜 결제가 기본 ON 이 된다 (배포만으로 새는 문이 열린다)',
     file: 'src/shared/feature-flags.ts',
     find: 'export const VOUCHER_DEAL_PAYMENT_ENABLED = false',
@@ -7201,6 +7212,79 @@ canvas {
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
   },
   {
+    name: '📏 레인 하트비트가 회차별 읽기·쓰기를 다시 버린다(출처를 추측으로 돌아감)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'rr: this.meter.rr || 0, rw: this.meter.rw || 0,',
+    replace: 'rr: 0, rw: 0,',
+    test: 'src/tests/unit/ads-lane-meter-visibility.test.ts',
+    why:
+      '계측기는 원래부터 회차마다 돌았는데 공용 원장에 더하고 레인별 값은 버렸다. 그래서 "하루 ' +
+      '쓰기 37만·읽기 2억이 어느 레인 것인가"에 아무도 답을 못 했고, 그 자리를 추측으로 메우다 ' +
+      '두 번 틀렸다(#1333·#1348 — 둘 다 배포 후 감소 0). 상수를 박으면 그 상태로 되돌아간다.',
+  },
+  {
+    name: '🪞 재분류가 안 바뀐 판정도 다시 쓴다(업체 DB 쓰기 폭주 복귀)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: '    if (!changed) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/ads-reclassify-noop.test.ts',
+    why:
+      '이 랩은 규칙 버전이 오를 때마다 업체 41만 행을 다시 판정한다. 라이브 실측상 실제로 판정이 ' +
+      '바뀌는 비율은 0.14%(reg_seen 28,777 / reg_changed 40) — 이 분기가 죽으면 99.86% 가 다시 ' +
+      '아무것도 안 바뀐 재기록이 되고, 행마다 판정 5개 컬럼의 인덱스 다발까지 다시 쓴다.',
+  },
+  {
+    name: '🪞 재분류가 재검사 도장을 안 찍는다(그 행이 영영 미검사로 되돌아온다)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: 'if (r.classified_v !== CLASSIFY_RULES_VERSION) stampOnly.push(r.id)',
+    replace: '// (제거)',
+    test: 'src/tests/unit/ads-reclassify-noop.test.ts',
+    why:
+      '쓰기를 아끼려고 판정 컬럼을 건너뛰면서 도장까지 안 찍으면, 그 행은 매 회차 다시 읽히고 ' +
+      '영영 "미검사"로 남는다 — 쓰기를 아끼려다 읽기를 무한히 태우는 반대편 사고다.',
+  },
+  {
+    name: '🪞 재검사 도장이 행당 UPDATE 로 풀린다(묶음 해제 = 절약 소멸)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: 'UPDATE ad_company_leads SET classified_v = ? WHERE id IN',
+    replace: 'UPDATE ad_company_leads SET classified_v = ? WHERE id = ? AND id IN',
+    test: 'src/tests/unit/ads-reclassify-noop.test.ts',
+    why:
+      '도장을 100건씩 한 문장으로 묶어야 절약이 남는다. 행당 UPDATE 로 풀면 아끼려던 쓰기가 ' +
+      '고스란히 돌아온다(행 수는 같고 문장 수만 늘어난다).',
+  },
+  {
+    name: '🪞 백필이 거른 목록 대신 전체를 다시 쓴다(no-op 재기록 복귀)',
+    file: 'src/features/marketing/api/influencer-save.ts',
+    find: 'DB.batch(changed.map',
+    replace: 'DB.batch(existing.map',
+    test: 'src/tests/unit/ads-backfill-noop.test.ts',
+    why:
+      '거르는 함수를 불러 놓고 결과를 안 쓰면 절약이 정확히 0 이다 — 호출은 남아 있어 코드만 보면 ' +
+      '고쳐진 것처럼 보인다. 그러면 값이 안 바뀐 재조우마다 행+인덱스 13개를 다시 써서 하루 쓰기 예산을 ' +
+      '태우고, 차단기가 8~12시간 만에 걸려 남은 시간의 발굴이 통째로 멈춘다.',
+  },
+  {
+    name: '🪞 백필 조회 실패를 fail-closed 로 바꾼다(갱신이 조용히 멎는다)',
+    file: 'src/features/marketing/api/influencer-save.ts',
+    find: 'if (!res?.results) return existing',
+    replace: 'if (!res?.results) return []',
+    test: 'src/tests/unit/ads-backfill-noop.test.ts',
+    why:
+      '읽기가 실패했을 때 "모르니까 안 쓴다"로 기울면 구독자수·소개글이 영원히 수집 당시 값에 머문다 — ' +
+      '2026-07-23(F-32)이 고쳤던 그 스테일 사고가 에러 없이 돌아온다. 이 자리의 모름은 갱신이어야 한다.',
+  },
+  {
+    name: '🪞 백필 판정에서 소개글 규칙이 사라진다(재분류가 낡은 글로 판정)',
+    file: 'src/features/marketing/api/influencer-backfill-diff.ts',
+    find: "  if (inc.description !== '' && (cur.description ?? null) !== inc.description) return true",
+    replace: '  // (제거)',
+    test: 'src/tests/unit/ads-backfill-noop.test.ts',
+    why:
+      '이 순수함수는 backfillSql 의 SET 절 거울이라, 규칙 하나가 빠지면 그 컬럼만 조용히 갱신이 멎는다. ' +
+      '소개글은 카테고리 재분류의 입력이므로 낡으면 분류 전체가 낡는다 — 화면에는 아무 에러도 안 뜬다.',
+  },
+  {
     name: '🔁 재측정 필터가 배선에서 빠진다(쓰기 2배 초과로 복귀 · 에러 0)',
     file: 'src/features/marketing/api/influencer-performance.ts',
     find: '  rows = dueForRemeasure(rows, env)',
@@ -8301,6 +8385,27 @@ canvas {
     why:
       '조회 자체가 실패한 것(테이블 부재·일시 오류)을 403 자격 없음으로 말하면, 매장에 다녀온 사용자가 ' +
       '"다녀오라" 는 문구를 본다. 원인을 알 길이 없는 문구라 문의조차 못 한다 — 503 으로 갈라야 한다.',
+  },
+  {
+    name: '🎟️ 발송 실패한 교환권을 다시 "내 교환권" 으로 센다',
+    file: 'src/pages/user-profile/useMyCounts.ts',
+    find: 'vouchers.filter(v => isGifticonVoucher(v) && !isFailedGifticon(v)).length',
+    replace: 'vouchers.filter(isGifticonVoucher).length',
+    test: 'src/tests/unit/gifticon-failed-not-counted.test.tsx',
+    why:
+      '대표가 지목한 숫자가 정확히 이것이다 — 문자조차 못 받은 교환권을 "내 교환권 1" 로 말하면 거짓이다. ' +
+      'KT 병합이 발송 실패를 status:unused 로 눌러 담기 때문에 kt_status 를 안 보면 되살아난다. ' +
+      '⚠️ 이 항목은 되돌려-검증에서 **처음엔 통과했다** — 지갑 페이지만 테스트하고 이 카운트를 안 봤다.',
+  },
+  {
+    name: '🎟️ 교환권 지갑이 발송 실패분을 다시 사용가능·합계에 넣는다',
+    file: 'src/pages/MyGifticonsPage.tsx',
+    find: '  const owned = items.filter(v => !isFailedGifticon(v))',
+    replace: '  const owned = items.filter(() => true)',
+    test: 'src/tests/unit/gifticon-failed-not-counted.test.tsx',
+    why:
+      "실패분이 '사용 가능 N장' 과 상단 딜 합계에 섞이면 쓸 수 없는 것을 자산으로 표시하는 것이다. " +
+      '카드는 계속 보여야 하지만(문의 경로) 세면 안 된다.',
   },
   {
     name: '🎟️ 이용권 현황이 교환권까지 센다 (마이가 자기 자신과 모순)',

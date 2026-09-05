@@ -27,13 +27,13 @@ import { HOME_SHOWCASE_ENABLED, REGION_PAGES_ENABLED } from '@/shared/feature-fl
 const SORT_CHIPS = [
   { key: 'popular',  label: '인기순' },
   { key: 'newest',   label: '최신순' },
-  { key: 'deadline', label: '마감임박' },
   { key: 'discount', label: '할인율순' },
 ] as const
 type SortKey = typeof SORT_CHIPS[number]['key'] | 'near'
 
 const DEAL_CATEGORY_KEYS: DealCategory[] = ['all', 'meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher']
-const SORT_KEYS: SortKey[] = ['popular', 'newest', 'deadline', 'discount']
+// 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 'deadline' 제거 — 옛 `?sort=deadline` 링크는 'popular' 로 폴백된다.
+const SORT_KEYS: SortKey[] = ['popular', 'newest', 'discount']
 
 export default function PcHomePage() {
   // 🧭 2026-07-20 (카테고리 이동 전수조사): `/?category=` 딥링크로 초기 카테고리 지정 지원 —

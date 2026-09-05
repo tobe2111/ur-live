@@ -4819,7 +4819,8 @@
       "used": "사용 완료",
       "expired": "만료됨",
       "refunded": "환불됨",
-      "processing": "발송 중"
+      "processing": "발송 중",
+      "sendFailed": "발송 실패"
     },
     "verify": {
       "title": "교환권 인증",

@@ -37,7 +37,7 @@ export default function MobileHomePage() {
   //   서버 엔드포인트는 2026-07-07 부터 있었는데 **아무도 안 부르고 있었다**(useCurrentDong 주석).
   const dong = useCurrentDong(userLoc)
   const [category, setCategory] = useState<DealCategory>('all')
-  const [sort, setSort] = useState<'popular' | 'newest' | 'deadline' | 'discount' | 'near'>('popular')
+  const [sort, setSort] = useState<'popular' | 'newest' | 'discount' | 'near'>('popular')
 
   /**
    * 🔗 2026-08-27 (대표 신고 — "지금 인기 이용권의 더보기 클릭도 안되고"): 섹션 '더보기'는

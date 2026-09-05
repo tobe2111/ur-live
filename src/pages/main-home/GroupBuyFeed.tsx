@@ -6,7 +6,7 @@
  */
 
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
-import { SearchX, Flame, Timer, Tag, Clock, Store } from 'lucide-react'
+import { SearchX, Flame, Tag, Clock, Store } from 'lucide-react'
 import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
 import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -77,9 +77,11 @@ const CATEGORIES = DEAL_CATS
  *   전부 `SortMenu`). `sort-menu.tsx` 의 주석이 스스로 밝히듯 그 컴포넌트의 존재 이유가
  *   "네이티브 select 대체" 인데, 정작 홈이 예외로 남아 있었다.
  */
-const SORTS: Array<SortOptionItem<'popular' | 'deadline' | 'discount' | 'newest'>> = [
+// 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): '마감임박' 칩 제거. 이용권은 모여야 열리는 공동구매가
+//   아니라 즉시 구매라 마감이 개념으로 없다. 라이브 실측으로도 활성 338건 중 마감이 박힌 건 1건뿐이라
+//   그 칩은 사실상 아무 순서도 만들지 못했다. 구매 후 사용 기간은 `voucher_expiry`(별개 필드)가 맡는다.
+const SORTS: Array<SortOptionItem<'popular' | 'discount' | 'newest'>> = [
   { key: 'popular',  label: '인기순',   Icon: Flame },
-  { key: 'deadline', label: '마감임박', Icon: Timer },
   { key: 'discount', label: '할인율',   Icon: Tag },
   { key: 'newest',   label: '최신순',   Icon: Clock },
 ]
@@ -262,11 +264,6 @@ export default function GroupBuyFeed({
         return a.sort((x, y) => d2(x) - d2(y))
       }
       case 'popular': return a.sort((x, y) => soldOf(y) - soldOf(x))
-      case 'deadline': return a.sort((x, y) => {
-        const ax = x.expires_at ? parseUTCDate(x.expires_at).getTime() : Infinity
-        const bx = y.expires_at ? parseUTCDate(y.expires_at).getTime() : Infinity
-        return ax - bx
-      })
       case 'discount': return a.sort((x, y) => discountOf(y) - discountOf(x))
       case 'newest': return a.sort((x, y) => {
         const ax = x.created_at ? parseUTCDate(x.created_at).getTime() : 0

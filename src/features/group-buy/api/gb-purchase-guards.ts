@@ -270,16 +270,15 @@ export function groupBuyJoinBlockReason(product: {
   group_buy_status?: string | null
   voucher_expiry?: string | null
 }): string | null {
-  if (product.group_buy_deadline && new Date(product.group_buy_deadline) < new Date()) {
-    return '공동구매가 마감되었습니다'
-  }
+  // 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 마감으로 구매를 막지 않는다.
+  //   이용권은 모여야 열리는 공동구매가 아니라 즉시 구매다. 마감이 구매를 막으면 셀러가 옛날에
+  //   넣어 둔 날짜 하나로 상품이 **안내도 없이 조용히 안 팔린다** — 라이브에서 실제로 그럴 뻔했다
+  //   (유일한 실제 상품 2888 이 2026-09-10 부터 400 을 받을 예정이었다).
+  //   `voucher_expiry ≤ deadline` 가드도 함께 없앤다: 마감이 아무것도 안 막는데 그 둘의 선후로
+  //   발급을 막으면 근거가 사라진 규칙이 된다. 구매 후 사용 기간은 `voucher_expiry` 가 단독으로 맡는다.
+  //   ⚠️ 남기는 것: 상태(expired/cancelled) 차단 — 그건 마감이 아니라 **사람이 내린 종료**다.
   if (product.group_buy_status === 'expired' || product.group_buy_status === 'cancelled') {
     return '종료된 공동구매입니다'
-  }
-  if (product.voucher_expiry && product.group_buy_deadline) {
-    if (new Date(product.voucher_expiry) <= new Date(product.group_buy_deadline)) {
-      return '바우처 만료일이 공구 마감 전이라 발급할 수 없습니다. 셀러에게 문의해주세요.'
-    }
   }
   return null
 }
