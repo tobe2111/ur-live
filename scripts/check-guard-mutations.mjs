@@ -88,6 +88,66 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎟️ 손으로 친 바우처 코드가 다시 대소문자를 가린다 (폴백이 반쪽이 된다)',
+    file: 'src/components/voucher/VoucherScanner.tsx',
+    find: "  const v = (raw || '').replace(/\\s+/g, '').toUpperCase()",
+    replace: "  const v = (raw || '').trim()",
+    test: 'src/tests/unit/store-scan-manual-code.test.ts',
+    why:
+      '발급 코드는 전부 대문자인데 서버 조회는 BINARY 대조다(라이브 실측: 소문자 조회 0건). ' +
+      '폰 키보드는 소문자로 시작하므로, 정규화가 빠지면 유효한 바우처에 404 가 뜬다.',
+  },
+  {
+    name: '🎟️ 계산대 입력칸이 다시 소문자 키보드로 시작한다',
+    file: 'src/components/voucher/VoucherScanner.tsx',
+    find: '            autoCapitalize="characters"',
+    replace: '            data-removed-autocapitalize="characters"',
+    test: 'src/tests/unit/store-scan-manual-code.test.ts',
+    why:
+      '정규화가 있어도 이 속성이 빠지면 사장님이 친 글자와 화면 글자가 달라 보인다 — ' +
+      '"내가 맞게 쳤나"를 손님 앞에서 의심하게 만든다.',
+  },
+  {
+    name: '🎫 상단 띠 배너가 첫 섹션 **아래로** 내려간다',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: '          <HomeBannerStrip variant="strip" />\n          <HomeSections',
+    replace: '          <HomeSections',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '대표 지시는 *"인기 이용권 섹션 **위**에"* 다. 배선이 빠지면 에러 없이 그냥 안 뜬다 — ' +
+      '이 레포가 반복해 겪은 "조용한 부재" 클래스라 배선 자체를 고정한다.',
+  },
+  {
+    name: '🎫 배너 자리 규격이 다시 엇갈려 참조된다 (안내 문구만 거짓말)',
+    file: 'src/components/home/HomeBannerStrip.tsx',
+    find: 'const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.wide.requestWidth, quality: 76 }) : \'\'',
+    replace: 'const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.inline.requestWidth, quality: 76 }) : \'\'',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '엇갈려 참조해도 **사진 크기는 맞아서** 증상이 없다. 대신 어드민 안내가 반대로 나가 ' +
+      '가로 전체 배너에 "800px 권장"을 보여 준다 — 그대로 올리면 흐려진다.',
+  },
+  {
+    name: '🧭 홈 기본 정렬이 다시 인기순으로 굳는다 (위치를 알아도 무시)',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: "    () => (readCachedLoc() && !readHomeRegion().regionKey ? 'near' : 'popular'),",
+    replace: "    () => 'popular',",
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '대표 지시 *"기본 디폴트가 현재 위치에서 가까운 순대로"*. 정렬 기본값은 화면 어디에도 ' +
+      '"왜 이 순서인가"를 안 적으므로, 되돌아가도 아무도 눈치채지 못한다.',
+  },
+  {
+    name: '🧭 홈이 진입하자마자 위치 권한 팝업을 띄운다',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: '  const dong = useCurrentDong(userLoc)',
+    replace: '  const dong = useCurrentDong(userLoc); if (typeof navigator !== \'undefined\') navigator.geolocation?.getCurrentPosition(() => {})',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '"가까운 순"을 확실히 하려고 홈에서 측위를 시작하고 싶은 유혹이 생긴다. 홈 진입에 ' +
+      '권한 팝업을 띄우는 건 과하고, 거부당하면 어차피 캐시 경로로 돌아온다.',
+  },
+  {
     name: '🔎 인기 검색어가 없을 때 빈 섹션 제목만 남는다',
     file: 'src/pages/SearchPage.tsx',
     find: '{relatedKeywords.length > 0 && (',

@@ -2916,7 +2916,7 @@
       "cameraStarting": "カメラ起動中…",
       "processing": "処理中…",
       "noDetector": "このブラウザは自動認識非対応 — 下にコードを入力してください。",
-      "manualPlaceholder": "コードを直接入力",
+      "manualPlaceholder": "コードを直接入力 (UR-XXXX-XXXX)",
       "useBtn": "使用処理",
       "homeCardTitle": "店舗オーナー様 — お客様のバウチャーはここでスキャン",
       "homeCardDesc": "QRをかざすと1タップで使用処理 · マジックリンクはログイン不要",

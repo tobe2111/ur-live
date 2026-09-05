@@ -2235,7 +2235,7 @@
       "cameraStarting": "Démarrage de la caméra…",
       "processing": "Traitement…",
       "noDetector": "Ce navigateur ne détecte pas automatiquement — saisissez le code.",
-      "manualPlaceholder": "Saisir le code",
+      "manualPlaceholder": "Saisir le code (UR-XXXX-XXXX)",
       "useBtn": "Valider",
       "homeCardTitle": "Commerçants — scannez les bons clients ici",
       "homeCardDesc": "Visez le QR pour valider en un geste · Magic link sans connexion",

@@ -6,21 +6,12 @@
  * 이 화면의 정직함을 지탱한다 — 없는 급함이나 없는 인기를 지어내지 않는다.
  */
 
-/** 마지막 측위 캐시 키 — 지도 홈(`RestaurantMapPage`)이 쓰는 것과 **같은 키**여야 한다. */
-export const LAST_LOC_KEY = 'ur_last_loc_v1'
-
 /**
- * 위치는 **새로 묻지 않는다.** 지도 홈이 저장해 둔 마지막 측위만 읽는다 —
- * 상세를 열었다고 권한 팝업을 띄우는 건 과하고, 없으면 거리 자리를 그냥 비운다.
+ * 📍 위치 캐시는 **공용 SSOT**(`@/shared/utils/cached-loc`)로 옮겼다 — 홈이 기본 정렬을
+ *   '가까운 순'으로 바꾸며 이 파일을 import 하자 상세 모듈이 홈 첫 페인트 청크로 딸려 왔다
+ *   (`home-chunk-diet` 가드가 잡았다). 여기서는 재수출만 해 기존 호출부를 안 건드린다.
  */
-export function readCachedLoc(): { lat: number; lng: number } | null {
-  try {
-    const c = JSON.parse(localStorage.getItem(LAST_LOC_KEY) || 'null')
-    return c && Number.isFinite(c.lat) && Number.isFinite(c.lng) ? { lat: c.lat as number, lng: c.lng as number } : null
-  } catch {
-    return null
-  }
-}
+export { LAST_LOC_KEY, readCachedLoc } from '@/shared/utils/cached-loc'
 
 /**
  * 현위치 거리(km 문자열). 홈 카드(`GroupBuyFeedCard`)와 **같은 계산·같은 컷오프**다.

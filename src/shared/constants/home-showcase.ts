@@ -26,11 +26,12 @@
  * ⇒ 자리는 **사람이 고른 것만** 값이 된다. 기본값 없는 새 컬럼(`banner_slot`)이라
  *   기존 행은 NULL 로 남고, NULL 은 어디에도 안 뜬다. 되돌리는 데이터 수정이 필요 없다.
  */
-export const BANNER_SLOTS = ['hero', 'inline', 'wide'] as const
+export const BANNER_SLOTS = ['hero', 'strip', 'inline', 'wide'] as const
 export type BannerSlot = typeof BANNER_SLOTS[number]
 
 export const BANNER_SLOT_LABELS: Record<BannerSlot, string> = {
   hero: '히어로 (홈 최상단 · 배경 이미지/영상)',
+  strip: '상단 띠 (첫 섹션 위 · 가로 카드 1장)',
   inline: '중간 배너 (3열)',
   wide: '와이드 배너 (가로 전체)',
 }
@@ -83,7 +84,40 @@ export const BANNER_SLOT_SPECS: Record<BannerSlot, BannerSlotSpec> = {
       '좌우·상하 끝은 색면으로 페이드되므로 **가장자리에 글자·로고를 두지 말 것**.',
     ],
   },
+  /**
+   * 🎫 2026-09-05 (대표 "인기 이용권 섹션 위에 배너가 작게 있어야 할 것 같음" — 시안 안 2).
+   *   첫 섹션 **위** 가로 카드 1장. 사진은 왼쪽 56×56 정사각으로만 들어간다(어두운 오버레이 없음).
+   *   ⚠️ 다른 자리와 달리 **글자가 사진 위에 얹히지 않는다** — 흰 카드 위 잉크 글자다.
+   *     그래서 "가장자리에 글자 두지 말 것" 류의 주의가 여기엔 해당하지 않는다.
+   */
+  strip: {
+    requestWidth: 168,
+    recommendedWidth: 400,
+    recommendedHeight: 400,
+    renderedNote: '왼쪽 정사각 56 × 56 (레티나 3배 = 168px) · 카드 높이 76px',
+    notes: [
+      '정사각으로 잘리므로 **가운데에 피사체**가 오는 사진이 좋다.',
+      '사진을 안 올리면 브랜드 색면이 대신 들어간다 — 문구만으로도 켤 수 있다.',
+      '이 자리는 **한 장만** 쓴다(여러 개 올려도 첫 번째만 뜬다).',
+    ],
+  },
+  /**
+   * 🩸 2026-09-05: `inline`/`wide` 두 규격이 **서로 뒤바뀐 채** 있었다.
+   *   `inline`(3열)에 "가로 전체 · 104px · 1600px", `wide`(가로 전체)에 "3열 그리드 · 96px · 800px".
+   *   렌더는 이름을 **엇갈려**(inline 렌더가 `SPECS.wide` 를) 참조해 **사진 크기는 맞았고**,
+   *   그래서 몇 달간 아무 증상이 없었다 — 대신 **어드민 안내 문구만 반대로** 나갔다.
+   *   가로 전체 배너를 올리는 사람은 "800 × 400 권장"을 보고 그대로 올렸고, 실제 필요 폭은
+   *   1,600px 이라 그만큼 흐려졌다. 이 상수 파일이 애초에 막으려던 사고가 이 파일 안에서 났다.
+   *   ⇒ 몸통을 제자리로 돌리고 렌더도 **같은 이름**을 참조하게 했다(`home-showcase.test.ts` 가 고정).
+   */
   inline: {
+    requestWidth: 700,
+    recommendedWidth: 800,
+    recommendedHeight: 400,
+    renderedNote: '3열 그리드 · 최소 높이 96px · 어두운 그라디언트가 덮인다',
+    notes: ['카드가 작으므로 인물·글자보다 **면·색이 뚜렷한 사진**이 잘 보인다.'],
+  },
+  wide: {
     requestWidth: 1600,
     recommendedWidth: 1600,
     recommendedHeight: 540,
@@ -92,13 +126,6 @@ export const BANNER_SLOT_SPECS: Record<BannerSlot, BannerSlotSpec> = {
       '제목·설명·버튼이 사진 위에 얹히므로 **왼쪽 절반은 단순한 사진**이 좋다.',
       '검은 그라디언트(좌 60% → 우 25%)가 자동으로 덮여 글자 가독성은 확보된다.',
     ],
-  },
-  wide: {
-    requestWidth: 700,
-    recommendedWidth: 800,
-    recommendedHeight: 400,
-    renderedNote: '3열 그리드 · 최소 높이 96px · 어두운 그라디언트가 덮인다',
-    notes: ['카드가 작으므로 인물·글자보다 **면·색이 뚜렷한 사진**이 잘 보인다.'],
   },
 }
 

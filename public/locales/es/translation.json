@@ -2235,7 +2235,7 @@
       "cameraStarting": "Iniciando cámara…",
       "processing": "Procesando…",
       "noDetector": "Este navegador no detecta automáticamente — ingresa el código abajo.",
-      "manualPlaceholder": "Ingresar código",
+      "manualPlaceholder": "Ingresar código (UR-XXXX-XXXX)",
       "useBtn": "Canjear",
       "homeCardTitle": "Dueños — escanea los vales de clientes aquí",
       "homeCardDesc": "Apunta al QR y canjea en un toque · Magic link sin iniciar sesión",

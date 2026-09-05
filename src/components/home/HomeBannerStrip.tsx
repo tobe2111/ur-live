@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { cfImage } from '@/utils/cf-image'
+import { ChevronRight } from 'lucide-react'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useHomeBanners, type HomeBanner } from './useHomeBanners'
 import type { BannerSlot } from '@/shared/constants/home-showcase'
@@ -31,14 +32,54 @@ function Wrap({ href, className, children }: { href: string; className: string; 
     : <div className={className}>{children}</div>
 }
 
-export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSlot, 'inline' | 'wide'> }) {
+export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSlot, 'strip' | 'inline' | 'wide'> }) {
   const banners = useHomeBanners(variant)
   if (banners.length === 0) return null
+
+  /**
+   * 🎫 2026-09-05 (대표 "인기 이용권 섹션 위에 배너가 작게 있어야 할 것 같음" — 시안 안 2 확정):
+   *   첫 섹션 **위** 가로 카드. 다른 두 자리와 달리 **사진 위에 글자를 얹지 않는다** —
+   *   아래 딜 카드와 같은 흰 표면·같은 들림(`shadow-lift`)이라 화면이 한 벌로 읽힌다.
+   *   잉크 색면 띠(시안 안 1)는 흰 카드가 이어지는 그 자리에서 이물감이 있었다.
+   *
+   * 📐 **아래 여백만** — 이 자리는 카테고리 탭 바로 밑이라 위 여백을 주면 탭과 벌어진다.
+   *   그리고 배너가 없으면 통째로 null 이라 유령 여백이 안 남는다(다른 두 자리와 같은 규칙).
+   */
+  if (variant === 'strip') {
+    const b = banners[0]
+    const href = bannerHref(b)
+    const th = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 78 }) : ''
+    return (
+      <div className="pb-4">
+        <Wrap
+          href={href}
+          className="flex items-center gap-3 rounded-xl bg-white dark:bg-[#1D1F29] shadow-lift px-3.5 py-2.5 min-h-[76px] transition-transform active:scale-[.995]"
+        >
+          <div className="shrink-0 w-14 h-14 rounded-[9px] overflow-hidden bg-brand">
+            {th && (
+              <img
+                src={th} alt="" aria-hidden="true" width={56} height={56} loading="lazy"
+                className="w-full h-full object-cover"
+                onError={(e) => cfImageOnError(e.currentTarget, b.image_url)}
+              />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            {b.description && (
+              <span className="block text-[10.5px] font-extrabold text-brand-text truncate">{b.description}</span>
+            )}
+            <strong className="block text-[14px] font-extrabold tracking-tight text-gray-900 dark:text-white truncate">{b.title}</strong>
+          </div>
+          {href && <ChevronRight className="shrink-0 w-[18px] h-[18px] text-gray-300 dark:text-gray-600" aria-hidden="true" />}
+        </Wrap>
+      </div>
+    )
+  }
 
   if (variant === 'wide') {
     const b = banners[0]
     const href = bannerHref(b)
-    const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.inline.requestWidth, quality: 76 }) : ''
+    const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.wide.requestWidth, quality: 76 }) : ''
     return (
       <div className="pb-6">
         <Wrap
@@ -72,7 +113,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
       }`}>
         {banners.slice(0, 3).map(b => {
           const href = bannerHref(b)
-          const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.wide.requestWidth, quality: 76 }) : ''
+          const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.inline.requestWidth, quality: 76 }) : ''
           return (
             <Wrap
               key={b.id}
