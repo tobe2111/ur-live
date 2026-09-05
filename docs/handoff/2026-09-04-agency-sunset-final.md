@@ -295,3 +295,38 @@ main 머지(`ad4fa7a`) 를 하다가 발견했다. main 의 #1350(`dfb99a7`)이 
 1. 빈 매장 9곳 삭제 → 확인창 없이 통과해야 정상
 2. **5 UR Team** → 409(상품 9 · 연결된 유저) 뜬 뒤 cascade 재확인 → 삭제
 3. 판정: `SELECT COUNT(*) FROM sellers` **11 → 1**
+
+---
+
+## 🌇 2026-09-05 — 잔재 4차: **대외 소개서**가 없는 서비스를 팔고 있었다
+
+main 을 세 번째로 머지하다 소개서 생성기 출력에서 걸렸다: `에이전시: 9 pages, 29 endpoints` +
+`[추출실패—수동확인]`. 열어 보니 `docs/proposals/agency-brief.md` 가 그대로 있었다 —
+**디자인 AI 에게 넘길 슬라이드 덱의 원천 자료**이고, 머리말이 인용하는 SSOT 가 전부 삭제된 파일이다
+(`agency-store-intro-commission.ts` · `agency-settlements.routes.ts` · `pk-battles.routes.ts` …).
+
+**대표가 사업계획서 C-2 에서 지적한 것과 정확히 같은 클래스다** — 그때는 고쳤는데 이 덱은 놓쳤다.
+
+- `docs/proposals/agency-brief.md` **삭제** (5개 소개서 → 4개)
+- `generate-proposal-refs.mjs` — `agency` 도메인·라벨·`agencyRows()`·`features/agency/api` 스캔 제거.
+  **살아남은 것만 `linkshop` 으로 승계**: `/influencer` · `/seller/prospects` · `/i/offer` ·
+  `/seller/castings` · `/admin/influencer-{disputes,payouts}` · `/admin/castings` +
+  `/api/{influencer-discover,influencer-rankings,influencer-settlement,seller-marketing,admin-payouts,admin/influencer,admin/castings,seller/castings}`.
+  ⚠️ **죽은 경로는 목록에서 뺐다**(`/api/agency*`·`/api/pk*`·`/api/seller/promote-boosts` …) —
+  남겨 두면 커버리지 매트릭스가 **있지도 않은 기능을 셈한다.**
+  라벨도 `링크샵 / 큐레이터` → `유어샵 / 담기·소개`(명칭 SSOT).
+- `check-proposal-sync.sh` — 에이전시 트리거 블록 + 정책 fan-out 목록에서 제거.
+- 마스터 `00-service-overview-and-coverage.md` 머리말에 정정 note. **§E·§5 의 "5개 소개서" 서술은
+  2026-06-07 당시 기록이라 소급 수정하지 않는다**(이 레포의 audit log 관례와 동일).
+- 가드: `agency-sunset-final.test.ts` 에 "덱 부재 + 생성기에 agency 도메인 없음" 1건 + 주입 매니페스트
+  1건 — **되돌려-검증 빨간불 확인.**
+
+### 🧭 교훈 (3차와 같은 모양이다)
+3차는 *"읽는 쪽만 지우고 쓰는 쪽이 남았다"* 였고, 4차는 *"코드만 지우고 **그 코드를 설명하는 대외 자료**가
+남았다"* 다. **일몰 체크리스트에 `docs/proposals/**` 와 `docs/business/**` 를 넣을 것** — 생성기가
+`[추출실패]` 를 내고 있었는데도 나흘간 아무도 안 봤다.
+
+### 🔢 머지에서 또 걸린 것 — 시드 버전 충돌
+`GUIDE_SEED_VERSION` 을 **양쪽이 각자 25 를 잡았다**(내 브랜치 = 에이전시 가이드 삭제 / main #1358 =
+추천 적립 5%→2% 정정). 안 합치면 재시드가 **무음 스킵**된다 → **26 으로 올리고 두 사유를 모두 기록**했다.
+`check-seed-version-monotonic` 이 정확히 이걸 막으려고 있는 가드다(세션이 여럿이면 계속 난다).

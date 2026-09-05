@@ -88,6 +88,17 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🌇 소개서 생성기에 에이전시 도메인이 되살아난다(없는 덱의 숫자를 다시 뽑는다)',
+    file: 'scripts/generate-proposal-refs.mjs',
+    find: "const DOMAINS = ['wholesale', 'offline-groupbuy', 'online-listing', 'linkshop']",
+    replace: "const DOMAINS = ['wholesale', 'offline-groupbuy', 'online-listing', 'linkshop', 'agency']",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '에이전시 덱이 자랑하던 코드는 전부 삭제됐다. 도메인이 남으면 생성기가 그 덱의 숫자를 다시 ' +
+      '뽑으려다 "[추출실패—수동확인]" 을 내고, 커버리지 매트릭스가 **있지도 않은 기능**을 셈한다 — ' +
+      '대표가 사업계획서 C-2 에서 지적한 것과 같은 클래스(대외 자료가 없는 서비스를 판다).',
+  },
+  {
     name: '🌇 영입 사전등록이 다시 agencies 를 조회한다(초대 링크에 ?agency= 가 되살아난다)',
     file: 'src/features/seller-prospects/api/seller-prospects.routes.ts',
     find: "  const introducerType = 'influencer'",

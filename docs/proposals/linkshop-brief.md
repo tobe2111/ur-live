@@ -712,7 +712,7 @@
 
 ## 🤖 코드 자동 동기화 (수치 SSOT + 기능 인벤토리) — 자동 생성, 수동 수정 금지
 
-> 도메인: **링크샵 / 큐레이터**. 이 블록은 `scripts/generate-proposal-refs.mjs` 가 코드에서 추출해 자동 채웁니다.
+> 도메인: **유어샵 / 담기·소개**. 이 블록은 `scripts/generate-proposal-refs.mjs` 가 코드에서 추출해 자동 채웁니다.
 > 값이 코드와 다르면 코드를 수정하고 `npm run generate:proposal-refs` 실행. (수동 편집 금지 — 다음 커밋에 덮어써짐.)
 
 ### 핵심 수치 (자동 추출)
@@ -733,15 +733,25 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (13개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (23개)
 
+- `/admin/influencer-disputes`
+- `/admin/influencer-payouts`
 - `/host`
 - `/host/new`
+- `/i/offer/:token`
+- `/influencer`
+- `/influencer/analytics`
+- `/influencer/dashboard`
+- `/influencer/discover`
+- `/influencer/rankings`
+- `/influencer/settlement`
 - `/profile/:sellerId`
 - `/referral`
 - `/referral/:code`
 - `/s/:sellerId`
 - `/seller/mini-shop`
+- `/seller/prospects`
 - `/u/:handle`
 - `/u/:handle/p/:productId`
 - `/u/me`
@@ -749,8 +759,21 @@
 - `/u/me/earnings`
 - `/user/affiliate`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (59개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (88개)
 
+
+**/api/admin-payouts/disputes**
+- `GET /api/admin-payouts/disputes`
+- `POST /api/admin-payouts/disputes/:id/resolve`
+
+**/api/admin-payouts/payouts**
+- `GET /api/admin-payouts/payouts`
+- `POST /api/admin-payouts/payouts/process`
+
+**/api/admin/castings**
+- `GET /api/admin/castings/`
+- `POST /api/admin/castings/`
+- `PATCH /api/admin/castings/:id/complete`
 
 **/api/affiliate/funnel**
 - `GET /api/affiliate/funnel`
@@ -812,6 +835,33 @@
 **/api/donations/stream**
 - `GET /api/donations/stream/:streamId`
 
+**/api/influencer-rankings**
+- `GET /api/influencer-rankings/`
+
+**/api/influencer-settlement/analytics**
+- `GET /api/influencer-settlement/analytics`
+
+**/api/influencer-settlement/deal-for-seller**
+- `GET /api/influencer-settlement/deal-for-seller/:sellerId`
+
+**/api/influencer-settlement/deals**
+- `GET /api/influencer-settlement/deals`
+- `POST /api/influencer-settlement/deals/:id/submit-proof`
+- `POST /api/influencer-settlement/deals/propose`
+
+**/api/influencer-settlement/disputes**
+- `POST /api/influencer-settlement/disputes`
+
+**/api/influencer-settlement/me**
+- `GET /api/influencer-settlement/me`
+- `PUT /api/influencer-settlement/me`
+
+**/api/influencer-settlement/my-rank**
+- `GET /api/influencer-settlement/my-rank`
+
+**/api/influencer-settlement/my-stores**
+- `GET /api/influencer-settlement/my-stores`
+
 **/api/referral-tree/admin**
 - `GET /api/referral-tree/admin/withdrawals`
 - `PATCH /api/referral-tree/admin/withdrawals/:id/approve`
@@ -854,6 +904,27 @@
 **/api/referral/product**
 - `GET /api/referral/product/:productId`
 
+**/api/seller-marketing/block**
+- `POST /api/seller-marketing/block`
+
+**/api/seller-marketing/deals**
+- `GET /api/seller-marketing/deals`
+- `POST /api/seller-marketing/deals/:id/approve-proof`
+- `POST /api/seller-marketing/deals/:id/respond`
+- `POST /api/seller-marketing/deals/propose`
+
+**/api/seller-marketing/me**
+- `GET /api/seller-marketing/me`
+
+**/api/seller-marketing/realtime-stats**
+- `GET /api/seller-marketing/realtime-stats`
+
+**/api/seller-marketing/toggle**
+- `POST /api/seller-marketing/toggle`
+
+**/api/seller-marketing/unblock**
+- `POST /api/seller-marketing/unblock`
+
 **/api/seller-public/:sellerId**
 - `DELETE /api/seller-public/:sellerId/follow`
 - `POST /api/seller-public/:sellerId/follow`
@@ -871,6 +942,10 @@
 **/api/seller-public/seller**
 - `GET /api/seller-public/seller/analytics`
 
+**/api/seller/castings**
+- `GET /api/seller/castings/`
+- `POST /api/seller/castings/:id/respond`
+
 **/api/seller/donations**
 - `GET /api/seller/donations`
 - `GET /api/seller/donations/settlements`
@@ -878,7 +953,7 @@
 - `GET /api/seller/donations/summary`
 
 
-> 마지막 생성: 2026-09-05T16:58:37.961Z
+> 마지막 생성: 2026-09-05T18:37:49.399Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

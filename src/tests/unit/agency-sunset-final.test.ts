@@ -126,6 +126,15 @@ describe('② 매장을 에이전시에 붙일 수 있는 문이 없다 (2026-09
     expect(src).not.toMatch(/qs\.set\('agency'/)
   })
 
+  it('대외 소개서에서 에이전시 덱이 사라졌다', () => {
+    // 🩸 이 덱은 **없는 서비스를 파는 자료**였다 — 자랑하던 코드(에이전시 대시보드·정산·캐스팅·
+    //   PK·부스트)가 전부 삭제된 뒤에도 남아 있었고, 소개서 생성기는 그 덱의 숫자를 계속 뽑으려다
+    //   "[추출실패—수동확인]" 을 내고 있었다. 대표가 사업계획서 C-2 에서 지적한 것과 같은 클래스다.
+    expect(existsSync('docs/proposals/agency-brief.md')).toBe(false)
+    const gen = codeOnly(readFileSync('scripts/generate-proposal-refs.mjs', 'utf-8'))
+    expect(gen, '생성기에 agency 도메인이 남으면 없는 덱의 숫자를 다시 뽑는다').not.toMatch(/'agency'/)
+  })
+
   it('어드민 에이전시 재배정 라우트가 없다', () => {
     const src = codeOnly(readFileSync('src/features/admin/api/admin-sellers.routes.ts', 'utf-8'))
     expect(src).not.toMatch(/reassign-agency/)

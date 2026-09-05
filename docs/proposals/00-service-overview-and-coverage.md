@@ -1,8 +1,14 @@
 # 유어딜 / 유통스타트 — 전체 서비스 지도 & 소개서 커버리지 검증 (MECE)
 
-> **이 문서의 목적**: **5개 대표 소개서**(`wholesale-mall-brief` 도매몰 / `offline-groupbuy-brief` 오프라인 공구 / `online-listing-proposal-brief` 온라인 입점 / `linkshop-brief` 링크샵 / `agency-brief` 에이전시)가 **유어딜/유통스타트 서비스 전체를 빠짐없이(MECE) 커버하는지** 검증하기 위한 마스터 인벤토리 + 커버리지 매트릭스.
+> **이 문서의 목적**: **4개 대표 소개서**(`wholesale-mall-brief` 도매몰 / `offline-groupbuy-brief` 오프라인 공구 / `online-listing-proposal-brief` 온라인 입점 / `linkshop-brief` 유어샵)가 **유어딜/유통스타트 서비스 전체를 빠짐없이(MECE) 커버하는지** 검증하기 위한 마스터 인벤토리 + 커버리지 매트릭스.
 >
-> ✅ **최종 구조 = 5개 소개서** (2026-06-07 사용자 확정 — 아래 §5 최종 결정 참조). 라이브커머스는 온라인입점·링크샵에 1급 흡수, 에이전시는 전용 덱 신설.
+> 🌇 **2026-09-05 정정 — 소개서는 4개다.** 대표 지시로 **에이전시가 통째로 일몰**되면서
+> (`docs/design/store-operator-model.md §7`) `agency-brief.md` 를 **삭제**했다. 그 덱이 자랑하던
+> 코드(에이전시 대시보드·정산·캐스팅·PK·부스트)가 하나도 남아 있지 않아, 두면 **없는 서비스를 파는
+> 대외 자료**가 된다. 살아남은 영입(소개)·크리에이터 정산 경로는 **유어샵 덱**이 승계했다.
+>
+> ⚠️ **아래 §E 와 §5 의 "5개 소개서" 서술은 2026-06-07 당시의 기록**이다(소급 수정하지 않는다).
+> 현재 구조를 알고 싶으면 이 머리말과 자동 생성 인벤토리를 볼 것.
 > **작성일**: 2026-06-07 · **근거**: 코드 audit (`src/App.tsx`, `src/routes/*.tsx`, `src/features/*/api/*.routes.ts`, `src/shared/seller-roles.ts`, `src/shared/constants/policy.ts`, `CLAUDE.md`, `docs/design/*`).
 > **원칙**: 코드/설정에서 추출. 운영 정책으로만 정해지는 값은 `[확인 필요]`.
 > ⚠️ 이 파일은 신규 생성. 다른 4개 소개서 파일은 동시 편집 중이므로 본 문서에서는 수정하지 않음.
@@ -286,9 +292,8 @@
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
 | 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 69 | 272 |
-| 링크샵 / 큐레이터 | `linkshop-brief.md` | 13 | 59 |
-| 에이전시 | `agency-brief.md` | 9 | 29 |
-| **합계** | — | **163** | **459** |
+| 유어샵 / 담기·소개 | `linkshop-brief.md` | 23 | 88 |
+| **합계** | — | **164** | **459** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -298,11 +303,11 @@
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
 | 전체 | 360 | 1104 |
-| 도메인 버킷 (5개 소개서) | 163 | 459 |
+| 도메인 버킷 (5개 소개서) | 164 | 459 |
 | 공통/인프라 (의도적 제외) | 163 | 468 |
-| **미커버 (점검 필요)** | **34** | **177** |
+| **미커버 (점검 필요)** | **33** | **177** |
 
-⚠️ **미커버 211건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 210건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -328,7 +333,6 @@
 - `/district/:slug`
 - `/experience`
 - `/gb-market`
-- `/i/offer/:token`
 - `/local/:code`
 - `/map`
 - `/my-gifticons`
@@ -576,7 +580,7 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-#### 링크샵 / 큐레이터
+#### 유어샵 / 담기·소개
 
 ### 핵심 수치 (자동 추출)
 
@@ -592,20 +596,6 @@
 | 큐레이터→셀러 승급 권유 임계 (누적 정산) | 500,000원 | `src/shared/constants/policy.ts:WITHDRAWAL_DEFAULTS.SELLER_UPGRADE_THRESHOLD` |
 | 최소 출금 금액 | 10,000원 | `src/shared/constants/policy.ts:WITHDRAWAL_DEFAULTS.MIN_AMOUNT` |
 | 최소 commission 출금 | 10,000원 | `src/shared/constants/policy.ts:REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL` |
-| 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
-| 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
-| 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
-
-#### 에이전시
-
-### 핵심 수치 (자동 추출)
-
-| 항목 | 값 | 출처 (파일:심볼) |
-|---|---|---|
-| 에이전시 입점 분배 (platform_fee 중) | [추출실패—수동확인] | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_SHARE_PCT` |
-| 에이전시 본인 commission (매출 기준) | [추출실패—수동확인] | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_OWN_RATE` |
-| 인플루언서 입점 분배 (platform_fee 중) | 20% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.INFLUENCER_INTRO_SHARE_PCT` |
-| 크리에이터 매장 영입 commission (default) | [추출실패—수동확인] | `src/worker/utils/influencer-store-intro-commission.ts:DEFAULT_STORE_INTRO_PCT` |
 | 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
@@ -1503,17 +1493,27 @@
 - `GET /api/youtube/shorts/sync`
 
 
-#### 링크샵 / 큐레이터
+#### 유어샵 / 담기·소개
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (13개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (23개)
 
+- `/admin/influencer-disputes`
+- `/admin/influencer-payouts`
 - `/host`
 - `/host/new`
+- `/i/offer/:token`
+- `/influencer`
+- `/influencer/analytics`
+- `/influencer/dashboard`
+- `/influencer/discover`
+- `/influencer/rankings`
+- `/influencer/settlement`
 - `/profile/:sellerId`
 - `/referral`
 - `/referral/:code`
 - `/s/:sellerId`
 - `/seller/mini-shop`
+- `/seller/prospects`
 - `/u/:handle`
 - `/u/:handle/p/:productId`
 - `/u/me`
@@ -1521,8 +1521,21 @@
 - `/u/me/earnings`
 - `/user/affiliate`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (59개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (88개)
 
+
+**/api/admin-payouts/disputes**
+- `GET /api/admin-payouts/disputes`
+- `POST /api/admin-payouts/disputes/:id/resolve`
+
+**/api/admin-payouts/payouts**
+- `GET /api/admin-payouts/payouts`
+- `POST /api/admin-payouts/payouts/process`
+
+**/api/admin/castings**
+- `GET /api/admin/castings/`
+- `POST /api/admin/castings/`
+- `PATCH /api/admin/castings/:id/complete`
 
 **/api/affiliate/funnel**
 - `GET /api/affiliate/funnel`
@@ -1584,6 +1597,33 @@
 **/api/donations/stream**
 - `GET /api/donations/stream/:streamId`
 
+**/api/influencer-rankings**
+- `GET /api/influencer-rankings/`
+
+**/api/influencer-settlement/analytics**
+- `GET /api/influencer-settlement/analytics`
+
+**/api/influencer-settlement/deal-for-seller**
+- `GET /api/influencer-settlement/deal-for-seller/:sellerId`
+
+**/api/influencer-settlement/deals**
+- `GET /api/influencer-settlement/deals`
+- `POST /api/influencer-settlement/deals/:id/submit-proof`
+- `POST /api/influencer-settlement/deals/propose`
+
+**/api/influencer-settlement/disputes**
+- `POST /api/influencer-settlement/disputes`
+
+**/api/influencer-settlement/me**
+- `GET /api/influencer-settlement/me`
+- `PUT /api/influencer-settlement/me`
+
+**/api/influencer-settlement/my-rank**
+- `GET /api/influencer-settlement/my-rank`
+
+**/api/influencer-settlement/my-stores**
+- `GET /api/influencer-settlement/my-stores`
+
 **/api/referral-tree/admin**
 - `GET /api/referral-tree/admin/withdrawals`
 - `PATCH /api/referral-tree/admin/withdrawals/:id/approve`
@@ -1626,87 +1666,6 @@
 **/api/referral/product**
 - `GET /api/referral/product/:productId`
 
-**/api/seller-public/:sellerId**
-- `DELETE /api/seller-public/:sellerId/follow`
-- `POST /api/seller-public/:sellerId/follow`
-- `GET /api/seller-public/:sellerId/follow/preferences`
-- `PATCH /api/seller-public/:sellerId/follow/preferences`
-- `GET /api/seller-public/:sellerId/is-following`
-- `GET /api/seller-public/:sellerId/upcoming`
-
-**/api/seller-public/my**
-- `GET /api/seller-public/my/follows`
-
-**/api/seller-public/notify-followers**
-- `POST /api/seller-public/notify-followers`
-
-**/api/seller-public/seller**
-- `GET /api/seller-public/seller/analytics`
-
-**/api/seller/donations**
-- `GET /api/seller/donations`
-- `GET /api/seller/donations/settlements`
-- `POST /api/seller/donations/settlements`
-- `GET /api/seller/donations/summary`
-
-
-#### 에이전시
-
-### 도메인 코드 인벤토리 (자동) — 페이지 (9개)
-
-- `/admin/influencer-disputes`
-- `/admin/influencer-payouts`
-- `/influencer`
-- `/influencer/analytics`
-- `/influencer/dashboard`
-- `/influencer/discover`
-- `/influencer/rankings`
-- `/influencer/settlement`
-- `/seller/prospects`
-
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (29개)
-
-
-**/api/admin-payouts/disputes**
-- `GET /api/admin-payouts/disputes`
-- `POST /api/admin-payouts/disputes/:id/resolve`
-
-**/api/admin-payouts/payouts**
-- `GET /api/admin-payouts/payouts`
-- `POST /api/admin-payouts/payouts/process`
-
-**/api/admin/castings**
-- `GET /api/admin/castings/`
-- `POST /api/admin/castings/`
-- `PATCH /api/admin/castings/:id/complete`
-
-**/api/influencer-rankings**
-- `GET /api/influencer-rankings/`
-
-**/api/influencer-settlement/analytics**
-- `GET /api/influencer-settlement/analytics`
-
-**/api/influencer-settlement/deal-for-seller**
-- `GET /api/influencer-settlement/deal-for-seller/:sellerId`
-
-**/api/influencer-settlement/deals**
-- `GET /api/influencer-settlement/deals`
-- `POST /api/influencer-settlement/deals/:id/submit-proof`
-- `POST /api/influencer-settlement/deals/propose`
-
-**/api/influencer-settlement/disputes**
-- `POST /api/influencer-settlement/disputes`
-
-**/api/influencer-settlement/me**
-- `GET /api/influencer-settlement/me`
-- `PUT /api/influencer-settlement/me`
-
-**/api/influencer-settlement/my-rank**
-- `GET /api/influencer-settlement/my-rank`
-
-**/api/influencer-settlement/my-stores**
-- `GET /api/influencer-settlement/my-stores`
-
 **/api/seller-marketing/block**
 - `POST /api/seller-marketing/block`
 
@@ -1728,13 +1687,36 @@
 **/api/seller-marketing/unblock**
 - `POST /api/seller-marketing/unblock`
 
+**/api/seller-public/:sellerId**
+- `DELETE /api/seller-public/:sellerId/follow`
+- `POST /api/seller-public/:sellerId/follow`
+- `GET /api/seller-public/:sellerId/follow/preferences`
+- `PATCH /api/seller-public/:sellerId/follow/preferences`
+- `GET /api/seller-public/:sellerId/is-following`
+- `GET /api/seller-public/:sellerId/upcoming`
+
+**/api/seller-public/my**
+- `GET /api/seller-public/my/follows`
+
+**/api/seller-public/notify-followers**
+- `POST /api/seller-public/notify-followers`
+
+**/api/seller-public/seller**
+- `GET /api/seller-public/seller/analytics`
+
 **/api/seller/castings**
 - `GET /api/seller/castings/`
 - `POST /api/seller/castings/:id/respond`
 
+**/api/seller/donations**
+- `GET /api/seller/donations`
+- `GET /api/seller/donations/settlements`
+- `POST /api/seller/donations/settlements`
+- `GET /api/seller/donations/summary`
 
 
-> 마지막 생성: 2026-09-05T18:27:49.373Z
+
+> 마지막 생성: 2026-09-05T18:37:49.402Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
