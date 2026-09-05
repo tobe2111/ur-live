@@ -88,6 +88,66 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🌇 영입 사전등록이 다시 agencies 를 조회한다(초대 링크에 ?agency= 가 되살아난다)',
+    file: 'src/features/seller-prospects/api/seller-prospects.routes.ts',
+    find: "  const introducerType = 'influencer'",
+    replace: "  const introducerType = 'influencer'; await c.env.DB.prepare('SELECT id FROM agencies WHERE id = ?')",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '1차 일몰은 읽는 쪽(대시보드·커미션)만 지웠고 **쓰는 쪽**이 살아 있었다. 이 라우트가 발급하던 ' +
+      '`?agency=` 초대 링크가 가입 폼의 유령 입력칸을 채워 요금(직접 10% / 중개 5%)을 갈랐다.',
+  },
+  {
+    name: '🌇 어드민이 매장을 다시 에이전시에 붙일 수 있다(화면 없는 쓰기 경로)',
+    file: 'src/features/admin/api/admin-sellers/reassign-introducer.ts',
+    find: "    existsTable: 'users',",
+    replace: "    existsTable: 'agencies',",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '어드민 UI 는 reassign-influencer 하나만 부르는데 agency 쪽 라우트가 화면 없이 살아 있었다. ' +
+      '일몰된 개념에 매장을 붙일 수 있는 문은 남기지 않는다(2026-09-05 대표 "잔재 다 삭제").',
+  },
+  {
+    name: '🏪 본인 가입이 채널을 안 찍는다(직접 입점 사장님이 조용히 5% 로 돌아간다)',
+    file: 'src/features/seller/api/seller-registration.routes.ts',
+    find: '    await stampSignupStoreChannel(db, newSellerId);',
+    replace: '    // (제거)',
+    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
+    why:
+      '채널이 비면 channelPlatformRate 가 undefined → 중개(5%) 폴백이다. 라이브 실측상 이 문으로 온 ' +
+      '매장 8곳 중 7곳이 미지정이었고, 에러도 경고도 없이 절반 요율로 걷혔다.',
+  },
+  {
+    name: '🏪 본인 가입 문이 중개(5%)로 찍힌다',
+    file: 'src/features/seller/api/seller-signup-meta.ts',
+    find: "  return 'direct'",
+    replace: "  return 'brokered'",
+    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
+    why:
+      '이 문은 카카오 user 세션 전용 — 로그인한 본인이 자기 가게를 올린다. 여기서 brokered 가 나오면 ' +
+      '중개사가 없는 매장까지 절반 요율로 걷힌다(에이전시 일몰 후 brokered 의 출처는 /store/new 뿐).',
+  },
+  {
+    name: '🏪 매장 등록 모달이 "누가 운영하나요?" 없이 제출된다',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '    if (!picked || !channel || !managerOk || !certOk || submitting) return',
+    replace: '    if (!picked || !managerOk || !certOk || submitting) return',
+    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
+    why:
+      '에이전시 일몰 후 brokered 를 만들 수 있는 문은 여기 하나다. 이 강제가 풀리면 채널 미지정 ' +
+      '매장이 다시 생기고, 미지정은 조용히 5% 로 떨어진다.',
+  },
+  {
+    name: '🌇 가입 퍼널에 에이전시 초대 코드가 되살아난다(아무도 못 켜는 스위치가 요금을 가른다)',
+    file: 'src/features/seller/api/seller-registration.routes.ts',
+    find: "    const hasInfluencerCode = !!(influencer_intro_code && influencer_intro_code.trim())",
+    replace: "    const hasInfluencerCode = !!(influencer_intro_code && influencer_intro_code.trim()); const agency_intro_code = ''",
+    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
+    why:
+      '2026-09-05 대표 "에이전시 남은 잔재 다 삭제". 발급 주체(대시보드·초대 링크)가 사라졌는데 ' +
+      '읽는 쪽만 남으면, 아무도 채울 수 없는 칸이 직접 10% / 중개 5% 를 계속 가르게 된다.',
+  },
+  {
     name: '떠난 페이지가 스크롤 저장을 0 으로 덮어쓴다',
     file: 'src/components/ScrollToTop.tsx',
     find: '      if (currentKeyRef.current !== keyAtAttach) return',
@@ -7689,7 +7749,7 @@ canvas {
       '**에러 없이 엉뚱한 사람에게 2% 가 간다** — 가장 조용한 머니 사고다.',
   },
   {
-    name: '🔀 라우트가 반대편 종류로 위임한다 (사람↔에이전시 뒤바뀜)',
+    name: '🔀 재배정 라우트가 영입자(users.id) 아닌 종류로 위임한다',
     file: 'src/features/admin/api/admin-sellers.routes.ts',
     find: "reassignIntroducer(c, 'influencer', safeAdminError)",
     replace: "reassignIntroducer(c, 'agency', safeAdminError)",

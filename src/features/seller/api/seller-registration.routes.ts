@@ -188,16 +188,18 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       try {
         const { matchProspectOnSignup } = await import('../../seller-prospects/api/seller-prospects.routes')
         const matched = await matchProspectOnSignup(db, Number(result.meta.last_row_id), phone, email)
-        if (matched) {
-          const col = matched.introducerType === 'agency' ? 'introduced_by_agency_id' : 'introduced_by_influencer_id'
-          // 🛡️ 2026-05-28: 영입 commission 기본 기간 차등 (docs/SERVICE_MODEL.md §3).
-          //   에이전시 = 장기(12개월), 크리에이터(유저) = 6개월 → 과도한 영입 경쟁 완화.
+        // 🌇 2026-09-05 에이전시 일몰 — 귀속 대상은 **영입자(users.id)** 하나뿐이다.
+        //   옛 코드는 prospect 의 introducer_type 이 'agency' 면 `introduced_by_agency_id` 에 썼는데,
+        //   그 값을 읽어 돈을 주던 코드(agency-store-intro-commission)가 통째로 삭제됐다.
+        //   지금 쓰면 **아무도 안 읽는 칸에 적고 영입자 귀속은 놓치는** 최악이 된다 → 건너뛴다.
+        //   (라이브 실측: introduced_by_agency_id 0명 · agency 타입 prospect 는 발급 경로 자체가 없다.)
+        if (matched && matched.introducerType !== 'agency') {
+          // 🛡️ 2026-05-28: 영입 commission 기본 기간 (docs/SERVICE_MODEL.md §3) — 크리에이터 6개월.
           //   어드민이 매장별로 referral_bonus_until 재설정 가능 (commission-settings).
-          const months = matched.introducerType === 'agency' ? 12 : 6
           await db.prepare(
-            `UPDATE sellers SET ${col} = ?, introduced_at = datetime('now'),
-                    referral_bonus_until = datetime('now', '+' || ? || ' months') WHERE id = ?`
-          ).bind(matched.introducerId, months, Number(result.meta.last_row_id)).run().catch(() => null)
+            `UPDATE sellers SET introduced_by_influencer_id = ?, introduced_at = datetime('now'),
+                    referral_bonus_until = datetime('now', '+6 months') WHERE id = ?`
+          ).bind(matched.introducerId, Number(result.meta.last_row_id)).run().catch(() => null)
         }
       } catch { /* graceful */ }
     }
@@ -361,15 +363,14 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       seller_type: 'influencer' | 'store_owner' | 'both';
       youtube_email?: string;
       description?: string;
-      // 🛡️ 2026-05-20: 에이전시 입점 영업 — 가게 사장님이 추천코드 입력 시 자동 매칭.
-      agency_intro_code?: string;
       // 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 유치 — 사장님 가입 시 인플루언서 추천코드 입력.
+      //   🌇 2026-09-05 에이전시 일몰 — `agency_intro_code` 삭제(발급 주체·대시보드가 없어졌다).
       influencer_intro_code?: string;
       // 📜 2026-07-05: 판매자 이용약관 v1.0 동의 (가입 화면 필수 체크)
       terms_agreed_version?: string;
     }>();
 
-    const { business_name, business_number, phone, seller_type, youtube_email, description, agency_intro_code, influencer_intro_code } = body;
+    const { business_name, business_number, phone, seller_type, youtube_email, description, influencer_intro_code } = body;
 
     if (!business_name || !business_number || !phone) {
       return c.json({ success: false, error: '사업자명, 사업자번호, 연락처는 필수입니다' }, 400);
@@ -422,31 +423,11 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     const tempPasswordStr = Array.from(tempPassword).map(b => b.toString(16).padStart(2, '0')).join('');
     const passwordHash = await hashPassword(tempPasswordStr);
 
-    // 🛡️ 2026-05-20: 에이전시 추천 코드 → agency_id 매칭.
-    //   가게 사장님 (store_owner) 만 적용 — 인플루언서는 에이전시 매니지먼트 기존 흐름 유지.
-    //   잘못된 코드면 silent (가입은 진행, introduced_by_agency_id 만 null).
-    // 🛡️ 2026-05-21 Phase D-6 영구 정책 (docs/AGENCY_POLICY.md):
-    //   "한 가게 = 1개 lock-in only" — agency_intro_code 와 influencer_intro_code 동시 사용 금지.
-    //   둘 다 입력 시 400 에러 (사장님에게 선택 요구).
-    //   영구성: 양쪽 commission 분배 충돌 / 플랫폼 수익 잠식 방지.
-    const hasAgencyCode = !!(agency_intro_code && agency_intro_code.trim())
+    // 🌇 2026-09-05 에이전시 일몰 — 이 문의 추천코드는 **영입자 코드 하나뿐**이다.
+    //   옛 코드는 `agency_intro_code` 로 `agencies` 를 조회해 `introduced_by_agency_id` 를 채우고
+    //   "한 가게 = 1개 lock-in" 이라며 둘 중 하나만 고르게 했는데, 에이전시 쪽 발급 주체(대시보드·
+    //   초대 링크)가 전부 삭제돼 **고를 수 있는 코드가 하나로 줄었다** → 상호배제 자체가 사라진다.
     const hasInfluencerCode = !!(influencer_intro_code && influencer_intro_code.trim())
-    if (hasAgencyCode && hasInfluencerCode) {
-      return c.json({
-        success: false,
-        error: '에이전시 코드와 인플루언서 코드는 동시에 입력할 수 없습니다. 둘 중 하나만 선택하세요.',
-        code: 'CONFLICTING_INTRO_CODES',
-      }, 400)
-    }
-
-    let introducedAgencyId: number | null = null;
-    if (resolvedSellerType === 'store_owner' && hasAgencyCode) {
-      const code = agency_intro_code!.trim().toUpperCase().slice(0, 12);
-      const agencyRow = await db.prepare(
-        `SELECT id FROM agencies WHERE UPPER(intro_code) = ? AND status = 'active' LIMIT 1`
-      ).bind(code).first<{ id: number }>().catch(() => null);
-      if (agencyRow?.id) introducedAgencyId = agencyRow.id;
-    }
 
     // 🛡️ Phase D-6: 인플루언서 입점 유치 코드 매칭 (영구 commission lock-in).
     let introducedInfluencerId: number | null = null;
@@ -472,16 +453,15 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
         INSERT INTO sellers (
           username, email, password_hash, name, business_name, business_number,
           phone, description, youtube_email, seller_type, linked_user_id,
-          introduced_by_agency_id, introduced_by_influencer_id, introduced_at,
-          agency_intro_code, influencer_intro_code, intro_code,
+          introduced_by_influencer_id, introduced_at,
+          influencer_intro_code, intro_code,
           status, commission_rate, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
       `).bind(
         username, sellerEmail, passwordHash, userName, business_name, business_number,
         phone, description || null, youtube_email || null, resolvedSellerType, userId,
-        introducedAgencyId, introducedInfluencerId,
-        (introducedAgencyId || introducedInfluencerId) ? new Date().toISOString() : null,
-        introducedAgencyId ? (agency_intro_code || '').trim().toUpperCase().slice(0, 12) : null,
+        introducedInfluencerId,
+        introducedInfluencerId ? new Date().toISOString() : null,
         introducedInfluencerId ? (influencer_intro_code || '').trim().toUpperCase().slice(0, 12) : null,
         ownIntroCode
       ).run();
@@ -492,13 +472,7 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       throw insertErr;
     }
 
-    // 에이전시 dashboard 알림 — 입점 통보
-    if (introducedAgencyId) {
-      const { createDashboardNotification: notify2 } = await import('../../notifications/api/dashboard-notifications.routes');
-      notify2(db, 'agency', String(introducedAgencyId), 'store_introduced',
-        '새 입점 가게', `${business_name} (${userName}) 이 추천코드로 가입`,
-        '/agency/introduced-stores').catch(swallow('seller:api:agency-intro-notify'));
-    }
+    // 🌇 2026-09-05 에이전시 일몰 — 입점 통보를 받던 `/agency/introduced-stores` 대시보드가 없어졌다.
 
     if (!result.success) {
       throw new Error('Failed to create seller account');
@@ -522,8 +496,9 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     // 🏪 2026-09-04 (대표 "가입할 때 선택을 하잖아 — 그때 정해지면 되는거 아니야?"):
     //   매장 채널을 **가입 시점에 확정**한다. 이 폼엔 `/store/new` 의 "누가 운영하나요?" 질문이
     //   없어 그동안 미지정으로 남았고, 미지정은 중개(5%)로 떨어져 **직접 입점 사장님이 영원히 5%**
-    //   였다. 추측하지 않는다 — 에이전시 초대 코드가 붙었으면 중개, 아니면 직접(seller-signup-meta.ts).
-    await stampSignupStoreChannel(db, newSellerId, introducedAgencyId);
+    //   였다. 🌇 2026-09-05 에이전시 일몰 후 이 문은 **언제나 직접**이다 — 카카오 user 세션 전용이라
+    //   로그인한 본인이 자기 가게를 올리는 자리다(중개 매장은 `/store/new` 에서 채널을 골라 만든다).
+    await stampSignupStoreChannel(db, newSellerId);
 
     const { createDashboardNotification: notify } = await import('../../notifications/api/dashboard-notifications.routes');
     // 🛡️ 2026-06-12 (감사 1단계): deep-link 교정 — /admin/sellers 는 클라 라우트에 없음 → 승인 페이지로.

@@ -739,11 +739,7 @@ adminSellersRoutes.post('/sellers/:id/notify-magic-link', cors(), async (c) => {
   }
 });
 
-// 🛡️ 2026-05-21: 에이전시 lock-in 재배정 — docs/AGENCY_POLICY.md 룰.
-//   sellers.introduced_by_agency_id 는 가입 시 1회 lock-in. 변경은 이 endpoint 만 허용.
-//   감사 로그 + 강력 경고 (admin_audit_log 자동 기록).
-//   사유: 가게 사장님 분쟁 (영업권 충돌) / 에이전시 무활동 6개월 unlock 등.
-adminSellersRoutes.patch('/sellers/:id/reassign-agency', cors(), (c) => reassignIntroducer(c, 'agency', safeAdminError));
+// 🌇 2026-09-05 에이전시 일몰 — `PATCH /sellers/:id/reassign-agency` 삭제(부르는 화면이 없었다).
 
 // 🛡️ 2026-05-21 Phase D-6: 사람(영입자) 매장영입 2% lock-in 재배정 — 한 가게 = 1 lock-in 영구.
 //   🩸 2026-08-31: 존재 확인이 `sellers` 를 보던 것을 `users` 로 고쳤다(엉뚱한 사람에게 2% 가던 버그).

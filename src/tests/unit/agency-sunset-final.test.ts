@@ -90,6 +90,31 @@ describe('에이전시 — 배선이 되살아나지 않는다', () => {
   })
 })
 
+describe('② 매장을 에이전시에 붙일 수 있는 문이 없다 (2026-09-05 잔재 2차)', () => {
+  // 🩸 1차 일몰은 **읽는 쪽**(대시보드·커미션·크론)을 지웠는데 **쓰는 쪽**이 살아 있었다.
+  //   그 문 셋으로 들어오면 `introduced_by_agency_id` 가 채워지고, 그 값이 요금(직접 10% /
+  //   중개 5%)까지 갈랐다 — 정작 그걸 읽어 돈을 주던 코드는 이미 없었는데도.
+  it('가입 라우트가 agencies 를 조회하지 않는다', () => {
+    const src = codeOnly(readFileSync('src/features/seller/api/seller-registration.routes.ts', 'utf-8'))
+    expect(src).not.toMatch(/FROM agencies/)
+    expect(src).not.toMatch(/introduced_by_agency_id/)
+  })
+
+  it('영입 사전등록(prospects)이 agencies 를 조회하지 않는다', () => {
+    const src = codeOnly(readFileSync('src/features/seller-prospects/api/seller-prospects.routes.ts', 'utf-8'))
+    expect(src).not.toMatch(/FROM agencies/)
+    // 초대 링크에 `?agency=` 를 동봉하던 자리 — 받아 줄 입력칸도 함께 없어졌다.
+    expect(src).not.toMatch(/qs\.set\('agency'/)
+  })
+
+  it('어드민 에이전시 재배정 라우트가 없다', () => {
+    const src = codeOnly(readFileSync('src/features/admin/api/admin-sellers.routes.ts', 'utf-8'))
+    expect(src).not.toMatch(/reassign-agency/)
+    const spec = codeOnly(readFileSync('src/features/admin/api/admin-sellers/reassign-introducer.ts', 'utf-8'))
+    expect(spec).not.toMatch(/existsTable: 'agencies'/)
+  })
+})
+
 describe('일몰이 삼키면 안 되는 것들', () => {
   it('소비자 친구초대(referral)는 그대로 산다', () => {
     // 에이전시 초대코드가 같은 `/api/invite` 에 얹혀 있었다 — 지울 때 이쪽까지 지우면

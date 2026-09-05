@@ -217,3 +217,48 @@ file-size 래칫에 걸려 3개를 분리했는데(아래), 그 코드를 가리
   `grep -n "<옛 경로>" src/tests scripts/check-guard-mutations.mjs` 한 번이면 끝난다.
 - **커밋 전 전체 유닛을 돌려라.** 나는 관련 테스트만 돌리고 커밋했다가 CI 에서 2건을 받았다
   (`business-info-from-registration` 은 내가 건드린 파일의 *다른* 테스트였다).
+
+---
+
+## 🌇 2026-09-05 — 잔재 2차: **쓰는 쪽**이 살아 있었다
+
+main 머지(`ad4fa7a`) 를 하다가 발견했다. main 의 #1350(`dfb99a7`)이 **가입 시점에 매장 채널을 확정**
+하는 기능을 넣었는데, 그 판정 근거가 하필 **에이전시 초대 코드**였다:
+
+> "이 폼은 이미 에이전시 초대 코드를 받아 `introduced_by_agency_id` 를 채운다. 붙었으면 brokered, 없으면 direct."
+
+맞는 말이었다 — 1차 일몰이 **읽는 쪽**(대시보드·커미션·크론·원장)만 지우고 **쓰는 쪽**을 남겨 뒀기
+때문이다. 그래서 아무도 발급할 수 없는 코드가 **요금(직접 10% / 중개 5%)을 계속 가르고 있었다.**
+정작 그 값을 읽어 돈을 주던 코드(`agency-store-intro-commission.ts`)는 이미 삭제된 뒤였다.
+
+### 막은 문 셋 (전부 *쓰기* 경로)
+| 문 | 무엇이었나 | 지금 |
+|---|---|---|
+| `POST /register-from-user` | `agency_intro_code` → `agencies` 조회 → `introduced_by_agency_id` + `?agency=` 프리필 입력칸 | 삭제. 이 문은 **언제나 `direct`** |
+| `POST /api/prospects/:id/invite-link` | 초대 링크에 `?agency=CODE` 동봉 · prospect 를 `agencies.id` 로 정규화 | 삭제. 영업자는 **영입자(users.id)** 하나 |
+| `PATCH /api/admin/sellers/:id/reassign-agency` | 화면이 없는데 살아 있던 어드민 쓰기 경로 | 삭제(UI 는 원래 `reassign-influencer` 만 불렀다) |
+
+### 채널 판정이 어떻게 바뀌었나
+`channelFromSignup(introducedAgencyId)` → **`channelFromSelfSignup()` = 언제나 `direct`**.
+추측이 아니라 **그 문의 정의**다 — `/register-from-user` 는 카카오 user 세션 전용이라 로그인한
+본인이 자기 가게를 올리는 자리이고, 가입 즉시 `linked_user_id` 로 그 사람에게 묶인다.
+
+⇒ **`brokered` 를 만들 수 있는 문은 이제 `/store/new` 의 `StoreRegisterModal` 하나뿐이다**
+("③ 누가 운영하나요?" 필수 선택). 그 강제가 풀리면 채널 미지정 매장이 다시 생기고 조용히 5% 로
+떨어진다 — 그래서 그 가드를 주입 매니페스트에 넣었다.
+
+### 가드
+`signup-store-channel-2026-09-04.test.ts` 를 새 규칙으로 다시 씀(① direct ② 퍼널에 `brokered` 없음
+③ 모달 강제 ④ `agency_intro_code` 부활 금지) + `agency-sunset-final.test.ts` 에 "쓰는 문 셋" 3건 추가.
+**주입 6건 전부 되돌려-검증 빨간불 확인.**
+
+### ⚠️ 남긴 것 — 일부러
+- `sellers.introduced_by_agency_id` **컬럼·인덱스·repair-schema** (스키마 호환. 라이브 0명)
+- 어드민 **표시**(`AdminPendingSellersPage`·`AdminMerchantCommissionsPage`)와 진단 쿼리 — 읽기뿐
+- `agencies` **4행** — 프로덕션 raw DELETE 는 레포 룰상 금지(코드 경로로만)
+- `matchProspectOnSignup` 의 `'agency'` 반환 타입 — 레거시 행이 있어도 **귀속을 건너뛰도록** 남김
+  (지우면 옛 행이 `introduced_by_influencer_id` 로 잘못 흘러간다)
+
+### 🧭 다음 세션이 가져갈 것
+- **"일몰"은 읽는 쪽만 지우면 절반이다.** 쓰는 쪽이 남으면 아무도 못 켜는 스위치가 요금을 가른다.
+  다음에 무언가를 일몰할 땐 `grep -rn "<개념>" src/` 를 **INSERT/UPDATE 기준으로 한 번 더** 훑을 것.
