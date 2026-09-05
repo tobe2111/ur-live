@@ -89,8 +89,14 @@ export const GB_ENGINE_ENABLED = false
  *
  *   활성 순서: ① 교환권 마진 0 + 재계산 ② 딜 보너스 0 + 현금 정산 수수료 ③ 이 플래그 + 서버 키.
  *   ①②는 어드민에서, ③은 이 상수(배포)와 어드민 키를 함께 — 이중 안전.
+ *
+ * ✅ **2026-09-04 대표 지시로 켠다** (*"머지하고, 너가 직접 켜줘"*). 선행 조건은 라이브 실측으로
+ *   확인했다 — `influencer_deal_bonus_pct = 0`(적자 조건 해소). ⇒ 이제 **유일한 스위치는
+ *   서버 키** `platform_settings.voucher_deal_payment_enabled` 다. 그 키가 꺼져 있으면 버튼은
+ *   보이되 누를 때 서버가 `DEAL_PAYMENT_NOT_ALLOWED` 로 막고 화면이 안내한다(`deal-join-error.ts`).
+ *   되돌리려면 그 키를 `false` 로 — 배포 없이 즉시.
  */
-export const VOUCHER_DEAL_PAYMENT_ENABLED = false
+export const VOUCHER_DEAL_PAYMENT_ENABLED = true
 
 /**
  * TOPUP_DISABLED — '딜 충전'(현금→딜 유상 충전) **서비스 전체 종료** (2026-07-18 대표 확정

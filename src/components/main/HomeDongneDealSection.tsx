@@ -5,12 +5,12 @@
  * 데이터: 동네딜 탭과 같은 키(prewarm/엣지캐시 적중) — 상위 6개만 미니 카드로.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MapPin, ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
 import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
-import HomeMiniCard from './HomeMiniCard'
+import DealMiniCard from '@/components/deal/DealMiniCard'
 
 type GBItem = {
   id: number
@@ -19,12 +19,10 @@ type GBItem = {
   image_url?: string | null
   restaurant_name?: string | null
   current_price?: number | null
-  dominant_color?: string | null
 }
 
 export default function HomeDongneDealSection() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
   const [items, setItems] = useState<GBItem[] | null>(null)
   const fetchedRef = useRef(false)
@@ -75,14 +73,12 @@ export default function HomeDongneDealSection() {
       ) : (
         <div className="grid grid-cols-3 gap-2">
           {items.map((p) => (
-            <HomeMiniCard
+            <DealMiniCard
               key={p.id}
-              id={p.id}
+              to={`/group-buy/${p.id}`}
               imageUrl={p.image_url}
               title={p.restaurant_name || p.name}
-              priceText={`${(p.current_price ?? p.price).toLocaleString('ko-KR')}원`}
-              dominantColor={p.dominant_color}
-              onClick={() => navigate(`/group-buy/${p.id}`)}
+              price={p.current_price ?? p.price}
             />
           ))}
         </div>

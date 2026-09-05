@@ -98,7 +98,7 @@ export default function GiftClaimPage() {
           <XCircle className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
           <h1 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{t('giftClaim.notFoundTitle')}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t('giftClaim.notFoundDesc')}</p>
-          <button onClick={() => navigate('/')} className="px-6 py-3 bg-pink-500 text-white rounded-full text-sm font-bold">
+          <button onClick={() => navigate('/')} className="px-6 py-3 bg-brand text-white rounded-full text-sm font-bold">
             {t('common.back')}
           </button>
         </div>
@@ -122,14 +122,14 @@ export default function GiftClaimPage() {
       <div className="ur-content-narrow px-5 lg:px-8 py-10">
         {/* 헤더 */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-pink-100 mb-3">
-            <Gift className="w-8 h-8 text-pink-500" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-tint mb-3">
+            <Gift className="w-8 h-8 text-brand-text" />
           </div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
             <Trans
               i18nKey="giftClaim.fromSender"
               values={{ name: gift.sender_name }}
-              components={[<span key="0" className="text-pink-500" />, <br key="1" />]}
+              components={[<span key="0" className="text-brand-text" />, <br key="1" />]}
             />
           </h1>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{parseUTCDate(gift.created_at).toLocaleDateString(i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US', { timeZone: 'Asia/Seoul' })}</p>
@@ -147,13 +147,13 @@ export default function GiftClaimPage() {
             )}
             <div className="flex-1 min-w-0">
               <h2 className="font-bold text-gray-900 dark:text-white text-sm leading-tight mb-2">{gift.product_name}</h2>
-              <div className="text-pink-500 font-bold text-base">{formatNumber(gift.amount)}원</div>
+              <div className="text-brand-text font-bold text-base">{formatNumber(gift.amount)}원</div>
             </div>
           </div>
 
           {gift.message && (
-            <div className="bg-pink-50 dark:bg-pink-900/20 rounded-xl p-4 border border-pink-100 dark:border-pink-800/40">
-              <div className="flex items-center gap-1 text-xs font-bold text-pink-600 mb-2">
+            <div className="bg-brand-tint rounded-xl p-4 border border-rule ">
+              <div className="flex items-center gap-1 text-xs font-bold text-brand-text mb-2">
                 <Sparkles className="w-3 h-3" /> {t('giftClaim.messageLabel')}
               </div>
               <p className="text-sm text-gray-800 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">{gift.message}</p>
@@ -192,27 +192,27 @@ export default function GiftClaimPage() {
         {canClaim && (
           <form onSubmit={handleSubmit} className="bg-white dark:bg-[#11141C] rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-5 shadow-sm">
             <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-pink-500" /> {t('giftClaim.addressTitle')}
+              <MapPin className="w-4 h-4 text-brand-text" /> {t('giftClaim.addressTitle')}
             </h3>
             <div className="space-y-3">
               <input
                 value={postalCode}
                 onChange={e => setPostalCode(e.target.value)}
                 placeholder={t('giftClaim.postalCode')}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#11141C]"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:bg-white dark:focus:bg-[#11141C]"
               />
               <input
                 value={address}
                 onChange={e => setAddress(e.target.value)}
                 placeholder={t('giftClaim.addressMain')}
                 required
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#11141C]"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:bg-white dark:focus:bg-[#11141C]"
               />
               <input
                 value={addressDetail}
                 onChange={e => setAddressDetail(e.target.value)}
                 placeholder={t('giftClaim.addressDetail')}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#11141C]"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:bg-white dark:focus:bg-[#11141C]"
               />
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -221,14 +221,14 @@ export default function GiftClaimPage() {
                   onChange={e => setPhone(e.target.value)}
                   placeholder={t('giftClaim.phone')}
                   type="tel"
-                  className="w-full pl-9 pr-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-200 focus:bg-white dark:focus:bg-[#11141C]"
+                  className="w-full pl-9 pr-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:bg-white dark:focus:bg-[#11141C]"
                 />
               </div>
             </div>
             <button
               type="submit"
               disabled={submitting || !address.trim()}
-              className="w-full mt-5 py-4 bg-pink-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-pink-600 transition-colors disabled:opacity-50"
+              className="w-full mt-5 py-4 bg-brand text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-dark transition-colors disabled:opacity-50"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
               {t('giftClaim.submit')}

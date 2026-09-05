@@ -52,11 +52,11 @@ function timeLeft(expiresAt: string | null): string {
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  active:    { label: '입찰중', cls: 'bg-blue-100 text-blue-700' },
-  won:       { label: '낙찰',   cls: 'bg-green-100 text-green-700' },
+  active:    { label: '입찰중', cls: 'bg-tone-info-bg text-tone-info' },
+  won:       { label: '낙찰',   cls: 'bg-tone-ok-bg text-tone-ok' },
   lost:      { label: '탈락',   cls: 'bg-gray-100 text-gray-500' },
   cancelled: { label: '취소',   cls: 'bg-gray-100 text-gray-500' },
-  refunded:  { label: '환불',   cls: 'bg-amber-100 text-amber-700' },
+  refunded:  { label: '환불',   cls: 'bg-tone-warn-bg text-tone-warn' },
 }
 
 export default function AdminAdSlotsPage() {

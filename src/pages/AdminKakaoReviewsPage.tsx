@@ -104,7 +104,7 @@ export default function AdminKakaoReviewsPage() {
                   </div>
                 </div>
                 <a href={s.review_url} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-pink-600 underline break-all mb-3">
+                  className="inline-flex items-center gap-1 text-xs text-brand-text underline break-all mb-3">
                   <ExternalLink className="w-3 h-3" /> {s.review_url.slice(0, 60)}{s.review_url.length > 60 ? '...' : ''}
                 </a>
                 {s.admin_notes && (

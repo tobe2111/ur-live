@@ -30,10 +30,10 @@ type IntentTiers = Record<string, { label: string; weight: number }>
 // BD 파이프라인 단계 — 자격심사·샘플·협상.
 const STAGE_META: Record<string, { label: string; cls: string }> = {
   lead: { label: '리드', cls: 'bg-gray-100 text-gray-600' },
-  qualified: { label: '자격확인', cls: 'bg-blue-100 text-blue-700' },
-  sampling: { label: '샘플발송', cls: 'bg-cyan-100 text-cyan-700' },
-  negotiating: { label: '협상', cls: 'bg-amber-100 text-amber-700' },
-  won: { label: '성사', cls: 'bg-emerald-100 text-emerald-700' },
+  qualified: { label: '자격확인', cls: 'bg-tone-info-bg text-tone-info' },
+  sampling: { label: '샘플발송', cls: 'bg-tone-info-bg text-tone-info' },
+  negotiating: { label: '협상', cls: 'bg-tone-warn-bg text-tone-warn' },
+  won: { label: '성사', cls: 'bg-tone-ok-bg text-tone-ok' },
   lost: { label: '실패', cls: 'bg-gray-100 text-gray-400' },
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }

@@ -40,12 +40,12 @@ interface QuoteRow {
 const won = (n: number | null | undefined) => '₩' + Number(n || 0).toLocaleString('ko-KR')
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  requested: { label: '요청접수', cls: 'bg-blue-100 text-blue-700' },
-  quoted: { label: '회신완료', cls: 'bg-amber-100 text-amber-700' },
-  accepted: { label: '수락됨', cls: 'bg-emerald-100 text-emerald-700' },
-  rejected: { label: '반려', cls: 'bg-red-100 text-red-700' },
+  requested: { label: '요청접수', cls: 'bg-tone-info-bg text-tone-info' },
+  quoted: { label: '회신완료', cls: 'bg-tone-warn-bg text-tone-warn' },
+  accepted: { label: '수락됨', cls: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { label: '반려', cls: 'bg-tone-bad-bg text-tone-bad' },
   expired: { label: '기간만료', cls: 'bg-gray-100 text-gray-600' },
-  converted: { label: '발주전환', cls: 'bg-emerald-100 text-emerald-700' },
+  converted: { label: '발주전환', cls: 'bg-tone-ok-bg text-tone-ok' },
 }
 
 const STATUS_FILTERS = ['', 'requested', 'quoted', 'accepted', 'rejected', 'converted'] as const

@@ -39,7 +39,7 @@ export default function ReferralIndexPage() {
           </div>
           <h2 className="text-[22px] font-extrabold text-gray-900 dark:text-white leading-tight">
             {t('referral.heroTitle1', { defaultValue: '친구와 함께' })}<br />
-            <span className="text-pink-500">{t('referral.heroTitle2', { defaultValue: '더 저렴하게' })}</span> {t('referral.heroTitle3', { defaultValue: '쇼핑하세요' })}
+            <span className="text-brand-text">{t('referral.heroTitle2', { defaultValue: '더 저렴하게' })}</span> {t('referral.heroTitle3', { defaultValue: '쇼핑하세요' })}
           </h2>
           <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
             {t('referral.heroDesc', { defaultValue: '친구와 함께 공동구매가로 구매하고, 초대 보너스도 받으세요' })}
@@ -61,7 +61,7 @@ export default function ReferralIndexPage() {
                 icon: Share2,
                 title: t('referral.step2Title', { defaultValue: '초대 링크 공유' }),
                 desc: t('referral.step2Desc', { defaultValue: '상품 페이지에서 "친구초대하기" 버튼을 눌러 링크를 공유하세요' }),
-                tint: 'bg-pink-50 text-pink-500',
+                tint: 'bg-brand-tint text-brand-text',
               },
               {
                 icon: Gift,
@@ -78,7 +78,7 @@ export default function ReferralIndexPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-bold text-gray-900 dark:text-white">
-                      <span className="text-pink-500 mr-1">0{i + 1}</span>
+                      <span className="text-brand-text mr-1">0{i + 1}</span>
                       {step.title}
                     </p>
                     <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">

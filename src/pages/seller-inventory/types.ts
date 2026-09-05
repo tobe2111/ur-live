@@ -24,8 +24,8 @@ export interface StockMovement {
 }
 
 export const TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  in:     { label: 'stockHistoryIn', color: 'text-green-600 bg-green-50' },
-  out:    { label: 'stockHistoryOut', color: 'text-red-600 bg-red-50' },
-  adjust: { label: 'stockHistoryAdjust', color: 'text-blue-600 bg-blue-50' },
-  return: { label: 'stockHistoryReturn', color: 'text-amber-600 bg-amber-50' },
+  in:     { label: 'stockHistoryIn', color: 'text-tone-ok bg-tone-ok-bg' },
+  out:    { label: 'stockHistoryOut', color: 'text-tone-bad bg-tone-bad-bg' },
+  adjust: { label: 'stockHistoryAdjust', color: 'text-tone-info bg-tone-info-bg' },
+  return: { label: 'stockHistoryReturn', color: 'text-tone-warn bg-tone-warn-bg' },
 }

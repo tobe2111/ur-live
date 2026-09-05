@@ -57,13 +57,13 @@ export default function AboutPage() {
         <section className="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-[#1A0A14] dark:via-[#11141C] dark:to-[#0F0A1A] border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="ur-content-wide px-4 lg:px-8 py-16 lg:py-24">
             <div className="text-center max-w-4xl mx-auto">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-300 text-xs font-semibold mb-6">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-tint text-brand-text text-xs font-semibold mb-6">
                 <Sparkles className="w-3.5 h-3.5" />
                 우리 동네 공동구매
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tight leading-tight mb-6">
                 유어딜
-                <span className="block text-pink-500 mt-2">함께라서 더 좋은 가격</span>
+                <span className="block text-brand-text mt-2">함께라서 더 좋은 가격</span>
               </h1>
               <p className="text-base sm:text-lg lg:text-xl text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
                 우리 동네 맛집·뷰티·숙소를 그룹 특가로.
@@ -75,7 +75,7 @@ export default function AboutPage() {
               <div className="flex flex-wrap gap-3 justify-center">
                 <Link
                   to="/group-buy"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-pink-500 hover:bg-pink-600 text-white font-bold text-sm lg:text-base transition-colors shadow-lg shadow-pink-500/20"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold text-sm lg:text-base transition-colors shadow-lg /20"
                 >
                   동네 공구 둘러보기
                   <ArrowRight className="w-4 h-4" />
@@ -168,7 +168,7 @@ export default function AboutPage() {
                 <li>· 브라우저만 있으면 시작합니다 (앱 설치 없음). 공구 등록과 주문, 정산이 한 곳에서</li>
                 <li>· 자체 쇼핑몰 구축 비용 0원 (Shopify 월 $29 + 도메인 + PG 부담 X)</li>
               </ul>
-              <p className="mt-3 p-3 rounded-lg bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-300 text-xs lg:text-sm">
+              <p className="mt-3 p-3 rounded-lg bg-brand-tint text-brand-text text-xs lg:text-sm">
                 비교: 자체 쇼핑몰 구축 시 평균 2~3개월 + 200만원. 유어딜은 <strong>0원 / 5분</strong>.
               </p>
             </SubBlock>
@@ -328,9 +328,9 @@ export default function AboutPage() {
             ].map((f, i) => (
               <div
                 key={i}
-                className="p-4 rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] hover:border-pink-200 dark:hover:border-pink-900 transition-colors"
+                className="p-4 rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] hover:border-rule transition-colors"
               >
-                <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-900/20 text-pink-500 flex items-center justify-center mb-3">
+                <div className="w-10 h-10 rounded-xl bg-brand-tint text-brand-text flex items-center justify-center mb-3">
                   {f.icon}
                 </div>
                 <h3 className="font-bold text-gray-900 dark:text-white text-sm lg:text-base mb-1">{f.title}</h3>
@@ -479,7 +479,7 @@ function Section({
 }) {
   const toneBg: Record<string, string> = {
     gray: 'bg-white dark:bg-[#11141C]',
-    pink: 'bg-pink-50/40 dark:bg-[#150A10]',
+    pink: 'bg-brand-tint/40 dark:bg-[#150A10]',
     purple: 'bg-purple-50/40 dark:bg-[#100A18]',
     amber: 'bg-amber-50/40 dark:bg-[#181208]',
     emerald: 'bg-emerald-50/30 dark:bg-[#0A1410]',
@@ -511,7 +511,7 @@ function ValueCard({
   color: 'pink' | 'purple' | 'amber' | 'emerald'
 }) {
   const map: Record<string, string> = {
-    pink: 'bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-300',
+    pink: 'bg-brand-tint  text-brand-text ',
     purple: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300',
     amber: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-300',
     emerald: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300',
@@ -548,7 +548,7 @@ function ComparisonTable({
                 <th
                   key={i}
                   className={`px-4 py-3 text-left font-bold text-gray-900 dark:text-white ${
-                    i === headers.length - 1 ? 'text-pink-600 dark:text-pink-400' : ''
+                    i === headers.length - 1 ? 'text-brand-text ' : ''
                   }`}
                 >
                   {h}
@@ -566,7 +566,7 @@ function ComparisonTable({
                       ci === 0
                         ? 'font-semibold text-gray-900 dark:text-white whitespace-nowrap'
                         : ci === row.length - 1
-                        ? 'text-pink-700 dark:text-pink-300 font-medium'
+                        ? 'text-brand-text  font-medium'
                         : 'text-gray-700 dark:text-gray-300'
                     }`}
                   >
@@ -633,7 +633,7 @@ function SubBlock({
   return (
     <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35]">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-9 h-9 rounded-lg bg-pink-50 dark:bg-pink-900/20 text-pink-500 flex items-center justify-center">
+        <div className="w-9 h-9 rounded-lg bg-brand-tint text-brand-text flex items-center justify-center">
           {icon}
         </div>
         <h3 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white">{title}</h3>
@@ -745,7 +745,7 @@ function FitCard({
   return (
     <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35]">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-900/20 text-pink-500 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-brand-tint text-brand-text flex items-center justify-center">
           {icon}
         </div>
         <h3 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white">{title}</h3>
@@ -753,7 +753,7 @@ function FitCard({
       <ul className="space-y-2">
         {items.map((item, i) => (
           <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <CheckCircle2 className="w-4 h-4 text-pink-500 mt-0.5 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-brand-text mt-0.5 shrink-0" />
             <span>{item}</span>
           </li>
         ))}

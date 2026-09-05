@@ -85,8 +85,8 @@ export default function SellerKpiDashboard() {
       sub: data.followers.recent_7d > 0
         ? t('seller.kpi.followersRecent', { defaultValue: '+{{n}}/7일', n: data.followers.recent_7d })
         : t('seller.kpi.followersNoneRecent', { defaultValue: '신규 0' }),
-      color: 'text-pink-600',
-      bg: 'bg-pink-50',
+      color: 'text-brand-text',
+      bg: 'bg-brand-tint',
       path: '/seller/followers',
     },
     {
@@ -125,7 +125,7 @@ export default function SellerKpiDashboard() {
     <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-pink-500" /> KPI
+          <TrendingUp className="w-4 h-4 text-brand-text" /> KPI
         </h3>
         <span className="text-[10px] text-gray-400">{t('seller.kpi.realtime', { defaultValue: '실시간' })}</span>
       </div>

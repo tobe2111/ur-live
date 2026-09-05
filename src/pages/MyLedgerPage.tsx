@@ -53,10 +53,10 @@ const EVENT_LABEL: Record<string, { label: string; Icon: LucideIcon }> = {
 }
 
 const PAYOUT_STATUS: Record<string, { label: string; cls: string }> = {
-  pending: { label: '검토 대기', cls: 'bg-amber-100 text-amber-700' },
-  approved: { label: '승인됨', cls: 'bg-blue-100 text-blue-700' },
-  sent: { label: '송금완료', cls: 'bg-emerald-100 text-emerald-700' },
-  failed: { label: '실패', cls: 'bg-red-100 text-red-700' },
+  pending: { label: '검토 대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+  approved: { label: '승인됨', cls: 'bg-tone-info-bg text-tone-info' },
+  sent: { label: '송금완료', cls: 'bg-tone-ok-bg text-tone-ok' },
+  failed: { label: '실패', cls: 'bg-tone-bad-bg text-tone-bad' },
   cancelled: { label: '취소', cls: 'bg-gray-100 text-gray-600' },
 }
 

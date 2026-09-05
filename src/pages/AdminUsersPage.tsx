@@ -289,9 +289,9 @@ export default function AdminUsersPage() {
                                     <p className="text-[10px] text-gray-500">🎫 바우처</p>
                                     <p className="font-bold text-blue-700 text-sm">{formatNumber(detail.voucher_count || 0)}</p>
                                   </div>
-                                  <div className="bg-pink-50 rounded p-2 text-center">
+                                  <div className="bg-brand-tint rounded p-2 text-center">
                                     <p className="text-[10px] text-gray-500">🎟 쿠폰</p>
-                                    <p className="font-bold text-pink-700 text-sm">{formatNumber(detail.coupon_count || 0)}</p>
+                                    <p className="font-bold text-brand-text text-sm">{formatNumber(detail.coupon_count || 0)}</p>
                                   </div>
                                   <div className="bg-rose-50 rounded p-2 text-center">
                                     <p className="text-[10px] text-gray-500">❤️ 찜</p>
@@ -500,7 +500,7 @@ function FullStateModal({ userId, onClose }: { userId: number; onClose: () => vo
                 <p className="text-[10px] text-gray-600">바우처</p>
                 <p className="font-bold">{data.vouchers.count}</p>
               </div>
-              <div className="bg-pink-50 rounded p-2 text-center">
+              <div className="bg-brand-tint rounded p-2 text-center">
                 <p className="text-[10px] text-gray-600">쿠폰</p>
                 <p className="font-bold">{data.coupons.count}</p>
               </div>

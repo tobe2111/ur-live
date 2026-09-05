@@ -61,7 +61,7 @@ export default function InterestListPage() {
             </p>
             <button
               onClick={() => navigate('/group-buy')}
-              className="mt-5 px-5 py-2.5 bg-pink-500 text-white text-[13px] font-semibold rounded-full"
+              className="mt-5 px-5 py-2.5 bg-brand text-white text-[13px] font-semibold rounded-full"
             >
               {t('interestList.browseGroupBuy')}
             </button>
@@ -74,8 +74,8 @@ export default function InterestListPage() {
                 className="flex items-center justify-between bg-gray-50 dark:bg-[#1D1F29] rounded-xl px-4 py-3.5 border border-gray-200 dark:border-[#2C2F35]"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-lg bg-pink-500/10 flex items-center justify-center flex-shrink-0">
-                    <Bell className="w-4 h-4 text-pink-400" />
+                  <div className="w-9 h-9 rounded-lg bg-brand/10 flex items-center justify-center flex-shrink-0">
+                    <Bell className="w-4 h-4 text-brand-text" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-gray-900 dark:text-white text-[13px] font-medium truncate">

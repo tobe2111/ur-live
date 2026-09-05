@@ -18,13 +18,13 @@ import BrandLoader from '@/components/brand/BrandLoader'
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending: { label: '결제 대기', color: 'bg-gray-100 text-gray-600 dark:bg-[#1D1F29] dark:text-gray-300' },
-  confirmed: { label: '예약 확정', color: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300' },
-  checked_in: { label: '체크인 완료', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300' },
-  checked_out: { label: '이용 완료', color: 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300' },
+  confirmed: { label: '예약 확정', color: 'bg-tone-info-bg text-tone-info' },
+  checked_in: { label: '체크인 완료', color: 'bg-tone-ok-bg text-tone-ok' },
+  checked_out: { label: '이용 완료', color: 'bg-tone-info-bg text-tone-info' },
   cancelled: { label: '취소됨', color: 'bg-gray-100 text-gray-500 dark:bg-[#1D1F29] dark:text-gray-400' },
-  no_show: { label: '노쇼', color: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300' },
-  refunded: { label: '환불됨', color: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300' },
-  dispute: { label: '분쟁 중', color: 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300' },
+  no_show: { label: '노쇼', color: 'bg-tone-bad-bg text-tone-bad' },
+  refunded: { label: '환불됨', color: 'bg-tone-warn-bg text-tone-warn' },
+  dispute: { label: '분쟁 중', color: 'bg-tone-warn-bg text-tone-warn' },
 }
 
 export default function MyStaysPage() {

@@ -63,9 +63,9 @@ interface PoolStats { total?: number; youtube?: number; naver_blog?: number; nav
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-600' },
-  contacted: { label: '컨택함', cls: 'bg-blue-100 text-blue-700' },
-  interested: { label: '관심', cls: 'bg-amber-100 text-amber-700' },
-  contracted: { label: '계약', cls: 'bg-emerald-100 text-emerald-700' },
+  contacted: { label: '컨택함', cls: 'bg-tone-info-bg text-tone-info' },
+  interested: { label: '관심', cls: 'bg-tone-warn-bg text-tone-warn' },
+  contracted: { label: '계약', cls: 'bg-tone-ok-bg text-tone-ok' },
   rejected: { label: '거절', cls: 'bg-gray-100 text-gray-400' },
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
@@ -514,7 +514,7 @@ export default function AdminInfluencerPoolPage() {
                         <span className="inline-flex flex-col items-end">
                           <span className="inline-flex items-center gap-1.5 justify-end">
                             {formatNumber(l.subscriber_count)}
-                            {(() => { const s = l.subscriber_count; const b = s >= 500000 ? { t: '대형', c: 'bg-gray-100 text-gray-500' } : s >= 100000 ? { t: '중형', c: 'bg-emerald-100 text-emerald-700' } : s >= 10000 ? { t: '마이크로', c: 'bg-emerald-100 text-emerald-700' } : s > 0 ? { t: '나노', c: 'bg-gray-100 text-gray-500' } : null; return b ? <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${b.c}`}>{b.t}</span> : null })()}
+                            {(() => { const s = l.subscriber_count; const b = s >= 500000 ? { t: '대형', c: 'bg-gray-100 text-gray-500' } : s >= 100000 ? { t: '중형', c: 'bg-tone-ok-bg text-tone-ok' } : s >= 10000 ? { t: '마이크로', c: 'bg-tone-ok-bg text-tone-ok' } : s > 0 ? { t: '나노', c: 'bg-gray-100 text-gray-500' } : null; return b ? <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${b.c}`}>{b.t}</span> : null })()}
                           </span>
                           {l.median_long_views ? (
                             <span className="text-[11px] text-gray-400" title="최근 영상 중 롱폼(3분 초과)만의 중앙값 — 쇼츠 조회수 착시를 배제한 실제 도달력(협찬 단가 판단용)">📈 롱폼중앙 {formatNumber(l.median_long_views)}회{l.shorts_ratio ? <span className="text-gray-300"> · 쇼츠 {l.shorts_ratio}%</span> : null}</span>
@@ -530,7 +530,7 @@ export default function AdminInfluencerPoolPage() {
                         : <span className="text-gray-300">—</span>}
                     </td>
                     <td className="px-3 py-2 text-xs text-gray-600">
-                      {l.instagram && <a href={`https://instagram.com/${l.instagram}`} target="_blank" rel="noreferrer" className="block text-pink-600 hover:underline">IG @{l.instagram}</a>}
+                      {l.instagram && <a href={`https://instagram.com/${l.instagram}`} target="_blank" rel="noreferrer" className="block text-brand-text hover:underline">IG @{l.instagram}</a>}
                       {l.tiktok && <a href={`https://tiktok.com/@${l.tiktok}`} target="_blank" rel="noreferrer" className="block text-gray-700 hover:underline">TT @{l.tiktok}</a>}
                       {!l.instagram && !l.tiktok && <span className="text-gray-300">—</span>}
                     </td>

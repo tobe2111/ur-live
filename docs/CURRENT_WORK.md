@@ -5494,10 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 251건 · 최신순 · 이 목록은 자동 생성된다._
+_총 253건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-05**
 - [배포 판정 + 실측에서 나온 것: 직접 10% 가 걷히는 매장이 0곳 (2026-09-05)](handoff/2026-09-05-live-verdict-channel-gap.md)
+- [2026-09-05 — 홈 상단 배너 · 기본 정렬 '가까운 순' · 계산대 코드 입력](handoff/2026-09-05-home-banner-near-default-scan-code.md)
 - [담아 팔면 몇 % — 화면 네 곳이 서로 다른 숫자를 말하고 있었다 (2026-09-05)](handoff/2026-09-05-affiliate-rate-ssot.md)
 **2026-09-04**
 - [발송 실패한 교환권을 숫자에서 뺀다 — 보이되 세지 않는다](handoff/2026-09-04-gifticon-failed-not-counted.md)
@@ -5511,6 +5512,7 @@ _총 251건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-09-03 · 검색 전면 개선 (대표 QA)](handoff/2026-09-03-search-engine-rebuild.md)
 - [2026-09-03 · 리뷰 버튼 hard-disable 제거 + 자격 사전 안내](handoff/2026-09-03-review-gate-clicktime.md)
 - [2026-09-03 — 다크 대비 사각지대 제거 · 히어로 사진 정렬 · 위시리스트 PC](handoff/2026-09-03-dark-contrast-and-screens.md)
+- [2026-09-03 — 딜 카드 형태 3종 통일 + 상태 색이 전부 회색이던 것](handoff/2026-09-03-card-shapes-and-status-tone.md)
 **2026-09-02**
 - [🎟️ 이용권 등록 플로우 전수조사 (2026-09-02)](handoff/2026-09-02-voucher-flow-audit.md)
 - [2026-09-02 — 유어딜 요청 경로 D1 읽기 다이어트 (PR-C)](handoff/2026-09-02-urdeal-request-diet.md)

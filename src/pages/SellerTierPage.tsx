@@ -193,7 +193,7 @@ export default function SellerTierPage() {
               return (
                 <div
                   key={tier}
-                  className={`rounded-xl border ${m.border} ${m.bg} p-3 ${isCurrent ? 'ring-2 ring-pink-400' : ''}`}
+                  className={`rounded-xl border ${m.border} ${m.bg} p-3 ${isCurrent ? 'ring-2 ring-brand/40' : ''}`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <p className={`text-sm font-bold ${m.color} flex items-center gap-1.5`}>

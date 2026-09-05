@@ -150,14 +150,14 @@ export default function AdminCommissionSettingsPage() {
           <p className="text-sm font-bold text-gray-900">매출 100% 분배</p>
           <div className="flex w-full h-8 rounded overflow-hidden">
             <div className="bg-purple-500" style={{ width: `${form.platform_margin_pct}%` }} title={`유어딜 ${form.platform_margin_pct}%`} />
-            <div className="bg-pink-500" style={{ width: `${form.influencer_commission_pct}%` }} title={`인플 ${form.influencer_commission_pct}%`} />
+            <div className="bg-brand" style={{ width: `${form.influencer_commission_pct}%` }} title={`인플 ${form.influencer_commission_pct}%`} />
             <div className="bg-yellow-500" style={{ width: `${form.user_referral_bonus_pct}%` }} title={`유저 ${form.user_referral_bonus_pct}%`} />
             <div className="bg-blue-500" style={{ width: `${form.agency_commission_pct}%` }} title={`에이전시 ${form.agency_commission_pct}%`} />
             <div className="bg-emerald-500" style={{ width: `${sellerReceives}%` }} title={`셀러 ${sellerReceives}%`} />
           </div>
           <div className="grid grid-cols-5 gap-2 text-[10px] text-center">
             <span className="text-purple-700">유어딜 {form.platform_margin_pct}%</span>
-            <span className="text-pink-700">인플 {form.influencer_commission_pct}%</span>
+            <span className="text-brand-text">인플 {form.influencer_commission_pct}%</span>
             <span className="text-yellow-700">유저 {form.user_referral_bonus_pct}%</span>
             <span className="text-blue-700">에이전시 {form.agency_commission_pct}%</span>
             <span className="text-emerald-700">셀러 {sellerReceives.toFixed(1)}%</span>

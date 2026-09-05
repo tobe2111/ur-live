@@ -37,7 +37,7 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
                 onChange={e => update('stock', Number(e.target.value))}
                 placeholder="100"
                 min={1}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               />
             </div>
             {/* 🎯 1인당 구매 수량 제한 (0=무제한) */}
@@ -50,7 +50,7 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
                 placeholder="0 = 무제한"
                 min={0}
                 max={99}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               />
               <p className="text-[11px] text-gray-400 mt-1">0 = 제한 없음, 최대 99</p>
             </div>
@@ -70,7 +70,7 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
                     if (e.target.checked) update('voucher_expiry', '')
                     else update('voucher_expiry', new Date(Date.now() + 90 * 24 * 3600 * 1000).toISOString().slice(0, 10))
                   }}
-                  className="w-4 h-4 accent-pink-500"
+                  className="w-4 h-4 accent-brand"
                 />
                 <span className="text-sm text-gray-700">{t('seller.mealVoucher.noExpiry', { defaultValue: '유효기간 제한 없음' })}</span>
               </label>
@@ -79,7 +79,7 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
                   type="date"
                   value={form.voucher_expiry}
                   onChange={e => update('voucher_expiry', e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
                 />
               )}
             </div>
@@ -104,7 +104,7 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
               onChange={e => update('voucher_terms', e.target.value)}
               placeholder={t('seller.mealVoucher.usageTermsPlaceholder')}
               rows={2}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none resize-none"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none resize-none"
             />
           </div>
 
@@ -118,14 +118,14 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
               value={form.external_booking_url}
               onChange={e => update('external_booking_url', e.target.value)}
               placeholder="https://booking.naver.com/... 또는 https://www.yanolja.com/..."
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
             />
             <p className="text-[10px] text-gray-400 mt-1">바우처 발급 후 사용자에게 노출. 비워두면 매장 전화번호로 안내.</p>
           </div>
 
           {/* 즉시판매 단일가 모델 안내 */}
           <div className="border-t border-gray-200 pt-4">
-            <div className="bg-pink-50 border border-pink-100 rounded-lg p-3">
+            <div className="bg-brand-tint border border-rule rounded-lg p-3">
               <p className="text-sm font-bold text-gray-900">{t('seller.mealVoucher.singlePriceTitle', { defaultValue: '공구가는 단일 가격이에요' })}</p>
               <p className="text-[11px] text-gray-600 mt-1 leading-relaxed">
                 {t('seller.mealVoucher.singlePriceDesc', { defaultValue: '위에 입력한 판매가가 모든 참여자에게 동일하게 적용되는 공구가예요. 인원수에 따라 가격이 바뀌지 않으며, 결제 즉시 교환권이 발급됩니다. 정가(원가)를 함께 입력하면 할인율이 자동 표시돼요.' })}

@@ -63,13 +63,13 @@ interface AdminBooking {
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending: { label: '대기', color: 'bg-gray-100 text-gray-700' },
-  confirmed: { label: '확정', color: 'bg-blue-100 text-blue-700' },
-  checked_in: { label: '체크인', color: 'bg-emerald-100 text-emerald-700' },
-  checked_out: { label: '완료', color: 'bg-purple-100 text-purple-700' },
+  confirmed: { label: '확정', color: 'bg-tone-info-bg text-tone-info' },
+  checked_in: { label: '체크인', color: 'bg-tone-ok-bg text-tone-ok' },
+  checked_out: { label: '완료', color: 'bg-tone-info-bg text-tone-info' },
   cancelled: { label: '취소', color: 'bg-gray-100 text-gray-500' },
-  no_show: { label: '노쇼', color: 'bg-red-100 text-red-700' },
-  refunded: { label: '환불됨', color: 'bg-amber-100 text-amber-700' },
-  dispute: { label: '분쟁', color: 'bg-orange-100 text-orange-800' },
+  no_show: { label: '노쇼', color: 'bg-tone-bad-bg text-tone-bad' },
+  refunded: { label: '환불됨', color: 'bg-tone-warn-bg text-tone-warn' },
+  dispute: { label: '분쟁', color: 'bg-tone-warn-bg text-tone-warn' },
 }
 
 export default function AdminStaysPage() {
@@ -146,7 +146,7 @@ export default function AdminStaysPage() {
             <KpiCard label="활성 숙소" value={`${formatNumber(kpi.active_properties)}/${formatNumber(kpi.total_properties)}`} icon={<Building2 className="w-5 h-5" />} color="text-blue-600 bg-blue-50" />
             <KpiCard label="총 객실" value={formatNumber(kpi.total_rooms)} icon={<Users className="w-5 h-5" />} color="text-emerald-600 bg-emerald-50" />
             <KpiCard label="예약" value={`${formatNumber(kpi.confirmed_bookings)}/${formatNumber(kpi.total_bookings)}`} icon={<TrendingUp className="w-5 h-5" />} color="text-violet-600 bg-violet-50" />
-            <KpiCard label="누적 매출" value={`₩${formatNumber(kpi.total_revenue)}`} icon={<DollarSign className="w-5 h-5" />} color="text-pink-600 bg-pink-50" />
+            <KpiCard label="누적 매출" value={`₩${formatNumber(kpi.total_revenue)}`} icon={<DollarSign className="w-5 h-5" />} color="text-brand-text bg-brand-tint" />
             <KpiCard
               label="평균 평점"
               value={kpi.avg_rating ? kpi.avg_rating.toFixed(1) : '-'}

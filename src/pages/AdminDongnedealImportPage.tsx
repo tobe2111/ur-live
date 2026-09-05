@@ -636,7 +636,7 @@ export default function AdminDongnedealImportPage() {
                 </table>
               </div>
             )}
-            <a href="/group-buy" target="_blank" rel="noreferrer" className="inline-block mt-3 text-sm font-semibold text-pink-600 hover:underline">동네딜에서 확인 →</a>
+            <a href="/group-buy" target="_blank" rel="noreferrer" className="inline-block mt-3 text-sm font-semibold text-brand-text hover:underline">동네딜에서 확인 →</a>
           </div>
         )}
       </div>

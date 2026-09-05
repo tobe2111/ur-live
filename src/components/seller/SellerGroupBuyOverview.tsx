@@ -58,11 +58,11 @@ export default function SellerGroupBuyOverview() {
     <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
-          <Ticket className="w-4 h-4 text-pink-500" /> 공구 진행 현황
+          <Ticket className="w-4 h-4 text-brand-text" /> 공구 진행 현황
         </h3>
         <button
           onClick={() => navigate('/seller/group-buy')}
-          className="text-[11px] text-pink-500 font-bold flex items-center gap-0.5 hover:underline"
+          className="text-[11px] text-brand-text font-bold flex items-center gap-0.5 hover:underline"
         >
           전체 관리 <ChevronRight className="w-3 h-3" />
         </button>

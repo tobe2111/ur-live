@@ -391,7 +391,7 @@ export default function AdminSystemMonitoringPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded font-bold shrink-0">웹푸시</span>
+                        <span className="text-[10px] bg-brand-tint text-brand-text px-1.5 py-0.5 rounded font-bold shrink-0">웹푸시</span>
                         <p className="text-sm font-bold text-gray-900 truncate">{f.title}</p>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${
                           f.retry_count >= f.max_retries && !f.resolved ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'

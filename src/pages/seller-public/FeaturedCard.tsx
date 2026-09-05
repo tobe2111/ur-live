@@ -35,7 +35,9 @@ export default function FeaturedCard({ product, to, eyebrow }: { product: Produc
           📐 2026-08-17 (UX 전수검사 P1): 밝은 사진(콜라주 등)에서 제목이 묻힘 — 중간 구간 농도 보강(.40→.58). */}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(6,6,10,.88) 0%, rgba(6,6,10,.58) 32%, rgba(6,6,10,.12) 58%, transparent 76%)' }} />
       {disc > 0 && (
-        <span className="absolute top-3 left-3 rounded-lg bg-[#DE5F27] text-white text-[12px] font-extrabold px-2.5 py-1">{disc}% 할인</span>
+        /* 🎨 2026-09-03: 하드코딩 오렌지 `#DE5F27` → 브랜드. 이 색은 어느 팔레트에도 없어서
+           MONO 중화(tailwind.config)도 안 거쳤고, 유어샵에서 혼자 다른 서비스처럼 보였다. */
+        <span className="absolute top-3 left-3 rounded-lg bg-brand text-white text-[12px] font-extrabold px-2.5 py-1">{disc}% 할인</span>
       )}
       <div className="absolute left-4 right-4 bottom-4 text-white">
         {eyebrow && <span className="inline-block text-[11px] font-bold tracking-wide text-white/80 mb-1">{eyebrow}</span>}
@@ -44,7 +46,8 @@ export default function FeaturedCard({ product, to, eyebrow }: { product: Produc
         )}
         <h4 className="text-[19px] font-extrabold leading-tight tracking-tight mb-2 line-clamp-2">{product.name}</h4>
         <div className="flex items-baseline gap-2">
-          {disc > 0 && <span className="text-[14px] font-extrabold text-[#FFC7A6]">{disc}%</span>}
+          {/* 사진 위 흰 글자 영역이라 브랜드 블루는 안 읽힌다 — 같은 흰색 계열로 두고 굵기로 세운다. */}
+          {disc > 0 && <span className="text-[14px] font-extrabold text-white">{disc}%</span>}
           <b className="text-[21px] font-extrabold tabular-nums">{formatNumber(product.price || 0)}원</b>
           {product.original_price && product.original_price > (product.price || 0) && (
             <s className="text-[13px] text-white/60">{formatNumber(product.original_price)}원</s>

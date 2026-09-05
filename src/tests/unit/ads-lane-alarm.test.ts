@@ -344,13 +344,32 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
     const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
     for (const [lane, hour] of WAVE4) {
       expect(runners, `${lane} 등록 누락`).toContain(`${lane}: {`)
-      const seg = runners.slice(runners.indexOf(`${lane}: {`), runners.indexOf(`${lane}: {`) + 700)
+      /**
+       * 🕳️ 2026-09-05: 여기가 **고정 700자 창**이었다. 그 창이 다음 레인까지 넘어가서, 이웃 레인의
+       *   선언이 대신 매치돼 **결함을 심어도 초록불**이었다(되돌려-검증이 잡았다). 레인 경계로 자른다.
+       */
+      const start = runners.indexOf(`${lane}: {`)
+      const next = runners.indexOf("\n  '", start + 5)
+      const seg = runners.slice(start, next === -1 ? runners.length : next)
       expect(seg, `${lane} runsPerHour 1 아님`).toMatch(/runsPerHour: 1,/)
-      // 시각 체크가 빠지면 일 1회 레인이 매시간 돌게 된다(외부 API 호출량 증설 — 대표 판단 사항)
-      const want = hour === 'RESCAN_HOUR_UTC' ? /!== RESCAN_HOUR_UTC/
-        : hour === '%4' ? /getUTCHours\(\) % 4 !== 1/
+      /**
+       * 🗺️ 2026-09-05 재조준: 시각 리터럴을 박아 뒀는데, 시각 고정을 걷어내자(하루 1회는 유지)
+       *   깨졌다. 바로 윗줄이 지키려는 것을 적어 뒀다 — **"매시간 돌게 되는 것"** 즉 호출량이지
+       *   몇 시인지가 아니다. 그래서 호출량으로 다시 고정한다: 시각 고정이든 경과 시간 선언이든
+       *   **하루 1회면 통과**, 둘 다 없으면(=매시간) 빨간불.
+       *
+       *   🩸 왜 걷어냈나: 시각을 고정하면 그 시각에 알람이 안 깨어날 때 레인이 **영영** 안 돈다.
+       *      2026-09-05 실사고 — 읽기 예산 차단기가 창을 00~02시 UTC 로 줄이자 15~23시에 박힌
+       *      레인 9개가 통째로 죽었고(하트비트 `skipped: off_hour`), B2B 신규 수집이 하루
+       *      4,800~7,200건에서 78건으로 무너졌다. 에러도 경보도 없었다.
+       *   ⚠️ `scan-notices` 는 하루 6회(`% 4 !== 1`)라 이 완화 대상이 아니다 — 값 그대로 못박는다.
+       */
+      const daily = /minIntervalHours:\s*(DAILY_INTERVAL_HOURS|24)\b/
+      const want = hour === '%4' ? /getUTCHours\(\) % 4 !== 1/
+        : hour === 'RESCAN_HOUR_UTC' ? /!== RESCAN_HOUR_UTC/
           : new RegExp(`getUTCHours\\(\\) !== ${hour}`)
-      expect(seg, `${lane} 시각 보존 누락`).toMatch(want)
+      expect(want.test(seg) || (hour !== '%4' && daily.test(seg)),
+        `${lane}: 하루 1회가 안 지켜진다 — 시각 고정도 경과 시간 선언도 없으면 매시간 돈다`).toBe(true)
     }
   })
 

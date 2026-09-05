@@ -116,9 +116,9 @@ export default function AdminVoucherOrdersPage() {
 
   // 🛡️ 2026-06-14: 상태 의미를 한국어로 명시 (운영자가 영문 status 만 보고 의미 모름 신고).
   const STATUS_META: Record<VoucherOrderRow['status'], { label: string; desc: string; cls: string }> = {
-    processing: { label: '처리 중', desc: 'KT 발송 요청 후 결과 대기', cls: 'bg-amber-100 text-amber-700' },
-    sent: { label: '발송 완료', desc: '고객 문자로 기프티콘 전송됨', cls: 'bg-green-100 text-green-700' },
-    failed: { label: '발송 실패', desc: '재발송 필요 (사유 확인)', cls: 'bg-red-100 text-red-700' },
+    processing: { label: '처리 중', desc: 'KT 발송 요청 후 결과 대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+    sent: { label: '발송 완료', desc: '고객 문자로 기프티콘 전송됨', cls: 'bg-tone-ok-bg text-tone-ok' },
+    failed: { label: '발송 실패', desc: '재발송 필요 (사유 확인)', cls: 'bg-tone-bad-bg text-tone-bad' },
   }
 
   return (
@@ -228,7 +228,7 @@ export default function AdminVoucherOrdersPage() {
           </div>
           <div className="flex gap-2 mb-3">
             {(['all', 'processing', 'sent', 'failed'] as const).map(s => (
-              <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 text-sm rounded ${statusFilter === s ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+              <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 text-sm rounded ${statusFilter === s ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}>
                 {s === 'all' ? '전체' : STATUS_META[s].label}
               </button>
             ))}

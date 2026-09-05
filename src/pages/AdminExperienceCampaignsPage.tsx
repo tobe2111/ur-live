@@ -93,8 +93,8 @@ export default function AdminExperienceCampaignsPage() {
 
   const statusBadge = (s: string) => {
     const m: Record<string, { t: string; c: string }> = {
-      open: { t: '모집중', c: 'bg-green-100 text-green-700' },
-      drawn: { t: '추첨완료', c: 'bg-blue-100 text-blue-700' },
+      open: { t: '모집중', c: 'bg-tone-ok-bg text-tone-ok' },
+      drawn: { t: '추첨완료', c: 'bg-tone-info-bg text-tone-info' },
       closed: { t: '종료', c: 'bg-gray-100 text-gray-600' },
     }
     const x = m[s] || { t: s, c: 'bg-gray-100 text-gray-600' }

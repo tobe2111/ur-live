@@ -55,7 +55,7 @@ export default function SellerReferralInfoCard() {
             매출의 <strong className="text-blue-700">{commissionPct}%</strong> 가 영업 commission 으로 차감됩니다.
             {isActive && (
               <>
-                {' '}<strong className="text-pink-700">+ {bonusPct}% 영입 보너스</strong>
+                {' '}<strong className="text-brand-text">+ {bonusPct}% 영입 보너스</strong>
                 {info.referral_bonus_until && (
                   <span className="text-gray-500"> (~{new Date(info.referral_bonus_until).toLocaleDateString('ko-KR')})</span>
                 )}

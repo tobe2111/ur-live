@@ -42,7 +42,7 @@ export default function UserGroupBuyCreatePage() {
 
   // 🛡️ 2026-05-16: 공구 등록 권한 강화 — 점주(셀러) OR 인플루언서만 등록 가능
   //   일반 user (영업/공구 등록 자격 없음) 차단 — 사용자 보고:
-  //   "아무나 이 공구를 올리면 안 될 것 같아. 점주님이나 아니면 인플루언서"
+  // "아무나 이 공구를 올리면 안 될 것 같아. 점주님이나 아니면 인플루언서"
   const [eligibleAsInfluencer, setEligibleAsInfluencer] = useState<boolean | null>(null)
   const isSeller = !!sellerToken
 
@@ -101,7 +101,7 @@ export default function UserGroupBuyCreatePage() {
         <div className="flex flex-col gap-2 w-full max-w-xs">
           <button
             onClick={() => navigate('/store/new')}
-            className="w-full py-3 bg-pink-500 text-white rounded-xl font-bold text-sm"
+            className="w-full py-3 bg-brand text-white rounded-xl font-bold text-sm"
           >
             🏪 내 가게 등록하기
           </button>
@@ -425,7 +425,7 @@ export default function UserGroupBuyCreatePage() {
             {/* Balance */}
             <div className="mt-3 flex items-center justify-between px-1">
               <span className="text-[13px] text-gray-600 dark:text-gray-400">{t('groupbuy.balanceLabel', { defaultValue: '내 딜 잔액' })}</span>
-              <span className="text-[14px] font-bold text-pink-500">
+              <span className="text-[14px] font-bold text-brand-text">
                 {balance !== null
                   ? `${formatNumber(balance)}딜`
                   : t('groupbuy.balanceLoading', { defaultValue: '로딩중...' })}

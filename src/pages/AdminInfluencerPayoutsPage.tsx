@@ -213,7 +213,7 @@ export default function AdminInfluencerPayoutsPage() {
                       <td className="px-4 py-3 text-gray-900 font-mono text-xs">{r.influencer_id}</td>
                       <td className="px-4 py-3 text-right font-bold text-gray-900">{r.available_amount.toLocaleString()}원</td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`text-[10px] px-2 py-1 rounded font-bold ${r.payout_method === 'deal' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'}`}>
+                        <span className={`text-[10px] px-2 py-1 rounded font-bold ${r.payout_method === 'deal' ? 'bg-brand-tint text-brand-text' : 'bg-blue-100 text-blue-700'}`}>
                           {r.payout_method === 'deal' ? '딜 (+보너스)' : '현금'}
                         </span>
                       </td>

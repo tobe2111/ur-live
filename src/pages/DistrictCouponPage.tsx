@@ -23,9 +23,9 @@ interface MyReceipt { id: number; amount: number; status: string; reject_reason?
 interface MyCoupon { id: number; code: string; face_value: number; status: string; expires_at: string; redeemed_at?: string | null; redeemed_store_name?: string | null; campaign_name: string; campaign_slug: string; source?: string }
 
 const RECEIPT_STATUS: Record<string, { label: string; cls: string }> = {
-  submitted: { label: '검수 중', cls: 'bg-amber-100 text-amber-700' },
-  approved: { label: '지급 완료', cls: 'bg-emerald-100 text-emerald-700' },
-  rejected: { label: '반려됨', cls: 'bg-red-100 text-red-600' },
+  submitted: { label: '검수 중', cls: 'bg-tone-warn-bg text-tone-warn' },
+  approved: { label: '지급 완료', cls: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { label: '반려됨', cls: 'bg-tone-bad-bg text-tone-bad' },
 }
 
 function isLoggedIn(): boolean {
