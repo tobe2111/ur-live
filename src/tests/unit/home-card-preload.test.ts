@@ -7,7 +7,7 @@ import {
   HOME_CARD_LG_QUERY, HOME_CARD_BASE_QUERY, HOME_CARD_ABOVE_FOLD,
 } from '@/shared/home-card-image'
 import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink } from '@/worker/utils/home-card-preload'
-import { DETAIL_HERO_DESKTOP_WIDTH, detailHeroMobileUrl, detailPlainUrl } from '@/shared/detail-hero-image'
+import { DETAIL_HERO_DESKTOP_WIDTH, DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, detailCropUrl, detailHeroMobileUrl } from '@/shared/detail-hero-image'
 
 /**
  * 🖼️ 홈 첫 화면 카드 사진 preload (2026-08-27 대표 신고 — "메인페이지 로딩 자체도 느려").
@@ -93,11 +93,31 @@ describe('홈 카드 사진 preload — 클라와 워커가 같은 URL 을 만�
     //    08-31 뒤 갤러리가 그리는 어떤 URL 과도 안 맞아 111KB 를 받고 버렸다(라이브 실측).
     expect(gb).toContain(`href="${detailHeroMobileUrl('/api/media/uploads/demo/hero.jpg')}"`)
     expect(gb).toMatch(/gravity=auto/)
+    // 🖥️ 2026-09-06: PC 도 스마트 크롭. 사진이 한 장뿐인 seed 라 16:9 프레임이어야 한다
+    //    (여러 장이면 4:3 — 아래 별도 케이스). 갤러리가 그리는 URL 과 **같아야** preload 가 쓰인다.
     const pc = buildDetailHeroPreloadLink(seed, false, false)
-    expect(pc).toContain(`href="${detailPlainUrl('/api/media/uploads/demo/hero.jpg', DETAIL_HERO_DESKTOP_WIDTH)}"`)
-    expect(pc).not.toMatch(/gravity=/)
+    expect(pc).toContain(`href="${detailCropUrl('/api/media/uploads/demo/hero.jpg', DETAIL_HERO_DESKTOP_WIDTH, DETAIL_PC_HERO_RATIO_SINGLE)}"`)
+    expect(pc).toMatch(/gravity=auto/)
     expect(vc).toMatch(/imagesrcset=/)          // 교환권 상세는 밀도 srcSet
     expect(buildDetailHeroPreloadLink('not json', false)).toBeNull()
+  })
+
+  /**
+   * 🖥️ 2026-09-06 — **PC 프레임은 사진 장수로 갈린다**(여러 장 4:3 / 한 장 16:9).
+   *
+   * 워커가 장수를 화면과 다르게 세면 preload 가 통째로 버려진다(2026-09-02 에 실제로 났던 사고).
+   * 그래서 워커도 갤러리와 **같은 함수**(`detailGalleryImages`)로 센다 — 그 배선을 여기서 고정한다.
+   */
+  it('🔴 PC preload — 사진이 여러 장이면 4:3, 한 장이면 16:9', () => {
+    const one = JSON.stringify({ data: { image_url: '/api/media/uploads/demo/hero.jpg' } })
+    const many = JSON.stringify({
+      data: { image_url: '/api/media/uploads/demo/hero.jpg', images: JSON.stringify(['/api/media/uploads/demo/hero.jpg', '/api/media/uploads/demo/b.jpg']) },
+    })
+    const pcOne = buildDetailHeroPreloadLink(one, false, false)
+    const pcMany = buildDetailHeroPreloadLink(many, false, false)
+    expect(pcOne).toContain(`href="${detailCropUrl('/api/media/uploads/demo/hero.jpg', DETAIL_HERO_DESKTOP_WIDTH, DETAIL_PC_HERO_RATIO_SINGLE)}"`)
+    expect(pcMany).toContain(`href="${detailCropUrl('/api/media/uploads/demo/hero.jpg', DETAIL_HERO_DESKTOP_WIDTH, DETAIL_PC_HERO_RATIO_MULTI)}"`)
+    expect(pcOne).not.toBe(pcMany)   // 갈리지 않으면 둘 중 하나는 화면과 어긋난다
     expect(buildDetailHeroPreloadLink('{}', false)).toBeNull()
   })
 

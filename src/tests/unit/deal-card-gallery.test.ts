@@ -196,7 +196,7 @@ describe('죽은 사진은 다음 사진으로 대체된다', () => {
     //   렌더 `src={url}` 과 목록의 url 이 같은 함수 산출이라 "같은 URL" 은 구조적으로 보장된다.
     expect(detail).toMatch(/probes\.map\(\(\{ src, url \}\)/)
     expect(detail).toMatch(/src=\{url\}/)
-    expect(detail).toMatch(/\{ src: main, url: detailPlainUrl\(main, DETAIL_HERO_DESKTOP_WIDTH\) \}/)
+    expect(detail).toMatch(/\{ src: main, url: pcHeroUrl\(main\) \}/)
     expect(detail).toMatch(/onError=\{\(\) => setDead\(/)
   })
 

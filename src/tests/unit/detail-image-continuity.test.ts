@@ -95,7 +95,7 @@ describe('④ 카드가 받은 변형을 상세가 밑에 깐다 (쌍)', () => {
     expect(GALLERY).toMatch(/getWarmImage\(src\)/)
     expect(GALLERY).toMatch(/`url\("\$\{hi\}"\), url\("\$\{lo\}"\)`/)
     // 모바일 슬라이드·PC bg 둘 다 layered 를 거친다
-    expect((GALLERY.match(/layered\((?:hi|detailPlainUrl)/g) || []).length).toBe(2)
+    expect((GALLERY.match(/layered\((?:hi|url)\b/g) || []).length).toBe(2)
   })
   it('기억 모듈 — 같은 원본이면 돌려주고, 없으면 null, 빈 값은 저장하지 않는다', () => {
     rememberWarmImage('/api/media/a.jpg', 'https://urdeal.kr/cdn-cgi/image/width=600/https://media.ur-team.com/a.jpg')
