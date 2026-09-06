@@ -94,10 +94,9 @@ export async function reverseOrderAncillaryOnRefund(
     const { reverseInfluencerStoreIntroOnRefund } = await import('./influencer-store-intro-commission')
     await reverseInfluencerStoreIntroOnRefund(DB, orderId, 'order_refund')
   } catch { /* best-effort */ }
-  try {
-    const { reverseAgencyStoreIntroOnRefund } = await import('./agency-store-intro-commission')
-    await reverseAgencyStoreIntroOnRefund(DB, orderId, 'order_refund')
-  } catch { /* best-effort */ }
+  // 🌇 2026-09-04 에이전시 일몰 — `reverseAgencyStoreIntroOnRefund` 호출을 삭제했다. 적립은
+  //    2026-08-31 에 이미 폐지됐고(`agency_intro` 타입 제거), 라이브 `agency_store_intro_commissions`
+  //    는 **0행**이라 역전할 대상이 존재하지 않는다(구조적 no-op). docs/design/store-operator-model.md
   // 💸 2026-07-01: 쇼핑 주문 원장 크레딧(SHOPPING_LEDGER_ENABLED) 역전 — 게이트 무관 멱등.
   //   크레딧이 없으면 no-op(플래그 OFF 로 크레딧 안 된 주문은 안전). 플래그를 껐어도 기존 크레딧은 역전.
   try {

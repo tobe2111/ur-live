@@ -88,6 +88,77 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🌇 소개서 생성기에 에이전시 도메인이 되살아난다(없는 덱의 숫자를 다시 뽑는다)',
+    file: 'scripts/generate-proposal-refs.mjs',
+    find: "const DOMAINS = ['wholesale', 'offline-groupbuy', 'online-listing', 'linkshop']",
+    replace: "const DOMAINS = ['wholesale', 'offline-groupbuy', 'online-listing', 'linkshop', 'agency']",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '에이전시 덱이 자랑하던 코드는 전부 삭제됐다. 도메인이 남으면 생성기가 그 덱의 숫자를 다시 ' +
+      '뽑으려다 "[추출실패—수동확인]" 을 내고, 커버리지 매트릭스가 **있지도 않은 기능**을 셈한다 — ' +
+      '대표가 사업계획서 C-2 에서 지적한 것과 같은 클래스(대외 자료가 없는 서비스를 판다).',
+  },
+  {
+    name: '🌇 영입 사전등록이 다시 agencies 를 조회한다(초대 링크에 ?agency= 가 되살아난다)',
+    file: 'src/features/seller-prospects/api/seller-prospects.routes.ts',
+    find: "  const introducerType = 'influencer'",
+    replace: "  const introducerType = 'influencer'; await c.env.DB.prepare('SELECT id FROM agencies WHERE id = ?')",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '1차 일몰은 읽는 쪽(대시보드·커미션)만 지웠고 **쓰는 쪽**이 살아 있었다. 이 라우트가 발급하던 ' +
+      '`?agency=` 초대 링크가 가입 폼의 유령 입력칸을 채워 요금(직접 10% / 중개 5%)을 갈랐다.',
+  },
+  {
+    name: '🌇 어드민이 매장을 다시 에이전시에 붙일 수 있다(화면 없는 쓰기 경로)',
+    file: 'src/features/admin/api/admin-sellers/reassign-introducer.ts',
+    find: "    existsTable: 'users',",
+    replace: "    existsTable: 'agencies',",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '어드민 UI 는 reassign-influencer 하나만 부르는데 agency 쪽 라우트가 화면 없이 살아 있었다. ' +
+      '일몰된 개념에 매장을 붙일 수 있는 문은 남기지 않는다(2026-09-05 대표 "잔재 다 삭제").',
+  },
+  {
+    name: '🏪 본인 가입이 채널을 안 찍는다(직접 입점 사장님이 조용히 5% 로 돌아간다)',
+    file: 'src/features/seller/api/seller-registration.routes.ts',
+    find: '    await stampSignupStoreChannel(db, newSellerId);',
+    replace: '    // (제거)',
+    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
+    why:
+      '채널이 비면 channelPlatformRate 가 undefined → 중개(5%) 폴백이다. 라이브 실측상 이 문으로 온 ' +
+      '매장 8곳 중 7곳이 미지정이었고, 에러도 경고도 없이 절반 요율로 걷혔다.',
+  },
+  {
+    name: '🏪 본인 가입 문이 중개(5%)로 찍힌다',
+    file: 'src/features/seller/api/seller-signup-meta.ts',
+    find: "  return 'direct'",
+    replace: "  return 'brokered'",
+    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
+    why:
+      '이 문은 카카오 user 세션 전용 — 로그인한 본인이 자기 가게를 올린다. 여기서 brokered 가 나오면 ' +
+      '중개사가 없는 매장까지 절반 요율로 걷힌다(에이전시 일몰 후 brokered 의 출처는 /store/new 뿐).',
+  },
+  {
+    name: '🏪 매장 등록 모달이 "누가 운영하나요?" 없이 제출된다',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '    if (!picked || !channel || !managerOk || !certOk || submitting) return',
+    replace: '    if (!picked || !managerOk || !certOk || submitting) return',
+    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
+    why:
+      '에이전시 일몰 후 brokered 를 만들 수 있는 문은 여기 하나다. 이 강제가 풀리면 채널 미지정 ' +
+      '매장이 다시 생기고, 미지정은 조용히 5% 로 떨어진다.',
+  },
+  {
+    name: '🌇 가입 퍼널에 에이전시 초대 코드가 되살아난다(아무도 못 켜는 스위치가 요금을 가른다)',
+    file: 'src/features/seller/api/seller-registration.routes.ts',
+    find: "    const hasInfluencerCode = !!(influencer_intro_code && influencer_intro_code.trim())",
+    replace: "    const hasInfluencerCode = !!(influencer_intro_code && influencer_intro_code.trim()); const agency_intro_code = ''",
+    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
+    why:
+      '2026-09-05 대표 "에이전시 남은 잔재 다 삭제". 발급 주체(대시보드·초대 링크)가 사라졌는데 ' +
+      '읽는 쪽만 남으면, 아무도 채울 수 없는 칸이 직접 10% / 중개 5% 를 계속 가르게 된다.',
+  },
+  {
     name: '컨테이너 스크롤을 capture 없이 들어 영원히 못 받는다',
     file: 'src/components/ScrollToTop.tsx',
     find: "{ passive: true, capture: true }",
@@ -2274,35 +2345,115 @@ canvas {
       '**영원히 생성되지 않는다** — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
   },
   {
-    name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
-    file: 'src/features/agency/api/agency-sunset.ts',
-    find: "    code: 'AGENCY_SIGNUP_CLOSED',",
-    replace: "    code: 'OK',",
-    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    name: '🏪 운영 요약이 남의 매장까지 센다 (스코프 소실)',
+    file: 'src/features/seller/api/seller-operators.routes.ts',
+    // ⚠️ `listOperableStores(...)` 호출은 파일에 2곳(/my-stores · /operating-summary)이라
+    //    그 줄만으로는 앵커가 유일하지 않다. 뒤따르는 조기반환까지 붙여 좁힌다.
+    find: '    const stores = await listOperableStores(c.env.DB, userId)\n    if (stores.length === 0) return c.json({ success: true, data: [] })',
+    replace: "    const stores = ((await c.env.DB.prepare('SELECT id AS seller_id FROM sellers').all()).results || [])",
+    test: 'src/tests/unit/store-operator-scope.test.ts',
     why:
-      '2026-08-19 에이전시 대시보드 일몰. 가입 차단은 **클라+서버 한 쌍**이다 — 화면만 막으면 ' +
-      '직접 POST 로 우회되고(계정이 조용히 생긴다), 서버만 막으면 사용자가 폼을 다 채운 뒤 403 을 본다. ' +
-      '반쪽 롤백은 화면상 멀쩡해 보여서 리뷰로 안 걸린다.',
+      '`listOperableStores` 가 이 화면의 유일한 스코프다. 빠지면 아무 셀러나 **모든 매장의 매출**을 본다 — ' +
+      '에러도 없고 화면도 정상이라 목록이 길어진 걸 누가 이상하게 여기기 전엔 모른다.',
   },
   {
-    name: '에이전시 nav 가 존재하지 않는 라우트를 가리킨다(죽은 링크 부활)',
-    file: 'src/components/AgencyLayout.tsx',
-    find: "{ path: '/agency/settlements'",
-    replace: "{ path: '/agency/streams', label: 'X', i18nKey: 'x', icon: Settings, mode: 'common' },\n      { path: '/agency/settlements'",
-    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    name: '🏪 운영 요약이 미결제 주문까지 매출로 센다',
+    file: 'src/features/seller/api/seller-operators.routes.ts',
+    find: 'const PAID = "status IN (\'PAID\',\'DONE\',\'PREPARING\',\'SHIPPING\',\'DELIVERED\')"',
+    replace: 'const PAID = "status IN (\'PENDING\',\'PAID\',\'DONE\')"',
+    test: 'src/tests/unit/store-operator-scope.test.ts',
     why:
-      '일몰 전 이미 /agency/streams·/agency/pending 이 라우트 없이 nav 에 남아 있었다(누르면 아무 일도 ' +
-      '안 일어난다). 화면을 지우면서 nav 를 안 지우면 그 부채가 즉시 다시 쌓인다.',
+      '이 숫자는 중개사가 매장에 청구할 근거다. 결제도 안 된 주문이 섞이면 그 청구가 부풀려지고, ' +
+      '사장님은 정산서와 안 맞는 금액을 요구받는다.',
   },
   {
-    name: '일몰로 내린 에이전시 API 가 다시 마운트된다',
+    name: '🏪 운영자가 매장 정산계좌를 갈아끼울 수 있게 된다',
+    file: 'src/features/seller/api/seller-profile.routes.ts',
+    find: '      if (!actor.isOwner) {\n        return c.json({ success: false, error: `정산 계좌는 ${OWNER_ONLY_MESSAGE}` }, 403);',
+    replace: '      if (false) {\n        return c.json({ success: false, error: `정산 계좌는 ${OWNER_ONLY_MESSAGE}` }, 403);',
+    test: 'src/tests/unit/store-operator-scope.test.ts',
+    why:
+      '위임받은 중개사가 계좌를 바꾸면 그 매장의 돈이 통째로 딴 데로 간다. PIN 은 *운영자 자신의* ' +
+      'PIN 이라 못 막는다 — 권한으로 끊는 이 한 줄이 유일한 방어선이다.',
+  },
+  {
+    name: '🏪 행위자 판별이 linked_user_id 폴백으로 되돌아간다',
+    file: 'src/worker/utils/store-actor.ts',
+    find: '    const opRaw = Number(p.operator_user_id)',
+    replace: '    const opRaw = Number(p.linked_user_id)',
+    test: 'src/tests/unit/store-operator-scope.test.ts',
+    why:
+      '`linked_user_id` 는 *호출자*가 아니라 **매장 주인**의 id 다. 그걸로 판정하면 세션 없는 요청에서 ' +
+      '운영자가 주인으로 오판되고, 위의 모든 게이트가 한 번에 무의미해진다.',
+  },
+  {
+    name: '🏪 사업자정보 시드 폴백만 마스킹을 빠뜨린다',
+    file: 'src/features/seller/api/seller-profile/business-info.ts',
+    find: "      const a0 = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);",
+    replace: '      const a0 = { isOwner: true };',
+    test: 'src/tests/unit/store-operator-scope.test.ts',
+    why:
+      '"사업자정보 행이 아직 없는 매장"에서만 원본이 샌다. 신규 매장은 흔한 상태인데 ' +
+      '평소 경로는 멀쩡해 보여서 눈에 안 띈다 — 이 레포가 반복해 만난 "조용한 부재".',
+  },
+  {
+    name: '🗑️ cascade 가 머니 잔여물 검사까지 건너뛴다 (매출 있는 매장이 사라진다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "    const ords = await countOr('주문', 'SELECT COUNT(*) AS n FROM orders WHERE seller_id = ?', [sellerId]);\n    if (ords > 0) blockers.push(`주문 ${ords}건`);",
+    replace: "    const ords = 0;",
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      'cascade 는 상품·운영자·유저연결만 덮어야 한다. 주문 검사가 그 분기 안으로 들어가거나 사라지면 ' +
+      '**매출이 있는 매장이 한 번에 사라진다** — 되돌릴 수 없고, 화면상 "정리됐다"로 보인다.',
+  },
+  {
+    name: '🗑️ 매장 완전 삭제가 잔여물 검사를 건너뛴다 (되돌릴 수 없는 파괴)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: '    if (blockers.length > 0) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '거부 분기가 죽으면 상품·주문이 있는 매장도 그냥 지워진다. 되돌릴 수 없고, ' +
+      '삭제 직후엔 화면상 "정리됐다"로 보여서 사고를 나중에야 안다.',
+  },
+  {
+    name: '🗑️ 매장 완전 삭제가 super 권한 없이 열린다',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "adminSellersRoutes.delete('/sellers/:id/purge', cors(), requireAdminRole('super'), require2FA(), async (c) => {",
+    replace: "adminSellersRoutes.delete('/sellers/:id/purge', cors(), async (c) => {",
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '파괴적 작업이 일반 어드민 토큰만으로 실행된다. 계정 하나가 새면 매장이 통째로 사라진다.',
+  },
+  {
+    name: '🌇 일몰한 에이전시 API 가 워커에 다시 마운트된다',
     file: 'src/worker/index.ts',
-    find: "app.route('/api/agency/delegation', agencyDelegationRoutes);",
-    replace: "app.route('/api/agency/campaigns', agencyCampaignsRoutes);",
-    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    find: "app.route('/api/invite', inviteRewardRoutes);",
+    replace: "app.route('/api/invite', inviteRewardRoutes);\napp.route('/api/agency', agencyRoutes);",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
     why:
-      '화면 없는 인증 API 가 살아 있으면 축소의 의미가 없다(공격 표면만 남는다). 파일은 일부러 ' +
-      '남겼기 때문에(머니 심볼 computeCommission 이 함께 export 된다) 마운트 한 줄이면 되살아난다.',
+      '에이전시는 이 레포에서 **두 번** 일몰됐고(08-19 축소 · 08-31 커미션 폐지) 두 번 다 잔재가 남아 ' +
+      '다음 세션이 "아직 쓰는 모델"로 읽었다. 09-04 완전 삭제 뒤에도 마운트 한 줄이면 되살아난다.',
+  },
+  {
+    name: '🌇 일몰한 /agency 라우트가 앱에 다시 그려진다',
+    file: 'src/App.tsx',
+    find: '            <Route path="/business" element={<BusinessLandingPage />} />',
+    replace: '            <Route path="/agency" element={<BusinessLandingPage />} />\n            <Route path="/business" element={<BusinessLandingPage />} />',
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '중개사는 별도 대시보드가 아니라 셀러 대시보드를 쓴다(대표 확정). /agency 가 다시 생기면 ' +
+      '같은 역할에 문이 둘이 되고, 그게 정확히 대표가 "헷갈리지 말자" 고 한 상태다.',
+  },
+  {
+    name: '🕳️ 일몰이 소비자 친구초대까지 삼킨다',
+    file: 'src/worker/index.ts',
+    find: "app.route('/api/invite', inviteRewardRoutes);",
+    replace: '/* referral 초대 마운트 제거 */',
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '에이전시 초대코드가 **같은 `/api/invite`** 에 얹혀 있었다. 이름만 보고 지우면 마이페이지의 ' +
+      "'내 추천 링크'(GET /api/invite/my)가 통째로 죽는데, 화면엔 빈 카드로 보여 신고가 안 들어온다.",
   },
   {
     name: '이용권 상세 제목이 다시 사진 아래로 내려간다',
@@ -6802,10 +6953,15 @@ canvas {
       '원장을 합산해야 드러난다.',
   },
   {
-    name: '💸 [INV-#44] 에이전시 share 가 platform:revenue 하드코딩으로 되돌아감',
+    name: '💸 사용시점 셰어의 debit 이 platform:revenue 로 하드코딩된다 (#44)',
     file: 'src/worker/utils/ledger.ts',
-    find: "    debit_account: ownerFunded ? `merchant:${params.merchant_id}` : 'platform:revenue',",
-    replace: "    debit_account: 'platform:revenue',",
+    // 🌇 2026-09-04: 앵커를 옮겼다. 이 자리를 지키던 `recordAgencyCommissionShare` 가
+    //    에이전시 일몰로 삭제됐고, 같은 성질의 코드는 `creditUserCommission` 의 flip 분기다.
+    // ⚠️ 주입 형태가 중요하다: 가드는 `debit_account: 'platform:revenue'` **리터럴**을 찾는다.
+    //    `const debitAcct = 'platform:revenue'` 로 바꾸는 주입은 같은 결함인데도 가드가 못 본다
+    //    (실제로 첫 판이 그렇게 초록불이었다). 가드가 실제로 보는 형태로 심는다.
+    find: "      debit_account: debitAcct,\n      credit_account: `user:${params.userId}`,",
+    replace: "      debit_account: 'platform:revenue',\n      credit_account: `user:${params.userId}`,",
     test: 'scripts/check-commission-budget.mjs',
     why:
       'flip 을 켜도 이 축만 조용히 5% 를 계속 잠식한다. 에러도 없고 화면도 멀쩡해서 ' +
@@ -7894,7 +8050,7 @@ canvas {
       '**에러 없이 엉뚱한 사람에게 2% 가 간다** — 가장 조용한 머니 사고다.',
   },
   {
-    name: '🔀 라우트가 반대편 종류로 위임한다 (사람↔에이전시 뒤바뀜)',
+    name: '🔀 재배정 라우트가 영입자(users.id) 아닌 종류로 위임한다',
     file: 'src/features/admin/api/admin-sellers.routes.ts',
     find: "reassignIntroducer(c, 'influencer', safeAdminError)",
     replace: "reassignIntroducer(c, 'agency', safeAdminError)",
@@ -7919,24 +8075,25 @@ canvas {
     file: 'src/worker/utils/order-commissions.ts',
     // 🗺️ 2026-09-05: 크리에이터 영입 2% 폐지로 'influencer_intro' 가 타입에서 빠져 이 지도가 낡았다.
     //   (pre-commit 의 '낡은 지도' 검사가 잡았다 — 그게 이 검사의 두 번째 역할이다.)
+    // 🌇 같은 날 에이전시 일몰로 `agency-intro-retired.test.ts` 가 `agency-sunset-final.test.ts` 로
+    //   대체됐다(그 파일의 "역전은 남는다"가 일몰과 정반대라 지웠다) — 지키는 불변식은 동일하다.
     find: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'supplier'",
     replace: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'agency_intro' | 'supplier'",
-    test: 'src/tests/unit/agency-intro-retired.test.ts',
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
     why:
       '타입에서 뺀 것이 이 폐지의 자물쇠다 — 호출부가 컴파일로 막힌다. 되살아나면 같은 행위(매장 영입)에 ' +
       '신분별 이중 보상이 돌아오고, 대행 5% 매장에서 유어딜이 0.25% 만 남는 적자 구간이 다시 열린다.',
   },
   {
-    name: '🛑 환불 역전만 지워 비대칭이 된다',
+    name: '🌇 일몰한 에이전시 환불 역전이 되살아난다',
     file: 'src/worker/utils/order-refund.ts',
-    // ⚠️ 이름만으로는 import·호출 두 곳에 걸린다 — 호출 줄로 앵커를 좁힌다.
-    find: "await reverseAgencyStoreIntroOnRefund(DB, orderId, 'order_refund')",
-    replace: '/* 역전 제거 */',
-    test: 'src/tests/unit/agency-intro-retired.test.ts',
+    find: '  // 🌇 2026-09-04 에이전시 일몰 — `reverseAgencyStoreIntroOnRefund` 호출을 삭제했다. 적립은',
+    replace: "  await (await import('./agency-store-intro-commission')).reverseAgencyStoreIntroOnRefund(DB, orderId, 'order_refund')\n  //",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
     why:
-      '적립만 없애고 역전까지 지우면 과거·수동 행이 환불돼도 안 돌아온다. ' +
-      '⚠️ 이 주입은 처음에 통과했다 — 가드가 `toContain(이름)` 이라 `_REMOVED` 접미사가 붙어도 ' +
-      '앞부분이 일치했기 때문이다. 호출 형태(`이름(`)로 보도록 고쳤다.',
+      '2026-08-31 에는 "역전은 남긴다"가 맞았고 이 자리의 주입은 정반대 방향이었다. ' +
+      '2026-09-04 대표 확정으로 에이전시가 통째로 일몰이라 방향이 뒤집혔다 — 라이브 ' +
+      '`agency_store_intro_commissions` 0행이라 역전할 대상이 없고, 되살아나면 삭제한 파일을 다시 import 한다.',
   },
   {
     name: '🕳️ 빌드 CSS 가드를 워크플로에서 떼어낸다 (파일만 남고 안 돎)',
@@ -8837,14 +8994,8 @@ canvas {
     test: 'src/tests/unit/no-deadline-sort.test.ts',
     why: '마감이 없어졌으므로 NULL 비교라 언제나 0 이다. 크래시가 아니라 조용한 부재 — 화면은 멀쩡해 보인다.',
   },
-  {
-    name: '🗓️ 에이전시 알림에 사라진 개념(24h 내 마감) 안내가 부활',
-    file: 'src/components/agency/AgencyGroupBuyAlert.tsx',
-    find: "        {data.churn_sellers > 0 && (",
-    replace: "        {false && (<p>미달성 위험 — 24h 이내 마감</p>)}\n        {data.churn_sellers > 0 && (",
-    test: 'src/tests/unit/no-deadline-sort.test.ts',
-    why: '존재하지 않는 개념을 설명하는 문구는 다음 세션에게 틀린 지도가 된다.',
-  },
+  // 🌇 2026-09-05 에이전시 일몰 — `AgencyGroupBuyAlert.tsx` 주입 항목 삭제(파일이 없어졌다).
+  //    그 불변식은 `no-deadline-sort.test.ts` 의 **파일 부재** 단언이 더 강하게 대신한다.
   {
     name: '🗓️ 찜 목록에 하는 일이 없는 \'마감 임박\' 정렬 칩이 부활',
     file: 'src/pages/wishlist/WishlistParts.tsx',

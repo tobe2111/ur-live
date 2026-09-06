@@ -17,14 +17,13 @@ export const ADMIN_SEED: SeedSection[] = [
 ### 역할 정의
 - **유저(구매자)** — 홈/쇼츠/라이브 시청, 장바구니·결제, 후원(donation)
 - **셀러** — 상품 등록, 라이브 방송, 정산 요청, 번들·공동구매·타임딜 생성
-- **에이전시** — 셀러 모집·관리, 수수료 수익, 성과 비교
 - **관리자(운영팀)** — 승인·정산·모더레이션·지표 모니터링
 
 ### 기술 스택
 \`Cloudflare Pages + Workers + D1 + R2 + KV + Durable Objects\`. 프론트는 React + Vite, 모바일은 Capacitor 래핑.
 
 ### 수익 모델
-상품 판매 플랫폼 수수료(기본 5%, 셀러별 조정 가능) + 후원/기부 수수료(15%) + 알림톡 발송비 + 에이전시 수수료.`,
+상품 판매 플랫폼 수수료(직접 입점 10% / 중개 5%, 셀러별 조정 가능) + 후원/기부 수수료(15%) + 알림톡 발송비.`,
   },
   DAILY_CHECKLIST_SECTION,
 
@@ -74,39 +73,28 @@ export const ADMIN_SEED: SeedSection[] = [
 매일 18시 최고 입찰자 낙찰. 5개 슬롯 (메인 hero, 카테고리 top, 라이브 추천 1/2/3). 낙찰 후 셀러가 결제 완료하면 24시간 우선 노출 적용.`,
   },
   {
-    key: 'agency-ops', icon: '🤝', title: '에이전시 관리', order: 40,
-    content: `**에이전시 = 여러 셀러를 대표하는 중개 조직**. 관리자 페이지: \`/admin/agencies\`
+    key: 'agency-ops', icon: '🤝', title: '중개(대행) 매장 운영', order: 40,
+    content: `> 🌇 **2026-09-04 에이전시 일몰(대표 확정).** 이 자리에 오래 "에이전시 = 여러 셀러를 대표하는
+> 중개 조직" 설명과 \`/admin/agencies\` · 셀러 심사 큐 · 자동 매칭이 있었습니다. **전부 삭제됐습니다.**
+> 라이브 실측상 에이전시에 붙은 매장 0곳 · 위임 0건 · 지급 이력 0건이었습니다.
 
-### 가입 플로우
-- 에이전시 자체 가입 → **status: pending** → 관리자 승인 필요
-- 승인 후 에이전시는 \`/seller/register?agency=<id>\` 링크로 셀러 초대 가능
-- 초대로 가입한 셀러는 **agency_id** 가 자동 연결 → 에이전시 수수료 적용
+### 지금 모델 — 중개사는 별도 대시보드가 없습니다
 
-### 수수료 구조 (2026-07-05 개편)
-- **매장 영입 커미션 기본 1%** — 에이전시별 조정: 에이전시 관리의 store_intro_commission_pct
-- 기간: 매장별 첫 판매 확정일로부터 **기본 24개월** (commission_term_months, NULL=무제한 — 신규는 24 자동)
-- 캡 발동 시 에이전시 커미션 최우선 보전 (플랫폼 설정 → 커미션 캡 발동 이력에서 확인)
-- 레거시 자동정산 rail (소속 셀러 매출 2% + 일률 3.3% 원천징수) 은 봉인됨 — agency_auto_settle_legacy_enabled 기본 OFF
+| | 무엇 | 유어딜 수수료 |
+|---|---|---|
+| **직접 입점** | 매장이 스스로 가입 | **10%** |
+| **중개(대행)** | 중개사가 매장을 데려와 대신 운영 | **5%** |
 
-### 🛡️ 셀러 심사 워크플로우 (2026-04-26 추가)
-- 에이전시가 \`POST /api/agency/invite-seller\` 로 셀러 초대 시 **status='pending'** 으로 생성됨
-- \`agency_creator_approvals\` 테이블에 심사 대기 row 생성
-- 어드민이 \`/admin/agency-creator-approvals\` 에서 검증 후 승인/반려
-- 승인 → sellers.status='approved', is_active=1 → 로그인/판매 가능
-- 반려 → sellers.status='rejected', is_active=0 → 비활성, 사유 기록
+- 중개사는 **셀러 대시보드 계정**입니다. 별도 로그인·별도 화면이 없습니다.
+- 매장과의 관계는 \`seller_operators\`(owner / operator) 한 줄로 표현됩니다.
+- 채널(직접/중개)은 매장별로 \`seller_meta.store_channel\` 에 기록되고, 그 값이 수수료율을 정합니다.
 
-**API:**
-- \`GET /api/admin/agency-creator-approvals?status=pending\` — 심사 대기 목록
-- \`POST /api/admin/agency-creator-approvals/:id/approve\`
-- \`POST /api/admin/agency-creator-approvals/:id/reject\` — body: { reason }
+### ⚠️ 중개사 보상은 유어딜이 지급하지 않습니다
+5% 는 **온전히 유어딜 몫**입니다. 중개사는 나머지 **95%(매장 몫)** 에서 매장과 직접 거래해
+공수 비용을 받습니다 — 유어딜 장부·정산 화면에 중개사 지급은 **등장하지 않습니다.**
+(그래서 커미션이 겹쳐 유어딜이 적자가 나는 구조가 존재할 수 없습니다.)
 
-### 계약 변경
-\`/admin/agencies\` → 에이전시 상세 → 수수료율 수정. 변경 이력은 감사 로그에 기록.
-
-### 🤖 신규 셀러 자동 매칭 (2026-05-05)
-- 매일 18시 배치가 가입 60일 이내 무소속 셀러를 자동으로 에이전시에 매칭 제안
-- 에이전시는 \`/agency/match-suggestions\` 에서 수락/거절
-- 수락 즉시 \`agency_sellers\` 에 추가, 셀러에게 알림 발송`,
+설계 SSOT: \`docs/design/store-operator-model.md\``,
   },
   {
     key: 'orders', icon: '📦', title: '주문 관리', order: 50,
@@ -136,11 +124,10 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
   {
     key: 'settlement', icon: '💰', title: '정산 처리', order: 60,
     content: `### 🏦 지급 센터 (\`/admin/payout-center\`) — 2026-06-12 신설, 권장 진입점
-셀러 정산 · 소개 환급 · 에이전시 영입 커미션의 **모든 지급 요청이 한 화면**에 모입니다.
+셀러 정산 · 소개 환급의 **모든 지급 요청이 한 화면**에 모입니다.
 1. 매주 금요일 지급 센터 열기 (정산 센터 탭 맨 앞)
 2. 줄 서 있는 신청의 계좌로 폰뱅킹 이체
 3. **입금 완료** 클릭 → 상태 기록 + 신청자에게 자동 알림
-- 에이전시는 환불 보호를 위해 **7일 경과분만** 일괄 지급 버튼이 활성화됩니다
 - 소개 환급 반려 시 차감됐던 딜이 자동 복원됩니다
 - 제조사(공급사) 출금은 기존 전용 화면(\`/admin/wholesale-withdrawals\`) 그대로
 
@@ -152,7 +139,7 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 
 ### 일괄 처리 (\`/admin/settlements-bulk\`)
 - 매주 수요일 일괄 정산 권장 — CSV 다운로드 → 은행 일괄이체 → 완료 후 업로드
-- 금액 = 총매출 − 플랫폼 수수료(10%) − 에이전시 수수료(2%) − 환불액 − 배송비 정산
+- 금액 = 총매출 − 플랫폼 수수료(직접 10% / 중개 5%) − 환불액 − 배송비 정산
 
 ### 정산 검증 포인트
 - DONE 상태 주문만 집계됨 (구매확정 14일 경과)
@@ -576,7 +563,7 @@ donations 테이블에서 payment_status='approved' 만 집계. 수수료(15%) �
 **구현**: \`html\` 태그에 \`.dark\` class 토글 + \`src/index.css\` 글로벌 override.
 - 다크 모드: 기존 \`bg-[#11141C]\` / \`text-white\` 등 그대로
 - 라이트 모드: \`html:not(.dark)\` selector 가 hardcoded 다크 색상을 light 로 invert
-- 셀러/어드민/에이전시 대시보드는 토글 무영향 (강제 화이트 유지)
+- 셀러/어드민 대시보드는 토글 무영향 (강제 화이트 유지)
 
 **사고 사례 / 운영 노트**:
 - 컬러 버튼 (bg-pink/red/blue/gradient) 위 흰 텍스트는 라이트 모드에서도 유지 (invisible 방지 안전장치)
@@ -721,7 +708,7 @@ WHERE account LIKE 'user:%' GROUP BY account HAVING SUM(net) < 0;
 3단계 추천 commission 의 출금 신청을 처리하는 어드민 페이지.
 
 ### 흐름
-1. 사용자/셀러/에이전시가 \`/my-commissions\` 에서 **출금 신청** 클릭
+1. 사용자/셀러가 \`/my-commissions\` 에서 **출금 신청** 클릭
 2. 계좌 정보 입력 → \`commission_withdrawals\` row 생성 (status=pending)
 3. 연관된 \`referral_commissions\` 의 status: \`granted\` → \`withdrawal_requested\`
 4. 어드민이 이 페이지에서 신청 검토 → **송금완료** OR **거절** 선택
@@ -844,7 +831,7 @@ WHERE account LIKE 'user:%' GROUP BY account HAVING SUM(net) < 0;
 - 50건 넘어도 페이지 1 만 보이던 버그 fix (\`res.data.totalPages\` 응답 키 호환).
 
 ### 사용자 상세 (확장)
-- 연결된 셀러 / 에이전시 계정 표시 (linked_user_id)
+- 연결된 셀러 계정 표시 (linked_user_id)
 - 상태 변경 (active/suspended/banned) — \`PATCH /api/admin/users/:id/status\``,
   },
   // 🛡️ 2026-05-25 (migration 0278): 큐레이터 유어샵 관리
@@ -1096,7 +1083,7 @@ WITHDRAWAL_DEFAULTS.UPGRADE_REOFFER_DAYS  // 30
 8월 promo flip(재원 owner 전환) staging 검증 조종석입니다. 돈 이동 0 · 정산 로직 무변경.
 
 - **재원 스위치 상태**: \`promo_funding_source\`(platform/owner) · \`commission_budget_enabled\` · \`pg_reserve_pct\` · \`seller_promo_field_enabled\` 를 칩으로 표시.
-- **월별 분배 집계**: 주문 수/금액 · affiliate promo 합계 · order_fee_breakdown(플랫폼/promo/에이전시/owner net) 월 단위 대사.
+- **월별 분배 집계**: 주문 수/금액 · affiliate promo 합계 · order_fee_breakdown(플랫폼/promo/owner net — agency 슬라이스는 일몰로 항상 0) 월 단위 대사.
 - **불변식 #44 패널**: "원장 platform:revenue = 5% 전액 · 성장 커미션 debit 0" 검증.
   - **전환 전(platform)엔 커미션 debit 항목이 파란 정보 톤 = 정상**(예상된 현행 항목 — 위반 아님).
   - 전환 후(owner)에 debit 존재 = 🔴 위반 — 즉시 조사 대상.

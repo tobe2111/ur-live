@@ -222,4 +222,79 @@ app.post('/operators/:userId/revoke', async (c) => {
   }
 })
 
+// ── GET /operating-summary — 내가 운영하는 매장 요약 ──────────────────────
+/**
+ * 🏪 2026-09-04 (대표 확정 "운영 매장 요약 대시보드") — 중개사가 **매장에 청구할 근거**를 보는 화면.
+ *
+ * ## 왜 필요한가
+ * 중개사 보수는 유어딜이 주지 않는다. 매장 몫(95%)에서 매장과 직접 정한다. 그러면 "얼마를 받을지"를
+ * 정할 근거가 필요한데, 지금은 매장을 하나씩 전환해 들어가 보는 수밖에 없었다.
+ *
+ * ## 🔴 정직하게 보여줄 것 — 이건 "내 성과"가 아니다
+ * 운영자별 매출 귀속은 추적하지 않는다. 그래서 **매장의 총액**을 주되, 위임받은 매장은
+ * `revenue_since_grant`(운영 시작 이후)를 함께 준다 — 그 구간이 그나마 방어 가능한 청구 근거다.
+ * 화면은 이 차이를 **문장으로** 밝혀야 한다. "내가 만든 매출"이라고 쓰면 거짓말이 된다.
+ *
+ * 스코프: `listOperableStores` 가 이미 이 유저가 운영 가능한 매장으로 좁힌다(남의 매장 안 샌다).
+ */
+app.get('/operating-summary', async (c) => {
+  try {
+    const userId = await resolveActorUserId(c)
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+    const stores = await listOperableStores(c.env.DB, userId)
+    if (stores.length === 0) return c.json({ success: true, data: [] })
+
+    // 위임 매장의 운영 시작일 — 청구 구간의 시작점.
+    const grants = new Map<number, string>()
+    try {
+      const g = await c.env.DB.prepare(
+        `SELECT seller_id, granted_at FROM seller_operators
+          WHERE user_id = ? AND revoked_at IS NULL`
+      ).bind(userId).all<{ seller_id: number; granted_at: string | null }>()
+      for (const r of g.results || []) if (r.granted_at) grants.set(r.seller_id, r.granted_at)
+    } catch { /* 테이블 없으면 구간 없이 총액만 */ }
+
+    const out = []
+    for (const st of stores) {
+      const since = grants.get(st.seller_id) || null
+      // ⚠️ 확정된 주문만 센다 — PENDING 을 매출로 보여주면 청구 근거가 부풀려진다.
+      const PAID = "status IN ('PAID','DONE','PREPARING','SHIPPING','DELIVERED')"
+      const agg = await c.env.DB.prepare(
+        `SELECT COUNT(*) AS orders, COALESCE(SUM(total_amount), 0) AS revenue
+           FROM orders WHERE seller_id = ? AND ${PAID}`
+      ).bind(st.seller_id).first<{ orders: number; revenue: number }>().catch(() => null)
+      const sinceAgg = since
+        ? await c.env.DB.prepare(
+            `SELECT COUNT(*) AS orders, COALESCE(SUM(total_amount), 0) AS revenue
+               FROM orders WHERE seller_id = ? AND ${PAID} AND created_at >= ?`
+          ).bind(st.seller_id, since).first<{ orders: number; revenue: number }>().catch(() => null)
+        : null
+      const prods = await c.env.DB.prepare(
+        'SELECT COUNT(*) AS n FROM products WHERE seller_id = ? AND is_active = 1'
+      ).bind(st.seller_id).first<{ n: number }>().catch(() => null)
+
+      out.push({
+        seller_id: st.seller_id,
+        business_name: st.business_name || st.name,
+        username: st.username,
+        status: st.status,
+        role: st.role,
+        source: st.source,
+        granted_at: since,
+        products_active: Number(prods?.n) || 0,
+        orders_total: Number(agg?.orders) || 0,
+        revenue_total: Number(agg?.revenue) || 0,
+        orders_since_grant: sinceAgg ? Number(sinceAgg.orders) || 0 : null,
+        revenue_since_grant: sinceAgg ? Number(sinceAgg.revenue) || 0 : null,
+      })
+    }
+    // 위임 매장을 위로 — 이 화면을 여는 이유가 그쪽이다.
+    out.sort((a, b) => (a.source === b.source ? b.revenue_total - a.revenue_total : a.source === 'grant' ? -1 : 1))
+    return c.json({ success: true, data: out })
+  } catch (err) {
+    return safeError(c, err, '운영 매장 요약을 불러오지 못했습니다', '[seller-operators]')
+  }
+})
+
 export { app as sellerOperatorsRoutes }

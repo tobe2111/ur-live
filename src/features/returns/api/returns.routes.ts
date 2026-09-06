@@ -747,11 +747,9 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     await reverseInfluencerStoreIntroOnRefund(DB, Number(returnRecord.order_id), 'return_refund');
   } catch { /* best-effort */ }
 
-  // 🔐 2026-06-11 (머니 감사 High#2): 에이전시 매장영입 커미션 역전 (적립 있는데 역전 없던 누수).
-  try {
-    const { reverseAgencyStoreIntroOnRefund } = await import('../../../worker/utils/agency-store-intro-commission');
-    await reverseAgencyStoreIntroOnRefund(DB, Number(returnRecord.order_id), 'return_refund');
-  } catch { /* best-effort */ }
+  // 🌇 2026-09-04 에이전시 일몰 — `reverseAgencyStoreIntroOnRefund` 호출을 삭제했다. 적립은
+  //    2026-08-31 에 이미 폐지됐고(`agency_intro` 타입 제거), 라이브 `agency_store_intro_commissions`
+  //    는 **0행**이라 역전할 대상이 존재하지 않는다(구조적 no-op). docs/design/store-operator-model.md
 
   // 🛡️ 2026-07-02 (쇼핑 전수조사 — 대표 승인 "선행 수리까지"): 쇼핑 원장 net 크레딧 역전.
   //   이 반품환불 경로가 역전을 인라인 재구현하면서 order-refund.ts 의 reverseSellerOrderLedger 만

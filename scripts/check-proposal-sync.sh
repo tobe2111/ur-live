@@ -56,14 +56,11 @@ if echo "$staged" | grep -qE '^src/features/(curator|seller-public|referral|affi
   briefs="$briefs linkshop-brief.md"
 fi
 
-# ── 에이전시 ──
-if echo "$staged" | grep -qE '^src/features/(agency|casting)/|pk-battles|^src/pages/Agency'; then
-  briefs="$briefs agency-brief.md"
-fi
+# 🌇 2026-09-05 에이전시 일몰 — `agency-brief.md` 삭제(그 소개서가 자랑하던 코드가 전부 없어졌다).
 
 # ── 정책 SSOT / 세금 — 전 소개서 영향 ──
 if echo "$staged" | grep -qE '^src/shared/constants/policy\.ts$|^src/worker/utils/tax-withholding\.ts$'; then
-  briefs="$briefs wholesale-mall-brief.md offline-groupbuy-brief.md online-listing-proposal-brief.md linkshop-brief.md agency-brief.md 00-service-overview-and-coverage.md"
+  briefs="$briefs wholesale-mall-brief.md offline-groupbuy-brief.md online-listing-proposal-brief.md linkshop-brief.md 00-service-overview-and-coverage.md"
 fi
 
 briefs=$(echo "$briefs" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')

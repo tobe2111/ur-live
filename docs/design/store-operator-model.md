@@ -1,6 +1,10 @@
 # 🏪 매장 운영 주체 모델 — 소유(owner) ↔ 운영(operator) 분리
 
-> **상태**: 1·2단계 구현 완료(2026-08-19) · **3단계는 설계 박제(미구현)**
+> **상태**: 1·2단계 구현 완료(2026-08-19) · **에이전시 완전 일몰 완료(2026-09-04)** · **3단계는 설계 박제(미구현)**
+>
+> 🔴 **2026-09-04 갱신 — 아래 §7 을 먼저 읽으세요.** 이 문서의 §1~§6 은 *에이전시가 아직 존재하던 시점*의
+> 기록입니다. 그 뒤 대표 확정으로 에이전시는 **코드에서 통째로 삭제**됐고(라우트·페이지·API·크론·커미션),
+> "API 파일을 지우지 않은 이유" 같은 절은 **더 이상 유효하지 않습니다.**
 > **결정자**: 대표 (2026-08-19 — "에이전시 대시보드를 없애고 셀러 대시보드가 여러 매장을 운영하게" → "모두 하자")
 > **선행 설계**: `vendor-commission-passthrough.md` §4.3(3단 위임) · `urdeal-platform-model.md` §2
 > **서비스 축**: 유어딜(소비자) 레일. 도매몰·공구 서비스(운영자 몰)·유어애즈와 무관.
@@ -231,3 +235,115 @@ SELECT COUNT(*) FROM seller_operators WHERE revoked_at IS NULL;
 `AGENCY_DASHBOARD_SUNSET = false` → 가입 즉시 복원.
 라우트/nav/마운트는 각각 독립: `src/routes/agency.routes.tsx` 복원 · `worker/index.ts` 의 주석 해제 ·
 `scheduled.ts` 의 cron 한 줄 해제. **삭제한 23개 페이지만 git 복원이 필요하다.**
+
+
+---
+
+## 7. 🌇 2026-09-04 — 에이전시 **완전 일몰** (대표 확정)
+
+> "그 에이전시는 없애자. 에이전시 대시보드도 안쓸거야. **더 이상 헷갈리지 말자 다른 세션에서도 그렇고.**"
+>
+> "에이전시 남은 잔재 다 삭제하고, **중개사가 5% 내에서 가져가는게 아니라 나머지 95%에서 매장이랑
+>  거래를 하는거지. 5%는 중개사 일 때 유어딜의 수수료인거고.**"
+
+### 7.1 무엇이 바뀌었나 — 한 문장
+**중개사는 별도 실체가 아니다.** 셀러 대시보드 계정이고, 매장과의 관계는 `seller_operators` 한 줄이다.
+
+| | 무엇 | 관계 | 유어딜 수수료 |
+|---|---|---|---|
+| **직접 입점** | 매장이 스스로 가입 | owner 본인 | **10%** (`store_channel='direct'`) |
+| **중개(대행)** | 중개사가 데려와 대신 운영 | `seller_operators` operator | **5%** (`store_channel='brokered'`) |
+
+### 7.2 🔑 중개사 보상의 위치 (여기서 계속 틀렸다)
+낮은 요율(5%)은 **중개사에게 주는 돈이 아니다.** 5% 는 온전히 유어딜 몫이고, 낮춘 이유는
+**매장에게 여유를 주기 위해서**다. 중개사는 그 여유가 생긴 **95%(매장 몫) 안에서 매장과 직접 거래**해
+공수 비용을 받는다.
+
+⇒ **유어딜 장부·정산 화면에 중개사 지급은 한 줄도 등장하지 않는다.**
+⇒ 그래서 커미션이 겹쳐 유어딜이 적자가 나는 구조가 **존재할 수 없다.**
+
+> 🩸 2026-09-04 이전의 셀러 가이드에는 *"수수료 차액(10%−5%)이 대행사 몫"* 이라고 적혀 있었다.
+> **틀린 문장이었고 이번에 고쳤다.** 차액은 유어딜이 덜 받는 것이지 중개사에게 주는 것이 아니다.
+
+### 7.3 삭제 근거 (라이브 실측 2026-09-04)
+```
+agencies                        4행 (껍데기만 — 유어딜 본사·인디아즈·제아스컴퍼니·KONEX)
+sellers.introduced_by_agency_id 0명     agency_sellers          0행
+store_agency_delegation         0행     agency_creator_approvals 0행
+agency_store_intro_commissions  0행  ← 이 경로로 돈이 나간 적이 한 번도 없다
+agency_invite_usage             0행     promote_boost_coupons   0행
+```
+
+### 7.4 삭제 목록
+| 층 | 지운 것 |
+|---|---|
+| 크론 | 에이전시 작업 11종. 배치 2개 개명: `agency-cron-batch`→`growth-daily-batch` · `agency-weekly-batch`→`weekly-tier-batch` |
+| 머니 | `agency-store-intro-commission.ts`(적립·역전) · `recordAgencyCommissionShare`(원장 30% 분배) · fee-resolver 로의 agency 컨텍스트 공급 · `agency_share_pct` 설정 |
+| API | `/api/agency/**` · `/api/agency-public` · `/api/agency/transfers` + `/api/seller/transfers` · `/api/agency/delegation` · `/api/seller/delegation` · `/api/invite/:code`(에이전시 초대코드) · 어드민 `/agencies`·`/agency-creator-approvals` |
+| 화면 | `/agency/**` 16라우트 · `/a/:slug` · `/agency-partner` · `/terms/agency` · 어드민 2화면 · `/seller/agency-delegation` · `/seller/promote-boosts` |
+| 파일 | `src/features/agency/**` · `src/lib/agency-shared.ts` · `AgencyLayout` · 페이지 21개 · 가이드 시드 `guide-seed-agency.ts` · `docs/AGENCY_POLICY.md` |
+| 플래그 | `AGENCY_DASHBOARD_SUNSET`(게이트로 되살릴 게 없다) · `enable_agency_*` 6개 |
+
+**살린 것 (일몰이 삼키면 안 되는 것)**
+- `/api/invite` **referral**(소비자 친구초대) — 에이전시 초대코드가 *같은 경로*에 얹혀 있었다.
+  이름만 보고 지우면 마이페이지 '내 추천 링크'가 통째로 죽는데 화면엔 빈 카드로 보인다.
+- 로그아웃의 `ur_agency_session` 삭제 — 남은 세션을 실제로 죽이는 코드다.
+- `fee-resolver.ts` 의 agency 필드·불변식·`order_fee_breakdown.agency` 컬럼 — 머니 SSOT 의 합계 검증을
+  고치는 것보다 **공급을 끊어 0** 으로 만드는 쪽이 되돌리기 쉽다.
+- 사람 영입 2%(`influencer_intro`) — 별개 축이고 직접 입점 매장 전용이다.
+
+### 7.5 가드
+`src/tests/unit/agency-sunset-final.test.ts` 12건 + `check-guard-mutations` 주입 4건(되돌려-검증 빨간불 확인).
+**못 막는 것**: 이름만 바꿔 같은 개념을 다시 만드는 것 · DB 에 남은 `agencies` 4행(읽는 코드는 없다).
+
+### 7.6 남은 데이터
+`agencies` 4행 · `agency_*` 테이블들은 **DB 에 그대로 남겼다.** 읽는 코드가 없어 무해하고,
+프로덕션 raw DELETE 는 이 레포의 룰이 금지한다(수리는 코드 경로로). 정리가 필요하면 어드민 기능으로.
+
+### 7.7 ✅ 3단계 — 대표 결정(2026-09-04)과 구현
+
+대표가 세 가지를 확정했다. **설계 후 구현** 순서를 지켰다(대표 지시 *"정하고 나서 작업하자"*).
+
+| # | 질문 | 확정 |
+|---|---|---|
+| 1 | 매장 정리 범위 | **홍대돈까스만 남기고 전부 삭제** (위험 고지 후 재확인) |
+| 2 | operator 가 정산계좌·사업자정보를 보나 | **주인만. 단 마스킹해서 보여줌** |
+| 3 | 중개사 실적 화면 | **운영 매장 요약 대시보드** |
+
+#### ② 권한 범위 — 무엇을 어떻게 막았나
+**문제**: 셀러 토큰은 `seller_id` 하나로 그 매장의 전부를 열었다. 그래서 중개사가 사장님의
+**정산계좌를 갈아끼울 수** 있었다 — 그 매장 돈이 통째로 딴 데로 간다. PIN 을 요구해도 그 PIN 은
+*운영자 자신의* 것이라 못 막는다.
+
+**판별 SSOT**: `src/worker/utils/store-actor.ts` — 토큰의 **`operator_user_id`** 로만 판정한다
+(`/stores/:id/token` 이 위임으로 들어갈 때만 심는 claim).
+🔴 **`resolveActorUserId` + `isStoreOwner` 로 판정하면 안 된다** — 그 헬퍼는 소비자 세션이 없으면
+`sellers.linked_user_id`(= *매장 주인*의 id)로 폴백해서, 세션 없는 요청에서 **운영자를 주인으로 오판**한다.
+
+| 대상 | 운영자 |
+|---|---|
+| 정산계좌 읽기 | 기존대로 마스킹(`****1234` — 전부터 전원 마스킹) |
+| **정산계좌 변경** | **403** (`seller-profile.routes` PATCH /profile) |
+| 사업자정보 읽기 | 등록번호 끝 4자리(`***-**-*1234`) · 대표자명 첫 글자 · 주소/연락처 **null** |
+| **사업자정보 쓰기** | **403** (POST/PUT/PATCH /business-info) |
+| **셀러 탈퇴** | **403** (`seller-withdraw.routes`) |
+| 매장 채널(direct/brokered) | 이미 owner 전용(`seller-stores.routes:537`) |
+
+⚠️ 사업자정보 **시드 폴백**(행이 아직 없을 때 매장 등록값으로 채워 주는 경로)도 같은 마스킹을 탄다 —
+빠뜨리면 "신규 매장에서만" 원본이 샌다.
+
+#### ③ 운영 매장 요약 — `/seller/operating`
+`GET /api/seller/operating-summary`. 스코프는 `listOperableStores`(그 유저가 운영 가능한 매장만).
+매장별로 활성 상품 수 · 누적 매출/주문 · **운영 시작 이후** 매출/주문(위임 매장만).
+
+🔴 **정직함이 이 화면의 설계 제약이다.** 운영자별 매출 귀속은 추적하지 않는다. 그래서 숫자는
+**매장의 총액**이고, 화면이 그 사실을 문장으로 밝힌다. "내가 만든 매출"이라고 쓰면 거짓말이다.
+방어 가능한 청구 근거는 `revenue_since_grant`(운영 시작 이후 구간)뿐이다.
+확정 주문(`PAID/DONE/PREPARING/SHIPPING/DELIVERED`)만 센다 — `PENDING` 을 섞으면 청구가 부풀려진다.
+
+#### 가드
+`store-operator-scope.test.ts` 14건 + 주입 5건(정산계좌 게이트 무력화 · `linked_user_id` 폴백 복귀 ·
+시드 폴백 마스킹 누락 · 요약 스코프 소실 · 미결제 주문 합산) — 전부 되돌려-검증 빨간불 확인.
+
+**못 막는 것**: 소유자가 계정을 남에게 빌려주는 것(권한 모델 밖) · 이미 발급된 운영자 토큰의 즉시 무효화
+(회수는 다음 토큰 발급부터) · 런타임에 실제로 403 이 나는지(소스에 게이트가 있는지만 본다 — staging 확인 몫).

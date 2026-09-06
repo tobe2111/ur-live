@@ -367,10 +367,7 @@ export default function AdminUsersPage() {
                                             담당: {detail.linked_agency.contact_name} · {detail.linked_agency.status}
                                           </p>
                                         </div>
-                                        <button onClick={() => navigate(`/admin/agencies?id=${detail.linked_agency!.id}`)}
-                                          className="text-[11px] text-purple-600 font-semibold px-2 py-1 hover:bg-purple-100 rounded">
-                                          {t('admin.users.manageLink', { defaultValue: '관리 →' })}
-                                        </button>
+                                        {/* 🌇 2026-09-04 에이전시 일몰 — '관리 →' 링크 제거(/admin/agencies 없음). 표시는 과거 연결 흔적으로 유지. */}
                                       </div>
                                     )}
                                   </div>

@@ -173,10 +173,6 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     title: '판매자 이용약관',
     description: '유어딜에서 상품·이용권을 판매하는 사업자 유저에게 적용되는 약관 — 입점, 정산과 수수료, 금지 행위, 책임 범위.',
   },
-  '/terms/agency': {
-    title: '에이전시 파트너 약관',
-    description: '매장 운영을 위임받아 대신 파는 에이전시 파트너에게 적용되는 약관 — 매장 영입과 관리, 수수료 지급, 계약 해지.',
-  },
   '/terms/influencer': {
     title: '소개 활동 약관',
     description: '유어샵 링크로 이용권을 소개하는 유저에게 적용되는 약관 — 커미션 정책, 정산과 원천징수, 금지 행위.',

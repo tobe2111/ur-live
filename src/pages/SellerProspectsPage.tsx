@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-27 (영업 검증 Layer 2 UI): 영업자 (agency / influencer) 가 매장 영입 사전 등록.
+ * 🛡️ 2026-05-27 (영업 검증 Layer 2 UI): 영업자(영입자)가 매장 영입 사전 등록.
  *
  * - POST /api/prospects — 매장 정보 사전 등록 (사장님 가입 전)
  * - 사장님 가입 시 phone/email 자동 매칭 → introduced_by_X_id 자동
@@ -9,7 +9,7 @@
  *   영업자 → 매장 방문 → 이 페이지에서 사전 등록 → 사장님이 가입 → 매출 발생 → commission 활성
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -47,7 +47,7 @@ export default function SellerProspectsPage() {
   )
   const load = () => refetch()
   const [showAdd, setShowAdd] = useState(false)
-  const [introducerType, setIntroducerType] = useState<'agency' | 'influencer'>('influencer')
+
   const [form, setForm] = useState({
     store_name: '',
     contact_name: '',
@@ -79,11 +79,6 @@ export default function SellerProspectsPage() {
     }
   }
 
-  useEffect(() => {
-    // 토큰 유형 추정 — agency_token 있으면 agency, 아니면 influencer
-    if (localStorage.getItem('agency_token')) setIntroducerType('agency')
-  }, [])
-
   async function submit() {
     if (!form.contact_phone && !form.contact_email) {
       toast.error('연락처 (전화 또는 이메일) 중 하나는 필수')
@@ -92,7 +87,6 @@ export default function SellerProspectsPage() {
     try {
       const r = await api.post('/api/prospects', {
         ...form,
-        introducer_type: introducerType,
       })
       if (r.data?.success) {
         toast.success('매장 사전 등록 완료')
@@ -110,7 +104,7 @@ export default function SellerProspectsPage() {
     }
   }
 
-  // 🏁 2026-07-02 (대리 등록): 사장님 가입 링크 발급+복사 — 매장 정보·에이전시 코드가 자동 채워진
+  // 🏁 2026-07-02 (대리 등록): 사장님 가입 링크 발급+복사 — 매장 정보가 자동 채워진
   //   단일 관문(/seller/register/supplier) 링크. 사장님은 카카오 로그인 + 확인·제출만.
   async function copyInviteLink(id: number) {
     try {
@@ -144,7 +138,7 @@ export default function SellerProspectsPage() {
 
   return (
     <>
-      <SEO title="매장 영입 관리 - 유어딜" description="사장님 영입 사전 등록 + commission 추적" url="/agency/prospects" />
+      <SEO title="매장 영입 관리 - 유어딜" description="사장님 영입 사전 등록 + commission 추적" url="/seller/prospects" />
       <div className="min-h-screen bg-gray-50 pb-24">
         <header className="sticky top-0 z-20 bg-white border-b border-gray-200">
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">

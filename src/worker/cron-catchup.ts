@@ -16,7 +16,7 @@
  * 2026-08-31 실측:
  * ```
  * 이용권 만료 알림 · 예약 리마인더 · 숙박 체크아웃 전환   94시간 전   (마지막 08-27 09:40)
- * agency-cron-batch · 별점 시드                          120시간 전  (마지막 08-25 18:40)
+ * growth-daily-batch · 별점 시드                        120시간 전  (마지막 08-25 18:40)
  * reconciliation · influencer-payout · 원장 정합          격일꼴     (6일 중 3일)
  * kt-alpha-voucher-retry(결제됐는데 안 간 교환권 복구)     72시간 전
  * ```
