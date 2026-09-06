@@ -13,6 +13,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
 import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { deferSeeded, seededSectionProductIds } from '@/shared/home-section-ids'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
@@ -250,6 +251,12 @@ export default function GroupBuyFeed({
     if (la != null && ln != null) return matchRegionCoords(la, ln, regionKey) === true
     return false
   }
+  /**
+   * 🏠 위 편성 섹션에 이미 뜬 상품 id — 홈에서만 채워진다(`/region/*` 등 다른 표면엔 시드가 없어 빈 집합).
+   *   비어 있으면 아래 `pushBand` 는 종전과 **byte-동일하게** 동작한다.
+   */
+  const sectionIds = useMemo(() => seededSectionProductIds(), [])
+
   const sortBand = (arr: FeedProduct[]) => {
     const a = [...arr]
     switch (sort) {
@@ -310,7 +317,17 @@ export default function GroupBuyFeed({
     const out: FeedProduct[] = []
     const pushBand = (band: FeedProduct[], filterRegion: boolean) => {
       const src = filterRegion ? band.filter(inRegion) : band
-      for (const p of sortBand(src)) {
+      /**
+       * 🖼️ 2026-09-06 (대표 — "메인에서 같은 이용권 사진이 두 번"의 나머지 절반):
+       *   바로 위 편성 섹션('지금 인기 이용권'·'주말에 떠나는 숙소')에 이미 뜬 상품을
+       *   **이 밴드의 뒤로 미룬다.** 빼지 않는다 — 이 피드는 *전체* 목록이라, 여기서 지우면
+       *   찾는 사람이 그 상품을 영영 못 만난다(목록이 거짓말이 된다).
+       *
+       *   ⚠️ **반드시 밴드 안에서만** 미룰 것. 밴드 경계를 넘겨 page2 로 보내면 나중 페이지가
+       *      로드될 때 이미 그려진 카드가 움직인다 — 바로 위 주석의 2026-07-16 사고 그대로다.
+       *   섹션 id 는 SSR 시드에서 첫 렌더에 확정된다(구독 아님) → 재정렬이 구조적으로 없다.
+       */
+      for (const p of deferSeeded(sortBand(src), sectionIds)) {
         if (p?.id != null && !seen.has(p.id)) { seen.add(p.id); out.push(p) }
       }
     }
@@ -326,7 +343,7 @@ export default function GroupBuyFeed({
     // inRegion/sortBand 는 매 렌더 재생성(아래 deps 를 클로저) → deps 에 원천값만 나열.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // regionRef 는 객체라 참조가 매 렌더 바뀔 수 있어 원시값으로 분해해 넣는다(무한 재계산 방지).
-  }, [items, extraPages, sort, userLoc, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu])
+  }, [items, extraPages, sort, userLoc, sectionIds, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu])
 
   return (
     <>
