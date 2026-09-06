@@ -29,7 +29,8 @@ export function registerSellerPurgeRoute(
  * "이 매장은 아무것도 안 남겼다"가 **서버에서** 증명될 때만 통과시킨다(호출자 판단을 믿지 않는다).
  * 매출 이력이 있는 매장을 지우고 싶다면 그건 이 도구가 아니라 별도 판단이다.
  *
- * ⚠️ 함께 지우는 것: `seller_meta`(K-V 사이드테이블) · `seller_operators`(0건 확인 후라 no-op).
+ * ⚠️ 함께 지우는 것: `seller_meta`(K-V 사이드테이블) · `seller_operators` · `seller_business_info`
+ *    (매장 없이는 의미 없는 그 매장의 사업자등록 정보 — FK 가 RESTRICT 라 안 지우면 매장이 안 지워진다).
  *    남기는 것: `seller_status_history`(감사 흔적) · `admin_audit_logs`.
  */
 adminSellersRoutes.delete('/sellers/:id/purge', cors(), requireAdminRole('super'), require2FA(), async (c) => {
@@ -70,7 +71,15 @@ adminSellersRoutes.delete('/sellers/:id/purge', cors(), requireAdminRole('super'
     const stl = await countOr('정산', 'SELECT COUNT(*) AS n FROM settlements WHERE seller_id = ?', [sellerId]);
     if (stl > 0) blockers.push(`정산 ${stl}건`);
     const led = await countOr('원장', "SELECT COUNT(*) AS n FROM ledger_entries WHERE credit_account = 'seller:' || ? OR debit_account = 'seller:' || ?", [sellerId, sellerId]);
+    // 🩸 2026-09-06 라이브 실행에서 드러난 구멍 — 이 둘이 목록에 없었다.
+    //   `donations`(후원)는 FK 가 RESTRICT 라 DB 가 막아 **500** 이 났다(운이지 설계가 아니다).
+    //   `voucher_orders`(KT 교환권 발송)는 **ON DELETE CASCADE** 라 매장과 함께 **조용히 사라진다** —
+    //   더 나쁜 쪽이다. 둘 다 돈이 오간 흔적이므로 cascade 로도 통과하면 안 된다.
+    const dons = await countOr('후원', 'SELECT COUNT(*) AS n FROM donations WHERE seller_id = ?', [sellerId]);
+    const vord = await countOr('교환권 발송', 'SELECT COUNT(*) AS n FROM voucher_orders WHERE seller_id = ?', [sellerId]);
     if (led > 0) blockers.push(`원장 ${led}건`);
+    if (dons > 0) blockers.push(`후원 ${dons}건`);
+    if (vord > 0) blockers.push(`교환권 발송 ${vord}건`);
 
     // ── cascade 로 정리 가능한 것 ─────────────────────────────────────
     const prods = await countOr('상품', 'SELECT COUNT(*) AS n FROM products WHERE seller_id = ?', [sellerId]);
@@ -123,7 +132,24 @@ adminSellersRoutes.delete('/sellers/:id/purge', cors(), requireAdminRole('super'
       await DB.prepare('DELETE FROM seller_operators WHERE seller_id = ?').bind(sellerId).run().catch(swallow('admin:purge-seller:ops'));
     }
     await DB.prepare('DELETE FROM seller_meta WHERE seller_id = ?').bind(sellerId).run().catch(swallow('admin:purge-seller:meta'));
-    await executeRun(DB, 'DELETE FROM sellers WHERE id = ?', [sellerId]);
+    // 🩸 2026-09-06 라이브 실행에서 드러난 두 번째 구멍 — 이 줄이 없어서 **매장이 안 지워졌다.**
+    //   `seller_business_info` 는 FK 가 RESTRICT(ON DELETE 절 없음)라 남아 있으면 sellers DELETE 가
+    //   그대로 던지고, `safeAdminError` 가 그걸 "Internal server error" 로 덮어 원인이 안 보인다.
+    //   매장의 사업자등록 정보는 그 매장 없이는 의미가 없으므로 함께 지운다(돈 기록이 아니다).
+    await DB.prepare('DELETE FROM seller_business_info WHERE seller_id = ?').bind(sellerId).run().catch(swallow('admin:purge-seller:bizinfo'));
+
+    // 🔒 마지막 DELETE 는 **삼키지 않는다.** 남은 FK 참조가 있으면 500 대신 무엇이 막았는지 말한다 —
+    //   500 은 "우리가 모른다"라는 뜻이고, 이 작업에서 모르는 채 다시 누르게 하면 안 된다.
+    try {
+      await executeRun(DB, 'DELETE FROM sellers WHERE id = ?', [sellerId]);
+    } catch (delErr) {
+      return c.json({
+        success: false,
+        error: '매장 행 삭제가 남은 참조에 막혔습니다 — 어떤 테이블이 이 매장을 붙들고 있는지 확인이 필요합니다.'
+          + (cascade ? ` (상품 ${productsDeleted}건은 이미 삭제됨)` : ''),
+        data: { id: Number(sellerId), products_deleted: productsDeleted, cascade, detail: safeAdminError(delErr, c.env) },
+      }, 409);
+    }
 
     return c.json({
       success: true,

@@ -88,6 +88,28 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🗑️ 매장 purge 가 후원·교환권 발송을 안 센다(돈 기록이 조용히 사라진다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "    if (vord > 0) blockers.push(`교환권 발송 ${vord}건`);",
+    replace: '    // (제거)',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '2026-09-06 라이브에서 실제로 났다. `voucher_orders` 는 FK 가 **ON DELETE CASCADE** 라 매장을 ' +
+      '지우면 KT 교환권 발송 기록이 함께 조용히 없어진다 — 에러도 로그도 없다. `donations` 는 ' +
+      'RESTRICT 라 DB 가 막아 500 이 났는데, 그건 설계가 아니라 운이었다.',
+  },
+  {
+    name: '🗑️ 매장 purge 가 seller_business_info 를 안 지운다(매장이 영영 안 지워진다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "    await DB.prepare('DELETE FROM seller_business_info WHERE seller_id = ?').bind(sellerId).run().catch(swallow('admin:purge-seller:bizinfo'));",
+    replace: '    // (제거)',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '그 FK 는 ON DELETE 절이 없어 RESTRICT 다. 남아 있으면 sellers DELETE 가 던지고 ' +
+      '`safeAdminError` 가 "Internal server error" 로 덮어 원인이 안 보인다 — 라이브에서 매장 5가 ' +
+      '**상품 9건만 지워진 채** 남았다(부분 적용).',
+  },
+  {
     name: '🌇 소개서 생성기에 에이전시 도메인이 되살아난다(없는 덱의 숫자를 다시 뽑는다)',
     file: 'scripts/generate-proposal-refs.mjs',
     find: "const DOMAINS = ['wholesale', 'offline-groupbuy', 'online-listing', 'linkshop']",

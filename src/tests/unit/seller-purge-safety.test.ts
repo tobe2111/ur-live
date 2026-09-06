@@ -42,13 +42,50 @@ describe('매장 완전 삭제 — 서버가 직접 빈 매장을 확인한다',
   })
 
   it('🔴 돈이 오간 흔적은 cascade 로도 못 지운다', () => {
-    // cascade 는 상품·운영자·유저연결만 덮는다. 주문·이용권·정산·원장은 **분기 밖**에서 검사돼야
-    // 하고, `if (!cascade)` 안으로 들어가면 cascade 한 번에 매출 있는 매장이 사라진다.
+    // cascade 는 상품·운영자·유저연결만 덮는다. 주문·이용권·정산·원장·후원·교환권발송은 **분기 밖**에서
+    // 검사돼야 하고, `if (!cascade)` 안으로 들어가면 cascade 한 번에 매출 있는 매장이 사라진다.
     const gate = PURGE.indexOf('if (!cascade) {')
     expect(gate, 'cascade 분기를 못 찾았다').toBeGreaterThan(0)
-    for (const money of ['주문 ${ords}건', '이용권 ${vch}건', '정산 ${stl}건', '원장 ${led}건']) {
-      expect(PURGE.indexOf(money), `${money} 검사가 cascade 분기 뒤에 있다`).toBeLessThan(gate)
+    for (const money of [
+      '주문 ${ords}건', '이용권 ${vch}건', '정산 ${stl}건', '원장 ${led}건',
+      '후원 ${dons}건', '교환권 발송 ${vord}건',
+    ]) {
+      const at = PURGE.indexOf(money)
+      // 🩸 2026-09-06: 원래 `toBeLessThan(gate)` 만 봤는데, **없으면 -1 이라 그 조건이 참**이다.
+      //   즉 push 줄을 통째로 지워도 초록이었다 — 주입 검증이 그걸 잡았다(가드가 지키는 척만 함).
+      //   그래서 "있다"를 먼저 본다.
+      expect(at, `${money} 검사 자체가 없다`).toBeGreaterThan(0)
+      expect(at, `${money} 검사가 cascade 분기 뒤에 있다`).toBeLessThan(gate)
     }
+  })
+
+  /**
+   * 🩸 2026-09-06 — **라이브에서 실제로 났다.** 대표 지시로 매장 10곳을 지우다 두 곳이 500 을 냈고,
+   * 원인이 아래 둘이었다. 둘 다 "테스트가 없어서" 가 아니라 **테이블을 빠뜨려서** 생긴 구멍이다.
+   */
+  describe('라이브 실행이 드러낸 구멍 두 개', () => {
+    it('🔴 후원·교환권 발송도 머니 잔여물로 센다', () => {
+      // donations 는 FK 가 RESTRICT 라 DB 가 막아 500 이 났다 — **운이지 설계가 아니다.**
+      // voucher_orders 는 ON DELETE CASCADE 라 매장과 함께 **조용히 사라진다**(더 나쁜 쪽).
+      expect(PURGE, 'donations 검사가 없다').toMatch(/FROM donations WHERE seller_id/)
+      expect(PURGE, 'voucher_orders 검사가 없다').toMatch(/FROM voucher_orders WHERE seller_id/)
+    })
+
+    it('🔴 seller_business_info 를 함께 지운다 (안 지우면 매장이 안 지워진다)', () => {
+      // FK 에 ON DELETE 절이 없어 RESTRICT 다. 남아 있으면 sellers DELETE 가 던지고,
+      // safeAdminError 가 "Internal server error" 로 덮어 원인이 안 보인다.
+      const del = PURGE.indexOf('DELETE FROM seller_business_info')
+      expect(del, 'seller_business_info 정리가 없다').toBeGreaterThan(0)
+      expect(del, '매장 삭제보다 뒤에 있으면 소용없다').toBeLessThan(PURGE.indexOf('DELETE FROM sellers'))
+    })
+
+    it('🔴 마지막 매장 삭제 실패를 삼키지 않는다 (500 대신 이유를 말한다)', () => {
+      // 500 은 "우리가 모른다"는 뜻이다. 모르는 채로 다시 누르게 하면 부분 적용이 쌓인다
+      // (실제로 매장 5는 상품 9건이 지워진 채 매장만 남았다).
+      const tail = PURGE.slice(PURGE.indexOf('DELETE FROM seller_business_info'))
+      expect(tail, '마지막 DELETE 가 try 로 감싸여 있지 않다').toMatch(/try\s*\{[\s\S]{0,200}DELETE FROM sellers/)
+      expect(tail).toMatch(/products_deleted/)
+    })
   })
 
   it('cascade 로 상품을 지우다 남으면 매장 삭제를 중단한다 (고아 상품 방지)', () => {
