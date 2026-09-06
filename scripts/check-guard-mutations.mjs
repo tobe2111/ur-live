@@ -88,6 +88,58 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🗑️ 부수 머니 삭제 플래그가 cascade 없이도 먹는다(실수로 열린다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "    const purgeAncillary = cascade && /^(1|true|yes)$/i.test(c.req.query('purge_ancillary') || '');",
+    replace: "    const purgeAncillary = /^(1|true|yes)$/i.test(c.req.query('purge_ancillary') || '');",
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '되돌릴 수 없는 삭제라 문을 둘 다 열어야 한다. `cascade &&` 가 빠지면 쿼리 하나만 붙여도 ' +
+      '후원·교환권 발송 기록이 지워진다 — 오타 한 번의 거리다.',
+  },
+  {
+    name: '🗑️ 부수 머니를 감사 로그 박제 없이 지운다(사본이 사라진다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "          DB.prepare('SELECT * FROM donations WHERE seller_id = ?').bind(sellerId).all(),",
+    replace: '          Promise.resolve({ results: [] }),',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '이 삭제에서 감사 로그는 **유일한 사본**이다. 스냅샷이 비면 개수만 남고 금액·상대·외부 ' +
+      '주문번호가 통째로 사라진다 — 지운 뒤에는 복원할 방법이 없다.',
+  },
+  {
+    name: '🗑️ 주문·정산이 부수 머니 플래그로 함께 풀린다(정산 있는 매장이 사라진다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "    if (stl > 0) blockers.push(`정산 ${stl}건`);",
+    replace: '    if (stl > 0 && !purgeAncillary) blockers.push(`정산 ${stl}건`);',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '이 플래그가 덮는 것은 후원·교환권 발송 **둘뿐**이다. 정산·주문·이용권·원장까지 풀리면 ' +
+      '쿼리 하나로 회계 원장이 있는 매장이 사라진다 — 그건 이 도구가 손댈 자리가 아니다.',
+  },
+  {
+    name: '🗑️ 매장 purge 가 후원·교환권 발송을 안 센다(돈 기록이 조용히 사라진다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "    if (vord > 0) blockers.push(`교환권 발송 ${vord}건`);",
+    replace: '    // (제거)',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '2026-09-06 라이브에서 실제로 났다. `voucher_orders` 는 FK 가 **ON DELETE CASCADE** 라 매장을 ' +
+      '지우면 KT 교환권 발송 기록이 함께 조용히 없어진다 — 에러도 로그도 없다. `donations` 는 ' +
+      'RESTRICT 라 DB 가 막아 500 이 났는데, 그건 설계가 아니라 운이었다.',
+  },
+  {
+    name: '🗑️ 매장 purge 가 seller_business_info 를 안 지운다(매장이 영영 안 지워진다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "    await DB.prepare('DELETE FROM seller_business_info WHERE seller_id = ?').bind(sellerId).run().catch(swallow('admin:purge-seller:bizinfo'));",
+    replace: '    // (제거)',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '그 FK 는 ON DELETE 절이 없어 RESTRICT 다. 남아 있으면 sellers DELETE 가 던지고 ' +
+      '`safeAdminError` 가 "Internal server error" 로 덮어 원인이 안 보인다 — 라이브에서 매장 5가 ' +
+      '**상품 9건만 지워진 채** 남았다(부분 적용).',
+  },
+  {
     name: '🌇 소개서 생성기에 에이전시 도메인이 되살아난다(없는 덱의 숫자를 다시 뽑는다)',
     file: 'scripts/generate-proposal-refs.mjs',
     find: "const DOMAINS = ['wholesale', 'offline-groupbuy', 'online-listing', 'linkshop']",
