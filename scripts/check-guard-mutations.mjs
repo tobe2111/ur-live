@@ -7728,6 +7728,40 @@ canvas {
       '2026-07-23(F-32)이 고쳤던 그 스테일 사고가 에러 없이 돌아온다. 이 자리의 모름은 갱신이어야 한다.',
   },
   {
+    name: '🎯 링크인바이오 조회가 계획기에 맡겨진다(19만 행 전수 스캔 복귀)',
+    file: 'src/features/marketing/api/influencer-bio-enrich.ts',
+    find: "  const res = await pick(' INDEXED BY idx_ad_inf_leads_bio_links') || await pick('')",
+    replace: "  const res = await pick('')",
+    test: 'src/tests/unit/ads-bio-scan-index.test.ts',
+    why:
+      '부분 인덱스가 있어도 계획기는 idx_ad_inf_leads_bio 를 고른다 — bio_checked_at IS NULL 이 전체의 ' +
+      '99.9%라 거르는 일을 못 하는데 통계가 없으니 모른다. 라이브 실측 193,898행 vs 2,573행(75배). ' +
+      '2026-09-06 실사고: 큐가 고갈돼 결과가 0건이라 상태줄에 흔적이 없는 채, 샤드 4개 × 시간당 30회차가 ' +
+      '시간당 2,330만 행을 읽고 아무 일도 안 했다. 그 읽기가 일일 예산을 태워 B2B 수집이 멈췄다.',
+  },
+  {
+    name: '🎯 링크인바이오 WHERE 에서 부분 인덱스 조건이 빠진다(인덱스가 조용히 무효)',
+    file: 'src/features/marketing/api/influencer-bio-enrich.ts',
+    find: 'account_id = ? AND bio_checked_at IS NULL AND (email IS NULL OR instagram IS NULL)',
+    replace: 'account_id = ? AND (email IS NULL OR instagram IS NULL)',
+    test: 'src/tests/unit/ads-bio-scan-index.test.ts',
+    why:
+      '부분 인덱스는 WHERE 가 그 조건을 함의할 때만 쓰인다. 하나만 빠져도 SQLite 는 못 쓴다고 판단하는데 ' +
+      '**결과는 똑같아서** 눈에 안 보인다 — 비용만 75배가 된다(2026-08-27 주석이 이미 경고한 함정).',
+  },
+  {
+    name: '🪞 백필 조회가 platform 을 빼먹는다(회차마다 계정 전체를 훑는다)',
+    file: 'src/features/marketing/api/influencer-save.ts',
+    find: 'WHERE account_id = ? AND platform = ? AND channel_id IN',
+    replace: 'WHERE account_id = ? AND channel_id IN',
+    test: 'src/tests/unit/ads-backfill-noop.test.ts',
+    why:
+      '유니크 인덱스가 (account_id, platform, channel_id) 복합이라 platform 이 빠지면 그 인덱스를 못 타고 ' +
+      '18.9만 행을 훑는다. 2026-09-05 실사고: collect 레인이 회차당 883만 행을 읽어 3시간 실측 2억의 39%를 ' +
+      '혼자 썼고, 그 읽기가 일일 예산을 태워 레인 창을 3시간으로 좁혀 창 밖 B2B 레인이 통째로 죽었다. ' +
+      '느려지는 것이 아니라 다른 서비스가 멈춘다 — 그리고 에러는 하나도 안 난다.',
+  },
+  {
     name: '🪞 백필 판정에서 소개글 규칙이 사라진다(재분류가 낡은 글로 판정)',
     file: 'src/features/marketing/api/influencer-backfill-diff.ts',
     find: "  if (inc.description !== '' && (cur.description ?? null) !== inc.description) return true",

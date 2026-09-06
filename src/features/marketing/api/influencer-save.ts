@@ -137,17 +137,40 @@ async function pickChangedForBackfill(
   DB: D1Database, accountId: number, existing: InfluencerLead[],
 ): Promise<InfluencerLead[]> {
   if (!existing.length) return existing
-  const marks = existing.map(() => '?').join(',')
-  const res = await DB.prepare(
-    `SELECT platform, channel_id, email, instagram, tiktok, links, subscriber_count, view_count,
-            description, last_post_at, opted_out
-       FROM ad_influencer_leads
-      WHERE account_id = ? AND channel_id IN (${marks})`,
-  ).bind(accountId, ...existing.map(l => l.channel_id))
-    .all<BackfillCurrent & { platform: string; channel_id: string }>()
-    .catch(() => null)
-  if (!res?.results) return existing               // fail-open — 읽기 실패는 갱신 생략의 근거가 못 된다
-  const cur = new Map(res.results.map(r => [`${r.platform} ${r.channel_id}`, r]))
+  /**
+   * 🔑 **플랫폼별로 갈라 묻는다** — 유니크 인덱스가 `(account_id, platform, channel_id)` 복합이라
+   *   `platform` 을 빼면 그 인덱스를 못 타고 **계정 전체를 훑는다**. 실행계획으로 확인한 차이:
+   *   ```
+   *     platform 없음  SEARCH ... USING INDEX idx_..._instagram_ci (account_id=?)      ← 18.9만 행
+   *     platform 포함  SEARCH ... USING INDEX sqlite_autoindex_..._1
+   *                    (account_id=? AND platform=? AND channel_id=?)                   ← 찾는 행만
+   *   ```
+   *   🩸 이 조회는 2026-09-04(#1348)에 쓰기를 줄이려고 내가 넣은 것인데, `platform` 을 빠뜨려
+   *   **회차마다 수백만 행을 읽고 있었다**(계측: collect 레인 한 회차 880만 행 = 전체 읽기의 83%).
+   *   그 읽기가 일일 예산을 태워 레인 창을 하루 3시간으로 좁혔고, 창 밖 레인이 죽어 B2B 수집이
+   *   무너졌다 — 쓰기를 아끼려다 훨씬 비싼 것을 잃은 것이다.
+   *   ⇒ 한 청크에 플랫폼이 섞여 있으므로(yt·naver_blog·cafe) 플랫폼별로 나눠 묻는다.
+   *      질의 수는 청크당 최대 4개로 늘지만 각각이 점 조회다.
+   */
+  const byPlatform = new Map<string, InfluencerLead[]>()
+  for (const l of existing) {
+    const g = byPlatform.get(l.platform)
+    if (g) g.push(l); else byPlatform.set(l.platform, [l])
+  }
+  const cur = new Map<string, BackfillCurrent>()
+  for (const [platform, group] of byPlatform) {
+    const marks = group.map(() => '?').join(',')
+    const res = await DB.prepare(
+      `SELECT platform, channel_id, email, instagram, tiktok, links, subscriber_count, view_count,
+              description, last_post_at, opted_out
+         FROM ad_influencer_leads
+        WHERE account_id = ? AND platform = ? AND channel_id IN (${marks})`,
+    ).bind(accountId, platform, ...group.map(l => l.channel_id))
+      .all<BackfillCurrent & { platform: string; channel_id: string }>()
+      .catch(() => null)
+    if (!res?.results) return existing             // fail-open — 읽기 실패는 갱신 생략의 근거가 못 된다
+    for (const r of res.results) cur.set(`${r.platform} ${r.channel_id}`, r)
+  }
   return existing.filter(l => {
     const c = cur.get(`${l.platform} ${l.channel_id}`)
     if (!c) return true                            // 못 찾았으면 쓴다(경합으로 방금 생겼을 수 있다)
