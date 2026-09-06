@@ -29,13 +29,37 @@ import { POOL_ACCOUNT_ID } from './influencer-auto-collect'
 /** 링크인바이오 플랫폼 자체 메일(안내/noreply) — 인플루언서 연락처가 아니라 저장 금지. */
 const PLATFORM_EMAIL_RE = /@(linktr\.ee|litt\.ly|inpock\.co\.kr|litelink\.at|taplink\.cc|link\.bio)$/i
 
+/**
+ * 🎯 **부분 인덱스를 이름으로 지정한다** — 아래 실측이 이유다(2026-09-06).
+ *
+ *   2026-08-27 에 이 조회를 위해 부분 인덱스를 만들어 뒀는데, **계획기가 그걸 안 골랐다.**
+ *   ```
+ *     계획기 선택   USING INDEX idx_ad_inf_leads_bio (account_id, bio_checked_at)  → 193,898행
+ *     이름 지정     USING INDEX idx_ad_inf_leads_bio_links                         →   2,573행
+ *   ```
+ *   `bio_checked_at IS NULL` 이 전체의 99.9%라 그 인덱스는 **거르는 일을 못 한다**. 계획기는
+ *   그걸 모르고 "두 컬럼을 다 쓸 수 있는 쪽"을 고른다 — 통계 없이는 늘 그렇게 고른다.
+ *
+ *   ⚠️ 이 낭비가 왜 안 보였나: 결과가 **0건**이라 상태줄엔 흔적이 없다. 링크인바이오 큐는
+ *   이미 고갈됐고(후보 0), 그런데도 샤드 4개 × 시간당 30회차가 매번 19만 행을 읽었다 —
+ *   **시간당 2,330만 행을 읽고 아무것도 안 했다.** 그 읽기가 일일 예산을 태워 레인 창을
+ *   하루 3시간으로 좁혔고, 창 밖 B2B 수집이 통째로 멈췄다.
+ *
+ *   ⚠️ `INDEXED BY` 는 인덱스가 없으면 **문장이 에러가 난다**. 그래서 실패하면 이름 없는
+ *   조회로 한 번 더 간다 — 인덱스 부재는 느려질 이유는 돼도 보강이 멈출 이유는 못 된다.
+ */
+const BIO_WHERE = `account_id = ? AND bio_checked_at IS NULL AND (email IS NULL OR instagram IS NULL)
+      AND links IS NOT NULL AND (links LIKE '%linktr.ee%' OR links LIKE '%litt.ly%' OR links LIKE '%inpock.co.kr%' OR links LIKE '%litelink.at%' OR links LIKE '%link.bio%' OR links LIKE '%taplink.cc%')`
+type BioRow = { id: number; links: string | null; email: string | null; instagram: string | null; tiktok: string | null }
+
 export async function enrichPoolFromLinkInBio(DB: D1Database, budget: FetchBudget, max: number): Promise<number> {
   if (max <= 0 || budget.left <= 0) return 0
-  const rows = (await DB.prepare(`SELECT id, links, email, instagram, tiktok FROM ad_influencer_leads
-    WHERE account_id = ? AND bio_checked_at IS NULL AND (email IS NULL OR instagram IS NULL)
-      AND links IS NOT NULL AND (links LIKE '%linktr.ee%' OR links LIKE '%litt.ly%' OR links LIKE '%inpock.co.kr%' OR links LIKE '%litelink.at%' OR links LIKE '%link.bio%' OR links LIKE '%taplink.cc%')
-    ORDER BY id DESC LIMIT ?`).bind(POOL_ACCOUNT_ID, max)
-    .all<{ id: number; links: string | null; email: string | null; instagram: string | null; tiktok: string | null }>().catch(() => null))?.results || []
+  const pick = (hint: string) => DB.prepare(
+    `SELECT id, links, email, instagram, tiktok FROM ad_influencer_leads${hint}
+    WHERE ${BIO_WHERE}
+    ORDER BY id DESC LIMIT ?`).bind(POOL_ACCOUNT_ID, max).all<BioRow>().catch(() => null)
+  const res = await pick(' INDEXED BY idx_ad_inf_leads_bio_links') || await pick('')
+  const rows = res?.results || []
   if (!rows.length) return 0
   let enriched = 0
   const stmts: ReturnType<D1Database['prepare']>[] = []

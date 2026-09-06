@@ -7688,6 +7688,28 @@ canvas {
       '2026-07-23(F-32)이 고쳤던 그 스테일 사고가 에러 없이 돌아온다. 이 자리의 모름은 갱신이어야 한다.',
   },
   {
+    name: '🎯 링크인바이오 조회가 계획기에 맡겨진다(19만 행 전수 스캔 복귀)',
+    file: 'src/features/marketing/api/influencer-bio-enrich.ts',
+    find: "  const res = await pick(' INDEXED BY idx_ad_inf_leads_bio_links') || await pick('')",
+    replace: "  const res = await pick('')",
+    test: 'src/tests/unit/ads-bio-scan-index.test.ts',
+    why:
+      '부분 인덱스가 있어도 계획기는 idx_ad_inf_leads_bio 를 고른다 — bio_checked_at IS NULL 이 전체의 ' +
+      '99.9%라 거르는 일을 못 하는데 통계가 없으니 모른다. 라이브 실측 193,898행 vs 2,573행(75배). ' +
+      '2026-09-06 실사고: 큐가 고갈돼 결과가 0건이라 상태줄에 흔적이 없는 채, 샤드 4개 × 시간당 30회차가 ' +
+      '시간당 2,330만 행을 읽고 아무 일도 안 했다. 그 읽기가 일일 예산을 태워 B2B 수집이 멈췄다.',
+  },
+  {
+    name: '🎯 링크인바이오 WHERE 에서 부분 인덱스 조건이 빠진다(인덱스가 조용히 무효)',
+    file: 'src/features/marketing/api/influencer-bio-enrich.ts',
+    find: 'account_id = ? AND bio_checked_at IS NULL AND (email IS NULL OR instagram IS NULL)',
+    replace: 'account_id = ? AND (email IS NULL OR instagram IS NULL)',
+    test: 'src/tests/unit/ads-bio-scan-index.test.ts',
+    why:
+      '부분 인덱스는 WHERE 가 그 조건을 함의할 때만 쓰인다. 하나만 빠져도 SQLite 는 못 쓴다고 판단하는데 ' +
+      '**결과는 똑같아서** 눈에 안 보인다 — 비용만 75배가 된다(2026-08-27 주석이 이미 경고한 함정).',
+  },
+  {
     name: '🪞 백필 조회가 platform 을 빼먹는다(회차마다 계정 전체를 훑는다)',
     file: 'src/features/marketing/api/influencer-save.ts',
     find: 'WHERE account_id = ? AND platform = ? AND channel_id IN',
