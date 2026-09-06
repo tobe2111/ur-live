@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DetailGallery from './group-buy/DetailGallery'
+import { detailGalleryImages } from '@/shared/detail-hero-image'
 import RedeemHowTo from './group-buy/RedeemHowTo'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { voucherCrumbs } from '@/components/deal/DetailBreadcrumb'
@@ -333,17 +334,11 @@ export default function GroupBuyDetailPage() {
 
   // 🎨 2026-06-16 리디자인: 스와이프 갤러리 이미지 — image_url + images/detail_images/image_urls(JSON) 병합·중복제거.
   //   🖼️ 2026-07-20: products.images(PRODUCT_DETAIL_FIELDS 기포함 — 데모 시드 3~5장) 병합 추가.
-  const galleryImages: string[] = (() => {
-    if (!detail) return []
-    const out: string[] = []
-    if (detail.image_url) out.push(detail.image_url)
-    const extra = detail as { detail_images?: string | null; image_urls?: string | null; images?: string | null }
-    for (const raw of [extra.images, extra.image_urls, extra.detail_images]) {
-      if (!raw) continue
-      try { const arr = JSON.parse(raw); if (Array.isArray(arr)) for (const u of arr) if (typeof u === 'string' && u) out.push(u) } catch { /* not json */ }
-    }
-    return Array.from(new Set(out)).slice(0, 8)
-  })()
+  //   🧵 2026-09-06: 병합 규칙을 `shared/detail-hero-image` 로 올렸다 — 워커 preload 가 **같은 방법으로**
+  //     장수를 세야 PC 프레임(4:3 ↔ 16:9)을 맞출 수 있다. 두 벌이면 경계에서 갈려 preload 가 버려진다.
+  const galleryImages: string[] = detailGalleryImages(
+    detail as { image_url?: string | null; images?: string | null; image_urls?: string | null; detail_images?: string | null } | null
+  )
 
   // 🎨 2026-06-16 리디자인: 할인코드(promo) 입력 UI 제거 — checkPromo/clearPromo 삭제.
 

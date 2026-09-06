@@ -5494,9 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 254건 · 최신순 · 이 목록은 자동 생성된다._
+_총 255건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-06**
+- [PC 상세 사진도 스마트 크롭 + 남아 있던 두 항목 판정 (2026-09-06)](handoff/2026-09-06-pc-hero-crop.md)
 - [2026-09-06 — 홈에서 같은 이용권 사진이 두 번 나오던 것](handoff/2026-09-06-home-section-duplicate-photo.md)
 **2026-09-05**
 - [배포 판정 + 실측에서 나온 것: 직접 10% 가 걷히는 매장이 0곳 (2026-09-05)](handoff/2026-09-05-live-verdict-channel-gap.md)

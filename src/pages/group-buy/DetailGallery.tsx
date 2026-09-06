@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
-import { cfImage } from '@/utils/cf-image'
 import { Z } from '@/constants/z-index'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { getWarmImage } from '@/utils/image-warm'
 import {
   DETAIL_DESKTOP_QUERY, DETAIL_HERO_DESKTOP_WIDTH, DETAIL_HERO_MOBILE_WIDTH, DETAIL_THUMB_WIDTH,
-  detailHeroMobileUrl, detailPlainUrl,
+  DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, DETAIL_PC_THUMB_RATIO,
+  detailCropUrl, detailHeroMobileUrl, detailPlainUrl,
 } from '@/shared/detail-hero-image'
 
 /**
@@ -107,9 +107,17 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
     return lo && lo !== hi ? `url("${hi}"), url("${lo}")` : `url("${hi}")`
   }
 
-  const bg = (src: string, w: number) => ({
+  /**
+   * 🖥️ PC 사진 URL — **여기 한 곳**에서 만든다. 배경(`bg`)과 감시 `<img>`(`probes`)가 같은 함수를
+   *   부르므로 URL 이 갈릴 수 없다(갈리면 브라우저가 재사용을 못 해 요청이 두 배가 된다).
+   */
+  const pcHeroUrl = (src: string) =>
+    detailCropUrl(src, DETAIL_HERO_DESKTOP_WIDTH, multi ? DETAIL_PC_HERO_RATIO_MULTI : DETAIL_PC_HERO_RATIO_SINGLE)
+  const pcThumbUrl = (src: string) => detailCropUrl(src, DETAIL_THUMB_WIDTH, DETAIL_PC_THUMB_RATIO)
+
+  const bg = (src: string, url: string) => ({
     backgroundColor: '#1D1F29',
-    backgroundImage: src ? layered(detailPlainUrl(src, w), src) : undefined,
+    backgroundImage: src ? layered(url, src) : undefined,
     backgroundSize: 'cover' as const,
     backgroundPosition: 'center' as const,
   })
@@ -138,8 +146,8 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
       list.push({ src: main, url: heroUrl(main, DETAIL_HERO_MOBILE_WIDTH) })
       return list
     }
-    list.push({ src: main, url: detailPlainUrl(main, DETAIL_HERO_DESKTOP_WIDTH) })
-    for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, url: detailPlainUrl(t, DETAIL_THUMB_WIDTH) })
+    list.push({ src: main, url: pcHeroUrl(main) })
+    for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, url: pcThumbUrl(t) })
     return list
   }, [main, images, isDesktop])
 
@@ -199,7 +207,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             /* 📐 2026-08-19 (대표 확정 — 상세 1안): 제목·별점이 사진 **위**로 올라갔으므로 사진이
                화면을 통째로 먹으면 안 된다. 1장짜리도 정사각(=800px 높이) 대신 16:9 로 눕힌다.
                모바일 스와이프(위 블록)는 1:1 그대로 — 세로 화면에선 정사각이 맞다. */
-            style={{ aspectRatio: multi ? '4 / 3' : '16 / 9', ...bg(main, DETAIL_HERO_DESKTOP_WIDTH) }}
+            style={{ aspectRatio: multi ? '4 / 3' : '16 / 9', ...bg(main, pcHeroUrl(main)) }}
           >
             {!has && fallback}
             {/* 배지·그라데이션은 **대형 사진 기준**으로 얹는다(그리드 전체를 덮으면 썸네일까지 어두워진다). */}
@@ -217,7 +225,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
                     onClick={() => (isLast ? setLightbox(true) : setActive(i + 1))}
                     aria-label={isLast ? `전체 사진 ${images.length}장 보기` : `사진 ${i + 2}번째 보기`}
                     className="relative w-full h-full cursor-pointer"
-                    style={bg(src, DETAIL_THUMB_WIDTH)}
+                    style={bg(src, pcThumbUrl(src))}
                   >
                     {isLast && (
                       <span className="absolute inset-0 flex flex-col items-center justify-center bg-black/55 text-white text-[13px] font-bold">
@@ -256,7 +264,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
                 ⇒ `<img object-contain max-h-[85vh]>` 로 바꾼다: 화면 안에 들어오고, 사진이 안 잘리고,
                   실패하면 onError 로 그 사진을 목록에서 뺀다(다음 사진이 올라온다). */}
             <img
-              src={cfImage(main, { width: 1600, format: 'auto' }) || main}
+              src={detailPlainUrl(main, 1600)}
               alt={alt}
               className="w-full max-h-[85vh] object-contain rounded-xl bg-black/40"
               onError={() => setDead((prev) => (prev.has(main) ? prev : new Set(prev).add(main)))}
@@ -275,7 +283,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
                   {images.map((src, i) => (
                     <button key={src} type="button" onClick={() => setActive(i)} aria-label={`${i + 1}번째 사진`}
                       className={`w-14 h-14 rounded-md ${i === active ? 'ring-2 ring-white' : 'opacity-60 hover:opacity-100'}`}
-                      style={bg(src, 160)} />
+                      style={bg(src, detailCropUrl(src, 160, 1))} />
                   ))}
                 </div>
               </>
