@@ -88,6 +88,36 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🖼️ 홈 섹션이 서로 겹치는지 다시 안 본다 (같은 사진이 위아래로 두 번)',
+    file: 'src/features/sections/api/sections.routes.ts',
+    find: '            excludeIds: [...claimed],\n',
+    replace: '',
+    test: 'src/tests/unit/home-section-no-duplicate.test.ts',
+    why:
+      '리졸버가 배제를 받아도 라우트가 안 넘기면 화면은 그대로다. 라이브 실측에서 인기 4개 중 ' +
+      '3개가 바로 아래 숙소 섹션에 그대로 다시 나왔다 — 에러가 없어 아무도 못 봤다.',
+  },
+  {
+    name: '🖼️ 섹션 배제의 바인드가 앞으로 끼어든다 (에러 없이 결과만 틀린다)',
+    file: 'src/features/sections/api/section-rules.ts',
+    find: '    binds.push(...excl)',
+    replace: '    binds.unshift(...excl)',
+    test: 'src/tests/unit/home-section-no-duplicate.test.ts',
+    why:
+      '`NOT IN` 은 SQL 에서 CROSS JOIN 분모 **뒤**에 온다. 바인드를 앞에 끼우면 카테고리와 id 가 ' +
+      '어긋나 **SQL 은 통과하고 결과만 조용히 틀린다**. 문자열 검사로는 절대 못 잡는 클래스다.',
+  },
+  {
+    name: '🖼️ 수동 큐레이션이 규칙에 밀린다 (사람이 고른 상품이 사라진다)',
+    file: 'src/features/sections/api/sections.routes.ts',
+    find: "          if (normalizeSectionSource(s.source) !== 'manual') continue;",
+    replace: "          if (normalizeSectionSource(s.source) === 'manual') continue;",
+    test: 'src/tests/unit/home-section-no-duplicate.test.ts',
+    why:
+      '어드민이 그 줄에 그 상품을 직접 골라 넣었는데 위 규칙 섹션이 먼저 집어갔다고 사라지면, ' +
+      '사람이 내린 결정이 질의에 밀리는 것이다. manual 이 먼저 자기 몫을 확정해야 한다.',
+  },
+  {
     name: '🗑️ 부수 머니 삭제 플래그가 cascade 없이도 먹는다(실수로 열린다)',
     file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
     find: "    const purgeAncillary = cascade && /^(1|true|yes)$/i.test(c.req.query('purge_ancillary') || '');",
