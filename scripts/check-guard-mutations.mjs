@@ -7215,6 +7215,18 @@ canvas {
       '2026-07-23(F-32)이 고쳤던 그 스테일 사고가 에러 없이 돌아온다. 이 자리의 모름은 갱신이어야 한다.',
   },
   {
+    name: '🪞 백필 조회가 platform 을 빼먹는다(회차마다 계정 전체를 훑는다)',
+    file: 'src/features/marketing/api/influencer-save.ts',
+    find: 'WHERE account_id = ? AND platform = ? AND channel_id IN',
+    replace: 'WHERE account_id = ? AND channel_id IN',
+    test: 'src/tests/unit/ads-backfill-noop.test.ts',
+    why:
+      '유니크 인덱스가 (account_id, platform, channel_id) 복합이라 platform 이 빠지면 그 인덱스를 못 타고 ' +
+      '18.9만 행을 훑는다. 2026-09-05 실사고: collect 레인이 회차당 883만 행을 읽어 3시간 실측 2억의 39%를 ' +
+      '혼자 썼고, 그 읽기가 일일 예산을 태워 레인 창을 3시간으로 좁혀 창 밖 B2B 레인이 통째로 죽었다. ' +
+      '느려지는 것이 아니라 다른 서비스가 멈춘다 — 그리고 에러는 하나도 안 난다.',
+  },
+  {
     name: '🪞 백필 판정에서 소개글 규칙이 사라진다(재분류가 낡은 글로 판정)',
     file: 'src/features/marketing/api/influencer-backfill-diff.ts',
     find: "  if (inc.description !== '' && (cur.description ?? null) !== inc.description) return true",
