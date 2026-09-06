@@ -30,6 +30,7 @@ import { isVoucherCategory } from '../../shared/constants/voucher-categories'
 import { getPolicy } from '../utils/dynamic-policy'
 import { intParam } from '@/shared/pagination'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
 import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product'
+import { isAffiliateProgramEnabled, gateAffiliateRows } from '../utils/affiliate-program'
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
@@ -160,7 +161,9 @@ curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
        LIMIT ?`,
     ).bind(...excludeIds, limit).all()
 
-    return c.json({ success: true, recommendations: results ?? [] })
+    // 🛑 2026-09-06: 프로그램이 꺼져 있으면 적립 신호를 눕힌다(꺼진 적립을 약속하지 않는다).
+    const affOn = await isAffiliateProgramEnabled(DB)
+    return c.json({ success: true, recommendations: gateAffiliateRows(results ?? [], affOn) })
   } catch (err) {
     return safeError(c, err, '추천 핀 조회 중 오류가 발생했습니다', '[curator:recommend]')
   }
@@ -244,11 +247,17 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     //     실려도 정확하다 — 누가 보든 같은 값이다.
     //   💸 왕복 1회. 핀마다 부르면 핀 수만큼 왕복한다.
     const dealBySeller = await findActiveDealPctsBySeller(DB, String(userId))
-    const pins = (pinsResult.results as Record<string, unknown>[]).map((r) => ({
-      ...r,
-      // null = 이 매장과 딜이 없음 → 팔려도 소개비 0. 화면이 두 덩어리로 가르는 근거.
-      deal_pct: dealBySeller.get(Number(r.seller_id)) ?? null,
-    }))
+    // 🛑 2026-09-06: 프로그램이 꺼져 있으면 적립 신호를 눕힌다 — 핀 관리의 '쓰면 ₩N' 이
+    //   꺼진 프로그램의 금액을 말하던 자리(2026-09-05 단위 버그 수정이 드러냈다).
+    const affOn = await isAffiliateProgramEnabled(DB)
+    const pins = gateAffiliateRows(
+      (pinsResult.results as Record<string, unknown>[]).map((r) => ({
+        ...r,
+        // null = 이 매장과 딜이 없음 → 팔려도 소개비 0. 화면이 두 덩어리로 가르는 근거.
+        deal_pct: dealBySeller.get(Number(r.seller_id)) ?? null,
+      })),
+      affOn,
+    )
 
     // 🎨 2026-06-17 (유어샵 랜딩 리디자인): 마퀴 헤드라인 — 별도 best-effort 조회(컬럼 없는 env 에서
     //   메인 SELECT 의 banner/sns 가 폴백으로 사라지지 않도록 분리). 컬럼 없으면 null.
