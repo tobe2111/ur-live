@@ -41,6 +41,18 @@ adminSellersRoutes.delete('/sellers/:id/purge', cors(), requireAdminRole('super'
     // ?cascade=1 — 상품과 그 파생행(리뷰·지역·장바구니·위시리스트…)까지 함께 지운다.
     //   ⚠️ **머니 잔여물(주문·이용권·정산·원장)은 cascade 여도 절대 통과 못 한다** — 아래 blockers 참조.
     const cascade = /^(1|true|yes)$/i.test(c.req.query('cascade') || '');
+    /**
+     * 🔴 `?purge_ancillary=1` — **부수 머니 기록까지** 지운다 (2026-09-06 대표 명시 지시).
+     *
+     * 덮는 것은 **후원(`donations`)과 교환권 발송(`voucher_orders`) 둘뿐**이다.
+     * 주문·주문항목·이용권·정산·원장은 **이 플래그로도 못 지운다** — 그건 소비자가 들고 있는
+     * 자산이거나 회계 원장이고, 이 도구가 손댈 자리가 아니다.
+     *
+     * ⚠️ 지우기 **전에 행 전문을 감사 로그에 박제**한다. 행은 사라져도 기록은 남는다 —
+     *    되돌릴 수 없는 삭제에서 우리가 지킬 수 있는 최소한이다.
+     * ⚠️ `cascade` 없이는 안 먹는다(실수로 단독으로 붙는 것을 막는다).
+     */
+    const purgeAncillary = cascade && /^(1|true|yes)$/i.test(c.req.query('purge_ancillary') || '');
 
     const rows = await executeQuery<{ id: number; status: string; business_name: string | null; linked_user_id: number | null }>(
       DB, 'SELECT id, status, business_name, linked_user_id FROM sellers WHERE id = ?', [sellerId],
@@ -78,8 +90,12 @@ adminSellersRoutes.delete('/sellers/:id/purge', cors(), requireAdminRole('super'
     const dons = await countOr('후원', 'SELECT COUNT(*) AS n FROM donations WHERE seller_id = ?', [sellerId]);
     const vord = await countOr('교환권 발송', 'SELECT COUNT(*) AS n FROM voucher_orders WHERE seller_id = ?', [sellerId]);
     if (led > 0) blockers.push(`원장 ${led}건`);
-    if (dons > 0) blockers.push(`후원 ${dons}건`);
-    if (vord > 0) blockers.push(`교환권 발송 ${vord}건`);
+    // 🔴 이 둘만 `purge_ancillary=1` 로 넘어갈 수 있다. 위 다섯(주문·주문항목·이용권·정산·원장)은
+    //    플래그와 **무관하게** 계속 막힌다 — 아래 push 들이 이 분기 밖에 있는 이유다.
+    if (!purgeAncillary) {
+      if (dons > 0) blockers.push(`후원 ${dons}건`);
+      if (vord > 0) blockers.push(`교환권 발송 ${vord}건`);
+    }
 
     // ── cascade 로 정리 가능한 것 ─────────────────────────────────────
     const prods = await countOr('상품', 'SELECT COUNT(*) AS n FROM products WHERE seller_id = ?', [sellerId]);
@@ -99,10 +115,35 @@ adminSellersRoutes.delete('/sellers/:id/purge', cors(), requireAdminRole('super'
       }, 409);
     }
 
+    // 🔴 `purge_ancillary` 면 **지우기 전에 행 전문을 읽어 둔다.** 감사 로그가 유일한 사본이 되므로
+    //    개수가 아니라 **내용**을 남긴다(금액·상대·외부 주문번호까지). 읽기 실패는 삭제를 중단시킨다 —
+    //    "박제 못 했는데 지웠다" 가 되면 안 된다.
+    let ancillarySnapshot: { donations?: unknown[]; voucher_orders?: unknown[] } | null = null;
+    if (purgeAncillary && (dons > 0 || vord > 0)) {
+      try {
+        const [d, v] = await Promise.all([
+          DB.prepare('SELECT * FROM donations WHERE seller_id = ?').bind(sellerId).all(),
+          DB.prepare('SELECT * FROM voucher_orders WHERE seller_id = ?').bind(sellerId).all(),
+        ]);
+        ancillarySnapshot = { donations: d.results || [], voucher_orders: v.results || [] };
+      } catch (snapErr) {
+        return c.json({
+          success: false,
+          error: '부수 머니 기록을 감사 로그에 박제하지 못해 삭제를 중단했습니다 (사본 없이 지우지 않습니다).',
+          data: { id: Number(sellerId), detail: safeAdminError(snapErr, c.env) },
+        }, 409);
+      }
+    }
+
     await writeAuditLog(c, {
       action: 'purge_seller', targetType: 'seller', targetId: sellerId,
-      before: { status: seller.status, business_name: seller.business_name, products: prods, operators: ops, linked_user_id: seller.linked_user_id },
-      after: { cascade },
+      before: {
+        status: seller.status, business_name: seller.business_name,
+        products: prods, operators: ops, linked_user_id: seller.linked_user_id,
+        // 행이 사라져도 여기 남는다.
+        ...(ancillarySnapshot ? { ancillary_money: ancillarySnapshot } : {}),
+      },
+      after: { cascade, purge_ancillary: purgeAncillary },
     });
 
     let productsDeleted = 0;
@@ -132,6 +173,14 @@ adminSellersRoutes.delete('/sellers/:id/purge', cors(), requireAdminRole('super'
       await DB.prepare('DELETE FROM seller_operators WHERE seller_id = ?').bind(sellerId).run().catch(swallow('admin:purge-seller:ops'));
     }
     await DB.prepare('DELETE FROM seller_meta WHERE seller_id = ?').bind(sellerId).run().catch(swallow('admin:purge-seller:meta'));
+    // 🔴 부수 머니 행 삭제 — **위 감사 로그가 먼저 쓰인 뒤**에만 여기 온다(사본 없이 안 지운다).
+    //    `voucher_orders` 는 FK 가 CASCADE 라 어차피 함께 사라지지만, **명시적으로** 지운다 —
+    //    "조용히 사라지는 것" 과 "지우기로 하고 지운 것" 은 다른 일이고, 그 차이가 이 플래그의 존재 이유다.
+    if (purgeAncillary) {
+      await DB.prepare('DELETE FROM donations WHERE seller_id = ?').bind(sellerId).run().catch(swallow('admin:purge-seller:donations'));
+      await DB.prepare('DELETE FROM voucher_orders WHERE seller_id = ?').bind(sellerId).run().catch(swallow('admin:purge-seller:voucher-orders'));
+    }
+
     // 🩸 2026-09-06 라이브 실행에서 드러난 두 번째 구멍 — 이 줄이 없어서 **매장이 안 지워졌다.**
     //   `seller_business_info` 는 FK 가 RESTRICT(ON DELETE 절 없음)라 남아 있으면 sellers DELETE 가
     //   그대로 던지고, `safeAdminError` 가 그걸 "Internal server error" 로 덮어 원인이 안 보인다.
@@ -154,7 +203,10 @@ adminSellersRoutes.delete('/sellers/:id/purge', cors(), requireAdminRole('super'
     return c.json({
       success: true,
       message: '매장이 완전히 삭제되었습니다',
-      data: { id: Number(sellerId), business_name: seller.business_name, products_deleted: productsDeleted, cascade },
+      data: {
+        id: Number(sellerId), business_name: seller.business_name, products_deleted: productsDeleted, cascade,
+        ...(purgeAncillary ? { ancillary_purged: { donations: dons, voucher_orders: vord } } : {}),
+      },
     });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);

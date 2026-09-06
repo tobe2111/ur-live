@@ -79,6 +79,46 @@ describe('매장 완전 삭제 — 서버가 직접 빈 매장을 확인한다',
       expect(del, '매장 삭제보다 뒤에 있으면 소용없다').toBeLessThan(PURGE.indexOf('DELETE FROM sellers'))
     })
 
+    it('🔴 부수 머니 삭제는 명시 플래그 + cascade 둘 다 있어야 한다', () => {
+      // 2026-09-06 대표가 내용을 알고 다시 지시해 만든 문이다. 실수로 열리면 안 되므로
+      // `cascade &&` 가 앞에 붙는다 — 플래그만 단독으로 붙여서는 아무 일도 안 일어난다.
+      expect(PURGE).toMatch(/const purgeAncillary = cascade && \/\^\(1\|true\|yes\)/)
+    })
+
+    it('🔴 이 플래그로도 주문·이용권·정산·원장은 못 지운다', () => {
+      // 후원·교환권 발송만 `if (!purgeAncillary)` 안에 있다. 나머지 다섯의 push 가 그 블록
+      // **밖**에 있어야 한다 — 안으로 들어가면 플래그 하나로 정산 있는 매장이 사라진다.
+      const soft = PURGE.indexOf('if (!purgeAncillary) {')
+      const softEnd = PURGE.indexOf('}', PURGE.indexOf('교환권 발송 ${vord}건'))
+      expect(soft, 'purgeAncillary 분기를 못 찾았다').toBeGreaterThan(0)
+      const lines = PURGE.split('\n')
+      for (const hard of ['주문 ${ords}건', '주문항목 ${items}건', '이용권 ${vch}건', '정산 ${stl}건', '원장 ${led}건']) {
+        const at = PURGE.indexOf(hard)
+        expect(at, `${hard} 검사 자체가 없다`).toBeGreaterThan(0)
+        // ① 블록 **밖**에 있어야 한다.
+        expect(at < soft || at > softEnd, `${hard} 가 purgeAncillary 블록 안으로 들어갔다`).toBe(true)
+        // ② 🩸 위치만 보면 안 된다 — 주입 검증이 잡았다. 같은 줄에 `&& !purgeAncillary` 를
+        //    끼워 넣으면 자리는 그대로인데 조건은 풀린다. **줄 자체**를 본다.
+        const line = lines.find(l => l.includes(hard)) || ''
+        expect(line, `${hard} 조건에 purgeAncillary 가 끼어들었다: ${line.trim()}`).not.toContain('purgeAncillary')
+      }
+    })
+
+    it('🔴 지우기 전에 행 전문을 감사 로그에 박제한다 (사본 없이 안 지운다)', () => {
+      // 개수가 아니라 **내용**이어야 한다 — 감사 로그가 유일한 사본이 된다.
+      expect(PURGE).toMatch(/SELECT \* FROM donations WHERE seller_id/)
+      expect(PURGE).toMatch(/SELECT \* FROM voucher_orders WHERE seller_id/)
+      expect(PURGE).toMatch(/ancillary_money/)
+      // 순서: 박제(writeAuditLog) → 삭제. 뒤집히면 실패 시 사본 없이 지운 것이 된다.
+      const snap = PURGE.indexOf('SELECT * FROM donations')
+      // ⚠️ 맨 위 import 줄에도 이 이름이 있다 — **호출부**로 앵커를 잡는다(실제로 한 번 걸렸다).
+      const audit = PURGE.indexOf('writeAuditLog(c, {')
+      const del = PURGE.indexOf('DELETE FROM donations')
+      expect(snap, '스냅샷이 없다').toBeGreaterThan(0)
+      expect(snap, '스냅샷이 감사 로그보다 뒤에 있다').toBeLessThan(audit)
+      expect(audit, '삭제가 감사 로그보다 앞에 있다').toBeLessThan(del)
+    })
+
     it('🔴 마지막 매장 삭제 실패를 삼키지 않는다 (500 대신 이유를 말한다)', () => {
       // 500 은 "우리가 모른다"는 뜻이다. 모르는 채로 다시 누르게 하면 부분 적용이 쌓인다
       // (실제로 매장 5는 상품 9건이 지워진 채 매장만 남았다).

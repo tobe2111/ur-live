@@ -88,6 +88,36 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🗑️ 부수 머니 삭제 플래그가 cascade 없이도 먹는다(실수로 열린다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "    const purgeAncillary = cascade && /^(1|true|yes)$/i.test(c.req.query('purge_ancillary') || '');",
+    replace: "    const purgeAncillary = /^(1|true|yes)$/i.test(c.req.query('purge_ancillary') || '');",
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '되돌릴 수 없는 삭제라 문을 둘 다 열어야 한다. `cascade &&` 가 빠지면 쿼리 하나만 붙여도 ' +
+      '후원·교환권 발송 기록이 지워진다 — 오타 한 번의 거리다.',
+  },
+  {
+    name: '🗑️ 부수 머니를 감사 로그 박제 없이 지운다(사본이 사라진다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "          DB.prepare('SELECT * FROM donations WHERE seller_id = ?').bind(sellerId).all(),",
+    replace: '          Promise.resolve({ results: [] }),',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '이 삭제에서 감사 로그는 **유일한 사본**이다. 스냅샷이 비면 개수만 남고 금액·상대·외부 ' +
+      '주문번호가 통째로 사라진다 — 지운 뒤에는 복원할 방법이 없다.',
+  },
+  {
+    name: '🗑️ 주문·정산이 부수 머니 플래그로 함께 풀린다(정산 있는 매장이 사라진다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "    if (stl > 0) blockers.push(`정산 ${stl}건`);",
+    replace: '    if (stl > 0 && !purgeAncillary) blockers.push(`정산 ${stl}건`);',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '이 플래그가 덮는 것은 후원·교환권 발송 **둘뿐**이다. 정산·주문·이용권·원장까지 풀리면 ' +
+      '쿼리 하나로 회계 원장이 있는 매장이 사라진다 — 그건 이 도구가 손댈 자리가 아니다.',
+  },
+  {
     name: '🗑️ 매장 purge 가 후원·교환권 발송을 안 센다(돈 기록이 조용히 사라진다)',
     file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
     find: "    if (vord > 0) blockers.push(`교환권 발송 ${vord}건`);",
