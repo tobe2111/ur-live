@@ -88,6 +88,36 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🖼️ 홈 섹션이 서로 겹치는지 다시 안 본다 (같은 사진이 위아래로 두 번)',
+    file: 'src/features/sections/api/sections.routes.ts',
+    find: '            excludeIds: [...claimed],\n',
+    replace: '',
+    test: 'src/tests/unit/home-section-no-duplicate.test.ts',
+    why:
+      '리졸버가 배제를 받아도 라우트가 안 넘기면 화면은 그대로다. 라이브 실측에서 인기 4개 중 ' +
+      '3개가 바로 아래 숙소 섹션에 그대로 다시 나왔다 — 에러가 없어 아무도 못 봤다.',
+  },
+  {
+    name: '🖼️ 섹션 배제의 바인드가 앞으로 끼어든다 (에러 없이 결과만 틀린다)',
+    file: 'src/features/sections/api/section-rules.ts',
+    find: '    binds.push(...excl)',
+    replace: '    binds.unshift(...excl)',
+    test: 'src/tests/unit/home-section-no-duplicate.test.ts',
+    why:
+      '`NOT IN` 은 SQL 에서 CROSS JOIN 분모 **뒤**에 온다. 바인드를 앞에 끼우면 카테고리와 id 가 ' +
+      '어긋나 **SQL 은 통과하고 결과만 조용히 틀린다**. 문자열 검사로는 절대 못 잡는 클래스다.',
+  },
+  {
+    name: '🖼️ 수동 큐레이션이 규칙에 밀린다 (사람이 고른 상품이 사라진다)',
+    file: 'src/features/sections/api/sections.routes.ts',
+    find: "          if (normalizeSectionSource(s.source) !== 'manual') continue;",
+    replace: "          if (normalizeSectionSource(s.source) === 'manual') continue;",
+    test: 'src/tests/unit/home-section-no-duplicate.test.ts',
+    why:
+      '어드민이 그 줄에 그 상품을 직접 골라 넣었는데 위 규칙 섹션이 먼저 집어갔다고 사라지면, ' +
+      '사람이 내린 결정이 질의에 밀리는 것이다. manual 이 먼저 자기 몫을 확정해야 한다.',
+  },
+  {
     name: '🗑️ 부수 머니 삭제 플래그가 cascade 없이도 먹는다(실수로 열린다)',
     file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
     find: "    const purgeAncillary = cascade && /^(1|true|yes)$/i.test(c.req.query('purge_ancillary') || '');",
@@ -803,9 +833,19 @@ const MUTATIONS = [
     why: '2026-09-02 라이브 워터폴: 슬라이드 넷(각 136~220KB, 콜드 2.3~4.4s)이 첫 사진과 동시에 내려왔다.',
   },
   {
+    name: '🖥️ PC 대형 CSS 프레임만 바뀌어 서버 크롭 비율과 갈린다 (에러 없이 피사체가 밀린다)',
+    file: 'src/pages/group-buy/DetailGallery.tsx',
+    find: "aspectRatio: multi ? '4 / 3' : '16 / 9'",
+    replace: "aspectRatio: multi ? '3 / 2' : '16 / 9'",
+    test: 'src/tests/unit/detail-hero-crop.test.ts',
+    why:
+      '서버가 4:3 으로 자른 사진을 3:2 칸에 넣으면 브라우저가 **한 번 더** 자른다 — gravity=auto 로 ' +
+      '찾아 놓은 피사체가 다시 밀려난다. 화면은 그럴듯하게 채워지고 에러도 로그도 없어 아무도 모른다.',
+  },
+  {
     name: '🧵 워커 preload 가 옛 width:900(크롭 없음)으로 되돌아가 갤러리 URL 과 갈린다',
     file: 'src/worker/utils/home-card-preload.ts',
-    find: '      : isMobile ? detailHeroMobileUrl(heroSrc) : detailPlainUrl(heroSrc, DETAIL_HERO_DESKTOP_WIDTH)\n',
+    find: '      : isMobile ? detailHeroMobileUrl(heroSrc) : detailCropUrl(heroSrc, DETAIL_HERO_DESKTOP_WIDTH, pcRatio)\n',
     replace: "      : cfImage(heroSrc, { width: 900, format: 'auto' })\n",
     test: 'src/tests/unit/detail-image-continuity.test.ts',
     why: '08-31 크롭 도입 뒤 실제로 이 상태였다 — preload 111KB 를 받고 버린 뒤 같은 사진을 다시 받았다.',
@@ -1972,7 +2012,7 @@ canvas {
   {
     name: '상세 갤러리가 썸네일의 죽은 사진을 감시하지 않는다',
     file: 'src/pages/group-buy/DetailGallery.tsx',
-    find: 'for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, url: detailPlainUrl(t, DETAIL_THUMB_WIDTH) })', // 2026-09-02 SSOT 폭으로
+    find: 'for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, url: pcThumbUrl(t) })', // 2026-09-06 PC 크롭으로 재조준
     replace: '/* 감시 제거됨 */',
     test: 'src/tests/unit/groupon-detail-map.test.ts',
     why:
