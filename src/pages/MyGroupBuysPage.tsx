@@ -293,7 +293,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
             {item.subBadge && (
               <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
                 item.subBadgeAccent === 'pink'
-                  ? 'bg-pink-50 text-pink-600'
+                  ? 'bg-brand-tint text-brand-text'
                   : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'
               }`}>
                 {item.subBadge}
@@ -304,7 +304,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
           {/* 진행 바 (active + has target) */}
           {item.isActive && item.target && item.target > 0 && (
             <div className="h-1.5 w-full bg-gray-100 dark:bg-[#1D1F29] rounded-full overflow-hidden mb-2">
-              <div className="h-full bg-pink-500 transition-all" style={{ width: `${progressPct}%` }} />
+              <div className="h-full bg-brand transition-all" style={{ width: `${progressPct}%` }} />
             </div>
           )}
 
@@ -317,7 +317,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
                 </span>
               )}
               {item.discountText && (
-                <span className="font-semibold text-pink-600">{item.discountText}</span>
+                <span className="font-semibold text-brand-text">{item.discountText}</span>
               )}
             </div>
             {item.isActive && item.expires_at && (

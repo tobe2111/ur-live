@@ -30,9 +30,9 @@ interface DepositRequest {
 }
 
 const STATUS: Record<DepositRequest['status'], { t: string; c: string }> = {
-  pending: { t: '대기', c: 'bg-amber-50 text-amber-700' },
-  confirmed: { t: '완료', c: 'bg-emerald-50 text-emerald-700' },
-  rejected: { t: '반려', c: 'bg-rose-50 text-rose-700' },
+  pending: { t: '대기', c: 'bg-tone-warn-bg text-tone-warn' },
+  confirmed: { t: '완료', c: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { t: '반려', c: 'bg-tone-bad-bg text-tone-bad' },
 }
 
 // 🏦 2026-07-02 (대표 — 어드민 도매 IA 통합): embedded 면 AdminLayout 래퍼를 생략하고 본문만 반환 →
@@ -183,7 +183,7 @@ export default function AdminWholesaleDepositsPage({ embedded = false }: { embed
                   <tr key={req.id} className="border-b border-gray-50">
                     <td className="py-2.5 px-4 text-gray-900">
                       {req.business_name || `#${req.seller_id}`}
-                      {req.mall_name && <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600">{req.mall_name}</span>}
+                      {req.mall_name && <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded bg-tone-info-bg text-tone-info">{req.mall_name}</span>}
                     </td>
                     <td className="py-2.5 px-4 text-right font-bold text-gray-900">{formatWon(req.amount)}</td>
                     <td className="py-2.5 px-4 text-gray-700">{req.depositor_name}</td>

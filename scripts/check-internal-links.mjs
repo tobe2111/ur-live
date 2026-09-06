@@ -24,7 +24,6 @@ const ROUTE_FILES = [
   'src/App.tsx',
   'src/routes/admin.routes.tsx',
   'src/routes/seller.routes.tsx',
-  'src/routes/agency.routes.tsx',
   'src/routes/supplier.routes.tsx',
 ]
 // react-router 가 아니라 워커(서버)가 처리하는 prefix — 풀페이지 네비라 라우트 매칭 대상 아님.

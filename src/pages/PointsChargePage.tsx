@@ -237,17 +237,17 @@ export default function PointsChargePage() {
                       onClick={() => setSelected(opt)}
                       className={`relative flex flex-col items-center justify-center py-5 rounded-2xl border-2 transition-all ${
                         isSelected
-                          ? 'border-pink-500 bg-pink-50 dark:bg-pink-500/10 ring-2 ring-pink-200 dark:ring-pink-500/30'
+                          ? 'border-brand bg-brand-tint bg-brand/10 ring-2 ring-brand/40 dark:ring-brand/30'
                           : 'border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] hover:border-gray-300 dark:hover:border-[#3A3A3A]'
                       }`}
                       aria-label={`${formatNumber(opt.amount)}원 충전`}
                     >
                       {isSelected && (
-                        <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center">
+                        <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-brand flex items-center justify-center">
                           <Check className="w-3 h-3 text-white" strokeWidth={3} />
                         </span>
                       )}
-                      <p className={`text-[18px] font-extrabold ${isSelected ? 'text-pink-600' : 'text-gray-900 dark:text-white'}`}>
+                      <p className={`text-[18px] font-extrabold ${isSelected ? 'text-brand-text' : 'text-gray-900 dark:text-white'}`}>
                         {formatNumber(opt.amount)}
                         <span className="text-[12px] font-bold ml-0.5">원</span>
                       </p>
@@ -269,7 +269,7 @@ export default function PointsChargePage() {
                 </div>
                 <div className="flex items-center justify-between text-[13px] mt-2">
                   <span className="text-gray-500 dark:text-gray-400">{t('pointsCharge.chargeDeals', { defaultValue: '충전 딜' })}</span>
-                  <span className="font-semibold text-pink-600">+{formatNumber(pointsPreview)}딜</span>
+                  <span className="font-semibold text-brand-text">+{formatNumber(pointsPreview)}딜</span>
                 </div>
                 <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-between">
                   <span className="text-[13px] font-bold text-gray-900 dark:text-white">{t('pointsCharge.afterBalance', { defaultValue: '충전 후 잔액' })}</span>

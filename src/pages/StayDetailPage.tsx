@@ -396,11 +396,11 @@ export default function StayDetailPage() {
 
         {/* 🛡️ 2026-05-18: 인플 referral 배너 — ref 진입 시 표시. */}
         {referrerId && stay.referral_enabled === 1 && (stay.influencer_discount_pct || 0) > 0 && (
-          <div className="bg-pink-50 dark:bg-gray-800/[0.15] border border-pink-300 dark:border-pink-500/30 rounded-xl p-3 mb-3 flex items-center gap-2.5">
-            <TicketPercent className="w-5 h-5 shrink-0 text-pink-500 dark:text-pink-300" strokeWidth={1.8} aria-hidden />
+          <div className="bg-brand-tint dark:bg-gray-800/[0.15] border border-rule rounded-xl p-3 mb-3 flex items-center gap-2.5">
+            <TicketPercent className="w-5 h-5 shrink-0 text-brand-text " strokeWidth={1.8} aria-hidden />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-pink-600 dark:text-pink-300">추천 할인 {stay.influencer_discount_pct}% 적용</p>
-              <p className="text-[10px] text-pink-500/80 dark:text-pink-200/70 mt-0.5">결제 시 자동 적용됩니다</p>
+              <p className="text-xs font-bold text-brand-text ">추천 할인 {stay.influencer_discount_pct}% 적용</p>
+              <p className="text-[10px] text-brand-text/80 mt-0.5">결제 시 자동 적용됩니다</p>
             </div>
           </div>
         )}
@@ -589,11 +589,11 @@ export default function StayDetailPage() {
       {/* 🛡️ 2026-05-19: 다객실 묶음 결제 sticky bar — 모바일 전용(PC 는 아사이드 요약이 담당).
           ⚠️ app-frame-bar 미사용(pc-fullbleed 가 숨김) + lg:hidden — pc-fullbleed 등재 전제조건. */}
       {cartItems.length > 0 && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-black/95 backdrop-blur border-t border-gray-200 dark:border-pink-500/30 p-3">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-black/95 backdrop-blur border-t border-gray-200 p-3">
           <div className="max-w-md mx-auto flex items-center gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-[10px] text-gray-500 dark:text-gray-400">{cartItems.length}종 객실 / {cartTotalQty}객실</p>
-              <p className="text-base font-extrabold text-brand dark:text-pink-400">₩{formatNumber(cartSubtotal)}</p>
+              <p className="text-base font-extrabold text-brand ">₩{formatNumber(cartSubtotal)}</p>
             </div>
             <button onClick={() => setCartQty({})}
               className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">비우기</button>
@@ -703,10 +703,10 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode,
             {referrerId && (room.discount_pct || 0) > 0 && (
               <>
                 <p className="flex justify-between mt-1"><span className="text-gray-500 dark:text-gray-400">정가</span><span className="line-through text-gray-400 dark:text-gray-500">₩{formatNumber(room.total_price)}</span></p>
-                <p className="flex justify-between mt-1"><span className="text-pink-600 dark:text-pink-300">추천 할인 -{room.discount_pct}%</span><span className="font-semibold text-pink-600 dark:text-pink-300">-₩{formatNumber(room.total_price - (room.discounted_price || room.total_price))}</span></p>
+                <p className="flex justify-between mt-1"><span className="text-brand-text ">추천 할인 -{room.discount_pct}%</span><span className="font-semibold text-brand-text ">-₩{formatNumber(room.total_price - (room.discounted_price || room.total_price))}</span></p>
               </>
             )}
-            <p className="flex justify-between mt-2 pt-2 border-t border-gray-200 dark:border-white/10"><span className="text-gray-500 dark:text-gray-400">총 결제 금액</span><span className="font-extrabold text-brand dark:text-pink-400">₩{formatNumber(room.discounted_price || room.total_price)}</span></p>
+            <p className="flex justify-between mt-2 pt-2 border-t border-gray-200 dark:border-white/10"><span className="text-gray-500 dark:text-gray-400">총 결제 금액</span><span className="font-extrabold text-brand ">₩{formatNumber(room.discounted_price || room.total_price)}</span></p>
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">예약자 이름 *</label>
@@ -833,7 +833,7 @@ function MultiBookingModal({
             ))}
             <div className="border-t border-gray-200 dark:border-white/10 mt-2 pt-2 flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">총 금액 (할인 전)</span>
-              <span className="font-extrabold text-brand dark:text-pink-400">₩{formatNumber(cartSubtotal)}</span>
+              <span className="font-extrabold text-brand ">₩{formatNumber(cartSubtotal)}</span>
             </div>
             {saleMode === 'date' ? (
               <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">기간: {checkIn} → {checkOut} ({nights}박)</p>

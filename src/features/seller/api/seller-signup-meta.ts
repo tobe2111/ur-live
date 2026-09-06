@@ -10,14 +10,18 @@
  * (`ledger-commission-policy.ts` — 모르면 낮은 쪽. 더 떼는 쪽은 되돌리기 비싸다).
  * 즉 초대 링크로 들어온 **직접 입점 사장님이 영원히 5%** 로 걷힌다. 에러도 경고도 없다.
  *
- * ## 🔑 추측하지 않는다 — 이미 아는 값으로 정한다
- * 이 폼은 **에이전시 초대 코드**(`?agency=AG-XXXXXXXX`)를 받아 `introduced_by_agency_id` 를 채운다.
- * 그게 붙었다는 건 **대행사가 데려온 매장**이라는 뜻이다 ⇒ 중개(5%).
- * 안 붙었으면 사장님이 자기 가게를 직접 올린 것이다 ⇒ 직접(10%).
+ * ## 🌇 2026-09-05 — 판정 근거가 바뀌었다(에이전시 일몰)
+ * 원래 이 판정은 **에이전시 초대 코드**(`?agency=AG-XXXXXXXX`) 유무로 갈랐다. 그런데 대표 지시로
+ * 에이전시가 통째로 일몰되면서(`docs/design/store-operator-model.md §7`) **그 코드를 발급할 수 있는
+ * 주체도, 받아 줄 대시보드도 없어졌다.** 남겨 두면 아무도 켤 수 없는 스위치가 요금을 가르게 된다.
  *
- * ⚠️ **소개자(인플루언서) 초대는 direct 다.** 소개자는 데려오기만 하고 매장을 *운영*하지 않는다 —
- *    2026-08-20 정책의 brokered 는 "중개사가 **관리**하는 매장"이다. 그리고 소개자의 영입 2% 는
- *    직접 입점 매장의 10% 안에서 나가므로, 여기서 brokered 로 찍으면 **소개자가 보상을 못 받는다.**
+ * ⇒ **이 문은 이제 언제나 `direct` 다.** 추측이 아니라 이 문의 정의다:
+ *    `/register-from-user` 는 **카카오 user 세션 전용**이고(로그인한 본인이 자기 가게를 올린다)
+ *    가입 즉시 `linked_user_id` 로 그 사람에게 묶인다. 중개사가 대신 낸 매장이 아니다.
+ *
+ * ⚠️ **그래서 `brokered` 를 만들 수 있는 문은 이제 하나뿐이다** — `/store/new` 의
+ *    `StoreRegisterModal`("누가 운영하나요?" 필수 선택). 그 강제가 풀리면 채널 미지정 매장이
+ *    다시 생기고 조용히 5% 로 떨어진다(가드: `signup-store-channel-2026-09-04.test.ts`).
  *
  * ⚠️ 이 함수는 **비어 있을 때만 쓴다**(`setSellerMeta` 는 덮어쓰므로 호출부가 신규 매장에서만 부른다).
  *    운영 중 매장의 채널 변경은 어드민(`/admin/merchant-commissions`)의 일이다 — 정산이 즉시 바뀐다.
@@ -26,9 +30,12 @@ import type { D1Database } from '@cloudflare/workers-types'
 
 export type StoreChannel = 'direct' | 'brokered'
 
-/** 대행사가 데려왔으면 중개, 아니면 직접. 가입 시점에 아는 값만 본다. */
-export function channelFromSignup(introducedAgencyId: number | null | undefined): StoreChannel {
-  return introducedAgencyId ? 'brokered' : 'direct'
+/**
+ * 사장님이 **본인 세션으로 자기 가게를 올리는 문**(`/register-from-user`)의 채널.
+ * 중개사가 낸 매장은 이 문으로 오지 않는다 — `/store/new` 에서 채널을 명시해 만든다.
+ */
+export function channelFromSelfSignup(): StoreChannel {
+  return 'direct'
 }
 
 /**
@@ -36,12 +43,12 @@ export function channelFromSignup(introducedAgencyId: number | null | undefined)
  * (채널이 없으면 종전대로 5% 폴백이고, 어드민이 나중에 지정할 수 있다).
  */
 export async function stampSignupStoreChannel(
-  db: D1Database, sellerId: number | null | undefined, introducedAgencyId: number | null | undefined,
+  db: D1Database, sellerId: number | null | undefined,
 ): Promise<void> {
   if (!sellerId) return
   try {
     const { setSellerMeta } = await import('../../../worker/utils/seller-meta')
-    await setSellerMeta(db, Number(sellerId), { store_channel: channelFromSignup(introducedAgencyId) })
+    await setSellerMeta(db, Number(sellerId), { store_channel: channelFromSelfSignup() })
   } catch { /* 채널 미기록 — 종전 폴백(5%)으로 동작, 어드민에서 지정 가능 */ }
 }
 

@@ -42,7 +42,7 @@ export default function InfluencerAnalyticsPage() {
       <SEO title="인플루언서 성과표 - 유어딜" description="referral 매출 / 매장별 ranking / 일별 추세" url="/influencer/analytics" />
       <header className="sticky top-0 z-30 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3 flex items-center gap-2">
         <Link to="/influencer/settlement" className="text-gray-700 dark:text-gray-200"><ChevronLeft className="w-5 h-5" /></Link>
-        <BarChart3 className="w-5 h-5 text-pink-500" />
+        <BarChart3 className="w-5 h-5 text-brand-text" />
         <h1 className="text-base font-bold text-gray-900 dark:text-white flex-1">성과표</h1>
       </header>
 
@@ -50,7 +50,7 @@ export default function InfluencerAnalyticsPage() {
         {/* 총 commission 5계정 split */}
         <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-5">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-pink-500" /> 총 commission ({data.summary.total_attributions}건)
+            <TrendingUp className="w-4 h-4 text-brand-text" /> 총 commission ({data.summary.total_attributions}건)
           </h3>
           <p className="text-2xl font-extrabold text-gray-900 dark:text-white">{data.summary.total.toLocaleString()}원</p>
           <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
@@ -86,7 +86,7 @@ export default function InfluencerAnalyticsPage() {
                 <div key={d.d} className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500 dark:text-gray-400 w-16 font-mono">{d.d.slice(5)}</span>
                   <div className="flex-1 bg-gray-100 dark:bg-[#1D1F29] rounded h-4 relative overflow-hidden">
-                    <div className="bg-pink-400 h-full" style={{ width: `${(d.amt / maxDaily) * 100}%` }} />
+                    <div className="bg-brand h-full" style={{ width: `${(d.amt / maxDaily) * 100}%` }} />
                   </div>
                   <span className="text-[10px] text-gray-700 dark:text-gray-200 w-20 text-right font-bold">{d.amt.toLocaleString()}원</span>
                 </div>
@@ -109,7 +109,7 @@ export default function InfluencerAnalyticsPage() {
                   <span className="w-5 text-center font-bold text-gray-500 dark:text-gray-400">{i + 1}</span>
                   <span className="flex-1 truncate text-gray-900 dark:text-white">{s.seller_name || `매장 ${s.seller_id}`}</span>
                   <span className="text-gray-500 dark:text-gray-400 font-mono text-[10px]">{s.attribution_count}건</span>
-                  <span className="font-bold text-pink-600 w-20 text-right">{s.total_commission.toLocaleString()}원</span>
+                  <span className="font-bold text-brand-text w-20 text-right">{s.total_commission.toLocaleString()}원</span>
                 </li>
               ))}
             </ol>
@@ -131,7 +131,7 @@ export default function InfluencerAnalyticsPage() {
                     {p.restaurant_name && <p className="truncate text-gray-400 text-[10px]">{p.restaurant_name}</p>}
                   </div>
                   <span className="text-gray-500 dark:text-gray-400 font-mono text-[10px]">{p.attribution_count}건</span>
-                  <span className="font-bold text-pink-600 w-20 text-right">{p.total_commission.toLocaleString()}원</span>
+                  <span className="font-bold text-brand-text w-20 text-right">{p.total_commission.toLocaleString()}원</span>
                 </li>
               ))}
             </ol>

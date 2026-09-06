@@ -50,10 +50,10 @@ interface PendingRow {
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  pending: { label: '검토 대기', cls: 'bg-amber-100 text-amber-700' },
-  approved: { label: '승인됨', cls: 'bg-blue-100 text-blue-700' },
-  sent: { label: '송금 완료', cls: 'bg-emerald-100 text-emerald-700' },
-  failed: { label: '실패', cls: 'bg-red-100 text-red-700' },
+  pending: { label: '검토 대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+  approved: { label: '승인됨', cls: 'bg-tone-info-bg text-tone-info' },
+  sent: { label: '송금 완료', cls: 'bg-tone-ok-bg text-tone-ok' },
+  failed: { label: '실패', cls: 'bg-tone-bad-bg text-tone-bad' },
   cancelled: { label: '취소', cls: 'bg-gray-100 text-gray-600' },
 }
 
@@ -65,7 +65,7 @@ export default function AdminPayoutsPage() {
   //   화면엔 3건인데 실제로는 30건이 처리되는 사고가 난다.
   const [picked, setPicked] = useState<Set<number>>(new Set())
   // 🛡️ 2026-05-21 Phase D: commission rates + 연말 리포트.
-  const [rates, setRates] = useState({ platform_fee_pct: '5', seller_commission_pct: '10', agency_share_pct: '30', influencer_intro_share_pct: '20' })
+  const [rates, setRates] = useState({ platform_fee_pct: '5', seller_commission_pct: '10', influencer_intro_share_pct: '20' })
   const [savingRates, setSavingRates] = useState(false)
   const [annualYear, setAnnualYear] = useState(String(new Date().getFullYear() - 1))
   const [annualType, setAnnualType] = useState<'all' | 'store_owner' | 'seller' | 'agency'>('all')
@@ -361,16 +361,6 @@ export default function AdminPayoutsPage() {
               <p className="text-[10px] text-gray-400 mt-1">위탁 판매 (consignment) 시 셀러 commission</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">에이전시 분배 % <span className="text-gray-400">(default 30)</span></label>
-              <input
-                type="number" min={0} max={100} step={1}
-                value={rates.agency_share_pct}
-                onChange={e => setRates(r => ({ ...r, agency_share_pct: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-blue-500"
-              />
-              <p className="text-[10px] text-gray-400 mt-1">플랫폼 fee 중 에이전시에게 분배 (introduced_by_agency_id 있는 가게만)</p>
-            </div>
-            <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">🎤 인플루언서 입점 유치 % <span className="text-gray-400">(default 20)</span></label>
               <input
                 type="number" min={0} max={100} step={1}
@@ -392,7 +382,6 @@ export default function AdminPayoutsPage() {
                 const res = await api.patch('/api/admin/payouts/commission-rates', {
                   platform_fee_pct: Number(rates.platform_fee_pct),
                   seller_commission_pct: Number(rates.seller_commission_pct),
-                  agency_share_pct: Number(rates.agency_share_pct),
                   influencer_intro_share_pct: Number(rates.influencer_intro_share_pct),
                 })
                 if (res.data?.success) toast.success('저장됨 — 다음 voucher 부터 적용')

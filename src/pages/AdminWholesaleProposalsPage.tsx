@@ -31,10 +31,10 @@ interface FeedbackRow {
 }
 
 const STATUS: Record<FeedbackStatus, { t: string; c: string }> = {
-  open: { t: '접수', c: 'bg-amber-50 text-amber-700' },
-  in_progress: { t: '검토중', c: 'bg-blue-50 text-blue-700' },
-  resolved: { t: '처리완료', c: 'bg-emerald-50 text-emerald-700' },
-  rejected: { t: '반려', c: 'bg-rose-50 text-rose-700' },
+  open: { t: '접수', c: 'bg-tone-warn-bg text-tone-warn' },
+  in_progress: { t: '검토중', c: 'bg-tone-info-bg text-tone-info' },
+  resolved: { t: '처리완료', c: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { t: '반려', c: 'bg-tone-bad-bg text-tone-bad' },
 }
 
 const FILTERS: { id: string; label: string }[] = [
@@ -118,7 +118,7 @@ export default function AdminWholesaleProposalsPage() {
             {rows.map((row) => (
               <div key={row.id} className="bg-white rounded-xl border border-gray-200 p-4">
                 <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${row.type === 'report' ? 'bg-rose-50 text-rose-700' : 'bg-pink-50 text-pink-700'}`}>
+                  <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${row.type === 'report' ? 'bg-tone-bad-bg text-tone-bad' : 'bg-brand-tint text-brand-text'}`}>
                     {row.type === 'report' ? <Flag className="w-3 h-3" /> : <Lightbulb className="w-3 h-3" />}
                     {row.type === 'report' ? '신고' : '제안'}
                   </span>

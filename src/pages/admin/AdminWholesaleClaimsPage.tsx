@@ -36,10 +36,10 @@ interface ClaimRow {
 }
 
 const STATUS: Record<string, { t: string; c: string }> = {
-  open: { t: '접수', c: 'bg-amber-50 text-amber-700' },
-  reviewing: { t: '검토중', c: 'bg-blue-50 text-blue-700' },
-  approved: { t: '승인(환불)', c: 'bg-emerald-50 text-emerald-700' },
-  rejected: { t: '반려', c: 'bg-rose-50 text-rose-700' },
+  open: { t: '접수', c: 'bg-tone-warn-bg text-tone-warn' },
+  reviewing: { t: '검토중', c: 'bg-tone-info-bg text-tone-info' },
+  approved: { t: '승인(환불)', c: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { t: '반려', c: 'bg-tone-bad-bg text-tone-bad' },
   resolved: { t: '해결', c: 'bg-gray-100 text-gray-600' },
 }
 const REASON: Record<string, string> = {

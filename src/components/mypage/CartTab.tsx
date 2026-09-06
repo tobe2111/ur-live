@@ -117,7 +117,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
         <div className="pt-4 flex justify-between items-baseline">
           <span className="text-[15px] font-bold text-gray-900 dark:text-white">{t('cart.totalAmount', { defaultValue: '총 결제금액' })}</span>
           <div className="text-right">
-            <span className="text-[24px] font-extrabold text-pink-500">
+            <span className="text-[24px] font-extrabold text-brand-text">
               {formatNumber(totalAmount)}
             </span>
             <span className="text-[14px] font-semibold text-gray-600 dark:text-gray-300 ml-1">원</span>

@@ -32,11 +32,11 @@ export default function AdminAccountsPage() {
   const ROLE_LABELS: Record<string, { label: string; color: string; desc: string }> = {
     super_admin: { label: t('admin.accounts.roleSuperAdmin', { defaultValue: '슈퍼관리자' }), color: 'bg-red-100 text-red-700', desc: '전체 권한 (계정·정산·설정 포함)' },
     admin: { label: t('admin.accounts.roleAdmin', { defaultValue: '일반관리자' }), color: 'bg-blue-100 text-blue-700', desc: '일반 운영 (계정 관리·정산 게이트 제외)' },
-    ops: { label: '운영(주문/상품)', color: 'bg-indigo-100 text-indigo-700', desc: '주문·상품·배송 처리' },
-    cs: { label: '고객응대(CS)', color: 'bg-teal-100 text-teal-700', desc: '주문 조회·반품·문의 응대' },
-    finance: { label: '정산/회계', color: 'bg-emerald-100 text-emerald-700', desc: '정산·출금·세금 처리' },
+    ops: { label: '운영(주문/상품)', color: 'bg-tone-info-bg text-tone-info', desc: '주문·상품·배송 처리' },
+    cs: { label: '고객응대(CS)', color: 'bg-tone-ok-bg text-tone-ok', desc: '주문 조회·반품·문의 응대' },
+    finance: { label: '정산/회계', color: 'bg-tone-ok-bg text-tone-ok', desc: '정산·출금·세금 처리' },
     viewer: { label: t('admin.accounts.roleViewer', { defaultValue: '읽기전용' }), color: 'bg-gray-100 text-gray-600', desc: '조회만 가능 (변경 불가)' },
-    wholesale: { label: '도매 파트너', color: 'bg-orange-100 text-orange-700', desc: '도매(유통스타트) 전용 — 도매 외 데이터 접근 차단' },
+    wholesale: { label: '도매 파트너', color: 'bg-tone-warn-bg text-tone-warn', desc: '도매(유통스타트) 전용 — 도매 외 데이터 접근 차단' },
   }
   const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
     { value: 'super_admin', label: '슈퍼관리자 — 전체 권한' },

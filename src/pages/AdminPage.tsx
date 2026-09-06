@@ -431,7 +431,7 @@ export default function AdminPage() {
         >
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <span className="text-[10px] sm:text-xs font-medium text-gray-500">오늘 교환권 거래</span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-brand-tint text-brand-text flex items-center justify-center">
               <Ticket className="w-5 h-5" />
             </div>
           </div>
@@ -439,7 +439,7 @@ export default function AdminPage() {
             <p className="text-lg sm:text-xl font-bold text-gray-900">{formatNumber(dashboardStats.todayVouchers || 0)}건</p>
             <p className="text-sm text-gray-600">· {fmtPrice(dashboardStats.todayVouchersAmount || 0)}</p>
           </div>
-          <p className="text-[10px] sm:text-xs text-pink-600 mt-0.5">→ 자세히 보기 (사용자/시각/상품)</p>
+          <p className="text-[10px] sm:text-xs text-brand-text mt-0.5">→ 자세히 보기 (사용자/시각/상품)</p>
         </button>
         <button
           onClick={() => navigate('/admin/voucher-orders')}
@@ -466,12 +466,12 @@ export default function AdminPage() {
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 sm:gap-3">
           {[
-            { label: '승인 대기 셀러', value: dashboardStats.pendingSellers ?? pendingSellers.length, icon: <Users className="w-4 h-4" />, link: '/admin/seller-approval', color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: '미발송 주문', value: dashboardStats.unshippedOrders ?? 0, icon: <Truck className="w-4 h-4" />, link: '/admin/orders?status=PAID', color: 'text-indigo-600', bg: 'bg-indigo-50' },
-            { label: '반품 신청', value: dashboardStats.pendingReturns ?? 0, icon: <RotateCcw className="w-4 h-4" />, link: '/admin/returns', color: 'text-rose-600', bg: 'bg-rose-50' },
-            { label: '정산 대기', value: dashboardStats.pendingPayouts ?? 0, icon: <Banknote className="w-4 h-4" />, link: '/admin/payout-center', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { label: '제조사 승인', value: dashboardStats.pendingSuppliers ?? 0, icon: <Boxes className="w-4 h-4" />, link: '/admin/suppliers', color: 'text-purple-600', bg: 'bg-purple-50' },
-            { label: '교환권 발송실패', value: dashboardStats.failedVouchers ?? 0, icon: <Ticket className="w-4 h-4" />, link: '/admin/voucher-orders', color: 'text-amber-600', bg: 'bg-amber-50' },
+            { label: '승인 대기 셀러', value: dashboardStats.pendingSellers ?? pendingSellers.length, icon: <Users className="w-4 h-4" />, link: '/admin/seller-approval', color: 'text-tone-info', bg: 'bg-tone-info-bg' },
+            { label: '미발송 주문', value: dashboardStats.unshippedOrders ?? 0, icon: <Truck className="w-4 h-4" />, link: '/admin/orders?status=PAID', color: 'text-tone-info', bg: 'bg-tone-info-bg' },
+            { label: '반품 신청', value: dashboardStats.pendingReturns ?? 0, icon: <RotateCcw className="w-4 h-4" />, link: '/admin/returns', color: 'text-tone-bad', bg: 'bg-tone-bad-bg' },
+            { label: '정산 대기', value: dashboardStats.pendingPayouts ?? 0, icon: <Banknote className="w-4 h-4" />, link: '/admin/payout-center', color: 'text-tone-ok', bg: 'bg-tone-ok-bg' },
+            { label: '제조사 승인', value: dashboardStats.pendingSuppliers ?? 0, icon: <Boxes className="w-4 h-4" />, link: '/admin/suppliers', color: 'text-tone-info', bg: 'bg-tone-info-bg' },
+            { label: '교환권 발송실패', value: dashboardStats.failedVouchers ?? 0, icon: <Ticket className="w-4 h-4" />, link: '/admin/voucher-orders', color: 'text-tone-warn', bg: 'bg-tone-warn-bg' },
           ].map(task => (
             <button
               key={task.label}

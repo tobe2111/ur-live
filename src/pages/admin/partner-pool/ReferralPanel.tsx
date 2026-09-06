@@ -15,9 +15,9 @@ interface Referral {
 }
 const ST: Record<string, { label: string; cls: string }> = {
   new: { label: '접수', cls: 'bg-gray-100 text-gray-700' },
-  contacted: { label: '컨택중', cls: 'bg-blue-100 text-blue-700' },
-  onboarded: { label: '입점 완료', cls: 'bg-green-100 text-green-700' },
-  rejected: { label: '무산', cls: 'bg-red-100 text-red-600' },
+  contacted: { label: '컨택중', cls: 'bg-tone-info-bg text-tone-info' },
+  onboarded: { label: '입점 완료', cls: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { label: '무산', cls: 'bg-tone-bad-bg text-tone-bad' },
 }
 const EMPTY = { partner_name: '', store_name: '', region: '', phone: '', memo: '' }
 

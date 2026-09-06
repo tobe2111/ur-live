@@ -214,7 +214,7 @@ export default function InfluencerDiscoveryPanel() {
                 {/* 연락처 chips */}
                 <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
                   {l.email && <a href={`mailto:${l.email}`} className="px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold">✉ {l.email}</a>}
-                  {l.instagram && <a href={igUrl(l.instagram)} target="_blank" rel="noreferrer" className="px-1.5 py-0.5 rounded bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 font-semibold">IG @{l.instagram}</a>}
+                  {l.instagram && <a href={igUrl(l.instagram)} target="_blank" rel="noreferrer" className="px-1.5 py-0.5 rounded bg-brand-tint text-brand-text font-semibold">IG @{l.instagram}</a>}
                   {l.tiktok && <a href={ttUrl(l.tiktok)} target="_blank" rel="noreferrer" className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1A2030] text-gray-700 dark:text-gray-200 font-semibold">TikTok @{l.tiktok}</a>}
                   {l.links && l.links.split(' ').filter(Boolean).map((u, i) => <a key={i} href={u.startsWith('http') ? u : `https://${u}`} target="_blank" rel="noreferrer" className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1A2030] text-gray-600 dark:text-gray-300">🔗 링크</a>)}
                   {!l.email && !l.instagram && !l.tiktok && !l.links && <span className="text-gray-400 dark:text-gray-500">연락처 미공개</span>}

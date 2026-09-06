@@ -37,8 +37,18 @@ const ROOT = process.cwd()
 const BASELINE = path.join(ROOT, 'scripts/deal-card-baseline.json')
 const STRICT = process.env.STRICT_DEAL_CARD === '1' || process.argv.includes('-s')
 
-/** 공유 카드 — 이 중 하나를 렌더하면 통일된 것으로 본다. */
-const SHARED = ['GroupBuyFeedCard', 'BrowseProductCard', 'VoucherCard', 'VoucherRow', 'GroupBuyGridCard', 'DealCardMedia', 'HomeMiniCard']
+/**
+ * 공유 카드 — 이 중 하나를 렌더하면 통일된 것으로 본다.
+ *
+ * 🎫 형태는 **셋뿐**이다(2026-09-03 — 대표 "왜 통합 관리가 안 되는거지" 후속):
+ *   · 격자 `GroupBuyFeedCard`  — 홈·검색·유어샵·상권·숙소 목록
+ *   · 미니 `DealMiniCard`      — 홈 우리 동네딜, 최근 본 상품 같은 작은 정사각
+ *   · 줄   `DealRow`           — /vouchers 모바일 목록, 사용 완료 추천, 체험단
+ * `BrowseProductCard`·`VoucherRow` 는 **격자/줄 SSOT 에 얹은 얇은 어댑터**라 여기 남는다
+ * (호출부 props 를 안 바꾸려고 이름만 유지한 것 — 자체 마크업이 아니다).
+ * 새 형태를 넷째로 추가하지 말 것. 필요하면 위 셋 중 하나에 prop 을 더한다.
+ */
+const SHARED = ['GroupBuyFeedCard', 'BrowseProductCard', 'VoucherCard', 'VoucherRow', 'GroupBuyGridCard', 'DealCardMedia', 'DealMiniCard', 'DealRow']
 
 /** 대시보드·도매는 이 체계의 대상이 아니다(CLAUDE.md — 표면 규칙은 소비자 표면 기준). */
 const SKIP_PATH = /(^|\/)(admin|seller|agency|wholesale|supplier)|Admin|Seller|Agency|Wholesale|Supplier|\/tests\//
@@ -57,6 +67,8 @@ const ALLOW = {
   'src/pages/my-orders/OrderDetailModal.tsx': '주문 상세의 품목 줄 — 카드가 아니다',
   'src/pages/checkout/StayCheckout.tsx': '결제 요약 줄 — 카드가 아니다',
   'src/pages/CuratorEarningsPage.tsx': '적립 내역 목록 — 딜 카드가 아니다',
+  // 목록이 아니라 **초대받은 그 공구 하나**의 요약 + 참여 흐름이다(결제 요약과 같은 부류).
+  'src/pages/ReferralPage.tsx': '초대 링크의 단일 공구 요약 — 카드 목록이 아니다',
   // 🧱 서비스 분리(CLAUDE.md): 운영자 몰은 **공구 서비스**다. 유어딜 카드 체계를 몰에 강제하지 않는다.
   'src/pages/MallHomePage.tsx': '공구 서비스(운영자 몰) — 유어딜과 별개 서비스',
   'src/pages/MallProductPage.tsx': '공구 서비스(운영자 몰) — 유어딜과 별개 서비스',

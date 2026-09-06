@@ -4,9 +4,9 @@ import type { WithdrawalItem } from './types'
 
 // 🏦 2026-06-09: 정산금 출금 — 실가용 잔액 + 출금 신청 버튼 + 신청 내역.
 const WD_STATUS: Record<string, { label: string; cls: string }> = {
-  requested: { label: '처리 대기', cls: 'bg-amber-50 text-amber-700' },
-  approved: { label: '승인', cls: 'bg-emerald-50 text-emerald-700' },
-  paid: { label: '송금 완료', cls: 'bg-emerald-50 text-emerald-700' },
+  requested: { label: '처리 대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+  approved: { label: '승인', cls: 'bg-tone-ok-bg text-tone-ok' },
+  paid: { label: '송금 완료', cls: 'bg-tone-ok-bg text-tone-ok' },
   rejected: { label: '반려', cls: 'bg-gray-100 text-gray-500' },
 }
 export default function WithdrawalSection({ spendable, items, t, onRequest, hasAccount }: {

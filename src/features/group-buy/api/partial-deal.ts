@@ -232,3 +232,53 @@ export async function restorePartialDeal(
     console.error('[partial-deal] 딜 복원 실패 — 수동 개입 필요', e)
   }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 환불 — 돌려줄 금액을 카드 몫과 딜 몫으로 나눈다
+// ──────────────────────────────────────────────────────────────────────────────
+
+/** 환불 분배. `card + deal` 은 **언제나** 요청한 환불액과 같다. */
+export interface RefundSplit {
+  /** 카드(Toss)에 취소 요청할 금액. 0 이면 아예 호출하지 않는다(0원 취소는 거절된다). */
+  card: number
+  /** 유저 지갑으로 되돌릴 딜. */
+  deal: number
+}
+
+/**
+ * 💸 **카드로 취소할 수 있는 건 카드로 긁은 만큼뿐이다.**
+ *
+ * 2026-09-04 실측 결함: `orders.total_amount` 에는 **총액**이 들어가고 카드 승인액은 그보다
+ * `deal_used` 만큼 적은데, 환불이 총액을 취소 요청했다 → `EXCEED_CANCEL_AMOUNT` → 그 자리에서
+ * 중단 → 상태 전이도 딜 복원도 도달 못 함. **딜을 섞어 산 고객은 환불을 아예 못 받았다.**
+ *
+ * ⚠️ 두 경로의 계산은 **일부러 다르다. 하나로 합치면 틀린다.**
+ *   반품 경로가 복원할 때마다 `orders.deal_used` 를 **차감**하므로, `remainingDeal` 은 이미
+ *   "아직 안 돌려준 딜" 이다. 전액 환불은 그 남은 걸 **다** 돌려줘야 하고(비례를 또 곱하면 과소),
+ *   부분 환불은 **이번 환불분에 해당하는 만큼만** 돌려줘야 한다(다 주면 과다).
+ */
+
+/** 전액 환불 — 남아 있는 딜을 전부. 잔여 환불액을 넘지 않게만 클램프한다. */
+export function splitFullRefund(input: { remainingDeal: number; refundAmount: number }): RefundSplit {
+  const refund = Math.max(0, Math.round(Number(input.refundAmount) || 0))
+  const remaining = Math.max(0, Math.round(Number(input.remainingDeal) || 0))
+  const deal = Math.min(remaining, refund)
+  return { card: Math.max(0, refund - deal), deal }
+}
+
+/**
+ * 부분(반품) 환불 — 이번에 돌려주는 비율만큼의 딜.
+ * 여러 번 반품해도 원래 `deal_used` 를 넘지 않는다(호출부가 매번 차감하고, 여기서도 클램프한다).
+ */
+export function splitPartialRefund(input: {
+  remainingDeal: number; refundAmount: number; orderTotal: number
+}): RefundSplit {
+  const refund = Math.max(0, Math.round(Number(input.refundAmount) || 0))
+  const remaining = Math.max(0, Math.round(Number(input.remainingDeal) || 0))
+  const total = Math.max(1, Number(input.orderTotal) || 1)
+  const deal = remaining > 0
+    ? Math.min(remaining, refund, Math.round(remaining * Math.min(1, refund / total)))
+    : 0
+  return { card: Math.max(0, refund - deal), deal }
+}
+

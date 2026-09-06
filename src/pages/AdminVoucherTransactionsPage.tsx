@@ -249,10 +249,10 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  unused:   { label: '미사용', cls: 'bg-emerald-100 text-emerald-700' },
+  unused:   { label: '미사용', cls: 'bg-tone-ok-bg text-tone-ok' },
   used:     { label: '사용됨', cls: 'bg-gray-100 text-gray-600' },
-  expired:  { label: '만료',   cls: 'bg-red-100 text-red-700' },
-  refunded: { label: '환불',   cls: 'bg-yellow-100 text-yellow-700' },
+  expired:  { label: '만료',   cls: 'bg-tone-bad-bg text-tone-bad' },
+  refunded: { label: '환불',   cls: 'bg-tone-warn-bg text-tone-warn' },
 }
 
 const PAGE_SIZE = 50
@@ -302,7 +302,7 @@ export default function AdminVoucherTransactionsPage() {
         <div className="bg-white rounded-lg shadow p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-xl font-bold text-gray-900">교환권 거래</h1>
-            <Link to="/admin/voucher-orders" className="text-xs text-pink-600 hover:underline">KT Alpha 발송 추적 →</Link>
+            <Link to="/admin/voucher-orders" className="text-xs text-brand-text hover:underline">KT Alpha 발송 추적 →</Link>
           </div>
           <p className="text-xs text-gray-500 mb-3">사용자 voucher 구매 내역. KT Alpha 자동발송 status 는 별도 추적 페이지에서 확인.</p>
 

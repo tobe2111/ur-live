@@ -289,9 +289,9 @@ export default function AdminUsersPage() {
                                     <p className="text-[10px] text-gray-500">🎫 바우처</p>
                                     <p className="font-bold text-blue-700 text-sm">{formatNumber(detail.voucher_count || 0)}</p>
                                   </div>
-                                  <div className="bg-pink-50 rounded p-2 text-center">
+                                  <div className="bg-brand-tint rounded p-2 text-center">
                                     <p className="text-[10px] text-gray-500">🎟 쿠폰</p>
-                                    <p className="font-bold text-pink-700 text-sm">{formatNumber(detail.coupon_count || 0)}</p>
+                                    <p className="font-bold text-brand-text text-sm">{formatNumber(detail.coupon_count || 0)}</p>
                                   </div>
                                   <div className="bg-rose-50 rounded p-2 text-center">
                                     <p className="text-[10px] text-gray-500">❤️ 찜</p>
@@ -367,10 +367,7 @@ export default function AdminUsersPage() {
                                             담당: {detail.linked_agency.contact_name} · {detail.linked_agency.status}
                                           </p>
                                         </div>
-                                        <button onClick={() => navigate(`/admin/agencies?id=${detail.linked_agency!.id}`)}
-                                          className="text-[11px] text-purple-600 font-semibold px-2 py-1 hover:bg-purple-100 rounded">
-                                          {t('admin.users.manageLink', { defaultValue: '관리 →' })}
-                                        </button>
+                                        {/* 🌇 2026-09-04 에이전시 일몰 — '관리 →' 링크 제거(/admin/agencies 없음). 표시는 과거 연결 흔적으로 유지. */}
                                       </div>
                                     )}
                                   </div>
@@ -503,7 +500,7 @@ function FullStateModal({ userId, onClose }: { userId: number; onClose: () => vo
                 <p className="text-[10px] text-gray-600">바우처</p>
                 <p className="font-bold">{data.vouchers.count}</p>
               </div>
-              <div className="bg-pink-50 rounded p-2 text-center">
+              <div className="bg-brand-tint rounded p-2 text-center">
                 <p className="text-[10px] text-gray-600">쿠폰</p>
                 <p className="font-bold">{data.coupons.count}</p>
               </div>

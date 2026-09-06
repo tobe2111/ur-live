@@ -925,13 +925,9 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     // 🛡️ 2026-05-28: 영입 커미션 무기한(NULL) 일몰제 강제 — 레거시 영입 매장에 +12개월 캡 (LTV 보호).
     //   introduced_at 기준 (없으면 created_at). 이미 referral_bonus_until 설정된 매장은 불변.
     { desc: 'backfill: sellers.referral_bonus_until cap (introduced, NULL→+12mo)', sql: `UPDATE sellers SET referral_bonus_until = datetime(COALESCE(introduced_at, created_at, datetime('now')), '+12 months'), updated_at = datetime('now') WHERE referral_bonus_until IS NULL AND (introduced_by_agency_id IS NOT NULL OR introduced_by_influencer_id IS NOT NULL)` },
-    // 🛡️ 2026-06-25 (대표 승인 — B4 기존 데이터 복구): 카카오 로그인 에이전시가 영입한 매장의 귀속을
-    //   user.id(users.id) → canonical agencies.id 로 정정. 기존 prospect/registration 이 user.id 를 저장해
-    //   대시보드(agencies.id 조회)에서 영입 매장·커미션이 안 보였음(forward fix 는 seller-prospects.routes).
-    //   가드: '이미 유효한 agencies.id 가 아니면서(NOT IN agencies.id) 유효한 linked_user_id 인(IN …) 값만'
-    //   매핑 → 정상 행 불변·멱등(재실행 시 값이 이미 agency id 라 제외)·collision 회피.
-    { desc: 'backfill: seller_prospects.introducer_id (agency user.id→agencies.id)', sql: `UPDATE seller_prospects SET introducer_id = (SELECT a.id FROM agencies a WHERE a.linked_user_id = CAST(seller_prospects.introducer_id AS INTEGER) LIMIT 1) WHERE introducer_type = 'agency' AND CAST(introducer_id AS INTEGER) IN (SELECT linked_user_id FROM agencies WHERE linked_user_id IS NOT NULL) AND CAST(introducer_id AS INTEGER) NOT IN (SELECT id FROM agencies)` },
-    { desc: 'backfill: sellers.introduced_by_agency_id (user.id→agencies.id)', sql: `UPDATE sellers SET introduced_by_agency_id = (SELECT a.id FROM agencies a WHERE a.linked_user_id = sellers.introduced_by_agency_id LIMIT 1), updated_at = datetime('now') WHERE introduced_by_agency_id IS NOT NULL AND introduced_by_agency_id IN (SELECT linked_user_id FROM agencies WHERE linked_user_id IS NOT NULL) AND introduced_by_agency_id NOT IN (SELECT id FROM agencies)` },
+    // 🌇 2026-09-04 에이전시 완전 일몰 — 여기 있던 backfill 2건(`seller_prospects.introducer_id` ·
+    //    `sellers.introduced_by_agency_id` 를 user.id → agencies.id 로 정정)을 삭제했다.
+    //    두 컬럼 모두 라이브에서 대상 0행이고, `agencies` 를 읽는 코드가 더 이상 없다.
     // 🏭 2026-06-29 (대표 신고 — "업로드 제품 카테고리 배치 안됨") 근본수정 backfill: 도매 상품 카테고리를
     //   표준 3종(food/living/health)으로 정규화. 스토어 임포트('lifestyle' 하드코드)·레거시 자유입력값이
     //   카탈로그 칩 필터(p.category='food'…)에 안 잡혀 미배치되던 것 일괄 치유. is_supply_product=1 만

@@ -34,9 +34,9 @@ interface Withdrawal {
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  pending: { label: '대기', cls: 'bg-amber-100 text-amber-700' },
-  approved: { label: '송금완료', cls: 'bg-emerald-100 text-emerald-700' },
-  rejected: { label: '거절', cls: 'bg-red-100 text-red-700' },
+  pending: { label: '대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+  approved: { label: '송금완료', cls: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { label: '거절', cls: 'bg-tone-bad-bg text-tone-bad' },
 }
 
 export default function AdminCommissionWithdrawalsPage() {

@@ -14,7 +14,7 @@
  *   · 미라우팅 파일(`GroupBuyListPage`)의 마감 정렬·'오늘 마감' 큐레이션 — 죽은 코드라 대상이 아니다
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 
 const read = (p: string) => readFileSync(p, 'utf-8')
 /** ⚠️ 주석은 걷어내고 **코드만** 본다 — 이 레포가 반복해 밟은 함정이다(설명에 그 단어를 쓰면
@@ -78,14 +78,14 @@ describe('마감 개념 — 영구히 0 이 되는 지표를 남기지 않는다
     expect(q).toMatch(/churn_count/)
   })
 
-  it('에이전시 알림 카드에 마감 기준 위험 블록이 없다', () => {
-    const s = code('src/components/agency/AgencyGroupBuyAlert.tsx')
-    expect(s).not.toMatch(/at_risk/)
-    expect(s).not.toMatch(/미달성 위험/)
-    expect(s).not.toMatch(/24h 이내/)
-    // 나머지 두 블록은 마감과 무관하므로 살아 있어야 한다
-    expect(s).toMatch(/churn_sellers/)
-    expect(s).toMatch(/pending_disputes/)
+  it('에이전시 알림 카드 자체가 없다 — 마감 문구가 되돌아올 자리가 없다', () => {
+    // 🌇 2026-09-05 에이전시 일몰(대표 확정) — `AgencyGroupBuyAlert.tsx` 는 삭제됐다.
+    //   원래 이 자리는 그 카드 안에 "미달성 위험 — 24h 이내 마감" 문구가 되살아나는 것을 막았다.
+    //   컴포넌트가 통째로 없어졌으므로 **더 강한 형태**로 고정한다(파일 부재).
+    //   ⚠️ 삭제된 파일을 계속 읽으면 `code()` 가 던지거나 빈 문자열이 되어 단언이 조용히 통과한다 —
+    //     이 레포가 반복해 당한 '낡은 지도'다. 실제로 머지에서 주입 검사가 이걸 잡았다.
+    expect(existsSync('src/components/agency/AgencyGroupBuyAlert.tsx')).toBe(false)
+    expect(existsSync('src/components/agency')).toBe(false)
   })
 
   it('셀러 타입에 고아가 된 위험 카운트 필드가 없다', () => {

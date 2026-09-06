@@ -31,10 +31,10 @@ interface WithdrawalRequest {
 }
 
 const STATUS: Record<WithdrawalRequest['status'], { t: string; c: string }> = {
-  requested: { t: '대기', c: 'bg-amber-50 text-amber-700' },
-  approved: { t: '승인', c: 'bg-emerald-50 text-emerald-700' },
-  paid: { t: '송금완료', c: 'bg-emerald-50 text-emerald-700' },
-  rejected: { t: '반려', c: 'bg-rose-50 text-rose-700' },
+  requested: { t: '대기', c: 'bg-tone-warn-bg text-tone-warn' },
+  approved: { t: '승인', c: 'bg-tone-ok-bg text-tone-ok' },
+  paid: { t: '송금완료', c: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { t: '반려', c: 'bg-tone-bad-bg text-tone-bad' },
 }
 
 // 🏦 2026-07-02 (대표 — 어드민 도매 IA 통합): embedded 면 AdminLayout 래퍼를 생략하고 본문만 반환 →

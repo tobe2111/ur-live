@@ -31,9 +31,15 @@ type PreserveScrollState = { preserveScroll?: boolean } | null
  * 요소를 보이게 만든다 — 즉 앱이 아니라 **테스트가** 위치를 0 으로 바꿔 놓고, 나는 그걸 앱의
  * 증상으로 읽어 엉뚱한 기전(높이 붕괴)을 확신하고 있었다. 재현은 **뷰포트 안의 링크**를 눌러야 한다.
  *
+ * ## 내부 스크롤 영역도 덮는다 — `data-scroll-restore="<이름>"`
+ * 문서가 아니라 **컨테이너**가 스크롤되는 화면이 있다(`/map` 의 바텀시트 목록이 그렇다 —
+ * 2026-09-01 전수 실측에서 유일하게 남은 구멍이었다). 그런 요소에 이 속성을 달아 두면
+ * 문서 스크롤과 **똑같이** 저장·복원된다. 새 화면도 속성 한 줄이면 끝이고, 안 단 화면은
+ * 아무 일도 일어나지 않는다(옵트인이라 오작동 위험 없음).
+ *
  * ## 이 파일이 **못 하는 것**(정직하게)
- * - 내부 컨테이너(`overflow-y-auto`)로 스크롤하는 화면. 여기서 다루는 건 문서 스크롤뿐이다
- *   (소비자 주요 표면은 전부 문서 스크롤인 것을 2026-09-01 에 실측 확인했다).
+ * - `data-scroll-restore` 를 안 단 내부 스크롤 영역. 자동 탐지는 하지 않는다 — 모달·캐러셀·
+ *   가로 스크롤까지 건드려 되레 화면을 흔든다.
  * - 뒤로 왔을 때 목록이 **더 짧아진 경우**(필터가 바뀌었다 등)는 갈 수 있는 데까지만 간다.
  */
 /** 저장소 — sessionStorage(탭 한정). 실패해도 조용히 메모리로 폴백한다(사파리 프라이빗 등). */
@@ -66,6 +72,11 @@ function readPos(key: string): number | undefined {
   return typeof v === 'number' ? v : MEM.get(key)
 }
 
+/** 복원 대상 내부 스크롤 영역 — 옵트인(`data-scroll-restore="<이름>"`)만. */
+const RESTORE_SEL = '[data-scroll-restore]'
+const panesOf = () => Array.from(document.querySelectorAll<HTMLElement>(RESTORE_SEL))
+const paneKey = (entryKey: string, el: HTMLElement) => `${entryKey}#${el.dataset.scrollRestore || ''}`
+
 export default function ScrollToTop() {
   const { pathname, search, state, key } = useLocation()
   const navType = useNavigationType()
@@ -91,12 +102,15 @@ export default function ScrollToTop() {
   // 현재 위치 저장 — **scroll 이벤트에서만**. cleanup 에서는 저장하지 않는다(위 주석의 사고).
   useEffect(() => {
     const keyAtAttach = entryKey
-    const onScroll = () => {
+    const onScroll = (e: Event) => {
       if (currentKeyRef.current !== keyAtAttach) return // 이미 떠난 페이지의 뒤늦은 이벤트
-      writePos(keyAtAttach, window.scrollY)
+      const t = e.target
+      if (t instanceof HTMLElement && t.matches(RESTORE_SEL)) { writePos(paneKey(keyAtAttach, t), t.scrollTop); return }
+      if (t === document || t === document.documentElement || t === window) writePos(keyAtAttach, window.scrollY)
     }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    // ⚠️ capture 로 듣는다 — scroll 이벤트는 **버블하지 않아서** window 리스너로는 컨테이너 스크롤을 못 받는다.
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true })
+    return () => window.removeEventListener('scroll', onScroll, { capture: true } as EventListenerOptions)
   }, [entryKey])
 
   // 페이지 전환 시 스크롤 조정
@@ -104,7 +118,9 @@ export default function ScrollToTop() {
     if (preserveScroll) return
     if (navType === 'POP') {
       const saved = readPos(entryKey)
-      if (saved && saved > 0) {
+      // 내부 스크롤 영역은 문서가 안 움직였어도 복원해야 한다 — 둘 중 하나라도 있으면 루프를 돈다.
+      const panesPending = () => panesOf().some((el) => (readPos(paneKey(entryKey, el)) || 0) > 0)
+      if ((saved && saved > 0) || panesPending()) {
         // 복귀 순간엔 콘텐츠가 아직 짧아 목표까지 못 간다(리스트는 비동기 로드).
         // 높이가 자랄 때까지 프레임마다 재시도하되, **사용자가 직접 스크롤하면 즉시 손을 뗀다**.
         let raf = 0
@@ -115,10 +131,21 @@ export default function ScrollToTop() {
         window.addEventListener('touchstart', stop, { passive: true, once: true })
         const tryRestore = () => {
           if (done) return
-          const maxScroll = document.documentElement.scrollHeight - window.innerHeight
-          window.scrollTo({ top: Math.min(saved, Math.max(0, maxScroll)), left: 0, behavior: 'instant' as ScrollBehavior })
+          let short = false
+          if (saved && saved > 0) {
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight
+            window.scrollTo({ top: Math.min(saved, Math.max(0, maxScroll)), left: 0, behavior: 'instant' as ScrollBehavior })
+            if (maxScroll < saved - 2) short = true
+          }
+          for (const el of panesOf()) {
+            const want = readPos(paneKey(entryKey, el)) || 0
+            if (want <= 0) continue
+            const max = el.scrollHeight - el.clientHeight
+            el.scrollTop = Math.min(want, Math.max(0, max))
+            if (max < want - 2) short = true
+          }
           // 목표에 닿았거나 시간이 다 되면 그만. 3s 는 이 레포의 콜드 리스트 로딩 실측 상한이다.
-          if (maxScroll < saved - 2 && performance.now() - started < 3000) raf = requestAnimationFrame(tryRestore)
+          if (short && performance.now() - started < 3000) raf = requestAnimationFrame(tryRestore)
           else stop()
         }
         raf = requestAnimationFrame(tryRestore)

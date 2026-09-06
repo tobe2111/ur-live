@@ -6,8 +6,6 @@ Disallow: /admin/*
 Disallow: /static/proposals/
 Disallow: /seller/login
 Disallow: /seller/register
-Disallow: /agency/login
-Disallow: /agency/register
 Disallow: /api/
 Disallow: /auth/
 Disallow: /checkout
@@ -35,7 +33,6 @@ Disallow: /search
 #     · `/u/me` 는 `$` 로 앵커했다 — 안 그러면 `/u/melon` 같은 **실제 링크샵 핸들**이 통째로 차단된다.
 #   ('$' 와 '*' 는 Google·네이버 모두 지원. 가드: scripts/check-robots-private-routes.mjs)
 Disallow: /seller
-Disallow: /agency/
 Disallow: /supplier/
 Disallow: /influencer/
 Disallow: /my-

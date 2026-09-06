@@ -18,10 +18,10 @@ import { formatWon, formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  active: { label: '모집 중', color: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300' },
-  achieved: { label: '🎉 달성', color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300' },
+  active: { label: '모집 중', color: 'bg-tone-info-bg text-tone-info' },
+  achieved: { label: '🎉 달성', color: 'bg-tone-ok-bg text-tone-ok' },
   expired: { label: '마감', color: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
-  cancelled: { label: '취소', color: 'bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-300' },
+  cancelled: { label: '취소', color: 'bg-tone-bad-bg text-red-500' },
 }
 
 export default function HostingPage() {
@@ -73,7 +73,7 @@ export default function HostingPage() {
             <h1 className="text-lg font-bold">🎉 {t('hosting.title', { defaultValue: '내 공구 호스팅' })}</h1>
             <button
               onClick={() => navigate('/host/new')}
-              className="px-3 py-1.5 bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold rounded-lg"
+              className="px-3 py-1.5 bg-brand hover:bg-brand-dark text-white text-sm font-bold rounded-lg"
             >
               + {t('hosting.startNew', { defaultValue: '공구 열기' })}
             </button>
@@ -87,7 +87,7 @@ export default function HostingPage() {
                 { label: '전체', value: formatNumber(summary.total) },
                 { label: '진행', value: formatNumber(summary.active), accent: 'text-blue-500' },
                 { label: '성공', value: formatNumber(summary.achieved), accent: 'text-emerald-500' },
-                { label: '적립', value: formatWon(summary.total_earnings), accent: 'text-pink-500' },
+                { label: '적립', value: formatWon(summary.total_earnings), accent: 'text-brand-text' },
               ].map(card => (
                 <div key={card.label} className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35]">
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">{card.label}</p>
@@ -107,7 +107,7 @@ export default function HostingPage() {
               </p>
               <button
                 onClick={() => navigate('/host/new')}
-                className="px-6 py-3 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-xl"
+                className="px-6 py-3 bg-brand hover:bg-brand-dark text-white font-bold rounded-xl"
               >
                 {t('hosting.startNew', { defaultValue: '공구 열기' })}
               </button>
@@ -131,7 +131,7 @@ export default function HostingPage() {
                         </div>
                         <p className="text-sm font-medium truncate">{host.product_name}</p>
                         {host.note && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">💬 {host.note}</p>}
-                        <p className="text-xs text-pink-500 dark:text-pink-400 mt-1 font-bold">+{formatWon(host.total_earnings)} 적립</p>
+                        <p className="text-xs text-brand-text mt-1 font-bold">+{formatWon(host.total_earnings)} 적립</p>
                       </div>
                     </div>
                     <div className="flex gap-2">

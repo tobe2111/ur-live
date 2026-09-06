@@ -145,7 +145,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
               <div
                 key={s}
                 className={`h-1.5 rounded-full transition-all ${
-                  s === step ? 'w-6 bg-pink-500' : s < step ? 'w-3 bg-pink-300' : 'w-3 bg-gray-200 dark:bg-[#2C2F35]'
+                  s === step ? 'w-6 bg-brand' : s < step ? 'w-3 bg-brand/40' : 'w-3 bg-gray-200 dark:bg-[#2C2F35]'
                 }`}
               />
             ))}
@@ -190,26 +190,26 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                 </div>
               )}
 
-              <div className="bg-gray-50 border border-pink-200 rounded-2xl p-5 mt-6 text-left">
+              <div className="bg-gray-50 border border-rule rounded-2xl p-5 mt-6 text-left">
                 <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-pink-500 flex items-center justify-center shrink-0 shadow-md">
+                  <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center shrink-0 shadow-md">
                     <Gift className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-[13px] font-bold text-pink-700">{t('welcomeOnboarding.couponBadge', { defaultValue: '신규 환영 쿠폰' })}</p>
+                    <p className="text-[13px] font-bold text-brand-text">{t('welcomeOnboarding.couponBadge', { defaultValue: '신규 환영 쿠폰' })}</p>
                     <p className="text-[20px] font-extrabold text-gray-900 dark:text-white mt-0.5">{t('welcomeOnboarding.couponAmount', { defaultValue: '5,000원 할인' })}</p>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{t('welcomeOnboarding.couponDesc', { defaultValue: '10,000원 이상 구매 시 사용 가능 · 7일 유효' })}</p>
                   </div>
                 </div>
                 {couponClaimed ? (
-                  <div className="mt-3 px-3 py-2 bg-white dark:bg-[#11141C] rounded-xl text-center text-[13px] font-bold text-pink-600 flex items-center justify-center gap-1">
+                  <div className="mt-3 px-3 py-2 bg-white dark:bg-[#11141C] rounded-xl text-center text-[13px] font-bold text-brand-text flex items-center justify-center gap-1">
                     <Check className="w-4 h-4" /> {t('welcomeOnboarding.couponClaimed', { defaultValue: '발급 완료!' })}
                   </div>
                 ) : (
                   <button
                     onClick={handleClaimCoupon}
                     disabled={claimingCoupon}
-                    className="mt-3 w-full py-2.5 bg-pink-500 text-white rounded-xl font-bold text-sm active:scale-95 disabled:opacity-50"
+                    className="mt-3 w-full py-2.5 bg-brand text-white rounded-xl font-bold text-sm active:scale-95 disabled:opacity-50"
                   >
                     {claimingCoupon ? t('welcomeOnboarding.couponClaiming', { defaultValue: '발급 중...' }) : t('welcomeOnboarding.couponClaim', { defaultValue: '쿠폰 받기' })}
                   </button>
@@ -221,8 +221,8 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
           {step === 2 && (
             <div>
               <div className="text-center mb-5">
-                <div className="mx-auto w-16 h-16 rounded-full bg-pink-50 flex items-center justify-center mb-3">
-                  <Heart className="w-8 h-8 text-pink-500" />
+                <div className="mx-auto w-16 h-16 rounded-full bg-brand-tint flex items-center justify-center mb-3">
+                  <Heart className="w-8 h-8 text-brand-text" />
                 </div>
                 <h2 className="text-[20px] font-extrabold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step2Title', { defaultValue: '관심 분야를 알려주세요' })}</h2>
                 <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('welcomeOnboarding.step2Desc', { defaultValue: '맞춤 추천에 사용돼요 (1개 이상 선택, 변경 가능)' })}</p>
@@ -237,12 +237,12 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                       onClick={() => toggleCat(c.key)}
                       className={`flex flex-col items-center gap-1 px-2 py-3 rounded-2xl border-2 transition-all ${
                         selected
-                          ? 'bg-pink-50 border-pink-500 shadow-sm'
+                          ? 'bg-brand-tint border-brand shadow-sm'
                           : 'bg-white dark:bg-[#11141C] border-gray-200 dark:border-[#2C2F35]'
                       }`}
                     >
                       <c.Icon className="w-6 h-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-                      <span className={`text-[11px] font-bold ${selected ? 'text-pink-600' : 'text-gray-700 dark:text-gray-200'}`}>
+                      <span className={`text-[11px] font-bold ${selected ? 'text-brand-text' : 'text-gray-700 dark:text-gray-200'}`}>
                         {c.label}
                       </span>
                     </button>
@@ -331,7 +331,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
             <button
               onClick={handleFinish}
               disabled={submitting}
-              className="w-full py-3.5 bg-pink-500 text-white rounded-2xl font-bold text-[14px] active:scale-[0.98] disabled:opacity-50"
+              className="w-full py-3.5 bg-brand text-white rounded-2xl font-bold text-[14px] active:scale-[0.98] disabled:opacity-50"
             >
               {submitting ? t('welcomeOnboarding.saving', { defaultValue: '저장 중...' }) : t('welcomeOnboarding.finish', { defaultValue: '시작하기 🎉' })}
             </button>
