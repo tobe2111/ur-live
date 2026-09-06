@@ -9211,6 +9211,28 @@ canvas {
       '유어딜이 대신 문다(재원 설계의 −14% 누수). 화면 플래그만으론 못 막는다 — API 직접 호출이 통한다.',
   },
   {
+    name: '🛑 꺼진 어필리에이트 적립이 다시 목록 API 로 새어 화면에 뜬다',
+    file: 'src/features/products/repositories/ProductRepository.ts',
+    find: 'return capGalleries(gateAffiliateRows(result.results || [], affiliateOn));',
+    replace: 'return capGalleries(result.results || []);',
+    test: 'src/tests/unit/affiliate-program-gate-2026-09-06.test.ts',
+    why:
+      '프로그램은 2026-08-22 에 꺼졌는데 유어샵 담기 화면이 "쓰면 2%" 를 약속하던 자리다. ' +
+      '지급은 0 인데 화면만 약속하므로 사용자가 담고 팔아도 아무 일이 안 일어난다 — 에러도 안 난다.',
+  },
+  {
+    name: '🛑 스위치를 못 읽을 때 적립을 약속하는 쪽으로 열린다 (fail-open 회귀)',
+    file: 'src/worker/utils/affiliate-program.ts',
+    find: `  } catch {
+    on = false                    // 못 읽으면 약속하지 않는다`,
+    replace: `  } catch {
+    on = true                     // (주입) 못 읽으면 약속한다`,
+    test: 'src/tests/unit/affiliate-program-gate-2026-09-06.test.ts',
+    why:
+      '설정 조회 실패는 "모름"이지 "켜짐"이 아니다. 이 자리가 열리면 D1 이 잠깐 흔들릴 때마다 ' +
+      '꺼진 프로그램의 적립이 화면에 떴다 사라진다 — 재현도 안 되고 로그도 조용하다.',
+  },
+  {
     name: '💸 핀 관리가 적립 분수를 다시 100 으로 나눈다 (₩5,000 → ₩50)',
     file: 'src/pages/curator-page/PinManageList.tsx',
     find: 'const est = estRate != null ? Math.round(pin.price * estRate) : 0',
