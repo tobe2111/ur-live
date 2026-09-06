@@ -88,6 +88,46 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🖼️ 피드가 섹션 상품을 미루지 않는다 (같은 사진이 위아래로 두 번)',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: 'deferSeeded(sortBand(src), sectionIds)',
+    replace: 'sortBand(src)',
+    test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
+    why:
+      '라이브 실측에서 섹션 8개가 **전부** 피드에도 있었고 4개는 피드 앞 14번 안이었다. ' +
+      '배선 한 줄이 빠지면 화면은 정확히 그 상태로 돌아간다 — 에러는 안 난다.',
+  },
+  {
+    name: '🖼️ 미루기가 밴드 경계를 넘는다 (스크롤하면 이미 본 카드가 움직인다)',
+    file: 'src/shared/home-section-ids.ts',
+    find: '  return head.concat(tail)',
+    replace: '  return tail.concat(head)',
+    test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
+    why:
+      '앞뒤가 뒤집히면 섹션 상품이 오히려 맨 앞으로 온다. 순서 계약이 조용히 반대가 되는 ' +
+      '클래스라 눈으로는 "그냥 정렬이 좀 다르네" 로 보인다.',
+  },
+  {
+    name: '🖼️ 피드가 섹션 상품을 아예 빼 버린다 (전체 목록이 거짓말이 된다)',
+    file: 'src/shared/home-section-ids.ts',
+    find: '    ;(typeof id === \'number\' && ids.has(id) ? tail : head).push(p)',
+    replace: '    if (!(typeof id === \'number\' && ids.has(id))) head.push(p)',
+    test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
+    why:
+      '반복이 사라지니 화면은 오히려 깔끔해 보인다 — 그래서 위험하다. 전체 목록에서 그 상품을 ' +
+      '찾는 사람은 영영 못 만나고, 아무 에러도 안 난다.',
+  },
+  {
+    name: '🖼️ 섹션 id 가 매 렌더 새로 만들어진다 (스크롤 중 카드가 재배치된다)',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: '  const sectionIds = useMemo(() => seededSectionProductIds(), [])',
+    replace: '  const sectionIds = new Set<number>()',
+    test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
+    why:
+      'useMemo 가 빠지면 참조가 매 렌더 바뀌어 목록 useMemo 가 통째로 다시 돈다. 게다가 빈 Set 이라 ' +
+      '미루기 자체가 죽는다 — 화면은 수정 전으로 돌아가고 카드는 스크롤 중에 움직인다.',
+  },
+  {
     name: '🖼️ 홈 섹션이 서로 겹치는지 다시 안 본다 (같은 사진이 위아래로 두 번)',
     file: 'src/features/sections/api/sections.routes.ts',
     find: '            excludeIds: [...claimed],\n',

@@ -3,6 +3,7 @@ import { Fragment, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { resolveSectionMoreHref, isDeadEndHref } from './section-more-href'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { readHomeSectionsSeed } from '@/shared/home-section-ids'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import {
@@ -77,16 +78,9 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
    * 스켈레톤이 한 번 깜빡이고, 그게 대표가 본 "늦게 끼어든다"의 실체다.
    * 시드가 없으면(다른 표면·콜드 타임아웃) undefined → 평소대로 fetch. 회귀 0.
    */
-  const ssrSections = useMemo<HomeSection[] | undefined>(() => {
-    try {
-      const el = document.getElementById('__SSR_INITIAL_SECTIONS__')
-      if (!el?.textContent) return undefined
-      const r = JSON.parse(el.textContent) as { success?: boolean; data?: HomeSection[] }
-      return r?.success && Array.isArray(r.data) ? r.data : undefined
-    } catch {
-      return undefined // 깨진 시드 하나가 홈을 못 열게 하면 안 된다
-    }
-  }, [])
+  //   시드 파싱은 `shared/home-section-ids` 가 SSOT 다 — 바로 아래 피드도 같은 시드를 읽는다
+  //   (섹션에 뜬 상품을 자기 밴드 뒤로 미루려고). 파서가 둘이면 한쪽만 고쳐지고 결국 갈린다.
+  const ssrSections = useMemo(() => readHomeSectionsSeed<HomeSection>(), [])
 
   const { data: sections = [], isLoading } = useApiQuery<HomeSection[]>(
     ['home', 'sections'],
