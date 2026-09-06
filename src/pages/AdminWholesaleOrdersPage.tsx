@@ -35,16 +35,16 @@ interface DetailItem {
 
 // 2026-06-27: 상태머신 12종 전부 라벨 — ACCEPTED/REJECTED/CANCELLED/DONE/ON_CREDIT/EXPIRED 누락 시 raw 코드 노출됐음.
 const STATUS: Record<string, { t: string; c: string }> = {
-  PENDING: { t: '결제대기', c: 'bg-amber-50 text-amber-700' },
-  PAID: { t: '결제완료', c: 'bg-emerald-50 text-emerald-700' },
-  ACCEPTED: { t: '수락됨', c: 'bg-cyan-50 text-cyan-700' },
-  ON_CREDIT: { t: '여신(외상)', c: 'bg-teal-50 text-teal-700' },
-  SHIPPED: { t: '발송완료', c: 'bg-blue-50 text-blue-700' },
-  PARTIAL_REFUNDED: { t: '부분환불', c: 'bg-orange-50 text-orange-700' },
-  REFUNDED: { t: '환불완료', c: 'bg-rose-50 text-rose-700' },
-  REJECTED: { t: '제조사 거절', c: 'bg-rose-50 text-rose-700' },
+  PENDING: { t: '결제대기', c: 'bg-tone-warn-bg text-tone-warn' },
+  PAID: { t: '결제완료', c: 'bg-tone-ok-bg text-tone-ok' },
+  ACCEPTED: { t: '수락됨', c: 'bg-tone-info-bg text-tone-info' },
+  ON_CREDIT: { t: '여신(외상)', c: 'bg-tone-ok-bg text-tone-ok' },
+  SHIPPED: { t: '발송완료', c: 'bg-tone-info-bg text-tone-info' },
+  PARTIAL_REFUNDED: { t: '부분환불', c: 'bg-tone-warn-bg text-tone-warn' },
+  REFUNDED: { t: '환불완료', c: 'bg-tone-bad-bg text-tone-bad' },
+  REJECTED: { t: '제조사 거절', c: 'bg-tone-bad-bg text-tone-bad' },
   CANCELLED: { t: '취소', c: 'bg-gray-100 text-gray-500' },
-  DONE: { t: '구매확정', c: 'bg-emerald-50 text-emerald-700' },
+  DONE: { t: '구매확정', c: 'bg-tone-ok-bg text-tone-ok' },
   FAILED: { t: '실패', c: 'bg-gray-100 text-gray-500' },
   EXPIRED: { t: '만료', c: 'bg-gray-100 text-gray-500' },
 }

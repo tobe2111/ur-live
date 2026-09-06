@@ -129,7 +129,7 @@ export default function AdminDisputesPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-2 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${tab === t ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              className={`px-4 py-2 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${tab === t ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
             >
               {t === 'escalated' && <><Clock className="w-3.5 h-3.5 inline mr-1" /> 검토 필요</>}
               {t === 'auto_refunded' && <><Bot className="w-3.5 h-3.5 inline mr-1" /> AI 자동</>}
@@ -141,7 +141,7 @@ export default function AdminDisputesPage() {
         </div>
 
         {loading ? (
-          <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-pink-500" /></div>
+          <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-text" /></div>
         ) : items.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <CheckCircle2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />

@@ -161,7 +161,7 @@ export default function ReferralPage() {
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{community.restaurant_address}</p>
             )}
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-xl font-bold text-pink-500">{formatNumber(cgPrice)}원</span>
+              <span className="text-xl font-bold text-brand-text">{formatNumber(cgPrice)}원</span>
               <span className="text-xs text-gray-400 dark:text-gray-500">{t('groupbuy.summaryPriceLabel', { defaultValue: '희망 가격' })}</span>
             </div>
             <div className="mt-2 flex items-center gap-2 text-[13px] text-gray-600 dark:text-gray-300">
@@ -169,7 +169,7 @@ export default function ReferralPage() {
               <span><span className="font-bold text-gray-900 dark:text-white">{community.current_count}</span> / {community.target_count}명 참여</span>
             </div>
             <div className="mt-2 h-2 rounded-full bg-gray-100 dark:bg-[#1D1F29] overflow-hidden">
-              <div className="h-full bg-pink-500 rounded-full transition-all" style={{ width: `${cgProgress}%` }} />
+              <div className="h-full bg-brand rounded-full transition-all" style={{ width: `${cgProgress}%` }} />
             </div>
           </section>
 
@@ -285,7 +285,7 @@ export default function ReferralPage() {
                 <div className="mt-1.5 flex items-baseline gap-2">
                   {currentDiscount > 0 ? (
                     <>
-                      <span className="text-lg font-bold text-pink-500">{formatNumber(discountedPrice)}원</span>
+                      <span className="text-lg font-bold text-brand-text">{formatNumber(discountedPrice)}원</span>
                       <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(product.price)}원</span>
                     </>
                   ) : (
@@ -332,7 +332,7 @@ export default function ReferralPage() {
             {currentDiscount > 0 ? (
               <>
                 <p className="text-xs text-gray-600 dark:text-gray-300 mb-1">현재 적용 할인</p>
-                <p className="text-3xl font-bold text-pink-500">{currentDiscount}% 할인 적용 중!</p>
+                <p className="text-3xl font-bold text-brand-text">{currentDiscount}% 할인 적용 중!</p>
               </>
             ) : (
               <>
@@ -342,9 +342,9 @@ export default function ReferralPage() {
             )}
             {group.next_tier && (
               <p className="text-sm text-gray-700 dark:text-gray-200 mt-2">
-                <span className="font-bold text-pink-500">{group.next_tier.count - group.current_count}명</span>
+                <span className="font-bold text-brand-text">{group.next_tier.count - group.current_count}명</span>
                 <span> 더 모이면 </span>
-                <span className="font-bold text-pink-500">{group.next_tier.discount}% 할인!</span>
+                <span className="font-bold text-brand-text">{group.next_tier.discount}% 할인!</span>
               </p>
             )}
             {!group.next_tier && isAchieved && (
@@ -541,7 +541,7 @@ function TierProgressBar({
               <div
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                   reached
-                    ? 'bg-pink-500 border-pink-500 shadow-md shadow-pink-200'
+                    ? 'bg-brand border-brand shadow-md '
                     : 'bg-white dark:bg-[#11141C] border-gray-300 dark:border-[#3A3A3A]'
                 }`}
               >
@@ -549,10 +549,10 @@ function TierProgressBar({
               </div>
               {/* 라벨 */}
               <div className="absolute top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-center">
-                <div className={`text-[10px] font-bold ${reached ? 'text-pink-600' : 'text-gray-500 dark:text-gray-400'}`}>
+                <div className={`text-[10px] font-bold ${reached ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>
                   {t.count}명
                 </div>
-                <div className={`text-[10px] font-bold ${reached ? 'text-pink-600' : 'text-gray-400 dark:text-gray-500'}`}>
+                <div className={`text-[10px] font-bold ${reached ? 'text-brand-text' : 'text-gray-400 dark:text-gray-500'}`}>
                   -{t.discount}%
                 </div>
               </div>
@@ -572,7 +572,7 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
 
   return (
     <div className="pt-4 text-center">
-      <p className="text-[11px] text-pink-500 font-bold mb-2">⏰ {t('referralPage.timeRemaining')}</p>
+      <p className="text-[11px] text-brand-text font-bold mb-2">⏰ {t('referralPage.timeRemaining')}</p>
       <div className="flex items-center justify-center gap-1.5">
         {[
           { v: days, l: t('referralPage.unitDays') },
@@ -581,11 +581,11 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
           { v: seconds, l: t('referralPage.unitSeconds') },
         ].filter((t, i) => i > 0 || t.v > 0).map((t, i, arr) => (
           <span key={t.l} className="contents">
-            <div className="rounded-lg px-2.5 py-1.5 bg-pink-50">
-              <span className="text-[16px] font-extrabold text-pink-700" style={{ fontFamily: 'ui-monospace, monospace' }}>
+            <div className="rounded-lg px-2.5 py-1.5 bg-brand-tint">
+              <span className="text-[16px] font-extrabold text-brand-text" style={{ fontFamily: 'ui-monospace, monospace' }}>
                 {String(t.v).padStart(2, '0')}
               </span>
-              <span className="text-[9px] block leading-none mt-0.5 text-pink-700">{t.l}</span>
+              <span className="text-[9px] block leading-none mt-0.5 text-brand-text">{t.l}</span>
             </div>
             {i < arr.length - 1 && <span className="text-[14px] text-gray-300 dark:text-gray-600 font-extrabold">:</span>}
           </span>

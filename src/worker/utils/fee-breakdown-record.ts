@@ -6,7 +6,7 @@
  *   `order_fee_breakdown` 기록을 현행 정산과 **비교 검증** → 검증 후에야 authoritative 전환(별도).
  *
  *   안전: 순수 additive(INSERT OR IGNORE) + fail-soft. FEE_RESOLVER_ENABLED='true' 일 때만 호출.
- *   per-agency 율·기간(어드민 설정)을 그대로 반영 — pctOverride + withinTerm 판정.
+ *   🌇 2026-09-04 에이전시 일몰 — agency 슬라이스는 항상 0(공급 차단). 컬럼은 스키마 호환으로 유지.
  *   공급가(supplyCost)도 order_items 공급라인에서 계산해 주입 → 그림자 owner_net 이 authoritative
  *   전환 후 값과 동일(검증 유효). promo(핀 소개비)는 affiliate_earnings 실측값 주입(2026-07-04 —
  *   [INV-CB §3-D] owner-펀딩 검증용. 기록 시점에 적립분이 있으면 반영, 없으면 0 — 기록 전용·정산 무변경).
@@ -45,32 +45,12 @@ export async function recordOrderFeeBreakdown(
     if (!order.id || amount <= 0) return
     const ownership: '1P' | '3P' = order.seller_id ? '3P' : '1P'  // 어드민 업로드(seller 없음)=1P
 
-    // per-agency 컨텍스트(어드민 설정 율·기간 반영) — 영입 가게면.
-    let agency: AgencyContext | null = null
-    if (order.seller_id) {
-      const s = await DB.prepare('SELECT introduced_by_agency_id FROM sellers WHERE id = ?')
-        .bind(order.seller_id).first<{ introduced_by_agency_id: number | null }>().catch(() => null)
-      const agencyId = s?.introduced_by_agency_id
-      if (agencyId) {
-        let pctOverride: number | undefined
-        let termMonths = 0
-        try {
-          const a = await DB.prepare('SELECT store_intro_commission_pct AS pct, commission_term_months AS term FROM agencies WHERE id = ?')
-            .bind(agencyId).first<{ pct: number | null; term: number | null }>()
-          if (typeof a?.pct === 'number' && Number.isFinite(a.pct)) pctOverride = a.pct
-          const t = Number(a?.term); termMonths = Number.isFinite(t) && t > 0 ? t : 0
-        } catch { /* 컬럼 미존재 — 기본 율/무제한 */ }
-        // withinTerm: termMonths>0 면 가게 활성화(첫 결제) 경과로 판정. 활성화 기록 없으면 첫 결제=within.
-        let withinTerm = true
-        if (termMonths > 0) {
-          const age = await DB.prepare(
-            "SELECT (julianday('now') - julianday(created_at)) AS days FROM agency_store_intro_commissions WHERE store_seller_id = ? AND type = 'signup_bonus' ORDER BY created_at ASC LIMIT 1"
-          ).bind(order.seller_id).first<{ days: number }>().catch(() => null)
-          if (age && (Number(age.days) || 0) > termMonths * 30.44) withinTerm = false
-        }
-        agency = { agencyId, active: true, withinTerm, pctOverride }
-      }
-    }
+    // 🌇 2026-09-04 에이전시 일몰(대표 확정) — 여기서 `agencies` 를 읽어 만들던 per-agency 컨텍스트를
+    //    삭제했다. 리졸버의 agency 슬라이스는 이제 **구조적으로 항상 0** 이다(ctx.agency = null).
+    //    라이브 실측: `sellers.introduced_by_agency_id` 0명 · `agency_store_intro_commissions` 0행.
+    //    ⚠️ `fee-resolver.ts` 의 agency 필드/불변식은 **건드리지 않았다** — 머니 SSOT 의 합계 검증을
+    //       바꾸는 것보다, 공급을 끊어 0 으로 만드는 쪽이 되돌리기 쉽다(롤백=이 블록 복원).
+    const agency: AgencyContext | null = null
 
     // 공급가(B2B 원가) — 공급상품 라인(supply_source_id)의 공급가 합. authoritative 전환 시 resolver 가
     //   쓸 값과 동일하게 *여기서* 계산해야 검증이 유효(그림자 owner_net == 전환 후 owner_net).

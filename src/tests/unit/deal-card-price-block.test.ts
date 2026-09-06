@@ -36,8 +36,13 @@ describe('이용권 카드 가격 블록', () => {
 
   it('③ 정가(취소선)와 판매가가 같은 줄에 있지 않다 — 6자리 가격 줄 깨짐 방지', () => {
     // 두 값을 감싸는 가장 가까운 `<p …>` 가 서로 달라야 한다.
+    // ⚠️ 2026-09-03: 예전엔 판매가를 `formatNumber(price)` 라는 **함수 이름 그대로** 찾았다.
+    //   교환권을 '딜' 로 찍으려고 포매터를 `formatPrice(price, …)` 로 바꾸자 이 검사가
+    //   빨간불이 됐다 — 규칙(두 줄)은 안 깨졌는데 **철자**가 달라졌을 뿐이다.
+    //   이 레포가 여러 번 밟은 "가드가 파일이 아니라 규칙을 고정해야 한다" 의 같은 사례다.
+    //   ⇒ 포매터 이름이 아니라 **`price` 를 찍는 자리**를 찾는다.
     const orig = body.indexOf('line-through')
-    const sale = body.indexOf('formatNumber(price)')
+    const sale = body.search(/format\w*\(price[,)]/)
     expect(orig).toBeGreaterThan(-1)
     expect(sale).toBeGreaterThan(-1)
     const between = body.slice(Math.min(orig, sale), Math.max(orig, sale))

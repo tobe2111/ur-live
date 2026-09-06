@@ -52,7 +52,7 @@ export default function NotificationsPage() {
             <ChevronLeft className="w-6 h-6" aria-hidden="true" />
           </button>
           <h1 className="text-gray-900 dark:text-white font-bold text-[15px]">{t('notifications.title')}</h1>
-          <button type="button" onClick={markAllRead} className="text-xs text-pink-400 font-medium">{t('notifications.markAllRead')}</button>
+          <button type="button" onClick={markAllRead} className="text-xs text-brand-text font-medium">{t('notifications.markAllRead')}</button>
         </div>
       </div>
 
@@ -82,7 +82,7 @@ export default function NotificationsPage() {
                 }}
                 className={`w-full flex items-start gap-3 p-4 text-left border-b border-gray-100 dark:border-[#2C2F35] ${n.is_read ? 'opacity-50' : ''}`}
               >
-                <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-pink-500'}`} />
+                <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-brand'}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">{n.title}</p>
                   {n.message && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{n.message}</p>}

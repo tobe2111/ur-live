@@ -19,11 +19,11 @@
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import DealRow from '@/components/deal/DealRow'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { Link2, Copy, Share2, Search } from 'lucide-react'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
-import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 interface Product {
   id: number
@@ -69,7 +69,7 @@ export default function InfluencerDiscoverPage() {
 
   // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). category(cat) 변경 시 재조회.
   // 🤝 2026-08-27: 응답에서 `authed` 도 함께 받는다 — 딜이 없을 때 "딜을 맺으세요"(로그인됨)와
-  //   "로그인하세요"(비로그인)를 구분해야 한다. 둘을 같은 문구로 두면 로그인 안 한 사람이
+  // "로그인하세요"(비로그인)를 구분해야 한다. 둘을 같은 문구로 두면 로그인 안 한 사람이
   //   자기에게 딜이 없다고 오해한다.
   const { data: resp, isLoading: loading } = useApiQuery<{ items: Product[]; authed: boolean }>(
     ['influencer-discover', 'products', cat],
@@ -124,9 +124,9 @@ export default function InfluencerDiscoverPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-[#1D1F29] pb-20">
       <SEO title="추천 공구 카탈로그 - 유어딜" description="매장과 딜을 맺은 이용권을 골라 내 링크로 소개하세요. 소개비는 매장이 정한 비율로 정산됩니다." url="/influencer/discover" />
       <header className="sticky top-0 z-30 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3 flex items-center gap-2">
-        <Link2 className="w-5 h-5 text-pink-500" />
+        <Link2 className="w-5 h-5 text-brand-text" />
         <h1 className="text-base font-bold text-gray-900 dark:text-white flex-1">추천 공구 카탈로그</h1>
-        <button onClick={() => navigate('/influencer/settlement')} className="text-xs text-pink-600 font-bold">내 정산 →</button>
+        <button onClick={() => navigate('/influencer/settlement')} className="text-xs text-brand-text font-bold">내 정산 →</button>
       </header>
 
       <main className="ur-content-wide mx-auto px-4 py-4 space-y-4">
@@ -151,7 +151,7 @@ export default function InfluencerDiscoverPage() {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="공구명/매장명 검색"
-              className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-300"
+              className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40"
             />
           </div>
           <select
@@ -173,45 +173,47 @@ export default function InfluencerDiscoverPage() {
             {filtered.map(p => {
               const progress = p.group_buy_target > 0 ? Math.min(100, (p.group_buy_current / p.group_buy_target) * 100) : 0
               return (
-                <li key={p.id} className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl overflow-hidden">
-                  <div className="flex gap-3 p-3">
-                    {p.image_url ? (
-                      <img src={cfImage(p.image_url, { width: 200, quality: 82, format: 'auto' }) || p.image_url} alt={p.name} className="w-20 h-20 object-cover rounded-lg shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, p.image_url)} />
-                    ) : (
-                      <div className="w-20 h-20 bg-gray-100 dark:bg-[#1D1F29] rounded-lg shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{p.restaurant_name || p.seller_name || '-'}</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{p.name}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        <p className="text-sm font-extrabold text-pink-600">{p.price.toLocaleString()}원</p>
+                /* 🎫 2026-09-03: 자체 카드 → 줄 SSOT(`DealRow`) + 소개자 전용 액션.
+                   딜을 보여 주는 부분은 다른 화면과 같은 그림이고, 모집 진척·링크 복사는 이 화면 것이다. */
+                <li key={p.id} className="bg-white dark:bg-[#1D1F29] rounded-2xl shadow-lift overflow-hidden">
+                  <DealRow
+                    imageUrl={p.image_url}
+                    eyebrow={p.restaurant_name || p.seller_name || '-'}
+                    title={p.name}
+                    price={p.price}
+                    className="!shadow-none !rounded-none"
+                    meta={
+                      <>
                         {p.my_deal_pct != null && (
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                          <span className="inline-block px-1.5 py-0.5 rounded bg-brand text-white text-[10px] font-bold mb-1">
                             내 소개비 {p.my_deal_pct}%
                           </span>
                         )}
-                      </div>
-                      <div className="w-full bg-gray-100 dark:bg-[#1D1F29] rounded-full h-1.5 mt-1.5 overflow-hidden">
-                        <div className="h-full bg-pink-500 rounded-full" style={{ width: `${progress}%` }} />
-                      </div>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{p.group_buy_current}/{p.group_buy_target}명</p>
-                    </div>
-                  </div>
+                        <span className="block w-full bg-gray-100 dark:bg-[#2A2A2B] rounded-full h-1.5 overflow-hidden">
+                          <span className="block h-full bg-brand rounded-full" style={{ width: `${progress}%` }} />
+                        </span>
+                        <span className="block text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{p.group_buy_current}/{p.group_buy_target}명</span>
+                      </>
+                    }
+                  />
+                  {/* 🚨 딜이 없으면 링크를 주지 않는다 — 주면 0원을 약속하는 것이다.
+                      ⚠️ 2026-09-03: 카드를 줄 SSOT 로 바꾸면서 이 블록을 **통째로 지웠다가**
+                         `discover-deal-gate.test.ts` 가 CI 에서 잡았다. 이건 디자인이 아니라
+                         약속이다 — 딜 없는 사람이 링크를 뿌리면 첫 정산에서 0원을 본다. */}
                   {p.my_deal_pct != null ? (
                     <div className="grid grid-cols-2 gap-1.5 px-3 pb-3">
                       <button onClick={() => copyLink(p.id)}
-                        className="py-2 rounded-lg border border-gray-200 dark:border-[#2C2F35] text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1">
+                        className="py-2 rounded-lg border border-rule-strong text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1">
                         <Copy className="w-3 h-3" /> 링크 복사
                       </button>
                       <button onClick={() => shareLink(p)}
-                        className="py-2 rounded-lg bg-gray-800 text-white text-xs font-bold flex items-center justify-center gap-1">
+                        className="py-2 rounded-lg bg-brand text-white text-xs font-bold flex items-center justify-center gap-1">
                         <Share2 className="w-3 h-3" /> SNS 공유
                       </button>
                     </div>
                   ) : (
-                    /* 🚨 딜이 없으면 링크를 주지 않는다 — 주면 0원을 약속하는 것이다. */
                     <div className="px-3 pb-3">
-                      <p className="py-2 rounded-lg bg-gray-50 dark:bg-[#1D1F29] text-[11px] text-gray-600 dark:text-gray-300 text-center leading-relaxed">
+                      <p className="py-2 rounded-lg bg-gray-50 dark:bg-[#2A2A2B] text-[11px] text-gray-600 dark:text-gray-300 text-center leading-relaxed">
                         {authed
                           ? '이 매장과 딜을 맺어야 소개비가 붙습니다'
                           : '로그인하면 내 딜을 확인할 수 있어요'}

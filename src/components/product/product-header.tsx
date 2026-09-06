@@ -24,8 +24,8 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
       {sellerName && (
         <div className="flex items-center justify-between px-5 pt-5 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="rounded-full flex items-center justify-center w-9 h-9 bg-pink-50 border border-pink-200">
-              <span className="text-[13px] font-extrabold text-pink-500">{sellerName.charAt(0)}</span>
+            <div className="rounded-full flex items-center justify-center w-9 h-9 bg-brand-tint border border-rule">
+              <span className="text-[13px] font-extrabold text-brand-text">{sellerName.charAt(0)}</span>
             </div>
             <div>
               {sellerId ? (

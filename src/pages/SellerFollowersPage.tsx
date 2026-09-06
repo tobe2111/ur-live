@@ -82,7 +82,7 @@ export default function SellerFollowersPage() {
         {/* 알림 ON 비율 */}
         <div className="bg-white rounded-2xl p-5 border border-gray-200">
           <p className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-1">
-            <Bell className="w-4 h-4 text-pink-500" /> 알림 ON 비율
+            <Bell className="w-4 h-4 text-brand-text" /> 알림 ON 비율
           </p>
           {data.total === 0 ? (
             <p className="text-xs text-gray-400 py-4 text-center">단골 없음</p>
@@ -111,7 +111,7 @@ export default function SellerFollowersPage() {
         {/* 일별 신규 단골 (30일) */}
         <div className="bg-white rounded-2xl p-5 border border-gray-200">
           <p className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-1">
-            <TrendingUp className="w-4 h-4 text-pink-500" /> 최근 30일 신규 단골
+            <TrendingUp className="w-4 h-4 text-brand-text" /> 최근 30일 신규 단골
           </p>
           {data.daily.length === 0 ? (
             <p className="text-xs text-gray-400 py-8 text-center">데이터 없음 — 첫 단골을 기다리는 중</p>

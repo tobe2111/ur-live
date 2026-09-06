@@ -288,6 +288,27 @@
        `--home-field-rgb` 는 스크림·페이드가 알파를 얹을 때 쓴다: rgb(var(--home-field-rgb) / .88) */
     --home-field: #16181C;
     --home-field-rgb: 22 24 28;
+
+    /* 🚦 2026-09-03 상태 색(tone) — **대시보드에서 상태가 안 읽히던 실측 결함의 수리**
+       ────────────────────────────────────────────────────────────────────────────────
+       `tailwind.config.js` 는 2026-06-19 대표 지시("아예 흑백, 기능 빨강만 유지")로
+       **모든 장식 색조를 잉크 스케일(MONO)로 중화**한다 — `pink/rose/amber/emerald/blue/…`
+       전부. 소비자 화면에서는 그게 의도다.
+       그런데 어드민·셀러·도매 대시보드의 **상태 배지**가 바로 그 색조로 상태를 구분하고 있었다:
+         `대기 = bg-amber-50 text-amber-700` · `완료 = bg-emerald-50 …` · `반려 = bg-rose-50 …`
+       중화 후 셋은 **완전히 같은 픽셀**이 된다(라이브 CSS 실측:
+       `bg-rose-50` = `bg-emerald-50` = `rgb(248 247 252)`, `text-rose-700` = `text-emerald-700` = `rgb(61 60 58)`).
+       ⇒ 반려·완료·대기가 한 화면에서 구분이 안 됐다. 에러도 안 나고 색이 있는 것처럼 보여서 아무도 몰랐다.
+
+       대표 지시의 원칙("기능 신호는 색을 유지")은 그대로 지킨다 — 다만 그 신호를
+       **중화되는 색조로 표현하지 않고** 이 토큰으로 표현한다. 소비자 장식색은 여전히 흑백이다.
+
+       ⚠️ 대시보드는 화이트 고정이므로 아래 always-light 래퍼에서 라이트 값을 다시 박는다
+          (`--lift`/`--rule` 과 같은 이유·같은 자리). */
+    --tone-ok: #0F7B45;      --tone-ok-bg: #E7F4EC;    /* 완료·승인·정상 */
+    --tone-warn: #8A5A00;    --tone-warn-bg: #FBF1DC;  /* 대기·검수·주의 */
+    --tone-bad: #C62828;     --tone-bad-bg: #FBEAEA;   /* 반려·실패·연체 (대표가 유지하라고 한 '기능 빨강') */
+    --tone-info: #1C69EF;    --tone-info-bg: #EAF1FE;  /* 진행중·발송 (브랜드와 같은 블루) */
   }
 
   /* 🎨 2026-07-19 지시서 §6 STEP B — 다크 테마 토큰 (html.dark = 기존 토글/시스템 감지, data-theme 별칭 겸용).
@@ -304,6 +325,11 @@
     --rule: rgb(255 255 255 / 0.08);        /* 🎫 카드 안 구분선(다크) */
     --rule-strong: rgb(255 255 255 / 0.32); /* 🎫 outline 버튼·칩 테두리(다크 — 시안 실측 #6E7178 계열) */
     --lift: none;                            /* 🎫 다크는 그림자 0 */
+    /* 🚦 상태 색 — 어두운 바탕에서 읽히도록 명도를 올리고 배경은 알파로 얹는다. */
+    --tone-ok: #5FD08A;      --tone-ok-bg: rgb(95 208 138 / 0.14);
+    --tone-warn: #E5B44F;    --tone-warn-bg: rgb(229 180 79 / 0.14);
+    --tone-bad: #F1807E;     --tone-bad-bg: rgb(241 128 126 / 0.14);
+    --tone-info: #4D8DF5;    --tone-info-bg: rgb(77 141 245 / 0.14);
   }
 
 }
@@ -408,11 +434,21 @@
   --lift: 0 2px 10px rgb(22 24 28 / 0.06);
   --rule: rgb(22 24 28 / 0.08);
   --rule-strong: rgb(22 24 28 / 0.28);
+  /* 🚦 상태 색도 라이트 값으로 되박는다 — 안 그러면 html.dark 에서 흰 카드 위에 다크용 밝은 초록이 뜬다. */
+  --tone-ok: #0F7B45;      --tone-ok-bg: #E7F4EC;
+  --tone-warn: #8A5A00;    --tone-warn-bg: #FBF1DC;
+  --tone-bad: #C62828;     --tone-bad-bg: #FBEAEA;
+  --tone-info: #1C69EF;    --tone-info-bg: #EAF1FE;
 }
-.admin-light-theme, .agency-light-theme {
+.light-island, .force-light-theme, .admin-light-theme, .agency-light-theme {
   --lift: 0 2px 10px rgb(22 24 28 / 0.06);
   --rule: rgb(22 24 28 / 0.08);
   --rule-strong: rgb(22 24 28 / 0.28);
+  /* 🚦 상태 색도 라이트 값으로 되박는다 — 안 그러면 html.dark 에서 흰 카드 위에 다크용 밝은 초록이 뜬다. */
+  --tone-ok: #0F7B45;      --tone-ok-bg: #E7F4EC;
+  --tone-warn: #8A5A00;    --tone-warn-bg: #FBF1DC;
+  --tone-bad: #C62828;     --tone-bad-bg: #FBEAEA;
+  --tone-info: #1C69EF;    --tone-info-bg: #EAF1FE;
 }
 
 /* 🛡️ 2026-06-17 (사용자 신고 — 로그인/대시보드 입력 글자 흰색으로 안 보임): 어드민/셀러/에이전시/도매는 라이트 고정.

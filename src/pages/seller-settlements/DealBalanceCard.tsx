@@ -104,7 +104,7 @@ export default function DealBalanceCard() {
             <button
               type="button"
               onClick={() => setVoucherOpen(true)}
-              className="px-3 py-1.5 bg-pink-500 text-white text-xs font-bold rounded-lg hover:bg-pink-600 ml-2"
+              className="px-3 py-1.5 bg-brand text-white text-xs font-bold rounded-lg hover:bg-brand-dark ml-2"
             >
               🎁 교환권으로 받기
             </button>

@@ -30,10 +30,10 @@ interface Appointment {
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  confirmed: { label: '예약 확정', cls: 'bg-emerald-100 text-emerald-700' },
+  confirmed: { label: '예약 확정', cls: 'bg-tone-ok-bg text-tone-ok' },
   cancelled: { label: '취소', cls: 'bg-gray-100 text-gray-600' },
-  no_show: { label: '노쇼', cls: 'bg-red-100 text-red-700' },
-  completed: { label: '이용 완료', cls: 'bg-blue-100 text-blue-700' },
+  no_show: { label: '노쇼', cls: 'bg-tone-bad-bg text-tone-bad' },
+  completed: { label: '이용 완료', cls: 'bg-tone-info-bg text-tone-info' },
 }
 
 export default function SellerAppointmentsPage() {

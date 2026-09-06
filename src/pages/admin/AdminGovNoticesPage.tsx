@@ -16,10 +16,10 @@ interface Collect { gate: boolean; adsBinding: boolean; run: { last_run?: string
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
-  reviewing: { label: '검토', cls: 'bg-amber-100 text-amber-700' },
-  applied: { label: '응모', cls: 'bg-blue-100 text-blue-700' },
-  shared: { label: '전달함', cls: 'bg-indigo-100 text-indigo-700' },
-  won: { label: '수주', cls: 'bg-green-100 text-green-700' },
+  reviewing: { label: '검토', cls: 'bg-tone-warn-bg text-tone-warn' },
+  applied: { label: '응모', cls: 'bg-tone-info-bg text-tone-info' },
+  shared: { label: '전달함', cls: 'bg-tone-info-bg text-tone-info' },
+  won: { label: '수주', cls: 'bg-tone-ok-bg text-tone-ok' },
   skip: { label: '스킵', cls: 'bg-gray-100 text-gray-400' },
 }
 const STATUSES = ['new', 'reviewing', 'applied', 'shared', 'won', 'skip']

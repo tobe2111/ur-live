@@ -112,7 +112,7 @@ export default function SellerGroupBuyPage() {
           actions={
             <button
               onClick={() => navigate('/seller/meal-voucher/new')}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-pink-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-pink-600 active:scale-[0.98] transition"
+              className="ur-btn ur-btn-md ur-btn-primary"
             >
               <Plus className="h-4 w-4" />
               {t('seller.groupBuy.registerVoucher', { defaultValue: '이용권 등록' })}
@@ -123,9 +123,9 @@ export default function SellerGroupBuyPage() {
         {/* 요약 카드 */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: t('seller.groupBuy.active'), value: products.filter(p => p.group_buy_status === 'active').length, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: t('seller.groupBuy.achieved'), value: products.filter(p => p.group_buy_status === 'achieved').length, color: 'text-green-600', bg: 'bg-green-50' },
-            { label: t('seller.groupBuy.totalParticipants'), value: products.reduce((s, p) => s + safeNum(p.group_buy_current), 0), color: 'text-pink-600', bg: 'bg-pink-50' },
+            { label: t('seller.groupBuy.active'), value: products.filter(p => p.group_buy_status === 'active').length, color: 'text-tone-info', bg: 'bg-tone-info-bg' },
+            { label: t('seller.groupBuy.achieved'), value: products.filter(p => p.group_buy_status === 'achieved').length, color: 'text-tone-ok', bg: 'bg-tone-ok-bg' },
+            { label: t('seller.groupBuy.totalParticipants'), value: products.reduce((s, p) => s + safeNum(p.group_buy_current), 0), color: 'text-tone-info', bg: 'bg-tone-info-bg' },
           ].map(s => (
             <div key={s.label} className="bg-white rounded-xl p-4 border border-gray-200 text-center">
               <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
@@ -205,7 +205,7 @@ export default function SellerGroupBuyPage() {
             <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-900 font-bold mb-1">{t('seller.groupBuy.noVouchers')}</p>
             <p className="text-sm text-gray-500 mb-4">{t('seller.groupBuy.noVouchersDesc')}</p>
-            <button onClick={() => navigate('/seller/meal-voucher/new')} className="px-5 py-2.5 bg-pink-500 text-white rounded-xl text-sm font-bold">{t('seller.groupBuy.registerVoucher')}</button>
+            <button onClick={() => navigate('/seller/meal-voucher/new')} className="ur-btn ur-btn-md ur-btn-primary">{t('seller.groupBuy.registerVoucher')}</button>
           </div>
         ) : (
           <div className="space-y-3">
@@ -238,10 +238,10 @@ export default function SellerGroupBuyPage() {
                       <div className="mt-2">
                         <div className="flex items-center justify-between text-xs mb-1">
                           <span className="text-gray-500">{t('seller.groupBuy.participantCount', { current: currentNum, target: targetNum })}</span>
-                          <span className="font-bold text-pink-500">{Math.round(progress)}%</span>
+                          <span className="font-bold text-brand-text">{Math.round(progress)}%</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div className={`h-full rounded-full transition-all ${isAchieved ? 'bg-green-500' : 'bg-pink-500'}`} style={{ width: `${progress}%` }} />
+                          <div className={`h-full rounded-full transition-all ${isAchieved ? 'bg-green-500' : 'bg-brand'}`} style={{ width: `${progress}%` }} />
                         </div>
                       </div>
 
@@ -287,7 +287,7 @@ export default function SellerGroupBuyPage() {
                   {/* 🧭 2026-06-10 (재방문 루프 갭): 종료/진행 공구를 1탭으로 복사 재발행 — 매번 처음부터 입력하던 마찰 제거 */}
                   <button
                     onClick={() => navigate(`/seller/meal-voucher/new?copyFrom=${p.id}`)}
-                    className="mt-3 w-full px-3 py-2 rounded-lg bg-pink-50 border border-pink-200 text-pink-600 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
+                    className="mt-3 w-full px-3 py-2 rounded-lg bg-brand-tint border border-rule text-brand-text text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
                   >
                     <RefreshCw className="w-3.5 h-3.5" /> {t('seller.groupBuy.reissue', { defaultValue: '같은 내용으로 재발행' })}
                   </button>

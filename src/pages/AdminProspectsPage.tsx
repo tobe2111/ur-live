@@ -21,7 +21,8 @@ type ProspectStatus = 'visiting' | 'converted' | 'expired'
 
 interface Prospect {
   id: number
-  introducer_type: 'agency' | 'influencer'
+  /** 🌇 2026-09-05 에이전시 일몰 — 신규 행은 언제나 'influencer'. 레거시 행만 'agency' 일 수 있다. */
+  introducer_type: string
   introducer_id: string
   store_name: string | null
   contact_name: string | null
@@ -39,8 +40,8 @@ interface Prospect {
 }
 
 const STATUS_META: Record<ProspectStatus, { label: string; color: string }> = {
-  visiting: { label: '영입 중', color: 'bg-amber-100 text-amber-700' },
-  converted: { label: '가입 완료', color: 'bg-green-100 text-green-700' },
+  visiting: { label: '영입 중', color: 'bg-tone-warn-bg text-tone-warn' },
+  converted: { label: '가입 완료', color: 'bg-tone-ok-bg text-tone-ok' },
   expired: { label: '만료', color: 'bg-gray-100 text-gray-500' },
 }
 
@@ -76,7 +77,7 @@ export default function AdminProspectsPage() {
                 key={s}
                 onClick={() => setStatus(s)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                  status === s ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'
+                  status === s ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'
                 }`}
               >
                 {STATUS_META[s].label}
@@ -115,7 +116,7 @@ export default function AdminProspectsPage() {
           ) : (
             prospects.map((p) => {
               const meta = STATUS_META[p.status]
-              const introducerLabel = p.introducer_type === 'agency' ? '🏢 에이전시' : '🎤 인플루언서'
+              const introducerLabel = '🎤 영입자'
               return (
                 <div key={p.id} className="bg-white rounded-xl border border-gray-200 p-4">
                   <div className="flex items-start justify-between gap-3 mb-2">

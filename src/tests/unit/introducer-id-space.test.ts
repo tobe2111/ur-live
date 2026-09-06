@@ -36,10 +36,12 @@ describe('영입자 id 공간이 한 가지다 (users.id)', () => {
     expect(REASSIGN).not.toMatch(/FROM sellers WHERE id = \? AND seller_type/)
   })
 
-  it('라우트 두 개가 이 SSOT 로 위임한다 (복제본 부활 차단)', () => {
+  it('라우트가 이 SSOT 로 위임한다 (복제본 부활 차단)', () => {
     // 복제본이 둘이면 한쪽만 고쳐지는 사고가 난다 — 이 버그가 정확히 그렇게 났다.
-    expect(ADMIN).toMatch(/reassign-agency'.*reassignIntroducer\(c, 'agency'/)
+    // 🌇 2026-09-05 에이전시 일몰 — 재배정 라우트는 **하나만** 남았다(agency 쪽은 화면이 없는
+    //   쓰기 경로라 삭제). 그래서 "둘 다 위임" 이 아니라 "남은 하나가 위임 + 인라인 검증 부활 금지".
     expect(ADMIN).toMatch(/reassign-influencer'.*reassignIntroducer\(c, 'influencer'/)
+    expect(ADMIN).not.toMatch(/reassign-agency/)
     expect(ADMIN).not.toMatch(/SELECT id FROM sellers WHERE id = \? AND seller_type/)
   })
 

@@ -130,7 +130,7 @@ export default function SellerNotifyFollowersPage() {
                 onClick={() => selectPreset(p.key)}
                 className={`p-3 rounded-xl text-left border-2 transition-all ${
                   reason === p.key
-                    ? 'border-pink-500 bg-pink-50'
+                    ? 'border-brand bg-brand-tint'
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
               >
@@ -148,7 +148,7 @@ export default function SellerNotifyFollowersPage() {
             <input
               value={title} onChange={e => setTitle(e.target.value.slice(0, 100))}
               placeholder="2-100자"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
             />
             <p className="text-[10px] text-gray-400 mt-1">{title.length}/100</p>
           </div>
@@ -158,7 +158,7 @@ export default function SellerNotifyFollowersPage() {
               value={message} onChange={e => setMessage(e.target.value.slice(0, 500))}
               placeholder="5-500자"
               rows={3}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none resize-none"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none resize-none"
             />
             <p className="text-[10px] text-gray-400 mt-1">{message.length}/500</p>
           </div>
@@ -167,14 +167,14 @@ export default function SellerNotifyFollowersPage() {
             <input
               value={url} onChange={e => setUrl(e.target.value.slice(0, 200))}
               placeholder="/group-buy/123"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none font-mono"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none font-mono"
             />
           </div>
         </div>
 
         {/* 미리보기 */}
-        <div className="bg-gray-50 border border-pink-200 rounded-2xl p-4">
-          <p className="text-[11px] font-bold text-pink-700 mb-2 flex items-center gap-1">
+        <div className="bg-gray-50 border border-rule rounded-2xl p-4">
+          <p className="text-[11px] font-bold text-brand-text mb-2 flex items-center gap-1">
             <Bell className="w-3 h-3" /> Push Notification 미리보기
           </p>
           <div className="bg-white rounded-xl p-3 shadow-sm">

@@ -1,9 +1,18 @@
-import { Link } from 'react-router-dom'
+/**
+ * 🔎 검색 결과 카드 — **격자 SSOT(`GroupBuyFeedCard`)에 얹는 얇은 어댑터** (2026-09-03)
+ *
+ *   이 파일은 자체 격자 카드였다. 그래서 검색 결과만 다른 그림이었고, 그 자체 구현 안에
+ *   실제 결함이 둘 있었다:
+ *     ① 사진 우하단 하트가 **아무 일도 안 했다** — `onClick={(e) => e.preventDefault()}` 뿐이라
+ *        누르면 찜이 되는 것처럼 보이고 아무것도 저장되지 않았다(SSOT 의 `WishlistHeart` 는 진짜다).
+ *     ② 30% 이상일 때만 사진 위에 빨간 할인 배지 — 2026-08-31 대표 지시
+ *        *"할인율이 사진 안으로 들어가면 안돼"* 이후 다른 카드는 전부 본문으로 내렸는데 여기만 남았다.
+ *   ⇒ 어댑터로 접으면서 둘 다 사라진다. 검색 고유의 것(검색어 하이라이트 · 유어샵 핀 버튼 ·
+ *      품절/재고)만 슬롯으로 넘긴다.
+ */
+import { type ReactNode } from 'react'
+import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import { publicSellerHandle } from '@/shared/seller-handle'
-import { Heart } from 'lucide-react'
-import { formatNumber } from '@/utils/format'
-import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
-import { canonicalDetailPath } from '@/shared/product-flow'
 import PinButton from '@/components/curator/PinButton'
 
 interface Product {
@@ -29,7 +38,7 @@ interface ProductCardProps {
   highlightQuery?: string
 }
 
-function highlightText(text: string, query: string) {
+function highlightText(text: string, query: string): ReactNode {
   if (!query || query.length < 1) return <>{text}</>
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const parts = text.split(new RegExp(`(${escaped})`, 'gi'))
@@ -37,7 +46,7 @@ function highlightText(text: string, query: string) {
     <>
       {parts.map((part, i) =>
         part.toLowerCase() === query.toLowerCase() ? (
-          <mark key={i} className="bg-yellow-200 text-gray-900 dark:bg-yellow-400/30 dark:text-yellow-200 rounded-sm px-0.5">{part}</mark>
+          <mark key={i} className="bg-brand-tint text-brand-text rounded-sm px-0.5">{part}</mark>
         ) : (
           <span key={i}>{part}</span>
         )
@@ -48,107 +57,32 @@ function highlightText(text: string, query: string) {
 
 export default function ProductCard({ product, highlightQuery }: ProductCardProps) {
   // 🛡️ 2026-07-02 (쇼핑 전수조사): price 는 이미 최종 판매가(서버 과금가 = order.routes unit_price).
-  //   이전엔 price × (1-rate) 를 판매가로 표시(이중 할인 — 실결제보다 싸게 표시) + price 를 취소선
-  //   원가로 표시. 수정: 판매가 = price, 취소선 = original_price(있으면), 할인% = discount_rate.
-  const salePrice = product.price
-  const discount = product.discount_rate || 0
-  const originalPrice = (product as { original_price?: number }).original_price
-  const strikethrough = originalPrice && originalPrice > salePrice ? originalPrice : null
-  const showDiscountBadge = discount >= 30
-  const priceUnit = Number(product.deal_only) === 1 ? '딜' : '원'
-  // 🧭 2026-07-20 (대표 — "페이지 이동 가장 이상적으로"): 종류별 정규 상세로 직접 링크(교환권 /vouchers,
-  //   숙소 /stays, 이용권 /group-buy). 기존엔 전부 /products/:id 로 보내 ProductDetailPage 가 다시
-  //   canonicalDetailPath 로 리다이렉트하던 추가 홉을 제거(리다이렉트 SSOT 는 동일 함수 재사용).
-  const detailPath = canonicalDetailPath(product) ?? `/products/${product.id}`
-
+  const soldOut = Number(product.stock) === 0
+  const lowStock = !soldOut && Number(product.stock) > 0 && Number(product.stock) <= 10
   return (
-    <Link to={detailPath} className="block text-left group">
-      <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1D1F29]">
-        {product.image_url ? (
-          /* 🛡️ 2026-05-23 (Task 4): Cloudflare Image Resizing — WebP/AVIF 자동 변환 + DPI별 srcset.
-              원본 URL 그대로 → 50-80% 트래픽 절감, LCP ↓.
-              외부 URL (i.ibb.co 등) 은 helper 가 자동으로 그대로 반환. */
-          <img
-            src={cfImage(product.image_url, { width: 400, format: 'auto' })}
-            srcSet={cfSrcSet(product.image_url, 400)}
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
-            decoding="async"
-            onError={(e) => cfImageOnError(e.currentTarget, product.image_url)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-[#1D1F29]">
-            <span className="text-gray-300 dark:text-gray-600 text-2xl">📦</span>
-          </div>
-        )}
-
-        {/* Discount badge - only for >= 30% */}
-        {showDiscountBadge && product.stock > 0 && (
-          <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-1 rounded-lg">
-            -{discount}%
-          </span>
-        )}
-
-        {/* Sold out overlay */}
-        {product.stock === 0 && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <span className="text-white text-[13px] font-bold">품절</span>
-          </div>
-        )}
-
-        {/* Heart button */}
-        <button
-          className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform"
-          onClick={(e) => e.preventDefault()}
-        >
-          <Heart className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        </button>
-
-        {/* 🛡️ 2026-05-25 큐레이터 핀 — 1탭 핀 추가 (Phase 1-B 핵심 UX) */}
-        <PinButton productId={product.id} price={product.price} variant="card-overlay" />
-      </div>
-
-      <div className="mt-2.5 px-0.5">
-        {/* 🎫 2026-06-21 (대표 요청): 교환권(deal_only=1)은 판매자 핸들(@) 대신 브랜드명 표시.
-            판매자 없는 교환권에 빈 '@' 만 뜨던 것 해소 — 브랜드·판매자 둘 다 없으면 줄 생략. */}
-        {Number(product.deal_only) === 1 && product.brand_name ? (
-          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-0.5 truncate">{product.brand_name}</p>
-        ) : (product.seller_name || publicSellerHandle(product.seller_username)) ? (
-          /* 🏷️ 2026-09-03: 이름이 없을 때의 폴백에서 자동 발급 아이디(@store_xxxx)는 쓰지 않는다. */
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-0.5 truncate">@{product.seller_name || publicSellerHandle(product.seller_username)}</p>
-        ) : null}
-
-        {/* Product name with keyword highlight */}
-        <p className="text-[13px] text-gray-900 dark:text-white leading-[1.35] line-clamp-2 mb-1.5">
-          {highlightQuery ? highlightText(product.name, highlightQuery) : product.name}
-        </p>
-
-        {/* Original price (strikethrough) — original_price 있을 때만 */}
-        {strikethrough && (
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 line-through">
-            {formatNumber(strikethrough)}{priceUnit === '딜' ? ' 딜' : '원'}
-          </p>
-        )}
-
-        {/* Price row — 최종 판매가(서버 과금가) */}
-        <div className="flex items-baseline gap-1.5 mt-0.5">
-          {discount > 0 && (
-            <span className="text-[14px] font-extrabold text-red-500">{discount}%</span>
-          )}
-          <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">
-            {formatNumber(salePrice)}{priceUnit === '딜' ? ' 딜' : '원'}
-          </span>
-        </div>
-
-        {/* Low stock warning */}
-        {product.stock > 0 && product.stock <= 10 && (
-          <p className="text-[10px] text-amber-500 font-semibold mt-1">
-            재고 {product.stock}개
-          </p>
-        )}
-      </div>
-    </Link>
+    <GroupBuyFeedCard
+      p={{
+        ...product,
+        /* 🏷️ 머천트 줄 — 카드 SSOT 는 `restaurant_name || brand_name` 을 쓴다. 둘 다 없는
+           일반 쇼핑 상품은 판매자 이름으로 채운다(그러지 않으면 그 줄이 통째로 빈다).
+           ⚠️ 자동 발급 아이디(`@store_xxxx`)는 폴백에 쓰지 않는다 — main 2026-09-03 수정을
+              `publicSellerHandle` 로 그대로 승계한다. */
+        restaurant_name: (product as { restaurant_name?: string }).restaurant_name
+          || product.brand_name
+          || product.seller_name
+          || publicSellerHandle(product.seller_username)
+          || undefined,
+      } as never}
+      aboveFold={false}
+      titleNode={highlightQuery ? highlightText(product.name, highlightQuery) : undefined}
+      /* 🚩 품절·재고는 **본문 맨 위 한 줄**로 — 사진 위에 얹지 않는다(08-31 규칙). */
+      flags={soldOut ? (
+        <p className="text-[11px] font-bold text-red-500 mb-0.5">품절</p>
+      ) : lowStock ? (
+        <p className="text-[11px] font-semibold text-red-500 mb-0.5">재고 {product.stock}개</p>
+      ) : undefined}
+      /* 🛡️ 2026-05-25 큐레이터 핀 — 1탭 핀 추가(Phase 1-B 핵심 UX). 찜 하트 아래에 놓는다. */
+      overlayExtra={<PinButton productId={product.id} price={product.price} variant="card-overlay" />}
+    />
   )
 }

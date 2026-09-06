@@ -26,9 +26,9 @@ interface AccountStats { days: number; totals: { impCnt: number; clkCnt: number;
 interface Pacing { id: string; name: string; dailyBudget: number; todaySpend: number; pacePct: number; status: 'over' | 'ok' | 'under' | 'no_budget' }
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`
 const PACE_LABEL: Record<string, { t: string; c: string }> = {
-  over: { t: '소진임박', c: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400' },
-  under: { t: '저소진', c: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' },
-  ok: { t: '정상', c: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  over: { t: '소진임박', c: 'bg-tone-bad-bg text-tone-bad' },
+  under: { t: '저소진', c: 'bg-tone-warn-bg text-tone-warn' },
+  ok: { t: '정상', c: 'bg-tone-ok-bg text-tone-ok' },
   no_budget: { t: '무제한', c: 'bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400' },
 }
 

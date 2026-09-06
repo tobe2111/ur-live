@@ -79,8 +79,8 @@ const REGION_LABEL: Record<string, string> = Object.fromEntries(REGIONS.map((r) 
 const won = (n: number) => formatNumber(n)
 const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] p-4'
 const BADGE: Record<Candidate['badge'], { label: string; cls: string }> = {
-  measured: { label: '🏆 실측 성과', cls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400' },
-  repeat: { label: '⭐ 재방문 강세', cls: 'bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400' },
+  measured: { label: '🏆 실측 성과', cls: 'bg-tone-ok-bg text-tone-ok' },
+  repeat: { label: '⭐ 재방문 강세', cls: 'bg-tone-info-bg text-tone-info' },
   cold: { label: '🌱 데이터 축적중', cls: 'bg-gray-100 text-gray-500 dark:bg-[#1D1F29] dark:text-gray-400' },
 }
 const nameOf = (c: { displayName: string | null; handle: string | null; influencerId: string }) =>

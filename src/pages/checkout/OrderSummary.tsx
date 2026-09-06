@@ -76,7 +76,7 @@ export default function OrderSummary({
           {dealToUse > 0 && (
             <div className="flex items-center justify-between">
               <span className="text-[14px] text-gray-400 dark:text-gray-500">{t('checkout.summary.dealPoints', { defaultValue: '딜 포인트' })}</span>
-              <span className="text-[14px] font-medium text-pink-500">-{formatNumber(dealToUse)}{t('checkout.summary.dealSuffix', { defaultValue: '딜' })}</span>
+              <span className="text-[14px] font-medium text-brand-text">-{formatNumber(dealToUse)}{t('checkout.summary.dealSuffix', { defaultValue: '딜' })}</span>
             </div>
           )}
         </div>

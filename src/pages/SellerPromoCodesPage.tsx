@@ -187,7 +187,7 @@ export default function SellerPromoCodesPage() {
                 value={form.code}
                 onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20) }))}
                 placeholder="DANGOL10"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono focus:border-brand focus:outline-none"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -197,7 +197,7 @@ export default function SellerPromoCodesPage() {
                   type="number" min="1" max="99"
                   value={form.discount_pct}
                   onChange={e => setForm(f => ({ ...f, discount_pct: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
                 />
               </div>
               <div>
@@ -205,7 +205,7 @@ export default function SellerPromoCodesPage() {
                 <select
                   value={form.audience}
                   onChange={e => setForm(f => ({ ...f, audience: e.target.value as typeof f.audience }))}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
                 >
                   <option value="followers_only">단골만 (권장)</option>
                   <option value="new_users_only">🆕 신규 고객만</option>
@@ -220,7 +220,7 @@ export default function SellerPromoCodesPage() {
                   type="number" min="0" max="100000"
                   value={form.max_uses}
                   onChange={e => setForm(f => ({ ...f, max_uses: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
                 />
               </div>
               <div>
@@ -229,7 +229,7 @@ export default function SellerPromoCodesPage() {
                   type="number" min="1" max="100"
                   value={form.per_user_limit}
                   onChange={e => setForm(f => ({ ...f, per_user_limit: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
                 />
               </div>
             </div>
@@ -239,7 +239,7 @@ export default function SellerPromoCodesPage() {
                 type="date"
                 value={form.expires_at}
                 onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               />
             </div>
             <div>
@@ -248,12 +248,12 @@ export default function SellerPromoCodesPage() {
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value.slice(0, 200) }))}
                 placeholder="단골 감사 이벤트"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               />
             </div>
             <div className="flex gap-2">
               <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold">취소</button>
-              <button onClick={createCode} disabled={submitting} className="flex-1 py-2.5 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-lg text-sm font-bold">
+              <button onClick={createCode} disabled={submitting} className="ur-btn ur-btn-md ur-btn-primary flex-1">
                 {submitting ? '발급 중…' : '발급'}
               </button>
             </div>
@@ -276,8 +276,8 @@ export default function SellerPromoCodesPage() {
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2">
-                      <code className={`font-mono text-base font-extrabold ${c.is_active ? 'text-pink-600' : 'text-gray-400'}`}>{c.code}</code>
-                      <span className="px-1.5 py-0.5 bg-pink-100 text-pink-700 rounded text-[10px] font-bold">{c.discount_pct}%</span>
+                      <code className={`font-mono text-base font-extrabold ${c.is_active ? 'text-brand-text' : 'text-gray-400'}`}>{c.code}</code>
+                      <span className="px-1.5 py-0.5 bg-brand-tint text-brand-text rounded text-[10px] font-bold">{c.discount_pct}%</span>
                       <span className="text-[10px] text-gray-500">{AUDIENCE_LABEL[c.audience] || c.audience}</span>
                       {!c.is_active && <span className="text-[10px] text-gray-400">비활성</span>}
                     </div>
@@ -298,11 +298,11 @@ export default function SellerPromoCodesPage() {
                       </button>
                       <button
                         onClick={() => pushToFollowers(c)}
-                        className="p-1.5 hover:bg-pink-50 rounded"
+                        className="p-1.5 hover:bg-brand-tint rounded"
                         aria-label="단골에게 push"
                         title="단골 전원에게 알림 발송 (10분 5회 제한)"
                       >
-                        <Megaphone className="w-3.5 h-3.5 text-pink-500" />
+                        <Megaphone className="w-3.5 h-3.5 text-brand-text" />
                       </button>
                       <button onClick={() => deleteCode(c.id, c.code)} className="p-1.5 hover:bg-red-50 rounded" aria-label="비활성화">
                         <Trash2 className="w-3.5 h-3.5 text-red-500" />
