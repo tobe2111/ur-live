@@ -49,8 +49,14 @@ describe('히어로 프레임과 크롭은 한 벌이다', () => {
     const gal = code(read(GALLERY))
     expect(gal, '갤러리가 SSOT 함수를 안 쓴다 — preload 와 다시 갈린다').toMatch(/const heroUrl = detailHeroMobileUrl/)
     const s = code(read(HERO_SSOT))
-    const at = s.indexOf('function detailHeroMobileUrl')
-    expect(at, 'detailHeroMobileUrl 이 사라졌다').toBeGreaterThan(0)
+    // 🔁 2026-09-06: 크롭 옵션 조립이 `detailCropUrl`(모바일·PC 공용)로 모였다. 모바일 함수는 그걸
+    //    3:2 로 부르는 얇은 껍데기다 — 그래서 ⓐ 껍데기가 그 함수를 부르는지 ⓑ 그 함수가 실제로
+    //    높이·cover·gravity 를 보내는지 **둘 다** 본다. 하나만 보면 어느 쪽이 빠져도 초록이 뜬다.
+    const mob = s.indexOf('function detailHeroMobileUrl')
+    expect(mob, 'detailHeroMobileUrl 이 사라졌다').toBeGreaterThan(0)
+    expect(s.slice(mob, mob + 300), '모바일 히어로가 크롭 함수를 안 쓴다').toMatch(/detailCropUrl\(src, w, DETAIL_HERO_RATIO\)/)
+    const at = s.indexOf('function detailCropUrl')
+    expect(at, 'detailCropUrl 이 사라졌다').toBeGreaterThan(0)
     const win = s.slice(at, at + 400)
     expect(win, '높이를 안 보내면 크롭이 일어나지 않는다').toContain('height:')
     expect(win, 'fit=cover 가 빠졌다 — 레터박스가 생긴다').toContain("fit: 'cover'")
@@ -123,5 +129,59 @@ describe('두 상세가 같은 상단바를 쓴다 (갈리지 않게)', () => {
     for (const f of PAGES) {
       expect(code(read(f)), `${f}: 페이지가 headerSolid 를 다시 들고 있다`).not.toContain('setHeaderSolid')
     }
+  })
+})
+
+/**
+ * 🖥️ **PC 도 스마트 크롭** (2026-09-06 — 08-31 에 "별도로 다룬다"고 미뤄 둔 나머지 절반)
+ *
+ * ## 왜 미뤄져 있었나, 그리고 왜 이제 되나
+ * 당시 주석은 *"PC 는 감시 `<img>` 와 URL 을 공유해 트래픽 0 을 유지하는 구조라, 옵션을 한쪽만
+ * 바꾸면 요청이 두 배가 된다"* 였다. 맞는 말이지만 **한쪽만** 바꿀 때의 이야기다 — 배경·감시·
+ * 워커 preload 셋이 같은 함수를 부르면 URL 이 같아 요청은 그대로 하나다.
+ *
+ * ## 이 블록이 지키는 것 — 갈리는 지점 셋
+ *   ① CSS 프레임(`aspectRatio: multi ? '4 / 3' : '16 / 9'`) ↔ 크롭 비율 상수가 **같은 값**일 것.
+ *      갈리면 서버가 자른 비율과 화면 칸이 어긋나 브라우저가 한 번 더 자른다(피사체가 다시 밀린다).
+ *      **이게 이 변경의 진짜 위험**이다 — 누군가 CSS 만 고치면 조용히 나빠지고 에러는 없다.
+ *   ② 배경과 감시 `<img>` 가 **같은 함수**를 부를 것(갈리면 요청 두 배).
+ *   ③ 워커 PC preload 도 같은 함수 + 같은 방법으로 장수를 셀 것(갈리면 preload 가 버려진다).
+ *
+ * ## 못 막는 것
+ * - 실제 크롭 품질(Cloudflare 판단). 화면으로 봐야 한다.
+ * - 썸네일 비율 5:4 는 **레이아웃에서 유도한 근사값**이라 CSS 와 1:1 대조가 불가능하다
+ *   (칸 높이가 그리드에서 결정된다). 남는 오차는 `cover` 가 흡수한다.
+ */
+describe('PC 상세 사진도 프레임에 맞춰 피사체를 자른다', () => {
+  it('① CSS 프레임과 크롭 비율 상수가 같은 값이다', () => {
+    const g = code(read(GALLERY))
+    const m = g.match(/aspectRatio:\s*multi\s*\?\s*'([\d\s/]+)'\s*:\s*'([\d\s/]+)'/)
+    expect(m, 'PC 대형 프레임 선언을 못 찾았다 — 가드가 낡았다').toBeTruthy()
+    const val = (css: string) => { const [a, b] = css.split('/').map((x) => Number(x.trim())); return a / b }
+    const ssot = code(read(HERO_SSOT))
+    const num = (name: string) => {
+      const mm = ssot.match(new RegExp(`${name}\\s*=\\s*([\\d.]+)\\s*/\\s*([\\d.]+)`))
+      expect(mm, `${name} 상수를 못 찾았다`).toBeTruthy()
+      return Number(mm![1]) / Number(mm![2])
+    }
+    expect(val(m![1]), '여러 장 프레임(CSS) ↔ DETAIL_PC_HERO_RATIO_MULTI 가 다르다').toBeCloseTo(num('DETAIL_PC_HERO_RATIO_MULTI'), 5)
+    expect(val(m![2]), '한 장 프레임(CSS) ↔ DETAIL_PC_HERO_RATIO_SINGLE 이 다르다').toBeCloseTo(num('DETAIL_PC_HERO_RATIO_SINGLE'), 5)
+  })
+
+  it('② 배경과 감시 <img> 가 같은 함수를 부른다', () => {
+    const g = code(read(GALLERY))
+    // 대형: bg 와 probe 둘 다 pcHeroUrl(main)
+    expect((g.match(/pcHeroUrl\(main\)/g) || []).length, 'PC 대형이 배경·감시 두 곳에서 같은 함수를 부르지 않는다').toBe(2)
+    expect((g.match(/pcThumbUrl\(/g) || []).length, 'PC 썸네일이 배경·감시 두 곳에서 같은 함수를 부르지 않는다').toBe(2)
+    // 크롭 없는 폭 리사이즈가 PC 표시 경로로 되돌아오지 않았는지(그러면 감시와 갈린다)
+    expect(g, 'PC 표시 경로에 크롭 없는 URL 이 돌아왔다').not.toMatch(/bg\([^)]*detailPlainUrl/)
+  })
+
+  it('③ 워커 PC preload 도 같은 함수 + 같은 방법으로 장수를 센다', () => {
+    const w = code(read('src/worker/utils/home-card-preload.ts'))
+    expect(w, '워커가 PC 히어로를 크롭 없이 preload 한다 — 갤러리와 갈려 버려진다').toMatch(/detailCropUrl\(heroSrc, DETAIL_HERO_DESKTOP_WIDTH, pcRatio\)/)
+    expect(w, '워커가 갤러리와 다른 방법으로 장수를 센다').toMatch(/detailGalleryImages\(data\)\.length > 1/)
+    // 화면도 같은 함수로 세는지(둘 중 하나만 바뀌면 경계에서 갈린다)
+    expect(code(read('src/pages/GroupBuyDetailPage.tsx')), '화면이 갤러리 목록 SSOT 를 안 쓴다').toMatch(/detailGalleryImages\(/)
   })
 })

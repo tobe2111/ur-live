@@ -1,5 +1,5 @@
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
-import { DETAIL_HERO_DESKTOP_WIDTH, detailHeroMobileUrl, detailPlainUrl } from '../../shared/detail-hero-image'
+import { DETAIL_HERO_DESKTOP_WIDTH, DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, detailCropUrl, detailGalleryImages, detailHeroMobileUrl } from '../../shared/detail-hero-image'
 import {
   HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE,
   HOME_CARD_LG_QUERY, HOME_CARD_BASE_QUERY, HOME_CARD_ABOVE_FOLD,
@@ -91,14 +91,20 @@ export function buildHomeCardPreloadLinks(ssrExtraPayload: string): string[] {
  */
 export function buildDetailHeroPreloadLink(ssrPayload: string, isVoucherSurface: boolean, isMobile = true): string | null {
   try {
-    const heroSrc = (JSON.parse(ssrPayload) as { data?: { image_url?: string } })?.data?.image_url
+    const data = (JSON.parse(ssrPayload) as {
+      data?: { image_url?: string; images?: string | null; image_urls?: string | null; detail_images?: string | null }
+    })?.data
+    const heroSrc = data?.image_url
     if (!heroSrc) return null
+    // 🖥️ PC 대형은 **사진 장수**에 따라 4:3(여러 장) / 16:9(한 장)로 갈린다. 갤러리와 같은 함수로 센다
+    //    (`detailGalleryImages`) — 두 벌로 세면 경계에서 갈려 preload 가 버려진다.
+    const pcRatio = detailGalleryImages(data).length > 1 ? DETAIL_PC_HERO_RATIO_MULTI : DETAIL_PC_HERO_RATIO_SINGLE
     // 🧵 2026-09-02: 이용권 상세는 `DetailGallery` 와 **같은 SSOT 함수**로 만든다. 이전의 `width: 900` 은
     //    08-31 크롭 도입 뒤 갤러리가 그리는 어떤 URL 과도 안 맞아 **preload 가 통째로 버려지고** 있었다
     //    (라이브 실측: 111KB 를 받고 안 쓴 뒤 같은 사진을 다시 받았다). 폰/PC 는 그리는 폭이 달라 UA 로 가른다.
     const heroUrl = isVoucherSurface
       ? cfImage(heroSrc, { width: 800, format: 'auto' })
-      : isMobile ? detailHeroMobileUrl(heroSrc) : detailPlainUrl(heroSrc, DETAIL_HERO_DESKTOP_WIDTH)
+      : isMobile ? detailHeroMobileUrl(heroSrc) : detailCropUrl(heroSrc, DETAIL_HERO_DESKTOP_WIDTH, pcRatio)
     if (!heroUrl || heroUrl.startsWith('data:')) return null
     const heroSrcSet = isVoucherSurface ? cfSrcSet(heroSrc, 800) : ''
     return `<link rel="preload" as="image" fetchpriority="high" href="${escAttr(heroUrl)}"${
