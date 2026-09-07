@@ -5,7 +5,7 @@
 | 문서 | 파일 | 어드민 |
 |---|---|---|
 | 인플루언서 제휴 제안 (16:9, 9장) | `public/static/proposals/influencer-proposal.html` | `/admin/proposals` |
-| 대행사 제휴 제안 (16:9, 16장, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
+| 대행사 제휴 제안 (16:9, 16장, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
 
 ## 왜 docs/ 가 아니라 public/static/ 인가
 
@@ -47,3 +47,9 @@ node /path/to/ur-live/docs/business/proposals/urdeal-agency-proposal.build.mjs .
   전달 전에 다시 재서 3·10 장을 갱신하세요.
 - 5·6 장의 단위 경제(판매가 2만원, 월 60건, 보수 10%, 재료비 35%)와 14 장의 파일럿 목표는 **가정·제안**입니다. 슬라이드에도 그렇게 적혀 있습니다.
 - 글꼴은 맑은 고딕입니다. 리눅스 LibreOffice 렌더는 글꼴이 치환되어 자간이 벌어져 보이지만 PowerPoint 에서는 정상입니다.
+
+### PDF 로 뽑으려면 (리눅스)
+`libreoffice-impress` + `fonts-nanum` + `python3-uno` 가 있어야 합니다. 맑은 고딕을 나눔고딕으로
+매핑하는 fontconfig alias 를 두고, `export-pptx-to-pdf.py <in.pptx> <out.pdf>` 를 돌립니다.
+이 스크립트가 LibreOffice 의 "아시아/비아시아 문자 간 자동 여백" 문단 속성을 꺼서 "월 12 만원" 처럼
+벌어지는 표시를 없앱니다(PowerPoint 원본엔 없는 현상). 차트 안 글자는 별도 객체라 여백이 남습니다.
