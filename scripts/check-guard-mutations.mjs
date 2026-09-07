@@ -773,10 +773,21 @@ const MUTATIONS = [
   {
     name: '🎞️ 카드 넘김이 painted 대신 shown 을 따라 클릭 순간 빈 칸이 다시 보인다',
     file: 'src/components/deal/DealCardMedia.tsx',
-    find: 'opacity: i === painted ? (painted === shown ? 1 : 0.65) : 0',
-    replace: 'opacity: i === shown ? 1 : 0',
+    find: 'opacity: i === painted ? (waiting ? 0.8 : 1) : 0,',
+    replace: 'opacity: i === shown ? 1 : 0,',
     test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
     why: '2026-09-02 대표 신고: 화살표를 누르면 이전 사진이 사라지고 새 사진이 올 때까지 회색 칸(콜드 0.3~2초).',
+  },
+  {
+    name: '🎞️ 받는 중인데 직전 사진이 선명하게 남아 "안 넘어갔다"로 보인다 (블러 신호 소실)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: "                filter: i === painted && waiting ? 'blur(10px)' : 'blur(0px)',\n",
+    replace: '',
+    test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
+    why:
+      '2026-09-06 대표 신고: 모바일 4G 첫 넘김이 **2,180ms** 인데 그동안 직전 사진이 0.65 로 어둡게만 ' +
+      '남아 있었다. 밝은 사진에선 그 차이가 거의 안 보이고, 도트는 이미 다음 칸에 가 있어 ' +
+      '"점은 넘어갔는데 사진은 그대로" = 안 넘어간 것으로 읽힌다. 블러가 유일한 즉시 신호다.',
   },
   {
     name: '🎞️ 보이는 카드의 idle 프리페치 게이트가 뒤집혀 커버 로드 전에도 안 도는(=영영 안 도는) 상태',

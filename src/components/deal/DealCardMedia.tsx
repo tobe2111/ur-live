@@ -101,13 +101,26 @@ function DealCardMedia({
    *
    * 이전엔 화살표를 누르는 순간 이전 사진의 opacity 가 0 이 되고 새 사진은 아직 안 왔으니 **회색 칸**이
    * 보였다 — 콜드 콜로에서 0.3~2초. 사진이 늦는 게 아니라 *늦는 동안 아무것도 안 보이는 것*이 체감이다.
-   * ⇒ 다운로드가 끝난 장면(`loaded`)만 그린다. 새 장면이 아직이면 **직전 장면을 그대로 두고** 살짝 어둡게
-   *   (`0.65`) 해 "받는 중"을 알린 뒤, 도착하면 교차한다. 요청 수는 그대로다.
+   * ⇒ 다운로드가 끝난 장면(`loaded`)만 그린다. 새 장면이 아직이면 **직전 장면을 그대로 두고**,
+   *   도착하면 교차한다. 요청 수는 그대로다.
+   *
+   * 🩸 **2026-09-06 대표 신고 — "로딩이 걸리면 이전 사진과 똑같이 나온다"**. 위 처방은 방향이 맞았지만
+   *   신호가 없었다: 직전 사진을 `0.65` 로 어둡게만 했는데, 그건 **밝은 사진에선 거의 안 보이고**
+   *   "약간 어둡다"는 "받는 중"을 뜻하지 않는다. 게다가 **도트는 이미 다음 칸으로 가 있어서**
+   *   점은 넘어갔는데 사진은 그대로 = 사람 눈엔 *안 넘어간 것*으로 읽힌다.
+   *
+   *   실측(라이브 · 홈 다장 카드): PC 130ms(안 보임) vs **모바일 4G 첫 넘김 2,180ms**. 2초 동안
+   *   "같은 사진"이 서 있었다. ⇒ **블러-업**으로 바꾼다 — 흐려지는 순간(0ms) "이건 아직 그 사진이
+   *   아니다"가 읽히고, 도착하면 선명해진다. 업계 표준 idiom 이고 새 자산·새 요청이 0 이다.
+   *
+   *   ⚠️ 블러만 걸면 가장자리에 투명 테두리가 생긴다 → `scale(1.06)` 으로 살짝 키워 덮는다.
    */
   const [loaded, setLoaded] = useState<Set<number>>(() => new Set())
   const paintedRef = useRef(0)
   const painted = loaded.has(shown) ? shown : paintedRef.current
   useEffect(() => { if (loaded.has(shown)) paintedRef.current = shown }, [loaded, shown])
+  /** 가려는 장면이 아직 안 왔다 = 지금 보이는 건 **직전 사진**이다. 이때만 흐리게 한다. */
+  const waiting = painted !== shown
 
   const markDead = useCallback((i: number, isShown: boolean) => {
     setDead((prev) => {
@@ -291,8 +304,14 @@ function DealCardMedia({
                 // `cfFallback === '2'` = 리사이저도 원본도 실패해 숨긴 상태 = 이 장면은 죽었다.
                 if (el.dataset.cfFallback === '2') markDead(i, i === shown)
               }}
-              // 🎞️ 그려진 장면(painted)만 보인다. 새 장면을 받는 중이면 직전 장면을 0.65 로 남긴다(빈 칸 0).
-              style={{ opacity: i === painted ? (painted === shown ? 1 : 0.65) : 0, transition: 'opacity 220ms ease-out' }}
+              // 🎞️ 그려진 장면(painted)만 보인다. 새 장면을 받는 중이면 직전 장면을 **흐리게** 남긴다
+              //    (빈 칸 0 + "아직 그 사진이 아니다"가 0ms 에 읽힌다 — 위 주석의 2026-09-06 신고).
+              style={{
+                opacity: i === painted ? (waiting ? 0.8 : 1) : 0,
+                filter: i === painted && waiting ? 'blur(10px)' : 'blur(0px)',
+                transform: i === painted && waiting ? 'scale(1.06)' : undefined,
+                transition: 'opacity 220ms ease-out, filter 200ms ease-out, transform 200ms ease-out',
+              }}
               className={`absolute inset-0 w-full h-full object-cover ${
                 i === painted ? 'transition-transform duration-300 group-hover:scale-[1.03]' : 'pointer-events-none'
               }`}
