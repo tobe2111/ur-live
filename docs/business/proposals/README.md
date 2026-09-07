@@ -46,7 +46,13 @@ node /path/to/ur-live/docs/business/proposals/urdeal-agency-proposal.build.mjs .
   인플루언서 DB 198,704명·연락 가능 45,725명(`/api/admin/ads/influencer-pool/stats`, 2026-09-07).
   전달 전에 다시 재서 3·10 장을 갱신하세요.
 - 5·6 장의 단위 경제(판매가 2만원, 월 60건, 보수 10%, 재료비 35%)와 14 장의 파일럿 목표는 **가정·제안**입니다. 슬라이드에도 그렇게 적혀 있습니다.
-- 글꼴은 맑은 고딕입니다. 리눅스 LibreOffice 렌더는 글꼴이 치환되어 자간이 벌어져 보이지만 PowerPoint 에서는 정상입니다.
+- 글꼴은 **Pretendard** 입니다(v3, 대표 지시). PowerPoint 로 여는 PC 에 Pretendard 가 없으면 대체 글꼴로 보이므로
+  **대외 전달은 PDF 로** 하세요. 리눅스에서 뽑으려면 `~/.fonts` 에 Pretendard OTF 를 넣고 `fc-cache -f`.
+- **라이브 모바일 캡처**(`shots/home·detail·use·shop.jpg`, 390×844)가 1·3·7·9·15 장에 들어갑니다.
+  다시 찍으려면 아래 캡처 절차 그대로. 캡처 폴더를 `SHOTS_DIR` 로 넘기면 되고, 없으면 빈 슬롯으로 그립니다.
+- ⚠️ **셀러 대시보드 화면(8·10·11 장)은 캡처가 없습니다.** 셀러 로그인이 필요한데 이 환경엔 셀러 테스트
+  계정이 없습니다. 계정이 생기면 `/seller/stores`·`/seller/influencers`·`/seller/operating` 을 같은 규격으로
+  찍어 `shots/` 에 넣고 생성기의 해당 장에 `phone()` 슬롯을 추가하세요.
 
 ### PDF 로 뽑으려면 (리눅스)
 `libreoffice-impress` + `fonts-nanum` + `python3-uno` 가 있어야 합니다. 맑은 고딕을 나눔고딕으로

@@ -10,6 +10,15 @@ v1 은 구조 설명이었고 "그래서 내일 어디 가서 뭘 하면 얼마�
 새로 확인한 사실: 매장 등록 = 사업자번호·대표자명·개업일 국세청 진위확인 + 카카오맵 장소 연결 + 채널 선택 + 확인 PIN
 (`seller-stores.routes.ts`, 사장님 서명 불필요·대행사 계정으로 등록). 정산 = `used` 이용권만 주간(`auto-settlement.ts`).
 
+## v3 (대표 피드백 "Pretendard, 더 세련되게, 실제 모바일 화면을 적재적소에")
+- 글꼴 Pretendard(OTF 를 `~/.fonts` 에 두고 렌더). 여백 넓힘(M 0.75), 카드 줄이고 hairline·여백 위주, 제목 자간 −0.6.
+- 라이브 모바일 캡처 4장(`scripts/capture-proposal-shots.mjs`, NODE_PATH 로 playwright-core·sharp 를 빌려 실행)을
+  폰 프레임으로 1(홈)·3(상세+사용안내)·7(유어샵)·9(상세)·15(4장 전부)에 배치. 유어샵은 cropTop 없이 재캡처.
+- 🩸 **틀렸던 것 2건**: ① pptxgenjs `addImage({rounding:true})` 는 둥근 모서리가 아니라 **원형 크롭**이다.
+  ② `sizing:{type:'crop', w,h}` 의 w·h 는 **인치**이지 비율이 아니다(1×1 인치로 그려졌다). `cover` 로 교체.
+- 5·6 장 구조 정정(대표 지적): 매장 몫 95% 안을 인플루언서 소개비 / 대행사 보수 / 매장 순수취 **세 갈래**로.
+- 못 한 것: 셀러 대시보드 화면 캡처(셀러 로그인 필요, 테스트 계정 없음 → 대표에게 요청).
+
 ## 만든 것
 - `docs/business/proposals/urdeal-agency-proposal.pptx` — 대행사(중개사) 향 제안서 14장, 16:9.
 - `docs/business/proposals/urdeal-agency-proposal.build.mjs` — pptxgenjs 생성기(재생성 절차는 proposals/README.md).
