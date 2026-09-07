@@ -31,7 +31,11 @@
  *
  * ■ 한계 (과신 금지)
  *   - 사진/그라디언트 위 글자는 배경색을 못 재서 건너뛴다(마스크·이미지는 계산 밖).
- *   - 시드로 못 그리는 화면(로그인 후 전용 등)은 그 경로를 안 돈다 → 경로 목록이 곧 범위다.
+ *   - **경로 목록이 곧 범위다** — 목록에 없는 화면은 안 본다.
+ *     ⚠️ 로그인 뒤 화면은 못 보는 게 아니다: `auth: 'user'` 가 localStorage 를 시드해 그린다.
+ *     2026-09-07 에 `/store/new` 가 흰 판 위 흰 글자로 배포된 것은 못 넣어서가 아니라
+ *     **안 넣어서**였다. 새 소비자 화면을 만들면 여기 한 줄 추가할 것.
+ *   - 서버 데이터가 있어야 그려지는 화면(주문 상세 등)은 빈 상태만 재게 된다.
  *   - 포커스·호버·입력중 상태는 기본 상태만 잰다. 그래서 입력요소는 **값을 넣어** 잰다.
  */
 import { spawn } from 'node:child_process'
@@ -89,6 +93,35 @@ const ROUTES = [
   { route: '/about', name: '소개', fill: true },
   { route: '/faq', name: 'FAQ', fill: true },
   { route: '/login', name: '로그인', fill: true },
+
+  /**
+   * 🩸 2026-09-07 — **입력을 받는 화면**을 채운다. 이번에 `/store/new` 의 검색창이 다크에서
+   *   흰 판 위 흰 글자(실측 1.00:1)로 배포됐는데 이 가드는 그 경로를 안 돌고 있었다.
+   *
+   *   ⚠️ 그날 나는 "로그인 필요 페이지는 이 목록에 못 넣는다"고 적었는데 **틀렸다** — 위의
+   *      `auth: 'user'` 8건이 이미 그렇게 돌고 있다. 못 넣은 게 아니라 **안 넣었을 뿐**이다.
+   *
+   *   그리고 입력 화면이 이 클래스의 진앙이다: 전역 `.dark input`(특이도 0,5,1)이 요소의
+   *   `text-gray-900`(0,1,0)을 언제나 이기므로, 늘 흰 표면 위 입력은 클래스 유틸로 못 이긴다.
+   *   `fill: true` 가 값을 채워 재는 이유도 그것이다(빈 칸이면 placeholder 만 재게 된다).
+   */
+  { route: '/store/new', name: '매장 등록', auth: 'user', fill: true },
+  { route: '/store/new', name: '매장 등록(PC)', pc: true, auth: 'user', fill: true },
+  { route: '/account/settings', name: '계정 설정', auth: 'user', fill: true },
+  { route: '/mypage/addresses', name: '배송지', auth: 'user', fill: true },
+  { route: '/community-group-buy/new', name: '동네 공구 제안', auth: 'user', fill: true },
+  { route: '/register', name: '가입', fill: true },
+  { route: '/join', name: '가입 선택', fill: true },
+  { route: '/u/me/add', name: '유어샵 담기', auth: 'user', fill: true },
+
+  /**
+   * 💳 머니 화면 — 여기서 글자가 안 보이면 사람이 **돈을 잘못 낸다.** 위의 목록·상세보다
+   *   실패 비용이 크므로 흔들림을 감수하고 넣는다.
+   */
+  { route: '/checkout', name: '결제', auth: 'user', fill: true },
+  { route: '/points/charge', name: '딜 충전', auth: 'user', fill: true },
+  { route: '/payment/success', name: '결제 완료', auth: 'user', fill: true },
+  { route: '/my-coupons', name: '쿠폰', auth: 'user', fill: true },
 ]
 
 const PORT = 8790
@@ -177,9 +210,14 @@ const MEASURE = () => {
     const tag = el.tagName.toLowerCase()
     if (['script', 'style', 'svg', 'path', 'noscript'].includes(tag)) continue
     const isField = ['input', 'textarea', 'select'].includes(tag)
+    /* 🩸 2026-09-07: `<input type="checkbox">` 는 값이 없어도 `el.value === 'on'` 이다.
+       그 'on' 은 **화면에 그려지지 않는다** — 글자로 세면 읽을 것 없는 요소를 신고하게 된다.
+       값이 실제로 보이는 타입만 텍스트로 취급한다. */
+    const NON_TEXT_INPUT = new Set(['checkbox', 'radio', 'hidden', 'range', 'color', 'file', 'button', 'submit', 'reset', 'image'])
+    const fieldShowsValue = isField && !(tag === 'input' && NON_TEXT_INPUT.has((el.getAttribute('type') || 'text').toLowerCase()))
     // 텍스트를 직접 갖고 있는 요소만(부모 중복 방지)
     const own = isField
-      ? (el.value || el.getAttribute('value') || '')
+      ? (fieldShowsValue ? (el.value || el.getAttribute('value') || '') : '')
       : Array.from(el.childNodes).filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(' ')
     if (!own.trim()) continue
     const r = el.getBoundingClientRect()
@@ -406,9 +444,23 @@ for (const R of ROUTES) {
   const focusables = await page.evaluate(() => {
     const out = []
     let i = 0
+    /* 🩸 2026-09-07: 여기엔 **텍스트 검사가 없었다** — 호버 경로(위)는 직접 텍스트 노드를 요구하는데
+       포커스 경로만 빠져서, 글자가 자식에 있는 `<button>`(자기 텍스트 0)과 체크박스까지 재고 있었다.
+       읽을 것이 없는 요소를 신고하면 진짜 결함이 소음에 묻힌다 — 그러면 결국 가드를 꺼 버리게 된다. */
+    const NON_TEXT_INPUT = new Set(['checkbox', 'radio', 'hidden', 'range', 'color', 'file', 'button', 'submit', 'reset', 'image'])
+    const readable = (el) => {
+      const tag = el.tagName.toLowerCase()
+      if (tag === 'input') {
+        if (NON_TEXT_INPUT.has((el.getAttribute('type') || 'text').toLowerCase())) return false
+        return !!(el.value || el.placeholder)
+      }
+      if (tag === 'textarea' || tag === 'select') return true
+      return Array.from(el.childNodes).some((n) => n.nodeType === 3 && n.textContent.trim())
+    }
     for (const el of document.querySelectorAll('a,button,input,textarea,select,[tabindex]')) {
       const r = el.getBoundingClientRect()
       if (r.width < 8 || r.height < 8 || r.top < 0 || r.top > innerHeight) continue
+      if (!readable(el)) continue
       el.setAttribute('data-dc-focus', String(i)); out.push(i); i++
       if (i >= 12) break
     }
