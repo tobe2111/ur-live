@@ -51,11 +51,19 @@ node /path/to/ur-live/docs/business/proposals/urdeal-agency-proposal.build.mjs .
 - **폰 프레임은 `phone-frame.mjs` 가 PNG 로 미리 굽습니다**(둥근 화면 + 베젤 + 그림자). pptxgenjs 는 이미지를
   둥글게 못 자릅니다(`rounding:true` 는 원형 크롭). 스타일 4종 시안은 `phone-frame-styles.png`, 선택은
   `PHONE_STYLE=minimal|island|card|light`(기본 minimal, 대표 확정 대기).
-- **라이브 모바일 캡처**(`shots/home·detail·use·shop.jpg`, 390×844)가 1·3·7·9·15 장에 들어갑니다.
+- **라이브 모바일 캡처**(`shots/home·detail·use·shop.jpg`, 390×844)가 1·3·7·9·15 장에, 셀러 화면 4장(`shots/seller-*.jpg`)이 8·10·11·12 장에 들어갑니다.
   다시 찍으려면 아래 캡처 절차 그대로. 캡처 폴더를 `SHOTS_DIR` 로 넘기면 되고, 없으면 빈 슬롯으로 그립니다.
-- ⚠️ **셀러 대시보드 화면(8·10·11 장)은 캡처가 없습니다.** 셀러 로그인이 필요한데 이 환경엔 셀러 테스트
-  계정이 없습니다. 계정이 생기면 `/seller/stores`·`/seller/influencers`·`/seller/operating` 을 같은 규격으로
-  찍어 `shots/` 에 넣고 생성기의 해당 장에 `phone()` 슬롯을 추가하세요.
+- **셀러 대시보드 화면(8·10·11·12 장)은 셀러 계정 없이 찍었습니다.** `capture-seller-shots.mjs` 가 실제 urdeal.kr
+  프론트를 띄우되 `/api/seller/*` 응답만 예시 데이터로 대체합니다(Playwright `route`). 로그인도, 프로덕션 쓰기도 없습니다.
+  클라이언트 가드가 토큰의 `exp` 만 보므로 서명 없는 JWT 를 localStorage 에 넣어 화면을 엽니다. 슬라이드에는
+  "예시 데이터로 렌더한 실제 화면"이라고 적혀 있습니다. 화면 UI 가 바뀌면 다시 찍으세요:
+  ```bash
+  NODE_USE_ENV_PROXY=1 NODE_PATH=/opt/node22/lib/node_modules/playwright/node_modules:/opt/node22/lib/node_modules:/tmp/deck/node_modules \
+    node docs/business/proposals/capture-seller-shots.mjs /tmp/shots
+  ```
+  🩸 처음엔 `/seller/stores` 가 에러 경계로 떴습니다. 알림 벨(`/api/dashboard-notifications`)·유입 바인딩이 401 을 내면
+  소비자용 클라이언트가 throw 하고, `ReviewBonusCard` 가 `/api/seller/stores/review-bonus` 의 빈 배열에 `.toLocaleString()` 을
+  부릅니다. 그 엔드포인트들을 이름을 밝혀 명시적으로 모킹한 것이 해결책입니다(무차별 401→200 치환은 하지 않습니다).
 
 ### PDF 로 뽑으려면 (리눅스)
 `libreoffice-impress` + `fonts-nanum` + `python3-uno` 가 있어야 합니다. 맑은 고딕을 나눔고딕으로

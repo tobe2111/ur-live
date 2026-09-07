@@ -72,7 +72,8 @@ async function shot(name) {
   ic.FiMailW = await icon('FiMail', C.darkText);
   ic.FiGlobeW = await icon('FiGlobe', C.darkText);
   ic.FiFileTextW = await icon('FiFileText', C.darkText);
-  const shots = { home: await shot('home'), detail: await shot('detail'), use: await shot('use'), shop: await shot('shop') };
+  const shots = {};
+  for (const k of ['home', 'detail', 'use', 'shop', 'seller-stores', 'seller-influencers', 'seller-operating', 'seller-operators']) shots[k] = await shot(k);
   const missing = Object.entries(shots).filter(([, v]) => !v).map(([k]) => k);
   if (missing.length) console.warn('캡처 없음 (빈 슬롯으로 그림):', missing.join(', '));
 
@@ -332,11 +333,11 @@ async function shot(name) {
     s.addNotes('등록 필수 필드는 seller-stores.routes.ts. 오른쪽은 /u/jiwon1228 라이브 캡처(대표 계정).');
   }
 
-  // ───────── 08 매장 등록 10분 ─────────
+  // ───────── 08 매장 등록 10분 (+ 매장 관리 화면) ─────────
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '사장님 앞에서 10분. 서명도 서류도 없이 대행사 폰으로 끝납니다.');
+    title(s, '사장님 앞에서 10분.\n서명도 서류도 없이 대행사 폰으로 끝납니다.', { w: 8.8, size: 26 });
     const steps = [
       ['FiSearch', '카카오맵에서 매장 찾기', '/seller/stores 에서 매장 이름을 검색해 장소를 연결합니다. 주소와 좌표가 자동으로 들어옵니다.', '1분'],
       ['FiShield', '국세청 진위확인', '사업자번호, 대표자명, 개업일을 넣으면 국세청 조회로 즉시 확인됩니다. 사업자등록증 사진만 보면 됩니다.', '2분'],
@@ -344,18 +345,17 @@ async function shot(name) {
       ['FiCamera', '이용권 만들기', '사진, 정가, 판매가, 유효기간, 마감 수량. 대표 메뉴 두세 개면 충분합니다. 사진은 그 자리에서 찍어도 됩니다.', '3분씩'],
       ['FiSmartphone', '사장님께 사용법', '손님이 QR을 보여 주면 매장 폰으로 찍거나, 손님 화면에 매장 PIN을 눌러 주면 끝. 이것만 설명하면 됩니다.', '3분'],
     ];
-    const sw = (W - 2 * M - 4 * 0.25) / 5;
+    let y = 2.35;
     steps.forEach(([i, h, p, t], k) => {
-      const x = M + k * (sw + 0.25);
-      T(s, t, { x, y: 2.2, w: sw, h: 0.4, fontSize: 22, bold: true, color: C.brand, charSpacing: -0.8 });
-      hr(s, x, 2.7, sw - 0.15);
-      iconCircle(s, i, x, 2.88, 0.46);
-      T(s, h, { x, y: 3.48, w: sw - 0.15, h: 0.65, fontSize: 13.5, bold: true, color: C.ink, lineSpacingMultiple: 1.25, valign: 'top', charSpacing: -0.3 });
-      T(s, p, { x, y: 4.15, w: sw - 0.15, h: 1.85, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
+      T(s, t, { x: M, y: y + 0.03, w: 0.9, h: 0.36, fontSize: 17, bold: true, color: C.brand, charSpacing: -0.6 });
+      iconCircle(s, i, M + 0.95, y + 0.02, 0.4);
+      T(s, h, { x: M + 1.5, y: y + 0.03, w: 6.4, h: 0.3, fontSize: 13, bold: true, color: C.ink, charSpacing: -0.3 });
+      T(s, p, { x: M + 1.5, y: y + 0.36, w: 6.7, h: 0.5, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.36, valign: 'top' });
+      if (k < 4) hr(s, M, y + 0.84, 8.4);
+      y += 0.88;
     });
-    card(s, M, 6.15, W - 2 * M, 0.7, { fill: C.tint });
-    T(s, '등록은 대행사 셀러 계정으로 합니다. 사장님이 나중에 직접 계정을 만들어 이어받을 때는 계정 양도가 아니라 권한 변경이라, 올려 둔 이용권과 주문과 리뷰가 그대로 남습니다.', { x: M + 0.25, y: 6.15, w: W - 2 * M - 0.5, h: 0.7, fontSize: 10.5, color: C.ink, valign: 'middle', lineSpacingMultiple: 1.35 });
-    s.addNotes('시간은 현장 추정. 필드는 seller-stores.routes.ts 실재. 셀러 화면 캡처는 셀러 로그인이 필요해 이 판에 없다.');
+    phone(s, 'seller-stores', 10.0, 1.15, 5.15, { caption: '매장 관리 화면 (예시 데이터)' });
+    s.addNotes('시간은 현장 추정. 필드는 seller-stores.routes.ts 실재. 오른쪽은 /seller/stores 실제 UI 를 예시 데이터로 렌더한 캡처(프로덕션 무접촉).');
   }
 
   // ───────── 09 사장님 대본 (+ 상세 화면) ─────────
@@ -395,11 +395,11 @@ async function shot(name) {
     s.addNotes('대본의 사실 주장은 앞 장들과 동일 출처. 가운데는 이용권 상세 라이브 캡처.');
   }
 
-  // ───────── 10 인플루언서 붙이기 ─────────
+  // ───────── 10 인플루언서 붙이기 (+ 소개 파트너 찾기 화면) ─────────
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '인플루언서 섭외, 계약, 정산이 화면 안에서 끝납니다.');
+    title(s, '인플루언서 섭외, 계약, 정산이\n화면 안에서 끝납니다.', { w: 6.8 });
     const steps = [
       ['DB에서 고른다', '/seller/influencers 에서 플랫폼과 팔로워 구간으로 거릅니다. 매장 동네에서 활동하는 채널을 우선합니다.'],
       ['제안을 접수한다', '매장 소개와 조건을 적어 접수하면 유어딜이 발송합니다. 연락처는 대행사에게도 공개되지 않습니다.'],
@@ -407,89 +407,90 @@ async function shot(name) {
       ['귀속은 자동', '수락 즉시 전용 링크가 나오고 그 링크로 들어온 주문이 자동 연결됩니다. 쿠폰 코드를 확인할 일이 없습니다.'],
       ['지급도 자동', '환불 가능 기간 7일이 지나면 확정되고, 원천징수를 계산해 유어딜이 지급합니다. 대행사가 돈을 옮기지 않습니다.'],
     ];
-    const sw = (W - 2 * M - 4 * 0.25) / 5;
+    let y = 2.35;
     steps.forEach(([h, p], i) => {
-      const x = M + i * (sw + 0.25);
-      numBadge(s, i + 1, x, 2.2);
-      hr(s, x, 2.75, sw - 0.15);
-      T(s, h, { x, y: 2.9, w: sw - 0.15, h: 0.35, fontSize: 13.5, bold: true, color: C.ink, charSpacing: -0.3 });
-      T(s, p, { x, y: 3.3, w: sw - 0.15, h: 1.6, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
+      numBadge(s, i + 1, M, y + 0.02, 0.36);
+      T(s, h, { x: M + 0.55, y: y + 0.03, w: 6.0, h: 0.3, fontSize: 13, bold: true, color: C.ink, charSpacing: -0.3 });
+      T(s, p, { x: M + 0.55, y: y + 0.36, w: 6.1, h: 0.5, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.36, valign: 'top' });
+      if (i < 4) hr(s, M, y + 0.84, 6.65);
+      y += 0.88;
     });
-    card(s, M, 5.05, W - 2 * M, 1.7, { fill: C.ink });
-    const nums = [['198,704', '인플루언서 DB'], ['45,725', '연락 가능'], ['170,307', '네이버 블로그'], ['17,986', '유튜브'], ['9,803', '네이버 카페']];
-    const nw = (W - 2 * M - 0.7) / 5;
+    const pw10 = phone(s, 'seller-influencers', 7.75, 1.15, 5.15, { caption: '소개 파트너 찾기 (예시 데이터)' });
+    const sx = 7.75 + pw10 + 0.45, sw = W - M - sx;
+    label(s, '인플루언서 DB (2026.9.7 실측)', sx, 1.3, sw);
+    const nums = [['198,704', '전체'], ['45,725', '연락 가능'], ['170,307', '네이버 블로그'], ['17,986', '유튜브'], ['9,803', '네이버 카페']];
+    let ny = 1.68;
     nums.forEach(([n, l], i) => {
-      const x = M + 0.35 + i * nw;
-      T(s, n, { x, y: 5.25, w: nw, h: 0.6, fontSize: 26, bold: true, color: i < 2 ? C.brand : C.darkText, charSpacing: -0.8 });
-      T(s, l, { x, y: 5.87, w: nw, h: 0.3, fontSize: 10.5, color: C.darkMuted });
+      T(s, n, { x: sx, y: ny, w: sw, h: 0.45, fontSize: 21, bold: true, color: i < 2 ? C.brand : C.ink, charSpacing: -0.8 });
+      T(s, l, { x: sx, y: ny + 0.44, w: sw, h: 0.25, fontSize: 10, color: C.inkSoft });
+      if (i < 4) hr(s, sx, ny + 0.78, sw);
+      ny += 0.9;
     });
-    T(s, '2026년 9월 7일 유어딜 운영 콘솔 실측. 인스타그램과 틱톡은 탐색 필터에 있으나 DB의 대부분은 네이버 블로그와 유튜브입니다.', { x: M + 0.35, y: 6.3, w: W - 2 * M - 0.7, h: 0.3, fontSize: 9.5, color: C.darkMuted });
-    s.addNotes('숫자는 /api/admin/ads/influencer-pool/stats 2026-09-07 실측.');
+    T(s, '인스타그램과 틱톡은 필터에 있으나 DB의 대부분은 네이버 블로그와 유튜브입니다.', { x: sx, y: 6.2, w: sw, h: 0.6, fontSize: 8.5, color: C.gray, lineSpacingMultiple: 1.35, valign: 'top' });
+    s.addNotes('숫자는 /api/admin/ads/influencer-pool/stats 2026-09-07 실측. 가운데는 /seller/influencers 실제 UI 를 예시 데이터로 렌더한 캡처.');
   }
 
-  // ───────── 11 주간 루틴 + 도구 ─────────
+  // ───────── 11 주간 루틴 + 화면 3장 ─────────
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '담당자 한 명의 일주일. 쓰는 화면은 여섯 장뿐입니다.');
+    title(s, '담당자 한 명의 일주일.\n쓰는 화면은 여섯 장뿐입니다.', { w: 5.4 });
     const days = [
-      ['월·화', '매장 방문 4곳', '7장 체크리스트로 고른 매장을 방문해 등록합니다. 하루 2곳이면 충분합니다.', '/seller/stores'],
-      ['수', '이용권 손보기', '사진 교체, 마감 수량, 할인율 조정. 잘 팔리는 메뉴는 수량을 늘립니다.', '/seller/products'],
-      ['목', '인플루언서 제안 5건', 'DB에서 매장 동네 채널을 골라 제안을 접수하고, 들어온 신청에 답합니다.', '/seller/influencers'],
-      ['금', '매장에 보고', '운영 매장 요약에서 매장별 매출과 주문을 뽑아 사장님께 보내고, 계약대로 청구합니다.', '/seller/operating'],
+      ['월·화', '매장 방문 4곳', '체크리스트로 고른 매장을 방문해 등록합니다. 하루 2곳이면 충분합니다.'],
+      ['수', '이용권 손보기', '사진 교체, 마감 수량, 할인율 조정. 잘 팔리는 메뉴는 수량을 늘립니다.'],
+      ['목', '인플루언서 제안 5건', 'DB에서 매장 동네 채널을 골라 제안을 접수하고, 들어온 신청에 답합니다.'],
+      ['금', '매장에 보고', '운영 매장 요약의 매장별 매출과 주문을 사장님께 보내고, 계약대로 청구합니다.'],
     ];
-    const cw = (W - 2 * M - 0.9) / 4;
-    days.forEach(([d, h, p, r], i) => {
-      const x = M + i * (cw + 0.3);
-      card(s, x, 2.15, cw, 2.45);
-      label(s, d, x + 0.28, 2.33, cw - 0.5, { color: C.brand });
-      T(s, h, { x: x + 0.28, y: 2.62, w: cw - 0.5, h: 0.38, fontSize: 15, bold: true, color: C.ink, charSpacing: -0.3 });
-      T(s, p, { x: x + 0.28, y: 3.05, w: cw - 0.5, h: 1.05, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
-      T(s, r, { x: x + 0.28, y: 4.2, w: cw - 0.5, h: 0.25, fontSize: 9.5, color: C.brand, fontFace: 'Courier New' });
+    let y = 2.35;
+    days.forEach(([d, h, p], i) => {
+      T(s, d, { x: M, y: y + 0.03, w: 0.8, h: 0.3, fontSize: 11, bold: true, color: C.brand, charSpacing: 0.5 });
+      T(s, h, { x: M + 0.85, y: y + 0.02, w: 4.4, h: 0.3, fontSize: 13, bold: true, color: C.ink, charSpacing: -0.3 });
+      T(s, p, { x: M + 0.85, y: y + 0.34, w: 4.5, h: 0.5, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.36, valign: 'top' });
+      if (i < 3) hr(s, M, y + 0.82, 5.3);
+      y += 0.86;
     });
-    label(s, '쓰는 화면 여섯 장 (전부 셀러 대시보드. 대행사 전용 계정이나 별도 프로그램이 없습니다)', M, 4.9, W - 2 * M);
-    const tools = [
-      ['매장 관리', '/seller/stores', '등록, 국세청 확인, 채널, 매장 전환'],
-      ['운영 권한', '/seller/operators', '사장님이 대행사 핸들을 추가하거나 회수'],
-      ['인플루언서 탐색', '/seller/influencers', '필터, 제안 접수'],
-      ['소개 협업', '/seller/influencer-deals', '커미션 % 제안, 조건부 발효'],
-      ['소개비 내역', '/seller/promo-spend', '수령인별, 딜별. 사장님도 항상 열람'],
-      ['운영 매장 요약', '/seller/operating', '매장별 매출과 주문, 운영 시작 이후 구간'],
-    ];
-    const tw = (W - 2 * M - 0.5) / 3;
-    tools.forEach(([h, r, p], k) => {
-      const col = k % 3, row = Math.floor(k / 3);
-      const x = M + col * (tw + 0.25), y = 5.3 + row * 0.78;
-      T(s, h, { x, y, w: 1.7, h: 0.28, fontSize: 11.5, bold: true, color: C.ink });
-      T(s, r, { x: x + 1.6, y: y + 0.02, w: tw - 1.6, h: 0.25, fontSize: 9.5, color: C.brand, fontFace: 'Courier New' });
-      T(s, p, { x, y: y + 0.3, w: tw - 0.2, h: 0.32, fontSize: 10, color: C.inkSoft });
+    label(s, '쓰는 화면 여섯 장 (전부 셀러 대시보드, 별도 프로그램 없음)', M, 5.85, 5.4);
+    const tools = [['매장 관리', '/seller/stores'], ['운영 권한', '/seller/operators'], ['인플루언서 탐색', '/seller/influencers'], ['소개 협업', '/seller/influencer-deals'], ['소개비 내역', '/seller/promo-spend'], ['운영 매장 요약', '/seller/operating']];
+    tools.forEach(([h, r], k) => {
+      const col = k % 2, row = Math.floor(k / 2);
+      const x = M + col * 2.75, ty = 6.15 + row * 0.25;
+      T(s, h, { x, y: ty, w: 1.15, h: 0.24, fontSize: 9.5, bold: true, color: C.ink });
+      T(s, r, { x: x + 1.15, y: ty + 0.01, w: 1.6, h: 0.22, fontSize: 8.5, color: C.brand, fontFace: 'Courier New' });
     });
-    s.addNotes('라우트 6개는 2026-09-07 main 실재. 요일 배분은 권장 루틴.');
+    const ph = 4.05;
+    const pw11 = ph * ((780 + 44) / (1688 + 44));
+    const gap = 0.22, x0 = W - M - (3 * pw11 + 2 * gap);
+    [['seller-stores', '매장 관리'], ['seller-operating', '운영 매장 요약'], ['seller-operators', '운영자 관리']].forEach(([k, cap], i) => {
+      phone(s, k, x0 + i * (pw11 + gap), 2.0, ph, { caption: cap });
+    });
+    T(s, '예시 데이터로 렌더한 실제 화면', { x: x0, y: 6.55, w: 3 * pw11 + 2 * gap, h: 0.25, fontSize: 9, color: C.gray, align: 'center' });
+    s.addNotes('라우트 6개는 2026-09-07 main 실재. 요일 배분은 권장 루틴. 오른쪽 3장은 실제 UI + 예시 데이터 캡처.');
   }
 
-  // ───────── 12 사장님이 안심하는 이유 ─────────
+  // ───────── 12 사장님이 안심하는 이유 (+ 운영자 관리 화면) ─────────
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '사장님이 맡겨도 잃을 게 없어서, 두 번째 방문이 쉬워집니다.', { size: 25 });
+    title(s, '사장님이 맡겨도 잃을 게 없어서,\n두 번째 방문이 쉬워집니다.', { w: 8.6, size: 25 });
     const items = [
       ['FiRefreshCcw', '회수는 언제든, 조건 없이', '사장님이 권한을 빼도 대행사가 올려 둔 이용권, 주문, 리뷰는 매장에 남습니다. 붙이는 것도 떼는 것도 권한 한 줄입니다.'],
-      ['FiLock', '정산계좌와 사업자정보는 주인만', '운영자에게는 사업자번호와 대표자명이 가려 보이고, 계좌 변경과 사업자정보 수정과 탈퇴는 서버가 막습니다. 매장 돈이 딴 데로 갈 길이 없습니다.'],
+      ['FiLock', '정산계좌와 사업자정보는 주인만', '운영자에게는 사업자번호와 대표자명이 가려 보이고, 계좌 변경과 사업자정보 수정과 탈퇴는 서버가 막습니다.'],
       ['FiEye', '소개비 지출은 항상 사장님이 봅니다', '운영을 맡겨도 소개비가 누구에게 얼마 나갔는지 사장님이 직접 봅니다. 투명성은 위임 여부와 무관합니다.'],
-      ['FiBarChart2', '운영 성과는 부풀리지 않습니다', '운영 매장 요약은 매장 총액과 "운영 시작 이후" 구간을 나눠 보여 줍니다. 그래서 그 숫자를 청구 근거로 쓸 수 있습니다.'],
+      ['FiBarChart2', '운영 성과는 부풀리지 않습니다', '운영 매장 요약은 매장 총액과 "운영 시작 이후" 구간을 나눠 보여 줍니다. 그 숫자를 청구 근거로 쓸 수 있습니다.'],
     ];
-    const cw = (W - 2 * M - 0.5) / 2;
+    const cw = (8.7 - 0.4) / 2;
     items.forEach(([i, h, p], k) => {
       const col = k % 2, row = Math.floor(k / 2);
-      const x = M + col * (cw + 0.5), y = 2.25 + row * 1.75;
-      iconCircle(s, i, x, y, 0.46);
-      T(s, h, { x: x + 0.65, y: y + 0.06, w: cw - 0.7, h: 0.35, fontSize: 14.5, bold: true, color: C.ink, charSpacing: -0.3 });
-      T(s, p, { x, y: y + 0.62, w: cw - 0.2, h: 0.95, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.45, valign: 'top' });
-      if (row === 0) hr(s, x, y + 1.55, cw - 0.2);
+      const x = M + col * (cw + 0.4), y = 2.4 + row * 1.7;
+      iconCircle(s, i, x, y, 0.42);
+      T(s, h, { x: x + 0.58, y: y + 0.05, w: cw - 0.6, h: 0.32, fontSize: 13, bold: true, color: C.ink, charSpacing: -0.3 });
+      T(s, p, { x, y: y + 0.58, w: cw - 0.1, h: 0.95, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
+      if (row === 0) hr(s, x, y + 1.5, cw - 0.1);
     });
-    card(s, M, 5.85, W - 2 * M, 0.95, { fill: C.tint });
-    T(s, '"계좌랑 사업자 정보는 사장님만 만질 수 있고 저는 못 봅니다. 마음에 안 들면 오늘이라도 권한만 빼시면 되고, 올려 둔 건 다 사장님 것으로 남습니다."', { x: M + 0.3, y: 5.85, w: W - 2 * M - 0.6, h: 0.95, fontSize: 12, italic: true, color: C.ink, lineSpacingMultiple: 1.4, valign: 'middle' });
-    s.addNotes('store-operator-model.md §7.7.');
+    card(s, M, 5.85, 8.7, 0.95, { fill: C.tint });
+    T(s, '"계좌랑 사업자 정보는 사장님만 만질 수 있고 저는 못 봅니다. 마음에 안 들면 오늘이라도 권한만 빼시면 되고, 올려 둔 건 다 사장님 것으로 남습니다."', { x: M + 0.3, y: 5.85, w: 8.1, h: 0.95, fontSize: 11.5, italic: true, color: C.ink, lineSpacingMultiple: 1.4, valign: 'middle' });
+    phone(s, 'seller-operators', 10.05, 1.15, 5.15, { caption: '운영자 관리 (예시 데이터)' });
+    s.addNotes('store-operator-model.md §7.7. 오른쪽은 /seller/operators 실제 UI 를 예시 데이터로 렌더한 캡처.');
   }
 
   // ───────── 13 유어딜이 대행사에게 해 주는 것 ─────────
