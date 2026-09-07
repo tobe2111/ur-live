@@ -18,7 +18,7 @@
  */
 import { Hono } from 'hono'
 import { edgeCache } from '@/worker/middleware/edge-cache'
-import { requireAdmin } from '@/worker/middleware/auth'
+import { requireAdmin, requireSeller, getCurrentUser } from '@/worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error'
 import { intParam } from '@/shared/pagination'
 import {
@@ -29,6 +29,7 @@ import type { Env } from '@/worker/types/env'
 
 const urshortsRoutes = new Hono<{ Bindings: Env }>()
 const adminUrshortsRoutes = new Hono<{ Bindings: Env }>()
+const sellerUrshortsRoutes = new Hono<{ Bindings: Env }>()
 
 const _ensured = new WeakSet<D1Database>()
 /** per-request DDL 금지 룰(CLAUDE.md 머니/정합성 §부수) 을 지키려 DB 당 1회만. */
@@ -235,4 +236,92 @@ adminUrshortsRoutes.put('/channel', requireAdmin(), async (c) => {
   }
 })
 
-export { urshortsRoutes, adminUrshortsRoutes }
+// ── 셀러 ──────────────────────────────────────────────────────────────────────
+/**
+ * 🏪 사업자 유저가 **자기 이용권에** 쇼츠를 붙인다 (2026-09-07).
+ *
+ * 가장 확실한 수급 경로다 — 매장 자신이 자기 영상을 갖고 있고, 연결이 **원천적으로 정확**하다.
+ * 자동 수집이 남의 영상에서 우리 매장을 찾아내는 어려운 일인 데 비해 이건 그 반대다.
+ *
+ * 🔴 **소유권 검사가 이 블록의 전부다.** `products.seller_id` 가 요청자와 같을 때만 붙인다.
+ *    안 보면 아무 셀러나 **남의 상품**에 영상을 걸 수 있다(IDOR) — 그러면 A 매장 이용권 옆에
+ *    B 매장 영상이 붙고, 홈에서 그게 그대로 팔린다. 에러가 안 나서 신고가 와야 안다.
+ */
+sellerUrshortsRoutes.get('/', requireSeller(), async (c) => {
+  try {
+    const DB = c.env.DB
+    await ensureTable(DB)
+    const sellerId = getCurrentUser(c)?.id
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const { results } = await DB.prepare(`
+      SELECT s.id, s.video_id, s.title, s.thumb_url, s.is_active, s.duration_sec,
+             s.product_id, p.name AS product_name
+        FROM home_shorts s
+        JOIN products p ON p.id = s.product_id
+       WHERE p.seller_id = ?
+       ORDER BY s.id DESC
+       LIMIT 100`).bind(sellerId).all()
+    return c.json({ success: true, data: results ?? [] })
+  } catch (err) {
+    return safeError(c, err, '내 쇼츠를 불러오지 못했습니다', '[urshorts:seller]')
+  }
+})
+
+sellerUrshortsRoutes.post('/', requireSeller(), async (c) => {
+  try {
+    const DB = c.env.DB
+    await ensureTable(DB)
+    const sellerId = getCurrentUser(c)?.id
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+
+    const body = await c.req.json<{ url?: string; product_id?: number }>()
+    const productId = Number(body?.product_id)
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return c.json({ success: false, error: '어느 이용권인지 골라 주세요' }, 400)
+    }
+    // 🔴 소유권. 이 한 줄이 빠지면 남의 상품에 영상을 걸 수 있다.
+    const owned = await DB.prepare(`SELECT id, name FROM products WHERE id = ? AND seller_id = ?`)
+      .bind(productId, sellerId).first<{ id: number; name: string }>()
+    if (!owned) return c.json({ success: false, error: '내 이용권이 아닙니다' }, 403)
+
+    const parsed = parseYouTubeUrl(body?.url)
+    if (!parsed) return c.json({ success: false, error: '유튜브 주소에서 영상을 찾지 못했습니다' }, 400)
+    const verdict = await verifyIsShort(c.env, parsed.id, parsed.form)
+    if (!verdict.ok) return c.json({ success: false, error: verdict.reason }, 400)
+
+    const r = await DB.prepare(`
+      INSERT OR IGNORE INTO home_shorts
+        (video_id, title, thumb_url, product_id, sort_order, source, duration_sec)
+      VALUES (?, ?, ?, ?, 0, 'seller', ?)`)
+      .bind(parsed.id, owned.name?.slice(0, 200) ?? null, youTubeThumbUrl(parsed.id),
+            productId, verdict.duration)
+      .run()
+    if (!r.meta.changes) return c.json({ success: false, error: '이미 등록된 영상입니다' }, 409)
+    return c.json({ success: true, video_id: parsed.id })
+  } catch (err) {
+    return safeError(c, err, '쇼츠를 추가하지 못했습니다', '[urshorts:seller]')
+  }
+})
+
+sellerUrshortsRoutes.delete('/:id', requireSeller(), async (c) => {
+  try {
+    const DB = c.env.DB
+    await ensureTable(DB)
+    const sellerId = getCurrentUser(c)?.id
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청' }, 400)
+    // 🔴 여기도 소유권. 삭제는 자기 상품에 붙은 것만.
+    const r = await DB.prepare(`
+      DELETE FROM home_shorts
+       WHERE id = ?
+         AND product_id IN (SELECT id FROM products WHERE seller_id = ?)`)
+      .bind(id, sellerId).run()
+    if (!r.meta.changes) return c.json({ success: false, error: '내 쇼츠가 아닙니다' }, 403)
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '쇼츠를 삭제하지 못했습니다', '[urshorts:seller]')
+  }
+})
+
+export { urshortsRoutes, adminUrshortsRoutes, sellerUrshortsRoutes }

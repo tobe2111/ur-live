@@ -88,6 +88,16 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎬 셀러가 남의 상품에 영상을 걸 수 있다 (소유권 검사 제거)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: 'SELECT id, name FROM products WHERE id = ? AND seller_id = ?',
+    replace: 'SELECT id, name FROM products WHERE id = ?',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '화면이 보낸 product_id 를 그대로 믿으면 아무 셀러나 남의 상품에 영상을 건다(IDOR). ' +
+      'A 매장 이용권 옆에 B 매장 영상이 붙어 홈에서 그대로 팔리는데, 에러가 안 나서 신고가 와야 안다.',
+  },
+  {
     name: '🎬 /videos 가 몰 슬러그 예약어에서 빠진다',
     file: 'src/shared/mall/slug.ts',
     find: "'u', 'user', 'v', 'videos', 'vouchers',",

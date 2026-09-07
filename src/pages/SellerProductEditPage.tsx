@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import ProductOptionForm, { ProductOption } from '@/components/ProductOptionForm'
 import VoucherFields from '@/pages/seller-product-edit/VoucherFields'
 import ProductPhotoField, { parseProductPhotos } from '@/pages/seller-product-edit/ProductPhotoField'
+// 🎬 2026-09-07 유어쇼츠 — 매장이 자기 영상을 직접 붙이는 가장 확실한 수급 경로.
+import ProductShortsField from '@/pages/seller-product-edit/ProductShortsField'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { 
   ArrowLeft, 
@@ -384,6 +386,8 @@ export default function SellerProductEditPage() {
             onPhotos={(next) => setFormData({ ...formData, photos: next, image_url: next[0] || '' })}
             onImageUrl={(url) => setFormData({ ...formData, image_url: url })}
           />
+
+          <ProductShortsField productId={id ? Number(id) : undefined} />
 
           {/* Category Selection */}
           <div>

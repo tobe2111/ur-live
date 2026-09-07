@@ -268,7 +268,7 @@ import { sellerTiersRoutes } from '../features/seller-tiers/api/seller-tiers.rou
 import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
 import { sectionsRoutes } from '../features/sections/api/sections.routes';
 // 🎬 2026-09-07 유어쇼츠 — 홈 레일 + /videos 뷰어. 공개는 이용권이 붙은 영상만 나간다.
-import { urshortsRoutes, adminUrshortsRoutes } from '../features/urshorts/api/urshorts.routes';
+import { urshortsRoutes, adminUrshortsRoutes, sellerUrshortsRoutes } from '../features/urshorts/api/urshorts.routes';
 import { youtubeGrowthRoutes, youtubeGrowthAdminRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
 import { dashboardNotificationsRoutes } from '../features/notifications/api/dashboard-notifications.routes';
 import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
@@ -1430,6 +1430,7 @@ app.route('/api/admin', adminAuthRoutes);
 app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, windowSec: 300 }));
 app.route('/api/seller', sellerAuthRoutes);
 app.route('/api/seller', sellerOperatorsRoutes); // 🏪 my-stores · 매장 전환 · 운영자 관리
+app.route('/api/seller/urshorts', sellerUrshortsRoutes); // 🎬 자기 이용권에 쇼츠 붙이기(소유권 검사)
 app.route('/api/influencer-profile', influencerProfileRoutes); app.route('/api/seller', sellerStoresRoutes); app.route('/api/seller', sellerWithdrawRoutes); app.route('/api/seller/influencers', sellerInfluencersRoutes); app.route('/api/influencer-offers', influencerOfferInvitesRoutes); app.route('/api/admin/influencer-outreach', adminInfluencerOutreachRoutes); // 매장관리/인플탐색·제안/수락다리/어드민 발송큐
 
 // 🔒 2026-07-28: Google/Firebase 로그인 마운트 해제 — 사유·복원법은 auth.ts 주석 / AUDIT_INVARIANTS.md

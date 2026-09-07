@@ -204,3 +204,37 @@ describe('어드민 화면', () => {
     expect(A).toMatch(/response\?\.data\?\.error/)
   })
 })
+
+describe('셀러 입력칸 — 소유권이 전부다', () => {
+  const R = code('src/features/urshorts/api/urshorts.routes.ts')
+  const seller = R.slice(R.indexOf('sellerUrshortsRoutes.get'))
+
+  it('추가할 때 그 상품이 정말 그 셀러 것인지 서버가 확인한다 (IDOR 차단)', () => {
+    // 화면이 보낸 product_id 를 믿으면 남의 상품에 영상을 걸 수 있다.
+    expect(seller).toMatch(/FROM products WHERE id = \? AND seller_id = \?/)
+    expect(seller).toMatch(/내 이용권이 아닙니다/)
+  })
+
+  it('삭제도 자기 상품에 붙은 것만 지운다', () => {
+    const del = seller.slice(seller.indexOf("sellerUrshortsRoutes.delete"))
+    expect(del).toMatch(/product_id IN \(SELECT id FROM products WHERE seller_id = \?\)/)
+  })
+
+  it('목록도 자기 상품 것만 (남의 쇼츠가 보이면 안 된다)', () => {
+    const list = seller.slice(0, seller.indexOf("sellerUrshortsRoutes.post"))
+    expect(list).toMatch(/WHERE p\.seller_id = \?/)
+  })
+
+  it('셀러 경로도 쇼츠만 받는다 (어드민과 같은 검사를 쓴다)', () => {
+    expect(seller).toContain('verifyIsShort(c.env, parsed.id, parsed.form)')
+  })
+
+  it('세 경로 전부 requireSeller 뒤에 있다', () => {
+    expect((seller.match(/requireSeller\(\)/g) ?? []).length).toBe(3)
+  })
+
+  it('화면은 저장 전 상품에서는 안 뜬다 (붙일 곳이 없다)', () => {
+    const F = code('src/pages/seller-product-edit/ProductShortsField.tsx')
+    expect(F).toMatch(/if \(!productId\) return null/)
+  })
+})
