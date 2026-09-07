@@ -23,11 +23,13 @@ interface MyShort {
   thumb_url: string | null
   product_id: number
   is_active: number
+  consent: number
 }
 
 export default function ProductShortsField({ productId }: { productId?: number }) {
   const [rows, setRows] = useState<MyShort[]>([])
   const [url, setUrl] = useState('')
+  const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -54,7 +56,7 @@ export default function ProductShortsField({ productId }: { productId?: number }
     if (busy || !url.trim() || !productId) return
     setBusy(true); setErr(null)
     try {
-      await api.post('/api/seller/urshorts', { url, product_id: productId })
+      await api.post('/api/seller/urshorts', { url, product_id: productId, consent })
       setUrl(''); await load()
     } catch (e) {
       const d = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
@@ -126,6 +128,18 @@ export default function ProductShortsField({ productId }: { productId?: number }
           <Plus size={15} /> 추가
         </button>
       </div>
+      {/* 🔴 허락 확인. 매장 자기 영상이면 당연히 체크되지만, 손님이 찍어 올린 영상을 붙일 때는
+          그 사람에게 물어야 한다 — 영상 옆에 구매 버튼이 붙으면 그가 이 딜을 보증한 것으로 읽힌다. */}
+      <label className="mt-2 flex items-start gap-2 text-xs text-gray-700">
+        <input
+          type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0 accent-[#1C69EF]"
+        />
+        <span>
+          <b>내 매장이 만든 영상이거나, 만든 사람에게 허락받았습니다.</b>
+          <span className="block text-gray-500">확인해야 유어딜 홈에 나갑니다.</span>
+        </span>
+      </label>
       {(err || hint) && (
         <p className={`mt-1.5 text-xs ${err || hint?.bad ? 'text-red-600' : 'text-gray-500'}`}>
           {err || hint?.text}

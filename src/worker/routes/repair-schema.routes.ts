@@ -101,6 +101,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       sort_order INTEGER NOT NULL DEFAULT 0,
       is_active INTEGER NOT NULL DEFAULT 1,
       source TEXT NOT NULL DEFAULT 'manual',
+      duration_sec INTEGER,
+      consent INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )` },
     { name: 'auth_refresh_tokens', sql: `CREATE TABLE IF NOT EXISTS auth_refresh_tokens (

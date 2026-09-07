@@ -48,11 +48,13 @@ async function ensureTable(DB: D1Database) {
       is_active INTEGER NOT NULL DEFAULT 1,
       source TEXT NOT NULL DEFAULT 'manual',
       duration_sec INTEGER,
+      consent INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `).run().catch(() => {})
   // 기존 테이블에도 붙인다(이미 있으면 무해).
   await DB.prepare(`ALTER TABLE home_shorts ADD COLUMN duration_sec INTEGER`).run().catch(() => {})
+  await DB.prepare(`ALTER TABLE home_shorts ADD COLUMN consent INTEGER NOT NULL DEFAULT 0`).run().catch(() => {})
   await DB.prepare(
     `CREATE INDEX IF NOT EXISTS idx_home_shorts_live ON home_shorts(is_active, sort_order, id)`
   ).run().catch(() => {})
@@ -60,7 +62,15 @@ async function ensureTable(DB: D1Database) {
 
 /**
  * 공개 목록 SELECT.
+ *
  * 🔴 `JOIN products` 는 INNER 다 — 이용권이 안 붙었거나 그 상품이 내려갔으면 행 자체가 없다.
+ *
+ * 🔴 `s.consent = 1` — **허락받은 영상만 홈에 나간다** (2026-09-07 대표 판단).
+ *    남의 영상을 구매 버튼 옆에 두면 그 창작자가 이 딜을 보증한 것으로 읽히는데 그는 그런 적이 없다.
+ *    게다가 유어애즈가 바로 그 식당 채널들에게 제휴 제안을 보낼 참이라, 자기 영상이 이미 우리
+ *    판매에 쓰이는 걸 보면 그 제안이 열리기도 전에 죽는다 — **만들려는 관계를 태우는 셈**이다.
+ *    ⇒ 홈에 나가는 영상은 (a) 우리 것 (b) 매장 것 (c) 창작자가 명시로 허락한 것, 셋 중 하나.
+ *    이 조건이 그 규칙을 **문서가 아니라 구조로** 만든다 — 나중에 자동수집이 붙어도 못 샌다.
  */
 const PUBLIC_SQL = `
   SELECT s.id, s.video_id, s.title, s.channel, s.thumb_url,
@@ -76,6 +86,7 @@ const PUBLIC_SQL = `
     JOIN products p ON p.id = s.product_id
    WHERE s.is_active = 1
      AND p.is_active = 1
+     AND s.consent = 1
    ORDER BY s.sort_order ASC, s.id DESC
    LIMIT ?`
 
@@ -161,7 +172,7 @@ adminUrshortsRoutes.post('/', requireAdmin(), async (c) => {
   try {
     const DB = c.env.DB
     await ensureTable(DB)
-    const body = await c.req.json<{ url?: string; title?: string; channel?: string; product_id?: number }>()
+    const body = await c.req.json<{ url?: string; title?: string; channel?: string; product_id?: number; consent?: boolean }>()
     const parsed = parseYouTubeUrl(body?.url)
     // 추측해서 저장하지 않는다 — 틀린 id 는 죽은 썸네일로만 드러난다.
     if (!parsed) return c.json({ success: false, error: '유튜브 주소에서 영상을 찾지 못했습니다' }, 400)
@@ -170,11 +181,11 @@ adminUrshortsRoutes.post('/', requireAdmin(), async (c) => {
     const pid = Number(body?.product_id)
     const r = await DB.prepare(`
       INSERT OR IGNORE INTO home_shorts
-        (video_id, title, channel, thumb_url, product_id, sort_order, source, duration_sec)
-      VALUES (?, ?, ?, ?, ?, 0, 'manual', ?)`)
+        (video_id, title, channel, thumb_url, product_id, sort_order, source, duration_sec, consent)
+      VALUES (?, ?, ?, ?, ?, 0, 'manual', ?, ?)`)
       .bind(parsed.id, (body?.title ?? '').slice(0, 200) || null, (body?.channel ?? '').slice(0, 100) || null,
             youTubeThumbUrl(parsed.id), Number.isFinite(pid) && pid > 0 ? pid : null,
-            verdict.duration)
+            verdict.duration, body?.consent ? 1 : 0)
       .run()
     if (!r.meta.changes) return c.json({ success: false, error: '이미 등록된 영상입니다' }, 409)
     return c.json({ success: true, video_id: parsed.id })
@@ -189,7 +200,7 @@ adminUrshortsRoutes.patch('/:id', requireAdmin(), async (c) => {
     await ensureTable(DB)
     const id = Number(c.req.param('id'))
     if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청' }, 400)
-    const b = await c.req.json<{ product_id?: number | null; is_active?: boolean; sort_order?: number }>()
+    const b = await c.req.json<{ product_id?: number | null; is_active?: boolean; sort_order?: number; consent?: boolean }>()
     const sets: string[] = []
     const binds: unknown[] = []
     if ('product_id' in b) {
@@ -197,6 +208,7 @@ adminUrshortsRoutes.patch('/:id', requireAdmin(), async (c) => {
       sets.push('product_id = ?'); binds.push(Number.isFinite(pid) && pid > 0 ? pid : null)
     }
     if ('is_active' in b) { sets.push('is_active = ?'); binds.push(b.is_active ? 1 : 0) }
+    if ('consent' in b) { sets.push('consent = ?'); binds.push(b.consent ? 1 : 0) }
     if ('sort_order' in b) { sets.push('sort_order = ?'); binds.push(intParam(b.sort_order, 0)) }
     if (!sets.length) return c.json({ success: false, error: '바꿀 것이 없습니다' }, 400)
     binds.push(id)
@@ -254,7 +266,7 @@ sellerUrshortsRoutes.get('/', requireSeller(), async (c) => {
     const sellerId = getCurrentUser(c)?.id
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
     const { results } = await DB.prepare(`
-      SELECT s.id, s.video_id, s.title, s.thumb_url, s.is_active, s.duration_sec,
+      SELECT s.id, s.video_id, s.title, s.thumb_url, s.is_active, s.duration_sec, s.consent,
              s.product_id, p.name AS product_name
         FROM home_shorts s
         JOIN products p ON p.id = s.product_id
@@ -274,7 +286,7 @@ sellerUrshortsRoutes.post('/', requireSeller(), async (c) => {
     const sellerId = getCurrentUser(c)?.id
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
 
-    const body = await c.req.json<{ url?: string; product_id?: number }>()
+    const body = await c.req.json<{ url?: string; product_id?: number; consent?: boolean }>()
     const productId = Number(body?.product_id)
     if (!Number.isFinite(productId) || productId <= 0) {
       return c.json({ success: false, error: '어느 이용권인지 골라 주세요' }, 400)
@@ -288,13 +300,17 @@ sellerUrshortsRoutes.post('/', requireSeller(), async (c) => {
     if (!parsed) return c.json({ success: false, error: '유튜브 주소에서 영상을 찾지 못했습니다' }, 400)
     const verdict = await verifyIsShort(c.env, parsed.id, parsed.form)
     if (!verdict.ok) return c.json({ success: false, error: verdict.reason }, 400)
+    // 🔴 허락 확인란. 안 체크하면 저장은 되지만 홈에는 안 나간다(공개 쿼리가 consent=1 을 요구).
+    if (!body?.consent) {
+      return c.json({ success: false, error: '내 영상이거나 창작자에게 허락받았는지 확인해 주세요' }, 400)
+    }
 
     const r = await DB.prepare(`
       INSERT OR IGNORE INTO home_shorts
-        (video_id, title, thumb_url, product_id, sort_order, source, duration_sec)
-      VALUES (?, ?, ?, ?, 0, 'seller', ?)`)
+        (video_id, title, thumb_url, product_id, sort_order, source, duration_sec, consent)
+      VALUES (?, ?, ?, ?, 0, 'seller', ?, ?)`)
       .bind(parsed.id, owned.name?.slice(0, 200) ?? null, youTubeThumbUrl(parsed.id),
-            productId, verdict.duration)
+            productId, verdict.duration, body?.consent ? 1 : 0)
       .run()
     if (!r.meta.changes) return c.json({ success: false, error: '이미 등록된 영상입니다' }, 409)
     return c.json({ success: true, video_id: parsed.id })

@@ -248,3 +248,55 @@ describe('셀러 입력칸 — 소유권이 전부다', () => {
     expect(F).toMatch(/if \(!productId\) return null/)
   })
 })
+
+/**
+ * 🤝 2026-09-07 대표 판단 — *"남의 영상을 우리 구매 버튼 옆에 두는게 좋을까?"*
+ *
+ * 답: **허락 없이는 두지 않는다.** 이유 셋.
+ *  ① 유어애즈가 바로 그 식당 채널 4,825명에게 제휴 제안을 보낼 참인데, 자기 영상이 이미 우리
+ *     판매에 쓰이는 걸 보면 그 제안이 열리기도 전에 죽는다 — 만들려는 관계를 태우는 셈이다.
+ *  ② 영상 옆에 "지금 구매"가 붙으면 그 창작자가 이 딜을 보증한 것으로 읽히는데 그는 그런 적이 없다.
+ *  ③ 얻는 건 레일이 좀 더 차는 것이고, 잃는 건 창작자 한 명의 공개 항의다. 비대칭이 심하다.
+ *
+ * ⇒ 홈에 나가는 영상은 (a) 우리 것 (b) 매장 것 (c) 창작자가 명시로 허락한 것, 셋 중 하나.
+ *   이 규칙을 **문서가 아니라 구조로** 만든다 — 나중에 자동수집이 붙어도 못 샌다.
+ */
+describe('허락받은 영상만 홈에 나간다', () => {
+  const R = code('src/features/urshorts/api/urshorts.routes.ts')
+
+  it('공개 쿼리가 consent = 1 을 요구한다 (이게 규칙의 전부다)', () => {
+    const sql = R.slice(R.indexOf('const PUBLIC_SQL'), R.indexOf('urshortsRoutes.get'))
+    expect(sql).toMatch(/AND s\.consent = 1/)
+  })
+
+  it('기본값은 0 이다 — 모르면 안 내보낸다', () => {
+    expect(R).toMatch(/consent INTEGER NOT NULL DEFAULT 0/)
+    // 기존 테이블에도 붙는다(이미 있으면 무해).
+    expect(R).toMatch(/ALTER TABLE home_shorts ADD COLUMN consent/)
+  })
+
+  it('셀러는 확인란을 체크해야 등록된다 (안 하면 400)', () => {
+    const seller = R.slice(R.indexOf('sellerUrshortsRoutes.post'))
+    expect(seller).toMatch(/if \(!body\?\.consent\)/)
+    expect(seller).toMatch(/허락받았는지 확인해 주세요/)
+  })
+
+  it('어드민은 확인란 값을 그대로 저장하고 나중에 토글할 수 있다', () => {
+    expect(R).toMatch(/body\?\.consent \? 1 : 0/)
+    expect(R).toMatch(/if \('consent' in b\)/)
+  })
+
+  it('두 화면 모두 확인란을 보여 준다 (서버만 막으면 사람은 이유를 모른다)', () => {
+    for (const p of ['src/pages/AdminUrShortsPage.tsx',
+                     'src/pages/seller-product-edit/ProductShortsField.tsx']) {
+      const F = code(p)
+      expect(F, p).toMatch(/type="checkbox"/)
+      expect(F, p).toMatch(/허락받았습니다/)
+    }
+  })
+
+  it('repair-schema 테이블 정의에도 있다 (라우트만 있으면 새 DB 에서 갈린다)', () => {
+    expect(code('src/worker/routes/repair-schema.routes.ts'))
+      .toMatch(/consent INTEGER NOT NULL DEFAULT 0/)
+  })
+})

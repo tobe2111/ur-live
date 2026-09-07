@@ -34,12 +34,14 @@ interface Row {
   source: string
   sort_order: number
   duration_sec: number | null
+  consent: number
 }
 
 export default function AdminUrShortsPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [channel, setChannel] = useState('')
   const [url, setUrl] = useState('')
+  const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'bad'; text: string } | null>(null)
 
@@ -67,7 +69,7 @@ export default function AdminUrShortsPage() {
     if (busy || !url.trim()) return
     setBusy(true); setMsg(null)
     try {
-      await api.post('/api/admin/urshorts', { url })
+      await api.post('/api/admin/urshorts', { url, consent })
       setUrl(''); await load()
       setMsg({ kind: 'ok', text: '추가했습니다. 이용권을 골라야 홈에 나갑니다' })
     } catch (e) {
@@ -99,7 +101,8 @@ export default function AdminUrShortsPage() {
     } catch { setMsg({ kind: 'bad', text: '저장하지 못했습니다' }) }
   }
 
-  const live = rows.filter((r) => r.is_active && r.product_id).length
+  const live = rows.filter((r) => r.is_active && r.product_id && r.consent).length
+  const noConsent = rows.filter((r) => !r.consent).length
   const orphan = rows.filter((r) => !r.product_id).length
 
   return (
@@ -158,6 +161,21 @@ export default function AdminUrShortsPage() {
               {hint.text}
             </p>
           )}
+          {/* 🔴 허락 확인. 남의 영상을 구매 버튼 옆에 두면 그 창작자가 이 딜을 보증한 것으로 읽히는데
+              그는 그런 적이 없다. 게다가 유어애즈가 바로 그 채널들에게 제휴 제안을 보낼 참이라,
+              자기 영상이 이미 우리 판매에 쓰이는 걸 보면 그 제안이 열리기도 전에 죽는다. */}
+          <label className="mt-3 flex items-start gap-2 text-[12.5px] text-gray-700">
+            <input
+              type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[#1C69EF]"
+            />
+            <span>
+              <b>우리가 만든 영상이거나, 매장 영상이거나, 창작자에게 허락받았습니다.</b>
+              <span className="block text-gray-500">
+                확인 안 하면 목록에는 남지만 홈에는 안 나갑니다. 허락은 유어애즈 제휴 제안으로 받으세요.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className="rounded-xl bg-white shadow-sm">
@@ -168,11 +186,18 @@ export default function AdminUrShortsPage() {
                 홈에 나가는 것 {Math.min(live, URSHORTS_RAIL_LIMIT)}편
               </span>
             </div>
-            {orphan > 0 && (
-              <span className="flex items-center gap-1 text-[12.5px] font-semibold text-red-600">
-                <AlertCircle size={14} /> 이용권을 안 고른 영상 {orphan}편
-              </span>
-            )}
+            <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              {orphan > 0 && (
+                <span className="flex items-center gap-1 text-[12.5px] font-semibold text-red-600">
+                  <AlertCircle size={14} /> 이용권을 안 고른 영상 {orphan}편
+                </span>
+              )}
+              {noConsent > 0 && (
+                <span className="flex items-center gap-1 text-[12.5px] font-semibold text-amber-600">
+                  <AlertCircle size={14} /> 허락 미확인 {noConsent}편
+                </span>
+              )}
+            </span>
           </div>
 
           {rows.length === 0 ? (
@@ -225,6 +250,14 @@ export default function AdminUrShortsPage() {
                     className="w-[86px] shrink-0 rounded-lg border border-gray-200 px-2 py-1.5 text-[12px] text-gray-900"
                   />
 
+                  <button
+                    onClick={() => void patch(r.id, { consent: !r.consent })}
+                    title={r.consent ? '허락 확인됨 — 누르면 취소' : '허락 미확인 — 누르면 확인'}
+                    className={`shrink-0 rounded-lg px-2.5 py-2 text-[11px] font-bold ${
+                      r.consent ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}
+                  >
+                    {r.consent ? '허락 O' : '허락 ?'}
+                  </button>
                   <button
                     onClick={() => void patch(r.id, { is_active: !r.is_active })}
                     title={r.is_active ? '끄기' : '켜기'}
