@@ -5494,7 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 264건 · 최신순 · 이 목록은 자동 생성된다._
+_총 265건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-07**
 - [🏪 매장 등록 문 — 당근식 스텝 위저드 + 막다른 길 셋 (2026-09-07)](handoff/2026-09-07-store-register-wizard.md)
