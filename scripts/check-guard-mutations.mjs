@@ -2928,7 +2928,9 @@ canvas {
   },
   {
     name: '공구가 킬스위치를 어드민 화면에서 뺀다(돈 새는 중에 멈출 손잡이가 사라진다)',
-    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    // 🩸 2026-09-07: 머니 스위치 배열이 페이지에서 이 모듈로 빠졌다(페이지가 600줄 래칫에 닿았다).
+    //   이 지도를 안 따라가면 "주입 대상을 못 찾음(낡은 지도)" 로 빨간불이 난다 — 실제로 났다.
+    file: 'src/pages/admin-platform-settings/money-switch-fields.ts',
     find: "key: 'gb_pricing_enabled'",
     replace: "key: 'gb_pricing_REMOVED'",
     test: 'src/tests/unit/ops-gate-reachable.test.ts',
