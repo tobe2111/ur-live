@@ -331,6 +331,15 @@ const OPS_GATES: OpsGate[] = [
   // 💸 2026-08-01 ④-c: 부분환불 **금액을 정할 입구**. 그간 `returns.refund_amount` 를 바꾸는 경로가
   //   아예 없어 실질적으로 전액 환불만 가능했다. OFF 면 금액 설정 API 가 403 → 현행(전액) 그대로.
   { key: 'partial_refund_enabled', kind: 'setting', label: '부분환불 금액 설정 ④-c', default_value: 'false', staging_ref: 'P11', turn_on_when: '**첫 픽업 공구 개설과 동시**(⑤ 3순위) — ④-b 와 같이 켠다' },
+  // 🎛️ 2026-09-07 — `check-gate-registry` 가 찾아낸 **미등재 strict-true 게이트 5개**.
+  //   전부 read-site 가 `=== 'true'` 인데 이 표에 없어서 `ops-gate-reachable` 의 사각지대였다.
+  //   등재가 곧 검사 범위다 — 넣는 순간 "켤 화면이 있나"를 기계가 묻기 시작한다.
+  { key: 'settlement_skip_ledgered', kind: 'setting', label: '자동정산에서 원장 기록분 제외', default_value: 'false', staging_ref: null, turn_on_when: '🔴 머니 경로. 원장 적립(SHOPPING_LEDGER 계열)이 실제로 돌기 시작해 같은 매출이 두 번 정산될 위험이 생겼을 때. 그전엔 켜면 정산이 통째로 빠진다' },
+  { key: 'outreach_auto_send', kind: 'setting', label: '인플루언서 제휴 제안 자동 발송', default_value: 'false', staging_ref: null, turn_on_when: '📮 콜드 발송은 법·평판 문제라 **대표가 직접 판단**한다. 세션이 켜지 않는다' },
+  { key: 'promo_bar_enabled', kind: 'setting', label: '소비자 홈 프로모 바', default_value: 'false', staging_ref: null, turn_on_when: '홍보 문구가 정해지면 (문구·버튼·색은 같은 화면의 프로모 바 섹션에서)' },
+  // 아래 둘은 **되살리지 않기로 한** 축이다(2026-08-23 종료, 다단계 성격). 화면이 없는 게 정상.
+  { key: 'invite_reward_enabled', kind: 'setting', label: '초대 보상 (2026-08-23 종료)', default_value: 'false', staging_ref: null, turn_on_when: '켜지 않는다 — 심플 모델로 정리하며 종료한 축이다' },
+  { key: 'multi_tier_enabled', kind: 'setting', label: '멀티티어 추천 (2026-08-23 종료)', default_value: 'false', staging_ref: null, turn_on_when: '켜지 않는다 — 다단계 성격이라 되살릴 이유가 없다' },
 ]
 
 adminSystemMonitoringRoutes.get('/ops-status', async (c) => {

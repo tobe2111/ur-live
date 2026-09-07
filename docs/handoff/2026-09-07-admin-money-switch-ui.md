@@ -74,3 +74,64 @@
   (현재 소비자 마크업 0% 라 팔려도 유어딜 몫 0원)
 
 정리 문서: https://claude.ai/code/artifact/9c6841b4-d6e4-4b83-9dca-417a2f04e027
+
+---
+
+# 후속 — 두 클래스를 닫았다 (같은 날, 대표 *"둘 다 해줘"*)
+
+대표 질문: *"모두 영구적 해결이야?"* → 정직한 답은 **아니오** 였다. 위 작업은 **인스턴스**를
+고쳤고 **클래스**는 열려 있었다. 그래서 가드 둘을 만들었다.
+
+## 가드 A — `check-gate-registry`
+
+**규칙**: `platform_settings` 를 `=== 'true'` / `!== 'true'` 로 읽는 키는 전부 `OPS_GATES` 에 등재.
+
+**첫 실행에서 미등재 게이트 5개를 찾았다** — 그중 둘은 손잡이도 없었다:
+
+| 키 | 상태 | 처리 |
+|---|---|---|
+| `settlement_skip_ledgered` | 🔴 머니 게이트, 화면 0 | 등재 + 어드민 필드 ⑨ |
+| `outreach_auto_send` | 📮 콜드 발송 자동화, 화면 0 | 등재 + 어드민 필드 ⑩ |
+| `promo_bar_enabled` | 화면은 있는데 하위 폴더라 시험이 못 봄 | 등재 + 시험 시야 확대 |
+| `invite_reward_enabled` | 2026-08-23 종료 | 등재 + `turn_on_when: 켜지 않는다`(화면 면제) |
+| `multi_tier_enabled` | 2026-08-23 종료 | 〃 |
+
+**곁들여 고친 기존 시험의 사각지대**: `ops-gate-reachable` 이 `src/pages/Admin*.tsx` **최상위만**
+봤다. 이 레포는 큰 어드민 화면을 같은이름 폴더로 쪼개므로(파일크기 래칫이 그렇게 시킨다),
+손잡이가 실재하는데 안 보여서 그 게이트를 아예 등재하지 않게 된다 — `promo_bar_enabled` 가
+정확히 그 경우였다. `admin-*` 하위 폴더도 인정하도록 넓혔다.
+
+**오탐을 셋 잡고 좁혔다**: 주석 줄의 `=== 'true'`(→ `platform_fee_pct`) · `ENV_NAME === 'true'`
+(→ `ads_notice_stats`) · `IN(...)` 에서 이름만 스치는 키(→ `promo_bar_text`).
+
+## 가드 B — `check-affiliate-display-gate`
+
+**규칙**: 소비자 표면이 `referral_enabled` 를 응답으로 나르면 `gateAffiliateRows` 를 거칠 것.
+예외는 `scripts/affiliate-display-gate-baseline.json` 에 **사유와 함께**.
+
+**🩸 이 가드가 처음엔 헛돌았다.** 판정이 `src.includes('gateAffiliateRows')` 라
+`gateAffiliateRows_UNUSED` 로 바꿔 감싸기를 없애도 **초록불**이었다. 주입이 잡았다 →
+호출 형태(`\bgateAffiliateRows\s*\(`)를 요구하도록 교정. 그다음 하한 검사가 *"스캐너가 눈이
+멀었다"* 는 **엉뚱한 이유**로 빨간불을 내서, 하한을 게이트된 파일 수 → carrier 총수로 바꿨다
+(하한은 시력만 재고, 위반은 위반으로 말해야 한다).
+
+## 🔴 기준선에 남긴 미해결 항목 하나
+
+`stays-public.routes.ts` 의 숙박 추천(`?ref=`) 경로는 `referral_enabled` 를 **응답에 싣지 않고
+서버가 읽어서 할인·커미션을 직접 계산**한다. 즉 표시가 아니라 **동작**이라 게이트를 걸면
+머니 경로가 바뀐다 — 별도 세션 + staging.
+
+**라이브 실측(2026-09-07)**: `product_stay_info` 79행 중 `referral_enabled=1` **0행**,
+`influencer_discount_pct>0` **0행** → 지금은 잠들어 있다.
+
+⚠️ **어필리에이트를 다시 켤 때 함께 판단할 것**: 프로그램이 꺼져 있는데 이 경로만 살아나면
+손님은 할인을 받고 소개한 사람은 한 푼도 못 받는다(매장만 부담).
+
+## 검증 (후속분)
+
+- `gate-registry-and-display-2026-09-07.test.ts` 5건 + 주입 2건 **되돌려-검증 빨간불 확인**
+- 두 가드를 `audit-gate.sh` + `verify.yml`(strict) + `AUDIT_INVARIANTS.md`(105 → 107) 에 등재
+- `check-audit-registry-sync` · `check-guard-registry`(128) · tsc 0 · 관련 시험 8파일 47건 pass
+- `AdminPlatformSettingsPage` 가 600줄 래칫에 닿아 머니 스위치 배열을
+  `admin-platform-settings/money-switch-fields.ts` 로 뽑았다(463줄). 그 배열이 곧
+  **"대표가 켤 수 있는 것의 목록"** 이라 렌더 코드에 묻히지 않는 편이 낫다.

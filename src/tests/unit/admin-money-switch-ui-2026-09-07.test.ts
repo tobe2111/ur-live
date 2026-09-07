@@ -24,7 +24,9 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 
-const PAGE = 'src/pages/AdminPlatformSettingsPage.tsx'
+// 🩸 2026-09-07 후속: 필드 배열이 페이지에서 이 모듈로 빠졌다(페이지가 600줄 래칫에 닿았다).
+//   경로를 안 따라가면 이 시험은 "필드가 없다"로 **가짜 빨간불**을 낸다 — 낡은 지도 클래스다.
+const PAGE = 'src/pages/admin-platform-settings/money-switch-fields.ts'
 const GATES = 'src/features/admin/api/admin-system-monitoring.routes.ts'
 const VALID = 'src/worker/utils/platform-settings-validation.ts'
 const POLICY = 'src/worker/utils/ledger-commission-policy.ts'

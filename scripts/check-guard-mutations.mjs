@@ -88,8 +88,29 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎛️ 새 게이트를 표에서 뗀다 (켤 화면이 있는지 아무도 안 묻는다)',
+    file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
+    find: "{ key: 'outreach_auto_send', kind: 'setting'",
+    replace: "{ key: 'outreach_auto_send_UNREGISTERED', kind: 'setting'",
+    test: 'src/tests/unit/gate-registry-and-display-2026-09-07.test.ts',
+    why:
+      '등재가 곧 검사 범위다. 표에서 빠지면 ops-gate-reachable 이 "켤 화면이 있나"를 묻지 않고, ' +
+      '그 스위치는 D1 직접 수정으로만 켤 수 있게 된다 — 담기 적립 주 스위치가 정확히 그랬다.',
+  },
+  {
+    name: '🪙 소비자 목록에서 적립 표시 게이트를 뗀다 (꺼진 적립을 다시 약속한다)',
+    file: 'src/features/products/repositories/ProductRepository.ts',
+    find: 'gateAffiliateRows(result.results || [], affiliateOn)',
+    replace: '(result.results || [])',
+    test: 'src/tests/unit/gate-registry-and-display-2026-09-07.test.ts',
+    why:
+      '이게 #1372 이전 상태다 — 프로그램은 꺼졌는데 화면은 "담으면 2%" 를 약속했다. ' +
+      '🩸 첫 판정이 `src.includes(\'gateAffiliateRows\')` 라 **이름만 남겨도 통과**했다(주입으로 잡았다). ' +
+      '지금은 호출 형태를 요구한다.',
+  },
+  {
     name: '🎛️ 담기 적립 스위치를 어드민에서 다시 뗀다 (켤 손잡이가 사라진다)',
-    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    file: 'src/pages/admin-platform-settings/money-switch-fields.ts',
     find: "    key: 'affiliate_program_enabled', label: '⑧ 담기 적립(어필리에이트) 프로그램', default: 'false',",
     replace: "    key: 'affiliate_program_enabled_REMOVED', label: '⑧ 담기 적립(어필리에이트) 프로그램', default: 'false',",
     test: 'src/tests/unit/admin-money-switch-ui-2026-09-07.test.ts',
@@ -99,7 +120,7 @@ const MUTATIONS = [
   },
   {
     name: "🎛️ 스위치 옵션 값을 'True' 로 (켠 줄 알지만 꺼진 채로 돈다)",
-    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    file: 'src/pages/admin-platform-settings/money-switch-fields.ts',
     find: "{ value: 'true', label: 'ON — 담아서 팔면 소개비 적립' }",
     replace: "{ value: 'True', label: 'ON — 담아서 팔면 소개비 적립' }",
     test: 'src/tests/unit/admin-money-switch-ui-2026-09-07.test.ts',
