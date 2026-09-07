@@ -7768,6 +7768,17 @@ canvas {
       '2026-07-23(F-32)이 고쳤던 그 스테일 사고가 에러 없이 돌아온다. 이 자리의 모름은 갱신이어야 한다.',
   },
   {
+    name: '🗂️ 매장정보 재보강 큐 인덱스가 사라진다(20건 뽑으려고 38.7만 행)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: '`CREATE INDEX IF NOT EXISTS idx_company_leads_storeinfo_queue ON ad_company_leads(source, id)',
+    replace: '`CREATE INDEX IF NOT EXISTS idx_company_leads_storeinfo_queue ON ad_company_leads(active, id)',
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      'source 가 선두 키가 아니면 등호 하나로 범위가 안 잡히고 정렬 키가 id 로 안 끝나 임시 B-트리가 ' +
+      '되돌아온다. 2026-09-07 라이브: 이 큐가 20건을 뽑으려고 387,003행을 읽었고 2시간마다 돌아 ' +
+      '하루 460만 행이었다 — 그 대가로 얻은 신규는 6일 연속 0. 결과는 똑같아서 눈에 안 보인다.',
+  },
+  {
     name: '🎯 링크인바이오 조회가 계획기에 맡겨진다(19만 행 전수 스캔 복귀)',
     file: 'src/features/marketing/api/influencer-bio-enrich.ts',
     find: "  const res = await pick(' INDEXED BY idx_ad_inf_leads_bio_links') || await pick('')",
