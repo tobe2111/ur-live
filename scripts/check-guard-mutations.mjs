@@ -88,6 +88,38 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎨 홈 정렬 칩이 다시 잉크 검정으로 (선택 색이 서비스 안에서 둘이 된다)',
+    file: 'src/pages/pc-home/PcHomePage.tsx',
+    // 정렬 칩은 두 벌(현위치 칩 + SORT_CHIPS 루프)이라 같은 문자열이 두 번 나온다.
+    // 들여쓰기가 유일하게 갈라 주는 자리다 — 루프 쪽(22칸)을 앵커로 쓴다.
+    find: "                      ? 'bg-brand text-white border-brand'",
+    replace: "                      ? 'bg-gray-900 text-white border-gray-900'",
+    test: 'src/tests/unit/home-selected-is-brand.test.ts',
+    why:
+      '지도·유어샵·교환권 칩은 전부 블루다. 홈만 검정으로 돌아가면 같은 서비스에서 "선택됨"이 ' +
+      '두 색이 되어 사용자가 규칙을 못 배운다 — 에러는 안 난다.',
+  },
+  {
+    name: '🎨 카테고리 칩만 검정으로 남는다 (같은 줄에 선택 색 둘)',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: "                    ? 'bg-brand text-white'",
+    replace: "                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'",
+    test: 'src/tests/unit/home-selected-is-brand.test.ts',
+    why:
+      '카테고리 칩과 정렬 칩은 홈에서 위아래로 붙어 있다. 한쪽만 되돌아가면 **한 화면 안에서** ' +
+      '선택 색이 갈린다 — 고치기 전보다 나쁘다.',
+  },
+  {
+    name: '🎨 섹션 더보기가 다시 테두리 알약이 된다 (표면 규칙 ① 위반)',
+    file: 'src/components/home/HomeSections.tsx',
+    find: '                  className="shrink-0 text-[12.5px] font-extrabold text-brand-text hover:underline underline-offset-4 whitespace-nowrap"',
+    replace: '                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 text-[12.5px] font-bold text-gray-600 whitespace-nowrap"',
+    test: 'src/tests/unit/home-selected-is-brand.test.ts',
+    why:
+      '우리 표면 규칙 첫 줄이 테두리 0 이다. 이게 돌아오면 화면에서 **가장 안 중요한 것이 제일 ' +
+      '진하게** 보인다 — 섹션마다 반복돼 눈에 띄는데도 아무도 결함으로 신고하지 않는 종류다.',
+  },
+  {
     name: '🖼️ 히어로 사진이 다시 클릭 불가가 된다 (안내 문구도 없이)',
     file: 'src/components/home/HomeHeroDefault.tsx',
     find: "          aria-label=\"이 사진의 딜 보기\"\n",

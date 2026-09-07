@@ -154,11 +154,15 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
                 )}
               </div>
               {more && !moreIsDeadEnd && (
+                /* 🎨 2026-09-07 (대표 승인 — 홈 개선 안 C): 테두리 알약 → 블루 글자.
+                   표면 규칙 첫 줄이 **테두리 0** 인데 섹션마다 붙는 더보기만 테두리를 그려,
+                   화면에서 가장 안 중요한 것이 제일 진하게 보였다. 화살표를 뺀 이유는 블루 글자가
+                   이미 "눌러진다"를 말하고 있어서다 — 색과 화살표가 같은 말을 두 번 한다. */
                 <Link
                   to={more}
-                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[12.5px] font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors whitespace-nowrap"
+                  className="shrink-0 text-[12.5px] font-extrabold text-brand-text hover:underline underline-offset-4 whitespace-nowrap"
                 >
-                  더보기 →
+                  더보기
                 </Link>
               )}
             </div>
