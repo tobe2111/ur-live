@@ -88,6 +88,36 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🖼️ 히어로 사진이 다시 클릭 불가가 된다 (안내 문구도 없이)',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: "          aria-label=\"이 사진의 딜 보기\"\n",
+    replace: '',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '사진은 `alt=""`(장식)라 링크가 이름을 갖지 않으면 스크린리더에 **빈 링크**로 읽힌다. ' +
+      '눈으로는 멀쩡해 보여서 아무도 못 잡는 클래스다.',
+  },
+  {
+    name: '🖼️ 사진 링크가 사진과 다른 자를 쓴다 (사진 밖으로 나가거나 덜 덮는다)',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: '          className="hidden md:block absolute z-20 inset-y-0 w-[46%] lg:w-[54%] right-',
+    replace: '          className="hidden md:block absolute z-20 inset-y-0 w-[40%] lg:w-[40%] right-',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '폭이 사진과 어긋나면 사진 오른쪽이 죽은 영역이 되거나 링크가 사진 밖 색면까지 먹는다. ' +
+      '둘은 **같이 고쳐야 하는 한 쌍**인데 소스에서는 20줄 떨어져 있어 한쪽만 고치기 쉽다.',
+  },
+  {
+    name: '🖼️ 사진 링크가 콘텐츠 층 아래로 내려간다 (눌러도 아무 일도 안 난다)',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: 'className="hidden md:block absolute z-20 inset-y-0',
+    replace: 'className="hidden md:block absolute z-0 inset-y-0',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '콘텐츠 층(z-10)이 `w-full` 이라 사진 위까지 덮는다. 그 아래로 내려가면 투명한 div 가 클릭을 ' +
+      '먼저 가로채 **커서만 바뀌고 이동은 안 된다** — 에러가 없어 배포까지 간다.',
+  },
+  {
     name: '🖼️ 피드가 섹션 상품을 미루지 않는다 (같은 사진이 위아래로 두 번)',
     file: 'src/pages/main-home/GroupBuyFeed.tsx',
     find: 'deferSeeded(sortBand(src), sectionIds)',
