@@ -5494,9 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 200건 · 최신순 · 이 목록은 자동 생성된다._
-_총 247건 · 최신순 · 이 목록은 자동 생성된다._
+_총 248건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-07**
+- [인플루언서 제안서 — 프리텐다드 이행 + 라이브 화면 재배치 (2026-09-07)](handoff/2026-09-07-proposal-pretendard-live-shots.md)
 **2026-09-04**
 - [발송 실패한 교환권을 숫자에서 뺀다 — 보이되 세지 않는다](handoff/2026-09-04-gifticon-failed-not-counted.md)
 **2026-09-03**
