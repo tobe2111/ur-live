@@ -17,7 +17,7 @@
 
 | ID | 게이트 | 위치 | 시나리오 | 통과 기준 | 상태 |
 |---|---|---|---|---|---|
-| **S1** | `commission_budget_enabled='true'` | platform_settings | 영입자 커미션 + 추천트리 커미션이 **겹치는** 3P 주문 결제 → 환불 | ① Σ(모든 커미션 적립) ≤ 주문당 예산(수수료−`pg_reserve_pct`) ② 환불 시 전 커미션 역전 대칭 ③ OFF 복귀 시 기존 동작과 동일 | ⬜ 미검증 (2026-07-04 배선) |
+| **S1** | `commission_budget_enabled='true'` | platform_settings | 영입자 커미션 + 추천트리 커미션이 **겹치는** 3P 주문 결제 → 환불 | ① Σ(모든 커미션 적립) ≤ 주문당 예산(수수료−`pg_reserve_pct`) ② 환불 시 전 커미션 역전 대칭 ③ OFF 복귀 시 기존 동작과 동일 | ⬜ 미검증 (2026-07-04 배선). **2026-09-07 결재 Q4-2 로 켜기 확정(대표)** — 이 항목 통과가 선행. 지금 살아 있는 플랫폼 부담 축은 **영입 2%(직접 입점 매장만)** 하나라 시나리오를 그에 맞춘다: ⓐ 직접 입점 매장(채널 direct · `introduced_by_influencer_id` 있음) 주문 1건 → 영입 적립 = 2% 이고 총합 ≤ 10% − `pg_reserve_pct` ⓑ 같은 매장에 추천트리(`multi_tier_enabled`)까지 켜서 겹친 주문 1건 → Σ 적립이 예산에 비례 배분돼 상한을 안 넘는다 ⓒ 중개 매장 주문 1건 → 영입 0(08-31) ⓓ 환불 → 전 커미션 역전 ⓔ OFF 복귀 → 종전 동작. 판정 근거는 `ledger_entries`·`influencer_attributions` 행과 어드민 `/admin/commission-settings` 표시값의 일치 (PR #1394 (draft, 머지 대기)) |
 | **S2** | `promo_funding_source='owner'` | platform_settings | 이용권 구매 → 매장에서 사용 → 환불 | ① 사용 시 매장 원장 promo debit **정확히 1회** ② 쇼핑 원장 fee 합산 정합 ③ 환불 시 debit 복원 | ⬜ 미검증 (2026-07-04 배선) |
 | **S3** | `SHOPPING_LEDGER_ENABLED='true'` | Cloudflare env | 일반 쇼핑 주문 결제 → 환불 (쇼핑탭 재오픈 전 필수) | ① 셀러 원장 net 크레딧(gross+fee) **정확히 1회**(이용권/공구 주문은 skip — 이중적립 0) ② 환불 시 역전 → receivable 0 | ⬜ 미검증 (2026-07-01 배선) |
 | **S5** | `pickup_unclaimed_policy_enabled='true'` | platform_settings | 🔴 **머니 경로 · 이미 흐르는 환불의 방향을 바꾼다**(cron `0 18` 실행 확인됨). 절차: P10 참조 | ① 게이트 OFF 로 되돌리면 **즉시 전액 환불 복귀** ② `storage` 미설정 상품은 **전액**(모르면 안 깎는다) ③ cron 2회 실행에도 **이중 환불 0**(CAS) ④ 깎인 만큼 `ledger_entries` 에 `unclaimed_forfeit` 1행 ⑤ **유어딜 5% 불변** | ⬜ 미검증 (2026-08-01 배선, 기본 OFF) |
