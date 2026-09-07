@@ -88,6 +88,26 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🤖 결정권 매트릭스에서 머니 경로를 C 에서 B 로 낮춤',
+    file: 'docs/design/ai-team-operating-model.md',
+    find: '| 결제·정산·요율·환불·원장·커미션 코드 | **C** |',
+    replace: '| 결제·정산·요율·환불·원장·커미션 코드 | B |',
+    test: 'src/tests/unit/ai-team-operating-model.test.ts',
+    why:
+      '운영 SSOT 의 한 칸이 바뀌면 여섯 역할 에이전트가 그 칸을 읽고 머니 코드를 "보고 후 진행"으로 밀어붙인다. ' +
+      '대표(2026-09-07)가 "완성됐다고 판단했는데 문제가 숨어 있던" 원인으로 지목한 것이 바로 이런 정의의 드리프트다.',
+  },
+  {
+    name: '🤖 개발 역할 파일에서 완료 판정 절 삭제',
+    file: '.claude/agents/dev.md',
+    find: '## 완료 판정 (§4)',
+    replace: '## 참고',
+    test: 'src/tests/unit/ai-team-operating-model.test.ts',
+    why:
+      '완료 판정 절이 없으면 그 역할은 E3(머지·배포)에서 "완료"라고 말하게 된다 — 이 레포가 반복해 당한 클래스. ' +
+      '절 이름만 바꿔도 테스트가 잡아야 한다(주석에 E4 가 남아 있어도 절 헤더가 없으면 빨강).',
+  },
+  {
     name: '🎛️ 새 게이트를 표에서 뗀다 (켤 화면이 있는지 아무도 안 묻는다)',
     file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
     find: "{ key: 'outreach_auto_send', kind: 'setting'",
