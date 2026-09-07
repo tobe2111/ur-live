@@ -146,7 +146,6 @@ const MUTATIONS = [
     why:
       '가로 10분짜리가 9:16 카드에 들어가면 위아래 검은 띠가 생기고 구매 바를 띄울 화면도 아니다. ' +
       '깨지는 게 아니라 그냥 못생겨지므로 배포까지 간다.',
->>>>>>> origin/main
   },
   {
     name: '🏪 채널 미지정 좌석이 고르지 않고도 1단계를 넘는다 (결재 Q3-3 "미지정 폴백 폐지" 무력화)',
@@ -9670,7 +9669,6 @@ canvas {
       '둘이면 하나만 고치고 끝났다고 믿기 쉽다 — 그래서 둘 다 주입해 본다.',
   },
   {
-<<<<<<< HEAD
     name: '💸 매칭 정산에 2% 상한이 되살아난다 (결재 Q2-1 "상한 없음" 무력화)',
     file: 'src/worker/utils/matching-settlement.ts',
     find: '  const pct = Math.max(0, Number(input.commissionPct) || 0)',
@@ -9679,7 +9677,8 @@ canvas {
     why:
       '매장이 "10% 드릴게요" 라고 약속했는데 정산이 2% 만 적립하면 소개자는 약속의 1/5 을 받고 매장은 ' +
       '이유를 모른다 — 에러가 없어 아무도 모른다. 2026-08-30 에 제안 문에서 걷어낸 캡이 정산 쪽에서 되살아나는 모습.',
-=======
+  },
+  {
     name: '🎬 허락 안 받은 영상이 홈에 나간다 (consent 게이트 제거)',
     file: 'src/features/urshorts/api/urshorts.routes.ts',
     find: '     AND s.consent = 1',
