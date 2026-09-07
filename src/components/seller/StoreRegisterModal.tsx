@@ -79,6 +79,16 @@ interface Props {
    * (인자를 안 읽는 기존 호출부는 그대로 동작한다.)
    */
   onDone: (sellerId?: number, opts?: { existing?: boolean }) => void
+  /**
+   * 배경(어두운 여백)을 눌렀을 때 닫을지. 기본 `true` — 대시보드에서 목록 위에 겹쳐 뜰 때는
+   * 바깥 클릭으로 닫히는 게 맞다(뒤에 돌아갈 화면이 보인다).
+   *
+   * 🩸 2026-09-07 (대표 신고 *"흰 섹션 바깥쪽을 클릭하니까 페이지가 꺼져"*): `/store/new` 는
+   *   **모달이 곧 페이지**라 배경 뒤에 아무것도 없다. 그 자리에서 바깥을 누르면 사장님이
+   *   사업자등록증까지 올려 둔 폼이 통째로 날아가고 화면을 떠난다. 겹쳐 뜬 것과 페이지인 것은
+   *   같은 컴포넌트라도 **닫기의 의미가 다르다** ⇒ 페이지로 쓸 땐 `false`.
+   */
+  dismissOnBackdrop?: boolean
 }
 
 /** 질문 넷. 순서가 곧 진행바이고, 각 단계는 **하나만** 묻는다. */
@@ -89,7 +99,7 @@ const STEPS = [
   { key: 'business', title: '사업자등록증을 올려주세요', hint: '사람이 직접 확인해요 — 내용이 잘 보이는 사진이면 돼요' },
 ] as const
 
-export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Props) {
+export default function StoreRegisterModal({ initialPlace, onClose, onDone, dismissOnBackdrop = true }: Props) {
   const navigate = useNavigate()
   const [picked, setPicked] = useState<RegisterPlace | null>(initialPlace ?? null)
   const [showMap, setShowMap] = useState(!initialPlace)
@@ -215,10 +225,15 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
     try { return !!localStorage.getItem('seller_token') } catch { return false }
   })()
 
+  // 🩸 2026-09-07 병합에서 **다른 세션의 가드가 내 버그를 잡았다.** 이 안내 화면은 위 폼과 별개의
+  //   모달 마크업이라, 같은 날 고쳐진 두 가지가 여기엔 안 들어와 있었다 — `light-island` 없이
+  //   `bg-white` 라 다크에서 흰 판 위 흰 글자가 되고, 배경 클릭이 `dismissOnBackdrop` 을 안 거쳐
+  //   곧장 닫혔다. 한 파일 안에 같은 성질의 표면이 둘이면 **하나만 고치고 끝났다고 믿기 쉽다.**
   if (taken) {
     return (
-      <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
-        <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>
+      <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4"
+        onClick={dismissOnBackdrop ? onClose : undefined}>
+        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>
           <div className="p-5">
             <h2 className="text-base font-bold text-gray-900">이미 유어딜에 등록된 매장이에요</h2>
             {/* ⚠️ 누구 것인지 단정하지 않는다 — 내 매장이어도 승인 대기면 좌석이 안 열려 여기로 온다. */}
@@ -254,8 +269,20 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
   }
 
   return (
-    <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
-      <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4"
+      onClick={dismissOnBackdrop ? onClose : undefined}>
+      {/* 🏝️ light-island — 이 패널은 `bg-white` 뿐이라 **테마와 무관하게 늘 흰색**이다. 그런데 이 모달은
+        * 소비자 라우트(`/store/new`)에서도 열리므로, 다크에서 안쪽 `dark:` 유틸이 살아 있으면
+        * 흰 판 위에 흰 글자가 된다 — 실제로 대표가 검색창에 친 글자를 못 봤다(2026-09-07).
+        * 전역 `.dark input`(특이도 0,5,1)이 `text-gray-900`(0,1,0)을 이기므로 **클래스 유틸로는 못 이긴다.**
+        * 실측: 붙이기 전 1.00:1(흰 위 흰) → 붙인 뒤 17.77:1.
+        * ⚠️ 두 세션이 같은 버그를 각자 고쳐 방어가 둘이다 — 여기 `light-island`(모달 자신, **모든 호출부**를
+        *    덮는다)와 `StoreClaimPage` 의 `force-light-theme`(페이지 셸). 겹쳐도 무해하고 서로 다른 범위를
+        *    지키므로 **둘 다 남긴다**. 하나를 지우려면 나머지 하나가 그 범위까지 덮는지 먼저 확인할 것.
+        * ⚠️ `light-fixed` 주석은 가드 면제용 부표일 뿐 런타임엔 아무 일도 안 한다(CLAUDE.md 🏝️ 절).
+        * ⚠️ 이 블록의 이어지는 줄이 `*` 로 시작하는 이유: `check-dashboard-theme.sh` 가 여러 줄 JSX
+        *    주석의 둘째 줄부터를 실코드로 보고 다크 유틸 표기를 위반으로 잡는다(오탐 방향이라 안전). */}
+      <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="px-4 pt-3 pb-2 shrink-0">
           <div className="flex items-center justify-between">
             <button

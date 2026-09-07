@@ -9553,6 +9553,39 @@ canvas {
       '요약은 틀린 걸 발견하라고 있는 것이다. 발견해도 고칠 길이 없으면 불안만 주고, 사장님은 ' +
       '취소하고 처음부터 다시 하거나 그냥 잘못된 채로 등록한다. 화면은 멀쩡해 보인다.',
   },
+  {
+    name: '🏝️ 매장 등록 모달이 다시 흰 판 위 흰 글자가 된다 (light-island 소실)',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: 'className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh]',
+    replace: 'className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh]',
+    test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
+    why:
+      '이 패널은 bg-white 뿐이라 늘 흰데 소비자 라우트(/store/new)에서도 열린다. 전역 .dark input' +
+      '(특이도 0,5,1)이 text-gray-900(0,1,0)을 이기므로 클래스 유틸로는 못 이기고, light-island 만이 ' +
+      '안쪽 dark: 를 끈다. 2026-09-07 대표가 검색창에 친 글자를 못 봤다 — 이 레포 세 번째 재발.',
+  },
+  {
+    name: '🚪 매장 등록 페이지가 다시 배경 클릭으로 꺼진다 (폼 통째로 날아감)',
+    file: 'src/pages/StoreClaimPage.tsx',
+    find: '        dismissOnBackdrop={false}',
+    replace: '',
+    test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
+    why:
+      '/store/new 는 모달이 곧 페이지라 배경 뒤에 아무것도 없다. 사업자등록증까지 올린 폼이 ' +
+      '스치는 클릭 한 번에 사라지고 화면을 떠난다(2026-09-07 대표 신고). 대시보드에서 겹쳐 뜰 때와 ' +
+      '닫기의 의미가 다르다.',
+  },
+  {
+    name: '🏝️ 409 안내 패널만 light-island 를 잃는다 (한 파일 안 두 표면 중 하나)',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>',
+    replace: '        <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>',
+    test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
+    why:
+      '이 파일엔 늘-흰 패널이 **둘**이다(등록 폼 · 409 안내). 실제로 409 화면이 light-island 없이 ' +
+      '들어왔고, 그때 가드가 `.find()` 로 첫 하나만 봐서 통과시켰다. 한 파일 안에 같은 성질의 표면이 ' +
+      '둘이면 하나만 고치고 끝났다고 믿기 쉽다 — 그래서 둘 다 주입해 본다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
