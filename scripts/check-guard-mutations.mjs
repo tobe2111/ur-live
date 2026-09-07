@@ -9204,6 +9204,14 @@ canvas {
     test: 'src/tests/unit/no-deadline-sort.test.ts',
     why: '마감이 없어졌으므로 NULL 비교라 언제나 0 이다. 크래시가 아니라 조용한 부재 — 화면은 멀쩡해 보인다.',
   },
+  {
+    name: "🗓️ 홈·지도 피드 카드에 '마감 임박' 빨간 배지가 부활",
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '  const brandName = p.brand_name',
+    replace: "  const remaining = p.expires_at ? '\ub9c8\uac10 3\uc2dc\uac04' : null\n  const isUrgent = !!remaining\n  const brandName = p.brand_name",
+    test: 'src/tests/unit/no-deadline-sort.test.ts',
+    why: "리스트 API 가 판매 마감을 `p.group_buy_deadline AS expires_at` 으로 **이름을 바꿔** 내려서, 카드 코드만 보면 사용 기한처럼 읽힌다(원 필드명으로 grep 하면 안 걸린다). 게다가 시간·분 단위일 때만 떠서 평소엔 보이지도 않는다 — 2026-09-07 실측으로 09-09 부터 24시간만 켜질 예정이던 것을 잡았다.",
+  },
   // 🌇 2026-09-05 에이전시 일몰 — `AgencyGroupBuyAlert.tsx` 주입 항목 삭제(파일이 없어졌다).
   //    그 불변식은 `no-deadline-sort.test.ts` 의 **파일 부재** 단언이 더 강하게 대신한다.
   {

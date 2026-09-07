@@ -32,15 +32,7 @@ export function distanceKm(
   return km < 1 ? String(Math.round(km * 10) / 10) : String(Math.round(km))
 }
 
-/**
- * 마감까지 남은 날. **실제 마감일이 있을 때만** 숫자가 나온다.
- * ⚠️ 없는 급함을 지어내지 않는다 — 그게 화면에서 가장 티 나는 짓이고, 한 번 하면 다른 문구까지
- *    전부 의심받는다. 마감일이 없으면 `null` 이고 호출부는 띠를 안 그린다.
- */
-export function daysLeft(deadline: string | null | undefined, parse: (s: string) => Date | null): number | null {
-  if (!deadline) return null
-  const t = parse(deadline)?.getTime()
-  if (!t || !Number.isFinite(t)) return null
-  const d = Math.ceil((t - Date.now()) / 86400000)
-  return d >= 0 ? d : null
-}
+// 🪦 2026-09-07: `daysLeft(deadline)` 제거 — #1349 가 상세의 'D-N 마감' 띠를 지우면서 소비처가
+//   0이 됐는데 함수만 남아 있었다. 남겨 두면 다음 세션이 "쓰는 데가 있나 보다" 하고 되살린다.
+//   ⚠️ 구매 후 사용 기한의 D-N 은 **다른 함수**다(`my-vouchers/VoucherTicket` ·
+//      `group-buy/PaymentCompleteTicket` 이 `vouchers.expires_at` 으로 직접 센다). 그건 그대로 있다.
