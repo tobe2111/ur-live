@@ -58,7 +58,7 @@ export function SortMenu<T extends string>({
                   onClick={() => { onChange(o.key); setOpen(false) }}
                   className={`w-full text-left px-3.5 py-2.5 text-[13px] inline-flex items-center gap-2 transition-colors ${
                     selected
-                      ? 'font-extrabold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-500/10'
+                      ? 'font-extrabold text-brand-text  bg-brand-tint bg-brand/10'
                       : 'font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.06]'
                   }`}
                 >

@@ -3,7 +3,6 @@
  *
  * v4 (2026-05-21): 보유한 role 의 "대시보드 바로가기" 단축 카드 추가.
  *   - 셀러 토큰 있으면: 📊 셀러 대시보드 → /seller
- *   - 에이전시 토큰 있으면: 📊 에이전시 대시보드 → /agency
  *   - 둘 다 있는 사용자도 양쪽 진입 가능 (셀러+에이전시 겸업).
  *
  * v3 영구 디자인:
@@ -16,7 +15,7 @@
 import { Link } from 'react-router-dom'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Store, LayoutDashboard, Building2, Handshake, ShoppingBag, type LucideIcon } from 'lucide-react'
+import { ChevronRight, Store, LayoutDashboard, Handshake, ShoppingBag, type LucideIcon } from 'lucide-react'
 import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 
 interface Cta {
@@ -35,12 +34,10 @@ export default function RoleCtaGrid() {
   const { t } = useTranslation()
   const { dashboardItems, signupItems } = useMemo(() => {
     const hasSellerToken = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
-    const hasAgencyToken = typeof window !== 'undefined' && !!localStorage.getItem('agency_token')
     // 내 바로가기 (모든 유저가 가진 유어샵 + 보유 role 의 대시보드 단축)
     const dash: Cta[] = [
       { Icon: Store, title: t('roleCta.linkshop', { defaultValue: '내 유어샵' }), desc: t('roleCta.linkshopDesc', { defaultValue: '이용권을 담아 진열하고 소개해요' }), to: '/u/me', show: () => true, accent: true },
       { Icon: LayoutDashboard, title: t('roleCta.sellerDash', { defaultValue: '셀러 대시보드' }), desc: t('roleCta.sellerDashDesc', { defaultValue: '내 상품·공구·정산 관리' }), to: '/seller', show: () => hasSellerToken, accent: true },
-      { Icon: Building2, title: t('roleCta.agencyDash', { defaultValue: '에이전시 대시보드' }), desc: t('roleCta.agencyDashDesc', { defaultValue: '소속 사업자·소개 가게 수익' }), to: '/agency', show: () => hasAgencyToken, accent: true },
     ]
     // 신규 가입 CTA (보유 안 한 role 만)
     const signup: Cta[] = [
@@ -50,10 +47,8 @@ export default function RoleCtaGrid() {
       // 🏷️ 2026-08-26: '내 쇼핑몰 열기' → '내 가게 등록'. 유어샵은 가입하면 **이미 있다** — 여기서
       //   새로 만드는 건 매장이다. 목적지도 매장 등록(/store/new)으로(대표 확정 '매장 등록이 선행').
       { Icon: ShoppingBag, title: t('roleCta.openShop', { defaultValue: '내 가게 등록' }), desc: t('roleCta.openShopDesc', { defaultValue: '카카오맵에서 내 가게를 찾아 이용권을 팔아요' }), to: '/store/new', show: () => !hasSellerToken },
-      // 🧹 2026-09-02 (대표 "마이페이지에 에이전시 사업 탭은 없어야 해"): 소비자 마이페이지에서 제거.
-      //   에이전시는 B2B 조직 모집이라 소비자 동선에 섞을 자리가 아니다(랜딩 /agency-partner 는 그대로).
-      //   ⚠️ **이미 에이전시인 사람의 대시보드 바로가기(위 dash 의 agencyDash)는 유지** — 그건 진입로가 아니라
-      //     이미 가진 역할로 돌아가는 문이다. 지우면 에이전시가 자기 대시보드로 갈 길을 잃는다.
+      // 🌇 2026-09-04 에이전시 완전 일몰(대표 확정) — 09-02 에 신규 가입 CTA 만 뺐고 "이미 에이전시인
+      //   사람의 대시보드 바로가기는 유지" 했는데, 그 대시보드 자체가 사라졌다. 바로가기도 함께 제거.
     ]
     return {
       dashboardItems: dash.filter(c => c.show()),

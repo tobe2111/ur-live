@@ -151,7 +151,12 @@ describe('배선 — 앱 셸이 몰 표면에서 유어딜 크롬을 안 그린�
 describe('배선 — 상품 상세가 두 신호를 각각 쓴다', () => {
   const page = read('src/pages/ProductDetailPage.tsx')
   it('유어딜 영입 CTA 는 !mallProduct 게이트 뒤다', () => {
-    expect(/\{!mallProduct && \(\(\) => \{/.test(page)).toBe(true)
+    // 🔄 2026-09-04: 정확한 형태(`{!mallProduct && (() => {`)로 고정했더니, 같은 블록에 게이트를
+    //   **추가**하는 것까지 위반으로 읽혔다(가로채기 차단 `!arrivedViaSomeoneElsesRef()`).
+    //   이 테스트가 지키는 것은 "이 블록이 !mallProduct 뒤에 있다" 이지 "조건이 그것뿐이다" 가 아니다.
+    //   ⇒ **맨 앞이 !mallProduct 인 것만** 요구하고 뒤에 조건이 더 붙는 것은 허용한다.
+    //   (게이트를 지우면 여전히 빨간불 — 되돌려-검증 확인.)
+    expect(/\{!mallProduct &&[^\n]*\(\(\) => \{/.test(page)).toBe(true)
   })
   it('추천 섹션도 !mallProduct 게이트 뒤다', () => {
     expect(/\{!mallProduct && \(\s*<ReferralSection/.test(page)).toBe(true)

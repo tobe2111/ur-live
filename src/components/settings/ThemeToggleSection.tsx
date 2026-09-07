@@ -40,11 +40,11 @@ export default function ThemeToggleSection({ variant, className }: Props) {
         <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t('theme.title', { defaultValue: '화면 테마 선택' })}>
           {options.map(o => {
             const active = mode === o.key
-            const baseActive = 'bg-pink-500/20 border border-pink-500/40 text-pink-400'
+            const baseActive = 'bg-brand/20 border border-brand/40 text-brand-text'
             const baseInactive = isDark
               ? 'bg-white/[0.06] border border-white/[0.08] text-white/65 hover:bg-white/[0.10]'
               : 'bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.06] text-gray-700 dark:text-white/65 hover:bg-gray-50 dark:hover:bg-white/[0.08]'
-            const activeClass = isDark ? baseActive : `bg-pink-500/15 dark:bg-pink-500/20 border border-pink-500/40 text-pink-600 dark:text-pink-300`
+            const activeClass = isDark ? baseActive : `bg-brand/15 border border-brand/40 text-brand-text `
             return (
               <button
                 key={o.key}

@@ -16,7 +16,10 @@ import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { swallow } from '@/worker/utils/swallow'
 import { isPinVerified } from './seller-pin.routes'
-import { buildBusinessInfoSeed } from './business-info-seed'
+import { registerBusinessInfoRoutes } from './seller-profile/business-info'
+// 🏪 2026-09-04 (대표 확정 "주인만, 단 마스킹해서 보여줌"): 위임받은 운영자(중개사)에게는
+//   정산계좌·사업자정보를 **가려서 보여주고 수정은 막는다**. 판별 SSOT: worker/utils/store-actor.
+import { resolveStoreActor, OWNER_ONLY_MESSAGE } from '../../../worker/utils/store-actor'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 interface SellerProfileUpdate {
@@ -166,6 +169,16 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
     const bankChangeKeys = ['bank_account', 'bank_name', 'account_holder'] as const;
     const bankChanged = bankChangeKeys.some(k => body[k] !== undefined);
 
+    // 🏪 2026-09-04 (대표 확정): **정산 목적지는 소유자만 바꾼다.** 위임받은 운영자(중개사)가
+    //   계좌를 갈아끼우면 그 매장의 돈이 통째로 다른 곳으로 간다 — PIN 을 요구해도 그 PIN 은
+    //   *운영자 자신의* 것이라 막지 못한다. 그래서 권한 자체로 끊는다.
+    if (bankChanged) {
+      const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);
+      if (!actor.isOwner) {
+        return c.json({ success: false, error: `정산 계좌는 ${OWNER_ONLY_MESSAGE}` }, 403);
+      }
+    }
+
     // 🛡️ 계좌 변경은 민감 액션 — 최근 15분 내 PIN 인증 필수
     if (bankChanged) {
       const pinOk = await isPinVerified(c.req.header('Cookie'), sellerId, c.env.JWT_SECRET);
@@ -309,315 +322,41 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
   }
 });
 
-/**
- * GET /api/seller/business-info
- * 사업자 정보 조회 (seller_business_info 테이블)
- */
-sellerProfileRoutes.get('/business-info', async (c) => {
-  try {
-    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
-    const db = c.env.DB;
-    let businessInfo;
-    try {
-      businessInfo = await db.prepare(`
-        SELECT
-          id, business_number, business_name, ceo_name,
-          business_type, business_category,
-          postal_code, address, address_detail,
-          phone, email,
-          is_verified, verified_at, created_at
-        FROM seller_business_info
-        WHERE seller_id = ?
-      `).bind(sellerId).first();
-    } catch {
-      // address_detail 컬럼이 없는 경우 fallback
-      businessInfo = await db.prepare(`
-        SELECT
-          id, business_number, business_name, ceo_name,
-          business_type, business_category,
-          postal_code, address, '' as address_detail,
-          phone, email,
-          is_verified, verified_at, created_at
-        FROM seller_business_info
-        WHERE seller_id = ?
-      `).bind(sellerId).first();
-    }
-
-    // 🏪 2026-09-03: 행이 없으면 매장 등록 때 받은 값으로 채워 돌려준다(설명은 business-info-seed).
-    if (!businessInfo) {
-      const seeded = await buildBusinessInfoSeed(db, sellerId);
-      return seeded ? c.json({ success: true, data: seeded }) : c.json({ success: false, error: 'Not found' }, 404);
-    }
-
-    // 🖼️ 2026-07-01 (대표 — 유어샵 판매자 정보): 통신판매업신고번호 additive 동봉 (컬럼 없으면 조용히 생략 —
-    //   repair-schema 가 seller_business_info.mail_order_number 보장).
-    try {
-      const mo = await db.prepare('SELECT mail_order_number FROM seller_business_info WHERE seller_id = ?')
-        .bind(sellerId).first<{ mail_order_number: string | null }>();
-      (businessInfo as Record<string, unknown>).mail_order_number = mo?.mail_order_number ?? null;
-    } catch { /* additive — 컬럼 미존재 환경 graceful */ }
-
-    // 🏪 2026-07-05 온누리 가맹 플래그 additive 동봉 (seller_meta K-V).
-    try {
-      const { getSellerMeta } = await import('../../../worker/utils/seller-meta');
-      const sm = await getSellerMeta(db, [Number(sellerId)]);
-      (businessInfo as Record<string, unknown>).onnuri_merchant = sm.get(Number(sellerId))?.onnuri_merchant === '1';
-    } catch { /* additive — fail-soft */ }
-
-    return c.json({ success: true, data: businessInfo });
-
-  } catch (error: unknown) {
-    console.error('Get business info error:', error);
-    return c.json({ success: false, error: 'Failed to get business info' }, 500);
-  }
-});
-
-/**
- * POST/PUT/PATCH /api/seller/business-info
- * 사업자 정보 등록/수정 (seller_business_info 테이블 UPSERT)
- * 수정 시 is_verified = 0 으로 초기화 (재승인 필요)
- */
-sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => {
-  try {
-    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
-
-    const body = await c.req.json<{
-      business_number?: string;
-      business_name?: string;
-      ceo_name?: string;
-      business_type?: string;
-      business_category?: string;
-      postal_code?: string;
-      address?: string;
-      address_detail?: string;
-      phone?: string;
-      email?: string;
-      mail_order_number?: string; // 🖼️ 2026-07-01 통신판매업신고번호 (side-table 컬럼, additive 저장)
-      onnuri_merchant?: boolean;  // 🏪 2026-07-05 온누리상품권 가맹 여부 (seller_meta K-V, additive 저장)
-    }>();
-
-    // 사업자번호 형식 검증 — 🗣️ 2026-09-03: 문구를 한국어로(영문 원문이면 무엇을 고칠지 모른다).
-    if (body.business_number && !/^\d{3}-\d{2}-\d{5}$/.test(body.business_number)) {
-      return c.json({ success: false, error: '사업자등록번호는 000-00-00000 형식으로 입력해 주세요' }, 400);
-    }
-
-    const db = c.env.DB;
-
-    // address_detail 컬럼이 없을 수 있으므로 확인 (마이그레이션 0127 미적용 대비)
-    let hasAddressDetail = true;
-    try {
-      await db.prepare('SELECT address_detail FROM seller_business_info LIMIT 0').all();
-    } catch {
-      hasAddressDetail = false;
-    }
-
-    const existing = await db.prepare(
-      'SELECT id, is_verified FROM seller_business_info WHERE seller_id = ?'
-    ).bind(sellerId).first<{ id: number; is_verified: number }>();
-
-    if (existing) {
-      // UPDATE — 재제출 시 승인 상태 초기화
-      if (hasAddressDetail) {
-        await db.prepare(`
-          UPDATE seller_business_info SET
-            business_number = COALESCE(?, business_number),
-            business_name   = COALESCE(?, business_name),
-            ceo_name        = COALESCE(?, ceo_name),
-            business_type   = COALESCE(?, business_type),
-            business_category = COALESCE(?, business_category),
-            postal_code     = COALESCE(?, postal_code),
-            address         = COALESCE(?, address),
-            address_detail  = COALESCE(?, address_detail),
-            phone           = COALESCE(?, phone),
-            email           = COALESCE(?, email),
-            is_verified     = 0,
-            verified_at     = NULL,
-            updated_at      = datetime('now')
-          WHERE seller_id = ?
-        `).bind(
-          body.business_number ?? null,
-          body.business_name ?? null,
-          body.ceo_name ?? null,
-          body.business_type ?? null,
-          body.business_category ?? null,
-          body.postal_code ?? null,
-          body.address ?? null,
-          body.address_detail ?? null,
-          body.phone ?? null,
-          body.email ?? null,
-          sellerId
-        ).run();
-      } else {
-        await db.prepare(`
-          UPDATE seller_business_info SET
-            business_number = COALESCE(?, business_number),
-            business_name   = COALESCE(?, business_name),
-            ceo_name        = COALESCE(?, ceo_name),
-            business_type   = COALESCE(?, business_type),
-            business_category = COALESCE(?, business_category),
-            postal_code     = COALESCE(?, postal_code),
-            address         = COALESCE(?, address),
-            phone           = COALESCE(?, phone),
-            email           = COALESCE(?, email),
-            is_verified     = 0,
-            verified_at     = NULL,
-            updated_at      = datetime('now')
-          WHERE seller_id = ?
-        `).bind(
-          body.business_number ?? null,
-          body.business_name ?? null,
-          body.ceo_name ?? null,
-          body.business_type ?? null,
-          body.business_category ?? null,
-          body.postal_code ?? null,
-          body.address ?? null,
-          body.phone ?? null,
-          body.email ?? null,
-          sellerId
-        ).run();
-      }
-    } else {
-      // INSERT — NOT NULL 제약 대비: 빈 문자열 기본값
-      if (hasAddressDetail) {
-        await db.prepare(`
-          INSERT INTO seller_business_info
-            (seller_id, business_number, business_name, ceo_name,
-             business_type, business_category, postal_code, address, address_detail,
-             phone, email, is_verified)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-        `).bind(
-          sellerId,
-          body.business_number || '',
-          body.business_name || '',
-          body.ceo_name || '',
-          body.business_type ?? null,
-          body.business_category ?? null,
-          body.postal_code ?? null,
-          body.address ?? null,
-          body.address_detail ?? null,
-          body.phone ?? null,
-          body.email ?? null
-        ).run();
-      } else {
-        await db.prepare(`
-          INSERT INTO seller_business_info
-            (seller_id, business_number, business_name, ceo_name,
-             business_type, business_category, postal_code, address,
-             phone, email, is_verified)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-        `).bind(
-          sellerId,
-          body.business_number || '',
-          body.business_name || '',
-          body.ceo_name || '',
-          body.business_type ?? null,
-          body.business_category ?? null,
-          body.postal_code ?? null,
-          body.address ?? null,
-          body.phone ?? null,
-          body.email ?? null
-        ).run();
-      }
-    }
-
-    // 🖼️ 2026-07-01 (대표 — 유어샵 판매자 정보): 통신판매업신고번호 additive 저장 (컬럼 없으면 조용히 생략).
-    //   메인 UPSERT 와 분리 — 기존 필드/검증/재승인(is_verified=0) 로직 byte-불변.
-    if (body.mail_order_number !== undefined) {
-      try {
-        await db.prepare('UPDATE seller_business_info SET mail_order_number = ? WHERE seller_id = ?')
-          .bind(body.mail_order_number || null, sellerId).run();
-      } catch { /* additive — 컬럼 미존재 환경 graceful */ }
-    }
-
-    // 🏪 2026-07-05 온누리 가맹 플래그 — sellers 컬럼 한도(100=D1 한도) 회피, seller_meta K-V 저장.
-    //   소비자 표면(동네딜 카드/상세/상권관)이 이 키로 뱃지 렌더. 메인 UPSERT 와 분리(additive).
-    if (body.onnuri_merchant !== undefined) {
-      try {
-        const { setSellerMeta } = await import('../../../worker/utils/seller-meta');
-        await setSellerMeta(db, Number(sellerId), { onnuri_merchant: body.onnuri_merchant ? '1' : null });
-      } catch { /* additive — fail-soft */ }
-    }
-
-    // 저장 확인 (address_detail 유무에 따라 쿼리 분기)
-    let saved;
-    try {
-      saved = await db.prepare(`
-        SELECT id, business_number, business_name, ceo_name,
-               business_type, business_category, postal_code, address, address_detail,
-               phone, email, is_verified, verified_at, created_at
-        FROM seller_business_info WHERE seller_id = ?
-      `).bind(sellerId).first();
-    } catch {
-      saved = await db.prepare(`
-        SELECT id, business_number, business_name, ceo_name,
-               business_type, business_category, postal_code, address,
-               '' as address_detail,
-               phone, email, is_verified, verified_at, created_at
-        FROM seller_business_info WHERE seller_id = ?
-      `).bind(sellerId).first();
-    }
-
-    if (saved && body.mail_order_number !== undefined) {
-      (saved as Record<string, unknown>).mail_order_number = body.mail_order_number || null;
-    }
-    return c.json({ success: true, data: saved });
-
-  } catch (error: unknown) {
-    const errMsg = (error as Error).message || 'Unknown error';
-    console.error('Update business info error:', errMsg, error);
-    // 구체적인 에러 메시지 반환 (디버깅용)
-    if (errMsg.includes('UNIQUE constraint')) {
-      return c.json({ success: false, error: '이미 등록된 사업자번호입니다.' }, 409);
-    }
-    if (errMsg.includes('NOT NULL constraint')) {
-      return c.json({ success: false, error: '필수 항목을 모두 입력해주세요 (사업자번호, 상호명, 대표자명).' }, 400);
-    }
-    return safeError(c, error, '사업자 정보 저장 중 오류가 발생했습니다', '[seller-profile]');
-  }
-});
+// 🧱 2026-09-04: 사업자 정보 3핸들러는 `seller-profile/business-info.ts` 로 분리(파일 크기 래칫).
+registerBusinessInfoRoutes(sellerProfileRoutes)
 
 
 // 🛡️ 2026-05-27 (사용자 결정 — 투명성): 셀러 본인 영입자 + commission 분배 정보.
 //   sellers.introduced_by_X_id 가 있으면 영입자 정보 + commission % 반환.
 //   매장 dashboard 의 SellerReferralInfoCard 에서 사용.
 sellerProfileRoutes.get("/referral-info", async (c) => {
+  // 🌇 2026-09-04 에이전시 완전 일몰 — `introduced_by_agency_id` / `agencies` 조회 / `agency_commission_pct`
+  //    를 전부 걷어냈다. 영입자는 이제 **사람(인플루언서)** 하나뿐이다.
   try {
     const sellerId = await getSellerIdFromToken(c.req.header("Authorization"), c.env.JWT_SECRET);
     if (!sellerId) return c.json({ success: false, error: "로그인 필요" }, 401);
 
     const seller = await c.env.DB.prepare(
-      "SELECT introduced_by_agency_id, introduced_by_influencer_id, introduced_at, referral_bonus_until FROM sellers WHERE id = ?"
+      "SELECT introduced_by_influencer_id, introduced_at, referral_bonus_until FROM sellers WHERE id = ?"
     ).bind(sellerId).first<{
-      introduced_by_agency_id: string | null;
       introduced_by_influencer_id: string | null;
       introduced_at: string | null;
       referral_bonus_until: string | null;
     }>().catch(() => null);
 
-    if (!seller || (!seller.introduced_by_agency_id && !seller.introduced_by_influencer_id)) {
+    if (!seller || !seller.introduced_by_influencer_id) {
       return c.json({ success: true, data: null });
     }
 
-    // 영입자 정보 추가 조회
-    let agency_name: string | undefined;
-    let influencer_handle: string | undefined;
-    if (seller.introduced_by_agency_id) {
-      const a = await c.env.DB.prepare("SELECT name FROM agencies WHERE id = ?")
-        .bind(seller.introduced_by_agency_id).first<{ name: string }>().catch(() => null);
-      agency_name = a?.name;
-    } else if (seller.introduced_by_influencer_id) {
-      const i = await c.env.DB.prepare("SELECT handle FROM users WHERE id = ?")
-        .bind(seller.introduced_by_influencer_id).first<{ handle: string | null }>().catch(() => null);
-      influencer_handle = i?.handle || undefined;
-    }
+    const i = await c.env.DB.prepare("SELECT handle FROM users WHERE id = ?")
+      .bind(seller.introduced_by_influencer_id).first<{ handle: string | null }>().catch(() => null);
+    const influencer_handle = i?.handle || undefined;
 
     // platform_settings 에서 commission % 조회 (default)
     const { results: settings } = await c.env.DB.prepare(
-      "SELECT key, value FROM platform_settings WHERE key IN (?, ?, ?)"
-    ).bind("agency_commission_pct", "influencer_commission_pct", "seller_referral_bonus_pct").all<{ key: string; value: string }>()
+      "SELECT key, value FROM platform_settings WHERE key IN (?, ?)"
+    ).bind("influencer_commission_pct", "seller_referral_bonus_pct").all<{ key: string; value: string }>()
       .catch(() => ({ results: [] as { key: string; value: string }[] }));
     const sMap = (settings || []).reduce((acc: Record<string, string>, r) => ({ ...acc, [r.key]: r.value }), {});
 
@@ -625,14 +364,12 @@ sellerProfileRoutes.get("/referral-info", async (c) => {
       success: true,
       data: {
         ...seller,
-        agency_name,
         influencer_handle,
-        agency_commission_pct: Number(sMap.agency_commission_pct) || 2,
         influencer_commission_pct: Number(sMap.influencer_commission_pct) || 0.5,
         bonus_pct: Number(sMap.seller_referral_bonus_pct) || 1,
       },
     });
-  } catch (err) {
+  } catch {
     return c.json({ success: false, error: "referral-info 조회 실패" }, 500);
   }
 });

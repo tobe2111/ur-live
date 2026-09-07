@@ -5498,8 +5498,23 @@ _총 248건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-07**
 - [인플루언서 제안서 — 프리텐다드 이행 + 라이브 화면 재배치 (2026-09-07)](handoff/2026-09-07-proposal-pretendard-live-shots.md)
+_총 259건 · 최신순 · 이 목록은 자동 생성된다._
+
+**2026-09-07**
+- [어드민에 없던 머니 스위치 셋을 붙였다 (2026-09-07)](handoff/2026-09-07-admin-money-switch-ui.md)
+**2026-09-06**
+- [PC 상세 사진도 스마트 크롭 + 남아 있던 두 항목 판정 (2026-09-06)](handoff/2026-09-06-pc-hero-crop.md)
+- [2026-09-06 — 홈에서 같은 이용권 사진이 두 번 나오던 것](handoff/2026-09-06-home-section-duplicate-photo.md)
+- [카드 사진 넘길 때 "이전 사진이 그대로" — 신호가 없던 것 (2026-09-06)](handoff/2026-09-06-card-swipe-blur.md)
+- [꺼진 프로그램의 적립을 화면이 약속하던 것 (2026-09-06)](handoff/2026-09-06-affiliate-display-gate.md)
+- [2026-09-06 — 유어애즈 읽기 증폭 2건 · B2B 업체 수집 붕괴 규명](handoff/2026-09-06-ads-read-amplification-and-b2b-collapse.md)
+**2026-09-05**
+- [배포 판정 + 실측에서 나온 것: 직접 10% 가 걷히는 매장이 0곳 (2026-09-05)](handoff/2026-09-05-live-verdict-channel-gap.md)
+- [2026-09-05 — 홈 상단 배너 · 기본 정렬 '가까운 순' · 계산대 코드 입력](handoff/2026-09-05-home-banner-near-default-scan-code.md)
+- [담아 팔면 몇 % — 화면 네 곳이 서로 다른 숫자를 말하고 있었다 (2026-09-05)](handoff/2026-09-05-affiliate-rate-ssot.md)
 **2026-09-04**
 - [발송 실패한 교환권을 숫자에서 뺀다 — 보이되 세지 않는다](handoff/2026-09-04-gifticon-failed-not-counted.md)
+- [2026-09-04 — 에이전시 완전 일몰 + 매장 정리 + 매장↔중개사 권한 모델](handoff/2026-09-04-agency-sunset-final.md)
 **2026-09-03**
 - [2026-09-03 — 지갑 제목 삭제 + 라이브 신고 2건 분류(429 · /map)](handoff/2026-09-03-wallet-title-and-live-triage.md)
 - [이용권 현황이 교환권까지 세던 것 — 마이페이지가 자기 자신과 모순](handoff/2026-09-03-voucher-status-wallet-split.md)
@@ -5509,6 +5524,7 @@ _총 248건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-09-03 · 검색 전면 개선 (대표 QA)](handoff/2026-09-03-search-engine-rebuild.md)
 - [2026-09-03 · 리뷰 버튼 hard-disable 제거 + 자격 사전 안내](handoff/2026-09-03-review-gate-clicktime.md)
 - [2026-09-03 — 다크 대비 사각지대 제거 · 히어로 사진 정렬 · 위시리스트 PC](handoff/2026-09-03-dark-contrast-and-screens.md)
+- [2026-09-03 — 딜 카드 형태 3종 통일 + 상태 색이 전부 회색이던 것](handoff/2026-09-03-card-shapes-and-status-tone.md)
 **2026-09-02**
 - [🎟️ 이용권 등록 플로우 전수조사 (2026-09-02)](handoff/2026-09-02-voucher-flow-audit.md)
 - [2026-09-02 — 유어딜 요청 경로 D1 읽기 다이어트 (PR-C)](handoff/2026-09-02-urdeal-request-diet.md)
@@ -5524,6 +5540,7 @@ _총 248건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-09-01 — 교환권 탭 상단 두 층 정리 (대표 "나안")](handoff/2026-09-01-vouchers-top-chrome.md)
 - [교환권 화면 — 같은 숫자를 두 번 말하던 할인율 · 앰버 · 이모지 (2026-09-01)](handoff/2026-09-01-vouchers-discount-once.md)
 - [이용권 부분결제 — 딜 일부 + 카드 나머지 (게이트 OFF)](handoff/2026-09-01-voucher-partial-deal.md)
+- [뒤로가기 스크롤 복원 — "어떠한 페이지든 무조건" (2026-09-01)](handoff/2026-09-01-scroll-restoration.md)
 - [인플루언서 DB 읽기 증폭 — 한 달 전 수리가 왜 안 먹었나 (2026-09-01)](handoff/2026-09-01-influencer-db-read-amplification.md)
 - [구매 흐름(상세·장바구니·결제) 디자인 정리 · 가드 두 개 확장 (2026-09-01)](handoff/2026-09-01-funnel-detail-design.md)
 - [이용권 장바구니·결제 — 배송비 판정이 두 화면에서 갈려 있었다 (2026-09-01)](handoff/2026-09-01-cart-checkout-shipping-ssot.md)

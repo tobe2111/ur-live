@@ -23,7 +23,6 @@
  *  - affiliate.routes.ts: /track 경로의 creditAffiliateForOrder (설계 F6)
  *  - payment.routes.ts: 숙소(stay) referral 의 affiliate_earnings 직접 INSERT (설계 F5)
  *  - group-buy helpers.ts / group-buy.routes.ts: 이용권 인플 attribution INSERT (별개 source)
- *  - cron agency-store-intro-monthly-bonus.ts: 월간 보너스 INSERT
  * 의도적 확장이 정말 필요하면: 대표 승인 + 이 파일 베이스라인 갱신 + commit 메시지에 사유.
  * 설계 SSOT: docs/design/commission-funding-restructure.md
  */
@@ -70,12 +69,11 @@ const ENTRY_FNS = [
 ]
 // path suffix → { fn: 최대 허용 등장 수 } ('*' = 무제한, 정의 파일/오케스트레이터)
 const R1_ALLOW = {
-  'src/worker/utils/agency-store-intro-commission.ts': { creditAgencyStoreIntroCommission: '*' },
   'src/worker/utils/influencer-store-intro-commission.ts': { creditInfluencerStoreIntroCommission: '*' },
   'src/worker/utils/affiliate-credit.ts': { creditAffiliateFromIntent: '*', creditAffiliateForOrder: '*' },
   'src/features/referral/api/referral-tree.routes.ts': { calculateMultiTierCommission: '*' },
   'src/worker/utils/order-commissions.ts': {
-    creditAgencyStoreIntroCommission: '*', creditInfluencerStoreIntroCommission: '*',
+    creditInfluencerStoreIntroCommission: '*',
     calculateMultiTierCommission: '*', creditAffiliateFromIntent: '*',
   },
   // 기존 예외 (래칫 — 늘어나면 위반)
@@ -110,10 +108,8 @@ const R2_TABLES = {
     'src/features/group-buy/api/helpers.ts',                 // 이용권 인플 attribution(별개 source)
     'src/features/group-buy/api/group-buy.routes.ts',        // 동일
   ],
-  agency_store_intro_commissions: [
-    'src/worker/utils/agency-store-intro-commission.ts',     // SSOT
-    'src/worker/cron/agency-store-intro-monthly-bonus.ts',   // 월간 보너스
-  ],
+  // 🌇 2026-09-04 에이전시 완전 일몰 — `agency_store_intro_commissions` 축을 표에서 뺐다.
+  //    적립 모듈·월간 보너스 크론 둘 다 삭제됐다(라이브 0행). 되살아나면 R1/R3 가 새 파일을 잡는다.
   referral_commissions: [
     'src/features/referral/api/referral-tree.routes.ts',     // SSOT
   ],
@@ -134,15 +130,16 @@ for (const file of files) {
 }
 
 // ── R3: F2 이중 커미션 dedup 회귀 방지 ───────────────────────────────────────
-//   ledger.ts 의 사용시점 셰어 2함수(recordAgencyCommissionShare/recordIntroductionCommissionShare)는
-//   결제확정 시 GMV 커미션과의 주문 단위 dedup([INV-CB-DEDUP] 마커 블록)을 반드시 보유해야 함.
-//   제거되면 같은 주문에 두 시스템이 이중 적립(최대 GMV 6% > 수수료 5%) — 2026-07-04 F2 실감사 확정.
+//   ledger.ts 의 사용시점 셰어는 결제확정 시 GMV 커미션과의 주문 단위 dedup([INV-CB-DEDUP] 마커
+//   블록)을 반드시 보유해야 함. 제거되면 같은 주문에 두 시스템이 이중 적립 — 2026-07-04 F2 실감사 확정.
+//   🌇 2026-09-04: 셰어가 **둘 → 하나**로 줄었다(`recordAgencyCommissionShare` 삭제 — 에이전시 일몰).
+//      그래서 기대 마커도 2 → 1 이다. 남은 하나는 `recordIntroductionCommissionShare`(사람 영입).
 try {
   const ledgerSrc = readFileSync('src/worker/utils/ledger.ts', 'utf8')
   const dedupCount = (ledgerSrc.match(/\[INV-CB-DEDUP\]/g) || []).length
-  if (dedupCount < 2) {
+  if (dedupCount < 1) {
     violations.push(
-      `   - [R3] src/worker/utils/ledger.ts — [INV-CB-DEDUP] 마커 ${dedupCount}개(<2) — 사용시점 셰어의 확정-커미션 dedup 이 제거됨(이중 적립 회귀)`,
+      `   - [R3] src/worker/utils/ledger.ts — [INV-CB-DEDUP] 마커 ${dedupCount}개(<1) — 사용시점 셰어의 확정-커미션 dedup 이 제거됨(이중 적립 회귀)`,
     )
   }
 } catch {
@@ -161,7 +158,6 @@ try {
 const R4_DEALFUNDED_FILES = [
   'src/worker/utils/affiliate-credit.ts',
   'src/worker/utils/influencer-store-intro-commission.ts',
-  'src/worker/utils/agency-store-intro-commission.ts',
 ]
 const PLATREV_DEBIT_RE = /debit_account\s*:\s*['"]platform:revenue['"]/
 for (const suffix of R4_DEALFUNDED_FILES) {
@@ -189,7 +185,6 @@ try {
 try {
   const src = stripComments(readFileSync('src/worker/utils/ledger.ts', 'utf8'))
   const blocks = [
-    { name: 'recordAgencyCommissionShare', anchor: "event_type: 'agency_commission'", span: 400 },
     { name: 'creditUserCommission', anchor: 'const debitAcct', span: 1400 },
   ]
   for (const b of blocks) {

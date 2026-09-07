@@ -36,7 +36,7 @@ type OrderLike = { id: number; seller_id?: number | null; total_amount?: number 
 
 /** 커미션 축 식별 키 — opts.only 필터용. */
 // 🛑 2026-08-31: 'agency_intro'(에이전시 매장영입 1%) 폐지 — 타입에서 뺐으므로 호출부가 컴파일로 막힌다.
-export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'supplier'
+export type CommissionAxis = 'affiliate' | 'multi_tier' | 'supplier'
 
 export interface CreditOrderCommissionsOpts {
   /** system-push 등 side-effect 용 env (affiliate 알림). 미전달 시 push 만 생략됨. */
@@ -125,12 +125,19 @@ async function legacyCredit(DB: D1Database, orders: OrderLike[], opts?: CreditOr
   //   ⚠️ **적립만 없앴다.** `reverseAgencyStoreIntroOnRefund`(환불 역전)와 정산/원장 읽기는
   //   그대로 둔다 — 새 적립이 0 이라 무해하고, 역전만 먼저 지우면 비대칭이 된다.
   //   폐지 시점 라이브 실측: `agency_store_intro_commissions` **0행**(잃는 데이터 없음).
-  if (axisOn(opts, 'influencer_intro')) try {
-    const { creditInfluencerStoreIntroCommission } = await import('./influencer-store-intro-commission')
-    for (const o of orders) {
-      await creditInfluencerStoreIntroCommission(DB, { id: Number(o.id), seller_id: o.seller_id ?? null, total_amount: o.total_amount ?? null })
-    }
-  } catch { /* fail-soft */ }
+  // 🛑 2026-09-04 대표 *"2% 주는건 지금은 없는게 낫겠어"* — **크리에이터 매장영입 2% 폐지.**
+  //
+  //   재원을 매장(promo)으로 통일한다 — 2026-07-08 대표 확정 원칙("유어딜 5%는 어떤 커미션에도
+  //   안 쓴다")의 **마지막 예외**가 이 축이었다. 데려온 사람의 몫은 이제 매장이 스스로 거는
+  //   소개비에서 나온다: 손님이 급한 매장은 많이 걸고, 잘 되는 매장은 안 건다.
+  //
+  //   폐지 시점 라이브 실측 — 성장 커미션 **네 축 전부 지급 0건**:
+  //     C1 핀/어필리에이트 0 · C2 멀티티어 0 · C3 영입(이 축) 0 · C4 에이전시 0
+  //   영입자가 지정된 매장도 0곳이라 **잃는 사람이 없다.**
+  //
+  //   ⚠️ **적립만 없앴다.** `reverseInfluencerStoreIntroOnRefund`(환불 역전)와 정산·원장·cron 의
+  //   `influencer_attributions` 읽기는 그대로 둔다 — 새 적립이 0 이라 무해하고, 역전만 먼저
+  //   지우면 비대칭이 된다(에이전시 1% 폐지와 동일 판단, 2026-08-31).
   if (axisOn(opts, 'supplier')) try {
     const { creditSupplierOnOrder } = await import('../../features/supply/api/supply-settlement')
     for (const o of orders) {
@@ -178,7 +185,6 @@ async function budgetedCreditForOrder(
 
   const { creditAffiliateFromIntent, peekAffiliateIntentRequest } = await import('./affiliate-credit')
   const { calculateMultiTierCommission, computeMultiTierEntries } = await import('../../features/referral/api/referral-tree.routes')
-  const { creditInfluencerStoreIntroCommission, computeInfluencerStoreIntroRequest } = await import('./influencer-store-intro-commission')
 
   // ── 요청액 산출 (compute-only, read-only) ───────────────────────────────
   const requests: CommissionRequest[] = []
@@ -199,8 +205,8 @@ async function budgetedCreditForOrder(
     //   플랫폼 예산 대상 아님(push 안 함, 아래에서 전액 적립). owner 되갚기는 debitOwnerPromoForOrder.
     if (mtReq > 0 && !promoOwnerFunded) requests.push({ key: 'multi_tier', amountKrw: mtReq })
   }
-  const infReq = axisOn(opts, 'influencer_intro') ? await computeInfluencerStoreIntroRequest(DB, order) : 0
-  if (infReq > 0 && !promoOwnerFunded) requests.push({ key: 'influencer_intro', amountKrw: infReq })
+  // 🛑 2026-09-04 폐지(위 주석) — 예산 요청에서도 제외한다. 남겨 두면 예산을 잡아만 두고
+  //   적립은 0 이라, 다른 축이 받을 수 있었던 몫이 사라진다(가장 조용한 손실 — 에이전시 폐지 교훈).
   // 🛑 2026-08-31 폐지(위 주석) — 예산 요청에서도 제외한다. 남겨 두면 예산을 잡아만 두고
   //   적립은 0 이라, 다른 축이 받을 수 있었던 몫이 사라진다(가장 조용한 손실).
 
@@ -242,7 +248,6 @@ async function budgetedCreditForOrder(
   // C3/C4 는 요청 0(부적격)이어도 호출 — helper 자체가 안전 skip 하고, C4 는 signup 보너스
   // (월예산 캡, 거래 예산 밖 정액)를 독립 처리해야 하므로 항상 통과시킨다.
   // 💸 owner-펀딩이면 amountOverride 미전달=전액(셀러 promo 부담, C1 과 동일 패턴). 되갚기는 debitOwnerPromoForOrder.
-  if (axisOn(opts, 'influencer_intro')) await creditInfluencerStoreIntroCommission(DB, order, promoOwnerFunded ? undefined : { amountOverride: granted('influencer_intro') }).catch(() => {})
 }
 
 export async function creditOrderCommissions(

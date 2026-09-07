@@ -639,7 +639,7 @@ function ShareLinkButton({ productId }: { productId: number }) {
     <button
       type="button"
       onClick={copyLink}
-      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-pink-50 text-pink-700 text-xs font-semibold rounded-lg hover:bg-pink-100"
+      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-brand-tint text-brand-text text-xs font-semibold rounded-lg hover:bg-brand-tint"
       title="이 숙소의 소개 링크 복사"
     >
       🔗 referral 링크

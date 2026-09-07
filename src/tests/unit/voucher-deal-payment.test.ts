@@ -6,9 +6,14 @@
  *   서버는 원래부터 이용권에도 `payment_method:'deal'` 을 받고 있었다. 화면이 안 내놨을 뿐
  *   직접 POST 하면 통했다. 게이트가 기본 OFF 라 이 PR 은 그 문을 닫는다.
  *
- * 🔴 왜 기본 OFF 여야 하는가: 딜 보너스 20% 가 살아 있는 채로 열면 이용권 마진(5~10%)보다
- *   보너스가 커서 **팔릴수록 유어딜이 건당 8~14원 적자**다. 교환권은 소비자 마크업 20% 가
+ * 🔴 왜 오래 기본 OFF 였는가: 딜 보너스 20% 가 살아 있는 채로 열면 이용권 마진(5~10%)보다
+ *   보너스가 커서 **팔릴수록 유어딜이 건당 8~14원 적자**였다. 교환권은 소비자 마크업 20% 가
  *   보너스를 상쇄해 괜찮았고, 이용권엔 그 상쇄가 없다.
+ *
+ * ✅ **2026-09-04**: 그 선행 조건이 해소돼(라이브 실측 `influencer_deal_bonus_pct = 0`)
+ *   대표 지시로 클라 플래그를 켰다. ⇒ 이 파일이 지키는 것이 바뀐다:
+ *   *"배포만으로 안 열린다"* → **"유일한 스위치가 서버 키 하나로 남아 있다"**.
+ *   그 키가 사라지거나 truthy 검사로 느슨해지면 **끌 방법이 없어진다** — 그게 이제 진짜 위험이다.
  *
  * ⚠️ 못 막는 것: 실제 D1 실행·정산 결과는 안 본다(소스 불변식만). 활성 전 staging 실결제 필요.
  */
@@ -29,9 +34,15 @@ const DEALERR = 'src/pages/group-buy/deal-join-error.ts'
 /** 주석 제거 — 주석에만 남은 이름을 배선으로 오독하지 않는다(2026-08-01 교훈). */
 const codeOnly = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-describe('R1 — 기본 OFF (배포만으로 열리지 않는다)', () => {
-  it('클라 플래그가 false', () => expect(VOUCHER_DEAL_PAYMENT_ENABLED).toBe(false))
-  it('서버는 설정이 정확히 `true` 일 때만 통과시킨다', () => {
+describe('R1 — 끌 수 있어야 한다 (서버 키가 유일한 스위치)', () => {
+  // 🔑 플래그는 2026-09-04 에 켜졌다. 여기서 값을 고정하지 않는 이유: 켜고 끄는 건 판단이고,
+  //   테스트가 지켜야 할 것은 **그 판단을 실행할 수단이 남아 있는가** 다.
+  it('클라 플래그는 boolean 상수로 남아 있다 (조건식으로 흐려지지 않는다)', () => {
+    expect(typeof VOUCHER_DEAL_PAYMENT_ENABLED).toBe('boolean')
+    const flags = readFileSync('src/shared/feature-flags.ts', 'utf8')
+    expect(flags).toMatch(/export const VOUCHER_DEAL_PAYMENT_ENABLED = (true|false)\s*$/m)
+  })
+  it('서버는 설정이 정확히 `true` 일 때만 통과시킨다 (= 키를 지우면 꺼진다)', () => {
     const code = codeOnly(readFileSync(GUARD, 'utf8'))
     expect(code).toContain("key = 'voucher_deal_payment_enabled'")
     // `=== 'true'` 로만 허용 — truthy 검사(`!!gate?.value`)면 'false' 문자열도 통과한다.

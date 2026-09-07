@@ -24,8 +24,13 @@ const MEDIA = code('src/components/deal/DealCardMedia.tsx')
 describe('① 빈 칸 없는 넘김', () => {
   it('opacity 가 shown 이 아니라 painted(로드 완료 장면) 를 따른다', () => {
     expect(MEDIA).toMatch(/const painted = loaded\.has\(shown\) \? shown : paintedRef\.current/)
-    expect(MEDIA).toMatch(/opacity: i === painted \? \(painted === shown \? 1 : 0\.65\) : 0/)
+    expect(MEDIA).toMatch(/opacity: i === painted \? \(waiting \? 0\.8 : 1\) : 0/)
     expect(MEDIA, '옛 즉시 전환이 남아 있다 — 클릭 순간 빈 칸').not.toMatch(/opacity: i === shown \? 1 : 0/)
+    // 🩸 2026-09-06: 어둡게만 하는 건 신호가 아니다(대표 "이전 사진과 똑같이 나온다").
+    //   받는 중인 것을 **흐림**으로 알린다 — 밝은 사진에서도 0ms 에 읽힌다.
+    expect(MEDIA, '받는 중 표시(블러)가 사라졌다 — 직전 사진이 선명해 안 넘어간 것으로 보인다')
+      .toMatch(/filter: i === painted && waiting \? 'blur\(10px\)' : 'blur\(0px\)'/)
+    expect(MEDIA, 'waiting 판정이 사라졌다').toMatch(/const waiting = painted !== shown/)
   })
   it('onLoad 가 loaded 집합을 채우고, 직전 장면은 로드 완료 뒤에만 painted 가 바뀐다', () => {
     expect(MEDIA).toMatch(/setLoaded\(\(prev\) => \(prev\.has\(i\) \? prev : new Set\(prev\)\.add\(i\)\)\)/)
@@ -41,7 +46,14 @@ describe('② 보이는 카드는 다음 한 장을 idle 에 미리', () => {
     const body = MEDIA.slice(at, at + 1200)
     expect(body).toMatch(/if \(!multi \|\| !coverLoaded \|\| idleDone\.current\) return/)
     expect(body).toMatch(/new IntersectionObserver\(/)
-    expect(body).toMatch(/threshold: 0\.6/)
+    // ⏱️ 2026-09-06: 화면에 **닿기 전**부터 받는다. 받는 장수는 그대로(카드당 1장) — 시점만 앞당겼다.
+    //   되돌아가면 스크롤해서 만난 카드를 바로 넘길 때 4~5초를 정면으로 맞는다(4G 실측).
+    expect(body, '관측 여백이 사라졌다 — 카드가 화면에 다 들어온 뒤에야 받기 시작한다').toMatch(/rootMargin: '400px'/)
+    expect(body, 'idle 대기가 다시 길어졌다').toMatch(/timeout: 800/)
+    // 👁️ 머문 카드만 받는다 — 스쳐 지나간 카드는 타이머가 취소돼 한 장도 안 받는다.
+    //   이게 빠지면 "일찍 받기"의 트래픽 비용(+27% 실측)이 빠른 스크롤에서도 그대로 나간다.
+    expect(body, '머문-시간 게이트가 사라졌다 — 스쳐 간 카드까지 받는다').toMatch(/setTimeout\([\s\S]{0,400}?DWELL_MS\)/)
+    expect(body, '화면을 벗어날 때 예약을 취소하지 않는다').toMatch(/clearTimeout\(dwell\)/)
     expect(body).toMatch(/requestIdleCallback\(run/)
     expect(body).toMatch(/const run = \(\) => prefetchNext\(\)/)
     expect(MEDIA).toMatch(/const coverLoaded = loaded\.has\(0\)/)

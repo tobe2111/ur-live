@@ -164,7 +164,7 @@ export default function BlogDetailPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8 lg:py-12
-        lg:grid lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_260px] lg:gap-8 xl:gap-10">
+ lg:grid lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_260px] lg:gap-8 xl:gap-10">
 
         {/* ── 좌측: 목차 ── */}
         <aside className="hidden lg:block">
@@ -224,7 +224,7 @@ export default function BlogDetailPage() {
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">이용권·교환권·동네딜을 한곳에, 나만의 유어샵까지</p>
             <div className="flex gap-3 justify-center">
               <Link to="/" className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-bold hover:opacity-90">둘러보기</Link>
-              <Link to="/u/me" className="px-5 py-2.5 bg-pink-500 text-white rounded-xl text-sm font-bold hover:bg-pink-600">내 유어샵 보기</Link>
+              <Link to="/u/me" className="px-5 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-dark">내 유어샵 보기</Link>
             </div>
             <div className="mt-3">
               <KakaoShareButton title={stripBold(post.title)} description={stripBold(post.summary)} link={`/blog/${post.slug}`} buttonText={t('blog.readBtn', { defaultValue: '글 읽기' })} />

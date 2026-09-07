@@ -24,7 +24,6 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const LOGIN_PAGES = [
   'src/pages/AdminLoginPage.tsx',
   'src/pages/SellerLoginPage.tsx',
-  'src/pages/AgencyLoginPage.tsx',
 ]
 
 const GATE_LOOKBACK = 12 // clearAuthData('user') 직전 N줄 안에 !isKorea() 가 있어야 함

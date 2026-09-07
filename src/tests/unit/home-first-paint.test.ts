@@ -51,6 +51,7 @@ describe('홈 섹션 0-RTT — 피드와 섹션이 같은 화면이면 시드도
   const read = (p: string) => readFileSync(p, 'utf-8')
   const WORKER = 'src/worker/index.ts'
   const SECTIONS = 'src/components/home/HomeSections.tsx'
+  const SEED_SSOT = 'src/shared/home-section-ids.ts'
 
   it('워커가 홈에서 SECTIONS 보조 슬롯을 잡는다', () => {
     const lines = read(WORKER).split('\n').map((l) => l.trim()).filter((l) => !l.startsWith('//'))
@@ -71,18 +72,23 @@ describe('홈 섹션 0-RTT — 피드와 섹션이 같은 화면이면 시드도
     expect(s).toContain('__SSR_INITIAL_SECTIONS__')
   })
 
+  /**
+   * 🖼️ 2026-09-06: 시드 파서가 `shared/home-section-ids` 로 옮겨졌다(바로 아래 피드도 같은 시드를
+   *   읽어야 해서 — 섹션에 뜬 상품을 자기 밴드 뒤로 미룬다). 불변식은 그대로이고 **어디서 읽는가**만
+   *   바뀌었으므로 판정 대상을 그 SSOT 로 옮긴다(완화 아님 — 여전히 동기 + fail-soft 를 요구한다).
+   */
   it('클라가 첫 render 에서 동기로 읽는다 (useEffect 면 한 프레임 늦다)', () => {
     const s = read(SECTIONS)
-    expect(s).toMatch(/useMemo<HomeSection\[\] \| undefined>/)
-    expect(s).toContain("getElementById('__SSR_INITIAL_SECTIONS__')")
+    expect(s).toMatch(/useMemo\(\(\) => readHomeSectionsSeed/)
+    expect(read(SEED_SSOT)).toContain("getElementById('__SSR_INITIAL_SECTIONS__')")
     expect(s).toContain('initialData: ssrSections')
     // initialData 는 기본이 "신선함" — 보호가 없으면 시드가 낡아도 갱신이 안 된다.
     expect(s).toContain("refetchOnMount: 'always'")
   })
 
   it('깨진 시드가 홈을 못 열게 하지 않는다', () => {
-    const s = read(SECTIONS)
-    const seed = s.slice(s.indexOf('const ssrSections'), s.indexOf('const { data: sections'))
+    const s = read(SEED_SSOT)
+    const seed = s.slice(s.indexOf('export function readHomeSectionsSeed'), s.indexOf('export function seededSectionProductIds'))
     expect(seed).toContain('catch')
   })
 

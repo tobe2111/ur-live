@@ -38,9 +38,10 @@ const STORE_CATEGORIES = [
 export default function SellerRegisterSupplierPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  // 🛡️ 2026-05-20: 에이전시 가입 링크 (/seller/register/supplier?agency=AG-XXXXXXXX) 자동 prefill.
+  // 🌇 2026-09-05 에이전시 일몰 — `?agency=AG-XXXXXXXX` 자동 prefill + 추천코드 입력칸 삭제.
+  //   코드를 발급하던 대시보드·초대 링크가 전부 없어져 **아무도 채울 수 없는 칸**이 남아 있었고,
+  //   그 값이 요금(직접 10% / 중개 5%)을 갈랐다. 이 문은 이제 언제나 직접 입점이다.
   const [searchParams] = useSearchParams()
-  const agencyFromUrl = (searchParams.get('agency') || '').toUpperCase().slice(0, 12)
   const userName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null
   const [loading, setLoading] = useState(false)
   // 📜 2026-07-05 판매자 이용약관 v1.0: 가입 시 동의 필수
@@ -56,18 +57,7 @@ export default function SellerRegisterSupplierPage() {
     store_category: '',
     address: '',
     description: '',
-    // 🛡️ 2026-05-20: 에이전시 (입점 영업) 가 가게에 추천 코드 전달 → 가입 시 입력.
-    //   서버는 agency_intro_code 로 에이전시 매칭 + sellers.introduced_by_agency_id 자동 채움.
-    //   URL ?agency=AG-XXXXXXXX 가 있으면 useEffect 에서 자동 prefill.
-    agency_intro_code: agencyFromUrl,
   })
-
-  // URL query 변경 시 (drag-n-drop, copy 링크) prefill 갱신.
-  useEffect(() => {
-    if (agencyFromUrl && agencyFromUrl !== '') {
-      setForm(f => f.agency_intro_code === agencyFromUrl ? f : { ...f, agency_intro_code: agencyFromUrl })
-    }
-  }, [agencyFromUrl])
 
   const formatBusinessNumber = (input: string) => {
     const d = input.replace(/\D/g, '').slice(0, 10)
@@ -183,7 +173,6 @@ export default function SellerRegisterSupplierPage() {
         phone: form.phone,
         seller_type: 'store_owner',
         description: descWithMeta,
-        agency_intro_code: form.agency_intro_code.trim() || undefined,
         terms_agreed_version: TERMS_CURRENT_VERSION,
       })
       if (res.data?.success) {
@@ -369,33 +358,6 @@ export default function SellerRegisterSupplierPage() {
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 resize-none" />
           </Field>
 
-          {/* 🛡️ 2026-05-20: 에이전시 추천 코드 — 입점 영업 에이전시가 가게에 알려준 코드.
-              URL query 로 자동 prefill 시 emerald 배지로 시각 강조. */}
-          <Field label={
-            agencyFromUrl
-              ? '에이전시 추천 코드 ✓ 자동 입력됨'
-              : '에이전시 추천 코드 (선택)'
-          }>
-            <input value={form.agency_intro_code}
-              onChange={e => setForm(f => ({ ...f, agency_intro_code: e.target.value.toUpperCase().slice(0, 12) }))}
-              placeholder="예: AG-A8K3F1 (없으면 비워두세요)"
-              className={`w-full px-3 py-2.5 border rounded-lg text-sm text-gray-900 font-mono uppercase ${
-                agencyFromUrl
-                  ? 'bg-emerald-50 border-emerald-300 focus:border-emerald-500'
-                  : 'border-gray-300'
-              }`} />
-            <p className="text-[10px] mt-1">
-              {agencyFromUrl ? (
-                <span className="text-emerald-600 font-bold">
-                  ✓ 추천 링크로 들어오셨어요. 에이전시 코드가 자동 입력됐습니다.
-                </span>
-              ) : (
-                <span className="text-gray-500">
-                  영업 에이전시가 직접 추천해서 가입하시는 경우만 입력하세요.
-                </span>
-              )}
-            </p>
-          </Field>
         </div>
 
         <TermsConsentBox

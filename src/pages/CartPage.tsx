@@ -304,7 +304,7 @@ function CartPageContent() {
   }, [selectedIds, removeItemMutation, showAlert, showConfirm, t])
 
   // 🛡️ 2026-05-20: 판매종료 (product_is_active === 0) 항목만 일괄 삭제. 사용자 신고:
-  //   "만료된 상품들 하나씩 삭제하기 번거롭다". 자동 제외만으로는 cart 가 깔끔하지 않음.
+  // "만료된 상품들 하나씩 삭제하기 번거롭다". 자동 제외만으로는 cart 가 깔끔하지 않음.
   const inactiveIds = useMemo(() => {
     return cartItems
       .filter((it: CartItem) => it.product_is_active !== undefined && Number(it.product_is_active) !== 1)
@@ -528,7 +528,7 @@ function CartPageContent() {
                         }
                         const hasBundle = Array.from(bundlingMap.values()).some(v => v >= 2)
                         return hasBundle ? (
-                          <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400">
+                          <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-brand-tint text-brand-text ">
                             <PackageCheck className="w-3 h-3" strokeWidth={2} aria-hidden />합배송
                           </span>
                         ) : null

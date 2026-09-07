@@ -128,7 +128,7 @@ export default function IntroducePage() {
         {/* gradient backdrop */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#2D0A14] via-[#11141C] to-[#11141C] pointer-events-none" />
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] rounded-full bg-red-600/10 blur-[120px] pointer-events-none" />
-        <div className="absolute top-20 right-1/4 w-[300px] h-[300px] rounded-full bg-pink-600/10 blur-[100px] pointer-events-none" />
+        <div className="absolute top-20 right-1/4 w-[300px] h-[300px] rounded-full bg-brand/10 blur-[100px] pointer-events-none" />
 
         <div className="relative max-w-[1280px] mx-auto px-6 pt-20 pb-24 flex flex-col md:flex-row gap-16 items-center">
           {/* left: copy */}

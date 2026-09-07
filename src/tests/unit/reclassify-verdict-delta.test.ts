@@ -146,7 +146,12 @@ describe('🔌 배선 — 계측이 실제로 꽂혀 있고, 동작은 안 바�
 
   it('🔴 UPDATE 와 비교가 **같은 기록값**을 쓴다 — 두 벌이면 v1 오계상이 재발한다', () => {
     expect(disc).toMatch(/const written = \{/)
-    expect(disc).toMatch(/tallyVerdict\(delta, r\.source, r\.classified_v, verdictChanged\(r, written,/)
+    // 🗺️ 2026-09-04: 인라인 호출 문자열을 박아 뒀더니, 그 값을 `changed` 상수로 뽑아 **쓰기 분기에도
+    //   쓰게** 하자(no-op UPDATE 제거) 이 검사가 깨졌다 — 계약은 오히려 강해졌는데 지도가 낡은 경우다.
+    //   지키려는 것은 "비교와 기록이 같은 값을 쓴다"이지 호출이 한 줄인지가 아니므로, 둘로 나눠 고정한다.
+    expect(disc, '비교는 반드시 같은 written 객체로').toMatch(/verdictChanged\(r, written,/)
+    expect(disc, '통계는 그 비교 결과를 그대로 받아야 한다(따로 계산하면 두 벌이 된다)')
+      .toMatch(/tallyVerdict\(delta, r\.source, r\.classified_v, (changed|verdictChanged\(r, written,)/)
     // 세 갈래 바인드가 전부 written.* 를 쓴다(날것 c.lead_type / c.confidence 직접 바인드 금지).
     expect(disc).toMatch(/\.bind\(written\.lead_type, CLASSIFY_RULES_VERSION/)
     expect(disc).toMatch(/\.bind\(written\.category, written\.subcategory, written\.tier, written\.lead_type, written\.confidence/)

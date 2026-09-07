@@ -169,7 +169,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
           //   waitUntil 비동기 — 응답 지연 0.
           c.executionCtx?.waitUntil((async () => {
             try {
-              const { recordVoucherUsedLedger, recordAgencyCommissionShare, recordIntroductionCommissionShare } = await import('../../../worker/utils/ledger'); const { debitOwnerPromoForOrder } = await import('../../../worker/utils/owner-promo')
+              const { recordVoucherUsedLedger, recordIntroductionCommissionShare } = await import('../../../worker/utils/ledger'); const { debitOwnerPromoForOrder } = await import('../../../worker/utils/owner-promo')
               const merchantId = meta.consigned_from_seller_id ?? meta.seller_id ?? 0
               const sellerId = meta.consigned_from_seller_id ? meta.seller_id : null
               const amount = meta.applied_price || 0
@@ -180,12 +180,10 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
                   merchant_id: merchantId,
                   seller_id: sellerId,
                 })
-                // 🛡️ Phase D: 에이전시 commission 자동 분배 (introduced_by_agency_id 있을 시).
-                await recordAgencyCommissionShare(DB, {
-                  voucher_id: meta.voucher_id,
-                  merchant_id: merchantId,
-                  platform_fee: result.platform_amount,
-                })
+                // 🌇 2026-09-04 에이전시 완전 일몰 — 여기 있던 `recordAgencyCommissionShare`(플랫폼 수수료의
+                //    30% 를 영입 에이전시에 자동 분배)를 삭제했다. 대표 확정: **5% 는 온전히 유어딜 몫**이고
+                //    중개사는 나머지 95%(매장 몫)에서 매장과 직접 거래한다. 이 코드는 그 원칙과 정반대였고,
+                //    `sellers.introduced_by_agency_id` 가 전원 NULL 이라 실제로 지급된 적은 없다.
                 // 🛡️ Phase D-6: 인플루언서 입점 유치 commission (별도 영구 분배)
                 await recordIntroductionCommissionShare(DB, {
                   voucher_id: meta.voucher_id,
@@ -372,7 +370,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       // 🛡️ 2026-05-21 Phase C: 정산 ledger entries 3개 자동 기록 (멱등).
       c.executionCtx?.waitUntil((async () => {
         try {
-          const { recordVoucherUsedLedger, recordAgencyCommissionShare, recordIntroductionCommissionShare } = await import('../../../worker/utils/ledger'); const { debitOwnerPromoForOrder } = await import('../../../worker/utils/owner-promo')
+          const { recordVoucherUsedLedger, recordIntroductionCommissionShare } = await import('../../../worker/utils/ledger'); const { debitOwnerPromoForOrder } = await import('../../../worker/utils/owner-promo')
           const merchantId = voucher.consigned_from_seller_id ?? voucher.seller_id
           const sellerForCommission = voucher.consigned_from_seller_id ? voucher.seller_id : null
           const amount = voucher.applied_price || 0
@@ -383,11 +381,10 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
               merchant_id: merchantId,
               seller_id: sellerForCommission,
             })
-            await recordAgencyCommissionShare(DB, {
-              voucher_id: voucher.id,
-              merchant_id: merchantId,
-              platform_fee: result.platform_amount,
-            })
+            // 🌇 2026-09-04 에이전시 완전 일몰 — 여기 있던 `recordAgencyCommissionShare`(플랫폼 수수료의
+            //    30% 를 영입 에이전시에 자동 분배)를 삭제했다. 대표 확정: **5% 는 온전히 유어딜 몫**이고
+            //    중개사는 나머지 95%(매장 몫)에서 매장과 직접 거래한다. 이 코드는 그 원칙과 정반대였고,
+            //    `sellers.introduced_by_agency_id` 가 전원 NULL 이라 실제로 지급된 적은 없다.
             await recordIntroductionCommissionShare(DB, {
               voucher_id: voucher.id,
               merchant_id: merchantId,

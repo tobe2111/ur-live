@@ -25,6 +25,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types 를 ./seller-product-edit/types 로 추출.
 import type { LiveStream, Product } from './seller-product-edit/types'
+import PromoRateField, { promoPctFromProduct, promoRateForSubmit } from './seller-product-edit/PromoRateField'
 
 /**
  * 레거시 이용권 카테고리(2026 이전 등록분). 새로 고를 수는 없고, **이미 그 값을 가진 상품을
@@ -71,6 +72,7 @@ export default function SellerProductEditPage() {
     store_verify_pin: '',
     // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도"): 0/빈값 = 무제한.
     max_per_person: '',
+    promo_pct: 0,  // 💰 소개비 %(0~50) — 저장 시 /100 → 분수. 게이트 OFF 면 미노출.
   })
   
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
@@ -104,6 +106,7 @@ export default function SellerProductEditPage() {
       group_buy_target: productData.group_buy_target ? String(productData.group_buy_target) : '', group_buy_deadline: productData.group_buy_deadline || '',
       store_verify_pin: productData.store_verify_pin || '',
       max_per_person: productData.max_per_person ? String(productData.max_per_person) : '',
+      promo_pct: promoPctFromProduct(productData),
     })
     if (productData.options && Array.isArray(productData.options)) setProductOptions(productData.options)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -147,6 +150,7 @@ export default function SellerProductEditPage() {
           store_verify_pin: formData.store_verify_pin || null,
           // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도" 수정): 0=무제한 해제, 1~99=제한.
           max_per_person: Number(formData.max_per_person) > 0 ? Math.min(99, Math.floor(Number(formData.max_per_person))) : 0,
+          referral_commission_rate: promoRateForSubmit(formData.promo_pct),
         } : {}),
       }
 
@@ -417,7 +421,10 @@ export default function SellerProductEditPage() {
               그래서 뷰티/숙박/기타 이용권은 1인당 한도를 처음부터 끝까지 설정할 수 없었다.
               (서버는 원래 카테고리를 안 가린다 — 막고 있던 건 이 화면뿐이었다.) */}
           {isVoucherCategory(formData.category) && (
-            <VoucherFields formData={formData} onChange={handleChange} />
+            <><VoucherFields formData={formData} onChange={handleChange} />
+              {/* 💰 2026-09-05: 등록 화면에만 있던 소개비 레버를 관리 화면에도. */}
+              <PromoRateField promoPct={formData.promo_pct} price={Number(formData.price) || 0} category={formData.category}
+                onChange={(pct) => setFormData(prev => ({ ...prev, promo_pct: pct }))} /></>
           )}
 
           {/* Product Type Selection */}

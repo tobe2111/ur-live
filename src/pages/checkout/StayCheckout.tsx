@@ -18,6 +18,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { appendPaySummary } from '@/shared/pay-summary'
 import { useForceLightTheme } from '@/hooks/useForceLightTheme'
 
 interface StayOrderBooking {
@@ -101,6 +102,12 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
       clientKey,
       successUrl: returnPath,
       failUrl: returnPath,
+    })
+    // 🧾 2026-09-03 (대표 확정 "안 2-D"): 결제 화면 요약용 표시 값 — 이 화면이 이미 띄우고 있는 것.
+    //   숙소는 정가·수량 개념이 방·박수라 넘기지 않는다(사진·숙소명만).
+    appendPaySummary(params, {
+      image: first?.image_url || undefined,
+      merchant: first?.product_name || undefined,
     })
     navigate(`/pay/widget?${params.toString()}`)
   }

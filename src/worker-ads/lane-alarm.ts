@@ -178,6 +178,14 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
           put.bind(`${LANE_ALARM_STAMP_KEY}:${this.lane}`, serializeLaneStamp({
             at: new Date().toISOString(), lane: this.lane, ms: Date.now() - t0, runs_this_hour: ran, cap,
             interval_ms: interval, next_at: new Date(at).toISOString(), fail_streak: nextFail,
+            /**
+             * 📏 **이 회차가 읽고 쓴 행**(2026-09-05) — 계측기는 원래 있었는데 공용 원장에 더하고
+             *   레인별 값은 버렸다. 그래서 "하루 37만 쓰기·2억 읽기가 **어느 레인** 것인가"에
+             *   아무도 답을 못 했고, 나는 그 자리를 추측으로 메우다 두 번 틀렸다(재측정 필터·재조우
+             *   백필 — 둘 다 배포 후 감소 0). 값은 이미 손에 있으니 버리지만 않으면 된다.
+             *   비용 0: 같은 batch 의 같은 JSON 에 숫자 두 개를 더할 뿐이다.
+             */
+            rr: this.meter.rr || 0, rw: this.meter.rw || 0,
             ...(error ? { error: error.slice(0, 200) } : {}),
           }, stats ? JSON.parse(JSON.stringify(stats)) : null)),
           put.bind(hb.key, hb.value),

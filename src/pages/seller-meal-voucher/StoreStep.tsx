@@ -164,7 +164,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                   onClick={() => pickStore(s)}
                   disabled={switching != null}
                   className={`px-3 py-2 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-60 ${
-                    active ? 'border-pink-500 bg-pink-50 text-pink-700'
+                    active ? 'border-brand bg-brand-tint text-brand-text'
                       : seatable(s) ? 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                       /* 승인 대기 — 눌러도 서버가 거부한다. 숨기지 않고 '왜 못 고르는지'를 보여준다. */
                       : 'border-gray-200 bg-gray-50 text-gray-400'
@@ -278,7 +278,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
               value={form.restaurant_name}
               onChange={e => update('restaurant_name', e.target.value)}
               placeholder={t('seller.mealVoucher.restaurantNamePlaceholder')}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               required
             />
           </div>
@@ -290,7 +290,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                 value={form.restaurant_address}
                 onChange={e => update('restaurant_address', e.target.value)}
                 placeholder={t('seller.mealVoucher.addressPlaceholder')}
-                className="flex-1 min-w-0 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="flex-1 min-w-0 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               />
               <button
                 type="button"
@@ -314,7 +314,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                 value={form.restaurant_phone}
                 onChange={e => update('restaurant_phone', e.target.value)}
                 placeholder={t('seller.mealVoucher.addressPlaceholder')}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               />
             </div>
             <div>
@@ -325,7 +325,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                 value={form.store_verify_pin}
                 onChange={e => update('store_verify_pin', e.target.value)}
                 placeholder={t('seller.mealVoucher.pinPlaceholder')}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               />
               <p className="text-[10px] text-gray-400 mt-1">
                 {t('seller.mealVoucher.pinHint', { defaultValue: '식당 전화번호를 입력하시면 사장님께 통계 페이지 링크가 알림톡으로 자동 발송됩니다 (PIN 불필요).' })}

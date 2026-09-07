@@ -23,6 +23,7 @@ import SEO from '@/components/SEO'
 //   표준 카드(홈과 같은 `GroupBuyFeedCard`)를 그대로 써 디자인 영구 동기화. 카드 위에 핀 토글 버튼만 오버레이.
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import { invalidateCurator } from '@/features/curator/curator-page-cache'
+import { affiliateRatePct } from '@/shared/affiliate-rate'
 
 type PickerTab = 'shop' | 'voucher'
 
@@ -35,8 +36,12 @@ interface PickItem {
   category?: string | null
   deal_only?: number
   dominant_color?: string | null
-  /** 추천 적립률(%) — 담으면 얼마 적립되는지 신호. /api/products 만 포함(동네딜 group-buy 는 없음). */
-  referral_commission_rate?: number
+  /** 추천 적립률 — **분수**(0.05 = 5%). NULL/미전달 = 상품별 설정 없음 → 플랫폼 기본.
+   *  ⚠️ 2026-09-05 이전 주석은 '(%)' 라고 적혀 있었고 그 오해 그대로 `Math.round(rate)` 를 써서
+   *  배지가 한 번도 안 떴다. 해석은 `@/shared/affiliate-rate` 하나가 한다. */
+  referral_commission_rate?: number | null
+  /** 0/1 — 적립이 꺼진 상품엔 배지를 달면 안 된다(약속 위반). */
+  referral_enabled?: number | null
   /** 동네딜(group-buy) 출처 — 카드 본문 미리보기 목적지를 /group-buy/:id 로 (그 외는 /products/:id). */
   gb?: boolean
 }
@@ -384,7 +389,7 @@ function PickCard({ item, pinned, busy, onToggle }: { item: PickItem; pinned: bo
     deal_only: item.deal_only,
   }
   const to = item.gb ? `/group-buy/${item.id}` : `/products/${item.id}`
-  const commission = Math.round(Number(item.referral_commission_rate) || 0)
+  const commission = affiliateRatePct(item)
 
   function handleToggle(e: React.MouseEvent) {
     e.preventDefault()
@@ -396,10 +401,13 @@ function PickCard({ item, pinned, busy, onToggle }: { item: PickItem; pinned: bo
     /* 선택 표시는 **브랜드 블루 링** — 표면 규칙 ②(강조색 하나, 자리 셋) 중 '선택' 자리. */
     <div className={`relative group rounded-xl ${pinned ? 'ring-2 ring-brand ring-offset-2 ring-offset-white dark:ring-offset-[#11141C]' : ''}`}>
       <GroupBuyFeedCard p={product as never} aboveFold={false} to={to} hideWishlist />
-      {/* 적립률 신호 — 담으면 얼마 적립되는지(있을 때만). 동네딜(group-buy)은 데이터 없어 미표시. */}
-      {commission > 0 && (
+      {/* 🛡️ 2026-09-04 (대표 "너무 모호하지 않아? 결국 판매 후 사용 당 계산이 될텐데"):
+            적립은 **담을 때도 팔릴 때도 아니라 손님이 실제로 쓸 때** 확정된다
+            (affiliate-credit: holding → 이용권 status='used' → granted. 2026-06-17 대표 결정).
+            "적립 N%" 는 담기만 해도 받는 것처럼 읽혀 과약속이었다. 동네딜은 데이터 없어 미표시. */}
+      {commission != null && (
         <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-0.5 h-6 px-2 rounded-full bg-black/55 backdrop-blur-md ring-1 ring-white/20 text-white text-[11px] font-bold pointer-events-none">
-          적립 {commission}%
+          쓰면 {commission}%
         </span>
       )}
       {/* 핀 토글 버튼 — 추가됨(잉크 필) / 추가(글래스) */}

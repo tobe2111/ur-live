@@ -31,10 +31,10 @@ interface GrowthRequest {
 }
 
 const STATUS_STYLES: Record<string, { label: string; icon: typeof Clock; color: string }> = {
-  pending:    { label: 'statusReviewing', icon: Clock,       color: 'text-amber-600 bg-amber-50' },
-  processing: { label: 'statusInProgress', icon: Loader2,     color: 'text-blue-600 bg-blue-50' },
-  completed:  { label: 'statusComplete',   icon: CheckCircle,  color: 'text-green-600 bg-green-50' },
-  rejected:   { label: 'statusRejectedLabel', icon: XCircle,      color: 'text-red-600 bg-red-50' },
+  pending:    { label: 'statusReviewing', icon: Clock,       color: 'text-tone-warn bg-tone-warn-bg' },
+  processing: { label: 'statusInProgress', icon: Loader2,     color: 'text-tone-info bg-tone-info-bg' },
+  completed:  { label: 'statusComplete',   icon: CheckCircle,  color: 'text-tone-ok bg-tone-ok-bg' },
+  rejected:   { label: 'statusRejectedLabel', icon: XCircle,      color: 'text-tone-bad bg-tone-bad-bg' },
 }
 
 export default function SellerYoutubeGrowthPage() {

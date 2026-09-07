@@ -325,7 +325,7 @@ export default function SellerAnalyticsPage() {
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">전환율</p>
-                      <p className="text-2xl font-bold text-pink-600">{k.conversion_rate}%</p>
+                      <p className="text-2xl font-bold text-brand-text">{k.conversion_rate}%</p>
                       <p className="text-[10px] text-gray-400 mt-1">클릭 → 결제</p>
                     </div>
                   </div>

@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DetailGallery from './group-buy/DetailGallery'
+import { detailGalleryImages } from '@/shared/detail-hero-image'
+import RedeemHowTo from './group-buy/RedeemHowTo'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { voucherCrumbs } from '@/components/deal/DetailBreadcrumb'
 import { readCachedLoc, distanceKm } from './group-buy/detail-derived'
@@ -11,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
+import { appendPaySummary } from '@/shared/pay-summary'
 import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
@@ -331,17 +334,11 @@ export default function GroupBuyDetailPage() {
 
   // 🎨 2026-06-16 리디자인: 스와이프 갤러리 이미지 — image_url + images/detail_images/image_urls(JSON) 병합·중복제거.
   //   🖼️ 2026-07-20: products.images(PRODUCT_DETAIL_FIELDS 기포함 — 데모 시드 3~5장) 병합 추가.
-  const galleryImages: string[] = (() => {
-    if (!detail) return []
-    const out: string[] = []
-    if (detail.image_url) out.push(detail.image_url)
-    const extra = detail as { detail_images?: string | null; image_urls?: string | null; images?: string | null }
-    for (const raw of [extra.images, extra.image_urls, extra.detail_images]) {
-      if (!raw) continue
-      try { const arr = JSON.parse(raw); if (Array.isArray(arr)) for (const u of arr) if (typeof u === 'string' && u) out.push(u) } catch { /* not json */ }
-    }
-    return Array.from(new Set(out)).slice(0, 8)
-  })()
+  //   🧵 2026-09-06: 병합 규칙을 `shared/detail-hero-image` 로 올렸다 — 워커 preload 가 **같은 방법으로**
+  //     장수를 세야 PC 프레임(4:3 ↔ 16:9)을 맞출 수 있다. 두 벌이면 경계에서 갈려 preload 가 버려진다.
+  const galleryImages: string[] = detailGalleryImages(
+    detail as { image_url?: string | null; images?: string | null; image_urls?: string | null; detail_images?: string | null } | null
+  )
 
   // 🎨 2026-06-16 리디자인: 할인코드(promo) 입력 UI 제거 — checkPromo/clearPromo 삭제.
 
@@ -415,7 +412,7 @@ export default function GroupBuyDetailPage() {
         toast.error(initRes.data?.error || '공구 결제 시작 실패')
         return
       }
-      const { orderId, amount, orderName, clientKey: serverClientKey, flow: serverFlow } = initRes.data.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'redirect' | 'widget' | 'invalid' }
+      const { orderId, amount, orderName, clientKey: serverClientKey, flow: serverFlow, dealUsed: serverDealUsed } = initRes.data.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'redirect' | 'widget' | 'invalid'; dealUsed?: number }
       if (!serverClientKey) {
         toast.error('결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.')
         return
@@ -445,6 +442,15 @@ export default function GroupBuyDetailPage() {
         clientKey: serverClientKey,
         successUrl: successPath,
         failUrl: failPath,
+      })
+      // 🧾 결제 화면 '결제 상품' 칸의 표시용 값(이 화면이 이미 가진 것 — 새 fetch 0). ⚠️ 금액 판단엔 안 쓴다 · /confirm 이 재검증. 사유: `src/shared/pay-summary.ts`
+      appendPaySummary(params, {
+        image: detail?.image_url || undefined,
+        merchant: detail?.restaurant_name || undefined,
+        origAmount: Number(detail?.original_price) || undefined,
+        qty: quantity,
+        // 🪙 부분결제: **서버가 계산한** 딜 사용액만 싣는다(게이트 OFF 면 서버가 0 → 화면도 무언).
+        dealUsed: Number(serverDealUsed) || undefined,
       })
       navigate(`/pay/widget?${params.toString()}`)
     } catch (err: unknown) {
@@ -799,7 +805,7 @@ export default function GroupBuyDetailPage() {
             {[
               { k: '사용기한', v: detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''} 까지` : '발급 후 사용 기간 적용' },
               { k: '사용처', v: detail.restaurant_name || '전 지점' },
-              { k: '사용 방법', v: '매장에서 교환권 제시' },
+              { k: '사용 방법', v: 'QR 제시 · 확인코드' },
             ].map((row, i, arr) => (
               <div key={row.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 0', borderTop: '1px solid var(--gbd-line2)', borderBottom: i === arr.length - 1 ? '1px solid var(--gbd-line2)' : 'none' }}>
                 <span style={{ fontSize: 13.5, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>{row.k}</span>
@@ -807,6 +813,7 @@ export default function GroupBuyDetailPage() {
               </div>
             ))}
           </div>
+          <RedeemHowTo />
           <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {(detail.voucher_terms
               ? detail.voucher_terms.split('\n').map(s => s.trim()).filter(Boolean)

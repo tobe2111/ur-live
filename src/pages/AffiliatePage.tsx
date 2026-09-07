@@ -118,9 +118,9 @@ export default function AffiliatePage() {
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('affiliate.howToTitle')}</p>
             <div className="space-y-3">
               {[
-                { step: '1', text: t('affiliate.howToStep1'), color: 'bg-violet-100 text-violet-700' },
-                { step: '2', text: t('affiliate.howToStep2'), color: 'bg-blue-100 text-blue-700' },
-                { step: '3', text: t('affiliate.howToStep3'), color: 'bg-green-100 text-green-700' },
+                { step: '1', text: t('affiliate.howToStep1'), color: 'bg-tone-info-bg text-tone-info' },
+                { step: '2', text: t('affiliate.howToStep2'), color: 'bg-tone-info-bg text-tone-info' },
+                { step: '3', text: t('affiliate.howToStep3'), color: 'bg-tone-ok-bg text-tone-ok' },
               ].map(s => (
                 <div key={s.step} className="flex items-center gap-3">
                   <span className={`w-7 h-7 rounded-full ${s.color} text-xs font-bold flex items-center justify-center shrink-0`}>{s.step}</span>
@@ -223,7 +223,7 @@ function TopGroupsToShare() {
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{g.name}</p>
               <p className="text-[10px] text-gray-500 truncate">{g.restaurant_name || ''} · {g.progress_pct}% · {g.group_buy_current}/{g.group_buy_target}명</p>
-              <p className="text-[10px] text-pink-600 font-bold mt-0.5">친구 가입 시 +{(g.my_potential_bonus ?? 0).toLocaleString()}딜 보너스</p>
+              <p className="text-[10px] text-brand-text font-bold mt-0.5">친구 가입 시 +{(g.my_potential_bonus ?? 0).toLocaleString()}딜 보너스</p>
             </div>
             <button
               onClick={async () => {
@@ -232,7 +232,7 @@ function TopGroupsToShare() {
                   toast.success('링크 복사됨')
                 } catch { toast.error('복사 실패') }
               }}
-              className="px-3 py-1.5 bg-pink-50 dark:bg-pink-900/30 text-pink-600 rounded-lg text-[11px] font-bold shrink-0 active:scale-95"
+              className="px-3 py-1.5 bg-brand-tint text-brand-text rounded-lg text-[11px] font-bold shrink-0 active:scale-95"
             >
               <Copy className="w-3 h-3 inline mr-0.5" /> 복사
             </button>

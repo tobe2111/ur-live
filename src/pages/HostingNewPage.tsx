@@ -86,7 +86,7 @@ export default function HostingNewPage() {
                 onClick={() => setCategory(cat.key)}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
                   category === cat.key
-                    ? 'bg-pink-500 text-white'
+                    ? 'bg-brand text-white'
                     : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'
                 }`}
               >
@@ -106,7 +106,7 @@ export default function HostingNewPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {items.map(item => (
-                <div key={item.id} className={`bg-gray-50 dark:bg-[#1D1F29] rounded-xl border ${selectedId === item.id ? 'border-pink-500' : 'border-gray-100 dark:border-[#2C2F35]'} overflow-hidden`}>
+                <div key={item.id} className={`bg-gray-50 dark:bg-[#1D1F29] rounded-xl border ${selectedId === item.id ? 'border-brand' : 'border-gray-100 dark:border-[#2C2F35]'} overflow-hidden`}>
                   <button
                     onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
                     className="block w-full text-left"
@@ -118,7 +118,7 @@ export default function HostingNewPage() {
                     </div>
                     <div className="p-3">
                       <p className="text-xs font-medium line-clamp-2 mb-1">{item.name}</p>
-                      <p className="text-sm font-bold text-pink-500 dark:text-pink-400">{formatWon(item.price)}</p>
+                      <p className="text-sm font-bold text-brand-text ">{formatWon(item.price)}</p>
                       {item.restaurant_name && <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{item.restaurant_name}</p>}
                       {item.my_host_id && (
                         <p className="text-[10px] text-emerald-500 mt-1">✓ 호스팅 중</p>
@@ -153,7 +153,7 @@ export default function HostingNewPage() {
                       <button
                         onClick={() => handleStart(item.id)}
                         disabled={submitting}
-                        className="w-full py-2 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg"
+                        className="w-full py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-xs font-bold rounded-lg"
                       >
                         {submitting ? '시작 중...' : '🎉 공구 시작'}
                       </button>

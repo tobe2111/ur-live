@@ -196,7 +196,7 @@ export default function SellerMarketingPage() {
       <div className="mx-auto max-w-2xl space-y-5 p-4 sm:p-6 lg:p-8">
         <div>
           <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-            <Megaphone className="w-5 h-5 text-pink-500" /> 인플루언서 마케팅 관리
+            <Megaphone className="w-5 h-5 text-brand-text" /> 인플루언서 마케팅 관리
           </h2>
           <p className="text-xs text-gray-500 mt-1">차단 시점까지 발생한 commission 은 그대로 정산됩니다 (인플루언서 신뢰 보호).</p>
         </div>

@@ -163,8 +163,8 @@ export default function PushNotificationSetup() {
   return (
     <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[400px] z-[9000] animate-sheet-up">
       <div className="bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-2xl shadow-xl p-4 flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center shrink-0">
-          <Bell className="w-5 h-5 text-pink-500" />
+        <div className="w-10 h-10 rounded-xl bg-brand-tint flex items-center justify-center shrink-0">
+          <Bell className="w-5 h-5 text-brand-text" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-bold text-gray-900 dark:text-white">
@@ -175,7 +175,7 @@ export default function PushNotificationSetup() {
           </p>
           <div className="flex gap-2 mt-2.5">
             <button onClick={() => void subscribe(true)} disabled={busy}
-              className="px-3.5 py-1.5 bg-pink-500 text-white rounded-lg text-[12px] font-bold disabled:opacity-50">
+              className="px-3.5 py-1.5 bg-brand text-white rounded-lg text-[12px] font-bold disabled:opacity-50">
               {t('push.promptOn', { defaultValue: '켜기' })}
             </button>
             <button onClick={snooze}

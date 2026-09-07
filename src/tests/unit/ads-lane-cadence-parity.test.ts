@@ -106,8 +106,23 @@ describe('cron ↔ 알람 주기 정합', () => {
       const arg = r.args.split(',').map(s => s.trim()).filter(Boolean)
       if (r.kind === 'dailyAt') {
         const h = arg[0]
-        if (!new RegExp(`getUTCHours\\(\\)\\s*!==\\s*${h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(body)) {
-          bad.push(`${r.lane}: cron dailyAt(${h}) ↔ 알람에 'getUTCHours() !== ${h}' 없음`)
+        const pinned = new RegExp(`getUTCHours\\(\\)\\s*!==\\s*${h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(body)
+        /**
+         * 📅 2026-09-05: **하루 1회를 경과 시간으로 선언하는 표현도 정합으로 인정한다**
+         *   (`minIntervalHours: DAILY_INTERVAL_HOURS`). 위 everyNHours 분기가 2026-08-17 에 같은
+         *   이유로 이미 넓혔다 — 지켜야 하는 것은 "표현"이 아니라 **주기가 두 곳에서 같다**는 사실이다.
+         *
+         *   🩸 왜 필요해졌나(실사고): 시각을 고정하면 그 시각에 알람이 안 깨어날 때 레인이 **영영**
+         *   안 돈다. 읽기 예산 차단기가 하루 3시간만 남기자 15~23시에 박힌 레인 9개가 통째로 죽었고
+         *   (하트비트 `skipped: off_hour`), B2B 신규 수집이 하루 5,000+ → 100 으로 무너졌다.
+         *   cron 은 시각 기반이라 "아무 때나 하루 1회"를 표현할 방법이 없으므로, 알람 쪽만 그렇게 둔다.
+         *
+         *   ⚠️ **완화의 범위**: 인정하는 것은 *하루 1회끼리*다. cron 이 `everyNHours(4,1)`(하루 6회)로
+         *   바뀌면 그쪽 분기가 `minIntervalHours: 4` 를 요구하므로 **횟수가 갈리는 사고는 그대로 잡힌다.**
+         */
+        const daily = /minIntervalHours:\s*(DAILY_INTERVAL_HOURS|24)\b/.test(body)
+        if (!pinned && !daily) {
+          bad.push(`${r.lane}: cron dailyAt(${h}) ↔ 알람에 'getUTCHours() !== ${h}' 도 'minIntervalHours: DAILY_INTERVAL_HOURS' 도 없음`)
         }
       } else if (r.kind === 'everyNHours') {
         const [n, off] = arg
@@ -167,8 +182,15 @@ describe('cron 잔류 일 1회 레인', () => {
   it('🔒 5차 이관 두 레인은 알람이 몬다 (cron 으로 되돌리면 다시 굶는다)', () => {
     for (const lane of ['sweep-mx', 'collect-franchise']) {
       expect(ALARM.has(lane), `${lane} 이 알람 등록부에서 사라졌다`).toBe(true)
-      // 시각 보존 — 이관은 '누가 모는가'만 바꾸고 외부 호출량은 그대로여야 한다(R2 가 값도 대조한다).
-      expect(ALARM.get(lane)).toMatch(/getUTCHours\(\) !== (17|22)\b/)
+      /**
+       * 🗺️ 2026-09-05: 시각 리터럴(`!== 17|22`)을 박아 뒀는데, 시각 고정을 걷어내자(하루 1회는
+       *   유지) 이 검사가 깨졌다 — 지도가 낡은 경우다. 이 앵커가 지키려는 것은 바로 윗줄이 적어 둔
+       *   **"외부 호출량은 그대로"** 이지 몇 시인지가 아니다. 그래서 호출량으로 다시 고정한다.
+       *   ⚠️ 시각을 고정하면 그 시각에 알람이 안 깨어날 때 레인이 영영 안 돈다(2026-09-05 실사고:
+       *      읽기 차단기가 창을 3시간으로 줄이자 15~23시 레인 9개가 통째로 죽었다).
+       */
+      expect(ALARM.get(lane), `${lane} 의 하루 1회가 깨졌다 — 이관은 호출량을 바꾸지 않는다`)
+        .toMatch(/minIntervalHours:\s*(DAILY_INTERVAL_HOURS|24)\b/)
     }
   })
 })

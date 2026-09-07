@@ -68,7 +68,7 @@ function MyRankCard() {
 
 // 🛡️ 2026-05-16: 내가 영입한 매장 + 협업 deals
 // 💡 2026-07-11 (flip D1 선반영): ownerFunded — promo_funding_source==='owner' 일 때만
-//   "매장 promo 재원" 프레이밍 노출. platform(현행 기본/미확인) 동안 기존 문구 byte-동일.
+// "매장 promo 재원" 프레이밍 노출. platform(현행 기본/미확인) 동안 기존 문구 byte-동일.
 function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
   const [referred, setReferred] = useState<Array<{ id: number; name: string; referral_bonus_until: string | null; total_commission: number }>>([])
   const [deals, setDeals] = useState<Array<{ id: number; seller_id: number; seller_name: string | null; commission_pct: number; status: string; proposed_by: string; created_at: string; ends_at: string | null }>>([])
@@ -143,10 +143,10 @@ function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  pending: { label: '환불기간 (대기)', color: 'bg-yellow-100 text-yellow-700' },
-  available: { label: '송금 대기', color: 'bg-blue-100 text-blue-700' },
-  paid: { label: '송금 완료', color: 'bg-emerald-100 text-emerald-700' },
-  clawed_back: { label: '회수됨 (환불)', color: 'bg-red-100 text-red-700' },
+  pending: { label: '환불기간 (대기)', color: 'bg-tone-warn-bg text-tone-warn' },
+  available: { label: '송금 대기', color: 'bg-tone-info-bg text-tone-info' },
+  paid: { label: '송금 완료', color: 'bg-tone-ok-bg text-tone-ok' },
+  clawed_back: { label: '회수됨 (환불)', color: 'bg-tone-bad-bg text-tone-bad' },
 }
 
 export default function InfluencerSettlementPage() {
@@ -155,7 +155,7 @@ export default function InfluencerSettlementPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   // 💡 2026-07-11 (flip D1 선반영): 재원 게이트 — /me 응답의 funding_source 가 'owner' 일 때만
-  //   "매장 promo 재원" 프레이밍. 미확인/로딩/platform(현행 기본)은 기존 문구 byte-동일.
+  // "매장 promo 재원" 프레이밍. 미확인/로딩/platform(현행 기본)은 기존 문구 byte-동일.
   const [ownerFunded, setOwnerFunded] = useState(false)
   const [form, setForm] = useState({
     business_number: '',
@@ -218,7 +218,7 @@ export default function InfluencerSettlementPage() {
       {/* 💡 flip D1: description 만 재원 게이트 — platform(기본) 은 기존 문구 byte-동일 */}
       <SEO title="인플루언서 정산 - 유어딜" description={ownerFunded ? '매장 promo(매장 몫) 재원 커미션 잔액 / 송금 내역 / 세금 정보 관리' : 'referral commission 잔액 / 송금 내역 / 세금 정보 관리'} url="/influencer/settlement" />
       <header className="sticky top-0 z-30 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3 flex items-center gap-2">
-        <Wallet className="w-5 h-5 text-pink-500" />
+        <Wallet className="w-5 h-5 text-brand-text" />
         <h1 className="text-base font-bold text-gray-900 dark:text-white flex-1">인플루언서 정산</h1>
         <button
           onClick={async () => {
@@ -312,12 +312,12 @@ export default function InfluencerSettlementPage() {
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, payout_method: 'deal' }))}
-                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'deal' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white dark:bg-[#11141C]'}`}
+                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'deal' ? 'border-brand bg-brand-tint' : 'border-gray-200 bg-white dark:bg-[#11141C]'}`}
               >
-                <p className="text-sm font-bold text-gray-900 dark:text-white">딜 포인트 <span className="text-pink-600">+20%</span></p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">딜 포인트 <span className="text-brand-text">+20%</span></p>
                 {/* 💡 flip D1: owner-펀딩일 때만 재원 출처 병기 — platform 은 기존 문구 byte-동일 */}
                 <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{ownerFunded ? '매장 promo 재원 · 유어딜 결제 사용 / 환불 X' : '유어딜 결제 / 환불 X'}</p>
-                <p className="text-[10px] font-bold text-pink-600 mt-0.5">금액 제한 없음</p>
+                <p className="text-[10px] font-bold text-brand-text mt-0.5">금액 제한 없음</p>
               </button>
             </div>
           </div>
@@ -398,7 +398,7 @@ export default function InfluencerSettlementPage() {
           <button
             onClick={save}
             disabled={saving}
-            className="w-full py-2.5 bg-pink-500 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-2.5 bg-brand text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Save className="w-4 h-4" /> {saving ? '저장 중...' : '정산 정보 저장'}
           </button>

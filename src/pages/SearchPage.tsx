@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
+import { usePopularSearches } from '@/hooks/queries/usePopularSearches'
 import api from '@/lib/api'
 import { useSearchInfinite } from '@/hooks/useSearch'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
@@ -39,15 +40,6 @@ interface SearchSuggestion {
   type: 'product' | 'seller'
   text: string
 }
-
-const DEFAULT_RELATED_KEYWORD_KEYS = [
-  { key: 'popular', defaultValue: '인기상품' },
-  { key: 'new', defaultValue: '신상품' },
-  { key: 'sale', defaultValue: '할인특가' },
-  { key: 'freeShipping', defaultValue: '무료배송' },
-  { key: 'bestSeller', defaultValue: '베스트셀러' },
-  { key: 'limited', defaultValue: '한정판' },
-]
 
 export default function SearchPage() {
   const [searchParams] = useSearchParams()
@@ -181,7 +173,13 @@ export default function SearchPage() {
   const stillLoadingResults = loading || (query.length >= 2 && products.length === 0 && (isFetchingNextPage || hasNextPage))
   const showResults = !stillLoadingResults && !error && query && hasResults
 
-  const relatedKeywords = DEFAULT_RELATED_KEYWORD_KEYS.map(k => t(`search.related.${k.key}`, { defaultValue: k.defaultValue }))
+  /**
+   * 🔎 2026-09-04: 여기 있던 **하드코딩 6개**(인기상품·신상품·할인특가·무료배송·베스트셀러·한정판)를
+   *   실제 인기 검색어로 교체했다. 그 여섯은 검색어와 무관했고 **누르면 0건**이었으며,
+   *   `무료배송` 은 이용권 서비스에 개념 자체가 없었다. 지금 보고 있는 검색어는 뺀다(자기 자신 제안 금지).
+   */
+  const popularSearches = usePopularSearches(8)
+  const relatedKeywords = popularSearches.filter((k) => k !== query)
 
   // 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일).
   return (
@@ -262,9 +260,11 @@ export default function SearchPage() {
               </div>
             )}
 
-            {/* Related Keywords Section */}
+            {/* 🔎 인기 검색어 — 값이 없으면 **섹션 자체를 안 그린다**(빈 제목만 남기지 않는다).
+                ⚠️ 라벨은 '함께 검색된' 이 아니라 '인기 검색어' 다 — 연관검색어가 아니므로 그렇게 부르면 거짓이다. */}
+            {relatedKeywords.length > 0 && (
             <div className="mt-10 pt-8 border-t border-gray-100 dark:border-[#2C2F35]">
-              <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('search.relatedKeywords', { defaultValue: '함께 검색된 키워드' })}</h3>
+              <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('search.popularKeywords', { defaultValue: '인기 검색어' })}</h3>
               <div className="flex flex-wrap gap-2">
                 {relatedKeywords.map((keyword) => (
                   <button
@@ -277,6 +277,7 @@ export default function SearchPage() {
                 ))}
               </div>
             </div>
+            )}
           </>
         )}
       </div>

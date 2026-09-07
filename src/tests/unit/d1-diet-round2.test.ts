@@ -4,16 +4,19 @@
  *   ① `review-gen-tuning` 최근 실리뷰 2,000건 조회 — 12만 행 정렬 → 부분 인덱스로 2,000행
  *   ② `group-buy-deadline-push` 마감 창 조회 — products 전수 ×3 → 활성+마감 부분 인덱스
  *
+ * 🪦 2026-09-05: ②는 **인덱스가 아니라 cron 자체를 없애서** 해결됐다. 마감 개념이 사라져(대표
+ *   "마감 개념은 없어") 그 조회는 영구히 0건이 됐고, 0건을 빠르게 찾는 인덱스보다 안 찾는 편이 낫다.
+ *   그래서 ②의 검사는 "인덱스를 타는가"에서 **"그 cron 이 되살아나지 않는가"** 로 바뀌었다.
+ *
  * 플래너 실증(node:sqlite): 인덱스 DDL 을 `index-repairs.ts` 에서 **그대로** 읽어 실제 쿼리 문장이 그 인덱스를 타는지 본다.
  * ⚠️ 못 막는 것: 라이브 D1 의 ANALYZE 통계·실제 행 분포. 여기선 "인덱스를 고를 수 있는가"만 고정한다.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { INDEX_REPAIRS } from '@/worker/routes/repair-schema/index-repairs'
 
 const TUNING = readFileSync('src/worker/utils/review-gen-tuning.ts', 'utf8')
-const PUSH = readFileSync('src/worker/cron/group-buy-deadline-push.ts', 'utf8')
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
 const plan = (db: InstanceType<typeof DatabaseSync>, sql: string) =>
   db.prepare('EXPLAIN QUERY PLAN ' + sql).all().map((x: Record<string, unknown>) => String(x.detail)).join(' | ')
@@ -41,19 +44,23 @@ describe('① 실리뷰 최근 2,000건 — 부분 인덱스', () => {
   })
 })
 
-describe('② 공구 마감 창 조회 — 활성+마감 부분 인덱스', () => {
-  it('쿼리가 활성 + 마감 NOT NULL 을 명시한다(부분 인덱스 함의 조건)', () => {
-    expect(PUSH).toMatch(/WHERE group_buy_status = 'active'\s+AND group_buy_deadline IS NOT NULL/)
+describe('② 공구 마감 push cron — 되살아나지 않는다', () => {
+  it('cron 파일이 없다', () => {
+    expect(existsSync('src/worker/cron/group-buy-deadline-push.ts')).toBe(false)
   })
-  it('🔒 플래너가 부분 인덱스를 탄다(products 전수 스캔 아님)', () => {
-    const db = new DatabaseSync(':memory:')
-    db.exec("CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, restaurant_name TEXT, group_buy_current INTEGER, group_buy_target INTEGER, group_buy_status TEXT, group_buy_deadline TEXT, deadline_pushed_3h INTEGER DEFAULT 0, deadline_pushed_1h INTEGER DEFAULT 0)")
-    db.exec(ddlOf('idx_products_gb_deadline_active'))
-    const ins = db.prepare('INSERT INTO products (name, group_buy_status, group_buy_deadline) VALUES (?,?,?)')
-    for (let i = 1; i <= 3000; i++) ins.run('p' + i, i % 7 === 0 ? 'active' : 'ended', i % 5 === 0 ? '2026-09-03 12:00:00' : null)
-    const p = plan(db, `SELECT id, name, restaurant_name, group_buy_current, group_buy_target FROM products WHERE group_buy_status = 'active' AND group_buy_deadline IS NOT NULL AND deadline_pushed_3h = 0 AND datetime(group_buy_deadline) BETWEEN datetime('now', '+2.9 hours') AND datetime('now', '+3.1 hours') LIMIT 50`)
-    expect(p).toContain('idx_products_gb_deadline_active')
-    expect(p).not.toMatch(/SCAN products(?! USING)/)
-    db.close()
+
+  it('디스패처가 그 이름을 부르지 않는다', () => {
+    const sched = readFileSync('src/worker/scheduled.ts', 'utf8')
+    expect(sched).not.toMatch(/handleGroupBuyDeadlinePush/)
+    expect(sched).not.toMatch(/safeCron\('group-buy-deadline-push'/)
+  })
+
+  it('그 인덱스를 다시 만들지 않는다 — 읽는 사람이 없으면 products 쓰기만 무거워진다', () => {
+    expect(INDEX_REPAIRS.some((x) => x.name === 'idx_products_gb_deadline_active')).toBe(false)
+  })
+
+  it('🪦 하트비트 이름이 은퇴 처리돼 있다 — 안 그러면 그 행이 영원히 빨갛고 경보를 침묵시킨다', () => {
+    const map = readFileSync('src/worker/utils/cron-beat-retirement.ts', 'utf8')
+    expect(map).toContain('beat-retire-ok group-buy-deadline-push')
   })
 })

@@ -149,4 +149,32 @@ export const COMPANY_INDEX_DDL: readonly string[] = [
      ON ad_company_leads(id) WHERE email LIKE '%*%'`,
   `CREATE INDEX IF NOT EXISTS idx_company_leads_placeholder_address
      ON ad_company_leads(id) WHERE address IN ('N/A','n/a','N.A.','-','--','없음','미상','null')`,
+
+  /**
+   * ⑨ **매장정보 레인이 20건 뽑으려고 38.7만 행을 훑던 것** (2026-09-07 라이브 실측 — ④ 와 같은 클래스).
+   *
+   * `store-info-collect` 는 회차 앞에서 **연락처를 못 찾아 접어 둔 리드**(`active = 0`)를 20건씩
+   * 다시 집어 재보강한다. 설계는 옳다(31,601건이 대기 중이다). 문제는 값이다:
+   * ```
+   *   라이브 rows_read 387,003  →  돌려주는 행 20      (2시간마다 = 하루 12회 = 460만 행/일)
+   *   EXPLAIN: SEARCH … USING INDEX idx_company_leads_active (active=?)
+   *            USE TEMP B-TREE FOR ORDER BY
+   * ```
+   * `idx_company_leads_active(active, tier, id)` 는 **비활성 전량(38.7만)을 통과시키고**, 정렬 키가
+   * `(active, tier, id)` 라 `ORDER BY id DESC` 를 못 받아 그 전부를 임시 B-트리로 세운다.
+   *
+   * 🔑 `source` 를 **선두 키**로 둔다 — 이 큐는 항상 소스 하나를 지목해서 묻기 때문에 등호 하나로
+   *   범위가 잡히고, 그러면 남은 정렬 키가 `id` 하나라 **정렬이 사라진다**.
+   *   `active`·`merged_into` 는 리터럴 조건이라 부분조건으로 내린다(키에 두면 정렬 키가 밀린다).
+   *   (`node:sqlite` 실증 6만 행: `SEARCH idx_..._active + TEMP B-TREE` → `SEARCH idx_..._storeinfo_queue
+   *   (source=?)`, 상위 20건 완전 동일.)
+   *
+   * ⚠️ 부분조건은 `store-info-collect.ts` 의 `WHERE` 와 **글자까지 같아야** 쓰인다.
+   * ⚠️ 이 큐는 storeinfo 전용이 아니다 — 키가 `source` 라 같은 모양으로 묻는 다른 소스도 그대로 탄다.
+   * ⚠️ **판정은 배포 후 라이브 `rows_read` 로만 된다.** 2026-09-06 에 정확히 이 자리에서, 합성
+   *   픽스처의 계획기 시험이 초록불인데 라이브는 다른 인덱스를 고른 일이 있었다(`influencer-bio-scan`).
+   *   위 실증은 "탈 수 있는 모양"까지만 증명한다.
+   */
+  `CREATE INDEX IF NOT EXISTS idx_company_leads_storeinfo_queue ON ad_company_leads(source, id)
+     WHERE active = 0 AND merged_into IS NULL`,
 ]

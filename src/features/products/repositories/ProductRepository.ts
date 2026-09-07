@@ -8,6 +8,7 @@ import type { Product, ProductFilter, ProductCreateInput, ProductUpdateInput } f
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories';
 import { capRowGalleries } from '@/features/group-buy/api/card-gallery'
 import { buildSearchClause } from './search-query'
+import { isAffiliateProgramEnabled, gateAffiliateRows } from '../../../worker/utils/affiliate-program';
 
 /**
  * 🖼️ 목록 응답의 갤러리를 **커버 제외 3장**으로 자른다 (2026-08-27).
@@ -115,8 +116,11 @@ export class ProductRepository {
     ];
     // dominant_color: 미적용 DB 면 제외(영구 캐시) → 매 요청 실패-재시도 제거.
     if (_dominantColorCol !== false) baseCols.push('dominant_color');
-    // referral_commission_rate: 동일 가드(미적용 DB 영구 제외). 유어샵 picker 적립률 배지용.
-    if (_referralCommissionCol !== false) baseCols.push('referral_commission_rate');
+    // referral_commission_rate / referral_enabled: 동일 가드(미적용 DB 영구 제외). 유어샵 picker 적립률 배지용.
+    //   ⚠️ 둘은 **같은 마이그레이션(0271)** 이 만든 짝이라 가드 하나로 충분하다 — 하나만 있는 DB 는 없다.
+    //   referral_enabled 를 같이 보내는 이유: 적립이 **꺼진** 상품에 "쓰면 2%" 를 약속하면 안 되기 때문
+    //   (2026-09-05 — 그전엔 rate 만 보내서 화면이 꺼짐 여부를 알 방법이 없었다).
+    if (_referralCommissionCol !== false) baseCols.push('referral_commission_rate', 'referral_enabled');
     const LIST_COLUMNS = baseCols.join(', ');
     let query = `SELECT ${LIST_COLUMNS} FROM products WHERE is_active = 1
       AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)
@@ -219,7 +223,11 @@ export class ProductRepository {
       const result = await this.db.prepare(query).bind(...params).all<Product>();
       if (_dominantColorCol === null) _dominantColorCol = true; // 1차 성공 → 컬럼 존재 확정(이후 항상 포함)
       if (_referralCommissionCol === null) _referralCommissionCol = true;
-      return capGalleries(result.results || []);
+      // 🛑 2026-09-06: 어필리에이트 프로그램이 꺼져 있으면 적립 신호를 눕힌다 — 유어샵 담기 화면이
+      //   꺼진 프로그램의 "쓰면 N%" 를 약속하던 것(2026-09-05 단위 버그 수정이 드러낸 자리).
+      //   메모(60s) 라 워밍된 isolate 에서 D1 읽기 0.
+      const affiliateOn = await isAffiliateProgramEnabled(this.db);
+      return capGalleries(gateAffiliateRows(result.results || [], affiliateOn));
     } catch (err) {
       // 🏭 2026-06-05 (근본수정 — 정렬 무시 + 느린 로딩):
       //   1) dominant_color 미적용 DB → 모듈 캐시(_dominantColorCol=false) 후 1회 재귀.
@@ -232,7 +240,7 @@ export class ProductRepository {
           _dominantColorCol = false;
           return this.findAll(filter, offset, limit);
         }
-        if (/referral_commission_rate/i.test(errMsg) && _referralCommissionCol !== false) {
+        if (/referral_commission_rate|referral_enabled/i.test(errMsg) && _referralCommissionCol !== false) {
           _referralCommissionCol = false;
           return this.findAll(filter, offset, limit);
         }

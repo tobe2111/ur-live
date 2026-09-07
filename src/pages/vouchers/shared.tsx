@@ -8,6 +8,7 @@ import { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BookOpen, Clapperboard, Coffee, Croissant, Drumstick, Fuel, Gamepad2, Gift, HardDrive, Home, IceCreamCone, Music, Pizza, Plug, RadioTower, Sandwich, Shirt, ShoppingBag, ShoppingCart, Smartphone, Soup, Sparkle, Store, Ticket, Utensils, Wrench, type LucideIcon } from 'lucide-react'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
+import DealRow from '@/components/deal/DealRow'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
@@ -137,73 +138,56 @@ export const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: Vouche
     : String(soldCount)
   const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
   const [imgError, setImgError] = useState(false)
+  /**
+   * 🎫 2026-09-03 — 줄 형태의 **표면은 `DealRow`(SSOT)** 가 그린다. 이 파일은 교환권 고유의
+   *   내용(브랜드·딜 단위·구매수)과 **잠금 이미지 계약**만 갖는다.
+   *   ⚠️ 아래 `<img>` 는 통째로 `thumb` 슬롯에 넘어간다 —
+   *      width/height/srcSet/sizes/lazy/fetchPriority/onLoad 색추출/fade-in 전부 byte-불변.
+   */
   return (
-    <button
-      type="button"
+    <DealRow
       onClick={() => navigate(`/vouchers/${p.id}`)}
-      onMouseEnter={() => prefetchProduct(p.id)}
-      onTouchStart={() => prefetchProduct(p.id)}
-      onFocus={() => prefetchProduct(p.id)}
-      className="w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift active:opacity-60 transition-opacity"
-    >
-      {/* 🎨 이미지 — 좌측 정사각 타일(컴팩트 64/72). dominant_color 있으면 로딩 플레이스홀더(잠금).
-          ⚠️ img width/height/srcSet/lazy/fetchPriority/dominant_color 속성 불변 — 표시 박스 CSS 크기만 축소. */}
-      <div
-        className="relative w-16 h-16 sm:w-[72px] sm:h-[72px] shrink-0 overflow-hidden rounded-xl bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115]"
-        style={cardColor ? { backgroundColor: cardColor } : undefined}
-      >
-        {p.image_url && !imgError ? (
-          <img
-            src={cfImage(p.image_url, { width: 240, format: 'auto' }) || p.image_url}
-            srcSet={cfSrcSet(p.image_url, 240) || undefined}
-            sizes="120px"
-            alt={p.name}
-            width={240}
-            height={240}
-            loading={aboveFold ? 'eager' : 'lazy'}
-            fetchPriority={aboveFold ? 'high' : 'auto'}
-            decoding="async"
-            onLoad={(e) => {
-              const el = e.currentTarget as HTMLImageElement
-              el.style.opacity = '1'
-              const color = extractDominantColor(el)
-              if (color) {
-                if (!cardColor) setCardColor(color)
-                if (!p.dominant_color) reportDominantColor(p.id, color)
-              }
-            }}
-            onError={() => setImgError(true)}
-            style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-300 dark:text-gray-600">
-            <Gift className="w-8 h-8" />
-            {p.brand_name && <span className="text-[10px] font-bold px-1 text-center line-clamp-1">{p.brand_name}</span>}
-          </div>
-        )}
-      </div>
-      {/* 🎨 본문 — 우측. 브랜드/상품명/가격/구매수 (별점 제거·여백 축소로 행 높이 컴팩트). */}
-      <div className="flex-1 min-w-0">
-        {p.brand_name && (
-          <p className="text-[11px] font-semibold leading-none mb-0.5 text-gray-400 dark:text-gray-500 truncate">{p.brand_name}</p>
-        )}
-        <p className="text-[14px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white">{p.name}</p>
-        <div className="flex items-baseline gap-1 mt-1">
-          {discountRate > 0 && (
-            <span className="text-[15px] font-extrabold text-brand dark:text-[#4D8DF5] tracking-tight">{discountRate}%</span>
-          )}
-          <span className="text-[17px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
-          <span className="text-[12px] font-bold text-[#171B24] dark:text-white">딜</span>
-          {hasStrike && (
-            <span className="text-[11px] ml-1 leading-none line-through text-gray-300 dark:text-gray-600">{formatNumber(p.original_price!)}딜</span>
-          )}
+      prefetch={() => prefetchProduct(p.id)}  /* 🚑 2026-07-10: /vouchers/:id 와 동일 키·엔드포인트 */
+      thumbClassName="bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115]"
+      thumbStyle={cardColor ? { backgroundColor: cardColor } : undefined}
+      thumb={p.image_url && !imgError ? (
+        <img
+          src={cfImage(p.image_url, { width: 240, format: 'auto' }) || p.image_url}
+          srcSet={cfSrcSet(p.image_url, 240) || undefined}
+          sizes="120px"
+          alt={p.name}
+          width={240}
+          height={240}
+          loading={aboveFold ? 'eager' : 'lazy'}
+          fetchPriority={aboveFold ? 'high' : 'auto'}
+          decoding="async"
+          onLoad={(e) => {
+            const el = e.currentTarget as HTMLImageElement
+            el.style.opacity = '1'
+            const color = extractDominantColor(el)
+            if (color) {
+              if (!cardColor) setCardColor(color)
+              if (!p.dominant_color) reportDominantColor(p.id, color)
+            }
+          }}
+          onError={() => setImgError(true)}
+          style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-300 dark:text-gray-600">
+          <Gift className="w-8 h-8" />
+          {p.brand_name && <span className="text-[10px] font-bold px-1 text-center line-clamp-1">{p.brand_name}</span>}
         </div>
-        {soldCount > 0 && (
-          <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">구매 {soldLabel}</p>
-        )}
-      </div>
-    </button>
+      )}
+      eyebrow={p.brand_name || undefined}
+      title={p.name}
+      price={p.price}
+      originalPrice={hasStrike ? p.original_price : null}
+      unit="딜"
+      discountPct={discountRate}
+      meta={soldCount > 0 ? `구매 ${soldLabel}` : undefined}
+    />
   )
 })
 

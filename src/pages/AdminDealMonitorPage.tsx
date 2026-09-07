@@ -191,11 +191,11 @@ export default function AdminDealMonitorPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          icon={<Gift className="w-5 h-5 text-pink-600" />}
+          icon={<Gift className="w-5 h-5 text-brand-text" />}
           label={t('admin.dealMonitor.k002', { defaultValue: "총 충전액" })}
           value={`${fmt(s?.totals.total_charged_amount)}원`}
           sub={`수수료 ${fmt(s?.totals.total_commission)}원`}
-          bg="bg-pink-50"
+          bg="bg-brand-tint"
         />
         <StatCard
           icon={<Zap className="w-5 h-5 text-amber-600" />}
@@ -314,7 +314,7 @@ export default function AdminDealMonitorPage() {
                     </td>
                     <td className="px-4 py-3 text-right font-medium">{fmt(c.amount)}원</td>
                     <td className="px-4 py-3 text-right text-gray-500">{fmt(c.commission_amount)}원</td>
-                    <td className="px-4 py-3 text-right text-pink-600 font-medium">{fmt(c.points_amount)}딜</td>
+                    <td className="px-4 py-3 text-right text-brand-text font-medium">{fmt(c.points_amount)}딜</td>
                     <td className="px-4 py-3 text-right">{fmt(c.current_balance)}딜</td>
                     <td className="px-4 py-3 font-mono text-xs text-gray-500 truncate max-w-[160px]" title={c.order_id}>{c.order_id}</td>
                   </tr>
@@ -357,7 +357,7 @@ export default function AdminDealMonitorPage() {
                     <td className="px-4 py-3 text-right">{fmt(u.charge_count)}회</td>
                     <td className="px-4 py-3 text-right font-medium">{fmt(u.total_charged)}딜</td>
                     <td className="px-4 py-3 text-right text-amber-600">{fmt(u.total_donated)}딜</td>
-                    <td className="px-4 py-3 text-right text-pink-600 font-medium">{fmt(u.balance)}딜</td>
+                    <td className="px-4 py-3 text-right text-brand-text font-medium">{fmt(u.balance)}딜</td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{u.last_charged ? formatKST(u.last_charged) : '-'}</td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{u.first_charge_date ? formatKST(u.first_charge_date) : '-'}</td>
                   </tr>

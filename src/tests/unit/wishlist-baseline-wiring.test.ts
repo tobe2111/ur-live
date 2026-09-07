@@ -54,7 +54,8 @@ describe('찜 시점 가격 — 전달', () => {
 
 describe('찜 시점 가격 — 표시', () => {
   it('⑥ 찜 목록이 카드에 신호를 넘긴다', () => {
-    expect(PAGE).toMatch(/flags=\{<WishlistFlag drop=\{priceDrop\(item\)\} days=\{daysLeft\(item\)\} \/>\}/)
+    // 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): days 프롭 제거 — 마감이 없으니 늘 null 이었다.
+    expect(PAGE).toMatch(/flags=\{<WishlistFlag drop=\{priceDrop\(item\)\} \/>\}/)
     expect(PAGE).toMatch(/expires_at: item\.expires_at/)
   })
 

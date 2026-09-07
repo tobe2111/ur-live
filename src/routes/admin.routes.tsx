@@ -90,9 +90,7 @@ const AdminWholesaleGuidePage = lazy(() => import('@/pages/admin/AdminWholesaleG
 const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage'))
 const AdminSocialPage = lazy(() => import('@/pages/AdminSocialPage'))
 const AdminNotificationSettingsPage = lazy(() => import('@/pages/AdminNotificationSettingsPage'))
-const AdminAgencyPage = lazy(() => import('@/pages/AdminAgencyPage'))
 const AdminSellerApprovalPage = lazy(() => import('@/pages/AdminSellerApprovalPage'))
-const AdminAgencyCreatorApprovalPage = lazy(() => import('@/pages/AdminAgencyCreatorApprovalPage'))
 const AdminSettlementsBulkPage = lazy(() => import('@/pages/AdminSettlementsBulkPage'))
 const AdminNoticesPage = lazy(() => import('@/pages/AdminNoticesPage'))
 const AdminPlatformSettingsPage = lazy(() => import('@/pages/AdminPlatformSettingsPage'))
@@ -595,9 +593,6 @@ export function AdminRoutes() {
       <Route path="/admin/seller-approval" element={
         <ProtectedRoute requireAdmin><AdminSellerApprovalPage /></ProtectedRoute>
       } />
-      <Route path="/admin/agency-creator-approval" element={
-        <ProtectedRoute requireAdmin><AdminAgencyCreatorApprovalPage /></ProtectedRoute>
-      } />
       <Route path="/admin/settlements-bulk" element={
         <ProtectedRoute requireAdmin><AdminSettlementsBulkPage /></ProtectedRoute>
       } />
@@ -635,11 +630,8 @@ export function AdminRoutes() {
           <ErrorBoundary><AdminCouponsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      <Route path="/admin/agencies" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminAgencyPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
+      {/* 🌇 2026-09-04 에이전시 일몰 — `/admin/agencies` · `/admin/agency-creator-approval` 삭제.
+          docs/design/store-operator-model.md */}
       <Route path="/admin/abuse" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminAbusePage /></ErrorBoundary>

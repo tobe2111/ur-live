@@ -96,6 +96,16 @@ export default {
           faint: '#8A8580',    // 비활성/플레이스홀더
         },
         surface: '#FFFFFF',
+        /* 🚦 2026-09-03 상태 색 — 아래 MONO 중화를 **통과하지 않는** 유일한 의미 색 집합.
+           대시보드 상태 배지(대기/완료/반려)가 중화 뒤 같은 회색이 되던 실측 결함의 수리.
+           값·이유·라이트 되박기는 `src/index.css` 의 `--tone-*` 주석 참조.
+           ⚠️ 장식으로 쓰지 말 것 — 이건 "지금 어떤 상태인가" 를 말하는 자리 전용이다. */
+        tone: {
+          ok: { DEFAULT: 'var(--tone-ok)', bg: 'var(--tone-ok-bg)' },
+          warn: { DEFAULT: 'var(--tone-warn)', bg: 'var(--tone-warn-bg)' },
+          bad: { DEFAULT: 'var(--tone-bad)', bg: 'var(--tone-bad-bg)' },
+          info: { DEFAULT: 'var(--tone-info)', bg: 'var(--tone-info-bg)' },
+        },
         line: '#EAE4E0',
         // 🎫 2026-09-02 표면 체계 — 카드 안 구분선·outline 테두리는 이 둘로만(테마별 값은 index.css).
         rule: { DEFAULT: 'var(--rule)', strong: 'var(--rule-strong)' },

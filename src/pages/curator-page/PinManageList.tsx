@@ -7,6 +7,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { curatorApi, type CuratorPin } from '@/features/curator/api/curator-api'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { toast } from '@/hooks/useToast'
+import { effectiveAffiliateRate } from '@/shared/affiliate-rate'
 
 // 🎨 2026-06-16 유어샵 시안: 본인 핀 관리 리스트 — 드래그(터치+마우스) 정렬 + 핀별 통계 + 코멘트 넛지 + 삭제.
 //   드래그 라이브러리 없이 pointer 이벤트로 구현 (window 리스너 + ref, 모바일 스크롤 방지 touch-action:none).
@@ -76,7 +77,10 @@ export default function PinManageList({ pins, onReorder, onDeleted }: { pins: Cu
       <div ref={listRef} className="flex flex-col gap-2.5">
         {items.map((pin, idx) => {
           const img = pin.thumbnail || pin.image_url || ''
-          const est = pin.commission_rate > 0 ? Math.round(pin.price * pin.commission_rate / 100) : 0
+          // 🩸 2026-09-05: `pin.price * rate / 100` 이었다 — rate 는 **분수**(0.05)라 100 으로 또 나누면
+          //   실제의 1/100(₩5,000 → ₩50). 게다가 rate 는 라이브에서 전부 NULL 이라 늘 0 이었다.
+          const estRate = effectiveAffiliateRate({ referral_commission_rate: pin.commission_rate, referral_enabled: pin.referral_enabled })
+          const est = estRate != null ? Math.round(pin.price * estRate) : 0
           const dragging = draggingId === pin.id
           return (
             <div
@@ -100,7 +104,7 @@ export default function PinManageList({ pins, onReorder, onDeleted }: { pins: Cu
                   {idx === 0 && <span className="shrink-0 text-[9.5px] font-extrabold text-[#6b7280] bg-[#FFEDE8] dark:bg-[#2a1812] px-1.5 py-0.5 rounded">{t('curator.topPick', { defaultValue: '강추' })}</span>}
                 </div>
                 {pin.note
-                  ? <div className="text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">{t('curator.viewsCount', { defaultValue: '조회 {{n}}', n: fmtK(pin.click_count || 0) })}{est > 0 ? t('curator.earnPerSaleAmt', { defaultValue: ' · 적립 ₩{{amt}}/건', amt: est.toLocaleString('ko-KR') }) : ''}</div>
+                  ? <div className="text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">{t('curator.viewsCount', { defaultValue: '조회 {{n}}', n: fmtK(pin.click_count || 0) })}{est > 0 ? t('curator.earnPerSaleAmt', { defaultValue: ' · 쓰면 ₩{{amt}}', amt: est.toLocaleString('ko-KR') }) : ''}</div>
                   : <div className="text-[11.5px] font-semibold text-[#C2491F] dark:text-[#9ca3af] mt-1">{t('curator.noCommentNudge', { defaultValue: '추천 코멘트 없음 · 추가하면 전환 ↑' })}</div>}
               </div>
               <button onClick={() => del(pin.id)} aria-label={t('curator.delete', { defaultValue: '삭제' })} className="shrink-0 w-[30px] h-[30px] rounded-lg bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors text-sm font-bold">✕</button>

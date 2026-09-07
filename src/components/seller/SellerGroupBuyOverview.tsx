@@ -3,7 +3,7 @@
  *
  * 표시:
  *   - 진행 중 공구 N개 (active)
- *   - 마감 임박 (24시간 이내) 갯수
+ *   (2026-09-04 대표 "마감 개념은 없어" — '마감 임박(24h)' 갯수는 제거됐다.)
  *   - 미달성 위험 (deadline 24h + progress < 50%)
  *   - 미해결 분쟁 갯수
  *
@@ -58,11 +58,11 @@ export default function SellerGroupBuyOverview() {
     <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
-          <Ticket className="w-4 h-4 text-pink-500" /> 공구 진행 현황
+          <Ticket className="w-4 h-4 text-brand-text" /> 공구 진행 현황
         </h3>
         <button
           onClick={() => navigate('/seller/group-buy')}
-          className="text-[11px] text-pink-500 font-bold flex items-center gap-0.5 hover:underline"
+          className="text-[11px] text-brand-text font-bold flex items-center gap-0.5 hover:underline"
         >
           전체 관리 <ChevronRight className="w-3 h-3" />
         </button>

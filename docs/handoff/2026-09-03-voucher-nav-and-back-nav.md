@@ -73,8 +73,11 @@ SSOT `src/components/seller/seller-tab-groups.ts` 하나에서 사이드바 항�
 
 ## 이번에 틀렸던 판단 (제일 값진 부분)
 
-- **`node scripts/check-file-size.mjs --changed-only -s` 는 아무것도 안 잰다.** "대상 없음 (skip)"
-  이 뜨는데 그걸 통과로 읽었고 CI 가 **두 번** 막았다. `-s`(staged) 없이 `--changed-only` 로 돌릴 것.
+- 🔴 **`-s` 는 "staged" 가 아니라 STRICT 다** (2026-09-04 정정 — 이 줄의 이전 판이 틀렸다).
+  `check-file-size.mjs` 소스: `STRICT = env.STRICT_FILE_SIZE === '1' || argv.includes('-s')`.
+  그리고 **`--changed-only` 는 `merge-base(origin/main, HEAD)..HEAD` — 즉 *커밋된* 것만 본다.**
+  아직 커밋 안 한 작업 트리는 **"대상 없음 (skip)"** 이 뜨고, 그걸 통과로 읽으면 CI 에서 막힌다(2회 겪음).
+  ⇒ **커밋 전 로컬 판정은 `node scripts/check-file-size.mjs -s`**(전수 strict). `--changed-only` 는 CI 용.
   그리고 막혔을 때 `[SKIP_SIZE]` 로 넘기지 않고 실제로 줄였다(설명 주석을 테스트 헤더로 옮김 —
   어차피 중복이었다).
 - **`sed` 로 되돌려-검증 주입을 했다가 이스케이프 때문에 조용히 no-op** 났고 "통과"로 보였다.

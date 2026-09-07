@@ -208,105 +208,17 @@ export async function recordVoucherUsedLedger(
 }
 
 /**
- * 🛡️ 2026-05-21 Phase D: voucher 사용 시점에 에이전시 commission 자동 분배.
+ * 🌇 2026-09-04 에이전시 완전 일몰(대표 확정) — 여기 있던 `recordAgencyCommissionShare` 를 삭제했다.
  *
- * 구조: 플랫폼 fee 의 일부(default 30%)를 에이전시에게 자동 분배.
- *   - sellers.introduced_by_agency_id 가 있는 가게의 voucher 사용 시 발생.
- *   - 분배 비율은 platform_settings.agency_share_pct (default 30) 에서 조정 (어드민 페이지).
- *   - ledger: platform:revenue → agency:N (debit/credit) 자동 entry.
+ * 무엇이었나: 이용권 *사용* 시점에 플랫폼 수수료의 30%(`agency_share_pct`)를 영입 에이전시
+ * (`sellers.introduced_by_agency_id`)에게 원장 분개(`platform:revenue` → `agency:N`)로 넘기던 레거시.
  *
- * 멱등: voucher_id + agency 조합 1회만.
- */
-export async function recordAgencyCommissionShare(
-  DB: D1Database,
-  params: {
-    voucher_id: number | string
-    merchant_id: number | string  // sellers.id (introduced_by_agency_id 조회용)
-    platform_fee: number          // recordVoucherUsedLedger 가 반환한 platform 분
-  },
-): Promise<{ agency_id: number | null; amount: number }> {
-  await ensureLedgerTable(DB)
-  const ref = `voucher:${params.voucher_id}:agency`
-  const existing = await DB.prepare(
-    `SELECT id FROM ledger_entries WHERE reference_id = ? LIMIT 1`,
-  ).bind(ref).first().catch(() => null)
-  if (existing) return { agency_id: null, amount: 0 }
-
-  // 가게의 추천 에이전시 조회
-  // 🛡️ 2026-05-27 (사용자 결정): 매장별 commission 기간 체크 추가.
-  //   referral_bonus_until NULL = 무기한, 날짜 있으면 만료 검사 (admin 이 매장별 설정).
-  const seller = await DB.prepare(
-    'SELECT introduced_by_agency_id, referral_bonus_until FROM sellers WHERE id = ?',
-  ).bind(params.merchant_id).first<{ introduced_by_agency_id: number | null; referral_bonus_until: string | null }>().catch(() => null)
-  if (!seller?.introduced_by_agency_id) return { agency_id: null, amount: 0 }
-  // 기간 만료 시 commission 0 (referral_bonus_until 설정된 경우만)
-  if (seller.referral_bonus_until && new Date(seller.referral_bonus_until) < new Date()) {
-    return { agency_id: null, amount: 0 }
-  }
-
-  // 💸 2026-07-04 [INV-CB-DEDUP] (F2 이중 커미션 수정 — commission-funding-restructure.md):
-  //   같은 구매에 결제확정 시 GMV 커미션(agency_store_intro_commissions sales_commission, 아비터 캡 대상)이
-  //   이미 적립됐으면 이 사용시점 셰어(platform_fee 30%)는 **skip** — 두 시스템이 같은 에이전시에
-  //   같은 주문으로 이중 적립(최대 GMV 3.5% > 플랫폼 수수료)하던 구조적 누수 차단.
-  //   확정 커미션이 없을 때(영입 시점이 구매 후 등)만 이 레거시 셰어가 단독 지급(단일-지급 보장).
-  try {
-    const v = await DB.prepare('SELECT order_id FROM vouchers WHERE id = ?')
-      .bind(params.voucher_id).first<{ order_id: number | null }>().catch(() => null)
-    if (v?.order_id) {
-      const dup = await DB.prepare(
-        `SELECT id FROM agency_store_intro_commissions
-          WHERE order_id = ? AND agency_id = ? AND type = 'sales_commission'
-            AND COALESCE(status, 'pending') != 'cancelled' LIMIT 1`,
-      ).bind(v.order_id, seller.introduced_by_agency_id).first().catch(() => null)
-      if (dup) return { agency_id: seller.introduced_by_agency_id, amount: 0 }
-    }
-  } catch { /* dedup 조회 실패 → 기존 동작(지급) — 멱등 ref 가 재실행 이중은 막음 */ }
-
-  // 분배 비율 (platform_settings)
-  let sharePct = 0.30  // default 30%
-  try {
-    const row = await DB.prepare(
-      "SELECT value FROM platform_settings WHERE key = 'agency_share_pct'",
-    ).first<{ value: string }>()
-    const v = parseFloat(row?.value || '0.30')
-    if (v > 0 && v < 1) sharePct = v
-    else if (v >= 1 && v <= 100) sharePct = v / 100
-  } catch { /* settings 없으면 default */ }
-
-  const agencyAmount = Math.floor(params.platform_fee * sharePct)
-  if (agencyAmount <= 0) return { agency_id: seller.introduced_by_agency_id, amount: 0 }
-
-  // 💸 [INV-#44] promo flip — 에이전시는 **매장-인플 조율 독립 사업자**이므로 그 몫도
-  //   매장 promo(5% 밖)에서 나온다(대표 확정 2026-07-08 §확정 원칙 3). flip 이 켜지면
-  //   debit 을 `merchant:{id}` 로 돌려 **platform:revenue 를 한 푼도 건드리지 않는다**.
-  //   OFF(기본)면 종전과 byte-동일. 산식(platform_fee×share_pct)은 **크기 기준일 뿐**이라 불변.
-  const ownerFunded = await ownerFundedFor(DB, `merchant:${params.merchant_id}`)
-  await recordLedger(DB, {
-    event_type: 'agency_commission',
-    reference_id: ref,
-    amount: agencyAmount,
-    debit_account: ownerFunded ? `merchant:${params.merchant_id}` : 'platform:revenue',
-    credit_account: `agency:${seller.introduced_by_agency_id}`,
-    metadata: {
-      kind: 'agency_share', voucher_id: params.voucher_id, share_pct: sharePct,
-      ...(ownerFunded ? { funding: 'owner' } : {}),
-    },
-  })
-
-  return { agency_id: seller.introduced_by_agency_id, amount: agencyAmount }
-}
-
-/**
- * 🛡️ 2026-05-28: 유저 commission 통합 적립 SSOT (docs/SERVICE_MODEL.md §9).
+ * 왜 지웠나: 대표 확정 원칙과 **정반대**다 — "5%는 중개사 일 때 유어딜의 수수료인거고,
+ * 중개사는 나머지 95%에서 매장이랑 거래를 하는거지." 유어딜 몫에서 커미션이 나가면 안 된다.
+ * 라이브 실측상 `introduced_by_agency_id` 는 전원 NULL 이라 실제로 지급된 적은 없다.
  *
- * 모든 유저(크리에이터/큐레이터) commission 의 "현금 vs 딜" 결정을 단 한 곳으로 통합:
- *   - 사업자 (users.business_status='verified') → user:N ledger credit → payouts-generate 현금 정산
- *   - 비사업자                                  → userdeal:N audit + 딜 즉시 적립
- *
- * 영입 commission 이 현재 유일한 호출자. 추천(affiliate) 통합은 payment.routes.ts(Toss 잠금)
- * 해제 후 같은 helper 로 forward-only 수렴 예정.
- *
- * idempotency 는 호출자가 reference_id 중복 체크로 보장 (여기선 재확인 안 함).
+ * ⚠️ 짝인 `recordIntroductionCommissionShare`(사람 영입)는 **그대로 산다** — 그건 별개 축이고
+ *    2026-08-31 대표 확정으로 직접 입점 매장 전용이다.
  */
 export async function creditUserCommission(
   DB: D1Database,

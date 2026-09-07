@@ -100,7 +100,7 @@ export default function StayCheckoutReturnPage() {
             <p className="text-[12px] text-gray-500 mt-2">체크인 코드 등 상세는 내 숙소 예약에서 확인하세요.</p>
             <div className="mt-5 space-y-2">
               <button onClick={() => navigate('/my-stays', { replace: true })}
-                className="w-full py-3 bg-pink-500 text-white text-[14px] font-bold rounded-full">
+                className="w-full py-3 bg-brand text-white text-[14px] font-bold rounded-full">
                 내 숙소 예약 보기
               </button>
               <button onClick={() => navigate('/', { replace: true })}
@@ -117,7 +117,7 @@ export default function StayCheckoutReturnPage() {
             <p className="text-[13px] text-gray-600 mt-2">{message}</p>
             <p className="text-[12px] text-gray-500 mt-1">결제는 자동 환불 처리됩니다 (영업일 기준 3-5일).</p>
             <button onClick={() => navigate('/stays', { replace: true })}
-              className="mt-5 w-full py-3 bg-pink-500 text-white text-[14px] font-bold rounded-full">
+              className="mt-5 w-full py-3 bg-brand text-white text-[14px] font-bold rounded-full">
               다른 숙소 둘러보기
             </button>
           </>
@@ -130,7 +130,7 @@ export default function StayCheckoutReturnPage() {
             <div className="mt-5 space-y-2">
               {Number.isFinite(orderId) && orderId > 0 && (
                 <button onClick={() => navigate(`/checkout?order_id=${orderId}&stay=1`, { replace: true })}
-                  className="w-full py-3 bg-pink-500 text-white text-[14px] font-bold rounded-full">
+                  className="w-full py-3 bg-brand text-white text-[14px] font-bold rounded-full">
                   다시 결제하기
                 </button>
               )}

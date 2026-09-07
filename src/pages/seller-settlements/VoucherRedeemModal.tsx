@@ -157,7 +157,7 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
                   <button key={item.gift_code} type="button"
                     onClick={() => setSelected(item)}
                     className={`border-2 rounded-lg overflow-hidden text-left ${
-                      isSel ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                      isSel ? 'border-brand bg-brand-tint' : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}>
                     <div className="aspect-square bg-gray-100">
                       {item.image_url_small && <img src={item.image_url_small} alt={item.name} className="w-full h-full object-cover" loading="lazy" />}
@@ -167,7 +167,7 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
                       <p className="text-xs font-bold text-gray-900 line-clamp-2">{item.name}</p>
                       <div className="mt-1.5">
                         <p className="text-[10px] text-gray-400 line-through">₩{item.sale_price.toLocaleString()}</p>
-                        <p className="text-xs font-extrabold text-pink-600">차감 ₩{deduct.toLocaleString()}</p>
+                        <p className="text-xs font-extrabold text-brand-text">차감 ₩{deduct.toLocaleString()}</p>
                       </div>
                     </div>
                   </button>
@@ -211,7 +211,7 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
                   <span>₩{withholdingAmount.toLocaleString()}</span>
                 </p>
               )}
-              <p className="flex justify-between pt-1 border-t border-gray-200"><span className="text-gray-700 font-bold">총 차감액</span><span className="text-base font-extrabold text-pink-600">₩{totalDeductWithTax.toLocaleString()}</span></p>
+              <p className="flex justify-between pt-1 border-t border-gray-200"><span className="text-gray-700 font-bold">총 차감액</span><span className="text-base font-extrabold text-brand-text">₩{totalDeductWithTax.toLocaleString()}</span></p>
               {totalDeductWithTax > totalBalance && (
                 <p className="text-red-600 text-[11px] font-bold mt-1">⚠️ 잔액 부족 (보유 ₩{totalBalance.toLocaleString()})</p>
               )}
@@ -221,7 +221,7 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
             <div className="bg-white border border-amber-200 rounded p-3 mb-3 space-y-2">
               <label className="flex items-start gap-2 text-[11px] text-gray-700 cursor-pointer">
                 <input type="checkbox" checked={acceptExpiry} onChange={(e) => setAcceptExpiry(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 accent-pink-500 flex-shrink-0" />
+                  className="mt-0.5 w-4 h-4 accent-brand flex-shrink-0" />
                 <span>
                   <b className="text-amber-700">[필수]</b> 본 교환권은 <b>발행일로부터 30일 유효</b>하며,
                   발송 후 <b>환불 / 취소 / 유효기간 연장이 불가</b>함을 확인했습니다 (KT Alpha B2B 쿠폰 정책).
@@ -229,7 +229,7 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
               </label>
               <label className="flex items-start gap-2 text-[11px] text-gray-700 cursor-pointer">
                 <input type="checkbox" checked={acceptB2B} onChange={(e) => setAcceptB2B(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 accent-pink-500 flex-shrink-0" />
+                  className="mt-0.5 w-4 h-4 accent-brand flex-shrink-0" />
                 <span>
                   <b className="text-amber-700">[필수]</b> 본 교환권은 <b>유어딜이 자사 셀러(본인)에게 지급하는 B2B 정산 수단</b>이며,
                   최종 소비자 판매 목적이 아님을 확인했습니다. 본인 명의 휴대폰으로만 발송됩니다.
@@ -238,7 +238,7 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
               {needTaxConsent && (
                 <label className="flex items-start gap-2 text-[11px] text-gray-700 cursor-pointer">
                   <input type="checkbox" checked={acceptTax} onChange={(e) => setAcceptTax(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 accent-pink-500 flex-shrink-0" />
+                    className="mt-0.5 w-4 h-4 accent-brand flex-shrink-0" />
                   <span>
                     <b className="text-amber-700">[비사업자 필수]</b> 본인은 사업자등록증을 보유하지 않은 개인이며,
                     소득세법 §21 기타소득에 따라 <b>액면가의 {withholdingRate}% (₩{withholdingAmount.toLocaleString()}) 원천징수</b> 후
@@ -254,7 +254,7 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
                 취소
               </button>
               <button onClick={submit} disabled={submitting || !canSubmit}
-                className="flex-1 px-4 py-2 bg-pink-500 text-white text-sm font-bold rounded-lg hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                className="flex-1 px-4 py-2 bg-brand text-white text-sm font-bold rounded-lg hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed">
                 {submitting ? '발송 중...' : `🎁 ₩${totalDeduct.toLocaleString()} 차감 후 발송`}
               </button>
             </div>

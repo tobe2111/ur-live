@@ -84,7 +84,7 @@ export default function FollowingPage() {
             </p>
             <button
               onClick={() => navigate('/group-buy')}
-              className="mt-5 px-5 py-2.5 bg-pink-500 text-white text-[13px] font-semibold rounded-full"
+              className="mt-5 px-5 py-2.5 bg-brand text-white text-[13px] font-semibold rounded-full"
             >
               {t('following.exploreLive', { defaultValue: '동네 공구 둘러보기' })}
             </button>
@@ -120,7 +120,7 @@ export default function FollowingPage() {
                     <p className="text-gray-500 dark:text-gray-400 text-[12px] truncate mt-0.5">{seller.bio}</p>
                   )}
                 </div>
-                <span className="text-pink-500 dark:text-pink-400 text-[11px] font-semibold shrink-0">
+                <span className="text-brand-text text-[11px] font-semibold shrink-0">
                   {t('following.followingBadge', { defaultValue: '팔로잉' })}
                 </span>
               </button>

@@ -83,10 +83,10 @@ export default function SellerOnboardingChecklist() {
   const progress = Math.round((completedRequired / totalRequired) * 100)
 
   return (
-    <div className="bg-gray-50 border-2 border-pink-200 rounded-2xl p-5 mb-5">
+    <div className="bg-gray-50 border-2 border-rule rounded-2xl p-5 mb-5">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-pink-500" />
+          <Sparkles className="w-5 h-5 text-brand-text" />
           <h3 className="text-base font-extrabold text-gray-900">시작 가이드 ({completedRequired}/{totalRequired})</h3>
         </div>
         {/* 🛡️ 닫기 버튼 제거 — 첫 매출까지 강제 노출 */}
@@ -96,7 +96,7 @@ export default function SellerOnboardingChecklist() {
       <div className="w-full bg-white rounded-full h-2 mb-2 overflow-hidden">
         <div className="h-full bg-gray-800 rounded-full transition-all" style={{ width: `${progress}%` }} />
       </div>
-      <p className="text-[11px] text-pink-700 mb-3 font-bold">
+      <p className="text-[11px] text-brand-text mb-3 font-bold">
         {progress === 100 ? '모든 단계 완료!' : `${totalRequired - completedRequired}단계 남음 — 첫 매출까지 가이드 표시`}
       </p>
 
@@ -131,7 +131,7 @@ export default function SellerOnboardingChecklist() {
               {!item.done && <p className="text-[11px] text-gray-500 mt-0.5">{item.desc}</p>}
             </div>
             {!item.done && (
-              <span className="px-2.5 py-1 bg-pink-500 text-white text-[10px] font-bold rounded-full flex items-center gap-1 shrink-0">
+              <span className="px-2.5 py-1 bg-brand text-white text-[10px] font-bold rounded-full flex items-center gap-1 shrink-0">
                 {item.cta} <ArrowRight className="w-3 h-3" />
               </span>
             )}

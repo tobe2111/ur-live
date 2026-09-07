@@ -50,6 +50,34 @@ function campaignFromUrl(): string | undefined {
  *   서버 share_url(affiliate.routes)·캠페인 완료화면이 발급하는 `urdeal.kr/?ref=` 링크가
  *   지금까지 inflow_clicks 에 안 남던 갭(전역 캡처 부재)을 닫는다.
  */
+/**
+ * 🛡️ **남의 추천으로 들어왔는가** (2026-09-04 대표).
+ *
+ * 대표: *"누가 돈을 벌기 위해서 그 링크를 누구에게 공유했는데, 그 누구가 또 자신의 링크로
+ * 판매를 다이렉트로 되게 하면 안 된다는거야. 유어딜 메인에서 발견한 이용권으로 직접 확인할 때만."*
+ *
+ * A 가 자기 유어샵 링크를 B 에게 공유 → B 가 그 페이지에서 **"내 유어샵에 담기 + 추천 링크 복사"**
+ * 를 누르면 B 의 링크가 만들어진다. A 가 데려온 손님을 B 가 그대로 가져가는 구조 —
+ * **소개의 결과를 소개받은 사람이 가로챈다.** 소개할 이유가 없어진다.
+ *
+ * ⚠️ 이 함수는 **화면을 가릴 때만** 쓴다. 저장된 ref(구매 귀속)는 건드리지 않는다 —
+ *   B 가 사면 그 매출은 여전히 A 에게 귀속돼야 한다(그게 A 가 공유한 이유다).
+ *
+ * 유효기간(7일)이 지난 값은 '남의 추천'으로 안 본다 — 저장 로직과 같은 창을 쓴다.
+ */
+export function arrivedViaSomeoneElsesRef(): boolean {
+  try {
+    const ref = localStorage.getItem(KEY)
+    if (!ref) return false
+    const exp = parseInt(localStorage.getItem(EXP_KEY) || '0', 10)
+    if (!Number.isFinite(exp) || Date.now() > exp) return false
+    // 본인 ref 는 애초에 저장되지 않지만(storeAffiliateRef), 로그인 전환 등으로 남을 수 있어 한 번 더 본다.
+    return localStorage.getItem('user_id') !== ref
+  } catch {
+    return false // 스토리지 불가 — 막지 않는다(기능 상실보다 낫다)
+  }
+}
+
 export function captureInflowRef(ref: string | null | undefined): void {
   try {
     if (!ref || !/^\d{1,12}$/.test(ref)) return

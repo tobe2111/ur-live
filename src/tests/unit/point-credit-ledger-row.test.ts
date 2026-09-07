@@ -143,10 +143,10 @@ describe('신규 가입 보너스 — 지급 경로 제거 (2026-08-31 대표 "3
     expect(routes, "`?bonus=` 부착이 되살아났다").not.toMatch(/searchParams\.set\(\s*'bonus'/)
   })
 
-  it('에이전시 매장영입의 signup_bonus(₩30,000)는 **다른 제도**라 그대로 남아 있다', () => {
-    // 이름만 같다. 소비자 딜이 아니라 에이전시 커미션 행이다 — 같이 지우면 안 된다.
-    const agency = readFileSync('src/worker/utils/agency-store-intro-commission.ts', 'utf8')
-    expect(agency).toContain("'signup_bonus'")
+  it('🌇 에이전시 매장영입 signup_bonus(₩30,000)도 함께 사라졌다', () => {
+    // 2026-08-31 에는 "이름만 같은 다른 제도라 남긴다"가 맞았다. 2026-09-04 대표 확정으로
+    // 에이전시 자체가 일몰이라 그 모듈을 통째로 지웠다(지급 이력 0행).
+    expect(existsSync('src/worker/utils/agency-store-intro-commission.ts')).toBe(false)
   })
 
   it('모달의 보너스 카드는 조건부라 지급이 없으면 안 뜬다', () => {

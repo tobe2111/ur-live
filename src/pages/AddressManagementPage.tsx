@@ -231,8 +231,8 @@ export default function AddressManagementPage() {
         {/* 배송지 목록 */}
         {addresses.length === 0 ? (
           <div className="text-center py-14 px-6 rounded-2xl bg-gray-50 dark:bg-[#1D1F29]">
-            <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center">
-              <MapPin className="w-10 h-10 text-pink-400" strokeWidth={1.5} />
+            <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-brand-tint flex items-center justify-center">
+              <MapPin className="w-10 h-10 text-brand-text" strokeWidth={1.5} />
             </div>
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('address.empty')}</p>
             <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5">{t('address.emptySub')}</p>
@@ -256,7 +256,7 @@ export default function AddressManagementPage() {
                   key={address.id}
                   className={`relative overflow-hidden rounded-2xl transition-all ${
                     isDefault
-                      ? 'bg-gray-50 dark:bg-gray-900/15 border border-pink-200 dark:border-pink-900/40 shadow-sm'
+                      ? 'bg-gray-50 dark:bg-gray-900/15 border border-rule  shadow-sm'
                       : 'bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35]'
                   }`}
                 >
@@ -313,7 +313,7 @@ export default function AddressManagementPage() {
                         {!isDefault && (
                           <button
                             onClick={() => handleSetDefault(address.id)}
-                            className="mt-3 text-[12px] font-bold text-pink-500 hover:text-pink-600 inline-flex items-center gap-1"
+                            className="mt-3 text-[12px] font-bold text-brand-text hover:text-brand-text inline-flex items-center gap-1"
                           >
                             ⭐ 기본 배송지로 설정
                           </button>
@@ -452,7 +452,7 @@ export default function AddressManagementPage() {
                   onClick={() => setFormData({ ...formData, label: preset })}
                   className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
                     formData.label === preset
-                      ? 'bg-pink-500 text-white border-pink-500'
+                      ? 'bg-brand text-white border-brand'
                       : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
                   }`}
                 >
@@ -484,7 +484,7 @@ export default function AddressManagementPage() {
                   onClick={() => setFormData({ ...formData, entry_method: opt.value })}
                   className={`px-3 py-2.5 rounded-xl text-[13px] font-semibold border transition-colors ${
                     formData.entry_method === opt.value
-                      ? 'bg-pink-50 text-pink-600 border-pink-500'
+                      ? 'bg-brand-tint text-brand-text border-brand'
                       : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
                   }`}
                 >
@@ -564,7 +564,7 @@ export default function AddressManagementPage() {
             <button
               type="button"
               onClick={handleSaveAddress}
-              className="flex-1 py-4 bg-pink-500 text-white rounded-2xl text-[16px] font-bold hover:bg-pink-600 hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+              className="flex-1 py-4 bg-brand text-white rounded-2xl text-[16px] font-bold hover:bg-brand-dark hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
             >
               {editingId ? t('address.edit') : t('address.save')}
             </button>

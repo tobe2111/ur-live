@@ -9,6 +9,7 @@ import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
 import HomeSections from '@/components/home/HomeSections'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
+import { readCachedLoc } from '@/shared/utils/cached-loc'
 import { DEAL_CATS, type DealCategory } from '@/pages/pc-home/PcHomeRail'
 import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
 
@@ -32,12 +33,27 @@ import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
 export default function MobileHomePage() {
   const navigate = useNavigate()
   const [region, setRegion] = useState<HomeRegion>(() => readHomeRegion())
-  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
+  /**
+   * 🧭 2026-09-05 (대표 "주말에 떠나는 숙소 섹션 아래의 일반 이용권들은 기본 디폴트가 현재 위치에서
+   *   가까운 순대로"): **새로 묻지 않는다** — 지도 홈·위치바가 저장해 둔 마지막 측위만 읽는다
+   *   (`readCachedLoc`, 키 `ur_last_loc_v1`). 홈에 들어왔다고 권한 팝업을 띄우는 건 과하고,
+   *   거부하면 아무것도 못 하므로 결국 기존 동작으로 돌아온다.
+   *   ⇒ 위치를 한 번이라도 잡은 사람은 재방문부터 첫 페인트가 '가까운 순', 아니면 지금과 동일.
+   */
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => readCachedLoc())
   // 🧭 2026-08-30 (대표 "홈에선 현재 위치가 어딘지도 나와야지"): 좌표 → 동네 이름.
   //   서버 엔드포인트는 2026-07-07 부터 있었는데 **아무도 안 부르고 있었다**(useCurrentDong 주석).
   const dong = useCurrentDong(userLoc)
   const [category, setCategory] = useState<DealCategory>('all')
-  const [sort, setSort] = useState<'popular' | 'newest' | 'discount' | 'near'>('popular')
+  /**
+   * ⚠️ 지역을 직접 고른 사람에겐 '가까운 순'을 씌우지 않는다 — 지역 필터와 거리순이 겹치면
+   *   무엇을 기준으로 걸러진 목록인지 화면이 말할 수 없다(지도의 `useNearMeAuto` 와 같은 가드).
+   *   섹션 '더보기'(`/?sort=popular`)는 `useHomeQuerySync` 가 그 위를 덮는다 — 대표 지시대로
+   *   "더보기 = 인기순"이 유지된다.
+   */
+  const [sort, setSort] = useState<'popular' | 'newest' | 'discount' | 'near'>(
+    () => (readCachedLoc() && !readHomeRegion().regionKey ? 'near' : 'popular'),
+  )
 
   /**
    * 🔗 2026-08-27 (대표 신고 — "지금 인기 이용권의 더보기 클릭도 안되고"): 섹션 '더보기'는
@@ -120,6 +136,9 @@ export default function MobileHomePage() {
       {/* 어드민 편성(섹션·배너) — 카테고리를 고르면 숨긴다(PC 홈과 같은 규칙: 화면 맨 위가 그 카테고리여야 한다). */}
       {HOME_SHOWCASE_ENABLED && category === 'all' && (
         <div className="mt-3">
+          {/* 🎫 2026-09-05 (대표 "인기 이용권 섹션 위에 배너가 작게 있어야 할 것 같음" — 시안 안 2).
+              첫 섹션 **위** 가로 카드 1장. 등록된 배너가 없으면 통째로 null 이라 지금 화면과 같다. */}
+          <HomeBannerStrip variant="strip" />
           <HomeSections midBanner={<HomeBannerStrip variant="inline" />} />
           <HomeBannerStrip variant="wide" />
         </div>

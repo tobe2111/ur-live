@@ -3,9 +3,9 @@ import type { SupplierTaxInvoiceRow } from './types'
 
 // 🏭 Wave 3c: 매입 역발행 전자세금계산서 목록(제조사→플랫폼). 공급가액/부가세/합계/상태.
 const TAX_INV_STATUS: Record<string, { label: string; cls: string }> = {
-  issued: { label: '발행완료', cls: 'bg-emerald-50 text-emerald-700' },
-  draft: { label: '발행대기', cls: 'bg-amber-50 text-amber-700' },
-  failed: { label: '발행실패', cls: 'bg-red-50 text-red-700' },
+  issued: { label: '발행완료', cls: 'bg-tone-ok-bg text-tone-ok' },
+  draft: { label: '발행대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+  failed: { label: '발행실패', cls: 'bg-tone-bad-bg text-tone-bad' },
 }
 export default function SupplierTaxInvoicesTab({ items, t }: { items: SupplierTaxInvoiceRow[]; t: (k: string, o?: Record<string, unknown>) => string }) {
   if (items.length === 0) {

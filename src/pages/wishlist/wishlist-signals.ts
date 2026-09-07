@@ -8,13 +8,9 @@
  * ⚠️ 이 파일이 못 하는 것: 값의 출처는 서버다. `base_price` 열이 없는 환경에선 인하 신호가
  *    아예 안 나온다(0건). 그건 결함이 아니라 **모름**이고, 화면은 조용히 그 배지만 뺀다.
  */
-import { safeDate } from '@/utils/safe-date'
 import type { WishlistItem } from '@/hooks/queries/useWishlist'
 
-/** 마감이 이 일수 안이면 "임박" — 3일은 주말을 한 번 낀다(금요일에 봐도 놓치지 않는 폭). */
-export const SOON_DAYS = 3
-
-export type WishlistSort = 'recent' | 'drop' | 'deadline' | 'discount'
+export type WishlistSort = 'recent' | 'drop' | 'discount'
 
 /**
  * 찜한 뒤 내린 금액(원). 내리지 않았거나 알 수 없으면 null.
@@ -31,29 +27,16 @@ export function priceDrop(it: Pick<WishlistItem, 'price' | 'base_price'>): numbe
 }
 
 /**
- * 마감까지 남은 일수(0 = 오늘 안). 마감이 없거나 이미 지났으면 null.
+ * 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 마감 임박 신호 두 개와 그 정렬 칩을 지웠다.
  *
- * 이미 지난 것을 null 로 두는 이유: 만료된 딜을 "0일 남음"으로 앞에 세우면 **살 수 없는 것을
- * 제일 먼저 보여주는** 목록이 된다. 마감된 건 신호가 아니라 그냥 조용히 뒤로 간다.
+ * 마감이 사라지자 남은 일수가 모든 항목에서 null 이었다. 그러면 정렬은 전부 동점이라
+ * **칩을 눌러도 순서가 그대로**이고(= 하는 일이 없는 칩), 요약의 "마감 N일 이내"는 영구히 0 이다.
+ * 사라진 개념을 가리키는 UI 를 남기면 다음 사람이 그게 살아 있는 줄 안다.
  */
-export function daysLeft(it: Pick<WishlistItem, 'expires_at' | 'group_buy_status'>): number | null {
-  if (it.group_buy_status === 'ended' || it.group_buy_status === 'cancelled') return null
-  const t = safeDate(it.expires_at)?.getTime()
-  if (t == null) return null
-  const ms = t - Date.now()
-  if (ms <= 0) return null
-  return Math.floor(ms / 86_400_000)
-}
-
-export function isSoon(it: Pick<WishlistItem, 'expires_at' | 'group_buy_status'>): boolean {
-  const d = daysLeft(it)
-  return d != null && d <= SOON_DAYS
-}
 
 export interface WishlistSummary {
   total: number
   drops: number
-  soon: number
   /** 카테고리별 개수 — 많은 순. */
   byCategory: { category: string; count: number }[]
 }
@@ -61,17 +44,14 @@ export interface WishlistSummary {
 export function summarize(items: WishlistItem[]): WishlistSummary {
   const cat = new Map<string, number>()
   let drops = 0
-  let soon = 0
   for (const it of items) {
     if (priceDrop(it) != null) drops++
-    if (isSoon(it)) soon++
     const c = it.category || 'etc'
     cat.set(c, (cat.get(c) ?? 0) + 1)
   }
   return {
     total: items.length,
     drops,
-    soon,
     byCategory: [...cat.entries()]
       .map(([category, count]) => ({ category, count }))
       .sort((a, b) => b.count - a.count),
@@ -89,10 +69,6 @@ export function sortWishlist(items: WishlistItem[], sort: WishlistSort): Wishlis
   const arr = items.map((it, i) => ({ it, i }))
   const key = (x: WishlistItem): number => {
     if (sort === 'drop') return -(priceDrop(x) ?? -1)
-    if (sort === 'deadline') {
-      const d = daysLeft(x)
-      return d == null ? Number.POSITIVE_INFINITY : d // 마감 없음·지남 → 맨 뒤
-    }
     return -(Number(x.discount_rate) || 0)
   }
   arr.sort((a, b) => {

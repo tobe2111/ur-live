@@ -17,7 +17,6 @@ export interface DashboardStats {
   pendingSettlement?: number
   // 🛡️ 2026-05-18: 공구 (store) 모드 KPI — SellerGroupBuyOverview API 와 동일 source.
   activeGroupBuys?: number
-  atRiskGroupBuys?: number
 }
 
 export interface DailyStats {

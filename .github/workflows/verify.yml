@@ -269,6 +269,20 @@ jobs:
       #   2026-05-15 에 만든 랜딩이 두 달 넘게 한 번도 렌더된 적이 없었다. 예외 `duplicate-route-ok`.
       - name: 라우트 경로 중복 차단 (strict)
         run: node scripts/check-duplicate-routes.mjs -s
+      - name: 서버 라우트 중복 검사 (한 번도 안 도는 핸들러)
+        run: node scripts/check-duplicate-hono-routes.mjs -s
+        continue-on-error: false
+
+      # 🎛️ 2026-09-07: **게이트를 만들고 표에 안 넣으면 `ops-gate-reachable` 의 검사 밖으로 나간다.**
+      #   그래서 담기 적립의 주 스위치가 한 달 넘게 손잡이 없이 남았다(읽는 곳 둘 · 쓰는 화면 0).
+      #   등재가 곧 검사 범위다 — 이 가드가 등재 자체를 강제한다. 첫 실행에서 미등재 5개를 찾았다.
+      - name: 게이트 미등재 차단 (strict)
+        run: node scripts/check-gate-registry.mjs -s
+        continue-on-error: false
+      # 🪙 2026-09-07: 꺼진 적립을 화면이 약속하던 사고(#1372)의 **클래스**를 닫는다.
+      #   새 목록 API 가 referral_enabled 를 실으면 같은 사고가 그대로 재현된다 — 에러가 없다.
+      - name: 적립 표시 게이트 래칫 (strict)
+        run: node scripts/check-affiliate-display-gate.mjs -s
         continue-on-error: false
 
       # 🕳️ 2026-09-02: 위 가드는 **같은 경로 문자열**만 본다. Hono 는 등록 순서로 매칭하므로
@@ -452,6 +466,16 @@ jobs:
         env:
           STRICT_DEAL_CARD: '1'
         run: node scripts/check-deal-card-unify.mjs
+        continue-on-error: false
+
+      # 🚦 2026-09-03: 대시보드 상태 배지가 **전부 같은 회색**이었다. tailwind.config 가 장식 색조를
+      #   MONO 로 중화하는데(2026-06-19 대표 "아예 흑백, 기능 빨강만 유지") 상태 배지가 하필 그 색조로
+      #   상태를 구분하고 있었다 — 라이브 실측: `bg-rose-50` == `bg-emerald-50` == rgb(248 247 252).
+      #   반려와 승인이 픽셀 단위로 같았고, 에러가 안 나서 몇 달간 안 드러났다.
+      - name: Status tone ratchet (strict)
+        env:
+          STRICT_STATUS_TONE: '1'
+        run: node scripts/check-status-tone.mjs
         continue-on-error: false
 
       # 🍎 2026-06-20: 카카오 OAuth iOS 쿠키 미영속 안티패턴 (strict). iOS Safari/WebKit 은

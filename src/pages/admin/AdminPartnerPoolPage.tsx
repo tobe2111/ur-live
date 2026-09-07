@@ -37,9 +37,9 @@ interface Lead {
 const SRC_LABEL: Record<string, string> = { govreg: '정부등록', kakao: '카카오', homepage: '홈페이지', naver: '네이버', commerce: '통신판매', franchise: '공정위', registry: '명부' }
 /** 접촉 가치 축(company-classify SSOT 미러) — 업종(category)과 분리된 별개 축. */
 const TYPE_META: Record<string, { label: string; cls: string }> = {
-  partner: { label: '파트너', cls: 'bg-emerald-100 text-emerald-700' },
-  store: { label: '매장', cls: 'bg-sky-100 text-sky-700' },
-  org: { label: '기관', cls: 'bg-purple-100 text-purple-700' },
+  partner: { label: '파트너', cls: 'bg-tone-ok-bg text-tone-ok' },
+  store: { label: '매장', cls: 'bg-tone-info-bg text-tone-info' },
+  org: { label: '기관', cls: 'bg-tone-info-bg text-tone-info' },
   unknown: { label: '분류 확인', cls: 'bg-gray-100 text-gray-500' },
 }
 interface Stats { total: number; with_contact: number; with_email: number; held_no_contact: number; active_pipeline: number; recent7: number; needs_review: number }
@@ -47,10 +47,10 @@ interface Meta { categories: Record<string, string[]>; statuses: string[]; chann
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
-  contacted: { label: '컨택함', cls: 'bg-blue-100 text-blue-700' },
-  interested: { label: '관심', cls: 'bg-amber-100 text-amber-700' },
-  contracted: { label: '계약', cls: 'bg-green-100 text-green-700' },
-  rejected: { label: '거절', cls: 'bg-red-100 text-red-600' },
+  contacted: { label: '컨택함', cls: 'bg-tone-info-bg text-tone-info' },
+  interested: { label: '관심', cls: 'bg-tone-warn-bg text-tone-warn' },
+  contracted: { label: '계약', cls: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { label: '거절', cls: 'bg-tone-bad-bg text-tone-bad' },
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
 const CHANNEL_LABEL: Record<string, string> = { call: '전화', email: '이메일', visit: '방문', sms: '문자', kakao: '카톡', other: '기타' }

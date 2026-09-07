@@ -77,26 +77,7 @@ export default function AdminOpsInsightsPage() {
         ) : data ? (
           <>
             {/* 부진 에이전시 */}
-            <Section title="🔴 부진 에이전시 (이번 달 매출 0)" count={data.inactive_agencies.length}>
-              {data.inactive_agencies.length === 0 ? (
-                <Empty />
-              ) : (
-                <Table headers={['에이전시', '이메일', '소속 셀러', '월 매출']}>
-                  {data.inactive_agencies.map(a => (
-                    <tr key={a.id} className="border-t border-gray-100">
-                      <td className="py-2 px-3 text-sm">
-                        <a href={`/admin/agencies?id=${a.id}`} className="text-blue-600 hover:underline inline-flex items-center gap-0.5">
-                          {a.name} <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </td>
-                      <td className="py-2 px-3 text-xs text-gray-500">{a.email}</td>
-                      <td className="py-2 px-3 text-sm text-center">{a.seller_count}</td>
-                      <td className="py-2 px-3 text-sm text-right">{(a.monthly_revenue / 10_000).toFixed(0)}만</td>
-                    </tr>
-                  ))}
-                </Table>
-              )}
-            </Section>
+            {/* 🌇 2026-09-04 에이전시 완전 일몰 — '부진 에이전시' 섹션 제거(대상 자체가 없다). */}
 
             {/* 신규 가입 후 미접속 셀러 */}
             <Section title="🟡 신규 가입 후 7일 미접속 셀러" count={data.dormant_new_sellers.length}>

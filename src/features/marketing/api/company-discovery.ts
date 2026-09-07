@@ -407,6 +407,7 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
   let updated = 0, removed = 0, held = 0
   const delta = emptyDelta()   // 🔬 판정 *변화율* 계측(좁히기 판단 근거) — 동작은 안 바꾼다
   const stmts: D1PreparedStatement[] = []
+  const stampOnly: number[] = []   // 판정 불변 — 재검사 표시만 필요한 행(위 블록 참조)
   for (const r of rows) {
     const c = classifyLead(r)
     if (!c.ok) {
@@ -428,7 +429,26 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
       lead_type: registry && c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type,
       confidence: registry ? 'registry' : conf,
     }
-    if (registry) {
+    /**
+     * 🪞 **판정이 안 바뀐 행은 도장만 찍는다**(2026-09-04) — 여기가 업체 DB 쓰기의 주범이었다.
+     *   이 랩은 규칙 버전이 오를 때마다 전 행(41만)을 다시 판정하는데, 아래 `changed` 를 **이미
+     *   계산해 놓고 통계에만 쓰고** 쓰기는 무조건 했다. 라이브 실측이 그 대가를 말한다:
+     *   ```
+     *     reg_seen 28,777   reg_changed 40   →  실제로 바뀐 비율 0.14%
+     *   ```
+     *   SQLite 의 UPDATE 는 값이 같아도 행을 다시 쓰고, **바뀐 컬럼을 포함한 인덱스마다** 또 쓴다.
+     *   판정 5개 컬럼을 건드리면 인덱스 다발이 따라오지만, `classified_v` 만 찍으면 그 인덱스 하나다.
+     *   ⇒ 안 바뀐 99.86% 는 재검사 표시(`classified_v`)만 남기고 판정 컬럼은 손대지 않는다.
+     *
+     *   ⚠️ **도장은 반드시 찍는다.** 안 찍으면 이 행이 영영 "미검사"로 남아 다음 회차마다 다시
+     *      읽힌다 — 쓰기를 아끼려다 읽기를 무한히 태우는 반대편 사고가 된다.
+     *   ⚠️ 이미 현재 버전이면 그마저 불필요하므로 아무것도 안 한다.
+     */
+    const branch = registry ? 'registry' : c.confidence === 'evidence' ? 'evidence' : 'other'
+    const changed = verdictChanged(r, written, branch)
+    if (!changed) {
+      if (r.classified_v !== CLASSIFY_RULES_VERSION) stampOnly.push(r.id)
+    } else if (registry) {
       stmts.push(DB.prepare("UPDATE ad_company_leads SET lead_type = ?, classify_confidence = 'registry', classified_v = ? WHERE id = ?")
         .bind(written.lead_type, CLASSIFY_RULES_VERSION, r.id))
     } else if (c.confidence === 'evidence') {
@@ -438,10 +458,16 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     } else {
       stmts.push(DB.prepare('UPDATE ad_company_leads SET lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?').bind(written.lead_type, written.confidence, CLASSIFY_RULES_VERSION, r.id))
     }
-    tallyVerdict(delta, r.source, r.classified_v, verdictChanged(r, written, registry ? 'registry' : c.confidence === 'evidence' ? 'evidence' : 'other'))
+    tallyVerdict(delta, r.source, r.classified_v, changed)
     // 🧼 소급 위생(전화 형식·플랫폼 연락처·뉴스룸 이메일) — 판정과 근거는 `company-lead-hygiene.ts`.
     for (const st of hygieneStatements(r, sql => DB.prepare(sql))) stmts.push(st)
     updated++
+  }
+  // 판정 불변 행은 **한 문장으로 묶어** 도장만 — 행당 UPDATE 를 만들면 아끼려던 쓰기가 그대로 돌아온다.
+  for (let i = 0; i < stampOnly.length; i += 100) {
+    const ids = stampOnly.slice(i, i + 100)
+    stmts.push(DB.prepare(`UPDATE ad_company_leads SET classified_v = ? WHERE id IN (${ids.map(() => '?').join(',')})`)
+      .bind(CLASSIFY_RULES_VERSION, ...ids))
   }
   for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100)).catch(() => null)
   if (housekeeping) await sweepSuppressedEmails(DB)
