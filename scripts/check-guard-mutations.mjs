@@ -9491,10 +9491,73 @@ canvas {
       '어드민 정책 표가 2.5배 틀린 숫자를 보여 줬다. 상수를 되돌리면 그 상태로 돌아간다.',
   },
   {
+    name: '🏪 매장 등록 페이지가 다시 다크에 노출된다 (사장님이 자기 입력을 못 본다)',
+    file: 'src/pages/StoreClaimPage.tsx',
+    find: '<div className="force-light-theme min-h-[100dvh] bg-gray-50">',
+    replace: '<div className="min-h-[100dvh] bg-gray-50 dark:bg-[#11141C]">',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '전역 `.dark input`(특이도 0,5,1)이 모달의 text-gray-900(0,1,0)을 이겨 **흰 배경 위 흰 글자**가 ' +
+      '된다(브라우저 실측 1.00:1). 화면은 멀쩡해 보이고 에러도 없다 — 사장님이 사업자번호를 치는 ' +
+      '동안 자기가 뭘 쳤는지 못 볼 뿐이다. 하필 매장 유치 퍼널의 유일한 문이다.',
+  },
+  {
+    name: '🏪 이미 등록된 매장이 다시 막다른 alert 이 된다',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: "      if (e?.response?.status === 409 && e?.response?.data?.code === 'STORE_EXISTS') {",
+    replace: '      if (false) {',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '서버는 중복이면 그 매장의 seller_id 까지 돌려주는데(seller-stores.routes.ts:357) 분기를 지우면 ' +
+      '화면은 "이미 등록된 매장입니다" 토스트 하나 띄우고 끝난다. 자기 매장을 다른 계정으로 등록해 둔 ' +
+      '사장님은 거기서 갈 곳이 없다 — 실패가 아니라 **조용한 포기**라 우리는 영영 모른다.',
+  },
+  {
+    name: '🏪 위저드가 다시 한 화면 네 질문으로 (회색 버튼 이유가 사라진다)',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '          {blocked && <p className="text-[11.5px] text-gray-500 text-center mt-2">{blocked}</p>}',
+    replace: '',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      'blockReason 을 계산만 하고 안 그리면 종전과 똑같다 — 사장님은 무엇이 빠졌는지 모른 채 회색 ' +
+      '버튼을 바라본다. 이 레포가 토스 결제에서 한 번 고친 "구조적으로 잠기는 버튼" 클래스다.',
+  },
+  {
+    name: '🏪 좌석 없는 소비자에게 requireSeller 경로를 권한다 (새 막다른 길)',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '              {hasSellerSeat && (',
+    replace: '              {true && (',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '`/seller/stores` 는 requireSeller 다. 푸터로 들어온 소비자(seller_token 없음)에게 이 버튼을 ' +
+      '보이면 셀러 로그인 화면으로 튕긴다 — 막다른 길을 없애러 와서 하나 더 놓는 셈이고, 화면상 ' +
+      '멀쩡해 보여 리뷰에서도 안 잡힌다. 실제로 내가 첫 판에 이대로 썼다가 적대적 재독에서 잡았다.',
+  },
+  {
+    name: '🏪 등록 안 했는데 "매장이 등록됐어요" 라고 말한다',
+    file: 'src/pages/StoreClaimPage.tsx',
+    find: '          if (!opts?.existing) {',
+    replace: '          if (true) {',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '이미 갖고 있던 매장으로 들어간 경우엔 아무것도 등록되지 않았다. 그런데 같은 문구를 띄우면 ' +
+      '사장님은 매장이 하나 더 생긴 줄 안다 — 거짓말이고, 좌석도 이미 잡혀 있어 재발급이 낭비다.',
+  },
+  {
+    name: '🏪 등록 직전 요약에서 되돌아갈 길이 사라진다',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '                    <button onClick={() => setStep(r.to)} className="text-[11px] text-gray-400 underline shrink-0 pt-0.5">수정</button>',
+    replace: '',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '요약은 틀린 걸 발견하라고 있는 것이다. 발견해도 고칠 길이 없으면 불안만 주고, 사장님은 ' +
+      '취소하고 처음부터 다시 하거나 그냥 잘못된 채로 등록한다. 화면은 멀쩡해 보인다.',
+  },
+  {
     name: '🏝️ 매장 등록 모달이 다시 흰 판 위 흰 글자가 된다 (light-island 소실)',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: 'className="light-island w-full sm:max-w-lg',
-    replace: 'className="w-full sm:max-w-lg',
+    find: 'className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh]',
+    replace: 'className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh]',
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
       '이 패널은 bg-white 뿐이라 늘 흰데 소비자 라우트(/store/new)에서도 열린다. 전역 .dark input' +
@@ -9511,6 +9574,17 @@ canvas {
       '/store/new 는 모달이 곧 페이지라 배경 뒤에 아무것도 없다. 사업자등록증까지 올린 폼이 ' +
       '스치는 클릭 한 번에 사라지고 화면을 떠난다(2026-09-07 대표 신고). 대시보드에서 겹쳐 뜰 때와 ' +
       '닫기의 의미가 다르다.',
+  },
+  {
+    name: '🏝️ 409 안내 패널만 light-island 를 잃는다 (한 파일 안 두 표면 중 하나)',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>',
+    replace: '        <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>',
+    test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
+    why:
+      '이 파일엔 늘-흰 패널이 **둘**이다(등록 폼 · 409 안내). 실제로 409 화면이 light-island 없이 ' +
+      '들어왔고, 그때 가드가 `.find()` 로 첫 하나만 봐서 통과시켰다. 한 파일 안에 같은 성질의 표면이 ' +
+      '둘이면 하나만 고치고 끝났다고 믿기 쉽다 — 그래서 둘 다 주입해 본다.',
   },
 ]
 /**

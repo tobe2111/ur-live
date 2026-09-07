@@ -5270,9 +5270,6 @@
     "editNamePlaceholder": "Enter your name",
     "editPhone": "Phone",
     "editCancel": "Cancel",
-    "appInfo": "App Info",
-    "currentVersion": "Current version",
-    "build": "Build",
     "checkLatest": "Check for updates",
     "loginRequired": "Login required.",
     "fallbackName": "User",
@@ -5309,7 +5306,12 @@
     "ariaToggleOff": "Turn off {{label}}",
     "language": "Language",
     "phoneRequired": "Enter your phone number — vouchers and alerts are sent there",
-    "phoneInvalid": "Check the phone number format (010-0000-0000)"
+    "phoneInvalid": "Check the phone number format (010-0000-0000)",
+    "appName": "UrDeal",
+    "checking": "Checking…",
+    "isLatest": "You're on the latest version",
+    "updateAvailable": "A new version is out",
+    "updateNow": "Update now"
   },
   "productDetail": {
     "retry": "Retry",

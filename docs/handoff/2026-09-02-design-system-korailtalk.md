@@ -72,7 +72,9 @@
 - `AccountPcPane.tsx` 신규(lg+ 만 마운트, `useMediaQuery` 동기 분기) · UserProfilePage 그라디언트 헤더 삭제(PC 는 헤더 숨김) · AccountSideNav 블루 선택 + 내 교환권.
 - 가드 `account-pc-pane.test.ts` 6건 + 매니페스트 2건. 하네스 `--route=/user/profile --pc --auth=user --deals --wallet` 라이트/다크 확인.
 - ⚠️ 하네스에선 주문 현황·리뷰어 레벨이 데이터 0 이라 안 그려진다(둘 다 빈값이면 null) — 라이브에서 확인할 것.
-- 남은 것: ④ 셀러 대시보드 B안.
+- ~~남은 것: ④ 셀러 대시보드 B안~~ → **같은 날 구현 완료**(§12). 이 줄이 그대로 남아 2026-09-07 세션이
+  "미구현"으로 오독했다 — 아래 §12 가 정본이고, 코드에도 `ur-seller-nav-active`(평면 tint)+`border-brand`
+  세로 막대와 `ur-btn-primary: #1C69EF` 로 살아 있다.
 
 ## 셀러 대시보드 B안 구현 (같은 PR)
 

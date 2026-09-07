@@ -29,23 +29,32 @@ describe('/store/new 매장 등록 — 2026-09-07 대표 신고 회귀 가드', 
   it('① 늘-흰 패널에 light-island 가 실제 className 으로 붙어 있다 (주석 아님)', () => {
     const s = read(MODAL)
     // 패널 = `bg-white` 를 가진 그 div. 같은 요소에 light-island 가 있어야 안쪽 `dark:` 가 꺼진다.
-    const panel = s.split('\n').find(l => l.includes('sm:max-w-lg') && l.includes('bg-white'))
-    expect(panel, `${MODAL} 의 흰 패널(div)을 못 찾았다 — 앵커가 낡았다`).toBeTruthy()
-    expect(panel, '흰 패널에 light-island 가 없다 — 다크에서 흰 글자가 된다').toContain('light-island')
-    // 🩸 className 안에 있어야 한다. 주석/문자열에만 있으면 런타임엔 아무 일도 안 한다.
-    expect(panel).toMatch(/className="[^"]*\blight-island\b/)
+    // 🩸 2026-09-07 (병합): 이 파일에 늘-흰 패널이 **둘**이 됐다(등록 폼 + 409 안내 화면).
+    //   원래 `.find()` 로 **첫 하나만** 봤는데, 그러면 나중에 추가된 패널은 보호 없이 지나간다 —
+    //   실제로 409 화면이 light-island 없이 들어왔다. ⇒ 전부 검사한다.
+    const panels = s.split('\n').filter(l => l.includes('sm:max-w-lg') && l.includes('bg-white'))
+    expect(panels.length, `${MODAL} 의 흰 패널(div)을 못 찾았다 — 앵커가 낡았다`).toBeGreaterThan(0)
+    for (const panel of panels) {
+      expect(panel, '흰 패널에 light-island 가 없다 — 다크에서 흰 글자가 된다').toContain('light-island')
+      // 🩸 className 안에 있어야 한다. 주석/문자열에만 있으면 런타임엔 아무 일도 안 한다.
+      expect(panel).toMatch(/className="[^"]*\blight-island\b/)
+    }
   })
 
   it('② 배경 클릭 닫기가 dismissOnBackdrop 로 통제된다', () => {
     const s = read(MODAL)
     expect(s, 'dismissOnBackdrop prop 이 없다').toContain('dismissOnBackdrop')
     // 배경 div 의 onClick 이 무조건 onClose 면 안 된다 — 플래그를 거쳐야 한다.
-    const backdrop = s.indexOf('fixed inset-0 z-[10500]')
-    expect(backdrop, '배경 div 앵커가 낡았다').toBeGreaterThan(0)
-    const near = s.slice(backdrop, backdrop + 400)
-    expect(near, '배경 onClick 이 플래그를 안 거치고 바로 onClose 를 부른다')
-      .not.toMatch(/onClick=\{onClose\}/)
-    expect(near).toContain('dismissOnBackdrop')
+    // 배경도 둘이다(폼 · 409 안내) — 하나만 보면 나머지가 조용히 새 사고를 낸다.
+    const backdrops: number[] = []
+    for (let i = s.indexOf('fixed inset-0 z-[10500]'); i >= 0; i = s.indexOf('fixed inset-0 z-[10500]', i + 1)) backdrops.push(i)
+    expect(backdrops.length, '배경 div 앵커가 낡았다').toBeGreaterThan(0)
+    for (const backdrop of backdrops) {
+      const near = s.slice(backdrop, backdrop + 400)
+      expect(near, '배경 onClick 이 플래그를 안 거치고 바로 onClose 를 부른다')
+        .not.toMatch(/onClick=\{onClose\}/)
+      expect(near).toContain('dismissOnBackdrop')
+    }
   })
 
   it('③ /store/new 는 배경 클릭으로 안 닫힌다 (모달이 곧 페이지)', () => {
