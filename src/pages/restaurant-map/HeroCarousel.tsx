@@ -62,7 +62,7 @@ export default function HeroCarousel({ heroDeals, userLoc, liveSellerIds, onSele
                   })()}
                 </p>
                 <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-1 tabular-nums">
-                  {discount > 0 && <span className="text-brand-text mr-1">{discount}%</span>}{formatNumber(r.price ?? 0)}원
+                  {discount > 0 && <span className="text-sale mr-1">{discount}%</span>}{formatNumber(r.price ?? 0)}원
                 </p>
               </div>
             </button>

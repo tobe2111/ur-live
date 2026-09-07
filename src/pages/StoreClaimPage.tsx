@@ -38,11 +38,27 @@ export default function StoreClaimPage() {
     if (!isLoggedInSync()) navigate(`/login?returnUrl=${encodeURIComponent('/store/new')}`, { replace: true })
   }, [navigate])
 
+  /**
+   * ✕ 로 나갈 곳. `navigate(-1)` 하나로는 부족하다 — 이 페이지는 푸터·소개 페이지·카톡으로 받은
+   * 링크처럼 **직접 주소로** 열리는 자리라(그게 이 페이지의 존재 이유다) 돌아갈 이력이 없을 수 있고,
+   * 그때 `-1` 은 아무 일도 안 하거나 앱 밖으로 나간다. 이력이 없으면 홈으로 보낸다.
+   */
+  const goBack = () => {
+    const idx = (window.history.state as { idx?: number } | null)?.idx
+    if (typeof idx === 'number' ? idx > 0 : window.history.length > 1) navigate(-1)
+    else navigate('/', { replace: true })
+  }
+
   return (
     <div className="min-h-[100dvh] bg-gray-50 dark:bg-[#11141C]">
       <SEO title="매장 등록 - 유어딜" description="카카오맵에서 내 가게를 찾아 유어딜에 등록하세요" noindex />
       <StoreRegisterModal
-        onClose={() => navigate(-1)}
+        /**
+         * 🩸 2026-09-07 (대표 *"흰 섹션 바깥쪽을 클릭하니까 페이지가 꺼져"*): 여기선 모달이 곧 페이지라
+         *   배경 뒤에 아무것도 없다 — 바깥 클릭은 닫을 것이 아니라 **폼을 날리는 사고**다. 닫기는 ✕ 로만.
+         */
+        dismissOnBackdrop={false}
+        onClose={goBack}
         onDone={async (sellerId) => {
           await enterStoreSeat(sellerId)
           toast.success('매장이 등록됐어요 — 이제 이용권을 올릴 수 있어요')

@@ -50,8 +50,11 @@ describe('이용권 카드 가격 블록', () => {
     expect(between).toContain('</p>')
   })
 
-  it('④ 할인율은 브랜드 로즈로 강조한다', () => {
+  it('④ 할인율은 할인색(빨강)으로 강조한다', () => {
     const line = body.split('\n').find((l) => l.includes('{discount}%')) || ''
-    expect(line).toMatch(/text-brand/)
+    /* 할인 강조색은 `--sale`(빨강)이다 — 2026-09-07 대표 "할인율도 빨강으로 유지".
+       블루는 행동(버튼·선택 칩) 전용이고 이건 가격 이득이라 역할이 다르다.
+       계약은 "할인율이 한 색으로 강조된다" 이고, 그 색만 바뀌었다(완화 아님). */
+    expect(line).toMatch(/text-sale/)
   })
 })

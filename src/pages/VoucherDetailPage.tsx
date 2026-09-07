@@ -395,7 +395,7 @@ export default function VoucherDetailPage() {
             {hasDiscount && (
               <div className="text-right leading-tight">
                 <div className="text-[12px] text-gray-400 dark:text-gray-500 line-through">정가 ₩{formatNumber(product.original_price!)}</div>
-                <div className="text-[12.5px] font-bold text-[#0E9F6E] dark:text-emerald-400">{discountPct}% 할인 교환</div>
+                <div className="text-[12.5px] font-bold text-sale">{discountPct}% 할인 교환</div>
               </div>
             )}
           </div>
