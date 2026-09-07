@@ -50,6 +50,7 @@
 | [planning] 기획 주간 정합 | 월 09:30 | `trig_01TwdCNThxLzVxd6WLKT3DPm` |
 | [marketing] 마케팅 주간 | 화 09:30 | `trig_01Mac6jT8N7CayQ78qFXz89p` |
 | [design] 디자인 주간 | 수 09:30 | `trig_01TPoqu3NDox96ETDrk7qUnh` |
+| [executor] 승인 결재 실행기 | 4시간마다(:56) · 승인 0건이면 무동작 | `trig_01LkzCCq5UD56vsY1yHVKjv7` |
 
 ### 🔴 대표가 직접 해야 하는 것 2가지 (세션이 권한상 못 한다)
 1. **죽은 "System health check" 비활성화** — 2026-04 에 `http_api` 로 만들어져 에이전트가 수정할 수 없다
