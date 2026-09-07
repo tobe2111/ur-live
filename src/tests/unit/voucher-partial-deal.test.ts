@@ -164,7 +164,16 @@ describe('점등 선행 조건 — 켜는 사람이 알 수 있어야 한다', (
   //    켜는 사람(대표)은 알 방법이 없고, 그러면 팔릴수록 적자인 상태로 켜진다.
   const CHECKLIST = readFileSync('docs/STAGING_CHECKLIST.md', 'utf8')
   const OPS = readFileSync('src/features/admin/api/admin-system-monitoring.routes.ts', 'utf8')
-  const SETTINGS = readFileSync('src/pages/AdminPlatformSettingsPage.tsx', 'utf8')
+  /**
+   * 🩸 2026-09-07: 머니 스위치 배열이 페이지에서 `money-switch-fields.ts` 로 빠졌다(페이지가
+   *   600줄 래칫에 닿았다). 한 파일만 읽으면 그 순간 이 시험이 **가짜 빨간불**을 낸다 — 실제로 냈다.
+   *   ⇒ 이 시험이 보려는 건 "어드민 토글 설명에 선행이 적혀 있는가" 이지 **어느 파일인가**가 아니다.
+   *   둘을 이어 붙여, 다음에 또 쪼개져도 안 깨지게 한다.
+   */
+  const SETTINGS = [
+    'src/pages/AdminPlatformSettingsPage.tsx',
+    'src/pages/admin-platform-settings/money-switch-fields.ts',
+  ].map(f => readFileSync(f, 'utf8')).join('\n')
 
   /** 그 게이트의 OPS_GATES 한 줄만 잘라낸다 (파일 전체에서 찾으면 옆 게이트 문구에 걸린다). */
   const gateLine = (() => {

@@ -5494,10 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 259건 · 최신순 · 이 목록은 자동 생성된다._
+_총 260건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-07**
 - [2026-09-07 — AI 팀 운영 모델 (역할 6 · 결재함 · 완료 판정 E1~E5) + 행위자·베네핏 한 장 지도](handoff/2026-09-07-ai-team-operating-model.md)
+- [어드민에 없던 머니 스위치 셋을 붙였다 (2026-09-07)](handoff/2026-09-07-admin-money-switch-ui.md)
 **2026-09-06**
 - [PC 상세 사진도 스마트 크롭 + 남아 있던 두 항목 판정 (2026-09-06)](handoff/2026-09-06-pc-hero-crop.md)
 - [2026-09-06 — 홈에서 같은 이용권 사진이 두 번 나오던 것](handoff/2026-09-06-home-section-duplicate-photo.md)
