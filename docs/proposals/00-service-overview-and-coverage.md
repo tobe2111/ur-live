@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 360 | 1105 |
+| 전체 | 362 | 1105 |
 | 도메인 버킷 (5개 소개서) | 164 | 459 |
-| 공통/인프라 (의도적 제외) | 163 | 468 |
-| **미커버 (점검 필요)** | **33** | **178** |
+| 공통/인프라 (의도적 제외) | 164 | 468 |
+| **미커버 (점검 필요)** | **34** | **178** |
 
-⚠️ **미커버 211건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 212건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -343,6 +343,7 @@
 - `/region`
 - `/region/:sido`
 - `/region/:sido/:sigungu`
+- `/videos`
 
 **미커버 API 엔드포인트**
 - `DELETE /:id` (`src/features/supply/api/wholesale-board.routes.ts`)
@@ -1717,7 +1718,7 @@
 
 
 
-> 마지막 생성: 2026-09-07T12:32:16.555Z
+> 마지막 생성: 2026-09-07T16:25:33.309Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

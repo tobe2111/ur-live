@@ -7,6 +7,7 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
 import HomeSections from '@/components/home/HomeSections'
+import UrShortsRail from '@/components/home/UrShortsRail'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
 import { readCachedLoc } from '@/shared/utils/cached-loc'
@@ -139,7 +140,10 @@ export default function MobileHomePage() {
           {/* 🎫 2026-09-05 (대표 "인기 이용권 섹션 위에 배너가 작게 있어야 할 것 같음" — 시안 안 2).
               첫 섹션 **위** 가로 카드 1장. 등록된 배너가 없으면 통째로 null 이라 지금 화면과 같다. */}
           <HomeBannerStrip variant="strip" />
-          <HomeSections midBanner={<HomeBannerStrip variant="inline" />} />
+          <HomeSections
+            midBanner={<HomeBannerStrip variant="inline" />}
+            shortsRail={<UrShortsRail />}
+          />
           <HomeBannerStrip variant="wide" />
         </div>
       )}

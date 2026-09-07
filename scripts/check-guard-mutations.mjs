@@ -88,14 +88,65 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
-    name: '💸 매칭 정산에 2% 상한이 되살아난다 (결재 Q2-1 "상한 없음" 무력화)',
-    file: 'src/worker/utils/matching-settlement.ts',
-    find: '  const pct = Math.max(0, Number(input.commissionPct) || 0)',
-    replace: '  const pct = Math.min(2, Math.max(0, Number(input.commissionPct) || 0))',
-    test: 'src/tests/unit/deal-pct-no-cap-2026-09-07.test.ts',
+    name: '🎬 셀러가 남의 상품에 영상을 걸 수 있다 (소유권 검사 제거)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: 'SELECT id, name FROM products WHERE id = ? AND seller_id = ?',
+    replace: 'SELECT id, name FROM products WHERE id = ?',
+    test: 'src/tests/unit/urshorts-core.test.ts',
     why:
-      '매장이 "10% 드릴게요" 라고 약속했는데 정산이 2% 만 적립하면 소개자는 약속의 1/5 을 받고 매장은 ' +
-      '이유를 모른다 — 에러가 없어 아무도 모른다. 2026-08-30 에 제안 문에서 걷어낸 캡이 정산 쪽에서 되살아나는 모습.',
+      '화면이 보낸 product_id 를 그대로 믿으면 아무 셀러나 남의 상품에 영상을 건다(IDOR). ' +
+      'A 매장 이용권 옆에 B 매장 영상이 붙어 홈에서 그대로 팔리는데, 에러가 안 나서 신고가 와야 안다.',
+  },
+  {
+    name: '🎬 /videos 가 몰 슬러그 예약어에서 빠진다',
+    file: 'src/shared/mall/slug.ts',
+    find: "'u', 'user', 'v', 'videos', 'vouchers',",
+    replace: "'u', 'user', 'v', 'vouchers',",
+    test: 'src/tests/unit/mall-branding.test.ts',
+    why:
+      '`urdeal.kr/{몰슬러그}` 는 한 세그먼트라, 어떤 몰이 videos 를 슬러그로 잡으면 유어쇼츠 뷰어가 ' +
+      '통째로 죽는다. 개설되기 전까지는 아무 일도 안 일어나서 몇 달 뒤에 터진다.',
+  },
+  {
+    name: '🎬 미연결 영상이 홈으로 샌다 (LEFT JOIN)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '    JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
+    replace: '    LEFT JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '이용권이 안 붙은 영상이 홈에 뜨면 누른 사람이 살 수가 없다 — 그 순간 유어쇼츠는 매출 장치가 ' +
+      '아니라 유튜브로 나가는 문이 된다. 에러가 안 나고 "영상이 많아졌네"로만 보인다.',
+  },
+  {
+    name: '🎬 재생기가 여러 개 살아남는다 (iframe key 제거)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '          key={cur.video_id}',
+    replace: '          data-key={cur.video_id}',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      'key 가 없으면 React 가 같은 iframe 을 재사용하지 않고 넘길 때마다 새 재생기가 쌓인다. ' +
+      '폰에서 목록이 길어질수록 조용히 느려지다 멈춘다 — 에러는 끝까지 안 난다.',
+  },
+  {
+    name: '🎬 홈 레일이 마운트하자마자 데이터를 부른다',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '    if (!near) return\n    let alive = true',
+    replace: '    let alive = true',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '홈을 여는 모든 사람이 요청을 하나 더 내게 된다. 대부분은 레일까지 스크롤하지 않으므로 ' +
+      '그 요청은 통째로 낭비다 — 화면은 똑같아 보여서 아무도 못 알아챈다.',
+  },
+  {
+    name: '🎬 쇼츠가 아닌 영상도 통과시킨다 (길이 확인 생략)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '    if (sec > URSHORTS_MAX_DURATION_SEC) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '가로 10분짜리가 9:16 카드에 들어가면 위아래 검은 띠가 생기고 구매 바를 띄울 화면도 아니다. ' +
+      '깨지는 게 아니라 그냥 못생겨지므로 배포까지 간다.',
+>>>>>>> origin/main
   },
   {
     name: '🏪 채널 미지정 좌석이 고르지 않고도 1단계를 넘는다 (결재 Q3-3 "미지정 폴백 폐지" 무력화)',
@@ -9617,6 +9668,27 @@ canvas {
       '이 파일엔 늘-흰 패널이 **둘**이다(등록 폼 · 409 안내). 실제로 409 화면이 light-island 없이 ' +
       '들어왔고, 그때 가드가 `.find()` 로 첫 하나만 봐서 통과시켰다. 한 파일 안에 같은 성질의 표면이 ' +
       '둘이면 하나만 고치고 끝났다고 믿기 쉽다 — 그래서 둘 다 주입해 본다.',
+  },
+  {
+<<<<<<< HEAD
+    name: '💸 매칭 정산에 2% 상한이 되살아난다 (결재 Q2-1 "상한 없음" 무력화)',
+    file: 'src/worker/utils/matching-settlement.ts',
+    find: '  const pct = Math.max(0, Number(input.commissionPct) || 0)',
+    replace: '  const pct = Math.min(2, Math.max(0, Number(input.commissionPct) || 0))',
+    test: 'src/tests/unit/deal-pct-no-cap-2026-09-07.test.ts',
+    why:
+      '매장이 "10% 드릴게요" 라고 약속했는데 정산이 2% 만 적립하면 소개자는 약속의 1/5 을 받고 매장은 ' +
+      '이유를 모른다 — 에러가 없어 아무도 모른다. 2026-08-30 에 제안 문에서 걷어낸 캡이 정산 쪽에서 되살아나는 모습.',
+=======
+    name: '🎬 허락 안 받은 영상이 홈에 나간다 (consent 게이트 제거)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '     AND s.consent = 1',
+    replace: '     AND 1 = 1',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '남의 영상 옆에 "지금 구매"가 붙으면 그 창작자가 이 딜을 보증한 것으로 읽히는데 그는 그런 적이 ' +
+      '없다. 게다가 유어애즈가 바로 그 채널들에게 제휴 제안을 보낼 참이라, 자기 영상이 이미 우리 ' +
+      '판매에 쓰이는 걸 보면 그 제안이 열리기도 전에 죽는다 — 만들려는 관계를 태우는 셈이다.',
   },
 ]
 /**
