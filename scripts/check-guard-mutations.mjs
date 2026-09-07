@@ -88,6 +88,16 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🏪 채널 미지정 좌석이 고르지 않고도 1단계를 넘는다 (결재 Q3-3 "미지정 폴백 폐지" 무력화)',
+    file: 'src/pages/SellerMealVoucherNewPage.tsx',
+    find: '    if (s === 0 && channelSet === false) {',
+    replace: '    if (false && channelSet === false) {',
+    test: 'src/tests/unit/store-channel-required-2026-09-07.test.ts',
+    why:
+      '게이트가 빠지면 옛 매장이 채널을 안 고른 채 이용권을 등록하고, 화면은 "운영 방식 미선택" 만 ' +
+      '띄운 채 정산은 조용히 중개 폴백으로 걷힌다 — 에러가 없어 아무도 모른다.',
+  },
+  {
     name: '🏷️ 할인율이 다시 브랜드 블루로 (행동 색과 가격 색이 섞인다)',
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
     find: "font-extrabold text-sale\">{discount}%",
