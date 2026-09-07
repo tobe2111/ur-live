@@ -64,7 +64,11 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
         <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent px-[7px] pb-[7px] pt-[18px] text-white">
           <span className="block truncate text-[9.5px] opacity-90">{item.store_name || ''}</span>
           <span className="mt-[1px] block text-[11.5px] font-bold tabular-nums">
-            {dc > 0 && <b className="text-[#FF8A93]">{dc}% </b>}
+            {/* 🩸 여기에 새 빨강(#FF8A93)을 발명했다가 되돌렸다. 오늘 아침에 할인율을 `--sale`
+                하나로 통일해 놓고 같은 날 넷째 값을 만들 뻔했다. 사진 위 스크림은 **테마와 무관하게
+                늘 어둡다**(light-island 와 같은 성질)이라 라이트 값 #DC2626 은 안 읽힌다 →
+                시스템이 이미 쓰는 **다크 표면용 --sale 값**을 그대로 쓴다. */}
+            {dc > 0 && <b className="text-[#FF5C69]">{dc}% </b>}
             {formatNumber(item.price)}원
           </span>
         </span>

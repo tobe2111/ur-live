@@ -117,6 +117,16 @@ describe('③ 홈 첫 화면이 비용을 안 문다', () => {
     expect(RAIL).toMatch(/items\.length === 0/)
   })
 
+  it('할인 빨강을 새로 발명하지 않는다 — 시스템 --sale 값(다크 표면)을 쓴다', () => {
+    // 🩸 처음에 #FF8A93 이라는 넷째 빨강을 만들었다. 같은 날 아침에 할인율을 --sale 하나로
+    //    통일해 놓고서다. 사진 위 스크림은 테마와 무관하게 늘 어두워 라이트 값(#DC2626)이 안 읽히므로
+    //    **다크 표면용 --sale 값**을 그대로 쓴다.
+    expect(RAIL).toContain('#FF5C69')
+    expect(RAIL).not.toContain('#FF8A93')
+    const css = readFileSync('src/index.css', 'utf8')
+    expect(css, '다크 --sale 값이 바뀌면 이 카드도 함께 바꿀 것').toMatch(/--sale:\s*#FF5C69/)
+  })
+
   it('레일에서는 iframe 을 만들지 않는다 — 재생기는 뷰어에서만 산다', () => {
     expect(RAIL).not.toContain('<iframe')
   })
