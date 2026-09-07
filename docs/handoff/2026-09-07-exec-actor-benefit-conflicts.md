@@ -1,4 +1,4 @@
-# [E2] 승인 실행기 1회차 — 결재 `2026-09-07-actor-benefit-conflicts` 중 Q3-3 (채널 필수 선택)
+# [E2] 승인 실행기 1회차 — 결재 `2026-09-07-actor-benefit-conflicts` 중 Q3-3 (채널 필수 선택) — PR #1390
 
 > 실행기: 이 세션 바인딩 루틴 `trig_01BmSbMMZfpnC1TBF3xWfRGF`(fresh-session 은 푸시 불가로 21:16 KST 판정 후 교체).
 > 결재 실행 계획의 순서 Q3-3 → Q2-1 → Q4-2 중 **첫 번째**. WIP 1 이라 나머지 둘은 이 PR 이 머지된 뒤 다음 회차가 집는다.
