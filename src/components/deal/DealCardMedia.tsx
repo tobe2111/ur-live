@@ -62,6 +62,9 @@ function parseImages(raw: string[] | string | null | undefined): string[] {
 /** 카드 캐러셀 최대 장수 — 넘기는 재미는 5장이면 충분하고, 그 이상은 페이로드만 키운다. */
 const MAX_SLIDES = 5
 
+/** 카드가 이만큼 머물러야 다음 장을 미리 받는다 — 스쳐 지나간 카드는 안 받는다(아래 👁️ 주석). */
+const DWELL_MS = 250
+
 function DealCardMedia({
   cover, images, alt, eager = false, width = 400, fallback, onCoverLoad, overlay,
   className = '', aspectClass = 'aspect-[4/3]',
@@ -191,8 +194,26 @@ function DealCardMedia({
    * 👀 2026-09-02 (대표 "여기도 사진 좌우 불러오는 데 시간이 걸려"): **보이는 카드는 다음 1장을 한가할 때 미리**.
    *
    * hover/touch 프리페치(위)는 손이 닿은 *뒤*에 시작하므로 화살표를 바로 누르면 여전히 콜드 대기였다
-   * (PC 실측: hover→클릭 0.3초, 외부 CDN 콜드 리사이즈 0.3~2초). 그래서 **화면에 60% 이상 들어온 카드**가
+   * (PC 실측: hover→클릭 0.3초, 외부 CDN 콜드 리사이즈 0.3~2초). 그래서 화면에 들어오는 카드가
    * 커버를 다 받은 뒤, 브라우저가 한가할 때(`requestIdleCallback`) **다음 한 장만** 받아 둔다.
+   *
+   * ⏱️ **2026-09-06 — "더 일찍" 로 조정**(대표 *"속도도 개선했으면"*). 종전은 `threshold: 0.6`(카드가
+   *   60% 보여야) + `timeout: 2000` 이라 시작이 늦었다. 실측(4G · 카드가 보인 뒤 다음 장이 준비되기까지):
+   *
+   *       종전   4,723ms · 458ms · >5,000ms · 1,044ms   (중앙값 1,044 · 최악 5초 초과)
+   *       지금   1,832ms ·  29ms ·    253ms ·    25ms   (중앙값   253 · 최악 1.8초)
+   *
+   *   ⇒ `rootMargin: '400px'` + `threshold: 0` + `timeout: 800` + 아래 머문-시간 게이트.
+   *
+   * 💸 **공짜가 아니다 — 이 트레이드오프를 지우지 말 것.** 처음엔 "받는 장수는 그대로고 시점만
+   *   앞당기니 트래픽은 안 는다"고 적었는데 **틀렸다.** 같은 스크롤로 실측하니:
+   *
+   *       종전 60장 2,624KB  →  지금 71장 3,326KB  (+11장 · +702KB · **+27%**)
+   *       참고: 여백을 0 으로 줄여도 68장 3,185KB (+21%) — "일찍"의 값이지 여백만의 값이 아니다
+   *
+   *   `threshold: 0.6` 은 스치듯 지나간 카드를 놓쳤고, 그게 절약처럼 보였을 뿐이다. 늘어난 장수는
+   *   **사용자가 보고 있거나 400px 앞에 있는 카드**의 것이라 낭비는 아니지만, 데이터는 실제로 더 쓴다.
+   *   ⇒ 되돌리려면 상수 두 개(`DWELL_MS`·`rootMargin`)와 `threshold` 만 원복하면 된다.
    *
    * ⚠️ 트래픽 보호(위 1원칙)와의 타협을 명시한다: 화면 밖 카드는 여전히 커버만이고, 보이는 카드도 **한 장**(전량 X),
    *   첫 페인트 뒤(커버 로드 후 + idle)라 LCP 를 안 건드린다. 첫 화면 기준 카드 ~6장 × 1장 ≈ 200~300KB 가 idle 에 추가.
@@ -206,17 +227,36 @@ function DealCardMedia({
     const el = rootRef.current
     if (!el || typeof IntersectionObserver === 'undefined') return
     let idle: number | undefined
+    /**
+     * 👁️ **머문 카드만** 받는다 — 스쳐 지나간 카드는 안 받는다(2026-09-06 실측이 시킨 설계).
+     *
+     * 처음엔 여백만 넓혔더니(400px) 속도는 좋아졌는데 **트래픽이 +27%** 였다 — 화면에 오지도 않은
+     * 카드까지 받았기 때문이다. 여백을 0 으로 줄여도 +21%. "일찍 받기"는 공짜가 아니었다.
+     * ⇒ 여백은 넓게 두되(곧 볼 카드를 미리), **250ms 머물러야** 실제로 받는다. 빠르게 스크롤해
+     *   지나가는 카드는 타이머가 취소돼 한 장도 안 받는다.
+     *
+     * ⚠️ **이 게이트의 절감은 실측하지 못했다 — 단정하지 말 것.** 하네스가 스크롤마다 1.1초씩 멈춰
+     *   모든 카드가 250ms 를 넘겼고(멈추지 않는 연속 스크롤은 기준선이 갈려 비교 실패), 그래서
+     *   위 **+27% 는 "천천히 훑는 사용자" 기준의 상한**이다. 빠른 스크롤에선 더 적을 것으로 *기대*하되
+     *   숫자로 못 박지 않는다. 재려면 두 빌드에서 **같은 초기 로드 상태**를 만든 뒤 연속 스크롤할 것.
+     */
+    let dwell: number | undefined
     const io = new IntersectionObserver((entries) => {
-      if (!entries.some((e) => e.isIntersecting)) return
-      io.disconnect()
-      idleDone.current = true
-      const run = () => prefetchNext()
-      if (typeof requestIdleCallback === 'function') idle = requestIdleCallback(run, { timeout: 2000 })
-      else idle = window.setTimeout(run, 300)
-    }, { threshold: 0.6 })
+      const inView = entries.some((e) => e.isIntersecting)
+      if (!inView) { if (dwell != null) { clearTimeout(dwell); dwell = undefined } ; return }
+      if (dwell != null) return
+      dwell = window.setTimeout(() => {
+        io.disconnect()
+        idleDone.current = true
+        const run = () => prefetchNext()
+        if (typeof requestIdleCallback === 'function') idle = requestIdleCallback(run, { timeout: 800 })
+        else idle = window.setTimeout(run, 300)
+      }, DWELL_MS)
+    }, { threshold: 0, rootMargin: '400px' })
     io.observe(el)
     const cleanup = () => { // ⚠️ 화살괄호를 바로 돌려주지 않는다 — deal-card-gallery 가드가 JSX 반환문을 앵커로 자른다
       io.disconnect()
+      if (dwell != null) clearTimeout(dwell)
       if (idle != null) { if (typeof cancelIdleCallback === 'function') cancelIdleCallback(idle); else clearTimeout(idle) }
     }
     return cleanup

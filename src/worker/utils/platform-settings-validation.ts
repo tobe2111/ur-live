@@ -107,9 +107,18 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   gb_pricing_enabled: boolStr,                 // 🔌 공구가 청구 킬스위치(기본 ON — 'false' 만 끔). gb-order-pricing
   gb_engine_enabled: boolStr,                // gb-marketplace:26 / gb-proposals:27 / seller-orders:1285
   voucher_deal_payment_enabled: boolStr,     // 💰 이용권 딜 결제 (group-buy.routes join). ⚠️ 켜기 전 influencer_deal_bonus_pct=0 — 보너스 20% > 이용권 마진 5~10% 라 팔릴수록 적자
+  // 🪙 2026-09-07: 담기 적립(어필리에이트) 프로그램 스위치. read-site 는 **행 부재 = 꺼짐**으로 읽는다
+  //   (affiliate-credit.ts:139 지급 · affiliate-program.ts:33 표시 — 둘이 같은 키를 본다).
+  //   그래서 'True'/'1' 이 저장되면 켠 줄 알지만 실제로는 꺼진 채로 돈다.
+  affiliate_program_enabled: boolStr,
   seller_promo_field_enabled: boolStr,         // seller-orders.routes.ts:814
   settlement_skip_ledgered: boolStr,           // auto-settlement.ts:54 / restaurant-settlement.routes.ts:87
   agency_auto_settle_legacy_enabled: boolStr,  // cron/agency-auto-settle.ts:59
+  // 🎛️ 2026-09-07: strict-true 로 읽히는데 미등재였던 것들(check-gate-registry 가 찾았다).
+  outreach_auto_send: boolStr,                 // seller-influencers.routes.ts:251
+  promo_bar_enabled: boolStr,                  // public-utility.routes.ts:518
+  invite_reward_enabled: boolStr,              // invite-reward.ts:50 (종료된 축)
+  multi_tier_enabled: boolStr,                 // referral-tree.routes.ts:349 (종료된 축)
 
   // ── enum ──
   promo_funding_source: enumOf(['platform', 'owner']),           // ledger.ts:482 등 === 'owner'

@@ -88,6 +88,57 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎛️ 새 게이트를 표에서 뗀다 (켤 화면이 있는지 아무도 안 묻는다)',
+    file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
+    find: "{ key: 'outreach_auto_send', kind: 'setting'",
+    replace: "{ key: 'outreach_auto_send_UNREGISTERED', kind: 'setting'",
+    test: 'src/tests/unit/gate-registry-and-display-2026-09-07.test.ts',
+    why:
+      '등재가 곧 검사 범위다. 표에서 빠지면 ops-gate-reachable 이 "켤 화면이 있나"를 묻지 않고, ' +
+      '그 스위치는 D1 직접 수정으로만 켤 수 있게 된다 — 담기 적립 주 스위치가 정확히 그랬다.',
+  },
+  {
+    name: '🪙 소비자 목록에서 적립 표시 게이트를 뗀다 (꺼진 적립을 다시 약속한다)',
+    file: 'src/features/products/repositories/ProductRepository.ts',
+    find: 'gateAffiliateRows(result.results || [], affiliateOn)',
+    replace: '(result.results || [])',
+    test: 'src/tests/unit/gate-registry-and-display-2026-09-07.test.ts',
+    why:
+      '이게 #1372 이전 상태다 — 프로그램은 꺼졌는데 화면은 "담으면 2%" 를 약속했다. ' +
+      '🩸 첫 판정이 `src.includes(\'gateAffiliateRows\')` 라 **이름만 남겨도 통과**했다(주입으로 잡았다). ' +
+      '지금은 호출 형태를 요구한다.',
+  },
+  {
+    name: '🎛️ 담기 적립 스위치를 어드민에서 다시 뗀다 (켤 손잡이가 사라진다)',
+    file: 'src/pages/admin-platform-settings/money-switch-fields.ts',
+    find: "    key: 'affiliate_program_enabled', label: '⑧ 담기 적립(어필리에이트) 프로그램', default: 'false',",
+    replace: "    key: 'affiliate_program_enabled_REMOVED', label: '⑧ 담기 적립(어필리에이트) 프로그램', default: 'false',",
+    test: 'src/tests/unit/admin-money-switch-ui-2026-09-07.test.ts',
+    why:
+      '이게 없던 것이 원래 상태다 — 읽는 곳 둘, 쓰는 화면 0. 머니 스위치를 D1 직접 수정으로만 ' +
+      '켤 수 있으면 오타값이 저장돼도 read-site 가 조용히 OFF 로 읽는다.',
+  },
+  {
+    name: "🎛️ 스위치 옵션 값을 'True' 로 (켠 줄 알지만 꺼진 채로 돈다)",
+    file: 'src/pages/admin-platform-settings/money-switch-fields.ts',
+    find: "{ value: 'true', label: 'ON — 담아서 팔면 소개비 적립' }",
+    replace: "{ value: 'True', label: 'ON — 담아서 팔면 소개비 적립' }",
+    test: 'src/tests/unit/admin-money-switch-ui-2026-09-07.test.ts',
+    why:
+      "read-site 둘 다 `=== 'true'` strict 비교다. 대문자 하나면 화면엔 ON 인데 지급도 배지도 " +
+      '안 켜진다 — 에러가 없어 "왜 안 켜지지" 로 며칠 간다.',
+  },
+  {
+    name: '💸 요율 폴백을 Number() 로 (칸을 비우면 수수료가 0% 가 된다)',
+    file: 'src/worker/utils/ledger-commission-policy.ts',
+    find: "    const pct = Number.parseFloat(row?.value ?? '')",
+    replace: "    const pct = Number(row?.value ?? '')",
+    test: 'src/tests/unit/admin-money-switch-ui-2026-09-07.test.ts',
+    why:
+      "Number('') 는 0 이고 0 은 0~100 범위를 통과한다 — 폴백(10%/5%)으로 안 가고 **0% 로 걷힌다**. " +
+      '이번에 요율 입력칸을 만들면서 "비울 수 있는 입구"가 처음 생겼으므로 이 폴백이 곧 안전판이다.',
+  },
+  {
     name: '🖼️ 피드가 섹션 상품을 미루지 않는다 (같은 사진이 위아래로 두 번)',
     file: 'src/pages/main-home/GroupBuyFeed.tsx',
     find: 'deferSeeded(sortBand(src), sectionIds)',
@@ -858,6 +909,28 @@ const MUTATIONS = [
       '2026-09-06 대표 신고: 모바일 4G 첫 넘김이 **2,180ms** 인데 그동안 직전 사진이 0.65 로 어둡게만 ' +
       '남아 있었다. 밝은 사진에선 그 차이가 거의 안 보이고, 도트는 이미 다음 칸에 가 있어 ' +
       '"점은 넘어갔는데 사진은 그대로" = 안 넘어간 것으로 읽힌다. 블러가 유일한 즉시 신호다.',
+  },
+  {
+    name: '👁️ 스쳐 지나간 카드까지 미리 받는다 (머문-시간 게이트 소실 → 트래픽 낭비)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: '      }, DWELL_MS)\n',
+    replace: '      }, 0)\n',
+    test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
+    why:
+      '"일찍 받기" 는 공짜가 아니다 — 2026-09-06 실측으로 같은 스크롤에서 +27%(2,624→3,326KB) 였다. ' +
+      '머문 250ms 를 조건으로 걸어야 빠르게 훑고 지나가는 카드가 걸러진다. 이 게이트가 사라져도 ' +
+      '화면은 완전히 똑같고 오히려 더 빨라 보여서 — 데이터만 조용히 더 쓴다.',
+  },
+  {
+    name: '⏱️ 카드 프리페치가 다시 늦게 시작한다 (화면에 다 들어온 뒤 · idle 2초)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: "    }, { threshold: 0, rootMargin: '400px' })",  // 2026-09-06 머문-시간 게이트와 짝
+    replace: '    }, { threshold: 0.6 })',
+    test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
+    why:
+      '2026-09-06 실측(4G · 카드가 보인 뒤 다음 장 준비까지): 4,650ms · 435ms · >5,000ms · 1,048ms. ' +
+      '스크롤로 만난 카드를 바로 넘기면 그 대기를 정면으로 맞는다. 되돌려도 **화면은 멀쩡하고 에러도 ' +
+      '없어서** 느려진 것을 아무도 모른다. (트래픽은 +27% 늘지만 그건 머문-시간 게이트가 맡는 몫이다.)',
   },
   {
     name: '🎞️ 보이는 카드의 idle 프리페치 게이트가 뒤집혀 커버 로드 전에도 안 도는(=영영 안 도는) 상태',
@@ -2877,7 +2950,9 @@ canvas {
   },
   {
     name: '공구가 킬스위치를 어드민 화면에서 뺀다(돈 새는 중에 멈출 손잡이가 사라진다)',
-    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    // 🩸 2026-09-07: 머니 스위치 배열이 페이지에서 이 모듈로 빠졌다(페이지가 600줄 래칫에 닿았다).
+    //   이 지도를 안 따라가면 "주입 대상을 못 찾음(낡은 지도)" 로 빨간불이 난다 — 실제로 났다.
+    file: 'src/pages/admin-platform-settings/money-switch-fields.ts',
     find: "key: 'gb_pricing_enabled'",
     replace: "key: 'gb_pricing_REMOVED'",
     test: 'src/tests/unit/ops-gate-reachable.test.ts',
@@ -9181,6 +9256,14 @@ canvas {
     replace: '        SELECT\n          COUNT(*) AS active_count,\n          SUM(CASE WHEN p.group_buy_deadline < ? THEN 1 ELSE 0 END) AS at_risk_count\n        FROM products p',
     test: 'src/tests/unit/no-deadline-sort.test.ts',
     why: '마감이 없어졌으므로 NULL 비교라 언제나 0 이다. 크래시가 아니라 조용한 부재 — 화면은 멀쩡해 보인다.',
+  },
+  {
+    name: "🗓️ 홈·지도 피드 카드에 '마감 임박' 빨간 배지가 부활",
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '  const brandName = p.brand_name',
+    replace: "  const remaining = p.expires_at ? '\ub9c8\uac10 3\uc2dc\uac04' : null\n  const isUrgent = !!remaining\n  const brandName = p.brand_name",
+    test: 'src/tests/unit/no-deadline-sort.test.ts',
+    why: "리스트 API 가 판매 마감을 `p.group_buy_deadline AS expires_at` 으로 **이름을 바꿔** 내려서, 카드 코드만 보면 사용 기한처럼 읽힌다(원 필드명으로 grep 하면 안 걸린다). 게다가 시간·분 단위일 때만 떠서 평소엔 보이지도 않는다 — 2026-09-07 실측으로 09-09 부터 24시간만 켜질 예정이던 것을 잡았다.",
   },
   // 🌇 2026-09-05 에이전시 일몰 — `AgencyGroupBuyAlert.tsx` 주입 항목 삭제(파일이 없어졌다).
   //    그 불변식은 `no-deadline-sort.test.ts` 의 **파일 부재** 단언이 더 강하게 대신한다.

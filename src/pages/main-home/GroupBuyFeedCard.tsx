@@ -8,7 +8,6 @@
 import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
-import { safeDate } from '@/utils/safe-date'
 import DealCardMedia from '@/components/deal/DealCardMedia'
 import WishlistHeart from '@/components/deal/WishlistHeart'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
@@ -41,7 +40,6 @@ interface FeedCardProduct extends Product {
   group_buy_current?: number
   group_buy_target?: number
   group_buy_status?: string
-  expires_at?: string | null
   seller_name?: string
   seller_avatar?: string
   category?: string
@@ -75,20 +73,12 @@ function formatSoldCount(n: number): string {
   return String(n)
 }
 
-function timeRemaining(expiresAt: string | null | undefined): string | null {
-  if (!expiresAt) return null
-  // 🛡️ 2026-06-26 (소비자 감사): safeDate — 사파리가 D1 datetime 을 NaN 으로 파싱하면 'NaN분' 표시. 파싱 보정.
-  const t = safeDate(expiresAt)?.getTime()
-  if (t == null) return null
-  const ms = t - Date.now()
-  if (ms <= 0) return '마감'
-  const hours = Math.floor(ms / 3_600_000)
-  const days = Math.floor(hours / 24)
-  if (days >= 2) return `마감 ${days}일`
-  if (hours >= 1) return `마감 ${hours}시간`
-  const mins = Math.max(1, Math.floor(ms / 60_000))
-  return `마감 ${mins}분`
-}
+// 🗓️ 2026-09-07 (대표 "마감 개념은 없어"): '마감 임박' 빨간 배지를 만들던 `timeRemaining` 제거.
+//   #1349 가 상세 배너를 지울 때 **카드 배지는 남아 있었다** — 리스트 API 가 판매 마감
+//   (`group_buy_deadline`)을 `expires_at` 이라는 이름으로 내려서 사용 기한처럼 보였기 때문이다.
+//   라이브 실측: 유일한 실제 매장 상품(2888)의 값이 `2026-09-10 07:21` 이라 **09-09 부터 24시간 동안**
+//   카드에 빨간 `마감 23시간 → 마감 30분` 이 켜질 예정이었다. 아무것도 막지 않는 날짜로 만든
+//   가짜 긴박감이다. 구매 후 사용 기한(`vouchers.expires_at`)은 **다른 축**이고 지갑에 그대로 있다.
 
 // 🛡️ 2026-05-24 (loading P0): aboveFold prop — 첫 화면 카드는 eager + fetchpriority=high.
 //   효과: LCP 단축 (첫 진입 시 카드 이미지 우선 로드, lazy 후순위 카드는 nav 중에 로드).
@@ -208,8 +198,6 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
     if (km >= 10) return null // 📍 2026-07-19 (대표 UI v2 P1): 10km+ 는 km 대신 지역명(addrShort) 우선
     return km < 1 ? `${Math.round(km * 10) / 10}` : `${Math.round(km)}`
   })()
-  const remaining = timeRemaining(p.expires_at)
-  const isUrgent = remaining && (remaining.includes('시간') || remaining.includes('분'))
   // 🎨 대표색은 **사진 자리 플레이스홀더**로만 쓴다(2026-08-27 흰 카드 통일).
   //   ⚠️ 2026-09-03: 여기 남아 있던 `cardGradient(cardColor)` 는 **참조 0인 죽은 계산**이었다
   //      — 흰 카드로 바꾸면서 소비처가 다 사라졌는데 호출만 남아 카드마다 매 렌더 돌고 있었다.
@@ -289,15 +277,9 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
         }}
         overlay={
           <>
-            {/* 마감 임박 배지 (시간/분 단위면 좌상단 빨강) */}
-            {isUrgent && (
-              <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-brand text-[10px] font-extrabold text-white shadow-sm z-[2]">
-                {remaining}
-              </span>
-            )}
-            {/* 🎯 추첨 응모 배지 — 💗 2026-08-19 우상단을 찜 하트에 내주고 **좌상단**으로 이동
-                (마감임박 배지가 있으면 그 아래). 겹치면 둘 다 못 읽는다. */}
-            {fcfs && <FcfsBadge info={fcfs} variant="overlay" className={`absolute ${isUrgent ? 'top-9' : 'top-2'} left-2 z-[2]`} />}
+            {/* 🎯 추첨 응모 배지 — 💗 2026-08-19 우상단을 찜 하트에 내주고 **좌상단**으로 이동.
+                2026-09-07: 위에 있던 마감 배지가 사라져 좌상단이 비었다(종전 `top-9` 분기 제거). */}
+            {fcfs && <FcfsBadge info={fcfs} variant="overlay" className="absolute top-2 left-2 z-[2]" />}
             {/* 💗 찜 — 그루폰 카드 우상단 하트. hover 시 나타나고(찜된 건 항상 보임) 누르면 통 튄다. */}
             {/* 🧷 `hideWishlist` — 핀 고르기 화면은 이 자리에 '추가' 버튼이 온다(둘이 겹치면 하트가 묻힌다).
                 기본값 false 라 홈·찜·유어샵은 출력 불변. */}
