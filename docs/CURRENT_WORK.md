@@ -5494,10 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 260건 · 최신순 · 이 목록은 자동 생성된다._
+_총 262건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-07**
 - [`/store/new` 매장 등록 — 다크 흰 글자 · 배경 클릭 이탈 (2026-09-07)](handoff/2026-09-07-store-claim-dark-and-backdrop.md)
+- [마이페이지 앱 정보 — 카드에서 줄글로 (2026-09-07)](handoff/2026-09-07-app-info-plain-text.md)
 - [2026-09-07 — AI 팀 운영 모델 (역할 6 · 결재함 · 완료 판정 E1~E5) + 행위자·베네핏 한 장 지도](handoff/2026-09-07-ai-team-operating-model.md)
 - [어드민에 없던 머니 스위치 셋을 붙였다 (2026-09-07)](handoff/2026-09-07-admin-money-switch-ui.md)
 **2026-09-06**

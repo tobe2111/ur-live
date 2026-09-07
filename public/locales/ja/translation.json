@@ -5270,10 +5270,7 @@
     "editNamePlaceholder": "名前を入力してください",
     "editPhone": "電話番号",
     "editCancel": "キャンセル",
-    "appInfo": "アプリ情報",
-    "currentVersion": "現在のバージョン",
-    "build": "ビルド",
-    "checkLatest": "最新ビルド確認",
+    "checkLatest": "最新か確認する",
     "loginRequired": "ログインが必要です。",
     "fallbackName": "ユーザー",
     "nameRequired": "お名前を入力してください。",
@@ -5309,7 +5306,12 @@
     "ariaToggleOff": "{{label}}をオフ",
     "language": "言語",
     "phoneRequired": "電話番号を入力してください — 交換券・通知はこの番号に届きます",
-    "phoneInvalid": "電話番号の形式をご確認ください (010-0000-0000)"
+    "phoneInvalid": "電話番号の形式をご確認ください (010-0000-0000)",
+    "appName": "UrDeal",
+    "checking": "確認中…",
+    "isLatest": "最新バージョンです",
+    "updateAvailable": "新しいバージョンがあります",
+    "updateNow": "今すぐ更新"
   },
   "productDetail": {
     "retry": "もう一度試す",

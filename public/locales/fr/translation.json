@@ -5270,10 +5270,7 @@
     "editNamePlaceholder": "Saisissez votre nom",
     "editPhone": "Téléphone",
     "editCancel": "Annuler",
-    "appInfo": "Infos de l'app",
-    "currentVersion": "Version actuelle",
-    "build": "Build",
-    "checkLatest": "Vérifier les mises à jour",
+    "checkLatest": "Rechercher une mise à jour",
     "loginRequired": "Connexion requise.",
     "fallbackName": "Utilisateur",
     "nameRequired": "Veuillez saisir votre nom.",
@@ -5309,7 +5306,12 @@
     "ariaToggleOff": "Désactiver {{label}}",
     "language": "Langue",
     "phoneRequired": "Saisissez votre téléphone — bons et alertes y sont envoyés",
-    "phoneInvalid": "Vérifiez le format du téléphone (010-0000-0000)"
+    "phoneInvalid": "Vérifiez le format du téléphone (010-0000-0000)",
+    "appName": "UrDeal",
+    "checking": "Vérification…",
+    "isLatest": "Vous avez la dernière version",
+    "updateAvailable": "Une nouvelle version est disponible",
+    "updateNow": "Mettre à jour"
   },
   "productDetail": {
     "retry": "Réessayer",
