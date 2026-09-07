@@ -5494,14 +5494,12 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 267건 · 최신순 · 이 목록은 자동 생성된다._
+_총 265건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-07**
 - [🏪 매장 등록 문 — 당근식 스텝 위저드 + 막다른 길 셋 (2026-09-07)](handoff/2026-09-07-store-register-wizard.md)
 - [`/store/new` 매장 등록 — 다크 흰 글자 · 배경 클릭 이탈 (2026-09-07)](handoff/2026-09-07-store-claim-dark-and-backdrop.md)
 - [2026-09-07 — 운영(ops) 역할 신설 + 1인 운영 결재 3건 (대표 "모두 진행")](handoff/2026-09-07-ops-role-and-queue-automation.md)
-- [[E2] 승인 실행기 1회차 — 결재 `2026-09-07-actor-benefit-conflicts` 중 Q3-3 (채널 필수 선택) — PR #1390](handoff/2026-09-07-exec-actor-benefit-conflicts.md)
-- [[E2] 승인 실행기 2회차 — 결재 `2026-09-07-actor-benefit-conflicts` 중 Q2-1 (딜 % 상한 없음) — <PR_Q2>](handoff/2026-09-07-exec-actor-benefit-conflicts-q2.md)
 - [다크 대비 가드 범위 확장 — 가입 폼이 안 읽히고 있었다 (2026-09-07)](handoff/2026-09-07-dark-contrast-coverage.md)
 - [마이페이지 앱 정보 — 카드에서 줄글로 (2026-09-07)](handoff/2026-09-07-app-info-plain-text.md)
 - [2026-09-07 — AI 팀 운영 모델 (역할 6 · 결재함 · 완료 판정 E1~E5) + 행위자·베네핏 한 장 지도](handoff/2026-09-07-ai-team-operating-model.md)
