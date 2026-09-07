@@ -372,7 +372,7 @@ export default function GroupBuyFeed({
                 onClick={() => setCategory(c.key)}
                 className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
                   active
-                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                    ? 'bg-brand text-white'  /* 🎨 2026-09-07 안 B: 선택 = 브랜드 블루(서비스 공통) */
                     : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
                 }`}
               >

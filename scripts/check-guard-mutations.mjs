@@ -88,6 +88,88 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🏷️ 할인율이 다시 브랜드 블루로 (행동 색과 가격 색이 섞인다)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: "font-extrabold text-sale\">{discount}%",
+    replace: "font-extrabold text-brand\">{discount}%",
+    test: 'src/tests/unit/discount-is-sale-red.test.ts',
+    why:
+      '블루는 "누르는 것", 할인 빨강은 "가격 이득" 이다. 할인율이 블루로 돌아가면 목록에서 파랑이던 ' +
+      '것이 상세에서 빨강이 되는 종전 상태로 되돌아간다 — 같은 상품의 같은 숫자인데 색이 바뀐다.',
+  },
+  {
+    name: '🏷️ --sale 이 대비 미달 값으로 바뀐다 (할인율이 안 읽힌다)',
+    file: 'src/index.css',
+    find: '    --sale: #DC2626;',
+    replace: '    --sale: #F23E4D;',
+    test: 'src/tests/unit/discount-is-sale-red.test.ts',
+    why:
+      '공구 상세가 쓰던 #F23E4D 는 흰 카드 위 3.77:1 로 본문 크기 글자엔 AA 미달이다(그쪽은 빨강 ' +
+      '**면** 위 흰 글자라 기준이 다르다). 눈으로는 "비슷한 빨강" 이라 그냥 지나간다.',
+  },
+  {
+    name: '🎨 홈 정렬 칩이 다시 잉크 검정으로 (선택 색이 서비스 안에서 둘이 된다)',
+    file: 'src/pages/pc-home/PcHomePage.tsx',
+    // 정렬 칩은 두 벌(현위치 칩 + SORT_CHIPS 루프)이라 같은 문자열이 두 번 나온다.
+    // 들여쓰기가 유일하게 갈라 주는 자리다 — 루프 쪽(22칸)을 앵커로 쓴다.
+    find: "                      ? 'bg-brand text-white border-brand'",
+    replace: "                      ? 'bg-gray-900 text-white border-gray-900'",
+    test: 'src/tests/unit/home-selected-is-brand.test.ts',
+    why:
+      '지도·유어샵·교환권 칩은 전부 블루다. 홈만 검정으로 돌아가면 같은 서비스에서 "선택됨"이 ' +
+      '두 색이 되어 사용자가 규칙을 못 배운다 — 에러는 안 난다.',
+  },
+  {
+    name: '🎨 카테고리 칩만 검정으로 남는다 (같은 줄에 선택 색 둘)',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: "                    ? 'bg-brand text-white'",
+    replace: "                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'",
+    test: 'src/tests/unit/home-selected-is-brand.test.ts',
+    why:
+      '카테고리 칩과 정렬 칩은 홈에서 위아래로 붙어 있다. 한쪽만 되돌아가면 **한 화면 안에서** ' +
+      '선택 색이 갈린다 — 고치기 전보다 나쁘다.',
+  },
+  {
+    name: '🎨 섹션 더보기가 다시 테두리 알약이 된다 (표면 규칙 ① 위반)',
+    file: 'src/components/home/HomeSections.tsx',
+    find: '                  className="shrink-0 text-[12.5px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"',
+    replace: '                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 text-[12.5px] font-bold text-gray-600 whitespace-nowrap"',
+    test: 'src/tests/unit/home-selected-is-brand.test.ts',
+    why:
+      '우리 표면 규칙 첫 줄이 테두리 0 이다. 이게 돌아오면 화면에서 **가장 안 중요한 것이 제일 ' +
+      '진하게** 보인다 — 섹션마다 반복돼 눈에 띄는데도 아무도 결함으로 신고하지 않는 종류다.',
+  },
+  {
+    name: '🖼️ 히어로 사진이 다시 클릭 불가가 된다 (안내 문구도 없이)',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: "          aria-label=\"이 사진의 딜 보기\"\n",
+    replace: '',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '사진은 `alt=""`(장식)라 링크가 이름을 갖지 않으면 스크린리더에 **빈 링크**로 읽힌다. ' +
+      '눈으로는 멀쩡해 보여서 아무도 못 잡는 클래스다.',
+  },
+  {
+    name: '🖼️ 사진 링크가 사진과 다른 자를 쓴다 (사진 밖으로 나가거나 덜 덮는다)',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: '          className="hidden md:block absolute z-20 inset-y-0 w-[46%] lg:w-[54%] right-',
+    replace: '          className="hidden md:block absolute z-20 inset-y-0 w-[40%] lg:w-[40%] right-',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '폭이 사진과 어긋나면 사진 오른쪽이 죽은 영역이 되거나 링크가 사진 밖 색면까지 먹는다. ' +
+      '둘은 **같이 고쳐야 하는 한 쌍**인데 소스에서는 20줄 떨어져 있어 한쪽만 고치기 쉽다.',
+  },
+  {
+    name: '🖼️ 사진 링크가 콘텐츠 층 아래로 내려간다 (눌러도 아무 일도 안 난다)',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: 'className="hidden md:block absolute z-20 inset-y-0',
+    replace: 'className="hidden md:block absolute z-0 inset-y-0',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '콘텐츠 층(z-10)이 `w-full` 이라 사진 위까지 덮는다. 그 아래로 내려가면 투명한 div 가 클릭을 ' +
+      '먼저 가로채 **커서만 바뀌고 이동은 안 된다** — 에러가 없어 배포까지 간다.',
+  },
+  {
     name: '🤖 결정권 매트릭스에서 머니 경로를 C 에서 B 로 낮춤',
     file: 'docs/design/ai-team-operating-model.md',
     find: '| 결제·정산·요율·환불·원장·커미션 코드 | **C** |',

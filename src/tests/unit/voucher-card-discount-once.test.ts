@@ -80,11 +80,14 @@ describe('교환권 할인율은 한 화면에 한 번, 사진 밖에', () => {
     expect(componentBody('VoucherRow')).toMatch(/discountPct=\{discountRate\}/)
   })
 
-  it('할인율은 브랜드 색으로 강조된다', () => {
+  it('할인율은 할인색(빨강)으로 강조된다', () => {
     for (const name of ['VoucherCard', 'VoucherRow']) {
       const { body, token } = discountSource(name)
       const line = body.split('\n').find((l) => l.includes(token))!
-      expect(line, `${name} 할인율이 브랜드 강조가 아니다`).toMatch(/text-brand/)
+      /* 할인 강조색은 `--sale`(빨강)이다 — 2026-09-07 대표 "할인율도 빨강으로 유지".
+         블루는 행동(버튼·선택 칩) 전용이고 이건 가격 이득이라 역할이 다르다.
+         계약은 "할인율이 한 색으로 강조된다" 이고, 그 색만 바뀌었다(완화 아님). */
+      expect(line, `${name} 할인율이 할인색 강조가 아니다`).toMatch(/text-sale/)
     }
   })
 })

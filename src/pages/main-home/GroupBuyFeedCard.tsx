@@ -332,7 +332,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
         <div className="mt-1">
           {(discount > 0 || (originalPrice > price && originalPrice > 0)) && (
             <p className="flex items-baseline gap-1 leading-none">
-              {discount > 0 && <span className="text-[12.5px] font-extrabold text-brand">{discount}%</span>}
+              {discount > 0 && <span className="text-[12.5px] font-extrabold text-sale">{discount}%</span>}
               {originalPrice > price && originalPrice > 0 && (
                 <span className={`text-[11.5px] line-through ${cSub}`}>{formatNumber(originalPrice)}{unitLabel}</span>
               )}

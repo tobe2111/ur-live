@@ -144,7 +144,12 @@ export default function PcHomePage() {
             )}
           </header>
 
-          {/* 정렬 칩 — 현위치 설정 시 '가까운 순' 칩 노출(거리순). */}
+          {/* 정렬 칩 — 현위치 설정 시 '가까운 순' 칩 노출(거리순).
+              🎨 2026-09-07 (대표 승인 — 홈 개선 안 B): 선택 = **브랜드 블루 면**.
+              종전엔 잉크 검정이었는데 지도 칩·유어샵 카테고리·교환권 카테고리는 전부 블루로 통일돼
+              있었다. 같은 서비스에서 "선택됨"이 두 색이면 사용자가 규칙을 못 배운다.
+              ⚠️ 바로 위 카테고리 칩(`GroupBuyFeed`)도 **같이** 바꿨다 — 한쪽만 바꾸면 같은 줄에
+                 선택 색이 둘이 되어 오히려 더 어긋난다. */}
           <div className="flex items-center gap-2 mb-4 flex-wrap">
             {userLoc && (
               <button
@@ -152,7 +157,7 @@ export default function PcHomePage() {
                 aria-pressed={sort === 'near'}
                 className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-bold border transition-colors inline-flex items-center gap-1 ${
                   sort === 'near'
-                    ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
+                    ? 'bg-brand text-white border-brand'
                     : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                 }`}
               >
@@ -168,7 +173,7 @@ export default function PcHomePage() {
                   aria-pressed={active}
                   className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-bold border transition-colors ${
                     active
-                      ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
+                      ? 'bg-brand text-white border-brand'
                       : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                   }`}
                 >

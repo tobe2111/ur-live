@@ -234,7 +234,7 @@ export default function TossWidgetPayPage() {
               <p className="text-[14px] font-bold leading-snug text-gray-900 dark:text-white line-clamp-2">{orderName || '—'}</p>
               {(discountPct > 0 || summary.qty) && (
                 <p className="mt-1 flex items-baseline gap-1 text-[12px]">
-                  {discountPct > 0 && <span className="font-extrabold text-brand-text">{discountPct}%</span>}
+                  {discountPct > 0 && <span className="font-extrabold text-sale">{discountPct}%</span>}
                   {discountPct > 0 && summary.origAmount && (
                     <span className="line-through text-gray-400 dark:text-gray-500">{summary.origAmount.toLocaleString('ko-KR')}원</span>
                   )}
