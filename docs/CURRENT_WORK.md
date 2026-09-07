@@ -5498,6 +5498,7 @@ _총 260건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-07**
 - [인플루언서 제안서 — 프리텐다드 이행 + 라이브 화면 재배치 (2026-09-07)](handoff/2026-09-07-proposal-pretendard-live-shots.md)
+- [`/store/new` 매장 등록 — 다크 흰 글자 · 배경 클릭 이탈 (2026-09-07)](handoff/2026-09-07-store-claim-dark-and-backdrop.md)
 - [2026-09-07 — AI 팀 운영 모델 (역할 6 · 결재함 · 완료 판정 E1~E5) + 행위자·베네핏 한 장 지도](handoff/2026-09-07-ai-team-operating-model.md)
 - [어드민에 없던 머니 스위치 셋을 붙였다 (2026-09-07)](handoff/2026-09-07-admin-money-switch-ui.md)
 **2026-09-06**
