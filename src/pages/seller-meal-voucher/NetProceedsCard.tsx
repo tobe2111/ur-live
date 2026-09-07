@@ -19,7 +19,7 @@ import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
 
 export default function NetProceedsCard({ price, promoPct }: { price: number; promoPct?: number }) {
-  const [fee, setFee] = useState<{ channel: string; platform_fee_pct: number; channel_rates_active?: boolean } | null>(null)
+  const [fee, setFee] = useState<{ channel: string | null; platform_fee_pct: number; channel_rates_active?: boolean } | null>(null)
   useEffect(() => {
     api.get('/api/seller/fee-context')
       .then(r => { if (r.data?.success) setFee(r.data.data) })
@@ -38,7 +38,7 @@ export default function NetProceedsCard({ price, promoPct }: { price: number; pr
       <div className="space-y-1 text-xs">
         <div className="flex justify-between text-gray-600"><span>판매가</span><span>{formatNumber(price)}원</span></div>
         <div className="flex justify-between text-gray-600">
-          <span>플랫폼 수수료 ({fee.platform_fee_pct}%{fee.channel === 'direct' ? ' · 직접 운영' : ' · 중개 운영'})</span>
+          <span>플랫폼 수수료 ({fee.platform_fee_pct}%{fee.channel === 'direct' ? ' · 직접 운영' : fee.channel === 'brokered' ? ' · 중개 운영' : ' · 운영 방식 미선택'})</span>
           <span>−{formatNumber(platformCut)}원</span>
         </div>
         {promo > 0 && (

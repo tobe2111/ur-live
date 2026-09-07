@@ -31,6 +31,7 @@ import { parseSessionCookie } from '@/worker/utils/session'
 import { DEFAULT_FEE_RATES } from '@/worker/utils/fee-resolver'
 import { getEffectivePlatformFee } from '@/worker/utils/effective-platform-fee'
 import { registerVoucherDraftRoutes } from './seller-voucher-draft.routes'
+import { pickStoreChannel, registerStoreChannelRoutes } from './seller-store-channel.routes'
 
 const app = new Hono<{ Bindings: Env }>()
 type Ctx = Context<{ Bindings: Env }>
@@ -120,7 +121,10 @@ app.get('/fee-context', async (c) => {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
     if (!sellerId) return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401)
     const meta = await getSellerMeta(c.env.DB, [sellerId])
-    const channel: StoreChannel = meta.get(sellerId)?.store_channel === 'direct' ? 'direct' : 'brokered'
+    // 🏪 2026-09-07 결재 Q3-3: 미지정을 "중개" 로 보여 주지 않는다 — `picked.channel` 은 null 일 수 있다.
+    //   정산이 쓰는 값(`effective`)은 종전 폴백 그대로(머니 경로 무접촉). 상세: seller-store-channel.routes.ts
+    const picked = pickStoreChannel(meta.get(sellerId)?.store_channel)
+    const channel: StoreChannel = picked.effective
     // 🩸 2026-08-27 정정: 여기 있던 주석은 *"loadFeeRates SSOT 라 표시·정산이 갈릴 수 없다"* 였는데
     //   **틀렸다.** 같은 값을 읽는 건 맞지만 **그 값이 결제 분배에 안 쓰인다** —
     //   결제는 `getSellerCommissionRate`(채널 무시)를 쓰고, 채널 요율은 게이트 뒤에 있으며 꺼져 있다.
@@ -130,7 +134,8 @@ app.get('/fee-context', async (c) => {
     return c.json({
       success: true,
       data: {
-        channel,
+        channel: picked.channel,                         // null = 아직 아무도 안 골랐다(화면이 선택을 요구한다)
+        channel_set: picked.set,
         platform_fee_pct: fee.pct,                       // 지금 실제로 떼이는 %
         channel_rates_active: fee.channelRatesActive,    // false 면 아래 설계값은 아직 미적용
         channel_pct: fee.channelPct,                     // 채널 요율이 켜졌을 때의 설계값
@@ -146,6 +151,8 @@ app.get('/fee-context', async (c) => {
 // 💾 이용권 임시저장(/voucher-draft) 은 별도 모듈로 — 매장 프로필·등록과 무관한 위저드 자동저장이라
 //   god-파일 래칫(600줄)에 걸렸을 때 가장 자연스러운 이음매였다. **경로·동작 불변**(같은 앱에 등록).
 registerVoucherDraftRoutes(app)
+// 🏪 채널 필수 선택(미지정 좌석 set-once) — 2026-09-07 결재 Q3-3. 같은 앱에 등록(경로 /fee-context/channel).
+registerStoreChannelRoutes(app)
 
 // ── 매장 프로필 병합(공유) — SSOT: worker/utils/store-profile.ts (2026-08-23 단일화) ────────
 async function loadMergedProfile(DB: D1Database, sellerId: number) {
