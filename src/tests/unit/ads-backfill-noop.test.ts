@@ -111,6 +111,26 @@ describe('배선 — 순수함수가 실제 저장 경로에 붙어 있는가', 
     expect(fn).toMatch(/description: l\.description\.slice\(0, 500\)/)
   })
 
+  /**
+   * 🩸 **이 조회가 인덱스를 못 타면 회차마다 계정 전체를 훑는다** (2026-09-05 실사고).
+   *   유니크 인덱스가 `(account_id, platform, channel_id)` 복합인데 처음엔 `platform` 을 빠뜨렸다.
+   *   실행계획으로 확인한 차이:
+   *   ```
+   *     platform 없음  SEARCH ... USING INDEX idx_..._instagram_ci (account_id=?)   ← 18.9만 행
+   *     platform 포함  SEARCH ... USING INDEX sqlite_autoindex_..._1
+   *                    (account_id=? AND platform=? AND channel_id=?)                ← 찾는 행만
+   *   ```
+   *   결과: collect 레인이 회차당 **883만 행**을 읽어 3시간 실측 2억의 39%를 혼자 썼고, 그 읽기가
+   *   일일 예산을 태워 레인 창을 3시간으로 좁혔다. 창 밖 레인이 죽어 B2B 수집이 무너진 사고의
+   *   상당 부분이 여기서 시작됐다 — **쓰기를 아끼려다 훨씬 비싼 읽기를 샀다.**
+   */
+  it('⑯ 조회가 platform 을 함께 건다 — 안 그러면 계정 전체를 훑는다', () => {
+    const fn = src.slice(src.indexOf('async function pickChangedForBackfill'))
+    expect(fn, 'WHERE 에 platform 이 없으면 복합 유니크 인덱스를 못 탄다')
+      .toMatch(/WHERE account_id = \? AND platform = \? AND channel_id IN/)
+    expect(fn, '한 청크에 플랫폼이 섞이므로 플랫폼별로 갈라 물어야 한다').toMatch(/byPlatform/)
+  })
+
   it('⑮ SET 절이 다루는 컬럼을 조회가 전부 읽어 온다 (하나라도 빠지면 그 규칙이 늘 참이 된다)', () => {
     const fn = src.slice(src.indexOf('async function pickChangedForBackfill'))
     for (const col of ['email', 'instagram', 'tiktok', 'links', 'subscriber_count',

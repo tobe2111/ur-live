@@ -88,6 +88,76 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🖼️ 피드가 섹션 상품을 미루지 않는다 (같은 사진이 위아래로 두 번)',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: 'deferSeeded(sortBand(src), sectionIds)',
+    replace: 'sortBand(src)',
+    test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
+    why:
+      '라이브 실측에서 섹션 8개가 **전부** 피드에도 있었고 4개는 피드 앞 14번 안이었다. ' +
+      '배선 한 줄이 빠지면 화면은 정확히 그 상태로 돌아간다 — 에러는 안 난다.',
+  },
+  {
+    name: '🖼️ 미루기가 밴드 경계를 넘는다 (스크롤하면 이미 본 카드가 움직인다)',
+    file: 'src/shared/home-section-ids.ts',
+    find: '  return head.concat(tail)',
+    replace: '  return tail.concat(head)',
+    test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
+    why:
+      '앞뒤가 뒤집히면 섹션 상품이 오히려 맨 앞으로 온다. 순서 계약이 조용히 반대가 되는 ' +
+      '클래스라 눈으로는 "그냥 정렬이 좀 다르네" 로 보인다.',
+  },
+  {
+    name: '🖼️ 피드가 섹션 상품을 아예 빼 버린다 (전체 목록이 거짓말이 된다)',
+    file: 'src/shared/home-section-ids.ts',
+    find: '    ;(typeof id === \'number\' && ids.has(id) ? tail : head).push(p)',
+    replace: '    if (!(typeof id === \'number\' && ids.has(id))) head.push(p)',
+    test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
+    why:
+      '반복이 사라지니 화면은 오히려 깔끔해 보인다 — 그래서 위험하다. 전체 목록에서 그 상품을 ' +
+      '찾는 사람은 영영 못 만나고, 아무 에러도 안 난다.',
+  },
+  {
+    name: '🖼️ 섹션 id 가 매 렌더 새로 만들어진다 (스크롤 중 카드가 재배치된다)',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: '  const sectionIds = useMemo(() => seededSectionProductIds(), [])',
+    replace: '  const sectionIds = new Set<number>()',
+    test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
+    why:
+      'useMemo 가 빠지면 참조가 매 렌더 바뀌어 목록 useMemo 가 통째로 다시 돈다. 게다가 빈 Set 이라 ' +
+      '미루기 자체가 죽는다 — 화면은 수정 전으로 돌아가고 카드는 스크롤 중에 움직인다.',
+  },
+  {
+    name: '🖼️ 홈 섹션이 서로 겹치는지 다시 안 본다 (같은 사진이 위아래로 두 번)',
+    file: 'src/features/sections/api/sections.routes.ts',
+    find: '            excludeIds: [...claimed],\n',
+    replace: '',
+    test: 'src/tests/unit/home-section-no-duplicate.test.ts',
+    why:
+      '리졸버가 배제를 받아도 라우트가 안 넘기면 화면은 그대로다. 라이브 실측에서 인기 4개 중 ' +
+      '3개가 바로 아래 숙소 섹션에 그대로 다시 나왔다 — 에러가 없어 아무도 못 봤다.',
+  },
+  {
+    name: '🖼️ 섹션 배제의 바인드가 앞으로 끼어든다 (에러 없이 결과만 틀린다)',
+    file: 'src/features/sections/api/section-rules.ts',
+    find: '    binds.push(...excl)',
+    replace: '    binds.unshift(...excl)',
+    test: 'src/tests/unit/home-section-no-duplicate.test.ts',
+    why:
+      '`NOT IN` 은 SQL 에서 CROSS JOIN 분모 **뒤**에 온다. 바인드를 앞에 끼우면 카테고리와 id 가 ' +
+      '어긋나 **SQL 은 통과하고 결과만 조용히 틀린다**. 문자열 검사로는 절대 못 잡는 클래스다.',
+  },
+  {
+    name: '🖼️ 수동 큐레이션이 규칙에 밀린다 (사람이 고른 상품이 사라진다)',
+    file: 'src/features/sections/api/sections.routes.ts',
+    find: "          if (normalizeSectionSource(s.source) !== 'manual') continue;",
+    replace: "          if (normalizeSectionSource(s.source) === 'manual') continue;",
+    test: 'src/tests/unit/home-section-no-duplicate.test.ts',
+    why:
+      '어드민이 그 줄에 그 상품을 직접 골라 넣었는데 위 규칙 섹션이 먼저 집어갔다고 사라지면, ' +
+      '사람이 내린 결정이 질의에 밀리는 것이다. manual 이 먼저 자기 몫을 확정해야 한다.',
+  },
+  {
     name: '🗑️ 부수 머니 삭제 플래그가 cascade 없이도 먹는다(실수로 열린다)',
     file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
     find: "    const purgeAncillary = cascade && /^(1|true|yes)$/i.test(c.req.query('purge_ancillary') || '');",
@@ -7709,6 +7779,40 @@ canvas {
       '2026-07-23(F-32)이 고쳤던 그 스테일 사고가 에러 없이 돌아온다. 이 자리의 모름은 갱신이어야 한다.',
   },
   {
+    name: '🎯 링크인바이오 조회가 계획기에 맡겨진다(19만 행 전수 스캔 복귀)',
+    file: 'src/features/marketing/api/influencer-bio-enrich.ts',
+    find: "  const res = await pick(' INDEXED BY idx_ad_inf_leads_bio_links') || await pick('')",
+    replace: "  const res = await pick('')",
+    test: 'src/tests/unit/ads-bio-scan-index.test.ts',
+    why:
+      '부분 인덱스가 있어도 계획기는 idx_ad_inf_leads_bio 를 고른다 — bio_checked_at IS NULL 이 전체의 ' +
+      '99.9%라 거르는 일을 못 하는데 통계가 없으니 모른다. 라이브 실측 193,898행 vs 2,573행(75배). ' +
+      '2026-09-06 실사고: 큐가 고갈돼 결과가 0건이라 상태줄에 흔적이 없는 채, 샤드 4개 × 시간당 30회차가 ' +
+      '시간당 2,330만 행을 읽고 아무 일도 안 했다. 그 읽기가 일일 예산을 태워 B2B 수집이 멈췄다.',
+  },
+  {
+    name: '🎯 링크인바이오 WHERE 에서 부분 인덱스 조건이 빠진다(인덱스가 조용히 무효)',
+    file: 'src/features/marketing/api/influencer-bio-enrich.ts',
+    find: 'account_id = ? AND bio_checked_at IS NULL AND (email IS NULL OR instagram IS NULL)',
+    replace: 'account_id = ? AND (email IS NULL OR instagram IS NULL)',
+    test: 'src/tests/unit/ads-bio-scan-index.test.ts',
+    why:
+      '부분 인덱스는 WHERE 가 그 조건을 함의할 때만 쓰인다. 하나만 빠져도 SQLite 는 못 쓴다고 판단하는데 ' +
+      '**결과는 똑같아서** 눈에 안 보인다 — 비용만 75배가 된다(2026-08-27 주석이 이미 경고한 함정).',
+  },
+  {
+    name: '🪞 백필 조회가 platform 을 빼먹는다(회차마다 계정 전체를 훑는다)',
+    file: 'src/features/marketing/api/influencer-save.ts',
+    find: 'WHERE account_id = ? AND platform = ? AND channel_id IN',
+    replace: 'WHERE account_id = ? AND channel_id IN',
+    test: 'src/tests/unit/ads-backfill-noop.test.ts',
+    why:
+      '유니크 인덱스가 (account_id, platform, channel_id) 복합이라 platform 이 빠지면 그 인덱스를 못 타고 ' +
+      '18.9만 행을 훑는다. 2026-09-05 실사고: collect 레인이 회차당 883만 행을 읽어 3시간 실측 2억의 39%를 ' +
+      '혼자 썼고, 그 읽기가 일일 예산을 태워 레인 창을 3시간으로 좁혀 창 밖 B2B 레인이 통째로 죽었다. ' +
+      '느려지는 것이 아니라 다른 서비스가 멈춘다 — 그리고 에러는 하나도 안 난다.',
+  },
+  {
     name: '🪞 백필 판정에서 소개글 규칙이 사라진다(재분류가 낡은 글로 판정)',
     file: 'src/features/marketing/api/influencer-backfill-diff.ts',
     find: "  if (inc.description !== '' && (cur.description ?? null) !== inc.description) return true",
@@ -9116,6 +9220,28 @@ canvas {
     why:
       '재원이 아직 플랫폼 부담(promo_funding_source≠owner)인데 게이트가 빠지면 매장이 건 소개비를 ' +
       '유어딜이 대신 문다(재원 설계의 −14% 누수). 화면 플래그만으론 못 막는다 — API 직접 호출이 통한다.',
+  },
+  {
+    name: '🛑 꺼진 어필리에이트 적립이 다시 목록 API 로 새어 화면에 뜬다',
+    file: 'src/features/products/repositories/ProductRepository.ts',
+    find: 'return capGalleries(gateAffiliateRows(result.results || [], affiliateOn));',
+    replace: 'return capGalleries(result.results || []);',
+    test: 'src/tests/unit/affiliate-program-gate-2026-09-06.test.ts',
+    why:
+      '프로그램은 2026-08-22 에 꺼졌는데 유어샵 담기 화면이 "쓰면 2%" 를 약속하던 자리다. ' +
+      '지급은 0 인데 화면만 약속하므로 사용자가 담고 팔아도 아무 일이 안 일어난다 — 에러도 안 난다.',
+  },
+  {
+    name: '🛑 스위치를 못 읽을 때 적립을 약속하는 쪽으로 열린다 (fail-open 회귀)',
+    file: 'src/worker/utils/affiliate-program.ts',
+    find: `  } catch {
+    on = false                    // 못 읽으면 약속하지 않는다`,
+    replace: `  } catch {
+    on = true                     // (주입) 못 읽으면 약속한다`,
+    test: 'src/tests/unit/affiliate-program-gate-2026-09-06.test.ts',
+    why:
+      '설정 조회 실패는 "모름"이지 "켜짐"이 아니다. 이 자리가 열리면 D1 이 잠깐 흔들릴 때마다 ' +
+      '꺼진 프로그램의 적립이 화면에 떴다 사라진다 — 재현도 안 되고 로그도 조용하다.',
   },
   {
     name: '💸 핀 관리가 적립 분수를 다시 100 으로 나눈다 (₩5,000 → ₩50)',

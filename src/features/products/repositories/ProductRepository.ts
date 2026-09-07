@@ -8,6 +8,7 @@ import type { Product, ProductFilter, ProductCreateInput, ProductUpdateInput } f
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories';
 import { capRowGalleries } from '@/features/group-buy/api/card-gallery'
 import { buildSearchClause } from './search-query'
+import { isAffiliateProgramEnabled, gateAffiliateRows } from '../../../worker/utils/affiliate-program';
 
 /**
  * 🖼️ 목록 응답의 갤러리를 **커버 제외 3장**으로 자른다 (2026-08-27).
@@ -222,7 +223,11 @@ export class ProductRepository {
       const result = await this.db.prepare(query).bind(...params).all<Product>();
       if (_dominantColorCol === null) _dominantColorCol = true; // 1차 성공 → 컬럼 존재 확정(이후 항상 포함)
       if (_referralCommissionCol === null) _referralCommissionCol = true;
-      return capGalleries(result.results || []);
+      // 🛑 2026-09-06: 어필리에이트 프로그램이 꺼져 있으면 적립 신호를 눕힌다 — 유어샵 담기 화면이
+      //   꺼진 프로그램의 "쓰면 N%" 를 약속하던 것(2026-09-05 단위 버그 수정이 드러낸 자리).
+      //   메모(60s) 라 워밍된 isolate 에서 D1 읽기 0.
+      const affiliateOn = await isAffiliateProgramEnabled(this.db);
+      return capGalleries(gateAffiliateRows(result.results || [], affiliateOn));
     } catch (err) {
       // 🏭 2026-06-05 (근본수정 — 정렬 무시 + 느린 로딩):
       //   1) dominant_color 미적용 DB → 모듈 캐시(_dominantColorCol=false) 후 1회 재귀.
