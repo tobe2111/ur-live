@@ -1206,6 +1206,27 @@ const MUTATIONS = [
       '매번 ALTER 를 두 번 시도했다. 09-02 에 이 계정은 D1 일일 읽기 한도로 소비자 API 가 통째로 500 이었다.',
   },
   {
+    name: '🪦 은퇴한 cron 식이 기대 목록으로 되돌아간다 — 헬스체크 영구 빨강',
+    file: 'src/worker/utils/cron-expected.ts',
+    find: "  '2,17,32,47 * * * *',\n]",
+    replace: "  '2,17,32,47 * * * *',\n  '0 20 * * 0',\n]",
+    test: 'src/tests/unit/cron-expected.test.ts',
+    why:
+      '`0 20 * * 0` 은 2026-08-25 에 트리거에서 빠졌는데 기대 목록에 남아, `findNeverFired` 가 매번 잡아내 ' +
+      '`/api/_healthcheck/cron` 이 13일간 503 이었다. 영원한 빨간불 하나가 경보 채널 전체를 침묵시킨다 — ' +
+      '진짜 cron 이 죽어도 같은 503 이라 구분이 안 된다(#1056 에서 같은 방식으로 21일을 잃었다).',
+  },
+  {
+    name: '🪦 은퇴한 cron 식의 디스패처 분기가 사라진다 — 잔존 트리거가 unmatched',
+    file: 'src/worker/scheduled.ts',
+    find: "cron === '2,17,32,47 * * * *' || cron === '0 20 * * 0' || cron === '0 20 * * SUN' || cron === '0 20 * * 7'",
+    replace: "cron === '2,17,32,47 * * * *'",
+    test: 'src/tests/unit/cron-expected.test.ts',
+    why:
+      '은퇴는 "기대하지 않는다"이지 "받지 않는다"가 아니다. 분기를 지우면 대시보드에 남은 옛 주간 트리거의 ' +
+      '회차가 `cron-unmatched` 로 조용히 버려진다 — 아무 일도 안 일어나는데 에러도 안 난다.',
+  },
+  {
     name: '📉 키워드 수율 재계산 6h 게이트가 헛돈다(회차마다 전수 GROUP BY)',
     file: 'src/features/marketing/api/influencer-keyword-yield.ts',
     find: '  if (row?.value === bucket) return { skipped: \'bucket\', bucket }\n',
