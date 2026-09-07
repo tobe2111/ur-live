@@ -75,6 +75,44 @@
 3. **체크박스의 `text-[#111]` 은 건드리지 않았다** — 그건 체크 색(장식)이지 읽는 글자가 아니다.
    치환에서 `accent-[#111]` 이 있는 줄을 건너뛰어 구분했다.
 
+## 🩸 배포 판정에서 내가 세 번 헛돌았다 — 라이브 확인의 올바른 방법
+
+머지·배포 뒤 "라이브에 반영됐나"를 청크를 받아 grep 하는 방식으로 확인하려다 **연속으로 세 번** 틀렸다.
+같은 함정을 다음 세션이 밟지 않게 적는다.
+
+1. **빈 파일을 "통과"로 읽을 뻔했다.** 청크를 받아 옛 문자열이 없길래 "제거됨 ✅" 이라 판정했는데,
+   받아온 것이 **9바이트짜리 `Not Found`** 였다. **없는 파일에서 문자열이 없는 것은 아무것도 증명하지 않는다.**
+   ⇒ 원격 파일을 grep 하기 전에 **크기와 HTTP 상태를 먼저 본다.**
+2. **정규식이 청크 이름을 잘랐다.** `RegisterPage-[A-Za-z0-9_-]+\.js` 가 `SupplierRegisterPage-XXXX.js`
+   **안에서도** 매칭돼 앞을 버린 가짜 이름을 만들었고, 그 404 가 위의 9바이트였다.
+   ⇒ 이름 추출엔 앞 경계를 붙인다: `[A-Za-z0-9_]*RegisterPage-...`.
+3. **청크 추적 자체가 틀린 접근이었다.** 소비자 `RegisterPage` 청크는 `app-routes` 가 나열하는 218개
+   목록에 **아예 없다**(모든 lazy 청크가 거기 있지는 않다). 앞서 `AccountControlsSection` 을 찾을 때도
+   같은 벽에 부딪혔었다.
+
+### ✅ 올바른 방법 — 라이브 페이지를 브라우저로 직접 연다
+
+청크 고고학을 할 이유가 없다. 확인하려는 것이 "그 화면이 실제로 어떻게 보이나" 이므로 그대로 재면 된다.
+
+```js
+const b = await chromium.launch({
+  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+  // 🔑 이 환경 프록시는 TLS 1.3 터널을 못 연다(#1239 실측) — 없으면 ERR_CONNECTION_RESET
+  args: ['--ssl-version-max=tls1.2', '--ignore-certificate-errors'],
+})
+const ctx = await b.newContext({ colorScheme: 'dark', ignoreHTTPSErrors: true, /* 브라우저 UA 필수 */ })
+await ctx.addInitScript(() => localStorage.setItem('ur_theme_mode_v1', 'dark'))
+```
+
+실측 결과(2026-09-07 배포 후 `https://urdeal.kr/register` 다크):
+```
+측정 텍스트 23개 · 대비 3:1 미만 0건
+입력 글자  1.00:1 → 16.40:1     라벨 "이메일"·"비밀번호"  2.47:1 → 5.04:1
+```
+
+⚠️ 로케일 JSON 만 바뀐 변경(예: 앱 정보 줄글)은 `/locales/ko/translation.json` 을 받아 키 유무로 보는
+것이 훨씬 싸고 정확하다. **소스가 바뀐 변경은 브라우저로 연다.** 둘을 섞지 말 것.
+
 ## 다음 세션의 첫 액션
 
 - 남은 미커버 소비자 라우트 **67개**. 다음 순위는 `/my-gifticons`·`/my-returns`·`/orders`·`/mypage`
