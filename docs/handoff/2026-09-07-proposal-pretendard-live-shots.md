@@ -88,7 +88,8 @@
 | PDF | 9장 · 960x540pt (정확히 16:9) |
 | 인쇄 미디어 폰트 | Pretendard 유지 |
 | `tsc --noEmit` | 0 |
-| `admin-proposals-asset.test.ts` | 5 pass |
+| `admin-proposals-asset.test.ts` | **7 pass** (R4 되돌려-검증 red 확인) |
+| PDF 4·6·7 페이지 사진 | 렌더해서 눈으로 확인 |
 | robots.txt (레포·라이브 양쪽) | `Disallow: /static/proposals/` 확인 |
 
 ⚠️ 표지의 +180px 은 배경 광원 그라디언트의 **의도된 번짐**이다(`overflow:hidden` 이 자른다).
@@ -96,6 +97,50 @@
 
 ⚠️ **`*.pages.dev` 는 이 환경 프록시가 정책으로 막는다**(`connect_rejected ... 403 to CONNECT`).
 브랜치 미리보기로는 검증할 수 없고, 머지 후 `urdeal.kr` 로만 확인 가능하다.
+
+## 🔴 이번에 틀렸던 판단 — 검증 방법이 결함을 가려 줬다
+
+대표 신고: *"4페이지는 왜 비어져있어? 화면 사진들이?"* → *"6,7 페이지도 마찬가지야."*
+PDF 로 저장하면 그 세 페이지의 폰 프레임이 **빈 흰 상자**였다.
+
+**원인**: 인라인 base64 이미지에 붙어 있던 **`loading="lazy"`**.
+인쇄는 스크롤하지 않으므로 첫 뷰포트 아래 이미지는 로드되지 않은 채 찍힌다.
+base64 라 파일 안에 이미 들어 있는데도 그렇다 — **그 속성의 이득은 0 이고 손해만 있었다.**
+
+**내 검증이 못 잡은 이유가 더 중요하다.** 확인용 렌더 스크립트가 슬라이드마다
+`locator.screenshot()` 을 쓰는데, 그 호출이 **요소를 화면 안으로 스크롤해서 매번 lazy 를
+발동시킨다.** 그리고 PDF 는 장수(9)와 용지 크기(960x540pt)만 재고 **내용은 안 봤다.**
+화면으로 보면 멀쩡하고 인쇄하면 비는 결함을, 검증 도구가 정확히 가려 줬다.
+
+> 🧭 교훈 두 개. ① **인쇄는 스크롤하지 않는다** — 인쇄를 전제한 문서에 지연 로딩을 쓰지 말 것
+> (`decoding="sync"` + 인쇄 전 `Promise.all([...document.images].map(i => i.decode()))`).
+> ② **관측 행위가 관측 대상을 바꾼다.** `locator.screenshot()` 은 스크롤을, `page.pdf()` 는
+> 레이아웃을 바꾼다. "렌더해서 봤다"가 "인쇄해서 봤다"를 대신하지 못한다.
+> **장수와 크기는 내용이 아니다** — 산출물은 열어서 봐야 한다.
+
+**가드 R4** (`src/tests/unit/admin-proposals-asset.test.ts`): 제안서 HTML 에 `loading="lazy"` 0.
+짝으로 **"인라인 캡처가 0장이면 통과가 아니라 실패"** 검사를 붙였다 — 캡처가 사라지면
+lazy 검사는 헛돌기 때문이다(이 레포가 반복해 당한 "실패할 수 없는 가드" 클래스).
+되돌려-검증: lazy 하나 주입 → 1 failed / 6 passed, 복원 → 7 passed.
+
+## ⚠️ 오기 정정 — Chromium 은 TLS 터널을 연다
+
+PR #1239 본문과 `scripts/capture-proposal-shots.mjs` 헤더에 *"이 환경에서 Chromium 은 스스로
+TLS 터널을 못 연다"* 고 적혀 있었다. **틀렸다.** 막고 있던 것은 프록시가 아니라 **TLS 1.3** 이고,
+아래 셋을 주면 `urdeal.kr` 에 그대로 붙는다(`/api/version` 200 실측):
+
+```
+--proxy-server=$HTTPS_PROXY
+--ssl-version-max=tls1.2
+--disable-features=EncryptedClientHello,PostQuantumKyber
+```
+
+그래서 `ctx.route('**')` 로 Node fetch 가 대신 받아 채우는 우회는 **유일한 길이 아니다.**
+스크립트는 이미 검증된 라우팅 방식을 유지하되, 헤더에 이 사실을 적어 뒀다.
+`ERR_CONNECTION_RESET` 을 보고 "사이트가 막혔다"로 오진하지 말 것.
+
+지도 캡처의 두 함정도 같이 남긴다: **위치 권한(`geolocation`)을 안 주면 전국 축척으로 핀 없이**
+찍히고, 타일이 다 오기 전에 찍으면 **흰 구멍**이 남는다(`settle: 18000`).
 
 ## Notion 미기록 (의도적)
 
