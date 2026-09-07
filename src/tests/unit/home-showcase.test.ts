@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
+import { readRepairLane } from '../helpers/source-text'
 import {
   BANNER_SLOTS, NEW_BANNER_SLOT, parseBannerSlot, isBannerSlot,
   SECTION_SOURCES, DEFAULT_SECTION_SOURCE, normalizeSectionSource,
@@ -358,7 +359,8 @@ describe('⑦ 어드민 도달성 — 만들 수 있어야 존재한다', () => 
   })
 
   it('새 컬럼이 정비 레인(repair-schema)에도 등재돼 있다', () => {
-    const repair = code('src/worker/routes/repair-schema.routes.ts')
+    // 파일이 아니라 *레인*을 읽는다 — 표 정의가 `repair-schema/aux-tables.ts` 로 갈렸다.
+    const repair = readRepairLane()
     for (const name of [
       'banners.banner_slot', 'banners.video_url',
       'homepage_sections.source', 'homepage_sections.limit_count', 'homepage_sections.more_href',
