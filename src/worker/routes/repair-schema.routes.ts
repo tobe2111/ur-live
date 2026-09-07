@@ -90,6 +90,19 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
 
   // 부수적: 자주 사용되는 보조 테이블 보장 (static code audit 확장)
   const tables: Array<{ name: string; sql: string }> = [
+    // 🎬 2026-09-07 유어쇼츠 — 마이그레이션 러너가 CI 에서 못 도니 여기서 보장한다.
+    { name: 'home_shorts', sql: `CREATE TABLE IF NOT EXISTS home_shorts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      video_id TEXT NOT NULL UNIQUE,
+      title TEXT,
+      channel TEXT,
+      thumb_url TEXT,
+      product_id INTEGER,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      source TEXT NOT NULL DEFAULT 'manual',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )` },
     { name: 'auth_refresh_tokens', sql: `CREATE TABLE IF NOT EXISTS auth_refresh_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_type TEXT NOT NULL,

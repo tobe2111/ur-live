@@ -88,6 +88,46 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎬 미연결 영상이 홈으로 샌다 (LEFT JOIN)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '    JOIN products p ON p.id = s.product_id',
+    replace: '    LEFT JOIN products p ON p.id = s.product_id',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '이용권이 안 붙은 영상이 홈에 뜨면 누른 사람이 살 수가 없다 — 그 순간 유어쇼츠는 매출 장치가 ' +
+      '아니라 유튜브로 나가는 문이 된다. 에러가 안 나고 "영상이 많아졌네"로만 보인다.',
+  },
+  {
+    name: '🎬 재생기가 여러 개 살아남는다 (iframe key 제거)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '          key={cur.video_id}',
+    replace: '          data-key={cur.video_id}',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      'key 가 없으면 React 가 같은 iframe 을 재사용하지 않고 넘길 때마다 새 재생기가 쌓인다. ' +
+      '폰에서 목록이 길어질수록 조용히 느려지다 멈춘다 — 에러는 끝까지 안 난다.',
+  },
+  {
+    name: '🎬 홈 레일이 마운트하자마자 데이터를 부른다',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '    if (!near) return\n    let alive = true',
+    replace: '    let alive = true',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '홈을 여는 모든 사람이 요청을 하나 더 내게 된다. 대부분은 레일까지 스크롤하지 않으므로 ' +
+      '그 요청은 통째로 낭비다 — 화면은 똑같아 보여서 아무도 못 알아챈다.',
+  },
+  {
+    name: '🎬 쇼츠가 아닌 영상도 통과시킨다 (길이 확인 생략)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '    if (sec > URSHORTS_MAX_DURATION_SEC) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '가로 10분짜리가 9:16 카드에 들어가면 위아래 검은 띠가 생기고 구매 바를 띄울 화면도 아니다. ' +
+      '깨지는 게 아니라 그냥 못생겨지므로 배포까지 간다.',
+  },
+  {
     name: '🏷️ 할인율이 다시 브랜드 블루로 (행동 색과 가격 색이 섞인다)',
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
     find: "font-extrabold text-sale\">{discount}%",

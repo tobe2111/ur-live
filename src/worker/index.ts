@@ -267,6 +267,8 @@ import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
 import { sellerTiersRoutes } from '../features/seller-tiers/api/seller-tiers.routes';
 import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
 import { sectionsRoutes } from '../features/sections/api/sections.routes';
+// 🎬 2026-09-07 유어쇼츠 — 홈 레일 + /videos 뷰어. 공개는 이용권이 붙은 영상만 나간다.
+import { urshortsRoutes, adminUrshortsRoutes } from '../features/urshorts/api/urshorts.routes';
 import { youtubeGrowthRoutes, youtubeGrowthAdminRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
 import { dashboardNotificationsRoutes } from '../features/notifications/api/dashboard-notifications.routes';
 import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
@@ -1776,6 +1778,7 @@ adminApp.route('/', adminAbuseRoutes);
 // 🛡️ 2026-04-22 배치 156 (TD-006 부분): admin-review-generator 분리
 adminApp.route('/', adminReviewGeneratorRoutes);
 adminApp.route('/banners', adminBannersRoutes);
+adminApp.route('/urshorts', adminUrshortsRoutes);
 // Feature flags / kill-switch (graceful degradation for traffic spikes)
 adminApp.route('/flags', adminFlagsRoutes);
 adminApp.route('/cafe24', cafe24Routes);
@@ -2006,6 +2009,7 @@ app.route('/api/inventory', inventoryRoutes);
 
 // ── 홈페이지 섹션 관리 ──
 app.route('/api/sections', sectionsRoutes);
+app.route('/api/urshorts', urshortsRoutes);
 
 // ── YouTube 구독자 늘리기 ──
 app.route('/api/youtube-growth', youtubeGrowthRoutes);
