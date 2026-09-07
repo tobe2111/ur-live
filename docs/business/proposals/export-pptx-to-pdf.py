@@ -31,9 +31,11 @@ def walk(shape):
         for i in range(shape.getCount()): walk(shape.getByIndex(i))
     elif st == 'com.sun.star.drawing.TableShape':
         m = shape.getPropertyValue('Model')
-        for r in range(m.getRowCount()):
-            for c in range(m.getColumnCount()):
-                fix_text(m.getCellByPosition(c, r))
+        rows, cols = m.getRows().getCount(), m.getColumns().getCount()
+        for r in range(rows):
+            for c in range(cols):
+                try: fix_text(m.getCellByPosition(c, r))
+                except Exception: pass
     else:
         fix_text(shape)
 pages = doc.getDrawPages()
