@@ -13,10 +13,12 @@ import * as Fi from 'react-icons/fi';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { renderPhone } from './phone-frame.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = process.argv[2] || path.join(__dirname, 'urdeal-agency-proposal.pptx');
 const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
+const PHONE_STYLE = process.env.PHONE_STYLE || 'minimal'; // phone-frame.mjs STYLES: minimal | island | card | light
 
 // ── 브랜드 토큰 (src/index.css SSOT) ──
 const C = {
@@ -37,14 +39,14 @@ async function wordmark(fill) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 344 100" width="1376" height="400"><text x="0" y="78" font-family="Poppins, Pretendard, Arial, sans-serif" font-weight="800" font-size="96" letter-spacing="-3.4" fill="#${fill}">urdeal</text><circle cx="322" cy="70" r="8.2" fill="#${C.brand}"/></svg>`;
   return 'image/png;base64,' + (await sharp(Buffer.from(svg)).png().toBuffer()).toString('base64');
 }
-// 라이브 캡처 (390×844 @2x → 폰 프레임용). 없으면 null 을 돌려주고 호출부가 빈 슬롯을 그린다.
+// 라이브 캡처(390×844 비율)를 폰 프레임(둥근 화면 + 베젤 + 그림자)이 합성된 PNG 로 미리 굽는다.
+// pptxgenjs 는 이미지를 둥글게 못 자르므로(rounding:true 는 원형 크롭) 프레임을 여기서 만든다. 없으면 null.
 async function shot(name) {
   for (const ext of ['jpg', 'png']) {
     const p = path.join(SHOTS_DIR, `${name}.${ext}`);
     if (fs.existsSync(p)) {
-      const buf = await sharp(p).resize({ width: 780 }).jpeg({ quality: 82 }).toBuffer();
-      const meta = await sharp(buf).metadata();
-      return { data: 'image/jpeg;base64,' + buf.toString('base64'), ratio: meta.height / meta.width };
+      const r = await renderPhone(p, PHONE_STYLE);
+      return { data: 'image/png;base64,' + r.buffer.toString('base64'), width: r.width, height: r.height, pad: r.pad, frameW: r.frameW, frameH: r.frameH };
     }
   }
   return null;
@@ -109,27 +111,20 @@ async function shot(name) {
   function label(slide, text, x, y, w, { dark = false, color } = {}) {
     T(slide, text, { x, y, w, h: 0.26, fontSize: 10, bold: true, color: color || (dark ? C.darkMuted : C.gray), charSpacing: 1.2 });
   }
-  /** 폰 프레임. h 기준으로 폭을 정한다(390:844). 캡처가 없으면 빈 슬롯. 반환값은 프레임 폭. */
+  /** 폰 프레임. (x, y) 는 보이는 프레임의 좌상단, h 는 프레임 높이. 그림자는 PNG 에 구워져 있어 프레임 밖으로 비어져 나온다.
+   *  캡처가 없으면 빈 슬롯. 반환값은 보이는 프레임 폭. */
   function phone(slide, key, x, y, h, { caption, dark = false } = {}) {
-    const bezel = 0.1, r = 0.3;
-    const innerH = h - bezel * 2;
-    const innerW = innerH * (390 / 844);
-    const w = innerW + bezel * 2;
-    slide.addShape(pres.shapes.ROUNDED_RECTANGLE, {
-      x, y, w, h, rectRadius: r, fill: { color: C.ink }, line: { color: C.ink, width: 0 },
-      shadow: { type: 'outer', color: '0A0C10', blur: 14, offset: 4, angle: 90, opacity: dark ? 0.5 : 0.22 },
-    });
     const s = shots[key];
+    const frameRatio = s ? s.frameW / s.frameH : (780 + 44) / (1688 + 44);
+    const w = h * frameRatio;
     if (s) {
-      // 캡처는 세로가 더 길 수 있으니 위에서부터 폰 비율만큼만 보여 준다 (sizing crop, 비율은 0~1)
-      // rounding:true 는 원형 크롭이라 쓰지 않는다. 바깥 둥근 모서리는 베젤이 맡는다.
-      // sizing 값은 인치다(비율 아님). cover 로 프레임을 꽉 채우고 넘치는 아래쪽은 잘린다.
-      slide.addImage({ data: s.data, x: x + bezel, y: y + bezel, w: innerW, h: innerH, sizing: { type: 'cover', w: innerW, h: innerH } });
+      const scale = h / s.frameH; // inch per px
+      slide.addImage({ data: s.data, x: x - s.pad * scale, y: y - s.pad * scale, w: s.width * scale, h: s.height * scale });
     } else {
-      slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: x + bezel, y: y + bezel, w: innerW, h: innerH, rectRadius: r - bezel, fill: { color: C.darkSurface }, line: { color: C.darkSurface, width: 0 } });
-      T(slide, '라이브 화면\n캡처 자리', { x: x + bezel, y: y + innerH / 2 - 0.3, w: innerW, h: 0.6, fontSize: 10, color: C.darkMuted, align: 'center', valign: 'middle' });
+      slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, rectRadius: 0.3, fill: { color: C.darkSurface }, line: { color: C.darkSurface, width: 0 } });
+      T(slide, '라이브 화면\n캡처 자리', { x, y: y + h / 2 - 0.3, w, h: 0.6, fontSize: 10, color: C.darkMuted, align: 'center', valign: 'middle' });
     }
-    if (caption) T(slide, caption, { x: x - 0.4, y: y + h + 0.12, w: w + 0.8, h: 0.3, fontSize: 10.5, color: dark ? C.darkMuted : C.inkSoft, align: 'center' });
+    if (caption) T(slide, caption, { x: x - 0.4, y: y + h + 0.16, w: w + 0.8, h: 0.3, fontSize: 10.5, color: dark ? C.darkMuted : C.inkSoft, align: 'center' });
     return w;
   }
   function kv(slide, rows, x, y, w, { rowH = 0.4 } = {}) {
@@ -206,8 +201,8 @@ async function shot(name) {
       y += 0.92;
     });
     T(s, 'urdeal.kr 2026년 9월 7일 기준. 화면은 같은 날 모바일에서 그대로 캡처했습니다.', { x: M, y: 6.55, w: 6, h: 0.3, fontSize: 9.5, color: C.gray });
-    phone(s, 'detail', 7.75, 1.05, 5.5, { caption: '이용권 상세' });
-    phone(s, 'use', 10.4, 1.05, 5.5, { caption: '사용 방법과 환불 안내' });
+    const pw3 = phone(s, 'detail', 7.6, 1.1, 4.95, { caption: '이용권 상세' });
+    phone(s, 'use', 7.6 + pw3 + 0.3, 1.1, 4.95, { caption: '사용 방법과 환불 안내' });
     s.addNotes('338 은 2026-09-07 공개 API 실측(활성 이용권). 캡처는 scripts/capture-proposal-shots.mjs (detail/use).');
   }
 
@@ -330,7 +325,7 @@ async function shot(name) {
     });
     card(s, M, 6.35, 9.0, 0.55, { fill: C.tint });
     T(s, '먼저 갈 곳: 배달앱이나 예약앱에 광고비를 쓰고 있는 매장. "그 돈을 팔린 뒤에만 내는 걸로 바꾸자"가 통합니다.', { x: M + 0.25, y: 6.35, w: 8.5, h: 0.55, fontSize: 10.5, color: C.ink, valign: 'middle' });
-    phone(s, 'shop', 10.35, 1.05, 5.5, { caption: '올라간 매장 페이지 (유어샵)' });
+    phone(s, 'shop', 10.2, 1.1, 5.0, { caption: '올라간 매장 페이지 (유어샵)' });
     s.addNotes('등록 필수 필드는 seller-stores.routes.ts. 오른쪽은 /u/jiwon1228 라이브 캡처(대표 계정).');
   }
 
@@ -563,7 +558,7 @@ async function shot(name) {
       ['use', '사용', '매장에서 QR을 보여 주거나 매장 PIN을 입력합니다. 매장은 폰 한 대로 확인합니다.'],
       ['shop', '다시 찾기', '매장 페이지(유어샵)가 남습니다. 안 쓴 이용권은 100% 자동 환불이라 응대가 매장이나 대행사로 오지 않습니다.'],
     ];
-    const ph = 3.4, pw = (ph - 0.2) * (390 / 844) + 0.2;
+    const ph = 3.4, pw = ph * ((780 + 44) / (1688 + 44));
     const colW = (W - 2 * M) / 4;
     steps.forEach(([key, h, p], k) => {
       const cx0 = M + k * colW;
