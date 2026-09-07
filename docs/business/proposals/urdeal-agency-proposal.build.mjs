@@ -1,6 +1,8 @@
-// 유어딜 대행사 제휴 제안서 (.pptx) 생성기
+// 유어딜 대행사 제휴 제안서 (.pptx) 생성기 — "매장을 모집하게 만드는" 실행서 판 (2026-09-07 v2)
 // 사실 출처: docs/business/urdeal-business-plan.md C-2 · docs/design/store-operator-model.md §7 ·
-//            docs/design/urdeal-platform-model.md §2·§5 · 라이브 실측 2026-09-07
+//            seller-stores.routes.ts(국세청 진위확인·카카오맵·채널) · auto-settlement.ts(사용분 주간 정산) ·
+//            라이브 실측 2026-09-07 (활성 이용권 338 · 인플루언서 DB 198,704)
+// 재생성: npm i pptxgenjs sharp react react-dom react-icons && node urdeal-agency-proposal.build.mjs out.pptx
 import pptxgen from 'pptxgenjs';
 import sharp from 'sharp';
 import React from 'react';
@@ -10,39 +12,26 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 const OUT = process.argv[2] || path.join(__dirname, 'urdeal-agency-proposal.pptx');
 
-// ── 브랜드 토큰 (src/index.css SSOT, 2026-09-02 코레일톡 시안) ──
+// ── 브랜드 토큰 (src/index.css SSOT) ──
 const C = {
-  brand: '1C69EF',
-  brandSoft: 'E4EDFD',
-  bg: 'F8F7FC',
-  surface: 'FFFFFF',
-  ink: '16181C',
-  inkSoft: '6E6B68',
-  rule: 'E6E2DE',
-  dark: '11141C',
-  darkSurface: '1D1F29',
-  darkText: 'F8F7FC',
-  darkMuted: 'B4B0AC',
-  gray: '8A8580',
+  brand: '1C69EF', brandSoft: 'E4EDFD', bg: 'F8F7FC', surface: 'FFFFFF', ink: '16181C', inkSoft: '6E6B68',
+  rule: 'E6E2DE', dark: '11141C', darkSurface: '1D1F29', darkText: 'F8F7FC', darkMuted: 'B4B0AC', gray: '8A8580',
+  tint: 'EEF3FE',
 };
 const FONT = 'Malgun Gothic';
 const W = 13.333, H = 7.5, M = 0.65;
 
-// ── 아이콘 → PNG ──
 async function icon(name, color, px = 256) {
   const Comp = Fi[name];
   if (!Comp) throw new Error('icon ' + name);
   const svg = renderToStaticMarkup(React.createElement(Comp, { color: '#' + color, size: px, strokeWidth: 1.8 }));
-  const buf = await sharp(Buffer.from(svg)).png().toBuffer();
-  return 'image/png;base64,' + buf.toString('base64');
+  return 'image/png;base64,' + (await sharp(Buffer.from(svg)).png().toBuffer()).toString('base64');
 }
 async function wordmark(fill) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 344 100" width="1376" height="400"><text x="0" y="78" font-family="Poppins, Arial, Helvetica, sans-serif" font-weight="800" font-size="96" letter-spacing="-3.4" fill="#${fill}">urdeal</text><circle cx="322" cy="70" r="8.2" fill="#${C.brand}"/></svg>`;
-  const buf = await sharp(Buffer.from(svg)).png().toBuffer();
-  return 'image/png;base64,' + buf.toString('base64');
+  return 'image/png;base64,' + (await sharp(Buffer.from(svg)).png().toBuffer()).toString('base64');
 }
 
 (async () => {
@@ -54,18 +43,16 @@ async function wordmark(fill) {
   const wmDark = await wordmark(C.ink);
   const wmLight = await wordmark(C.darkText);
   const ic = {};
-  for (const [k, col] of [
-    ['FiPercent', C.brand], ['FiLayers', C.brand], ['FiUsers', C.brand], ['FiCreditCard', C.brand], ['FiLink', C.brand],
-    ['FiMapPin', C.brand], ['FiUserCheck', C.brand], ['FiSearch', C.brand], ['FiHandshake', C.brand], ['FiEye', C.brand],
-    ['FiBarChart2', C.brand], ['FiRefreshCcw', C.brand], ['FiLock', C.brand], ['FiFileText', C.brand], ['FiCheckCircle', C.brand],
-    ['FiSmartphone', C.brand], ['FiShield', C.brand], ['FiMail', C.darkText], ['FiGlobe', C.darkText], ['FiHash', C.darkText],
-  ]) {
-    ic[k] = await icon(k === 'FiHandshake' ? 'FiThumbsUp' : k, col);
-  }
+  const names = ['FiPercent', 'FiLayers', 'FiUsers', 'FiCreditCard', 'FiLink', 'FiMapPin', 'FiUserCheck', 'FiSearch', 'FiThumbsUp', 'FiEye',
+    'FiBarChart2', 'FiRefreshCcw', 'FiLock', 'FiFileText', 'FiCheckCircle', 'FiSmartphone', 'FiShield', 'FiClock', 'FiCamera', 'FiTag',
+    'FiMessageSquare', 'FiTrendingUp', 'FiXCircle', 'FiCheck', 'FiCalendar'];
+  for (const n of names) ic[n] = await icon(n, C.brand);
+  ic.FiMailW = await icon('FiMail', C.darkText);
+  ic.FiGlobeW = await icon('FiGlobe', C.darkText);
+  ic.FiFileTextW = await icon('FiFileText', C.darkText);
 
   let page = 0;
   const T = (slide, text, o) => slide.addText(text, Object.assign({ fontFace: FONT, isTextBox: true, margin: 0 }, o));
-
   function chrome(slide, { dark = false } = {}) {
     page += 1;
     slide.background = { color: dark ? C.dark : C.bg };
@@ -73,7 +60,7 @@ async function wordmark(fill) {
     T(slide, '유어딜 대행사 제휴 제안', { x: M, y: H - 0.55, w: 6, h: 0.25, fontSize: 9.5, color: dark ? C.darkMuted : C.gray });
     T(slide, String(page).padStart(2, '0'), { x: W - M - 0.8, y: H - 0.55, w: 0.8, h: 0.25, fontSize: 10, bold: true, color: dark ? C.darkText : C.ink, align: 'right' });
   }
-  function title(slide, text, { dark = false, y = 1.05, size = 30, w = W - 2 * M } = {}) {
+  function title(slide, text, { dark = false, y = 1.05, size = 28, w = W - 2 * M } = {}) {
     T(slide, text, { x: M, y, w, h: 1.0, fontSize: size, bold: true, color: dark ? C.darkText : C.ink, valign: 'top', lineSpacingMultiple: 1.15 });
   }
   function card(slide, x, y, w, h, { dark = false, fill } = {}) {
@@ -81,388 +68,509 @@ async function wordmark(fill) {
       x, y, w, h, rectRadius: 0.12,
       fill: { color: fill || (dark ? C.darkSurface : C.surface) },
       line: { color: fill || (dark ? C.darkSurface : C.surface), width: 0 },
-      shadow: dark ? undefined : { type: 'outer', color: '1A2C42', blur: 6, offset: 1.5, angle: 90, opacity: 0.08 },
+      shadow: dark || fill === C.ink || fill === C.darkSurface ? undefined : { type: 'outer', color: '1A2C42', blur: 6, offset: 1.5, angle: 90, opacity: 0.08 },
     });
   }
   function iconCircle(slide, name, x, y, d = 0.5, { fill = C.brandSoft } = {}) {
     slide.addShape(pres.shapes.OVAL, { x, y, w: d, h: d, fill: { color: fill }, line: { color: fill, width: 0 } });
     slide.addImage({ data: ic[name], x: x + d * 0.25, y: y + d * 0.25, w: d * 0.5, h: d * 0.5 });
   }
+  function numBadge(slide, n, x, y, d = 0.42, { filled = true } = {}) {
+    slide.addShape(pres.shapes.OVAL, { x, y, w: d, h: d, fill: { color: filled ? C.brand : C.surface }, line: { color: C.brand, width: 1.5 } });
+    T(slide, String(n), { x, y, w: d, h: d, fontSize: 12, bold: true, color: filled ? 'FFFFFF' : C.brand, align: 'center', valign: 'middle' });
+  }
+  function hr(slide, x, y, w, { dark = false } = {}) {
+    slide.addShape(pres.shapes.LINE, { x, y, w, h: 0, line: { color: dark ? '3A3D44' : C.rule, width: 0.75 } });
+  }
 
-  // ───────────────────────── 01 표지 ─────────────────────────
+  // ───────── 01 표지 ─────────
   {
     const s = pres.addSlide();
     chrome(s, { dark: true });
     s.addShape(pres.shapes.RECTANGLE, { x: 7.9, y: 0, w: W - 7.9, h: H, fill: { color: C.darkSurface }, line: { color: C.darkSurface, width: 0 } });
     s.addImage({ data: wmLight, x: M, y: 0.42, w: 1.03, h: 0.3 });
-    T(s, '대행사 제휴 제안', { x: M, y: 1.75, w: 6.5, h: 0.3, fontSize: 12, bold: true, color: C.brand, charSpacing: 2 });
+    T(s, '대행사 제휴 제안', { x: M, y: 1.65, w: 6.5, h: 0.3, fontSize: 12, bold: true, color: C.brand, charSpacing: 2 });
     s.addText([
-      { text: '매장을 모아 운영하고,', options: { breakLine: true } },
-      { text: '매장에게서 받으세요.', options: { color: C.brand } },
-    ], { x: M, y: 2.15, w: 6.9, h: 2.0, fontFace: FONT, fontSize: 40, bold: true, color: C.darkText, isTextBox: true, margin: 0, valign: 'top', lineSpacingMultiple: 1.18 });
-    T(s, '유어딜은 식당, 카페, 미용, 숙박 이용권을 온라인 할인가로 파는 로컬 커머스입니다.\n대행사가 데려와 운영하는 매장에서 유어딜은 5%만 뗍니다. 나머지 95%는 매장 몫이고, 대행사 보수는 그 안에서 매장과 직접 정합니다.', {
-      x: M, y: 4.35, w: 6.6, h: 1.4, fontSize: 13.5, color: C.darkMuted, lineSpacingMultiple: 1.45, valign: 'top',
+      { text: '동네 매장을 데려오세요.', options: { breakLine: true } },
+      { text: '매장 한 곳당 월 12만원이', options: { color: C.brand, breakLine: true } },
+      { text: '대행사에게 남는 구조입니다.', options: { color: C.brand } },
+    ], { x: M, y: 2.05, w: 6.9, h: 2.6, fontFace: FONT, fontSize: 36, bold: true, color: C.darkText, isTextBox: true, margin: 0, valign: 'top', lineSpacingMultiple: 1.18 });
+    T(s, '이용권 평균 2만원, 매장당 월 60건, 대행사 보수 매출의 10%를 가정한 값입니다. 유어딜은 매장에서 5%만 떼고, 대행사 보수는 매장 몫 95% 안에서 매장과 직접 정합니다. 이 문서는 그 매장을 어떻게 고르고, 10분 안에 어떻게 올리고, 사장님께 뭐라고 말하는지까지 적었습니다.', {
+      x: M, y: 4.75, w: 6.7, h: 1.5, fontSize: 12.5, color: C.darkMuted, lineSpacingMultiple: 1.45, valign: 'top',
     });
     T(s, '리스터코퍼레이션  |  2026년 9월', { x: M, y: H - 0.95, w: 5, h: 0.3, fontSize: 10.5, color: C.darkMuted });
 
     const rows = [
-      ['대행사가 하는 일', '매장을 데려오고, 대신 운영한다'],
-      ['매장이 하는 일', '딜과 소개비를 정한다'],
-      ['유어딜이 하는 일', '결제, 정산, QR 확인, 세금'],
+      ['대행사가 하는 일', '매장을 찾아 올리고, 이용권을 운영한다'],
+      ['매장이 내는 것', '팔린 금액의 5%(유어딜) + 대행사와 정한 보수'],
+      ['유어딜이 하는 일', '결제, 발급, QR 확인, 정산, 세금, 손님 유입'],
     ];
     let y = 1.9;
     rows.forEach(([k, v], i) => {
-      s.addShape(pres.shapes.RECTANGLE, { x: 8.6, y: y + 0.05, w: 0.04, h: 0.82, fill: { color: i === 0 ? C.brand : '3A3D44' }, line: { color: i === 0 ? C.brand : '3A3D44', width: 0 } });
+      s.addShape(pres.shapes.RECTANGLE, { x: 8.6, y: y + 0.05, w: 0.04, h: 0.95, fill: { color: i === 0 ? C.brand : '3A3D44' }, line: { color: i === 0 ? C.brand : '3A3D44', width: 0 } });
       T(s, k, { x: 8.85, y, w: 3.9, h: 0.3, fontSize: 10.5, color: C.darkMuted, charSpacing: 1 });
-      T(s, v, { x: 8.85, y: y + 0.34, w: 4.1, h: 0.55, fontSize: 19, bold: true, color: C.darkText, valign: 'top' });
-      y += 1.25;
+      T(s, v, { x: 8.85, y: y + 0.34, w: 4.2, h: 0.75, fontSize: 17, bold: true, color: C.darkText, valign: 'top', lineSpacingMultiple: 1.25 });
+      y += 1.35;
     });
-    T(s, '재고도, 택배도, 반품 응대도 이 구조에 없습니다.\n이용권은 매장에서 쓰는 권리라, 물건이 오가지 않습니다.', { x: 8.85, y: 5.75, w: 4.0, h: 0.9, fontSize: 12, color: C.darkMuted, lineSpacingMultiple: 1.45 });
-    s.addNotes('표지. 핵심 메시지 하나: 유어딜은 대행사에게 지급하지 않고, 중개 매장에서 5%만 뗀다. 대행사 보수는 매장 몫 95% 안에서 매장과 직접 정한다.');
+    T(s, '대행사가 유어딜에 내는 돈은 없습니다.\n가입비도, 월 이용료도, 매장당 등록비도 없습니다.', { x: 8.85, y: 5.95, w: 4.1, h: 0.8, fontSize: 12, color: C.darkMuted, lineSpacingMultiple: 1.45 });
+    s.addNotes('표지. 첫 문장에 숫자를 건다. 가정은 본문 5장에 그대로 공개한다.');
   }
 
-  // ───────────────────────── 02 유어딜이 무엇인가 ─────────────────────────
+  // ───────── 02 한 장 요약 ─────────
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '배송되는 물건이 아니라,\n동네에서 쓰는 권리를 팝니다.', { size: 27, w: 5.5 });
-    T(s, '소비자는 온라인에서 할인가로 미리 사고, 매장에 가서 QR이나 PIN으로 씁니다. 택배가 오가지 않으니 품절, 오배송, 반품이라는 사고가 애초에 없습니다. 미사용분은 100% 자동 환불되어 고객 응대가 매장이나 대행사로 흘러오지 않습니다.', {
-      x: M, y: 2.55, w: 5.0, h: 1.9, fontSize: 13, color: C.inkSoft, lineSpacingMultiple: 1.5, valign: 'top',
-    });
-    // 실측 숫자
-    card(s, M, 4.75, 5.0, 1.75);
-    T(s, '338', { x: M + 0.3, y: 4.9, w: 1.7, h: 0.8, fontSize: 40, bold: true, color: C.ink });
-    T(s, '판매 중 이용권', { x: M + 0.3, y: 5.75, w: 2, h: 0.3, fontSize: 11, color: C.inkSoft });
-    T(s, '4', { x: M + 2.5, y: 4.9, w: 1.2, h: 0.8, fontSize: 40, bold: true, color: C.ink });
-    T(s, '이용권 카테고리\n식사, 미용, 숙소, 액티비티', { x: M + 2.5, y: 5.75, w: 2.4, h: 0.6, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.3 });
-    T(s, 'urdeal.kr 2026년 9월 7일 기준', { x: M + 0.3, y: 6.2, w: 3, h: 0.25, fontSize: 9, color: C.gray });
-
-    const items = [
-      ['FiCreditCard', '이용권', '식당, 미용, 숙박, 액티비티를 할인가로 미리 구매한 뒤 매장에서 QR이나 PIN으로 사용합니다. 유효기간은 매장이 정합니다.'],
-      ['FiSmartphone', '교환권', '기프티콘형 즉시 교환권. 결제 즉시 발급되며 선물하기와 소액 전환에 강합니다.'],
-      ['FiMapPin', '동네딜', '지도에서 찾는 내 주변 딜. 행정동 단위로 노출되어 상권이 뚜렷한 매장일수록 유리합니다.'],
-      ['FiLink', '유어샵', '가입한 누구나 urdeal.kr/u/{주소} 진열대를 갖습니다. 매장에게는 카톡에 붙이면 미리보기 카드가 뜨는 내 페이지입니다.'],
+    title(s, '제안을 한 장으로 줄이면 이렇습니다.');
+    const cells = [
+      ['FiMapPin', '무엇을 파나', '동네 식당, 카페, 미용, 숙박, 액티비티의 이용권. 손님이 온라인에서 할인가로 미리 사고 매장에 와서 QR로 씁니다. 배송도 재고도 없습니다.'],
+      ['FiUsers', '대행사는 무엇을 하나', '매장을 찾아 유어딜에 올리고(10분), 이용권을 만들고(3분), 인플루언서를 붙이고, 매장에 성과를 보고합니다. 돈을 걷거나 나누는 일은 없습니다.'],
+      ['FiPercent', '누가 얼마를 내나', '매장이 팔린 금액의 5%를 유어딜에 냅니다(직접 입점은 10%). 대행사 보수는 매장 몫 95% 안에서 매장과 직접 정합니다. 대행사가 유어딜에 내는 돈은 0입니다.'],
+      ['FiCreditCard', '유어딜은 무엇을 하나', '결제(토스), 이용권 발급, QR 확인 앱, 주간 정산, 원천징수, 환불 응대, 홈 지도 노출과 검색 유입. 인플루언서 DB와 제안 발송까지.'],
     ];
-    let y = 1.05;
-    items.forEach(([i, h, p]) => {
-      card(s, 6.35, y, W - M - 6.35, 1.28);
-      iconCircle(s, i, 6.55, y + 0.36, 0.55);
-      T(s, h, { x: 7.3, y: y + 0.17, w: 3, h: 0.35, fontSize: 15, bold: true, color: C.ink });
-      T(s, p, { x: 7.3, y: y + 0.52, w: W - M - 7.5, h: 0.7, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.35, valign: 'top' });
-      y += 1.4;
+    const cw = (W - 2 * M - 0.3) / 2, ch = 2.1;
+    cells.forEach(([i, h, p], k) => {
+      const col = k % 2, row = Math.floor(k / 2);
+      const x = M + col * (cw + 0.3), y = 2.0 + row * (ch + 0.3);
+      card(s, x, y, cw, ch);
+      iconCircle(s, i, x + 0.28, y + 0.3, 0.5);
+      T(s, h, { x: x + 0.95, y: y + 0.32, w: cw - 1.2, h: 0.4, fontSize: 15, bold: true, color: C.ink });
+      T(s, p, { x: x + 0.28, y: y + 0.95, w: cw - 0.56, h: 1.05, fontSize: 11.5, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
     });
-    s.addNotes('제품 정의. 숫자는 2026-09-07 urdeal.kr 공개 API 실측(활성 이용권 338건).');
+    T(s, '숫자 근거와 절차는 다음 장부터 순서대로 나옵니다. 마지막 장에 8주 파일럿 조건이 있습니다.', { x: M, y: 6.6, w: W - 2 * M, h: 0.3, fontSize: 10.5, color: C.gray });
+    s.addNotes('요약. 사업계획서 C-2 + store-operator-model §7. "대행사가 유어딜에 내는 돈 0" 은 가입비·월정액·등록비 전부 없음(사실).');
   }
 
-  // ───────────────────────── 03 벤더 모델 이식 ─────────────────────────
+  // ───────── 03 이용권이란 (예시로) ─────────
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '쇼핑 공구의 벤더 모델을, 오프라인 이용권으로 옮겼습니다.');
-    T(s, '공구 벤더가 이미 아는 구조입니다. 브랜드와 인플루언서를 조율하고 마진을 나누던 일이, 매장과 인플루언서를 조율하는 일로 바뀝니다. 재고와 택배와 반품이 빠지고, 정산은 자동이 됩니다. 경쟁이 아니라 이식입니다.', {
-      x: M, y: 2.0, w: W - 2 * M, h: 0.8, fontSize: 13, color: C.inkSoft, lineSpacingMultiple: 1.5, valign: 'top',
-    });
-    const rows = [
-      ['', '쇼핑 공구', '유어딜'],
-      ['조율자', '벤더', '대행사'],
-      ['조율 대상', '브랜드와 인플루언서', '매장과 인플루언서'],
-      ['판매물', '상품', '이용권'],
-      ['수령', '택배', '매장 방문, QR 확인'],
-      ['마진 분배', '브랜드 프로모션 예산을 벤더와 인플루언서가 나눔', '매장 몫 95% 안에서 대행사와 인플루언서가 나눔'],
-      ['플랫폼 몫', '오픈마켓 수수료와 PG', '결제, 정산, QR 인프라 5%'],
-      ['남는 일', '재고, 배송, 반품, 정산 엑셀', '없음. 정산과 원천징수는 자동'],
-    ];
-    const tbl = rows.map((r, ri) => r.map((c, ci) => ({
-      text: c,
-      options: {
-        fontFace: FONT, fontSize: ri === 0 ? 12 : 12.5, bold: ri === 0 || ci === 0,
-        color: ri === 0 ? C.gray : (ci === 2 ? C.ink : C.inkSoft),
-        fill: { color: ci === 2 && ri > 0 ? 'EEF3FE' : C.surface },
-        align: 'left', valign: 'middle', margin: [0.06, 0.14, 0.06, 0.14],
-        border: [{ type: 'none' }, { type: 'none' }, { type: 'solid', color: C.rule, pt: 0.75 }, { type: 'none' }],
-      },
-    })));
-    s.addTable(tbl, { x: M, y: 3.0, w: W - 2 * M, colW: [2.0, 4.6, 5.43], rowH: 0.42 });
-    s.addNotes('제품 정체성(2026-07-08 대표 확정): 쇼핑 공구의 벤더/에이전시 중개 모델을 오프라인 매장 이용권으로 옮긴 것. 쇼핑 벤더가 준비된 대행사 풀.');
-  }
-
-  // ───────────────────────── 04 시장 ─────────────────────────
-  {
-    const s = pres.addSlide();
-    chrome(s);
-    title(s, '대상은 동네 상권 전체이고, 온라인화는 이미 진행 중입니다.');
-    const stats = [
-      ['596만', '소상공인 사업체', '숙박, 음식점 79만 개와 도소매 200만 개가 이용권과 동네딜의 핵심 대상입니다.', '중기부, 소진공 2023 소상공인실태조사'],
-      ['172.7조', 'O2O 서비스 거래액', '연평균 11.4%씩 자라는 오프라인 상거래의 온라인화. 유어딜이 파고드는 흐름입니다.', 'KISDI 2023 O2O 서비스산업 시장조사'],
-      ['10조', '모바일 상품권 시장', '2019년 3조에서 3배. 미리 사서 매장에서 쓰는 습관이 이미 있습니다.', '업계 및 언론 추정, 2023'],
+    title(s, '이용권은 이렇게 생겼습니다. 매장 메뉴 하나가 곧 상품입니다.');
+    const ex = [
+      ['파스타 2인 세트', '식당', '32,000', '25,000', '22%', '유효기간 60일'],
+      ['젤 네일 기본', '미용', '45,000', '35,000', '22%', '유효기간 90일'],
+      ['평일 1박 (2인)', '숙박', '120,000', '89,000', '26%', '날짜 지정'],
     ];
     const cw = (W - 2 * M - 0.6) / 3;
-    stats.forEach(([n, l, p, src], i) => {
+    ex.forEach(([n, cat, orig, sale, pct, valid], i) => {
       const x = M + i * (cw + 0.3);
-      card(s, x, 2.25, cw, 3.9);
-      T(s, n, { x: x + 0.35, y: 2.5, w: cw - 0.7, h: 1.0, fontSize: 44, bold: true, color: i === 1 ? C.brand : C.ink });
-      T(s, l, { x: x + 0.35, y: 3.5, w: cw - 0.7, h: 0.4, fontSize: 14, bold: true, color: C.ink });
-      T(s, p, { x: x + 0.35, y: 4.0, w: cw - 0.7, h: 1.3, fontSize: 11.5, color: C.inkSoft, lineSpacingMultiple: 1.45, valign: 'top' });
-      T(s, src, { x: x + 0.35, y: 5.6, w: cw - 0.7, h: 0.4, fontSize: 9, color: C.gray, lineSpacingMultiple: 1.3, valign: 'top' });
+      card(s, x, 2.0, cw, 2.75);
+      s.addShape(pres.shapes.RECTANGLE, { x, y: 2.0, w: cw, h: 0.9, fill: { color: C.tint }, line: { color: C.tint, width: 0 } });
+      T(s, cat, { x: x + 0.3, y: 2.12, w: 2, h: 0.28, fontSize: 10.5, bold: true, color: C.brand });
+      T(s, n, { x: x + 0.3, y: 2.4, w: cw - 0.6, h: 0.4, fontSize: 16, bold: true, color: C.ink });
+      T(s, pct, { x: x + 0.3, y: 3.1, w: 1.2, h: 0.5, fontSize: 24, bold: true, color: C.brand });
+      T(s, orig + '원', { x: x + 1.45, y: 3.2, w: 1.5, h: 0.3, fontSize: 12, color: C.gray, strike: true });
+      T(s, sale + '원', { x: x + 0.3, y: 3.65, w: cw - 0.6, h: 0.5, fontSize: 26, bold: true, color: C.ink });
+      T(s, valid + ', 미사용 시 100% 자동 환불', { x: x + 0.3, y: 4.25, w: cw - 0.6, h: 0.3, fontSize: 10.5, color: C.inkSoft });
     });
-    T(s, '수치는 발표 시점과 집계 범위에 따라 편차가 있습니다. 시장 전체가 아니라, 그중 손님이 방문해서 쓰는 업종이 유어딜의 직접 대상입니다.', { x: M, y: 6.4, w: W - 2 * M, h: 0.4, fontSize: 10, color: C.gray });
-    s.addNotes('시장 규모는 사업계획서 B-1 공개 통계. 경쟁사 비교와 재무 추정은 대표 요청으로 제외.');
+    T(s, '위 세 개는 구조를 보여드리기 위한 예시입니다. 할인율, 유효기간, 판매 수량 마감은 전부 매장이 정합니다.', { x: M, y: 4.95, w: W - 2 * M, h: 0.3, fontSize: 10.5, color: C.gray });
+    const facts = [
+      ['338', '지금 판매 중인 이용권'],
+      ['4', '카테고리: 식사, 미용, 숙소, 액티비티'],
+      ['0', '재고, 배송, 반품'],
+    ];
+    facts.forEach(([n, l], i) => {
+      const x = M + i * 4.05;
+      T(s, n, { x, y: 5.4, w: 1.6, h: 0.75, fontSize: 38, bold: true, color: i === 2 ? C.brand : C.ink });
+      T(s, l, { x: x + 1.55, y: 5.62, w: 2.5, h: 0.5, fontSize: 11.5, color: C.inkSoft, lineSpacingMultiple: 1.3, valign: 'top' });
+    });
+    T(s, 'urdeal.kr 2026년 9월 7일 기준', { x: M, y: 6.45, w: 4, h: 0.25, fontSize: 9, color: C.gray });
+    s.addNotes('예시 상품 3개는 가정. 338 은 2026-09-07 공개 API 실측(활성 이용권).');
   }
 
-  // ───────────────────────── 05 수수료 구조 ─────────────────────────
+  // ───────── 04 돈의 흐름 ─────────
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '유어딜은 대행사에게 지급하지 않습니다.\n대신 대행사가 데려온 매장에서 5%만 뗍니다.');
-    const cols = [
-      ['매장이 직접 입점', '10', '90', false],
-      ['대행사가 데려와 운영', '5', '95', true],
-    ];
-    cols.forEach(([h, fee, keep, hi], i) => {
-      const x = M + i * 3.55;
-      card(s, x, 2.7, 3.3, 3.75, { fill: hi ? C.ink : C.surface });
-      T(s, h, { x: x + 0.3, y: 2.9, w: 2.8, h: 0.35, fontSize: 12.5, bold: true, color: hi ? C.darkText : C.inkSoft });
-      T(s, fee + '%', { x: x + 0.3, y: 3.3, w: 2.8, h: 1.0, fontSize: 54, bold: true, color: hi ? C.brand : C.ink });
-      T(s, '유어딜 수수료', { x: x + 0.3, y: 4.3, w: 2.8, h: 0.3, fontSize: 11, color: hi ? C.darkMuted : C.gray });
-      s.addShape(pres.shapes.LINE, { x: x + 0.3, y: 4.8, w: 2.7, h: 0, line: { color: hi ? '3A3D44' : C.rule, width: 0.75 } });
-      T(s, keep + '%', { x: x + 0.3, y: 4.95, w: 1.4, h: 0.6, fontSize: 28, bold: true, color: hi ? C.darkText : C.ink });
-      T(s, '매장 몫', { x: x + 0.3, y: 5.6, w: 2.8, h: 0.3, fontSize: 11, color: hi ? C.darkMuted : C.gray });
-    });
-    const pts = [
-      ['5%는 온전히 유어딜 몫입니다', '낮춘 요율은 대행사에게 주는 돈이 아니라 매장에게 드리는 여유입니다. 유어딜이 대행사에게 지급하는 항목은 없습니다.'],
-      ['대행사 보수는 95% 안에서 매장과 직접', '금액, 방식, 기간 모두 두 분의 계약입니다. 유어딜은 그 계약에 관여하지 않고, 정산서에도 한 줄 나오지 않습니다.'],
-      ['이중 수수료가 성립할 수 없는 구조', '플랫폼이 떼는 것은 하나뿐입니다. 사장님이 "대행사 붙이면 수수료가 두 번 나가나요"라고 물으면, 아니라고 답하시면 됩니다.'],
-    ];
-    let y = 2.7;
-    pts.forEach(([h, p]) => {
-      T(s, h, { x: 8.0, y, w: W - M - 8.0, h: 0.35, fontSize: 14.5, bold: true, color: C.ink });
-      T(s, p, { x: 8.0, y: y + 0.38, w: W - M - 8.0, h: 0.85, fontSize: 11.5, color: C.inkSoft, lineSpacingMultiple: 1.45, valign: 'top' });
-      y += 1.3;
-    });
-    s.addNotes('2026-09-04 대표 확정. store_channel direct=10% / brokered=5% (fee-resolver.ts 기본값, 어드민 조정 가능). 유어딜 정산에 중개사 지급은 등장하지 않는다.');
-  }
-
-  // ───────────────────────── 06 돈의 흐름 ─────────────────────────
-  {
-    const s = pres.addSlide();
-    chrome(s);
-    title(s, '손님이 낸 100원은 이렇게 흐릅니다.');
-    // 흐름 상단: 3 박스
+    title(s, '손님이 낸 100원은 이렇게 갈립니다. 유어딜은 5에서 끝납니다.');
     const flow = [
-      ['손님 결제', '100', '토스 간편결제로 할인가를 냅니다. 이용권이 즉시 발급됩니다.', C.surface, C.ink],
-      ['유어딜', '5', '결제, 발급, QR 확인, 정산, 세금 처리의 인프라 비용입니다. 여기서 끝입니다.', C.ink, C.darkText],
-      ['매장 몫', '95', '매장 계좌로 정산됩니다. 이 안에서 매장이 두 가지를 정합니다.', 'EEF3FE', C.ink],
+      ['손님 결제', '100원', '토스로 할인가를 냅니다. 이용권이 즉시 발급됩니다.', C.surface, C.ink],
+      ['유어딜', '5원', '결제, 발급, QR 확인, 정산, 세금, 손님 유입의 인프라 비용입니다.', C.ink, C.darkText],
+      ['매장 몫', '95원', '손님이 매장에서 실제로 쓴 이용권만, 매주 매장 계좌로 정산됩니다.', C.tint, C.ink],
     ];
     const bw = 3.55, gap = 0.6;
     flow.forEach(([h, n, p, fill, tc], i) => {
       const x = M + i * (bw + gap);
-      card(s, x, 2.05, bw, 2.15, { fill });
+      card(s, x, 2.05, bw, 2.05, { fill });
       T(s, h, { x: x + 0.3, y: 2.2, w: bw - 0.6, h: 0.3, fontSize: 12, bold: true, color: fill === C.ink ? C.darkMuted : C.inkSoft });
-      T(s, n + '원', { x: x + 0.3, y: 2.5, w: bw - 0.6, h: 0.7, fontSize: 34, bold: true, color: i === 1 ? C.brand : tc });
-      T(s, p, { x: x + 0.3, y: 3.25, w: bw - 0.6, h: 0.85, fontSize: 10.5, color: fill === C.ink ? C.darkMuted : C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
-      if (i < 2) T(s, '→', { x: x + bw + 0.1, y: 2.85, w: 0.4, h: 0.5, fontSize: 22, color: C.gray, align: 'center' });
+      T(s, n, { x: x + 0.3, y: 2.5, w: bw - 0.6, h: 0.7, fontSize: 34, bold: true, color: i === 1 ? C.brand : tc });
+      T(s, p, { x: x + 0.3, y: 3.25, w: bw - 0.6, h: 0.8, fontSize: 10.5, color: fill === C.ink ? C.darkMuted : C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
+      if (i < 2) T(s, '→', { x: x + bw + 0.1, y: 2.8, w: 0.4, h: 0.5, fontSize: 22, color: C.gray, align: 'center' });
     });
-    // 하단: 매장 몫 안의 두 갈래
+    T(s, '매장 몫 95원 안에서 매장이 정하는 두 가지', { x: M, y: 4.4, w: 6, h: 0.3, fontSize: 11, bold: true, color: C.gray, charSpacing: 1 });
     const sub = [
-      ['FiUsers', '인플루언서 소개비', '매장이 딜마다 제안하는 비율. 매장 부담이며, 링크 귀속과 정산과 원천징수는 유어딜이 자동으로 처리합니다. 대행사가 걷거나 나눌 일이 없습니다.'],
-      ['FiFileText', '대행사 보수', '매장과 대행사의 계약입니다. 정액이든 매출 비율이든 두 분이 정하고, 유어딜 장부 밖에서 오갑니다.'],
-      ['FiCheckCircle', '매장 순수취', '위 둘을 뺀 나머지. 대행사 보수를 5%p 안에 잡으면 사장님 손에는 직접 입점과 같은 돈이 남습니다.'],
+      ['FiFileText', '대행사 보수', '매장과 대행사의 계약입니다. 매출의 몇 %든, 월 정액이든 두 분이 정합니다. 유어딜 장부 밖이라 유어딜 정산서에 한 줄도 나오지 않고, 유어딜이 중간에서 떼지도 않습니다.'],
+      ['FiUsers', '인플루언서 소개비', '매장이 딜마다 제안하는 비율입니다. 매장 부담이고, 링크 귀속과 지급과 원천징수는 유어딜이 자동 처리합니다. 대행사가 걷거나 나눌 일이 없습니다.'],
+      ['FiCheckCircle', '매장 순수취', '위 둘을 뺀 나머지. 다음 장에서 매장 한 곳 기준으로 실제 숫자를 놓습니다.'],
     ];
-    T(s, '매장 몫 95% 안에서', { x: M, y: 4.5, w: 4, h: 0.3, fontSize: 11, bold: true, color: C.gray, charSpacing: 1 });
     sub.forEach(([i, h, p], k) => {
       const x = M + k * (bw + gap);
-      iconCircle(s, i, x, 4.9, 0.5);
-      T(s, h, { x: x + 0.65, y: 4.93, w: bw - 0.65, h: 0.4, fontSize: 14, bold: true, color: C.ink });
-      T(s, p, { x, y: 5.5, w: bw, h: 1.2, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
+      iconCircle(s, i, x, 4.8, 0.5);
+      T(s, h, { x: x + 0.65, y: 4.83, w: bw - 0.65, h: 0.4, fontSize: 14, bold: true, color: C.ink });
+      T(s, p, { x, y: 5.4, w: bw, h: 1.3, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
     });
-    s.addNotes('머니 경로 SSOT: fee-resolver.ts (5%/10%), seller_influencer_deals(매장 부담 소개비), 중개사 보수는 유어딜 장부 밖.');
+    s.addNotes('2026-09-04 대표 확정. 정산은 used 상태 이용권만 주간(auto-settlement.ts). 중개사 지급은 유어딜 장부 밖.');
   }
 
-  // ───────────────────────── 07 계산 (차트) ─────────────────────────
+  // ───────── 05 매장 1곳 단위 경제 (대행사 시점) ─────────
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '대행사 보수 5%p까지는,\n사장님 손에 남는 돈이 직접 입점과 같습니다.', { w: 7.7, size: 24 });
+    title(s, '매장 한 곳이 대행사에게 얼마가 되는가. 가정은 전부 공개합니다.', { size: 25 });
+    // 좌: 가정과 계산
+    card(s, M, 2.05, 5.6, 4.7);
+    const x = M + 0.3, w = 5.0;
+    T(s, '가정 (바꿔서 다시 계산하셔도 됩니다)', { x, y: 2.25, w, h: 0.3, fontSize: 11, bold: true, color: C.gray, charSpacing: 1 });
+    const a = [
+      ['이용권 평균 판매가', '20,000원'],
+      ['매장당 월 판매', '60건'],
+      ['매장 월 매출(GMV)', '1,200,000원'],
+      ['유어딜 5%', '60,000원'],
+      ['매장 몫 95%', '1,140,000원'],
+      ['대행사 보수 (매출 10% 계약 시)', '120,000원'],
+    ];
+    let y = 2.62;
+    a.forEach(([k, v], i) => {
+      const strong = i === 5;
+      T(s, k, { x, y, w: w * 0.62, h: 0.34, fontSize: 11.5, color: strong ? C.ink : C.inkSoft, bold: strong });
+      T(s, v, { x: x + w * 0.55, y, w: w * 0.45, h: 0.34, fontSize: 12, bold: true, color: strong ? C.brand : C.ink, align: 'right' });
+      if (i === 2 || i === 4) hr(s, x, y + 0.4, w);
+      y += 0.46;
+    });
+    T(s, '매장 10곳이면 월 120만원, 30곳이면 월 360만원입니다. 매장 하나를 올리는 데 드는 시간은 방문 30분과 등록 10분입니다.', { x, y: 5.5, w, h: 1.1, fontSize: 11.5, color: C.ink, lineSpacingMultiple: 1.45, valign: 'top' });
+    // 우: 차트 (매장 수 × 대행사 월 수입)
     s.addChart(pres.charts.BAR, [
-      { name: '매장 순수취', labels: ['직접 입점', '대행사 경유, 보수 5%', '대행사 경유, 보수 10%'], values: [90, 90, 85] },
-      { name: '대행사 보수', labels: ['직접 입점', '대행사 경유, 보수 5%', '대행사 경유, 보수 10%'], values: [0, 5, 10] },
-      { name: '유어딜 수수료', labels: ['직접 입점', '대행사 경유, 보수 5%', '대행사 경유, 보수 10%'], values: [10, 5, 5] },
+      { name: '보수 10%', labels: ['5곳', '10곳', '20곳', '30곳'], values: [60, 120, 240, 360] },
+      { name: '보수 15%', labels: ['5곳', '10곳', '20곳', '30곳'], values: [90, 180, 360, 540] },
     ], {
-      x: M, y: 2.3, w: 7.4, h: 4.55, barDir: 'col', barGrouping: 'stacked', barGapWidthPct: 55,
-      chartColors: [C.brand, '8FB4F5', 'C9C5C1'],
-      showValue: true, dataLabelPosition: 'ctr', dataLabelColor: 'FFFFFF', dataLabelFontSize: 11, dataLabelFontFace: FONT, dataLabelFormatCode: '0"%";;',
-      valAxisMinVal: 0,
+      x: 6.6, y: 2.05, w: W - M - 6.6, h: 4.7, barDir: 'col', barGrouping: 'clustered', barGapWidthPct: 60,
+      chartColors: [C.brand, '8FB4F5'],
+      showValue: true, dataLabelPosition: 'outEnd', dataLabelColor: C.ink, dataLabelFontSize: 10, dataLabelFontFace: FONT, dataLabelFormatCode: '#,##0"만"',
       showLegend: true, legendPos: 'b', legendFontFace: FONT, legendFontSize: 10.5, legendColor: C.inkSoft,
       catAxisLabelColor: C.ink, catAxisLabelFontFace: FONT, catAxisLabelFontSize: 11,
-      valAxisLabelColor: C.gray, valAxisLabelFontSize: 9, valAxisMaxVal: 100, valAxisMajorUnit: 25, valAxisLabelFormatCode: '0"%"',
+      valAxisLabelColor: C.gray, valAxisLabelFontSize: 9, valAxisMinVal: 0, valAxisMaxVal: 600, valAxisMajorUnit: 150, valAxisLabelFormatCode: '#,##0"만원"',
       valGridLine: { color: 'E6E2DE', size: 0.5 }, catGridLine: { style: 'none' },
-      showTitle: false, plotArea: { fill: { color: C.bg } }, chartArea: { fill: { color: C.bg } },
+      showTitle: true, title: '매장 수별 대행사 월 수입 (매장당 월 매출 120만원 가정)', titleFontFace: FONT, titleFontSize: 11, titleColor: C.inkSoft,
+      plotArea: { fill: { color: C.bg } }, chartArea: { fill: { color: C.bg } },
     });
-    card(s, 8.55, 1.05, W - M - 8.55, 5.8);
-    const x = 8.85, w = W - M - 8.85 - 0.3;
-    T(s, '월 예시', { x, y: 1.25, w, h: 0.3, fontSize: 11, bold: true, color: C.gray, charSpacing: 1 });
-    T(s, '이용권 20,000원 × 100건', { x, y: 1.55, w, h: 0.4, fontSize: 15, bold: true, color: C.ink });
-    T(s, '= 2,000,000원', { x, y: 1.95, w, h: 0.5, fontSize: 22, bold: true, color: C.brand });
+    s.addNotes('전부 가정. 판매가 2만·월 60건은 구조 설명용. 보수율은 매장과 대행사의 계약이며 유어딜이 정하지 않는다.');
+  }
+
+  // ───────── 06 사장님 셈법 ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '사장님이 "네" 하는 이유도 숫자입니다. 광고비 선지출이 없습니다.', { size: 25 });
+    // 좌: 한 건의 셈
+    card(s, M, 2.05, 5.9, 4.7);
+    const x = M + 0.3, w = 5.3;
+    T(s, '이용권 한 장이 팔렸을 때 (파스타 2인 세트 예시)', { x, y: 2.25, w, h: 0.3, fontSize: 11, bold: true, color: C.gray, charSpacing: 1 });
     const rows = [
-      ['유어딜 5%', '100,000원'],
-      ['매장 몫', '1,900,000원'],
-      ['대행사 보수 5%일 때', '100,000원'],
-      ['   → 사장님 순수취', '1,800,000원'],
-      ['대행사 보수 10%일 때', '200,000원'],
-      ['   → 사장님 순수취', '1,700,000원'],
+      ['정가', '32,000원', false],
+      ['이용권 판매가 (22% 할인)', '25,000원', false],
+      ['유어딜 5%', '1,250원', false],
+      ['대행사 보수 10% (계약 예시)', '2,500원', false],
+      ['매장에 들어오는 돈', '21,250원', true],
+      ['재료비 35% 가정', '11,200원', false],
+      ['매장 이익', '10,050원', true],
     ];
-    let y = 2.7;
-    rows.forEach(([k, v], i) => {
-      const strong = i === 3 || i === 5;
-      T(s, k, { x, y, w: w * 0.58, h: 0.36, fontSize: 11.5, color: strong ? C.ink : C.inkSoft, bold: strong });
-      T(s, v, { x: x + w * 0.5, y, w: w * 0.5, h: 0.36, fontSize: 11.5, bold: true, color: C.ink, align: 'right' });
-      if (i === 1 || i === 3) s.addShape(pres.shapes.LINE, { x, y: y + 0.42, w, h: 0, line: { color: C.rule, width: 0.75 } });
-      y += 0.47;
+    let y = 2.62;
+    rows.forEach(([k, v, strong], i) => {
+      T(s, k, { x, y, w: w * 0.62, h: 0.34, fontSize: 11.5, color: strong ? C.ink : C.inkSoft, bold: strong });
+      T(s, v, { x: x + w * 0.55, y, w: w * 0.45, h: 0.34, fontSize: 12, bold: true, color: strong ? C.brand : C.ink, align: 'right' });
+      if (i === 1 || i === 3 || i === 5) hr(s, x, y + 0.4, w);
+      y += 0.46;
     });
-    T(s, '직접 입점이면 사장님 순수취는 1,800,000원입니다. 인플루언서 소개비는 매장이 딜마다 따로 정하는 값이라 이 계산에서 뺐습니다. 요율은 유어딜 어드민 설정 기준 기본값입니다.', { x, y: 5.6, w, h: 1.1, fontSize: 10, color: C.gray, lineSpacingMultiple: 1.4, valign: 'top' });
-    s.addNotes('구조 설명용 가정 숫자. 대행사 보수 5%p까지는 매장이 직접 입점보다 손해 보지 않는다는 점이 대행사의 첫 설득 문장이 된다.');
+    T(s, '이 손님은 광고 없이 온 새 손님입니다. 안 팔리면 0원이고, 팔린 뒤에만 수수료가 나갑니다.', { x, y: 5.95, w, h: 0.7, fontSize: 11.5, color: C.ink, lineSpacingMultiple: 1.4, valign: 'top' });
+    // 우: 사장님이 좋아하는 것 4
+    const pts = [
+      ['FiXCircle', '선지출 광고비 0', '배너, 검색 광고, 체험단처럼 미리 내는 돈이 없습니다. 팔린 만큼만 나갑니다.'],
+      ['FiTag', '할인율과 유효기간은 사장님이', '남는 메뉴만 올리고, 할인율도 마감 수량도 직접 정합니다. 손해 보는 구조를 만들 수 없습니다.'],
+      ['FiClock', '정산은 손님이 쓴 뒤 매주', '손님이 매장에서 QR을 찍은 이용권만 주간 정산으로 매장 계좌에 들어옵니다. 안 쓴 이용권은 손님에게 자동 환불됩니다.'],
+      ['FiSmartphone', '사장님이 하는 일은 하나', '손님 QR을 폰으로 찍거나 확인 PIN을 눌러 주는 것. 등록과 운영은 대행사가 합니다.'],
+    ];
+    let py = 2.05;
+    pts.forEach(([i, h, p]) => {
+      iconCircle(s, i, 6.95, py + 0.02, 0.46);
+      T(s, h, { x: 7.6, y: py, w: W - M - 7.6, h: 0.32, fontSize: 13.5, bold: true, color: C.ink });
+      T(s, p, { x: 7.6, y: py + 0.35, w: W - M - 7.6, h: 0.75, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
+      py += 1.2;
+    });
+    s.addNotes('재료비 35% 는 가정. 정산 규칙(used 만 주간)은 auto-settlement.ts. 사용 처리는 매장 계산대 QR 스캔 또는 확인 PIN(store_verify_pin).');
   }
 
-  // ───────────────────────── 08 대행사가 얻는 것 ─────────────────────────
+  // ───────── 07 어떤 매장을 데려올지 ─────────
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '대행사가 얻는 것은 다섯 가지입니다.');
-    const items = [
-      ['FiPercent', '재원이 구조 안에 있습니다', '대행사 매장은 유어딜 수수료가 10%가 아니라 5%입니다. 그 5%p가 매장에게 생기는 여유이고, 대행사 보수의 재원입니다. 별도 광고비를 먼저 받을 필요가 없습니다.'],
-      ['FiLayers', '도구를 새로 만들지 않습니다', '전용 계정도, 전용 대시보드도 없습니다. 셀러 대시보드 하나에 로그인해서 맡은 매장 사이를 전환합니다. 매장마다 계정을 파고 비밀번호를 받아 두는 일이 사라집니다.'],
-      ['FiUsers', '인플루언서 섭외 채널이 들어 있습니다', '유어애즈가 모은 인플루언서 DB에서 찾아 제안을 접수하면 유어딜이 발송합니다. 딜이 맺어지면 링크 귀속, 커미션 적립, 원천징수까지 자동입니다.'],
-      ['FiCreditCard', '결제, 정산, QR 확인, 세금은 유어딜이 합니다', '대행사가 돈을 걷거나 나누는 지점이 없습니다. 판매 대금은 매장 계좌로, 소개비는 인플루언서에게, 각각 자동으로 갑니다.'],
-      ['FiRefreshCcw', '관계는 권한 한 줄입니다', '매장과의 관계는 운영 권한 하나로 표현됩니다. 사장님이 직접 이어받을 때도 계정을 양도하는 게 아니라 권한을 바꿀 뿐이라, 상품과 주문과 리뷰가 그대로 남습니다.'],
+    title(s, '이 여섯 가지가 되면 데려오세요. 대부분 그 자리에서 진행됩니다.', { size: 25 });
+    const checks = [
+      ['사업자등록이 있다', '사업자번호, 대표자명, 개업일 세 가지로 국세청 진위확인을 합니다. 이게 없으면 올릴 수 없습니다.'],
+      ['카카오맵에 매장이 있다', '등록할 때 카카오맵 장소를 연결합니다. 없으면 사장님이 카카오맵에 먼저 등록해야 합니다(무료, 하루 이틀).'],
+      ['손님이 방문해서 쓰는 업종이다', '식당, 카페, 미용, 네일, 숙박, 키즈카페, 스튜디오, 클래스. 택배로 보내는 상품만 파는 곳은 대상이 아닙니다.'],
+      ['15~30% 할인해도 남는 대표 메뉴가 있다', '이용권은 할인가로 팝니다. 마진이 얇은 메뉴만 있는 곳은 사장님이 곧 후회합니다.'],
+      ['사진이 3장 이상 있다', '이용권 카드의 절반은 사진입니다. 없으면 방문할 때 폰으로 찍어 오세요.'],
+      ['사장님이나 직원이 폰으로 QR을 찍을 수 있다', '사용 처리는 매장 폰 한 대로 끝납니다. POS 연동이 필요 없습니다.'],
     ];
-    const colW = (W - 2 * M - 0.5) / 2;
-    items.forEach(([i, h, p], k) => {
+    const cw = (W - 2 * M - 0.3) / 2;
+    checks.forEach(([h, p], k) => {
       const col = k % 2, row = Math.floor(k / 2);
-      const x = M + col * (colW + 0.5);
-      const y = 2.05 + row * 1.55;
-      if (k === 4) {
-        // 마지막 항목은 전폭
-        iconCircle(s, i, x, y + 0.02, 0.5);
-        T(s, h, { x: x + 0.7, y, w: colW - 0.7, h: 0.35, fontSize: 14.5, bold: true, color: C.ink });
-        T(s, p, { x: x + 0.7, y: y + 0.4, w: W - 2 * M - 0.7, h: 0.9, fontSize: 11.5, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
-        return;
-      }
-      iconCircle(s, i, x, y + 0.02, 0.5);
-      T(s, h, { x: x + 0.7, y, w: colW - 0.7, h: 0.35, fontSize: 14.5, bold: true, color: C.ink });
-      T(s, p, { x: x + 0.7, y: y + 0.4, w: colW - 0.7, h: 1.05, fontSize: 11.5, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
+      const x = M + col * (cw + 0.3), y = 2.0 + row * 1.45;
+      s.addImage({ data: ic.FiCheck, x, y: y + 0.03, w: 0.3, h: 0.3 });
+      T(s, h, { x: x + 0.45, y, w: cw - 0.5, h: 0.35, fontSize: 14, bold: true, color: C.ink });
+      T(s, p, { x: x + 0.45, y: y + 0.38, w: cw - 0.6, h: 0.9, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
     });
-    s.addNotes('사업계획서 C-2 "중개사가 얻는 것" 확장. 전용 대시보드는 2026-09-04 삭제됨. 자랑하지 말 것.');
+    card(s, M, 6.35, W - 2 * M, 0.55, { fill: C.tint });
+    T(s, '먼저 갈 곳: 이미 배달앱이나 예약앱에 광고비를 쓰고 있는 매장. "그 돈을 팔린 뒤에만 내는 걸로 바꾸자"는 한 문장이 통합니다.', { x: M + 0.3, y: 6.35, w: W - 2 * M - 0.6, h: 0.55, fontSize: 11, color: C.ink, valign: 'middle' });
+    s.addNotes('등록 필수 필드는 seller-stores.routes.ts: business_number·representative·business_start_date(국세청) + kakao_place_id. 카카오맵 미등록 매장은 연결 불가.');
   }
 
-  // ───────────────────────── 09 도구 화면 ─────────────────────────
+  // ───────── 08 매장 등록 10분 ─────────
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '셀러 대시보드 화면 여섯 장이 대행사의 도구 전부입니다.');
-    const tools = [
-      ['FiMapPin', '매장 관리', '/seller/stores', '카카오맵으로 매장을 찾아 등록하고 국세청 사업자 검증을 겁니다. 등록 시 채널을 "중개"로 고르면 5% 요율이 적용됩니다. 맡은 매장 사이를 상단에서 전환합니다.'],
-      ['FiUserCheck', '운영 권한', '/seller/operators', '사장님이 유어딜 핸들이나 이메일로 운영자를 추가합니다. 회수는 언제든, 조건 없이 가능합니다.'],
-      ['FiSearch', '인플루언서 탐색', '/seller/influencers', '플랫폼과 팔로워 구간으로 걸러 보고, 매장 소개글을 담아 제안을 접수합니다. 연락처는 화면에 없고 발송은 유어딜이 합니다.'],
-      ['FiHandshake', '소개 협업', '/seller/influencer-deals', '소개해 줄 사람에게 우대 커미션 %를 제안하거나 받은 신청에 응답합니다. 콘텐츠 게시를 확인한 뒤 발효되는 조건부 제안도 됩니다.'],
-      ['FiEye', '소개비 지출 내역', '/seller/promo-spend', '내 매장에서 나간 소개비를 수령인별, 딜별로 봅니다. 운영을 맡겼어도 사장님이 항상 직접 열람하는 화면입니다.'],
-      ['FiBarChart2', '운영 매장 요약', '/seller/operating', '맡은 매장마다 활성 이용권 수, 누적 매출과 주문, 운영 시작 이후 구간의 매출을 봅니다. 매장에 청구할 근거가 여기서 나옵니다.'],
-    ];
-    const cw = (W - 2 * M - 0.6) / 3, ch = 2.0;
-    tools.forEach(([i, h, route, p], k) => {
-      const col = k % 3, row = Math.floor(k / 3);
-      const x = M + col * (cw + 0.3), y = 2.0 + row * (ch + 0.25);
-      card(s, x, y, cw, ch);
-      iconCircle(s, i, x + 0.25, y + 0.25, 0.48);
-      T(s, h, { x: x + 0.85, y: y + 0.25, w: cw - 1.0, h: 0.3, fontSize: 14, bold: true, color: C.ink });
-      T(s, route, { x: x + 0.85, y: y + 0.53, w: cw - 1.0, h: 0.25, fontSize: 9.5, color: C.brand, fontFace: 'Courier New' });
-      T(s, p, { x: x + 0.25, y: y + 0.92, w: cw - 0.5, h: ch - 1.05, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.38, valign: 'top' });
-    });
-    T(s, '이용권 등록, 주문, QR 스캔, 정산 화면은 매장 사장님이 쓰는 것과 같은 화면을 그대로 씁니다.', { x: M, y: 6.45, w: W - 2 * M, h: 0.3, fontSize: 10.5, color: C.gray });
-    s.addNotes('라우트는 2026-09-07 main 기준 실재. 별도 대행사 화면은 없다(2026-09-04 삭제).');
-  }
-
-  // ───────────────────────── 10 인플루언서 섭외 ─────────────────────────
-  {
-    const s = pres.addSlide();
-    chrome(s);
-    title(s, '매장에 인플루언서를 붙이는 일이, 다섯 단계로 끝납니다.');
+    title(s, '사장님 앞에서 10분. 서명도 서류도 없이 대행사 폰으로 끝납니다.');
     const steps = [
-      ['DB에서 찾는다', '유어애즈가 모아 둔 인플루언서 DB를 플랫폼과 팔로워 구간으로 거릅니다.'],
+      ['FiSearch', '카카오맵에서 매장 찾기', '/seller/stores 에서 매장 이름을 검색해 장소를 연결합니다. 주소와 좌표가 자동으로 들어옵니다.', '1분'],
+      ['FiShield', '국세청 진위확인', '사업자번호, 대표자명, 개업일을 넣으면 국세청 조회로 즉시 확인됩니다. 사장님이 사업자등록증 사진만 보여 주면 됩니다.', '2분'],
+      ['FiLayers', '채널 "중개" 선택', '등록 시 채널을 중개로 고르면 유어딜 수수료가 5%로 잡힙니다. 매장 확인 PIN도 여기서 정합니다.', '1분'],
+      ['FiCamera', '이용권 만들기', '사진, 정가, 판매가, 유효기간, 마감 수량. 대표 메뉴 두세 개면 충분합니다. 사진은 그 자리에서 찍어도 됩니다.', '3분씩'],
+      ['FiSmartphone', '사장님께 사용법 알려 드리기', '손님이 QR을 보여 주면 매장 폰으로 찍거나, 손님 화면에 매장 PIN을 눌러 주면 끝. 이 한 가지만 설명하면 됩니다.', '3분'],
+    ];
+    const sw = (W - 2 * M - 4 * 0.22) / 5;
+    steps.forEach(([i, h, p, t], k) => {
+      const x = M + k * (sw + 0.22);
+      card(s, x, 2.0, sw, 3.9);
+      numBadge(s, k + 1, x + 0.25, 2.22);
+      T(s, t, { x: x + sw - 1.1, y: 2.27, w: 0.85, h: 0.3, fontSize: 11, bold: true, color: C.brand, align: 'right' });
+      iconCircle(s, i, x + 0.25, 2.85, 0.5);
+      T(s, h, { x: x + 0.25, y: 3.5, w: sw - 0.5, h: 0.7, fontSize: 13, bold: true, color: C.ink, lineSpacingMultiple: 1.25, valign: 'top' });
+      T(s, p, { x: x + 0.25, y: 4.2, w: sw - 0.5, h: 1.6, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.38, valign: 'top' });
+    });
+    T(s, '등록은 대행사 셀러 계정으로 합니다. 사장님이 나중에 직접 계정을 만들어 이어받을 때는 계정 양도가 아니라 권한 변경이라, 올려 둔 이용권과 주문과 리뷰가 그대로 남습니다.', { x: M, y: 6.15, w: W - 2 * M, h: 0.6, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.4 });
+    s.addNotes('시간은 현장 추정. 필드는 seller-stores.routes.ts 실재(kakao_place_id, business_number/representative/business_start_date, store_channel, verify_pin). 이용권 3분 등록은 /seller/products/quick.');
+  }
+
+  // ───────── 09 사장님 설득 대본 ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '사장님께 하는 말 네 마디와, 거절 다섯 가지의 답.');
+    // 좌: 3문장
+    card(s, M, 2.0, 5.3, 4.75, { fill: C.ink });
+    T(s, '5분 대본', { x: M + 0.3, y: 2.2, w: 3, h: 0.3, fontSize: 11, bold: true, color: C.brand, charSpacing: 1 });
+    const lines = [
+      ['열기', '"사장님, 배달앱 말고 손님이 가게에 직접 오게 하는 건데요. 미리 내는 돈은 없고 팔린 만큼만 5% 나갑니다."'],
+      ['보여주기', '"이 메뉴를 이용권으로 올리면 이렇게 보입니다." (홈 지도와 이용권 카드 화면을 폰으로 보여 준다)'],
+      ['정하기', '"어떤 메뉴를 몇 % 할인해서 올릴까요? 유효기간은요?" 사장님이 정하게 한다. 대행사가 대신 정하지 않는다.'],
+      ['끝내기', '"사업자등록증만 보여 주시면 지금 10분 안에 올라갑니다. 손님 오면 QR만 찍어 주세요."'],
+    ];
+    let y = 2.6;
+    lines.forEach(([k, v]) => {
+      T(s, k, { x: M + 0.3, y, w: 1.0, h: 0.3, fontSize: 11, bold: true, color: C.darkMuted });
+      T(s, v, { x: M + 1.2, y, w: 3.85, h: 0.95, fontSize: 11, color: C.darkText, lineSpacingMultiple: 1.4, valign: 'top' });
+      y += 1.0;
+    });
+    // 우: 거절 5
+    const obj = [
+      ['"할인하면 손해 아니에요?"', '남는 메뉴만, 사장님이 정한 할인율로만 올립니다. 안 팔리면 0원이고, 팔리면 새 손님입니다.'],
+      ['"배달앱이랑 뭐가 달라요?"', '배달이 없고 손님이 가게에 옵니다. 수수료는 5%이고, 가게 페이지가 사장님 것으로 남습니다. 병행해도 됩니다.'],
+      ['"정산은 언제 들어와요?"', '손님이 매장에서 쓴 이용권만 매주 정산돼 매장 계좌로 들어옵니다. 안 쓴 건 손님에게 자동 환불이라 분쟁이 없습니다.'],
+      ['"귀찮은 일 있어요?"', '손님 QR을 폰으로 찍는 것 하나입니다. 등록, 이용권 관리, 인플루언서 섭외는 제가 합니다.'],
+      ['"계약서 써야 해요?"', '유어딜과는 가입뿐입니다. 저와의 운영 위임은 권한 한 줄이고, 마음에 안 들면 오늘이라도 사장님이 빼시면 됩니다.'],
+    ];
+    let oy = 2.0;
+    obj.forEach(([q, a]) => {
+      T(s, q, { x: 6.3, y: oy, w: W - M - 6.3, h: 0.3, fontSize: 12.5, bold: true, color: C.ink });
+      T(s, a, { x: 6.3, y: oy + 0.32, w: W - M - 6.3, h: 0.6, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.38, valign: 'top' });
+      oy += 0.96;
+    });
+    s.addNotes('대본의 모든 사실 주장은 앞 장들과 동일 출처. "권한 한 줄, 언제든 회수" 는 seller_operators 모델.');
+  }
+
+  // ───────── 10 인플루언서 붙이기 ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '인플루언서 섭외, 계약, 정산이 화면 안에서 끝납니다.');
+    const steps = [
+      ['DB에서 고른다', '/seller/influencers 에서 플랫폼과 팔로워 구간으로 거릅니다. 매장 동네에서 활동하는 채널을 우선합니다.'],
       ['제안을 접수한다', '매장 소개와 조건을 적어 접수하면 유어딜이 발송합니다. 연락처는 대행사에게도 공개되지 않습니다.'],
-      ['딜을 맺는다', '커미션 %는 매장이 정합니다. 콘텐츠 게시 링크를 확인한 뒤 발효되는 조건부 제안도 됩니다.'],
-      ['귀속은 자동이다', '수락 즉시 전용 링크가 나오고, 그 링크로 들어온 주문은 자동으로 연결됩니다. 쿠폰 코드를 확인할 일이 없습니다.'],
-      ['정산도 자동이다', '환불 가능 기간 7일이 지나면 확정되고, 원천징수를 계산해 지급합니다. 환불된 주문의 커미션은 자동 회수됩니다.'],
+      ['딜을 맺는다', '/seller/influencer-deals 에서 커미션 %를 제안합니다. 매장이 정한 값이고 매장 부담입니다. 콘텐츠 게시를 확인한 뒤 발효되는 조건부도 됩니다.'],
+      ['귀속은 자동', '수락 즉시 전용 링크가 나오고 그 링크로 들어온 주문이 자동 연결됩니다. 쿠폰 코드를 확인할 일이 없습니다.'],
+      ['지급도 자동', '환불 가능 기간 7일이 지나면 확정되고, 원천징수를 계산해 유어딜이 지급합니다. 대행사가 돈을 옮기지 않습니다.'],
     ];
     const sw = (W - 2 * M - 4 * 0.22) / 5;
     steps.forEach(([h, p], i) => {
       const x = M + i * (sw + 0.22);
-      card(s, x, 2.0, sw, 2.8);
-      s.addShape(pres.shapes.OVAL, { x: x + 0.25, y: 2.22, w: 0.42, h: 0.42, fill: { color: C.brand }, line: { color: C.brand, width: 0 } });
-      T(s, String(i + 1), { x: x + 0.25, y: 2.22, w: 0.42, h: 0.42, fontSize: 12, bold: true, color: 'FFFFFF', align: 'center', valign: 'middle' });
+      card(s, x, 2.0, sw, 2.85);
+      numBadge(s, i + 1, x + 0.25, 2.22);
       T(s, h, { x: x + 0.25, y: 2.78, w: sw - 0.5, h: 0.35, fontSize: 13.5, bold: true, color: C.ink });
-      T(s, p, { x: x + 0.25, y: 3.16, w: sw - 0.5, h: 1.55, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.38, valign: 'top' });
+      T(s, p, { x: x + 0.25, y: 3.16, w: sw - 0.5, h: 1.6, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.38, valign: 'top' });
     });
-    // 하단 실측
-    card(s, M, 5.05, W - 2 * M, 1.7, { fill: C.ink });
-    const nums = [
-      ['198,704', '인플루언서 DB'],
-      ['45,725', '연락 가능 인원'],
-      ['170,307', '네이버 블로그'],
-      ['17,986', '유튜브'],
-      ['9,803', '네이버 카페'],
-    ];
+    card(s, M, 5.1, W - 2 * M, 1.65, { fill: C.ink });
+    const nums = [['198,704', '인플루언서 DB'], ['45,725', '연락 가능'], ['170,307', '네이버 블로그'], ['17,986', '유튜브'], ['9,803', '네이버 카페']];
     const nw = (W - 2 * M - 0.6) / 5;
     nums.forEach(([n, l], i) => {
       const x = M + 0.3 + i * nw;
-      T(s, n, { x, y: 5.22, w: nw, h: 0.65, fontSize: 26, bold: true, color: i < 2 ? C.brand : C.darkText });
-      T(s, l, { x, y: 5.85, w: nw, h: 0.3, fontSize: 11, color: C.darkMuted });
+      T(s, n, { x, y: 5.27, w: nw, h: 0.65, fontSize: 26, bold: true, color: i < 2 ? C.brand : C.darkText });
+      T(s, l, { x, y: 5.9, w: nw, h: 0.3, fontSize: 11, color: C.darkMuted });
     });
-    T(s, '2026년 9월 7일 유어딜 운영 콘솔 실측. 인스타그램과 틱톡은 탐색 필터에 있으나 DB의 대부분은 네이버 블로그와 유튜브입니다.', { x: M + 0.3, y: 6.3, w: W - 2 * M - 0.6, h: 0.3, fontSize: 9.5, color: C.darkMuted });
-    s.addNotes('숫자는 /api/admin/ads/influencer-pool/stats 2026-09-07 실측. 발송은 대표가 직접 판단(자동 콜드 발송 없음).');
+    T(s, '2026년 9월 7일 유어딜 운영 콘솔 실측. 인스타그램과 틱톡은 탐색 필터에 있으나 DB의 대부분은 네이버 블로그와 유튜브입니다.', { x: M + 0.3, y: 6.33, w: W - 2 * M - 0.6, h: 0.3, fontSize: 9.5, color: C.darkMuted });
+    s.addNotes('숫자는 /api/admin/ads/influencer-pool/stats 2026-09-07 실측.');
   }
 
-  // ───────────────────────── 11 사장님이 안심하는 이유 ─────────────────────────
+  // ───────── 11 주간 루틴 + 도구 ─────────
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '사장님이 안심하고 맡기는 구조라, 대행사의 설득이 쉬워집니다.');
+    title(s, '담당자 한 명의 일주일. 쓰는 화면은 여섯 장뿐입니다.');
+    const days = [
+      ['월·화', '매장 방문 4곳', '7장 체크리스트로 고른 매장을 방문해 등록합니다. 하루 2곳이면 충분합니다.', '/seller/stores'],
+      ['수', '이용권 손보기', '사진 교체, 마감 수량, 할인율 조정. 잘 팔리는 메뉴는 수량을 늘립니다.', '/seller/products'],
+      ['목', '인플루언서 제안 5건', 'DB에서 매장 동네 채널을 골라 제안을 접수하고, 들어온 신청에 답합니다.', '/seller/influencers'],
+      ['금', '매장에 보고', '운영 매장 요약에서 매장별 매출과 주문을 뽑아 사장님께 보내고, 계약대로 청구합니다.', '/seller/operating'],
+    ];
+    const cw = (W - 2 * M - 0.9) / 4;
+    days.forEach(([d, h, p, r], i) => {
+      const x = M + i * (cw + 0.3);
+      card(s, x, 2.0, cw, 2.6);
+      T(s, d, { x: x + 0.25, y: 2.18, w: cw - 0.5, h: 0.3, fontSize: 11, bold: true, color: C.brand, charSpacing: 1 });
+      T(s, h, { x: x + 0.25, y: 2.5, w: cw - 0.5, h: 0.4, fontSize: 15, bold: true, color: C.ink });
+      T(s, p, { x: x + 0.25, y: 2.95, w: cw - 0.5, h: 1.1, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.38, valign: 'top' });
+      T(s, r, { x: x + 0.25, y: 4.15, w: cw - 0.5, h: 0.25, fontSize: 9.5, color: C.brand, fontFace: 'Courier New' });
+    });
+    T(s, '쓰는 화면 여섯 장 (전부 셀러 대시보드. 대행사 전용 계정이나 별도 프로그램이 없습니다)', { x: M, y: 4.85, w: W - 2 * M, h: 0.3, fontSize: 11, bold: true, color: C.gray, charSpacing: 1 });
+    const tools = [
+      ['매장 관리', '/seller/stores', '등록, 국세청 확인, 채널, 매장 전환'],
+      ['운영 권한', '/seller/operators', '사장님이 대행사 핸들을 추가하거나 회수'],
+      ['인플루언서 탐색', '/seller/influencers', '필터, 제안 접수'],
+      ['소개 협업', '/seller/influencer-deals', '커미션 % 제안, 조건부 발효'],
+      ['소개비 내역', '/seller/promo-spend', '수령인별·딜별. 사장님도 항상 열람'],
+      ['운영 매장 요약', '/seller/operating', '매장별 매출·주문, 운영 시작 이후 구간'],
+    ];
+    const tw = (W - 2 * M - 0.4) / 3;
+    tools.forEach(([h, r, p], k) => {
+      const col = k % 3, row = Math.floor(k / 3);
+      const x = M + col * (tw + 0.2), y = 5.25 + row * 0.75;
+      T(s, h, { x, y, w: 1.6, h: 0.3, fontSize: 11.5, bold: true, color: C.ink });
+      T(s, r, { x: x + 1.55, y: y + 0.02, w: 2.2, h: 0.26, fontSize: 9.5, color: C.brand, fontFace: 'Courier New' });
+      T(s, p, { x, y: y + 0.3, w: tw - 0.2, h: 0.35, fontSize: 10, color: C.inkSoft });
+    });
+    s.addNotes('라우트 6개는 2026-09-07 main 실재. 요일 배분은 권장 루틴.');
+  }
+
+  // ───────── 12 사장님이 안심하는 이유 (짧게) ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '사장님이 맡겨도 잃을 게 없어서, 두 번째 방문이 쉬워집니다.', { size: 25 });
     const items = [
-      ['FiRefreshCcw', '회수는 언제든, 조건 없이', '사장님이 운영 권한을 회수해도 대행사가 올려 둔 이용권과 주문과 리뷰는 매장에 남습니다. 붙이는 것도 떼는 것도 권한 한 줄입니다.'],
-      ['FiLock', '정산계좌와 사업자정보는 주인만', '운영자에게는 사업자등록번호와 대표자명이 가려 보이고, 계좌 변경과 사업자정보 수정과 탈퇴는 서버가 막습니다. 매장 돈이 딴 데로 갈 길이 없습니다.'],
+      ['FiRefreshCcw', '회수는 언제든, 조건 없이', '사장님이 권한을 빼도 대행사가 올려 둔 이용권, 주문, 리뷰는 매장에 남습니다. 붙이는 것도 떼는 것도 권한 한 줄입니다.'],
+      ['FiLock', '정산계좌와 사업자정보는 주인만', '운영자에게는 사업자번호와 대표자명이 가려 보이고, 계좌 변경과 사업자정보 수정과 탈퇴는 서버가 막습니다. 매장 돈이 딴 데로 갈 길이 없습니다.'],
       ['FiEye', '소개비 지출은 항상 사장님이 봅니다', '운영을 맡겨도 소개비가 누구에게 얼마 나갔는지 사장님이 직접 봅니다. 투명성은 위임 여부와 무관합니다.'],
-      ['FiBarChart2', '운영 성과는 정직하게 씁니다', '운영 매장 요약은 매장 총액과 운영 시작 이후 구간을 나눠 보여 줍니다. "내가 만든 매출"이라고 부풀리지 않으니, 청구 근거로 쓸 수 있습니다.'],
+      ['FiBarChart2', '운영 성과는 부풀리지 않습니다', '운영 매장 요약은 매장 총액과 "운영 시작 이후" 구간을 나눠 보여 줍니다. 그래서 그 숫자를 청구 근거로 쓸 수 있습니다.'],
     ];
     const cw = (W - 2 * M - 0.3) / 2;
     items.forEach(([i, h, p], k) => {
       const col = k % 2, row = Math.floor(k / 2);
-      const x = M + col * (cw + 0.3), y = 2.05 + row * 1.6;
-      card(s, x, y, cw, 1.42);
-      iconCircle(s, i, x + 0.25, y + 0.25, 0.48);
-      T(s, h, { x: x + 0.85, y: y + 0.22, w: cw - 1.05, h: 0.35, fontSize: 13.5, bold: true, color: C.ink });
-      T(s, p, { x: x + 0.85, y: y + 0.58, w: cw - 1.1, h: 0.8, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.38, valign: 'top' });
+      const x = M + col * (cw + 0.3), y = 2.05 + row * 1.7;
+      card(s, x, y, cw, 1.5);
+      iconCircle(s, i, x + 0.25, y + 0.27, 0.48);
+      T(s, h, { x: x + 0.85, y: y + 0.24, w: cw - 1.05, h: 0.35, fontSize: 13.5, bold: true, color: C.ink });
+      T(s, p, { x: x + 0.85, y: y + 0.6, w: cw - 1.1, h: 0.85, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.38, valign: 'top' });
     });
-    T(s, '사장님께 이렇게 말하면 됩니다', { x: M, y: 5.35, w: 5, h: 0.3, fontSize: 11, bold: true, color: C.gray, charSpacing: 1 });
-    const quotes = [
-      '"가입비도 월 이용료도 없어요. 팔린 만큼만 5% 나갑니다."',
-      '"계좌랑 사업자 정보는 사장님만 만질 수 있어요. 저는 못 봅니다."',
-      '"맡기신 게 마음에 안 들면 오늘이라도 권한만 빼시면 돼요."',
-    ];
-    quotes.forEach((q, i) => {
-      T(s, q, { x: M + i * ((W - 2 * M) / 3), y: 5.7, w: (W - 2 * M) / 3 - 0.2, h: 0.9, fontSize: 12, italic: true, color: C.ink, lineSpacingMultiple: 1.4, valign: 'top' });
-    });
-    s.addNotes('store-operator-model.md §7.7: 운영자 마스킹·403 게이트·operating summary 정직성. 실제 403 발생은 staging 확인 몫이라 "서버가 막는다"까지만 말한다.');
+    card(s, M, 5.65, W - 2 * M, 1.05, { fill: C.tint });
+    T(s, '그래서 사장님께 이렇게 말할 수 있습니다.', { x: M + 0.3, y: 5.75, w: 5, h: 0.3, fontSize: 10.5, bold: true, color: C.gray });
+    T(s, '"계좌랑 사업자 정보는 사장님만 만질 수 있고 저는 못 봅니다. 마음에 안 들면 오늘이라도 권한만 빼시면 되고, 올려 둔 건 다 사장님 것으로 남습니다."', { x: M + 0.3, y: 6.05, w: W - 2 * M - 0.6, h: 0.55, fontSize: 12, italic: true, color: C.ink, lineSpacingMultiple: 1.35, valign: 'top' });
+    s.addNotes('store-operator-model.md §7.7. 실제 403 발생은 staging 확인 몫이라 "서버가 막는다"까지만.');
   }
 
-  // ───────────────────────── 12 소비자 경험 ─────────────────────────
+  // ───────── 13 유어딜이 대행사에게 해 주는 것 ─────────
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '손님 쪽에서는 화면 네 장이면 끝나서, 팔립니다.');
+    title(s, '유어딜이 대행사에게 붙여 드리는 것 여섯 가지.');
+    const items = [
+      ['FiUserCheck', '첫 매장 세 곳은 같이 갑니다', '첫 등록 세 건은 유어딜 담당자가 현장이나 통화로 동행합니다. 국세청 확인, 카카오맵 연결, 이용권 등록을 한 번 같이 하면 그다음은 혼자 됩니다.'],
+      ['FiFileText', '사장님용 한 장 안내', '수수료, 정산, QR 사용법이 적힌 매장용 안내 한 장을 드립니다. 대행사 이름을 넣어 드립니다.'],
+      ['FiUsers', '인플루언서 DB와 발송 대행', '19만 명 DB 탐색과 제안 발송을 유어딜이 합니다. 연락처를 모으거나 DM을 돌릴 필요가 없습니다.'],
+      ['FiCreditCard', '결제, 정산, 환불, 세금', '토스 결제, 주간 정산, 미사용 환불, 원천징수를 유어딜이 처리합니다. 손님 CS도 유어딜로 옵니다.'],
+      ['FiMapPin', '손님 유입', '홈 지도에 동네 기준으로 노출되고, 매장 페이지는 카톡 미리보기 카드와 네이버·구글 검색에 잡힙니다. 6개 언어를 지원합니다.'],
+      ['FiTrendingUp', '주간 실적 공유', '파일럿 기간에는 매주 매장별 판매와 사용 숫자를 유어딜이 먼저 보내 드립니다. 매장 보고서에 그대로 쓰시면 됩니다.'],
+    ];
+    const cw = (W - 2 * M - 0.6) / 3, ch = 2.15;
+    items.forEach(([i, h, p], k) => {
+      const col = k % 3, row = Math.floor(k / 3);
+      const x = M + col * (cw + 0.3), y = 2.0 + row * (ch + 0.3);
+      card(s, x, y, cw, ch);
+      iconCircle(s, i, x + 0.25, y + 0.25, 0.48);
+      T(s, h, { x: x + 0.85, y: y + 0.3, w: cw - 1.05, h: 0.4, fontSize: 13.5, bold: true, color: C.ink });
+      T(s, p, { x: x + 0.25, y: y + 0.85, w: cw - 0.5, h: ch - 1.0, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.38, valign: 'top' });
+    });
+    s.addNotes('동행·안내장·주간 실적 공유는 파일럿 제안의 유어딜 측 약속. 나머지 셋은 현행 기능.');
+  }
+
+  // ───────── 14 8주 파일럿 제안 ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '8주 파일럿 제안. 매장 10곳이면 구조가 맞는지 판정이 납니다.', { size: 25 });
+    // 좌: 목표 숫자
+    card(s, M, 2.0, 4.1, 4.75, { fill: C.ink });
+    T(s, '8주 목표', { x: M + 0.3, y: 2.2, w: 3, h: 0.3, fontSize: 11, bold: true, color: C.brand, charSpacing: 1 });
+    const goals = [['10곳', '등록 매장'], ['30개', '판매 중 이용권 (매장당 3개)'], ['20건', '인플루언서 제안 접수'], ['1회', '매장별 실적 보고와 청구']];
+    let gy = 2.6;
+    goals.forEach(([n, l]) => {
+      T(s, n, { x: M + 0.3, y: gy, w: 1.5, h: 0.6, fontSize: 28, bold: true, color: C.darkText });
+      T(s, l, { x: M + 1.75, y: gy + 0.15, w: 2.2, h: 0.4, fontSize: 11, color: C.darkMuted, valign: 'middle' });
+      gy += 0.95;
+    });
+    T(s, '숫자는 제안입니다. 담당자 한 명, 주 2일 방문 기준으로 잡았습니다.', { x: M + 0.3, y: 6.35, w: 3.5, h: 0.35, fontSize: 9.5, color: C.darkMuted });
+    // 중: 대행사가 준비할 것
+    const cx = M + 4.4, cw = (W - M - cx - 0.3) / 2;
+    card(s, cx, 2.0, cw, 4.75);
+    T(s, '대행사가 준비할 것', { x: cx + 0.3, y: 2.2, w: cw - 0.6, h: 0.3, fontSize: 11, bold: true, color: C.gray, charSpacing: 1 });
+    const prep = [
+      '담당자 1명과 카카오 계정 (셀러 계정은 사업자 인증으로 10분)',
+      '후보 매장 리스트 10~20곳 (7장 체크리스트 기준)',
+      '매장과 맺을 보수 조건 초안 (매출 % 또는 월 정액. 유어딜은 관여하지 않습니다)',
+      '첫 방문 일정 2주치',
+    ];
+    let py = 2.6;
+    prep.forEach((t, i) => {
+      numBadge(s, i + 1, cx + 0.3, py, 0.36, { filled: false });
+      T(s, t, { x: cx + 0.8, y: py - 0.02, w: cw - 1.1, h: 0.85, fontSize: 11.5, color: C.ink, lineSpacingMultiple: 1.4, valign: 'top' });
+      py += 0.95;
+    });
+    // 우: 유어딜이 준비할 것
+    const rx = cx + cw + 0.3;
+    card(s, rx, 2.0, cw, 4.75);
+    T(s, '유어딜이 준비할 것', { x: rx + 0.3, y: 2.2, w: cw - 0.6, h: 0.3, fontSize: 11, bold: true, color: C.gray, charSpacing: 1 });
+    const ours = [
+      '첫 3매장 등록 동행 (현장 또는 통화)',
+      '대행사 이름이 들어간 사장님용 안내 한 장',
+      '인플루언서 제안 발송, 결제·정산·환불·CS 전부',
+      '매주 매장별 판매·사용 숫자 공유. 8주 뒤 함께 판정',
+    ];
+    py = 2.6;
+    ours.forEach((t, i) => {
+      numBadge(s, i + 1, rx + 0.3, py, 0.36);
+      T(s, t, { x: rx + 0.8, y: py - 0.02, w: cw - 1.1, h: 0.85, fontSize: 11.5, color: C.ink, lineSpacingMultiple: 1.4, valign: 'top' });
+      py += 0.95;
+    });
+    s.addNotes('파일럿 조건은 이 문서의 제안. 유어딜은 대행사 보수 조건에 관여하지 않는다(대표 확정).');
+  }
+
+  // ───────── 15 손님 경험 ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '손님 쪽은 화면 네 장이면 끝납니다. 그래서 매장이 올리면 팔립니다.', { size: 26 });
     const steps = [
-      ['FiMapPin', '발견', '홈 지도에서 내 동네 기준으로 이용권이 뜹니다. 유어샵 링크를 카톡에 붙이면 매장 카드가 미리보기로 뜨고, 네이버와 구글 검색에도 잡힙니다. 6개 언어를 지원합니다.'],
+      ['FiMapPin', '발견', '홈 지도에서 내 동네 기준으로 이용권이 뜹니다. 매장 링크를 카톡에 붙이면 미리보기 카드가 뜨고, 네이버와 구글 검색에도 잡힙니다.'],
       ['FiCreditCard', '결제', '정가와 할인가를 함께 보고 토스로 결제합니다. 앱 설치나 가입 강요 구간이 없습니다.'],
-      ['FiSmartphone', '사용', '매장에서 QR이나 PIN을 제시합니다. 매장은 POS 없이 스마트폰으로 확인합니다.'],
-      ['FiShield', '환불과 응대', '미사용분은 100% 자동 환불됩니다. 재고, 배송, 반품이 없어 고객 응대가 매장이나 대행사로 흘러오지 않습니다.'],
+      ['FiSmartphone', '사용', '매장에서 QR을 보여 주거나 매장 PIN을 입력합니다. 매장은 폰 한 대로 확인합니다.'],
+      ['FiShield', '환불과 응대', '안 쓴 이용권은 100% 자동 환불됩니다. 재고, 배송, 반품이 없어 고객 응대가 매장이나 대행사로 흘러오지 않습니다.'],
     ];
     const cw = (W - 2 * M - 0.9) / 4;
     steps.forEach(([i, h, p], k) => {
@@ -473,76 +581,39 @@ async function wordmark(fill) {
       T(s, p, { x: x + 0.3, y: 3.6, w: cw - 0.6, h: 1.9, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
       if (k < 3) T(s, '→', { x: x + cw - 0.05, y: 3.6, w: 0.4, h: 0.4, fontSize: 18, color: C.gray, align: 'center' });
     });
-    T(s, '가격은 매장이 정한 실제 판매가이고, 유효기간도 매장이 정합니다. 손님이 겪는 순서는 링크 클릭, 할인가 결제, 이용권 발급, 매장에서 사용입니다.', { x: M, y: 5.95, w: W - 2 * M, h: 0.6, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.4 });
-    s.addNotes('소비자 경로: 홈 지도(/), 상세(/group-buy/:id) 토스 결제, /my-vouchers 지갑, 매장 QR/PIN 사용.');
+    T(s, '유어딜은 초기 서비스입니다. 트래픽을 약속하는 대신 요율과 정산 방식을 숫자로 먼저 공개합니다. 비어 있는 동네와 업종은 먼저 들어온 대행사의 매장이 가져갑니다.', { x: M, y: 5.95, w: W - 2 * M, h: 0.6, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.4 });
+    s.addNotes('소비자 경로: 홈 지도(/), 상세 토스 결제, /my-vouchers 지갑, 매장 QR/PIN 사용.');
   }
 
-  // ───────────────────────── 13 시작 절차 ─────────────────────────
-  {
-    const s = pres.addSlide();
-    chrome(s);
-    title(s, '시작은 다섯 단계이고, 첫 매장까지 하루면 됩니다.');
-    const steps = [
-      ['셀러 계정을 만든다', '카카오 로그인 후 사업자 인증을 합니다. 대행사 자신의 사업자로 하나면 됩니다. 국세청 진위확인이 맞으면 자동 승인됩니다.'],
-      ['매장을 등록하거나 권한을 받는다', '새 매장은 /seller/stores 에서 카카오맵으로 찾아 등록하고 채널을 "중개"로 고릅니다. 이미 있는 매장은 사장님이 대행사 핸들을 운영자로 추가합니다.'],
-      ['이용권을 올린다', '사진, 가격, 마감, 유효기간. 모바일 한 손으로 3분이면 등록됩니다. 재고를 넣을 필요가 없습니다.'],
-      ['인플루언서를 붙인다', 'DB에서 찾아 제안을 접수하고, 매장이 정한 커미션 %로 딜을 맺습니다. 링크 귀속과 정산은 자동입니다.'],
-      ['운영하고 정산받는다', '판매 대금은 매장 계좌로 자동 정산됩니다. 대행사 보수는 매장과의 계약대로, 운영 매장 요약 화면의 숫자를 근거로 받습니다.'],
-    ];
-    const lineY = 2.55;
-    s.addShape(pres.shapes.LINE, { x: M + 0.3, y: lineY, w: W - 2 * M - 0.6, h: 0, line: { color: C.rule, width: 1.5 } });
-    const sw = (W - 2 * M) / 5;
-    steps.forEach(([h, p], i) => {
-      const x = M + i * sw;
-      s.addShape(pres.shapes.OVAL, { x: x + 0.05, y: lineY - 0.25, w: 0.5, h: 0.5, fill: { color: i === 0 ? C.brand : C.surface }, line: { color: C.brand, width: 1.5 } });
-      T(s, String(i + 1), { x: x + 0.05, y: lineY - 0.25, w: 0.5, h: 0.5, fontSize: 13, bold: true, color: i === 0 ? 'FFFFFF' : C.brand, align: 'center', valign: 'middle' });
-      T(s, h, { x, y: lineY + 0.5, w: sw - 0.3, h: 0.75, fontSize: 13.5, bold: true, color: C.ink, lineSpacingMultiple: 1.25, valign: 'top' });
-      T(s, p, { x, y: lineY + 1.3, w: sw - 0.3, h: 2.0, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
-    });
-    card(s, M, 6.0, W - 2 * M, 0.85, { fill: C.brandSoft });
-    T(s, '유어딜은 초기 서비스입니다. 트래픽을 약속하는 대신 요율과 정산 방식을 숫자로 먼저 공개합니다. 비어 있는 지역과 업종은 먼저 들어온 대행사가 가져갑니다.', { x: M + 0.3, y: 6.05, w: W - 2 * M - 0.6, h: 0.75, fontSize: 11.5, color: C.ink, valign: 'middle', lineSpacingMultiple: 1.35 });
-    s.addNotes('입점 절차: 카카오 로그인 → 사업자 인증(/seller/business-info) → 승인(일치 시 자동) → 매장 등록(/seller/stores) → 이용권 등록(/seller/products/quick).');
-  }
-
-  // ───────────────────────── 14 FAQ + 연락처 ─────────────────────────
+  // ───────── 16 FAQ + 연락처 ─────────
   {
     const s = pres.addSlide();
     chrome(s, { dark: true });
-    title(s, '자주 나오는 질문과, 지금 하실 일.', { dark: true });
+    title(s, '남은 질문과, 지금 하실 일.', { dark: true });
     const faqs = [
-      ['수수료가 두 번 나가나요?', '아닙니다. 유어딜이 떼는 것은 하나, 중개 매장 5%뿐입니다. 대행사 보수는 매장과 대행사의 계약이고 유어딜 정산서에 나오지 않습니다.'],
+      ['수수료가 두 번 나가나요?', '아닙니다. 유어딜이 떼는 것은 중개 매장 5% 하나뿐입니다. 대행사 보수는 매장과 대행사의 계약이고 유어딜 정산서에 나오지 않습니다.'],
       ['사장님이 직접 계정을 만들면 우리 관계는요?', '계정 양도가 아니라 권한 변경입니다. 상품, 주문, 리뷰, 정산 이력은 매장에 그대로 남고, 대행사는 운영자로 계속 일할 수 있습니다.'],
-      ['비용이 드나요?', '가입비도 월 이용료도 없습니다. 매장에서 팔린 만큼만 수수료가 나가고, 대행사가 유어딜에 내는 돈은 없습니다.'],
-      ['정산은 언제 되나요?', '구매확정 주문이 정산 대상이고, 신청 후 3~5 영업일 안에 매장 계좌로 입금됩니다. 인플루언서 소개비는 7일 성숙 후 유어딜이 지급합니다.'],
+      ['대행사가 유어딜에 내는 돈이 있나요?', '없습니다. 가입비, 월 이용료, 매장당 등록비 전부 없습니다. 매장에서 팔린 만큼만 유어딜 수수료가 나갑니다.'],
+      ['매장 정산은 언제 되나요?', '손님이 매장에서 실제로 사용한 이용권만 주간 정산으로 매장 계좌에 들어옵니다. 안 쓴 이용권은 손님에게 자동 환불됩니다.'],
       ['쇼핑 공구 벤더인데 바로 할 수 있나요?', '구조가 같습니다. 브랜드 대신 매장, 상품 대신 이용권, 택배 대신 QR입니다. 재고와 반품이 빠지고 정산이 자동으로 바뀝니다.'],
     ];
     const cw = (W - 2 * M - 0.3) / 2;
     faqs.forEach(([q, a], i) => {
       const col = i % 2, row = Math.floor(i / 2);
       const x = M + col * (cw + 0.3), y = 2.0 + row * 1.35;
-      if (i === 4) {
-        T(s, q, { x, y, w: cw, h: 0.3, fontSize: 13, bold: true, color: C.darkText });
-        T(s, a, { x, y: y + 0.35, w: cw, h: 0.9, fontSize: 10.5, color: C.darkMuted, lineSpacingMultiple: 1.4, valign: 'top' });
-        return;
-      }
       T(s, q, { x, y, w: cw, h: 0.3, fontSize: 13, bold: true, color: C.darkText });
       T(s, a, { x, y: y + 0.35, w: cw, h: 0.9, fontSize: 10.5, color: C.darkMuted, lineSpacingMultiple: 1.4, valign: 'top' });
     });
-    // 연락처 패널 (우측 하단)
     const px = M + cw + 0.3, py = 4.55, pw = cw, ph = 2.3;
     card(s, px, py, pw, ph, { fill: C.darkSurface });
-    T(s, '제휴 문의', { x: px + 0.3, y: py + 0.2, w: 3, h: 0.3, fontSize: 11, bold: true, color: C.brand, charSpacing: 1 });
-    const contact = [
-      ['FiMail', 'jiwon@ur-team.com'],
-      ['FiGlobe', 'urdeal.kr'],
-      ['FiHash', '리스터코퍼레이션, 사업자등록번호 479-09-02930'],
-    ];
+    T(s, '지금 하실 일', { x: px + 0.3, y: py + 0.2, w: 3, h: 0.3, fontSize: 11, bold: true, color: C.brand, charSpacing: 1 });
+    T(s, '후보 매장 5곳의 이름과 동네만 보내 주세요. 하루 안에 채널과 요율을 확인해 드리고, 첫 방문 일정을 잡습니다.', { x: px + 0.3, y: py + 0.5, w: pw - 0.6, h: 0.7, fontSize: 11.5, color: C.darkText, lineSpacingMultiple: 1.4, valign: 'top' });
+    const contact = [['FiMailW', 'jiwon@ur-team.com'], ['FiGlobeW', 'urdeal.kr'], ['FiFileTextW', '리스터코퍼레이션, 사업자등록번호 479-09-02930']];
     contact.forEach(([i, t], k) => {
-      s.addImage({ data: ic[i], x: px + 0.3, y: py + 0.62 + k * 0.4, w: 0.22, h: 0.22 });
-      T(s, t, { x: px + 0.7, y: py + 0.57 + k * 0.4, w: pw - 0.9, h: 0.32, fontSize: k === 2 ? 10.5 : 13, bold: k < 2, color: C.darkText, valign: 'middle' });
+      s.addImage({ data: ic[i], x: px + 0.3, y: py + 1.3 + k * 0.32, w: 0.2, h: 0.2 });
+      T(s, t, { x: px + 0.65, y: py + 1.25 + k * 0.32, w: pw - 0.9, h: 0.3, fontSize: k === 2 ? 10 : 12.5, bold: k < 2, color: C.darkText, valign: 'middle' });
     });
-    T(s, '매장 리스트를 보내 주시면 채널과 요율을 확인해 드립니다. 첫 매장 등록은 함께 진행합니다.', { x: px + 0.3, y: py + 1.78, w: pw - 0.6, h: 0.45, fontSize: 10, color: C.darkMuted, lineSpacingMultiple: 1.35, valign: 'top' });
-    s.addNotes('FAQ 출처: 사업계획서 C-3, 셀러 가이드 "중개사 몫". 연락처는 사업계획서 A-2.');
+    s.addNotes('FAQ 출처: 사업계획서 C-3, 셀러 가이드 "중개사 몫", auto-settlement.ts.');
   }
 
   await pres.writeFile({ fileName: OUT });

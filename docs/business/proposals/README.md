@@ -5,7 +5,7 @@
 | 문서 | 파일 | 어드민 |
 |---|---|---|
 | 인플루언서 제휴 제안 (16:9, 9장) | `public/static/proposals/influencer-proposal.html` | `/admin/proposals` |
-| 대행사 제휴 제안 (16:9, 14장, PowerPoint) | `docs/business/proposals/urdeal-agency-proposal.pptx` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
+| 대행사 제휴 제안 (16:9, 16장, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
 
 ## 왜 docs/ 가 아니라 public/static/ 인가
 
@@ -41,8 +41,9 @@ node /path/to/ur-live/docs/business/proposals/urdeal-agency-proposal.build.mjs .
 ```
 
 - 요율(직접 10% / 중개 5%)과 "유어딜은 중개사에게 지급하지 않는다"는 2026-09-04 대표 확정입니다.
-  `docs/design/store-operator-model.md` §7 이 SSOT 이고, 바뀌면 5·6·7·14 장을 같이 고쳐야 합니다.
+  `docs/design/store-operator-model.md` §7 이 SSOT 이고, 바뀌면 1·2·4·5·6·16 장을 같이 고쳐야 합니다.
 - 숫자 두 개는 라이브 실측입니다. 판매 중 이용권 338건(`/api/group-buy/products?status=active`),
   인플루언서 DB 198,704명·연락 가능 45,725명(`/api/admin/ads/influencer-pool/stats`, 2026-09-07).
-  전달 전에 다시 재서 2·10 장을 갱신하세요.
+  전달 전에 다시 재서 3·10 장을 갱신하세요.
+- 5·6 장의 단위 경제(판매가 2만원, 월 60건, 보수 10%, 재료비 35%)와 14 장의 파일럿 목표는 **가정·제안**입니다. 슬라이드에도 그렇게 적혀 있습니다.
 - 글꼴은 맑은 고딕입니다. 리눅스 LibreOffice 렌더는 글꼴이 치환되어 자간이 벌어져 보이지만 PowerPoint 에서는 정상입니다.
