@@ -1,4 +1,4 @@
-# [E2] 승인 실행기 2회차 — 결재 `2026-09-07-actor-benefit-conflicts` 중 Q2-1 (딜 % 상한 없음) — <PR_Q2>
+# [E2] 승인 실행기 2회차 — 결재 `2026-09-07-actor-benefit-conflicts` 중 Q2-1 (딜 % 상한 없음) — PR #1392 (draft, 머지 대기)
 
 > 실행기(이 세션 바인딩, `trig_01BmSbMMZfpnC1TBF3xWfRGF`) 01:18 KST 회차. 실행 순서 Q3-3(→ #1390 머지 `1d0593e`) → **Q2-1** → Q4-2.
 
